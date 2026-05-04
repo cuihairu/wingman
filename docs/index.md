@@ -55,7 +55,7 @@ features:
 
 ## 快速开始
 
-\`\`\`bash
+```bash
 # 克隆仓库
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
@@ -66,7 +66,7 @@ cmake --build build --config Release
 
 # 运行示例
 wingman.exe scripts/examples/hello.lua
-\`\`\`
+```
 
 ## 许可证
 
