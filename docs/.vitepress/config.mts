@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'Wingman',
   description: '游戏自动化可编程控制引擎',
+  base: '/wingman/',
 
   themeConfig: {
     nav: [
