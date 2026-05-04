@@ -5,6 +5,7 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
 
 env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
@@ -56,6 +57,69 @@ jobs:
         name: wingman-windows-x64
         path: build/Release/wingman.exe
 
+  build-linux:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          liblua5.4-dev \
+          libopencv-dev \
+          libspdlog-dev \
+          nlohmann-json3-dev \
+          libasio-dev
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -S . \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build --parallel
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: wingman-linux-x64
+        path: build/wingman
+
+  build-macos:
+    runs-on: macos-14
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install system dependencies
+      run: |
+        brew update
+        brew install lua opencv spdlog nlohmann-json asio
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -S . \
+          -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build --parallel
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: wingman-macos-x64
+        path: build/wingman
+
   build-docs:
     runs-on: ubuntu-latest
 
@@ -66,10 +130,26 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '24'
 
     - name: Install pnpm
-      run: npm install -g pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: latest
+
+    - name: Get pnpm store directory
+      id: pnpm-cache
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+    - name: Setup pnpm cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
 
     - name: Install dependencies
       run: cd docs && pnpm install
