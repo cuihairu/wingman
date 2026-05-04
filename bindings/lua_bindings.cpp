@@ -7,6 +7,7 @@
 #include "wingman/process.hpp"
 #include "wingman/system.hpp"
 #include "wingman/security.hpp"
+#include "wingman/game_profile.hpp"
 
 #include <cstring>
 #include <ctime>
@@ -85,6 +86,7 @@ void LuaState::registerAPIs() {
     registerPerformanceModule();
     registerScriptModule();
     registerSecurityModule();
+    registerGameProfileModule();
 
     // 注册扩展模块
     registerHttpModule(L);
@@ -1470,6 +1472,159 @@ void LuaState::registerSecurityModule() {
     lua_setfield(L, -2, "filterSensitive");
 
     lua_setglobal(L, "security");
+}
+
+// ============================================================================
+// GameProfile 模块
+// ============================================================================
+
+namespace gameprofile {
+
+// gameprofile.load(id)
+static int load(lua_State* L) {
+    const char* id = luaL_checkstring(L, 1);
+    auto& mgr = GameProfileManager::instance();
+    lua_pushboolean(L, mgr.loadProfile(id));
+    return 1;
+}
+
+// gameprofile.save(id)
+static int save(lua_State* L) {
+    const char* id = luaL_checkstring(L, 1);
+    auto& mgr = GameProfileManager::instance();
+    auto* profile = mgr.getProfile(id);
+    if (profile) {
+        lua_pushboolean(L, mgr.saveProfile(*profile));
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+// gameprofile.get(id)
+static int get(lua_State* L) {
+    const char* id = luaL_checkstring(L, 1);
+    auto& mgr = GameProfileManager::instance();
+    const auto* profile = mgr.getProfile(id);
+    if (profile) {
+        lua_pushstring(L, profile->name.c_str());
+        lua_pushstring(L, profile->window.title.c_str());
+        return 2;
+    }
+    lua_pushnil(L);
+    return 1;
+}
+
+// gameprofile.getActive()
+static int getActive(lua_State* L) {
+    auto& mgr = GameProfileManager::instance();
+    const auto* profile = mgr.getActiveProfile();
+    if (profile) {
+        lua_pushstring(L, profile->id.c_str());
+        lua_pushstring(L, profile->name.c_str());
+        return 2;
+    }
+    lua_pushnil(L);
+    return 1;
+}
+
+// gameprofile.setActive(id)
+static int setActive(lua_State* L) {
+    const char* id = luaL_checkstring(L, 1);
+    auto& mgr = GameProfileManager::instance();
+    lua_pushboolean(L, mgr.setActiveProfile(id));
+    return 1;
+}
+
+// gameprofile.list()
+static int list(lua_State* L) {
+    auto& mgr = GameProfileManager::instance();
+    auto ids = mgr.getProfileIds();
+
+    lua_newtable(L);
+    for (size_t i = 0; i < ids.size(); ++i) {
+        lua_pushinteger(L, i + 1);
+        lua_pushstring(L, ids[i].c_str());
+        lua_settable(L, -3);
+    }
+    return 1;
+}
+
+// gameprofile.findByWindow(title)
+static int findByWindow(lua_State* L) {
+    const char* title = luaL_checkstring(L, 1);
+    auto& mgr = GameProfileManager::instance();
+    auto* profile = mgr.findProfileByWindow(title);
+    if (profile) {
+        lua_pushstring(L, profile->id.c_str());
+        lua_pushstring(L, profile->name.c_str());
+        return 2;
+    }
+    lua_pushnil(L);
+    return 1;
+}
+
+// gameprofile.createTemplate(name)
+static int createTemplate(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto& mgr = GameProfileManager::instance();
+    auto profile = mgr.createTemplate(name);
+    lua_pushstring(L, profile.id.c_str());
+    lua_pushstring(L, profile.name.c_str());
+    return 2;
+}
+
+// gameprofile.setProfilesDirectory(dir)
+static int setProfilesDirectory(lua_State* L) {
+    const char* dir = luaL_checkstring(L, 1);
+    auto& mgr = GameProfileManager::instance();
+    mgr.setProfilesDirectory(dir);
+    return 0;
+}
+
+// gameprofile.scan()
+static int scan(lua_State* L) {
+    auto& mgr = GameProfileManager::instance();
+    mgr.scanProfilesDirectory();
+    return 0;
+}
+
+} // namespace gameprofile
+
+void LuaState::registerGameProfileModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, gameprofile::load);
+    lua_setfield(L, -2, "load");
+
+    lua_pushcfunction(L, gameprofile::save);
+    lua_setfield(L, -2, "save");
+
+    lua_pushcfunction(L, gameprofile::get);
+    lua_setfield(L, -2, "get");
+
+    lua_pushcfunction(L, gameprofile::getActive);
+    lua_setfield(L, -2, "getActive");
+
+    lua_pushcfunction(L, gameprofile::setActive);
+    lua_setfield(L, -2, "setActive");
+
+    lua_pushcfunction(L, gameprofile::list);
+    lua_setfield(L, -2, "list");
+
+    lua_pushcfunction(L, gameprofile::findByWindow);
+    lua_setfield(L, -2, "findByWindow");
+
+    lua_pushcfunction(L, gameprofile::createTemplate);
+    lua_setfield(L, -2, "createTemplate");
+
+    lua_pushcfunction(L, gameprofile::setProfilesDirectory);
+    lua_setfield(L, -2, "setProfilesDirectory");
+
+    lua_pushcfunction(L, gameprofile::scan);
+    lua_setfield(L, -2, "scan");
+
+    lua_setglobal(L, "gameprofile");
 }
 
 } // namespace wingman::lua

@@ -46,6 +46,7 @@ private:
     void registerPerformanceModule();
     void registerScriptModule();
     void registerSecurityModule();
+    void registerGameProfileModule();
 };
 
 // === Lua C API 绑定函数 ===

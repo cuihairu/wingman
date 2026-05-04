@@ -1,0 +1,88 @@
+{
+  "id": "example_game",
+  "name": "示例游戏",
+  "version": "1.0.0",
+  "description": "示例游戏自动化配置文件",
+
+  "window": {
+    "title": "游戏窗口",
+    "process": "game.exe",
+    "exact_match": false,
+    "fullscreen": false
+  },
+
+  "colors": [
+    {
+      "name": "hp_full",
+      "r": 0,
+      "g": 255,
+      "b": 0,
+      "tolerance": 10
+    },
+    {
+      "name": "hp_low",
+      "r": 255,
+      "g": 0,
+      "b": 0,
+      "tolerance": 10
+    },
+    {
+      "name": "mp_full",
+      "r": 0,
+      "g": 0,
+      "b": 255,
+      "tolerance": 10
+    }
+  ],
+
+  "images": [
+    {
+      "name": "btn_attack",
+      "path": "images/attack.png",
+      "threshold": 0.9,
+      "preload": true
+    },
+    {
+      "name": "btn_skill",
+      "path": "images/skill.png",
+      "threshold": 0.9,
+      "preload": true
+    }
+  ],
+
+  "triggers": [
+    {
+      "name": "low_hp_alert",
+      "type": "pixel",
+      "action": "script",
+      "target": "use_potion",
+      "interval": 1000,
+      "enabled": true
+    },
+    {
+      "name": "auto_attack",
+      "type": "image",
+      "action": "click",
+      "target": "btn_attack",
+      "interval": 500,
+      "enabled": true
+    }
+  ],
+
+  "scripts": [
+    {
+      "name": "main",
+      "path": "main.lua",
+      "autoStart": true,
+      "restartOnCrash": true,
+      "priority": 10
+    }
+  ],
+
+  "settings": {
+    "auto_potion": "true",
+    "potion_hp_percent": "30",
+    "auto_loot": "true",
+    "loot_delay": "500"
+  }
+}
