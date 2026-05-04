@@ -12,9 +12,6 @@ hero:
     - theme: alt
       text: GitHub
       link: https://github.com/cuihairu/wingman
-  image:
-    src: /logo.png
-    alt: Wingman
 
 features:
   - title: 🚀 高性能
