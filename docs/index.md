@@ -15,6 +15,7 @@ hero:
   image:
     src: /logo.svg
     alt: Wingman
+    width: 120
 
 features:
   - title: 🚀 高性能
