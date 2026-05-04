@@ -77,7 +77,7 @@ end
 - `tolerance` (number) - 颜色容差 (0-255)
 
 **返回：**
-- `table` | `nil` - 找到的点列表 `{{x,y}, {x,y}, ...}`，未找到返回 nil
+- `table` | `nil` - 找到的点列表 `{x,y} 数组`，未找到返回 nil
 
 **示例：**
 \`\`\`lua
