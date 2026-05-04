@@ -6,7 +6,6 @@
   "dependencies": [
     {
       "name": "lua",
-      "features": ["tool"],
       "platform": "windows"
     },
     {
@@ -15,7 +14,6 @@
     },
     {
       "name": "spdlog",
-      "features": ["wchar"],
       "platform": "windows"
     },
     {
