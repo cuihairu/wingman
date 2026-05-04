@@ -67,3 +67,30 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.vcxproj
+*.vcxproj.filters
+
+# vcpkg cache
+vcpkg/
+vcpkg-cache/
+
+# Lua compiled
+*.luac
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+docs/node_modules/

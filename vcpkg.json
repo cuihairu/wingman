@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "wingman",
+  "version": "0.1.0",
+  "description": "Game Automation Programmable Control Engine",
+  "dependencies": [
+    {
+      "name": "lua",
+      "features": ["tool"],
+      "platform": "windows"
+    },
+    {
+      "name": "opencv4",
+      "platform": "windows"
+    },
+    {
+      "name": "spdlog",
+      "features": ["wchar"],
+      "platform": "windows"
+    },
+    {
+      "name": "nlohmann-json",
+      "platform": "windows"
+    },
+    {
+      "name": "asio",
+      "platform": "windows"
+    }
+  ],
+  "builtin-baseline": "2024.01.01"
+}
