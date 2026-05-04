@@ -1,0 +1,11 @@
+-- Busted 配置文件
+
+return {
+  _all = {
+    coverage = false,
+    verbose = true,
+    language = "en",
+    output = "utfTerminal",
+    lpath = "scripts/?.lua;../scripts/?.lua",
+  }
+}
