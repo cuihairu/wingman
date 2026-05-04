@@ -7,6 +7,8 @@
 C++ + Lua 的高性能游戏自动化框架
 
 [![Build](https://github.com/cuihairu/wingman/workflows/Build/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/build.yml)
+[![Test](https://github.com/cuihairu/wingman/workflows/Test/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 [文档](https://cuihairu.github.io/wingman/) | [快速开始](#快速开始) | [API](https://cuihairu.github.io/wingman/api/) | [示例](https://cuihairu.github.io/wingman/examples/)
@@ -89,6 +91,32 @@ cmake --build build --config Release
 ```bash
 .\build\Release\wingman.exe scripts\examples\hello.lua
 ```
+
+## 测试
+
+项目使用 [busted](https://lunarmodules.github.io/busted/) 作为 Lua 测试框架。
+
+### 安装测试依赖
+
+```bash
+# 安装 LuaRocks
+luarocks install busted
+```
+
+### 运行测试
+
+```bash
+# 运行所有测试
+busted tests
+
+# 只运行单元测试
+busted tests/unit
+
+# 详细输出
+busted tests -v
+```
+
+详细说明请参考 [测试指南](tests/README.md)。
 
 ## 文档
 
