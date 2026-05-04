@@ -70,4 +70,4 @@ wingman.exe scripts/examples/hello.lua
 
 ## 许可证
 
-[Apache-2.0 License](./LICENSE)
+[Apache-2.0 License](https://github.com/cuihairu/wingman/blob/main/LICENSE)
