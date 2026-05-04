@@ -18,7 +18,7 @@
 - `Image` - 图像对象
 
 **示例：**
-\`\`\`lua
+```lua
 local screen = require("wingman.screen")
 
 -- 截取全屏
@@ -26,7 +26,7 @@ local img = screen.capture(0, 0, 1920, 1080)
 
 -- 截取指定区域
 local img = screen.capture(100, 100, 500, 500)
-\`\`\`
+```
 
 ### getPixel(x, y)
 
@@ -40,10 +40,10 @@ local img = screen.capture(100, 100, 500, 500)
 - `number` - 颜色值 (0xRRGGBB)
 
 **示例：**
-\`\`\`lua
+```lua
 local color = screen.getPixel(100, 100)
 print(string.format("Color: 0x%06X", color))
-\`\`\`
+```
 
 ### findPixel(color, x1, y1, x2, y2, tolerance)
 
@@ -59,12 +59,12 @@ print(string.format("Color: 0x%06X", color))
 - `number, number` | `nil` - 找到的位置 x, y，未找到返回 nil
 
 **示例：**
-\`\`\`lua
+```lua
 local x, y = screen.findPixel(0xFF0000, 0, 0, 1920, 1080, 10)
 if x then
     print(string.format("Found at: %d, %d", x, y))
 end
-\`\`\`
+```
 
 ### findColor(color, x1, y1, x2, y2, tolerance)
 
@@ -80,14 +80,14 @@ end
 - `table` | `nil` - 找到的点列表 `{x,y} 数组`，未找到返回 nil
 
 **示例：**
-\`\`\`lua
+```lua
 local points = screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
 if points then
     for _, point in ipairs(points) do
         print(string.format("Found: %d, %d", point.x, point.y))
     end
 end
-\`\`\`
+```
 
 ### findImage(template, threshold)
 
@@ -101,12 +101,12 @@ end
 - `number, number` | `nil` - 找到的位置 x, y，未找到返回 nil
 
 **示例：**
-\`\`\`lua
+```lua
 local x, y = screen.findImage("template.png", 0.9)
 if x then
     input.click(x, y)
 end
-\`\`\`
+```
 
 ### getSize()
 
@@ -116,7 +116,7 @@ end
 - `number, number` - 宽度, 高度
 
 **示例：**
-\`\`\`lua
+```lua
 local w, h = screen.getSize()
 print(string.format("Screen: %dx%d", w, h))
-\`\`\`
+```

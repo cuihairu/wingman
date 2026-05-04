@@ -4,7 +4,7 @@
 
 ## 代码
 
-\`\`\`lua
+```lua
 -- scripts/examples/pixel-detection.lua
 
 local screen = require("wingman.screen")
@@ -36,10 +36,10 @@ while true do
   -- 等待 100ms
   util.sleep(100)
 end
-\`\`\`
+```
 
 ## 运行
 
-\`\`\`bash
+```bash
 wingman.exe scripts/examples/pixel-detection.lua
-\`\`\`
+```

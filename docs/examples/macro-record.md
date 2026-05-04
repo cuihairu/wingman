@@ -4,7 +4,7 @@
 
 ## 代码
 
-\`\`\`lua
+```lua
 -- scripts/examples/macro-record.lua
 
 local macro = require("wingman.macro")
@@ -33,13 +33,13 @@ while true do
   
   util.sleep(50)
 end
-\`\`\`
+```
 
 ## 运行
 
-\`\`\`bash
+```bash
 wingman.exe scripts/examples/macro-record.lua
-\`\`\`
+```
 
 ## 说明
 

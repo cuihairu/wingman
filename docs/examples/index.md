@@ -12,6 +12,6 @@
 
 ## 运行示例
 
-\`\`\`bash
+```bash
 wingman.exe scripts/examples/hello-world.lua
-\`\`\`
+```

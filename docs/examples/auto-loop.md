@@ -4,7 +4,7 @@
 
 ## 代码
 
-\`\`\`lua
+```lua
 -- scripts/examples/auto-loop.lua
 
 local screen = require("wingman.screen")
@@ -46,10 +46,10 @@ while true do
   -- 短暂休眠避免高 CPU 占用
   util.sleep(50)
 end
-\`\`\`
+```
 
 ## 运行
 
-\`\`\`bash
+```bash
 wingman.exe scripts/examples/auto-loop.lua
-\`\`\`
+```

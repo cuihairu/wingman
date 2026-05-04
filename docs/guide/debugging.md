@@ -11,15 +11,15 @@ Wingman 提供 VS Code 调试插件，支持：
 
 ### 安装
 
-\`\`\`bash
+```bash
 code --install-extension wingman.debugger
-\`\`\`
+```
 
 ### 配置
 
 创建 `.vscode/launch.json`：
 
-\`\`\`json
+```json
 {
   "version": "0.2.0",
   "configurations": [
@@ -32,7 +32,7 @@ code --install-extension wingman.debugger
     }
   ]
 }
-\`\`\`
+```
 
 ### 使用
 
@@ -44,13 +44,13 @@ code --install-extension wingman.debugger
 
 使用 `debug` 模块输出日志：
 
-\`\`\`lua
+```lua
 local debug = require("debug")
 
 debug.log("Info message")
 debug.warn("Warning message")
 debug.error("Error message")
-\`\`\`
+```
 
 ## 常见问题
 

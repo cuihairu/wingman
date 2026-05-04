@@ -85,7 +85,7 @@
 
 ## 目录结构
 
-\`\`\`
+```
 wingman/
 ├── .github/
 │   └── workflows/           # CI/CD 配置
@@ -118,7 +118,7 @@ wingman/
 ├── CMakeLists.txt
 ├── vcpkg.json
 └── README.md
-\`\`\`
+```
 
 ## 数据流
 

@@ -14,7 +14,7 @@
 - `button` (string) - 按键类型，可选值：`"left"`, `"right"`, `"middle"` (默认 `"left"`)
 
 **示例：**
-\`\`\`lua
+```lua
 local input = require("wingman.input")
 
 -- 左键点击
@@ -25,7 +25,7 @@ input.click(100, 100, "right")
 
 -- 中键点击
 input.click(100, 100, "middle")
-\`\`\`
+```
 
 ### move(x, y, smooth)
 
@@ -37,13 +37,13 @@ input.click(100, 100, "middle")
 - `smooth` (boolean) - 是否平滑移动 (默认 false)
 
 **示例：**
-\`\`\`lua
+```lua
 -- 瞬间移动
 input.move(500, 300)
 
 -- 平滑移动
 input.move(500, 300, true)
-\`\`\`
+```
 
 ### drag(x1, y1, x2, y2, duration)
 
@@ -55,10 +55,10 @@ input.move(500, 300, true)
 - `duration` (number) - 拖拽时长（毫秒）
 
 **示例：**
-\`\`\`lua
+```lua
 -- 拖拽 500ms
 input.drag(100, 100, 500, 300, 500)
-\`\`\`
+```
 
 ### keyDown(key)
 
@@ -75,11 +75,11 @@ input.drag(100, 100, 500, 300, 500)
 - 方向键：`"UP"`, `"DOWN"`, `"LEFT"`, `"RIGHT"`
 
 **示例：**
-\`\`\`lua
+```lua
 input.keyDown("W")
 -- ... 做一些操作
 input.keyUp("W")
-\`\`\`
+```
 
 ### keyUp(key)
 
@@ -89,9 +89,9 @@ input.keyUp("W")
 - `key` (string) - 按键名称
 
 **示例：**
-\`\`\`lua
+```lua
 input.keyUp("W")
-\`\`\`
+```
 
 ### keyPress(key, duration)
 
@@ -102,13 +102,13 @@ input.keyUp("W")
 - `duration` (number) - 按键时长（毫秒），默认 50
 
 **示例：**
-\`\`\`lua
+```lua
 -- 普通按键
 input.keyPress("SPACE")
 
 -- 长按 200ms
 input.keyPress("E", 200)
-\`\`\`
+```
 
 ### keyText(text)
 
@@ -118,6 +118,6 @@ input.keyPress("E", 200)
 - `text` (string) - 要输入的文本
 
 **示例：**
-\`\`\`lua
+```lua
 input.keyText("Hello World")
-\`\`\`
+```

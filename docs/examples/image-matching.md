@@ -4,7 +4,7 @@
 
 ## 代码
 
-\`\`\`lua
+```lua
 -- scripts/examples/image-matching.lua
 
 local screen = require("wingman.screen")
@@ -35,10 +35,10 @@ while true do
   
   util.sleep(500)
 end
-\`\`\`
+```
 
 ## 运行
 
-\`\`\`bash
+```bash
 wingman.exe scripts/examples/image-matching.lua
-\`\`\`
+```

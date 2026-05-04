@@ -1,6 +1,6 @@
 # 项目目录结构
 
-\`\`\`
+```
 wingman/
 ├── .github/
 │   └── workflows/           # CI/CD 配置
@@ -107,7 +107,7 @@ wingman/
 ├── vcpkg.json              # vcpkg 依赖
 ├── LICENSE                  # MIT 许可证
 └── README.md               # 项目说明
-\`\`\`
+```
 
 ## 目录说明
 
