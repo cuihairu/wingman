@@ -36,11 +36,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-vcpkg-
 
-    - name: Install dependencies
-      run: |
-        .\vcpkg\vcpkg install --triplet x64-windows `
-          lua opencv4 spdlog nlohmann-json asio
-
     - name: Configure CMake
       run: |
         cmake -B build `
@@ -104,7 +99,14 @@ jobs:
     - name: Install system dependencies
       run: |
         brew update
-        brew install lua opencv spdlog nlohmann-json asio
+        brew install lua opencv spdlog nlohmann-json
+
+    - name: Install asio (header-only)
+      run: |
+        curl -L https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-1-30-2.tar.gz -o asio.tar.gz
+        tar -xzf asio.tar.gz
+        sudo mkdir -p /usr/local/include/asio
+        sudo cp -r asio-asio-1-30-2/asio/include/* /usr/local/include/
 
     - name: Configure CMake
       run: |
