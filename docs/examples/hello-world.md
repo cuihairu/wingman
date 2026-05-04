@@ -4,7 +4,7 @@
 
 ## 代码
 
-\`\`\`lua
+```lua
 -- scripts/examples/hello-world.lua
 
 local wingman = require("wingman")
@@ -19,18 +19,18 @@ print(string.format("Screen size: %dx%d", width, height))
 util.sleep(2000)
 
 print("Done!")
-\`\`\`
+```
 
 ## 运行
 
-\`\`\`bash
+```bash
 wingman.exe scripts/examples/hello-world.lua
-\`\`\`
+```
 
 ## 输出
 
-\`\`\`
+```
 Wingman Hello World!
 Screen size: 1920x1080
 Done!
-\`\`\`
+```
