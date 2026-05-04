@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="docs/public/logo.svg" alt="Wingman" width="100" />
+
 **游戏自动化可编程控制引擎**
 
 C++ + Lua 的高性能游戏自动化框架
