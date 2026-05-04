@@ -41,6 +41,7 @@ private:
     void registerInputModule();
     void registerWindowModule();
     void registerProcessModule();
+    void registerSystemModule();
     void registerUtilModule();
 };
 

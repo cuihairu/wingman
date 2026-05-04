@@ -5,6 +5,7 @@
 #include "wingman/input.hpp"
 #include "wingman/window.hpp"
 #include "wingman/process.hpp"
+#include "wingman/system.hpp"
 
 #include <cstring>
 #include <ctime>
@@ -78,6 +79,7 @@ void LuaState::registerAPIs() {
     registerInputModule();
     registerWindowModule();
     registerProcessModule();
+    registerSystemModule();
     registerUtilModule();
 
     // 注册扩展模块
@@ -640,6 +642,269 @@ void LuaState::registerUtilModule() {
     lua_setfield(L, -2, "log");
 
     lua_setglobal(L, "util");
+}
+
+// ============================================================================
+// System 模块
+// ============================================================================
+
+namespace system {
+
+int getCpuInfo(lua_State* L) {
+    CpuInfo info = System::getCpuInfo();
+
+    lua_newtable(L);
+    lua_pushstring(L, info.vendor.c_str());
+    lua_setfield(L, -2, "vendor");
+    lua_pushstring(L, info.brand.c_str());
+    lua_setfield(L, -2, "brand");
+    lua_pushinteger(L, info.cores);
+    lua_setfield(L, -2, "cores");
+    lua_pushinteger(L, info.threads);
+    lua_setfield(L, -2, "threads");
+    lua_pushinteger(L, info.maxClock);
+    lua_setfield(L, -2, "maxClock");
+    lua_pushinteger(L, info.currentClock);
+    lua_setfield(L, -2, "currentClock");
+    lua_pushnumber(L, info.usage);
+    lua_setfield(L, -2, "usage");
+    lua_pushinteger(L, info.temperature);
+    lua_setfield(L, -2, "temperature");
+
+    return 1;
+}
+
+int getCpuUsage(lua_State* L) {
+    lua_pushnumber(L, System::getCpuUsage());
+    return 1;
+}
+
+int getMemoryInfo(lua_State* L) {
+    MemoryInfo info = System::getMemoryInfo();
+
+    lua_newtable(L);
+    lua_pushinteger(L, info.total);
+    lua_setfield(L, -2, "total");
+    lua_pushinteger(L, info.available);
+    lua_setfield(L, -2, "available");
+    lua_pushinteger(L, info.used);
+    lua_setfield(L, -2, "used");
+    lua_pushnumber(L, info.usage);
+    lua_setfield(L, -2, "usage");
+
+    return 1;
+}
+
+int getDiskInfo(lua_State* L) {
+    const char* drive = luaL_optstring(L, 1, "");
+
+    if (drive && drive[0]) {
+        // 单个驱动器
+        DiskInfo info = System::getDiskInfo(drive);
+
+        lua_newtable(L);
+        lua_pushstring(L, info.drive.c_str());
+        lua_setfield(L, -2, "drive");
+        lua_pushinteger(L, info.total);
+        lua_setfield(L, -2, "total");
+        lua_pushinteger(L, info.free);
+        lua_setfield(L, -2, "free");
+        lua_pushinteger(L, info.used);
+        lua_setfield(L, -2, "used");
+        lua_pushnumber(L, info.usage);
+        lua_setfield(L, -2, "usage");
+        lua_pushstring(L, info.fileSystem.c_str());
+        lua_setfield(L, -2, "fileSystem");
+    } else {
+        // 所有驱动器
+        auto disks = System::getDiskInfo();
+
+        lua_newtable(L);
+        for (size_t i = 0; i < disks.size(); ++i) {
+            lua_newtable(L);
+
+            lua_pushstring(L, disks[i].drive.c_str());
+            lua_setfield(L, -2, "drive");
+            lua_pushinteger(L, disks[i].total);
+            lua_setfield(L, -2, "total");
+            lua_pushinteger(L, disks[i].free);
+            lua_setfield(L, -2, "free");
+            lua_pushinteger(L, disks[i].used);
+            lua_setfield(L, -2, "used");
+            lua_pushnumber(L, disks[i].usage);
+            lua_setfield(L, -2, "usage");
+
+            lua_rawseti(L, -2, static_cast<int>(i + 1));
+        }
+    }
+
+    return 1;
+}
+
+int getGpuInfo(lua_State* L) {
+    auto gpus = System::getGpuInfo();
+
+    lua_newtable(L);
+    for (size_t i = 0; i < gpus.size(); ++i) {
+        lua_newtable(L);
+
+        lua_pushstring(L, gpus[i].name.c_str());
+        lua_setfield(L, -2, "name");
+        lua_pushinteger(L, gpus[i].dedicatedMemory);
+        lua_setfield(L, -2, "dedicatedMemory");
+        lua_pushinteger(L, gpus[i].sharedMemory);
+        lua_setfield(L, -2, "sharedMemory");
+        lua_pushnumber(L, gpus[i].usage);
+        lua_setfield(L, -2, "usage");
+        lua_pushinteger(L, gpus[i].temperature);
+        lua_setfield(L, -2, "temperature");
+
+        lua_rawseti(L, -2, static_cast<int>(i + 1));
+    }
+
+    return 1;
+}
+
+int getOsInfo(lua_State* L) {
+    OsInfo info = System::getOsInfo();
+
+    lua_newtable(L);
+    lua_pushstring(L, info.platform.c_str());
+    lua_setfield(L, -2, "platform");
+    lua_pushstring(L, info.version.c_str());
+    lua_setfield(L, -2, "version");
+    lua_pushstring(L, info.build.c_str());
+    lua_setfield(L, -2, "build");
+    lua_pushstring(L, info.architecture.c_str());
+    lua_setfield(L, -2, "architecture");
+    lua_pushstring(L, info.computerName.c_str());
+    lua_setfield(L, -2, "computerName");
+    lua_pushstring(L, info.userName.c_str());
+    lua_setfield(L, -2, "userName");
+
+    return 1;
+}
+
+int getNetworkAdapters(lua_State* L) {
+    auto adapters = System::getNetworkAdapters();
+
+    lua_newtable(L);
+    for (size_t i = 0; i < adapters.size(); ++i) {
+        lua_newtable(L);
+
+        lua_pushstring(L, adapters[i].name.c_str());
+        lua_setfield(L, -2, "name");
+        lua_pushstring(L, adapters[i].description.c_str());
+        lua_setfield(L, -2, "description");
+        lua_pushstring(L, adapters[i].macAddress.c_str());
+        lua_setfield(L, -2, "macAddress");
+        lua_pushstring(L, adapters[i].ipAddress.c_str());
+        lua_setfield(L, -2, "ipAddress");
+        lua_pushboolean(L, adapters[i].isUp);
+        lua_setfield(L, -2, "isUp");
+
+        lua_rawseti(L, -2, static_cast<int>(i + 1));
+    }
+
+    return 1;
+}
+
+int getDisplayInfo(lua_State* L) {
+    auto displays = System::getDisplayInfo();
+
+    lua_newtable(L);
+    for (size_t i = 0; i < displays.size(); ++i) {
+        lua_newtable(L);
+
+        lua_pushinteger(L, displays[i].index);
+        lua_setfield(L, -2, "index");
+        lua_pushstring(L, displays[i].name.c_str());
+        lua_setfield(L, -2, "name");
+        lua_pushinteger(L, displays[i].width);
+        lua_setfield(L, -2, "width");
+        lua_pushinteger(L, displays[i].height);
+        lua_setfield(L, -2, "height");
+        lua_pushinteger(L, displays[i].refreshRate);
+        lua_setfield(L, -2, "refreshRate");
+        lua_pushboolean(L, displays[i].isPrimary);
+        lua_setfield(L, -2, "isPrimary");
+
+        lua_rawseti(L, -2, static_cast<int>(i + 1));
+    }
+
+    return 1;
+}
+
+int getUptime(lua_State* L) {
+    lua_pushinteger(L, System::getUptime());
+    return 1;
+}
+
+int getDateTime(lua_State* L) {
+    lua_pushstring(L, System::getDateTime().c_str());
+    return 1;
+}
+
+int getTimeZone(lua_State* L) {
+    lua_pushstring(L, System::getTimeZone().c_str());
+    return 1;
+}
+
+int getProcessCount(lua_State* L) {
+    lua_pushinteger(L, System::getProcessCount());
+    return 1;
+}
+
+int getThreadCount(lua_State* L) {
+    lua_pushinteger(L, System::getThreadCount());
+    return 1;
+}
+
+} // namespace system
+
+void LuaState::registerSystemModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, system::getCpuInfo);
+    lua_setfield(L, -2, "getCpuInfo");
+
+    lua_pushcfunction(L, system::getCpuUsage);
+    lua_setfield(L, -2, "getCpuUsage");
+
+    lua_pushcfunction(L, system::getMemoryInfo);
+    lua_setfield(L, -2, "getMemoryInfo");
+
+    lua_pushcfunction(L, system::getDiskInfo);
+    lua_setfield(L, -2, "getDiskInfo");
+
+    lua_pushcfunction(L, system::getGpuInfo);
+    lua_setfield(L, -2, "getGpuInfo");
+
+    lua_pushcfunction(L, system::getOsInfo);
+    lua_setfield(L, -2, "getOsInfo");
+
+    lua_pushcfunction(L, system::getNetworkAdapters);
+    lua_setfield(L, -2, "getNetworkAdapters");
+
+    lua_pushcfunction(L, system::getDisplayInfo);
+    lua_setfield(L, -2, "getDisplayInfo");
+
+    lua_pushcfunction(L, system::getUptime);
+    lua_setfield(L, -2, "getUptime");
+
+    lua_pushcfunction(L, system::getDateTime);
+    lua_setfield(L, -2, "getDateTime");
+
+    lua_pushcfunction(L, system::getTimeZone);
+    lua_setfield(L, -2, "getTimeZone");
+
+    lua_pushcfunction(L, system::getProcessCount);
+    lua_setfield(L, -2, "getProcessCount");
+
+    lua_pushcfunction(L, system::getThreadCount);
+    lua_setfield(L, -2, "getThreadCount");
+
+    lua_setglobal(L, "system");
 }
 
 } // namespace wingman::lua
