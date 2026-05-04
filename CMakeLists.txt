@@ -35,6 +35,7 @@ set(CORE_SOURCES
     src/json.cpp
     src/kvstore.cpp
     src/system.cpp
+    src/performance.cpp
 )
 
 # Lua bindings

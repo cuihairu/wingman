@@ -81,6 +81,7 @@ void LuaState::registerAPIs() {
     registerProcessModule();
     registerSystemModule();
     registerUtilModule();
+    registerPerformanceModule();
 
     // 注册扩展模块
     registerHttpModule(L);
@@ -905,6 +906,228 @@ void LuaState::registerSystemModule() {
     lua_setfield(L, -2, "getThreadCount");
 
     lua_setglobal(L, "system");
+}
+
+// ============================================================================
+// 性能优化模块
+// ============================================================================
+
+namespace perf {
+
+static int setConfig(lua_State* L) {
+    auto& mgr = PerformanceManager::instance();
+    PerformanceConfig config;
+
+    lua_getfield(L, 1, "enableImageCache");
+    if (lua_isboolean(L, -1)) config.enableImageCache = lua_toboolean(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "maxCacheSize");
+    if (lua_isinteger(L, -1)) config.maxCacheSize = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "enableParallelProcessing");
+    if (lua_isboolean(L, -1)) config.enableParallelProcessing = lua_toboolean(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "numThreads");
+    if (lua_isinteger(L, -1)) config.numThreads = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    mgr.setConfig(config);
+    return 0;
+}
+
+static int getConfig(lua_State* L) {
+    auto& mgr = PerformanceManager::instance();
+    const auto& config = mgr.getConfig();
+
+    lua_newtable(L);
+
+    lua_pushboolean(L, config.enableImageCache);
+    lua_setfield(L, -2, "enableImageCache");
+
+    lua_pushinteger(L, config.maxCacheSize);
+    lua_setfield(L, -2, "maxCacheSize");
+
+    lua_pushboolean(L, config.enableParallelProcessing);
+    lua_setfield(L, -2, "enableParallelProcessing");
+
+    lua_pushinteger(L, config.numThreads);
+    lua_setfield(L, -2, "numThreads");
+
+    return 1;
+}
+
+static int preloadImage(lua_State* L) {
+    const char* path = luaL_checkstring(L, 1);
+    auto& mgr = PerformanceManager::instance();
+    mgr.preloadImage(path);
+    return 0;
+}
+
+static int clearCache(lua_State* L) {
+    auto& mgr = PerformanceManager::instance();
+    mgr.clearCache();
+    return 0;
+}
+
+static int getCacheSize(lua_State* L) {
+    auto& mgr = PerformanceManager::instance();
+    lua_pushinteger(L, mgr.getCacheSize());
+    return 1;
+}
+
+static int getCacheStats(lua_State* L) {
+    auto& mgr = PerformanceManager::instance();
+    lua_newtable(L);
+
+    lua_pushinteger(L, mgr.getCacheSize());
+    lua_setfield(L, -2, "size");
+
+    lua_pushinteger(L, mgr.getCacheHits());
+    lua_setfield(L, -2, "hits");
+
+    lua_pushinteger(L, mgr.getCacheMisses());
+    lua_setfield(L, -2, "misses");
+
+    double hitRate = 0.0;
+    size_t total = mgr.getCacheHits() + mgr.getCacheMisses();
+    if (total > 0) {
+        hitRate = (double)mgr.getCacheHits() / total * 100;
+    }
+    lua_pushnumber(L, hitRate);
+    lua_setfield(L, -2, "hitRate");
+
+    return 1;
+}
+
+static int fastFindImage(lua_State* L) {
+    const char* imagePath = luaL_checkstring(L, 1);
+    int x = luaL_checkinteger(L, 2);
+    int y = luaL_checkinteger(L, 3);
+    int width = luaL_checkinteger(L, 4);
+    int height = luaL_checkinteger(L, 5);
+    double threshold = luaL_checknumber(L, 6);
+
+    auto& mgr = PerformanceManager::instance();
+    Point result;
+    bool found = mgr.fastFindImage(imagePath, Rect(x, y, width, height), threshold, result);
+
+    if (found) {
+        lua_newtable(L);
+        lua_pushinteger(L, result.x);
+        lua_setfield(L, -2, "x");
+        lua_pushinteger(L, result.y);
+        lua_setfield(L, -2, "y");
+        return 1;
+    }
+
+    return 0;
+}
+
+static int parallelFindColors(lua_State* L) {
+    uint32_t color = luaL_checkinteger(L, 1);
+    int x = luaL_checkinteger(L, 2);
+    int y = luaL_checkinteger(L, 3);
+    int width = luaL_checkinteger(L, 4);
+    int height = luaL_checkinteger(L, 5);
+    int tolerance = luaL_checkinteger(L, 6);
+    int maxCount = 0;
+    if (lua_gettop(L) >= 7) {
+        maxCount = luaL_checkinteger(L, 7);
+    }
+
+    auto& mgr = PerformanceManager::instance();
+    auto points = mgr.parallelFindColors(
+        Color::fromRGB(color),
+        Rect(x, y, width, height),
+        tolerance,
+        maxCount
+    );
+
+    lua_newtable(L);
+    for (size_t i = 0; i < points.size(); ++i) {
+        lua_newtable(L);
+        lua_pushinteger(L, points[i].x);
+        lua_setfield(L, -2, "x");
+        lua_pushinteger(L, points[i].y);
+        lua_setfield(L, -2, "y");
+        lua_rawseti(L, -2, i + 1);
+    }
+
+    return 1;
+}
+
+static int getStats(lua_State* L) {
+    auto& mgr = PerformanceManager::instance();
+    auto stats = mgr.getStats();
+
+    lua_newtable(L);
+
+    lua_pushinteger(L, stats.totalCaptures);
+    lua_setfield(L, -2, "totalCaptures");
+
+    lua_pushinteger(L, stats.totalColorSearches);
+    lua_setfield(L, -2, "totalColorSearches");
+
+    lua_pushinteger(L, stats.totalImageSearches);
+    lua_setfield(L, -2, "totalImageSearches");
+
+    lua_pushnumber(L, stats.avgCaptureTime);
+    lua_setfield(L, -2, "avgCaptureTime");
+
+    lua_pushnumber(L, stats.avgColorSearchTime);
+    lua_setfield(L, -2, "avgColorSearchTime");
+
+    lua_pushnumber(L, stats.avgImageSearchTime);
+    lua_setfield(L, -2, "avgImageSearchTime");
+
+    return 1;
+}
+
+static int resetStats(lua_State* L) {
+    auto& mgr = PerformanceManager::instance();
+    mgr.resetStats();
+    return 0;
+}
+
+} // namespace perf
+
+void LuaState::registerPerformanceModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, perf::setConfig);
+    lua_setfield(L, -2, "setConfig");
+
+    lua_pushcfunction(L, perf::getConfig);
+    lua_setfield(L, -2, "getConfig");
+
+    lua_pushcfunction(L, perf::preloadImage);
+    lua_setfield(L, -2, "preloadImage");
+
+    lua_pushcfunction(L, perf::clearCache);
+    lua_setfield(L, -2, "clearCache");
+
+    lua_pushcfunction(L, perf::getCacheSize);
+    lua_setfield(L, -2, "getCacheSize");
+
+    lua_pushcfunction(L, perf::getCacheStats);
+    lua_setfield(L, -2, "getCacheStats");
+
+    lua_pushcfunction(L, perf::fastFindImage);
+    lua_setfield(L, -2, "fastFindImage");
+
+    lua_pushcfunction(L, perf::parallelFindColors);
+    lua_setfield(L, -2, "parallelFindColors");
+
+    lua_pushcfunction(L, perf::getStats);
+    lua_setfield(L, -2, "getStats");
+
+    lua_pushcfunction(L, perf::resetStats);
+    lua_setfield(L, -2, "resetStats");
+
+    lua_setglobal(L, "perf");
 }
 
 } // namespace wingman::lua
