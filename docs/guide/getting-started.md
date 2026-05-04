@@ -37,7 +37,7 @@ Wingman 使用以下 vcpkg 包：
 
 | 包名 | 用途 |
 |-----|------|
-| `lua` | LuaJIT 脚本引擎 |
+| `lua` | Lua 脚本引擎 |
 | `opencv4` | 图像处理（可选） |
 | `spdlog` | 日志库 |
 | `nlohmann-json` | JSON 配置解析 |

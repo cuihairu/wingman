@@ -62,7 +62,7 @@
 
 ### 1.6 Lua 绑定 ✅
 - [x] 暴露所有 C++ API 到 Lua
-- [x] LuaJIT 集成
+- [x] Lua 集成
 - [x] 错误处理和异常转换
 - [x] HTTP 客户端绑定
 - [x] JSON 封装绑定

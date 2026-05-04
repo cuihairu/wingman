@@ -19,7 +19,7 @@ hero:
 
 features:
   - title: 🚀 高性能
-    details: C++ 核心引擎，LuaJIT 脚本执行，毫秒级响应
+    details: C++ 核心引擎，Lua 脚本执行，毫秒级响应
   - title: 🔒 安全可靠
     details: 纯用户态运行，使用合法 Windows API，不读写游戏内存
   - title: 🎮 可编程
@@ -38,7 +38,7 @@ features:
 **Wingman** 是一个为了游戏自动化而生的可编程控制项目。
 
 - 基于 **C++** 开发核心引擎，提供高性能的屏幕操作和输入模拟能力
-- 使用 **LuaJIT** 作为脚本引擎，灵活可扩展
+- 使用 **Lua** 作为脚本引擎，灵活可扩展
 - 纯**用户态**运行，使用合法 Windows API，安全可靠
 - 支持**远程控制**，TCP Server/Client 模式，暴露 API 供外部调用
 
