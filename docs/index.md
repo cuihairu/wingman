@@ -70,4 +70,4 @@ wingman.exe scripts/examples/hello.lua
 
 ## 许可证
 
-[MIT License](./LICENSE)
+[Apache-2.0 License](./LICENSE)

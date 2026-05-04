@@ -7,7 +7,7 @@
 C++ + Lua 的高性能游戏自动化框架
 
 [![Build](https://github.com/cuihairu/wingman/workflows/Build/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/build.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 [文档](https://cuihairu.github.io/wingman/) | [快速开始](#快速开始) | [API](https://cuihairu.github.io/wingman/api/) | [示例](https://cuihairu.github.io/wingman/examples/)
 
@@ -96,4 +96,4 @@ cmake --build build --config Release
 
 ## 许可证
 
-[MIT](LICENSE)
+[Apache-2.0](LICENSE)

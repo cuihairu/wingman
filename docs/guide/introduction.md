@@ -130,4 +130,4 @@ Wingman 遵循单一职责原则，以下功能**不在**项目范围内：
 
 ## 许可证
 
-MIT License - 详见 [LICENSE](https://github.com/cuihairu/wingman/blob/main/LICENSE)
+Apache License 2.0 - 详见 [LICENSE](https://github.com/cuihairu/wingman/blob/main/LICENSE)
