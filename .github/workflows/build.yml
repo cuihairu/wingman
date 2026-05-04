@@ -27,6 +27,9 @@ jobs:
         cd vcpkg
         .\bootstrap-vcpkg.bat
 
+    - name: Create cache directory
+      run: New-Item -ItemType Directory -Force -Path ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+
     - name: Cache vcpkg packages
       uses: actions/cache@v4
       with:
@@ -100,20 +103,29 @@ jobs:
     - name: Install system dependencies
       run: |
         brew update
-        brew install lua opencv spdlog nlohmann-json
+        brew install lua opencv spdlog
 
     - name: Install asio (header-only)
       run: |
         curl -L https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-1-30-2.tar.gz -o asio.tar.gz
         tar -xzf asio.tar.gz
-        sudo mkdir -p /usr/local/include/asio
+        sudo mkdir -p /usr/local/include
         sudo cp -r asio-asio-1-30-2/asio/include/* /usr/local/include/
+
+    - name: Install nlohmann/json (header-only)
+      run: |
+        curl -L https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.tar.gz -o json.tar.gz
+        tar -xzf json.tar.gz
+        sudo mkdir -p /usr/local/include/nlohmann
+        sudo cp json-3.11.3/single_include/nlohmann/json.hpp /usr/local/include/nlohmann/
 
     - name: Configure CMake
       run: |
         cmake -B build \
           -S . \
-          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INCLUDE_PATH=/usr/local/include \
+          -DCMAKE_LIBRARY_PATH=/usr/local/lib
 
     - name: Build
       run: cmake --build build --parallel
