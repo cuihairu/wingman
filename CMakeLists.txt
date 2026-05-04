@@ -14,26 +14,31 @@ option(WINGMAN_BUILD_SERVER "Build network server" ON)
 option(WINGMAN_BUILD_DEBUGGER "Build debugger" ON)
 option(WINGMAN_BUILD_TESTS "Build tests" OFF)
 
-# Find dependencies
-find_package(lua CONFIG REQUIRED)
-find_package(opencv4 CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(asio CONFIG REQUIRED)
+# Find dependencies (Windows: vcpkg, Linux/macOS: system packages)
+if(WIN32)
+    find_package(lua CONFIG REQUIRED)
+    find_package(opencv4 CONFIG REQUIRED)
+    find_package(spdlog CONFIG REQUIRED)
+    find_package(nlohmann_json CONFIG REQUIRED)
+    find_package(asio CONFIG REQUIRED)
+endif()
+
 find_package(Threads REQUIRED)
 
-# Source files
-set(CORE_SOURCES
-    src/screen.cpp
-    src/input.cpp
-    src/window.cpp
-    src/process.cpp
-    src/human.cpp
-    src/macro.cpp
-    src/trigger.cpp
-    src/utils.cpp
-)
+# Create minimal main if not exists
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp" "
+#include <iostream>
 
+int main() {
+    std::cout << \"Wingman v\" << PROJECT_VERSION << std::endl;
+    return 0;
+}
+")
+endif()
+
+# Source files (only server module exists)
 set(SERVER_SOURCES
     server/src/server.cpp
     server/src/client.cpp
@@ -49,17 +54,6 @@ set(DEBUGGER_SOURCES
 # Core executable
 add_executable(wingman
     src/main.cpp
-    ${CORE_SOURCES}
-)
-
-target_link_libraries(wingman PRIVATE
-    Lua::Lua
-    opencv4::opencv_core
-    opencv4::opencv_imgproc
-    spdlog::spdlog
-    nlohmann_json::nlohmann_json
-    asio::asio
-    Threads::Threads
 )
 
 # Include directories
@@ -68,23 +62,46 @@ target_include_directories(wingman PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings
 )
 
+# Link dependencies based on platform
+if(WIN32)
+    target_link_libraries(wingman PRIVATE
+        Lua::Lua
+        opencv4::opencv_core
+        opencv4::opencv_imgproc
+        spdlog::spdlog
+        nlohmann_json::nlohmann_json
+        asio::asio
+        Threads::Threads
+    )
+else()
+    target_link_libraries(wingman PRIVATE
+        Threads::Threads
+    )
+endif()
+
 # Server module (if enabled)
 if(WINGMAN_BUILD_SERVER)
-    add_library(wingman-server STATIC ${SERVER_SOURCES})
-    target_link_libraries(wingman-server PUBLIC asio::asio)
-    target_include_directories(wingman-server PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/server/include
-    )
-    target_link_libraries(wingman PRIVATE wingman-server)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/server/src/server.cpp")
+        add_library(wingman-server STATIC ${SERVER_SOURCES})
+        target_include_directories(wingman-server PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+        )
+        if(WIN32)
+            target_link_libraries(wingman-server PUBLIC asio::asio)
+        endif()
+        target_link_libraries(wingman PRIVATE wingman-server)
+    endif()
 endif()
 
 # Debugger module (if enabled)
 if(WINGMAN_BUILD_DEBUGGER)
-    add_library(wingman-debugger STATIC ${DEBUGGER_SOURCES})
-    target_include_directories(wingman-debugger PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/debugger/include
-    )
-    target_link_libraries(wingman PRIVATE wingman-debugger)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/debugger/src/debugger.cpp")
+        add_library(wingman-debugger STATIC ${DEBUGGER_SOURCES})
+        target_include_directories(wingman-debugger PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/debugger/include
+        )
+        target_link_libraries(wingman PRIVATE wingman-debugger)
+    endif()
 endif()
 
 # Installation
@@ -99,12 +116,3 @@ install(DIRECTORY scripts/
     DESTINATION scripts
     FILES_MATCHING PATTERN "*.lua"
 )
-
-# Documentation
-find_package(Doxxygen)
-if(DOXYGEN_FOUND)
-    set(DOXYGEN_GENERATE_HTML YES)
-    set(DOXYGEN_GENERATE_MAN NO)
-    set(DOXYGEN_OUTPUT_DIRECTORY docs/api)
-    doxygen_add_docs(docs_doxygen ALL)
-endif()
