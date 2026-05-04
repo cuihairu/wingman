@@ -25,20 +25,14 @@ endif()
 
 find_package(Threads REQUIRED)
 
-# Create minimal main if not exists
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
-    file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src")
-    file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp" "
-#include <iostream>
+# Core source files
+set(CORE_SOURCES
+    src/screen.cpp
+    src/input.cpp
+    src/window.cpp
+    src/process.cpp
+)
 
-int main() {
-    std::cout << \"Wingman v\" << PROJECT_VERSION << std::endl;
-    return 0;
-}
-")
-endif()
-
-# Source files (only server module exists)
 set(SERVER_SOURCES
     server/src/server.cpp
     server/src/client.cpp
@@ -56,13 +50,20 @@ add_executable(wingman
     src/main.cpp
 )
 
+# Add core sources if they exist
+foreach(src ${CORE_SOURCES})
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
+        target_sources(wingman PRIVATE ${src})
+    endif()
+endforeach()
+
 # Include directories
 target_include_directories(wingman PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings
 )
 
-# Link dependencies based on platform
+# Windows specific libraries
 if(WIN32)
     target_link_libraries(wingman PRIVATE
         Lua::Lua
@@ -72,10 +73,14 @@ if(WIN32)
         nlohmann_json::nlohmann_json
         asio::asio
         Threads::Threads
+        gdiplus
+        user32
+        gdi32
     )
 else()
     target_link_libraries(wingman PRIVATE
         Threads::Threads
+        X11
     )
 endif()
 
