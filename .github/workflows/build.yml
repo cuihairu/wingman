@@ -27,9 +27,6 @@ jobs:
         cd vcpkg
         .\bootstrap-vcpkg.bat
 
-    - name: Create cache directory
-      run: New-Item -ItemType Directory -Force -Path ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-
     - name: Cache vcpkg packages
       uses: actions/cache@v4
       with:
@@ -42,6 +39,7 @@ jobs:
 
     - name: Configure CMake
       run: |
+        New-Item -ItemType Directory -Force -Path ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
         cmake -B build `
           -S . `
           -G "Visual Studio 17 2022" `
