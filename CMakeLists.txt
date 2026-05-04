@@ -37,6 +37,7 @@ set(CORE_SOURCES
     src/system.cpp
     src/performance.cpp
     src/script_manager.cpp
+    src/security.cpp
 )
 
 # Lua bindings

@@ -6,6 +6,7 @@
 #include "wingman/window.hpp"
 #include "wingman/process.hpp"
 #include "wingman/system.hpp"
+#include "wingman/security.hpp"
 
 #include <cstring>
 #include <ctime>
@@ -83,6 +84,7 @@ void LuaState::registerAPIs() {
     registerUtilModule();
     registerPerformanceModule();
     registerScriptModule();
+    registerSecurityModule();
 
     // 注册扩展模块
     registerHttpModule(L);
@@ -1344,6 +1346,130 @@ void LuaState::registerScriptModule() {
     lua_setfield(L, -2, "checkReload");
 
     lua_setglobal(L, "script");
+}
+
+// ============================================================================
+// Security 模块
+// ============================================================================
+
+namespace security {
+
+// security.getRandomDelay()
+static int getRandomDelay(lua_State* L) {
+    auto& mgr = SecurityManager::instance();
+    int delay = mgr.getRandomDelay();
+    lua_pushinteger(L, delay);
+    return 1;
+}
+
+// security.getRandomOffset()
+static int getRandomOffset(lua_State* L) {
+    auto& mgr = SecurityManager::instance();
+    auto [x, y] = mgr.getRandomOffset();
+    lua_pushnumber(L, x);
+    lua_pushnumber(L, y);
+    return 2;
+}
+
+// security.isDebuggerPresent()
+static int isDebuggerPresent(lua_State* L) {
+    auto& mgr = SecurityManager::instance();
+    lua_pushboolean(L, mgr.isDebuggerPresent());
+    return 1;
+}
+
+// security.isRunningInVM()
+static int isRunningInVM(lua_State* L) {
+    auto& mgr = SecurityManager::instance();
+    lua_pushboolean(L, mgr.isRunningInVM());
+    return 1;
+}
+
+// security.verifyIntegrity()
+static int verifyIntegrity(lua_State* L) {
+    auto& mgr = SecurityManager::instance();
+    lua_pushboolean(L, mgr.verifyIntegrity());
+    return 1;
+}
+
+// security.hashString(str)
+static int hashString(lua_State* L) {
+    const char* str = luaL_checkstring(L, 1);
+    std::string hash = SecurityManager::hashString(str);
+    lua_pushstring(L, hash.c_str());
+    return 1;
+}
+
+// security.encryptString(str, key)
+static int encryptString(lua_State* L) {
+    const char* str = luaL_checkstring(L, 1);
+    const char* key = luaL_checkstring(L, 2);
+    std::string encrypted = SecurityManager::encryptString(str, key);
+    lua_pushstring(L, encrypted.c_str());
+    return 1;
+}
+
+// security.decryptString(str, key)
+static int decryptString(lua_State* L) {
+    const char* str = luaL_checkstring(L, 1);
+    const char* key = luaL_checkstring(L, 2);
+    std::string decrypted = SecurityManager::decryptString(str, key);
+    lua_pushstring(L, decrypted.c_str());
+    return 1;
+}
+
+// security.generateRandomString(length)
+static int generateRandomString(lua_State* L) {
+    int length = luaL_checkinteger(L, 1);
+    std::string random = SecurityManager::generateRandomString(length);
+    lua_pushstring(L, random.c_str());
+    return 1;
+}
+
+// security.filterSensitive(str)
+static int filterSensitive(lua_State* L) {
+    const char* str = luaL_checkstring(L, 1);
+    std::string filtered = SecurityManager::filterSensitive(str);
+    lua_pushstring(L, filtered.c_str());
+    return 1;
+}
+
+} // namespace security
+
+void LuaState::registerSecurityModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, security::getRandomDelay);
+    lua_setfield(L, -2, "getRandomDelay");
+
+    lua_pushcfunction(L, security::getRandomOffset);
+    lua_setfield(L, -2, "getRandomOffset");
+
+    lua_pushcfunction(L, security::isDebuggerPresent);
+    lua_setfield(L, -2, "isDebuggerPresent");
+
+    lua_pushcfunction(L, security::isRunningInVM);
+    lua_setfield(L, -2, "isRunningInVM");
+
+    lua_pushcfunction(L, security::verifyIntegrity);
+    lua_setfield(L, -2, "verifyIntegrity");
+
+    lua_pushcfunction(L, security::hashString);
+    lua_setfield(L, -2, "hashString");
+
+    lua_pushcfunction(L, security::encryptString);
+    lua_setfield(L, -2, "encryptString");
+
+    lua_pushcfunction(L, security::decryptString);
+    lua_setfield(L, -2, "decryptString");
+
+    lua_pushcfunction(L, security::generateRandomString);
+    lua_setfield(L, -2, "generateRandomString");
+
+    lua_pushcfunction(L, security::filterSensitive);
+    lua_setfield(L, -2, "filterSensitive");
+
+    lua_setglobal(L, "security");
 }
 
 } // namespace wingman::lua
