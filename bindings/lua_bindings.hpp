@@ -44,6 +44,7 @@ private:
     void registerSystemModule();
     void registerUtilModule();
     void registerPerformanceModule();
+    void registerScriptModule();
 };
 
 // === Lua C API 绑定函数 ===

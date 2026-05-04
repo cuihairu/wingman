@@ -36,6 +36,7 @@ set(CORE_SOURCES
     src/kvstore.cpp
     src/system.cpp
     src/performance.cpp
+    src/script_manager.cpp
 )
 
 # Lua bindings

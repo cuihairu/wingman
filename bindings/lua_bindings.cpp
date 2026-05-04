@@ -82,6 +82,7 @@ void LuaState::registerAPIs() {
     registerSystemModule();
     registerUtilModule();
     registerPerformanceModule();
+    registerScriptModule();
 
     // 注册扩展模块
     registerHttpModule(L);
@@ -1128,6 +1129,221 @@ void LuaState::registerPerformanceModule() {
     lua_setfield(L, -2, "resetStats");
 
     lua_setglobal(L, "perf");
+}
+
+// ============================================================================
+// Script 模块
+// ============================================================================
+
+namespace script {
+
+// script.load(name, path, config)
+static int load(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    const char* path = luaL_checkstring(L, 2);
+
+    // 可选的配置表
+    bool autoReload = false;
+    bool sandboxed = true;
+    int timeoutMs = 30000;
+
+    if (lua_istable(L, 3)) {
+        lua_getfield(L, 3, "autoReload");
+        if (lua_isboolean(L, -1)) autoReload = lua_toboolean(L, -1);
+        lua_pop(L, 1);
+
+        lua_getfield(L, 3, "sandboxed");
+        if (lua_isboolean(L, -1)) sandboxed = lua_toboolean(L, -1);
+        lua_pop(L, 1);
+
+        lua_getfield(L, 3, "timeout");
+        if (lua_isnumber(L, -1)) timeoutMs = lua_tointeger(L, -1);
+        lua_pop(L, 1);
+    }
+
+    // TODO: 实现 ScriptManager 集成
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+// script.unload(name)
+static int unload(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    // TODO: 实现 ScriptManager 集成
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+// script.reload(name)
+static int reload(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    // TODO: 实现 ScriptManager 集成
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+// script.run(name)
+static int run(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    // TODO: 实现 ScriptManager 集成
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+// script.stop(name)
+static int stop(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    // TODO: 实现 ScriptManager 集成
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+// script.pause(name)
+static int pause(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    // TODO: 实现 ScriptManager 集成
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+// script.resume(name)
+static int resume(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    // TODO: 实现 ScriptManager 集成
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+// script.list()
+static int list(lua_State* L) {
+    lua_newtable(L);
+    // TODO: 实现 ScriptManager 集成
+    lua_pushstring(L, "example");
+    lua_pushboolean(L, true);
+    lua_settable(L, -3);
+    return 1;
+}
+
+// script.isRunning(name)
+static int isRunning(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    // TODO: 实现 ScriptManager 集成
+    lua_pushboolean(L, false);
+    return 1;
+}
+
+// script.getState(name)
+static int getState(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    // TODO: 实现 ScriptManager 集成
+    lua_pushstring(L, "loaded");
+    return 1;
+}
+
+// script.setConfig(name, key, value)
+static int setConfig(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    const char* key = luaL_checkstring(L, 2);
+    const char* value = luaL_checkstring(L, 3);
+    // TODO: 实现 ScriptManager 集成
+    return 0;
+}
+
+// script.getConfig(name, key, default)
+static int getConfig(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    const char* key = luaL_checkstring(L, 2);
+    const char* defaultValue = lua_tostring(L, 3);
+    // TODO: 实现 ScriptManager 集成
+    lua_pushstring(L, defaultValue ? defaultValue : "");
+    return 1;
+}
+
+// script.setEnv(name, key, value)
+static int setEnv(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    const char* key = luaL_checkstring(L, 2);
+    const char* value = luaL_checkstring(L, 3);
+    // TODO: 实现 ScriptManager 集成
+    return 0;
+}
+
+// script.getEnv(name, key)
+static int getEnv(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    const char* key = luaL_checkstring(L, 2);
+    // TODO: 实现 ScriptManager 集成
+    lua_pushstring(L, "");
+    return 1;
+}
+
+// script.setHotReload(enabled)
+static int setHotReload(lua_State* L) {
+    bool enabled = lua_toboolean(L, 1);
+    // TODO: 实现 ScriptManager 集成
+    return 0;
+}
+
+// script.checkReload()
+static int checkReload(lua_State* L) {
+    // TODO: 实现 ScriptManager 集成
+    return 0;
+}
+
+} // namespace script
+
+void LuaState::registerScriptModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, script::load);
+    lua_setfield(L, -2, "load");
+
+    lua_pushcfunction(L, script::unload);
+    lua_setfield(L, -2, "unload");
+
+    lua_pushcfunction(L, script::reload);
+    lua_setfield(L, -2, "reload");
+
+    lua_pushcfunction(L, script::run);
+    lua_setfield(L, -2, "run");
+
+    lua_pushcfunction(L, script::stop);
+    lua_setfield(L, -2, "stop");
+
+    lua_pushcfunction(L, script::pause);
+    lua_setfield(L, -2, "pause");
+
+    lua_pushcfunction(L, script::resume);
+    lua_setfield(L, -2, "resume");
+
+    lua_pushcfunction(L, script::list);
+    lua_setfield(L, -2, "list");
+
+    lua_pushcfunction(L, script::isRunning);
+    lua_setfield(L, -2, "isRunning");
+
+    lua_pushcfunction(L, script::getState);
+    lua_setfield(L, -2, "getState");
+
+    lua_pushcfunction(L, script::setConfig);
+    lua_setfield(L, -2, "setConfig");
+
+    lua_pushcfunction(L, script::getConfig);
+    lua_setfield(L, -2, "getConfig");
+
+    lua_pushcfunction(L, script::setEnv);
+    lua_setfield(L, -2, "setEnv");
+
+    lua_pushcfunction(L, script::getEnv);
+    lua_setfield(L, -2, "getEnv");
+
+    lua_pushcfunction(L, script::setHotReload);
+    lua_setfield(L, -2, "setHotReload");
+
+    lua_pushcfunction(L, script::checkReload);
+    lua_setfield(L, -2, "checkReload");
+
+    lua_setglobal(L, "script");
 }
 
 } // namespace wingman::lua
