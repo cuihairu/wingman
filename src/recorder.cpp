@@ -74,10 +74,10 @@ bool MacroRecorder::saveToLua(const std::string& filepath) const {
     std::ofstream file(filepath);
     if (!file.is_open()) return false;
 
-    file << "-- Wingman 宏录制脚本\n";
-    file << "-- 录制时间: " << m_events.size() << " 个事件\n\n";
+    file << "-- Wingman Macro Recording Script\n";
+    file << "-- Recorded " << m_events.size() << " events\n\n";
 
-    file << "util.log(\"开始回放宏...\")\n";
+    file << "util.log(\"Starting macro playback...\")\n";
     file << "local startTime = util.getTime()\n\n";
 
     for (const auto& event : m_events) {
@@ -111,7 +111,7 @@ bool MacroRecorder::saveToLua(const std::string& filepath) const {
         }
     }
 
-    file << "\nutil.log(\"宏回放完成!\")\n";
+    file << "\nutil.log(\"Macro playback completed!\")\n";
 
     return true;
 }

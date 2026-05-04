@@ -76,7 +76,7 @@ void LuaState::reportError(int status) {
     const char* msg = lua_tostring(L, -1);
     if (msg) {
         m_lastError = msg;
-        std::cerr << "Lua 错误: " << msg << "\n";
+        std::cerr << "Lua error: " << msg << "\n";
     }
     lua_pop(L, 1);
 }

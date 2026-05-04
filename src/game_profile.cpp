@@ -277,7 +277,7 @@ GameProfile GameProfileManager::createTemplate(const std::string& gameName) cons
     profile.id = id;
     profile.name = gameName;
     profile.version = "1.0.0";
-    profile.description = gameName + " 自动化配置";
+    profile.description = gameName + " Automation Profile";
 
     profile.window.title = gameName;
     profile.window.exactMatch = false;
@@ -349,7 +349,7 @@ bool GameProfileManager::writeProfileFile(const std::string& path, const GamePro
     }
 
     file << "; Wingman Game Profile\n";
-    file << "; 游戏配置文件\n\n";
+    file << "; Game Configuration File\n\n";
 
     file << "[profile]\n";
     file << "id=" << profile.id << "\n";
