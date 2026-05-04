@@ -46,7 +46,10 @@ struct ObfuscationConfig {
 
 class SecurityManager {
 public:
-    static SecurityManager& instance();
+    static SecurityManager& instance() {
+        static SecurityManager inst;
+        return inst;
+    }
 
     // ========== 防检测 ==========
 
@@ -55,13 +58,19 @@ public:
     const AntiDetectionConfig& getAntiDetectionConfig() const;
 
     // 获取随机延迟 (毫秒)
-    int getRandomDelay() const;
+    int getRandomDelay() const {
+        return 100;  // TODO: Implement when security.cpp is enabled
+    }
 
     // 获取随机偏移 (像素)
-    std::pair<double, double> getRandomOffset() const;
+    std::pair<double, double> getRandomOffset() const {
+        return {0.0, 0.0};  // TODO: Implement when security.cpp is enabled
+    }
 
     // 获取随机点击偏移
-    std::pair<double, double> getClickJitter() const;
+    std::pair<double, double> getClickJitter() const {
+        return {0.0, 0.0};  // TODO: Implement when security.cpp is enabled
+    }
 
     // 模拟人类行为模式
     void simulateHumanBehavior();
@@ -79,13 +88,19 @@ public:
     void disableProcessProtection();
 
     // 检查调试器
-    bool isDebuggerPresent();
+    bool isDebuggerPresent() {
+        return false;  // TODO: Implement when security.cpp is enabled
+    }
 
     // 检查虚拟机
-    bool isRunningInVM();
+    bool isRunningInVM() {
+        return false;  // TODO: Implement when security.cpp is enabled
+    }
 
     // 完整性检查
-    bool verifyIntegrity();
+    bool verifyIntegrity() {
+        return true;  // TODO: Implement when security.cpp is enabled
+    }
 
     // ========== 代码签名 ==========
 
@@ -101,14 +116,26 @@ public:
     // ========== 混淆 ==========
 
     // 加密字符串
-    static std::string encryptString(const std::string& input, const std::string& key);
-    static std::string decryptString(const std::string& input, const std::string& key);
+    static std::string encryptString(const std::string& input, const std::string& key) {
+        (void)key;
+        return input;  // TODO: Implement when security.cpp is enabled
+    }
+    static std::string decryptString(const std::string& input, const std::string& key) {
+        (void)key;
+        return input;  // TODO: Implement when security.cpp is enabled
+    }
 
     // 生成随机字符串
-    static std::string generateRandomString(size_t length);
+    static std::string generateRandomString(size_t length) {
+        (void)length;
+        return "";  // TODO: Implement when security.cpp is enabled
+    }
 
     // 哈希函数
-    static std::string hashString(const std::string& input);
+    static std::string hashString(const std::string& input) {
+        (void)input;
+        return "";  // TODO: Implement when security.cpp is enabled
+    }
 
     // ========== 内存保护 ==========
 
@@ -130,11 +157,13 @@ public:
     void secureLog(const std::string& message);
 
     // 过滤敏感信息
-    static std::string filterSensitive(const std::string& input);
+    static std::string filterSensitive(const std::string& input) {
+        return input;  // TODO: Implement when security.cpp is enabled
+    }
 
 private:
-    SecurityManager();
-    ~SecurityManager();
+    SecurityManager() = default;
+    ~SecurityManager() = default;
 
     AntiDetectionConfig m_antiDetection;
     ProcessProtectionConfig m_processProtection;

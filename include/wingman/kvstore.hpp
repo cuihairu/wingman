@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <functional>
 #include <cstdint>
+#include <memory>
 
 namespace wingman {
 

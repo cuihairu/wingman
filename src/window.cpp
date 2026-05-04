@@ -7,19 +7,19 @@
 #include <chrono>
 #include <thread>
 
-namespace wingman {
+// ============================================================================
+// 用于枚举窗口的数据结构和回调
+// ============================================================================
 
-// ============================================================================
-// 用于枚举窗口的数据结构
-// ============================================================================
+namespace {
 
 struct EnumWindowsData {
     std::string title;
-    std::vector<WindowHandle> results;
-    std::vector<WindowInfo>* windowInfos;
+    std::vector<wingman::WindowHandle> results;
+    std::vector<wingman::WindowInfo>* windowInfos;
 };
 
-BOOL CALLBACK Window::enumWindowsProc(HWND hwnd, LPARAM lParam) {
+BOOL CALLBACK enumWindowsProc(HWND hwnd, LPARAM lParam) {
     auto* data = reinterpret_cast<EnumWindowsData*>(lParam);
 
     if (!IsWindowVisible(hwnd)) {
@@ -46,16 +46,20 @@ BOOL CALLBACK Window::enumWindowsProc(HWND hwnd, LPARAM lParam) {
     data->results.push_back(hwnd);
 
     if (data->windowInfos) {
-        WindowInfo info;
+        wingman::WindowInfo info;
         info.handle = hwnd;
         info.title = title;
-        info.bounds = getBounds(hwnd);
+        info.bounds = wingman::Window::getBounds(hwnd);
         info.isForeground = (GetForegroundWindow() == hwnd);
         data->windowInfos->push_back(info);
     }
 
     return TRUE;
 }
+
+}  // anonymous namespace
+
+namespace wingman {
 
 // ============================================================================
 // Window 实现

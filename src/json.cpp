@@ -25,6 +25,15 @@ JsonValue::JsonValue(double value) : m_impl(std::make_unique<Impl>(value)) {}
 JsonValue::JsonValue(const char* value) : m_impl(std::make_unique<Impl>(value)) {}
 JsonValue::JsonValue(const std::string& value) : m_impl(std::make_unique<Impl>(value)) {}
 
+JsonValue::JsonValue(const JsonValue& other) : m_impl(std::make_unique<Impl>(other.m_impl->data)) {}
+
+JsonValue& JsonValue::operator=(const JsonValue& other) {
+    if (this != &other) {
+        m_impl = std::make_unique<Impl>(other.m_impl->data);
+    }
+    return *this;
+}
+
 JsonType JsonValue::type() const {
     if (m_impl->data.is_null()) return JsonType::Null;
     if (m_impl->data.is_boolean()) return JsonType::Boolean;
@@ -119,5 +128,7 @@ JsonValue JsonValue::parse(const std::string& jsonStr) {
     }
     return result;
 }
+
+JsonValue::~JsonValue() = default;
 
 } // namespace wingman

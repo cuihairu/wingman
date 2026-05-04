@@ -3,7 +3,7 @@
 #include "wingman/window.hpp"
 #include "wingman/process.hpp"
 
-#include "bindings/lua_bindings.hpp"
+#include "lua_bindings.hpp"
 
 #include <iostream>
 #include <string>

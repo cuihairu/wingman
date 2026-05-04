@@ -32,8 +32,8 @@ struct ImageConfig {
     bool preload = true;
 };
 
-// 触发器配置
-struct TriggerConfig {
+// 游戏触发器配置
+struct GameTriggerConfig {
     std::string name;
     std::string type;            // pixel, image, timer, window, process
     std::string action;          // click, key, script
@@ -61,7 +61,7 @@ struct GameProfile {
     GameWindowConfig window;
     std::vector<ColorConfig> colors;
     std::vector<ImageConfig> images;
-    std::vector<TriggerConfig> triggers;
+    std::vector<GameTriggerConfig> triggers;
     std::vector<ScriptConfig> scripts;
 
     // 高级设置

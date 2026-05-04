@@ -92,8 +92,10 @@ namespace {
         lua_setfield(sandboxL, -2, "__newindex");
         lua_setmetatable(sandboxL, -2);
 
-        // 替换全局环境
-        lua_replace(sandboxL, LUA_GLOBALSINDEX);
+        // 替换全局环境 (Lua 5.2+ compatible)
+        // In Lua 5.2+, use lua_setupvalue instead of LUA_GLOBALSINDEX
+        lua_pushvalue(sandboxL, -1);  // Push the table again
+        lua_setglobal(sandboxL, "_G");  // Set as _G global
 
         return sandboxL;
     }

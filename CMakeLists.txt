@@ -4,6 +4,9 @@ project(Wingman VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Add UTF-8 compiler flag
+add_compile_options(/utf-8)
+
 # vcpkg integration
 if(DEFINED CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Using vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
@@ -15,13 +18,18 @@ option(WINGMAN_BUILD_DEBUGGER "Build debugger" ON)
 option(WINGMAN_BUILD_TESTS "Build tests" OFF)
 
 # Find dependencies via vcpkg
-find_package(lua CONFIG REQUIRED)
-find_package(opencv4 CONFIG REQUIRED)
+find_package(Lua REQUIRED)
+find_package(OpenCV CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(asio CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+
+# Testing framework
+if(WINGMAN_BUILD_TESTS)
+    find_package(GTest CONFIG REQUIRED)
+endif()
 
 # Core source files
 set(CORE_SOURCES
@@ -33,17 +41,18 @@ set(CORE_SOURCES
     src/recorder.cpp
     src/http.cpp
     src/json.cpp
-    src/kvstore.cpp
+    # src/kvstore.cpp  # TODO: Re-enable when sqlite3 is properly configured
     src/system.cpp
     src/performance.cpp
-    src/script_manager.cpp
-    src/security.cpp
+    # src/script_manager.cpp  # TODO: Re-enable after fixing Lua compatibility issues
+    # src/security.cpp  # TODO: Re-enable after fixing WINTRUST issues
     src/game_profile.cpp
 )
 
 # Lua bindings
 set(LUA_SOURCES
     bindings/lua_bindings.cpp
+    bindings/lua_extensions.cpp
 )
 
 set(SERVER_SOURCES
@@ -86,9 +95,10 @@ target_include_directories(wingman PRIVATE
 
 # Windows specific libraries
 target_link_libraries(wingman PRIVATE
-    Lua::Lua
-    opencv4::opencv_core
-    opencv4::opencv_imgproc
+    ${LUA_LIBRARIES}
+    opencv_core
+    opencv_imgproc
+    opencv_imgcodecs
     spdlog::spdlog
     nlohmann_json::nlohmann_json
     asio::asio
@@ -105,6 +115,7 @@ if(WINGMAN_BUILD_SERVER)
         add_library(wingman-server STATIC ${SERVER_SOURCES})
         target_include_directories(wingman-server PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
         )
         target_link_libraries(wingman-server PUBLIC asio::asio)
         target_link_libraries(wingman PRIVATE wingman-server)
@@ -120,6 +131,12 @@ if(WINGMAN_BUILD_DEBUGGER)
         )
         target_link_libraries(wingman PRIVATE wingman-debugger)
     endif()
+endif()
+
+# Tests (if enabled)
+if(WINGMAN_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests/cpp)
 endif()
 
 # Installation

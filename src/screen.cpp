@@ -119,8 +119,8 @@ bool Bitmap::save(const std::string& filepath) const {
 // ============================================================================
 
 std::unique_ptr<Bitmap> Screen::capture() {
-    int width = GetScreenWidth();
-    int height = GetScreenHeight();
+    int width = GetSystemMetrics(SM_CXSCREEN);
+    int height = GetSystemMetrics(SM_CYSCREEN);
     return capture(Rect(0, 0, width, height));
 }
 

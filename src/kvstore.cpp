@@ -7,7 +7,8 @@
 #include <thread>
 #include <condition_variable>
 
-#include <sqlite3.h>
+// TODO: Add sqlite3 to vcpkg and enable this
+// #include <sqlite3.h>
 
 namespace wingman {
 

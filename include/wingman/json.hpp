@@ -30,6 +30,12 @@ public:
     JsonValue(const char* value);
     JsonValue(const std::string& value);
 
+    // Copy constructor and assignment (needed for unique_ptr member)
+    JsonValue(const JsonValue& other);
+    JsonValue& operator=(const JsonValue& other);
+
+    ~JsonValue();
+
     // 类型检查
     JsonType type() const;
     bool isNull() const;

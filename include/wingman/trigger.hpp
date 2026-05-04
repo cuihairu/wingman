@@ -1,10 +1,22 @@
 #pragma once
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include <string>
 #include <vector>
 #include <functional>
 #include <memory>
 #include <windows.h>
+#include <lua.hpp>
+#include <spdlog/logger.h>
+
+#include "wingman/screen.hpp"  // For Rect type
 
 namespace wingman {
 
@@ -42,7 +54,7 @@ enum class TriggerAction {
     StopScript,      // 停止脚本
     PauseScript,     // 暂停脚本
     ShowMessage,     // 显示消息
-    PlaySound,       // 播放声音
+    PlayAudio,       // 播放声音
     Log,             // 记录日志
 };
 
@@ -67,6 +79,7 @@ struct TriggerConfig {
 class TriggerManager {
 public:
     TriggerManager();
+    explicit TriggerManager(std::shared_ptr<spdlog::logger> logger);
     ~TriggerManager();
 
     // 添加触发器
@@ -86,7 +99,16 @@ public:
     // 获取触发器状态
     bool isRunning(size_t id) const;
 
+    // 设置 Lua 状态（用于执行 Lua 脚本动作）
+    void setLuaState(lua_State* L);
+
+    // 设置日志器
+    void setLogger(std::shared_ptr<spdlog::logger> logger);
+
 private:
+    // 内部辅助方法
+    void Lock() const { EnterCriticalSection(&m_cs); }
+    void Unlock() const { LeaveCriticalSection(&m_cs); }
     struct TriggerInstance {
         size_t id;
         TriggerConfig config;
@@ -97,7 +119,9 @@ private:
     std::vector<TriggerInstance> m_triggers;
     bool m_running;
     HANDLE m_thread;
-    CRITICAL_SECTION m_cs;
+    mutable CRITICAL_SECTION m_cs;
+    lua_State* m_luaState;
+    std::shared_ptr<spdlog::logger> m_logger;
 
     // 触发器检查线程
     static DWORD WINAPI checkThread(LPVOID param);

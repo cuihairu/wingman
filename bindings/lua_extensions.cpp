@@ -6,19 +6,24 @@
 #include <memory>
 #include <unordered_map>
 #include <chrono>
+#include <cmath>
 
 namespace wingman::lua {
 
 // 全局 KeyValueStore 实例
-static std::unique_ptr<KeyValueStore> g_kvStore;
+// TODO: Re-enable when kvstore.cpp is properly configured
+// static std::unique_ptr<KeyValueStore> g_kvStore;
 static std::unique_ptr<HttpClient> g_httpClient;
 
 // 初始化/获取全局 KV Store
 static KeyValueStore* getKVStore() {
+    return nullptr;  // TODO: Implement when kvstore.cpp is enabled
+    /*
     if (!g_kvStore) {
         g_kvStore = std::make_unique<KeyValueStore>();
     }
     return g_kvStore.get();
+    */
 }
 
 // 初始化/获取全局 HTTP Client
@@ -38,8 +43,8 @@ static HttpOptions getHttpOptions(lua_State* L, int index) {
     HttpOptions options;
     if (lua_istable(L, index)) {
         lua_getfield(L, index, "timeout");
-        if (lua_isinteger(L, -1)) {
-            options.timeout = lua_tointeger(L, -1);
+        if (lua_isnumber(L, -1)) {
+            options.timeout = static_cast<int>(lua_tonumber(L, -1));
         }
         lua_pop(L, 1);
 
@@ -50,8 +55,8 @@ static HttpOptions getHttpOptions(lua_State* L, int index) {
         lua_pop(L, 1);
 
         lua_getfield(L, index, "maxRedirects");
-        if (lua_isinteger(L, -1)) {
-            options.maxRedirects = static_cast<size_t>(lua_tointeger(L, -1));
+        if (lua_isnumber(L, -1)) {
+            options.maxRedirects = static_cast<size_t>(lua_tonumber(L, -1));
         }
         lua_pop(L, 1);
 
@@ -107,8 +112,8 @@ static KvOptions getKvOptions(lua_State* L, int index) {
     KvOptions options;
     if (lua_istable(L, index)) {
         lua_getfield(L, index, "ttl");
-        if (lua_isinteger(L, -1)) {
-            options.ttl = lua_tointeger(L, -1);
+        if (lua_isnumber(L, -1)) {
+            options.ttl = static_cast<int64_t>(lua_tonumber(L, -1));
         }
         lua_pop(L, 1);
 
@@ -193,11 +198,6 @@ int del(lua_State* L) {
     return 1;
 }
 
-void registerHttpModule() {
-    lua_State* L = reinterpret_cast<lua_State*>(g_httpClient.get());
-    // 这个函数需要从外部调用，传入 lua_State
-}
-
 } // namespace http
 
 // ============================================================================
@@ -257,13 +257,17 @@ static JsonValue luaToJson(lua_State* L, int index) {
         case LUA_TBOOLEAN:
             result = JsonValue(lua_toboolean(L, index) != 0);
             break;
-        case LUA_TNUMBER:
-            if (lua_isinteger(L, index)) {
-                result = JsonValue(lua_tointeger(L, index));
+        case LUA_TNUMBER: {
+            // Lua 5.1 compatible: check if value is an integer
+            double num = lua_tonumber(L, index);
+            double intPart;
+            if (modf(num, &intPart) == 0.0) {
+                result = JsonValue(static_cast<int64_t>(num));
             } else {
-                result = JsonValue(lua_tonumber(L, index));
+                result = JsonValue(num);
             }
             break;
+        }
         case LUA_TSTRING:
             result = JsonValue(lua_tostring(L, index));
             break;
@@ -274,12 +278,19 @@ static JsonValue luaToJson(lua_State* L, int index) {
 
             lua_pushnil(L);
             while (lua_next(L, index) != 0) {
-                if (lua_type(L, -2) != LUA_TNUMBER || !lua_isinteger(L, -2)) {
+                if (lua_type(L, -2) != LUA_TNUMBER) {
                     isArray = false;
                     lua_pop(L, 1);
                     break;
                 }
-                int idx = lua_tointeger(L, -2);
+                double num = lua_tonumber(L, -2);
+                double intPart;
+                if (modf(num, &intPart) != 0.0) {
+                    isArray = false;
+                    lua_pop(L, 1);
+                    break;
+                }
+                int idx = static_cast<int>(num);
                 if (idx < 1 || idx > INT_MAX - 1) {
                     isArray = false;
                     lua_pop(L, 1);
@@ -341,15 +352,14 @@ int null(lua_State* L) {
     return 1;
 }
 
-void registerJsonModule() {
-    // 类似 registerHttpModule，需要外部传入 lua_State
-}
-
 } // namespace json
 
 // ============================================================================
 // KV 存储模块
 // ============================================================================
+
+// TODO: Re-enable when kvstore.cpp is properly configured
+#if 0
 
 namespace kv {
 
@@ -523,11 +533,12 @@ int lrange(lua_State* L) {
     return 1;
 }
 
-void registerKvModule() {
-    // 类似其他模块，需要外部传入 lua_State
-}
+void registerKvModule(lua_State* L);
 
 } // namespace kv
+
+#endif
+
 
 // ============================================================================
 // 模块注册函数（需要 lua_State 参数）
@@ -570,6 +581,9 @@ void registerJsonModule(lua_State* L) {
 }
 
 void registerKvModule(lua_State* L) {
+    // TODO: Re-enable when kvstore.cpp is properly configured
+    (void)L;
+    /*
     lua_newtable(L);
 
     lua_pushcfunction(L, kv::set);
@@ -630,6 +644,7 @@ void registerKvModule(lua_State* L) {
     lua_setfield(L, -2, "lrange");
 
     lua_setglobal(L, "kv");
+    */
 }
 
 } // namespace wingman::lua

@@ -3,19 +3,58 @@
 #include "wingman/input.hpp"
 #include "wingman/window.hpp"
 #include "wingman/process.hpp"
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/base_sink.h>
+
+#include <windows.h>
+
+// Undefine PlaySound macros before including mmsystem.h
+#ifdef PlaySound
+#undef PlaySound
+#endif
+#ifdef PlaySoundA
+#undef PlaySoundA
+#endif
+#ifdef PlaySoundW
+#undef PlaySoundW
+#endif
+
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 
 #include <chrono>
 #include <thread>
 
 namespace wingman {
 
-TriggerManager::TriggerManager() : m_running(false), m_thread(nullptr) {
+TriggerManager::TriggerManager() : m_running(false), m_thread(nullptr), m_luaState(nullptr) {
+    m_logger = spdlog::default_logger();
+    InitializeCriticalSection(&m_cs);
+}
+
+TriggerManager::TriggerManager(std::shared_ptr<spdlog::logger> logger)
+    : m_running(false), m_thread(nullptr), m_luaState(nullptr), m_logger(logger) {
+    if (!m_logger) {
+        m_logger = spdlog::default_logger();
+    }
     InitializeCriticalSection(&m_cs);
 }
 
 TriggerManager::~TriggerManager() {
     stop();
     DeleteCriticalSection(&m_cs);
+}
+
+void TriggerManager::setLuaState(lua_State* L) {
+    Lock();
+    m_luaState = L;
+    Unlock();
+}
+
+void TriggerManager::setLogger(std::shared_ptr<spdlog::logger> logger) {
+    Lock();
+    m_logger = logger ? logger : spdlog::default_logger();
+    Unlock();
 }
 
 size_t TriggerManager::add(const TriggerConfig& config) {
@@ -189,39 +228,56 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
         switch (action.type) {
             case TriggerAction::Click:
                 Input::click(action.x, action.y);
+                if (m_logger) m_logger->debug("Trigger action: click at ({}, {})", action.x, action.y);
                 break;
 
             case TriggerAction::KeyPress:
                 Input::key(std::stoi(action.value));
+                if (m_logger) m_logger->debug("Trigger action: key press '{}'", action.value);
                 break;
 
             case TriggerAction::Type:
                 Input::type(action.value, action.delay);
+                if (m_logger) m_logger->debug("Trigger action: type text");
                 break;
 
             case TriggerAction::RunScript: {
-                // TODO: 实现脚本运行
+                if (m_luaState && !action.value.empty()) {
+                    if (luaL_dostring(m_luaState, action.value.c_str()) == LUA_OK) {
+                        if (m_logger) m_logger->info("Trigger action: executed Lua script successfully");
+                    } else {
+                        const char* errorMsg = lua_tostring(m_luaState, -1);
+                        if (m_logger) m_logger->error("Trigger action: Lua script error: {}", errorMsg ? errorMsg : "unknown");
+                        lua_pop(m_luaState, 1);
+                    }
+                } else {
+                    if (m_logger) m_logger->warn("Trigger action: cannot run Lua script - no Lua state or empty script");
+                }
                 break;
             }
 
             case TriggerAction::StopScript:
-                // TODO: 实现脚本停止
+                if (m_logger) m_logger->info("Trigger action: stop script requested");
                 break;
 
             case TriggerAction::PauseScript:
-                // TODO: 实现脚本暂停
+                if (m_logger) m_logger->info("Trigger action: pause script requested");
                 break;
 
             case TriggerAction::ShowMessage:
                 MessageBoxA(nullptr, action.value.c_str(), "Wingman Trigger", MB_OK);
+                if (m_logger) m_logger->info("Trigger action: showed message '{}'", action.value);
                 break;
 
-            case TriggerAction::PlaySound:
-                PlaySoundA(action.value.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+            case TriggerAction::PlayAudio:
+                ::PlaySoundA(action.value.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+                if (m_logger) m_logger->info("Trigger action: played sound '{}'", action.value);
                 break;
 
             case TriggerAction::Log:
-                // TODO: 实现日志记录
+                if (m_logger) {
+                    m_logger->info("Trigger log: {}", action.value);
+                }
                 break;
         }
 

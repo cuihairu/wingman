@@ -11,8 +11,6 @@
 
 namespace wingman {
 
-namespace wingman {
-
 /**
  * 图像缓存项
  */

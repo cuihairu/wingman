@@ -94,7 +94,7 @@ bool MacroRecorder::saveToLua(const std::string& filepath) const {
                 file << "input.scroll(" << event.x << ", " << event.y << ", " << event.delay << ")\n";
                 break;
 
-            case RecordedEventType::KeyPress:
+            case RecordedEventType::KeyDown:
                 file << "input.key(" << event.keyCode << ")\n";
                 break;
 
@@ -168,7 +168,7 @@ void MacroRecorder::playback(int speed, int repeat) const {
                     Input::scroll(event.x, event.y, event.delay);
                     break;
 
-                case RecordedEventType::KeyPress:
+                case RecordedEventType::KeyDown:
                     Input::key(event.keyCode);
                     break;
 

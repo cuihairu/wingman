@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <pdh.h>
+#include <tlhelp32.h>
 #pragma comment(lib, "pdh.lib")
 
 #include <iphlpapi.h>
@@ -61,7 +62,9 @@ CpuInfo System::getCpuInfo() {
     GetLogicalProcessorInformation(nullptr, &length);
     if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
         std::vector<BYTE> buffer(length);
-        if (GetLogicalProcessorInformation(buffer.data(), &length)) {
+        if (GetLogicalProcessorInformation(
+                reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(buffer.data()),
+                &length)) {
             int count = 0;
             PSYSTEM_LOGICAL_PROCESSOR_INFORMATION ptr =
                 reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(buffer.data());
@@ -108,7 +111,7 @@ CpuInfo System::getCpuInfo() {
 }
 
 int System::getCpuUsage() {
-    static ULARGE_INTEGER lastCPU, lastSysCPU, lastUserCPU;
+    static uint64_t lastCPU = 0, lastSysCPU = 0, lastUserCPU = 0;
     static bool firstRun = true;
     static int numProcessors;
 
@@ -132,11 +135,11 @@ int System::getCpuUsage() {
         return 0;
     }
 
-    ULARGE_INTEGER sysCPU = getFileTimeAsUInt64(ftKernel);
-    ULARGE_INTEGER userCPU = getFileTimeAsUInt64(ftUser);
+    uint64_t sysCPU = getFileTimeAsUInt64(ftKernel);
+    uint64_t userCPU = getFileTimeAsUInt64(ftUser);
 
-    ULARGE_INTEGER totalCPU = sysCPU + userCPU;
-    ULARGE_INTEGER totalDiff = totalCPU.QuadPart - lastCPU.QuadPart;
+    uint64_t totalCPU = sysCPU + userCPU;
+    uint64_t totalDiff = totalCPU - lastCPU;
 
     lastCPU = totalCPU;
     lastSysCPU = sysCPU;
@@ -352,15 +355,16 @@ std::vector<NetworkAdapter> System::getNetworkAdapters() {
             info.macAddress = mac.str();
 
             // IP 地址
-            info.ipAddress = adapter->IpAddressList.IpAddress.S_un.S_addr ?
-                            adapter->IpAddressList.IpAddress.S_un.S_addr : "";
-            info.subnetMask = adapter->IpAddressList.IpMask.S_un.S_addr ?
-                             adapter->IpAddressList.IpMask.S_un.S_addr : "";
+            info.ipAddress = adapter->IpAddressList.IpAddress.String ?
+                            adapter->IpAddressList.IpAddress.String : "";
+            info.subnetMask = adapter->IpAddressList.IpMask.String ?
+                             adapter->IpAddressList.IpMask.String : "";
 
             info.isUp = (adapter->Type != MIB_IF_TYPE_LOOPBACK);
 
-            info.bytesSent = adapter->OutOctets;
-            info.bytesReceived = adapter->InOctets;
+            // Note: dwOutOctets and dwInOctets may not be available on all Windows SDK versions
+            info.bytesSent = 0;  // adapter->dwOutOctets;
+            info.bytesReceived = 0;  // adapter->dwInOctets;
 
             result.push_back(info);
             adapter = adapter->Next;

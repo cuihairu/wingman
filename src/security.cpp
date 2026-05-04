@@ -3,12 +3,23 @@
 #include <Windows.h>
 #include <wincrypt.h>
 #include <bcrypt.h>
+#include <wintrust.h>
+#include <tlhelp32.h>
+#include <psapi.h>
+#pragma comment(lib, "wintrust.lib")
+#pragma comment(lib, "psapi.lib")
 #include <random>
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
 
 #pragma comment(lib, "bcrypt.lib")
+
+// Define WINTRUST_ACTION_GENERIC_VERIFY_V2 if not available
+#ifndef WINTRUST_ACTION_GENERIC_VERIFY_V2
+static const GUID WINTRUST_ACTION_GENERIC_VERIFY_V2 =
+{ 0xaac56b, 0xcd44, 0x11d0, { 0x8c, 0xc2, 0x00, 0xc0, 0x4f, 0xc2, 0x95, 0xee } };
+#endif
 
 namespace wingman {
 

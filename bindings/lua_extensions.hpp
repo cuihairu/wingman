@@ -60,5 +60,3 @@ void registerJsonModule(lua_State* L);
 void registerKvModule(lua_State* L);
 
 } // namespace wingman::lua
-
-} // namespace wingman::lua

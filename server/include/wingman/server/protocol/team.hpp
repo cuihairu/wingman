@@ -22,6 +22,15 @@ struct PlayerInfo {
                    isOnline(false), isReady(false), teamId(0) {}
 };
 
+// 队伍状态
+enum class TeamState {
+    Waiting,       // 等待中
+    Matching,      // 匹配中
+    Ready,         // 准备阶段
+    InGame,        // 游戏中
+    Disbanded,     // 已解散
+};
+
 // 队伍成员角色
 enum class TeamRole {
     Leader,     // 队长
@@ -63,15 +72,6 @@ struct TeamInfo {
     TeamInfo() : teamId(0), leaderId(0), maxSize(5), minStart(2),
                  state(TeamState::Waiting), createTime(0), lastActivity(0),
                  targetRank(0) {}
-};
-
-// 队伍状态
-enum class TeamState {
-    Waiting,       // 等待中
-    Matching,      // 匹配中
-    Ready,         // 准备阶段
-    InGame,        // 游戏中
-    Disbanded,     // 已解散
 };
 
 // 投票类型

@@ -1,3 +1,6 @@
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+
 #include "lua_bindings.hpp"
 #include "lua_extensions.hpp"
 
@@ -8,6 +11,8 @@
 #include "wingman/system.hpp"
 #include "wingman/security.hpp"
 #include "wingman/game_profile.hpp"
+#include "wingman/performance.hpp"
+#include "wingman/trigger.hpp"
 
 #include <cstring>
 #include <ctime>

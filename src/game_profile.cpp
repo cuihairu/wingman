@@ -1,5 +1,10 @@
 #include "wingman/game_profile.hpp"
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#include <Windows.h>
 #include <fstream>
 #include <sstream>
 #include <filesystem>
