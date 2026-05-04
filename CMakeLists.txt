@@ -14,15 +14,13 @@ option(WINGMAN_BUILD_SERVER "Build network server" ON)
 option(WINGMAN_BUILD_DEBUGGER "Build debugger" ON)
 option(WINGMAN_BUILD_TESTS "Build tests" OFF)
 
-# Find dependencies (Windows: vcpkg, Linux/macOS: system packages)
-if(WIN32)
-    find_package(lua CONFIG REQUIRED)
-    find_package(opencv4 CONFIG REQUIRED)
-    find_package(spdlog CONFIG REQUIRED)
-    find_package(nlohmann_json CONFIG REQUIRED)
-    find_package(asio CONFIG REQUIRED)
-endif()
-
+# Find dependencies via vcpkg
+find_package(lua CONFIG REQUIRED)
+find_package(opencv4 CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(asio CONFIG REQUIRED)
+find_package(CURL CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 
 # Core source files
@@ -31,12 +29,23 @@ set(CORE_SOURCES
     src/input.cpp
     src/window.cpp
     src/process.cpp
+    src/trigger.cpp
+    src/recorder.cpp
+    src/http.cpp
+    src/json.cpp
+    src/kvstore.cpp
+)
+
+# Lua bindings
+set(LUA_SOURCES
+    bindings/lua_bindings.cpp
 )
 
 set(SERVER_SOURCES
     server/src/server.cpp
     server/src/client.cpp
     server/src/protocol.cpp
+    server/src/orchestrator.cpp
 )
 
 set(DEBUGGER_SOURCES
@@ -57,6 +66,13 @@ foreach(src ${CORE_SOURCES})
     endif()
 endforeach()
 
+# Add Lua bindings
+foreach(src ${LUA_SOURCES})
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
+        target_sources(wingman PRIVATE ${src})
+    endif()
+endforeach()
+
 # Include directories
 target_include_directories(wingman PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -64,25 +80,19 @@ target_include_directories(wingman PRIVATE
 )
 
 # Windows specific libraries
-if(WIN32)
-    target_link_libraries(wingman PRIVATE
-        Lua::Lua
-        opencv4::opencv_core
-        opencv4::opencv_imgproc
-        spdlog::spdlog
-        nlohmann_json::nlohmann_json
-        asio::asio
-        Threads::Threads
-        gdiplus
-        user32
-        gdi32
-    )
-else()
-    target_link_libraries(wingman PRIVATE
-        Threads::Threads
-        X11
-    )
-endif()
+target_link_libraries(wingman PRIVATE
+    Lua::Lua
+    opencv4::opencv_core
+    opencv4::opencv_imgproc
+    spdlog::spdlog
+    nlohmann_json::nlohmann_json
+    asio::asio
+    CURL::libcurl
+    Threads::Threads
+    gdiplus
+    user32
+    gdi32
+)
 
 # Server module (if enabled)
 if(WINGMAN_BUILD_SERVER)
@@ -91,9 +101,7 @@ if(WINGMAN_BUILD_SERVER)
         target_include_directories(wingman-server PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/server/include
         )
-        if(WIN32)
-            target_link_libraries(wingman-server PUBLIC asio::asio)
-        endif()
+        target_link_libraries(wingman-server PUBLIC asio::asio)
         target_link_libraries(wingman PRIVATE wingman-server)
     endif()
 endif()
