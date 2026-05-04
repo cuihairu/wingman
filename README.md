@@ -35,15 +35,19 @@ C++ + Lua 的高性能游戏自动化框架
 
 | 模块 | 功能 |
 |-----|------|
-| **屏幕操作** | 截图、像素检测、颜色匹配、图像查找 |
+| **屏幕操作** | 截图、像素检测、颜色匹配、图像查找 (OpenCV) |
 | **输入模拟** | 鼠标点击/移动、按键发送、文本输入 |
+| **人性化模拟** | 贝塞尔曲线鼠标移动、随机延迟、自然操作 |
 | **窗口管理** | 查找窗口、激活窗口、获取位置 |
 | **进程管理** | 启动/等待/终止进程 |
-| **宏录制** | 录制鼠标键盘操作，自动回放 |
-| **触发器系统** | 像素触发、定时触发、条件组合 |
-| **网络层** | TCP Server/Client，支持远程控制 |
-| **调试器** | VS Code 插件，断点调试、变量查看 |
-| **人性化模拟** | 贝塞尔曲线、随机延迟、自然操作 |
+| **HTTP 客户端** | GET/POST/PUT/DELETE 请求，表单提交 (libcurl) |
+| **JSON 封装** | JSON 解析和序列化 (nlohmann/json) |
+| **KV 存储** | 类 Redis 键值存储，支持持久化 |
+| **组队编排** | 多 Client 协同组队、投票协调 |
+| **宏录制** | 录制鼠标键盘操作，保存为 Lua/JSON 回放 |
+| **触发器系统** | 颜色/图像/窗口/进程触发，自动执行动作 |
+| **Web Dashboard** | React + UmiJS + Ant Design 管理界面 |
+| **VSCode 插件** | 语法高亮、自动完成、调试支持 |
 
 ## 快速开始
 
@@ -70,7 +74,7 @@ git clone https://github.com/cuihairu/wingman.git
 cd wingman
 
 # 安装依赖
-vcpkg install --triplet x64-windows lua opencv4 spdlog nlohmann-json asio
+vcpkg install --triplet x64-windows lua opencv4 spdlog nlohmann-json asio curl
 
 # 配置项目
 cmake -B build -S . -G "Visual Studio 17 2022" `
@@ -93,6 +97,68 @@ cmake --build build --config Release
 - [指南](https://cuihairu.github.io/wingman/guide/)
 - [API 参考](https://cuihairu.github.io/wingman/api/)
 - [示例](https://cuihairu.github.io/wingman/examples/)
+
+## Chimpeeon 风格功能
+
+### 触发器系统
+
+```cpp
+// C++ 中配置触发器
+TriggerConfig trigger;
+trigger.name = "血量低自动喝药";
+trigger.condition.type = TriggerType::ColorFound;
+trigger.condition.value = "0xFF0000";  // 红色
+trigger.condition.region = { 100, 100, 50, 50 };
+trigger.condition.tolerance = 10;
+
+TriggerActionData action;
+action.type = TriggerAction::KeyPress;
+action.value = "49";  // 1 键
+
+trigger.actions.push_back(action);
+```
+
+### 宏录制
+
+```cpp
+// 开始录制
+MacroRecorder recorder;
+recorder.start();
+
+// ... 执行操作 ...
+
+// 停止并保存
+recorder.stop();
+recorder.saveToLua("macro.lua");
+
+// 回放
+recorder.playback(100, 1);  // 100% 速度
+```
+
+### Web Dashboard
+
+```bash
+cd dashboard
+npm install
+npm run dev
+```
+
+- 脚本管理
+- 窗口监控
+- 系统状态
+- 远程控制
+
+### VSCode 插件
+
+```bash
+cd vscode-extension
+npm install
+npm run compile
+```
+
+- Lua 语法高亮
+- API 自动完成
+- 断点调试
 
 ## 许可证
 
