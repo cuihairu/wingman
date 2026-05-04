@@ -10,6 +10,7 @@ on:
 env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
   VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
+  ACTIONS_NODE_VERSION: '24'
 
 jobs:
   build-windows:
