@@ -55,6 +55,7 @@ export default defineConfig({
             { text: 'wingman.macro', link: '/api/macro' },
             { text: 'wingman.trigger', link: '/api/trigger' },
             { text: 'wingman.util', link: '/api/util' },
+            { text: 'wingman.remote', link: '/api/remote' },
             { text: 'wingman.debug', link: '/api/debug' }
           ]
         }
