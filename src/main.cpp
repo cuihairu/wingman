@@ -3,6 +3,8 @@
 #include "wingman/window.hpp"
 #include "wingman/process.hpp"
 
+#include "bindings/lua_bindings.hpp"
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -142,6 +144,25 @@ int cmdList() {
     return 0;
 }
 
+// 执行 Lua 脚本
+int runScript(const std::string& scriptPath) {
+    lua::LuaState luaState;
+
+    if (!luaState.getState()) {
+        std::cerr << "无法初始化 Lua 环境\n";
+        return 1;
+    }
+
+    std::cout << "正在执行脚本: " << scriptPath << "\n";
+
+    if (!luaState.doFile(scriptPath)) {
+        std::cerr << "脚本执行失败: " << luaState.getLastError() << "\n";
+        return 1;
+    }
+
+    return 0;
+}
+
 // 主函数
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -193,18 +214,11 @@ int main(int argc, char* argv[]) {
 
     // === 脚本模式 ===
 
-    std::string scriptPath = argv[1];
-
-    // 检查文件是否存在
-    std::ifstream file(scriptPath);
-    if (!file.is_open()) {
-        std::cerr << "无法打开脚本文件: " << scriptPath << "\n";
-        return 1;
+    // 检查是否为 Lua 脚本
+    if (arg1.size() > 4 && arg1.substr(arg1.size() - 4) == ".lua") {
+        return runScript(arg1);
     }
 
-    // TODO: 实现 Lua 脚本执行
-    std::cout << "正在执行脚本: " << scriptPath << "\n";
-    std::cout << "注意: Lua 脚本支持尚未实现\n";
-
-    return 0;
+    // 默认作为脚本处理
+    return runScript(arg1);
 }

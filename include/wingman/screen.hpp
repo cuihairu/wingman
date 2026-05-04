@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <windows.h>
 
 namespace wingman {
 
@@ -86,10 +87,8 @@ public:
     // 保存为文件
     bool save(const std::string& filepath) const;
 
-    // 从 HBITMAP 创建 (Windows)
-    #ifdef _WIN32
+    // 从 HBITMAP 创建
     static std::unique_ptr<Bitmap> fromHBITMAP(HBITMAP hbitmap);
-    #endif
 
 private:
     int m_width;

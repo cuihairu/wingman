@@ -3,16 +3,11 @@
 #include "wingman/screen.hpp"
 #include <string>
 #include <vector>
-
-#ifdef _WIN32
-// Windows 使用 HWND 作为窗口句柄
-using WindowHandle = HWND;
-#else
-// Linux/X11 使用 Window 作为窗口句柄
-typedef unsigned long WindowHandle;
-#endif
+#include <windows.h>
 
 namespace wingman {
+
+using WindowHandle = HWND;
 
 struct WindowInfo {
     WindowHandle handle;
@@ -91,12 +86,6 @@ public:
 
     // 等待窗口消失
     static bool waitClose(const std::string& title, int timeoutMs = 5000);
-
-private:
-#ifdef _WIN32
-    // 枚举窗口回调
-    static BOOL CALLBACK enumWindowsProc(HWND hwnd, LPARAM lParam);
-#endif
 };
 
 } // namespace wingman
