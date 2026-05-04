@@ -1,4 +1,4 @@
-name: Build
+name: Test
 
 on:
   push:
@@ -10,11 +10,10 @@ on:
 env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
   VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
-  ACTIONS_NODE_VERSION: '24'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-windows:
+  test-windows:
     runs-on: windows-2022
 
     steps:
@@ -52,8 +51,18 @@ jobs:
     - name: Build
       run: cmake --build build --config Release
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: wingman-windows-x64
-        path: build/Release/wingman.exe
+    - name: Install LuaRocks and busted
+      run: |
+        # 下载 LuaRocks
+        Invoke-WebRequest -Uri "https://luarocks.github.io/luarocks/releases/luarocks-3.11.1-windows-x86_64.zip" -OutFile "luarocks.zip"
+        Expand-Archive -Path "luarocks.zip" -DestinationPath .
+        Move-Item luarocks-3.11.1-windows-x86_64 luarocks
+        $env:PATH = "$((Get-Location).Path)\luarocks;$env:PATH"
+        # 安装 busted
+        luarocks install busted
+
+    - name: Run Lua tests
+      shell: pwsh
+      run: |
+        $env:PATH = "$((Get-Location).Path)\luarocks;$((Get-Location).Path)\build\Release;$env:PATH"
+        busted tests -o utfTerminal
