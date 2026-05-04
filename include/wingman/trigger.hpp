@@ -112,6 +112,7 @@ private:
     struct TriggerInstance {
         size_t id;
         TriggerConfig config;
+        DWORD startTime;       // 触发器启动时间
         DWORD lastTriggerTime;
         bool triggered;
     };

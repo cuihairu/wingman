@@ -111,7 +111,7 @@ CpuInfo System::getCpuInfo() {
 }
 
 int System::getCpuUsage() {
-    static uint64_t lastCPU = 0, lastSysCPU = 0, lastUserCPU = 0;
+    static uint64_t lastIdleTime = 0, lastKernelTime = 0, lastUserTime = 0;
     static bool firstRun = true;
     static int numProcessors;
 
@@ -122,9 +122,9 @@ int System::getCpuUsage() {
 
         FILETIME ftIdle, ftKernel, ftUser;
         if (GetSystemTimes(&ftIdle, &ftKernel, &ftUser)) {
-            lastCPU = getFileTimeAsUInt64(ftKernel) + getFileTimeAsUInt64(ftUser);
-            lastSysCPU = getFileTimeAsUInt64(ftKernel);
-            lastUserCPU = getFileTimeAsUInt64(ftUser);
+            lastIdleTime = getFileTimeAsUInt64(ftIdle);
+            lastKernelTime = getFileTimeAsUInt64(ftKernel);
+            lastUserTime = getFileTimeAsUInt64(ftUser);
         }
         firstRun = false;
         return 0;
@@ -135,19 +135,23 @@ int System::getCpuUsage() {
         return 0;
     }
 
-    uint64_t sysCPU = getFileTimeAsUInt64(ftKernel);
-    uint64_t userCPU = getFileTimeAsUInt64(ftUser);
+    uint64_t idleTime = getFileTimeAsUInt64(ftIdle);
+    uint64_t kernelTime = getFileTimeAsUInt64(ftKernel);
+    uint64_t userTime = getFileTimeAsUInt64(ftUser);
 
-    uint64_t totalCPU = sysCPU + userCPU;
-    uint64_t totalDiff = totalCPU - lastCPU;
+    uint64_t totalDiff = (kernelTime - lastKernelTime) + (userTime - lastUserTime);
+    uint64_t idleDiff = idleTime - lastIdleTime;
 
-    lastCPU = totalCPU;
-    lastSysCPU = sysCPU;
-    lastUserCPU = userCPU;
+    lastIdleTime = idleTime;
+    lastKernelTime = kernelTime;
+    lastUserTime = userTime;
 
     if (totalDiff == 0) return 0;
 
-    return static_cast<int>(100.0 - (static_cast<double>(totalDiff) / numProcessors * 100.0));
+    // CPU 使用率 = (非空闲时间 / 总时间) * 100
+    // 注意：需要除以 CPU 核心数来获取整体使用率
+    double usage = 100.0 * (1.0 - static_cast<double>(idleDiff) / static_cast<double>(totalDiff));
+    return static_cast<int>(usage);
 }
 
 int System::getCpuTemperature() {

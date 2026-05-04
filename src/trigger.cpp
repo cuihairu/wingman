@@ -64,6 +64,7 @@ size_t TriggerManager::add(const TriggerConfig& config) {
     TriggerInstance instance;
     instance.id = nextId++;
     instance.config = config;
+    instance.startTime = GetTickCount();
     instance.lastTriggerTime = 0;
     instance.triggered = false;
 
@@ -203,8 +204,10 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
         }
 
         case TriggerType::TimeElapsed: {
-            // 特殊处理：value 是毫秒数
-            return GetTickCount() >= std::stoul(cond.value);
+            // 特殊处理：检查自启动以来是否经过了指定的时间间隔
+            // 使用 trigger.instance.startTime 作为起点
+            DWORD elapsed = GetTickCount() - trigger.startTime;
+            return elapsed >= static_cast<DWORD>(cond.interval);
         }
 
         case TriggerType::PixelChanged: {
