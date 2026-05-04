@@ -256,14 +256,14 @@ bool ScriptManager::runScript(const std::string& name) {
         return false;
     }
 
-    auto& info = it->second;
+    auto& infoPtr = it->second;
 
     // 读取脚本文件
-    std::ifstream file(info->config.path);
+    std::ifstream file(infoPtr->config.path);
     if (!file.is_open()) {
-        info->state = ScriptState::error;
-        info->lastError = "failed to open file";
-        triggerEvent(name, ScriptEvent::error, info->lastError);
+        infoPtr->state = ScriptState::error;
+        infoPtr->lastError = "failed to open file";
+        triggerEvent(name, ScriptEvent::error, infoPtr->lastError);
         return false;
     }
 
@@ -274,15 +274,16 @@ bool ScriptManager::runScript(const std::string& name) {
 
     // 设置环境变量
     std::string envSetup;
-    for (const auto& [key, value] : info->config.env) {
-        envSetup += "_G['" + key + "'] = '" + value + "';\n";
+    const std::unordered_map<std::string, std::string>& env = infoPtr->config.env;
+    for (std::unordered_map<std::string, std::string>::const_iterator it = env.begin(); it != env.end(); ++it) {
+        envSetup += "_G['" + it->first + "'] = '" + it->second + "';\n";
     }
 
     // TODO: 创建 Lua 状态并执行脚本
     // 这里需要集成 LuaState 类
 
-    info->state = ScriptState::running;
-    info->lastLoaded = std::chrono::duration_cast<std::chrono::milliseconds>(
+    infoPtr->state = ScriptState::running;
+    infoPtr->lastLoaded = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()
     ).count();
 
@@ -391,8 +392,8 @@ bool ScriptManager::saveConfig(const std::string& path) {
         return false;
     }
 
-    for (const auto& [key, value] : m_config) {
-        file << key << "=" << value << "\n";
+    for (const auto& pair : m_config) {
+        file << pair.first << "=" << pair.second << "\n";
     }
 
     return true;
@@ -458,8 +459,8 @@ std::vector<std::string> ScriptManager::getScriptNames() const {
 
     std::vector<std::string> names;
     names.reserve(m_scripts.size());
-    for (const auto& [name, _] : m_scripts) {
-        names.push_back(name);
+    for (const auto& pair : m_scripts) {
+        names.push_back(pair.first);
     }
     return names;
 }
@@ -468,9 +469,9 @@ std::vector<std::string> ScriptManager::getRunningScripts() const {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     std::vector<std::string> names;
-    for (const auto& [name, info] : m_scripts) {
-        if (info->state == ScriptState::running) {
-            names.push_back(name);
+    for (const auto& pair : m_scripts) {
+        if (pair.second->state == ScriptState::running) {
+            names.push_back(pair.first);
         }
     }
     return names;

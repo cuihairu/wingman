@@ -18,6 +18,8 @@ add_executable(wingman_tests
     system_test.cpp
     performance_test.cpp
     game_profile_test.cpp
+    # Note: kvstore_test.cpp, script_manager_test.cpp, security_test.cpp, and recorder_test.cpp
+    # are excluded due to unimplemented functions or compilation errors
 )
 
 # Include directories
@@ -60,6 +62,8 @@ target_sources(wingman_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/system.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/performance.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/game_profile.cpp
+    # Note: kvstore.cpp, script_manager.cpp, and security.cpp are excluded
+    # security.cpp functions are inline in header, others have compilation errors
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bindings/lua_bindings.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bindings/lua_extensions.cpp
 )
