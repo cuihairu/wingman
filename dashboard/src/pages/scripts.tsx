@@ -29,6 +29,14 @@ interface ScriptData {
   runCount: number;
 }
 
+interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+const getAuthToken = () => localStorage.getItem('wingman_token') || '';
+
 export default function ScriptsPage() {
   const [scripts, setScripts] = useState<ScriptData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,49 +50,72 @@ export default function ScriptsPage() {
 
   const loadScripts = async () => {
     setLoading(true);
-    // TODO: 从 API 加载脚本列表
-    setTimeout(() => {
-      setScripts([
-        {
-          key: '1',
-          name: 'hello_world.lua',
-          path: 'C:\\\\scripts\\\\hello_world.lua',
-          status: 'stopped',
-          runCount: 5,
+    try {
+      const response = await fetch('/api/scripts', {
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
         },
-        {
-          key: '2',
-          name: 'auto_loop.lua',
-          path: 'C:\\\\scripts\\\\auto_loop.lua',
-          status: 'running',
-          lastRun: '2024-01-15 10:30:00',
-          runCount: 120,
-        },
-        {
-          key: '3',
-          name: 'pixel_detection.lua',
-          path: 'C:\\\\scripts\\\\pixel_detection.lua',
-          status: 'stopped',
-          runCount: 0,
-        },
-      ]);
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('wingman_token');
+        window.location.href = '/login';
+        return;
+      }
+
+      const data: ApiResponse<ScriptData[]> = await response.json();
+      if (data.success && data.data) {
+        setScripts(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to load scripts:', error);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
-  const handleRun = (record: ScriptData) => {
-    // TODO: 调用 API 运行脚本
-    console.log('Run script:', record);
+  const handleRun = async (record: ScriptData) => {
+    try {
+      const response = await fetch('/api/scripts', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: record.name }),
+      });
+      await loadScripts();
+    } catch (error) {
+      console.error('Failed to run script:', error);
+    }
   };
 
-  const handlePause = (record: ScriptData) => {
-    // TODO: 调用 API 暂停脚本
-    console.log('Pause script:', record);
+  const handlePause = async (record: ScriptData) => {
+    try {
+      const response = await fetch(`/api/scripts/${record.key}/pause`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+        },
+      });
+      await loadScripts();
+    } catch (error) {
+      console.error('Failed to pause script:', error);
+    }
   };
 
-  const handleStop = (record: ScriptData) => {
-    // TODO: 调用 API 停止脚本
-    console.log('Stop script:', record);
+  const handleStop = async (record: ScriptData) => {
+    try {
+      const response = await fetch(`/api/scripts/${record.key}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+        },
+      });
+      await loadScripts();
+    } catch (error) {
+      console.error('Failed to stop script:', error);
+    }
   };
 
   const handleEdit = (record: ScriptData) => {
@@ -97,8 +128,18 @@ export default function ScriptsPage() {
     Modal.confirm({
       title: '确认删除',
       content: '确定要删除这个脚本吗？',
-      onOk: () => {
-        setScripts(scripts.filter((s) => s.key !== key));
+      onOk: async () => {
+        try {
+          await fetch(`/api/scripts/${key}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${getAuthToken()}`,
+            },
+          });
+          await loadScripts();
+        } catch (error) {
+          console.error('Failed to delete script:', error);
+        }
       },
     });
   };
@@ -109,25 +150,22 @@ export default function ScriptsPage() {
     setModalVisible(true);
   };
 
-  const handleModalOk = () => {
-    form.validateFields().then((values) => {
-      if (editingScript) {
-        setScripts(
-          scripts.map((s) =>
-            s.key === editingScript.key ? { ...s, ...values } : s
-          )
-        );
-      } else {
-        const newScript: ScriptData = {
-          ...values,
-          key: Date.now().toString(),
-          status: 'stopped',
-          runCount: 0,
-        };
-        setScripts([...scripts, newScript]);
-      }
+  const handleModalOk = async () => {
+    try {
+      const values = await form.validateFields();
+      const response = await fetch('/api/scripts', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+      });
       setModalVisible(false);
-    });
+      await loadScripts();
+    } catch (error) {
+      console.error('Failed to save script:', error);
+    }
   };
 
   const columns: ColumnsType<ScriptData> = [

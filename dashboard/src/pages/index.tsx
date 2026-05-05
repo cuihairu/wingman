@@ -15,6 +15,14 @@ interface DashboardStats {
   memoryUsage: number;
 }
 
+interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+const getAuthToken = () => localStorage.getItem('wingman_token') || '';
+
 export default function IndexPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalScripts: 0,
@@ -26,26 +34,67 @@ export default function IndexPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // TODO: 从 API 获取统计数据
-    setStats({
-      totalScripts: 5,
-      runningScripts: 2,
-      totalWindows: 12,
-      cpuUsage: 15,
-      memoryUsage: 256,
-    });
+    fetchStats();
+    const interval = setInterval(fetchStats, 5000);
+    return () => clearInterval(interval);
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/status', {
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+        },
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('wingman_token');
+        window.location.href = '/login';
+        return;
+      }
+
+      const data: ApiResponse<DashboardStats> = await response.json();
+      if (data.success && data.data) {
+        setStats(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
 
   const handleStartAll = async () => {
     setLoading(true);
-    // TODO: 调用 API 启动所有脚本
-    setTimeout(() => setLoading(false), 1000);
+    try {
+      const response = await fetch('/api/scripts', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      await fetchStats();
+    } catch (error) {
+      console.error('Failed to start scripts:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleStopAll = async () => {
     setLoading(true);
-    // TODO: 调用 API 停止所有脚本
-    setTimeout(() => setLoading(false), 1000);
+    try {
+      const response = await fetch('/api/scripts', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+        },
+      });
+      await fetchStats();
+    } catch (error) {
+      console.error('Failed to stop scripts:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

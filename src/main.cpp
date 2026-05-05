@@ -3,6 +3,7 @@
 #include "wingman/window.hpp"
 #include "wingman/process.hpp"
 #include "wingman/version.hpp"
+#include "wingman/http_server.hpp"
 
 #include "lua_bindings.hpp"
 
@@ -10,8 +11,26 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <memory>
+#include <csignal>
+#include <thread>
+#include <chrono>
 
 using namespace wingman;
+
+// Global HTTP server pointer for signal handling
+static std::unique_ptr<HTTPServer> g_httpServer;
+static bool g_running = true;
+
+// Signal handler for graceful shutdown
+void signalHandler(int signal) {
+    std::cout << "\nShutting down...\n";
+    g_running = false;
+    if (g_httpServer) {
+        g_httpServer->stop();
+    }
+    exit(0);
+}
 
 // Print usage information
 void printUsage() {
@@ -19,6 +38,7 @@ void printUsage() {
               << " - Game Automation Programmable Control Engine\n\n";
     std::cout << "Usage:\n";
     std::cout << "  wingman.exe <script.lua>              Run Lua script\n";
+    std::cout << "  wingman.exe --server [port]           Start HTTP server (default: 8080)\n";
     std::cout << "  wingman.exe --pixel <x> <y>          Get pixel color at position\n";
     std::cout << "  wingman.exe --find <color> <region>  Find color on screen\n";
     std::cout << "  wingman.exe --capture [file.png]     Capture screen and save\n";
@@ -26,6 +46,8 @@ void printUsage() {
     std::cout << "  wingman.exe --version               Show version information\n";
     std::cout << "\nExamples:\n";
     std::cout << "  wingman.exe script.lua\n";
+    std::cout << "  wingman.exe --server\n";
+    std::cout << "  wingman.exe --server 9000\n";
     std::cout << "  wingman.exe --pixel 100 200\n";
     std::cout << "  wingman.exe --find 0xFF0000 0,0,1920,1080\n";
     std::cout << "  wingman.exe --capture screenshot.png\n";
@@ -165,6 +187,38 @@ int runScript(const std::string& scriptPath) {
     return 0;
 }
 
+// Command: Start HTTP server
+int cmdServer(const std::vector<std::string>& args) {
+    int port = 8080;
+    if (!args.empty()) {
+        try {
+            port = std::stoi(args[0]);
+        } catch (...) {
+            std::cerr << "Invalid port number\n";
+            return 1;
+        }
+    }
+
+    // Setup signal handlers
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
+    g_httpServer = std::make_unique<HTTPServer>("wingman.db", port);
+    g_httpServer->start();
+
+    std::cout << "\nHTTP Server running on http://localhost:" << port << "\n";
+    std::cout << "Dashboard: http://localhost:" << port << "\n";
+    std::cout << "Default credentials: admin/admin\n";
+    std::cout << "\nPress Ctrl+C to stop...\n\n";
+
+    // Keep running
+    while (g_running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    return 0;
+}
+
 // Main function
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -215,6 +269,14 @@ int main(int argc, char* argv[]) {
 
     if (arg1 == "--list") {
         return cmdList();
+    }
+
+    if (arg1 == "--server") {
+        std::vector<std::string> args;
+        for (int i = 2; i < argc; ++i) {
+            args.push_back(argv[i]);
+        }
+        return cmdServer(args);
     }
 
     // === Script mode ===

@@ -29,6 +29,10 @@
       "platform": "windows"
     },
     {
+      "name": "crow",
+      "platform": "windows"
+    },
+    {
       "name": "sqlite3",
       "platform": "windows"
     },

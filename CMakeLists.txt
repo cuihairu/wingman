@@ -25,6 +25,8 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(asio CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+find_package(crow CONFIG REQUIRED)
+find_package(SQLite3 REQUIRED)
 
 # Testing framework
 if(WINGMAN_BUILD_TESTS)
@@ -48,6 +50,8 @@ set(CORE_SOURCES
     # src/security.cpp  # TODO: Re-enable after fixing WINTRUST issues
     src/game_profile.cpp
     src/storage.cpp
+    src/auth.cpp
+    src/http_server.cpp
 )
 
 # Lua bindings
@@ -105,6 +109,8 @@ target_link_libraries(wingman PRIVATE
     asio::asio
     CURL::libcurl
     Threads::Threads
+    crow::crow
+    SQLite::SQLite3
     gdiplus
     user32
     gdi32
