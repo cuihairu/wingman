@@ -90,6 +90,11 @@ vcpkg-cache/
 .DS_Store
 Thumbs.db
 
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
 # Docs
 docs/.vitepress/cache/
 docs/.vitepress/dist/
