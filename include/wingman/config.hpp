@@ -44,6 +44,7 @@ struct TrayMenuItemConfig {
     std::string action;                 // 动作参数（命令/Lua脚本/URL等）
     bool enabled = true;                // 是否启用
     bool isSeparator = false;           // 是否为分隔符
+    bool checked = false;               // 是否勾选（用于状态显示）
     std::vector<TrayMenuItemConfig> subitems;  // 子菜单项
 
     std::string toJson() const;

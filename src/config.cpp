@@ -91,6 +91,7 @@ std::string TrayMenuItemConfig::toJson() const {
     j["action"] = action;
     j["enabled"] = enabled;
     j["isSeparator"] = isSeparator;
+    j["checked"] = checked;
 
     if (!subitems.empty()) {
         nlohmann::json subArray = nlohmann::json::array();
@@ -113,6 +114,7 @@ TrayMenuItemConfig TrayMenuItemConfig::fromJson(const std::string& json) {
         if (j.contains("action")) config.action = j["action"];
         if (j.contains("enabled")) config.enabled = j["enabled"];
         if (j.contains("isSeparator")) config.isSeparator = j["isSeparator"];
+        if (j.contains("checked")) config.checked = j["checked"];
 
         if (j.contains("subitems") && j["subitems"].is_array()) {
             for (const auto& subJson : j["subitems"]) {
@@ -300,6 +302,16 @@ public:
 
             // 默认菜单项
             nlohmann::json defaultMenu = nlohmann::json::array();
+            defaultMenu.push_back({
+                {"id", "server_status"},
+                {"label", "● 服务器: 未连接"},
+                {"actionType", static_cast<int>(TrayActionType::callback)},
+                {"enabled", false}  // 仅显示状态，不可点击
+            });
+            defaultMenu.push_back({
+                {"id", "sep0"},
+                {"isSeparator", true}
+            });
             defaultMenu.push_back({
                 {"id", "help"},
                 {"label", "帮助 / 用法"},

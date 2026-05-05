@@ -22,6 +22,8 @@ struct TrayItem {
     std::string label;
     TrayItemType type = TrayItemType::NORMAL;
     std::function<void()> callback;
+    bool checked = false;     // 是否勾选
+    bool enabled = true;      // 是否启用
     std::vector<TrayItem> subitems;
 };
 
@@ -83,6 +85,12 @@ public:
 
     // 获取当前图标状态
     TrayIconState getIconState() const;
+
+    // 设置菜单项勾选状态
+    void setItemChecked(const std::string& id, bool checked);
+
+    // 设置菜单项启用/禁用状态
+    void setItemEnabled(const std::string& id, bool enabled);
 
 private:
     class Impl;

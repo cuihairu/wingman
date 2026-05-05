@@ -7,6 +7,14 @@
 #include <iostream>
 #include <sstream>
 
+// GDI+ 用于图标灰度转换
+// 必须在 gdiplus.h 之前包含这些头文件
+#include <objbase.h>
+#include <comdef.h>
+#include <gdiplus.h>
+#pragma comment(lib, "gdiplus.lib")
+#pragma comment(lib, "ole32.lib")
+
 namespace wingman {
 
 // WM_APP 消息范围用于托盘图标
@@ -16,6 +24,79 @@ namespace wingman {
 // 全局窗口类注册标志
 static bool g_trayClassRegistered = false;
 static std::mutex g_classRegistrationMutex;
+
+// GDI+ 初始化
+static ULONG_PTR g_gdiplusToken = 0;
+static bool g_gdiplusInitialized = false;
+
+static void initializeGdiPlus() {
+    if (!g_gdiplusInitialized) {
+        Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+        Gdiplus::GdiplusStartup(&g_gdiplusToken, &gdiplusStartupInput, nullptr);
+        g_gdiplusInitialized = true;
+    }
+}
+
+// 将 HICON 转换为灰度
+static HICON convertToGrayscale(HICON hIcon) {
+    if (!hIcon) return nullptr;
+
+    initializeGdiPlus();
+
+    ICONINFO iconInfo;
+    if (!GetIconInfo(hIcon, &iconInfo)) return hIcon;
+
+    // 获取图标尺寸
+    BITMAP bm;
+    GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bm);
+    int width = bm.bmWidth;
+    int height = bm.bmHeight;
+
+    // 创建 GDI+ Bitmap 从 HBITMAP
+    Gdiplus::Bitmap* pBitmap = Gdiplus::Bitmap::FromHBITMAP(iconInfo.hbmColor, nullptr);
+    if (!pBitmap) {
+        DeleteObject(iconInfo.hbmColor);
+        DeleteObject(iconInfo.hbmMask);
+        return hIcon;
+    }
+
+    // 创建灰度版本的 Bitmap
+    Gdiplus::Bitmap grayscaleBitmap(width, height, PixelFormat32bppARGB);
+
+    // 处理每个像素，转换为灰度
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            Gdiplus::Color color;
+            pBitmap->GetPixel(x, y, &color);
+
+            // 使用亮度公式转换为灰度
+            BYTE gray = (BYTE)(0.299 * color.GetR() + 0.587 * color.GetG() + 0.114 * color.GetB());
+            Gdiplus::Color grayColor(color.GetA(), gray, gray, gray);
+            grayscaleBitmap.SetPixel(x, y, grayColor);
+        }
+    }
+
+    // 转换回 HICON
+    HBITMAP hGrayscaleBitmap = nullptr;
+    Gdiplus::Status status = grayscaleBitmap.GetHBITMAP(Gdiplus::Color(0, 0, 0), &hGrayscaleBitmap);
+
+    HICON hGrayIcon = nullptr;
+    if (status == Gdiplus::Ok) {
+        ICONINFO ii;
+        ii.fIcon = TRUE;
+        ii.hbmMask = iconInfo.hbmMask;
+        ii.hbmColor = hGrayscaleBitmap;
+        ii.xHotspot = 0;
+        ii.yHotspot = 0;
+        hGrayIcon = CreateIconIndirect(&ii);
+    }
+
+    delete pBitmap;
+    DeleteObject(iconInfo.hbmColor);
+    DeleteObject(iconInfo.hbmMask);
+
+    return hGrayIcon ? hGrayIcon : hIcon;
+}
 
 class TrayIcon::Impl {
 public:
@@ -35,6 +116,8 @@ public:
     // 图标状态支持
     TrayIconState currentState_ = TrayIconState::normal;
     std::map<TrayIconState, std::string> stateIcons_;  // 状态对应的图标路径
+    std::map<TrayIconState, HICON> stateIconHandles_;   // 状态对应的图标句柄
+    HICON originalIcon_ = nullptr;  // 原始图标句柄
     std::mutex stateMutex_;
 
     Impl(const std::string& tooltip) : tooltip_(tooltip), hwnd_(nullptr) {
@@ -113,6 +196,19 @@ public:
 
     ~Impl() {
         hide();
+
+        // 释放缓存的图标
+        {
+            std::lock_guard<std::mutex> lock(stateMutex_);
+            HICON defaultIcon = LoadIcon(nullptr, IDI_INFORMATION);
+            for (auto& pair : stateIconHandles_) {
+                if (pair.second && pair.second != defaultIcon) {
+                    DestroyIcon(pair.second);
+                }
+            }
+            stateIconHandles_.clear();
+        }
+
         if (hwnd_) {
             DestroyWindow(hwnd_);
         }
@@ -142,6 +238,13 @@ public:
             if (visible_) {
                 Shell_NotifyIconW(NIM_MODIFY, &nid_);
             }
+
+            // 保存为原始图标
+            {
+                std::lock_guard<std::mutex> lock(stateMutex_);
+                originalIcon_ = hIcon;
+                stateIconHandles_[TrayIconState::normal] = hIcon;
+            }
         }
     }
 
@@ -166,35 +269,70 @@ public:
         std::lock_guard<std::mutex> lock(stateMutex_);
         currentState_ = state;
 
-        // 查找对应状态的图标
-        auto it = stateIcons_.find(state);
-        if (it != stateIcons_.end() && !it->second.empty()) {
-            // 加载并设置状态图标
-            HICON hIcon = static_cast<HICON>(LoadImageA(
-                nullptr,
-                it->second.c_str(),
-                IMAGE_ICON,
-                GetSystemMetrics(SM_CXICON),
-                GetSystemMetrics(SM_CYICON),
-                LR_LOADFROMFILE
-            ));
+        HICON hIcon = nullptr;
 
-            if (hIcon) {
-                // 释放旧图标
-                if (nid_.hIcon) {
+        // 查找对应状态的图标句柄（已缓存）
+        auto handleIt = stateIconHandles_.find(state);
+        if (handleIt != stateIconHandles_.end() && handleIt->second) {
+            hIcon = handleIt->second;
+        } else {
+            // 尝试从文件加载
+            auto pathIt = stateIcons_.find(state);
+            if (pathIt != stateIcons_.end() && !pathIt->second.empty()) {
+                hIcon = static_cast<HICON>(LoadImageA(
+                    nullptr,
+                    pathIt->second.c_str(),
+                    IMAGE_ICON,
+                    GetSystemMetrics(SM_CXICON),
+                    GetSystemMetrics(SM_CYICON),
+                    LR_LOADFROMFILE
+                ));
+                if (hIcon) {
+                    stateIconHandles_[state] = hIcon;
+                }
+            }
+
+            // 如果是 idle 状态且没有找到图标，自动生成灰度版本
+            if (!hIcon && state == TrayIconState::idle && originalIcon_) {
+                std::cout << "[TRAY] 自动生成灰度图标\n";
+                std::cout.flush();
+                hIcon = convertToGrayscale(originalIcon_);
+                if (hIcon && hIcon != originalIcon_) {
+                    stateIconHandles_[state] = hIcon;
+                }
+            }
+
+            // 保存原始图标（normal 状态）
+            if (state == TrayIconState::normal && hIcon) {
+                originalIcon_ = hIcon;
+            }
+        }
+
+        if (hIcon) {
+            // 释放旧图标（但不释放缓存的图标）
+            if (nid_.hIcon) {
+                // 检查是否是缓存的图标，如果不是则释放
+                bool isCached = false;
+                for (const auto& pair : stateIconHandles_) {
+                    if (pair.second == nid_.hIcon) {
+                        isCached = true;
+                        break;
+                    }
+                }
+                if (!isCached) {
                     HICON defaultIcon = LoadIcon(nullptr, IDI_INFORMATION);
                     if (nid_.hIcon != defaultIcon) {
                         DestroyIcon(nid_.hIcon);
                     }
                 }
-                nid_.hIcon = hIcon;
-                nid_.uFlags |= NIF_ICON;
-                if (visible_) {
-                    Shell_NotifyIconW(NIM_MODIFY, &nid_);
-                }
-                std::cout << "[TRAY] 图标状态切换到: " << static_cast<int>(state) << "\n";
-                std::cout.flush();
             }
+            nid_.hIcon = hIcon;
+            nid_.uFlags |= NIF_ICON;
+            if (visible_) {
+                Shell_NotifyIconW(NIM_MODIFY, &nid_);
+            }
+            std::cout << "[TRAY] 图标状态切换到: " << static_cast<int>(state) << "\n";
+            std::cout.flush();
         }
     }
 
@@ -257,6 +395,40 @@ public:
         items_.clear();
     }
 
+    void setItemChecked(const std::string& id, bool checked) {
+        std::lock_guard<std::mutex> lock(itemsMutex_);
+        for (auto& item : items_) {
+            if (item.id == id) {
+                item.checked = checked;
+                return;
+            }
+            // 检查子菜单
+            for (auto& subItem : item.subitems) {
+                if (subItem.id == id) {
+                    subItem.checked = checked;
+                    return;
+                }
+            }
+        }
+    }
+
+    void setItemEnabled(const std::string& id, bool enabled) {
+        std::lock_guard<std::mutex> lock(itemsMutex_);
+        for (auto& item : items_) {
+            if (item.id == id) {
+                item.enabled = enabled;
+                return;
+            }
+            // 检查子菜单
+            for (auto& subItem : item.subitems) {
+                if (subItem.id == id) {
+                    subItem.enabled = enabled;
+                    return;
+                }
+            }
+        }
+    }
+
     void updateMenu() {
         // 菜单在点击时动态创建，这里只是标记需要更新
     }
@@ -295,7 +467,10 @@ public:
                         wchar_t wlabel[256];
                         MultiByteToWideChar(CP_UTF8, 0, subItem.label.c_str(), -1,
                                            wlabel, 256);
-                        AppendMenuW(hSubMenu, MF_STRING, itemId++, wlabel);
+                        UINT flags = MF_STRING;
+                        if (subItem.checked) flags |= MF_CHECKED;
+                        if (!subItem.enabled) flags |= MF_GRAYED;
+                        AppendMenuW(hSubMenu, flags, itemId++, wlabel);
                         callbacks.push_back(subItem.callback);
                         itemIds.push_back(subItem.id);
                     }
@@ -308,8 +483,11 @@ public:
                 wchar_t wlabel[256];
                 MultiByteToWideChar(CP_UTF8, 0, item.label.c_str(), -1,
                                    wlabel, 256);
+                UINT flags = MF_STRING;
+                if (item.checked) flags |= MF_CHECKED;
+                if (!item.enabled) flags |= MF_GRAYED;
                 UINT thisItemId = itemId++;
-                AppendMenuW(hMenu, MF_STRING, thisItemId, wlabel);
+                AppendMenuW(hMenu, flags, thisItemId, wlabel);
                 callbacks.push_back(item.callback);
                 itemIds.push_back(item.id);
             }
@@ -329,10 +507,19 @@ public:
 
         if (clicked >= ID_TRAY_FIRST) {
             size_t index = clicked - ID_TRAY_FIRST;
+            std::cout << "[DEBUG] Menu clicked: " << clicked << ", index: " << index << ", callbacks.size: " << callbacks.size() << "\n";
+            std::cout.flush();
             if (index < callbacks.size()) {
+                // 检查回调是否为空
+                bool hasCallback = static_cast<bool>(callbacks[index]);
+                std::cout << "[DEBUG] hasCallback: " << hasCallback << ", index < itemIds.size: " << (index < itemIds.size()) << "\n";
+                std::cout.flush();
+
                 // 首先尝试执行直接回调
-                if (callbacks[index]) {
+                if (hasCallback) {
                     try {
+                        std::cout << "[DEBUG] Executing direct callback\n";
+                        std::cout.flush();
                         callbacks[index]();
                     } catch (const std::exception& e) {
                         std::cout << "[DEBUG] Exception in callback: " << e.what() << "\n";
@@ -341,6 +528,8 @@ public:
                     // 如果没有直接回调，尝试使用动作处理器
                     if (actionHandler_ && index < itemIds.size()) {
                         const std::string& configId = itemIds[index];
+                        std::cout << "[DEBUG] Using action handler for configId: " << configId << "\n";
+                        std::cout.flush();
                         auto it = itemConfigs_.find(configId);
                         if (it != itemConfigs_.end()) {
                             try {
@@ -348,8 +537,13 @@ public:
                             } catch (const std::exception& e) {
                                 std::cout << "[DEBUG] Exception in action handler: " << e.what() << "\n";
                             }
+                        } else {
+                            std::cout << "[DEBUG] Config not found for id: " << configId << "\n";
                         }
+                    } else {
+                        std::cout << "[DEBUG] No action handler or index out of bounds\n";
                     }
+                    std::cout.flush();
                 }
             }
         }
@@ -400,6 +594,8 @@ public:
                     subItem.id = subConfig.id;
                     subItem.label = subConfig.label;
                     subItem.type = subConfig.isSeparator ? TrayItemType::SEPARATOR : TrayItemType::NORMAL;
+                    subItem.checked = subConfig.checked;
+                    subItem.enabled = subConfig.enabled;
                     // 动作由 actionHandler_ 处理，不设置 callback
                     subitems.push_back(subItem);
                 }
@@ -410,6 +606,8 @@ public:
                 item.id = menuItem.id;
                 item.label = menuItem.label;
                 item.type = TrayItemType::NORMAL;
+                item.checked = menuItem.checked;
+                item.enabled = menuItem.enabled;
                 // 动作由 actionHandler_ 处理，不设置 callback
                 items_.push_back(item);
             }
@@ -522,6 +720,14 @@ void TrayIcon::setIconState(TrayIconState state) {
 
 TrayIconState TrayIcon::getIconState() const {
     return impl_->getIconState();
+}
+
+void TrayIcon::setItemChecked(const std::string& id, bool checked) {
+    impl_->setItemChecked(id, checked);
+}
+
+void TrayIcon::setItemEnabled(const std::string& id, bool enabled) {
+    impl_->setItemEnabled(id, enabled);
 }
 
 // TrayManager implementation

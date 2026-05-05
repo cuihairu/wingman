@@ -337,14 +337,24 @@ int cmdTray() {
 
         icon->addSeparator("sep1");
 
-        icon->addItem("config_view", "查看配置", []() {
-            // 由 actionHandler 处理
+        icon->addItem("config_view", "查看配置", [&serverConfig]() {
+            std::cout << "\n=== 当前配置 ===\n";
+            std::cout << "服务器: " << serverConfig.host << ":" << serverConfig.port << "\n";
+            if (!serverConfig.username.empty()) {
+                std::cout << "用户名: " << serverConfig.username << "\n";
+            }
+            std::cout << "自动连接: " << (serverConfig.autoConnect ? "是" : "否") << "\n";
+            std::cout << "服务器控制: " << (serverConfig.serverControlled ? "是" : "否") << "\n";
+            std::cout.flush();
         });
 
         icon->addSeparator("sep2");
 
         icon->addItem("exit", "退出", []() {
-            // 由 actionHandler 处理
+            std::cout << "[TRAY] 退出 Wingman\n";
+            std::cout.flush();
+            g_running = false;
+            PostQuitMessage(0);
         });
     }
 
