@@ -19,6 +19,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Needed for codecov diff coverage
 
     - name: Setup vcpkg
       run: |
@@ -44,6 +46,10 @@ jobs:
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
         .\vcpkg\vcpkg install --triplet=x64-windows
 
+    - name: Install OpenCppCoverage
+      run: |
+        choco install opencppcoverage -y
+
     - name: Configure CMake
       run: |
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
@@ -52,10 +58,32 @@ jobs:
           -S . `
           -G "Visual Studio 17 2022" `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT_ABS/scripts/buildsystems/vcpkg.cmake" `
-          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=Debug `
+          -DWINGMAN_BUILD_TESTS=ON
 
     - name: Build
-      run: cmake --build build --config Release
+      run: cmake --build build --config Debug
+
+    - name: Run tests with coverage
+      run: |
+        # Run tests with OpenCppCoverage
+        & "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe" `
+          --sources "${{ github.workspace }}/src" `
+          --sources "${{ github.workspace }}/include" `
+          --sources "${{ github.workspace }}/bindings" `
+          --excluded_sources "${{ github.workspace }}/tests" `
+          --export_type=cobertura:coverage.xml `
+          --working_dir build `
+          -- build\tests\cpp\Debug\wingman_tests.exe
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: cpp
+        name: windows-coverage
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Run Lua tests
       shell: pwsh
