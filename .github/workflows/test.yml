@@ -59,8 +59,8 @@ jobs:
 
     - name: Install LuaRocks and busted
       run: |
-        # 下载 LuaRocks
-        Invoke-WebRequest -Uri "https://luarocks.github.io/luarocks/releases/luarocks-3.11.1-windows-x86_64.zip" -OutFile "luarocks.zip"
+        # 下载 LuaRocks (使用 GitHub Releases)
+        Invoke-WebRequest -Uri "https://github.com/luarocks/luarocks/releases/download/v3.11.1/luarocks-3.11.1-windows-x86_64.zip" -OutFile "luarocks.zip"
         Expand-Archive -Path "luarocks.zip" -DestinationPath .
         Move-Item luarocks-3.11.1-windows-x86_64 luarocks
         $env:PATH = "$((Get-Location).Path)\luarocks;$env:PATH"
