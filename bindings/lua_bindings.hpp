@@ -53,6 +53,7 @@ private:
     void registerOcrModule();
     void registerTrayModule();
     void registerConfigModule();
+    void registerNodeModule();
 };
 
 // === Lua C API 绑定函数 ===

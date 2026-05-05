@@ -131,6 +131,29 @@ AutoRunConfig AutoRunConfig::fromJson(const std::string& json) {
     return config;
 }
 
+// ========== HeartbeatConfig Implementation ==========
+
+std::string HeartbeatConfig::toJson() const {
+    nlohmann::json j;
+    j["enabled"] = enabled;
+    j["intervalSeconds"] = intervalSeconds;
+    j["timeoutSeconds"] = timeoutSeconds;
+    return j.dump();
+}
+
+HeartbeatConfig HeartbeatConfig::fromJson(const std::string& json) {
+    HeartbeatConfig config;
+    try {
+        nlohmann::json j = nlohmann::json::parse(json);
+        if (j.contains("enabled")) config.enabled = j["enabled"];
+        if (j.contains("intervalSeconds")) config.intervalSeconds = j["intervalSeconds"];
+        if (j.contains("timeoutSeconds")) config.timeoutSeconds = j["timeoutSeconds"];
+    } catch (...) {
+        // 解析失败，返回默认配置
+    }
+    return config;
+}
+
 // ========== ConfigManager Implementation ==========
 
 class ConfigManager::Impl {
@@ -165,6 +188,11 @@ public:
                 {"delaySeconds", 0},
                 {"repeat", false},
                 {"repeatInterval", 0}
+            };
+            config["heartbeat"] = {
+                {"enabled", true},
+                {"intervalSeconds", 30},
+                {"timeoutSeconds", 90}
             };
             createdDefault = true;
         }
@@ -266,6 +294,32 @@ bool ConfigManager::setAutoRunConfig(const AutoRunConfig& config) {
         {"delaySeconds", config.delaySeconds},
         {"repeat", config.repeat},
         {"repeatInterval", config.repeatInterval}
+    };
+
+    return saveConfigJson(impl_->configDir, j);
+}
+
+HeartbeatConfig ConfigManager::getHeartbeatConfig() const {
+    nlohmann::json config = loadConfigJson(impl_->configDir);
+    HeartbeatConfig result;
+
+    if (config.contains("heartbeat")) {
+        auto& heartbeat = config["heartbeat"];
+        if (heartbeat.contains("enabled")) result.enabled = heartbeat["enabled"];
+        if (heartbeat.contains("intervalSeconds")) result.intervalSeconds = heartbeat["intervalSeconds"];
+        if (heartbeat.contains("timeoutSeconds")) result.timeoutSeconds = heartbeat["timeoutSeconds"];
+    }
+
+    return result;
+}
+
+bool ConfigManager::setHeartbeatConfig(const HeartbeatConfig& config) {
+    nlohmann::json j = loadConfigJson(impl_->configDir);
+
+    j["heartbeat"] = {
+        {"enabled", config.enabled},
+        {"intervalSeconds", config.intervalSeconds},
+        {"timeoutSeconds", config.timeoutSeconds}
     };
 
     return saveConfigJson(impl_->configDir, j);

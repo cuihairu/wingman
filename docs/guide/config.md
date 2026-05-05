@@ -64,6 +64,14 @@ Wingman 使用 JSON 格式的配置文件来存储应用程序设置。配置文
 | `repeat` | boolean | `false` | 是否重复运行 |
 | `repeatInterval` | number | `0` | 重复间隔（秒），0 表示脚本自己控制循环 |
 
+### Heartbeat (心跳配置)
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `enabled` | boolean | `true` | 是否启用心跳 |
+| `intervalSeconds` | number | `30` | 心跳间隔（秒） |
+| `timeoutSeconds` | number | `90` | 超时时间（秒），服务器超过此时间未收到心跳认为节点离线 |
+
 ## C++ API
 
 ```cpp
@@ -120,9 +128,55 @@ autoRun.repeat = true
 autoRun.repeatInterval = 60
 config.setAutoRun(autoRun)
 
+-- 心跳配置
+local heartbeat = config.getHeartbeat()
+heartbeat.enabled = true
+heartbeat.intervalSeconds = 30  -- 每 30 秒发送一次心跳
+config.setHeartbeat(heartbeat)
+
 -- 通用键值对
 config.set("myKey", "myValue")
 local value = config.get("myKey")
+```
+
+## 节点模块 (node)
+
+节点模块提供了节点状态管理和心跳功能。
+
+### node.createHeartbeat()
+
+创建心跳数据。
+
+```lua
+local heartbeat = node.createHeartbeat()
+-- {
+--   json = "{...}",      -- 完整的 JSON 数据
+--   nodeId = "node-abc123",
+--   version = "0.1.0"
+-- }
+```
+
+### node.sendHeartbeat(table)
+
+发送心跳到服务器（需要启用服务器控制模式）。
+
+```lua
+local heartbeat = node.createHeartbeat()
+node.sendHeartbeat(heartbeat)
+```
+
+### node.getWindows()
+
+获取所有窗口列表（用于汇报游戏窗口状态）。
+
+```lua
+local windows = node.getWindows()
+for i, win in ipairs(windows) do
+    print(win.title)
+    print(win.handle)
+    print(win.isForeground)
+    -- bounds: {x, y, width, height}
+end
 ```
 
 ## 运行模式

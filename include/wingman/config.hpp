@@ -47,6 +47,16 @@ struct AutoRunConfig {
     static AutoRunConfig fromJson(const std::string& json);
 };
 
+// 心跳配置
+struct HeartbeatConfig {
+    bool enabled = true;            // 是否启用心跳
+    int intervalSeconds = 30;       // 心跳间隔（秒）
+    int timeoutSeconds = 90;        // 超时时间（秒），服务器超过此时间未收到心跳认为节点离线
+
+    std::string toJson() const;
+    static HeartbeatConfig fromJson(const std::string& json);
+};
+
 // 通用配置管理器
 class ConfigManager {
 public:
@@ -68,6 +78,10 @@ public:
     // 自动运行配置
     AutoRunConfig getAutoRunConfig() const;
     bool setAutoRunConfig(const AutoRunConfig& config);
+
+    // 心跳配置
+    HeartbeatConfig getHeartbeatConfig() const;
+    bool setHeartbeatConfig(const HeartbeatConfig& config);
 
     // 通用键值对访问
     std::optional<std::string> get(const std::string& key) const;

@@ -92,6 +92,8 @@ set(CORE_SOURCES
     src/tray.cpp
     # Config
     src/config.cpp
+    # Node Status (Heartbeat)
+    src/node_status.cpp
 )
 
 # OCR support (conditional)

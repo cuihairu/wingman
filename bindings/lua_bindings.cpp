@@ -19,6 +19,8 @@
 #include "wingman/ocr.hpp"
 #include "wingman/tray.hpp"
 #include "wingman/config.hpp"
+#include "wingman/node_status.hpp"
+#include "wingman/version.hpp"
 
 #include <cstring>
 #include <ctime>
@@ -104,6 +106,7 @@ void LuaState::registerAPIs() {
     registerOcrModule();
     registerTrayModule();
     registerConfigModule();
+    registerNodeModule();
 
     // 注册扩展模块
     registerHttpModule(L);
@@ -2637,6 +2640,58 @@ int setAutoRun(lua_State* L) {
     return 0;
 }
 
+// getHeartbeat() -> table
+int getHeartbeat(lua_State* L) {
+    auto* config = getConfigManager();
+    HeartbeatConfig heartbeatConfig = config->getHeartbeatConfig();
+
+    lua_newtable(L);
+    lua_pushboolean(L, heartbeatConfig.enabled);
+    lua_setfield(L, -2, "enabled");
+
+    lua_pushinteger(L, heartbeatConfig.intervalSeconds);
+    lua_setfield(L, -2, "intervalSeconds");
+
+    lua_pushinteger(L, heartbeatConfig.timeoutSeconds);
+    lua_setfield(L, -2, "timeoutSeconds");
+
+    return 1;
+}
+
+// setHeartbeat(table)
+int setHeartbeat(lua_State* L) {
+    auto* config = getConfigManager();
+
+    if (!lua_istable(L, 1)) {
+        lua_pushstring(L, "setHeartbeat: 期望 table 参数");
+        lua_error(L);
+        return 1;
+    }
+
+    HeartbeatConfig heartbeatConfig;
+
+    lua_getfield(L, 1, "enabled");
+    if (lua_isboolean(L, -1)) {
+        heartbeatConfig.enabled = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "intervalSeconds");
+    if (lua_isinteger(L, -1)) {
+        heartbeatConfig.intervalSeconds = lua_tointeger(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "timeoutSeconds");
+    if (lua_isinteger(L, -1)) {
+        heartbeatConfig.timeoutSeconds = lua_tointeger(L, -1);
+    }
+    lua_pop(L, 1);
+
+    config->setHeartbeatConfig(heartbeatConfig);
+    return 0;
+}
+
 } // namespace config
 
 void LuaState::registerConfigModule() {
@@ -2669,7 +2724,139 @@ void LuaState::registerConfigModule() {
     lua_pushcfunction(L, config::setAutoRun);
     lua_setfield(L, -2, "setAutoRun");
 
+    lua_pushcfunction(L, config::getHeartbeat);
+    lua_setfield(L, -2, "getHeartbeat");
+
+    lua_pushcfunction(L, config::setHeartbeat);
+    lua_setfield(L, -2, "setHeartbeat");
+
     lua_setglobal(L, "config");
+}
+
+// ============================================================================
+// Node 模块 (节点状态和心跳)
+// ============================================================================
+
+namespace node {
+
+// 获取节点 ID
+static std::string getNodeId() {
+    // 尝试从配置读取，否则生成新的
+    if (config::g_configManager) {
+        auto nodeId = config::g_configManager->get("nodeId");
+        if (nodeId.has_value()) {
+            // 去掉 JSON 字符串的引号
+            std::string id = nodeId.value();
+            if (!id.empty() && id.front() == '"') id.erase(0, 1);
+            if (!id.empty() && id.back() == '"') id.pop_back();
+            if (!id.empty()) return id;
+        }
+    }
+
+    // 生成新的节点 ID
+    static const char* charset = "abcdefghijklmnopqrstuvwxyz0123456789";
+    std::string newId = "node-";
+    for (int i = 0; i < 8; i++) {
+        newId += charset[rand() % 36];
+    }
+    if (config::g_configManager) {
+        config::g_configManager->set("nodeId", newId);
+    }
+    return newId;
+}
+
+// createHeartbeat() -> table
+int createHeartbeat(lua_State* L) {
+    NodeHeartbeat heartbeat;
+    heartbeat.nodeId = getNodeId();
+    heartbeat.status = NodeState::Online;
+    heartbeat.timestamp = NodeHeartbeat::now();
+    heartbeat.cpuUsage = 0.0;
+    heartbeat.memoryUsage = 0.0;
+    heartbeat.version = wingman::version::getFullVersion();
+
+    lua_newtable(L);
+    lua_pushstring(L, heartbeat.toJson().c_str());
+    lua_setfield(L, -2, "json");
+
+    lua_pushstring(L, heartbeat.nodeId.c_str());
+    lua_setfield(L, -2, "nodeId");
+
+    lua_pushstring(L, wingman::version::getFullVersion().c_str());
+    lua_setfield(L, -2, "version");
+
+    return 1;
+}
+
+// sendHeartbeat(table)
+int sendHeartbeat(lua_State* L) {
+    // 在服务器控制模式下，这会将心跳数据发送到服务器
+    // 目前只是打印日志，实际网络通信需要配合 server 模块
+    if (lua_istable(L, 1)) {
+        lua_getfield(L, 1, "json");
+        if (lua_isstring(L, -1)) {
+            const char* json = lua_tostring(L, -1);
+            std::cout << "[HEARTBEAT] " << json << "\n";
+            std::cout.flush();
+        }
+        lua_pop(L, 1);
+    }
+    return 0;
+}
+
+// getWindows() -> table
+int getWindows(lua_State* L) {
+    auto windows = Window::enumerate();
+
+    lua_newtable(L);
+    for (size_t i = 0; i < windows.size(); i++) {
+        lua_newtable(L);
+
+        lua_pushstring(L, windows[i].title.c_str());
+        lua_setfield(L, -2, "title");
+
+        // Handle 作为字符串传递
+        char handleStr[32];
+        snprintf(handleStr, sizeof(handleStr), "%llu", (unsigned long long)windows[i].handle);
+        lua_pushstring(L, handleStr);
+        lua_setfield(L, -2, "handle");
+
+        lua_pushboolean(L, windows[i].isForeground);
+        lua_setfield(L, -2, "isForeground");
+
+        // 窗口位置和大小
+        lua_newtable(L);
+        lua_pushinteger(L, windows[i].bounds.x);
+        lua_setfield(L, -2, "x");
+        lua_pushinteger(L, windows[i].bounds.y);
+        lua_setfield(L, -2, "y");
+        lua_pushinteger(L, windows[i].bounds.width);
+        lua_setfield(L, -2, "width");
+        lua_pushinteger(L, windows[i].bounds.height);
+        lua_setfield(L, -2, "height");
+        lua_setfield(L, -2, "bounds");
+
+        lua_rawseti(L, -2, i + 1);
+    }
+
+    return 1;
+}
+
+} // namespace node
+
+void LuaState::registerNodeModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, node::createHeartbeat);
+    lua_setfield(L, -2, "createHeartbeat");
+
+    lua_pushcfunction(L, node::sendHeartbeat);
+    lua_setfield(L, -2, "sendHeartbeat");
+
+    lua_pushcfunction(L, node::getWindows);
+    lua_setfield(L, -2, "getWindows");
+
+    lua_setglobal(L, "node");
 }
 
 } // namespace wingman::lua
