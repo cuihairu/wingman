@@ -24,6 +24,7 @@ Wingman 提供以下 API 模块：
 - [http](/api/http) - HTTP 客户端 API
 - [json](/api/json) - JSON 解析与序列化 API
 - [kv](/api/kv) - 键值存储 API
+- [config](/api/config) - 配置管理 API
 
 ### 高级功能
 

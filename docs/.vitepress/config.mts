@@ -72,7 +72,8 @@ export default defineConfig({
           items: [
             { text: 'wingman.http', link: '/api/http' },
             { text: 'wingman.json', link: '/api/json' },
-            { text: 'wingman.kv', link: '/api/kv' }
+            { text: 'wingman.kv', link: '/api/kv' },
+            { text: 'wingman.config', link: '/api/config' }
           ]
         },
         {
