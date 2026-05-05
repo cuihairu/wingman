@@ -43,6 +43,9 @@ public:
     // 添加菜单项
     void addItem(const TrayItem& item);
 
+    // 便捷方法：添加菜单项（id, label, callback）
+    void addItem(const std::string& id, const std::string& label, std::function<void()> callback);
+
     // 添加分隔符
     void addSeparator(const std::string& id);
 
@@ -88,7 +91,7 @@ public:
     void clear();
 
 private:
-    TrayManager() = default;
+    TrayManager();
     ~TrayManager() = default;
 
     class Impl;

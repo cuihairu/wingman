@@ -5,6 +5,7 @@
 #include "wingman/version.hpp"
 #include "wingman/http_server.hpp"
 #include "wingman/tray.hpp"
+#include "wingman/config.hpp"
 
 // Lua HTTP support (requires sol2)
 #ifdef WINGMAN_BUILD_LUA_HTTP
@@ -26,6 +27,15 @@
 #include <thread>
 #include <chrono>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <direct.h>
+#define GetCurrentDir _getcwd
+#else
+#include <unistd.h>
+#define GetCurrentDir getcwd
+#endif
+
 using namespace wingman;
 using namespace wingman::lua;
 
@@ -34,6 +44,7 @@ static std::unique_ptr<HTTPServer> g_httpServer;
 #ifdef WINGMAN_BUILD_LUA_HTTP
 static std::unique_ptr<LuaHTTPServer> g_luaHttpServer;
 #endif
+static std::unique_ptr<ConfigManager> g_config;
 static bool g_running = true;
 
 // Signal handler for graceful shutdown
@@ -199,36 +210,87 @@ int cmdTray() {
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
 
+    // Initialize ConfigManager
+    g_config = std::make_unique<ConfigManager>("config");
+    auto serverConfig = g_config->getServerConfig();
+
+    std::cout << "[CONFIG] 服务器配置: " << serverConfig.host << ":" << serverConfig.port << "\n";
+    std::cout.flush();
+
     // Create tray icon
     auto icon = std::make_shared<TrayIcon>("Wingman - Game Automation Engine");
+
+    // Set custom icon - try multiple paths
+    std::vector<std::string> iconPaths = {
+        "assets/wingman.ico",
+        "../assets/wingman.ico",
+        "../../assets/wingman.ico",
+        "wingman.ico"
+    };
+
+    bool iconLoaded = false;
+    for (const auto& path : iconPaths) {
+        if (std::ifstream(path).good()) {
+            icon->setIcon(path);
+            iconLoaded = true;
+            break;
+        }
+    }
+
+    if (!iconLoaded) {
+        std::cout << "Warning: Could not find wingman.ico, using default icon\n";
+    }
 
     // Add menu items
     icon->addItem("help", "帮助 / 用法", []() {
         std::cout << "\n=== Wingman 命令行用法 ===\n";
-        std::cout << "  wingman.exe <script.lua>    - 运行 Lua 脚本\n";
-        std::cout << "  wingman.exe --server        - 启动 HTTP 服务器\n";
-        std::cout << "  wingman.exe --capture       - 截图保存到 screenshot.png\n";
-        std::cout << "  wingman.exe --list          - 列出所有窗口\n";
-        std::cout << "  wingman.exe --version       - 显示版本信息\n";
-        std::cout << "\n更多帮助: wingman.exe --help\n\n";
+        std::cout << "  wingman.exe --server [port]    启动 HTTP 服务器\n";
+        std::cout << "  wingman.exe <script.lua>       运行 Lua 脚本\n";
+        std::cout.flush();
+    });
+
+    icon->addItem("config_view", "查看配置", [serverConfig]() {
+        std::cout << "\n=== 当前配置 ===\n";
+        std::cout << "服务器: " << serverConfig.host << ":" << serverConfig.port << "\n";
+        if (!serverConfig.username.empty()) {
+            std::cout << "用户名: " << serverConfig.username << "\n";
+        }
+        std::cout << "自动连接: " << (serverConfig.autoConnect ? "是" : "否") << "\n";
+        std::cout.flush();
+    });
+
+    icon->addItem("config_set", "设置服务器", []() {
+        std::cout << "\n[CONFIG] 设置服务器\n";
+        std::cout << "请在配置文件中手动修改，或使用 Lua API:\n";
+        std::cout << "  config.setServer({host=\"localhost\", port=8080})\n";
+        std::cout.flush();
     });
 
     icon->addSeparator("sep1");
 
-    icon->addItem("server", "启动 HTTP 服务器", []() {
-        std::cout << "\n正在启动 HTTP 服务器...\n";
-        g_httpServer = std::make_unique<HTTPServer>("wingman.db", 8080);
-        g_httpServer->start();
-        std::cout << "HTTP 服务器已启动: http://localhost:8080\n";
+    icon->addItem("server", "启动 HTTP 服务器", [serverConfig]() {
+        std::cout << "\n[HTTP] 启动 HTTP 服务器 " << serverConfig.host << ":" << serverConfig.port << "...\n";
+        std::cout.flush();
+
+        // TODO: 实际启动 HTTP 服务器
+        // g_httpServer = std::make_unique<HTTPServer>("wingman.db", serverConfig.port);
+        // g_httpServer->start();
     });
 
     icon->addSeparator("sep2");
 
     icon->addItem("exit", "退出", []() {
-        std::cout << "\n退出 Wingman...\n";
+        std::cout << "\n[EXIT] 退出 Wingman\n";
+        std::cout.flush();
         g_running = false;
-        exit(0);
+        PostQuitMessage(0);
     });
+
+    // Auto-connect if configured
+    if (serverConfig.autoConnect) {
+        std::cout << "[CONFIG] 自动连接已启用\n";
+        std::cout.flush();
+    }
 
     // Show the icon
     icon->show();
@@ -237,9 +299,11 @@ int cmdTray() {
     std::cout << "托盘图标已启动，点击图标查看菜单\n";
     std::cout << "按 Ctrl+C 退出\n\n";
 
-    // Keep running
-    while (g_running) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Windows message loop
+    MSG msg;
+    while (g_running && GetMessage(&msg, nullptr, 0, 0) > 0) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
 
     return 0;
@@ -372,6 +436,24 @@ int cmdLuaHttpServer(const std::vector<std::string>& args) {
 
 // Main function
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+    // 自动检测并设置控制台编码为 UTF-8
+    UINT outputCP = GetConsoleOutputCP();
+    UINT inputCP = GetConsoleCP();
+
+    // 如果当前不是 UTF-8，则设置为 UTF-8
+    if (outputCP != CP_UTF8 || inputCP != CP_UTF8) {
+        SetConsoleOutputCP(CP_UTF8);
+        SetConsoleCP(CP_UTF8);
+
+        // 只有在非托盘模式下才显示编码设置信息
+        if (argc >= 2) {
+            std::cout << "控制台编码已设置为 UTF-8 (原来: output=" << outputCP
+                      << ", input=" << inputCP << ")\n";
+        }
+    }
+#endif
+
     // 无参数时启动托盘模式
     if (argc < 2) {
         return cmdTray();

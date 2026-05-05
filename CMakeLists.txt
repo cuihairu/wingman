@@ -13,6 +13,18 @@ add_compile_definitions(WIN32_LEAN_AND_MEAN)
 # vcpkg integration
 if(DEFINED CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Using vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
+    # Try to find vcpkg installed directory
+    if(EXISTS "C:/Users/cui/vcpkg/installed/x64-windows")
+        set(VCPKG_INSTALLED_DIR "C:/Users/cui/vcpkg/installed")
+        set(CMAKE_PREFIX_PATH "${VCPKG_INSTALLED_DIR}/x64-windows;${CMAKE_PREFIX_PATH}")
+        set(LUA_INCLUDE_DIR "${VCPKG_INSTALLED_DIR}/x64-windows/include" CACHE PATH "Lua include directory" FORCE)
+        set(LUA_LIBRARIES "${VCPKG_INSTALLED_DIR}/x64-windows/lib/lua.lib" CACHE FILEPATH "Lua library" FORCE)
+    elseif(EXISTS "$ENV{USERPROFILE}/vcpkg/installed/x64-windows")
+        set(VCPKG_INSTALLED_DIR "$ENV{USERPROFILE}/vcpkg/installed")
+        set(CMAKE_PREFIX_PATH "${VCPKG_INSTALLED_DIR}/x64-windows;${CMAKE_PREFIX_PATH}")
+        set(LUA_INCLUDE_DIR "${VCPKG_INSTALLED_DIR}/x64-windows/include" CACHE PATH "Lua include directory" FORCE)
+        set(LUA_LIBRARIES "${VCPKG_INSTALLED_DIR}/x64-windows/lib/lua.lib" CACHE FILEPATH "Lua library" FORCE)
+    endif()
 endif()
 
 # Options
@@ -78,6 +90,8 @@ set(CORE_SOURCES
     src/behavior_tree.cpp
     # Tray Icon
     src/tray.cpp
+    # Config
+    src/config.cpp
 )
 
 # OCR support (conditional)
@@ -127,9 +141,10 @@ add_executable(wingman
 
 # Add Windows icon resource
 if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/wingman.rc")
+    # 设置资源文件的工作目录
+    set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/assets/wingman.rc" PROPERTIES
+        COMPILE_FLAGS "/I${CMAKE_CURRENT_SOURCE_DIR}/assets")
     target_sources(wingman PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/assets/wingman.rc")
-    # 设置输出目录为 assets 所在目录，以便 .rc 能找到 .ico 文件
-    target_compile_definitions(wingman PRIVATE "RES_DIR=${CMAKE_CURRENT_SOURCE_DIR}/assets")
 endif()
 
 # Add core sources if they exist

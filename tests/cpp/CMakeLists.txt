@@ -20,6 +20,7 @@ add_executable(wingman_tests
     game_profile_test.cpp
     storage_test.cpp
     vision_test.cpp
+    config_test.cpp
     # Note: kvstore_test.cpp, script_manager_test.cpp, security_test.cpp, and recorder_test.cpp
     # are excluded due to unimplemented functions or compilation errors
 )
@@ -80,6 +81,8 @@ target_sources(wingman_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/vision.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/smart_trigger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/behavior_tree.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/tray.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/config.cpp
     # Note: kvstore.cpp, script_manager.cpp, and security.cpp are excluded
     # security.cpp functions are inline in header, others have compilation errors
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bindings/lua_bindings.cpp

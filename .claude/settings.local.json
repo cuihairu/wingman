@@ -55,7 +55,10 @@
       "Bash(curl *)",
       "Read(//d/c/Users/cui/Workspaces/**)",
       "Bash(vcpkg list *)",
-      "Bash(vcpkg install *)"
+      "Bash(vcpkg install *)",
+      "Bash(.\\\\build\\\\tests\\\\cpp\\\\Debug\\\\wingman_tests.exe --gtest_brief=1)",
+      "Bash(\"C:\\\\Users\\\\cui\\\\Workspaces\\\\wingman\\\\build\\\\tests\\\\cpp\\\\Debug\\\\wingman_tests.exe\" --gtest_brief=1)",
+      "Bash(gh run *)"
     ]
   }
 }

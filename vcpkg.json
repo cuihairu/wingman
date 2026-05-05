@@ -39,10 +39,6 @@
     {
       "name": "gtest",
       "platform": "windows"
-    },
-    {
-      "name": "tesseract",
-      "platform": "windows"
     }
   ],
   "builtin-baseline": "cf9b6f1a47898a888f9e86e346a9adfa68357380"

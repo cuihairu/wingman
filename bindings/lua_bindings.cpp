@@ -18,6 +18,7 @@
 #include "wingman/behavior_tree.hpp"
 #include "wingman/ocr.hpp"
 #include "wingman/tray.hpp"
+#include "wingman/config.hpp"
 
 #include <cstring>
 #include <ctime>
@@ -102,6 +103,7 @@ void LuaState::registerAPIs() {
     registerBehaviorTreeModule();
     registerOcrModule();
     registerTrayModule();
+    registerConfigModule();
 
     // 注册扩展模块
     registerHttpModule(L);
@@ -2371,6 +2373,218 @@ void LuaState::registerTrayModule() {
     lua_setfield(L, -2, "remove");
 
     lua_setglobal(L, "tray");
+}
+
+// ============================================================================
+// Config 模块
+// ============================================================================
+
+namespace config {
+
+// 全局 ConfigManager 实例（使用默认配置目录）
+static std::unique_ptr<ConfigManager> g_configManager;
+
+// 确保 ConfigManager 已初始化
+static ConfigManager* getConfigManager() {
+    if (!g_configManager) {
+        g_configManager = std::make_unique<ConfigManager>("config");
+    }
+    return g_configManager.get();
+}
+
+// getServer() -> table
+int getServer(lua_State* L) {
+    auto* config = getConfigManager();
+    ServerConfig serverConfig = config->getServerConfig();
+
+    lua_newtable(L);
+    lua_pushstring(L, serverConfig.host.c_str());
+    lua_setfield(L, -2, "host");
+
+    lua_pushinteger(L, serverConfig.port);
+    lua_setfield(L, -2, "port");
+
+    lua_pushstring(L, serverConfig.username.c_str());
+    lua_setfield(L, -2, "username");
+
+    lua_pushstring(L, serverConfig.password.c_str());
+    lua_setfield(L, -2, "password");
+
+    lua_pushboolean(L, serverConfig.autoConnect);
+    lua_setfield(L, -2, "autoConnect");
+
+    return 1;
+}
+
+// setServer(table)
+int setServer(lua_State* L) {
+    auto* config = getConfigManager();
+
+    if (!lua_istable(L, 1)) {
+        lua_pushstring(L, "setServer: 期望 table 参数");
+        lua_error(L);
+        return 1;
+    }
+
+    ServerConfig serverConfig;
+
+    lua_getfield(L, 1, "host");
+    if (lua_isstring(L, -1)) {
+        serverConfig.host = lua_tostring(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "port");
+    if (lua_isinteger(L, -1)) {
+        serverConfig.port = lua_tointeger(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "username");
+    if (lua_isstring(L, -1)) {
+        serverConfig.username = lua_tostring(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "password");
+    if (lua_isstring(L, -1)) {
+        serverConfig.password = lua_tostring(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "autoConnect");
+    if (lua_isboolean(L, -1)) {
+        serverConfig.autoConnect = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+
+    config->setServerConfig(serverConfig);
+    return 0;
+}
+
+// getTray() -> table
+int getTray(lua_State* L) {
+    auto* config = getConfigManager();
+    TrayConfig trayConfig = config->getTrayConfig();
+
+    lua_newtable(L);
+    lua_pushboolean(L, trayConfig.minimizeToTray);
+    lua_setfield(L, -2, "minimizeToTray");
+
+    lua_pushboolean(L, trayConfig.startMinimized);
+    lua_setfield(L, -2, "startMinimized");
+
+    lua_pushboolean(L, trayConfig.showNotifications);
+    lua_setfield(L, -2, "showNotifications");
+
+    return 1;
+}
+
+// setTray(table)
+int setTray(lua_State* L) {
+    auto* config = getConfigManager();
+
+    if (!lua_istable(L, 1)) {
+        lua_pushstring(L, "setTray: 期望 table 参数");
+        lua_error(L);
+        return 1;
+    }
+
+    TrayConfig trayConfig;
+
+    lua_getfield(L, 1, "minimizeToTray");
+    if (lua_isboolean(L, -1)) {
+        trayConfig.minimizeToTray = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "startMinimized");
+    if (lua_isboolean(L, -1)) {
+        trayConfig.startMinimized = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "showNotifications");
+    if (lua_isboolean(L, -1)) {
+        trayConfig.showNotifications = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+
+    config->setTrayConfig(trayConfig);
+    return 0;
+}
+
+// get(key) -> string
+int get(lua_State* L) {
+    auto* config = getConfigManager();
+    const char* key = luaL_checkstring(L, 1);
+
+    auto value = config->get(key);
+    if (value.has_value()) {
+        lua_pushstring(L, value.value().c_str());
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// set(key, value)
+int set(lua_State* L) {
+    auto* config = getConfigManager();
+    const char* key = luaL_checkstring(L, 1);
+
+    std::string value;
+    if (lua_isboolean(L, 2)) {
+        value = lua_toboolean(L, 2) ? "true" : "false";
+    } else if (lua_isinteger(L, 2)) {
+        value = std::to_string(lua_tointeger(L, 2));
+    } else if (lua_isnumber(L, 2)) {
+        value = std::to_string(lua_tonumber(L, 2));
+    } else {
+        value = luaL_checkstring(L, 2);
+    }
+
+    config->set(key, value);
+    return 0;
+}
+
+// remove(key)
+int remove(lua_State* L) {
+    auto* config = getConfigManager();
+    const char* key = luaL_checkstring(L, 1);
+
+    bool removed = config->remove(key);
+    lua_pushboolean(L, removed);
+    return 1;
+}
+
+} // namespace config
+
+void LuaState::registerConfigModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, config::getServer);
+    lua_setfield(L, -2, "getServer");
+
+    lua_pushcfunction(L, config::setServer);
+    lua_setfield(L, -2, "setServer");
+
+    lua_pushcfunction(L, config::getTray);
+    lua_setfield(L, -2, "getTray");
+
+    lua_pushcfunction(L, config::setTray);
+    lua_setfield(L, -2, "setTray");
+
+    lua_pushcfunction(L, config::get);
+    lua_setfield(L, -2, "get");
+
+    lua_pushcfunction(L, config::set);
+    lua_setfield(L, -2, "set");
+
+    lua_pushcfunction(L, config::remove);
+    lua_setfield(L, -2, "remove");
+
+    lua_setglobal(L, "config");
 }
 
 } // namespace wingman::lua

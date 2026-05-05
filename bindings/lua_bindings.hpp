@@ -52,6 +52,7 @@ private:
     void registerBehaviorTreeModule();
     void registerOcrModule();
     void registerTrayModule();
+    void registerConfigModule();
 };
 
 // === Lua C API 绑定函数 ===

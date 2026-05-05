@@ -4,6 +4,7 @@
 #include <map>
 #include <mutex>
 #include <atomic>
+#include <iostream>
 
 namespace wingman {
 
@@ -11,27 +12,44 @@ namespace wingman {
 #define WM_TRAYICON (WM_APP + 1)
 #define ID_TRAY_FIRST 1000
 
+// 全局窗口类注册标志
+static bool g_trayClassRegistered = false;
+static std::mutex g_classRegistrationMutex;
+
 class TrayIcon::Impl {
 public:
     std::string tooltip_;
     std::string iconPath_;
     HWND hwnd_;
-    NOTIFYICONDATAA nid_;
+    NOTIFYICONDATAW nid_;
     std::vector<TrayItem> items_;
     std::mutex itemsMutex_;
     std::atomic<bool> visible_{false};
     UINT nextId_ = ID_TRAY_FIRST;
 
     Impl(const std::string& tooltip) : tooltip_(tooltip), hwnd_(nullptr) {
-        // 创建隐藏窗口用于接收消息
-        WNDCLASSEXA wc = {0};
-        wc.cbSize = sizeof(WNDCLASSEXA);
-        wc.lpfnWndProc = WindowProc;
-        wc.hInstance = GetModuleHandle(nullptr);
-        wc.lpszClassName = "WingmanTrayClass";
+        // 注册窗口类（只注册一次）
+        {
+            std::lock_guard<std::mutex> lock(g_classRegistrationMutex);
+            if (!g_trayClassRegistered) {
+                WNDCLASSEXA wc = {0};
+                wc.cbSize = sizeof(WNDCLASSEXA);
+                wc.lpfnWndProc = WindowProc;
+                wc.hInstance = GetModuleHandle(nullptr);
+                wc.lpszClassName = "WingmanTrayClass";
 
-        RegisterClassExA(&wc);
+                if (RegisterClassExA(&wc)) {
+                    g_trayClassRegistered = true;
+                } else {
+                    // 窗口类可能已经注册
+                    if (GetLastError() == ERROR_CLASS_ALREADY_EXISTS) {
+                        g_trayClassRegistered = true;
+                    }
+                }
+            }
+        }
 
+        // 创建消息窗口
         hwnd_ = CreateWindowExA(
             0,
             "WingmanTrayClass",
@@ -44,18 +62,43 @@ public:
             this
         );
 
-        // 初始化 NOTIFYICONDATA
+        if (!hwnd_) {
+            std::cerr << "Failed to create tray window: " << GetLastError() << std::endl;
+            return;
+        }
+
+        // 初始化 NOTIFYICONDATA (使用宽字符版本)
         memset(&nid_, 0, sizeof(nid_));
-        nid_.cbSize = sizeof(NOTIFYICONDATAA);
+        nid_.cbSize = sizeof(NOTIFYICONDATAW);
         nid_.hWnd = hwnd_;
         nid_.uID = 1;
         nid_.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
         nid_.uCallbackMessage = WM_TRAYICON;
-        nid_.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
-        strncpy_s(nid_.szTip, tooltip.c_str(), sizeof(nid_.szTip) - 1);
 
-        // 保存 this 指针
-        SetWindowLongPtr(hwnd_, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+        // 尝试从 exe 资源加载图标
+        HICON hIcon = nullptr;
+        HMODULE hModule = GetModuleHandle(nullptr);
+
+        // 尝试加载资源图标 (IDI_ICON1)
+        hIcon = static_cast<HICON>(LoadImageA(
+            hModule,
+            MAKEINTRESOURCEA(1),  // IDI_ICON1
+            IMAGE_ICON,
+            GetSystemMetrics(SM_CXICON),
+            GetSystemMetrics(SM_CYICON),
+            0
+        ));
+
+        // 如果资源图标加载失败，使用系统信息图标
+        if (!hIcon) {
+            hIcon = LoadIcon(nullptr, IDI_INFORMATION);
+        }
+
+        nid_.hIcon = hIcon;
+
+        // 转换 tooltip 为宽字符
+        MultiByteToWideChar(CP_UTF8, 0, tooltip.c_str(), -1,
+                           nid_.szTip, sizeof(nid_.szTip) / sizeof(wchar_t));
     }
 
     ~Impl() {
@@ -71,42 +114,51 @@ public:
             nullptr,
             iconPath.c_str(),
             IMAGE_ICON,
-            GetSystemMetrics(SM_CXSMICON),
-            GetSystemMetrics(SM_CYSMICON),
+            GetSystemMetrics(SM_CXICON),
+            GetSystemMetrics(SM_CYICON),
             LR_LOADFROMFILE
         ));
 
         if (hIcon) {
-            if (nid_.hIcon && nid_.hIcon != LoadIcon(nullptr, IDI_APPLICATION)) {
-                DestroyIcon(nid_.hIcon);
+            // 释放旧图标（如果是系统默认图标则不释放）
+            if (nid_.hIcon) {
+                HICON defaultIcon = LoadIcon(nullptr, IDI_INFORMATION);
+                if (nid_.hIcon != defaultIcon) {
+                    DestroyIcon(nid_.hIcon);
+                }
             }
             nid_.hIcon = hIcon;
             nid_.uFlags |= NIF_ICON;
             if (visible_) {
-                Shell_NotifyIconA(NIM_MODIFY, &nid_);
+                Shell_NotifyIconW(NIM_MODIFY, &nid_);
             }
         }
     }
 
     void setTooltip(const std::string& tooltip) {
         tooltip_ = tooltip;
-        strncpy_s(nid_.szTip, tooltip.c_str(), sizeof(nid_.szTip) - 1);
+        MultiByteToWideChar(CP_UTF8, 0, tooltip.c_str(), -1,
+                           nid_.szTip, sizeof(nid_.szTip) / sizeof(wchar_t));
         nid_.uFlags |= NIF_TIP;
         if (visible_) {
-            Shell_NotifyIconA(NIM_MODIFY, &nid_);
+            Shell_NotifyIconW(NIM_MODIFY, &nid_);
         }
     }
 
     void show() {
-        if (!visible_) {
-            Shell_NotifyIconA(NIM_ADD, &nid_);
-            visible_ = true;
+        if (!visible_ && hwnd_) {
+            if (Shell_NotifyIconW(NIM_ADD, &nid_)) {
+                visible_ = true;
+                std::cout << "Tray icon shown" << std::endl;
+            } else {
+                std::cerr << "Failed to show tray icon: " << GetLastError() << std::endl;
+            }
         }
     }
 
     void hide() {
         if (visible_) {
-            Shell_NotifyIconA(NIM_DELETE, &nid_);
+            Shell_NotifyIconW(NIM_DELETE, &nid_);
             visible_ = false;
         }
     }
@@ -157,30 +209,70 @@ public:
     }
 
     void showMenu(int x, int y) {
-        std::lock_guard<std::mutex> lock(itemsMutex_);
+        // 复制菜单项以避免长时间持锁
+        std::vector<TrayItem> itemsCopy;
+        {
+            std::lock_guard<std::mutex> lock(itemsMutex_);
+            itemsCopy = items_;
+        }
 
         HMENU hMenu = CreatePopupMenu();
         if (!hMenu) return;
 
         UINT itemId = ID_TRAY_FIRST;
+        std::vector<std::function<void()>> callbacks;
 
-        for (const auto& item : items_) {
+        std::cout << "[DEBUG] Creating menu with " << itemsCopy.size() << " items\n";
+        std::cout.flush();
+
+        std::cout << "[DEBUG] Starting menu item creation...\n";
+        std::cout.flush();
+
+        for (const auto& item : itemsCopy) {
+            std::cout << "[DEBUG] Processing item: id=" << item.id
+                      << ", label=" << item.label
+                      << ", type=" << static_cast<int>(item.type) << "\n";
+            std::cout.flush();
+
             if (item.type == TrayItemType::SEPARATOR) {
-                AppendMenuA(hMenu, MF_SEPARATOR, 0, nullptr);
+                AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
+                std::cout << "[DEBUG] Added SEPARATOR: " << item.id << "\n";
             } else if (item.type == TrayItemType::SUBMENU) {
                 HMENU hSubMenu = CreatePopupMenu();
                 for (const auto& subItem : item.subitems) {
                     if (subItem.type == TrayItemType::SEPARATOR) {
-                        AppendMenuA(hSubMenu, MF_SEPARATOR, 0, nullptr);
+                        AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
                     } else {
-                        AppendMenuA(hSubMenu, MF_STRING, itemId++, subItem.label.c_str());
+                        // 转换为宽字符
+                        wchar_t wlabel[256];
+                        MultiByteToWideChar(CP_UTF8, 0, subItem.label.c_str(), -1,
+                                           wlabel, 256);
+                        AppendMenuW(hSubMenu, MF_STRING, itemId++, wlabel);
+                        callbacks.push_back(subItem.callback);
                     }
                 }
-                AppendMenuA(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hSubMenu), item.label.c_str());
+                wchar_t wlabel[256];
+                MultiByteToWideChar(CP_UTF8, 0, item.label.c_str(), -1,
+                                   wlabel, 256);
+                AppendMenuW(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hSubMenu), wlabel);
+                std::cout << "[DEBUG] Added SUBMENU: " << item.id << " - " << item.label << "\n";
             } else {
-                AppendMenuA(hMenu, MF_STRING, itemId++, item.label.c_str());
+                // 转换为宽字符
+                wchar_t wlabel[256];
+                MultiByteToWideChar(CP_UTF8, 0, item.label.c_str(), -1,
+                                   wlabel, 256);
+                UINT thisItemId = itemId++;
+                std::cout << "[DEBUG] Adding ITEM with itemId=" << thisItemId << ": " << item.id << " - " << item.label << "\n";
+                std::cout.flush();
+                AppendMenuW(hMenu, MF_STRING, thisItemId, wlabel);
+                callbacks.push_back(item.callback);
+                std::cout << "[DEBUG] Added ITEM: " << item.id << " - " << item.label << " (itemId=" << thisItemId << ")\n";
             }
         }
+        std::cout.flush();
+
+        std::cout << "[DEBUG] About to show popup menu with " << callbacks.size() << " callbacks\n";
+        std::cout.flush();
 
         SetForegroundWindow(hwnd_);
         UINT clicked = TrackPopupMenu(
@@ -192,48 +284,54 @@ public:
             nullptr
         );
 
-        if (clicked >= ID_TRAY_FIRST) {
-            executeItem(clicked - ID_TRAY_FIRST);
-        }
-
+        // 在菜单销毁后执行回调
         DestroyMenu(hMenu);
-    }
 
-private:
-    void executeItem(size_t index) {
-        size_t currentIndex = 0;
-        for (const auto& item : items_) {
-            if (item.type == TrayItemType::NORMAL) {
-                if (currentIndex == index && item.callback) {
-                    item.callback();
-                    return;
+        std::cout << "[DEBUG] clicked=" << clicked << ", ID_TRAY_FIRST=" << ID_TRAY_FIRST
+                  << ", callbacks.size()=" << callbacks.size() << "\n";
+        std::cout.flush();
+
+        if (clicked >= ID_TRAY_FIRST) {
+            size_t index = clicked - ID_TRAY_FIRST;
+            std::cout << "[DEBUG] index=" << index << "\n";
+            std::cout.flush();
+            if (index < callbacks.size() && callbacks[index]) {
+                std::cout << "[DEBUG] Executing callback...\n";
+                std::cout.flush();
+                try {
+                    callbacks[index]();
+                    std::cout << "[DEBUG] Callback executed\n";
+                } catch (const std::exception& e) {
+                    std::cout << "[DEBUG] Exception in callback: " << e.what() << "\n";
+                } catch (...) {
+                    std::cout << "[DEBUG] Unknown exception in callback\n";
                 }
-                currentIndex++;
-            } else if (item.type == TrayItemType::SUBMENU) {
-                for (const auto& subItem : item.subitems) {
-                    if (subItem.type == TrayItemType::NORMAL) {
-                        if (currentIndex == index && subItem.callback) {
-                            subItem.callback();
-                            return;
-                        }
-                        currentIndex++;
-                    }
-                }
+                std::cout.flush();
+            } else {
+                std::cout << "[DEBUG] No callback at index " << index << " (size=" << callbacks.size() << ")\n";
+                std::cout.flush();
             }
         }
     }
 
     static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-        Impl* impl = reinterpret_cast<Impl*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+        Impl* impl = nullptr;
+
+        if (msg == WM_CREATE) {
+            // 从 CREATESTRUCT 获取 this 指针
+            CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
+            impl = static_cast<Impl*>(cs->lpCreateParams);
+            SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(impl));
+        } else {
+            impl = reinterpret_cast<Impl*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+        }
 
         switch (msg) {
             case WM_TRAYICON:
-                if (lParam == WM_LBUTTONUP || lParam == WM_RBUTTONUP) {
+                if (impl && (lParam == WM_LBUTTONDOWN || lParam == WM_RBUTTONDOWN)) {
                     POINT pt;
                     GetCursorPos(&pt);
-                    if (impl) {
-                        impl->showMenu(pt.x, pt.y);
-                    }
+                    impl->showMenu(pt.x, pt.y);
                 }
                 return 0;
 
@@ -260,6 +358,15 @@ void TrayIcon::setTooltip(const std::string& tooltip) {
 }
 
 void TrayIcon::addItem(const TrayItem& item) {
+    impl_->addItem(item);
+}
+
+void TrayIcon::addItem(const std::string& id, const std::string& label, std::function<void()> callback) {
+    TrayItem item;
+    item.id = id;
+    item.label = label;
+    item.type = TrayItemType::NORMAL;
+    item.callback = std::move(callback);
     impl_->addItem(item);
 }
 
@@ -301,6 +408,8 @@ public:
     std::map<std::string, std::shared_ptr<TrayIcon>> icons_;
     std::mutex mutex_;
 };
+
+TrayManager::TrayManager() : impl_(std::make_unique<Impl>()) {}
 
 TrayManager& TrayManager::instance() {
     static TrayManager instance_;

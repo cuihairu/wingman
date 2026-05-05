@@ -38,6 +38,7 @@ export default defineConfig({
         {
           text: '高级',
           items: [
+            { text: '配置系统', link: '/guide/config' },
             { text: '远程控制', link: '/guide/remote' },
             { text: '调试指南', link: '/guide/debugging' },
             { text: '性能优化', link: '/guide/performance' }
