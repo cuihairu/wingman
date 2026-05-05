@@ -17,6 +17,7 @@
 #include "wingman/smart_trigger.hpp"
 #include "wingman/behavior_tree.hpp"
 #include "wingman/ocr.hpp"
+#include "wingman/tray.hpp"
 
 #include <cstring>
 #include <ctime>
@@ -100,6 +101,7 @@ void LuaState::registerAPIs() {
     registerSmartTriggerModule();
     registerBehaviorTreeModule();
     registerOcrModule();
+    registerTrayModule();
 
     // 注册扩展模块
     registerHttpModule(L);
@@ -2114,6 +2116,261 @@ void LuaState::registerBehaviorTreeModule() {
     lua_setfield(L, -2, "remove");
 
     lua_setglobal(L, "bt");
+}
+
+// ============================================================================
+// Tray 模块
+// ============================================================================
+
+// TrayIcon userdata 的元方法名称
+#define TRAY_ICON_METATABLE "Wingman.TrayIcon"
+
+// 从栈获取 TrayIcon 指针
+static wingman::TrayIcon* checkTrayIcon(lua_State* L, int index) {
+    void* ud = luaL_checkudata(L, index, TRAY_ICON_METATABLE);
+    return *static_cast<wingman::TrayIcon**>(ud);
+}
+
+// 创建新的 TrayIcon
+static wingman::TrayIcon* pushTrayIcon(lua_State* L, const std::string& tooltip) {
+    auto icon = new wingman::TrayIcon(tooltip);
+    *static_cast<wingman::TrayIcon**>(lua_newuserdata(L, sizeof(wingman::TrayIcon*))) = icon;
+
+    // 设置元表
+    luaL_getmetatable(L, TRAY_ICON_METATABLE);
+    lua_setmetatable(L, -2);
+
+    return icon;
+}
+
+namespace tray {
+
+int create(lua_State* L) {
+    const char* tooltip = luaL_checkstring(L, 1);
+    pushTrayIcon(L, tooltip);
+    return 1;
+}
+
+int get(lua_State* L) {
+    const char* id = luaL_checkstring(L, 1);
+    auto icon = wingman::TrayManager::instance().getIcon(id);
+    if (icon) {
+        // 重新包装已存在的 icon
+        *static_cast<wingman::TrayIcon**>(lua_newuserdata(L, sizeof(wingman::TrayIcon*))) = icon.get();
+        luaL_getmetatable(L, TRAY_ICON_METATABLE);
+        lua_setmetatable(L, -2);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+int remove(lua_State* L) {
+    const char* id = luaL_checkstring(L, 1);
+    wingman::TrayManager::instance().removeIcon(id);
+    return 0;
+}
+
+} // namespace tray
+
+namespace tray_icon {
+
+int setIcon(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    const char* iconPath = luaL_checkstring(L, 2);
+    icon->setIcon(iconPath);
+    return 0;
+}
+
+int setTooltip(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    const char* tooltip = luaL_checkstring(L, 2);
+    icon->setTooltip(tooltip);
+    return 0;
+}
+
+int addItem(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    const char* id = luaL_checkstring(L, 2);
+    const char* label = luaL_checkstring(L, 3);
+
+    // 检查是否有回调函数
+    if (lua_isfunction(L, 4)) {
+        // 将函数保存到注册表中
+        int callbackRef = luaL_ref(L, LUA_REGISTRYINDEX);
+
+        wingman::TrayItem item;
+        item.id = id;
+        item.label = label;
+        item.type = wingman::TrayItemType::NORMAL;
+        item.callback = [L, callbackRef]() {
+            // 从注册表中获取函数并调用
+            lua_rawgeti(L, LUA_REGISTRYINDEX, callbackRef);
+            if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+                // 错误处理
+                lua_pop(L, 1);
+            }
+        };
+
+        icon->addItem(item);
+    } else {
+        wingman::TrayItem item;
+        item.id = id;
+        item.label = label;
+        item.type = wingman::TrayItemType::NORMAL;
+        icon->addItem(item);
+    }
+
+    return 0;
+}
+
+int addSeparator(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    const char* id = luaL_checkstring(L, 2);
+    icon->addSeparator(id);
+    return 0;
+}
+
+int addSubmenu(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    const char* id = luaL_checkstring(L, 2);
+    const char* label = luaL_checkstring(L, 3);
+
+    std::vector<wingman::TrayItem> subitems;
+
+    // 遍历表格，获取子菜单项
+    luaL_checktype(L, 4, LUA_TTABLE);
+    lua_pushnil(L);
+    while (lua_next(L, 4) != 0) {
+        if (lua_istable(L, -1)) {
+            wingman::TrayItem item;
+
+            lua_getfield(L, -1, "id");
+            if (lua_isstring(L, -1)) {
+                item.id = lua_tostring(L, -1);
+            }
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "label");
+            if (lua_isstring(L, -1)) {
+                item.label = lua_tostring(L, -1);
+            }
+            lua_pop(L, 1);
+
+            item.type = wingman::TrayItemType::NORMAL;
+            subitems.push_back(item);
+        }
+        lua_pop(L, 1);
+    }
+
+    icon->addSubmenu(id, label, subitems);
+    return 0;
+}
+
+int removeItem(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    const char* id = luaL_checkstring(L, 2);
+    icon->removeItem(id);
+    return 0;
+}
+
+int clearItems(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    icon->clearItems();
+    return 0;
+}
+
+int show(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    icon->show();
+    return 0;
+}
+
+int hide(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    icon->hide();
+    return 0;
+}
+
+int updateMenu(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    icon->updateMenu();
+    return 0;
+}
+
+int isVisible(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    lua_pushboolean(L, icon->isVisible());
+    return 1;
+}
+
+int destroy(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    delete icon;
+    return 0;
+}
+
+} // namespace tray_icon
+
+void LuaState::registerTrayModule() {
+    // 创建 TrayIcon 元表
+    if (luaL_newmetatable(L, TRAY_ICON_METATABLE)) {
+        // 设置 __index
+        lua_pushvalue(L, -1);
+        lua_setfield(L, -2, "__index");
+
+        // 注册对象方法
+        lua_pushcfunction(L, tray_icon::setIcon);
+        lua_setfield(L, -2, "setIcon");
+
+        lua_pushcfunction(L, tray_icon::setTooltip);
+        lua_setfield(L, -2, "setTooltip");
+
+        lua_pushcfunction(L, tray_icon::addItem);
+        lua_setfield(L, -2, "addItem");
+
+        lua_pushcfunction(L, tray_icon::addSeparator);
+        lua_setfield(L, -2, "addSeparator");
+
+        lua_pushcfunction(L, tray_icon::addSubmenu);
+        lua_setfield(L, -2, "addSubmenu");
+
+        lua_pushcfunction(L, tray_icon::removeItem);
+        lua_setfield(L, -2, "removeItem");
+
+        lua_pushcfunction(L, tray_icon::clearItems);
+        lua_setfield(L, -2, "clearItems");
+
+        lua_pushcfunction(L, tray_icon::show);
+        lua_setfield(L, -2, "show");
+
+        lua_pushcfunction(L, tray_icon::hide);
+        lua_setfield(L, -2, "hide");
+
+        lua_pushcfunction(L, tray_icon::updateMenu);
+        lua_setfield(L, -2, "updateMenu");
+
+        lua_pushcfunction(L, tray_icon::isVisible);
+        lua_setfield(L, -2, "isVisible");
+
+        lua_pushcfunction(L, tray_icon::destroy);
+        lua_setfield(L, -2, "destroy");
+    }
+    lua_pop(L, 1);
+
+    // 注册 tray 全局模块
+    lua_newtable(L);
+
+    lua_pushcfunction(L, tray::create);
+    lua_setfield(L, -2, "create");
+
+    lua_pushcfunction(L, tray::get);
+    lua_setfield(L, -2, "get");
+
+    lua_pushcfunction(L, tray::remove);
+    lua_setfield(L, -2, "remove");
+
+    lua_setglobal(L, "tray");
 }
 
 } // namespace wingman::lua

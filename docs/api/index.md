@@ -29,6 +29,7 @@ Wingman 提供以下 API 模块：
 
 - [remote](/api/remote) - 远程控制 API
 - [team](/api/team) - 组队编排 API
+- [tray](/api/tray) - 系统托盘图标 API
 
 ## 即将添加
 

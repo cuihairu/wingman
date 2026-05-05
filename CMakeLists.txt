@@ -76,6 +76,8 @@ set(CORE_SOURCES
     src/smart_trigger.cpp
     # Behavior Tree
     src/behavior_tree.cpp
+    # Tray Icon
+    src/tray.cpp
 )
 
 # OCR support (conditional)
