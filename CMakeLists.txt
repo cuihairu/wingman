@@ -125,6 +125,13 @@ add_executable(wingman
     src/main.cpp
 )
 
+# Add Windows icon resource
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/wingman.rc")
+    target_sources(wingman PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/assets/wingman.rc")
+    # 设置输出目录为 assets 所在目录，以便 .rc 能找到 .ico 文件
+    target_compile_definitions(wingman PRIVATE "RES_DIR=${CMAKE_CURRENT_SOURCE_DIR}/assets")
+endif()
+
 # Add core sources if they exist
 foreach(src ${CORE_SOURCES})
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}")

@@ -1,0 +1,39 @@
+// Microsoft Visual C++ generated resource script.
+//
+
+#include <windows.h>
+
+IDI_ICON1 ICON "wingman.ico"
+
+1 VERSIONINFO
+ FILEVERSION 0,1,0,0
+ PRODUCTVERSION 0,1,0,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "Wingman Project"
+            VALUE "FileDescription", "Game Automation Programmable Control Engine"
+            VALUE "FileVersion", "0.1.0.0"
+            VALUE "InternalName", "wingman"
+            VALUE "LegalCopyright", "Copyright (C) 2026"
+            VALUE "OriginalFilename", "wingman.exe"
+            VALUE "ProductName", "Wingman"
+            VALUE "ProductVersion", "0.1.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
