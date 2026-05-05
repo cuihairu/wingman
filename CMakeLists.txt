@@ -25,7 +25,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(asio CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(Threads REQUIRED)
-find_package(crow CONFIG REQUIRED)
+find_package(Crow CONFIG REQUIRED)
 find_package(SQLite3 REQUIRED)
 
 # Testing framework
@@ -109,7 +109,7 @@ target_link_libraries(wingman PRIVATE
     asio::asio
     CURL::libcurl
     Threads::Threads
-    crow::crow
+    Crow::Crow
     SQLite::SQLite3
     gdiplus
     user32
