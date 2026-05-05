@@ -114,6 +114,7 @@ target_link_libraries(wingman PRIVATE
 if(WINGMAN_BUILD_SERVER)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/server/src/server.cpp")
         add_library(wingman-server STATIC ${SERVER_SOURCES} src/storage_remote.cpp)
+        target_compile_definitions(wingman-server PUBLIC WINGMAN_BUILD_SERVER)
         target_include_directories(wingman-server PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/server/include
             ${CMAKE_CURRENT_SOURCE_DIR}/include

@@ -1,0 +1,128 @@
+name: Nightly Build
+
+on:
+  schedule:
+    # 每天 UTC 0:00 运行 (北京时间 8:00)
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
+  ACTIONS_NODE_VERSION: '24'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE20: true
+
+jobs:
+  nightly-windows:
+    runs-on: windows-2022
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get nightly version
+      id: nightly_version
+      run: |
+        $date = Get-Date -Format "yyyy.MM.dd"
+        $commit = git rev-parse --short HEAD
+        echo "version=$date-nightly-$commit" >> $env:GITHUB_OUTPUT
+        echo "version_suffix=$date-nightly" >> $env:GITHUB_OUTPUT
+
+    - name: Setup vcpkg
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        .\bootstrap-vcpkg.bat
+
+    - name: Cache vcpkg packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ env.VCPKG_ROOT }}/packages
+          ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
+
+    - name: Create cache directory
+      run: New-Item -ItemType Directory -Force -Path "vcpkg-cache" | Out-Null
+
+    - name: Install vcpkg dependencies
+      run: |
+        $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
+        .\vcpkg\vcpkg install --triplet=x64-windows
+
+    - name: Configure CMake with nightly version
+      run: |
+        $version = "${{ steps.nightly_version.outputs.version_suffix }}"
+        $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
+        $env:VCPKG_INSTALLED_DIR = "$env:VCPKG_ROOT_ABS\installed"
+        cmake -B build `
+          -S . `
+          -G "Visual Studio 17 2022" `
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT_ABS/scripts/buildsystems/vcpkg.cmake" `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DWINGMAN_VERSION_SUFFIX="$version"
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Package nightly build
+      run: |
+        $version = "${{ steps.nightly_version.outputs.version }}"
+        $distDir = "dist-wingman-$version"
+        New-Item -ItemType Directory -Force -Path "$distDir" | Out-Null
+
+        # 复制可执行文件
+        Copy-Item "build\Release\wingman.exe" -Destination "$distDir\"
+
+        # 复制脚本
+        if (Test-Path "scripts") {
+          Copy-Item "scripts" -Destination "$distDir\" -Recurse
+        }
+
+        # 创建版本信息文件
+        @"
+        Wingman $version
+        Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+        Commit: ${{ steps.nightly_version.outputs.version }}
+        Branch: nightly
+        "@ | Out-File -FilePath "$distDir\VERSION.txt" -Encoding UTF8
+
+        # 创建压缩包
+        Compress-Archive -Path "$distDir\*" -DestinationPath "wingman-$version-windows-x64.zip"
+
+    - name: Upload nightly artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: wingman-nightly-windows-x64
+        path: wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip
+        retention-days: 30
+
+    - name: Create GitHub Release (nightly)
+      uses: softprops/action-gh-release@v2
+      if: github.ref == 'refs/heads/main'
+      with:
+        tag_name: nightly-${{ steps.nightly_version.outputs.version_suffix }}
+        name: "Nightly Build ${{ steps.nightly_version.outputs.version_suffix }}"
+        body: |
+          ## Nightly Build ${{ steps.nightly_version.outputs.version_suffix }}
+
+          This is an automated nightly build.
+          **Not recommended for production use.**
+
+          ### Changes
+          Built from commit: ${{ steps.nightly_version.outputs.version }}
+
+          ### Download
+          - Windows x64: `wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip`
+
+          ---
+          *Use at your own risk. Nightly builds may contain unstable features.*
+        files: wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip
+        prerelease: true
+        draft: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

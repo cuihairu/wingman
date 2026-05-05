@@ -2,6 +2,7 @@
 #include "wingman/input.hpp"
 #include "wingman/window.hpp"
 #include "wingman/process.hpp"
+#include "wingman/version.hpp"
 
 #include "lua_bindings.hpp"
 
@@ -14,7 +15,8 @@ using namespace wingman;
 
 // Print usage information
 void printUsage() {
-    std::cout << "Wingman v0.1.0 - Game Automation Programmable Control Engine\n\n";
+    std::cout << "Wingman v" << wingman::version::getFullVersion()
+              << " - Game Automation Programmable Control Engine\n\n";
     std::cout << "Usage:\n";
     std::cout << "  wingman.exe <script.lua>              Run Lua script\n";
     std::cout << "  wingman.exe --pixel <x> <y>          Get pixel color at position\n";
@@ -180,7 +182,10 @@ int main(int argc, char* argv[]) {
     }
 
     if (arg1 == "--version" || arg1 == "-v") {
-        std::cout << "Wingman v0.1.0\n";
+        std::cout << "Wingman v" << wingman::version::getFullVersion() << "\n";
+        std::cout << "Build: " << wingman::version::getBuildDate()
+                  << " " << wingman::version::getBuildTime() << "\n";
+        std::cout << "Compiler: " << wingman::version::getCompiler() << "\n";
         return 0;
     }
 
