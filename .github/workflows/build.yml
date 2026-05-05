@@ -3,8 +3,22 @@ name: Build
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'bindings/**'
+      - 'CMakeLists.txt'
+      - 'vcpkg.json'
+      - '.github/workflows/build.yml'
   pull_request:
     branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'bindings/**'
+      - 'CMakeLists.txt'
+      - 'vcpkg.json'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 
 env:

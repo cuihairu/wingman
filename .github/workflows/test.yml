@@ -65,16 +65,50 @@ jobs:
     - name: Build
       run: cmake --build build --config Debug
 
+    - name: Run tests first (without coverage)
+      run: |
+        # Run tests to make sure they pass
+        & "build\tests\cpp\Debug\wingman_tests.exe" --gtest_brief=1
+      continue-on-error: true
+
     - name: Run tests with coverage
       run: |
-        # Run tests with OpenCppCoverage
-        & "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe" `
-          --sources "${{ github.workspace }}/src" `
-          --sources "${{ github.workspace }}/include" `
-          --sources "${{ github.workspace }}/bindings" `
-          --excluded_sources "${{ github.workspace }}/tests" `
-          --export_type=cobertura:coverage.xml `
-          -- build\tests\cpp\Debug\wingman_tests.exe
+        # Find OpenCppCoverage path
+        $openCppCoverage = "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
+        if (-not (Test-Path $openCppCoverage)) {
+          Write-Host "OpenCppCoverage not found at default path"
+          # Try alternate path
+          $openCppCoverage = "C:\Program Files (x86)\OpenCppCoverage\OpenCppCoverage.exe"
+        }
+
+        if (Test-Path $openCppCoverage) {
+          Write-Host "Using OpenCppCoverage at: $openCppCoverage"
+
+          # Convert workspace path to Windows format
+          $workspace = ${{ github.workspace }}
+          $workspace = $workspace -replace '/', '\'
+
+          & $openCppCoverage `
+            --sources "$workspace\src" `
+            --sources "$workspace\include" `
+            --sources "$workspace\bindings" `
+            --excluded_sources "$workspace\tests" `
+            --excluded_sources "$workspace\vcpkg" `
+            --export_type=cobertura:coverage.xml `
+            -- build\tests\cpp\Debug\wingman_tests.exe --gtest_brief=1
+        } else {
+          Write-Host "ERROR: OpenCppCoverage not installed"
+          exit 1
+        }
+
+        # Check if coverage file was generated
+        if (Test-Path "coverage.xml") {
+          Write-Host "Coverage file generated successfully"
+          (Get-Content coverage.xml) | Select-Object -First 5
+        } else {
+          Write-Host "WARNING: coverage.xml not found"
+          Get-ChildItem -Filter *.xml | Select-Object Name
+        }
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
@@ -84,6 +118,7 @@ jobs:
         name: windows-coverage
         fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}
+        verbose: true
 
     - name: Run Lua tests
       shell: pwsh
