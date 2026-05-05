@@ -213,78 +213,140 @@ int cmdTray() {
     // Initialize ConfigManager
     g_config = std::make_unique<ConfigManager>("config");
     auto serverConfig = g_config->getServerConfig();
+    auto trayConfig = g_config->getTrayConfig();
 
     std::cout << "[CONFIG] 服务器配置: " << serverConfig.host << ":" << serverConfig.port << "\n";
     std::cout.flush();
 
-    // Create tray icon
-    auto icon = std::make_shared<TrayIcon>("Wingman - Game Automation Engine");
+    // Create tray icon with tooltip from config
+    auto icon = std::make_shared<TrayIcon>(trayConfig.tooltip);
 
-    // Set custom icon - try multiple paths
-    std::vector<std::string> iconPaths = {
-        "assets/wingman.ico",
-        "../assets/wingman.ico",
-        "../../assets/wingman.ico",
-        "wingman.ico"
-    };
-
-    bool iconLoaded = false;
-    for (const auto& path : iconPaths) {
-        if (std::ifstream(path).good()) {
-            icon->setIcon(path);
-            iconLoaded = true;
-            break;
+    // Set icon from config or try default paths
+    std::string iconPath = trayConfig.iconPath;
+    if (iconPath.empty()) {
+        std::vector<std::string> defaultPaths = {
+            "assets/wingman.ico",
+            "../assets/wingman.ico",
+            "../../assets/wingman.ico",
+            "wingman.ico"
+        };
+        for (const auto& path : defaultPaths) {
+            if (std::ifstream(path).good()) {
+                iconPath = path;
+                break;
+            }
         }
     }
 
-    if (!iconLoaded) {
-        std::cout << "Warning: Could not find wingman.ico, using default icon\n";
+    if (!iconPath.empty() && std::ifstream(iconPath).good()) {
+        icon->setIcon(iconPath);
+    } else {
+        std::cout << "Warning: Could not find tray icon, using default icon\n";
     }
 
-    // Add menu items
-    icon->addItem("help", "帮助 / 用法", []() {
-        std::cout << "\n=== Wingman 命令行用法 ===\n";
-        std::cout << "  wingman.exe --server [port]    启动 HTTP 服务器\n";
-        std::cout << "  wingman.exe <script.lua>       运行 Lua 脚本\n";
+    // Set action handler for menu items
+    icon->setActionHandler([&serverConfig](const TrayMenuItemConfig& item) {
+        std::cout << "\n[TRAY] 菜单项点击: " << item.label << "\n";
         std::cout.flush();
-    });
 
-    icon->addItem("config_view", "查看配置", [serverConfig]() {
-        std::cout << "\n=== 当前配置 ===\n";
-        std::cout << "服务器: " << serverConfig.host << ":" << serverConfig.port << "\n";
-        if (!serverConfig.username.empty()) {
-            std::cout << "用户名: " << serverConfig.username << "\n";
+        switch (item.actionType) {
+            case TrayActionType::command:
+                // 执行系统命令
+                if (!item.action.empty()) {
+                    std::cout << "[TRAY] 执行命令: " << item.action << "\n";
+                    std::system(item.action.c_str());
+                }
+                break;
+
+            case TrayActionType::lua:
+                // 执行 Lua 脚本 (需要 Lua 环境)
+                std::cout << "[TRAY] 执行 Lua 脚本: " << item.action << "\n";
+                std::cout << "  (需要 Lua 环境，暂未实现)\n";
+                std::cout.flush();
+                break;
+
+            case TrayActionType::startGame:
+                // 启动游戏
+                if (!item.action.empty()) {
+                    auto games = g_config->getGameConfigList();
+                    for (const auto& game : games) {
+                        if (game.name == item.action) {
+                            std::cout << "[TRAY] 启动游戏: " << game.name << "\n";
+                            std::cout << "  路径: " << game.path << "\n";
+                            // TODO: 实际启动游戏
+                            std::cout.flush();
+                            break;
+                        }
+                    }
+                }
+                break;
+
+            case TrayActionType::http:
+                // 发送 HTTP 请求
+                if (!item.action.empty()) {
+                    std::cout << "[TRAY] 发送 HTTP 请求: " << item.action << "\n";
+                    // TODO: 实现 HTTP 请求
+                    std::cout.flush();
+                }
+                break;
+
+            case TrayActionType::callback:
+                // 内部回调 - 特殊处理
+                if (item.id == "exit") {
+                    std::cout << "[TRAY] 退出 Wingman\n";
+                    std::cout.flush();
+                    g_running = false;
+                    PostQuitMessage(0);
+                } else if (item.id == "config_view") {
+                    std::cout << "\n=== 当前配置 ===\n";
+                    std::cout << "服务器: " << serverConfig.host << ":" << serverConfig.port << "\n";
+                    if (!serverConfig.username.empty()) {
+                        std::cout << "用户名: " << serverConfig.username << "\n";
+                    }
+                    std::cout << "自动连接: " << (serverConfig.autoConnect ? "是" : "否") << "\n";
+                    std::cout << "服务器控制: " << (serverConfig.serverControlled ? "是" : "否") << "\n";
+                    std::cout.flush();
+                } else if (item.id == "help") {
+                    std::cout << "\n=== Wingman 命令行用法 ===\n";
+                    std::cout << "  wingman.exe --server [port]    启动 HTTP 服务器\n";
+                    std::cout << "  wingman.exe <script.lua>       运行 Lua 脚本\n";
+                    std::cout << "  wingman.exe --tray             托盘模式 (默认)\n";
+                    std::cout.flush();
+                }
+                break;
+
+            default:
+                break;
         }
-        std::cout << "自动连接: " << (serverConfig.autoConnect ? "是" : "否") << "\n";
-        std::cout.flush();
     });
 
-    icon->addItem("config_set", "设置服务器", []() {
-        std::cout << "\n[CONFIG] 设置服务器\n";
-        std::cout << "请在配置文件中手动修改，或使用 Lua API:\n";
-        std::cout << "  config.setServer({host=\"localhost\", port=8080})\n";
-        std::cout.flush();
-    });
+    // Load menu from config
+    if (!trayConfig.menuItems.empty()) {
+        std::cout << "[TRAY] 从配置加载 " << trayConfig.menuItems.size() << " 个菜单项\n";
+        icon->loadFromConfig(trayConfig);
+    } else {
+        // 使用默认菜单
+        std::cout << "[TRAY] 使用默认菜单\n";
 
-    icon->addSeparator("sep1");
+        icon->addItem("help", "帮助 / 用法", []() {
+            std::cout << "\n=== Wingman 命令行用法 ===\n";
+            std::cout << "  wingman.exe --server [port]    启动 HTTP 服务器\n";
+            std::cout << "  wingman.exe <script.lua>       运行 Lua 脚本\n";
+            std::cout.flush();
+        });
 
-    icon->addItem("server", "启动 HTTP 服务器", [serverConfig]() {
-        std::cout << "\n[HTTP] 启动 HTTP 服务器 " << serverConfig.host << ":" << serverConfig.port << "...\n";
-        std::cout.flush();
+        icon->addSeparator("sep1");
 
-        // TODO: 实际启动 HTTP 服务器
-        // g_httpServer = std::make_unique<HTTPServer>("wingman.db", serverConfig.port);
-        // g_httpServer->start();
-    });
+        icon->addItem("config_view", "查看配置", []() {
+            // 由 actionHandler 处理
+        });
 
-    icon->addSeparator("sep2");
+        icon->addSeparator("sep2");
 
-    icon->addItem("exit", "退出", []() {
-        std::cout << "\n[EXIT] 退出 Wingman\n";
-        std::cout.flush();
-        g_running = false;
-        PostQuitMessage(0);
-    });
+        icon->addItem("exit", "退出", []() {
+            // 由 actionHandler 处理
+        });
+    }
 
     // Auto-connect if configured
     if (serverConfig.autoConnect) {

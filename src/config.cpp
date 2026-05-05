@@ -81,6 +81,50 @@ ServerConfig ServerConfig::fromJson(const std::string& json) {
     return config;
 }
 
+// ========== TrayMenuItemConfig Implementation ==========
+
+std::string TrayMenuItemConfig::toJson() const {
+    nlohmann::json j;
+    j["id"] = id;
+    j["label"] = label;
+    j["actionType"] = static_cast<int>(actionType);
+    j["action"] = action;
+    j["enabled"] = enabled;
+    j["isSeparator"] = isSeparator;
+
+    if (!subitems.empty()) {
+        nlohmann::json subArray = nlohmann::json::array();
+        for (const auto& item : subitems) {
+            subArray.push_back(nlohmann::json::parse(item.toJson()));
+        }
+        j["subitems"] = subArray;
+    }
+
+    return j.dump();
+}
+
+TrayMenuItemConfig TrayMenuItemConfig::fromJson(const std::string& json) {
+    TrayMenuItemConfig config;
+    try {
+        nlohmann::json j = nlohmann::json::parse(json);
+        if (j.contains("id")) config.id = j["id"];
+        if (j.contains("label")) config.label = j["label"];
+        if (j.contains("actionType")) config.actionType = static_cast<TrayActionType>(j["actionType"]);
+        if (j.contains("action")) config.action = j["action"];
+        if (j.contains("enabled")) config.enabled = j["enabled"];
+        if (j.contains("isSeparator")) config.isSeparator = j["isSeparator"];
+
+        if (j.contains("subitems") && j["subitems"].is_array()) {
+            for (const auto& subJson : j["subitems"]) {
+                config.subitems.push_back(fromJson(subJson.dump()));
+            }
+        }
+    } catch (...) {
+        // 解析失败，返回默认配置
+    }
+    return config;
+}
+
 // ========== TrayConfig Implementation ==========
 
 std::string TrayConfig::toJson() const {
@@ -88,6 +132,17 @@ std::string TrayConfig::toJson() const {
     j["minimizeToTray"] = minimizeToTray;
     j["startMinimized"] = startMinimized;
     j["showNotifications"] = showNotifications;
+    j["iconPath"] = iconPath;
+    j["tooltip"] = tooltip;
+
+    if (!menuItems.empty()) {
+        nlohmann::json menuArray = nlohmann::json::array();
+        for (const auto& item : menuItems) {
+            menuArray.push_back(nlohmann::json::parse(item.toJson()));
+        }
+        j["menuItems"] = menuArray;
+    }
+
     return j.dump();
 }
 
@@ -98,6 +153,14 @@ TrayConfig TrayConfig::fromJson(const std::string& json) {
         if (j.contains("minimizeToTray")) config.minimizeToTray = j["minimizeToTray"];
         if (j.contains("startMinimized")) config.startMinimized = j["startMinimized"];
         if (j.contains("showNotifications")) config.showNotifications = j["showNotifications"];
+        if (j.contains("iconPath")) config.iconPath = j["iconPath"];
+        if (j.contains("tooltip")) config.tooltip = j["tooltip"];
+
+        if (j.contains("menuItems") && j["menuItems"].is_array()) {
+            for (const auto& itemJson : j["menuItems"]) {
+                config.menuItems.push_back(TrayMenuItemConfig::fromJson(itemJson.dump()));
+            }
+        }
     } catch (...) {
         // 解析失败，返回默认配置
     }
@@ -218,11 +281,42 @@ public:
                 {"autoConnect", false},
                 {"serverControlled", false}
             };
-            config["tray"] = {
+            // 默认托盘配置
+            nlohmann::json defaultTray = {
                 {"minimizeToTray", true},
                 {"startMinimized", false},
-                {"showNotifications", true}
+                {"showNotifications", true},
+                {"iconPath", ""},
+                {"tooltip", "Wingman"}
             };
+
+            // 默认菜单项
+            nlohmann::json defaultMenu = nlohmann::json::array();
+            defaultMenu.push_back({
+                {"id", "help"},
+                {"label", "帮助 / 用法"},
+                {"actionType", static_cast<int>(TrayActionType::none)}
+            });
+            defaultMenu.push_back({
+                {"id", "sep1"},
+                {"isSeparator", true}
+            });
+            defaultMenu.push_back({
+                {"id", "config_view"},
+                {"label", "查看配置"},
+                {"actionType", static_cast<int>(TrayActionType::none)}
+            });
+            defaultMenu.push_back({
+                {"id", "sep2"},
+                {"isSeparator", true}
+            });
+            defaultMenu.push_back({
+                {"id", "exit"},
+                {"label", "退出"},
+                {"actionType", static_cast<int>(TrayActionType::callback)}
+            });
+            defaultTray["menuItems"] = defaultMenu;
+            config["tray"] = defaultTray;
             config["autoRun"] = {
                 {"enabled", false},
                 {"scriptPath", ""},
@@ -294,6 +388,14 @@ TrayConfig ConfigManager::getTrayConfig() const {
         if (tray.contains("minimizeToTray")) result.minimizeToTray = tray["minimizeToTray"];
         if (tray.contains("startMinimized")) result.startMinimized = tray["startMinimized"];
         if (tray.contains("showNotifications")) result.showNotifications = tray["showNotifications"];
+        if (tray.contains("iconPath")) result.iconPath = tray["iconPath"];
+        if (tray.contains("tooltip")) result.tooltip = tray["tooltip"];
+
+        if (tray.contains("menuItems") && tray["menuItems"].is_array()) {
+            for (const auto& itemJson : tray["menuItems"]) {
+                result.menuItems.push_back(TrayMenuItemConfig::fromJson(itemJson.dump()));
+            }
+        }
     }
 
     return result;
@@ -302,12 +404,22 @@ TrayConfig ConfigManager::getTrayConfig() const {
 bool ConfigManager::setTrayConfig(const TrayConfig& config) {
     nlohmann::json j = loadConfigJson(impl_->configDir);
 
-    j["tray"] = {
-        {"minimizeToTray", config.minimizeToTray},
-        {"startMinimized", config.startMinimized},
-        {"showNotifications", config.showNotifications}
-    };
+    nlohmann::json trayJson;
+    trayJson["minimizeToTray"] = config.minimizeToTray;
+    trayJson["startMinimized"] = config.startMinimized;
+    trayJson["showNotifications"] = config.showNotifications;
+    trayJson["iconPath"] = config.iconPath;
+    trayJson["tooltip"] = config.tooltip;
 
+    if (!config.menuItems.empty()) {
+        nlohmann::json menuArray = nlohmann::json::array();
+        for (const auto& item : config.menuItems) {
+            menuArray.push_back(nlohmann::json::parse(item.toJson()));
+        }
+        trayJson["menuItems"] = menuArray;
+    }
+
+    j["tray"] = trayJson;
     return saveConfigJson(impl_->configDir, j);
 }
 

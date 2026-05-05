@@ -5,6 +5,7 @@
 #include <mutex>
 #include <atomic>
 #include <iostream>
+#include <sstream>
 
 namespace wingman {
 
@@ -26,6 +27,10 @@ public:
     std::mutex itemsMutex_;
     std::atomic<bool> visible_{false};
     UINT nextId_ = ID_TRAY_FIRST;
+
+    // 配置支持
+    TrayIcon::ActionHandler actionHandler_;
+    std::map<std::string, TrayMenuItemConfig> itemConfigs_;  // 菜单项配置映射
 
     Impl(const std::string& tooltip) : tooltip_(tooltip), hwnd_(nullptr) {
         // 注册窗口类（只注册一次）
@@ -221,58 +226,42 @@ public:
 
         UINT itemId = ID_TRAY_FIRST;
         std::vector<std::function<void()>> callbacks;
+        std::vector<std::string> itemIds;  // 存储每个 itemId 对应的配置 ID
 
         std::cout << "[DEBUG] Creating menu with " << itemsCopy.size() << " items\n";
         std::cout.flush();
 
-        std::cout << "[DEBUG] Starting menu item creation...\n";
-        std::cout.flush();
-
         for (const auto& item : itemsCopy) {
-            std::cout << "[DEBUG] Processing item: id=" << item.id
-                      << ", label=" << item.label
-                      << ", type=" << static_cast<int>(item.type) << "\n";
-            std::cout.flush();
-
             if (item.type == TrayItemType::SEPARATOR) {
                 AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
-                std::cout << "[DEBUG] Added SEPARATOR: " << item.id << "\n";
             } else if (item.type == TrayItemType::SUBMENU) {
                 HMENU hSubMenu = CreatePopupMenu();
                 for (const auto& subItem : item.subitems) {
                     if (subItem.type == TrayItemType::SEPARATOR) {
                         AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
                     } else {
-                        // 转换为宽字符
                         wchar_t wlabel[256];
                         MultiByteToWideChar(CP_UTF8, 0, subItem.label.c_str(), -1,
                                            wlabel, 256);
                         AppendMenuW(hSubMenu, MF_STRING, itemId++, wlabel);
                         callbacks.push_back(subItem.callback);
+                        itemIds.push_back(subItem.id);
                     }
                 }
                 wchar_t wlabel[256];
                 MultiByteToWideChar(CP_UTF8, 0, item.label.c_str(), -1,
                                    wlabel, 256);
                 AppendMenuW(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(hSubMenu), wlabel);
-                std::cout << "[DEBUG] Added SUBMENU: " << item.id << " - " << item.label << "\n";
             } else {
-                // 转换为宽字符
                 wchar_t wlabel[256];
                 MultiByteToWideChar(CP_UTF8, 0, item.label.c_str(), -1,
                                    wlabel, 256);
                 UINT thisItemId = itemId++;
-                std::cout << "[DEBUG] Adding ITEM with itemId=" << thisItemId << ": " << item.id << " - " << item.label << "\n";
-                std::cout.flush();
                 AppendMenuW(hMenu, MF_STRING, thisItemId, wlabel);
                 callbacks.push_back(item.callback);
-                std::cout << "[DEBUG] Added ITEM: " << item.id << " - " << item.label << " (itemId=" << thisItemId << ")\n";
+                itemIds.push_back(item.id);
             }
         }
-        std::cout.flush();
-
-        std::cout << "[DEBUG] About to show popup menu with " << callbacks.size() << " callbacks\n";
-        std::cout.flush();
 
         SetForegroundWindow(hwnd_);
         UINT clicked = TrackPopupMenu(
@@ -284,34 +273,90 @@ public:
             nullptr
         );
 
-        // 在菜单销毁后执行回调
         DestroyMenu(hMenu);
-
-        std::cout << "[DEBUG] clicked=" << clicked << ", ID_TRAY_FIRST=" << ID_TRAY_FIRST
-                  << ", callbacks.size()=" << callbacks.size() << "\n";
-        std::cout.flush();
 
         if (clicked >= ID_TRAY_FIRST) {
             size_t index = clicked - ID_TRAY_FIRST;
-            std::cout << "[DEBUG] index=" << index << "\n";
-            std::cout.flush();
-            if (index < callbacks.size() && callbacks[index]) {
-                std::cout << "[DEBUG] Executing callback...\n";
-                std::cout.flush();
-                try {
-                    callbacks[index]();
-                    std::cout << "[DEBUG] Callback executed\n";
-                } catch (const std::exception& e) {
-                    std::cout << "[DEBUG] Exception in callback: " << e.what() << "\n";
-                } catch (...) {
-                    std::cout << "[DEBUG] Unknown exception in callback\n";
+            if (index < callbacks.size()) {
+                // 首先尝试执行直接回调
+                if (callbacks[index]) {
+                    try {
+                        callbacks[index]();
+                    } catch (const std::exception& e) {
+                        std::cout << "[DEBUG] Exception in callback: " << e.what() << "\n";
+                    }
+                } else {
+                    // 如果没有直接回调，尝试使用动作处理器
+                    if (actionHandler_ && index < itemIds.size()) {
+                        const std::string& configId = itemIds[index];
+                        auto it = itemConfigs_.find(configId);
+                        if (it != itemConfigs_.end()) {
+                            try {
+                                actionHandler_(it->second);
+                            } catch (const std::exception& e) {
+                                std::cout << "[DEBUG] Exception in action handler: " << e.what() << "\n";
+                            }
+                        }
+                    }
                 }
-                std::cout.flush();
-            } else {
-                std::cout << "[DEBUG] No callback at index " << index << " (size=" << callbacks.size() << ")\n";
-                std::cout.flush();
             }
         }
+    }
+
+    void loadFromConfig(const TrayConfig& config) {
+        std::lock_guard<std::mutex> lock(itemsMutex_);
+        items_.clear();
+        itemConfigs_.clear();
+
+        // 设置提示文本
+        if (!config.tooltip.empty()) {
+            tooltip_ = config.tooltip;
+            MultiByteToWideChar(CP_UTF8, 0, config.tooltip.c_str(), -1,
+                               nid_.szTip, sizeof(nid_.szTip) / sizeof(wchar_t));
+            nid_.uFlags |= NIF_TIP;
+            if (visible_) {
+                Shell_NotifyIconW(NIM_MODIFY, &nid_);
+            }
+        }
+
+        // 设置图标
+        if (!config.iconPath.empty()) {
+            setIcon(config.iconPath);
+        }
+
+        // 加载菜单项
+        for (const auto& menuItem : config.menuItems) {
+            itemConfigs_[menuItem.id] = menuItem;
+
+            if (menuItem.isSeparator) {
+                addSeparator(menuItem.id);
+            } else if (!menuItem.subitems.empty()) {
+                // 子菜单
+                std::vector<TrayItem> subitems;
+                for (const auto& subConfig : menuItem.subitems) {
+                    itemConfigs_[subConfig.id] = subConfig;
+                    TrayItem subItem;
+                    subItem.id = subConfig.id;
+                    subItem.label = subConfig.label;
+                    subItem.type = subConfig.isSeparator ? TrayItemType::SEPARATOR : TrayItemType::NORMAL;
+                    // 动作由 actionHandler_ 处理，不设置 callback
+                    subitems.push_back(subItem);
+                }
+                addSubmenu(menuItem.id, menuItem.label, subitems);
+            } else {
+                // 普通菜单项
+                TrayItem item;
+                item.id = menuItem.id;
+                item.label = menuItem.label;
+                item.type = TrayItemType::NORMAL;
+                // 动作由 actionHandler_ 处理，不设置 callback
+                items_.push_back(item);
+            }
+        }
+    }
+
+    void setActionHandler(TrayIcon::ActionHandler handler) {
+        actionHandler_ = std::move(handler);
     }
 
     static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -400,6 +445,14 @@ void TrayIcon::updateMenu() {
 
 bool TrayIcon::isVisible() const {
     return impl_->isVisible();
+}
+
+void TrayIcon::loadFromConfig(const TrayConfig& config) {
+    impl_->loadFromConfig(config);
+}
+
+void TrayIcon::setActionHandler(ActionHandler handler) {
+    impl_->setActionHandler(std::move(handler));
 }
 
 // TrayManager implementation

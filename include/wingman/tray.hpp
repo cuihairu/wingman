@@ -5,6 +5,7 @@
 #include <functional>
 #include <vector>
 #include <memory>
+#include "wingman/config.hpp"
 
 namespace wingman {
 
@@ -67,6 +68,15 @@ public:
 
     // 检查是否可见
     bool isVisible() const;
+
+    // 从配置加载菜单
+    void loadFromConfig(const TrayConfig& config);
+
+    // 动作处理器函数类型
+    using ActionHandler = std::function<void(const TrayMenuItemConfig&)>;
+
+    // 设置动作处理器
+    void setActionHandler(ActionHandler handler);
 
 private:
     class Impl;

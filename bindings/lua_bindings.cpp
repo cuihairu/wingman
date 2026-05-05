@@ -2490,6 +2490,70 @@ int getTray(lua_State* L) {
     lua_pushboolean(L, trayConfig.showNotifications);
     lua_setfield(L, -2, "showNotifications");
 
+    lua_pushstring(L, trayConfig.iconPath.c_str());
+    lua_setfield(L, -2, "iconPath");
+
+    lua_pushstring(L, trayConfig.tooltip.c_str());
+    lua_setfield(L, -2, "tooltip");
+
+    // 菜单项数组
+    lua_createtable(L, trayConfig.menuItems.size(), 0);
+    for (size_t i = 0; i < trayConfig.menuItems.size(); ++i) {
+        const auto& item = trayConfig.menuItems[i];
+        lua_createtable(L, 0, 6);
+
+        lua_pushstring(L, item.id.c_str());
+        lua_setfield(L, -2, "id");
+
+        lua_pushstring(L, item.label.c_str());
+        lua_setfield(L, -2, "label");
+
+        lua_pushinteger(L, static_cast<lua_Integer>(item.actionType));
+        lua_setfield(L, -2, "actionType");
+
+        lua_pushstring(L, item.action.c_str());
+        lua_setfield(L, -2, "action");
+
+        lua_pushboolean(L, item.enabled);
+        lua_setfield(L, -2, "enabled");
+
+        lua_pushboolean(L, item.isSeparator);
+        lua_setfield(L, -2, "isSeparator");
+
+        // 子菜单项
+        if (!item.subitems.empty()) {
+            lua_createtable(L, item.subitems.size(), 0);
+            for (size_t j = 0; j < item.subitems.size(); ++j) {
+                const auto& subItem = item.subitems[j];
+                lua_createtable(L, 0, 6);
+
+                lua_pushstring(L, subItem.id.c_str());
+                lua_setfield(L, -2, "id");
+
+                lua_pushstring(L, subItem.label.c_str());
+                lua_setfield(L, -2, "label");
+
+                lua_pushinteger(L, static_cast<lua_Integer>(subItem.actionType));
+                lua_setfield(L, -2, "actionType");
+
+                lua_pushstring(L, subItem.action.c_str());
+                lua_setfield(L, -2, "action");
+
+                lua_pushboolean(L, subItem.enabled);
+                lua_setfield(L, -2, "enabled");
+
+                lua_pushboolean(L, subItem.isSeparator);
+                lua_setfield(L, -2, "isSeparator");
+
+                lua_rawseti(L, -2, static_cast<lua_Integer>(j + 1));
+            }
+            lua_setfield(L, -2, "subitems");
+        }
+
+        lua_rawseti(L, -2, static_cast<lua_Integer>(i + 1));
+    }
+    lua_setfield(L, -2, "menuItems");
+
     return 1;
 }
 
@@ -2520,6 +2584,104 @@ int setTray(lua_State* L) {
     lua_getfield(L, 1, "showNotifications");
     if (lua_isboolean(L, -1)) {
         trayConfig.showNotifications = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "iconPath");
+    if (lua_isstring(L, -1)) {
+        trayConfig.iconPath = lua_tostring(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "tooltip");
+    if (lua_isstring(L, -1)) {
+        trayConfig.tooltip = lua_tostring(L, -1);
+    }
+    lua_pop(L, 1);
+
+    // 解析菜单项
+    lua_getfield(L, 1, "menuItems");
+    if (lua_istable(L, -1)) {
+        int menuIndex = 1;
+        while (true) {
+            lua_rawgeti(L, -1, menuIndex++);
+            if (!lua_istable(L, -1)) {
+                lua_pop(L, 1);
+                break;
+            }
+
+            TrayMenuItemConfig item;
+
+            lua_getfield(L, -1, "id");
+            if (lua_isstring(L, -1)) item.id = lua_tostring(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "label");
+            if (lua_isstring(L, -1)) item.label = lua_tostring(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "actionType");
+            if (lua_isnumber(L, -1)) item.actionType = static_cast<TrayActionType>(lua_tointeger(L, -1));
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "action");
+            if (lua_isstring(L, -1)) item.action = lua_tostring(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "enabled");
+            if (lua_isboolean(L, -1)) item.enabled = lua_toboolean(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "isSeparator");
+            if (lua_isboolean(L, -1)) item.isSeparator = lua_toboolean(L, -1);
+            lua_pop(L, 1);
+
+            // 解析子菜单项
+            lua_getfield(L, -1, "subitems");
+            if (lua_istable(L, -1)) {
+                int subMenuIndex = 1;
+                while (true) {
+                    lua_rawgeti(L, -1, subMenuIndex++);
+                    if (!lua_istable(L, -1)) {
+                        lua_pop(L, 1);
+                        break;
+                    }
+
+                    TrayMenuItemConfig subItem;
+
+                    lua_getfield(L, -1, "id");
+                    if (lua_isstring(L, -1)) subItem.id = lua_tostring(L, -1);
+                    lua_pop(L, 1);
+
+                    lua_getfield(L, -1, "label");
+                    if (lua_isstring(L, -1)) subItem.label = lua_tostring(L, -1);
+                    lua_pop(L, 1);
+
+                    lua_getfield(L, -1, "actionType");
+                    if (lua_isnumber(L, -1)) subItem.actionType = static_cast<TrayActionType>(lua_tointeger(L, -1));
+                    lua_pop(L, 1);
+
+                    lua_getfield(L, -1, "action");
+                    if (lua_isstring(L, -1)) subItem.action = lua_tostring(L, -1);
+                    lua_pop(L, 1);
+
+                    lua_getfield(L, -1, "enabled");
+                    if (lua_isboolean(L, -1)) subItem.enabled = lua_toboolean(L, -1);
+                    lua_pop(L, 1);
+
+                    lua_getfield(L, -1, "isSeparator");
+                    if (lua_isboolean(L, -1)) subItem.isSeparator = lua_toboolean(L, -1);
+                    lua_pop(L, 1);
+
+                    item.subitems.push_back(subItem);
+                    lua_pop(L, 1);
+                }
+            }
+            lua_pop(L, 1);
+
+            trayConfig.menuItems.push_back(item);
+            lua_pop(L, 1);
+        }
     }
     lua_pop(L, 1);
 
