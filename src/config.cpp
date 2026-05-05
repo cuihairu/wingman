@@ -104,6 +104,33 @@ TrayConfig TrayConfig::fromJson(const std::string& json) {
     return config;
 }
 
+// ========== AutoRunConfig Implementation ==========
+
+std::string AutoRunConfig::toJson() const {
+    nlohmann::json j;
+    j["enabled"] = enabled;
+    j["scriptPath"] = scriptPath;
+    j["delaySeconds"] = delaySeconds;
+    j["repeat"] = repeat;
+    j["repeatInterval"] = repeatInterval;
+    return j.dump();
+}
+
+AutoRunConfig AutoRunConfig::fromJson(const std::string& json) {
+    AutoRunConfig config;
+    try {
+        nlohmann::json j = nlohmann::json::parse(json);
+        if (j.contains("enabled")) config.enabled = j["enabled"];
+        if (j.contains("scriptPath")) config.scriptPath = j["scriptPath"];
+        if (j.contains("delaySeconds")) config.delaySeconds = j["delaySeconds"];
+        if (j.contains("repeat")) config.repeat = j["repeat"];
+        if (j.contains("repeatInterval")) config.repeatInterval = j["repeatInterval"];
+    } catch (...) {
+        // 解析失败，返回默认配置
+    }
+    return config;
+}
+
 // ========== ConfigManager Implementation ==========
 
 class ConfigManager::Impl {
@@ -124,12 +151,20 @@ public:
                 {"port", 8080},
                 {"username", ""},
                 {"password", ""},
-                {"autoConnect", false}
+                {"autoConnect", false},
+                {"serverControlled", false}
             };
             config["tray"] = {
                 {"minimizeToTray", true},
                 {"startMinimized", false},
                 {"showNotifications", true}
+            };
+            config["autoRun"] = {
+                {"enabled", false},
+                {"scriptPath", ""},
+                {"delaySeconds", 0},
+                {"repeat", false},
+                {"repeatInterval", 0}
             };
             createdDefault = true;
         }
@@ -159,6 +194,7 @@ ServerConfig ConfigManager::getServerConfig() const {
         if (server.contains("username")) result.username = server["username"];
         if (server.contains("password")) result.password = server["password"];
         if (server.contains("autoConnect")) result.autoConnect = server["autoConnect"];
+        if (server.contains("serverControlled")) result.serverControlled = server["serverControlled"];
     }
 
     return result;
@@ -172,7 +208,8 @@ bool ConfigManager::setServerConfig(const ServerConfig& config) {
         {"port", config.port},
         {"username", config.username},
         {"password", config.password},
-        {"autoConnect", config.autoConnect}
+        {"autoConnect", config.autoConnect},
+        {"serverControlled", config.serverControlled}
     };
 
     return saveConfigJson(impl_->configDir, j);
@@ -199,6 +236,36 @@ bool ConfigManager::setTrayConfig(const TrayConfig& config) {
         {"minimizeToTray", config.minimizeToTray},
         {"startMinimized", config.startMinimized},
         {"showNotifications", config.showNotifications}
+    };
+
+    return saveConfigJson(impl_->configDir, j);
+}
+
+AutoRunConfig ConfigManager::getAutoRunConfig() const {
+    nlohmann::json config = loadConfigJson(impl_->configDir);
+    AutoRunConfig result;
+
+    if (config.contains("autoRun")) {
+        auto& autoRun = config["autoRun"];
+        if (autoRun.contains("enabled")) result.enabled = autoRun["enabled"];
+        if (autoRun.contains("scriptPath")) result.scriptPath = autoRun["scriptPath"];
+        if (autoRun.contains("delaySeconds")) result.delaySeconds = autoRun["delaySeconds"];
+        if (autoRun.contains("repeat")) result.repeat = autoRun["repeat"];
+        if (autoRun.contains("repeatInterval")) result.repeatInterval = autoRun["repeatInterval"];
+    }
+
+    return result;
+}
+
+bool ConfigManager::setAutoRunConfig(const AutoRunConfig& config) {
+    nlohmann::json j = loadConfigJson(impl_->configDir);
+
+    j["autoRun"] = {
+        {"enabled", config.enabled},
+        {"scriptPath", config.scriptPath},
+        {"delaySeconds", config.delaySeconds},
+        {"repeat", config.repeat},
+        {"repeatInterval", config.repeatInterval}
     };
 
     return saveConfigJson(impl_->configDir, j);

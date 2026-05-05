@@ -2413,6 +2413,9 @@ int getServer(lua_State* L) {
     lua_pushboolean(L, serverConfig.autoConnect);
     lua_setfield(L, -2, "autoConnect");
 
+    lua_pushboolean(L, serverConfig.serverControlled);
+    lua_setfield(L, -2, "serverControlled");
+
     return 1;
 }
 
@@ -2455,6 +2458,12 @@ int setServer(lua_State* L) {
     lua_getfield(L, 1, "autoConnect");
     if (lua_isboolean(L, -1)) {
         serverConfig.autoConnect = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "serverControlled");
+    if (lua_isboolean(L, -1)) {
+        serverConfig.serverControlled = lua_toboolean(L, -1);
     }
     lua_pop(L, 1);
 
@@ -2558,6 +2567,76 @@ int remove(lua_State* L) {
     return 1;
 }
 
+// getAutoRun() -> table
+int getAutoRun(lua_State* L) {
+    auto* config = getConfigManager();
+    AutoRunConfig autoRunConfig = config->getAutoRunConfig();
+
+    lua_newtable(L);
+    lua_pushboolean(L, autoRunConfig.enabled);
+    lua_setfield(L, -2, "enabled");
+
+    lua_pushstring(L, autoRunConfig.scriptPath.c_str());
+    lua_setfield(L, -2, "scriptPath");
+
+    lua_pushinteger(L, autoRunConfig.delaySeconds);
+    lua_setfield(L, -2, "delaySeconds");
+
+    lua_pushboolean(L, autoRunConfig.repeat);
+    lua_setfield(L, -2, "repeat");
+
+    lua_pushinteger(L, autoRunConfig.repeatInterval);
+    lua_setfield(L, -2, "repeatInterval");
+
+    return 1;
+}
+
+// setAutoRun(table)
+int setAutoRun(lua_State* L) {
+    auto* config = getConfigManager();
+
+    if (!lua_istable(L, 1)) {
+        lua_pushstring(L, "setAutoRun: 期望 table 参数");
+        lua_error(L);
+        return 1;
+    }
+
+    AutoRunConfig autoRunConfig;
+
+    lua_getfield(L, 1, "enabled");
+    if (lua_isboolean(L, -1)) {
+        autoRunConfig.enabled = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "scriptPath");
+    if (lua_isstring(L, -1)) {
+        autoRunConfig.scriptPath = lua_tostring(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "delaySeconds");
+    if (lua_isinteger(L, -1)) {
+        autoRunConfig.delaySeconds = lua_tointeger(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "repeat");
+    if (lua_isboolean(L, -1)) {
+        autoRunConfig.repeat = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "repeatInterval");
+    if (lua_isinteger(L, -1)) {
+        autoRunConfig.repeatInterval = lua_tointeger(L, -1);
+    }
+    lua_pop(L, 1);
+
+    config->setAutoRunConfig(autoRunConfig);
+    return 0;
+}
+
 } // namespace config
 
 void LuaState::registerConfigModule() {
@@ -2583,6 +2662,12 @@ void LuaState::registerConfigModule() {
 
     lua_pushcfunction(L, config::remove);
     lua_setfield(L, -2, "remove");
+
+    lua_pushcfunction(L, config::getAutoRun);
+    lua_setfield(L, -2, "getAutoRun");
+
+    lua_pushcfunction(L, config::setAutoRun);
+    lua_setfield(L, -2, "setAutoRun");
 
     lua_setglobal(L, "config");
 }
