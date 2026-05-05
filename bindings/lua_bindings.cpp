@@ -25,6 +25,7 @@
 #include <cstring>
 #include <ctime>
 #include <iostream>
+#include <windows.h>
 
 namespace wingman::lua {
 
@@ -2692,6 +2693,175 @@ int setHeartbeat(lua_State* L) {
     return 0;
 }
 
+// getGames() -> table
+int getGames(lua_State* L) {
+    auto* config = getConfigManager();
+    std::vector<GameConfig> games = config->getGameConfigList();
+
+    lua_newtable(L);
+    for (size_t i = 0; i < games.size(); i++) {
+        const auto& game = games[i];
+
+        lua_newtable(L);
+        lua_pushstring(L, game.name.c_str());
+        lua_setfield(L, -2, "name");
+        lua_pushstring(L, game.path.c_str());
+        lua_setfield(L, -2, "path");
+        lua_pushstring(L, game.args.c_str());
+        lua_setfield(L, -2, "args");
+        lua_pushstring(L, game.workingDir.c_str());
+        lua_setfield(L, -2, "workingDir");
+        lua_pushboolean(L, game.autoStart);
+        lua_setfield(L, -2, "autoStart");
+        lua_pushstring(L, game.scriptPath.c_str());
+        lua_setfield(L, -2, "scriptPath");
+        lua_pushstring(L, game.windowTitle.c_str());
+        lua_setfield(L, -2, "windowTitle");
+        lua_pushinteger(L, game.delaySeconds);
+        lua_setfield(L, -2, "delaySeconds");
+        lua_pushboolean(L, game.autoRestart);
+        lua_setfield(L, -2, "autoRestart");
+        lua_pushinteger(L, game.restartDelay);
+        lua_setfield(L, -2, "restartDelay");
+        lua_pushinteger(L, game.maxRestarts);
+        lua_setfield(L, -2, "maxRestarts");
+
+        lua_rawseti(L, -2, i + 1);
+    }
+
+    return 1;
+}
+
+// addGame(table)
+int addGame(lua_State* L) {
+    auto* config = getConfigManager();
+
+    if (!lua_istable(L, 1)) {
+        lua_pushstring(L, "addGame: 期望 table 参数");
+        lua_error(L);
+        return 1;
+    }
+
+    GameConfig gameConfig;
+
+    lua_getfield(L, 1, "name");
+    if (lua_isstring(L, -1)) gameConfig.name = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "path");
+    if (lua_isstring(L, -1)) gameConfig.path = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "args");
+    if (lua_isstring(L, -1)) gameConfig.args = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "workingDir");
+    if (lua_isstring(L, -1)) gameConfig.workingDir = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "autoStart");
+    if (lua_isboolean(L, -1)) gameConfig.autoStart = lua_toboolean(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "scriptPath");
+    if (lua_isstring(L, -1)) gameConfig.scriptPath = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "windowTitle");
+    if (lua_isstring(L, -1)) gameConfig.windowTitle = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "delaySeconds");
+    if (lua_isinteger(L, -1)) gameConfig.delaySeconds = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "autoRestart");
+    if (lua_isboolean(L, -1)) gameConfig.autoRestart = lua_toboolean(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "restartDelay");
+    if (lua_isinteger(L, -1)) gameConfig.restartDelay = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "maxRestarts");
+    if (lua_isinteger(L, -1)) gameConfig.maxRestarts = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    bool success = config->addGameConfig(gameConfig);
+    lua_pushboolean(L, success);
+    return 1;
+}
+
+// removeGame(name)
+int removeGame(lua_State* L) {
+    auto* config = getConfigManager();
+    const char* name = luaL_checkstring(L, 1);
+
+    bool removed = config->removeGameConfig(name);
+    lua_pushboolean(L, removed);
+    return 1;
+}
+
+// startGame(name)
+int startGame(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    auto* config = getConfigManager();
+    std::vector<GameConfig> games = config->getGameConfigList();
+
+    for (const auto& game : games) {
+        if (game.name == name) {
+            // 启动游戏进程
+            std::string command = "\"" + game.path + "\"";
+            if (!game.args.empty()) {
+                command += " " + game.args;
+            }
+
+            std::cout << "[GAME] Starting: " << command << "\n";
+            std::cout.flush();
+
+            // 使用 Windows API 启动进程
+            STARTUPINFOA si = {0};
+            PROCESS_INFORMATION pi = {0};
+            si.cb = sizeof(si);
+
+            std::string workingDir = game.workingDir.empty() ?
+                game.path.substr(0, game.path.find_last_of("\\/")) : game.workingDir;
+
+            BOOL result = CreateProcessA(
+                nullptr,
+                const_cast<char*>(command.c_str()),
+                nullptr,
+                nullptr,
+                FALSE,
+                CREATE_NEW_CONSOLE,
+                nullptr,
+                workingDir.c_str(),
+                &si,
+                &pi
+            );
+
+            if (result) {
+                CloseHandle(pi.hThread);
+                CloseHandle(pi.hProcess);
+                lua_pushboolean(L, true);
+                std::cout << "[GAME] Started: " << name << " (PID: " << pi.dwProcessId << ")\n";
+                std::cout.flush();
+                return 1;
+            } else {
+                std::cerr << "[GAME] Failed to start: " << GetLastError() << "\n";
+                lua_pushboolean(L, false);
+                return 1;
+            }
+        }
+    }
+
+    std::cerr << "[GAME] Game not found: " << name << "\n";
+    lua_pushboolean(L, false);
+    return 1;
+}
+
 } // namespace config
 
 void LuaState::registerConfigModule() {
@@ -2729,6 +2899,18 @@ void LuaState::registerConfigModule() {
 
     lua_pushcfunction(L, config::setHeartbeat);
     lua_setfield(L, -2, "setHeartbeat");
+
+    lua_pushcfunction(L, config::getGames);
+    lua_setfield(L, -2, "getGames");
+
+    lua_pushcfunction(L, config::addGame);
+    lua_setfield(L, -2, "addGame");
+
+    lua_pushcfunction(L, config::removeGame);
+    lua_setfield(L, -2, "removeGame");
+
+    lua_pushcfunction(L, config::startGame);
+    lua_setfield(L, -2, "startGame");
 
     lua_setglobal(L, "config");
 }

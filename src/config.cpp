@@ -154,6 +154,47 @@ HeartbeatConfig HeartbeatConfig::fromJson(const std::string& json) {
     return config;
 }
 
+// ========== GameConfig Implementation ==========
+
+std::string GameConfig::toJson() const {
+    nlohmann::json j;
+    j["name"] = name;
+    j["path"] = path;
+    j["args"] = args;
+    j["workingDir"] = workingDir;
+    j["autoStart"] = autoStart;
+    j["scriptPath"] = scriptPath;
+    j["windowTitle"] = windowTitle;
+    j["delaySeconds"] = delaySeconds;
+    j["autoRestart"] = autoRestart;
+    j["restartDelay"] = restartDelay;
+    j["maxRestarts"] = maxRestarts;
+    j["restartCount"] = restartCount;
+    return j.dump();
+}
+
+GameConfig GameConfig::fromJson(const std::string& json) {
+    GameConfig config;
+    try {
+        nlohmann::json j = nlohmann::json::parse(json);
+        if (j.contains("name")) config.name = j["name"];
+        if (j.contains("path")) config.path = j["path"];
+        if (j.contains("args")) config.args = j["args"];
+        if (j.contains("workingDir")) config.workingDir = j["workingDir"];
+        if (j.contains("autoStart")) config.autoStart = j["autoStart"];
+        if (j.contains("scriptPath")) config.scriptPath = j["scriptPath"];
+        if (j.contains("windowTitle")) config.windowTitle = j["windowTitle"];
+        if (j.contains("delaySeconds")) config.delaySeconds = j["delaySeconds"];
+        if (j.contains("autoRestart")) config.autoRestart = j["autoRestart"];
+        if (j.contains("restartDelay")) config.restartDelay = j["restartDelay"];
+        if (j.contains("maxRestarts")) config.maxRestarts = j["maxRestarts"];
+        if (j.contains("restartCount")) config.restartCount = j["restartCount"];
+    } catch (...) {
+        // 解析失败，返回默认配置
+    }
+    return config;
+}
+
 // ========== ConfigManager Implementation ==========
 
 class ConfigManager::Impl {
@@ -194,6 +235,7 @@ public:
                 {"intervalSeconds", 30},
                 {"timeoutSeconds", 90}
             };
+            config["games"] = nlohmann::json::array();  // 空游戏列表
             createdDefault = true;
         }
 
@@ -323,6 +365,61 @@ bool ConfigManager::setHeartbeatConfig(const HeartbeatConfig& config) {
     };
 
     return saveConfigJson(impl_->configDir, j);
+}
+
+std::vector<GameConfig> ConfigManager::getGameConfigList() const {
+    nlohmann::json config = loadConfigJson(impl_->configDir);
+    std::vector<GameConfig> result;
+
+    if (config.contains("games") && config["games"].is_array()) {
+        for (const auto& gameJson : config["games"]) {
+            result.push_back(GameConfig::fromJson(gameJson.dump()));
+        }
+    }
+
+    return result;
+}
+
+bool ConfigManager::writeGameConfigList(const std::vector<GameConfig>& games) {
+    nlohmann::json j = loadConfigJson(impl_->configDir);
+
+    nlohmann::json gamesArray = nlohmann::json::array();
+    for (const auto& game : games) {
+        gamesArray.push_back(nlohmann::json::parse(game.toJson()));
+    }
+    j["games"] = gamesArray;
+
+    return saveConfigJson(impl_->configDir, j);
+}
+
+bool ConfigManager::addGameConfig(const GameConfig& game) {
+    auto games = getGameConfigList();
+
+    // 检查是否已存在同名游戏
+    for (auto& existing : games) {
+        if (existing.name == game.name) {
+            existing = game;  // 更新现有配置
+            return writeGameConfigList(games);
+        }
+    }
+
+    // 添加新游戏
+    games.push_back(game);
+    return writeGameConfigList(games);
+}
+
+bool ConfigManager::removeGameConfig(const std::string& name) {
+    auto games = getGameConfigList();
+
+    auto it = std::remove_if(games.begin(), games.end(),
+        [&name](const GameConfig& game) { return game.name == name; });
+
+    if (it != games.end()) {
+        games.erase(it, games.end());
+        return writeGameConfigList(games);
+    }
+
+    return false;
 }
 
 std::optional<std::string> ConfigManager::get(const std::string& key) const {

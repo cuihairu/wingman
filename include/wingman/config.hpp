@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 #include <memory>
+#include <vector>
 
 namespace wingman {
 
@@ -57,6 +58,27 @@ struct HeartbeatConfig {
     static HeartbeatConfig fromJson(const std::string& json);
 };
 
+// 游戏配置
+struct GameConfig {
+    std::string name;               // 游戏名称
+    std::string path;               // 游戏可执行文件路径
+    std::string args;               // 启动参数
+    std::string workingDir;         // 工作目录
+    bool autoStart = false;         // 是否自动启动游戏
+    std::string scriptPath;         // 关联的自动脚本
+    std::string windowTitle;        // 窗口标题（用于检测）
+    int delaySeconds = 5;           // 游戏启动后等待时间（秒）
+    bool autoRestart = false;       // 游戏关闭后是否自动重启
+    int restartDelay = 10;          // 重启延迟（秒）
+    int maxRestarts = 3;            // 最大重启次数（0 = 无限）
+    int restartCount = 0;           // 当前重启次数（内部使用）
+
+    std::string toJson() const;
+    static GameConfig fromJson(const std::string& json);
+
+    bool isValid() const { return !path.empty(); }
+};
+
 // 通用配置管理器
 class ConfigManager {
 public:
@@ -82,6 +104,12 @@ public:
     // 心跳配置
     HeartbeatConfig getHeartbeatConfig() const;
     bool setHeartbeatConfig(const HeartbeatConfig& config);
+
+    // 游戏配置
+    std::vector<GameConfig> getGameConfigList() const;
+    bool writeGameConfigList(const std::vector<GameConfig>& games);
+    bool addGameConfig(const GameConfig& game);
+    bool removeGameConfig(const std::string& name);
 
     // 通用键值对访问
     std::optional<std::string> get(const std::string& key) const;
