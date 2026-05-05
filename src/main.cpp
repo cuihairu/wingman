@@ -4,6 +4,7 @@
 #include "wingman/process.hpp"
 #include "wingman/version.hpp"
 #include "wingman/http_server.hpp"
+#include "wingman/tray.hpp"
 
 // Lua HTTP support (requires sol2)
 #ifdef WINGMAN_BUILD_LUA_HTTP
@@ -192,6 +193,58 @@ int cmdList() {
     return 0;
 }
 
+// Command: Start with tray icon (default mode)
+int cmdTray() {
+    // Setup signal handlers
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
+    // Create tray icon
+    auto icon = std::make_shared<TrayIcon>("Wingman - Game Automation Engine");
+
+    // Add menu items
+    icon->addItem("help", "帮助 / 用法", []() {
+        std::cout << "\n=== Wingman 命令行用法 ===\n";
+        std::cout << "  wingman.exe <script.lua>    - 运行 Lua 脚本\n";
+        std::cout << "  wingman.exe --server        - 启动 HTTP 服务器\n";
+        std::cout << "  wingman.exe --capture       - 截图保存到 screenshot.png\n";
+        std::cout << "  wingman.exe --list          - 列出所有窗口\n";
+        std::cout << "  wingman.exe --version       - 显示版本信息\n";
+        std::cout << "\n更多帮助: wingman.exe --help\n\n";
+    });
+
+    icon->addSeparator("sep1");
+
+    icon->addItem("server", "启动 HTTP 服务器", []() {
+        std::cout << "\n正在启动 HTTP 服务器...\n";
+        g_httpServer = std::make_unique<HTTPServer>("wingman.db", 8080);
+        g_httpServer->start();
+        std::cout << "HTTP 服务器已启动: http://localhost:8080\n";
+    });
+
+    icon->addSeparator("sep2");
+
+    icon->addItem("exit", "退出", []() {
+        std::cout << "\n退出 Wingman...\n";
+        g_running = false;
+        exit(0);
+    });
+
+    // Show the icon
+    icon->show();
+
+    std::cout << "Wingman v" << wingman::version::getFullVersion() << "\n";
+    std::cout << "托盘图标已启动，点击图标查看菜单\n";
+    std::cout << "按 Ctrl+C 退出\n\n";
+
+    // Keep running
+    while (g_running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    return 0;
+}
+
 // Execute Lua script
 int runScript(const std::string& scriptPath) {
     lua::LuaState luaState;
@@ -319,9 +372,9 @@ int cmdLuaHttpServer(const std::vector<std::string>& args) {
 
 // Main function
 int main(int argc, char* argv[]) {
+    // 无参数时启动托盘模式
     if (argc < 2) {
-        printUsage();
-        return 0;
+        return cmdTray();
     }
 
     std::string arg1 = argv[1];
