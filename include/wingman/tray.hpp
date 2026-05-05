@@ -92,6 +92,9 @@ public:
     // 设置菜单项启用/禁用状态
     void setItemEnabled(const std::string& id, bool enabled);
 
+    // 设置菜单项文本
+    void setItemLabel(const std::string& id, const std::string& label);
+
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;

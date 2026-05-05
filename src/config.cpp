@@ -302,34 +302,56 @@ public:
 
             // 默认菜单项
             nlohmann::json defaultMenu = nlohmann::json::array();
+
+            // 服务器开关菜单项
             defaultMenu.push_back({
-                {"id", "server_status"},
-                {"label", "● 服务器: 未连接"},
-                {"actionType", static_cast<int>(TrayActionType::callback)},
-                {"enabled", false}  // 仅显示状态，不可点击
+                {"id", "server_toggle"},
+                {"label", "☐ 启动服务器"},
+                {"actionType", static_cast<int>(TrayActionType::callback)}
             });
+
+            // 服务器状态信息
+            defaultMenu.push_back({
+                {"id", "server_info"},
+                {"label", "  服务器: 未连接"},
+                {"actionType", static_cast<int>(TrayActionType::none)},
+                {"enabled", false}
+            });
+
+            defaultMenu.push_back({
+                {"id", "local_ip"},
+                {"label", "  本地 IP: 获取中..."},
+                {"actionType", static_cast<int>(TrayActionType::none)},
+                {"enabled", false}
+            });
+
             defaultMenu.push_back({
                 {"id", "sep0"},
                 {"isSeparator", true}
             });
+
             defaultMenu.push_back({
                 {"id", "help"},
                 {"label", "帮助 / 用法"},
                 {"actionType", static_cast<int>(TrayActionType::none)}
             });
+
             defaultMenu.push_back({
                 {"id", "sep1"},
                 {"isSeparator", true}
             });
+
             defaultMenu.push_back({
                 {"id", "config_view"},
                 {"label", "查看配置"},
                 {"actionType", static_cast<int>(TrayActionType::none)}
             });
+
             defaultMenu.push_back({
                 {"id", "sep2"},
                 {"isSeparator", true}
             });
+
             defaultMenu.push_back({
                 {"id", "exit"},
                 {"label", "退出"},

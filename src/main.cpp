@@ -47,6 +47,89 @@ static std::unique_ptr<LuaHTTPServer> g_luaHttpServer;
 static std::unique_ptr<ConfigManager> g_config;
 static bool g_running = true;
 
+// 获取本地 IP 地址
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+
+static std::string getLocalIP() {
+    static std::string cachedIP;
+    if (!cachedIP.empty()) return cachedIP;
+
+    // 初始化 Winsock
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        return "127.0.0.1";
+    }
+
+    char hostbuffer[256];
+    if (gethostname(hostbuffer, sizeof(hostbuffer)) == 0) {
+        struct addrinfo hints = {}, *info = nullptr;
+        hints.ai_family = AF_INET;  // 只获取 IPv4
+        hints.ai_socktype = SOCK_STREAM;
+
+        if (getaddrinfo(hostbuffer, nullptr, &hints, &info) == 0) {
+            for (struct addrinfo* p = info; p != nullptr; p = p->ai_next) {
+                char ipstr[INET_ADDRSTRLEN];
+                struct sockaddr_in* ipv4 = (struct sockaddr_in*)p->ai_addr;
+                void* addr = &(ipv4->sin_addr);
+                if (inet_ntop(p->ai_family, addr, ipstr, sizeof(ipstr))) {
+                    // 跳过 127.0.0.1
+                    std::string ip(ipstr);
+                    if (ip != "127.0.0.1") {
+                        cachedIP = ip;
+                        freeaddrinfo(info);
+                        WSACleanup();
+                        return ip;
+                    }
+                }
+            }
+            freeaddrinfo(info);
+        }
+    }
+
+    WSACleanup();
+    cachedIP = "127.0.0.1";
+    return cachedIP;
+}
+#else
+#include <sys/types.h>
+#include <ifaddrs.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+static std::string getLocalIP() {
+    static std::string cachedIP;
+    if (!cachedIP.empty()) return cachedIP;
+
+    struct ifaddrs* ifaddr;
+    if (getifaddrs(&ifaddr) == -1) {
+        return "127.0.0.1";
+    }
+
+    for (struct ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == nullptr) continue;
+        if (ifa->ifa_addr->sa_family == AF_INET) {
+            char addr[INET_ADDRSTRLEN];
+            struct sockaddr_in* addr_in = (struct sockaddr_in*)ifa->ifa_addr;
+            if (inet_ntop(AF_INET, &(addr_in->sin_addr), addr, sizeof(addr))) {
+                std::string ip(addr);
+                if (ip != "127.0.0.1") {
+                    cachedIP = ip;
+                    freeifaddrs(ifaddr);
+                    return ip;
+                }
+            }
+        }
+    }
+
+    freeifaddrs(ifaddr);
+    cachedIP = "127.0.0.1";
+    return cachedIP;
+}
+#endif
+
 // Signal handler for graceful shutdown
 void signalHandler(int signal) {
     std::cout << "\nShutting down...\n";
@@ -215,6 +298,9 @@ int cmdTray() {
     auto serverConfig = g_config->getServerConfig();
     auto trayConfig = g_config->getTrayConfig();
 
+    // 服务器运行状态
+    bool serverRunning = false;
+
     std::cout << "[CONFIG] 服务器配置: " << serverConfig.host << ":" << serverConfig.port << "\n";
     std::cout.flush();
 
@@ -245,7 +331,7 @@ int cmdTray() {
     }
 
     // Set action handler for menu items
-    icon->setActionHandler([&serverConfig](const TrayMenuItemConfig& item) {
+    icon->setActionHandler([&serverConfig, &serverRunning, icon](const TrayMenuItemConfig& item) {
         std::cout << "\n[TRAY] 菜单项点击: " << item.label << "\n";
         std::cout.flush();
 
@@ -297,6 +383,36 @@ int cmdTray() {
                     std::cout.flush();
                     g_running = false;
                     PostQuitMessage(0);
+                } else if (item.id == "server_toggle") {
+                    // 切换服务器状态
+                    if (serverRunning) {
+                        // 停止服务器
+                        std::cout << "[TRAY] 停止服务器\n";
+                        std::cout.flush();
+                        if (g_httpServer) {
+                            g_httpServer->stop();
+                            g_httpServer.reset();
+                        }
+                        serverRunning = false;
+                        icon->setItemChecked("server_toggle", false);
+                        icon->setItemLabel("server_toggle", "☐ 启动服务器");
+                        icon->setItemLabel("server_info", "  服务器: 未连接");
+                    } else {
+                        // 启动服务器
+                        std::cout << "[TRAY] 启动服务器\n";
+                        std::cout.flush();
+                        try {
+                            g_httpServer = std::make_unique<HTTPServer>("wingman.db", serverConfig.port);
+                            g_httpServer->start();
+                            serverRunning = true;
+                            icon->setItemChecked("server_toggle", true);
+                            icon->setItemLabel("server_toggle", "☑ 停止服务器");
+                            icon->setItemLabel("server_info", "  服务器: http://" + getLocalIP() + ":" + std::to_string(serverConfig.port));
+                        } catch (const std::exception& e) {
+                            std::cout << "[TRAY] 启动服务器失败: " << e.what() << "\n";
+                            std::cout.flush();
+                        }
+                    }
                 } else if (item.id == "config_view") {
                     std::cout << "\n=== 当前配置 ===\n";
                     std::cout << "服务器: " << serverConfig.host << ":" << serverConfig.port << "\n";
@@ -363,6 +479,10 @@ int cmdTray() {
         std::cout << "[CONFIG] 自动连接已启用\n";
         std::cout.flush();
     }
+
+    // 更新本地 IP 显示
+    std::string localIP = getLocalIP();
+    icon->setItemLabel("local_ip", "  本地 IP: " + localIP);
 
     // Show the icon
     icon->show();

@@ -429,6 +429,23 @@ public:
         }
     }
 
+    void setItemLabel(const std::string& id, const std::string& label) {
+        std::lock_guard<std::mutex> lock(itemsMutex_);
+        for (auto& item : items_) {
+            if (item.id == id) {
+                item.label = label;
+                return;
+            }
+            // 检查子菜单
+            for (auto& subItem : item.subitems) {
+                if (subItem.id == id) {
+                    subItem.label = label;
+                    return;
+                }
+            }
+        }
+    }
+
     void updateMenu() {
         // 菜单在点击时动态创建，这里只是标记需要更新
     }
@@ -728,6 +745,10 @@ void TrayIcon::setItemChecked(const std::string& id, bool checked) {
 
 void TrayIcon::setItemEnabled(const std::string& id, bool enabled) {
     impl_->setItemEnabled(id, enabled);
+}
+
+void TrayIcon::setItemLabel(const std::string& id, const std::string& label) {
+    impl_->setItemLabel(id, label);
 }
 
 // TrayManager implementation
