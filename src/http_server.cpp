@@ -86,18 +86,65 @@ void HTTPServer::setupRoutes() {
         return resp;
     });
 
-    // Public routes
-    CROW_ROUTE(app_, "/api/auth/login").methods("POST"_method)(
+    // Public routes - /api/v1/
+    CROW_ROUTE(app_, "/api/v1/auth/login").methods("POST"_method)(
         [this](const crow::request& req) {
             crow::response resp = handleLogin(req);
             addCorsHeaders(resp);
             return resp;
         });
 
-    // Protected routes
-    CROW_ROUTE(app_, "/api/auth/logout").methods("POST"_method)(
+    // Protected routes - /api/v1/
+    CROW_ROUTE(app_, "/api/v1/auth/logout").methods("POST"_method)(
         [this](const crow::request& req) {
             crow::response resp = handleLogout(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/v1/status").methods("GET"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleStatus(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/v1/scripts").methods("GET"_method, "POST"_method, "DELETE"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleScripts(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/v1/windows").methods("GET"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleWindows(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/v1/settings").methods("GET"_method, "PUT"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleSettings(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    // Health check
+    CROW_ROUTE(app_, "/api/v1/health").methods("GET"_method)(
+        [](const crow::request& req) {
+            nlohmann::json j;
+            j["status"] = "ok";
+            j["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
+            crow::response resp = jsonResponse(j);
+            resp.add_header("Access-Control-Allow-Origin", "*");
+            return resp;
+        });
+
+    // 兼容旧路径 /api/（重定向到 /api/v1/）
+    CROW_ROUTE(app_, "/api/auth/login").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleLogin(req);
             addCorsHeaders(resp);
             return resp;
         });
@@ -106,38 +153,6 @@ void HTTPServer::setupRoutes() {
         [this](const crow::request& req) {
             crow::response resp = handleStatus(req);
             addCorsHeaders(resp);
-            return resp;
-        });
-
-    CROW_ROUTE(app_, "/api/scripts").methods("GET"_method, "POST"_method, "DELETE"_method)(
-        [this](const crow::request& req) {
-            crow::response resp = handleScripts(req);
-            addCorsHeaders(resp);
-            return resp;
-        });
-
-    CROW_ROUTE(app_, "/api/windows").methods("GET"_method)(
-        [this](const crow::request& req) {
-            crow::response resp = handleWindows(req);
-            addCorsHeaders(resp);
-            return resp;
-        });
-
-    CROW_ROUTE(app_, "/api/settings").methods("GET"_method, "PUT"_method)(
-        [this](const crow::request& req) {
-            crow::response resp = handleSettings(req);
-            addCorsHeaders(resp);
-            return resp;
-        });
-
-    // Health check
-    CROW_ROUTE(app_, "/api/health").methods("GET"_method)(
-        [](const crow::request& req) {
-            nlohmann::json j;
-            j["status"] = "ok";
-            j["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
-            crow::response resp = jsonResponse(j);
-            resp.add_header("Access-Control-Allow-Origin", "*");
             return resp;
         });
 }
