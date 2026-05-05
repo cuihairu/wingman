@@ -53,6 +53,63 @@ Wingman 使用 JSON 格式的配置文件来存储应用程序设置。配置文
 | `minimizeToTray` | boolean | `true` | 最小化到托盘而非任务栏 |
 | `startMinimized` | boolean | `false` | 启动时最小化到托盘 |
 | `showNotifications` | boolean | `true` | 显示托盘通知 |
+| `iconPath` | string | `""` | 自定义托盘图标路径（.ico 文件） |
+| `tooltip` | string | `"Wingman"` | 托盘图标提示文本 |
+| `menuItems` | array | 见下方 | 托盘菜单项配置 |
+
+#### 菜单项配置 (menuItems)
+
+每个菜单项是一个对象，包含以下字段：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | 菜单项唯一标识 |
+| `label` | string | 显示文本 |
+| `actionType` | number | 动作类型：0=无, 1=命令, 2=Lua, 3=启动游戏, 4=HTTP请求, 5=回调 |
+| `action` | string | 动作参数（命令路径/Lua脚本/游戏名/URL等） |
+| `enabled` | boolean | 是否启用 |
+| `isSeparator` | boolean | 是否为分隔符 |
+| `subitems` | array | 子菜单项（仅用于子菜单类型） |
+
+**动作类型说明：**
+
+- `0` (none): 无动作，仅用于显示
+- `1` (command): 执行系统命令，`action` 为命令字符串
+- `2` (lua): 执行 Lua 脚本，`action` 为脚本代码
+- `3` (startGame): 启动游戏，`action` 为游戏名称
+- `4` (http): 发送 HTTP 请求，`action` 为 URL
+- `5` (callback): 内部回调，用于预设菜单项（如退出、查看配置等）
+
+**配置示例：**
+
+```json
+{
+  "tray": {
+    "minimizeToTray": true,
+    "iconPath": "assets/myicon.ico",
+    "tooltip": "我的游戏助手",
+    "menuItems": [
+      {
+        "id": "game1",
+        "label": "启动游戏1",
+        "actionType": 3,
+        "action": "游戏1",
+        "enabled": true
+      },
+      {
+        "id": "sep1",
+        "isSeparator": true
+      },
+      {
+        "id": "exit",
+        "label": "退出",
+        "actionType": 5,
+        "enabled": true
+      }
+    ]
+  }
+}
+```
 
 ### AutoRun (自动运行配置)
 
@@ -135,6 +192,47 @@ config.setServer(server)
 -- 托盘配置
 local tray = config.getTray()
 tray.startMinimized = true
+tray.iconPath = "assets/myicon.ico"
+tray.tooltip = "我的游戏助手"
+
+-- 配置托盘菜单项
+tray.menuItems = {
+    {
+        id = "help",
+        label = "帮助",
+        actionType = 0,  -- 无动作
+        enabled = true,
+        isSeparator = false
+    },
+    {
+        id = "sep1",
+        isSeparator = true
+    },
+    {
+        id = "start_game",
+        label = "启动游戏",
+        actionType = 3,  -- startGame
+        action = "我的游戏",
+        enabled = true
+    },
+    {
+        id = "custom_script",
+        label = "运行自定义脚本",
+        actionType = 1,  -- command
+        action = "notepad.exe",
+        enabled = true
+    },
+    {
+        id = "sep2",
+        isSeparator = true
+    },
+    {
+        id = "exit",
+        label = "退出",
+        actionType = 5,  -- callback
+        enabled = true
+    }
+}
 config.setTray(tray)
 
 -- 自动运行配置
