@@ -72,6 +72,24 @@ Wingman 使用 JSON 格式的配置文件来存储应用程序设置。配置文
 | `intervalSeconds` | number | `30` | 心跳间隔（秒） |
 | `timeoutSeconds` | number | `90` | 超时时间（秒），服务器超过此时间未收到心跳认为节点离线 |
 
+### Game (游戏配置)
+
+游戏配置用于管理需要自动启动和控制的游戏。可以配置多个游戏，每个游戏可以关联自动运行脚本。
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `name` | string | - | 游戏名称（唯一标识） |
+| `path` | string | - | 游戏可执行文件路径（绝对路径） |
+| `args` | string | `""` | 启动参数 |
+| `workingDir` | string | - | 工作目录（可选，默认为游戏所在目录） |
+| `autoStart` | boolean | `false` | 是否自动启动游戏 |
+| `scriptPath` | string | `""` | 关联的自动脚本路径 |
+| `windowTitle` | string | `""` | 窗口标题（用于检测游戏窗口） |
+| `delaySeconds` | number | `5` | 游戏启动后等待时间（秒） |
+| `autoRestart` | boolean | `false` | 游戏关闭后是否自动重启 |
+| `restartDelay` | number | `10` | 重启延迟（秒） |
+| `maxRestarts` | number | `3` | 最大重启次数（0 = 无限） |
+
 ## C++ API
 
 ```cpp
@@ -133,6 +151,32 @@ local heartbeat = config.getHeartbeat()
 heartbeat.enabled = true
 heartbeat.intervalSeconds = 30  -- 每 30 秒发送一次心跳
 config.setHeartbeat(heartbeat)
+
+-- 游戏配置
+local games = config.getGames()
+for i, game in ipairs(games) do
+    print("游戏: " .. game.name)
+    print("路径: " .. game.path)
+end
+
+-- 添加游戏配置
+local newGame = {
+    name = "我的游戏",
+    path = "C:\\Games\\MyGame\\game.exe",
+    args = "-windowed -nosplash",
+    workingDir = "C:\\Games\\MyGame",
+    autoStart = true,
+    scriptPath = "scripts/my_game_script.lua",
+    windowTitle = "MyGame",
+    delaySeconds = 5,
+    autoRestart = true,
+    restartDelay = 10,
+    maxRestarts = 3
+}
+config.addGame(newGame)
+
+-- 启动游戏
+game.startGame("我的游戏")
 
 -- 通用键值对
 config.set("myKey", "myValue")
