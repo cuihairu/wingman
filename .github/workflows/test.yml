@@ -73,7 +73,6 @@ jobs:
           --sources "${{ github.workspace }}/bindings" `
           --excluded_sources "${{ github.workspace }}/tests" `
           --export_type=cobertura:coverage.xml `
-          --working_dir build `
           -- build\tests\cpp\Debug\wingman_tests.exe
 
     - name: Upload coverage to Codecov
