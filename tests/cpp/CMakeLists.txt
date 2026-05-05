@@ -23,6 +23,14 @@ add_executable(wingman_tests
     # are excluded due to unimplemented functions or compilation errors
 )
 
+# Lua HTTP tests (requires sol2)
+if(WINGMAN_BUILD_LUA_HTTP)
+    find_package(sol2 CONFIG REQUIRED)
+    target_sources(wingman_tests PRIVATE lua_http_test.cpp)
+    target_link_libraries(wingman_tests PRIVATE sol2::sol2)
+    message(STATUS "Lua HTTP tests enabled")
+endif()
+
 # Include directories
 target_include_directories(wingman_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include
@@ -44,6 +52,8 @@ target_link_libraries(wingman_tests PRIVATE
     asio::asio
     CURL::libcurl
     Threads::Threads
+    Crow::Crow
+    unofficial::sqlite3::sqlite3
     gdiplus
     user32
     gdi32
@@ -64,6 +74,8 @@ target_sources(wingman_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/performance.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/game_profile.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/storage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/lua_http.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/auth.cpp
     # Note: kvstore.cpp, script_manager.cpp, and security.cpp are excluded
     # security.cpp functions are inline in header, others have compilation errors
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bindings/lua_bindings.cpp
@@ -71,6 +83,11 @@ target_sources(wingman_tests PRIVATE
     # Note: Server sources (server.cpp, client.cpp, orchestrator.cpp, protocol.cpp)
     # require asio IO context and are excluded from unit tests to avoid complex setup
 )
+
+# Lua HTTP bindings (requires sol2)
+if(WINGMAN_BUILD_LUA_HTTP)
+    target_sources(wingman_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../bindings/lua_http_bindings.cpp)
+endif()
 
 # Discover tests
 include(GoogleTest)

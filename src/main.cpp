@@ -5,7 +5,16 @@
 #include "wingman/version.hpp"
 #include "wingman/http_server.hpp"
 
+// Lua HTTP support (requires sol2)
+#ifdef WINGMAN_BUILD_LUA_HTTP
+#include "wingman/lua_http.hpp"
+#include "lua_http_bindings.hpp"
+#include <sol/sol.hpp>
+#endif
+
 #include "lua_bindings.hpp"
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include <iostream>
 #include <string>
@@ -17,9 +26,13 @@
 #include <chrono>
 
 using namespace wingman;
+using namespace wingman::lua;
 
-// Global HTTP server pointer for signal handling
+// Global HTTP server pointers for signal handling
 static std::unique_ptr<HTTPServer> g_httpServer;
+#ifdef WINGMAN_BUILD_LUA_HTTP
+static std::unique_ptr<LuaHTTPServer> g_luaHttpServer;
+#endif
 static bool g_running = true;
 
 // Signal handler for graceful shutdown
@@ -29,6 +42,11 @@ void signalHandler(int signal) {
     if (g_httpServer) {
         g_httpServer->stop();
     }
+#ifdef WINGMAN_BUILD_LUA_HTTP
+    if (g_luaHttpServer) {
+        g_luaHttpServer->stop();
+    }
+#endif
     exit(0);
 }
 
@@ -39,6 +57,9 @@ void printUsage() {
     std::cout << "Usage:\n";
     std::cout << "  wingman.exe <script.lua>              Run Lua script\n";
     std::cout << "  wingman.exe --server [port]           Start HTTP server (default: 8080)\n";
+#ifdef WINGMAN_BUILD_LUA_HTTP
+    std::cout << "  wingman.exe --lua-http [port] [script]  Start Lua HTTP server (default: 8081)\n";
+#endif
     std::cout << "  wingman.exe --pixel <x> <y>          Get pixel color at position\n";
     std::cout << "  wingman.exe --find <color> <region>  Find color on screen\n";
     std::cout << "  wingman.exe --capture [file.png]     Capture screen and save\n";
@@ -47,6 +68,9 @@ void printUsage() {
     std::cout << "\nExamples:\n";
     std::cout << "  wingman.exe script.lua\n";
     std::cout << "  wingman.exe --server\n";
+#ifdef WINGMAN_BUILD_LUA_HTTP
+    std::cout << "  wingman.exe --lua-http 8081 scripts/http_routes.lua\n";
+#endif
     std::cout << "  wingman.exe --server 9000\n";
     std::cout << "  wingman.exe --pixel 100 200\n";
     std::cout << "  wingman.exe --find 0xFF0000 0,0,1920,1080\n";
@@ -219,6 +243,80 @@ int cmdServer(const std::vector<std::string>& args) {
     return 0;
 }
 
+#ifdef WINGMAN_BUILD_LUA_HTTP
+// Command: Start Lua HTTP server
+int cmdLuaHttpServer(const std::vector<std::string>& args) {
+    // Initialize spdlog
+    auto console = spdlog::stdout_color_mt("console");
+    spdlog::set_default_logger(console);
+    spdlog::set_level(spdlog::level::info);
+
+    int port = 8081;
+    std::string scriptPath = "scripts/http_routes_example.lua";
+
+    if (!args.empty()) {
+        try {
+            port = std::stoi(args[0]);
+            if (args.size() >= 2) {
+                scriptPath = args[1];
+            }
+        } catch (...) {
+            // First arg is script path, use default port
+            port = 8081;
+            scriptPath = args[0];
+        }
+    }
+
+    // Check if script exists
+    std::ifstream scriptFile(scriptPath);
+    if (!scriptFile.good()) {
+        std::cerr << "Script not found: " << scriptPath << "\n";
+        std::cerr << "Using default script: scripts/http_routes_example.lua\n";
+        scriptPath = "scripts/http_routes_example.lua";
+        scriptFile.open(scriptPath);
+        if (!scriptFile.good()) {
+            std::cerr << "Default script not found either. Starting without routes.\n";
+        }
+    }
+
+    // Setup signal handlers
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
+    // Initialize Lua state
+    sol::state lua;
+    lua.open_libraries(sol::lib::base, sol::lib::string, sol::lib::table);
+
+    // Create Lua HTTP server
+    g_luaHttpServer = std::make_unique<LuaHTTPServer>(port);
+
+    // Load routes from script
+    if (scriptFile.good()) {
+        std::cout << "Loading routes from: " << scriptPath << "\n";
+        if (!load_http_routes(lua, scriptPath, *g_luaHttpServer)) {
+            std::cerr << "Failed to load routes, starting server anyway...\n";
+        }
+    }
+
+    // Start server
+    g_luaHttpServer->start();
+
+    std::cout << "\nLua HTTP Server running on http://localhost:" << port << "\n";
+    std::cout << "\nTest endpoints:\n";
+    std::cout << "  GET  http://localhost:" << port << "/test/health\n";
+    std::cout << "  POST http://localhost:" << port << "/test/echo\n";
+    std::cout << "  GET  http://localhost:" << port << "/test/query?name=world\n";
+    std::cout << "\nPress Ctrl+C to stop...\n\n";
+
+    // Keep running
+    while (g_running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    return 0;
+}
+#endif // WINGMAN_BUILD_LUA_HTTP
+
 // Main function
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -278,6 +376,16 @@ int main(int argc, char* argv[]) {
         }
         return cmdServer(args);
     }
+
+#ifdef WINGMAN_BUILD_LUA_HTTP
+    if (arg1 == "--lua-http") {
+        std::vector<std::string> args;
+        for (int i = 2; i < argc; ++i) {
+            args.push_back(argv[i]);
+        }
+        return cmdLuaHttpServer(args);
+    }
+#endif
 
     // === Script mode ===
 

@@ -19,6 +19,7 @@ endif()
 option(WINGMAN_BUILD_SERVER "Build network server" ON)
 option(WINGMAN_BUILD_DEBUGGER "Build debugger" ON)
 option(WINGMAN_BUILD_TESTS "Build tests" OFF)
+option(WINGMAN_BUILD_LUA_HTTP "Build Lua HTTP bindings (requires sol2)" OFF)
 
 # Find dependencies via vcpkg
 find_package(Lua REQUIRED)
@@ -55,6 +56,7 @@ set(CORE_SOURCES
     src/storage.cpp
     src/auth.cpp
     src/http_server.cpp
+    src/lua_http.cpp
 )
 
 # Lua bindings
@@ -62,6 +64,13 @@ set(LUA_SOURCES
     bindings/lua_bindings.cpp
     bindings/lua_extensions.cpp
 )
+
+# Lua HTTP bindings (requires sol2)
+if(WINGMAN_BUILD_LUA_HTTP)
+    list(APPEND LUA_SOURCES bindings/lua_http_bindings.cpp)
+    find_package(sol2 CONFIG REQUIRED)
+    message(STATUS "Lua HTTP bindings enabled")
+endif()
 
 set(SERVER_SOURCES
     server/src/server.cpp
