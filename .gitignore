@@ -94,3 +94,6 @@ Thumbs.db
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 docs/node_modules/
+
+# Claude Code local files
+.claude/
