@@ -229,22 +229,22 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
 void TriggerManager::executeActions(const std::vector<TriggerActionData>& actions) {
     for (const auto& action : actions) {
         switch (action.type) {
-            case TriggerAction::Click:
+            case BasicTriggerAction::Click:
                 Input::click(action.x, action.y);
                 if (m_logger) m_logger->debug("Trigger action: click at ({}, {})", action.x, action.y);
                 break;
 
-            case TriggerAction::KeyPress:
+            case BasicTriggerAction::KeyPress:
                 Input::key(std::stoi(action.value));
                 if (m_logger) m_logger->debug("Trigger action: key press '{}'", action.value);
                 break;
 
-            case TriggerAction::Type:
+            case BasicTriggerAction::Type:
                 Input::type(action.value, action.delay);
                 if (m_logger) m_logger->debug("Trigger action: type text");
                 break;
 
-            case TriggerAction::RunScript: {
+            case BasicTriggerAction::RunScript: {
                 if (m_luaState && !action.value.empty()) {
                     if (luaL_dostring(m_luaState, action.value.c_str()) == LUA_OK) {
                         if (m_logger) m_logger->info("Trigger action: executed Lua script successfully");
@@ -259,25 +259,25 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
                 break;
             }
 
-            case TriggerAction::StopScript:
+            case BasicTriggerAction::StopScript:
                 if (m_logger) m_logger->info("Trigger action: stop script requested");
                 break;
 
-            case TriggerAction::PauseScript:
+            case BasicTriggerAction::PauseScript:
                 if (m_logger) m_logger->info("Trigger action: pause script requested");
                 break;
 
-            case TriggerAction::ShowMessage:
+            case BasicTriggerAction::ShowMessage:
                 MessageBoxA(nullptr, action.value.c_str(), "Wingman Trigger", MB_OK);
                 if (m_logger) m_logger->info("Trigger action: showed message '{}'", action.value);
                 break;
 
-            case TriggerAction::PlayAudio:
+            case BasicTriggerAction::PlayAudio:
                 ::PlaySoundA(action.value.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
                 if (m_logger) m_logger->info("Trigger action: played sound '{}'", action.value);
                 break;
 
-            case TriggerAction::Log:
+            case BasicTriggerAction::Log:
                 if (m_logger) {
                     m_logger->info("Trigger log: {}", action.value);
                 }

@@ -28,6 +28,10 @@ struct Rect {
     Rect(int x = 0, int y = 0, int w = 0, int h = 0)
         : x(x), y(y), width(w), height(h) {}
 
+    bool isEmpty() const {
+        return width <= 0 || height <= 0;
+    }
+
     bool contains(const Point& p) const {
         return p.x >= x && p.x < x + width &&
                p.y >= y && p.y < y + height;

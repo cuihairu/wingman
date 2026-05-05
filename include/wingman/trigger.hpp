@@ -36,7 +36,7 @@ enum class TriggerType {
 };
 
 // 触发器条件
-struct TriggerCondition {
+struct BasicTriggerCondition {
     TriggerType type;
     std::string value;      // 具体值（如颜色、窗口标题等）
     Rect region;           // 搜索区域
@@ -46,7 +46,7 @@ struct TriggerCondition {
 };
 
 // 触发器动作
-enum class TriggerAction {
+enum class BasicTriggerAction {
     RunScript,       // 运行脚本
     Click,           // 点击
     KeyPress,        // 按键
@@ -59,7 +59,7 @@ enum class TriggerAction {
 };
 
 struct TriggerActionData {
-    TriggerAction type;
+    BasicTriggerAction type;
     std::string value;
     int x, y;           // 坐标
     int delay;          // 延迟
@@ -68,7 +68,7 @@ struct TriggerActionData {
 // 触发器配置
 struct TriggerConfig {
     std::string name;
-    TriggerCondition condition;
+    BasicTriggerCondition condition;
     std::vector<TriggerActionData> actions;
     bool oneShot;        // 只触发一次
     int cooldown;        // 冷却时间 (ms)

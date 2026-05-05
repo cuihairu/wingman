@@ -19,6 +19,7 @@ add_executable(wingman_tests
     performance_test.cpp
     game_profile_test.cpp
     storage_test.cpp
+    vision_test.cpp
     # Note: kvstore_test.cpp, script_manager_test.cpp, security_test.cpp, and recorder_test.cpp
     # are excluded due to unimplemented functions or compilation errors
 )
@@ -76,6 +77,9 @@ target_sources(wingman_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/storage.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/lua_http.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/auth.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/vision.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/smart_trigger.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/behavior_tree.cpp
     # Note: kvstore.cpp, script_manager.cpp, and security.cpp are excluded
     # security.cpp functions are inline in header, others have compilation errors
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bindings/lua_bindings.cpp
@@ -83,6 +87,20 @@ target_sources(wingman_tests PRIVATE
     # Note: Server sources (server.cpp, client.cpp, orchestrator.cpp, protocol.cpp)
     # require asio IO context and are excluded from unit tests to avoid complex setup
 )
+
+# OCR support (conditional)
+if(WINGMAN_ENABLE_OCR)
+    target_sources(wingman_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../src/ocr_stub.cpp)
+else()
+    target_sources(wingman_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../src/ocr_stub.cpp)
+endif()
+
+# ML/AI support (conditional)
+if(WINGMAN_ENABLE_ML)
+    target_sources(wingman_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../src/ml_stub.cpp)
+else()
+    target_sources(wingman_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../src/ml_stub.cpp)
+endif()
 
 # Lua HTTP bindings (requires sol2)
 if(WINGMAN_BUILD_LUA_HTTP)

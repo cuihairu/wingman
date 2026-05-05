@@ -20,6 +20,8 @@ option(WINGMAN_BUILD_SERVER "Build network server" ON)
 option(WINGMAN_BUILD_DEBUGGER "Build debugger" ON)
 option(WINGMAN_BUILD_TESTS "Build tests" OFF)
 option(WINGMAN_BUILD_LUA_HTTP "Build Lua HTTP bindings (requires sol2)" OFF)
+option(WINGMAN_ENABLE_OCR "Enable OCR support (requires Tesseract)" ON)
+option(WINGMAN_ENABLE_ML "Enable ML/AI support (requires ONNX Runtime)" ON)
 
 # Find dependencies via vcpkg
 find_package(Lua REQUIRED)
@@ -35,6 +37,18 @@ find_package(unofficial-sqlite3 CONFIG REQUIRED)
 # Testing framework
 if(WINGMAN_BUILD_TESTS)
     find_package(GTest CONFIG REQUIRED)
+endif()
+
+# OCR support
+if(WINGMAN_ENABLE_OCR)
+    add_compile_definitions(WINGMAN_ENABLE_OCR)
+    message(STATUS "OCR support enabled")
+endif()
+
+# ML/AI support
+if(WINGMAN_ENABLE_ML)
+    add_compile_definitions(WINGMAN_ENABLE_ML)
+    message(STATUS "ML/AI support enabled")
 endif()
 
 # Core source files
@@ -57,7 +71,26 @@ set(CORE_SOURCES
     src/auth.cpp
     src/http_server.cpp
     src/lua_http.cpp
+    # Vision & Smart Trigger
+    src/vision.cpp
+    src/smart_trigger.cpp
+    # Behavior Tree
+    src/behavior_tree.cpp
 )
+
+# OCR support (conditional)
+if(WINGMAN_ENABLE_OCR)
+    list(APPEND CORE_SOURCES src/ocr.cpp)
+else()
+    list(APPEND CORE_SOURCES src/ocr_stub.cpp)
+endif()
+
+# ML/AI support (conditional)
+if(WINGMAN_ENABLE_ML)
+    list(APPEND CORE_SOURCES src/ml.cpp)
+else()
+    list(APPEND CORE_SOURCES src/ml_stub.cpp)
+endif()
 
 # Lua bindings
 set(LUA_SOURCES

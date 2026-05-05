@@ -98,7 +98,7 @@ TEST_F(TriggerTest, LogAction) {
     config.oneShot = true;
 
     TriggerActionData action;
-    action.type = TriggerAction::Log;
+    action.type = BasicTriggerAction::Log;
     action.value = "Test log message";
     config.actions.push_back(action);
 

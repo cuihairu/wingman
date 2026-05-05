@@ -13,6 +13,10 @@
 #include "wingman/game_profile.hpp"
 #include "wingman/performance.hpp"
 #include "wingman/trigger.hpp"
+#include "wingman/vision.hpp"
+#include "wingman/smart_trigger.hpp"
+#include "wingman/behavior_tree.hpp"
+#include "wingman/ocr.hpp"
 
 #include <cstring>
 #include <ctime>
@@ -92,6 +96,10 @@ void LuaState::registerAPIs() {
     registerScriptModule();
     registerSecurityModule();
     registerGameProfileModule();
+    registerVisionModule();
+    registerSmartTriggerModule();
+    registerBehaviorTreeModule();
+    registerOcrModule();
 
     // 注册扩展模块
     registerHttpModule(L);
@@ -1630,6 +1638,482 @@ void LuaState::registerGameProfileModule() {
     lua_setfield(L, -2, "scan");
 
     lua_setglobal(L, "gameprofile");
+}
+
+// ============================================================================
+// Vision 模块
+// ============================================================================
+
+namespace vision {
+
+int findColor(lua_State* L) {
+    Color color = getColor(L, 1);
+    int tolerance = luaL_optinteger(L, 2, 0);
+    Rect region = getRect(L, 3);
+
+    auto result = Vision::findColor(color, tolerance, region);
+    if (result.has_value()) {
+        pushPoint(L, *result);
+        return 1;
+    }
+    return 0;
+}
+
+int findAllColors(lua_State* L) {
+    Color color = getColor(L, 1);
+    int tolerance = luaL_optinteger(L, 2, 0);
+    Rect region = getRect(L, 3);
+
+    auto results = Vision::findAllColors(color, tolerance, region);
+    lua_newtable(L);
+    for (size_t i = 0; i < results.size(); i++) {
+        pushPoint(L, results[i]);
+        lua_rawseti(L, -2, i + 1);
+    }
+    return 1;
+}
+
+int hasColor(lua_State* L) {
+    Color color = getColor(L, 1);
+    int tolerance = luaL_optinteger(L, 2, 0);
+    Rect region = getRect(L, 3);
+
+    bool found = Vision::hasColor(color, tolerance, region);
+    lua_pushboolean(L, found);
+    return 1;
+}
+
+int getDominantColor(lua_State* L) {
+    Rect region = getRect(L, 1);
+    Color color = Vision::getDominantColor(region);
+    pushColor(L, color);
+    return 1;
+}
+
+int findImage(lua_State* L) {
+    const char* templatePath = luaL_checkstring(L, 1);
+    double threshold = luaL_optnumber(L, 2, 0.8);
+    Rect region = getRect(L, 3);
+
+    auto result = Vision::findImage(templatePath, region, threshold);
+    lua_newtable(L);
+    lua_pushboolean(L, result.found);
+    lua_setfield(L, -2, "found");
+    if (result.found) {
+        pushPoint(L, result.position);
+        lua_setfield(L, -2, "position");
+        lua_pushnumber(L, result.confidence);
+        lua_setfield(L, -2, "confidence");
+    }
+    return 1;
+}
+
+int detectEdges(lua_State* L) {
+    Rect region = getRect(L, 1);
+    double threshold1 = luaL_optnumber(L, 2, 50.0);
+    double threshold2 = luaL_optnumber(L, 3, 150.0);
+
+    auto edges = Vision::detectEdges(region, threshold1, threshold2);
+    lua_newtable(L);
+    for (size_t i = 0; i < edges.size(); i++) {
+        pushPoint(L, edges[i]);
+        lua_rawseti(L, -2, i + 1);
+    }
+    return 1;
+}
+
+int captureRegion(lua_State* L) {
+    Rect region = getRect(L, 1);
+    const char* outputPath = luaL_checkstring(L, 2);
+
+    bool success = Vision::captureRegion(region, outputPath);
+    lua_pushboolean(L, success);
+    return 1;
+}
+
+} // namespace vision
+
+void LuaState::registerVisionModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, vision::findColor);
+    lua_setfield(L, -2, "findColor");
+
+    lua_pushcfunction(L, vision::findAllColors);
+    lua_setfield(L, -2, "findAllColors");
+
+    lua_pushcfunction(L, vision::hasColor);
+    lua_setfield(L, -2, "hasColor");
+
+    lua_pushcfunction(L, vision::getDominantColor);
+    lua_setfield(L, -2, "getDominantColor");
+
+    lua_pushcfunction(L, vision::findImage);
+    lua_setfield(L, -2, "findImage");
+
+    lua_pushcfunction(L, vision::detectEdges);
+    lua_setfield(L, -2, "detectEdges");
+
+    lua_pushcfunction(L, vision::captureRegion);
+    lua_setfield(L, -2, "captureRegion");
+
+    lua_setglobal(L, "vision");
+}
+
+// ============================================================================
+// OCR 模块
+// ============================================================================
+
+namespace ocr {
+
+int recognize(lua_State* L) {
+    Rect region = getRect(L, 1);
+
+    auto result = OCR::recognize(region);
+    lua_newtable(L);
+    lua_pushboolean(L, result.success);
+    lua_setfield(L, -2, "success");
+    lua_pushstring(L, result.text.c_str());
+    lua_setfield(L, -2, "text");
+    lua_pushnumber(L, result.confidence);
+    lua_setfield(L, -2, "confidence");
+    return 1;
+}
+
+int recognizeText(lua_State* L) {
+    Rect region = getRect(L, 1);
+
+    auto result = OCR::recognize(region);
+    if (result.success) {
+        lua_pushstring(L, result.text.c_str());
+        return 1;
+    }
+    lua_pushnil(L);
+    return 1;
+}
+
+} // namespace ocr
+
+void LuaState::registerOcrModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, ocr::recognize);
+    lua_setfield(L, -2, "recognize");
+
+    lua_pushcfunction(L, ocr::recognizeText);
+    lua_setfield(L, -2, "recognizeText");
+
+    lua_setglobal(L, "ocr");
+}
+
+// ============================================================================
+// SmartTrigger 模块
+// ============================================================================
+
+namespace smarttrigger {
+
+// 存储 trigger 指针的 userdata 管理
+static std::map<std::string, std::shared_ptr<SmartTrigger>> triggers;
+
+int create(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    auto trigger = SmartTriggerManager::instance().createTrigger(name);
+    if (trigger) {
+        triggers[name] = trigger;
+        lua_pushboolean(L, true);
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+int addCondition(lua_State* L) {
+    const char* triggerName = luaL_checkstring(L, 1);
+    const char* conditionType = luaL_checkstring(L, 2);
+
+    auto trigger = SmartTriggerManager::instance().getTrigger(triggerName);
+    if (!trigger) {
+        return luaL_error(L, "Trigger '%s' not found", triggerName);
+    }
+
+    TriggerCondition condition;
+    std::string typeStr(conditionType);
+
+    if (typeStr == "COLOR_FOUND") {
+        condition.type = TriggerConditionType::COLOR_FOUND;
+        condition.targetColor = getColor(L, 3);
+        condition.tolerance = luaL_optinteger(L, 4, 0);
+    } else if (typeStr == "COLOR_NOT_FOUND") {
+        condition.type = TriggerConditionType::COLOR_NOT_FOUND;
+        condition.targetColor = getColor(L, 3);
+        condition.tolerance = luaL_optinteger(L, 4, 0);
+    } else if (typeStr == "IMAGE_FOUND") {
+        condition.type = TriggerConditionType::IMAGE_FOUND;
+        condition.templatePath = luaL_checkstring(L, 3);
+        condition.threshold = luaL_optnumber(L, 4, 0.8);
+    } else if (typeStr == "TEXT_FOUND") {
+        condition.type = TriggerConditionType::TEXT_FOUND;
+        condition.targetText = luaL_checkstring(L, 3);
+    } else if (typeStr == "OCR_CONTAINS") {
+        condition.type = TriggerConditionType::OCR_CONTAINS;
+        condition.targetText = luaL_checkstring(L, 3);
+    } else {
+        return luaL_error(L, "Unknown condition type: %s", conditionType);
+    }
+
+    condition.searchRegion = getRect(L, 5);
+
+    trigger->addCondition(condition);
+    return 0;
+}
+
+int addAction(lua_State* L) {
+    const char* triggerName = luaL_checkstring(L, 1);
+    const char* actionType = luaL_checkstring(L, 2);
+
+    auto trigger = SmartTriggerManager::instance().getTrigger(triggerName);
+    if (!trigger) {
+        return luaL_error(L, "Trigger '%s' not found", triggerName);
+    }
+
+    TriggerAction action;
+    std::string typeStr(actionType);
+
+    if (typeStr == "CLICK") {
+        action.type = TriggerActionType::CLICK;
+        action.clickPosition = {static_cast<int>(luaL_checkinteger(L, 3)), static_cast<int>(luaL_checkinteger(L, 4))};
+    } else if (typeStr == "KEY_PRESS") {
+        action.type = TriggerActionType::KEY_PRESS;
+        action.keyCode = static_cast<int>(luaL_checkinteger(L, 3));
+    } else if (typeStr == "WAIT") {
+        action.type = TriggerActionType::WAIT;
+        action.waitMs = luaL_checkinteger(L, 3);
+    } else if (typeStr == "LOG") {
+        action.type = TriggerActionType::LOG;
+        action.logMessage = luaL_checkstring(L, 3);
+    } else if (typeStr == "STOP") {
+        action.type = TriggerActionType::STOP;
+    } else {
+        return luaL_error(L, "Unknown action type: %s", actionType);
+    }
+
+    trigger->addAction(action);
+    return 0;
+}
+
+int start(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    auto trigger = SmartTriggerManager::instance().getTrigger(name);
+    if (!trigger) {
+        return luaL_error(L, "Trigger '%s' not found", name);
+    }
+
+    bool success = trigger->start();
+    lua_pushboolean(L, success);
+    return 1;
+}
+
+int stop(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    auto trigger = SmartTriggerManager::instance().getTrigger(name);
+    if (trigger) {
+        trigger->stop();
+    }
+
+    return 0;
+}
+
+int remove(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    SmartTriggerManager::instance().removeTrigger(name);
+    triggers.erase(name);
+    return 0;
+}
+
+int setCheckInterval(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    int interval = luaL_checkinteger(L, 2);
+
+    auto trigger = SmartTriggerManager::instance().getTrigger(name);
+    if (trigger) {
+        trigger->setCheckInterval(interval);
+    }
+
+    return 0;
+}
+
+int setMaxTriggers(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    int max = luaL_checkinteger(L, 2);
+
+    auto trigger = SmartTriggerManager::instance().getTrigger(name);
+    if (trigger) {
+        trigger->setMaxTriggers(max);
+    }
+
+    return 0;
+}
+
+int getTriggerCount(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    auto trigger = SmartTriggerManager::instance().getTrigger(name);
+    if (trigger) {
+        lua_pushinteger(L, trigger->getTriggerCount());
+    } else {
+        lua_pushinteger(L, 0);
+    }
+    return 1;
+}
+
+} // namespace smarttrigger
+
+void LuaState::registerSmartTriggerModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, smarttrigger::create);
+    lua_setfield(L, -2, "create");
+
+    lua_pushcfunction(L, smarttrigger::addCondition);
+    lua_setfield(L, -2, "addCondition");
+
+    lua_pushcfunction(L, smarttrigger::addAction);
+    lua_setfield(L, -2, "addAction");
+
+    lua_pushcfunction(L, smarttrigger::start);
+    lua_setfield(L, -2, "start");
+
+    lua_pushcfunction(L, smarttrigger::stop);
+    lua_setfield(L, -2, "stop");
+
+    lua_pushcfunction(L, smarttrigger::remove);
+    lua_setfield(L, -2, "remove");
+
+    lua_pushcfunction(L, smarttrigger::setCheckInterval);
+    lua_setfield(L, -2, "setCheckInterval");
+
+    lua_pushcfunction(L, smarttrigger::setMaxTriggers);
+    lua_setfield(L, -2, "setMaxTriggers");
+
+    lua_pushcfunction(L, smarttrigger::getTriggerCount);
+    lua_setfield(L, -2, "getTriggerCount");
+
+    lua_setglobal(L, "smarttrigger");
+}
+
+// ============================================================================
+// BehaviorTree 模块
+// ============================================================================
+
+namespace behaviortree {
+
+// 存储 tree 指针
+static std::map<std::string, std::shared_ptr<BehaviorTree>> trees;
+
+int create(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    auto tree = BehaviorTreeManager::instance().createTree(name);
+    if (tree) {
+        trees[name] = tree;
+        lua_pushboolean(L, true);
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+int sequence(lua_State* L) {
+    const char* name = luaL_optstring(L, 1, "");
+    lua_pushlightuserdata(L, (void*)BehaviorTree::sequence(name).get());
+    return 1;
+}
+
+int selector(lua_State* L) {
+    const char* name = luaL_optstring(L, 1, "");
+    lua_pushlightuserdata(L, (void*)BehaviorTree::selector(name).get());
+    return 1;
+}
+
+int condition(lua_State* L) {
+    const char* name = luaL_optstring(L, 1, "");
+    // 对于条件节点，我们需要一个回调引用
+    // 这里简化处理，返回一个标记
+    lua_pushstring(L, "condition");
+    lua_pushstring(L, name);
+    return 2;
+}
+
+int action(lua_State* L) {
+    const char* name = luaL_optstring(L, 1, "");
+    lua_pushstring(L, "action");
+    lua_pushstring(L, name);
+    return 2;
+}
+
+int setRoot(lua_State* L) {
+    const char* treeName = luaL_checkstring(L, 1);
+    // 这里简化处理，实际需要更复杂的节点构建逻辑
+    return 0;
+}
+
+int tick(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    auto tree = BehaviorTreeManager::instance().getTree(name);
+    if (!tree) {
+        return luaL_error(L, "Tree '%s' not found", name);
+    }
+
+    NodeStatus status = tree->tick();
+
+    const char* statusStr = "RUNNING";
+    if (status == NodeStatus::SUCCESS) statusStr = "SUCCESS";
+    else if (status == NodeStatus::FAILURE) statusStr = "FAILURE";
+
+    lua_pushstring(L, statusStr);
+    return 1;
+}
+
+int remove(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    BehaviorTreeManager::instance().removeTree(name);
+    trees.erase(name);
+    return 0;
+}
+
+} // namespace behaviortree
+
+void LuaState::registerBehaviorTreeModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, behaviortree::create);
+    lua_setfield(L, -2, "create");
+
+    lua_pushcfunction(L, behaviortree::sequence);
+    lua_setfield(L, -2, "sequence");
+
+    lua_pushcfunction(L, behaviortree::selector);
+    lua_setfield(L, -2, "selector");
+
+    lua_pushcfunction(L, behaviortree::condition);
+    lua_setfield(L, -2, "condition");
+
+    lua_pushcfunction(L, behaviortree::action);
+    lua_setfield(L, -2, "action");
+
+    lua_pushcfunction(L, behaviortree::tick);
+    lua_setfield(L, -2, "tick");
+
+    lua_pushcfunction(L, behaviortree::remove);
+    lua_setfield(L, -2, "remove");
+
+    lua_setglobal(L, "bt");
 }
 
 } // namespace wingman::lua

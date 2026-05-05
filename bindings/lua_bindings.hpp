@@ -47,6 +47,10 @@ private:
     void registerScriptModule();
     void registerSecurityModule();
     void registerGameProfileModule();
+    void registerVisionModule();
+    void registerSmartTriggerModule();
+    void registerBehaviorTreeModule();
+    void registerOcrModule();
 };
 
 // === Lua C API 绑定函数 ===
