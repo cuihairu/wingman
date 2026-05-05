@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Add UTF-8 compiler flag
 add_compile_options(/utf-8)
 
+# Add WIN32_LEAN_AND_MEAN to avoid WinSock conflicts
+add_compile_definitions(WIN32_LEAN_AND_MEAN)
+
 # vcpkg integration
 if(DEFINED CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Using vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
@@ -26,7 +29,7 @@ find_package(asio CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Crow CONFIG REQUIRED)
-find_package(SQLite3 REQUIRED)
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
 
 # Testing framework
 if(WINGMAN_BUILD_TESTS)
@@ -110,7 +113,7 @@ target_link_libraries(wingman PRIVATE
     CURL::libcurl
     Threads::Threads
     Crow::Crow
-    SQLite::SQLite3
+    unofficial::sqlite3::sqlite3
     gdiplus
     user32
     gdi32

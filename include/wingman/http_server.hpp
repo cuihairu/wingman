@@ -1,6 +1,7 @@
 #pragma once
 
 #include <crow.h>
+#include <nlohmann/json.hpp>
 #include <memory>
 #include <string>
 #include "wingman/auth.hpp"
@@ -20,10 +21,12 @@ public:
 private:
     int port_;
     std::unique_ptr<AuthManager> authManager_;
-    std::unique_ptr<crow::SimpleApp> app_;
+    crow::SimpleApp app_;
 
     void setupRoutes();
-    void setupCors();
+
+    // Helper to add CORS headers to responses
+    void addCorsHeaders(crow::response& resp);
 
     // Middleware for authentication
     bool authenticate(const crow::request& req, User& user);

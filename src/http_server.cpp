@@ -1,3 +1,6 @@
+// Define WIN32_LEAN_AND_MEAN to avoid WinSock conflicts
+#define WIN32_LEAN_AND_MEAN
+
 #include "wingman/http_server.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
@@ -5,59 +8,81 @@
 namespace wingman {
 
 HTTPServer::HTTPServer(const std::string& dbPath, int port)
-    : port_(port), authManager_(std::make_unique<AuthManager>(dbPath)),
-      app_(std::make_unique<crow::SimpleApp>()) {}
+    : port_(port), authManager_(std::make_unique<AuthManager>(dbPath)) {}
 
 HTTPServer::~HTTPServer() {
     stop();
 }
 
-void HTTPServer::setupCors() {
-    // CORS middleware
-    auto& cors = app_->get_middleware<crow::CORSHandler>();
-
-    // Allow all origins for development (restrict in production)
-    cors.global
-        .headers("Content-Type", "Authorization", "X-Requested-With")
-        .methods("GET"_method, "POST"_method, "PUT"_method, "DELETE"_method, "OPTIONS"_method)
-        .origin("*");
-}
-
 void HTTPServer::setupRoutes() {
     // Public routes
-    CROW_ROUTE(*app_, "/api/auth/login").methods("POST"_method)(
-        [this](const crow::request& req) { return handleLogin(req); });
+    CROW_ROUTE(app_, "/api/auth/login").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleLogin(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
 
     // Protected routes
-    CROW_ROUTE(*app_, "/api/auth/logout").methods("POST"_method)(
-        [this](const crow::request& req) { return handleLogout(req); });
+    CROW_ROUTE(app_, "/api/auth/logout").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleLogout(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
 
-    CROW_ROUTE(*app_, "/api/status").methods("GET"_method)(
-        [this](const crow::request& req) { return handleStatus(req); });
+    CROW_ROUTE(app_, "/api/status").methods("GET"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleStatus(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
 
-    CROW_ROUTE(*app_, "/api/scripts").methods("GET"_method, "POST"_method, "DELETE"_method)(
-        [this](const crow::request& req) { return handleScripts(req); });
+    CROW_ROUTE(app_, "/api/scripts").methods("GET"_method, "POST"_method, "DELETE"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleScripts(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
 
-    CROW_ROUTE(*app_, "/api/windows").methods("GET"_method)(
-        [this](const crow::request& req) { return handleWindows(req); });
+    CROW_ROUTE(app_, "/api/windows").methods("GET"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleWindows(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
 
-    CROW_ROUTE(*app_, "/api/settings").methods("GET"_method, "PUT"_method)(
-        [this](const crow::request& req) { return handleSettings(req); });
+    CROW_ROUTE(app_, "/api/settings").methods("GET"_method, "PUT"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleSettings(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
 
     // Health check
-    CROW_ROUTE(*app_, "/api/health").methods("GET"_method)(
+    CROW_ROUTE(app_, "/api/health").methods("GET"_method)(
         [](const crow::request& req) {
             nlohmann::json j;
             j["status"] = "ok";
             j["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
-            return jsonResponse(j);
+            crow::response resp = jsonResponse(j);
+            resp.add_header("Access-Control-Allow-Origin", "*");
+            return resp;
         });
 
     // 404 handler
-    CROW_ROUTE(*app_, ".*")(
+    CROW_ROUTE(app_, ".*")(
         [](const crow::request& req) {
-            return errorResponse("Not found");
+            crow::response resp = errorResponse("Not found");
+            resp.add_header("Access-Control-Allow-Origin", "*");
+            return resp;
         });
+}
+
+void HTTPServer::addCorsHeaders(crow::response& resp) {
+    resp.add_header("Access-Control-Allow-Origin", "*");
+    resp.add_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    resp.add_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
 }
 
 bool HTTPServer::authenticate(const crow::request& req, User& user) {
@@ -91,23 +116,25 @@ crow::response HTTPServer::handleLogin(const crow::request& req) {
             return errorResponse("Username and password required");
         }
 
-        auto user = authManager_->login(username, password);
-        if (!user) {
+        auto userOpt = authManager_->login(username, password);
+        if (!userOpt) {
             nlohmann::json j;
             j["success"] = false;
             j["message"] = "Invalid credentials";
-            return crow::response(401, j.dump());
+            crow::response resp(401, j.dump());
+            return resp;
         }
 
-        std::string token = authManager_->generateToken(*user);
+        User user = *userOpt;
+        std::string token = authManager_->generateToken(user);
 
         nlohmann::json j;
         j["success"] = true;
         j["token"] = token;
         j["user"] = {
-            {"id", user->id},
-            {"username", user->username},
-            {"role", user->role}
+            {"id", user.id},
+            {"username", user.username},
+            {"role", user.role}
         };
 
         return jsonResponse(j);
@@ -117,7 +144,6 @@ crow::response HTTPServer::handleLogin(const crow::request& req) {
 }
 
 crow::response HTTPServer::handleLogout(const crow::request& req) {
-    // In a real implementation, invalidate the token
     nlohmann::json j;
     j["success"] = true;
     j["message"] = "Logged out";
@@ -127,18 +153,18 @@ crow::response HTTPServer::handleLogout(const crow::request& req) {
 crow::response HTTPServer::handleStatus(const crow::request& req) {
     User user;
     if (!authenticate(req, user)) {
-        return crow::response(401, errorResponse("Unauthorized"));
+        return crow::response(401);
     }
 
     nlohmann::json j;
     j["success"] = true;
-    j["data"] = {
-        {"totalScripts", 5},
-        {"runningScripts", 2},
-        {"totalWindows", 12},
-        {"cpuUsage", 15},
-        {"memoryUsage", 256}
-    };
+    nlohmann::json data;
+    data["totalScripts"] = 5;
+    data["runningScripts"] = 2;
+    data["totalWindows"] = 12;
+    data["cpuUsage"] = 15;
+    data["memoryUsage"] = 256;
+    j["data"] = data;
 
     return jsonResponse(j);
 }
@@ -146,31 +172,36 @@ crow::response HTTPServer::handleStatus(const crow::request& req) {
 crow::response HTTPServer::handleScripts(const crow::request& req) {
     User user;
     if (!authenticate(req, user)) {
-        return crow::response(401, errorResponse("Unauthorized"));
+        return crow::response(401);
     }
 
     if (req.method == "GET"_method) {
         nlohmann::json j;
         j["success"] = true;
-        j["data"] = nlohmann::json::array();
-        j["data"].push_back({
-            {"name", "auto_heal.lua"},
-            {"path", "scripts/auto_heal.lua"},
-            {"status", "running"},
-            {"lastRun", 1234567890}
-        });
-        j["data"].push_back({
-            {"name", "auto_farm.lua"},
-            {"path", "scripts/auto_farm.lua"},
-            {"status", "stopped"}
-        });
+        nlohmann::json arr = nlohmann::json::array();
+        nlohmann::json script1;
+        script1["name"] = "auto_heal.lua";
+        script1["path"] = "scripts/auto_heal.lua";
+        script1["status"] = "running";
+        script1["lastRun"] = 1234567890;
+        arr.push_back(script1);
+
+        nlohmann::json script2;
+        script2["name"] = "auto_farm.lua";
+        script2["path"] = "scripts/auto_farm.lua";
+        script2["status"] = "stopped";
+        arr.push_back(script2);
+
+        j["data"] = arr;
         return jsonResponse(j);
     } else if (req.method == "POST"_method) {
-        // Start script
-        return jsonResponse({{"success", true}});
+        nlohmann::json j;
+        j["success"] = true;
+        return jsonResponse(j);
     } else if (req.method == "DELETE"_method) {
-        // Stop script
-        return jsonResponse({{"success", true}});
+        nlohmann::json j;
+        j["success"] = true;
+        return jsonResponse(j);
     }
 
     return errorResponse("Method not allowed");
@@ -179,18 +210,24 @@ crow::response HTTPServer::handleScripts(const crow::request& req) {
 crow::response HTTPServer::handleWindows(const crow::request& req) {
     User user;
     if (!authenticate(req, user)) {
-        return crow::response(401, errorResponse("Unauthorized"));
+        return crow::response(401);
     }
 
     nlohmann::json j;
     j["success"] = true;
-    j["data"] = nlohmann::json::array();
-    j["data"].push_back({
-        {"handle", 12345},
-        {"title", "Notepad"},
-        {"bounds", {{"x", 100}, {"y", 100}, {"width", 800}, {"height", 600}}},
-        {"isForeground", true}
-    });
+    nlohmann::json arr = nlohmann::json::array();
+    nlohmann::json win;
+    win["handle"] = 12345;
+    win["title"] = "Notepad";
+    nlohmann::json bounds;
+    bounds["x"] = 100;
+    bounds["y"] = 100;
+    bounds["width"] = 800;
+    bounds["height"] = 600;
+    win["bounds"] = bounds;
+    win["isForeground"] = true;
+    arr.push_back(win);
+    j["data"] = arr;
 
     return jsonResponse(j);
 }
@@ -198,29 +235,31 @@ crow::response HTTPServer::handleWindows(const crow::request& req) {
 crow::response HTTPServer::handleSettings(const crow::request& req) {
     User user;
     if (!authenticate(req, user)) {
-        return crow::response(401, errorResponse("Unauthorized"));
+        return crow::response(401);
     }
 
     if (req.method == "GET"_method) {
         nlohmann::json j;
         j["success"] = true;
-        j["data"] = {
-            {"serverPort", 8888},
-            {"httpPort", 8080},
-            {"logLevel", "info"},
-            {"maxScripts", 10}
-        };
+        nlohmann::json data;
+        data["serverPort"] = 8888;
+        data["httpPort"] = 8080;
+        data["logLevel"] = "info";
+        data["maxScripts"] = 10;
+        j["data"] = data;
         return jsonResponse(j);
     } else if (req.method == "PUT"_method) {
-        // Update settings
-        return jsonResponse({{"success", true}});
+        nlohmann::json j;
+        j["success"] = true;
+        return jsonResponse(j);
     }
 
     return errorResponse("Method not allowed");
 }
 
 crow::response HTTPServer::jsonResponse(const nlohmann::json& data) {
-    crow::response resp(data.dump());
+    std::string body = data.dump();
+    crow::response resp(body);
     resp.add_header("Content-Type", "application/json");
     return resp;
 }
@@ -229,7 +268,8 @@ crow::response HTTPServer::errorResponse(const std::string& message) {
     nlohmann::json j;
     j["success"] = false;
     j["error"] = message;
-    crow::response resp(j.dump());
+    std::string body = j.dump();
+    crow::response resp(body);
     resp.add_header("Content-Type", "application/json");
     return resp;
 }
@@ -240,23 +280,20 @@ void HTTPServer::start() {
         return;
     }
 
-    setupCors();
     setupRoutes();
 
     spdlog::info("HTTP Server starting on port {}", port_);
 
     // Run in a separate thread
     std::thread([this]() {
-        app_->port(port_).multithreaded().run();
+        app_.port(port_).multithreaded().run();
     }).detach();
 
     spdlog::info("HTTP Server started on http://localhost:{}", port_);
 }
 
 void HTTPServer::stop() {
-    if (app_) {
-        app_->stop();
-    }
+    app_.stop();
 }
 
 } // namespace wingman
