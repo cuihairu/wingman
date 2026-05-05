@@ -66,6 +66,51 @@ struct OcrResult {
 };
 ```
 
+## 语言包配置
+
+Tesseract 语言包需要单独下载。
+
+### 下载语言包
+
+从 [tessdata](https://github.com/tesseract-ocr/tessdata) 下载所需的 .traineddata 文件：
+
+| 语言 | 文件名 |
+|------|--------|
+| 英文 | `eng.traineddata` |
+| 简体中文 | `chi_sim.traineddata` |
+| 繁体中文 | `chi_tra.traineddata` |
+| 日文 | `jpn.traineddata` |
+| 韩文 | `kor.traineddata` |
+
+### 安装语言包
+
+将下载的 .traineddata 文件放到 Tesseract 的 tessdata 目录：
+
+**Windows (vcpkg 安装):**
+```
+<vcpkg-root>\installed\x64-windows\share\tesseract\tessdata\
+```
+
+或者通过代码指定语言包路径：
+```lua
+-- 设置语言包目录
+ocr.setDataPath("C:/path/to/tessdata")
+
+-- 指定使用的中英文语言包
+ocr.setLanguage("chi_sim+eng")
+```
+
+### 指定识别语言
+
+```lua
+-- 单语言
+ocr.setLanguage("eng")      -- 仅英文
+ocr.setLanguage("chi_sim")  -- 仅简体中文
+
+-- 多语言（用 + 连接）
+ocr.setLanguage("chi_sim+eng")  -- 中英文混合
+```
+
 ## 编译选项
 
 OCR 功能默认启用，需要安装 Tesseract：
