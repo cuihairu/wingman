@@ -40,6 +40,11 @@ C++ + Lua 的高性能游戏自动化框架
 | 模块 | 功能 |
 |-----|------|
 | **屏幕操作** | 截图、像素检测、颜色匹配、图像查找 (OpenCV) |
+| **Vision 视觉** | 颜色检测、图像匹配、边缘检测、轮廓检测、形状识别 |
+| **OCR 识别** | Tesseract 文字识别，支持多语言 |
+| **ML/AI 推理** | ONNX Runtime 模型推理，支持图像分类、目标检测、分割 |
+| **智能触发器** | SmartTrigger 系统，支持颜色/图像/文字/OCR 条件触发 |
+| **行为树引擎** | BehaviorTree，支持 Sequence/Selector/Parallel/Wait/Retry 节点 |
 | **输入模拟** | 鼠标点击/移动、按键发送、文本输入 |
 | **人性化模拟** | 贝塞尔曲线鼠标移动、随机延迟、自然操作 |
 | **窗口管理** | 查找窗口、激活窗口、获取位置 |
@@ -132,41 +137,144 @@ scripts\run-lua-tests.cmd
 - [API 参考](https://cuihairu.github.io/wingman/api/)
 - [示例](https://cuihairu.github.io/wingman/examples/)
 
-## Chimpeeon 风格功能
+## Lua API 示例
 
-### 触发器系统
+### Vision 视觉系统
 
-```cpp
-// C++ 中配置触发器
-TriggerConfig trigger;
-trigger.name = "血量低自动喝药";
-trigger.condition.type = TriggerType::ColorFound;
-trigger.condition.value = "0xFF0000";  // 红色
-trigger.condition.region = { 100, 100, 50, 50 };
-trigger.condition.tolerance = 10;
+```lua
+-- 查找颜色（带容差）
+local pos = vision.findColor({r=255, g=0, b=0}, 10)
+if pos then
+    input.click(pos.x, pos.y)
+end
 
-TriggerActionData action;
-action.type = TriggerAction::KeyPress;
-action.value = "49";  // 1 键
+-- 查找所有匹配颜色
+local positions = vision.findAllColors({r=0, g=255, b=0}, 5)
 
-trigger.actions.push_back(action);
+-- 图像匹配
+local result = vision.findImage("target.png", 0.8)
+if result.found then
+    input.click(result.position.x, result.position.y)
+end
+
+-- 边缘检测
+local edges = vision.detectEdges({x=0, y=0, width=800, height=600})
 ```
 
-### 宏录制
+### OCR 文字识别
+
+```lua
+-- 识别屏幕区域文字
+local result = ocr.recognize({x=100, y=100, width=200, height=50})
+if result.success then
+    print("识别到文字: " .. result.text)
+end
+
+-- 简化版本
+local text = ocr.recognizeText({x=0, y=0, width=300, height=100})
+```
+
+### SmartTrigger 智能触发器
+
+```lua
+-- 创建触发器：血量低自动喝药
+smarttrigger.create("auto_heal")
+
+-- 添加条件：检测红色血条
+smarttrigger.addCondition("auto_heal", "COLOR_FOUND", {r=255, g=0, b=0}, 10, {x=100, y=100, width=50, height=10})
+
+-- 添加动作：按 1 键喝药
+smarttrigger.addAction("auto_heal", "KEY_PRESS", 49)
+
+-- 启动触发器
+smarttrigger.start("auto_heal")
+
+-- 等待 10 秒后停止
+util.sleep(10000)
+smarttrigger.stop("auto_heal")
+```
+
+### BehaviorTree 行为树
+
+```lua
+-- 创建行为树
+bt.create("combat_tree")
+
+-- 设置根节点：选择执行任务或攻击
+local selector = bt.selector("main_selector")
+local sequence = bt.sequence("attack_sequence")
+
+-- tick 行为树
+local status = bt.tick("combat_tree")
+print("树状态: " .. status)  -- SUCCESS/FAILURE/RUNNING
+```
+
+### 组合使用
+
+```lua
+-- 智能战斗脚本
+while true do
+    -- 检测敌人
+    local enemy = vision.findImage("enemy.png", 0.7)
+    if enemy.found then
+        -- 点击攻击
+        input.click(enemy.position.x, enemy.position.y)
+        util.sleep(500)
+
+        -- 检测血量
+        local hp = ocr.recognizeText({x=200, y=600, width=100, height=20})
+        if string.find(hp, "低") then
+            input.key(49)  -- 按 1 喝药
+        end
+    end
+
+    util.sleep(100)
+end
+```
+
+## C++ API 示例
+
+### 智能触发器系统
 
 ```cpp
-// 开始录制
-MacroRecorder recorder;
-recorder.start();
+// 创建智能触发器
+auto trigger = SmartTriggerManager::instance().createTrigger("auto_heal");
 
-// ... 执行操作 ...
+// 添加颜色检测条件
+TriggerCondition condition;
+condition.type = TriggerConditionType::COLOR_FOUND;
+condition.targetColor = Color(255, 0, 0);
+condition.tolerance = 10;
+condition.searchRegion = Rect(100, 100, 50, 50);
+trigger->addCondition(condition);
 
-// 停止并保存
-recorder.stop();
-recorder.saveToLua("macro.lua");
+// 添加按键动作
+TriggerAction action;
+action.type = TriggerActionType::KEY_PRESS;
+action.keyCode = 49;  // 1 键
+trigger->addAction(action);
 
-// 回放
-recorder.playback(100, 1);  // 100% 速度
+// 启动触发器
+trigger->start();
+```
+
+### 行为树引擎
+
+```cpp
+// 创建行为树
+auto tree = BehaviorTreeManager::instance().createTree("combat");
+
+// 构建节点：序列执行
+auto sequence = BehaviorTree::sequence("attack");
+sequence->addChild(BehaviorTree::action("find_enemy", []() {
+    // 查找敌人逻辑
+    return NodeStatus::SUCCESS;
+}));
+
+tree->setRoot(sequence);
+
+// 执行行为树
+NodeStatus status = tree->tick();
 ```
 
 ### Web Dashboard
