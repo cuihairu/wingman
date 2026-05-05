@@ -1,0 +1,76 @@
+{
+  "autoRun": {
+    "delaySeconds": 0,
+    "enabled": false,
+    "repeat": false,
+    "repeatInterval": 0,
+    "scriptPath": ""
+  },
+  "games": [],
+  "heartbeat": {
+    "enabled": true,
+    "intervalSeconds": 30,
+    "timeoutSeconds": 90
+  },
+  "server": {
+    "autoConnect": false,
+    "host": "localhost",
+    "password": "",
+    "port": 8080,
+    "serverControlled": false,
+    "username": ""
+  },
+  "tray": {
+    "iconPath": "",
+    "menuItems": [
+      {
+        "actionType": 5,
+        "id": "server_toggle",
+        "label": "☐ 启动服务器"
+      },
+      {
+        "actionType": 0,
+        "enabled": false,
+        "id": "server_info",
+        "label": "  服务器: 未连接"
+      },
+      {
+        "actionType": 0,
+        "enabled": false,
+        "id": "local_ip",
+        "label": "  本地 IP: 获取中..."
+      },
+      {
+        "id": "sep0",
+        "isSeparator": true
+      },
+      {
+        "actionType": 0,
+        "id": "help",
+        "label": "帮助 / 用法"
+      },
+      {
+        "id": "sep1",
+        "isSeparator": true
+      },
+      {
+        "actionType": 0,
+        "id": "config_view",
+        "label": "查看配置"
+      },
+      {
+        "id": "sep2",
+        "isSeparator": true
+      },
+      {
+        "actionType": 5,
+        "id": "exit",
+        "label": "退出"
+      }
+    ],
+    "minimizeToTray": true,
+    "showNotifications": true,
+    "startMinimized": false,
+    "tooltip": "Wingman"
+  }
+}

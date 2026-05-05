@@ -522,6 +522,9 @@ public:
 
         DestroyMenu(hMenu);
 
+        std::cout << "[DEBUG] Menu destroyed, clicked: " << clicked << "\n";
+        std::cout.flush();
+
         if (clicked >= ID_TRAY_FIRST) {
             size_t index = clicked - ID_TRAY_FIRST;
             std::cout << "[DEBUG] Menu clicked: " << clicked << ", index: " << index << ", callbacks.size: " << callbacks.size() << "\n";
@@ -538,6 +541,8 @@ public:
                         std::cout << "[DEBUG] Executing direct callback\n";
                         std::cout.flush();
                         callbacks[index]();
+                        std::cout << "[DEBUG] Direct callback completed\n";
+                        std::cout.flush();
                     } catch (const std::exception& e) {
                         std::cout << "[DEBUG] Exception in callback: " << e.what() << "\n";
                     }
@@ -550,7 +555,11 @@ public:
                         auto it = itemConfigs_.find(configId);
                         if (it != itemConfigs_.end()) {
                             try {
+                                std::cout << "[DEBUG] Calling action handler...\n";
+                                std::cout.flush();
                                 actionHandler_(it->second);
+                                std::cout << "[DEBUG] Action handler returned\n";
+                                std::cout.flush();
                             } catch (const std::exception& e) {
                                 std::cout << "[DEBUG] Exception in action handler: " << e.what() << "\n";
                             }
@@ -564,12 +573,20 @@ public:
                 }
             }
         }
+        std::cout << "[DEBUG] showMenu() about to return\n";
+        std::cout.flush();
     }
 
     void loadFromConfig(const TrayConfig& config) {
+        std::cout << "[TRAY] loadFromConfig 开始, menuItems.size: " << config.menuItems.size() << "\n";
+        std::cout.flush();
+
         std::lock_guard<std::mutex> lock(itemsMutex_);
         items_.clear();
         itemConfigs_.clear();
+
+        std::cout << "[TRAY] items cleared\n";
+        std::cout.flush();
 
         // 设置提示文本
         if (!config.tooltip.empty()) {
@@ -581,6 +598,9 @@ public:
                 Shell_NotifyIconW(NIM_MODIFY, &nid_);
             }
         }
+
+        std::cout << "[TRAY] tooltip set\n";
+        std::cout.flush();
 
         // 设置默认图标
         if (!config.iconPath.empty()) {
@@ -596,27 +616,39 @@ public:
             if (!config.iconError.empty()) stateIcons_[TrayIconState::error] = config.iconError;
         }
 
-        // 加载菜单项
+        std::cout << "[TRAY] state icons loaded, loading menu items...\n";
+        std::cout.flush();
+
+        // 加载菜单项 (直接操作 items_ 避免死锁)
         for (const auto& menuItem : config.menuItems) {
             itemConfigs_[menuItem.id] = menuItem;
 
             if (menuItem.isSeparator) {
-                addSeparator(menuItem.id);
+                // 直接添加分隔符，不调用 addSeparator (避免死锁)
+                TrayItem sepItem;
+                sepItem.id = menuItem.id;
+                sepItem.type = TrayItemType::SEPARATOR;
+                items_.push_back(sepItem);
             } else if (!menuItem.subitems.empty()) {
-                // 子菜单
-                std::vector<TrayItem> subitems;
+                // 子菜单 - 直接添加，不调用 addSubmenu (避免死锁)
+                TrayItem subItem;
+                subItem.id = menuItem.id;
+                subItem.label = menuItem.label;
+                subItem.type = TrayItemType::SUBMENU;
+                subItem.checked = menuItem.checked;
+                subItem.enabled = menuItem.enabled;
+
                 for (const auto& subConfig : menuItem.subitems) {
                     itemConfigs_[subConfig.id] = subConfig;
-                    TrayItem subItem;
-                    subItem.id = subConfig.id;
-                    subItem.label = subConfig.label;
-                    subItem.type = subConfig.isSeparator ? TrayItemType::SEPARATOR : TrayItemType::NORMAL;
-                    subItem.checked = subConfig.checked;
-                    subItem.enabled = subConfig.enabled;
-                    // 动作由 actionHandler_ 处理，不设置 callback
-                    subitems.push_back(subItem);
+                    TrayItem item;
+                    item.id = subConfig.id;
+                    item.label = subConfig.label;
+                    item.type = subConfig.isSeparator ? TrayItemType::SEPARATOR : TrayItemType::NORMAL;
+                    item.checked = subConfig.checked;
+                    item.enabled = subConfig.enabled;
+                    subItem.subitems.push_back(item);
                 }
-                addSubmenu(menuItem.id, menuItem.label, subitems);
+                items_.push_back(subItem);
             } else {
                 // 普通菜单项
                 TrayItem item;
@@ -625,10 +657,12 @@ public:
                 item.type = TrayItemType::NORMAL;
                 item.checked = menuItem.checked;
                 item.enabled = menuItem.enabled;
-                // 动作由 actionHandler_ 处理，不设置 callback
                 items_.push_back(item);
             }
         }
+
+        std::cout << "[TRAY] loadFromConfig 完成\n";
+        std::cout.flush();
     }
 
     void setActionHandler(TrayIcon::ActionHandler handler) {
@@ -643,12 +677,16 @@ public:
             CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
             impl = static_cast<Impl*>(cs->lpCreateParams);
             SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(impl));
+            std::cout << "[DEBUG] WM_CREATE received\n";
+            std::cout.flush();
         } else {
             impl = reinterpret_cast<Impl*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
         }
 
         switch (msg) {
             case WM_TRAYICON:
+                std::cout << "[DEBUG] WM_TRAYICON received, lParam: 0x" << std::hex << lParam << std::dec << "\n";
+                std::cout.flush();
                 if (impl && (lParam == WM_LBUTTONDOWN || lParam == WM_RBUTTONDOWN)) {
                     POINT pt;
                     GetCursorPos(&pt);
@@ -657,8 +695,23 @@ public:
                 return 0;
 
             case WM_DESTROY:
+                std::cout << "[DEBUG] WM_DESTROY received, posting quit message\n";
+                std::cout.flush();
                 PostQuitMessage(0);
                 return 0;
+
+            case WM_CLOSE:
+                std::cout << "[DEBUG] WM_CLOSE received\n";
+                std::cout.flush();
+                return 0;
+
+            default:
+                // 记录一些关键消息
+                if (msg == WM_COMMAND || msg == WM_SYSCOMMAND || msg == WM_ACTIVATE) {
+                    std::cout << "[DEBUG] Message: 0x" << std::hex << msg << std::dec << ", wParam: 0x" << std::hex << wParam << std::dec << ", lParam: 0x" << std::hex << lParam << std::dec << "\n";
+                    std::cout.flush();
+                }
+                break;
         }
 
         return DefWindowProc(hwnd, msg, wParam, lParam);

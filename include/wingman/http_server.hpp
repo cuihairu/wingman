@@ -10,16 +10,18 @@ namespace wingman {
 
 class HTTPServer {
 public:
-    HTTPServer(const std::string& dbPath = "wingman.db", int port = 8080);
+    HTTPServer(const std::string& dbPath = "wingman.db", int port = 9527, const std::string& staticDir = "dist");
     ~HTTPServer();
 
     void start();
     void stop();
 
     void setPort(int port) { port_ = port; }
+    void setStaticDir(const std::string& dir) { staticDir_ = dir; }
 
 private:
     int port_;
+    std::string staticDir_;
     std::unique_ptr<AuthManager> authManager_;
     crow::SimpleApp app_;
 

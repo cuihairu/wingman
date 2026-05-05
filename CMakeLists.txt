@@ -187,6 +187,16 @@ target_link_libraries(wingman PRIVATE
     gdi32
 )
 
+# 复制 dashboard 静态文件到输出目录 (如果存在)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/dist")
+    add_custom_command(TARGET wingman POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/build/dist"
+            "$<TARGET_FILE_DIR:wingman>/dist"
+        COMMENT "Copying dashboard dist files to output directory"
+    )
+endif()
+
 # Server module (if enabled)
 if(WINGMAN_BUILD_SERVER)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/server/src/server.cpp")

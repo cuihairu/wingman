@@ -10,7 +10,7 @@ namespace wingman {
 // 服务器连接配置
 struct ServerConfig {
     std::string host = "localhost";
-    int port = 8080;
+    int port = 9527;
     std::string username;
     std::string password;  // 注意：实际使用时应该加密存储
     bool autoConnect = false;

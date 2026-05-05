@@ -285,7 +285,7 @@ public:
         if (config.empty()) {
             config["server"] = {
                 {"host", "localhost"},
-                {"port", 8080},
+                {"port", 9527},
                 {"username", ""},
                 {"password", ""},
                 {"autoConnect", false},

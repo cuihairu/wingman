@@ -1,3 +1,10 @@
+// Winsock must be included before windows.h
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+#endif
+
 #include "wingman/screen.hpp"
 #include "wingman/input.hpp"
 #include "wingman/window.hpp"
@@ -30,7 +37,9 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <direct.h>
+#include <dbghelp.h>
 #define GetCurrentDir _getcwd
+#pragma comment(lib, "dbghelp.lib")
 #else
 #include <unistd.h>
 #define GetCurrentDir getcwd
@@ -47,49 +56,110 @@ static std::unique_ptr<LuaHTTPServer> g_luaHttpServer;
 static std::unique_ptr<ConfigManager> g_config;
 static bool g_running = true;
 
+#ifdef _WIN32
+// Windows 崩溃处理
+LONG WINAPI CrashHandler(EXCEPTION_POINTERS* exceptionInfo) {
+    std::cout << "\n!!! 程序崩溃 !!!\n";
+    std::cout << "异常代码: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionCode << std::dec << "\n";
+    std::cout << "异常地址: " << exceptionInfo->ExceptionRecord->ExceptionAddress << "\n";
+    std::cout << "异常标志: 0x" << std::hex << exceptionInfo->ExceptionRecord->ExceptionFlags << std::dec << "\n";
+
+    // 打印堆栈跟踪
+    HANDLE process = GetCurrentProcess();
+    SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+    SymInitialize(process, NULL, TRUE);
+
+    void* stack[64];
+    USHORT frames = CaptureStackBackTrace(0, 64, stack, NULL);
+    SYMBOL_INFO* symbol = (SYMBOL_INFO*)malloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char));
+    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+    symbol->MaxNameLen = 255;
+
+    std::cout << "\n堆栈跟踪:\n";
+    for (USHORT i = 0; i < frames; i++) {
+        SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
+        std::cout << "  " << i << ": " << symbol->Name << " (0x" << symbol->Address << ")\n";
+    }
+    free(symbol);
+
+    std::cout.flush();
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+void EnableCrashHandler() {
+    SetUnhandledExceptionFilter(CrashHandler);
+}
+#endif
+
 // 获取本地 IP 地址
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
-
 static std::string getLocalIP() {
     static std::string cachedIP;
     if (!cachedIP.empty()) return cachedIP;
 
     // 初始化 Winsock
-    WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        return "127.0.0.1";
+    static bool ws_initialized = false;
+    if (!ws_initialized) {
+        WSADATA wsaData;
+        WSAStartup(MAKEWORD(2, 2), &wsaData);
+        ws_initialized = true;
     }
 
     char hostbuffer[256];
     if (gethostname(hostbuffer, sizeof(hostbuffer)) == 0) {
-        struct addrinfo hints = {}, *info = nullptr;
-        hints.ai_family = AF_INET;  // 只获取 IPv4
+        struct addrinfo hints = {}, *info = nullptr, *p = nullptr;
+        hints.ai_family = AF_INET;
         hints.ai_socktype = SOCK_STREAM;
 
         if (getaddrinfo(hostbuffer, nullptr, &hints, &info) == 0) {
-            for (struct addrinfo* p = info; p != nullptr; p = p->ai_next) {
+            // 优先级：192.168.x.x > 10.x.x.x > 172.16-31.x.x > 其他
+            std::string bestIP;
+            int bestPriority = 0;
+
+            for (p = info; p != nullptr; p = p->ai_next) {
                 char ipstr[INET_ADDRSTRLEN];
                 struct sockaddr_in* ipv4 = (struct sockaddr_in*)p->ai_addr;
-                void* addr = &(ipv4->sin_addr);
-                if (inet_ntop(p->ai_family, addr, ipstr, sizeof(ipstr))) {
-                    // 跳过 127.0.0.1
+                if (inet_ntop(p->ai_family, &(ipv4->sin_addr), ipstr, sizeof(ipstr))) {
                     std::string ip(ipstr);
-                    if (ip != "127.0.0.1") {
-                        cachedIP = ip;
-                        freeaddrinfo(info);
-                        WSACleanup();
-                        return ip;
+
+                    // 跳过本地回环和特殊地址
+                    if (ip == "127.0.0.1" ||
+                        ip.find("198.18.") == 0 ||
+                        ip.find("169.254.") == 0) {
+                        continue;
+                    }
+
+                    // 计算优先级
+                    int priority = 0;
+                    if (ip.find("192.168.") == 0) {
+                        priority = 3;
+                    } else if (ip.find("10.") == 0) {
+                        priority = 2;
+                    } else if (ip.find("172.") == 0) {
+                        size_t secondDot = ip.find('.', 4);
+                        if (secondDot != std::string::npos) {
+                            int second = std::stoi(ip.substr(4, secondDot - 4));
+                            if (second >= 16 && second <= 31) {
+                                priority = 1;
+                            }
+                        }
+                    }
+
+                    if (priority > bestPriority) {
+                        bestPriority = priority;
+                        bestIP = ip;
                     }
                 }
             }
             freeaddrinfo(info);
+
+            if (!bestIP.empty()) {
+                cachedIP = bestIP;
+                return bestIP;
+            }
         }
     }
 
-    WSACleanup();
     cachedIP = "127.0.0.1";
     return cachedIP;
 }
@@ -108,6 +178,9 @@ static std::string getLocalIP() {
         return "127.0.0.1";
     }
 
+    std::string bestIP;
+    int bestPriority = 0;
+
     for (struct ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
         if (ifa->ifa_addr == nullptr) continue;
         if (ifa->ifa_addr->sa_family == AF_INET) {
@@ -115,16 +188,42 @@ static std::string getLocalIP() {
             struct sockaddr_in* addr_in = (struct sockaddr_in*)ifa->ifa_addr;
             if (inet_ntop(AF_INET, &(addr_in->sin_addr), addr, sizeof(addr))) {
                 std::string ip(addr);
-                if (ip != "127.0.0.1") {
-                    cachedIP = ip;
-                    freeifaddrs(ifaddr);
-                    return ip;
+
+                // 跳过本地回环和特殊地址
+                if (ip == "127.0.0.1" ||
+                    ip.substr(0, 8) == "198.18." ||
+                    ip.substr(0, 8) == "169.254.") {
+                    continue;
+                }
+
+                // 计算优先级
+                int priority = 0;
+                if (ip.substr(0, 8) == "192.168.") {
+                    priority = 3;
+                } else if (ip.substr(0, 3) == "10.") {
+                    priority = 2;
+                } else if (ip.substr(0, 4) == "172.") {
+                    int second = std::stoi(ip.substr(4, ip.find('.', 4) - 4));
+                    if (second >= 16 && second <= 31) {
+                        priority = 1;
+                    }
+                }
+
+                if (priority > bestPriority) {
+                    bestPriority = priority;
+                    bestIP = ip;
                 }
             }
         }
     }
 
     freeifaddrs(ifaddr);
+
+    if (!bestIP.empty()) {
+        cachedIP = bestIP;
+        return bestIP;
+    }
+
     cachedIP = "127.0.0.1";
     return cachedIP;
 }
@@ -151,7 +250,7 @@ void printUsage() {
               << " - Game Automation Programmable Control Engine\n\n";
     std::cout << "Usage:\n";
     std::cout << "  wingman.exe <script.lua>              Run Lua script\n";
-    std::cout << "  wingman.exe --server [port]           Start HTTP server (default: 8080)\n";
+    std::cout << "  wingman.exe --server [port]           Start HTTP server (default: 9527)\n";
 #ifdef WINGMAN_BUILD_LUA_HTTP
     std::cout << "  wingman.exe --lua-http [port] [script]  Start Lua HTTP server (default: 8081)\n";
 #endif
@@ -289,9 +388,18 @@ int cmdList() {
 
 // Command: Start with tray icon (default mode)
 int cmdTray() {
+#ifdef _WIN32
+    EnableCrashHandler();
+#endif
+    std::cout << "[TRAY] cmdTray 开始\n";
+    std::cout.flush();
+
     // Setup signal handlers
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
+
+    std::cout << "[TRAY] 信号处理器已设置\n";
+    std::cout.flush();
 
     // Initialize ConfigManager
     g_config = std::make_unique<ConfigManager>("config");
@@ -394,22 +502,41 @@ int cmdTray() {
                             g_httpServer.reset();
                         }
                         serverRunning = false;
-                        icon->setItemChecked("server_toggle", false);
+                        std::cout << "[TRAY] 服务器已停止\n";
+                        std::cout.flush();
+
+                        // 更新菜单状态
                         icon->setItemLabel("server_toggle", "☐ 启动服务器");
+                        icon->setItemChecked("server_toggle", false);
                         icon->setItemLabel("server_info", "  服务器: 未连接");
                     } else {
                         // 启动服务器
                         std::cout << "[TRAY] 启动服务器\n";
                         std::cout.flush();
                         try {
+                            std::cout << "[TRAY] 创建 HTTPServer...\n";
+                            std::cout.flush();
                             g_httpServer = std::make_unique<HTTPServer>("wingman.db", serverConfig.port);
+                            std::cout << "[TRAY] 调用 start()...\n";
+                            std::cout.flush();
                             g_httpServer->start();
+                            std::cout << "[TRAY] start() 返回\n";
+                            std::cout.flush();
                             serverRunning = true;
-                            icon->setItemChecked("server_toggle", true);
+                            std::cout << "[TRAY] 服务器已启动" << std::endl;
+                            std::cout << "[TRAY] 服务器运行中，端口: " << serverConfig.port << std::endl;
+                            std::cout << "[TRAY] 访问: http://" << getLocalIP() << ":" << serverConfig.port << std::endl;
+                            std::cout.flush();
+
+                            // 更新菜单状态
                             icon->setItemLabel("server_toggle", "☑ 停止服务器");
-                            icon->setItemLabel("server_info", "  服务器: http://" + getLocalIP() + ":" + std::to_string(serverConfig.port));
+                            icon->setItemChecked("server_toggle", true);
+                            icon->setItemLabel("server_info", "  服务器: " + getLocalIP() + ":" + std::to_string(serverConfig.port));
                         } catch (const std::exception& e) {
                             std::cout << "[TRAY] 启动服务器失败: " << e.what() << "\n";
+                            std::cout.flush();
+                        } catch (...) {
+                            std::cout << "[TRAY] 启动服务器时发生未知异常\n";
                             std::cout.flush();
                         }
                     }
@@ -439,7 +566,11 @@ int cmdTray() {
     // Load menu from config
     if (!trayConfig.menuItems.empty()) {
         std::cout << "[TRAY] 从配置加载 " << trayConfig.menuItems.size() << " 个菜单项\n";
+        std::cout << "[TRAY] 开始调用 loadFromConfig...\n";
+        std::cout.flush();
         icon->loadFromConfig(trayConfig);
+        std::cout << "[TRAY] loadFromConfig 完成\n";
+        std::cout.flush();
     } else {
         // 使用默认菜单
         std::cout << "[TRAY] 使用默认菜单\n";
@@ -480,12 +611,39 @@ int cmdTray() {
         std::cout.flush();
     }
 
+    std::cout << "[TRAY] 准备更新本地 IP...\n";
+    std::cout.flush();
+
     // 更新本地 IP 显示
-    std::string localIP = getLocalIP();
-    icon->setItemLabel("local_ip", "  本地 IP: " + localIP);
+    try {
+        std::string localIP = getLocalIP();
+        std::cout << "[TRAY] 本地 IP: " << localIP << "\n";
+        std::cout.flush();
+        icon->setItemLabel("local_ip", "  本地 IP: " + localIP);
+        std::cout << "[TRAY] 本地 IP 标签已更新\n";
+        std::cout.flush();
+    } catch (const std::exception& e) {
+        std::cout << "[TRAY] 获取本地 IP 失败: " << e.what() << "\n";
+        std::cout.flush();
+        try {
+            icon->setItemLabel("local_ip", "  本地 IP: 未知");
+        } catch (...) {
+            std::cout << "[TRAY] 设置本地 IP 标签失败\n";
+            std::cout.flush();
+        }
+    } catch (...) {
+        std::cout << "[TRAY] 获取本地 IP 时发生未知错误\n";
+        std::cout.flush();
+    }
+
+    std::cout << "[TRAY] 准备显示托盘图标...\n";
+    std::cout.flush();
 
     // Show the icon
     icon->show();
+
+    std::cout << "[TRAY] 托盘图标已显示\n";
+    std::cout.flush();
 
     std::cout << "Wingman v" << wingman::version::getFullVersion() << "\n";
     std::cout << "托盘图标已启动，点击图标查看菜单\n";
@@ -493,10 +651,36 @@ int cmdTray() {
 
     // Windows message loop
     MSG msg;
-    while (g_running && GetMessage(&msg, nullptr, 0, 0) > 0) {
+    bool firstLoop = true;
+    while (g_running) {
+        BOOL result = GetMessage(&msg, nullptr, 0, 0);
+
+        if (firstLoop) {
+            std::cout << "[DEBUG] 首次进入消息循环，GetMessage 返回: " << result << "\n";
+            std::cout.flush();
+            firstLoop = false;
+        }
+
+        if (result == 0) {
+            // WM_QUIT
+            std::cout << "[DEBUG] 收到 WM_QUIT\n";
+            std::cout.flush();
+            break;
+        } else if (result == -1) {
+            // Error
+            std::cout << "[DEBUG] GetMessage 出错: " << GetLastError() << "\n";
+            std::cout.flush();
+            break;
+        }
+
+        std::cout << "[DEBUG] Message: 0x" << std::hex << msg.message << std::dec << "\n";
+        std::cout.flush();
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    std::cout << "[TRAY] 消息循环退出, g_running=" << g_running << "\n";
+    std::cout.flush();
 
     return 0;
 }
@@ -522,7 +706,7 @@ int runScript(const std::string& scriptPath) {
 
 // Command: Start HTTP server
 int cmdServer(const std::vector<std::string>& args) {
-    int port = 8080;
+    int port = 9527;
     if (!args.empty()) {
         try {
             port = std::stoi(args[0]);
