@@ -46,18 +46,39 @@ export default defineConfig({
       ],
       '/api/': [
         {
-          text: 'API 参考',
+          text: '核心 API',
           items: [
             { text: 'wingman.screen', link: '/api/screen' },
-            { text: 'wingman.input', link: '/api/input' },
-            { text: 'wingman.window', link: '/api/window' },
-            { text: 'wingman.process', link: '/api/process' },
-            { text: 'wingman.human', link: '/api/human' },
-            { text: 'wingman.macro', link: '/api/macro' },
-            { text: 'wingman.trigger', link: '/api/trigger' },
-            { text: 'wingman.util', link: '/api/util' },
+            { text: 'wingman.input', link: '/api/input' }
+          ]
+        },
+        {
+          text: '视觉与 AI',
+          items: [
+            { text: 'wingman.vision', link: '/api/vision' },
+            { text: 'wingman.ocr', link: '/api/ocr' }
+          ]
+        },
+        {
+          text: '自动化系统',
+          items: [
+            { text: 'wingman.smart-trigger', link: '/api/smart-trigger' },
+            { text: 'wingman.behavior-tree', link: '/api/behavior-tree' }
+          ]
+        },
+        {
+          text: '网络与数据',
+          items: [
+            { text: 'wingman.http', link: '/api/http' },
+            { text: 'wingman.json', link: '/api/json' },
+            { text: 'wingman.kv', link: '/api/kv' }
+          ]
+        },
+        {
+          text: '高级功能',
+          items: [
             { text: 'wingman.remote', link: '/api/remote' },
-            { text: 'wingman.debug', link: '/api/debug' }
+            { text: 'wingman.team', link: '/api/team' }
           ]
         }
       ],
