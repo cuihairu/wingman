@@ -53,9 +53,25 @@ Wingman 使用 JSON 格式的配置文件来存储应用程序设置。配置文
 | `minimizeToTray` | boolean | `true` | 最小化到托盘而非任务栏 |
 | `startMinimized` | boolean | `false` | 启动时最小化到托盘 |
 | `showNotifications` | boolean | `true` | 显示托盘通知 |
-| `iconPath` | string | `""` | 自定义托盘图标路径（.ico 文件） |
+| `iconPath` | string | `""` | 默认托盘图标路径（.ico 文件） |
 | `tooltip` | string | `"Wingman"` | 托盘图标提示文本 |
+| `iconNormal` | string | `""` | 正常状态图标（正在运行） |
+| `iconIdle` | string | `""` | 空闲状态图标（变灰，无任务） |
+| `iconBusy` | string | `""` | 忙碌状态图标 |
+| `iconError` | string | `""` | 错误状态图标 |
 | `menuItems` | array | 见下方 | 托盘菜单项配置 |
+
+#### 图标状态
+
+托盘图标支持多种状态，可根据程序运行情况动态切换：
+
+| 状态值 | 名称 | 说明 |
+|-------|------|------|
+| `0` | normal | 正常状态（正在运行任务） |
+| `1` | idle | 空闲状态（无任务，显示灰色图标） |
+| `2` | disabled | 禁用状态 |
+| `3` | busy | 忙碌状态（处理中） |
+| `4` | error | 错误状态 |
 
 #### 菜单项配置 (menuItems)
 
@@ -87,6 +103,9 @@ Wingman 使用 JSON 格式的配置文件来存储应用程序设置。配置文
   "tray": {
     "minimizeToTray": true,
     "iconPath": "assets/myicon.ico",
+    "iconNormal": "assets/icon_normal.ico",
+    "iconIdle": "assets/icon_gray.ico",
+    "iconBusy": "assets/icon_busy.ico",
     "tooltip": "我的游戏助手",
     "menuItems": [
       {
@@ -234,6 +253,17 @@ tray.menuItems = {
     }
 }
 config.setTray(tray)
+
+-- 托盘图标状态切换
+local icon = tray.get("main")  -- 获取托盘图标
+
+-- 状态值：0=normal, 1=idle(灰), 2=disabled, 3=busy, 4=error
+icon:setIconState(0)  -- 正常运行状态
+icon:setIconState(1)  -- 空闲状态（图标变灰）
+
+-- 获取当前状态
+local state = icon:getIconState()
+print("当前图标状态: " .. state)
 
 -- 自动运行配置
 local autoRun = config.getAutoRun()
