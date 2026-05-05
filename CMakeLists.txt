@@ -94,6 +94,8 @@ set(CORE_SOURCES
     src/config.cpp
     # Node Status (Heartbeat)
     src/node_status.cpp
+    # Verification (TOTP, Email)
+    src/verification.cpp
 )
 
 # OCR support (conditional)

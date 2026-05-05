@@ -20,6 +20,7 @@
 #include "wingman/tray.hpp"
 #include "wingman/config.hpp"
 #include "wingman/node_status.hpp"
+#include "wingman/verification.hpp"
 #include "wingman/version.hpp"
 
 #include <cstring>
@@ -108,6 +109,7 @@ void LuaState::registerAPIs() {
     registerTrayModule();
     registerConfigModule();
     registerNodeModule();
+    registerVerificationModule();
 
     // 注册扩展模块
     registerHttpModule(L);
@@ -3235,6 +3237,160 @@ int getWindows(lua_State* L) {
 }
 
 } // namespace node
+
+// ============================================================================
+// Verification 模块 (TOTP, Email)
+// ============================================================================
+
+namespace verification {
+
+static VerificationManager* getManager() {
+    static VerificationManager manager;
+    return &manager;
+}
+
+// TOTP 生成
+static int totpGenerate(lua_State* L) {
+    const char* secret = luaL_checkstring(L, 1);
+    int digits = luaL_optinteger(L, 2, 6);
+    int period = luaL_optinteger(L, 3, 30);
+
+    TOTPConfig config;
+    config.type = TOTPType::Steam;
+    config.secret = secret;
+    config.digits = digits;
+    config.period = period;
+
+    std::string code = getManager()->generateTOTP(config);
+    lua_pushstring(L, code.c_str());
+    return 1;
+}
+
+// Steam Guard 生成
+static int steamGuard(lua_State* L) {
+    const char* secret = luaL_checkstring(L, 1);
+    std::string code = getManager()->generateSteamGuard(secret);
+    lua_pushstring(L, code.c_str());
+    return 1;
+}
+
+// 保存 TOTP 配置
+static int saveTOTP(lua_State* L) {
+    const char* account = luaL_checkstring(L, 1);
+    const char* secret = luaL_checkstring(L, 2);
+    int digits = luaL_optinteger(L, 3, 6);
+    int period = luaL_optinteger(L, 4, 30);
+
+    TOTPConfig config;
+    config.type = TOTPType::Steam;
+    config.secret = secret;
+    config.digits = digits;
+    config.period = period;
+    config.account = account;
+
+    bool result = getManager()->saveTOTP(account, config);
+    lua_pushboolean(L, result);
+    return 1;
+}
+
+// 加载 TOTP 配置并生成
+static int loadTOTP(lua_State* L) {
+    const char* account = luaL_checkstring(L, 1);
+    auto config = getManager()->loadTOTP(account);
+    if (!config) {
+        lua_pushnil(L);
+        return 1;
+    }
+    std::string code = getManager()->generateTOTP(*config);
+    lua_pushstring(L, code.c_str());
+    return 1;
+}
+
+// 列出所有 TOTP 账号
+static int listTOTP(lua_State* L) {
+    auto accounts = getManager()->listTOTPAccounts();
+    lua_newtable(L);
+    for (size_t i = 0; i < accounts.size(); ++i) {
+        lua_pushinteger(L, i + 1);
+        lua_pushstring(L, accounts[i].c_str());
+        lua_settable(L, -3);
+    }
+    return 1;
+}
+
+// 删除 TOTP 配置
+static int removeTOTP(lua_State* L) {
+    const char* account = luaL_checkstring(L, 1);
+    bool result = getManager()->removeTOTP(account);
+    lua_pushboolean(L, result);
+    return 1;
+}
+
+// 获取剩余时间
+static int getRemaining(lua_State* L) {
+    const char* secret = luaL_checkstring(L, 1);
+    int period = luaL_optinteger(L, 2, 30);
+
+    TOTPConfig config;
+    config.secret = secret;
+    config.period = period;
+    config.digits = 6;
+
+    int remaining = getManager()->getRemainingSeconds(config);
+    lua_pushinteger(L, remaining);
+    return 1;
+}
+
+// 验证 TOTP 码
+static int verifyTOTP(lua_State* L) {
+    const char* secret = luaL_checkstring(L, 1);
+    const char* code = luaL_checkstring(L, 2);
+    int window = luaL_optinteger(L, 3, 1);
+
+    TOTPConfig config;
+    config.secret = secret;
+    config.digits = 6;
+    config.period = 30;
+
+    bool result = getManager()->verifyTOTP(config, code, window);
+    lua_pushboolean(L, result);
+    return 1;
+}
+
+} // namespace verification
+
+void LuaState::registerVerificationModule() {
+    lua_newtable(L);
+
+    // TOTP 生成
+    lua_pushcfunction(L, verification::totpGenerate);
+    lua_setfield(L, -2, "totp");
+
+    lua_pushcfunction(L, verification::steamGuard);
+    lua_setfield(L, -2, "steamGuard");
+
+    // TOTP 配置管理
+    lua_pushcfunction(L, verification::saveTOTP);
+    lua_setfield(L, -2, "saveTOTP");
+
+    lua_pushcfunction(L, verification::loadTOTP);
+    lua_setfield(L, -2, "loadTOTP");
+
+    lua_pushcfunction(L, verification::listTOTP);
+    lua_setfield(L, -2, "listTOTP");
+
+    lua_pushcfunction(L, verification::removeTOTP);
+    lua_setfield(L, -2, "removeTOTP");
+
+    // 工具函数
+    lua_pushcfunction(L, verification::getRemaining);
+    lua_setfield(L, -2, "getRemaining");
+
+    lua_pushcfunction(L, verification::verifyTOTP);
+    lua_setfield(L, -2, "verify");
+
+    lua_setglobal(L, "verification");
+}
 
 void LuaState::registerNodeModule() {
     lua_newtable(L);

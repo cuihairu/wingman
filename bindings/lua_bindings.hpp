@@ -54,6 +54,7 @@ private:
     void registerTrayModule();
     void registerConfigModule();
     void registerNodeModule();
+    void registerVerificationModule();
 };
 
 // === Lua C API 绑定函数 ===
