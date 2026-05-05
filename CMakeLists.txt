@@ -96,6 +96,8 @@ set(CORE_SOURCES
     src/node_status.cpp
     # Verification (TOTP, Email)
     src/verification.cpp
+    # QR Code Login
+    src/qrcode.cpp
 )
 
 # OCR support (conditional)

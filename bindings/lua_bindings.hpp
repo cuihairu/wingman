@@ -55,6 +55,7 @@ private:
     void registerConfigModule();
     void registerNodeModule();
     void registerVerificationModule();
+    void registerQRCodeModule();
 };
 
 // === Lua C API 绑定函数 ===

@@ -21,6 +21,7 @@
 #include "wingman/config.hpp"
 #include "wingman/node_status.hpp"
 #include "wingman/verification.hpp"
+#include "wingman/qrcode.hpp"
 #include "wingman/version.hpp"
 
 #include <cstring>
@@ -110,6 +111,7 @@ void LuaState::registerAPIs() {
     registerConfigModule();
     registerNodeModule();
     registerVerificationModule();
+    registerQRCodeModule();
 
     // 注册扩展模块
     registerHttpModule(L);
@@ -3390,6 +3392,170 @@ void LuaState::registerVerificationModule() {
     lua_setfield(L, -2, "verify");
 
     lua_setglobal(L, "verification");
+}
+
+// ============================================================================
+// QRCode 扫码登录模块
+// ============================================================================
+
+namespace qrcode {
+
+static QRLoginManager* getManager() {
+    static QRLoginManager manager;
+    return &manager;
+}
+
+// 获取二维码内容
+static int getQRCode(lua_State* L) {
+    const char* qrUrl = luaL_checkstring(L, 1);
+    const char* statusUrl = luaL_checkstring(L, 2);
+
+    QRLoginConfig config = QRLoginManager::genericConfig(qrUrl, statusUrl);
+
+    auto qrCode = getManager()->getQRCode(config);
+    if (qrCode) {
+        lua_pushstring(L, qrCode->c_str());
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// 获取二维码并保存为图片
+static int getQRImage(lua_State* L) {
+    const char* qrUrl = luaL_checkstring(L, 1);
+    const char* statusUrl = luaL_checkstring(L, 2);
+    const char* outputPath = luaL_checkstring(L, 3);
+
+    QRLoginConfig config = QRLoginManager::genericConfig(qrUrl, statusUrl);
+
+    auto result = getManager()->getQRCodeImage(config, outputPath);
+    if (result) {
+        lua_pushstring(L, result->c_str());
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// 执行扫码登录
+static int login(lua_State* L) {
+    const char* qrUrl = luaL_checkstring(L, 1);
+    const char* statusUrl = luaL_checkstring(L, 2);
+
+    QRLoginConfig config = QRLoginManager::genericConfig(qrUrl, statusUrl);
+
+    // 可选参数：轮询间隔
+    int pollInterval = luaL_optinteger(L, 3, 2000);
+    config.pollInterval = pollInterval;
+
+    QRLoginResult result = getManager()->login(config);
+
+    // 返回结果表
+    lua_newtable(L);
+
+    lua_pushstring(L, qrLoginStateToString(result.state).c_str());
+    lua_setfield(L, -2, "state");
+
+    lua_pushstring(L, result.message.c_str());
+    lua_setfield(L, -2, "message");
+
+    if (!result.token.empty()) {
+        lua_pushstring(L, result.token.c_str());
+        lua_setfield(L, -2, "token");
+    }
+
+    if (!result.sessionId.empty()) {
+        lua_pushstring(L, result.sessionId.c_str());
+        lua_setfield(L, -2, "sessionId");
+    }
+
+    // 添加完整数据（JSON 字符串）
+    if (!result.data.empty()) {
+        lua_pushstring(L, result.data.dump().c_str());
+        lua_setfield(L, -2, "data");
+    }
+
+    return 1;
+}
+
+// Steam 登录
+static int steamLogin(lua_State* L) {
+    QRLoginConfig config = QRLoginManager::steamConfig();
+
+    QRLoginResult result = getManager()->login(config);
+
+    lua_newtable(L);
+
+    lua_pushstring(L, qrLoginStateToString(result.state).c_str());
+    lua_setfield(L, -2, "state");
+
+    lua_pushstring(L, result.message.c_str());
+    lua_setfield(L, -2, "message");
+
+    if (!result.token.empty()) {
+        lua_pushstring(L, result.token.c_str());
+        lua_setfield(L, -2, "token");
+    }
+
+    if (!result.data.empty()) {
+        lua_pushstring(L, result.data.dump().c_str());
+        lua_setfield(L, -2, "data");
+    }
+
+    return 1;
+}
+
+// 取消登录
+static int cancel(lua_State* L) {
+    getManager()->cancel();
+    return 0;
+}
+
+// 识别二维码
+static int detect(lua_State* L) {
+    int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+    int width = luaL_checkinteger(L, 3);
+    int height = luaL_checkinteger(L, 4);
+
+    auto code = getManager()->detectQRCode(x, y, width, height);
+    if (code) {
+        lua_pushstring(L, code->c_str());
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+} // namespace qrcode
+
+void LuaState::registerQRCodeModule() {
+    lua_newtable(L);
+
+    // 获取二维码
+    lua_pushcfunction(L, qrcode::getQRCode);
+    lua_setfield(L, -2, "get");
+
+    lua_pushcfunction(L, qrcode::getQRImage);
+    lua_setfield(L, -2, "getImage");
+
+    // 登录流程
+    lua_pushcfunction(L, qrcode::login);
+    lua_setfield(L, -2, "login");
+
+    lua_pushcfunction(L, qrcode::steamLogin);
+    lua_setfield(L, -2, "steamLogin");
+
+    // 控制
+    lua_pushcfunction(L, qrcode::cancel);
+    lua_setfield(L, -2, "cancel");
+
+    // 二维码识别
+    lua_pushcfunction(L, qrcode::detect);
+    lua_setfield(L, -2, "detect");
+
+    lua_setglobal(L, "qrcode");
 }
 
 void LuaState::registerNodeModule() {
