@@ -46,7 +46,7 @@ C++ + Lua 的高性能游戏自动化框架
 | **进程管理** | 启动/等待/终止进程 |
 | **HTTP 客户端** | GET/POST/PUT/DELETE 请求，表单提交 (libcurl) |
 | **JSON 封装** | JSON 解析和序列化 (nlohmann/json) |
-| **KV 存储** | 类 Redis 键值存储，支持持久化 |
+| **存储系统** | 四层存储架构：SessionStorage/LocalStorage/TeamStorage/ServerStorage |
 | **组队编排** | 多 Client 协同组队、投票协调 |
 | **宏录制** | 录制鼠标键盘操作，保存为 Lua/JSON 回放 |
 | **触发器系统** | 颜色/图像/窗口/进程触发，自动执行动作 |
@@ -94,31 +94,35 @@ cmake --build build --config Release
 .\build\Release\wingman.exe scripts\examples\hello.lua
 ```
 
-## 测试
+## 开发
 
-项目使用 [busted](https://lunarmodules.github.io/busted/) 作为 Lua 测试框架。
-
-### 安装测试依赖
+### C++ 单元测试
 
 ```bash
-# 安装 LuaRocks
-luarocks install busted
+# 构建测试
+cmake -B build -DWINGMAN_BUILD_TESTS=ON
+cmake --build build --config Debug
+
+# 运行测试
+.\build\tests\cpp\Debug\wingman_tests.exe
 ```
 
-### 运行测试
+### Lua 开发工具 (可选)
+
+Wingman 提供可选的 Lua 开发工具：
 
 ```bash
-# 运行所有测试
-busted tests
+# 安装 LuaRocks 包管理器
+scripts\install-luarocks.cmd
 
-# 只运行单元测试
-busted tests/unit
+# 安装 Busted 测试框架
+scripts\install-busted.cmd
 
-# 详细输出
-busted tests -v
+# 运行 Lua 测试
+scripts\run-lua-tests.cmd
 ```
 
-详细说明请参考 [测试指南](tests/README.md)。
+详细开发指南请参考 [DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 
 ## 文档
 

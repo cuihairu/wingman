@@ -57,12 +57,14 @@
 | **Input** | 输入模拟 | `input.cpp/h` |
 | **Window** | 窗口管理 | `window.cpp/h` |
 | **Process** | 进程管理 | `process.cpp/h` |
-| **Human** | 人性化模拟 | `human.cpp/h` |
-| **Macro** | 宏录制 | `macro.cpp/h` |
+| **Recorder** | 宏录制 | `recorder.cpp/h` |
 | **Trigger** | 触发器系统 | `trigger.cpp/h` |
-| **Network** | 网络层 | `network.cpp/h` |
-| **Debugger** | 调试器 | `debugger.cpp/h` |
-| **Utils** | 工具函数 | `utils.cpp/h` |
+| **Storage** | 存储系统 | `storage.cpp/h` |
+| **GameProfile** | 游戏配置 | `game_profile.cpp/h` |
+| **HTTP** | HTTP 客户端 | `http.cpp/h` |
+| **JSON** | JSON 封装 | `json.cpp/h` |
+| **System** | 系统信息 | `system.cpp/h` |
+| **Performance** | 性能监控 | `performance.cpp/h` |
 
 ## C++ / Lua 分层
 
