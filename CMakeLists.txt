@@ -47,6 +47,7 @@ set(CORE_SOURCES
     # src/script_manager.cpp  # TODO: Re-enable after fixing Lua compatibility issues
     # src/security.cpp  # TODO: Re-enable after fixing WINTRUST issues
     src/game_profile.cpp
+    src/storage.cpp
 )
 
 # Lua bindings
@@ -112,12 +113,12 @@ target_link_libraries(wingman PRIVATE
 # Server module (if enabled)
 if(WINGMAN_BUILD_SERVER)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/server/src/server.cpp")
-        add_library(wingman-server STATIC ${SERVER_SOURCES})
+        add_library(wingman-server STATIC ${SERVER_SOURCES} src/storage_remote.cpp)
         target_include_directories(wingman-server PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/server/include
             ${CMAKE_CURRENT_SOURCE_DIR}/include
         )
-        target_link_libraries(wingman-server PUBLIC asio::asio)
+        target_link_libraries(wingman-server PUBLIC asio::asio nlohmann_json::nlohmann_json)
         target_link_libraries(wingman PRIVATE wingman-server)
     endif()
 endif()
