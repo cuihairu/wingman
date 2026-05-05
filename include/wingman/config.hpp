@@ -50,14 +50,29 @@ struct TrayMenuItemConfig {
     static TrayMenuItemConfig fromJson(const std::string& json);
 };
 
+// 托盘图标状态
+enum class TrayIconState {
+    normal,    // 正常（正在运行）
+    idle,      // 空闲（无任务）
+    disabled,  // 禁用（变灰）
+    busy,      // 忙碌
+    error      // 错误
+};
+
 // 托盘配置
 struct TrayConfig {
     bool minimizeToTray = true;
     bool startMinimized = false;
     bool showNotifications = true;
-    std::string iconPath;               // 图标路径
+    std::string iconPath;               // 默认图标路径
     std::string tooltip = "Wingman";    // 提示文本
     std::vector<TrayMenuItemConfig> menuItems;  // 预设菜单项
+
+    // 不同状态的图标路径
+    std::string iconNormal;             // 正常状态图标
+    std::string iconIdle;               // 空闲状态图标（灰色）
+    std::string iconBusy;               // 忙碌状态图标
+    std::string iconError;              // 错误状态图标
 
     std::string toJson() const;
     static TrayConfig fromJson(const std::string& json);

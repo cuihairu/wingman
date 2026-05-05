@@ -32,6 +32,11 @@ public:
     TrayIcon::ActionHandler actionHandler_;
     std::map<std::string, TrayMenuItemConfig> itemConfigs_;  // 菜单项配置映射
 
+    // 图标状态支持
+    TrayIconState currentState_ = TrayIconState::normal;
+    std::map<TrayIconState, std::string> stateIcons_;  // 状态对应的图标路径
+    std::mutex stateMutex_;
+
     Impl(const std::string& tooltip) : tooltip_(tooltip), hwnd_(nullptr) {
         // 注册窗口类（只注册一次）
         {
@@ -148,6 +153,53 @@ public:
         if (visible_) {
             Shell_NotifyIconW(NIM_MODIFY, &nid_);
         }
+    }
+
+    // 设置指定状态的图标路径
+    void setStateIcon(TrayIconState state, const std::string& iconPath) {
+        std::lock_guard<std::mutex> lock(stateMutex_);
+        stateIcons_[state] = iconPath;
+    }
+
+    // 切换图标状态
+    void setIconState(TrayIconState state) {
+        std::lock_guard<std::mutex> lock(stateMutex_);
+        currentState_ = state;
+
+        // 查找对应状态的图标
+        auto it = stateIcons_.find(state);
+        if (it != stateIcons_.end() && !it->second.empty()) {
+            // 加载并设置状态图标
+            HICON hIcon = static_cast<HICON>(LoadImageA(
+                nullptr,
+                it->second.c_str(),
+                IMAGE_ICON,
+                GetSystemMetrics(SM_CXICON),
+                GetSystemMetrics(SM_CYICON),
+                LR_LOADFROMFILE
+            ));
+
+            if (hIcon) {
+                // 释放旧图标
+                if (nid_.hIcon) {
+                    HICON defaultIcon = LoadIcon(nullptr, IDI_INFORMATION);
+                    if (nid_.hIcon != defaultIcon) {
+                        DestroyIcon(nid_.hIcon);
+                    }
+                }
+                nid_.hIcon = hIcon;
+                nid_.uFlags |= NIF_ICON;
+                if (visible_) {
+                    Shell_NotifyIconW(NIM_MODIFY, &nid_);
+                }
+                std::cout << "[TRAY] 图标状态切换到: " << static_cast<int>(state) << "\n";
+                std::cout.flush();
+            }
+        }
+    }
+
+    TrayIconState getIconState() const {
+        return currentState_;
     }
 
     void show() {
@@ -319,9 +371,18 @@ public:
             }
         }
 
-        // 设置图标
+        // 设置默认图标
         if (!config.iconPath.empty()) {
             setIcon(config.iconPath);
+        }
+
+        // 加载状态图标
+        {
+            std::lock_guard<std::mutex> stateLock(stateMutex_);
+            if (!config.iconNormal.empty()) stateIcons_[TrayIconState::normal] = config.iconNormal;
+            if (!config.iconIdle.empty()) stateIcons_[TrayIconState::idle] = config.iconIdle;
+            if (!config.iconBusy.empty()) stateIcons_[TrayIconState::busy] = config.iconBusy;
+            if (!config.iconError.empty()) stateIcons_[TrayIconState::error] = config.iconError;
         }
 
         // 加载菜单项
@@ -453,6 +514,14 @@ void TrayIcon::loadFromConfig(const TrayConfig& config) {
 
 void TrayIcon::setActionHandler(ActionHandler handler) {
     impl_->setActionHandler(std::move(handler));
+}
+
+void TrayIcon::setIconState(TrayIconState state) {
+    impl_->setIconState(state);
+}
+
+TrayIconState TrayIcon::getIconState() const {
+    return impl_->getIconState();
 }
 
 // TrayManager implementation

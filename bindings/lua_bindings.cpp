@@ -2310,6 +2310,20 @@ int isVisible(lua_State* L) {
     return 1;
 }
 
+int setIconState(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    int state = luaL_checkinteger(L, 2);
+    icon->setIconState(static_cast<TrayIconState>(state));
+    return 0;
+}
+
+int getIconState(lua_State* L) {
+    auto* icon = checkTrayIcon(L, 1);
+    TrayIconState state = icon->getIconState();
+    lua_pushinteger(L, static_cast<lua_Integer>(state));
+    return 1;
+}
+
 int destroy(lua_State* L) {
     auto* icon = checkTrayIcon(L, 1);
     delete icon;
@@ -2358,6 +2372,12 @@ void LuaState::registerTrayModule() {
 
         lua_pushcfunction(L, tray_icon::isVisible);
         lua_setfield(L, -2, "isVisible");
+
+        lua_pushcfunction(L, tray_icon::setIconState);
+        lua_setfield(L, -2, "setIconState");
+
+        lua_pushcfunction(L, tray_icon::getIconState);
+        lua_setfield(L, -2, "getIconState");
 
         lua_pushcfunction(L, tray_icon::destroy);
         lua_setfield(L, -2, "destroy");
@@ -2496,6 +2516,18 @@ int getTray(lua_State* L) {
     lua_pushstring(L, trayConfig.tooltip.c_str());
     lua_setfield(L, -2, "tooltip");
 
+    lua_pushstring(L, trayConfig.iconNormal.c_str());
+    lua_setfield(L, -2, "iconNormal");
+
+    lua_pushstring(L, trayConfig.iconIdle.c_str());
+    lua_setfield(L, -2, "iconIdle");
+
+    lua_pushstring(L, trayConfig.iconBusy.c_str());
+    lua_setfield(L, -2, "iconBusy");
+
+    lua_pushstring(L, trayConfig.iconError.c_str());
+    lua_setfield(L, -2, "iconError");
+
     // 菜单项数组
     lua_createtable(L, trayConfig.menuItems.size(), 0);
     for (size_t i = 0; i < trayConfig.menuItems.size(); ++i) {
@@ -2597,6 +2629,22 @@ int setTray(lua_State* L) {
     if (lua_isstring(L, -1)) {
         trayConfig.tooltip = lua_tostring(L, -1);
     }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "iconNormal");
+    if (lua_isstring(L, -1)) trayConfig.iconNormal = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "iconIdle");
+    if (lua_isstring(L, -1)) trayConfig.iconIdle = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "iconBusy");
+    if (lua_isstring(L, -1)) trayConfig.iconBusy = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "iconError");
+    if (lua_isstring(L, -1)) trayConfig.iconError = lua_tostring(L, -1);
     lua_pop(L, 1);
 
     // 解析菜单项

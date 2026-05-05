@@ -78,6 +78,12 @@ public:
     // 设置动作处理器
     void setActionHandler(ActionHandler handler);
 
+    // 设置图标状态
+    void setIconState(TrayIconState state);
+
+    // 获取当前图标状态
+    TrayIconState getIconState() const;
+
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;

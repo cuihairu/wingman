@@ -134,6 +134,10 @@ std::string TrayConfig::toJson() const {
     j["showNotifications"] = showNotifications;
     j["iconPath"] = iconPath;
     j["tooltip"] = tooltip;
+    j["iconNormal"] = iconNormal;
+    j["iconIdle"] = iconIdle;
+    j["iconBusy"] = iconBusy;
+    j["iconError"] = iconError;
 
     if (!menuItems.empty()) {
         nlohmann::json menuArray = nlohmann::json::array();
@@ -155,6 +159,10 @@ TrayConfig TrayConfig::fromJson(const std::string& json) {
         if (j.contains("showNotifications")) config.showNotifications = j["showNotifications"];
         if (j.contains("iconPath")) config.iconPath = j["iconPath"];
         if (j.contains("tooltip")) config.tooltip = j["tooltip"];
+        if (j.contains("iconNormal")) config.iconNormal = j["iconNormal"];
+        if (j.contains("iconIdle")) config.iconIdle = j["iconIdle"];
+        if (j.contains("iconBusy")) config.iconBusy = j["iconBusy"];
+        if (j.contains("iconError")) config.iconError = j["iconError"];
 
         if (j.contains("menuItems") && j["menuItems"].is_array()) {
             for (const auto& itemJson : j["menuItems"]) {
@@ -410,6 +418,10 @@ bool ConfigManager::setTrayConfig(const TrayConfig& config) {
     trayJson["showNotifications"] = config.showNotifications;
     trayJson["iconPath"] = config.iconPath;
     trayJson["tooltip"] = config.tooltip;
+    trayJson["iconNormal"] = config.iconNormal;
+    trayJson["iconIdle"] = config.iconIdle;
+    trayJson["iconBusy"] = config.iconBusy;
+    trayJson["iconError"] = config.iconError;
 
     if (!config.menuItems.empty()) {
         nlohmann::json menuArray = nlohmann::json::array();
