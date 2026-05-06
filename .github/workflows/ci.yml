@@ -33,10 +33,16 @@ jobs:
     - name: Setup vcpkg
       if: steps.vcpkg-cache.outputs.cache-hit != 'true'
       run: |
-        Write-Host "首次运行：克隆 vcpkg（这可能需要几分钟）"
-        git clone https://github.com/Microsoft/vcpkg.git
-        cd vcpkg
-        .\bootstrap-vcpkg.bat
+        # 检查并使用 GitHub Actions 预装的 vcpkg
+        if (Test-Path "C:\vcpkg") {
+          Write-Host "使用预装的 vcpkg"
+          Copy-Item -Recurse -Path "C:\vcpkg" -Destination "vcpkg" -Force
+        } else {
+          Write-Host "首次运行：克隆 vcpkg（这可能需要几分钟）"
+          git clone https://github.com/Microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+        }
 
     - name: Install vcpkg dependencies
       run: |
