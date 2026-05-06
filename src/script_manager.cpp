@@ -1,4 +1,5 @@
 #include "wingman/script_manager.hpp"
+#include "wingman/lua_bindings.hpp"
 
 #include <fstream>
 #include <sstream>
@@ -138,10 +139,25 @@ namespace {
 
 // ========== ScriptManager Implementation ==========
 
-ScriptManager::ScriptManager() = default;
+ScriptManager::ScriptManager() {
+    initLua();
+}
 
 ScriptManager::~ScriptManager() {
     stopHotReload();
+
+    // 清理所有脚本的 Lua 状态
+    for (auto& pair : m_scripts) {
+        if (pair.second->luaState) {
+            pair.second->luaState.reset();
+        }
+    }
+
+    // 清理主 Lua 状态
+    if (m_mainL) {
+        lua_close(m_mainL);
+        m_mainL = nullptr;
+    }
 }
 
 // ========== 脚本加载管理 ==========
@@ -258,6 +274,16 @@ bool ScriptManager::runScript(const std::string& name) {
 
     auto& infoPtr = it->second;
 
+    // 如果已经在运行，先停止
+    if (infoPtr->state == ScriptState::running) {
+        stopScript(name);
+    }
+
+    // 创建或重用 Lua 状态
+    if (!infoPtr->luaState) {
+        infoPtr->luaState = std::make_unique<lua::LuaState>();
+    }
+
     // 读取脚本文件
     std::ifstream file(infoPtr->config.path);
     if (!file.is_open()) {
@@ -279,8 +305,14 @@ bool ScriptManager::runScript(const std::string& name) {
         envSetup += "_G['" + it->first + "'] = '" + it->second + "';\n";
     }
 
-    // TODO: 创建 Lua 状态并执行脚本
-    // 这里需要集成 LuaState 类
+    // 执行脚本
+    std::string fullCode = envSetup + code;
+    if (!infoPtr->luaState->doString(fullCode)) {
+        infoPtr->state = ScriptState::error;
+        infoPtr->lastError = infoPtr->luaState->getLastError();
+        triggerEvent(name, ScriptEvent::error, infoPtr->lastError);
+        return false;
+    }
 
     infoPtr->state = ScriptState::running;
     infoPtr->lastLoaded = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -350,7 +382,48 @@ bool ScriptManager::callFunction(const std::string& name, const std::string& fun
         return false;
     }
 
-    // TODO: 实现函数调用
+    lua_State* L = getLuaState(name);
+    if (!L) {
+        return false;
+    }
+
+    // 获取函数
+    lua_getglobal(L, func.c_str());
+    if (!lua_isfunction(L, -1)) {
+        lua_pop(L, 1);
+        return false;
+    }
+
+    // 压入参数
+    for (const auto& arg : args) {
+        lua_pushstring(L, arg.c_str());
+    }
+
+    // 调用函数
+    int status = lua_pcall(L, static_cast<int>(args.size()), 1, 0);
+    if (status != LUA_OK) {
+        const char* error = lua_tostring(L, -1);
+        if (error) {
+            it->second->lastError = error;
+        }
+        lua_pop(L, 1);
+        return false;
+    }
+
+    // 获取结果
+    if (result && lua_gettop(L) > 0) {
+        if (lua_isstring(L, -1)) {
+            *result = lua_tostring(L, -1);
+        } else if (lua_isboolean(L, -1)) {
+            *result = lua_toboolean(L, -1) ? "true" : "false";
+        } else if (lua_isnumber(L, -1)) {
+            *result = std::to_string(lua_tonumber(L, -1));
+        } else {
+            *result = "";
+        }
+    }
+
+    lua_pop(L, 1);
     return true;
 }
 
@@ -548,7 +621,17 @@ void ScriptManager::stopHotReload() {
 // ========== Lua 状态访问 ==========
 
 lua_State* ScriptManager::getLuaState(const std::string& name) {
-    // TODO: 实现 Lua 状态管理
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    auto it = m_scripts.find(name);
+    if (it == m_scripts.end()) {
+        return nullptr;
+    }
+
+    if (it->second->luaState) {
+        return it->second->luaState->getState();
+    }
+
     return nullptr;
 }
 
@@ -645,6 +728,276 @@ void ScriptManager::triggerEvent(const std::string& name, ScriptEvent event, con
     if (m_eventCallback) {
         m_eventCallback(name, event, message);
     }
+}
+
+// ========== Lua 初始化和管理 ==========
+
+void ScriptManager::initLua() {
+    // 创建主 Lua 状态
+    m_mainL = luaL_newstate();
+    if (!m_mainL) {
+        return;
+    }
+
+    // 打开标准库
+    luaL_openlibs(m_mainL);
+
+    // 注册 script 模块（将 ScriptManager 实例存储到注册表中）
+    lua_pushlightuserdata(m_mainL, this);
+    lua_setfield(m_mainL, LUA_REGISTRYINDEX, "__wm_script_manager");
+
+    // 注册 script 模块函数
+    lua_newtable(m_mainL);
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        // 获取 ScriptManager 实例
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        const char* path = luaL_optstring(L, 2, "");
+
+        // 解析配置表
+        ScriptConfig config;
+        config.name = name;
+        config.path = path;
+
+        if (lua_istable(L, 3)) {
+            lua_getfield(L, 3, "auto_reload");
+            if (lua_isboolean(L, -1)) config.autoReload = lua_toboolean(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, 3, "sandboxed");
+            if (lua_isboolean(L, -1)) config.sandboxed = lua_toboolean(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, 3, "timeout");
+            if (lua_isnumber(L, -1)) config.timeoutMs = lua_tointeger(L, -1);
+            lua_pop(L, 1);
+
+            // 解析环境变量
+            lua_getfield(L, 3, "env");
+            if (lua_istable(L, -1)) {
+                lua_pushnil(L);
+                while (lua_next(L, -2) != 0) {
+                    const char* key = lua_tostring(L, -2);
+                    const char* value = lua_tostring(L, -1);
+                    if (key && value) {
+                        config.env[key] = value;
+                    }
+                    lua_pop(L, 1);
+                }
+            }
+            lua_pop(L, 1);
+        }
+
+        bool success = mgr->loadScript(name, path, config);
+        lua_pushboolean(L, success);
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "load");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        bool success = mgr->unloadScript(name);
+        lua_pushboolean(L, success);
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "unload");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        bool success = mgr->reloadScript(name);
+        lua_pushboolean(L, success);
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "reload");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        bool success = mgr->runScript(name);
+        lua_pushboolean(L, success);
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "run");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        bool success = mgr->stopScript(name);
+        lua_pushboolean(L, success);
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "stop");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        bool success = mgr->pauseScript(name);
+        lua_pushboolean(L, success);
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "pause");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        bool success = mgr->resumeScript(name);
+        lua_pushboolean(L, success);
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "resume");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        auto names = mgr->getScriptNames();
+        lua_newtable(L);
+        for (size_t i = 0; i < names.size(); ++i) {
+            lua_pushstring(L, names[i].c_str());
+            lua_rawseti(L, -2, static_cast<int>(i + 1));
+        }
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "list");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        auto* info = mgr->getScriptInfo(name);
+        bool isRunning = info && info->state == ScriptState::running;
+        lua_pushboolean(L, isRunning);
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "isRunning");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        auto* info = mgr->getScriptInfo(name);
+        if (!info) {
+            lua_pushnil(L);
+            return 1;
+        }
+
+        const char* stateStr = "unloaded";
+        switch (info->state) {
+            case ScriptState::unloaded: stateStr = "unloaded"; break;
+            case ScriptState::loaded: stateStr = "loaded"; break;
+            case ScriptState::running: stateStr = "running"; break;
+            case ScriptState::paused: stateStr = "paused"; break;
+            case ScriptState::error: stateStr = "error"; break;
+        }
+        lua_pushstring(L, stateStr);
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "getState");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        const char* key = luaL_checkstring(L, 2);
+        const char* value = luaL_checkstring(L, 3);
+        mgr->setConfig(key, value);
+        return 0;
+    });
+    lua_setfield(m_mainL, -2, "setConfig");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        const char* key = luaL_checkstring(L, 2);
+        const char* defaultValue = lua_optstring(L, 3, "");
+        std::string result = mgr->getConfig(key, defaultValue);
+        lua_pushstring(L, result.c_str());
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "getConfig");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        const char* key = luaL_checkstring(L, 2);
+        const char* value = luaL_checkstring(L, 3);
+        mgr->setEnv(key, value);
+        return 0;
+    });
+    lua_setfield(m_mainL, -2, "setEnv");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        const char* name = luaL_checkstring(L, 1);
+        const char* key = luaL_checkstring(L, 2);
+        std::string result = mgr->getEnv(key);
+        lua_pushstring(L, result.c_str());
+        return 1;
+    });
+    lua_setfield(m_mainL, -2, "getEnv");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        bool enabled = lua_toboolean(L, 1);
+        mgr->setGlobalAutoReload(enabled);
+        return 0;
+    });
+    lua_setfield(m_mainL, -2, "setHotReload");
+
+    lua_pushcfunction(m_mainL, [](lua_State* L) {
+        lua_getfield(L, LUA_REGISTRYINDEX, "__wm_script_manager");
+        auto* mgr = static_cast<ScriptManager*>(lua_touserdata(L, -1));
+        lua_pop(L, 1);
+
+        mgr->checkAllReloads();
+        return 0;
+    });
+    lua_setfield(m_mainL, -2, "checkReload");
+
+    lua_setglobal(m_mainL, "script");
 }
 
 } // namespace wingman

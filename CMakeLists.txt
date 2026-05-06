@@ -77,7 +77,7 @@ set(CORE_SOURCES
     # src/kvstore.cpp  # TODO: Re-enable when sqlite3 is properly configured
     src/system.cpp
     src/performance.cpp
-    # src/script_manager.cpp  # TODO: Re-enable after fixing Lua compatibility issues
+    src/script_manager.cpp
     # src/security.cpp  # TODO: Re-enable after fixing WINTRUST issues
     src/game_profile.cpp
     src/storage.cpp

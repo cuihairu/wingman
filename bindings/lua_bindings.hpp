@@ -6,6 +6,10 @@
 #include <string>
 #include <vector>
 
+namespace wingman {
+class ScriptManager;
+}
+
 namespace wingman::lua {
 
 // Lua 状态管理类
@@ -28,6 +32,9 @@ public:
 
     // 获取最后的错误信息
     std::string getLastError() const { return m_lastError; }
+
+    // 设置 ScriptManager 实例（用于 script 模块）
+    static void setScriptManager(wingman::ScriptManager* mgr);
 
 private:
     lua_State* L;

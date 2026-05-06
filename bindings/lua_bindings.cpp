@@ -29,6 +29,7 @@
 #include "wingman/qrcode.hpp"
 #include "wingman/ui_automation.hpp"
 #include "wingman/version.hpp"
+#include "wingman/script_manager.hpp"
 
 #include <cstring>
 #include <ctime>
@@ -38,6 +39,19 @@
 #include <windows.h>
 
 namespace wingman::lua {
+
+// 全局 ScriptManager 实例（用于 script 模块）
+static wingman::ScriptManager* g_scriptManager = nullptr;
+
+// 设置 ScriptManager 实例
+void LuaState::setScriptManager(wingman::ScriptManager* mgr) {
+    g_scriptManager = mgr;
+}
+
+// 获取 ScriptManager 实例
+static wingman::ScriptManager* getScriptManager() {
+    return g_scriptManager;
+}
 
 // ============================================================================
 // LuaState 实现
@@ -1333,57 +1347,336 @@ static int checkReload(lua_State* L) {
 } // namespace script
 
 void LuaState::registerScriptModule() {
-    lua_newtable(L);
+    // 如果有 ScriptManager 实例，使用它提供的 script 模块
+    // 否则使用默认的存根实现
+    if (g_scriptManager && g_scriptManager->getMainLuaState()) {
+        // ScriptManager 已经在它自己的 Lua 状态中注册了 script 模块
+        // 我们需要将其导出到当前状态
+        // 注意：这里简化处理，只使用存根实现并转发到 ScriptManager
 
-    lua_pushcfunction(L, script::load);
-    lua_setfield(L, -2, "load");
+        lua_newtable(L);
 
-    lua_pushcfunction(L, script::unload);
-    lua_setfield(L, -2, "unload");
+        // script.load(name, path, config)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_pushboolean(L, false);
+                return 1;
+            }
+            const char* name = luaL_checkstring(L, 1);
+            const char* path = luaL_optstring(L, 2, "");
 
-    lua_pushcfunction(L, script::reload);
-    lua_setfield(L, -2, "reload");
+            ScriptConfig config;
+            config.name = name;
+            config.path = path;
 
-    lua_pushcfunction(L, script::run);
-    lua_setfield(L, -2, "run");
+            if (lua_istable(L, 3)) {
+                lua_getfield(L, 3, "auto_reload");
+                if (lua_isboolean(L, -1)) config.autoReload = lua_toboolean(L, -1);
+                lua_pop(L, 1);
 
-    lua_pushcfunction(L, script::stop);
-    lua_setfield(L, -2, "stop");
+                lua_getfield(L, 3, "sandboxed");
+                if (lua_isboolean(L, -1)) config.sandboxed = lua_toboolean(L, -1);
+                lua_pop(L, 1);
 
-    lua_pushcfunction(L, script::pause);
-    lua_setfield(L, -2, "pause");
+                lua_getfield(L, 3, "timeout");
+                if (lua_isnumber(L, -1)) config.timeoutMs = lua_tointeger(L, -1);
+                lua_pop(L, 1);
 
-    lua_pushcfunction(L, script::resume);
-    lua_setfield(L, -2, "resume");
+                lua_getfield(L, 3, "env");
+                if (lua_istable(L, -1)) {
+                    lua_pushnil(L);
+                    while (lua_next(L, -2) != 0) {
+                        const char* key = lua_tostring(L, -2);
+                        const char* value = lua_tostring(L, -1);
+                        if (key && value) {
+                            config.env[key] = value;
+                        }
+                        lua_pop(L, 1);
+                    }
+                }
+                lua_pop(L, 1);
+            }
 
-    lua_pushcfunction(L, script::list);
-    lua_setfield(L, -2, "list");
+            bool success = mgr->loadScript(name, path, config);
+            lua_pushboolean(L, success);
+            return 1;
+        });
+        lua_setfield(L, -2, "load");
 
-    lua_pushcfunction(L, script::isRunning);
-    lua_setfield(L, -2, "isRunning");
+        // script.unload(name)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_pushboolean(L, false);
+                return 1;
+            }
+            const char* name = luaL_checkstring(L, 1);
+            bool success = mgr->unloadScript(name);
+            lua_pushboolean(L, success);
+            return 1;
+        });
+        lua_setfield(L, -2, "unload");
 
-    lua_pushcfunction(L, script::getState);
-    lua_setfield(L, -2, "getState");
+        // script.reload(name)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_pushboolean(L, false);
+                return 1;
+            }
+            const char* name = luaL_checkstring(L, 1);
+            bool success = mgr->reloadScript(name);
+            lua_pushboolean(L, success);
+            return 1;
+        });
+        lua_setfield(L, -2, "reload");
 
-    lua_pushcfunction(L, script::setConfig);
-    lua_setfield(L, -2, "setConfig");
+        // script.run(name)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_pushboolean(L, false);
+                return 1;
+            }
+            const char* name = luaL_checkstring(L, 1);
+            bool success = mgr->runScript(name);
+            lua_pushboolean(L, success);
+            return 1;
+        });
+        lua_setfield(L, -2, "run");
 
-    lua_pushcfunction(L, script::getConfig);
-    lua_setfield(L, -2, "getConfig");
+        // script.stop(name)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_pushboolean(L, false);
+                return 1;
+            }
+            const char* name = luaL_checkstring(L, 1);
+            bool success = mgr->stopScript(name);
+            lua_pushboolean(L, success);
+            return 1;
+        });
+        lua_setfield(L, -2, "stop");
 
-    lua_pushcfunction(L, script::setEnv);
-    lua_setfield(L, -2, "setEnv");
+        // script.pause(name)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_pushboolean(L, false);
+                return 1;
+            }
+            const char* name = luaL_checkstring(L, 1);
+            bool success = mgr->pauseScript(name);
+            lua_pushboolean(L, success);
+            return 1;
+        });
+        lua_setfield(L, -2, "pause");
 
-    lua_pushcfunction(L, script::getEnv);
-    lua_setfield(L, -2, "getEnv");
+        // script.resume(name)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_pushboolean(L, false);
+                return 1;
+            }
+            const char* name = luaL_checkstring(L, 1);
+            bool success = mgr->resumeScript(name);
+            lua_pushboolean(L, success);
+            return 1;
+        });
+        lua_setfield(L, -2, "resume");
 
-    lua_pushcfunction(L, script::setHotReload);
-    lua_setfield(L, -2, "setHotReload");
+        // script.list()
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_newtable(L);
+                return 1;
+            }
+            auto names = mgr->getScriptNames();
+            lua_newtable(L);
+            for (size_t i = 0; i < names.size(); ++i) {
+                lua_pushstring(L, names[i].c_str());
+                lua_rawseti(L, -2, static_cast<int>(i + 1));
+            }
+            return 1;
+        });
+        lua_setfield(L, -2, "list");
 
-    lua_pushcfunction(L, script::checkReload);
-    lua_setfield(L, -2, "checkReload");
+        // script.isRunning(name)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_pushboolean(L, false);
+                return 1;
+            }
+            const char* name = luaL_checkstring(L, 1);
+            auto* info = mgr->getScriptInfo(name);
+            bool isRunning = info && info->state == ScriptState::running;
+            lua_pushboolean(L, isRunning);
+            return 1;
+        });
+        lua_setfield(L, -2, "isRunning");
 
-    lua_setglobal(L, "script");
+        // script.getState(name)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_pushstring(L, "unloaded");
+                return 1;
+            }
+            const char* name = luaL_checkstring(L, 1);
+            auto* info = mgr->getScriptInfo(name);
+            if (!info) {
+                lua_pushnil(L);
+                return 1;
+            }
+
+            const char* stateStr = "unloaded";
+            switch (info->state) {
+                case ScriptState::unloaded: stateStr = "unloaded"; break;
+                case ScriptState::loaded: stateStr = "loaded"; break;
+                case ScriptState::running: stateStr = "running"; break;
+                case ScriptState::paused: stateStr = "paused"; break;
+                case ScriptState::error: stateStr = "error"; break;
+            }
+            lua_pushstring(L, stateStr);
+            return 1;
+        });
+        lua_setfield(L, -2, "getState");
+
+        // script.setConfig(name, key, value)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) return 0;
+            const char* name = luaL_checkstring(L, 1);
+            const char* key = luaL_checkstring(L, 2);
+            const char* value = luaL_checkstring(L, 3);
+            mgr->setConfig(key, value);
+            return 0;
+        });
+        lua_setfield(L, -2, "setConfig");
+
+        // script.getConfig(name, key, default)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_pushstring(L, "");
+                return 1;
+            }
+            const char* name = luaL_checkstring(L, 1);
+            const char* key = luaL_checkstring(L, 2);
+            const char* defaultValue = lua_optstring(L, 3, "");
+            std::string result = mgr->getConfig(key, defaultValue);
+            lua_pushstring(L, result.c_str());
+            return 1;
+        });
+        lua_setfield(L, -2, "getConfig");
+
+        // script.setEnv(name, key, value)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) return 0;
+            const char* name = luaL_checkstring(L, 1);
+            const char* key = luaL_checkstring(L, 2);
+            const char* value = luaL_checkstring(L, 3);
+            mgr->setEnv(key, value);
+            return 0;
+        });
+        lua_setfield(L, -2, "setEnv");
+
+        // script.getEnv(name, key)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) {
+                lua_pushstring(L, "");
+                return 1;
+            }
+            const char* name = luaL_checkstring(L, 1);
+            const char* key = luaL_checkstring(L, 2);
+            std::string result = mgr->getEnv(key);
+            lua_pushstring(L, result.c_str());
+            return 1;
+        });
+        lua_setfield(L, -2, "getEnv");
+
+        // script.setHotReload(enabled)
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) return 0;
+            bool enabled = lua_toboolean(L, 1);
+            mgr->setGlobalAutoReload(enabled);
+            return 0;
+        });
+        lua_setfield(L, -2, "setHotReload");
+
+        // script.checkReload()
+        lua_pushcfunction(L, [](lua_State* L) {
+            auto* mgr = getScriptManager();
+            if (!mgr) return 0;
+            mgr->checkAllReloads();
+            return 0;
+        });
+        lua_setfield(L, -2, "checkReload");
+
+        lua_setglobal(L, "script");
+    } else {
+        // 存根实现（无 ScriptManager 时）
+        lua_newtable(L);
+
+        lua_pushcfunction(L, [](lua_State* L) {
+            const char* name = luaL_checkstring(L, 1);
+            luaL_error(L, "ScriptManager not initialized. Cannot load script '%s'", name);
+            return 0;
+        });
+        lua_setfield(L, -2, "load");
+
+        lua_pushcfunction(L, [](lua_State* L) {
+            lua_pushboolean(L, false);
+            return 1;
+        });
+        lua_setfield(L, -2, "unload");
+        lua_setfield(L, -2, "reload");
+        lua_setfield(L, -2, "run");
+        lua_setfield(L, -2, "stop");
+        lua_setfield(L, -2, "pause");
+        lua_setfield(L, -2, "resume");
+
+        lua_pushcfunction(L, [](lua_State* L) {
+            lua_newtable(L);
+            return 1;
+        });
+        lua_setfield(L, -2, "list");
+
+        lua_pushcfunction(L, [](lua_State* L) {
+            lua_pushboolean(L, false);
+            return 1;
+        });
+        lua_setfield(L, -2, "isRunning");
+
+        lua_pushcfunction(L, [](lua_State* L) {
+            lua_pushstring(L, "unloaded");
+            return 1;
+        });
+        lua_setfield(L, -2, "getState");
+
+        lua_pushcfunction(L, [](lua_State* L) { return 0; });
+        lua_setfield(L, -2, "setConfig");
+        lua_setfield(L, -2, "setEnv");
+        lua_setfield(L, -2, "setHotReload");
+        lua_setfield(L, -2, "checkReload");
+
+        lua_pushcfunction(L, [](lua_State* L) {
+            lua_pushstring(L, "");
+            return 1;
+        });
+        lua_setfield(L, -2, "getConfig");
+        lua_setfield(L, -2, "getEnv");
+
+        lua_setglobal(L, "script");
+    }
 }
 
 // ============================================================================

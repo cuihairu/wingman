@@ -13,6 +13,7 @@
 #include "wingman/http_server.hpp"
 #include "wingman/tray.hpp"
 #include "wingman/config.hpp"
+#include "wingman/script_manager.hpp"
 
 // Lua HTTP support (requires sol2)
 #ifdef WINGMAN_BUILD_LUA_HTTP
@@ -687,12 +688,19 @@ int cmdTray() {
 
 // Execute Lua script
 int runScript(const std::string& scriptPath) {
+    // 创建 ScriptManager 实例
+    auto scriptManager = std::make_unique<ScriptManager>();
+
+    // 创建 LuaState
     lua::LuaState luaState;
 
     if (!luaState.getState()) {
         std::cerr << "Failed to initialize Lua environment\n";
         return 1;
     }
+
+    // 设置 ScriptManager 到 Lua 模块
+    lua::LuaState::setScriptManager(scriptManager.get());
 
     std::cout << "Executing script: " << scriptPath << "\n";
 

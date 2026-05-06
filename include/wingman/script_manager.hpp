@@ -12,6 +12,11 @@
 
 namespace wingman {
 
+// 前向声明
+namespace lua {
+    class LuaState;
+}
+
 // 脚本配置
 struct ScriptConfig {
     std::string name;
@@ -38,6 +43,12 @@ struct ScriptInfo {
     std::string lastError;
     uint64_t lastModified = 0;
     uint64_t lastLoaded = 0;
+
+    // Lua 状态实例（每个脚本独立的状态）
+    std::unique_ptr<lua::LuaState> luaState;
+
+    // 脚本存储的数据（kv 存储）
+    std::unordered_map<std::string, std::string> data;
 };
 
 // 沙箱配置
@@ -171,6 +182,12 @@ public:
     // 获取脚本的 Lua 状态
     lua_State* getLuaState(const std::string& name);
 
+    // 获取管理器的主 Lua 状态（用于 script 模块）
+    lua_State* getMainLuaState() { return m_mainL; }
+
+    // 初始化 Lua 环境
+    void initLua();
+
 private:
     mutable std::mutex m_mutex;
     std::unordered_map<std::string, std::unique_ptr<ScriptInfo>> m_scripts;
@@ -181,6 +198,9 @@ private:
     bool m_globalAutoReload = false;
     bool m_hotReloadRunning = false;
     std::thread m_hotReloadThread;
+
+    // 主 Lua 状态（用于 script 模块）
+    lua_State* m_mainL = nullptr;
 
     // 沙箱设置
     void setupSandbox(lua_State* L, const std::string& name);
