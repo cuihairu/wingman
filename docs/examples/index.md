@@ -10,6 +10,10 @@
 - [自动化循环](/examples/auto-loop) - 持续监控并执行操作
 - [宏录制](/examples/macro-record) - 录制并回放操作
 
+## UI Automation 示例
+
+- [UI Automation](/examples/ui-automation) - Windows 控件自动化交互
+
 ## 运行示例
 
 ```bash

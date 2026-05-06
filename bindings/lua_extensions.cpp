@@ -2,7 +2,24 @@
 #include "wingman/http.hpp"
 #include "wingman/json.hpp"
 #include "wingman/kvstore.hpp"
+
+// 条件包含 workflow_orchestrator（仅在构建 server 模块时）
+#ifdef WINGMAN_BUILD_SERVER
 #include "wingman/server/workflow_orchestrator.hpp"
+#else
+// 存根类型定义（未构建 server 模块时）
+namespace wingman::server {
+    struct WorkflowOrchestrator;
+    struct TaskStep { std::string id; std::string name; std::string script; };
+    struct Workflow {
+        std::string id;
+        enum Status { PENDING, RUNNING, COMPLETED, FAILED, CANCELLED };
+        Status status = PENDING;
+    };
+    inline std::string workflowStatusToString(Workflow::Status s) { return "PENDING"; }
+    inline std::string stepStatusToString(int s) { return "PENDING"; }
+}
+#endif
 
 #include <memory>
 #include <unordered_map>
@@ -359,10 +376,9 @@ int null(lua_State* L) {
 // Orchestration 模块
 // ============================================================================
 
+#ifdef WINGMAN_BUILD_SERVER
 namespace orchestration {
 
-// 全局 WorkflowOrchestrator 实例指针（由主程序设置）
-static wingman::server::WorkflowOrchestrator* g_orchestrator = nullptr;
 
 // 设置全局 Orchestrator
 void setOrchestrator(wingman::server::WorkflowOrchestrator* orchestrator) {
@@ -373,6 +389,83 @@ void setOrchestrator(wingman::server::WorkflowOrchestrator* orchestrator) {
 static wingman::server::WorkflowOrchestrator* getOrchestrator() {
     return g_orchestrator;
 }
+
+// 从 Lua 表构建 TaskStep
+static wingman::server::TaskStep parseTaskStep(lua_State* L, int index) {
+    wingman::server::TaskStep step;
+
+    if (!lua_istable(L, index)) {
+        return step;
+    }
+
+    lua_getfield(L, index, "id");
+    if (lua_isstring(L, -1)) step.id = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, index, "name");
+    if (lua_isstring(L, -1)) step.name = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, index, "script");
+    if (lua_isstring(L, -1)) step.script = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, index, "timeout");
+    if (lua_isinteger(L, -1)) step.timeout_seconds = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, index, "parameters");
+    if (lua_isstring(L, -1)) step.parameters = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    // 解析 workers 数组
+    lua_getfield(L, index, "workers");
+    if (lua_istable(L, -1)) {
+        int len = lua_objlen(L, -1);
+        for (int i = 1; i <= len; i++) {
+            lua_rawgeti(L, -1, i);
+            if (lua_isstring(L, -1)) {
+                step.workers.push_back(lua_tostring(L, -1));
+            }
+            lua_pop(L, 1);
+        }
+    }
+    lua_pop(L, 1);
+
+    // 解析 depends_on 数组
+    lua_getfield(L, index, "depends_on");
+    if (lua_istable(L, -1)) {
+        int len = lua_objlen(L, -1);
+        for (int i = 1; i <= len; i++) {
+            lua_rawgeti(L, -1, i);
+            if (lua_isstring(L, -1)) {
+                step.depends_on.push_back(lua_tostring(L, -1));
+            }
+            lua_pop(L, 1);
+        }
+    }
+    lua_pop(L, 1);
+
+    return step;
+}
+
+#else
+// 存根实现（未构建 server 模块时）
+struct WorkflowOrchestrator;
+static void* g_orchestrator = nullptr;
+
+void setOrchestrator(void* orchestrator) {
+    g_orchestrator = orchestrator;
+}
+
+static void* getOrchestrator() {
+    return g_orchestrator;
+}
+
+// 存根类型
+struct TaskStep { };
+struct Workflow { };
+#endif
 
 // 从 Lua 表构建 TaskStep
 static wingman::server::TaskStep parseTaskStep(lua_State* L, int index) {
@@ -798,6 +891,7 @@ void registerOrchestrationModule(lua_State* L);
 
 } // namespace orchestration
 
+#endif // WINGMAN_BUILD_SERVER
 // ============================================================================
 // KV 存储模块
 // ============================================================================

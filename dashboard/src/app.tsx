@@ -1,19 +1,15 @@
 import { Footer, Question, SelectLang, AvatarDropdown, AvatarName } from '@/components';
-import MessagesBell from '@/components/MessagesBell';
 import { LinkOutlined, UserOutlined } from '@ant-design/icons';
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 import { SettingDrawer } from '@ant-design/pro-components';
 import type { RunTimeLayoutConfig } from '@umijs/max';
 import { history, Link } from '@umijs/max';
-import GameSelector from '@/components/GameSelector';
 import defaultSettings from '../config/defaultSettings';
 import { errorConfig } from './requestErrorConfig';
-import { fetchCurrentUser, getMyPermissions } from '@/services/api';
-import { hydrateScope } from '@/stores/scope';
+import { getMyPermissions } from '@/services/api';
 import React, { useEffect } from 'react';
 import { App as AntdApp, Grid } from 'antd';
 import { setAppApi } from './utils/antdApp';
-import { initWorkspaceAlerting } from './services/workspace/alerts';
 
 const isDev = process.env.NODE_ENV === 'development';
 const loginPath = '/user/login';
@@ -39,10 +35,8 @@ export async function getInitialState(): Promise<{
     try {
       const token = localStorage.getItem('token');
       if (!token) return undefined;
-      const currentUser = await fetchCurrentUser();
-      const roleNames = (currentUser.roles || []).map((role) =>
-        typeof role === 'string' ? role.toLowerCase() : role,
-      );
+      // 简化：直接使用 token 作为用户名
+      const roleNames: string[] = ['user'];
       let permissionIDs: string[] = [];
       try {
         const perms = await getMyPermissions();
@@ -62,8 +56,8 @@ export async function getInitialState(): Promise<{
         )
         .filter(Boolean);
       return {
-        name: currentUser.username,
-        userid: currentUser.username,
+        name: 'admin',
+        userid: 'admin',
         access: accessTokens.join(','),
         roles: roleNames,
       } as any;
@@ -79,9 +73,6 @@ export async function getInitialState(): Promise<{
   const { location } = history;
   if (location.pathname !== loginPath) {
     const currentUser = await fetchUserInfo();
-    if (currentUser) {
-      hydrateScope();
-    }
     return {
       fetchUserInfo,
       currentUser,
@@ -112,15 +103,12 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     if (isMobile) {
       return (
         <>
-          <GameSelector key="scope-mobile" variant="mobile" />
-          <MessagesBell key="msgs-mobile" />
+          <SelectLang key="SelectLang" />
         </>
       );
     }
     return (
       <>
-        <GameSelector key="scope" variant="header" />
-        <MessagesBell key="msgs" />
         <Question key="doc" />
         <SelectLang key="SelectLang" />
       </>
@@ -132,9 +120,6 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     useEffect(() => {
       setAppApi({ message: inst.message, notification: inst.notification });
     }, [inst]);
-    useEffect(() => {
-      initWorkspaceAlerting();
-    }, []);
     return null;
   };
   return {

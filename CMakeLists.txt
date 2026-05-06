@@ -99,6 +99,8 @@ set(CORE_SOURCES
     src/verification.cpp
     # QR Code Login
     src/qrcode.cpp
+    # UI Automation
+    src/ui_automation.cpp
 )
 
 # OCR support (conditional)

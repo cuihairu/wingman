@@ -1,6 +1,6 @@
 /**
  * @name umi 的路由配置
- * @description Wingman 游戏自动化控制引擎 - 简化版路由配置
+ * @description Wingman 游戏自动化控制引擎 - 路由配置
  * @doc https://umijs.org/docs/guides/routes
  */
 export default [
@@ -20,6 +20,20 @@ export default [
   {
     path: '/',
     component: './Welcome',
+  },
+  // Agent 管理
+  {
+    path: '/agents',
+    name: 'Agents',
+    icon: 'api',
+    component: './Agents',
+  },
+  // 工作流管理
+  {
+    path: '/workflows',
+    name: 'Workflows',
+    icon: 'block',
+    component: './Workflows',
   },
   // 用户中心
   {

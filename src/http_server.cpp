@@ -14,7 +14,27 @@ HTTPServer::~HTTPServer() {
     stop();
 }
 
+void HTTPServer::setupWebSocketRoutes() {
+    // WebSocket 路由 - 用于实时推送
+    CROW_WEBSOCKET_ROUTE(app_, "/ws")
+        .onopen([this](crow::websocket::connection& conn) {
+            onWSOpen(conn.get_shared_this());
+        })
+        .onmessage([this](const crow::request& req, crow::websocket::connection& conn, const std::string& message, bool is_binary) {
+            onWSMessage(conn.get_shared_this(), message, is_binary);
+        })
+        .onclose([this](const crow::websocket::connection& conn, const std::string& reason) {
+            onWSClose(conn.get_shared_this(), reason);
+        })
+        .onerror([this](crow::websocket::connection& conn, const std::string& error) {
+            spdlog::error("[WS] Error: {}", error);
+        });
+}
+
 void HTTPServer::setupRoutes() {
+    // 设置 WebSocket 路由
+    setupWebSocketRoutes();
+
     // 静态文件服务 - 提供 dashboard 前端
     CROW_ROUTE(app_, "/")
     ([this](const crow::request& req) {
@@ -380,7 +400,170 @@ void HTTPServer::start() {
 }
 
 void HTTPServer::stop() {
+    // 停止心跳线程
+    wsHeartbeatRunning_ = false;
+    if (wsHeartbeatThread_.joinable()) {
+        wsHeartbeatThread_.join();
+    }
+
+    // 关闭所有 WebSocket 连接
+    {
+        std::lock_guard<std::mutex> lock(wsMutex_);
+        for (auto& ws : wsConnections_) {
+            ws->close();
+        }
+        wsConnections_.clear();
+    }
+
     app_.stop();
+}
+
+// ========== WebSocket 实现 ==========
+
+void HTTPServer::onWSOpen(std::shared_ptr<crow::websocket::connection> conn) {
+    std::string connId = "ws_" + std::to_string(++wsConnectionIdCounter_);
+    auto wsConn = std::make_shared<WSConnection>(conn, connId);
+
+    {
+        std::lock_guard<std::mutex> lock(wsMutex_);
+        wsConnections_.insert(wsConn);
+    }
+
+    spdlog::info("[WS] Connection opened: {} (total: {})", connId, wsConnections_.size());
+
+    // 发送欢迎消息
+    nlohmann::json welcome;
+    welcome["type"] = "connected";
+    welcome["connectionId"] = connId;
+    welcome["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
+    wsConn->send(welcome.dump());
+
+    // 启动心跳线程（如果还没启动）
+    if (!wsHeartbeatRunning_) {
+        wsHeartbeatRunning_ = true;
+        wsHeartbeatThread_ = std::thread([this]() {
+            spdlog::info("[WS] Heartbeat thread started");
+            while (wsHeartbeatRunning_) {
+                std::this_thread::sleep_for(std::chrono::seconds(30));
+
+                std::lock_guard<std::mutex> lock(wsMutex_);
+                auto now = std::chrono::system_clock::now();
+                std::vector<std::shared_ptr<WSConnection>> toRemove;
+
+                for (auto& ws : wsConnections_) {
+                    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - ws->lastPing).count();
+                    if (elapsed > 60) { // 60秒超时
+                        spdlog::warn("[WS] Connection {} timeout, closing", ws->id);
+                        ws->close();
+                        toRemove.push_back(ws);
+                    } else {
+                        // 发送心跳
+                        nlohmann::json ping;
+                        ping["type"] = "ping";
+                        ping["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
+                        ws->send(ping.dump());
+                    }
+                }
+
+                // 移除超时连接
+                for (auto& ws : toRemove) {
+                    wsConnections_.erase(ws);
+                }
+            }
+            spdlog::info("[WS] Heartbeat thread stopped");
+        });
+    }
+}
+
+void HTTPServer::onWSMessage(std::shared_ptr<crow::websocket::connection> conn, const std::string& message, bool is_binary) {
+    try {
+        auto j = nlohmann::json::parse(message);
+        std::string type = j.value("type", "");
+
+        spdlog::debug("[WS] Received message type: {}", type);
+
+        // 处理 pong 响应
+        if (type == "pong") {
+            std::lock_guard<std::mutex> lock(wsMutex_);
+            for (auto& ws : wsConnections_) {
+                if (ws->connection.get() == conn.get()) {
+                    ws->lastPing = std::chrono::system_clock::now();
+                    break;
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        spdlog::error("[WS] Message parse error: {}", e.what());
+    }
+}
+
+void HTTPServer::onWSClose(std::shared_ptr<crow::websocket::connection> conn, const std::string& reason) {
+    std::lock_guard<std::mutex> lock(wsMutex_);
+    for (auto it = wsConnections_.begin(); it != wsConnections_.end(); ++it) {
+        if ((*it)->connection.get() == conn.get()) {
+            spdlog::info("[WS] Connection closed: {} (reason: {}, total: {})",
+                (*it)->id, reason, wsConnections_.size() - 1);
+            wsConnections_.erase(it);
+            break;
+        }
+    }
+}
+
+void HTTPServer::broadcast(const WSMessage& message) {
+    std::string msgStr = message.toString();
+    std::lock_guard<std::mutex> lock(wsMutex_);
+
+    for (auto& ws : wsConnections_) {
+        if (ws->isOpen()) {
+            try {
+                ws->send(msgStr);
+            } catch (const std::exception& e) {
+                spdlog::error("[WS] Broadcast error to {}: {}", ws->id, e.what());
+            }
+        }
+    }
+}
+
+void HTTPServer::broadcastAgentEvent(const std::string& eventType, const nlohmann::json& agentData) {
+    nlohmann::json j;
+    j["type"] = "agent";
+    j["event"] = eventType;
+    j["data"] = agentData;
+    j["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
+
+    std::string msgStr = j.dump();
+    std::lock_guard<std::mutex> lock(wsMutex_);
+
+    for (auto& ws : wsConnections_) {
+        if (ws->isOpen()) {
+            try {
+                ws->send(msgStr);
+            } catch (const std::exception& e) {
+                spdlog::error("[WS] Broadcast error to {}: {}", ws->id, e.what());
+            }
+        }
+    }
+}
+
+void HTTPServer::broadcastWorkflowEvent(const std::string& eventType, const nlohmann::json& workflowData) {
+    nlohmann::json j;
+    j["type"] = "workflow";
+    j["event"] = eventType;
+    j["data"] = workflowData;
+    j["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
+
+    std::string msgStr = j.dump();
+    std::lock_guard<std::mutex> lock(wsMutex_);
+
+    for (auto& ws : wsConnections_) {
+        if (ws->isOpen()) {
+            try {
+                ws->send(msgStr);
+            } catch (const std::exception& e) {
+                spdlog::error("[WS] Broadcast error to {}: {}", ws->id, e.what());
+            }
+        }
+    }
 }
 
 } // namespace wingman

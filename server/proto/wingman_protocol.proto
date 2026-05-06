@@ -5,11 +5,11 @@ package wingman.protocol;
 // ========== 错误码 ==========
 enum ErrorCode {
   OK = 0;
-  UNKNOWN = 1;
+  ERR_UNKNOWN = 1;
   INVALID_REQUEST = 2;
   NOT_FOUND = 3;
   TIMEOUT = 4;
-  BUSY = 5;
+  ERR_BUSY = 5;
   NOT_AUTHORIZED = 6;
   ALREADY_EXISTS = 7;
   FAILED = 8;
@@ -19,7 +19,7 @@ enum ErrorCode {
 
 // ========== 请求类型 ==========
 enum RequestType {
-  UNKNOWN = 0;
+  REQ_UNKNOWN = 0;
   // 控制指令
   EXECUTE_SCRIPT = 1;
   STOP_SCRIPT = 2;

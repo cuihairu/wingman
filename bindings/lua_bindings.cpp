@@ -27,6 +27,7 @@
 #include "wingman/node_status.hpp"
 #include "wingman/verification.hpp"
 #include "wingman/qrcode.hpp"
+#include "wingman/ui_automation.hpp"
 #include "wingman/version.hpp"
 
 #include <cstring>
@@ -117,6 +118,7 @@ void LuaState::registerAPIs() {
     registerNodeModule();
     registerVerificationModule();
     registerQRCodeModule();
+    registerUIAutomationModule();
 
     // 注册扩展模块
     registerHttpModule(L);
@@ -3577,6 +3579,406 @@ void LuaState::registerNodeModule() {
     lua_setfield(L, -2, "getWindows");
 
     lua_setglobal(L, "node");
+}
+
+// ============================================================================
+// UI Automation 模块
+// ============================================================================
+
+namespace uia {
+
+// UI Element 元数据（存储在 Lua userdata 中）
+struct UIElementData {
+    std::shared_ptr<wingman::UIAutomationElement> element;
+};
+
+// 检查参数是否是 UIElement
+UIElementData* checkUIElement(lua_State* L, int index) {
+    void* ud = luaL_checkudata(L, index, "UIElement");
+    return static_cast<UIElementData*>(ud);
+}
+
+// 创建 UIElement userdata 并压入栈
+void pushUIElement(lua_State* L, std::shared_ptr<wingman::UIAutomationElement> element) {
+    auto* ud = static_cast<UIElementData*>(lua_newuserdata(L, sizeof(UIElementData)));
+    new (ud) UIElementData();
+    ud->element = element;
+    luaL_setmetatable(L, "UIElement");
+}
+
+// UIElement:click()
+int click(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data && data->element) {
+        bool result = data->element->click();
+        lua_pushboolean(L, result);
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+// UIElement:rightClick()
+int rightClick(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data && data->element) {
+        bool result = data->element->rightClick();
+        lua_pushboolean(L, result);
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+// UIElement:doubleClick()
+int doubleClick(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data && data->element) {
+        bool result = data->element->doubleClick();
+        lua_pushboolean(L, result);
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+// UIElement:focus()
+int focus(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data && data->element) {
+        bool result = data->element->focus();
+        lua_pushboolean(L, result);
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+// UIElement:getValue()
+int getValue(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data && data->element) {
+        std::string value = data->element->getValue();
+        lua_pushstring(L, value.c_str());
+    } else {
+        lua_pushstring(L, "");
+    }
+    return 1;
+}
+
+// UIElement:setValue(value)
+int setValue(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    const char* value = luaL_checkstring(L, 2);
+    if (data && data->element && value) {
+        bool result = data->element->setValue(value);
+        lua_pushboolean(L, result);
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+// UIElement:getName()
+int getName(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data && data->element) {
+        std::string name = data->element->getName();
+        lua_pushstring(L, name.c_str());
+    } else {
+        lua_pushstring(L, "");
+    }
+    return 1;
+}
+
+// UIElement:getInfo()
+int getInfo(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    lua_newtable(L);
+    if (data && data->element) {
+        UIElementInfo info = data->element->getInfo();
+        lua_pushstring(L, info.name.c_str());
+        lua_setfield(L, -2, "name");
+        lua_pushstring(L, info.className.c_str());
+        lua_setfield(L, -2, "className");
+        lua_pushstring(L, info.automationId.c_str());
+        lua_setfield(L, -2, "automationId");
+        lua_pushstring(L, info.controlType.c_str());
+        lua_setfield(L, -2, "controlType");
+        lua_pushboolean(L, info.isEnabled);
+        lua_setfield(L, -2, "isEnabled");
+        lua_pushboolean(L, info.isVisible);
+        lua_setfield(L, -2, "isVisible");
+
+        // bounds
+        lua_newtable(L);
+        lua_pushinteger(L, info.bounds.x);
+        lua_setfield(L, -2, "x");
+        lua_pushinteger(L, info.bounds.y);
+        lua_setfield(L, -2, "y");
+        lua_pushinteger(L, info.bounds.width);
+        lua_setfield(L, -2, "width");
+        lua_pushinteger(L, info.bounds.height);
+        lua_setfield(L, -2, "height");
+        lua_setfield(L, -2, "bounds");
+    }
+    return 1;
+}
+
+// UIElement:getChildren()
+int getChildren(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    lua_newtable(L);
+    if (data && data->element) {
+        auto children = data->element->getChildren();
+        for (size_t i = 0; i < children.size(); i++) {
+            pushUIElement(L, children[i]);
+            lua_rawseti(L, -2, i + 1);
+        }
+    }
+    return 1;
+}
+
+// UIElement 元方法
+int uiElementGC(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data) {
+        data->element.~shared_ptr();
+    }
+    return 0;
+}
+
+int uiElementToString(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data && data->element) {
+        std::string name = data->element->getName();
+        lua_pushfstring(L, "UIElement(%s)", name.c_str());
+    } else {
+        lua_pushstring(L, "UIElement(invalid)");
+    }
+    return 1;
+}
+
+// UIElement 索引方法
+int uiElementIndex(lua_State* L) {
+    const char* key = luaL_checkstring(L, 2);
+    auto* data = checkUIElement(L, 1);
+
+    if (strcmp(key, "click") == 0) {
+        lua_pushcfunction(L, click);
+        return 1;
+    } else if (strcmp(key, "rightClick") == 0) {
+        lua_pushcfunction(L, rightClick);
+        return 1;
+    } else if (strcmp(key, "doubleClick") == 0) {
+        lua_pushcfunction(L, doubleClick);
+        return 1;
+    } else if (strcmp(key, "focus") == 0) {
+        lua_pushcfunction(L, focus);
+        return 1;
+    } else if (strcmp(key, "getValue") == 0) {
+        lua_pushcfunction(L, getValue);
+        return 1;
+    } else if (strcmp(key, "setValue") == 0) {
+        lua_pushcfunction(L, setValue);
+        return 1;
+    } else if (strcmp(key, "getName") == 0) {
+        lua_pushcfunction(L, getName);
+        return 1;
+    } else if (strcmp(key, "getInfo") == 0) {
+        lua_pushcfunction(L, getInfo);
+        return 1;
+    } else if (strcmp(key, "getChildren") == 0) {
+        lua_pushcfunction(L, getChildren);
+        return 1;
+    }
+
+    // 返回属性
+    if (data && data->element) {
+        if (strcmp(key, "name") == 0) {
+            std::string name = data->element->getName();
+            lua_pushstring(L, name.c_str());
+            return 1;
+        } else if (strcmp(key, "className") == 0) {
+            std::string className = data->element->getClassName();
+            lua_pushstring(L, className.c_str());
+            return 1;
+        } else if (strcmp(key, "automationId") == 0) {
+            std::string automationId = data->element->getAutomationId();
+            lua_pushstring(L, automationId.c_str());
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+// ========== 全局函数 ==========
+
+// uia.fromPoint(x, y)
+int fromPoint(lua_State* L) {
+    int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+
+    auto element = wingman::uia().fromPoint(x, y);
+    if (element) {
+        pushUIElement(L, element);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// uia.fromWindow(hwnd)
+int fromWindow(lua_State* L) {
+    HWND hwnd = reinterpret_cast<HWND>(luaL_checkinteger(L, 1));
+
+    auto element = wingman::uia().fromWindow(hwnd);
+    if (element) {
+        pushUIElement(L, element);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// uia.fromForeground()
+int fromForeground(lua_State* L) {
+    auto element = wingman::uia().fromForegroundWindow();
+    if (element) {
+        pushUIElement(L, element);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// uia.findButton(name)
+int findButton(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    auto element = wingman::uia().findButton(name);
+    if (element) {
+        pushUIElement(L, element);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// uia.findEdit(name)
+int findEdit(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    auto element = wingman::uia().findEdit(name);
+    if (element) {
+        pushUIElement(L, element);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// uia.findText(name)
+int findText(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    auto element = wingman::uia().findText(name);
+    if (element) {
+        pushUIElement(L, element);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// uia.findByName(name)
+int findByName(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+
+    auto element = wingman::uia().findByName(name);
+    if (element) {
+        pushUIElement(L, element);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// uia.findById(id)
+int findById(lua_State* L) {
+    const char* id = luaL_checkstring(L, 1);
+
+    auto element = wingman::uia().findById(id);
+    if (element) {
+        pushUIElement(L, element);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// uia.waitForName(name, timeout)
+int waitForName(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    int timeout = luaL_optinteger(L, 2, 5000);
+
+    auto element = wingman::uia().waitForName(name, timeout);
+    if (element) {
+        pushUIElement(L, element);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+} // namespace uia
+
+void LuaState::registerUIAutomationModule() {
+    // 创建 UIElement 元表
+    luaL_newmetatable(L, "UIElement");
+
+    // 元方法
+    lua_pushcfunction(L, uia::uiElementGC);
+    lua_setfield(L, -2, "__gc");
+    lua_pushcfunction(L, uia::uiElementToString);
+    lua_setfield(L, -2, "__tostring");
+    lua_pushcfunction(L, uia::uiElementIndex);
+    lua_setfield(L, -2, "__index");
+
+    lua_pop(L, 1);
+
+    // 创建 uia 全局表
+    lua_newtable(L);
+
+    lua_pushcfunction(L, uia::fromPoint);
+    lua_setfield(L, -2, "fromPoint");
+
+    lua_pushcfunction(L, uia::fromWindow);
+    lua_setfield(L, -2, "fromWindow");
+
+    lua_pushcfunction(L, uia::fromForeground);
+    lua_setfield(L, -2, "fromForeground");
+
+    lua_pushcfunction(L, uia::findButton);
+    lua_setfield(L, -2, "findButton");
+
+    lua_pushcfunction(L, uia::findEdit);
+    lua_setfield(L, -2, "findEdit");
+
+    lua_pushcfunction(L, uia::findText);
+    lua_setfield(L, -2, "findText");
+
+    lua_pushcfunction(L, uia::findByName);
+    lua_setfield(L, -2, "findByName");
+
+    lua_pushcfunction(L, uia::findById);
+    lua_setfield(L, -2, "findById");
+
+    lua_pushcfunction(L, uia::waitForName);
+    lua_setfield(L, -2, "waitForName");
+
+    lua_setglobal(L, "uia");
 }
 
 } // namespace wingman::lua

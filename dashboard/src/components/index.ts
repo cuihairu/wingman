@@ -8,13 +8,6 @@
 import Footer from './Footer';
 import { Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
-import {
-  SummaryOverview,
-  StandardFilterBar,
-  StandardListSection,
-  PageStatePanel,
-  DASHBOARD_PAGE_TOKENS,
-} from './StandardPage';
 
 export {
   Footer,
@@ -22,9 +15,4 @@ export {
   SelectLang,
   AvatarDropdown,
   AvatarName,
-  StandardFilterBar,
-  SummaryOverview,
-  StandardListSection,
-  PageStatePanel,
-  DASHBOARD_PAGE_TOKENS,
 };

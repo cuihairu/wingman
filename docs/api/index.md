@@ -8,6 +8,8 @@ Wingman 提供以下 API 模块：
 
 - [screen](/api/screen) - 屏幕操作相关 API
 - [input](/api/input) - 输入模拟相关 API
+- [window](/api/window) - 窗口管理相关 API
+- [uia](/api/uia) - UI Automation 控件交互 API
 
 ### 视觉与 AI
 
@@ -32,10 +34,13 @@ Wingman 提供以下 API 模块：
 - [team](/api/team) - 组队编排 API
 - [tray](/api/tray) - 系统托盘图标 API
 
+### 系统管理
+
+- [window](/api/window) - 窗口管理相关 API
+- [process](/api/process) - 进程管理相关 API
+
 ## 即将添加
 
-- window - 窗口管理相关 API
-- process - 进程管理相关 API
 - human - 人性化模拟 API
 - macro - 宏录制 API
 - trigger - 基础触发器系统 API

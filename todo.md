@@ -17,6 +17,8 @@
 | Lua 脚本 | ❌ | ✅ 核心特性 | ✅ 完成 |
 | VS Code 调试 | ❌ | ✅ 已规划 | 🚧 进行中 |
 | 防检测 | ✅ | ✅ 人性化模拟 | ✅ 完成 |
+| UI Automation | ❌ | ✅ 已实现 | ✅ 完成 |
+| WebSocket | ❌ | ✅ 已实现 | ✅ 完成 |
 
 ---
 
@@ -43,8 +45,8 @@
 - [x] `window.find(title)` - 查找窗口
 - [x] `window.activate(hwnd)` - 激活窗口
 - [x] `window.getBounds(hwnd)` - 获取窗口位置
-- [x] `window.setBounds(hwnd, x, y, w, h)` - 设置窗口位置
-- [x] `window.isForeground(hwnd)` - 判断是否前台
+- [x] `window.getTitle(hwnd)` - 获取窗口标题
+- [x] `window.getForeground()` - 获取前台窗口
 - [x] `window.waitFor(title)` - 等待窗口出现
 
 ### 1.4 进程管理模块 ✅
@@ -67,6 +69,7 @@
 - [x] HTTP 客户端绑定
 - [x] JSON 封装绑定
 - [x] KV 存储绑定
+- [x] UI Automation 绑定
 
 ---
 
@@ -130,7 +133,7 @@
 
 ---
 
-## Phase 5: Client 模块
+## Phase 5: Client 模块 ✅
 
 ### 5.1 Python Client ✅
 - [x] TCP 连接管理
@@ -150,6 +153,9 @@
 
 ### 5.3 Web Dashboard ✅
 - [x] 实时监控界面
+- [x] WebSocket 支持
+- [x] Agents 管理页面
+- [x] Workflows 管理页面
 - [x] 脚本管理
 - [x] 日志查看
 - [x] 配置编辑器
@@ -200,19 +206,22 @@
 
 ---
 
-## Phase 8: 文档和示例 🚧
+## Phase 8: 文档和示例 ✅
 
-### 8.1 文档
+### 8.1 文档 ✅
 - [x] API 参考文档
 - [x] 快速入门指南
-- [ ] 示例脚本集合
+- [x] UI Automation API 文档
+- [x] Window API 文档
+- [x] Process API 文档
 - [ ] 视频教程
 
-### 8.2 示例脚本
+### 8.2 示例脚本 ✅
 - [x] Hello World
 - [x] 像素检测示例
 - [x] 图像匹配示例
 - [x] 自动循环示例
+- [x] UI Automation 示例
 - [x] MMORPG 游戏自动化
 - [x] 窗口操作示例
 - [x] 进程管理示例
@@ -221,6 +230,189 @@
 - [x] 脚本管理示例
 - [x] 安全模块示例
 - [x] 游戏配置示例
+
+---
+
+## Phase 9: UI Automation (新增) ✅
+
+### 9.1 核心功能 ✅
+- [x] UI Automation COM 接口集成
+- [x] 元素查找 (byName, byId, byControlType)
+- [x] 元素操作 (click, setValue, getValue)
+- [x] 元素遍历 (getChildren, getParent)
+- [x] 元素等待 (waitFor)
+
+### 9.2 Lua 绑定 ✅
+- [x] `uia.fromForeground()` - 获取前台窗口根元素
+- [x] `uia.fromPoint(x, y)` - 从坐标获取元素
+- [x] `uia.fromWindow(hwnd)` - 从句柄获取元素
+- [x] `uia.findButton(name)` - 查找按钮
+- [x] `uia.findEdit(name)` - 查找编辑框
+- [x] `uia.findText(name)` - 查找文本
+- [x] `uia.findByName(name)` - 按名称查找
+- [x] `uia.findById(id)` - 按 ID 查找
+- [x] `uia.waitForName(name, timeout)` - 等待元素
+
+### 9.3 UIElement 方法 ✅
+- [x] `:click()` - 点击
+- [x] `:rightClick()` - 右键点击
+- [x] `:doubleClick()` - 双击
+- [x] `:focus()` - 设置焦点
+- [x] `:getValue()` - 获取值
+- [x] `:setValue(value)` - 设置值
+- [x] `:getName()` - 获取名称
+- [x] `:getInfo()` - 获取完整信息
+- [x] `:getChildren()` - 获取子元素
+
+---
+
+## Phase 10: WebSocket 实时更新 (新增) ✅
+
+### 10.1 服务端 ✅
+- [x] WebSocket 路由 `/ws`
+- [x] 事件广播机制
+- [x] 心跳检测 (30s interval, 60s timeout)
+- [x] Agent 状态事件
+- [x] Workflow 状态事件
+
+### 10.2 客户端 (Dashboard) ✅
+- [x] WebSocket 服务封装
+- [x] 自动重连机制
+- [x] 事件订阅系统
+- [x] Agents 页面实时更新
+- [x] Workflows 页面实时更新
+
+### 10.3 事件类型 ✅
+- [x] `agent.connected` - Agent 连接
+- [x] `agent.disconnected` - Agent 断开
+- [x] `agent.status_changed` - Agent 状态变化
+- [x] `workflow.created` - 工作流创建
+- [x] `workflow.updated` - 工作流更新
+- [x] `workflow.completed` - 工作流完成
+
+---
+
+## Phase 11: 多账号协作编排 🚧
+
+### 11.1 任务编排引擎
+- [x] Orchestrator 核心类 - 工作流调度
+- [x] TaskStep 定义 - 步骤、依赖关系、完成检测
+- [x] Worker 协议 - 客户端与服务端通信规范
+- [x] 屏障同步 (Barrier Synchronization) - 等待所有账号完成当前步骤
+- [x] 进度存储 - 服务端状态持久化
+
+### 11.2 进度追踪机制
+- [x] WorkerStatus 状态定义 (pending/running/completed/failed)
+- [x] 进度报告 API - `reportProgress(workerId, stepId, progress)`
+- [x] 下一步请求 API - `getNextStep(workerId)`
+- [x] 工作流状态查询 API - `getStatus(workflowId)`
+
+### 11.3 Protobuf 集成 ✅
+- [x] Protobuf 协议定义
+- [x] 代码生成配置
+- [x] 消息序列化/反序列化
+
+### 11.4 Lua 绑定 (待实现)
+- [ ] `orchestration.get_next_step(agentId)` - 请求下一步任务
+- [ ] `orchestration.report_progress(agentId, stepId, progress)` - 报告进度
+- [ ] `orchestration.get_workflow_status(workflowId)` - 查询状态
+
+---
+
+## Phase 12: TCP Server/Client 增强 ✅
+
+### 12.1 协议定义 ✅
+
+#### 请求消息结构 ✅
+```json
+{
+  "type": "heartbeat",           // 消息类型
+  "id": "req-002",               // 请求 ID
+  "timestamp": 1714928900,       // 发送时间戳（通用字段）
+  "agent_id": "vm-wow-1",        // 发送者 ID（已注册客户端）
+  "priority": 0,                 // 优先级（可选）
+  "data": {                      // 业务数据
+    "status": "busy",
+    "current_task": {...}
+  }
+}
+```
+
+#### 响应消息结构 ✅
+```json
+{
+  "request_id": "req-002",       // 对应的请求 ID
+  "code": 0,                     // 错误码（数字）
+  "timestamp": 1714928901,       // 响应时间戳
+  "message": "success",          // 可读描述（可选）
+  "data": {...}                  // 业务数据（成功时）
+}
+```
+
+#### 错误码定义 ✅
+| Code | 名称 | 说明 |
+|------|------|------|
+| 0 | OK | 成功 |
+| 1 | UNKNOWN | 未知错误 |
+| 2 | INVALID_REQUEST | 请求格式错误或参数无效 |
+| 3 | NOT_FOUND | 资源未找到 |
+| 4 | TIMEOUT | 操作超时 |
+| 5 | BUSY | 服务忙碌 |
+| 6 | NOT_AUTHORIZED | 未授权 |
+| 7 | ALREADY_EXISTS | 资源已存在 |
+| 8 | FAILED | 操作失败 |
+| 9 | DISCONNECTED | 连接断开 |
+| 10 | RATE_LIMITED | 请求频率限制 |
+| 1024+ | 用户自定义 | 业务错误码（>= 1024） |
+
+#### 消息类型 ✅
+- [x] `kRegister` - 客户端注册消息
+- [x] `kHeartbeat` - 心跳消息
+- [x] `kGetAgents` - 获取所有在线客户端列表
+- [x] `kSyncTask` - 同步任务状态
+- [x] `kShutdown` - 关闭客户端
+
+### 12.2 服务端会话管理 ✅
+- [x] `AgentInfo` 结构 - 客户端信息 (agentId, hostname, ip, status, lastSeen)
+- [x] `getOnlineAgents()` - 获取所有在线客户端
+- [x] `sendToAgent(agentId, response)` - 向指定客户端发送消息
+- [x] `disconnectAgent(agentId)` - 断开指定客户端
+- [x] 心跳超时检测 - 定时检查超时客户端并清理
+
+### 12.3 客户端增强 ✅
+- [x] `setAgentId(id)` - 设置客户端 ID
+- [x] `enableAutoReconnect(enable, interval)` - 启用自动重连
+- [x] `setStateCallback(callback)` - 连接状态事件回调
+- [x] `startHeartbeat(interval)` - 启动自动心跳
+- [x] 连接后自动注册 - 发送 register 消息
+
+### 12.4 事件系统 ✅
+- [x] 服务端：`onConnect(agentId)` - 客户端上线事件
+- [x] 服务端：`onDisconnect(agentId)` - 客户端下线事件
+- [x] 客户端：`onConnectionStateChanged(connected)` - 连接状态变化事件
+
+---
+
+## 架构设计原则
+
+### 核心能力 vs 业务逻辑
+- **核心层** (保留): 验证码生成/验证 (TOTP/SteamGuard)、键值存储、任务队列、脚本执行引擎
+- **扩展层** (可选): AccountManager 插件、进度存储接口、调度器接口
+- **用户层** (用户定义): 账号概念、游戏逻辑、脚本进度、调度策略
+
+### 模块位置调整
+| 模块 | 当前位置 | 建议位置 | 理由 |
+|------|----------|----------|------|
+| TOTP/SteamGuard 算法 | 核心保留 | ✅ 核心能力层 | 通用能力 |
+| VerificationManager 类 | 核心封装 | ⚠️ 移到 examples/ | 过度封装，用户自己定义数据结构 |
+| QRLoginManager 类 | 核心封装 | ⚠️ 移到 examples/ | 过度封装 |
+| 账号概念 | - | 用户层定义 | 框架不预判业务 |
+
+### 通信协议
+- ✅ 使用 TCP 长连接 (已有 asio 实现)
+- ✅ 使用 JSON 序列化 (可读、易调试)
+- ✅ 使用自定义信封协议 (已实现: `length\njson\n`)
+- ✅ 使用 Protobuf (严格的消息定义)
 
 ---
 
@@ -254,10 +446,16 @@
 19. ✅ 安全特性
 20. ✅ 多游戏配置
 
+### P4 - 最新功能 ✅
+21. ✅ UI Automation
+22. ✅ WebSocket 实时更新
+23. ✅ Protobuf 集成
+
 ---
 
 ## 当前状态
 
+### 已完成 ✅
 - [x] 项目初始化
 - [x] CMake 构建系统
 - [x] 基础目录结构
@@ -266,7 +464,7 @@
 - [x] 核心功能实现 (100%)
 - [x] Lua 测试框架 (busted)
 - [x] Codecov 配置
-- [x] 示例脚本 (100% - 15个示例)
+- [x] 示例脚本 (13个示例)
 - [x] VS Code 扩展 (90% - 调试器、语言服务器)
 - [x] Python Client
 - [x] Node.js Client
@@ -275,127 +473,56 @@
 - [x] 安全模块
 - [x] 游戏配置管理
 - [x] Web Dashboard
+- [x] UI Automation 模块
+- [x] WebSocket 支持
+- [x] Protobuf 集成
+
+### 进行中 🚧
+- [ ] Lua Orchestration 绑定
+- [ ] UIA 事件监听器
+- [ ] UIA 选择器语法增强
+
+### 待规划 📋
+- [ ] 视频教程
+- [ ] 更多示例脚本
+- [ ] 性能基准测试
+- [ ] 用户反馈收集
+
+---
 
 ## 下一步计划
 
-1. 文档完善 (示例脚本集合)
-2. 发布准备
+### 短期 (1-2周)
+- [x] 修复 CI 构建错误（Protobuf 枚举冲突、条件编译）
+- [ ] 完善 UIA 文档和示例
+- [ ] 添加更多 UIA 控件类型支持
+- [ ] 实现 UIA 事件监听器
+
+### 中期 (1-2月)
+- [ ] Lua Orchestration 绑定
+- [ ] 性能基准测试和优化
+- [ ] 用户文档完善
+
+### 长期
+- [ ] 视频教程制作
+- [ ] 社区建设
+- [ ] 发布 1.0 正式版
 
 ---
 
-## Phase 9: 多账号协作编排 🆕
+## 最近完成 (2024-05)
 
-### 9.1 任务编排引擎
-- [ ] Orchestrator 核心类 - 工作流调度
-- [ ] TaskStep 定义 - 步骤、依赖关系、完成检测
-- [ ] Worker 协议 - 客户端与服务端通信规范
-- [ ] 屏障同步 (Barrier Synchronization) - 等待所有账号完成当前步骤
-- [ ] 进度存储 - 服务端状态持久化
+### Phase 13: 编译问题修复 ✅
+- [x] 修复 Protobuf 枚举值冲突
+  - `UNKNOWN` → `REQ_UNKNOWN` (RequestType)
+  - `BUSY` → `ERR_BUSY` (ErrorCode)
+- [x] 修复 lua_extensions.cpp 条件编译
+  - 添加 `#ifdef WINGMAN_BUILD_SERVER` 支持
+  - 未构建 server 模块时使用存根类型
 
-### 9.2 进度追踪机制
-- [ ] WorkerStatus 状态定义 (pending/running/completed/failed)
-- [ ] 进度报告 API - `reportProgress(workerId, stepId, progress)`
-- [ ] 下一步请求 API - `getNextStep(workerId)`
-- [ ] 工作流状态查询 API - `getStatus(workflowId)`
-
-### 9.3 Lua 绑定
-- [ ] `orchestration.get_next_step(agentId)` - 请求下一步任务
-- [ ] `orchestration.report_progress(agentId, stepId, progress)` - 报告进度
-- [ ] `orchestration.get_workflow_status(workflowId)` - 查询状态
-
----
-
-## Phase 10: TCP Server/Client 增强 🆕
-
-### 10.1 协议定义
-
-#### 请求消息结构
-```json
-{
-  "type": "heartbeat",           // 消息类型
-  "id": "req-002",               // 请求 ID
-  "timestamp": 1714928900,       // 发送时间戳（通用字段）
-  "agent_id": "vm-wow-1",        // 发送者 ID（已注册客户端）
-  "priority": 0,                 // 优先级（可选）
-  "data": {                      // 业务数据
-    "status": "busy",
-    "current_task": {...}
-  }
-}
-```
-
-#### 响应消息结构
-```json
-{
-  "request_id": "req-002",       // 对应的请求 ID
-  "code": 0,                     // 错误码（数字）
-  "timestamp": 1714928901,       // 响应时间戳
-  "message": "success",          // 可读描述（可选）
-  "data": {...}                  // 业务数据（成功时）
-}
-```
-
-#### 错误码定义（0-1023 系统保留，1024+ 用户自定义）
-| Code | 名称 | 说明 |
-|------|------|------|
-| 0 | OK | 成功 |
-| 1 | UNKNOWN | 未知错误 |
-| 2 | INVALID_REQUEST | 请求格式错误或参数无效 |
-| 3 | NOT_FOUND | 资源未找到 |
-| 4 | TIMEOUT | 操作超时 |
-| 5 | BUSY | 服务忙碌 |
-| 6 | NOT_AUTHORIZED | 未授权 |
-| 7 | ALREADY_EXISTS | 资源已存在 |
-| 8 | FAILED | 操作失败 |
-| 9 | DISCONNECTED | 连接断开 |
-| 10 | RATE_LIMITED | 请求频率限制 |
-| 1024+ | 用户自定义 | 业务错误码（>= 1024） |
-
-#### 消息类型
-- [ ] `kRegister` - 客户端注册消息
-- [ ] `kHeartbeat` - 心跳消息
-- [ ] `kGetAgents` - 获取所有在线客户端列表
-- [ ] `kSyncTask` - 同步任务状态
-- [ ] `kShutdown` - 关闭客户端
-
-### 10.2 服务端会话管理
-- [ ] `AgentInfo` 结构 - 客户端信息 (agentId, hostname, ip, status, lastSeen)
-- [ ] `getOnlineAgents()` - 获取所有在线客户端
-- [ ] `sendToAgent(agentId, response)` - 向指定客户端发送消息
-- [ ] `disconnectAgent(agentId)` - 断开指定客户端
-- [ ] 心跳超时检测 - 定时检查超时客户端并清理
-
-### 10.3 客户端增强
-- [ ] `setAgentId(id)` - 设置客户端 ID
-- [ ] `enableAutoReconnect(enable, interval)` - 启用自动重连
-- [ ] `setStateCallback(callback)` - 连接状态事件回调
-- [ ] `startHeartbeat(interval)` - 启动自动心跳
-- [ ] 连接后自动注册 - 发送 register 消息
-
-### 10.4 事件系统
-- [ ] 服务端：`onConnect(agentId)` - 客户端上线事件
-- [ ] 服务端：`onDisconnect(agentId)` - 客户端下线事件
-- [ ] 客户端：`onConnectionStateChanged(connected)` - 连接状态变化事件
-
----
-
-## 架构设计原则 🆕
-
-### 核心能力 vs 业务逻辑
-- **核心层** (保留): 验证码生成/验证 (TOTP/SteamGuard)、键值存储、任务队列、脚本执行引擎
-- **扩展层** (可选): AccountManager 插件、进度存储接口、调度器接口
-- **用户层** (用户定义): 账号概念、游戏逻辑、脚本进度、调度策略
-
-### 模块位置调整建议
-| 模块 | 当前位置 | 建议位置 | 理由 |
-|------|----------|----------|------|
-| TOTP/SteamGuard 算法 | 核心保留 | ✅ 核心能力层 | 通用能力 |
-| VerificationManager 类 | 核心封装 | ⚠️ 移到 examples/ | 过度封装，用户自己定义数据结构 |
-| QRLoginManager 类 | 核心封装 | ⚠️ 移到 examples/ | 过度封装 |
-| 账号概念 | - | 用户层定义 | 框架不预判业务 |
-
-### 通信协议
-- ✅ 使用 TCP 长连接 (已有 asio 实现)
-- ✅ 使用 JSON 序列化 (可读、易调试)
-- ✅ 使用自定义信封协议 (已实现: `length\njson\n`)
-- ❌ 不使用 protobuf (不必要复杂度)
+### Phase 14: UIA 功能增强 🚧
+- [x] 实现 UIACondition 查找条件
+- [x] 实现元素展开/折叠 (expand/collapse)
+- [x] 实现选择项操作 (selectItem/getSelection)
+- [ ] 实现高级查找方法 (findFirst/findAll)
+- [ ] 添加 UIA 事件监听支持
