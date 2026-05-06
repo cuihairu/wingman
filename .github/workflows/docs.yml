@@ -69,7 +69,7 @@ jobs:
 
     - name: Install dependencies
       working-directory: dashboard
-      run: pnpm install --ignore-scripts=false
+      run: pnpm install --ignore-scripts=false --no-frozen-lockfile
 
     - name: Build dashboard
       working-directory: dashboard
