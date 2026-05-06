@@ -8,7 +8,6 @@ on:
 
 env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
   ACTIONS_NODE_VERSION: '24'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE20: true
 
@@ -36,23 +35,21 @@ jobs:
         cd vcpkg
         .\bootstrap-vcpkg.bat
 
-    - name: Cache vcpkg packages
+    - name: Cache vcpkg binary packages
       uses: actions/cache@v4
       with:
         path: |
+          ${{ env.VCPKG_ROOT }}/installed
+          ${{ env.VCPKG_ROOT }}/downloads
           ${{ env.VCPKG_ROOT }}/packages
-          ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-
 
-    - name: Create cache directory
-      run: New-Item -ItemType Directory -Force -Path "vcpkg-cache" | Out-Null
-
     - name: Install vcpkg dependencies
       run: |
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
-        .\vcpkg\vcpkg install --triplet=x64-windows
+        .\vcpkg\vcpkg install --triplet=x64-windows --recurse
 
     - name: Configure CMake with nightly version
       run: |
