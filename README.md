@@ -1,4 +1,4 @@
-# Wingman
+# Wingman [![Windows](https://img.shields.io/badge/OS-Windows-blue.svg)](https://github.com/cuihairu/wingman)
 
 <div align="center">
 
