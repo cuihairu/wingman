@@ -11,6 +11,11 @@
 #include <tesseract/baseapi.h>
 #endif
 
+// Leptonica API (for pixRead/pixDestroy)
+#ifdef WINGMAN_ENABLE_LEPTONICA
+#include <leptonica/allheaders.h>
+#endif
+
 namespace wingman {
 
 // 静态成员初始化
@@ -102,7 +107,8 @@ OcrResult OCR::recognizeImage(const std::string& imagePath) {
         // 设置页面分割模式
         api.SetPageSegMode(static_cast<tesseract::PageSegMode>(pageSegMode));
 
-        // 读取图像
+#ifdef WINGMAN_ENABLE_LEPTONICA
+        // 读取图像 (需要 Leptonica)
         Pix* image = pixRead(imagePath.c_str());
         if (!image) {
             spdlog::error("Failed to read image: {}", imagePath);
@@ -122,6 +128,23 @@ OcrResult OCR::recognizeImage(const std::string& imagePath) {
         result.success = !result.text.empty();
 
         pixDestroy(&image);
+#else
+        // 如果没有 Leptonica，使用 SetImage 从文件
+        if (!api.SetImage(imagePath.c_str())) {
+            spdlog::error("Failed to set image from file: {}", imagePath);
+            return result;
+        }
+
+        // 获取识别结果
+        char* outText = api.GetUTF8Text();
+        if (outText) {
+            result.text = outText;
+            delete[] outText;
+        }
+
+        result.confidence = api.MeanTextConf();
+        result.success = !result.text.empty();
+#endif
 
         spdlog::debug("OCR result: text='{}', confidence={}", result.text, result.confidence);
     } catch (const std::exception& e) {
@@ -139,7 +162,7 @@ OcrResult OCR::recognizeBitmap(const Bitmap& bitmap) {
         return result;
     }
 
-    if (!bitmap.data || bitmap.width <= 0 || bitmap.height <= 0) {
+    if (!bitmap.getData() || bitmap.getWidth() <= 0 || bitmap.getHeight() <= 0) {
         spdlog::error("Invalid bitmap");
         return result;
     }
@@ -154,7 +177,7 @@ OcrResult OCR::recognizeBitmap(const Bitmap& bitmap) {
         api.SetPageSegMode(static_cast<tesseract::PageSegMode>(pageSegMode));
 
         // 设置图像数据（BGR 格式）
-        api.SetImage(bitmap.data.get(), bitmap.width, bitmap.height, 4, bitmap.width * 4);
+        api.SetImage(bitmap.getData(), bitmap.getWidth(), bitmap.getHeight(), 4, bitmap.getWidth() * 4);
 
         // 获取识别结果
         char* outText = api.GetUTF8Text();
@@ -197,3 +220,5 @@ std::string OCR::getVersion() {
 }
 
 } // namespace wingman
+
+#endif // WINGMAN_ENABLE_OCR

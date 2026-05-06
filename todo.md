@@ -280,3 +280,122 @@
 
 1. 文档完善 (示例脚本集合)
 2. 发布准备
+
+---
+
+## Phase 9: 多账号协作编排 🆕
+
+### 9.1 任务编排引擎
+- [ ] Orchestrator 核心类 - 工作流调度
+- [ ] TaskStep 定义 - 步骤、依赖关系、完成检测
+- [ ] Worker 协议 - 客户端与服务端通信规范
+- [ ] 屏障同步 (Barrier Synchronization) - 等待所有账号完成当前步骤
+- [ ] 进度存储 - 服务端状态持久化
+
+### 9.2 进度追踪机制
+- [ ] WorkerStatus 状态定义 (pending/running/completed/failed)
+- [ ] 进度报告 API - `reportProgress(workerId, stepId, progress)`
+- [ ] 下一步请求 API - `getNextStep(workerId)`
+- [ ] 工作流状态查询 API - `getStatus(workflowId)`
+
+### 9.3 Lua 绑定
+- [ ] `orchestration.get_next_step(agentId)` - 请求下一步任务
+- [ ] `orchestration.report_progress(agentId, stepId, progress)` - 报告进度
+- [ ] `orchestration.get_workflow_status(workflowId)` - 查询状态
+
+---
+
+## Phase 10: TCP Server/Client 增强 🆕
+
+### 10.1 协议定义
+
+#### 请求消息结构
+```json
+{
+  "type": "heartbeat",           // 消息类型
+  "id": "req-002",               // 请求 ID
+  "timestamp": 1714928900,       // 发送时间戳（通用字段）
+  "agent_id": "vm-wow-1",        // 发送者 ID（已注册客户端）
+  "priority": 0,                 // 优先级（可选）
+  "data": {                      // 业务数据
+    "status": "busy",
+    "current_task": {...}
+  }
+}
+```
+
+#### 响应消息结构
+```json
+{
+  "request_id": "req-002",       // 对应的请求 ID
+  "code": 0,                     // 错误码（数字）
+  "timestamp": 1714928901,       // 响应时间戳
+  "message": "success",          // 可读描述（可选）
+  "data": {...}                  // 业务数据（成功时）
+}
+```
+
+#### 错误码定义（0-1023 系统保留，1024+ 用户自定义）
+| Code | 名称 | 说明 |
+|------|------|------|
+| 0 | OK | 成功 |
+| 1 | UNKNOWN | 未知错误 |
+| 2 | INVALID_REQUEST | 请求格式错误或参数无效 |
+| 3 | NOT_FOUND | 资源未找到 |
+| 4 | TIMEOUT | 操作超时 |
+| 5 | BUSY | 服务忙碌 |
+| 6 | NOT_AUTHORIZED | 未授权 |
+| 7 | ALREADY_EXISTS | 资源已存在 |
+| 8 | FAILED | 操作失败 |
+| 9 | DISCONNECTED | 连接断开 |
+| 10 | RATE_LIMITED | 请求频率限制 |
+| 1024+ | 用户自定义 | 业务错误码（>= 1024） |
+
+#### 消息类型
+- [ ] `kRegister` - 客户端注册消息
+- [ ] `kHeartbeat` - 心跳消息
+- [ ] `kGetAgents` - 获取所有在线客户端列表
+- [ ] `kSyncTask` - 同步任务状态
+- [ ] `kShutdown` - 关闭客户端
+
+### 10.2 服务端会话管理
+- [ ] `AgentInfo` 结构 - 客户端信息 (agentId, hostname, ip, status, lastSeen)
+- [ ] `getOnlineAgents()` - 获取所有在线客户端
+- [ ] `sendToAgent(agentId, response)` - 向指定客户端发送消息
+- [ ] `disconnectAgent(agentId)` - 断开指定客户端
+- [ ] 心跳超时检测 - 定时检查超时客户端并清理
+
+### 10.3 客户端增强
+- [ ] `setAgentId(id)` - 设置客户端 ID
+- [ ] `enableAutoReconnect(enable, interval)` - 启用自动重连
+- [ ] `setStateCallback(callback)` - 连接状态事件回调
+- [ ] `startHeartbeat(interval)` - 启动自动心跳
+- [ ] 连接后自动注册 - 发送 register 消息
+
+### 10.4 事件系统
+- [ ] 服务端：`onConnect(agentId)` - 客户端上线事件
+- [ ] 服务端：`onDisconnect(agentId)` - 客户端下线事件
+- [ ] 客户端：`onConnectionStateChanged(connected)` - 连接状态变化事件
+
+---
+
+## 架构设计原则 🆕
+
+### 核心能力 vs 业务逻辑
+- **核心层** (保留): 验证码生成/验证 (TOTP/SteamGuard)、键值存储、任务队列、脚本执行引擎
+- **扩展层** (可选): AccountManager 插件、进度存储接口、调度器接口
+- **用户层** (用户定义): 账号概念、游戏逻辑、脚本进度、调度策略
+
+### 模块位置调整建议
+| 模块 | 当前位置 | 建议位置 | 理由 |
+|------|----------|----------|------|
+| TOTP/SteamGuard 算法 | 核心保留 | ✅ 核心能力层 | 通用能力 |
+| VerificationManager 类 | 核心封装 | ⚠️ 移到 examples/ | 过度封装，用户自己定义数据结构 |
+| QRLoginManager 类 | 核心封装 | ⚠️ 移到 examples/ | 过度封装 |
+| 账号概念 | - | 用户层定义 | 框架不预判业务 |
+
+### 通信协议
+- ✅ 使用 TCP 长连接 (已有 asio 实现)
+- ✅ 使用 JSON 序列化 (可读、易调试)
+- ✅ 使用自定义信封协议 (已实现: `length\njson\n`)
+- ❌ 不使用 protobuf (不必要复杂度)
