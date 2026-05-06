@@ -20,33 +20,23 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Setup vcpkg (use pre-installed)
-      run: |
-        # GitHub Actions Windows runner 预装了 vcpkg
-        if (Test-Path "C:\vcpkg") {
-          Write-Host "使用预装的 vcpkg"
-          Copy-Item -Recurse -Path "C:\vcpkg" -Destination "vcpkg" -Force
-        } else {
-          Write-Host "克隆 vcpkg"
-          git clone --depth=1 https://github.com/Microsoft/vcpkg.git
-        }
-        cd vcpkg
-        # 只有 vcpkg.exe 不存在时才 bootstrap
-        if (-not (Test-Path "vcpkg.exe")) {
-          .\bootstrap-vcpkg.bat
-        }
-
-    - name: Cache vcpkg binaries and downloads
+    - name: Cache vcpkg entire directory
       uses: actions/cache@v4
       id: vcpkg-cache
       with:
         path: |
-          ${{ env.VCPKG_ROOT }}/installed
-          ${{ env.VCPKG_ROOT }}/downloads
-          ${{ env.VCPKG_ROOT }}/packages
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'vcpkg.json.lock') }}
+          ${{ env.VCPKG_ROOT }}
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-
+
+    - name: Setup vcpkg
+      if: steps.vcpkg-cache.outputs.cache-hit != 'true'
+      run: |
+        Write-Host "首次运行：克隆 vcpkg（这可能需要几分钟）"
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        .\bootstrap-vcpkg.bat
 
     - name: Install vcpkg dependencies
       run: |
@@ -113,29 +103,21 @@ jobs:
     - name: Install OpenCppCoverage
       run: choco install opencppcoverage -y
 
-    - name: Setup vcpkg (use pre-installed)
-      run: |
-        if (Test-Path "C:\vcpkg") {
-          Write-Host "使用预装的 vcpkg"
-          Copy-Item -Recurse -Path "C:\vcpkg" -Destination "vcpkg" -Force
-        } else {
-          Write-Host "克隆 vcpkg"
-          git clone --depth=1 https://github.com/Microsoft/vcpkg.git
-        }
-        cd vcpkg
-        if (-not (Test-Path "vcpkg.exe")) {
-          .\bootstrap-vcpkg.bat
-        }
-
-    - name: Cache vcpkg binaries and downloads
+    - name: Cache vcpkg entire directory
       uses: actions/cache@v4
       with:
         path: |
-          ${{ env.VCPKG_ROOT }}/installed
-          ${{ env.VCPKG_ROOT }}/downloads
-          ${{ env.VCPKG_ROOT }}/packages
+          ${{ env.VCPKG_ROOT }}
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         fail-on-cache-miss: false
+
+    - name: Setup vcpkg (if cache miss)
+      if: steps.vcpkg-cache.outputs.cache-hit != 'true'
+      run: |
+        Write-Host "首次运行：克隆 vcpkg"
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        .\bootstrap-vcpkg.bat
 
     - name: Download test artifacts
       uses: actions/download-artifact@v4
