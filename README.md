@@ -276,6 +276,30 @@ while true do
 end
 ```
 
+### ML/AI 推理
+
+```lua
+-- 加载 ONNX 模型
+local model = ml.loadModel("scripts/models/yolov8n.onnx")
+
+-- 对屏幕截图进行推理
+local screenshot = screen.capture()
+local results = model.detect(screenshot, 0.5)
+
+-- 处理检测结果
+for _, obj in ipairs(results) do
+    if obj.class == "enemy" then
+        print(string.format("发现敌人: 置信度 %.2f, 位置 (%d, %d)",
+            obj.confidence, obj.center.x, obj.center.y))
+
+        -- 自动点击目标
+        input.click(obj.center.x, obj.center.y)
+    end
+end
+```
+
+完整示例请参考: [scripts/examples/onnx_object_detection.lua](scripts/examples/onnx_object_detection.lua)
+
 ## C++ API 示例
 
 ### 智能触发器系统
