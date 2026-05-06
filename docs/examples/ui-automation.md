@@ -171,6 +171,81 @@ if root then
 end
 ```
 
+## 场景：事件监听器
+
+监听 UI 元素的变化并做出响应。
+
+```lua
+-- 监听编辑框内容变化
+local editListener = uia.onPropertyChanged("编辑框", function(propertyName, value)
+    if propertyName == "Value" then
+        print("编辑框内容已变化: " .. value)
+    end
+end)
+
+if editListener then
+    print("编辑框监听器已注册，ID: " .. editListener)
+end
+
+-- 监听列表结构变化（例如项目添加/删除）
+local listListener = uia.onStructureChanged("列表", function()
+    print("列表结构已变化")
+    -- 可以重新获取列表项
+    local list = uia.findByName("列表")
+    if list then
+        local items = list:getChildren()
+        print("当前列表项数量: " .. #items)
+    end
+end)
+
+if listListener then
+    print("列表监听器已注册，ID: " .. listListener)
+end
+
+-- 运行一段时间后移除监听器
+util.sleep(10000)  -- 监听 10 秒
+
+if editListener then
+    uia.removeEventListener(editListener)
+    print("编辑框监听器已移除")
+end
+
+if listListener then
+    uia.removeEventListener(listListener)
+    print("列表监听器已移除")
+end
+```
+
+### 监听对话框出现并自动点击
+
+```lua
+-- 监听确认对话框的出现
+local dialogListener = uia.onPropertyChanged("确认", function(propertyName, value)
+    if propertyName == "Name" and value == "确认" then
+        print("检测到确认对话框")
+
+        -- 自动点击"是"按钮
+        util.sleep(200)
+        local yesBtn = uia.findButton("是")
+        if yesBtn then
+            yesBtn:click()
+            print("已自动点击"是"按钮")
+        end
+    end
+end)
+
+if dialogListener then
+    print("对话框监听器已注册，等待对话框出现...")
+end
+
+-- 等待 30 秒或直到对话框出现
+util.sleep(30000)
+
+if dialogListener then
+    uia.removeEventListener(dialogListener)
+end
+```
+
 ## 场景：等待对话框并点击
 
 ```lua

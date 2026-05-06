@@ -88,8 +88,8 @@
 - [x] 鼠标操作
 - [x] 显示消息
 - [x] 播放声音
-- [ ] 执行 Lua 函数 (待集成)
-- [ ] 日志输出 (待实现)
+- [x] 执行 Lua 函数 (RunScript 动作)
+- [x] 日志输出 (Log 动作)
 
 ---
 
@@ -312,10 +312,16 @@
 - [x] 代码生成配置
 - [x] 消息序列化/反序列化
 
-### 11.4 Lua 绑定 (待实现)
-- [ ] `orchestration.get_next_step(agentId)` - 请求下一步任务
-- [ ] `orchestration.report_progress(agentId, stepId, progress)` - 报告进度
-- [ ] `orchestration.get_workflow_status(workflowId)` - 查询状态
+### 11.4 Lua 绑定 ✅
+- [x] `orchestration.get_next_task(agentId)` - 请求下一步任务
+- [x] `orchestration.report_progress(agentId, stepId, progress)` - 报告进度
+- [x] `orchestration.get_workflow(workflowId)` - 查询工作流
+- [x] `orchestration.get_all_workflows()` - 获取所有工作流
+- [x] `orchestration.submit_workflow(workflow)` - 提交工作流
+- [x] `orchestration.cancel_workflow(workflowId)` - 取消工作流
+- [x] `orchestration.complete_task(agentId, stepId)` - 完成任务
+- [x] `orchestration.fail_task(agentId, stepId, reason)` - 失败任务
+- [x] `orchestration.get_worker_statuses()` - 获取所有 Worker 状态
 
 ---
 
@@ -478,9 +484,12 @@
 - [x] Protobuf 集成
 
 ### 进行中 🚧
-- [ ] Lua Orchestration 绑定
-- [ ] UIA 事件监听器
-- [ ] UIA 选择器语法增强
+- [x] UIA 事件监听器 Lua 绑定
+- [x] 触发器系统增强（Lua 函数执行、日志输出）
+- [x] 完善 UIA 文档和示例
+- [x] 添加更多 UIA 控件类型支持
+
+所有短期任务已完成！
 
 ### 待规划 📋
 - [ ] 视频教程
@@ -494,12 +503,12 @@
 
 ### 短期 (1-2周)
 - [x] 修复 CI 构建错误（Protobuf 枚举冲突、条件编译）
-- [ ] 完善 UIA 文档和示例
-- [ ] 添加更多 UIA 控件类型支持
-- [ ] 实现 UIA 事件监听器
+- [x] 完善 UIA 文档和示例
+- [x] 实现 UIA 事件监听器
+- [x] 添加更多 UIA 控件类型支持
 
 ### 中期 (1-2月)
-- [ ] Lua Orchestration 绑定
+- [x] Lua Orchestration 绑定
 - [ ] 性能基准测试和优化
 - [ ] 用户文档完善
 
@@ -543,3 +552,32 @@
 - [x] 修复 websocket.ts 重复导出 (WSMessageType)
 - [x] 创建 PageStatePanel 组件
 - [x] pnpm install 成功通过
+
+### Phase 17: UIA 事件监听器 Lua 绑定 ✅
+- [x] 实现 `uia.onPropertyChanged(name, callback)` - 属性变更事件
+- [x] 实现 `uia.onStructureChanged(name, callback)` - 结构变更事件
+- [x] 实现 `uia.removeEventListener(listenerId)` - 移除监听器
+- [x] 添加全局监听器注册表和清理机制
+- [x] 修复 SmartTrigger 日志语法错误
+- [x] 更新 todo.md 确认触发器系统 Lua 函数执行和日志输出已完成
+
+### Phase 18: UIA 文档更新 ✅
+- [x] 更新 `docs/api/uia.md` 添加事件监听器 API 文档
+- [x] 更新 `docs/examples/ui-automation.md` 添加事件监听器示例
+- [x] 添加监听对话框自动响应示例
+- [x] 添加监听内容变化示例
+
+### Phase 19: UIA 控件类型支持扩展 ✅
+- [x] 添加 `findCheckBox(name)` - 查找复选框
+- [x] 添加 `findRadioButton(name)` - 查找单选按钮
+- [x] 添加 `findComboBox(name)` - 查找下拉框
+- [x] 添加 `findList(name)` - 查找列表
+- [x] 添加 `findListItem(name)` - 查找列表项
+- [x] 添加 `findTab(name)` / `findTabItem(name)` - 查找标签页
+- [x] 添加 `findTree(name)` / `findTreeItem(name)` - 查找树形控件
+- [x] 添加 `findMenuItem(name)` - 查找菜单项
+- [x] 添加 `findHyperlink(name)` - 查找超链接
+- [x] 添加 `findImage(name)` - 查找图像
+- [x] 添加 `findSlider(name)` - 查找滑块
+- [x] 添加 `findSpinner(name)` - 查找微调器
+- [x] 添加 `findProgressBar(name)` - 查找进度条

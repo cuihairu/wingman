@@ -33,6 +33,8 @@
 #include <cstring>
 #include <ctime>
 #include <iostream>
+#include <unordered_map>
+#include <atomic>
 #include <windows.h>
 
 namespace wingman::lua {
@@ -3970,6 +3972,127 @@ int findAll(lua_State* L) {
     return 1;
 }
 
+// 便捷查找方法
+int findCheckBox(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findCheckBox(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findRadioButton(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findRadioButton(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findComboBox(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findComboBox(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findList(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findList(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findListItem(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findListItem(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findTab(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findTab(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findTabItem(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findTabItem(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findTree(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findTree(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findTreeItem(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findTreeItem(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findMenuItem(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findMenuItem(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findHyperlink(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findHyperlink(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findImage(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findImage(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findSlider(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findSlider(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findSpinner(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findSpinner(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
+int findProgressBar(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    auto element = wingman::uia().findProgressBar(name);
+    if (element) pushUIElement(L, element);
+    else lua_pushnil(L);
+    return 1;
+}
+
 // 遍历所有子元素
 int findChildren(lua_State* L) {
     // 从栈中获取 UIElement
@@ -4068,17 +4191,172 @@ int getSelection(lua_State* L) {
     return 1;
 }
 
+// ============================================================================
+// UIA 事件监听器支持
+// ============================================================================
+
+// 事件监听器数据结构
+struct UIAEventListener {
+    lua_State* L;
+    int callbackRef;
+    int listenerId;
+    std::string propertyName;
+    std::string elementName;
+    bool isActive;
+
+    UIAEventListener() : L(nullptr), callbackRef(LUA_NOREF), listenerId(0), isActive(false) {}
+
+    ~UIAEventListener() {
+        if (callbackRef != LUA_NOREF && L) {
+            luaL_unref(L, LUA_REGISTRYINDEX, callbackRef);
+        }
+    }
+};
+
+// 全局监听器注册表
+static std::unordered_map<int, std::shared_ptr<UIAEventListener>> g_uiEventListeners;
+static std::atomic<int> g_nextListenerId{1};
+
+// 调用 Lua 回调
+static void invokeLuaCallback(lua_State* L, int callbackRef, const std::string& propertyName, const std::string& value) {
+    if (callbackRef == LUA_NOREF || !L) return;
+
+    // 获取 Lua 函数
+    lua_rawgeti(L, LUA_REGISTRYINDEX, callbackRef);
+
+    // 推送参数
+    lua_pushstring(L, propertyName.c_str());
+    lua_pushstring(L, value.c_str());
+
+    // 调用函数
+    if (lua_pcall(L, 2, 0, 0) != LUA_OK) {
+        const char* errorMsg = lua_tostring(L, -1);
+        if (errorMsg) {
+            spdlog::error("[UIA] Lua callback error: {}", errorMsg);
+        }
+        lua_pop(L, 1);
+    }
+}
+
 // 注册属性变更事件
+// 用法: uia.onPropertyChanged(name, callback)
+// 示例: uia.onPropertyChanged("按钮1", function(prop, value) print(prop, value) end)
 int onPropertyChanged(lua_State* L) {
     const char* name = luaL_checkstring(L, 1);
-    int callbackRef = luaL_ref(L, LUA_REGISTRYINDEX);  // 保存回调函数引用
+    if (!lua_isfunction(L, 2)) {
+        luaL_error(L, "Expected function as second argument");
+        return 0;
+    }
 
-    // 注意：完整实现需要保存 callbackRef 以便后续调用
-    // 这是一个简化实现
-    spdlog::warn("[UIA] onPropertyChanged registered for: {}", name);
+    // 保存回调函数引用
+    lua_pushvalue(L, 2);
+    int callbackRef = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    lua_pushboolean(L, true);
+    // 创建监听器
+    auto listener = std::make_shared<UIAEventListener>();
+    listener->L = L;
+    listener->callbackRef = callbackRef;
+    listener->listenerId = g_nextListenerId++;
+    listener->elementName = name;
+    listener->isActive = true;
+
+    // 注册 C++ 层事件
+    wingman::UIACondition condition;
+    condition.withName(name);
+
+    bool registered = wingman::uia().registerPropertyChangedHandler(
+        condition,
+        [listener](const std::string& propertyName, const std::string& value) {
+            if (listener && listener->isActive) {
+                invokeLuaCallback(listener->L, listener->callbackRef, propertyName, value);
+            }
+        }
+    );
+
+    if (registered) {
+        g_uiEventListeners[listener->listenerId] = listener;
+        lua_pushinteger(L, listener->listenerId);
+        spdlog::info("[UIA] Property change listener registered for '{}' (id: {})", name, listener->listenerId);
+    } else {
+        lua_pushnil(L);
+        spdlog::warn("[UIA] Failed to register property change listener for '{}'", name);
+    }
+
     return 1;
+}
+
+// 注册结构变更事件
+// 用法: uia.onStructureChanged(name, callback)
+int onStructureChanged(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    if (!lua_isfunction(L, 2)) {
+        luaL_error(L, "Expected function as second argument");
+        return 0;
+    }
+
+    // 保存回调函数引用
+    lua_pushvalue(L, 2);
+    int callbackRef = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    // 创建监听器
+    auto listener = std::make_shared<UIAEventListener>();
+    listener->L = L;
+    listener->callbackRef = callbackRef;
+    listener->listenerId = g_nextListenerId++;
+    listener->elementName = name;
+    listener->isActive = true;
+
+    // 注册 C++ 层事件
+    wingman::UIACondition condition;
+    condition.withName(name);
+
+    bool registered = wingman::uia().registerStructureChangedHandler(
+        condition,
+        [listener]() {
+            if (listener && listener->isActive) {
+                invokeLuaCallback(listener->L, listener->callbackRef, "StructureChanged", "");
+            }
+        }
+    );
+
+    if (registered) {
+        g_uiEventListeners[listener->listenerId] = listener;
+        lua_pushinteger(L, listener->listenerId);
+        spdlog::info("[UIA] Structure change listener registered for '{}' (id: {})", name, listener->listenerId);
+    } else {
+        lua_pushnil(L);
+        spdlog::warn("[UIA] Failed to register structure change listener for '{}'", name);
+    }
+
+    return 1;
+}
+
+// 移除事件监听器
+// 用法: uia.removeEventListener(listenerId)
+int removeEventListener(lua_State* L) {
+    int listenerId = luaL_checkinteger(L, 1);
+
+    auto it = g_uiEventListeners.find(listenerId);
+    if (it != g_uiEventListeners.end()) {
+        it->second->isActive = false;
+        g_uiEventListeners.erase(it);
+        lua_pushboolean(L, true);
+        spdlog::info("[UIA] Event listener removed (id: {})", listenerId);
+    } else {
+        lua_pushboolean(L, false);
+        spdlog::warn("[UIA] Event listener not found (id: {})", listenerId);
+    }
+
+    return 1;
+}
+
+// 清理所有监听器（在 Lua 状态关闭时调用）
+int cleanupAllListeners(lua_State* L) {
+    for (auto& pair : g_uiEventListeners) {
+        pair.second->isActive = false;
+    }
+    g_uiEventListeners.clear();
+    return 0;
 }
 
 } // namespace uia
@@ -4118,6 +4396,51 @@ void LuaState::registerUIAutomationModule() {
     lua_pushcfunction(L, uia::findText);
     lua_setfield(L, -2, "findText");
 
+    lua_pushcfunction(L, uia::findCheckBox);
+    lua_setfield(L, -2, "findCheckBox");
+
+    lua_pushcfunction(L, uia::findRadioButton);
+    lua_setfield(L, -2, "findRadioButton");
+
+    lua_pushcfunction(L, uia::findComboBox);
+    lua_setfield(L, -2, "findComboBox");
+
+    lua_pushcfunction(L, uia::findList);
+    lua_setfield(L, -2, "findList");
+
+    lua_pushcfunction(L, uia::findListItem);
+    lua_setfield(L, -2, "findListItem");
+
+    lua_pushcfunction(L, uia::findTab);
+    lua_setfield(L, -2, "findTab");
+
+    lua_pushcfunction(L, uia::findTabItem);
+    lua_setfield(L, -2, "findTabItem");
+
+    lua_pushcfunction(L, uia::findTree);
+    lua_setfield(L, -2, "findTree");
+
+    lua_pushcfunction(L, uia::findTreeItem);
+    lua_setfield(L, -2, "findTreeItem");
+
+    lua_pushcfunction(L, uia::findMenuItem);
+    lua_setfield(L, -2, "findMenuItem");
+
+    lua_pushcfunction(L, uia::findHyperlink);
+    lua_setfield(L, -2, "findHyperlink");
+
+    lua_pushcfunction(L, uia::findImage);
+    lua_setfield(L, -2, "findImage");
+
+    lua_pushcfunction(L, uia::findSlider);
+    lua_setfield(L, -2, "findSlider");
+
+    lua_pushcfunction(L, uia::findSpinner);
+    lua_setfield(L, -2, "findSpinner");
+
+    lua_pushcfunction(L, uia::findProgressBar);
+    lua_setfield(L, -2, "findProgressBar");
+
     lua_pushcfunction(L, uia::findByName);
     lua_setfield(L, -2, "findByName");
 
@@ -4132,6 +4455,12 @@ void LuaState::registerUIAutomationModule() {
 
     lua_pushcfunction(L, uia::onPropertyChanged);
     lua_setfield(L, -2, "onPropertyChanged");
+
+    lua_pushcfunction(L, uia::onStructureChanged);
+    lua_setfield(L, -2, "onStructureChanged");
+
+    lua_pushcfunction(L, uia::removeEventListener);
+    lua_setfield(L, -2, "removeEventListener");
 
     lua_setglobal(L, "uia");
 }

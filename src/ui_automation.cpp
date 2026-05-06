@@ -569,6 +569,247 @@ std::shared_ptr<UIAutomationElement> UIAutomation::findText(const std::string& n
     return nullptr;
 }
 
+// 便捷查找方法实现
+std::shared_ptr<UIAutomationElement> UIAutomation::findCheckBox(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_CheckBoxControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findRadioButton(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_RadioButtonControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findComboBox(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_ComboBoxControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findList(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_ListControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findListItem(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_ListItemControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findTab(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_TabControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findTabItem(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_TabItemControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findTree(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_TreeControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findTreeItem(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_TreeItemControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findMenuItem(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_MenuItemControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findHyperlink(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_HyperlinkControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findImage(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_ImageControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findSlider(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_SliderControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findSpinner(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_SpinnerControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::findProgressBar(const std::string& name) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    auto children = root->getChildren();
+    for (auto& child : children) {
+        if (child->impl->getControlType() == UIA_ProgressBarControlTypeId) {
+            std::string childName = child->getName();
+            if (childName.find(name) != std::string::npos) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
 // 检查元素是否匹配条件
 static bool matchesCondition(const UIAutomationElement* element, const UIACondition& condition) {
     if (!element || !element->isValid()) return false;

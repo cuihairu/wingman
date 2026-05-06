@@ -175,7 +175,7 @@ void SmartTrigger::executeActions() {
                 break;
 
             case TriggerActionType::LOG:
-                spdlog::info("Trigger '{}: {}", name_, action.logMessage);
+                spdlog::info("Trigger '{}': {}", name_, action.logMessage);
                 break;
         }
     }

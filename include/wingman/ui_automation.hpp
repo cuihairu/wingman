@@ -167,6 +167,21 @@ public:
     std::shared_ptr<UIAutomationElement> findButton(const std::string& name);
     std::shared_ptr<UIAutomationElement> findEdit(const std::string& name);
     std::shared_ptr<UIAutomationElement> findText(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findCheckBox(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findRadioButton(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findComboBox(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findList(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findListItem(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findTab(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findTabItem(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findTree(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findTreeItem(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findMenuItem(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findHyperlink(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findImage(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findSlider(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findSpinner(const std::string& name);
+    std::shared_ptr<UIAutomationElement> findProgressBar(const std::string& name);
 
     // 等待元素出现
     std::shared_ptr<UIAutomationElement> waitFor(const UIACondition& condition, int timeoutMs = 5000);

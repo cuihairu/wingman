@@ -189,20 +189,65 @@ end
 
 ### onPropertyChanged(name, callback)
 
-注册属性变更事件监听器（实验性功能）。
+注册属性变更事件监听器。当指定元素的属性发生变化时触发回调。
+
+**参数：**
+- `name` (string) - 要监听的元素名称
+- `callback` (function) - 回调函数，接收参数 `(propertyName, value)`
+
+**返回：**
+- `number` | `nil` - 监听器 ID，失败返回 nil
+
+**示例：**
+```lua
+local listenerId = uia.onPropertyChanged("编辑框", function(propertyName, value)
+    print(string.format("属性 %s 变更为: %s", propertyName, value))
+end)
+
+if listenerId then
+    print("监听器已注册，ID: " .. listenerId)
+end
+```
+
+### onStructureChanged(name, callback)
+
+注册结构变更事件监听器。当指定元素的子结构发生变化时触发回调。
 
 **参数：**
 - `name` (string) - 要监听的元素名称
 - `callback` (function) - 回调函数
 
 **返回：**
-- `boolean` - 是否注册成功
+- `number` | `nil` - 监听器 ID，失败返回 nil
 
 **示例：**
 ```lua
-uia.onPropertyChanged("编辑框", function(propertyName, value)
-    print(string.format("属性 %s 变更为: %s", propertyName, value))
+local listenerId = uia.onStructureChanged("列表框", function()
+    print("列表结构已变化")
 end)
+```
+
+### removeEventListener(listenerId)
+
+移除事件监听器。
+
+**参数：**
+- `listenerId` (number) - 监听器 ID（由 `onPropertyChanged` 或 `onStructureChanged` 返回）
+
+**返回：**
+- `boolean` - 是否成功移除
+
+**示例：**
+```lua
+local listenerId = uia.onPropertyChanged("按钮", function(prop, val)
+    print("属性变化: " .. prop)
+end)
+
+-- 稍后移除监听器
+if listenerId then
+    uia.removeEventListener(listenerId)
+    print("监听器已移除")
+end
 ```
 
 ## UIElement 对象
