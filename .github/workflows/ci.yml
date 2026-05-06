@@ -18,10 +18,10 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Cache vcpkg entire directory
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: vcpkg-cache
       with:
         path: |
@@ -73,21 +73,21 @@ jobs:
       run: cmake --build build-release --config Release
 
     - name: Upload Debug artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: wingman-debug
         path: build-debug/Debug/wingman.exe
         retention-days: 1
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: wingman-tests
         path: build-debug/tests/cpp/Debug/wingman_tests.exe
         retention-days: 1
 
     - name: Upload Release artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: wingman-release
         path: build-release/Release/wingman.exe
@@ -98,13 +98,13 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Install OpenCppCoverage
       run: choco install opencppcoverage -y
 
     - name: Cache vcpkg entire directory
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           ${{ env.VCPKG_ROOT }}
@@ -120,7 +120,7 @@ jobs:
         .\bootstrap-vcpkg.bat
 
     - name: Download test artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: wingman-tests
         path: build-debug/tests/cpp/Debug

@@ -17,7 +17,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
@@ -30,7 +30,7 @@ jobs:
         echo "version_suffix=$date-nightly" >> $env:GITHUB_OUTPUT
 
     - name: Cache vcpkg entire directory
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: vcpkg-cache
       with:
         path: |
@@ -93,7 +93,7 @@ jobs:
         Compress-Archive -Path "$distDir\*" -DestinationPath "wingman-$version-windows-x64.zip"
 
     - name: Upload nightly artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: wingman-nightly-windows-x64
         path: wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip
