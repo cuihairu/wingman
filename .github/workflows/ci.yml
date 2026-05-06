@@ -9,6 +9,7 @@ on:
 
 env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -19,27 +20,39 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Setup vcpkg
+    - name: Setup vcpkg (use pre-installed)
       run: |
-        git clone https://github.com/Microsoft/vcpkg.git
+        # GitHub Actions Windows runner 预装了 vcpkg
+        if (Test-Path "C:\vcpkg") {
+          Write-Host "使用预装的 vcpkg"
+          Copy-Item -Recurse -Path "C:\vcpkg" -Destination "vcpkg" -Force
+        } else {
+          Write-Host "克隆 vcpkg"
+          git clone --depth=1 https://github.com/Microsoft/vcpkg.git
+        }
         cd vcpkg
-        .\bootstrap-vcpkg.bat
+        # 只有 vcpkg.exe 不存在时才 bootstrap
+        if (-not (Test-Path "vcpkg.exe")) {
+          .\bootstrap-vcpkg.bat
+        }
 
-    - name: Cache vcpkg binary packages
+    - name: Cache vcpkg binaries and downloads
       uses: actions/cache@v4
+      id: vcpkg-cache
       with:
         path: |
           ${{ env.VCPKG_ROOT }}/installed
           ${{ env.VCPKG_ROOT }}/downloads
           ${{ env.VCPKG_ROOT }}/packages
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'vcpkg.json.lock') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-
 
     - name: Install vcpkg dependencies
       run: |
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
-        .\vcpkg\vcpkg install --triplet=x64-windows --recurse
+        # 使用项目 manifest
+        .\vcpkg\vcpkg install --triplet=x64-windows
 
     - name: Configure CMake (Debug)
       run: |
@@ -100,13 +113,21 @@ jobs:
     - name: Install OpenCppCoverage
       run: choco install opencppcoverage -y
 
-    - name: Setup vcpkg
+    - name: Setup vcpkg (use pre-installed)
       run: |
-        git clone https://github.com/Microsoft/vcpkg.git
+        if (Test-Path "C:\vcpkg") {
+          Write-Host "使用预装的 vcpkg"
+          Copy-Item -Recurse -Path "C:\vcpkg" -Destination "vcpkg" -Force
+        } else {
+          Write-Host "克隆 vcpkg"
+          git clone --depth=1 https://github.com/Microsoft/vcpkg.git
+        }
         cd vcpkg
-        .\bootstrap-vcpkg.bat
+        if (-not (Test-Path "vcpkg.exe")) {
+          .\bootstrap-vcpkg.bat
+        }
 
-    - name: Cache vcpkg binary packages
+    - name: Cache vcpkg binaries and downloads
       uses: actions/cache@v4
       with:
         path: |
