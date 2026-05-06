@@ -195,7 +195,7 @@ const Welcome: React.FC = () => {
               <Card size="small" type="inner">
                 <Space direction="vertical" size={12}>
                   <Tag color="blue">步骤 2</Tag>
-                  <Typography.Title level={5">创建工作流</Typography.Title>
+                  <Typography.Title level={5}>创建工作流</Typography.Title>
                   <Typography.Text type="secondary">
                     在工作流管理页面创建任务流，配置执行步骤、依赖关系和超时时间。
                   </Typography.Text>

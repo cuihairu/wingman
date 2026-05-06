@@ -536,3 +536,10 @@
 - [x] Workflows 页面实时更新
 - [x] Dashboard Croupier 内容清理
 - [x] Welcome 页面更新为 Wingman 产品介绍
+
+### Phase 16: Dashboard 构建修复 ✅
+- [x] 创建缺失的 API 服务存根 (audit, messages, permissions, support, storage)
+- [x] 修复 Welcome.tsx 语法错误 (level={5})
+- [x] 修复 websocket.ts 重复导出 (WSMessageType)
+- [x] 创建 PageStatePanel 组件
+- [x] pnpm install 成功通过

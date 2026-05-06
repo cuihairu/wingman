@@ -8,6 +8,7 @@
 import Footer from './Footer';
 import { Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
+import PageStatePanel from './PageStatePanel';
 
 export {
   Footer,
@@ -15,4 +16,5 @@ export {
   SelectLang,
   AvatarDropdown,
   AvatarName,
+  PageStatePanel,
 };
