@@ -379,15 +379,17 @@ int null(lua_State* L) {
 #ifdef WINGMAN_BUILD_SERVER
 namespace orchestration {
 
+// 全局 Workflow Orchestrator 实例
+static wingman::server::WorkflowOrchestrator* g_workflowOrchestrator = nullptr;
 
 // 设置全局 Orchestrator
 void setOrchestrator(wingman::server::WorkflowOrchestrator* orchestrator) {
-    g_orchestrator = orchestrator;
+    g_workflowOrchestrator = orchestrator;
 }
 
 // 获取全局 Orchestrator
 static wingman::server::WorkflowOrchestrator* getOrchestrator() {
-    return g_orchestrator;
+    return g_workflowOrchestrator;
 }
 
 // 从 Lua 表构建 TaskStep
@@ -1219,5 +1221,228 @@ void registerOrchestrationModule(lua_State* L) {
 
     lua_setglobal(L, "orchestration");
 }
+
+// ============================================================================
+// Team 模块 - 队伍协调
+// ============================================================================
+
+namespace team {
+
+// API: team.join(team_id, client_id, username) -> success
+int join(lua_State* L) {
+    const char* teamId = luaL_checkstring(L, 1);
+    const char* clientId = luaL_optstring(L, 2, "");
+    const char* username = luaL_optstring(L, 3, "");
+
+    // 如果没有 clientId，从 KV 生成或获取
+    auto* kv = getKVStore();
+
+    std::string actualClientId = clientId;
+    if (actualClientId.empty()) {
+        actualClientId = kv->get("team:my_client_id");
+        if (actualClientId.empty()) {
+            // 生成新 ID
+            actualClientId = "client_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+            kv->set("team:my_client_id", actualClientId);
+        }
+    }
+
+    // 保存用户名
+    if (username && *username) {
+        kv->set("team:my_username", username);
+    }
+
+    // 加入队伍（使用 KV 存储）
+    kv->hset("team:" + std::string(teamId) + ":members", actualClientId, username && *username ? username : actualClientId);
+
+    // 保存当前队伍 ID
+    kv->set("team:my_current_team", teamId);
+
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+// API: team.leave() -> success
+int leave(lua_State* L) {
+    auto* kv = getKVStore();
+
+    std::string teamId = kv->get("team:my_current_team");
+    std::string clientId = kv->get("team:my_client_id");
+
+    if (!teamId.empty() && !clientId.empty()) {
+        // 从队伍移除
+        kv->hdel("team:" + teamId + ":members", clientId);
+        // 清除当前队伍
+        kv->del("team:my_current_team");
+    }
+
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+// API: team.send(action, data) -> success
+int send(lua_State* L) {
+    auto* kv = getKVStore();
+
+    std::string teamId = kv->get("team:my_current_team");
+    if (teamId.empty()) {
+        lua_pushboolean(L, 0);
+        lua_pushstring(L, "Not in a team");
+        return 2;
+    }
+
+    const char* action = luaL_checkstring(L, 1);
+
+    // 构建消息
+    nlohmann::json msg;
+    msg["action"] = action;
+    msg["from"] = kv->get("team:my_client_id");
+    msg["username"] = kv->get("team:my_username");
+    msg["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
+
+    // 如果有第二个参数，作为 data
+    if (!lua_isnone(L, 2)) {
+        JsonValue dataJson = luaToJson(L, 2);
+        msg["data"] = nlohmann::json::parse(dataJson.dump());
+    }
+
+    // 写入队伍消息队列
+    std::string msgKey = "team:" + teamId + ":messages";
+    kv->lpush(msgKey, msg.dump());
+
+    // 限制队列大小
+    size_t size = kv->llen(msgKey);
+    if (size > 100) {
+        kv->ltrim(msgKey, 0, 99);
+    }
+
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+// API: team.poll() -> message or nil
+int poll(lua_State* L) {
+    auto* kv = getKVStore();
+
+    std::string teamId = kv->get("team:my_current_team");
+    if (teamId.empty()) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    std::string clientId = kv->get("team:my_client_id");
+    std::string myMsgKey = "team:" + teamId + ":last_index:" + clientId;
+
+    // 获取上次读取的位置
+    size_t lastIndex = static_cast<size_t>(std::stoll(kv->get(myMsgKey)));
+
+    // 获取消息队列
+    std::string msgKey = "team:" + teamId + ":messages";
+    size_t queueSize = kv->llen(msgKey);
+
+    if (lastIndex >= queueSize) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    // 获取新消息
+    size_t newIndex = lastIndex + 1;
+    size_t listIndex = queueSize - newIndex;
+    std::vector<std::string> msgs = kv->lrange(msgKey, listIndex, listIndex);
+
+    if (!msgs.empty()) {
+        kv->set(myMsgKey, std::to_string(newIndex));
+
+        try {
+            nlohmann::json msg = nlohmann::json::parse(msgs[0]);
+            JsonValue result = JsonValue::parse(msg.dump());
+            pushJsonValue(L, result);
+            return 1;
+        } catch (const std::exception& e) {
+            lua_pushstring(L, msgs[0].c_str());
+            return 1;
+        }
+    }
+
+    lua_pushnil(L);
+    return 1;
+}
+
+// API: team.members() -> array of {id, username}
+int members(lua_State* L) {
+    auto* kv = getKVStore();
+
+    std::string teamId = kv->get("team:my_current_team");
+    if (teamId.empty()) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    auto fields = kv->hgetall("team:" + teamId + ":members");
+
+    lua_newtable(L);
+    int i = 1;
+    for (const auto& [clientId, username] : fields) {
+        lua_newtable(L);
+        lua_pushstring(L, clientId.c_str());
+        lua_setfield(L, -2, "id");
+        lua_pushstring(L, username.c_str());
+        lua_setfield(L, -2, "username");
+        lua_rawseti(L, -2, i++);
+    }
+
+    return 1;
+}
+
+// API: team.info() -> {team_id, my_id, my_username, member_count}
+int info(lua_State* L) {
+    auto* kv = getKVStore();
+
+    std::string teamId = kv->get("team:my_current_team");
+    std::string clientId = kv->get("team:my_client_id");
+    std::string username = kv->get("team:my_username");
+
+    lua_newtable(L);
+    lua_pushstring(L, teamId.c_str());
+    lua_setfield(L, -2, "team_id");
+    lua_pushstring(L, clientId.c_str());
+    lua_setfield(L, -2, "my_id");
+    lua_pushstring(L, username.c_str());
+    lua_setfield(L, -2, "my_username");
+
+    if (!teamId.empty()) {
+        size_t memberCount = kv->hlen("team:" + teamId + ":members");
+        lua_pushinteger(L, memberCount);
+        lua_setfield(L, -2, "member_count");
+    }
+
+    return 1;
+}
+
+void registerTeamModule(lua_State* L) {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, team::join);
+    lua_setfield(L, -2, "join");
+
+    lua_pushcfunction(L, team::leave);
+    lua_setfield(L, -2, "leave");
+
+    lua_pushcfunction(L, team::send);
+    lua_setfield(L, -2, "send");
+
+    lua_pushcfunction(L, team::poll);
+    lua_setfield(L, -2, "poll");
+
+    lua_pushcfunction(L, team::members);
+    lua_setfield(L, -2, "members");
+
+    lua_pushcfunction(L, team::info);
+    lua_setfield(L, -2, "info");
+
+    lua_setglobal(L, "team");
+}
+
+} // namespace team
 
 } // namespace wingman::lua

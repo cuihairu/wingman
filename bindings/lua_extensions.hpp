@@ -81,5 +81,6 @@ void registerHttpModule(lua_State* L);
 void registerJsonModule(lua_State* L);
 void registerKvModule(lua_State* L);
 void registerOrchestrationModule(lua_State* L);
+void registerTeamModule(lua_State* L);
 
 } // namespace wingman::lua

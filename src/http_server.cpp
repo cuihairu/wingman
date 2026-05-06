@@ -482,6 +482,23 @@ void HTTPServer::onWSMessage(std::shared_ptr<crow::websocket::connection> conn, 
 
         spdlog::debug("[WS] Received message type: {}", type);
 
+        // 获取连接ID
+        std::string connId;
+        {
+            std::lock_guard<std::mutex> lock(wsMutex_);
+            for (auto& ws : wsConnections_) {
+                if (ws->connection.get() == conn.get()) {
+                    connId = ws->id;
+                    break;
+                }
+            }
+        }
+
+        if (connId.empty()) {
+            spdlog::warn("[WS] Message from unknown connection");
+            return;
+        }
+
         // 处理 pong 响应
         if (type == "pong") {
             std::lock_guard<std::mutex> lock(wsMutex_);
@@ -492,20 +509,82 @@ void HTTPServer::onWSMessage(std::shared_ptr<crow::websocket::connection> conn, 
                 }
             }
         }
+        // 加入房间
+        else if (type == "join_room") {
+            std::string roomId = j.value("roomId", "");
+            if (!roomId.empty()) {
+                joinRoom(connId, roomId);
+            }
+        }
+        // 离开房间
+        else if (type == "leave_room") {
+            leaveRoom(connId);
+        }
+        // 房间消息
+        else if (type == "room_message") {
+            std::string roomId = j.value("roomId", "");
+            std::string action = j.value("action", "");
+            nlohmann::json data = j.value("data", nlohmann::json::object());
+
+            if (!roomId.empty()) {
+                nlohmann::json msg;
+                msg["type"] = "room";
+                msg["event"] = "message";
+                msg["roomId"] = roomId;
+                msg["action"] = action;
+                msg["data"] = data;
+                msg["from"] = connId;
+                msg["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
+
+                // 广播给房间其他人
+                broadcastToRoom(roomId, connId, msg);
+
+                // 也回送给发送者（确认）
+                {
+                    std::lock_guard<std::mutex> lock(wsMutex_);
+                    for (auto& ws : wsConnections_) {
+                        if (ws->connection.get() == conn.get()) {
+                            nlohmann::json ack;
+                            ack["type"] = "room";
+                            ack["event"] = "message_sent";
+                            ack["roomId"] = roomId;
+                            ack["action"] = action;
+                            ws->send(ack.dump());
+                            break;
+                        }
+                    }
+                }
+
+                spdlog::info("[Room] Message from {} to room {}: action={}", connId, roomId, action);
+            }
+        }
     } catch (const std::exception& e) {
         spdlog::error("[WS] Message parse error: {}", e.what());
     }
 }
 
 void HTTPServer::onWSClose(std::shared_ptr<crow::websocket::connection> conn, const std::string& reason) {
-    std::lock_guard<std::mutex> lock(wsMutex_);
-    for (auto it = wsConnections_.begin(); it != wsConnections_.end(); ++it) {
-        if ((*it)->connection.get() == conn.get()) {
-            spdlog::info("[WS] Connection closed: {} (reason: {}, total: {})",
-                (*it)->id, reason, wsConnections_.size() - 1);
-            wsConnections_.erase(it);
-            break;
+    std::string connId;
+    std::string currentRoom;
+
+    {
+        std::lock_guard<std::mutex> lock(wsMutex_);
+        for (auto it = wsConnections_.begin(); it != wsConnections_.end(); ++it) {
+            if ((*it)->connection.get() == conn.get()) {
+                connId = (*it)->id;
+                currentRoom = (*it)->currentRoom;
+                spdlog::info("[WS] Connection closed: {} (reason: {}, total: {})",
+                    (*it)->id, reason, wsConnections_.size() - 1);
+                wsConnections_.erase(it);
+                break;
+            }
         }
+    }
+
+    // 离开房间
+    if (!connId.empty() && !currentRoom.empty()) {
+        leaveRoom(connId);
+    }
     }
 }
 
@@ -564,6 +643,166 @@ void HTTPServer::broadcastWorkflowEvent(const std::string& eventType, const nloh
             }
         }
     }
+}
+
+// ========== Room 管理 ==========
+
+void HTTPServer::joinRoom(const std::string& connId, const std::string& roomId) {
+    std::lock_guard<std::mutex> wsLock(wsMutex_);
+    std::lock_guard<std::mutex> roomLock(roomMutex_);
+
+    // 找到连接
+    std::shared_ptr<WSConnection> targetConn;
+    for (auto& ws : wsConnections_) {
+        if (ws->id == connId) {
+            targetConn = ws;
+            break;
+        }
+    }
+
+    if (!targetConn) {
+        spdlog::warn("[Room] Connection {} not found", connId);
+        return;
+    }
+
+    // 如果之前在房间，先离开
+    if (!targetConn->currentRoom.empty()) {
+        leaveRoom(connId);
+    }
+
+    // 加入新房间
+    auto& room = rooms_[roomId];
+    room.roomId = roomId;
+    room.connectionIds.insert(connId);
+    targetConn->currentRoom = roomId;
+
+    spdlog::info("[Room] Connection {} joined room {} (size: {})", connId, roomId, room.size());
+
+    // 发送加入成功消息
+    nlohmann::json msg;
+    msg["type"] = "room";
+    msg["event"] = "joined";
+    msg["roomId"] = roomId;
+    msg["connectionId"] = connId;
+    msg["roomSize"] = static_cast<int>(room.size());
+    targetConn->send(msg.dump());
+
+    // 通知房间其他人
+    nlohmann::json notify;
+    notify["type"] = "room";
+    notify["event"] = "user_joined";
+    notify["roomId"] = roomId;
+    notify["connectionId"] = connId;
+    broadcastToRoom(roomId, connId, notify);
+}
+
+void HTTPServer::leaveRoom(const std::string& connId) {
+    std::lock_guard<std::mutex> wsLock(wsMutex_);
+    std::lock_guard<std::mutex> roomLock(roomMutex_);
+
+    // 找到连接
+    std::shared_ptr<WSConnection> targetConn;
+    for (auto& ws : wsConnections_) {
+        if (ws->id == connId) {
+            targetConn = ws;
+            break;
+        }
+    }
+
+    if (!targetConn || targetConn->currentRoom.empty()) {
+        return;
+    }
+
+    std::string roomId = targetConn->currentRoom;
+
+    // 从房间移除
+    auto it = rooms_.find(roomId);
+    if (it != rooms_.end()) {
+        it->second.connectionIds.erase(connId);
+
+        // 通知房间其他人
+        nlohmann::json notify;
+        notify["type"] = "room";
+        notify["event"] = "user_left";
+        notify["roomId"] = roomId;
+        notify["connectionId"] = connId;
+        broadcastToRoom(roomId, connId, notify);
+
+        // 如果房间空了，删除房间
+        if (it->second.empty()) {
+            rooms_.erase(it);
+            spdlog::info("[Room] Room {} removed (empty)", roomId);
+        }
+    }
+
+    targetConn->currentRoom = "";
+    spdlog::info("[Room] Connection {} left room {}", connId, roomId);
+}
+
+void HTTPServer::sendToRoom(const std::string& roomId, const nlohmann::json& message) {
+    std::lock_guard<std::mutex> wsLock(wsMutex_);
+    std::lock_guard<std::mutex> roomLock(roomMutex_);
+
+    auto it = rooms_.find(roomId);
+    if (it == rooms_.end()) {
+        spdlog::warn("[Room] Room {} not found", roomId);
+        return;
+    }
+
+    std::string msgStr = message.dump();
+    for (const auto& connId : it->second.connectionIds) {
+        for (auto& ws : wsConnections_) {
+            if (ws->id == connId && ws->isOpen()) {
+                try {
+                    ws->send(msgStr);
+                } catch (const std::exception& e) {
+                    spdlog::error("[Room] Send error to {}: {}", ws->id, e.what());
+                }
+                break;
+            }
+        }
+    }
+}
+
+void HTTPServer::broadcastToRoom(const std::string& roomId, const std::string& excludeConnId, const nlohmann::json& message) {
+    std::lock_guard<std::mutex> wsLock(wsMutex_);
+    std::lock_guard<std::mutex> roomLock(roomMutex_);
+
+    auto it = rooms_.find(roomId);
+    if (it == rooms_.end()) {
+        return;
+    }
+
+    std::string msgStr = message.dump();
+    for (const auto& connId : it->second.connectionIds) {
+        if (connId == excludeConnId) continue;  // 跳过发送者
+
+        for (auto& ws : wsConnections_) {
+            if (ws->id == connId && ws->isOpen()) {
+                try {
+                    ws->send(msgStr);
+                } catch (const std::exception& e) {
+                    spdlog::error("[Room] Broadcast error to {}: {}", ws->id, e.what());
+                }
+                break;
+            }
+        }
+    }
+}
+
+std::vector<std::string> HTTPServer::getRoomConnections(const std::string& roomId) {
+    std::lock_guard<std::mutex> lock(roomMutex_);
+
+    auto it = rooms_.find(roomId);
+    if (it == rooms_.end()) {
+        return {};
+    }
+
+    std::vector<std::string> result;
+    for (const auto& connId : it->second.connectionIds) {
+        result.push_back(connId);
+    }
+    return result;
 }
 
 } // namespace wingman

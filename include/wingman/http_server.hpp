@@ -22,6 +22,11 @@ enum class WSMessageType {
     WorkflowSubmitted,
     WorkflowStatusChanged,
     WorkflowProgress,
+    // Team Room 事件
+    RoomJoined,
+    RoomLeft,
+    RoomMessage,
+    RoomBroadcast,
     // 系统事件
     SystemStatus,
     Error
@@ -49,10 +54,11 @@ class WSConnection {
 public:
     std::shared_ptr<crow::websocket::connection> connection;
     std::string id;
+    std::string currentRoom;  // 当前加入的房间ID
     std::chrono::system_clock::time_point lastPing;
 
     WSConnection(std::shared_ptr<crow::websocket::connection> conn, const std::string& id)
-        : connection(conn), id(id), lastPing(std::chrono::system_clock::now()) {}
+        : connection(conn), id(id), currentRoom(""), lastPing(std::chrono::system_clock::now()) {}
 
     void send(const std::string& msg) {
         if (connection && connection->is_open()) {
@@ -69,6 +75,16 @@ public:
     bool isOpen() const {
         return connection && connection->is_open();
     }
+};
+
+// Room 结构 - 用于 Team Room 等多播场景
+struct Room {
+    std::string roomId;
+    std::unordered_set<std::string> connectionIds;  // 房间内的连接ID
+    nlohmann::json metadata;  // 房间元数据
+
+    size_t size() const { return connectionIds.size(); }
+    bool empty() const { return connectionIds.empty(); }
 };
 
 class HTTPServer {
@@ -93,6 +109,23 @@ public:
     // 广播工作流事件
     void broadcastWorkflowEvent(const std::string& eventType, const nlohmann::json& workflowData);
 
+    // ========== Room 管理 ==========
+
+    // 加入房间
+    void joinRoom(const std::string& connId, const std::string& roomId);
+
+    // 离开房间
+    void leaveRoom(const std::string& connId);
+
+    // 发送消息到指定房间
+    void sendToRoom(const std::string& roomId, const nlohmann::json& message);
+
+    // 广播消息到指定房间（除了发送者）
+    void broadcastToRoom(const std::string& roomId, const std::string& excludeConnId, const nlohmann::json& message);
+
+    // 获取房间信息
+    std::vector<std::string> getRoomConnections(const std::string& roomId);
+
 private:
     int port_;
     std::string staticDir_;
@@ -103,6 +136,10 @@ private:
     std::unordered_set<std::shared_ptr<WSConnection>> wsConnections_;
     std::mutex wsMutex_;
     std::atomic<uint64_t> wsConnectionIdCounter_{0};
+
+    // Room 管理
+    std::unordered_map<std::string, Room> rooms_;
+    std::mutex roomMutex_;
 
     // WebSocket 心跳检测
     std::thread wsHeartbeatThread_;

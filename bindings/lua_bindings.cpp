@@ -123,10 +123,11 @@ void LuaState::registerAPIs() {
     registerUIAutomationModule();
 
     // 注册扩展模块
-    registerHttpModule(L);
-    registerJsonModule(L);
-    registerKvModule(L);
-    registerOrchestrationModule(L);
+    wingman::lua::registerHttpModule(L);
+    wingman::lua::registerJsonModule(L);
+    wingman::lua::registerKvModule(L);
+    wingman::lua::registerOrchestrationModule(L);
+    wingman::lua::registerTeamModule(L);
 }
 
 // ============================================================================
