@@ -7,6 +7,7 @@
 
 namespace wingman::server {
 class WorkflowOrchestrator;
+class Orchestrator;
 }
 
 namespace wingman::lua {
@@ -75,6 +76,14 @@ int fail_task(lua_State* L);
 int get_worker_statuses(lua_State* L);
 
 } // namespace orchestration
+
+// Team 模块
+namespace team {
+
+// 设置全局 Orchestrator 实例
+void setOrchestrator(wingman::server::Orchestrator* orchestrator);
+
+} // namespace team
 
 // 注册扩展模块（需要 lua_State 参数）
 void registerHttpModule(lua_State* L);

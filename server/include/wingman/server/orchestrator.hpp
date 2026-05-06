@@ -65,6 +65,37 @@ struct VoteAction {
     VoteAction() : agree(false), timestamp(0) {}
 };
 
+// TeamSession 消息
+struct TeamMessage {
+    std::string messageId;
+    std::string fromClientId;
+    std::string fromUsername;
+    std::string action;       // 消息类型
+    std::string data;         // JSON 数据
+    int64_t timestamp;
+
+    TeamMessage() : timestamp(0) {}
+};
+
+// TeamSession - 队伍会话，用于成员间实时通信
+struct TeamSession {
+    std::string teamId;
+    std::string leaderId;
+    std::vector<std::string> members;     // clientId 列表
+    std::vector<TeamMessage> messages;    // 共享消息队列
+    std::unordered_map<std::string, size_t> readIndexes;  // 每个成员的读取位置
+    int64_t createdAt;
+    bool isActive;
+
+    TeamSession() : createdAt(0), isActive(false) {}
+
+    size_t getUnreadCount(const std::string& clientId) const {
+        auto it = readIndexes.find(clientId);
+        size_t index = (it != readIndexes.end()) ? it->second : 0;
+        return (messages.size() > index) ? (messages.size() - index) : 0;
+    }
+};
+
 // 编排引擎 - 负责组队逻辑协调
 class Orchestrator {
 public:
@@ -117,6 +148,24 @@ public:
     // 获取待处理的投票动作
     std::vector<VoteAction> getPendingActions(const std::string& clientId);
 
+    // ========== TeamSession 通信 ==========
+
+    // 创建 TeamSession（由 Orchestrator 调用）
+    bool createTeamSession(const std::string& teamId, const std::vector<std::string>& members);
+
+    // 发送消息到 TeamSession（所有成员收到）
+    bool sendToTeamSession(const std::string& teamId, const std::string& action,
+                           const std::string& fromClientId, const std::string& data);
+
+    // 从 TeamSession 接收消息（返回未读消息）
+    std::vector<TeamMessage> receiveFromTeamSession(const std::string& clientId);
+
+    // 关闭 TeamSession
+    void closeTeamSession(const std::string& teamId);
+
+    // 获取 TeamSession 信息
+    TeamSession getTeamSession(const std::string& teamId);
+
     // ========== 维护 ==========
 
     // 清理超时 Client
@@ -128,6 +177,7 @@ public:
 private:
     std::mutex mutex_;
     std::unique_ptr<KeyValueStore> kv_;
+    std::unordered_map<std::string, TeamSession> teamSessions_;  // TeamSession 存储
 
     // 生成唯一 ID
     std::string generateId(const std::string& prefix);

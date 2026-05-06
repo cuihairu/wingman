@@ -1,4 +1,5 @@
 #include "wingman/server/server.hpp"
+#include "wingman/lua_extensions.hpp"
 #include <spdlog/spdlog.h>
 #include <mutex>
 
@@ -125,6 +126,7 @@ Server::Server(asio::io_context& ioContext, unsigned short port)
       acceptor_(ioContext, tcp::endpoint(tcp::v4(), port)),
       agentManager_(std::make_unique<AgentManager>()),
       orchestrator_(std::make_unique<WorkflowOrchestrator>()),
+      teamOrchestrator_(std::make_unique<Orchestrator>()),
       heartbeatTimer_(ioContext) {
 
     // 设置 AgentManager 的回调
@@ -139,6 +141,12 @@ Server::Server(asio::io_context& ioContext, unsigned short port)
             disconnectCallback_(agentId);
         }
     });
+
+    // 设置全局 Orchestrator 实例（供 Lua team 模块使用）
+    wingman::lua::team::setOrchestrator(teamOrchestrator_.get());
+    wingman::lua::orchestration::setOrchestrator(orchestrator_.get());
+
+    spdlog::info("Team orchestrator initialized");
 }
 
 Server::~Server() {

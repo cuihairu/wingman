@@ -199,6 +199,10 @@ std::string Orchestrator::createTeam(const std::string& leaderId, int maxSize) {
     // 将队伍添加到等待队列
     kv_->lpush("queue:teams", teamId);
 
+    // 创建 TeamSession（单成员初始队伍）
+    std::vector<std::string> initialMembers = {leaderId};
+    createTeamSession(teamId, initialMembers);
+
     spdlog::info("Team created: {} by leader {}", teamId, leaderId);
     return teamId;
 }
@@ -228,6 +232,21 @@ bool Orchestrator::joinTeam(const std::string& clientId, const std::string& team
     kv_->lpush("team:" + teamId + ":members", clientId);
     kv_->hset("client:" + clientId, "teamId", teamId);
 
+    // 更新 TeamSession，添加新成员
+    auto it = teamSessions_.find(teamId);
+    if (it != teamSessions_.end() && it->second.isActive) {
+        // 添加到成员列表
+        it->second.members.push_back(clientId);
+        // 初始化读取位置
+        it->second.readIndexes[clientId] = it->second.messages.size();
+
+        spdlog::info("[TeamSession] Added client {} to session {}", clientId, teamId);
+    } else {
+        // 如果不存在，创建新的 TeamSession
+        std::vector<std::string> members = getTeamMembers(teamId);
+        createTeamSession(teamId, members);
+    }
+
     spdlog::info("Client {} joined team {}", clientId, teamId);
     return true;
 }
@@ -255,6 +274,21 @@ bool Orchestrator::leaveTeam(const std::string& clientId) {
 
     // 更新 Client
     kv_->hset("client:" + clientId, "teamId", "");
+
+    // 更新 TeamSession
+    auto it = teamSessions_.find(teamId);
+    if (it != teamSessions_.end() && it->second.isActive) {
+        // 从成员列表移除
+        auto& sessMembers = it->second.members;
+        sessMembers.erase(std::remove(sessMembers.begin(), sessMembers.end(), clientId), sessMembers.end());
+        // 移除读取位置
+        it->second.readIndexes.erase(clientId);
+
+        // 如果是队长离开，更新队长
+        if (leader == clientId && !sessMembers.empty()) {
+            it->second.leaderId = sessMembers[0];
+        }
+    }
 
     // 如果是队长离开，解散队伍或转移队长
     if (leader == clientId) {
@@ -337,6 +371,9 @@ void Orchestrator::disbandTeam(const std::string& teamId) {
 
     // 从队列中移除
     kv_->lrem("queue:teams", 1, teamId);
+
+    // 关闭 TeamSession
+    closeTeamSession(teamId);
 
     spdlog::info("Team disbanded: {}", teamId);
 }
@@ -558,6 +595,154 @@ size_t Orchestrator::tryFormTeams(int minTeamSize, int maxTeamSize) {
     }
 
     return formedCount;
+}
+
+// ========== TeamSession 通信 ==========
+
+bool Orchestrator::createTeamSession(const std::string& teamId, const std::vector<std::string>& members) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    if (members.empty()) {
+        spdlog::warn("[TeamSession] Cannot create session with empty members");
+        return false;
+    }
+
+    TeamSession session;
+    session.teamId = teamId;
+    session.leaderId = members[0];  // 第一个成员是队长
+    session.members = members;
+    session.createdAt = std::chrono::system_clock::now().time_since_epoch().count();
+    session.isActive = true;
+
+    // 初始化每个成员的读取位置
+    for (const auto& memberId : members) {
+        session.readIndexes[memberId] = 0;
+    }
+
+    teamSessions_[teamId] = session;
+
+    spdlog::info("[TeamSession] Created session {} with {} members", teamId, members.size());
+    return true;
+}
+
+bool Orchestrator::sendToTeamSession(const std::string& teamId, const std::string& action,
+                                     const std::string& fromClientId, const std::string& data) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    auto it = teamSessions_.find(teamId);
+    if (it == teamSessions_.end() || !it->second.isActive) {
+        spdlog::warn("[TeamSession] Session {} not found or inactive", teamId);
+        return false;
+    }
+
+    // 验证发送者是成员
+    bool isMember = false;
+    for (const auto& memberId : it->second.members) {
+        if (memberId == fromClientId) {
+            isMember = true;
+            break;
+        }
+    }
+
+    if (!isMember) {
+        spdlog::warn("[TeamSession] Client {} is not a member of team {}", fromClientId, teamId);
+        return false;
+    }
+
+    // 创建消息
+    TeamMessage msg;
+    msg.messageId = generateId("msg_");
+    msg.fromClientId = fromClientId;
+    msg.fromUsername = "";  // 可以从 ClientInfo 获取
+    msg.action = action;
+    msg.data = data;
+    msg.timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+
+    // 获取用户名
+    auto clientInfo = getClientInfo(fromClientId);
+    msg.fromUsername = clientInfo.username;
+
+    // 添加到消息队列
+    it->second.messages.push_back(msg);
+
+    // 限制队列大小
+    if (it->second.messages.size() > 1000) {
+        // 移除旧消息，调整读取位置
+        size_t removeCount = it->second.messages.size() - 1000;
+        it->second.messages.erase(it->second.messages.begin(),
+                                   it->second.messages.begin() + removeCount);
+
+        // 调整所有成员的读取位置
+        for (auto& [memberId, index] : it->second.readIndexes) {
+            if (index >= removeCount) {
+                index -= removeCount;
+            } else {
+                index = 0;
+            }
+        }
+    }
+
+    spdlog::debug("[TeamSession] Message from {} to team {}: action={}",
+                  fromClientId, teamId, action);
+    return true;
+}
+
+std::vector<TeamMessage> Orchestrator::receiveFromTeamSession(const std::string& clientId) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    std::vector<TeamMessage> result;
+
+    // 找到客户端所属的 TeamSession
+    for (auto& [teamId, session] : teamSessions_) {
+        if (!session.isActive) continue;
+
+        // 检查是否是成员
+        bool isMember = false;
+        for (const auto& memberId : session.members) {
+            if (memberId == clientId) {
+                isMember = true;
+                break;
+            }
+        }
+
+        if (!isMember) continue;
+
+        // 获取未读消息
+        size_t currentIndex = session.readIndexes[clientId];
+        if (currentIndex < session.messages.size()) {
+            // 复制未读消息
+            for (size_t i = currentIndex; i < session.messages.size(); ++i) {
+                result.push_back(session.messages[i]);
+            }
+
+            // 更新读取位置
+            session.readIndexes[clientId] = session.messages.size();
+        }
+
+        break;  // 每个客户端只能属于一个 session
+    }
+
+    return result;
+}
+
+void Orchestrator::closeTeamSession(const std::string& teamId) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    auto it = teamSessions_.find(teamId);
+    if (it != teamSessions_.end()) {
+        it->second.isActive = false;
+        spdlog::info("[TeamSession] Closed session {}", teamId);
+    }
+}
+
+TeamSession Orchestrator::getTeamSession(const std::string& teamId) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    auto it = teamSessions_.find(teamId);
+    if (it != teamSessions_.end()) {
+        return it->second;
+    }
+    return TeamSession();  // 返回空 session
 }
 
 } // namespace wingman::server

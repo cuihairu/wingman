@@ -7,25 +7,36 @@ print("=== Wingman 队伍协同示例 ===")
 local TEAM_ID = "team_demo_001"
 local MY_NAME = "Player" .. math.random(1000, 9999)
 
--- 加入队伍
-print("加入队伍 " .. TEAM_ID ...)
-team.join(TEAM_ID, "", MY_NAME)
+-- 1. 注册客户端
+print("注册客户端...")
+local client_id = team.register(MY_NAME)
+print(string.format("我的客户端ID: %s", client_id))
 
--- 获取队伍信息
+-- 2. 加入队伍
+print("加入队伍 " .. TEAM_ID .. "...")
+if team.join(TEAM_ID) then
+    print("加入成功")
+else
+    print("加入失败")
+    return
+end
+
+-- 3. 获取队伍信息
 local info = team.info()
 print(string.format("队伍ID: %s", info.team_id))
 print(string.format("我的ID: %s", info.my_id))
 print(string.format("我的昵称: %s", info.my_username))
 print(string.format("队员数量: %d", info.member_count))
 
--- 获取队员列表
+-- 4. 获取队员列表
 local members = team.members()
 print("队员列表:")
 for i, m in ipairs(members) do
-    print(string.format("  [%d] %s (%s)", i, m.username, m.id))
+    local leader = m.is_leader and " [队长]" or ""
+    print(string.format("  [%d] %s (%s)%s", i, m.username, m.id, leader))
 end
 
--- 发送消息到队伍
+-- 5. 发送消息到队伍
 print("\n发送消息到队伍...")
 team.send("ready", {
     position = {x = 100, y = 200},
@@ -37,23 +48,23 @@ team.send("scan_complete", {
     position = {x = 150, y = 250}
 })
 
--- 轮询队伍消息
-print("\n轮询队伍消息 (模拟其他脚本发送的消息)...")
-for i = 1, 3 do
-    local msg = team.poll()
-    if msg then
-        print(string.format("收到消息: action=%s, from=%s",
-            msg.action, msg.from))
+-- 6. 轮询队伍消息
+print("\n轮询队伍消息...")
+local messages = team.poll()
+if messages then
+    print(string.format("收到 %d 条消息", #messages))
+    for i, msg in ipairs(messages) do
+        print(string.format("  [%d] action=%s, from=%s (%s)",
+            i, msg.action, msg.from, msg.username))
         if msg.data then
-            print(string.format("  data: %s", msg.data))
+            print(string.format("      data: %s", json.encode(msg.data)))
         end
-    else
-        print("没有新消息")
     end
-    util.sleep(500)
+else
+    print("没有新消息")
 end
 
--- 协同示例：等待所有队员准备就绪
+-- 7. 协同示例：等待所有队员准备就绪
 print("\n协同示例：等待队员准备...")
 local allReady = false
 local checkCount = 0
@@ -82,7 +93,7 @@ if allReady then
     print("任务开始！")
 end
 
--- 清理
+-- 8. 清理
 print("\n离开队伍...")
 team.leave()
 

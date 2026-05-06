@@ -8,6 +8,7 @@
 #include "wingman/server/protocol.hpp"
 #include "wingman/server/agent_manager.hpp"
 #include "wingman/server/workflow_orchestrator.hpp"
+#include "wingman/server/orchestrator.hpp"
 
 namespace wingman::server {
 
@@ -88,6 +89,11 @@ public:
     // 获取所有工作流
     std::vector<Workflow> getAllWorkflows() const;
 
+    // ========== 队伍编排 ==========
+
+    // 获取队伍编排器
+    Orchestrator* getOrchestrator() { return teamOrchestrator_.get(); }
+
     // ========== 事件回调 ==========
 
     using ConnectCallback = std::function<void(const std::string& agentId, const AgentInfo& info)>;
@@ -118,6 +124,9 @@ private:
 
     // 工作流编排
     std::unique_ptr<WorkflowOrchestrator> orchestrator_;
+
+    // 队伍编排
+    std::unique_ptr<Orchestrator> teamOrchestrator_;
 
     // 心跳检测
     asio::steady_timer heartbeatTimer_;
