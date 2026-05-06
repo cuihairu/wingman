@@ -92,14 +92,118 @@ inline AgentStatus parseAgentStatus(const std::string& str) {
     return AgentStatus::Offline;
 }
 
+// ========== 资源状态定义 ==========
+struct ResourceStats {
+    // CPU
+    double cpuUsage = 0.0;           // CPU 使用率 0-100
+    int cpuCores = 0;                // CPU 核心数
+    std::string cpuModel;            // CPU 型号
+
+    // 内存
+    uint64_t totalMemory = 0;        // 总内存 (字节)
+    uint64_t availableMemory = 0;    // 可用内存 (字节)
+    double memoryUsage = 0.0;        // 内存使用率 0-100
+
+    // 硬盘
+    uint64_t totalDisk = 0;          // 总磁盘空间 (字节)
+    uint64_t availableDisk = 0;      // 可用磁盘空间 (字节)
+    double diskUsage = 0.0;          // 磁盘使用率 0-100
+
+    // 网络
+    uint64_t networkUp = 0;          // 上行速度 (字节/秒)
+    uint64_t networkDown = 0;        // 下行速度 (字节/秒)
+    std::string localIp;             // 本地 IP
+    std::string publicIp;            // 公网 IP (可选)
+
+    // 系统
+    double temperature = 0.0;        // 温度 (摄氏度)
+    std::string os;                  // 操作系统
+    std::string arch;                // 架构 (x64/arm)
+
+    // 时间戳
+    uint64_t timestamp = 0;          // 采集时间
+
+    nlohmann::json toJson() const {
+        nlohmann::json j;
+        j["cpu"] = {
+            {"usage", cpuUsage},
+            {"cores", cpuCores},
+            {"model", cpuModel}
+        };
+        j["memory"] = {
+            {"total", totalMemory},
+            {"available", availableMemory},
+            {"usage", memoryUsage}
+        };
+        j["disk"] = {
+            {"total", totalDisk},
+            {"available", availableDisk},
+            {"usage", diskUsage}
+        };
+        j["network"] = {
+            {"up", networkUp},
+            {"down", networkDown},
+            {"local_ip", localIp},
+            {"public_ip", publicIp}
+        };
+        j["system"] = {
+            {"temperature", temperature},
+            {"os", os},
+            {"arch", arch}
+        };
+        j["timestamp"] = timestamp;
+        return j;
+    }
+
+    static ResourceStats fromJson(const nlohmann::json& j) {
+        ResourceStats stats;
+        if (j.contains("cpu")) {
+            auto& cpu = j["cpu"];
+            if (cpu.contains("usage")) stats.cpuUsage = cpu["usage"];
+            if (cpu.contains("cores")) stats.cpuCores = cpu["cores"];
+            if (cpu.contains("model")) stats.cpuModel = cpu["model"];
+        }
+        if (j.contains("memory")) {
+            auto& mem = j["memory"];
+            if (mem.contains("total")) stats.totalMemory = mem["total"];
+            if (mem.contains("available")) stats.availableMemory = mem["available"];
+            if (mem.contains("usage")) stats.memoryUsage = mem["usage"];
+        }
+        if (j.contains("disk")) {
+            auto& disk = j["disk"];
+            if (disk.contains("total")) stats.totalDisk = disk["total"];
+            if (disk.contains("available")) stats.availableDisk = disk["available"];
+            if (disk.contains("usage")) stats.diskUsage = disk["usage"];
+        }
+        if (j.contains("network")) {
+            auto& net = j["network"];
+            if (net.contains("up")) stats.networkUp = net["up"];
+            if (net.contains("down")) stats.networkDown = net["down"];
+            if (net.contains("local_ip")) stats.localIp = net["local_ip"];
+            if (net.contains("public_ip")) stats.publicIp = net["public_ip"];
+        }
+        if (j.contains("system")) {
+            auto& sys = j["system"];
+            if (sys.contains("temperature")) stats.temperature = sys["temperature"];
+            if (sys.contains("os")) stats.os = sys["os"];
+            if (sys.contains("arch")) stats.arch = sys["arch"];
+        }
+        if (j.contains("timestamp")) stats.timestamp = j["timestamp"];
+        return stats;
+    }
+};
+
 // ========== Agent 信息 ==========
 struct AgentInfo {
     std::string agentId;              // 客户端 ID
     std::string hostname;             // 主机名
     std::string ip;                   // IP 地址
     AgentStatus status = AgentStatus::Online;
-    nlohmann::json currentTask;       // 当前任务
+    nlohmann::json currentTask;       // 当前任务（业务层）
     std::chrono::system_clock::time_point lastSeen;
+
+    // 资源状态（注册中心层）
+    ResourceStats resources;          // 系统资源状态
 
     // 序列化
     nlohmann::json toJson() const {
@@ -109,6 +213,7 @@ struct AgentInfo {
         j["ip"] = ip;
         j["status"] = agentStatusToString(status);
         j["current_task"] = currentTask;
+        j["resources"] = resources.toJson();
         j["last_seen"] = std::chrono::system_clock::to_time_t(lastSeen);
         return j;
     }
@@ -121,6 +226,7 @@ struct AgentInfo {
         if (j.contains("ip")) info.ip = j["ip"];
         if (j.contains("status")) info.status = parseAgentStatus(j["status"]);
         if (j.contains("current_task")) info.currentTask = j["current_task"];
+        if (j.contains("resources")) info.resources = ResourceStats::fromJson(j["resources"]);
         if (j.contains("last_seen")) {
             info.lastSeen = std::chrono::system_clock::from_time_t(j["last_seen"].get<uint64_t>());
         }

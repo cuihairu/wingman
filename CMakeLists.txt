@@ -134,6 +134,7 @@ set(SERVER_SOURCES
     server/src/orchestrator.cpp
     server/src/agent_manager.cpp
     server/src/workflow_orchestrator.cpp
+    server/src/resource_collector.cpp
 )
 
 set(DEBUGGER_SOURCES

@@ -269,7 +269,13 @@ void Client::doHeartbeat() {
     req.id = Request::generateId();
     req.timestamp = Protocol::now();
     req.agentId = agentId_;
+
+    // 收集资源状态
+    ResourceStats resources = resourceCollector_.collect();
+
+    // 构建心跳数据
     req.data = heartbeatData_;
+    req.data["resources"] = resources.toJson();
 
     send(req, [this](const Response& response) {
         if (response.code != ErrorCode::OK) {

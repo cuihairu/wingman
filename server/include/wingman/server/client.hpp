@@ -8,6 +8,7 @@
 #include <mutex>
 #include <atomic>
 #include "wingman/server/protocol.hpp"
+#include "wingman/server/resource_collector.hpp"
 
 namespace wingman::server {
 
@@ -63,6 +64,9 @@ public:
 
     void setHeartbeatData(const nlohmann::json& data) { heartbeatData_ = data; }
 
+    // 资源收集
+    ResourceStats collectResources() const { return resourceCollector_.collect(); }
+
 private:
     asio::io_context& ioContext_;
     std::unique_ptr<tcp::socket> socket_;
@@ -74,6 +78,9 @@ private:
     std::string agentId_;
     std::string host_;
     unsigned short port_;
+
+    // 资源收集器
+    ResourceCollector resourceCollector_;
 
     // 自动重连
     bool autoReconnect_ = false;

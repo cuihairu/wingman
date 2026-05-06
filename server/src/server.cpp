@@ -311,32 +311,32 @@ Response Server::handleHeartbeat(const Request& request) {
         return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing agent_id");
     }
 
-    // 更新心跳
-    nlohmann::json currentTask;
-    if (request.data.contains("current_task")) {
-        currentTask = request.data["current_task"];
-    }
-
-    if (!agentManager_->updateHeartbeat(agentId, currentTask)) {
+    // 获取当前 Agent 信息
+    auto info = agentManager_->getAgent(agentId);
+    if (!info) {
         return Response::error(request.id, ErrorCode::NOT_FOUND, "Agent not registered");
     }
 
+    AgentInfo updated = *info;
+    updated.lastSeen = std::chrono::system_clock::now();
+
     // 更新状态
-    AgentStatus newStatus = AgentStatus::Online;
     if (request.data.contains("status")) {
-        newStatus = parseAgentStatus(request.data["status"]);
+        updated.status = parseAgentStatus(request.data["status"]);
     }
 
-    auto info = agentManager_->getAgent(agentId);
-    if (info) {
-        AgentInfo updated = *info;
-        updated.status = newStatus;
-        updated.lastSeen = std::chrono::system_clock::now();
-        if (!currentTask.is_null()) {
-            updated.currentTask = currentTask;
-        }
-        agentManager_->registerAgent(agentId, updated);
+    // 更新当前任务（业务层）
+    if (request.data.contains("current_task")) {
+        updated.currentTask = request.data["current_task"];
     }
+
+    // 更新资源状态（注册中心层）
+    if (request.data.contains("resources")) {
+        updated.resources = ResourceStats::fromJson(request.data["resources"]);
+    }
+
+    // 重新注册（更新信息）
+    agentManager_->registerAgent(agentId, updated);
 
     return Response::ok(request.id, {
         {"server_time", Protocol::now()}
