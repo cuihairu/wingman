@@ -221,4 +221,5 @@ std::string OCR::getVersion() {
 
 } // namespace wingman
 
-#endif // WINGMAN_ENABLE_OCR
+#endif
+

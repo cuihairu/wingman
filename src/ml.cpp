@@ -1,12 +1,10 @@
 #include "wingman/ml.hpp"
 #include <spdlog/spdlog.h>
 
-#ifdef _WIN32
-// ONNX Runtime Windows
-#include <core/session/onnxruntime_cxx_api.h>
-#pragma comment(lib, "onnxruntime.lib")
-#else
+// ONNX Runtime - vcpkg 安装的路径是直接可用的
 #include <onnxruntime_cxx_api.h>
+#ifdef _WIN32
+#pragma comment(lib, "onnxruntime")
 #endif
 
 namespace wingman {
