@@ -184,6 +184,10 @@ private:
     std::unique_ptr<Impl> impl;
 
     static UIAutomation* instance_;
+
+    // 事件处理器前向声明
+    struct EventHandler;
+    struct StructureHandler;
 };
 
 // 全局访问

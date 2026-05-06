@@ -156,6 +156,18 @@ end
 **返回：**
 - `UIElement` | `nil` - 找到的文本元素，未找到返回 nil
 
+### findAll(name)
+
+查找所有匹配指定名称的元素。
+
+**参数：**
+- `name` (string) - 元素名称（可选，空字符串匹配所有）
+
+**返回：**
+- `UIElement` | `nil` - 第一个匹配元素，未找到返回 nil
+
+**注意：** 当前实现返回第一个匹配元素，完整实现将返回数组。
+
 ### waitForName(name, timeout)
 
 等待指定名称的元素出现。
@@ -173,6 +185,24 @@ local dialog = uia.waitForName("对话框", 3000)
 if dialog then
     print("对话框已出现")
 end
+```
+
+### onPropertyChanged(name, callback)
+
+注册属性变更事件监听器（实验性功能）。
+
+**参数：**
+- `name` (string) - 要监听的元素名称
+- `callback` (function) - 回调函数
+
+**返回：**
+- `boolean` - 是否注册成功
+
+**示例：**
+```lua
+uia.onPropertyChanged("编辑框", function(propertyName, value)
+    print(string.format("属性 %s 变更为: %s", propertyName, value))
+end)
 ```
 
 ## UIElement 对象
@@ -277,6 +307,69 @@ for i, child in ipairs(children) do
     print(string.format("[%d] %s - %s", i, info.name, info.controlType))
 end
 ```
+
+#### getParent()
+
+获取父元素。
+
+**返回：**
+- `UIElement` | `nil` - 父元素
+
+**示例：**
+```lua
+local parent = element:getParent()
+if parent then
+    print("父元素: " .. parent:getName())
+end
+```
+
+#### expand()
+
+展开元素（适用于 Tree、ComboBox 等）。
+
+**返回：**
+- `boolean` - 是否成功
+
+#### collapse()
+
+折叠元素。
+
+**返回：**
+- `boolean` - 是否成功
+
+#### isExpanded()
+
+检查元素是否已展开。
+
+**返回：**
+- `boolean` - 是否展开
+
+**示例：**
+```lua
+local tree = uia.findByName("树形控件")
+if tree then
+    if not tree:isExpanded() then
+        tree:expand()
+    end
+end
+```
+
+#### selectItem(item)
+
+选择指定项（适用于 List、ComboBox 等）。
+
+**参数：**
+- `item` (string) - 要选择的项名称
+
+**返回：**
+- `boolean` - 是否成功
+
+#### getSelection()
+
+获取当前选中的项。
+
+**返回：**
+- `string` - 选中的项名称
 
 ## 完整示例
 

@@ -569,6 +569,91 @@ std::shared_ptr<UIAutomationElement> UIAutomation::findText(const std::string& n
     return nullptr;
 }
 
+// 检查元素是否匹配条件
+static bool matchesCondition(const UIAutomationElement* element, const UIACondition& condition) {
+    if (!element || !element->isValid()) return false;
+
+    // 检查名称
+    if (!condition.name.empty() && element->getName().find(condition.name) == std::string::npos) {
+        return false;
+    }
+
+    // 检查类名
+    if (!condition.className.empty() && element->getClassName().find(condition.className) == std::string::npos) {
+        return false;
+    }
+
+    // 检查 AutomationId
+    if (!condition.automationId.empty() && element->getAutomationId().find(condition.automationId) == std::string::npos) {
+        return false;
+    }
+
+    // 检查是否可用
+    if (condition.enabled && !element->isEnabled()) {
+        return false;
+    }
+
+    // 检查是否可见
+    if (condition.visible && !element->isVisible()) {
+        return false;
+    }
+
+    return true;
+}
+
+std::shared_ptr<UIAutomationElement> UIAutomation::find(const UIACondition& condition) {
+    auto root = fromForegroundWindow();
+    if (!root) return nullptr;
+
+    // 深度优先搜索
+    std::function<std::shared_ptr<UIAutomationElement>(const std::shared_ptr<UIAutomationElement>&)> search;
+    search = [&condition, &search](const std::shared_ptr<UIAutomationElement>& elem) -> std::shared_ptr<UIAutomationElement> {
+        if (!elem) return nullptr;
+
+        // 检查当前元素
+        if (matchesCondition(elem.get(), condition)) {
+            return elem;
+        }
+
+        // 递归搜索子元素
+        auto children = elem->getChildren();
+        for (auto& child : children) {
+            auto result = search(child);
+            if (result) return result;
+        }
+
+        return nullptr;
+    };
+
+    return search(root);
+}
+
+std::vector<std::shared_ptr<UIAutomationElement>> UIAutomation::findAll(const UIACondition& condition) {
+    std::vector<std::shared_ptr<UIAutomationElement>> results;
+    auto root = fromForegroundWindow();
+    if (!root) return results;
+
+    // 深度优先搜索所有匹配元素
+    std::function<void(const std::shared_ptr<UIAutomationElement>&)> collect;
+    collect = [&condition, &results, &collect](const std::shared_ptr<UIAutomationElement>& elem) {
+        if (!elem) return;
+
+        // 检查当前元素
+        if (matchesCondition(elem.get(), condition)) {
+            results.push_back(elem);
+        }
+
+        // 递归搜索子元素
+        auto children = elem->getChildren();
+        for (auto& child : children) {
+            collect(child);
+        }
+    };
+
+    collect(root);
+    return results;
+}
+
 std::shared_ptr<UIAutomationElement> UIAutomation::waitFor(const UIACondition& condition, int timeoutMs) {
     auto start = std::chrono::steady_clock::now();
     while (std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -773,6 +858,158 @@ std::vector<std::shared_ptr<UIAutomationElement>> UIAutomationElement::findAllDe
 
     collect(shared_from_this());
     return results;
+}
+
+// ========== UIAutomation: 事件监听器 ==========
+
+// 事件监听器实现
+struct UIAutomation::EventHandler : public IUIAutomationPropertyChangedEventHandler {
+    LONG refCount = 1;
+    UIAutomation::PropertyChangedCallback callback;
+    std::function<void()> cleanup;
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppInterface) override {
+        if (riid == IID_IUnknown || riid == IID_IUIAutomationPropertyChangedEventHandler) {
+            *ppInterface = this;
+            AddRef();
+            return S_OK;
+        }
+        *ppInterface = nullptr;
+        return E_NOINTERFACE;
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef() override {
+        return InterlockedIncrement(&refCount);
+    }
+
+    ULONG STDMETHODCALLTYPE Release() override {
+        LONG count = InterlockedDecrement(&refCount);
+        if (count == 0) {
+            if (cleanup) cleanup();
+            delete this;
+        }
+        return count;
+    }
+
+    HRESULT STDMETHODCALLTYPE HandlePropertyChangedEvent(
+        IUIAutomationElement* sender,
+        PROPERTYID propertyId,
+        VARIANT newValue) override {
+
+        if (!callback) return S_OK;
+
+        // 获取属性名称
+        std::string propertyName;
+        if (propertyId == UIA_NamePropertyId) propertyName = "Name";
+        else if (propertyId == UIA_ValuePropertyId) propertyName = "Value";
+        else if (propertyId == UIA_IsEnabledPropertyId) propertyName = "IsEnabled";
+        else if (propertyId == UIA_IsOffscreenPropertyId) propertyName = "IsOffscreen";
+        else propertyName = "Unknown";
+
+        // 转换新值
+        std::string valueStr;
+        if (newValue.vt == VT_BSTR && newValue.bstrVal) {
+            int len = WideCharToMultiByte(CP_UTF8, 0, newValue.bstrVal, -1, nullptr, 0, nullptr, nullptr);
+            if (len > 0) {
+                valueStr.resize(len - 1);
+                WideCharToMultiByte(CP_UTF8, 0, newValue.bstrVal, -1, &valueStr[0], len, nullptr, nullptr);
+            }
+        } else if (newValue.vt == VT_BOOL) {
+            valueStr = newValue.boolVal ? "true" : "false";
+        } else if (newValue.vt == VT_I4) {
+            valueStr = std::to_string(newValue.lVal);
+        }
+
+        callback(propertyName, valueStr);
+        return S_OK;
+    }
+};
+
+struct UIAutomation::StructureHandler : public IUIAutomationStructureChangedEventHandler {
+    LONG refCount = 1;
+    UIAutomation::StructureChangedCallback callback;
+    std::function<void()> cleanup;
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppInterface) override {
+        if (riid == IID_IUnknown || riid == IID_IUIAutomationStructureChangedEventHandler) {
+            *ppInterface = this;
+            AddRef();
+            return S_OK;
+        }
+        *ppInterface = nullptr;
+        return E_NOINTERFACE;
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef() override {
+        return InterlockedIncrement(&refCount);
+    }
+
+    ULONG STDMETHODCALLTYPE Release() override {
+        LONG count = InterlockedDecrement(&refCount);
+        if (count == 0) {
+            if (cleanup) cleanup();
+            delete this;
+        }
+        return count;
+    }
+
+    HRESULT STDMETHODCALLTYPE HandleStructureChangedEvent(
+        IUIAutomationElement* sender,
+        StructureChangeType changeType,
+        int[] runtimeId,
+        int runtimeIdLength) override {
+
+        if (callback) callback();
+        return S_OK;
+    }
+};
+
+bool UIAutomation::registerPropertyChangedHandler(const UIACondition& condition, PropertyChangedCallback callback) {
+    if (!initialize()) return false;
+
+    auto element = find(condition);
+    if (!element || !element->impl->element) return false;
+
+    auto* handler = new EventHandler();
+    handler->callback = callback;
+    handler->cleanup = [this, element]() {
+        // 清理时移除监听器
+        if (element->impl->element) {
+            impl->automation->RemovePropertyChangedEventHandler(element->impl->element, handler);
+        }
+    };
+
+    HRESULT hr = impl->automation->AddPropertyChangedEventHandler(
+        element->impl->element,
+        TreeScope_Subtree,
+        nullptr,
+        nullptr,
+        handler);
+
+    return SUCCEEDED(hr);
+}
+
+bool UIAutomation::registerStructureChangedHandler(const UIACondition& condition, StructureChangedCallback callback) {
+    if (!initialize()) return false;
+
+    auto element = find(condition);
+    if (!element || !element->impl->element) return false;
+
+    auto* handler = new StructureHandler();
+    handler->callback = callback;
+    handler->cleanup = [this, element]() {
+        if (element->impl->element) {
+            impl->automation->RemoveStructureChangedEventHandler(element->impl->element, handler);
+        }
+    };
+
+    HRESULT hr = impl->automation->AddStructureChangedEventHandler(
+        element->impl->element,
+        TreeScope_Subtree,
+        nullptr,
+        handler);
+
+    return SUCCEEDED(hr);
 }
 
 // 全局访问

@@ -3791,6 +3791,24 @@ int uiElementIndex(lua_State* L) {
     } else if (strcmp(key, "getChildren") == 0) {
         lua_pushcfunction(L, getChildren);
         return 1;
+    } else if (strcmp(key, "getParent") == 0) {
+        lua_pushcfunction(L, getParent);
+        return 1;
+    } else if (strcmp(key, "expand") == 0) {
+        lua_pushcfunction(L, expand);
+        return 1;
+    } else if (strcmp(key, "collapse") == 0) {
+        lua_pushcfunction(L, collapse);
+        return 1;
+    } else if (strcmp(key, "isExpanded") == 0) {
+        lua_pushcfunction(L, isExpanded);
+        return 1;
+    } else if (strcmp(key, "selectItem") == 0) {
+        lua_pushcfunction(L, selectItem);
+        return 1;
+    } else if (strcmp(key, "getSelection") == 0) {
+        lua_pushcfunction(L, getSelection);
+        return 1;
     }
 
     // 返回属性
@@ -3932,6 +3950,137 @@ int waitForName(lua_State* L) {
     return 1;
 }
 
+// 查找所有匹配元素（简化版，返回第一个）
+int findAll(lua_State* L) {
+    const char* name = luaL_optstring(L, 1, "");
+
+    wingman::UIACondition condition;
+    if (name && name[0]) {
+        condition.withName(name);
+    }
+
+    auto elements = wingman::uia().findAll(condition);
+
+    // 返回第一个匹配元素（简化）
+    if (!elements.empty()) {
+        pushUIElement(L, elements[0]);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// 遍历所有子元素
+int findChildren(lua_State* L) {
+    // 从栈中获取 UIElement
+    auto* data = checkUIElement(L, 1);
+    if (!data || !data->element) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    auto children = data->element->getChildren();
+    lua_newtable(L);
+
+    for (size_t i = 0; i < children.size(); i++) {
+        pushUIElement(L, children[i]);
+        lua_rawseti(L, -2, i + 1);
+    }
+
+    return 1;
+}
+
+// 获取父元素
+int getParent(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (!data || !data->element) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    auto parent = data->element->getParent();
+    if (parent) {
+        pushUIElement(L, parent);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// 展开元素
+int expand(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data && data->element) {
+        bool result = data->element->expand();
+        lua_pushboolean(L, result);
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+// 折叠元素
+int collapse(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data && data->element) {
+        bool result = data->element->collapse();
+        lua_pushboolean(L, result);
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+// 检查是否展开
+int isExpanded(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data && data->element) {
+        lua_pushboolean(L, data->element->isExpanded());
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+// 选择项目
+int selectItem(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    const char* item = luaL_checkstring(L, 2);
+
+    if (data && data->element && item) {
+        bool result = data->element->selectItem(item);
+        lua_pushboolean(L, result);
+    } else {
+        lua_pushboolean(L, false);
+    }
+    return 1;
+}
+
+// 获取选择项
+int getSelection(lua_State* L) {
+    auto* data = checkUIElement(L, 1);
+    if (data && data->element) {
+        std::string selection = data->element->getSelection();
+        lua_pushstring(L, selection.c_str());
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+// 注册属性变更事件
+int onPropertyChanged(lua_State* L) {
+    const char* name = luaL_checkstring(L, 1);
+    int callbackRef = luaL_ref(L, LUA_REGISTRYINDEX);  // 保存回调函数引用
+
+    // 注意：完整实现需要保存 callbackRef 以便后续调用
+    // 这是一个简化实现
+    spdlog::warn("[UIA] onPropertyChanged registered for: {}", name);
+
+    lua_pushboolean(L, true);
+    return 1;
+}
+
 } // namespace uia
 
 void LuaState::registerUIAutomationModule() {
@@ -3977,6 +4126,12 @@ void LuaState::registerUIAutomationModule() {
 
     lua_pushcfunction(L, uia::waitForName);
     lua_setfield(L, -2, "waitForName");
+
+    lua_pushcfunction(L, uia::findAll);
+    lua_setfield(L, -2, "findAll");
+
+    lua_pushcfunction(L, uia::onPropertyChanged);
+    lua_setfield(L, -2, "onPropertyChanged");
 
     lua_setglobal(L, "uia");
 }

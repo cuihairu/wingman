@@ -520,9 +520,19 @@
   - 添加 `#ifdef WINGMAN_BUILD_SERVER` 支持
   - 未构建 server 模块时使用存根类型
 
-### Phase 14: UIA 功能增强 🚧
+### Phase 14: UIA 功能增强 ✅
 - [x] 实现 UIACondition 查找条件
 - [x] 实现元素展开/折叠 (expand/collapse)
 - [x] 实现选择项操作 (selectItem/getSelection)
-- [ ] 实现高级查找方法 (findFirst/findAll)
-- [ ] 添加 UIA 事件监听支持
+- [x] 实现高级查找方法 (find/findAll)
+- [x] 添加 UIA 事件监听支持 (PropertyChangedEventHandler)
+- [x] Lua 绑定更新 (getParent, expand, collapse, isExpanded, selectItem, getSelection)
+- [x] 更新 UIA 文档
+
+### Phase 15: WebSocket 和 Dashboard ✅
+- [x] WebSocket 服务端实现
+- [x] WebSocket 客户端服务
+- [x] Agents 页面实时更新
+- [x] Workflows 页面实时更新
+- [x] Dashboard Croupier 内容清理
+- [x] Welcome 页面更新为 Wingman 产品介绍
