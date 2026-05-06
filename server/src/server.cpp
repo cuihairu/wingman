@@ -4,26 +4,60 @@
 
 namespace wingman::server {
 
-// Connection implementation
+// ========== Connection 实现 ==========
+
 Connection::Connection(tcp::socket socket, RequestHandler handler)
     : socket_(std::move(socket)), handler_(std::move(handler)) {}
+
+Connection::~Connection() {
+    close();
+}
 
 void Connection::start() {
     doRead();
 }
 
 void Connection::send(const Response& response) {
+    if (!isOpen()) return;
+
     auto self = shared_from_this();
     std::string data = Protocol::encode(response);
-    doWrite(data);
+
+    asio::async_write(socket_, asio::buffer(data),
+        [this, self](const std::error_code& ec, std::size_t) {
+            if (ec) {
+                handleError(ec);
+            }
+        });
+}
+
+void Connection::close() {
+    if (isOpen()) {
+        std::error_code ec;
+        socket_.close(ec);
+    }
+}
+
+std::string Connection::getRemoteAddress() const {
+    try {
+        if (isOpen()) {
+            return socket_.remote_endpoint().address().to_string();
+        }
+    } catch (...) {}
+    return "unknown";
+}
+
+bool Connection::isOpen() const {
+    return socket_.is_open();
 }
 
 void Connection::doRead() {
     auto self = shared_from_this();
+
     asio::async_read_until(socket_, buffer_, '\n',
         [this, self](const std::error_code& ec, std::size_t) {
             if (ec) {
-                spdlog::error("Connection read error: {}", ec.message());
+                handleError(ec);
                 return;
             }
 
@@ -32,11 +66,23 @@ void Connection::doRead() {
             std::getline(is, line);
 
             // Parse length
-            size_t length = std::stoul(line, nullptr, 16);
+            size_t length = 0;
+            try {
+                length = std::stoul(line, nullptr, 16);
+            } catch (...) {
+                handleError(asio::error::invalid_argument);
+                return;
+            }
 
             // Read JSON data
             std::string jsonStr(length, '\0');
-            asio::read(socket_, asio::buffer(jsonStr, length + 1)); // +1 for newline
+            asio::error_code read_ec;
+            std::size_t n = asio::read(socket_, asio::buffer(jsonStr, length + 1), read_ec); // +1 for newline
+
+            if (read_ec || n != length + 1) {
+                handleError(read_ec ? read_ec : asio::error::eof);
+                return;
+            }
 
             // Parse request
             Request request = Request::fromJson(jsonStr);
@@ -44,9 +90,14 @@ void Connection::doRead() {
             // Handle request
             Response response = handler_(request);
             response.requestId = request.id;
+            response.timestamp = Protocol::now();
 
             send(response);
-            doRead(); // Continue reading
+
+            // Continue reading
+            if (isOpen()) {
+                doRead();
+            }
         });
 }
 
@@ -55,15 +106,39 @@ void Connection::doWrite(const std::string& data) {
     asio::async_write(socket_, asio::buffer(data),
         [this, self](const std::error_code& ec, std::size_t) {
             if (ec) {
-                spdlog::error("Connection write error: {}", ec.message());
+                handleError(ec);
             }
         });
 }
 
-// Server implementation
+void Connection::handleError(const std::error_code& ec) {
+    if (ec) {
+        spdlog::error("Connection error from {}: {}", getRemoteAddress(), ec.message());
+        close();
+    }
+}
+
+// ========== Server 实现 ==========
+
 Server::Server(asio::io_context& ioContext, unsigned short port)
     : ioContext_(ioContext),
-      acceptor_(ioContext, tcp::endpoint(tcp::v4(), port)) {}
+      acceptor_(ioContext, tcp::endpoint(tcp::v4(), port)),
+      agentManager_(std::make_unique<AgentManager>()),
+      heartbeatTimer_(ioContext) {
+
+    // 设置 AgentManager 的回调
+    agentManager_->setConnectCallback([this](const std::string& agentId, const AgentInfo& info) {
+        if (connectCallback_) {
+            connectCallback_(agentId, info);
+        }
+    });
+
+    agentManager_->setDisconnectCallback([this](const std::string& agentId) {
+        if (disconnectCallback_) {
+            disconnectCallback_(agentId);
+        }
+    });
+}
 
 Server::~Server() {
     stop();
@@ -72,11 +147,20 @@ Server::~Server() {
 void Server::start() {
     spdlog::info("Server started on port {}", acceptor_.local_endpoint().port());
     doAccept();
+    startHeartbeatCheck();
 }
 
 void Server::stop() {
     std::error_code ec;
     acceptor_.close(ec);
+    heartbeatTimer_.cancel(ec);
+
+    std::lock_guard<std::mutex> lock(connectionsMutex_);
+    for (auto& conn : connections_) {
+        conn->close();
+    }
+    connections_.clear();
+
     if (ec) {
         spdlog::error("Server close error: {}", ec.message());
     }
@@ -86,12 +170,48 @@ void Server::setHandler(RequestType type, RequestHandler handler) {
     handlers_[type] = std::move(handler);
 }
 
-void Server::broadcast(const Response& response) {
-    std::lock_guard<std::mutex> lock(connectionsMutex_);
-    for (auto& conn : connections_) {
-        conn->send(response);
-    }
+// ========== Agent 管理 ==========
+
+std::vector<AgentInfo> Server::getOnlineAgents() const {
+    return agentManager_->getOnlineAgents();
 }
+
+std::optional<AgentInfo> Server::getAgent(const std::string& agentId) const {
+    return agentManager_->getAgent(agentId);
+}
+
+bool Server::sendToAgent(const std::string& agentId, const Response& response) {
+    auto conn = agentManager_->getConnection(agentId);
+    if (conn && conn->isOpen()) {
+        conn->send(response);
+        return true;
+    }
+    return false;
+}
+
+bool Server::disconnectAgent(const std::string& agentId) {
+    auto conn = agentManager_->getConnection(agentId);
+    if (conn) {
+        conn->close();
+        agentManager_->unregisterAgent(agentId);
+        return true;
+    }
+    return false;
+}
+
+size_t Server::getOnlineCount() const {
+    return agentManager_->getOnlineCount();
+}
+
+void Server::setConnectCallback(ConnectCallback callback) {
+    connectCallback_ = std::move(callback);
+}
+
+void Server::setDisconnectCallback(DisconnectCallback callback) {
+    disconnectCallback_ = std::move(callback);
+}
+
+// ========== 私有方法 ==========
 
 void Server::doAccept() {
     acceptor_.async_accept(
@@ -99,17 +219,36 @@ void Server::doAccept() {
             if (!ec) {
                 auto conn = std::make_shared<Connection>(
                     std::move(socket),
-                    [this](const Request& req) { return defaultHandler(req); }
+                    [this, conn](const Request& req) {
+                        // 处理特殊请求类型
+                        if (req.type == RequestType::kRegister) {
+                            return handleRegister(req, conn);
+                        } else if (req.type == RequestType::kHeartbeat) {
+                            return handleHeartbeat(req);
+                        } else if (req.type == RequestType::kGetAgents) {
+                            return handleGetAgents(req);
+                        } else if (req.type == RequestType::kSyncTask) {
+                            return handleSyncTask(req);
+                        } else if (req.type == RequestType::kShutdown) {
+                            return handleShutdown(req);
+                        }
+                        return defaultHandler(req);
+                    }
                 );
+
+                std::string remoteAddr = conn->getRemoteAddress();
+                spdlog::info("New connection from {}", remoteAddr);
+
                 {
                     std::lock_guard<std::mutex> lock(connectionsMutex_);
                     connections_.push_back(conn);
                 }
-                spdlog::info("New connection accepted");
+
                 conn->start();
             } else {
                 spdlog::error("Accept error: {}", ec.message());
             }
+
             doAccept();
         });
 }
@@ -123,17 +262,148 @@ void Server::removeConnection(Connection::ptr conn) {
 }
 
 Response Server::defaultHandler(const Request& request) {
-    Response response;
-    response.requestId = request.id;
-
     auto it = handlers_.find(request.type);
     if (it != handlers_.end()) {
         return it->second(request);
     }
 
-    response.status = ResponseStatus::kNotFound;
-    response.message = "Unknown request type";
-    return response;
+    return Response::error(request.id, ErrorCode::NOT_FOUND, "Unknown request type");
+}
+
+// ========== 请求处理器 ==========
+
+Response Server::handleRegister(const Request& request, Connection::ptr conn) {
+    auto agentId = request.agentId;
+    if (agentId.empty()) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing agent_id");
+    }
+
+    // 从 data 中获取客户端信息
+    AgentInfo info;
+    info.agentId = agentId;
+    info.status = AgentStatus::Online;
+    info.lastSeen = std::chrono::system_clock::now();
+
+    if (request.data.contains("hostname")) {
+        info.hostname = request.data["hostname"];
+    }
+    if (request.data.contains("ip")) {
+        info.ip = request.data["ip"];
+    } else {
+        info.ip = conn->getRemoteAddress();
+    }
+
+    // 注册客户端
+    agentManager_->registerAgent(agentId, info);
+    agentManager_->setConnection(agentId, conn);
+
+    spdlog::info("Agent registered: {} from {}", agentId, info.ip);
+
+    return Response::ok(request.id, {
+        {"server_time", Protocol::now()},
+        {"agent_id", agentId}
+    });
+}
+
+Response Server::handleHeartbeat(const Request& request) {
+    auto agentId = request.agentId;
+    if (agentId.empty()) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing agent_id");
+    }
+
+    // 更新心跳
+    nlohmann::json currentTask;
+    if (request.data.contains("current_task")) {
+        currentTask = request.data["current_task"];
+    }
+
+    if (!agentManager_->updateHeartbeat(agentId, currentTask)) {
+        return Response::error(request.id, ErrorCode::NOT_FOUND, "Agent not registered");
+    }
+
+    // 更新状态
+    AgentStatus newStatus = AgentStatus::Online;
+    if (request.data.contains("status")) {
+        newStatus = parseAgentStatus(request.data["status"]);
+    }
+
+    auto info = agentManager_->getAgent(agentId);
+    if (info) {
+        AgentInfo updated = *info;
+        updated.status = newStatus;
+        updated.lastSeen = std::chrono::system_clock::now();
+        if (!currentTask.is_null()) {
+            updated.currentTask = currentTask;
+        }
+        agentManager_->registerAgent(agentId, updated);
+    }
+
+    return Response::ok(request.id, {
+        {"server_time", Protocol::now()}
+    });
+}
+
+Response Server::handleGetAgents(const Request& request) {
+    auto agents = agentManager_->getOnlineAgents();
+
+    nlohmann::json agentsJson = nlohmann::json::array();
+    for (const auto& agent : agents) {
+        agentsJson.push_back(agent.toJson());
+    }
+
+    return Response::ok(request.id, {
+        {"agents", agentsJson},
+        {"count", agents.size()}
+    });
+}
+
+Response Server::handleSyncTask(const Request& request) {
+    // 这个方法由 Orchestrator 实现
+    // 这里暂时返回基础响应
+    return Response::ok(request.id, {
+        {"synced", false},
+        {"message", "Orchestrator not implemented yet"}
+    });
+}
+
+Response Server::handleShutdown(const Request& request) {
+    auto agentId = request.agentId;
+    if (agentId.empty()) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing agent_id");
+    }
+
+    if (disconnectAgent(agentId)) {
+        spdlog::info("Agent {} disconnected by shutdown request", agentId);
+        return Response::ok(request.id);
+    }
+
+    return Response::error(request.id, ErrorCode::NOT_FOUND, "Agent not found");
+}
+
+// ========== 心跳检测 ==========
+
+void Server::startHeartbeatCheck() {
+    checkHeartbeat(asio::error_code{});
+}
+
+void Server::checkHeartbeat(const asio::error_code& ec) {
+    if (ec) {
+        // Timer 被取消，正常退出
+        return;
+    }
+
+    // 检查超时客户端
+    auto timeoutAgents = agentManager_->checkTimeout(heartbeatTimeout_);
+
+    if (!timeoutAgents.empty()) {
+        spdlog::warn("Detected {} timeout agents", timeoutAgents.size());
+    }
+
+    // 重新设置定时器
+    heartbeatTimer_.expires_after(heartbeatCheckInterval_);
+    heartbeatTimer_.async_wait([this](const asio::error_code& ec) {
+        checkHeartbeat(ec);
+    });
 }
 
 } // namespace wingman::server
