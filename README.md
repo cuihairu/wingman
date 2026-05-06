@@ -40,6 +40,7 @@ C++ + Lua 的高性能游戏自动化框架
 | 模块 | 功能 |
 |-----|------|
 | **屏幕操作** | 截图、像素检测、颜色匹配、图像查找 (OpenCV) |
+| **UI Automation** | Windows UIA 自动化，直接操作 UI 控件（按钮/编辑框/列表等） |
 | **Vision 视觉** | 颜色检测、图像匹配、边缘检测、轮廓检测、形状识别 |
 | **OCR 识别** | Tesseract 文字识别，支持多语言 |
 | **ML/AI 推理** | ONNX Runtime 模型推理，支持图像分类、目标检测、分割 |
@@ -138,6 +139,41 @@ scripts\run-lua-tests.cmd
 - [示例](https://cuihairu.github.io/wingman/examples/)
 
 ## Lua API 示例
+
+### UI Automation 自动化
+
+```lua
+-- 从前台窗口获取 UIA 根元素
+local root = uia.fromForeground()
+
+-- 查找并点击按钮
+local btn = uia.findButton("确定")
+if btn then
+    btn:click()
+end
+
+-- 查找编辑框并输入文本
+local edit = uia.findEdit("")
+if edit then
+    edit:setValue("Hello, UI Automation!")
+end
+
+-- 等待窗口出现
+local dialog = uia.waitForName("对话框", 3000)
+if dialog then
+    local okBtn = dialog:findFirstChild("Button", "确定")
+    if okBtn then
+        okBtn:click()
+    end
+end
+
+-- 操作下拉框
+local comboBox = uia.findByName("下拉选择")
+if comboBox then
+    comboBox:expand()
+    comboBox:selectItem("选项2")
+end
+```
 
 ### Vision 视觉系统
 
