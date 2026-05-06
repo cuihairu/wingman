@@ -1,4 +1,4 @@
-name: Test
+name: CI
 
 on:
   push:
@@ -13,14 +13,12 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  test-windows:
+  build:
     runs-on: windows-2022
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Needed for codecov diff coverage
 
     - name: Cache vcpkg
       id: cache-vcpkg
@@ -29,7 +27,7 @@ jobs:
         path: |
           ${{ env.VCPKG_ROOT }}
           vcpkg-cache
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('.github/workflows/test.yml') }}
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('.github/workflows/*.yml') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}-
           ${{ runner.os }}-vcpkg-
@@ -49,15 +47,11 @@ jobs:
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
         .\vcpkg\vcpkg install --triplet=x64-windows
 
-    - name: Install OpenCppCoverage
-      run: |
-        choco install opencppcoverage -y
-
-    - name: Configure CMake
+    - name: Configure CMake (Debug)
       run: |
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
         $env:VCPKG_INSTALLED_DIR = "$env:VCPKG_ROOT_ABS\installed"
-        cmake -B build `
+        cmake -B build-debug `
           -S . `
           -G "Visual Studio 17 2022" `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT_ABS/scripts/buildsystems/vcpkg.cmake" `
@@ -65,29 +59,81 @@ jobs:
           -DWINGMAN_BUILD_TESTS=ON `
           -DWINGMAN_ENABLE_ML=OFF
 
-    - name: Build
-      run: cmake --build build --config Debug
+    - name: Build Debug
+      run: cmake --build build-debug --config Debug
 
-    - name: Run tests first (without coverage)
+    - name: Configure CMake (Release)
       run: |
-        # Run tests to make sure they pass
-        & "build\tests\cpp\Debug\wingman_tests.exe" --gtest_brief=1
+        $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
+        $env:VCPKG_INSTALLED_DIR = "$env:VCPKG_ROOT_ABS\installed"
+        cmake -B build-release `
+          -S . `
+          -G "Visual Studio 17 2022" `
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT_ABS/scripts/buildsystems/vcpkg.cmake" `
+          -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build Release
+      run: cmake --build build-release --config Release
+
+    - name: Upload Debug artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: wingman-debug
+        path: build-debug/Debug/wingman.exe
+        retention-days: 1
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: wingman-tests
+        path: build-debug/tests/cpp/Debug/wingman_tests.exe
+        retention-days: 1
+
+    - name: Upload Release artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: wingman-release
+        path: build-release/Release/wingman.exe
+
+  test:
+    needs: build
+    runs-on: windows-2022
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install OpenCppCoverage
+      run: choco install opencppcoverage -y
+
+    - name: Download test artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: wingman-tests
+        path: build-debug/tests/cpp/Debug
+
+    - name: Download vcpkg binaries from build job cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ env.VCPKG_ROOT }}
+          vcpkg-cache
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('.github/workflows/*.yml') }}
+        fail-on-cache-miss: false
+
+    - name: Run tests
+      run: |
+        & "build-debug\tests\cpp\Debug\wingman_tests.exe" --gtest_brief=1
       continue-on-error: true
 
     - name: Run tests with coverage
       run: |
-        # Find OpenCppCoverage path
         $openCppCoverage = "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
         if (-not (Test-Path $openCppCoverage)) {
-          Write-Host "OpenCppCoverage not found at default path"
-          # Try alternate path
           $openCppCoverage = "C:\Program Files (x86)\OpenCppCoverage\OpenCppCoverage.exe"
         }
 
         if (Test-Path $openCppCoverage) {
-          Write-Host "Using OpenCppCoverage at: $openCppCoverage"
-
-          # Convert workspace path to Windows format
           $workspace = ${{ github.workspace }}
           $workspace = $workspace -replace '/', '\'
 
@@ -98,19 +144,10 @@ jobs:
             --excluded_sources "$workspace\tests" `
             --excluded_sources "$workspace\vcpkg" `
             --export_type=cobertura:coverage.xml `
-            -- build\tests\cpp\Debug\wingman_tests.exe --gtest_brief=1
+            -- build-debug\tests\cpp\Debug\wingman_tests.exe --gtest_brief=1
         } else {
           Write-Host "ERROR: OpenCppCoverage not installed"
           exit 1
-        }
-
-        # Check if coverage file was generated
-        if (Test-Path "coverage.xml") {
-          Write-Host "Coverage file generated successfully"
-          (Get-Content coverage.xml) | Select-Object -First 5
-        } else {
-          Write-Host "WARNING: coverage.xml not found"
-          Get-ChildItem -Filter *.xml | Select-Object Name
         }
 
     - name: Upload coverage to Codecov
@@ -121,14 +158,3 @@ jobs:
         name: windows-coverage
         fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}
-        verbose: true
-
-    - name: Run Lua tests
-      shell: pwsh
-      run: |
-        # 跳过 Lua 测试（需要 LuaRocks，属于开发工具）
-        Write-Host "Skipping Lua tests (LuaRocks is optional dev tool)"
-        # 如需运行 Lua 测试，开发者本地执行：
-        # 1. 安装 LuaRocks (scripts/install-luarocks.cmd)
-        # 2. 安装 Busted (luarocks install busted)
-        # 3. 运行测试 (busted tests -o utfTerminal)
