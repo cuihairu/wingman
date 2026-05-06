@@ -45,6 +45,7 @@ find_package(CURL CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Crow CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
+find_package(Protobuf REQUIRED)
 
 # Testing framework
 if(WINGMAN_BUILD_TESTS)
@@ -127,6 +128,35 @@ if(WINGMAN_BUILD_LUA_HTTP)
     message(STATUS "Lua HTTP bindings enabled")
 endif()
 
+# Protobuf generation
+set(PROTO_PATH ${CMAKE_CURRENT_SOURCE_DIR}/server/proto)
+set(GENERATED_PROTOBUF_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/proto)
+
+set(PROTO_FILES
+    ${PROTO_PATH}/wingman_protocol.proto
+)
+
+foreach(PROTO_FILE ${PROTO_FILES})
+    get_filename_component(PROTO_NAME ${PROTO_FILE} NAME_WE)
+
+    set(PROTO_SRC ${GENERATED_PROTOBUF_DIR}/${PROTO_NAME}.pb.cpp)
+    set(PROTO_HDR ${GENERATED_PROTOBUF_DIR}/${PROTO_NAME}.pb.h)
+
+    add_custom_command(
+        OUTPUT ${PROTO_SRC} ${PROTO_HDR}
+        COMMAND protobuf::protoc
+        ARGS --cpp_out=${GENERATED_PROTOBUF_DIR} -I${PROTO_PATH} ${PROTO_FILE}
+        DEPENDS ${PROTO_FILE}
+        COMMENT "Generating protobuf files for ${PROTO_NAME}"
+    )
+
+    list(APPEND PROTO_GENERATED_SRCS ${PROTO_SRC})
+    list(APPEND PROTO_GENERATED_HDRS ${PROTO_HDR})
+endforeach()
+
+# Create a source group for IDE
+source_group("Generated\\Proto" FILES ${PROTO_GENERATED_SRCS} ${PROTO_GENERATED_HDRS})
+
 set(SERVER_SOURCES
     server/src/server.cpp
     server/src/client.cpp
@@ -135,6 +165,7 @@ set(SERVER_SOURCES
     server/src/agent_manager.cpp
     server/src/workflow_orchestrator.cpp
     server/src/resource_collector.cpp
+    ${PROTO_GENERATED_SRCS}
 )
 
 set(DEBUGGER_SOURCES
@@ -212,8 +243,13 @@ if(WINGMAN_BUILD_SERVER)
         target_include_directories(wingman-server PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/server/include
             ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${GENERATED_PROTOBUF_DIR}
         )
-        target_link_libraries(wingman-server PUBLIC asio::asio nlohmann_json::nlohmann_json)
+        target_link_libraries(wingman-server PUBLIC
+            asio::asio
+            nlohmann_json::nlohmann_json
+            protobuf::libprotobuf
+        )
         target_link_libraries(wingman PRIVATE wingman-server)
     endif()
 endif()

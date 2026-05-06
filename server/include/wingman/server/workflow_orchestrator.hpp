@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wingman/server/protocol.hpp"
+#include "wingman_protocol.pb.h"
 #include <string>
 #include <vector>
 #include <functional>
@@ -42,6 +43,34 @@ struct TaskStep {
     std::vector<std::string> dependsOn;       // 依赖的步骤 ID
     int timeoutSeconds = 300;
     nlohmann::json parameters;                // 脚本参数
+
+    // 转换到 protobuf
+    wingman::protocol::TaskStep toProtobuf() const {
+        wingman::protocol::TaskStep proto;
+        proto.set_id(id);
+        proto.set_name(name);
+        proto.set_script(script);
+        for (const auto& w : workers) proto.add_workers(w);
+        for (const auto& d : dependsOn) proto.add_depends_on(d);
+        proto.set_timeout_seconds(timeoutSeconds);
+        proto.set_parameters(parameters.dump());
+        return proto;
+    }
+
+    // 从 protobuf 转换
+    static TaskStep fromProtobuf(const wingman::protocol::TaskStep& proto) {
+        TaskStep step;
+        step.id = proto.id();
+        step.name = proto.name();
+        step.script = proto.script();
+        for (const auto& w : proto.workers()) step.workers.push_back(w);
+        for (const auto& d : proto.depends_on()) step.dependsOn.push_back(d);
+        step.timeoutSeconds = proto.timeout_seconds();
+        if (!proto.parameters().empty()) {
+            step.parameters = nlohmann::json::parse(proto.parameters());
+        }
+        return step;
+    }
 
     nlohmann::json toJson() const {
         nlohmann::json j;
@@ -111,6 +140,29 @@ inline std::string workflowStatusToString(WorkflowStatus status) {
     }
 }
 
+// 工作流状态枚举转换
+inline wingman::protocol::Workflow::Status workflowStatusToProtobuf(WorkflowStatus status) {
+    switch (status) {
+        case WorkflowStatus::Pending: return wingman::protocol::Workflow::PENDING;
+        case WorkflowStatus::Running: return wingman::protocol::Workflow::RUNNING;
+        case WorkflowStatus::Completed: return wingman::protocol::Workflow::COMPLETED;
+        case WorkflowStatus::Failed: return wingman::protocol::Workflow::FAILED;
+        case WorkflowStatus::Cancelled: return wingman::protocol::Workflow::CANCELLED;
+        default: return wingman::protocol::Workflow::PENDING;
+    }
+}
+
+inline WorkflowStatus protobufToWorkflowStatus(wingman::protocol::Workflow::Status status) {
+    switch (status) {
+        case wingman::protocol::Workflow::PENDING: return WorkflowStatus::Pending;
+        case wingman::protocol::Workflow::RUNNING: return WorkflowStatus::Running;
+        case wingman::protocol::Workflow::COMPLETED: return WorkflowStatus::Completed;
+        case wingman::protocol::Workflow::FAILED: return WorkflowStatus::Failed;
+        case wingman::protocol::Workflow::CANCELLED: return WorkflowStatus::Cancelled;
+        default: return WorkflowStatus::Pending;
+    }
+}
+
 // 工作流定义
 struct Workflow {
     std::string id;
@@ -122,6 +174,42 @@ struct Workflow {
     uint64_t createdTime = 0;
     uint64_t startTime = 0;
     uint64_t endTime = 0;
+
+    // 转换到 protobuf
+    wingman::protocol::Workflow toProtobuf() const {
+        wingman::protocol::Workflow proto;
+        proto.set_id(id);
+        proto.set_name(name);
+        proto.set_description(description);
+        for (const auto& step : steps) {
+            *proto.add_steps() = step.toProtobuf();
+        }
+        proto.set_shared_context(sharedContext.dump());
+        proto.set_status(workflowStatusToProtobuf(status));
+        proto.set_created_time(createdTime);
+        proto.set_start_time(startTime);
+        proto.set_end_time(endTime);
+        return proto;
+    }
+
+    // 从 protobuf 转换
+    static Workflow fromProtobuf(const wingman::protocol::Workflow& proto) {
+        Workflow wf;
+        wf.id = proto.id();
+        wf.name = proto.name();
+        wf.description = proto.description();
+        for (const auto& stepProto : proto.steps()) {
+            wf.steps.push_back(TaskStep::fromProtobuf(stepProto));
+        }
+        if (!proto.shared_context().empty()) {
+            wf.sharedContext = nlohmann::json::parse(proto.shared_context());
+        }
+        wf.status = protobufToWorkflowStatus(proto.status());
+        wf.createdTime = proto.created_time();
+        wf.startTime = proto.start_time();
+        wf.endTime = proto.end_time();
+        return wf;
+    }
 
     nlohmann::json toJson() const {
         nlohmann::json j;

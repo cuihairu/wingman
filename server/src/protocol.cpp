@@ -4,7 +4,7 @@
 
 namespace wingman::server {
 
-// ========== Request 实现 ==========
+// ========== Request 实现（JSON 向后兼容）==========
 std::string Request::toJson() const {
     nlohmann::json j;
     j["type"] = Protocol::requestTypeToString(type);
@@ -34,7 +34,7 @@ Request Request::fromJson(const std::string& jsonStr) {
     return request;
 }
 
-// ========== Response 实现 ==========
+// ========== Response 实现（JSON 向后兼容）==========
 std::string Response::toJson() const {
     nlohmann::json j;
     j["request_id"] = requestId;
@@ -63,26 +63,115 @@ Response Response::fromJson(const std::string& jsonStr) {
 
 // ========== Protocol 实现 ==========
 std::string Protocol::encode(const Response& response) {
-    // Format: length_in_hex + '\n' + json + '\n'
+    // 使用 protobuf 序列化
+    auto proto = response.toProtobuf();
+    std::string serialized;
+    proto.SerializeToString(&serialized);
+
+    // 信封协议：length\nprotobuf\n
+    std::ostringstream oss;
+    oss << std::hex << serialized.length() << "\n";
+    oss.write(serialized.data(), serialized.size());
+    oss << "\n";
+    return oss.str();
+}
+
+std::string Protocol::encode(const Request& request) {
+    // 使用 protobuf 序列化
+    auto proto = request.toProtobuf();
+    std::string serialized;
+    proto.SerializeToString(&serialized);
+
+    // 信封协议：length\nprotobuf\n
+    std::ostringstream oss;
+    oss << std::hex << serialized.length() << "\n";
+    oss.write(serialized.data(), serialized.size());
+    oss << "\n";
+    return oss.str();
+}
+
+std::string Protocol::encodeJson(const Response& response) {
+    // JSON 编码（向后兼容）
     std::string json = response.toJson();
     std::ostringstream oss;
     oss << std::hex << json.length() << "\n" << json << "\n";
     return oss.str();
 }
 
-std::optional<Request> Protocol::decode(const std::string& buffer) {
+std::optional<Request> Protocol::decodeRequest(const std::string& buffer) {
     std::istringstream iss(buffer);
     std::string line;
 
-    // Read length
+    // 读取长度
     if (!std::getline(iss, line)) return std::nullopt;
-    size_t length = std::stoul(line, nullptr, 16);
+    size_t length = 0;
+    try {
+        length = std::stoul(line, nullptr, 16);
+    } catch (...) {
+        return std::nullopt;
+    }
 
-    // Read JSON
+    // 读取 protobuf 数据
+    std::string serialized;
+    serialized.resize(length);
+    if (!iss.read(&serialized[0], length)) return std::nullopt;
+
+    // 跳过换行符
+    iss.get();
+
+    // 反序列化 protobuf
+    wingman::protocol::Request proto;
+    if (!proto.ParseFromArray(serialized.data(), static_cast<int>(length))) {
+        return std::nullopt;
+    }
+
+    return Request::fromProtobuf(proto);
+}
+
+std::optional<Response> Protocol::decodeResponse(const std::string& buffer) {
+    std::istringstream iss(buffer);
+    std::string line;
+
+    // 读取长度
     if (!std::getline(iss, line)) return std::nullopt;
-    if (line.length() < length) return std::nullopt;
+    size_t length = 0;
+    try {
+        length = std::stoul(line, nullptr, 16);
+    } catch (...) {
+        return std::nullopt;
+    }
 
-    return Request::fromJson(line);
+    // 读取 protobuf 数据
+    std::string serialized;
+    serialized.resize(length);
+    if (!iss.read(&serialized[0], length)) return std::nullopt;
+
+    // 跳过换行符
+    iss.get();
+
+    // 反序列化 protobuf
+    wingman::protocol::Response proto;
+    if (!proto.ParseFromArray(serialized.data(), static_cast<int>(length))) {
+        return std::nullopt;
+    }
+
+    return Response::fromProtobuf(proto);
+}
+
+std::optional<Request> Protocol::decode(const std::string& buffer) {
+    // 先尝试 protobuf，失败则尝试 JSON
+    auto result = decodeRequest(buffer);
+    if (!result) {
+        // 尝试 JSON 解析（向后兼容）
+        std::istringstream iss(buffer);
+        std::string line;
+        if (!std::getline(iss, line)) return std::nullopt;
+        size_t length = std::stoul(line, nullptr, 16);
+        if (!std::getline(iss, line)) return std::nullopt;
+        if (line.length() < length) return std::nullopt;
+        return Request::fromJson(line);
+    }
+    return result;
 }
 
 RequestType Protocol::parseRequestType(const std::string& type) {
