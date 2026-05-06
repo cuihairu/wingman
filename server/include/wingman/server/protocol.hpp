@@ -9,6 +9,62 @@
 
 namespace wingman::server {
 
+// ========== 错误码定义（保留向后兼容）==========
+// 0-1023 系统保留，1024+ 用户自定义
+enum class ErrorCode : int {
+    OK              = 0,    // 成功
+    UNKNOWN         = 1,    // 未知错误
+    INVALID_REQUEST = 2,    // 请求格式错误或参数无效
+    NOT_FOUND       = 3,    // 资源未找到
+    TIMEOUT         = 4,    // 操作超时
+    BUSY            = 5,    // 服务忙碌
+    NOT_AUTHORIZED  = 6,    // 未授权
+    ALREADY_EXISTS  = 7,    // 资源已存在
+    FAILED          = 8,    // 操作失败
+    DISCONNECTED    = 9,    // 连接断开
+    RATE_LIMITED    = 10,   // 请求频率限制
+    USER_DEFINED_START = 1024  // 用户自定义错误码起始值
+};
+
+// ========== 消息类型 ==========
+enum class RequestType {
+    // 控制指令（已有）
+    kExecuteScript,
+    kStopScript,
+    kGetStatus,
+    kScreenshot,
+    kMouseMove,
+    kMouseClick,
+    kKeyPress,
+
+    // 会话管理（新增）
+    kRegister,       // 客户端注册
+    kHeartbeat,      // 心跳
+    kGetAgents,      // 获取所有在线客户端列表
+    kSyncTask,       // 同步任务状态
+    kShutdown,       // 关闭客户端
+
+    // 工作流管理
+    kSubmitWorkflow,   // 提交工作流
+    kCancelWorkflow,   // 取消工作流
+    kGetWorkflow,      // 获取工作流状态
+    kGetNextTask,      // 获取下一步任务
+    kReportProgress,   // 报告任务进度
+    kCompleteTask,     // 完成任务
+    kFailTask,         // 任务失败
+
+    kUnknown
+};
+
+// ========== Agent 状态 ==========
+enum class AgentStatus {
+    Offline,
+    Online,
+    Idle,
+    Busy,
+    Error
+};
+
 // ========== 类型转换函数（protobuf <-> 本地枚举） ==========
 
 inline ErrorCode protobufToErrorCode(wingman::protocol::ErrorCode code) {
@@ -77,23 +133,6 @@ inline wingman::protocol::AgentStatus agentStatusToProtobuf(AgentStatus status) 
     return static_cast<wingman::protocol::AgentStatus>(status);
 }
 
-// ========== 错误码定义（保留向后兼容）==========
-// 0-1023 系统保留，1024+ 用户自定义
-enum class ErrorCode : int {
-    OK              = 0,    // 成功
-    UNKNOWN         = 1,    // 未知错误
-    INVALID_REQUEST = 2,    // 请求格式错误或参数无效
-    NOT_FOUND       = 3,    // 资源未找到
-    TIMEOUT         = 4,    // 操作超时
-    BUSY            = 5,    // 服务忙碌
-    NOT_AUTHORIZED  = 6,    // 未授权
-    ALREADY_EXISTS  = 7,    // 资源已存在
-    FAILED          = 8,    // 操作失败
-    DISCONNECTED    = 9,    // 连接断开
-    RATE_LIMITED    = 10,   // 请求频率限制
-    USER_DEFINED_START = 1024  // 用户自定义错误码起始值
-};
-
 // 错误码转字符串
 inline std::string errorCodeToString(ErrorCode code) {
     switch (code) {
@@ -111,45 +150,6 @@ inline std::string errorCodeToString(ErrorCode code) {
         default: return "USER_DEFINED_" + std::to_string(static_cast<int>(code));
     }
 }
-
-// ========== 消息类型 ==========
-enum class RequestType {
-    // 控制指令（已有）
-    kExecuteScript,
-    kStopScript,
-    kGetStatus,
-    kScreenshot,
-    kMouseMove,
-    kMouseClick,
-    kKeyPress,
-
-    // 会话管理（新增）
-    kRegister,       // 客户端注册
-    kHeartbeat,      // 心跳
-    kGetAgents,      // 获取所有在线客户端列表
-    kSyncTask,       // 同步任务状态
-    kShutdown,       // 关闭客户端
-
-    // 工作流管理
-    kSubmitWorkflow,   // 提交工作流
-    kCancelWorkflow,   // 取消工作流
-    kGetWorkflow,      // 获取工作流状态
-    kGetNextTask,      // 获取下一步任务
-    kReportProgress,   // 报告任务进度
-    kCompleteTask,     // 完成任务
-    kFailTask,         // 任务失败
-
-    kUnknown
-};
-
-// ========== Agent 状态 ==========
-enum class AgentStatus {
-    Offline,
-    Online,
-    Idle,
-    Busy,
-    Error
-};
 
 inline std::string agentStatusToString(AgentStatus status) {
     switch (status) {

@@ -780,10 +780,9 @@ int report_progress(lua_State* L) {
     const char* workflowId = luaL_checkstring(L, 2);
     const char* stepId = luaL_checkstring(L, 3);
 
-    nlohmann::json progress;
+    JsonValue progress = JsonValue::parse("{}");
     if (!lua_isnil(L, 4)) {
-        JsonValue progressJson = luaToJson(L, 4);
-        progress = nlohmann::json::parse(progressJson.dump());
+        progress = luaToJson(L, 4);
     }
 
     bool reported = orchestrator->reportProgress(workerId, workflowId, stepId, progress);
@@ -805,10 +804,9 @@ int complete_task(lua_State* L) {
     const char* workflowId = luaL_checkstring(L, 2);
     const char* stepId = luaL_checkstring(L, 3);
 
-    nlohmann::json result;
+    JsonValue result = JsonValue::parse("{}");
     if (!lua_isnil(L, 4)) {
-        JsonValue resultJson = luaToJson(L, 4);
-        result = nlohmann::json::parse(resultJson.dump());
+        result = luaToJson(L, 4);
     }
 
     bool success = true;
@@ -895,7 +893,6 @@ void registerOrchestrationModule(lua_State* L);
 
 } // namespace orchestration
 
-#endif // WINGMAN_BUILD_SERVER
 // ============================================================================
 // KV 存储模块
 // ============================================================================

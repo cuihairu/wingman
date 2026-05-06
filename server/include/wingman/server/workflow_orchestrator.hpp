@@ -2,6 +2,7 @@
 
 #include "wingman/server/protocol.hpp"
 #include "wingman_protocol.pb.h"
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 #include <functional>
