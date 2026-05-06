@@ -98,6 +98,13 @@ RequestType Protocol::parseRequestType(const std::string& type) {
     if (type == "get_agents") return RequestType::kGetAgents;
     if (type == "sync_task") return RequestType::kSyncTask;
     if (type == "shutdown") return RequestType::kShutdown;
+    if (type == "submit_workflow") return RequestType::kSubmitWorkflow;
+    if (type == "cancel_workflow") return RequestType::kCancelWorkflow;
+    if (type == "get_workflow") return RequestType::kGetWorkflow;
+    if (type == "get_next_task") return RequestType::kGetNextTask;
+    if (type == "report_progress") return RequestType::kReportProgress;
+    if (type == "complete_task") return RequestType::kCompleteTask;
+    if (type == "fail_task") return RequestType::kFailTask;
     return RequestType::kUnknown;
 }
 
@@ -115,6 +122,13 @@ std::string Protocol::requestTypeToString(RequestType type) {
         case RequestType::kGetAgents: return "get_agents";
         case RequestType::kSyncTask: return "sync_task";
         case RequestType::kShutdown: return "shutdown";
+        case RequestType::kSubmitWorkflow: return "submit_workflow";
+        case RequestType::kCancelWorkflow: return "cancel_workflow";
+        case RequestType::kGetWorkflow: return "get_workflow";
+        case RequestType::kGetNextTask: return "get_next_task";
+        case RequestType::kReportProgress: return "report_progress";
+        case RequestType::kCompleteTask: return "complete_task";
+        case RequestType::kFailTask: return "fail_task";
         default: return "unknown";
     }
 }

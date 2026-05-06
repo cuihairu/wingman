@@ -2,6 +2,7 @@
 #include "wingman/http.hpp"
 #include "wingman/json.hpp"
 #include "wingman/kvstore.hpp"
+#include "wingman/server/workflow_orchestrator.hpp"
 
 #include <memory>
 #include <unordered_map>
@@ -355,6 +356,449 @@ int null(lua_State* L) {
 } // namespace json
 
 // ============================================================================
+// Orchestration 模块
+// ============================================================================
+
+namespace orchestration {
+
+// 全局 WorkflowOrchestrator 实例指针（由主程序设置）
+static wingman::server::WorkflowOrchestrator* g_orchestrator = nullptr;
+
+// 设置全局 Orchestrator
+void setOrchestrator(wingman::server::WorkflowOrchestrator* orchestrator) {
+    g_orchestrator = orchestrator;
+}
+
+// 获取全局 Orchestrator
+static wingman::server::WorkflowOrchestrator* getOrchestrator() {
+    return g_orchestrator;
+}
+
+// 从 Lua 表构建 TaskStep
+static wingman::server::TaskStep parseTaskStep(lua_State* L, int index) {
+    wingman::server::TaskStep step;
+
+    if (!lua_istable(L, index)) {
+        return step;
+    }
+
+    lua_getfield(L, index, "id");
+    if (lua_isstring(L, -1)) step.id = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, index, "name");
+    if (lua_isstring(L, -1)) step.name = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, index, "script");
+    if (lua_isstring(L, -1)) step.script = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, index, "timeout_seconds");
+    if (lua_isnumber(L, -1)) step.timeoutSeconds = static_cast<int>(lua_tonumber(L, -1));
+    lua_pop(L, 1);
+
+    // 解析 workers 数组
+    lua_getfield(L, index, "workers");
+    if (lua_istable(L, -1)) {
+        lua_pushnil(L);
+        while (lua_next(L, -2) != 0) {
+            if (lua_isstring(L, -1)) {
+                step.workers.push_back(lua_tostring(L, -1));
+            }
+            lua_pop(L, 1);
+        }
+    }
+    lua_pop(L, 1);
+
+    // 解析 depends_on 数组
+    lua_getfield(L, index, "depends_on");
+    if (lua_istable(L, -1)) {
+        lua_pushnil(L);
+        while (lua_next(L, -2) != 0) {
+            if (lua_isstring(L, -1)) {
+                step.dependsOn.push_back(lua_tostring(L, -1));
+            }
+            lua_pop(L, 1);
+        }
+    }
+    lua_pop(L, 1);
+
+    // 解析 parameters
+    lua_getfield(L, index, "parameters");
+    if (!lua_isnil(L, -1)) {
+        JsonValue params = luaToJson(L, -1);
+        step.parameters = nlohmann::json::parse(params.dump());
+    }
+    lua_pop(L, 1);
+
+    return step;
+}
+
+// 从 Lua 表构建 Workflow
+static wingman::server::Workflow parseWorkflow(lua_State* L, int index) {
+    wingman::server::Workflow workflow;
+
+    if (!lua_istable(L, index)) {
+        return workflow;
+    }
+
+    lua_getfield(L, index, "id");
+    if (lua_isstring(L, -1)) workflow.id = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, index, "name");
+    if (lua_isstring(L, -1)) workflow.name = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, index, "description");
+    if (lua_isstring(L, -1)) workflow.description = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    // 解析 shared_context
+    lua_getfield(L, index, "shared_context");
+    if (!lua_isnil(L, -1)) {
+        JsonValue context = luaToJson(L, -1);
+        workflow.sharedContext = nlohmann::json::parse(context.dump());
+    }
+    lua_pop(L, 1);
+
+    // 解析 steps 数组
+    lua_getfield(L, index, "steps");
+    if (lua_istable(L, -1)) {
+        lua_pushnil(L);
+        while (lua_next(L, -2) != 0) {
+            if (lua_istable(L, -1)) {
+                workflow.steps.push_back(parseTaskStep(L, -1));
+            }
+            lua_pop(L, 1);
+        }
+    }
+    lua_pop(L, 1);
+
+    return workflow;
+}
+
+// 将 TaskStep 转换为 Lua 表
+static void pushTaskStep(lua_State* L, const wingman::server::TaskStep& step) {
+    lua_newtable(L);
+
+    lua_pushstring(L, step.id.c_str());
+    lua_setfield(L, -2, "id");
+
+    lua_pushstring(L, step.name.c_str());
+    lua_setfield(L, -2, "name");
+
+    lua_pushstring(L, step.script.c_str());
+    lua_setfield(L, -2, "script");
+
+    lua_pushinteger(L, step.timeoutSeconds);
+    lua_setfield(L, -2, "timeout_seconds");
+
+    // workers 数组
+    lua_newtable(L);
+    for (size_t i = 0; i < step.workers.size(); ++i) {
+        lua_pushstring(L, step.workers[i].c_str());
+        lua_rawseti(L, -2, static_cast<int>(i + 1));
+    }
+    lua_setfield(L, -2, "workers");
+
+    // depends_on 数组
+    lua_newtable(L);
+    for (size_t i = 0; i < step.dependsOn.size(); ++i) {
+        lua_pushstring(L, step.dependsOn[i].c_str());
+        lua_rawseti(L, -2, static_cast<int>(i + 1));
+    }
+    lua_setfield(L, -2, "depends_on");
+
+    // parameters
+    if (!step.parameters.empty()) {
+        std::string paramsStr = step.parameters.dump();
+        JsonValue params = JsonValue::parse(paramsStr);
+        pushJsonValue(L, params);
+        lua_setfield(L, -2, "parameters");
+    }
+}
+
+// 将 Workflow 转换为 Lua 表
+static void pushWorkflow(lua_State* L, const wingman::server::Workflow& workflow) {
+    lua_newtable(L);
+
+    lua_pushstring(L, workflow.id.c_str());
+    lua_setfield(L, -2, "id");
+
+    lua_pushstring(L, workflow.name.c_str());
+    lua_setfield(L, -2, "name");
+
+    lua_pushstring(L, workflow.description.c_str());
+    lua_setfield(L, -2, "description");
+
+    lua_pushstring(L, wingman::server::workflowStatusToString(workflow.status).c_str());
+    lua_setfield(L, -2, "status");
+
+    lua_pushinteger(L, workflow.createdTime);
+    lua_setfield(L, -2, "created_time");
+
+    lua_pushinteger(L, workflow.startTime);
+    lua_setfield(L, -2, "start_time");
+
+    lua_pushinteger(L, workflow.endTime);
+    lua_setfield(L, -2, "end_time");
+
+    // shared_context
+    if (!workflow.sharedContext.empty()) {
+        std::string contextStr = workflow.sharedContext.dump();
+        JsonValue context = JsonValue::parse(contextStr);
+        pushJsonValue(L, context);
+        lua_setfield(L, -2, "shared_context");
+    }
+
+    // steps 数组
+    lua_newtable(L);
+    for (size_t i = 0; i < workflow.steps.size(); ++i) {
+        pushTaskStep(L, workflow.steps[i]);
+        lua_rawseti(L, -2, static_cast<int>(i + 1));
+    }
+    lua_setfield(L, -2, "steps");
+}
+
+// API: submit_workflow(workflow_table) -> workflow_id
+int submit_workflow(lua_State* L) {
+    auto* orchestrator = getOrchestrator();
+    if (!orchestrator) {
+        lua_pushnil(L);
+        lua_pushstring(L, "Orchestrator not initialized");
+        return 2;
+    }
+
+    if (!lua_istable(L, 1)) {
+        lua_pushnil(L);
+        lua_pushstring(L, "Expected workflow table");
+        return 2;
+    }
+
+    try {
+        wingman::server::Workflow workflow = parseWorkflow(L, 1);
+        std::string workflowId = orchestrator->submitWorkflow(workflow);
+
+        lua_pushstring(L, workflowId.c_str());
+        return 1;
+    } catch (const std::exception& e) {
+        lua_pushnil(L);
+        lua_pushstring(L, e.what());
+        return 2;
+    }
+}
+
+// API: cancel_workflow(workflow_id) -> success
+int cancel_workflow(lua_State* L) {
+    auto* orchestrator = getOrchestrator();
+    if (!orchestrator) {
+        lua_pushboolean(L, 0);
+        lua_pushstring(L, "Orchestrator not initialized");
+        return 2;
+    }
+
+    const char* workflowId = luaL_checkstring(L, 1);
+    bool cancelled = orchestrator->cancelWorkflow(workflowId);
+
+    lua_pushboolean(L, cancelled);
+    return 1;
+}
+
+// API: get_workflow(workflow_id) -> workflow_table or nil
+int get_workflow(lua_State* L) {
+    auto* orchestrator = getOrchestrator();
+    if (!orchestrator) {
+        lua_pushnil(L);
+        lua_pushstring(L, "Orchestrator not initialized");
+        return 2;
+    }
+
+    const char* workflowId = luaL_checkstring(L, 1);
+    auto workflow = orchestrator->getWorkflow(workflowId);
+
+    if (!workflow) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    pushWorkflow(L, *workflow);
+    return 1;
+}
+
+// API: get_all_workflows() -> array of workflow_table
+int get_all_workflows(lua_State* L) {
+    auto* orchestrator = getOrchestrator();
+    if (!orchestrator) {
+        lua_pushnil(L);
+        lua_pushstring(L, "Orchestrator not initialized");
+        return 2;
+    }
+
+    auto workflows = orchestrator->getAllWorkflows();
+
+    lua_newtable(L);
+    for (size_t i = 0; i < workflows.size(); ++i) {
+        pushWorkflow(L, workflows[i]);
+        lua_rawseti(L, -2, static_cast<int>(i + 1));
+    }
+
+    return 1;
+}
+
+// API: get_next_task(worker_id, workflow_id) -> task_table or nil
+int get_next_task(lua_State* L) {
+    auto* orchestrator = getOrchestrator();
+    if (!orchestrator) {
+        lua_pushnil(L);
+        lua_pushstring(L, "Orchestrator not initialized");
+        return 2;
+    }
+
+    const char* workerId = luaL_checkstring(L, 1);
+    const char* workflowId = luaL_checkstring(L, 2);
+
+    auto task = orchestrator->getNextTask(workerId, workflowId);
+
+    if (!task) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    pushTaskStep(L, *task);
+    return 1;
+}
+
+// API: report_progress(worker_id, workflow_id, step_id, progress_table)
+int report_progress(lua_State* L) {
+    auto* orchestrator = getOrchestrator();
+    if (!orchestrator) {
+        lua_pushboolean(L, 0);
+        lua_pushstring(L, "Orchestrator not initialized");
+        return 2;
+    }
+
+    const char* workerId = luaL_checkstring(L, 1);
+    const char* workflowId = luaL_checkstring(L, 2);
+    const char* stepId = luaL_checkstring(L, 3);
+
+    nlohmann::json progress;
+    if (!lua_isnil(L, 4)) {
+        JsonValue progressJson = luaToJson(L, 4);
+        progress = nlohmann::json::parse(progressJson.dump());
+    }
+
+    bool reported = orchestrator->reportProgress(workerId, workflowId, stepId, progress);
+
+    lua_pushboolean(L, reported);
+    return 1;
+}
+
+// API: complete_task(worker_id, workflow_id, step_id, result_table, success)
+int complete_task(lua_State* L) {
+    auto* orchestrator = getOrchestrator();
+    if (!orchestrator) {
+        lua_pushboolean(L, 0);
+        lua_pushstring(L, "Orchestrator not initialized");
+        return 2;
+    }
+
+    const char* workerId = luaL_checkstring(L, 1);
+    const char* workflowId = luaL_checkstring(L, 2);
+    const char* stepId = luaL_checkstring(L, 3);
+
+    nlohmann::json result;
+    if (!lua_isnil(L, 4)) {
+        JsonValue resultJson = luaToJson(L, 4);
+        result = nlohmann::json::parse(resultJson.dump());
+    }
+
+    bool success = true;
+    if (!lua_isnil(L, 5)) {
+        success = lua_toboolean(L, 5) != 0;
+    }
+
+    bool completed = orchestrator->completeTask(workerId, workflowId, stepId, success, result);
+
+    lua_pushboolean(L, completed);
+    return 1;
+}
+
+// API: fail_task(worker_id, workflow_id, step_id, error_message)
+int fail_task(lua_State* L) {
+    auto* orchestrator = getOrchestrator();
+    if (!orchestrator) {
+        lua_pushboolean(L, 0);
+        lua_pushstring(L, "Orchestrator not initialized");
+        return 2;
+    }
+
+    const char* workerId = luaL_checkstring(L, 1);
+    const char* workflowId = luaL_checkstring(L, 2);
+    const char* stepId = luaL_checkstring(L, 3);
+    const char* error = luaL_optstring(L, 4, "Unknown error");
+
+    bool failed = orchestrator->failTask(workerId, workflowId, stepId, error);
+
+    lua_pushboolean(L, failed);
+    return 1;
+}
+
+// API: get_worker_statuses(workflow_id) -> array of worker_status_table
+int get_worker_statuses(lua_State* L) {
+    auto* orchestrator = getOrchestrator();
+    if (!orchestrator) {
+        lua_pushnil(L);
+        lua_pushstring(L, "Orchestrator not initialized");
+        return 2;
+    }
+
+    const char* workflowId = luaL_checkstring(L, 1);
+    auto statuses = orchestrator->getWorkerStatuses(workflowId);
+
+    lua_newtable(L);
+    for (size_t i = 0; i < statuses.size(); ++i) {
+        const auto& status = statuses[i];
+        lua_newtable(L);
+
+        lua_pushstring(L, status.workerId.c_str());
+        lua_setfield(L, -2, "worker_id");
+
+        lua_pushstring(L, status.stepId.c_str());
+        lua_setfield(L, -2, "step_id");
+
+        lua_pushstring(L, wingman::server::stepStatusToString(status.status).c_str());
+        lua_setfield(L, -2, "status");
+
+        lua_pushstring(L, status.message.c_str());
+        lua_setfield(L, -2, "message");
+
+        lua_pushinteger(L, status.startTime);
+        lua_setfield(L, -2, "start_time");
+
+        lua_pushinteger(L, status.endTime);
+        lua_setfield(L, -2, "end_time");
+
+        // progress
+        if (!status.progress.empty()) {
+            std::string progressStr = status.progress.dump();
+            JsonValue progressJson = JsonValue::parse(progressStr);
+            pushJsonValue(L, progressJson);
+            lua_setfield(L, -2, "progress");
+        }
+
+        lua_rawseti(L, -2, static_cast<int>(i + 1));
+    }
+
+    return 1;
+}
+
+void registerOrchestrationModule(lua_State* L);
+
+} // namespace orchestration
+
+// ============================================================================
 // KV 存储模块
 // ============================================================================
 
@@ -645,6 +1089,41 @@ void registerKvModule(lua_State* L) {
 
     lua_setglobal(L, "kv");
     */
+}
+
+void registerOrchestrationModule(lua_State* L) {
+    using namespace orchestration;
+
+    lua_newtable(L);
+
+    lua_pushcfunction(L, orchestration::submit_workflow);
+    lua_setfield(L, -2, "submit_workflow");
+
+    lua_pushcfunction(L, orchestration::cancel_workflow);
+    lua_setfield(L, -2, "cancel_workflow");
+
+    lua_pushcfunction(L, orchestration::get_workflow);
+    lua_setfield(L, -2, "get_workflow");
+
+    lua_pushcfunction(L, orchestration::get_all_workflows);
+    lua_setfield(L, -2, "get_all_workflows");
+
+    lua_pushcfunction(L, orchestration::get_next_task);
+    lua_setfield(L, -2, "get_next_task");
+
+    lua_pushcfunction(L, orchestration::report_progress);
+    lua_setfield(L, -2, "report_progress");
+
+    lua_pushcfunction(L, orchestration::complete_task);
+    lua_setfield(L, -2, "complete_task");
+
+    lua_pushcfunction(L, orchestration::fail_task);
+    lua_setfield(L, -2, "fail_task");
+
+    lua_pushcfunction(L, orchestration::get_worker_statuses);
+    lua_setfield(L, -2, "get_worker_statuses");
+
+    lua_setglobal(L, "orchestration");
 }
 
 } // namespace wingman::lua

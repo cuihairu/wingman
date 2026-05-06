@@ -7,6 +7,7 @@
 #include <vector>
 #include "wingman/server/protocol.hpp"
 #include "wingman/server/agent_manager.hpp"
+#include "wingman/server/workflow_orchestrator.hpp"
 
 namespace wingman::server {
 
@@ -73,6 +74,20 @@ public:
     // 获取在线客户端数量
     size_t getOnlineCount() const;
 
+    // ========== 工作流管理 ==========
+
+    // 提交工作流
+    std::string submitWorkflow(const Workflow& workflow);
+
+    // 取消工作流
+    bool cancelWorkflow(const std::string& workflowId);
+
+    // 获取工作流状态
+    std::optional<Workflow> getWorkflow(const std::string& workflowId) const;
+
+    // 获取所有工作流
+    std::vector<Workflow> getAllWorkflows() const;
+
     // ========== 事件回调 ==========
 
     using ConnectCallback = std::function<void(const std::string& agentId, const AgentInfo& info)>;
@@ -100,6 +115,9 @@ private:
 
     // Agent 管理
     std::unique_ptr<AgentManager> agentManager_;
+
+    // 工作流编排
+    std::unique_ptr<WorkflowOrchestrator> orchestrator_;
 
     // 心跳检测
     asio::steady_timer heartbeatTimer_;
@@ -130,6 +148,29 @@ private:
 
     // 处理关闭客户端请求
     Response handleShutdown(const Request& request);
+
+    // ========== 工作流请求处理器 ==========
+
+    // 提交工作流
+    Response handleSubmitWorkflow(const Request& request);
+
+    // 取消工作流
+    Response handleCancelWorkflow(const Request& request);
+
+    // 获取工作流状态
+    Response handleGetWorkflow(const Request& request);
+
+    // 获取下一步任务
+    Response handleGetNextTask(const Request& request);
+
+    // 报告任务进度
+    Response handleReportProgress(const Request& request);
+
+    // 完成任务
+    Response handleCompleteTask(const Request& request);
+
+    // 任务失败
+    Response handleFailTask(const Request& request);
 };
 
 } // namespace wingman::server

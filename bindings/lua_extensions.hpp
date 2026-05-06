@@ -5,6 +5,10 @@
 #include "wingman/json.hpp"
 #include "wingman/kvstore.hpp"
 
+namespace wingman::server {
+class WorkflowOrchestrator;
+}
+
 namespace wingman::lua {
 
 // HTTP 模块
@@ -54,9 +58,28 @@ int lrange(lua_State* L);
 
 } // namespace kv
 
+// Orchestration 模块
+namespace orchestration {
+
+// 设置全局 Orchestrator 实例
+void setOrchestrator(wingman::server::WorkflowOrchestrator* orchestrator);
+
+int submit_workflow(lua_State* L);
+int cancel_workflow(lua_State* L);
+int get_workflow(lua_State* L);
+int get_all_workflows(lua_State* L);
+int get_next_task(lua_State* L);
+int report_progress(lua_State* L);
+int complete_task(lua_State* L);
+int fail_task(lua_State* L);
+int get_worker_statuses(lua_State* L);
+
+} // namespace orchestration
+
 // 注册扩展模块（需要 lua_State 参数）
 void registerHttpModule(lua_State* L);
 void registerJsonModule(lua_State* L);
 void registerKvModule(lua_State* L);
+void registerOrchestrationModule(lua_State* L);
 
 } // namespace wingman::lua

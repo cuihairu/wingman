@@ -61,6 +61,15 @@ enum class RequestType {
     kSyncTask,       // 同步任务状态
     kShutdown,       // 关闭客户端
 
+    // 工作流管理
+    kSubmitWorkflow,   // 提交工作流
+    kCancelWorkflow,   // 取消工作流
+    kGetWorkflow,      // 获取工作流状态
+    kGetNextTask,      // 获取下一步任务
+    kReportProgress,   // 报告任务进度
+    kCompleteTask,     // 完成任务
+    kFailTask,         // 任务失败
+
     kUnknown
 };
 

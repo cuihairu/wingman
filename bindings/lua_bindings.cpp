@@ -117,6 +117,7 @@ void LuaState::registerAPIs() {
     registerHttpModule(L);
     registerJsonModule(L);
     registerKvModule(L);
+    registerOrchestrationModule(L);
 }
 
 // ============================================================================

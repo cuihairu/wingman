@@ -124,6 +124,7 @@ Server::Server(asio::io_context& ioContext, unsigned short port)
     : ioContext_(ioContext),
       acceptor_(ioContext, tcp::endpoint(tcp::v4(), port)),
       agentManager_(std::make_unique<AgentManager>()),
+      orchestrator_(std::make_unique<WorkflowOrchestrator>()),
       heartbeatTimer_(ioContext) {
 
     // 设置 AgentManager 的回调
@@ -203,6 +204,24 @@ size_t Server::getOnlineCount() const {
     return agentManager_->getOnlineCount();
 }
 
+// ========== 工作流管理 ==========
+
+std::string Server::submitWorkflow(const Workflow& workflow) {
+    return orchestrator_->submitWorkflow(workflow);
+}
+
+bool Server::cancelWorkflow(const std::string& workflowId) {
+    return orchestrator_->cancelWorkflow(workflowId);
+}
+
+std::optional<Workflow> Server::getWorkflow(const std::string& workflowId) const {
+    return orchestrator_->getWorkflow(workflowId);
+}
+
+std::vector<Workflow> Server::getAllWorkflows() const {
+    return orchestrator_->getAllWorkflows();
+}
+
 void Server::setConnectCallback(ConnectCallback callback) {
     connectCallback_ = std::move(callback);
 }
@@ -231,6 +250,20 @@ void Server::doAccept() {
                             return handleSyncTask(req);
                         } else if (req.type == RequestType::kShutdown) {
                             return handleShutdown(req);
+                        } else if (req.type == RequestType::kSubmitWorkflow) {
+                            return handleSubmitWorkflow(req);
+                        } else if (req.type == RequestType::kCancelWorkflow) {
+                            return handleCancelWorkflow(req);
+                        } else if (req.type == RequestType::kGetWorkflow) {
+                            return handleGetWorkflow(req);
+                        } else if (req.type == RequestType::kGetNextTask) {
+                            return handleGetNextTask(req);
+                        } else if (req.type == RequestType::kReportProgress) {
+                            return handleReportProgress(req);
+                        } else if (req.type == RequestType::kCompleteTask) {
+                            return handleCompleteTask(req);
+                        } else if (req.type == RequestType::kFailTask) {
+                            return handleFailTask(req);
                         }
                         return defaultHandler(req);
                     }
@@ -404,6 +437,167 @@ void Server::checkHeartbeat(const asio::error_code& ec) {
     heartbeatTimer_.async_wait([this](const asio::error_code& ec) {
         checkHeartbeat(ec);
     });
+}
+
+// ========== 工作流请求处理器 ==========
+
+Response Server::handleSubmitWorkflow(const Request& request) {
+    if (!request.data.contains("workflow")) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing workflow data");
+    }
+
+    try {
+        Workflow workflow = Workflow::fromJson(request.data["workflow"]);
+        std::string workflowId = submitWorkflow(workflow);
+
+        return Response::ok(request.id, {
+            {"workflow_id", workflowId},
+            {"status", workflowStatusToString(workflow.status)}
+        });
+    } catch (const std::exception& e) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, std::string("Invalid workflow: ") + e.what());
+    }
+}
+
+Response Server::handleCancelWorkflow(const Request& request) {
+    if (!request.data.contains("workflow_id")) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing workflow_id");
+    }
+
+    std::string workflowId = request.data["workflow_id"];
+    bool cancelled = cancelWorkflow(workflowId);
+
+    if (cancelled) {
+        return Response::ok(request.id, {
+            {"workflow_id", workflowId},
+            {"cancelled", true}
+        });
+    }
+
+    return Response::error(request.id, ErrorCode::NOT_FOUND, "Workflow not found or cannot be cancelled");
+}
+
+Response Server::handleGetWorkflow(const Request& request) {
+    std::string workflowId;
+
+    if (request.data.contains("workflow_id")) {
+        workflowId = request.data["workflow_id"];
+    } else if (!request.agentId.empty()) {
+        // 如果没有指定 workflow_id，尝试从 agent 的当前任务获取
+        auto agent = getAgent(request.agentId);
+        if (agent && agent->currentTask.contains("workflow_id")) {
+            workflowId = agent->currentTask["workflow_id"];
+        }
+    }
+
+    if (workflowId.empty()) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing workflow_id");
+    }
+
+    auto workflow = getWorkflow(workflowId);
+    if (!workflow) {
+        return Response::error(request.id, ErrorCode::NOT_FOUND, "Workflow not found");
+    }
+
+    return Response::ok(request.id, workflow->toJson());
+}
+
+Response Server::handleGetNextTask(const Request& request) {
+    if (request.agentId.empty()) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing agent_id");
+    }
+
+    if (!request.data.contains("workflow_id")) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing workflow_id");
+    }
+
+    std::string workflowId = request.data["workflow_id"];
+    auto nextTask = orchestrator_->getNextTask(request.agentId, workflowId);
+
+    if (!nextTask) {
+        return Response::ok(request.id, {
+            {"has_task", false},
+            {"message", "No available tasks"}
+        });
+    }
+
+    return Response::ok(request.id, {
+        {"has_task", true},
+        {"task", nextTask->toJson()}
+    });
+}
+
+Response Server::handleReportProgress(const Request& request) {
+    if (request.agentId.empty()) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing agent_id");
+    }
+
+    if (!request.data.contains("workflow_id") || !request.data.contains("step_id")) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing workflow_id or step_id");
+    }
+
+    std::string workflowId = request.data["workflow_id"];
+    std::string stepId = request.data["step_id"];
+    nlohmann::json progress = request.data.value("progress", nlohmann::json{});
+
+    bool reported = orchestrator_->reportProgress(request.agentId, workflowId, stepId, progress);
+
+    if (reported) {
+        return Response::ok(request.id, {
+            {"reported", true}
+        });
+    }
+
+    return Response::error(request.id, ErrorCode::NOT_FOUND, "Workflow not found");
+}
+
+Response Server::handleCompleteTask(const Request& request) {
+    if (request.agentId.empty()) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing agent_id");
+    }
+
+    if (!request.data.contains("workflow_id") || !request.data.contains("step_id")) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing workflow_id or step_id");
+    }
+
+    std::string workflowId = request.data["workflow_id"];
+    std::string stepId = request.data["step_id"];
+    nlohmann::json result = request.data.value("result", nlohmann::json{});
+    bool success = request.data.value("success", true);
+
+    bool completed = orchestrator_->completeTask(request.agentId, workflowId, stepId, success, result);
+
+    if (completed) {
+        return Response::ok(request.id, {
+            {"completed", true}
+        });
+    }
+
+    return Response::error(request.id, ErrorCode::NOT_FOUND, "Workflow not found");
+}
+
+Response Server::handleFailTask(const Request& request) {
+    if (request.agentId.empty()) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing agent_id");
+    }
+
+    if (!request.data.contains("workflow_id") || !request.data.contains("step_id")) {
+        return Response::error(request.id, ErrorCode::INVALID_REQUEST, "Missing workflow_id or step_id");
+    }
+
+    std::string workflowId = request.data["workflow_id"];
+    std::string stepId = request.data["step_id"];
+    std::string error = request.data.value("error", "Unknown error");
+
+    bool failed = orchestrator_->failTask(request.agentId, workflowId, stepId, error);
+
+    if (failed) {
+        return Response::ok(request.id, {
+            {"failed", true}
+        });
+    }
+
+    return Response::error(request.id, ErrorCode::NOT_FOUND, "Workflow not found");
 }
 
 } // namespace wingman::server
