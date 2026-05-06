@@ -8,8 +8,7 @@
 
 C++ + Lua 的高性能游戏自动化框架
 
-[![Build](https://github.com/cuihairu/wingman/workflows/Build/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/build.yml)
-[![Test](https://github.com/cuihairu/wingman/workflows/Test/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/test.yml)
+[![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
