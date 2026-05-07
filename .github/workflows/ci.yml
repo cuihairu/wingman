@@ -26,6 +26,7 @@ jobs:
       with:
         path: |
           ${{ env.VCPKG_ROOT }}
+          ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-
@@ -42,11 +43,25 @@ jobs:
     - name: Create binary cache directory
       run: New-Item -ItemType Directory -Force -Path "vcpkg-cache"
 
+    - name: Configure vcpkg binary cache
+      run: |
+        $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
+        $cacheDir = (Resolve-Path "vcpkg-cache").Path
+        # 配置 vcpkg 使用二进制缓存
+        $env:VCPKG_DEFAULT_BINARY_CACHE = $cacheDir
+        # 启用二进制缓存（只从缓存读取，不上传，因为 Actions cache 会自动处理）
+        $env:VCPKG_BINARY_SOURCES = "clear;files,$cacheDir,read"
+        Write-Host "VCPKG_DEFAULT_BINARY_CACHE=$env:VCPKG_DEFAULT_BINARY_CACHE"
+
     - name: Install vcpkg dependencies
       run: |
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
-        # 使用项目 manifest
-        .\vcpkg\vcpkg install --triplet=x64-windows
+        $cacheDir = (Resolve-Path "vcpkg-cache").Path
+        $env:VCPKG_DEFAULT_BINARY_CACHE = $cacheDir
+        $env:VCPKG_BINARY_SOURCES = "clear;files,$cacheDir,read"
+        Write-Host "安装依赖（使用缓存）..."
+        # 使用项目 manifest，显示详细日志
+        .\vcpkg\vcpkg install --triplet=x64-windows --vcpkg-root "$env:VCPKG_ROOT_ABS"
 
     - name: Configure CMake (Debug)
       run: |
