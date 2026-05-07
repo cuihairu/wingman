@@ -45,11 +45,10 @@ jobs:
       run: |
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
         $cacheDir = (Resolve-Path "vcpkg-cache").Path
-        # 配置二进制源：官方缓存 + 本地缓存（写入）
-        # 官方缓存优先，读取速度快；本地缓存作为备选和存储
-        $env:VCPKG_BINARY_SOURCES = "x-azurl,https://nuget.pkg.github.com/microsoft/vcpkg-cache,readwrite;files,$cacheDir,readwrite"
+        # 配置二进制源：微软官方 Azure blob 缓存 + 本地缓存
+        $env:VCPKG_BINARY_SOURCES = "x-azblob,https://vcpkg.blob.core.windows.net/cache,readwrite;files,$cacheDir,readwrite"
         Write-Host "VCPKG_BINARY_SOURCES=$env:VCPKG_BINARY_SOURCES"
-        Write-Host "从微软官方二进制缓存下载（如果可用），否则使用本地缓存..."
+        Write-Host "从微软 Azure Blob 缓存下载预编译二进制文件..."
         .\vcpkg\vcpkg install --triplet=x64-windows
 
     - name: Configure CMake (Debug)
