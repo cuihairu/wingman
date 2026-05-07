@@ -2,6 +2,8 @@
 
 > 类似 Chimpeeon 的游戏自动化工具完整开发计划
 
+> **🚧 架构重构中 (2025)** - 正在进行多模块架构重构，详见下方 "重构计划"
+
 ## 参考项目分析
 
 | 项目 | 语言 | 特点 | 参考价值 |
@@ -11,14 +13,193 @@
 | [OpenCV](https://opencv.org) | C++ | 图像识别 | 像素/图像检测 |
 | [MicroMacro](https://github.com/Fallas/micromacro) | C++/Lua | 游戏自动化框架 | Lua绑定设计 |
 | [Osenpa Auto Clicker](https://sourceforge.net/projects/osenpa-autoclicker) | C# | 图像/颜色检测 | UI设计 |
+| [EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) | C++ | Lua调试器 | 调试协议实现 |
+| [Drogon](https://github.com/drogonframework/drogon) | C++ | Web框架 | C++ HTTP服务 |
 
 ---
 
-## 架构设计
+## 🏗️ 架构重构计划 (2025)
+
+### 重构目标
+
+1. **多模块架构** - 分离核心库、Agent、Server，便于维护和扩展
+2. **双模运行** - Agent 支持主动连接和被动监听同时开启（双保险）
+3. **EmmyLua集成** - 使用成熟的 Lua 调试器而非自研
+4. **Go控制端** - Server 改用 Go 实现，利用其并发优势
+
+### 新架构设计
+
+```
+wingman/
+├── proto/                    # Protobuf 协议定义
+│   ├── agent_api.proto       # Agent API
+│   ├── common.proto          # 公共类型
+│   └── debug.proto           # 调试协议
+│
+├── libs/                     # 共享库
+│   ├── wingman-proto/        # Protobuf C++ 封装
+│   ├── wingman-transport/    # 传输层 (TCP/WebSocket)
+│   ├── wingman-core/         # 核心功能 (Screen/Input/Trigger等)
+│   ├── wingman-lua/          # Lua 引擎 + EmmyLua 集成
+│   └── wingman-debug/        # 调试器客户端
+│
+├── agent/                    # C++ Agent (被动执行)
+│   ├── src/
+│   │   ├── main.cpp
+│   │   ├── active_mode.cpp   # 主动连接 Server
+│   │   ├── passive_mode.cpp  # 被动监听端口
+│   │   └── script_engine.cpp # Lua 脚本执行
+│   ├── CMakeLists.txt
+│   └── agent.toml            # Agent 配置
+│
+├── server/                   # Go Server (主动控制)
+│   ├── cmd/
+│   │   └── wingmand/
+│   ├── internal/
+│   │   ├── api/              # HTTP API
+│   │   ├── agent/            # Agent 管理
+│   │   └── workflow/         # 工作流编排
+│   ├── proto/                # Go Protobuf 生成代码
+│   ├── web/                  # 前端资源
+│   └── go.mod
+│
+└── debugger/                 # EmmyLua 调试器集成
+    ├── emmy_core/            # EmmyLua 核心库
+    └── adapter/              # 适配层
+```
+
+### Agent 配置 (agent.toml)
+
+```toml
+# 运行模式配置
+[mode]
+enable_active = true           # 启用主动连接
+enable_passive = true          # 启用被动监听
+connection_strategy = "fallback"  # fallback/parallel/primary
+
+# 主动模式配置
+[active]
+server_ip = "192.168.1.100"
+server_port = 9527
+reconnect_interval = 5         # 重连间隔(秒)
+heartbeat_interval = 30        # 心跳间隔(秒)
+
+# 被动模式配置
+[passive]
+listen_ip = "0.0.0.0"
+listen_port = 9528
+
+# 单机模式配置
+[standalone]
+script_dir = "./scripts"
+auto_start = []
+
+# 调试器配置
+[debugger]
+enable = true
+listen_port = 9966
+```
+
+### Protobuf 协议设计
+
+```protobuf
+// common.proto
+syntax = "proto3";
+package wingman;
+
+message JsonData {
+    string data = 1;          // JSON 字符串包裹，方便脚本扩展
+}
+
+message Empty {}
+
+// agent_api.proto
+syntax = "proto3";
+package wingman;
+
+service AgentService {
+    // 屏幕操作
+    rpc CaptureScreen(CaptureRequest) returns (CaptureResponse);
+    rpc FindColor(FindColorRequest) returns (FindColorResponse);
+
+    // 输入模拟
+    rpc Click(ClickRequest) returns (Empty);
+    rpc Move(MoveRequest) returns (Empty);
+    rpc Key(KeyRequest) returns (Empty);
+
+    // 脚本控制
+    rpc RunScript(ScriptRequest) returns (ScriptResponse);
+    rpc StopScript(StopRequest) returns (Empty);
+    rpc ListScripts(Empty) returns (ScriptList);
+
+    // 触发器管理
+    rpc AddTrigger(TriggerConfig) returns (Empty);
+    rpc RemoveTrigger(RemoveTriggerRequest) returns (Empty);
+    rpc ListTriggers(Empty) returns (TriggerList);
+}
+
+// JSON 包裹示例
+message ScriptRequest {
+    string script_path = 1;
+    JsonData params = 2;      // JSON 参数，灵活性高
+}
+```
+
+### EmmyLua 集成
+
+```cpp
+// wingman-lua/src/debug_adapter.cpp
+#include "emmy_core.h"
+
+namespace wingman::lua {
+
+class DebugAdapter {
+public:
+    void enable(int port = 9966) {
+        // 加载 EmmyLua 模块
+        lua_getglobal(L_, "require");
+        lua_pushstring(L_, "emmy_core");
+        lua_call(L_, 1, 1);
+
+        // 启动 TCP 监听
+        lua_getfield(L_, -1, "tcpListen");
+        lua_pushstring(L_, "0.0.0.0");
+        lua_pushinteger(L_, port);
+        lua_call(L_, 2, 0);
+    }
+
+    void wait() {
+        // 等待 IDE 连接
+        lua_getglobal(L_, "require");
+        lua_pushstring(L_, "emmy_core");
+        lua_call(L_, 1, 1);
+
+        lua_getfield(L_, -1, "waitIDE");
+        lua_call(L_, 0, 0);
+    }
+};
+
+} // namespace wingman::lua
+```
+
+### 重构里程碑
+
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| Phase 1 | Protobuf 协议定义 + 多模块 CMake | 🚧 进行中 |
+| Phase 2 | wingman-* 共享库迁移 | ⏳ 待开始 |
+| Phase 3 | Agent 重构 (主动/被动/单机) | ⏳ 待开始 |
+| Phase 4 | EmmyLua 集成 | ⏳ 待开始 |
+| Phase 5 | Go Server 实现 | ⏳ 待开始 |
+| Phase 6 | 测试与迁移 | ⏳ 待开始 |
+
+---
+
+## 原架构 (待废弃)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        Wingman                              │
+│                        Wingman (旧)                         │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
 │  │   Client    │  │   Web UI    │  │   VS Code Debug     │ │
@@ -277,29 +458,109 @@ human.config = {
 
 ---
 
-## Milestone 7: VS Code 调试器
+## Milestone 7: EmmyLua 调试器集成
 
-**目标**: 完整的 Lua 开发体验
+**目标**: 集成成熟的 EmmyLua 调试器，提供完整 Lua 开发体验
 
-### 7.1 DAP (Debug Adapter Protocol)
+### 7.1 EmmyLuaDebugger
+
+[EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) 是成熟的跨平台 Lua 调试器：
+
+**特性：**
+- ✅ 完整调试功能：断点、单步、变量监视、调用栈
+- ✅ 跨平台支持：Windows、macOS、Linux
+- ✅ 多 Lua 版本：Lua 5.1-5.5、LuaJIT
+- ✅ 高性能 TCP 通信
+
+### 7.2 集成方式
+
+**CMake 配置:**
+```cmake
+# Fetch EmmyLuaDebugger as dependency
+FetchContent_Declare(
+    emmylua
+    GIT_REPOSITORY https://github.com/EmmyLua/EmmyLuaDebugger.git
+    GIT_TAG        master
+)
+
+# 构建对应 Lua 版本
+set(EMMY_LUA_VERSION 54)  # Lua 5.4
+FetchContent_MakeAvailable(emmylua)
+
+target_link_libraries(wingman-lua PRIVATE emmy_core)
+```
+
+**Agent 端集成:**
+```cpp
+// wingman-lua/src/debug_adapter.cpp
+#include "emmy_core.h"
+
+namespace wingman::lua {
+
+class EmmyAdapter {
+public:
+    // 启动调试监听
+    void enable(int port = 9966) {
+        luaGetGlobal(L, "require");
+        luaPushString(L, "emmy_core");
+        luaCall(L, 1);
+
+        luaGetField(L, -1, "tcpListen");
+        luaPushString(L, "0.0.0.0");
+        luaPushInteger(L, port);
+        luaCall(L, 2, 0);
+    }
+
+    // 等待 IDE 连接
+    void wait() {
+        luaGetGlobal(L, "require");
+        luaPushString(L, "emmy_core");
+        luaCall(L, 1);
+
+        luaGetField(L, -1, "waitIDE");
+        luaCall(L, 0, 0);
+    }
+};
+
+} // namespace wingman::lua
+```
+
+**Lua 脚本端:**
+```lua
+-- 调试模式启动
+local emmy = require('emmy_core')
+emmy.tcpListen('localhost', 9966)
+emmy.waitIDE()
+
+-- 你的脚本代码
+local wingman = require('wingman')
+-- ...
+```
+
+### 7.3 IDE 支持
+
+**VS Code:**
+- 安装 [EmmyLua 扩展](https://github.com/emmylua/vscode-emmylua)
+- 配置 launch.json:
 ```json
 {
-  "type": "wingman-lua",
-  "request": "launch",
-  "name": "Debug Wingman Script",
-  "program": "${workspaceFolder}/scripts/main.lua",
-  "wingmanPath": "C:/Wingman/bin/wingman.exe"
+  "type": "emmylua",
+  "request": "attach",
+  "name": "Attach to Wingman",
+  "host": "localhost",
+  "port": 9966,
+  "ext": [
+    ".lua",
+    ".lua.txt"
+  ]
 }
 ```
 
-### 7.2 调试功能
-- 断点设置
-- 单步执行
-- 变量查看
-- 调用栈
-- 表达式求值
+**IntelliJ IDEA:**
+- 安装 EmmyLua 插件
+- 配置 TCP Attach 连接
 
-**交付物**: VS Code 扩展
+**交付物**: EmmyLua 集成完成，IDE 调试可用
 
 ---
 
@@ -338,10 +599,53 @@ human.config = {
 
 ---
 
-## 下一阶段行动
+## 下一阶段行动 (重构优先)
 
-1. **本周**: 实现 MVP - 屏幕捕获 + 像素检测
-2. **下周**: 输入模拟 + Lua 绑定
-3. **月底**: 第一个可运行版本
+### 🔥 当前重点 - 多模块架构重构
 
-需要我开始实现哪个模块？
+| 优先级 | 任务 | 预计时间 |
+|--------|------|----------|
+| P0 | 定义 Protobuf 协议 (agent_api.proto, common.proto) | 1天 |
+| P0 | 创建多模块 CMake 结构 (libs/, agent/) | 1天 |
+| P1 | 迁移核心代码到 wingman-core | 2天 |
+| P1 | 实现 Agent 主动/被动模式 | 2天 |
+| P1 | 集成 EmmyLuaDebugger | 1天 |
+| P2 | Go Server 基础框架 | 3天 |
+| P2 | Protobuf Go 代码生成 | 1天 |
+
+### 📋 重构检查清单
+
+#### Phase 1: 协议与结构
+- [ ] 创建 proto/ 目录
+- [ ] 定义 common.proto (JsonData 包装)
+- [ ] 定义 agent_api.proto (完整 API)
+- [ ] 定义 debug.proto (调试协议)
+- [ ] 创建 libs/ 子目录结构
+- [ ] 更新根 CMakeLists.txt 支持多模块
+
+#### Phase 2: 核心库迁移
+- [ ] 创建 wingman-core (Screen/Input/Trigger/Window...)
+- [ ] 创建 wingman-lua (Lua 引擎 + 绑定)
+- [ ] 创建 wingman-proto (Protobuf C++ 封装)
+- [ ] 创建 wingman-transport (TCP/WebSocket)
+
+#### Phase 3: Agent 重构
+- [ ] 实现 ActiveMode (主动连接 Server)
+- [ ] 实现 PassiveMode (被动监听)
+- [ ] 实现 StandaloneMode (单机脚本)
+- [ ] agent.toml 配置解析
+
+#### Phase 4: EmmyLua 集成
+- [ ] 添加 EmmyLuaDebugger 为依赖
+- [ ] 创建 wingman-debug 适配层
+- [ ] 测试 VS Code 断点调试
+
+#### Phase 5: Go Server
+- [ ] 初始化 Go 项目结构
+- [ ] 生成 Protobuf Go 代码
+- [ ] 实现 Agent 管理器
+- [ ] 实现 HTTP API
+
+---
+
+需要我开始实现哪个任务？

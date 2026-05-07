@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "vcpkg",
+      "hidden": true,
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      }
+    },
+    {
+      "name": "scoop",
+      "displayName": "Scoop Dependencies",
+      "inherits": "base",
+      "cacheVariables": {
+        "LUA_INCLUDE_DIR": "$env{USERPROFILE}/scoop/apps/lua/5.4.8-1/include",
+        "LUA_LIBRARY": "$env{USERPROFILE}/scoop/apps/lua/5.4.8-1/lib/liblua.dll.a",
+        "WINGMAN_BUILD_AGENT": "ON",
+        "WINGMAN_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "minimal",
+      "displayName": "Minimal Build (No Dependencies)",
+      "inherits": "base",
+      "cacheVariables": {
+        "WINGMAN_BUILD_AGENT": "ON",
+        "WINGMAN_BUILD_TESTS": "OFF",
+        "WINGMAN_BUILD_GUI": "OFF",
+        "WINGMAN_ENABLE_OCR": "OFF",
+        "WINGMAN_ENABLE_ML": "OFF"
+      }
+    }
+  ]
+}

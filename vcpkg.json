@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "wingman",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Game Automation Programmable Control Engine",
   "dependencies": [
     {
@@ -29,29 +29,56 @@
       "platform": "windows"
     },
     {
-      "name": "crow",
-      "platform": "windows"
-    },
-    {
       "name": "sqlite3",
       "platform": "windows"
     },
     {
-      "name": "gtest",
-      "platform": "windows"
-    },
-    {
-      "name": "tesseract",
-      "platform": "windows"
-    },
-    {
-      "name": "onnxruntime",
-      "platform": "windows"
-    },
-    {
-      "name": "imgui",
+      "$comment": "Protobuf for Agent-Server communication",
+      "name": "protobuf",
       "platform": "windows"
     }
   ],
+  "features": {
+    "gui": {
+      "description": "Build native GUI (ImGui)",
+      "dependencies": [
+        {
+          "name": "imgui",
+          "platform": "windows"
+        },
+        {
+          "name": "directxtex",
+          "platform": "windows"
+        }
+      ]
+    },
+    "ocr": {
+      "description": "Enable OCR support (Tesseract)",
+      "dependencies": [
+        {
+          "name": "tesseract",
+          "platform": "windows"
+        }
+      ]
+    },
+    "ml": {
+      "description": "Enable ML/AI support (ONNX Runtime)",
+      "dependencies": [
+        {
+          "name": "onnxruntime",
+          "platform": "windows"
+        }
+      ]
+    },
+    "tests": {
+      "description": "Build tests (requires GTest)",
+      "dependencies": [
+        {
+          "name": "gtest",
+          "platform": "windows"
+        }
+      ]
+    }
+  },
   "builtin-baseline": "493710c788f428c30af8c853b812d94165d43df4"
 }

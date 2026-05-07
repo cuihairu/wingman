@@ -1,0 +1,373 @@
+syntax = "proto3";
+
+package wingman.agent;
+
+import "common.proto";
+
+// ========== Agent 服务定义 ==========
+
+service AgentService {
+    // 健康检查
+    rpc Ping(wingman.common.Empty) returns (PingResponse);
+
+    // ========== 屏幕操作 ==========
+    rpc CaptureScreen(CaptureRequest) returns (CaptureResponse);
+    rpc GetPixel(GetPixelRequest) returns (GetPixelResponse);
+    rpc FindColor(FindColorRequest) returns (FindColorResponse);
+    rpc FindImage(FindImageRequest) returns (FindImageResponse);
+
+    // ========== 输入模拟 ==========
+    rpc Click(ClickRequest) returns (wingman.common.Response);
+    rpc Move(MoveRequest) returns (wingman.common.Response);
+    rpc Key(KeyRequest) returns (wingman.common.Response);
+    rpc TypeText(TypeTextRequest) returns (wingman.common.Response);
+
+    // ========== 窗口操作 ==========
+    rpc GetWindows(wingman.common.Empty) returns (GetWindowsResponse);
+    rpc ActivateWindow(ActivateWindowRequest) returns (wingman.common.Response);
+    rpc GetWindowRect(GetWindowRectRequest) returns (GetWindowRectResponse);
+
+    // ========== 脚本控制 ==========
+    rpc RunScript(RunScriptRequest) returns (RunScriptResponse);
+    rpc StopScript(StopScriptRequest) returns (wingman.common.Response);
+    rpc PauseScript(PauseScriptRequest) returns (wingman.common.Response);
+    rpc ResumeScript(ResumeScriptRequest) returns (wingman.common.Response);
+    rpc ListScripts(wingman.common.Empty) returns (ListScriptsResponse);
+    rpc GetScriptStatus(GetScriptStatusRequest) returns (GetScriptStatusResponse);
+
+    // ========== 触发器管理 ==========
+    rpc AddTrigger(AddTriggerRequest) returns (wingman.common.Response);
+    rpc RemoveTrigger(RemoveTriggerRequest) returns (wingman.common.Response);
+    rpc EnableTrigger(EnableTriggerRequest) returns (wingman.common.Response);
+    rpc DisableTrigger(DisableTriggerRequest) returns (wingman.common.Response);
+    rpc ListTriggers(wingman.common.Empty) returns (ListTriggersResponse);
+    rpc GetTriggerStatus(GetTriggerStatusRequest) returns (GetTriggerStatusResponse);
+
+    // ========== 宏操作 ==========
+    rpc RecordMacro(RecordMacroRequest) returns (RecordMacroResponse);
+    rpc StopMacroRecording(wingman.common.Empty) returns (StopMacroRecordingResponse);
+    rpc PlayMacro(PlayMacroRequest) returns (wingman.common.Response);
+
+    // ========== 配置管理 ==========
+    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+    rpc SetConfig(SetConfigRequest) returns (wingman.common.Response);
+    rpc ReloadConfig(wingman.common.Empty) returns (wingman.common.Response);
+
+    // ========== 调试支持 ==========
+    rpc StartDebug(StartDebugRequest) returns (wingman.common.Response);
+    rpc StopDebug(wingman.common.Empty) returns (wingman.common.Response);
+    rpc DebugEval(DebugEvalRequest) returns (DebugEvalResponse);
+}
+
+// ========== 请求/响应消息 ==========
+
+// 健康检查
+message PingResponse {
+    string version = 1;
+    string uptime = 2;
+    repeated string active_modes = 3;  // active, passive, standalone
+}
+
+// ========== 屏幕操作 ==========
+
+// 截图请求
+message CaptureRequest {
+    wingman.common.Rect region = 1;  // 空表示全屏
+}
+
+// 截图响应
+message CaptureResponse {
+    bytes image_data = 1;      // PNG 编码
+    int32 width = 2;
+    int32 height = 3;
+    string format = 4;         // "png", "jpeg"
+}
+
+// 获取像素
+message GetPixelRequest {
+    int32 x = 1;
+    int32 y = 2;
+}
+
+message GetPixelResponse {
+    wingman.common.Color color = 1;
+}
+
+// 查找颜色
+message FindColorRequest {
+    wingman.common.Color color = 1;
+    wingman.common.Rect region = 2;
+    int32 tolerance = 3;           // 容差 0-255
+    bool find_all = 4;             // 查找所有匹配
+    int32 max_count = 5;           // 最大返回数量
+}
+
+message FindColorResponse {
+    repeated wingman.common.ColorMatch matches = 1;
+    int32 count = 2;
+}
+
+// 查找图像
+message FindImageRequest {
+    bytes template_data = 1;       // 模板图像数据 (PNG)
+    wingman.common.Rect region = 2;
+    double threshold = 3;          // 匹配阈值 0-1
+    bool find_all = 4;
+    int32 max_count = 5;
+}
+
+message FindImageResponse {
+    repeated ImageMatch matches = 1;
+    int32 count = 2;
+}
+
+message ImageMatch {
+    wingman.common.Point location = 1;
+    double confidence = 2;
+    wingman.common.Rect rect = 3;
+}
+
+// ========== 输入模拟 ==========
+
+// 点击请求
+message ClickRequest {
+    int32 x = 1;
+    int32 y = 2;
+    string button = 3;             // "left", "right", "middle"
+    int32 duration_ms = 4;         // 点击持续时间
+    bool double_click = 5;
+}
+
+// 移动请求
+message MoveRequest {
+    int32 x = 1;
+    int32 y = 2;
+    int32 duration_ms = 3;         // 移动持续时间
+    bool bezier = 4;               // 使用贝塞尔曲线
+}
+
+// 按键请求
+message KeyRequest {
+    string key = 1;                // 虚拟键码或键名
+    bool down = 2;                 // true=按下, false=释放
+    int32 duration_ms = 3;         // 持续时间（仅对按下有效）
+}
+
+// 文本输入
+message TypeTextRequest {
+    string text = 1;
+    int32 delay_ms = 2;            // 每个字符之间的延迟
+}
+
+// ========== 窗口操作 ==========
+
+// 窗口信息
+message WindowInfo {
+    uint32 hwnd = 1;
+    string title = 2;
+    string class_name = 3;
+    wingman.common.Rect rect = 4;
+    bool visible = 5;
+}
+
+message GetWindowsResponse {
+    repeated WindowInfo windows = 1;
+}
+
+message ActivateWindowRequest {
+    uint32 hwnd = 1;
+}
+
+message GetWindowRectRequest {
+    uint32 hwnd = 1;
+}
+
+message GetWindowRectResponse {
+    wingman.common.Rect rect = 1;
+}
+
+// ========== 脚本控制 ==========
+
+// 脚本状态
+enum ScriptStatus {
+    SCRIPT_UNKNOWN = 0;
+    SCRIPT_LOADED = 1;
+    SCRIPT_RUNNING = 2;
+    SCRIPT_PAUSED = 3;
+    SCRIPT_STOPPED = 4;
+    SCRIPT_ERROR = 5;
+}
+
+// 脚本信息
+message ScriptInfo {
+    string path = 1;
+    ScriptStatus status = 2;
+    string error = 3;
+    int64 uptime_seconds = 4;
+}
+
+message RunScriptRequest {
+    string path = 1;
+    wingman.common.JsonData params = 2;  // 脚本参数（JSON）
+}
+
+message RunScriptResponse {
+    string script_id = 1;
+    ScriptStatus status = 2;
+}
+
+message StopScriptRequest {
+    string script_id = 1;
+}
+
+message PauseScriptRequest {
+    string script_id = 1;
+}
+
+message ResumeScriptRequest {
+    string script_id = 1;
+}
+
+message ListScriptsResponse {
+    repeated ScriptInfo scripts = 1;
+}
+
+message GetScriptStatusRequest {
+    string script_id = 1;
+}
+
+message GetScriptStatusResponse {
+    ScriptInfo info = 1;
+}
+
+// ========== 触发器管理 ==========
+
+// 触发器条件类型
+enum TriggerConditionType {
+    CONDITION_UNKNOWN = 0;
+    CONDITION_PIXEL = 1;
+    CONDITION_IMAGE = 2;
+    CONDITION_COLOR_RANGE = 3;
+    CONDITION_TIMER = 4;
+    CONDITION_KEY = 5;
+}
+
+// 触发器动作类型
+enum TriggerActionType {
+    ACTION_UNKNOWN = 0;
+    ACTION_CLICK = 1;
+    ACTION_KEY = 2;
+    ACTION_MACRO = 3;
+    ACTION_SCRIPT = 4;
+    ACTION_MESSAGE = 5;
+}
+
+// 触发器配置
+message TriggerConfig {
+    string id = 1;
+    string name = 2;
+    bool enabled = 3;
+
+    TriggerConditionType condition_type = 4;
+    wingman.common.JsonData condition = 5;  // 条件详情（JSON）
+
+    TriggerActionType action_type = 6;
+    wingman.common.JsonData action = 7;      // 动作详情（JSON）
+
+    int32 cooldown_ms = 8;
+    int32 max_triggers = 9;                  // 最大触发次数，0=无限
+}
+
+// 触发器状态
+message TriggerStatus {
+    string id = 1;
+    string name = 2;
+    bool enabled = 3;
+    int32 trigger_count = 4;
+    int64 last_trigger_time = 5;
+    int64 next_trigger_time = 6;             // 冷却结束时间
+}
+
+message AddTriggerRequest {
+    TriggerConfig config = 1;
+}
+
+message RemoveTriggerRequest {
+    string id = 1;
+}
+
+message EnableTriggerRequest {
+    string id = 1;
+    bool enable = 2;
+}
+
+message DisableTriggerRequest {
+    string id = 1;
+}
+
+message ListTriggersResponse {
+    repeated TriggerStatus triggers = 1;
+}
+
+message GetTriggerStatusRequest {
+    string id = 1;
+}
+
+message GetTriggerStatusResponse {
+    TriggerStatus status = 1;
+    TriggerConfig config = 2;
+}
+
+// ========== 宏操作 ==========
+
+message RecordMacroRequest {
+    string name = 1;
+}
+
+message RecordMacroResponse {
+    string macro_id = 1;
+    bool recording = 2;
+}
+
+message StopMacroRecordingResponse {
+    string macro_id = 1;
+    int32 action_count = 2;
+}
+
+message PlayMacroRequest {
+    string macro_id = 1;
+    int32 repeat_count = 2;                  // 重复次数，0=无限
+    float speed_multiplier = 3;              // 速度倍数
+}
+
+// ========== 配置管理 ==========
+
+message GetConfigRequest {
+    string key = 1;                          // 空=获取全部
+}
+
+message GetConfigResponse {
+    wingman.common.JsonData config = 1;
+}
+
+message SetConfigRequest {
+    string key = 1;
+    wingman.common.JsonData value = 2;
+}
+
+// ========== 调试支持 ==========
+
+message StartDebugRequest {
+    int32 port = 1;                          // 调试端口，默认 9966
+}
+
+message DebugEvalRequest {
+    string script_id = 1;
+    string expression = 2;
+}
+
+message DebugEvalResponse {
+    wingman.common.JsonData result = 1;
+    bool error = 2;
+    string error_message = 3;
+}

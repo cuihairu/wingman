@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package wingman.common;
+
+// ========== 公共类型 ==========
+
+// JSON 数据包装 - 灵活扩展
+message JsonData {
+    string data = 1;
+}
+
+// 通用空消息
+message Empty {}
+
+// 错误信息
+message Error {
+    int32 code = 1;
+    string message = 2;
+    string detail = 3;
+}
+
+// 响应状态
+enum Status {
+    UNKNOWN = 0;
+    SUCCESS = 1;
+    FAILED = 2;
+    TIMEOUT = 3;
+    CANCELLED = 4;
+}
+
+// 通用响应包装
+message Response {
+    Status status = 1;
+    JsonData data = 2;
+    Error error = 3;
+}
+
+// ========== 区域相关 ==========
+
+// 矩形区域
+message Rect {
+    int32 x = 1;
+    int32 y = 2;
+    int32 width = 3;
+    int32 height = 4;
+}
+
+// 点坐标
+message Point {
+    int32 x = 1;
+    int32 y = 2;
+}
+
+// ========== 颜色相关 ==========
+
+// RGBA 颜色
+message Color {
+    uint32 r = 1;      // 0-255
+    uint32 g = 2;      // 0-255
+    uint32 b = 3;      // 0-255
+    uint32 a = 4;      // 0-255
+}
+
+// 颜色查找结果
+message ColorMatch {
+    Point point = 1;
+    Color color = 2;
+    double similarity = 3;  // 相似度 0-1
+}
+
+// ========== 时间相关 ==========
+
+// 时间戳
+message Timestamp {
+    int64 seconds = 1;
+    int32 nanos = 2;
+}
+
+// 时长
+message Duration {
+    int64 seconds = 1;
+    int32 nanos = 2;
+}

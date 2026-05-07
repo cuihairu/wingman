@@ -1,0 +1,78 @@
+# Wingman Agent 配置文件
+# 支持 TOML 格式配置
+
+# ========== 运行模式配置 ==========
+[mode]
+# 启用主动模式：主动连接 Server
+enable_active = true
+
+# 启用被动模式：监听端口等待连接
+enable_passive = true
+
+# 连接策略：fallback（失败切换）| parallel（同时开启）| primary（仅主动）
+connection_strategy = "parallel"
+
+# ========== 主动模式配置 ==========
+[active]
+# Server 地址
+server_ip = "127.0.0.1"
+server_port = 9527
+
+# 重连间隔（秒）
+reconnect_interval = 5
+
+# 心跳间隔（秒）
+heartbeat_interval = 30
+
+# 连接超时（秒）
+connect_timeout = 10
+
+# ========== 被动模式配置 ==========
+[passive]
+# 监听地址
+listen_ip = "0.0.0.0"
+listen_port = 9528
+
+# 最大连接数
+max_connections = 10
+
+# ========== 单机模式配置 ==========
+[standalone]
+# 脚本目录
+script_dir = "./scripts"
+
+# 自动启动的脚本列表
+auto_start = []
+
+# ========== 调试器配置 ==========
+[debugger]
+# 启用调试器
+enable = true
+
+# 监听端口（EmmyLua）
+listen_port = 9966
+
+# 自动等待 IDE 连接
+wait_for_ide = false
+
+# ========== 日志配置 ==========
+[logging]
+# 日志级别：trace | debug | info | warn | error
+level = "info"
+
+# 日志文件路径
+file = "wingman-agent.log"
+
+# 控制台输出
+console = true
+
+# ========== 性能配置 ==========
+[performance]
+# 截图缓存大小
+screenshot_cache_size = 10
+
+# 图像匹配线程池大小
+match_thread_pool_size = 4
+
+# 内存限制（MB）
+memory_limit_mb = 512

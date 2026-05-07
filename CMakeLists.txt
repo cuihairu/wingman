@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Wingman VERSION 0.1.0 LANGUAGES CXX)
+project(Wingman VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,10 +10,11 @@ add_compile_options(/utf-8)
 # Add WIN32_LEAN_AND_MEAN to avoid WinSock conflicts
 add_compile_definitions(WIN32_LEAN_AND_MEAN)
 
-# vcpkg integration
+# ========== vcpkg 集成 ==========
 if(DEFINED CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Using vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
-    # Try to find vcpkg installed directory
+
+    # 尝试查找 vcpkg 安装目录
     if(EXISTS "C:/Users/cui/vcpkg/installed/x64-windows")
         set(VCPKG_INSTALLED_DIR "C:/Users/cui/vcpkg/installed")
         set(CMAKE_PREFIX_PATH "${VCPKG_INSTALLED_DIR}/x64-windows;${CMAKE_PREFIX_PATH}")
@@ -25,57 +26,87 @@ if(DEFINED CMAKE_TOOLCHAIN_FILE)
         set(LUA_INCLUDE_DIR "${VCPKG_INSTALLED_DIR}/x64-windows/include" CACHE PATH "Lua include directory" FORCE)
         set(LUA_LIBRARIES "${VCPKG_INSTALLED_DIR}/x64-windows/lib/lua.lib" CACHE FILEPATH "Lua library" FORCE)
     endif()
+else()
+    # 尝试使用 Scoop 安装的依赖
+    if(EXISTS "$ENV{USERPROFILE}/scoop/apps/lua/5.4.8-1")
+        set(LUA_INCLUDE_DIR "$ENV{USERPROFILE}/scoop/apps/lua/5.4.8-1/include" CACHE PATH "Lua include directory" FORCE)
+        set(LUA_LIBRARY "$ENV{USERPROFILE}/scoop/apps/lua/5.4.8-1/lib/liblua.dll.a" CACHE FILEPATH "Lua library" FORCE)
+        set(LUA_LIBRARIES "${LUA_LIBRARY}" CACHE STRING "Lua libraries" FORCE)
+        message(STATUS "Found Lua (Scoop): ${LUA_INCLUDE_DIR}")
+    endif()
 endif()
 
-# Options
-option(WINGMAN_BUILD_SERVER "Build network server" ON)
-option(WINGMAN_BUILD_DEBUGGER "Build debugger" ON)
+# ========== 构建选项 ==========
+option(WINGMAN_BUILD_SERVER "Build network server (legacy)" OFF)  # 默认关闭，使用新架构
+option(WINGMAN_BUILD_DEBUGGER "Build debugger (legacy)" OFF)       # 默认关闭，使用 EmmyLua
 option(WINGMAN_BUILD_TESTS "Build tests" OFF)
-option(WINGMAN_BUILD_LUA_HTTP "Build Lua HTTP bindings (requires sol2)" OFF)
 option(WINGMAN_BUILD_GUI "Build native GUI (requires ImGui)" ON)
-option(WINGMAN_ENABLE_OCR "Enable OCR support (requires Tesseract)" ON)
-option(WINGMAN_ENABLE_ML "Enable ML/AI support (requires ONNX Runtime)" ON)
+option(WINGMAN_ENABLE_OCR "Enable OCR support (requires Tesseract)" OFF)  # 默认关闭
+option(WINGMAN_ENABLE_ML "Enable ML/AI support (requires ONNX Runtime)" OFF)  # 默认关闭
 
-# Find dependencies via vcpkg
+# ========== 新架构选项 ==========
+option(WINGMAN_BUILD_AGENT "Build new Agent (multi-module)" ON)
+option(WINGMAN_ENABLE_EMMY "Enable EmmyLua Debugger integration" ON)
+
+# ========== 核心依赖（必需）==========
 find_package(Lua REQUIRED)
-find_package(OpenCV CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(asio CONFIG REQUIRED)
-find_package(CURL CONFIG REQUIRED)
+find_package(OpenCV CONFIG)
+find_package(spdlog CONFIG)
+find_package(nlohmann_json CONFIG)
+find_package(asio CONFIG)
+find_package(CURL CONFIG)
 find_package(Threads REQUIRED)
-find_package(Crow CONFIG REQUIRED)
-find_package(unofficial-sqlite3 CONFIG REQUIRED)
-find_package(Protobuf REQUIRED)
+find_package(unofficial-sqlite3 CONFIG)
+find_package(Protobuf CONFIG)
 
-# SQLite3 support - enable kvstore persistence
+# SQLite3 支持
 add_compile_definitions(WINGMAN_HAS_SQLITE)
 message(STATUS "SQLite3 persistence enabled")
 
-# GUI support
+# GUI 支持
 if(WINGMAN_BUILD_GUI)
     find_package(imgui CONFIG REQUIRED)
+    add_compile_definitions(WINGMAN_BUILD_GUI)
     message(STATUS "Native GUI support enabled")
 endif()
 
-# Testing framework
-if(WINGMAN_BUILD_TESTS)
-    find_package(GTest CONFIG REQUIRED)
-endif()
-
-# OCR support
+# OCR 支持
 if(WINGMAN_ENABLE_OCR)
     add_compile_definitions(WINGMAN_ENABLE_OCR)
     message(STATUS "OCR support enabled")
 endif()
 
-# ML/AI support
+# ML/AI 支持
 if(WINGMAN_ENABLE_ML)
     add_compile_definitions(WINGMAN_ENABLE_ML)
     message(STATUS "ML/AI support enabled")
 endif()
 
-# Core source files
+# EmmyLua 支持
+if(WINGMAN_ENABLE_EMMY)
+    add_compile_definitions(WINGMAN_ENABLE_EMMY)
+    message(STATUS "EmmyLua Debugger enabled")
+endif()
+
+# ========== 多模块架构 ==========
+
+# 共享库子目录
+if(WINGMAN_BUILD_AGENT)
+    add_subdirectory(libs/wingman-proto)
+    add_subdirectory(libs/wingman-transport)
+    add_subdirectory(libs/wingman-core)
+    add_subdirectory(libs/wingman-lua)
+    add_subdirectory(libs/wingman-debug)
+
+    # Agent 可执行文件
+    add_subdirectory(agent)
+
+    message(STATUS "Multi-module Agent build enabled")
+endif()
+
+# ========== 旧版构建 (保持兼容) ==========
+
+# 核心源文件（旧版）
 set(CORE_SOURCES
     src/screen.cpp
     src/input.cpp
@@ -117,34 +148,33 @@ set(CORE_SOURCES
     src/human.cpp
 )
 
-# OCR support (conditional)
+# OCR 支持
 if(WINGMAN_ENABLE_OCR)
     list(APPEND CORE_SOURCES src/ocr.cpp)
 else()
     list(APPEND CORE_SOURCES src/ocr_stub.cpp)
 endif()
 
-# ML/AI support (conditional)
+# ML/AI 支持
 if(WINGMAN_ENABLE_ML)
     list(APPEND CORE_SOURCES src/ml.cpp)
 else()
     list(APPEND CORE_SOURCES src/ml_stub.cpp)
 endif()
 
-# Lua bindings
+# Lua 绑定
 set(LUA_SOURCES
     bindings/lua_bindings.cpp
     bindings/lua_extensions.cpp
 )
 
-# Lua HTTP bindings (requires sol2)
 if(WINGMAN_BUILD_LUA_HTTP)
     list(APPEND LUA_SOURCES bindings/lua_http_bindings.cpp)
     find_package(sol2 CONFIG REQUIRED)
     message(STATUS "Lua HTTP bindings enabled")
 endif()
 
-# GUI support
+# GUI 源文件
 if(WINGMAN_BUILD_GUI)
     set(GUI_SOURCES
         src/gui/imgui_backend.cpp
@@ -159,37 +189,22 @@ if(WINGMAN_BUILD_GUI)
         src/gui/widgets/color_picker.cpp
         src/gui/widgets/region_selector.cpp
     )
-    set(GUI_HEADERS
-        include/wingman/gui/imgui_backend.hpp
-        include/wingman/gui/app.hpp
-        include/wingman/gui/config.hpp
-        include/wingman/gui/panels/trigger_panel.hpp
-        include/wingman/gui/panels/script_panel.hpp
-        include/wingman/gui/panels/preview_panel.hpp
-        include/wingman/gui/panels/log_panel.hpp
-        include/wingman/gui/spdlog_sink.hpp
-        include/wingman/gui/file_dialog.hpp
-        include/wingman/gui/widgets/color_picker.hpp
-        include/wingman/gui/widgets/region_selector.hpp
-    )
-    add_compile_definitions(WINGMAN_BUILD_GUI)
-    message(STATUS "Native GUI enabled")
 endif()
 
-# Protobuf generation
-set(PROTO_PATH ${CMAKE_CURRENT_SOURCE_DIR}/server/proto)
+# Protobuf 生成
+set(PROTO_PATH ${CMAKE_CURRENT_SOURCE_DIR}/proto)
 set(GENERATED_PROTOBUF_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/proto)
 
 set(PROTO_FILES
-    ${PROTO_PATH}/wingman_protocol.proto
+    ${PROTO_PATH}/common.proto
+    ${PROTO_PATH}/agent_api.proto
+    ${PROTO_PATH}/debug.proto
 )
 
 foreach(PROTO_FILE ${PROTO_FILES})
     get_filename_component(PROTO_NAME ${PROTO_FILE} NAME_WE)
-
     set(PROTO_SRC ${GENERATED_PROTOBUF_DIR}/${PROTO_NAME}.pb.cpp)
     set(PROTO_HDR ${GENERATED_PROTOBUF_DIR}/${PROTO_NAME}.pb.h)
-
     add_custom_command(
         OUTPUT ${PROTO_SRC} ${PROTO_HDR}
         COMMAND protobuf::protoc
@@ -197,14 +212,13 @@ foreach(PROTO_FILE ${PROTO_FILES})
         DEPENDS ${PROTO_FILE}
         COMMENT "Generating protobuf files for ${PROTO_NAME}"
     )
-
     list(APPEND PROTO_GENERATED_SRCS ${PROTO_SRC})
     list(APPEND PROTO_GENERATED_HDRS ${PROTO_HDR})
 endforeach()
 
-# Create a source group for IDE
 source_group("Generated\\Proto" FILES ${PROTO_GENERATED_SRCS} ${PROTO_GENERATED_HDRS})
 
+# ========== Server 模块 (旧版) ==========
 set(SERVER_SOURCES
     server/src/server.cpp
     server/src/client.cpp
@@ -222,40 +236,39 @@ set(DEBUGGER_SOURCES
     debugger/src/protocol.cpp
 )
 
-# Core executable
+# ========== 旧版主程序 ==========
 add_executable(wingman
     src/main.cpp
 )
 
-# Add Windows icon resource
+# Windows 图标
 if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/wingman.rc")
-    # 设置资源文件的工作目录
     set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/assets/wingman.rc" PROPERTIES
         COMPILE_FLAGS "/I${CMAKE_CURRENT_SOURCE_DIR}/assets")
     target_sources(wingman PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/assets/wingman.rc")
 endif()
 
-# Add core sources if they exist
+# 添加源文件
 foreach(src ${CORE_SOURCES})
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
         target_sources(wingman PRIVATE ${src})
     endif()
 endforeach()
 
-# Add Lua bindings
 foreach(src ${LUA_SOURCES})
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
         target_sources(wingman PRIVATE ${src})
     endif()
 endforeach()
 
-# Include directories
+# 包含目录
 target_include_directories(wingman PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings
+    ${GENERATED_PROTOBUF_DIR}
 )
 
-# Windows specific libraries
+# 链接库
 target_link_libraries(wingman PRIVATE
     ${LUA_LIBRARIES}
     opencv_core
@@ -266,21 +279,21 @@ target_link_libraries(wingman PRIVATE
     asio::asio
     CURL::libcurl
     Threads::Threads
-    Crow::Crow
     unofficial::sqlite3::sqlite3
+    protobuf::libprotobuf
     gdiplus
     user32
     gdi32
 )
 
-# GUI support
+# GUI 链接
 if(WINGMAN_BUILD_GUI)
     target_link_libraries(wingman PRIVATE imgui::imgui d3d12 dxgi)
-    target_sources(wingman PRIVATE ${GUI_SOURCES} ${GUI_HEADERS})
+    target_sources(wingman PRIVATE ${GUI_SOURCES})
     target_include_directories(wingman PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/wingman/gui)
 endif()
 
-# 复制 dashboard 静态文件到输出目录 (如果存在)
+# 复制 dashboard 静态文件
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/dist")
     add_custom_command(TARGET wingman POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -290,7 +303,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/dist")
     )
 endif()
 
-# Server module (if enabled)
+# Server 模块
 if(WINGMAN_BUILD_SERVER)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/server/src/server.cpp")
         add_library(wingman-server STATIC ${SERVER_SOURCES} src/storage_remote.cpp)
@@ -309,7 +322,7 @@ if(WINGMAN_BUILD_SERVER)
     endif()
 endif()
 
-# Debugger module (if enabled)
+# Debugger 模块
 if(WINGMAN_BUILD_DEBUGGER)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/debugger/src/debugger.cpp")
         add_library(wingman-debugger STATIC ${DEBUGGER_SOURCES})
@@ -320,21 +333,26 @@ if(WINGMAN_BUILD_DEBUGGER)
     endif()
 endif()
 
-# Tests (if enabled)
+# 测试
 if(WINGMAN_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests/cpp)
 endif()
 
-# Installation
-install(TARGETS wingman
+# ========== 安装 ==========
+install(TARGETS wingman wingman-agent
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
 
-# Copy scripts
+# 复制脚本
 install(DIRECTORY scripts/
     DESTINATION scripts
     FILES_MATCHING PATTERN "*.lua"
+)
+
+# 复制 VSCode 配置包
+install(DIRECTORY assets/vscode-wingman-lua/
+    DESTINATION vscode-config
 )

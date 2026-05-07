@@ -1,0 +1,169 @@
+syntax = "proto3";
+
+package wingman.debug;
+
+import "common.proto";
+
+// ========== 调试服务定义 ==========
+
+// 注意：实际调试使用 EmmyLua 协议
+// 此文件仅定义与 EmmyLua 交互的辅助接口
+
+service DebugService {
+    // 启动调试器 (EmmyLua)
+    rpc StartDebugger(StartDebuggerRequest) returns (StartDebuggerResponse);
+
+    // 停止调试器
+    rpc StopDebugger(wingman.common.Empty) returns (wingman.common.Response);
+
+    // 调试器状态
+    rpc GetDebuggerStatus(wingman.common.Empty) returns (DebuggerStatus);
+
+    // 断点管理 (EmmyLua 直接处理，此处仅作代理)
+    rpc SetBreakpoint(SetBreakpointRequest) returns (wingman.common.Response);
+    rpc RemoveBreakpoint(RemoveBreakpointRequest) returns (wingman.common.Response);
+    rpc ListBreakpoints(wingman.common.Empty) returns (ListBreakpointsResponse);
+}
+
+// ========== 调试器状态 ==========
+
+// 调试器状态
+enum DebuggerState {
+    DEBUGGER_STOPPED = 0;
+    DEBUGGER_RUNNING = 1;
+    DEBUGGER_PAUSED = 2;
+    DEBUGGER_WAITING = 3;    // 等待 IDE 连接
+}
+
+message DebuggerStatus {
+    DebuggerState state = 1;
+    int32 listen_port = 2;
+    bool ide_connected = 3;
+    string ide_address = 4;
+    int64 uptime_seconds = 5;
+}
+
+// ========== 启动调试器 ==========
+
+message StartDebuggerRequest {
+    int32 port = 1;              // 监听端口，默认 9966
+    bool wait_for_ide = 2;      // 是否等待 IDE 连接
+    bool break_on_start = 3;    // 启动时是否暂停
+}
+
+message StartDebuggerResponse {
+    bool success = 1;
+    int32 listen_port = 2;
+}
+
+// ========== 断点管理 ==========
+
+// 断点类型
+enum BreakpointType {
+    BP_LINE = 0;
+    BP_CONDITION = 1;
+    BP_FUNCTION = 2;
+}
+
+// 断点信息
+message Breakpoint {
+    string id = 1;
+    string file = 2;
+    int32 line = 3;
+    BreakpointType type = 4;
+    string condition = 5;       // 条件断点的条件表达式
+    bool enabled = 6;
+    int32 hit_count = 7;        // 命中次数
+}
+
+message SetBreakpointRequest {
+    string file = 1;
+    int32 line = 2;
+    BreakpointType type = 3;
+    string condition = 4;
+}
+
+message RemoveBreakpointRequest {
+    string breakpoint_id = 1;
+}
+
+message ListBreakpointsResponse {
+    repeated Breakpoint breakpoints = 1;
+}
+
+// ========== 调试事件 (服务器推送) ==========
+
+// 调试事件类型
+enum DebugEventType {
+    EVENT_UNKNOWN = 0;
+    EVENT_BREAKPOINT_HIT = 1;
+    EVENT_STEP_COMPLETE = 2;
+    EVENT_EXCEPTION = 3;
+    EVENT_PAUSED = 4;
+    EVENT_RESUMED = 5;
+    EVENT_SCRIPT_LOADED = 6;
+}
+
+// 调试事件消息
+message DebugEvent {
+    DebugEventType type = 1;
+    int64 timestamp = 2;
+
+    oneof event_data {
+        BreakpointEvent breakpoint = 10;
+        StepEvent step = 11;
+        ExceptionEvent exception = 12;
+        PauseEvent pause = 13;
+        ScriptLoadedEvent script_loaded = 14;
+    }
+}
+
+message BreakpointEvent {
+    string file = 1;
+    int32 line = 2;
+    string breakpoint_id = 3;
+}
+
+message StepEvent {
+    string file = 1;
+    int32 line = 2;
+}
+
+message ExceptionEvent {
+    string message = 1;
+    string file = 2;
+    int32 line = 3;
+    repeated string stack_trace = 4;
+}
+
+message PauseEvent {
+    string reason = 1;
+}
+
+message ScriptLoadedEvent {
+    string script_path = 1;
+}
+
+// ========== EmmyLua 兼容说明 ==========
+
+/*
+ * EmmyLua Debugger 使用自己的 TCP 协议，不直接使用 Protobuf。
+ *
+ * Wingman Agent 集成方式：
+ * 1. C++ 端加载 EmmyLua 核心库 (emmy_core.dll)
+ * 2. Lua 脚本调用 require('emmy_core') 启动调试器
+ * 3. IDE (VSCode/IntelliJ) 通过 TCP 直接连接到 EmmyLua
+ * 4. 本 Protobuf 服务仅用于：
+ *    - 控制 Agent 启动/停止调试器
+ *    - 查询调试器状态
+ *    - 管理层面的断点查询
+ *
+ * EmmyLua TCP 端口默认: 9966
+ * VSCode 配置示例：
+ * {
+ *   "type": "emmylua",
+ *   "request": "attach",
+ *   "host": "localhost",
+ *   "port": 9966
+ * }
+ */
