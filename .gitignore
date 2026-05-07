@@ -68,6 +68,13 @@ vcpkg_installed/
 Testing/
 .cache/
 
+# test build directories
+tests/build*/
+tests/**/_deps/
+test3/
+tests/cpp/CMakeLists.*.txt
+tests/cpp/simple_test*.cpp
+
 # Visual Studio
 .vs/
 *.suo
