@@ -66,7 +66,6 @@ C++ + Lua 的高性能游戏自动化框架
 | **宏录制** | 录制鼠标键盘操作，保存为 Lua/JSON 回放 |
 | **触发器系统** | 颜色/图像/窗口/进程触发，自动执行动作 |
 | **Web Dashboard** | React + UmiJS + Ant Design 管理界面 |
-| **VSCode 插件** | 语法高亮、自动完成、调试支持 |
 
 ## 快速开始
 
@@ -358,18 +357,6 @@ npm run dev
 - 窗口监控
 - 系统状态
 - 远程控制
-
-### VSCode 插件
-
-```bash
-cd vscode-extension
-npm install
-npm run compile
-```
-
-- Lua 语法高亮
-- API 自动完成
-- 断点调试
 
 ## 许可证
 
