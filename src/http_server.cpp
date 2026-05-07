@@ -31,6 +31,38 @@ HTTPServer::HTTPServer(const std::string& dbPath, int port, const std::string& s
             }
         }
     }
+
+    // 设置调试器事件回调
+    auto& debugger = wingman::getDebugger();
+    debugger.setEventCallback([this](wingman::DebuggerEvent event, const std::string& file, int line) {
+        std::string eventType;
+        nlohmann::json data;
+
+        switch (event) {
+            case wingman::DebuggerEvent::BreakpointHit:
+                eventType = "stopped";
+                data["reason"] = "breakpoint";
+                data["file"] = file;
+                data["line"] = line;
+                break;
+            case wingman::DebuggerEvent::StepComplete:
+                eventType = "stopped";
+                data["reason"] = "step";
+                data["file"] = file;
+                data["line"] = line;
+                break;
+            case wingman::DebuggerEvent::Paused:
+                eventType = "paused";
+                break;
+            case wingman::DebuggerEvent::Error:
+                eventType = "error";
+                break;
+        }
+
+        broadcastDebuggerEvent(eventType, data);
+    });
+
+    spdlog::info("[Debugger] Event callback registered");
 }
 
 HTTPServer::~HTTPServer() {
@@ -947,6 +979,43 @@ void HTTPServer::broadcastWorkflowEvent(const std::string& eventType, const nloh
     j["event"] = eventType;
     j["data"] = workflowData;
     j["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
+
+    std::string msgStr = j.dump();
+    std::lock_guard<std::mutex> lock(wsMutex_);
+
+    for (auto& ws : wsConnections_) {
+        if (ws->isOpen()) {
+            try {
+                ws->send(msgStr);
+            } catch (const std::exception& e) {
+                spdlog::error("[WS] Broadcast error to {}: {}", ws->id, e->what());
+            }
+        }
+    }
+}
+
+void HTTPServer::broadcastDebuggerEvent(const std::string& eventType, const nlohmann::json& data) {
+    nlohmann::json j;
+    j["type"] = "debugger";
+    j["event"] = eventType;
+    j["data"] = data;
+    j["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
+
+    std::string msgStr = j.dump();
+    std::lock_guard<std::mutex> lock(wsMutex_);
+
+    for (auto& ws : wsConnections_) {
+        if (ws->isOpen()) {
+            try {
+                ws->send(msgStr);
+            } catch (const std::exception& e) {
+                spdlog::error("[WS] Broadcast error to {}: {}", ws->id, e.what());
+            }
+        }
+    }
+
+    spdlog::debug("[Debugger] Broadcast event: {}", eventType);
+}
 
     std::string msgStr = j.dump();
     std::lock_guard<std::mutex> lock(wsMutex_);

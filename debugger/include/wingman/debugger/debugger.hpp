@@ -7,13 +7,25 @@
 #include <mutex>
 #include <optional>
 #include <atomic>
+#include <string>
 
 // 前向声明 Lua 状态
 struct lua_State;
 
 namespace wingman {
 
-// Lua 调试器（简化版）
+// 调试器事件类型
+enum class DebuggerEvent {
+    BreakpointHit,     // 断点命中
+    StepComplete,      // 步进完成
+    Paused,            // 暂停
+    Error              // 错误
+};
+
+// 调试器事件回调
+using DebuggerEventCallback = std::function<void(DebuggerEvent, const std::string&, int)>;
+
+// Lua 调试器
 class LuaDebugger {
 public:
     LuaDebugger();
@@ -46,6 +58,9 @@ public:
     };
     CurrentPosition getCurrentPosition() const;
 
+    // 事件回调设置
+    void setEventCallback(DebuggerEventCallback callback) { eventCallback_ = callback; }
+
     // 单例访问
     static LuaDebugger& instance();
 
@@ -59,9 +74,15 @@ private:
     BreakpointManager breakpointManager_;
     std::mutex mutex_;
 
+    // 事件回调
+    DebuggerEventCallback eventCallback_;
+
     // 调试钩子相关
     void installDebugHook();
     void removeDebugHook();
+
+    // 发送事件
+    void sendEvent(DebuggerEvent event, const std::string& file = "", int line = 0);
 
     // 当前调试上下文
     struct DebugContext {

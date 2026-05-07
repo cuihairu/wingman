@@ -110,6 +110,9 @@ public:
     // 广播工作流事件
     void broadcastWorkflowEvent(const std::string& eventType, const nlohmann::json& workflowData);
 
+    // 广播调试器事件
+    void broadcastDebuggerEvent(const std::string& eventType, const nlohmann::json& data);
+
     // ========== Room 管理 ==========
 
     // 加入房间

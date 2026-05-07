@@ -4,12 +4,15 @@ import {
   LoggingDebugSession,
   OutputEvent,
   TerminatedEvent,
+  StoppedEvent,
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
+import * as WebSocket from 'ws';
 
 /**
  * Wingman Debug Adapter Protocol 实现
  * 支持断点、变量查看、步进等调试功能
+ * 使用 WebSocket 接收调试器事件推送
  */
 export class WingmanDebugger extends LoggingDebugSession {
   private static THREAD_ID = 1;
@@ -17,6 +20,7 @@ export class WingmanDebugger extends LoggingDebugSession {
   private serverPort = 8080;
   private isConnected = false;
   private breakpoints = new Map<string, DebugProtocol.SourceBreakpoint[]>();
+  private ws: WebSocket | null = null;
 
   protected initializeRequest(
     response: DebugProtocol.InitializeResponse,
@@ -25,8 +29,8 @@ export class WingmanDebugger extends LoggingDebugSession {
     response.body = response.body || {};
 
     response.body.supportsConfigurationDoneRequest = true;
-    response.body.supportsEvaluateForHovers = true;
-    response.body.supportsConditionalBreakpoints = true;
+    response.body.supportsEvaluateForHovers = false;
+    response.body.supportsConditionalBreakpoints = false;
     response.body.supportsHitConditionalBreakpoints = false;
     response.body.supportsStepBack = false;
     response.body.supportsStepInTargetsRequest = false;
@@ -35,7 +39,7 @@ export class WingmanDebugger extends LoggingDebugSession {
     response.body.supportsCompletionsRequest = false;
     response.body.supportsModulesRequest = false;
     response.body.supportsRestartRequest = false;
-    response.body.supportsSetVariable = true;
+    response.body.supportsSetVariable = false;
     response.body.supportsReadMemoryRequest = false;
     response.body.supportsDisassembleRequest = false;
     response.body.supportsTerminateRequest = false;
@@ -49,11 +53,15 @@ export class WingmanDebugger extends LoggingDebugSession {
   ): Promise<void> {
     // 获取服务器配置
     this.serverHost = args.host || 'localhost';
-    this.serverPort = args.port || 8080;
+    this.serverPort = args.port || 9527;  // Wingman 默认端口
 
-    // 连接到 Wingman 服务器
     try {
+      // 连接到 HTTP 服务器
       await this.connectToServer();
+
+      // 建立 WebSocket 连接接收调试器事件
+      await this.connectWebSocket();
+
       this.isConnected = true;
       this.sendResponse(response);
       this.sendEvent(new InitializedEvent());
@@ -75,15 +83,22 @@ export class WingmanDebugger extends LoggingDebugSession {
     this.breakpoints.set(path, clientBreakpoints);
 
     // 发送断点到服务器
-    this.setBreakpointsOnServer(path, clientBreakpoints);
-
-    response.body = {
-      breakpoints: clientBreakpoints.map(bp => ({
-        verified: true,
-        line: bp.line
-      }))
-    };
-    this.sendResponse(response);
+    this.setBreakpointsOnServer(path, clientBreakpoints)
+      .then(() => {
+        response.body = {
+          breakpoints: clientBreakpoints.map(bp => ({
+            verified: true,
+            line: bp.line
+          }))
+        };
+        this.sendResponse(response);
+      })
+      .catch(err => {
+        this.sendErrorResponse(response, {
+          id: 3001,
+          format: `设置断点失败: ${err}`
+        });
+      });
   }
 
   protected continueRequest(
@@ -154,7 +169,6 @@ export class WingmanDebugger extends LoggingDebugSession {
   protected threadsRequest(
     response: DebugProtocol.ThreadsResponse
   ): void {
-    // Wingman 当前只支持单线程
     response.body = {
       threads: [
         {
@@ -173,10 +187,10 @@ export class WingmanDebugger extends LoggingDebugSession {
     this.getStackTrace()
       .then(frames => {
         response.body = {
-          stackFrames: frames.map((f, i) => ({
+          stackFrames: frames.map((f: any, i: number) => ({
             id: i,
             name: f.name,
-            source: { name: f.file, path: f.file },
+            source: { name: f.source, path: f.source },
             line: f.line,
             column: 0
           })),
@@ -216,7 +230,7 @@ export class WingmanDebugger extends LoggingDebugSession {
     args: DebugProtocol.VariablesArguments
   ): void {
     this.getVariables(args.variablesReference)
-      .then(variables => {
+      .then((variables: any[]) => {
         response.body = {
           variables: variables.map((v: any) => ({
             name: v.name,
@@ -233,47 +247,15 @@ export class WingmanDebugger extends LoggingDebugSession {
       }));
   }
 
-  protected evaluateRequest(
-    response: DebugProtocol.EvaluateResponse,
-    args: DebugProtocol.EvaluateArguments
-  ): void {
-    this.evaluateExpression(args.expression)
-      .then(result => {
-        response.body = {
-          result: result.value,
-          type: result.type,
-          variablesReference: result.variablesReference || 0
-        };
-        this.sendResponse(response);
-      })
-      .catch(err => this.sendErrorResponse(response, {
-        id: 5001,
-        format: `表达式求值失败: ${err}`
-      }));
-  }
-
-  protected setVariableRequest(
-    response: DebugProtocol.SetVariableResponse,
-    args: DebugProtocol.SetVariableArguments
-  ): void {
-    this.setVariableValue(args.variablesReference, args.name, args.value)
-      .then(result => {
-        response.body = {
-          value: result.value,
-          type: result.type
-        };
-        this.sendResponse(response);
-      })
-      .catch(err => this.sendErrorResponse(response, {
-        id: 5002,
-        format: `设置变量失败: ${err}`
-      }));
-  }
-
   protected disconnectRequest(
     response: DebugProtocol.DisconnectResponse,
     args: DebugProtocol.DisconnectArguments
   ): void {
+    // 关闭 WebSocket 连接
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
     this.isConnected = false;
     this.sendResponse(response);
   }
@@ -285,6 +267,53 @@ export class WingmanDebugger extends LoggingDebugSession {
     const response = await fetch(url, { method: 'POST' });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
+    }
+  }
+
+  private async connectWebSocket(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const wsUrl = `ws://${this.serverHost}:${this.serverPort}/ws`;
+      this.ws = new WebSocket(wsUrl);
+
+      this.ws.on('open', () => {
+        console.log('[Wingman] WebSocket connected');
+        resolve();
+      });
+
+      this.ws.on('error', (err) => {
+        console.error('[Wingman] WebSocket error:', err);
+        reject(err);
+      });
+
+      this.ws.on('message', (data: Buffer) => {
+        try {
+          const message = JSON.parse(data.toString());
+          this.handleWebSocketMessage(message);
+        } catch (err) {
+          console.error('[Wingman] Failed to parse WebSocket message:', err);
+        }
+      });
+
+      this.ws.on('close', () => {
+        console.log('[Wingman] WebSocket disconnected');
+      });
+    });
+  }
+
+  private handleWebSocketMessage(message: any): void {
+    if (message.type === 'debugger') {
+      switch (message.event) {
+        case 'stopped':
+          // 调试器停止（断点或步进）
+          this.sendEvent(new StoppedEvent(message.data.reason, WingmanDebugger.THREAD_ID));
+          break;
+        case 'paused':
+          this.sendEvent(new StoppedEvent('pause', WingmanDebugger.THREAD_ID));
+          break;
+        case 'error':
+          this.sendEvent(new OutputEvent(`调试器错误: ${message.data}\n`));
+          break;
+      }
     }
   }
 
@@ -316,7 +345,8 @@ export class WingmanDebugger extends LoggingDebugSession {
   private async getStackTrace(): Promise<any[]> {
     const url = `http://${this.serverHost}:${this.serverPort}/api/debugger/stacktrace`;
     const response = await fetch(url);
-    return response.json();
+    const json = await response.json();
+    return json.stackFrames || [];
   }
 
   private async getVariables(ref: number): Promise<any[]> {
@@ -326,26 +356,7 @@ export class WingmanDebugger extends LoggingDebugSession {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reference: ref })
     });
-    return response.json();
-  }
-
-  private async evaluateExpression(expr: string): Promise<any> {
-    const url = `http://${this.serverHost}:${this.serverPort}/api/debugger/evaluate`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ expression: expr })
-    });
-    return response.json();
-  }
-
-  private async setVariableValue(ref: number, name: string, value: string): Promise<any> {
-    const url = `http://${this.serverHost}:${this.serverPort}/api/debugger/setvariable`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reference: ref, name, value })
-    });
-    return response.json();
+    const json = await response.json();
+    return json.variables || [];
   }
 }

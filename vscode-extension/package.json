@@ -143,7 +143,9 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.80.0",
-    "@vscode/debugprotocol": "^1.0.0"
+    "@types/ws": "^8.5.0",
+    "@vscode/debugprotocol": "^1.0.0",
+    "ws": "^8.14.0"
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

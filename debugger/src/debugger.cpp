@@ -80,6 +80,15 @@ void LuaDebugger::removeDebugHook() {
     spdlog::debug("[Debugger] Debug hook removed");
 }
 
+void LuaDebugger::sendEvent(DebuggerEvent event, const std::string& file, int line) {
+    if (eventCallback_) {
+        // 在单独的线程中调用回调，避免死锁
+        std::thread([eventCallback = eventCallback_, event, file, line]() {
+            eventCallback(event, file, line);
+        }).detach();
+    }
+}
+
 // Lua 钩子函数
 void LuaDebugger::luaDebugHook(lua_State* L, lua_Debug* ar) {
     lua_getinfo(L, "nSl", ar);
@@ -109,7 +118,12 @@ void LuaDebugger::luaDebugHook(lua_State* L, lua_Debug* ar) {
 }
 
 bool LuaDebugger::checkBreakpoint(const std::string& file, int line) {
-    return breakpointManager_.shouldBreak(file, line);
+    bool shouldBreak = breakpointManager_.shouldBreak(file, line);
+    if (shouldBreak) {
+        spdlog::debug("[Debugger] Breakpoint hit at {}:{}", file, line);
+        sendEvent(DebuggerEvent::BreakpointHit, file, line);
+    }
+    return shouldBreak;
 }
 
 bool LuaDebugger::checkStep() {
@@ -118,6 +132,7 @@ bool LuaDebugger::checkStep() {
     if (context_.stepCount <= 0) {
         context_.stepping = false;
         spdlog::debug("[Debugger] Step complete at {}:{}", context_.currentFile, context_.currentLine);
+        sendEvent(DebuggerEvent::StepComplete, context_.currentFile, context_.currentLine);
         return true;
     }
 
