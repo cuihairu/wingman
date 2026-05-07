@@ -27,6 +27,8 @@ add_executable(wingman_tests
     kvstore_test.cpp
     qrcode_test.cpp
     ui_automation_test.cpp
+    tray_test.cpp
+    smart_trigger_test.cpp
     # Note: script_manager_test.cpp, security_test.cpp, and recorder_test.cpp
     # are excluded due to unimplemented functions or compilation errors
 )
