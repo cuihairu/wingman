@@ -107,7 +107,7 @@ public:
         auto it = sessions_.find(id);
         if (it != sessions_.end()) {
             it->second->close();
-            channelManager_.closeBySession(id);
+            channelManager_.removeBySession(id);
             sessions_.erase(it);
         }
     }
@@ -198,12 +198,8 @@ private:
 // ========== 工厂函数 ==========
 
 inline std::unique_ptr<TransportServer> TransportServer::create(TransportType type) {
-    switch (type) {
-        case TransportType::TCP:
-            return std::make_unique<TcpServer>();
-        default:
-            return nullptr;
-    }
+    (void)type;
+    return std::unique_ptr<TransportServer>(new TcpServer());
 }
 
 } // namespace wingman::transport

@@ -197,12 +197,8 @@ private:
 // ========== 工厂函数 ==========
 
 inline std::unique_ptr<TransportClient> TransportClient::create(TransportType type) {
-    switch (type) {
-        case TransportType::TCP:
-            return std::make_unique<TcpClient>();
-        default:
-            return nullptr;
-    }
+    (void)type;
+    return std::unique_ptr<TransportClient>(new TcpClient());
 }
 
 } // namespace wingman::transport

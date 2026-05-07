@@ -82,7 +82,9 @@ add_library(wingman-core STATIC ${CORE_SOURCES})
 # 包含目录
 target_include_directories(wingman-core PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/wingman>
     $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:include/wingman>
 )
 
 # 链接库

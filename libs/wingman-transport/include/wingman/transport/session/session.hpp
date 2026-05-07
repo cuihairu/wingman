@@ -1,5 +1,14 @@
 #pragma once
 
+// 在包含 Windows 头文件之前定义保护宏，避免宏冲突
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0601
+#endif
+#endif
+
 #include <string>
 #include <memory>
 #include <functional>
