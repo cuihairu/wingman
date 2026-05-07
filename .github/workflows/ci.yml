@@ -154,9 +154,9 @@ jobs:
 
     - name: Install LuaRocks
       run: |
-        Invoke-WebRequest -Uri "https://luarocks.github.io/luarocks/releases/luarocks-3.11.1-windows-x86_64.zip" -OutFile luarocks.zip
+        Invoke-WebRequest -Uri "https://github.com/luarocks/luarocks/releases/download/3.13.0/luarocks-3.13.0-windows-64.zip" -OutFile luarocks.zip
         Expand-Archive luarocks.zip -DestinationPath .
-        Move-Item luarocks-3.11.1-windows-x86_64 C:\luarocks
+        Move-Item luarocks-3.13.0-windows-64 C:\luarocks
         $env:PATH += ";C:\luarocks"
         [Environment]::SetEnvironmentVariable("Path", $env:PATH, "Machine")
 
