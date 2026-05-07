@@ -9,7 +9,6 @@ on:
 
 env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -26,7 +25,7 @@ jobs:
       with:
         path: |
           ${{ env.VCPKG_ROOT }}
-          ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          vcpkg-cache
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-
@@ -34,8 +33,7 @@ jobs:
     - name: Setup vcpkg
       if: steps.vcpkg-cache.outputs.cache-hit != 'true'
       run: |
-        Write-Host "首次运行：克隆 vcpkg（约 2-3 分钟）"
-        Write-Host "后续运行将使用缓存，无需重新克隆"
+        Write-Host "克隆 vcpkg..."
         git clone https://github.com/Microsoft/vcpkg.git
         cd vcpkg
         .\bootstrap-vcpkg.bat
@@ -43,25 +41,16 @@ jobs:
     - name: Create binary cache directory
       run: New-Item -ItemType Directory -Force -Path "vcpkg-cache"
 
-    - name: Configure vcpkg binary cache
-      run: |
-        $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
-        $cacheDir = (Resolve-Path "vcpkg-cache").Path
-        # 配置 vcpkg 使用二进制缓存
-        $env:VCPKG_DEFAULT_BINARY_CACHE = $cacheDir
-        # 启用二进制缓存（只从缓存读取，不上传，因为 Actions cache 会自动处理）
-        $env:VCPKG_BINARY_SOURCES = "clear;files,$cacheDir,read"
-        Write-Host "VCPKG_DEFAULT_BINARY_CACHE=$env:VCPKG_DEFAULT_BINARY_CACHE"
-
     - name: Install vcpkg dependencies
       run: |
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
         $cacheDir = (Resolve-Path "vcpkg-cache").Path
-        $env:VCPKG_DEFAULT_BINARY_CACHE = $cacheDir
-        $env:VCPKG_BINARY_SOURCES = "clear;files,$cacheDir,read"
-        Write-Host "安装依赖（使用缓存）..."
-        # 使用项目 manifest，显示详细日志
-        .\vcpkg\vcpkg install --triplet=x64-windows --vcpkg-root "$env:VCPKG_ROOT_ABS"
+        # 配置二进制源：官方缓存 + 本地缓存（写入）
+        # 官方缓存优先，读取速度快；本地缓存作为备选和存储
+        $env:VCPKG_BINARY_SOURCES = "x-azurl,https://nuget.pkg.github.com/microsoft/vcpkg-cache,readwrite;files,$cacheDir,readwrite"
+        Write-Host "VCPKG_BINARY_SOURCES=$env:VCPKG_BINARY_SOURCES"
+        Write-Host "从微软官方二进制缓存下载（如果可用），否则使用本地缓存..."
+        .\vcpkg\vcpkg install --triplet=x64-windows
 
     - name: Configure CMake (Debug)
       run: |
@@ -127,13 +116,14 @@ jobs:
       with:
         path: |
           ${{ env.VCPKG_ROOT }}
+          vcpkg-cache
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         fail-on-cache-miss: false
 
     - name: Setup vcpkg (if cache miss)
       if: steps.vcpkg-cache.outputs.cache-hit != 'true'
       run: |
-        Write-Host "首次运行：克隆 vcpkg"
+        Write-Host "克隆 vcpkg"
         git clone https://github.com/Microsoft/vcpkg.git
         cd vcpkg
         .\bootstrap-vcpkg.bat
