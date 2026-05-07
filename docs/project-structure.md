@@ -65,3 +65,42 @@ Web 前端，基于 VitePress + Vue 构建。
 
 ### tools/inspector/
 图形化开发工具，用于快速验证功能（截图、像素检测、图像匹配等）。
+
+## 构建说明
+
+### Windows
+使用 vcpkg 管理依赖：
+```bash
+cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build build --config Release
+```
+
+### macOS
+使用 Homebrew 安装依赖后构建：
+```bash
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+```
+
+## Phase 6: 测试与迁移
+
+### 跨平台构建
+- [x] Windows (vcpkg)
+- [x] macOS (Homebrew)
+- [ ] Linux (待测试)
+
+### 测试覆盖
+- C++ 单元测试：`tests/cpp/` (30+ 测试文件)
+- Lua 单元测试：`tests/unit/` (busted 框架)
+- 集成测试：`tests/integration/`
+
+启用测试构建：
+```bash
+cmake -DWINGMAN_BUILD_TESTS=ON ...
+```
+
+### 待完成
+- [ ] Linux 构建测试
+- [ ] CI/CD 配置
+- [ ] 性能基准测试自动化
+- [ ] API 文档生成
