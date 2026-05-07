@@ -108,6 +108,8 @@ set(CORE_SOURCES
     src/qrcode.cpp
     # UI Automation
     src/ui_automation.cpp
+    # Human Input
+    src/human.cpp
 )
 
 # OCR support (conditional)

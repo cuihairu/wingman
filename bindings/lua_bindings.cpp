@@ -30,6 +30,7 @@
 #include "wingman/ui_automation.hpp"
 #include "wingman/version.hpp"
 #include "wingman/script_manager.hpp"
+#include "wingman/human.hpp"
 
 #include <cstring>
 #include <ctime>
@@ -135,6 +136,7 @@ void LuaState::registerAPIs() {
     registerVerificationModule();
     registerQRCodeModule();
     registerUIAutomationModule();
+    registerHumanModule();
 
     // 注册扩展模块
     wingman::lua::registerHttpModule(L);
@@ -4757,6 +4759,268 @@ void LuaState::registerUIAutomationModule() {
     lua_setfield(L, -2, "removeEventListener");
 
     lua_setglobal(L, "uia");
+}
+
+// ============================================================================
+// Human 模块 (人性化操作)
+// ============================================================================
+
+namespace human {
+
+// ========== human.mouse 函数 ==========
+
+int mouseMove(lua_State* L) {
+    int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+    Human::mouse().moveTo(x, y);
+    return 0;
+}
+
+int mouseMoveWithDuration(lua_State* L) {
+    int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+    int duration = luaL_optinteger(L, 3, 200);
+    Human::mouse().moveTo(x, y, duration);
+    return 0;
+}
+
+int mouseClick(lua_State* L) {
+    int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+    Human::mouse().click(x, y);
+    return 0;
+}
+
+int mouseRightClick(lua_State* L) {
+    int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+    Human::mouse().rightClick(x, y);
+    return 0;
+}
+
+int mouseDoubleClick(lua_State* L) {
+    int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+    Human::mouse().doubleClick(x, y);
+    return 0;
+}
+
+int mouseDrag(lua_State* L) {
+    int fromX = luaL_checkinteger(L, 1);
+    int fromY = luaL_checkinteger(L, 2);
+    int toX = luaL_checkinteger(L, 3);
+    int toY = luaL_checkinteger(L, 4);
+    Human::mouse().drag(fromX, fromY, toX, toY);
+    return 0;
+}
+
+int mouseScroll(lua_State* L) {
+    int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+    int delta = luaL_optinteger(L, 3, 120);
+    Human::mouse().scroll(x, y, delta);
+    return 0;
+}
+
+int mouseGetPosition(lua_State* L) {
+    Point pos = Human::mouse().getCurrentPosition();
+    pushPoint(L, pos);
+    return 1;
+}
+
+// ========== human.mouse 配置函数 ==========
+
+int mouseSetConfig(lua_State* L) {
+    if (!lua_istable(L, 1)) {
+        return luaL_error(L, "config must be a table");
+    }
+
+    HumanMouseConfig config;
+
+    // 读取配置参数
+    lua_getfield(L, 1, "minMoveDuration");
+    if (lua_isinteger(L, -1)) config.minMoveDuration = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "maxMoveDuration");
+    if (lua_isinteger(L, -1)) config.maxMoveDuration = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "moveVariance");
+    if (lua_isinteger(L, -1)) config.moveVariance = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "pathVariance");
+    if (lua_isinteger(L, -1)) config.pathVariance = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "clickDelayMin");
+    if (lua_isinteger(L, -1)) config.clickDelayMin = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "clickDelayMax");
+    if (lua_isinteger(L, -1)) config.clickDelayMax = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "enableRandomDelay");
+    if (lua_isboolean(L, -1)) config.enableRandomDelay = lua_toboolean(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "enablePathRandomness");
+    if (lua_isboolean(L, -1)) config.enablePathRandomness = lua_toboolean(L, -1);
+    lua_pop(L, 1);
+
+    Human::mouse().setConfig(config);
+    return 0;
+}
+
+int mouseGetConfig(lua_State* L) {
+    HumanMouseConfig config = Human::mouse().getConfig();
+
+    lua_newtable(L);
+    lua_pushinteger(L, config.minMoveDuration);
+    lua_setfield(L, -2, "minMoveDuration");
+    lua_pushinteger(L, config.maxMoveDuration);
+    lua_setfield(L, -2, "maxMoveDuration");
+    lua_pushinteger(L, config.moveVariance);
+    lua_setfield(L, -2, "moveVariance");
+    lua_pushinteger(L, config.pathVariance);
+    lua_setfield(L, -2, "pathVariance");
+    lua_pushinteger(L, config.clickDelayMin);
+    lua_setfield(L, -2, "clickDelayMin");
+    lua_pushinteger(L, config.clickDelayMax);
+    lua_setfield(L, -2, "clickDelayMax");
+    lua_pushboolean(L, config.enableRandomDelay);
+    lua_setfield(L, -2, "enableRandomDelay");
+    lua_pushboolean(L, config.enablePathRandomness);
+    lua_setfield(L, -2, "enablePathRandomness");
+
+    return 1;
+}
+
+// ========== human.keyboard 函数 ==========
+
+int keyPress(lua_State* L) {
+    int vkCode = luaL_checkinteger(L, 1);
+    Human::keyboard().key(vkCode);
+    return 0;
+}
+
+int keyDown(lua_State* L) {
+    int vkCode = luaL_checkinteger(L, 1);
+    Human::keyboard().keyDown(vkCode);
+    return 0;
+}
+
+int keyUp(lua_State* L) {
+    int vkCode = luaL_checkinteger(L, 1);
+    Human::keyboard().keyUp(vkCode);
+    return 0;
+}
+
+int typeText(lua_State* L) {
+    const char* text = luaL_checkstring(L, 1);
+    bool randomCase = lua_toboolean(L, 2);
+    Human::keyboard().type(text, randomCase);
+    return 0;
+}
+
+// ========== human.keyboard 配置函数 ==========
+
+int keyboardSetConfig(lua_State* L) {
+    if (!lua_istable(L, 1)) {
+        return luaL_error(L, "config must be a table");
+    }
+
+    HumanKeyboardConfig config;
+
+    lua_getfield(L, 1, "keyDownDelayMin");
+    if (lua_isinteger(L, -1)) config.keyDownDelayMin = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "keyDownDelayMax");
+    if (lua_isinteger(L, -1)) config.keyDownDelayMax = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "typeDelayMin");
+    if (lua_isinteger(L, -1)) config.typeDelayMin = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "typeDelayMax");
+    if (lua_isinteger(L, -1)) config.typeDelayMax = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "enableRandomDelay");
+    if (lua_isboolean(L, -1)) config.enableRandomDelay = lua_toboolean(L, -1);
+    lua_pop(L, 1);
+
+    Human::keyboard().setConfig(config);
+    return 0;
+}
+
+} // namespace human
+
+void LuaState::registerHumanModule() {
+    // 创建 human 全局表
+    lua_newtable(L);
+
+    // ---------- mouse 子表 ----------
+    lua_newtable(L);
+
+    lua_pushcfunction(L, human::mouseMove);
+    lua_setfield(L, -2, "move");
+
+    lua_pushcfunction(L, human::mouseMoveWithDuration);
+    lua_setfield(L, -2, "moveTo");
+
+    lua_pushcfunction(L, human::mouseClick);
+    lua_setfield(L, -2, "click");
+
+    lua_pushcfunction(L, human::mouseRightClick);
+    lua_setfield(L, -2, "rightClick");
+
+    lua_pushcfunction(L, human::mouseDoubleClick);
+    lua_setfield(L, -2, "doubleClick");
+
+    lua_pushcfunction(L, human::mouseDrag);
+    lua_setfield(L, -2, "drag");
+
+    lua_pushcfunction(L, human::mouseScroll);
+    lua_setfield(L, -2, "scroll");
+
+    lua_pushcfunction(L, human::mouseGetPosition);
+    lua_setfield(L, -2, "getPosition");
+
+    lua_pushcfunction(L, human::mouseSetConfig);
+    lua_setfield(L, -2, "setConfig");
+
+    lua_pushcfunction(L, human::mouseGetConfig);
+    lua_setfield(L, -2, "getConfig");
+
+    lua_setfield(L, -2, "mouse");
+
+    // ---------- keyboard 子表 ----------
+    lua_newtable(L);
+
+    lua_pushcfunction(L, human::keyPress);
+    lua_setfield(L, -2, "press");
+
+    lua_pushcfunction(L, human::keyDown);
+    lua_setfield(L, -2, "down");
+
+    lua_pushcfunction(L, human::keyUp);
+    lua_setfield(L, -2, "up");
+
+    lua_pushcfunction(L, human::typeText);
+    lua_setfield(L, -2, "type");
+
+    lua_pushcfunction(L, human::keyboardSetConfig);
+    lua_setfield(L, -2, "setConfig");
+
+    lua_setfield(L, -2, "keyboard");
+
+    // 设置为全局表
+    lua_setglobal(L, "human");
 }
 
 } // namespace wingman::lua
