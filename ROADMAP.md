@@ -2,7 +2,7 @@
 
 > 类似 Chimpeeon 的游戏自动化工具完整开发计划
 
-> **🚧 架构重构中 (2025)** - 正在进行多模块架构重构，详见下方 "重构计划"
+> **✅ 架构重构已完成 (2025)** - 采用 apps + lib 架构，详见 docs/architecture.md
 
 ## 参考项目分析
 
@@ -18,214 +18,134 @@
 
 ---
 
-## 🏗️ 架构重构计划 (2025)
+## 🏗️ 新架构 (2025)
 
-### 重构目标
-
-1. **多模块架构** - 分离核心库、Client、Server，便于维护和扩展
-2. **双模运行** - Client 支持主动连接和被动监听同时开启（双保险）
-3. **EmmyLua集成** - 使用成熟的 Lua 调试器而非自研
-4. **Go控制端** - Server 改用 Go 实现，利用其并发优势
-
-### 新架构设计
+### 架构设计
 
 ```
 wingman/
-├── proto/                    # Protobuf 协议定义
-│   ├── agent_api.proto       # Client API
-│   ├── common.proto          # 公共类型
-│   └── debug.proto           # 调试协议
+├── apps/                         ← 所有可执行程序
+│   ├── client/                   ← 主应用
+│   │   ├── src/
+│   │   │   ├── main.cpp          ← 入口
+│   │   │   ├── cli/              ← CLI 命令（一个文件一个命令）
+│   │   │   │   ├── start.cpp
+│   │   │   │   ├── stop.cpp
+│   │   │   │   └── status.cpp
+│   │   │   ├── modes/            ← 运行模式
+│   │   │   │   ├── active_mode.cpp      ← 使用 TcpClient
+│   │   │   │   ├── passive_mode.cpp     ← 使用 TcpServer
+│   │   │   │   └── standalone_mode.cpp
+│   │   │   └── gui/              ← GUI
+│   │   │       ├── app.cpp
+│   │   │       ├── panels/
+│   │   │       └── widgets/
+│   │   ├── include/wingman/client/
+│   │   ├── tests/
+│   │   └── CMakeLists.txt
+│   │
+│   └── inspector/                ← 检查工具
+│       ├── src/
+│       ├── include/
+│       └── CMakeLists.txt
 │
-├── libs/                     # 共享库
-│   ├── proto/        # Protobuf C++ 封装
-│   ├── transport/    # 传输层 (TCP/WebSocket)
-│   ├── core/         # 核心功能 (Screen/Input/Trigger等)
-│   ├── lua/          # Lua 引擎 + EmmyLua 集成
-│   └── debug/        # 调试器客户端
-│
-├── client/                   # C++ Client (被动执行)
+├── lib/wingman/                  ← 核心库
+│   ├── include/wingman/
+│   │   ├── screen.hpp            ← 屏幕捕获
+│   │   ├── input.hpp             ← 输入模拟
+│   │   ├── trigger.hpp           ← 触发器
+│   │   ├── vision.hpp            ← 视觉识别
+│   │   ├── behavior_tree.hpp     ← 行为树
+│   │   ├── ocr.hpp               ← OCR
+│   │   └── ...
 │   ├── src/
-│   │   ├── main.cpp
-│   │   ├── active_mode.cpp   # 主动连接 Server
-│   │   ├── passive_mode.cpp  # 被动监听端口
-│   │   └── script_engine.cpp # Lua 脚本执行
-│   ├── CMakeLists.txt
-│   └── client.toml           # Client 配置
+│   ├── tests/
+│   └── CMakeLists.txt
 │
-├── server/                   # Go Server (主动控制)
-│   ├── cmd/
-│   │   └── wingmand/
-│   ├── internal/
-│   │   ├── api/              # HTTP API
-│   │   ├── client/           # Client 管理
-│   │   └── workflow/         # 工作流编排
-│   ├── proto/                # Go Protobuf 生成代码
-│   ├── web/                  # 前端资源
-│   └── go.mod
+├── libs/                         ← 内部辅助库
+│   ├── transport/                ← 网络传输（TCP/WebSocket）
+│   │   ├── include/wingman/transport/
+│   │   │   ├── transport.hpp     ← 传输抽象
+│   │   │   ├── transport_client.hpp
+│   │   │   ├── transport_server.hpp
+│   │   │   ├── session/          ← 会话层
+│   │   │   └── channel/          ← 消息通道
+│   │   └── src/
+│   │
+│   ├── lua/                      ← Lua 绑定（桥接 Lua → 核心库）
+│   │   ├── include/wingman/lua/
+│   │   └── src/
+│   │
+│   └── proto/                    ← Protobuf
 │
-└── debugger/                 # EmmyLua 调试器集成
-    ├── emmy_core/            # EmmyLua 核心库
-    └── adapter/              # 适配层
+├── examples/                     ← 示例代码
+├── scripts/                      ← 脚本
+├── docs/                         ← 文档
+└── CMakeLists.txt                ← 根 CMake（聚合构建）
 ```
 
-### Client 配置 (client.toml)
+### 架构分层
 
-```toml
-# 运行模式配置
-[mode]
-enable_active = true           # 启用主动连接
-enable_passive = true          # 启用被动监听
-connection_strategy = "fallback"  # fallback/parallel/primary
-
-# 主动模式配置
-[active]
-server_ip = "192.168.1.100"
-server_port = 9527
-reconnect_interval = 5         # 重连间隔(秒)
-heartbeat_interval = 30        # 心跳间隔(秒)
-
-# 被动模式配置
-[passive]
-listen_ip = "0.0.0.0"
-listen_port = 9528
-
-# 单机模式配置
-[standalone]
-script_dir = "./scripts"
-auto_start = []
-
-# 调试器配置
-[debugger]
-enable = true
-listen_port = 9966
+```
+┌─────────────────────────────────────────────────────────┐
+│                    apps/                                 │
+│  ┌──────────────┐           ┌──────────────┐           │
+│  │   client     │           │  inspector   │           │
+│  │  (应用入口)   │           │  (检查工具)   │           │
+│  └──────┬───────┘           └──────────────┘           │
+└─────────┼───────────────────────────────────────────────┘
+          │
+┌─────────▼───────────────────────────────────────────────┐
+│              lib/wingman/ (核心库)                        │
+│  屏幕捕获、输入模拟、触发器、视觉识别、行为树、OCR...     │
+└─────────┬───────────────────────────────────────────────┘
+          │
+┌─────────▼───────────────────────────────────────────────┐
+│              libs/ (辅助库)                              │
+│  ┌──────────┐  ┌──────┐  ┌──────┐                      │
+│  │transport │  │ lua  │  │ proto│                      │
+│  └──────────┘  └──────┘  └──────┘                      │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Protobuf 协议设计
+### 调用链
 
-```protobuf
-// common.proto
-syntax = "proto3";
-package wingman;
-
-message JsonData {
-    string data = 1;          // JSON 字符串包裹，方便脚本扩展
-}
-
-message Empty {}
-
-// agent_api.proto
-syntax = "proto3";
-package wingman;
-
-service AgentService {
-    // 屏幕操作
-    rpc CaptureScreen(CaptureRequest) returns (CaptureResponse);
-    rpc FindColor(FindColorRequest) returns (FindColorResponse);
-
-    // 输入模拟
-    rpc Click(ClickRequest) returns (Empty);
-    rpc Move(MoveRequest) returns (Empty);
-    rpc Key(KeyRequest) returns (Empty);
-
-    // 脚本控制
-    rpc RunScript(ScriptRequest) returns (ScriptResponse);
-    rpc StopScript(StopRequest) returns (Empty);
-    rpc ListScripts(Empty) returns (ScriptList);
-
-    // 触发器管理
-    rpc AddTrigger(TriggerConfig) returns (Empty);
-    rpc RemoveTrigger(RemoveTriggerRequest) returns (Empty);
-    rpc ListTriggers(Empty) returns (TriggerList);
-}
-
-// JSON 包裹示例
-message ScriptRequest {
-    string script_path = 1;
-    JsonData params = 2;      // JSON 参数，灵活性高
-}
+```
+Lua 脚本
+    ↓
+libs/lua/ (Lua 绑定)
+    ↓
+lib/wingman/ (核心功能：screen, input, trigger...)
+    ↓
+apps/client/ (应用：CLI/GUI + 运行模式)
 ```
 
-### EmmyLua 集成
+### 运行模式
 
-```cpp
-// lua/src/debug_adapter.cpp
-#include "emmy_core.h"
+| 模式 | 说明 | Transport |
+|------|------|-----------|
+| ActiveMode | 主动连接到服务器 | TcpClient |
+| PassiveMode | 被动监听，等待连接 | TcpServer |
+| StandaloneMode | 单机模式，无网络 | - |
 
-namespace wingman::lua {
+### 设计原则
 
-class DebugAdapter {
-public:
-    void enable(int port = 9966) {
-        // 加载 EmmyLua 模块
-        lua_getglobal(L_, "require");
-        lua_pushstring(L_, "emmy_core");
-        lua_call(L_, 1, 1);
-
-        // 启动 TCP 监听
-        lua_getfield(L_, -1, "tcpListen");
-        lua_pushstring(L_, "0.0.0.0");
-        lua_pushinteger(L_, port);
-        lua_call(L_, 2, 0);
-    }
-
-    void wait() {
-        // 等待 IDE 连接
-        lua_getglobal(L_, "require");
-        lua_pushstring(L_, "emmy_core");
-        lua_call(L_, 1, 1);
-
-        lua_getfield(L_, -1, "waitIDE");
-        lua_call(L_, 0, 0);
-    }
-};
-
-} // namespace wingman::lua
-```
+1. **核心库独立** - `lib/wingman/` 不依赖 `apps/`，可单独复用
+2. **就近测试** - 每个模块都有自己的 `tests/` 目录
+3. **职责清晰** - apps（应用）、lib（核心库）、libs（辅助库）分离
+4. **命名空间对应** - `include/wingman/xxx.hpp` → `namespace wingman::xxx`
 
 ### 重构里程碑
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
 | Phase 1 | Protobuf 协议定义 + 多模块 CMake | ✅ 已完成 |
-| Phase 2 | wingman-* 共享库迁移 | ✅ 已完成 |
-| Phase 3 | Client 重构 (主动/被动/单机) | ✅ 已完成 |
-| Phase 4 | EmmyLua 集成 | ✅ 已完成 |
-| Phase 5 | Go Server 实现 | ✅ 已完成 |
-| Phase 6 | 测试与迁移 | 🚧 进行中 |
-
----
-
-## 原架构 (待废弃)
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Wingman (旧)                         │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
-│  │   Client    │  │   Web UI    │  │   VS Code Debug     │ │
-│  │ (Python/JS) │  │ (Dashboard) │  │      Extension      │ │
-│  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘ │
-│         │                │                    │             │
-│         └────────────────┴────────────────────┘             │
-│                          │                                 │
-│         ┌────────────────▼────────────────┐                │
-│         │       TCP / WebSocket           │                │
-│         └────────────────┬────────────────┘                │
-│                          │                                 │
-│  ┌───────────────────────▼──────────────────────────────┐  │
-│  │                   Core Engine                        │  │
-│  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐         │  │
-│  │  │ Screen │ │ Input  │ │Window  │ │Process │         │  │
-│  │  └────────┘ └────────┘ └────────┘ └────────┘         │  │
-│  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐         │  │
-│  │  │ Trigger│ │  Macro │ │ Human  │ │  Log   │         │  │
-│  │  └────────┘ └────────┘ └────────┘ └────────┘         │  │
-│  │  ┌─────────────────────────────────────────┐          │  │
-│  │  │           Lua Runtime                  │          │  │
-│  │  └─────────────────────────────────────────┘          │  │
-│  └─────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
+| Phase 2 | 目录结构重组 (apps + lib) | ✅ 已完成 |
+| Phase 3 | 核心库迁移 (libs/core → lib/wingman) | ✅ 已完成 |
+| Phase 4 | Client 重构 (主动/被动/单机) | ✅ 已完成 |
+| Phase 5 | GUI 迁移到 apps/client | ✅ 已完成 |
+| Phase 6 | EmmyLua 集成 | ✅ 已完成 |
+| Phase 7 | 测试与文档 | 🚧 进行中 |
 
 ---
 
@@ -270,9 +190,10 @@ end
 
 ### 1.3 命令行工具 (1周)
 ```bash
-wingman.exe script.lua              # 运行脚本
-wingman.exe --record macro.lua      # 录制宏
-wingman.exe --test pixel.lua        # 测试模式
+wingman.exe start              # 启动服务
+wingman.exe stop               # 停止服务
+wingman.exe status             # 查看状态
+wingman.exe script.lua         # 运行脚本
 ```
 
 **交付物**: 可运行的 CLI 版本
@@ -420,8 +341,8 @@ result = client.script.run_file("auto_farm.lua")
 ```
 
 ### 5.2 技术选型
-- **Qt6** - C++ 原生，跨平台
 - **Dear ImGui** - 轻量级，游戏内调试
+- **Qt6** - C++ 原生，跨平台 (后期)
 - **Electron + Web** - 现代化 UI (后期)
 
 **交付物**: 图形化配置工具
@@ -599,59 +520,26 @@ local wingman = require('wingman')
 
 ---
 
-## 下一阶段行动 (重构优先)
+## 下一阶段行动
 
-### 🔥 当前重点 - 多模块架构重构
+### 🔥 当前重点
 
 | 优先级 | 任务 | 预计时间 | 状态 |
 |--------|------|----------|------|
-| P0 | 定义 Protobuf 协议 (agent_api.proto, common.proto) | 1天 | ✅ |
-| P0 | 创建多模块 CMake 结构 (libs/, client/) | 1天 | ✅ |
-| P1 | 迁移核心代码到 core | 2天 | ✅ |
-| P1 | 实现 Client 主动/被动模式 | 2天 | ✅ |
-| P1 | 集成 EmmyLuaDebugger | 1天 | ✅ |
-| P2 | Go Server 基础框架 | 3天 | ✅ |
-| P2 | Protobuf Go 代码生成 | 1天 | ✅ |
+| P0 | 跨平台构建测试 | 1天 | 🚧 |
+| P0 | 集成测试覆盖 | 2天 | - |
+| P1 | 性能基准测试 | 1天 | - |
+| P1 | 文档完善 | 2天 | - |
 
-### 📋 重构检查清单
-
-#### Phase 1: 协议与结构
-- [x] 创建 proto/ 目录
-- [x] 定义 common.proto (JsonData 包装)
-- [x] 定义 agent_api.proto (完整 API)
-- [x] 定义 debug.proto (调试协议)
-- [x] 创建 libs/ 子目录结构
-- [x] 更新根 CMakeLists.txt 支持多模块
-
-#### Phase 2: 核心库迁移
-- [x] 创建 core (Screen/Input/Trigger/Window...)
-- [x] 创建 lua (Lua 引擎 + 绑定)
-- [x] 创建 proto (Protobuf C++ 封装)
-- [x] 创建 transport (TCP/WebSocket)
-
-#### Phase 3: Client 重构
-- [x] 实现 ActiveMode (主动连接 Server)
-- [x] 实现 PassiveMode (被动监听)
-- [x] 实现 StandaloneMode (单机脚本)
-- [x] client.toml 配置解析
-
-#### Phase 4: EmmyLua 集成
-- [x] 添加 EmmyLuaDebugger 为依赖
-- [x] 创建 debug 适配层
-- [x] 测试 VS Code 断点调试
-
-#### Phase 5: Go Server
-- [x] 初始化 Go 项目结构
-- [x] 生成 Protobuf Go 代码
-- [x] 实现 Client 管理器
-- [x] 实现 HTTP API
+### 📋 检查清单
 
 #### Phase 6: 测试与迁移 (进行中)
 - [ ] 跨平台构建测试 (Windows/macOS/Linux)
 - [ ] 集成测试覆盖
 - [ ] 性能基准测试
 - [ ] 文档完善
+- [ ] 示例代码更新
 
 ---
 
-需要我开始实现哪个任务？
+参考项目：[moderncpp-project-template](https://github.com/madduci/moderncpp-project-template)
