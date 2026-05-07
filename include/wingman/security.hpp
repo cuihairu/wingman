@@ -58,19 +58,13 @@ public:
     const AntiDetectionConfig& getAntiDetectionConfig() const;
 
     // 获取随机延迟 (毫秒)
-    int getRandomDelay() const {
-        return 100;  // TODO: Implement when security.cpp is enabled
-    }
+    int getRandomDelay() const;
 
     // 获取随机偏移 (像素)
-    std::pair<double, double> getRandomOffset() const {
-        return {0.0, 0.0};  // TODO: Implement when security.cpp is enabled
-    }
+    std::pair<double, double> getRandomOffset() const;
 
     // 获取随机点击偏移
-    std::pair<double, double> getClickJitter() const {
-        return {0.0, 0.0};  // TODO: Implement when security.cpp is enabled
-    }
+    std::pair<double, double> getClickJitter() const;
 
     // 模拟人类行为模式
     void simulateHumanBehavior();
@@ -88,19 +82,13 @@ public:
     void disableProcessProtection();
 
     // 检查调试器
-    bool isDebuggerPresent() {
-        return false;  // TODO: Implement when security.cpp is enabled
-    }
+    bool isDebuggerPresent();
 
     // 检查虚拟机
-    bool isRunningInVM() {
-        return false;  // TODO: Implement when security.cpp is enabled
-    }
+    bool isRunningInVM();
 
     // 完整性检查
-    bool verifyIntegrity() {
-        return true;  // TODO: Implement when security.cpp is enabled
-    }
+    bool verifyIntegrity();
 
     // ========== 代码签名 ==========
 
@@ -116,26 +104,14 @@ public:
     // ========== 混淆 ==========
 
     // 加密字符串
-    static std::string encryptString(const std::string& input, const std::string& key) {
-        (void)key;
-        return input;  // TODO: Implement when security.cpp is enabled
-    }
-    static std::string decryptString(const std::string& input, const std::string& key) {
-        (void)key;
-        return input;  // TODO: Implement when security.cpp is enabled
-    }
+    static std::string encryptString(const std::string& input, const std::string& key);
+    static std::string decryptString(const std::string& input, const std::string& key);
 
     // 生成随机字符串
-    static std::string generateRandomString(size_t length) {
-        (void)length;
-        return "";  // TODO: Implement when security.cpp is enabled
-    }
+    static std::string generateRandomString(size_t length);
 
     // 哈希函数
-    static std::string hashString(const std::string& input) {
-        (void)input;
-        return "";  // TODO: Implement when security.cpp is enabled
-    }
+    static std::string hashString(const std::string& input);
 
     // ========== 内存保护 ==========
 
@@ -157,13 +133,11 @@ public:
     void secureLog(const std::string& message);
 
     // 过滤敏感信息
-    static std::string filterSensitive(const std::string& input) {
-        return input;  // TODO: Implement when security.cpp is enabled
-    }
+    static std::string filterSensitive(const std::string& input);
 
 private:
-    SecurityManager() = default;
-    ~SecurityManager() = default;
+    SecurityManager();
+    ~SecurityManager();
 
     AntiDetectionConfig m_antiDetection;
     ProcessProtectionConfig m_processProtection;

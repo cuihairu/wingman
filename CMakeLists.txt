@@ -90,7 +90,7 @@ set(CORE_SOURCES
     src/system.cpp
     src/performance.cpp
     src/script_manager.cpp
-    # src/security.cpp  # TODO: Re-enable after fixing WINTRUST issues
+    src/security.cpp
     src/game_profile.cpp
     src/storage.cpp
     src/auth.cpp
