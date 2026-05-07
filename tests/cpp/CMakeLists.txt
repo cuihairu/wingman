@@ -29,7 +29,9 @@ add_executable(wingman_tests
     ui_automation_test.cpp
     tray_test.cpp
     smart_trigger_test.cpp
-    # Note: script_manager_test.cpp, security_test.cpp, and recorder_test.cpp
+    verification_test.cpp
+    recorder_test.cpp
+    # Note: script_manager_test.cpp and security_test.cpp
     # are excluded due to unimplemented functions or compilation errors
 )
 
