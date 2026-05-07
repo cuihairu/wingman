@@ -32,6 +32,7 @@ option(WINGMAN_BUILD_SERVER "Build network server" ON)
 option(WINGMAN_BUILD_DEBUGGER "Build debugger" ON)
 option(WINGMAN_BUILD_TESTS "Build tests" OFF)
 option(WINGMAN_BUILD_LUA_HTTP "Build Lua HTTP bindings (requires sol2)" OFF)
+option(WINGMAN_BUILD_GUI "Build native GUI (requires ImGui)" ON)
 option(WINGMAN_ENABLE_OCR "Enable OCR support (requires Tesseract)" ON)
 option(WINGMAN_ENABLE_ML "Enable ML/AI support (requires ONNX Runtime)" ON)
 
@@ -46,6 +47,12 @@ find_package(Threads REQUIRED)
 find_package(Crow CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(Protobuf REQUIRED)
+
+# GUI support
+if(WINGMAN_BUILD_GUI)
+    find_package(imgui CONFIG REQUIRED)
+    message(STATUS "Native GUI support enabled")
+endif()
 
 # Testing framework
 if(WINGMAN_BUILD_TESTS)
@@ -128,6 +135,38 @@ if(WINGMAN_BUILD_LUA_HTTP)
     list(APPEND LUA_SOURCES bindings/lua_http_bindings.cpp)
     find_package(sol2 CONFIG REQUIRED)
     message(STATUS "Lua HTTP bindings enabled")
+endif()
+
+# GUI support
+if(WINGMAN_BUILD_GUI)
+    set(GUI_SOURCES
+        src/gui/imgui_backend.cpp
+        src/gui/app.cpp
+        src/gui/config.cpp
+        src/gui/panels/trigger_panel.cpp
+        src/gui/panels/script_panel.cpp
+        src/gui/panels/preview_panel.cpp
+        src/gui/panels/log_panel.cpp
+        src/gui/spdlog_sink.cpp
+        src/gui/file_dialog.cpp
+        src/gui/widgets/color_picker.cpp
+        src/gui/widgets/region_selector.cpp
+    )
+    set(GUI_HEADERS
+        include/wingman/gui/imgui_backend.hpp
+        include/wingman/gui/app.hpp
+        include/wingman/gui/config.hpp
+        include/wingman/gui/panels/trigger_panel.hpp
+        include/wingman/gui/panels/script_panel.hpp
+        include/wingman/gui/panels/preview_panel.hpp
+        include/wingman/gui/panels/log_panel.hpp
+        include/wingman/gui/spdlog_sink.hpp
+        include/wingman/gui/file_dialog.hpp
+        include/wingman/gui/widgets/color_picker.hpp
+        include/wingman/gui/widgets/region_selector.hpp
+    )
+    add_compile_definitions(WINGMAN_BUILD_GUI)
+    message(STATUS "Native GUI enabled")
 endif()
 
 # Protobuf generation
@@ -226,6 +265,13 @@ target_link_libraries(wingman PRIVATE
     user32
     gdi32
 )
+
+# GUI support
+if(WINGMAN_BUILD_GUI)
+    target_link_libraries(wingman PRIVATE imgui::imgui d3d12 dxgi)
+    target_sources(wingman PRIVATE ${GUI_SOURCES} ${GUI_HEADERS})
+    target_include_directories(wingman PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/wingman/gui)
+endif()
 
 # 复制 dashboard 静态文件到输出目录 (如果存在)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/dist")

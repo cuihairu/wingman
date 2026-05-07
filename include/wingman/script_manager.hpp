@@ -75,6 +75,9 @@ enum class ScriptEvent {
 
 using ScriptEventCallback = std::function<void(const std::string& scriptName, ScriptEvent event, const std::string& message)>;
 
+// 脚本输出回调
+using ScriptOutputCallback = std::function<void(const std::string& scriptName, const std::string& output)>;
+
 class ScriptManager {
 public:
     ScriptManager();
@@ -141,6 +144,9 @@ public:
     // 获取脚本信息
     ScriptInfo* getScriptInfo(const std::string& name);
 
+    // 获取所有脚本信息（含状态）
+    std::vector<ScriptInfo> getAllScriptInfos() const;
+
     // 获取所有脚本名称
     std::vector<std::string> getScriptNames() const;
 
@@ -154,6 +160,12 @@ public:
 
     // 设置事件回调
     void setEventCallback(ScriptEventCallback callback);
+
+    // 设置输出回调
+    void setOutputCallback(ScriptOutputCallback callback);
+
+    // 输出脚本日志
+    void logScriptOutput(const std::string& scriptName, const std::string& output);
 
     // ========== 沙箱管理 ==========
 
@@ -195,6 +207,7 @@ private:
     std::unordered_map<std::string, std::string> m_env;
     SandboxConfig m_sandboxConfig;
     ScriptEventCallback m_eventCallback;
+    ScriptOutputCallback m_outputCallback;
     bool m_globalAutoReload = false;
     bool m_hotReloadRunning = false;
     std::thread m_hotReloadThread;

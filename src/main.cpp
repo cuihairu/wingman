@@ -22,6 +22,11 @@
 #include <sol/sol.hpp>
 #endif
 
+// GUI support
+#ifdef WINGMAN_BUILD_GUI
+#include "wingman/gui/app.hpp"
+#endif
+
 #include "lua_bindings.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -255,6 +260,9 @@ void printUsage() {
 #ifdef WINGMAN_BUILD_LUA_HTTP
     std::cout << "  wingman.exe --lua-http [port] [script]  Start Lua HTTP server (default: 8081)\n";
 #endif
+#ifdef WINGMAN_BUILD_GUI
+    std::cout << "  wingman.exe --gui                    Start native GUI application\n";
+#endif
     std::cout << "  wingman.exe --pixel <x> <y>          Get pixel color at position\n";
     std::cout << "  wingman.exe --find <color> <region>  Find color on screen\n";
     std::cout << "  wingman.exe --capture [file.png]     Capture screen and save\n";
@@ -263,6 +271,9 @@ void printUsage() {
     std::cout << "\nExamples:\n";
     std::cout << "  wingman.exe script.lua\n";
     std::cout << "  wingman.exe --server\n";
+#ifdef WINGMAN_BUILD_GUI
+    std::cout << "  wingman.exe --gui\n";
+#endif
 #ifdef WINGMAN_BUILD_LUA_HTTP
     std::cout << "  wingman.exe --lua-http 8081 scripts/http_routes.lua\n";
 #endif
@@ -887,6 +898,12 @@ int main(int argc, char* argv[]) {
     if (arg1 == "--list") {
         return cmdList();
     }
+
+#ifdef WINGMAN_BUILD_GUI
+    if (arg1 == "--gui") {
+        return RunGuiApplication();
+    }
+#endif
 
     if (arg1 == "--server") {
         std::vector<std::string> args;

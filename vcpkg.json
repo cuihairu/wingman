@@ -47,7 +47,11 @@
     {
       "name": "onnxruntime",
       "platform": "windows"
+    },
+    {
+      "name": "imgui",
+      "platform": "windows"
     }
   ],
-  "builtin-baseline": "77826283b4676c526da3a5c59e6717e3775ba722"
+  "builtin-baseline": "493710c788f428c30af8c853b812d94165d43df4"
 }

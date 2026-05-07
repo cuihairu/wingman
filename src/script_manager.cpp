@@ -562,6 +562,37 @@ void ScriptManager::setEventCallback(ScriptEventCallback callback) {
     m_eventCallback = std::move(callback);
 }
 
+void ScriptManager::setOutputCallback(ScriptOutputCallback callback) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_outputCallback = std::move(callback);
+}
+
+void ScriptManager::logScriptOutput(const std::string& scriptName, const std::string& output) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_outputCallback) {
+        m_outputCallback(scriptName, output);
+    }
+}
+
+std::vector<ScriptInfo> ScriptManager::getAllScriptInfos() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    std::vector<ScriptInfo> infos;
+    infos.reserve(m_scripts.size());
+    for (const auto& pair : m_scripts) {
+        // 创建 ScriptInfo 副本（不包含 LuaState）
+        ScriptInfo info;
+        info.config = pair.second->config;
+        info.state = pair.second->state;
+        info.lastError = pair.second->lastError;
+        info.lastModified = pair.second->lastModified;
+        info.lastLoaded = pair.second->lastLoaded;
+        info.data = pair.second->data;
+        infos.push_back(std::move(info));
+    }
+    return infos;
+}
+
 // ========== 沙箱管理 ==========
 
 void ScriptManager::setSandboxConfig(const SandboxConfig& config) {

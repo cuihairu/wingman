@@ -74,6 +74,22 @@ size_t TriggerManager::add(const TriggerConfig& config) {
     return instance.id;
 }
 
+bool TriggerManager::update(size_t id, const TriggerConfig& config) {
+    Lock();
+    for (auto& t : m_triggers) {
+        if (t.id == id) {
+            t.config = config;
+            // 重置触发状态
+            t.lastTriggerTime = 0;
+            t.triggered = false;
+            Unlock();
+            return true;
+        }
+    }
+    Unlock();
+    return false;
+}
+
 void TriggerManager::remove(size_t id) {
     Lock();
     m_triggers.erase(
@@ -135,6 +151,57 @@ bool TriggerManager::isRunning(size_t id) const {
     }
     Unlock();
     return false;
+}
+
+std::vector<TriggerConfig> TriggerManager::getAllTriggerConfigs() const {
+    std::vector<TriggerConfig> result;
+    Lock();
+    result.reserve(m_triggers.size());
+    for (const auto& t : m_triggers) {
+        result.push_back(t.config);
+    }
+    Unlock();
+    return result;
+}
+
+std::vector<TriggerInstance> TriggerManager::getAllTriggerInstances() const {
+    std::vector<TriggerInstance> result;
+    Lock();
+    result = m_triggers;
+    Unlock();
+    return result;
+}
+
+std::optional<TriggerConfig> TriggerManager::getTriggerConfig(size_t id) const {
+    Lock();
+    for (const auto& t : m_triggers) {
+        if (t.id == id) {
+            auto config = t.config;
+            Unlock();
+            return config;
+        }
+    }
+    Unlock();
+    return std::nullopt;
+}
+
+bool TriggerManager::hasTrigger(size_t id) const {
+    Lock();
+    for (const auto& t : m_triggers) {
+        if (t.id == id) {
+            Unlock();
+            return true;
+        }
+    }
+    Unlock();
+    return false;
+}
+
+size_t TriggerManager::getTriggerCount() const {
+    Lock();
+    size_t count = m_triggers.size();
+    Unlock();
+    return count;
 }
 
 DWORD WINAPI TriggerManager::checkThread(LPVOID param) {
