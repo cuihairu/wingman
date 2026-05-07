@@ -9,11 +9,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找依赖
-find_package(OpenCV CONFIG REQUIRED)
+find_package(OpenCV CONFIG)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
-find_package(unofficial-sqlite3 CONFIG REQUIRED)
+find_package(unofficial-sqlite3 CONFIG)
 
 # ========== 源文件 ==========
 set(CORE_SOURCES
@@ -86,15 +86,23 @@ target_include_directories(wingman-core PUBLIC
 )
 
 # 链接库
-target_link_libraries(wingman-core PUBLIC
-    opencv_core
-    opencv_imgproc
-    opencv_imgcodecs
+set(CORE_LINK_LIBS
     spdlog::spdlog
     nlohmann_json::nlohmann_json
     CURL::libcurl
-    unofficial::sqlite3::sqlite3
 )
+
+# 添加 OpenCV（如果可用）
+if(TARGET opencv_core)
+    list(APPEND CORE_LINK_LIBS opencv_core opencv_imgproc opencv_imgcodecs)
+endif()
+
+# 添加 sqlite3（如果可用）
+if(TARGET unofficial::sqlite3::sqlite3)
+    list(APPEND CORE_LINK_LIBS unofficial::sqlite3::sqlite3)
+endif()
+
+target_link_libraries(wingman-core PUBLIC ${CORE_LINK_LIBS})
 
 # Windows 特定库
 if(WIN32)

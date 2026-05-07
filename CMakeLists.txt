@@ -50,12 +50,14 @@ option(WINGMAN_ENABLE_EMMY "Enable EmmyLua Debugger integration" ON)
 
 # ========== 核心依赖（必需）==========
 find_package(Lua REQUIRED)
-find_package(OpenCV CONFIG)
-find_package(spdlog CONFIG)
-find_package(nlohmann_json CONFIG)
-find_package(asio CONFIG)
-find_package(CURL CONFIG)
+find_package(spdlog CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(asio CONFIG REQUIRED)
+find_package(CURL CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+
+# 可选依赖
+find_package(OpenCV CONFIG)
 find_package(unofficial-sqlite3 CONFIG)
 find_package(Protobuf CONFIG)
 
@@ -266,25 +268,38 @@ target_include_directories(wingman PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings
     ${GENERATED_PROTOBUF_DIR}
+    ${LUA_INCLUDE_DIR}
 )
 
 # 链接库
-target_link_libraries(wingman PRIVATE
+set(MAIN_LINK_LIBS
     ${LUA_LIBRARIES}
-    opencv_core
-    opencv_imgproc
-    opencv_imgcodecs
     spdlog::spdlog
     nlohmann_json::nlohmann_json
     asio::asio
     CURL::libcurl
     Threads::Threads
-    unofficial::sqlite3::sqlite3
-    protobuf::libprotobuf
     gdiplus
     user32
     gdi32
 )
+
+# 添加 OpenCV（如果可用）
+if(TARGET opencv_core)
+    list(APPEND MAIN_LINK_LIBS opencv_core opencv_imgproc opencv_imgcodecs)
+endif()
+
+# 添加 sqlite3（如果可用）
+if(TARGET unofficial::sqlite3::sqlite3)
+    list(APPEND MAIN_LINK_LIBS unofficial::sqlite3::sqlite3)
+endif()
+
+# 添加 protobuf（如果可用）
+if(TARGET protobuf::libprotobuf)
+    list(APPEND MAIN_LINK_LIBS protobuf::libprotobuf)
+endif()
+
+target_link_libraries(wingman PRIVATE ${MAIN_LINK_LIBS})
 
 # GUI 链接
 if(WINGMAN_BUILD_GUI)
