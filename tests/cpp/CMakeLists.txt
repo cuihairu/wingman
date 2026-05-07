@@ -24,7 +24,10 @@ add_executable(wingman_tests
     human_test.cpp
     behavior_tree_test.cpp
     auth_test.cpp
-    # Note: kvstore_test.cpp, script_manager_test.cpp, security_test.cpp, and recorder_test.cpp
+    kvstore_test.cpp
+    qrcode_test.cpp
+    ui_automation_test.cpp
+    # Note: script_manager_test.cpp, security_test.cpp, and recorder_test.cpp
     # are excluded due to unimplemented functions or compilation errors
 )
 
@@ -62,6 +65,9 @@ target_link_libraries(wingman_tests PRIVATE
     gdiplus
     user32
     gdi32
+    ole32
+    oleaut32
+    uiautomationcore
 )
 
 # Link against the main project's object files by creating a library
@@ -90,7 +96,9 @@ target_sources(wingman_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/verification.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/qrcode.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/human.cpp
-    # Note: kvstore.cpp, script_manager.cpp, and security.cpp are excluded
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/kvstore.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/ui_automation.cpp
+    # Note: script_manager.cpp and security.cpp are excluded
     # security.cpp functions are inline in header, others have compilation errors
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bindings/lua_bindings.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bindings/lua_extensions.cpp
