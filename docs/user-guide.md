@@ -254,9 +254,23 @@ debugger.breakHere()
 
 A: 安装 [Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe)
 
+### Q: Windows SmartScreen 警告"无法验证发布者"？
+
+A: Wingman 使用自签名证书（开源项目标准做法），首次运行会看到警告：
+
+1. 点击"更多信息"
+2. 点击"仍要运行"
+
+**永久解决方案：** 信任 Wingman 证书
+
+1. 双击 `setup\wingman-cert.cer`
+2. 点击"安装证书"
+3. 选择"本地计算机"→"将所有证书放入下列存储"→"受信任的根证书颁发机构"
+4. 完成后不再出现警告
+
 ### Q: 杀毒软件误报？
 
-A: 将 Wingman 安装目录添加到杀毒软件白名单
+A: 将 Wingman 安装目录添加到杀毒软件白名单。杀毒软件对自动化工具误报是常见现象。
 
 ### Q: 脚本运行但没反应？
 
