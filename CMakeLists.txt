@@ -100,10 +100,10 @@ if(WINGMAN_BUILD_AGENT)
     add_subdirectory(libs/wingman-lua)
     add_subdirectory(libs/wingman-debug)
 
-    # Agent 可执行文件
-    add_subdirectory(agent)
+    # Client 可执行文件
+    add_subdirectory(client)
 
-    message(STATUS "Multi-module Agent build enabled")
+    message(STATUS "Multi-module Client build enabled")
 endif()
 
 # ========== 旧版构建 (保持兼容) ==========

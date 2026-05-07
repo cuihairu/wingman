@@ -23,14 +23,14 @@
          │ gRPC / TCP
          ↓
 ┌─────────────────────────────────────┐
-│   C++ Agent (独立进程)              │
-│   - wingman-agent                   │
+│   C++ Client (独立进程)              │
+│   - wingman-client                   │
 │   - Screen/Input/Window/Script...   │
 └─────────────────────────────────────┘
 
 ┌─────────────────────────────────────┐
 │   C++ TCP Server (server/)          │
-│   - Agent 间通信                    │
+│   - Client 间通信                    │
 │   - 工作流编排                      │
 └─────────────────────────────────────┘
 ```
@@ -54,7 +54,7 @@ wingman/
 │   │   │   └── auth.go
 │   │   ├── models/            # GORM 模型
 │   │   │   └── models.go
-│   │   └── agent/             # gRPC 客户端
+│   │   └── client/             # gRPC 客户端
 │   │       └── client.go
 │   ├── pkg/
 │   │   └── websocket/         # WebSocket Hub
@@ -66,7 +66,7 @@ wingman/
 ├── server/                     # C++ TCP Server (保持不变)
 │   ├── include/wingman/server/
 │   └── src/
-├── agent/                      # C++ Agent (保持不变)
+├── client/                      # C++ Client (保持不变)
 └── build/dist/                 # 前端静态文件
 ```
 
@@ -91,7 +91,7 @@ wingman/
 
 ### Phase 4: 集成与部署
 - [ ] 前端静态文件服务
-- [ ] 与 C++ Agent 联调
+- [ ] 与 C++ Client 联调
 - [ ] 构建脚本
 - [ ] 移除旧 C++ HTTP Server
 
@@ -120,7 +120,7 @@ WS     /ws                      - WebSocket 连接
 复用 `proto/agent_api.proto` 定义的接口：
 
 ```protobuf
-service AgentService {
+service ClientService {
     rpc Ping(Empty) returns (PingResponse);
     rpc RunScript(RunScriptRequest) returns (RunScriptResponse);
     rpc StopScript(StopScriptRequest) returns (Response);
@@ -170,14 +170,14 @@ cors:
 ## 构建与运行
 
 ```bash
-# 1. 编译 C++ Agent
-cd build && cmake --build . --target wingman-agent
+# 1. 编译 C++ Client
+cd build && cmake --build . --target wingman-client
 
 # 2. 编译 Go HTTP Server
 cd go-http && go build -o ../build/go-server.exe ./cmd/server
 
 # 3. 运行
-./build/wingman-agent.exe     # C++ Agent (端口 50051)
+./build/wingman-client.exe     # C++ Client (端口 50051)
 ./build/go-server.exe         # Go HTTP Server (端口 9527)
 ```
 
@@ -194,6 +194,6 @@ Go 依赖：
 
 ## 备注
 
-- C++ TCP Server (server/) 保持不变，用于 Agent 间通信
-- C++ Agent (agent/) 暴露 gRPC 服务供 Go HTTP Server 调用
+- C++ TCP Server (server/) 保持不变，用于 Client 间通信
+- C++ Client (client/) 暴露 gRPC 服务供 Go HTTP Server 调用
 - 前端 Dashboard 只与 Go HTTP Server 通信

@@ -144,7 +144,7 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		return
 	}
 
-	// TODO: 调用 C++ Agent API
+	// TODO: 调用 C++ Client API
 	scriptName := filepath.Base(req.Path)
 	scriptName = scriptName[:len(scriptName)-4] // 去掉 .lua
 
@@ -172,7 +172,7 @@ func (h *ScriptHandler) HandleStop(c *gin.Context) {
 		return
 	}
 
-	// TODO: 调用 C++ Agent API
+	// TODO: 调用 C++ Client API
 
 	h.db.Model(&models.Script{}).Where("path LIKE ?", "%"+req.ExecutionID+"%").Updates(map[string]interface{}{
 		"is_running": false,

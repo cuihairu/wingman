@@ -179,7 +179,7 @@ void Server::setHandler(RequestType type, RequestHandler handler) {
     handlers_[type] = std::move(handler);
 }
 
-// ========== Agent 管理 ==========
+// ========== Client 管理 ==========
 
 std::vector<AgentInfo> Server::getOnlineAgents() const {
     return agentManager_->getOnlineAgents();

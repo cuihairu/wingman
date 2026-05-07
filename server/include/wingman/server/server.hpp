@@ -58,7 +58,7 @@ public:
 
     void setHandler(RequestType type, RequestHandler handler);
 
-    // ========== Agent 管理 ==========
+    // ========== Client 管理 ==========
 
     // 获取所有在线客户端
     std::vector<AgentInfo> getOnlineAgents() const;
@@ -119,7 +119,7 @@ private:
     std::vector<Connection::ptr> connections_;
     std::mutex connectionsMutex_;
 
-    // Agent 管理
+    // Client 管理
     std::unique_ptr<AgentManager> agentManager_;
 
     // 工作流编排

@@ -15,7 +15,7 @@ class Connection;
 using ConnectCallback = std::function<void(const std::string& agentId, const AgentInfo& info)>;
 using DisconnectCallback = std::function<void(const std::string& agentId)>;
 
-// Agent 管理器 - 负责服务端客户端会话管理
+// Client 管理器 - 负责服务端客户端会话管理
 class AgentManager {
 public:
     AgentManager() = default;

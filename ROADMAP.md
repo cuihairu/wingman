@@ -22,8 +22,8 @@
 
 ### 重构目标
 
-1. **多模块架构** - 分离核心库、Agent、Server，便于维护和扩展
-2. **双模运行** - Agent 支持主动连接和被动监听同时开启（双保险）
+1. **多模块架构** - 分离核心库、Client、Server，便于维护和扩展
+2. **双模运行** - Client 支持主动连接和被动监听同时开启（双保险）
 3. **EmmyLua集成** - 使用成熟的 Lua 调试器而非自研
 4. **Go控制端** - Server 改用 Go 实现，利用其并发优势
 
@@ -32,7 +32,7 @@
 ```
 wingman/
 ├── proto/                    # Protobuf 协议定义
-│   ├── agent_api.proto       # Agent API
+│   ├── agent_api.proto       # Client API
 │   ├── common.proto          # 公共类型
 │   └── debug.proto           # 调试协议
 │
@@ -43,21 +43,21 @@ wingman/
 │   ├── wingman-lua/          # Lua 引擎 + EmmyLua 集成
 │   └── wingman-debug/        # 调试器客户端
 │
-├── agent/                    # C++ Agent (被动执行)
+├── client/                   # C++ Client (被动执行)
 │   ├── src/
 │   │   ├── main.cpp
 │   │   ├── active_mode.cpp   # 主动连接 Server
 │   │   ├── passive_mode.cpp  # 被动监听端口
 │   │   └── script_engine.cpp # Lua 脚本执行
 │   ├── CMakeLists.txt
-│   └── agent.toml            # Agent 配置
+│   └── client.toml           # Client 配置
 │
 ├── server/                   # Go Server (主动控制)
 │   ├── cmd/
 │   │   └── wingmand/
 │   ├── internal/
 │   │   ├── api/              # HTTP API
-│   │   ├── agent/            # Agent 管理
+│   │   ├── client/           # Client 管理
 │   │   └── workflow/         # 工作流编排
 │   ├── proto/                # Go Protobuf 生成代码
 │   ├── web/                  # 前端资源
@@ -68,7 +68,7 @@ wingman/
     └── adapter/              # 适配层
 ```
 
-### Agent 配置 (agent.toml)
+### Client 配置 (client.toml)
 
 ```toml
 # 运行模式配置
@@ -186,12 +186,12 @@ public:
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| Phase 1 | Protobuf 协议定义 + 多模块 CMake | 🚧 进行中 |
-| Phase 2 | wingman-* 共享库迁移 | ⏳ 待开始 |
-| Phase 3 | Agent 重构 (主动/被动/单机) | ⏳ 待开始 |
-| Phase 4 | EmmyLua 集成 | ⏳ 待开始 |
-| Phase 5 | Go Server 实现 | ⏳ 待开始 |
-| Phase 6 | 测试与迁移 | ⏳ 待开始 |
+| Phase 1 | Protobuf 协议定义 + 多模块 CMake | ✅ 已完成 |
+| Phase 2 | wingman-* 共享库迁移 | ✅ 已完成 |
+| Phase 3 | Client 重构 (主动/被动/单机) | ✅ 已完成 |
+| Phase 4 | EmmyLua 集成 | ✅ 已完成 |
+| Phase 5 | Go Server 实现 | ✅ 已完成 |
+| Phase 6 | 测试与迁移 | 🚧 进行中 |
 
 ---
 
@@ -603,48 +603,54 @@ local wingman = require('wingman')
 
 ### 🔥 当前重点 - 多模块架构重构
 
-| 优先级 | 任务 | 预计时间 |
-|--------|------|----------|
-| P0 | 定义 Protobuf 协议 (agent_api.proto, common.proto) | 1天 |
-| P0 | 创建多模块 CMake 结构 (libs/, agent/) | 1天 |
-| P1 | 迁移核心代码到 wingman-core | 2天 |
-| P1 | 实现 Agent 主动/被动模式 | 2天 |
-| P1 | 集成 EmmyLuaDebugger | 1天 |
-| P2 | Go Server 基础框架 | 3天 |
-| P2 | Protobuf Go 代码生成 | 1天 |
+| 优先级 | 任务 | 预计时间 | 状态 |
+|--------|------|----------|------|
+| P0 | 定义 Protobuf 协议 (agent_api.proto, common.proto) | 1天 | ✅ |
+| P0 | 创建多模块 CMake 结构 (libs/, client/) | 1天 | ✅ |
+| P1 | 迁移核心代码到 wingman-core | 2天 | ✅ |
+| P1 | 实现 Client 主动/被动模式 | 2天 | ✅ |
+| P1 | 集成 EmmyLuaDebugger | 1天 | ✅ |
+| P2 | Go Server 基础框架 | 3天 | ✅ |
+| P2 | Protobuf Go 代码生成 | 1天 | ✅ |
 
 ### 📋 重构检查清单
 
 #### Phase 1: 协议与结构
-- [ ] 创建 proto/ 目录
-- [ ] 定义 common.proto (JsonData 包装)
-- [ ] 定义 agent_api.proto (完整 API)
-- [ ] 定义 debug.proto (调试协议)
-- [ ] 创建 libs/ 子目录结构
-- [ ] 更新根 CMakeLists.txt 支持多模块
+- [x] 创建 proto/ 目录
+- [x] 定义 common.proto (JsonData 包装)
+- [x] 定义 agent_api.proto (完整 API)
+- [x] 定义 debug.proto (调试协议)
+- [x] 创建 libs/ 子目录结构
+- [x] 更新根 CMakeLists.txt 支持多模块
 
 #### Phase 2: 核心库迁移
-- [ ] 创建 wingman-core (Screen/Input/Trigger/Window...)
-- [ ] 创建 wingman-lua (Lua 引擎 + 绑定)
-- [ ] 创建 wingman-proto (Protobuf C++ 封装)
-- [ ] 创建 wingman-transport (TCP/WebSocket)
+- [x] 创建 wingman-core (Screen/Input/Trigger/Window...)
+- [x] 创建 wingman-lua (Lua 引擎 + 绑定)
+- [x] 创建 wingman-proto (Protobuf C++ 封装)
+- [x] 创建 wingman-transport (TCP/WebSocket)
 
-#### Phase 3: Agent 重构
-- [ ] 实现 ActiveMode (主动连接 Server)
-- [ ] 实现 PassiveMode (被动监听)
-- [ ] 实现 StandaloneMode (单机脚本)
-- [ ] agent.toml 配置解析
+#### Phase 3: Client 重构
+- [x] 实现 ActiveMode (主动连接 Server)
+- [x] 实现 PassiveMode (被动监听)
+- [x] 实现 StandaloneMode (单机脚本)
+- [x] client.toml 配置解析
 
 #### Phase 4: EmmyLua 集成
-- [ ] 添加 EmmyLuaDebugger 为依赖
-- [ ] 创建 wingman-debug 适配层
-- [ ] 测试 VS Code 断点调试
+- [x] 添加 EmmyLuaDebugger 为依赖
+- [x] 创建 wingman-debug 适配层
+- [x] 测试 VS Code 断点调试
 
 #### Phase 5: Go Server
-- [ ] 初始化 Go 项目结构
-- [ ] 生成 Protobuf Go 代码
-- [ ] 实现 Agent 管理器
-- [ ] 实现 HTTP API
+- [x] 初始化 Go 项目结构
+- [x] 生成 Protobuf Go 代码
+- [x] 实现 Client 管理器
+- [x] 实现 HTTP API
+
+#### Phase 6: 测试与迁移 (进行中)
+- [ ] 跨平台构建测试 (Windows/macOS/Linux)
+- [ ] 集成测试覆盖
+- [ ] 性能基准测试
+- [ ] 文档完善
 
 ---
 

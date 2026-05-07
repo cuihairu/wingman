@@ -64,7 +64,7 @@ cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=vcp
 
 ```
 wingman/
-├── agent/              # Agent 可执行文件
+├── client/             # Client 可执行文件
 │   ├── src/           # 源文件
 │   ├── include/       # 头文件
 │   └── config/        # 配置文件
@@ -81,7 +81,7 @@ wingman/
 
 ## 模块说明
 
-### Agent 模式
+### Client 模式
 
 - **ActiveMode**: 主动连接服务器
 - **PassiveMode**: 监听客户端连接

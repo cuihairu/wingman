@@ -42,7 +42,7 @@ type Message struct {
 	Body   []byte
 }
 
-// Client TCP 客户端，连接到 C++ Agent
+// Client TCP 客户端，连接到 C++ Client
 type Client struct {
 	address  string
 	conn     net.Conn

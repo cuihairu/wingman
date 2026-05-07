@@ -18,7 +18,7 @@ const (
 	Port         = 9527
 	DbPath       = "./data/wingman.db"
 	StaticDir    = "../build/dist"
-	AgentAddress = "localhost:8888" // C++ Agent HTTP API
+	AgentAddress = "localhost:8888" // C++ Client HTTP API
 )
 
 func main() {

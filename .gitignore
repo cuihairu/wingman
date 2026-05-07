@@ -110,3 +110,9 @@ docs/node_modules/
 # Claude Code local files
 .claude/
 _deps/
+
+# Package manager temporary files (using vcpkg, not conan)
+conan-build/
+conanfile.txt
+clients/
+/*.cmake

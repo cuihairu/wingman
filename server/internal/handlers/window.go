@@ -16,7 +16,7 @@ func NewWindowHandler() *WindowHandler {
 
 // HandleList 获取窗口列表
 func (h *WindowHandler) HandleList(c *gin.Context) {
-	// TODO: 调用 C++ Agent API
+	// TODO: 调用 C++ Client API
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    []interface{}{},

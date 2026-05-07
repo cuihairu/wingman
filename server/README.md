@@ -13,7 +13,7 @@ server/
 │   ├── middleware/     # 中间件 (CORS, JWT)
 │   └── models/         # GORM 数据模型
 ├── pkg/                # 公共包
-│   ├── agent/          # C++ Agent HTTP 客户端
+│   ├── agent/          # C++ Client HTTP 客户端
 │   └── websocket/      # WebSocket Hub
 ├── include/            # C++ 头文件 (保留)
 ├── src/                # C++ 源文件 (保留)
@@ -30,7 +30,7 @@ go build -o ../build/go-server.exe .
 ## 运行
 
 ```bash
-# 1. 启动 C++ Agent (监听 8888 端口)
+# 1. 启动 C++ Client (监听 8888 端口)
 ./build/wingman-agent.exe
 
 # 2. 启动 Go HTTP Server (监听 9527 端口)
