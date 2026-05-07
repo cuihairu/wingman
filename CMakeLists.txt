@@ -48,6 +48,11 @@ option(WINGMAN_ENABLE_ML "Enable ML/AI support (requires ONNX Runtime)" OFF)  # 
 option(WINGMAN_BUILD_AGENT "Build new Agent (multi-module)" ON)
 option(WINGMAN_ENABLE_EMMY "Enable EmmyLua Debugger integration" ON)
 
+# ========== 测试选项 ==========
+option(BUILD_CLIENT_TESTS "Build client tests" OFF)
+option(BUILD_CORE_TESTS "Build core library tests" OFF)
+option(BUILD_TRANSPORT_TESTS "Build transport library tests" OFF)
+
 # ========== 核心依赖（必需）==========
 find_package(Lua REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
@@ -348,10 +353,20 @@ if(WINGMAN_BUILD_DEBUGGER)
     endif()
 endif()
 
-# 测试
+# ========== 测试（新架构）==========
 if(WINGMAN_BUILD_TESTS)
     enable_testing()
-    add_subdirectory(tests/cpp)
+
+    # 各模块测试
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/core/tests/CMakeLists.txt")
+        add_subdirectory(libs/core/tests)
+    endif()
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/transport/tests/CMakeLists.txt")
+        add_subdirectory(libs/transport/tests)
+    endif()
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/client/tests/CMakeLists.txt")
+        add_subdirectory(client/tests)
+    endif()
 endif()
 
 # ========== 安装 ==========

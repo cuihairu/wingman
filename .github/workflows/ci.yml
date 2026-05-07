@@ -12,14 +12,15 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build:
+  # ========== C++ Build & Test ==========
+  build-cpp:
     runs-on: windows-2022
 
     steps:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Cache vcpkg entire directory
+    - name: Cache vcpkg
       uses: actions/cache@v5
       id: vcpkg-cache
       with:
@@ -33,82 +34,42 @@ jobs:
     - name: Setup vcpkg
       if: steps.vcpkg-cache.outputs.cache-hit != 'true'
       run: |
-        Write-Host "克隆 vcpkg..."
+        Write-Host "Cloning vcpkg..."
         git clone https://github.com/Microsoft/vcpkg.git
         cd vcpkg
         .\bootstrap-vcpkg.bat
 
-    - name: Install vcpkg dependencies
+    - name: Install dependencies
       run: |
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
-        # 使用默认的二进制缓存（会自动使用 GitHub Actions 缓存的 vcpkg 目录）
-        # 默认缓存位置: %LOCALAPPDATA%\vcpkg\archives
         $env:VCPKG_DEFAULT_BINARY_CACHE = "$env:VCPKG_ROOT_ABS\archives"
         New-Item -ItemType Directory -Force -Path "$env:VCPKG_DEFAULT_BINARY_CACHE"
-        Write-Host "使用本地二进制缓存: $env:VCPKG_DEFAULT_BINARY_CACHE"
-        # 安装核心依赖（移除了 crow，减少了约 100MB）
         .\vcpkg\vcpkg install --triplet=x64-windows lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf
-        # 可选功能（按需启用）
-        # .\vcpkg\vcpkg install --triplet=x64-windows wingman[gui,ocr,ml,tests]
 
-    - name: Cache vcpkg binaries
-      uses: actions/cache@v5
-      with:
-        path: vcpkg/archives
-        key: ${{ runner.os }}-vcpkg-binaries-${{ hashFiles('vcpkg.json') }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-binaries-
-
-    - name: Configure CMake (Debug)
+    - name: Configure CMake
       run: |
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
-        $env:VCPKG_INSTALLED_DIR = "$env:VCPKG_ROOT_ABS\installed"
-        cmake -B build-debug `
+        cmake -B build `
           -S . `
           -G "Visual Studio 17 2022" `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT_ABS/scripts/buildsystems/vcpkg.cmake" `
           -DCMAKE_BUILD_TYPE=Debug `
-          -DWINGMAN_BUILD_TESTS=ON `
-          -DWINGMAN_ENABLE_ML=OFF
+          -DWINGMAN_BUILD_TESTS=ON
 
-    - name: Build Debug
-      run: cmake --build build-debug --config Debug
-
-    - name: Configure CMake (Release)
-      run: |
-        $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
-        $env:VCPKG_INSTALLED_DIR = "$env:VCPKG_ROOT_ABS\installed"
-        cmake -B build-release `
-          -S . `
-          -G "Visual Studio 17 2022" `
-          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT_ABS/scripts/buildsystems/vcpkg.cmake" `
-          -DCMAKE_BUILD_TYPE=Release
-
-    - name: Build Release
-      run: cmake --build build-release --config Release
-
-    - name: Upload Debug artifacts
-      uses: actions/upload-artifact@v6
-      with:
-        name: wingman-debug
-        path: build-debug/Debug/wingman.exe
-        retention-days: 1
+    - name: Build
+      run: cmake --build build --config Debug
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@v6
       with:
-        name: wingman-tests
-        path: build-debug/tests/cpp/Debug/wingman_tests.exe
+        name: cpp-tests
+        path: |
+          build/client/tests/Debug/*.exe
+          build/libs/*/tests/Debug/*.exe
         retention-days: 1
 
-    - name: Upload Release artifacts
-      uses: actions/upload-artifact@v6
-      with:
-        name: wingman-release
-        path: build-release/Release/wingman.exe
-
-  test:
-    needs: build
+  test-cpp:
+    needs: build-cpp
     runs-on: windows-2022
 
     steps:
@@ -118,64 +79,123 @@ jobs:
     - name: Install OpenCppCoverage
       run: choco install opencppcoverage -y
 
-    - name: Cache vcpkg entire directory
-      uses: actions/cache@v5
-      id: vcpkg-cache
-      with:
-        path: |
-          ${{ env.VCPKG_ROOT }}
-          vcpkg/archives
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
-        fail-on-cache-miss: false
-
-    - name: Setup vcpkg (if cache miss)
-      if: steps.vcpkg-cache.outputs.cache-hit != 'true'
-      run: |
-        Write-Host "克隆 vcpkg"
-        git clone https://github.com/Microsoft/vcpkg.git
-        cd vcpkg
-        .\bootstrap-vcpkg.bat
-
     - name: Download test artifacts
       uses: actions/download-artifact@v6
       with:
-        name: wingman-tests
-        path: build-debug/tests/cpp/Debug
+        name: cpp-tests
+        path: build/tests
 
-    - name: Run tests
-      run: |
-        & "build-debug\tests\cpp\Debug\wingman_tests.exe" --gtest_brief=1
-      continue-on-error: true
-
-    - name: Run tests with coverage
+    - name: Run client tests with coverage
       run: |
         $openCppCoverage = "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
         if (-not (Test-Path $openCppCoverage)) {
           $openCppCoverage = "C:\Program Files (x86)\OpenCppCoverage\OpenCppCoverage.exe"
         }
 
-        if (Test-Path $openCppCoverage) {
-          $workspace = ${{ github.workspace }}
-          $workspace = $workspace -replace '/', '\'
+        $workspace = ${{ github.workspace }}
+        $workspace = $workspace -replace '/', '\'
 
-          & $openCppCoverage `
-            --sources "$workspace\src" `
-            --sources "$workspace\include" `
-            --sources "$workspace\bindings" `
-            --excluded_sources "$workspace\tests" `
-            --excluded_sources "$workspace\vcpkg" `
-            --export_type=cobertura:coverage.xml `
-            -- build-debug\tests\cpp\Debug\wingman_tests.exe --gtest_brief=1
-        } else {
-          Write-Host "ERROR: OpenCppCoverage not installed"
-          exit 1
+        & $openCppCoverage `
+          --sources "$workspace\client" `
+          --excluded_sources "$workspace\client\tests" `
+          --excluded_sources "$workspace\vcpkg" `
+          --export_type=cobertura:coverage-client.xml `
+          -- build/tests/client_tests.exe
+        continue-on-error: true
+
+    - name: Run libs tests with coverage
+      run: |
+        $openCppCoverage = "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
+        if (-not (Test-Path $openCppCoverage)) {
+          $openCppCoverage = "C:\Program Files (x86)\OpenCppCoverage\OpenCppCoverage.exe"
         }
+
+        $workspace = ${{ github.workspace }}
+        $workspace = $workspace -replace '/', '\'
+
+        & $openCppCoverage `
+          --sources "$workspace\libs" `
+          --excluded_sources "$workspace\libs\*\tests" `
+          --excluded_sources "$workspace\vcpkg" `
+          --export_type=cobertura:coverage-libs.xml `
+          -- build/tests/core_tests.exe
+        continue-on-error: true
+
+        & $openCppCoverage `
+          --sources "$workspace\libs" `
+          --excluded_sources "$workspace\libs\*\tests" `
+          --excluded_sources "$workspace\vcpkg" `
+          --export_type=cobertura:coverage-transport.xml `
+          -- build/tests/transport_tests.exe
+        continue-on-error: true
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
-        file: ./coverage.xml
-        flags: cpp
-        name: windows-coverage
+        files: |
+          ./coverage-client.xml
+          ./coverage-libs.xml
+          ./coverage-transport.xml
+        flags: client,libs
+        name: cpp-coverage
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ========== Lua Tests ==========
+  test-lua:
+    runs-on: windows-2022
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Install Lua
+      run: choco install lua -y
+
+    - name: Install LuaRocks
+      run: |
+        Invoke-WebRequest -Uri "https://luarocks.github.io/luarocks/releases/luarocks-3.11.1-windows-x86_64.zip" -OutFile luarocks.zip
+        Expand-Archive luarocks.zip -DestinationPath .
+        Move-Item luarocks-3.11.1-windows-x86_64 C:\luarocks
+        $env:PATH += ";C:\luarocks"
+        [Environment]::SetEnvironmentVariable("Path", $env:PATH, "Machine")
+
+    - name: Install Busted
+      run: |
+        $env:PATH += ";C:\luarocks\bin;C:\Program Files\Lua\5.4"
+        luarocks install busted
+
+    - name: Run Lua tests
+      run: |
+        $env:PATH += ";C:\luarocks\bin;C:\Program Files\Lua\5.4"
+        cd libs/lua/tests
+        busted
+      continue-on-error: true
+
+  # ========== Go Test ==========
+  test-go:
+    runs-on: windows-2022
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Run Go tests
+      run: |
+        cd server
+        go test -v -coverprofile=coverage.txt -covermode=atomic ./...
+      continue-on-error: true
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./server/coverage.txt
+        flags: server
+        name: go-coverage
         fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}

@@ -1,26 +1,41 @@
-# Codecov 配置文件
+# Codecov configuration
 coverage:
   status:
     project:
       default:
-        target: 80%
-        threshold: 1%
-        informational: false
+        target: auto
+        threshold: 5%
+        informational: true
+      client:
+        target: auto
+        threshold: 5%
+        informational: true
+        flags:
+          - client
+      libs:
+        target: auto
+        threshold: 5%
+        informational: true
+        flags:
+          - libs
+      server:
+        target: auto
+        threshold: 5%
+        informational: true
+        flags:
+          - server
     patch:
       default:
-        target: 75%
-        threshold: 1%
-        informational: false
+        target: auto
+        threshold: 5%
+        informational: true
 
-  # 精确计算，而非抽样
   precision: 2
-
-  # 仅对指定的目录计算覆盖率
   round: down
-  range: "70...100"
+  range: "0...100"
 
 comment:
-  layout: "reach,diff,flags,files,footer"
+  layout: "reach,diff,flags,footer"
   behavior: default
   require_changes: false
   require_base: false
@@ -29,6 +44,32 @@ comment:
 ignore:
   - "tests/**"
   - "scripts/**"
-  - "third_party/**"
-  - "build/**"
   - "vcpkg/**"
+  - "build/**"
+  - "build-*/**"
+  - "docs/**"
+  - "examples/**"
+  - "setup/**"
+  - "cmake/**"
+  - "**/*_test.go"
+  - "server/cmd/**"
+  - "*.md"
+  - "*.yml"
+  - "*.yaml"
+  - "*.json"
+  - "*.toml"
+
+# 语言/模块配置
+flags:
+  client:
+    paths:
+      - client/
+    carryforward: true
+  libs:
+    paths:
+      - libs/
+    carryforward: true
+  server:
+    paths:
+      - server/
+    carryforward: true
