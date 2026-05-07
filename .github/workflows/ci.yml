@@ -25,7 +25,7 @@ jobs:
       with:
         path: |
           ${{ env.VCPKG_ROOT }}
-          vcpkg-cache
+          vcpkg/archives
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-
@@ -38,18 +38,23 @@ jobs:
         cd vcpkg
         .\bootstrap-vcpkg.bat
 
-    - name: Create binary cache directory
-      run: New-Item -ItemType Directory -Force -Path "vcpkg-cache"
-
     - name: Install vcpkg dependencies
       run: |
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
-        $cacheDir = (Resolve-Path "vcpkg-cache").Path
-        # 配置二进制源：微软官方 Azure blob 缓存 + 本地缓存
-        $env:VCPKG_BINARY_SOURCES = "x-azblob,https://vcpkg.blob.core.windows.net/cache,readwrite;files,$cacheDir,readwrite"
-        Write-Host "VCPKG_BINARY_SOURCES=$env:VCPKG_BINARY_SOURCES"
-        Write-Host "从微软 Azure Blob 缓存下载预编译二进制文件..."
+        # 使用默认的二进制缓存（会自动使用 GitHub Actions 缓存的 vcpkg 目录）
+        # 默认缓存位置: %LOCALAPPDATA%\vcpkg\archives
+        $env:VCPKG_DEFAULT_BINARY_CACHE = "$env:VCPKG_ROOT_ABS\archives"
+        New-Item -ItemType Directory -Force -Path "$env:VCPKG_DEFAULT_BINARY_CACHE"
+        Write-Host "使用本地二进制缓存: $env:VCPKG_DEFAULT_BINARY_CACHE"
         .\vcpkg\vcpkg install --triplet=x64-windows
+
+    - name: Cache vcpkg binaries
+      uses: actions/cache@v5
+      with:
+        path: vcpkg/archives
+        key: ${{ runner.os }}-vcpkg-binaries-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-binaries-
 
     - name: Configure CMake (Debug)
       run: |
@@ -112,10 +117,11 @@ jobs:
 
     - name: Cache vcpkg entire directory
       uses: actions/cache@v5
+      id: vcpkg-cache
       with:
         path: |
           ${{ env.VCPKG_ROOT }}
-          vcpkg-cache
+          vcpkg/archives
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         fail-on-cache-miss: false
 

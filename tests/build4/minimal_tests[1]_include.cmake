@@ -1,0 +1,5 @@
+if(EXISTS "D:/workspaces/wingman/tests/build4/minimal_tests[1]_tests.cmake")
+  include("D:/workspaces/wingman/tests/build4/minimal_tests[1]_tests.cmake")
+else()
+  add_test(minimal_tests_NOT_BUILT minimal_tests_NOT_BUILT)
+endif()
