@@ -53,11 +53,9 @@ func main() {
 	// 静态文件服务
 	r.Static("/assets", StaticDir+"/assets")
 	r.StaticFile("/favicon.ico", StaticDir+"/favicon.ico")
+
+	// SPA 路由支持 - 必须放在最后
 	r.GET("/", func(c *gin.Context) {
-		c.File(StaticDir + "/index.html")
-	})
-	// SPA 路由支持
-	r.GET("//*filepath", func(c *gin.Context) {
 		c.File(StaticDir + "/index.html")
 	})
 
