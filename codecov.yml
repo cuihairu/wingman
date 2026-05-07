@@ -3,14 +3,21 @@ coverage:
   status:
     project:
       default:
-        target: auto
+        target: 80%
         threshold: 1%
-        informational: true
+        informational: false
     patch:
       default:
-        target: auto
+        target: 75%
         threshold: 1%
-        informational: true
+        informational: false
+
+  # 精确计算，而非抽样
+  precision: 2
+
+  # 仅对指定的目录计算覆盖率
+  round: down
+  range: "70...100"
 
 comment:
   layout: "reach,diff,flags,files,footer"
