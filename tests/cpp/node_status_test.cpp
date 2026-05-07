@@ -26,7 +26,7 @@ TEST_F(NodeStatusTest, NodeStateValues) {
 // ============================================================================
 
 TEST_F(NodeStatusTest, GameWindowStatusDefaults) {
-    GameWindowStatus status;
+    GameWindowStatus status{};  // Value initialization
     EXPECT_TRUE(status.title.empty());
     EXPECT_TRUE(status.processName.empty());
     EXPECT_EQ(status.handle, 0);
@@ -38,7 +38,7 @@ TEST_F(NodeStatusTest, GameWindowStatusDefaults) {
 }
 
 TEST_F(NodeStatusTest, GameWindowStatusWithValues) {
-    GameWindowStatus status;
+    GameWindowStatus status{};
     status.title = "Test Game";
     status.processName = "game.exe";
     status.handle = 12345;
@@ -56,7 +56,7 @@ TEST_F(NodeStatusTest, GameWindowStatusWithValues) {
 }
 
 TEST_F(NodeStatusTest, GameWindowStatusToJson) {
-    GameWindowStatus status;
+    GameWindowStatus status{};
     status.title = "Test Game";
     status.processName = "game.exe";
 
@@ -88,7 +88,7 @@ TEST_F(NodeStatusTest, GameWindowStatusFromJson) {
 // ============================================================================
 
 TEST_F(NodeStatusTest, ScriptStatusDefaults) {
-    ScriptStatus status;
+    ScriptStatus status{};
     EXPECT_TRUE(status.name.empty());
     EXPECT_TRUE(status.state.empty());
     EXPECT_EQ(status.uptimeSeconds, 0);
@@ -96,7 +96,7 @@ TEST_F(NodeStatusTest, ScriptStatusDefaults) {
 }
 
 TEST_F(NodeStatusTest, ScriptStatusWithValues) {
-    ScriptStatus status;
+    ScriptStatus status{};
     status.name = "test_script.lua";
     status.state = "running";
     status.uptimeSeconds = 3600;
@@ -108,7 +108,7 @@ TEST_F(NodeStatusTest, ScriptStatusWithValues) {
 }
 
 TEST_F(NodeStatusTest, ScriptStatusToJson) {
-    ScriptStatus status;
+    ScriptStatus status{};
     status.name = "test.lua";
     status.state = "running";
 
@@ -136,7 +136,7 @@ TEST_F(NodeStatusTest, ScriptStatusFromJson) {
 // ============================================================================
 
 TEST_F(NodeStatusTest, NodeHeartbeatDefaults) {
-    NodeHeartbeat heartbeat;
+    NodeHeartbeat heartbeat{};
     EXPECT_TRUE(heartbeat.nodeId.empty());
     EXPECT_TRUE(heartbeat.hostname.empty());
     EXPECT_EQ(heartbeat.timestamp, 0);
@@ -148,7 +148,7 @@ TEST_F(NodeStatusTest, NodeHeartbeatDefaults) {
 }
 
 TEST_F(NodeStatusTest, NodeHeartbeatWithValues) {
-    NodeHeartbeat heartbeat;
+    NodeHeartbeat heartbeat{};
     heartbeat.nodeId = "node_001";
     heartbeat.hostname = "test-pc";
     heartbeat.status = NodeState::Online;
@@ -169,7 +169,7 @@ TEST_F(NodeStatusTest, NodeHeartbeatNow) {
 }
 
 TEST_F(NodeStatusTest, NodeHeartbeatToJson) {
-    NodeHeartbeat heartbeat;
+    NodeHeartbeat heartbeat{};
     heartbeat.nodeId = "node_001";
     heartbeat.hostname = "test-pc";
     heartbeat.status = NodeState::Online;
@@ -216,7 +216,7 @@ TEST_F(NodeStatusTest, ServerCommandValues) {
 // ============================================================================
 
 TEST_F(NodeStatusTest, ServerCommandDataDefaults) {
-    ServerCommandData data;
+    ServerCommandData data{};
     EXPECT_EQ(data.command, ServerCommand::None);
     EXPECT_TRUE(data.scriptPath.empty());
     EXPECT_TRUE(data.configData.empty());
@@ -224,7 +224,7 @@ TEST_F(NodeStatusTest, ServerCommandDataDefaults) {
 }
 
 TEST_F(NodeStatusTest, ServerCommandDataWithValues) {
-    ServerCommandData data;
+    ServerCommandData data{};
     data.command = ServerCommand::StartScript;
     data.scriptPath = "scripts/test.lua";
     data.timestamp = 1234567890;
@@ -234,7 +234,7 @@ TEST_F(NodeStatusTest, ServerCommandDataWithValues) {
 }
 
 TEST_F(NodeStatusTest, ServerCommandDataToJson) {
-    ServerCommandData data;
+    ServerCommandData data{};
     data.command = ServerCommand::StartScript;
     data.scriptPath = "test.lua";
 
@@ -245,7 +245,7 @@ TEST_F(NodeStatusTest, ServerCommandDataToJson) {
 
 TEST_F(NodeStatusTest, ServerCommandDataFromJson) {
     std::string json = R"({
-        "command": 1,
+        "command": "start_script",
         "scriptPath": "test.lua",
         "configData": "",
         "timestamp": 1234567890
