@@ -63,7 +63,7 @@ ResourceStats ResourceCollector::collect() const {
 // ========== Windows 实现 ==========
 #ifdef _WIN32
 
-CpuInfo ResourceCollector::collectCpu() const {
+ResourceCollector::CpuInfo ResourceCollector::collectCpu() const {
     CpuInfo info;
 
     // 获取 CPU 核心数
@@ -112,7 +112,7 @@ CpuInfo ResourceCollector::collectCpu() const {
     return info;
 }
 
-MemoryInfo ResourceCollector::collectMemory() const {
+ResourceCollector::MemoryInfo ResourceCollector::collectMemory() const {
     MemoryInfo info;
 
     MEMORYSTATUSEX memInfo;
@@ -126,7 +126,7 @@ MemoryInfo ResourceCollector::collectMemory() const {
     return info;
 }
 
-DiskInfo ResourceCollector::collectDisk(const std::string& path) const {
+ResourceCollector::DiskInfo ResourceCollector::collectDisk(const std::string& path) const {
     DiskInfo info;
 
     ULARGE_INTEGER freeBytes, totalBytes;
@@ -139,7 +139,7 @@ DiskInfo ResourceCollector::collectDisk(const std::string& path) const {
     return info;
 }
 
-NetworkInfo ResourceCollector::collectNetwork() const {
+ResourceCollector::NetworkInfo ResourceCollector::collectNetwork() const {
     NetworkInfo info;
 
     // 获取本地 IP
@@ -163,7 +163,7 @@ NetworkInfo ResourceCollector::collectNetwork() const {
     return info;
 }
 
-SystemInfo ResourceCollector::collectSystem() const {
+ResourceCollector::SystemInfo ResourceCollector::collectSystem() const {
     SystemInfo info;
 
     // 主机名
@@ -194,7 +194,7 @@ SystemInfo ResourceCollector::collectSystem() const {
 #else
 // ========== Linux 实现 ==========
 
-CpuInfo ResourceCollector::collectCpu() const {
+ResourceCollector::CpuInfo ResourceCollector::collectCpu() const {
     CpuInfo info;
 
     // 读取 CPU 核心数
@@ -233,7 +233,7 @@ CpuInfo ResourceCollector::collectCpu() const {
     return info;
 }
 
-MemoryInfo ResourceCollector::collectMemory() const {
+ResourceCollector::MemoryInfo ResourceCollector::collectMemory() const {
     MemoryInfo info;
 
     struct sysinfo sys_info;
@@ -246,7 +246,7 @@ MemoryInfo ResourceCollector::collectMemory() const {
     return info;
 }
 
-DiskInfo ResourceCollector::collectDisk(const std::string& path) const {
+ResourceCollector::DiskInfo ResourceCollector::collectDisk(const std::string& path) const {
     DiskInfo info;
 
     struct statvfs stat;
@@ -259,7 +259,7 @@ DiskInfo ResourceCollector::collectDisk(const std::string& path) const {
     return info;
 }
 
-NetworkInfo ResourceCollector::collectNetwork() const {
+ResourceCollector::NetworkInfo ResourceCollector::collectNetwork() const {
     NetworkInfo info;
 
     char hostname[256] = {0};
@@ -270,7 +270,7 @@ NetworkInfo ResourceCollector::collectNetwork() const {
     return info;
 }
 
-SystemInfo ResourceCollector::collectSystem() const {
+ResourceCollector::SystemInfo ResourceCollector::collectSystem() const {
     SystemInfo info;
 
     char hostname[256] = {0};

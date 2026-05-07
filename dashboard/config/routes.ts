@@ -35,6 +35,13 @@ export default [
     icon: 'block',
     component: './Workflows',
   },
+  // 脚本管理
+  {
+    path: '/scripts',
+    name: 'Scripts',
+    icon: 'file',
+    component: './Scripts',
+  },
   // 用户中心
   {
     path: '/account',

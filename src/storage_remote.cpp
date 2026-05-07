@@ -33,7 +33,7 @@ size_t TeamStorage::length() const {
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
-        if (response.status == server::ResponseStatus::kOk &&
+        if (response.code == server::ErrorCode::OK &&
             response.data.contains("result") && response.data["result"].is_array()) {
             return response.data["result"].size();
         }
@@ -51,7 +51,7 @@ std::vector<std::string> TeamStorage::keys() const {
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
-        if (response.status == server::ResponseStatus::kOk &&
+        if (response.code == server::ErrorCode::OK &&
             response.data.contains("result") && response.data["result"].is_array()) {
             return response.data["result"].get<std::vector<std::string>>();
         }
@@ -80,7 +80,7 @@ std::optional<std::string> TeamStorage::getItem(const std::string& key) const {
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
-        if (response.status == server::ResponseStatus::kOk && response.data.contains("result")) {
+        if (response.code == server::ErrorCode::OK && response.data.contains("result")) {
             std::string value = response.data["result"].get<std::string>();
 
             // 更新缓存
@@ -107,7 +107,7 @@ bool TeamStorage::setItem(const std::string& key, const std::string& value) {
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
-        if (response.status == server::ResponseStatus::kOk) {
+        if (response.code == server::ErrorCode::OK) {
             // 更新缓存
             if (m_cacheEnabled) {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -131,7 +131,7 @@ bool TeamStorage::removeItem(const std::string& key) {
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
-        if (response.status == server::ResponseStatus::kOk) {
+        if (response.code == server::ErrorCode::OK) {
             // 清除缓存
             if (m_cacheEnabled) {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -215,7 +215,7 @@ size_t ServerStorage::length() const {
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
-        if (response.status == server::ResponseStatus::kOk &&
+        if (response.code == server::ErrorCode::OK &&
             response.data.contains("result") && response.data["result"].is_array()) {
             return response.data["result"].size();
         }
@@ -233,7 +233,7 @@ std::vector<std::string> ServerStorage::keys() const {
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
-        if (response.status == server::ResponseStatus::kOk &&
+        if (response.code == server::ErrorCode::OK &&
             response.data.contains("result") && response.data["result"].is_array()) {
             return response.data["result"].get<std::vector<std::string>>();
         }
@@ -262,7 +262,7 @@ std::optional<std::string> ServerStorage::getItem(const std::string& key) const 
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
-        if (response.status == server::ResponseStatus::kOk && response.data.contains("result")) {
+        if (response.code == server::ErrorCode::OK && response.data.contains("result")) {
             std::string value = response.data["result"].get<std::string>();
 
             // 更新缓存
@@ -289,7 +289,7 @@ bool ServerStorage::setItem(const std::string& key, const std::string& value) {
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
-        if (response.status == server::ResponseStatus::kOk) {
+        if (response.code == server::ErrorCode::OK) {
             // 更新缓存
             if (m_cacheEnabled) {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -313,7 +313,7 @@ bool ServerStorage::removeItem(const std::string& key) {
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
-        if (response.status == server::ResponseStatus::kOk) {
+        if (response.code == server::ErrorCode::OK) {
             // 清除缓存
             if (m_cacheEnabled) {
                 std::lock_guard<std::mutex> lock(m_mutex);

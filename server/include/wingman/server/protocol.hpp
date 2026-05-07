@@ -121,7 +121,7 @@ inline wingman::protocol::RequestType requestTypeToProtobuf(RequestType type) {
         case RequestType::kReportProgress: return wingman::protocol::RequestType::REPORT_PROGRESS;
         case RequestType::kCompleteTask: return wingman::protocol::RequestType::COMPLETE_TASK;
         case RequestType::kFailTask: return wingman::protocol::RequestType::FAIL_TASK;
-        default: return wingman::protocol::RequestType::UNKNOWN;
+        default: return wingman::protocol::RequestType::REQ_UNKNOWN;
     }
 }
 

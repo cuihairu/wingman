@@ -1,5 +1,5 @@
 #include "wingman/server/server.hpp"
-#include "wingman/lua_extensions.hpp"
+#include "lua_extensions.hpp"
 #include <spdlog/spdlog.h>
 #include <mutex>
 

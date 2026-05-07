@@ -178,6 +178,89 @@ export async function getStepStatus(workflowId: string, stepId: string) {
   });
 }
 
+// ========== 脚本管理 ==========
+
+// 脚本信息
+export interface ScriptInfo {
+  id: string;
+  name: string;
+  path: string;
+  description?: string;
+  size: number;
+  modifiedTime: number;
+  isRunning: boolean;
+}
+
+// 脚本执行日志
+export interface ScriptLog {
+  timestamp: number;
+  level: 'info' | 'warn' | 'error' | 'debug';
+  message: string;
+}
+
+// 获取脚本列表
+export async function getScripts() {
+  return request<API.Response<ScriptInfo[]>>('/api/scripts', {
+    method: 'GET',
+  });
+}
+
+// 获取脚本内容
+export async function getScriptContent(path: string) {
+  return request<API.Response<string>>(`/api/scripts/content`, {
+    method: 'POST',
+    data: { path },
+  });
+}
+
+// 保存脚本内容
+export async function saveScriptContent(path: string, content: string) {
+  return request<API.Response<void>>(`/api/scripts/save`, {
+    method: 'POST',
+    data: { path, content },
+  });
+}
+
+// 创建新脚本
+export async function createScript(name: string, description?: string) {
+  return request<API.Response<ScriptInfo>>('/api/scripts', {
+    method: 'POST',
+    data: { name, description },
+  });
+}
+
+// 删除脚本
+export async function deleteScript(path: string) {
+  return request<API.Response<void>>(`/api/scripts/delete`, {
+    method: 'POST',
+    data: { path },
+  });
+}
+
+// 运行脚本
+export async function runScript(path: string, args?: string[]) {
+  return request<API.Response<{ executionId: string }>>('/api/scripts/run', {
+    method: 'POST',
+    data: { path, args },
+  });
+}
+
+// 停止脚本
+export async function stopScript(executionId: string) {
+  return request<API.Response<void>>(`/api/scripts/stop`, {
+    method: 'POST',
+    data: { executionId },
+  });
+}
+
+// 获取脚本执行日志
+export async function getScriptLogs(executionId: string, offset = 0, limit = 100) {
+  return request<API.Response<ScriptLog[]>>(`/api/scripts/logs`, {
+    method: 'POST',
+    data: { executionId, offset, limit },
+  });
+}
+
 // ========== 工具函数 ==========
 
 export function formatBytes(bytes: number): string {
@@ -256,6 +339,15 @@ export default {
   // Task
   getWorkerStatuses,
   getStepStatus,
+  // Script
+  getScripts,
+  getScriptContent,
+  saveScriptContent,
+  createScript,
+  deleteScript,
+  runScript,
+  stopScript,
+  getScriptLogs,
   // Utils
   formatBytes,
   formatDuration,
