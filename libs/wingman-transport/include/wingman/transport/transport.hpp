@@ -12,10 +12,21 @@
 #include "wingman/transport/session/session.hpp"
 #include "wingman/transport/session/tcp_session.hpp"
 #include "wingman/transport/channel/channel.hpp"
-#include "wingman/transport/transport_server.hpp"
-#include "wingman/transport/transport_client.hpp"
+#include <memory>
 
 namespace wingman::transport {
+
+// ========== 传输类型 ==========
+
+enum class TransportType {
+    TCP,
+    WebSocket
+};
+
+// ========== 前向声明 ==========
+
+class TransportServer;
+class TransportClient;
 
 // ========== 消息定义 ==========
 

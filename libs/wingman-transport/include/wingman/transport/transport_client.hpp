@@ -194,11 +194,4 @@ private:
     std::map<uint32_t, std::shared_ptr<std::promise<MessagePtr>>> pendingRequests_;
 };
 
-// ========== 工厂函数 ==========
-
-inline std::unique_ptr<TransportClient> TransportClient::create(TransportType type) {
-    (void)type;
-    return std::unique_ptr<TransportClient>(new TcpClient());
-}
-
 } // namespace wingman::transport

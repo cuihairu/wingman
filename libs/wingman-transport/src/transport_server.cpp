@@ -1,5 +1,13 @@
 #include "wingman/transport/transport_server.hpp"
 
 namespace wingman::transport {
-// TransportServer 实现在头文件中
+
+std::unique_ptr<TransportServer> TransportServer::create(TransportType type) {
+    if (type == TransportType::TCP) {
+        TcpServer* server = new TcpServer();
+        return std::unique_ptr<TransportServer>(static_cast<TransportServer*>(server));
+    }
+    return std::unique_ptr<TransportServer>(static_cast<TransportServer*>(nullptr));
+}
+
 }

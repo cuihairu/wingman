@@ -9,13 +9,6 @@
 
 namespace wingman::transport {
 
-// ========== 传输类型 ==========
-
-enum class TransportType {
-    TCP,
-    WebSocket
-};
-
 // ========== Transport Server 实现 ==========
 
 class TcpServer : public TransportServer {
@@ -194,12 +187,5 @@ private:
 
     ChannelManager channelManager_;
 };
-
-// ========== 工厂函数 ==========
-
-inline std::unique_ptr<TransportServer> TransportServer::create(TransportType type) {
-    (void)type;
-    return std::unique_ptr<TransportServer>(new TcpServer());
-}
 
 } // namespace wingman::transport
