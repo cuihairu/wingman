@@ -316,7 +316,7 @@ const Scripts: React.FC = () => {
                 <Space>
                   <ConsoleSqlOutlined />
                   <span>执行日志</span>
-                </>
+                </Space>
               }
               headerBordered
               className={styles.logCard}

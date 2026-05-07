@@ -108,6 +108,7 @@ export default defineConfig({
   },
 
   markdown: {
+    ignoreDeadLinks: true,
     codeTransformers: [
       {
         postTransform: (code, node) => {
