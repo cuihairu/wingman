@@ -69,12 +69,12 @@ wingman/
 │   ├── include/       # 头文件
 │   └── config/        # 配置文件
 ├── libs/              # 共享库
-│   ├── wingman-proto/     # Protobuf 封装
-│   ├── wingman-transport/ # 传输层
-│   ├── wingman-core/      # 核心功能
-│   ├── wingman-lua/       # Lua 引擎
-│   └── wingman-debug/     # 调试器适配器
-├── proto/              # Protobuf 定义
+│   ├── proto/               # Protobuf 封装
+│   ├── transport/           # 传输层
+│   ├── core/                # 核心功能
+│   ├── lua/                 # Lua 引擎
+│   └── debug/               # 调试器适配器
+├── protobuf/              # Protobuf 定义
 ├── server/             # Go Server
 └── build/              # 构建输出
 ```

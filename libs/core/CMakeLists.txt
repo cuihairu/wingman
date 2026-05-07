@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-# ========== wingman-core ==========
+# ========== wingman::core ==========
 # 核心功能模块 - 输入输出、屏幕、窗口、触发器等
 
 project(wingman_core LANGUAGES CXX)
@@ -77,10 +77,10 @@ else()
 endif()
 
 # ========== 创建库 ==========
-add_library(wingman-core STATIC ${CORE_SOURCES})
+add_library(wingman::core STATIC ${CORE_SOURCES})
 
 # 包含目录
-target_include_directories(wingman-core PUBLIC
+target_include_directories(wingman::core PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/wingman>
     $<INSTALL_INTERFACE:include>
@@ -104,11 +104,11 @@ if(TARGET unofficial::sqlite3::sqlite3)
     list(APPEND CORE_LINK_LIBS unofficial::sqlite3::sqlite3)
 endif()
 
-target_link_libraries(wingman-core PUBLIC ${CORE_LINK_LIBS})
+target_link_libraries(wingman::core PUBLIC ${CORE_LINK_LIBS})
 
 # Windows 特定库
 if(WIN32)
-    target_link_libraries(wingman-core PUBLIC
+    target_link_libraries(wingman::core PUBLIC
         gdiplus
         user32
         gdi32
@@ -118,13 +118,13 @@ if(WIN32)
 endif()
 
 # 导出库
-add_library(wingman::core ALIAS wingman-core)
+add_library(wingman::core ALIAS wingman::core)
 
 # ========== 编译选项 ==========
-target_compile_features(wingman-core PUBLIC cxx_std_17)
+target_compile_features(wingman::core PUBLIC cxx_std_17)
 
 if(MSVC)
-    target_compile_options(wingman-core PRIVATE /W4 /utf-8)
+    target_compile_options(wingman::core PRIVATE /W4 /utf-8)
 else()
-    target_compile_options(wingman-core PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(wingman::core PRIVATE -Wall -Wextra -Wpedantic)
 endif()

@@ -37,11 +37,11 @@ wingman/
 │   └── debug.proto           # 调试协议
 │
 ├── libs/                     # 共享库
-│   ├── wingman-proto/        # Protobuf C++ 封装
-│   ├── wingman-transport/    # 传输层 (TCP/WebSocket)
-│   ├── wingman-core/         # 核心功能 (Screen/Input/Trigger等)
-│   ├── wingman-lua/          # Lua 引擎 + EmmyLua 集成
-│   └── wingman-debug/        # 调试器客户端
+│   ├── proto/        # Protobuf C++ 封装
+│   ├── transport/    # 传输层 (TCP/WebSocket)
+│   ├── core/         # 核心功能 (Screen/Input/Trigger等)
+│   ├── lua/          # Lua 引擎 + EmmyLua 集成
+│   └── debug/        # 调试器客户端
 │
 ├── client/                   # C++ Client (被动执行)
 │   ├── src/
@@ -148,7 +148,7 @@ message ScriptRequest {
 ### EmmyLua 集成
 
 ```cpp
-// wingman-lua/src/debug_adapter.cpp
+// lua/src/debug_adapter.cpp
 #include "emmy_core.h"
 
 namespace wingman::lua {
@@ -487,12 +487,12 @@ FetchContent_Declare(
 set(EMMY_LUA_VERSION 54)  # Lua 5.4
 FetchContent_MakeAvailable(emmylua)
 
-target_link_libraries(wingman-lua PRIVATE emmy_core)
+target_link_libraries(lua PRIVATE emmy_core)
 ```
 
 **Agent 端集成:**
 ```cpp
-// wingman-lua/src/debug_adapter.cpp
+// lua/src/debug_adapter.cpp
 #include "emmy_core.h"
 
 namespace wingman::lua {
@@ -607,7 +607,7 @@ local wingman = require('wingman')
 |--------|------|----------|------|
 | P0 | 定义 Protobuf 协议 (agent_api.proto, common.proto) | 1天 | ✅ |
 | P0 | 创建多模块 CMake 结构 (libs/, client/) | 1天 | ✅ |
-| P1 | 迁移核心代码到 wingman-core | 2天 | ✅ |
+| P1 | 迁移核心代码到 core | 2天 | ✅ |
 | P1 | 实现 Client 主动/被动模式 | 2天 | ✅ |
 | P1 | 集成 EmmyLuaDebugger | 1天 | ✅ |
 | P2 | Go Server 基础框架 | 3天 | ✅ |
@@ -624,10 +624,10 @@ local wingman = require('wingman')
 - [x] 更新根 CMakeLists.txt 支持多模块
 
 #### Phase 2: 核心库迁移
-- [x] 创建 wingman-core (Screen/Input/Trigger/Window...)
-- [x] 创建 wingman-lua (Lua 引擎 + 绑定)
-- [x] 创建 wingman-proto (Protobuf C++ 封装)
-- [x] 创建 wingman-transport (TCP/WebSocket)
+- [x] 创建 core (Screen/Input/Trigger/Window...)
+- [x] 创建 lua (Lua 引擎 + 绑定)
+- [x] 创建 proto (Protobuf C++ 封装)
+- [x] 创建 transport (TCP/WebSocket)
 
 #### Phase 3: Client 重构
 - [x] 实现 ActiveMode (主动连接 Server)
@@ -637,7 +637,7 @@ local wingman = require('wingman')
 
 #### Phase 4: EmmyLua 集成
 - [x] 添加 EmmyLuaDebugger 为依赖
-- [x] 创建 wingman-debug 适配层
+- [x] 创建 debug 适配层
 - [x] 测试 VS Code 断点调试
 
 #### Phase 5: Go Server

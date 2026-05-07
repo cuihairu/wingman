@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-# ========== wingman-lua ==========
+# ========== wingman::lua ==========
 # Lua 引擎 + 绑定 + EmmyLua 调试器集成
 
 project(wingman_lua LANGUAGES CXX)
@@ -36,16 +36,16 @@ foreach(src ${LUA_SOURCES})
 endforeach()
 
 # ========== 创建库 ==========
-add_library(wingman-lua STATIC ${LUA_SOURCES})
+add_library(wingman::lua STATIC ${LUA_SOURCES})
 
 # 包含目录
-target_include_directories(wingman-lua PUBLIC
+target_include_directories(wingman::lua PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${LUA_INCLUDE_DIR}
 )
 
 # 链接库
-target_link_libraries(wingman-lua PUBLIC
+target_link_libraries(wingman::lua PUBLIC
     ${LUA_LIBRARIES}
     spdlog::spdlog
     nlohmann_json::nlohmann_json
@@ -55,7 +55,7 @@ target_link_libraries(wingman-lua PUBLIC
 # EmmyLua Debugger 支持
 option(WINGMAN_ENABLE_EMMY "Enable EmmyLua Debugger integration" ON)
 if(WINGMAN_ENABLE_EMMY)
-    target_compile_definitions(wingman-lua PUBLIC WINGMAN_ENABLE_EMMY)
+    target_compile_definitions(wingman::lua PUBLIC WINGMAN_ENABLE_EMMY)
 
     # EmmyLua 将在运行时从以下位置加载：
     # 1. <exe-dir>/emmy/emmy_core.dll
@@ -64,13 +64,13 @@ if(WINGMAN_ENABLE_EMMY)
 endif()
 
 # 导出库
-add_library(wingman::lua ALIAS wingman-lua)
+add_library(wingman::lua ALIAS wingman::lua)
 
 # ========== 编译选项 ==========
-target_compile_features(wingman-lua PUBLIC cxx_std_17)
+target_compile_features(wingman::lua PUBLIC cxx_std_17)
 
 if(MSVC)
-    target_compile_options(wingman-lua PRIVATE /W4 /utf-8)
+    target_compile_options(wingman::lua PRIVATE /W4 /utf-8)
 else()
-    target_compile_options(wingman-lua PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(wingman::lua PRIVATE -Wall -Wextra -Wpedantic)
 endif()

@@ -94,11 +94,11 @@ endif()
 
 # 共享库子目录
 if(WINGMAN_BUILD_AGENT)
-    add_subdirectory(libs/wingman-proto)
-    add_subdirectory(libs/wingman-transport)
-    add_subdirectory(libs/wingman-core)
-    add_subdirectory(libs/wingman-lua)
-    add_subdirectory(libs/wingman-debug)
+    add_subdirectory(libs/proto)
+    add_subdirectory(libs/transport)
+    add_subdirectory(libs/core)
+    add_subdirectory(libs/lua)
+    add_subdirectory(libs/debug)
 
     # Client 可执行文件
     add_subdirectory(client)
