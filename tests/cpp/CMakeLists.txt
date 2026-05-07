@@ -32,6 +32,8 @@ add_executable(wingman_tests
     verification_test.cpp
     recorder_test.cpp
     node_status_test.cpp
+    ml_test.cpp
+    ocr_test.cpp
     # Note: script_manager_test.cpp and security_test.cpp
     # are excluded due to unimplemented functions or compilation errors
 )
