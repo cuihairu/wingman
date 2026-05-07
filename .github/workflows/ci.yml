@@ -44,7 +44,7 @@ jobs:
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
         $env:VCPKG_DEFAULT_BINARY_CACHE = "$env:VCPKG_ROOT_ABS\archives"
         New-Item -ItemType Directory -Force -Path "$env:VCPKG_DEFAULT_BINARY_CACHE"
-        .\vcpkg\vcpkg install --triplet=x64-windows lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf
+        .\vcpkg\vcpkg install
 
     - name: Configure CMake
       run: |
