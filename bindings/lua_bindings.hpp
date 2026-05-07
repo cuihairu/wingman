@@ -63,6 +63,9 @@ private:
     void registerNodeModule();
     void registerVerificationModule();
     void registerQRCodeModule();
+    void registerUIAutomationModule();
+    void registerHumanModule();
+    void registerDebuggerModule();
 };
 
 // === Lua C API 绑定函数 ===
@@ -140,6 +143,14 @@ namespace tray_icon {
     int updateMenu(lua_State* L);
     int isVisible(lua_State* L);
     int destroy(lua_State* L);
+}
+
+// Debugger 模块
+namespace debugger {
+    int debuggerStart(lua_State* L);
+    int debuggerStop(lua_State* L);
+    int debuggerSetBreakpoint(lua_State* L);
+    int debuggerBreakHere(lua_State* L);
 }
 
 } // namespace wingman::lua

@@ -176,6 +176,15 @@ private:
     crow::response handleWindows(const crow::request& req);
     crow::response handleSettings(const crow::request& req);
 
+    // Debugger routes
+    crow::response handleDebuggerConnect(const crow::request& req);
+    crow::response handleDebuggerCommand(const crow::request& req);
+    crow::response handleDebuggerBreakpoints(const crow::request& req);
+    crow::response handleDebuggerStackTrace(const crow::request& req);
+    crow::response handleDebuggerVariables(const crow::request& req);
+    crow::response handleDebuggerEvaluate(const crow::request& req);
+    crow::response handleDebuggerSetVariable(const crow::request& req);
+
     // API response helpers
     static crow::response jsonResponse(const nlohmann::json& data);
     static crow::response errorResponse(const std::string& message);

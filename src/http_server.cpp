@@ -2,6 +2,7 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include "wingman/http_server.hpp"
+#include "wingman/debugger/debugger.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <filesystem>
@@ -204,6 +205,58 @@ void HTTPServer::setupRoutes() {
     CROW_ROUTE(app_, "/api/v1/settings").methods("GET"_method, "PUT"_method)(
         [this](const crow::request& req) {
             crow::response resp = handleSettings(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    // ========== Debugger API Routes ==========
+    // 使用 /api/debugger 前缀（不带 v1）以兼容 VS Code 扩展
+
+    CROW_ROUTE(app_, "/api/debugger/connect").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleDebuggerConnect(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/debugger/command").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleDebuggerCommand(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/debugger/breakpoints").methods("POST"_method, "GET"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleDebuggerBreakpoints(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/debugger/stacktrace").methods("GET"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleDebuggerStackTrace(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/debugger/variables").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleDebuggerVariables(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/debugger/evaluate").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleDebuggerEvaluate(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/debugger/setvariable").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleDebuggerSetVariable(req);
             addCorsHeaders(resp);
             return resp;
         });
@@ -1067,6 +1120,162 @@ std::vector<std::string> HTTPServer::getRoomConnections(const std::string& roomI
         result.push_back(connId);
     }
     return result;
+}
+
+// ========== Debugger API Handlers ==========
+
+crow::response HTTPServer::handleDebuggerConnect(const crow::request& req) {
+    // 调试器连接请求（无需认证，简化 VS Code 扩展连接）
+    nlohmann::json j;
+    j["success"] = true;
+    j["message"] = "Debugger connected";
+    j["version"] = "0.1.0";
+    spdlog::info("[Debugger] Client connected from {}", req.remote_address);
+    return jsonResponse(j);
+}
+
+crow::response HTTPServer::handleDebuggerCommand(const crow::request& req) {
+    try {
+        auto body = nlohmann::json::parse(req.body);
+        std::string command = body.value("command", "continue");
+
+        auto& debugger = wingman::getDebugger();
+
+        if (command == "continue") {
+            debugger.continueExecution();
+        } else if (command == "stepOver") {
+            debugger.stepOver();
+        } else if (command == "stepIn") {
+            debugger.stepIn();
+        } else if (command == "pause") {
+            debugger.pause();
+        } else {
+            return errorResponse("Unknown command: " + command);
+        }
+
+        nlohmann::json j;
+        j["success"] = true;
+        j["state"] = debugStateToString(debugger.getState());
+        return jsonResponse(j);
+    } catch (const std::exception& e) {
+        return errorResponse(e.what());
+    }
+}
+
+crow::response HTTPServer::handleDebuggerBreakpoints(const crow::request& req) {
+    try {
+        auto& debugger = wingman::getDebugger();
+        auto& bpManager = debugger.breakpoints();
+
+        if (req.method == "GET"_method) {
+            // 获取所有断点
+            auto bps = bpManager.getAllBreakpoints();
+            nlohmann::json arr = nlohmann::json::array();
+            for (const auto& bp : bps) {
+                nlohmann::json j;
+                j["id"] = bp.id;
+                j["file"] = bp.file;
+                j["line"] = bp.line;
+                j["enabled"] = (bp.state == BreakpointState::Enabled);
+                j["hitCount"] = bp.hitCount;
+                arr.push_back(j);
+            }
+
+            nlohmann::json response;
+            response["success"] = true;
+            response["breakpoints"] = arr;
+            return jsonResponse(response);
+        } else {
+            // POST - 设置断点
+            auto body = nlohmann::json::parse(req.body);
+            std::string file = body.value("file", "");
+            auto breakpoints = body.value("breakpoints", nlohmann::json::array());
+
+            // 清除该文件的旧断点
+            if (!file.empty()) {
+                bpManager.removeBreakpointsForFile(file);
+            }
+
+            nlohmann::json arr = nlohmann::json::array();
+            for (const auto& bp : breakpoints) {
+                int line = bp.value("line", 0);
+                if (line > 0 && !file.empty()) {
+                    size_t id = bpManager.addBreakpoint(file, line);
+
+                    nlohmann::json j;
+                    j["id"] = id;
+                    j["verified"] = true;
+                    j["line"] = line;
+                    arr.push_back(j);
+                }
+            }
+
+            nlohmann::json response;
+            response["success"] = true;
+            response["breakpoints"] = arr;
+            return jsonResponse(response);
+        }
+    } catch (const std::exception& e) {
+        return errorResponse(e.what());
+    }
+}
+
+crow::response HTTPServer::handleDebuggerStackTrace(const crow::request& req) {
+    try {
+        auto& debugger = wingman::getDebugger();
+        auto frames = debugger.getStackTrace();
+
+        nlohmann::json arr = nlohmann::json::array();
+        for (const auto& frame : frames) {
+            arr.push_back(frame.toJson());
+        }
+
+        nlohmann::json j;
+        j["success"] = true;
+        j["stackFrames"] = arr;
+        j["totalFrames"] = frames.size();
+        return jsonResponse(j);
+    } catch (const std::exception& e) {
+        return errorResponse(e.what());
+    }
+}
+
+crow::response HTTPServer::handleDebuggerVariables(const crow::request& req) {
+    try {
+        auto body = nlohmann::json::parse(req.body);
+        size_t reference = body.value("reference", 1);
+
+        auto& debugger = wingman::getDebugger();
+        auto vars = debugger.getVariables(reference);
+
+        nlohmann::json arr = nlohmann::json::array();
+        for (const auto& var : vars) {
+            arr.push_back(var.toJson());
+        }
+
+        nlohmann::json j;
+        j["success"] = true;
+        j["variables"] = arr;
+        return jsonResponse(j);
+    } catch (const std::exception& e) {
+        return errorResponse(e.what());
+    }
+}
+
+crow::response HTTPServer::handleDebuggerEvaluate(const crow::request& req) {
+    // 简化版不支持表达式求值
+    nlohmann::json j;
+    j["success"] = false;
+    j["message"] = "Expression evaluation not supported in basic debugger";
+    return jsonResponse(j);
+}
+
+crow::response HTTPServer::handleDebuggerSetVariable(const crow::request& req) {
+    // 简化版不支持修改变量
+    nlohmann::json j;
+    j["success"] = false;
+    j["message"] = "Variable modification not supported in basic debugger";
+    return jsonResponse(j);
 }
 
 } // namespace wingman

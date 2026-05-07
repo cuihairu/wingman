@@ -31,6 +31,7 @@
 #include "wingman/version.hpp"
 #include "wingman/script_manager.hpp"
 #include "wingman/human.hpp"
+#include "wingman/debugger/debugger.hpp"
 
 #include <cstring>
 #include <ctime>
@@ -137,6 +138,7 @@ void LuaState::registerAPIs() {
     registerQRCodeModule();
     registerUIAutomationModule();
     registerHumanModule();
+    registerDebuggerModule();
 
     // 注册扩展模块
     wingman::lua::registerHttpModule(L);
@@ -5021,6 +5023,62 @@ void LuaState::registerHumanModule() {
 
     // 设置为全局表
     lua_setglobal(L, "human");
+}
+
+// ============================================================================
+// debugger 模块 - Lua 调试器支持
+// ============================================================================
+
+namespace debugger {
+    // debugger.start() - 启动调试器
+    static int debuggerStart(lua_State* L) {
+        bool success = wingman::startDebugger(L);
+        lua_pushboolean(L, success);
+        return 1;
+    }
+
+    // debugger.stop() - 停止调试器
+    static int debuggerStop(lua_State* L) {
+        wingman::stopDebugger();
+        return 0;
+    }
+
+    // debugger.breakpoint(file, line) - 设置断点
+    static int debuggerSetBreakpoint(lua_State* L) {
+        const char* file = luaL_checkstring(L, 1);
+        int line = luaL_checkinteger(L, 2);
+
+        auto& bpManager = wingman::getDebugger().breakpoints();
+        size_t id = bpManager.addBreakpoint(file, line);
+
+        lua_pushinteger(L, id);
+        return 1;
+    }
+
+    // debugger.breakHere() - 在当前位置中断（断点）
+    static int debuggerBreakHere(lua_State* L) {
+        // 在 Lua 中设置一个断点标记
+        lua_pushstring(L, "DEBUG_BREAK_HERE");
+        return 1;
+    }
+}
+
+void LuaState::registerDebuggerModule() {
+    lua_newtable(L);
+
+    lua_pushcfunction(L, debugger::debuggerStart);
+    lua_setfield(L, -2, "start");
+
+    lua_pushcfunction(L, debugger::debuggerStop);
+    lua_setfield(L, -2, "stop");
+
+    lua_pushcfunction(L, debugger::debuggerSetBreakpoint);
+    lua_setfield(L, -2, "breakpoint");
+
+    lua_pushcfunction(L, debugger::debuggerBreakHere);
+    lua_setfield(L, -2, "breakHere");
+
+    lua_setglobal(L, "debugger");
 }
 
 } // namespace wingman::lua
