@@ -38,7 +38,7 @@ struct KvListItem {
 // 订阅信息
 struct Subscription {
     std::string channel;
-    KvStore::ChannelCallback callback;
+    KeyValueStore::ChannelCallback callback;
 };
 
 // KeyValueStore 实现
@@ -72,6 +72,7 @@ public:
         }
     }
 
+#ifdef WINGMAN_HAS_SQLITE
     bool saveToSqlite(const std::string& filepath) {
         sqlite3* db = nullptr;
         if (sqlite3_open(filepath.c_str(), &db) != SQLITE_OK) {
@@ -137,6 +138,7 @@ public:
         sqlite3_close(db);
         return true;
     }
+#endif // WINGMAN_HAS_SQLITE
 };
 
 KeyValueStore::KeyValueStore() : m_impl(std::make_unique<Impl>()) {}
@@ -531,11 +533,21 @@ void KeyValueStore::unsubscribe(const std::string& channel) {
 
 // 持久化
 bool KeyValueStore::save(const std::string& filepath) {
+#ifdef WINGMAN_HAS_SQLITE
     return m_impl->saveToSqlite(filepath);
+#else
+    (void)filepath;
+    return false;
+#endif
 }
 
 bool KeyValueStore::load(const std::string& filepath) {
+#ifdef WINGMAN_HAS_SQLITE
     return m_impl->loadFromSqlite(filepath);
+#else
+    (void)filepath;
+    return false;
+#endif
 }
 
 void KeyValueStore::enableAutoSave(const std::string& filepath, int64_t intervalSeconds) {

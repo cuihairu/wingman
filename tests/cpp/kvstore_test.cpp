@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #include "wingman/kvstore.hpp"
 #include <filesystem>
+#include <thread>
+#include <chrono>
 
 using namespace wingman;
 
@@ -110,7 +112,7 @@ TEST_F(KvStoreTest, DeleteMultiple) {
     store->set("key2", "value2");
     store->set("key3", "value3");
 
-    store->del({"key1", "key3"});
+    store->del(std::vector<std::string>{"key1", "key3"});
 
     EXPECT_EQ(store->get("key1"), "");
     EXPECT_EQ(store->get("key2"), "value2");

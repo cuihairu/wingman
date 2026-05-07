@@ -17,7 +17,7 @@ public:
 };
 
 JsonValue::JsonValue() : m_impl(std::make_unique<Impl>()) {}
-JsonValue::JsonValue(nullptr_t) : m_impl(std::make_unique<Impl>(nullptr)) {}
+JsonValue::JsonValue(std::nullptr_t) : m_impl(std::make_unique<Impl>(nullptr)) {}
 JsonValue::JsonValue(bool value) : m_impl(std::make_unique<Impl>(value)) {}
 JsonValue::JsonValue(int value) : m_impl(std::make_unique<Impl>(value)) {}
 JsonValue::JsonValue(int64_t value) : m_impl(std::make_unique<Impl>(value)) {}

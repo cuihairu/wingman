@@ -22,7 +22,7 @@ enum class JsonType {
 class JsonValue {
 public:
     JsonValue();
-    JsonValue(nullptr_t);
+    JsonValue(std::nullptr_t);
     JsonValue(bool value);
     JsonValue(int value);
     JsonValue(int64_t value);

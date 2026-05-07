@@ -120,11 +120,11 @@ TEST_F(AccountsTest, AccountManagerConstruction) {
     EXPECT_NO_THROW();
 }
 
-TEST_F(AccountsTest, AccountManagerGetAccounts) {
+TEST_F(AccountsTest, AccountManagerListAccounts) {
     AccountManager manager;
-    auto accounts = manager.getAccounts();
-    // Initially empty
-    SUCCEED();
+    // Initially empty for a test game
+    auto accounts = manager.listAccounts("TestGame");
+    EXPECT_EQ(accounts.size(), 0);
 }
 
 TEST_F(AccountsTest, AccountManagerAddAccount) {
@@ -132,83 +132,90 @@ TEST_F(AccountsTest, AccountManagerAddAccount) {
 
     Account account;
     account.id = "test001";
+    account.game = "TestGame";
     account.username = "player1";
 
     EXPECT_TRUE(manager.addAccount(account));
 }
 
 TEST_F(AccountsTest, AccountManagerGetAccount) {
-    AccountManager manager;
+    AccountManager manager("data/test_accounts");
 
     Account account;
     account.id = "test001";
+    account.game = "TestGame";
     account.username = "player1";
     manager.addAccount(account);
 
-    auto retrieved = manager.getAccount("test001");
-    ASSERT_NE(retrieved, nullptr);
+    auto retrieved = manager.getAccount("TestGame", "test001");
+    ASSERT_TRUE(retrieved.has_value());
     EXPECT_EQ(retrieved->username, "player1");
 
-    auto missing = manager.getAccount("nonexistent");
-    EXPECT_EQ(missing, nullptr);
+    auto missing = manager.getAccount("TestGame", "nonexistent");
+    EXPECT_FALSE(missing.has_value());
 }
 
 TEST_F(AccountsTest, AccountManagerRemoveAccount) {
-    AccountManager manager;
+    AccountManager manager("data/test_accounts");
 
     Account account;
     account.id = "test001";
+    account.game = "TestGame";
     manager.addAccount(account);
 
-    EXPECT_TRUE(manager.removeAccount("test001"));
-    EXPECT_FALSE(manager.removeAccount("nonexistent"));
-    EXPECT_EQ(manager.getAccount("test001"), nullptr);
+    EXPECT_TRUE(manager.removeAccount("TestGame", "test001"));
+    EXPECT_FALSE(manager.removeAccount("TestGame", "nonexistent"));
+    EXPECT_FALSE(manager.getAccount("TestGame", "test001").has_value());
 }
 
 TEST_F(AccountsTest, AccountManagerUpdateAccount) {
-    AccountManager manager;
+    AccountManager manager("data/test_accounts");
 
     Account account;
     account.id = "test001";
+    account.game = "TestGame";
     account.username = "player1";
     manager.addAccount(account);
 
     account.username = "player2";
-    EXPECT_TRUE(manager.updateAccount(account));
+    EXPECT_TRUE(manager.updateAccount("TestGame", account));
 
-    auto retrieved = manager.getAccount("test001");
-    ASSERT_NE(retrieved, nullptr);
+    auto retrieved = manager.getAccount("TestGame", "test001");
+    ASSERT_TRUE(retrieved.has_value());
     EXPECT_EQ(retrieved->username, "player2");
 }
 
-TEST_F(AccountsTest, AccountManagerGetByGroup) {
-    AccountManager manager;
+TEST_F(AccountsTest, AccountManagerListByGroup) {
+    AccountManager manager("data/test_accounts");
 
     Account acc1;
     acc1.id = "acc1";
+    acc1.game = "TestGame";
     acc1.group = "group1";
 
     Account acc2;
     acc2.id = "acc2";
+    acc2.game = "TestGame";
     acc2.group = "group1";
 
     Account acc3;
     acc3.id = "acc3";
+    acc3.game = "TestGame";
     acc3.group = "group2";
 
     manager.addAccount(acc1);
     manager.addAccount(acc2);
     manager.addAccount(acc3);
 
-    auto group1Accounts = manager.getByGroup("group1");
+    auto group1Accounts = manager.listByGroup("TestGame", "group1");
     EXPECT_EQ(group1Accounts.size(), 2);
 
-    auto group2Accounts = manager.getByGroup("group2");
+    auto group2Accounts = manager.listByGroup("TestGame", "group2");
     EXPECT_EQ(group2Accounts.size(), 1);
 }
 
-TEST_F(AccountsTest, AccountManagerGetByGame) {
-    AccountManager manager;
+TEST_F(AccountsTest, AccountManagerListByGame) {
+    AccountManager manager("data/test_accounts");
 
     Account acc1;
     acc1.id = "acc1";
@@ -226,7 +233,7 @@ TEST_F(AccountsTest, AccountManagerGetByGame) {
     manager.addAccount(acc2);
     manager.addAccount(acc3);
 
-    auto gameAAccounts = manager.getByGame("GameA");
+    auto gameAAccounts = manager.listAccounts("GameA");
     EXPECT_EQ(gameAAccounts.size(), 2);
 }
 
@@ -235,40 +242,50 @@ TEST_F(AccountsTest, AccountManagerGetByGame) {
 // ============================================================================
 
 TEST_F(AccountsTest, BatchManagerConstruction) {
-    BatchManager manager;
+    AccountManager am("data/test_accounts");
+    BatchManager manager(am);
     EXPECT_NO_THROW();
 }
 
 TEST_F(AccountsTest, BatchManagerCreateBatch) {
-    BatchManager manager;
-    EXPECT_TRUE(manager.createBatch("batch1", {"acc1", "acc2"}));
+    AccountManager am("data/test_accounts");
+    BatchManager manager(am);
+
+    auto batchId = manager.create("TestGame", "batch1", {"acc1", "acc2"});
+    EXPECT_FALSE(batchId.empty());
 }
 
-TEST_F(AccountsTest, BatchManagerGetBatches) {
-    BatchManager manager;
-    manager.createBatch("batch1", {"acc1", "acc2"});
-    manager.createBatch("batch2", {"acc3"});
+TEST_F(AccountsTest, BatchManagerListBatches) {
+    AccountManager am("data/test_accounts");
+    BatchManager manager(am);
 
-    auto batches = manager.getBatches();
+    manager.create("TestGame", "batch1", {"acc1", "acc2"});
+    manager.create("TestGame", "batch2", {"acc3"});
+
+    auto batches = manager.list("TestGame");
     EXPECT_GE(batches.size(), 2);
 }
 
 TEST_F(AccountsTest, BatchManagerGetBatch) {
-    BatchManager manager;
-    manager.createBatch("batch1", {"acc1", "acc2"});
+    AccountManager am("data/test_accounts");
+    BatchManager manager(am);
 
-    auto batch = manager.getBatch("batch1");
-    ASSERT_NE(batch, nullptr);
+    auto batchId = manager.create("TestGame", "batch1", {"acc1", "acc2"});
+
+    auto batch = manager.get(batchId);
+    ASSERT_TRUE(batch.has_value());
     EXPECT_EQ(batch->accountIds.size(), 2);
 
-    auto missing = manager.getBatch("nonexistent");
-    EXPECT_EQ(missing, nullptr);
+    auto missing = manager.get("nonexistent");
+    EXPECT_FALSE(missing.has_value());
 }
 
 TEST_F(AccountsTest, BatchManagerRemoveBatch) {
-    BatchManager manager;
-    manager.createBatch("batch1", {"acc1"});
+    AccountManager am("data/test_accounts");
+    BatchManager manager(am);
 
-    EXPECT_TRUE(manager.removeBatch("batch1"));
-    EXPECT_FALSE(manager.removeBatch("batch1"));
+    auto batchId = manager.create("TestGame", "batch1", {"acc1"});
+
+    EXPECT_TRUE(manager.remove(batchId));
+    EXPECT_FALSE(manager.remove(batchId));
 }
