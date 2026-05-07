@@ -4,11 +4,33 @@
 #include "wingman/http_server.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
+#include <filesystem>
+#include <fstream>
 
 namespace wingman {
 
 HTTPServer::HTTPServer(const std::string& dbPath, int port, const std::string& staticDir)
-    : port_(port), staticDir_(staticDir), authManager_(std::make_unique<AuthManager>(dbPath)) {}
+    : port_(port),
+      staticDir_(staticDir),
+      authManager_(std::make_unique<AuthManager>(dbPath)),
+      scriptManager_(std::make_unique<ScriptManager>()) {
+
+    // 初始化脚本管理器
+    scriptManager_->initLua();
+
+    // 扫描并加载 scripts 目录下的所有脚本
+    std::string scriptsDir = "scripts";
+    if (std::filesystem::exists(scriptsDir) && std::filesystem::is_directory(scriptsDir)) {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(scriptsDir)) {
+            if (entry.is_regular_file() && entry.path().extension() == ".lua") {
+                std::string scriptName = entry.path().stem().string();
+                std::string scriptPath = entry.path().string();
+                scriptManager_->loadScript(scriptName, scriptPath);
+                spdlog::info("Loaded script: {} from {}", scriptName, scriptPath);
+            }
+        }
+    }
+}
 
 HTTPServer::~HTTPServer() {
     stop();
@@ -132,6 +154,42 @@ void HTTPServer::setupRoutes() {
     CROW_ROUTE(app_, "/api/v1/scripts").methods("GET"_method, "POST"_method, "DELETE"_method)(
         [this](const crow::request& req) {
             crow::response resp = handleScripts(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    // Script content and execution routes
+    CROW_ROUTE(app_, "/api/v1/scripts/content").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleScriptContent(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/v1/scripts/save").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleScriptSave(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/v1/scripts/run").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleScriptRun(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/v1/scripts/stop").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleScriptStop(req);
+            addCorsHeaders(resp);
+            return resp;
+        });
+
+    CROW_ROUTE(app_, "/api/v1/scripts/logs").methods("POST"_method)(
+        [this](const crow::request& req) {
+            crow::response resp = handleScriptLogs(req);
             addCorsHeaders(resp);
             return resp;
         });
@@ -274,35 +332,241 @@ crow::response HTTPServer::handleScripts(const crow::request& req) {
     }
 
     if (req.method == "GET"_method) {
+        // 获取脚本列表
         nlohmann::json j;
         j["success"] = true;
         nlohmann::json arr = nlohmann::json::array();
-        nlohmann::json script1;
-        script1["name"] = "auto_heal.lua";
-        script1["path"] = "scripts/auto_heal.lua";
-        script1["status"] = "running";
-        script1["lastRun"] = 1234567890;
-        arr.push_back(script1);
 
-        nlohmann::json script2;
-        script2["name"] = "auto_farm.lua";
-        script2["path"] = "scripts/auto_farm.lua";
-        script2["status"] = "stopped";
-        arr.push_back(script2);
+        auto scriptNames = scriptManager_->getScriptNames();
+        for (const auto& name : scriptNames) {
+            auto* info = scriptManager_->getScriptInfo(name);
+            if (info) {
+                nlohmann::json script;
+                script["id"] = name;
+                script["name"] = name + ".lua";
+                script["path"] = info->config.path;
+                script["description"] = "";
+                script["size"] = std::filesystem::file_size(info->config.path);
+                script["modifiedTime"] = info->lastModified;
+                script["isRunning"] = (info->state == ScriptState::running);
+                arr.push_back(script);
+            }
+        }
 
         j["data"] = arr;
         return jsonResponse(j);
     } else if (req.method == "POST"_method) {
-        nlohmann::json j;
-        j["success"] = true;
-        return jsonResponse(j);
+        // 创建新脚本
+        try {
+            auto body = nlohmann::json::parse(req.body);
+            std::string name = body.value("name", "");
+            std::string description = body.value("description", "");
+
+            if (name.empty() || name.find(".lua") == std::string::npos) {
+                return errorResponse("Script name must end with .lua");
+            }
+
+            std::string scriptName = name.substr(0, name.length() - 4); // 移除 .lua
+            std::string scriptPath = "scripts/" + name;
+
+            // 创建脚本文件
+            std::ofstream scriptFile(scriptPath);
+            if (!scriptFile.is_open()) {
+                return errorResponse("Failed to create script file");
+            }
+
+            scriptFile << "-- " << name << "\n";
+            scriptFile << "-- " << description << "\n\n";
+            scriptFile << "function main()\n";
+            scriptFile << "    print(\"Hello, Wingman!\")\n";
+            scriptFile << "end\n\n";
+            scriptFile << "main()\n";
+            scriptFile.close();
+
+            // 加载脚本
+            if (scriptManager_->loadScript(scriptName, scriptPath)) {
+                nlohmann::json j;
+                j["success"] = true;
+                j["data"] = {
+                    {"id", scriptName},
+                    {"name", name},
+                    {"path", scriptPath}
+                };
+                return jsonResponse(j);
+            } else {
+                return errorResponse("Failed to load script");
+            }
+        } catch (const std::exception& e) {
+            return errorResponse(e.what());
+        }
     } else if (req.method == "DELETE"_method) {
-        nlohmann::json j;
-        j["success"] = true;
-        return jsonResponse(j);
+        // 删除脚本
+        try {
+            auto body = nlohmann::json::parse(req.body);
+            std::string path = body.value("path", "");
+
+            if (path.empty()) {
+                return errorResponse("Path is required");
+            }
+
+            // 卸载脚本
+            std::string scriptName = std::filesystem::path(path).stem().string();
+            scriptManager_->unloadScript(scriptName);
+
+            // 删除文件
+            if (std::filesystem::remove(path)) {
+                nlohmann::json j;
+                j["success"] = true;
+                return jsonResponse(j);
+            } else {
+                return errorResponse("Failed to delete script file");
+            }
+        } catch (const std::exception& e) {
+            return errorResponse(e.what());
+        }
     }
 
     return errorResponse("Method not allowed");
+}
+
+crow::response HTTPServer::handleScriptContent(const crow::request& req) {
+    User user;
+    if (!authenticate(req, user)) {
+        return crow::response(401);
+    }
+
+    try {
+        auto body = nlohmann::json::parse(req.body);
+        std::string path = body.value("path", "");
+
+        if (path.empty()) {
+            return errorResponse("Path is required");
+        }
+
+        // 读取文件内容
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            return errorResponse("Failed to open script file");
+        }
+
+        std::string content((std::istreambuf_iterator<char>(file)),
+                           std::istreambuf_iterator<char>());
+        file.close();
+
+        nlohmann::json j;
+        j["success"] = true;
+        j["data"] = content;
+        return jsonResponse(j);
+    } catch (const std::exception& e) {
+        return errorResponse(e.what());
+    }
+}
+
+crow::response HTTPServer::handleScriptSave(const crow::request& req) {
+    User user;
+    if (!authenticate(req, user)) {
+        return crow::response(401);
+    }
+
+    try {
+        auto body = nlohmann::json::parse(req.body);
+        std::string path = body.value("path", "");
+        std::string content = body.value("content", "");
+
+        if (path.empty()) {
+            return errorResponse("Path is required");
+        }
+
+        // 写入文件
+        std::ofstream file(path);
+        if (!file.is_open()) {
+            return errorResponse("Failed to open script file for writing");
+        }
+
+        file << content;
+        file.close();
+
+        // 重新加载脚本
+        std::string scriptName = std::filesystem::path(path).stem().string();
+        scriptManager_->reloadScript(scriptName);
+
+        nlohmann::json j;
+        j["success"] = true;
+        return jsonResponse(j);
+    } catch (const std::exception& e) {
+        return errorResponse(e.what());
+    }
+}
+
+crow::response HTTPServer::handleScriptRun(const crow::request& req) {
+    User user;
+    if (!authenticate(req, user)) {
+        return crow::response(401);
+    }
+
+    try {
+        auto body = nlohmann::json::parse(req.body);
+        std::string path = body.value("path", "");
+
+        if (path.empty()) {
+            return errorResponse("Path is required");
+        }
+
+        std::string scriptName = std::filesystem::path(path).stem().string();
+
+        if (scriptManager_->runScript(scriptName)) {
+            nlohmann::json j;
+            j["success"] = true;
+            j["data"] = {
+                {"executionId", scriptName}
+            };
+            return jsonResponse(j);
+        } else {
+            return errorResponse("Failed to run script");
+        }
+    } catch (const std::exception& e) {
+        return errorResponse(e.what());
+    }
+}
+
+crow::response HTTPServer::handleScriptStop(const crow::request& req) {
+    User user;
+    if (!authenticate(req, user)) {
+        return crow::response(401);
+    }
+
+    try {
+        auto body = nlohmann::json::parse(req.body);
+        std::string executionId = body.value("executionId", "");
+
+        if (executionId.empty()) {
+            return errorResponse("Execution ID is required");
+        }
+
+        if (scriptManager_->stopScript(executionId)) {
+            nlohmann::json j;
+            j["success"] = true;
+            return jsonResponse(j);
+        } else {
+            return errorResponse("Failed to stop script");
+        }
+    } catch (const std::exception& e) {
+        return errorResponse(e.what());
+    }
+}
+
+crow::response HTTPServer::handleScriptLogs(const crow::request& req) {
+    User user;
+    if (!authenticate(req, user)) {
+        return crow::response(401);
+    }
+
+    // TODO: 实现日志收集功能
+    // 目前返回空数组
+    nlohmann::json j;
+    j["success"] = true;
+    j["data"] = nlohmann::json::array();
+    return jsonResponse(j);
 }
 
 crow::response HTTPServer::handleWindows(const crow::request& req) {

@@ -9,6 +9,7 @@
 #include <mutex>
 #include <thread>
 #include "wingman/auth.hpp"
+#include "wingman/script_manager.hpp"
 
 namespace wingman {
 
@@ -130,6 +131,7 @@ private:
     int port_;
     std::string staticDir_;
     std::unique_ptr<AuthManager> authManager_;
+    std::unique_ptr<ScriptManager> scriptManager_;
     crow::SimpleApp app_;
 
     // WebSocket 连接管理
@@ -166,6 +168,11 @@ private:
     crow::response handleLogout(const crow::request& req);
     crow::response handleStatus(const crow::request& req);
     crow::response handleScripts(const crow::request& req);
+    crow::response handleScriptContent(const crow::request& req);
+    crow::response handleScriptSave(const crow::request& req);
+    crow::response handleScriptRun(const crow::request& req);
+    crow::response handleScriptStop(const crow::request& req);
+    crow::response handleScriptLogs(const crow::request& req);
     crow::response handleWindows(const crow::request& req);
     crow::response handleSettings(const crow::request& req);
 
