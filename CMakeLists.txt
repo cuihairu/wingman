@@ -48,6 +48,10 @@ find_package(Crow CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(Protobuf REQUIRED)
 
+# SQLite3 support - enable kvstore persistence
+add_compile_definitions(WINGMAN_HAS_SQLITE)
+message(STATUS "SQLite3 persistence enabled")
+
 # GUI support
 if(WINGMAN_BUILD_GUI)
     find_package(imgui CONFIG REQUIRED)
@@ -81,7 +85,8 @@ set(CORE_SOURCES
     src/recorder.cpp
     src/http.cpp
     src/json.cpp
-    # src/kvstore.cpp  # TODO: Re-enable when sqlite3 is properly configured
+    src/kvstore.cpp
+    src/accounts.cpp
     src/system.cpp
     src/performance.cpp
     src/script_manager.cpp
