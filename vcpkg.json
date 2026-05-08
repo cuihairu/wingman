@@ -33,14 +33,13 @@
       "platform": "windows"
     },
     {
-      "$comment": "Protobuf for Agent-Server communication",
-      "name": "protobuf",
-      "platform": "windows",
-      "features": ["icu"]
-    },
-    {
       "$comment": "ICU for protobuf support",
       "name": "icu",
+      "platform": "windows"
+    },
+    {
+      "$comment": "Protobuf for Agent-Server communication",
+      "name": "protobuf",
       "platform": "windows"
     }
   ],
