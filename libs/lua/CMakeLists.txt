@@ -69,8 +69,14 @@ endif()
 # ========== 编译选项 ==========
 target_compile_features(wingman_lua PUBLIC cxx_std_17)
 
-if(MSVC)
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(wingman_lua PRIVATE /W4)
 else()
     target_compile_options(wingman_lua PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+# ========== 测试 ==========
+option(BUILD_LUA_TESTS "Build lua library tests" OFF)
+if(BUILD_LUA_TESTS)
+    add_subdirectory(tests)
 endif()

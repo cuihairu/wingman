@@ -123,7 +123,7 @@ add_library(wingman::wingman ALIAS wingman)
 # ========== 编译选项 ==========
 target_compile_features(wingman PUBLIC cxx_std_17)
 
-if(MSVC)
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(wingman PRIVATE /W4 /utf-8)
 else()
     target_compile_options(wingman PRIVATE -Wall -Wextra -Wpedantic)

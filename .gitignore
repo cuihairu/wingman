@@ -110,6 +110,12 @@ docs/.vitepress/cache/
 docs/.vitepress/dist/
 docs/node_modules/
 
+# Dashboard
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.turbo/
+dashboard/config/local.ts
+
 # Claude Code local files
 .claude/
 _deps/

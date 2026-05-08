@@ -5,17 +5,18 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 使用静态运行时库 (与 vcpkg x64-windows-static 一致)
-if(MSVC)
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     # 确保所有目标使用静态运行时库
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
-    # 使用 spdlog header-only 模式避免符号重复
-    add_compile_definitions(SPDLOG_HEADER_ONLY)
 endif()
 
+# 使用 spdlog header-only 模式避免符号重复
+add_compile_definitions(SPDLOG_HEADER_ONLY)
+
 # Add UTF-8 compiler flag (MSVC only)
-if(MSVC)
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(/utf-8)
 endif()
 
@@ -46,6 +47,7 @@ option(WINGMAN_ENABLE_EMMY "Enable EmmyLua Debugger integration" ON)
 option(BUILD_CLIENT_TESTS "Build client tests" OFF)
 option(BUILD_CORE_TESTS "Build core library tests" OFF)
 option(BUILD_TRANSPORT_TESTS "Build transport library tests" OFF)
+option(BUILD_LUA_TESTS "Build lua library tests" OFF)
 
 # ========== 核心依赖（必需）==========
 find_package(Lua REQUIRED)
@@ -61,7 +63,7 @@ find_package(unofficial-sqlite3 CONFIG)
 find_package(Protobuf CONFIG)
 
 # 测试依赖
-if(BUILD_TRANSPORT_TESTS)
+if(BUILD_TRANSPORT_TESTS OR BUILD_LUA_TESTS)
     find_package(GTest CONFIG REQUIRED)
 endif()
 
