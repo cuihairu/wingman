@@ -153,24 +153,31 @@ jobs:
       uses: actions/checkout@v6
 
     - name: Install Lua
-      run: choco install lua -y
+      run: |
+        choco install lua -y
+        # Lua 5.4 from Chocolatey (vcpkg lua is also 5.4.x)
+        # Lua 5.5 binaries not available on Chocolatey yet
+        $luaPath = "C:\Program Files\Lua\5.4"
+        if (Test-Path $luaPath) {
+            echo $luaPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        }
 
     - name: Install LuaRocks
       run: |
         Invoke-WebRequest -Uri "https://luarocks.github.io/luarocks/releases/luarocks-3.13.0-windows-64.zip" -OutFile luarocks.zip
         Expand-Archive luarocks.zip -DestinationPath .
         Move-Item luarocks-3.13.0-windows-64 C:\luarocks
-        $env:PATH += ";C:\luarocks"
-        [Environment]::SetEnvironmentVariable("Path", $env:PATH, "Machine")
+        echo "C:\luarocks" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "C:\luarocks\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Install Busted
       run: |
-        $env:PATH += ";C:\luarocks\bin;C:\Program Files\Lua\5.4"
+        $env:PATH = "C:\luarocks\bin;C:\luarocks;C:\Program Files\Lua\5.4;$env:PATH"
         luarocks install busted
 
     - name: Run Lua tests
       run: |
-        $env:PATH += ";C:\luarocks\bin;C:\Program Files\Lua\5.4"
+        $env:PATH = "C:\luarocks\bin;C:\luarocks;C:\Program Files\Lua\5.4;$env:PATH"
         cd libs/lua/tests
         busted
       continue-on-error: true

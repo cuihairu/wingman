@@ -48,6 +48,8 @@ option(BUILD_CLIENT_TESTS "Build client tests" OFF)
 option(BUILD_CORE_TESTS "Build core library tests" OFF)
 option(BUILD_TRANSPORT_TESTS "Build transport library tests" OFF)
 option(BUILD_LUA_TESTS "Build lua library tests" OFF)
+option(BUILD_PROTO_TESTS "Build proto library tests" OFF)
+option(BUILD_DEBUG_TESTS "Build debug library tests" OFF)
 
 # ========== 核心依赖（必需）==========
 find_package(unofficial-lua CONFIG REQUIRED)
@@ -69,7 +71,7 @@ find_package(unofficial-sqlite3 CONFIG)
 find_package(Protobuf CONFIG)
 
 # 测试依赖
-if(BUILD_TRANSPORT_TESTS OR BUILD_LUA_TESTS)
+if(BUILD_TRANSPORT_TESTS OR BUILD_LUA_TESTS OR BUILD_CORE_TESTS OR BUILD_PROTO_TESTS OR BUILD_DEBUG_TESTS)
     find_package(GTest CONFIG REQUIRED)
 endif()
 
@@ -120,6 +122,7 @@ if(WINGMAN_BUILD_AGENT)
 
     # 应用
     add_subdirectory(apps/client)
+    add_subdirectory(apps/cli)
     # add_subdirectory(apps/inspector)  # 暂时禁用，需要 imgui
 
     message(STATUS "Multi-module build enabled")
@@ -129,16 +132,19 @@ endif()
 if(WINGMAN_BUILD_TESTS)
     enable_testing()
 
-    # 各模块测试
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/core/tests/CMakeLists.txt")
-        add_subdirectory(libs/core/tests)
+    # 各模块测试（transport、lua、proto、debug 在各自模块内处理）
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/wingman/tests/CMakeLists.txt")
+        add_subdirectory(lib/wingman/tests)
     endif()
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/transport/tests/CMakeLists.txt")
-        add_subdirectory(libs/transport/tests)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/apps/client/tests/CMakeLists.txt")
+        add_subdirectory(apps/client/tests)
     endif()
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/client/tests/CMakeLists.txt")
-        add_subdirectory(client/tests)
-    endif()
+endif()
+
+# ========== 性能基准测试 ==========
+option(WINGMAN_BUILD_BENCHMARKS "Build performance benchmarks" OFF)
+if(WINGMAN_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
 endif()
 
 # ========== 安装 ==========

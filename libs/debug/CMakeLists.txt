@@ -45,3 +45,9 @@ add_library(wingman::debug ALIAS wingman_debug)
 
 # EmmyLua 文件应该在构建时复制到输出目录
 # 用户需要手动下载 EmmyLua 或通过 FetchContent 获取
+
+# ========== 测试 ==========
+option(BUILD_DEBUG_TESTS "Build debug library tests" OFF)
+if(BUILD_DEBUG_TESTS)
+    add_subdirectory(tests)
+endif()

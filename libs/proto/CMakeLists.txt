@@ -86,3 +86,9 @@ else()
     # 创建命名空间别名
     add_library(wingman::proto ALIAS wingman_proto)
 endif()
+
+# ========== 测试 ==========
+option(BUILD_PROTO_TESTS "Build proto library tests" OFF)
+if(BUILD_PROTO_TESTS)
+    add_subdirectory(tests)
+endif()

@@ -12,7 +12,7 @@ C++ + Lua 的高性能游戏自动化框架
 [![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
-[![Lua](https://img.shields.io/badge/Lua-5.5-blue.svg)](https://www.lua.org/)
+[![Lua](https://img.shields.io/badge/Lua-5.4-blue.svg)](https://www.lua.org/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 [文档](https://cuihairu.github.io/wingman/) | [快速开始](#快速开始) | [API](https://cuihairu.github.io/wingman/api/) | [示例](https://cuihairu.github.io/wingman/examples/)
@@ -113,29 +113,40 @@ cmake --build build --config Release
 ### C++ 单元测试
 
 ```bash
+# 配置测试
+cmake -B build -G "Visual Studio 17 2022" `
+    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+    -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+    -DVCPKG_MANIFEST_FEATURES=tests `
+    -DWINGMAN_BUILD_TESTS=ON `
+    -DBUILD_CORE_TESTS=ON `
+    -DBUILD_TRANSPORT_TESTS=ON
+
 # 构建测试
-cmake -B build -DWINGMAN_BUILD_TESTS=ON
-cmake --build build --config Debug
+cmake --build build --config Release
 
 # 运行测试
-.\build\tests\cpp\Debug\wingman_tests.exe
+.\build\lib\wingman\tests\Release\core_tests.exe      # 25 个测试
+.\build\libs\transport\tests\Release\transport_tests.exe  # 7 个测试
+.\build\libs\proto\tests\Release\proto_tests.exe        # 7 个测试
+.\build\libs\debug\tests\Release\debug_tests.exe        # 4 个测试
 ```
 
-### Lua 开发工具 (可选)
-
-Wingman 提供可选的 Lua 开发工具：
+### 性能基准测试
 
 ```bash
-# 安装 LuaRocks 包管理器
-scripts\install-luarocks.cmd
+# 配置基准测试
+cmake -B build -G "Visual Studio 17 2022" `
+    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+    -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+    -DWINGMAN_BUILD_BENCHMARKS=ON
 
-# 安装 Busted 测试框架
-scripts\install-busted.cmd
-
-# 运行 Lua 测试
-scripts\run-lua-tests.cmd
+# 构建并运行
+cmake --build build --config Release --target kvstore_bench
+.\build\benchmarks\Release\kvstore_bench.exe
 ```
 
+详细构建指南请参考 [BUILD.md](BUILD.md)。
 详细开发指南请参考 [DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 
 ## 文档

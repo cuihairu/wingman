@@ -24,19 +24,24 @@ set(CLIENT_SOURCES
 
 # GUI 支持
 if(WINGMAN_BUILD_GUI)
-    find_package(imgui CONFIG REQUIRED)
-    list(APPEND CLIENT_SOURCES
-        src/gui/app.cpp
-        src/gui/config.cpp
-        src/gui/file_dialog.cpp
-        src/gui/imgui_backend.cpp
-        src/gui/spdlog_sink.cpp
-        src/gui/panels/log_panel.cpp
-        src/gui/panels/preview_panel.cpp
-        src/gui/panels/script_panel.cpp
-        src/gui/panels/trigger_panel.cpp
-    )
-    message(STATUS "Client GUI enabled")
+    find_package(imgui CONFIG QUIET)
+    if(imgui_FOUND)
+        list(APPEND CLIENT_SOURCES
+            src/gui/app.cpp
+            src/gui/config.cpp
+            src/gui/file_dialog.cpp
+            src/gui/imgui_backend.cpp
+            src/gui/spdlog_sink.cpp
+            src/gui/panels/log_panel.cpp
+            src/gui/panels/preview_panel.cpp
+            src/gui/panels/script_panel.cpp
+            src/gui/panels/trigger_panel.cpp
+        )
+        message(STATUS "Client GUI enabled")
+    else()
+        message(STATUS "imgui not found, GUI disabled")
+        set(WINGMAN_BUILD_GUI OFF)
+    endif()
 endif()
 
 # 创建可执行文件

@@ -1,0 +1,188 @@
+# Wingman 构建指南
+
+## 系统要求
+
+### Windows
+- Windows 10/11 (x64)
+- Visual Studio 2022
+- CMake 3.20+
+- vcpkg 包管理器
+- Git
+
+## 快速开始
+
+### 1. 安装 vcpkg
+
+```bash
+git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+C:\vcpkg\bootstrap-vcpkg.bat
+```
+
+### 2. 配置项目
+
+```bash
+# 克隆项目
+git clone https://github.com/cuihairu/wingman.git
+cd wingman
+
+# 配置 CMake
+cmake -B build -G "Visual Studio 17 2022" `
+    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+    -DVCPKG_TARGET_TRIPLET=x64-windows-static
+```
+
+### 3. 编译
+
+```bash
+cmake --build build --config Release
+```
+
+### 4. 运行
+
+```bash
+.\build\apps\client\Release\wingman-client.exe
+```
+
+## 测试
+
+### 启用测试
+
+```bash
+cmake -B build -G "Visual Studio 17 2022" `
+    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+    -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+    -DVCPKG_MANIFEST_FEATURES=tests `
+    -DWINGMAN_BUILD_TESTS=ON `
+    -DBUILD_CORE_TESTS=ON `
+    -DBUILD_TRANSPORT_TESTS=ON
+```
+
+### 运行测试
+
+```bash
+# 核心库测试 (25 个测试)
+.\build\lib\wingman\tests\Release\core_tests.exe
+
+# 传输库测试 (7 个测试)
+.\build\libs\transport\tests\Release\transport_tests.exe
+
+# 协议库测试 (7 个测试)
+.\build\libs\proto\tests\Release\proto_tests.exe
+
+# 调试库测试 (4 个测试)
+.\build\libs\debug\tests\Release\debug_tests.exe
+```
+
+## 性能基准测试
+
+### 编译基准测试
+
+```bash
+cmake -B build -G "Visual Studio 17 2022" `
+    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+    -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+    -DWINGMAN_BUILD_BENCHMARKS=ON
+
+cmake --build build --config Release --target kvstore_bench
+```
+
+### 运行基准测试
+
+```bash
+.\build\benchmarks\Release\kvstore_bench.exe
+```
+
+### 性能指标
+
+| 操作 | 性能 |
+|------|------|
+| SET | 0.04 μs/op |
+| GET | 0.03 μs/op |
+| DELETE | 0.21 μs/op |
+| INCR | 0.07 μs/op |
+| HSET | 0.04 μs/op |
+| HGET | 0.04 μs/op |
+| LPUSH | 0.12 μs/op |
+| LPOP | 0.20 μs/op |
+| WRITE 吞吐量 | 10M ops/sec |
+
+## 构建选项
+
+### CMake 选项
+
+| 选项 | 默认值 | 说明 |
+|------|--------|------|
+| `WINGMAN_BUILD_GUI` | ON | 构建原生 GUI (需要 ImGui) |
+| `WINGMAN_ENABLE_OCR` | OFF | 启用 OCR 支持 (需要 Tesseract) |
+| `WINGMAN_ENABLE_ML` | OFF | 启用 ML/AI 支持 (需要 ONNX Runtime) |
+| `WINGMAN_BUILD_TESTS` | OFF | 构建测试 |
+| `WINGMAN_BUILD_BENCHMARKS` | OFF | 构建基准测试 |
+| `BUILD_CORE_TESTS` | OFF | 构建核心库测试 |
+| `BUILD_TRANSPORT_TESTS` | OFF | 构建传输库测试 |
+| `BUILD_PROTO_TESTS` | OFF | 构建协议库测试 |
+| `BUILD_DEBUG_TESTS` | OFF | 构建调试库测试 |
+
+### Vcpkg Features
+
+```bash
+# 启用 tests feature (安装 GTest)
+-DVCPKG_MANIFEST_FEATURES=tests
+
+# 启用 gui feature (安装 ImGui)
+-DVCPKG_MANIFEST_FEATURES=gui
+
+# 启用多个 features
+-DVCPKG_MANIFEST_FEATURES=tests;gui
+```
+
+## 依赖项
+
+### 核心依赖 (自动安装)
+- lua 5.4
+- spdlog
+- nlohmann-json
+- asio
+- curl
+- sqlite3
+- protobuf
+
+### 可选依赖
+- imgui (GUI)
+- tesseract (OCR)
+- onnxruntime (ML/AI)
+- gtest (测试)
+
+## 故障排除
+
+### vcpkg 安装缓慢
+
+使用二进制缓存：
+
+```bash
+$env:VCPKG_DEFAULT_BINARY_CACHE = "C:\vcpkg\archives"
+```
+
+### CMake 找不到包
+
+确保使用正确的 toolchain 文件和 triplet：
+
+```bash
+-DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+-DVCPKG_TARGET_TRIPLET=x64-windows-static
+```
+
+### 链接错误
+
+确保使用静态运行时库，项目默认配置已设置。
+
+## CI/CD
+
+项目使用 GitHub Actions 进行持续集成：
+
+```yaml
+# .github/workflows/ci.yml
+- Windows 构建
+- C++ 测试
+- Lua 测试
+- 代码覆盖率
+```
