@@ -139,9 +139,6 @@ jobs:
 
     - name: Setup vcpkg and install Lua
       run: |
-        # 创建 vcpkg 缓存目录（避免环境变量错误）
-        New-Item -ItemType Directory -Force -Path "vcpkg\archives" | Out-Null
-
         # 不使用 GitHub Packages 缓存，直接安装
         if (Test-Path "vcpkg") {
           Remove-Item -Recurse -Force vcpkg
@@ -149,6 +146,10 @@ jobs:
         git clone https://github.com/Microsoft/vcpkg.git
         cd vcpkg
         .\bootstrap-vcpkg.bat
+
+        # 创建缓存目录（在 vcpkg 目录内）
+        New-Item -ItemType Directory -Force -Path "archives" | Out-Null
+
         cd ..
         # 使用 classic 模式安装 Lua
         .\vcpkg\vcpkg install --classic --triplet=x64-windows-static lua
