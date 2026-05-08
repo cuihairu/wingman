@@ -221,19 +221,23 @@ jobs:
 
     - name: Install Busted
       run: |
-        # 确保 Lua 在 PATH 中
-        $env:PATH = "C:\Program Files\Lua\5.4;C:\luarocks\bin;C:\luarocks;$env:PATH"
-        Write-Host "PATH: $env:PATH"
-        # 检查 lua 是否可用
-        & lua -v
-        # 安装 busted
-        & luarocks install busted
+        # 直接使用完整路径
+        $luaPath = "C:\Program Files\Lua\5.4"
+        if (Test-Path "$luaPath\lua.exe") {
+            & "$luaPath\lua.exe" -v
+            & "C:\luarocks\bin\luarocks.exe" install busted
+        } else {
+            Write-Host "ERROR: lua.exe not found at $luaPath"
+            exit 1
+        }
 
     - name: Run Lua tests
       run: |
-        $env:PATH = "C:\luarocks\bin;C:\luarocks;C:\Program Files\Lua\5.4;$env:PATH"
+        # 直接使用完整路径
+        $luaPath = "C:\Program Files\Lua\5.4"
+        $env:PATH = "$luaPath;C:\luarocks\bin;C:\luarocks;$env:PATH"
         cd libs/lua/tests
-        busted
+        & "C:\luarocks\bin\busted.exe"
       continue-on-error: true
 
   # ========== Go Test ==========
