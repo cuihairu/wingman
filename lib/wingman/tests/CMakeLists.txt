@@ -3,8 +3,12 @@
 if(BUILD_CORE_TESTS)
     enable_testing()
 
-    # 添加 GTest include 目录
-    include_directories(${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include)
+    # 添加多个可能的 GTest include 目录
+    # vcpkg 的 GTest 头文件可能在不同位置
+    include_directories(
+        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include
+        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include/gtest
+    )
 
     # 创建测试可执行文件
     add_executable(core_tests
