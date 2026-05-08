@@ -9,10 +9,6 @@ on:
 
 env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
-env:
-  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
   VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
