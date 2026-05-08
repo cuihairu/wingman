@@ -3,8 +3,13 @@
 if(BUILD_CORE_TESTS)
     enable_testing()
 
-    # 查找 GoogleTest
-    find_package(GTest CONFIG REQUIRED)
+    # 查找 GoogleTest - 使用 QUIET 模式避免主配置失败
+    find_package(GTest CONFIG QUIET)
+
+    if(NOT GTest_FOUND)
+        message(WARNING "GTest not found, skipping core tests")
+        return()
+    endif()
 
     # 创建测试可执行文件
     add_executable(core_tests

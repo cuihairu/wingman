@@ -70,10 +70,8 @@ find_package(OpenCV CONFIG)
 find_package(unofficial-sqlite3 CONFIG)
 find_package(Protobuf CONFIG)
 
-# 测试依赖
-if(BUILD_TRANSPORT_TESTS OR BUILD_LUA_TESTS OR BUILD_CORE_TESTS OR BUILD_PROTO_TESTS OR BUILD_DEBUG_TESTS)
-    find_package(GTest CONFIG REQUIRED)
-endif()
+# 测试依赖 - GTest 在各测试子目录中单独查找
+# 这样可以避免在主配置阶段因找不到 GTest 而失败
 
 # SQLite3 支持
 add_compile_definitions(WINGMAN_HAS_SQLITE)
