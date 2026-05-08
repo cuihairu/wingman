@@ -52,6 +52,7 @@ Makefile
 install_manifest.txt
 compile_commands.json
 CMakeUserPresets.json
+ZERO_CHECK.dir/
 
 # Temporary files
 *.tmp
