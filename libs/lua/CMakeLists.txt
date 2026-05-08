@@ -46,7 +46,7 @@ target_include_directories(wingman_lua PUBLIC
 
 # 链接库
 target_link_libraries(wingman_lua PUBLIC
-    ${LUA_LIBRARIES}
+    unofficial::lua::lua
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman

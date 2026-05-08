@@ -50,12 +50,18 @@ option(BUILD_TRANSPORT_TESTS "Build transport library tests" OFF)
 option(BUILD_LUA_TESTS "Build lua library tests" OFF)
 
 # ========== 核心依赖（必需）==========
-find_package(Lua REQUIRED)
+find_package(unofficial-lua CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(asio CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+
+# 设置 Lua 库变量（兼容性）
+if(TARGET unofficial::lua::lua)
+    set(LUA_LIBRARIES unofficial::lua::lua)
+    set(LUA_INCLUDE_DIR "${unofficial-lua_DIR}/../../include")
+endif()
 
 # 可选依赖
 find_package(OpenCV CONFIG)
