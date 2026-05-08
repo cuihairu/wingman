@@ -99,9 +99,19 @@ TEST_F(RemoteServerTest, ClientConnectDisconnect) {
     ASSERT_TRUE(client->connect("127.0.0.1", 9998));
     EXPECT_TRUE(client->isConnected());
 
+    // 发送一个请求，确保服务器端线程正常工作
+    RemoteResponse resp = client->ping();
+    EXPECT_TRUE(resp.success);
+
+    // 稍等服务器处理完
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     // 断开
     client->disconnect();
     EXPECT_FALSE(client->isConnected());
+
+    // 稍等服务器端线程退出
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 }
 
 TEST_F(RemoteServerTest, ClientPing) {
@@ -167,16 +177,22 @@ TEST_F(RemoteServerTest, ClientGetPixel) {
 }
 
 TEST_F(RemoteServerTest, ClientListTriggers) {
-    ASSERT_TRUE(server->start(9993));
+    // 使用 9988 端口避免与其他测试冲突
+    ASSERT_TRUE(server->start(9988));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    ASSERT_TRUE(client->connect("127.0.0.1", 9988));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    ASSERT_TRUE(client->connect("127.0.0.1", 9993));
-
     RemoteResponse resp = client->listTriggers();
-    EXPECT_TRUE(resp.success);
-    EXPECT_TRUE(resp.data.contains("count"));
-    EXPECT_TRUE(resp.data.contains("triggers"));
+    EXPECT_TRUE(resp.success) << "Error: " << resp.error;
+    if (resp.success) {
+        EXPECT_TRUE(resp.data.contains("count"));
+        EXPECT_TRUE(resp.data.contains("triggers"));
+    }
 
+    // 稍等服务器处理完
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     client->disconnect();
 }
 

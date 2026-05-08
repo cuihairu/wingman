@@ -1,5 +1,6 @@
 #include "wingman/remote_server.hpp"
 #include "wingman/window.hpp"
+#include "wingman/vision.hpp"
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <chrono>
@@ -107,6 +108,10 @@ bool RemoteServer::start(int port) {
         return false;
     }
 
+    // 允许地址重用，避免 TIME_WAIT 导致的端口冲突
+    int reuseAddr = 1;
+    setsockopt(impl_->listenSocket, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuseAddr, sizeof(reuseAddr));
+
     // 绑定地址
     sockaddr_in serverAddr{};
     serverAddr.sin_family = AF_INET;
@@ -149,6 +154,10 @@ bool RemoteServer::start(int port) {
             char clientIP[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &clientAddr.sin_addr, clientIP, INET_ADDRSTRLEN);
             spdlog::info("Client connected from {}:{}", clientIP, ntohs(clientAddr.sin_port));
+
+            // 设置接收超时，避免线程永久阻塞
+            DWORD timeout = 1000; // 1秒超时
+            setsockopt(clientSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
 
             // 启动客户端处理线程
             {
@@ -249,13 +258,19 @@ RemoteResponse RemoteServer::handleRequest(const RemoteRequest& req) {
         if (req.action == "capture_screen") return handleCaptureScreen(req.params);
         if (req.action == "get_pixel") return handleGetPixel(req.params);
         if (req.action == "find_color") return handleFindColor(req.params);
+        if (req.action == "find_image") return handleFindImage(req.params);
         if (req.action == "click") return handleClick(req.params);
         if (req.action == "move") return handleMove(req.params);
         if (req.action == "key") return handleKey(req.params);
         if (req.action == "type_text") return handleTypeText(req.params);
         if (req.action == "list_triggers") return handleListTriggers(req.params);
+        if (req.action == "add_trigger") return handleAddTrigger(req.params);
+        if (req.action == "remove_trigger") return handleRemoveTrigger(req.params);
         if (req.action == "enable_trigger") return handleEnableTrigger(req.params);
         if (req.action == "disable_trigger") return handleDisableTrigger(req.params);
+        if (req.action == "record_macro") return handleRecordMacro(req.params);
+        if (req.action == "stop_macro_recording") return handleStopMacroRecording(req.params);
+        if (req.action == "play_macro") return handlePlayMacro(req.params);
 
         RemoteResponse resp;
         resp.success = false;
@@ -300,6 +315,46 @@ RemoteResponse RemoteServer::handleCaptureScreen(const nlohmann::json& params) {
     resp.data["width"] = width;
     resp.data["height"] = height;
     resp.data["message"] = "Screenshot not fully implemented";
+    return resp;
+}
+
+RemoteResponse RemoteServer::handleFindImage(const nlohmann::json& params) {
+    RemoteResponse resp;
+
+    try {
+        std::string templatePath = params["template_path"];
+        double threshold = params.value("threshold", 0.8);
+
+        // 解析搜索区域
+        bool hasRegion = params.contains("region");
+        ImageMatch result;
+
+        if (hasRegion) {
+            Rect region;
+            region.x = params["region"].value("x", 0);
+            region.y = params["region"].value("y", 0);
+            region.width = params["region"].value("width", 0);
+            region.height = params["region"].value("height", 0);
+            result = Vision::findImage(templatePath, region, threshold);
+        } else {
+            result = Vision::findImage(templatePath, threshold);
+        }
+
+        resp.success = result.found;
+        if (result.found) {
+            resp.data["x"] = result.position.x;
+            resp.data["y"] = result.position.y;
+            resp.data["confidence"] = result.confidence;
+            resp.data["region"]["x"] = result.region.x;
+            resp.data["region"]["y"] = result.region.y;
+            resp.data["region"]["width"] = result.region.width;
+            resp.data["region"]["height"] = result.region.height;
+        }
+    } catch (const std::exception& e) {
+        resp.success = false;
+        resp.error = e.what();
+    }
+
     return resp;
 }
 
@@ -399,37 +454,113 @@ RemoteResponse RemoteServer::handleTypeText(const nlohmann::json& params) {
 
 RemoteResponse RemoteServer::handleAddTrigger(const nlohmann::json& params) {
     RemoteResponse resp;
-    // TODO: 实现添加触发器
-    resp.success = false;
-    resp.error = "Not implemented";
+
+    try {
+        // 解析触发器配置
+        TriggerConfig config;
+        config.name = params["config"]["name"];
+        config.enabled = params["config"].value("enabled", true);
+        config.oneShot = params["config"].value("one_shot", false);
+        config.cooldown = params["config"].value("cooldown", 0);
+
+        // 解析条件
+        const auto& cond = params["config"]["condition"];
+        std::string typeStr = cond.value("type", "ColorFound");
+        if (typeStr == "ColorFound") config.condition.type = TriggerType::ColorFound;
+        else if (typeStr == "ColorLost") config.condition.type = TriggerType::ColorLost;
+        else if (typeStr == "ImageFound") config.condition.type = TriggerType::ImageFound;
+        else if (typeStr == "ImageLost") config.condition.type = TriggerType::ImageLost;
+        else config.condition.type = TriggerType::ColorFound;
+
+        config.condition.value = cond.value("value", "");
+        config.condition.tolerance = cond.value("tolerance", 10);
+        config.condition.interval = cond.value("interval", 100);
+
+        if (cond.contains("region")) {
+            config.condition.region.x = cond["region"].value("x", 0);
+            config.condition.region.y = cond["region"].value("y", 0);
+            config.condition.region.width = cond["region"].value("width", 0);
+            config.condition.region.height = cond["region"].value("height", 0);
+        }
+
+        // 解析动作
+        if (params["config"].contains("actions")) {
+            for (const auto& actionJson : params["config"]["actions"]) {
+                TriggerActionData action;
+                std::string actionType = actionJson.value("type", "Click");
+                if (actionType == "RunScript") action.type = BasicTriggerAction::RunScript;
+                else if (actionType == "Click") action.type = BasicTriggerAction::Click;
+                else if (actionType == "KeyPress") action.type = BasicTriggerAction::KeyPress;
+                else if (actionType == "Type") action.type = BasicTriggerAction::Type;
+                else action.type = BasicTriggerAction::Click;
+
+                action.value = actionJson.value("value", "");
+                action.x = actionJson.value("x", 0);
+                action.y = actionJson.value("y", 0);
+                action.delay = actionJson.value("delay", 0);
+                config.actions.push_back(action);
+            }
+        }
+
+        // 添加触发器
+        size_t id = triggerManager_->add(config);
+
+        resp.success = true;
+        resp.data["id"] = id;
+        resp.data["message"] = "Trigger added";
+    } catch (const std::exception& e) {
+        resp.success = false;
+        resp.error = e.what();
+    }
+
     return resp;
 }
 
 RemoteResponse RemoteServer::handleRemoveTrigger(const nlohmann::json& params) {
     RemoteResponse resp;
-    // TODO: 实现移除触发器
-    resp.success = false;
-    resp.error = "Not implemented";
+
+    try {
+        size_t id = params["id"];
+        triggerManager_->remove(id);
+        resp.success = true;
+        resp.data["message"] = "Trigger removed";
+    } catch (const std::exception& e) {
+        resp.success = false;
+        resp.error = e.what();
+    }
+
     return resp;
 }
 
 RemoteResponse RemoteServer::handleEnableTrigger(const nlohmann::json& params) {
     RemoteResponse resp;
 
-    std::string id = params["id"];
-    // TODO: 根据ID启用触发器
-    resp.success = false;
-    resp.error = "Not implemented";
+    try {
+        size_t id = params["id"];
+        triggerManager_->enable(id);
+        resp.success = true;
+        resp.data["message"] = "Trigger enabled";
+    } catch (const std::exception& e) {
+        resp.success = false;
+        resp.error = e.what();
+    }
+
     return resp;
 }
 
 RemoteResponse RemoteServer::handleDisableTrigger(const nlohmann::json& params) {
     RemoteResponse resp;
 
-    std::string id = params["id"];
-    // TODO: 根据ID禁用触发器
-    resp.success = false;
-    resp.error = "Not implemented";
+    try {
+        size_t id = params["id"];
+        triggerManager_->disable(id);
+        resp.success = true;
+        resp.data["message"] = "Trigger disabled";
+    } catch (const std::exception& e) {
+        resp.success = false;
+        resp.error = e.what();
+    }
+
     return resp;
 }
 
@@ -539,6 +670,10 @@ bool RemoteClient::connect(const std::string& host, int port) {
         WSACleanup();
         return false;
     }
+
+    // 设置接收超时
+    DWORD timeout = 5000; // 5秒超时
+    setsockopt(impl_->socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
 
     connected_ = true;
     spdlog::info("Connected to {}:{}", host, port);
