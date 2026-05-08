@@ -10,6 +10,7 @@ if(BUILD_CORE_TESTS)
     add_executable(core_tests
         kvstore_test.cpp
         trigger_test.cpp
+        recorder_test.cpp
     )
 
     target_include_directories(core_tests PRIVATE

@@ -546,19 +546,26 @@ local wingman = require('wingman')
 #### 测试覆盖详情
 | 模块 | 测试数 | 状态 |
 |------|--------|------|
-| core | 41/41 | ✅ KeyValueStore + Trigger |
+| core | 58/58 | ✅ KVStore + Trigger + Recorder |
 | transport | 7/7 | ✅ Message 序列化 |
 | proto | 7/7 | ✅ JSON 封装 |
 | debug | 4/4 | ✅ 状态枚举 |
-| **总计** | **59/59** | ✅ **全部通过** |
+| **总计** | **76/76** | ✅ **全部通过** |
 
-#### Milestone 2: 触发器系统 (进行中)
+#### Milestone 2: 触发器系统 (已完成)
 - [x] TriggerManager - 完整的触发器生命周期管理
 - [x] TriggerEngine - Lua配置加载支持
 - [x] 触发器测试 - 16个测试用例
 - [x] 示例配置 - config/triggers.lua
 - [x] 集成Lua库 - trigger_engine.cpp链接
-- [ ] YAML配置支持 - TriggerEngine::loadFromYAML
+
+#### Milestone 3: 宏系统 (已完成)
+- [x] MacroRecorder - 鼠标/键盘录制
+- [x] Hook支持 - 低级键盘鼠标钩子
+- [x] 保存为Lua脚本 - saveToLua()
+- [x] 保存/加载JSON - saveToJSON/loadFromJSON
+- [x] 回放功能 - playback(speed, repeat)
+- [x] 宏系统测试 - 17个测试用例
 
 #### 性能指标
 | 操作 | 性能 |

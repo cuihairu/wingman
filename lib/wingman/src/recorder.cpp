@@ -1,5 +1,6 @@
 #include "wingman/recorder.hpp"
 #include "wingman/input.hpp"
+#include <nlohmann/json.hpp>
 
 #include <fstream>
 #include <thread>
@@ -140,6 +141,39 @@ bool MacroRecorder::saveToJSON(const std::string& filepath) const {
     file << "}\n";
 
     return true;
+}
+
+bool MacroRecorder::loadFromJSON(const std::string& filepath) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) return false;
+
+    try {
+        nlohmann::json j;
+        file >> j;
+
+        if (!j.contains("events") || !j["events"].is_array()) {
+            return false;
+        }
+
+        m_events.clear();
+        for (const auto& eventJson : j["events"]) {
+            RecordedEvent event;
+            event.type = static_cast<RecordedEventType>(eventJson.value("type", 0));
+            event.timestamp = eventJson.value("timestamp", 0);
+            event.x = eventJson.value("x", 0);
+            event.y = eventJson.value("y", 0);
+            event.button = eventJson.value("button", 0);
+            event.keyCode = eventJson.value("keyCode", 0);
+            event.delay = eventJson.value("delay", 0);
+            event.text = eventJson.value("text", "");
+
+            m_events.push_back(event);
+        }
+
+        return true;
+    } catch (...) {
+        return false;
+    }
 }
 
 void MacroRecorder::playback(int speed, int repeat) const {

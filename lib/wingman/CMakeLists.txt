@@ -44,7 +44,7 @@ set(WINGMAN_SOURCES
 
     # 配置与工具
     src/config.cpp
-    # src/recorder.cpp  # TODO: 检查依赖
+    src/recorder.cpp
     src/json.cpp
     src/kvstore.cpp
 
