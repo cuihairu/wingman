@@ -24,7 +24,7 @@ env:
 jobs:
   # ========== C++ Build & Test ==========
   build-cpp:
-    runs-on: windows-2025
+    runs-on: windows-2025-vs2026
 
     steps:
     - name: Checkout
@@ -109,7 +109,7 @@ jobs:
 
   test-cpp:
     needs: build-cpp
-    runs-on: windows-2025
+    runs-on: windows-2025-vs2026
 
     steps:
     - name: Checkout
@@ -131,7 +131,7 @@ jobs:
 
   # ========== Lua Tests ==========
   test-lua:
-    runs-on: windows-2025
+    runs-on: windows-2025-vs2026
 
     steps:
     - name: Checkout
@@ -183,7 +183,7 @@ jobs:
 
   # ========== Go Test ==========
   test-go:
-    runs-on: windows-2025
+    runs-on: windows-2025-vs2026
 
     steps:
     - name: Checkout
