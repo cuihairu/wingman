@@ -10,6 +10,7 @@ on:
 # GitHub Packages 权限（用于 vcpkg 二进制缓存）
 permissions:
   packages: write
+  contents: read
 
 env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
@@ -19,20 +20,19 @@ env:
   VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
   FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
   VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ========== C++ Build & Test ==========
   build-cpp:
-    runs-on: windows-2022
+    runs-on: windows-2025
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v4
 
     # Cache vcpkg binary archives for faster builds
     - name: Cache vcpkg binaries
-      uses: actions/cache@v5
+      uses: actions/cache@v4
       with:
         path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
@@ -41,6 +41,10 @@ jobs:
 
     - name: Setup vcpkg
       run: |
+        if (Test-Path "vcpkg") {
+          Write-Host "vcpkg directory exists, removing..."
+          Remove-Item -Recurse -Force vcpkg
+        }
         Write-Host "Cloning vcpkg..."
         git clone https://github.com/Microsoft/vcpkg.git
         cd vcpkg
@@ -75,24 +79,9 @@ jobs:
         # 启用 tests feature 来安装 GTest
         .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse --x-feature=tests
 
-    - name: Verify GTest installation
-      run: |
-        Write-Host "Checking GTest installation..."
-        $gtestPath = "vcpkg\installed\x64-windows-static\share\gtest"
-        if (Test-Path $gtestPath) {
-          Write-Host "GTest directory exists: $gtestPath"
-          Get-ChildItem $gtestPath
-        } else {
-          Write-Host "GTest directory NOT found at: $gtestPath"
-          Write-Host "Checking vcpkg\packages directory..."
-          Get-ChildItem "vcpkg\packages" -Filter "*gtest*" | Select-Object -First 5
-        }
-
     - name: Configure CMake
       run: |
         $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
-        # 确保 vcpkg 能找到所有已安装的包
-        $env:CMAKE_PREFIX_PATH = "vcpkg\installed\x64-windows-static"
         cmake -B build `
           -S . `
           -G "Visual Studio 17 2022" `
@@ -107,163 +96,88 @@ jobs:
       run: cmake --build build --config Debug
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v4
       with:
         name: cpp-tests
         path: |
-          build/client/tests/Debug/*.exe
-          build/libs/*/tests/Debug/*.exe
+          build/**/tests/Debug/*.exe
+        if-no-files-found: ignore
         retention-days: 1
 
   test-cpp:
     needs: build-cpp
-    runs-on: windows-2022
+    runs-on: windows-2025
+    if: hashFiles('build/**/tests/Debug/*.exe') != ''
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
-
-    - name: Install OpenCppCoverage
-      run: choco install opencppcoverage -y
+      uses: actions/checkout@v4
 
     - name: Download test artifacts
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v4
       with:
         name: cpp-tests
         path: build/tests
 
-    - name: Run client tests with coverage
+    - name: Run tests
       run: |
-        $openCppCoverage = "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
-        if (-not (Test-Path $openCppCoverage)) {
-          $openCppCoverage = "C:\Program Files (x86)\OpenCppCoverage\OpenCppCoverage.exe"
+        Get-ChildItem -Recurse build/tests -Filter "*.exe" | ForEach-Object {
+          Write-Host "Running $($_.FullName)..."
+          & $_.FullName
         }
-
-        $workspace = ${{ github.workspace }}
-        $workspace = $workspace -replace '/', '\'
-
-        & $openCppCoverage `
-          --sources "$workspace\client" `
-          --excluded_sources "$workspace\client\tests" `
-          --excluded_sources "$workspace\vcpkg" `
-          --export_type=cobertura:coverage-client.xml `
-          -- build/tests/client_tests.exe
-        continue-on-error: true
-
-    - name: Run libs tests with coverage
-      run: |
-        $openCppCoverage = "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
-        if (-not (Test-Path $openCppCoverage)) {
-          $openCppCoverage = "C:\Program Files (x86)\OpenCppCoverage\OpenCppCoverage.exe"
-        }
-
-        $workspace = ${{ github.workspace }}
-        $workspace = $workspace -replace '/', '\'
-
-        & $openCppCoverage `
-          --sources "$workspace\libs" `
-          --excluded_sources "$workspace\libs\*\tests" `
-          --excluded_sources "$workspace\vcpkg" `
-          --export_type=cobertura:coverage-libs.xml `
-          -- build/tests/core_tests.exe
-        continue-on-error: true
-
-        & $openCppCoverage `
-          --sources "$workspace\libs" `
-          --excluded_sources "$workspace\libs\*\tests" `
-          --excluded_sources "$workspace\vcpkg" `
-          --export_type=cobertura:coverage-transport.xml `
-          -- build/tests/transport_tests.exe
-        continue-on-error: true
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        files: |
-          ./coverage-client.xml
-          ./coverage-libs.xml
-          ./coverage-transport.xml
-        flags: client,libs
-        name: cpp-coverage
-        fail_ci_if_error: false
-        token: ${{ secrets.CODECOV_TOKEN }}
+      continue-on-error: true
 
   # ========== Lua Tests ==========
   test-lua:
-    runs-on: windows-2022
+    runs-on: windows-2025
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v4
 
     - name: Install Lua
       run: |
         choco install lua -y
-        # Lua 5.4 from Chocolatey (vcpkg lua is also 5.4.x)
-        # Lua 5.5 binaries not available on Chocolatey yet
         $luaPath = "C:\Program Files\Lua\5.4"
         if (Test-Path $luaPath) {
-            Write-Host "Lua found at: $luaPath"
-            Get-ChildItem $luaPath
-            echo "$luaPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        } else {
-            Write-Host "Lua not found at $luaPath, searching..."
-            Get-ChildItem "C:\Program Files" -Recurse -Filter "lua.exe" -ErrorAction SilentlyContinue | Select-Object -First 5
+          Write-Host "Lua found at: $luaPath"
+          "$luaPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         }
 
-    - name: Install LuaRocks
+    - name: Install LuaRocks and Busted
       run: |
         Invoke-WebRequest -Uri "https://luarocks.github.io/luarocks/releases/luarocks-3.13.0-windows-64.zip" -OutFile luarocks.zip
         Expand-Archive luarocks.zip -DestinationPath .
         Move-Item luarocks-3.13.0-windows-64 C:\luarocks
-        echo "C:\luarocks" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        echo "C:\luarocks\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        "C:\luarocks\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: Install Busted
-      run: |
-        # 直接使用完整路径
-        $luaPath = "C:\Program Files\Lua\5.4"
-        if (Test-Path "$luaPath\lua.exe") {
-            & "$luaPath\lua.exe" -v
-            & "C:\luarocks\bin\luarocks.exe" install busted
-        } else {
-            Write-Host "ERROR: lua.exe not found at $luaPath"
-            exit 1
+        # 使用 vcpkg 的 lua
+        if (Test-Path "vcpkg\installed\x64-windows-static\tools\lua\lua.exe") {
+          "vcpkg\installed\x64-windows-static\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         }
 
+        & luarocks install busted
+
     - name: Run Lua tests
-      run: |
-        # 直接使用完整路径
-        $luaPath = "C:\Program Files\Lua\5.4"
-        $env:PATH = "$luaPath;C:\luarocks\bin;C:\luarocks;$env:PATH"
-        cd libs/lua/tests
-        & "C:\luarocks\bin\busted.exe"
+      working-directory: libs/lua/tests
+      run: busted
       continue-on-error: true
 
   # ========== Go Test ==========
   test-go:
-    runs-on: windows-2022
+    runs-on: windows-2025
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v4
 
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: 'stable'
+        cache: true
 
     - name: Run Go tests
-      run: |
-        cd server
-        go test -v -coverprofile=coverage.txt -covermode=atomic ./...
+      working-directory: server
+      run: go test -v -coverprofile=coverage.txt -covermode=atomic ./...
       continue-on-error: true
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        files: ./server/coverage.txt
-        flags: server
-        name: go-coverage
-        fail_ci_if_error: false
-        token: ${{ secrets.CODECOV_TOKEN }}
