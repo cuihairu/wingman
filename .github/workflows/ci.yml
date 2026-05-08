@@ -178,13 +178,21 @@ jobs:
           Get-ChildItem -Recurse vcpkg\installed -Directory | Select-Object -First 20 FullName
         } else {
           Write-Host "vcpkg\installed directory not found!"
+          Write-Host "=== 检查 vcpkg 目录 ==="
+          if (Test-Path "vcpkg") {
+            Get-ChildItem vcpkg | Select-Object Name
+          }
         }
 
-        # 搜索所有 lua.exe
+        # 搜索所有 lua.exe（在 vcpkg 整个目录下）
         Write-Host "=== 搜索 lua.exe ==="
         Get-ChildItem -Recurse vcpkg -Filter lua.exe -ErrorAction SilentlyContinue | ForEach-Object {
           Write-Host "Found: $($_.FullName)"
         }
+
+        # 搜索所有 lua 相关文件
+        Write-Host "=== 搜索所有 lua 相关文件 ==="
+        Get-ChildItem -Recurse vcpkg -Filter lua* -ErrorAction SilentlyContinue | Select-Object -First 30 FullName
 
     - name: Install Busted and run tests
       shell: pwsh
