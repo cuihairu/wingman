@@ -3,62 +3,71 @@
 if(BUILD_CORE_TESTS)
     enable_testing()
 
-    # 调试：输出 vcpkg 安装目录
-    message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
+    # 使用 FetchContent 下载 GTest
+    include(FetchContent)
 
-    # 检查 GTest 头文件是否存在 - 尝试多个可能的位置
-    set(GTEST_INCLUDE_BASE "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include")
+    # 检查是否已经通过 vcpkg 安装了 GTest
+    set(GTEST_LIB_PATH "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib/gtest.lib")
+    set(GTEST_MAIN_LIB_PATH "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib/gtest_main.lib")
+    set(GTEST_INCLUDE_PATH "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include")
 
-    # 列出所有可能的路径并检查它们是否存在
-    set(POSSIBLE_GTEST_PATHS
-        "${GTEST_INCLUDE_BASE}/gtest/gtest.h"
-        "${GTEST_INCLUDE_BASE}/googletest/gtest/gtest.h"
-        "${GTEST_INCLUDE_BASE}/googletest/include/gtest/gtest.h"
-    )
+    if(EXISTS "${GTEST_LIB_PATH}" AND EXISTS "${GTEST_INCLUDE_PATH}/gtest/gtest.h")
+        message(STATUS "Using GTest from vcpkg")
+        set(GTEST_FOUND TRUE)
+    else()
+        message(STATUS "GTest not found in vcpkg, downloading with FetchContent")
+        FetchContent_Declare(
+            googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG v1.17.0
+        )
 
-    foreach(path ${POSSIBLE_GTEST_PATHS})
-        if(EXISTS "${path}")
-            message(STATUS "Found gtest.h at: ${path}")
-            get_filename_component(GTEST_INCLUDE_DIR "${path}" DIRECTORY)
-            get_filename_component(GTEST_INCLUDE_DIR "${GTEST_INCLUDE_DIR}" DIRECTORY)
-            break()
-        endif()
-    endforeach()
+        # 对于 Windows，防止覆盖父项目的选项
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(googletest)
 
-    # 如果没找到，列出目录内容进行调试
-    if(NOT GTEST_INCLUDE_DIR)
-        message(WARNING "GTest headers not found in expected locations")
-        file(GLOB_RECURSE FOUND_GTEST "${GTEST_INCLUDE_BASE}/*gtest.h")
-        message(STATUS "Found gtest.h files: ${FOUND_GTEST}")
+        # 设置 GTest 路径
+        set(GTEST_INCLUDE_PATH "${googletest_SOURCE_DIR}/include")
+        set(GTEST_LIB_PATH "${googletest_BINARY_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        set(GTEST_MAIN_LIB_PATH "${googletest_BINARY_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gtest_main${CMAKE_STATIC_LIBRARY_SUFFIX}")
+
+        set(GTEST_FOUND TRUE)
     endif()
 
-    # 添加所有可能的 GTest include 目录
-    include_directories(
-        ${GTEST_INCLUDE_BASE}
-        "${GTEST_INCLUDE_BASE}/gtest"
-        "${GTEST_INCLUDE_BASE}/googletest"
-        "${GTEST_INCLUDE_BASE}/googletest/include"
-    )
+    if(GTEST_FOUND)
+        # 创建测试可执行文件
+        add_executable(core_tests
+            kvstore_test.cpp
+            trigger_test.cpp
+            recorder_test.cpp
+            remote_server_test.cpp
+        )
 
-    # 创建测试可执行文件
-    add_executable(core_tests
-        kvstore_test.cpp
-        trigger_test.cpp
-        recorder_test.cpp
-        remote_server_test.cpp
-    )
+        # 添加 include 目录
+        target_include_directories(core_tests PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../include
+            ${GTEST_INCLUDE_PATH}
+        )
 
-    # 添加 include 目录
-    target_include_directories(core_tests PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    )
-
-    # 链接库 - 直接使用库文件路径
-    target_link_libraries(core_tests PRIVATE
-        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib/gtest.lib
-        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib/gtest_main.lib
-        wingman
-    )
+        # 链接库
+        if(TARGET gtest)
+            # 使用 FetchContent 的 target
+            target_link_libraries(core_tests PRIVATE
+                gtest
+                gtest_main
+                wingman
+            )
+        else()
+            # 使用 vcpkg 的库文件
+            target_link_libraries(core_tests PRIVATE
+                ${GTEST_LIB_PATH}
+                ${GTEST_MAIN_LIB_PATH}
+                wingman
+            )
+        endif()
+    else()
+        message(FATAL_ERROR "GTest not found")
+    endif()
 
     # 注册测试
     include(GoogleTest)
