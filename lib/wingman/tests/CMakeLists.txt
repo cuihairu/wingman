@@ -5,19 +5,34 @@ if(BUILD_CORE_TESTS)
 
     # 调试：输出 vcpkg 安装目录
     message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
-    message(STATUS "VCPKG_INSTALLED_DIR: $ENV{VCPKG_INSTALLED_DIR}")
 
-    # 检查 GTest 头文件是否存在
+    # 检查 GTest 头文件是否存在 - 尝试多个可能的位置
     set(GTEST_INCLUDE_BASE "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include")
-    if(EXISTS "${GTEST_INCLUDE_BASE}/gtest/gtest.h")
-        message(STATUS "Found gtest/gtest.h at ${GTEST_INCLUDE_BASE}/gtest/gtest.h")
-    elseif(EXISTS "${GTEST_INCLUDE_BASE}/googletest/gtest/gtest.h")
-        message(STATUS "Found googletest/gtest/gtest.h at ${GTEST_INCLUDE_BASE}/googletest/gtest/gtest.h")
-    else()
-        message(WARNING "GTest headers not found in ${GTEST_INCLUDE_BASE}")
+
+    # 列出所有可能的路径并检查它们是否存在
+    set(POSSIBLE_GTEST_PATHS
+        "${GTEST_INCLUDE_BASE}/gtest/gtest.h"
+        "${GTEST_INCLUDE_BASE}/googletest/gtest/gtest.h"
+        "${GTEST_INCLUDE_BASE}/googletest/include/gtest/gtest.h"
+    )
+
+    foreach(path ${POSSIBLE_GTEST_PATHS})
+        if(EXISTS "${path}")
+            message(STATUS "Found gtest.h at: ${path}")
+            get_filename_component(GTEST_INCLUDE_DIR "${path}" DIRECTORY)
+            get_filename_component(GTEST_INCLUDE_DIR "${GTEST_INCLUDE_DIR}" DIRECTORY)
+            break()
+        endif()
+    endforeach()
+
+    # 如果没找到，列出目录内容进行调试
+    if(NOT GTEST_INCLUDE_DIR)
+        message(WARNING "GTest headers not found in expected locations")
+        file(GLOB_RECURSE FOUND_GTEST "${GTEST_INCLUDE_BASE}/*gtest.h")
+        message(STATUS "Found gtest.h files: ${FOUND_GTEST}")
     endif()
 
-    # 添加多个可能的 GTest include 目录
+    # 添加所有可能的 GTest include 目录
     include_directories(
         ${GTEST_INCLUDE_BASE}
         "${GTEST_INCLUDE_BASE}/gtest"
