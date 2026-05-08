@@ -17,11 +17,22 @@
 #include <map>
 #include <mutex>
 #include <condition_variable>
+#include <cstdint>
+#include <memory>
+#include <future>
 
 namespace wingman::transport {
 
 // ========== Channel (消息通道) ==========
 // 用于多路复用和请求-响应匹配
+
+// 类型别名
+using ChannelId = uint64_t;
+
+// 前向声明
+class Channel;
+
+using ChannelPtr = std::shared_ptr<Channel>;
 
 enum class ChannelType : uint8_t {
     RequestResponse,    // 请求-响应模式
@@ -30,6 +41,8 @@ enum class ChannelType : uint8_t {
 };
 
 class Channel {
+    friend class ChannelManager;
+
 public:
     Channel(ChannelId id, ChannelType type, std::weak_ptr<Session> session)
         : id_(id), type_(type), session_(session) {}
@@ -50,7 +63,7 @@ public:
 
         // 保存 promise
         {
-            std::lock_guard lock(mutex_);
+            std::lock_guard<std::mutex> lock(mutex_);
             pendingRequests_[request->header.sequence] = promise;
         }
 
@@ -75,7 +88,7 @@ public:
 
     // 处理响应（由 Session 调用）
     void handleResponse(const MessagePtr& response) {
-        std::lock_guard lock(mutex_);
+        std::lock_guard<std::mutex> lock(mutex_);
 
         auto it = pendingRequests_.find(response->header.sequence);
         if (it != pendingRequests_.end()) {
@@ -86,7 +99,7 @@ public:
 
     // 关闭通道
     void close() {
-        std::lock_guard lock(mutex_);
+        std::lock_guard<std::mutex> lock(mutex_);
 
         // 取消所有等待的请求
         for (auto& [seq, promise] : pendingRequests_) {
@@ -104,9 +117,6 @@ private:
     std::map<uint32_t, std::shared_ptr<std::promise<MessagePtr>>> pendingRequests_;
 };
 
-using ChannelPtr = std::shared_ptr<Channel>;
-using ChannelId = uint64_t;
-
 // ========== Channel Manager ==========
 
 class ChannelManager {
@@ -118,7 +128,7 @@ public:
 
     // 创建通道
     ChannelPtr createChannel(ChannelId id, ChannelType type, std::weak_ptr<Session> session) {
-        std::lock_guard lock(mutex_);
+        std::lock_guard<std::mutex> lock(mutex_);
 
         auto channel = std::make_shared<Channel>(id, type, session);
         channels_[id] = channel;
@@ -127,14 +137,14 @@ public:
 
     // 获取通道
     ChannelPtr getChannel(ChannelId id) {
-        std::lock_guard lock(mutex_);
+        std::lock_guard<std::mutex> lock(mutex_);
         auto it = channels_.find(id);
         return it != channels_.end() ? it->second : nullptr;
     }
 
     // 关闭通道
     void closeChannel(ChannelId id) {
-        std::lock_guard lock(mutex_);
+        std::lock_guard<std::mutex> lock(mutex_);
         auto it = channels_.find(id);
         if (it != channels_.end()) {
             it->second->close();
@@ -144,7 +154,7 @@ public:
 
     // 关闭所有通道
     void closeAll() {
-        std::lock_guard lock(mutex_);
+        std::lock_guard<std::mutex> lock(mutex_);
         for (auto& [id, channel] : channels_) {
             channel->close();
         }
@@ -153,7 +163,7 @@ public:
 
     // 移除会话相关的所有通道
     void removeBySession(SessionId sessionId) {
-        std::lock_guard lock(mutex_);
+        std::lock_guard<std::mutex> lock(mutex_);
         for (auto it = channels_.begin(); it != channels_.end();) {
             if (auto session = it->second->session_.lock(); !session) {
                 it = channels_.erase(it);

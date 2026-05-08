@@ -1,11 +1,19 @@
 #pragma once
 
-#include "wingman/config.hpp"
+#include "wingman/client/config.hpp"
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <functional>
+#include <string>
+#include <vector>
 
 namespace wingman::client {
+
+// 前向声明
+namespace wingman::transport {
+    class TcpClient;
+}
 
 // ========== 连接状态 ==========
 
@@ -26,15 +34,12 @@ struct ConnectionEvent {
 
 using ConnectionCallback = std::function<void(const ConnectionEvent&)>;
 
-// ========== 消息处理 ==========
-
-namespace transport {
-    class TcpClient;
-}
-
 // ========== 主动模式 ==========
 
 class ActiveMode {
+    class Impl;
+
+public:
 public:
     ActiveMode(const ActiveModeConfig& config);
     ~ActiveMode();
@@ -51,7 +56,7 @@ public:
     }
 
     // 获取配置
-    const ActiveModeConfig& getConfig() const { return config_; }
+    const ActiveModeConfig& getConfig() const;
 
 private:
     // 连接管理
@@ -67,9 +72,10 @@ private:
     void onMessage(const std::vector<uint8_t>& data);
     void onEvent(ConnectionState state, const std::string& message);
 
-    ActiveModeConfig config_;
-    std::unique_ptr<transport::TcpClient> client_;
+    // P-Impl
+    std::unique_ptr<Impl> impl_;
 
+    // 运行状态
     std::atomic<bool> running_{false};
     std::atomic<bool> connected_{false};
 

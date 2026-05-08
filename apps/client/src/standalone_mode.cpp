@@ -8,8 +8,16 @@ namespace wingman::client {
 
 // ========== StandaloneMode 实现 ==========
 
+class StandaloneMode::Impl {
+public:
+    StandaloneModeConfig config;
+    std::map<std::string, ScriptInfo> scripts;
+    mutable std::mutex scriptsMutex;
+};
+
 StandaloneMode::StandaloneMode(const StandaloneModeConfig& config)
-    : config_(config) {
+    : impl_(std::make_unique<Impl>()) {
+    impl_->config = config;
 }
 
 StandaloneMode::~StandaloneMode() {
@@ -22,11 +30,11 @@ bool StandaloneMode::start() {
         return true;
     }
 
-    spdlog::info("Starting StandaloneMode - script dir: {}", config_.scriptDir);
+    spdlog::info("Starting StandaloneMode - script dir: {}", impl_->config.scriptDir);
 
     // 创建脚本目录
     try {
-        std::filesystem::create_directories(config_.scriptDir);
+        std::filesystem::create_directories(impl_->config.scriptDir);
     } catch (const std::exception& e) {
         spdlog::error("Failed to create script directory: {}", e.what());
         return false;
@@ -45,15 +53,15 @@ void StandaloneMode::stop() {
     spdlog::info("Stopping StandaloneMode");
 
     // 停止所有运行的脚本
-    std::lock_guard lock(scriptsMutex_);
-    for (auto& [id, info] : scripts_) {
+    std::lock_guard lock(impl_->scriptsMutex);
+    for (auto& [id, info] : impl_->scripts) {
         if (info.state == ScriptState::Running) {
             info.state = ScriptState::Stopped;
             spdlog::info("Stopped script: {}", id);
         }
     }
 
-    running_.load(false);
+    running_.store(false);
     spdlog::info("StandaloneMode stopped");
 }
 
@@ -75,8 +83,8 @@ std::string StandaloneMode::loadScript(const std::string& path) {
     info.state = ScriptState::Loaded;
     info.uptime = 0;
 
-    std::lock_guard lock(scriptsMutex_);
-    scripts_[id] = info;
+    std::lock_guard lock(impl_->scriptsMutex);
+    impl_->scripts[id] = info;
 
     spdlog::info("Script loaded: {} -> {}", path, id);
     return id;
@@ -85,9 +93,9 @@ std::string StandaloneMode::loadScript(const std::string& path) {
 bool StandaloneMode::unloadScript(const std::string& id) {
     spdlog::info("Unloading script: {}", id);
 
-    std::lock_guard lock(scriptsMutex_);
-    auto it = scripts_.find(id);
-    if (it == scripts_.end()) {
+    std::lock_guard lock(impl_->scriptsMutex);
+    auto it = impl_->scripts.find(id);
+    if (it == impl_->scripts.end()) {
         spdlog::warn("Script not found: {}", id);
         return false;
     }
@@ -97,7 +105,7 @@ bool StandaloneMode::unloadScript(const std::string& id) {
         it->second.state = ScriptState::Stopped;
     }
 
-    scripts_.erase(it);
+    impl_->scripts.erase(it);
     spdlog::info("Script unloaded: {}", id);
     return true;
 }
@@ -105,9 +113,9 @@ bool StandaloneMode::unloadScript(const std::string& id) {
 bool StandaloneMode::startScript(const std::string& id) {
     spdlog::info("Starting script: {}", id);
 
-    std::lock_guard lock(scriptsMutex_);
-    auto it = scripts_.find(id);
-    if (it == scripts_.end()) {
+    std::lock_guard lock(impl_->scriptsMutex);
+    auto it = impl_->scripts.find(id);
+    if (it == impl_->scripts.end()) {
         spdlog::warn("Script not found: {}", id);
         return false;
     }
@@ -127,9 +135,9 @@ bool StandaloneMode::startScript(const std::string& id) {
 bool StandaloneMode::pauseScript(const std::string& id) {
     spdlog::info("Pausing script: {}", id);
 
-    std::lock_guard lock(scriptsMutex_);
-    auto it = scripts_.find(id);
-    if (it == scripts_.end()) {
+    std::lock_guard lock(impl_->scriptsMutex);
+    auto it = impl_->scripts.find(id);
+    if (it == impl_->scripts.end()) {
         spdlog::warn("Script not found: {}", id);
         return false;
     }
@@ -147,9 +155,9 @@ bool StandaloneMode::pauseScript(const std::string& id) {
 bool StandaloneMode::resumeScript(const std::string& id) {
     spdlog::info("Resuming script: {}", id);
 
-    std::lock_guard lock(scriptsMutex_);
-    auto it = scripts_.find(id);
-    if (it == scripts_.end()) {
+    std::lock_guard lock(impl_->scriptsMutex);
+    auto it = impl_->scripts.find(id);
+    if (it == impl_->scripts.end()) {
         spdlog::warn("Script not found: {}", id);
         return false;
     }
@@ -167,9 +175,9 @@ bool StandaloneMode::resumeScript(const std::string& id) {
 bool StandaloneMode::stopScript(const std::string& id) {
     spdlog::info("Stopping script: {}", id);
 
-    std::lock_guard lock(scriptsMutex_);
-    auto it = scripts_.find(id);
-    if (it == scripts_.end()) {
+    std::lock_guard lock(impl_->scriptsMutex);
+    auto it = impl_->scripts.find(id);
+    if (it == impl_->scripts.end()) {
         spdlog::warn("Script not found: {}", id);
         return false;
     }
@@ -181,11 +189,11 @@ bool StandaloneMode::stopScript(const std::string& id) {
 }
 
 std::vector<ScriptInfo> StandaloneMode::listScripts() const {
-    std::lock_guard lock(scriptsMutex_);
+    std::lock_guard lock(impl_->scriptsMutex);
     std::vector<ScriptInfo> result;
-    result.reserve(scripts_.size());
+    result.reserve(impl_->scripts.size());
 
-    for (const auto& [id, info] : scripts_) {
+    for (const auto& [id, info] : impl_->scripts) {
         result.push_back(info);
     }
 
@@ -193,9 +201,9 @@ std::vector<ScriptInfo> StandaloneMode::listScripts() const {
 }
 
 ScriptInfo StandaloneMode::getScript(const std::string& id) const {
-    std::lock_guard lock(scriptsMutex_);
-    auto it = scripts_.find(id);
-    if (it != scripts_.end()) {
+    std::lock_guard lock(impl_->scriptsMutex);
+    auto it = impl_->scripts.find(id);
+    if (it != impl_->scripts.end()) {
         return it->second;
     }
     return ScriptInfo{};
@@ -208,6 +216,10 @@ std::string StandaloneMode::generateScriptId() {
     static std::uniform_int_distribution<> dis(1000, 9999);
 
     return "script_" + std::to_string(dis(gen));
+}
+
+const StandaloneModeConfig& StandaloneMode::getConfig() const {
+    return impl_->config;
 }
 
 } // namespace wingman::client

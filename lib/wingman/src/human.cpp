@@ -34,13 +34,13 @@ Point HumanMouse::getCurrentPosition() const {
     return Input::getMousePosition();
 }
 
-int HumanMouse::randomInt(int min, int max) {
+int HumanMouse::randomInt(int min, int max) const {
     if (min == max) return min;
     std::uniform_int_distribution<int> dist(min, max);
     return dist(rng_);
 }
 
-double HumanMouse::randomDouble(double min, double max) {
+double HumanMouse::randomDouble(double min, double max) const {
     if (min == max) return min;
     std::uniform_real_distribution<double> dist(min, max);
     return dist(rng_);
@@ -366,7 +366,7 @@ HumanKeyboard& HumanKeyboard::instance() {
     return instance;
 }
 
-int HumanKeyboard::randomInt(int min, int max) {
+int HumanKeyboard::randomInt(int min, int max) const {
     if (min == max) return min;
     std::uniform_int_distribution<int> dist(min, max);
     return dist(rng_);

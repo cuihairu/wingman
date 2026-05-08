@@ -16,11 +16,11 @@ find_package(nlohmann_json CONFIG REQUIRED)
 # ========== 源文件 ==========
 set(LUA_SOURCES
     src/lua_engine.cpp
-    src/lua_bindings.cpp
-    src/lua_extensions.cpp
-    src/lua_http.cpp
-    src/debug_adapter.cpp
-    src/script_manager.cpp
+    # src/lua_bindings.cpp  # TODO: 创建头文件
+    # src/lua_extensions.cpp  # TODO: 创建头文件
+    # src/lua_http.cpp  # TODO: 依赖 crow.h
+    # src/debug_adapter.cpp  # TODO: 依赖 emmy_adapter
+    # src/script_manager.cpp  # TODO: 依赖 lua_bindings
 )
 
 # 如果源文件不存在，使用空实现
@@ -36,26 +36,29 @@ foreach(src ${LUA_SOURCES})
 endforeach()
 
 # ========== 创建库 ==========
-add_library(wingman::lua STATIC ${LUA_SOURCES})
+add_library(wingman_lua STATIC ${LUA_SOURCES})
 
 # 包含目录
-target_include_directories(wingman::lua PUBLIC
+target_include_directories(wingman_lua PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     ${LUA_INCLUDE_DIR}
 )
 
 # 链接库
-target_link_libraries(wingman::lua PUBLIC
+target_link_libraries(wingman_lua PUBLIC
     ${LUA_LIBRARIES}
-    spdlog::spdlog
+    spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
-    wingman::core
+    wingman
 )
+
+# 导出库
+add_library(wingman::lua ALIAS wingman_lua)
 
 # EmmyLua Debugger 支持
 option(WINGMAN_ENABLE_EMMY "Enable EmmyLua Debugger integration" ON)
 if(WINGMAN_ENABLE_EMMY)
-    target_compile_definitions(wingman::lua PUBLIC WINGMAN_ENABLE_EMMY)
+    target_compile_definitions(wingman_lua PUBLIC WINGMAN_ENABLE_EMMY)
 
     # EmmyLua 将在运行时从以下位置加载：
     # 1. <exe-dir>/emmy/emmy_core.dll
@@ -63,14 +66,11 @@ if(WINGMAN_ENABLE_EMMY)
     message(STATUS "EmmyLua Debugger integration enabled")
 endif()
 
-# 导出库
-add_library(wingman::lua ALIAS wingman::lua)
-
 # ========== 编译选项 ==========
-target_compile_features(wingman::lua PUBLIC cxx_std_17)
+target_compile_features(wingman_lua PUBLIC cxx_std_17)
 
 if(MSVC)
-    target_compile_options(wingman::lua PRIVATE /W4 /utf-8)
+    target_compile_options(wingman_lua PRIVATE /W4)
 else()
-    target_compile_options(wingman::lua PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(wingman_lua PRIVATE -Wall -Wextra -Wpedantic)
 endif()

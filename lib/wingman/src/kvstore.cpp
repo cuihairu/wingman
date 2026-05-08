@@ -6,9 +6,7 @@
 #include <regex>
 #include <thread>
 #include <condition_variable>
-
-// TODO: Add sqlite3 to vcpkg and enable this
-// #include <sqlite3.h>
+#include <sqlite3.h>
 
 namespace wingman {
 

@@ -5,20 +5,15 @@ namespace wingman::lua {
 
 // ========== LuaEngine 实现 ==========
 
-class LuaEngine::Impl {
-public:
-    lua_State* L = nullptr;
-};
-
-LuaEngine::LuaEngine() : impl_(std::make_unique<Impl>()) {}
+LuaEngine::LuaEngine() = default;
 
 LuaEngine::~LuaEngine() {
     shutdown();
 }
 
 bool LuaEngine::initialize() {
-    impl_->L = luaL_newstate();
-    if (!impl_->L) {
+    L_ = luaL_newstate();
+    if (!L_) {
         return false;
     }
     openLibs();
@@ -26,54 +21,54 @@ bool LuaEngine::initialize() {
 }
 
 void LuaEngine::shutdown() {
-    if (impl_->L) {
-        lua_close(impl_->L);
-        impl_->L = nullptr;
+    if (L_) {
+        lua_close(L_);
+        L_ = nullptr;
     }
 }
 
 bool LuaEngine::executeFile(const std::string& path) {
-    if (!impl_->L) return false;
+    if (!L_) return false;
 
-    if (luaL_dofile(impl_->L, path.c_str()) != LUA_OK) {
+    if (luaL_dofile(L_, path.c_str()) != LUA_OK) {
         if (errorCallback_) {
-            errorCallback_(lua_tostring(impl_->L, -1));
+            errorCallback_(lua_tostring(L_, -1));
         }
-        lua_pop(impl_->L, 1);
+        lua_pop(L_, 1);
         return false;
     }
     return true;
 }
 
 bool LuaEngine::executeString(const std::string& code) {
-    if (!impl_->L) return false;
+    if (!L_) return false;
 
-    if (luaL_dostring(impl_->L, code.c_str()) != LUA_OK) {
+    if (luaL_dostring(L_, code.c_str()) != LUA_OK) {
         if (errorCallback_) {
-            errorCallback_(lua_tostring(impl_->L, -1));
+            errorCallback_(lua_tostring(L_, -1));
         }
-        lua_pop(impl_->L, 1);
+        lua_pop(L_, 1);
         return false;
     }
     return true;
 }
 
 bool LuaEngine::executeBuffer(const char* buffer, size_t size, const std::string& name) {
-    if (!impl_->L) return false;
+    if (!L_) return false;
 
-    if (luaL_loadbuffer(impl_->L, buffer, size, name.c_str()) != LUA_OK) {
+    if (luaL_loadbuffer(L_, buffer, size, name.c_str()) != LUA_OK) {
         if (errorCallback_) {
-            errorCallback_(lua_tostring(impl_->L, -1));
+            errorCallback_(lua_tostring(L_, -1));
         }
-        lua_pop(impl_->L, 1);
+        lua_pop(L_, 1);
         return false;
     }
 
-    if (lua_pcall(impl_->L, 0, 0, 0) != LUA_OK) {
+    if (lua_pcall(L_, 0, 0, 0) != LUA_OK) {
         if (errorCallback_) {
-            errorCallback_(lua_tostring(impl_->L, -1));
+            errorCallback_(lua_tostring(L_, -1));
         }
-        lua_pop(impl_->L, 1);
+        lua_pop(L_, 1);
         return false;
     }
 
@@ -81,8 +76,8 @@ bool LuaEngine::executeBuffer(const char* buffer, size_t size, const std::string
 }
 
 void LuaEngine::openLibs() {
-    if (!impl_->L) return;
-    luaL_openlibs(impl_->L);
+    if (!L_) return;
+    luaL_openlibs(L_);
 }
 
 int LuaEngine::luaErrorCallback(lua_State* L) {

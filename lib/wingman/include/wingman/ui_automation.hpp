@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include "wingman/screen.hpp"
 #include <windows.h>
 #include <ole2.h>
 #include <uiautomation.h>
@@ -130,7 +131,7 @@ public:
 
     // 父元素和子元素
     std::shared_ptr<UIAutomationElement> getParent();
-    std::vector<std::shared_ptr<UIAutomationElement>> getChildren();
+    std::vector<std::shared_ptr<UIAutomationElement>> getChildren() const;
 
 private:
     friend class UIAutomation;

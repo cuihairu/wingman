@@ -3,8 +3,9 @@
 #include <string>
 #include <memory>
 #include <functional>
-
-struct lua_State;
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
 
 namespace wingman::lua {
 

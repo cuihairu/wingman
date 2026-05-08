@@ -1,31 +1,25 @@
 #pragma once
 
-#include "wingman/config.hpp"
+#include "wingman/client/config.hpp"
 #include <memory>
 #include <atomic>
+#include <string>
+#include <vector>
 
 namespace wingman::client {
 
 // ========== 前向声明 ==========
 
-namespace active {
-    class ActiveMode;
-}
-
-namespace passive {
-    class PassiveMode;
-}
-
-namespace standalone {
-    class StandaloneMode;
-}
-
-// P-Impl 实现类
-class Agent::Impl;
+class ActiveMode;
+class PassiveMode;
+class StandaloneMode;
 
 // ========== Agent 主类 ==========
 
 class Agent {
+    // P-Impl 前向声明
+    class Impl;
+
 public:
     Agent();
     ~Agent();
@@ -49,9 +43,9 @@ public:
     const AgentConfig& getConfig() const;
 
     // 获取各模式实例（用于高级控制）
-    active::ActiveMode* getActiveMode();
-    passive::PassiveMode* getPassiveMode();
-    standalone::StandaloneMode* getStandaloneMode();
+    ActiveMode* getActiveMode();
+    PassiveMode* getPassiveMode();
+    StandaloneMode* getStandaloneMode();
 
     // TCP 消息处理（供 PassiveMode 回调使用）
     std::vector<uint8_t> handleMessage(const std::string& sessionId, const std::vector<uint8_t>& data);

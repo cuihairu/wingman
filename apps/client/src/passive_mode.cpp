@@ -12,11 +12,15 @@ namespace wingman::client {
 class PassiveMode::Impl {
 public:
     PassiveModeConfig config;
-    std::unique_ptr<transport::TcpServer> server;
+    transport::TcpServerPtr server;
+
+    // 会话管理
+    std::map<std::string, SessionInfo> sessions;
+    mutable std::mutex sessionsMutex;
 };
 
 PassiveMode::PassiveMode(const PassiveModeConfig& config)
-    : config_(config), impl_(std::make_unique<Impl>()) {
+    : impl_(std::make_unique<Impl>()) {
     impl_->config = config;
     impl_->server = transport::createTcpServer();
 }
@@ -32,7 +36,7 @@ bool PassiveMode::start() {
     }
 
     spdlog::info("Starting PassiveMode - listening on {}:{}",
-        config_.listenIp, config_.listenPort);
+        impl_->config.listenIp, impl_->config.listenPort);
 
     // 设置消息处理回调
     impl_->server->setMessageHandler([this](const transport::MessagePtr& msg) {
@@ -73,14 +77,14 @@ bool PassiveMode::start() {
     }
 
     // 开始监听
-    if (!impl_->server->listen(config_.listenIp, config_.listenPort)) {
-        spdlog::error("Failed to listen on {}:{}", config_.listenIp, config_.listenPort);
+    if (!impl_->server->listen(impl_->config.listenIp, impl_->config.listenPort)) {
+        spdlog::error("Failed to listen on {}:{}", impl_->config.listenIp, impl_->config.listenPort);
         impl_->server->stop();
         return false;
     }
 
     running_.store(true);
-    spdlog::info("PassiveMode started - listening on {}:{}", config_.listenIp, config_.listenPort);
+    spdlog::info("PassiveMode started - listening on {}:{}", impl_->config.listenIp, impl_->config.listenPort);
     return true;
 }
 
@@ -90,7 +94,7 @@ void PassiveMode::stop() {
     }
 
     spdlog::info("Stopping PassiveMode");
-    running_.load(false);
+    running_.store(false);
 
     if (impl_->server) {
         impl_->server->stop();
@@ -98,8 +102,8 @@ void PassiveMode::stop() {
 
     // 清空会话
     {
-        std::lock_guard lock(sessionsMutex_);
-        sessions_.clear();
+        std::lock_guard lock(impl_->sessionsMutex);
+        impl_->sessions.clear();
     }
 
     spdlog::info("PassiveMode stopped");
@@ -122,9 +126,9 @@ std::vector<std::string> PassiveMode::getSessionIds() const {
 }
 
 SessionInfo PassiveMode::getSession(const std::string& id) {
-    std::lock_guard lock(sessionsMutex_);
-    auto it = sessions_.find(id);
-    if (it != sessions_.end()) {
+    std::lock_guard lock(impl_->sessionsMutex);
+    auto it = impl_->sessions.find(id);
+    if (it != impl_->sessions.end()) {
         return it->second;
     }
 
@@ -193,8 +197,8 @@ void PassiveMode::onNewSession(const std::string& sessionId) {
     info.id = sessionId;
     info.connectTime = std::chrono::system_clock::now();
 
-    std::lock_guard lock(sessionsMutex_);
-    sessions_[sessionId] = info;
+    std::lock_guard lock(impl_->sessionsMutex);
+    impl_->sessions[sessionId] = info;
 }
 
 void PassiveMode::onSessionEvent(const std::string& sessionId, SessionEventType type, const std::string& message) {
@@ -213,8 +217,8 @@ void PassiveMode::onSessionEvent(const std::string& sessionId, SessionEventType 
 
     // 移除断开的会话
     if (type == SessionEventType::Disconnected) {
-        std::lock_guard lock(sessionsMutex_);
-        sessions_.erase(sessionId);
+        std::lock_guard lock(impl_->sessionsMutex);
+        impl_->sessions.erase(sessionId);
     }
 }
 
@@ -243,6 +247,10 @@ void PassiveMode::onMessage(const std::string& sessionId, const std::vector<uint
             }
         }
     }
+}
+
+const PassiveModeConfig& PassiveMode::getConfig() const {
+    return impl_->config;
 }
 
 } // namespace wingman::client

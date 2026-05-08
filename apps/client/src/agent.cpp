@@ -14,9 +14,9 @@ public:
     AgentConfig config;
     RunMode mode = RunMode::Unknown;
 
-    std::unique_ptr<active::ActiveMode> activeMode;
-    std::unique_ptr<passive::PassiveMode> passiveMode;
-    std::unique_ptr<standalone::StandaloneMode> standaloneMode;
+    std::unique_ptr<ActiveMode> activeMode;
+    std::unique_ptr<PassiveMode> passiveMode;
+    std::unique_ptr<StandaloneMode> standaloneMode;
 };
 
 Agent::Agent() : impl_(std::make_unique<Impl>()) {}
@@ -132,15 +132,15 @@ void Agent::stop() {
     if (impl_->standaloneMode) impl_->standaloneMode->stop();
 }
 
-active::ActiveMode* Agent::getActiveMode() {
+ActiveMode* Agent::getActiveMode() {
     return impl_->activeMode.get();
 }
 
-passive::PassiveMode* Agent::getPassiveMode() {
+PassiveMode* Agent::getPassiveMode() {
     return impl_->passiveMode.get();
 }
 
-standalone::StandaloneMode* Agent::getStandaloneMode() {
+StandaloneMode* Agent::getStandaloneMode() {
     return impl_->standaloneMode.get();
 }
 
@@ -153,12 +153,12 @@ const AgentConfig& Agent::getConfig() const {
 }
 
 bool Agent::initActiveMode() {
-    impl_->activeMode = std::make_unique<active::ActiveMode>(impl_->config.active);
+    impl_->activeMode = std::make_unique<ActiveMode>(impl_->config.active);
     return true;
 }
 
 bool Agent::initPassiveMode() {
-    impl_->passiveMode = std::make_unique<passive::PassiveMode>(impl_->config.passive);
+    impl_->passiveMode = std::make_unique<PassiveMode>(impl_->config.passive);
 
     // 设置消息处理器
     impl_->passiveMode->setMessageHandler([this](const std::string& sessionId, const std::vector<uint8_t>& data) {
@@ -169,7 +169,7 @@ bool Agent::initPassiveMode() {
 }
 
 bool Agent::initStandaloneMode() {
-    impl_->standaloneMode = std::make_unique<standalone::StandaloneMode>(impl_->config.standalone);
+    impl_->standaloneMode = std::make_unique<StandaloneMode>(impl_->config.standalone);
     return true;
 }
 

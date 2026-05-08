@@ -54,7 +54,7 @@ target_link_libraries(wingman-client PRIVATE
     wingman
     wingman::lua
     wingman::debug
-    spdlog::spdlog
+    spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
 )
 

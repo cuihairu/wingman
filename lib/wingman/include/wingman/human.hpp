@@ -98,14 +98,14 @@ private:
     int calculateDuration(double pathLength) const;
 
     // 随机数生成
-    int randomInt(int min, int max);
-    double randomDouble(double min, double max);
+    int randomInt(int min, int max) const;
+    double randomDouble(double min, double max) const;
 
     // 贝塞尔曲线计算
     static Point calculateBezierPoint(double t, const std::vector<Point>& controlPoints);
 
     HumanMouseConfig config_;
-    std::mt19937 rng_;
+    mutable std::mt19937 rng_;
 };
 
 // 人性化键盘配置
@@ -148,9 +148,10 @@ public:
 
 private:
     void randomDelay();
+    int randomInt(int min, int max) const;
 
     HumanKeyboardConfig config_;
-    std::mt19937 rng_;
+    mutable std::mt19937 rng_;
 };
 
 // 人性化操作总接口

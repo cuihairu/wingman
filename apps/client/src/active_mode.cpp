@@ -11,7 +11,7 @@ namespace wingman::client {
 class ActiveMode::Impl {
 public:
     ActiveModeConfig config;
-    std::unique_ptr<transport::TcpClient> client;
+    transport::TcpClientPtr client;
     std::thread heartbeatThread;
     std::thread reconnectThread;
     std::atomic<bool> shouldStop{false};
@@ -21,7 +21,7 @@ public:
 };
 
 ActiveMode::ActiveMode(const ActiveModeConfig& config)
-    : config_(config), impl_(std::make_unique<Impl>()) {
+    : impl_(std::make_unique<Impl>()) {
     impl_->config = config;
     impl_->client = transport::createTcpClient();
 }
@@ -37,7 +37,7 @@ bool ActiveMode::start() {
     }
 
     spdlog::info("Starting ActiveMode - connecting to {}:{}",
-        config_.serverIp, config_.serverPort);
+        impl_->config.serverIp, impl_->config.serverPort);
 
     impl_->shouldStop.store(false);
 
@@ -66,14 +66,14 @@ bool ActiveMode::start() {
     });
 
     // 连接服务器
-    if (!impl_->client->connect(config_.serverIp, config_.serverPort)) {
+    if (!impl_->client->connect(impl_->config.serverIp, impl_->config.serverPort)) {
         spdlog::error("Failed to connect to server");
         onEvent(ConnectionState::Error, "Failed to connect to server");
 
         // 启动重连线程
         impl_->reconnectThread = std::thread([this]() {
             while (!impl_->shouldStop.load() && !isConnected()) {
-                std::this_thread::sleep_for(std::chrono::seconds(config_.reconnectInterval));
+                std::this_thread::sleep_for(std::chrono::seconds(impl_->config.reconnectInterval));
                 if (!impl_->shouldStop.load()) {
                     connect();
                 }
@@ -127,7 +127,7 @@ void ActiveMode::connect() {
 
     onEvent(ConnectionState::Connecting, "Connecting to server...");
 
-    if (impl_->client->connect(config_.serverIp, config_.serverPort)) {
+    if (impl_->client->connect(impl_->config.serverIp, impl_->config.serverPort)) {
         connected_.store(true);
         impl_->lastHeartbeat = std::chrono::steady_clock::now();
         startHeartbeat();
@@ -149,7 +149,7 @@ void ActiveMode::reconnect() {
     onEvent(ConnectionState::Reconnecting, "Reconnecting to server...");
 
     // 等待重连间隔
-    std::this_thread::sleep_for(std::chrono::seconds(config_.reconnectInterval));
+    std::this_thread::sleep_for(std::chrono::seconds(impl_->config.reconnectInterval));
 
     if (!impl_->shouldStop.load()) {
         connect();
@@ -167,7 +167,7 @@ void ActiveMode::startHeartbeat() {
     // 启动新的心跳线程
     impl_->heartbeatThread = std::thread([this]() {
         while (!impl_->shouldStop.load() && isConnected()) {
-            std::this_thread::sleep_for(std::chrono::seconds(config_.heartbeatInterval));
+            std::this_thread::sleep_for(std::chrono::seconds(impl_->config.heartbeatInterval));
             if (!impl_->shouldStop.load() && isConnected()) {
                 sendHeartbeat();
             }
@@ -219,6 +219,10 @@ void ActiveMode::onEvent(ConnectionState state, const std::string& message) {
         event.message = message;
         eventCallback_(event);
     }
+}
+
+const ActiveModeConfig& ActiveMode::getConfig() const {
+    return impl_->config;
 }
 
 } // namespace wingman::client

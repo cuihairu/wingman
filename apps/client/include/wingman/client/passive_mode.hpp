@@ -1,12 +1,21 @@
 #pragma once
 
-#include "wingman/config.hpp"
+#include "wingman/client/config.hpp"
 #include <atomic>
+#include <chrono>
+#include <map>
 #include <memory>
 #include <functional>
-#include <map>
+#include <mutex>
+#include <string>
+#include <vector>
 
 namespace wingman::client {
+
+// 前向声明
+namespace wingman::transport {
+    class TcpServer;
+}
 
 // ========== 会话信息 ==========
 
@@ -35,17 +44,14 @@ using SessionCallback = std::function<void(const SessionEvent&)>;
 
 // ========== 消息处理 ==========
 
-namespace transport {
-    class TcpServer;
-}
-
-// ========== 消息处理 ==========
-
 using MessageHandler = std::function<std::vector<uint8_t>(const std::string& sessionId, const std::vector<uint8_t>& data)>;
 
 // ========== 被动模式 ==========
 
 class PassiveMode {
+    class Impl;
+
+public:
 public:
     PassiveMode(const PassiveModeConfig& config);
     ~PassiveMode();
@@ -75,7 +81,7 @@ public:
     }
 
     // 获取配置
-    const PassiveModeConfig& getConfig() const { return config_; }
+    const PassiveModeConfig& getConfig() const;
 
 private:
     // 新会话处理
@@ -85,14 +91,10 @@ private:
     // 消息处理
     void onMessage(const std::string& sessionId, const std::vector<uint8_t>& data);
 
-    PassiveModeConfig config_;
-    std::unique_ptr<transport::TcpServer> server_;
+    // P-Impl
+    std::unique_ptr<Impl> impl_;
 
     std::atomic<bool> running_{false};
-
-    // 会话管理
-    std::map<std::string, SessionInfo> sessions_;
-    mutable std::mutex sessionsMutex_;
 
     SessionCallback sessionCallback_;
     MessageHandler messageHandler_;

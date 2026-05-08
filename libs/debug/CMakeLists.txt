@@ -17,14 +17,14 @@ set(DEBUG_SOURCES
 )
 
 # 创建库
-add_library(wingman::debug STATIC ${DEBUG_SOURCES})
+add_library(wingman_debug STATIC ${DEBUG_SOURCES})
 
-target_include_directories(wingman::debug PUBLIC
+target_include_directories(wingman_debug PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${LUA_INCLUDE_DIR}
 )
 
-target_link_libraries(wingman::debug PUBLIC
+target_link_libraries(wingman_debug PUBLIC
     ${LUA_LIBRARIES}
 )
 
@@ -34,12 +34,12 @@ target_link_libraries(wingman::debug PUBLIC
 # 2. WINGMAN_EMMY_PATH 环境变量
 # 3. 编译时指定的路径
 
-target_compile_definitions(wingman::debug PUBLIC
+target_compile_definitions(wingman_debug PUBLIC
     WINGMAN_EMMY_VERSION="0.5.3"
 )
 
 # 导出库
-add_library(wingman::debug ALIAS wingman::debug)
+add_library(wingman::debug ALIAS wingman_debug)
 
 # ========== 复制 EmmyLua 文件到输出目录 ==========
 

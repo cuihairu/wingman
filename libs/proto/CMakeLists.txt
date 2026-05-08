@@ -45,41 +45,44 @@ if(Protobuf_FOUND)
     endforeach()
 
     # 创建静态库（带 Protobuf）
-    add_library(wingman::proto STATIC
+    add_library(wingman_proto STATIC
         ${PROTO_GENERATED_SRCS}
         src/proto_wrapper.cpp
     )
 
-    target_include_directories(wingman::proto PUBLIC
+    target_include_directories(wingman_proto PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${GENERATED_PROTOBUF_DIR}
     )
 
-    target_link_libraries(wingman::proto PUBLIC
+    target_link_libraries(wingman_proto PUBLIC
         protobuf::libprotobuf
     )
 
-    target_compile_definitions(wingman::proto PUBLIC WINGMAN_HAS_PROTOBUF)
+    target_compile_definitions(wingman_proto PUBLIC WINGMAN_HAS_PROTOBUF)
+
+    # 创建命名空间别名
+    add_library(wingman::proto ALIAS wingman_proto)
 else()
     set(PROTOBUF_SUPPORT OFF)
     message(WARNING "Protobuf not found, building without protobuf support")
 
     # 创建静态库（不带 Protobuf - JSON only）
-    add_library(wingman::proto STATIC
+    add_library(wingman_proto STATIC
         src/proto_wrapper_json.cpp
     )
 
-    target_include_directories(wingman::proto PUBLIC
+    target_include_directories(wingman_proto PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
 
     # 添加 nlohmann_json 支持
     find_package(nlohmann_json CONFIG QUIET)
     if(nlohmann_json_FOUND)
-        target_link_libraries(wingman::proto PUBLIC nlohmann_json::nlohmann_json)
-        target_compile_definitions(wingman::proto PUBLIC WINGMAN_HAS_JSON)
+        target_link_libraries(wingman_proto PUBLIC nlohmann_json::nlohmann_json)
+        target_compile_definitions(wingman_proto PUBLIC WINGMAN_HAS_JSON)
     endif()
-endif()
 
-# 导出库
-add_library(wingman::proto ALIAS wingman::proto)
+    # 创建命名空间别名
+    add_library(wingman::proto ALIAS wingman_proto)
+endif()

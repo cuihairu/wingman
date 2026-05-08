@@ -1,5 +1,6 @@
 #include "wingman/ui_automation.hpp"
 #include "wingman/window.hpp"
+#include "wingman/input.hpp"
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <thread>
@@ -99,9 +100,9 @@ struct UIAutomationElement::Impl {
     // 辅助：获取窗口句柄
     HWND getHandle() const {
         if (!element) return nullptr;
-        HWND hwnd = nullptr;
-        element->get_CurrentNativeWindowHandle(&hwnd);
-        return hwnd;
+        UIA_HWND uiaHwnd = nullptr;
+        element->get_CurrentNativeWindowHandle(&uiaHwnd);
+        return reinterpret_cast<HWND>(uiaHwnd);
     }
 };
 
@@ -223,7 +224,7 @@ bool UIAutomationElement::rightClick() {
     if (bounds.width > 0 && bounds.height > 0) {
         int centerX = bounds.x + bounds.width / 2;
         int centerY = bounds.y + bounds.height / 2;
-        return Input::rightClick(centerX, centerY);
+        return Input::click(centerX, centerY, MouseButton::Right);
     }
     return false;
 }
@@ -365,7 +366,7 @@ std::shared_ptr<UIAutomationElement> UIAutomationElement::getParent() {
     return nullptr;
 }
 
-std::vector<std::shared_ptr<UIAutomationElement>> UIAutomationElement::getChildren() {
+std::vector<std::shared_ptr<UIAutomationElement>> UIAutomationElement::getChildren() const {
     std::vector<std::shared_ptr<UIAutomationElement>> children;
 
     if (!impl->element) return children;

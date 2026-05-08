@@ -4,11 +4,26 @@ project(Wingman VERSION 0.2.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Add UTF-8 compiler flag
-add_compile_options(/utf-8)
+# 使用静态运行时库 (与 vcpkg x64-windows-static 一致)
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    # 确保所有目标使用静态运行时库
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+    # 使用 spdlog header-only 模式避免符号重复
+    add_compile_definitions(SPDLOG_HEADER_ONLY)
+endif()
+
+# Add UTF-8 compiler flag (MSVC only)
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
 
 # Add WIN32_LEAN_AND_MEAN to avoid WinSock conflicts
 add_compile_definitions(WIN32_LEAN_AND_MEAN)
+
+# Add NOMINMAX to avoid min/max macro conflicts
+add_compile_definitions(NOMINMAX)
 
 # ========== vcpkg 集成 ==========
 if(DEFINED CMAKE_TOOLCHAIN_FILE)
@@ -72,9 +87,13 @@ message(STATUS "SQLite3 persistence enabled")
 
 # GUI 支持
 if(WINGMAN_BUILD_GUI)
-    find_package(imgui CONFIG REQUIRED)
-    add_compile_definitions(WINGMAN_BUILD_GUI)
-    message(STATUS "Native GUI support enabled")
+    find_package(imgui CONFIG QUIET)
+    if(imgui_FOUND)
+        add_compile_definitions(WINGMAN_BUILD_GUI)
+        message(STATUS "Native GUI support enabled")
+    else()
+        message(WARNING "imgui not found, GUI support disabled")
+    endif()
 endif()
 
 # OCR 支持
@@ -109,7 +128,7 @@ if(WINGMAN_BUILD_AGENT)
 
     # 应用
     add_subdirectory(apps/client)
-    add_subdirectory(apps/inspector)
+    # add_subdirectory(apps/inspector)  # 暂时禁用，需要 imgui
 
     message(STATUS "Multi-module build enabled")
 endif()

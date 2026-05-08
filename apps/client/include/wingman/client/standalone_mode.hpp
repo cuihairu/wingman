@@ -1,9 +1,12 @@
 #pragma once
 
-#include "wingman/config.hpp"
+#include "wingman/client/config.hpp"
 #include <atomic>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <vector>
 
 namespace wingman::client {
 
@@ -29,6 +32,9 @@ struct ScriptInfo {
 // ========== 单机模式 ==========
 
 class StandaloneMode {
+    class Impl;
+
+public:
 public:
     StandaloneMode(const StandaloneModeConfig& config);
     ~StandaloneMode();
@@ -51,15 +57,14 @@ public:
     ScriptInfo getScript(const std::string& id) const;
 
     // 获取配置
-    const StandaloneModeConfig& getConfig() const { return config_; }
+    const StandaloneModeConfig& getConfig() const;
 
 private:
-    StandaloneModeConfig config_;
+    // 生成脚本 ID
+    std::string generateScriptId();
+    // P-Impl
+    std::unique_ptr<Impl> impl_;
     std::atomic<bool> running_{false};
-
-    // 脚本管理
-    std::map<std::string, ScriptInfo> scripts_;
-    mutable std::mutex scriptsMutex_;
 };
 
 } // namespace wingman::client
