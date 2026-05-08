@@ -3,21 +3,27 @@
 if(BUILD_TRANSPORT_TESTS)
     enable_testing()
 
-    # TODO: Add transport test sources
-    # add_executable(transport_tests
-    #     test_main.cpp
-    #     transport_test.cpp
-    #     ...
-    # )
+    # 查找 GoogleTest（vcpkg 提供的 CONFIG 模式）
+    find_package(GTest CONFIG REQUIRED)
 
-    # target_link_libraries(transport_tests PRIVATE
-    #     wingman::transport
-    #     wingman::proto
-    #     GTest::gtest
-    #     GTest::gtest_main
-    # )
+    # 创建测试可执行文件
+    add_executable(transport_tests
+        transport_test.cpp
+    )
 
-    # gtest_discover_tests(transport_tests)
+    target_include_directories(transport_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    )
 
-    message(STATUS "Transport tests enabled (no tests defined yet)")
+    target_link_libraries(transport_tests PRIVATE
+        wingman::transport
+        GTest::gtest
+        GTest::gtest_main
+    )
+
+    # 注册测试
+    include(GoogleTest)
+    gtest_discover_tests(transport_tests)
+
+    message(STATUS "Transport tests enabled")
 endif()

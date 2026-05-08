@@ -79,3 +79,9 @@ endif()
 if(asio_SOURCE_DIR)
     target_include_directories(wingman_transport PRIVATE ${asio_SOURCE_DIR}/asio/include)
 endif()
+
+# ========== 测试 ==========
+option(BUILD_TRANSPORT_TESTS "Build transport library tests" OFF)
+if(BUILD_TRANSPORT_TESTS)
+    add_subdirectory(tests)
+endif()

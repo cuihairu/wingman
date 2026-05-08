@@ -28,27 +28,6 @@ add_compile_definitions(NOMINMAX)
 # ========== vcpkg 集成 ==========
 if(DEFINED CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Using vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
-
-    # 尝试查找 vcpkg 安装目录
-    if(EXISTS "C:/Users/cui/vcpkg/installed/x64-windows")
-        set(VCPKG_INSTALLED_DIR "C:/Users/cui/vcpkg/installed")
-        set(CMAKE_PREFIX_PATH "${VCPKG_INSTALLED_DIR}/x64-windows;${CMAKE_PREFIX_PATH}")
-        set(LUA_INCLUDE_DIR "${VCPKG_INSTALLED_DIR}/x64-windows/include" CACHE PATH "Lua include directory" FORCE)
-        set(LUA_LIBRARIES "${VCPKG_INSTALLED_DIR}/x64-windows/lib/lua.lib" CACHE FILEPATH "Lua library" FORCE)
-    elseif(EXISTS "$ENV{USERPROFILE}/vcpkg/installed/x64-windows")
-        set(VCPKG_INSTALLED_DIR "$ENV{USERPROFILE}/vcpkg/installed")
-        set(CMAKE_PREFIX_PATH "${VCPKG_INSTALLED_DIR}/x64-windows;${CMAKE_PREFIX_PATH}")
-        set(LUA_INCLUDE_DIR "${VCPKG_INSTALLED_DIR}/x64-windows/include" CACHE PATH "Lua include directory" FORCE)
-        set(LUA_LIBRARIES "${VCPKG_INSTALLED_DIR}/x64-windows/lib/lua.lib" CACHE FILEPATH "Lua library" FORCE)
-    endif()
-else()
-    # 尝试使用 Scoop 安装的依赖
-    if(EXISTS "$ENV{USERPROFILE}/scoop/apps/lua/5.4.8-1")
-        set(LUA_INCLUDE_DIR "$ENV{USERPROFILE}/scoop/apps/lua/5.4.8-1/include" CACHE PATH "Lua include directory" FORCE)
-        set(LUA_LIBRARY "$ENV{USERPROFILE}/scoop/apps/lua/5.4.8-1/lib/liblua.dll.a" CACHE FILEPATH "Lua library" FORCE)
-        set(LUA_LIBRARIES "${LUA_LIBRARY}" CACHE STRING "Lua libraries" FORCE)
-        message(STATUS "Found Lua (Scoop): ${LUA_INCLUDE_DIR}")
-    endif()
 endif()
 
 # ========== 构建选项 ==========
@@ -80,6 +59,11 @@ find_package(Threads REQUIRED)
 find_package(OpenCV CONFIG)
 find_package(unofficial-sqlite3 CONFIG)
 find_package(Protobuf CONFIG)
+
+# 测试依赖
+if(BUILD_TRANSPORT_TESTS)
+    find_package(GTest CONFIG REQUIRED)
+endif()
 
 # SQLite3 支持
 add_compile_definitions(WINGMAN_HAS_SQLITE)

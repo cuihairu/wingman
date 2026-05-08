@@ -67,8 +67,10 @@ public:
 
     // 序列化
     std::vector<uint8_t> serialize() const {
+        MessageHeader h = header;
+        h.length = static_cast<uint32_t>(body.size());
         std::vector<uint8_t> buffer(sizeof(MessageHeader) + body.size());
-        memcpy(buffer.data(), &header, sizeof(MessageHeader));
+        memcpy(buffer.data(), &h, sizeof(MessageHeader));
         memcpy(buffer.data() + sizeof(MessageHeader), body.data(), body.size());
         return buffer;
     }
