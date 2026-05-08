@@ -82,6 +82,7 @@ tests/cpp/simple_test*.cpp
 *.user
 *.vcxproj
 *.vcxproj.filters
+*.sln
 
 # vcpkg cache
 vcpkg/
@@ -111,6 +112,10 @@ docs/node_modules/
 # Claude Code local files
 .claude/
 _deps/
+
+# Generated config files
+client.toml
+apps/*/config/
 
 # Package manager temporary files (using vcpkg, not conan)
 conan-build/
