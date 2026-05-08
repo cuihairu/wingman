@@ -76,8 +76,9 @@ jobs:
         # 使用官方推荐的 binary cache 配置
         $env:VCPKG_BINARY_SOURCES = "${{ env.VCPKG_BINARY_SOURCES }}"
         New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
-        # 启用 tests feature 来安装 GTest，并显式安装 GTest
-        .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse --x-feature=tests gtest:x64-windows-static
+        # 启用 tests feature 来安装 GTest
+        # 在 manifest 模式下，不需要指定包名，只需使用 --x-feature=tests
+        .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse --x-feature=tests
 
     - name: Configure CMake
       run: |
@@ -148,8 +149,8 @@ jobs:
 
     - name: Install Lua and LuaRocks
       run: |
-        # 使用 vcpkg 安装 Lua
-        .\vcpkg\vcpkg install lua:x64-windows-static
+        # 使用 vcpkg 安装 Lua（使用 --classic 模式来指定单个包）
+        .\vcpkg\vcpkg install --classic --triplet=x64-windows-static lua
 
         # 下载并安装 LuaRocks
         Invoke-WebRequest -Uri "https://luarocks.github.io/luarocks/releases/luarocks-3.13.0-windows-64.zip" -OutFile luarocks.zip
