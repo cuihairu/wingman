@@ -3,8 +3,9 @@
 if(BUILD_CORE_TESTS)
     enable_testing()
 
-    # 查找 GoogleTest - 使用 QUIET 模式避免主配置失败
-    find_package(GTest CONFIG QUIET)
+    # 查找 GoogleTest - vcpkg 的 gtest 使用内置的 FindGTest 模块
+    # 不使用 CONFIG 标志，因为 vcpkg 的 gtest 不提供 CMake Config 文件
+    find_package(GTest QUIET)
 
     if(NOT GTest_FOUND)
         message(WARNING "GTest not found, skipping core tests")
