@@ -4,21 +4,23 @@ if(BUILD_CORE_TESTS)
     enable_testing()
 
     # vcpkg 的 GTest 包不提供 GTestConfig.cmake
-    # 需要使用传统的 FindGTest 模块并手动指定路径
-    set(GTEST_INCLUDE_DIRS "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include")
-    set(GTEST_LIBRARIES "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib/gtest.lib;${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib/gtest_main.lib")
+    # 手动指定 GTest 路径
+    set(GTEST_ROOT "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static")
+    set(GTEST_INCLUDE_DIR "${GTEST_ROOT}/include")
+    set(GTEST_LIBRARY "${GTEST_ROOT}/lib/gtest.lib")
+    set(GTEST_MAIN_LIBRARY "${GTEST_ROOT}/lib/gtest_main.lib")
 
     # 创建 imported targets
-    add_library(gtest STATIC IMPORTED)
+    add_library(gtest STATIC IMPORTED GLOBAL)
     set_target_properties(gtest PROPERTIES
-        IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib/gtest.lib"
-        INTERFACE_INCLUDE_DIRECTORIES "${GTEST_INCLUDE_DIRS}"
+        IMPORTED_LOCATION "${GTEST_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${GTEST_INCLUDE_DIR}"
     )
 
-    add_library(gtest_main STATIC IMPORTED)
+    add_library(gtest_main STATIC IMPORTED GLOBAL)
     set_target_properties(gtest_main PROPERTIES
-        IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib/gtest_main.lib"
-        INTERFACE_INCLUDE_DIRECTORIES "${GTEST_INCLUDE_DIRS}"
+        IMPORTED_LOCATION "${GTEST_MAIN_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${GTEST_INCLUDE_DIR}"
     )
 
     # 兼容 GTest::gtest 和 GTest::gtest_main
@@ -35,7 +37,7 @@ if(BUILD_CORE_TESTS)
 
     target_include_directories(core_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
-        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include
+        ${GTEST_INCLUDE_DIR}
     )
 
     # 链接库
