@@ -169,16 +169,27 @@ jobs:
         # 添加 LuaRocks 到 PATH
         "C:\luarocks" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+    - name: Find Lua executable
+      shell: pwsh
+      run: |
+        # 查找 lua.exe 的实际位置
+        Write-Host "Searching for lua.exe..."
+        Get-ChildItem -Recurse vcpkg\installed -Filter lua.exe -ErrorAction SilentlyContinue | ForEach-Object {
+          Write-Host "Found: $($_.FullName)"
+        }
+
     - name: Install Busted and run tests
       shell: pwsh
       run: |
-        # 检查 Lua 路径是否存在
-        $luaPath = "vcpkg\installed\x64-windows-static\tools\lua"
-        if (-not (Test-Path "$luaPath\lua.exe")) {
-          Write-Error "Lua not found at $luaPath\lua.exe"
+        # 查找 lua.exe 的实际位置
+        $luaExe = Get-ChildItem -Recurse vcpkg\installed -Filter lua.exe -ErrorAction SilentlyContinue | Select-Object -First -ExpandProperty FullName
+
+        if (-not $luaExe) {
+          Write-Error "Lua not found in vcpkg\installed"
           exit 1
         }
-        $luaPath = Resolve-Path $luaPath
+
+        Write-Host "Using Lua: $luaExe"
 
         # 检查 LuaRocks 是否存在
         if (-not (Test-Path "C:\luarocks\luarocks.exe")) {
@@ -186,8 +197,8 @@ jobs:
           exit 1
         }
 
-        # 配置 LuaRocks 使用 vcpkg 的 Lua
-        & "C:\luarocks\luarocks.exe" --local config variables.LUA "$luaPath\lua.exe"
+        # 配置 LuaRocks 使用找到的 Lua
+        & "C:\luarocks\luarocks.exe" --local config variables.LUA $luaExe
 
         # 安装 Busted
         & "C:\luarocks\luarocks.exe" install busted
