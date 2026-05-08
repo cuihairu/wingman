@@ -137,8 +137,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Setup vcpkg and install dependencies
+    - name: Setup vcpkg and install Lua
       run: |
+        # 不使用 GitHub Packages 缓存，直接安装
         if (Test-Path "vcpkg") {
           Remove-Item -Recurse -Force vcpkg
         }
@@ -146,19 +147,17 @@ jobs:
         cd vcpkg
         .\bootstrap-vcpkg.bat
         cd ..
-
-    - name: Install Lua and LuaRocks
-      run: |
-        # 使用 vcpkg 安装 Lua（使用 --classic 模式来指定单个包）
+        # 使用 classic 模式安装 Lua
         .\vcpkg\vcpkg install --classic --triplet=x64-windows-static lua
 
+    - name: Download and install LuaRocks
+      run: |
         # 下载并安装 LuaRocks
         Invoke-WebRequest -Uri "https://luarocks.github.io/luarocks/releases/luarocks-3.13.0-windows-64.zip" -OutFile luarocks.zip
         Expand-Archive luarocks.zip -DestinationPath .
         Move-Item luarocks-3.13.0-windows-64 C:\luarocks
 
         # 添加到 PATH
-        "$env:GITHUB_PATH" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         "C:\luarocks\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
         # 使用 vcpkg 的 lua 工具
@@ -167,17 +166,14 @@ jobs:
           "$vcpkgTools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         }
 
-    - name: Install Busted
+    - name: Install Busted and run tests
       shell: pwsh
       run: |
         # 使用完整路径安装 Busted
         & "C:\luarocks\bin\luarocks.bat" install busted
 
-    - name: Run Lua tests
-      shell: pwsh
-      working-directory: libs/lua/tests
-      run: |
-        # 使用完整路径运行 busted
+        # 运行测试
+        cd libs/lua/tests
         & "C:\luarocks\bin\busted.bat"
       continue-on-error: true
 
