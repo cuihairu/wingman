@@ -28,11 +28,11 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     # Cache vcpkg binary archives for faster builds
     - name: Cache vcpkg binaries
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
@@ -97,7 +97,7 @@ jobs:
       run: cmake --build build --config Debug
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: cpp-tests
         path: |
@@ -113,10 +113,10 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Download test artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: cpp-tests
         path: build/tests
@@ -135,7 +135,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup vcpkg and install Lua
       run: |
@@ -187,7 +187,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Go
       uses: actions/setup-go@v6
