@@ -182,7 +182,7 @@ jobs:
       shell: pwsh
       run: |
         # 查找 lua.exe 的实际位置
-        $luaExe = Get-ChildItem -Recurse vcpkg\installed -Filter lua.exe -ErrorAction SilentlyContinue | Select-Object -First -ExpandProperty FullName
+        $luaExe = Get-ChildItem -Recurse vcpkg\installed -Filter lua.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
 
         if (-not $luaExe) {
           Write-Error "Lua not found in vcpkg\installed"
