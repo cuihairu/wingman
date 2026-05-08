@@ -136,85 +136,24 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Setup vcpkg and install Lua
+    - name: Install Lua and LuaRocks
       run: |
-        # 不使用 GitHub Packages 缓存，直接安装
-        if (Test-Path "vcpkg") {
-          Remove-Item -Recurse -Force vcpkg
-        }
-        git clone https://github.com/Microsoft/vcpkg.git
-        cd vcpkg
-        .\bootstrap-vcpkg.bat
+        # 使用 Chocolatey 安装 Lua
+        choco install lua -y
 
-        # 创建缓存目录（在 vcpkg 目录内）
-        New-Item -ItemType Directory -Force -Path "archives" | Out-Null
-
-        cd ..
-        # 使用 classic 模式安装 Lua
-        .\vcpkg\vcpkg install --classic --triplet=x64-windows-static lua
-
-    - name: Download and install LuaRocks
-      run: |
         # 下载并安装 LuaRocks
         Invoke-WebRequest -Uri "https://luarocks.github.io/luarocks/releases/luarocks-3.13.0-windows-64.zip" -OutFile luarocks.zip
         Expand-Archive luarocks.zip -DestinationPath .
         Move-Item luarocks-3.13.0-windows-64 C:\luarocks
 
-        # 添加 Lua 到 PATH
-        $luaPath = "vcpkg\installed\x64-windows-static\tools\lua"
-        if (Test-Path "$luaPath\lua.exe") {
-          "$luaPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        }
-
-        # 添加 LuaRocks 到 PATH
-        "C:\luarocks" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-    - name: Find Lua executable
-      shell: pwsh
-      run: |
-        # 打印 vcpkg 安装目录结构
-        Write-Host "=== vcpkg\installed 目录结构 ==="
-        if (Test-Path "vcpkg\installed") {
-          Get-ChildItem -Recurse vcpkg\installed -Directory | Select-Object -First 20 FullName
-        } else {
-          Write-Host "vcpkg\installed directory not found!"
-          Write-Host "=== 检查 vcpkg 目录 ==="
-          if (Test-Path "vcpkg") {
-            Get-ChildItem vcpkg | Select-Object Name
-          }
-        }
-
-        # 搜索所有 lua.exe（在 vcpkg 整个目录下）
-        Write-Host "=== 搜索 lua.exe ==="
-        Get-ChildItem -Recurse vcpkg -Filter lua.exe -ErrorAction SilentlyContinue | ForEach-Object {
-          Write-Host "Found: $($_.FullName)"
-        }
-
-        # 搜索所有 lua 相关文件
-        Write-Host "=== 搜索所有 lua 相关文件 ==="
-        Get-ChildItem -Recurse vcpkg -Filter lua* -ErrorAction SilentlyContinue | Select-Object -First 30 FullName
-
     - name: Install Busted and run tests
       shell: pwsh
       run: |
-        # 查找 lua.exe 的实际位置
-        $luaExe = Get-ChildItem -Recurse vcpkg\installed -Filter lua.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+        # Chocolatey 安装的 Lua 在 C:\Program Files\Lua\5.4
+        $luaPath = "C:\Program Files\Lua\5.4"
 
-        if (-not $luaExe) {
-          Write-Error "Lua not found in vcpkg\installed"
-          exit 1
-        }
-
-        Write-Host "Using Lua: $luaExe"
-
-        # 检查 LuaRocks 是否存在
-        if (-not (Test-Path "C:\luarocks\luarocks.exe")) {
-          Write-Error "LuaRocks not found at C:\luarocks\luarocks.exe"
-          exit 1
-        }
-
-        # 配置 LuaRocks 使用找到的 Lua
-        & "C:\luarocks\luarocks.exe" --local config variables.LUA $luaExe
+        # 配置 LuaRocks 使用 Chocolatey 的 Lua
+        & "C:\luarocks\luarocks.exe" --local config variables.LUA "$luaPath\lua.exe"
 
         # 安装 Busted
         & "C:\luarocks\luarocks.exe" install busted
