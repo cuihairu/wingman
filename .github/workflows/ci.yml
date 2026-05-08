@@ -127,7 +127,6 @@ jobs:
           Write-Host "Running $($_.FullName)..."
           & $_.FullName
         }
-      continue-on-error: true
 
   # ========== Lua Tests ==========
   test-lua:
@@ -196,7 +195,6 @@ jobs:
         # 运行测试
         cd libs/lua/tests
         & "C:\luarocks\bin\busted.bat"
-      continue-on-error: true
 
   # ========== Go Test ==========
   test-go:
@@ -223,4 +221,3 @@ jobs:
       working-directory: server
       run: |
         go test -v -coverprofile=coverage.txt -covermode=atomic ./...
-      continue-on-error: true
