@@ -173,8 +173,21 @@ jobs:
     - name: Install Busted and run tests
       shell: pwsh
       run: |
-        # 配置 LuaRocks 使用 vcpkg 的 Lua（使用绝对路径）
-        $luaPath = Resolve-Path "vcpkg\installed\x64-windows-static\tools\lua"
+        # 检查 Lua 路径是否存在
+        $luaPath = "vcpkg\installed\x64-windows-static\tools\lua"
+        if (-not (Test-Path "$luaPath\lua.exe")) {
+          Write-Error "Lua not found at $luaPath\lua.exe"
+          exit 1
+        }
+        $luaPath = Resolve-Path $luaPath
+
+        # 检查 LuaRocks 是否存在
+        if (-not (Test-Path "C:\luarocks\luarocks.exe")) {
+          Write-Error "LuaRocks not found at C:\luarocks\luarocks.exe"
+          exit 1
+        }
+
+        # 配置 LuaRocks 使用 vcpkg 的 Lua
         & "C:\luarocks\luarocks.exe" --local config variables.LUA "$luaPath\lua.exe"
 
         # 安装 Busted
