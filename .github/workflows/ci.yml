@@ -99,8 +99,8 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT_ABS/scripts/buildsystems/vcpkg.cmake" `
           -DVCPKG_TARGET_TRIPLET=x64-windows-static `
           -DCMAKE_BUILD_TYPE=Debug `
-          -DBUILD_TRANSPORT_TESTS=ON `
-          -DBUILD_LUA_TESTS=ON `
+          -DWINGMAN_BUILD_TESTS=ON `
+          -DBUILD_CORE_TESTS=ON `
           -DWINGMAN_BUILD_GUI=OFF
 
     - name: Build
