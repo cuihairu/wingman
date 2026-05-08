@@ -72,7 +72,8 @@ jobs:
         # 使用官方推荐的 binary cache 配置
         $env:VCPKG_BINARY_SOURCES = "${{ env.VCPKG_BINARY_SOURCES }}"
         New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
-        .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse
+        # 启用 tests feature 来安装 GTest
+        .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse --x-feature=tests
 
     - name: Configure CMake
       run: |
