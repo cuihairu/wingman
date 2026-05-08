@@ -199,6 +199,10 @@ jobs:
         go-version: 'stable'
         cache: false
 
+    - name: Initialize Go module
+      working-directory: server
+      run: go mod init github.com/cuihaitao/wingman/server
+
     - name: Run Go tests
       working-directory: server
       run: go test -v -coverprofile=coverage.txt -covermode=atomic ./...
