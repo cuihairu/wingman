@@ -14,6 +14,7 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG)
+find_package(unofficial-lua CONFIG)  # Lua for trigger engine
 
 # ========== 源文件 ==========
 set(WINGMAN_SOURCES
@@ -27,6 +28,7 @@ set(WINGMAN_SOURCES
 
     # 触发器与视觉
     src/trigger.cpp
+    src/trigger_engine.cpp
     src/smart_trigger.cpp
     src/vision.cpp
 
@@ -101,6 +103,11 @@ endif()
 # 添加 sqlite3（如果可用）
 if(TARGET unofficial::sqlite3::sqlite3)
     list(APPEND WINGMAN_LINK_LIBS unofficial::sqlite3::sqlite3)
+endif()
+
+# 添加 Lua（如果可用）
+if(TARGET unofficial::lua::lua)
+    list(APPEND WINGMAN_LINK_LIBS unofficial::lua::lua)
 endif()
 
 target_link_libraries(wingman PUBLIC ${WINGMAN_LINK_LIBS})

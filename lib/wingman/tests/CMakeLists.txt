@@ -9,6 +9,7 @@ if(BUILD_CORE_TESTS)
     # 创建测试可执行文件
     add_executable(core_tests
         kvstore_test.cpp
+        trigger_test.cpp
     )
 
     target_include_directories(core_tests PRIVATE

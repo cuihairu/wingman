@@ -531,27 +531,34 @@ local wingman = require('wingman')
 
 | 优先级 | 任务 | 预计时间 | 状态 |
 |--------|------|----------|------|
-| P0 | Windows 构建 | 1天 | ✅ |
-| P0 | 集成测试覆盖 | 2天 | ✅ |
-| P1 | 性能基准测试 | 1天 | ✅ |
-| P1 | 文档完善 | 2天 | ✅ |
+| P0 | Milestone 2: 触发器系统 | 3周 | 🚧 进行中 |
+| P1 | Milestone 3: 宏系统 | 2周 | ⏳ 待开始 |
+| P1 | Milestone 4: 远程控制 | 2周 | ⏳ 待开始 |
 
 ### 📋 检查清单
 
 #### Phase 7: 测试与文档 (已完成)
 - [x] Windows 构建 - MSVC + x64-windows-static
-- [x] 集成测试覆盖 - 43 个测试通过
+- [x] 集成测试覆盖 - 57 个测试通过
 - [x] 性能基准测试 - KVStore 性能指标
 - [x] 文档完善 - BUILD.md + 更新 README
 
 #### 测试覆盖详情
 | 模块 | 测试数 | 状态 |
 |------|--------|------|
-| core | 25/25 | ✅ KeyValueStore |
+| core | 41/41 | ✅ KeyValueStore + Trigger |
 | transport | 7/7 | ✅ Message 序列化 |
 | proto | 7/7 | ✅ JSON 封装 |
 | debug | 4/4 | ✅ 状态枚举 |
-| lua | - | ⚠️ 链接问题待解决 |
+| **总计** | **59/59** | ✅ **全部通过** |
+
+#### Milestone 2: 触发器系统 (进行中)
+- [x] TriggerManager - 完整的触发器生命周期管理
+- [x] TriggerEngine - Lua配置加载支持
+- [x] 触发器测试 - 16个测试用例
+- [x] 示例配置 - config/triggers.lua
+- [x] 集成Lua库 - trigger_engine.cpp链接
+- [ ] YAML配置支持 - TriggerEngine::loadFromYAML
 
 #### 性能指标
 | 操作 | 性能 |

@@ -216,9 +216,19 @@ bool TriggerEngine::disableTrigger(const std::string& name) {
 
 TriggerEngine::Stats TriggerEngine::getStats() const {
     Stats stats;
-    stats.totalTriggers = m_triggerIds.size();
-    stats.enabledTriggers = 0;  // TODO: 从 manager 获取
-    stats.totalTriggered = 0;   // TODO: 从 manager 获取
+
+    // 从manager获取实际数据，而不是依赖m_triggerIds
+    auto instances = m_manager->getAllTriggerInstances();
+    stats.totalTriggers = instances.size();
+
+    stats.enabledTriggers = 0;
+    for (const auto& instance : instances) {
+        if (instance.config.enabled) {
+            stats.enabledTriggers++;
+        }
+    }
+
+    stats.totalTriggered = 0;  // TODO: 实现触发计数
     return stats;
 }
 

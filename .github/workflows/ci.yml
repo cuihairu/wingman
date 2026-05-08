@@ -11,6 +11,11 @@ env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ========== C++ Build & Test ==========
   build-cpp:
@@ -20,19 +25,16 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Cache vcpkg
+    # Cache vcpkg binary archives for faster builds
+    - name: Cache vcpkg binaries
       uses: actions/cache@v5
-      id: vcpkg-cache
       with:
-        path: |
-          ${{ env.VCPKG_ROOT }}
-          ${{ github.workspace }}/vcpkg/archives
-        key: ${{ runner.os }}-vcpkg-static-${{ hashFiles('vcpkg.json') }}
+        path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         restore-keys: |
-          ${{ runner.os }}-vcpkg-static-
+          ${{ runner.os }}-vcpkg-
 
     - name: Setup vcpkg
-      if: steps.vcpkg-cache.outputs.cache-hit != 'true'
       run: |
         Write-Host "Cloning vcpkg..."
         git clone https://github.com/Microsoft/vcpkg.git
@@ -41,9 +43,9 @@ jobs:
 
     - name: Install dependencies
       run: |
-        $env:VCPKG_ROOT_ABS = (Resolve-Path "vcpkg").Path
-        $env:VCPKG_DEFAULT_BINARY_CACHE = "$env:VCPKG_ROOT_ABS\archives"
-        New-Item -ItemType Directory -Force -Path "$env:VCPKG_DEFAULT_BINARY_CACHE"
+        # 使用官方推荐的 binary cache 配置
+        $env:VCPKG_BINARY_SOURCES = "clear;default,readwrite"
+        New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
         .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse
 
     - name: Configure CMake
