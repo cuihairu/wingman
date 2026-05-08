@@ -35,15 +35,16 @@ if(BUILD_CORE_TESTS)
         remote_server_test.cpp
     )
 
+    # 添加 include 目录 - 直接指定 GTest 路径
     target_include_directories(core_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
-        ${GTEST_INCLUDE_DIR}
+        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include
     )
 
-    # 链接库
+    # 链接库 - 直接使用库文件路径
     target_link_libraries(core_tests PRIVATE
-        GTest::gtest
-        GTest::gtest_main
+        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib/gtest.lib
+        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib/gtest_main.lib
         wingman
     )
 
