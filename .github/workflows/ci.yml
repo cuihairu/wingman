@@ -200,7 +200,6 @@ jobs:
         cache: false
 
     - name: Run Go tests
-      shell: pwsh
       working-directory: server
       run: go test -v -coverprofile=coverage.txt -covermode=atomic ./...
       continue-on-error: true
