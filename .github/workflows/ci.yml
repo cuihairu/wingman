@@ -172,9 +172,17 @@ jobs:
     - name: Find Lua executable
       shell: pwsh
       run: |
-        # 查找 lua.exe 的实际位置
-        Write-Host "Searching for lua.exe..."
-        Get-ChildItem -Recurse vcpkg\installed -Filter lua.exe -ErrorAction SilentlyContinue | ForEach-Object {
+        # 打印 vcpkg 安装目录结构
+        Write-Host "=== vcpkg\installed 目录结构 ==="
+        if (Test-Path "vcpkg\installed") {
+          Get-ChildItem -Recurse vcpkg\installed -Directory | Select-Object -First 20 FullName
+        } else {
+          Write-Host "vcpkg\installed directory not found!"
+        }
+
+        # 搜索所有 lua.exe
+        Write-Host "=== 搜索 lua.exe ==="
+        Get-ChildItem -Recurse vcpkg -Filter lua.exe -ErrorAction SilentlyContinue | ForEach-Object {
           Write-Host "Found: $($_.FullName)"
         }
 
