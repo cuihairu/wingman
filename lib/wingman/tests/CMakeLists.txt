@@ -3,10 +3,10 @@
 if(BUILD_CORE_TESTS)
     enable_testing()
 
-    # 查找 GoogleTest - 使用 CONFIG 模式并指定 vcpkg 安装目录
-    # vcpkg 的 config 文件通常在 share/ 目录下
-    find_package(GTest CONFIG REQUIRED
-        HINTS "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/share")
+    # 查找 GoogleTest - 使用 CMAKE_PREFIX_PATH 确保 vcpkg 包可被找到
+    # vcpkg 的 GTest 包在 x64-windows-static triplet 下
+    list(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static")
+    find_package(GTest CONFIG REQUIRED)
 
     # 创建测试可执行文件
     add_executable(core_tests
