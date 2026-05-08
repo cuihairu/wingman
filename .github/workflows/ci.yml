@@ -7,9 +7,18 @@ on:
     branches: [ main, develop ]
   workflow_dispatch:
 
+# GitHub Packages 权限（用于 vcpkg 二进制缓存）
+permissions:
+  packages: write
+
 env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
   VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
+  # GitHub Packages NuGet 源配置
+  USERNAME: ${{ github.repository_owner }}
+  VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+  FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -37,10 +46,31 @@ jobs:
         cd vcpkg
         .\bootstrap-vcpkg.bat
 
+    - name: Add NuGet sources (GitHub Packages)
+      run: |
+        # 使用 PAT 进行认证（需要在 repository secrets 中配置 VCPKG_PAT_TOKEN）
+        # 如果没有配置 PAT，则使用 GITHUB_TOKEN（权限可能受限）
+        $patToken = "${{ secrets.VCPKG_PAT_TOKEN }}"
+        if ([string]::IsNullOrEmpty($patToken)) {
+          Write-Host "VCPKG_PAT_TOKEN not found, using GITHUB_TOKEN (may have limited permissions)"
+          $patToken = "${{ github.token }}"
+        }
+
+        # 添加 GitHub Packages 作为 NuGet 源
+        .\vcpkg\vcpkg fetch nuget | ForEach-Object { & $_ sources add `
+          -Source "${{ env.FEED_URL }}" `
+          -StorePasswordInClearText `
+          -Name "GitHubPackages" `
+          -UserName "${{ env.USERNAME }}" `
+          -Password $patToken }
+
+        # 设置 API key
+        .\vcpkg\vcpkg fetch nuget | ForEach-Object { & $_ setapikey $patToken -Source "${{ env.FEED_URL }}" }
+
     - name: Install dependencies
       run: |
         # 使用官方推荐的 binary cache 配置
-        $env:VCPKG_BINARY_SOURCES = "clear;default,readwrite"
+        $env:VCPKG_BINARY_SOURCES = "${{ env.VCPKG_BINARY_SOURCES }}"
         New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
         .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse
 
@@ -157,7 +187,12 @@ jobs:
         # Lua 5.5 binaries not available on Chocolatey yet
         $luaPath = "C:\Program Files\Lua\5.4"
         if (Test-Path $luaPath) {
-            echo $luaPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            Write-Host "Lua found at: $luaPath"
+            Get-ChildItem $luaPath
+            echo "$luaPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        } else {
+            Write-Host "Lua not found at $luaPath, searching..."
+            Get-ChildItem "C:\Program Files" -Recurse -Filter "lua.exe" -ErrorAction SilentlyContinue | Select-Object -First 5
         }
 
     - name: Install LuaRocks
