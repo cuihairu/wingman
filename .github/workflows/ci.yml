@@ -173,8 +173,8 @@ jobs:
     - name: Install Busted and run tests
       shell: pwsh
       run: |
-        # 配置 LuaRocks 使用 vcpkg 的 Lua
-        $luaPath = "vcpkg\installed\x64-windows-static\tools\lua"
+        # 配置 LuaRocks 使用 vcpkg 的 Lua（使用绝对路径）
+        $luaPath = Resolve-Path "vcpkg\installed\x64-windows-static\tools\lua"
         & "C:\luarocks\luarocks.exe" --local config variables.LUA "$luaPath\lua.exe"
 
         # 安装 Busted
@@ -182,7 +182,7 @@ jobs:
 
         # 运行测试
         cd libs/lua/tests
-        & "C:\luarocks\busted.bat"
+        & "C:\luarocks\bin\busted.bat"
       continue-on-error: true
 
   # ========== Go Test ==========
