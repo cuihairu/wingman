@@ -217,6 +217,8 @@ jobs:
       run: go mod init github.com/cuihaitao/wingman/server
 
     - name: Run Go tests
+      shell: bash
       working-directory: server
-      run: go test -v -coverprofile=coverage.txt -covermode=atomic ./...
+      run: |
+        go test -v -coverprofile=coverage.txt -covermode=atomic ./...
       continue-on-error: true
