@@ -3,11 +3,26 @@
 if(BUILD_CORE_TESTS)
     enable_testing()
 
+    # 调试：输出 vcpkg 安装目录
+    message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
+    message(STATUS "VCPKG_INSTALLED_DIR: $ENV{VCPKG_INSTALLED_DIR}")
+
+    # 检查 GTest 头文件是否存在
+    set(GTEST_INCLUDE_BASE "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include")
+    if(EXISTS "${GTEST_INCLUDE_BASE}/gtest/gtest.h")
+        message(STATUS "Found gtest/gtest.h at ${GTEST_INCLUDE_BASE}/gtest/gtest.h")
+    elseif(EXISTS "${GTEST_INCLUDE_BASE}/googletest/gtest/gtest.h")
+        message(STATUS "Found googletest/gtest/gtest.h at ${GTEST_INCLUDE_BASE}/googletest/gtest/gtest.h")
+    else()
+        message(WARNING "GTest headers not found in ${GTEST_INCLUDE_BASE}")
+    endif()
+
     # 添加多个可能的 GTest include 目录
-    # vcpkg 的 GTest 头文件可能在不同位置
     include_directories(
-        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include
-        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include/gtest
+        ${GTEST_INCLUDE_BASE}
+        "${GTEST_INCLUDE_BASE}/gtest"
+        "${GTEST_INCLUDE_BASE}/googletest"
+        "${GTEST_INCLUDE_BASE}/googletest/include"
     )
 
     # 创建测试可执行文件
