@@ -162,9 +162,9 @@ jobs:
         # 安装 Busted
         & "C:\luarocks\luarocks.exe" install busted
 
-        # 运行测试（使用 luarocks 运行 busted）
+        # 运行测试（直接使用 Lua 运行 busted）
         cd libs/lua/tests
-        & "C:\luarocks\luarocks.exe" --local run busted
+        & "$luaPath\lua.exe" "$env:USERPROFILE\AppData\Roaming\luarocks\bin\busted.lua"
 
   # ========== Go Test ==========
   test-go:
