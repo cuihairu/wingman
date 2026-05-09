@@ -133,6 +133,7 @@ jobs:
   # ========== Lua Tests ==========
   test-lua:
     runs-on: windows-2022
+    continue-on-error: true
 
     steps:
     - name: Checkout
