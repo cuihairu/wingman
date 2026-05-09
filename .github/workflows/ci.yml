@@ -138,8 +138,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Install Lua with Chocolatey
-      run: choco install lua -y
+    - name: Download and install Lua
+      run: |
+        # 下载 Lua 5.4.7 for Windows
+        Invoke-WebRequest -Uri "https://github.com/lua/lua/releases/download/v5.4.7/lua-5.4.7-win64-msvc140.zip" -OutFile lua.zip
+        Expand-Archive lua.zip -DestinationPath C:\lua
+        # 添加到 PATH
+        "$env:APPDATA\..\Local\Microsoft\WindowsApps" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Download and install LuaRocks
       run: |
@@ -150,11 +155,11 @@ jobs:
     - name: Install Busted and run tests
       shell: pwsh
       run: |
-        # Chocolatey 安装的 Lua 在 C:\Program Files\Lua\5.4
-        $luaPath = "C:\Program Files\Lua\5.4"
+        # 使用下载的 Lua
+        $luaPath = "C:\lua"
 
-        # 配置 LuaRocks 使用 Chocolatey 的 Lua
-        & "C:\luarocks\luarocks.exe" --local config variables.LUA "$luaPath\lua.exe"
+        # 配置 LuaRocks 使用下载的 Lua
+        & "C:\luarocks\luarocks.exe" --local config variables.LUA "$luaPath\lua54.exe"
 
         # 安装 Busted
         & "C:\luarocks\luarocks.exe" install busted
