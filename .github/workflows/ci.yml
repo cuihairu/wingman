@@ -155,16 +155,17 @@ jobs:
       run: |
         # scoop 安装的 Lua 在 ~/scoop/apps/lua/current
         $luaPath = "$env:USERPROFILE\scoop\apps\lua\current"
+        $luaExe = Join-Path $luaPath "lua.exe"
 
         # 配置 LuaRocks 使用 scoop 的 Lua
-        & "C:\luarocks\luarocks.exe" --local config variables.LUA "$luaPath\lua.exe"
+        & "C:\luarocks\luarocks.exe" --local config variables.LUA $luaExe
 
         # 安装 Busted
         & "C:\luarocks\luarocks.exe" install busted
 
         # 运行测试（直接使用 Lua 运行 busted）
         cd libs/lua/tests
-        & "$luaPath\lua.exe" "$env:USERPROFILE\AppData\Roaming\luarocks\bin\busted.lua"
+        & $luaExe "$env:USERPROFILE\AppData\Roaming\luarocks\bin\busted.lua"
 
   # ========== Go Test ==========
   test-go:
