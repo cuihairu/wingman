@@ -110,8 +110,10 @@ jobs:
         $distDir = "dist-wingman-$version"
         New-Item -ItemType Directory -Force -Path "$distDir" | Out-Null
 
-        # 复制可执行文件
-        Copy-Item "build\Release\wingman.exe" -Destination "$distDir\"
+        # 复制可执行文件（GUI 客户端）
+        Copy-Item "build\apps\client\Release\wingman-client.exe" -Destination "$distDir\wingman.exe"
+        # 复制 CLI 工具
+        Copy-Item "build\bin\Release\wingman-cli.exe" -Destination "$distDir\"
 
         # 复制脚本
         if (Test-Path "scripts") {
