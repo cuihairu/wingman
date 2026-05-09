@@ -163,13 +163,9 @@ jobs:
         # 安装 Busted
         & "C:\luarocks\luarocks.exe" install busted
 
-        # 检查 busted.lua 的位置
-        Write-Host "Searching for busted.lua..."
-        Get-ChildItem -Path "$env:USERPROFILE\AppData\Roaming\luarocks" -Recurse -Filter "busted*" | Select-Object FullName
-
-        # 运行测试（直接使用 Lua 运行 busted）
+        # 运行测试（使用 busted.bat）
         cd libs/lua/tests
-        & $luaExe "$env:USERPROFILE\AppData\Roaming\luarocks\bin\busted.lua"
+        & "$env:USERPROFILE\AppData\Roaming\luarocks\bin\busted.bat"
 
   # ========== Go Test ==========
   test-go:
