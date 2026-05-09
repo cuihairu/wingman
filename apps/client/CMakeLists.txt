@@ -50,6 +50,7 @@ add_executable(wingman-client ${CLIENT_SOURCES})
 # 包含目录
 target_include_directories(wingman-client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${WINGMAN_GENERATED_DIR}
 )
 
 # 链接库

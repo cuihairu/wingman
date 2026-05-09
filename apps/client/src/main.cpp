@@ -1,4 +1,5 @@
 #include "wingman/client/agent.hpp"
+#include "wingman/version.hpp"
 #include <iostream>
 #include <csignal>
 #include <spdlog/spdlog.h>
@@ -24,7 +25,7 @@ int main(int argc, char* argv[]) {
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
 
-    spdlog::info("Wingman Agent v0.2.0");
+    spdlog::info("Wingman Agent {}", WINGMAN_VERSION);
     spdlog::info("====================");
 
     // 确定配置文件路径
@@ -53,8 +54,7 @@ int main(int argc, char* argv[]) {
 
     // 启动
     if (!agent.start()) {
-        spdlog::error("Failed to start agent");
-        return 1;
+        spdlog::warn("Some modes failed to start, but agent will continue running");
     }
 
     spdlog::info("Agent is running. Press Ctrl+C to stop.");

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Wingman VERSION 0.2.0 LANGUAGES CXX)
+project(Wingman VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -105,6 +105,14 @@ if(WINGMAN_ENABLE_EMMY)
     add_compile_definitions(WINGMAN_ENABLE_EMMY)
     message(STATUS "EmmyLua Debugger enabled")
 endif()
+
+# ========== 版本信息 ==========
+set(WINGMAN_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/include" CACHE INTERNAL "Generated headers directory")
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/wingman/include/wingman/version.hpp.in
+    ${WINGMAN_GENERATED_DIR}/wingman/version.hpp
+    @ONLY
+)
 
 # ========== 多模块架构 ==========
 

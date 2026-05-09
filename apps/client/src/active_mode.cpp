@@ -67,14 +67,19 @@ bool ActiveMode::start() {
 
     // 连接服务器
     if (!impl_->client->connect(impl_->config.serverIp, impl_->config.serverPort)) {
-        spdlog::error("Failed to connect to server");
+        spdlog::warn("Failed to connect to server {}:{}, will retry in background",
+            impl_->config.serverIp, impl_->config.serverPort);
         onEvent(ConnectionState::Error, "Failed to connect to server");
 
         // 启动重连线程
         impl_->reconnectThread = std::thread([this]() {
+            int retryCount = 0;
             while (!impl_->shouldStop.load() && !isConnected()) {
                 std::this_thread::sleep_for(std::chrono::seconds(impl_->config.reconnectInterval));
                 if (!impl_->shouldStop.load()) {
+                    retryCount++;
+                    spdlog::warn("Attempting to reconnect to {}:{} (retry {})",
+                        impl_->config.serverIp, impl_->config.serverPort, retryCount);
                     connect();
                 }
             }

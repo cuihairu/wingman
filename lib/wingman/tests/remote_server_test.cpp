@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "wingman/remote_server.hpp"
+#include "wingman/version.hpp"
 #include <thread>
 #include <chrono>
 
@@ -138,7 +139,7 @@ TEST_F(RemoteServerTest, ClientGetVersion) {
     RemoteResponse resp = client->send(req);
 
     EXPECT_TRUE(resp.success);
-    EXPECT_EQ(resp.data["version"], "0.2.0");
+    EXPECT_EQ(resp.data["version"], std::string(WINGMAN_VERSION));
     EXPECT_EQ(resp.data["name"], "Wingman");
 
     client->disconnect();

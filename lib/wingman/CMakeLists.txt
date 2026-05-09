@@ -84,11 +84,16 @@ endif()
 # ========== 创建库 ==========
 add_library(wingman STATIC ${WINGMAN_SOURCES})
 
+# 调试信息
+message(STATUS "WINGMAN_GENERATED_DIR in wingman: ${WINGMAN_GENERATED_DIR}")
+
 # 包含目录
 target_include_directories(wingman PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+# 添加生成的头文件目录 (不使用生成器表达式)
+target_include_directories(wingman PUBLIC ${WINGMAN_GENERATED_DIR})
 
 # 链接库
 set(WINGMAN_LINK_LIBS

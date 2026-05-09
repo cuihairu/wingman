@@ -28,11 +28,19 @@ Agent::~Agent() {
 bool Agent::initialize(const std::string& configPath) {
     try {
         impl_->config = AgentConfig::loadFromFile(configPath);
-        return initialize(impl_->config);
     } catch (const std::exception& e) {
-        spdlog::error("Failed to load config: {}", e.what());
-        return false;
+        // 配置文件不存在或加载失败，创建默认配置
+        spdlog::warn("Failed to load config: {}, using default configuration", e.what());
+        impl_->config = AgentConfig{};  // 使用默认值
+
+        // 尝试保存默认配置文件
+        if (impl_->config.saveToFile(configPath)) {
+            spdlog::info("Created default config file: {}", configPath);
+        } else {
+            spdlog::warn("Failed to create default config file: {}", configPath);
+        }
     }
+    return initialize(impl_->config);
 }
 
 bool Agent::initialize(const AgentConfig& config) {

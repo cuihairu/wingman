@@ -4,6 +4,7 @@
 #include <tlhelp32.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <wingman/version.hpp>
 
 // 服务名称
 const wchar_t* SERVICE_NAME = L"WingmanAgent";
@@ -141,7 +142,7 @@ bool RunScript(const std::string& scriptPath) {
 
 // 显示帮助
 void ShowHelp() {
-    std::cout << "Wingman CLI Tool v0.2.0\n\n"
+    std::cout << "Wingman CLI Tool " << WINGMAN_VERSION << "\n\n"
               << "Usage: wingman-cli <command> [options]\n\n"
               << "Commands:\n"
               << "  start              Start Wingman service\n"

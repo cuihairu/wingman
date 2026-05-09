@@ -1,4 +1,5 @@
 #include "wingman/remote_server.hpp"
+#include "wingman/version.hpp"
 #include "wingman/window.hpp"
 #include "wingman/vision.hpp"
 #include <spdlog/spdlog.h>
@@ -290,14 +291,14 @@ RemoteResponse RemoteServer::handlePing(const nlohmann::json& params) {
     RemoteResponse resp;
     resp.success = true;
     resp.data["status"] = "ok";
-    resp.data["version"] = "0.2.0";
+    resp.data["version"] = WINGMAN_VERSION;
     return resp;
 }
 
 RemoteResponse RemoteServer::handleGetVersion(const nlohmann::json& params) {
     RemoteResponse resp;
     resp.success = true;
-    resp.data["version"] = "0.2.0";
+    resp.data["version"] = WINGMAN_VERSION;
     resp.data["name"] = "Wingman";
     return resp;
 }

@@ -13,6 +13,11 @@ add_executable(wingman-cli
     wingman-cli.cpp
 )
 
+# 包含目录
+target_include_directories(wingman-cli PRIVATE
+    ${WINGMAN_GENERATED_DIR}
+)
+
 # 链接库
 target_link_libraries(wingman-cli PRIVATE
     spdlog::spdlog_header_only
