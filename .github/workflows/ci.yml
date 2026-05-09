@@ -146,6 +146,8 @@ jobs:
 
     - name: Install Lua with vcpkg
       run: |
+        # 创建缓存目录
+        New-Item -ItemType Directory -Force -Path "vcpkg/archives" | Out-Null
         .\vcpkg\vcpkg install --classic --triplet=x64-windows-static lua
 
     - name: Download and install LuaRocks
