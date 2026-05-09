@@ -195,9 +195,6 @@ jobs:
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v6
-      shell: bash
-      env:
-        PYTHONIOENCODING: utf-8
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./server/coverage.txt
