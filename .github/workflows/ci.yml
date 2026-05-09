@@ -193,3 +193,10 @@ jobs:
       working-directory: server
       run: |
         go test -v -coverprofile=coverage.txt -covermode=atomic ./...
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./server/coverage.txt
+        flags: go
+        name: codecov-umbrella
