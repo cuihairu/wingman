@@ -138,18 +138,8 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Setup vcpkg and install Lua
-      run: |
-        if (Test-Path "vcpkg") { Remove-Item -Recurse -Force vcpkg }
-        git clone https://github.com/Microsoft/vcpkg.git
-        cd vcpkg
-        .\bootstrap-vcpkg.bat
-
-    - name: Install Lua with vcpkg
-      run: |
-        # 创建缓存目录
-        New-Item -ItemType Directory -Force -Path "vcpkg/archives" | Out-Null
-        .\vcpkg\vcpkg install --classic --triplet=x64-windows-static lua
+    - name: Install Lua with Chocolatey
+      run: choco install lua -y
 
     - name: Download and install LuaRocks
       run: |
@@ -160,11 +150,11 @@ jobs:
     - name: Install Busted and run tests
       shell: pwsh
       run: |
-        # 使用 vcpkg 安装的 Lua（使用绝对路径）
-        $vcpkgLua = (Resolve-Path "vcpkg\installed\x64-windows-static\bin\lua.exe").Path
+        # Chocolatey 安装的 Lua 在 C:\Program Files\Lua\5.4
+        $luaPath = "C:\Program Files\Lua\5.4"
 
-        # 配置 LuaRocks 使用 vcpkg 的 Lua
-        & "C:\luarocks\luarocks.exe" --local config variables.LUA $vcpkgLua
+        # 配置 LuaRocks 使用 Chocolatey 的 Lua
+        & "C:\luarocks\luarocks.exe" --local config variables.LUA "$luaPath\lua.exe"
 
         # 安装 Busted
         & "C:\luarocks\luarocks.exe" install busted
