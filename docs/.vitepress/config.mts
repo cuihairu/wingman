@@ -4,6 +4,7 @@ export default defineConfig({
   title: 'Wingman',
   description: '游戏自动化可编程控制引擎',
   base: '/wingman/',
+  ignoreDeadLinks: true,
 
   themeConfig: {
     nav: [
