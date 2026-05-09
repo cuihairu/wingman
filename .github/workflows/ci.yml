@@ -153,9 +153,9 @@ jobs:
     - name: Install Busted and run tests
       shell: pwsh
       run: |
-        # scoop 安装的 Lua 在 ~/scoop/apps/lua/current
-        $luaPath = "$env:USERPROFILE\scoop\apps\lua\current"
-        $luaExe = Join-Path $luaPath "lua.exe"
+        # 找到 scoop 安装的 Lua
+        $luaExe = Get-Command lua | Select-Object -ExpandProperty Source
+        Write-Host "Lua found at: $luaExe"
 
         # 配置 LuaRocks 使用 scoop 的 Lua
         & "C:\luarocks\luarocks.exe" --local config variables.LUA $luaExe
