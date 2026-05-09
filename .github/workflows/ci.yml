@@ -86,6 +86,7 @@ jobs:
         cmake -B build `
           -S . `
           -G "Visual Studio 17 2022" `
+          -A x64 `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT_ABS/scripts/buildsystems/vcpkg.cmake" `
           -DVCPKG_TARGET_TRIPLET=x64-windows-static `
           -DCMAKE_BUILD_TYPE=Debug `
@@ -130,18 +131,25 @@ jobs:
 
   # ========== Lua Tests ==========
   test-lua:
-    runs-on: windows-2025-vs2026
+    runs-on: windows-2025
 
     steps:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Install Lua and LuaRocks
+    - name: Setup vcpkg and install Lua
       run: |
-        # 使用 Chocolatey 安装 Lua
-        choco install lua -y
+        if (Test-Path "vcpkg") { Remove-Item -Recurse -Force vcpkg }
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        .\bootstrap-vcpkg.bat
 
-        # 下载并安装 LuaRocks
+    - name: Install Lua with vcpkg
+      run: |
+        .\vcpkg\vcpkg install --triplet=x64-windows-static lua
+
+    - name: Download and install LuaRocks
+      run: |
         Invoke-WebRequest -Uri "https://luarocks.github.io/luarocks/releases/luarocks-3.13.0-windows-64.zip" -OutFile luarocks.zip
         Expand-Archive luarocks.zip -DestinationPath .
         Move-Item luarocks-3.13.0-windows-64 C:\luarocks
@@ -149,11 +157,11 @@ jobs:
     - name: Install Busted and run tests
       shell: pwsh
       run: |
-        # Chocolatey 安装的 Lua 在 C:\Program Files\Lua\5.4
-        $luaPath = "C:\Program Files\Lua\5.4"
+        # 使用 vcpkg 安装的 Lua
+        $vcpkgLua = "vcpkg\installed\x64-windows-static\tools\lua\lua.exe"
 
-        # 配置 LuaRocks 使用 Chocolatey 的 Lua
-        & "C:\luarocks\luarocks.exe" --local config variables.LUA "$luaPath\lua.exe"
+        # 配置 LuaRocks 使用 vcpkg 的 Lua
+        & "C:\luarocks\luarocks.exe" --local config variables.LUA $vcpkgLua
 
         # 安装 Busted
         & "C:\luarocks\luarocks.exe" install busted
