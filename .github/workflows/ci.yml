@@ -174,8 +174,6 @@ jobs:
   # ========== Go Test ==========
   test-go:
     runs-on: windows-2022
-    env:
-      PYTHONIOENCODING: utf-8
 
     steps:
     - name: Checkout
@@ -198,6 +196,29 @@ jobs:
       working-directory: server
       run: |
         go test -v -coverprofile=coverage.txt -covermode=atomic ./...
+
+    - name: Upload coverage artifact
+      uses: actions/upload-artifact@v6
+      with:
+        name: go-coverage
+        path: server/coverage.txt
+        retention-days: 1
+
+  # ========== Codecov Upload ==========
+  # 使用 Ubuntu 避免 Windows 编码问题
+  codecov:
+    needs: test-go
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Download coverage artifact
+      uses: actions/download-artifact@v8
+      with:
+        name: go-coverage
+        path: server/
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v6
