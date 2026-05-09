@@ -146,7 +146,7 @@ jobs:
 
     - name: Install Lua with vcpkg
       run: |
-        .\vcpkg\vcpkg install --triplet=x64-windows-static lua
+        .\vcpkg\vcpkg install --classic --triplet=x64-windows-static lua
 
     - name: Download and install LuaRocks
       run: |
