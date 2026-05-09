@@ -133,7 +133,6 @@ jobs:
   # ========== Lua Tests ==========
   test-lua:
     runs-on: windows-2022
-    continue-on-error: true
 
     steps:
     - name: Checkout
@@ -164,9 +163,9 @@ jobs:
         # 安装 Busted
         & "C:\luarocks\luarocks.exe" install busted
 
-        # 运行测试（使用 busted.bat）
+        # 运行测试（指定 unit 目录）
         cd libs/lua/tests
-        & "$env:USERPROFILE\AppData\Roaming\luarocks\bin\busted.bat"
+        & "$env:USERPROFILE\AppData\Roaming\luarocks\bin\busted.bat" --directory=unit --recursive
 
   # ========== Go Test ==========
   test-go:
@@ -195,8 +194,13 @@ jobs:
         go test -v -coverprofile=coverage.txt -covermode=atomic ./...
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v6
+      shell: bash
+      env:
+        PYTHONIOENCODING: utf-8
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         files: ./server/coverage.txt
         flags: go
         name: codecov-umbrella
+        fail_ci_if_error: false
