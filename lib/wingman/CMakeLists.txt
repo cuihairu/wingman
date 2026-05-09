@@ -60,7 +60,7 @@ set(WINGMAN_SOURCES
     # src/verification.cpp  # TODO: 检查依赖
     # src/behavior_tree.cpp  # TODO: 检查依赖
     # src/game_profile.cpp  # TODO: 检查依赖
-    # src/tray.cpp  # TODO: 检查依赖
+    src/tray.cpp
 )
 
 # OCR 支持（可选）
