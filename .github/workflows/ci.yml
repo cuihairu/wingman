@@ -153,6 +153,9 @@ jobs:
     - name: Install Busted and run tests
       shell: pwsh
       run: |
+        # 添加 scoop shims 到 PATH
+        $env:PATH = "$env:USERPROFILE\scoop\shims;$env:PATH"
+
         # 找到 scoop 安装的 Lua
         $luaExe = Get-Command lua | Select-Object -ExpandProperty Source
         Write-Host "Lua found at: $luaExe"
