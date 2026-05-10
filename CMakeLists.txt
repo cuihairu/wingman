@@ -128,10 +128,14 @@ if(WINGMAN_BUILD_AGENT)
 
     # 应用
     add_subdirectory(apps/runtime)
-    add_subdirectory(apps/gui)
     # add_subdirectory(apps/inspector)  # 暂时禁用，需要 imgui
 
     message(STATUS "Multi-module build enabled")
+endif()
+
+# GUI 应用 (Tauri - 如果启用则构建)
+if(WINGMAN_BUILD_GUI)
+    add_subdirectory(apps/gui)
 endif()
 
 # ========== 测试（新架构）==========
