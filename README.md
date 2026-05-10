@@ -118,34 +118,36 @@ wingman/
 │   │   │   ├── agent.cpp      # Agent 主逻辑
 │   │   │   ├── remote_client.cpp  # 连接 Orchestrator
 │   │   │   ├── remote_server.cpp  # 作为服务器供外部连接
-│   │   │   ├── standalone_mode.cpp # 单机模式
 │   │   │   └── main.cpp        # 程序入口
 │   │   └── include/wingman/runtime/
 │   ├── gui/              # Tauri 用户界面 (计划中)
-│   │   └── src-tauri/    # Rust 后端
-│   ├── dashboard/        # React Web 管理界面
 │   └── inspector/        # Tauri 调试工具 (未来计划)
 │
-├── orchestrator/         # Go 中控服务器
-│   ├── internal/         # 内部包
-│   │   ├── handlers/     # HTTP/WebSocket 处理器
-│   │   ├── middleware/   # 中间件
-│   │   └── models/       # 数据模型
-│   ├── pkg/              # 公共包
-│   │   ├── agent/        # Agent 客户端
-│   │   └── websocket/    # WebSocket Hub
-│   └── src/              # C++ 绑定代码
+├── orchestrator/         # 中控服务器 (Go + React)
+│   ├── server/           # Go 中控服务器
+│   │   ├── internal/     # 内部包
+│   │   │   ├── handlers/ # HTTP/WebSocket 处理器
+│   │   │   ├── middleware/ # 中间件
+│   │   │   └── models/   # 数据模型
+│   │   ├── pkg/          # 公共包
+│   │   │   ├── agent/    # Agent 客户端
+│   │   │   └── websocket/ # WebSocket Hub
+│   │   ├── src/          # C++ 绑定代码
+│   │   ├── main.go       # 程序入口
+│   │   └── go.sum        # Go 依赖
+│   ├── dashboard/        # React Web 管理界面
+│   └── tests/            # 测试
 │
 ├── lib/
 │   └── wingman/          # C++ 核心库
 │       ├── src/
-│       │   ├── screen/      # 屏幕操作 (截图/取色/图找图)
-│       │   ├── input/       # 输入模拟 (鼠标/键盘)
-│       │   ├── window/      # 窗口管理
-│       │   ├── vision/      # 视觉算法 (OpenCV)
-│       │   ├── uia/         # UI Automation
-│       │   ├── ocr/         # OCR 识别
-│       │   └── ml/          # ML/AI 推理 (ONNX)
+│       │   ├── screen/   # 屏幕操作 (截图/取色/图找图)
+│       │   ├── input/    # 输入模拟 (鼠标/键盘)
+│       │   ├── window/   # 窗口管理
+│       │   ├── vision/   # 视觉算法 (OpenCV)
+│       │   ├── uia/      # UI Automation
+│       │   ├── ocr/      # OCR 识别
+│       │   └── ml/       # ML/AI 推理 (ONNX)
 │       └── include/wingman/
 │
 ├── libs/                 # C++ 子模块库
@@ -311,7 +313,7 @@ cmake --build build --config Release
 ## Dashboard
 
 ```bash
-cd dashboard
+cd orchestrator/dashboard
 pnpm install
 pnpm dev
 ```

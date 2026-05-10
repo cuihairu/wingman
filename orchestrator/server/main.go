@@ -6,10 +6,10 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/cuihaitao/wingman/server/internal/handlers"
-	"github.com/cuihaitao/wingman/server/internal/middleware"
-	"github.com/cuihaitao/wingman/server/internal/models"
-	"github.com/cuihaitao/wingman/server/pkg/websocket"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/handlers"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
+	"github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

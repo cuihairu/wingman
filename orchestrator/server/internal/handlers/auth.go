@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"github.com/cuihaitao/wingman/server/internal/models"
-	"github.com/cuihaitao/wingman/server/internal/middleware"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 )
 
 // AuthHandler 认证处理器

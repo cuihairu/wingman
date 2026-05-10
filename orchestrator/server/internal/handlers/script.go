@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"github.com/cuihaitao/wingman/server/internal/models"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 )
 
 // ScriptHandler 脚本处理器
