@@ -1,5 +1,5 @@
 # CLASP Port for Wingman Overlay Ports
-# 支持本地开发或从 GitHub 获取
+# 简化版本 - 只安装头文件和库，手动创建 CMake 配置
 
 # 方式1: 从本地 sibling 目录获取（开发时）
 set(CLASP_LOCAL_DIR "$ENV{USERPROFILE}/Workspaces/clasp")
@@ -18,8 +18,6 @@ if(EXISTS "${CLASP_LOCAL_DIR}")
     set(SOURCE_PATH "${CLASP_LOCAL_DIR}")
 else()
     # 方式3: 从 GitHub 获取
-    # 注意: 使用 HEAD_REF 而不是 REF，避免需要 SHA512 校验和
-    # 这对于处于活跃开发的 overlay ports 是可以接受的
     vcpkg_from_github(
         OUT_SOURCE_PATH SOURCE_PATH
         REPO cuihairu/clasp
@@ -27,6 +25,7 @@ else()
     )
 endif()
 
+# 配置并构建 clasp
 vcpkg_configure_cmake(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
@@ -36,26 +35,44 @@ vcpkg_configure_cmake(
 
 vcpkg_install_cmake()
 
-# 安装 CMake config 到正确位置
-file(INSTALL "${SOURCE_PATH}/cmake/claspTargets.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/clasp" OPTIONAL)
-file(INSTALL "${SOURCE_PATH}/cmake/claspConfig.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/clasp" OPTIONAL)
-file(INSTALL "${SOURCE_PATH}/cmake/claspConfigVersion.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/clasp" OPTIONAL)
+# 手动创建 CMake 配置文件
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/clasp/claspConfig.cmake"
+"include(CMakeFindDependencyMacro)
 
-# 处理头文件 - 确保所有 clasp/*.hpp 都被复制
-file(GLOB HEADER_FILES "${SOURCE_PATH}/include/clasp/*.hpp")
-if(HEADER_FILES)
-    file(INSTALL ${HEADER_FILES}
-         DESTINATION "${CURRENT_PACKAGES_DIR}/include/clasp")
-endif()
+# 添加导入目标
+if(NOT TARGET clasp::clasp)
+    add_library(clasp::clasp STATIC IMPORTED)
 
-# 处理可能的子目录
-if(EXISTS "${SOURCE_PATH}/include/clasp/clasp")
-    file(GLOB RECURSE SUB_HEADERS "${SOURCE_PATH}/include/clasp/clasp/*.hpp")
-    if(SUB_HEADERS)
-        file(INSTALL ${SUB_HEADERS}
-             DESTINATION "${CURRENT_PACKAGES_DIR}/include/clasp/clasp")
+    # 设置包含目录
+    set_target_properties(clasp::clasp PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES \"\${CMAKE_CURRENT_LIST_DIR}/../../include\"
+    )
+
+    # 设置库文件位置（根据构建类型）
+    if(EXISTS \"\${CMAKE_CURRENT_LIST_DIR}/../../lib/clasp.lib\")
+        set_target_properties(clasp::clasp PROPERTIES
+            IMPORTED_LOCATION \"\${CMAKE_CURRENT_LIST_DIR}/../../lib/clasp.lib\"
+        )
+    elseif(EXISTS \"\${CMAKE_CURRENT_LIST_DIR}/../../lib/libclasp.a\")
+        set_target_properties(clasp::clasp PROPERTIES
+            IMPORTED_LOCATION \"\${CMAKE_CURRENT_LIST_DIR}/../../lib/libclasp.a\"
+        )
     endif()
 endif()
+")
+
+# 创建版本文件
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/clasp/claspConfigVersion.cmake"
+"set(PACKAGE_VERSION 0.1.0)
+set(PACKAGE_VERSION_EXACT FALSE)
+set(PACKAGE_VERSION_COMPATIBLE FALSE)
+
+if(PACKAGE_FIND_VERSION VERSION_EQUAL PACKAGE_VERSION)
+    set(PACKAGE_VERSION_COMPATIBLE TRUE)
+elseif(PACKAGE_FIND_VERSION_MAJOR EQUAL 0)
+    set(PACKAGE_VERSION_COMPATIBLE TRUE)
+endif()
+")
 
 # 安装许可证
 if(EXISTS "${SOURCE_PATH}/LICENSE")
