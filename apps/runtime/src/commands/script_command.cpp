@@ -1,5 +1,5 @@
-#include "script_command.hpp"
-#include "wingman/lua.hpp"
+#include "wingman/runtime/commands/script_command.hpp"
+#include "wingman/lua/lua_engine.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <fstream>

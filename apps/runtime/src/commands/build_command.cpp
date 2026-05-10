@@ -1,4 +1,4 @@
-#include "build_command.hpp"
+#include "wingman/runtime/commands/build_command.hpp"
 #include "wingman/runtime/packer.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>

@@ -87,7 +87,7 @@ void ApiCtrl::getStatus(const drogon::HttpRequestPtr& req,
     if (rpcResp.success) {
         callback(success(rpcResp.result));
     } else {
-        callback(500, rpcResp.error);
+        callback(error(500, rpcResp.error));
     }
 }
 
@@ -103,7 +103,7 @@ void ApiCtrl::getVersion(const drogon::HttpRequestPtr& req,
     if (rpcResp.success) {
         callback(success(rpcResp.result));
     } else {
-        callback(500, rpcResp.error);
+        callback(error(500, rpcResp.error));
     }
 }
 
@@ -119,7 +119,7 @@ void ApiCtrl::listScripts(const drogon::HttpRequestPtr& req,
     if (rpcResp.success) {
         callback(success(rpcResp.result));
     } else {
-        callback(500, rpcResp.error);
+        callback(error(500, rpcResp.error));
     }
 }
 

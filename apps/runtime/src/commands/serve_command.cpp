@@ -1,4 +1,4 @@
-#include "serve_command.hpp"
+#include "wingman/runtime/commands/serve_command.hpp"
 #include "wingman/runtime/controllers/websocket.hpp"
 #include "wingman/version.hpp"
 #include <drogon/drogon.h>
