@@ -1,5 +1,6 @@
 #include "wingman/runtime/controllers/api.hpp"
 #include "wingman/runtime/controllers/script.hpp"
+#include "wingman/runtime/controllers/system.hpp"
 #include "wingman/version.hpp"
 #include <spdlog/spdlog.h>
 #include <optional>
@@ -10,18 +11,20 @@ namespace wingman::runtime::controllers {
 // ========== 辅助方法 ==========
 
 drogon::HttpResponsePtr ApiCtrl::success(const nlohmann::json& data) {
-    auto resp = drogon::HttpResponse::newHttpJsonResponse(
-        nlohmann::json{{"success", true}, {"data", data}}
-    );
+    nlohmann::json response;
+    response["success"] = true;
+    response["data"] = data;
+    auto resp = drogon::HttpResponse::newHttpJsonResponse(response);
     resp->addHeader("Access-Control-Allow-Origin", "*");
     resp->addHeader("Content-Type", "application/json; charset=utf-8");
     return resp;
 }
 
 drogon::HttpResponsePtr ApiCtrl::error(int code, const std::string& message) {
-    auto resp = drogon::HttpResponse::newHttpJsonResponse(
-        nlohmann::json{{"success", false}, {"error", message}}
-    );
+    nlohmann::json response;
+    response["success"] = false;
+    response["error"] = message;
+    auto resp = drogon::HttpResponse::newHttpJsonResponse(response);
     resp->setStatusCode(static_cast<drogon::HttpStatusCode>(code));
     resp->addHeader("Access-Control-Allow-Origin", "*");
     resp->addHeader("Content-Type", "application/json; charset=utf-8");
