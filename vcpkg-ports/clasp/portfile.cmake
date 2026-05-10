@@ -18,10 +18,11 @@ if(EXISTS "${CLASP_LOCAL_DIR}")
     set(SOURCE_PATH "${CLASP_LOCAL_DIR}")
 else()
     # 方式3: 从 GitHub 获取
+    # 注意: 使用 HEAD_REF 而不是 REF，避免需要 SHA512 校验和
+    # 这对于处于活跃开发的 overlay ports 是可以接受的
     vcpkg_from_github(
         OUT_SOURCE_PATH SOURCE_PATH
         REPO cuihairu/clasp
-        REF main
         HEAD_REF main
     )
 endif()
