@@ -10,12 +10,10 @@
 #include <iostream>
 #include <spdlog/spdlog.h>
 
-using namespace wingman::runtime;
-
 /// 运行嵌入的脚本（如果存在）
 /// @return 如果运行了嵌入脚本返回 true，否则返回 false
 bool runEmbeddedScript() {
-    ResourceLoader loader;
+    wingman::runtime::ResourceLoader loader;
 
     if (!loader.hasEmbeddedScript()) {
         spdlog::debug("No embedded script found");
@@ -24,7 +22,7 @@ bool runEmbeddedScript() {
 
     spdlog::info("=== Embedded Script Detected ===");
 
-    ResourceInfo info = loader.getResourceInfo();
+    wingman::runtime::ResourceInfo info = loader.getResourceInfo();
     spdlog::info("Version: {}", info.version);
     spdlog::info("Original Size: {} bytes", info.originalSize);
     spdlog::info("Compressed Size: {} bytes", info.compressedSize);
@@ -69,7 +67,7 @@ int runGuiMode() {
 
     // TODO: 启动 ImGui GUI
     // 目前先启动 agent
-    return commands::startCommand("agent.toml");
+    return wingman::runtime::commands::startCommand("agent.toml");
 }
 
 int main(int argc, char** argv) {
@@ -104,19 +102,19 @@ int main(int argc, char** argv) {
         .withFlag("--config", "-c", "config", "Configuration file path", std::string("agent.toml"))
         .action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
             const auto configPath = parser.getFlag<std::string>("--config", "agent.toml");
-            return commands::startCommand(configPath);
+            return wingman::runtime::commands::startCommand(configPath);
         });
 
     // ========== stop 命令 ==========
     clasp::Command stopCmd("stop", "Stop Wingman Agent service");
     stopCmd.action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
-        return commands::stopCommand();
+        return wingman::runtime::commands::stopCommand();
     });
 
     // ========== status 命令 ==========
     clasp::Command statusCmd("status", "Show Wingman Agent service status");
     statusCmd.action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
-        return commands::statusCommand();
+        return wingman::runtime::commands::statusCommand();
     });
 
     // ========== script 命令 ==========
@@ -137,7 +135,7 @@ int main(int argc, char** argv) {
                 scriptArgs = parser.getFlags<std::string>("--arg");
             }
 
-            return commands::scriptCommand(scriptPath, scriptArgs);
+            return wingman::runtime::commands::scriptCommand(scriptPath, scriptArgs);
         });
 
     // ========== build 命令 ==========
@@ -149,7 +147,7 @@ int main(int argc, char** argv) {
         .withFlag("--no-encrypt", "", "no-encrypt", "Disable script encryption", false)
         .withFlag("--no-compress", "", "no-compress", "Disable compression", false)
         .action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
-            commands::BuildOptions options;
+            wingman::runtime::commands::BuildOptions options;
             options.scriptPath = parser.getFlag<std::string>("--script", "");
             options.outputPath = parser.getFlag<std::string>("--output", "");
             options.iconPath = parser.getFlag<std::string>("--icon", "");
@@ -161,7 +159,7 @@ int main(int argc, char** argv) {
                 return 1;
             }
 
-            return commands::buildCommand(options);
+            return wingman::runtime::commands::buildCommand(options);
         });
 
     // ========== serve 命令 ==========
@@ -172,7 +170,7 @@ int main(int argc, char** argv) {
         .action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
             const auto host = parser.getFlag<std::string>("--host", "127.0.0.1");
             const auto port = parser.getFlag<int>("--port", 8080);
-            return commands::serveCommand(host, port);
+            return wingman::runtime::commands::serveCommand(host, port);
         });
 
     // 注册所有命令
