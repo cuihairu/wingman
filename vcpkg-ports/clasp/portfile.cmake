@@ -35,11 +35,17 @@ vcpkg_configure_cmake(
 
 vcpkg_install_cmake()
 
+# 检查安装的库文件
+message(STATUS "Checking for installed library files...")
+file(GLOB_RECURSE _clasp_libs "${CURRENT_PACKAGES_DIR}/lib/*clasp*")
+message(STATUS "Found clasp libraries: ${_clasp_libs}")
+
 # 手动创建 CMake 配置文件
+# 使用 find_library 来定位库文件，而不是硬编码路径
 file(WRITE "${CURRENT_PACKAGES_DIR}/share/clasp/claspConfig.cmake"
 "include(CMakeFindDependencyMacro)
 
-# 添加导入目标
+# 设置导入目标
 if(NOT TARGET clasp::clasp)
     add_library(clasp::clasp STATIC IMPORTED GLOBAL)
 
@@ -48,23 +54,21 @@ if(NOT TARGET clasp::clasp)
         INTERFACE_INCLUDE_DIRECTORIES \"\${CMAKE_CURRENT_LIST_DIR}/../../include\"
     )
 
-    # 为所有配置类型设置库文件位置
-    # 在 vcpkg 中，库文件位于 lib/ 目录，通常没有构建类型后缀
-    # 但我们需要为每种 CMake 配置设置 IMPORTED_LOCATION
+    # 在配置时查找库文件
+    # vcpkg 将库安装到 lib/ 目录
+    find_library(_clasp_lib_PATH
+        NAMES clasp libclasp
+        PATHS \"\${CMAKE_CURRENT_LIST_DIR}/../../lib\"
+        NO_DEFAULT_PATH
+        REQUIRED
+    )
 
-    # 检查库文件是否存在
-    set(_clasp_lib \"\${CMAKE_CURRENT_LIST_DIR}/../../lib/clasp.lib\")
-    if(NOT EXISTS \"\${_clasp_lib}\")
-        set(_clasp_lib \"\${CMAKE_CURRENT_LIST_DIR}/../../lib/libclasp.a\")
-    endif()
-
-    # 为所有配置设置相同的库文件
+    # 为所有配置类型设置库位置
     set_target_properties(clasp::clasp PROPERTIES
-        IMPORTED_LOCATION \"\${_clasp_lib}\"
-        IMPORTED_LOCATION_DEBUG \"\${_clasp_lib}\"
-        IMPORTED_LOCATION_RELEASE \"\${_clasp_lib}\"
-        IMPORTED_LOCATION_MINSIZEREL \"\${_clasp_lib}\"
-        IMPORTED_LOCATION_RELWITHDEBINFO \"\${_clasp_lib}\"
+        IMPORTED_LOCATION_DEBUG \"\${_clasp_lib_PATH}\"
+        IMPORTED_LOCATION_RELEASE \"\${_clasp_lib_PATH}\"
+        IMPORTED_LOCATION_MINSIZEREL \"\${_clasp_lib_PATH}\"
+        IMPORTED_LOCATION_RELWITHDEBINFO \"\${_clasp_lib_PATH}\"
     )
 endif()
 ")
