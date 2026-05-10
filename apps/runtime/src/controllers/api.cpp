@@ -14,9 +14,10 @@ drogon::HttpResponsePtr ApiCtrl::success(const nlohmann::json& data) {
     nlohmann::json response;
     response["success"] = true;
     response["data"] = data;
-    auto resp = drogon::HttpResponse::newHttpJsonResponse(response);
+    auto resp = drogon::HttpResponse::newHttpResponse();
+    resp->setBody(response.dump());
+    resp->setContentTypeString("application/json; charset=utf-8");
     resp->addHeader("Access-Control-Allow-Origin", "*");
-    resp->addHeader("Content-Type", "application/json; charset=utf-8");
     return resp;
 }
 
@@ -24,10 +25,11 @@ drogon::HttpResponsePtr ApiCtrl::error(int code, const std::string& message) {
     nlohmann::json response;
     response["success"] = false;
     response["error"] = message;
-    auto resp = drogon::HttpResponse::newHttpJsonResponse(response);
+    auto resp = drogon::HttpResponse::newHttpResponse();
+    resp->setBody(response.dump());
+    resp->setContentTypeString("application/json; charset=utf-8");
     resp->setStatusCode(static_cast<drogon::HttpStatusCode>(code));
     resp->addHeader("Access-Control-Allow-Origin", "*");
-    resp->addHeader("Content-Type", "application/json; charset=utf-8");
     return resp;
 }
 
