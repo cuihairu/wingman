@@ -1,4 +1,4 @@
-#include "wingman/runtime/passive_mode.hpp"
+#include "wingman/runtime/remote_server.hpp"
 #include "wingman/transport/transport_server.hpp"
 #include <spdlog/spdlog.h>
 #include <chrono>
@@ -7,11 +7,11 @@
 
 namespace wingman::runtime {
 
-// ========== PassiveMode 实现 ==========
+// ========== RemoteServer 实现 ==========
 
-class PassiveMode::Impl {
+class RemoteServer::Impl {
 public:
-    PassiveModeConfig config;
+    RemoteServerConfig config;
     transport::TcpServerPtr server;
 
     // 会话管理
@@ -19,23 +19,23 @@ public:
     mutable std::mutex sessionsMutex;
 };
 
-PassiveMode::PassiveMode(const PassiveModeConfig& config)
+RemoteServer::RemoteServer(const RemoteServerConfig& config)
     : impl_(std::make_unique<Impl>()) {
     impl_->config = config;
     impl_->server = transport::createTcpServer();
 }
 
-PassiveMode::~PassiveMode() {
+RemoteServer::~RemoteServer() {
     stop();
 }
 
-bool PassiveMode::start() {
+bool RemoteServer::start() {
     if (running_.load()) {
-        spdlog::warn("PassiveMode already running");
+        spdlog::warn("RemoteServer already running");
         return true;
     }
 
-    spdlog::info("Starting PassiveMode - listening on {}:{}",
+    spdlog::info("Starting RemoteServer - listening on {}:{}",
         impl_->config.listenIp, impl_->config.listenPort);
 
     // 设置消息处理回调
@@ -84,16 +84,16 @@ bool PassiveMode::start() {
     }
 
     running_.store(true);
-    spdlog::info("PassiveMode started - listening on {}:{}", impl_->config.listenIp, impl_->config.listenPort);
+    spdlog::info("RemoteServer started - listening on {}:{}", impl_->config.listenIp, impl_->config.listenPort);
     return true;
 }
 
-void PassiveMode::stop() {
+void RemoteServer::stop() {
     if (!running_.load()) {
         return;
     }
 
-    spdlog::info("Stopping PassiveMode");
+    spdlog::info("Stopping RemoteServer");
     running_.store(false);
 
     if (impl_->server) {
@@ -106,14 +106,14 @@ void PassiveMode::stop() {
         impl_->sessions.clear();
     }
 
-    spdlog::info("PassiveMode stopped");
+    spdlog::info("RemoteServer stopped");
 }
 
-size_t PassiveMode::getSessionCount() const {
+size_t RemoteServer::getSessionCount() const {
     return impl_->server ? impl_->server->getSessionCount() : 0;
 }
 
-std::vector<std::string> PassiveMode::getSessionIds() const {
+std::vector<std::string> RemoteServer::getSessionIds() const {
     std::vector<std::string> result;
     if (!impl_->server) return result;
 
@@ -125,7 +125,7 @@ std::vector<std::string> PassiveMode::getSessionIds() const {
     return result;
 }
 
-SessionInfo PassiveMode::getSession(const std::string& id) {
+SessionInfo RemoteServer::getSession(const std::string& id) {
     std::lock_guard lock(impl_->sessionsMutex);
     auto it = impl_->sessions.find(id);
     if (it != impl_->sessions.end()) {
@@ -154,7 +154,7 @@ SessionInfo PassiveMode::getSession(const std::string& id) {
     return SessionInfo{};
 }
 
-bool PassiveMode::broadcast(const std::vector<uint8_t>& data) {
+bool RemoteServer::broadcast(const std::vector<uint8_t>& data) {
     if (!impl_->server || !running_.load()) {
         return false;
     }
@@ -167,7 +167,7 @@ bool PassiveMode::broadcast(const std::vector<uint8_t>& data) {
     return true;
 }
 
-bool PassiveMode::send(const std::string& sessionId, const std::vector<uint8_t>& data) {
+bool RemoteServer::send(const std::string& sessionId, const std::vector<uint8_t>& data) {
     if (!impl_->server || !running_.load()) {
         return false;
     }
@@ -190,7 +190,7 @@ bool PassiveMode::send(const std::string& sessionId, const std::vector<uint8_t>&
     return false;
 }
 
-void PassiveMode::onNewSession(const std::string& sessionId) {
+void RemoteServer::onNewSession(const std::string& sessionId) {
     spdlog::info("New session: {}", sessionId);
 
     SessionInfo info;
@@ -201,7 +201,7 @@ void PassiveMode::onNewSession(const std::string& sessionId) {
     impl_->sessions[sessionId] = info;
 }
 
-void PassiveMode::onSessionEvent(const std::string& sessionId, SessionEventType type, const std::string& message) {
+void RemoteServer::onSessionEvent(const std::string& sessionId, SessionEventType type, const std::string& message) {
     spdlog::info("Session event: {} - type={}, message={}", sessionId,
         type == SessionEventType::Connected ? "Connected" :
         type == SessionEventType::Disconnected ? "Disconnected" : "Error",
@@ -222,7 +222,7 @@ void PassiveMode::onSessionEvent(const std::string& sessionId, SessionEventType 
     }
 }
 
-void PassiveMode::onMessage(const std::string& sessionId, const std::vector<uint8_t>& data) {
+void RemoteServer::onMessage(const std::string& sessionId, const std::vector<uint8_t>& data) {
     spdlog::trace("Received message from {}: {} bytes", sessionId, data.size());
 
     // 如果有注册的消息处理器，使用它
@@ -249,7 +249,7 @@ void PassiveMode::onMessage(const std::string& sessionId, const std::vector<uint
     }
 }
 
-const PassiveModeConfig& PassiveMode::getConfig() const {
+const RemoteServerConfig& RemoteServer::getConfig() const {
     return impl_->config;
 }
 

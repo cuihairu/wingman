@@ -1,6 +1,6 @@
 #include "wingman/runtime/agent.hpp"
-#include "wingman/runtime/active_mode.hpp"
-#include "wingman/runtime/passive_mode.hpp"
+#include "wingman/runtime/remote_client.hpp"
+#include "wingman/runtime/remote_server.hpp"
 #include "wingman/runtime/standalone_mode.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
@@ -14,8 +14,8 @@ public:
     AgentConfig config;
     RunMode mode = RunMode::Unknown;
 
-    std::unique_ptr<ActiveMode> activeMode;
-    std::unique_ptr<PassiveMode> passiveMode;
+    std::unique_ptr<RemoteClient> remoteClient;
+    std::unique_ptr<RemoteServer> remoteServer;
     std::unique_ptr<StandaloneMode> standaloneMode;
 };
 
@@ -54,14 +54,14 @@ bool Agent::initialize(const AgentConfig& config) {
 
     // 初始化对应模式
     if (impl_->mode == RunMode::Active || impl_->mode == RunMode::Both) {
-        if (!initActiveMode()) {
+        if (!initRemoteClient()) {
             spdlog::error("Failed to initialize active mode");
             return false;
         }
     }
 
     if (impl_->mode == RunMode::Passive || impl_->mode == RunMode::Both) {
-        if (!initPassiveMode()) {
+        if (!initRemoteServer()) {
             spdlog::error("Failed to initialize passive mode");
             return false;
         }
@@ -80,14 +80,14 @@ bool Agent::initialize(const AgentConfig& config) {
 void Agent::shutdown() {
     spdlog::info("Shutting down Agent");
 
-    if (impl_->activeMode) {
-        impl_->activeMode->stop();
-        impl_->activeMode.reset();
+    if (impl_->remoteClient) {
+        impl_->remoteClient->stop();
+        impl_->remoteClient.reset();
     }
 
-    if (impl_->passiveMode) {
-        impl_->passiveMode->stop();
-        impl_->passiveMode.reset();
+    if (impl_->remoteServer) {
+        impl_->remoteServer->stop();
+        impl_->remoteServer.reset();
     }
 
     if (impl_->standaloneMode) {
@@ -103,15 +103,15 @@ bool Agent::start() {
 
     bool success = true;
 
-    if (impl_->activeMode && (impl_->mode == RunMode::Active || impl_->mode == RunMode::Both)) {
-        if (!impl_->activeMode->start()) {
+    if (impl_->remoteClient && (impl_->mode == RunMode::Active || impl_->mode == RunMode::Both)) {
+        if (!impl_->remoteClient->start()) {
             spdlog::error("Failed to start active mode");
             success = false;
         }
     }
 
-    if (impl_->passiveMode && (impl_->mode == RunMode::Passive || impl_->mode == RunMode::Both)) {
-        if (!impl_->passiveMode->start()) {
+    if (impl_->remoteServer && (impl_->mode == RunMode::Passive || impl_->mode == RunMode::Both)) {
+        if (!impl_->remoteServer->start()) {
             spdlog::error("Failed to start passive mode");
             success = false;
         }
@@ -135,17 +135,17 @@ void Agent::stop() {
     spdlog::info("Stopping Agent");
     running_.store(false);
 
-    if (impl_->activeMode) impl_->activeMode->stop();
-    if (impl_->passiveMode) impl_->passiveMode->stop();
+    if (impl_->remoteClient) impl_->remoteClient->stop();
+    if (impl_->remoteServer) impl_->remoteServer->stop();
     if (impl_->standaloneMode) impl_->standaloneMode->stop();
 }
 
-ActiveMode* Agent::getActiveMode() {
-    return impl_->activeMode.get();
+RemoteClient* Agent::getRemoteClient() {
+    return impl_->remoteClient.get();
 }
 
-PassiveMode* Agent::getPassiveMode() {
-    return impl_->passiveMode.get();
+RemoteServer* Agent::getRemoteServer() {
+    return impl_->remoteServer.get();
 }
 
 StandaloneMode* Agent::getStandaloneMode() {
@@ -160,16 +160,16 @@ const AgentConfig& Agent::getConfig() const {
     return impl_->config;
 }
 
-bool Agent::initActiveMode() {
-    impl_->activeMode = std::make_unique<ActiveMode>(impl_->config.active);
+bool Agent::initRemoteClient() {
+    impl_->remoteClient = std::make_unique<RemoteClient>(impl_->config.remoteClient);
     return true;
 }
 
-bool Agent::initPassiveMode() {
-    impl_->passiveMode = std::make_unique<PassiveMode>(impl_->config.passive);
+bool Agent::initRemoteServer() {
+    impl_->remoteServer = std::make_unique<RemoteServer>(impl_->config.remoteServer);
 
     // 设置消息处理器
-    impl_->passiveMode->setMessageHandler([this](const std::string& sessionId, const std::vector<uint8_t>& data) {
+    impl_->remoteServer->setMessageHandler([this](const std::string& sessionId, const std::vector<uint8_t>& data) {
         return handleMessage(sessionId, data);
     });
 

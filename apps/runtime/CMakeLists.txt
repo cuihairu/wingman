@@ -20,8 +20,8 @@ find_package(Drogon CONFIG REQUIRED)
 set(CLIENT_SOURCES
     src/main.cpp
     src/agent.cpp
-    src/active_mode.cpp
-    src/passive_mode.cpp
+    src/remote_client.cpp
+    src/remote_server.cpp
     src/standalone_mode.cpp
     src/agent_config.cpp
     src/packer.cpp

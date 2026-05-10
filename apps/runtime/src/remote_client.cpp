@@ -1,4 +1,4 @@
-#include "wingman/runtime/active_mode.hpp"
+#include "wingman/runtime/remote_client.hpp"
 #include "wingman/transport/transport_client.hpp"
 #include <spdlog/spdlog.h>
 #include <thread>
@@ -6,11 +6,11 @@
 
 namespace wingman::runtime {
 
-// ========== ActiveMode 实现 ==========
+// ========== RemoteClient 实现 ==========
 
-class ActiveMode::Impl {
+class RemoteClient::Impl {
 public:
-    ActiveModeConfig config;
+    RemoteClientConfig config;
     transport::TcpClientPtr client;
     std::thread heartbeatThread;
     std::thread reconnectThread;
@@ -20,23 +20,23 @@ public:
     std::chrono::steady_clock::time_point lastHeartbeat;
 };
 
-ActiveMode::ActiveMode(const ActiveModeConfig& config)
+RemoteClient::RemoteClient(const RemoteClientConfig& config)
     : impl_(std::make_unique<Impl>()) {
     impl_->config = config;
     impl_->client = transport::createTcpClient();
 }
 
-ActiveMode::~ActiveMode() {
+RemoteClient::~RemoteClient() {
     stop();
 }
 
-bool ActiveMode::start() {
+bool RemoteClient::start() {
     if (running_.load()) {
-        spdlog::warn("ActiveMode already running");
+        spdlog::warn("RemoteClient already running");
         return true;
     }
 
-    spdlog::info("Starting ActiveMode - connecting to {}:{}",
+    spdlog::info("Starting RemoteClient - connecting to {}:{}",
         impl_->config.serverIp, impl_->config.serverPort);
 
     impl_->shouldStop.store(false);
@@ -93,16 +93,16 @@ bool ActiveMode::start() {
     startHeartbeat();
 
     running_.store(true);
-    spdlog::info("ActiveMode started");
+    spdlog::info("RemoteClient started");
     return true;
 }
 
-void ActiveMode::stop() {
+void RemoteClient::stop() {
     if (!running_.load()) {
         return;
     }
 
-    spdlog::info("Stopping ActiveMode");
+    spdlog::info("Stopping RemoteClient");
     impl_->shouldStop.store(true);
     running_.store(false);
     connected_.store(false);
@@ -122,10 +122,10 @@ void ActiveMode::stop() {
         impl_->client->disconnect();
     }
 
-    spdlog::info("ActiveMode stopped");
+    spdlog::info("RemoteClient stopped");
 }
 
-void ActiveMode::connect() {
+void RemoteClient::connect() {
     if (isConnected()) {
         return;
     }
@@ -141,12 +141,12 @@ void ActiveMode::connect() {
     }
 }
 
-void ActiveMode::disconnect() {
+void RemoteClient::disconnect() {
     connected_.store(false);
     impl_->client->disconnect();
 }
 
-void ActiveMode::reconnect() {
+void RemoteClient::reconnect() {
     if (impl_->shouldStop.load()) {
         return;
     }
@@ -161,7 +161,7 @@ void ActiveMode::reconnect() {
     }
 }
 
-void ActiveMode::startHeartbeat() {
+void RemoteClient::startHeartbeat() {
     // 停止之前的心跳线程
     if (impl_->heartbeatThread.joinable()) {
         impl_->heartbeatThread.join();
@@ -180,7 +180,7 @@ void ActiveMode::startHeartbeat() {
     });
 }
 
-void ActiveMode::sendHeartbeat() {
+void RemoteClient::sendHeartbeat() {
     // 创建心跳消息
     auto message = std::make_shared<transport::Message>();
     message->header.type = transport::MessageType::Notify;
@@ -195,7 +195,7 @@ void ActiveMode::sendHeartbeat() {
     }
 }
 
-void ActiveMode::onMessage(const std::vector<uint8_t>& data) {
+void RemoteClient::onMessage(const std::vector<uint8_t>& data) {
     // 解析消息
     if (data.size() >= 4) {
         std::string type(data.begin(), data.begin() + 4);
@@ -210,8 +210,8 @@ void ActiveMode::onMessage(const std::vector<uint8_t>& data) {
     }
 }
 
-void ActiveMode::onEvent(ConnectionState state, const std::string& message) {
-    spdlog::info("ActiveMode event: {} - {}",
+void RemoteClient::onEvent(ConnectionState state, const std::string& message) {
+    spdlog::info("RemoteClient event: {} - {}",
         state == ConnectionState::Connected ? "Connected" :
         state == ConnectionState::Connecting ? "Connecting" :
         state == ConnectionState::Disconnected ? "Disconnected" :
@@ -226,7 +226,7 @@ void ActiveMode::onEvent(ConnectionState state, const std::string& message) {
     }
 }
 
-const ActiveModeConfig& ActiveMode::getConfig() const {
+const RemoteClientConfig& RemoteClient::getConfig() const {
     return impl_->config;
 }
 

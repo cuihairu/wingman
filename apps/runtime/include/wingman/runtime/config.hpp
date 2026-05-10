@@ -18,7 +18,7 @@ enum class RunMode {
 
 // ========== 配置结构 ==========
 
-struct ActiveModeConfig {
+struct RemoteClientConfig {
     std::string serverIp = "127.0.0.1";
     int serverPort = 9527;
     int reconnectInterval = 5;      // 秒
@@ -26,7 +26,7 @@ struct ActiveModeConfig {
     int connectTimeout = 10;        // 秒
 };
 
-struct PassiveModeConfig {
+struct RemoteServerConfig {
     std::string listenIp = "0.0.0.0";
     int listenPort = 9528;
     int maxConnections = 10;
@@ -61,8 +61,8 @@ struct AgentConfig {
     bool enablePassive = true;
     std::string connectionStrategy = "parallel";  // fallback | parallel | primary
 
-    ActiveModeConfig active;
-    PassiveModeConfig passive;
+    RemoteClientConfig remoteClient;
+    RemoteServerConfig remoteServer;
     StandaloneModeConfig standalone;
     DebuggerConfig debugger;
     LoggingConfig logging;

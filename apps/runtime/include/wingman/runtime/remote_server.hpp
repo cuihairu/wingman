@@ -48,13 +48,13 @@ using MessageHandler = std::function<std::vector<uint8_t>(const std::string& ses
 
 // ========== 被动模式 ==========
 
-class PassiveMode {
+class RemoteServer {
     class Impl;
 
 public:
 public:
-    PassiveMode(const PassiveModeConfig& config);
-    ~PassiveMode();
+    RemoteServer(const RemoteServerConfig& config);
+    ~RemoteServer();
 
     // 启动/停止
     bool start();
@@ -81,7 +81,7 @@ public:
     }
 
     // 获取配置
-    const PassiveModeConfig& getConfig() const;
+    const RemoteServerConfig& getConfig() const;
 
 private:
     // 新会话处理

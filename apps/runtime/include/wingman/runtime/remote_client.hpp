@@ -36,13 +36,13 @@ using ConnectionCallback = std::function<void(const ConnectionEvent&)>;
 
 // ========== 主动模式 ==========
 
-class ActiveMode {
+class RemoteClient {
     class Impl;
 
 public:
 public:
-    ActiveMode(const ActiveModeConfig& config);
-    ~ActiveMode();
+    RemoteClient(const RemoteClientConfig& config);
+    ~RemoteClient();
 
     // 启动/停止
     bool start();
@@ -56,7 +56,7 @@ public:
     }
 
     // 获取配置
-    const ActiveModeConfig& getConfig() const;
+    const RemoteClientConfig& getConfig() const;
 
 private:
     // 连接管理
