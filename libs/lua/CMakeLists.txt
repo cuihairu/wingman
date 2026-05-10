@@ -13,6 +13,19 @@ find_package(Lua REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
+# 获取 Lua 库
+# 尝试多种可能的 target 名称
+if(TARGET Lua::Lua)
+    set(LUA_TARGET Lua::Lua)
+elseif(TARGET unofficial::lua::lua)
+    set(LUA_TARGET unofficial::lua::lua)
+elseif(TARGET lua)
+    set(LUA_TARGET lua)
+else()
+    # 直接使用 Lua 变量
+    set(LUA_TARGET ${LUA_LIBRARIES})
+endif()
+
 # ========== 源文件 ==========
 # 注意: lua_bindings, lua_extensions, lua_http, debug_adapter, script_manager
 # 需要额外的依赖，暂时禁用
@@ -48,7 +61,7 @@ target_include_directories(wingman_lua PUBLIC
 
 # 链接库
 target_link_libraries(wingman_lua PUBLIC
-    unofficial::lua::lua
+    ${LUA_TARGET}
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman
