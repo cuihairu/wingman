@@ -9,25 +9,18 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找依赖
-# 注意：vcpkg lua 包在 x64-windows-static triplet 中存在链接问题
-# 临时禁用 Lua 支持，等待上游修复或切换到动态链接 triplet
-# 参考：https://github.com/microsoft/vcpkg/issues/XXXXX
+# 使用 CMake 的 FindLua 模块（vcpkg 会通过 toolchain 拦截）
+find_package(Lua REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# Lua 支持选项（默认关闭，因为存在链接问题）
-option(WINGMAN_ENABLE_LUA "Enable Lua scripting support (has linking issues in x64-windows-static)" OFF)
+# 验证 Lua 是否正确找到
+message(STATUS "Found Lua: ${LUA_VERSION_STRING} (${LUA_LIBRARIES})")
+message(STATUS "Lua include dir: ${LUA_INCLUDE_DIR}")
 
-if(WINGMAN_ENABLE_LUA)
-    find_package(unofficial-lua CONFIG QUIET)
-    if(TARGET unofficial::lua::lua)
-        set(LUA_TARGET unofficial::lua::lua)
-        message(STATUS "Using Lua library: ${LUA_TARGET}")
-        message(WARNING "Lua linking in x64-windows-static may have issues. Consider using x64-windows triplet instead.")
-    else()
-        message(WARNING "Lua library not found, Lua support will be disabled")
-        set(WINGMAN_ENABLE_LUA OFF)
-    endif()
+# 检查 Lua::Lua imported target 是否可用
+if(NOT TARGET Lua::Lua)
+    message(FATAL_ERROR "Lua::Lua target not found. vcpkg FindLua integration failed.")
 endif()
 
 # ========== 源文件 ==========
@@ -63,17 +56,13 @@ target_include_directories(wingman_lua PUBLIC
 )
 
 # 链接库 - 使用 PUBLIC 确保依赖传递给使用 wingman_lua 的目标
+# 使用现代的 Lua::Lua imported target（由 vcpkg 的 FindLua 提供）
 target_link_libraries(wingman_lua PUBLIC
+    Lua::Lua
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman
 )
-
-# 条件性链接 Lua 库
-if(WINGMAN_ENABLE_LUA AND LUA_TARGET)
-    target_link_libraries(wingman_lua PUBLIC ${LUA_TARGET})
-    target_compile_definitions(wingman_lua PUBLIC WINGMAN_ENABLE_LUA)
-endif()
 
 # 导出库
 add_library(wingman::lua ALIAS wingman_lua)
