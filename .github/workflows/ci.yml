@@ -95,6 +95,7 @@ jobs:
       shell: cmd
       run: |
         set "VCPKG_ROOT_ABS=%CD%\vcpkg"
+        set "VCPKG_OVERLAY_PORTS=%CD%\vcpkg-ports"
         cmake -B build ^
           -S . ^
           -G "Visual Studio 17 2022" ^

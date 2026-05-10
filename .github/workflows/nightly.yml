@@ -102,6 +102,7 @@ jobs:
       shell: cmd
       run: |
         set "VCPKG_ROOT_ABS=%CD%\vcpkg"
+        set "VCPKG_OVERLAY_PORTS=%CD%\vcpkg-ports"
         set "VERSION_SUFFIX=${{ steps.nightly_version.outputs.version_suffix }}"
         cmake -B build ^
           -S . ^
