@@ -18,10 +18,8 @@ find_package(nlohmann_json CONFIG REQUIRED)
 message(STATUS "Found Lua: ${LUA_VERSION_STRING} (${LUA_LIBRARIES})")
 message(STATUS "Lua include dir: ${LUA_INCLUDE_DIR}")
 
-# 检查 Lua::Lua imported target 是否可用
-if(NOT TARGET Lua::Lua)
-    message(FATAL_ERROR "Lua::Lua target not found. vcpkg FindLua integration failed.")
-endif()
+# vcpkg 的 FindLua 提供变量而非导入目标
+# 使用 ${LUA_INCLUDE_DIR} 和 ${LUA_LIBRARIES}
 
 # ========== 源文件 ==========
 # 注意: lua_bindings, lua_extensions, lua_http, debug_adapter, script_manager
@@ -53,12 +51,13 @@ add_library(wingman_lua STATIC ${LUA_SOURCES})
 # 包含目录
 target_include_directories(wingman_lua PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    ${LUA_INCLUDE_DIR}
 )
 
 # 链接库 - 使用 PUBLIC 确保依赖传递给使用 wingman_lua 的目标
-# 使用现代的 Lua::Lua imported target（由 vcpkg 的 FindLua 提供）
+# vcpkg 的 FindLua 提供变量，直接链接库文件
 target_link_libraries(wingman_lua PUBLIC
-    Lua::Lua
+    ${LUA_LIBRARIES}
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman
