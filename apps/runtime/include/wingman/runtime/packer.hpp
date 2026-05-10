@@ -38,6 +38,18 @@ public:
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;
+
+    // 内部辅助方法
+    std::vector<uint8_t> processScript();
+    std::vector<uint8_t> compileToBytecode(const std::string& source);
+    std::vector<uint8_t> encryptData(const std::vector<uint8_t>& data);
+    std::vector<uint8_t> compressData(const std::vector<uint8_t>& data);
+    bool copyStub();
+    bool embedResource(const std::vector<uint8_t>& data);
+    bool replaceIcon();
+    bool setVersionInfo();
+    std::vector<uint8_t> generateKey();
+    std::vector<uint8_t> calculateHash(const std::vector<uint8_t>& data);
 };
 
 } // namespace wingman::runtime

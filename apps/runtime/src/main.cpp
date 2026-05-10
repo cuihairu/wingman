@@ -9,6 +9,7 @@
 #include "wingman/version.hpp"
 #include <iostream>
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 /// 运行嵌入的脚本（如果存在）
 /// @return 如果运行了嵌入脚本返回 true，否则返回 false
@@ -38,7 +39,11 @@ bool runEmbeddedScript() {
 
     // 创建 Lua 实例并执行
     try {
-        auto lua = std::make_unique<wingman::lua::LuaState>();
+        auto lua = std::make_unique<wingman::lua::LuaEngine>();
+        if (!lua->initialize()) {
+            spdlog::error("Failed to initialize Lua engine");
+            return true;
+        }
 
         // 设置嵌入脚本标记
         lua->setGlobal("_EMBEDDED", true);
@@ -46,9 +51,15 @@ bool runEmbeddedScript() {
         // 将数据转换为字符串
         std::string scriptCode(loadedScript->data.begin(), loadedScript->data.end());
 
+        // 设置错误回调
+        std::string lastError;
+        lua->setErrorCallback([&lastError](const std::string& err) {
+            lastError = err;
+        });
+
         // 执行脚本
-        if (!lua->doString(scriptCode)) {
-            spdlog::error("Script execution failed: {}", lua->getLastError());
+        if (!lua->executeString(scriptCode)) {
+            spdlog::error("Script execution failed: {}", lastError.empty() ? "unknown error" : lastError);
             return true;  // 即使失败也返回 true，因为已经尝试运行
         }
 
@@ -72,7 +83,7 @@ int runGuiMode() {
 
 int main(int argc, char** argv) {
     // 初始化日志
-    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_st>();
     spdlog::default_logger()->sinks().push_back(consoleSink);
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
@@ -91,18 +102,14 @@ int main(int argc, char** argv) {
 
     // 根命令 (wingman-runtime)
     clasp::Command rootCmd("wingman-runtime", "Wingman - Game Automation Programmable Control Engine");
-    rootCmd.withVersion("wingman-runtime " WINGMAN_VERSION);
-
-    // 无命令时：显示帮助
-    rootCmd.withShortDescription("Run 'wingman-runtime <command> --help' for more information.");
 
     // ========== start 命令 ==========
     clasp::Command startCmd("start", "Start Wingman Agent service");
     startCmd
         .withFlag("--config", "-c", "config", "Configuration file path", std::string("agent.toml"))
         .action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
-            const auto configPath = parser.getFlag<std::string>("--config", "agent.toml");
-            return wingman::runtime::commands::startCommand(configPath);
+            const auto configPath = parser.getFlag<std::string>("--config");
+            return wingman::runtime::commands::startCommand(configPath.empty() ? "agent.toml" : configPath);
         });
 
     // ========== stop 命令 ==========
@@ -120,7 +127,6 @@ int main(int argc, char** argv) {
     // ========== script 命令 ==========
     clasp::Command scriptCmd("script", "Run a Lua script");
     scriptCmd
-        .withArg<std::string>("script", "Path to the Lua script file")
         .withFlag("--arg", "-a", "arg", "Argument to pass to script (can be used multiple times)")
         .action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
             if (args.empty()) {
@@ -132,7 +138,7 @@ int main(int argc, char** argv) {
             // 收集额外的参数
             std::vector<std::string> scriptArgs;
             if (parser.hasFlag("--arg")) {
-                scriptArgs = parser.getFlags<std::string>("--arg");
+                scriptArgs = parser.getStringSlice("--arg");
             }
 
             return wingman::runtime::commands::scriptCommand(scriptPath, scriptArgs);
@@ -144,15 +150,15 @@ int main(int argc, char** argv) {
         .withFlag("--script", "-s", "script", "Path to the main Lua script", std::string(""))
         .withFlag("--output", "-o", "output", "Output executable path", std::string(""))
         .withFlag("--icon", "-i", "icon", "Path to icon file (.ico)", std::string(""))
-        .withFlag("--no-encrypt", "", "no-encrypt", "Disable script encryption", false)
-        .withFlag("--no-compress", "", "no-compress", "Disable compression", false)
+        .withFlag("--no-encrypt", "", "no-encrypt", "Disable script encryption")
+        .withFlag("--no-compress", "", "no-compress", "Disable compression")
         .action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
             wingman::runtime::commands::BuildOptions options;
-            options.scriptPath = parser.getFlag<std::string>("--script", "");
-            options.outputPath = parser.getFlag<std::string>("--output", "");
-            options.iconPath = parser.getFlag<std::string>("--icon", "");
-            options.encrypt = !parser.getFlag<bool>("--no-encrypt", false);
-            options.compress = !parser.getFlag<bool>("--no-compress", false);
+            options.scriptPath = parser.getFlag<std::string>("--script");
+            options.outputPath = parser.getFlag<std::string>("--output");
+            options.iconPath = parser.getFlag<std::string>("--icon");
+            options.encrypt = !parser.hasFlag("--no-encrypt");
+            options.compress = !parser.hasFlag("--no-compress");
 
             if (options.scriptPath.empty() || options.outputPath.empty()) {
                 std::cerr << "Error: --script and --output are required\n";
@@ -168,9 +174,9 @@ int main(int argc, char** argv) {
         .withFlag("--port", "-p", "port", "Server port", 8080)
         .withFlag("--host", "-H", "host", "Server host", std::string("127.0.0.1"))
         .action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
-            const auto host = parser.getFlag<std::string>("--host", "127.0.0.1");
-            const auto port = parser.getFlag<int>("--port", 8080);
-            return wingman::runtime::commands::serveCommand(host, port);
+            const auto host = parser.getFlag<std::string>("--host");
+            const auto port = parser.getFlag<int>("--port");
+            return wingman::runtime::commands::serveCommand(host.empty() ? "127.0.0.1" : host, port);
         });
 
     // 注册所有命令
