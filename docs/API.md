@@ -1,15 +1,15 @@
-# Wingman Client API 文档
+# Wingman Runtime API 文档
 
-Wingman Client 同时提供 HTTP RESTful API 和 WebSocket RPC 接口，供 Tauri UI 或其他客户端调用。
+Wingman Runtime 同时提供 HTTP RESTful API 和 WebSocket RPC 接口，供 Tauri UI 或其他客户端调用。
 
 ## 启动服务器
 
 ```bash
 # 默认配置 (127.0.0.1:8080)
-wingman-client serve
+wingman-runtime serve
 
 # 自定义主机和端口
-wingman-client serve --host 0.0.0.0 --port 9000
+wingman-runtime serve --host 0.0.0.0 --port 9000
 ```
 
 ## HTTP RESTful API

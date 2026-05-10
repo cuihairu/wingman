@@ -91,12 +91,12 @@ int main(int argc, char** argv) {
 
     // ========== 有命令行参数，使用 Clasp 解析 ==========
 
-    // 根命令 (wingman-client)
-    clasp::Command rootCmd("wingman-client", "Wingman - Game Automation Programmable Control Engine");
-    rootCmd.withVersion("wingman-client " WINGMAN_VERSION);
+    // 根命令 (wingman-runtime)
+    clasp::Command rootCmd("wingman-runtime", "Wingman - Game Automation Programmable Control Engine");
+    rootCmd.withVersion("wingman-runtime " WINGMAN_VERSION);
 
     // 无命令时：显示帮助
-    rootCmd.withShortDescription("Run 'wingman-client <command> --help' for more information.");
+    rootCmd.withShortDescription("Run 'wingman-runtime <command> --help' for more information.");
 
     // ========== start 命令 ==========
     clasp::Command startCmd("start", "Start Wingman Agent service");

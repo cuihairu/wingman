@@ -127,8 +127,8 @@ if(WINGMAN_BUILD_AGENT)
     add_subdirectory(lib/wingman)
 
     # 应用
-    add_subdirectory(apps/client)
-    add_subdirectory(apps/cli)
+    add_subdirectory(apps/runtime)
+    add_subdirectory(apps/gui)
     # add_subdirectory(apps/inspector)  # 暂时禁用，需要 imgui
 
     message(STATUS "Multi-module build enabled")
@@ -142,8 +142,8 @@ if(WINGMAN_BUILD_TESTS)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/wingman/tests/CMakeLists.txt")
         add_subdirectory(lib/wingman/tests)
     endif()
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/apps/client/tests/CMakeLists.txt")
-        add_subdirectory(apps/client/tests)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/apps/runtime/tests/CMakeLists.txt")
+        add_subdirectory(apps/runtime/tests)
     endif()
 endif()
 
@@ -154,7 +154,7 @@ if(WINGMAN_BUILD_BENCHMARKS)
 endif()
 
 # ========== 安装 ==========
-install(TARGETS wingman-client
+install(TARGETS wingman-runtime
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib

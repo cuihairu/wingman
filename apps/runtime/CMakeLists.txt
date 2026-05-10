@@ -40,16 +40,16 @@ set(CLIENT_SOURCES
 )
 
 # 创建可执行文件
-add_executable(wingman-client ${CLIENT_SOURCES})
+add_executable(wingman-runtime ${CLIENT_SOURCES})
 
 # 包含目录
-target_include_directories(wingman-client PRIVATE
+target_include_directories(wingman-runtime PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${WINGMAN_GENERATED_DIR}
 )
 
 # 链接库
-target_link_libraries(wingman-client PRIVATE
+target_link_libraries(wingman-runtime PRIVATE
     wingman::proto
     wingman::transport
     wingman
@@ -72,7 +72,7 @@ configure_file(
 if(WIN32)
     # 添加资源文件
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../assets/wingman.rc")
-        target_sources(wingman-client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../assets/wingman.rc")
+        target_sources(wingman-runtime PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../assets/wingman.rc")
     endif()
 endif()
 

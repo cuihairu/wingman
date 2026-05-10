@@ -64,7 +64,7 @@ cmake --build build --config Release
 ### 4. 运行
 
 ```bash
-.\build\apps\client\Release\wingman-client.exe
+.\build\apps\runtime\Release\wingman-runtime.exe
 ```
 
 ## 测试
