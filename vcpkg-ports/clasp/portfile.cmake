@@ -1,5 +1,5 @@
 # CLASP Port for Wingman Overlay Ports
-# 简化版本 - 只安装头文件和库，手动创建 CMake 配置
+# 使用 vcpkg 标准方式
 
 # 方式1: 从本地 sibling 目录获取（开发时）
 set(CLASP_LOCAL_DIR "$ENV{USERPROFILE}/Workspaces/clasp")
@@ -25,66 +25,21 @@ else()
     )
 endif()
 
-# 配置并构建 clasp
 vcpkg_configure_cmake(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DCLASP_BUILD_EXAMPLES=OFF
-        -DCLASP_BUILD_TESTS=OFF
+        -DCLASP_ENABLE_COVERAGE=OFF
 )
 
 vcpkg_install_cmake()
 
-# 检查安装的库文件
-message(STATUS "Checking for installed library files...")
-file(GLOB_RECURSE _clasp_libs "${CURRENT_PACKAGES_DIR}/lib/*clasp*")
-message(STATUS "Found clasp libraries: ${_clasp_libs}")
-
-# 手动创建 CMake 配置文件
-# 使用 find_library 来定位库文件，而不是硬编码路径
-file(WRITE "${CURRENT_PACKAGES_DIR}/share/clasp/claspConfig.cmake"
-"include(CMakeFindDependencyMacro)
-
-# 设置导入目标
-if(NOT TARGET clasp::clasp)
-    add_library(clasp::clasp STATIC IMPORTED GLOBAL)
-
-    # 设置包含目录
-    set_target_properties(clasp::clasp PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES \"\${CMAKE_CURRENT_LIST_DIR}/../../include\"
-    )
-
-    # 在配置时查找库文件
-    # vcpkg 将库安装到 lib/ 目录
-    find_library(_clasp_lib_PATH
-        NAMES clasp libclasp
-        PATHS \"\${CMAKE_CURRENT_LIST_DIR}/../../lib\"
-        NO_DEFAULT_PATH
-        REQUIRED
-    )
-
-    # 为所有配置类型设置库位置
-    set_target_properties(clasp::clasp PROPERTIES
-        IMPORTED_LOCATION_DEBUG \"\${_clasp_lib_PATH}\"
-        IMPORTED_LOCATION_RELEASE \"\${_clasp_lib_PATH}\"
-        IMPORTED_LOCATION_MINSIZEREL \"\${_clasp_lib_PATH}\"
-        IMPORTED_LOCATION_RELWITHDEBINFO \"\${_clasp_lib_PATH}\"
-    )
+# vcpkg 会自动处理 CMake targets，但我们需要确保配置文件正确
+# 检查并复制 CMake 配置文件到正确的位置
+file(GLOB _cmake_files "${CURRENT_PACKAGES_DIR}/lib/cmake/clasp/*")
+if(_cmake_files)
+    file(COPY ${_cmake_files} DESTINATION "${CURRENT_PACKAGES_DIR}/share/clasp")
 endif()
-")
-
-# 创建版本文件
-file(WRITE "${CURRENT_PACKAGES_DIR}/share/clasp/claspConfigVersion.cmake"
-"set(PACKAGE_VERSION 0.1.0)
-set(PACKAGE_VERSION_EXACT FALSE)
-set(PACKAGE_VERSION_COMPATIBLE FALSE)
-
-if(PACKAGE_FIND_VERSION VERSION_EQUAL PACKAGE_VERSION)
-    set(PACKAGE_VERSION_COMPATIBLE TRUE)
-elseif(PACKAGE_FIND_VERSION_MAJOR EQUAL 0)
-    set(PACKAGE_VERSION_COMPATIBLE TRUE)
-endif()
-")
 
 # 安装许可证
 if(EXISTS "${SOURCE_PATH}/LICENSE")
