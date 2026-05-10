@@ -135,8 +135,7 @@ wingman/
 │   │   ├── src/          # C++ 绑定代码
 │   │   ├── main.go       # 程序入口
 │   │   └── go.sum        # Go 依赖
-│   ├── dashboard/        # React Web 管理界面
-│   └── tests/            # 测试
+│   └── dashboard/        # React Web 管理界面
 │
 ├── lib/
 │   └── wingman/          # C++ 核心库
@@ -158,7 +157,7 @@ wingman/
 │
 ├── examples/             # Lua 脚本示例
 ├── docs/                 # 项目文档
-└── scripts/              # 构建脚本
+└── build-scripts/        # 构建脚本
 ```
 
 ---
