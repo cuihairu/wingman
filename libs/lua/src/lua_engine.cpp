@@ -1,6 +1,12 @@
 #include "wingman/lua/lua_engine.hpp"
 #include <spdlog/spdlog.h>
 
+#ifdef WINGMAN_ENABLE_LUA
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
+#endif
+
 namespace wingman::lua {
 
 // ========== LuaEngine 实现 ==========
@@ -10,6 +16,8 @@ LuaEngine::LuaEngine() = default;
 LuaEngine::~LuaEngine() {
     shutdown();
 }
+
+#ifdef WINGMAN_ENABLE_LUA
 
 bool LuaEngine::initialize() {
     L_ = luaL_newstate();
@@ -115,5 +123,64 @@ int LuaEngine::luaErrorCallback(lua_State* L) {
     spdlog::error("Lua error: {}", msg ? msg : "unknown error");
     return 0;
 }
+
+#else // WINGMAN_ENABLE_LUA
+
+// 当 Lua 被禁用时，提供空实现
+bool LuaEngine::initialize() {
+    spdlog::warn("Lua support is disabled");
+    return false;
+}
+
+void LuaEngine::shutdown() {
+    // 空实现
+}
+
+bool LuaEngine::executeFile(const std::string& /*path*/) {
+    spdlog::warn("Lua support is disabled");
+    return false;
+}
+
+bool LuaEngine::executeString(const std::string& /*code*/) {
+    spdlog::warn("Lua support is disabled");
+    return false;
+}
+
+bool LuaEngine::executeBuffer(const char* /*buffer*/, size_t /*size*/, const std::string& /*name*/) {
+    spdlog::warn("Lua support is disabled");
+    return false;
+}
+
+void LuaEngine::openLibs() {
+    // 空实现
+}
+
+void LuaEngine::setGlobal(const std::string& /*name*/, const std::string& /*value*/) {
+    // 空实现
+}
+
+void LuaEngine::setGlobal(const std::string& /*name*/, int /*value*/) {
+    // 空实现
+}
+
+void LuaEngine::setGlobal(const std::string& /*name*/, double /*value*/) {
+    // 空实现
+}
+
+void LuaEngine::registerFunction(const std::string& /*name*/, lua_CFunction /*func*/) {
+    // 空实现
+}
+
+bool LuaEngine::loadModule(const std::string& /*name*/, const std::string& /*path*/) {
+    spdlog::warn("Lua support is disabled");
+    return false;
+}
+
+int LuaEngine::luaErrorCallback(lua_State* /*L*/) {
+    spdlog::error("Lua error: Lua support is disabled");
+    return 0;
+}
+
+#endif // WINGMAN_ENABLE_LUA
 
 } // namespace wingman::lua
