@@ -9,46 +9,21 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找依赖
-find_package(Lua REQUIRED)
+# vcpkg 的 lua 包默认构建 C++ 版本，使用 unofficial-lua 来获取
+find_package(unofficial-lua CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# vcpkg 的 Lua 包需要特殊处理
-# 创建 imported target 用于 Lua 库
-if(NOT TARGET lua_static)
-    if(LUA_LIBRARIES)
-        # 尝试将 LUA_LIBRARIES 作为路径
-        if(EXISTS "${LUA_LIBRARIES}")
-            add_library(lua_static STATIC IMPORTED)
-            set_target_properties(lua_static PROPERTIES
-                IMPORTED_LOCATION "${LUA_LIBRARIES}"
-                INTERFACE_INCLUDE_DIRECTORIES "${LUA_INCLUDE_DIR}"
-            )
-            message(STATUS "Created lua_static target from LUA_LIBRARIES: ${LUA_LIBRARIES}")
-        else()
-            # LUA_LIBRARIES 可能是 target 名称或库列表，尝试查找实际的 .lib 文件
-            # 在 vcpkg x64-windows-static 中，Lua 库通常位于 installed/x64-windows-static/lib
-            find_file(LUA_LIB_FILE
-                NAMES "lua55.lib" "lua54.lib" "lua5.5.lib" "lua5.4.lib" "lua.lib"
-                PATHS "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib"
-                  "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib"
-                  "$ENV{VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib"
-                NO_DEFAULT_PATH
-            )
-            if(LUA_LIB_FILE)
-                add_library(lua_static STATIC IMPORTED)
-                set_target_properties(lua_static PROPERTIES
-                    IMPORTED_LOCATION "${LUA_LIB_FILE}"
-                    INTERFACE_INCLUDE_DIRECTORIES "${LUA_INCLUDE_DIR}"
-                )
-                message(STATUS "Created lua_static target from found library: ${LUA_LIB_FILE}")
-            else()
-                message(FATAL_ERROR "Could not find Lua library file. Searched for lua*.lib in vcpkg lib directories.")
-            endif()
-        endif()
-    else()
-        message(FATAL_ERROR "LUA_LIBRARIES is empty. Lua package not found.")
-    endif()
+# 使用 vcpkg 提供的 lua-cpp target（包含完整的 Lua C API）
+# 如果需要纯 C 库，可以尝试查找 lua54 等目标
+if(TARGET unofficial::lua::lua-cpp)
+    set(LUA_TARGET unofficial::lua::lua-cpp)
+    message(STATUS "Using Lua C++ library (includes C API): unofficial::lua::lua-cpp")
+elseif(TARGET unofficial::lua::lua)
+    set(LUA_TARGET unofficial::lua::lua)
+    message(STATUS "Using Lua library: unofficial::lua::lua")
+else()
+    message(FATAL_ERROR "Could not find Lua library target from vcpkg")
 endif()
 
 # ========== 源文件 ==========
@@ -86,7 +61,7 @@ target_include_directories(wingman_lua PUBLIC
 
 # 链接库 - 使用 PUBLIC 确保依赖传递给使用 wingman_lua 的目标
 target_link_libraries(wingman_lua PUBLIC
-    lua_static
+    ${LUA_TARGET}
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman
@@ -100,8 +75,8 @@ endif()
 # 导出库
 add_library(wingman::lua ALIAS wingman_lua)
 
-# 创建 lua_static 的全局 ALIAS，以便其他目标可以访问
-add_library(wingman::lua_static ALIAS lua_static)
+# 创建 Lua 库的全局 ALIAS，以便其他目标可以访问
+add_library(wingman::lua_lib ALIAS ${LUA_TARGET})
 
 # EmmyLua Debugger 支持
 option(WINGMAN_ENABLE_EMMY "Enable EmmyLua Debugger integration" ON)
