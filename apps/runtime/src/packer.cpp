@@ -3,13 +3,14 @@
 #include <fstream>
 #include <sstream>
 #include <cstring>
+#include <filesystem>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <wincrypt.h>
 #include <imagehlp.h>
 #include <shlobj.h>
-#pragma comment(lib, "imagehlp.lib")
+#pragma comment(lib, "imagehlib.lib")
 #endif
 
 namespace wingman::runtime {

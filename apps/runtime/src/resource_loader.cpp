@@ -200,6 +200,11 @@ ResourceLoader::ResourceLoader()
 
 ResourceLoader::~ResourceLoader() = default;
 
+void ResourceLoader::setErrorCallback(ErrorCallback callback) {
+    errorCallback_ = std::move(callback);
+    impl_->errorCallback = errorCallback_;
+}
+
 bool ResourceLoader::hasEmbeddedScript() const {
     return impl_->resourceInfo.exists;
 }

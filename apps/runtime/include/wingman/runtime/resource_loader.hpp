@@ -4,6 +4,7 @@
 #include <vector>
 #include <optional>
 #include <functional>
+#include <memory>
 
 namespace wingman::runtime {
 
@@ -47,11 +48,11 @@ public:
 
     /// 设置错误回调
     using ErrorCallback = std::function<void(const std::string&)>;
-    void setErrorCallback(ErrorCallback callback) { errorCallback_ = std::move(callback); }
+    void setErrorCallback(ErrorCallback callback);
 
 private:
-    std::string executablePath_;
-    ResourceInfo resourceInfo_;
+    class Impl;
+    std::unique_ptr<Impl> impl_;
     ErrorCallback errorCallback_;
 
     // 从 PE 资源读取数据

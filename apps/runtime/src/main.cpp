@@ -127,7 +127,6 @@ int main(int argc, char** argv) {
     // ========== script 命令 ==========
     clasp::Command scriptCmd("script", "Run a Lua script");
     scriptCmd
-        .withFlag("--arg", "-a", "arg", "Argument to pass to script (can be used multiple times)")
         .action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
             if (args.empty()) {
                 std::cerr << "Error: script path is required\n";
@@ -135,10 +134,10 @@ int main(int argc, char** argv) {
             }
             const auto scriptPath = args[0];
 
-            // 收集额外的参数
+            // 收集额外的参数 (位置参数)
             std::vector<std::string> scriptArgs;
-            if (parser.hasFlag("--arg")) {
-                scriptArgs = parser.getStringSlice("--arg");
+            if (args.size() > 1) {
+                scriptArgs.assign(args.begin() + 1, args.end());
             }
 
             return wingman::runtime::commands::scriptCommand(scriptPath, scriptArgs);
@@ -150,8 +149,8 @@ int main(int argc, char** argv) {
         .withFlag("--script", "-s", "script", "Path to the main Lua script", std::string(""))
         .withFlag("--output", "-o", "output", "Output executable path", std::string(""))
         .withFlag("--icon", "-i", "icon", "Path to icon file (.ico)", std::string(""))
-        .withFlag("--no-encrypt", "", "no-encrypt", "Disable script encryption")
-        .withFlag("--no-compress", "", "no-compress", "Disable compression")
+        .withFlag("--no-encrypt", "", "Disable script encryption")
+        .withFlag("--no-compress", "", "Disable compression")
         .action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
             wingman::runtime::commands::BuildOptions options;
             options.scriptPath = parser.getFlag<std::string>("--script");
