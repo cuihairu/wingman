@@ -120,9 +120,9 @@ dashboard/config/local.ts
 .claude/
 _deps/
 
-# Generated config files
-client.toml
-apps/*/config/
+# Generated config files (but not checked-in templates)
+apps/*/config/*.local
+apps/*/config/user.*
 
 # Package manager temporary files (using vcpkg, not conan)
 conan-build/
