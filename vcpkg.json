@@ -5,6 +5,10 @@
   "description": "Game Automation Programmable Control Engine",
   "dependencies": [
     {
+      "name": "clasp",
+      "platform": "windows"
+    },
+    {
       "name": "lua",
       "platform": "windows"
     },
@@ -36,6 +40,12 @@
       "$comment": "Protobuf for Agent-Server communication",
       "name": "protobuf",
       "platform": "windows"
+    },
+    {
+      "$comment": "Drogon HTTP/WebSocket framework for UI communication",
+      "name": "drogon",
+      "platform": "windows",
+      "features": ["with_ctl", "withopenssl"]
     }
   ],
   "features": {

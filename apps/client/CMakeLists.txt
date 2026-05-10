@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 # ========== Wingman Client ==========
-# C++ Client - 支持主动/被动/单机三种模式
+# 无 UI 的命令行客户端，使用 Drogon 提供 WebSocket API
 
 project(wingman_client LANGUAGES CXX)
 
@@ -11,6 +11,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 依赖库
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(clasp CONFIG REQUIRED)  # Clasp 命令行库
+
+# Drogon HTTP 框架
+find_package(Drogon CONFIG REQUIRED)
 
 # Client 源文件
 set(CLIENT_SOURCES
@@ -20,29 +24,20 @@ set(CLIENT_SOURCES
     src/passive_mode.cpp
     src/standalone_mode.cpp
     src/agent_config.cpp
+    src/packer.cpp
+    src/resource_loader.cpp
+    # Drogon 控制器
+    src/controllers/websocket.cpp
+    src/controllers/script.cpp
+    src/controllers/system.cpp
+    src/controllers/api.cpp
+    # 命令实现
+    src/commands/start_command.cpp
+    src/commands/stop_command.cpp
+    src/commands/script_command.cpp
+    src/commands/build_command.cpp
+    src/commands/serve_command.cpp
 )
-
-# GUI 支持
-if(WINGMAN_BUILD_GUI)
-    find_package(imgui CONFIG QUIET)
-    if(imgui_FOUND)
-        list(APPEND CLIENT_SOURCES
-            src/gui/app.cpp
-            src/gui/config.cpp
-            src/gui/file_dialog.cpp
-            src/gui/imgui_backend.cpp
-            src/gui/spdlog_sink.cpp
-            src/gui/panels/log_panel.cpp
-            src/gui/panels/preview_panel.cpp
-            src/gui/panels/script_panel.cpp
-            src/gui/panels/trigger_panel.cpp
-        )
-        message(STATUS "Client GUI enabled")
-    else()
-        message(STATUS "imgui not found, GUI disabled")
-        set(WINGMAN_BUILD_GUI OFF)
-    endif()
-endif()
 
 # 创建可执行文件
 add_executable(wingman-client ${CLIENT_SOURCES})
@@ -62,13 +57,9 @@ target_link_libraries(wingman-client PRIVATE
     wingman::debug
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
+    clasp::clasp
+    Drogon::Drogon
 )
-
-# GUI 链接
-if(WINGMAN_BUILD_GUI)
-    target_link_libraries(wingman-client PRIVATE imgui::imgui d3d12 dxgi)
-    target_include_directories(wingman-client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/wingman/client/gui)
-endif()
 
 # 复制配置文件到输出目录
 configure_file(

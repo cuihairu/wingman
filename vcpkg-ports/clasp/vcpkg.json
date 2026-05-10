@@ -1,0 +1,16 @@
+{
+  "name": "clasp",
+  "version-string": "0.1.0",
+  "description": "Modern C++ command-line library inspired by Go Cobra",
+  "homepage": "https://github.com/cuihairu/clasp",
+  "license": "Apache-2.0",
+  "dependencies": [],
+  "features": {
+    "tests": {
+      "description": "Build clasp tests"
+    },
+    "examples": {
+      "description": "Build clasp examples"
+    }
+  }
+}

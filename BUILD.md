@@ -9,6 +9,26 @@
 - vcpkg 包管理器
 - Git
 
+### Clasp (本地开发依赖)
+
+Wingman 使用 [Clasp](https://github.com/cuihairu/clasp) 作为命令行库。通过 **overlay ports** 本地管理：
+
+#### 方式1: Clasp 在本地开发目录
+
+```bash
+# clasp 位于 sibling 目录 (如: C:\Users\你的用户名\Workspaces\clasp)
+# 或设置环境变量
+set CLASP_SOURCE_DIR=C:\path\to\clasp
+```
+
+#### 方式2: 添加为 Git Submodule
+
+```bash
+cd wingman
+git submodule add https://github.com/cuihairu/clasp.git libs/clasp
+git submodule update --init --recursive
+```
+
 ## 快速开始
 
 ### 1. 安装 vcpkg
@@ -25,10 +45,14 @@ C:\vcpkg\bootstrap-vcpkg.bat
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
 
-# 配置 CMake
+# 配置 CMake (使用 overlay ports)
 cmake -B build -G "Visual Studio 17 2022" `
     -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+    -DVCPKG_OVERLAY_PORTS="vcpkg-ports" `
     -DVCPKG_TARGET_TRIPLET=x64-windows-static
+
+# 如果 clasp 不在默认位置，设置环境变量
+# $env:CLASP_SOURCE_DIR = "C:\path\to\clasp"
 ```
 
 ### 3. 编译
@@ -138,6 +162,7 @@ cmake --build build --config Release --target kvstore_bench
 ## 依赖项
 
 ### 核心依赖 (自动安装)
+- clasp (命令行库，通过 overlay ports)
 - lua 5.4
 - spdlog
 - nlohmann-json

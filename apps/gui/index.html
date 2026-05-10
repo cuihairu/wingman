@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wingman GUI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #4ade80;
+        }
+
+        .status {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #666;
+        }
+
+        .status-dot.connected {
+            background: #4ade80;
+        }
+
+        .version {
+            color: #888;
+        }
+
+        .section {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #4ade80;
+        }
+
+        .scripts-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .script-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #0f3460;
+            border-radius: 6px;
+        }
+
+        .script-info {
+            flex: 1;
+        }
+
+        .script-name {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .script-meta {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .script-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #4ade80;
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: #22c55e;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #444;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .connect-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .connect-form input {
+            flex: 1;
+            padding: 10px;
+            background: #0f3460;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .connect-form input:focus {
+            outline: none;
+            border-color: #4ade80;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Wingman</h1>
+            <div class="status">
+                <div class="status-item">
+                    <div class="status-dot" id="connectionDot"></div>
+                    <span id="connectionStatus">未连接</span>
+                </div>
+                <div class="status-item">
+                    <span class="version" id="versionInfo">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">连接设置</div>
+            <div class="connect-form">
+                <input type="text" id="wsUrl" value="ws://127.0.0.1:8080/ws" placeholder="WebSocket URL">
+                <button class="btn btn-primary" id="connectBtn">连接</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">脚本列表</div>
+            <div class="scripts-list" id="scriptsList">
+                <div class="empty-state">点击刷新获取脚本列表</div>
+            </div>
+            <div style="margin-top: 15px; text-align: right;">
+                <button class="btn btn-secondary" id="refreshBtn">刷新</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const invoke = window.__TAURI_INVOKE__ || window.invoke;
+
+        let isConnected = false;
+
+        // 更新连接状态
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            document.getElementById('connectionDot').classList.toggle('connected', connected);
+            document.getElementById('connectionStatus').textContent = connected ? '已连接' : '未连接';
+            document.getElementById('connectBtn').textContent = connected ? '断开' : '连接';
+        }
+
+        // 连接 WebSocket
+        async function connect() {
+            const url = document.getElementById('wsUrl').value;
+            try {
+                if (isConnected) {
+                    // 断开连接逻辑
+                    updateConnectionStatus(false);
+                } else {
+                    const result = await invoke('connect_websocket', { url });
+                    console.log(result);
+                    updateConnectionStatus(true);
+                    loadVersion();
+                    loadScripts();
+                }
+            } catch (error) {
+                console.error('连接失败:', error);
+                alert('连接失败: ' + error);
+            }
+        }
+
+        // 加载版本信息
+        async function loadVersion() {
+            try {
+                const version = await invoke('get_version');
+                document.getElementById('versionInfo').textContent =
+                    `${version.server} ${version.version}`;
+            } catch (error) {
+                console.error('获取版本失败:', error);
+            }
+        }
+
+        // 加载脚本列表
+        async function loadScripts() {
+            if (!isConnected) return;
+
+            try {
+                const scripts = await invoke('get_scripts');
+                renderScripts(scripts);
+            } catch (error) {
+                console.error('获取脚本列表失败:', error);
+                document.getElementById('scriptsList').innerHTML =
+                    '<div class="empty-state">加载失败: ' + error + '</div>';
+            }
+        }
+
+        // 渲染脚本列表
+        function renderScripts(scripts) {
+            const container = document.getElementById('scriptsList');
+
+            if (!scripts || scripts.length === 0) {
+                container.innerHTML = '<div class="empty-state">没有找到脚本</div>';
+                return;
+            }
+
+            container.innerHTML = scripts.map(script => `
+                <div class="script-item">
+                    <div class="script-info">
+                        <div class="script-name">${script.name}</div>
+                        <div class="script-meta">
+                            ${formatSize(script.size)} | ${script.is_running ? '运行中' : '已停止'}
+                        </div>
+                    </div>
+                    <div class="script-actions">
+                        <button class="btn ${script.is_running ? 'btn-danger' : 'btn-primary'}"
+                                onclick="toggleScript('${script.id}', ${script.is_running})"
+                                ${script.is_running ? '' : ''}>
+                            ${script.is_running ? '停止' : '启动'}
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 格式化文件大小
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // 启动/停止脚本
+        async function toggleScript(id, isRunning) {
+            if (!isRunning) {
+                try {
+                    await invoke('start_script', { id });
+                    await loadScripts();
+                } catch (error) {
+                    alert('启动失败: ' + error);
+                }
+            } else {
+                try {
+                    await invoke('stop_script', { scriptId: 'script_' + id });
+                    await loadScripts();
+                } catch (error) {
+                    alert('停止失败: ' + error);
+                }
+            }
+        }
+
+        // 事件绑定
+        document.getElementById('connectBtn').addEventListener('click', connect);
+        document.getElementById('refreshBtn').addEventListener('click', loadScripts);
+
+        // 初始化
+        if (typeof invoke !== 'undefined') {
+            // Tauri 环境
+            loadVersion();
+        } else {
+            // 开发环境，模拟数据
+            updateConnectionStatus(true);
+            document.getElementById('versionInfo').textContent = 'wingman 0.1.0 (dev)';
+            renderScripts([
+                { id: 'example', name: 'example.lua', path: 'scripts/example.lua', size: 1024, is_running: false },
+                { id: 'test', name: 'test.lua', path: 'scripts/test.lua', size: 512, is_running: true }
+            ]);
+        }
+    </script>
+</body>
+</html>

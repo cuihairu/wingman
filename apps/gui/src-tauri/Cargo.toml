@@ -1,0 +1,25 @@
+[package]
+name = "wingman-gui"
+version = "0.1.0"
+description = "Wingman - Game Automation Programmable Control Engine"
+authors = ["cuihairu"]
+license = ""
+repository = ""
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = ["devtools"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.24"
+url = "2.5"
+uuid = { version = "1.0", features = ["v4"] }
+futures-util = "0.3"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
