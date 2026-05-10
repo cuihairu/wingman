@@ -40,41 +40,59 @@ C++ + Lua 的高性能游戏自动化框架
 
 ## 架构设计
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Wingman 架构图                              │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  ┌──────────────┐    WebSocket     ┌───────────────────────────┐  │
-│  │  Tauri GUI   │ ◄──────────────► │   wingman-runtime        │  │
-│  │  (未来计划)   │                   │   - 命令行接口            │  │
-│  └──────────────┘                   │   - WebSocket API        │  │
-│                                     │   - Lua 脚本执行         │  │
-│                                     │   - 屏幕操作             │  │
-│                                     │   - 输入模拟             │  │
-│                                     └───────────┬───────────────┘  │
-│                                                 │                   │
-│                                                 │ Remote Protocol   │
-│                                                 ▼                   │
-│  ┌─────────────────────────────────────────────────────────────┐  │
-│  │                   wingman-orchestrator                      │  │
-│  │                   (Go 中控服务器)                            │  │
-│  │                                                              │  │
-│  │  - 多 Runtime 编排调度                                       │  │
-│  │  - 组队任务分配                                               │  │
-│  │  - WebSocket Hub                                            │  │
-│  │  - 状态管理 & 监控                                           │  │
-│  └─────────────────────────────────────────────────────────────┘  │
-│                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐  │
-│  │                     libwm (C++)                              │  │
-│  │  ┌───────────┐ ┌──────────┐ ┌──────────┐ ┌─────────────┐  │  │
-│  │  │ proto     │ │ transport │ │   lua    │ │    debug    │  │  │
-│  │  │ (Protobuf)│ │ (TCP/WS) │ │ (引擎)   │ │  (EmmyLua)   │  │  │
-│  │  └───────────┘ └──────────┘ └──────────┘ └─────────────┘  │  │
-│  └─────────────────────────────────────────────────────────────┘  │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Client["客户端层"]
+        GUI["Tauri GUI<br/>(计划中)"]
+        Runtime["wingman-runtime<br/>(C++ 运行时)"]
+        Dashboard["Web Dashboard<br/>(React)"]
+    end
+
+    subgraph Runtime["Runtime 能力"]
+        CLI["命令行接口"]
+        WS["WebSocket API"]
+        Lua["Lua 脚本引擎"]
+        Screen["屏幕操作"]
+        Input["输入模拟"]
+    end
+
+    subgraph Orchestrator["中控服务层"]
+        Orch["wingman-orchestrator<br/>(Go 中控服务器)"]
+        Hub["WebSocket Hub"]
+        Team["组队编排"]
+        State["状态管理"]
+    end
+
+    subgraph Libs["C++ 核心库"]
+        Proto["libwm/proto<br/>(Protobuf)"]
+        Transport["libwm/transport<br/>(TCP/WS)"]
+        LuaLib["libwm/lua<br/>(Lua 引擎)"]
+        Debug["libwm/debug<br/>(EmmyLua)"]
+    end
+
+    GUI -->|"WebSocket"| WS
+    Dashboard -->|"HTTP/WS"| WS
+    WS --> Runtime
+    CLI --> Runtime
+    Lua --> Screen
+    Lua --> Input
+    Runtime -->|"Remote Protocol"| Orch
+    Orch --> Hub
+    Orch --> Team
+    Orch --> State
+    Runtime --> Proto
+    Runtime --> Transport
+    Runtime --> LuaLib
+    Runtime --> Debug
+
+    classDef plan fill:#fff3cd,stroke:#ffecb5,stroke-width:2px
+    class GUI plan
+
+    classDef core fill:#d1e7dd,stroke:#a7d3c4,stroke-width:2px
+    class Runtime,Orch,Proto,Transport,LuaLib,Debug core
+
+    classDef future fill:#f8d7da,stroke:#f5c6cb,stroke-width:2px
+    class GUI,Dashboard future
 ```
 
 ---
