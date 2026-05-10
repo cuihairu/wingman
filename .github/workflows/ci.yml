@@ -78,7 +78,8 @@ jobs:
         New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
         # 启用 tests feature 来安装 GTest
         # 在 manifest 模式下，不需要指定包名，只需使用 --x-feature=tests
-        .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse --x-feature=tests
+        # 添加 overlay-ports 以使用自定义端口 (clasp)
+        .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse --x-feature=tests --overlay-ports=vcpkg-ports
 
     - name: Configure CMake
       shell: cmd
