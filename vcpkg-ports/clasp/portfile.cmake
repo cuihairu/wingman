@@ -27,14 +27,14 @@ else()
     )
 endif()
 
-vcpkg_cmake_configure(
+vcpkg_configure_cmake(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DCLASP_BUILD_EXAMPLES=OFF
         -DCLASP_BUILD_TESTS=OFF
 )
 
-vcpkg_cmake_install()
+vcpkg_install_cmake()
 
 vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/clasp)
 
