@@ -36,7 +36,8 @@ vcpkg_configure_cmake(
 
 vcpkg_install_cmake()
 
-# 手动安装 CMake config 文件
+# 安装 CMake config 到正确位置
+file(INSTALL "${SOURCE_PATH}/cmake/claspTargets.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/clasp" OPTIONAL)
 file(INSTALL "${SOURCE_PATH}/cmake/claspConfig.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/clasp" OPTIONAL)
 file(INSTALL "${SOURCE_PATH}/cmake/claspConfigVersion.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/clasp" OPTIONAL)
 
