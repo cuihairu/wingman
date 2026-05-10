@@ -1,9 +1,9 @@
-#include "wingman/client/controllers/websocket.hpp"
-#include "wingman/client/controllers/script.hpp"
-#include "wingman/client/controllers/system.hpp"
+#include "wingman/runtime/controllers/websocket.hpp"
+#include "wingman/runtime/controllers/script.hpp"
+#include "wingman/runtime/controllers/system.hpp"
 #include <nlohmann/json.hpp>
 
-namespace wingman::client::controllers {
+namespace wingman::runtime::controllers {
 
 // ========== 静态成员初始化 ==========
 std::unordered_map<std::string, drogon::WebSocketConnectionPtr> WebSocketCtrl::connections_;
@@ -186,4 +186,4 @@ std::string WebSocketCtrl::getConnectionId(const drogon::WebSocketConnectionPtr&
     return "";
 }
 
-} // namespace wingman::client::controllers
+} // namespace wingman::runtime::controllers

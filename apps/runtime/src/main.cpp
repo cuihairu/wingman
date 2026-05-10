@@ -1,16 +1,16 @@
 #include <clasp/clasp.hpp>
-#include "wingman/client/resource_loader.hpp"
-#include "wingman/client/commands/start_command.hpp"
-#include "wingman/client/commands/stop_command.hpp"
-#include "wingman/client/commands/script_command.hpp"
-#include "wingman/client/commands/build_command.hpp"
-#include "wingman/client/commands/serve_command.hpp"
+#include "wingman/runtime/resource_loader.hpp"
+#include "wingman/runtime/commands/start_command.hpp"
+#include "wingman/runtime/commands/stop_command.hpp"
+#include "wingman/runtime/commands/script_command.hpp"
+#include "wingman/runtime/commands/build_command.hpp"
+#include "wingman/runtime/commands/serve_command.hpp"
 #include "wingman/lua.hpp"
 #include "wingman/version.hpp"
 #include <iostream>
 #include <spdlog/spdlog.h>
 
-using namespace wingman::client;
+using namespace wingman::runtime;
 
 /// 运行嵌入的脚本（如果存在）
 /// @return 如果运行了嵌入脚本返回 true，否则返回 false

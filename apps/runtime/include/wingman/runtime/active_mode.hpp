@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wingman/client/config.hpp"
+#include "wingman/runtime/config.hpp"
 #include <atomic>
 #include <chrono>
 #include <memory>
@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // 前向声明
 namespace wingman::transport {
@@ -82,4 +82,4 @@ private:
     ConnectionCallback eventCallback_;
 };
 
-} // namespace wingman::client
+} // namespace wingman::runtime

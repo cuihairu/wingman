@@ -1,10 +1,10 @@
-#include "wingman/client/controllers/api.hpp"
+#include "wingman/runtime/controllers/api.hpp"
 #include "wingman/version.hpp"
 #include <spdlog/spdlog.h>
 #include <optional>
 #include <chrono>
 
-namespace wingman::client::controllers {
+namespace wingman::runtime::controllers {
 
 // ========== 辅助方法 ==========
 
@@ -240,4 +240,4 @@ void ApiCtrl::deleteScript(const drogon::HttpRequestPtr& req,
     callback(error(501, "Not implemented yet"));
 }
 
-} // namespace wingman::client::controllers
+} // namespace wingman::runtime::controllers

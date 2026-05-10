@@ -8,14 +8,14 @@
 #include <functional>
 
 // Forward declarations
-namespace wingman::client::controllers {
+namespace wingman::runtime::controllers {
     struct RpcRequest;
     struct RpcResponse;
     class ScriptCtrl;
     class SystemCtrl;
 }
 
-namespace wingman::client::controllers {
+namespace wingman::runtime::controllers {
 
 /// HTTP RESTful API 控制器
 /// 提供 HTTP 接口供 Tauri UI 调用
@@ -93,4 +93,4 @@ private:
     static std::optional<nlohmann::json> getJson(const drogon::HttpRequestPtr& req);
 };
 
-} // namespace wingman::client::controllers
+} // namespace wingman::runtime::controllers

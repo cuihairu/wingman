@@ -1,6 +1,6 @@
 #pragma once
 
-namespace wingman::client::commands {
+namespace wingman::runtime::commands {
 
 /// 停止 Wingman Agent 服务
 /// @return 退出码
@@ -10,4 +10,4 @@ int stopCommand();
 /// @return 退出码 (0=运行中, 1=已停止)
 int statusCommand();
 
-} // namespace wingman::client::commands
+} // namespace wingman::runtime::commands

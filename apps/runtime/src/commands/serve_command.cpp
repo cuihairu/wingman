@@ -1,12 +1,12 @@
 #include "serve_command.hpp"
-#include "wingman/client/controllers/websocket.hpp"
+#include "wingman/runtime/controllers/websocket.hpp"
 #include "wingman/version.hpp"
 #include <drogon/drogon.h>
 #include <spdlog/spdlog.h>
 #include <csignal>
 #include <cstdlib>
 
-namespace wingman::client::commands {
+namespace wingman::runtime::commands {
 
 namespace {
 
@@ -92,4 +92,4 @@ int serveCommand(const std::string& host, int port) {
     }
 }
 
-} // namespace wingman::client::commands
+} // namespace wingman::runtime::commands

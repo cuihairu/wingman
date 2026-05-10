@@ -1,11 +1,11 @@
-#include "wingman/client/passive_mode.hpp"
+#include "wingman/runtime/passive_mode.hpp"
 #include "wingman/transport/transport_server.hpp"
 #include <spdlog/spdlog.h>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // ========== PassiveMode 实现 ==========
 
@@ -253,4 +253,4 @@ const PassiveModeConfig& PassiveMode::getConfig() const {
     return impl_->config;
 }
 
-} // namespace wingman::client
+} // namespace wingman::runtime

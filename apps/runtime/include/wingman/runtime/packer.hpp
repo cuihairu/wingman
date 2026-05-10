@@ -4,7 +4,7 @@
 #include <vector>
 #include <filesystem>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 /// 打包选项
 struct PackerOptions {
@@ -69,4 +69,4 @@ private:
     std::vector<uint8_t> calculateHash(const std::vector<uint8_t>& data);
 };
 
-} // namespace wingman::client
+} // namespace wingman::runtime

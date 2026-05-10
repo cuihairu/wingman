@@ -1,4 +1,4 @@
-#include "wingman/client/resource_loader.hpp"
+#include "wingman/runtime/resource_loader.hpp"
 #include <spdlog/spdlog.h>
 #include <cstring>
 
@@ -11,7 +11,7 @@
 #include <limits.h>
 #endif
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // ========== 资源格式定义 ==========
 constexpr const char* RESOURCE_ID = "WM_SCRIPT";  // 资源类型
@@ -361,4 +361,4 @@ bool ResourceLoader::verifyHash(const std::vector<uint8_t>& data, const std::vec
     return impl_->verifyHash(data, expectedHash);
 }
 
-} // namespace wingman::client
+} // namespace wingman::runtime

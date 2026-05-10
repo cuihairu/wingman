@@ -1,10 +1,10 @@
-#include "wingman/client/standalone_mode.hpp"
+#include "wingman/runtime/standalone_mode.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <random>
 #include <algorithm>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // ========== StandaloneMode 实现 ==========
 
@@ -222,4 +222,4 @@ const StandaloneModeConfig& StandaloneMode::getConfig() const {
     return impl_->config;
 }
 
-} // namespace wingman::client
+} // namespace wingman::runtime

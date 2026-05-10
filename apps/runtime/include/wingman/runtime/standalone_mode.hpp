@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wingman/client/config.hpp"
+#include "wingman/runtime/config.hpp"
 #include <atomic>
 #include <map>
 #include <memory>
@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // ========== 脚本状态 ==========
 
@@ -67,4 +67,4 @@ private:
     std::atomic<bool> running_{false};
 };
 
-} // namespace wingman::client
+} // namespace wingman::runtime

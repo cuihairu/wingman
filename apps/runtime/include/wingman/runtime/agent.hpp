@@ -1,12 +1,12 @@
 #pragma once
 
-#include "wingman/client/config.hpp"
+#include "wingman/runtime/config.hpp"
 #include <memory>
 #include <atomic>
 #include <string>
 #include <vector>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // ========== 前向声明 ==========
 
@@ -63,4 +63,4 @@ private:
     std::atomic<bool> running_{false};
 };
 
-} // namespace wingman::client
+} // namespace wingman::runtime

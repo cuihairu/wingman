@@ -1,11 +1,11 @@
-#include "wingman/client/agent.hpp"
-#include "wingman/client/active_mode.hpp"
-#include "wingman/client/passive_mode.hpp"
-#include "wingman/client/standalone_mode.hpp"
+#include "wingman/runtime/agent.hpp"
+#include "wingman/runtime/active_mode.hpp"
+#include "wingman/runtime/passive_mode.hpp"
+#include "wingman/runtime/standalone_mode.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // ========== Agent 实现 ==========
 
@@ -272,4 +272,4 @@ std::vector<uint8_t> Agent::handleMessage(const std::string& sessionId, const st
     return std::vector<uint8_t>(responseStr.begin(), responseStr.end());
 }
 
-} // namespace wingman::client
+} // namespace wingman::runtime

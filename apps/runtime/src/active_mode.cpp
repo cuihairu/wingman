@@ -1,10 +1,10 @@
-#include "wingman/client/active_mode.hpp"
+#include "wingman/runtime/active_mode.hpp"
 #include "wingman/transport/transport_client.hpp"
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <chrono>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // ========== ActiveMode 实现 ==========
 
@@ -230,4 +230,4 @@ const ActiveModeConfig& ActiveMode::getConfig() const {
     return impl_->config;
 }
 
-} // namespace wingman::client
+} // namespace wingman::runtime

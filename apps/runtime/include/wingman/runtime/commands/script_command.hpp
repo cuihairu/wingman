@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace wingman::client::commands {
+namespace wingman::runtime::commands {
 
 /// 运行 Lua 脚本
 /// @param scriptPath 脚本文件路径
@@ -11,4 +11,4 @@ namespace wingman::client::commands {
 /// @return 退出码
 int scriptCommand(const std::string& scriptPath, const std::vector<std::string>& args);
 
-} // namespace wingman::client::commands
+} // namespace wingman::runtime::commands

@@ -1,4 +1,4 @@
-#include "wingman/client/packer.hpp"
+#include "wingman/runtime/packer.hpp"
 #include <spdlog/spdlog.h>
 #include <fstream>
 #include <sstream>
@@ -12,7 +12,7 @@
 #pragma comment(lib, "imagehlp.lib")
 #endif
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // ========== 资源类型定义 ==========
 constexpr const char* WM_SCRIPT_RESOURCE = "WM_SCRIPT";
@@ -484,4 +484,4 @@ std::vector<uint8_t> Packer::calculateHash(const std::vector<uint8_t>& data) {
     return impl_->sha256(data);
 }
 
-} // namespace wingman::client
+} // namespace wingman::runtime

@@ -5,7 +5,7 @@
 #include <optional>
 #include <functional>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 /// 资源信息
 struct ResourceInfo {
@@ -70,4 +70,4 @@ private:
     bool verifyHash(const std::vector<uint8_t>& data, const std::vector<uint8_t>& expectedHash);
 };
 
-} // namespace wingman::client
+} // namespace wingman::runtime

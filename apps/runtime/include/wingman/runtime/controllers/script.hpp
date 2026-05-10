@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace wingman::client::controllers {
+namespace wingman::runtime::controllers {
 
 /// 脚本信息
 struct ScriptInfo {
@@ -40,4 +40,4 @@ private:
     static std::vector<ScriptInfo> scanScripts(const std::string& dir = "scripts");
 };
 
-} // namespace wingman::client::controllers
+} // namespace wingman::runtime::controllers

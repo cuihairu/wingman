@@ -1,8 +1,8 @@
-#include "wingman/client/config.hpp"
+#include "wingman/runtime/config.hpp"
 #include <fstream>
 #include <sstream>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // ========== AgentConfig 实现 ==========
 
@@ -148,4 +148,4 @@ bool AgentConfig::saveToFile(const std::string& path) const {
     return file.good();
 }
 
-} // namespace wingman::client
+} // namespace wingman::runtime

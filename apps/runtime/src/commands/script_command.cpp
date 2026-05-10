@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <fstream>
 
-namespace wingman::client::commands {
+namespace wingman::runtime::commands {
 
 int scriptCommand(const std::string& scriptPath, const std::vector<std::string>& args) {
     // 检查脚本文件是否存在
@@ -48,4 +48,4 @@ int scriptCommand(const std::string& scriptPath, const std::vector<std::string>&
     }
 }
 
-} // namespace wingman::client::commands
+} // namespace wingman::runtime::commands

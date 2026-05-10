@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace wingman::client::commands {
+namespace wingman::runtime::commands {
 
 /// 启动 WebSocket 服务器
 /// 与 Tauri UI 进行通信
@@ -11,4 +11,4 @@ namespace wingman::client::commands {
 /// @return 退出码
 int serveCommand(const std::string& host = "127.0.0.1", int port = 8080);
 
-} // namespace wingman::client::commands
+} // namespace wingman::runtime::commands

@@ -1,10 +1,10 @@
-#include "wingman/client/controllers/script.hpp"
+#include "wingman/runtime/controllers/script.hpp"
 #include "wingman/script_manager.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <fstream>
 
-namespace wingman::client::controllers {
+namespace wingman::runtime::controllers {
 
 RpcResponse ScriptCtrl::start(const RpcRequest& req) {
     RpcResponse resp;
@@ -185,4 +185,4 @@ std::vector<ScriptInfo> ScriptCtrl::scanScripts(const std::string& dir) {
     return scripts;
 }
 
-} // namespace wingman::client::controllers
+} // namespace wingman::runtime::controllers

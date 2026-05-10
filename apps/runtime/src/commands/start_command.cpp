@@ -1,11 +1,11 @@
 #include "start_command.hpp"
-#include "wingman/client/agent.hpp"
+#include "wingman/runtime/agent.hpp"
 #include "wingman/tray.hpp"
 #include <spdlog/spdlog.h>
 #include <csignal>
 #include <memory>
 
-namespace wingman::client::commands {
+namespace wingman::runtime::commands {
 
 namespace {
 
@@ -38,7 +38,7 @@ int startCommand(const std::string& configPath) {
     spdlog::info("====================");
 
     // 创建 Agent
-    wingman::client::Agent agent;
+    wingman::runtime::Agent agent;
 
     // 设置信号处理
     g_agent = &agent;
@@ -94,4 +94,4 @@ int startCommand(const std::string& configPath) {
     return 0;
 }
 
-} // namespace wingman::client::commands
+} // namespace wingman::runtime::commands

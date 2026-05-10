@@ -1,10 +1,10 @@
 #include "build_command.hpp"
-#include "wingman/client/packer.hpp"
+#include "wingman/runtime/packer.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <fstream>
 
-namespace wingman::client::commands {
+namespace wingman::runtime::commands {
 
 int buildCommand(const BuildOptions& options) {
     spdlog::info("=== Wingman Build ===");
@@ -20,13 +20,13 @@ int buildCommand(const BuildOptions& options) {
         return 1;
     }
 
-    // 检查 stub 程序（当前运行的 wingman-client.exe）
-    std::string stubPath = "wingman-client.exe";
+    // 检查 stub 程序（当前运行的 wingman-runtime.exe）
+    std::string stubPath = "wingman-runtime.exe";
     if (!std::filesystem::exists(stubPath)) {
         // 尝试从构建目录获取
-        stubPath = "../build/apps/client/Release/wingman-client.exe";
+        stubPath = "../build/apps/runtime/Release/wingman-runtime.exe";
         if (!std::filesystem::exists(stubPath)) {
-            spdlog::error("Stub executable not found. Please ensure wingman-client.exe is in current directory.");
+            spdlog::error("Stub executable not found. Please ensure wingman-runtime.exe is in current directory.");
             return 1;
         }
     }
@@ -66,4 +66,4 @@ int buildCommand(const BuildOptions& options) {
     }
 }
 
-} // namespace wingman::client::commands
+} // namespace wingman::runtime::commands

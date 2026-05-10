@@ -1,9 +1,9 @@
-#include "wingman/client/controllers/system.hpp"
+#include "wingman/runtime/controllers/system.hpp"
 #include "wingman/version.hpp"
 #include <spdlog/spdlog.h>
 #include <chrono>
 
-namespace wingman::client::controllers {
+namespace wingman::runtime::controllers {
 
 RpcResponse SystemCtrl::getStatus(const RpcRequest& req) {
     RpcResponse resp;
@@ -69,4 +69,4 @@ RpcResponse SystemCtrl::quit(const RpcRequest& req) {
     return resp;
 }
 
-} // namespace wingman::client::controllers
+} // namespace wingman::runtime::controllers

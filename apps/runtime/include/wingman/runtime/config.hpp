@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // ========== 运行模式 ==========
 
@@ -81,4 +81,4 @@ struct AgentConfig {
     RunMode getRunMode() const;
 };
 
-} // namespace wingman::client
+} // namespace wingman::runtime

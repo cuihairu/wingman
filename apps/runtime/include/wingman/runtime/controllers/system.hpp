@@ -4,7 +4,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-namespace wingman::client::controllers {
+namespace wingman::runtime::controllers {
 
 /// 系统控制器
 /// 处理系统相关的 RPC 调用
@@ -20,4 +20,4 @@ public:
     static RpcResponse quit(const RpcRequest& req);
 };
 
-} // namespace wingman::client::controllers
+} // namespace wingman::runtime::controllers

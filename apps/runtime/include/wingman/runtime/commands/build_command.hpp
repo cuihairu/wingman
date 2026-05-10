@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace wingman::client::commands {
+namespace wingman::runtime::commands {
 
 struct BuildOptions {
     std::string scriptPath;
@@ -17,4 +17,4 @@ struct BuildOptions {
 /// @return 退出码
 int buildCommand(const BuildOptions& options);
 
-} // namespace wingman::client::commands
+} // namespace wingman::runtime::commands

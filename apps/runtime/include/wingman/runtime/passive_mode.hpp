@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wingman/client/config.hpp"
+#include "wingman/runtime/config.hpp"
 #include <atomic>
 #include <chrono>
 #include <map>
@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-namespace wingman::client {
+namespace wingman::runtime {
 
 // 前向声明
 namespace wingman::transport {
@@ -100,4 +100,4 @@ private:
     MessageHandler messageHandler_;
 };
 
-} // namespace wingman::client
+} // namespace wingman::runtime

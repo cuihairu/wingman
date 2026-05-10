@@ -9,7 +9,7 @@
 #include <atomic>
 #include <string>
 
-namespace wingman::client::controllers {
+namespace wingman::runtime::controllers {
 
 /// WebSocket 连接状态
 enum class ConnectionState {
@@ -109,4 +109,4 @@ private:
     static std::string getConnectionId(const drogon::WebSocketConnectionPtr& wsConnPtr);
 };
 
-} // namespace wingman::client::controllers
+} // namespace wingman::runtime::controllers

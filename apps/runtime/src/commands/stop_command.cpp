@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <tlhelp32.h>
 
-namespace wingman::client::commands {
+namespace wingman::runtime::commands {
 
 namespace {
 
@@ -49,8 +49,8 @@ int stopCommand() {
     bool found = false;
     if (Process32FirstW(hSnapshot, &pe32)) {
         do {
-            // 匹配 wingman-client.exe 或 wingman-agent.exe
-            if (_wcsicmp(pe32.szExeFile, L"wingman-client.exe") == 0 ||
+            // 匹配 wingman-runtime.exe 或 wingman-agent.exe
+            if (_wcsicmp(pe32.szExeFile, L"wingman-runtime.exe") == 0 ||
                 _wcsicmp(pe32.szExeFile, L"wingman-agent.exe") == 0) {
                 HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pe32.th32ProcessID);
                 if (hProcess) {
@@ -74,7 +74,7 @@ int stopCommand() {
 }
 
 int statusCommand() {
-    bool running = isProcessRunning(L"wingman-client.exe") ||
+    bool running = isProcessRunning(L"wingman-runtime.exe") ||
                    isProcessRunning(L"wingman-agent.exe");
 
     if (running) {
@@ -86,4 +86,4 @@ int statusCommand() {
     }
 }
 
-} // namespace wingman::client::commands
+} // namespace wingman::runtime::commands
