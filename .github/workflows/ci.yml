@@ -320,11 +320,8 @@ jobs:
       uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: |
-          ./orchestrator/server/coverage.txt
-          ./build/coverage.info
-        flags: |
-          go
-          cpp
+        directory: ./orchestrator/server
+        files: ./coverage.txt
+        flags: go
         name: codecov-umbrella
         fail_ci_if_error: false
