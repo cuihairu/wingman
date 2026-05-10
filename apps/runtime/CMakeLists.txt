@@ -30,18 +30,7 @@ endif()
 # Drogon HTTP 框架
 find_package(Drogon CONFIG REQUIRED)
 
-# Lua 库 - 直接链接 vcpkg 安装的静态库
-# 由于 vcpkg 的 target 存在链接问题，直接使用库文件路径
-find_file(LUA_STATIC_LIB
-    NAMES "lua55.lib" "lua54.lib" "lua5.5.lib" "lua5.4.lib" "lua.lib"
-    PATHS "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib"
-    NO_DEFAULT_PATH
-)
-if(LUA_STATIC_LIB)
-    message(STATUS "Found Lua static library: ${LUA_STATIC_LIB}")
-else()
-    message(FATAL_ERROR "Could not find Lua static library")
-endif()
+# Lua 库通过 wingman::lua 依赖自动链接
 
 # Client 源文件
 set(CLIENT_SOURCES
@@ -86,7 +75,6 @@ target_link_libraries(wingman-runtime PRIVATE
     nlohmann_json::nlohmann_json
     clasp::clasp
     Drogon::Drogon
-    ${LUA_STATIC_LIB}  # 显式链接 Lua 静态库
 )
 
 # 复制配置文件到输出目录

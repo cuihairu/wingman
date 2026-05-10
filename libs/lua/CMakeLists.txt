@@ -9,17 +9,21 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找依赖
-# vcpkg 的 lua 包提供标准 FindLua.cmake 支持
-find_package(Lua REQUIRED)
+# vcpkg 的 lua 包使用 unofficial-lua 提供 C++ 库（包含完整的 Lua C API）
+find_package(unofficial-lua CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# 设置 Lua 库变量
-if(LUA_LIBRARIES)
-    message(STATUS "Found Lua libraries: ${LUA_LIBRARIES}")
-    message(STATUS "Lua include dir: ${LUA_INCLUDE_DIR}")
+# 使用 vcpkg 的 C++ Lua 库，它包含完整的 Lua C API
+# 注意：lua-cpp 是 C++ 包装器，但它链接了完整的 Lua C 库
+if(TARGET unofficial::lua::lua-cpp)
+    set(LUA_TARGET unofficial::lua::lua-cpp)
+    message(STATUS "Using Lua C++ library: unofficial::lua::lua-cpp")
+elseif(TARGET unofficial::lua::lua)
+    set(LUA_TARGET unofficial::lua::lua)
+    message(STATUS "Using Lua library: unofficial::lua::lua")
 else()
-    message(FATAL_ERROR "Lua libraries not found")
+    message(FATAL_ERROR "Could not find Lua library target from vcpkg")
 endif()
 
 # ========== 源文件 ==========
@@ -52,12 +56,11 @@ add_library(wingman_lua STATIC ${LUA_SOURCES})
 # 包含目录
 target_include_directories(wingman_lua PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    ${LUA_INCLUDE_DIR}
 )
 
 # 链接库 - 使用 PUBLIC 确保依赖传递给使用 wingman_lua 的目标
 target_link_libraries(wingman_lua PUBLIC
-    ${LUA_LIBRARIES}
+    ${LUA_TARGET}
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman
