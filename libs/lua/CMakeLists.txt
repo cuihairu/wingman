@@ -50,9 +50,9 @@ target_include_directories(wingman_lua PUBLIC
 )
 
 # 链接库 - 使用 PUBLIC 确保依赖传递给使用 wingman_lua 的目标
-# vcpkg 的 Lua 包提供 unofficial::lua::lua 目标
+# 使用 lua-cpp 目标，它包含完整的 C API
 target_link_libraries(wingman_lua PUBLIC
-    unofficial::lua::lua
+    unofficial::lua::lua-cpp
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman

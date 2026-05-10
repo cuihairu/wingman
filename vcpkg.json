@@ -6,7 +6,8 @@
   "dependencies": [
     {
       "name": "lua",
-      "platform": "windows"
+      "platform": "windows",
+      "features": ["cpp"]
     },
     {
       "name": "opencv4",
