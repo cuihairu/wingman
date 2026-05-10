@@ -1,8 +1,11 @@
 #include "wingman/lua/lua_engine.hpp"
 #include <spdlog/spdlog.h>
+
+#ifdef WINGMAN_ENABLE_LUA
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
+#endif
 
 namespace wingman::lua {
 
@@ -13,6 +16,8 @@ LuaEngine::LuaEngine() = default;
 LuaEngine::~LuaEngine() {
     shutdown();
 }
+
+#ifdef WINGMAN_ENABLE_LUA
 
 bool LuaEngine::initialize() {
     L_ = luaL_newstate();
@@ -108,8 +113,6 @@ void LuaEngine::registerFunction(const std::string& name, lua_CFunction func) {
 
 bool LuaEngine::loadModule(const std::string& /*name*/, const std::string& path) {
     if (!L_) return false;
-    // 简单实现：通过 require 加载模块
-    // TODO: 实现更复杂的模块加载逻辑
     return executeFile(path);
 }
 
@@ -118,5 +121,49 @@ int LuaEngine::luaErrorCallback(lua_State* L) {
     spdlog::error("Lua error: {}", msg ? msg : "unknown error");
     return 0;
 }
+
+#else // WINGMAN_ENABLE_LUA
+
+bool LuaEngine::initialize() {
+    spdlog::warn("Lua support is disabled (WINGMAN_ENABLE_LUA=OFF)");
+    return false;
+}
+
+void LuaEngine::shutdown() {}
+
+bool LuaEngine::executeFile(const std::string&) {
+    spdlog::warn("Lua support is disabled");
+    return false;
+}
+
+bool LuaEngine::executeString(const std::string&) {
+    spdlog::warn("Lua support is disabled");
+    return false;
+}
+
+bool LuaEngine::executeBuffer(const char*, size_t, const std::string&) {
+    spdlog::warn("Lua support is disabled");
+    return false;
+}
+
+void LuaEngine::openLibs() {}
+
+void LuaEngine::setGlobal(const std::string&, const std::string&) {}
+void LuaEngine::setGlobal(const std::string&, int) {}
+void LuaEngine::setGlobal(const std::string&, double) {}
+
+void LuaEngine::registerFunction(const std::string&, lua_CFunction) {}
+
+bool LuaEngine::loadModule(const std::string&, const std::string&) {
+    spdlog::warn("Lua support is disabled");
+    return false;
+}
+
+int LuaEngine::luaErrorCallback(lua_State*) {
+    spdlog::error("Lua error: Lua support is disabled");
+    return 0;
+}
+
+#endif // WINGMAN_ENABLE_LUA
 
 } // namespace wingman::lua

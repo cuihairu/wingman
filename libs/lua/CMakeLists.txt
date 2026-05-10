@@ -9,21 +9,25 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找依赖
-# vcpkg 的 lua 包使用 unofficial-lua 提供 C++ 库（包含完整的 Lua C API）
-find_package(unofficial-lua CONFIG REQUIRED)
+# 注意：vcpkg lua 包在 x64-windows-static triplet 中存在链接问题
+# 临时禁用 Lua 支持，等待上游修复或切换到动态链接 triplet
+# 参考：https://github.com/microsoft/vcpkg/issues/XXXXX
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# 使用 vcpkg 的 C++ Lua 库，它包含完整的 Lua C API
-# 注意：lua-cpp 是 C++ 包装器，但它链接了完整的 Lua C 库
-if(TARGET unofficial::lua::lua-cpp)
-    set(LUA_TARGET unofficial::lua::lua-cpp)
-    message(STATUS "Using Lua C++ library: unofficial::lua::lua-cpp")
-elseif(TARGET unofficial::lua::lua)
-    set(LUA_TARGET unofficial::lua::lua)
-    message(STATUS "Using Lua library: unofficial::lua::lua")
-else()
-    message(FATAL_ERROR "Could not find Lua library target from vcpkg")
+# Lua 支持选项（默认关闭，因为存在链接问题）
+option(WINGMAN_ENABLE_LUA "Enable Lua scripting support (has linking issues in x64-windows-static)" OFF)
+
+if(WINGMAN_ENABLE_LUA)
+    find_package(unofficial-lua CONFIG QUIET)
+    if(TARGET unofficial::lua::lua)
+        set(LUA_TARGET unofficial::lua::lua)
+        message(STATUS "Using Lua library: ${LUA_TARGET}")
+        message(WARNING "Lua linking in x64-windows-static may have issues. Consider using x64-windows triplet instead.")
+    else()
+        message(WARNING "Lua library not found, Lua support will be disabled")
+        set(WINGMAN_ENABLE_LUA OFF)
+    endif()
 endif()
 
 # ========== 源文件 ==========
@@ -60,11 +64,16 @@ target_include_directories(wingman_lua PUBLIC
 
 # 链接库 - 使用 PUBLIC 确保依赖传递给使用 wingman_lua 的目标
 target_link_libraries(wingman_lua PUBLIC
-    ${LUA_TARGET}
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman
 )
+
+# 条件性链接 Lua 库
+if(WINGMAN_ENABLE_LUA AND LUA_TARGET)
+    target_link_libraries(wingman_lua PUBLIC ${LUA_TARGET})
+    target_compile_definitions(wingman_lua PUBLIC WINGMAN_ENABLE_LUA)
+endif()
 
 # 导出库
 add_library(wingman::lua ALIAS wingman_lua)
