@@ -150,7 +150,7 @@ endif()
 # ========== 性能基准测试 ==========
 option(WINGMAN_BUILD_BENCHMARKS "Build performance benchmarks" OFF)
 if(WINGMAN_BUILD_BENCHMARKS)
-    add_subdirectory(benchmarks)
+    add_subdirectory(lib/wingman/tests/benchmarks)
 endif()
 
 # ========== 安装 ==========
@@ -161,7 +161,7 @@ install(TARGETS wingman-runtime
 )
 
 # 复制脚本
-install(DIRECTORY scripts/
+install(DIRECTORY build-scripts/
     DESTINATION scripts
     FILES_MATCHING PATTERN "*.lua"
 )
