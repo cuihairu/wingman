@@ -28,14 +28,25 @@ int scriptCommand(const std::string& scriptPath, const std::vector<std::string>&
 
     // 创建 Lua 实例并执行
     try {
-        auto lua = std::make_unique<wingman::lua::LuaState>();
+        auto lua = std::make_unique<wingman::lua::LuaEngine>();
+        if (!lua->initialize()) {
+            spdlog::error("Failed to initialize Lua engine");
+            return 1;
+        }
 
         // 设置命令行参数
-        lua->setGlobal("arg", args);
+        // TODO: 传递参数到 Lua
+        (void)args;  // 暂时忽略参数
+
+        // 设置错误回调
+        std::string lastError;
+        lua->setErrorCallback([&lastError](const std::string& err) {
+            lastError = err;
+        });
 
         // 执行脚本
-        if (!lua->doString(content)) {
-            spdlog::error("Script execution failed: {}", lua->getLastError());
+        if (!lua->executeString(content)) {
+            spdlog::error("Script execution failed: {}", lastError.empty() ? "unknown error" : lastError);
             return 1;
         }
 

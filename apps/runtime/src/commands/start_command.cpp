@@ -1,7 +1,9 @@
 #include "wingman/runtime/commands/start_command.hpp"
 #include "wingman/runtime/agent.hpp"
 #include "wingman/tray.hpp"
+#include "wingman/version.hpp"
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <csignal>
 #include <memory>
 
@@ -29,7 +31,7 @@ void quitApplication() {
 
 int startCommand(const std::string& configPath) {
     // 初始化日志
-    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_st>();
     spdlog::default_logger()->sinks().push_back(consoleSink);
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");

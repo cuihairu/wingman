@@ -3,6 +3,7 @@
 #include "wingman/version.hpp"
 #include <drogon/drogon.h>
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <csignal>
 #include <cstdlib>
 
@@ -21,7 +22,7 @@ void signalHandler(int signal) {
 
 int serveCommand(const std::string& host, int port) {
     // 初始化日志
-    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_st>();
     spdlog::default_logger()->sinks().push_back(consoleSink);
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
@@ -57,7 +58,7 @@ int serveCommand(const std::string& host, int port) {
                 .setDocumentRoot("./static")
                 .setIdleConnectionTimeout(60)
                 .setKeepaliveRequestsNumber(1000)
-                .setMaxBodySize(10 * 1024 * 1024)  // 10MB
+                // .setMaxBodySize(10 * 1024 * 1024)  // 10MB - not available in this version
                 .setMaxConnectionNumPerIP(0);  // 无限制
 
         } else {
