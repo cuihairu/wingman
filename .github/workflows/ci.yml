@@ -71,6 +71,16 @@ jobs:
         # 设置 API key
         .\vcpkg\vcpkg fetch nuget | ForEach-Object { & $_ setapikey $patToken -Source "${{ env.FEED_URL }}" }
 
+    - name: Clone clasp for overlay port
+      run: |
+        # clasp portfile 会检查本地路径，如果存在则使用本地版本
+        # 这样避免需要 REF + SHA512 或 --head 标志
+        $workspacesDir = "$env:USERPROFILE\Workspaces"
+        New-Item -ItemType Directory -Force -Path $workspacesDir
+        if (-not (Test-Path "$workspacesDir\clasp")) {
+            git clone https://github.com/cuihairu/clasp.git "$workspacesDir\clasp"
+        }
+
     - name: Install dependencies
       run: |
         # 使用官方推荐的 binary cache 配置
