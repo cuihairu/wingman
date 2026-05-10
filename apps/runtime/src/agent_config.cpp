@@ -74,23 +74,23 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
             // 解析整数
             else if (value.find_first_not_of("0123456789") == std::string::npos) {
                 int intValue = std::stoi(value);
-                if (key == "server_port") config.active.serverPort = intValue;
+                if (key == "server_port") config.remoteClient.serverPort = intValue;
                 if (key == "listen_port") {
-                    config.passive.listenPort = intValue;
+                    config.remoteServer.listenPort = intValue;
                     config.debugger.listenPort = intValue;
                 }
-                if (key == "reconnect_interval") config.active.reconnectInterval = intValue;
-                if (key == "heartbeat_interval") config.active.heartbeatInterval = intValue;
-                if (key == "connect_timeout") config.active.connectTimeout = intValue;
-                if (key == "max_connections") config.passive.maxConnections = intValue;
+                if (key == "reconnect_interval") config.remoteClient.reconnectInterval = intValue;
+                if (key == "heartbeat_interval") config.remoteClient.heartbeatInterval = intValue;
+                if (key == "connect_timeout") config.remoteClient.connectTimeout = intValue;
+                if (key == "max_connections") config.remoteServer.maxConnections = intValue;
                 if (key == "screenshot_cache_size") config.performance.screenshotCacheSize = intValue;
                 if (key == "match_thread_pool_size") config.performance.matchThreadPoolSize = intValue;
                 if (key == "memory_limit_mb") config.performance.memoryLimitMb = intValue;
             }
             // 解析字符串
             else {
-                if (key == "server_ip") config.active.serverIp = value;
-                if (key == "listen_ip") config.passive.listenIp = value;
+                if (key == "server_ip") config.remoteClient.serverIp = value;
+                if (key == "listen_ip") config.remoteServer.listenIp = value;
                 if (key == "connection_strategy") config.connectionStrategy = value;
                 if (key == "script_dir") config.standalone.scriptDir = value;
                 if (key == "level") config.logging.level = value;
@@ -117,17 +117,17 @@ bool AgentConfig::saveToFile(const std::string& path) const {
 
     file << "# ========== 主动模式配置 ==========\n";
     file << "[active]\n";
-    file << "server_ip = \"" << active.serverIp << "\"\n";
-    file << "server_port = " << active.serverPort << "\n";
-    file << "reconnect_interval = " << active.reconnectInterval << "\n";
-    file << "heartbeat_interval = " << active.heartbeatInterval << "\n";
-    file << "connect_timeout = " << active.connectTimeout << "\n\n";
+    file << "server_ip = \"" << remoteClient.serverIp << "\"\n";
+    file << "server_port = " << remoteClient.serverPort << "\n";
+    file << "reconnect_interval = " << remoteClient.reconnectInterval << "\n";
+    file << "heartbeat_interval = " << remoteClient.heartbeatInterval << "\n";
+    file << "connect_timeout = " << remoteClient.connectTimeout << "\n\n";
 
     file << "# ========== 被动模式配置 ==========\n";
     file << "[passive]\n";
-    file << "listen_ip = \"" << passive.listenIp << "\"\n";
-    file << "listen_port = " << passive.listenPort << "\n";
-    file << "max_connections = " << passive.maxConnections << "\n\n";
+    file << "listen_ip = \"" << remoteServer.listenIp << "\"\n";
+    file << "listen_port = " << remoteServer.listenPort << "\n";
+    file << "max_connections = " << remoteServer.maxConnections << "\n\n";
 
     file << "# ========== 单机模式配置 ==========\n";
     file << "[standalone]\n";

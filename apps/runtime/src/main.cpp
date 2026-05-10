@@ -5,7 +5,7 @@
 #include "wingman/runtime/commands/script_command.hpp"
 #include "wingman/runtime/commands/build_command.hpp"
 #include "wingman/runtime/commands/serve_command.hpp"
-#include "wingman/lua.hpp"
+#include "wingman/lua/lua_engine.hpp"
 #include "wingman/version.hpp"
 #include <iostream>
 #include <spdlog/spdlog.h>
