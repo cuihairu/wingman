@@ -86,7 +86,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
         # 使用与主 CI 相同的 triplet
         # 添加 overlay-ports 以使用自定义端口 (clasp)
-        .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse --overlay-ports=vcpkg-ports
+        .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse --overlay-ports=vcpkg-ports --head
 
     - name: Configure CMake with nightly version
       shell: cmd
