@@ -42,57 +42,66 @@ C++ + Lua 的高性能游戏自动化框架
 
 ```mermaid
 flowchart TB
-    subgraph Client["客户端层"]
-        GUI["Tauri GUI<br/>(计划中)"]
-        Runtime["wingman-runtime<br/>(C++ 运行时)"]
-        Dashboard["Web Dashboard<br/>(React)"]
+    subgraph Orchestrator["wingman-orchestrator (Go 中控服务器)"]
+        Dashboard["Dashboard<br/>(Web 管理界面)"]
+        API["HTTP API"]
+        WS_Hub["WebSocket Hub"]
+        Scheduler["任务调度器"]
+        TeamMgr["组队管理"]
     end
 
-    subgraph Runtime["Runtime 能力"]
-        CLI["命令行接口"]
-        WS["WebSocket API"]
+    subgraph Runtimes["多台 wingman-runtime"]
+        Runtime1["Runtime 1<br/>(本机)"]
+        Runtime2["Runtime 2<br/>(远程)"]
+        Runtime3["Runtime N<br/>(远程)"]
+    end
+
+    subgraph Runtime1_Details["Runtime 本机能力"]
+        GUI["Tauri GUI<br/>(计划中)"]
+        CLI["命令行"]
+        WS_Client["WebSocket 客户端"]
         Lua["Lua 脚本引擎"]
         Screen["屏幕操作"]
         Input["输入模拟"]
     end
 
-    subgraph Orchestrator["中控服务层"]
-        Orch["wingman-orchestrator<br/>(Go 中控服务器)"]
-        Hub["WebSocket Hub"]
-        Team["组队编排"]
-        State["状态管理"]
+    subgraph Libwm["libwm (C++ 基础库)"]
+        Proto["proto"]
+        Transport["transport"]
+        LuaLib["lua"]
+        Debug["debug"]
     end
 
-    subgraph Libs["C++ 核心库"]
-        Proto["libwm/proto<br/>(Protobuf)"]
-        Transport["libwm/transport<br/>(TCP/WS)"]
-        LuaLib["libwm/lua<br/>(Lua 引擎)"]
-        Debug["libwm/debug<br/>(EmmyLua)"]
-    end
+    Dashboard --> API
+    API --> WS_Hub
+    WS_Hub --> Scheduler
+    WS_Hub --> TeamMgr
 
-    GUI -->|"WebSocket"| WS
-    Dashboard -->|"HTTP/WS"| WS
-    WS --> Runtime
-    CLI --> Runtime
+    WS_Hub -->|"WebSocket"| Runtime1
+    WS_Hub -->|"WebSocket"| Runtime2
+    WS_Hub -->|"WebSocket"| Runtime3
+
+    GUI --> WS_Client
+    CLI --> WS_Client
+    WS_Client --> WS_Hub
     Lua --> Screen
     Lua --> Input
-    Runtime -->|"Remote Protocol"| Orch
-    Orch --> Hub
-    Orch --> Team
-    Orch --> State
-    Runtime --> Proto
-    Runtime --> Transport
-    Runtime --> LuaLib
-    Runtime --> Debug
 
-    classDef plan fill:#fff3cd,stroke:#ffecb5,stroke-width:2px
+    Runtime1 --> Libwm
+    Runtime2 --> Libwm
+    Runtime3 --> Libwm
+
+    classDef orch fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
+    class Orchestrator,Dashboard,API,WS_Hub,Scheduler,TeamMgr orch
+
+    classDef run fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    class Runtime1,Runtime2,Runtime3,GUI,CLI,WS_Client,Lua,Screen,Input run
+
+    classDef lib fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+    class Libwm,Proto,Transport,LuaLib,Debug lib
+
+    classDef plan fill:#fff3cd,stroke:#ff9800,stroke-width:2px,dasharray: 5 5
     class GUI plan
-
-    classDef core fill:#d1e7dd,stroke:#a7d3c4,stroke-width:2px
-    class Runtime,Orch,Proto,Transport,LuaLib,Debug core
-
-    classDef future fill:#f8d7da,stroke:#f5c6cb,stroke-width:2px
-    class GUI,Dashboard future
 ```
 
 ---
