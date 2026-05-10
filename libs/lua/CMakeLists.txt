@@ -100,6 +100,9 @@ endif()
 # 导出库
 add_library(wingman::lua ALIAS wingman_lua)
 
+# 创建 lua_static 的全局 ALIAS，以便其他目标可以访问
+add_library(wingman::lua_static ALIAS lua_static)
+
 # EmmyLua Debugger 支持
 option(WINGMAN_ENABLE_EMMY "Enable EmmyLua Debugger integration" ON)
 if(WINGMAN_ENABLE_EMMY)

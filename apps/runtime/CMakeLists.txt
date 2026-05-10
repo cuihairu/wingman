@@ -71,12 +71,12 @@ target_link_libraries(wingman-runtime PRIVATE
     wingman::transport
     wingman
     wingman::lua
+    wingman::lua_static  # 显式链接 Lua 静态库
     wingman::debug
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     clasp::clasp
     Drogon::Drogon
-    ${LUA_LIBRARIES}
 )
 
 # 复制配置文件到输出目录
