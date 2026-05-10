@@ -11,7 +11,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 依赖库
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(clasp CONFIG REQUIRED)  # Clasp 命令行库
+find_package(clasp CONFIG QUIET)  # Clasp 命令行库（可选）
+
+# 如果找不到 clasp，使用 FetchContent 下载
+if(NOT clasp_FOUND)
+    message(STATUS "clasp not found via vcpkg, using FetchContent")
+    include(FetchContent)
+    FetchContent_Declare(
+        clasp_repo
+        GIT_REPOSITORY https://github.com/cuihairu/clasp.git
+        GIT_TAG main
+        GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(clasp_repo)
+    set(clasp_FOUND TRUE)
+endif()
 
 # Drogon HTTP 框架
 find_package(Drogon CONFIG REQUIRED)

@@ -5,10 +5,6 @@
   "description": "Game Automation Programmable Control Engine",
   "dependencies": [
     {
-      "name": "clasp",
-      "platform": "windows"
-    },
-    {
       "name": "lua",
       "platform": "windows"
     },
