@@ -6,8 +6,11 @@
   "dependencies": [
     {
       "name": "lua",
-      "platform": "windows",
-      "features": ["cpp"]
+      "platform": "windows"
+    },
+    {
+      "name": "sol2",
+      "platform": "windows"
     },
     {
       "name": "opencv4",

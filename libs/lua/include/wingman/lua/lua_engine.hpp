@@ -3,9 +3,7 @@
 #include <string>
 #include <memory>
 #include <functional>
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
+#include <sol/sol.hpp>
 
 namespace wingman::lua {
 
@@ -16,12 +14,17 @@ public:
     LuaEngine();
     ~LuaEngine();
 
+    // 禁止拷贝
+    LuaEngine(const LuaEngine&) = delete;
+    LuaEngine& operator=(const LuaEngine&) = delete;
+
     // 初始化
     bool initialize();
     void shutdown();
 
     // 获取 Lua 状态
-    lua_State* getState() const { return L_; }
+    sol::state& getState() { return lua_; }
+    const sol::state& getState() const { return lua_; }
 
     // 执行脚本
     bool executeFile(const std::string& path);
@@ -32,7 +35,8 @@ public:
     bool loadModule(const std::string& name, const std::string& path);
 
     // 注册 C 函数
-    void registerFunction(const std::string& name, lua_CFunction func);
+    using LuaCFunction = sol::protected_function;
+    void registerFunction(const std::string& name, sol::function func);
 
     // 设置全局变量
     void setGlobal(const std::string& name, const std::string& value);
@@ -43,15 +47,23 @@ public:
     using LuaCallback = std::function<void(const std::string&)>;
     void setErrorCallback(LuaCallback callback) { errorCallback_ = std::move(callback); }
 
+    // 模板方法：设置任意类型的全局变量
+    template<typename T>
+    void setGlobal(const std::string& name, T&& value) {
+        if (!lua_.ready()) return;
+        lua_[name] = std::forward<T>(value);
+    }
+
+    // 模板方法：注册任意类型的函数
+    template<typename F>
+    void registerFunction(const std::string& name, F&& func) {
+        if (!lua_.ready()) return;
+        lua_.set_function(name, std::forward<F>(func));
+    }
+
 private:
-    lua_State* L_ = nullptr;
+    sol::state lua_;
     LuaCallback errorCallback_;
-
-    // 初始化标准库
-    void openLibs();
-
-    // 错误处理
-    static int luaErrorCallback(lua_State* L);
 };
 
 // ========== 脚本管理器 ==========
@@ -69,6 +81,10 @@ public:
 
     ScriptManager();
     ~ScriptManager();
+
+    // 禁止拷贝
+    ScriptManager(const ScriptManager&) = delete;
+    ScriptManager& operator=(const ScriptManager&) = delete;
 
     // 加载脚本
     std::string loadScript(const std::string& path);

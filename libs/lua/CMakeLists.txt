@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 # ========== wingman::lua ==========
-# Lua 引擎 + 绑定 + EmmyLua 调试器集成
+# Lua 引擎 + sol2 绑定 + EmmyLua 调试器集成
 
 project(wingman_lua LANGUAGES CXX)
 
@@ -9,13 +9,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找依赖
-# vcpkg 的 Lua 包提供 unofficial::lua::lua 目标
-find_package(unofficial-lua CONFIG REQUIRED)
+# sol2 是 header-only 库，会自动链接 Lua
+find_package(sol2 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# 验证 Lua 是否正确找到
-message(STATUS "Found Lua via unofficial-lua")
+message(STATUS "Found sol2 for Lua bindings")
 
 # ========== 源文件 ==========
 # 注意: lua_bindings, lua_extensions, lua_http, debug_adapter, script_manager
@@ -50,9 +49,9 @@ target_include_directories(wingman_lua PUBLIC
 )
 
 # 链接库 - 使用 PUBLIC 确保依赖传递给使用 wingman_lua 的目标
-# 使用 lua-cpp 目标，它包含完整的 C API
+# sol2 是 header-only，会自动处理 Lua 链接
 target_link_libraries(wingman_lua PUBLIC
-    unofficial::lua::lua-cpp
+    sol2::sol2
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman

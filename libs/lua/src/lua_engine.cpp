@@ -1,8 +1,5 @@
 #include "wingman/lua/lua_engine.hpp"
 #include <spdlog/spdlog.h>
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
 
 namespace wingman::lua {
 
@@ -15,106 +12,121 @@ LuaEngine::~LuaEngine() {
 }
 
 bool LuaEngine::initialize() {
-    L_ = luaL_newstate();
-    if (!L_) {
+    try {
+        lua_.open_libraries(
+            sol::lib::base,
+            sol::lib::package,
+            sol::lib::string,
+            sol::lib::table,
+            sol::lib::math,
+            sol::lib::io,
+            sol::lib::os,
+            sol::lib::debug
+        );
+        return true;
+    } catch (const std::exception& e) {
+        if (errorCallback_) {
+            errorCallback_(e.what());
+        }
         return false;
     }
-    openLibs();
-    return true;
 }
 
 void LuaEngine::shutdown() {
-    if (L_) {
-        lua_close(L_);
-        L_ = nullptr;
-    }
+    lua_ = sol::state();
 }
 
 bool LuaEngine::executeFile(const std::string& path) {
-    if (!L_) return false;
+    if (!lua_.ready()) return false;
 
-    if (luaL_dofile(L_, path.c_str()) != LUA_OK) {
-        if (errorCallback_) {
-            errorCallback_(lua_tostring(L_, -1));
+    try {
+        sol::protected_function_result result = lua_.safe_script_file(path);
+        if (!result.valid()) {
+            sol::error err = result;
+            if (errorCallback_) {
+                errorCallback_(err.what());
+            }
+            return false;
         }
-        lua_pop(L_, 1);
+        return true;
+    } catch (const std::exception& e) {
+        if (errorCallback_) {
+            errorCallback_(e.what());
+        }
         return false;
     }
-    return true;
 }
 
 bool LuaEngine::executeString(const std::string& code) {
-    if (!L_) return false;
+    if (!lua_.ready()) return false;
 
-    if (luaL_dostring(L_, code.c_str()) != LUA_OK) {
-        if (errorCallback_) {
-            errorCallback_(lua_tostring(L_, -1));
+    try {
+        sol::protected_function_result result = lua_.safe_script(code);
+        if (!result.valid()) {
+            sol::error err = result;
+            if (errorCallback_) {
+                errorCallback_(err.what());
+            }
+            return false;
         }
-        lua_pop(L_, 1);
+        return true;
+    } catch (const std::exception& e) {
+        if (errorCallback_) {
+            errorCallback_(e.what());
+        }
         return false;
     }
-    return true;
 }
 
 bool LuaEngine::executeBuffer(const char* buffer, size_t size, const std::string& name) {
-    if (!L_) return false;
+    if (!lua_.ready()) return false;
 
-    if (luaL_loadbuffer(L_, buffer, size, name.c_str()) != LUA_OK) {
-        if (errorCallback_) {
-            errorCallback_(lua_tostring(L_, -1));
+    try {
+        sol::protected_function_result result = lua_.safe_script(
+            std::string(buffer, size),
+            sol::detail::default_chunk_name(),
+            name,
+            sol::load_mode::text
+        );
+        if (!result.valid()) {
+            sol::error err = result;
+            if (errorCallback_) {
+                errorCallback_(err.what());
+            }
+            return false;
         }
-        lua_pop(L_, 1);
+        return true;
+    } catch (const std::exception& e) {
+        if (errorCallback_) {
+            errorCallback_(e.what());
+        }
         return false;
     }
-
-    if (lua_pcall(L_, 0, 0, 0) != LUA_OK) {
-        if (errorCallback_) {
-            errorCallback_(lua_tostring(L_, -1));
-        }
-        lua_pop(L_, 1);
-        return false;
-    }
-
-    return true;
 }
 
-void LuaEngine::openLibs() {
-    if (!L_) return;
-    luaL_openlibs(L_);
-}
-
-void LuaEngine::setGlobal(const std::string& name, const std::string& value) {
-    if (!L_) return;
-    lua_pushstring(L_, value.c_str());
-    lua_setglobal(L_, name.c_str());
-}
-
-void LuaEngine::setGlobal(const std::string& name, int value) {
-    if (!L_) return;
-    lua_pushinteger(L_, value);
-    lua_setglobal(L_, name.c_str());
-}
-
-void LuaEngine::setGlobal(const std::string& name, double value) {
-    if (!L_) return;
-    lua_pushnumber(L_, value);
-    lua_setglobal(L_, name.c_str());
-}
-
-void LuaEngine::registerFunction(const std::string& name, lua_CFunction func) {
-    if (!L_) return;
-    lua_register(L_, name.c_str(), func);
-}
-
-bool LuaEngine::loadModule(const std::string& /*name*/, const std::string& path) {
-    if (!L_) return false;
+bool LuaEngine::loadModule(const std::string& name, const std::string& path) {
+    if (!lua_.ready()) return false;
     return executeFile(path);
 }
 
-int LuaEngine::luaErrorCallback(lua_State* L) {
-    const char* msg = lua_tostring(L, -1);
-    spdlog::error("Lua error: {}", msg ? msg : "unknown error");
-    return 0;
+void LuaEngine::registerFunction(const std::string& name, sol::function func) {
+    if (!lua_.ready()) return;
+    lua_.set(name, func);
+}
+
+void LuaEngine::setGlobal(const std::string& name, const std::string& value) {
+    if (!lua_.ready()) return;
+    lua_[name] = value;
+}
+
+void LuaEngine::setGlobal(const std::string& name, int value) {
+    if (!lua_.ready()) return;
+    lua_[name] = value;
+}
+
+void LuaEngine::setGlobal(const std::string& name, double value) {
+    if (!lua_.ready()) return;
+    lua_[name] = value;
 }
 
 } // namespace wingman::lua
