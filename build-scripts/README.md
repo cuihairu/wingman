@@ -21,7 +21,7 @@ cmake --build . --config Release
 ### 2. 构建 Dashboard
 
 ```bash
-cd dashboard
+cd orchestrator/dashboard
 npm install
 npm run build
 ```
@@ -66,7 +66,7 @@ mkdir portable/wingman
 # 复制文件
 xcopy /E /Y build\Release portable\wingman\
 xcopy /E /Y build\dist portable\wingman\dist\
-xcopy /E /Y scripts\examples portable\wingman\scripts\examples\
+xcopy /E /Y examples\lua_scripts portable\wingman\examples\lua_scripts\
 
 # 打包
 powershell Compress-Archive -Path portable\wingman -DestinationPath wingman-portable-{version}.zip
