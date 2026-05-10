@@ -196,7 +196,7 @@ jobs:
         path: build/coverage.info
         retention-days: 1
 
-  test-cpp:
+  test-cpp-windows:
     needs: build-cpp
     runs-on: windows-2022
 
