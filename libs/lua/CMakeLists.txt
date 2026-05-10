@@ -13,13 +13,43 @@ find_package(Lua REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# vcpkg 的 lua 包使用变量而非 target
-if(NOT LUA_LIBRARIES)
-    message(FATAL_ERROR "Lua libraries not found. LUA_LIBRARIES is empty.")
+# vcpkg 的 Lua 包需要特殊处理
+# 创建 imported target 用于 Lua 库
+if(NOT TARGET lua_static)
+    if(LUA_LIBRARIES)
+        # 尝试将 LUA_LIBRARIES 作为路径
+        if(EXISTS "${LUA_LIBRARIES}")
+            add_library(lua_static STATIC IMPORTED)
+            set_target_properties(lua_static PROPERTIES
+                IMPORTED_LOCATION "${LUA_LIBRARIES}"
+                INTERFACE_INCLUDE_DIRECTORIES "${LUA_INCLUDE_DIR}"
+            )
+            message(STATUS "Created lua_static target from LUA_LIBRARIES: ${LUA_LIBRARIES}")
+        else()
+            # LUA_LIBRARIES 可能是 target 名称或库列表，尝试查找实际的 .lib 文件
+            # 在 vcpkg x64-windows-static 中，Lua 库通常位于 installed/x64-windows-static/lib
+            find_file(LUA_LIB_FILE
+                NAMES "lua55.lib" "lua54.lib" "lua5.5.lib" "lua5.4.lib" "lua.lib"
+                PATHS "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib"
+                  "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib"
+                  "$ENV{VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib"
+                NO_DEFAULT_PATH
+            )
+            if(LUA_LIB_FILE)
+                add_library(lua_static STATIC IMPORTED)
+                set_target_properties(lua_static PROPERTIES
+                    IMPORTED_LOCATION "${LUA_LIB_FILE}"
+                    INTERFACE_INCLUDE_DIRECTORIES "${LUA_INCLUDE_DIR}"
+                )
+                message(STATUS "Created lua_static target from found library: ${LUA_LIB_FILE}")
+            else()
+                message(FATAL_ERROR "Could not find Lua library file. Searched for lua*.lib in vcpkg lib directories.")
+            endif()
+        endif()
+    else()
+        message(FATAL_ERROR "LUA_LIBRARIES is empty. Lua package not found.")
+    endif()
 endif()
-
-message(STATUS "Using Lua libraries: ${LUA_LIBRARIES}")
-message(STATUS "Lua include dir: ${LUA_INCLUDE_DIR}")
 
 # ========== 源文件 ==========
 # 注意: lua_bindings, lua_extensions, lua_http, debug_adapter, script_manager
@@ -55,9 +85,8 @@ target_include_directories(wingman_lua PUBLIC
 )
 
 # 链接库 - 使用 PUBLIC 确保依赖传递给使用 wingman_lua 的目标
-# 注意：vcpkg 的 lua 包提供的是变量而非 target
 target_link_libraries(wingman_lua PUBLIC
-    ${LUA_LIBRARIES}
+    lua_static
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman
