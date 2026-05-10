@@ -33,6 +33,28 @@ find_package(Drogon CONFIG REQUIRED)
 # Lua 库（确保 Lua 符号正确链接）
 find_package(Lua REQUIRED)
 
+# 创建 lua_static imported target（如果不存在）
+if(NOT TARGET lua_static)
+    # 查找 Lua 库文件
+    find_file(LUA_LIB_FILE
+        NAMES "lua55.lib" "lua54.lib" "lua5.5.lib" "lua5.4.lib" "lua.lib"
+        PATHS "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib"
+          "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib"
+          "$ENV{VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib"
+        NO_DEFAULT_PATH
+    )
+    if(LUA_LIB_FILE)
+        add_library(lua_static STATIC IMPORTED GLOBAL)
+        set_target_properties(lua_static PROPERTIES
+            IMPORTED_LOCATION "${LUA_LIB_FILE}"
+            INTERFACE_INCLUDE_DIRECTORIES "${LUA_INCLUDE_DIR}"
+        )
+        message(STATUS "Created lua_static target in runtime: ${LUA_LIB_FILE}")
+    else()
+        message(FATAL_ERROR "Could not find Lua library file")
+    endif()
+endif()
+
 # Client 源文件
 set(CLIENT_SOURCES
     src/main.cpp
@@ -71,7 +93,7 @@ target_link_libraries(wingman-runtime PRIVATE
     wingman::transport
     wingman
     wingman::lua
-    wingman::lua_static  # 显式链接 Lua 静态库
+    lua_static  # 显式链接 Lua 静态库
     wingman::debug
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
