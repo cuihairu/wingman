@@ -12,7 +12,7 @@ std::string OCR::datapath;
 std::string OCR::language;
 OCR::PageSegMode OCR::pageSegMode = OCR::PageSegMode::AUTO;
 
-bool OCR::init(const std::string& datapath, const std::string& language) {
+bool OCR::init(const std::string& /*datapath*/, const std::string& /*language*/) {
     spdlog::warn("OCR support not enabled (compile with WINGMAN_ENABLE_OCR)");
     return false;
 }
@@ -21,25 +21,25 @@ void OCR::cleanup() {
     initialized = false;
 }
 
-OcrResult OCR::recognize(const Rect& region) {
+OcrResult OCR::recognize(const Rect& /*region*/) {
     OcrResult result = {false, "", 0.0, {}};
     spdlog::warn("OCR support not enabled");
     return result;
 }
 
-OcrResult OCR::recognizeImage(const std::string& imagePath) {
+OcrResult OCR::recognizeImage(const std::string& /*imagePath*/) {
     OcrResult result = {false, "", 0.0, {}};
     spdlog::warn("OCR support not enabled");
     return result;
 }
 
-OcrResult OCR::recognizeBitmap(const Bitmap& bitmap) {
+OcrResult OCR::recognizeBitmap(const Bitmap& /*bitmap*/) {
     OcrResult result = {false, "", 0.0, {}};
     spdlog::warn("OCR support not enabled");
     return result;
 }
 
-bool OCR::setLanguage(const std::string& lang) {
+bool OCR::setLanguage(const std::string& /*lang*/) {
     return false;
 }
 

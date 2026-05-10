@@ -59,13 +59,18 @@ target_include_directories(wingman_lua PUBLIC
     ${LUA_INCLUDE_DIR}
 )
 
-# 链接库
+# 链接库 - 使用 PUBLIC 确保依赖传递给使用 wingman_lua 的目标
 target_link_libraries(wingman_lua PUBLIC
     ${LUA_TARGET}
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman
 )
+
+# 确保 Lua 头文件目录被正确传播
+if(LUA_INCLUDE_DIR)
+    target_include_directories(wingman_lua PUBLIC ${LUA_INCLUDE_DIR})
+endif()
 
 # 导出库
 add_library(wingman::lua ALIAS wingman_lua)

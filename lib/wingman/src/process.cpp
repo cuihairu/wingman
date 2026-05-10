@@ -130,6 +130,7 @@ bool Process::wait(ProcessId pid, int timeoutMs) {
 }
 
 bool Process::terminate(ProcessId pid, bool force) {
+    (void)force;  // TODO: 考虑实现强制终止逻辑
     HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
     if (!hProcess) {
         return false;

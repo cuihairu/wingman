@@ -80,6 +80,36 @@ void LuaEngine::openLibs() {
     luaL_openlibs(L_);
 }
 
+void LuaEngine::setGlobal(const std::string& name, const std::string& value) {
+    if (!L_) return;
+    lua_pushstring(L_, value.c_str());
+    lua_setglobal(L_, name.c_str());
+}
+
+void LuaEngine::setGlobal(const std::string& name, int value) {
+    if (!L_) return;
+    lua_pushinteger(L_, value);
+    lua_setglobal(L_, name.c_str());
+}
+
+void LuaEngine::setGlobal(const std::string& name, double value) {
+    if (!L_) return;
+    lua_pushnumber(L_, value);
+    lua_setglobal(L_, name.c_str());
+}
+
+void LuaEngine::registerFunction(const std::string& name, lua_CFunction func) {
+    if (!L_) return;
+    lua_register(L_, name.c_str(), func);
+}
+
+bool LuaEngine::loadModule(const std::string& name, const std::string& path) {
+    if (!L_) return false;
+    // 简单实现：通过 require 加载模块
+    // TODO: 实现更复杂的模块加载逻辑
+    return executeFile(path);
+}
+
 int LuaEngine::luaErrorCallback(lua_State* L) {
     const char* msg = lua_tostring(L, -1);
     spdlog::error("Lua error: {}", msg ? msg : "unknown error");

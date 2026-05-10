@@ -58,7 +58,6 @@ public:
 
     void cleanupExpired() {
         std::lock_guard<std::mutex> lock(mutex);
-        int64_t now = std::time(nullptr);
 
         auto it = store.begin();
         while (it != store.end()) {
@@ -576,7 +575,6 @@ size_t KeyValueStore::cleanupExpired() {
     std::lock_guard<std::mutex> lock(m_impl->mutex);
 
     size_t count = 0;
-    int64_t now = std::time(nullptr);
 
     auto it = m_impl->store.begin();
     while (it != m_impl->store.end()) {

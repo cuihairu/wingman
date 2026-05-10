@@ -14,10 +14,6 @@
 /// 运行嵌入的脚本（如果存在）
 /// @return 如果运行了嵌入脚本返回 true，否则返回 false
 bool runEmbeddedScript() {
-    // TODO: 暂时禁用嵌入脚本功能，等待 Lua 库链接问题修复
-    return false;
-
-    /*
     wingman::runtime::ResourceLoader loader;
 
     if (!loader.hasEmbeddedScript()) {
@@ -74,7 +70,6 @@ bool runEmbeddedScript() {
         spdlog::error("Exception while running embedded script: {}", e.what());
         return true;
     }
-    */
 }
 
 /// 运行 GUI 模式

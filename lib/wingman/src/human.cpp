@@ -405,9 +405,9 @@ void HumanKeyboard::type(const std::string& text, bool randomCase) {
         // 随机大小写
         if (randomCase && std::isalpha(c)) {
             if (randomInt(0, 1) == 1) {
-                c = std::toupper(c);
+                c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
             } else {
-                c = std::tolower(c);
+                c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             }
         }
 

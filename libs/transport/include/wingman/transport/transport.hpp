@@ -61,7 +61,7 @@ protected:
     MessageHandler messageHandler_;
     EventHandler eventHandler_;
 
-    void handleMessage(Session* session, const MessagePtr& message) {
+    void handleMessage(Session* /*session*/, const MessagePtr& message) {
         if (messageHandler_) {
             messageHandler_(message);
         }

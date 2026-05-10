@@ -313,8 +313,14 @@ std::string ResourceLoader::getExecutablePath() {
 #ifdef _WIN32
     wchar_t path[MAX_PATH];
     GetModuleFileNameW(NULL, path, MAX_PATH);
-    std::wstring widePath(path);
-    return std::string(widePath.begin(), widePath.end());
+    // 转换为窄字符
+    int size = WideCharToMultiByte(CP_UTF8, 0, path, -1, nullptr, 0, nullptr, nullptr);
+    if (size > 0) {
+        std::string result(size - 1, 0);
+        WideCharToMultiByte(CP_UTF8, 0, path, -1, &result[0], size, nullptr, nullptr);
+        return result;
+    }
+    return "";
 #else
     char path[PATH_MAX];
     ssize_t count = readlink("/proc/self/exe", path, PATH_MAX);

@@ -45,7 +45,7 @@ ModelEngine::~ModelEngine() {
     unloadModel();
 }
 
-bool ModelEngine::loadModel(const std::string& modelPath, const std::string& executionProvider) {
+bool ModelEngine::loadModel(const std::string& /*modelPath*/, const std::string& /*executionProvider*/) {
     spdlog::warn("ML/AI support not enabled (compile with WINGMAN_ENABLE_ML)");
     return false;
 }
@@ -62,13 +62,14 @@ std::vector<std::pair<std::string, TensorShape>> ModelEngine::getOutputInfo() co
     return {};
 }
 
-InferenceResult ModelEngine::run(const std::map<std::string, TensorData>& inputs) {
+InferenceResult ModelEngine::run(const std::map<std::string, TensorData>& /*inputs*/) {
     InferenceResult result = {false, "ML/AI support not enabled", {}, 0.0};
     return result;
 }
 
-InferenceResult ModelEngine::run(const std::string& inputName, const TensorData& input) {
-    return run({{inputName, input}});
+InferenceResult ModelEngine::run(const std::string& /*inputName*/, const TensorData& /*input*/) {
+    InferenceResult result = {false, "ML/AI support not enabled", {}, 0.0};
+    return result;
 }
 
 std::vector<std::string> ModelEngine::getAvailableExecutionProviders() {
@@ -125,33 +126,33 @@ TensorData Tensor::fromImage(const uint8_t* imageData, int width, int height,
 // ========== ModelHelpers 实现 ==========
 
 std::pair<std::string, float> ModelHelpers::classifyImage(
-    ModelEngine& engine,
-    const std::string& inputName,
-    const uint8_t* imageData,
-    int width, int height,
-    const std::vector<std::string>& labels
+    ModelEngine& /*engine*/,
+    const std::string& /*inputName*/,
+    const uint8_t* /*imageData*/,
+    int /*width*/, int /*height*/,
+    const std::vector<std::string>& /*labels*/
 ) {
     spdlog::warn("ML/AI support not enabled");
     return {"", 0.0f};
 }
 
 std::vector<ModelHelpers::Detection> ModelHelpers::detectObjects(
-    ModelEngine& engine,
-    const std::string& inputName,
-    const uint8_t* imageData,
-    int width, int height,
-    float confThreshold,
-    float nmsThreshold
+    ModelEngine& /*engine*/,
+    const std::string& /*inputName*/,
+    const uint8_t* /*imageData*/,
+    int /*width*/, int /*height*/,
+    float /*confThreshold*/,
+    float /*nmsThreshold*/
 ) {
     spdlog::warn("ML/AI support not enabled");
     return {};
 }
 
 Bitmap ModelHelpers::segment(
-    ModelEngine& engine,
-    const std::string& inputName,
-    const uint8_t* imageData,
-    int width, int height
+    ModelEngine& /*engine*/,
+    const std::string& /*inputName*/,
+    const uint8_t* /*imageData*/,
+    int /*width*/, int /*height*/
 ) {
     spdlog::warn("ML/AI support not enabled");
     return Bitmap(0, 0);  // Return empty bitmap as sentinel

@@ -123,7 +123,7 @@ JsonValue JsonValue::parse(const std::string& jsonStr) {
     JsonValue result;
     try {
         result.m_impl->data = json::parse(jsonStr);
-    } catch (const json::parse_error& e) {
+    } catch (const json::parse_error&) {
         result.m_impl->data = nullptr;
     }
     return result;

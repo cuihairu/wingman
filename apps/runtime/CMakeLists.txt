@@ -30,6 +30,9 @@ endif()
 # Drogon HTTP 框架
 find_package(Drogon CONFIG REQUIRED)
 
+# Lua 库（确保 Lua 符号正确链接）
+find_package(Lua REQUIRED)
+
 # Client 源文件
 set(CLIENT_SOURCES
     src/main.cpp
@@ -73,6 +76,7 @@ target_link_libraries(wingman-runtime PRIVATE
     nlohmann_json::nlohmann_json
     clasp::clasp
     Drogon::Drogon
+    ${LUA_LIBRARIES}
 )
 
 # 复制配置文件到输出目录

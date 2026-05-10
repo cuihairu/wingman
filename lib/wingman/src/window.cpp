@@ -135,7 +135,7 @@ std::string Window::getTitle(WindowHandle hwnd) {
     }
 
     wchar_t titleBuf[512];
-    int len = GetWindowTextW(hwnd, titleBuf, 512);
+    GetWindowTextW(hwnd, titleBuf, 512);
 
     char titleUtf8[1024];
     WideCharToMultiByte(CP_UTF8, 0, titleBuf, -1,

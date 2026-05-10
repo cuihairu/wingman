@@ -166,7 +166,7 @@ int System::getCpuTemperature() {
 // ============================================================================
 
 MemoryInfo System::getMemoryInfo() {
-    MemoryInfo info;
+    MemoryInfo info = {};
 
     MEMORYSTATUSEX status;
     status.dwLength = sizeof(status);
@@ -430,7 +430,6 @@ std::string System::getDateTime() {
 std::string System::getTimeZone() {
     TIME_ZONE_INFORMATION tzi;
     if (GetTimeZoneInformation(&tzi) != TIME_ZONE_ID_INVALID) {
-        wchar_t name[64];
         // 转换时区名称
         std::wstring wname(tzi.StandardName);
         return std::string(wname.begin(), wname.end());

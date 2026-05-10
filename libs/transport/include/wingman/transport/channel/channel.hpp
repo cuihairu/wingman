@@ -162,7 +162,7 @@ public:
     }
 
     // 移除会话相关的所有通道
-    void removeBySession(SessionId sessionId) {
+    void removeBySession(SessionId /*sessionId*/) {
         std::lock_guard<std::mutex> lock(mutex_);
         for (auto it = channels_.begin(); it != channels_.end();) {
             if (auto session = it->second->session_.lock(); !session) {

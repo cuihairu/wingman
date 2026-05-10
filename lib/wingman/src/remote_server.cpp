@@ -117,7 +117,7 @@ bool RemoteServer::start(int port) {
     sockaddr_in serverAddr{};
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons(port_);
+    serverAddr.sin_port = htons(static_cast<u_short>(port_));
 
     if (bind(impl_->listenSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         spdlog::error("bind failed");
@@ -287,7 +287,7 @@ RemoteResponse RemoteServer::handleRequest(const RemoteRequest& req) {
 
 // ========== 动作处理器 ==========
 
-RemoteResponse RemoteServer::handlePing(const nlohmann::json& params) {
+RemoteResponse RemoteServer::handlePing(const nlohmann::json& /*params*/) {
     RemoteResponse resp;
     resp.success = true;
     resp.data["status"] = "ok";
@@ -295,7 +295,7 @@ RemoteResponse RemoteServer::handlePing(const nlohmann::json& params) {
     return resp;
 }
 
-RemoteResponse RemoteServer::handleGetVersion(const nlohmann::json& params) {
+RemoteResponse RemoteServer::handleGetVersion(const nlohmann::json& /*params*/) {
     RemoteResponse resp;
     resp.success = true;
     resp.data["version"] = WINGMAN_VERSION;
@@ -306,8 +306,6 @@ RemoteResponse RemoteServer::handleGetVersion(const nlohmann::json& params) {
 RemoteResponse RemoteServer::handleCaptureScreen(const nlohmann::json& params) {
     RemoteResponse resp;
 
-    int x = params.value("x", 0);
-    int y = params.value("y", 0);
     int width = params.value("width", 0);
     int height = params.value("height", 0);
 
@@ -565,7 +563,7 @@ RemoteResponse RemoteServer::handleDisableTrigger(const nlohmann::json& params) 
     return resp;
 }
 
-RemoteResponse RemoteServer::handleListTriggers(const nlohmann::json& params) {
+RemoteResponse RemoteServer::handleListTriggers(const nlohmann::json& /*params*/) {
     RemoteResponse resp;
 
     auto triggers = triggerManager_->getAllTriggerConfigs();
@@ -583,7 +581,7 @@ RemoteResponse RemoteServer::handleListTriggers(const nlohmann::json& params) {
     return resp;
 }
 
-RemoteResponse RemoteServer::handleRecordMacro(const nlohmann::json& params) {
+RemoteResponse RemoteServer::handleRecordMacro(const nlohmann::json& /*params*/) {
     RemoteResponse resp;
     macroRecorder_->start();
     resp.success = true;
@@ -591,7 +589,7 @@ RemoteResponse RemoteServer::handleRecordMacro(const nlohmann::json& params) {
     return resp;
 }
 
-RemoteResponse RemoteServer::handleStopMacroRecording(const nlohmann::json& params) {
+RemoteResponse RemoteServer::handleStopMacroRecording(const nlohmann::json& /*params*/) {
     RemoteResponse resp;
     macroRecorder_->stop();
     resp.success = true;
@@ -646,7 +644,7 @@ bool RemoteClient::connect(const std::string& host, int port) {
     // 连接服务器
     sockaddr_in serverAddr{};
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(port_);
+    serverAddr.sin_port = htons(static_cast<u_short>(port_));
 
     if (inet_pton(AF_INET, host.c_str(), &serverAddr.sin_addr) <= 0) {
         // 尝试解析域名

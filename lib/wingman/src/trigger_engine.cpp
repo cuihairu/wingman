@@ -91,26 +91,26 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
                 lua_getfield(L, -1, "region");
                 if (lua_istable(L, -1)) {
                     lua_rawgeti(L, -1, 1);
-                    config.condition.region.x = lua_tointeger(L, -1);
+                    config.condition.region.x = static_cast<int>(lua_tointeger(L, -1));
                     lua_pop(L, 1);
 
                     lua_rawgeti(L, -1, 2);
-                    config.condition.region.y = lua_tointeger(L, -1);
+                    config.condition.region.y = static_cast<int>(lua_tointeger(L, -1));
                     lua_pop(L, 1);
 
                     lua_rawgeti(L, -1, 3);
-                    config.condition.region.width = lua_tointeger(L, -1);
+                    config.condition.region.width = static_cast<int>(lua_tointeger(L, -1));
                     lua_pop(L, 1);
 
                     lua_rawgeti(L, -1, 4);
-                    config.condition.region.height = lua_tointeger(L, -1);
+                    config.condition.region.height = static_cast<int>(lua_tointeger(L, -1));
                     lua_pop(L, 1);
                 }
                 lua_pop(L, 1);
 
                 // tolerance
                 lua_getfield(L, -1, "tolerance");
-                config.condition.tolerance = lua_tointeger(L, -1);
+                config.condition.tolerance = static_cast<int>(lua_tointeger(L, -1));
                 lua_pop(L, 1);
             }
             lua_pop(L, 1);
@@ -147,7 +147,7 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
 
             // cooldown
             lua_getfield(L, -1, "cooldown");
-            config.cooldown = lua_tointeger(L, -1);
+            config.cooldown = static_cast<int>(lua_tointeger(L, -1));
             lua_pop(L, 1);
 
             // 添加触发器

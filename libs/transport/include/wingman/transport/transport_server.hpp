@@ -59,7 +59,7 @@ public:
     // 监听
     bool listen(const std::string& host, int port) override {
         try {
-            asio::ip::tcp::endpoint endpoint(asio::ip::make_address(host), port);
+            asio::ip::tcp::endpoint endpoint(asio::ip::make_address(host), static_cast<asio::ip::port_type>(port));
             acceptor_.open(endpoint.protocol());
             acceptor_.set_option(asio::socket_base::reuse_address(true));
             acceptor_.bind(endpoint);
@@ -69,7 +69,7 @@ public:
             acceptNext();
 
             return true;
-        } catch (const std::exception& e) {
+        } catch (const std::exception&) {
             return false;
         }
     }
@@ -151,7 +151,7 @@ private:
                     handleMessage(session.get(), msg);
                 });
 
-                session->setEventCallback([this, session](SessionEvent event, const std::string& info) {
+                session->setEventCallback([this, session](SessionEvent event, const std::string& /*info*/) {
                     handleEvent(session.get(), event);
                     if (event == SessionEvent::Disconnected) {
                         closeSession(session->getId());

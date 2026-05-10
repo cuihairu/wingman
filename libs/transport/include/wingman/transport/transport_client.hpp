@@ -26,7 +26,7 @@ public:
     // 连接
     bool connect(const std::string& host, int port) override {
         try {
-            asio::ip::tcp::endpoint endpoint(asio::ip::make_address(host), port);
+            asio::ip::tcp::endpoint endpoint(asio::ip::make_address(host), static_cast<asio::ip::port_type>(port));
             asio::error_code ec;
 
             // 同步连接
@@ -46,7 +46,7 @@ public:
                 handleMessage(session_.get(), msg);
             });
 
-            session_->setEventCallback([this](SessionEvent event, const std::string& info) {
+            session_->setEventCallback([this](SessionEvent event, const std::string& /*info*/) {
                 if (event == SessionEvent::Disconnected) {
                     connected_ = false;
                 }
@@ -71,7 +71,7 @@ public:
             }
 
             return true;
-        } catch (const std::exception& e) {
+        } catch (const std::exception&) {
             return false;
         }
     }

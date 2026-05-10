@@ -216,7 +216,7 @@ DWORD WINAPI TriggerManager::checkThread(LPVOID param) {
             if (manager->checkTrigger(trigger)) {
                 // 检查冷却时间
                 DWORD now = GetTickCount();
-                if (now - trigger.lastTriggerTime >= trigger.config.cooldown) {
+                if (now - trigger.lastTriggerTime >= static_cast<DWORD>(trigger.config.cooldown)) {
                     trigger.lastTriggerTime = now;
                     manager->executeActions(trigger.config.actions);
 
