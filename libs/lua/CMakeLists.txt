@@ -14,16 +14,14 @@ find_package(unofficial-lua CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# 使用 vcpkg 提供的 lua-cpp target（包含完整的 Lua C API）
-# 如果需要纯 C 库，可以尝试查找 lua54 等目标
-if(TARGET unofficial::lua::lua-cpp)
-    set(LUA_TARGET unofficial::lua::lua-cpp)
-    message(STATUS "Using Lua C++ library (includes C API): unofficial::lua::lua-cpp")
-elseif(TARGET unofficial::lua::lua)
-    set(LUA_TARGET unofficial::lua::lua)
-    message(STATUS "Using Lua library: unofficial::lua::lua")
-else()
-    message(FATAL_ERROR "Could not find Lua library target from vcpkg")
+# 直接使用 lua-cpp target（包含完整的 Lua C API）
+# 这个 target 在 vcpkg 的 unofficial-lua 包中提供
+set(LUA_TARGET unofficial::lua::lua-cpp)
+message(STATUS "Using Lua library: ${LUA_TARGET}")
+
+# 验证 target 是否存在
+if(NOT TARGET ${LUA_TARGET})
+    message(FATAL_ERROR "Lua target ${LUA_TARGET} not found!")
 endif()
 
 # ========== 源文件 ==========
