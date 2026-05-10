@@ -94,7 +94,7 @@ bool LuaEngine::executeBuffer(const char* buffer, size_t size, const std::string
     }
 }
 
-bool LuaEngine::loadModule(const std::string& name, const std::string& path) {
+bool LuaEngine::loadModule(const std::string& /*name*/, const std::string& path) {
     return executeFile(path);
 }
 
