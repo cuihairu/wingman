@@ -17,29 +17,24 @@
       "platform": "windows"
     },
     {
-      "name": "spdlog",
-      "platform": "windows"
+      "name": "spdlog"
     },
     {
-      "name": "nlohmann-json",
-      "platform": "windows"
+      "name": "nlohmann-json"
     },
     {
       "name": "asio",
       "platform": "windows"
     },
     {
-      "name": "curl",
-      "platform": "windows"
+      "name": "curl"
     },
     {
-      "name": "sqlite3",
-      "platform": "windows"
+      "name": "sqlite3"
     },
     {
       "$comment": "Protobuf for Agent-Server communication",
-      "name": "protobuf",
-      "platform": "windows"
+      "name": "protobuf"
     },
     {
       "$comment": "Drogon HTTP/WebSocket framework for UI communication",

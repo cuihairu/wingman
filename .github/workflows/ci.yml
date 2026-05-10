@@ -121,6 +121,81 @@ jobs:
         if-no-files-found: warn
         retention-days: 1
 
+  # ========== C++ Test with Coverage ==========
+  test-cpp:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    # Cache vcpkg binary archives
+    - name: Cache vcpkg binaries
+      uses: actions/cache@v5
+      with:
+        path: ~/vcpkg/archives
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
+
+    - name: Setup vcpkg
+      run: |
+        if [ -d "vcpkg" ]; then
+          echo "vcpkg directory exists, removing..."
+          rm -rf vcpkg
+        fi
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        ./bootstrap-vcpkg.sh
+
+    - name: Install dependencies
+      run: |
+        ./vcpkg/vcpkg install --triplet=x64-linux-static --recurse --overlay-ports=vcpkg-ports
+
+    - name: Install lcov
+      run: sudo apt-get update && sudo apt-get install -y lcov
+
+    - name: Configure CMake with coverage
+      run: |
+        cmake -B build \
+          -S . \
+          -G "Unix Makefiles" \
+          -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake \
+          -DVCPKG_TARGET_TRIPLET=x64-linux-static \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_CXX_FLAGS="--coverage" \
+          -DCMAKE_C_FLAGS="--coverage" \
+          -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+          -DWINGMAN_BUILD_TESTS=ON \
+          -DBUILD_CORE_TESTS=ON \
+          -DWINGMAN_BUILD_GUI=OFF
+
+    - name: Build
+      run: cmake --build build -- -j$(nproc)
+
+    - name: Run tests
+      run: |
+        find build -type f -executable -name "*_tests" -o -name "*test" | while read test; do
+          echo "Running $test..."
+          "$test" || true
+        done
+
+    - name: Generate coverage report
+      run: |
+        lcov --capture --directory build --output-file build/coverage.info --rc lcov_branch_coverage=1
+        lcov --remove build/coverage.info '/usr/*' --output-file build/coverage.info
+        lcov --remove build/coverage.info '*/vcpkg_installed/*' --output-file build/coverage.info
+        lcov --remove build/coverage.info '*/tests/*' --output-file build/coverage.info
+        lcov --remove build/coverage.info '*/test/*' --output-file build/coverage.info
+        lcov --list build/coverage.info
+
+    - name: Upload coverage artifact
+      uses: actions/upload-artifact@v6
+      with:
+        name: cpp-coverage
+        path: build/coverage.info
+        retention-days: 1
+
   test-cpp:
     needs: build-cpp
     runs-on: windows-2022
@@ -219,24 +294,34 @@ jobs:
   # ========== Codecov Upload ==========
   # 使用 Ubuntu 避免 Windows 编码问题
   codecov:
-    needs: test-go
+    needs: [test-go, test-cpp]
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Download coverage artifact
+    - name: Download Go coverage artifact
       uses: actions/download-artifact@v8
       with:
         name: go-coverage
         path: orchestrator/server/
 
+    - name: Download C++ coverage artifact
+      uses: actions/download-artifact@v8
+      with:
+        name: cpp-coverage
+        path: build/
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./orchestrator/server/coverage.txt
-        flags: go
+        files: |
+          ./orchestrator/server/coverage.txt
+          ./build/coverage.info
+        flags: |
+          go
+          cpp
         name: codecov-umbrella
         fail_ci_if_error: false

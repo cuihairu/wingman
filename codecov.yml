@@ -6,24 +6,18 @@ coverage:
         target: auto
         threshold: 5%
         informational: true
-      client:
+      go:
         target: auto
         threshold: 5%
         informational: true
         flags:
-          - client
-      libs:
+          - go
+      cpp:
         target: auto
         threshold: 5%
         informational: true
         flags:
-          - libs
-      server:
-        target: auto
-        threshold: 5%
-        informational: true
-        flags:
-          - server
+          - cpp
     patch:
       default:
         target: auto
@@ -47,29 +41,33 @@ ignore:
   - "vcpkg/**"
   - "build/**"
   - "build-*/**"
+  - "**/build/**"
   - "docs/**"
   - "examples/**"
   - "setup/**"
   - "cmake/**"
   - "**/*_test.go"
-  - "server/cmd/**"
+  - "**/*_test.cpp"
+  - "**/*.test.cpp"
+  - "**/tests/**"
+  - "**/test/**"
   - "*.md"
   - "*.yml"
   - "*.yaml"
   - "*.json"
   - "*.toml"
+  - "assets/**"
+  - "vcpkg-ports/**"
 
 # 语言/模块配置
 flags:
-  client:
+  go:
     paths:
-      - client/
+      - orchestrator/server/
     carryforward: true
-  libs:
+  cpp:
     paths:
+      - apps/
+      - lib/
       - libs/
-    carryforward: true
-  server:
-    paths:
-      - server/
     carryforward: true
