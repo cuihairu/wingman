@@ -10,7 +10,7 @@
 #include <wincrypt.h>
 #include <imagehlp.h>
 #include <shlobj.h>
-#pragma comment(lib, "imagehlib.lib")
+#pragma comment(lib, "imagehlp.lib")
 #endif
 
 namespace wingman::runtime {
