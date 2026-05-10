@@ -430,9 +430,15 @@ std::string System::getDateTime() {
 std::string System::getTimeZone() {
     TIME_ZONE_INFORMATION tzi;
     if (GetTimeZoneInformation(&tzi) != TIME_ZONE_ID_INVALID) {
-        // 转换时区名称
-        std::wstring wname(tzi.StandardName);
-        return std::string(wname.begin(), wname.end());
+        // 转换时区名称（使用 WideCharToMultiByte 正确转换）
+        if (tzi.StandardName[0] != L'\0') {
+            int size = WideCharToMultiByte(CP_UTF8, 0, tzi.StandardName, -1, nullptr, 0, nullptr, nullptr);
+            if (size > 0) {
+                std::string result(size - 1, 0);
+                WideCharToMultiByte(CP_UTF8, 0, tzi.StandardName, -1, &result[0], size, nullptr, nullptr);
+                return result;
+            }
+        }
     }
     return "";
 }

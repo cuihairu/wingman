@@ -13,32 +13,13 @@ find_package(Lua REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# 获取 Lua 库 target
-# 尝试多种可能的 target 名称
-set(LUA_FOUND_TARGET "")
-if(TARGET Lua::Lua)
-    set(LUA_FOUND_TARGET Lua::Lua)
-elseif(TARGET unofficial::lua::lua)
-    set(LUA_FOUND_TARGET unofficial::lua::lua)
-elseif(TARGET lua)
-    set(LUA_FOUND_TARGET lua)
+# vcpkg 的 lua 包使用变量而非 target
+if(NOT LUA_LIBRARIES)
+    message(FATAL_ERROR "Lua libraries not found. LUA_LIBRARIES is empty.")
 endif()
 
-if(NOT LUA_FOUND_TARGET AND LUA_LIBRARIES)
-    # 如果找不到 target 但有库路径，创建 imported target
-    add_library(lua_imported UNKNOWN IMPORTED)
-    set_target_properties(lua_imported PROPERTIES
-        IMPORTED_LOCATION "${LUA_LIBRARIES}"
-        INTERFACE_INCLUDE_DIRECTORIES "${LUA_INCLUDE_DIR}"
-    )
-    set(LUA_FOUND_TARGET lua_imported)
-endif()
-
-if(NOT LUA_FOUND_TARGET)
-    message(FATAL_ERROR "Could not find Lua library target")
-endif()
-
-message(STATUS "Using Lua target: ${LUA_FOUND_TARGET}")
+message(STATUS "Using Lua libraries: ${LUA_LIBRARIES}")
+message(STATUS "Lua include dir: ${LUA_INCLUDE_DIR}")
 
 # ========== 源文件 ==========
 # 注意: lua_bindings, lua_extensions, lua_http, debug_adapter, script_manager
@@ -74,8 +55,9 @@ target_include_directories(wingman_lua PUBLIC
 )
 
 # 链接库 - 使用 PUBLIC 确保依赖传递给使用 wingman_lua 的目标
+# 注意：vcpkg 的 lua 包提供的是变量而非 target
 target_link_libraries(wingman_lua PUBLIC
-    ${LUA_FOUND_TARGET}
+    ${LUA_LIBRARIES}
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman

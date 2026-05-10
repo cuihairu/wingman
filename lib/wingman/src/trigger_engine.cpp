@@ -165,7 +165,7 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
     return true;
 }
 
-bool TriggerEngine::loadFromYAML(const std::string& filepath) {
+bool TriggerEngine::loadFromYAML(const std::string& /*filepath*/) {
     // TODO: 实现 YAML 解析
     spdlog::warn("YAML config loading not yet implemented, use Lua config");
     return false;
