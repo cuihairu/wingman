@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include <filesystem>
+#include <memory>
 
 namespace wingman::runtime {
 
@@ -36,37 +36,8 @@ public:
     PackerResult build();
 
 private:
-    PackerOptions options_;
-
-    // 步骤1: 读取并处理脚本
-    std::vector<uint8_t> processScript();
-
-    // 步骤2: 可选：编译为字节码
-    std::vector<uint8_t> compileToBytecode(const std::string& source);
-
-    // 步骤3: 加密数据
-    std::vector<uint8_t> encryptData(const std::vector<uint8_t>& data);
-
-    // 步骤4: 压缩数据
-    std::vector<uint8_t> compressData(const std::vector<uint8_t>& data);
-
-    // 步骤5: 复制 stub 程序
-    bool copyStub();
-
-    // 步骤6: 嵌入资源
-    bool embedResource(const std::vector<uint8_t>& data);
-
-    // 步骤7: 替换图标
-    bool replaceIcon();
-
-    // 步骤8: 设置版本信息
-    bool setVersionInfo();
-
-    // 生成随机密钥
-    std::vector<uint8_t> generateKey();
-
-    // 计算 SHA256 哈希
-    std::vector<uint8_t> calculateHash(const std::vector<uint8_t>& data);
+    class Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace wingman::runtime

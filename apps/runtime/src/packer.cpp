@@ -208,7 +208,7 @@ public:
     bool updateResource(const std::vector<uint8_t>& data) {
 #ifdef _WIN32
         std::wstring outputPathW;
-        outputPathW.assign(options_.outputPath.begin(), options_.outputPath.end());
+        outputPathW.assign(options.outputPath.begin(), options.outputPath.end());
 
         // 开始资源更新
         HANDLE hUpdate = BeginUpdateResourceW(outputPathW.c_str(), FALSE);
@@ -223,17 +223,17 @@ public:
         std::memcpy(header.magic, "WMSP", 4);
         header.version = 1;
         header.flags = 0;
-        header.originalSize = options_.encrypt ? data.size() : 0;  // 原始大小（加密前）
+        header.originalSize = options.encrypt ? data.size() : 0;  // 原始大小（加密前）
 
         std::vector<uint8_t> payload = data;
-        if (options_.encrypt) {
+        if (options.encrypt) {
             // 生成密钥
             std::vector<uint8_t> key = generateKeyImpl();
             payload = aesEncrypt(data, key);
             std::memcpy(header.keyHash, key.data(), std::min(key.size(), size_t(32)));
         }
 
-        if (options_.compress) {
+        if (options.compress) {
             payload = compress(payload);
         }
 
@@ -278,14 +278,14 @@ public:
 
     // 替换图标
     bool replaceIcon() {
-        if (options_.iconPath.empty()) {
+        if (options.iconPath.empty()) {
             return true;  // 没有指定图标，跳过
         }
 
 #ifdef _WIN32
         std::wstring iconPathW, outputPathW;
-        iconPathW.assign(options_.iconPath.begin(), options_.iconPath.end());
-        outputPathW.assign(options_.outputPath.begin(), options_.outputPath.end());
+        iconPathW.assign(options.iconPath.begin(), options.iconPath.end());
+        outputPathW.assign(options.outputPath.begin(), options.outputPath.end());
 
         // 简单实现：复制图标到资源
         HANDLE hUpdate = BeginUpdateResourceW(outputPathW.c_str(), FALSE);
@@ -295,9 +295,9 @@ public:
         }
 
         // 读取图标文件
-        std::ifstream iconFile(options_.iconPath, std::ios::binary);
+        std::ifstream iconFile(options.iconPath, std::ios::binary);
         if (!iconFile) {
-            spdlog::warn("Failed to open icon file: {}", options_.iconPath);
+            spdlog::warn("Failed to open icon file: {}", options.iconPath);
             EndUpdateResource(hUpdate, TRUE);
             return false;
         }

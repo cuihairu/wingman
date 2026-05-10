@@ -16,11 +16,11 @@ find_package(nlohmann_json CONFIG REQUIRED)
 # ========== 源文件 ==========
 set(LUA_SOURCES
     src/lua_engine.cpp
-    # src/lua_bindings.cpp  # TODO: 创建头文件
-    # src/lua_extensions.cpp  # TODO: 创建头文件
-    # src/lua_http.cpp  # TODO: 依赖 crow.h
-    # src/debug_adapter.cpp  # TODO: 依赖 emmy_adapter
-    # src/script_manager.cpp  # TODO: 依赖 lua_bindings
+    src/lua_bindings.cpp
+    src/lua_extensions.cpp
+    src/lua_http.cpp
+    src/debug_adapter.cpp
+    src/script_manager.cpp
 )
 
 # 如果源文件不存在，使用空实现

@@ -1,0 +1,52 @@
+{
+  "app": {
+    "threads_num": 4,
+    "enable_session": false,
+    "session_timeout": 0,
+    "document_root": "./static",
+    "upload_path": "./uploads",
+    "max_connections": 100000,
+    "max_connections_per_ip": 0,
+    "load_config_file": true,
+    "run_as_daemon": false,
+    "relaunch_on_error": true,
+    "use_sendfile": true,
+    "use_gzip": true,
+    "static_files_cache_time": 5,
+    "idle_connection_timeout": 60,
+    "server_header_field": "Wingman-WebSocket",
+    "keepalive_requests": 1000,
+    "pipeline_timeout": 0,
+    "enable_server_header": true,
+    "enable_date_header": true
+  },
+  "listeners": [
+    {
+      "address": "127.0.0.1",
+      "port": 8080,
+      "https": false
+    }
+  ],
+  "log": {
+    "log_path": "./logs",
+    "logfile_base_name": "wingman-ws",
+    "log_size_limit": 104857600,
+    "log_level": "DEBUG"
+  },
+  "file_types": [
+    "gif",
+    "png",
+    "jpg",
+    "jpeg",
+    "bmp",
+    "ico",
+    "svg",
+    "css",
+    "js",
+    "json",
+    "txt",
+    "html",
+    "htm",
+    "pdf"
+  ]
+}
