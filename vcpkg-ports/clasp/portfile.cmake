@@ -36,7 +36,9 @@ vcpkg_configure_cmake(
 
 vcpkg_install_cmake()
 
-vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/clasp)
+# 手动安装 CMake config 文件
+file(INSTALL "${SOURCE_PATH}/cmake/claspConfig.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/clasp" OPTIONAL)
+file(INSTALL "${SOURCE_PATH}/cmake/claspConfigVersion.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/clasp" OPTIONAL)
 
 # 处理头文件 - 确保所有 clasp/*.hpp 都被复制
 file(GLOB HEADER_FILES "${SOURCE_PATH}/include/clasp/*.hpp")
