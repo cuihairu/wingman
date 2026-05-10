@@ -1,13 +1,14 @@
 #include "wingman/runtime/controllers/websocket.hpp"
 #include "wingman/runtime/controllers/script.hpp"
 #include "wingman/runtime/controllers/system.hpp"
+#include "wingman/version.hpp"
 #include <nlohmann/json.hpp>
 
 namespace wingman::runtime::controllers {
 
 // ========== 静态成员初始化 ==========
 std::unordered_map<std::string, drogon::WebSocketConnectionPtr> WebSocketCtrl::connections_;
-std::unordered_map<std::string, std::string> WebSocketCtrl::connectionIds_;
+std::unordered_map<drogon::WebSocketConnection*, std::string> WebSocketCtrl::connectionIds_;
 std::mutex WebSocketCtrl::mutex_;
 std::atomic<uint64_t> WebSocketCtrl::connectionCounter_{0};
 

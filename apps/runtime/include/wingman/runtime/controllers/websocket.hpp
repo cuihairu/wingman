@@ -90,7 +90,7 @@ public:
 
 private:
     static std::unordered_map<std::string, drogon::WebSocketConnectionPtr> connections_;
-    static std::unordered_map<std::string, std::string> connectionIds_;  // wsConnPtr → id
+    static std::unordered_map<drogon::WebSocketConnection*, std::string> connectionIds_;  // wsConnPtr → id
     static std::mutex mutex_;
     static std::atomic<uint64_t> connectionCounter_;
 
