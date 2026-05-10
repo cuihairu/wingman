@@ -46,7 +46,7 @@ bool runEmbeddedScript() {
         }
 
         // 设置嵌入脚本标记
-        lua->setGlobal("_EMBEDDED", true);
+        lua->setGlobal("_EMBEDDED", 1);
 
         // 将数据转换为字符串
         std::string scriptCode(loadedScript->data.begin(), loadedScript->data.end());
