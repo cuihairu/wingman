@@ -45,7 +45,7 @@
       "$comment": "Drogon HTTP/WebSocket framework for UI communication",
       "name": "drogon",
       "platform": "windows",
-      "features": ["with_ctl", "withopenssl"]
+      "features": ["ctl", "openssl"]
     }
   ],
   "features": {
