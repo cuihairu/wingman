@@ -142,24 +142,24 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: github.ref == 'refs/heads/main'
       with:
-        tag_name: nightly-${{ steps.nightly_version.outputs.version_suffix }}
-        name: "Nightly Build ${{ steps.nightly_version.outputs.version_suffix }}"
+        tag_name: nightly
+        name: "Nightly Build"
         body: |
-          ## Nightly Build ${{ steps.nightly_version.outputs.version_suffix }}
+          ## Nightly Build
 
-          This is an automated nightly build.
+          This is an automated nightly build (overwrites daily).
           **Not recommended for production use.**
 
-          ### Changes
-          Built from commit: ${{ steps.nightly_version.outputs.version }}
-
-          ### Download
-          - Windows x64: `wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip`
+          ### Latest Build
+          - Date: ${{ steps.nightly_version.outputs.version_suffix }}
+          - Commit: ${{ steps.nightly_version.outputs.version }}
+          - Download: `wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip`
 
           ---
           *Use at your own risk. Nightly builds may contain unstable features.*
         files: wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip
         prerelease: true
         draft: false
+        replace_existing_artifacts: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
