@@ -186,14 +186,14 @@ jobs:
         cache: false
 
     - name: Initialize Go module
-      working-directory: server
+      working-directory: orchestrator/server
       run: |
-        go mod init github.com/cuihaitao/wingman/server || true
+        go mod init github.com/cuihaitao/wingman/orchestrator/server || true
         go mod tidy
 
     - name: Run Go tests
       shell: bash
-      working-directory: server
+      working-directory: orchestrator/server
       run: |
         go test -v -coverprofile=coverage.txt -covermode=atomic ./...
 
@@ -201,7 +201,7 @@ jobs:
       uses: actions/upload-artifact@v6
       with:
         name: go-coverage
-        path: server/coverage.txt
+        path: orchestrator/server/coverage.txt
         retention-days: 1
 
   # ========== Codecov Upload ==========
@@ -218,13 +218,13 @@ jobs:
       uses: actions/download-artifact@v8
       with:
         name: go-coverage
-        path: server/
+        path: orchestrator/server/
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./server/coverage.txt
+        files: ./orchestrator/server/coverage.txt
         flags: go
         name: codecov-umbrella
         fail_ci_if_error: false
