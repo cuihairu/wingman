@@ -1,4 +1,5 @@
 #include "wingman/runtime/controllers/api.hpp"
+#include "wingman/runtime/controllers/script.hpp"
 #include "wingman/version.hpp"
 #include <spdlog/spdlog.h>
 #include <optional>
