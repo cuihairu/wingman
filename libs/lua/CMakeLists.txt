@@ -13,18 +13,32 @@ find_package(Lua REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# 获取 Lua 库
+# 获取 Lua 库 target
 # 尝试多种可能的 target 名称
+set(LUA_FOUND_TARGET "")
 if(TARGET Lua::Lua)
-    set(LUA_TARGET Lua::Lua)
+    set(LUA_FOUND_TARGET Lua::Lua)
 elseif(TARGET unofficial::lua::lua)
-    set(LUA_TARGET unofficial::lua::lua)
+    set(LUA_FOUND_TARGET unofficial::lua::lua)
 elseif(TARGET lua)
-    set(LUA_TARGET lua)
-else()
-    # 直接使用 Lua 变量
-    set(LUA_TARGET ${LUA_LIBRARIES})
+    set(LUA_FOUND_TARGET lua)
 endif()
+
+if(NOT LUA_FOUND_TARGET AND LUA_LIBRARIES)
+    # 如果找不到 target 但有库路径，创建 imported target
+    add_library(lua_imported UNKNOWN IMPORTED)
+    set_target_properties(lua_imported PROPERTIES
+        IMPORTED_LOCATION "${LUA_LIBRARIES}"
+        INTERFACE_INCLUDE_DIRECTORIES "${LUA_INCLUDE_DIR}"
+    )
+    set(LUA_FOUND_TARGET lua_imported)
+endif()
+
+if(NOT LUA_FOUND_TARGET)
+    message(FATAL_ERROR "Could not find Lua library target")
+endif()
+
+message(STATUS "Using Lua target: ${LUA_FOUND_TARGET}")
 
 # ========== 源文件 ==========
 # 注意: lua_bindings, lua_extensions, lua_http, debug_adapter, script_manager
@@ -61,7 +75,7 @@ target_include_directories(wingman_lua PUBLIC
 
 # 链接库 - 使用 PUBLIC 确保依赖传递给使用 wingman_lua 的目标
 target_link_libraries(wingman_lua PUBLIC
-    ${LUA_TARGET}
+    ${LUA_FOUND_TARGET}
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     wingman

@@ -103,7 +103,7 @@ void LuaEngine::registerFunction(const std::string& name, lua_CFunction func) {
     lua_register(L_, name.c_str(), func);
 }
 
-bool LuaEngine::loadModule(const std::string& name, const std::string& path) {
+bool LuaEngine::loadModule(const std::string& /*name*/, const std::string& path) {
     if (!L_) return false;
     // 简单实现：通过 require 加载模块
     // TODO: 实现更复杂的模块加载逻辑
