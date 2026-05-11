@@ -242,7 +242,7 @@ jobs:
             --modules *wingman* `
             --excluded_modules *test* `
             --excluded_modules *Test* `
-            --quiet_mode `
+            --quiet `
             -- $test.FullName
         }
 
