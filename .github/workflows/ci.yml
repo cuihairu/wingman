@@ -221,6 +221,9 @@ jobs:
         # 创建覆盖率输出目录
         New-Item -ItemType Directory -Force -Path build/coverage
 
+        # OpenCppCoverage 安装路径
+        $occ = "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
+
         # 收集所有测试可执行文件
         $tests = Get-ChildItem -Recurse build/tests -Filter "*.exe"
 
@@ -234,7 +237,7 @@ jobs:
           $coverageFiles += $outputFile
 
           # 运行 OpenCppCoverage，生成 cobertura 格式
-          OpenCppCoverage.exe `
+          & $occ `
             --export_type=cobertura:$outputFile `
             --modules *wingman* `
             --excluded_modules *test* `
