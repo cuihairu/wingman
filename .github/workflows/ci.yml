@@ -212,12 +212,46 @@ jobs:
         name: cpp-tests
         path: build/tests
 
-    - name: Run tests
+    - name: Install OpenCppCoverage
+      run: choco install opencppcoverage -y
+
+    - name: Run tests with coverage
+      shell: pwsh
       run: |
-        Get-ChildItem -Recurse build/tests -Filter "*.exe" | ForEach-Object {
-          Write-Host "Running $($_.FullName)..."
-          & $_.FullName
+        # 创建覆盖率输出目录
+        New-Item -ItemType Directory -Force -Path build/coverage
+
+        # 收集所有测试可执行文件
+        $tests = Get-ChildItem -Recurse build/tests -Filter "*.exe"
+
+        # 初始化覆盖率报告文件
+        $coverageFiles = @()
+
+        foreach ($test in $tests) {
+          Write-Host "Running coverage for $($test.FullName)..."
+
+          $outputFile = "build/coverage/$($test.BaseName)-coverage.xml"
+          $coverageFiles += $outputFile
+
+          # 运行 OpenCppCoverage，生成 cobertura 格式
+          OpenCppCoverage.exe `
+            --export_type=cobertura:$outputFile `
+            --modules *wingman* `
+            --excluded_modules *test* `
+            --excluded_modules *Test* `
+            --quiet_mode `
+            -- $test.FullName
         }
+
+        Write-Host "Coverage reports generated: $($coverageFiles -join ', ')"
+
+    - name: Upload C++ coverage artifact
+      uses: actions/upload-artifact@v6
+      with:
+        name: cpp-coverage-cobertura
+        path: build/coverage/*.xml
+        retention-days: 1
+        if-no-files-found: warn
 
   # ========== Lua Tests ==========
   # NOTE: 暂时禁用 - Lua 测试需要 C++ 绑定，需要先实现测试运行器
@@ -261,7 +295,10 @@ jobs:
         & "$env:USERPROFILE\AppData\Roaming\luarocks\bin\busted.bat" --directory=unit --recursive
 
   # ========== Go Test ==========
+  # NOTE: 暂时禁用 - Go 代码没有测试文件，覆盖率始终为 0%
+  # 待添加测试文件后再启用
   test-go:
+    if: false
     runs-on: windows-2022
 
     steps:
@@ -296,32 +333,24 @@ jobs:
   # ========== Codecov Upload ==========
   # 使用 Ubuntu 避免 Windows 编码问题
   codecov:
-    needs: test-go
+    needs: test-cpp-windows
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Download Go coverage artifact
-      uses: actions/download-artifact@v8
-      with:
-        name: go-coverage
-        path: orchestrator/server/
-
     - name: Download C++ coverage artifact
       uses: actions/download-artifact@v8
       with:
-        name: cpp-coverage
-        path: build/
-      continue-on-error: true
+        name: cpp-coverage-cobertura
+        path: build/coverage/
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        directory: ./orchestrator/server
-        files: ./coverage.txt
-        flags: go
-        name: codecov-umbrella
+        files: ./build/coverage/*.xml
+        flags: cpp
+        name: cpp-coverage
         fail_ci_if_error: false
