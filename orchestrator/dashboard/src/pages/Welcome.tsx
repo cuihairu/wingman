@@ -144,6 +144,16 @@ const Welcome: React.FC = () => {
         <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
             <EntryCard
+              title="游戏监控"
+              description="实时查看游戏画面、管理触发器、执行宏命令、监控系统资源。"
+              icon={<DesktopOutlined />}
+              actionLabel="打开监控"
+              path="/monitor"
+              tone="linear-gradient(135deg, #0f9d58 0%, #34d399 100%)"
+            />
+          </Col>
+          <Col xs={24} md={8}>
+            <EntryCard
               title="Agent 管理"
               description="查看所有已注册的 Agent 节点，监控 CPU、内存、网络等资源使用情况，管理 Agent 状态。"
               icon={<NodeIndexOutlined />}
@@ -160,16 +170,6 @@ const Welcome: React.FC = () => {
               actionLabel="创建工作流"
               path="/workflows"
               tone="linear-gradient(135deg, #722ed1 0%, #b37feb 100%)"
-            />
-          </Col>
-          <Col xs={24} md={8}>
-            <EntryCard
-              title="实时监控"
-              description="实时查看工作流执行进度、Agent 状态、任务日志和系统资源使用情况。"
-              icon={<DesktopOutlined />}
-              actionLabel="查看监控"
-              path="/agents"
-              tone="linear-gradient(135deg, #0f9d58 0%, #34d399 100%)"
             />
           </Col>
         </Row>

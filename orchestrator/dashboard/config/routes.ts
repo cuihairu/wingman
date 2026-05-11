@@ -42,6 +42,13 @@ export default [
     icon: 'file',
     component: './Scripts',
   },
+  // 游戏监控
+  {
+    path: '/monitor',
+    name: 'Monitor',
+    icon: 'desktop',
+    component: './Monitor',
+  },
   // 用户中心
   {
     path: '/account',
