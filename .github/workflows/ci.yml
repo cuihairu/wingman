@@ -236,17 +236,28 @@ jobs:
           $outputFile = "build/coverage/$($test.BaseName)-coverage.xml"
           $coverageFiles += $outputFile
 
+          # 获取项目根目录的绝对路径
+          $projectRoot = (Get-Item .).FullName
+
           # 运行 OpenCppCoverage，生成 cobertura 格式
+          # 使用 --sources 过滤源代码路径而非模块名
           & $occ `
             --export_type=cobertura:$outputFile `
-            --modules *wingman* `
-            --excluded_modules *test* `
-            --excluded_modules *Test* `
+            --sources "$projectRoot\libs" `
+            --sources "$projectRoot\lib" `
+            --excluded_sources "*test*" `
+            --excluded_sources "*Test*" `
+            --working_dir "$($test.Directory.FullName)" `
             --quiet `
             -- $test.FullName
         }
 
         Write-Host "Coverage reports generated: $($coverageFiles -join ', ')"
+
+        # 检查生成的文件大小
+        Get-ChildItem build/coverage -Filter "*.xml" | ForEach-Object {
+          Write-Host "File: $($_.Name), Size: $($_.Length) bytes"
+        }
 
     - name: Upload C++ coverage artifact
       uses: actions/upload-artifact@v6
