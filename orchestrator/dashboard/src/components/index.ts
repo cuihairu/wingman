@@ -9,6 +9,7 @@ import Footer from './Footer';
 import { Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 import PageStatePanel from './PageStatePanel';
+import ScreenshotView from './ScreenshotView';
 
 export {
   Footer,
@@ -17,4 +18,5 @@ export {
   AvatarDropdown,
   AvatarName,
   PageStatePanel,
+  ScreenshotView,
 };

@@ -51,6 +51,7 @@ set(WINGMAN_SOURCES
     # 网络与通信
     src/http.cpp
     src/remote_server.cpp
+    src/screenshot_reporter.cpp
     # src/http_server.cpp  # TODO: 检查依赖
     # src/node_status.cpp  # TODO: 检查依赖
     # src/storage_remote.cpp  # TODO: 检查依赖

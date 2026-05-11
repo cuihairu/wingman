@@ -93,6 +93,10 @@ func main() {
 			// 设置
 			auth.GET("/settings", handlers.HandleGetSettings)
 			auth.PUT("/settings", handlers.HandleUpdateSettings)
+
+			// 截图
+			screenshotHandler := handlers.NewScreenshotHandler(wsHub)
+			auth.POST("/screenshot", screenshotHandler.HandleScreenshot)
 		}
 	}
 
