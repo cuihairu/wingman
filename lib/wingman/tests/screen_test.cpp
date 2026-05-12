@@ -34,8 +34,10 @@ TEST(ScreenTest, ColorDistance) {
 TEST(ScreenTest, ColorMatches) {
     Color c1(100, 100, 100);
     Color c2(105, 105, 105);
-    EXPECT_TRUE(c1.matches(c2, 8));  // sqrt(75) ≈ 8.66
-    EXPECT_FALSE(c1.matches(c2, 5));
+    // distance = 5^2 + 5^2 + 5^2 = 75
+    // tolerance^2 需要大于等于 75 才能匹配
+    EXPECT_TRUE(c1.matches(c2, 9));  // 9^2 = 81 >= 75
+    EXPECT_FALSE(c1.matches(c2, 8));  // 8^2 = 64 < 75
 }
 
 TEST(ScreenTest, ColorExactMatch) {
