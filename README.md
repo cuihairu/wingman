@@ -29,79 +29,40 @@ C++ + Lua 的高性能游戏自动化框架
 
 ## 简介
 
-**Wingman** 是一个游戏自动化可编程控制引擎，采用 C++ 核心引擎 + Lua 脚本的架构设计。
+**Wingman** 是一个 Windows 平台的游戏自动化工具，采用 C++ 核心引擎 + Lua 脚本的架构设计。
 
 - 🚀 **高性能** - C++ 核心引擎，Lua 脚本执行，毫秒级响应
 - 🔒 **安全可靠** - 纯用户态运行，使用合法 Windows API，不读写游戏内存
 - 🎮 **可编程** - Lua 脚本控制，灵活扩展，支持复杂业务逻辑
-- 🌐 **远程编排** - 支持与 Orchestrator 中控服务器协同，多机组队
+- 🖥️ **Windows 专用** - 针对 Windows 平台深度优化
 
 ---
 
 ## 架构设计
 
-```mermaid
-flowchart TB
-    subgraph Orchestrator["wingman-orchestrator (Go 中控服务器)"]
-        Dashboard["Dashboard<br/>(Web 管理界面)"]
-        API["HTTP API"]
-        WS_Hub["WebSocket Hub"]
-        Scheduler["任务调度器"]
-        TeamMgr["组队管理"]
-    end
-
-    subgraph Runtimes["多台 wingman-runtime"]
-        Runtime1["Runtime 1<br/>(本机)"]
-        Runtime2["Runtime 2<br/>(远程)"]
-        Runtime3["Runtime N<br/>(远程)"]
-    end
-
-    subgraph Runtime1_Details["Runtime 本机能力"]
-        GUI["Tauri GUI<br/>(计划中)"]
-        CLI["命令行"]
-        WS_Client["WebSocket 客户端"]
-        Lua["Lua 脚本引擎"]
-        Screen["屏幕操作"]
-        Input["输入模拟"]
-    end
-
-    subgraph Libwm["libwm (C++ 基础库)"]
-        Proto["proto"]
-        Transport["transport"]
-        LuaLib["lua"]
-        Debug["debug"]
-    end
-
-    Dashboard --> API
-    API --> WS_Hub
-    WS_Hub --> Scheduler
-    WS_Hub --> TeamMgr
-
-    WS_Hub -->|"WebSocket"| Runtime1
-    WS_Hub -->|"WebSocket"| Runtime2
-    WS_Hub -->|"WebSocket"| Runtime3
-
-    GUI --> WS_Client
-    CLI --> WS_Client
-    WS_Client --> WS_Hub
-    Lua --> Screen
-    Lua --> Input
-
-    Runtime1 --> Libwm
-    Runtime2 --> Libwm
-    Runtime3 --> Libwm
-
-    classDef orch fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
-    class Orchestrator,Dashboard,API,WS_Hub,Scheduler,TeamMgr orch
-
-    classDef run fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
-    class Runtime1,Runtime2,Runtime3,GUI,CLI,WS_Client,Lua,Screen,Input run
-
-    classDef lib fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
-    class Libwm,Proto,Transport,LuaLib,Debug lib
-
-    classDef plan fill:#fff3cd,stroke:#ff9800,stroke-width:2px,dasharray: 5 5
-    class GUI plan
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Lua 脚本                              │
+│  (用户编写的自动化逻辑：触发器、宏、图像识别等)           │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│              Lua 绑定层 (libs/lua)                       │
+│  将 C++ 功能暴露给 Lua：screen, input, window, etc.     │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│          C++ 核心库 (lib/wingman)                        │
+│  ┌──────────┬──────────┬──────────┬──────────┐          │
+│  │  Screen  │  Input   │  Window  │  Vision  │          │
+│  │  屏幕操作 │  输入模拟 │  窗口管理 │  视觉识别 │          │
+│  └──────────┴──────────┴──────────┴──────────┘          │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│              Windows API                                 │
+│         (GDI+, User32, UI Automation)                   │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -111,77 +72,34 @@ flowchart TB
 ```
 wingman/
 ├── apps/
-│   ├── runtime/          # C++ 运行时 (核心)
-│   │   ├── src/          # 源代码
-│   │   │   ├── commands/ # 命令实现 (start/stop/script/build/serve)
-│   │   │   ├── controllers/ # HTTP/WebSocket 控制器
-│   │   │   ├── agent.cpp      # Agent 主逻辑
-│   │   │   ├── remote_client.cpp  # 连接 Orchestrator
-│   │   │   ├── remote_server.cpp  # 作为服务器供外部连接
-│   │   │   └── main.cpp        # 程序入口
-│   │   └── include/wingman/runtime/
-│   ├── gui/              # Tauri 用户界面 (计划中)
-│   └── inspector/        # Tauri 调试工具 (未来计划)
+│   ├── client/           # 主应用程序
+│   │   ├── src/
+│   │   │   ├── cli/      # 命令行接口
+│   │   │   ├── modes/    # 运行模式 (主动/被动/单机)
+│   │   │   └── gui/      # GUI 界面
+│   │   └── include/wingman/client/
+│   └── inspector/        # 检查工具
 │
-├── orchestrator/         # 中控服务器 (Go + React)
-│   ├── server/           # Go 中控服务器
-│   │   ├── internal/     # 内部包
-│   │   │   ├── handlers/ # HTTP/WebSocket 处理器
-│   │   │   ├── middleware/ # 中间件
-│   │   │   └── models/   # 数据模型
-│   │   ├── pkg/          # 公共包
-│   │   │   ├── agent/    # Agent 客户端
-│   │   │   └── websocket/ # WebSocket Hub
-│   │   ├── src/          # C++ 绑定代码
-│   │   ├── main.go       # 程序入口
-│   │   └── go.sum        # Go 依赖
-│   └── dashboard/        # React Web 管理界面
+├── lib/wingman/          # 核心库
+│   ├── include/wingman/
+│   │   ├── screen.hpp    # 屏幕捕获
+│   │   ├── input.hpp     # 输入模拟
+│   │   ├── trigger.hpp   # 触发器
+│   │   ├── vision.hpp    # 视觉识别
+│   │   ├── behavior_tree.hpp # 行为树
+│   │   └── ocr.hpp       # OCR
+│   ├── src/
+│   └── tests/
 │
-├── lib/
-│   └── wingman/          # C++ 核心库
-│       ├── src/
-│       │   ├── screen/   # 屏幕操作 (截图/取色/图找图)
-│       │   ├── input/    # 输入模拟 (鼠标/键盘)
-│       │   ├── window/   # 窗口管理
-│       │   ├── vision/   # 视觉算法 (OpenCV)
-│       │   ├── uia/      # UI Automation
-│       │   ├── ocr/      # OCR 识别
-│       │   └── ml/       # ML/AI 推理 (ONNX)
-│       └── include/wingman/
+├── libs/                 # 内部辅助库
+│   ├── transport/        # 网络传输 (TCP/WebSocket)
+│   ├── lua/              # Lua 绑定
+│   └── proto/            # Protobuf
 │
-├── libs/                 # C++ 子模块库
-│   ├── proto/            # Protobuf 消息定义
-│   ├── transport/        # 网络传输层
-│   ├── lua/              # Lua 引擎封装
-│   └── debug/            # 调试支持 (EmmyLua)
-│
-├── examples/             # Lua 脚本示例
-├── docs/                 # 项目文档
-└── build-scripts/        # 构建脚本
+├── examples/             # 示例脚本
+├── docs/                 # 文档
+└── CMakeLists.txt        # 根 CMake
 ```
-
----
-
-## 开发计划
-
-### 第一阶段 - 核心功能 (当前)
-
-| 组件 | 状态 | 说明 |
-|------|------|------|
-| `wingman-runtime` | 🔥 开发中 | C++ 运行时，执行 Lua 脚本 |
-| `wingman-orchestrator` | 🔥 开发中 | Go 中控服务器，多机编排 |
-| **平台** | Windows | 第一阶段仅支持 Windows |
-| **脚本** | Lua | 第一阶段仅支持 Lua (Python 未来计划) |
-
-### 未来计划
-
-| 计划 | 说明 |
-|------|------|
-| **Tauri GUI** | 桌面用户界面，替代命令行操作 |
-| **SDK 被动模式** | 暴露 SDK 供外部程序调用控制能力 |
-| **Python 支持** | 除 Lua 外支持 Python 脚本 |
-| **Inspector** | 开发者调试工具 (取色/句柄/UIA/代码验证) |
-| **跨平台** | 支持 Linux/macOS |
 
 ---
 
@@ -193,10 +111,11 @@ wingman/
 | **输入模拟** | 鼠标点击/移动、按键发送、文本输入 |
 | **人性化模拟** | 贝塞尔曲线鼠标移动、随机延迟、自然操作 |
 | **窗口管理** | 查找窗口、激活窗口、获取位置 |
-| **进程管理** | 启动/等待/终止进程 |
+| **触发器系统** | 像素/图像/时间条件触发，自动执行动作 |
+| **宏录制回放** | 录制鼠标键盘操作，保存为脚本回放 |
 | **UI Automation** | Windows UIA 自动化，操作 UI 控件 |
-| **OCR 识别** | Tesseract 文字识别 (可选) |
-| **ML/AI 推理** | ONNX Runtime 模型推理 (可选) |
+| **OCR 识别** | Tesseract 文字识别 |
+| **EmmyLua 调试** | 支持 VS Code 断点调试 Lua 脚本 |
 
 ---
 
@@ -208,7 +127,6 @@ wingman/
 - Visual Studio 2022
 - CMake 3.20+
 - vcpkg
-- Node.js 18+ (Dashboard)
 
 ### 安装 vcpkg
 
@@ -218,52 +136,54 @@ C:\vcpkg\bootstrap-vcpkg.bat
 C:\vcpkg\vcpkg integrate install
 ```
 
-### 编译 Runtime
+### 编译
 
 ```bash
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
 
-# 配置项目
 cmake -B build -G "Visual Studio 17 2022" `
     -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
     -DVCPKG_TARGET_TRIPLET=x64-windows-static
 
-# 编译
 cmake --build build --config Release
 ```
 
-### 运行
+### 运行 Lua 脚本
 
 ```bash
-# 运行 Lua 脚本
-.\build\apps\runtime\Release\wingman-runtime.exe script examples\hello.lua
+# 运行单个脚本
+.\build\apps\client\Release\wingman-client.exe script examples\hello.lua
 
-# 启动 WebSocket 服务
-.\build\apps\runtime\Release\wingman-runtime.exe serve
-
-# 查看版本
-.\build\apps\runtime\Release\wingman-runtime.exe --version
+# 启动服务模式
+.\build\apps\client\Release\wingman-client.exe start
 ```
 
 ---
 
-## 命令行接口
+## Lua 脚本示例
 
-```bash
-wingman-runtime <command> [options]
+```lua
+local wingman = require("wingman")
 
-命令:
-  start       启动 Agent 服务
-  stop        停止服务
-  status      查看服务状态
-  script      运行 Lua 脚本
-  build       打包脚本为独立 EXE
-  serve       启动 WebSocket 服务器
+-- 截图并保存
+local screenshot = wingman.screen.capture(0, 0, 1920, 1080)
+screenshot:save("screenshot.png")
 
-选项:
-  -h, --help     显示帮助信息
-  -v, --version  显示版本信息
+-- 查找颜色
+local points = wingman.screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
+if points then
+    for _, p in ipairs(points) do
+        wingman.input.click(p.x, p.y, "left")
+    end
+end
+
+-- 图像匹配
+local match = wingman.screen.findImage("target.png", 0, 0, 1920, 1080, 0.8)
+if match then
+    wingman.input.move(match.x, match.y, 500)  -- 人性化移动
+    wingman.input.click(match.x, match.y)
+end
 ```
 
 ---
@@ -272,7 +192,7 @@ wingman-runtime <command> [options]
 
 ### VSCode 开发环境
 
-推荐使用以下插件 + 配置：
+推荐插件：
 
 | 插件 | 用途 |
 |------|------|
@@ -280,22 +200,20 @@ wingman-runtime <command> [options]
 | [C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) | C++ 语言支持 |
 | [EmmyLua](https://marketplace.visualstudio.com/items?itemName=EmmyLuaVSCode.emmylua) | Lua 调试支持 |
 
-配置文件：`.vscode/settings.json`
+配置 `.vscode/settings.json`:
 ```json
 {
   "Lua.workspace.library": ["${workspaceFolder}/libs/lua/defs"],
-  "Lua.diagnostics.globals": ["print", "wm"]
+  "Lua.diagnostics.globals": ["wingman"]
 }
 ```
 
 ### 单元测试
 
 ```bash
-cmake -B build -G "Visual Studio 17 2022" `
-    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
-    -DWINGMAN_BUILD_TESTS=ON
-
+cmake -B build -DWINGMAN_BUILD_TESTS=ON
 cmake --build build --config Release
+ctest --test-dir build --config Release
 ```
 
 ---
@@ -305,19 +223,7 @@ cmake --build build --config Release
 - [构建指南](BUILD.md)
 - [API 文档](docs/API.md)
 - [架构设计](docs/architecture.md)
-- [项目结构](docs/project-structure.md)
-
----
-
-## Dashboard
-
-```bash
-cd orchestrator/dashboard
-pnpm install
-pnpm dev
-```
-
-访问 http://localhost:8000
+- [开发路线图](ROADMAP.md)
 
 ---
 

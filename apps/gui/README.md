@@ -4,12 +4,10 @@ Tauri 桌面应用，用于控制 Wingman Client。
 
 ## 前置要求
 
+- Windows 10/11
 - Rust 1.70+
 - Node.js 18+
-- 系统依赖 (Tauri 要求):
-  - **Windows**: WebView2 Runtime
-  - **macOS**: Xcode Command Line Tools
-  - **Linux**: webkit2gtk
+- WebView2 Runtime
 
 ## 开发
 

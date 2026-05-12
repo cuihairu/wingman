@@ -1,6 +1,6 @@
 # Wingman 开发待办事项
 
-> 对比 Chimpeeon 功能规划 Server/Client 架构
+> Windows 平台游戏自动化工具开发计划
 
 ## Chimpeon 核心功能对比
 
@@ -110,43 +110,7 @@
 
 ---
 
-## Phase 4: Server 模块 (远程控制) ✅
-
-### 4.1 TCP Server ✅
-- [x] 监听端口启动
-- [x] 客户端连接管理
-- [x] 消息协议定义
-- [x] 心跳保活
-
-### 4.2 远程 API ✅
-- [x] 执行 Lua 脚本
-- [x] 获取屏幕截图
-- [x] 像素检测请求
-- [x] 输入模拟请求
-- [x] 状态查询
-
-### 4.3 组队编排引擎 ✅
-- [x] Client 注册和心跳
-- [x] 队伍自动编排
-- [x] 投票协调
-- [x] KV 状态存储
-
----
-
-## Phase 5: Client 模块 ✅
-
-### 5.1 Web Dashboard ✅
-- [x] 实时监控界面
-- [x] WebSocket 支持
-- [x] Agents 管理页面
-- [x] Workflows 管理页面
-- [x] 脚本管理
-- [x] 日志查看
-- [x] 配置编辑器
-
----
-
-## Phase 6: 调试工具 🚧
+## Phase 4: 调试工具 🚧
 
 ### 6.1 VS Code 开发环境
 - [x] 使用 EmmyLua 插件提供语法高亮、自动完成、悬停提示
@@ -162,7 +126,7 @@
 
 ---
 
-## Phase 7: 高级功能 ✅
+## Phase 5: 高级功能 ✅
 
 ### 7.1 脚本管理 ✅
 - [x] 脚本热加载
@@ -185,7 +149,7 @@
 
 ---
 
-## Phase 8: 文档和示例 ✅
+## Phase 6: 文档和示例 ✅
 
 ### 8.1 文档 ✅
 - [x] API 参考文档
@@ -245,74 +209,7 @@
 
 ---
 
-## Phase 10: WebSocket 实时更新 (新增) ✅
-
-### 10.1 服务端 ✅
-- [x] WebSocket 路由 `/ws`
-- [x] 事件广播机制
-- [x] 心跳检测 (30s interval, 60s timeout)
-- [x] Agent 状态事件
-- [x] Workflow 状态事件
-
-### 10.2 客户端 (Dashboard) ✅
-- [x] WebSocket 服务封装
-- [x] 自动重连机制
-- [x] 事件订阅系统
-- [x] Agents 页面实时更新
-- [x] Workflows 页面实时更新
-
-### 10.3 事件类型 ✅
-- [x] `agent.connected` - Agent 连接
-- [x] `agent.disconnected` - Agent 断开
-- [x] `agent.status_changed` - Agent 状态变化
-- [x] `workflow.created` - 工作流创建
-- [x] `workflow.updated` - 工作流更新
-- [x] `workflow.completed` - 工作流完成
-
----
-
-## Phase 11: 多账号协作编排 🚧
-
-### 11.1 任务编排引擎
-- [x] Orchestrator 核心类 - 工作流调度
-- [x] TaskStep 定义 - 步骤、依赖关系、完成检测
-- [x] Worker 协议 - 客户端与服务端通信规范
-- [x] 屏障同步 (Barrier Synchronization) - 等待所有账号完成当前步骤
-- [x] 进度存储 - 服务端状态持久化
-
-### 11.2 进度追踪机制
-- [x] WorkerStatus 状态定义 (pending/running/completed/failed)
-- [x] 进度报告 API - `reportProgress(workerId, stepId, progress)`
-- [x] 下一步请求 API - `getNextStep(workerId)`
-- [x] 工作流状态查询 API - `getStatus(workflowId)`
-
-### 11.3 Protobuf 集成 ✅
-- [x] Protobuf 协议定义
-- [x] 代码生成配置
-- [x] 消息序列化/反序列化
-
-### 11.4 Lua 绑定 ✅
-- [x] `orchestration.get_next_task(agentId)` - 请求下一步任务
-- [x] `orchestration.report_progress(agentId, stepId, progress)` - 报告进度
-- [x] `orchestration.get_workflow(workflowId)` - 查询工作流
-- [x] `orchestration.get_all_workflows()` - 获取所有工作流
-- [x] `orchestration.submit_workflow(workflow)` - 提交工作流
-- [x] `orchestration.cancel_workflow(workflowId)` - 取消工作流
-- [x] `orchestration.complete_task(agentId, stepId)` - 完成任务
-- [x] `orchestration.fail_task(agentId, stepId, reason)` - 失败任务
-- [x] `orchestration.get_worker_statuses()` - 获取所有 Worker 状态
-
----
-
-## Phase 12: TCP Server/Client 增强 ✅
-
-### 12.1 协议定义 ✅
-
-#### 请求消息结构 ✅
-```json
-{
-  "type": "heartbeat",           // 消息类型
-  "id": "req-002",               // 请求 ID
+## Phase 7: TCP 协议增强 (可选)
   "timestamp": 1714928900,       // 发送时间戳（通用字段）
   "agent_id": "vm-wow-1",        // 发送者 ID（已注册客户端）
   "priority": 0,                 // 优先级（可选）
@@ -413,8 +310,6 @@
 5. ✅ 窗口管理模块
 6. ✅ 触发器系统基础
 7. ✅ 宏录制回放
-8. ✅ Server TCP 模块
-9. ✅ HTTP/JSON/KV 模块
 
 ### P2 - 增强功能 ✅
 10. ✅ 人性化模拟
@@ -423,16 +318,11 @@
 15. ✅ 脚本管理
 
 ### P3 - 高级功能 ✅
-16. ✅ Web Dashboard
+16. ✅ UI Automation
 17. ✅ VS Code 开发环境配置
 18. ✅ 脚本管理
 19. ✅ 安全特性
 20. ✅ 多游戏配置
-
-### P4 - 最新功能 ✅
-21. ✅ UI Automation
-22. ✅ WebSocket 实时更新
-23. ✅ Protobuf 集成
 
 ---
 
@@ -453,10 +343,7 @@
 - [x] 脚本管理模块
 - [x] 安全模块
 - [x] 游戏配置管理
-- [x] Web Dashboard
 - [x] UI Automation 模块
-- [x] WebSocket 支持
-- [x] Protobuf 集成
 
 ### 进行中 🚧
 - [x] UIA 事件监听器 Lua 绑定
@@ -483,7 +370,6 @@
 - [x] 添加更多 UIA 控件类型支持
 
 ### 中期 (1-2月)
-- [x] Lua Orchestration 绑定
 - [ ] 性能基准测试和优化
 - [ ] 用户文档完善
 

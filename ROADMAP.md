@@ -10,7 +10,6 @@
 
 | 项目 | 语言 | 特点 | 参考价值 |
 |------|------|------|----------|
-| [PyAutoGUI](https://github.com/asweigart/pyautogui) | Python | 跨平台GUI自动化 | 屏幕操作API设计 |
 | [AutoHotkey](https://github.com/AutoHotkey/AutoHotkey) | C++ | 热键/宏录制 | 触发器系统 |
 | [OpenCV](https://opencv.org) | C++ | 图像识别 | 像素/图像检测 |
 | [MicroMacro](https://github.com/Fallas/micromacro) | C++/Lua | 游戏自动化框架 | Lua绑定设计 |
@@ -329,8 +328,6 @@ message Response {
 
 ### 5.2 技术选型
 - **Dear ImGui** - 轻量级，游戏内调试
-- **Qt6** - C++ 原生，跨平台 (后期)
-- **Electron + Web** - 现代化 UI (后期)
 
 **交付物**: 图形化配置工具
 
@@ -372,11 +369,10 @@ human.config = {
 
 ### 7.1 EmmyLuaDebugger
 
-[EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) 是成熟的跨平台 Lua 调试器：
+[EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) 是成熟的 Lua 调试器：
 
 **特性：**
 - ✅ 完整调试功能：断点、单步、变量监视、调用栈
-- ✅ 跨平台支持：Windows、macOS、Linux
 - ✅ 多 Lua 版本：Lua 5.1-5.5、LuaJIT
 - ✅ 高性能 TCP 通信
 

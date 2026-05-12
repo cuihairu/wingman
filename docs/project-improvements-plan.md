@@ -484,7 +484,7 @@ git commit -m "docs: add ML/AI inference example to README"
 
 ### Task 3.1: 录制功能演示 GIF（需要 Windows 环境）
 
-**注意:** 此任务需要在 Windows 环境下运行 Wingman，当前在 macOS 环境下无法完成。跳过此任务。
+**注意:** 此任务需要在 Windows 环境下运行 Wingman。
 
 ---
 
