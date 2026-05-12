@@ -244,11 +244,9 @@ jobs:
           $projectRoot = (Get-Item .).FullName
 
           # 运行 OpenCppCoverage，生成 cobertura 格式
-          # 使用 --sources 过滤只统计 wingman 源文件
+          # 暂时不过滤，收集所有覆盖率数据
           & $occ `
             --export_type=cobertura:$outputFile `
-            --sources "*\\lib\\wingman\\src\\*" `
-            --excluded_sources "*test*" `
             --working_dir "$($test.Directory.FullName)" `
             -- $test.FullName
         }
