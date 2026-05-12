@@ -149,7 +149,16 @@ bool MacroRecorder::loadFromJSON(const std::string& filepath) {
 
     try {
         nlohmann::json j;
-        file >> j;
+        // 使用更详细的异常处理
+        try {
+            file >> j;
+        } catch (const nlohmann::json::parse_error&) {
+            return false;
+        } catch (const nlohmann::json::type_error&) {
+            return false;
+        } catch (...) {
+            return false;
+        }
 
         if (!j.contains("events") || !j["events"].is_array()) {
             return false;
