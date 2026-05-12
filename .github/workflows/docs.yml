@@ -5,13 +5,11 @@ on:
     branches: [ main, develop ]
     paths:
       - 'docs/**'
-      - 'dashboard/**'
       - '.github/workflows/docs.yml'
   pull_request:
     branches: [ main, develop ]
     paths:
       - 'docs/**'
-      - 'dashboard/**'
   workflow_dispatch:
 
 env:
@@ -49,34 +47,3 @@ jobs:
       with:
         name: docs-dist
         path: docs/.vitepress/dist
-
-  build-dashboard:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v6
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: ${{ env.ACTIONS_NODE_VERSION }}
-
-    - name: Install pnpm
-      uses: pnpm/action-setup@v6
-      with:
-        version: 9
-
-    - name: Install dependencies
-      working-directory: dashboard
-      run: pnpm install --ignore-scripts=false --no-frozen-lockfile
-
-    - name: Build dashboard
-      working-directory: dashboard
-      run: pnpm build
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v6
-      with:
-        name: dashboard-dist
-        path: dashboard/dist
