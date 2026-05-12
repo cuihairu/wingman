@@ -135,23 +135,7 @@
 
 ## Phase 5: Client 模块 ✅
 
-### 5.1 Python Client ✅
-- [x] TCP 连接管理
-- [x] API 封装
-- [x] 异步请求支持
-- [x] 类型提示
-- [x] 事件处理
-- [x] 完整文档和示例
-
-### 5.2 Node.js Client ✅
-- [x] TCP 连接管理
-- [x] API 封装
-- [x] TypeScript 类型定义
-- [x] 事件处理
-- [x] 自动重连
-- [x] 完整文档和示例
-
-### 5.3 Web Dashboard ✅
+### 5.1 Web Dashboard ✅
 - [x] 实时监控界面
 - [x] WebSocket 支持
 - [x] Agents 管理页面
@@ -164,16 +148,11 @@
 
 ## Phase 6: 调试工具 🚧
 
-### 6.1 VS Code 扩展
-- [x] 项目结构
-- [x] Lua 语法高亮
-- [x] API 自动完成
-- [x] 悬停提示
-- [x] 签名帮助
-- [x] 诊断支持
-- [x] 断点设置
-- [x] 变量查看
-- [x] 调试协议 (DAP) 实现
+### 6.1 VS Code 开发环境
+- [x] 使用 EmmyLua 插件提供语法高亮、自动完成、悬停提示
+- [x] 使用 EmmyLuaDebugger 提供断点调试
+- [x] 项目配置 (.vscode/settings.json, launch.json)
+- [x] Lua 库路径配置 (Lua.library)
 
 ### 6.2 日志系统
 - [x] 分级日志 (DEBUG/INFO/WARN/ERROR) - 使用 spdlog
@@ -440,14 +419,12 @@
 ### P2 - 增强功能 ✅
 10. ✅ 人性化模拟
 11. ✅ 调试工具
-12. ✅ Python Client
-13. ✅ Node.js Client
 14. ✅ 性能优化
 15. ✅ 脚本管理
 
 ### P3 - 高级功能 ✅
 16. ✅ Web Dashboard
-17. ✅ VS Code 扩展
+17. ✅ VS Code 开发环境配置
 18. ✅ 脚本管理
 19. ✅ 安全特性
 20. ✅ 多游戏配置
@@ -471,9 +448,7 @@
 - [x] Lua 测试框架 (busted)
 - [x] Codecov 配置
 - [x] 示例脚本 (13个示例)
-- [x] VS Code 扩展 (90% - 调试器、语言服务器)
-- [x] Python Client
-- [x] Node.js Client
+- [x] VS Code 开发环境配置 (EmmyLua + EmmyLuaDebugger)
 - [x] 性能优化模块
 - [x] 脚本管理模块
 - [x] 安全模块

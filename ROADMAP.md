@@ -298,25 +298,7 @@ message Response {
 }
 ```
 
-### 4.2 Python Client
-```python
-from wingman import Client
-
-client = Client("localhost", 9999)
-
-# 截图
-screenshot = client.screen.capture()
-
-# 查找并点击
-points = client.screen.find_color(0xFF0000)
-if points:
-    client.input.click(points[0].x, points[0].y)
-
-# 运行脚本
-result = client.script.run_file("auto_farm.lua")
-```
-
-**交付物**: Python SDK + 协议文档
+**交付物**: 协议文档
 
 ---
 
