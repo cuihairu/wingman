@@ -103,6 +103,10 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE="%VCPKG_ROOT_ABS%/scripts/buildsystems/vcpkg.cmake" ^
           -DVCPKG_TARGET_TRIPLET=x64-windows-static ^
           -DCMAKE_BUILD_TYPE=Debug ^
+          -DCMAKE_CXX_FLAGS="/Zi /O2" ^
+          -DCMAKE_C_FLAGS="/Zi /O2" ^
+          -DCMAKE_EXE_LINKER_FLAGS="/PROFILE" ^
+          -DCMAKE_SHARED_LINKER_FLAGS="/PROFILE" ^
           -DWINGMAN_BUILD_TESTS=ON ^
           -DBUILD_CORE_TESTS=ON ^
           -DWINGMAN_BUILD_GUI=OFF
@@ -240,15 +244,13 @@ jobs:
           $projectRoot = (Get-Item .).FullName
 
           # 运行 OpenCppCoverage，生成 cobertura 格式
-          # 使用 --sources 过滤源代码路径而非模块名
+          # 使用 --modules 过滤只统计 wingman 相关模块
           & $occ `
             --export_type=cobertura:$outputFile `
-            --sources "$projectRoot\libs" `
-            --sources "$projectRoot\lib" `
-            --excluded_sources "*test*" `
-            --excluded_sources "*Test*" `
+            --modules "wingman*" `
+            --excluded_modules "*test*" `
+            --excluded_modules "*Test*" `
             --working_dir "$($test.Directory.FullName)" `
-            --quiet `
             -- $test.FullName
         }
 
