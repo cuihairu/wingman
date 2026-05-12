@@ -43,6 +43,8 @@ if(BUILD_CORE_TESTS)
             remote_server_test.cpp
             screen_test.cpp
             input_test.cpp
+            vision_test.cpp
+            window_test.cpp
         )
 
         # 添加 include 目录
