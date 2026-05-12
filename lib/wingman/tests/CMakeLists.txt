@@ -41,6 +41,8 @@ if(BUILD_CORE_TESTS)
             trigger_test.cpp
             recorder_test.cpp
             remote_server_test.cpp
+            screen_test.cpp
+            input_test.cpp
         )
 
         # 添加 include 目录
