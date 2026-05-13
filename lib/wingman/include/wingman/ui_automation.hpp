@@ -1,209 +1,167 @@
 #pragma once
 
+#include "wingman/screen.hpp"
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 #include <functional>
-#include "wingman/screen.hpp"
-#include <windows.h>
-#include <ole2.h>
-#include <uiautomation.h>
 
 namespace wingman {
 
-// 前向声明
-class UIAutomationElement;
+/**
+ * @brief 元素角色
+ */
+enum class UIARole : uint16_t {
+    Unknown,
+    Window,
+    Button,
+    TextBox,
+    CheckBox,
+    RadioButton,
+    ComboBox,
+    ListBox,
+    ListItem,
+    Menu,
+    MenuItem,
+    Table,
+    Tree,
+    TreeItem,
+};
 
-// UI 元素信息
-struct UIElementInfo {
+/**
+ * @brief 元素状态
+ */
+enum class UIAState : uint32_t {
+    None = 0,
+    Enabled = 1 << 0,
+    Visible = 1 << 1,
+    Focusable = 1 << 2,
+    Focused = 1 << 3,
+    Checkable = 1 << 4,
+    Checked = 1 << 5,
+    Selectable = 1 << 6,
+    Selected = 1 << 7,
+};
+
+inline UIAState operator|(UIAState a, UIAState b) {
+    return static_cast<UIAState>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+}
+
+inline bool hasState(UIAState flags, UIAState state) {
+    return (flags & state) == state;
+}
+
+/**
+ * @brief UI 元素信息
+ */
+struct UIAElementInfo {
     std::string name;
+    std::string id;
     std::string className;
-    std::string automationId;
-    std::string controlType;
+    UIARole role = UIARole::Unknown;
     Rect bounds;
-    bool isEnabled;
-    bool isVisible;
-    int handle;
-
-    UIElementInfo() : isEnabled(false), isVisible(false), handle(0) {}
+    UIAState state = UIAState::None;
+    std::string text;
+    bool isEnabled = true;
+    bool isVisible = true;
+    bool hasFocus = false;
 };
 
-// 控制类型枚举
-enum class UIControlType {
-    Unknown = 0,
-    Button = 50000,
-    Calendar = 50001,
-    CheckBox = 50002,
-    ComboBox = 50003,
-    Edit = 50004,
-    Hyperlink = 50005,
-    Image = 50006,
-    ListItem = 50007,
-    List = 50008,
-    Menu = 50009,
-    MenuBar = 50010,
-    MenuItem = 50011,
-    ProgressBar = 50012,
-    RadioButton = 50013,
-    ScrollBar = 50014,
-    Slider = 50015,
-    Spinner = 50016,
-    StatusBar = 50017,
-    Tab = 50018,
-    TabItem = 50019,
-    Text = 50020,
-    ToolBar = 50021,
-    ToolTip = 50022,
-    Tree = 50023,
-    TreeItem = 50024,
-    Custom = 50025,
-    Group = 50026,
-    Pane = 50027,
-    Window = 50028,
-    DataGrid = 50029,
-    DataItem = 50030,
-};
-
-// UI Automation 查找条件
-struct UIACondition {
+/**
+ * @brief 元素选择器
+ */
+struct UIASelector {
     std::string name;
+    std::string id;
     std::string className;
-    std::string automationId;
-    UIControlType controlType = UIControlType::Unknown;
-    bool enabled = true;
-    bool visible = true;
+    UIARole role = UIARole::Unknown;
+    std::string text;
 
-    UIACondition() = default;
+    UIASelector& withName(const std::string& value) { name = value; return *this; }
+    UIASelector& withId(const std::string& value) { id = value; return *this; }
+    UIASelector& withClassName(const std::string& value) { className = value; return *this; }
+    UIASelector& withRole(UIARole value) { role = value; return *this; }
+    UIASelector& withText(const std::string& value) { text = value; return *this; }
 
-    // 设置属性条件
-    UIACondition& withName(const std::string& n) { name = n; return *this; }
-    UIACondition& withClassName(const std::string& n) { className = n; return *this; }
-    UIACondition& withAutomationId(const std::string& n) { automationId = n; return *this; }
-    UIACondition& withControlType(UIControlType t) { controlType = t; return *this; }
-    UIACondition& withEnabled(bool e = true) { enabled = e; return *this; }
-    UIACondition& withVisible(bool v = true) { visible = v; return *this; }
+    bool matches(const UIAElementInfo& info) const {
+        if (!name.empty() && info.name.find(name) == std::string::npos) return false;
+        if (!id.empty() && info.id != id) return false;
+        if (!className.empty() && info.className != className) return false;
+        if (role != UIARole::Unknown && info.role != role) return false;
+        if (!text.empty() && info.text.find(text) == std::string::npos) return false;
+        return true;
+    }
 };
 
-// UI Automation 元素
-class UIAutomationElement {
+/**
+ * @brief UI 自动化元素接口
+ */
+class IUIAElement {
 public:
-    UIAutomationElement();
-    ~UIAutomationElement();
+    virtual ~IUIAElement() = default;
 
-    // 查找子元素
-    std::shared_ptr<UIAutomationElement> findFirst(const UIACondition& condition);
-    std::vector<std::shared_ptr<UIAutomationElement>> findAll(const UIACondition& condition);
-    std::vector<std::shared_ptr<UIAutomationElement>> findAllDescendants(const UIACondition& condition);
+    virtual std::string getName() const = 0;
+    virtual std::string getId() const = 0;
+    virtual std::string getClassName() const = 0;
+    virtual UIARole getRole() const = 0;
+    virtual Rect getBounds() const = 0;
+    virtual bool isVisible() const = 0;
+    virtual bool isEnabled() const = 0;
 
-    // 获取信息
-    UIElementInfo getInfo() const;
+    virtual std::string getText() const = 0;
+    virtual bool setText(const std::string& text) = 0;
 
-    // 操作
-    bool click();
-    bool rightClick();
-    bool doubleClick();
-    bool focus();
+    virtual bool click() = 0;
+    virtual bool setFocus() = 0;
+    virtual bool hasFocus() const = 0;
 
-    // 文本框操作
-    std::string getValue() const;
-    bool setValue(const std::string& value);
+    virtual bool isChecked() const = 0;
+    virtual bool setChecked(bool checked) = 0;
 
-    // 选择操作
-    std::string getSelection() const;
-    bool selectItem(const std::string& item);
-    std::vector<std::string> getSelectionItems() const;
-
-    // 展开/折叠
-    bool expand();
-    bool collapse();
-    bool isExpanded() const;
-
-    // 检查状态
-    bool isValid() const;
-    bool isEnabled() const;
-    bool isVisible() const;
-
-    // 获取属性
-    std::string getName() const;
-    std::string getClassName() const;
-    std::string getAutomationId() const;
-    Rect getBounds() const;
-
-    // 父元素和子元素
-    std::shared_ptr<UIAutomationElement> getParent();
-    std::vector<std::shared_ptr<UIAutomationElement>> getChildren() const;
-
-private:
-    friend class UIAutomation;
-    struct Impl;
-    std::unique_ptr<Impl> impl;
-
-    UIAutomationElement(Impl* p);
+    virtual bool isValid() const = 0;
+    virtual UIAElementInfo getInfo() const = 0;
 };
 
-// UI Automation 主类
+/**
+ * @brief UI 自动化管理器接口
+ */
+class IUIAManager {
+public:
+    virtual ~IUIAManager() = default;
+
+    virtual bool initialize() = 0;
+    virtual void shutdown() = 0;
+
+    virtual std::shared_ptr<IUIAElement> getFocusedElement() = 0;
+    virtual std::shared_ptr<IUIAElement> getElementFromPoint(const Point& point) = 0;
+    virtual std::shared_ptr<IUIAElement> findElement(const UIASelector& selector) = 0;
+
+    virtual std::string getBackendName() const = 0;
+    virtual bool isAvailable() const = 0;
+};
+
+/**
+ * @brief UI Automation 主类（兼容旧代码）
+ */
 class UIAutomation {
 public:
     UIAutomation();
     ~UIAutomation();
 
-    // 初始化（首次使用时自动调用）
     bool initialize();
     void cleanup();
 
-    // 从窗口句柄获取根元素
-    std::shared_ptr<UIAutomationElement> fromWindow(HWND hwnd);
-    std::shared_ptr<UIAutomationElement> fromForegroundWindow();
+    // 查找方法
+    std::shared_ptr<IUIAElement> find(const UIASelector& selector);
+    std::shared_ptr<IUIAElement> findByName(const std::string& name);
+    std::shared_ptr<IUIAElement> findById(const std::string& id);
 
-    // 从鼠标位置获取元素
-    std::shared_ptr<UIAutomationElement> fromPoint(int x, int y);
-
-    // 全局查找
-    std::shared_ptr<UIAutomationElement> find(const UIACondition& condition);
-    std::vector<std::shared_ptr<UIAutomationElement>> findAll(const UIACondition& condition);
-
-    // 便捷查找方法
-    std::shared_ptr<UIAutomationElement> findByName(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findById(const std::string& automationId);
-    std::shared_ptr<UIAutomationElement> findButton(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findEdit(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findText(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findCheckBox(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findRadioButton(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findComboBox(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findList(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findListItem(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findTab(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findTabItem(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findTree(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findTreeItem(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findMenuItem(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findHyperlink(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findImage(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findSlider(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findSpinner(const std::string& name);
-    std::shared_ptr<UIAutomationElement> findProgressBar(const std::string& name);
-
-    // 等待元素出现
-    std::shared_ptr<UIAutomationElement> waitFor(const UIACondition& condition, int timeoutMs = 5000);
-    std::shared_ptr<UIAutomationElement> waitForName(const std::string& name, int timeoutMs = 5000);
-
-    // 事件监听（高级功能）
-    using PropertyChangedCallback = std::function<void(const std::string& propertyName, const std::string& value)>;
-    using StructureChangedCallback = std::function<void()>;
-
-    bool registerPropertyChangedHandler(const UIACondition& condition, PropertyChangedCallback callback);
-    bool registerStructureChangedHandler(const UIACondition& condition, StructureChangedCallback callback);
+    std::shared_ptr<IUIAElement> getFocusedElement();
+    std::shared_ptr<IUIAElement> getElementFromPoint(int x, int y);
 
 private:
     struct Impl;
     std::unique_ptr<Impl> impl;
-
-    static UIAutomation* instance_;
-
-    // 事件处理器前向声明
-    struct EventHandler;
-    struct StructureHandler;
 };
 
 // 全局访问

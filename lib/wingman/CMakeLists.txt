@@ -22,9 +22,6 @@ set(WINGMAN_SOURCES
     src/core/component.cpp
     src/core/event_bus.cpp
 
-    # 平台抽象层
-    src/platform/common/platform_factory.cpp
-
     # 视觉与捕获
     src/capture/capture_source.cpp
     src/vision/image_analyzer.cpp
@@ -35,7 +32,7 @@ set(WINGMAN_SOURCES
     src/window.cpp
     src/process.cpp
     src/human.cpp
-    # src/ui_automation.cpp  # TODO: 修复编译错误
+    src/ui_automation.cpp
 
     # 触发器与视觉
     src/trigger.cpp
@@ -100,6 +97,7 @@ if(WIN32)
         src/platform/win/sendinput_input.cpp
         src/platform/win/win32_window.cpp
         src/platform/win/win32_screen.cpp
+        src/platform/win/win_automation.cpp
     )
     target_compile_definitions(wingman PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX)
 elseif(APPLE)
@@ -108,6 +106,7 @@ elseif(APPLE)
         src/platform/mac/cgevent_input.cpp
         src/platform/mac/cocoa_window.cpp
         src/platform/mac/cocoa_screen.cpp
+        src/platform/mac/mac_automation.cpp
     )
     # macOS 需要 Cocoa 框架
     find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
