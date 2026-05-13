@@ -1,14 +1,18 @@
-#include "wingman/ui_automation.hpp"
-#include <spdlog/spdlog.h>
-#include <memory>
-
 #ifdef _WIN32
 #include <windows.h>
+#include <ole2.h>
 #include <uiautomation.h>
 #include <atlbase.h>
 
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "uiautomationcore.lib")
+#endif
+
+#include "wingman/ui_automation.hpp"
+#include <spdlog/spdlog.h>
+#include <memory>
+
+#ifdef _WIN32
 
 namespace wingman {
 
