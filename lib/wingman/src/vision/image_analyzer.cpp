@@ -9,7 +9,7 @@ namespace wingman::vision {
 
 Rect ImageAnalyzer::getSearchRegion(const Bitmap& bitmap, const Rect& region) {
     if (region.isEmpty()) {
-        return Rect{0, 0, bitmap.width, bitmap.height};
+        return Rect{0, 0, bitmap.getWidth(), bitmap.getHeight()};
     }
     return clampRegion(region, bitmap);
 }
@@ -98,8 +98,8 @@ std::optional<ImageMatch> ImageAnalyzer::findImage(
 ) {
     Rect searchRegion = getSearchRegion(bitmap, region);
 
-    if (templateBitmap.width > searchRegion.width ||
-        templateBitmap.height > searchRegion.height) {
+    if (templateBitmap.getWidth() > searchRegion.width ||
+        templateBitmap.getHeight() > searchRegion.height) {
         spdlog::warn("[ImageAnalyzer] Template larger than search region");
         return std::nullopt;
     }
@@ -111,7 +111,7 @@ std::optional<ImageMatch> ImageAnalyzer::findImage(
         return ImageMatch{
             bestPosition,
             bestScore,
-            Rect{bestPosition.x, bestPosition.y, templateBitmap.width, templateBitmap.height}
+            Rect{bestPosition.x, bestPosition.y, templateBitmap.getWidth(), templateBitmap.getHeight()}
         };
     }
 
@@ -162,10 +162,10 @@ bool ImageAnalyzer::colorMatches(const Color& c1, const Color& c2, int tolerance
 
 Rect ImageAnalyzer::clampRegion(const Rect& region, const Bitmap& bitmap) {
     Rect result = region;
-    result.x = std::max(0, std::min(region.x, bitmap.width - 1));
-    result.y = std::max(0, std::min(region.y, bitmap.height - 1));
-    result.width = std::min(region.width, bitmap.width - result.x);
-    result.height = std::min(region.height, bitmap.height - result.y);
+    result.x = std::max(0, std::min(region.x, bitmap.getWidth() - 1));
+    result.y = std::max(0, std::min(region.y, bitmap.getHeight() - 1));
+    result.width = std::min(region.width, bitmap.getWidth() - result.x);
+    result.height = std::min(region.height, bitmap.getHeight() - result.y);
     return result;
 }
 
@@ -203,8 +203,8 @@ std::optional<Point> PatternMatcher::matchColorPattern(
                     basePos.y + offsets[i].y - firstOffset.y
                 };
 
-                if (checkPos.x < 0 || checkPos.x >= bitmap.width ||
-                    checkPos.y < 0 || checkPos.y >= bitmap.height) {
+                if (checkPos.x < 0 || checkPos.x >= bitmap.getWidth() ||
+                    checkPos.y < 0 || checkPos.y >= bitmap.getHeight()) {
                     allMatch = false;
                     break;
                 }
@@ -232,11 +232,11 @@ double PatternMatcher::templateMatch(
     const Rect& region
 ) {
     Rect searchRegion = region.isEmpty() ?
-        Rect{0, 0, bitmap.width, bitmap.height} :
+        Rect{0, 0, bitmap.getWidth(), bitmap.getHeight()} :
         ImageAnalyzer::clampRegion(region, bitmap);
 
-    int maxX = searchRegion.x + searchRegion.width - tpl.width;
-    int maxY = searchRegion.y + searchRegion.height - tpl.height;
+    int maxX = searchRegion.x + searchRegion.width - tpl.getWidth();
+    int maxY = searchRegion.y + searchRegion.height - tpl.getHeight();
 
     if (maxX < searchRegion.x || maxY < searchRegion.y) {
         bestPosition = Point{0, 0};
@@ -251,8 +251,8 @@ double PatternMatcher::templateMatch(
             double sumTemplate = 0.0;
             double sumTarget = 0.0;
 
-            for (int ty = 0; ty < tpl.height; ++ty) {
-                for (int tx = 0; tx < tpl.width; ++tx) {
+            for (int ty = 0; ty < tpl.getHeight(); ++ty) {
+                for (int tx = 0; tx < tpl.getWidth(); ++tx) {
                     Color targetPixel = bitmap.getPixel(x + tx, y + ty);
                     Color templatePixel = tpl.getPixel(tx, ty);
 
@@ -285,7 +285,7 @@ std::optional<Point> PatternMatcher::matchEdge(
     int threshold
 ) {
     Rect searchRegion = region.isEmpty() ?
-        Rect{0, 0, bitmap.width, bitmap.height} :
+        Rect{0, 0, bitmap.getWidth(), bitmap.getHeight()} :
         ImageAnalyzer::clampRegion(region, bitmap);
 
     if (horizontal) {

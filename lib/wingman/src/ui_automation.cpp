@@ -79,22 +79,22 @@ private:
 
 // ========== UIAutomation ==========
 
-UIAutomation::UIAutomation() : impl_(new Impl()) {}
+UIAutomation::UIAutomation() : impl(new Impl()) {}
 
 UIAutomation::~UIAutomation() {
-    impl_->cleanup();
+    impl->cleanup();
 }
 
 bool UIAutomation::initialize() {
-    return impl_->initialize();
+    return impl->initialize();
 }
 
 void UIAutomation::cleanup() {
-    impl_->cleanup();
+    impl->cleanup();
 }
 
 std::shared_ptr<IUIAElement> UIAutomation::find(const UIASelector& selector) {
-    return impl_->find(selector);
+    return impl->find(selector);
 }
 
 std::shared_ptr<IUIAElement> UIAutomation::findByName(const std::string& name) {
@@ -106,11 +106,11 @@ std::shared_ptr<IUIAElement> UIAutomation::findById(const std::string& id) {
 }
 
 std::shared_ptr<IUIAElement> UIAutomation::getFocusedElement() {
-    return impl_->getFocused();
+    return impl->getFocused();
 }
 
 std::shared_ptr<IUIAElement> UIAutomation::getElementFromPoint(int x, int y) {
-    return impl_->fromPoint(x, y);
+    return impl->fromPoint(x, y);
 }
 
 // ========== 全局访问 ==========
