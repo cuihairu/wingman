@@ -99,7 +99,6 @@ if(WIN32)
         src/platform/win/win32_screen.cpp
         src/platform/win/win_automation.cpp
     )
-    target_compile_definitions(wingman PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX)
 elseif(APPLE)
     list(APPEND WINGMAN_SOURCES
         src/platform/mac/sccapture_capture.cpp
@@ -177,6 +176,7 @@ if(WIN32)
         gdi32
         comdlg32
     )
+    target_compile_definitions(wingman PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX)
 endif()
 
 # 导出库
