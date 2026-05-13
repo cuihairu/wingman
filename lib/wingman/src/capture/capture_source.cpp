@@ -94,10 +94,7 @@ std::unique_ptr<Bitmap> ScreenCaptureSource::capture(const Rect& region) {
            hdcScreen, captureRegion.x, captureRegion.y, SRCCOPY);
     SelectObject(hdcMem, hOldBitmap);
 
-    auto bitmap = std::unique_ptr<Bitmap>(new Bitmap());
-    bitmap->width = captureRegion.width;
-    bitmap->height = captureRegion.height;
-    bitmap->data.resize(captureRegion.width * captureRegion.height * 4);
+    auto bitmap = std::unique_ptr<Bitmap>(new Bitmap(captureRegion.width, captureRegion.height));
 
     BITMAPINFO bmi = {};
     bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -107,8 +104,8 @@ std::unique_ptr<Bitmap> ScreenCaptureSource::capture(const Rect& region) {
     bmi.bmiHeader.biBitCount = 32;
     bmi.bmiHeader.biCompression = BI_RGB;
 
-    GetDIBits(hdcScreen, hBitmap, 0, captureRegion.height,
-               bitmap->data.data(), &bmi, DIB_RGB_COLORS);
+    ::GetDIBits(hdcScreen, hBitmap, 0, captureRegion.height,
+               bitmap->getData(), &bmi, DIB_RGB_COLORS);
 
     DeleteObject(hBitmap);
     DeleteDC(hdcMem);
@@ -235,10 +232,7 @@ std::unique_ptr<Bitmap> WindowCaptureSource::capture(const Rect& region) {
 
     SelectObject(hdcMem, hOldBitmap);
 
-    auto bitmap = std::unique_ptr<Bitmap>(new Bitmap());
-    bitmap->width = captureRegion.width;
-    bitmap->height = captureRegion.height;
-    bitmap->data.resize(captureRegion.width * captureRegion.height * 4);
+    auto bitmap = std::unique_ptr<Bitmap>(new Bitmap(captureRegion.width, captureRegion.height));
 
     BITMAPINFO bmi = {};
     bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -248,8 +242,8 @@ std::unique_ptr<Bitmap> WindowCaptureSource::capture(const Rect& region) {
     bmi.bmiHeader.biBitCount = 32;
     bmi.bmiHeader.biCompression = BI_RGB;
 
-    GetDIBits(hdcWindow, hBitmap, 0, captureRegion.height,
-               bitmap->data.data(), &bmi, DIB_RGB_COLORS);
+    ::GetDIBits(hdcWindow, hBitmap, 0, captureRegion.height,
+               bitmap->getData(), &bmi, DIB_RGB_COLORS);
 
     DeleteObject(hBitmap);
     DeleteDC(hdcMem);

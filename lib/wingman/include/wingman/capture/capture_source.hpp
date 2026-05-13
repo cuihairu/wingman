@@ -4,6 +4,8 @@
 #include "wingman/core/component.hpp"
 #include <memory>
 #include <vector>
+#include <mutex>
+#include <unordered_map>
 
 namespace wingman::capture {
 
@@ -73,11 +75,6 @@ public:
     bool isAvailable() const override;
     std::string getName() const override;
 
-    // ComponentBase 接口
-    std::string getName() const override {
-        return ICaptureSource::getName();
-    }
-
     /**
      * @brief 获取显示器索引
      */
@@ -126,11 +123,6 @@ public:
     Rect getBounds() const override;
     bool isAvailable() const override;
     std::string getName() const override;
-
-    // ComponentBase 接口
-    std::string getName() const override {
-        return ICaptureSource::getName();
-    }
 
     /**
      * @brief 获取窗口句柄
