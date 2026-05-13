@@ -40,6 +40,9 @@ set(TRANSPORT_SOURCES
     src/channel/channel.cpp
     src/transport_server.cpp
     src/transport_client.cpp
+    src/simple_protocol.cpp
+    src/stream_channel.cpp
+    src/stream_manager.cpp
 )
 
 # 创建库

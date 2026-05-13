@@ -6,9 +6,10 @@ if(BUILD_TRANSPORT_TESTS)
     # 查找 GoogleTest（vcpkg 提供的 CONFIG 模式）
     find_package(GTest CONFIG REQUIRED)
 
-    # 创建测试可执行文件
+    # 主测试可执行文件
     add_executable(transport_tests
         transport_test.cpp
+        simple_protocol_test.cpp
     )
 
     target_include_directories(transport_tests PRIVATE

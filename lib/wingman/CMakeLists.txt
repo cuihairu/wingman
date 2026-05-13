@@ -14,10 +14,18 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG)
-find_package(unofficial-lua CONFIG)  # Lua for trigger engine
+find_package(unofficial-lua CONFIG)
 
 # ========== 源文件 ==========
 set(WINGMAN_SOURCES
+    # 核心架构
+    src/core/component.cpp
+    src/core/event_bus.cpp
+
+    # 视觉与捕获
+    src/capture/capture_source.cpp
+    src/vision/image_analyzer.cpp
+
     # 输入输出
     src/screen.cpp
     src/input.cpp
@@ -83,7 +91,9 @@ else()
 endif()
 
 # ========== 创建库 ==========
+find_package(Threads REQUIRED)
 add_library(wingman STATIC ${WINGMAN_SOURCES})
+target_link_libraries(wingman PRIVATE Threads::Threads)
 
 # 调试信息
 message(STATUS "WINGMAN_GENERATED_DIR in wingman: ${WINGMAN_GENERATED_DIR}")
