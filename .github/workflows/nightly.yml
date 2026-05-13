@@ -111,6 +111,7 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE="%VCPKG_ROOT_ABS%/scripts/buildsystems/vcpkg.cmake" ^
           -DVCPKG_TARGET_TRIPLET=x64-windows-static ^
           -DCMAKE_BUILD_TYPE=Release ^
+          -DWINGMAN_BUILD_GUI=OFF ^
           -DWINGMAN_VERSION_SUFFIX="%VERSION_SUFFIX%"
 
     - name: Build
@@ -122,10 +123,8 @@ jobs:
         $distDir = "dist-wingman-$version"
         New-Item -ItemType Directory -Force -Path "$distDir" | Out-Null
 
-        # 复制可执行文件（GUI 客户端）
-        Copy-Item "build\apps\client\Release\wingman-client.exe" -Destination "$distDir\wingman.exe"
-        # 复制 CLI 工具
-        Copy-Item "build\bin\Release\wingman-cli.exe" -Destination "$distDir\"
+        # 复制可执行文件
+        Copy-Item "build\apps\runtime\Release\wingman-runtime.exe" -Destination "$distDir\wingman.exe"
 
         # 复制脚本
         if (Test-Path "scripts") {
