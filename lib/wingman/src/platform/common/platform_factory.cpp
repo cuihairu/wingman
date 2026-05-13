@@ -12,11 +12,13 @@
 namespace win_capture = wingman::platform::win;
 namespace win_input = wingman::platform::win;
 namespace win_window = wingman::platform::win;
+namespace win_screen = wingman::platform::win;
 
 extern "C" {
     std::unique_ptr<ICapture> CreateGDICapture();
     std::unique_ptr<IInput> CreateSendInputInput();
     std::unique_ptr<IWindow> CreateWin32Window();
+    std::unique_ptr<IScreen> CreateWin32Screen();
 }
 #endif
 
@@ -24,11 +26,13 @@ extern "C" {
 namespace mac_capture = wingman::platform::mac;
 namespace mac_input = wingman::platform::mac;
 namespace mac_window = wingman::platform::mac;
+namespace mac_screen = wingman::platform::mac;
 
 extern "C" {
     std::unique_ptr<ICapture> CreateSCCapture();
     std::unique_ptr<IInput> CreateCGEventInput();
     std::unique_ptr<IWindow> CreateCocoaWindow();
+    std::unique_ptr<IScreen> CreateCocoaScreen();
 }
 #endif
 
@@ -81,8 +85,7 @@ public:
     }
 
     std::unique_ptr<IScreen> createScreen() override {
-        // TODO: 实现 Win32Screen
-        return nullptr;
+        return std::unique_ptr<IScreen>(new win_screen::Win32Screen());
     }
 
     std::string getPlatformName() const override {
@@ -172,8 +175,7 @@ public:
     }
 
     std::unique_ptr<IScreen> createScreen() override {
-        // TODO: 实现 CocoaScreen
-        return nullptr;
+        return std::unique_ptr<IScreen>(new mac_screen::CocoaScreen());
     }
 
     std::string getPlatformName() const override {

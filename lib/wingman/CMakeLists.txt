@@ -99,6 +99,7 @@ if(WIN32)
         src/platform/win/gdi_capture.cpp
         src/platform/win/sendinput_input.cpp
         src/platform/win/win32_window.cpp
+        src/platform/win/win32_screen.cpp
     )
     target_compile_definitions(wingman PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX)
 elseif(APPLE)
@@ -106,6 +107,7 @@ elseif(APPLE)
         src/platform/mac/sccapture_capture.cpp
         src/platform/mac/cgevent_input.cpp
         src/platform/mac/cocoa_window.cpp
+        src/platform/mac/cocoa_screen.cpp
     )
     # macOS 需要 Cocoa 框架
     find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
