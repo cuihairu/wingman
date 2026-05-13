@@ -144,6 +144,12 @@ public:
      */
     static bool colorMatches(const Color& c1, const Color& c2, int tolerance);
 
+    /**
+     * @brief 限制区域到位图边界
+     * @note public 以便 PatternMatcher 可以使用
+     */
+    static Rect clampRegion(const Rect& region, const Bitmap& bitmap);
+
 private:
     /**
      * @brief 获取位图的搜索区域
@@ -157,11 +163,6 @@ private:
         return p.x >= r.x && p.x < r.x + r.width &&
                p.y >= r.y && p.y < r.y + r.height;
     }
-
-    /**
-     * @brief 限制区域到位图边界
-     */
-    static Rect clampRegion(const Rect& region, const Bitmap& bitmap);
 };
 
 /**

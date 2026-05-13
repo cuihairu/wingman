@@ -47,8 +47,12 @@ inline UIAState operator|(UIAState a, UIAState b) {
     return static_cast<UIAState>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
 }
 
+inline UIAState operator&(UIAState a, UIAState b) {
+    return static_cast<UIAState>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+}
+
 inline bool hasState(UIAState flags, UIAState state) {
-    return (flags & state) == state;
+    return (static_cast<uint32_t>(flags) & static_cast<uint32_t>(state)) == static_cast<uint32_t>(state);
 }
 
 /**

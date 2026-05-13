@@ -155,7 +155,7 @@ public:
         return bitmap;
     }
 
-    std::unique_ptr<Bitmap> captureWindowByTitle(const std::string& title) override {
+    std::unique_ptr<Bitmap> captureWindowByTitle(const std::string& title) {
         // 需要依赖 IWindow 接口来查找窗口
         // 这里暂时返回 nullptr，由工厂层协调
         return nullptr;
@@ -205,11 +205,11 @@ public:
         return "Monitor " + std::to_string(monitorIndex);
     }
 
-    int getPrimaryMonitorIndex() override {
+    int getPrimaryMonitorIndex() {
         return 0;
     }
 
-    double getDpiScale(int monitorIndex) override {
+    double getDpiScale(int monitorIndex) {
         HMONITOR hMonitor = getMonitorFromIndex(monitorIndex);
         if (!hMonitor) {
             return 1.0;
@@ -223,7 +223,7 @@ public:
         return 1.0;
     }
 
-    std::vector<DisplayMode> getSupportedDisplayModes(int monitorIndex) override {
+    std::vector<DisplayMode> getSupportedDisplayModes(int monitorIndex) {
         std::vector<DisplayMode> modes;
 
         DISPLAY_DEVICE dd = {};
@@ -248,7 +248,7 @@ public:
         return modes;
     }
 
-    std::optional<DisplayMode> getCurrentDisplayMode(int monitorIndex) override {
+    std::optional<DisplayMode> getCurrentDisplayMode(int monitorIndex) {
         DISPLAY_DEVICE dd = {};
         dd.cb = sizeof(dd);
         if (!EnumDisplayDevicesA(nullptr, monitorIndex, &dd, 0)) {
@@ -286,19 +286,19 @@ public:
         };
     }
 
-    bool supportsWindowCapture() const override {
+    bool supportsWindowCapture() const {
         return true;
     }
 
-    bool supportsCursorCapture() const override {
+    bool supportsCursorCapture() const {
         return false;
     }
 
-    CaptureConfig getConfig() const override {
+    CaptureConfig getConfig() const {
         return config_;
     }
 
-    bool updateConfig(const CaptureConfig& config) override {
+    bool updateConfig(const CaptureConfig& config) {
         config_ = config;
         return true;
     }

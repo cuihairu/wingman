@@ -142,7 +142,7 @@ public:
         keyUp(key);
     }
 
-    void keyCombination(const std::vector<KeyCode>& modifiers, KeyCode key) override {
+    void keyCombination(const std::vector<KeyCode>& modifiers, KeyCode key) {
         if (!initialized_) return;
 
         for (KeyCode mod : modifiers) {
@@ -198,19 +198,19 @@ public:
         return (GetKeyState(static_cast<int>(key)) & 0x8000) != 0;
     }
 
-    bool isMouseButtonPressed(MouseButton button) override {
+    bool isMouseButtonPressed(MouseButton button) {
         return (GetKeyState(getVirtualKeyCode(button)) & 0x8000) != 0;
     }
 
-    void mouseDragBegin(MouseButton button) override {
+    void mouseDragBegin(MouseButton button) {
         mouseDown(button);
     }
 
-    void mouseDragEnd(MouseButton button) override {
+    void mouseDragEnd(MouseButton button) {
         mouseUp(button);
     }
 
-    void setInputDelay(int delayMicroseconds) override {
+    void setInputDelay(int delayMicroseconds) {
         config_.inputDelay = delayMicroseconds;
     }
 
@@ -227,15 +227,15 @@ public:
         };
     }
 
-    InputConfig getConfig() const override {
+    InputConfig getConfig() const {
         return config_;
     }
 
-    bool supportsTextInput() const override {
+    bool supportsTextInput() const {
         return true;
     }
 
-    bool supportsRelativeMovement() const override {
+    bool supportsRelativeMovement() const {
         return true;
     }
 

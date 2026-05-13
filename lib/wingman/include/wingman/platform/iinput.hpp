@@ -12,6 +12,7 @@ struct InputConfig {
     InputBackend preferredBackend = InputBackend::Auto;
     bool simulateHardwareInput = true;
     int defaultDelay = 10;  // 默认操作间隔（毫秒）
+    int inputDelay = 10000;  // 输入延迟（微秒）
 };
 
 /**
