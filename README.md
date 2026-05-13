@@ -8,7 +8,7 @@
 
 C++ + Lua 的高性能游戏自动化框架
 
-[![Windows](https://img.shields.io/badge/OS-Windows-blue.svg)](https://github.com/cuihairu/wingman)
+[![OS](https://img.shields.io/badge/OS-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](https://github.com/cuihairu/wingman)
 [![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
@@ -29,12 +29,12 @@ C++ + Lua 的高性能游戏自动化框架
 
 ## 简介
 
-**Wingman** 是一个 Windows 平台的游戏自动化工具，采用 C++ 核心引擎 + Lua 脚本的架构设计。
+**Wingman** 是一个跨平台的游戏自动化工具，采用 C++ 核心引擎 + Lua 脚本的架构设计。
 
 - 🚀 **高性能** - C++ 核心引擎，Lua 脚本执行，毫秒级响应
-- 🔒 **安全可靠** - 纯用户态运行，使用合法 Windows API，不读写游戏内存
+- 🔒 **安全可靠** - 纯用户态运行，使用合法平台 API，不读写游戏内存
 - 🎮 **可编程** - Lua 脚本控制，灵活扩展，支持复杂业务逻辑
-- 🖥️ **Windows 专用** - 针对 Windows 平台深度优化
+- 🌐 **跨平台** - 支持 Windows、macOS、Linux，统一接口抽象
 
 ---
 
@@ -60,8 +60,14 @@ C++ + Lua 的高性能游戏自动化框架
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────┐
-│              Windows API                                 │
-│         (GDI+, User32, UI Automation)                   │
+│              平台抽象层 (platform/)                      │
+│   IScreen │ IInput │ IWindow │ ICapture │ IUIAutomation  │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│  Windows API    │    macOS API     │    Linux API       │
+│  GDI+/DXGI      │ ScreenCaptureKit │   X11/PipeWire     │
+│  Win32/UIA      │   Cocoa/CGEvent  │     XTest/libinput │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -123,10 +129,21 @@ wingman/
 
 ### 环境要求
 
+**Windows:**
 - Windows 10/11 (x64)
 - Visual Studio 2022
+
+**macOS:**
+- macOS 12+ (Monterey 或更高)
+- Xcode 14+ 或 Clang
+
+**Linux:**
+- Ubuntu 22.04+ 或等效发行版
+- GCC 11+ 或 Clang 14+
+
+**通用:**
 - CMake 3.20+
-- vcpkg
+- vcpkg (依赖管理)
 
 ### 安装 vcpkg
 
@@ -138,15 +155,24 @@ C:\vcpkg\vcpkg integrate install
 
 ### 编译
 
+**Windows:**
 ```bash
-git clone https://github.com/cuihairu/wingman.git
-cd wingman
-
-cmake -B build -G "Visual Studio 17 2022" `
-    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+cmake -B build -G "Visual Studio 17 2022" ^
+    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" ^
     -DVCPKG_TARGET_TRIPLET=x64-windows-static
-
 cmake --build build --config Release
+```
+
+**macOS:**
+```bash
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=~/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build build
+```
+
+**Linux:**
+```bash
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=~/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build build
 ```
 
 ### 运行 Lua 脚本
@@ -223,6 +249,7 @@ ctest --test-dir build --config Release
 - [构建指南](BUILD.md)
 - [API 文档](docs/API.md)
 - [架构设计](docs/architecture.md)
+- [平台抽象层设计](docs/platform-abstraction-design.md)
 - [开发路线图](ROADMAP.md)
 
 ---
