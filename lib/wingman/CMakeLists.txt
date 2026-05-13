@@ -22,6 +22,9 @@ set(WINGMAN_SOURCES
     src/core/component.cpp
     src/core/event_bus.cpp
 
+    # 平台抽象层
+    src/platform/common/platform_factory.cpp
+
     # 视觉与捕获
     src/capture/capture_source.cpp
     src/vision/image_analyzer.cpp
@@ -90,6 +93,27 @@ else()
     list(APPEND WINGMAN_SOURCES src/ml_stub.cpp)
 endif()
 
+# ========== 平台特定源文件 ==========
+if(WIN32)
+    list(APPEND WINGMAN_SOURCES
+        src/platform/win/gdi_capture.cpp
+        src/platform/win/sendinput_input.cpp
+        src/platform/win/win32_window.cpp
+    )
+    target_compile_definitions(wingman PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX)
+elseif(APPLE)
+    list(APPEND WINGMAN_SOURCES
+        src/platform/mac/sccapture_capture.cpp
+        src/platform/mac/cgevent_input.cpp
+        src/platform/mac/cocoa_window.cpp
+    )
+    # macOS 需要 Cocoa 框架
+    find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
+    find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
+    find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
+    find_library(SCREENCAPTUREKIT_FRAMEWORK ScreenCaptureKit)
+endif()
+
 # ========== 创建库 ==========
 find_package(Threads REQUIRED)
 add_library(wingman STATIC ${WINGMAN_SOURCES})
@@ -128,6 +152,19 @@ if(TARGET unofficial::lua::lua)
 endif()
 
 target_link_libraries(wingman PUBLIC ${WINGMAN_LINK_LIBS})
+
+# macOS 特定框架
+if(APPLE)
+    target_link_libraries(wingman PUBLIC
+        "-framework Foundation"
+        "-framework Cocoa"
+        "-framework CoreGraphics"
+    )
+    if(SCREENCAPTUREKIT_FRAMEWORK)
+        target_link_libraries(wingman PUBLIC "-framework ScreenCaptureKit")
+        target_compile_definitions(wingman PUBLIC HAVE_SCREENCAPTUREKIT)
+    endif()
+endif()
 # spdlog 使用 header-only，不传递链接依赖
 target_link_libraries(wingman PRIVATE spdlog::spdlog_header_only)
 
