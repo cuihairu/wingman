@@ -112,6 +112,16 @@ elseif(APPLE)
     find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
     find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
     find_library(SCREENCAPTUREKIT_FRAMEWORK ScreenCaptureKit)
+elseif(UNIX AND NOT APPLE)
+    list(APPEND WINGMAN_SOURCES
+        src/platform/linux/x11_factory.cpp
+    )
+    # Linux 需要 X11 和 XRandR
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(X11 REQUIRED x11)
+    pkg_check_modules(XRANDR REQUIRED xrandr)
+    pkg_check_modules(XEXT REQUIRED xext)
+    pkg_check_modules(XTST REQUIRED xtst)
 endif()
 
 # ========== 创建库 ==========
@@ -177,6 +187,13 @@ if(WIN32)
         comdlg32
     )
     target_compile_definitions(wingman PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX)
+endif()
+
+# Linux 特定库
+if(UNIX AND NOT APPLE)
+    target_include_directories(wingman PRIVATE ${X11_INCLUDE_DIRS} ${XRANDR_INCLUDE_DIRS} ${XEXT_INCLUDE_DIRS} ${XTST_INCLUDE_DIRS})
+    target_link_libraries(wingman PUBLIC ${X11_LIBRARIES} ${XRANDR_LIBRARIES} ${XEXT_LIBRARIES} ${XTST_LIBRARIES})
+    target_compile_definitions(wingman PUBLIC LINUX_PLATFORM)
 endif()
 
 # 导出库
