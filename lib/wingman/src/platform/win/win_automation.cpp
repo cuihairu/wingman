@@ -32,9 +32,9 @@ public:
 
     std::string getId() const override {
         if (!element_) return "";
-        CComVariant var;
-        if (SUCCEEDED(element_->get_CurrentAutomationId(&var)) && var.vt == VT_BSTR) {
-            CW2A converted(var.bstrVal);
+        CComBSTR bstr;
+        if (SUCCEEDED(element_->get_CurrentAutomationId(&bstr)) && bstr) {
+            CW2A converted(bstr);
             return std::string(converted);
         }
         return "";
@@ -42,9 +42,9 @@ public:
 
     std::string getClassName() const override {
         if (!element_) return "";
-        CComVariant var;
-        if (SUCCEEDED(element_->get_CurrentClassName(&var)) && var.vt == VT_BSTR) {
-            CW2A converted(var.bstrVal);
+        CComBSTR bstr;
+        if (SUCCEEDED(element_->get_CurrentClassName(&bstr)) && bstr) {
+            CW2A converted(bstr);
             return std::string(converted);
         }
         return "";
@@ -138,7 +138,8 @@ public:
         if (element_ && SUCCEEDED(element_->GetCurrentPatternAs(UIA_TogglePatternId,
             __uuidof(IUIAutomationTogglePattern), reinterpret_cast<void**>(&togglePattern))) && togglePattern) {
             ToggleState desired = checked ? ToggleState_On : ToggleState_Off;
-            return SUCCEEDED(togglePattern->SetToggleState(desired));
+            IUIAutomationTogglePattern* p = togglePattern.p;
+            return SUCCEEDED(p->SetToggleState(desired));
         }
         return false;
     }
@@ -207,7 +208,8 @@ public:
     std::shared_ptr<IUIAElement> getElementFromPoint(const Point& point) override {
         if (!initialized_) return nullptr;
         CComPtr<IUIAutomationElement> element;
-        if (FAILED(automation_->ElementFromPoint(point.x, point.y, &element))) return nullptr;
+        POINT pt = { point.x, point.y };
+        if (FAILED(automation_->ElementFromPoint(pt, &element))) return nullptr;
         return std::make_shared<UIAElement>(element);
     }
 
