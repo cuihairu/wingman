@@ -140,17 +140,12 @@ TEST_F(MacroRecorderTest, LoadFromJSON) {
 }
 
 TEST_F(MacroRecorderTest, LoadFromInvalidJSON) {
-    // 暂时跳过 - CI 环境中可能导致程序异常退出
-    GTEST_SKIP() << "Skipping in CI environment due to exit code 3 issue";
-
-    /*
     // 创建无效的 JSON 文件
     std::ofstream file(testJsonPath);
     file << "invalid json content";
     file.close();
 
     EXPECT_FALSE(recorder->loadFromJSON(testJsonPath));
-    */
 }
 
 TEST_F(MacroRecorderTest, LoadFromNonExistentFile) {
