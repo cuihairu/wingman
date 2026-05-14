@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #ifdef _WIN32
+    #include <winsock2.h>
     #include <ws2tcpip.h>
     #include <mswsock.h>
 #else
