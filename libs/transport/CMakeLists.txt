@@ -73,7 +73,7 @@ add_library(wingman::transport ALIAS wingman_transport)
 target_compile_features(wingman_transport PUBLIC cxx_std_20)
 
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_compile_options(wingman_transport PRIVATE /W4 /utf-8)
+    target_compile_options(wingman_transport PRIVATE /W4 /utf-8 /EHsc)
 else()
     target_compile_options(wingman_transport PRIVATE -Wall -Wextra -Wpedantic)
 endif()
