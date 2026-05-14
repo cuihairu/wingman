@@ -50,14 +50,12 @@ public:
     // 模板方法：设置任意类型的全局变量
     template<typename T>
     void setGlobal(const std::string& name, T&& value) {
-        if (!lua_.ready()) return;
         lua_[name] = std::forward<T>(value);
     }
 
     // 模板方法：注册任意类型的函数
     template<typename F>
     void registerFunction(const std::string& name, F&& func) {
-        if (!lua_.ready()) return;
         lua_.set_function(name, std::forward<F>(func));
     }
 
