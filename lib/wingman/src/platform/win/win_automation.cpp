@@ -137,9 +137,16 @@ public:
         CComPtr<IUIAutomationTogglePattern> togglePattern;
         if (element_ && SUCCEEDED(element_->GetCurrentPatternAs(UIA_TogglePatternId,
             __uuidof(IUIAutomationTogglePattern), reinterpret_cast<void**>(&togglePattern))) && togglePattern) {
-            ToggleState desired = checked ? ToggleState_On : ToggleState_Off;
-            IUIAutomationTogglePattern* p = togglePattern.p;
-            return SUCCEEDED(p->SetToggleState(desired));
+            // 先检查当前状态
+            ToggleState current;
+            if (SUCCEEDED(togglePattern->get_CurrentToggleState(&current))) {
+                bool isCurrentlyChecked = (current == ToggleState_On);
+                if (isCurrentlyChecked != checked) {
+                    // 状态不匹配，切换它
+                    return SUCCEEDED(togglePattern->Toggle());
+                }
+                return true;
+            }
         }
         return false;
     }
