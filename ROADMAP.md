@@ -277,33 +277,48 @@ class TriggerEngine {
 
 ---
 
-## Milestone 4: 远程控制
+## Milestone 4: 远程控制 ✅
 
 **目标**: 通过网络远程控制游戏
 
-### 4.1 TCP 协议
-```protobuf
-message Request {
-    uint32 id = 1;
-    string action = 2;
-    bytes params = 3;
-}
+**状态**: 已完成 (2026-05)
 
-message Response {
-    uint32 id = 1;
-    bool success = 2;
-    bytes data = 3;
-    string error = 4;
-}
-```
+**交付物**:
+- ✅ TCP 协议实现 (端口 9999)
+- ✅ JSON-RPC 风格请求/响应
+- ✅ 18 个 API 端点
+- ✅ RemoteServer/RemoteClient C++ API
+- ✅ 协议文档 (`docs/remote_protocol.md`)
+- ✅ 完整测试覆盖
 
-**交付物**: 协议文档
+**实现端点**:
+| 类别 | 端点 |
+|------|------|
+| 系统 | ping, get_version |
+| 屏幕 | capture_screen, get_pixel, find_color, find_image |
+| 输入 | click, move, key, type_text |
+| 触发器 | add_trigger, remove_trigger, enable_trigger, disable_trigger, list_triggers |
+| 宏 | record_macro, stop_macro_recording, play_macro |
 
 ---
 
-## Milestone 5: GUI 界面
+## Milestone 5: GUI 界面 🚧
 
 **目标**: 类似 Chimpeeon 的可视化配置界面
+
+**状态**: 进行中 (2026-05)
+
+**已完成**:
+- ✅ Tauri 2.0 框架集成
+- ✅ WebSocket 控制器实现
+- ✅ RPC 方法路由 (script.start, script.stop, script.list, system.*)
+- ✅ 前端界面原型
+
+**待完成**:
+- ⏳ Dear ImGui 游戏内调试界面
+- ⏳ 触发器可视化配置
+- ⏳ 屏幕预览面板
+- ⏳ 日志实时显示
 
 ### 5.1 主界面布局
 ```
@@ -481,6 +496,7 @@ local wingman = require('wingman')
 ### 8.2 文档
 - [x] 用户手册
 - [x] API 参考
+- [x] 远程控制协议文档
 - [ ] 视频教程
 - [x] 示例脚本库
 
@@ -509,10 +525,9 @@ local wingman = require('wingman')
 
 | 优先级 | 任务 | 预计时间 | 状态 |
 |--------|------|----------|------|
-| P0 | Milestone 4: 远程控制 | 2周 | 🚧 进行中 |
-| P1 | Milestone 5: GUI 界面 | 4周 | ⏳ 待开始 |
-| P1 | Milestone 6: 人性化模拟 | 1周 | ⏳ 待开始 |
-| P1 | 修复安全漏洞 | 1天 | ⏳ 待开始 |
+| P0 | Milestone 5: GUI 界面 | 4周 | 🚧 进行中 |
+| P1 | Milestone 6: 人性化模拟 | 1周 | 🚧 进行中 |
+| P1 | 修复测试失败 | 1天 | ✅ 已完成 |
 
 ### 📋 检查清单
 

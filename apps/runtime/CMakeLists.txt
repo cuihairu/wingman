@@ -13,22 +13,53 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(clasp CONFIG QUIET)  # Clasp 命令行库（可选）
 
-# 如果找不到 clasp，使用 FetchContent 下载
+# 如果找不到 clasp，使用源码树中的本地副本或 FetchContent
 if(NOT clasp_FOUND)
-    message(STATUS "clasp not found via vcpkg, using FetchContent")
-    include(FetchContent)
-    FetchContent_Declare(
-        clasp_repo
-        GIT_REPOSITORY https://github.com/cuihairu/clasp.git
-        GIT_TAG main
-        GIT_SHALLOW TRUE
-    )
-    FetchContent_MakeAvailable(clasp_repo)
-    set(clasp_FOUND TRUE)
+    # 尝试使用本地 libs/clasp（绕过 git 镜像问题）
+    # 使用 CMAKE_CURRENT_SOURCE_DIR 从 apps/runtime 定位到根目录
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../libs/clasp/CMakeLists.txt")
+        message(STATUS "clasp not found via vcpkg, using local libs/clasp")
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../libs/clasp" "${CMAKE_BINARY_DIR}/libs/clasp" EXCLUDE_FROM_ALL)
+        set(clasp_FOUND TRUE)
+        # 添加别名，保持 target_link_libraries 中的 clasp::clasp 引用有效
+        if(NOT TARGET clasp::clasp AND TARGET clasp)
+            add_library(clasp::clasp ALIAS clasp)
+        endif()
+    else()
+        message(STATUS "clasp not found via vcpkg or local, using FetchContent")
+        include(FetchContent)
+        FetchContent_Declare(
+            clasp_repo
+            GIT_REPOSITORY https://github.com/cuihairu/clasp.git
+            GIT_TAG main
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(clasp_repo)
+        set(clasp_FOUND TRUE)
+    endif()
 endif()
 
 # Drogon HTTP 框架
 find_package(Drogon CONFIG REQUIRED)
+
+# 修复 Jsoncpp_lib 不正确的 debug/release 库链接
+# Drogon 的 FindJsoncpp.cmake 没有正确处理多配置生成
+if(TARGET Jsoncpp_lib)
+    # 重新定义 Jsoncpp_lib 以正确处理 debug/release
+    get_target_property(_old_libs Jsoncpp_lib INTERFACE_LINK_LIBRARIES)
+    if(NOT _old_libs MATCHES "\\$<\\$")
+        # 查找 debug 和 release 版本的库
+        find_library(JSONCPP_LIB_RELEASE NAMES jsoncpp PATHS "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib" NO_DEFAULT_PATH)
+        find_library(JSONCPP_LIB_DEBUG NAMES jsoncpp PATHS "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/debug/lib" NO_DEFAULT_PATH)
+
+        if(JSONCPP_LIB_RELEASE AND JSONCPP_LIB_DEBUG)
+            # 使用生成器表达式：debug 配置用 debug 库，其他用 release 库
+            set_target_properties(Jsoncpp_lib PROPERTIES
+                INTERFACE_LINK_LIBRARIES "$<$<CONFIG:DEBUG,RELWITHDEBINFO>:${JSONCPP_LIB_DEBUG}>$<$<NOT:$<CONFIG:DEBUG,RELWITHDEBINFO>>:${JSONCPP_LIB_RELEASE}>"
+            )
+        endif()
+    endif()
+endif()
 
 # Lua 库通过 wingman::lua 依赖自动链接
 

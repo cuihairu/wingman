@@ -2,9 +2,12 @@
 #include "wingman/version.hpp"
 #include "wingman/window.hpp"
 #include "wingman/vision.hpp"
+#include "wingman/screen.hpp"
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <chrono>
+#include <vector>
+#include <opencv2/opencv.hpp>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -17,6 +20,29 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
+
+// ========== Base64 编码辅助函数 ==========
+
+static std::string base64Encode(const std::vector<uchar>& data) {
+    const std::string base64Chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    std::string base64;
+    base64.reserve((data.size() * 4) / 3 + 4);
+
+    for (size_t i = 0; i < data.size(); i += 3) {
+        auto b0 = data[i];
+        auto b1 = (i + 1 < data.size()) ? data[i + 1] : 0;
+        auto b2 = (i + 2 < data.size()) ? data[i + 2] : 0;
+
+        base64.push_back(base64Chars[(b0 >> 2) & 0x3F]);
+        base64.push_back(base64Chars[((b0 & 0x03) << 4) | ((b1 >> 4) & 0x0F)]);
+        base64.push_back((i + 1 < data.size()) ? base64Chars[((b1 & 0x0F) << 2) | ((b2 >> 6) & 0x03)] : '=');
+        base64.push_back((i + 2 < data.size()) ? base64Chars[b2 & 0x3F] : '=');
+    }
+
+    return base64;
+}
 
 namespace wingman {
 
@@ -306,14 +332,70 @@ RemoteResponse RemoteServer::handleGetVersion(const nlohmann::json& /*params*/) 
 RemoteResponse RemoteServer::handleCaptureScreen(const nlohmann::json& params) {
     RemoteResponse resp;
 
-    int width = params.value("width", 0);
-    int height = params.value("height", 0);
+    try {
+        // 获取参数
+        int x = params.value("x", 0);
+        int y = params.value("y", 0);
+        int reqWidth = params.value("width", 0);
+        int reqHeight = params.value("height", 0);
+        int quality = params.value("quality", 75);  // JPEG 质量 1-100
+        std::string format = params.value("format", "jpeg");  // jpeg 或 png
 
-    // TODO: 实现截图功能（需要返回base64编码的图像）
-    resp.success = true;
-    resp.data["width"] = width;
-    resp.data["height"] = height;
-    resp.data["message"] = "Screenshot not fully implemented";
+        // 截图
+        Rect region(x, y, reqWidth, reqHeight);
+        auto bitmap = region.isEmpty() ? Screen::capture() : Screen::capture(region);
+
+        if (!bitmap) {
+            resp.success = false;
+            resp.error = "Failed to capture screen";
+            return resp;
+        }
+
+        // 转换为 OpenCV Mat
+        cv::Mat mat(bitmap->getHeight(), bitmap->getWidth(), CV_8UC4,
+                    const_cast<uchar*>(bitmap->getData()));
+
+        // 转换为 BGR
+        cv::Mat bgrMat;
+        cv::cvtColor(mat, bgrMat, cv::COLOR_BGRA2BGR);
+
+        // 编码为图像
+        std::vector<uchar> buffer;
+        std::string ext = (format == "png") ? ".png" : ".jpg";
+        std::vector<int> encodeParams;
+
+        if (format == "png") {
+            encodeParams = {cv::IMWRITE_PNG_COMPRESSION, 9};  // 最高压缩
+        } else {
+            encodeParams = {cv::IMWRITE_JPEG_QUALITY, quality};
+        }
+
+        if (!cv::imencode(ext, bgrMat, buffer, encodeParams)) {
+            resp.success = false;
+            resp.error = "Failed to encode image";
+            return resp;
+        }
+
+        // Base64 编码
+        std::string base64 = base64Encode(buffer);
+
+        // 构建响应
+        resp.success = true;
+        resp.data["width"] = bitmap->getWidth();
+        resp.data["height"] = bitmap->getHeight();
+        resp.data["format"] = format;
+        resp.data["size"] = static_cast<int>(buffer.size());
+        resp.data["data"] = base64;  // Base64 编码的图像数据
+
+        spdlog::debug("Screenshot captured: {}x{}, {} bytes, base64: {} chars",
+                     bitmap->getWidth(), bitmap->getHeight(), buffer.size(), base64.size());
+
+    } catch (const std::exception& e) {
+        resp.success = false;
+        resp.error = std::string("Screenshot error: ") + e.what();
+        spdlog::error("Screenshot error: {}", e.what());
+    }
+
     return resp;
 }
 

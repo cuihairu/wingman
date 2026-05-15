@@ -69,6 +69,10 @@ int serveCommand(const std::string& host, int port) {
         spdlog::info("WebSocket server starting on ws://{}:{}", host, port);
         spdlog::info("WebSocket endpoint: ws://{}:{}/ws", host, port);
 
+        // 注册 WebSocket 控制器
+        drogon::app().registerWebSocketController("/ws", "wingman::runtime::controllers::WebSocketCtrl");
+        spdlog::info("Registered WebSocket controller at /ws");
+
         // 注册信号处理器，用于优雅退出
         drogon::app().registerBeginningAdvice([]() {
             spdlog::info("Drogon server started successfully");

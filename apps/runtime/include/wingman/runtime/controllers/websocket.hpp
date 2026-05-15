@@ -66,9 +66,10 @@ struct RpcResponse {
 /// 处理与 Tauri UI 的 WebSocket 通信
 class WebSocketCtrl : public drogon::WebSocketController<WebSocketCtrl> {
 public:
-    WS_PATH_LIST_BEGIN
-        // 路径: /ws
-    WS_PATH_LIST_END
+    /// 初始化路径路由（Drogon 要求）
+    static void initPathRouting() {
+        // 路径通过 drogon::app().registerWebSocketController() 运行时注册
+    }
 
     /// 连接建立
     void handleNewConnection(const drogon::HttpRequestPtr& req,
