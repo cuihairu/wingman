@@ -244,15 +244,15 @@ jobs:
           $coverageFiles += $outputFile
 
           # 运行 OpenCppCoverage，生成 cobertura 格式
-          # 指定源代码目录和模块路径
+          # 使用 --covered_modules 指定要测量的模块（使用通配符匹配所有相关 DLL）
+          # 添加 --no_aggregate_by_file 避免路径问题
           & $occ `
             --export_type=cobertura:$outputFile `
-            --sources "$projectRoot\apps" `
-            --sources "$projectRoot\lib" `
-            --sources "$projectRoot\libs" `
-            --modules "$projectRoot\build\lib\Debug" `
-            --modules "$projectRoot\build\apps\runtime\Debug" `
+            --sources "$projectRoot" `
+            --covered_modules "$projectRoot\build\**\*.dll" `
+            --covered_modules "$projectRoot\build\**\*.exe" `
             --working_dir "$($test.Directory.FullName)" `
+            --continue_after_error `
             -- $test.FullName
         }
 
