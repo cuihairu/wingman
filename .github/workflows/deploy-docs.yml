@@ -52,10 +52,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
+      - name: Approve build scripts
+        run: cd docs && echo "esbuild" | pnpm approve-builds
+
       - name: Install dependencies
-        run: cd docs && pnpm install --no-frozen-lockfile --ignore-scripts=false
-        env:
-          PNPM_IGNORE_BUILDS: "false"
+        run: cd docs && pnpm install --no-frozen-lockfile
 
       - name: Build docs
         run: cd docs && pnpm docs:build
