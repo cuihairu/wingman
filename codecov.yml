@@ -28,6 +28,12 @@ coverage:
   round: down
   range: "0...100"
 
+  # 修复: 匹配 Windows 路径中的项目根目录
+  # OpenCppCoverage 生成的路径如: C:/Users/runneradmin/runners/.../wingman/apps/...
+  # 需要让 codecov 识别这些文件
+  fixes:
+    - "::"
+
 comment:
   layout: "reach,diff,flags,footer"
   behavior: default
@@ -58,6 +64,9 @@ ignore:
   - "*.toml"
   - "assets/**"
   - "vcpkg-ports/**"
+  - "vcpkg_installed/**"
+  - "third_party/**"
+  - "third-party/**"
 
 # 语言/模块配置
 flags:

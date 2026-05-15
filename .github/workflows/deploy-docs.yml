@@ -53,7 +53,9 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: cd docs && pnpm install --no-frozen-lockfile
+        run: cd docs && pnpm install --no-frozen-lockfile --ignore-scripts=false
+        env:
+          PNPM_IGNORE_BUILDS: "false"
 
       - name: Build docs
         run: cd docs && pnpm docs:build

@@ -367,3 +367,9 @@ jobs:
         flags: cpp
         name: cpp-coverage
         fail_ci_if_error: false
+        # 覆盖率文件使用绝对路径，需要映射到项目根目录
+        override_branch: main
+        override_commit: ${{ github.sha }}
+        override_pr: ${{ github.event.number }}
+        # 启用详细日志以便调试
+        verbose: true

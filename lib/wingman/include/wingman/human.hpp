@@ -5,6 +5,12 @@
 #include <random>
 #include <string>
 
+// 前置声明测试类（用于 friend 声明）
+namespace wingman {
+class HumanMouseTest;
+class HumanKeyboardTest;
+}
+
 namespace wingman {
 
 // 人性化鼠标配置
@@ -44,6 +50,9 @@ struct HumanMouseConfig {
 
 // 人性化鼠标类
 class HumanMouse {
+    // 允许测试类访问私有成员
+    friend class HumanMouseTest;
+
 public:
     HumanMouse();
     explicit HumanMouse(const HumanMouseConfig& config);
@@ -126,6 +135,9 @@ struct HumanKeyboardConfig {
 
 // 人性化键盘类
 class HumanKeyboard {
+    // 允许测试类访问私有成员
+    friend class HumanKeyboardTest;
+
 public:
     HumanKeyboard();
     explicit HumanKeyboard(const HumanKeyboardConfig& config);
