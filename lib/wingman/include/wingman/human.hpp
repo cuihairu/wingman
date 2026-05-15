@@ -6,10 +6,9 @@
 #include <string>
 
 // 前置声明测试类（用于 friend 声明）
-namespace wingman {
+// 测试类在全局命名空间（使用 using namespace wingman;）
 class HumanMouseTest;
 class HumanKeyboardTest;
-}
 
 namespace wingman {
 
