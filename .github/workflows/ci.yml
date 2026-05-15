@@ -228,6 +228,9 @@ jobs:
         # OpenCppCoverage 安装路径
         $occ = "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
 
+        # 获取项目根目录的绝对路径
+        $projectRoot = (Get-Item .).FullName
+
         # 收集所有测试可执行文件
         $tests = Get-ChildItem -Recurse build/tests -Filter "*.exe"
 
@@ -240,13 +243,15 @@ jobs:
           $outputFile = "build/coverage/$($test.BaseName)-coverage.xml"
           $coverageFiles += $outputFile
 
-          # 获取项目根目录的绝对路径
-          $projectRoot = (Get-Item .).FullName
-
           # 运行 OpenCppCoverage，生成 cobertura 格式
-          # 暂时不过滤，收集所有覆盖率数据
+          # 指定源代码目录和模块路径
           & $occ `
             --export_type=cobertura:$outputFile `
+            --sources "$projectRoot\apps" `
+            --sources "$projectRoot\lib" `
+            --sources "$projectRoot\libs" `
+            --modules "$projectRoot\build\lib\Debug" `
+            --modules "$projectRoot\build\apps\runtime\Debug" `
             --working_dir "$($test.Directory.FullName)" `
             -- $test.FullName
         }
