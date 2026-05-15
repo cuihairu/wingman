@@ -5,11 +5,6 @@
 #include <random>
 #include <string>
 
-// 前置声明测试类（用于 friend 声明）
-// 测试类在全局命名空间（使用 using namespace wingman;）
-class HumanMouseTest;
-class HumanKeyboardTest;
-
 namespace wingman {
 
 // 人性化鼠标配置
@@ -49,9 +44,6 @@ struct HumanMouseConfig {
 
 // 人性化鼠标类
 class HumanMouse {
-    // 允许测试类访问私有成员
-    friend class HumanMouseTest;
-
 public:
     HumanMouse();
     explicit HumanMouse(const HumanMouseConfig& config);
@@ -89,18 +81,16 @@ public:
     // 静态便捷方法
     static HumanMouse& instance();
 
-private:
-    // 生成贝塞尔曲线路径点
+    // 测试支持方法
     std::vector<Point> generateBezierPath(const Point& start, const Point& end);
+    double calculatePathLength(const std::vector<Point>& path) const;
 
+private:
     // 添加随机性到路径
     void addRandomness(std::vector<Point>& path);
 
     // 沿路径移动
     void moveAlongPath(const std::vector<Point>& path);
-
-    // 计算路径长度
-    double calculatePathLength(const std::vector<Point>& path) const;
 
     // 根据路径长度计算移动时长
     int calculateDuration(double pathLength) const;
@@ -134,9 +124,6 @@ struct HumanKeyboardConfig {
 
 // 人性化键盘类
 class HumanKeyboard {
-    // 允许测试类访问私有成员
-    friend class HumanKeyboardTest;
-
 public:
     HumanKeyboard();
     explicit HumanKeyboard(const HumanKeyboardConfig& config);
@@ -157,8 +144,10 @@ public:
     // 静态便捷方法
     static HumanKeyboard& instance();
 
-private:
+    // 测试支持方法
     void randomDelay();
+
+private:
     int randomInt(int min, int max) const;
 
     HumanKeyboardConfig config_;
