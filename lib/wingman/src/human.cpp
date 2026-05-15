@@ -95,8 +95,8 @@ std::vector<Point> HumanMouse::generateBezierPath(const Point& start, const Poin
     std::vector<Point> controlPoints;
     controlPoints.push_back(start);
 
-    // 生成随机控制点数量
-    int numControlPoints = randomInt(config_.minControlPoints, config_.maxControlPoints);
+    // 生成随机控制点数量（限制为1或2，避免过多控制点导致复杂计算）
+    int numControlPoints = randomInt(config_.minControlPoints, std::min(config_.maxControlPoints, 2));
 
     // 计算中间控制点
     int deltaX = end.x - start.x;
@@ -126,13 +126,6 @@ std::vector<Point> HumanMouse::generateBezierPath(const Point& start, const Poin
 
     controlPoints.push_back(end);
 
-    // 如果只有起点和终点，添加一个中间控制点
-    if (controlPoints.size() == 2) {
-        int midX = (start.x + end.x) / 2 + randomInt(-config_.pathVariance, config_.pathVariance);
-        int midY = (start.y + end.y) / 2 + randomInt(-config_.pathVariance, config_.pathVariance);
-        controlPoints.insert(controlPoints.begin() + 1, Point(midX, midY));
-    }
-
     // 生成路径点（采样贝塞尔曲线）
     std::vector<Point> path;
     int numSamples = static_cast<int>(distance / 5);  // 每5像素采样一次
@@ -142,6 +135,11 @@ std::vector<Point> HumanMouse::generateBezierPath(const Point& start, const Poin
     for (int i = 0; i <= numSamples; ++i) {
         double t = static_cast<double>(i) / numSamples;
         path.push_back(calculateBezierPoint(t, controlPoints));
+    }
+
+    // 确保最后一个点就是终点（修正浮点误差）
+    if (!path.empty()) {
+        path.back() = end;
     }
 
     return path;
