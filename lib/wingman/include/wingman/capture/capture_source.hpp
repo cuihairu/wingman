@@ -103,6 +103,7 @@ private:
     bool queryDisplayInfo();
 };
 
+#ifdef _WIN32
 /**
  * @brief 窗口捕获源
  *
@@ -168,6 +169,7 @@ private:
     bool queryWindowInfo();
     static std::string getWindowTitle(HWND hwnd);
 };
+#endif // _WIN32
 
 /**
  * @brief 捕获源管理器
