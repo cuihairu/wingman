@@ -1,5 +1,9 @@
 #include "wingman/window.hpp"
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <psapi.h>
 #pragma comment(lib, "psapi.lib")
@@ -220,3 +224,5 @@ bool Window::waitClose(const std::string& title, int timeoutMs) {
 }
 
 } // namespace wingman
+
+#endif // _WIN32

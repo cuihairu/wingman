@@ -2,9 +2,17 @@
 
 #include <string>
 #include <vector>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
+#endif
 
 namespace wingman {
+
+#ifdef _WIN32
 
 using ProcessHandle = HANDLE;
 using ProcessId = DWORD;
@@ -37,5 +45,7 @@ public:
     static bool waitFor(const std::string& name, int timeoutMs = 5000);
     static bool waitExit(const std::string& name, int timeoutMs = 5000);
 };
+
+#endif // _WIN32
 
 } // namespace wingman

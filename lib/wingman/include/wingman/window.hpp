@@ -3,9 +3,17 @@
 #include "wingman/screen.hpp"
 #include <string>
 #include <vector>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
+#endif
 
 namespace wingman {
+
+#ifdef _WIN32
 
 using WindowHandle = HWND;
 
@@ -57,7 +65,7 @@ public:
     static std::string getTitle(WindowHandle hwnd);
 
     // 获取窗口边界
-    static Rect getBounds(WindowHandle hwnd);
+    Rect getBounds(WindowHandle hwnd);
 
     // 设置窗口位置和大小
     static bool setBounds(WindowHandle hwnd, const Rect& bounds);
@@ -87,5 +95,7 @@ public:
     // 等待窗口消失
     static bool waitClose(const std::string& title, int timeoutMs = 5000);
 };
+
+#endif // _WIN32
 
 } // namespace wingman
