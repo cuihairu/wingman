@@ -134,19 +134,13 @@ jobs:
     if: true
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    # Linux 上禁用 binary caching（GitHub Packages 中没有 Linux 包）
+    env:
+      VCPKG_BINARY_SOURCES: "clear"
 
     steps:
     - name: Checkout
       uses: actions/checkout@v6
-
-    # Cache vcpkg binary archives
-    - name: Cache vcpkg binaries
-      uses: actions/cache@v5
-      with:
-        path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-
 
     - name: Setup vcpkg
       run: |
@@ -162,10 +156,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y mono-complete
-        # Linux 上完全禁用 binary caching（GitHub Packages 中没有 Linux 包）
-        # 覆盖全局 VCPKG_BINARY_SOURCES 环境变量，并取消设置 VCPKG_DEFAULT_BINARY_CACHE
-        export VCPKG_BINARY_SOURCES="clear"
-        unset VCPKG_DEFAULT_BINARY_CACHE
         ./vcpkg/vcpkg install --triplet=x64-linux --recurse --overlay-ports=vcpkg-ports
 
     - name: Install lcov
