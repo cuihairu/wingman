@@ -244,16 +244,14 @@ jobs:
           $coverageFiles += $outputFile
 
           # 运行 OpenCppCoverage，生成 cobertura 格式
-          # 使用 --modules 指定要测量的模块（支持通配符）
-          # 使用 --no_aggregate_by_file 避免路径聚合问题
+          # 不指定 --modules，让工具自动检测所有加载的模块
+          # 只过滤源代码路径到项目目录
           & $occ `
             --export_type=cobertura:$outputFile `
-            --sources "$projectRoot\apps" `
-            --sources "$projectRoot\lib" `
-            --sources "$projectRoot\libs" `
-            --modules "$projectRoot\build\lib\Debug\*.dll" `
-            --modules "$projectRoot\build\libs\*\Debug\*.dll" `
-            --modules "$projectRoot\build\apps\runtime\Debug\*.dll" `
+            --sources "$projectRoot" `
+            --excluded_sources "*\vcpkg_installed*" `
+            --excluded_sources "*\build\_deps*" `
+            --excluded_sources "*\tests*" `
             --working_dir "$($test.Directory.FullName)" `
             --no_aggregate_by_file `
             -- $test.FullName
