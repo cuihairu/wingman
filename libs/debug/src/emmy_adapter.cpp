@@ -83,15 +83,29 @@ bool EmmyAdapter::initialize(const std::string& loadPath) {
     impl_->loadPath = loadPath;
     if (impl_->loadPath.empty()) {
         // 默认路径：可执行文件目录下的 emmy 文件夹
+        #ifdef _WIN32
         char exePath[MAX_PATH];
         if (GetModuleFileNameA(NULL, exePath, MAX_PATH)) {
             std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
             impl_->loadPath = (exeDir / "emmy").string();
         }
+        #else
+        char exePath[MAX_PATH];
+        ssize_t count = readlink("/proc/self/exe", exePath, MAX_PATH);
+        if (count != -1) {
+            exePath[count] = '\0';
+            std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
+            impl_->loadPath = (exeDir / "emmy").string();
+        }
+        #endif
     }
 
     // 检查 emmy_core.dll 是否存在
+    #ifdef _WIN32
     std::filesystem::path dllPath = std::filesystem::path(impl_->loadPath) / "emmy_core.dll";
+    #else
+    std::filesystem::path dllPath = std::filesystem::path(impl_->loadPath) / "emmy_core.so";
+    #endif
     if (!std::filesystem::exists(dllPath)) {
         spdlog::warn("emmy_core.dll not found at: {}", dllPath.string());
         spdlog::warn("EmmyLua debugger will be disabled");

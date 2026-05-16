@@ -1,9 +1,14 @@
 #include "wingman/screen.hpp"
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <comdef.h>
 #include <gdiplus.h>
 #pragma comment(lib, "gdiplus.lib")
+#endif
 
 #include <opencv2/opencv.hpp>
 
@@ -47,6 +52,7 @@ void Bitmap::setPixel(int x, int y, const Color& color) {
     p[3] = color.a;
 }
 
+#ifdef _WIN32
 std::unique_ptr<Bitmap> Bitmap::fromHBITMAP(HBITMAP hbitmap) {
     BITMAP bm = {};
     if (!GetObject(hbitmap, sizeof(bm), &bm)) {
@@ -282,5 +288,7 @@ int Screen::getScreenHeight() {
 Rect Screen::getScreenBounds() {
     return Rect(0, 0, getScreenWidth(), getScreenHeight());
 }
+
+#endif // _WIN32
 
 } // namespace wingman

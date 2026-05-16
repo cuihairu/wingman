@@ -9,6 +9,8 @@
 #include <chrono>
 #include <condition_variable>
 #include <atomic>
+#include <thread>
+#include <string>
 
 namespace wingman::core {
 

@@ -4,7 +4,13 @@
 #include <string>
 #include <vector>
 #include <memory>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
+#endif
 
 namespace wingman {
 
@@ -95,8 +101,10 @@ public:
     // 保存为文件
     bool save(const std::string& filepath) const;
 
+#ifdef _WIN32
     // 从 HBITMAP 创建
     static std::unique_ptr<Bitmap> fromHBITMAP(HBITMAP hbitmap);
+#endif
 
 private:
     int m_width;
@@ -106,6 +114,7 @@ private:
 
 class Screen {
 public:
+#ifdef _WIN32
     // 截取整个屏幕
     static std::unique_ptr<Bitmap> capture();
 
@@ -133,6 +142,7 @@ public:
 
     // 获取主显示器尺寸
     static Rect getScreenBounds();
+#endif // _WIN32
 };
 
 } // namespace wingman
