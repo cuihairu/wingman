@@ -122,6 +122,9 @@ jobs:
           build/lib/wingman/tests/Debug/*.exe
           build/**/Debug/*_tests.exe
           build/**/Debug/core_tests.exe
+          build/lib/Debug/*.dll
+          build/libs/*/Debug/*.dll
+          build/apps/*/Debug/*.dll
         if-no-files-found: warn
         retention-days: 1
 
@@ -244,11 +247,13 @@ jobs:
           $coverageFiles += $outputFile
 
           # 运行 OpenCppCoverage，生成 cobertura 格式
-          # 不指定 --modules，让工具自动检测所有加载的模块
-          # 只过滤源代码路径到项目目录
+          # 将测试 .exe 本身添加到模块列表（静态链接情况下代码都在 .exe 中）
           & $occ `
             --export_type=cobertura:$outputFile `
-            --sources "$projectRoot" `
+            --modules "$($test.FullName)" `
+            --sources "$projectRoot\apps" `
+            --sources "$projectRoot\lib" `
+            --sources "$projectRoot\libs" `
             --excluded_sources "*\vcpkg_installed*" `
             --excluded_sources "*\build\_deps*" `
             --excluded_sources "*\tests*" `
