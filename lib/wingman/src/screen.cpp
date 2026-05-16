@@ -10,7 +10,9 @@
 #pragma comment(lib, "gdiplus.lib")
 #endif
 
+#ifdef _WIN32
 #include <opencv2/opencv.hpp>
+#endif
 
 #include <cstring>
 #include <algorithm>
@@ -230,6 +232,7 @@ std::vector<Point> Screen::findColors(const Color& color, const Rect& region,
     return results;
 }
 
+#ifdef _WIN32
 bool Screen::findImage(const std::string& imagePath, const Rect& region,
                        double threshold, Point& result) {
     // 加载模板图像
@@ -276,6 +279,7 @@ bool Screen::findImage(const std::string& imagePath, const Rect& region,
 
     return false;
 }
+#endif // _WIN32
 
 int Screen::getScreenWidth() {
     return GetSystemMetrics(SM_CXSCREEN);
