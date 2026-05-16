@@ -163,8 +163,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y mono-complete
         # Linux 上完全禁用 binary caching（GitHub Packages 中没有 Linux 包）
-        # 覆盖全局 VCPKG_BINARY_SOURCES 环境变量
+        # 覆盖全局 VCPKG_BINARY_SOURCES 环境变量，并取消设置 VCPKG_DEFAULT_BINARY_CACHE
         export VCPKG_BINARY_SOURCES="clear"
+        unset VCPKG_DEFAULT_BINARY_CACHE
         ./vcpkg/vcpkg install --triplet=x64-linux --recurse --overlay-ports=vcpkg-ports
 
     - name: Install lcov
