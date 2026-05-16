@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef _WIN32
 #include "wingman/screen.hpp"
 #include "wingman/input.hpp"
 #include "wingman/trigger.hpp"
@@ -164,3 +165,5 @@ private:
 };
 
 } // namespace wingman
+
+#endif // _WIN32

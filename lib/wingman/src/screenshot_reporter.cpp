@@ -1,4 +1,6 @@
 #include "wingman/screenshot_reporter.hpp"
+
+#ifdef _WIN32
 #include "wingman/screen.hpp"
 #include <opencv2/opencv.hpp>
 #include <curl/curl.h>
@@ -170,3 +172,5 @@ bool ScreenshotReporter::captureAndSend() {
 }
 
 } // namespace wingman
+
+#endif // _WIN32

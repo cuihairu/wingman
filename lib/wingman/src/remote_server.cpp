@@ -1,4 +1,6 @@
 #include "wingman/remote_server.hpp"
+
+#ifdef _WIN32
 #include "wingman/version.hpp"
 #include "wingman/window.hpp"
 #include "wingman/vision.hpp"
@@ -905,3 +907,5 @@ RemoteResponse RemoteClient::ping() {
 }
 
 } // namespace wingman
+
+#endif // _WIN32
