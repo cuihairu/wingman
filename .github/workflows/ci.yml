@@ -137,7 +137,6 @@ jobs:
     # Linux 上禁用 binary caching（GitHub Packages 中没有 Linux 包）
     env:
       VCPKG_BINARY_SOURCES: "clear"
-      VCPKG_DEFAULT_BINARY_CACHE: ""
 
     steps:
     - name: Checkout
@@ -157,6 +156,8 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y mono-complete
+        # 取消设置 VCPKG_DEFAULT_BINARY_CACHE，因为禁用了 binary caching
+        unset VCPKG_DEFAULT_BINARY_CACHE
         ./vcpkg/vcpkg install --triplet=x64-linux --recurse --overlay-ports=vcpkg-ports
 
     - name: Install lcov
@@ -164,6 +165,8 @@ jobs:
 
     - name: Configure CMake with coverage
       run: |
+        # 取消设置 VCPKG_DEFAULT_BINARY_CACHE，因为禁用了 binary caching
+        unset VCPKG_DEFAULT_BINARY_CACHE
         cmake -B build \
           -S . \
           -G "Unix Makefiles" \
