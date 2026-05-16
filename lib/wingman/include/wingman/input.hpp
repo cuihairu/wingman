@@ -4,9 +4,17 @@
 #include <string>
 #include <thread>
 #include <chrono>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
+#endif
 
 namespace wingman {
+
+#ifdef _WIN32
 
 enum class MouseButton {
     Left,
@@ -42,5 +50,7 @@ private:
     static void sendKeyInput(int vkCode, bool isDown);
     static int getMouseFlag(MouseButton button, bool isDown);
 };
+
+#endif // _WIN32
 
 } // namespace wingman

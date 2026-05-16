@@ -1,5 +1,9 @@
 #include "wingman/input.hpp"
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 
 #include <random>
@@ -199,3 +203,5 @@ bool Input::isMouseDown(MouseButton button) {
 }
 
 } // namespace wingman
+
+#endif // _WIN32
