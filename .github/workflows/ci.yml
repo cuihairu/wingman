@@ -156,6 +156,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y mono-complete
+        sudo apt-get install -y libx11-dev libxrandr-dev libxext-dev libxtst-dev libxt-dev libxinerama-dev
         # 取消设置 VCPKG_DEFAULT_BINARY_CACHE，因为禁用了 binary caching
         unset VCPKG_DEFAULT_BINARY_CACHE
         ./vcpkg/vcpkg install --triplet=x64-linux --recurse --overlay-ports=vcpkg-ports

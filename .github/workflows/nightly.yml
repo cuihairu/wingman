@@ -196,6 +196,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y cmake ninja-build ccache
+        sudo apt-get install -y libx11-dev libxrandr-dev libxext-dev libxtst-dev libxt-dev libxinerama-dev
 
     - name: Setup vcpkg
       run: |
