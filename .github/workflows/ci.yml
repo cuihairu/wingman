@@ -131,7 +131,7 @@ jobs:
   # ========== C++ Test with Coverage ==========
   # NOTE: 暂时禁用 - 需要修复 Linux 依赖
   test-cpp:
-    if: false
+    if: true
     runs-on: ubuntu-latest
 
     steps:
@@ -357,24 +357,30 @@ jobs:
   # ========== Codecov Upload ==========
   # 使用 Ubuntu 避免 Windows 编码问题
   codecov:
-    needs: test-cpp-windows
+    needs: [test-cpp, test-cpp-windows, test-go]
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Download C++ coverage artifact
+    - name: Download C++ coverage artifact (Linux)
+      uses: actions/download-artifact@v8
+      with:
+        name: cpp-coverage
+        path: build/coverage/
+
+    - name: Download C++ coverage artifact (Windows)
       uses: actions/download-artifact@v8
       with:
         name: cpp-coverage-cobertura
-        path: build/coverage/
+        path: build/coverage/windows/
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./build/coverage/*.xml
+        files: ./build/coverage/*.info,./build/coverage/windows/*.xml
         flags: cpp
         name: cpp-coverage
         fail_ci_if_error: false
