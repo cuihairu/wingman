@@ -1,5 +1,6 @@
 #include "wingman/system.hpp"
 
+#ifdef _WIN32
 #include <windows.h>
 #include <pdh.h>
 #include <tlhelp32.h>
@@ -477,3 +478,5 @@ int System::getThreadCount() {
 }
 
 } // namespace wingman
+
+#endif // _WIN32
