@@ -24,11 +24,6 @@ if(NOT asio_FOUND)
 
     # asio 是 header-only 库，不需要构建
     FetchContent_MakeAvailable(asio)
-
-    # 添加 asio 的 include 路径
-    if(asio_SOURCE_DIR)
-        target_include_directories(wingman::transport PRIVATE ${asio_SOURCE_DIR}/asio/include)
-    endif()
 else()
     message(STATUS "asio found via CONFIG")
 endif()
