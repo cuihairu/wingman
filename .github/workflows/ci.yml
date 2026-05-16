@@ -133,6 +133,7 @@ jobs:
   test-cpp:
     if: true
     runs-on: ubuntu-latest
+    timeout-minutes: 120
 
     steps:
     - name: Checkout
@@ -142,7 +143,7 @@ jobs:
     - name: Cache vcpkg binaries
       uses: actions/cache@v5
       with:
-        path: ~/vcpkg/archives
+        path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-
@@ -162,7 +163,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y mono-complete
         mkdir -p "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
-        ./vcpkg/vcpkg install --triplet=x64-linux --recurse --overlay-ports=vcpkg-ports
+        # Linux 上禁用 binary cache 上传（网络太慢导致超时）
+        # 只使用本地缓存，不写入 NuGet 源
+        ./vcpkg/vcpkg install --triplet=x64-linux --recurse --overlay-ports=vcpkg-ports --binarysource=clear
 
     - name: Install lcov
       run: sudo apt-get update && sudo apt-get install -y lcov
