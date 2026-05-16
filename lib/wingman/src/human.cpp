@@ -95,8 +95,8 @@ std::vector<Point> HumanMouse::generateBezierPath(const Point& start, const Poin
     std::vector<Point> controlPoints;
     controlPoints.push_back(start);
 
-    // 生成随机控制点数量（限制为1或2，避免过多控制点导致复杂计算）
-    int numControlPoints = randomInt(config_.minControlPoints, std::min(config_.maxControlPoints, 2));
+    // 生成随机控制点数量（限制为最多3个，避免过多控制点导致复杂计算）
+    int numControlPoints = randomInt(config_.minControlPoints, std::min(config_.maxControlPoints, 3));
 
     // 计算中间控制点
     int deltaX = end.x - start.x;
