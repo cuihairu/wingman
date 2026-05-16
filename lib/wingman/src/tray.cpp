@@ -1,4 +1,6 @@
 #include "wingman/tray.hpp"
+
+#ifdef _WIN32
 #include <windows.h>
 #include <shellapi.h>
 #include <map>
@@ -842,3 +844,5 @@ void TrayManager::clear() {
 }
 
 } // namespace wingman
+
+#endif // _WIN32

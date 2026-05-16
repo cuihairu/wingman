@@ -1,6 +1,7 @@
 #ifndef WINGMAN_TRAY_HPP
 #define WINGMAN_TRAY_HPP
 
+#ifdef _WIN32
 #include <string>
 #include <functional>
 #include <vector>
@@ -126,5 +127,7 @@ private:
 };
 
 } // namespace wingman
+
+#endif // _WIN32
 
 #endif // WINGMAN_TRAY_HPP
