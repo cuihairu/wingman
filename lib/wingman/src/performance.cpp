@@ -1,5 +1,6 @@
 #include "wingman/performance.hpp"
 
+#ifdef _WIN32
 #include <Windows.h>
 #include <algorithm>
 #include <chrono>
@@ -430,3 +431,5 @@ void PerformanceManager::reduceColors(cv::Mat& image, int bits) {
 }
 
 } // namespace wingman
+
+#endif // _WIN32
