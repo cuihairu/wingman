@@ -172,6 +172,7 @@ std::shared_ptr<ScreenCaptureSource> ScreenCaptureSource::getPrimaryScreen() {
     return std::shared_ptr<ScreenCaptureSource>(new ScreenCaptureSource(0));
 }
 
+#ifdef _WIN32
 // ========== WindowCaptureSource ==========
 
 WindowCaptureSource::WindowCaptureSource(HWND hwnd)
@@ -392,6 +393,8 @@ std::shared_ptr<ScreenCaptureSource> CaptureSourceManager::getScreenSource(const
     }
     return nullptr;
 }
+#endif // _WIN32
+#ifdef _WIN32
 
 std::shared_ptr<WindowCaptureSource> CaptureSourceManager::getWindowSource(const std::string& name) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -402,6 +405,7 @@ std::shared_ptr<WindowCaptureSource> CaptureSourceManager::getWindowSource(const
     return nullptr;
 }
 
+#endif // _WIN32
 std::vector<std::shared_ptr<ICaptureSource>> CaptureSourceManager::listSources() const {
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<std::shared_ptr<ICaptureSource>> result;
