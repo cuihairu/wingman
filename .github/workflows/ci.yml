@@ -247,16 +247,16 @@ jobs:
           $coverageFiles += $outputFile
 
           # 运行 OpenCppCoverage，生成 cobertura 格式
-          # 将测试 .exe 本身添加到模块列表（静态链接情况下代码都在 .exe 中）
+          # --optimized_build: 支持 /O2 优化构建的覆盖率
           & $occ `
             --export_type=cobertura:$outputFile `
-            --modules "$($test.FullName)" `
             --sources "$projectRoot\apps" `
             --sources "$projectRoot\lib" `
             --sources "$projectRoot\libs" `
             --excluded_sources "*\vcpkg_installed*" `
             --excluded_sources "*\build\_deps*" `
             --excluded_sources "*\tests*" `
+            --optimized_build `
             --working_dir "$($test.Directory.FullName)" `
             --no_aggregate_by_file `
             -- $test.FullName
