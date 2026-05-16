@@ -1,4 +1,6 @@
 #include "wingman/recorder.hpp"
+
+#ifdef _WIN32
 #include "wingman/input.hpp"
 #include <nlohmann/json.hpp>
 
@@ -309,3 +311,5 @@ void MacroRecorder::recordEvent(const RecordedEvent& event) {
 }
 
 } // namespace wingman
+
+#endif // _WIN32
