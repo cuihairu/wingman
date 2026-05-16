@@ -1,8 +1,12 @@
 #include "wingman/smart_trigger.hpp"
+
+#ifdef _WIN32
 #include "wingman/input.hpp"
 #include "wingman/screen.hpp"
 #include <spdlog/spdlog.h>
 #include <algorithm>
+#include <chrono>
+#include <thread>
 
 namespace wingman {
 
@@ -278,3 +282,5 @@ std::vector<std::shared_ptr<SmartTrigger>> SmartTriggerManager::getAllTriggers()
 }
 
 } // namespace wingman
+
+#endif // _WIN32

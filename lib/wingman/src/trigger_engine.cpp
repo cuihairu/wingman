@@ -1,4 +1,6 @@
 #include "wingman/trigger_engine.hpp"
+
+#ifdef _WIN32
 #include "wingman/trigger.hpp"
 #include <spdlog/spdlog.h>
 #include <fstream>
@@ -233,3 +235,5 @@ TriggerEngine::Stats TriggerEngine::getStats() const {
 }
 
 } // namespace wingman
+
+#endif // _WIN32

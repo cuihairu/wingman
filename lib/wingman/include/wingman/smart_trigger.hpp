@@ -11,7 +11,16 @@
 #include "wingman/vision.hpp"
 #include "wingman/ocr.hpp"
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
+
 namespace wingman {
+
+#ifdef _WIN32
 
 // 触发条件类型
 enum class TriggerConditionType {
@@ -145,5 +154,7 @@ private:
     std::map<std::string, std::shared_ptr<SmartTrigger>> triggers_;
     mutable std::mutex mutex_;
 };
+
+#endif // _WIN32
 
 } // namespace wingman
