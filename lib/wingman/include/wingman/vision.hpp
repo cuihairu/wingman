@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef _WIN32
 #include <string>
 #include <vector>
 #include <optional>
@@ -89,3 +90,5 @@ private:
 };
 
 } // namespace wingman
+
+#endif // _WIN32
