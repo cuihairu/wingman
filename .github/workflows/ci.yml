@@ -137,6 +137,7 @@ jobs:
     # Linux 上禁用 binary caching（GitHub Packages 中没有 Linux 包）
     env:
       VCPKG_BINARY_SOURCES: "clear"
+      VCPKG_DEFAULT_BINARY_CACHE: ""
 
     steps:
     - name: Checkout
