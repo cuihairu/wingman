@@ -159,6 +159,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        mkdir -p "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
         ./vcpkg/vcpkg install --triplet=x64-linux --recurse --overlay-ports=vcpkg-ports
 
     - name: Install lcov

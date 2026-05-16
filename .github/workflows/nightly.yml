@@ -174,3 +174,225 @@ jobs:
         replace_existing_artifacts: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  nightly-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Get nightly version
+      id: nightly_version
+      run: |
+        date=$(date +%Y.%m.%d)
+        commit=$(git rev-parse --short HEAD)
+        echo "version=$date-nightly-$commit" >> $GITHUB_OUTPUT
+        echo "version_suffix=$date-nightly" >> $GITHUB_OUTPUT
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build ccache
+
+    - name: Setup vcpkg
+      run: |
+        if [ -d "vcpkg" ]; then
+          echo "vcpkg directory exists, removing..."
+          rm -rf vcpkg
+        fi
+        echo "Cloning vcpkg..."
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        ./bootstrap-vcpkg.sh
+
+    - name: Install vcpkg dependencies
+      run: |
+        ./vcpkg/vcpkg install --triplet=x64-linux --recurse --overlay-ports=vcpkg-ports
+
+    - name: Configure CMake with nightly version
+      run: |
+        cmake -B build \
+          -S . \
+          -G Ninja \
+          -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake \
+          -DVCPKG_TARGET_TRIPLET=x64-linux \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DWINGMAN_BUILD_GUI=OFF \
+          -DWINGMAN_VERSION_SUFFIX="${{ steps.nightly_version.outputs.version_suffix }}"
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Package nightly build
+      run: |
+        version="${{ steps.nightly_version.outputs.version }}"
+        distDir="dist-wingman-$version"
+        mkdir -p "$distDir"
+
+        # 复制可执行文件
+        cp "build/apps/runtime/wingman-runtime" "$distDir/wingman"
+
+        # 复制脚本
+        if [ -d "scripts" ]; then
+          cp -r scripts "$distDir/"
+        fi
+
+        # 创建版本信息文件
+        cat > "$distDir/VERSION.txt" << EOF
+        Wingman $version
+        Build Date: $(date -u +"%Y-%m-%d %H:%M:%S")
+        Commit: ${{ steps.nightly_version.outputs.version }}
+        Branch: nightly
+        EOF
+
+        # 创建压缩包
+        tar czf "wingman-$version-linux-x64.tar.gz" -C "$distDir" .
+
+    - name: Upload nightly artifacts
+      uses: actions/upload-artifact@v6
+      with:
+        name: wingman-nightly-linux-x64
+        path: wingman-${{ steps.nightly_version.outputs.version }}-linux-x64.tar.gz
+        retention-days: 30
+
+    - name: Add to GitHub Release (nightly)
+      uses: softprops/action-gh-release@v2
+      if: github.ref == 'refs/heads/main'
+      with:
+        tag_name: nightly
+        name: "Nightly Build"
+        body: |
+          ## Nightly Build
+
+          This is an automated nightly build (overwrites daily).
+          **Not recommended for production use.**
+
+          ### Latest Build
+          - Date: ${{ steps.nightly_version.outputs.version_suffix }}
+          - Commit: ${{ steps.nightly_version.outputs.version }}
+          - Downloads:
+            - Windows: `wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip`
+            - Linux: `wingman-${{ steps.nightly_version.outputs.version }}-linux-x64.tar.gz`
+
+          ---
+          *Use at your own risk. Nightly builds may contain unstable features.*
+        files: wingman-${{ steps.nightly_version.outputs.version }}-linux-x64.tar.gz
+        prerelease: true
+        draft: false
+        replace_existing_artifacts: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  nightly-macos:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Get nightly version
+      id: nightly_version
+      run: |
+        date=$(date +%Y.%m.%d)
+        commit=$(git rev-parse --short HEAD)
+        echo "version=$date-nightly-$commit" >> $GITHUB_OUTPUT
+        echo "version_suffix=$date-nightly" >> $GITHUB_OUTPUT
+
+    - name: Install dependencies
+      run: |
+        brew install cmake ninja
+
+    - name: Setup vcpkg
+      run: |
+        if [ -d "vcpkg" ]; then
+          echo "vcpkg directory exists, removing..."
+          rm -rf vcpkg
+        fi
+        echo "Cloning vcpkg..."
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        ./bootstrap-vcpkg.sh
+
+    - name: Install vcpkg dependencies
+      run: |
+        ./vcpkg/vcpkg install --triplet=x64-osx --recurse --overlay-ports=vcpkg-ports
+
+    - name: Configure CMake with nightly version
+      run: |
+        cmake -B build \
+          -S . \
+          -G Ninja \
+          -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake \
+          -DVCPKG_TARGET_TRIPLET=x64-osx \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DWINGMAN_BUILD_GUI=OFF \
+          -DWINGMAN_VERSION_SUFFIX="${{ steps.nightly_version.outputs.version_suffix }}"
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Package nightly build
+      run: |
+        version="${{ steps.nightly_version.outputs.version }}"
+        distDir="dist-wingman-$version"
+        mkdir -p "$distDir"
+
+        # 复制可执行文件
+        cp "build/apps/runtime/wingman-runtime" "$distDir/wingman"
+
+        # 复制脚本
+        if [ -d "scripts" ]; then
+          cp -r scripts "$distDir/"
+        fi
+
+        # 创建版本信息文件
+        cat > "$distDir/VERSION.txt" << EOF
+        Wingman $version
+        Build Date: $(date -u +"%Y-%m-%d %H:%M:%S")
+        Commit: ${{ steps.nightly_version.outputs.version }}
+        Branch: nightly
+        EOF
+
+        # 创建压缩包
+        tar czf "wingman-$version-macos-x64.tar.gz" -C "$distDir" .
+
+    - name: Upload nightly artifacts
+      uses: actions/upload-artifact@v6
+      with:
+        name: wingman-nightly-macos-x64
+        path: wingman-${{ steps.nightly_version.outputs.version }}-macos-x64.tar.gz
+        retention-days: 30
+
+    - name: Add to GitHub Release (nightly)
+      uses: softprops/action-gh-release@v2
+      if: github.ref == 'refs/heads/main'
+      with:
+        tag_name: nightly
+        name: "Nightly Build"
+        body: |
+          ## Nightly Build
+
+          This is an automated nightly build (overwrites daily).
+          **Not recommended for production use.**
+
+          ### Latest Build
+          - Date: ${{ steps.nightly_version.outputs.version_suffix }}
+          - Commit: ${{ steps.nightly_version.outputs.version }}
+          - Downloads:
+            - Windows: `wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip`
+            - Linux: `wingman-${{ steps.nightly_version.outputs.version }}-linux-x64.tar.gz`
+            - macOS: `wingman-${{ steps.nightly_version.outputs.version }}-macos-x64.tar.gz`
+
+          ---
+          *Use at your own risk. Nightly builds may contain unstable features.*
+        files: wingman-${{ steps.nightly_version.outputs.version }}-macos-x64.tar.gz
+        prerelease: true
+        draft: false
+        replace_existing_artifacts: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
