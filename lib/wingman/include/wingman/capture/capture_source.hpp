@@ -214,10 +214,12 @@ public:
      */
     std::shared_ptr<ScreenCaptureSource> getScreenSource(const std::string& name);
 
+#ifdef _WIN32
     /**
      * @brief 按名称获取窗口捕获源
      */
     std::shared_ptr<WindowCaptureSource> getWindowSource(const std::string& name);
+#endif // _WIN32
 
     /**
      * @brief 列出所有捕获源
