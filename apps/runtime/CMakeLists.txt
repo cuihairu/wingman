@@ -100,13 +100,19 @@ target_link_libraries(wingman-runtime PRIVATE
     wingman::proto
     wingman::transport
     wingman
-    wingman::lua
-    wingman::debug
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     clasp::clasp
     Drogon::Drogon
 )
+
+# Windows-only 库
+if(WIN32 AND TARGET wingman::lua)
+    target_link_libraries(wingman-runtime PRIVATE wingman::lua)
+endif()
+if(WIN32 AND TARGET wingman::debug)
+    target_link_libraries(wingman-runtime PRIVATE wingman::debug)
+endif()
 
 # 复制配置文件到输出目录
 configure_file(
