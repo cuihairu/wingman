@@ -3,12 +3,6 @@ cmake_minimum_required(VERSION 3.20)
 # ========== wingman::lua ==========
 # Lua 引擎 + sol2 绑定 + EmmyLua 调试器集成
 
-# Lua 功能只在 Windows 上支持
-if(NOT WIN32)
-    message(STATUS "Lua bindings are Windows-only, skipping wingman_lua")
-    return()
-endif()
-
 project(wingman_lua LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)

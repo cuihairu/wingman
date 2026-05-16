@@ -3,12 +3,6 @@ cmake_minimum_required(VERSION 3.20)
 # ========== wingman::debug ==========
 # EmmyLua Debugger 适配层
 
-# Debug 库只在 Windows 上支持（依赖 Lua）
-if(NOT WIN32)
-    message(STATUS "Debug adapter is Windows-only, skipping wingman_debug")
-    return()
-endif()
-
 project(wingman_debug LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)

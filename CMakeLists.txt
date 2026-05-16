@@ -52,11 +52,8 @@ option(BUILD_PROTO_TESTS "Build proto library tests" OFF)
 option(BUILD_DEBUG_TESTS "Build debug library tests" OFF)
 
 # ========== 核心依赖（必需）==========
-# Windows-only 依赖（Linux/macOS 暂不支持）
-if(WIN32)
-    find_package(unofficial-lua CONFIG REQUIRED)
-    find_package(asio CONFIG REQUIRED)
-endif()
+find_package(unofficial-lua CONFIG REQUIRED)
+find_package(asio CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
