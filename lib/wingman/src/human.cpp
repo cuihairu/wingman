@@ -1,10 +1,14 @@
 #include "wingman/human.hpp"
+
+#ifdef _WIN32
 #include "wingman/input.hpp"
 #include "wingman/screen.hpp"
 #include <spdlog/spdlog.h>
 #include <cmath>
 #include <algorithm>
 #include <random>
+#include <thread>
+#include <chrono>
 
 namespace wingman {
 
@@ -436,3 +440,5 @@ void Human::setKeyboardConfig(const HumanKeyboardConfig& config) {
 }
 
 } // namespace wingman
+
+#endif // _WIN32

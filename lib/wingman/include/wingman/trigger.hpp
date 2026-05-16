@@ -1,5 +1,12 @@
 #pragma once
 
+#include <string>
+#include <vector>
+#include <functional>
+#include <memory>
+#include <optional>
+
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -8,18 +15,17 @@
 #define NOMINMAX
 #endif
 
-#include <string>
-#include <vector>
-#include <functional>
-#include <memory>
-#include <optional>
 #include <windows.h>
+#endif
+
 #include <lua.hpp>
 #include <spdlog/logger.h>
 
 #include "wingman/screen.hpp"  // For Rect type
 
 namespace wingman {
+
+#ifdef _WIN32
 
 // 触发器类型
 enum class TriggerType {
@@ -154,5 +160,7 @@ private:
     // 执行动作
     void executeActions(const std::vector<TriggerActionData>& actions);
 };
+
+#endif // _WIN32
 
 } // namespace wingman

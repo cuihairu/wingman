@@ -1,4 +1,6 @@
 #include "wingman/trigger.hpp"
+
+#ifdef _WIN32
 #include "wingman/screen.hpp"
 #include "wingman/input.hpp"
 #include "wingman/window.hpp"
@@ -6,6 +8,9 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/base_sink.h>
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 
 // Undefine PlaySound macros before including mmsystem.h
@@ -24,6 +29,7 @@
 
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 namespace wingman {
 
@@ -358,3 +364,5 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
 }
 
 } // namespace wingman
+
+#endif // _WIN32
