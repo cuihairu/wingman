@@ -159,7 +159,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        ./vcpkg/vcpkg install --triplet=x64-linux-static --recurse --overlay-ports=vcpkg-ports
+        ./vcpkg/vcpkg install --triplet=x64-linux --recurse --overlay-ports=vcpkg-ports
 
     - name: Install lcov
       run: sudo apt-get update && sudo apt-get install -y lcov
@@ -170,7 +170,7 @@ jobs:
           -S . \
           -G "Unix Makefiles" \
           -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake \
-          -DVCPKG_TARGET_TRIPLET=x64-linux-static \
+          -DVCPKG_TARGET_TRIPLET=x64-linux \
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_CXX_FLAGS="--coverage" \
           -DCMAKE_C_FLAGS="--coverage" \
