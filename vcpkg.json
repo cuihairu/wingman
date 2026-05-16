@@ -38,8 +38,7 @@
     },
     {
       "$comment": "Drogon HTTP/WebSocket framework for UI communication",
-      "name": "drogon",
-      "platform": "windows"
+      "name": "drogon"
     }
   ],
   "features": {
@@ -78,8 +77,7 @@
       "description": "Build tests (requires GTest)",
       "dependencies": [
         {
-          "name": "gtest",
-          "platform": "windows"
+          "name": "gtest"
         }
       ]
     }
