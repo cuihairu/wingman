@@ -65,7 +65,7 @@ public:
     static std::string getTitle(WindowHandle hwnd);
 
     // 获取窗口边界
-    Rect getBounds(WindowHandle hwnd);
+    static Rect getBounds(WindowHandle hwnd);
 
     // 设置窗口位置和大小
     static bool setBounds(WindowHandle hwnd, const Rect& bounds);
