@@ -211,6 +211,8 @@ jobs:
 
     - name: Install vcpkg dependencies
       run: |
+        # 确保 binary cache 目录存在（全局环境变量 VCPKG_DEFAULT_BINARY_CACHE 指向此目录）
+        mkdir -p "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
         ./vcpkg/vcpkg install --triplet=x64-linux --recurse --overlay-ports=vcpkg-ports
 
     - name: Configure CMake with nightly version
@@ -321,6 +323,8 @@ jobs:
 
     - name: Install vcpkg dependencies
       run: |
+        # 确保 binary cache 目录存在（全局环境变量 VCPKG_DEFAULT_BINARY_CACHE 指向此目录）
+        mkdir -p "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
         ./vcpkg/vcpkg install --triplet=x64-osx --recurse --overlay-ports=vcpkg-ports
 
     - name: Configure CMake with nightly version
