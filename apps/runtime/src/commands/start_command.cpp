@@ -1,6 +1,5 @@
 #include "wingman/runtime/commands/start_command.hpp"
 #include "wingman/runtime/agent.hpp"
-#include "wingman/tray.hpp"
 #include "wingman/version.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -12,16 +11,9 @@ namespace wingman::runtime::commands {
 namespace {
 
 Agent* g_agent = nullptr;
-std::shared_ptr<TrayIcon> g_trayIcon = nullptr;
 
 void signalHandler(int signal) {
     spdlog::info("Received signal {}, shutting down...", signal);
-    if (g_agent) {
-        g_agent->stop();
-    }
-}
-
-void quitApplication() {
     if (g_agent) {
         g_agent->stop();
     }
@@ -62,20 +54,6 @@ int startCommand(const std::string& configPath) {
         spdlog::warn("Some modes failed to start, but agent will continue running");
     }
 
-    // 创建系统托盘图标
-    g_trayIcon = wingman::TrayManager::instance().createIcon("main", "Wingman Agent " WINGMAN_VERSION);
-
-    // 添加托盘菜单项
-    if (g_trayIcon) {
-        g_trayIcon->addItem("status", "状态: 运行中", []() {
-            spdlog::info("Agent status: {}", g_agent && g_agent->isRunning() ? "Running" : "Stopped");
-        });
-        g_trayIcon->addSeparator("sep1");
-        g_trayIcon->addItem("quit", "退出", quitApplication);
-        g_trayIcon->show();
-        spdlog::info("System tray icon created");
-    }
-
     spdlog::info("Agent is running. Press Ctrl+C to stop.");
 
     // 主循环
@@ -84,11 +62,6 @@ int startCommand(const std::string& configPath) {
     }
 
     // 清理
-    if (g_trayIcon) {
-        g_trayIcon->hide();
-        wingman::TrayManager::instance().removeIcon("main");
-        g_trayIcon.reset();
-    }
     agent.shutdown();
     g_agent = nullptr;
 

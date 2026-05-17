@@ -58,7 +58,6 @@ private:
     void registerSmartTriggerModule();
     void registerBehaviorTreeModule();
     void registerOcrModule();
-    void registerTrayModule();
     void registerConfigModule();
     void registerNodeModule();
     void registerVerificationModule();
@@ -120,29 +119,6 @@ namespace util {
     int sleep(lua_State* L);
     int getTime(lua_State* L);
     int log(lua_State* L);
-}
-
-// Tray 模块
-namespace tray {
-    int create(lua_State* L);
-    int get(lua_State* L);
-    int remove(lua_State* L);
-}
-
-// TrayIcon 对象方法
-namespace tray_icon {
-    int setIcon(lua_State* L);
-    int setTooltip(lua_State* L);
-    int addItem(lua_State* L);
-    int addSeparator(lua_State* L);
-    int addSubmenu(lua_State* L);
-    int removeItem(lua_State* L);
-    int clearItems(lua_State* L);
-    int show(lua_State* L);
-    int hide(lua_State* L);
-    int updateMenu(lua_State* L);
-    int isVisible(lua_State* L);
-    int destroy(lua_State* L);
 }
 
 // Debugger 模块

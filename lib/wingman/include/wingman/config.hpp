@@ -4,6 +4,7 @@
 #include <optional>
 #include <memory>
 #include <vector>
+#include <functional>
 
 namespace wingman {
 
@@ -24,59 +25,6 @@ struct ServerConfig {
 
     // 验证配置
     bool isValid() const { return !host.empty() && port > 0 && port <= 65535; }
-};
-
-// 托盘菜单项动作类型
-enum class TrayActionType {
-    none,           // 无动作
-    command,        // 执行命令
-    lua,            // 执行 Lua 脚本
-    startGame,      // 启动游戏
-    http,           // HTTP 请求
-    callback        // C++ 回调（内部使用）
-};
-
-// 托盘菜单项配置
-struct TrayMenuItemConfig {
-    std::string id;                     // 菜单项 ID
-    std::string label;                  // 显示文本
-    TrayActionType actionType = TrayActionType::none;  // 动作类型
-    std::string action;                 // 动作参数（命令/Lua脚本/URL等）
-    bool enabled = true;                // 是否启用
-    bool isSeparator = false;           // 是否为分隔符
-    bool checked = false;               // 是否勾选（用于状态显示）
-    std::vector<TrayMenuItemConfig> subitems;  // 子菜单项
-
-    std::string toJson() const;
-    static TrayMenuItemConfig fromJson(const std::string& json);
-};
-
-// 托盘图标状态
-enum class TrayIconState {
-    normal,    // 正常（正在运行）
-    idle,      // 空闲（无任务）
-    disabled,  // 禁用（变灰）
-    busy,      // 忙碌
-    error      // 错误
-};
-
-// 托盘配置
-struct TrayConfig {
-    bool minimizeToTray = true;
-    bool startMinimized = false;
-    bool showNotifications = true;
-    std::string iconPath;               // 默认图标路径
-    std::string tooltip = "Wingman";    // 提示文本
-    std::vector<TrayMenuItemConfig> menuItems;  // 预设菜单项
-
-    // 不同状态的图标路径
-    std::string iconNormal;             // 正常状态图标
-    std::string iconIdle;               // 空闲状态图标（灰色）
-    std::string iconBusy;               // 忙碌状态图标
-    std::string iconError;              // 错误状态图标
-
-    std::string toJson() const;
-    static TrayConfig fromJson(const std::string& json);
 };
 
 // 自动运行配置
@@ -135,10 +83,6 @@ public:
     // 服务器配置
     ServerConfig getServerConfig() const;
     bool setServerConfig(const ServerConfig& config);
-
-    // 托盘配置
-    TrayConfig getTrayConfig() const;
-    bool setTrayConfig(const TrayConfig& config);
 
     // 自动运行配置
     AutoRunConfig getAutoRunConfig() const;
