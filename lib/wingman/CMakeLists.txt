@@ -35,8 +35,7 @@ set(WINGMAN_SOURCES
     # 触发器与视觉
     src/trigger_engine.cpp
 
-    # 系统模块
-    src/performance.cpp
+    # 系统模块（注意：performance.cpp 需要 OpenCV，在后面添加）
     # src/security.cpp  # TODO: 修复重复定义
 
     # 账号与存储
@@ -84,7 +83,10 @@ endif()
 
 # Vision 支持（可选，需要 OpenCV）
 if(TARGET opencv_core)
-    list(APPEND WINGMAN_SOURCES src/vision.cpp)
+    list(APPEND WINGMAN_SOURCES
+        src/vision.cpp
+        src/performance.cpp
+    )
     add_compile_definitions(WINGMAN_ENABLE_VISION)
     message(STATUS "Vision support enabled (OpenCV found)")
 else()
