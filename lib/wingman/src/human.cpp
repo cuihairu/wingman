@@ -1,6 +1,5 @@
 #include "wingman/human.hpp"
 
-#ifdef _WIN32
 #include "wingman/input.hpp"
 #include "wingman/screen.hpp"
 #include <spdlog/spdlog.h>
@@ -440,5 +439,3 @@ void Human::setKeyboardConfig(const HumanKeyboardConfig& config) {
 }
 
 } // namespace wingman
-
-#endif // _WIN32

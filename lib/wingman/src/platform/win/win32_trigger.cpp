@@ -1,12 +1,12 @@
 #include "wingman/trigger.hpp"
 
 #ifdef _WIN32
+
 #include "wingman/screen.hpp"
 #include "wingman/input.hpp"
 #include "wingman/window.hpp"
 #include "wingman/process.hpp"
 #include <spdlog/spdlog.h>
-#include <spdlog/sinks/base_sink.h>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -33,198 +33,168 @@
 
 namespace wingman {
 
-TriggerManager::TriggerManager() : m_running(false), m_thread(nullptr), m_luaState(nullptr) {
+static uint64_t getTickCount() {
+    return GetTickCount();
+}
+
+TriggerManager::TriggerManager() : m_running(false), m_luaState(nullptr) {
     m_logger = spdlog::default_logger();
-    InitializeCriticalSection(&m_cs);
 }
 
 TriggerManager::TriggerManager(std::shared_ptr<spdlog::logger> logger)
-    : m_running(false), m_thread(nullptr), m_luaState(nullptr), m_logger(logger) {
+    : m_running(false), m_luaState(nullptr), m_logger(logger) {
     if (!m_logger) {
         m_logger = spdlog::default_logger();
     }
-    InitializeCriticalSection(&m_cs);
 }
 
 TriggerManager::~TriggerManager() {
     stop();
-    DeleteCriticalSection(&m_cs);
 }
 
 void TriggerManager::setLuaState(lua_State* L) {
-    Lock();
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_luaState = L;
-    Unlock();
 }
 
 void TriggerManager::setLogger(std::shared_ptr<spdlog::logger> logger) {
-    Lock();
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_logger = logger ? logger : spdlog::default_logger();
-    Unlock();
 }
 
 size_t TriggerManager::add(const TriggerConfig& config) {
-    Lock();
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     static size_t nextId = 1;
     TriggerInstance instance;
     instance.id = nextId++;
     instance.config = config;
-    instance.startTime = GetTickCount();
+    instance.startTime = getTickCount();
     instance.lastTriggerTime = 0;
     instance.triggered = false;
 
     m_triggers.push_back(instance);
-    Unlock();
-
     return instance.id;
 }
 
 bool TriggerManager::update(size_t id, const TriggerConfig& config) {
-    Lock();
+    std::lock_guard<std::mutex> lock(m_mutex);
     for (auto& t : m_triggers) {
         if (t.id == id) {
             t.config = config;
-            // 重置触发状态
             t.lastTriggerTime = 0;
             t.triggered = false;
-            Unlock();
             return true;
         }
     }
-    Unlock();
     return false;
 }
 
 void TriggerManager::remove(size_t id) {
-    Lock();
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_triggers.erase(
         std::remove_if(m_triggers.begin(), m_triggers.end(),
             [id](const TriggerInstance& t) { return t.id == id; }),
         m_triggers.end()
     );
-    Unlock();
 }
 
 void TriggerManager::enable(size_t id) {
-    Lock();
+    std::lock_guard<std::mutex> lock(m_mutex);
     for (auto& t : m_triggers) {
         if (t.id == id) {
             t.config.enabled = true;
             break;
         }
     }
-    Unlock();
 }
 
 void TriggerManager::disable(size_t id) {
-    Lock();
+    std::lock_guard<std::mutex> lock(m_mutex);
     for (auto& t : m_triggers) {
         if (t.id == id) {
             t.config.enabled = false;
             break;
         }
     }
-    Unlock();
 }
 
 void TriggerManager::start() {
     if (m_running) return;
-
     m_running = true;
-    m_thread = CreateThread(nullptr, 0, checkThread, this, 0, nullptr);
+    m_thread = std::thread(&TriggerManager::checkThread, this);
 }
 
 void TriggerManager::stop() {
     if (!m_running) return;
-
     m_running = false;
-
-    if (m_thread) {
-        WaitForSingleObject(m_thread, 5000);
-        CloseHandle(m_thread);
-        m_thread = nullptr;
+    if (m_thread.joinable()) {
+        m_thread.join();
     }
 }
 
 bool TriggerManager::isRunning(size_t id) const {
-    Lock();
+    std::lock_guard<std::mutex> lock(m_mutex);
     for (const auto& t : m_triggers) {
         if (t.id == id) {
-            Unlock();
             return t.config.enabled;
         }
     }
-    Unlock();
     return false;
 }
 
 std::vector<TriggerConfig> TriggerManager::getAllTriggerConfigs() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
     std::vector<TriggerConfig> result;
-    Lock();
     result.reserve(m_triggers.size());
     for (const auto& t : m_triggers) {
         result.push_back(t.config);
     }
-    Unlock();
     return result;
 }
 
 std::vector<TriggerInstance> TriggerManager::getAllTriggerInstances() const {
-    std::vector<TriggerInstance> result;
-    Lock();
-    result = m_triggers;
-    Unlock();
-    return result;
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_triggers;
 }
 
 std::optional<TriggerConfig> TriggerManager::getTriggerConfig(size_t id) const {
-    Lock();
+    std::lock_guard<std::mutex> lock(m_mutex);
     for (const auto& t : m_triggers) {
         if (t.id == id) {
-            auto config = t.config;
-            Unlock();
-            return config;
+            return t.config;
         }
     }
-    Unlock();
     return std::nullopt;
 }
 
 bool TriggerManager::hasTrigger(size_t id) const {
-    Lock();
+    std::lock_guard<std::mutex> lock(m_mutex);
     for (const auto& t : m_triggers) {
         if (t.id == id) {
-            Unlock();
             return true;
         }
     }
-    Unlock();
     return false;
 }
 
 size_t TriggerManager::getTriggerCount() const {
-    Lock();
-    size_t count = m_triggers.size();
-    Unlock();
-    return count;
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_triggers.size();
 }
 
-DWORD WINAPI TriggerManager::checkThread(LPVOID param) {
-    auto* manager = static_cast<TriggerManager*>(param);
+void TriggerManager::checkThread() {
+    while (m_running) {
+        std::lock_guard<std::mutex> lock(m_mutex);
 
-    while (manager->m_running) {
-        manager->Lock();
-
-        for (auto& trigger : manager->m_triggers) {
+        for (auto& trigger : m_triggers) {
             if (!trigger.config.enabled) continue;
 
-            if (manager->checkTrigger(trigger)) {
-                // 检查冷却时间
-                DWORD now = GetTickCount();
-                if (now - trigger.lastTriggerTime >= static_cast<DWORD>(trigger.config.cooldown)) {
+            if (checkTrigger(trigger)) {
+                uint64_t now = getTickCount();
+                if (now - trigger.lastTriggerTime >= static_cast<uint64_t>(trigger.config.cooldown)) {
                     trigger.lastTriggerTime = now;
-                    manager->executeActions(trigger.config.actions);
+                    executeActions(trigger.config.actions);
 
                     if (trigger.config.oneShot) {
                         trigger.config.enabled = false;
@@ -234,11 +204,8 @@ DWORD WINAPI TriggerManager::checkThread(LPVOID param) {
             }
         }
 
-        manager->Unlock();
-        Sleep(50); // 检查间隔
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
-
-    return 0;
 }
 
 bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
@@ -277,10 +244,8 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
         }
 
         case TriggerType::TimeElapsed: {
-            // 特殊处理：检查自启动以来是否经过了指定的时间间隔
-            // 使用 trigger.instance.startTime 作为起点
-            DWORD elapsed = GetTickCount() - trigger.startTime;
-            return elapsed >= static_cast<DWORD>(cond.interval);
+            uint64_t elapsed = getTickCount() - trigger.startTime;
+            return elapsed >= static_cast<uint64_t>(cond.interval);
         }
 
         case TriggerType::PixelChanged: {
@@ -341,12 +306,12 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
                 break;
 
             case BasicTriggerAction::ShowMessage:
-                MessageBoxA(nullptr, action.value.c_str(), "Wingman Trigger", MB_OK);
+                showMessage(action.value);
                 if (m_logger) m_logger->info("Trigger action: showed message '{}'", action.value);
                 break;
 
             case BasicTriggerAction::PlayAudio:
-                ::PlaySoundA(action.value.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+                playAudio(action.value);
                 if (m_logger) m_logger->info("Trigger action: played sound '{}'", action.value);
                 break;
 
@@ -361,6 +326,14 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
             Input::delay(action.delay);
         }
     }
+}
+
+void TriggerManager::showMessage(const std::string& message) {
+    MessageBoxA(nullptr, message.c_str(), "Wingman Trigger", MB_OK);
+}
+
+void TriggerManager::playAudio(const std::string& filepath) {
+    ::PlaySoundA(filepath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
 }
 
 } // namespace wingman

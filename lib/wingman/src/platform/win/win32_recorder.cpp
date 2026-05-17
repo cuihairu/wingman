@@ -1,6 +1,7 @@
 #include "wingman/recorder.hpp"
 
 #ifdef _WIN32
+
 #include "wingman/input.hpp"
 #include <nlohmann/json.hpp>
 
@@ -29,7 +30,6 @@ void MacroRecorder::start() {
     m_paused = false;
     m_startTime = GetTickCount();
 
-    // 安装 Hook
     m_mouseHook = SetWindowsHookExA(
         WH_MOUSE_LL,
         mouseHookProc,
@@ -151,7 +151,6 @@ bool MacroRecorder::loadFromJSON(const std::string& filepath) {
 
     try {
         nlohmann::json j;
-        // 使用更详细的异常处理
         try {
             file >> j;
         } catch (const nlohmann::json::parse_error&) {
@@ -194,7 +193,6 @@ void MacroRecorder::playback(int speed, int repeat) const {
         DWORD lastTimestamp = m_events[0].timestamp;
 
         for (const auto& event : m_events) {
-            // 计算延迟
             DWORD delay = (event.timestamp - lastTimestamp) * 100 / speed;
             if (delay > 0) {
                 Input::delay(delay);
@@ -299,7 +297,6 @@ MacroRecorder* MacroRecorder::getInstance() {
 }
 
 void MacroRecorder::recordEvent(const RecordedEvent& event) {
-    // 合并连续的鼠标移动事件
     if (!m_events.empty() && event.type == RecordedEventType::MouseMove) {
         if (m_events.back().type == RecordedEventType::MouseMove) {
             m_events.back() = event;

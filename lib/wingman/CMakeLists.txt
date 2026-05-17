@@ -30,18 +30,15 @@ set(WINGMAN_SOURCES
     src/screen.cpp
     src/input.cpp
     src/window.cpp
-    src/process.cpp
     src/human.cpp
     src/ui_automation.cpp
 
     # 触发器与视觉
-    src/trigger.cpp
     src/trigger_engine.cpp
     src/smart_trigger.cpp
     src/vision.cpp
 
     # 系统模块
-    src/system.cpp
     src/performance.cpp
     # src/security.cpp  # TODO: 修复重复定义
 
@@ -52,14 +49,13 @@ set(WINGMAN_SOURCES
 
     # 配置与工具
     src/config.cpp
-    src/recorder.cpp
     src/json.cpp
     src/kvstore.cpp
 
     # 网络与通信
     src/http.cpp
-    src/remote_server.cpp
     src/screenshot_reporter.cpp
+    src/platform/remote_server_common.cpp
     # src/http_server.cpp  # TODO: 检查依赖
     # src/node_status.cpp  # TODO: 检查依赖
     # src/storage_remote.cpp  # TODO: 检查依赖
@@ -97,6 +93,11 @@ if(WIN32)
         src/platform/win/win32_window.cpp
         src/platform/win/win32_screen.cpp
         src/platform/win/win_automation.cpp
+        src/platform/win/win32_process.cpp
+        src/platform/win/win32_system.cpp
+        src/platform/win/win32_recorder.cpp
+        src/platform/win/win32_trigger.cpp
+        src/platform/win/winsock_remote_server.cpp
     )
 elseif(APPLE)
     list(APPEND WINGMAN_SOURCES
@@ -105,6 +106,11 @@ elseif(APPLE)
         src/platform/mac/cocoa_window.cpp
         src/platform/mac/cocoa_screen.cpp
         src/platform/mac/mac_automation.cpp
+        src/platform/mac/posix_process.cpp
+        src/platform/mac/darwin_system.cpp
+        src/platform/mac/cocoa_recorder.cpp
+        src/platform/unix/posix_trigger.cpp
+        src/platform/unix/berkeley_remote_server.cpp
     )
     # macOS 需要 Cocoa 框架
     find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
@@ -114,6 +120,11 @@ elseif(APPLE)
 elseif(UNIX AND NOT APPLE)
     list(APPEND WINGMAN_SOURCES
         src/platform/linux/x11_factory.cpp
+        src/platform/linux/posix_process.cpp
+        src/platform/linux/posix_system.cpp
+        src/platform/linux/x11_recorder.cpp
+        src/platform/unix/posix_trigger.cpp
+        src/platform/unix/berkeley_remote_server.cpp
     )
     # Linux 需要 X11 和 XRandR
     find_package(PkgConfig REQUIRED)

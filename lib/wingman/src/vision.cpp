@@ -1,6 +1,5 @@
 #include "wingman/vision.hpp"
 
-#ifdef _WIN32
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -406,5 +405,3 @@ double Vision::compareImages(const std::string& path1, const std::string& path2)
 }
 
 } // namespace wingman
-
-#endif // _WIN32

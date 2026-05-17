@@ -1,6 +1,5 @@
 #pragma once
 
-#ifdef _WIN32
 #include "wingman/screen.hpp"
 #include "wingman/input.hpp"
 #include "wingman/trigger.hpp"
@@ -10,8 +9,19 @@
 #include <unordered_map>
 #include <mutex>
 
-// 前向声明Windows类型
+#ifdef _WIN32
+// Windows socket 类型
 typedef unsigned long long SOCKET;
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#else
+// POSIX socket 类型
+typedef int SOCKET;
+#define INVALID_SOCKET -1
+#define SOCKET_ERROR -1
+#endif
 
 namespace wingman {
 
@@ -165,5 +175,3 @@ private:
 };
 
 } // namespace wingman
-
-#endif // _WIN32

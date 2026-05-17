@@ -8,14 +8,15 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+using ProcessId = DWORD;
+using ProcessHandle = HANDLE;
+#else
+#include <unistd.h>
+using ProcessId = pid_t;
+using ProcessHandle = int;
 #endif
 
 namespace wingman {
-
-#ifdef _WIN32
-
-using ProcessHandle = HANDLE;
-using ProcessId = DWORD;
 
 struct ProcessInfo {
     ProcessId pid;
@@ -45,7 +46,5 @@ public:
     static bool waitFor(const std::string& name, int timeoutMs = 5000);
     static bool waitExit(const std::string& name, int timeoutMs = 5000);
 };
-
-#endif // _WIN32
 
 } // namespace wingman

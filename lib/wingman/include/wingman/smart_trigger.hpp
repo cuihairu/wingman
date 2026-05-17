@@ -11,16 +11,7 @@
 #include "wingman/vision.hpp"
 #include "wingman/ocr.hpp"
 
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#endif
-
 namespace wingman {
-
-#ifdef _WIN32
 
 // 触发条件类型
 enum class TriggerConditionType {
@@ -42,7 +33,7 @@ enum class TriggerActionType {
     KEY_PRESS,          // 按键
     WAIT,               // 等待
     LUA_SCRIPT,         // 执行 Lua 脚本
-    CUSTOM_CALLBACK,           // 回调函数
+    CUSTOM_CALLBACK,    // 回调函数
     STOP,               // 停止触发器
     LOG                 // 日志
 };
@@ -154,7 +145,5 @@ private:
     std::map<std::string, std::shared_ptr<SmartTrigger>> triggers_;
     mutable std::mutex mutex_;
 };
-
-#endif // _WIN32
 
 } // namespace wingman

@@ -1,6 +1,5 @@
 #include "wingman/smart_trigger.hpp"
 
-#ifdef _WIN32
 #include "wingman/input.hpp"
 #include "wingman/screen.hpp"
 #include <spdlog/spdlog.h>
@@ -109,7 +108,6 @@ bool SmartTrigger::checkConditions() {
             }
             case TriggerConditionType::OCR_EQUALS: {
                 auto result = OCR::recognize(condition.searchRegion);
-                // 去除空白后比较
                 std::string text = result.text;
                 text.erase(std::remove_if(text.begin(), text.end(), ::isspace), text.end());
                 std::string target = condition.targetText;
@@ -126,16 +124,14 @@ bool SmartTrigger::checkConditions() {
                 auto currentColor = Vision::getDominantColor(condition.searchRegion);
                 if (condition.hasPreviousColor) {
                     bool match = Vision::isColorMatch(currentColor, condition.previousColor, condition.tolerance);
-                    conditionMet = !match;  // 颜色改变了
+                    conditionMet = !match;
                 }
-                // 更新之前的颜色
                 const_cast<TriggerCondition&>(condition).previousColor = currentColor;
                 const_cast<TriggerCondition&>(condition).hasPreviousColor = true;
                 break;
             }
         }
 
-        // 所有条件都要满足（AND 逻辑）
         if (!conditionMet) {
             return false;
         }
@@ -163,7 +159,6 @@ void SmartTrigger::executeActions() {
                 break;
 
             case TriggerActionType::LUA_SCRIPT:
-                // TODO: 执行 Lua 脚本
                 spdlog::debug("Trigger '{}': executing Lua script", name_);
                 break;
 
@@ -194,7 +189,6 @@ void SmartTrigger::watchLoop() {
 
             executeActions();
 
-            // 检查是否达到最大触发次数
             if (maxTriggers_ > 0 && triggerCount_ >= maxTriggers_) {
                 spdlog::info("Trigger '{}' reached max triggers ({})", name_, maxTriggers_);
                 stop();
@@ -282,5 +276,3 @@ std::vector<std::shared_ptr<SmartTrigger>> SmartTriggerManager::getAllTriggers()
 }
 
 } // namespace wingman
-
-#endif // _WIN32

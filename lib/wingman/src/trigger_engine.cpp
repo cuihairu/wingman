@@ -1,6 +1,5 @@
 #include "wingman/trigger_engine.hpp"
 
-#ifdef _WIN32
 #include "wingman/trigger.hpp"
 #include <spdlog/spdlog.h>
 #include <fstream>
@@ -33,14 +32,12 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
 
     luaL_openlibs(L);
 
-    // 加载配置文件
     if (luaL_dofile(L, filepath.c_str()) != LUA_OK) {
         spdlog::error("Failed to load trigger config: {}", lua_tostring(L, -1));
         lua_close(L);
         return false;
     }
 
-    // 获取 triggers 表
     lua_getglobal(L, "triggers");
     if (!lua_istable(L, -1)) {
         spdlog::error("triggers table not found in config");
@@ -48,29 +45,23 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
         return false;
     }
 
-    // 遍历触发器
     lua_pushnil(L);
     while (lua_next(L, -2) != 0) {
-        // 每个触发器是一个表
         if (lua_istable(L, -1)) {
             TriggerConfig config;
 
-            // 获取 name
             lua_getfield(L, -1, "name");
             if (lua_isstring(L, -1)) {
                 config.name = lua_tostring(L, -1);
             }
             lua_pop(L, 1);
 
-            // 获取 enabled
             lua_getfield(L, -1, "enabled");
             config.enabled = lua_toboolean(L, -1);
             lua_pop(L, 1);
 
-            // 获取 condition 表
             lua_getfield(L, -1, "condition");
             if (lua_istable(L, -1)) {
-                // type
                 lua_getfield(L, -1, "type");
                 const char* type = lua_tostring(L, -1);
                 if (type) {
@@ -82,14 +73,12 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
                 }
                 lua_pop(L, 1);
 
-                // color
                 lua_getfield(L, -1, "color");
                 if (lua_isstring(L, -1)) {
                     config.condition.value = lua_tostring(L, -1);
                 }
                 lua_pop(L, 1);
 
-                // region [x, y, width, height]
                 lua_getfield(L, -1, "region");
                 if (lua_istable(L, -1)) {
                     lua_rawgeti(L, -1, 1);
@@ -110,19 +99,16 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
                 }
                 lua_pop(L, 1);
 
-                // tolerance
                 lua_getfield(L, -1, "tolerance");
                 config.condition.tolerance = static_cast<int>(lua_tointeger(L, -1));
                 lua_pop(L, 1);
             }
             lua_pop(L, 1);
 
-            // 获取 action 表
             lua_getfield(L, -1, "action");
             if (lua_istable(L, -1)) {
                 TriggerActionData action;
 
-                // type
                 lua_getfield(L, -1, "type");
                 const char* type = lua_tostring(L, -1);
                 if (type) {
@@ -136,7 +122,6 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
                 }
                 lua_pop(L, 1);
 
-                // key / value
                 lua_getfield(L, -1, "key");
                 if (lua_isstring(L, -1)) {
                     action.value = lua_tostring(L, -1);
@@ -147,12 +132,10 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
             }
             lua_pop(L, 1);
 
-            // cooldown
             lua_getfield(L, -1, "cooldown");
             config.cooldown = static_cast<int>(lua_tointeger(L, -1));
             lua_pop(L, 1);
 
-            // 添加触发器
             size_t id = m_manager->add(config);
             m_triggerNames.push_back(config.name);
             m_triggerIds.push_back(id);
@@ -168,7 +151,6 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
 }
 
 bool TriggerEngine::loadFromYAML(const std::string& /*filepath*/) {
-    // TODO: 实现 YAML 解析
     spdlog::warn("YAML config loading not yet implemented, use Lua config");
     return false;
 }
@@ -219,7 +201,6 @@ bool TriggerEngine::disableTrigger(const std::string& name) {
 TriggerEngine::Stats TriggerEngine::getStats() const {
     Stats stats;
 
-    // 从manager获取实际数据，而不是依赖m_triggerIds
     auto instances = m_manager->getAllTriggerInstances();
     stats.totalTriggers = instances.size();
 
@@ -230,10 +211,8 @@ TriggerEngine::Stats TriggerEngine::getStats() const {
         }
     }
 
-    stats.totalTriggered = 0;  // TODO: 实现触发计数
+    stats.totalTriggered = 0;
     return stats;
 }
 
 } // namespace wingman
-
-#endif // _WIN32

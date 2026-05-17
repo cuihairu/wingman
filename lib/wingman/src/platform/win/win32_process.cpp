@@ -1,6 +1,5 @@
 #include "wingman/process.hpp"
 
-#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -134,7 +133,6 @@ bool Process::wait(ProcessId pid, int timeoutMs) {
 }
 
 bool Process::terminate(ProcessId pid, bool force) {
-    (void)force;  // TODO: 考虑实现强制终止逻辑
     HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
     if (!hProcess) {
         return false;
@@ -232,5 +230,3 @@ bool Process::waitExit(const std::string& name, int timeoutMs) {
 }
 
 } // namespace wingman
-
-#endif // _WIN32

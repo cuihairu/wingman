@@ -1,13 +1,15 @@
 #pragma once
 
-#ifdef _WIN32
 #include <string>
 #include <vector>
 #include <cstdint>
+
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#endif
 
 namespace wingman {
 
@@ -33,27 +35,23 @@ struct MemoryInfo {
 
 // 磁盘信息
 struct DiskInfo {
-    std::string drive;      // 如 "C:\\"
+    std::string drive;      // 如 "C:\\" 或 "/"
     uint64_t total;         // 字节
     uint64_t free;          // 字节
     uint64_t used;          // 字节
     double usage;           // 0-100%
-    std::string fileSystem; // 如 NTFS
+    std::string fileSystem; // 如 NTFS, ext4
     std::string volumeName;
 };
 
-// GPU 信息
+// GPU 信息（简化版，只获取名称）
 struct GpuInfo {
-    std::string name;
-    uint64_t dedicatedMemory;  // 字节
-    uint64_t sharedMemory;     // 字节
-    double usage;              // 0-100%
-    int temperature;           // 摄氏度
+    std::string name;       // GPU 名称
 };
 
 // 操作系统信息
 struct OsInfo {
-    std::string platform;      // Windows
+    std::string platform;      // Windows / Linux / macOS
     std::string version;       // 如 10.0.19041
     std::string build;         // 构建号
     std::string architecture;  // x64 / ARM64
@@ -120,11 +118,11 @@ public:
     static int getThreadCount();
 
 private:
-    // 辅助函数
+#if defined(_WIN32)
+    // Windows 辅助函数
     static std::string readRegistryValue(const std::string& path, const std::string& value);
     static uint64_t getFileTimeAsUInt64(const FILETIME& ft);
+#endif
 };
 
 } // namespace wingman
-
-#endif // _WIN32

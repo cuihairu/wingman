@@ -5,18 +5,9 @@
 #include <functional>
 #include <memory>
 #include <optional>
-
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
-#include <windows.h>
-#endif
+#include <cstdint>
+#include <mutex>
+#include <thread>
 
 #include <lua.hpp>
 #include <spdlog/logger.h>
@@ -24,8 +15,6 @@
 #include "wingman/screen.hpp"  // For Rect type
 
 namespace wingman {
-
-#ifdef _WIN32
 
 // 触发器类型
 enum class TriggerType {
@@ -86,8 +75,8 @@ struct TriggerConfig {
 struct TriggerInstance {
     size_t id;
     TriggerConfig config;
-    DWORD startTime;       // 触发器启动时间
-    DWORD lastTriggerTime;
+    uint64_t startTime;       // 触发器启动时间
+    uint64_t lastTriggerTime;
     bool triggered;
 };
 
@@ -140,27 +129,27 @@ public:
     void setLogger(std::shared_ptr<spdlog::logger> logger);
 
 private:
-    // 内部辅助方法
-    void Lock() const { EnterCriticalSection(&m_cs); }
-    void Unlock() const { LeaveCriticalSection(&m_cs); }
-
     std::vector<TriggerInstance> m_triggers;
     bool m_running;
-    HANDLE m_thread;
-    mutable CRITICAL_SECTION m_cs;
+    std::thread m_thread;
+    mutable std::mutex m_mutex;
     lua_State* m_luaState;
     std::shared_ptr<spdlog::logger> m_logger;
 
     // 触发器检查线程
-    static DWORD WINAPI checkThread(LPVOID param);
+    void checkThread();
 
     // 检查单个触发器
     bool checkTrigger(TriggerInstance& trigger);
 
     // 执行动作
     void executeActions(const std::vector<TriggerActionData>& actions);
-};
 
-#endif // _WIN32
+    // 平台特定的消息框
+    static void showMessage(const std::string& message);
+
+    // 平台特定的音频播放
+    static void playAudio(const std::string& filepath);
+};
 
 } // namespace wingman

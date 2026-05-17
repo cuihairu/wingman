@@ -36,7 +36,7 @@ std::string System::readRegistryValue(const std::string& path, const std::string
     DWORD size = sizeof(buffer);
     DWORD type = REG_SZ;
 
-    if (RegQueryValueExA(hKey, value.c_str(), nullptr, &type,
+    if (RegQueryValueExA(hKey, value.c_str(), nullptr, nullptr,
                         reinterpret_cast<LPBYTE>(buffer), &size) != ERROR_SUCCESS) {
         RegCloseKey(hKey);
         return "";
@@ -149,17 +149,12 @@ int System::getCpuUsage() {
 
     if (totalDiff == 0) return 0;
 
-    // CPU 使用率 = (非空闲时间 / 总时间) * 100
-    // 注意：需要除以 CPU 核心数来获取整体使用率
     double usage = 100.0 * (1.0 - static_cast<double>(idleDiff) / static_cast<double>(totalDiff));
     return static_cast<int>(usage);
 }
 
 int System::getCpuTemperature() {
-    // 需要安装 Open Hardware Monitor 或类似的软件来读取温度
-    // Windows 没有直接读取 CPU 温度的 API
-    // 这里返回 -1 表示不支持
-    return -1;
+    return -1;  // 不支持
 }
 
 // ============================================================================
@@ -188,7 +183,6 @@ MemoryInfo System::getMemoryInfo() {
 std::vector<DiskInfo> System::getDiskInfo() {
     std::vector<DiskInfo> result;
 
-    // 获取所有逻辑驱动器
     DWORD drives = GetLogicalDrives();
     for (char drive = 'A'; drive <= 'Z'; ++drive) {
         if (drives & (1 << (drive - 'A'))) {
@@ -197,7 +191,6 @@ std::vector<DiskInfo> System::getDiskInfo() {
         }
     }
 
-    // 移除空驱动器
     result.erase(
         std::remove_if(result.begin(), result.end(),
             [](const DiskInfo& d) { return d.total == 0; }),
@@ -211,7 +204,6 @@ DiskInfo System::getDiskInfo(const std::string& drive) {
     DiskInfo info;
     info.drive = drive;
 
-    // 获取磁盘空间
     ULARGE_INTEGER freeBytes, totalBytes;
     if (GetDiskFreeSpaceExA(drive.c_str(), &freeBytes, &totalBytes, nullptr)) {
         info.total = totalBytes.QuadPart;
@@ -220,7 +212,6 @@ DiskInfo System::getDiskInfo(const std::string& drive) {
         info.usage = info.total > 0 ? (static_cast<double>(info.used) / info.total * 100.0) : 0;
     }
 
-    // 获取文件系统
     char fileSystem[MAX_PATH];
     char volumeName[MAX_PATH];
     DWORD maxComponentLength, fileSystemFlags;
@@ -235,14 +226,12 @@ DiskInfo System::getDiskInfo(const std::string& drive) {
 }
 
 // ============================================================================
-// GPU 信息
+// GPU 信息（简化版）
 // ============================================================================
 
 std::vector<GpuInfo> System::getGpuInfo() {
     std::vector<GpuInfo> result;
 
-    // 使用 WMI 或 DirectX 可以获取更详细的 GPU 信息
-    // 这里提供基础实现
     DISPLAY_DEVICE dd;
     dd.cb = sizeof(dd);
 
@@ -250,10 +239,6 @@ std::vector<GpuInfo> System::getGpuInfo() {
         if (dd.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
             GpuInfo info;
             info.name = dd.DeviceName;
-            info.dedicatedMemory = 0;
-            info.sharedMemory = 0;
-            info.usage = 0;
-            info.temperature = -1;
             result.push_back(info);
         }
     }
@@ -270,7 +255,6 @@ OsInfo System::getOsInfo() {
 
     info.platform = "Windows";
 
-    // 获取版本信息
     HKEY hKey;
     if (RegOpenKeyExA(HKEY_LOCAL_MACHINE,
                      "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
@@ -292,7 +276,6 @@ OsInfo System::getOsInfo() {
         RegCloseKey(hKey);
     }
 
-    // 获取架构
     SYSTEM_INFO sysInfo;
     GetNativeSystemInfo(&sysInfo);
     switch (sysInfo.wProcessorArchitecture) {
@@ -310,14 +293,12 @@ OsInfo System::getOsInfo() {
             break;
     }
 
-    // 获取计算机名
     char computerName[MAX_COMPUTERNAME_LENGTH + 1];
     DWORD size = sizeof(computerName);
     if (GetComputerNameA(computerName, &size)) {
         info.computerName = computerName;
     }
 
-    // 获取用户名
     char userName[UNLEN + 1];
     size = sizeof(userName);
     if (GetUserNameA(userName, &size)) {
@@ -350,7 +331,6 @@ std::vector<NetworkAdapter> System::getNetworkAdapters() {
             info.name = adapter->AdapterName;
             info.description = adapter->Description;
 
-            // MAC 地址
             std::ostringstream mac;
             mac << std::hex << std::setfill('0');
             for (UINT i = 0; i < adapter->AddressLength; ++i) {
@@ -359,17 +339,14 @@ std::vector<NetworkAdapter> System::getNetworkAdapters() {
             }
             info.macAddress = mac.str();
 
-            // IP 地址
             info.ipAddress = adapter->IpAddressList.IpAddress.String ?
                             adapter->IpAddressList.IpAddress.String : "";
             info.subnetMask = adapter->IpAddressList.IpMask.String ?
                              adapter->IpAddressList.IpMask.String : "";
 
             info.isUp = (adapter->Type != MIB_IF_TYPE_LOOPBACK);
-
-            // Note: dwOutOctets and dwInOctets may not be available on all Windows SDK versions
-            info.bytesSent = 0;  // adapter->dwOutOctets;
-            info.bytesReceived = 0;  // adapter->dwInOctets;
+            info.bytesSent = 0;
+            info.bytesReceived = 0;
 
             result.push_back(info);
             adapter = adapter->Next;
@@ -396,7 +373,6 @@ std::vector<DisplayInfo> System::getDisplayInfo() {
         info.name = dd.DeviceName;
         info.isPrimary = (dd.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) != 0;
 
-        // 获取显示器的当前设置
         DEVMODE dm;
         dm.dmSize = sizeof(dm);
         if (EnumDisplaySettingsA(dd.DeviceName, ENUM_CURRENT_SETTINGS, &dm)) {
@@ -431,7 +407,6 @@ std::string System::getDateTime() {
 std::string System::getTimeZone() {
     TIME_ZONE_INFORMATION tzi;
     if (GetTimeZoneInformation(&tzi) != TIME_ZONE_ID_INVALID) {
-        // 转换时区名称（使用 WideCharToMultiByte 正确转换）
         if (tzi.StandardName[0] != L'\0') {
             int size = WideCharToMultiByte(CP_UTF8, 0, tzi.StandardName, -1, nullptr, 0, nullptr, nullptr);
             if (size > 0) {
@@ -461,7 +436,6 @@ int System::getProcessCount() {
 }
 
 int System::getThreadCount() {
-    // 这只是估算，实际需要遍历所有进程
     DWORD threads = 0;
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snapshot != INVALID_HANDLE_VALUE) {

@@ -3,8 +3,6 @@
 #include <string>
 #include <vector>
 #include <memory>
-
-#ifdef _WIN32
 #include "wingman/trigger.hpp"
 
 namespace wingman {
@@ -54,5 +52,3 @@ private:
 };
 
 } // namespace wingman
-
-#endif // _WIN32

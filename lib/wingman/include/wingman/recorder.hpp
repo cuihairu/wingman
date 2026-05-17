@@ -1,12 +1,16 @@
 #pragma once
 
-#ifdef _WIN32
 #include <string>
 #include <vector>
+#include <thread>
+#include <cstdint>
+
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#endif
 
 namespace wingman {
 
@@ -25,12 +29,12 @@ enum class RecordedEventType {
 
 struct RecordedEvent {
     RecordedEventType type;
-    DWORD timestamp;      // 事件时间戳
-    int x, y;             // 鼠标位置
-    int button;           // 鼠标按钮
-    int keyCode;          // 按键代码
-    std::string text;     // 输入的文本
-    int delay;            // 延迟时间
+    uint64_t timestamp;    // 事件时间戳
+    int x, y;              // 鼠标位置
+    int button;            // 鼠标按钮
+    int keyCode;           // 按键代码
+    std::string text;      // 输入的文本
+    int delay;             // 延迟时间
 };
 
 // 宏录制器
@@ -73,21 +77,28 @@ private:
     std::vector<RecordedEvent> m_events;
     bool m_recording;
     bool m_paused;
-    DWORD m_startTime;
+    uint64_t m_startTime;
+
+#ifdef _WIN32
     HHOOK m_mouseHook;
     HHOOK m_keyboardHook;
-
-    // Hook 过程
-    static LRESULT WINAPI mouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
-    static LRESULT WINAPI keyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam);
+#elif defined(__linux__)
+    void* m_display;
+    void* m_recordContext;
+    std::thread m_processThread;
+#elif defined(__APPLE__)
+    void* m_eventTap;
+    void* m_runLoopSource;
+#endif
 
     // 获取实例
     static MacroRecorder* getInstance();
 
     // 记录事件
     void recordEvent(const RecordedEvent& event);
+
+    // 获取开始时间（用于平台实现）
+    uint64_t getStartTime() const { return m_startTime; }
 };
 
 } // namespace wingman
-
-#endif // _WIN32

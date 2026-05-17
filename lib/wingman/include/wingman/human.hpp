@@ -5,16 +5,7 @@
 #include <random>
 #include <string>
 
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#endif
-
 namespace wingman {
-
-#ifdef _WIN32
 
 // 人性化鼠标配置
 struct HumanMouseConfig {
@@ -173,7 +164,5 @@ public:
     static void setMouseConfig(const HumanMouseConfig& config);
     static void setKeyboardConfig(const HumanKeyboardConfig& config);
 };
-
-#endif // _WIN32
 
 } // namespace wingman
