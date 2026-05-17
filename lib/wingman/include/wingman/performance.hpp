@@ -1,6 +1,5 @@
 #pragma once
 
-#ifdef _WIN32
 #include "wingman/screen.hpp"
 
 #include <string>
@@ -8,6 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+#include <cstdint>
 #include <opencv2/opencv.hpp>
 
 namespace wingman {
@@ -174,6 +174,11 @@ private:
      * 颜色降级（加速）
      */
     void reduceColors(cv::Mat& image, int bits);
+
+    /**
+     * 获取 CPU 核心数（跨平台）
+     */
+    static int getNumCpuCores();
 };
 
 /**
@@ -193,9 +198,7 @@ public:
 
 private:
     double* m_target;
-    int64 m_start;
+    int64_t m_start;
 };
 
 } // namespace wingman
-
-#endif // _WIN32

@@ -1,9 +1,18 @@
 #include "wingman/performance.hpp"
+#include <spdlog/spdlog.h>
 
-#ifdef _WIN32
-#include <Windows.h>
 #include <algorithm>
 #include <chrono>
+#include <thread>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace wingman {
 
@@ -11,18 +20,26 @@ namespace wingman {
 // PerformanceManager Implementation
 // ============================================================================
 
+int PerformanceManager::getNumCpuCores() {
+#ifdef _WIN32
+    SYSTEM_INFO sysInfo;
+    GetSystemInfo(&sysInfo);
+    return static_cast<int>(sysInfo.dwNumberOfProcessors);
+#elif defined(_SC_NPROCESSORS_ONLN)
+    return static_cast<int>(sysconf(_SC_NPROCESSORS_ONLN));
+#else
+    return static_cast<int>(std::thread::hardware_concurrency());
+#endif
+}
+
 PerformanceManager& PerformanceManager::instance() {
     static PerformanceManager inst;
     return inst;
 }
 
 PerformanceManager::PerformanceManager() {
-    // 检测 CPU 核心数
-    SYSTEM_INFO sysInfo;
-    GetSystemInfo(&sysInfo);
-    m_config.numThreads = sysInfo.dwNumberOfProcessors;
+    m_config.numThreads = getNumCpuCores();
 
-    // 设置 OpenCV 并行处理
     if (m_config.enableParallelProcessing) {
         cv::setNumThreads(m_config.numThreads);
     }
@@ -32,7 +49,6 @@ void PerformanceManager::setConfig(const PerformanceConfig& config) {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_config = config;
 
-    // 更新 OpenCV 线程数
     if (m_config.enableParallelProcessing) {
         cv::setNumThreads(m_config.numThreads > 0 ? m_config.numThreads : cv::getNumThreads());
     }
@@ -48,7 +64,6 @@ cv::Mat PerformanceManager::getCachedImage(const std::string& path) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     if (!m_config.enableImageCache) {
-        // 缓存禁用，直接加载
         cv::Mat mat = cv::imread(path, cv::IMREAD_COLOR);
         m_cacheMisses++;
         return mat;
@@ -60,26 +75,22 @@ cv::Mat PerformanceManager::getCachedImage(const std::string& path) {
 
     auto it = m_imageCache.find(path);
     if (it != m_imageCache.end()) {
-        // 缓存命中
         it->second.accessCount++;
         it->second.lastAccess = now;
         m_cacheHits++;
         return it->second.mat.clone();
     }
 
-    // 缓存未命中，加载图像
     cv::Mat mat = cv::imread(path, cv::IMREAD_COLOR);
     if (mat.empty()) {
         m_cacheMisses++;
         return cv::Mat();
     }
 
-    // 检查缓存大小，必要时清理
     if (m_imageCache.size() >= m_config.maxCacheSize) {
         evictExpired();
     }
 
-    // 添加到缓存
     CachedImage cached;
     cached.mat = mat;
     cached.path = path;
@@ -93,7 +104,7 @@ cv::Mat PerformanceManager::getCachedImage(const std::string& path) {
 }
 
 void PerformanceManager::preloadImage(const std::string& path) {
-    getCachedImage(path); // 加载即缓存
+    getCachedImage(path);
 }
 
 void PerformanceManager::clearCache() {
@@ -104,7 +115,6 @@ void PerformanceManager::clearCache() {
 void PerformanceManager::evictExpired() {
     if (m_imageCache.empty()) return;
 
-    // 找到最少使用的项
     auto minIt = std::min_element(
         m_imageCache.begin(), m_imageCache.end(),
         [](const auto& a, const auto& b) {
@@ -140,13 +150,11 @@ bool PerformanceManager::fastFindImage(const std::string& imagePath,
     PerformanceTimer timer(&m_stats.avgImageSearchTime);
     m_stats.totalImageSearches++;
 
-    // 从缓存获取模板图像
     cv::Mat templ = getCachedImage(imagePath);
     if (templ.empty()) {
         return false;
     }
 
-    // 截取屏幕
     auto screenBitmap = Screen::capture(region);
     if (!screenBitmap) {
         return false;
@@ -156,16 +164,13 @@ bool PerformanceManager::fastFindImage(const std::string& imagePath,
     int height = screenBitmap->getHeight();
     cv::Mat screenMat(height, width, CV_8UC4, screenBitmap->getData());
 
-    // 转换 BGRA 到 BGR
     cv::Mat screenBGR;
     cv::cvtColor(screenMat, screenBGR, cv::COLOR_BGRA2BGR);
 
-    // 模板图像太大则跳过
     if (templ.rows > screenBGR.rows || templ.cols > screenBGR.cols) {
         return false;
     }
 
-    // 使用金字塔加速
     if (m_config.useImagePyramids && templ.cols > 50 && templ.rows > 50) {
         cv::Point matchPos;
         if (pyramidMatch(screenBGR, templ, threshold, matchPos)) {
@@ -176,7 +181,6 @@ bool PerformanceManager::fastFindImage(const std::string& imagePath,
         return false;
     }
 
-    // 标准模板匹配
     cv::Mat matchResult;
     cv::matchTemplate(screenBGR, templ, matchResult, cv::TM_CCOEFF_NORMED);
 
@@ -200,7 +204,6 @@ std::vector<std::pair<std::string, Point>> PerformanceManager::findMultipleImage
 ) {
     std::vector<std::pair<std::string, Point>> results;
 
-    // 截取屏幕一次
     auto screenBitmap = Screen::capture(region);
     if (!screenBitmap) {
         return results;
@@ -212,7 +215,6 @@ std::vector<std::pair<std::string, Point>> PerformanceManager::findMultipleImage
     cv::Mat screenBGR;
     cv::cvtColor(screenMat, screenBGR, cv::COLOR_BGRA2BGR);
 
-    // 对每个模板进行匹配
     for (const auto& path : imagePaths) {
         cv::Mat templ = getCachedImage(path);
         if (templ.empty()) continue;
@@ -257,7 +259,6 @@ std::vector<Point> PerformanceManager::parallelFindColors(
     int height = bitmap->getHeight();
     const uint8_t* data = bitmap->getData();
 
-    // 预计算目标颜色的容忍度
     int rMin = std::max(0, (int)color.r - tolerance);
     int rMax = std::min(255, (int)color.r + tolerance);
     int gMin = std::max(0, (int)color.g - tolerance);
@@ -265,10 +266,8 @@ std::vector<Point> PerformanceManager::parallelFindColors(
     int bMin = std::max(0, (int)color.b - tolerance);
     int bMax = std::min(255, (int)color.b + tolerance);
 
-    // 使用 OpenCV 并行处理
     cv::Mat mat(height, width, CV_8UC4, (void*)data);
 
-    // 并行查找
     cv::Mat mask(height, width, CV_8UC1);
     cv::parallel_for_(
         cv::Range(0, height),
@@ -279,7 +278,6 @@ std::vector<Point> PerformanceManager::parallelFindColors(
 
                 for (int x = 0; x < width; ++x) {
                     const uint8_t* pixel = row + x * 4;
-                    // OpenCV 中数据是 BGR
                     uint8_t b = pixel[0];
                     uint8_t g = pixel[1];
                     uint8_t r = pixel[2];
@@ -297,7 +295,6 @@ std::vector<Point> PerformanceManager::parallelFindColors(
         m_config.numThreads > 0 ? m_config.numThreads : -1
     );
 
-    // 收集结果
     for (int y = 0; y < height; ++y) {
         const uint8_t* maskRow = mask.ptr<uint8_t>(y);
         for (int x = 0; x < width; ++x) {
@@ -361,25 +358,21 @@ std::vector<cv::Mat> PerformanceManager::buildPyramid(const cv::Mat& image, int 
 
 bool PerformanceManager::pyramidMatch(const cv::Mat& screen, const cv::Mat& templ,
                                       double threshold, cv::Point& result) {
-    // 构建金字塔
     auto screenPyramid = buildPyramid(screen, m_config.minPyramidLevel);
     auto templPyramid = buildPyramid(templ, m_config.minPyramidLevel);
 
-    // 从最低分辨率开始
     cv::Point predictedPos(0, 0);
 
     for (int level = static_cast<int>(screenPyramid.size()) - 1; level >= 0; --level) {
         const cv::Mat& screenLevel = screenPyramid[level];
         const cv::Mat& templLevel = templPyramid[level];
 
-        // 根据上一级结果调整搜索区域
         cv::Mat searchRegion = screenLevel;
         int offsetX = 0, offsetY = 0;
 
         if (level < static_cast<int>(screenPyramid.size()) - 1) {
-            // 放大预测位置到当前层级
             int scale = 1 << (screenPyramid.size() - 1 - level);
-            int searchSize = 50 * scale; // 搜索窗口
+            int searchSize = 50 * scale;
             int searchX = std::max(0, predictedPos.x * scale - searchSize / 2);
             int searchY = std::max(0, predictedPos.y * scale - searchSize / 2);
             int searchW = std::min(screenLevel.cols - searchX, searchSize);
@@ -392,7 +385,6 @@ bool PerformanceManager::pyramidMatch(const cv::Mat& screen, const cv::Mat& temp
             }
         }
 
-        // 模板匹配
         cv::Mat matchResult;
         cv::matchTemplate(searchRegion, templLevel, matchResult, cv::TM_CCOEFF_NORMED);
 
@@ -407,7 +399,6 @@ bool PerformanceManager::pyramidMatch(const cv::Mat& screen, const cv::Mat& temp
         predictedPos.x = maxLoc.x + offsetX;
         predictedPos.y = maxLoc.y + offsetY;
 
-        // 如果是最高层级，返回结果
         if (level == 0) {
             result = predictedPos;
             return true;
@@ -426,10 +417,7 @@ void PerformanceManager::reduceColors(cv::Mat& image, int bits) {
     cv::Mat maskMat(image.size(), image.type(), cv::Scalar(mask, mask, mask, 0));
     cv::bitwise_and(image, maskMat, image);
 
-    // 向下取整
     image.convertTo(image, -1, 1.0, 0);
 }
 
 } // namespace wingman
-
-#endif // _WIN32
