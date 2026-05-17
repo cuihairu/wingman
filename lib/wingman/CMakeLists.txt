@@ -30,12 +30,10 @@ set(WINGMAN_SOURCES
     src/screen.cpp
     src/input.cpp
     src/window.cpp
-    src/human.cpp
     src/ui_automation.cpp
 
     # 触发器与视觉
     src/trigger_engine.cpp
-    src/smart_trigger.cpp
     src/vision.cpp
 
     # 系统模块
@@ -88,6 +86,8 @@ endif()
 # ========== 平台特定源文件 ==========
 if(WIN32)
     list(APPEND WINGMAN_SOURCES
+        src/human.cpp
+        src/smart_trigger.cpp
         src/platform/win/gdi_capture.cpp
         src/platform/win/sendinput_input.cpp
         src/platform/win/win32_window.cpp

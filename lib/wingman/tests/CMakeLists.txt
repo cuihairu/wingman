@@ -3,6 +3,9 @@
 if(BUILD_CORE_TESTS)
     enable_testing()
 
+    # 代码覆盖率选项
+    option(CODE_COVERAGE "Enable code coverage" OFF)
+
     # 检查是否已经通过 vcpkg 安装了 GTest
     # 设置 GTest_DIR 指向全局 vcpkg 安装（如果存在）
     if(EXISTS "C:/Users/admin/vcpkg/installed/x64-windows-static/share/gtest/GTestConfig.cmake")
@@ -101,6 +104,21 @@ if(BUILD_CORE_TESTS)
                 gtest_main
                 wingman
             )
+        endif()
+    endif()
+
+    # 应用覆盖率选项（必须在目标创建之后）
+    if(CODE_COVERAGE)
+        message(STATUS "Code coverage enabled")
+
+        # GCC/Clang 覆盖率标志
+        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+            target_compile_options(core_tests PRIVATE --coverage)
+            target_link_options(core_tests PRIVATE --coverage)
+        # MSVC 覆盖率标志
+        elseif(MSVC)
+            target_compile_options(core_tests PRIVATE /profile)
+            target_link_options(core_tests PRIVATE /PROFILE)
         endif()
     endif()
 
