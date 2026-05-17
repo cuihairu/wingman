@@ -121,7 +121,7 @@
     "react-router": "^6.30.2",
     "@remix-run/router": "^1.23.2",
     "axios": "^1.16.1",
-    "tar": "^6.2.1",
+    "tar": "^7.5.15",
     "tar-fs": "^2.0.1",
     "@tootallnate/once": "^3.0.0",
     "debug": "^2.6.9",
@@ -171,7 +171,7 @@
     "overrides": {
       "@rc-component/resize-observer": "^1.1.2",
       "axios": "^1.16.1",
-      "tar": "^6.2.1",
+      "tar": "^7.5.15",
       "tar-fs": "^2.0.1",
       "@tootallnate/once": "^3.0.0",
       "debug": "^2.6.9",

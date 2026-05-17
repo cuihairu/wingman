@@ -8,7 +8,7 @@ overrides:
   vite: ^5.4.20
   rollup: ^3.30.0
   axios: ^1.16.1
-  tar: ^6.2.1
+  tar: ^7.5.15
   tar-fs: ^2.0.1
   '@tootallnate/once': ^3.0.0
 
