@@ -9,6 +9,14 @@
     "docs:preview": "vitepress preview"
   },
   "devDependencies": {
-    "vitepress": "^2.0.0-alpha.12"
+    "vitepress": "^1.6.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "^5.4.20",
+      "rollup": "^3.30.0",
+      "axios": "^0.30.0",
+      "@tootallnate/once": "^2.0.1"
+    }
   }
 }
