@@ -34,7 +34,6 @@ set(WINGMAN_SOURCES
 
     # 触发器与视觉
     src/trigger_engine.cpp
-    src/vision.cpp
 
     # 系统模块
     src/performance.cpp
@@ -81,6 +80,17 @@ if(DEFINED WINGMAN_ENABLE_ML AND WINGMAN_ENABLE_ML)
 else()
     # 使用 stub 实现
     list(APPEND WINGMAN_SOURCES src/ml_stub.cpp)
+endif()
+
+# Vision 支持（可选，需要 OpenCV）
+if(TARGET opencv_core)
+    list(APPEND WINGMAN_SOURCES src/vision.cpp)
+    add_compile_definitions(WINGMAN_ENABLE_VISION)
+    message(STATUS "Vision support enabled (OpenCV found)")
+else()
+    # 使用 stub 实现
+    list(APPEND WINGMAN_SOURCES src/vision_stub.cpp)
+    message(STATUS "Vision support disabled (OpenCV not found)")
 endif()
 
 # ========== 平台特定源文件 ==========
