@@ -97,6 +97,12 @@ private:
     // 记录事件
     void recordEvent(const RecordedEvent& event);
 
+#ifdef _WIN32
+    // Windows Hook 回调函数
+    static LRESULT WINAPI mouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
+    static LRESULT WINAPI keyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam);
+#endif
+
     // 获取开始时间（用于平台实现）
     uint64_t getStartTime() const { return m_startTime; }
 };
