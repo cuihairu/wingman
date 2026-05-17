@@ -122,6 +122,7 @@
     "@remix-run/router": "^1.23.2",
     "axios": "^1.16.1",
     "tar": "^7.5.15",
+    "@umijs/bundler-vite": "^4.6.55",
     "tar-fs": "^2.0.1",
     "@tootallnate/once": "^3.0.0",
     "debug": "^2.6.9",
