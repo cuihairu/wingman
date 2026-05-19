@@ -81,10 +81,12 @@ private:
     // ========== 动作处理器 ==========
 
     // 屏幕操作
+#ifdef WINGMAN_ENABLE_VISION
     RemoteResponse handleCaptureScreen(const nlohmann::json& params);
+    RemoteResponse handleFindImage(const nlohmann::json& params);
+#endif
     RemoteResponse handleGetPixel(const nlohmann::json& params);
     RemoteResponse handleFindColor(const nlohmann::json& params);
-    RemoteResponse handleFindImage(const nlohmann::json& params);
 
     // 输入模拟
     RemoteResponse handleClick(const nlohmann::json& params);

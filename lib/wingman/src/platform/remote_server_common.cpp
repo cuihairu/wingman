@@ -8,7 +8,10 @@
 #include <thread>
 #include <chrono>
 #include <vector>
+
+#ifdef WINGMAN_ENABLE_VISION
 #include <opencv2/opencv.hpp>
+#endif
 
 // ========== Base64 编码辅助函数 ==========
 
@@ -85,10 +88,20 @@ RemoteResponse RemoteServer::handleRequest(const RemoteRequest& req) {
     try {
         if (req.action == "ping") return handlePing(req.params);
         if (req.action == "get_version") return handleGetVersion(req.params);
+#ifdef WINGMAN_ENABLE_VISION
         if (req.action == "capture_screen") return handleCaptureScreen(req.params);
+        if (req.action == "find_image") return handleFindImage(req.params);
+#else
+        // 返回不支持错误
+        if (req.action == "capture_screen" || req.action == "find_image") {
+            RemoteResponse resp;
+            resp.success = false;
+            resp.error = "Action not supported: Vision features require OpenCV";
+            return resp;
+        }
+#endif
         if (req.action == "get_pixel") return handleGetPixel(req.params);
         if (req.action == "find_color") return handleFindColor(req.params);
-        if (req.action == "find_image") return handleFindImage(req.params);
         if (req.action == "click") return handleClick(req.params);
         if (req.action == "move") return handleMove(req.params);
         if (req.action == "key") return handleKey(req.params);
@@ -131,6 +144,8 @@ RemoteResponse RemoteServer::handleGetVersion(const nlohmann::json& /*params*/) 
     resp.data["name"] = "Wingman";
     return resp;
 }
+
+#ifdef WINGMAN_ENABLE_VISION
 
 RemoteResponse RemoteServer::handleCaptureScreen(const nlohmann::json& params) {
     RemoteResponse resp;
@@ -233,6 +248,8 @@ RemoteResponse RemoteServer::handleFindImage(const nlohmann::json& params) {
 
     return resp;
 }
+
+#endif // WINGMAN_ENABLE_VISION
 
 RemoteResponse RemoteServer::handleGetPixel(const nlohmann::json& params) {
     RemoteResponse resp;
