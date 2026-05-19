@@ -361,6 +361,7 @@ jobs:
 
     - name: Download C++ coverage artifact (Linux)
       uses: actions/download-artifact@v8
+      continue-on-error: true
       with:
         name: cpp-coverage
         path: build/coverage/
