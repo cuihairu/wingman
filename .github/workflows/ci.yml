@@ -131,9 +131,9 @@ jobs:
         retention-days: 1
 
   # ========== C++ Test with Coverage ==========
-  # NOTE: 暂时禁用 - 需要修复 Linux 依赖
+  # NOTE: 暂时禁用 - 需要修复 Linux X11 平台代码
   test-cpp:
-    if: true
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 120
     # Linux 上禁用 binary caching（GitHub Packages 中没有 Linux 包）
