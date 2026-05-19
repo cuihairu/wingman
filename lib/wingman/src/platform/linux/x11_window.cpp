@@ -420,7 +420,7 @@ public:
             monitorIndex = 0;
         }
 
-        Screen* screenInfo = ScreenOfDisplay(display_, monitorIndex);
+        ::Screen* screenInfo = ScreenOfDisplay(display_, monitorIndex);
         int screenWidth = WidthOfScreen(screenInfo);
         int screenHeight = HeightOfScreen(screenInfo);
 

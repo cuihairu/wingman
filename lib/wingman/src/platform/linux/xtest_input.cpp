@@ -149,7 +149,7 @@ public:
         if (!initialized_) return;
 
         KeySym keySym = toKeySym(key);
-        KeyCode keyCode = XKeysymToKeycode(display_, keySym);
+        ::KeyCode keyCode = XKeysymToKeycode(display_, keySym);
 
         if (keyCode != 0) {
             XTestFakeKeyEvent(display_, keyCode, True, CurrentTime);
@@ -162,7 +162,7 @@ public:
         if (!initialized_) return;
 
         KeySym keySym = toKeySym(key);
-        KeyCode keyCode = XKeysymToKeycode(display_, keySym);
+        ::KeyCode keyCode = XKeysymToKeycode(display_, keySym);
 
         if (keyCode != 0) {
             XTestFakeKeyEvent(display_, keyCode, False, CurrentTime);
@@ -184,7 +184,7 @@ public:
 
         for (char c : text) {
             KeySym keySym = charToKeySym(c);
-            KeyCode keyCode = XKeysymToKeycode(display_, keySym);
+            ::KeyCode keyCode = XKeysymToKeycode(display_, keySym);
 
             if (keyCode != 0) {
                 XTestFakeKeyEvent(display_, keyCode, True, CurrentTime);
@@ -212,7 +212,7 @@ public:
         if (!initialized_) return false;
 
         KeySym keySym = toKeySym(key);
-        KeyCode keyCode = XKeysymToKeycode(display_, keySym);
+        ::KeyCode keyCode = XKeysymToKeycode(display_, keySym);
 
         if (keyCode == 0) return false;
 
@@ -249,7 +249,7 @@ public:
         };
     }
 
-    InputConfig getConfig() const override {
+    InputConfig getConfig() const {
         return config_;
     }
 

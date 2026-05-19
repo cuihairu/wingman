@@ -136,13 +136,18 @@ public:
 
         if (monitors && monitorIndex >= 0 && monitorIndex < count) {
             XRRMonitorInfo* monitor = &monitors[monitorIndex];
-            for (int i = 0; i < monitor->noutput; ++i) {
-                XRROutputInfo* outputInfo = XRRGetOutputInfo(display_, monitor->outputs[i]);
-                if (outputInfo && outputInfo->name) {
-                    name = outputInfo->name;
-                    XRRFreeOutputInfo(outputInfo);
-                    break;
+            // 获取 XRRScreenResources 以调用 XRRGetOutputInfo
+            XRRScreenResources* resources = XRRGetScreenResources(display_, root);
+            if (resources) {
+                for (int i = 0; i < monitor->noutput; ++i) {
+                    XRROutputInfo* outputInfo = XRRGetOutputInfo(display_, resources, monitor->outputs[i]);
+                    if (outputInfo && outputInfo->name) {
+                        name = outputInfo->name;
+                        XRRFreeOutputInfo(outputInfo);
+                        break;
+                    }
                 }
+                XRRFreeScreenResources(resources);
             }
         }
 
