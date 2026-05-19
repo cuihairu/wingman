@@ -251,17 +251,20 @@ jobs:
           $coverageFiles += $outputFile
 
           # 运行 OpenCppCoverage，生成 cobertura 格式
-          # 注意：使用 --modules 而不是 --sources 来捕获静态库的覆盖率
-          # 对于静态库，需要将测试可执行文件作为 --modules 参数
+          # 不使用 --modules 参数，让它自动检测所有模块
+          # 只用 --excluded_modules 来排除系统 DLL
           & $occ `
             --export_type=cobertura:$outputFile `
-            --modules "$($test.FullName)" `
             --sources "$projectRoot" `
             --excluded_sources "*\vcpkg_installed*" `
             --excluded_sources "*\build\_deps*" `
             --excluded_sources "*\tests*" `
-            --excluded_modules "*msvc*.dll" `
-            --excluded_modules "*vcruntime*.dll" `
+            --excluded_modules "msvc*.dll" `
+            --excluded_modules "vcruntime*.dll" `
+            --excluded_modules "ucrtbase.dll" `
+            --excluded_modules "kernel32.dll" `
+            --excluded_modules "kernelbase.dll" `
+            --excluded_modules "ntdll.dll" `
             --optimized_build `
             --no_aggregate_by_file `
             -- $test.FullName
@@ -277,16 +280,21 @@ jobs:
         # 合并所有覆盖率文件
         Write-Host "Merging coverage files..."
         $mergedFile = "build/coverage/coverage-merged.xml"
-        & $occ `
-          --export_type=cobertura:$mergedFile `
-          --input_coverage build/coverage/*.xml `
-          --sources "$projectRoot" `
-          --excluded_sources "*\vcpkg_installed*" `
-          --excluded_sources "*\build\_deps*" `
-          --excluded_sources "*\tests*"
+        $inputFiles = Get-ChildItem build/coverage -Filter "*.xml" | Where-Object { $_.Name -ne "coverage-merged.xml" }
+        if ($inputFiles.Count -gt 0) {
+          & $occ `
+            --export_type=cobertura:$mergedFile `
+            --input_coverage ($inputFiles | ForEach-Object { $_.FullName }) `
+            --sources "$projectRoot" `
+            --excluded_sources "*\vcpkg_installed*" `
+            --excluded_sources "*\build\_deps*" `
+            --excluded_sources "*\tests*"
 
-        if (Test-Path $mergedFile) {
-          Write-Host "Merged coverage file: $mergedFile, Size: $((Get-Item $mergedFile).Length) bytes"
+          if (Test-Path $mergedFile) {
+            Write-Host "Merged coverage file: $mergedFile, Size: $((Get-Item $mergedFile).Length) bytes"
+          }
+        } else {
+          Write-Host "No coverage files to merge"
         }
 
     - name: Upload C++ coverage artifact
