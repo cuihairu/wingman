@@ -179,6 +179,9 @@ jobs:
 
   nightly-linux:
     runs-on: ubuntu-latest
+    # Linux 上禁用 binary caching 写入（GitHub Packages 中没有 Linux 缓存）
+    env:
+      VCPKG_BINARY_SOURCES: "clear"
 
     steps:
     - name: Checkout
@@ -293,6 +296,9 @@ jobs:
 
   nightly-macos:
     runs-on: macos-latest
+    # macOS 上禁用 binary caching 写入（上传超时）
+    env:
+      VCPKG_BINARY_SOURCES: "clear"
 
     steps:
     - name: Checkout
