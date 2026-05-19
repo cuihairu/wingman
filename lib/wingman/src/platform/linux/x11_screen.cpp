@@ -9,6 +9,9 @@
 #include <algorithm>
 #include <climits>
 
+// 取消 linux 宏定义
+#undef linux
+
 namespace wingman::platform::linux {
 
 /**

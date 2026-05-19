@@ -12,6 +12,9 @@
 #include <vector>
 #include <string>
 
+// 取消 linux 宏定义
+#undef linux
+
 namespace wingman::platform::linux {
 
 /**

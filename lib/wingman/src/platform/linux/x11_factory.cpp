@@ -1,5 +1,8 @@
 #ifdef __linux__
 
+// 取消 linux 宏定义（某些编译器将其定义为 1）
+#undef linux
+
 // 前向声明 Linux 平台实现类
 namespace wingman::platform::linux {
     class X11Capture;
