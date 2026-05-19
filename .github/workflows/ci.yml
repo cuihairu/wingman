@@ -349,47 +349,10 @@ jobs:
         retention-days: 1
 
   # ========== Codecov Upload ==========
-  # 使用 Ubuntu 避免 Windows 编码问题
-  codecov:
-    needs: test-cpp-windows
-    if: always() && needs.test-cpp-windows.result == 'success'
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v6
-
-    - name: Download C++ coverage artifact (Linux)
-      uses: actions/download-artifact@v8
-      continue-on-error: true
-      with:
-        name: cpp-coverage
-        path: build/coverage/
-
-    - name: Download C++ coverage artifact (Windows)
-      uses: actions/download-artifact@v8
-      with:
-        name: cpp-coverage-cobertura
-        path: build/coverage/windows/
-
-    - name: Check coverage files
-      run: |
-        echo "Linux coverage files:"
-        ls -la build/coverage/ || echo "No Linux coverage"
-        echo "Windows coverage files:"
-        ls -la build/coverage/windows/ || echo "No Windows coverage"
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v6
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./build/coverage/*.info,./build/coverage/windows/*.xml,./build/coverage/windows/coverage-merged.xml
-        flags: cpp
-        name: cpp-coverage
-        fail_ci_if_error: false
-        # 覆盖率文件使用绝对路径，需要映射到项目根目录
-        override_branch: main
-        override_commit: ${{ github.sha }}
-        override_pr: ${{ github.event.number }}
-        # 启用详细日志以便调试
-        verbose: true
+  # 暂时禁用 - 静态库覆盖率工具支持有限
+  # TODO: 启用 Linux test-cpp 后重新启用，或考虑将核心库改为动态库
+  # codecov:
+  #   needs: test-cpp
+  #   if: always() && needs.test-cpp.result == 'success'
+  #   runs-on: ubuntu-latest
+  #   ...
