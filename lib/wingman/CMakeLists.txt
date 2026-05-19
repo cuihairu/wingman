@@ -51,7 +51,6 @@ set(WINGMAN_SOURCES
     # 网络与通信
     src/http.cpp
     src/screenshot_reporter.cpp
-    src/platform/remote_server_common.cpp
     # src/http_server.cpp  # TODO: 检查依赖
     # src/node_status.cpp  # TODO: 检查依赖
     # src/storage_remote.cpp  # TODO: 检查依赖
@@ -86,6 +85,7 @@ if(TARGET opencv_core)
     list(APPEND WINGMAN_SOURCES
         src/vision.cpp
         src/performance.cpp
+        src/platform/remote_server_common.cpp
     )
     add_compile_definitions(WINGMAN_ENABLE_VISION)
     message(STATUS "Vision support enabled (OpenCV found)")
