@@ -195,7 +195,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake ninja-build ccache
+        sudo apt-get install -y cmake ninja-build ccache mono-complete
         sudo apt-get install -y libx11-dev libxrandr-dev libxext-dev libxtst-dev libxt-dev libxinerama-dev
 
     - name: Setup vcpkg
@@ -308,7 +308,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install cmake ninja
+        brew install cmake ninja mono
 
     - name: Setup vcpkg
       run: |
