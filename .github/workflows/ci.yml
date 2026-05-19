@@ -251,17 +251,18 @@ jobs:
           $coverageFiles += $outputFile
 
           # 运行 OpenCppCoverage，生成 cobertura 格式
-          # --optimized_build: 支持 /O2 优化构建的覆盖率
+          # 注意：使用 --modules 而不是 --sources 来捕获静态库的覆盖率
+          # 对于静态库，需要将测试可执行文件作为 --modules 参数
           & $occ `
             --export_type=cobertura:$outputFile `
-            --sources "$projectRoot\apps" `
-            --sources "$projectRoot\lib" `
-            --sources "$projectRoot\libs" `
+            --modules "$($test.FullName)" `
+            --sources "$projectRoot" `
             --excluded_sources "*\vcpkg_installed*" `
             --excluded_sources "*\build\_deps*" `
             --excluded_sources "*\tests*" `
+            --excluded_modules "*msvc*.dll" `
+            --excluded_modules "*vcruntime*.dll" `
             --optimized_build `
-            --working_dir "$($test.Directory.FullName)" `
             --no_aggregate_by_file `
             -- $test.FullName
         }
@@ -271,6 +272,21 @@ jobs:
         # 检查生成的文件大小
         Get-ChildItem build/coverage -Filter "*.xml" | ForEach-Object {
           Write-Host "File: $($_.Name), Size: $($_.Length) bytes"
+        }
+
+        # 合并所有覆盖率文件
+        Write-Host "Merging coverage files..."
+        $mergedFile = "build/coverage/coverage-merged.xml"
+        & $occ `
+          --export_type=cobertura:$mergedFile `
+          --input_coverage build/coverage/*.xml `
+          --sources "$projectRoot" `
+          --excluded_sources "*\vcpkg_installed*" `
+          --excluded_sources "*\build\_deps*" `
+          --excluded_sources "*\tests*"
+
+        if (Test-Path $mergedFile) {
+          Write-Host "Merged coverage file: $mergedFile, Size: $((Get-Item $mergedFile).Length) bytes"
         }
 
     - name: Upload C++ coverage artifact
@@ -380,11 +396,18 @@ jobs:
         name: cpp-coverage-cobertura
         path: build/coverage/windows/
 
+    - name: Check coverage files
+      run: |
+        echo "Linux coverage files:"
+        ls -la build/coverage/ || echo "No Linux coverage"
+        echo "Windows coverage files:"
+        ls -la build/coverage/windows/ || echo "No Windows coverage"
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./build/coverage/*.info,./build/coverage/windows/*.xml
+        files: ./build/coverage/*.info,./build/coverage/windows/*.xml,./build/coverage/windows/coverage-merged.xml
         flags: cpp
         name: cpp-coverage
         fail_ci_if_error: false
