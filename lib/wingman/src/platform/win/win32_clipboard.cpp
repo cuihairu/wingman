@@ -407,6 +407,35 @@ bool Win32Clipboard::isEmpty() {
            !IsClipboardFormatAvailable(CF_HDROP);
 }
 
+std::vector<ClipboardFormat> Win32Clipboard::getAvailableFormats() {
+    std::vector<ClipboardFormat> formats;
+
+    if (!openClipboard()) {
+        return formats;
+    }
+
+    UINT enumFormat = EnumClipboardFormats(0);
+    while (enumFormat != 0) {
+        if (enumFormat == CF_TEXT || enumFormat == CF_UNICODETEXT) {
+            formats.push_back(ClipboardFormat::Text);
+        } else if (enumFormat == CF_DIB || enumFormat == CF_DIBV5) {
+            formats.push_back(ClipboardFormat::Image);
+        } else if (enumFormat == CF_HDROP) {
+            formats.push_back(ClipboardFormat::Files);
+        }
+        enumFormat = EnumClipboardFormats(enumFormat);
+    }
+
+    // 检查自定义格式
+    static UINT cfHTML = RegisterClipboardFormatW(L"HTML Format");
+    if (cfHTML != 0 && IsClipboardFormatAvailable(cfHTML)) {
+        formats.push_back(ClipboardFormat::HTML);
+    }
+
+    closeClipboard();
+    return formats;
+}
+
 BackendInfo Win32Clipboard::getBackendInfo() const {
     return BackendInfo{
         "Win32",

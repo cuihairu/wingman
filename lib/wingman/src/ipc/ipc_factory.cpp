@@ -2,7 +2,7 @@
 #include <spdlog/spdlog.h>
 
 #ifdef _WIN32
-#include "wingman/platform/win/named_pipe_channel.hpp"
+#include "wingman/ipc/windows/named_pipe_channel.hpp"
 using NamedPipeChannel = wingman::ipc::windows::NamedPipeChannel;
 #elif defined(__linux__)
 #include "wingman/platform/linux/unix_socket_channel.hpp"

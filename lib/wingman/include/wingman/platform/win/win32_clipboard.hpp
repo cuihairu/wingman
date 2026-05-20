@@ -53,6 +53,7 @@ public:
 
     void clear() override;
     bool isEmpty() override;
+    std::vector<ClipboardFormat> getAvailableFormats() override;
 
     std::string getBackendName() const override { return "Win32"; }
     BackendInfo getBackendInfo() const override;
@@ -61,8 +62,8 @@ private:
     bool initialized_;
     bool opened_;
 
-    static bool openClipboard();
-    static void closeClipboard();
+    bool openClipboard();
+    void closeClipboard();
     static UINT getHtmlFormat();
 };
 
