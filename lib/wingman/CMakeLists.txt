@@ -31,6 +31,8 @@ set(WINGMAN_SOURCES
     src/input.cpp
     src/window.cpp
     src/ui_automation.cpp
+    src/clipboard.cpp
+    src/filewatcher.cpp
 
     # 触发器与视觉
     src/trigger_engine.cpp
@@ -100,6 +102,8 @@ if(WIN32)
     list(APPEND WINGMAN_SOURCES
         src/human.cpp
         src/smart_trigger.cpp
+        src/platform/win/win32_clipboard.cpp
+        src/platform/win/win32_filewatcher.cpp
         src/platform/win/gdi_capture.cpp
         src/platform/win/sendinput_input.cpp
         src/platform/win/win32_window.cpp

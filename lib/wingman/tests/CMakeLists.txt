@@ -25,6 +25,8 @@ if(BUILD_CORE_TESTS)
             input_test.cpp
             vision_test.cpp
             window_test.cpp
+            clipboard_test.cpp
+            filewatcher_test.cpp
         )
 
         # 添加 include 目录
@@ -59,6 +61,7 @@ if(BUILD_CORE_TESTS)
                 vision_test.cpp
                 window_test.cpp
                 human_test.cpp
+                clipboard_test.cpp
             )
 
             target_include_directories(core_tests PRIVATE
@@ -93,6 +96,7 @@ if(BUILD_CORE_TESTS)
                 vision_test.cpp
                 window_test.cpp
                 human_test.cpp
+                clipboard_test.cpp
             )
 
             target_include_directories(core_tests PRIVATE
