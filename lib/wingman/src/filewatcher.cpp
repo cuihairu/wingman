@@ -18,7 +18,7 @@ namespace wingman {
 
 // ========== FileWatcher 实现 ==========
 
-IFileWatcher& FileWatcher::instance() {
+platform::IFileWatcher& FileWatcher::instance() {
     static std::unique_ptr<PlatformFileWatcher> instance = [] {
         auto watcher = std::make_unique<PlatformFileWatcher>();
         if (!watcher->initialize()) {

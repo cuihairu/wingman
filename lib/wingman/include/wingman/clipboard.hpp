@@ -12,6 +12,11 @@
 
 namespace wingman {
 
+// 前向声明
+namespace platform {
+    class IClipboard;
+}
+
 /**
  * @brief 剪贴板管理类
  *
@@ -22,7 +27,7 @@ public:
     /**
      * @brief 获取剪贴板单例
      */
-    static IClipboard& instance();
+    static platform::IClipboard& instance();
 
     // ========== 便捷静态方法 ==========
 

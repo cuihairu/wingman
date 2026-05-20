@@ -7,6 +7,12 @@
 
 namespace wingman {
 
+// 前向声明
+namespace platform {
+    class IFileWatcher;
+    struct FileChange;
+}
+
 /**
  * @brief 文件监控管理类
  *
@@ -17,7 +23,7 @@ public:
     /**
      * @brief 获取监控器单例
      */
-    static IFileWatcher& instance();
+    static platform::IFileWatcher& instance();
 
     // ========== 便捷静态方法 ==========
 

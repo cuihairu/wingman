@@ -18,7 +18,7 @@ namespace wingman {
 
 // ========== Clipboard 实现 ==========
 
-IClipboard& Clipboard::instance() {
+platform::IClipboard& Clipboard::instance() {
     static std::unique_ptr<PlatformClipboard> instance = [] {
         auto clipboard = std::make_unique<PlatformClipboard>();
         if (!clipboard->initialize()) {
