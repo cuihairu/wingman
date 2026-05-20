@@ -50,6 +50,9 @@ set(WINGMAN_SOURCES
     src/json.cpp
     src/kvstore.cpp
 
+    # IPC 通信
+    src/ipc/ipc_factory.cpp
+
     # 网络与通信
     src/http.cpp
     src/screenshot_reporter.cpp
@@ -104,6 +107,7 @@ if(WIN32)
         src/smart_trigger.cpp
         src/platform/win/win32_clipboard.cpp
         src/platform/win/win32_filewatcher.cpp
+        src/platform/win/named_pipe_channel.cpp
         src/platform/win/gdi_capture.cpp
         src/platform/win/sendinput_input.cpp
         src/platform/win/win32_window.cpp

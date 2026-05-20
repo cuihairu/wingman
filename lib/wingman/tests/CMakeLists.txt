@@ -27,6 +27,7 @@ if(BUILD_CORE_TESTS)
             window_test.cpp
             clipboard_test.cpp
             filewatcher_test.cpp
+            ipc_test.cpp
         )
 
         # 添加 include 目录
