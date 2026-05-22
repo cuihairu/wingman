@@ -116,6 +116,11 @@ dashboard/dist/
 dashboard/.turbo/
 dashboard/config/local.ts
 
+# GUI (Tauri + Svelte)
+apps/gui/node_modules/
+apps/gui/dist/
+apps/gui/src-tauri/target/
+
 # Claude Code local files
 .claude/
 _deps/
