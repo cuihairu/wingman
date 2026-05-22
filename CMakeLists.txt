@@ -144,8 +144,10 @@ if(WINGMAN_BUILD_AGENT)
 endif()
 
 # GUI 应用 (Tauri - 如果启用则构建)
-if(WINGMAN_BUILD_GUI)
+if(WINGMAN_BUILD_GUI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/apps/gui/CMakeLists.txt")
     add_subdirectory(apps/gui)
+elseif(WINGMAN_BUILD_GUI)
+    message(WARNING "apps/gui/CMakeLists.txt not found, skipping CMake GUI target (Tauri GUI is managed separately)")
 endif()
 
 # ========== 测试（新架构）==========
@@ -168,11 +170,13 @@ if(WINGMAN_BUILD_BENCHMARKS)
 endif()
 
 # ========== 安装 ==========
-install(TARGETS wingman-runtime
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-)
+if(TARGET wingman-runtime)
+    install(TARGETS wingman-runtime
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+    )
+endif()
 
 # 复制脚本
 install(DIRECTORY build-scripts/

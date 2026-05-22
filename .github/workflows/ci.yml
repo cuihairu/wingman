@@ -2,357 +2,117 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   workflow_dispatch:
 
-# GitHub Packages 权限（用于 vcpkg 二进制缓存）
 permissions:
-  packages: write
   contents: read
+  id-token: write
 
 env:
-  ACTIONS_NODE_VERSION: '24'
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
-  # GitHub Packages NuGet 源配置
-  USERNAME: ${{ github.repository_owner }}
-  VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
-  FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
-  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
 
 jobs:
-  # ========== C++ Build & Test ==========
-  build-cpp:
+  cpp-windows:
+    name: C++ Windows
     runs-on: windows-2022
+    defaults:
+      run:
+        shell: pwsh
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
 
-    # Cache vcpkg binary archives for faster builds
-    - name: Cache vcpkg binaries
-      uses: actions/cache@v5
-      with:
-        path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-
+      - name: Setup vcpkg
+        run: ./build-scripts/ci/setup-vcpkg.ps1
 
-    - name: Setup vcpkg
-      run: |
-        if (Test-Path "vcpkg") {
-          Write-Host "vcpkg directory exists, removing..."
-          Remove-Item -Recurse -Force vcpkg
-        }
-        Write-Host "Cloning vcpkg..."
-        git clone https://github.com/Microsoft/vcpkg.git
-        cd vcpkg
-        .\bootstrap-vcpkg.bat
+      - name: Configure CMake
+        run: ./build-scripts/ci/configure-windows.ps1 -BuildDir build -Config Debug -EnableTests
 
-    - name: Add NuGet sources (GitHub Packages)
-      run: |
-        # 使用 PAT 进行认证（需要在 repository secrets 中配置 VCPKG_PAT_TOKEN）
-        # 如果没有配置 PAT，则使用 GITHUB_TOKEN（权限可能受限）
-        $patToken = "${{ secrets.VCPKG_PAT_TOKEN }}"
-        if ([string]::IsNullOrEmpty($patToken)) {
-          Write-Host "VCPKG_PAT_TOKEN not found, using GITHUB_TOKEN (may have limited permissions)"
-          $patToken = "${{ github.token }}"
-        }
+      - name: Build
+        run: cmake --build build --config Debug --parallel
 
-        # 添加 GitHub Packages 作为 NuGet 源
-        .\vcpkg\vcpkg fetch nuget | ForEach-Object { & $_ sources add `
-          -Source "${{ env.FEED_URL }}" `
-          -StorePasswordInClearText `
-          -Name "GitHubPackages" `
-          -UserName "${{ env.USERNAME }}" `
-          -Password $patToken }
+      - name: Install OpenCppCoverage
+        run: choco install opencppcoverage -y --no-progress
 
-        # 设置 API key
-        .\vcpkg\vcpkg fetch nuget | ForEach-Object { & $_ setapikey $patToken -Source "${{ env.FEED_URL }}" }
+      - name: Run tests with coverage
+        run: ./build-scripts/ci/run-windows-coverage.ps1 -BuildDir build -Config Debug -CoverageFile build/coverage/coverage.cobertura.xml
 
-    - name: Clone clasp for overlay port
-      run: |
-        # clasp portfile 会检查本地路径，如果存在则使用本地版本
-        # 这样避免需要 REF + SHA512 或 --head 标志
-        $workspacesDir = "$env:USERPROFILE\Workspaces"
-        New-Item -ItemType Directory -Force -Path $workspacesDir
-        if (-not (Test-Path "$workspacesDir\clasp")) {
-            git clone https://github.com/cuihairu/clasp.git "$workspacesDir\clasp"
-        }
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-cpp-coverage
+          path: build/coverage/coverage.cobertura.xml
+          if-no-files-found: error
+          retention-days: 7
 
-    - name: Install dependencies
-      run: |
-        # 使用官方推荐的 binary cache 配置
-        $env:VCPKG_BINARY_SOURCES = "${{ env.VCPKG_BINARY_SOURCES }}"
-        New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
-        # 启用 tests feature 来安装 GTest
-        # 在 manifest 模式下，不需要指定包名，只需使用 --x-feature=tests
-        # 添加 overlay-ports 以使用自定义端口 (clasp)
-        .\vcpkg\vcpkg install --triplet=x64-windows-static --recurse --x-feature=tests --overlay-ports=vcpkg-ports
+      - name: Upload coverage to Codecov
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: codecov/codecov-action@v5.5.1
+        with:
+          files: build/coverage/coverage.cobertura.xml
+          flags: windows-cpp
+          name: windows-cpp
+          fail_ci_if_error: true
+          use_oidc: true
 
-    - name: Configure CMake
-      shell: cmd
-      run: |
-        set "VCPKG_ROOT_ABS=%CD%\vcpkg"
-        set "VCPKG_OVERLAY_PORTS=%CD%\vcpkg-ports"
-        cmake -B build ^
-          -S . ^
-          -G "Visual Studio 17 2022" ^
-          -A x64 ^
-          -DCMAKE_TOOLCHAIN_FILE="%VCPKG_ROOT_ABS%/scripts/buildsystems/vcpkg.cmake" ^
-          -DVCPKG_TARGET_TRIPLET=x64-windows-static ^
-          -DCMAKE_BUILD_TYPE=Debug ^
-          -DCMAKE_CXX_FLAGS="/Zi /O2" ^
-          -DCMAKE_C_FLAGS="/Zi /O2" ^
-          -DCMAKE_EXE_LINKER_FLAGS="/PROFILE" ^
-          -DCMAKE_SHARED_LINKER_FLAGS="/PROFILE" ^
-          -DWINGMAN_BUILD_TESTS=ON ^
-          -DBUILD_CORE_TESTS=ON ^
-          -DWINGMAN_BUILD_GUI=OFF
-
-    - name: Build
-      run: cmake --build build --config Debug
-
-    - name: Upload test artifacts
-      uses: actions/upload-artifact@v6
-      with:
-        name: cpp-tests
-        path: |
-          build/lib/wingman/tests/Debug/*.exe
-          build/**/Debug/*_tests.exe
-          build/**/Debug/core_tests.exe
-          build/lib/Debug/*.dll
-          build/libs/*/Debug/*.dll
-          build/apps/*/Debug/*.dll
-        if-no-files-found: warn
-        retention-days: 1
-
-  # ========== C++ Test with Coverage ==========
-  # NOTE: 暂时禁用 - 需要修复 Linux X11 平台代码
-  test-cpp:
-    if: false
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    # Linux 上禁用 binary caching（GitHub Packages 中没有 Linux 包）
-    env:
-      VCPKG_BINARY_SOURCES: "clear"
+  cpp-compat:
+    name: C++ ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            triplet: x64-linux
+          - os: macos-13
+            triplet: x64-osx
+    defaults:
+      run:
+        shell: bash
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
 
-    - name: Setup vcpkg
-      run: |
-        if [ -d "vcpkg" ]; then
-          echo "vcpkg directory exists, removing..."
-          rm -rf vcpkg
-        fi
-        git clone https://github.com/Microsoft/vcpkg.git
-        cd vcpkg
-        ./bootstrap-vcpkg.sh
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libx11-dev libxrandr-dev libxext-dev libxtst-dev libxinerama-dev ninja-build
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y mono-complete
-        sudo apt-get install -y libx11-dev libxrandr-dev libxext-dev libxtst-dev libxt-dev libxinerama-dev
-        # 取消设置 VCPKG_DEFAULT_BINARY_CACHE，因为禁用了 binary caching
-        unset VCPKG_DEFAULT_BINARY_CACHE
-        ./vcpkg/vcpkg install --triplet=x64-linux --recurse --overlay-ports=vcpkg-ports
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install ninja
 
-    - name: Install lcov
-      run: sudo apt-get update && sudo apt-get install -y lcov
+      - name: Setup vcpkg
+        run: bash ./build-scripts/ci/setup-vcpkg.sh
 
-    - name: Configure CMake with coverage
-      run: |
-        # 取消设置 VCPKG_DEFAULT_BINARY_CACHE，因为禁用了 binary caching
-        unset VCPKG_DEFAULT_BINARY_CACHE
-        cmake -B build \
-          -S . \
-          -G "Unix Makefiles" \
-          -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake \
-          -DVCPKG_TARGET_TRIPLET=x64-linux \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_CXX_FLAGS="--coverage" \
-          -DCMAKE_C_FLAGS="--coverage" \
-          -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
-          -DWINGMAN_BUILD_TESTS=ON \
-          -DBUILD_CORE_TESTS=ON \
-          -DWINGMAN_BUILD_GUI=OFF
+      - name: Configure CMake
+        run: bash ./build-scripts/ci/configure-unix.sh "${{ matrix.triplet }}" "Ninja" "build"
 
-    - name: Build
-      run: cmake --build build -- -j$(nproc)
+      - name: Build
+        run: cmake --build build --parallel
 
-    - name: Run tests
-      run: |
-        find build -type f -executable -name "*_tests" -o -name "*test" | while read test; do
-          echo "Running $test..."
-          "$test" || true
-        done
-
-    - name: Generate coverage report
-      run: |
-        lcov --capture --directory build --output-file build/coverage.info --rc lcov_branch_coverage=1
-        lcov --remove build/coverage.info '/usr/*' --output-file build/coverage.info
-        lcov --remove build/coverage.info '*/vcpkg_installed/*' --output-file build/coverage.info
-        lcov --remove build/coverage.info '*/tests/*' --output-file build/coverage.info
-        lcov --remove build/coverage.info '*/test/*' --output-file build/coverage.info
-        lcov --list build/coverage.info
-
-    - name: Upload coverage artifact
-      uses: actions/upload-artifact@v6
-      with:
-        name: cpp-coverage
-        path: build/coverage.info
-        retention-days: 1
-
-  test-cpp-windows:
-    needs: build-cpp
+  go-build:
+    name: Go Server
     runs-on: windows-2022
+    defaults:
+      run:
+        shell: pwsh
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
 
-    - name: Download test artifacts
-      uses: actions/download-artifact@v8
-      with:
-        name: cpp-tests
-        path: build/tests
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
 
-    - name: Install OpenCppCoverage
-      run: choco install opencppcoverage -y
-
-    - name: Run tests with coverage
-      shell: pwsh
-      run: |
-        # 创建覆盖率输出目录
-        New-Item -ItemType Directory -Force -Path build/coverage
-
-        # OpenCppCoverage 安装路径
-        $occ = "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
-
-        # 获取项目根目录的绝对路径
-        $projectRoot = (Get-Item .).FullName
-
-        # 收集所有测试可执行文件
-        $tests = Get-ChildItem -Recurse build/tests -Filter "*.exe"
-
-        # 初始化覆盖率报告文件
-        $coverageFiles = @()
-
-        foreach ($test in $tests) {
-          Write-Host "Running coverage for $($test.FullName)..."
-
-          $outputFile = "build/coverage/$($test.BaseName)-coverage.xml"
-          $coverageFiles += $outputFile
-
-          # 运行测试（不使用 OpenCppCoverage，因为静态库覆盖率不支持）
-          # OpenCppCoverage 对于静态库链接的 C++ 代码支持有限
-          # 直接运行测试以验证功能正确性
-          & $test.FullName
-        }
-
-        Write-Host "Tests completed"
-
-        # 生成一个空的覆盖率文件以避免 codecov job 失败
-        $emptyCoverage = "<?xml version='1.0'?><coverage></coverage>"
-        [System.IO.File]::WriteAllText("build/coverage/coverage-merged.xml", $emptyCoverage)
-        Write-Host "Generated placeholder coverage file"
-
-    - name: Upload C++ coverage artifact
-      uses: actions/upload-artifact@v6
-      with:
-        name: cpp-coverage-cobertura
-        path: build/coverage/*.xml
-        retention-days: 1
-        if-no-files-found: warn
-
-  # ========== Lua Tests ==========
-  # NOTE: 暂时禁用 - Lua 测试需要 C++ 绑定，需要先实现测试运行器
-  # 测试文件位于 libs/lua/tests/unit/，测试的是 C++ 暴露给 Lua 的 API
-  # 需要一个能加载 wingman_lua 库的测试环境才能运行
-  test-lua:
-    if: false
-    runs-on: windows-2022
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v6
-
-    - name: Install Lua with scoop
-      run: |
-        # 安装 scoop（如果尚未安装）
-        irm get.scoop.sh | iex
-        scoop install lua
-
-    - name: Download and install LuaRocks
-      run: |
-        Invoke-WebRequest -Uri "https://luarocks.github.io/luarocks/releases/luarocks-3.13.0-windows-64.zip" -OutFile luarocks.zip
-        Expand-Archive luarocks.zip -DestinationPath .
-        Move-Item luarocks-3.13.0-windows-64 C:\luarocks
-
-    - name: Install Busted and run tests
-      shell: pwsh
-      run: |
-        # 使用实际的 Lua 可执行文件（不是 shim）
-        $luaExe = "$env:USERPROFILE\scoop\apps\lua\current\bin\lua.exe"
-        Write-Host "Lua found at: $luaExe"
-
-        # 配置 LuaRocks 使用实际的 Lua
-        & "C:\luarocks\luarocks.exe" --local config variables.Lua $luaExe
-
-        # 安装 Busted
-        & "C:\luarocks\luarocks.exe" install busted
-
-        # 运行测试（指定 unit 目录）
-        cd libs/lua/tests
-        & "$env:USERPROFILE\AppData\Roaming\luarocks\bin\busted.bat" --directory=unit --recursive
-
-  # ========== Go Test ==========
-  # NOTE: 暂时禁用 - Go 代码没有测试文件，覆盖率始终为 0%
-  # 待添加测试文件后再启用
-  test-go:
-    if: false
-    runs-on: windows-2022
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v6
-
-    - name: Set up Go
-      uses: actions/setup-go@v6
-      with:
-        go-version: 'stable'
-        cache: false
-
-    - name: Initialize Go module
-      working-directory: orchestrator/server
-      run: |
-        go mod init github.com/cuihaitao/wingman/orchestrator/server || true
-        go mod tidy
-
-    - name: Run Go tests
-      shell: bash
-      working-directory: orchestrator/server
-      run: |
-        go test -v -coverprofile=coverage.txt -covermode=atomic ./...
-
-    - name: Upload coverage artifact
-      uses: actions/upload-artifact@v6
-      with:
-        name: go-coverage
-        path: orchestrator/server/coverage.txt
-        retention-days: 1
-
-  # ========== Codecov Upload ==========
-  # 暂时禁用 - 静态库覆盖率工具支持有限
-  # TODO: 启用 Linux test-cpp 后重新启用，或考虑将核心库改为动态库
-  # codecov:
-  #   needs: test-cpp
-  #   if: always() && needs.test-cpp.result == 'success'
-  #   runs-on: ubuntu-latest
-  #   ...
+      - name: Test
+        working-directory: orchestrator/server
+        run: go test ./...

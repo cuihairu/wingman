@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -204,8 +205,10 @@ func HandleWebSocket(c *gin.Context, hub *Hub) {
 		return
 	}
 
+	hub.mu.Lock()
 	hub.connCounter++
-	connID := "ws_" + string(rune(hub.connCounter))
+	connID := fmt.Sprintf("ws_%d", hub.connCounter)
+	hub.mu.Unlock()
 
 	wsConn := &Connection{
 		ID:       connID,

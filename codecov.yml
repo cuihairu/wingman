@@ -6,18 +6,12 @@ coverage:
         target: auto
         threshold: 5%
         informational: true
-      go:
+      windows-cpp:
         target: auto
         threshold: 5%
         informational: true
         flags:
-          - go
-      cpp:
-        target: auto
-        threshold: 5%
-        informational: true
-        flags:
-          - cpp
+          - windows-cpp
     patch:
       default:
         target: auto
@@ -28,11 +22,8 @@ coverage:
   round: down
   range: "0...100"
 
-  # 修复: 匹配 Windows 路径中的项目根目录
-  # OpenCppCoverage 生成的路径如: C:/Users/runneradmin/runners/.../wingman/apps/...
-  # 需要让 codecov 识别这些文件
   fixes:
-    - "::"
+    - "D:/a/wingman/wingman::"
 
 comment:
   layout: "reach,diff,flags,footer"
@@ -68,13 +59,8 @@ ignore:
   - "third_party/**"
   - "third-party/**"
 
-# 语言/模块配置
 flags:
-  go:
-    paths:
-      - orchestrator/server/
-    carryforward: true
-  cpp:
+  windows-cpp:
     paths:
       - apps/
       - lib/

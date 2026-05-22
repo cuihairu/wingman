@@ -27,6 +27,7 @@
 # Fortran module files
 *.mod
 *.smod
+!orchestrator/server/go.mod
 
 # Compiled Static libraries
 *.lai
@@ -120,6 +121,8 @@ dashboard/config/local.ts
 apps/gui/node_modules/
 apps/gui/dist/
 apps/gui/src-tauri/target/
+orchestrator/server/data/
+orchestrator/server/build/
 
 # Claude Code local files
 .claude/

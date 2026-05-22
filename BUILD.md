@@ -211,3 +211,9 @@ $env:VCPKG_DEFAULT_BINARY_CACHE = "C:\vcpkg\archives"
 - Lua 测试
 - 代码覆盖率
 ```
+
+## CI Status
+
+- Windows: build, run C++ tests, generate coverage, upload to Codecov
+- Linux/macOS: compile-only validation
+- Go server: run `go test ./...` on Windows
