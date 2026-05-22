@@ -13,7 +13,7 @@ C++ + Lua/Python 的高性能游戏自动化框架
 [![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![Lua](https://img.shields.io/badge/Lua-5.4-000080.svg?logo=lua&logoColor=white)](https://www.lua.org/)
-[![Python](https://img.shields.io/badge/Python-3.x-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 [文档](docs/) | [快速开始](#快速开始) | [API](docs/api/) | [示例](examples/)
