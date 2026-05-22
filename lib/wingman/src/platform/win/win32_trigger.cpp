@@ -1,4 +1,7 @@
 #include "wingman/trigger.hpp"
+#include "wingman/script_manager.hpp"
+#include "wingman/script/script_engine_factory.hpp"
+#include "wingman/script/module_registry.hpp"
 
 #ifdef _WIN32
 
@@ -37,12 +40,12 @@ static uint64_t getTickCount() {
     return GetTickCount();
 }
 
-TriggerManager::TriggerManager() : m_running(false), m_luaState(nullptr) {
+TriggerManager::TriggerManager() : m_running(false), m_scriptManager(nullptr) {
     m_logger = spdlog::default_logger();
 }
 
 TriggerManager::TriggerManager(std::shared_ptr<spdlog::logger> logger)
-    : m_running(false), m_luaState(nullptr), m_logger(logger) {
+    : m_running(false), m_scriptManager(nullptr), m_logger(logger) {
     if (!m_logger) {
         m_logger = spdlog::default_logger();
     }
@@ -52,9 +55,9 @@ TriggerManager::~TriggerManager() {
     stop();
 }
 
-void TriggerManager::setLuaState(lua_State* L) {
+void TriggerManager::setScriptManager(ScriptManager* mgr) {
     std::lock_guard<std::mutex> lock(m_mutex);
-    m_luaState = L;
+    m_scriptManager = mgr;
 }
 
 void TriggerManager::setLogger(std::shared_ptr<spdlog::logger> logger) {
@@ -283,16 +286,24 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
                 break;
 
             case BasicTriggerAction::RunScript: {
-                if (m_luaState && !action.value.empty()) {
-                    if (luaL_dostring(m_luaState, action.value.c_str()) == LUA_OK) {
-                        if (m_logger) m_logger->info("Trigger action: executed Lua script successfully");
+                if (!action.value.empty()) {
+                    // 通过 ScriptManager 执行脚本（语言无关）
+                    // 创建临时引擎执行脚本片段
+                    auto& factory = script::ScriptEngineFactory::instance();
+                    std::string lang = factory.detectLanguage("script.lua"); // 默认 Lua
+                    auto engine = factory.createEngine(lang);
+                    if (engine && engine->initialize()) {
+                        if (engine->executeString(action.value)) {
+                            if (m_logger) m_logger->info("Trigger action: executed script successfully");
+                        } else {
+                            if (m_logger) m_logger->error("Trigger action: script error: {}", engine->getLastError());
+                        }
+                        engine->shutdown();
                     } else {
-                        const char* errorMsg = lua_tostring(m_luaState, -1);
-                        if (m_logger) m_logger->error("Trigger action: Lua script error: {}", errorMsg ? errorMsg : "unknown");
-                        lua_pop(m_luaState, 1);
+                        if (m_logger) m_logger->warn("Trigger action: cannot create script engine");
                     }
                 } else {
-                    if (m_logger) m_logger->warn("Trigger action: cannot run Lua script - no Lua state or empty script");
+                    if (m_logger) m_logger->warn("Trigger action: empty script");
                 }
                 break;
             }

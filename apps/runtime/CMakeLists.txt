@@ -108,6 +108,11 @@ target_link_libraries(wingman-runtime PRIVATE
     Drogon::Drogon
 )
 
+# Python 引擎（可选）
+if(WINGMAN_ENABLE_PYTHON)
+    target_link_libraries(wingman-runtime PRIVATE wingman::python)
+endif()
+
 # 复制配置文件到输出目录
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/config/client.toml

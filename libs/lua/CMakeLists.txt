@@ -17,10 +17,10 @@ find_package(nlohmann_json CONFIG REQUIRED)
 message(STATUS "Found sol2 for Lua bindings")
 
 # ========== 源文件 ==========
-# 注意: lua_bindings, lua_extensions, lua_http, debug_adapter, script_manager
-# 需要额外的依赖，暂时禁用
 set(LUA_SOURCES
     src/lua_engine.cpp
+    src/lua_marshal.cpp
+    src/lua_script_engine.cpp
     # src/lua_bindings.cpp  # TODO: 需要额外的头文件
     # src/lua_extensions.cpp  # TODO: 需要额外的头文件
     # src/lua_http.cpp  # TODO: 依赖 crow.h

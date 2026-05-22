@@ -16,18 +16,16 @@ HTTPServer::HTTPServer(const std::string& dbPath, int port, const std::string& s
       authManager_(std::make_unique<AuthManager>(dbPath)),
       scriptManager_(std::make_unique<ScriptManager>()) {
 
-    // 初始化脚本管理器
-    scriptManager_->initLua();
-
-    // 扫描并加载 scripts 目录下的所有脚本
+    // 扫描并加载 scripts 目录下的所有脚本（支持多语言）
     std::string scriptsDir = "scripts";
     if (std::filesystem::exists(scriptsDir) && std::filesystem::is_directory(scriptsDir)) {
         for (const auto& entry : std::filesystem::recursive_directory_iterator(scriptsDir)) {
-            if (entry.is_regular_file() && entry.path().extension() == ".lua") {
+            if (entry.is_regular_file()) {
                 std::string scriptName = entry.path().stem().string();
                 std::string scriptPath = entry.path().string();
+                std::string lang = scriptManager_->detectLanguage(scriptPath);
                 scriptManager_->loadScript(scriptName, scriptPath);
-                spdlog::info("Loaded script: {} from {}", scriptName, scriptPath);
+                spdlog::info("Loaded script: {} from {} [{}]", scriptName, scriptPath, lang);
             }
         }
     }

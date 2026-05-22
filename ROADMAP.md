@@ -6,6 +6,8 @@
 
 > **📌 平台说明：第一版本仅支持 Windows，跨平台支持不在计划内**
 
+> **🔥 脚本层多语言抽象已完成 (2026-05)** - 支持 Lua (sol2) 和 Python (pybind11)，详见下文 "脚本引擎抽象"
+
 ## 参考项目分析
 
 | 项目 | 语言 | 特点 | 参考价值 |
@@ -73,8 +75,12 @@ wingman/
 │   │   │   └── channel/          ← 消息通道
 │   │   └── src/
 │   │
-│   ├── lua/                      ← Lua 绑定（桥接 Lua → 核心库）
+│   ├── lua/                      ← Lua 引擎（sol2 绑定，实现 IScriptEngine）
 │   │   ├── include/wingman/lua/
+│   │   └── src/
+│   │
+│   ├── python/                   ← Python 引擎（pybind11 + CPython，实现 IScriptEngine）[可选]
+│   │   ├── include/wingman/python/
 │   │   └── src/
 │   │
 │   └── proto/                    ← Protobuf
@@ -97,28 +103,66 @@ wingman/
 └─────────┼───────────────────────────────────────────────┘
           │
 ┌─────────▼───────────────────────────────────────────────┐
-│              lib/wingman/ (核心库)                        │
+│           lib/wingman/ (核心库 + 脚本抽象)               │
+│  ScriptManager (语言无关) + IScriptEngine 接口           │
+│  25+ ModuleDescriptor (screen/input/window/...)          │
 │  屏幕捕获、输入模拟、触发器、视觉识别、行为树、OCR...     │
 └─────────┬───────────────────────────────────────────────┘
           │
 ┌─────────▼───────────────────────────────────────────────┐
-│              libs/ (辅助库)                              │
-│  ┌──────────┐  ┌──────┐  ┌──────┐                      │
-│  │transport │  │ lua  │  │ proto│                      │
-│  └──────────┘  └──────┘  └──────┘                      │
+│              libs/ (引擎实现)                            │
+│  ┌──────────┐  ┌──────┐  ┌──────┐  ┌──────┐           │
+│  │transport │  │ lua  │  │python│  │ proto│           │
+│  └──────────┘  └──────┘  └──────┘  └──────┘           │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ### 调用链
 
 ```
-Lua 脚本
+Lua/Python 脚本 (.lua / .py)
     ↓
-libs/lua/ (Lua 绑定)
+ScriptManager (自动检测语言)
+    ↓
+ScriptEngineFactory → LuaScriptEngine / PythonScriptEngine
+    ↓
+ModuleDescriptor (25+ 语言无关模块) → C++ 核心 API
     ↓
 lib/wingman/ (核心功能：screen, input, trigger...)
     ↓
 apps/client/ (应用：CLI/GUI + 运行模式)
+```
+
+### 脚本引擎抽象
+
+```
+                        apps/runtime
+                             │
+                    ┌────────▼────────┐
+                    │  ScriptManager  │ (语言无关)
+                    │  owns IScriptEngine │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  IScriptEngine  │ (纯虚接口)
+                    └───┬────────┬───┘
+                        │        │
+          ┌─────────────▼──┐  ┌──▼──────────────┐
+          │ LuaScriptEngine│  │PythonScriptEngine│
+          │ (sol2)         │  │ (pybind11+CPython)│
+          └────────────────┘  └─────────────────┘
+                    │        │
+                    └───┬────┘
+                ┌────────▼────────┐
+                │ ModuleDescriptor │ (语言无关的模块定义)
+                │ screen/input/... │ (25+ 模块)
+                └─────────────────┘
+```
+
+**启用 Python 支持：**
+```bash
+cmake -B build -DWINGMAN_ENABLE_PYTHON=ON ...
+vcpkg install pybind11
 ```
 
 ### 运行模式
@@ -147,6 +191,7 @@ apps/client/ (应用：CLI/GUI + 运行模式)
 | Phase 5 | GUI 迁移到 apps/client | ✅ 已完成 |
 | Phase 6 | EmmyLua 集成 | ✅ 已完成 |
 | Phase 7 | 测试与文档 | ✅ 已完成 |
+| Phase 8 | 脚本层多语言抽象 (Lua + Python) | ✅ 已完成 |
 | Milestone 1 | MVP (最小可行产品) | ✅ 已完成 |
 
 ---
@@ -528,6 +573,7 @@ local wingman = require('wingman')
 | P0 | Milestone 5: GUI 界面 | 4周 | 🚧 进行中 |
 | P1 | Milestone 6: 人性化模拟 | 1周 | 🚧 进行中 |
 | P1 | 修复测试失败 | 1天 | ✅ 已完成 |
+| P1 | 脚本层多语言抽象 | 2周 | ✅ 已完成 |
 
 ### 📋 检查清单
 

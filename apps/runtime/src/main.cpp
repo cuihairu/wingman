@@ -6,6 +6,10 @@
 #include "wingman/runtime/commands/build_command.hpp"
 #include "wingman/runtime/commands/serve_command.hpp"
 #include "wingman/lua/lua_engine.hpp"
+#include "wingman/lua/lua_script_engine.hpp"
+#ifdef WINGMAN_ENABLE_PYTHON
+#include "wingman/python/python_script_engine.hpp"
+#endif
 #include "wingman/version.hpp"
 #include <iostream>
 #include <spdlog/spdlog.h>
@@ -87,6 +91,12 @@ int main(int argc, char** argv) {
     spdlog::default_logger()->sinks().push_back(consoleSink);
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
+
+    // 注册脚本引擎
+    wingman::lua::registerLuaEngine();
+#ifdef WINGMAN_ENABLE_PYTHON
+    wingman::python::registerPythonEngine();
+#endif
 
     // 首先检查是否有嵌入的脚本
     if (argc == 1) {

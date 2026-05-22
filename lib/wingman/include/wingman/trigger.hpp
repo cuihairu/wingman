@@ -9,7 +9,6 @@
 #include <mutex>
 #include <thread>
 
-#include <lua.hpp>
 #include <spdlog/logger.h>
 
 #include "wingman/screen.hpp"  // For Rect type
@@ -122,8 +121,8 @@ public:
     // 获取触发器数量
     size_t getTriggerCount() const;
 
-    // 设置 Lua 状态（用于执行 Lua 脚本动作）
-    void setLuaState(lua_State* L);
+    // 设置脚本引擎工厂（用于执行脚本动作）
+    void setScriptManager(class ScriptManager* mgr);
 
     // 设置日志器
     void setLogger(std::shared_ptr<spdlog::logger> logger);
@@ -133,7 +132,7 @@ private:
     bool m_running;
     std::thread m_thread;
     mutable std::mutex m_mutex;
-    lua_State* m_luaState;
+    class ScriptManager* m_scriptManager;
     std::shared_ptr<spdlog::logger> m_logger;
 
     // 触发器检查线程

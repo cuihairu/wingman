@@ -38,6 +38,7 @@ option(WINGMAN_BUILD_TESTS "Build tests" OFF)
 option(WINGMAN_BUILD_GUI "Build native GUI (requires ImGui)" ON)
 option(WINGMAN_ENABLE_OCR "Enable OCR support (requires Tesseract)" OFF)  # 默认关闭
 option(WINGMAN_ENABLE_ML "Enable ML/AI support (requires ONNX Runtime)" OFF)  # 默认关闭
+option(WINGMAN_ENABLE_PYTHON "Enable Python scripting engine (requires CPython + pybind11)" OFF)
 
 # ========== 新架构选项 ==========
 option(WINGMAN_BUILD_AGENT "Build new Agent (multi-module)" ON)
@@ -122,6 +123,15 @@ if(WINGMAN_BUILD_AGENT)
     add_subdirectory(libs/transport)
     add_subdirectory(libs/lua)
     add_subdirectory(libs/debug)
+
+    # Python 引擎（可选）
+    if(WINGMAN_ENABLE_PYTHON)
+        find_package(pybind11 CONFIG REQUIRED)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+        add_subdirectory(libs/python)
+        add_compile_definitions(WINGMAN_ENABLE_PYTHON)
+        message(STATUS "Python scripting engine enabled")
+    endif()
 
     # 核心库
     add_subdirectory(lib/wingman)

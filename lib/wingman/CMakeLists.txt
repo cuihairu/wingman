@@ -65,6 +65,29 @@ set(WINGMAN_SOURCES
     # src/verification.cpp  # TODO: 检查依赖
     # src/behavior_tree.cpp  # TODO: 检查依赖
     # src/game_profile.cpp  # TODO: 检查依赖
+
+    # 脚本抽象层（语言无关的模块描述符）
+    src/script_manager.cpp
+    src/script/modules/screen_module.cpp
+    src/script/modules/input_module.cpp
+    src/script/modules/window_module.cpp
+    src/script/modules/process_module.cpp
+    src/script/modules/util_module.cpp
+    src/script/modules/system_module.cpp
+    src/script/modules/security_module.cpp
+    src/script/modules/performance_module.cpp
+    src/script/modules/game_profile_module.cpp
+    src/script/modules/vision_module.cpp
+    src/script/modules/misc_modules.cpp
+    src/script/modules/config_module.cpp
+    src/script/modules/verification_module.cpp
+    src/script/modules/human_module.cpp
+    src/script/modules/debugger_module.cpp
+    src/script/modules/http_module.cpp
+    src/script/modules/json_module.cpp
+    src/script/modules/kv_module.cpp
+    src/script/modules/orchestration_module.cpp
+    src/script/modules/module_registry.cpp
 )
 
 # OCR 支持（可选）
