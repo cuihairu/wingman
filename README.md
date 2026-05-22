@@ -6,13 +6,14 @@
 
 **游戏自动化可编程控制引擎**
 
-C++ + Lua 的高性能游戏自动化框架
+C++ + Lua/Python 的高性能游戏自动化框架
 
 [![OS](https://img.shields.io/badge/OS-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](https://github.com/cuihairu/wingman)
 [![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
-[![Lua](https://img.shields.io/badge/Lua-5.4-blue.svg)](https://www.lua.org/)
+[![Lua](https://img.shields.io/badge/Lua-5.4-000080.svg?logo=lua&logoColor=white)](https://www.lua.org/)
+[![Python](https://img.shields.io/badge/Python-3.x-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 [文档](docs/) | [快速开始](#快速开始) | [API](docs/api/) | [示例](examples/)
@@ -29,11 +30,12 @@ C++ + Lua 的高性能游戏自动化框架
 
 ## 简介
 
-**Wingman** 是一个跨平台的游戏自动化工具，采用 C++ 核心引擎 + Lua 脚本的架构设计。
+**Wingman** 是一个跨平台的游戏自动化工具，采用 C++ 核心引擎 + 多语言脚本（Lua / Python）的架构设计。
 
-- 🚀 **高性能** - C++ 核心引擎，Lua 脚本执行，毫秒级响应
+- 🚀 **高性能** - C++ 核心引擎，Lua/Python 脚本执行，毫秒级响应
+- 🐍 **多语言** - 同时支持 Lua (sol2) 和 Python (pybind11)，统一 API 接口
 - 🔒 **安全可靠** - 纯用户态运行，使用合法平台 API，不读写游戏内存
-- 🎮 **可编程** - Lua 脚本控制，灵活扩展，支持复杂业务逻辑
+- 🎮 **可编程** - 脚本控制，灵活扩展，支持复杂业务逻辑
 - 🌐 **跨平台** - 支持 Windows、macOS、Linux，统一接口抽象
 
 ---
@@ -42,13 +44,25 @@ C++ + Lua 的高性能游戏自动化框架
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Lua 脚本                              │
+│            Lua 脚本 (.lua) / Python 脚本 (.py)            │
 │  (用户编写的自动化逻辑：触发器、宏、图像识别等)           │
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────┐
-│              Lua 绑定层 (libs/lua)                       │
-│  将 C++ 功能暴露给 Lua：screen, input, window, etc.     │
+│           IScriptEngine (语言无关脚本抽象)                │
+│  ScriptEngineFactory → 自动检测语言，创建对应引擎        │
+└────────┬───────────────────────────────┬────────────────┘
+         │                               │
+┌────────▼────────┐            ┌─────────▼────────┐
+│  LuaScriptEngine │            │PythonScriptEngine │
+│   (sol2 绑定)    │            │ (pybind11+CPython) │
+└────────┬────────┘            └─────────┬────────┘
+         │                               │
+         └───────────┬───────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│       25+ ModuleDescriptor (语言无关模块定义)             │
+│   screen | input | window | process | trigger | http ... │
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────┐
@@ -78,16 +92,17 @@ C++ + Lua 的高性能游戏自动化框架
 ```
 wingman/
 ├── apps/
-│   ├── client/           # 主应用程序
+│   ├── runtime/          # 运行时 (CLI + 脚本执行)
 │   │   ├── src/
-│   │   │   ├── cli/      # 命令行接口
-│   │   │   ├── modes/    # 运行模式 (主动/被动/单机)
-│   │   │   └── gui/      # GUI 界面
-│   │   └── include/wingman/client/
-│   └── inspector/        # 检查工具
+│   │   │   └── main.cpp  # 入口 (支持 Lua/Python)
+│   │   └── CMakeLists.txt
+│   └── gui/              # GUI 界面 (Tauri 2.0 + Svelte 5)
+│       ├── src/          # Svelte 5 前端
+│       └── src-tauri/    # Rust 后端
 │
 ├── lib/wingman/          # 核心库
 │   ├── include/wingman/
+│   │   ├── script/       # IScriptEngine, ScriptValue, ModuleDescriptor
 │   │   ├── screen.hpp    # 屏幕捕获
 │   │   ├── input.hpp     # 输入模拟
 │   │   ├── trigger.hpp   # 触发器
@@ -95,11 +110,13 @@ wingman/
 │   │   ├── behavior_tree.hpp # 行为树
 │   │   └── ocr.hpp       # OCR
 │   ├── src/
+│   │   └── script/modules/ # 25+ 语言无关模块实现
 │   └── tests/
 │
 ├── libs/                 # 内部辅助库
 │   ├── transport/        # 网络传输 (TCP/WebSocket)
-│   ├── lua/              # Lua 绑定
+│   ├── lua/              # Lua 引擎 (sol2, 实现 IScriptEngine)
+│   ├── python/           # Python 引擎 (pybind11+CPython, 实现 IScriptEngine)
 │   └── proto/            # Protobuf
 │
 ├── examples/             # 示例脚本
@@ -121,6 +138,7 @@ wingman/
 | **宏录制回放** | 录制鼠标键盘操作，保存为脚本回放 |
 | **UI Automation** | Windows UIA 自动化，操作 UI 控件 |
 | **OCR 识别** | Tesseract 文字识别 |
+| **多语言脚本** | Lua (sol2) 和 Python (pybind11) 双引擎 |
 | **EmmyLua 调试** | 支持 VS Code 断点调试 Lua 脚本 |
 
 ---
@@ -163,6 +181,11 @@ cmake -B build -G "Visual Studio 17 2022" ^
 cmake --build build --config Release
 ```
 
+**启用 Python 支持:**
+```bash
+cmake -B build -DWINGMAN_ENABLE_PYTHON=ON ...
+```
+
 **macOS:**
 ```bash
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=~/vcpkg/scripts/buildsystems/vcpkg.cmake
@@ -175,19 +198,27 @@ cmake -B build -DCMAKE_TOOLCHAIN_FILE=~/vcpkg/scripts/buildsystems/vcpkg.cmake
 cmake --build build
 ```
 
-### 运行 Lua 脚本
+### 运行脚本
 
 ```bash
-# 运行单个脚本
-.\build\apps\client\Release\wingman-client.exe script examples\hello.lua
+# Lua 脚本
+.\build\apps\runtime\Release\wingman-runtime.exe script examples\hello.lua
+
+# Python 脚本 (需要启用 WINGMAN_ENABLE_PYTHON)
+.\build\apps\runtime\Release\wingman-runtime.exe script examples\hello.py
 
 # 启动服务模式
-.\build\apps\client\Release\wingman-client.exe start
+.\build\apps\runtime\Release\wingman-runtime.exe start
+
+# 启动 GUI
+.\build\apps\runtime\Release\wingman-runtime.exe
 ```
 
 ---
 
-## Lua 脚本示例
+## 脚本示例
+
+### Lua
 
 ```lua
 local wingman = require("wingman")
@@ -207,9 +238,24 @@ end
 -- 图像匹配
 local match = wingman.screen.findImage("target.png", 0, 0, 1920, 1080, 0.8)
 if match then
-    wingman.input.move(match.x, match.y, 500)  -- 人性化移动
+    wingman.input.move(match.x, match.y, 500)
     wingman.input.click(match.x, match.y)
 end
+```
+
+### Python
+
+```python
+import screen
+import input
+
+# 截图
+screen.capture()
+
+# 查找颜色
+point = screen.findColor(0xFF0000, {"x": 0, "y": 0, "w": 1920, "h": 1080}, 10)
+if point:
+    input.click(point["x"], point["y"])
 ```
 
 ---
@@ -223,8 +269,10 @@ end
 | 插件 | 用途 |
 |------|------|
 | [LuaLS](https://marketplace.visualstudio.com/items?itemName=sumneko.lua) | Lua 语言支持 |
+| [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) | Python 语言支持 |
 | [C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) | C++ 语言支持 |
 | [EmmyLua](https://marketplace.visualstudio.com/items?itemName=EmmyLuaVSCode.emmylua) | Lua 调试支持 |
+| [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) | Svelte 前端开发 |
 
 配置 `.vscode/settings.json`:
 ```json
