@@ -113,7 +113,7 @@ bool LuaScriptEngine::callFunction(const std::string& name,
 		return false;
 	}
 
-	sol::object retObj(lua_, callResult);
+	sol::object retObj = callResult[0];
 	result = toScriptValue(retObj);
 	return true;
 }
