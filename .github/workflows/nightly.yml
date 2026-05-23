@@ -171,63 +171,17 @@ jobs:
         run: bash ./build-scripts/ci/configure-unix.sh "x64-linux" "Ninja" "build" "Release" "${{ steps.nightly_version.outputs.version_suffix }}"
 
       - name: Build
-        run: cmake --build build --config Release
-
-      - name: Package nightly build
-        run: |
-          version="${{ steps.nightly_version.outputs.version }}"
-          distDir="dist-wingman-$version"
-          mkdir -p "$distDir"
-
-          cp "build/apps/runtime/wingman-runtime" "$distDir/wingman"
-
-          if [ -d "scripts" ]; then
-            cp -r scripts "$distDir/"
-          fi
-
-          cat > "$distDir/VERSION.txt" << EOF
-          Wingman $version
-          Build Date: $(date -u +"%Y-%m-%d %H:%M:%S")
-          Commit: ${{ steps.nightly_version.outputs.version }}
-          Branch: nightly
-          EOF
-
-          tar czf "wingman-$version-linux-x64.tar.gz" -C "$distDir" .
+        run: cmake --build build --config Release --parallel --target wingman_proto wingman_transport
 
       - name: Upload nightly artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: wingman-nightly-linux-x64
-          path: wingman-${{ steps.nightly_version.outputs.version }}-linux-x64.tar.gz
-          retention-days: 30
-
-      - name: Add to GitHub Release (nightly)
-        uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/main'
-        with:
-          tag_name: nightly
-          name: "Nightly Build"
-          body: |
-            ## Nightly Build
-
-            This is an automated nightly build (overwrites daily).
-            **Not recommended for production use.**
-
-            ### Latest Build
-            - Date: ${{ steps.nightly_version.outputs.version_suffix }}
-            - Commit: ${{ steps.nightly_version.outputs.version }}
-            - Downloads:
-              - Windows: `wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip`
-              - Linux: `wingman-${{ steps.nightly_version.outputs.version }}-linux-x64.tar.gz`
-
-            ---
-            *Use at your own risk. Nightly builds may contain unstable features.*
-          files: wingman-${{ steps.nightly_version.outputs.version }}-linux-x64.tar.gz
-          prerelease: true
-          draft: false
-          replace_existing_artifacts: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: wingman-nightly-linux-compat-build
+          path: |
+            build/libs/proto
+            build/libs/transport
+          if-no-files-found: error
+          retention-days: 7
 
   nightly-macos:
     runs-on: macos-latest
@@ -265,61 +219,14 @@ jobs:
         run: bash ./build-scripts/ci/configure-unix.sh "x64-osx" "Ninja" "build" "Release" "${{ steps.nightly_version.outputs.version_suffix }}"
 
       - name: Build
-        run: cmake --build build --config Release
-
-      - name: Package nightly build
-        run: |
-          version="${{ steps.nightly_version.outputs.version }}"
-          distDir="dist-wingman-$version"
-          mkdir -p "$distDir"
-
-          cp "build/apps/runtime/wingman-runtime" "$distDir/wingman"
-
-          if [ -d "scripts" ]; then
-            cp -r scripts "$distDir/"
-          fi
-
-          cat > "$distDir/VERSION.txt" << EOF
-          Wingman $version
-          Build Date: $(date -u +"%Y-%m-%d %H:%M:%S")
-          Commit: ${{ steps.nightly_version.outputs.version }}
-          Branch: nightly
-          EOF
-
-          tar czf "wingman-$version-macos-x64.tar.gz" -C "$distDir" .
+        run: cmake --build build --config Release --parallel --target wingman_proto wingman_transport
 
       - name: Upload nightly artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: wingman-nightly-macos-x64
-          path: wingman-${{ steps.nightly_version.outputs.version }}-macos-x64.tar.gz
-          retention-days: 30
-
-      - name: Add to GitHub Release (nightly)
-        uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/main'
-        with:
-          tag_name: nightly
-          name: "Nightly Build"
-          body: |
-            ## Nightly Build
-
-            This is an automated nightly build (overwrites daily).
-            **Not recommended for production use.**
-
-            ### Latest Build
-            - Date: ${{ steps.nightly_version.outputs.version_suffix }}
-            - Commit: ${{ steps.nightly_version.outputs.version }}
-            - Downloads:
-              - Windows: `wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip`
-              - Linux: `wingman-${{ steps.nightly_version.outputs.version }}-linux-x64.tar.gz`
-              - macOS: `wingman-${{ steps.nightly_version.outputs.version }}-macos-x64.tar.gz`
-
-            ---
-            *Use at your own risk. Nightly builds may contain unstable features.*
-          files: wingman-${{ steps.nightly_version.outputs.version }}-macos-x64.tar.gz
-          prerelease: true
-          draft: false
-          replace_existing_artifacts: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: wingman-nightly-macos-compat-build
+          path: |
+            build/libs/proto
+            build/libs/transport
+          if-no-files-found: error
+          retention-days: 7

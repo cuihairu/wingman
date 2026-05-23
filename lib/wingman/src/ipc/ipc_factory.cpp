@@ -4,12 +4,6 @@
 #ifdef _WIN32
 #include "wingman/ipc/windows/named_pipe_channel.hpp"
 using NamedPipeChannel = wingman::ipc::windows::NamedPipeChannel;
-#elif defined(__linux__)
-#include "wingman/platform/linux/unix_socket_channel.hpp"
-using UnixSocketChannel = wingman::ipc::linux::UnixSocketChannel;
-#elif defined(__APPLE__)
-#include "wingman/platform/mac/unix_socket_channel.hpp"
-using UnixSocketChannel = wingman::ipc::macos::UnixSocketChannel;
 #endif
 
 namespace wingman::ipc {
@@ -37,11 +31,7 @@ std::unique_ptr<IIpcChannel> IpcFactory::createServer(const IpcConfig& config) {
             break;
 #elif defined(__unix__) || defined(__APPLE__)
         case IpcTransport::UnixSocket:
-            if (isTransportAvailable(IpcTransport::UnixSocket)) {
-                auto channel = std::make_unique<UnixSocketChannel>(true, endpoint);
-                spdlog::info("[IpcFactory] Created UnixSocket server: {}", endpoint);
-                return channel;
-            }
+            spdlog::warn("[IpcFactory] UnixSocket transport is not implemented on this platform build");
             break;
 #endif
         default:
@@ -73,11 +63,7 @@ std::unique_ptr<IIpcChannel> IpcFactory::createClient(const IpcConfig& config) {
             break;
 #elif defined(__unix__) || defined(__APPLE__)
         case IpcTransport::UnixSocket:
-            if (isTransportAvailable(IpcTransport::UnixSocket)) {
-                auto channel = std::make_unique<UnixSocketChannel>(false, endpoint);
-                spdlog::info("[IpcFactory] Created UnixSocket client: {}", endpoint);
-                return channel;
-            }
+            spdlog::warn("[IpcFactory] UnixSocket transport is not implemented on this platform build");
             break;
 #endif
         default:

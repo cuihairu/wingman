@@ -17,6 +17,7 @@ cmake_args=(
   -DVCPKG_TARGET_TRIPLET="$triplet"
   -DCMAKE_BUILD_TYPE="$build_type"
   -DWINGMAN_BUILD_GUI=OFF
+  -DWINGMAN_COMPAT_BUILD=ON
 )
 
 if [ -n "$version_suffix" ]; then

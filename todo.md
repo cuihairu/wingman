@@ -11,6 +11,7 @@
 - 修正文档与代码不一致的问题，重点同步 `README.md`、`docs/architecture.md`、`orchestrator/server/README.md`
 - 清理仓库中的历史构建产物、实验目录和重复文档，降低维护噪音
 - 为核心模块补齐测试覆盖，建立最小可回归集
+- 继续收敛 CI / nightly：Windows 负责测试和 Codecov，Linux / macOS 只做兼容编译；补齐 IPC 测试和依赖边界
 
 ## P2
 - 统一构建选项语义，减少过多开关导致的组合复杂度

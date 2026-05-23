@@ -4,14 +4,31 @@
 #ifdef _WIN32
 #include "wingman/platform/win/win32_filewatcher.hpp"
 using PlatformFileWatcher = wingman::platform::windows::Win32FileWatcher;
-#elif defined(__linux__)
-#include "wingman/platform/linux/inotify_filewatcher.hpp"
-using PlatformFileWatcher = wingman::platform::linux::InotifyFileWatcher;
-#elif defined(__APPLE__)
-#include "wingman/platform/mac/fsevents_filewatcher.hpp"
-using PlatformFileWatcher = wingman::platform::macos::FSEventsFileWatcher;
 #else
-#error "No file watcher implementation for this platform"
+
+namespace wingman::platform {
+
+class NullFileWatcher final : public IFileWatcher {
+public:
+    bool initialize() override { return true; }
+    void shutdown() override {}
+
+    uint64_t watch(const std::string&, bool, FileChangeCallback) override { return 0; }
+    bool unwatch(uint64_t) override { return false; }
+    size_t unwatchPath(const std::string&) override { return 0; }
+
+    size_t getWatchCount() const override { return 0; }
+    bool hasWatches() const override { return false; }
+
+    std::string getBackendName() const override { return "Null"; }
+    BackendInfo getBackendInfo() const override {
+        return BackendInfo{"Null", "1.0", true, "No-op file watcher backend"};
+    }
+};
+
+} // namespace wingman::platform
+
+using PlatformFileWatcher = wingman::platform::NullFileWatcher;
 #endif
 
 namespace wingman {

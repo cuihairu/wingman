@@ -39,6 +39,7 @@ option(WINGMAN_BUILD_GUI "Build native GUI (requires ImGui)" ON)
 option(WINGMAN_ENABLE_OCR "Enable OCR support (requires Tesseract)" OFF)  # 默认关闭
 option(WINGMAN_ENABLE_ML "Enable ML/AI support (requires ONNX Runtime)" OFF)  # 默认关闭
 option(WINGMAN_ENABLE_PYTHON "Enable Python scripting engine (requires CPython + pybind11)" OFF)
+option(WINGMAN_COMPAT_BUILD "Build only portable compatibility targets" OFF)
 
 # ========== 新架构选项 ==========
 option(WINGMAN_BUILD_AGENT "Build new Agent (multi-module)" ON)
@@ -53,33 +54,37 @@ option(BUILD_PROTO_TESTS "Build proto library tests" OFF)
 option(BUILD_DEBUG_TESTS "Build debug library tests" OFF)
 
 # ========== 核心依赖（必需）==========
-find_package(unofficial-lua CONFIG REQUIRED)
 find_package(asio CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(CURL CONFIG REQUIRED)
-find_package(Threads REQUIRED)
-
-# 设置 Lua 库变量（兼容性）
-if(TARGET unofficial::lua::lua)
-    set(LUA_LIBRARIES unofficial::lua::lua)
-    set(LUA_INCLUDE_DIR "${unofficial-lua_DIR}/../../include")
-endif()
-
-# 可选依赖
-find_package(OpenCV CONFIG)
-find_package(unofficial-sqlite3 CONFIG)
 find_package(Protobuf CONFIG)
+
+if(NOT WINGMAN_COMPAT_BUILD)
+    find_package(unofficial-lua CONFIG REQUIRED)
+    find_package(spdlog CONFIG REQUIRED)
+    find_package(nlohmann_json CONFIG REQUIRED)
+    find_package(CURL CONFIG REQUIRED)
+    find_package(Threads REQUIRED)
+    find_package(OpenCV CONFIG)
+    find_package(unofficial-sqlite3 CONFIG)
+
+    if(TARGET unofficial::lua::lua)
+        set(LUA_LIBRARIES unofficial::lua::lua)
+        set(LUA_INCLUDE_DIR "${unofficial-lua_DIR}/../../include")
+    endif()
+else()
+    find_package(nlohmann_json CONFIG QUIET)
+endif()
 
 # 测试依赖 - GTest 在各测试子目录中单独查找
 # 这样可以避免在主配置阶段因找不到 GTest 而失败
 
 # SQLite3 支持
-add_compile_definitions(WINGMAN_HAS_SQLITE)
-message(STATUS "SQLite3 persistence enabled")
+if(NOT WINGMAN_COMPAT_BUILD)
+    add_compile_definitions(WINGMAN_HAS_SQLITE)
+    message(STATUS "SQLite3 persistence enabled")
+endif()
 
 # GUI 支持
-if(WINGMAN_BUILD_GUI)
+if(WINGMAN_BUILD_GUI AND NOT WINGMAN_COMPAT_BUILD)
     find_package(imgui CONFIG QUIET)
     if(imgui_FOUND)
         add_compile_definitions(WINGMAN_BUILD_GUI)
@@ -87,16 +92,18 @@ if(WINGMAN_BUILD_GUI)
     else()
         message(WARNING "imgui not found, GUI support disabled")
     endif()
+elseif(WINGMAN_BUILD_GUI AND WINGMAN_COMPAT_BUILD)
+    message(STATUS "Compatibility build enabled: skipping GUI dependency discovery")
 endif()
 
 # OCR 支持
-if(WINGMAN_ENABLE_OCR)
+if(WINGMAN_ENABLE_OCR AND NOT WINGMAN_COMPAT_BUILD)
     add_compile_definitions(WINGMAN_ENABLE_OCR)
     message(STATUS "OCR support enabled")
 endif()
 
 # ML/AI 支持
-if(WINGMAN_ENABLE_ML)
+if(WINGMAN_ENABLE_ML AND NOT WINGMAN_COMPAT_BUILD)
     add_compile_definitions(WINGMAN_ENABLE_ML)
     message(STATUS "ML/AI support enabled")
 endif()
@@ -121,11 +128,13 @@ configure_file(
 if(WINGMAN_BUILD_AGENT)
     add_subdirectory(libs/proto)
     add_subdirectory(libs/transport)
-    add_subdirectory(libs/lua)
-    add_subdirectory(libs/debug)
+    if(NOT WINGMAN_COMPAT_BUILD)
+        add_subdirectory(libs/lua)
+        add_subdirectory(libs/debug)
+    endif()
 
     # Python 引擎（可选）
-    if(WINGMAN_ENABLE_PYTHON)
+    if(WINGMAN_ENABLE_PYTHON AND NOT WINGMAN_COMPAT_BUILD)
         find_package(pybind11 CONFIG REQUIRED)
         find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
         add_subdirectory(libs/python)
@@ -134,10 +143,16 @@ if(WINGMAN_BUILD_AGENT)
     endif()
 
     # 核心库
-    add_subdirectory(lib/wingman)
+    if(NOT WINGMAN_COMPAT_BUILD)
+        add_subdirectory(lib/wingman)
+    endif()
 
     # 应用
-    add_subdirectory(apps/runtime)
+    if(NOT WINGMAN_COMPAT_BUILD)
+        add_subdirectory(apps/runtime)
+    else()
+        message(STATUS "Compatibility build enabled: compiling portable targets only")
+    endif()
     # add_subdirectory(apps/inspector)  # 暂时禁用，需要 imgui
 
     message(STATUS "Multi-module build enabled")

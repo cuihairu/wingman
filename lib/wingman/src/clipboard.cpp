@@ -4,14 +4,52 @@
 #ifdef _WIN32
 #include "wingman/platform/win/win32_clipboard.hpp"
 using PlatformClipboard = wingman::platform::windows::Win32Clipboard;
-#elif defined(__linux__)
-#include "wingman/platform/linux/x11_clipboard.hpp"
-using PlatformClipboard = wingman::platform::linux::X11Clipboard;
-#elif defined(__APPLE__)
-#include "wingman/platform/mac/cocoa_clipboard.hpp"
-using PlatformClipboard = wingman::platform::macos::CocoaClipboard;
 #else
-#error "No clipboard implementation for this platform"
+
+namespace wingman::platform {
+
+class NullClipboard final : public IClipboard {
+public:
+    bool initialize() override { return true; }
+    void shutdown() override {}
+
+    bool setText(const std::string&) override { return false; }
+    std::string getText() override { return {}; }
+    bool hasText() override { return false; }
+
+    bool setHTML(const std::string&) override { return false; }
+    std::string getHTML() override { return {}; }
+    bool hasHTML() override { return false; }
+
+    bool setImage(const std::vector<uint8_t>&, int, int) override { return false; }
+    std::vector<uint8_t> getImage(int* outWidth, int* outHeight) override {
+        if (outWidth) {
+            *outWidth = 0;
+        }
+        if (outHeight) {
+            *outHeight = 0;
+        }
+        return {};
+    }
+    bool hasImage() override { return false; }
+
+    bool setFiles(const std::vector<std::string>&) override { return false; }
+    std::vector<std::string> getFiles() override { return {}; }
+    bool hasFiles() override { return false; }
+
+    void clear() override {}
+    bool isEmpty() override { return true; }
+    std::vector<ClipboardFormat> getAvailableFormats() override { return {}; }
+
+    std::string getBackendName() const override { return "Null"; }
+    BackendInfo getBackendInfo() const override {
+        return BackendInfo{"Null", "1.0", true, "No-op clipboard backend"};
+    }
+};
+
+} // namespace wingman::platform
+
+using PlatformClipboard = wingman::platform::NullClipboard;
 #endif
 
 namespace wingman {

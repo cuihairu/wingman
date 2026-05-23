@@ -1,61 +1,160 @@
 #include <gtest/gtest.h>
-#include "wingman/ipc/ipc_factory.hpp"
-#include <thread>
-#include <chrono>
 
+#include "wingman/ipc/ipc_factory.hpp"
+
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <cstdint>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
+
+using namespace std::chrono_literals;
 using namespace wingman::ipc;
 
 class IpcTest : public ::testing::Test {
 protected:
-    IpcConfig config;
-    std::vector<IpcMessage> serverMessages;
-    std::vector<IpcMessage> clientMessages;
-
     void SetUp() override {
-        config.serverName = "wingman_test";
+        config.serverName = makeServerName();
+        clearMessages();
+    }
+
+    void TearDown() override {
+        clearMessages();
+    }
+
+    static std::string makeServerName() {
+        static std::atomic<uint64_t> counter{0};
+        return "wingman_test_" + std::to_string(++counter);
+    }
+
+    void clearMessages() {
+        std::lock_guard<std::mutex> lock(messagesMutex);
         serverMessages.clear();
         clientMessages.clear();
     }
 
-    void TearDown() override {
-        // 清理
+    void recordServerMessage(const IpcMessage& msg) {
+        std::lock_guard<std::mutex> lock(messagesMutex);
+        serverMessages.push_back(msg);
+        messagesCv.notify_all();
     }
+
+    void recordClientMessage(const IpcMessage& msg) {
+        std::lock_guard<std::mutex> lock(messagesMutex);
+        clientMessages.push_back(msg);
+        messagesCv.notify_all();
+    }
+
+    size_t serverMessageCount() {
+        std::lock_guard<std::mutex> lock(messagesMutex);
+        return serverMessages.size();
+    }
+
+    bool waitForServerMessages(size_t expectedCount,
+                               std::chrono::milliseconds timeout = 1s) {
+        std::unique_lock<std::mutex> lock(messagesMutex);
+        return messagesCv.wait_for(lock, timeout, [&] {
+            return serverMessages.size() >= expectedCount;
+        });
+    }
+
+    bool connectServerAndClient(std::unique_ptr<IIpcChannel>& server,
+                                std::unique_ptr<IIpcChannel>& client) {
+        if (!server || !client) {
+            return false;
+        }
+
+        server->setMessageCallback([this](const IpcMessage& msg) {
+            recordServerMessage(msg);
+        });
+        client->setMessageCallback([this](const IpcMessage& msg) {
+            recordClientMessage(msg);
+        });
+
+        std::atomic<bool> serverConnected{false};
+        std::thread serverThread([&] {
+            serverConnected = server->connect(config.serverName);
+        });
+
+        std::this_thread::sleep_for(50ms);
+        if (!client->connect(config.serverName)) {
+            serverThread.join();
+            return false;
+        }
+
+        serverThread.join();
+        if (!serverConnected.load()) {
+            return false;
+        }
+
+        server->startReceiving();
+        client->startReceiving();
+
+        std::this_thread::sleep_for(50ms);
+        return server->isConnected() && client->isConnected();
+    }
+
+    void disconnectServerAndClient(std::unique_ptr<IIpcChannel>& server,
+                                   std::unique_ptr<IIpcChannel>& client) {
+        if (client) {
+            client->disconnect();
+        }
+        if (server) {
+            server->disconnect();
+        }
+    }
+
+    IpcConfig config;
+    std::mutex messagesMutex;
+    std::condition_variable messagesCv;
+    std::vector<IpcMessage> serverMessages;
+    std::vector<IpcMessage> clientMessages;
 };
 
-// ========== 基本测试 ==========
-
-TEST(IpcTest, CreateServer) {
+TEST_F(IpcTest, CreateServer) {
+#ifdef _WIN32
     auto server = IpcFactory::createServer(config);
 
     ASSERT_NE(server, nullptr);
     EXPECT_EQ(server->getTransport(), IpcFactory::getPreferredTransport());
-    EXPECT_EQ(server->getBackendName(), "NamedPipe");  // Windows
+    EXPECT_EQ(server->getBackendName(), "NamedPipe");
+#else
+    GTEST_SKIP() << "Server creation is only implemented for the Windows backend";
+#endif
 }
 
-TEST(IpcTest, CreateClient) {
+TEST_F(IpcTest, CreateClient) {
+#ifdef _WIN32
     auto client = IpcFactory::createClient(config);
 
     ASSERT_NE(client, nullptr);
     EXPECT_EQ(client->getTransport(), IpcFactory::getPreferredTransport());
+#else
+    GTEST_SKIP() << "Client creation is only implemented for the Windows backend";
+#endif
 }
 
-TEST(IpcTest, GetDefaultEndpoint) {
-    std::string endpoint = IpcFactory::getDefaultEndpoint();
-
+TEST_F(IpcTest, GetDefaultEndpoint) {
+    const std::string endpoint = IpcFactory::getDefaultEndpoint();
     EXPECT_FALSE(endpoint.empty());
 }
 
-TEST(IpcTest, GetPreferredTransport) {
-    IpcTransport transport = IpcFactory::getPreferredTransport();
+TEST_F(IpcTest, GetPreferredTransport) {
+    const IpcTransport transport = IpcFactory::getPreferredTransport();
 
 #ifdef _WIN32
     EXPECT_EQ(transport, IpcTransport::NamedPipe);
 #elif defined(__linux__) || defined(__APPLE__)
     EXPECT_EQ(transport, IpcTransport::UnixSocket);
+#else
+    EXPECT_EQ(transport, IpcTransport::TcpPipe);
 #endif
 }
 
-TEST(IpcTest, IsTransportAvailable) {
+TEST_F(IpcTest, IsTransportAvailable) {
 #ifdef _WIN32
     EXPECT_TRUE(IpcFactory::isTransportAvailable(IpcTransport::NamedPipe));
 #elif defined(__linux__) || defined(__APPLE__)
@@ -64,129 +163,68 @@ TEST(IpcTest, IsTransportAvailable) {
     EXPECT_TRUE(IpcFactory::isTransportAvailable(IpcTransport::TcpPipe));
 }
 
-// ========== 连接测试 ==========
-
-TEST(IpcTest, ServerClientConnection) {
+TEST_F(IpcTest, ServerClientConnection) {
+#ifndef _WIN32
+    GTEST_SKIP() << "IPC integration tests require the Windows NamedPipe backend";
+#endif
     auto server = IpcFactory::createServer(config);
-    ASSERT_NE(server, nullptr);
-
-    // 设置回调
-    server->setMessageCallback([&](const IpcMessage& msg) {
-        serverMessages.push_back(msg);
-    });
-
-    // 启动服务端
-    EXPECT_TRUE(server->connect("wingman_test"));
-    server->startReceiving();
-
-    // 创建客户端
     auto client = IpcFactory::createClient(config);
-    ASSERT_NE(client, nullptr);
 
-    client->setMessageCallback([&](const IpcMessage& msg) {
-        clientMessages.push_back(msg);
-    });
-
-    // 连接到服务端
-    EXPECT_TRUE(client->connect("wingman_test"));
-    client->startReceiving();
-
-    // 等待连接稳定
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ASSERT_TRUE(connectServerAndClient(server, client));
 
     EXPECT_TRUE(server->isConnected());
     EXPECT_TRUE(client->isConnected());
 
-    // 清理
-    client->disconnect();
-    server->disconnect();
+    disconnectServerAndClient(server, client);
 }
 
-// ========== 消息发送测试 ==========
-
-TEST(IpcTest, SendRequest) {
+TEST_F(IpcTest, SendRequest) {
+#ifndef _WIN32
+    GTEST_SKIP() << "IPC integration tests require the Windows NamedPipe backend";
+#endif
     auto server = IpcFactory::createServer(config);
     auto client = IpcFactory::createClient(config);
 
-    ASSERT_NE(server, nullptr);
-    ASSERT_NE(client, nullptr);
+    ASSERT_TRUE(connectServerAndClient(server, client));
 
-    server->setMessageCallback([&](const IpcMessage& msg) {
-        serverMessages.push_back(msg);
-    });
+    const uint64_t messageId = client->sendRequest("ping", "{}");
+    EXPECT_NE(messageId, 0U);
+    EXPECT_TRUE(waitForServerMessages(1));
 
-    EXPECT_TRUE(server->connect("wingman_test"));
-    server->startReceiving();
-
-    EXPECT_TRUE(client->connect("wingman_test"));
-
-    // 发送请求
-    uint64_t msgId = client->sendRequest("ping", "{}");
-    EXPECT_NE(msgId, 0);
-
-    // 等待消息
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    EXPECT_GT(serverMessages.size(), 0);
-
-    client->disconnect();
-    server->disconnect();
+    disconnectServerAndClient(server, client);
 }
 
-TEST(IpcTest, SendEvent) {
+TEST_F(IpcTest, SendEvent) {
+#ifndef _WIN32
+    GTEST_SKIP() << "IPC integration tests require the Windows NamedPipe backend";
+#endif
     auto server = IpcFactory::createServer(config);
     auto client = IpcFactory::createClient(config);
 
-    ASSERT_NE(server, nullptr);
-    ASSERT_NE(client, nullptr);
+    ASSERT_TRUE(connectServerAndClient(server, client));
 
-    server->setMessageCallback([&](const IpcMessage& msg) {
-        serverMessages.push_back(msg);
-    });
-
-    EXPECT_TRUE(server->connect("wingman_test"));
-    server->startReceiving();
-
-    EXPECT_TRUE(client->connect("wingman_test"));
-
-    // 发送事件
     EXPECT_TRUE(client->sendEvent("notification", "{\"message\":\"test\"}"));
+    EXPECT_TRUE(waitForServerMessages(1));
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    EXPECT_GT(serverMessages.size(), 0);
-
-    client->disconnect();
-    server->disconnect();
+    disconnectServerAndClient(server, client);
 }
 
-// ========== 多个消息测试 ==========
-
-TEST(IpcTest, MultipleMessages) {
+TEST_F(IpcTest, MultipleMessages) {
+#ifndef _WIN32
+    GTEST_SKIP() << "IPC integration tests require the Windows NamedPipe backend";
+#endif
     auto server = IpcFactory::createServer(config);
     auto client = IpcFactory::createClient(config);
 
-    ASSERT_NE(server, nullptr);
-    ASSERT_NE(client, nullptr);
+    ASSERT_TRUE(connectServerAndClient(server, client));
 
-    server->setMessageCallback([&](const IpcMessage& msg) {
-        serverMessages.push_back(msg);
-    });
-
-    EXPECT_TRUE(server->connect("wingman_test"));
-    server->startReceiving();
-
-    EXPECT_TRUE(client->connect("wingman_test"));
-
-    // 发送多个消息
-    for (int i = 0; i < 10; ++i) {
-        client->sendEvent("test", "{\"value\":" + std::to_string(i) + "}");
+    constexpr size_t messageCount = 10;
+    for (size_t i = 0; i < messageCount; ++i) {
+        EXPECT_TRUE(client->sendEvent("test", "{\"value\":" + std::to_string(i) + "}"));
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_TRUE(waitForServerMessages(messageCount, 2s));
+    EXPECT_GE(serverMessageCount(), messageCount);
 
-    EXPECT_GE(serverMessages.size(), 5);  // 至少收到部分消息
-
-    client->disconnect();
-    server->disconnect();
+    disconnectServerAndClient(server, client);
 }

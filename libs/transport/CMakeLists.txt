@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找 asio（可选）
 find_package(asio CONFIG QUIET)
+find_package(spdlog CONFIG REQUIRED)
 
 if(NOT asio_FOUND)
     # 使用 FetchContent 下载 asio（header-only）
@@ -53,6 +54,8 @@ target_include_directories(wingman_transport PUBLIC
 if(TARGET asio::asio)
     target_link_libraries(wingman_transport PUBLIC asio::asio)
 endif()
+
+target_link_libraries(wingman_transport PRIVATE spdlog::spdlog_header_only)
 
 # Windows 特定
 if(WIN32)
