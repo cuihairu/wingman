@@ -2,6 +2,10 @@
 #include "wingman/runtime/remote_client.hpp"
 #include "wingman/runtime/remote_server.hpp"
 #include "wingman/runtime/standalone_mode.hpp"
+#include "wingman/runtime/runtime_context.hpp"
+#include "wingman/system.hpp"
+#include "wingman/window.hpp"
+#include <filesystem>
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 
@@ -216,31 +220,58 @@ std::vector<uint8_t> Agent::handleMessage(const std::string& sessionId, const st
             response["data"]["mode"] = impl_->mode == RunMode::Active ? "active" :
                                       impl_->mode == RunMode::Passive ? "passive" :
                                       impl_->mode == RunMode::Standalone ? "standalone" : "both";
+            response["data"]["runningScripts"] = getScriptManager().getRunningScripts().size();
+            response["data"]["totalScripts"] = getScriptManager().getScriptNames().size();
+            response["data"]["cpuUsage"] = System::getCpuUsage();
+            response["data"]["memoryUsage"] = System::getMemoryInfo().usage;
+            response["data"]["totalWindows"] = 0;
+#ifdef _WIN32
+            response["data"]["totalWindows"] = Window::enumerate().size();
+#endif
         }
         else if (type == "list_scripts") {
-            // TODO: 实现 ScriptManager 集成
+            auto scripts = getScriptManager().getAllScriptInfos();
             response["success"] = true;
             response["data"]["scripts"] = nlohmann::json::array();
+            for (const auto& script : scripts) {
+                nlohmann::json item;
+                item["id"] = script.config.name;
+                item["name"] = script.config.name;
+                item["path"] = script.config.path;
+                item["isRunning"] = script.state == ScriptState::running;
+                item["status"] = script.state == ScriptState::running ? "running" :
+                                 script.state == ScriptState::paused ? "paused" :
+                                 script.state == ScriptState::error ? "error" : "loaded";
+                response["data"]["scripts"].push_back(item);
+            }
         }
         else if (type == "run_script") {
             if (!request.contains("path")) {
                 response["message"] = "missing 'path' field";
             } else {
-                // TODO: 实现 ScriptManager 集成
                 std::string path = request["path"];
-                response["success"] = true;
-                response["message"] = "script execution started";
-                response["data"]["script_id"] = "script_" + path;
+                std::string name = std::filesystem::path(path).stem().string();
+                if (getScriptManager().hasScript(name) || getScriptManager().loadScript(name, path)) {
+                    if (getScriptManager().runScript(name)) {
+                        response["success"] = true;
+                        response["message"] = "script execution started";
+                        response["data"]["script_id"] = name;
+                        response["data"]["status"] = "running";
+                    } else {
+                        response["message"] = "failed to run script";
+                    }
+                } else {
+                    response["message"] = "failed to load script";
+                }
             }
         }
         else if (type == "stop_script") {
             if (!request.contains("script_id")) {
                 response["message"] = "missing 'script_id' field";
             } else {
-                // TODO: 实现 ScriptManager 集成
                 std::string scriptId = request["script_id"];
-                response["success"] = true;
-                response["message"] = "script stopped";
+                response["success"] = getScriptManager().stopScript(scriptId);
+                response["message"] = response["success"] ? "script stopped" : "failed to stop script";
                 response["data"]["script_id"] = scriptId;
             }
         }
@@ -248,12 +279,35 @@ std::vector<uint8_t> Agent::handleMessage(const std::string& sessionId, const st
             if (!request.contains("script_id")) {
                 response["message"] = "missing 'script_id' field";
             } else {
-                // TODO: 实现 ScriptManager 集成
                 std::string scriptId = request["script_id"];
-                response["success"] = true;
                 response["data"]["script_id"] = scriptId;
-                response["data"]["status"] = "stopped";
+                if (auto* info = getScriptManager().getScriptInfo(scriptId)) {
+                    response["success"] = true;
+                    response["data"]["status"] = info->state == ScriptState::running ? "running" :
+                                              info->state == ScriptState::paused ? "paused" :
+                                              info->state == ScriptState::error ? "error" : "loaded";
+                } else {
+                    response["message"] = "script not found";
+                }
             }
+        }
+        else if (type == "list_windows") {
+            response["success"] = true;
+            response["data"]["windows"] = nlohmann::json::array();
+
+#ifdef _WIN32
+            for (const auto& window : Window::enumerate()) {
+                nlohmann::json item;
+                item["handle"] = reinterpret_cast<uint64_t>(window.handle);
+                item["title"] = window.title;
+                item["x"] = window.bounds.x;
+                item["y"] = window.bounds.y;
+                item["width"] = window.bounds.width;
+                item["height"] = window.bounds.height;
+                item["isForeground"] = window.isForeground;
+                response["data"]["windows"].push_back(item);
+            }
+#endif
         }
         else {
             response["message"] = "unknown message type: " + type;

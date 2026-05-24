@@ -77,6 +77,17 @@ void WebSocketCtrl::handleNewMessage(const drogon::WebSocketConnectionPtr& wsCon
             pong["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
             wsConnPtr->send(pong.dump());
 
+        } else if (msgType == "list_windows") {
+            RpcResponse resp;
+            resp.id = j.value("id", "");
+            resp.success = true;
+            resp.result["windows"] = nlohmann::json::array();
+
+            nlohmann::json response;
+            response["type"] = "result";
+            response["data"] = resp.toJson();
+            wsConnPtr->send(response.dump());
+
         } else {
             spdlog::warn("[WS] Unknown message type: {}", msgType);
         }

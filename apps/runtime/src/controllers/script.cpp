@@ -1,5 +1,6 @@
 #include "wingman/runtime/controllers/script.hpp"
 #include "wingman/script_manager.hpp"
+#include "wingman/runtime/runtime_context.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <fstream>
@@ -22,11 +23,19 @@ RpcResponse ScriptCtrl::start(const RpcRequest& req) {
             return resp;
         }
 
-        // TODO: 实际启动脚本
-        // 目前返回模拟响应
-        resp.success = true;
-        resp.result["scriptId"] = "script_" + std::to_string(std::hash<std::string>{}(scriptPath));
-        resp.result["status"] = "running";
+        std::string scriptId = std::filesystem::path(scriptPath).stem().string();
+        if (!getScriptManager().hasScript(scriptId)) {
+            getScriptManager().loadScript(scriptId, scriptPath);
+        }
+
+        if (getScriptManager().runScript(scriptId)) {
+            resp.success = true;
+            resp.result["scriptId"] = scriptId;
+            resp.result["status"] = "running";
+        } else {
+            resp.success = false;
+            resp.error = "Failed to start script";
+        }
 
         spdlog::info("[Script] Starting: {}", scriptPath);
 
@@ -51,9 +60,8 @@ RpcResponse ScriptCtrl::stop(const RpcRequest& req) {
             return resp;
         }
 
-        // TODO: 实际停止脚本
-        resp.success = true;
-        resp.result["status"] = "stopped";
+        resp.success = getScriptManager().stopScript(scriptId);
+        resp.result["status"] = resp.success ? "stopped" : "failed";
 
         spdlog::info("[Script] Stopping: {}", scriptId);
 
@@ -177,7 +185,8 @@ std::vector<ScriptInfo> ScriptCtrl::scanScripts(const std::string& dir) {
             info.name = entry.path().filename().string();
             info.path = entry.path().string();
             info.size = entry.file_size();
-            info.isRunning = false;  // TODO: 检查实际运行状态
+            auto* scriptInfo = getScriptManager().getScriptInfo(info.id);
+            info.isRunning = scriptInfo && scriptInfo->state == ScriptState::running;
             scripts.push_back(info);
         }
     }

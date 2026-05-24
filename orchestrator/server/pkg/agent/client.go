@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"time"
@@ -64,6 +65,10 @@ func (c *Client) Connect() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	return c.connectLocked()
+}
+
+func (c *Client) connectLocked() error {
 	if c.conn != nil {
 		return nil
 	}
@@ -97,7 +102,7 @@ func (c *Client) Send(msgType string, data map[string]interface{}) (map[string]i
 
 	// 确保已连接
 	if c.conn == nil {
-		if err := c.Connect(); err != nil {
+		if err := c.connectLocked(); err != nil {
 			return nil, err
 		}
 	}
@@ -147,8 +152,7 @@ func (c *Client) Send(msgType string, data map[string]interface{}) (map[string]i
 
 	// 读取响应头（16 字节）
 	respHeaderBuf := make([]byte, messageHeaderSize)
-	_, err = c.conn.Read(respHeaderBuf)
-	if err != nil {
+	if _, err = io.ReadFull(c.conn, respHeaderBuf); err != nil {
 		return nil, fmt.Errorf("failed to read header: %w", err)
 	}
 
@@ -156,8 +160,7 @@ func (c *Client) Send(msgType string, data map[string]interface{}) (map[string]i
 
 	// 读取响应体
 	respBytes := make([]byte, respLength)
-	_, err = c.conn.Read(respBytes)
-	if err != nil {
+	if _, err = io.ReadFull(c.conn, respBytes); err != nil {
 		return nil, fmt.Errorf("failed to read body: %w", err)
 	}
 
@@ -204,6 +207,11 @@ func (c *Client) GetScriptStatus(scriptId string) (map[string]interface{}, error
 	return c.Send("get_script_status", map[string]interface{}{
 		"script_id": scriptId,
 	})
+}
+
+// ListWindows 获取窗口列表
+func (c *Client) ListWindows() (map[string]interface{}, error) {
+	return c.Send("list_windows", nil)
 }
 
 // Pool 客户端连接池

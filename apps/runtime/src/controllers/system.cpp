@@ -1,4 +1,5 @@
 #include "wingman/runtime/controllers/system.hpp"
+#include "wingman/runtime/runtime_context.hpp"
 #include "wingman/version.hpp"
 #include <spdlog/spdlog.h>
 #include <chrono>
@@ -16,7 +17,8 @@ RpcResponse SystemCtrl::getStatus(const RpcRequest& req) {
         status["uptime"] = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::system_clock::now().time_since_epoch()
         ).count();
-        status["runningScripts"] = 0;  // TODO: 实际统计
+        status["runningScripts"] = getScriptManager().getRunningScripts().size();
+        status["totalScripts"] = getScriptManager().getScriptNames().size();
 
         resp.success = true;
         resp.result = status;

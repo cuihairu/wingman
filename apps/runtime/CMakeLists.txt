@@ -73,6 +73,7 @@ set(CLIENT_SOURCES
     src/agent_config.cpp
     src/packer.cpp
     src/resource_loader.cpp
+    src/runtime_context.cpp
     # Drogon 控制器
     src/controllers/websocket.cpp
     src/controllers/script.cpp
