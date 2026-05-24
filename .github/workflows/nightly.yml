@@ -97,14 +97,15 @@ jobs:
           Branch: nightly
           "@ | Out-File -FilePath "$distDir\VERSION.txt" -Encoding UTF8
 
-          Compress-Archive -Path "$distDir\*" -DestinationPath "wingman-$version-windows-x64.zip"
+          Compress-Archive -Path "$distDir\*" -DestinationPath "wingman-nightly-windows-x64.zip"
 
       - name: Upload nightly artifacts
         uses: actions/upload-artifact@v6
         with:
           name: wingman-nightly-windows-x64
-          path: wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip
+          path: wingman-nightly-windows-x64.zip
           retention-days: 30
+          overwrite: true
 
       - name: Create GitHub Release (nightly)
         uses: softprops/action-gh-release@v2
@@ -121,11 +122,11 @@ jobs:
             ### Latest Build
             - Date: ${{ steps.nightly_version.outputs.version_suffix }}
             - Commit: ${{ steps.nightly_version.outputs.version }}
-            - Download: `wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip`
+            - Download: `wingman-nightly-windows-x64.zip`
 
             ---
             *Use at your own risk. Nightly builds may contain unstable features.*
-          files: wingman-${{ steps.nightly_version.outputs.version }}-windows-x64.zip
+          files: wingman-nightly-windows-x64.zip
           prerelease: true
           draft: false
           replace_existing_artifacts: true
