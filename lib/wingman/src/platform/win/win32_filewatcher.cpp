@@ -23,7 +23,6 @@ WatchItem::WatchItem()
     , active(false) {
     buffer.resize(4096);
     memset(&overlapped, 0, sizeof(overlapped));
-    overlapped.hEvent = this;
 }
 
 Win32FileWatcher::Win32FileWatcher()

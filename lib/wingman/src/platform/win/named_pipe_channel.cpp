@@ -58,16 +58,10 @@ void NamedPipeChannel::disconnect() {
     setState(IpcState::Disconnecting);
     stopping_ = true;
 
-    // 停止接收线程
-    if (receiveThread_.joinable()) {
-        eventCondition_.notify_all();
-        receiveThread_.join();
-    }
+    stopReceiving();
 
-    // 关闭管道
     if (pipeHandle_ != INVALID_HANDLE_VALUE) {
         if (serverMode_) {
-            FlushFileBuffers(pipeHandle_);
             DisconnectNamedPipe(pipeHandle_);
         }
         CloseHandle(pipeHandle_);
@@ -160,9 +154,12 @@ void NamedPipeChannel::startReceiving() {
 
 void NamedPipeChannel::stopReceiving() {
     stopping_ = true;
-    eventCondition_.notify_all();
 
     if (receiveThread_.joinable()) {
+        if (pipeHandle_ != INVALID_HANDLE_VALUE) {
+            CancelSynchronousIo(reinterpret_cast<HANDLE>(receiveThread_.native_handle()));
+        }
+        eventCondition_.notify_all();
         receiveThread_.join();
     }
 }
@@ -191,7 +188,7 @@ bool NamedPipeChannel::createServerPipe() {
     // 创建 Named Pipe
     pipeHandle_ = CreateNamedPipeA(
         fullPipeName_.c_str(),
-        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+        PIPE_ACCESS_DUPLEX,
         PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
         PIPE_UNLIMITED_INSTANCES,
         65536,  // 输出缓冲区
@@ -231,13 +228,13 @@ bool NamedPipeChannel::createServerPipe() {
 bool NamedPipeChannel::connectToServer() {
     // 等待 Named Pipe 可用
     for (int i = 0; i < 50; ++i) {  // 最多等待 5 秒
-        pipeHandle_ = CreateFileA(
+    pipeHandle_ = CreateFileA(
             fullPipeName_.c_str(),
             GENERIC_READ | GENERIC_WRITE,
             0,
             nullptr,
             OPEN_EXISTING,
-            FILE_FLAG_OVERLAPPED,
+            0,
             nullptr
         );
 
@@ -292,7 +289,7 @@ void NamedPipeChannel::receiveLoop() {
 
         if (!result || bytesRead != sizeof(messageLength)) {
             DWORD error = GetLastError();
-            if (error == ERROR_BROKEN_PIPE || error == ERROR_NO_DATA) {
+            if (error == ERROR_BROKEN_PIPE || error == ERROR_NO_DATA || error == ERROR_OPERATION_ABORTED) {
                 spdlog::info("[NamedPipe] Connection closed");
             } else if (error != ERROR_IO_PENDING) {
                 spdlog::error("[NamedPipe] ReadFile length failed: {}", error);
