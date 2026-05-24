@@ -1,7 +1,8 @@
 param(
     [string]$BuildDir = "build",
     [string]$Config = "Debug",
-    [string]$CoverageFile = "build/coverage/coverage.cobertura.xml"
+    [string]$CoverageFile = "build/coverage/coverage.cobertura.xml",
+    [int]$TimeoutSeconds = 120
 )
 
 $coverageDir = Split-Path -Parent $CoverageFile
@@ -21,7 +22,7 @@ $absoluteCoverageFile = Join-Path $projectRoot $CoverageFile
     --sources $projectRoot `
     --export_type "cobertura:$absoluteCoverageFile" `
     -- `
-    ctest --test-dir $BuildDir -C $Config --output-on-failure
+    ctest --test-dir $BuildDir -C $Config --output-on-failure --timeout $TimeoutSeconds
 
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE

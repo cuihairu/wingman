@@ -41,7 +41,8 @@ jobs:
         run: choco install opencppcoverage -y --no-progress
 
       - name: Run tests with coverage
-        run: ./build-scripts/ci/run-windows-coverage.ps1 -BuildDir build -Config Debug -CoverageFile build/coverage/coverage.cobertura.xml
+        run: ./build-scripts/ci/run-windows-coverage.ps1 -BuildDir build -Config Debug -CoverageFile build/coverage/coverage.cobertura.xml -TimeoutSeconds 120
+        timeout-minutes: 30
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v6

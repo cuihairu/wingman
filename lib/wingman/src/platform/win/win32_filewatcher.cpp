@@ -1,10 +1,12 @@
 #include "wingman/platform/win/win32_filewatcher.hpp"
+
 #include <spdlog/spdlog.h>
-#include <thread>
-#include <mutex>
-#include <unordered_map>
+
 #include <atomic>
 #include <condition_variable>
+#include <mutex>
+#include <thread>
+#include <unordered_map>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -18,8 +20,7 @@ WatchItem::WatchItem()
     : id(0)
     , directoryHandle(INVALID_HANDLE_VALUE)
     , recursive(false)
-    , active(false)
-{
+    , active(false) {
     buffer.resize(4096);
     memset(&overlapped, 0, sizeof(overlapped));
     overlapped.hEvent = this;
@@ -28,17 +29,17 @@ WatchItem::WatchItem()
 Win32FileWatcher::Win32FileWatcher()
     : initialized_(false)
     , stopping_(false)
-    , nextId_(1)
-{}
+    , nextId_(1) {}
 
 Win32FileWatcher::~Win32FileWatcher() {
     shutdown();
 }
 
 bool Win32FileWatcher::initialize() {
-    if (initialized_) return true;
+    if (initialized_) {
+        return true;
+    }
 
-    // 启动事件处理线程
     stopping_ = false;
     eventThread_ = std::thread([this]() { eventLoop(); });
 
@@ -48,16 +49,18 @@ bool Win32FileWatcher::initialize() {
 }
 
 void Win32FileWatcher::shutdown() {
-    if (!initialized_) return;
-
-    // 停止所有监控
-    std::lock_guard<std::mutex> lock(watchesMutex_);
-    for (auto& pair : watches_) {
-        closeWatchHandle(pair.second.get());
+    if (!initialized_) {
+        return;
     }
-    watches_.clear();
 
-    // 停止事件线程
+    {
+        std::lock_guard<std::mutex> lock(watchesMutex_);
+        for (auto& pair : watches_) {
+            closeWatchHandle(pair.second.get());
+        }
+        watches_.clear();
+    }
+
     stopping_ = true;
     eventCondition_.notify_all();
 
@@ -70,24 +73,23 @@ void Win32FileWatcher::shutdown() {
 }
 
 uint64_t Win32FileWatcher::watch(const std::string& path, bool recursive, FileChangeCallback callback) {
-    if (!initialized_) return 0;
+    if (!initialized_) {
+        return 0;
+    }
 
     std::lock_guard<std::mutex> lock(watchesMutex_);
 
-    // 转换路径为绝对路径
     char fullPath[MAX_PATH];
     GetFullPathNameA(path.c_str(), MAX_PATH, fullPath, nullptr);
 
-    // 检查是否是目录
-    DWORD attrs = GetFileAttributesA(fullPath);
+    const DWORD attrs = GetFileAttributesA(fullPath);
     if (attrs == INVALID_FILE_ATTRIBUTES) {
         spdlog::error("[Win32FileWatcher] Path not found: {}", fullPath);
         return 0;
     }
 
-    bool isDirectory = (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    const bool isDirectory = (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
-    // 如果是文件，获取其目录
     std::string watchPath = fullPath;
     if (!isDirectory) {
         char drive[_MAX_DRIVE];
@@ -96,14 +98,12 @@ uint64_t Win32FileWatcher::watch(const std::string& path, bool recursive, FileCh
         watchPath = std::string(drive) + dir;
     }
 
-    // 创建监控项
     auto item = std::make_unique<WatchItem>();
     item->id = nextId_++;
     item->path = watchPath;
     item->recursive = recursive;
-    item->callback = callback;
+    item->callback = std::move(callback);
 
-    // 打开目录
     item->directoryHandle = CreateFileA(
         watchPath.c_str(),
         FILE_LIST_DIRECTORY,
@@ -119,14 +119,14 @@ uint64_t Win32FileWatcher::watch(const std::string& path, bool recursive, FileCh
         return 0;
     }
 
-    // 开始异步读取
     if (!beginRead(item.get())) {
         CloseHandle(item->directoryHandle);
+        item->directoryHandle = INVALID_HANDLE_VALUE;
         return 0;
     }
 
     item->active = true;
-    uint64_t watchId = item->id;
+    const uint64_t watchId = item->id;
     watches_[watchId] = std::move(item);
 
     spdlog::debug("[Win32FileWatcher] Started watch {} for: {}", watchId, watchPath);
@@ -136,7 +136,7 @@ uint64_t Win32FileWatcher::watch(const std::string& path, bool recursive, FileCh
 bool Win32FileWatcher::unwatch(uint64_t watchId) {
     std::lock_guard<std::mutex> lock(watchesMutex_);
 
-    auto it = watches_.find(watchId);
+    const auto it = watches_.find(watchId);
     if (it == watches_.end()) {
         return false;
     }
@@ -159,7 +159,7 @@ size_t Win32FileWatcher::unwatchPath(const std::string& path) {
         if (_stricmp(it->second->path.c_str(), fullPath) == 0) {
             closeWatchHandle(it->second.get());
             it = watches_.erase(it);
-            count++;
+            ++count;
         } else {
             ++it;
         }
@@ -193,12 +193,7 @@ BackendInfo Win32FileWatcher::getBackendInfo() const {
 
 void Win32FileWatcher::closeWatchHandle(WatchItem* item) {
     if (item->active && item->directoryHandle != INVALID_HANDLE_VALUE) {
-        // 取消 IO
-        CancelIo(item->directoryHandle);
-
-        // 等待完成
-        Sleep(50);
-
+        CancelIoEx(item->directoryHandle, nullptr);
         CloseHandle(item->directoryHandle);
         item->directoryHandle = INVALID_HANDLE_VALUE;
         item->active = false;
@@ -207,17 +202,17 @@ void Win32FileWatcher::closeWatchHandle(WatchItem* item) {
 
 bool Win32FileWatcher::beginRead(WatchItem* item) {
     DWORD bytesReturned = 0;
-    BOOL result = ReadDirectoryChangesW(
+    const BOOL result = ReadDirectoryChangesW(
         item->directoryHandle,
         item->buffer.data(),
         static_cast<DWORD>(item->buffer.size()),
         item->recursive,
         FILE_NOTIFY_CHANGE_FILE_NAME |
-        FILE_NOTIFY_CHANGE_DIR_NAME |
-        FILE_NOTIFY_CHANGE_ATTRIBUTES |
-        FILE_NOTIFY_CHANGE_SIZE |
-        FILE_NOTIFY_CHANGE_LAST_WRITE |
-        FILE_NOTIFY_CHANGE_SECURITY,
+            FILE_NOTIFY_CHANGE_DIR_NAME |
+            FILE_NOTIFY_CHANGE_ATTRIBUTES |
+            FILE_NOTIFY_CHANGE_SIZE |
+            FILE_NOTIFY_CHANGE_LAST_WRITE |
+            FILE_NOTIFY_CHANGE_SECURITY,
         &bytesReturned,
         &item->overlapped,
         nullptr
@@ -234,11 +229,9 @@ bool Win32FileWatcher::beginRead(WatchItem* item) {
 void Win32FileWatcher::eventLoop() {
     while (!stopping_) {
         std::unique_lock<std::mutex> lock(eventMutex_);
-
-        // 等待停止信号或超时检查 IO
         eventCondition_.wait_for(lock, std::chrono::milliseconds(100));
+        lock.unlock();
 
-        // 检查异步 IO 完成状态
         checkIOCompletion();
     }
 }
@@ -248,62 +241,57 @@ void Win32FileWatcher::checkIOCompletion() {
 
     for (auto& pair : watches_) {
         WatchItem* item = pair.second.get();
-        if (!item->active) continue;
+        if (!item->active) {
+            continue;
+        }
 
         DWORD bytesTransferred = 0;
         if (!GetOverlappedResult(item->directoryHandle, &item->overlapped, &bytesTransferred, FALSE)) {
-            DWORD error = GetLastError();
+            const DWORD error = GetLastError();
             if (error == ERROR_IO_INCOMPLETE) {
-                // IO 还在进行中
                 continue;
             }
 
-            // 错误，重新开始读取
             spdlog::warn("[Win32FileWatcher] IO error: {}, restarting", error);
             beginRead(item);
             continue;
         }
 
         if (bytesTransferred == 0) {
-            // 无变化，重新开始读取
             beginRead(item);
             continue;
         }
 
-        // 处理通知
-        FILE_NOTIFY_INFORMATION* fni = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(item->buffer.data());
+        auto* fni = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(item->buffer.data());
         while (true) {
             processNotification(item, fni);
 
-            if (fni->NextEntryOffset == 0) break;
+            if (fni->NextEntryOffset == 0) {
+                break;
+            }
             fni = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(
                 reinterpret_cast<uint8_t*>(fni) + fni->NextEntryOffset
             );
         }
 
-        // 重新开始读取
         beginRead(item);
     }
 }
 
 void Win32FileWatcher::processNotification(WatchItem* item, FILE_NOTIFY_INFORMATION* fni) {
-    // 转换文件名
-    int length = fni->FileNameLength / sizeof(wchar_t);
-    std::wstring wfileName(fni->FileName, length);
+    const int length = static_cast<int>(fni->FileNameLength / sizeof(wchar_t));
+    const std::wstring wfileName(fni->FileName, length);
 
-    // 转换为 UTF-8
-    int size = WideCharToMultiByte(CP_UTF8, 0, wfileName.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    std::string fileName(size - 1, 0);
-    WideCharToMultiByte(CP_UTF8, 0, wfileName.c_str(), -1, &fileName[0], size, nullptr, nullptr);
+    const int size = WideCharToMultiByte(CP_UTF8, 0, wfileName.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string fileName(size - 1, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wfileName.c_str(), -1, fileName.data(), size, nullptr, nullptr);
 
-    // 构建完整路径
     std::string fullPath = item->path;
     if (!fullPath.empty() && fullPath.back() != '\\' && fullPath.back() != '/') {
         fullPath += '\\';
     }
     fullPath += fileName;
 
-    // 映射变化类型
     FileChangeType type = FileChangeType::Modified;
     switch (fni->Action) {
         case FILE_ACTION_ADDED:
@@ -323,13 +311,11 @@ void Win32FileWatcher::processNotification(WatchItem* item, FILE_NOTIFY_INFORMAT
             break;
     }
 
-    // 创建事件并直接调用回调
     FileChange event;
     event.type = type;
     event.path = fullPath;
     event.timestamp = GetTickCount64();
 
-    // 调用回调（不持有锁）
     if (item->callback) {
         try {
             item->callback(event);
