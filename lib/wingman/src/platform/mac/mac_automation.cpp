@@ -322,10 +322,10 @@ private:
     }
 };
 
-std::unique_ptr<IUIAManager> createUIAManager() {
-    return std::make_unique<UIAManager>();
-}
-
 } // namespace wingman
+
+std::unique_ptr<wingman::IUIAManager> createUIAManager() {
+    return std::make_unique<wingman::UIAManager>();
+}
 
 #endif // __APPLE__
