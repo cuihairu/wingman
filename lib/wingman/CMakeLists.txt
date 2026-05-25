@@ -62,8 +62,8 @@ set(WINGMAN_SOURCES
 
     # 其他功能
     src/qrcode.cpp
-    # src/verification.cpp  # TODO: 检查依赖
-    # src/behavior_tree.cpp  # TODO: 检查依赖
+    src/verification.cpp
+    src/behavior_tree.cpp
     src/game_profile.cpp
 
     # 脚本抽象层（语言无关的模块描述符）
