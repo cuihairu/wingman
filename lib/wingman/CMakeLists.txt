@@ -38,7 +38,7 @@ set(WINGMAN_SOURCES
     src/trigger_engine.cpp
 
     # 系统模块（注意：performance.cpp 需要 OpenCV，在后面添加）
-    # src/security.cpp  # TODO: 修复重复定义
+    src/security.cpp
 
     # 账号与存储
     # src/accounts.cpp  # TODO: 检查依赖
@@ -61,10 +61,10 @@ set(WINGMAN_SOURCES
     # src/storage_remote.cpp  # TODO: 检查依赖
 
     # 其他功能
-    # src/qrcode.cpp  # TODO: 检查依赖
+    src/qrcode.cpp
     # src/verification.cpp  # TODO: 检查依赖
     # src/behavior_tree.cpp  # TODO: 检查依赖
-    # src/game_profile.cpp  # TODO: 检查依赖
+    src/game_profile.cpp
 
     # 脚本抽象层（语言无关的模块描述符）
     src/script_manager.cpp
