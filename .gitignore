@@ -115,6 +115,7 @@ docs/.vitepress/dist/
 docs/node_modules/
 
 # Dashboard
+dashboard/
 dashboard/node_modules/
 dashboard/dist/
 dashboard/.turbo/
@@ -130,6 +131,10 @@ orchestrator/server/build/
 # Claude Code local files
 .claude/
 _deps/
+
+# Go caches inside workspace
+orchestrator/server/.gocache/
+orchestrator/server/.gomodcache/
 
 # Generated config files (but not checked-in templates)
 apps/*/config/*.local
