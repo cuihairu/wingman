@@ -25,11 +25,6 @@ namespace wingman {
 
 // ========== SecurityManager Implementation ==========
 
-SecurityManager& SecurityManager::instance() {
-    static SecurityManager inst;
-    return inst;
-}
-
 SecurityManager::SecurityManager() {
     initRandomEngine();
 }
