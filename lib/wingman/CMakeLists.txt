@@ -57,7 +57,7 @@ set(WINGMAN_SOURCES
     src/http.cpp
     src/screenshot_reporter.cpp
     # src/http_server.cpp  # TODO: 检查依赖
-    # src/node_status.cpp  # TODO: 检查依赖
+    src/node_status.cpp
     # src/storage_remote.cpp  # TODO: 检查依赖
 
     # 其他功能
