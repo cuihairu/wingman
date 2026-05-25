@@ -238,10 +238,10 @@ std::vector<uint8_t> Agent::handleMessage(const std::string& sessionId, const st
                 item["id"] = script.config.name;
                 item["name"] = script.config.name;
                 item["path"] = script.config.path;
-                item["isRunning"] = script.state == ScriptState::running;
-                item["status"] = script.state == ScriptState::running ? "running" :
-                                 script.state == ScriptState::paused ? "paused" :
-                                 script.state == ScriptState::error ? "error" : "loaded";
+                item["isRunning"] = script.state == wingman::ScriptState::running;
+                item["status"] = script.state == wingman::ScriptState::running ? "running" :
+                                 script.state == wingman::ScriptState::paused ? "paused" :
+                                 script.state == wingman::ScriptState::error ? "error" : "loaded";
                 response["data"]["scripts"].push_back(item);
             }
         }
@@ -283,9 +283,9 @@ std::vector<uint8_t> Agent::handleMessage(const std::string& sessionId, const st
                 response["data"]["script_id"] = scriptId;
                 if (auto* info = getScriptManager().getScriptInfo(scriptId)) {
                     response["success"] = true;
-                    response["data"]["status"] = info->state == ScriptState::running ? "running" :
-                                              info->state == ScriptState::paused ? "paused" :
-                                              info->state == ScriptState::error ? "error" : "loaded";
+                    response["data"]["status"] = info->state == wingman::ScriptState::running ? "running" :
+                                              info->state == wingman::ScriptState::paused ? "paused" :
+                                              info->state == wingman::ScriptState::error ? "error" : "loaded";
                 } else {
                     response["message"] = "script not found";
                 }
