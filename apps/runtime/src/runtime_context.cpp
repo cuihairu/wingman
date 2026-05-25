@@ -1,9 +1,15 @@
 #include "wingman/runtime/runtime_context.hpp"
+
 #include <filesystem>
 
 namespace wingman::runtime {
 
 namespace {
+
+ScriptManager& scriptManagerInstance() {
+    static ScriptManager manager;
+    return manager;
+}
 
 void preloadScripts(ScriptManager& manager) {
     const std::filesystem::path scriptsDir("scripts");
@@ -25,8 +31,8 @@ void preloadScripts(ScriptManager& manager) {
 } // namespace
 
 ScriptManager& getScriptManager() {
-    static ScriptManager manager;
-    static const bool initialized = [] {
+    ScriptManager& manager = scriptManagerInstance();
+    static const bool initialized = [&manager] {
         preloadScripts(manager);
         return true;
     }();
