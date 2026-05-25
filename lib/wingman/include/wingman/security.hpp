@@ -141,7 +141,7 @@ private:
 
     AntiDetectionConfig m_antiDetection;
     ProcessProtectionConfig m_processProtection;
-    std::mt19937 m_randomEngine;
+    mutable std::mt19937 m_randomEngine;
 
     // 初始化随机引擎
     void initRandomEngine();
