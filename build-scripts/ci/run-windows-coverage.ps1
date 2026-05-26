@@ -16,13 +16,28 @@ if (-not (Test-Path $coverageExe)) {
 $projectRoot = (Get-Item ".").FullName
 $absoluteCoverageFile = Join-Path $projectRoot $CoverageFile
 
+# Find test executable
+$testExe = Get-ChildItem -Path "$BuildDir\$Config\core_tests.exe" -ErrorAction SilentlyContinue
+if (-not $testExe) {
+    $testExe = Get-ChildItem -Path "$BuildDir\lib\wingman\tests\$Config\core_tests.exe" -ErrorAction SilentlyContinue
+}
+if (-not $testExe) {
+    $testExe = Get-ChildItem -Path "$BuildDir" -Recurse -Filter "core_tests.exe" | Select-Object -First 1
+}
+if (-not $testExe) {
+    throw "Could not find core_tests.exe"
+}
+
+Write-Host "Found test executable: $($testExe.FullName)"
+Write-Host "Running with OpenCppCoverage..."
+
+# Run coverage directly on test executable (much faster than --cover_children with ctest)
 & $coverageExe `
     --quiet `
-    --cover_children `
     --sources $projectRoot `
     --export_type "cobertura:$absoluteCoverageFile" `
     -- `
-    ctest --test-dir $BuildDir -C $Config --output-on-failure --timeout $TimeoutSeconds
+    $testExe.FullName "--gtest_filter=*"
 
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
