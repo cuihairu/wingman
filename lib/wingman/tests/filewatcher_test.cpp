@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "wingman/filewatcher.hpp"
+#include "wingman/platform/ifilewatcher.hpp"
 
 #ifdef _WIN32
 #include <windows.h>
