@@ -108,7 +108,7 @@ jobs:
           overwrite: true
 
       - name: Create GitHub Release (nightly)
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: github.ref == 'refs/heads/main'
         with:
           tag_name: nightly
@@ -129,7 +129,7 @@ jobs:
           files: wingman-nightly-windows-x64.zip
           prerelease: true
           draft: false
-          replace_existing_artifacts: true
+          overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
