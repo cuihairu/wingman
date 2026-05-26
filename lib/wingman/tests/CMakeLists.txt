@@ -28,6 +28,16 @@ if(BUILD_CORE_TESTS)
             clipboard_test.cpp
             filewatcher_test.cpp
             ipc_test.cpp
+            json_test.cpp
+            node_status_test.cpp
+            component_test.cpp
+            event_bus_test.cpp
+            behavior_tree_test.cpp
+            config_test.cpp
+            verification_test.cpp
+            game_profile_test.cpp
+            qrcode_test.cpp
+            script_modules_test.cpp
         )
 
         # 添加 include 目录
@@ -63,6 +73,16 @@ if(BUILD_CORE_TESTS)
                 window_test.cpp
                 human_test.cpp
                 clipboard_test.cpp
+                json_test.cpp
+                node_status_test.cpp
+                component_test.cpp
+                event_bus_test.cpp
+                behavior_tree_test.cpp
+                config_test.cpp
+                verification_test.cpp
+                game_profile_test.cpp
+                qrcode_test.cpp
+                script_modules_test.cpp
             )
 
             target_include_directories(core_tests PRIVATE
@@ -98,6 +118,16 @@ if(BUILD_CORE_TESTS)
                 window_test.cpp
                 human_test.cpp
                 clipboard_test.cpp
+                json_test.cpp
+                node_status_test.cpp
+                component_test.cpp
+                event_bus_test.cpp
+                behavior_tree_test.cpp
+                config_test.cpp
+                verification_test.cpp
+                game_profile_test.cpp
+                qrcode_test.cpp
+                script_modules_test.cpp
             )
 
             target_include_directories(core_tests PRIVATE
