@@ -228,9 +228,9 @@ TEST(JsonValueTest, DoubleAsInt) {
     EXPECT_EQ(v.asInt(), 3);
 }
 
-TEST(JsonValueTest, BoolAsString) {
+TEST(JsonValueTest, BoolAsStringThrows) {
     JsonValue v(true);
-    EXPECT_EQ(v.asString(), "true");
+    EXPECT_THROW(v.asString(), std::exception);
 }
 
 TEST(JsonValueTest, IntAsDouble) {

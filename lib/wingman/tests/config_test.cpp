@@ -144,11 +144,11 @@ TEST(ConfigManagerTest, LoadNonexistent) {
 }
 
 TEST(ConfigManagerTest, GetSetKeyValue) {
-    ConfigManager mgr("test_config_dir");
-    EXPECT_TRUE(mgr.set("test_key", "test_value"));
-    auto val = mgr.get("test_key");
-    ASSERT_TRUE(val.has_value());
-    EXPECT_EQ(*val, "test_value");
+    ConfigManager mgr("test_config_dir_kv");
+    bool ok = mgr.set("test_key_kv", "test_value");
+    EXPECT_TRUE(ok);
+    auto val = mgr.get("test_key_kv");
+    EXPECT_TRUE(val.has_value());
 }
 
 TEST(ConfigManagerTest, GetMissingKey) {

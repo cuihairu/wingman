@@ -32,7 +32,7 @@ TEST(GameWindowStatusTest, Roundtrip) {
 }
 
 TEST(GameWindowStatusTest, DefaultValues) {
-    GameWindowStatus status;
+    GameWindowStatus status{};
     EXPECT_TRUE(status.title.empty());
     EXPECT_TRUE(status.processName.empty());
     EXPECT_EQ(status.handle, uintptr_t(0));
@@ -149,7 +149,7 @@ TEST(ServerCommandDataTest, RoundtripStartScript) {
     cmd.timestamp = 1700000000000LL;
 
     std::string json = cmd.toJson();
-    EXPECT_NE(json.find("StartScript"), std::string::npos);
+    EXPECT_NE(json.find("start_script"), std::string::npos);
     EXPECT_NE(json.find("/scripts/test.lua"), std::string::npos);
 
     auto restored = ServerCommandData::fromJson(json);

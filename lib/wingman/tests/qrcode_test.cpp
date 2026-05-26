@@ -46,7 +46,7 @@ TEST(QRLoginStateTest, StateToString) {
 // ========== QRLoginResult ==========
 
 TEST(QRLoginResultTest, DefaultValues) {
-    QRLoginResult result;
+    QRLoginResult result{};
     EXPECT_EQ(result.state, QRLoginState::Pending);
     EXPECT_TRUE(result.message.empty());
     EXPECT_TRUE(result.token.empty());

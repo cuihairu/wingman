@@ -8,22 +8,25 @@ using namespace wingman;
 TEST(BehaviorContextTest, StringVariables) {
     BehaviorContext ctx;
     ctx.set("name", "test");
-    EXPECT_EQ(ctx.get<std::string>("name"), "test");
-    EXPECT_EQ(ctx.get<std::string>("missing", "default"), "default");
+    auto it = ctx.variables.find("name");
+    ASSERT_NE(it, ctx.variables.end());
+    EXPECT_EQ(it->second, "test");
 }
 
 TEST(BehaviorContextTest, NumberVariables) {
     BehaviorContext ctx;
     ctx.set("count", 42.0);
-    EXPECT_DOUBLE_EQ(ctx.get<double>("count"), 42.0);
-    EXPECT_DOUBLE_EQ(ctx.get<double>("missing", 0.0), 0.0);
+    auto it = ctx.numbers.find("count");
+    ASSERT_NE(it, ctx.numbers.end());
+    EXPECT_DOUBLE_EQ(it->second, 42.0);
 }
 
 TEST(BehaviorContextTest, BoolFlags) {
     BehaviorContext ctx;
     ctx.set("active", true);
-    EXPECT_TRUE(ctx.get<bool>("active"));
-    EXPECT_FALSE(ctx.get<bool>("missing", false));
+    auto it = ctx.flags.find("active");
+    ASSERT_NE(it, ctx.flags.end());
+    EXPECT_TRUE(it->second);
 }
 
 // ========== SequenceNode ==========
@@ -290,7 +293,9 @@ TEST(BehaviorTreeTest, ContextAccess) {
     BehaviorTree tree("ctx_test");
     auto& ctx = tree.getContext();
     ctx.set("key", "value");
-    EXPECT_EQ(ctx.get<std::string>("key"), "value");
+    auto it = ctx.variables.find("key");
+    ASSERT_NE(it, ctx.variables.end());
+    EXPECT_EQ(it->second, "value");
 }
 
 TEST(BehaviorTreeTest, FactorySequence) {

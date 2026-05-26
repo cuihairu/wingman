@@ -124,6 +124,7 @@ TEST(GameProfileManagerTest, ValidateProfileValid) {
     GameProfile profile;
     profile.id = "valid_profile_test";
     profile.name = "Test Game";
+    profile.window.title = "GameWindow";
     std::string error;
     EXPECT_TRUE(mgr.validateProfile(profile, error));
 }
