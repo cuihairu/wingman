@@ -42,6 +42,7 @@ if(BUILD_CORE_TESTS)
             ipc_factory_test.cpp
             accounts_test.cpp
             storage_test.cpp
+            extra_modules_test.cpp
         )
 
         # 添加 include 目录
@@ -91,6 +92,7 @@ if(BUILD_CORE_TESTS)
                 ipc_factory_test.cpp
                 accounts_test.cpp
                 storage_test.cpp
+                extra_modules_test.cpp
             )
 
             target_include_directories(core_tests PRIVATE
@@ -140,6 +142,7 @@ if(BUILD_CORE_TESTS)
                 ipc_factory_test.cpp
                 accounts_test.cpp
                 storage_test.cpp
+                extra_modules_test.cpp
             )
 
             target_include_directories(core_tests PRIVATE
