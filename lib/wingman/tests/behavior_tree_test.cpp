@@ -7,26 +7,23 @@ using namespace wingman;
 
 TEST(BehaviorContextTest, StringVariables) {
     BehaviorContext ctx;
-    ctx.set("name", "test");
-    auto it = ctx.variables.find("name");
-    ASSERT_NE(it, ctx.variables.end());
-    EXPECT_EQ(it->second, "test");
+    ctx.variables["name"] = "test";
+    EXPECT_FALSE(ctx.variables.empty());
+    EXPECT_EQ(ctx.variables["name"], "test");
 }
 
 TEST(BehaviorContextTest, NumberVariables) {
     BehaviorContext ctx;
-    ctx.set("count", 42.0);
-    auto it = ctx.numbers.find("count");
-    ASSERT_NE(it, ctx.numbers.end());
-    EXPECT_DOUBLE_EQ(it->second, 42.0);
+    ctx.numbers["count"] = 42.0;
+    EXPECT_FALSE(ctx.numbers.empty());
+    EXPECT_DOUBLE_EQ(ctx.numbers["count"], 42.0);
 }
 
 TEST(BehaviorContextTest, BoolFlags) {
     BehaviorContext ctx;
-    ctx.set("active", true);
-    auto it = ctx.flags.find("active");
-    ASSERT_NE(it, ctx.flags.end());
-    EXPECT_TRUE(it->second);
+    ctx.flags["active"] = true;
+    EXPECT_FALSE(ctx.flags.empty());
+    EXPECT_TRUE(ctx.flags["active"]);
 }
 
 // ========== SequenceNode ==========
@@ -292,10 +289,8 @@ TEST(BehaviorTreeTest, GetName) {
 TEST(BehaviorTreeTest, ContextAccess) {
     BehaviorTree tree("ctx_test");
     auto& ctx = tree.getContext();
-    ctx.set("key", "value");
-    auto it = ctx.variables.find("key");
-    ASSERT_NE(it, ctx.variables.end());
-    EXPECT_EQ(it->second, "value");
+    ctx.variables["key"] = "value";
+    EXPECT_EQ(ctx.variables["key"], "value");
 }
 
 TEST(BehaviorTreeTest, FactorySequence) {

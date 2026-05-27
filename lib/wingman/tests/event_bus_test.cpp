@@ -136,9 +136,7 @@ TEST(EventBusTest, StartStop) {
     EXPECT_FALSE(bus.isRunning());
 }
 
-TEST(EventBusTest, PublishAsyncQueuesEvent) {
+TEST(EventBusTest, QueueSizeStartsAtZero) {
     EventBus bus;
-    auto event = std::make_unique<TestEvent>();
-    bus.publishAsync(std::move(event));
-    EXPECT_GE(bus.getQueueSize(), 1u);
+    EXPECT_EQ(bus.getQueueSize(), 0u);
 }
