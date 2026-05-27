@@ -229,15 +229,19 @@ TEST_F(FileWatcherTest, UnwatchPath) {
 }
 
 TEST_F(FileWatcherTest, WatchNonExistentPath) {
+    // Clean up any watches from prior tests
+    FileWatcher::unwatchPath(testDir);
+
     const std::string nonExistent = testDir + "\\definitely_nonexistent_dir_"
         + std::to_string(GetTickCount64());
 
     ASSERT_FALSE(fs::exists(nonExistent)) << "Path should not exist: " << nonExistent;
 
+    const size_t countBefore = FileWatcher::getWatchCount();
     const uint64_t watchId = FileWatcher::watch(nonExistent, getCallback(), false);
 
     EXPECT_EQ(watchId, 0U);
-    EXPECT_EQ(FileWatcher::getWatchCount(), 0U);
+    EXPECT_EQ(FileWatcher::getWatchCount(), countBefore);
 }
 
 TEST_F(FileWatcherTest, WatchFileInsteadOfDirectory) {
