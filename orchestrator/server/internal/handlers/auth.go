@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
+	"os"
 
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/security"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
-	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 )
 
 // AuthHandler 认证处理器
@@ -40,7 +43,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 		return
 	}
 
-	if user.Password != req.Password {
+	if !security.VerifyPassword(user.Password, req.Password) {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"message": "Invalid credentials",
@@ -81,9 +84,19 @@ func (h *AuthHandler) InitAdmin() {
 	var count int64
 	h.db.Model(&models.User{}).Count(&count)
 	if count == 0 {
+		password := os.Getenv("WINGMAN_ADMIN_PASSWORD")
+		if password == "" {
+			log.Println("No users exist. Set WINGMAN_ADMIN_PASSWORD to bootstrap the initial admin account.")
+			return
+		}
+		hash, err := security.HashPassword(password)
+		if err != nil {
+			log.Printf("Failed to hash bootstrap admin password: %v", err)
+			return
+		}
 		admin := models.User{
 			Username: "admin",
-			Password: "admin123",
+			Password: hash,
 			Role:     "admin",
 		}
 		h.db.Create(&admin)

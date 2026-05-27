@@ -2,23 +2,23 @@ package handlers
 
 import (
 	"net/http"
-	"os"
 
-	"github.com/gin-gonic/gin"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	"github.com/cuihaitao/wingman/orchestrator/server/pkg/agent"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 // StatusHandler 状态处理器
 type StatusHandler struct {
-	db   *gorm.DB
-	pool *agent.Pool
+	db        *gorm.DB
+	pool      *agent.Pool
+	agentAddr string
 }
 
 // NewStatusHandler 创建状态处理器
-func NewStatusHandler(db *gorm.DB) *StatusHandler {
-	return &StatusHandler{db: db, pool: agent.NewPool()}
+func NewStatusHandler(db *gorm.DB, agentAddr string) *StatusHandler {
+	return &StatusHandler{db: db, pool: agent.NewPool(), agentAddr: agentAddr}
 }
 
 // HandleStatus 获取系统状态
@@ -29,15 +29,10 @@ func (h *StatusHandler) HandleStatus(c *gin.Context) {
 	h.db.Model(&models.Script{}).Count(&totalScripts)
 	h.db.Model(&models.Script{}).Where("is_running = ?", true).Count(&runningScripts)
 
-	address := os.Getenv("WINGMAN_AGENT_ADDR")
-	if address == "" {
-		address = "localhost:8888"
-	}
-
 	totalWindows := int64(0)
 	cpuUsage := 0.0
 	memoryUsage := 0.0
-	if client, err := h.pool.Get(address); err == nil {
+	if client, err := h.pool.Get(h.agentAddr); err == nil {
 		if resp, err := client.GetStatus(); err == nil {
 			if data, ok := resp["data"].(map[string]interface{}); ok {
 				if v, ok := data["totalScripts"].(float64); ok {

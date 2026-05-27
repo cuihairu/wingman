@@ -2,30 +2,25 @@ package handlers
 
 import (
 	"net/http"
-	"os"
 
-	"github.com/gin-gonic/gin"
 	"github.com/cuihaitao/wingman/orchestrator/server/pkg/agent"
+	"github.com/gin-gonic/gin"
 )
 
 // WindowHandler 窗口处理器
 type WindowHandler struct {
-	pool *agent.Pool
+	pool      *agent.Pool
+	agentAddr string
 }
 
 // NewWindowHandler 创建窗口处理器
-func NewWindowHandler() *WindowHandler {
-	return &WindowHandler{pool: agent.NewPool()}
+func NewWindowHandler(agentAddr string) *WindowHandler {
+	return &WindowHandler{pool: agent.NewPool(), agentAddr: agentAddr}
 }
 
 // HandleList 获取窗口列表
 func (h *WindowHandler) HandleList(c *gin.Context) {
-	address := os.Getenv("WINGMAN_AGENT_ADDR")
-	if address == "" {
-		address = "localhost:8888"
-	}
-
-	client, err := h.pool.Get(address)
+	client, err := h.pool.Get(h.agentAddr)
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"success": false,

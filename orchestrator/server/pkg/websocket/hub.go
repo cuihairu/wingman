@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -16,7 +17,7 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true
+		return r.Header.Get("Origin") == "" || r.Host != ""
 	},
 }
 
@@ -31,13 +32,13 @@ type Message struct {
 
 // Connection WebSocket 连接
 type Connection struct {
-	ID         string
-	Conn       *websocket.Conn
-	Send       chan *Message
-	Hub        *Hub
+	ID          string
+	Conn        *websocket.Conn
+	Send        chan *Message
+	Hub         *Hub
 	currentRoom string
-	lastPing   time.Time
-	mu         sync.Mutex
+	lastPing    time.Time
+	mu          sync.Mutex
 }
 
 // Hub WebSocket 连接中心
@@ -48,7 +49,7 @@ type Hub struct {
 	unregister  chan *Connection
 	broadcast   chan *Message
 	mu          sync.RWMutex
-	connCounter  uint64
+	connCounter uint64
 }
 
 // NewHub 创建 Hub
@@ -199,12 +200,24 @@ func (h *Hub) BroadcastAgentEvent(eventType string, data interface{}) {
 
 // HandleWebSocket 处理 WebSocket 连接
 func HandleWebSocket(c *gin.Context, hub *Hub) {
+	token := c.Query("token")
+	if token == "" {
+		token = middleware.ParseBearerToken(c.GetHeader("Authorization"))
+	}
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "authorization required"})
+		return
+	}
+	if _, err := middleware.ValidateTokenString(token); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "invalid token"})
+		return
+	}
+
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("[WS] Upgrade error: %v", err)
 		return
 	}
-
 	hub.mu.Lock()
 	hub.connCounter++
 	connID := fmt.Sprintf("ws_%d", hub.connCounter)

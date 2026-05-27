@@ -8,16 +8,19 @@ import (
 	"net"
 	"sync"
 	"time"
+	"unsafe"
 )
 
 // C++ MessageHeader 结构（16 字节）
-// struct MessageHeader {
-//     uint32_t length;      // 消息体长度 (4 bytes)
-//     uint32_t sequence;    // 序列号 (4 bytes)
-//     MessageType type;     // 消息类型 (1 byte)
-//     uint32_t reserved;    // 保留字段 (4 bytes) + 3 bytes padding
-// };
+//
+//	struct MessageHeader {
+//	    uint32_t length;      // 消息体长度 (4 bytes)
+//	    uint32_t sequence;    // 序列号 (4 bytes)
+//	    MessageType type;     // 消息类型 (1 byte)
+//	    uint32_t reserved;    // 保留字段 (4 bytes) + 3 bytes padding
+//	};
 const messageHeaderSize = 16
+const maxResponseSize = 16 * 1024 * 1024
 
 // MessageType 匹配 C++ MessageType 枚举
 type MessageType uint8
@@ -58,6 +61,14 @@ func NewClient(address string) *Client {
 		address: address,
 		timeout: 30 * time.Second,
 	}
+}
+
+func nativeEndian() binary.ByteOrder {
+	var x uint16 = 0x0102
+	if *(*byte)(unsafe.Pointer(&x)) == 0x02 {
+		return binary.LittleEndian
+	}
+	return binary.BigEndian
 }
 
 // Connect 连接到 Agent
@@ -134,10 +145,11 @@ func (c *Client) Send(msgType string, data map[string]interface{}) (map[string]i
 
 	// 发送消息头（16 字节）
 	headerBuf := make([]byte, messageHeaderSize)
-	binary.BigEndian.PutUint32(headerBuf[0:4], msg.Header.Length)
-	binary.BigEndian.PutUint32(headerBuf[4:8], msg.Header.Sequence)
+	endian := nativeEndian()
+	endian.PutUint32(headerBuf[0:4], msg.Header.Length)
+	endian.PutUint32(headerBuf[4:8], msg.Header.Sequence)
 	headerBuf[8] = byte(msg.Header.Type)
-	binary.BigEndian.PutUint32(headerBuf[12:16], msg.Header.Reserved)
+	endian.PutUint32(headerBuf[12:16], msg.Header.Reserved)
 
 	_, err = c.conn.Write(headerBuf)
 	if err != nil {
@@ -156,7 +168,10 @@ func (c *Client) Send(msgType string, data map[string]interface{}) (map[string]i
 		return nil, fmt.Errorf("failed to read header: %w", err)
 	}
 
-	respLength := binary.BigEndian.Uint32(respHeaderBuf[0:4])
+	respLength := endian.Uint32(respHeaderBuf[0:4])
+	if respLength > maxResponseSize {
+		return nil, fmt.Errorf("response too large: %d bytes", respLength)
+	}
 
 	// 读取响应体
 	respBytes := make([]byte, respLength)

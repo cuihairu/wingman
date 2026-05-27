@@ -2,13 +2,13 @@ package middleware
 
 import (
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
-
-var jwtSecret = []byte("wingman-secret-key")
 
 // Claims JWT 声明
 type Claims struct {
@@ -16,6 +16,32 @@ type Claims struct {
 	Username string `json:"username"`
 	Role     string `json:"role"`
 	jwt.RegisteredClaims
+}
+
+func jwtSecret() []byte {
+	return []byte(os.Getenv("WINGMAN_JWT_SECRET"))
+}
+
+func ParseBearerToken(authHeader string) string {
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		return ""
+	}
+	return parts[1]
+}
+
+func ValidateTokenString(tokenString string) (*Claims, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		if token.Method != jwt.SigningMethodHS256 {
+			return nil, jwt.ErrTokenSignatureInvalid
+		}
+		return jwtSecret(), nil
+	})
+	if err != nil || !token.Valid {
+		return nil, jwt.ErrTokenInvalidClaims
+	}
+	return claims, nil
 }
 
 // AuthRequired JWT 认证中间件
@@ -28,21 +54,15 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
+		tokenString := ParseBearerToken(authHeader)
+		if tokenString == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "Invalid authorization format"})
 			c.Abort()
 			return
 		}
 
-		tokenString := parts[1]
-		claims := &Claims{}
-
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil
-		})
-
-		if err != nil || !token.Valid {
+		claims, err := ValidateTokenString(tokenString)
+		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "Invalid token"})
 			c.Abort()
 			return
@@ -58,14 +78,20 @@ func AuthRequired() gin.HandlerFunc {
 
 // GenerateToken 生成 JWT token
 func GenerateToken(userID uint, username, role string) (string, error) {
+	now := time.Now()
 	claims := Claims{
 		UserID:   userID,
 		Username: username,
 		Role:     role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
+			Subject:   username,
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(jwtSecret())
 }
 
 // GetCurrentUser 获取当前用户
@@ -73,5 +99,12 @@ func GetCurrentUser(c *gin.Context) (uint, string, string) {
 	userID, _ := c.Get("user_id")
 	username, _ := c.Get("username")
 	role, _ := c.Get("role")
-	return userID.(uint), username.(string), role.(string)
+	if id, ok := userID.(uint); ok {
+		if name, ok := username.(string); ok {
+			if r, ok := role.(string); ok {
+				return id, name, r
+			}
+		}
+	}
+	return 0, "", ""
 }
