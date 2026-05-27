@@ -110,6 +110,7 @@ struct Batch {
     int completed = 0;
     int success = 0;
     int failed = 0;
+    int running = 0;
 
     std::chrono::system_clock::time_point startTime;
     std::chrono::system_clock::time_point endTime;
@@ -134,6 +135,7 @@ struct Batch {
         j["completed"] = completed;
         j["success"] = success;
         j["failed"] = failed;
+        j["running"] = running;
         return j;
     }
 
@@ -163,6 +165,7 @@ struct Batch {
         batch.completed = j.value("completed", 0);
         batch.success = j.value("success", 0);
         batch.failed = j.value("failed", 0);
+        batch.running = j.value("running", 0);
 
         return batch;
     }
