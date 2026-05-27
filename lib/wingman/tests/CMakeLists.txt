@@ -102,6 +102,7 @@ if(BUILD_CORE_TESTS)
                 ui_automation_test.cpp
                 ml_test.cpp
                 ocr_test.cpp
+                script_function_test.cpp
             )
 
             target_include_directories(core_tests PRIVATE
@@ -157,6 +158,7 @@ if(BUILD_CORE_TESTS)
                 ui_automation_test.cpp
                 ml_test.cpp
                 ocr_test.cpp
+                script_function_test.cpp
             )
 
             target_include_directories(core_tests PRIVATE
