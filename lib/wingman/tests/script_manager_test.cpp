@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include "wingman/script_manager.hpp"
+#include <filesystem>
+#include <fstream>
 
 using namespace wingman;
 
@@ -252,4 +254,163 @@ TEST(ScriptManagerTest, LogScriptOutputWithCallback) {
 TEST(ScriptManagerTest, LogScriptOutputWithoutCallbackDoesNotCrash) {
     ScriptManager mgr;
     EXPECT_NO_THROW(mgr.logScriptOutput("test", "output"));
+}
+
+// ========== 脚本加载/卸载（使用临时文件） ==========
+
+class ScriptManagerFileTest : public ::testing::Test {
+protected:
+    std::string tempDir;
+
+    void SetUp() override {
+        tempDir = std::filesystem::temp_directory_path().string() + "/wingman_sm_test_" +
+            std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+        std::filesystem::create_directories(tempDir);
+    }
+
+    void TearDown() override {
+        std::filesystem::remove_all(tempDir);
+    }
+
+    std::string createTempScript(const std::string& name, const std::string& content) {
+        std::string path = tempDir + "/" + name;
+        std::ofstream(path) << content;
+        return path;
+    }
+};
+
+TEST_F(ScriptManagerFileTest, LoadNonexistentFile) {
+    ScriptManager mgr;
+    EXPECT_FALSE(mgr.loadScript("test", "/nonexistent/file.lua"));
+}
+
+TEST_F(ScriptManagerFileTest, LoadAndUnloadScript) {
+    ScriptManager mgr;
+    std::string path = createTempScript("test.lua", "print('hello')");
+
+    EXPECT_TRUE(mgr.loadScript("test", path));
+    EXPECT_TRUE(mgr.hasScript("test"));
+    EXPECT_EQ(mgr.getScriptNames().size(), 1u);
+
+    auto* info = mgr.getScriptInfo("test");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->state, ScriptState::loaded);
+    EXPECT_EQ(info->language, "lua");
+
+    EXPECT_TRUE(mgr.unloadScript("test"));
+    EXPECT_FALSE(mgr.hasScript("test"));
+}
+
+TEST_F(ScriptManagerFileTest, LoadScriptWithEventCallback) {
+    ScriptManager mgr;
+    std::vector<std::string> events;
+    mgr.setEventCallback([&](const std::string& name, ScriptEvent evt, const std::string& msg) {
+        events.push_back(name + ":" + std::to_string(static_cast<int>(evt)));
+    });
+
+    std::string path = createTempScript("evt_test.lua", "-- test");
+    mgr.loadScript("evt_test", path);
+
+    // Should have received a 'loaded' event
+    ASSERT_FALSE(events.empty());
+    EXPECT_EQ(events[0], "evt_test:0");  // ScriptEvent::loaded = 0
+}
+
+TEST_F(ScriptManagerFileTest, LoadScriptTriggersErrorEventForMissingFile) {
+    ScriptManager mgr;
+    std::string lastEvent;
+    mgr.setEventCallback([&](const std::string& name, ScriptEvent evt, const std::string& msg) {
+        lastEvent = name + ":" + std::to_string(static_cast<int>(evt));
+    });
+
+    mgr.loadScript("missing", "/nonexistent.lua");
+    // ScriptEvent::error = 4
+    EXPECT_EQ(lastEvent, "missing:4");
+}
+
+TEST_F(ScriptManagerFileTest, LoadAndUnloadEvents) {
+    ScriptManager mgr;
+    std::vector<std::string> events;
+    mgr.setEventCallback([&](const std::string& name, ScriptEvent evt, const std::string& msg) {
+        events.push_back(std::to_string(static_cast<int>(evt)));
+    });
+
+    std::string path = createTempScript("lu.lua", "-- test");
+    mgr.loadScript("lu", path);
+    mgr.unloadScript("lu");
+
+    ASSERT_GE(events.size(), 2u);
+    // loaded (0) then unloaded (1)
+    EXPECT_EQ(events[0], "0");
+    EXPECT_EQ(events[1], "1");
+}
+
+TEST_F(ScriptManagerFileTest, ReloadNonRunningScript) {
+    ScriptManager mgr;
+    std::string path = createTempScript("reload.lua", "-- v1");
+    mgr.loadScript("reload", path);
+
+    EXPECT_TRUE(mgr.reloadScript("reload"));
+    auto* info = mgr.getScriptInfo("reload");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->state, ScriptState::loaded);
+}
+
+TEST_F(ScriptManagerFileTest, GetAllScriptInfos) {
+    ScriptManager mgr;
+    std::string p1 = createTempScript("s1.lua", "-- 1");
+    std::string p2 = createTempScript("s2.lua", "-- 2");
+
+    mgr.loadScript("s1", p1);
+    mgr.loadScript("s2", p2);
+
+    auto infos = mgr.getAllScriptInfos();
+    EXPECT_EQ(infos.size(), 2u);
+}
+
+TEST_F(ScriptManagerFileTest, GetRunningScriptsEmpty) {
+    ScriptManager mgr;
+    std::string path = createTempScript("run.lua", "-- test");
+    mgr.loadScript("run", path);
+
+    EXPECT_TRUE(mgr.getRunningScripts().empty());
+}
+
+// ========== INI 配置加载 ==========
+
+TEST_F(ScriptManagerFileTest, LoadIniConfig) {
+    ScriptManager mgr;
+    std::string path = createTempScript("test.ini", "key1=value1\nkey2=value2\n;comment\n#comment\n  spaced  =  value  \n");
+
+    EXPECT_TRUE(mgr.loadConfig(path));
+    EXPECT_EQ(mgr.getConfig("key1"), "value1");
+    EXPECT_EQ(mgr.getConfig("key2"), "value2");
+    EXPECT_EQ(mgr.getConfig("spaced"), "value");
+}
+
+TEST_F(ScriptManagerFileTest, SaveAndLoadConfigRoundtrip) {
+    ScriptManager mgr;
+    mgr.setConfig("setting1", "val1");
+    mgr.setConfig("setting2", "val2");
+
+    std::string path = tempDir + "/save_test.cfg";
+    EXPECT_TRUE(mgr.saveConfig(path));
+
+    ScriptManager mgr2;
+    EXPECT_TRUE(mgr2.loadConfig(path));
+    EXPECT_EQ(mgr2.getConfig("setting1"), "val1");
+    EXPECT_EQ(mgr2.getConfig("setting2"), "val2");
+}
+
+TEST_F(ScriptManagerFileTest, LoadEmptyPathReturnsFalse) {
+    ScriptManager mgr;
+    EXPECT_FALSE(mgr.loadConfig(""));
+}
+
+// ========== 热加载 ==========
+
+TEST_F(ScriptManagerFileTest, StartHotReloadDoesNotCrash) {
+    ScriptManager mgr;
+    EXPECT_NO_THROW(mgr.startHotReload());
+    EXPECT_NO_THROW(mgr.stopHotReload());
 }
