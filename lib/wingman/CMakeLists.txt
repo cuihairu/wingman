@@ -41,8 +41,8 @@ set(WINGMAN_SOURCES
     src/security.cpp
 
     # 账号与存储
-    # src/accounts.cpp  # TODO: 检查依赖
-    # src/storage.cpp  # TODO: 检查依赖
+    src/accounts.cpp
+    src/storage.cpp
     # src/auth.cpp  # TODO: 检查依赖
 
     # 配置与工具
