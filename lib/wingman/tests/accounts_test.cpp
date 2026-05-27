@@ -67,7 +67,7 @@ TEST(AccountTest, ToJsonFromJsonRoundtrip) {
 }
 
 TEST(AccountTest, FromJsonMissingFields) {
-    nlohmann::json j;
+    nlohmann::json j = nlohmann::json::object();
     auto acc = Account::fromJson(j);
     EXPECT_TRUE(acc.id.empty());
     EXPECT_TRUE(acc.game.empty());
@@ -105,7 +105,7 @@ TEST(BatchTest, ToJsonFromJsonRoundtrip) {
 }
 
 TEST(BatchTest, FromJsonMissingFields) {
-    nlohmann::json j;
+    nlohmann::json j = nlohmann::json::object();
     auto batch = Batch::fromJson(j);
     EXPECT_TRUE(batch.id.empty());
     EXPECT_EQ(batch.total, 0);
