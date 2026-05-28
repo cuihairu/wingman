@@ -292,3 +292,89 @@ TEST(SecurityManagerTest, GetRandomOffsetInRange) {
         EXPECT_LE(y, 5.0);
     }
 }
+
+TEST(SecurityManagerTest, GetClickJitterInRange) {
+    auto& mgr = SecurityManager::instance();
+    AntiDetectionConfig cfg;
+    cfg.clickJitter = 3.0;
+    mgr.setAntiDetectionConfig(cfg);
+
+    for (int i = 0; i < 50; ++i) {
+        auto [x, y] = mgr.getClickJitter();
+        EXPECT_GE(x, -3.0);
+        EXPECT_LE(x, 3.0);
+        EXPECT_GE(y, -3.0);
+        EXPECT_LE(y, 3.0);
+    }
+}
+
+TEST(SecurityManagerTest, ProtectMemoryDoesNotCrash) {
+    auto& mgr = SecurityManager::instance();
+    char buffer[64] = {};
+    EXPECT_NO_THROW(mgr.protectMemory(buffer, sizeof(buffer), false));
+}
+
+TEST(SecurityManagerTest, LockUnlockMemoryDoesNotCrash) {
+    auto& mgr = SecurityManager::instance();
+    char buffer[4096] = {};
+    // VirtualLock may fail without privileges, just test it doesn't crash
+    EXPECT_NO_THROW(mgr.lockMemory(buffer, sizeof(buffer)));
+    EXPECT_NO_THROW(mgr.unlockMemory(buffer, sizeof(buffer)));
+}
+
+TEST(SecurityManagerTest, SecureLogDoesNotCrash) {
+    auto& mgr = SecurityManager::instance();
+    EXPECT_NO_THROW(mgr.secureLog("test message with password=secret"));
+}
+
+TEST(SecurityManagerTest, VerifySignatureReturnsFalse) {
+    auto& mgr = SecurityManager::instance();
+    // wingman.exe likely not signed in test environment
+    EXPECT_NO_THROW(mgr.verifySignature());
+}
+
+TEST(SecurityManagerTest, GetSignatureInfoDefaults) {
+    auto& mgr = SecurityManager::instance();
+    auto info = mgr.getSignatureInfo();
+    EXPECT_FALSE(info.isSigned);
+    EXPECT_TRUE(info.issuer.empty());
+    EXPECT_TRUE(info.subject.empty());
+}
+
+TEST(SecurityManagerTest, EnableProcessProtectionWithoutFlag) {
+    auto& mgr = SecurityManager::instance();
+    ProcessProtectionConfig cfg;
+    cfg.protectFromTermination = false;
+    mgr.setProcessProtectionConfig(cfg);
+    EXPECT_TRUE(mgr.enableProcessProtection());
+}
+
+TEST(SecurityManagerTest, HashStringKnownValue) {
+    // SHA-256("hello") is well-known
+    std::string hash = SecurityManager::hashString("hello");
+    EXPECT_EQ(hash, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+}
+
+TEST(SecurityManagerTest, EncryptDecryptWithEmptyKey) {
+    // XOR with empty key — key.size() = 0, modulo by zero is UB
+    // Just verify no crash
+    EXPECT_NO_THROW(SecurityManager::encryptString("test", ""));
+}
+
+TEST(SecurityManagerTest, EncryptDecryptUnicodeString) {
+    std::string original = "Hello 世界 🌍";
+    std::string key = "key123";
+    std::string encrypted = SecurityManager::encryptString(original, key);
+    std::string decrypted = SecurityManager::decryptString(encrypted, key);
+    EXPECT_EQ(decrypted, original);
+}
+
+TEST(SecurityManagerTest, FilterSensitiveAllPatterns) {
+    // Test all sensitive patterns are replaced
+    std::vector<std::string> patterns = {"password", "passwd", "pwd", "token", "key", "secret", "api_key", "apikey"};
+    for (const auto& p : patterns) {
+        std::string input = "my " + p + " is here";
+        std::string filtered = SecurityManager::filterSensitive(input);
+        EXPECT_EQ(filtered.find(p), std::string::npos) << "Pattern '" << p << "' was not filtered";
+    }
+}

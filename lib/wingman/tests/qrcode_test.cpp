@@ -80,3 +80,94 @@ TEST(QRLoginManagerTest, CancelDoesNotCrash) {
     QRLoginManager mgr;
     EXPECT_NO_THROW(mgr.cancel());
 }
+
+TEST(QRLoginManagerTest, ConstructionDoesNotCrash) {
+    EXPECT_NO_THROW(QRLoginManager mgr);
+}
+
+TEST(QRLoginManagerTest, DetectQRCodeReturnsNull) {
+    QRLoginManager mgr;
+    auto result = mgr.detectQRCode(0, 0, 100, 100);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(QRLoginManagerTest, GetQRCodeReturnsNullForInvalidUrl) {
+    QRLoginManager mgr;
+    QRLoginConfig cfg;
+    cfg.qrUrl = "http://127.0.0.1:1/nonexistent";
+    auto result = mgr.getQRCode(cfg);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(QRLoginManagerTest, GetQRCodeImageReturnsNullForInvalidUrl) {
+    QRLoginManager mgr;
+    QRLoginConfig cfg;
+    cfg.qrUrl = "http://127.0.0.1:1/nonexistent";
+    auto result = mgr.getQRCodeImage(cfg, "nonexistent_output.png");
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(QRLoginManagerTest, PollStatusReturnsErrorForInvalidUrl) {
+    QRLoginManager mgr;
+    QRLoginConfig cfg;
+    cfg.statusUrl = "http://127.0.0.1:1/nonexistent";
+    auto result = mgr.pollStatus(cfg);
+    EXPECT_EQ(result.state, QRLoginState::Error);
+}
+
+TEST(QRLoginManagerTest, LoginWithZeroMaxAttemptsReturnsExpired) {
+    QRLoginManager mgr;
+    QRLoginConfig cfg;
+    cfg.qrUrl = "http://127.0.0.1:1/nonexistent";
+    cfg.statusUrl = "http://127.0.0.1:1/nonexistent";
+    cfg.maxAttempts = 0;
+    auto result = mgr.login(cfg);
+    EXPECT_EQ(result.state, QRLoginState::Expired);
+}
+
+TEST(QRLoginManagerTest, LoginCancelledImmediately) {
+    QRLoginManager mgr;
+    mgr.cancel();
+    QRLoginConfig cfg;
+    cfg.qrUrl = "http://127.0.0.1:1/nonexistent";
+    cfg.statusUrl = "http://127.0.0.1:1/nonexistent";
+    cfg.maxAttempts = 1;
+    cfg.pollInterval = 1;
+    auto result = mgr.login(cfg);
+    EXPECT_EQ(result.state, QRLoginState::Cancelled);
+}
+
+TEST(QRLoginManagerTest, SteamConfigHasCorrectFields) {
+    auto cfg = QRLoginManager::steamConfig();
+    EXPECT_EQ(cfg.qrCodeField, "qr_challenge");
+    EXPECT_EQ(cfg.statusField, "state");
+    EXPECT_EQ(cfg.tokenField, "access_token");
+    EXPECT_EQ(cfg.pollInterval, 3000);
+    EXPECT_EQ(cfg.timeout, 180000);
+}
+
+TEST(QRLoginManagerTest, WechatConfigHasDefaults) {
+    auto cfg = QRLoginManager::wechatConfig();
+    EXPECT_EQ(cfg.pollInterval, 2000);
+    EXPECT_EQ(cfg.timeout, 120000);
+    EXPECT_EQ(cfg.maxAttempts, 60);
+}
+
+TEST(QRLoginManagerTest, GenericConfigPreservesUrls) {
+    auto cfg = QRLoginManager::genericConfig("https://qr.example.com", "https://status.example.com");
+    EXPECT_EQ(cfg.qrUrl, "https://qr.example.com");
+    EXPECT_EQ(cfg.statusUrl, "https://status.example.com");
+    EXPECT_EQ(cfg.method, "GET");
+}
+
+TEST(QRLoginResultTest, StateFieldAccess) {
+    QRLoginResult result{};
+    result.state = QRLoginState::Scanned;
+    result.message = "Scanned by user";
+    result.token = "abc123";
+    result.sessionId = "sess_1";
+    EXPECT_EQ(result.state, QRLoginState::Scanned);
+    EXPECT_EQ(result.message, "Scanned by user");
+    EXPECT_EQ(result.token, "abc123");
+    EXPECT_EQ(result.sessionId, "sess_1");
+}

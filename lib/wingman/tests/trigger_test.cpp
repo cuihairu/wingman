@@ -353,3 +353,33 @@ TEST_F(TriggerEngineTest, EnableDisableByName) {
     EXPECT_FALSE(engine->enableTrigger("non_existent"));
     EXPECT_FALSE(engine->disableTrigger("non_existent"));
 }
+
+TEST_F(TriggerEngineTest, LoadFromLuaNonexistentFile) {
+    EXPECT_FALSE(engine->loadFromLua("/nonexistent/trigger_config.lua"));
+}
+
+TEST_F(TriggerEngineTest, LoadFromYAMLReturnsFalse) {
+    EXPECT_FALSE(engine->loadFromYAML("/nonexistent/config.yaml"));
+}
+
+TEST_F(TriggerEngineTest, StopWhenNotRunningDoesNotCrash) {
+    EXPECT_NO_THROW(engine->stop());
+}
+
+TEST_F(TriggerEngineTest, DoubleStopDoesNotCrash) {
+    engine->start();
+    EXPECT_NO_THROW(engine->stop());
+    EXPECT_NO_THROW(engine->stop());
+}
+
+TEST_F(TriggerEngineTest, GetStatsEmpty) {
+    auto stats = engine->getStats();
+    EXPECT_EQ(stats.totalTriggers, 0);
+    EXPECT_EQ(stats.enabledTriggers, 0);
+    EXPECT_EQ(stats.totalTriggered, 0);
+}
+
+TEST_F(TriggerEngineTest, EnableDisableWithNoTriggers) {
+    EXPECT_FALSE(engine->enableTrigger("any"));
+    EXPECT_FALSE(engine->disableTrigger("any"));
+}
