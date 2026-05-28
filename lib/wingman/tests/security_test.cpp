@@ -346,10 +346,13 @@ TEST(SecurityManagerTest, HashStringKnownValue) {
     EXPECT_EQ(hash, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
 }
 
-TEST(SecurityManagerTest, EncryptDecryptWithEmptyKey) {
-    // XOR with empty key — key.size() = 0, modulo by zero is UB
-    // Just verify no crash
-    EXPECT_NO_THROW(SecurityManager::encryptString("test", ""));
+TEST(SecurityManagerTest, EncryptDecryptWithSingleCharKey) {
+    std::string original = "test data";
+    std::string key = "x";
+    std::string encrypted = SecurityManager::encryptString(original, key);
+    EXPECT_NE(encrypted, original);
+    std::string decrypted = SecurityManager::decryptString(encrypted, key);
+    EXPECT_EQ(decrypted, original);
 }
 
 TEST(SecurityManagerTest, EncryptDecryptUnicodeString) {

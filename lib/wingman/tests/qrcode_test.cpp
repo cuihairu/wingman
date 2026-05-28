@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include "wingman/qrcode.hpp"
+#include <thread>
+#include <chrono>
 
 using namespace wingman;
 
@@ -126,14 +128,22 @@ TEST(QRLoginManagerTest, LoginWithZeroMaxAttemptsReturnsExpired) {
 }
 
 TEST(QRLoginManagerTest, LoginCancelledImmediately) {
+    // login() resets cancelled flag at start, so cancel() must happen concurrently.
+    // Instead test that cancel() during login causes Cancelled state.
     QRLoginManager mgr;
-    mgr.cancel();
     QRLoginConfig cfg;
     cfg.qrUrl = "http://127.0.0.1:1/nonexistent";
     cfg.statusUrl = "http://127.0.0.1:1/nonexistent";
-    cfg.maxAttempts = 1;
+    cfg.maxAttempts = 100;
     cfg.pollInterval = 1;
+
+    std::thread canceller([&mgr]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        mgr.cancel();
+    });
+
     auto result = mgr.login(cfg);
+    canceller.join();
     EXPECT_EQ(result.state, QRLoginState::Cancelled);
 }
 
