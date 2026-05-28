@@ -202,3 +202,123 @@ TEST(ScreenTest, BitmapCopy) {
     EXPECT_EQ(result.g, c.g);
     EXPECT_EQ(result.b, c.b);
 }
+
+// ========== Additional Color Tests ==========
+
+TEST(ScreenTest, ColorDefaultConstructor) {
+    Color c;
+    EXPECT_EQ(c.r, 0);
+    EXPECT_EQ(c.g, 0);
+    EXPECT_EQ(c.b, 0);
+    EXPECT_EQ(c.a, 255);
+}
+
+TEST(ScreenTest, ColorWithAlpha) {
+    Color c(100, 150, 200, 128);
+    EXPECT_EQ(c.r, 100);
+    EXPECT_EQ(c.g, 150);
+    EXPECT_EQ(c.b, 200);
+    EXPECT_EQ(c.a, 128);
+}
+
+TEST(ScreenTest, ColorFromRGBBlack) {
+    Color c = Color::fromRGB(0x000000);
+    EXPECT_EQ(c.r, 0);
+    EXPECT_EQ(c.g, 0);
+    EXPECT_EQ(c.b, 0);
+}
+
+TEST(ScreenTest, ColorFromRGBWhite) {
+    Color c = Color::fromRGB(0xFFFFFF);
+    EXPECT_EQ(c.r, 255);
+    EXPECT_EQ(c.g, 255);
+    EXPECT_EQ(c.b, 255);
+}
+
+TEST(ScreenTest, ColorToRGBRoundtrip) {
+    Color original(42, 87, 213);
+    uint32_t rgb = original.toRGB();
+    Color restored = Color::fromRGB(rgb);
+    EXPECT_EQ(restored.r, original.r);
+    EXPECT_EQ(restored.g, original.g);
+    EXPECT_EQ(restored.b, original.b);
+}
+
+TEST(ScreenTest, ColorDistanceSame) {
+    Color c(100, 100, 100);
+    EXPECT_EQ(c.distance(c), 0);
+}
+
+TEST(ScreenTest, ColorDistanceMax) {
+    Color black(0, 0, 0);
+    Color white(255, 255, 255);
+    EXPECT_EQ(black.distance(white), 255*255 + 255*255 + 255*255);
+}
+
+// ========== Additional Point Tests ==========
+
+TEST(ScreenTest, PointAssignment) {
+    Point p1(10, 20);
+    Point p2;
+    p2 = p1;
+    EXPECT_EQ(p2.x, 10);
+    EXPECT_EQ(p2.y, 20);
+}
+
+TEST(ScreenTest, PointInequality) {
+    Point p1(0, 0);
+    Point p2(1, 0);
+    Point p3(0, 1);
+    EXPECT_NE(p1, p2);
+    EXPECT_NE(p1, p3);
+}
+
+// ========== Additional Rect Tests ==========
+
+TEST(ScreenTest, RectDefaultConstructor) {
+    Rect r;
+    EXPECT_EQ(r.x, 0);
+    EXPECT_EQ(r.y, 0);
+    EXPECT_EQ(r.width, 0);
+    EXPECT_EQ(r.height, 0);
+    EXPECT_TRUE(r.isEmpty());
+}
+
+TEST(ScreenTest, RectNegativeDimensions) {
+    Rect r(0, 0, -10, -5);
+    EXPECT_TRUE(r.isEmpty());
+}
+
+TEST(ScreenTest, RectContainsEdgeCases) {
+    Rect r(10, 10, 100, 100);
+    EXPECT_TRUE(r.contains(Point(10, 10)));
+    EXPECT_FALSE(r.contains(Point(110, 10)));
+    EXPECT_FALSE(r.contains(Point(10, 110)));
+    EXPECT_FALSE(r.contains(Point(110, 110)));
+}
+
+TEST(ScreenTest, RectContainsInEmptyRect) {
+    Rect r(0, 0, 0, 0);
+    EXPECT_FALSE(r.contains(Point(0, 0)));
+}
+
+// ========== Additional Bitmap Tests ==========
+
+TEST(ScreenTest, BitmapGetPixelUnset) {
+    Bitmap bmp(10, 10);
+    Color c = bmp.getPixel(5, 5);
+    EXPECT_EQ(c.r, 0);
+    EXPECT_EQ(c.g, 0);
+    EXPECT_EQ(c.b, 0);
+}
+
+TEST(ScreenTest, BitmapMultipleSetPixel) {
+    Bitmap bmp(10, 10);
+    bmp.setPixel(0, 0, Color(255, 0, 0));
+    bmp.setPixel(9, 9, Color(0, 255, 0));
+    bmp.setPixel(5, 5, Color(0, 0, 255));
+
+    EXPECT_EQ(bmp.getPixel(0, 0).r, 255);
+    EXPECT_EQ(bmp.getPixel(9, 9).g, 255);
+    EXPECT_EQ(bmp.getPixel(5, 5).b, 255);
+}

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "wingman/config.hpp"
+#include <filesystem>
 
 using namespace wingman;
 

@@ -452,3 +452,163 @@ TEST_F(KeyValueStoreTest, SaveToInvalidPath) {
 TEST_F(KeyValueStoreTest, LoadNonexistentFile) {
     EXPECT_FALSE(store->load("/nonexistent/file.db"));
 }
+
+// ========== Additional Tests ==========
+
+TEST_F(KeyValueStoreTest, EnableAutoSaveDoesNotCrash) {
+    // enableAutoSave starts background threads; verify no crash on scope exit
+    {
+        auto s = std::make_unique<wingman::KeyValueStore>();
+        s->set("k", "v");
+        EXPECT_NO_THROW(s->enableAutoSave(testDbPath + "_auto", 600));
+    }
+    // Destroy after leaving scope — threads should join cleanly
+}
+
+TEST_F(KeyValueStoreTest, IncrOnNonNumericValue) {
+    store->set("alpha", "hello");
+    // incr on non-numeric catches the exception internally and starts from 0
+    int64_t result = store->incr("alpha");
+    EXPECT_EQ(result, 1);
+    EXPECT_EQ(store->get("alpha"), "1");
+}
+
+TEST_F(KeyValueStoreTest, IncrOnNonNumericWithDelta) {
+    store->set("beta", "not_a_number");
+    EXPECT_EQ(store->incr("beta", 10), 10);
+    EXPECT_EQ(store->get("beta"), "10");
+}
+
+TEST_F(KeyValueStoreTest, MultipleSetDelCyclesOnSameKey) {
+    for (int i = 0; i < 5; ++i) {
+        store->set("recycle", std::to_string(i));
+        EXPECT_EQ(store->get("recycle"), std::to_string(i));
+        store->del("recycle");
+        EXPECT_EQ(store->get("recycle"), "");
+    }
+    // After cycles, set one more time and verify
+    store->set("recycle", "final");
+    EXPECT_EQ(store->get("recycle"), "final");
+}
+
+TEST_F(KeyValueStoreTest, HashFieldOverwrite) {
+    store->hset("doc", "field", "v1");
+    EXPECT_EQ(store->hget("doc", "field"), "v1");
+    store->hset("doc", "field", "v2");
+    EXPECT_EQ(store->hget("doc", "field"), "v2");
+    // Verify other fields remain untouched
+    store->hset("doc", "other", " untouched");
+    store->hset("doc", "field", "v3");
+    EXPECT_EQ(store->hget("doc", "field"), "v3");
+    EXPECT_EQ(store->hget("doc", "other"), " untouched");
+}
+
+TEST_F(KeyValueStoreTest, ListWithManyElements) {
+    const int count = 100;
+    for (int i = 0; i < count; ++i) {
+        store->rpush("biglist", std::to_string(i));
+    }
+    EXPECT_EQ(store->llen("biglist"), static_cast<size_t>(count));
+
+    // Pop all from the left — should come out in order 0..99
+    for (int i = 0; i < count; ++i) {
+        std::string val = store->lpop("biglist");
+        EXPECT_EQ(val, std::to_string(i));
+    }
+    EXPECT_EQ(store->llen("biglist"), 0u);
+    EXPECT_EQ(store->lpop("biglist"), "");  // empty after draining
+}
+
+TEST_F(KeyValueStoreTest, SaveLoadWithHashAndListData) {
+    store->set("str_key", "str_val");
+    store->hset("h1", "f1", "hv1");
+    store->hset("h1", "f2", "hv2");
+    store->lpush("l1", "lv1");
+    store->rpush("l1", "lv2");
+
+    EXPECT_TRUE(store->save(testDbPath));
+
+    auto loaded = std::make_unique<wingman::KeyValueStore>();
+    EXPECT_TRUE(loaded->load(testDbPath));
+
+    // String keys survive save/load
+    EXPECT_EQ(loaded->get("str_key"), "str_val");
+
+    // Hash and list are not persisted in current implementation — verify no crash
+    EXPECT_NO_THROW(loaded->hget("h1", "f1"));
+    EXPECT_NO_THROW(loaded->llen("l1"));
+}
+
+TEST_F(KeyValueStoreTest, StatsAfterVariousOperations) {
+    store->set("s1", "v1");
+    store->set("s2", "v2");
+    store->hset("hash1", "f", "v");
+    store->lpush("list1", "item");
+    store->subscribe("ch", [](const std::string&) {});
+
+    auto stats = store->stats();
+    EXPECT_EQ(stats["strings"], 2u);
+    EXPECT_EQ(stats["hashes"], 1u);
+    EXPECT_EQ(stats["lists"], 1u);
+    EXPECT_EQ(stats["subscriptions"], 1u);
+
+    // After deleting one key and unsubscribing
+    store->del("s1");
+    store->unsubscribe("ch");
+    stats = store->stats();
+    EXPECT_EQ(stats["strings"], 1u);
+    EXPECT_EQ(stats["subscriptions"], 0u);
+}
+
+TEST_F(KeyValueStoreTest, KeysWithEmptyStore) {
+    auto result = store->keys(".*");
+    EXPECT_TRUE(result.empty());
+}
+
+TEST_F(KeyValueStoreTest, KeysWithSpecialRegexChars) {
+    store->set("key.one", "a");
+    store->set("key+two", "b");
+    store->set("key*three", "c");
+
+    // Literal dot should match only key.one
+    auto dot = store->keys("key\\.one");
+    EXPECT_EQ(dot.size(), 1u);
+
+    // Escaped plus should match only key+two
+    auto plus = store->keys("key\\+two");
+    EXPECT_EQ(plus.size(), 1u);
+
+    // Escaped star should match only key*three
+    auto star = store->keys("key\\*three");
+    EXPECT_EQ(star.size(), 1u);
+}
+
+TEST_F(KeyValueStoreTest, LRemCountNegative) {
+    store->rpush("neglist", "x");
+    store->rpush("neglist", "a");
+    store->rpush("neglist", "x");
+    store->rpush("neglist", "b");
+    store->rpush("neglist", "x");
+
+    // Remove 2 'x' from tail side (count = -2)
+    size_t removed = store->lrem("neglist", -2, "x");
+    EXPECT_EQ(removed, 2u);
+    EXPECT_EQ(store->llen("neglist"), 3u);
+}
+
+TEST_F(KeyValueStoreTest, LRemCountZero) {
+    store->rpush("zerolist", "a");
+    store->rpush("zerolist", "b");
+    store->rpush("zerolist", "a");
+    store->rpush("zerolist", "a");
+    store->rpush("zerolist", "c");
+
+    // count=0 removes all occurrences
+    size_t removed = store->lrem("zerolist", 0, "a");
+    EXPECT_EQ(removed, 3u);
+    EXPECT_EQ(store->llen("zerolist"), 2u);
+}
+
+TEST_F(KeyValueStoreTest, UnsubscribeWithNoSubscriptions) {
+    EXPECT_NO_THROW(store->unsubscribe("unsub_channel"));
+}
