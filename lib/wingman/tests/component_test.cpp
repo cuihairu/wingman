@@ -261,3 +261,94 @@ TEST(ComponentTest, DestructorDoesNotThrow) {
         c.start();
     }
 }
+
+// ========== 新增测试：边界状态操作 ==========
+
+TEST(ComponentTest, StopFromUninitializedFails) {
+    TestComponent c;
+    // stop() only works from Running or Paused; from Uninitialized it should be a no-op
+    c.stop();
+    EXPECT_FALSE(c.stopCalled);
+    EXPECT_EQ(c.getState(), ComponentState::Uninitialized);
+}
+
+TEST(ComponentTest, StopFromErrorState) {
+    FailInitComponent c;
+    c.initialize(); // fails -> Error
+    EXPECT_EQ(c.getState(), ComponentState::Error);
+    // stop() only works from Running/Paused; from Error it should be a no-op
+    c.stop();
+    EXPECT_EQ(c.getState(), ComponentState::Error);
+}
+
+TEST(ComponentTest, ShutdownFromErrorState) {
+    FailInitComponent c;
+    c.initialize(); // fails -> Error
+    EXPECT_EQ(c.getState(), ComponentState::Error);
+
+    c.shutdown();
+    // shutdown() handles Error state explicitly
+    EXPECT_EQ(c.getState(), ComponentState::Stopped);
+}
+
+TEST(ComponentTest, StartStopRestartCycle) {
+    TestComponent c;
+
+    // First cycle: initialize -> start -> stop
+    ASSERT_TRUE(c.initialize());
+    ASSERT_TRUE(c.start());
+    EXPECT_EQ(c.getState(), ComponentState::Running);
+    c.stop();
+    EXPECT_EQ(c.getState(), ComponentState::Stopped);
+
+    // Reinitialize and restart
+    EXPECT_TRUE(c.initCalled);
+    c.initCalled = false;
+    ASSERT_TRUE(c.initialize());
+    EXPECT_TRUE(c.initCalled);
+    EXPECT_EQ(c.getState(), ComponentState::Ready);
+
+    c.startCalled = false;
+    ASSERT_TRUE(c.start());
+    EXPECT_TRUE(c.startCalled);
+    EXPECT_EQ(c.getState(), ComponentState::Running);
+
+    c.stop();
+    EXPECT_EQ(c.getState(), ComponentState::Stopped);
+}
+
+TEST(ComponentTest, MultiplePauseResumeCycles) {
+    TestComponent c;
+    c.initialize();
+    c.start();
+
+    for (int i = 0; i < 3; ++i) {
+        c.pause();
+        EXPECT_EQ(c.getState(), ComponentState::Paused);
+        c.resume();
+        EXPECT_EQ(c.getState(), ComponentState::Running);
+    }
+
+    c.stop();
+    EXPECT_EQ(c.getState(), ComponentState::Stopped);
+}
+
+TEST(ComponentTest, GetNameDefaultWhenNotSet) {
+    // ComponentBase default getName returns empty string when setName is not called
+    FailInitComponent c; // does not call setName
+    EXPECT_TRUE(c.getName().empty());
+}
+
+TEST(ComponentTest, ComponentExceptionCopyConstructor) {
+    ComponentException original("test error");
+    ComponentException copy(original);
+    EXPECT_STREQ(copy.what(), original.what());
+}
+
+TEST(ComponentTest, ComponentExceptionWithEmptyComponentName) {
+    ComponentException ex("", "something broke");
+    std::string msg = ex.what();
+    // Should contain the message text regardless of empty component name
+    EXPECT_NE(msg.find("something broke"), std::string::npos);
+    EXPECT_NE(msg.find("[]"), std::string::npos); // empty brackets from empty name
+}

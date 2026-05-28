@@ -237,3 +237,127 @@ TEST(JsonValueTest, IntAsDouble) {
     JsonValue v(5);
     EXPECT_DOUBLE_EQ(v.asDouble(), 5.0);
 }
+
+// ========== 嵌套结构解析 ==========
+
+TEST(JsonValueTest, ParseNestedObject) {
+    JsonValue v = JsonValue::parse("{\"a\":{\"b\":1}}");
+    EXPECT_TRUE(v.isObject());
+    EXPECT_TRUE(v.has("a"));
+    JsonValue inner = v.get("a");
+    EXPECT_TRUE(inner.isObject());
+    EXPECT_EQ(inner.get("b").asInt(), 1);
+}
+
+TEST(JsonValueTest, ParseArrayOfObjects) {
+    JsonValue v = JsonValue::parse("[{\"x\":1},{\"x\":2}]");
+    EXPECT_TRUE(v.isArray());
+    EXPECT_EQ(v.size(), 2u);
+    EXPECT_EQ(v.at(0).get("x").asInt(), 1);
+    EXPECT_EQ(v.at(1).get("x").asInt(), 2);
+}
+
+TEST(JsonValueTest, ParseEmptyObject) {
+    JsonValue v = JsonValue::parse("{}");
+    EXPECT_TRUE(v.isObject());
+    EXPECT_EQ(v.size(), 0u);
+    EXPECT_TRUE(v.keys().empty());
+}
+
+TEST(JsonValueTest, ParseEmptyArray) {
+    JsonValue v = JsonValue::parse("[]");
+    EXPECT_TRUE(v.isArray());
+    EXPECT_EQ(v.size(), 0u);
+}
+
+TEST(JsonValueTest, LargeNestedRoundtrip) {
+    JsonValue v = JsonValue::parse("{\"level1\":{\"level2\":{\"level3\":[1,2,3],\"flag\":true}}}");
+    ASSERT_TRUE(v.isObject());
+    std::string dumped = v.dump();
+    JsonValue reparsed = JsonValue::parse(dumped);
+    EXPECT_EQ(reparsed.get("level1").get("level2").get("level3").at(1).asInt(), 2);
+    EXPECT_TRUE(reparsed.get("level1").get("level2").get("flag").asBool());
+}
+
+// ========== 序列化扩展 ==========
+
+TEST(JsonValueTest, DumpNullValue) {
+    JsonValue v(nullptr);
+    EXPECT_EQ(v.dump(), "null");
+}
+
+TEST(JsonValueTest, DumpBooleanValues) {
+    JsonValue t(true);
+    EXPECT_EQ(t.dump(), "true");
+    JsonValue f(false);
+    EXPECT_EQ(f.dump(), "false");
+}
+
+TEST(JsonValueTest, DumpStringWithSpecialChars) {
+    JsonValue v("hello \"world\"");
+    std::string dumped = v.dump();
+    EXPECT_NE(dumped.find("\\\""), std::string::npos);
+}
+
+// ========== 对象操作扩展 ==========
+
+TEST(JsonValueTest, ObjectOverwriteExistingKey) {
+    JsonValue v = JsonValue::object();
+    v.set("key", JsonValue("old"));
+    EXPECT_EQ(v.get("key").asString(), "old");
+    v.set("key", JsonValue("new"));
+    EXPECT_EQ(v.get("key").asString(), "new");
+    // Should still be exactly one key
+    EXPECT_EQ(v.keys().size(), 1u);
+}
+
+// ========== 数组操作扩展 ==========
+
+TEST(JsonValueTest, ArrayPushMultipleTypes) {
+    JsonValue v = JsonValue::array();
+    v.push(JsonValue(42));
+    v.push(JsonValue("hello"));
+    v.push(JsonValue(true));
+    EXPECT_EQ(v.size(), 3u);
+    EXPECT_EQ(v.at(0).asInt(), 42);
+    EXPECT_EQ(v.at(1).asString(), "hello");
+    EXPECT_TRUE(v.at(2).asBool());
+}
+
+// ========== 类型转换扩展 ==========
+
+TEST(JsonValueTest, AsBoolOnNonZeroInt) {
+    JsonValue v(7);
+    EXPECT_TRUE(v.asBool());
+}
+
+TEST(JsonValueTest, AsBoolOnZeroInt) {
+    JsonValue v(0);
+    EXPECT_FALSE(v.asBool());
+}
+
+TEST(JsonValueTest, AsBoolOnString) {
+    // nlohmann::json: non-empty string converts to true
+    JsonValue v("hello");
+    EXPECT_TRUE(v.asBool());
+}
+
+TEST(JsonValueTest, AsIntOnBool) {
+    // nlohmann::json: true -> 1, false -> 0
+    JsonValue t(true);
+    EXPECT_EQ(t.asInt(), 1);
+    JsonValue f(false);
+    EXPECT_EQ(f.asInt(), 0);
+}
+
+// ========== has() 和 at() 在非目标类型上的行为 ==========
+
+TEST(JsonValueTest, NonObjectHasReturnsFalse) {
+    JsonValue v(42);
+    EXPECT_FALSE(v.has("anything"));
+}
+
+TEST(JsonValueTest, NonArrayAtThrows) {
+    JsonValue v("string");
+    EXPECT_THROW(v.at(0), std::exception);
+}

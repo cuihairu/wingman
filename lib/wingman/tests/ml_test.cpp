@@ -204,3 +204,114 @@ TEST(ModelHelpersTest, DetectObjectsReturnsEmptyStub) {
     auto detections = ModelHelpers::detectObjects(engine, "input", img, 1, 1);
     EXPECT_TRUE(detections.empty());
 }
+
+// ========== TensorData 边界情况 ==========
+
+TEST(TensorDataTest, EmptyShapeElementCount) {
+    // empty shape => product of no dimensions = 1
+    TensorData td;
+    td.shape = {};
+    td.dataType = TensorDataType::FLOAT32;
+    EXPECT_EQ(td.elementCount(), 1u);
+}
+
+TEST(TensorDataTest, ByteSizeInt8) {
+    TensorData td;
+    td.shape = {8};
+    td.dataType = TensorDataType::INT8;
+    EXPECT_EQ(td.byteSize(), 8u);  // 8 * 1 byte
+}
+
+TEST(TensorDataTest, ByteSizeBool) {
+    TensorData td;
+    td.shape = {5};
+    td.dataType = TensorDataType::BOOL;
+    EXPECT_EQ(td.byteSize(), 5u);  // 5 * 1 byte
+}
+
+TEST(TensorDataTest, ByteSizeInt16) {
+    TensorData td;
+    td.shape = {4};
+    td.dataType = TensorDataType::INT16;
+    EXPECT_EQ(td.byteSize(), 8u);  // 4 * 2 bytes
+}
+
+TEST(TensorDataTest, ByteSizeUint16) {
+    TensorData td;
+    td.shape = {3};
+    td.dataType = TensorDataType::UINT16;
+    EXPECT_EQ(td.byteSize(), 6u);  // 3 * 2 bytes
+}
+
+// ========== Tensor 边界情况 ==========
+
+TEST(TensorTest, CreateFloat32EmptyData) {
+    auto tensor = Tensor::createFloat32({0}, {});
+    EXPECT_EQ(tensor.dataType, TensorDataType::FLOAT32);
+    EXPECT_EQ(tensor.shape.size(), 1u);
+    EXPECT_EQ(tensor.shape[0], 0);
+    EXPECT_TRUE(tensor.data.empty());
+}
+
+TEST(TensorTest, CreateInt32EmptyData) {
+    auto tensor = Tensor::createInt32({0}, {});
+    EXPECT_EQ(tensor.dataType, TensorDataType::INT32);
+    EXPECT_EQ(tensor.shape.size(), 1u);
+    EXPECT_EQ(tensor.shape[0], 0);
+    EXPECT_TRUE(tensor.data.empty());
+}
+
+TEST(TensorTest, FromImage1x1) {
+    // 1x1 RGB image: single pixel R=255, G=128, B=0
+    uint8_t imageData[] = {0, 128, 255};  // BGR in memory
+    auto tensor = Tensor::fromImage(imageData, 1, 1);
+    EXPECT_EQ(tensor.dataType, TensorDataType::FLOAT32);
+    EXPECT_EQ(tensor.shape.size(), 4u);
+    EXPECT_EQ(tensor.shape[0], 1);
+    EXPECT_EQ(tensor.shape[1], 3);
+    EXPECT_EQ(tensor.shape[2], 1);
+    EXPECT_EQ(tensor.shape[3], 1);
+    EXPECT_EQ(tensor.data.size(), 3u * sizeof(float));
+}
+
+// ========== InferenceResult 扩展 ==========
+
+TEST(InferenceResultTest, SuccessWithOutputs) {
+    InferenceResult result;
+    result.success = true;
+    result.inferenceTimeMs = 12.5;
+
+    ModelOutput output;
+    output.name = "probabilities";
+    output.tensor = Tensor::createFloat32({1, 3}, {0.1f, 0.7f, 0.2f});
+    result.outputs.push_back(output);
+
+    EXPECT_TRUE(result.success);
+    EXPECT_EQ(result.outputs.size(), 1u);
+    EXPECT_EQ(result.outputs[0].name, "probabilities");
+    EXPECT_EQ(result.outputs[0].tensor.elementCount(), 3u);
+    EXPECT_DOUBLE_EQ(result.inferenceTimeMs, 12.5);
+}
+
+// ========== ModelHelpers::segment (Stub) ==========
+
+TEST(ModelHelpersTest, SegmentDoesNotCrashStub) {
+    ModelEngine engine;
+    uint8_t img[] = {128, 128, 128};
+    Bitmap bm(0, 0);
+    EXPECT_NO_THROW(bm = ModelHelpers::segment(engine, "input", img, 1, 1));
+}
+
+// ========== 执行提供器扩展 ==========
+
+TEST(ModelEngineTest, MultipleExecutionProvidersReturned) {
+    auto providers = ModelEngine::getAvailableExecutionProviders();
+    // Stub always returns at least {"cpu"}
+    EXPECT_GE(providers.size(), 1u);
+    // Verify "cpu" is present
+    bool hasCpu = false;
+    for (const auto& p : providers) {
+        if (p == "cpu") hasCpu = true;
+    }
+    EXPECT_TRUE(hasCpu);
+}
