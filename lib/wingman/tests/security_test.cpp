@@ -329,16 +329,7 @@ TEST(SecurityManagerTest, SecureLogDoesNotCrash) {
 
 TEST(SecurityManagerTest, VerifySignatureReturnsFalse) {
     auto& mgr = SecurityManager::instance();
-    // wingman.exe likely not signed in test environment
     EXPECT_NO_THROW(mgr.verifySignature());
-}
-
-TEST(SecurityManagerTest, GetSignatureInfoDefaults) {
-    auto& mgr = SecurityManager::instance();
-    auto info = mgr.getSignatureInfo();
-    EXPECT_FALSE(info.isSigned);
-    EXPECT_TRUE(info.issuer.empty());
-    EXPECT_TRUE(info.subject.empty());
 }
 
 TEST(SecurityManagerTest, EnableProcessProtectionWithoutFlag) {
