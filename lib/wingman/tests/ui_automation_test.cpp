@@ -186,3 +186,119 @@ TEST(UIAutomationTest, CleanupWithoutInitDoesNotCrash) {
     UIAutomation uia;
     EXPECT_NO_THROW(uia.cleanup());
 }
+
+// ========== Additional UIA Tests ==========
+
+TEST(UIAElementInfoTest, FieldAssignment) {
+    UIAElementInfo info{};
+    info.name = "MyButton";
+    info.id = "btn1";
+    info.className = "ButtonClass";
+    info.role = UIARole::Button;
+    info.bounds = Rect(10, 20, 100, 40);
+    info.state = UIAState::Enabled | UIAState::Visible;
+    info.text = "Click Me";
+    info.isEnabled = false;
+    info.isVisible = false;
+    info.hasFocus = true;
+
+    EXPECT_EQ(info.name, "MyButton");
+    EXPECT_EQ(info.id, "btn1");
+    EXPECT_EQ(info.className, "ButtonClass");
+    EXPECT_EQ(info.role, UIARole::Button);
+    EXPECT_EQ(info.bounds.width, 100);
+    EXPECT_TRUE(hasState(info.state, UIAState::Enabled));
+    EXPECT_FALSE(info.isEnabled);
+    EXPECT_FALSE(info.isVisible);
+    EXPECT_TRUE(info.hasFocus);
+}
+
+TEST(UIASelectorTest, DefaultValues) {
+    UIASelector sel;
+    EXPECT_TRUE(sel.name.empty());
+    EXPECT_TRUE(sel.id.empty());
+    EXPECT_TRUE(sel.className.empty());
+    EXPECT_EQ(sel.role, UIARole::Unknown);
+    EXPECT_TRUE(sel.text.empty());
+}
+
+TEST(UIASelectorTest, FluentChaining) {
+    auto sel = UIASelector()
+        .withName("a")
+        .withId("b")
+        .withClassName("c")
+        .withRole(UIARole::TextBox)
+        .withText("d");
+
+    EXPECT_EQ(sel.name, "a");
+    EXPECT_EQ(sel.id, "b");
+    EXPECT_EQ(sel.className, "c");
+    EXPECT_EQ(sel.role, UIARole::TextBox);
+    EXPECT_EQ(sel.text, "d");
+}
+
+TEST(UIASelectorTest, MatchesByNameSubstring) {
+    UIASelector sel;
+    sel.name = "Sub";
+
+    UIAElementInfo info;
+    info.name = "Submit Button";
+    EXPECT_TRUE(sel.matches(info));
+
+    info.name = "SUBMIT";
+    EXPECT_FALSE(sel.matches(info)); // case sensitive
+}
+
+TEST(UIASelectorTest, MatchesByTextSubstring) {
+    UIASelector sel;
+    sel.text = "world";
+
+    UIAElementInfo info;
+    info.text = "Hello world!";
+    EXPECT_TRUE(sel.matches(info));
+}
+
+TEST(UIAStateTest, SingleFlag) {
+    EXPECT_TRUE(hasState(UIAState::Enabled, UIAState::Enabled));
+    EXPECT_FALSE(hasState(UIAState::Enabled, UIAState::Visible));
+}
+
+TEST(UIAStateTest, OrAndRoundtrip) {
+    auto combined = UIAState::Enabled | UIAState::Checkable | UIAState::Checked;
+    auto andResult = combined & UIAState::Checked;
+    EXPECT_TRUE(hasState(andResult, UIAState::Checked));
+}
+
+TEST(UIAutomationTest, FindWithoutInitReturnsNull) {
+    UIAutomation uia;
+    auto elem = uia.find(UIASelector().withName("nonexistent"));
+    EXPECT_EQ(elem, nullptr);
+}
+
+TEST(UIAutomationTest, FindByNameWithoutInitReturnsNull) {
+    UIAutomation uia;
+    auto elem = uia.findByName("button");
+    EXPECT_EQ(elem, nullptr);
+}
+
+TEST(UIAutomationTest, FindByIdWithoutInitReturnsNull) {
+    UIAutomation uia;
+    auto elem = uia.findById("id1");
+    EXPECT_EQ(elem, nullptr);
+}
+
+TEST(UIAutomationTest, GetFocusedElementWithoutInit) {
+    UIAutomation uia;
+    auto elem = uia.getFocusedElement();
+    EXPECT_EQ(elem, nullptr);
+}
+
+TEST(UIAutomationTest, GetElementFromPointWithoutInit) {
+    UIAutomation uia;
+    auto elem = uia.getElementFromPoint(100, 100);
+    EXPECT_EQ(elem, nullptr);
+}
+
+TEST(UIAutomationTest, GlobalUiaFunction) {
+    EXPECT_NO_THROW(uia());
+}

@@ -56,3 +56,75 @@ TEST(OCRTest, GetVersion) {
     std::string version = OCR::getVersion();
     EXPECT_FALSE(version.empty());
 }
+
+// ========== Additional OCR Tests ==========
+
+TEST(OcrResultTest, FieldAssignment) {
+    OcrResult result{};
+    result.success = true;
+    result.text = "Hello World";
+    result.confidence = 0.95;
+    result.charRegions = {Rect(0, 0, 50, 20), Rect(55, 0, 50, 20)};
+
+    EXPECT_TRUE(result.success);
+    EXPECT_EQ(result.text, "Hello World");
+    EXPECT_DOUBLE_EQ(result.confidence, 0.95);
+    EXPECT_EQ(result.charRegions.size(), 2u);
+}
+
+TEST(OcrResultTest, EmptyCharRegions) {
+    OcrResult result{};
+    EXPECT_TRUE(result.charRegions.empty());
+}
+
+TEST(OCRTest, InitWithDataPathReturnsFalseStub) {
+    EXPECT_FALSE(OCR::init("/nonexistent/tessdata"));
+}
+
+TEST(OCRTest, InitWithLanguageReturnsFalseStub) {
+    EXPECT_FALSE(OCR::init("", "chi_sim"));
+}
+
+TEST(OCRTest, RecognizeWithRegionReturnsFailureStub) {
+    Rect region(0, 0, 100, 100);
+    auto result = OCR::recognize(region);
+    EXPECT_FALSE(result.success);
+}
+
+TEST(OCRTest, RecognizeBitmapReturnsFailureStub) {
+    Bitmap bmp(10, 10);
+    auto result = OCR::recognizeBitmap(bmp);
+    EXPECT_FALSE(result.success);
+}
+
+TEST(OCRTest, SetLanguageChineseReturnsFalseStub) {
+    EXPECT_FALSE(OCR::setLanguage("chi_sim"));
+}
+
+TEST(OCRTest, CleanupMultipleTimesDoesNotCrash) {
+    EXPECT_NO_THROW(OCR::cleanup());
+    EXPECT_NO_THROW(OCR::cleanup());
+}
+
+TEST(OCRTest, RecognizeImageEmptyPath) {
+    auto result = OCR::recognizeImage("");
+    EXPECT_FALSE(result.success);
+}
+
+TEST(OCRPageSegModeTest, AllEnumValues) {
+    EXPECT_NO_THROW(OCR::setPageSegMode(OCR::PageSegMode::OSD_ONLY));
+    EXPECT_NO_THROW(OCR::setPageSegMode(OCR::PageSegMode::AUTO_OSD));
+    EXPECT_NO_THROW(OCR::setPageSegMode(OCR::PageSegMode::AUTO_ONLY));
+    EXPECT_NO_THROW(OCR::setPageSegMode(OCR::PageSegMode::AUTO));
+    EXPECT_NO_THROW(OCR::setPageSegMode(OCR::PageSegMode::SINGLE_COLUMN));
+    EXPECT_NO_THROW(OCR::setPageSegMode(OCR::PageSegMode::SINGLE_BLOCK_VERT_TEXT));
+    EXPECT_NO_THROW(OCR::setPageSegMode(OCR::PageSegMode::SINGLE_BLOCK));
+    EXPECT_NO_THROW(OCR::setPageSegMode(OCR::PageSegMode::CIRCLE_WORD));
+    EXPECT_NO_THROW(OCR::setPageSegMode(OCR::PageSegMode::SPARSE_TEXT_OSD));
+}
+
+TEST(OCRTest, GetVersionConsistent) {
+    std::string v1 = OCR::getVersion();
+    std::string v2 = OCR::getVersion();
+    EXPECT_EQ(v1, v2);
+}

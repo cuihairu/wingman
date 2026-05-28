@@ -230,3 +230,126 @@ TEST(TriggerEngineStatsTest, DefaultValues) {
     EXPECT_EQ(stats.enabledTriggers, 0u);
     EXPECT_EQ(stats.totalTriggered, 0u);
 }
+
+// ========== Additional Trigger Config Tests ==========
+
+TEST(TriggerTypeTest, AllEnumValues) {
+    EXPECT_NO_THROW(TriggerType t = TriggerType::ColorFound);
+    EXPECT_NO_THROW(TriggerType t = TriggerType::ColorNotFound);
+    EXPECT_NO_THROW(TriggerType t = TriggerType::ImageFound);
+    EXPECT_NO_THROW(TriggerType t = TriggerType::ImageNotFound);
+    EXPECT_NO_THROW(TriggerType t = TriggerType::TimeElapsed);
+    EXPECT_NO_THROW(TriggerType t = TriggerType::PixelChanged);
+}
+
+TEST(BasicTriggerActionTest, AllEnumValues) {
+    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::RunScript);
+    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::Click);
+    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::KeyPress);
+    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::Type);
+    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::StopScript);
+    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::PauseScript);
+    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::ShowMessage);
+    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::PlayAudio);
+    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::Log);
+}
+
+TEST(TriggerConfigTest, FieldAssignment) {
+    TriggerConfig cfg{};
+    cfg.name = "test";
+    cfg.cooldown = 500;
+    cfg.enabled = true;
+    cfg.oneShot = true;
+
+    EXPECT_EQ(cfg.name, "test");
+    EXPECT_EQ(cfg.cooldown, 500);
+    EXPECT_TRUE(cfg.enabled);
+    EXPECT_TRUE(cfg.oneShot);
+}
+
+TEST(TriggerActionDataTest, FieldAssignment) {
+    TriggerActionData data{};
+    data.type = BasicTriggerAction::Click;
+    data.value = "click_action";
+    data.x = 100;
+    data.y = 200;
+    data.delay = 50;
+
+    EXPECT_EQ(data.type, BasicTriggerAction::Click);
+    EXPECT_EQ(data.value, "click_action");
+    EXPECT_EQ(data.x, 100);
+    EXPECT_EQ(data.y, 200);
+    EXPECT_EQ(data.delay, 50);
+}
+
+TEST(TriggerConditionTest, AllFields) {
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::COLOR_FOUND;
+    cond.targetColor = Color(255, 0, 0);
+    cond.tolerance = 10;
+    cond.searchRegion = Rect(0, 0, 800, 600);
+    cond.threshold = 0.9;
+
+    EXPECT_EQ(cond.type, TriggerConditionType::COLOR_FOUND);
+    EXPECT_EQ(cond.targetColor.r, 255);
+    EXPECT_EQ(cond.tolerance, 10);
+    EXPECT_EQ(cond.searchRegion.width, 800);
+    EXPECT_DOUBLE_EQ(cond.threshold, 0.9);
+}
+
+TEST(TriggerConditionTypeTest, AllEnumValues) {
+    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::COLOR_FOUND);
+    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::COLOR_NOT_FOUND);
+    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::IMAGE_FOUND);
+    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::IMAGE_NOT_FOUND);
+    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::TEXT_FOUND);
+    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::TEXT_NOT_FOUND);
+    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::EDGE_DETECTED);
+    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::COLOR_CHANGED);
+    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::OCR_CONTAINS);
+    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::OCR_EQUALS);
+}
+
+TEST(TriggerActionTypeTest, AllEnumValues) {
+    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::CLICK);
+    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::KEY_PRESS);
+    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::WAIT);
+    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::LUA_SCRIPT);
+    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::CUSTOM_CALLBACK);
+    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::STOP);
+    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::LOG);
+}
+
+// ========== PerformanceConfig Extended ==========
+
+TEST(PerformanceConfigTest, FieldModification) {
+    PerformanceConfig cfg;
+    cfg.enableImageCache = false;
+    cfg.maxCacheSize = 100;
+    cfg.enableParallelProcessing = false;
+    cfg.numThreads = 4;
+    cfg.useColorReduction = true;
+    cfg.colorReductionBits = 3;
+    cfg.useImagePyramids = false;
+    cfg.minPyramidLevel = 1;
+
+    EXPECT_FALSE(cfg.enableImageCache);
+    EXPECT_EQ(cfg.maxCacheSize, 100u);
+    EXPECT_FALSE(cfg.enableParallelProcessing);
+    EXPECT_EQ(cfg.numThreads, 4);
+    EXPECT_TRUE(cfg.useColorReduction);
+    EXPECT_EQ(cfg.colorReductionBits, 3);
+    EXPECT_FALSE(cfg.useImagePyramids);
+    EXPECT_EQ(cfg.minPyramidLevel, 1);
+}
+
+TEST(CachedImageTest, FieldAssignment) {
+    CachedImage img;
+    img.path = "/path/to/image.png";
+    img.accessCount = 5;
+    img.lastAccess = 1234567890;
+
+    EXPECT_EQ(img.path, "/path/to/image.png");
+    EXPECT_EQ(img.accessCount, 5u);
+    EXPECT_EQ(img.lastAccess, 1234567890u);
+}
