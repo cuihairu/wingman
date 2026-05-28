@@ -234,12 +234,17 @@ TEST(TriggerEngineStatsTest, DefaultValues) {
 // ========== Additional Trigger Config Tests ==========
 
 TEST(TriggerTypeTest, AllEnumValues) {
-    EXPECT_EQ(TriggerType::ColorFound, TriggerType::ColorFound);
-    EXPECT_EQ(TriggerType::ColorLost, TriggerType::ColorLost);
-    EXPECT_EQ(TriggerType::ImageFound, TriggerType::ImageFound);
-    EXPECT_EQ(TriggerType::ImageLost, TriggerType::ImageLost);
-    EXPECT_EQ(TriggerType::TimeElapsed, TriggerType::TimeElapsed);
-    EXPECT_EQ(TriggerType::PixelChanged, TriggerType::PixelChanged);
+    EXPECT_EQ(static_cast<int>(TriggerType::ColorFound), 0);
+    EXPECT_EQ(static_cast<int>(TriggerType::ColorLost), 1);
+    EXPECT_EQ(static_cast<int>(TriggerType::ImageFound), 2);
+    EXPECT_EQ(static_cast<int>(TriggerType::ImageLost), 3);
+    EXPECT_EQ(static_cast<int>(TriggerType::WindowOpened), 4);
+    EXPECT_EQ(static_cast<int>(TriggerType::WindowClosed), 5);
+    EXPECT_EQ(static_cast<int>(TriggerType::ProcessStarted), 6);
+    EXPECT_EQ(static_cast<int>(TriggerType::ProcessStopped), 7);
+    EXPECT_EQ(static_cast<int>(TriggerType::TimeElapsed), 8);
+    EXPECT_EQ(static_cast<int>(TriggerType::HotkeyPressed), 9);
+    EXPECT_EQ(static_cast<int>(TriggerType::PixelChanged), 10);
 }
 
 TEST(BasicTriggerActionTest, AllEnumValues) {
