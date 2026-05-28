@@ -182,3 +182,209 @@ TEST(GameProfileManagerTest, SaveAndGetProfile) {
     EXPECT_TRUE(mgr.deleteProfile("test_save_profile_123"));
     EXPECT_FALSE(mgr.hasProfile("test_save_profile_123"));
 }
+
+// ========== Extended Validation Tests ==========
+
+TEST(GameProfileManagerTest, ValidateProfileMissingName) {
+    auto& mgr = GameProfileManager::instance();
+    GameProfile profile;
+    profile.id = "no_name_profile";
+    profile.window.title = "SomeWindow";
+    std::string error;
+    EXPECT_FALSE(mgr.validateProfile(profile, error));
+    EXPECT_FALSE(error.empty());
+}
+
+TEST(GameProfileManagerTest, ValidateProfileMissingWindowInfo) {
+    auto& mgr = GameProfileManager::instance();
+    GameProfile profile;
+    profile.id = "no_window_profile";
+    profile.name = "No Window";
+    // Both title and processName are empty
+    std::string error;
+    EXPECT_FALSE(mgr.validateProfile(profile, error));
+    EXPECT_NE(error.find("window"), std::string::npos);
+}
+
+TEST(GameProfileManagerTest, ValidateProfileWithProcessNameOnly) {
+    auto& mgr = GameProfileManager::instance();
+    GameProfile profile;
+    profile.id = "process_only_profile";
+    profile.name = "Process Only";
+    profile.window.processName = "game.exe";
+    std::string error;
+    EXPECT_TRUE(mgr.validateProfile(profile, error));
+}
+
+// ========== Active Profile Tests ==========
+
+TEST(GameProfileManagerTest, SetActiveProfileNonexistent) {
+    auto& mgr = GameProfileManager::instance();
+    EXPECT_FALSE(mgr.setActiveProfile("nonexistent_active_xyz"));
+}
+
+TEST(GameProfileManagerTest, SetActiveProfileRoundtrip) {
+    auto& mgr = GameProfileManager::instance();
+
+    GameProfile profile;
+    profile.id = "test_active_profile_456";
+    profile.name = "Active Test";
+    profile.window.title = "ActiveWindow";
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    EXPECT_TRUE(mgr.setActiveProfile("test_active_profile_456"));
+    auto* active = mgr.getActiveProfile();
+    ASSERT_NE(active, nullptr);
+    EXPECT_EQ(active->id, "test_active_profile_456");
+
+    mgr.deleteProfile("test_active_profile_456");
+}
+
+// ========== Template Tests ==========
+
+TEST(GameProfileManagerTest, CreateTemplateGeneratesValidId) {
+    auto& mgr = GameProfileManager::instance();
+    auto tmpl = mgr.createTemplate("My Cool Game");
+
+    EXPECT_EQ(tmpl.name, "My Cool Game");
+    EXPECT_FALSE(tmpl.id.empty());
+    EXPECT_EQ(tmpl.version, "1.0.0");
+    EXPECT_FALSE(tmpl.description.empty());
+    EXPECT_FALSE(tmpl.window.title.empty());
+    EXPECT_FALSE(tmpl.window.exactMatch);
+}
+
+TEST(GameProfileManagerTest, CreateTemplateIdIsLowercase) {
+    auto& mgr = GameProfileManager::instance();
+    auto tmpl = mgr.createTemplate("UPPERCASE");
+    // ID should be transformed to lowercase
+    EXPECT_EQ(tmpl.id, "uppercase");
+}
+
+// ========== Search Tests ==========
+
+TEST(GameProfileManagerTest, FindProfileByWindowFound) {
+    auto& mgr = GameProfileManager::instance();
+
+    GameProfile profile;
+    profile.id = "test_find_window_789";
+    profile.name = "Find Window";
+    profile.window.title = "UniqueTitle_789";
+    profile.window.exactMatch = false;
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    auto* found = mgr.findProfileByWindow("Prefix_UniqueTitle_789_Suffix");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->id, "test_find_window_789");
+
+    mgr.deleteProfile("test_find_window_789");
+}
+
+TEST(GameProfileManagerTest, FindProfileByWindowExactMatch) {
+    auto& mgr = GameProfileManager::instance();
+
+    GameProfile profile;
+    profile.id = "test_exact_match_101";
+    profile.name = "Exact Match";
+    profile.window.title = "ExactTitle";
+    profile.window.exactMatch = true;
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    // Must match exactly
+    auto* found = mgr.findProfileByWindow("ExactTitle");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->id, "test_exact_match_101");
+
+    // Partial match should not find it
+    auto* notFound = mgr.findProfileByWindow("PrefixExactTitle");
+    EXPECT_EQ(notFound, nullptr);
+
+    mgr.deleteProfile("test_exact_match_101");
+}
+
+TEST(GameProfileManagerTest, FindProfileByProcessFound) {
+    auto& mgr = GameProfileManager::instance();
+
+    GameProfile profile;
+    profile.id = "test_find_proc_202";
+    profile.name = "Find Process";
+    profile.window.title = "ProcWindow";
+    profile.window.processName = "unique_game_202.exe";
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    auto* found = mgr.findProfileByProcess("unique_game_202.exe");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->id, "test_find_proc_202");
+
+    mgr.deleteProfile("test_find_proc_202");
+}
+
+// ========== Get All Profiles Tests ==========
+
+TEST(GameProfileManagerTest, GetAllProfilesIncludesSaved) {
+    auto& mgr = GameProfileManager::instance();
+
+    GameProfile profile;
+    profile.id = "test_getall_303";
+    profile.name = "Get All";
+    profile.window.title = "GetAllWindow";
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    auto all = mgr.getAllProfiles();
+    bool found = false;
+    for (const auto& p : all) {
+        if (p.id == "test_getall_303") {
+            found = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(found);
+
+    mgr.deleteProfile("test_getall_303");
+}
+
+// ========== Export Tests ==========
+
+TEST(GameProfileManagerTest, ExportProfileToJsonContent) {
+    auto& mgr = GameProfileManager::instance();
+
+    GameProfile profile;
+    profile.id = "test_export_404";
+    profile.name = "Export Test";
+    profile.version = "2.0.0";
+    profile.description = "A test profile for export";
+    profile.window.title = "ExportWindow";
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    std::string json = mgr.exportProfileToJson("test_export_404");
+    EXPECT_FALSE(json.empty());
+    EXPECT_NE(json.find("test_export_404"), std::string::npos);
+    EXPECT_NE(json.find("Export Test"), std::string::npos);
+    EXPECT_NE(json.find("2.0.0"), std::string::npos);
+
+    mgr.deleteProfile("test_export_404");
+}
+
+// ========== Delete Nonexistent Tests ==========
+
+TEST(GameProfileManagerTest, DeleteNonexistentProfileReturnsFalse) {
+    auto& mgr = GameProfileManager::instance();
+    EXPECT_FALSE(mgr.deleteProfile("nonexistent_delete_xyz"));
+}
+
+// ========== Settings Map Tests ==========
+
+TEST(GameProfileTest, SettingsMapOperations) {
+    GameProfile profile;
+    profile.settings["resolution"] = "1920x1080";
+    profile.settings["fps"] = "60";
+    profile.settings["language"] = "en";
+
+    EXPECT_EQ(profile.settings.size(), 3u);
+    EXPECT_EQ(profile.settings["resolution"], "1920x1080");
+    EXPECT_EQ(profile.settings["fps"], "60");
+
+    profile.settings.erase("fps");
+    EXPECT_EQ(profile.settings.size(), 2u);
+    EXPECT_EQ(profile.settings.count("fps"), 0u);
+}

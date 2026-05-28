@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <cstring>
 #include "wingman/security.hpp"
 
 using namespace wingman;
@@ -371,4 +372,292 @@ TEST(SecurityManagerTest, FilterSensitiveAllPatterns) {
         std::string filtered = SecurityManager::filterSensitive(input);
         EXPECT_EQ(filtered.find(p), std::string::npos) << "Pattern '" << p << "' was not filtered";
     }
+}
+
+// ========== Additional Security Tests ==========
+
+TEST(SecurityManagerTest, SimulateHumanBehaviorDoesNotCrash) {
+    auto& mgr = SecurityManager::instance();
+    AntiDetectionConfig cfg;
+    cfg.enableRandomDelay = true;
+    cfg.minDelayMs = 1;
+    cfg.maxDelayMs = 2;
+    mgr.setAntiDetectionConfig(cfg);
+    EXPECT_NO_THROW(mgr.simulateHumanBehavior());
+}
+
+TEST(SecurityManagerTest, IsDebuggerPresentWithAntiDebugEnabled) {
+    auto& mgr = SecurityManager::instance();
+    ProcessProtectionConfig cfg;
+    cfg.enableAntiDebug = true;
+    mgr.setProcessProtectionConfig(cfg);
+    // In normal test execution, no debugger is attached, so should return false.
+    // If a debugger IS attached, this may return true -- that is acceptable.
+    EXPECT_NO_THROW(mgr.isDebuggerPresent());
+}
+
+TEST(SecurityManagerTest, IsRunningInVMWithAntiVMEnabled) {
+    auto& mgr = SecurityManager::instance();
+    ProcessProtectionConfig cfg;
+    cfg.enableAntiVM = true;
+    mgr.setProcessProtectionConfig(cfg);
+    // Result depends on the test environment (physical vs virtual).
+    // We only verify it does not crash and returns a boolean.
+    bool result = false;
+    EXPECT_NO_THROW(result = mgr.isRunningInVM());
+    (void)result;
+}
+
+TEST(SecurityManagerTest, VerifyIntegrityWithCheckEnabled) {
+    auto& mgr = SecurityManager::instance();
+    ProcessProtectionConfig cfg;
+    cfg.enableIntegrityCheck = true;
+    mgr.setProcessProtectionConfig(cfg);
+    // verifyIntegrity with check enabled will run the full integrity check.
+    // In a test environment without a stored hash it may return true or false,
+    // but it must not crash.
+    EXPECT_NO_THROW(mgr.verifyIntegrity());
+}
+
+TEST(SecurityManagerTest, EnableProcessProtectionWithFlagEnabled) {
+    auto& mgr = SecurityManager::instance();
+    ProcessProtectionConfig cfg;
+    cfg.protectFromTermination = true;
+    mgr.setProcessProtectionConfig(cfg);
+    // May fail without admin privileges, but must not crash.
+    bool result = false;
+    EXPECT_NO_THROW(result = mgr.enableProcessProtection());
+    (void)result;
+}
+
+TEST(SecurityManagerTest, ProtectMemoryReadOnlyMode) {
+    auto& mgr = SecurityManager::instance();
+    char buffer[64] = {};
+    std::memcpy(buffer, "testdata", 8);
+    // Set memory to read-only
+    bool result = false;
+    EXPECT_NO_THROW(result = mgr.protectMemory(buffer, sizeof(buffer), true));
+    // Restore to read-write so the buffer can be safely released on the stack
+    EXPECT_NO_THROW(mgr.protectMemory(buffer, sizeof(buffer), false));
+    (void)result;
+}
+
+TEST(SecurityManagerTest, SecureZeroZeroSize) {
+    auto& mgr = SecurityManager::instance();
+    char data[] = "unchanged";
+    // Zero-size secureZero should not corrupt memory
+    EXPECT_NO_THROW(mgr.secureZero(data, 0));
+    EXPECT_STREQ(data, "unchanged");
+}
+
+TEST(SecurityManagerTest, SecureZeroHeapMemory) {
+    auto& mgr = SecurityManager::instance();
+    auto* data = new char[32];
+    std::memcpy(data, "heap_sensitive_data_here_12345", 30);
+    data[31] = '\0';
+    EXPECT_NO_THROW(mgr.secureZero(data, 32));
+    for (size_t i = 0; i < 32; ++i) {
+        EXPECT_EQ(data[i], 0);
+    }
+    delete[] data;
+}
+
+TEST(SecurityManagerTest, HashStringLongInput) {
+    std::string longInput(10000, 'A');
+    std::string hash = SecurityManager::hashString(longInput);
+    EXPECT_EQ(hash.size(), 64u);
+    EXPECT_FALSE(hash.empty());
+    // Hashing the same long input twice should produce the same result
+    std::string hash2 = SecurityManager::hashString(longInput);
+    EXPECT_EQ(hash, hash2);
+}
+
+TEST(SecurityManagerTest, EncryptStringKeyLongerThanInput) {
+    std::string original = "hi";
+    std::string key = "very_long_key_that_exceeds_input";
+    std::string encrypted = SecurityManager::encryptString(original, key);
+    EXPECT_NE(encrypted, original);
+    std::string decrypted = SecurityManager::decryptString(encrypted, key);
+    EXPECT_EQ(decrypted, original);
+}
+
+TEST(SecurityManagerTest, EncryptStringWithNullCharInKey) {
+    std::string original = "hello";
+    std::string key = "ke\0y";
+    key.resize(4); // include null character
+    std::string encrypted = SecurityManager::encryptString(original, key);
+    std::string decrypted = SecurityManager::decryptString(encrypted, key);
+    EXPECT_EQ(decrypted, original);
+}
+
+TEST(SecurityManagerTest, EncryptStringWithBinaryData) {
+    std::string original;
+    for (int i = 0; i < 256; ++i) {
+        original += static_cast<char>(i);
+    }
+    std::string key = "binarykey";
+    std::string encrypted = SecurityManager::encryptString(original, key);
+    std::string decrypted = SecurityManager::decryptString(encrypted, key);
+    EXPECT_EQ(decrypted, original);
+}
+
+TEST(SecurityManagerTest, GenerateRandomStringBoundaryLengths) {
+    std::string s1 = SecurityManager::generateRandomString(1);
+    EXPECT_EQ(s1.size(), 1u);
+
+    std::string s2 = SecurityManager::generateRandomString(256);
+    EXPECT_EQ(s2.size(), 256u);
+}
+
+TEST(SecurityManagerTest, GetRandomDelayVariance) {
+    auto& mgr = SecurityManager::instance();
+    AntiDetectionConfig cfg;
+    cfg.minDelayMs = 0;
+    cfg.maxDelayMs = 100;
+    cfg.enableRandomDelay = true;
+    mgr.setAntiDetectionConfig(cfg);
+
+    bool sawDifferent = false;
+    int first = mgr.getRandomDelay();
+    for (int i = 0; i < 20; ++i) {
+        int delay = mgr.getRandomDelay();
+        EXPECT_GE(delay, 0);
+        EXPECT_LE(delay, 100);
+        if (delay != first) sawDifferent = true;
+    }
+    EXPECT_TRUE(sawDifferent);
+}
+
+TEST(SecurityManagerTest, GetRandomOffsetZeroJitter) {
+    auto& mgr = SecurityManager::instance();
+    AntiDetectionConfig cfg;
+    cfg.clickJitter = 0.0;
+    mgr.setAntiDetectionConfig(cfg);
+
+    auto [x, y] = mgr.getRandomOffset();
+    EXPECT_DOUBLE_EQ(x, 0.0);
+    EXPECT_DOUBLE_EQ(y, 0.0);
+}
+
+TEST(SecurityManagerTest, FilterSensitiveConsecutiveKeywords) {
+    std::string input = "passwordpassword";
+    std::string filtered = SecurityManager::filterSensitive(input);
+    // Both occurrences should be replaced
+    EXPECT_EQ(filtered.find("password"), std::string::npos);
+}
+
+TEST(SecurityManagerTest, FilterSensitiveMixedCase) {
+    // The filter uses case-sensitive matching
+    std::string input = "PASSWORD token";
+    std::string filtered = SecurityManager::filterSensitive(input);
+    // "PASSWORD" should NOT be filtered (case-sensitive), but "token" should
+    EXPECT_NE(filtered.find("PASSWORD"), std::string::npos);
+    EXPECT_EQ(filtered.find("token"), std::string::npos);
+}
+
+TEST(SecurityManagerTest, FilterSensitiveKeySubstring) {
+    // "key" is a short pattern that could match many strings
+    std::string input = "keyboard keystroke";
+    std::string filtered = SecurityManager::filterSensitive(input);
+    // "key" inside "keyboard" and "keystroke" should be replaced
+    EXPECT_EQ(filtered.find("key"), std::string::npos);
+}
+
+TEST(SecurityManagerTest, SelfSignWithPaths) {
+    auto& mgr = SecurityManager::instance();
+    EXPECT_FALSE(mgr.selfSign("/path/to/cert", "/path/to/key"));
+}
+
+TEST(SecurityManagerTest, CodeSignatureFieldAssignment) {
+    CodeSignature sig;
+    sig.isSigned = true;
+    sig.issuer = "TestIssuer";
+    sig.subject = "TestSubject";
+    sig.thumbprint = "ABCD1234";
+    EXPECT_TRUE(sig.isSigned);
+    EXPECT_EQ(sig.issuer, "TestIssuer");
+    EXPECT_EQ(sig.subject, "TestSubject");
+    EXPECT_EQ(sig.thumbprint, "ABCD1234");
+}
+
+TEST(SecurityManagerTest, CodeSignatureValidityPeriod) {
+    CodeSignature sig;
+    auto now = std::chrono::system_clock::now();
+    sig.validFrom = now;
+    sig.validTo = now + std::chrono::hours(24 * 365);
+    EXPECT_LT(sig.validFrom, sig.validTo);
+}
+
+TEST(SecurityManagerTest, ObfuscationConfigFieldModification) {
+    ObfuscationConfig cfg;
+    cfg.enableStringEncryption = true;
+    cfg.enableControlFlowFlattening = true;
+    cfg.enableDeadCodeInjection = true;
+    cfg.enableVirtualization = true;
+    EXPECT_TRUE(cfg.enableStringEncryption);
+    EXPECT_TRUE(cfg.enableControlFlowFlattening);
+    EXPECT_TRUE(cfg.enableDeadCodeInjection);
+    EXPECT_TRUE(cfg.enableVirtualization);
+}
+
+TEST(SecurityManagerTest, ProcessProtectionConfigAllEnabled) {
+    ProcessProtectionConfig cfg;
+    cfg.protectFromTermination = true;
+    cfg.hideFromTaskManager = true;
+    cfg.enableAntiDebug = true;
+    cfg.enableAntiVM = true;
+    cfg.enableIntegrityCheck = true;
+    EXPECT_TRUE(cfg.protectFromTermination);
+    EXPECT_TRUE(cfg.hideFromTaskManager);
+    EXPECT_TRUE(cfg.enableAntiDebug);
+    EXPECT_TRUE(cfg.enableAntiVM);
+    EXPECT_TRUE(cfg.enableIntegrityCheck);
+}
+
+TEST(SecurityManagerTest, AntiDetectionConfigFieldModification) {
+    AntiDetectionConfig cfg;
+    cfg.enableRandomDelay = false;
+    cfg.enableBezierMovement = false;
+    cfg.enableRandomClick = false;
+    cfg.minDelayMs = 200;
+    cfg.maxDelayMs = 500;
+    cfg.clickJitter = 10.0;
+    cfg.movementVariance = 0.5;
+    EXPECT_FALSE(cfg.enableRandomDelay);
+    EXPECT_FALSE(cfg.enableBezierMovement);
+    EXPECT_FALSE(cfg.enableRandomClick);
+    EXPECT_EQ(cfg.minDelayMs, 200);
+    EXPECT_EQ(cfg.maxDelayMs, 500);
+    EXPECT_DOUBLE_EQ(cfg.clickJitter, 10.0);
+    EXPECT_DOUBLE_EQ(cfg.movementVariance, 0.5);
+}
+
+TEST(SecurityManagerTest, LockUnlockHeapMemory) {
+    auto& mgr = SecurityManager::instance();
+    auto* buffer = new char[4096]();
+    // Lock/unlock on heap memory; may fail without privileges but must not crash
+    EXPECT_NO_THROW(mgr.lockMemory(buffer, 4096));
+    EXPECT_NO_THROW(mgr.unlockMemory(buffer, 4096));
+    delete[] buffer;
+}
+
+TEST(SecurityManagerTest, ProtectMemoryNullLikeSmallBuffer) {
+    auto& mgr = SecurityManager::instance();
+    // Protect a very small buffer
+    char buffer[1] = {0x42};
+    EXPECT_NO_THROW(mgr.protectMemory(buffer, sizeof(buffer), false));
+    EXPECT_NO_THROW(mgr.protectMemory(buffer, sizeof(buffer), true));
+    EXPECT_NO_THROW(mgr.protectMemory(buffer, sizeof(buffer), false));
+}
+
+TEST(SecurityManagerTest, GetRandomDelaySameMinMax) {
+    auto& mgr = SecurityManager::instance();
+    AntiDetectionConfig cfg;
+    cfg.minDelayMs = 50;
+    cfg.maxDelayMs = 50;
+    cfg.enableRandomDelay = false;
+    mgr.setAntiDetectionConfig(cfg);
+
+    int delay = mgr.getRandomDelay();
+    EXPECT_EQ(delay, 50);
 }

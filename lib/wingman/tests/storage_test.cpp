@@ -180,3 +180,130 @@ TEST(StorageFactoryTest, CreateLocal) {
     EXPECT_EQ(storage->length(), 0u);
     std::filesystem::remove_all(dir);
 }
+
+// ========== Additional SessionStorage Tests ==========
+
+TEST(SessionStorageTest, EmptyKey) {
+    SessionStorage storage;
+    storage.setItem("", "empty_key_val");
+    auto val = storage.getItem("");
+    ASSERT_TRUE(val.has_value());
+    EXPECT_EQ(*val, "empty_key_val");
+}
+
+TEST(SessionStorageTest, EmptyValue) {
+    SessionStorage storage;
+    storage.setItem("key", "");
+    auto val = storage.getItem("key");
+    ASSERT_TRUE(val.has_value());
+    EXPECT_EQ(*val, "");
+}
+
+TEST(SessionStorageTest, LargeValue) {
+    SessionStorage storage;
+    std::string large(10000, 'x');
+    storage.setItem("big", large);
+    auto val = storage.getItem("big");
+    ASSERT_TRUE(val.has_value());
+    EXPECT_EQ(*val, large);
+}
+
+TEST(SessionStorageTest, UnicodeKeys) {
+    SessionStorage storage;
+    storage.setItem("键", "值");
+    auto val = storage.getItem("键");
+    ASSERT_TRUE(val.has_value());
+    EXPECT_EQ(*val, "值");
+}
+
+TEST(SessionStorageTest, RemoveItemOnEmpty) {
+    SessionStorage storage;
+    EXPECT_FALSE(storage.removeItem("nonexistent"));
+    EXPECT_EQ(storage.length(), 0u);
+}
+
+TEST(SessionStorageTest, ClearOnEmpty) {
+    SessionStorage storage;
+    EXPECT_NO_THROW(storage.clear());
+    EXPECT_EQ(storage.length(), 0u);
+}
+
+// ========== Additional LocalStorage Tests ==========
+
+TEST_F(LocalStorageTest, OverwriteValue) {
+    LocalStorage storage(tempDir);
+    storage.setItem("key", "old");
+    storage.setItem("key", "new");
+    auto val = storage.getItem("key");
+    ASSERT_TRUE(val.has_value());
+    EXPECT_EQ(*val, "new");
+    EXPECT_EQ(storage.length(), 1u);
+}
+
+TEST_F(LocalStorageTest, EmptyValue) {
+    LocalStorage storage(tempDir);
+    storage.setItem("key", "");
+    auto val = storage.getItem("key");
+    ASSERT_TRUE(val.has_value());
+    EXPECT_EQ(*val, "");
+}
+
+TEST_F(LocalStorageTest, LargeValue) {
+    LocalStorage storage(tempDir);
+    std::string large(10000, 'y');
+    storage.setItem("big", large);
+    auto val = storage.getItem("big");
+    ASSERT_TRUE(val.has_value());
+    EXPECT_EQ(*val, large);
+}
+
+TEST_F(LocalStorageTest, RemoveNonexistent) {
+    LocalStorage storage(tempDir);
+    EXPECT_FALSE(storage.removeItem("nonexistent"));
+}
+
+TEST_F(LocalStorageTest, ClearOnEmpty) {
+    LocalStorage storage(tempDir);
+    EXPECT_NO_THROW(storage.clear());
+    EXPECT_EQ(storage.length(), 0u);
+}
+
+TEST_F(LocalStorageTest, HasItemFalse) {
+    LocalStorage storage(tempDir);
+    EXPECT_FALSE(storage.hasItem("nonexistent"));
+}
+
+TEST_F(LocalStorageTest, KeysEmpty) {
+    LocalStorage storage(tempDir);
+    EXPECT_TRUE(storage.keys().empty());
+}
+
+TEST_F(LocalStorageTest, NamespaceIsolation) {
+    LocalStorage storage1(tempDir);
+    storage1.setNamespace("ns1");
+    storage1.setItem("key", "v1");
+
+    LocalStorage storage2(tempDir);
+    storage2.setNamespace("ns2");
+    EXPECT_FALSE(storage2.hasItem("key"));
+    storage2.setItem("key", "v2");
+
+    EXPECT_EQ(*storage1.getItem("key"), "v1");
+    EXPECT_EQ(*storage2.getItem("key"), "v2");
+}
+
+TEST_F(LocalStorageTest, PersistMultipleItems) {
+    {
+        LocalStorage storage(tempDir);
+        storage.setItem("a", "1");
+        storage.setItem("b", "2");
+        storage.setItem("c", "3");
+    }
+    {
+        LocalStorage storage(tempDir);
+        EXPECT_EQ(*storage.getItem("a"), "1");
+        EXPECT_EQ(*storage.getItem("b"), "2");
+        EXPECT_EQ(*storage.getItem("c"), "3");
+        EXPECT_EQ(storage.length(), 3u);
+    }
+}

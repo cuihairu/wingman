@@ -222,3 +222,191 @@ TEST(ConfigManagerTest, GameConfigList) {
 
     EXPECT_TRUE(mgr.removeGameConfig("Game1"));
 }
+
+// ========== Extended Struct Serialization Tests ==========
+
+TEST(ServerConfigTest, FromJsonInvalidInput) {
+    auto cfg = ServerConfig::fromJson("not valid json {{{");
+    // Should return defaults, not crash
+    EXPECT_EQ(cfg.host, "localhost");
+    EXPECT_EQ(cfg.port, 9527);
+}
+
+TEST(ServerConfigTest, FromJsonEmptyObject) {
+    auto cfg = ServerConfig::fromJson("{}");
+    EXPECT_EQ(cfg.host, "localhost");
+    EXPECT_EQ(cfg.port, 9527);
+}
+
+TEST(ServerConfigTest, ServerControlledField) {
+    ServerConfig original;
+    original.host = "10.0.0.1";
+    original.port = 443;
+    original.password = "secret";
+    original.serverControlled = true;
+
+    std::string json = original.toJson();
+    auto restored = ServerConfig::fromJson(json);
+    EXPECT_TRUE(restored.serverControlled);
+    EXPECT_EQ(restored.password, "secret");
+}
+
+TEST(ServerConfigTest, IsValidPortBoundary) {
+    ServerConfig cfg;
+    cfg.host = "localhost";
+    cfg.port = 1;
+    EXPECT_TRUE(cfg.isValid());
+
+    cfg.port = 65535;
+    EXPECT_TRUE(cfg.isValid());
+
+    cfg.port = -1;
+    EXPECT_FALSE(cfg.isValid());
+}
+
+TEST(AutoRunConfigTest, FromJsonInvalidInput) {
+    auto cfg = AutoRunConfig::fromJson("}}broken");
+    EXPECT_FALSE(cfg.enabled);
+    EXPECT_EQ(cfg.delaySeconds, 0);
+}
+
+TEST(HeartbeatConfigTest, FromJsonInvalidInput) {
+    auto cfg = HeartbeatConfig::fromJson("not json at all");
+    EXPECT_TRUE(cfg.enabled);
+    EXPECT_EQ(cfg.intervalSeconds, 30);
+}
+
+TEST(GameConfigTest, FullFieldRoundtrip) {
+    GameConfig original;
+    original.name = "FullGame";
+    original.path = "/games/full";
+    original.args = "-debug -log";
+    original.workingDir = "/games";
+    original.autoStart = true;
+    original.scriptPath = "scripts/full.lua";
+    original.windowTitle = "Full Window";
+    original.delaySeconds = 10;
+    original.autoRestart = true;
+    original.restartDelay = 5;
+    original.maxRestarts = 10;
+    original.restartCount = 2;
+
+    std::string json = original.toJson();
+    auto restored = GameConfig::fromJson(json);
+
+    EXPECT_EQ(restored.name, "FullGame");
+    EXPECT_EQ(restored.path, "/games/full");
+    EXPECT_EQ(restored.args, "-debug -log");
+    EXPECT_EQ(restored.workingDir, "/games");
+    EXPECT_TRUE(restored.autoStart);
+    EXPECT_EQ(restored.scriptPath, "scripts/full.lua");
+    EXPECT_EQ(restored.windowTitle, "Full Window");
+    EXPECT_EQ(restored.delaySeconds, 10);
+    EXPECT_TRUE(restored.autoRestart);
+    EXPECT_EQ(restored.restartDelay, 5);
+    EXPECT_EQ(restored.maxRestarts, 10);
+    EXPECT_EQ(restored.restartCount, 2);
+}
+
+TEST(GameConfigTest, FromJsonInvalidInput) {
+    auto cfg = GameConfig::fromJson("broken json {{{");
+    EXPECT_TRUE(cfg.name.empty());
+    EXPECT_EQ(cfg.delaySeconds, 5);
+}
+
+// ========== Extended ConfigManager Tests ==========
+
+TEST(ConfigManagerTest, SetJsonValueParsed) {
+    ConfigManager mgr("test_config_dir_json");
+    bool ok = mgr.set("json_key", R"({"nested":true,"count":42})");
+    EXPECT_TRUE(ok);
+
+    auto val = mgr.get("json_key");
+    EXPECT_TRUE(val.has_value());
+    // The stored value should be a parsed JSON object
+    EXPECT_NE(val->find("nested"), std::string::npos);
+    EXPECT_NE(val->find("42"), std::string::npos);
+}
+
+TEST(ConfigManagerTest, RemoveMissingKeyReturnsFalse) {
+    ConfigManager mgr("test_config_dir_rm");
+    bool result = mgr.remove("absolutely_nonexistent_key_xyz_999");
+    EXPECT_FALSE(result);
+}
+
+TEST(ConfigManagerTest, RemoveGameConfigNonexistent) {
+    ConfigManager mgr("test_config_dir_games");
+    bool result = mgr.removeGameConfig("nonexistent_game_xyz");
+    EXPECT_FALSE(result);
+}
+
+TEST(ConfigManagerTest, AddGameConfigUpdatesExisting) {
+    ConfigManager mgr("test_config_dir_update");
+
+    GameConfig game1;
+    game1.name = "UpdateGame";
+    game1.path = "/original";
+    EXPECT_TRUE(mgr.addGameConfig(game1));
+
+    GameConfig game2;
+    game2.name = "UpdateGame";
+    game2.path = "/updated";
+    EXPECT_TRUE(mgr.addGameConfig(game2));
+
+    auto games = mgr.getGameConfigList();
+    int count = 0;
+    for (const auto& g : games) {
+        if (g.name == "UpdateGame") {
+            EXPECT_EQ(g.path, "/updated");
+            ++count;
+        }
+    }
+    EXPECT_EQ(count, 1);
+
+    mgr.removeGameConfig("UpdateGame");
+}
+
+TEST(ConfigManagerTest, SaveAndLoadAlwaysReturnTrue) {
+    ConfigManager mgr("test_config_dir_sl");
+    EXPECT_TRUE(mgr.save());
+    EXPECT_TRUE(mgr.load());
+}
+
+TEST(ConfigManagerTest, FileRoundtripWithTempDir) {
+    auto tempDir = std::filesystem::temp_directory_path() / "wingman_config_test_roundtrip";
+    std::filesystem::remove_all(tempDir);
+    std::filesystem::create_directories(tempDir);
+
+    {
+        ConfigManager mgr(tempDir.string());
+        ServerConfig srv;
+        srv.host = "roundtrip.test";
+        srv.port = 7777;
+        srv.username = "rtuser";
+        srv.autoConnect = true;
+        EXPECT_TRUE(mgr.setServerConfig(srv));
+
+        AutoRunConfig ar;
+        ar.enabled = true;
+        ar.scriptPath = "rt_script.lua";
+        ar.delaySeconds = 3;
+        EXPECT_TRUE(mgr.setAutoRunConfig(ar));
+    }
+
+    // Re-create manager from the same directory
+    {
+        ConfigManager mgr(tempDir.string());
+        auto srv = mgr.getServerConfig();
+        EXPECT_EQ(srv.host, "roundtrip.test");
+        EXPECT_EQ(srv.port, 7777);
+        EXPECT_EQ(srv.username, "rtuser");
+        EXPECT_TRUE(srv.autoConnect);
+
+        auto ar = mgr.getAutoRunConfig();
+        EXPECT_TRUE(ar.enabled);
+        EXPECT_EQ(ar.scriptPath, "rt_script.lua");
+        EXPECT_EQ(ar.delaySeconds, 3);
+    }
+
+    std::filesystem::remove_all(tempDir);
+}

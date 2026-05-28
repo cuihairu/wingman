@@ -287,3 +287,168 @@ TEST_F(KeyValueStoreTest, CleanupExpired) {
     EXPECT_EQ(store->get("expire2"), "");
     EXPECT_EQ(store->get("permanent"), "value3");
 }
+
+// ========== Additional Key/Value Tests ==========
+
+TEST_F(KeyValueStoreTest, IncrNonexistentKey) {
+    EXPECT_EQ(store->incr("new_counter"), 1);
+    EXPECT_EQ(store->get("new_counter"), "1");
+}
+
+TEST_F(KeyValueStoreTest, IncrNegativeDelta) {
+    store->set("counter", "10");
+    EXPECT_EQ(store->incr("counter", -3), 7);
+    EXPECT_EQ(store->get("counter"), "7");
+}
+
+TEST_F(KeyValueStoreTest, KeysNoMatch) {
+    store->set("abc", "1");
+    store->set("def", "2");
+    auto result = store->keys("xyz.*");
+    EXPECT_TRUE(result.empty());
+}
+
+TEST_F(KeyValueStoreTest, KeysAllPattern) {
+    store->set("k1", "v1");
+    store->set("k2", "v2");
+    auto result = store->keys(".*");
+    EXPECT_EQ(result.size(), 2u);
+}
+
+TEST_F(KeyValueStoreTest, SetOverwrite) {
+    store->set("key", "old");
+    store->set("key", "new");
+    EXPECT_EQ(store->get("key"), "new");
+}
+
+TEST_F(KeyValueStoreTest, DeleteNonexistentKey) {
+    EXPECT_NO_THROW(store->del("nonexistent"));
+}
+
+TEST_F(KeyValueStoreTest, TtlNonexistentKey) {
+    EXPECT_LT(store->ttl("nonexistent"), 0);
+}
+
+TEST_F(KeyValueStoreTest, ExpireNonexistentKey) {
+    EXPECT_NO_THROW(store->expire("nonexistent", 10));
+}
+
+TEST_F(KeyValueStoreTest, EmptyKey) {
+    store->set("", "empty_key_value");
+    EXPECT_EQ(store->get(""), "empty_key_value");
+}
+
+TEST_F(KeyValueStoreTest, EmptyValue) {
+    store->set("key", "");
+    EXPECT_EQ(store->get("key"), "");
+    EXPECT_TRUE(store->exists("key"));
+}
+
+// ========== Additional Hash Tests ==========
+
+TEST_F(KeyValueStoreTest, HGetNonexistentHash) {
+    EXPECT_EQ(store->hget("nohash", "field"), "");
+}
+
+TEST_F(KeyValueStoreTest, HGetNonexistentField) {
+    store->hset("hash1", "field1", "val");
+    EXPECT_EQ(store->hget("hash1", "nofield"), "");
+}
+
+TEST_F(KeyValueStoreTest, HGetAllEmpty) {
+    auto all = store->hgetall("nohash");
+    EXPECT_TRUE(all.empty());
+}
+
+TEST_F(KeyValueStoreTest, HKeysEmpty) {
+    auto keys = store->hkeys("nohash");
+    EXPECT_TRUE(keys.empty());
+}
+
+TEST_F(KeyValueStoreTest, HDelNonexistentField) {
+    store->hset("hash1", "field1", "val");
+    EXPECT_NO_THROW(store->hdel("hash1", "nofield"));
+    EXPECT_EQ(store->hget("hash1", "field1"), "val");
+}
+
+TEST_F(KeyValueStoreTest, HExistsNonexistentHash) {
+    EXPECT_FALSE(store->hexists("nohash", "field"));
+}
+
+TEST_F(KeyValueStoreTest, HMSetOverwrite) {
+    wingman::HashFields fields1 = {{"k", "v1"}};
+    wingman::HashFields fields2 = {{"k", "v2"}};
+    store->hmset("hash1", fields1);
+    store->hmset("hash1", fields2);
+    EXPECT_EQ(store->hget("hash1", "k"), "v2");
+}
+
+// ========== Additional List Tests ==========
+
+TEST_F(KeyValueStoreTest, LPopEmpty) {
+    EXPECT_EQ(store->lpop("nolist"), "");
+}
+
+TEST_F(KeyValueStoreTest, RPopEmpty) {
+    EXPECT_EQ(store->rpop("nolist"), "");
+}
+
+TEST_F(KeyValueStoreTest, LLenNonexistent) {
+    EXPECT_EQ(store->llen("nolist"), 0u);
+}
+
+TEST_F(KeyValueStoreTest, LRangeNonexistent) {
+    auto range = store->lrange("nolist", 0, -1);
+    EXPECT_TRUE(range.empty());
+}
+
+TEST_F(KeyValueStoreTest, LRangeNegativeIndices) {
+    store->rpush("list", "a");
+    store->rpush("list", "b");
+    store->rpush("list", "c");
+    auto range = store->lrange("list", -2, -1);
+    EXPECT_EQ(range.size(), 2u);
+    EXPECT_EQ(range[0], "b");
+    EXPECT_EQ(range[1], "c");
+}
+
+TEST_F(KeyValueStoreTest, LRemNonexistent) {
+    size_t removed = store->lrem("nolist", 1, "value");
+    EXPECT_EQ(removed, 0u);
+}
+
+TEST_F(KeyValueStoreTest, MultipleSubscribers) {
+    int count = 0;
+    store->subscribe("ch", [&](const std::string&) { count++; });
+    store->subscribe("ch", [&](const std::string&) { count++; });
+    store->publish("ch", "msg");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(count, 2);
+    store->unsubscribe("ch");
+}
+
+// ========== Persistence Edge Cases ==========
+
+TEST_F(KeyValueStoreTest, SaveLoadRoundtrip) {
+    store->set("str1", "hello");
+    store->set("str2", "world");
+    store->hset("hash1", "f1", "v1");
+    store->lpush("list1", "item1");
+
+    EXPECT_TRUE(store->save(testDbPath));
+
+    auto loaded = std::make_unique<wingman::KeyValueStore>();
+    EXPECT_TRUE(loaded->load(testDbPath));
+
+    EXPECT_EQ(loaded->get("str1"), "hello");
+    EXPECT_EQ(loaded->get("str2"), "world");
+}
+
+TEST_F(KeyValueStoreTest, SaveToInvalidPath) {
+    store->set("key", "val");
+    EXPECT_FALSE(store->save("/nonexistent/dir/file.db"));
+}
+
+TEST_F(KeyValueStoreTest, LoadNonexistentFile) {
+    EXPECT_FALSE(store->load("/nonexistent/file.db"));
+}

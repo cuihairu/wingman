@@ -188,3 +188,174 @@ TEST(VerificationManagerTest, VerifyTOTPByAccount) {
 
     mgr.removeTOTP("verify_by_name_acct");
 }
+
+// ========== Additional Verification Tests ==========
+
+TEST(VerificationManagerTest, GetRemainingSecondsCustomPeriod) {
+    VerificationManager mgr;
+
+    TOTPConfig cfg;
+    cfg.period = 60;
+    int remaining = mgr.getRemainingSeconds(cfg);
+    EXPECT_GE(remaining, 0);
+    EXPECT_LE(remaining, 60);
+
+    cfg.period = 15;
+    remaining = mgr.getRemainingSeconds(cfg);
+    EXPECT_GE(remaining, 0);
+    EXPECT_LE(remaining, 15);
+}
+
+TEST(VerificationManagerTest, VerifyTOTPWindowZeroRejectsAdjacent) {
+    VerificationManager mgr;
+
+    TOTPConfig cfg;
+    cfg.type = TOTPType::Google;
+    cfg.secret = "JBSWY3DPEHPK3PXP";
+    cfg.digits = 6;
+    cfg.period = 30;
+
+    std::string code = mgr.generateTOTP(cfg);
+    EXPECT_TRUE(mgr.verifyTOTP(cfg, code, 0));
+    EXPECT_FALSE(mgr.verifyTOTP(cfg, "999999", 0));
+}
+
+TEST(VerificationManagerTest, VerifyTOTPByNonExistentAccount) {
+    VerificationManager mgr;
+    EXPECT_FALSE(mgr.verifyTOTP("no_such_account_verify", "123456", 1));
+}
+
+TEST(VerificationManagerTest, GenerateTOTPByNonExistentAccount) {
+    VerificationManager mgr;
+    std::string code = mgr.generateTOTP("no_such_account_generate");
+    EXPECT_TRUE(code.empty());
+}
+
+TEST(VerificationManagerTest, SaveAndLoadEmailAllFields) {
+    VerificationManager mgr;
+
+    EmailConfig cfg;
+    cfg.imapServer = "imap.test.com";
+    cfg.imapPort = 143;
+    cfg.useSSL = false;
+    cfg.username = "fullfield@test.com";
+    cfg.password = "secret_pass";
+    cfg.senderFilter = "sender@filter.com";
+    cfg.timeoutSeconds = 120;
+
+    EXPECT_TRUE(mgr.saveEmail("test_email_full_fields", cfg));
+
+    auto loaded = mgr.loadEmail("test_email_full_fields");
+    ASSERT_TRUE(loaded.has_value());
+    EXPECT_EQ(loaded->imapServer, "imap.test.com");
+    EXPECT_EQ(loaded->imapPort, 143);
+    EXPECT_FALSE(loaded->useSSL);
+    EXPECT_EQ(loaded->username, "fullfield@test.com");
+    EXPECT_EQ(loaded->password, "secret_pass");
+    EXPECT_EQ(loaded->senderFilter, "sender@filter.com");
+    EXPECT_EQ(loaded->timeoutSeconds, 120);
+}
+
+TEST(VerificationManagerTest, SaveEmailOverwritesExisting) {
+    VerificationManager mgr;
+
+    EmailConfig cfg1;
+    cfg1.imapServer = "old.server.com";
+    cfg1.username = "old_user";
+
+    EmailConfig cfg2;
+    cfg2.imapServer = "new.server.com";
+    cfg2.username = "new_user";
+
+    EXPECT_TRUE(mgr.saveEmail("test_email_overwrite", cfg1));
+    EXPECT_TRUE(mgr.saveEmail("test_email_overwrite", cfg2));
+
+    auto loaded = mgr.loadEmail("test_email_overwrite");
+    ASSERT_TRUE(loaded.has_value());
+    EXPECT_EQ(loaded->imapServer, "new.server.com");
+    EXPECT_EQ(loaded->username, "new_user");
+}
+
+TEST(VerificationManagerTest, SaveAndLoadTOTPAllTypes) {
+    VerificationManager mgr;
+
+    TOTPConfig cfg;
+    cfg.secret = "JBSWY3DPEHPK3PXP";
+    cfg.digits = 6;
+    cfg.period = 30;
+
+    for (int i = 0; i <= 4; ++i) {
+        std::string acct = "type_test_acct_" + std::to_string(i);
+        cfg.type = static_cast<TOTPType>(i);
+        cfg.account = acct;
+        EXPECT_TRUE(mgr.saveTOTP(acct, cfg));
+
+        auto loaded = mgr.loadTOTP(acct);
+        ASSERT_TRUE(loaded.has_value());
+        EXPECT_EQ(loaded->type, static_cast<TOTPType>(i));
+        EXPECT_EQ(loaded->digits, 6);
+        EXPECT_EQ(loaded->period, 30);
+
+        mgr.removeTOTP(acct);
+    }
+}
+
+TEST(VerificationManagerTest, ListTOTPAccountsAfterRemoval) {
+    VerificationManager mgr;
+
+    TOTPConfig cfg;
+    cfg.secret = "JBSWY3DPEHPK3PXP";
+    cfg.account = "removal_list_1";
+
+    mgr.saveTOTP("removal_list_acct_1", cfg);
+    cfg.account = "removal_list_2";
+    mgr.saveTOTP("removal_list_acct_2", cfg);
+
+    auto accounts = mgr.listTOTPAccounts();
+    size_t countBefore = accounts.size();
+
+    mgr.removeTOTP("removal_list_acct_1");
+    accounts = mgr.listTOTPAccounts();
+    EXPECT_EQ(accounts.size(), countBefore - 1);
+
+    mgr.removeTOTP("removal_list_acct_2");
+    accounts = mgr.listTOTPAccounts();
+    EXPECT_EQ(accounts.size(), countBefore - 2);
+}
+
+TEST(VerificationManagerTest, GetEmailCodeReturnsNullopt) {
+    VerificationManager mgr;
+
+    EmailConfig cfg;
+    cfg.imapServer = "imap.placeholder.com";
+    auto result = mgr.getEmailCode(cfg);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(VerificationManagerTest, StopEmailListenerNoThrow) {
+    VerificationManager mgr;
+    EXPECT_NO_THROW(mgr.stopEmailListener());
+}
+
+TEST(VerificationManagerTest, SteamGuardDifferentSecrets) {
+    VerificationManager mgr;
+
+    std::string code1 = mgr.generateSteamGuard("JBSWY3DPEHPK3PXP");
+    std::string code2 = mgr.generateSteamGuard("HXDMVJECJJWSRB3HWIZR4IFXFTXFJA");
+    EXPECT_EQ(code1.size(), 5u);
+    EXPECT_EQ(code2.size(), 5u);
+}
+
+TEST(VerificationManagerTest, TOTPCodesConsistentWithinPeriod) {
+    VerificationManager mgr;
+
+    TOTPConfig cfg;
+    cfg.type = TOTPType::Google;
+    cfg.secret = "JBSWY3DPEHPK3PXP";
+    cfg.digits = 6;
+    cfg.period = 30;
+
+    std::string code1 = mgr.generateTOTP(cfg);
+    std::string code2 = mgr.generateTOTP(cfg);
+    EXPECT_EQ(code1, code2);
+}

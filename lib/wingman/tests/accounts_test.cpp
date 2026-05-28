@@ -404,3 +404,144 @@ TEST_F(AccountManagerTest, BatchManagerDelegates) {
 
     EXPECT_TRUE(bm.remove(batchId));
 }
+
+// ========== Additional Accounts Tests ==========
+
+// -- Duplicate account overwrites --
+
+TEST_F(AccountManagerTest, AddDuplicateAccountOverwrites) {
+    Account acc;
+    acc.id = "a1"; acc.game = "g1"; acc.username = "original";
+    EXPECT_TRUE(mgr->addAccount(acc));
+
+    acc.username = "overwritten";
+    EXPECT_TRUE(mgr->addAccount(acc));
+
+    auto result = mgr->getAccount("g1", "a1");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->username, "overwritten");
+}
+
+// -- Remove nonexistent account --
+
+TEST_F(AccountManagerTest, RemoveNonexistentAccount) {
+    EXPECT_FALSE(mgr->removeAccount("g1", "nonexistent"));
+}
+
+// -- Account with empty attributes round-trips correctly --
+
+TEST(AccountTest, EmptyAttributesRoundTrip) {
+    Account original;
+    original.id = "a1";
+    original.game = "g1";
+    original.username = "user";
+    // attributes map is empty by default
+
+    auto j = original.toJson();
+    auto restored = Account::fromJson(j);
+    EXPECT_TRUE(restored.attributes.empty());
+    EXPECT_EQ(restored.id, "a1");
+}
+
+// -- Batch with empty account list --
+
+TEST_F(AccountManagerTest, CreateBatchEmptyAccountList) {
+    std::string batchId = mgr->createBatch("g1", "EmptyBatch", {});
+    EXPECT_FALSE(batchId.empty());
+
+    auto batch = mgr->getBatch(batchId);
+    ASSERT_TRUE(batch.has_value());
+    EXPECT_EQ(batch->total, 0);
+    EXPECT_TRUE(batch->accountIds.empty());
+}
+
+// -- updateBatchStatus on nonexistent batch --
+
+TEST_F(AccountManagerTest, UpdateBatchStatusNonexistent) {
+    EXPECT_FALSE(mgr->updateBatchStatus("nonexistent", "a1", AccountStatus::Running, "", ""));
+}
+
+// -- removeGroup on nonexistent group --
+
+TEST_F(AccountManagerTest, RemoveNonexistentGroup) {
+    EXPECT_FALSE(mgr->removeGroup("g1", "nonexistent"));
+}
+
+// -- Import accounts from JSON array format --
+
+TEST_F(AccountManagerTest, ImportAccountsFromArrayJson) {
+    // Create a JSON array file
+    std::string importPath = tempDir + "/import_array.json";
+    {
+        nlohmann::json arr = nlohmann::json::array();
+        nlohmann::json acc1;
+        acc1["id"] = "imp1";
+        acc1["username"] = "imported_user1";
+        arr.push_back(acc1);
+        nlohmann::json acc2;
+        acc2["id"] = "imp2";
+        acc2["username"] = "imported_user2";
+        arr.push_back(acc2);
+
+        std::ofstream f(importPath);
+        f << arr.dump(2);
+    }
+
+    EXPECT_TRUE(mgr->importAccounts("g1", importPath, "json"));
+    auto list = mgr->listAccounts("g1");
+    EXPECT_GE(list.size(), 2u);
+
+    auto result = mgr->getAccount("g1", "imp1");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->username, "imported_user1");
+    EXPECT_EQ(result->game, "g1");
+}
+
+// -- Export and verify file contents --
+
+TEST_F(AccountManagerTest, ExportVerifyFileContents) {
+    Account acc;
+    acc.id = "a1"; acc.game = "g1"; acc.username = "check_export";
+    mgr->addAccount(acc);
+
+    std::string exportPath = tempDir + "/verify_export.json";
+    EXPECT_TRUE(mgr->exportAccounts("g1", exportPath, "json"));
+
+    std::ifstream f(exportPath);
+    nlohmann::json j;
+    f >> j;
+    ASSERT_TRUE(j.contains("accounts"));
+    EXPECT_EQ(j["accounts"].size(), 1u);
+    EXPECT_EQ(j["accounts"][0]["username"], "check_export");
+}
+
+// -- Batch status transition to Banned counts as failed --
+
+TEST_F(AccountManagerTest, BatchStatusBannedCountsAsFailed) {
+    std::string batchId = mgr->createBatch("g1", "BanTest", {"a1"});
+
+    mgr->updateBatchStatus(batchId, "a1", AccountStatus::Banned, "banned_step", "account banned");
+
+    auto batch = mgr->getBatch(batchId);
+    ASSERT_TRUE(batch.has_value());
+    EXPECT_EQ(batch->status["a1"], AccountStatus::Banned);
+    EXPECT_EQ(batch->failed, 1);
+    EXPECT_EQ(batch->completed, 1);
+
+    auto progress = mgr->getBatchProgress(batchId);
+    EXPECT_DOUBLE_EQ(progress.percent, 100.0);
+}
+
+// -- List batches empty --
+
+TEST_F(AccountManagerTest, ListBatchesEmpty) {
+    auto list = mgr->listBatches("g1");
+    EXPECT_TRUE(list.empty());
+}
+
+// -- List groups for game with no groups --
+
+TEST_F(AccountManagerTest, ListGroupsNoGroups) {
+    auto groups = mgr->listGroups("nonexistent_game");
+    EXPECT_TRUE(groups.empty());
+}
