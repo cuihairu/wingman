@@ -117,7 +117,8 @@ TEST(IpcFactoryTest, IpcMessageFieldAssignment) {
 
 TEST(IpcFactoryTest, IpcMessageTypes) {
     EXPECT_NE(IpcMessageType::Request, IpcMessageType::Response);
-    EXPECT_NE(IpcMessageType::Request, IpcMessageType::Notification);
+    EXPECT_NE(IpcMessageType::Request, IpcMessageType::Event);
+    EXPECT_NE(IpcMessageType::Request, IpcMessageType::Error);
 }
 
 TEST(IpcFactoryTest, IpcTransportValues) {

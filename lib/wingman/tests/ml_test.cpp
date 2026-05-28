@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "wingman/ml.hpp"
+#include "wingman/screen.hpp"
 #include <cstring>
 
 using namespace wingman;

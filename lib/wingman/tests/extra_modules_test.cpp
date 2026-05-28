@@ -234,12 +234,12 @@ TEST(TriggerEngineStatsTest, DefaultValues) {
 // ========== Additional Trigger Config Tests ==========
 
 TEST(TriggerTypeTest, AllEnumValues) {
-    EXPECT_NO_THROW(TriggerType t = TriggerType::ColorFound);
-    EXPECT_NO_THROW(TriggerType t = TriggerType::ColorNotFound);
-    EXPECT_NO_THROW(TriggerType t = TriggerType::ImageFound);
-    EXPECT_NO_THROW(TriggerType t = TriggerType::ImageNotFound);
-    EXPECT_NO_THROW(TriggerType t = TriggerType::TimeElapsed);
-    EXPECT_NO_THROW(TriggerType t = TriggerType::PixelChanged);
+    EXPECT_EQ(TriggerType::ColorFound, TriggerType::ColorFound);
+    EXPECT_EQ(TriggerType::ColorLost, TriggerType::ColorLost);
+    EXPECT_EQ(TriggerType::ImageFound, TriggerType::ImageFound);
+    EXPECT_EQ(TriggerType::ImageLost, TriggerType::ImageLost);
+    EXPECT_EQ(TriggerType::TimeElapsed, TriggerType::TimeElapsed);
+    EXPECT_EQ(TriggerType::PixelChanged, TriggerType::PixelChanged);
 }
 
 TEST(BasicTriggerActionTest, AllEnumValues) {
