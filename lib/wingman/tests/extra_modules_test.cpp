@@ -15,8 +15,8 @@ TEST(TriggerEnumsTest, TriggerTypeValues) {
 }
 
 TEST(TriggerEnumsTest, BasicTriggerActionValues) {
-    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::RunScript);
-    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::Log);
+    EXPECT_EQ(static_cast<int>(BasicTriggerAction::RunScript), 0);
+    EXPECT_EQ(static_cast<int>(BasicTriggerAction::Log), 8);
 }
 
 // ========== TriggerConfig 结构体 ==========
@@ -214,7 +214,7 @@ TEST(SmartTriggerManagerTest, GetNonexistentTrigger) {
 TEST(SmartTriggerManagerTest, GetAllTriggers) {
     auto& mgr = SmartTriggerManager::instance();
     auto all = mgr.getAllTriggers();
-    EXPECT_NO_THROW(mgr.getAllTriggers());
+    EXPECT_EQ(all.size(), mgr.getTriggerCount());
 }
 
 TEST(SmartTriggerManagerTest, StopAllDoesNotCrash) {
@@ -248,15 +248,15 @@ TEST(TriggerTypeTest, AllEnumValues) {
 }
 
 TEST(BasicTriggerActionTest, AllEnumValues) {
-    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::RunScript);
-    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::Click);
-    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::KeyPress);
-    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::Type);
-    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::StopScript);
-    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::PauseScript);
-    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::ShowMessage);
-    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::PlayAudio);
-    EXPECT_NO_THROW(BasicTriggerAction a = BasicTriggerAction::Log);
+    EXPECT_EQ(static_cast<int>(BasicTriggerAction::RunScript), 0);
+    EXPECT_EQ(static_cast<int>(BasicTriggerAction::Click), 1);
+    EXPECT_EQ(static_cast<int>(BasicTriggerAction::KeyPress), 2);
+    EXPECT_EQ(static_cast<int>(BasicTriggerAction::Type), 3);
+    EXPECT_EQ(static_cast<int>(BasicTriggerAction::StopScript), 4);
+    EXPECT_EQ(static_cast<int>(BasicTriggerAction::PauseScript), 5);
+    EXPECT_EQ(static_cast<int>(BasicTriggerAction::ShowMessage), 6);
+    EXPECT_EQ(static_cast<int>(BasicTriggerAction::PlayAudio), 7);
+    EXPECT_EQ(static_cast<int>(BasicTriggerAction::Log), 8);
 }
 
 TEST(TriggerConfigTest, FieldAssignment) {
@@ -303,26 +303,26 @@ TEST(TriggerConditionTest, AllFields) {
 }
 
 TEST(TriggerConditionTypeTest, AllEnumValues) {
-    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::COLOR_FOUND);
-    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::COLOR_NOT_FOUND);
-    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::IMAGE_FOUND);
-    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::IMAGE_NOT_FOUND);
-    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::TEXT_FOUND);
-    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::TEXT_NOT_FOUND);
-    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::EDGE_DETECTED);
-    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::COLOR_CHANGED);
-    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::OCR_CONTAINS);
-    EXPECT_NO_THROW(TriggerConditionType t = TriggerConditionType::OCR_EQUALS);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::COLOR_FOUND), 0);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::COLOR_NOT_FOUND), 1);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::IMAGE_FOUND), 2);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::IMAGE_NOT_FOUND), 3);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::TEXT_FOUND), 4);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::TEXT_NOT_FOUND), 5);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::EDGE_DETECTED), 6);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::COLOR_CHANGED), 7);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::OCR_CONTAINS), 8);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::OCR_EQUALS), 9);
 }
 
 TEST(TriggerActionTypeTest, AllEnumValues) {
-    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::CLICK);
-    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::KEY_PRESS);
-    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::WAIT);
-    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::LUA_SCRIPT);
-    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::CUSTOM_CALLBACK);
-    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::STOP);
-    EXPECT_NO_THROW(TriggerActionType t = TriggerActionType::LOG);
+    EXPECT_EQ(static_cast<int>(TriggerActionType::CLICK), 0);
+    EXPECT_EQ(static_cast<int>(TriggerActionType::KEY_PRESS), 1);
+    EXPECT_EQ(static_cast<int>(TriggerActionType::WAIT), 2);
+    EXPECT_EQ(static_cast<int>(TriggerActionType::LUA_SCRIPT), 3);
+    EXPECT_EQ(static_cast<int>(TriggerActionType::CUSTOM_CALLBACK), 4);
+    EXPECT_EQ(static_cast<int>(TriggerActionType::STOP), 5);
+    EXPECT_EQ(static_cast<int>(TriggerActionType::LOG), 6);
 }
 
 // ========== PerformanceConfig Extended ==========

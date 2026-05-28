@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "wingman/script_manager.hpp"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 
@@ -22,10 +23,10 @@ TEST(ScriptConfigTest, DefaultValues) {
 
 TEST(ScriptStateTest, EnumValues) {
     EXPECT_EQ(static_cast<int>(ScriptState::unloaded), 0);
-    EXPECT_NO_THROW(ScriptState s = ScriptState::loaded);
-    EXPECT_NO_THROW(ScriptState s = ScriptState::running);
-    EXPECT_NO_THROW(ScriptState s = ScriptState::paused);
-    EXPECT_NO_THROW(ScriptState s = ScriptState::error);
+    EXPECT_EQ(static_cast<int>(ScriptState::loaded), 1);
+    EXPECT_EQ(static_cast<int>(ScriptState::running), 2);
+    EXPECT_EQ(static_cast<int>(ScriptState::paused), 3);
+    EXPECT_EQ(static_cast<int>(ScriptState::error), 4);
 }
 
 // ========== ScriptInfo ==========
@@ -57,12 +58,12 @@ TEST(SandboxConfigTest, DefaultValues) {
 // ========== ScriptEvent ==========
 
 TEST(ScriptEventTest, EnumValues) {
-    EXPECT_NO_THROW(ScriptEvent e = ScriptEvent::loaded);
-    EXPECT_NO_THROW(ScriptEvent e = ScriptEvent::unloaded);
-    EXPECT_NO_THROW(ScriptEvent e = ScriptEvent::started);
-    EXPECT_NO_THROW(ScriptEvent e = ScriptEvent::stopped);
-    EXPECT_NO_THROW(ScriptEvent e = ScriptEvent::error);
-    EXPECT_NO_THROW(ScriptEvent e = ScriptEvent::reloaded);
+    EXPECT_EQ(static_cast<int>(ScriptEvent::loaded), 0);
+    EXPECT_EQ(static_cast<int>(ScriptEvent::unloaded), 1);
+    EXPECT_EQ(static_cast<int>(ScriptEvent::started), 2);
+    EXPECT_EQ(static_cast<int>(ScriptEvent::stopped), 3);
+    EXPECT_EQ(static_cast<int>(ScriptEvent::error), 4);
+    EXPECT_EQ(static_cast<int>(ScriptEvent::reloaded), 5);
 }
 
 // ========== ScriptManager 构造/析构 ==========
@@ -193,7 +194,8 @@ TEST(ScriptManagerTest, DetectLanguageFallbackToLua) {
 TEST(ScriptManagerTest, GetAvailableLanguages) {
     ScriptManager mgr;
     auto langs = mgr.getAvailableLanguages();
-    EXPECT_NO_THROW(mgr.getAvailableLanguages());
+    EXPECT_FALSE(langs.empty());
+    EXPECT_NE(std::find(langs.begin(), langs.end(), "lua"), langs.end());
 }
 
 // ========== 热加载控制 ==========

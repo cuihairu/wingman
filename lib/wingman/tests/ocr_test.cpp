@@ -16,12 +16,19 @@ TEST(OcrResultTest, DefaultValues) {
 // ========== OCR PageSegMode ==========
 
 TEST(OCRPageSegModeTest, EnumValues) {
-    EXPECT_NO_THROW(OCR::PageSegMode m = OCR::PageSegMode::OSD_ONLY);
-    EXPECT_NO_THROW(OCR::PageSegMode m = OCR::PageSegMode::AUTO);
-    EXPECT_NO_THROW(OCR::PageSegMode m = OCR::PageSegMode::SINGLE_LINE);
-    EXPECT_NO_THROW(OCR::PageSegMode m = OCR::PageSegMode::SINGLE_WORD);
-    EXPECT_NO_THROW(OCR::PageSegMode m = OCR::PageSegMode::SINGLE_CHAR);
-    EXPECT_NO_THROW(OCR::PageSegMode m = OCR::PageSegMode::SPARSE_TEXT);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::OSD_ONLY), 0);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::AUTO_OSD), 1);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::AUTO_ONLY), 2);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::AUTO), 3);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::SINGLE_COLUMN), 4);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::SINGLE_BLOCK_VERT_TEXT), 5);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::SINGLE_BLOCK), 6);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::SINGLE_LINE), 7);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::SINGLE_WORD), 8);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::CIRCLE_WORD), 9);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::SINGLE_CHAR), 10);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::SPARSE_TEXT), 11);
+    EXPECT_EQ(static_cast<int>(OCR::PageSegMode::SPARSE_TEXT_OSD), 12);
 }
 
 // ========== OCR (Stub) ==========

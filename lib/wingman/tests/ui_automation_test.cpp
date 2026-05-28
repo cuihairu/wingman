@@ -6,20 +6,20 @@ using namespace wingman;
 // ========== UIARole 枚举 ==========
 
 TEST(UIARoleTest, EnumValues) {
-    EXPECT_NO_THROW(UIARole r = UIARole::Unknown);
-    EXPECT_NO_THROW(UIARole r = UIARole::Window);
-    EXPECT_NO_THROW(UIARole r = UIARole::Button);
-    EXPECT_NO_THROW(UIARole r = UIARole::TextBox);
-    EXPECT_NO_THROW(UIARole r = UIARole::CheckBox);
-    EXPECT_NO_THROW(UIARole r = UIARole::RadioButton);
-    EXPECT_NO_THROW(UIARole r = UIARole::ComboBox);
-    EXPECT_NO_THROW(UIARole r = UIARole::ListBox);
-    EXPECT_NO_THROW(UIARole r = UIARole::ListItem);
-    EXPECT_NO_THROW(UIARole r = UIARole::Menu);
-    EXPECT_NO_THROW(UIARole r = UIARole::MenuItem);
-    EXPECT_NO_THROW(UIARole r = UIARole::Table);
-    EXPECT_NO_THROW(UIARole r = UIARole::Tree);
-    EXPECT_NO_THROW(UIARole r = UIARole::TreeItem);
+    EXPECT_EQ(static_cast<int>(UIARole::Unknown), 0);
+    EXPECT_EQ(static_cast<int>(UIARole::Window), 1);
+    EXPECT_EQ(static_cast<int>(UIARole::Button), 2);
+    EXPECT_EQ(static_cast<int>(UIARole::TextBox), 3);
+    EXPECT_EQ(static_cast<int>(UIARole::CheckBox), 4);
+    EXPECT_EQ(static_cast<int>(UIARole::RadioButton), 5);
+    EXPECT_EQ(static_cast<int>(UIARole::ComboBox), 6);
+    EXPECT_EQ(static_cast<int>(UIARole::ListBox), 7);
+    EXPECT_EQ(static_cast<int>(UIARole::ListItem), 8);
+    EXPECT_EQ(static_cast<int>(UIARole::Menu), 9);
+    EXPECT_EQ(static_cast<int>(UIARole::MenuItem), 10);
+    EXPECT_EQ(static_cast<int>(UIARole::Table), 11);
+    EXPECT_EQ(static_cast<int>(UIARole::Tree), 12);
+    EXPECT_EQ(static_cast<int>(UIARole::TreeItem), 13);
 }
 
 // ========== UIAState 位操作 ==========

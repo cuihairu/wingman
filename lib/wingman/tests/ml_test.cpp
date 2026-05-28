@@ -8,17 +8,17 @@ using namespace wingman;
 // ========== TensorDataType 枚举 ==========
 
 TEST(TensorDataTypeTest, EnumValues) {
-    EXPECT_NO_THROW(TensorDataType t = TensorDataType::FLOAT32);
-    EXPECT_NO_THROW(TensorDataType t = TensorDataType::FLOAT64);
-    EXPECT_NO_THROW(TensorDataType t = TensorDataType::INT8);
-    EXPECT_NO_THROW(TensorDataType t = TensorDataType::INT16);
-    EXPECT_NO_THROW(TensorDataType t = TensorDataType::INT32);
-    EXPECT_NO_THROW(TensorDataType t = TensorDataType::INT64);
-    EXPECT_NO_THROW(TensorDataType t = TensorDataType::UINT8);
-    EXPECT_NO_THROW(TensorDataType t = TensorDataType::UINT16);
-    EXPECT_NO_THROW(TensorDataType t = TensorDataType::UINT32);
-    EXPECT_NO_THROW(TensorDataType t = TensorDataType::UINT64);
-    EXPECT_NO_THROW(TensorDataType t = TensorDataType::BOOL);
+    EXPECT_EQ(static_cast<int>(TensorDataType::FLOAT32), 0);
+    EXPECT_EQ(static_cast<int>(TensorDataType::FLOAT64), 1);
+    EXPECT_EQ(static_cast<int>(TensorDataType::INT8), 2);
+    EXPECT_EQ(static_cast<int>(TensorDataType::INT16), 3);
+    EXPECT_EQ(static_cast<int>(TensorDataType::INT32), 4);
+    EXPECT_EQ(static_cast<int>(TensorDataType::INT64), 5);
+    EXPECT_EQ(static_cast<int>(TensorDataType::UINT8), 6);
+    EXPECT_EQ(static_cast<int>(TensorDataType::UINT16), 7);
+    EXPECT_EQ(static_cast<int>(TensorDataType::UINT32), 8);
+    EXPECT_EQ(static_cast<int>(TensorDataType::UINT64), 9);
+    EXPECT_EQ(static_cast<int>(TensorDataType::BOOL), 10);
 }
 
 // ========== TensorData ==========

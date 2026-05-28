@@ -232,18 +232,16 @@ TEST(TriggerConditionTest, FieldAssignment) {
 }
 
 TEST(TriggerConditionTest, AllConditionTypesAreValid) {
-    // Ensure all enum values can be assigned without crashing
-    TriggerCondition cond;
-    EXPECT_NO_THROW(cond.type = TriggerConditionType::COLOR_FOUND);
-    EXPECT_NO_THROW(cond.type = TriggerConditionType::COLOR_NOT_FOUND);
-    EXPECT_NO_THROW(cond.type = TriggerConditionType::IMAGE_FOUND);
-    EXPECT_NO_THROW(cond.type = TriggerConditionType::IMAGE_NOT_FOUND);
-    EXPECT_NO_THROW(cond.type = TriggerConditionType::TEXT_FOUND);
-    EXPECT_NO_THROW(cond.type = TriggerConditionType::TEXT_NOT_FOUND);
-    EXPECT_NO_THROW(cond.type = TriggerConditionType::EDGE_DETECTED);
-    EXPECT_NO_THROW(cond.type = TriggerConditionType::COLOR_CHANGED);
-    EXPECT_NO_THROW(cond.type = TriggerConditionType::OCR_CONTAINS);
-    EXPECT_NO_THROW(cond.type = TriggerConditionType::OCR_EQUALS);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::COLOR_FOUND), 0);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::COLOR_NOT_FOUND), 1);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::IMAGE_FOUND), 2);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::IMAGE_NOT_FOUND), 3);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::TEXT_FOUND), 4);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::TEXT_NOT_FOUND), 5);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::EDGE_DETECTED), 6);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::COLOR_CHANGED), 7);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::OCR_CONTAINS), 8);
+    EXPECT_EQ(static_cast<int>(TriggerConditionType::OCR_EQUALS), 9);
 }
 
 // ========== TriggerAction 字段 ==========
