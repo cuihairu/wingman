@@ -184,7 +184,7 @@ TEST(SmartTriggerTest, SetMaxTriggers) {
     EXPECT_NO_THROW(trigger.setMaxTriggers(10));
 }
 
-TEST(SmartTriggerTest, ResetTriggerCount) {
+TEST(SmartTriggerTest, ResetTriggerCountKeepsZero) {
     SmartTrigger trigger("reset_test");
     EXPECT_NO_THROW(trigger.resetTriggerCount());
     EXPECT_EQ(trigger.getTriggerCount(), 0);
@@ -197,7 +197,7 @@ TEST(SmartTriggerTest, StopWithoutStartDoesNotCrash) {
 
 // ========== SmartTriggerManager ==========
 
-TEST(SmartTriggerManagerTest, CreateAndGetTrigger) {
+TEST(SmartTriggerManagerTest, CreateGetAndRemoveTrigger) {
     auto& mgr = SmartTriggerManager::instance();
     auto trigger = mgr.createTrigger("unique_test_trigger_xyz");
     ASSERT_NE(trigger, nullptr);
@@ -215,7 +215,7 @@ TEST(SmartTriggerManagerTest, GetNonexistentTrigger) {
     EXPECT_EQ(mgr.getTrigger("nonexistent_trigger_xyz"), nullptr);
 }
 
-TEST(SmartTriggerManagerTest, GetAllTriggers) {
+TEST(SmartTriggerManagerTest, GetAllTriggersReturnsContainer) {
     auto& mgr = SmartTriggerManager::instance();
     auto all = mgr.getAllTriggers();
     EXPECT_GE(all.size(), 0u);
