@@ -2,20 +2,20 @@
 
 /**
  * @file storage_all.hpp
- * @brief Wingman Storage System - 统一引入所有存储类型
+ * @brief Wingman Storage System - Unified include for all storage types
  *
- * 存储层级设计：
- * - SessionStorage: 内存存储，进程退出清空
- * - LocalStorage: 文件持久化，仅本机可见
- * - TeamStorage: 团队/编排组可见 (orchestrator team 成员)
- * - ServerStorage: 服务器全局可见 (所有连接的客户端)
+ * Storage hierarchy design:
+ * - SessionStorage: In-memory storage, cleared on process exit
+ * - LocalStorage: File-based persistence, local machine only
+ * - TeamStorage: Visible to team/orchestrator group members
+ * - ServerStorage: Globally visible on server (all connected clients)
  */
 
 #include "wingman/storage/storage.hpp"
 #include "wingman/storage/session_storage.hpp"
 #include "wingman/storage/local_storage.hpp"
 
-// 远程存储需要 server 模块
+// Remote storage requires server module
 #ifdef WINGMAN_BUILD_SERVER
 #include "wingman/storage/team_storage.hpp"
 #include "wingman/storage/server_storage.hpp"
@@ -23,24 +23,24 @@
 
 namespace wingman {
 
-// 存储工厂（可选，用于简化创建）
+// Storage factory (optional, for simplified creation)
 class StorageFactory {
 public:
-    // 创建 SessionStorage
+    // Create SessionStorage
     static std::unique_ptr<SessionStorage> createSession();
 
-    // 创建 LocalStorage
+    // Create LocalStorage
     static std::unique_ptr<LocalStorage> createLocal(
         const std::filesystem::path& storageDir = "storage"
     );
 
 #ifdef WINGMAN_BUILD_SERVER
-    // 创建 TeamStorage (需要 server 模块)
+    // Create TeamStorage (requires server module)
     static std::unique_ptr<TeamStorage> createTeam(
         std::shared_ptr<server::Client> client
     );
 
-    // 创建 ServerStorage (需要 server 模块)
+    // Create ServerStorage (requires server module)
     static std::unique_ptr<ServerStorage> createServer(
         std::shared_ptr<server::Client> client
     );

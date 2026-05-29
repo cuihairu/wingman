@@ -9,128 +9,128 @@
 
 namespace wingman {
 
-// KV 存储选项
+// KV storage options
 struct KvOptions {
-    int64_t ttl = 0;        // 过期时间（秒），0 表示不过期
-    bool nx = false;        // 仅当 key 不存在时设置 (SET NX)
-    bool xx = false;        // 仅当 key 存在时设置 (SET XX)
+    int64_t ttl = 0;        // Expiration time (seconds), 0 means no expiration
+    bool nx = false;        // Set only if key does not exist (SET NX)
+    bool xx = false;        // Set only if key exists (SET XX)
 };
 
-// Hash 操作
+// Hash operations
 using HashFields = std::unordered_map<std::string, std::string>;
 
-// List 操作
+// List operations
 using ListValues = std::vector<std::string>;
 
-// 轻量级 KV 存储 (类 Redis)
+// Lightweight KV store (Redis-like)
 class KeyValueStore {
 public:
     KeyValueStore();
     ~KeyValueStore();
 
-    // ========== 字符串操作 ==========
+    // ========== String operations ==========
 
-    // 设置键值
+    // Set key-value
     void set(const std::string& key, const std::string& value, const KvOptions& options = {});
 
-    // 获取值
+    // Get value
     std::string get(const std::string& key);
 
-    // 删除键
+    // Delete key
     void del(const std::string& key);
     void del(const std::vector<std::string>& keys);
 
-    // 检查键是否存在
+    // Check if key exists
     bool exists(const std::string& key);
 
-    // 获取匹配的所有键
+    // Get all matching keys
     std::vector<std::string> keys(const std::string& pattern);
 
-    // 设置过期时间
+    // Set expiration time
     void expire(const std::string& key, int64_t seconds);
 
-    // 获取剩余时间
+    // Get remaining time
     int64_t ttl(const std::string& key);
 
-    // 自增
+    // Increment
     int64_t incr(const std::string& key, int64_t delta = 1);
 
-    // ========== Hash 操作 ==========
+    // ========== Hash operations ==========
 
-    // 设置 hash 字段
+    // Set hash field
     void hset(const std::string& hash, const std::string& field, const std::string& value);
 
-    // 批量设置 hash
+    // Batch set hash
     void hmset(const std::string& hash, const HashFields& fields);
 
-    // 获取 hash 字段
+    // Get hash field
     std::string hget(const std::string& hash, const std::string& field);
 
-    // 获取所有 hash 字段
+    // Get all hash fields
     HashFields hgetall(const std::string& hash);
 
-    // 删除 hash 字段
+    // Delete hash field
     void hdel(const std::string& hash, const std::string& field);
 
-    // 检查 hash 字段是否存在
+    // Check if hash field exists
     bool hexists(const std::string& hash, const std::string& field);
 
-    // 获取所有字段名
+    // Get all field names
     std::vector<std::string> hkeys(const std::string& hash);
 
-    // ========== List 操作 ==========
+    // ========== List operations ==========
 
-    // 左推入
+    // Left push
     void lpush(const std::string& list, const std::string& value);
 
-    // 右推入
+    // Right push
     void rpush(const std::string& list, const std::string& value);
 
-    // 左弹出
+    // Left pop
     std::string lpop(const std::string& list);
 
-    // 右弹出
+    // Right pop
     std::string rpop(const std::string& list);
 
-    // 获取列表长度
+    // Get list length
     size_t llen(const std::string& list);
 
-    // 获取列表范围
+    // Get list range
     ListValues lrange(const std::string& list, int64_t start, int64_t stop);
 
-    // 删除列表元素
+    // Delete list element
     size_t lrem(const std::string& list, int64_t count, const std::string& value);
 
-    // ========== 发布订阅 (简化版) ==========
+    // ========== Pub/Sub (simplified) ==========
 
     using ChannelCallback = std::function<void(const std::string& message)>;
 
-    // 发布消息
+    // Publish message
     void publish(const std::string& channel, const std::string& message);
 
-    // 订阅频道
+    // Subscribe channel
     void subscribe(const std::string& channel, ChannelCallback callback);
 
-    // 取消订阅
+    // Unsubscribe
     void unsubscribe(const std::string& channel);
 
-    // ========== 持久化 ==========
+    // ========== Persistence ==========
 
-    // 保存到 SQLite
+    // Save to SQLite
     bool save(const std::string& filepath);
 
-    // 从 SQLite 加载
+    // Load from SQLite
     bool load(const std::string& filepath);
 
-    // 开启自动持久化
+    // Enable auto-persistence
     void enableAutoSave(const std::string& filepath, int64_t intervalSeconds);
 
-    // ========== 维护 ==========
+    // ========== Maintenance ==========
 
-    // 清理过期键
+    // Clean up expired keys
     size_t cleanupExpired();
 
-    // 获取统计信息
+    // Get statistics
     std::unordered_map<std::string, size_t> stats() const;
 
 private:

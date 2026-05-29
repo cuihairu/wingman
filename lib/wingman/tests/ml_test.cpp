@@ -5,7 +5,7 @@
 
 using namespace wingman;
 
-// ========== TensorDataType 枚举 ==========
+// ========== TensorDataType Enum ==========
 
 TEST(TensorDataTypeTest, EnumValues) {
     EXPECT_EQ(static_cast<int>(TensorDataType::FLOAT32), 0);
@@ -79,7 +79,7 @@ TEST(TensorDataTest, ByteSizeUint8) {
     EXPECT_EQ(td.byteSize(), 10u);  // 10 * 1 byte
 }
 
-// ========== Tensor 辅助函数 ==========
+// ========== Tensor Helper Functions ==========
 
 TEST(TensorTest, CreateFloat32) {
     auto tensor = Tensor::createFloat32({2, 3}, {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f});
@@ -206,7 +206,7 @@ TEST(ModelHelpersTest, DetectObjectsReturnsEmptyStub) {
     EXPECT_TRUE(detections.empty());
 }
 
-// ========== TensorData 边界情况 ==========
+// ========== TensorData Edge Cases ==========
 
 TEST(TensorDataTest, EmptyShapeElementCount) {
     // empty shape => product of no dimensions = 1
@@ -244,7 +244,7 @@ TEST(TensorDataTest, ByteSizeUint16) {
     EXPECT_EQ(td.byteSize(), 6u);  // 3 * 2 bytes
 }
 
-// ========== Tensor 边界情况 ==========
+// ========== Tensor Edge Cases ==========
 
 TEST(TensorTest, CreateFloat32EmptyData) {
     auto tensor = Tensor::createFloat32({0}, {});
@@ -275,7 +275,7 @@ TEST(TensorTest, FromImage1x1) {
     EXPECT_EQ(tensor.data.size(), 3u * sizeof(float));
 }
 
-// ========== InferenceResult 扩展 ==========
+// ========== InferenceResult Extended ==========
 
 TEST(InferenceResultTest, SuccessWithOutputs) {
     InferenceResult result;
@@ -303,7 +303,7 @@ TEST(ModelHelpersTest, SegmentDoesNotCrashStub) {
     EXPECT_NO_THROW(bm = ModelHelpers::segment(engine, "input", img, 1, 1));
 }
 
-// ========== 执行提供器扩展 ==========
+// ========== Execution Provider Extended ==========
 
 TEST(ModelEngineTest, MultipleExecutionProvidersReturned) {
     auto providers = ModelEngine::getAvailableExecutionProviders();

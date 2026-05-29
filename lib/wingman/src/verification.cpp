@@ -24,7 +24,7 @@
 
 namespace wingman {
 
-// ========== Base32 编解码 ==========
+// ========== Base32 Encode/Decode ==========
 
 static const char BASE32_ALPHABET[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
@@ -37,7 +37,7 @@ static std::string base32Decode(const std::string& encoded) {
         if (c == ' ' || c == '\t' || c == '\r' || c == '\n') continue;
 
         const char* p = std::strchr(BASE32_ALPHABET, std::toupper(c));
-        if (!p) continue;  // 跳过非法字符
+        if (!p) continue;  // Skip invalid characters
 
         int value = p - BASE32_ALPHABET;
         buffer = (buffer << 5) | value;
@@ -54,7 +54,7 @@ static std::string base32Decode(const std::string& encoded) {
 
 // ========== HMAC-SHA1 ==========
 
-// 简单的 SHA1 实现（用于 HMAC）
+// Simple SHA1 implementation (for HMAC)
 static std::vector<uint8_t> sha1(const std::vector<uint8_t>& data) {
     std::vector<uint8_t> result(20);
 
@@ -92,20 +92,20 @@ static std::vector<uint8_t> sha1(const std::vector<uint8_t>& data) {
 }
 
 static std::vector<uint8_t> hmacSha1(const std::vector<uint8_t>& key, const std::vector<uint8_t>& data) {
-    // HMAC-SHA1 实现 (RFC 2104)
+    // HMAC-SHA1 implementation (RFC 2104)
     const size_t blockSize = 64;  // SHA1 block size
 
     std::vector<uint8_t> keyCopy(key);
 
-    // 如果 key 长于 block size，先 hash
+    // If key is longer than block size, hash first
     if (key.size() > blockSize) {
         keyCopy = sha1(key);
     }
 
-    // 填充 key 到 block size
+    // Pad key to block size
     keyCopy.resize(blockSize, 0);
 
-    // 生成 ipad 和 opad
+    // Generate ipad and opad
     std::vector<uint8_t> ipad(blockSize, 0x36);
     std::vector<uint8_t> opad(blockSize, 0x5c);
 
@@ -114,13 +114,13 @@ static std::vector<uint8_t> hmacSha1(const std::vector<uint8_t>& key, const std:
         opad[i] ^= keyCopy[i];
     }
 
-    // 内层 hash: SHA1(key ^ ipad || data)
+    // Inner hash: SHA1(key ^ ipad || data)
     std::vector<uint8_t> inner;
     inner.insert(inner.end(), ipad.begin(), ipad.end());
     inner.insert(inner.end(), data.begin(), data.end());
     std::vector<uint8_t> innerHash = sha1(inner);
 
-    // 外层 hash: SHA1(key ^ opad || innerHash)
+    // Outer hash: SHA1(key ^ opad || innerHash)
     std::vector<uint8_t> outer;
     outer.insert(outer.end(), opad.begin(), opad.end());
     outer.insert(outer.end(), innerHash.begin(), innerHash.end());
@@ -128,7 +128,7 @@ static std::vector<uint8_t> hmacSha1(const std::vector<uint8_t>& key, const std:
     return sha1(outer);
 }
 
-// ========== TOTP 算法 ==========
+// ========== TOTP Algorithm ==========
 
 static uint64_t getCurrentTimeCounter(int period = 30) {
     auto now = std::chrono::system_clock::now();
@@ -137,49 +137,49 @@ static uint64_t getCurrentTimeCounter(int period = 30) {
 }
 
 static std::string generateTOTPInternal(const std::string& secret, int digits, int period, uint64_t timeCounter) {
-    // 1. 解码 Base32 密钥
+    // 1. Decode Base32 secret key
     std::string key = base32Decode(secret);
     if (key.empty()) {
         return "";
     }
 
-    // 2. 将时间计数器转为 8 字节大端序
+    // 2. Convert time counter to 8-byte big-endian
     std::vector<uint8_t> timeBytes(8);
     for (int i = 7; i >= 0; i--) {
         timeBytes[i] = timeCounter & 0xFF;
         timeCounter >>= 8;
     }
 
-    // 3. 计算 HMAC-SHA1
+    // 3. Calculate HMAC-SHA1
     std::vector<uint8_t> keyBytes(key.begin(), key.end());
     std::vector<uint8_t> hmac = hmacSha1(keyBytes, timeBytes);
 
-    // 4. 动态截取
+    // 4. Dynamic truncation
     int offset = hmac[19] & 0x0F;
     int binary = ((hmac[offset] & 0x7F) << 24)
                | ((hmac[offset + 1] & 0xFF) << 16)
                | ((hmac[offset + 2] & 0xFF) << 8)
                | (hmac[offset + 3] & 0xFF);
 
-    // 5. 生成验证码
+    // 5. Generate verification code
     int otp = binary % static_cast<int>(std::pow(10, digits));
     std::ostringstream oss;
     oss << std::setw(digits) << std::setfill('0') << otp;
     return oss.str();
 }
 
-// ========== Steam Guard 特殊实现 ==========
+// ========== Steam Guard Special Implementation ==========
 
-// Steam Guard 使用 modified Base64 和时间偏移
+// Steam Guard uses modified Base64 and time offset
 static std::string base64DecodeSteam(const std::string& encoded) {
-    // Steam 的 Base64 变体：替换字符
+    // Steam Base64 variant: replacement characters
     std::string normalized = encoded;
     for (char& c : normalized) {
         if (c == '-') c = '+';
         else if (c == '_') c = '/';
     }
 
-    // 标准 Base64 解码
+    // Standard Base64 decode
     std::string result;
     int buffer = 0;
     int bitsLeft = 0;
@@ -205,36 +205,36 @@ static std::string base64DecodeSteam(const std::string& encoded) {
 }
 
 static std::string generateSteamGuardInternal(const std::string& secret, uint64_t timeCounter) {
-    // Steam 使用自己的编码方式
+    // Steam uses its own encoding
     std::string key = base64DecodeSteam(secret);
     if (key.empty()) {
-        // 尝试标准 Base32
+        // Try standard Base32
         key = base32Decode(secret);
         if (key.empty()) return "";
     }
 
-    // Steam Guard 时间偏移（Unix 时间戳修正）
+    // Steam Guard time offset (Unix timestamp correction)
     timeCounter = timeCounter & 0xFFFFFFFF;
 
-    // 将时间计数器转为 8 字节大端序
+    // Convert time counter to 8-byte big-endian
     std::vector<uint8_t> timeBytes(8);
     for (int i = 7; i >= 0; i--) {
         timeBytes[i] = timeCounter & 0xFF;
         timeCounter >>= 8;
     }
 
-    // 计算 HMAC-SHA1
+    // Calculate HMAC-SHA1
     std::vector<uint8_t> keyBytes(key.begin(), key.end());
     std::vector<uint8_t> hmac = hmacSha1(keyBytes, timeBytes);
 
-    // Steam 使用特定的截取方式
+    // Steam uses specific truncation method
     int offset = hmac[19] & 0x0F;
     int binary = ((hmac[offset] & 0x7F) << 24)
                | ((hmac[offset + 1] & 0xFF) << 16)
                | ((hmac[offset + 2] & 0xFF) << 8)
                | (hmac[offset + 3] & 0xFF);
 
-    // Steam Guard 是 5 位数字
+    // Steam Guard is 5-digit
     int otp = binary % 100000;
     std::ostringstream oss;
     oss << std::setw(5) << std::setfill('0') << otp;
@@ -289,7 +289,7 @@ VerificationManager::VerificationManager()
 
 VerificationManager::~VerificationManager() = default;
 
-// ========== TOTP 实现 ==========
+// ========== TOTP Implementation ==========
 
 std::string VerificationManager::generateTOTP(const TOTPConfig& config) {
     uint64_t timeCounter = getCurrentTimeCounter(config.period);
@@ -305,7 +305,7 @@ std::string VerificationManager::generateTOTP(const std::string& account) {
 bool VerificationManager::verifyTOTP(const TOTPConfig& config, const std::string& code, int window) {
     uint64_t timeCounter = getCurrentTimeCounter(config.period);
 
-    // 检查当前窗口和前后各 window 个窗口
+    // Check current window and window windows before/after
     for (int i = -window; i <= window; i++) {
         std::string generated = generateTOTPInternal(config.secret, config.digits, config.period, timeCounter + i);
         if (generated == code) return true;
@@ -335,18 +335,18 @@ std::string VerificationManager::generateSteamGuardTime(const std::string& secre
     return generateSteamGuardInternal(secret, time / 30);
 }
 
-// ========== 邮件实现（占位） ==========
+// ========== Email Implementation (Placeholder) ==========
 
 std::optional<std::string> VerificationManager::getEmailCode(const EmailConfig& config) {
-    // TODO: 实现 IMAP 邮件读取
-    // 需要 libcurl 或其他 IMAP 库
+    // TODO: Implement IMAP email reading
+    // Requires libcurl or other IMAP library
     std::cout << "[EMAIL] Reading email from " << config.imapServer << "\n";
     return std::nullopt;
 }
 
 void VerificationManager::getEmailCodeAsync(const EmailConfig& config,
                                             std::function<void(std::optional<std::string>)> callback) {
-    // TODO: 实现异步邮件监听
+    // TODO: Implement async email listening
     std::thread([this, config, callback]() {
         auto code = getEmailCode(config);
         callback(code);
@@ -354,10 +354,10 @@ void VerificationManager::getEmailCodeAsync(const EmailConfig& config,
 }
 
 void VerificationManager::stopEmailListener() {
-    // TODO: 停止邮件监听
+    // TODO: Stop email listening
 }
 
-// ========== 配置管理 ==========
+// ========== Configuration Management ==========
 
 bool VerificationManager::saveTOTP(const std::string& account, const TOTPConfig& config) {
     nlohmann::json j = impl_->loadConfig();

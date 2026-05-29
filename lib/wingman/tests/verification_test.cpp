@@ -77,7 +77,7 @@ TEST(VerificationManagerTest, SteamGuardWithFixedTime) {
     EXPECT_EQ(code3.size(), 5u);
 }
 
-// ========== TOTP 配置管理 ==========
+// ========== TOTP Configuration Management ==========
 
 TEST(VerificationManagerTest, SaveAndLoadTOTP) {
     VerificationManager mgr;
@@ -129,7 +129,7 @@ TEST(VerificationManagerTest, RemoveNonExistentTOTP) {
     EXPECT_NO_THROW(mgr.removeTOTP("nonexistent_remove_test"));
 }
 
-// ========== Email 配置管理 ==========
+// ========== Email Configuration Management ==========
 
 TEST(VerificationManagerTest, SaveAndLoadEmail) {
     VerificationManager mgr;

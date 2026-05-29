@@ -10,10 +10,10 @@
 
 namespace wingman {
 
-// KV 项（带过期时间）
+// KV item (with expiration)
 struct KvItem {
     std::string value;
-    int64_t expireTime;  // 0 表示不过期，其他为过期时间戳
+    int64_t expireTime;  // 0 means no expiration, otherwise expiration timestamp
 
     KvItem() : expireTime(0) {}
     KvItem(const std::string& v, int64_t exp) : value(v), expireTime(exp) {}
@@ -23,23 +23,23 @@ struct KvItem {
     }
 };
 
-// Hash 项
+// Hash item
 struct KvHashItem {
     std::unordered_map<std::string, std::string> fields;
 };
 
-// List 项
+// List item
 struct KvListItem {
     std::list<std::string> values;
 };
 
-// 订阅信息
+// Subscription info
 struct Subscription {
     std::string channel;
     KeyValueStore::ChannelCallback callback;
 };
 
-// KeyValueStore 实现
+// KeyValueStore implementation
 class KeyValueStore::Impl {
 public:
     std::unordered_map<std::string, KvItem> store;
@@ -76,7 +76,7 @@ public:
             return false;
         }
 
-        // 创建表
+        // Create table
         const char* createTable =
             "CREATE TABLE IF NOT EXISTS kv_store ("
             "key TEXT PRIMARY KEY, value TEXT, expire_time INTEGER);";
@@ -85,13 +85,13 @@ public:
             return false;
         }
 
-        // 开始事务
+        // Begin transaction
         sqlite3_exec(db, "BEGIN;", nullptr, nullptr, nullptr);
 
-        // 清空旧数据
+        // Clear old data
         sqlite3_exec(db, "DELETE FROM kv_store;", nullptr, nullptr, nullptr);
 
-        // 插入数据
+        // Insert data
         sqlite3_stmt* stmt = nullptr;
         if (sqlite3_prepare_v2(db, "INSERT INTO kv_store (key, value, expire_time) VALUES (?, ?, ?);",
                                -1, &stmt, nullptr) == SQLITE_OK) {
@@ -150,7 +150,7 @@ KeyValueStore::~KeyValueStore() {
     }
 }
 
-// 字符串操作
+// String operations
 void KeyValueStore::set(const std::string& key, const std::string& value, const KvOptions& options) {
     std::lock_guard<std::mutex> lock(m_impl->mutex);
 
@@ -160,12 +160,12 @@ void KeyValueStore::set(const std::string& key, const std::string& value, const 
     }
 
     if (options.nx) {
-        // 仅当 key 不存在时设置
+        // Set only if key does not exist
         if (m_impl->store.find(key) == m_impl->store.end()) {
             m_impl->store[key] = KvItem(value, expireTime);
         }
     } else if (options.xx) {
-        // 仅当 key 存在时设置
+        // Set only if key exists
         if (m_impl->store.find(key) != m_impl->store.end()) {
             m_impl->store[key] = KvItem(value, expireTime);
         }
@@ -251,11 +251,11 @@ int64_t KeyValueStore::ttl(const std::string& key) {
 
     auto it = m_impl->store.find(key);
     if (it == m_impl->store.end() || it->second.expireTime == 0) {
-        return -1;  // 不存在或没有设置过期
+        return -1;  // Does not exist or no expiration set
     }
 
     int64_t remaining = it->second.expireTime - std::time(nullptr);
-    return remaining > 0 ? remaining : -2;  // -2 表示已过期
+    return remaining > 0 ? remaining : -2;  // -2 means expired
 }
 
 int64_t KeyValueStore::incr(const std::string& key, int64_t delta) {
@@ -274,7 +274,7 @@ int64_t KeyValueStore::incr(const std::string& key, int64_t delta) {
     return value;
 }
 
-// Hash 操作
+// Hash operations
 void KeyValueStore::hset(const std::string& hash, const std::string& field, const std::string& value) {
     std::lock_guard<std::mutex> lock(m_impl->mutex);
     m_impl->hashes[hash].fields[field] = value;
@@ -352,7 +352,7 @@ std::vector<std::string> KeyValueStore::hkeys(const std::string& hash) {
     return result;
 }
 
-// List 操作
+// List operations
 void KeyValueStore::lpush(const std::string& list, const std::string& value) {
     std::lock_guard<std::mutex> lock(m_impl->mutex);
     m_impl->lists[list].values.push_front(value);
@@ -422,10 +422,10 @@ ListValues KeyValueStore::lrange(const std::string& list, int64_t start, int64_t
     auto& values = it->second.values;
     size_t size = values.size();
 
-    // 处理负索引
+    // Handle negative index
     if (start < 0) start = size + start;
     if (stop < 0) stop = size + stop;
-    if (stop < 0) stop = -1;  // 到末尾
+    if (stop < 0) stop = -1;  // To end
 
     size_t startIndex = static_cast<size_t>(std::max<int64_t>(0, start));
     size_t stopIndex = static_cast<size_t>(std::max<int64_t>(0, stop));
@@ -451,7 +451,7 @@ size_t KeyValueStore::lrem(const std::string& list, int64_t count, const std::st
     auto& values = it->second.values;
 
     if (count == 0) {
-        // 删除所有等于 value 的元素
+        // Remove all elements equal to value
         auto vit = values.begin();
         while (vit != values.end()) {
             if (*vit == value) {
@@ -462,7 +462,7 @@ size_t KeyValueStore::lrem(const std::string& list, int64_t count, const std::st
             }
         }
     } else if (count > 0) {
-        // 从头开始删除 count 个
+        // Remove count elements from head
         int64_t toRemove = count;
         auto vit = values.begin();
         while (vit != values.end() && toRemove > 0) {
@@ -475,12 +475,12 @@ size_t KeyValueStore::lrem(const std::string& list, int64_t count, const std::st
             }
         }
     } else {
-        // count < 0，从尾开始删除 |count| 个
+        // count < 0, remove |count| elements from tail
         int64_t toRemove = -count;
         auto vit = values.rbegin();
         while (vit != values.rend() && toRemove > 0) {
             if (*vit == value) {
-                // 反向迭代器不能直接 erase
+                // Reverse iterator cannot erase directly
                 auto forwardIt = std::next(vit).base();
                 values.erase(std::prev(forwardIt));
                 removed++;
@@ -498,7 +498,7 @@ size_t KeyValueStore::lrem(const std::string& list, int64_t count, const std::st
     return removed;
 }
 
-// 发布订阅
+// Pub/Sub
 void KeyValueStore::publish(const std::string& channel, const std::string& message) {
     std::lock_guard<std::mutex> lock(m_impl->mutex);
 
@@ -528,7 +528,7 @@ void KeyValueStore::unsubscribe(const std::string& channel) {
     );
 }
 
-// 持久化
+// Persistence
 bool KeyValueStore::save(const std::string& filepath) {
 #ifdef WINGMAN_HAS_SQLITE
     return m_impl->saveToSqlite(filepath);
@@ -552,7 +552,7 @@ void KeyValueStore::enableAutoSave(const std::string& filepath, int64_t interval
     m_impl->autoSaveInterval = intervalSeconds;
     m_impl->running = true;
 
-    // 启动清理线程
+    // Start cleanup thread
     m_impl->cleanupThread = std::thread([this]() {
         while (m_impl->running) {
             std::this_thread::sleep_for(std::chrono::seconds(10));
@@ -560,7 +560,7 @@ void KeyValueStore::enableAutoSave(const std::string& filepath, int64_t interval
         }
     });
 
-    // 启动自动保存线程
+    // Start auto-save thread
     m_impl->saveThread = std::thread([this]() {
         while (m_impl->running) {
             std::this_thread::sleep_for(std::chrono::seconds(m_impl->autoSaveInterval));

@@ -14,15 +14,15 @@
 #include <cstring>
 #include <algorithm>
 
-// 取消 linux 宏定义
+// Undefine linux macro
 #undef linux
 
 namespace wingman::platform::linux {
 
 /**
- * @brief Linux X11 屏幕捕获实现
+ * @brief Linux X11 screen capture implementation
  *
- * 使用 XGetImage 和 XShm 扩展进行屏幕捕获。
+ * Uses XGetImage and XShm extension for screen capture.
  */
 class X11Capture : public ICapture {
 public:
@@ -42,10 +42,10 @@ public:
             return false;
         }
 
-        // 检查 XShm 扩展
+        // Check XShm extension
         int majorOpcode, firstEvent, firstError;
         if (XQueryExtension(display_, "MIT-SHM", &majorOpcode, &firstEvent, &firstError)) {
-            // 尝试使用 XShm
+            // Try using XShm
             useShm_ = testShm();
             if (useShm_) {
                 spdlog::info("[X11Capture] Using XShm extension for faster capture");
@@ -110,7 +110,7 @@ public:
         Window window = static_cast<Window>(hwnd);
         if (window == None) return nullptr;
 
-        // 获取窗口边界
+        // Get window bounds
         Window root;
         int x, y;
         unsigned int width, height, border_width, depth;
@@ -196,7 +196,7 @@ private:
     XShmSegmentInfo shmInfo_;
 
     bool testShm() {
-        // 创建一个小的测试图像
+        // Create a small test image
         XImage* testImage = XShmCreateImage(
             display_,
             DefaultVisual(display_, 0),
@@ -231,10 +231,10 @@ private:
             return false;
         }
 
-        // 测试捕获
+        // Test capture
         bool success = (XShmGetImage(display_, DefaultRootWindow(display_), testImage, 0, 0, AllPlanes) != 0);
 
-        // 清理
+        // Cleanup
         XShmDetach(display_, &shmInfo_);
         shmdt(shmInfo_.shmaddr);
         shmctl(shmInfo_.shmid, IPC_RMID, nullptr);
@@ -246,7 +246,7 @@ private:
     }
 
     std::unique_ptr<Bitmap> captureRegionShm(const Rect& region, Window window) {
-        // 获取窗口边界
+        // Get window bounds
         Window root;
         int x, y;
         unsigned int width, height, border_width, depth;
@@ -254,7 +254,7 @@ private:
             return nullptr;
         }
 
-        // 限制捕获区域
+        // Limit capture region
         Rect captureRegion = region;
         captureRegion.x = std::max(0, std::min(captureRegion.x, static_cast<int>(width) - 1));
         captureRegion.y = std::max(0, std::min(captureRegion.y, static_cast<int>(height) - 1));
@@ -265,7 +265,7 @@ private:
             return nullptr;
         }
 
-        // 创建 XImage
+        // Create XImage
         XImage* xImage = XShmCreateImage(
             display_,
             DefaultVisual(display_, 0),
@@ -281,7 +281,7 @@ private:
             return captureRegionXImage(region, window);
         }
 
-        // 分配共享内存
+        // Allocate shared memory
         shmInfo_.shmid = shmget(IPC_PRIVATE, xImage->bytes_per_line * captureRegion.height, IPC_CREAT | 0777);
         if (shmInfo_.shmid == -1) {
             XDestroyImage(xImage);
@@ -304,7 +304,7 @@ private:
             return captureRegionXImage(region, window);
         }
 
-        // 捕获图像
+        // Capture image
         bool success = XShmGetImage(
             display_,
             window,
@@ -320,7 +320,7 @@ private:
             result = xImageToBitmap(xImage, captureRegion.width, captureRegion.height);
         }
 
-        // 清理
+        // Cleanup
         XShmDetach(display_, &shmInfo_);
         XDestroyImage(xImage);
         shmdt(shmInfo_.shmaddr);
@@ -331,7 +331,7 @@ private:
     }
 
     std::unique_ptr<Bitmap> captureRegionXImage(const Rect& region, Window window) {
-        // 获取窗口边界
+        // Get window bounds
         Window root;
         int x, y;
         unsigned int width, height, border_width, depth;
@@ -339,7 +339,7 @@ private:
             return nullptr;
         }
 
-        // 限制捕获区域
+        // Limit capture region
         Rect captureRegion = region;
         captureRegion.x = std::max(0, std::min(captureRegion.x, static_cast<int>(width) - 1));
         captureRegion.y = std::max(0, std::min(captureRegion.y, static_cast<int>(height) - 1));
@@ -350,7 +350,7 @@ private:
             return nullptr;
         }
 
-        // 捕获图像
+        // Capture image
         XImage* xImage = XGetImage(
             display_,
             window,
@@ -378,16 +378,16 @@ private:
         auto bitmap = std::make_unique<Bitmap>(width, height);
         uint8_t* dest = bitmap->getData();
 
-        // 转换像素格式
+        // Convert pixel format
         if (xImage->bits_per_pixel == 32) {
-            // 32位：BGRA 或 RGBA
+            // 32-bit: BGRA or RGBA
             for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; ++x) {
                     unsigned long pixel = XGetPixel(xImage, x, y);
 
                     int destIndex = (y * width + x) * 4;
 
-                    // 检测字节序
+                    // Detect byte order
                     if (xImage->byte_order == LSBFirst) {
                         // BGRA
                         dest[destIndex + 0] = (pixel >> 0) & 0xFF;  // B
@@ -404,7 +404,7 @@ private:
                 }
             }
         } else if (xImage->bits_per_pixel == 24) {
-            // 24位：BGR 或 RGB
+            // 24-bit: BGR or RGB
             for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; ++x) {
                     unsigned long pixel = XGetPixel(xImage, x, y);
@@ -425,7 +425,7 @@ private:
                 }
             }
         } else if (xImage->bits_per_pixel == 16) {
-            // 16位：RGB565
+            // 16-bit: RGB565
             for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; ++x) {
                     unsigned long pixel = XGetPixel(xImage, x, y);
@@ -443,7 +443,7 @@ private:
                 }
             }
         } else {
-            // 其他格式，直接复制
+            // Other formats, direct copy
             spdlog::warn("[X11Capture] Unsupported pixel format: {} bits", xImage->bits_per_pixel);
             return nullptr;
         }

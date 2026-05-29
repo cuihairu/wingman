@@ -6,7 +6,7 @@
 
 namespace wingman {
 
-// 静态成员初始化
+// Static member initialization
 bool OCR::initialized = false;
 std::string OCR::datapath;
 std::string OCR::language;

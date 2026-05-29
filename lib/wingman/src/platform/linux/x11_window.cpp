@@ -12,13 +12,13 @@
 #include <vector>
 #include <string>
 
-// 取消 linux 宏定义
+// Undefine linux macro
 #undef linux
 
 namespace wingman::platform::linux {
 
 /**
- * @brief Linux X11 窗口管理实现
+ * @brief Linux X11 window management implementation
  */
 class X11Window : public IWindow {
 public:
@@ -105,11 +105,11 @@ public:
 
         Window window = static_cast<Window>(hwnd);
 
-        // 获取屏幕信息
+        // Get screen info
         int screen = DefaultScreen(display_);
         Window rootWindow = XRootWindow(display_, screen);
 
-        // 发送激活事件
+        // Send activation event
         XEvent event = {};
         event.xclient.type = ClientMessage;
         event.xclient.serial = 0;
@@ -124,7 +124,7 @@ public:
 
         XSendEvent(display_, rootWindow, False, SubstructureRedirectMask | SubstructureNotifyMask, &event);
 
-        // 同时提升窗口
+        // Also raise the window
         XRaiseWindow(display_, window);
         XFlush(display_);
 
@@ -136,7 +136,7 @@ public:
 
         Window window = static_cast<Window>(hwnd);
 
-        // 使用 _NET_WM_STATE_HIDDEN 属性
+        // Use _NET_WM_STATE_HIDDEN property
         Atom wmState = XInternAtom(display_, "_NET_WM_STATE", False);
         Atom wmStateHidden = XInternAtom(display_, "_NET_WM_STATE_HIDDEN", False);
 
@@ -167,7 +167,7 @@ public:
 
         Window window = static_cast<Window>(hwnd);
 
-        // 使用 _NET_WM_STATE_MAXIMIZED_HORZ 和 _NET_WM_STATE_MAXIMIZED_VERT
+        // Use _NET_WM_STATE_MAXIMIZED_HORZ and _NET_WM_STATE_MAXIMIZED_VERT
         Atom wmState = XInternAtom(display_, "_NET_WM_STATE", False);
         Atom wmMaxHorz = XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
         Atom wmMaxVert = XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False);
@@ -199,7 +199,7 @@ public:
 
         Window window = static_cast<Window>(hwnd);
 
-        // 检查是否最小化，如果是则取消最小化
+        // Check if minimized, restore if so
         if (isMinimized(hwnd)) {
             Atom wmState = XInternAtom(display_, "_NET_WM_STATE", False);
             Atom wmStateHidden = XInternAtom(display_, "_NET_WM_STATE_HIDDEN", False);
@@ -224,7 +224,7 @@ public:
             XFlush(display_);
         }
 
-        // 取消最大化
+        // Unmaximize
         if (isMaximized(hwnd)) {
             Atom wmState = XInternAtom(display_, "_NET_WM_STATE", False);
             Atom wmMaxHorz = XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
@@ -258,7 +258,7 @@ public:
 
         Window window = static_cast<Window>(hwnd);
 
-        // 发送 WM_DELETE_WINDOW 消息
+        // Send WM_DELETE_WINDOW message
         Atom wmProtocols = XInternAtom(display_, "WM_PROTOCOLS", False);
         Atom wmDeleteWindow = XInternAtom(display_, "WM_DELETE_WINDOW", False);
 
@@ -287,7 +287,7 @@ public:
             XFree(protocols);
         }
 
-        // 如果不支持 WM_DELETE_WINDOW，尝试使用 KillClient
+        // If WM_DELETE_WINDOW not supported, try KillClient
         XKillClient(display_, window);
         XFlush(display_);
 
@@ -305,7 +305,7 @@ public:
     }
 
     bool hide(WindowHandle hwnd) override {
-        // X11 没有直接的隐藏功能，使用最小化代替
+        // X11 has no direct hide, use minimize instead
         return minimize(hwnd);
     }
 
@@ -334,7 +334,7 @@ public:
 
         std::string result;
 
-        // 首先尝试 _NET_WM_NAME (支持 UTF-8)
+        // First try _NET_WM_NAME (supports UTF-8)
         if (XGetWindowProperty(display_, window, wmName, 0, 1024, False, utf8String,
                               &actualType, &actualFormat, &numItems, &bytesAfter, &prop) == Success) {
             if (prop && numItems > 0) {
@@ -345,7 +345,7 @@ public:
             if (prop) XFree(prop);
         }
 
-        // 回退到 WM_NAME (传统属性)
+        // Fall back to WM_NAME (legacy property)
         char* windowName = nullptr;
         if (XFetchName(display_, window, &windowName) != 0 && windowName) {
             result = std::string(windowName);
@@ -368,7 +368,7 @@ public:
         int screen = DefaultScreen(display_);
         Window rootWindow = XRootWindow(display_, screen);
 
-        // 获取相对于根窗口的坐标
+        // Get coordinates relative to root window
         int x, y;
         Window child;
         XTranslateCoordinates(display_, window, rootWindow, 0, 0, &x, &y, &child);
@@ -466,7 +466,7 @@ public:
 
         Window window = static_cast<Window>(hwnd);
 
-        // 检查 _NET_WM_STATE_HIDDEN 属性
+        // Check _NET_WM_STATE_HIDDEN property
         Atom wmState = XInternAtom(display_, "_NET_WM_STATE", False);
         Atom wmStateHidden = XInternAtom(display_, "_NET_WM_STATE_HIDDEN", False);
 
@@ -498,7 +498,7 @@ public:
 
         Window window = static_cast<Window>(hwnd);
 
-        // 检查 _NET_WM_STATE_MAXIMIZED_HORZ 和 _NET_WM_STATE_MAXIMIZED_VERT
+        // Check _NET_WM_STATE_MAXIMIZED_HORZ and _NET_WM_STATE_MAXIMIZED_VERT
         Atom wmState = XInternAtom(display_, "_NET_WM_STATE", False);
         Atom wmMaxHorz = XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
         Atom wmMaxVert = XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False);
@@ -653,14 +653,14 @@ private:
             for (unsigned int i = 0; i < numChildren; ++i) {
                 Window child = children[i];
 
-                // 检查当前窗口
+                // Check current window
                 std::string windowTitle = getTitle(static_cast<WindowHandle>(child));
                 if (!windowTitle.empty() && windowTitle.find(title) != std::string::npos) {
                     XFree(children);
                     return child;
                 }
 
-                // 递归检查子窗口
+                // Recursively check child windows
                 Window found = searchWindowRecursive(title, child);
                 if (found != None) {
                     XFree(children);
@@ -683,13 +683,13 @@ private:
             for (unsigned int i = 0; i < numChildren; ++i) {
                 Window child = children[i];
 
-                // 检查当前窗口
+                // Check current window
                 std::string windowTitle = getTitle(static_cast<WindowHandle>(child));
                 if (!windowTitle.empty() && windowTitle.find(title) != std::string::npos) {
                     results.push_back(static_cast<WindowHandle>(child));
                 }
 
-                // 递归检查子窗口
+                // Recursively check child windows
                 searchWindowsRecursive(title, child, results);
             }
 
@@ -710,7 +710,7 @@ private:
             for (unsigned int i = 0; i < numChildren; ++i) {
                 Window child = children[i];
 
-                // 检查当前窗口的类名
+                // Check current window class name
                 XClassHint classHint;
                 if (XGetClassHint(display_, child, &classHint) != 0) {
                     std::string resClass = classHint.res_class ? classHint.res_class : "";
@@ -728,7 +728,7 @@ private:
                     XFree(classHint.res_name);
                 }
 
-                // 递归检查子窗口
+                // Recursively check child windows
                 Window found = searchWindowByClassRecursive(className, child);
                 if (found != None) {
                     XFree(children);
@@ -751,13 +751,13 @@ private:
             for (unsigned int i = 0; i < numChildren; ++i) {
                 Window child = children[i];
 
-                // 检查当前窗口的 PID
+                // Check current window PID
                 auto pid = getProcessId(static_cast<WindowHandle>(child));
                 if (pid && pid == processId) {
                     results.push_back(static_cast<WindowHandle>(child));
                 }
 
-                // 递归检查子窗口
+                // Recursively check child windows
                 searchWindowsByPid(processId, child, results);
             }
 
@@ -789,7 +789,7 @@ private:
                     results.push_back(info);
                 }
 
-                // 递归枚举子窗口
+                // Recursively enumerate child windows
                 enumerateWindows(child, results);
             }
 

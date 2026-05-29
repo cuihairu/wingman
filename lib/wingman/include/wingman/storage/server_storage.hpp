@@ -9,20 +9,20 @@
 
 namespace wingman {
 
-// ServerStorage: 服务器全局存储，所有连接的客户端可见
-// 适合全局公告、服务器配置、跨团队数据等
+// ServerStorage: Server global storage, visible to all connected clients
+// Suitable for global announcements, server config, cross-team data, etc.
 class ServerStorage : public IStorage {
 public:
-    // 使用已连接的 Client
+    // Use connected Client
     explicit ServerStorage(std::shared_ptr<server::Client> client);
 
     ~ServerStorage() override = default;
 
-    // 禁止拷贝
+    // Non-copyable
     ServerStorage(const ServerStorage&) = delete;
     ServerStorage& operator=(const ServerStorage&) = delete;
 
-    // IStorage 接口实现
+    // IStorage interface implementation
     size_t length() const override;
 
     std::vector<std::string> keys() const override;
@@ -37,20 +37,20 @@ public:
 
     bool hasItem(const std::string& key) const override;
 
-    // 额外方法
+    // Additional methods
 
-    // 设置前缀（用于隔离不同类型的数据）
+    // Set prefix (for isolating different types of data)
     void setPrefix(const std::string& prefix) { m_prefix = prefix; }
     const std::string& getPrefix() const { return m_prefix; }
 
-    // 订阅键变更事件（全局广播）
+    // Subscribe to key change events (global broadcast)
     using ChangeCallback = std::function<void(const std::string& key, const std::string& value)>;
     void onChange(const std::string& key, ChangeCallback callback);
 
-    // 全局广播消息（所有连接的客户端都能收到）
+    // Global broadcast message (received by all connected clients)
     void broadcast(const std::string& event, const std::string& data);
 
-    // 获取客户端
+    // Get client
     std::shared_ptr<server::Client> getClient() const { return m_client; }
 
 private:
@@ -58,11 +58,11 @@ private:
     mutable std::mutex m_mutex;
     std::string m_prefix = "global";
 
-    // 本地缓存（可选，用于减少网络请求）
+    // Local cache (optional, to reduce network requests)
     mutable std::unordered_map<std::string, std::string> m_cache;
     mutable bool m_cacheEnabled = true;
 
-    // 获取带前缀的完整键
+    // Get full key with prefix
     std::string getFullKey(const std::string& key) const;
 };
 

@@ -10,13 +10,13 @@
 #include <chrono>
 #include <unordered_map>
 
-// 取消 linux 宏定义
+// Undefine linux macro
 #undef linux
 
 namespace wingman::platform::linux {
 
 /**
- * @brief Linux XTest 输入模拟实现
+ * @brief Linux XTest input simulation implementation
  */
 class XTestInput : public IInput {
 public:
@@ -67,7 +67,7 @@ public:
     void mouseMoveRelative(int deltaX, int deltaY) override {
         if (!initialized_) return;
 
-        // 获取当前鼠标位置
+        // Get current mouse position
         Window root, child;
         int rootX, rootY, winX, winY;
         unsigned int mask;
@@ -116,7 +116,7 @@ public:
     void mouseWheel(int delta) override {
         if (!initialized_) return;
 
-        // XTest 不直接支持滚轮，使用按钮 4 和 5 模拟
+        // XTest does not directly support scroll wheel, use buttons 4 and 5 to simulate
         int button = delta > 0 ? 4 : 5;
         int clicks = std::abs(delta);
 
@@ -132,7 +132,7 @@ public:
     void mouseWheelHorizontal(int delta) override {
         if (!initialized_) return;
 
-        // 水平滚动使用按钮 6 和 7
+        // Horizontal scroll uses buttons 6 and 7
         int button = delta > 0 ? 7 : 6;
         int clicks = std::abs(delta);
 
@@ -269,8 +269,8 @@ private:
             case MouseButton::Left: return 1;
             case MouseButton::Middle: return 2;
             case MouseButton::Right: return 3;
-            case MouseButton::X1: return 8;  // 侧键1
-            case MouseButton::X2: return 9;  // 侧键2
+            case MouseButton::X1: return 8;  // Side button 1
+            case MouseButton::X2: return 9;  // Side button 2
             default: return 1;
         }
     }
@@ -288,7 +288,7 @@ private:
 
     static KeySym toKeySym(KeyCode key) {
         static const std::unordered_map<KeyCode, KeySym> keyMap = {
-            // 字母键
+            // Letter keys
             {KeyCode::A, XK_a}, {KeyCode::B, XK_b}, {KeyCode::C, XK_c},
             {KeyCode::D, XK_d}, {KeyCode::E, XK_e}, {KeyCode::F, XK_f},
             {KeyCode::G, XK_g}, {KeyCode::H, XK_h}, {KeyCode::I, XK_i},
@@ -299,19 +299,19 @@ private:
             {KeyCode::V, XK_v}, {KeyCode::W, XK_w}, {KeyCode::X, XK_x},
             {KeyCode::Y, XK_y}, {KeyCode::Z, XK_z},
 
-            // 数字键
+            // Number keys
             {KeyCode::Num0, XK_0}, {KeyCode::Num1, XK_1}, {KeyCode::Num2, XK_2},
             {KeyCode::Num3, XK_3}, {KeyCode::Num4, XK_4}, {KeyCode::Num5, XK_5},
             {KeyCode::Num6, XK_6}, {KeyCode::Num7, XK_7}, {KeyCode::Num8, XK_8},
             {KeyCode::Num9, XK_9},
 
-            // 功能键
+            // Function keys
             {KeyCode::F1, XK_F1}, {KeyCode::F2, XK_F2}, {KeyCode::F3, XK_F3},
             {KeyCode::F4, XK_F4}, {KeyCode::F5, XK_F5}, {KeyCode::F6, XK_F6},
             {KeyCode::F7, XK_F7}, {KeyCode::F8, XK_F8}, {KeyCode::F9, XK_F9},
             {KeyCode::F10, XK_F10}, {KeyCode::F11, XK_F11}, {KeyCode::F12, XK_F12},
 
-            // 控制键
+            // Control keys
             {KeyCode::Space, XK_space},
             {KeyCode::Enter, XK_Return},
             {KeyCode::Escape, XK_Escape},
@@ -324,18 +324,18 @@ private:
             {KeyCode::PageUp, XK_Prior},
             {KeyCode::PageDown, XK_Next},
 
-            // 方向键
+            // Arrow keys
             {KeyCode::Left, XK_Left},
             {KeyCode::Right, XK_Right},
             {KeyCode::Up, XK_Up},
             {KeyCode::Down, XK_Down},
 
-            // 修饰键
+            // Modifier keys
             {KeyCode::Shift, XK_Shift_L},
             {KeyCode::Control, XK_Control_L},
             {KeyCode::Alt, XK_Alt_L},
 
-            // 其他
+            // Other
             {KeyCode::CapsLock, XK_Caps_Lock},
             {KeyCode::PrintScreen, XK_Print},
             {KeyCode::Pause, XK_Pause},
@@ -346,18 +346,18 @@ private:
     }
 
     static KeySym charToKeySym(char c) {
-        // 简单的 ASCII 到 KeySym 映射
+        // Simple ASCII to KeySym mapping
         if (c >= 0 && c <= 127) {
             return static_cast<KeySym>(c);
         }
 
-        // 处理一些特殊字符
+        // Handle some special characters
         switch (c) {
             case ' ': return XK_space;
             case '\n': return XK_Return;
             case '\t': return XK_Tab;
             default:
-                // 对于可打印字符，尝试直接转换
+                // For printable characters, try direct conversion
                 if (c >= 32 && c <= 126) {
                     return static_cast<KeySym>(c);
                 }

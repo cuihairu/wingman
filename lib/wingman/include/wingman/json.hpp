@@ -8,7 +8,7 @@
 
 namespace wingman {
 
-// JSON 值类型
+// JSON value type
 enum class JsonType {
     Null,
     Boolean,
@@ -18,7 +18,7 @@ enum class JsonType {
     Object
 };
 
-// JSON 值
+// JSON value
 class JsonValue {
 public:
     JsonValue();
@@ -36,7 +36,7 @@ public:
 
     ~JsonValue();
 
-    // 类型检查
+    // Type check
     JsonType type() const;
     bool isNull() const;
     bool isBool() const;
@@ -45,29 +45,29 @@ public:
     bool isArray() const;
     bool isObject() const;
 
-    // 获取值
+    // Get value
     bool asBool() const;
     int asInt() const;
     int64_t asInt64() const;
     double asDouble() const;
     std::string asString() const;
 
-    // 数组操作
+    // Array operations
     size_t size() const;
     JsonValue at(size_t index) const;
     void push(const JsonValue& value);
 
-    // 对象操作
+    // Object operations
     std::vector<std::string> keys() const;
     JsonValue get(const std::string& key) const;
     void set(const std::string& key, const JsonValue& value);
     bool has(const std::string& key) const;
 
-    // 序列化
+    // Serialization
     std::string dump(int indent = -1) const;
     static JsonValue parse(const std::string& json);
 
-    // 便捷函数
+    // Convenience functions
     static JsonValue object() { return JsonValue::parse("{}"); }
     static JsonValue array() { return JsonValue::parse("[]"); }
 

@@ -11,45 +11,45 @@
 namespace wingman::vision {
 
 /**
- * @brief 颜色匹配结果
+ * @brief Color match result
  */
 struct ColorMatch {
-    Point position;        // 匹配位置
-    Color foundColor;      // 实际找到的颜色
-    int distance;          // 与目标颜色的距离
-    double confidence;     // 匹配置信度 (0.0 - 1.0)
+    Point position;        // Match position
+    Color foundColor;      // Actually found color
+    int distance;          // Distance to target color
+    double confidence;     // Match confidence (0.0 - 1.0)
 };
 
 /**
- * @brief 图像匹配结果
+ * @brief Image match result
  */
 struct ImageMatch {
-    Point position;        // 匹配位置
-    double confidence;     // 匹配置信度 (0.0 - 1.0)
-    Rect matchedRegion;    // 匹配的区域
+    Point position;        // Match position
+    double confidence;     // Match confidence (0.0 - 1.0)
+    Rect matchedRegion;    // Matched region
 };
 
 /**
- * @brief 图像分析器
+ * @brief Image analyzer
  *
- * 职责：从位图中查找颜色、图像等
+ * Responsibility: find colors, images, etc. from bitmaps
  */
 class ImageAnalyzer {
 public:
     ImageAnalyzer() = default;
     ~ImageAnalyzer() = default;
 
-    // 禁止拷贝
+    // Non-copyable
     ImageAnalyzer(const ImageAnalyzer&) = delete;
     ImageAnalyzer& operator=(const ImageAnalyzer&) = delete;
 
     /**
-     * @brief 查找单个颜色点
-     * @param bitmap 要分析的位图
-     * @param target 目标颜色
-     * @param region 搜索区域
-     * @param tolerance 容差 (0-255)
-     * @return 找到的点，未找到返回 std::nullopt
+     * @brief Find single color point
+     * @param bitmap Bitmap to analyze
+     * @param target Target color
+     * @param region Search region
+     * @param tolerance Tolerance (0-255)
+     * @return Found point, returns std::nullopt if not found
      */
     std::optional<ColorMatch> findColor(
         const Bitmap& bitmap,
@@ -59,13 +59,13 @@ public:
     );
 
     /**
-     * @brief 查找所有颜色点
-     * @param bitmap 要分析的位图
-     * @param target 目标颜色
-     * @param region 搜索区域
-     * @param tolerance 容差
-     * @param maxCount 最大返回数量 (0 表示不限制)
-     * @return 找到的点列表
+     * @brief Find all color points
+     * @param bitmap Bitmap to analyze
+     * @param target Target color
+     * @param region Search region
+     * @param tolerance Tolerance
+     * @param maxCount Max return count (0 means no limit)
+     * @return List of found points
      */
     std::vector<ColorMatch> findColors(
         const Bitmap& bitmap,
@@ -76,12 +76,12 @@ public:
     );
 
     /**
-     * @brief 查找图像
-     * @param bitmap 要搜索的位图
-     * @param templatePath 模板图像路径
-     * @param region 搜索区域
-     * @param threshold 匹配阈值 (0.0 - 1.0)
-     * @return 匹配结果，未找到返回 std::nullopt
+     * @brief Find image
+     * @param bitmap Bitmap to search
+     * @param templatePath Template image path
+     * @param region Search region
+     * @param threshold Match threshold (0.0 - 1.0)
+     * @return Match result, returns std::nullopt if not found
      */
     std::optional<ImageMatch> findImage(
         const Bitmap& bitmap,
@@ -91,7 +91,7 @@ public:
     );
 
     /**
-     * @brief 查找图像（从位图模板）
+     * @brief Find image (from bitmap template)
      */
     std::optional<ImageMatch> findImage(
         const Bitmap& bitmap,
@@ -101,12 +101,12 @@ public:
     );
 
     /**
-     * @brief 从捕获源查找颜色（便捷方法）
-     * @param source 捕获源
-     * @param target 目标颜色
-     * @param region 搜索区域
-     * @param tolerance 容差
-     * @return 找到的点
+     * @brief Find color from capture source (convenience method)
+     * @param source Capture source
+     * @param target Target color
+     * @param region Search region
+     * @param tolerance Tolerance
+     * @return Found point
      */
     std::optional<ColorMatch> findColorFromSource(
         std::shared_ptr<capture::ICaptureSource> source,
@@ -116,8 +116,8 @@ public:
     );
 
     /**
-     * @brief 异步查找颜色
-     * @param callback 完成回调
+     * @brief Find color asynchronously
+     * @param callback Completion callback
      */
     void findColorAsync(
         const Bitmap& bitmap,
@@ -128,36 +128,36 @@ public:
     );
 
     /**
-     * @brief 计算颜色差异
-     * @param c1 颜色1
-     * @param c2 颜色2
-     * @return 欧氏距离平方
+     * @brief Calculate color distance
+     * @param c1 Color 1
+     * @param c2 Color 2
+     * @return Euclidean distance squared
      */
     static int colorDistance(const Color& c1, const Color& c2);
 
     /**
-     * @brief 检查颜色是否匹配
-     * @param c1 颜色1
-     * @param c2 颜色2
-     * @param tolerance 容差
-     * @return 匹配返回 true
+     * @brief Check if colors match
+     * @param c1 Color 1
+     * @param c2 Color 2
+     * @param tolerance Tolerance
+     * @return Returns true if matched
      */
     static bool colorMatches(const Color& c1, const Color& c2, int tolerance);
 
     /**
-     * @brief 限制区域到位图边界
-     * @note public 以便 PatternMatcher 可以使用
+     * @brief Clamp region to bitmap bounds
+     * @note public so PatternMatcher can use it
      */
     static Rect clampRegion(const Rect& region, const Bitmap& bitmap);
 
 private:
     /**
-     * @brief 获取位图的搜索区域
+     * @brief Get search region for bitmap
      */
     Rect getSearchRegion(const Bitmap& bitmap, const Rect& region);
 
     /**
-     * @brief 检查点是否在区域内
+     * @brief Check if point is in region
      */
     static bool isPointInRegion(const Point& p, const Rect& r) {
         return p.x >= r.x && p.x < r.x + r.width &&
@@ -166,20 +166,20 @@ private:
 };
 
 /**
- * @brief 模式匹配器
+ * @brief Pattern matcher
  *
- * 提供更高级的模式匹配功能
+ * Provides more advanced pattern matching functionality
  */
 class PatternMatcher {
 public:
     /**
-     * @brief 多色模式匹配
-     * @param bitmap 要搜索的位图
-     * @param colors 颜色列表（从左到右、从上到下）
-     * @param offsets 相对位置偏移
-     * @param region 搜索区域
-     * @param tolerance 容差
-     * @return 匹配结果
+     * @brief Multi-color pattern matching
+     * @param bitmap Bitmap to search
+     * @param colors Color list (left to right, top to bottom)
+     * @param offsets Relative position offsets
+     * @param region Search region
+     * @param tolerance Tolerance
+     * @return Match result
      */
     static std::optional<Point> matchColorPattern(
         const Bitmap& bitmap,
@@ -190,7 +190,7 @@ public:
     );
 
     /**
-     * @brief 模板匹配（归一化交叉相关）
+     * @brief Template matching (normalized cross-correlation)
      */
     static double templateMatch(
         const Bitmap& bitmap,
@@ -200,7 +200,7 @@ public:
     );
 
     /**
-     * @brief 边缘检测匹配
+     * @brief Edge detection matching
      */
     static std::optional<Point> matchEdge(
         const Bitmap& bitmap,

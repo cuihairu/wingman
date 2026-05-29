@@ -12,9 +12,9 @@
 namespace wingman::platform::mac {
 
 /**
- * @brief macOS CGEvent 输入实现
+ * @brief macOS CGEvent input implementation
  *
- * 使用 Core Graphics Event API 进行输入模拟。
+ * Uses Core Graphics Event API for input simulation.
  */
 class CGEventInput : public IInput {
 public:
@@ -25,7 +25,7 @@ public:
 
     bool initialize(const InputConfig& config) override {
         config_ = config;
-        // 获取辅助功能权限
+        // Get accessibility permissions
         initialized_ = AXIsProcessTrusted() != 0;
         if (!initialized_) {
             spdlog::warn("[CGEventInput] Missing accessibility permissions");
@@ -302,7 +302,7 @@ private:
     }
 
     static CGKeyCode toCGKeyCode(KeyCode key) {
-        // macOS 虚拟键码映射
+        // macOS virtual keycode mapping
         static const std::unordered_map<KeyCode, CGKeyCode> keyMap = {
             {KeyCode::A, kVK_ANSI_A}, {KeyCode::B, kVK_ANSI_B}, {KeyCode::C, kVK_ANSI_C},
             {KeyCode::D, kVK_ANSI_D}, {KeyCode::E, kVK_ANSI_E}, {KeyCode::F, kVK_ANSI_F},

@@ -33,7 +33,7 @@
 namespace wingman {
 
 // ============================================================================
-// 辅助函数
+// Helper functions
 // ============================================================================
 
 static std::string readFile(const std::string& path) {
@@ -63,7 +63,7 @@ static std::string getCommandOutput(const std::string& command) {
     }
     pclose(pipe);
 
-    // 移除末尾换行符
+    // Remove trailing newline
     if (!result.empty() && result.back() == '\n') {
         result.pop_back();
     }
@@ -72,14 +72,14 @@ static std::string getCommandOutput(const std::string& command) {
 }
 
 // ============================================================================
-// CPU 信息
+// CPU info
 // ============================================================================
 
 CpuInfo System::getCpuInfo() {
     CpuInfo info;
 
 #if defined(__linux__)
-    // 读取 /proc/cpuinfo
+    // Read /proc/cpuinfo
     std::string cpuinfo = readFile("/proc/cpuinfo");
     std::istringstream stream(cpuinfo);
     std::string line;
@@ -118,7 +118,7 @@ CpuInfo System::getCpuInfo() {
     info.temperature = getCpuTemperature();
 
 #elif defined(__APPLE__)
-    // 获取 CPU 核心数
+    // Get CPU core count
     int physicalCores = 0;
     size_t len = sizeof(physicalCores);
     sysctlbyname("hw.physicalcpu", &physicalCores, &len, nullptr, 0);
@@ -129,14 +129,14 @@ CpuInfo System::getCpuInfo() {
     sysctlbyname("hw.logicalcpu", &logicalCores, &len, nullptr, 0);
     info.threads = logicalCores;
 
-    // 获取 CPU 频率
+    // Get CPU frequency
     uint64_t freq = 0;
     len = sizeof(freq);
     sysctlbyname("hw.cpufrequency", &freq, &len, nullptr, 0);
     info.maxClock = static_cast<int>(freq / 1000000);  // Hz -> MHz
     info.currentClock = info.maxClock;
 
-    // 获取 CPU 品牌
+    // Get CPU brand
     char brand[128];
     len = sizeof(brand);
     sysctlbyname("machdep.cpu.brand_string", brand, &len, nullptr, 0);
@@ -217,12 +217,12 @@ int System::getCpuUsage() {
 }
 
 int System::getCpuTemperature() {
-    // 暂不支持
+    // Not supported yet
     return -1;
 }
 
 // ============================================================================
-// 内存信息
+// Memory info
 // ============================================================================
 
 MemoryInfo System::getMemoryInfo() {
@@ -257,14 +257,14 @@ MemoryInfo System::getMemoryInfo() {
     int64_t physicalMemory;
     size_t length;
 
-    // 总内存
+    // Total memory
     mib[0] = CTL_HW;
     mib[1] = HW_MEMSIZE;
     length = sizeof(int64_t);
     sysctl(mib, 2, &physicalMemory, &length, nullptr, 0);
     info.total = physicalMemory;
 
-    // 可用内存
+    // Available memory
     vm_size_t pageSize;
     host_page_size(mach_host_self(), &pageSize);
 
@@ -283,14 +283,14 @@ MemoryInfo System::getMemoryInfo() {
 }
 
 // ============================================================================
-// 磁盘信息
+// Disk info
 // ============================================================================
 
 std::vector<DiskInfo> System::getDiskInfo() {
     std::vector<DiskInfo> result;
 
 #if defined(__linux__)
-    // 读取 /proc/mounts 获取挂载点
+    // Read /proc/mounts to get mount points
     std::string mounts = readFile("/proc/mounts");
     std::istringstream stream(mounts);
     std::string line;
@@ -301,7 +301,7 @@ std::vector<DiskInfo> System::getDiskInfo() {
 
         lineStream >> device >> mountPoint >> fsType;
 
-        // 只检查实际设备
+        // Only check real devices
         if (device.find("/dev/") == 0 || device.find("/srv/") == 0) {
             DiskInfo info = getDiskInfo(mountPoint);
             if (!info.fileSystem.empty()) {
@@ -339,7 +339,7 @@ DiskInfo System::getDiskInfo(const std::string& drive) {
         info.usage = info.total > 0 ? (static_cast<double>(info.used) / info.total * 100.0) : 0;
     }
 
-    // 读取文件系统类型
+    // Read filesystem type
     std::string mounts = readFile("/proc/mounts");
     std::istringstream stream(mounts);
     std::string line;
@@ -372,14 +372,14 @@ DiskInfo System::getDiskInfo(const std::string& drive) {
 }
 
 // ============================================================================
-// GPU 信息（仅名称）
+// GPU info (name only)
 // ============================================================================
 
 std::vector<GpuInfo> System::getGpuInfo() {
     std::vector<GpuInfo> result;
 
 #if defined(__linux__)
-    // 从 /sys/class/drm 读取 GPU 信息
+    // Read GPU info from /sys/class/drm
     std::string cardPath = "/sys/class/drm";
     DIR* dir = opendir(cardPath.c_str());
     if (dir) {
@@ -410,7 +410,7 @@ std::vector<GpuInfo> System::getGpuInfo() {
         closedir(dir);
     }
 
-    // 尝试从 /sys/bus/pci/devices 读取更详细的 GPU 名称
+    // Try to read more detailed GPU name from /sys/bus/pci/devices
     DIR* pciDir = opendir("/sys/bus/pci/devices");
     if (pciDir) {
         struct dirent* entry;
@@ -419,7 +419,7 @@ std::vector<GpuInfo> System::getGpuInfo() {
             std::string classPath = devicePath + "/class";
 
             std::string classCode = readFile(classPath);
-            // VGA 控制器类代码是 0x03
+            // VGA controller class code is 0x03
             if (classCode.find("0x03") != std::string::npos) {
                 std::string ueventPath = devicePath + "/uevent";
                 std::string uevent = readFile(ueventPath);
@@ -433,7 +433,7 @@ std::vector<GpuInfo> System::getGpuInfo() {
                         if (pos != std::string::npos) {
                             std::string pciId = line.substr(pos + 1);
 
-                            // 尝试读取供应商和设备名称
+                            // Try to read vendor and device names
                             std::string vendorPath = devicePath + "/vendor";
                             std::string devicePath2 = devicePath + "/device";
 
@@ -441,7 +441,7 @@ std::vector<GpuInfo> System::getGpuInfo() {
                             std::string device = readFile(devicePath2);
 
                             GpuInfo gpuInfo;
-                            gpuInfo.name = "GPU " + pciId;  // 简化版本
+                            gpuInfo.name = "GPU " + pciId;  // Simplified version
                             result.push_back(gpuInfo);
                         }
                     }
@@ -452,8 +452,8 @@ std::vector<GpuInfo> System::getGpuInfo() {
     }
 
 #elif defined(__APPLE__)
-    // macOS 使用 IOKit 获取 GPU 信息（简化版）
-    // 使用 system_profiler 命令
+    // macOS uses IOKit to get GPU info (simplified)
+    // Use system_profiler command
     std::string output = getCommandOutput("system_profiler SPDisplaysDataType 2>/dev/null | grep 'Chipset Model' | cut -d: -f2 | sed 's/^[ ]*//'");
 
     if (!output.empty()) {
@@ -467,7 +467,7 @@ std::vector<GpuInfo> System::getGpuInfo() {
 }
 
 // ============================================================================
-// 操作系统信息
+// OS info
 // ============================================================================
 
 OsInfo System::getOsInfo() {
@@ -476,7 +476,7 @@ OsInfo System::getOsInfo() {
 #if defined(__linux__)
     info.platform = "Linux";
 
-    // 读取 /etc/os-release
+    // Read /etc/os-release
     std::string osRelease = readFile("/etc/os-release");
     std::istringstream stream(osRelease);
     std::string line;
@@ -486,7 +486,7 @@ OsInfo System::getOsInfo() {
             size_t pos = line.find('=');
             if (pos != std::string::npos) {
                 std::string value = line.substr(pos + 1);
-                // 移除引号
+                // Remove quotes
                 if (value.front() == '"' && value.back() == '"') {
                     value = value.substr(1, value.length() - 2);
                 }
@@ -495,7 +495,7 @@ OsInfo System::getOsInfo() {
         }
     }
 
-    // 获取内核版本
+    // Get kernel version
     struct utsname unameInfo;
     if (uname(&unameInfo) == 0) {
         info.build = unameInfo.release;
@@ -506,19 +506,19 @@ OsInfo System::getOsInfo() {
 #elif defined(__APPLE__)
     info.platform = "macOS";
 
-    // 获取 macOS 版本
+    // Get macOS version
     char swVersion[32];
     size_t len = sizeof(swVersion);
     sysctlbyname("kern.osproductversion", swVersion, &len, nullptr, 0);
     info.version = "macOS " + std::string(swVersion);
 
-    // 获取构建版本
+    // Get build version
     char buildVersion[32];
     len = sizeof(buildVersion);
     sysctlbyname("kern.osversion", buildVersion, &len, nullptr, 0);
     info.build = buildVersion;
 
-    // 获取架构
+    // Get architecture
     struct utsname unameInfo;
     if (uname(&unameInfo) == 0) {
         info.architecture = unameInfo.machine;
@@ -526,7 +526,7 @@ OsInfo System::getOsInfo() {
     }
 #endif
 
-    // 获取用户名
+    // Get username
     char userName[256];
     if (getlogin_r(userName, sizeof(userName)) == 0) {
         info.userName = userName;
@@ -536,7 +536,7 @@ OsInfo System::getOsInfo() {
 }
 
 // ============================================================================
-// 网络信息
+// Network info
 // ============================================================================
 
 std::vector<NetworkAdapter> System::getNetworkAdapters() {
@@ -569,7 +569,7 @@ std::vector<NetworkAdapter> System::getNetworkAdapters() {
             info.ipAddress = ip;
         }
 
-        // 检查是否已存在
+        // Check if already exists
         bool found = false;
         for (auto& existing : result) {
             if (existing.name == info.name) {
@@ -594,14 +594,14 @@ std::vector<NetworkAdapter> System::getNetworkAdapters() {
 }
 
 // ============================================================================
-// 显示器信息
+// Display info
 // ============================================================================
 
 std::vector<DisplayInfo> System::getDisplayInfo() {
     std::vector<DisplayInfo> result;
 
 #if defined(__linux__)
-    // 使用 xrandr 命令获取显示器信息
+    // Use xrandr command to get display info
     std::string output = getCommandOutput("xrandr 2>/dev/null");
     if (!output.empty()) {
         std::istringstream stream(output);
@@ -616,7 +616,7 @@ std::vector<DisplayInfo> System::getDisplayInfo() {
                 size_t pos = line.find(' ');
                 info.name = line.substr(0, pos);
 
-                // 解析分辨率
+                // Parse resolution
                 size_t resPos = line.find('x');
                 if (resPos != std::string::npos) {
                     size_t spacePos = line.rfind(' ', resPos - 1);
@@ -636,7 +636,7 @@ std::vector<DisplayInfo> System::getDisplayInfo() {
     }
 
 #elif defined(__APPLE__)
-    // macOS 使用 CGDisplay API
+    // macOS uses CGDisplay API
     CGDirectDisplayID displays[16];
     uint32_t count;
     if (CGGetOnlineDisplayList(16, displays, &count) == kCGErrorSuccess) {
@@ -663,7 +663,7 @@ std::vector<DisplayInfo> System::getDisplayInfo() {
 }
 
 // ============================================================================
-// 其他信息
+// Other info
 // ============================================================================
 
 int System::getUptime() {
@@ -739,7 +739,7 @@ int System::getProcessCount() {
 }
 
 int System::getThreadCount() {
-    // 暂不支持
+    // Not supported yet
     return 0;
 }
 

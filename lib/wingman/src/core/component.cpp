@@ -5,7 +5,7 @@ namespace wingman::core {
 bool ComponentBase::initialize() {
     ComponentState expected = ComponentState::Uninitialized;
     if (!state_.compare_exchange_strong(expected, ComponentState::Initializing)) {
-        // 如果当前状态不是 Uninitialized，检查是否可以重新初始化
+        // If current state is not Uninitialized, check if re-initialization is possible
         if (expected == ComponentState::Stopped) {
             if (!state_.compare_exchange_strong(expected, ComponentState::Initializing)) {
                 return false;
@@ -75,13 +75,13 @@ void ComponentBase::stop() {
 void ComponentBase::shutdown() {
     ComponentState current = state_.load();
 
-    // 如果正在运行或暂停，先停止
+    // If running or paused, stop first
     if (current == ComponentState::Running || current == ComponentState::Paused) {
         stop();
         current = state_.load();
     }
 
-    // 只有在停止状态才能关闭
+    // Can only close in stopped state
     if (current != ComponentState::Stopped &&
         current != ComponentState::Uninitialized &&
         current != ComponentState::Error) {

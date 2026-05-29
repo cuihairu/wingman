@@ -26,7 +26,7 @@
 namespace wingman {
 
 // ============================================================================
-// 辅助函数
+// Helper functions
 // ============================================================================
 
 static std::string getCommandOutput(const std::string& command) {
@@ -50,13 +50,13 @@ static std::string getCommandOutput(const std::string& command) {
 }
 
 // ============================================================================
-// CPU 信息
+// CPU info
 // ============================================================================
 
 CpuInfo System::getCpuInfo() {
     CpuInfo info;
 
-    // 获取 CPU 核心数
+    // Get CPU core count
     int physicalCores = 0;
     size_t len = sizeof(physicalCores);
     sysctlbyname("hw.physicalcpu", &physicalCores, &len, nullptr, 0);
@@ -67,14 +67,14 @@ CpuInfo System::getCpuInfo() {
     sysctlbyname("hw.logicalcpu", &logicalCores, &len, nullptr, 0);
     info.threads = logicalCores;
 
-    // 获取 CPU 频率
+    // Get CPU frequency
     uint64_t freq = 0;
     len = sizeof(freq);
     sysctlbyname("hw.cpufrequency", &freq, &len, nullptr, 0);
     info.maxClock = static_cast<int>(freq / 1000000);  // Hz -> MHz
     info.currentClock = info.maxClock;
 
-    // 获取 CPU 品牌
+    // Get CPU brand
     char brand[128];
     len = sizeof(brand);
     sysctlbyname("machdep.cpu.brand_string", brand, &len, nullptr, 0);
@@ -124,7 +124,7 @@ int System::getCpuTemperature() {
 }
 
 // ============================================================================
-// 内存信息
+// Memory info
 // ============================================================================
 
 MemoryInfo System::getMemoryInfo() {
@@ -157,7 +157,7 @@ MemoryInfo System::getMemoryInfo() {
 }
 
 // ============================================================================
-// 磁盘信息
+// Disk info
 // ============================================================================
 
 std::vector<DiskInfo> System::getDiskInfo() {
@@ -195,13 +195,13 @@ DiskInfo System::getDiskInfo(const std::string& drive) {
 }
 
 // ============================================================================
-// GPU 信息（仅名称）
+// GPU info (name only)
 // ============================================================================
 
 std::vector<GpuInfo> System::getGpuInfo() {
     std::vector<GpuInfo> result;
 
-    // macOS 使用 system_profiler 命令获取 GPU 信息
+    // macOS uses system_profiler command to get GPU info
     std::string output = getCommandOutput("system_profiler SPDisplaysDataType 2>/dev/null | grep 'Chipset Model' | cut -d: -f2 | sed 's/^[ ]*//'");
 
     if (!output.empty()) {
@@ -214,7 +214,7 @@ std::vector<GpuInfo> System::getGpuInfo() {
 }
 
 // ============================================================================
-// 操作系统信息
+// OS info
 // ============================================================================
 
 OsInfo System::getOsInfo() {
@@ -222,26 +222,26 @@ OsInfo System::getOsInfo() {
 
     info.platform = "macOS";
 
-    // 获取 macOS 版本
+    // Get macOS version
     char swVersion[32];
     size_t len = sizeof(swVersion);
     sysctlbyname("kern.osproductversion", swVersion, &len, nullptr, 0);
     info.version = "macOS " + std::string(swVersion);
 
-    // 获取构建版本
+    // Get build version
     char buildVersion[32];
     len = sizeof(buildVersion);
     sysctlbyname("kern.osversion", buildVersion, &len, nullptr, 0);
     info.build = buildVersion;
 
-    // 获取架构
+    // Get architecture
     struct utsname unameInfo;
     if (uname(&unameInfo) == 0) {
         info.architecture = unameInfo.machine;
         info.computerName = unameInfo.nodename;
     }
 
-    // 获取用户名
+    // Get username
     char userName[256];
     if (getlogin_r(userName, sizeof(userName)) == 0) {
         info.userName = userName;
@@ -251,7 +251,7 @@ OsInfo System::getOsInfo() {
 }
 
 // ============================================================================
-// 网络信息
+// Network info
 // ============================================================================
 
 std::vector<NetworkAdapter> System::getNetworkAdapters() {
@@ -308,7 +308,7 @@ std::vector<NetworkAdapter> System::getNetworkAdapters() {
 }
 
 // ============================================================================
-// 显示器信息
+// Display info
 // ============================================================================
 
 std::vector<DisplayInfo> System::getDisplayInfo() {
@@ -339,7 +339,7 @@ std::vector<DisplayInfo> System::getDisplayInfo() {
 }
 
 // ============================================================================
-// 其他信息
+// Other info
 // ============================================================================
 
 int System::getUptime() {

@@ -24,7 +24,7 @@ std::string TeamStorage::getFullKey(const std::string& key) const {
 }
 
 size_t TeamStorage::length() const {
-    // 通过客户端查询团队键数量
+    // Query team key count via client
     try {
         server::Request request;
         request.type = server::RequestType::kGetStatus;
@@ -63,7 +63,7 @@ std::vector<std::string> TeamStorage::keys() const {
 std::optional<std::string> TeamStorage::getItem(const std::string& key) const {
     std::string fullKey = getFullKey(key);
 
-    // 先检查缓存
+    // Check cache first
     if (m_cacheEnabled) {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_cache.find(fullKey);
@@ -83,7 +83,7 @@ std::optional<std::string> TeamStorage::getItem(const std::string& key) const {
         if (response.code == server::ErrorCode::OK && response.data.contains("result")) {
             std::string value = response.data["result"].get<std::string>();
 
-            // 更新缓存
+            // Update cache
             if (m_cacheEnabled) {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_cache[fullKey] = value;
@@ -101,14 +101,14 @@ bool TeamStorage::setItem(const std::string& key, const std::string& value) {
 
     try {
         server::Request request;
-        request.type = server::RequestType::kExecuteScript;  // 临时使用现有类型
+        request.type = server::RequestType::kExecuteScript;  // Temporarily use existing type
         request.data = {{"action", "set"}, {"key", fullKey}, {"value", value}, {"scope", "team"}};
 
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
         if (response.code == server::ErrorCode::OK) {
-            // 更新缓存
+            // Update cache
             if (m_cacheEnabled) {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_cache[fullKey] = value;
@@ -125,14 +125,14 @@ bool TeamStorage::removeItem(const std::string& key) {
 
     try {
         server::Request request;
-        request.type = server::RequestType::kStopScript;  // 临时使用现有类型
+        request.type = server::RequestType::kStopScript;  // Temporarily use existing type
         request.data = {{"action", "delete"}, {"key", fullKey}, {"scope", "team"}};
 
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
         if (response.code == server::ErrorCode::OK) {
-            // 清除缓存
+            // Clear cache
             if (m_cacheEnabled) {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_cache.erase(fullKey);
@@ -153,7 +153,7 @@ void TeamStorage::clear() {
         auto future = m_client->sendSync(request);
         future.get();
 
-        // 清除缓存
+        // Clear cache
         if (m_cacheEnabled) {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_cache.clear();
@@ -166,8 +166,8 @@ bool TeamStorage::hasItem(const std::string& key) const {
 }
 
 void TeamStorage::onChange(const std::string& key, ChangeCallback callback) {
-    // TODO: 需要扩展 Client 和 Server 支持订阅功能
-    // 目前先记录回调，等 subscribe 功能实现后再连接
+    // TODO: Need to extend Client and Server to support subscription
+    // Record callback for now, connect when subscribe is implemented
     (void)key;
     (void)callback;
 }
@@ -184,7 +184,7 @@ void TeamStorage::broadcast(const std::string& event, const std::string& data) {
         };
 
         m_client->send(request, [](const server::Response&) {
-            // 异步发送，忽略回调
+            // Send asynchronously, ignore callback
         });
     } catch (...) {}
 }
@@ -245,7 +245,7 @@ std::vector<std::string> ServerStorage::keys() const {
 std::optional<std::string> ServerStorage::getItem(const std::string& key) const {
     std::string fullKey = getFullKey(key);
 
-    // 先检查缓存
+    // Check cache first
     if (m_cacheEnabled) {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_cache.find(fullKey);
@@ -265,7 +265,7 @@ std::optional<std::string> ServerStorage::getItem(const std::string& key) const 
         if (response.code == server::ErrorCode::OK && response.data.contains("result")) {
             std::string value = response.data["result"].get<std::string>();
 
-            // 更新缓存
+            // Update cache
             if (m_cacheEnabled) {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_cache[fullKey] = value;
@@ -283,14 +283,14 @@ bool ServerStorage::setItem(const std::string& key, const std::string& value) {
 
     try {
         server::Request request;
-        request.type = server::RequestType::kExecuteScript;  // 临时使用现有类型
+        request.type = server::RequestType::kExecuteScript;  // Temporarily use existing type
         request.data = {{"action", "set"}, {"key", fullKey}, {"value", value}, {"scope", "global"}};
 
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
         if (response.code == server::ErrorCode::OK) {
-            // 更新缓存
+            // Update cache
             if (m_cacheEnabled) {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_cache[fullKey] = value;
@@ -307,14 +307,14 @@ bool ServerStorage::removeItem(const std::string& key) {
 
     try {
         server::Request request;
-        request.type = server::RequestType::kStopScript;  // 临时使用现有类型
+        request.type = server::RequestType::kStopScript;  // Temporarily use existing type
         request.data = {{"action", "delete"}, {"key", fullKey}, {"scope", "global"}};
 
         auto future = m_client->sendSync(request);
         auto response = future.get();
 
         if (response.code == server::ErrorCode::OK) {
-            // 清除缓存
+            // Clear cache
             if (m_cacheEnabled) {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_cache.erase(fullKey);
@@ -335,7 +335,7 @@ void ServerStorage::clear() {
         auto future = m_client->sendSync(request);
         future.get();
 
-        // 清除缓存
+        // Clear cache
         if (m_cacheEnabled) {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_cache.clear();
@@ -348,8 +348,8 @@ bool ServerStorage::hasItem(const std::string& key) const {
 }
 
 void ServerStorage::onChange(const std::string& key, ChangeCallback callback) {
-    // TODO: 需要扩展 Client 和 Server 支持订阅功能
-    // 目前先记录回调，等 subscribe 功能实现后再连接
+    // TODO: Need to extend Client and Server to support subscription
+    // Record callback for now, connect when subscribe is implemented
     (void)key;
     (void)callback;
 }
@@ -366,7 +366,7 @@ void ServerStorage::broadcast(const std::string& event, const std::string& data)
         };
 
         m_client->send(request, [](const server::Response&) {
-            // 异步发送，忽略回调
+            // Send asynchronously, ignore callback
         });
     } catch (...) {}
 }

@@ -10,11 +10,11 @@
 namespace wingman::platform::win {
 
 /**
- * @brief Windows GDI+ 捕获实现
+ * @brief Windows GDI+ capture implementation
  *
- * 使用 GDI+ API 进行屏幕和窗口捕获。
- * 优点：兼容性好，支持所有 Windows 版本
- * 缺点：性能较低，不支持光标捕获
+ * Uses GDI+ API for screen and window capture.
+ * Pros: Good compatibility, supports all Windows versions
+ * Cons: Lower performance, no cursor capture support
  */
 class GDICapture : public ICapture {
 public:
@@ -84,7 +84,7 @@ public:
         BITMAPINFO bmi = {};
         bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
         bmi.bmiHeader.biWidth = captureRegion.width;
-        bmi.bmiHeader.biHeight = -captureRegion.height;  // 自顶向下
+        bmi.bmiHeader.biHeight = -captureRegion.height;  // Top-down
         bmi.bmiHeader.biPlanes = 1;
         bmi.bmiHeader.biBitCount = 32;
         bmi.bmiHeader.biCompression = BI_RGB;
@@ -130,7 +130,7 @@ public:
 
         HBITMAP hOldBitmap = (HBITMAP)SelectObject(hdcMem, hBitmap);
 
-        // 使用 PrintWindow 以捕获窗口内容（包括非客户区）
+        // Use PrintWindow to capture window content (including non-client area)
         PrintWindow(hwnd, hdcMem, 0);
 
         SelectObject(hdcMem, hOldBitmap);
@@ -156,8 +156,8 @@ public:
     }
 
     std::unique_ptr<Bitmap> captureWindowByTitle(const std::string& title) {
-        // 需要依赖 IWindow 接口来查找窗口
-        // 这里暂时返回 nullptr，由工厂层协调
+        // Need to depend on IWindow interface to find window
+        // Return nullptr for now, coordinated by factory layer
         return nullptr;
     }
 
@@ -178,7 +178,7 @@ public:
             return Rect{0, 0, 0, 0};
         }
 
-        // 获取监视器位置
+        // Get monitor position
         HMONITOR hMonitor = getMonitorFromIndex(monitorIndex);
         if (!hMonitor) {
             return Rect{0, 0, static_cast<int>(dm.dmPelsWidth), static_cast<int>(dm.dmPelsHeight)};

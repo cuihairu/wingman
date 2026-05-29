@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 
-// 前向声明 Bitmap
+// Forward declaration of Bitmap
 namespace wingman {
 class Bitmap;
 }
@@ -12,7 +12,7 @@ class Bitmap;
 namespace wingman::platform {
 
 /**
- * @brief 捕获配置
+ * @brief Capture configuration
  */
 struct CaptureConfig {
     CaptureBackend preferredBackend = CaptureBackend::Auto;
@@ -23,96 +23,96 @@ struct CaptureConfig {
 };
 
 /**
- * @brief 屏幕捕获接口
+ * @brief Screen capture interface
  *
- * 提供屏幕、窗口、区域的图像捕获功能。
+ * Provides screen, window, region image capture functionality.
  */
 class ICapture {
 public:
     virtual ~ICapture() = default;
 
-    // ========== 初始化 ==========
+    // ========== Initialization ==========
 
     /**
-     * @brief 初始化捕获器
-     * @param config 配置
+     * @brief Initialize capturer
+     * @param config Configuration
      */
     virtual bool initialize(const CaptureConfig& config) = 0;
 
     /**
-     * @brief 关闭捕获器
+     * @brief Shutdown capturer
      */
     virtual void shutdown() = 0;
 
-    // ========== 屏幕捕获 ==========
+    // ========== Screen capture ==========
 
     /**
-     * @brief 捕获整个屏幕
-     * @param monitorIndex 显示器索引
+     * @brief Capture entire screen
+     * @param monitorIndex Monitor index
      */
     virtual std::unique_ptr<Bitmap> captureScreen(int monitorIndex) = 0;
 
     /**
-     * @brief 捕获屏幕区域
-     * @param region 区域
+     * @brief Capture screen region
+     * @param region Region
      */
     virtual std::unique_ptr<Bitmap> captureRegion(const Rect& region) = 0;
 
     /**
-     * @brief 捕获指定显示器的区域
-     * @param monitorIndex 显示器索引
-     * @param region 区域
+     * @brief Capture specified monitor region
+     * @param monitorIndex Monitor index
+     * @param region Region
      */
     virtual std::unique_ptr<Bitmap> captureRegion(int monitorIndex, const Rect& region) = 0;
 
-    // ========== 窗口捕获 ==========
+    // ========== Window capture ==========
 
     /**
-     * @brief 捕获窗口
-     * @param hwnd 窗口句柄
+     * @brief Capture window
+     * @param hwnd Window handle
      */
     virtual std::unique_ptr<Bitmap> captureWindow(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 捕获窗口区域
-     * @param hwnd 窗口句柄
-     * @param region 相对窗口的区域
+     * @brief Capture window region
+     * @param hwnd Window handle
+     * @param region Region relative to window
      */
     virtual std::unique_ptr<Bitmap> captureWindowRegion(WindowHandle hwnd, const Rect& region) = 0;
 
-    // ========== 信息查询 ==========
+    // ========== Information query ==========
 
     /**
-     * @brief 获取显示器数量
+     * @brief Get monitor count
      */
     virtual int getMonitorCount() = 0;
 
     /**
-     * @brief 获取显示器边界
-     * @param monitorIndex 显示器索引
+     * @brief Get monitor bounds
+     * @param monitorIndex Monitor index
      */
     virtual Rect getMonitorBounds(int monitorIndex) = 0;
 
     /**
-     * @brief 获取显示器名称
-     * @param monitorIndex 显示器索引
+     * @brief Get monitor name
+     * @param monitorIndex Monitor index
      */
     virtual std::string getMonitorName(int monitorIndex) = 0;
 
-    // ========== 状态 ==========
+    // ========== Status ==========
 
     /**
-     * @brief 检查捕获器是否可用
+     * @brief Check if capturer is available
      */
     virtual bool isAvailable() const = 0;
 
     /**
-     * @brief 获取后端名称
+     * @brief Get backend name
      */
     virtual std::string getBackendName() const = 0;
 
     /**
-     * @brief 获取后端信息
+     * @brief Get backend info
      */
     virtual BackendInfo getBackendInfo() const = 0;
 };

@@ -14,7 +14,7 @@
 
 namespace wingman {
 
-// 录制的事件类型
+// Recorded event type
 enum class RecordedEventType {
     MouseMove,
     MouseClick,
@@ -29,46 +29,46 @@ enum class RecordedEventType {
 
 struct RecordedEvent {
     RecordedEventType type;
-    uint64_t timestamp;    // 事件时间戳
-    int x, y;              // 鼠标位置
-    int button;            // 鼠标按钮
-    int keyCode;           // 按键代码
-    std::string text;      // 输入的文本
-    int delay;             // 延迟时间
+    uint64_t timestamp;    // Event timestamp
+    int x, y;              // Mouse position
+    int button;            // Mouse button
+    int keyCode;           // Key code
+    std::string text;      // Input text
+    int delay;             // Delay time
 };
 
-// 宏录制器
+// Macro recorder
 class MacroRecorder {
 public:
     MacroRecorder();
     ~MacroRecorder();
 
-    // 开始录制
+    // Start recording
     void start();
 
-    // 停止录制
+    // Stop recording
     void stop();
 
-    // 暂停录制
+    // Pause recording
     void pause();
     void resume();
 
-    // 清空录制
+    // Clear recording
     void clear();
 
-    // 保存录制为 Lua 脚本
+    // Save recording as Lua script
     bool saveToLua(const std::string& filepath) const;
 
-    // 保存录制为 JSON
+    // Save recording as JSON
     bool saveToJSON(const std::string& filepath) const;
 
-    // 加载录制
+    // Load recording
     bool loadFromJSON(const std::string& filepath);
 
-    // 回放录制
+    // Playback recording
     void playback(int speed = 100, int repeat = 1) const;
 
-    // 获取录制状态
+    // Get recording state
     bool isRecording() const { return m_recording; }
     bool isPaused() const { return m_paused; }
     size_t getEventCount() const { return m_events.size(); }
@@ -91,19 +91,19 @@ private:
     void* m_runLoopSource;
 #endif
 
-    // 获取实例
+    // Get instance
     static MacroRecorder* getInstance();
 
-    // 记录事件
+    // Record event
     void recordEvent(const RecordedEvent& event);
 
 #ifdef _WIN32
-    // Windows Hook 回调函数
+    // Windows Hook callback function
     static LRESULT WINAPI mouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
     static LRESULT WINAPI keyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam);
 #endif
 
-    // 获取开始时间（用于平台实现）
+    // Get start time (for platform implementation)
     uint64_t getStartTime() const { return m_startTime; }
 };
 

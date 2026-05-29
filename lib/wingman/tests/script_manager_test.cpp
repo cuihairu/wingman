@@ -66,13 +66,13 @@ TEST(ScriptEventTest, EnumValues) {
     EXPECT_EQ(static_cast<int>(ScriptEvent::reloaded), 5);
 }
 
-// ========== ScriptManager 构造/析构 ==========
+// ========== ScriptManager Construction/Destruction ==========
 
 TEST(ScriptManagerTest, ConstructionDoesNotCrash) {
     EXPECT_NO_THROW(ScriptManager mgr);
 }
 
-// ========== 配置管理 ==========
+// ========== Configuration Management ==========
 
 TEST(ScriptManagerTest, GetSetConfig) {
     ScriptManager mgr;
@@ -89,7 +89,7 @@ TEST(ScriptManagerTest, GetSetEnv) {
     EXPECT_EQ(mgr.getEnv("NONEXISTENT"), "");
 }
 
-// ========== 沙箱配置 ==========
+// ========== Sandbox Configuration ==========
 
 TEST(ScriptManagerTest, SetGetSandboxConfig) {
     ScriptManager mgr;
@@ -103,7 +103,7 @@ TEST(ScriptManagerTest, SetGetSandboxConfig) {
     EXPECT_EQ(retrieved.timeLimitMs, 10000u);
 }
 
-// ========== 事件回调 ==========
+// ========== Event Callbacks ==========
 
 TEST(ScriptManagerTest, SetEventCallbackDoesNotCrash) {
     ScriptManager mgr;
@@ -115,7 +115,7 @@ TEST(ScriptManagerTest, SetOutputCallbackDoesNotCrash) {
     EXPECT_NO_THROW(mgr.setOutputCallback([](const std::string&, const std::string&) {}));
 }
 
-// ========== 脚本查询（空状态） ==========
+// ========== Script Queries (Empty State) ==========
 
 TEST(ScriptManagerTest, NoScriptsInitially) {
     ScriptManager mgr;
@@ -135,7 +135,7 @@ TEST(ScriptManagerTest, GetEngineReturnsNull) {
     EXPECT_EQ(mgr.getEngine("nonexistent"), nullptr);
 }
 
-// ========== 操作不存在的脚本 ==========
+// ========== Operations on Non-Existent Scripts ==========
 
 TEST(ScriptManagerTest, UnloadNonexistentReturnsFalse) {
     ScriptManager mgr;
@@ -172,7 +172,7 @@ TEST(ScriptManagerTest, CallFunctionNonexistentReturnsFalse) {
     EXPECT_FALSE(mgr.callFunction("nonexistent", "func"));
 }
 
-// ========== 语言检测 ==========
+// ========== Language Detection ==========
 
 TEST(ScriptManagerTest, DetectLanguageLua) {
     ScriptManager mgr;
@@ -189,7 +189,7 @@ TEST(ScriptManagerTest, DetectLanguageFallbackToLua) {
     EXPECT_EQ(mgr.detectLanguage("noscript"), "lua");
 }
 
-// ========== 可用语言 ==========
+// ========== Available Languages ==========
 
 TEST(ScriptManagerTest, GetAvailableLanguages) {
     ScriptManager mgr;
@@ -198,7 +198,7 @@ TEST(ScriptManagerTest, GetAvailableLanguages) {
     EXPECT_NE(std::find(langs.begin(), langs.end(), "lua"), langs.end());
 }
 
-// ========== 热加载控制 ==========
+// ========== Hot Reload Control ==========
 
 TEST(ScriptManagerTest, SetAutoReloadNonexistentDoesNotCrash) {
     ScriptManager mgr;
@@ -216,7 +216,7 @@ TEST(ScriptManagerTest, StopHotReloadWithoutStartDoesNotCrash) {
     EXPECT_NO_THROW(mgr.stopHotReload());
 }
 
-// ========== 配置文件加载 ==========
+// ========== Config File Loading ==========
 
 TEST(ScriptManagerTest, LoadNonexistentConfig) {
     ScriptManager mgr;
@@ -258,7 +258,7 @@ TEST(ScriptManagerTest, LogScriptOutputWithoutCallbackDoesNotCrash) {
     EXPECT_NO_THROW(mgr.logScriptOutput("test", "output"));
 }
 
-// ========== 脚本加载/卸载（使用临时文件） ==========
+// ========== Script Load/Unload (Using Temporary Files) ==========
 
 class ScriptManagerFileTest : public ::testing::Test {
 protected:
@@ -373,7 +373,7 @@ TEST_F(ScriptManagerFileTest, GetRunningScriptsEmpty) {
     EXPECT_TRUE(mgr.getRunningScripts().empty());
 }
 
-// ========== INI 配置加载 ==========
+// ========== INI Config Loading ==========
 
 TEST_F(ScriptManagerFileTest, LoadIniConfig) {
     ScriptManager mgr;
@@ -404,7 +404,7 @@ TEST_F(ScriptManagerFileTest, LoadEmptyPathReturnsFalse) {
     EXPECT_FALSE(mgr.loadConfig(""));
 }
 
-// ========== 热加载 ==========
+// ========== Hot Reload ==========
 
 TEST_F(ScriptManagerFileTest, StartHotReloadDoesNotCrash) {
     ScriptManager mgr;

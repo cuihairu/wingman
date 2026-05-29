@@ -10,7 +10,7 @@ namespace wingman {
 // Forward declarations
 class Bitmap;
 
-// 张量数据类型
+// Tensor data type
 enum class TensorDataType {
     FLOAT32,
     FLOAT64,
@@ -25,10 +25,10 @@ enum class TensorDataType {
     BOOL
 };
 
-// 张量形状
+// Tensor shape
 using TensorShape = std::vector<int64_t>;
 
-// 张量数据
+// Tensor data
 struct TensorData {
     TensorDataType dataType;
     TensorShape shape;
@@ -38,13 +38,13 @@ struct TensorData {
     size_t byteSize() const;
 };
 
-// 模型输出
+// Model output
 struct ModelOutput {
     std::string name;
     TensorData tensor;
 };
 
-// 推理结果
+// Inference result
 struct InferenceResult {
     bool success;
     std::string error;
@@ -52,34 +52,34 @@ struct InferenceResult {
     double inferenceTimeMs;
 };
 
-// AI/ML 模型推理引擎
+// AI/ML model inference engine
 class ModelEngine {
 public:
     ModelEngine();
     ~ModelEngine();
 
-    // 加载模型
+    // Load model
     bool loadModel(const std::string& modelPath, const std::string& executionProvider = "cpu");
 
-    // 卸载模型
+    // Unload model
     void unloadModel();
 
-    // 检查模型是否已加载
+    // Check if model is loaded
     bool isModelLoaded() const { return modelLoaded_; }
 
-    // 获取模型输入信息
+    // Get model input info
     std::vector<std::pair<std::string, TensorShape>> getInputInfo() const;
 
-    // 获取模型输出信息
+    // Get model output info
     std::vector<std::pair<std::string, TensorShape>> getOutputInfo() const;
 
-    // 运行推理
+    // Run inference
     InferenceResult run(const std::map<std::string, TensorData>& inputs);
 
-    // 运行推理（单输入单输出简化版）
+    // Run inference (single input/output simplified)
     InferenceResult run(const std::string& inputName, const TensorData& input);
 
-    // 获取支持的执行提供器
+    // Get available execution providers
     static std::vector<std::string> getAvailableExecutionProviders();
 
 private:
@@ -88,28 +88,28 @@ private:
     bool modelLoaded_;
 };
 
-// 辅助函数：创建张量数据
+// Helper: create tensor data
 namespace Tensor {
-    // 从 vector 创建 float32 张量
+    // Create float32 tensor from vector
     TensorData createFloat32(const TensorShape& shape, const std::vector<float>& data);
 
-    // 从 vector 创建 int32 张量
+    // Create int32 tensor from vector
     TensorData createInt32(const TensorShape& shape, const std::vector<int32_t>& data);
 
-    // 从图像数据创建张量 (HWC -> CHW, 归一化)
+    // Create tensor from image data (HWC -> CHW, normalize)
     TensorData fromImage(const uint8_t* imageData, int width, int height,
                         float meanR = 0.485f, float meanG = 0.456f, float meanB = 0.406f,
                         float stdR = 0.229f, float stdG = 0.224f, float stdB = 0.225f);
 
-    // 获取张量数据
+    // Get tensor data
     template<typename T>
     std::vector<T> getData(const TensorData& tensor);
 }
 
-// 常用模型助手
+// Common model helpers
 class ModelHelpers {
 public:
-    // 图像分类
+    // Image classification
     static std::pair<std::string, float> classifyImage(
         ModelEngine& engine,
         const std::string& inputName,
@@ -118,7 +118,7 @@ public:
         const std::vector<std::string>& labels = {}
     );
 
-    // 目标检测
+    // Object detection
     struct Detection {
         float x, y, width, height;
         int classId;
@@ -133,7 +133,7 @@ public:
         float nmsThreshold = 0.45f
     );
 
-    // 分割
+    // Segmentation
     static Bitmap segment(
         ModelEngine& engine,
         const std::string& inputName,

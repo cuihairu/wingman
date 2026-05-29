@@ -9,7 +9,7 @@
 namespace wingman {
 namespace script {
 
-// 语言无关的值类型（tagged union）
+// Language-independent value type (tagged union)
 struct ScriptValue {
 	enum Type { Null, Bool, Int, Float, String, Array, Object };
 
@@ -24,7 +24,7 @@ struct ScriptValue {
 
 	ScriptValue() = default;
 
-	// 工厂方法
+	// Factory methods
 	static ScriptValue null() { return {}; }
 	static ScriptValue fromBool(bool v) { ScriptValue sv; sv.type = Bool; sv.boolVal = v; return sv; }
 	static ScriptValue fromInt(int64_t v) { ScriptValue sv; sv.type = Int; sv.intVal = v; return sv; }
@@ -34,7 +34,7 @@ struct ScriptValue {
 	static ScriptValue fromArray(std::vector<ScriptValue>&& v) { ScriptValue sv; sv.type = Array; sv.arrayVal = std::move(v); return sv; }
 	static ScriptValue fromObject(std::unordered_map<std::string, ScriptValue>&& v) { ScriptValue sv; sv.type = Object; sv.objectVal = std::move(v); return sv; }
 
-	// 便捷访问
+	// Convenience access
 	bool isNull() const { return type == Null; }
 	bool isBool() const { return type == Bool; }
 	bool isInt() const { return type == Int; }
@@ -48,7 +48,7 @@ struct ScriptValue {
 	double asFloat(double def = 0.0) const { return type == Float ? floatVal : (type == Int ? static_cast<double>(intVal) : def); }
 	const std::string& asString(const std::string& def = "") const { return type == String ? strVal : def; }
 
-	// Object 访问
+	// Object access
 	const ScriptValue* get(const std::string& key) const {
 		if (type != Object) return nullptr;
 		auto it = objectVal.find(key);
@@ -61,7 +61,7 @@ struct ScriptValue {
 		return it != objectVal.end() ? it->second : def;
 	}
 
-	// Array 访问
+	// Array access
 	const ScriptValue& at(size_t idx) const {
 		static const ScriptValue s_null;
 		return idx < arrayVal.size() ? arrayVal[idx] : s_null;
@@ -69,22 +69,22 @@ struct ScriptValue {
 	size_t size() const { return type == Array ? arrayVal.size() : 0; }
 };
 
-// 脚本函数签名
+// Script function signature
 using ScriptFunction = std::function<ScriptValue(const std::vector<ScriptValue>&)>;
 
-// 模块描述符（语言无关）
+// Module descriptor (language-independent)
 struct ModuleDescriptor {
 	struct FunctionEntry {
 		std::string name;
 		ScriptFunction func;
-		std::string signature; // 文档用途，如 "x:int, y:int -> bool"
+		std::string signature; // For documentation purposes, e.g. "x:int, y:int -> bool"
 	};
 
 	std::string name;
 	std::vector<FunctionEntry> functions;
 };
 
-// 引擎配置
+// Engine configuration
 struct EngineConfig {
 	bool sandboxed = true;
 	uint64_t memoryLimit = 100 * 1024 * 1024;   // 100MB
@@ -93,39 +93,39 @@ struct EngineConfig {
 	std::unordered_map<std::string, std::string> env;
 };
 
-// 脚本引擎纯虚接口
+// Pure virtual script engine interface
 class IScriptEngine {
 public:
 	virtual ~IScriptEngine() = default;
 
-	// 生命周期
+	// Lifecycle
 	virtual bool initialize(const EngineConfig& config = {}) = 0;
 	virtual void shutdown() = 0;
 
-	// 执行
+	// Execution
 	virtual bool executeFile(const std::string& path) = 0;
 	virtual bool executeString(const std::string& code) = 0;
 
-	// 函数调用
+	// Function call
 	virtual bool callFunction(const std::string& name,
 	                          const std::vector<ScriptValue>& args,
 	                          ScriptValue& result) = 0;
 
-	// 模块注册
+	// Module registration
 	virtual void registerModule(const ModuleDescriptor& module) = 0;
 
-	// 全局变量
+	// Global variables
 	virtual void setGlobal(const std::string& name, const ScriptValue& value) = 0;
 	virtual ScriptValue getGlobal(const std::string& name) = 0;
 
-	// 错误处理
+	// Error handling
 	virtual std::string getLastError() const = 0;
 
-	// 引擎标识
+	// Engine identification
 	virtual std::string getLanguageName() const = 0;
 	virtual std::vector<std::string> getSupportedExtensions() const = 0;
 
-	// 沙箱控制
+	// Sandbox control
 	virtual void enableSandbox(const EngineConfig& config) = 0;
 	virtual void disableSandbox() = 0;
 };

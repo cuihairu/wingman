@@ -6,7 +6,7 @@
 
 namespace wingman {
 
-// AccountManager 实现
+// AccountManager implementation
 class AccountManager::Impl {
 public:
     std::string dataDir;
@@ -21,10 +21,10 @@ public:
         accountsFile = dataDir + "/accounts.json";
         batchesFile = dataDir + "/batches.json";
 
-        // 创建数据目录
+        // Create data directory
         std::filesystem::create_directories(dataDir);
 
-        // 加载数据
+        // Load data
         load();
     }
 
@@ -37,7 +37,7 @@ public:
     }
 
     void load() {
-        // 加载账号
+        // Load accounts
         if (std::filesystem::exists(accountsFile)) {
             try {
                 std::ifstream f(accountsFile);
@@ -51,11 +51,11 @@ public:
                     }
                 }
             } catch (const std::exception& e) {
-                // 加载失败，使用空数据
+                // Load failed, use empty data
             }
         }
 
-        // 加载批次
+        // Load batches
         if (std::filesystem::exists(batchesFile)) {
             try {
                 std::ifstream f(batchesFile);
@@ -69,14 +69,14 @@ public:
                     }
                 }
             } catch (const std::exception& e) {
-                // 加载失败，使用空数据
+                // Load failed, use empty data
             }
         }
     }
 
     void save() {
         try {
-            // 保存账号
+            // Save accounts
             nlohmann::json j;
             j["accounts"] = nlohmann::json::object();
 
@@ -87,11 +87,11 @@ public:
             std::ofstream f(accountsFile);
             f << j.dump(2);
         } catch (...) {
-            // 保存失败
+            // Save failed
         }
 
         try {
-            // 保存批次
+            // Save batches
             nlohmann::json j;
             j["batches"] = nlohmann::json::object();
 
@@ -102,7 +102,7 @@ public:
             std::ofstream f(batchesFile);
             f << j.dump(2);
         } catch (...) {
-            // 保存失败
+            // Save failed
         }
     }
 };
@@ -112,7 +112,7 @@ AccountManager::AccountManager(const std::string& dataDir)
 
 AccountManager::~AccountManager() = default;
 
-// ========== 账号管理 ==========
+// ========== Account Management ==========
 
 bool AccountManager::addAccount(const Account& account) {
     if (account.id.empty() || account.game.empty()) {
@@ -132,7 +132,7 @@ bool AccountManager::removeAccount(const std::string& gameId, const std::string&
         return false;
     }
 
-    // 从所有分组中移除
+    // Remove from all groups
     if (!it->second.group.empty()) {
         std::string groupKey = impl_->makeGroupKey(gameId, it->second.group);
         auto& groupMembers = impl_->groups[groupKey];
@@ -199,11 +199,11 @@ bool AccountManager::updateAccount(const std::string& gameId, const Account& acc
     return true;
 }
 
-// ========== 批次管理 ==========
+// ========== Batch Management ==========
 
 std::string AccountManager::createBatch(const std::string& game, const std::string& name,
                                        const std::vector<std::string>& accountIds) {
-    // 生成批次 ID
+    // Generate batch ID
     std::string batchId = game + "_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
 
     Batch batch;
@@ -214,7 +214,7 @@ std::string AccountManager::createBatch(const std::string& game, const std::stri
     batch.total = static_cast<int>(accountIds.size());
     batch.startTime = std::chrono::system_clock::now();
 
-    // 初始化状态
+    // Initialize status
     for (const auto& accId : accountIds) {
         batch.status[accId] = AccountStatus::Idle;
     }
@@ -272,7 +272,7 @@ bool AccountManager::updateBatchStatus(const std::string& batchId,
         batch.errorMessage[accountId] = error;
     }
 
-    // 更新统计
+    // Update statistics
     batch.completed = 0;
     batch.success = 0;
     batch.failed = 0;
@@ -326,12 +326,12 @@ BatchProgress AccountManager::getBatchProgress(const std::string& batchId) {
     return progress;
 }
 
-// ========== 分组管理 ==========
+// ========== Group Management ==========
 
 bool AccountManager::createGroup(const std::string& game, const std::string& group) {
     std::string key = impl_->makeGroupKey(game, group);
     if (impl_->groups.find(key) != impl_->groups.end()) {
-        return false;  // 已存在
+        return false;  // Already exists
     }
     impl_->groups[key] = {};
     impl_->save();
@@ -345,7 +345,7 @@ bool AccountManager::removeGroup(const std::string& game, const std::string& gro
         return false;
     }
 
-    // 清除账号的分组标记
+    // Clear account group marker
     for (const auto& accountId : it->second) {
         std::string accKey = impl_->makeAccountKey(game, accountId);
         auto accIt = impl_->accounts.find(accKey);
@@ -380,7 +380,7 @@ bool AccountManager::addToGroup(const std::string& gameId, const std::string& ac
         return false;
     }
 
-    // 从旧分组移除
+    // Remove from old group
     if (!accIt->second.group.empty()) {
         std::string oldGroupKey = impl_->makeGroupKey(gameId, accIt->second.group);
         auto& oldMembers = impl_->groups[oldGroupKey];
@@ -390,7 +390,7 @@ bool AccountManager::addToGroup(const std::string& gameId, const std::string& ac
         );
     }
 
-    // 添加到新分组
+    // Add to new group
     std::string newGroupKey = impl_->makeGroupKey(gameId, group);
     impl_->groups[newGroupKey].push_back(accountId);
     accIt->second.group = group;
@@ -399,7 +399,7 @@ bool AccountManager::addToGroup(const std::string& gameId, const std::string& ac
     return true;
 }
 
-// ========== 导入/导出 ==========
+// ========== Import/Export ==========
 
 bool AccountManager::importAccounts(const std::string& game, const std::string& filePath,
                                    const std::string& format) {
@@ -460,7 +460,7 @@ bool AccountManager::exportAccounts(const std::string& game, const std::string& 
     return false;
 }
 
-// ========== BatchManager 实现 ==========
+// ========== BatchManager Implementation ==========
 
 BatchManager::BatchManager(AccountManager& accountManager)
     : accountManager_(accountManager) {}

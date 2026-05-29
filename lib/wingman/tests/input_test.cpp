@@ -11,7 +11,7 @@ protected:
     void TearDown() override {}
 };
 
-// ========== 基础功能测试 ==========
+// ========== Basic Functionality Tests ==========
 
 TEST(InputTest, GetMousePosition) {
     Point pos = Input::getMousePosition();
@@ -20,15 +20,15 @@ TEST(InputTest, GetMousePosition) {
 }
 
 TEST(InputTest, IsKeyDown) {
-    // 测试 VK_SHIFT 是否可用
+    // Test if VK_SHIFT is available
     bool result = Input::isKeyDown(VK_SHIFT);
-    // 只要不崩溃就算通过
+    // As long as it does not crash, it passes
     SUCCEED();
 }
 
 TEST(InputTest, IsMouseDown) {
     bool result = Input::isMouseDown(MouseButton::Left);
-    // 只要不崩溃就算通过
+    // As long as it does not crash, it passes
     SUCCEED();
 }
 
@@ -38,7 +38,7 @@ TEST(InputTest, Delay) {
     auto end = std::chrono::steady_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    EXPECT_GE(duration.count(), 90);  // 允许10ms误差
+    EXPECT_GE(duration.count(), 90);  // Allow 10ms error margin
 }
 
 TEST(InputTest, RandomDelay) {
@@ -47,10 +47,10 @@ TEST(InputTest, RandomDelay) {
     auto end = std::chrono::steady_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    EXPECT_GE(duration.count(), 40);  // 允许10ms误差
+    EXPECT_GE(duration.count(), 40);  // Allow 10ms error margin
 }
 
-// ========== 鼠标移动测试 ==========
+// ========== Mouse Movement Tests ==========
 
 TEST(InputTest, MoveInstant) {
     Point original = Input::getMousePosition();
@@ -62,14 +62,14 @@ TEST(InputTest, MoveInstant) {
     EXPECT_EQ(newPos.x, 100);
     EXPECT_EQ(newPos.y, 100);
 
-    // 恢复原始位置
+    // Restore original position
     Input::move(original.x, original.y);
 }
 
 TEST(InputTest, MoveSmooth) {
     Point original = Input::getMousePosition();
 
-    // 平滑移动到目标位置
+    // Smooth move to target position
     Input::move(200, 200, 200);
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
@@ -77,24 +77,24 @@ TEST(InputTest, MoveSmooth) {
     EXPECT_EQ(newPos.x, 200);
     EXPECT_EQ(newPos.y, 200);
 
-    // 恢复原始位置
+    // Restore original position
     Input::move(original.x, original.y);
 }
 
-// ========== 鼠标点击测试 ==========
+// ========== Mouse Click Tests ==========
 
 TEST(InputTest, ClickLeft) {
     Point original = Input::getMousePosition();
 
-    // 移动到安全位置
+    // Move to a safe position
     Input::move(300, 300);
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    // 执行点击（只测试不崩溃）
+    // Execute click (only test that it does not crash)
     Input::click(300, 300, MouseButton::Left);
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    // 恢复原始位置
+    // Restore original position
     Input::move(original.x, original.y);
 }
 
@@ -122,7 +122,7 @@ TEST(InputTest, DoubleClick) {
     Input::move(original.x, original.y);
 }
 
-// ========== 鼠标按下/释放测试 ==========
+// ========== Mouse Down/Up Tests ==========
 
 TEST(InputTest, MouseDownUp) {
     Point original = Input::getMousePosition();
@@ -138,24 +138,24 @@ TEST(InputTest, MouseDownUp) {
     Input::move(original.x, original.y);
 }
 
-// ========== 滚轮测试 ==========
+// ========== Scroll Tests ==========
 
 TEST(InputTest, Scroll) {
-    // 只测试不崩溃
+    // Only test that it does not crash
     Input::scroll(0, 0, 120);
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
-// ========== 键盘测试 ==========
+// ========== Keyboard Tests ==========
 
 TEST(InputTest, KeyPress) {
-    // 测试按下 'A' 键（只测试不崩溃）
+    // Test pressing 'A' key (only test that it does not crash)
     Input::key(0x41);  // VK_A
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 TEST(InputTest, KeyDownUp) {
-    // 测试按下和释放（只测试不崩溃）
+    // Test key down and up (only test that it does not crash)
     Input::keyDown(0x41);
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     Input::keyUp(0x41);
@@ -163,23 +163,23 @@ TEST(InputTest, KeyDownUp) {
 }
 
 TEST(InputTest, TypeSimple) {
-    // 只测试不崩溃
+    // Only test that it does not crash
     Input::type("Hello");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 TEST(InputTest, TypeWithDelay) {
-    // 只测试不崩溃
+    // Only test that it does not crash
     Input::type("Test", 50);
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 }
 
-// ========== 边界条件测试 ==========
+// ========== Boundary Condition Tests ==========
 
 TEST(InputTest, MoveToNegativeCoordinates) {
     Point original = Input::getMousePosition();
 
-    // 移动到边界位置
+    // Move to boundary position
     Input::move(0, 0);
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
@@ -193,11 +193,11 @@ TEST(InputTest, MoveToNegativeCoordinates) {
 TEST(InputTest, LargeCoordinates) {
     Point original = Input::getMousePosition();
 
-    // 移动到大坐标
+    // Move to large coordinates
     Input::move(5000, 5000);
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    // Windows 会限制在屏幕范围内
+    // Windows will clamp to screen bounds
     Point pos = Input::getMousePosition();
     EXPECT_GT(pos.x, 0);
     EXPECT_GT(pos.y, 0);
@@ -210,7 +210,7 @@ TEST(InputTest, ZeroDelay) {
     Input::delay(0);
     auto end = std::chrono::steady_clock::now();
 
-    // 应该立即返回
+    // Should return immediately
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     EXPECT_LT(duration.count(), 10);
 }

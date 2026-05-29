@@ -11,7 +11,7 @@
 
 namespace wingman {
 
-// ========== HumanMouse 实现 ==========
+// ========== HumanMouse Implementation ==========
 
 HumanMouse::HumanMouse() : rng_(std::random_device{}()) {
 }
@@ -58,16 +58,16 @@ void HumanMouse::randomDelay(int minMs, int maxMs) {
     }
 }
 
-// 二阶贝塞尔曲线: B(t) = (1-t)²P0 + 2(1-t)tP1 + t²P2
-// 三阶贝塞尔曲线: B(t) = (1-t)³P0 + 3(1-t)²tP1 + 3(1-t)t²P2 + t³P3
+// Quadratic Bezier curve: B(t) = (1-t)^2*P0 + 2(1-t)*t*P1 + t^2*P2
+// Cubic Bezier curve: B(t) = (1-t)^3*P0 + 3(1-t)^2*t*P1 + 3(1-t)*t^2*P2 + t^3*P3
 Point HumanMouse::calculateBezierPoint(double t, const std::vector<Point>& controlPoints) {
     if (controlPoints.size() == 2) {
-        // 线性插值
+        // Linear interpolation
         double x = (1 - t) * controlPoints[0].x + t * controlPoints[1].x;
         double y = (1 - t) * controlPoints[0].y + t * controlPoints[1].y;
         return Point(static_cast<int>(x), static_cast<int>(y));
     } else if (controlPoints.size() == 3) {
-        // 二阶贝塞尔
+        // Quadratic Bezier
         double t2 = t * t;
         double mt = 1 - t;
         double mt2 = mt * mt;
@@ -75,7 +75,7 @@ Point HumanMouse::calculateBezierPoint(double t, const std::vector<Point>& contr
         double y = mt2 * controlPoints[0].y + 2 * mt * t * controlPoints[1].y + t2 * controlPoints[2].y;
         return Point(static_cast<int>(x), static_cast<int>(y));
     } else if (controlPoints.size() >= 4) {
-        // 三阶贝塞尔
+        // Cubic Bezier
         double t2 = t * t;
         double t3 = t2 * t;
         double mt = 1 - t;
@@ -98,10 +98,10 @@ std::vector<Point> HumanMouse::generateBezierPath(const Point& start, const Poin
     std::vector<Point> controlPoints;
     controlPoints.push_back(start);
 
-    // 生成随机控制点数量（限制为最多3个，避免过多控制点导致复杂计算）
+    // Generate random control point count (limited to max 3, avoid too many control points causing complex calculations)
     int numControlPoints = randomInt(config_.minControlPoints, std::min(config_.maxControlPoints, 3));
 
-    // 计算中间控制点
+    // Calculate intermediate control points
     int deltaX = end.x - start.x;
     int deltaY = end.y - start.y;
     double distance = std::sqrt(static_cast<double>(deltaX * deltaX + deltaY * deltaY));
@@ -109,16 +109,16 @@ std::vector<Point> HumanMouse::generateBezierPath(const Point& start, const Poin
     for (int i = 0; i < numControlPoints; ++i) {
         double t = static_cast<double>(i + 1) / (numControlPoints + 1);
 
-        // 基础控制点在线段上
+        // Base control point on line segment
         int baseX = start.x + static_cast<int>(deltaX * t);
         int baseY = start.y + static_cast<int>(deltaY * t);
 
-        // 添加垂直于线段的随机偏移
-        // 垂直方向向量
+        // Add random offset perpendicular to line segment
+        // Perpendicular direction vector
         double perpX = -deltaY / distance;
         double perpY = deltaX / distance;
 
-        // 随机偏移量
+        // Random offset amount
         double offset = randomDouble(-config_.pathVariance, config_.pathVariance);
 
         int ctrlX = baseX + static_cast<int>(perpX * offset);
@@ -129,18 +129,18 @@ std::vector<Point> HumanMouse::generateBezierPath(const Point& start, const Poin
 
     controlPoints.push_back(end);
 
-    // 生成路径点（采样贝塞尔曲线）
+    // Generate path points (sample Bezier curve)
     std::vector<Point> path;
-    int numSamples = static_cast<int>(distance / 5);  // 每5像素采样一次
-    numSamples = std::max(numSamples, 20);  // 至少20个点
-    numSamples = std::min(numSamples, 100); // 最多100个点
+    int numSamples = static_cast<int>(distance / 5);  // Sample every 5 pixels
+    numSamples = std::max(numSamples, 20);  // At least 20 points
+    numSamples = std::min(numSamples, 100); // At most 100 points
 
     for (int i = 0; i <= numSamples; ++i) {
         double t = static_cast<double>(i) / numSamples;
         path.push_back(calculateBezierPoint(t, controlPoints));
     }
 
-    // 确保最后一个点就是终点（修正浮点误差）
+    // Ensure last point is exactly the endpoint (fix floating-point error)
     if (!path.empty()) {
         path.back() = end;
     }
@@ -152,10 +152,10 @@ void HumanMouse::addRandomness(std::vector<Point>& path) {
     if (!config_.enablePathRandomness) return;
 
     for (auto& point : path) {
-        // 跳过起点和终点
+        // Skip start and end points
         if (&point == &path.front() || &point == &path.back()) continue;
 
-        // 添加小幅随机偏移
+        // Add small random offset
         int offsetX = randomInt(-config_.pathVariance / 2, config_.pathVariance / 2);
         int offsetY = randomInt(-config_.pathVariance / 2, config_.pathVariance / 2);
         point.x += offsetX;
@@ -174,15 +174,15 @@ double HumanMouse::calculatePathLength(const std::vector<Point>& path) const {
 }
 
 int HumanMouse::calculateDuration(double pathLength) const {
-    // 根据路径长度计算时长：约 1000-2000 像素/秒
-    double pixelsPerMs = 2.0;  // 平均速度
+    // Calculate duration based on path length: approx 1000-2000 pixels/sec
+    double pixelsPerMs = 2.0;  // Average speed
     int baseDuration = static_cast<int>(pathLength / pixelsPerMs);
 
-    // 添加随机性并限制在配置范围内
+    // Add randomness and clamp within config range
     int variance = randomInt(-config_.moveVariance, config_.moveVariance);
     int duration = baseDuration + variance;
 
-    // 限制在最小和最大时长之间
+    // Clamp between min and max duration
     duration = std::max(duration, config_.minMoveDuration);
     duration = std::min(duration, config_.maxMoveDuration);
 
@@ -194,7 +194,7 @@ void HumanMouse::moveAlongPath(const std::vector<Point>& path) {
 
     int totalDuration = calculateDuration(calculatePathLength(path));
 
-    // 计算每个点之间的延迟
+    // Calculate delay between each point
     int numSegments = static_cast<int>(path.size()) - 1;
     if (numSegments <= 0) {
         Input::move(path[0].x, path[0].y);
@@ -203,13 +203,13 @@ void HumanMouse::moveAlongPath(const std::vector<Point>& path) {
 
     int delayPerSegment = totalDuration / numSegments;
 
-    // 沿路径移动
+    // Move along path
     for (size_t i = 0; i < path.size(); ++i) {
         Input::move(path[i].x, path[i].y);
 
-        // 最后一个点不需要延迟
+        // No delay needed for last point
         if (i < path.size() - 1) {
-            // 添加小的随机变化
+            // Add small random variation
             int actualDelay = delayPerSegment + randomInt(-5, 5);
             actualDelay = std::max(actualDelay, 1);
             std::this_thread::sleep_for(std::chrono::milliseconds(actualDelay));
@@ -224,18 +224,18 @@ void HumanMouse::moveTo(int x, int y) {
 void HumanMouse::moveTo(const Point& target) {
     Point start = getCurrentPosition();
 
-    // 如果已经在目标位置，直接返回
+    // If already at target position, return directly
     if (start.x == target.x && start.y == target.y) {
         return;
     }
 
-    // 生成贝塞尔曲线路径
+    // Generate Bezier curve path
     std::vector<Point> path = generateBezierPath(start, target);
 
-    // 添加随机性
+    // Add randomness
     addRandomness(path);
 
-    // 沿路径移动
+    // Move along path
     moveAlongPath(path);
 }
 
@@ -244,7 +244,7 @@ void HumanMouse::moveTo(int x, int y, int approximateDurationMs) {
 
     if (start.x == x && start.y == y) return;
 
-    // 临时修改配置以匹配指定时长
+    // Temporarily modify config to match specified duration
     HumanMouseConfig originalConfig = config_;
     config_.minMoveDuration = approximateDurationMs - config_.moveVariance;
     config_.maxMoveDuration = approximateDurationMs + config_.moveVariance;
@@ -259,45 +259,45 @@ void HumanMouse::click(int x, int y) {
 }
 
 void HumanMouse::click(const Point& pos) {
-    // 移动到目标位置
+    // Move to target position
     moveTo(pos.x, pos.y);
 
-    // 点击前随机延迟
+    // Random delay before click
     randomDelay(config_.clickDelayMin, config_.clickDelayMax);
 
-    // 点击
+    // Click
     Input::click(pos.x, pos.y);
 
     spdlog::debug("HumanMouse: clicked at ({}, {})", pos.x, pos.y);
 }
 
 void HumanMouse::rightClick(int x, int y) {
-    // 移动到目标位置
+    // Move to target position
     moveTo(x, y);
 
-    // 点击前随机延迟
+    // Random delay before click
     randomDelay(config_.clickDelayMin, config_.clickDelayMax);
 
-    // 右键点击
+    // Right click
     Input::click(x, y, MouseButton::Right);
 
     spdlog::debug("HumanMouse: right-clicked at ({}, {})", x, y);
 }
 
 void HumanMouse::doubleClick(int x, int y) {
-    // 移动到目标位置
+    // Move to target position
     moveTo(x, y);
 
-    // 点击前随机延迟
+    // Random delay before click
     randomDelay(config_.clickDelayMin, config_.clickDelayMax);
 
-    // 第一次点击
+    // First click
     Input::click(x, y);
 
-    // 双击间隔延迟
+    // Double-click interval delay
     randomDelay(config_.doubleClickIntervalMin, config_.doubleClickIntervalMax);
 
-    // 第二次点击
+    // Second click
     Input::click(x, y);
 
     spdlog::debug("HumanMouse: double-clicked at ({}, {})", x, y);
@@ -308,44 +308,44 @@ void HumanMouse::drag(int fromX, int fromY, int toX, int toY) {
 }
 
 void HumanMouse::drag(const Point& from, const Point& to) {
-    // 移动到起始位置
+    // Move to start position
     moveTo(from.x, from.y);
 
-    // 按下前随机延迟
+    // Random delay before press
     randomDelay(config_.clickDelayMin, config_.clickDelayMax);
 
-    // 按下鼠标
+    // Press mouse
     Input::mouseDown(MouseButton::Left);
 
-    // 按下持续时间
+    // Press duration
     randomDelay(config_.clickDurationMin, config_.clickDurationMax);
 
-    // 移动到目标位置（保持按下状态）
+    // Move to target position (keep pressed)
     moveTo(to.x, to.y);
 
-    // 释放前延迟
+    // Delay before release
     randomDelay(config_.clickDurationMin, config_.clickDurationMax);
 
-    // 释放鼠标
+    // Release mouse
     Input::mouseUp(MouseButton::Left);
 
     spdlog::debug("HumanMouse: dragged from ({}, {}) to ({}, {})", from.x, from.y, to.x, to.y);
 }
 
 void HumanMouse::scroll(int x, int y, int delta) {
-    // 移动到目标位置
+    // Move to target position
     moveTo(x, y);
 
-    // 滚动前延迟
+    // Delay before scroll
     randomDelay(config_.scrollDelayMin, config_.scrollDelayMax);
 
-    // 滚动
+    // Scroll
     Input::scroll(x, y, delta);
 
     spdlog::debug("HumanMouse: scrolled at ({}, {}) by {}", x, y, delta);
 }
 
-// ========== HumanKeyboard 实现 ==========
+// ========== HumanKeyboard Implementation ==========
 
 HumanKeyboard::HumanKeyboard() : rng_(std::random_device{}()) {
 }
@@ -403,7 +403,7 @@ void HumanKeyboard::type(const std::string& text) {
 
 void HumanKeyboard::type(const std::string& text, bool randomCase) {
     for (char c : text) {
-        // 随机大小写
+        // Random case
         if (randomCase && std::isalpha(c)) {
             if (randomInt(0, 1) == 1) {
                 c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
@@ -412,7 +412,7 @@ void HumanKeyboard::type(const std::string& text, bool randomCase) {
             }
         }
 
-        // 每个字符之间有随机延迟
+        // Random delay between each character
         int delay = randomInt(config_.typeDelayMin, config_.typeDelayMax);
         Input::type(std::string(1, c));
         std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -420,7 +420,7 @@ void HumanKeyboard::type(const std::string& text, bool randomCase) {
     spdlog::debug("HumanKeyboard: typed text (length={})", text.length());
 }
 
-// ========== Human 总接口实现 ==========
+// ========== Human Main Interface Implementation ==========
 
 HumanMouse& Human::mouse() {
     return HumanMouse::instance();

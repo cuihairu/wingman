@@ -19,7 +19,7 @@
 namespace wingman::platform::windows {
 
 /**
- * @brief 监控项
+ * @brief Watch item
  */
 struct WatchItem {
     uint64_t id;
@@ -35,9 +35,9 @@ struct WatchItem {
 };
 
 /**
- * @brief Windows 文件监控实现
+ * @brief Windows file watcher implementation
  *
- * 使用 ReadDirectoryChangesW 实现文件变化监控。
+ * Uses ReadDirectoryChangesW for file change monitoring.
  */
 class Win32FileWatcher : public IFileWatcher {
 public:
@@ -65,7 +65,7 @@ private:
     std::unordered_map<uint64_t, std::unique_ptr<WatchItem>> watches_;
     mutable std::mutex watchesMutex_;
 
-    // 事件处理线程
+    // Event processing thread
     std::thread eventThread_;
     std::mutex eventMutex_;
     std::condition_variable eventCondition_;

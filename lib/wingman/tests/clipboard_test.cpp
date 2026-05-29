@@ -23,7 +23,7 @@ TEST(ClipboardTest, SetEmptyText) {
 }
 
 TEST(ClipboardTest, SetUnicodeText) {
-    std::string testText = "你好世界 🚀 Wingman";
+    std::string testText = "Hello World 🚀 Wingman";
 
     EXPECT_TRUE(Clipboard::setText(testText));
     std::string result = Clipboard::getText();

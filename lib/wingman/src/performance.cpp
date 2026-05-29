@@ -58,7 +58,7 @@ const PerformanceConfig& PerformanceManager::getConfig() const {
     return m_config;
 }
 
-// ========== 图像缓存 ==========
+// ========== Image Cache ==========
 
 cv::Mat PerformanceManager::getCachedImage(const std::string& path) {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -142,7 +142,7 @@ size_t PerformanceManager::getCacheMisses() const {
     return m_cacheMisses;
 }
 
-// ========== 优化的图像匹配 ==========
+// ========== Optimized Image Matching ==========
 
 bool PerformanceManager::fastFindImage(const std::string& imagePath,
                                        const Rect& region,
@@ -238,7 +238,7 @@ std::vector<std::pair<std::string, Point>> PerformanceManager::findMultipleImage
     return results;
 }
 
-// ========== 并行像素检测 ==========
+// ========== Parallel Pixel Detection ==========
 
 std::vector<Point> PerformanceManager::parallelFindColors(
     const Color& color,
@@ -326,7 +326,7 @@ std::vector<std::pair<Color, std::vector<Point>>> PerformanceManager::parallelFi
     return results;
 }
 
-// ========== 性能统计 ==========
+// ========== Performance Statistics ==========
 
 PerformanceManager::Stats PerformanceManager::getStats() const {
     return m_stats;
@@ -338,7 +338,7 @@ void PerformanceManager::resetStats() {
     m_cacheMisses = 0;
 }
 
-// ========== 辅助方法 ==========
+// ========== Helper Methods ==========
 
 std::vector<cv::Mat> PerformanceManager::buildPyramid(const cv::Mat& image, int maxLevel) {
     std::vector<cv::Mat> pyramid;

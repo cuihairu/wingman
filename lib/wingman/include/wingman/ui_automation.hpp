@@ -9,7 +9,7 @@
 namespace wingman {
 
 /**
- * @brief 元素角色
+ * @brief Element role
  */
 enum class UIARole : uint16_t {
     Unknown,
@@ -29,7 +29,7 @@ enum class UIARole : uint16_t {
 };
 
 /**
- * @brief 元素状态
+ * @brief Element state
  */
 enum class UIAState : uint32_t {
     None = 0,
@@ -56,7 +56,7 @@ inline bool hasState(UIAState flags, UIAState state) {
 }
 
 /**
- * @brief UI 元素信息
+ * @brief UI element information
  */
 struct UIAElementInfo {
     std::string name;
@@ -72,7 +72,7 @@ struct UIAElementInfo {
 };
 
 /**
- * @brief 元素选择器
+ * @brief Element selector
  */
 struct UIASelector {
     std::string name;
@@ -98,7 +98,7 @@ struct UIASelector {
 };
 
 /**
- * @brief UI 自动化元素接口
+ * @brief UI Automation element interface
  */
 class IUIAElement {
 public:
@@ -127,7 +127,7 @@ public:
 };
 
 /**
- * @brief UI 自动化管理器接口
+ * @brief UI Automation manager interface
  */
 class IUIAManager {
 public:
@@ -145,7 +145,7 @@ public:
 };
 
 /**
- * @brief UI Automation 主类（兼容旧代码）
+ * @brief UI Automation main class (backward compatible)
  */
 class UIAutomation {
 public:
@@ -155,7 +155,7 @@ public:
     bool initialize();
     void cleanup();
 
-    // 查找方法
+    // Find methods
     std::shared_ptr<IUIAElement> find(const UIASelector& selector);
     std::shared_ptr<IUIAElement> findByName(const std::string& name);
     std::shared_ptr<IUIAElement> findById(const std::string& id);
@@ -168,7 +168,7 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
-// 全局访问
+// Global access
 UIAutomation& uia();
 
 } // namespace wingman

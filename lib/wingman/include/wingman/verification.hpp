@@ -9,7 +9,7 @@
 
 namespace wingman {
 
-// TOTP 类型
+// TOTP type
 enum class TOTPType {
     Steam,      // Steam Guard
     Google,     // Google Authenticator
@@ -18,94 +18,94 @@ enum class TOTPType {
     Blizzard,   // Blizzard Authenticator
 };
 
-// TOTP 配置
+// TOTP configuration
 struct TOTPConfig {
     TOTPType type = TOTPType::Steam;
-    std::string secret;      // Base32 密钥
-    int digits = 5;          // Steam 默认 5 位，其他通常 6 位
-    int period = 30;         // 刷新周期（秒）
-    std::string account;     // 账号标识
+    std::string secret;      // Base32 secret key
+    int digits = 5;          // Steam defaults to 5 digits, others usually 6 digits
+    int period = 30;         // Refresh period (seconds)
+    std::string account;     // Account identifier
 };
 
-// 邮箱配置
+// Email configuration
 struct EmailConfig {
     std::string imapServer;
     int imapPort = 993;
     bool useSSL = true;
     std::string username;
-    std::string password;    // 或应用专用密码
-    std::string senderFilter;  // 发件人过滤
+    std::string password;    // Or app-specific password
+    std::string senderFilter;  // Sender filter
     int timeoutSeconds = 60;
 };
 
-// 验证码类型
+// Verification code type
 enum class VerificationType {
     TOTP,
     Email,
     SMS,
 };
 
-// 验证码结果
+// Verification code result
 struct VerificationCode {
     VerificationType type;
     std::string code;
     std::chrono::system_clock::time_point expiry;
-    int remainingSeconds;  // TOTP 剩余有效时间
+    int remainingSeconds;  // TOTP remaining valid time
 };
 
-// 验证码管理器
+// Verification code manager
 class VerificationManager {
 public:
     VerificationManager();
     ~VerificationManager();
 
-    // ========== TOTP 相关 ==========
+    // ========== TOTP related ==========
 
-    // 生成 TOTP 验证码
+    // Generate TOTP verification code
     std::string generateTOTP(const TOTPConfig& config);
     std::string generateTOTP(const std::string& account);
 
-    // 验证 TOTP 码
+    // Verify TOTP code
     bool verifyTOTP(const TOTPConfig& config, const std::string& code, int window = 1);
     bool verifyTOTP(const std::string& account, const std::string& code, int window = 1);
 
-    // 获取剩余有效时间
+    // Get remaining valid time
     int getRemainingSeconds(const TOTPConfig& config);
 
-    // Steam Guard 特殊处理
+    // Steam Guard special handling
     std::string generateSteamGuard(const std::string& secret);
     std::string generateSteamGuardTime(const std::string& secret, uint64_t time);
 
-    // ========== 邮件相关 ==========
+    // ========== Email related ==========
 
-    // 获取邮箱验证码（阻塞等待）
+    // Get email verification code (blocking wait)
     std::optional<std::string> getEmailCode(const EmailConfig& config);
 
-    // 异步获取邮箱验证码
+    // Get email verification code asynchronously
     void getEmailCodeAsync(const EmailConfig& config,
                            std::function<void(std::optional<std::string>)> callback);
 
-    // 停止邮件监听
+    // Stop email listener
     void stopEmailListener();
 
-    // ========== 配置管理 ==========
+    // ========== Profile management ==========
 
-    // 保存 TOTP 配置
+    // Save TOTP configuration
     bool saveTOTP(const std::string& account, const TOTPConfig& config);
 
-    // 加载 TOTP 配置
+    // Load TOTP configuration
     std::optional<TOTPConfig> loadTOTP(const std::string& account);
 
-    // 列出所有 TOTP 账号
+    // List all TOTP accounts
     std::vector<std::string> listTOTPAccounts();
 
-    // 删除 TOTP 配置
+    // Remove TOTP configuration
     bool removeTOTP(const std::string& account);
 
-    // 保存邮箱配置
+    // Save email configuration
     bool saveEmail(const std::string& account, const EmailConfig& config);
 
-    // 加载邮箱配置
+    // Load email configuration
     std::optional<EmailConfig> loadEmail(const std::string& account);
 
 private:

@@ -6,7 +6,7 @@ namespace script {
 namespace modules {
 
 static KeyValueStore* getKVStore() {
-	// TODO: 返回全局 KVStore 实例
+	// TODO: Return global KVStore instance
 	return nullptr;
 }
 

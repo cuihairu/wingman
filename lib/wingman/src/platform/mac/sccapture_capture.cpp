@@ -12,11 +12,11 @@
 namespace wingman::platform::mac {
 
 /**
- * @brief macOS ScreenCaptureKit 实现
+ * @brief macOS ScreenCaptureKit implementation
  *
- * 使用 ScreenCaptureKit 框架进行屏幕捕获（macOS 12.3+）。
- * 优点：高性能，支持窗口捕获，支持光标
- * 缺点：仅支持 macOS 12.3+
+ * Uses ScreenCaptureKit framework for screen capture (macOS 12.3+).
+ * Pros: High performance, window capture support, cursor support
+ * Cons: Only supports macOS 12.3+
  */
 class SCCapture : public ICapture {
 public:
@@ -62,11 +62,11 @@ public:
                 return nullptr;
             }
 
-            // 获取主显示器
+            // Get main display
             CGDirectDisplayID displayID;
             CGGetActiveDisplayList(1, &displayID, &displayCount);
 
-            // 使用 CGDisplayCreateImage 捕获
+            // Capture using CGDisplayCreateImage
             CGImageRef cgImage = CGDisplayCreateImage(displayID);
             if (!cgImage) {
                 return nullptr;
@@ -91,7 +91,7 @@ public:
         }
 
         if (@available(macOS 12.3, *)) {
-            // WindowHandle 在 macOS 上是 CGWindowID
+            // WindowHandle is CGWindowID on macOS
             CGWindowID windowID = reinterpret_cast<CGWindowID>(hwnd);
 
             CFArrayRef windows = CFArrayCreate(nullptr, (const void**)&windowID, 1, nullptr);
@@ -116,7 +116,7 @@ public:
     }
 
     std::unique_ptr<Bitmap> captureWindowByTitle(const std::string& title) override {
-        // 需要依赖 IWindow 接口来查找窗口
+        // Need to depend on IWindow interface to find window
         return nullptr;
     }
 
@@ -203,7 +203,7 @@ public:
         CGSize size = CGDisplayScreenSize(displayID);
         CGRect rect = CGDisplayBounds(displayID);
 
-        // 计算 DPI (假设 1 inch = 25.4 mm)
+        // Calculate DPI (assuming 1 inch = 25.4 mm)
         double dpiX = (rect.size.width / size.width) * 25.4;
         return dpiX / 96.0;
     }
@@ -233,7 +233,7 @@ public:
                     static_cast<int>(CGDisplayModeGetWidth(mode)),
                     static_cast<int>(CGDisplayModeGetHeight(mode)),
                     static_cast<int>(CGDisplayModeGetRefreshRate(mode)),
-                    32  // macOS 通常为 32 位
+                    32  // macOS is typically 32-bit
                 };
                 modes.push_back(dm);
             }
@@ -321,7 +321,7 @@ private:
             Rect{0, 0, static_cast<int>(width), static_cast<int>(height)} :
             region;
 
-        // 限制裁剪区域
+        // Limit crop region
         cropRegion.x = std::max(0, std::min(cropRegion.x, static_cast<int>(width) - 1));
         cropRegion.y = std::max(0, std::min(cropRegion.y, static_cast<int>(height) - 1));
         cropRegion.width = std::min(cropRegion.width, static_cast<int>(width) - cropRegion.x);
@@ -329,7 +329,7 @@ private:
 
         auto bitmap = std::make_unique<Bitmap>(cropRegion.width, cropRegion.height);
 
-        // 创建位图上下文
+        // Create bitmap context
         CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
         CGContextRef context = CGBitmapContextCreate(
             bitmap->getData(),
@@ -342,7 +342,7 @@ private:
         );
 
         if (context) {
-            // 绘制图像
+            // Draw image
             CGRect drawRect = CGRectMake(
                 -cropRegion.x,
                 -cropRegion.y,

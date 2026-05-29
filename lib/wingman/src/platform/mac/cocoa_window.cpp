@@ -15,7 +15,7 @@
 namespace wingman::platform::mac {
 
 /**
- * @brief macOS Cocoa 窗口管理实现
+ * @brief macOS Cocoa window management implementation
  */
 class CocoaWindow : public IWindow {
 public:
@@ -78,7 +78,7 @@ public:
     }
 
     WindowHandle findByClassName(const std::string& className) override {
-        // macOS 不使用窗口类名概念
+        // macOS does not use window class name concept
         return NullWindowHandle;
     }
 
@@ -117,19 +117,19 @@ public:
             for (NSDictionary* windowInfo in windows) {
                 WindowInfo info;
 
-                // 窗口标题
+                // Window title
                 NSString* title = windowInfo[(id)kCGWindowName];
                 if (title) {
                     info.title = [title UTF8String];
                 }
 
-                // 窗口句柄
+                // Window handle
                 CFNumberRef windowNumber = (CFNumberRef)windowInfo[(id)kCGWindowNumber];
                 CGWindowID windowID;
                 CFNumberGetValue(windowNumber, kCFNumberIntType, &windowID);
                 info.handle = static_cast<WindowHandle>(windowID);
 
-                // 窗口边界
+                // Window bounds
                 CFDictionaryRef bounds = (CFDictionaryRef)windowInfo[(id)kCGWindowBounds];
                 if (bounds) {
                     CGRect rect;
@@ -142,14 +142,14 @@ public:
                     };
                 }
 
-                // 进程 ID
+                // Process ID
                 CFNumberRef pidRef = (CFNumberRef)windowInfo[(id)kCGWindowOwnerPID];
                 if (pidRef) {
                     CFNumberGetValue(pidRef, kCFNumberIntType, &info.processId);
                 }
 
-                // 前台窗口
-                info.isForeground = false;  // 需要额外逻辑判断
+                // Foreground window
+                info.isForeground = false;  // Requires additional logic
 
                 results.push_back(info);
             }
@@ -164,10 +164,10 @@ public:
         @autoreleasepool {
             NSRunningApplication* app = [NSWorkspace sharedWorkspace].frontmostApplication;
             if (app) {
-                // 获取应用的进程 ID
+                // Get application process ID
                 pid_t pid = app.processIdentifier;
 
-                // 查找该进程的窗口
+                // Find windows of this process
                 NSArray* windows = (NSArray*)CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
                 for (NSDictionary* windowInfo in windows) {
                     CFNumberRef pidRef = (CFNumberRef)windowInfo[(id)kCGWindowOwnerPID];
@@ -193,7 +193,7 @@ public:
         @autoreleasepool {
             CGWindowID windowID = static_cast<CGWindowID>(hwnd);
 
-            // 获取窗口所属的应用
+            // Get the app the window belongs to
             NSArray* windows = (NSArray*)CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
             for (NSDictionary* windowInfo in windows) {
                 CFNumberRef windowNumber = (CFNumberRef)windowInfo[(id)kCGWindowNumber];
@@ -237,7 +237,7 @@ public:
             AXUIElementRef element = createWindowAXUIElement(hwnd);
             if (!element) return false;
 
-            // macOS 没有直接的 "最大化" 概念，使用 Zoom 来模拟
+            // macOS has no direct "maximize" concept, use Zoom to simulate
             AXError err = AXUIElementPerformAction(element, CFSTR("AXZoom"));
             CFRelease(element);
             return err == kAXErrorSuccess;
@@ -249,7 +249,7 @@ public:
             AXUIElementRef element = createWindowAXUIElement(hwnd);
             if (!element) return false;
 
-            // 检查是否最小化，如果是则还原
+            // Check if minimized, restore if so
             CFBooleanRef minimized = nullptr;
             if (AXUIElementCopyAttributeValue(element, CFSTR("AXMinimized"), (CFTypeRef*)&minimized) == kAXErrorSuccess) {
                 bool isMin = CFBooleanGetValue(minimized);
@@ -262,7 +262,7 @@ public:
                 }
             }
 
-            // 如果不是最小化，可能是最大化状态，再次调用 Zoom 还原
+            // If not minimized, may be maximized, call Zoom again to restore
             AXError err = AXUIElementPerformAction(element, CFSTR("AXZoom"));
             CFRelease(element);
             return err == kAXErrorSuccess;
@@ -284,7 +284,7 @@ public:
     }
 
     bool forceClose(WindowHandle hwnd) override {
-        // 获取窗口所属进程并终止
+        // Get window process and terminate
         @autoreleasepool {
             NSArray* windows = (NSArray*)CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
 
@@ -300,7 +300,7 @@ public:
                         CFNumberGetValue(pidRef, kCFNumberIntType, &pid);
                         CFRelease(windows);
 
-                        // 终止进程（强制关闭）
+                        // Terminate process (force close)
                         kill(pid, SIGKILL);
                         return true;
                     }
@@ -318,7 +318,7 @@ public:
             AXUIElementRef element = createWindowAXUIElement(hwnd);
             if (!element) return false;
 
-            // 设置 minimized 属性为 true 来隐藏窗口
+            // Set minimized property to true to hide window
             AXError err = AXUIElementSetAttributeValue(element, CFSTR("AXMinimized"), kCFBooleanTrue);
             CFRelease(element);
             return err == kAXErrorSuccess;
@@ -330,10 +330,10 @@ public:
             AXUIElementRef element = createWindowAXUIElement(hwnd);
             if (!element) return false;
 
-            // 设置 minimized 属性为 false 来显示窗口
+            // Set minimized property to false to show window
             AXError err = AXUIElementSetAttributeValue(element, CFSTR("AXMinimized"), kCFBooleanFalse);
 
-            // 同时确保窗口可见
+            // Also ensure window is visible
             if (err == kAXErrorSuccess) {
                 AXUIElementSetAttributeValue(element, CFSTR("AXHidden"), kCFBooleanFalse);
             }
@@ -401,7 +401,7 @@ public:
             AXUIElementRef element = createWindowAXUIElement(hwnd);
             if (!element) return false;
 
-            // 设置窗口位置
+            // Set window position
             CGPoint point = CGPointMake(bounds.x, bounds.y);
             CFTypeRef positionValue = AXValueCreate(static_cast<AXValueType>(kAXValueCGPointType), &point);
             if (positionValue) {
@@ -409,7 +409,7 @@ public:
                 CFRelease(positionValue);
             }
 
-            // 设置窗口大小
+            // Set window size
             CGSize size = CGSizeMake(bounds.width, bounds.height);
             CFTypeRef sizeValue = AXValueCreate(static_cast<AXValueType>(kAXValueCGSizeType), &size);
             if (sizeValue) {
@@ -438,7 +438,7 @@ public:
 
     bool center(WindowHandle hwnd, int monitorIndex) override {
         @autoreleasepool {
-            // 获取显示器边界
+            // Get display bounds
             @autoreleasepool {
                 CGDisplayCount displayCount;
                 CGGetOnlineDisplayList(0, nullptr, &displayCount);
@@ -452,10 +452,10 @@ public:
 
                 CGRect displayRect = CGDisplayBounds(displays[monitorIndex]);
 
-                // 获取当前窗口大小
+                // Get current window size
                 Rect windowBounds = getBounds(hwnd);
 
-                // 计算居中位置
+                // Calculate centered position
                 int x = static_cast<int>(displayRect.origin.x + (displayRect.size.width - windowBounds.width) / 2);
                 int y = static_cast<int>(displayRect.origin.y + (displayRect.size.height - windowBounds.height) / 2);
 
@@ -513,11 +513,11 @@ public:
 
     bool isMaximized(WindowHandle hwnd) override {
         @autoreleasepool {
-            // macOS 使用 zoom 来实现最大化，需要通过比较窗口大小和屏幕大小来判断
+            // macOS uses zoom for maximize, need to compare window size with screen size
             AXUIElementRef element = createWindowAXUIElement(hwnd);
             if (!element) return false;
 
-            // 获取窗口大小
+            // Get window size
             CFTypeRef sizeValue = nullptr;
             CGSize windowSize;
             if (AXUIElementCopyAttributeValue(element, CFSTR("AXSize"), &sizeValue) == kAXErrorSuccess) {
@@ -528,10 +528,10 @@ public:
                 return false;
             }
 
-            // 获取主屏幕大小
+            // Get main screen size
             CGRect mainDisplayRect = CGDisplayBounds(CGMainDisplayID());
 
-            // 检查窗口大小是否接近屏幕大小（允许小误差）
+            // Check if window size is close to screen size (allow small margin)
             bool isMax = (std::abs(windowSize.width - mainDisplayRect.size.width) < 10 &&
                          std::abs(windowSize.height - mainDisplayRect.size.height) < 10);
 
@@ -634,10 +634,10 @@ private:
     bool initialized_ = false;
 
     /**
-     * @brief 从窗口句柄创建应用程序 AXUIElementRef
-     * @param hwnd 窗口句柄 (CGWindowID)
-     * @return AXUIElementRef，失败返回 nullptr
-     * @note 调用者需要在使用后 CFRelease 返回的元素
+     * @brief Create application AXUIElementRef from window handle
+     * @param hwnd Window handle (CGWindowID)
+     * @return AXUIElementRef, returns nullptr on failure
+     * @note Caller must CFRelease the returned element after use
      */
     static AXUIElementRef createAppAXUIElement(WindowHandle hwnd) {
         @autoreleasepool {
@@ -668,24 +668,24 @@ private:
     }
 
     /**
-     * @brief 从窗口句柄获取具体的窗口 AXUIElementRef
-     * @param hwnd 窗口句柄 (CGWindowID)
-     * @return AXUIElementRef，失败返回 nullptr
-     * @note 调用者需要在使用后 CFRelease 返回的元素
+     * @brief Get specific window AXUIElementRef from window handle
+     * @param hwnd Window handle (CGWindowID)
+     * @return AXUIElementRef, returns nullptr on failure
+     * @note Caller must CFRelease the returned element after use
      */
     static AXUIElementRef createWindowAXUIElement(WindowHandle hwnd) {
         @autoreleasepool {
             AXUIElementRef appElement = createAppAXUIElement(hwnd);
             if (!appElement) return nullptr;
 
-            // 获取应用程序的窗口列表
+            // Get application window list
             CFArrayRef windowList = nullptr;
             if (AXUIElementCopyAttributeValues(appElement, CFSTR("AXWindows"), 0, 1024, &windowList) != kAXErrorSuccess) {
                 CFRelease(appElement);
                 return nullptr;
             }
 
-            // 获取目标窗口标题（通过 CGWindowListCopyWindowInfo）
+            // Get target window title (via CGWindowListCopyWindowInfo)
             std::string targetTitle;
             @autoreleasepool {
                 CGWindowID windowID = static_cast<CGWindowID>(hwnd);
@@ -708,20 +708,20 @@ private:
                 CFRelease(windows);
             }
 
-            // 查找匹配的窗口（通过标题匹配）
+            // Find matching window (by title match)
             AXUIElementRef resultElement = nullptr;
             CFIndex count = CFArrayGetCount(windowList);
             for (CFIndex i = 0; i < count; ++i) {
                 AXUIElementRef windowElement = (AXUIElementRef)CFArrayGetValueAtIndex(windowList, i);
 
-                // 如果目标标题为空，直接返回第一个窗口
+                // If target title is empty, return first window directly
                 if (targetTitle.empty() && i == 0) {
                     CFRetain(windowElement);
                     resultElement = windowElement;
                     break;
                 }
 
-                // 获取窗口标题
+                // Get window title
                 CFStringRef titleRef = nullptr;
                 if (AXUIElementCopyAttributeValue(windowElement, CFSTR("AXTitle"), (CFTypeRef*)&titleRef) == kAXErrorSuccess && titleRef) {
                     const char* titlePtr = CFStringGetCStringPtr(titleRef, kCFStringEncodingUTF8);
@@ -738,7 +738,7 @@ private:
                 }
             }
 
-            // 如果没有找到匹配的窗口，返回第一个窗口
+            // If no matching window found, return first window
             if (!resultElement && count > 0) {
                 AXUIElementRef windowElement = (AXUIElementRef)CFArrayGetValueAtIndex(windowList, 0);
                 CFRetain(windowElement);

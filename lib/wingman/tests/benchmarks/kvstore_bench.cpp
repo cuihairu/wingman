@@ -1,5 +1,5 @@
-// Wingman 性能基准测试
-// 使用简单手动计时，避免额外的依赖
+// Wingman Performance Benchmark
+// Uses simple manual timing to avoid extra dependencies
 
 #include <wingman/kvstore.hpp>
 #include <chrono>
@@ -11,12 +11,12 @@
 using namespace std::chrono;
 using namespace wingman;
 
-// 简单的基准测试辅助类
+// Simple benchmark helper class
 class Benchmark {
 public:
     template<typename Func>
     static double run(const std::string& name, Func&& func, int iterations = 1000) {
-        // 预热
+        // Warmup
         func();
 
         auto start = high_resolution_clock::now();
@@ -36,88 +36,88 @@ public:
     }
 };
 
-// ========== KVStore 基准测试 ==========
+// ========== KVStore Benchmarks ==========
 
 void benchmark_kvstore() {
-    std::cout << "=== KeyValueStore 性能基准测试 ===" << std::endl;
+    std::cout << "=== KeyValueStore Performance Benchmark ===" << std::endl;
     std::cout << std::endl;
 
     KeyValueStore store;
 
-    // 1. SET 操作
+    // 1. SET operation
     Benchmark::run("SET (simple)", [&]() {
         store.set("key", "value");
     });
 
-    // 2. GET 操作
+    // 2. GET operation
     store.set("bench_key", "bench_value");
     Benchmark::run("GET (existing key)", [&]() {
         volatile auto val = store.get("bench_key");
         (void)val;
     });
 
-    // 3. GET 不存在的键
+    // 3. GET non-existing key
     Benchmark::run("GET (non-existing key)", [&]() {
         volatile auto val = store.get("nonexistent");
         (void)val;
     });
 
-    // 4. EXISTS 操作
+    // 4. EXISTS operation
     Benchmark::run("EXISTS", [&]() {
         volatile auto exists = store.exists("bench_key");
         (void)exists;
     });
 
-    // 5. DELETE 操作
+    // 5. DELETE operation
     Benchmark::run("DELETE", [&]() {
         store.set("temp", "value");
         store.del("temp");
     });
 
-    // 6. INCR 操作
+    // 6. INCR operation
     store.set("counter", "100");
     Benchmark::run("INCR", [&]() {
         store.incr("counter");
     });
 
-    // 7. HSET 操作
+    // 7. HSET operation
     Benchmark::run("HSET", [&]() {
         store.hset("hash", "field", "value");
     });
 
-    // 8. HGET 操作
+    // 8. HGET operation
     store.hset("bench_hash", "bench_field", "bench_value");
     Benchmark::run("HGET", [&]() {
         volatile auto val = store.hget("bench_hash", "bench_field");
         (void)val;
     });
 
-    // 9. LPUSH 操作
+    // 9. LPUSH operation
     Benchmark::run("LPUSH", [&]() {
         store.lpush("list", "item");
     });
 
-    // 10. LPOP 操作
+    // 10. LPOP operation
     store.lpush("bench_list", "item");
     Benchmark::run("LPOP", [&]() {
         store.lpop("bench_list");
-        store.lpush("bench_list", "item");  // 恢复
+        store.lpush("bench_list", "item");  // Restore
     });
 
     std::cout << std::endl;
 }
 
-// ========== 吞吐量测试 ==========
+// ========== Throughput Tests ==========
 
 void benchmark_throughput() {
-    std::cout << "=== 吞吐量测试 ===" << std::endl;
+    std::cout << "=== Throughput Tests ===" << std::endl;
     std::cout << std::endl;
 
     KeyValueStore store;
 
     const int count = 10000;
 
-    // 写入吞吐量
+    // Write throughput
     {
         auto start = high_resolution_clock::now();
         for (int i = 0; i < count; ++i) {
@@ -132,7 +132,7 @@ void benchmark_throughput() {
                   << ops_per_sec << " ops/sec" << std::endl;
     }
 
-    // 读取吞吐量
+    // Read throughput
     {
         auto start = high_resolution_clock::now();
         for (int i = 0; i < count; ++i) {
@@ -148,7 +148,7 @@ void benchmark_throughput() {
                   << ops_per_sec << " ops/sec" << std::endl;
     }
 
-    // 混合吞吐量（50% 读，50% 写）
+    // Mixed throughput (50% read, 50% write)
     {
         auto start = high_resolution_clock::now();
         for (int i = 0; i < count; ++i) {
@@ -171,10 +171,10 @@ void benchmark_throughput() {
     std::cout << std::endl;
 }
 
-// ========== 内存效率测试 ==========
+// ========== Memory Efficiency Tests ==========
 
 void benchmark_memory() {
-    std::cout << "=== 内存效率测试 ===" << std::endl;
+    std::cout << "=== Memory Efficiency Tests ===" << std::endl;
     std::cout << std::endl;
 
     KeyValueStore store;
@@ -207,7 +207,7 @@ void benchmark_memory() {
 }
 
 int main() {
-    std::cout << "Wingman 性能基准测试" << std::endl;
+    std::cout << "Wingman Performance Benchmark" << std::endl;
     std::cout << "======================" << std::endl;
     std::cout << std::endl;
 
@@ -215,7 +215,7 @@ int main() {
     benchmark_throughput();
     benchmark_memory();
 
-    std::cout << "=== 基准测试完成 ===" << std::endl;
+    std::cout << "=== Benchmark Complete ===" << std::endl;
 
     return 0;
 }

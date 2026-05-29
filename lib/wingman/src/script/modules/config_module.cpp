@@ -5,7 +5,7 @@ namespace wingman {
 namespace script {
 namespace modules {
 
-// 模块级共享 ConfigManager 实例
+// Module-level shared ConfigManager instance
 static ConfigManager& getConfigManager() {
 	static ConfigManager instance;
 	return instance;

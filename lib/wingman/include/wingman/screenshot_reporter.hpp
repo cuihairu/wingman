@@ -9,7 +9,7 @@
 
 namespace wingman {
 
-// 截图上报配置
+// Screenshot report configuration
 struct ScreenshotReporterConfig {
     std::string serverUrl = "http://localhost:9527";
     int intervalMs = 1000;

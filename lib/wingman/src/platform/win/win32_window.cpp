@@ -13,7 +13,7 @@
 namespace wingman::platform::win {
 
 /**
- * @brief Windows Win32 窗口管理实现
+ * @brief Windows Win32 window management implementation
  */
 class Win32Window : public IWindow {
 public:
@@ -169,7 +169,7 @@ public:
 
         Rect windowBounds = getBounds(hwnd);
 
-        // 获取显示器边界
+        // Get display bounds
         MONITORINFO mi = {};
         mi.cbSize = sizeof(mi);
         GetMonitorInfoA(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &mi);
@@ -298,7 +298,7 @@ private:
             return TRUE;
         }
 
-        // 按进程 ID 过滤
+        // Filter by process ID
         if (data->processId != 0) {
             DWORD pid;
             GetWindowThreadProcessId(hwnd, &pid);
@@ -307,7 +307,7 @@ private:
             }
         }
 
-        // 按标题过滤
+        // Filter by title
         if (!data->title.empty()) {
             wchar_t titleBuf[512];
             int len = GetWindowTextW(hwnd, titleBuf, 512);

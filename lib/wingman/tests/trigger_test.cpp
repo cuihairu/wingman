@@ -10,7 +10,7 @@ using namespace wingman;
 class TriggerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // 使用默认logger而不是创建新的
+        // Use default logger instead of creating a new one
         manager = std::make_unique<TriggerManager>();
     }
 
@@ -22,7 +22,7 @@ protected:
     std::unique_ptr<TriggerManager> manager;
 };
 
-// ========== TriggerManager 基础功能 ==========
+// ========== TriggerManager Basic Functionality ==========
 
 TEST_F(TriggerTest, AddTrigger) {
     TriggerConfig config;
@@ -110,7 +110,7 @@ TEST_F(TriggerTest, UpdateNonExistentTrigger) {
     EXPECT_FALSE(manager->update(99999, config));
 }
 
-// ========== 触发器配置 ==========
+// ========== Trigger Configuration ==========
 
 TEST_F(TriggerTest, GetTriggerConfig) {
     TriggerConfig config;
@@ -172,7 +172,7 @@ TEST_F(TriggerTest, GetAllTriggerConfigs) {
     EXPECT_EQ(configs.size(), 2);
 }
 
-// ========== 触发器实例 ==========
+// ========== Trigger Instances ==========
 
 TEST_F(TriggerTest, GetAllTriggerInstances) {
     TriggerConfig config;
@@ -193,7 +193,7 @@ TEST_F(TriggerTest, GetAllTriggerInstances) {
     EXPECT_FALSE(instances[0].triggered);
 }
 
-// ========== 启动停止 ==========
+// ========== Start/Stop ==========
 
 TEST_F(TriggerTest, StartStopManager) {
     EXPECT_FALSE(manager->isRunning(1));  // No triggers yet
@@ -215,7 +215,7 @@ TEST_F(TriggerTest, StartStopManager) {
     EXPECT_TRUE(manager->hasTrigger(id));
 }
 
-// ========== 多个触发器 ==========
+// ========== Multiple Triggers ==========
 
 TEST_F(TriggerTest, MultipleTriggers) {
     for (int i = 0; i < 5; ++i) {
@@ -238,10 +238,10 @@ TEST_F(TriggerTest, MultipleTriggers) {
     EXPECT_EQ(instances.size(), 5);
 }
 
-// ========== 触发器动作类型 ==========
+// ========== Trigger Action Types ==========
 
 TEST_F(TriggerTest, AllActionTypesExist) {
-    // 验证所有动作类型可以正确设置
+    // Verify all action types can be set correctly
     std::vector<BasicTriggerAction> types = {
         BasicTriggerAction::RunScript,
         BasicTriggerAction::Click,
@@ -280,7 +280,7 @@ TEST_F(TriggerTest, AllActionTypesExist) {
     }
 }
 
-// ========== TriggerEngine 测试 ==========
+// ========== TriggerEngine Tests ==========
 
 class TriggerEngineTest : public ::testing::Test {
 protected:

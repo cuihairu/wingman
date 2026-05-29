@@ -36,14 +36,14 @@ std::vector<ProcessId> Process::findAll(const std::string& name) {
 
     struct dirent* entry;
     while ((entry = readdir(proc_dir)) != nullptr) {
-        // 检查是否为数字目录（PID）
+        // Check if numeric directory (PID)
         if (!isdigit(entry->d_name[0])) {
             continue;
         }
 
         ProcessId pid = atoi(entry->d_name);
 
-        // 读取进程名称
+        // Read process name
         char comm_path[64];
         snprintf(comm_path, sizeof(comm_path), "/proc/%d/comm", pid);
 
@@ -56,7 +56,7 @@ std::vector<ProcessId> Process::findAll(const std::string& name) {
         std::getline(comm_file, processName);
         comm_file.close();
 
-        // 移除可能的换行符
+        // Remove possible trailing newline
         if (!processName.empty() && processName.back() == '\n') {
             processName.pop_back();
         }
@@ -118,7 +118,7 @@ std::vector<ProcessInfo> Process::enumerate() {
         ProcessInfo info;
         info.pid = pid;
 
-        // 读取进程名称
+        // Read process name
         char comm_path[64];
         snprintf(comm_path, sizeof(comm_path), "/proc/%d/comm", pid);
 
@@ -128,7 +128,7 @@ std::vector<ProcessInfo> Process::enumerate() {
             comm_file.close();
         }
 
-        // 读取进程路径
+        // Read process path
         char exe_path[64];
         snprintf(exe_path, sizeof(exe_path), "/proc/%d/exe", pid);
 
@@ -181,22 +181,22 @@ ProcessId Process::start(const std::string& path,
     pid_t pid = fork();
 
     if (pid == -1) {
-        // Fork 失败
+        // Fork failed
         return 0;
     }
 
     if (pid == 0) {
-        // 子进程
-        // 切换工作目录
+        // Child process
+        // Change working directory
         if (!workingDir.empty()) {
             chdir(workingDir.c_str());
         }
 
-        // 构建命令参数
+        // Build command arguments
         std::vector<char*> argv;
         argv.push_back(const_cast<char*>(path.c_str()));
 
-        // 简单的参数分割（按空格）
+        // Simple argument splitting (by spaces)
         if (!args.empty()) {
             std::string args_copy = args;
             char* token = strtok(&args_copy[0], " ");
@@ -208,14 +208,14 @@ ProcessId Process::start(const std::string& path,
 
         argv.push_back(nullptr);
 
-        // 执行程序
+        // Execute program
         execvp(path.c_str(), argv.data());
 
-        // 如果执行失败，退出子进程
+        // If execution fails, exit child process
         _exit(1);
     }
 
-    // 父进程返回子进程 PID
+    // Parent process returns child PID
     return pid;
 }
 
@@ -224,7 +224,7 @@ bool Process::wait(ProcessId pid, int timeoutMs) {
     pid_t result;
 
     if (timeoutMs > 0) {
-        // 带超时的等待
+        // Wait with timeout
         auto start = std::chrono::steady_clock::now();
         while (true) {
             result = waitpid(pid, &status, WNOHANG);
@@ -246,7 +246,7 @@ bool Process::wait(ProcessId pid, int timeoutMs) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     } else {
-        // 无限等待
+        // Wait indefinitely
         result = waitpid(pid, &status, 0);
         return result == pid && (WIFEXITED(status) || WIFSIGNALED(status));
     }
@@ -258,7 +258,7 @@ bool Process::terminate(ProcessId pid, bool force) {
 }
 
 bool Process::exists(ProcessId pid) {
-    // 发送信号 0 检查进程是否存在
+    // Send signal 0 to check if process exists
     return kill(pid, 0) == 0 || errno == EPERM;
 }
 
@@ -276,7 +276,7 @@ std::string Process::getName(ProcessId pid) {
     std::getline(comm_file, name);
     comm_file.close();
 
-    // 移除可能的换行符
+    // Remove possible trailing newline
     if (!name.empty() && name.back() == '\n') {
         name.pop_back();
     }

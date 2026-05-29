@@ -56,7 +56,7 @@ TEST(QRLoginResultTest, DefaultValues) {
     EXPECT_TRUE(result.sessionId.empty());
 }
 
-// ========== QRLoginManager 预设配置 ==========
+// ========== QRLoginManager Preset Configurations ==========
 
 TEST(QRLoginManagerTest, SteamConfig) {
     auto cfg = QRLoginManager::steamConfig();
@@ -180,7 +180,7 @@ TEST(QRLoginResultTest, StateFieldAccess) {
     EXPECT_EQ(result.sessionId, "sess_1");
 }
 
-// ========== QRLoginConfig 拷贝与移动语义 ==========
+// ========== QRLoginConfig Copy and Move Semantics ==========
 
 TEST(QRLoginConfigTest, CopySemantics) {
     QRLoginConfig original;
@@ -229,7 +229,7 @@ TEST(QRLoginConfigTest, AssignmentOperator) {
     EXPECT_EQ(b.pollInterval, 999);
 }
 
-// ========== QRLoginConfig 字段修改 ==========
+// ========== QRLoginConfig Field Modification ==========
 
 TEST(QRLoginConfigTest, FieldModifications) {
     QRLoginConfig cfg;
@@ -266,7 +266,7 @@ TEST(QRLoginConfigTest, FieldModifications) {
     EXPECT_EQ(cfg.sessionId, "sess_abc");
 }
 
-// ========== QRLoginResult 多种状态 ==========
+// ========== QRLoginResult Multiple States ==========
 
 TEST(QRLoginResultTest, ConfirmedState) {
     QRLoginResult result{};
@@ -311,7 +311,7 @@ TEST(QRLoginResultTest, DataFieldHoldsJson) {
     EXPECT_EQ(result.data["nested"]["key"], "val");
 }
 
-// ========== qrLoginStateToString 全覆盖 ==========
+// ========== qrLoginStateToString Full Coverage ==========
 
 TEST(QRLoginStateTest, AllStatesCovered) {
     // Verify every enum value has a non-empty string mapping
@@ -331,7 +331,7 @@ TEST(QRLoginStateTest, AllStatesCovered) {
     }
 }
 
-// ========== 多实例不干扰 ==========
+// ========== Multiple Instances Do Not Interfere ==========
 
 TEST(QRLoginManagerTest, MultipleInstancesDoNotInterfere) {
     QRLoginManager mgr1;
@@ -365,7 +365,7 @@ TEST(QRLoginManagerTest, SeparateInstancesIndependentCancel) {
     EXPECT_NO_THROW(mgr2.login(cfg));
 }
 
-// ========== loginAsync 行为 ==========
+// ========== loginAsync Behavior ==========
 
 TEST(QRLoginManagerTest, LoginAsyncCallbackExecutes) {
     QRLoginManager mgr;
@@ -401,7 +401,7 @@ TEST(QRLoginManagerTest, LoginAsyncCancelDoesNotCrash) {
     EXPECT_NO_THROW(mgr.cancel());
 }
 
-// ========== 状态解析边界情况 ==========
+// ========== State Parsing Edge Cases ==========
 
 TEST(QRLoginManagerTest, PollStatusWithEmptyStatusUrl) {
     QRLoginManager mgr;
@@ -425,7 +425,7 @@ TEST(QRLoginManagerTest, DetectQRCodeWithZeroDimensions) {
     EXPECT_FALSE(result.has_value());
 }
 
-// ========== 预设配置完整性 ==========
+// ========== Preset Configuration Completeness ==========
 
 TEST(QRLoginManagerTest, SteamConfigAllFieldsNonDefault) {
     auto cfg = QRLoginManager::steamConfig();
@@ -456,7 +456,7 @@ TEST(QRLoginManagerTest, GenericConfigUsesDefaultFieldValues) {
     EXPECT_EQ(cfg.maxAttempts, 60);
 }
 
-// ========== QRLoginConfig JSON 参数 ==========
+// ========== QRLoginConfig JSON Parameters ==========
 
 TEST(QRLoginConfigTest, JsonParamsAssignment) {
     QRLoginConfig cfg;

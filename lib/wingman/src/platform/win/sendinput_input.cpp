@@ -9,9 +9,9 @@
 namespace wingman::platform::win {
 
 /**
- * @brief Windows SendInput 实现
+ * @brief Windows SendInput implementation
  *
- * 使用 Windows SendInput API 进行输入模拟。
+ * Uses Windows SendInput API for input simulation.
  */
 class SendInputInput : public IInput {
 public:
@@ -162,7 +162,7 @@ public:
         for (char c : text) {
             SHORT vk = VkKeyScanA(c);
             if (vk == -1) {
-                // 无法直接输入的字符，跳过
+                // Characters that cannot be directly typed, skip
                 continue;
             }
 

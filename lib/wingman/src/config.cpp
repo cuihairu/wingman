@@ -7,12 +7,12 @@
 
 namespace wingman {
 
-// 获取配置文件路径
+// Get config file path
 static std::filesystem::path getConfigFilePath(const std::string& configDir) {
     return std::filesystem::path(configDir) / "config.json";
 }
 
-// 加载完整的配置 JSON
+// Load full config JSON
 static nlohmann::json loadConfigJson(const std::string& configDir) {
     std::filesystem::path configPath = getConfigFilePath(configDir);
 
@@ -34,12 +34,12 @@ static nlohmann::json loadConfigJson(const std::string& configDir) {
     }
 }
 
-// 保存完整的配置 JSON
+// Save full config JSON
 static bool saveConfigJson(const std::string& configDir, const nlohmann::json& j) {
     try {
         std::filesystem::path configPath = getConfigFilePath(configDir);
 
-        // 确保目录存在
+        // Ensure directory exists
         std::filesystem::create_directories(std::filesystem::path(configDir));
 
         std::ofstream file(configPath);
@@ -47,7 +47,7 @@ static bool saveConfigJson(const std::string& configDir, const nlohmann::json& j
             return false;
         }
 
-        file << j.dump(2);  // 缩进 2 格
+        file << j.dump(2);  // Indent 2 spaces
         return true;
     } catch (...) {
         return false;
@@ -76,7 +76,7 @@ ServerConfig ServerConfig::fromJson(const std::string& json) {
         if (j.contains("password")) config.password = j["password"];
         if (j.contains("autoConnect")) config.autoConnect = j["autoConnect"];
     } catch (...) {
-        // 解析失败，返回默认配置
+        // Parse failed, return default config
     }
     return config;
 }
@@ -103,7 +103,7 @@ AutoRunConfig AutoRunConfig::fromJson(const std::string& json) {
         if (j.contains("repeat")) config.repeat = j["repeat"];
         if (j.contains("repeatInterval")) config.repeatInterval = j["repeatInterval"];
     } catch (...) {
-        // 解析失败，返回默认配置
+        // Parse failed, return default config
     }
     return config;
 }
@@ -126,7 +126,7 @@ HeartbeatConfig HeartbeatConfig::fromJson(const std::string& json) {
         if (j.contains("intervalSeconds")) config.intervalSeconds = j["intervalSeconds"];
         if (j.contains("timeoutSeconds")) config.timeoutSeconds = j["timeoutSeconds"];
     } catch (...) {
-        // 解析失败，返回默认配置
+        // Parse failed, return default config
     }
     return config;
 }
@@ -167,7 +167,7 @@ GameConfig GameConfig::fromJson(const std::string& json) {
         if (j.contains("maxRestarts")) config.maxRestarts = j["maxRestarts"];
         if (j.contains("restartCount")) config.restartCount = j["restartCount"];
     } catch (...) {
-        // 解析失败，返回默认配置
+        // Parse failed, return default config
     }
     return config;
 }
@@ -179,13 +179,13 @@ public:
     std::string configDir;
 
     Impl(const std::string& configDir) : configDir(configDir) {
-        // 确保配置目录存在
+        // Ensure config directory exists
         std::filesystem::create_directories(configDir);
 
         bool createdDefault = false;
         nlohmann::json config = loadConfigJson(configDir);
 
-        // 如果配置文件为空或不存在，创建默认配置
+        // If config file is empty or missing, create default config
         if (config.empty()) {
             config["server"] = {
                 {"host", "localhost"},
@@ -207,14 +207,14 @@ public:
                 {"intervalSeconds", 30},
                 {"timeoutSeconds", 90}
             };
-            config["games"] = nlohmann::json::array();  // 空游戏列表
+            config["games"] = nlohmann::json::array();  // Empty game list
             createdDefault = true;
         }
 
-        // 保存配置
+        // Save config
         if (createdDefault) {
             saveConfigJson(configDir, config);
-            std::cout << "[CONFIG] 已创建默认配置文件: " << configDir << "/config.json\n";
+            std::cout << "[CONFIG] Created default config file: " << configDir << "/config.json\n";
             std::cout.flush();
         }
     }
@@ -341,15 +341,15 @@ bool ConfigManager::writeGameConfigList(const std::vector<GameConfig>& games) {
 bool ConfigManager::addGameConfig(const GameConfig& game) {
     auto games = getGameConfigList();
 
-    // 检查是否已存在同名游戏
+    // Check if game with same name already exists
     for (auto& existing : games) {
         if (existing.name == game.name) {
-            existing = game;  // 更新现有配置
+            existing = game;  // Update existing config
             return writeGameConfigList(games);
         }
     }
 
-    // 添加新游戏
+    // Add new game
     games.push_back(game);
     return writeGameConfigList(games);
 }
@@ -402,12 +402,12 @@ bool ConfigManager::remove(const std::string& key) {
 }
 
 bool ConfigManager::save() {
-    // 直接 JSON 模式下总是实时保存
+    // Direct JSON mode always saves in real-time
     return true;
 }
 
 bool ConfigManager::load() {
-    // 直接 JSON 模式下总是实时加载
+    // Direct JSON mode always loads in real-time
     return true;
 }
 

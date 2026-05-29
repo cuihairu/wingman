@@ -1,6 +1,6 @@
 #include "wingman/platform/mock_factory.hpp"
 
-// 前向声明 Mock 实现类
+// Forward declare Mock implementation classes
 namespace wingman::platform::mock {
     class MockCapture;
     class MockInput;
@@ -24,12 +24,12 @@ std::unique_ptr<IInput> MockPlatformFactory::createInput(const InputConfig& conf
 }
 
 std::unique_ptr<IWindow> MockPlatformFactory::createWindow() {
-    // TODO: 实现 MockWindow
+    // TODO: Implement MockWindow
     return nullptr;
 }
 
 std::unique_ptr<IScreen> MockPlatformFactory::createScreen() {
-    // TODO: 实现 MockScreen
+    // TODO: Implement MockScreen
     return nullptr;
 }
 

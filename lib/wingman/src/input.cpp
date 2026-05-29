@@ -13,7 +13,7 @@
 namespace wingman {
 
 // ============================================================================
-// 工具函数
+// Utility functions
 // ============================================================================
 
 void Input::delay(int milliseconds) {
@@ -28,7 +28,7 @@ void Input::randomDelay(int minMs, int maxMs) {
 }
 
 // ============================================================================
-// Windows 实现
+// Windows implementation
 // ============================================================================
 
 Point Input::getMousePosition() {
@@ -49,25 +49,25 @@ void Input::move(int x, int y, int durationMs) {
         return;
     }
 
-    // 使用贝塞尔曲线生成平滑路径
+    // Generate smooth path using Bezier curves
     int steps = durationMs / 10;
     float tStep = 1.0f / steps;
 
     for (int i = 1; i <= steps; ++i) {
         float t = tStep * i;
 
-        // 二次贝塞尔曲线
+        // Quadratic Bezier curve
         int controlX = current.x + (x - current.x) / 2;
         int controlY = current.y + (y - current.y) / 2;
 
-        // 添加一些随机性
+        // Add some randomness
         static std::random_device rd;
         static std::mt19937 gen(rd());
         std::uniform_int_distribution<> jitter(-5, 5);
         controlX += jitter(gen);
         controlY += jitter(gen);
 
-        // 贝塞尔曲线公式
+        // Bezier curve formula
         int newX = static_cast<int>(
             std::pow(1 - t, 2) * current.x +
             2 * (1 - t) * t * controlX +

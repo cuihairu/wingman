@@ -13,89 +13,89 @@
 
 namespace wingman {
 
-// 触发条件类型
+// Trigger condition type
 enum class TriggerConditionType {
-    COLOR_FOUND,        // 颜色出现
-    COLOR_NOT_FOUND,    // 颜色消失
-    IMAGE_FOUND,        // 图像出现
-    IMAGE_NOT_FOUND,    // 图像消失
-    TEXT_FOUND,         // 文字出现
-    TEXT_NOT_FOUND,     // 文字消失
-    EDGE_DETECTED,      // 边缘检测
-    COLOR_CHANGED,      // 颜色变化
-    OCR_CONTAINS,       // OCR 包含文本
-    OCR_EQUALS,         // OCR 等于文本
+    COLOR_FOUND,        // Color found
+    COLOR_NOT_FOUND,    // Color lost
+    IMAGE_FOUND,        // Image found
+    IMAGE_NOT_FOUND,    // Image lost
+    TEXT_FOUND,         // Text found
+    TEXT_NOT_FOUND,     // Text lost
+    EDGE_DETECTED,      // Edge detected
+    COLOR_CHANGED,      // Color changed
+    OCR_CONTAINS,       // OCR contains text
+    OCR_EQUALS,         // OCR equals text
 };
 
-// 触发动作类型
+// Trigger action type
 enum class TriggerActionType {
-    CLICK,              // 点击
-    KEY_PRESS,          // 按键
-    WAIT,               // 等待
-    LUA_SCRIPT,         // 执行 Lua 脚本
-    CUSTOM_CALLBACK,    // 回调函数
-    STOP,               // 停止触发器
-    LOG                 // 日志
+    CLICK,              // Click
+    KEY_PRESS,          // Key press
+    WAIT,               // Wait
+    LUA_SCRIPT,         // Execute Lua script
+    CUSTOM_CALLBACK,    // Callback function
+    STOP,               // Stop trigger
+    LOG                 // Log
 };
 
-// 触发条件配置
+// Trigger condition configuration
 struct TriggerCondition {
     TriggerConditionType type;
-    Color targetColor;               // 用于颜色相关
-    int tolerance = 0;               // 颜色容差
-    std::string templatePath;        // 用于图像匹配
-    std::string targetText;          // 用于文字识别
-    Rect searchRegion = {};          // 搜索区域
-    double threshold = 0.8;          // 匹配阈值
-    Color previousColor;             // 用于颜色变化检测
-    bool hasPreviousColor = false;   // 是否有之前的颜色
+    Color targetColor;               // For color-related
+    int tolerance = 0;               // Color tolerance
+    std::string templatePath;        // For image matching
+    std::string targetText;          // For text recognition
+    Rect searchRegion = {};          // Search region
+    double threshold = 0.8;          // Match threshold
+    Color previousColor;             // For color change detection
+    bool hasPreviousColor = false;   // Whether there is a previous color
 };
 
-// 触发动作配置
+// Trigger action configuration
 struct TriggerAction {
     TriggerActionType type;
-    Point clickPosition = {};        // 点击位置
-    int keyCode = 0;                 // 按键代码
-    int waitMs = 0;                  // 等待时间
-    std::string luaScript;           // Lua 脚本内容
-    std::string logMessage;          // 日志消息
-    std::function<void()> callback;  // 回调函数
+    Point clickPosition = {};        // Click position
+    int keyCode = 0;                 // Key code
+    int waitMs = 0;                  // Wait time
+    std::string luaScript;           // Lua script content
+    std::string logMessage;          // Log message
+    std::function<void()> callback;  // Callback function
 };
 
-// 智能触发器
+// Smart trigger
 class SmartTrigger {
 public:
     SmartTrigger(const std::string& name);
     ~SmartTrigger();
 
-    // 添加条件
+    // Add condition
     void addCondition(const TriggerCondition& condition);
 
-    // 添加动作
+    // Add action
     void addAction(const TriggerAction& action);
 
-    // 设置检查间隔（毫秒）
+    // Set check interval (milliseconds)
     void setCheckInterval(int intervalMs);
 
-    // 设置最大触发次数（0 = 无限）
+    // Set max trigger count (0 = unlimited)
     void setMaxTriggers(int maxCount);
 
-    // 开始监听
+    // Start monitoring
     bool start();
 
-    // 停止监听
+    // Stop monitoring
     void stop();
 
-    // 是否正在运行
+    // Whether running
     bool isRunning() const { return running_; }
 
-    // 获取触发次数
+    // Get trigger count
     int getTriggerCount() const { return triggerCount_; }
 
-    // 重置触发次数
+    // Reset trigger count
     void resetTriggerCount() { triggerCount_ = 0; }
 
-    // 获取名称
+    // Get name
     const std::string& getName() const { return name_; }
 
 private:
@@ -108,37 +108,37 @@ private:
     std::atomic<bool> running_{false};
     std::thread watchThread_;
 
-    // 检查条件
+    // Check conditions
     bool checkConditions();
 
-    // 执行动作
+    // Execute actions
     void executeActions();
 
-    // 监视线程
+    // Watch thread
     void watchLoop();
 };
 
-// 智能触发器管理器
+// Smart trigger manager
 class SmartTriggerManager {
 public:
     static SmartTriggerManager& instance();
 
-    // 创建触发器
+    // Create trigger
     std::shared_ptr<SmartTrigger> createTrigger(const std::string& name);
 
-    // 获取触发器
+    // Get trigger
     std::shared_ptr<SmartTrigger> getTrigger(const std::string& name);
 
-    // 移除触发器
+    // Remove trigger
     void removeTrigger(const std::string& name);
 
-    // 启动所有触发器
+    // Start all triggers
     void startAll();
 
-    // 停止所有触发器
+    // Stop all triggers
     void stopAll();
 
-    // 获取所有触发器
+    // Get all triggers
     std::vector<std::shared_ptr<SmartTrigger>> getAllTriggers() const;
 
 private:

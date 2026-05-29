@@ -8,7 +8,7 @@ ModuleDescriptor createOrchestrationModule() {
 	ModuleDescriptor mod;
 	mod.name = "orchestration";
 
-	// Orchestration 模块依赖 server 组件，提供存根实现
+	// Orchestration module depends on server component, providing stub implementation
 	mod.functions.push_back({"submit_workflow", [](const std::vector<ScriptValue>&) -> ScriptValue {
 		return ScriptValue::null();
 	}, "workflow:{...} -> workflowId:string?"});

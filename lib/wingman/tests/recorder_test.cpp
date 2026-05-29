@@ -13,7 +13,7 @@ protected:
         testJsonPath = "test_macro.json";
         testLuaPath = "test_macro.lua";
 
-        // 清理可能存在的旧文件
+        // Clean up any old files that may exist
         if (fs::exists(testJsonPath)) fs::remove(testJsonPath);
         if (fs::exists(testLuaPath)) fs::remove(testLuaPath);
     }
@@ -22,7 +22,7 @@ protected:
         recorder->stop();
         recorder.reset();
 
-        // 清理测试文件
+        // Clean up test files
         if (fs::exists(testJsonPath)) fs::remove(testJsonPath);
         if (fs::exists(testLuaPath)) fs::remove(testLuaPath);
     }
@@ -32,7 +32,7 @@ protected:
     std::string testLuaPath;
 };
 
-// ========== 基础功能 ==========
+// ========== Basic Functionality ==========
 
 TEST_F(MacroRecorderTest, InitialState) {
     EXPECT_FALSE(recorder->isRecording());
@@ -52,7 +52,7 @@ TEST_F(MacroRecorderTest, StartWhenAlreadyRecording) {
     recorder->start();
     EXPECT_TRUE(recorder->isRecording());
 
-    // 重复start应该是安全的
+    // Repeated start should be safe
     recorder->start();
     EXPECT_TRUE(recorder->isRecording());
 
@@ -73,7 +73,7 @@ TEST_F(MacroRecorderTest, PauseResume) {
 }
 
 TEST_F(MacroRecorderTest, PauseBeforeStart) {
-    // 在未开始时暂停应该是安全的
+    // Pausing before start should be safe
     recorder->pause();
     EXPECT_FALSE(recorder->isRecording());
 
@@ -84,7 +84,7 @@ TEST_F(MacroRecorderTest, PauseBeforeStart) {
     recorder->stop();
 }
 
-// ========== 事件记录 ==========
+// ========== Event Recording ==========
 
 TEST_F(MacroRecorderTest, ClearEvents) {
     recorder->start();
@@ -93,13 +93,13 @@ TEST_F(MacroRecorderTest, ClearEvents) {
     recorder->stop();
 }
 
-// ========== JSON 保存/加载 ==========
+// ========== JSON Save/Load ==========
 
 TEST_F(MacroRecorderTest, SaveToEmptyJSON) {
     EXPECT_TRUE(recorder->saveToJSON(testJsonPath));
     EXPECT_TRUE(fs::exists(testJsonPath));
 
-    // 检查文件内容
+    // Check file content
     std::ifstream file(testJsonPath);
     std::string content((std::istreambuf_iterator<char>(file)),
                         std::istreambuf_iterator<char>());
@@ -107,7 +107,7 @@ TEST_F(MacroRecorderTest, SaveToEmptyJSON) {
 }
 
 TEST_F(MacroRecorderTest, LoadFromJSON) {
-    // 创建测试 JSON 文件
+    // Create test JSON file
     std::ofstream file(testJsonPath);
     file << R"({
         "events": [
@@ -140,11 +140,11 @@ TEST_F(MacroRecorderTest, LoadFromJSON) {
 }
 
 TEST_F(MacroRecorderTest, LoadFromInvalidJSON) {
-    // 暂时跳过 - OpenCppCoverage 在测试后报告退出代码 3
+    // Temporarily skipped - OpenCppCoverage reports exit code 3 after test
     GTEST_SKIP() << "Skipping due to OpenCppCoverage exit code 3";
 
     /*
-    // 创建无效的 JSON 文件
+    // Create invalid JSON file
     std::ofstream file(testJsonPath);
     file << "invalid json content";
     file.close();
@@ -158,7 +158,7 @@ TEST_F(MacroRecorderTest, LoadFromNonExistentFile) {
 }
 
 TEST_F(MacroRecorderTest, SaveAndLoadJSON) {
-    // 先创建一个包含事件的 JSON 文件
+    // First create a JSON file containing events
     std::ofstream file(testJsonPath);
     file << R"({
         "events": [
@@ -175,27 +175,27 @@ TEST_F(MacroRecorderTest, SaveAndLoadJSON) {
     })";
     file.close();
 
-    // 加载并验证
+    // Load and verify
     auto newRecorder = std::make_unique<wingman::MacroRecorder>();
     EXPECT_TRUE(newRecorder->loadFromJSON(testJsonPath));
     EXPECT_EQ(newRecorder->getEventCount(), 1);
 
-    // 再次保存
+    // Save again
     EXPECT_TRUE(newRecorder->saveToJSON(testJsonPath));
 
-    // 创建另一个录制器并加载
+    // Create another recorder and load
     auto anotherRecorder = std::make_unique<wingman::MacroRecorder>();
     EXPECT_TRUE(anotherRecorder->loadFromJSON(testJsonPath));
     EXPECT_EQ(anotherRecorder->getEventCount(), 1);
 }
 
-// ========== Lua 保存 ==========
+// ========== Lua Save ==========
 
 TEST_F(MacroRecorderTest, SaveToLua) {
     EXPECT_TRUE(recorder->saveToLua(testLuaPath));
     EXPECT_TRUE(fs::exists(testLuaPath));
 
-    // 检查文件内容
+    // Check file content
     std::ifstream file(testLuaPath);
     std::string content((std::istreambuf_iterator<char>(file)),
                         std::istreambuf_iterator<char>());
@@ -215,10 +215,10 @@ TEST_F(MacroRecorderTest, SaveToLuaWithEvents) {
     EXPECT_NE(content.find("macro playback"), std::string::npos);
 }
 
-// ========== 回放功能 ==========
+// ========== Playback Functionality ==========
 
 TEST_F(MacroRecorderTest, PlaybackEmpty) {
-    // 空录制回放应该是安全的
+    // Playing back an empty recording should be safe
     recorder->playback(100, 1);
 }
 
@@ -226,7 +226,7 @@ TEST_F(MacroRecorderTest, PlaybackSpeed) {
     recorder->start();
     recorder->stop();
 
-    // 不同速度回放应该是安全的
+    // Playback at different speeds should be safe
     recorder->playback(50, 1);   // 0.5x
     recorder->playback(100, 1);  // 1x
     recorder->playback(200, 1);  // 2x
@@ -236,14 +236,14 @@ TEST_F(MacroRecorderTest, PlaybackRepeat) {
     recorder->start();
     recorder->stop();
 
-    // 多次重复回放应该是安全的
+    // Repeated playback multiple times should be safe
     recorder->playback(100, 3);
 }
 
-// ========== 事件类型枚举 ==========
+// ========== Event Type Enum ==========
 
 TEST_F(MacroRecorderTest, EventTypeEnumValues) {
-    // 验证事件类型枚举值
+    // Verify event type enum values
     EXPECT_EQ(static_cast<int>(wingman::RecordedEventType::MouseMove), 0);
     EXPECT_EQ(static_cast<int>(wingman::RecordedEventType::MouseClick), 1);
     EXPECT_EQ(static_cast<int>(wingman::RecordedEventType::MouseDown), 2);

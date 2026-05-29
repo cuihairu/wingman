@@ -6,7 +6,7 @@
 namespace wingman::platform::mock {
 
 /**
- * @brief Mock 捕获实现（用于测试）
+ * @brief Mock capture implementation (for testing)
  */
 class MockCapture : public ICapture {
 public:
@@ -145,7 +145,7 @@ public:
         return true;
     }
 
-    // ========== Mock 特定方法 ==========
+    // ========== Mock-Specific Methods ==========
 
     void setMockMonitorCount(int count) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -172,12 +172,12 @@ private:
     static std::unique_ptr<Bitmap> createTestBitmap(int width, int height) {
         auto bitmap = std::make_unique<Bitmap>(width, height);
 
-        // 填充测试图案
+        // Fill test pattern
         uint8_t* data = bitmap->getData();
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 int index = (y * width + x) * 4;
-                // 创建渐变图案
+                // Create gradient pattern
                 data[index + 0] = static_cast<uint8_t>((x * 255) / width);     // B
                 data[index + 1] = static_cast<uint8_t>((y * 255) / height);    // G
                 data[index + 2] = 128;                                        // R

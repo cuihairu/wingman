@@ -11,17 +11,17 @@ ModuleDescriptor createDebuggerModule() {
 	mod.name = "debugger";
 
 	mod.functions.push_back({"start", [](const std::vector<ScriptValue>&) -> ScriptValue {
-		// stub: debugger 尚未实现
+		// stub: debugger not yet implemented
 		return ScriptValue::fromBool(false);
 	}, "() -> bool"});
 
 	mod.functions.push_back({"stop", [](const std::vector<ScriptValue>&) -> ScriptValue {
-		// stub: debugger 尚未实现
+		// stub: debugger not yet implemented
 		return ScriptValue::null();
 	}, "() -> nil"});
 
 	mod.functions.push_back({"breakpoint", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		// 返回标识符，实际断点由 IDE 设置
+		// Return identifier; actual breakpoints are set by IDE
 		return ScriptValue::fromString(args[0].asString() + ":" + std::to_string(args[1].asInt()));
 	}, "file:string, line:int -> string"});
 

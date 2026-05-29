@@ -7,36 +7,36 @@
 
 namespace wingman {
 
-// 触发器引擎
-// 负责从配置文件加载触发器并管理生命周期
+// Trigger engine
+// Responsible for loading triggers from config files and managing lifecycle
 class TriggerEngine {
 public:
     TriggerEngine();
     ~TriggerEngine();
 
-    // 从 Lua 配置文件加载触发器
+    // Load triggers from Lua config file
     bool loadFromLua(const std::string& filepath);
 
-    // 从 YAML 配置文件加载触发器
+    // Load triggers from YAML config file
     bool loadFromYAML(const std::string& filepath);
 
-    // 启动引擎
+    // Start engine
     bool start();
 
-    // 停止引擎
+    // Stop engine
     void stop();
 
-    // 是否运行中
+    // Whether running
     bool isRunning() const { return m_running; }
 
-    // 获取触发器管理器
+    // Get trigger manager
     TriggerManager* getManager() { return m_manager.get(); }
 
-    // 启用/禁用触发器
+    // Enable/disable trigger
     bool enableTrigger(const std::string& name);
     bool disableTrigger(const std::string& name);
 
-    // 获取统计信息
+    // Get statistics
     struct Stats {
         size_t totalTriggers = 0;
         size_t enabledTriggers = 0;

@@ -1,7 +1,7 @@
 #pragma once
 
-// ScriptValue 与 Wingman 核心类型之间的转换工具
-// 模块描述符内部使用，不暴露给脚本引擎
+// Conversion utilities between ScriptValue and Wingman core types
+// For internal use by module descriptors, not exposed to script engine
 
 #include "wingman/script/iscript_engine.hpp"
 #include "wingman/screen.hpp"
@@ -33,7 +33,7 @@ inline ScriptValue fromRect(const Rect& r) {
 	});
 }
 
-// ScriptValue → Color（支持 0xRRGGBB 整数或 {r,g,b} 表）
+// ScriptValue -> Color (supports 0xRRGGBB integer or {r,g,b} table)
 inline Color toColor(const ScriptValue& v) {
 	if (v.isInt()) {
 		return Color::fromRGB(static_cast<uint32_t>(v.asInt()));

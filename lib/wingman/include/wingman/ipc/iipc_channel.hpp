@@ -9,50 +9,50 @@
 namespace wingman::ipc {
 
 /**
- * @brief IPC 传输类型
+ * @brief IPC transport type
  */
 enum class IpcTransport : uint8_t {
-    Auto,           // 自动选择最佳方案
+    Auto,           // Auto-select best option
     NamedPipe,      // Windows Named Pipe
     UnixSocket,     // Unix Domain Socket
-    TcpPipe         // TCP (回退方案)
+    TcpPipe         // TCP (fallback)
 };
 
 /**
- * @brief IPC 消息类型
+ * @brief IPC message type
  */
 enum class IpcMessageType : uint8_t {
-    Request,        // 请求
-    Response,       // 响应
-    Event,          // 事件（单向）
-    Error           // 错误
+    Request,        // Request
+    Response,       // Response
+    Event,          // Event (one-way)
+    Error           // Error
 };
 
 /**
- * @brief IPC 消息
+ * @brief IPC message
  */
 struct IpcMessage {
     IpcMessageType type;
-    std::string method;       // 方法名（如 "script.start"）
+    std::string method;       // Method name (e.g. "script.start"）
     std::string payload;      // JSON payload
-    uint64_t id;             // 消息 ID（请求/响应匹配）
-    uint64_t timestamp;      // 时间戳
+    uint64_t id;             // Message ID (request/response matching)
+    uint64_t timestamp;      // Timestamp
 
     IpcMessage() : type(IpcMessageType::Request), id(0), timestamp(0) {}
 };
 
 /**
- * @brief 消息回调
+ * @brief Message callback
  */
 using MessageCallback = std::function<void(const IpcMessage&)>;
 
 /**
- * @brief 错误回调
+ * @brief Error callback
  */
 using ErrorCallback = std::function<void(const std::string&)>;
 
 /**
- * @brief IPC 状态
+ * @brief IPC state
  */
 enum class IpcState : uint8_t {
     Disconnected,
@@ -63,101 +63,101 @@ enum class IpcState : uint8_t {
 };
 
 /**
- * @brief IPC 通道接口
+ * @brief IPC channel interface
  *
- * 抽象的进程间通信通道，支持多种传输方式。
+ * Abstract inter-process communication channel, supports multiple transport methods.
  */
 class IIpcChannel {
 public:
     virtual ~IIpcChannel() = default;
 
-    // ========== 连接管理 ==========
+    // ========== Connection management ==========
 
     /**
-     * @brief 连接到服务端
-     * @param endpoint 端点（Named Pipe 名字 / Unix Socket 路径 / TCP 地址）
-     * @return 成功返回 true
+     * @brief Connect to server
+     * @param endpoint Endpoint (Named Pipe name / Unix Socket path / TCP address)
+     * @return Returns true on success
      */
     virtual bool connect(const std::string& endpoint) = 0;
 
     /**
-     * @brief 断开连接
+     * @brief Disconnect
      */
     virtual void disconnect() = 0;
 
     /**
-     * @brief 检查连接状态
+     * @brief Check connection state
      */
     virtual bool isConnected() const = 0;
 
     /**
-     * @brief 获取当前状态
+     * @brief Get current state
      */
     virtual IpcState getState() const = 0;
 
-    // ========== 消息发送 ==========
+    // ========== Message sending ==========
 
     /**
-     * @brief 发送消息
-     * @param message 消息内容
-     * @return 成功返回 true
+     * @brief Send message
+     * @param message Message content
+     * @return Returns true on success
      */
     virtual bool send(const IpcMessage& message) = 0;
 
     /**
-     * @brief 发送请求（自动生成 ID）
-     * @param method 方法名
+     * @brief Send request (auto-generates ID)
+     * @param method Method name
      * @param payload JSON payload
-     * @return 消息 ID，失败返回 0
+     * @return Message ID, returns 0 on failure
      */
     virtual uint64_t sendRequest(const std::string& method, const std::string& payload = "{}") = 0;
 
     /**
-     * @brief 发送事件（单向）
-     * @param method 事件名
+     * @brief Send event (one-way)
+     * @param method Event name
      * @param payload JSON payload
-     * @return 成功返回 true
+     * @return Returns true on success
      */
     virtual bool sendEvent(const std::string& method, const std::string& payload = "{}") = 0;
 
-    // ========== 消息接收 ==========
+    // ========== Message receiving ==========
 
     /**
-     * @brief 设置消息回调
-     * @param callback 回调函数
+     * @brief Set message callback
+     * @param callback Callback function
      */
     virtual void setMessageCallback(MessageCallback callback) = 0;
 
     /**
-     * @brief 设置错误回调
-     * @param callback 回调函数
+     * @brief Set error callback
+     * @param callback Callback function
      */
     virtual void setErrorCallback(ErrorCallback callback) = 0;
 
     /**
-     * @brief 开始接收消息（异步）
+     * @brief Start receiving messages (async)
      */
     virtual void startReceiving() = 0;
 
     /**
-     * @brief 停止接收消息
+     * @brief Stop receiving messages
      */
     virtual void stopReceiving() = 0;
 
-    // ========== 后端信息 ==========
+    // ========== Backend information ==========
 
     /**
-     * @brief 获取传输类型
+     * @brief Get transport type
      */
     virtual IpcTransport getTransport() const = 0;
 
     /**
-     * @brief 获取后端名称
+     * @brief Get backend name
      */
     virtual std::string getBackendName() const = 0;
 
     /**
-     * @brief 获取端点
+     * @brief Get endpoint
      */
     virtual std::string getEndpoint() const = 0;
 };

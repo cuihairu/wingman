@@ -32,12 +32,12 @@ void Win32Clipboard::shutdown() {
     initialized_ = false;
 }
 
-// ========== 文本操作 ==========
+// ========== Text Operations ==========
 
 bool Win32Clipboard::setText(const std::string& text) {
     if (!openClipboard()) return false;
 
-    // 转换为 UTF-16
+    // Convert to UTF-16
     int wideSize = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, nullptr, 0);
     if (wideSize <= 0) {
         closeClipboard();
@@ -47,10 +47,10 @@ bool Win32Clipboard::setText(const std::string& text) {
     std::vector<wchar_t> wideText(wideSize);
     MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, wideText.data(), wideSize);
 
-    // 计算所需内存大小
+    // Calculate required memory size
     SIZE_T bytes = wideSize * sizeof(wchar_t);
 
-    // 分配全局内存
+    // Allocate global memory
     HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, bytes);
     if (!hMem) {
         spdlog::error("[Win32Clipboard] GlobalAlloc failed");
@@ -58,14 +58,14 @@ bool Win32Clipboard::setText(const std::string& text) {
         return false;
     }
 
-    // 锁定内存并复制数据
+    // Lock memory and copy data
     wchar_t* pData = static_cast<wchar_t*>(GlobalLock(hMem));
     if (pData) {
         memcpy(pData, wideText.data(), bytes);
         GlobalUnlock(hMem);
     }
 
-    // 设置剪贴板数据
+    // Set clipboard data
     BOOL result = SetClipboardData(CF_UNICODETEXT, hMem) != nullptr;
 
     closeClipboard();
@@ -93,7 +93,7 @@ std::string Win32Clipboard::getText() {
     if (hMem) {
         wchar_t* pData = static_cast<wchar_t*>(GlobalLock(hMem));
         if (pData) {
-            // 转换为 UTF-8
+            // Convert to UTF-8
             int size = WideCharToMultiByte(CP_UTF8, 0, pData, -1, nullptr, 0, nullptr, nullptr);
             if (size > 0) {
                 result.resize(size - 1);
@@ -112,12 +112,12 @@ bool Win32Clipboard::hasText() {
            IsClipboardFormatAvailable(CF_TEXT) != FALSE;
 }
 
-// ========== HTML 操作 ==========
+// ========== HTML Operations ==========
 
 bool Win32Clipboard::setHTML(const std::string& html) {
     if (!openClipboard()) return false;
 
-    // 注册 HTML 格式
+    // Register HTML format
     static UINT cfHTML = RegisterClipboardFormatW(L"HTML Format");
 
     if (cfHTML == 0) {
@@ -126,7 +126,7 @@ bool Win32Clipboard::setHTML(const std::string& html) {
         return false;
     }
 
-    // 转换为 UTF-16
+    // Convert to UTF-16
     int wideSize = MultiByteToWideChar(CP_UTF8, 0, html.c_str(), -1, nullptr, 0);
     if (wideSize <= 0) {
         closeClipboard();
@@ -197,12 +197,12 @@ bool Win32Clipboard::hasHTML() {
     return cfHTML != 0 && IsClipboardFormatAvailable(cfHTML) != FALSE;
 }
 
-// ========== 图像操作 ==========
+// ========== Image Operations ==========
 
 bool Win32Clipboard::setImage(const std::vector<uint8_t>& imageData, int width, int height) {
     if (!openClipboard()) return false;
 
-    // 创建 BITMAPINFOHEADER
+    // Create BITMAPINFOHEADER
     int headerSize = sizeof(BITMAPINFOHEADER);
     int imageSize = static_cast<int>(imageData.size());
     int totalSize = headerSize + imageSize;
@@ -215,7 +215,7 @@ bool Win32Clipboard::setImage(const std::vector<uint8_t>& imageData, int width, 
 
     uint8_t* pData = static_cast<uint8_t*>(GlobalLock(hMem));
     if (pData) {
-        // 填充 BITMAPINFOHEADER
+        // Fill BITMAPINFOHEADER
         BITMAPINFOHEADER* bmi = reinterpret_cast<BITMAPINFOHEADER*>(pData);
         bmi->biSize = sizeof(BITMAPINFOHEADER);
         bmi->biWidth = width;
@@ -229,7 +229,7 @@ bool Win32Clipboard::setImage(const std::vector<uint8_t>& imageData, int width, 
         bmi->biClrUsed = 0;
         bmi->biClrImportant = 0;
 
-        // 复制图像数据
+        // Copy image data
         memcpy(pData + headerSize, imageData.data(), imageSize);
         GlobalUnlock(hMem);
     }
@@ -290,21 +290,21 @@ bool Win32Clipboard::hasImage() {
            IsClipboardFormatAvailable(CF_DIBV5) != FALSE;
 }
 
-// ========== 文件操作 ==========
+// ========== File Operations ==========
 
 bool Win32Clipboard::setFiles(const std::vector<std::string>& files) {
     if (files.empty()) return false;
 
     if (!openClipboard()) return false;
 
-    // 计算所需内存大小
+    // Calculate required memory size
     SIZE_T totalSize = sizeof(DROPFILES);
     for (const auto& file : files) {
-        // 转换为宽字符路径
+        // Convert to wide character path
         int wideSize = MultiByteToWideChar(CP_UTF8, 0, file.c_str(), -1, nullptr, 0);
         totalSize += wideSize * sizeof(wchar_t);
     }
-    // 结束符
+    // Null terminator
     totalSize += sizeof(wchar_t);
 
     HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, totalSize);
@@ -391,7 +391,7 @@ bool Win32Clipboard::hasFiles() {
     return IsClipboardFormatAvailable(CF_HDROP) != FALSE;
 }
 
-// ========== 通用操作 ==========
+// ========== General Operations ==========
 
 void Win32Clipboard::clear() {
     if (OpenClipboard(nullptr)) {
@@ -426,7 +426,7 @@ std::vector<ClipboardFormat> Win32Clipboard::getAvailableFormats() {
         enumFormat = EnumClipboardFormats(enumFormat);
     }
 
-    // 检查自定义格式
+    // Check custom format
     static UINT cfHTML = RegisterClipboardFormatW(L"HTML Format");
     if (cfHTML != 0 && IsClipboardFormatAvailable(cfHTML)) {
         formats.push_back(ClipboardFormat::HTML);
@@ -445,7 +445,7 @@ BackendInfo Win32Clipboard::getBackendInfo() const {
     };
 }
 
-// ========== 私有方法 ==========
+// ========== Private Methods ==========
 
 bool Win32Clipboard::openClipboard() {
     if (!initialized_) return false;

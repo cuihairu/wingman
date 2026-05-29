@@ -9,15 +9,15 @@
 #include <algorithm>
 #include <climits>
 
-// 取消 linux 宏定义
+// Undefine linux macro
 #undef linux
 
 namespace wingman::platform::linux {
 
 /**
- * @brief Linux X11 屏幕管理实现
+ * @brief Linux X11 screen management implementation
  *
- * 使用 XRandR 扩展实现显示器管理和 DPI 查询。
+ * Uses XRandR extension for display management and DPI queries.
  */
 class X11Screen : public IScreen {
 public:
@@ -36,7 +36,7 @@ public:
             return false;
         }
 
-        // 检查 XRandR 扩展
+        // Check XRandR extension
         int majorVersion, minorVersion;
         if (!XRRQueryVersion(display_, &majorVersion, &minorVersion)) {
             spdlog::error("[X11Screen] XRandR extension not available");
@@ -120,8 +120,8 @@ public:
     }
 
     Rect getMonitorWorkArea(int monitorIndex) override {
-        // X11 没有直接的工作区 API，返回整个显示器边界
-        // 可以通过 _NET_WORKAREA 属性获取，但这里简化处理
+        // X11 has no direct workspace API, return entire display bounds
+        // Could use _NET_WORKAREA property, but simplified here
         return getMonitorBounds(monitorIndex);
     }
 
@@ -136,7 +136,7 @@ public:
 
         if (monitors && monitorIndex >= 0 && monitorIndex < count) {
             XRRMonitorInfo* monitor = &monitors[monitorIndex];
-            // 获取 XRRScreenResources 以调用 XRRGetOutputInfo
+            // Get XRRScreenResources to call XRRGetOutputInfo
             XRRScreenResources* resources = XRRGetScreenResources(display_, root);
             if (resources) {
                 for (int i = 0; i < monitor->noutput; ++i) {
@@ -223,7 +223,7 @@ public:
                     continue;
                 }
 
-                // 获取支持的模式
+                // Get supported modes
                 for (int j = 0; j < outputInfo->nmode; ++j) {
                     XRRModeInfo* modeInfo = findModeInfo(outputInfo->modes[j]);
                     if (modeInfo) {
@@ -234,7 +234,7 @@ public:
                             32
                         };
 
-                        // 避免重复
+                        // Avoid duplicates
                         bool exists = false;
                         for (const auto& m : modes) {
                             if (m.width == mode.width && m.height == mode.height &&
@@ -328,7 +328,7 @@ public:
                 XRROutputInfo* outputInfo = XRRGetOutputInfo(display_, monitor->outputs[i]);
                 if (!outputInfo) continue;
 
-                // 查找匹配的模式
+                // Find matching mode
                 RRMode targetMode = None;
                 for (int j = 0; j < outputInfo->nmode; ++j) {
                     XRRModeInfo* modeInfo = findModeInfo(outputInfo->modes[j]);
@@ -371,7 +371,7 @@ public:
     }
 
     bool resetDisplayMode(int monitorIndex) override {
-        // 重置为自动模式
+        // Reset to auto mode
         return setDisplayMode(monitorIndex, DisplayMode{0, 0, 0, 32});
     }
 
@@ -380,18 +380,18 @@ public:
 
         int state;
         if (XScreenSaverQueryInfo(display_, DefaultRootWindow(display_))) {
-            // XScreenSaver 扩展存在
+            // XScreenSaver extension exists
             return false;
         }
 
-        // 检查 xscreensaver 或 gnome-screensaver 进程
+        // Check xscreensaver or gnome-screensaver process
         return false;
     }
 
     void startScreenSaver() override {
         if (!initialized_) return;
 
-        // 发动屏幕保护程序
+        // Launch screen saver
         XScreenSaverActivate(display_, CurrentTime);
         XFlush(display_);
     }
@@ -399,7 +399,7 @@ public:
     bool isMonitorOff() override {
         if (!initialized_) return false;
 
-        // 检查 DPMS 状态
+        // Check DPMS state
         BOOL dpmsEnabled;
         CARD16 powerLevel;
         if (DPMSInfo(display_, &powerLevel, &dpmsEnabled)) {
@@ -412,7 +412,7 @@ public:
     void wakeUpMonitor() override {
         if (!initialized_) return;
 
-        // 唤醒显示器
+        // Wake up display
         if (DPMSCapable(display_)) {
             DPMSForceLevel(display_, DPMSModeOn);
             XFlush(display_);
@@ -483,7 +483,7 @@ public:
         Window window = static_cast<Window>(hwnd);
         if (window == None) return -1;
 
-        // 获取窗口位置
+        // Get window position
         Window root;
         int x, y;
         unsigned int width, height, border_width, depth;
@@ -491,7 +491,7 @@ public:
             return -1;
         }
 
-        // 获取绝对坐标
+        // Get absolute coordinates
         int destX, destY;
         Window child;
         XTranslateCoordinates(display_, window, root, 0, 0, &destX, &destY, &child);

@@ -7,21 +7,21 @@
 namespace wingman::core {
 
 /**
- * @brief 组件状态
+ * @brief Component state
  */
 enum class ComponentState : uint8_t {
-    Uninitialized,  // 未初始化
-    Initializing,   // 初始化中
-    Ready,          // 就绪
-    Running,        // 运行中
-    Paused,         // 暂停
-    Stopping,       // 停止中
-    Stopped,        // 已停止
-    Error           // 错误状态
+    Uninitialized,  // Uninitialized
+    Initializing,   // Initializing
+    Ready,          // Ready
+    Running,        // Running
+    Paused,         // Paused
+    Stopping,       // Stopping
+    Stopped,        // Stopped
+    Error           // Error state
 };
 
 /**
- * @brief 获取状态名称
+ * @brief Get state name
  */
 inline const char* componentStateName(ComponentState state) {
     switch (state) {
@@ -38,7 +38,7 @@ inline const char* componentStateName(ComponentState state) {
 }
 
 /**
- * @brief 组件异常
+ * @brief Component exception
  */
 class ComponentException : public std::runtime_error {
 public:
@@ -52,54 +52,54 @@ public:
 };
 
 /**
- * @brief 组件接口
+ * @brief Component interface
  *
- * 所有需要生命周期管理的组件都应该实现此接口。
+ * All components requiring lifecycle management should implement this interface.
  */
 class IComponent {
 public:
     virtual ~IComponent() = default;
 
     /**
-     * @brief 初始化组件
-     * @return 成功返回 true
-     * @throws ComponentException 初始化失败
+     * @brief Initialize component
+     * @return Returns true on success
+     * @throws ComponentException Initialization failed
      */
     virtual bool initialize() = 0;
 
     /**
-     * @brief 启动组件
-     * @return 成功返回 true
+     * @brief Start component
+     * @return Returns true on success
      */
     virtual bool start() = 0;
 
     /**
-     * @brief 暂停组件
+     * @brief Pause component
      */
     virtual void pause() = 0;
 
     /**
-     * @brief 恢复组件
+     * @brief Resume component
      */
     virtual void resume() = 0;
 
     /**
-     * @brief 停止组件
+     * @brief Stop component
      */
     virtual void stop() = 0;
 
     /**
-     * @brief 关闭组件，释放资源
+     * @brief Shutdown component, release resources
      */
     virtual void shutdown() = 0;
 
     /**
-     * @brief 获取组件状态
+     * @brief Get component state
      */
     virtual ComponentState getState() const = 0;
 
     /**
-     * @brief 检查组件是否就绪
+     * @brief Check if component is ready
      */
     bool isReady() const {
         auto s = getState();
@@ -107,19 +107,19 @@ public:
     }
 
     /**
-     * @brief 检查组件是否运行中
+     * @brief Check if component is running
      */
     bool isRunning() const {
         return getState() == ComponentState::Running;
     }
 
     /**
-     * @brief 获取组件名称
+     * @brief Get component name
      */
     virtual std::string getName() const = 0;
 
     /**
-     * @brief 获取组件版本
+     * @brief Get component version
      */
     virtual std::string getVersion() const { return "1.0.0"; }
 
@@ -128,9 +128,9 @@ protected:
 };
 
 /**
- * @brief 组件基类
+ * @brief Component base class
  *
- * 提供默认的状态管理实现，子类只需实现核心逻辑。
+ * Provides default state management implementation, subclasses only need to implement core logic.
  */
 class ComponentBase : public IComponent {
 public:
@@ -138,7 +138,7 @@ public:
         try {
             shutdown();
         } catch (...) {
-            // 析构函数不应该抛出异常
+            // Destructor should not throw exceptions
         }
     }
 
@@ -153,45 +153,45 @@ public:
     std::string getName() const override { return componentName_; }
 
     /**
-     * @brief 设置组件名称
+     * @brief Set component name
      */
     void setName(const std::string& name) { componentName_ = name; }
 
 protected:
     /**
-     * @brief 子类实现：初始化逻辑
-     * @return 成功返回 true
+     * @brief Subclass implementation: initialization logic
+     * @return Returns true on success
      */
     virtual bool onInitialize() { return true; }
 
     /**
-     * @brief 子类实现：启动逻辑
-     * @return 成功返回 true
+     * @brief Subclass implementation: start logic
+     * @return Returns true on success
      */
     virtual bool onStart() { return true; }
 
     /**
-     * @brief 子类实现：暂停逻辑
+     * @brief Subclass implementation: pause logic
      */
     virtual void onPause() {}
 
     /**
-     * @brief 子类实现：恢复逻辑
+     * @brief Subclass implementation: resume logic
      */
     virtual void onResume() {}
 
     /**
-     * @brief 子类实现：停止逻辑
+     * @brief Subclass implementation: stop logic
      */
     virtual void onStop() {}
 
     /**
-     * @brief 子类实现：关闭逻辑
+     * @brief Subclass implementation: shutdown logic
      */
     virtual void onShutdown() {}
 
     /**
-     * @brief 设置状态
+     * @brief Set status
      */
     void setState(ComponentState state);
 

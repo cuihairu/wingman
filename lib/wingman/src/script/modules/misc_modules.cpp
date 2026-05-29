@@ -168,7 +168,7 @@ ModuleDescriptor createNodeModule() {
 	}, "() -> {json,nodeId,version}"});
 
 	mod.functions.push_back({"sendHeartbeat", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		// 简化实现：记录心跳日志
+		// Simplified implementation: log heartbeat
 		return ScriptValue::null();
 	}, "heartbeat:{...} -> nil"});
 

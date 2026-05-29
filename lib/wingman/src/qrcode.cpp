@@ -9,7 +9,7 @@
 
 namespace wingman {
 
-// ========== JSON 路径解析 ==========
+// ========== JSON Path Parsing ==========
 
 static std::optional<nlohmann::json> getJsonByPath(const nlohmann::json& j, const std::string& path) {
     try {
@@ -42,7 +42,7 @@ class QRLoginManager::Impl {
 public:
     std::atomic<bool> cancelled{false};
 
-    // HTTP GET 请求
+    // HTTP GET request
     std::optional<std::string> httpGet(const std::string& url,
                                         const std::map<std::string, std::string>& headers) {
         try {
@@ -64,7 +64,7 @@ public:
         return std::nullopt;
     }
 
-    // HTTP POST 请求
+    // HTTP POST request
     std::optional<std::string> httpPost(const std::string& url,
                                          const std::string& body,
                                          const std::map<std::string, std::string>& headers) {
@@ -87,7 +87,7 @@ public:
         return std::nullopt;
     }
 
-    // 构建 URL 参数
+    // Build URL parameters
     std::string buildUrl(const std::string& baseUrl, const nlohmann::json& params) {
         if (params.empty()) {
             return baseUrl;
@@ -109,7 +109,7 @@ public:
                 valueStr = value.dump();
             }
 
-            // URL 编码（简单实现）
+            // URL encoding (simple implementation)
             ss << key << "=" << valueStr;
         }
 
@@ -122,7 +122,7 @@ QRLoginManager::QRLoginManager()
 
 QRLoginManager::~QRLoginManager() = default;
 
-// ========== 获取二维码 ==========
+// ========== Get QR Code ==========
 
 std::optional<std::string> QRLoginManager::getQRCode(const QRLoginConfig& config) {
     impl_->cancelled = false;
@@ -143,7 +143,7 @@ std::optional<std::string> QRLoginManager::getQRCode(const QRLoginConfig& config
         }
     } catch (...) {}
 
-    // 如果解析失败，可能直接返回的是二维码内容
+    // If parsing fails, the QR code content may have been returned directly
     return response;
 }
 
@@ -154,8 +154,8 @@ std::optional<std::string> QRLoginManager::getQRCodeImage(const QRLoginConfig& c
         return std::nullopt;
     }
 
-    // TODO: 使用 qrencode 库生成二维码图片
-    // 目前先保存内容为文本
+    // TODO: Use qrencode library to generate QR code image
+    // Save content as text for now
     std::ofstream file(outputPath);
     if (file.is_open()) {
         file << *qrCode;
@@ -167,14 +167,14 @@ std::optional<std::string> QRLoginManager::getQRCodeImage(const QRLoginConfig& c
 }
 
 std::optional<std::string> QRLoginManager::detectQRCode(int x, int y, int width, int height) {
-    // TODO: 使用 ZXing-C++ 实现二维码识别
+    // TODO: Use ZXing-C++ for QR code recognition
     std::cout << "[QR] Detecting QR code at (" << x << ", " << y << ") size "
               << width << "x" << height << "\n";
     std::cout << "[QR] QR code recognition not yet implemented\n";
     return std::nullopt;
 }
 
-// ========== 登录流程 ==========
+// ========== Login Flow ==========
 
 QRLoginResult QRLoginManager::login(const QRLoginConfig& config) {
     impl_->cancelled = false;
@@ -187,7 +187,7 @@ QRLoginResult QRLoginManager::login(const QRLoginConfig& config) {
     int attempts = 0;
 
     while (!impl_->cancelled && attempts < config.maxAttempts) {
-        // 检查超时
+        // Check timeout
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - startTime).count();
 
@@ -197,7 +197,7 @@ QRLoginResult QRLoginManager::login(const QRLoginConfig& config) {
             return result;
         }
 
-        // 轮询状态
+        // Poll status
         QRLoginResult status = pollStatus(config);
 
         if (status.state == QRLoginState::Confirmed) {
@@ -210,11 +210,11 @@ QRLoginResult QRLoginManager::login(const QRLoginConfig& config) {
             return status;
         }
 
-        // 更新状态
+        // Update status
         result.state = status.state;
         result.message = status.message;
 
-        // 等待下次轮询
+        // Wait for next poll
         std::this_thread::sleep_for(std::chrono::milliseconds(config.pollInterval));
         attempts++;
     }
@@ -244,7 +244,7 @@ QRLoginResult QRLoginManager::pollStatus(const QRLoginConfig& config) {
 
     std::string url = impl_->buildUrl(config.statusUrl, config.statusParams);
 
-    // 添加会话 ID
+    // Add session ID
     if (!config.sessionId.empty()) {
         url += "&session_id=" + config.sessionId;
     }
@@ -261,7 +261,7 @@ QRLoginResult QRLoginManager::pollStatus(const QRLoginConfig& config) {
         nlohmann::json j = nlohmann::json::parse(*response);
         result.data = j;
 
-        // 解析状态
+        // Parse status
         auto status = getJsonByPath(j, config.statusField);
         if (status && status->is_string()) {
             std::string statusStr = status->get<std::string>();
@@ -273,7 +273,7 @@ QRLoginResult QRLoginManager::pollStatus(const QRLoginConfig& config) {
                 result.state = QRLoginState::Confirmed;
                 result.message = "Login successful";
 
-                // 提取 token
+                // Extract token
                 auto token = getJsonByPath(j, config.tokenField);
                 if (token && token->is_string()) {
                     result.token = token->get<std::string>();
@@ -289,7 +289,7 @@ QRLoginResult QRLoginManager::pollStatus(const QRLoginConfig& config) {
                 result.message = j.value("error", "Unknown error");
             }
         } else {
-            // 尝试数字状态码
+            // Try numeric status code
             auto statusCode = getJsonByPath(j, config.statusField);
             if (statusCode && statusCode->is_number()) {
                 int code = statusCode->get<int>();
@@ -334,12 +334,12 @@ void QRLoginManager::cancel() {
     impl_->cancelled = true;
 }
 
-// ========== 预设配置 ==========
+// ========== Preset Configurations ==========
 
 QRLoginConfig QRLoginManager::steamConfig() {
     QRLoginConfig config;
-    // Steam 移动端登录流程需要更复杂的处理
-    // 这里是简化的示例
+    // Steam mobile login flow requires more complex handling
+    // This is a simplified example
     config.qrUrl = "https://steamcommunity.com/login/homeqr";
     config.statusUrl = "https://steamcommunity.com/login/qrcoderestate";
     config.pollInterval = 3000;

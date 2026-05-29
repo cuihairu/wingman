@@ -6,7 +6,7 @@
 
 namespace wingman {
 
-// ========== 颜色检测 ==========
+// ========== Color Detection ==========
 
 std::optional<Point> Vision::findColor(const Color& color, const Rect& region) {
     spdlog::warn("Vision support not enabled (OpenCV not available)");
@@ -33,7 +33,7 @@ Color Vision::getDominantColor(const Rect& region) {
     return Color();
 }
 
-// ========== 图像匹配 ==========
+// ========== Image Matching ==========
 
 ImageMatch Vision::findImage(const std::string& templatePath, double threshold) {
     spdlog::warn("Vision support not enabled (OpenCV not available)");
@@ -55,7 +55,7 @@ bool Vision::waitForImage(const std::string& templatePath, int timeoutMs, double
     return false;
 }
 
-// ========== 形状检测 ==========
+// ========== Shape Detection ==========
 
 std::vector<Point> Vision::detectEdges(const Rect& region, int threshold1, int threshold2) {
     spdlog::warn("Vision support not enabled (OpenCV not available)");
@@ -72,7 +72,7 @@ std::vector<std::pair<Point, int>> Vision::detectCircles(const Rect& region, int
     return {};
 }
 
-// ========== 图像处理 ==========
+// ========== Image Processing ==========
 
 bool Vision::captureRegion(const Rect& region, const std::string& outputPath) {
     spdlog::warn("Vision support not enabled (OpenCV not available)");

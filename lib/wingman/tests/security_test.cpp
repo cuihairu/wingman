@@ -48,7 +48,7 @@ TEST(ObfuscationConfigTest, DefaultValues) {
     EXPECT_FALSE(cfg.enableVirtualization);
 }
 
-// ========== SecurityManager 静态方法 ==========
+// ========== SecurityManager Static Methods ==========
 
 TEST(SecurityManagerTest, EncryptDecryptRoundtrip) {
     std::string original = "Hello, World!";
@@ -175,7 +175,7 @@ TEST(SecurityManagerTest, FilterSensitiveMultipleMatches) {
     EXPECT_NE(filtered, input);
 }
 
-// ========== SecurityManager Instance方法 ==========
+// ========== SecurityManager Instance Methods ==========
 
 TEST(SecurityManagerTest, SetGetAntiDetectionConfig) {
     auto& mgr = SecurityManager::instance();
@@ -357,7 +357,7 @@ TEST(SecurityManagerTest, EncryptDecryptWithSingleCharKey) {
 }
 
 TEST(SecurityManagerTest, EncryptDecryptUnicodeString) {
-    std::string original = "Hello 世界 🌍";
+    std::string original = "Hello World 🌍";
     std::string key = "key123";
     std::string encrypted = SecurityManager::encryptString(original, key);
     std::string decrypted = SecurityManager::decryptString(encrypted, key);

@@ -3,7 +3,7 @@
 #include <memory>
 #include <mutex>
 
-// 平台特定的管理器创建函数
+// Platform-specific manager creation functions
 #ifdef _WIN32
 extern std::unique_ptr<wingman::IUIAManager> createUIAManager();
 #elif defined(__APPLE__)
@@ -113,7 +113,7 @@ std::shared_ptr<IUIAElement> UIAutomation::getElementFromPoint(int x, int y) {
     return impl->fromPoint(x, y);
 }
 
-// ========== 全局访问 ==========
+// ========== Global Access ==========
 
 namespace {
     std::unique_ptr<UIAutomation> g_instance;

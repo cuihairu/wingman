@@ -3,7 +3,7 @@
 
 using namespace wingman;
 
-// ========== SmartTrigger 基础测试 ==========
+// ========== SmartTrigger Basic Tests ==========
 
 TEST(SmartTriggerTest, ConstructionAndName) {
     SmartTrigger t("MyTrigger");
@@ -83,7 +83,7 @@ TEST(SmartTriggerTest, DestructorCallsStop) {
     });
 }
 
-// ========== SmartTriggerManager 测试 ==========
+// ========== SmartTriggerManager Tests ==========
 
 TEST(SmartTriggerManagerTest, InstanceReturnsSingleton) {
     auto& a = SmartTriggerManager::instance();
@@ -154,7 +154,7 @@ TEST(SmartTriggerManagerTest, StartAllStopAllWithNoTriggers) {
     EXPECT_NO_THROW(mgr.stopAll());
 }
 
-// ========== 多条件与多动作 ==========
+// ========== Multiple Conditions and Actions ==========
 
 TEST(SmartTriggerTest, MultipleConditionsAdded) {
     SmartTrigger t("multi_cond");
@@ -200,7 +200,7 @@ TEST(SmartTriggerTest, MultipleActionsAdded) {
     EXPECT_EQ(t.getTriggerCount(), 0);
 }
 
-// ========== TriggerCondition 字段 ==========
+// ========== TriggerCondition Fields ==========
 
 TEST(TriggerConditionTest, DefaultFieldValues) {
     TriggerCondition cond{};
@@ -244,7 +244,7 @@ TEST(TriggerConditionTest, AllConditionTypesAreValid) {
     EXPECT_EQ(static_cast<int>(TriggerConditionType::OCR_EQUALS), 9);
 }
 
-// ========== TriggerAction 字段 ==========
+// ========== TriggerAction Fields ==========
 
 TEST(TriggerActionTest, DefaultFieldValues) {
     TriggerAction action{};
@@ -285,7 +285,7 @@ TEST(TriggerActionTest, CallbackInvocation) {
     EXPECT_TRUE(wasCalled);
 }
 
-// ========== SmartTriggerManager 多触发器 ==========
+// ========== SmartTriggerManager Multiple Triggers ==========
 
 TEST(SmartTriggerManagerTest, MultipleTriggersCount) {
     auto& mgr = SmartTriggerManager::instance();
@@ -329,7 +329,7 @@ TEST(SmartTriggerManagerTest, RemoveTriggerDecreasesCount) {
     mgr.removeTrigger("dec_b");
 }
 
-// ========== SmartTrigger setMaxTriggers 边界 ==========
+// ========== SmartTrigger setMaxTriggers Boundary ==========
 
 TEST(SmartTriggerTest, SetMaxTriggersToOneDoesNotCrash) {
     SmartTrigger t("max_one");
@@ -346,7 +346,7 @@ TEST(SmartTriggerTest, SetMaxTriggersToOneDoesNotCrash) {
     EXPECT_FALSE(t.isRunning());
 }
 
-// ========== SmartTrigger 析构后清理 ==========
+// ========== SmartTrigger Cleanup After Destruction ==========
 
 TEST(SmartTriggerTest, DestructorAfterStartCleansUp) {
     {
@@ -361,7 +361,7 @@ TEST(SmartTriggerTest, DestructorAfterStartCleansUp) {
     SUCCEED();
 }
 
-// ========== SmartTriggerManager 重复创建返回同一实例 ==========
+// ========== SmartTriggerManager Duplicate Creation Returns Same Instance ==========
 
 TEST(SmartTriggerManagerTest, CreateSameNameReturnsSameSharedPtr) {
     auto& mgr = SmartTriggerManager::instance();
@@ -374,7 +374,7 @@ TEST(SmartTriggerManagerTest, CreateSameNameReturnsSameSharedPtr) {
     mgr.removeTrigger("same_ptr_test");
 }
 
-// ========== SmartTrigger stop 在未启动时安全 ==========
+// ========== SmartTrigger stop Is Safe When Not Started ==========
 
 TEST(SmartTriggerTest, StopWhenNotRunningIsSafe) {
     SmartTrigger t("stop_idle");

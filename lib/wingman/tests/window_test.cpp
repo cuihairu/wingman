@@ -11,15 +11,15 @@ protected:
     void TearDown() override {}
 };
 
-// ========== 窗口查找测试 ==========
+// ========== Window Find Tests ==========
 
 TEST(WindowTest, FindExistingWindow) {
-	// CI 环境中窗口操作可能受限
+	// Window operations may be restricted in CI environment
 	GTEST_SKIP() << "Skipping in CI environment";
 }
 
 TEST(WindowTest, FindAllWindows) {
-	// CI 环境中窗口操作可能受限
+	// Window operations may be restricted in CI environment
 	GTEST_SKIP() << "Skipping in CI environment";
 }
 
@@ -33,7 +33,7 @@ TEST(WindowTest, EnumerateWindows) {
     auto windows = Window::enumerate();
     EXPECT_GT(windows.size(), 0);
 
-    // 检查返回的数据
+    // Check returned data
     for (const auto& win : windows) {
         EXPECT_NE(win.handle, nullptr);
         EXPECT_FALSE(win.title.empty());
@@ -44,11 +44,11 @@ TEST(WindowTest, FindNonExistentWindow) {
     std::string nonsenseTitle = "ThisWindowShouldNotExist123456789";
 
     auto hwnd = Window::find(nonsenseTitle);
-    // 可能返回 nullptr 或某个匹配的窗口
+    // May return nullptr or a matching window
     SUCCEED();
 }
 
-// ========== 窗口信息测试 ==========
+// ========== Window Info Tests ==========
 
 TEST(WindowTest, GetWindowTitle) {
     auto hwnd = Window::getForeground();
@@ -68,11 +68,11 @@ TEST(WindowTest, GetWindowBounds) {
 }
 
 TEST(WindowTest, IsWindowValid) {
-    // 有效窗口
+    // Valid window
     auto hwnd = Window::getForeground();
     EXPECT_TRUE(Window::isValid(hwnd));
 
-    // 无效窗口
+    // Invalid window
     EXPECT_FALSE(Window::isValid(nullptr));
 }
 
@@ -87,19 +87,19 @@ TEST(WindowTest, IsWindowVisible) {
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, nullptr);
 
-    // 前台窗口应该是可见的
+    // Foreground window should be visible
     EXPECT_TRUE(Window::isVisible(hwnd));
 }
 
-// ========== 窗口操作测试 ==========
+// ========== Window Operation Tests ==========
 
 TEST(WindowTest, ActivateWindow) {
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, nullptr);
 
-    // 尝试激活（可能已经是前台窗口）
+    // Try to activate (may already be the foreground window)
     bool result = Window::activate(hwnd);
-    // 结果取决于当前状态
+    // Result depends on current state
     SUCCEED();
 }
 
@@ -107,11 +107,11 @@ TEST(WindowTest, MinimizeWindow) {
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, nullptr);
 
-    // 最小化
+    // Minimize
     bool result = Window::minimize(hwnd);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // 还原
+    // Restore
     Window::restore(hwnd);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -122,11 +122,11 @@ TEST(WindowTest, MaximizeWindow) {
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, nullptr);
 
-    // 最大化
+    // Maximize
     bool result = Window::maximize(hwnd);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // 还原
+    // Restore
     Window::restore(hwnd);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -141,15 +141,15 @@ TEST(WindowTest, RestoreWindow) {
     SUCCEED();
 }
 
-// ========== 窗口移动和调整大小测试 ==========
+// ========== Window Move and Resize Tests ==========
 
 TEST(WindowTest, SetWindowBounds) {
-	// CI 环境中窗口操作可能受限
+	// Window operations may be restricted in CI environment
 	GTEST_SKIP() << "Skipping in CI environment";
 }
 
 TEST(WindowTest, MoveWindow) {
-	// CI 环境中窗口操作可能受限
+	// Window operations may be restricted in CI environment
 	GTEST_SKIP() << "Skipping in CI environment";
 }
 
@@ -159,39 +159,39 @@ TEST(WindowTest, ResizeWindow) {
 
     Rect original = Window::getBounds(hwnd);
 
-    // 调整大小
+    // Resize
     bool result = Window::resize(hwnd, 800, 600);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // 恢复原大小
+    // Restore original size
     Window::resize(hwnd, original.width, original.height);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     SUCCEED();
 }
 
-// ========== 等待窗口测试 ==========
+// ========== Wait for Window Tests ==========
 
 TEST(WindowTest, WaitForWindow) {
-	// CI 环境中窗口操作可能受限
+	// Window operations may be restricted in CI environment
 	GTEST_SKIP() << "Skipping in CI environment";
 }
 
 TEST(WindowTest, WaitForWindowTimeout) {
-	// 等待不存在的窗口
+	// Wait for non-existent window
 	bool found = Window::waitFor("NonExistentWindow12345", 500);
 	EXPECT_FALSE(found);
 }
 
 TEST(WindowTest, WaitCloseTimeout) {
-	// CI 环境中窗口操作可能受限
+	// Window operations may be restricted in CI environment
 	GTEST_SKIP() << "Skipping in CI environment";
 }
 
-// ========== 边界条件测试 ==========
+// ========== Boundary Condition Tests ==========
 
 TEST(WindowTest, InvalidWindowHandle) {
-    // 测试使用 nullptr 的情况
+    // Test with nullptr
     std::string title = Window::getTitle(nullptr);
     EXPECT_TRUE(title.empty());
 
@@ -207,7 +207,7 @@ TEST(WindowTest, InvalidWindowHandle) {
 }
 
 TEST(WindowTest, EmptyTitleSearch) {
-	// CI 环境中窗口操作可能受限
+	// Window operations may be restricted in CI environment
 	GTEST_SKIP() << "Skipping in CI environment";
 }
 
@@ -217,12 +217,12 @@ TEST(WindowTest, SetBoundsZeroSize) {
 
     Rect original = Window::getBounds(hwnd);
 
-    // 尝试设置零大小（可能被系统忽略）
+    // Try setting zero size (may be ignored by the system)
     Rect zeroBounds(0, 0, 0, 0);
     bool result = Window::setBounds(hwnd, zeroBounds);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // 恢复原始大小
+    // Restore original size
     Window::setBounds(hwnd, original);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 

@@ -20,14 +20,14 @@ GameProfileManager& GameProfileManager::instance() {
 }
 
 GameProfileManager::GameProfileManager() {
-    // 设置默认配置目录
+    // Set default config directory
     char exePath[MAX_PATH];
     GetModuleFileNameA(nullptr, exePath, MAX_PATH);
     std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
     m_profilesDirectory = (exeDir / "profiles").string();
 }
 
-// ========== 配置管理 ==========
+// ========== Configuration Management ==========
 
 bool GameProfileManager::loadProfile(const std::string& id) {
     std::string path = getProfilePath(id);
@@ -65,7 +65,7 @@ bool GameProfileManager::saveProfile(const GameProfile& profile) {
 }
 
 bool GameProfileManager::saveProfileToFile(const GameProfile& profile, const std::string& path) {
-    // 确保目录存在
+    // Ensure directory exists
     std::filesystem::path filePath(path);
     std::filesystem::create_directories(filePath.parent_path());
 
@@ -78,7 +78,7 @@ bool GameProfileManager::deleteProfile(const std::string& id) {
         return false;
     }
 
-    // 删除文件
+    // Delete file
     std::string path = getProfilePath(id);
     std::filesystem::remove_all(std::filesystem::path(path).parent_path());
 
@@ -118,7 +118,7 @@ bool GameProfileManager::setActiveProfile(const std::string& id) {
     return true;
 }
 
-// ========== 配置列表 ==========
+// ========== Configuration List ==========
 
 std::vector<std::string> GameProfileManager::getProfileIds() const {
     std::vector<std::string> ids;
@@ -142,7 +142,7 @@ bool GameProfileManager::hasProfile(const std::string& id) const {
     return m_profiles.find(id) != m_profiles.end();
 }
 
-// ========== 配置搜索 ==========
+// ========== Configuration Search ==========
 
 GameProfile* GameProfileManager::findProfileByWindow(const std::string& title) {
     for (auto& [id, profile] : m_profiles) {
@@ -151,7 +151,7 @@ GameProfile* GameProfileManager::findProfileByWindow(const std::string& title) {
         if (win.exactMatch) {
             if (title == win.title) return &profile;
         } else {
-            // 通配符匹配
+            // Wildcard matching
             if (title.find(win.title) != std::string::npos) {
                 return &profile;
             }
@@ -169,7 +169,7 @@ GameProfile* GameProfileManager::findProfileByProcess(const std::string& process
     return nullptr;
 }
 
-// ========== 配置目录 ==========
+// ========== Configuration Directory ==========
 
 void GameProfileManager::setProfilesDirectory(const std::string& dir) {
     m_profilesDirectory = dir;
@@ -195,7 +195,7 @@ void GameProfileManager::scanProfilesDirectory() {
     }
 }
 
-// ========== 配置导入导出 ==========
+// ========== Configuration Import/Export ==========
 
 std::string GameProfileManager::exportProfileToJson(const std::string& id) const {
     const auto* profile = getProfile(id);
@@ -203,7 +203,7 @@ std::string GameProfileManager::exportProfileToJson(const std::string& id) const
         return "";
     }
 
-    // TODO: 使用 nlohmann/json 序列化
+    // TODO: Use nlohmann/json for serialization
     std::stringstream ss;
     ss << "{\n";
     ss << "  \"id\": \"" << profile->id << "\",\n";
@@ -215,7 +215,7 @@ std::string GameProfileManager::exportProfileToJson(const std::string& id) const
 }
 
 bool GameProfileManager::importProfileFromJson(const std::string& json, const std::string& id) {
-    // TODO: 使用 nlohmann/json 解析
+    // TODO: Use nlohmann/json for parsing
     return false;
 }
 
@@ -225,25 +225,25 @@ bool GameProfileManager::exportProfilePackage(const std::string& id, const std::
         return false;
     }
 
-    // 创建临时目录
+    // Create temporary directory
     std::filesystem::path tempDir = std::filesystem::temp_directory_path() / id;
     std::filesystem::create_directories(tempDir);
 
-    // 复制配置和图像文件
+    // Copy config and image files
     std::filesystem::copy(getProfilePath(id), tempDir,
         std::filesystem::copy_options::recursive);
 
-    // TODO: 创建 ZIP 压缩包
+    // TODO: Create ZIP archive
 
     return true;
 }
 
 bool GameProfileManager::importProfilePackage(const std::string& packagePath) {
-    // TODO: 解压 ZIP 包
+    // TODO: Extract ZIP archive
     return false;
 }
 
-// ========== 验证 ==========
+// ========== Validation ==========
 
 bool GameProfileManager::validateProfile(const GameProfile& profile, std::string& error) const {
     if (profile.id.empty()) {
@@ -264,12 +264,12 @@ bool GameProfileManager::validateProfile(const GameProfile& profile, std::string
     return true;
 }
 
-// ========== 模板 ==========
+// ========== Templates ==========
 
 GameProfile GameProfileManager::createTemplate(const std::string& gameName) const {
     GameProfile profile;
 
-    // 从游戏名生成 ID
+    // Generate ID from game name
     std::string id = gameName;
     std::transform(id.begin(), id.end(), id.begin(), ::tolower);
     std::replace_if(id.begin(), id.end(), ::isspace, '_');
@@ -285,11 +285,11 @@ GameProfile GameProfileManager::createTemplate(const std::string& gameName) cons
     return profile;
 }
 
-// ========== 私有方法 ==========
+// ========== Private Methods ==========
 
 bool GameProfileManager::parseProfileFile(const std::string& path, GameProfile& profile) {
-    // TODO: 使用 nlohmann/json 解析
-    // 这里提供简单的 INI 解析作为后备
+    // TODO: Use nlohmann/json for parsing
+    // Simple INI parsing provided as fallback here
 
     std::ifstream file(path);
     if (!file.is_open()) {
@@ -300,24 +300,24 @@ bool GameProfileManager::parseProfileFile(const std::string& path, GameProfile& 
     std::string section;
 
     while (std::getline(file, line)) {
-        // 跳过注释和空行
+        // Skip comments and blank lines
         if (line.empty() || line[0] == ';' || line[0] == '#') {
             continue;
         }
 
-        // 解析节
+        // Parse section
         if (line[0] == '[' && line.back() == ']') {
             section = line.substr(1, line.size() - 2);
             continue;
         }
 
-        // 解析键值
+        // Parse key-value
         size_t pos = line.find('=');
         if (pos != std::string::npos) {
             std::string key = line.substr(0, pos);
             std::string value = line.substr(pos + 1);
 
-            // 去除空格
+            // Trim spaces
             key.erase(0, key.find_first_not_of(" \t"));
             key.erase(key.find_last_not_of(" \t") + 1);
             value.erase(0, value.find_first_not_of(" \t"));
@@ -340,8 +340,8 @@ bool GameProfileManager::parseProfileFile(const std::string& path, GameProfile& 
 }
 
 bool GameProfileManager::writeProfileFile(const std::string& path, const GameProfile& profile) {
-    // TODO: 使用 nlohmann/json 序列化
-    // 这里提供简单的 INI 格式作为后备
+    // TODO: Use nlohmann/json for serialization
+    // Simple INI format provided as fallback here
 
     std::ofstream file(path);
     if (!file.is_open()) {
@@ -362,7 +362,7 @@ bool GameProfileManager::writeProfileFile(const std::string& path, const GamePro
     file << "process=" << profile.window.processName << "\n";
     file << "exact_match=" << (profile.window.exactMatch ? "true" : "false") << "\n\n";
 
-    // 颜色配置
+    // Color configuration
     if (!profile.colors.empty()) {
         file << "[colors]\n";
         for (const auto& color : profile.colors) {
@@ -371,7 +371,7 @@ bool GameProfileManager::writeProfileFile(const std::string& path, const GamePro
         file << "\n";
     }
 
-    // 图像配置
+    // Image configuration
     if (!profile.images.empty()) {
         file << "[images]\n";
         for (const auto& img : profile.images) {

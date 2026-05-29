@@ -7,7 +7,7 @@
 
 namespace wingman {
 
-// ========== 辅助函数 ==========
+// ========== Helper Functions ==========
 
 bool Vision::isColorMatch(const Color& c1, const Color& c2, int tolerance) {
     int dr = abs((int)c1.r - (int)c2.r);
@@ -16,23 +16,23 @@ bool Vision::isColorMatch(const Color& c1, const Color& c2, int tolerance) {
     return dr <= tolerance && dg <= tolerance && db <= tolerance;
 }
 
-// Bitmap 转 cv::Mat
+// Bitmap to cv::Mat
 static cv::Mat bitmapToMat(const Bitmap& bitmap) {
     if (!bitmap.getData() || bitmap.getWidth() <= 0 || bitmap.getHeight() <= 0) {
         return cv::Mat();
     }
 
-    // Bitmap 是 BGRA 格式
+    // Bitmap is in BGRA format
     cv::Mat mat(bitmap.getHeight(), bitmap.getWidth(), CV_8UC4, (void*)bitmap.getData(), bitmap.getWidth() * 4);
 
-    // 转换为 BGR
+    // Convert to BGR
     cv::Mat bgr;
     cv::cvtColor(mat, bgr, cv::COLOR_BGRA2BGR);
 
     return bgr;
 }
 
-// ========== 颜色检测 ==========
+// ========== Color Detection ==========
 
 std::optional<Point> Vision::findColor(const Color& color, const Rect& region) {
     return findColor(color, 0, region);
@@ -47,13 +47,13 @@ std::optional<Point> Vision::findColor(const Color& color, int tolerance, const 
     cv::Mat mat = bitmapToMat(*bitmap);
     if (mat.empty()) return std::nullopt;
 
-    // 裁剪搜索区域
+    // Crop search region
     cv::Rect roi(searchRegion.x, searchRegion.y, searchRegion.width, searchRegion.height);
     if (roi.x + roi.width > mat.cols) roi.width = mat.cols - roi.x;
     if (roi.y + roi.height > mat.rows) roi.height = mat.rows - roi.y;
     cv::Mat searchMat = mat(roi);
 
-    // 遍历像素查找匹配颜色
+    // Iterate pixels to find matching colors
     for (int y = 0; y < searchMat.rows; y++) {
         for (int x = 0; x < searchMat.cols; x++) {
             cv::Vec3b pixel = searchMat.at<cv::Vec3b>(y, x);
@@ -116,7 +116,7 @@ Color Vision::getDominantColor(const Rect& region) {
     if (roi.y + roi.height > mat.rows) roi.height = mat.rows - roi.y;
     cv::Mat searchMat = mat(roi);
 
-    // 使用 KMeans 聚类找到主色
+    // Use KMeans clustering to find dominant color
     cv::Mat pixels = searchMat.reshape(1, searchMat.rows * searchMat.cols);
     pixels.convertTo(pixels, CV_32F);
 
@@ -128,7 +128,7 @@ Color Vision::getDominantColor(const Rect& region) {
     return Color((uint8_t)dominant[2], (uint8_t)dominant[1], (uint8_t)dominant[0]);
 }
 
-// ========== 图像匹配 ==========
+// ========== Image Matching ==========
 
 ImageMatch Vision::findImage(const std::string& templatePath, double threshold) {
     return findImage(templatePath, Screen::getScreenBounds(), threshold);
@@ -137,31 +137,31 @@ ImageMatch Vision::findImage(const std::string& templatePath, double threshold) 
 ImageMatch Vision::findImage(const std::string& templatePath, const Rect& searchRegion, double threshold) {
     ImageMatch result = {false, Point(), 0.0, Rect()};
 
-    // 加载模板图像
+    // Load template image
     cv::Mat templateImg = cv::imread(templatePath, cv::IMREAD_COLOR);
     if (templateImg.empty()) {
         spdlog::error("Failed to load template image: {}", templatePath);
         return result;
     }
 
-    // 截取屏幕
+    // Capture screen
     auto bitmap = Screen::capture();
     if (!bitmap) return result;
 
     cv::Mat screenMat = bitmapToMat(*bitmap);
     if (screenMat.empty()) return result;
 
-    // 裁剪搜索区域
+    // Crop search region
     cv::Rect roi(searchRegion.x, searchRegion.y, searchRegion.width, searchRegion.height);
     if (roi.x + roi.width > screenMat.cols) roi.width = screenMat.cols - roi.x;
     if (roi.y + roi.height > screenMat.rows) roi.height = screenMat.rows - roi.y;
     cv::Mat searchMat = screenMat(roi);
 
-    // 模板匹配
+    // Template matching
     cv::Mat matchResult;
     cv::matchTemplate(searchMat, templateImg, matchResult, cv::TM_CCOEFF_NORMED);
 
-    // 查找最佳匹配
+    // Find best match
     double minVal, maxVal;
     cv::Point minLoc, maxLoc;
     cv::minMaxLoc(matchResult, &minVal, &maxVal, &minLoc, &maxLoc);
@@ -194,7 +194,7 @@ std::vector<ImageMatch> Vision::findAllImages(const std::string& templatePath, d
     cv::Mat matchResult;
     cv::matchTemplate(screenMat, templateImg, matchResult, cv::TM_CCOEFF_NORMED);
 
-    // 查找所有超过阈值的匹配
+    // Find all matches above threshold
     while (true) {
         double minVal, maxVal;
         cv::Point minLoc, maxLoc;
@@ -209,7 +209,7 @@ std::vector<ImageMatch> Vision::findAllImages(const std::string& templatePath, d
         match.region = Rect(maxLoc.x, maxLoc.y, templateImg.cols, templateImg.rows);
         results.push_back(match);
 
-        // 抑制已找到的区域
+        // Suppress found regions
         int suppressRadius = templateImg.cols / 2;
         int x1 = std::max(0, maxLoc.x - suppressRadius);
         int y1 = std::max(0, maxLoc.y - suppressRadius);
@@ -237,7 +237,7 @@ bool Vision::waitForImage(const std::string& templatePath, int timeoutMs, double
     }
 }
 
-// ========== 形状检测 ==========
+// ========== Shape Detection ==========
 
 std::vector<Point> Vision::detectEdges(const Rect& region, int threshold1, int threshold2) {
     std::vector<Point> edges;
@@ -255,15 +255,15 @@ std::vector<Point> Vision::detectEdges(const Rect& region, int threshold1, int t
     if (roi.y + roi.height > mat.rows) roi.height = mat.rows - roi.y;
     cv::Mat searchMat = mat(roi);
 
-    // 转灰度
+    // Convert to grayscale
     cv::Mat gray;
     cv::cvtColor(searchMat, gray, cv::COLOR_BGR2GRAY);
 
-    // Canny 边缘检测
+    // Canny edge detection
     cv::Mat edgeMat;
     cv::Canny(gray, edgeMat, threshold1, threshold2);
 
-    // 提取边缘点
+    // Extract edge points
     for (int y = 0; y < edgeMat.rows; y++) {
         for (int x = 0; x < edgeMat.cols; x++) {
             if (edgeMat.at<uint8_t>(y, x) > 0) {
@@ -291,20 +291,20 @@ std::vector<std::vector<Point>> Vision::detectContours(const Rect& region) {
     if (roi.y + roi.height > mat.rows) roi.height = mat.rows - roi.y;
     cv::Mat searchMat = mat(roi);
 
-    // 转灰度
+    // Convert to grayscale
     cv::Mat gray;
     cv::cvtColor(searchMat, gray, cv::COLOR_BGR2GRAY);
 
-    // 二值化
+    // Binarize
     cv::Mat binary;
     cv::threshold(gray, binary, 128, 255, cv::THRESH_BINARY);
 
-    // 查找轮廓
+    // Find contours
     std::vector<std::vector<cv::Point>> cvContours;
     cv::Mat hierarchy;
     cv::findContours(binary, cvContours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    // 转换轮廓格式
+    // Convert contour format
     for (const auto& cvContour : cvContours) {
         std::vector<Point> contour;
         for (const auto& pt : cvContour) {
@@ -332,18 +332,18 @@ std::vector<std::pair<Point, int>> Vision::detectCircles(const Rect& region, int
     if (roi.y + roi.height > mat.rows) roi.height = mat.rows - roi.y;
     cv::Mat searchMat = mat(roi);
 
-    // 转灰度
+    // Convert to grayscale
     cv::Mat gray;
     cv::cvtColor(searchMat, gray, cv::COLOR_BGR2GRAY);
 
-    // 高斯模糊
+    // Gaussian blur
     cv::GaussianBlur(gray, gray, cv::Size(9, 9), 2, 2);
 
-    // 霍夫圆检测
+    // Hough circle detection
     std::vector<cv::Vec3f> cvCircles;
     cv::HoughCircles(gray, cvCircles, cv::HOUGH_GRADIENT, 1, gray.rows / 8, 100, 30, minRadius, maxRadius);
 
-    // 转换结果
+    // Convert results
     for (const auto& c : cvCircles) {
         Point center(searchRegion.x + (int)c[0], searchRegion.y + (int)c[1]);
         int radius = (int)c[2];
@@ -353,7 +353,7 @@ std::vector<std::pair<Point, int>> Vision::detectCircles(const Rect& region, int
     return circles;
 }
 
-// ========== 图像处理 ==========
+// ========== Image Processing ==========
 
 bool Vision::captureRegion(const Rect& region, const std::string& outputPath) {
     auto bitmap = Screen::capture();
@@ -385,12 +385,12 @@ double Vision::compareImages(const std::string& path1, const std::string& path2)
         return 0.0;
     }
 
-    // 调整大小到相同尺寸
+    // Resize to same dimensions
     if (img1.size() != img2.size()) {
         cv::resize(img2, img2, img1.size());
     }
 
-    // 计算结构相似性 (SSIM)
+    // Calculate structural similarity (SSIM)
     cv::Mat img1Gray, img2Gray;
     cv::cvtColor(img1, img1Gray, cv::COLOR_BGR2GRAY);
     cv::cvtColor(img2, img2Gray, cv::COLOR_BGR2GRAY);

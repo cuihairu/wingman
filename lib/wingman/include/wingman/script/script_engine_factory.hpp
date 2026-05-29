@@ -9,7 +9,7 @@
 namespace wingman {
 namespace script {
 
-// 脚本引擎工厂（自注册模式）
+// Script engine factory (self-registration pattern)
 class ScriptEngineFactory {
 public:
 	using Creator = std::function<std::unique_ptr<IScriptEngine>()>;
@@ -43,7 +43,7 @@ public:
 		auto dotPos = path.rfind('.');
 		if (dotPos == std::string::npos) return "lua";
 		std::string ext = path.substr(dotPos);
-		// 转小写
+		// Convert to lowercase
 		for (auto& c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
 		for (const auto& [lang, creator] : creators_) {

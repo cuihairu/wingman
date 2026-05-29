@@ -11,17 +11,17 @@
 
 namespace wingman {
 
-// 登录状态
+// Login state
 enum class QRLoginState {
-    Pending,       // 等待扫码
-    Scanned,       // 已扫码，等待确认
-    Confirmed,     // 已确认，登录成功
-    Expired,       // 二维码过期
-    Cancelled,     // 用户取消
-    Error          // 错误
+    Pending,       // Waiting for scan
+    Scanned,       // Scanned, waiting for confirmation
+    Confirmed,     // Confirmed, login successful
+    Expired,       // QR code expired
+    Cancelled,     // User cancelled
+    Error          // Error
 };
 
-// 登录状态转字符串
+// Convert login state to string
 inline std::string qrLoginStateToString(QRLoginState state) {
     switch (state) {
         case QRLoginState::Pending: return "pending";
@@ -34,86 +34,86 @@ inline std::string qrLoginStateToString(QRLoginState state) {
     }
 }
 
-// 二维码登录配置
+// QR code login configuration
 struct QRLoginConfig {
-    // API 端点
-    std::string qrUrl;           // 获取二维码的 URL
-    std::string statusUrl;       // 查询状态的 URL
-    std::string method = "GET";  // HTTP 方法
+    // API endpoints
+    std::string qrUrl;           // URL to get QR code
+    std::string statusUrl;       // URL to query status
+    std::string method = "GET";  // HTTP method
 
-    // 参数配置
-    nlohmann::json qrParams;     // 获取二维码的参数
-    nlohmann::json statusParams; // 查询状态的参数
+    // Parameter configuration
+    nlohmann::json qrParams;     // Parameters to get QR code
+    nlohmann::json statusParams; // Parameters to query status
 
-    // 响应解析（JSON 路径）
-    std::string qrCodeField = "qr_code";      // 二维码内容字段
-    std::string statusField = "status";       // 状态字段
-    std::string tokenField = "token";         // token 字段
-    std::string sessionIdField = "session_id"; // 会话 ID 字段
+    // Response parsing (JSON path)
+    std::string qrCodeField = "qr_code";      // QR code content field
+    std::string statusField = "status";       // Status field
+    std::string tokenField = "token";         // Token field
+    std::string sessionIdField = "session_id"; // Session ID field
 
-    // 轮询配置
-    int pollInterval = 2000;     // 轮询间隔（毫秒）
-    int timeout = 120000;        // 超时时间（毫秒）
-    int maxAttempts = 60;        // 最大尝试次数
+    // Polling configuration
+    int pollInterval = 2000;     // Polling interval (milliseconds)
+    int timeout = 120000;        // Timeout (milliseconds)
+    int maxAttempts = 60;        // Max attempts
 
-    // 头部配置
+    // Header configuration
     std::map<std::string, std::string> headers;
 
-    // 会话 ID（从响应中获取）
+    // Session ID (obtained from response)
     std::string sessionId;
 };
 
-// 登录结果
+// Login result
 struct QRLoginResult {
     QRLoginState state;
     std::string message;
-    std::string token;           // 登录凭证
-    std::string sessionId;       // 会话 ID
-    nlohmann::json data;         // 完整响应数据
+    std::string token;           // Login credentials
+    std::string sessionId;       // Session ID
+    nlohmann::json data;         // Full response data
 };
 
-// 扫码登录管理器
+// QR code login manager
 class QRLoginManager {
 public:
     QRLoginManager();
     ~QRLoginManager();
 
-    // ========== 获取二维码 ==========
+    // ========== Get QR code ==========
 
-    // 获取二维码内容
+    // Get QR code content
     std::optional<std::string> getQRCode(const QRLoginConfig& config);
 
-    // 获取二维码并保存为图片
+    // Get QR code and save as image
     std::optional<std::string> getQRCodeImage(const QRLoginConfig& config,
                                                const std::string& outputPath);
 
-    // 从屏幕区域识别二维码
+    // Recognize QR code from screen region
     std::optional<std::string> detectQRCode(int x, int y, int width, int height);
 
-    // ========== 登录流程 ==========
+    // ========== Login flow ==========
 
-    // 执行完整的扫码登录流程（阻塞）
+    // Execute full QR code login flow (blocking)
     QRLoginResult login(const QRLoginConfig& config);
 
-    // 执行扫码登录（异步，带回调）
+    // Execute QR code login (async, with callback)
     void loginAsync(const QRLoginConfig& config,
                     std::function<void(const QRLoginResult&)> callback);
 
-    // 轮询登录状态
+    // Poll login status
     QRLoginResult pollStatus(const QRLoginConfig& config);
 
-    // 取消登录
+    // Cancel login
     void cancel();
 
-    // ========== 预设配置 ==========
+    // ========== Preset configurations ==========
 
-    // Steam 扫码登录配置
+    // Steam QR code login configuration
     static QRLoginConfig steamConfig();
 
-    // 微信扫码登录配置
+    // WeChat QR code login configuration
     static QRLoginConfig wechatConfig();
 
-    // 通用扫码登录配置
+    // Generic QR code login configuration
     static QRLoginConfig genericConfig(const std::string& qrUrl,
                                         const std::string& statusUrl);
 

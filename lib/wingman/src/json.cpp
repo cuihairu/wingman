@@ -7,7 +7,7 @@ namespace wingman {
 
 using json = nlohmann::json;
 
-// JsonValue 实现
+// JsonValue implementation
 class JsonValue::Impl {
 public:
     json data;

@@ -13,7 +13,7 @@
 #include <opencv2/opencv.hpp>
 #endif
 
-// ========== Base64 编码辅助函数 ==========
+// ========== Base64 Encoding Helper Functions ==========
 
 static std::string base64Encode(const std::vector<uchar>& data) {
     const std::string base64Chars =
@@ -82,7 +82,7 @@ RemoteResponse RemoteResponse::fromJson(const nlohmann::json& j) {
     return resp;
 }
 
-// ========== RemoteServer 请求处理 ==========
+// ========== RemoteServer Request Handling ==========
 
 RemoteResponse RemoteServer::handleRequest(const RemoteRequest& req) {
     try {
@@ -92,7 +92,7 @@ RemoteResponse RemoteServer::handleRequest(const RemoteRequest& req) {
         if (req.action == "capture_screen") return handleCaptureScreen(req.params);
         if (req.action == "find_image") return handleFindImage(req.params);
 #else
-        // 返回不支持错误
+        // Return unsupported error
         if (req.action == "capture_screen" || req.action == "find_image") {
             RemoteResponse resp;
             resp.success = false;
@@ -127,7 +127,7 @@ RemoteResponse RemoteServer::handleRequest(const RemoteRequest& req) {
     }
 }
 
-// ========== 动作处理器 ==========
+// ========== Action Handlers ==========
 
 RemoteResponse RemoteServer::handlePing(const nlohmann::json& /*params*/) {
     RemoteResponse resp;

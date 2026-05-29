@@ -3,7 +3,7 @@
 
 using namespace wingman;
 
-// ========== 构造函数测试 ==========
+// ========== Constructor Tests ==========
 
 TEST(JsonValueTest, DefaultConstructorIsNull) {
     JsonValue v;
@@ -56,7 +56,7 @@ TEST(JsonValueTest, StdStringConstructor) {
     EXPECT_EQ(v.asString(), "world");
 }
 
-// ========== 拷贝和赋值 ==========
+// ========== Copy and Assignment ==========
 
 TEST(JsonValueTest, CopyConstructor) {
     JsonValue original(42);
@@ -78,7 +78,7 @@ TEST(JsonValueTest, SelfAssignment) {
     EXPECT_EQ(v.asInt(), 99);
 }
 
-// ========== 类型检查 ==========
+// ========== Type Checking ==========
 
 TEST(JsonValueTest, IsArray) {
     JsonValue v = JsonValue::parse("[1,2,3]");
@@ -97,7 +97,7 @@ TEST(JsonValueTest, FalseIsNotNumber) {
     EXPECT_FALSE(v.isNumber());
 }
 
-// ========== 数组操作 ==========
+// ========== Array Operations ==========
 
 TEST(JsonValueTest, ArraySize) {
     JsonValue v = JsonValue::parse("[1,2,3]");
@@ -136,7 +136,7 @@ TEST(JsonValueTest, NonArraySizeReturnsZero) {
     EXPECT_EQ(v.size(), 0u);
 }
 
-// ========== 对象操作 ==========
+// ========== Object Operations ==========
 
 TEST(JsonValueTest, ObjectKeys) {
     JsonValue v = JsonValue::parse("{\"a\":1,\"b\":2}");
@@ -179,7 +179,7 @@ TEST(JsonValueTest, NonObjectKeysReturnsEmpty) {
     EXPECT_TRUE(v.keys().empty());
 }
 
-// ========== 序列化 ==========
+// ========== Serialization ==========
 
 TEST(JsonValueTest, DumpCompact) {
     JsonValue v = JsonValue::parse("{\"a\":1}");
@@ -207,7 +207,7 @@ TEST(JsonValueTest, ParseInvalidReturnsNull) {
     EXPECT_TRUE(v.isNull());
 }
 
-// ========== 静态工厂 ==========
+// ========== Static Factory ==========
 
 TEST(JsonValueTest, StaticObject) {
     JsonValue v = JsonValue::object();
@@ -221,7 +221,7 @@ TEST(JsonValueTest, StaticArray) {
     EXPECT_EQ(v.size(), 0u);
 }
 
-// ========== 值访问类型转换 ==========
+// ========== Value Access Type Conversion ==========
 
 TEST(JsonValueTest, DoubleAsInt) {
     JsonValue v(3.7);
@@ -238,7 +238,7 @@ TEST(JsonValueTest, IntAsDouble) {
     EXPECT_DOUBLE_EQ(v.asDouble(), 5.0);
 }
 
-// ========== 嵌套结构解析 ==========
+// ========== Nested Structure Parsing ==========
 
 TEST(JsonValueTest, ParseNestedObject) {
     JsonValue v = JsonValue::parse("{\"a\":{\"b\":1}}");
@@ -279,7 +279,7 @@ TEST(JsonValueTest, LargeNestedRoundtrip) {
     EXPECT_TRUE(reparsed.get("level1").get("level2").get("flag").asBool());
 }
 
-// ========== 序列化扩展 ==========
+// ========== Serialization Extended ==========
 
 TEST(JsonValueTest, DumpNullValue) {
     JsonValue v(nullptr);
@@ -299,7 +299,7 @@ TEST(JsonValueTest, DumpStringWithSpecialChars) {
     EXPECT_NE(dumped.find("\\\""), std::string::npos);
 }
 
-// ========== 对象操作扩展 ==========
+// ========== Object Operations Extended ==========
 
 TEST(JsonValueTest, ObjectOverwriteExistingKey) {
     JsonValue v = JsonValue::object();
@@ -311,7 +311,7 @@ TEST(JsonValueTest, ObjectOverwriteExistingKey) {
     EXPECT_EQ(v.keys().size(), 1u);
 }
 
-// ========== 数组操作扩展 ==========
+// ========== Array Operations Extended ==========
 
 TEST(JsonValueTest, ArrayPushMultipleTypes) {
     JsonValue v = JsonValue::array();
@@ -324,7 +324,7 @@ TEST(JsonValueTest, ArrayPushMultipleTypes) {
     EXPECT_TRUE(v.at(2).asBool());
 }
 
-// ========== 类型转换扩展 ==========
+// ========== Type Conversion Extended ==========
 
 TEST(JsonValueTest, AsBoolOnNonZeroInt) {
     JsonValue v(7);
@@ -350,7 +350,7 @@ TEST(JsonValueTest, AsIntOnBool) {
     EXPECT_EQ(f.asInt(), 0);
 }
 
-// ========== has() 和 at() 在非目标类型上的行为 ==========
+// ========== has() and at() Behavior on Non-Target Types ==========
 
 TEST(JsonValueTest, NonObjectHasReturnsFalse) {
     JsonValue v(42);

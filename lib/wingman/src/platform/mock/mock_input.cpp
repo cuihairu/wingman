@@ -5,7 +5,7 @@
 namespace wingman::platform::mock {
 
 /**
- * @brief Mock 输入实现（用于测试）
+ * @brief Mock input implementation (for testing)
  */
 class MockInput : public IInput {
 public:
@@ -159,7 +159,7 @@ public:
         return true;
     }
 
-    // ========== Mock 特定方法（用于测试断言）==========
+    // ========== Mock-Specific Methods (for test assertions) ==========
 
     int getMouseMoveCallCount() const {
         return mouseMoveCallCount_;

@@ -9,19 +9,19 @@
 
 namespace wingman {
 
-// LocalStorage: 文件持久化存储，进程重启后数据保留
-// 类似浏览器的 localStorage，适合本地配置和缓存
+// LocalStorage: File-based persistent storage, data preserved across process restarts
+// Similar to browser localStorage, suitable for local config and cache
 class LocalStorage : public IStorage {
 public:
-    // 构造函数，指定存储目录
+    // Constructor, specifies storage directory
     explicit LocalStorage(const std::filesystem::path& storageDir = "storage");
     ~LocalStorage() override;
 
-    // 禁止拷贝
+    // Non-copyable
     LocalStorage(const LocalStorage&) = delete;
     LocalStorage& operator=(const LocalStorage&) = delete;
 
-    // IStorage 接口实现
+    // IStorage interface implementation
     size_t length() const override;
 
     std::vector<std::string> keys() const override;
@@ -36,18 +36,18 @@ public:
 
     bool hasItem(const std::string& key) const override;
 
-    // 额外方法
+    // Additional methods
 
-    // 立即保存到磁盘
+    // Save to disk immediately
     bool save();
 
-    // 从磁盘重新加载
+    // Reload from disk
     bool load();
 
-    // 获取存储路径
+    // Get storage path
     const std::filesystem::path& getStoragePath() const { return m_storagePath; }
 
-    // 设置命名空间（用于隔离不同模块的数据）
+    // Set namespace (for isolating data from different modules)
     void setNamespace(const std::string& ns) { m_namespace = ns; }
     const std::string& getNamespace() const { return m_namespace; }
 
@@ -57,10 +57,10 @@ private:
     std::filesystem::path m_storagePath;
     std::string m_namespace;
 
-    // 获取带命名空间的完整键
+    // Get full key with namespace
     std::string getFullKey(const std::string& key) const;
 
-    // 获取存储文件路径
+    // Get storage file path
     std::filesystem::path getStorageFile() const;
 };
 

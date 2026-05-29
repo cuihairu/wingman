@@ -7,226 +7,226 @@
 namespace wingman::platform {
 
 /**
- * @brief 窗口管理接口
+ * @brief Window management interface
  *
- * 提供窗口查找、操作、属性查询等功能。
+ * Provides window finding, operations, property query, etc.
  */
 class IWindow {
 public:
     virtual ~IWindow() = default;
 
-    // ========== 初始化 ==========
+    // ========== Initialization ==========
 
     /**
-     * @brief 初始化窗口管理器
+     * @brief Initialize window manager
      */
     virtual bool initialize() = 0;
 
     /**
-     * @brief 关闭窗口管理器
+     * @brief Shutdown window manager
      */
     virtual void shutdown() = 0;
 
-    // ========== 查找窗口 ==========
+    // ========== Find window ==========
 
     /**
-     * @brief 按标题查找窗口（返回第一个匹配）
-     * @param title 窗口标题（支持部分匹配）
+     * @brief Find window by title (returns first match)
+     * @param title Window title (supports partial match)
      */
     virtual WindowHandle find(const std::string& title) = 0;
 
     /**
-     * @brief 按标题查找所有匹配窗口
-     * @param title 窗口标题（支持部分匹配）
+     * @brief Find all matching windows by title
+     * @param title Window title (supports partial match)
      */
     virtual std::vector<WindowHandle> findAll(const std::string& title) = 0;
 
     /**
-     * @brief 按类名查找窗口
-     * @param className 窗口类名
+     * @brief Find window by class name
+     * @param className Window class name
      */
     virtual WindowHandle findByClassName(const std::string& className) = 0;
 
     /**
-     * @brief 按进程 ID 查找窗口
-     * @param processId 进程 ID
+     * @brief Find window by process ID
+     * @param processId Process ID
      */
     virtual std::vector<WindowHandle> findByProcessId(uint32_t processId) = 0;
 
     /**
-     * @brief 枚举所有顶层窗口
+     * @brief Enumerate all top-level windows
      */
     virtual std::vector<WindowInfo> enumerate() = 0;
 
     /**
-     * @brief 获取当前前台窗口
+     * @brief Get current foreground window
      */
     virtual WindowHandle getForeground() = 0;
 
-    // ========== 窗口操作 ==========
+    // ========== Window operations ==========
 
     /**
-     * @brief 激活窗口（置顶并获取焦点）
-     * @param hwnd 窗口句柄
+     * @brief Activate window (bring to top and focus)
+     * @param hwnd Window handle
      */
     virtual bool activate(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 最小化窗口
-     * @param hwnd 窗口句柄
+     * @brief Minimize window
+     * @param hwnd Window handle
      */
     virtual bool minimize(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 最大化窗口
-     * @param hwnd 窗口句柄
+     * @brief Maximize window
+     * @param hwnd Window handle
      */
     virtual bool maximize(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 还原窗口
-     * @param hwnd 窗口句柄
+     * @brief Restore window
+     * @param hwnd Window handle
      */
     virtual bool restore(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 关闭窗口（发送关闭消息）
-     * @param hwnd 窗口句柄
+     * @brief Close window (send close message)
+     * @param hwnd Window handle
      */
     virtual bool close(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 强制关闭窗口
-     * @param hwnd 窗口句柄
+     * @brief Force close window
+     * @param hwnd Window handle
      */
     virtual bool forceClose(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 隐藏窗口
-     * @param hwnd 窗口句柄
+     * @brief Hide window
+     * @param hwnd Window handle
      */
     virtual bool hide(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 显示窗口
-     * @param hwnd 窗口句柄
+     * @brief Show window
+     * @param hwnd Window handle
      */
     virtual bool show(WindowHandle hwnd) = 0;
 
-    // ========== 窗口属性 ==========
+    // ========== Window properties ==========
 
     /**
-     * @brief 获取窗口标题
-     * @param hwnd 窗口句柄
+     * @brief Get window title
+     * @param hwnd Window handle
      */
     virtual std::string getTitle(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 获取窗口边界
-     * @param hwnd 窗口句柄
+     * @brief Get window bounds
+     * @param hwnd Window handle
      */
     virtual Rect getBounds(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 设置窗口边界
-     * @param hwnd 窗口句柄
-     * @param bounds 新边界
+     * @brief Set window bounds
+     * @param hwnd Window handle
+     * @param bounds New bounds
      */
     virtual bool setBounds(WindowHandle hwnd, const Rect& bounds) = 0;
 
     /**
-     * @brief 移动窗口
-     * @param hwnd 窗口句柄
-     * @param x 新 X 坐标
-     * @param y 新 Y 坐标
+     * @brief Move window
+     * @param hwnd Window handle
+     * @param x New X coordinate
+     * @param y New Y coordinate
      */
     virtual bool move(WindowHandle hwnd, int x, int y) = 0;
 
     /**
-     * @brief 调整窗口大小
-     * @param hwnd 窗口句柄
-     * @param width 新宽度
-     * @param height 新高度
+     * @brief Resize window
+     * @param hwnd Window handle
+     * @param width New width
+     * @param height New height
      */
     virtual bool resize(WindowHandle hwnd, int width, int height) = 0;
 
     /**
-     * @brief 将窗口居中到指定显示器
-     * @param hwnd 窗口句柄
-     * @param monitorIndex 显示器索引
+     * @brief Center window on specified monitor
+     * @param hwnd Window handle
+     * @param monitorIndex Monitor index
      */
     virtual bool center(WindowHandle hwnd, int monitorIndex) = 0;
 
-    // ========== 窗口状态 ==========
+    // ========== Window state ==========
 
     /**
-     * @brief 检查窗口句柄是否有效
-     * @param hwnd 窗口句柄
+     * @brief Check if window handle is valid
+     * @param hwnd Window handle
      */
     virtual bool isValid(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 检查窗口是否可见
-     * @param hwnd 窗口句柄
+     * @brief Check if window is visible
+     * @param hwnd Window handle
      */
     virtual bool isVisible(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 检查窗口是否为前台窗口
-     * @param hwnd 窗口句柄
+     * @brief Check if window is foreground window
+     * @param hwnd Window handle
      */
     virtual bool isForeground(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 检查窗口是否最小化
-     * @param hwnd 窗口句柄
+     * @brief Check if window is minimized
+     * @param hwnd Window handle
      */
     virtual bool isMinimized(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 检查窗口是否最大化
-     * @param hwnd 窗口句柄
+     * @brief Check if window is maximized
+     * @param hwnd Window handle
      */
     virtual bool isMaximized(WindowHandle hwnd) = 0;
 
     /**
-     * @brief 获取窗口所属进程 ID
-     * @param hwnd 窗口句柄
+     * @brief Get window process ID
+     * @param hwnd Window handle
      */
     virtual std::optional<uint32_t> getProcessId(WindowHandle hwnd) = 0;
 
-    // ========== 等待操作 ==========
+    // ========== Wait operations ==========
 
     /**
-     * @brief 等待窗口出现
-     * @param title 窗口标题
-     * @param timeoutMs 超时时间（毫秒）
+     * @brief Wait for window to appear
+     * @param title Window title
+     * @param timeoutMs Timeout (milliseconds)
      */
     virtual bool waitFor(const std::string& title, int timeoutMs) = 0;
 
     /**
-     * @brief 等待窗口关闭
-     * @param title 窗口标题
-     * @param timeoutMs 超时时间（毫秒）
+     * @brief Wait for window to close
+     * @param title Window title
+     * @param timeoutMs Timeout (milliseconds)
      */
     virtual bool waitClose(const std::string& title, int timeoutMs) = 0;
 
     /**
-     * @brief 等待窗口成为前台窗口
-     * @param hwnd 窗口句柄
-     * @param timeoutMs 超时时间（毫秒）
+     * @brief Wait for window to become foreground
+     * @param hwnd Window handle
+     * @param timeoutMs Timeout (milliseconds)
      */
     virtual bool waitForForeground(WindowHandle hwnd, int timeoutMs) = 0;
 
-    // ========== 后端信息 ==========
+    // ========== Backend information ==========
 
     /**
-     * @brief 获取后端名称
+     * @brief Get backend name
      */
     virtual std::string getBackendName() const = 0;
 
     /**
-     * @brief 获取后端信息
+     * @brief Get backend info
      */
     virtual BackendInfo getBackendInfo() const = 0;
 };

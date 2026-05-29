@@ -5,7 +5,7 @@
 
 namespace wingman {
 
-// ========== BehaviorContext 实现 ==========
+// ========== BehaviorContext Implementation ==========
 
 template<>
 std::string BehaviorContext::get<std::string>(const std::string& key, const std::string& defaultValue) const {
@@ -25,7 +25,7 @@ bool BehaviorContext::get<bool>(const std::string& key, const bool& defaultValue
     return it != flags.end() ? it->second : defaultValue;
 }
 
-// ========== SequenceNode 实现 ==========
+// ========== SequenceNode Implementation ==========
 
 SequenceNode::SequenceNode(const std::string& name) : name_(name) {}
 
@@ -38,21 +38,21 @@ NodeStatus SequenceNode::tick() {
         NodeStatus status = children_[i]->tick();
 
         if (status == NodeStatus::FAILURE) {
-            currentChild_ = 0;  // 重置
+            currentChild_ = 0;  // Reset
             return NodeStatus::FAILURE;
         }
 
         if (status == NodeStatus::RUNNING) {
-            currentChild_ = i;  // 记住当前位置
+            currentChild_ = i;  // Remember current position
             return NodeStatus::RUNNING;
         }
     }
 
-    currentChild_ = 0;  // 完成，重置
+    currentChild_ = 0;  // Completed, reset
     return NodeStatus::SUCCESS;
 }
 
-// ========== SelectorNode 实现 ==========
+// ========== SelectorNode Implementation ==========
 
 SelectorNode::SelectorNode(const std::string& name) : name_(name) {}
 
@@ -65,7 +65,7 @@ NodeStatus SelectorNode::tick() {
         NodeStatus status = children_[i]->tick();
 
         if (status == NodeStatus::SUCCESS) {
-            currentChild_ = 0;  // 重置
+            currentChild_ = 0;  // Reset
             return NodeStatus::SUCCESS;
         }
 
@@ -79,7 +79,7 @@ NodeStatus SelectorNode::tick() {
     return NodeStatus::FAILURE;
 }
 
-// ========== ParallelNode 实现 ==========
+// ========== ParallelNode Implementation ==========
 
 ParallelNode::ParallelNode(const std::string& name, Policy successPolicy)
     : name_(name), successPolicy_(successPolicy) {}
@@ -101,7 +101,7 @@ NodeStatus ParallelNode::tick() {
         else hasRunning = true;
     }
 
-    // 根据策略决定结果
+    // Decide result based on policy
     switch (successPolicy_) {
         case Policy::SUCCEED_ON_ALL:
             return (successCount == (int)children_.size()) ? NodeStatus::SUCCESS :
@@ -123,7 +123,7 @@ NodeStatus ParallelNode::tick() {
     return NodeStatus::RUNNING;
 }
 
-// ========== RepeatNode 实现 ==========
+// ========== RepeatNode Implementation ==========
 
 RepeatNode::RepeatNode(std::shared_ptr<BehaviorNode> child, int count)
     : child_(child), count_(count) {}
@@ -148,7 +148,7 @@ NodeStatus RepeatNode::tick() {
     return NodeStatus::RUNNING;
 }
 
-// ========== RetryNode 实现 ==========
+// ========== RetryNode Implementation ==========
 
 RetryNode::RetryNode(std::shared_ptr<BehaviorNode> child, int maxRetries)
     : child_(child), maxRetries_(maxRetries) {}
@@ -173,7 +173,7 @@ NodeStatus RetryNode::tick() {
     return NodeStatus::FAILURE;
 }
 
-// ========== InverterNode 实现 ==========
+// ========== InverterNode Implementation ==========
 
 InverterNode::InverterNode(std::shared_ptr<BehaviorNode> child) : child_(child) {}
 
@@ -185,7 +185,7 @@ NodeStatus InverterNode::tick() {
     return NodeStatus::RUNNING;
 }
 
-// ========== ConditionNode 实现 ==========
+// ========== ConditionNode Implementation ==========
 
 ConditionNode::ConditionNode(const std::string& name, ConditionFunc condition)
     : name_(name), condition_(condition) {}
@@ -195,7 +195,7 @@ NodeStatus ConditionNode::tick() {
     return condition_(dummyContext) ? NodeStatus::SUCCESS : NodeStatus::FAILURE;
 }
 
-// ========== CheckNode 实现 ==========
+// ========== CheckNode Implementation ==========
 
 CheckNode::CheckNode(const std::string& variable, double value, Op op)
     : variable_(variable), value_(value), op_(op) {}
@@ -217,7 +217,7 @@ NodeStatus CheckNode::tick() {
     return result ? NodeStatus::SUCCESS : NodeStatus::FAILURE;
 }
 
-// ========== ActionNode 实现 ==========
+// ========== ActionNode Implementation ==========
 
 ActionNode::ActionNode(const std::string& name, ActionFunc action)
     : name_(name), action_(action) {}
@@ -227,7 +227,7 @@ NodeStatus ActionNode::tick() {
     return action_(dummyContext);
 }
 
-// ========== WaitNode 实现 ==========
+// ========== WaitNode Implementation ==========
 
 WaitNode::WaitNode(int milliseconds) : milliseconds_(milliseconds) {}
 
@@ -249,7 +249,7 @@ NodeStatus WaitNode::tick() {
     return NodeStatus::RUNNING;
 }
 
-// ========== DelayNode 实现 ==========
+// ========== DelayNode Implementation ==========
 
 DelayNode::DelayNode(std::shared_ptr<BehaviorNode> child, int milliseconds)
     : child_(child), milliseconds_(milliseconds) {}
@@ -272,7 +272,7 @@ NodeStatus DelayNode::tick() {
     return NodeStatus::RUNNING;
 }
 
-// ========== BehaviorTree 实现 ==========
+// ========== BehaviorTree Implementation ==========
 
 BehaviorTree::BehaviorTree(const std::string& name)
     : name_(name), root_(nullptr) {}
@@ -294,7 +294,7 @@ NodeStatus BehaviorTree::tick() {
 }
 
 void BehaviorTree::reset() {
-    // TODO: 重置所有节点状态
+    // TODO: Reset all node states
 }
 
 std::shared_ptr<SequenceNode> BehaviorTree::sequence(const std::string& name) {
@@ -317,7 +317,7 @@ std::shared_ptr<ActionNode> BehaviorTree::action(const std::string& name, std::f
     return std::make_shared<ActionNode>(name, [fn](BehaviorContext&) { return fn(); });
 }
 
-// ========== BehaviorTreeManager 实现 ==========
+// ========== BehaviorTreeManager Implementation ==========
 
 BehaviorTreeManager& BehaviorTreeManager::instance() {
     static BehaviorTreeManager instance;

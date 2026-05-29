@@ -6,7 +6,7 @@
 
 namespace wingman {
 
-// OCR 识别结果
+// OCR recognition result
 struct OcrResult {
     bool success;
     std::string text;
@@ -14,28 +14,28 @@ struct OcrResult {
     std::vector<Rect> charRegions;
 };
 
-// OCR 文字识别模块
+// OCR text recognition module
 class OCR {
 public:
-    // 初始化 OCR 引擎
+    // Initialize OCR engine
     static bool init(const std::string& datapath = "", const std::string& language = "eng");
 
-    // 清理 OCR 引擎
+    // Cleanup OCR engine
     static void cleanup();
 
-    // 识别屏幕区域的文字
+    // Recognize text in screen region
     static OcrResult recognize(const Rect& region = {});
 
-    // 识别图像文件的文字
+    // Recognize text in image file
     static OcrResult recognizeImage(const std::string& imagePath);
 
-    // 识别指定 Bitmap 的文字
+    // Recognize text in specified Bitmap
     static OcrResult recognizeBitmap(const Bitmap& bitmap);
 
-    // 设置识别语言
+    // Set recognition language
     static bool setLanguage(const std::string& language);
 
-    // 设置识别模式 (page seg mode)
+    // Set recognition mode (page seg mode)
     enum class PageSegMode {
         OSD_ONLY = 0,
         AUTO_OSD = 1,
@@ -53,7 +53,7 @@ public:
     };
     static void setPageSegMode(PageSegMode mode);
 
-    // 获取版本信息
+    // Get version info
     static std::string getVersion();
 
 private:

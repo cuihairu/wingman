@@ -13,7 +13,7 @@
 
 namespace wingman {
 
-// CPU 信息
+// CPU information
 struct CpuInfo {
     std::string vendor;
     std::string brand;
@@ -22,44 +22,44 @@ struct CpuInfo {
     int maxClock;      // MHz
     int currentClock;  // MHz
     double usage;      // 0-100%
-    int temperature;   // 摄氏度 (如果支持)
+    int temperature;   // Celsius (if supported)
 };
 
-// 内存信息
+// Memory information
 struct MemoryInfo {
-    uint64_t total;      // 字节
-    uint64_t available;  // 字节
-    uint64_t used;       // 字节
+    uint64_t total;      // Bytes
+    uint64_t available;  // Bytes
+    uint64_t used;       // Bytes
     double usage;        // 0-100%
 };
 
-// 磁盘信息
+// Disk information
 struct DiskInfo {
-    std::string drive;      // 如 "C:\\" 或 "/"
-    uint64_t total;         // 字节
-    uint64_t free;          // 字节
-    uint64_t used;          // 字节
+    std::string drive;      // e.g. "C:\\" or "/"
+    uint64_t total;         // Bytes
+    uint64_t free;          // Bytes
+    uint64_t used;          // Bytes
     double usage;           // 0-100%
-    std::string fileSystem; // 如 NTFS, ext4
+    std::string fileSystem; // e.g. NTFS, ext4
     std::string volumeName;
 };
 
-// GPU 信息（简化版，只获取名称）
+// GPU information (simplified, name only)
 struct GpuInfo {
-    std::string name;       // GPU 名称
+    std::string name;       // GPU name
 };
 
-// 操作系统信息
+// OS information
 struct OsInfo {
     std::string platform;      // Windows / Linux / macOS
-    std::string version;       // 如 10.0.19041
-    std::string build;         // 构建号
+    std::string version;       // e.g. 10.0.19041
+    std::string build;         // Build number
     std::string architecture;  // x64 / ARM64
     std::string computerName;
     std::string userName;
 };
 
-// 网络信息
+// Network information
 struct NetworkAdapter {
     std::string name;
     std::string description;
@@ -71,7 +71,7 @@ struct NetworkAdapter {
     uint64_t bytesReceived;
 };
 
-// 显示器信息
+// Monitor information
 struct DisplayInfo {
     int index;
     std::string name;
@@ -81,7 +81,7 @@ struct DisplayInfo {
     bool isPrimary;
 };
 
-// 系统信息类
+// System information class
 class System {
 public:
     // === CPU ===
@@ -89,37 +89,37 @@ public:
     static int getCpuUsage();
     static int getCpuTemperature();
 
-    // === 内存 ===
+    // === Memory ===
     static MemoryInfo getMemoryInfo();
 
-    // === 磁盘 ===
+    // === Disk ===
     static std::vector<DiskInfo> getDiskInfo();
     static DiskInfo getDiskInfo(const std::string& drive);
 
     // === GPU ===
     static std::vector<GpuInfo> getGpuInfo();
 
-    // === 操作系统 ===
+    // === OS ===
     static OsInfo getOsInfo();
 
-    // === 网络 ===
+    // === Network ===
     static std::vector<NetworkAdapter> getNetworkAdapters();
 
-    // === 显示器 ===
+    // === Display ===
     static std::vector<DisplayInfo> getDisplayInfo();
 
-    // === 其他 ===
-    static int getUptime();  // 系统运行时间（秒）
+    // === Other ===
+    static int getUptime();  // System uptime (seconds)
     static std::string getDateTime();
     static std::string getTimeZone();
 
-    // === 进程/线程 ===
+    // === Process/Thread ===
     static int getProcessCount();
     static int getThreadCount();
 
 private:
 #if defined(_WIN32)
-    // Windows 辅助函数
+    // Windows helper function
     static std::string readRegistryValue(const std::string& path, const std::string& value);
     static uint64_t getFileTimeAsUInt64(const FILETIME& ft);
 #endif

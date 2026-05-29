@@ -12,7 +12,7 @@
 #include <thread>
 
 // ============================================================================
-// 用于枚举窗口的数据结构和回调
+// Data structure and callback for window enumeration
 // ============================================================================
 
 namespace {
@@ -66,7 +66,7 @@ BOOL CALLBACK enumWindowsProc(HWND hwnd, LPARAM lParam) {
 namespace wingman {
 
 // ============================================================================
-// Window 实现
+// Window implementation
 // ============================================================================
 
 WindowHandle Window::find(const std::string& title) {

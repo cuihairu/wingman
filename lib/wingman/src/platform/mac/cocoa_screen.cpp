@@ -9,7 +9,7 @@
 namespace wingman::platform::mac {
 
 /**
- * @brief macOS Cocoa 屏幕管理实现
+ * @brief macOS Cocoa screen management implementation
  */
 class CocoaScreen : public IScreen {
 public:
@@ -77,7 +77,7 @@ public:
     }
 
     Rect getMonitorWorkArea(int monitorIndex) override {
-        // macOS 的工作区需要通过 NSScreen 获取，这里简化处理
+        // macOS workspace needs NSScreen, simplified here
         return getMonitorBounds(monitorIndex);
     }
 
@@ -121,7 +121,7 @@ public:
         CGSize size = CGDisplayScreenSize(displayID);
         CGRect rect = CGDisplayBounds(displayID);
 
-        // 计算 DPI (假设 1 inch = 25.4 mm)
+        // Calculate DPI (assuming 1 inch = 25.4 mm)
         double dpiX = (rect.size.width / size.width) * 25.4;
         return dpiX / 96.0;
     }
@@ -223,7 +223,7 @@ public:
 
         CGDirectDisplayID displayID = displays[monitorIndex];
 
-        // 查找匹配的显示模式
+        // Find matching display mode
         CFArrayRef modes = CGDisplayCopyAllDisplayModes(displayID, nullptr);
         if (modes) {
             CFIndex count = CFArrayGetCount(modes);
@@ -283,7 +283,7 @@ public:
     }
 
     void wakeUpMonitor() override {
-        // macOS 需要使用 Power Management API
+        // macOS requires Power Management API
     }
 
     Rect getVirtualScreenBounds() override {
@@ -327,7 +327,7 @@ public:
     }
 
     int getMonitorFromWindow(WindowHandle hwnd) override {
-        // macOS 需要通过 NSWindow 获取
+        // macOS needs to get via NSWindow
         CGDisplayID display = CGMainDisplayID();
         return getPrimaryMonitorIndex();
     }

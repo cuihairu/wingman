@@ -1,7 +1,7 @@
 #include "wingman/ml.hpp"
 #include <spdlog/spdlog.h>
 
-// ONNX Runtime - vcpkg 安装的路径是直接可用的
+// ONNX Runtime - vcpkg installed path is directly available
 #include <onnxruntime_cxx_api.h>
 #ifdef _WIN32
 #pragma comment(lib, "onnxruntime")
@@ -9,7 +9,7 @@
 
 namespace wingman {
 
-// ========== TensorData 实现 ==========
+// ========== TensorData Implementation ==========
 
 size_t TensorData::elementCount() const {
     size_t count = 1;
@@ -37,7 +37,7 @@ size_t TensorData::byteSize() const {
     return elementCount() * elemSize;
 }
 
-// ========== ModelEngine 私有实现 ==========
+// ========== ModelEngine Private Implementation ==========
 
 class ModelEngine::Impl {
 public:
@@ -50,7 +50,7 @@ public:
               sessionOptions_(std::make_unique<Ort::SessionOptions>()) {}
 };
 
-// ========== ModelEngine 实现 ==========
+// ========== ModelEngine Implementation ==========
 
 ModelEngine::ModelEngine() : impl_(std::make_unique<Impl>()), modelLoaded_(false) {}
 
@@ -60,7 +60,7 @@ ModelEngine::~ModelEngine() {
 
 bool ModelEngine::loadModel(const std::string& modelPath, const std::string& executionProvider) {
     try {
-        // 设置执行提供器
+        // Set execution providers
         if (executionProvider == "cuda") {
 #ifdef USE_CUDA
             impl_->sessionOptions_->AppendExecutionProvider_CUDA(OrtCUDAProviderOptions{});
@@ -75,7 +75,7 @@ bool ModelEngine::loadModel(const std::string& modelPath, const std::string& exe
 #endif
         }
 
-        // 创建会话
+        // Create session
         impl_->session_ = std::make_unique<Ort::Session>(
             *impl_->env_,
             modelPath.c_str(),
@@ -173,13 +173,13 @@ InferenceResult ModelEngine::run(const std::map<std::string, TensorData>& inputs
         std::vector<Ort::Value> inputTensors;
         std::vector<const char*> inputNames;
 
-        // 准备输入张量
+        // Prepare input tensors
         for (const auto& [name, tensorData] : inputs) {
-            // 创建内存信息
+            // Create memory info
             Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
                 OrtArenaAllocator, OrtMemTypeDefault);
 
-            // 转换数据类型
+            // Convert data type
             ONNXTensorElementDataType onnxType;
             switch (tensorData.dataType) {
                 case TensorDataType::FLOAT32: onnxType = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT; break;
@@ -198,7 +198,7 @@ InferenceResult ModelEngine::run(const std::map<std::string, TensorData>& inputs
                     return result;
             }
 
-            // 创建输入张量
+            // Create input tensor
             inputTensors.push_back(Ort::Value::CreateTensor(
                 memoryInfo,
                 const_cast<uint8_t*>(tensorData.data.data()),
@@ -211,7 +211,7 @@ InferenceResult ModelEngine::run(const std::map<std::string, TensorData>& inputs
             inputNames.push_back(name.c_str());
         }
 
-        // 获取输出名称
+        // Get output names
         std::vector<const char*> outputNames;
         size_t numOutputs = impl_->session_->GetOutputCount();
         for (size_t i = 0; i < numOutputs; i++) {
@@ -219,7 +219,7 @@ InferenceResult ModelEngine::run(const std::map<std::string, TensorData>& inputs
             outputNames.push_back(outputName);
         }
 
-        // 运行推理
+        // Run inference
         auto outputs = impl_->session_->Run(
             Ort::RunOptions{nullptr},
             inputNames.data(),
@@ -229,7 +229,7 @@ InferenceResult ModelEngine::run(const std::map<std::string, TensorData>& inputs
             outputNames.size()
         );
 
-        // 处理输出
+        // Process output
         for (size_t i = 0; i < outputs.size(); i++) {
             ModelOutput output;
             output.name = outputNames[i];
@@ -240,7 +240,7 @@ InferenceResult ModelEngine::run(const std::map<std::string, TensorData>& inputs
                 tensorInfo.GetShape() + tensorInfo.GetDimensionsCount()
             );
 
-            // 获取数据类型
+            // Get data type
             auto type = tensorInfo.GetElementType();
             switch (type) {
                 case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
@@ -249,12 +249,12 @@ InferenceResult ModelEngine::run(const std::map<std::string, TensorData>& inputs
                 case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
                     output.tensor.dataType = TensorDataType::INT32;
                     break;
-                // ... 其他类型
+                // ... other types
                 default:
                     output.tensor.dataType = TensorDataType::FLOAT32;
             }
 
-            // 复制数据
+            // Copy data
             size_t byteSize = outputs[i].GetTensorTypeAndShapeInfo().GetElementCount() *
                              (type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT ? 4 : 4);
             output.tensor.data.assign(
@@ -286,7 +286,7 @@ std::vector<std::string> ModelEngine::getAvailableExecutionProviders() {
     return {"cpu", "cuda", "dml"};
 }
 
-// ========== Tensor 辅助函数 ==========
+// ========== Tensor Helper Functions ==========
 
 TensorData Tensor::createFloat32(const TensorShape& shape, const std::vector<float>& data) {
     TensorData tensor;
@@ -315,7 +315,7 @@ TensorData Tensor::createInt32(const TensorShape& shape, const std::vector<int32
 TensorData Tensor::fromImage(const uint8_t* imageData, int width, int height,
                              float meanR, float meanG, float meanB,
                              float stdR, float stdG, float stdB) {
-    // 假设输入是 BGR 格式
+    // Assume input is in BGR format
     std::vector<float> data(width * height * 3);
 
     for (int i = 0; i < width * height; i++) {
@@ -323,21 +323,21 @@ TensorData Tensor::fromImage(const uint8_t* imageData, int width, int height,
         uint8_t g = imageData[i * 3 + 1];
         uint8_t r = imageData[i * 3 + 2];
 
-        // 归一化并标准化 (HWC -> CHW)
+        // Normalize and standardize (HWC -> CHW)
         int h = i / width;
         int w = i % width;
 
-        // BGR 通道转 RGB 并归一化
+        // Convert BGR channels to RGB and normalize
         data[0 * width * height + h * width + w] = ((r / 255.0f) - meanR) / stdR;
         data[1 * width * height + h * width + w] = ((g / 255.0f) - meanG) / stdG;
         data[2 * width * height + h * width + w] = ((b / 255.0f) - meanB) / stdB;
     }
 
-    // 创建张量: CHW = {1, 3, height, width}
+    // Create tensor: CHW = {1, 3, height, width}
     return createFloat32({1, 3, (int64_t)height, (int64_t)width}, data);
 }
 
-// ========== ModelHelpers 实现 ==========
+// ========== ModelHelpers Implementation ==========
 
 std::pair<std::string, float> ModelHelpers::classifyImage(
     ModelEngine& engine,
@@ -353,7 +353,7 @@ std::pair<std::string, float> ModelHelpers::classifyImage(
         return {"", 0.0f};
     }
 
-    // 找到最大概率的类别
+    // Find class with highest probability
     const auto& output = result.outputs[0];
     const float* data = (const float*)output.tensor.data.data();
     size_t count = output.tensor.elementCount();

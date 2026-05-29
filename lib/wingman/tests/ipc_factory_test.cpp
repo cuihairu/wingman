@@ -13,7 +13,7 @@ TEST(IpcConfigTest, DefaultValues) {
     EXPECT_EQ(cfg.timeoutMs, 5000);
 }
 
-// ========== IpcFactory 静态方法 ==========
+// ========== IpcFactory Static Methods ==========
 
 TEST(IpcFactoryTest, GetDefaultEndpointNotEmpty) {
     std::string endpoint = IpcFactory::getDefaultEndpoint();

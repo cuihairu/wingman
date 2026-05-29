@@ -6,143 +6,143 @@
 namespace wingman::platform {
 
 /**
- * @brief 输入配置
+ * @brief Input configuration
  */
 struct InputConfig {
     InputBackend preferredBackend = InputBackend::Auto;
     bool simulateHardwareInput = true;
-    int defaultDelay = 10;  // 默认操作间隔（毫秒）
-    int inputDelay = 10000;  // 输入延迟（微秒）
+    int defaultDelay = 10;  // Default operation interval (milliseconds)
+    int inputDelay = 10000;  // Input delay (microseconds)
 };
 
 /**
- * @brief 输入模拟接口
+ * @brief Input simulation interface
  *
- * 提供鼠标和键盘输入模拟功能。
+ * Provides mouse and keyboard input simulation functionality.
  */
 class IInput {
 public:
     virtual ~IInput() = default;
 
-    // ========== 初始化 ==========
+    // ========== Initialization ==========
 
     /**
-     * @brief 初始化输入模拟器
-     * @param config 配置
+     * @brief Initialize input simulator
+     * @param config Configuration
      */
     virtual bool initialize(const InputConfig& config) = 0;
 
     /**
-     * @brief 关闭输入模拟器
+     * @brief Shutdown input simulator
      */
     virtual void shutdown() = 0;
 
-    // ========== 鼠标操作 ==========
+    // ========== Mouse operations ==========
 
     /**
-     * @brief 移动鼠标到绝对坐标
-     * @param x X 坐标
-     * @param y Y 坐标
+     * @brief Move mouse to absolute coordinates
+     * @param x X coordinate
+     * @param y Y coordinate
      */
     virtual void mouseMove(int x, int y) = 0;
 
     /**
-     * @brief 相对移动鼠标
-     * @param deltaX X 方向偏移
-     * @param deltaY Y 方向偏移
+     * @brief Move mouse relatively
+     * @param deltaX X direction offset
+     * @param deltaY Y direction offset
      */
     virtual void mouseMoveRelative(int deltaX, int deltaY) = 0;
 
     /**
-     * @brief 按下鼠标按钮
-     * @param button 鼠标按钮
+     * @brief Press mouse button down
+     * @param button Mouse button
      */
     virtual void mouseDown(MouseButton button) = 0;
 
     /**
-     * @brief 释放鼠标按钮
-     * @param button 鼠标按钮
+     * @brief Release mouse button
+     * @param button Mouse button
      */
     virtual void mouseUp(MouseButton button) = 0;
 
     /**
-     * @brief 点击鼠标按钮
-     * @param button 鼠标按钮
+     * @brief Click mouse button
+     * @param button Mouse button
      */
     virtual void mouseClick(MouseButton button) = 0;
 
     /**
-     * @brief 双击鼠标按钮
-     * @param button 鼠标按钮
+     * @brief Double-click mouse button
+     * @param button Mouse button
      */
     virtual void mouseDoubleClick(MouseButton button) = 0;
 
     /**
-     * @brief 滚动鼠标滚轮
-     * @param delta 滚动量（正数向上，负数向下）
+     * @brief Scroll mouse wheel
+     * @param delta Scroll amount (positive up, negative down)
      */
     virtual void mouseWheel(int delta) = 0;
 
     /**
-     * @brief 水平滚动鼠标滚轮
-     * @param delta 滚动量
+     * @brief Horizontal scroll mouse wheel
+     * @param delta Scroll amount
      */
     virtual void mouseWheelHorizontal(int delta) = 0;
 
-    // ========== 键盘操作 ==========
+    // ========== Keyboard operations ==========
 
     /**
-     * @brief 按下键
-     * @param key 键码
+     * @brief Press key down
+     * @param key Key code
      */
     virtual void keyDown(KeyCode key) = 0;
 
     /**
-     * @brief 释放键
-     * @param key 键码
+     * @brief Release key
+     * @param key Key code
      */
     virtual void keyUp(KeyCode key) = 0;
 
     /**
-     * @brief 按键（按下后释放）
-     * @param key 键码
+     * @brief Key press (down then up)
+     * @param key Key code
      */
     virtual void keyPress(KeyCode key) = 0;
 
     /**
-     * @brief 输入文本
-     * @param text 文本内容
+     * @brief Input text
+     * @param text Text content
      */
     virtual void textInput(const std::string& text) = 0;
 
-    // ========== 状态查询 ==========
+    // ========== Status query ==========
 
     /**
-     * @brief 获取当前鼠标位置
+     * @brief Get current mouse position
      */
     virtual Point getMousePosition() = 0;
 
     /**
-     * @brief 检查键是否被按下
-     * @param key 键码
+     * @brief Check if key is pressed
+     * @param key Key code
      */
     virtual bool isKeyPressed(KeyCode key) = 0;
 
     /**
-     * @brief 检查鼠标按钮是否被按下
-     * @param button 鼠标按钮
+     * @brief Check if mouse button is pressed
+     * @param button Mouse button
      */
     virtual bool isMousePressed(MouseButton button) = 0;
 
-    // ========== 后端信息 ==========
+    // ========== Backend information ==========
 
     /**
-     * @brief 获取后端名称
+     * @brief Get backend name
      */
     virtual std::string getBackendName() const = 0;
 
     /**
-     * @brief 获取后端信息
+     * @brief Get backend info
      */
     virtual BackendInfo getBackendInfo() const = 0;
 };

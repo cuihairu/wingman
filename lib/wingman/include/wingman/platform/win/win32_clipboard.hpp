@@ -13,9 +13,9 @@
 namespace wingman::platform::windows {
 
 /**
- * @brief Windows 剪贴板实现
+ * @brief Windows clipboard implementation
  *
- * 支持 CF_TEXT, CF_UNICODETEXT, CF_HDROP, CF_DIB 等格式。
+ * Supports CF_TEXT, CF_UNICODETEXT, CF_HDROP, CF_DIB and other formats.
  */
 class Win32Clipboard : public IClipboard {
 public:
@@ -25,31 +25,31 @@ public:
     bool initialize() override;
     void shutdown() override;
 
-    // ========== 文本操作 ==========
+    // ========== Text operations ==========
 
     bool setText(const std::string& text) override;
     std::string getText() override;
     bool hasText() override;
 
-    // ========== HTML 操作 ==========
+    // ========== HTML operations ==========
 
     bool setHTML(const std::string& html) override;
     std::string getHTML() override;
     bool hasHTML() override;
 
-    // ========== 图像操作 ==========
+    // ========== Image operations ==========
 
     bool setImage(const std::vector<uint8_t>& imageData, int width, int height) override;
     std::vector<uint8_t> getImage(int* outWidth, int* outHeight) override;
     bool hasImage() override;
 
-    // ========== 文件操作 ==========
+    // ========== File operations ==========
 
     bool setFiles(const std::vector<std::string>& files) override;
     std::vector<std::string> getFiles() override;
     bool hasFiles() override;
 
-    // ========== 通用操作 ==========
+    // ========== General operations ==========
 
     void clear() override;
     bool isEmpty() override;

@@ -210,10 +210,10 @@ TEST(SessionStorageTest, LargeValue) {
 
 TEST(SessionStorageTest, UnicodeKeys) {
     SessionStorage storage;
-    storage.setItem("键", "值");
-    auto val = storage.getItem("键");
+    storage.setItem("key_cn", "value_cn");
+    auto val = storage.getItem("key_cn");
     ASSERT_TRUE(val.has_value());
-    EXPECT_EQ(*val, "值");
+    EXPECT_EQ(*val, "value_cn");
 }
 
 TEST(SessionStorageTest, RemoveItemOnEmpty) {

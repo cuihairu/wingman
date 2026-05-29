@@ -31,7 +31,7 @@ GameWindowStatus GameWindowStatus::fromJson(const std::string& json) {
         if (j.contains("height")) status.height = j["height"];
         if (j.contains("isForeground")) status.isForeground = j["isForeground"];
     } catch (...) {
-        // 解析失败，返回默认值
+        // Parse failed, return default value
     }
     return status;
 }
@@ -56,7 +56,7 @@ ScriptStatus ScriptStatus::fromJson(const std::string& json) {
         if (j.contains("uptimeSeconds")) status.uptimeSeconds = j["uptimeSeconds"];
         if (j.contains("lastError")) status.lastError = j["lastError"];
     } catch (...) {
-        // 解析失败，返回默认值
+        // Parse failed, return default value
     }
     return status;
 }
@@ -69,7 +69,7 @@ std::string NodeHeartbeat::toJson() const {
     j["hostname"] = hostname;
     j["timestamp"] = timestamp;
 
-    // 状态转换为字符串
+    // Convert status to string
     switch (status) {
         case NodeState::Online: j["status"] = "online"; break;
         case NodeState::Busy: j["status"] = "busy"; break;
@@ -82,14 +82,14 @@ std::string NodeHeartbeat::toJson() const {
     j["memoryUsage"] = memoryUsage;
     j["version"] = version;
 
-    // 游戏窗口
+    // Game window
     nlohmann::json gamesArray = nlohmann::json::array();
     for (const auto& game : games) {
         gamesArray.push_back(nlohmann::json::parse(game.toJson()));
     }
     j["games"] = gamesArray;
 
-    // 脚本状态
+    // Script status
     nlohmann::json scriptsArray = nlohmann::json::array();
     for (const auto& script : scripts) {
         scriptsArray.push_back(nlohmann::json::parse(script.toJson()));
@@ -110,7 +110,7 @@ NodeHeartbeat NodeHeartbeat::fromJson(const std::string& json) {
         if (j.contains("memoryUsage")) heartbeat.memoryUsage = j["memoryUsage"];
         if (j.contains("version")) heartbeat.version = j["version"];
 
-        // 解析状态字符串
+        // Parse status string
         if (j.contains("status")) {
             std::string statusStr = j["status"];
             if (statusStr == "online") heartbeat.status = NodeState::Online;
@@ -120,21 +120,21 @@ NodeHeartbeat NodeHeartbeat::fromJson(const std::string& json) {
             else if (statusStr == "offline") heartbeat.status = NodeState::Offline;
         }
 
-        // 解析游戏窗口
+        // Parse game window
         if (j.contains("games") && j["games"].is_array()) {
             for (const auto& gameJson : j["games"]) {
                 heartbeat.games.push_back(GameWindowStatus::fromJson(gameJson.dump()));
             }
         }
 
-        // 解析脚本状态
+        // Parse script status
         if (j.contains("scripts") && j["scripts"].is_array()) {
             for (const auto& scriptJson : j["scripts"]) {
                 heartbeat.scripts.push_back(ScriptStatus::fromJson(scriptJson.dump()));
             }
         }
     } catch (...) {
-        // 解析失败，返回默认值
+        // Parse failed, return default value
     }
     return heartbeat;
 }
@@ -145,7 +145,7 @@ std::string ServerCommandData::toJson() const {
     nlohmann::json j;
     j["timestamp"] = timestamp;
 
-    // 命令转换为字符串
+    // Convert command to string
     switch (command) {
         case ServerCommand::None: j["command"] = "none"; break;
         case ServerCommand::StartScript: j["command"] = "start_script"; break;
@@ -171,7 +171,7 @@ ServerCommandData ServerCommandData::fromJson(const std::string& json) {
         if (j.contains("scriptPath")) data.scriptPath = j["scriptPath"];
         if (j.contains("configData")) data.configData = j["configData"];
 
-        // 解析命令字符串
+        // Parse command string
         if (j.contains("command")) {
             std::string commandStr = j["command"];
             if (commandStr == "start_script") data.command = ServerCommand::StartScript;
@@ -183,7 +183,7 @@ ServerCommandData ServerCommandData::fromJson(const std::string& json) {
             else if (commandStr == "update_config") data.command = ServerCommand::UpdateConfig;
         }
     } catch (...) {
-        // 解析失败，返回默认值
+        // Parse failed, return default value
     }
     return data;
 }

@@ -4,7 +4,7 @@
 #include <spdlog/spdlog.h>
 #include <fstream>
 
-// Lua 配置解析
+// Lua config parsing
 extern "C" {
 #include <lua.h>
 #include <lauxlib.h>

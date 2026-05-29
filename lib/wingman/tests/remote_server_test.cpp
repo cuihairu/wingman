@@ -76,7 +76,7 @@ TEST_F(RemoteServerTest, ServerStartStop) {
     EXPECT_TRUE(server->isRunning());
     EXPECT_EQ(server->getPort(), 9999);
 
-    // 重复start应该是安全的
+    // Repeated start should be safe
     EXPECT_TRUE(server->start(9999));
 
     server->stop();
@@ -90,28 +90,28 @@ TEST_F(RemoteServerTest, ClientInitialState) {
 }
 
 TEST_F(RemoteServerTest, ClientConnectDisconnect) {
-    // 启动服务器
+    // Start server
     ASSERT_TRUE(server->start(9998));
 
-    // 稍等服务器启动
+    // Wait briefly for server to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // 连接
+    // Connect
     ASSERT_TRUE(client->connect("127.0.0.1", 9998));
     EXPECT_TRUE(client->isConnected());
 
-    // 发送一个请求，确保服务器端线程正常工作
+    // Send a request to ensure the server-side thread works properly
     RemoteResponse resp = client->ping();
     EXPECT_TRUE(resp.success);
 
-    // 稍等服务器处理完
+    // Wait briefly for server to finish processing
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    // 断开
+    // Disconnect
     client->disconnect();
     EXPECT_FALSE(client->isConnected());
 
-    // 稍等服务器端线程退出
+    // Wait briefly for server-side thread to exit
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 }
 
@@ -151,11 +151,11 @@ TEST_F(RemoteServerTest, ClientSend) {
 
     ASSERT_TRUE(client->connect("127.0.0.1", 9995));
 
-    // 测试send方法
+    // Test send method
     RemoteResponse resp = client->send("ping");
     EXPECT_TRUE(resp.success);
 
-    // 测试带参数的send
+    // Test send with parameters
     resp = client->send("get_version", {{"extra", "param"}});
     EXPECT_TRUE(resp.success);
 
@@ -178,7 +178,7 @@ TEST_F(RemoteServerTest, ClientGetPixel) {
 }
 
 TEST_F(RemoteServerTest, ClientListTriggers) {
-    // 使用 9988 端口避免与其他测试冲突
+    // Use port 9988 to avoid conflict with other tests
     ASSERT_TRUE(server->start(9988));
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
@@ -192,12 +192,12 @@ TEST_F(RemoteServerTest, ClientListTriggers) {
         EXPECT_TRUE(resp.data.contains("triggers"));
     }
 
-    // 稍等服务器处理完
+    // Wait briefly for server to finish processing
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     client->disconnect();
 }
 
-// ========== 错误处理 ==========
+// ========== Error Handling ==========
 
 TEST_F(RemoteServerTest, ClientConnectToNonExistentServer) {
     EXPECT_FALSE(client->connect("127.0.0.1", 9990));

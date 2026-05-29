@@ -11,10 +11,10 @@
 
 namespace wingman::platform {
 
-// ========== 通用类型定义 ==========
+// ========== Common type definitions ==========
 
 /**
- * @brief 点坐标
+ * @brief Point coordinates
  */
 struct Point {
     int x = 0;
@@ -29,7 +29,7 @@ struct Point {
 };
 
 /**
- * @brief 矩形区域
+ * @brief Rectangle area
  */
 struct Rect {
     int x = 0;
@@ -52,7 +52,7 @@ struct Rect {
 };
 
 /**
- * @brief 显示模式
+ * @brief Display mode
  */
 struct DisplayMode {
     int width = 0;
@@ -66,7 +66,7 @@ struct DisplayMode {
 };
 
 /**
- * @brief 窗口句柄类型
+ * @brief Window handle type
  */
 #ifdef _WIN32
 using WindowHandle = HWND;
@@ -77,7 +77,7 @@ static constexpr WindowHandle NullWindowHandle = 0;
 #endif
 
 /**
- * @brief 窗口信息
+ * @brief Window information
  */
 struct WindowInfo {
     WindowHandle handle = NullWindowHandle;
@@ -88,7 +88,7 @@ struct WindowInfo {
 };
 
 /**
- * @brief 后端信息
+ * @brief Backend information
  */
 struct BackendInfo {
     std::string name;
@@ -97,10 +97,10 @@ struct BackendInfo {
     std::string description;
 };
 
-// ========== 枚举类型 ==========
+// ========== Enum types ==========
 
 /**
- * @brief 鼠标按钮
+ * @brief Mouse button
  */
 enum class MouseButton : uint8_t {
     Left,
@@ -111,24 +111,24 @@ enum class MouseButton : uint8_t {
 };
 
 /**
- * @brief 键码
+ * @brief Key code
  */
 enum class KeyCode : uint32_t {
-    // 字母键
+    // Letter keys
     A = 0x41, B = 0x42, C = 0x43, D = 0x44, E = 0x45, F = 0x46, G = 0x47,
     H = 0x48, I = 0x49, J = 0x4A, K = 0x4B, L = 0x4C, M = 0x4D, N = 0x4E,
     O = 0x4F, P = 0x50, Q = 0x51, R = 0x52, S = 0x53, T = 0x54, U = 0x55,
     V = 0x56, W = 0x57, X = 0x58, Y = 0x59, Z = 0x5A,
 
-    // 数字键
+    // Number keys
     Num0 = 0x30, Num1 = 0x31, Num2 = 0x32, Num3 = 0x33, Num4 = 0x34,
     Num5 = 0x35, Num6 = 0x36, Num7 = 0x37, Num8 = 0x38, Num9 = 0x39,
 
-    // 功能键
+    // Function keys
     F1 = 0x70, F2 = 0x71, F3 = 0x72, F4 = 0x73, F5 = 0x74, F6 = 0x75,
     F7 = 0x76, F8 = 0x77, F9 = 0x78, F10 = 0x79, F11 = 0x7A, F12 = 0x7B,
 
-    // 控制键
+    // Control keys
     Space = 0x20,
     Enter = 0x0D,
     Escape = 0x1B,
@@ -141,18 +141,18 @@ enum class KeyCode : uint32_t {
     PageUp = 0x21,
     PageDown = 0x22,
 
-    // 方向键
+    // Arrow keys
     Left = 0x25,
     Up = 0x26,
     Right = 0x27,
     Down = 0x28,
 
-    // 修饰键
+    // Modifier keys
     Shift = 0x10,
     Control = 0x11,
     Alt = 0x12,
 
-    // 其他
+    // Other
     CapsLock = 0x14,
     ScrollLock = 0x91,
     PrintScreen = 0x2A,
@@ -160,7 +160,7 @@ enum class KeyCode : uint32_t {
 };
 
 /**
- * @brief 捕获后端类型
+ * @brief Capture backend type
  */
 enum class CaptureBackend : uint8_t {
     Auto,
@@ -173,7 +173,7 @@ enum class CaptureBackend : uint8_t {
 };
 
 /**
- * @brief 输入后端类型
+ * @brief Input backend type
  */
 enum class InputBackend : uint8_t {
     Auto,
@@ -184,7 +184,7 @@ enum class InputBackend : uint8_t {
 };
 
 /**
- * @brief 窗口后端类型
+ * @brief Window backend type
  */
 enum class WindowBackend : uint8_t {
     Auto,
@@ -194,7 +194,7 @@ enum class WindowBackend : uint8_t {
 };
 
 /**
- * @brief 屏幕后端类型
+ * @brief Screen backend type
  */
 enum class ScreenBackend : uint8_t {
     Auto,

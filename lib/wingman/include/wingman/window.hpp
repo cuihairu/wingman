@@ -28,71 +28,71 @@ struct WindowInfo {
 
 class Window {
 public:
-    // === 查找窗口 ===
+    // === Find window ===
 
-    // 按标题查找窗口（部分匹配）
+    // Find window by title (partial match)
     static WindowHandle find(const std::string& title);
 
-    // 查找所有匹配标题的窗口
+    // Find all windows matching title
     static std::vector<WindowHandle> findAll(const std::string& title);
 
-    // 获取前台窗口
+    // Get foreground window
     static WindowHandle getForeground();
 
-    // 获取所有窗口列表
+    // Get all window list
     static std::vector<WindowInfo> enumerate();
 
-    // === 窗口操作 ===
+    // === Window operations ===
 
-    // 激活窗口（设置为前台）
+    // Activate window (set as foreground)
     static bool activate(WindowHandle hwnd);
 
-    // 最小化窗口
+    // Minimize window
     static bool minimize(WindowHandle hwnd);
 
-    // 最大化窗口
+    // Maximize window
     static bool maximize(WindowHandle hwnd);
 
-    // 还原窗口
+    // Restore window
     static bool restore(WindowHandle hwnd);
 
-    // 关闭窗口
+    // Close window
     static bool close(WindowHandle hwnd);
 
-    // === 窗口信息 ===
+    // === Window information ===
 
-    // 获取窗口标题
+    // Get window title
     static std::string getTitle(WindowHandle hwnd);
 
-    // 获取窗口边界
+    // Get window bounds
     static Rect getBounds(WindowHandle hwnd);
 
-    // 设置窗口位置和大小
+    // Set window position and size
     static bool setBounds(WindowHandle hwnd, const Rect& bounds);
 
-    // 检查窗口是否有效
+    // Check if window is valid
     static bool isValid(WindowHandle hwnd);
 
-    // 检查窗口是否在前台
+    // Check if window is in foreground
     static bool isForeground(WindowHandle hwnd);
 
-    // 检查窗口是否可见
+    // Check if window is visible
     static bool isVisible(WindowHandle hwnd);
 
-    // === 移动窗口 ===
+    // === Move window ===
 
-    // 移动窗口到指定位置
+    // Move window to specified position
     static bool move(WindowHandle hwnd, int x, int y);
 
-    // 调整窗口大小
+    // Resize window
     static bool resize(WindowHandle hwnd, int width, int height);
 
-    // === 工具函数 ===
+    // === Utility functions ===
 
-    // 等待窗口出现
+    // Wait for window to appear
     static bool waitFor(const std::string& title, int timeoutMs = 5000);
 
-    // 等待窗口消失
+    // Wait for window to close
     static bool waitClose(const std::string& title, int timeoutMs = 5000);
 };
 

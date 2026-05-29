@@ -18,7 +18,7 @@
 
 namespace wingman {
 
-// 静态成员初始化
+// Static member initialization
 bool OCR::initialized = false;
 std::string OCR::datapath;
 std::string OCR::language;
@@ -33,14 +33,14 @@ bool OCR::init(const std::string& datapath, const std::string& language) {
     try {
         tesseract::TessBaseAPI* api = new tesseract::TessBaseAPI();
 
-        // 如果没有指定 datapath，尝试使用环境变量或默认路径
+        // If datapath not specified, try environment variable or default path
         std::string tessDataPath = datapath;
         if (tessDataPath.empty()) {
             const char* envPath = std::getenv("TESSDATA_PREFIX");
             if (envPath) {
                 tessDataPath = envPath;
             } else {
-                // Windows 默认路径
+                // Windows default path
                 tessDataPath = "./tessdata";
             }
         }
@@ -104,11 +104,11 @@ OcrResult OCR::recognizeImage(const std::string& imagePath) {
             return result;
         }
 
-        // 设置页面分割模式
+        // Set page segmentation mode
         api.SetPageSegMode(static_cast<tesseract::PageSegMode>(pageSegMode));
 
 #ifdef WINGMAN_ENABLE_LEPTONICA
-        // 读取图像 (需要 Leptonica)
+        // Read image (requires Leptonica)
         Pix* image = pixRead(imagePath.c_str());
         if (!image) {
             spdlog::error("Failed to read image: {}", imagePath);
@@ -117,7 +117,7 @@ OcrResult OCR::recognizeImage(const std::string& imagePath) {
 
         api.SetImage(image);
 
-        // 获取识别结果
+        // Get recognition result
         char* outText = api.GetUTF8Text();
         if (outText) {
             result.text = outText;
@@ -129,13 +129,13 @@ OcrResult OCR::recognizeImage(const std::string& imagePath) {
 
         pixDestroy(&image);
 #else
-        // 如果没有 Leptonica，使用 SetImage 从文件
+        // Without Leptonica, use SetImage from file
         if (!api.SetImage(imagePath.c_str())) {
             spdlog::error("Failed to set image from file: {}", imagePath);
             return result;
         }
 
-        // 获取识别结果
+        // Get recognition result
         char* outText = api.GetUTF8Text();
         if (outText) {
             result.text = outText;
@@ -176,14 +176,14 @@ OcrResult OCR::recognizeBitmap(const Bitmap& bitmap) {
 
         api.SetPageSegMode(static_cast<tesseract::PageSegMode>(pageSegMode));
 
-        // 设置图像数据（BGR 格式）
+        // Set image data (BGR format)
         api.SetImage(bitmap.getData(), bitmap.getWidth(), bitmap.getHeight(), 4, bitmap.getWidth() * 4);
 
-        // 获取识别结果
+        // Get recognition result
         char* outText = api.GetUTF8Text();
         if (outText) {
             result.text = outText;
-            // 去除末尾换行符
+            // Remove trailing newline
             while (!result.text.empty() && (result.text.back() == '\n' || result.text.back() == '\r')) {
                 result.text.pop_back();
             }

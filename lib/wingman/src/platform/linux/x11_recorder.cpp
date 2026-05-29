@@ -29,7 +29,7 @@ static unsigned long getTickCount() {
     return static_cast<unsigned long>(tv.tv_sec * 1000 + tv.tv_usec / 1000);
 }
 
-// X11 Record 回调
+// X11 Record callback
 static void eventCallback(XPointer priv, XRecordInterceptData* data) {
     if (!g_instance || !g_instance->isRecording() || g_instance->isPaused()) {
         XRecordFreeData(data);
@@ -60,7 +60,7 @@ static void eventCallback(XPointer priv, XRecordInterceptData* data) {
             event.button = xev->u.u.detail - 1;
             g_instance->recordEvent(event);
 
-            // 同时记录为点击事件
+            // Also record as click event
             RecordedEvent clickEvent = event;
             clickEvent.type = RecordedEventType::MouseClick;
             g_instance->recordEvent(clickEvent);
@@ -107,7 +107,7 @@ void MacroRecorder::start() {
     m_paused = false;
     m_startTime = getTickCount();
 
-    // 打开两个 Display 连接
+    // Open two Display connections
     Display* controlDisplay = XOpenDisplay(nullptr);
     Display* dataDisplay = XOpenDisplay(nullptr);
 
@@ -118,7 +118,7 @@ void MacroRecorder::start() {
         return;
     }
 
-    // 检查 Record Extension
+    // Check Record Extension
     int major, minor;
     if (!XRecordQueryVersion(controlDisplay, &major, &minor)) {
         m_recording = false;
@@ -127,7 +127,7 @@ void MacroRecorder::start() {
         return;
     }
 
-    // 创建记录范围
+    // Create record range
     XRecordClientSpec clients = XRecordAllClients;
 
     XRecordRange* range = XRecordAllocRange();
@@ -162,7 +162,7 @@ void MacroRecorder::start() {
     m_display = controlDisplay;
     g_display = dataDisplay;
 
-    // 启动处理线程
+    // Start processing thread
     m_processThread = std::thread([this]() {
         while (m_recording) {
             if (g_display) {

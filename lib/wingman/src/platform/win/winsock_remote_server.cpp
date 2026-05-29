@@ -20,7 +20,7 @@
 
 namespace wingman {
 
-// ========== RemoteServer 平台实现 ==========
+// ========== RemoteServer Platform Implementation ==========
 
 class RemoteServer::Impl {
 public:
@@ -193,7 +193,7 @@ void RemoteServer::handleClient(SOCKET clientSocket) {
     }
 }
 
-// ========== RemoteClient 平台实现 ==========
+// ========== RemoteClient Platform Implementation ==========
 
 class RemoteClient::Impl {
 public:

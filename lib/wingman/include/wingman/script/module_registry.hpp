@@ -7,10 +7,10 @@ namespace wingman {
 namespace script {
 namespace modules {
 
-// 获取所有模块描述符（统一注册入口）
+// Get all module descriptors (unified registration entry)
 std::vector<ModuleDescriptor> getAllModules();
 
-// 将所有模块注册到引擎
+// Register all modules to engine
 void registerAllModules(IScriptEngine& engine);
 
 } // namespace modules

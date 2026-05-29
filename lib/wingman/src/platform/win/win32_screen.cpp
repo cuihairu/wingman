@@ -10,7 +10,7 @@
 namespace wingman::platform::win {
 
 /**
- * @brief Windows Win32 屏幕管理实现
+ * @brief Windows Win32 screen management implementation
  */
 class Win32Screen : public IScreen {
 public:
@@ -127,7 +127,7 @@ public:
             return static_cast<double>(dpiX) / 96.0;
         }
 
-        // 降级方式：使用 DC
+        // Fallback: use DC
         HDC hdc = GetDC(nullptr);
         if (hdc) {
             double dpi = GetDeviceCaps(hdc, LOGPIXELSX);
@@ -259,12 +259,12 @@ public:
     }
 
     bool isMonitorOff() override {
-        // Windows 不直接支持检测显示器关闭状态
+        // Windows does not directly support detecting display off state
         return false;
     }
 
     void wakeUpMonitor() override {
-        // 移动鼠标唤醒显示器
+        // Move mouse to wake display
         POINT pt;
         GetCursorPos(&pt);
         SetCursorPos(pt.x, pt.y);

@@ -19,10 +19,10 @@
 namespace wingman::ipc::windows {
 
 /**
- * @brief Windows Named Pipe 实现
+ * @brief Windows Named Pipe implementation
  *
- * 使用 Named Pipe 进行本地进程间通信。
- * 支持异步 IO 和消息传递。
+ * Uses Named Pipes for local inter-process communication.
+ * Supports async IO and message passing.
  */
 class NamedPipeChannel : public IIpcChannel {
 public:

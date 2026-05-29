@@ -268,7 +268,7 @@ TEST_F(KeyValueStoreTest, Stats) {
     EXPECT_GT(stats["hashes"], 0);
 }
 
-// ========== 清理过期键 ==========
+// ========== Cleanup Expired Keys ==========
 
 TEST_F(KeyValueStoreTest, CleanupExpired) {
     wingman::KvOptions options;

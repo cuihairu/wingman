@@ -72,15 +72,15 @@ bool SessionStorage::hasItem(const std::string& key) const {
 
 LocalStorage::LocalStorage(const std::filesystem::path& storageDir)
     : m_storagePath(storageDir) {
-    // 确保存储目录存在
+    // Ensure storage directory exists
     std::filesystem::create_directories(m_storagePath);
 
-    // 自动加载已有数据
+    // Auto-load existing data
     load();
 }
 
 LocalStorage::~LocalStorage() {
-    // 析构时自动保存
+    // Auto-save on destruction
     save();
 }
 
@@ -169,7 +169,7 @@ bool LocalStorage::save() {
     try {
         std::filesystem::path filePath = getStorageFile();
 
-        // 使用 nlohmann/json 保存
+        // Save using nlohmann/json
         nlohmann::json j = nlohmann::json::object();
 
         for (const auto& pair : m_data) {
@@ -181,7 +181,7 @@ bool LocalStorage::save() {
             return false;
         }
 
-        file << j.dump(2);  // 缩进 2 格，方便阅读
+        file << j.dump(2);  // Indent 2 spaces for readability
         return true;
 
     } catch (...) {
@@ -194,7 +194,7 @@ bool LocalStorage::load() {
         std::filesystem::path filePath = getStorageFile();
 
         if (!std::filesystem::exists(filePath)) {
-            return true;  // 文件不存在是正常情况
+            return true;  // File not existing is normal
         }
 
         std::ifstream file(filePath);

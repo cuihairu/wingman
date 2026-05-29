@@ -8,23 +8,23 @@
 
 namespace wingman {
 
-// 游戏窗口配置
+// Game window configuration
 struct GameWindowConfig {
-    std::string title;           // 窗口标题 (支持通配符)
-    std::string className;       // 窗口类名
-    std::string processName;     // 进程名称
-    bool exactMatch = false;     // 是否精确匹配
-    bool fullscreen = false;     // 是否全屏
+    std::string title;           // Window title (supports wildcards)
+    std::string className;       // Window class name
+    std::string processName;     // Process name
+    bool exactMatch = false;     // Whether to match exactly
+    bool fullscreen = false;     // Whether fullscreen
 };
 
-// 颜色配置
+// Color configuration
 struct ColorConfig {
     std::string name;
     uint8_t r, g, b;
     int tolerance = 10;
 };
 
-// 图像配置
+// Image configuration
 struct ImageConfig {
     std::string name;
     std::string path;
@@ -32,31 +32,31 @@ struct ImageConfig {
     bool preload = true;
 };
 
-// 游戏触发器配置
+// Game trigger configuration
 struct GameTriggerConfig {
     std::string name;
     std::string type;            // pixel, image, timer, window, process
     std::string action;          // click, key, script
-    std::string target;          // 目标值
-    int interval = 1000;         // 检查间隔 (ms)
+    std::string target;          // Target value
+    int interval = 1000;         // Check interval (ms)
     bool enabled = true;
 };
 
-// 脚本配置
+// Script configuration
 struct ScriptConfig {
     std::string name;
     std::string path;
     bool autoStart = false;
     bool restartOnCrash = false;
-    int priority = 0;            // 优先级 (0-10)
+    int priority = 0;            // Priority (0-10)
 };
 
-// 游戏配置
+// Game configuration
 struct GameProfile {
-    std::string id;              // 唯一标识
-    std::string name;            // 显示名称
-    std::string version;         // 配置版本
-    std::string description;     // 描述
+    std::string id;              // Unique identifier
+    std::string name;            // Display name
+    std::string version;         // Configuration version
+    std::string description;     // Description
 
     GameWindowConfig window;
     std::vector<ColorConfig> colors;
@@ -64,90 +64,90 @@ struct GameProfile {
     std::vector<GameTriggerConfig> triggers;
     std::vector<ScriptConfig> scripts;
 
-    // 高级设置
+    // Advanced settings
     std::unordered_map<std::string, std::string> settings;
 };
 
-// 游戏配置管理器
+// Game profile manager
 class GameProfileManager {
 public:
     static GameProfileManager& instance();
 
-    // ========== 配置管理 ==========
+    // ========== Profile management ==========
 
-    // 加载配置
+    // Load profile
     bool loadProfile(const std::string& id);
     bool loadProfileFromFile(const std::string& path);
     bool loadProfileFromDir(const std::string& dir);
 
-    // 保存配置
+    // Save profile
     bool saveProfile(const GameProfile& profile);
     bool saveProfileToFile(const GameProfile& profile, const std::string& path);
 
-    // 删除配置
+    // Delete profile
     bool deleteProfile(const std::string& id);
 
-    // 获取配置
+    // Get profile
     GameProfile* getProfile(const std::string& id);
     const GameProfile* getProfile(const std::string& id) const;
 
-    // 获取当前活动配置
+    // Get active profile
     GameProfile* getActiveProfile();
     const GameProfile* getActiveProfile() const;
 
-    // 设置活动配置
+    // Set active profile
     bool setActiveProfile(const std::string& id);
 
-    // ========== 配置列表 ==========
+    // ========== Profile list ==========
 
-    // 获取所有配置 ID
+    // Get all profile IDs
     std::vector<std::string> getProfileIds() const;
 
-    // 获取所有配置
+    // Get all profiles
     std::vector<GameProfile> getAllProfiles() const;
 
-    // 配置是否存在
+    // Whether profile exists
     bool hasProfile(const std::string& id) const;
 
-    // ========== 配置搜索 ==========
+    // ========== Profile search ==========
 
-    // 根据窗口查找配置
+    // Find profile by window
     GameProfile* findProfileByWindow(const std::string& title);
     GameProfile* findProfileByProcess(const std::string& processName);
 
-    // ========== 配置目录 ==========
+    // ========== Profile directory ==========
 
-    // 设置配置目录
+    // Set profiles directory
     void setProfilesDirectory(const std::string& dir);
 
-    // 获取配置目录
+    // Get profiles directory
     std::string getProfilesDirectory() const;
 
-    // 扫描配置目录
+    // Scan profiles directory
     void scanProfilesDirectory();
 
-    // ========== 配置导入导出 ==========
+    // ========== Profile import/export ==========
 
-    // 导出配置为 JSON
+    // Export profile to JSON
     std::string exportProfileToJson(const std::string& id) const;
 
-    // 从 JSON 导入配置
+    // Import profile from JSON
     bool importProfileFromJson(const std::string& json, const std::string& id = "");
 
-    // 导出配置包
+    // Export profile package
     bool exportProfilePackage(const std::string& id, const std::string& outputPath);
 
-    // 导入配置包
+    // Import profile package
     bool importProfilePackage(const std::string& packagePath);
 
-    // ========== 验证 ==========
+    // ========== Validation ==========
 
-    // 验证配置
+    // Validate profile
     bool validateProfile(const GameProfile& profile, std::string& error) const;
 
-    // ========== 模板 ==========
+    // ========== Template ==========
 
-    // 创建默认配置模板
+    // Create default profile template
     GameProfile createTemplate(const std::string& gameName) const;
 
 private:
@@ -159,13 +159,13 @@ private:
     std::string m_profilesDirectory;
     std::string m_configFileName = "profile.json";
 
-    // 解析配置文件
+    // Parse profile file
     bool parseProfileFile(const std::string& path, GameProfile& profile);
 
-    // 写入配置文件
+    // Write profile file
     bool writeProfileFile(const std::string& path, const GameProfile& profile);
 
-    // 获取配置路径
+    // Get profile path
     std::string getProfilePath(const std::string& id) const;
 };
 

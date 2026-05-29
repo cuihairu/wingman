@@ -18,7 +18,7 @@
 namespace wingman {
 
 // ============================================================================
-// 辅助函数
+// Helper functions
 // ============================================================================
 
 uint64_t System::getFileTimeAsUInt64(const FILETIME& ft) {
@@ -47,18 +47,18 @@ std::string System::readRegistryValue(const std::string& path, const std::string
 }
 
 // ============================================================================
-// CPU 信息
+// CPU info
 // ============================================================================
 
 CpuInfo System::getCpuInfo() {
     CpuInfo info;
 
-    // 获取 CPU 核心数
+    // Get CPU core count
     SYSTEM_INFO sysInfo;
     GetSystemInfo(&sysInfo);
     info.cores = sysInfo.dwNumberOfProcessors;
 
-    // 获取逻辑处理器数
+    // Get logical processor count
     DWORD length = 0;
     GetLogicalProcessorInformation(nullptr, &length);
     if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
@@ -80,7 +80,7 @@ CpuInfo System::getCpuInfo() {
         info.threads = info.cores;
     }
 
-    // 读取注册表获取 CPU 信息
+    // Read registry for CPU info
     info.vendor = readRegistryValue(
         "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
         "VendorIdentifier"
@@ -91,7 +91,7 @@ CpuInfo System::getCpuInfo() {
         "ProcessorNameString"
     );
 
-    // 获取最大时钟频率
+    // Get max clock frequency
     HKEY hKey;
     if (RegOpenKeyExA(HKEY_LOCAL_MACHINE,
                      "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
@@ -154,11 +154,11 @@ int System::getCpuUsage() {
 }
 
 int System::getCpuTemperature() {
-    return -1;  // 不支持
+    return -1;  // Not supported
 }
 
 // ============================================================================
-// 内存信息
+// Memory info
 // ============================================================================
 
 MemoryInfo System::getMemoryInfo() {
@@ -177,7 +177,7 @@ MemoryInfo System::getMemoryInfo() {
 }
 
 // ============================================================================
-// 磁盘信息
+// Disk info
 // ============================================================================
 
 std::vector<DiskInfo> System::getDiskInfo() {
@@ -226,7 +226,7 @@ DiskInfo System::getDiskInfo(const std::string& drive) {
 }
 
 // ============================================================================
-// GPU 信息（简化版）
+// GPU info (simplified)
 // ============================================================================
 
 std::vector<GpuInfo> System::getGpuInfo() {
@@ -247,7 +247,7 @@ std::vector<GpuInfo> System::getGpuInfo() {
 }
 
 // ============================================================================
-// 操作系统信息
+// OS info
 // ============================================================================
 
 OsInfo System::getOsInfo() {
@@ -309,7 +309,7 @@ OsInfo System::getOsInfo() {
 }
 
 // ============================================================================
-// 网络信息
+// Network info
 // ============================================================================
 
 std::vector<NetworkAdapter> System::getNetworkAdapters() {
@@ -358,7 +358,7 @@ std::vector<NetworkAdapter> System::getNetworkAdapters() {
 }
 
 // ============================================================================
-// 显示器信息
+// Display info
 // ============================================================================
 
 std::vector<DisplayInfo> System::getDisplayInfo() {
@@ -388,7 +388,7 @@ std::vector<DisplayInfo> System::getDisplayInfo() {
 }
 
 // ============================================================================
-// 其他信息
+// Other info
 // ============================================================================
 
 int System::getUptime() {

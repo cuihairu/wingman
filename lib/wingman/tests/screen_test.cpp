@@ -11,7 +11,7 @@ protected:
     void TearDown() override {}
 };
 
-// ========== Color 测试 ==========
+// ========== Color Tests ==========
 
 TEST(ScreenTest, ColorFromRGB) {
     Color c = Color::fromRGB(0xFF0000);
@@ -35,7 +35,7 @@ TEST(ScreenTest, ColorMatches) {
     Color c1(100, 100, 100);
     Color c2(105, 105, 105);
     // distance = 5^2 + 5^2 + 5^2 = 75
-    // tolerance^2 需要大于等于 75 才能匹配
+    // tolerance^2 must be >= 75 to match
     EXPECT_TRUE(c1.matches(c2, 9));  // 9^2 = 81 >= 75
     EXPECT_FALSE(c1.matches(c2, 8));  // 8^2 = 64 < 75
 }
@@ -46,7 +46,7 @@ TEST(ScreenTest, ColorExactMatch) {
     EXPECT_TRUE(c1.matches(c2, 0));
 }
 
-// ========== Point 测试 ==========
+// ========== Point Tests ==========
 
 TEST(ScreenTest, PointConstructor) {
     Point p(10, 20);
@@ -68,7 +68,7 @@ TEST(ScreenTest, PointEquality) {
     EXPECT_NE(p1, p3);
 }
 
-// ========== Rect 测试 ==========
+// ========== Rect Tests ==========
 
 TEST(ScreenTest, RectConstructor) {
     Rect r(10, 20, 100, 200);
@@ -92,19 +92,19 @@ TEST(ScreenTest, RectIsEmpty) {
 TEST(ScreenTest, RectContains) {
     Rect r(10, 10, 100, 100);
 
-    Point p1(50, 50);  // 内部
+    Point p1(50, 50);  // Inside
     EXPECT_TRUE(r.contains(p1));
 
-    Point p2(10, 10);  // 边界
+    Point p2(10, 10);  // Boundary
     EXPECT_TRUE(r.contains(p2));
 
-    Point p3(109, 109);  // 边界
+    Point p3(109, 109);  // Boundary
     EXPECT_TRUE(r.contains(p3));
 
-    Point p4(0, 0);  // 外部
+    Point p4(0, 0);  // Outside
     EXPECT_FALSE(r.contains(p4));
 
-    Point p5(110, 110);  // 外部
+    Point p5(110, 110);  // Outside
     EXPECT_FALSE(r.contains(p5));
 }
 
@@ -174,7 +174,7 @@ TEST(ScreenTest, FindColorsMultiple) {
 
 #endif // _WIN32
 
-// ========== Bitmap 测试 ==========
+// ========== Bitmap Tests ==========
 
 TEST(ScreenTest, BitmapCreate) {
     Bitmap bmp(100, 100);

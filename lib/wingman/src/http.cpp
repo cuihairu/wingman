@@ -6,7 +6,7 @@
 
 namespace wingman {
 
-// 回调函数：写入响应体
+// Callback: write response body
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     size_t totalSize = size * nmemb;
     std::string* response = static_cast<std::string*>(userp);
@@ -14,12 +14,12 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* use
     return totalSize;
 }
 
-// 回调函数：写入响应头
+// Callback: write response headers
 static size_t HeaderCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     size_t totalSize = size * nmemb;
     std::string header(static_cast<char*>(contents), totalSize);
 
-    // 移除 \r\n
+    // Remove \r\n
     if (!header.empty() && header.back() == '\n') {
         header.pop_back();
         if (!header.empty() && header.back() == '\r') {
@@ -33,7 +33,7 @@ static size_t HeaderCallback(void* contents, size_t size, size_t nmemb, void* us
             std::string key = header.substr(0, colonPos);
             std::string value = header.substr(colonPos + 1);
 
-            // 去除空格
+            // Trim spaces
             while (!value.empty() && value.front() == ' ') {
                 value.erase(0, 1);
             }
@@ -76,35 +76,35 @@ HttpResponse HttpClient::perform(const std::string& url,
 
     auto startTime = std::chrono::steady_clock::now();
 
-    // 设置 URL
+    // Set URL
     curl_easy_setopt(m_curl, CURLOPT_URL, url.c_str());
 
-    // 设置超时
+    // Set timeout
     long timeout = options.timeout > 0 ? options.timeout : m_defaultTimeout;
     curl_easy_setopt(m_curl, CURLOPT_TIMEOUT, timeout);
     curl_easy_setopt(m_curl, CURLOPT_CONNECTTIMEOUT, 10L);
 
-    // 设置跟随重定向
+    // Set follow redirects
     curl_easy_setopt(m_curl, CURLOPT_FOLLOWLOCATION, options.followRedirects ? 1L : 0L);
     curl_easy_setopt(m_curl, CURLOPT_MAXREDIRS, static_cast<long>(options.maxRedirects));
 
-    // 设置响应回调
+    // Set response callback
     curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &response.body);
 
     curl_easy_setopt(m_curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
     curl_easy_setopt(m_curl, CURLOPT_HEADERDATA, &response.headers);
 
-    // 设置请求头
+    // Set request headers
     struct curl_slist* headers = nullptr;
 
-    // 默认头
+    // Default headers
     for (const auto& [key, value] : m_defaultHeaders) {
         std::string header = key + ": " + value;
         headers = curl_slist_append(headers, header.c_str());
     }
 
-    // 选项头
+    // Option headers
     for (const auto& [key, value] : options.headers) {
         std::string header = key + ": " + value;
         headers = curl_slist_append(headers, header.c_str());
@@ -114,7 +114,7 @@ HttpResponse HttpClient::perform(const std::string& url,
         curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, headers);
     }
 
-    // 设置方法和请求体
+    // Set method and request body
     if (method == "POST") {
         curl_easy_setopt(m_curl, CURLOPT_POST, 1L);
         if (!body.empty()) {
@@ -130,9 +130,9 @@ HttpResponse HttpClient::perform(const std::string& url,
     } else if (method == "HEAD") {
         curl_easy_setopt(m_curl, CURLOPT_NOBODY, 1L);
     }
-    // GET 是默认的
+    // GET is default
 
-    // 执行请求
+    // Execute request
     CURLcode res = curl_easy_perform(m_curl);
 
     if (res == CURLE_OK) {
@@ -143,15 +143,15 @@ HttpResponse HttpClient::perform(const std::string& url,
         response.error = curl_easy_strerror(res);
     }
 
-    // 清理
+    // Cleanup
     if (headers) {
         curl_slist_free_all(headers);
     }
 
-    // 重置选项（为下次请求做准备）
+    // Reset options (prepare for next request)
     curl_easy_reset(m_curl);
 
-    // 计算耗时
+    // Calculate elapsed time
     auto endTime = std::chrono::steady_clock::now();
     response.elapsed = std::chrono::duration<double>(endTime - startTime).count();
 
@@ -175,7 +175,7 @@ HttpResponse HttpClient::post(const std::string& url,
 HttpResponse HttpClient::postForm(const std::string& url,
                                   const std::unordered_map<std::string, std::string>& fields,
                                   const HttpOptions& options) {
-    // 构建 form 数据
+    // Build form data
     std::string formBody;
     for (auto it = fields.begin(); it != fields.end(); ++it) {
         if (it != fields.begin()) {

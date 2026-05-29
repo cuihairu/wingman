@@ -13,7 +13,7 @@
 namespace wingman {
 
 /**
- * 图像缓存项
+ * Image cache entry
  */
 struct CachedImage {
     cv::Mat mat;
@@ -25,79 +25,79 @@ struct CachedImage {
 };
 
 /**
- * 性能配置
+ * Performance configuration
  */
 struct PerformanceConfig {
-    bool enableImageCache = true;          // 启用图像缓存
-    size_t maxCacheSize = 50;              // 最大缓存图像数量
-    bool enableParallelProcessing = true;  // 启用并行处理
-    int numThreads = 0;                    // 线程数 (0 = 自动)
+    bool enableImageCache = true;          // Enable image cache
+    size_t maxCacheSize = 50;              // Max cached image count
+    bool enableParallelProcessing = true;  // Enable parallel processing
+    int numThreads = 0;                    // Thread count (0 = auto)
 
-    // 查找优化
-    bool useColorReduction = false;        // 使用颜色降级加速
-    int colorReductionBits = 5;            // 降级位数
+    // Search optimization
+    bool useColorReduction = false;        // Use color reduction for acceleration
+    int colorReductionBits = 5;            // Reduction bits
 
-    // 图像匹配优化
-    bool useImagePyramids = true;          // 使用图像金字塔加速
-    int minPyramidLevel = 2;               // 最小金字塔层级
+    // Image matching optimization
+    bool useImagePyramids = true;          // Use image pyramid for acceleration
+    int minPyramidLevel = 2;               // Minimum pyramid level
 };
 
 /**
- * 性能优化管理器
+ * Performance optimization manager
  *
- * 提供以下优化功能:
- * 1. 图像缓存 - 缓存已加载的模板图像，避免重复加载
- * 2. 并行处理 - 使用多线程加速像素检测
- * 3. 图像金字塔 - 加速大图像匹配
+ * Provides the following optimization features:
+ * 1. Image cache - caches loaded template images to avoid repeated loading
+ * 2. Parallel processing - uses multi-threading to accelerate pixel detection
+ * 3. Image pyramid - accelerates large image matching
  */
 class PerformanceManager {
 public:
     static PerformanceManager& instance();
 
-    // 设置配置
+    // Set configuration
     void setConfig(const PerformanceConfig& config);
     const PerformanceConfig& getConfig() const;
 
-    // ========== 图像缓存 ==========
+    // ========== Image cache ==========
 
     /**
-     * 获取缓存的图像
-     * 如果缓存中没有，则从文件加载并缓存
+     * Get cached image
+     * If not in cache, loads from file and caches
      */
     cv::Mat getCachedImage(const std::string& path);
 
     /**
-     * 预加载图像到缓存
+     * Preload image to cache
      */
     void preloadImage(const std::string& path);
 
     /**
-     * 清除所有缓存
+     * Clear all cache
      */
     void clearCache();
 
     /**
-     * 清除过期缓存 (LRU)
+     * Evict expired cache (LRU)
      */
     void evictExpired();
 
     /**
-     * 获取缓存统计
+     * Get cache statistics
      */
     size_t getCacheSize() const;
     size_t getCacheHits() const;
     size_t getCacheMisses() const;
 
-    // ========== 优化的图像匹配 ==========
+    // ========== Optimized image matching ==========
 
     /**
-     * 快速图像匹配（使用缓存和金字塔）
+     * Fast image matching (using cache and pyramid)
      */
     bool fastFindImage(const std::string& imagePath, const Rect& region,
                        double threshold, Point& result);
 
     /**
-     * 批量图像匹配
+     * Batch image matching
      */
     std::vector<std::pair<std::string, Point>> findMultipleImages(
         const std::vector<std::string>& imagePaths,
@@ -105,10 +105,10 @@ public:
         double threshold
     );
 
-    // ========== 并行像素检测 ==========
+    // ========== Parallel pixel detection ==========
 
     /**
-     * 并行查找颜色点
+     * Parallel find color points
      */
     std::vector<Point> parallelFindColors(
         const Color& color,
@@ -118,7 +118,7 @@ public:
     );
 
     /**
-     * 并行查找多个颜色
+     * Parallel find multiple colors
      */
     std::vector<std::pair<Color, std::vector<Point>>> parallelFindMultipleColors(
         const std::vector<Color>& colors,
@@ -127,7 +127,7 @@ public:
         int maxCountPerColor = 10
     );
 
-    // ========== 性能统计 ==========
+    // ========== Performance statistics ==========
 
     struct Stats {
         uint64_t totalCaptures = 0;
@@ -157,32 +157,32 @@ private:
     size_t m_cacheMisses = 0;
     Stats m_stats;
 
-    // ========== 辅助方法 ==========
+    // ========== Helper methods ==========
 
     /**
-     * 创建图像金字塔
+     * Build image pyramid
      */
     std::vector<cv::Mat> buildPyramid(const cv::Mat& image, int maxLevel);
 
     /**
-     * 使用金字塔进行模板匹配
+     * Template matching using pyramid
      */
     bool pyramidMatch(const cv::Mat& screen, const cv::Mat& templ,
                      double threshold, cv::Point& result);
 
     /**
-     * 颜色降级（加速）
+     * Color reduction (acceleration)
      */
     void reduceColors(cv::Mat& image, int bits);
 
     /**
-     * 获取 CPU 核心数（跨平台）
+     * Get CPU core count (cross-platform)
      */
     static int getNumCpuCores();
 };
 
 /**
- * 性能计数器
+ * Performance timer
  */
 class PerformanceTimer {
 public:
@@ -192,7 +192,7 @@ public:
     ~PerformanceTimer() {
         if (m_target) {
             double elapsed = (cv::getTickCount() - m_start) / cv::getTickFrequency() * 1000;
-            *m_target = (*m_target * 0.9 + elapsed * 0.1); // 移动平均
+            *m_target = (*m_target * 0.9 + elapsed * 0.1); // Moving average
         }
     }
 

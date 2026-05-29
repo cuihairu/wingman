@@ -7,173 +7,173 @@
 namespace wingman::platform {
 
 /**
- * @brief 屏幕管理接口
+ * @brief Screen management interface
  *
- * 提供显示器信息查询、DPI 缩放、显示模式设置等功能。
+ * Provides display info query, DPI scaling, display mode settings, etc.
  */
 class IScreen {
 public:
     virtual ~IScreen() = default;
 
-    // ========== 初始化 ==========
+    // ========== Initialization ==========
 
     /**
-     * @brief 初始化屏幕管理器
+     * @brief Initialize screen manager
      */
     virtual bool initialize() = 0;
 
     /**
-     * @brief 关闭屏幕管理器
+     * @brief Shutdown screen manager
      */
     virtual void shutdown() = 0;
 
-    // ========== 显示器信息 ==========
+    // ========== Monitor information ==========
 
     /**
-     * @brief 获取显示器数量
+     * @brief Get monitor count
      */
     virtual int getMonitorCount() = 0;
 
     /**
-     * @brief 获取主显示器索引
+     * @brief Get primary monitor index
      */
     virtual int getPrimaryMonitorIndex() = 0;
 
     /**
-     * @brief 获取主显示器边界
+     * @brief Get primary monitor bounds
      */
     virtual Rect getPrimaryMonitorBounds() = 0;
 
     /**
-     * @brief 获取指定显示器的边界
-     * @param monitorIndex 显示器索引
+     * @brief Get specified monitor bounds
+     * @param monitorIndex Monitor index
      */
     virtual Rect getMonitorBounds(int monitorIndex) = 0;
 
     /**
-     * @brief 获取指定显示器的工作区边界（排除任务栏）
-     * @param monitorIndex 显示器索引
+     * @brief Get specified monitor work area bounds (excluding taskbar)
+     * @param monitorIndex Monitor index
      */
     virtual Rect getMonitorWorkArea(int monitorIndex) = 0;
 
     /**
-     * @brief 获取显示器名称
-     * @param monitorIndex 显示器索引
+     * @brief Get monitor name
+     * @param monitorIndex Monitor index
      */
     virtual std::string getMonitorName(int monitorIndex) = 0;
 
     /**
-     * @brief 判断是否为主显示器
-     * @param monitorIndex 显示器索引
+     * @brief Check if primary monitor
+     * @param monitorIndex Monitor index
      */
     virtual bool isPrimaryMonitor(int monitorIndex) = 0;
 
-    // ========== DPI 缩放 ==========
+    // ========== DPI scaling ==========
 
     /**
-     * @brief 获取 DPI 缩放比例
-     * @param monitorIndex 显示器索引
-     * @return 缩放比例（1.0 = 96 DPI）
+     * @brief Get DPI scaling ratio
+     * @param monitorIndex Monitor index
+     * @return Scaling ratio (1.0 = 96 DPI)
      */
     virtual double getDpiScale(int monitorIndex) = 0;
 
     /**
-     * @brief 获取 DPI 值
-     * @param monitorIndex 显示器索引
+     * @brief Get DPI value
+     * @param monitorIndex Monitor index
      */
     virtual int getDpi(int monitorIndex) = 0;
 
     /**
-     * @brief 逻辑坐标转换为物理坐标
-     * @param point 逻辑坐标
-     * @param monitorIndex 显示器索引
+     * @brief Convert logical coordinates to physical coordinates
+     * @param point Logical coordinates
+     * @param monitorIndex Monitor index
      */
     virtual Point logicalToPhysical(const Point& point, int monitorIndex) = 0;
 
     /**
-     * @brief 物理坐标转换为逻辑坐标
-     * @param point 物理坐标
-     * @param monitorIndex 显示器索引
+     * @brief Convert physical coordinates to logical coordinates
+     * @param point Physical coordinates
+     * @param monitorIndex Monitor index
      */
     virtual Point physicalToLogical(const Point& point, int monitorIndex) = 0;
 
-    // ========== 显示模式 ==========
+    // ========== Display mode ==========
 
     /**
-     * @brief 获取支持的显示模式列表
-     * @param monitorIndex 显示器索引
+     * @brief Get supported display mode list
+     * @param monitorIndex Monitor index
      */
     virtual std::vector<DisplayMode> getSupportedDisplayModes(int monitorIndex) = 0;
 
     /**
-     * @brief 获取当前显示模式
-     * @param monitorIndex 显示器索引
+     * @brief Get current display mode
+     * @param monitorIndex Monitor index
      */
     virtual std::optional<DisplayMode> getCurrentDisplayMode(int monitorIndex) = 0;
 
     /**
-     * @brief 设置显示模式
-     * @param monitorIndex 显示器索引
-     * @param mode 显示模式
+     * @brief Set display mode
+     * @param monitorIndex Monitor index
+     * @param mode Display mode
      */
     virtual bool setDisplayMode(int monitorIndex, const DisplayMode& mode) = 0;
 
     /**
-     * @brief 重置显示模式为默认
-     * @param monitorIndex 显示器索引
+     * @brief Reset display mode to default
+     * @param monitorIndex Monitor index
      */
     virtual bool resetDisplayMode(int monitorIndex) = 0;
 
-    // ========== 屏幕状态 ==========
+    // ========== Screen state ==========
 
     /**
-     * @brief 检查屏幕保护程序是否运行
+     * @brief Check if screen saver is running
      */
     virtual bool isScreenSaverRunning() = 0;
 
     /**
-     * @brief 启动屏幕保护程序
+     * @brief Start screen saver
      */
     virtual void startScreenSaver() = 0;
 
     /**
-     * @brief 检查显示器是否关闭
+     * @brief Check if monitor is off
      */
     virtual bool isMonitorOff() = 0;
 
     /**
-     * @brief 唤醒显示器
+     * @brief Wake up monitor
      */
     virtual void wakeUpMonitor() = 0;
 
-    // ========== 虚拟屏幕 ==========
+    // ========== Virtual screen ==========
 
     /**
-     * @brief 获取虚拟屏幕边界（所有显示器组成的区域）
+     * @brief Get virtual screen bounds (area composed of all monitors)
      */
     virtual Rect getVirtualScreenBounds() = 0;
 
     /**
-     * @brief 获取包含指定点的显示器索引
-     * @param point 点坐标
+     * @brief Get monitor index containing the specified point
+     * @param point Point coordinates
      */
     virtual int getMonitorFromPoint(const Point& point) = 0;
 
     /**
-     * @brief 获取包含指定窗口的显示器索引
-     * @param hwnd 窗口句柄
+     * @brief Get monitor index containing the specified window
+     * @param hwnd Window handle
      */
     virtual int getMonitorFromWindow(WindowHandle hwnd) = 0;
 
-    // ========== 后端信息 ==========
+    // ========== Backend information ==========
 
     /**
-     * @brief 获取后端名称
+     * @brief Get backend name
      */
     virtual std::string getBackendName() const = 0;
 
     /**
-     * @brief 获取后端信息
+     * @brief Get backend info
      */
     virtual BackendInfo getBackendInfo() const = 0;
 };

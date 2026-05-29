@@ -3,7 +3,7 @@
 
 using namespace wingman;
 
-// ========== UIARole 枚举 ==========
+// ========== UIARole Enum ==========
 
 TEST(UIARoleTest, EnumValues) {
     EXPECT_EQ(static_cast<int>(UIARole::Unknown), 0);
@@ -22,7 +22,7 @@ TEST(UIARoleTest, EnumValues) {
     EXPECT_EQ(static_cast<int>(UIARole::TreeItem), 13);
 }
 
-// ========== UIAState 位操作 ==========
+// ========== UIAState Bitwise Operations ==========
 
 TEST(UIAStateTest, BitwiseOr) {
     auto combined = UIAState::Enabled | UIAState::Visible;
@@ -176,7 +176,7 @@ TEST(UIASelectorTest, EmptySelectorMatchesAll) {
     EXPECT_TRUE(sel.matches(info));
 }
 
-// ========== UIAutomation 构造 ==========
+// ========== UIAutomation Construction ==========
 
 TEST(UIAutomationTest, ConstructionDoesNotCrash) {
     EXPECT_NO_THROW(UIAutomation uia);

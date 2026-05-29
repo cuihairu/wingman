@@ -15,12 +15,12 @@
 namespace wingman::core {
 
 /**
- * @brief 事件类型标识符
+ * @brief Event type identifier
  */
 using EventType = uint32_t;
 
 /**
- * @brief 事件优先级
+ * @brief Event priority
  */
 enum class EventPriority : uint8_t {
     Low = 0,
@@ -30,7 +30,7 @@ enum class EventPriority : uint8_t {
 };
 
 /**
- * @brief 事件基类
+ * @brief Event base class
  */
 class Event {
 public:
@@ -70,12 +70,12 @@ private:
 };
 
 /**
- * @brief 泛型事件回调函数
+ * @brief Generic event callback
  */
 using GenericEventCallback = std::function<void(const Event&)>;
 
 /**
- * @brief 事件订阅信息
+ * @brief Event subscription info
  */
 struct EventSubscription {
     GenericEventCallback callback;
@@ -85,26 +85,26 @@ struct EventSubscription {
 };
 
 /**
- * @brief 事件总线
+ * @brief Event bus
  *
- * 负责事件的发布、订阅和分发。
+ * Responsible for event publishing, subscribing, and dispatching.
  */
 class EventBus {
 public:
     EventBus();
     ~EventBus();
 
-    // 禁止拷贝
+    // Non-copyable
     EventBus(const EventBus&) = delete;
     EventBus& operator=(const EventBus&) = delete;
 
     /**
-     * @brief 订阅事件
-     * @param type 事件类型
-     * @param callback 回调函数
-     * @param subscriberName 订阅者名称
-     * @param once 是否只触发一次
-     * @return 订阅ID
+     * @brief Subscribe to event
+     * @param type Event type
+     * @param callback Callback function
+     * @param subscriberName Subscriber name
+     * @param once Whether to trigger only once
+     * @return Subscription ID
      */
     uint64_t subscribe(EventType type,
                       GenericEventCallback callback,
@@ -112,48 +112,48 @@ public:
                       bool once = false);
 
     /**
-     * @brief 取消订阅
-     * @param subscriptionId 订阅ID
+     * @brief Unsubscribe
+     * @param subscriptionId Subscription ID
      */
     void unsubscribe(uint64_t subscriptionId);
 
     /**
-     * @brief 取消订阅（按订阅者名称）
+     * @brief Unsubscribe (by subscriber name)
      */
     void unsubscribe(const std::string& subscriberName);
 
     /**
-     * @brief 发布事件（同步）
+     * @brief Publish event (synchronous)
      */
     void publish(const Event& event);
 
     /**
-     * @brief 发布事件（异步，加入队列）
+     * @brief Publish event (async, enqueue)
      */
     void publishAsync(std::unique_ptr<Event> event);
 
     /**
-     * @brief 启动事件分发线程
+     * @brief Start event dispatch thread
      */
     void start();
 
     /**
-     * @brief 停止事件分发
+     * @brief Stop event dispatch
      */
     void stop();
 
     /**
-     * @brief 处理所有待处理事件（同步模式）
+     * @brief Process all pending events (synchronous mode)
      */
     void processEvents();
 
     /**
-     * @brief 获取队列大小
+     * @brief Get queue size
      */
     size_t getQueueSize() const;
 
     /**
-     * @brief 检查是否运行中
+     * @brief Check if running
      */
     bool isRunning() const { return running_.load(); }
 
@@ -173,7 +173,7 @@ private:
     std::unordered_map<uint64_t, EventType> subscriptionIdToType_;
     uint64_t nextSubscriptionId_ = 1;
 
-    // 异步分发
+    // Async dispatch
     std::queue<QueuedEvent> eventQueue_;
     std::condition_variable queueCondition_;
     std::thread dispatchThread_;

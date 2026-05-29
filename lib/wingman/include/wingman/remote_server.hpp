@@ -152,7 +152,7 @@ public:
     RemoteResponse getPixel(int x, int y);
     RemoteResponse findColor(uint32_t color, int x, int y, int width, int height, int tolerance = 10);
 
-    // 输入模拟
+    // Input simulation
     RemoteResponse click(int x, int y, const std::string& button = "left");
     RemoteResponse move(int x, int y, int durationMs = 100);
     RemoteResponse key(int keyCode);

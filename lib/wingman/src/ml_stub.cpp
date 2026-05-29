@@ -7,7 +7,7 @@
 
 namespace wingman {
 
-// ========== TensorData 实现 ==========
+// ========== TensorData Implementation ==========
 
 size_t TensorData::elementCount() const {
     size_t count = 1;
@@ -30,14 +30,14 @@ size_t TensorData::byteSize() const {
     return elementCount() * elemSize;
 }
 
-// ========== ModelEngine 私有实现 ==========
+// ========== ModelEngine Private Implementation ==========
 
 class ModelEngine::Impl {
 public:
     std::string modelPath_;
 };
 
-// ========== ModelEngine 实现 ==========
+// ========== ModelEngine Implementation ==========
 
 ModelEngine::ModelEngine() : impl_(std::make_unique<Impl>()), modelLoaded_(false) {}
 
@@ -76,7 +76,7 @@ std::vector<std::string> ModelEngine::getAvailableExecutionProviders() {
     return {"cpu"};
 }
 
-// ========== Tensor 辅助函数 ==========
+// ========== Tensor Helper Functions ==========
 
 TensorData Tensor::createFloat32(const TensorShape& shape, const std::vector<float>& data) {
     TensorData tensor;
@@ -123,7 +123,7 @@ TensorData Tensor::fromImage(const uint8_t* imageData, int width, int height,
     return createFloat32({1, 3, (int64_t)height, (int64_t)width}, data);
 }
 
-// ========== ModelHelpers 实现 ==========
+// ========== ModelHelpers Implementation ==========
 
 std::pair<std::string, float> ModelHelpers::classifyImage(
     ModelEngine& /*engine*/,

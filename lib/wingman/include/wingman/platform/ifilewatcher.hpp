@@ -9,100 +9,100 @@
 namespace wingman::platform {
 
 /**
- * @brief 文件变化类型
+ * @brief File change type
  */
 enum class FileChangeType : uint8_t {
-    Added,      // 文件/目录添加
-    Removed,    // 文件/目录删除
-    Modified,   // 文件/目录修改
-    RenamedOld, // 重命名（旧名称）
-    RenamedNew  // 重命名（新名称）
+    Added,      // File/directory added
+    Removed,    // File/directory removed
+    Modified,   // File/directory modified
+    RenamedOld, // Renamed (old name)
+    RenamedNew  // Renamed (new name)
 };
 
 /**
- * @brief 文件变化信息
+ * @brief File change information
  */
 struct FileChange {
     FileChangeType type;
-    std::string path;           // 文件路径
-    std::string oldPath;        // 重命名时的旧路径
-    uint64_t timestamp;         // 时间戳（毫秒）
+    std::string path;           // File path
+    std::string oldPath;        // Old path when renamed
+    uint64_t timestamp;         // Timestamp (milliseconds)
 
     FileChange() : type(FileChangeType::Modified), timestamp(0) {}
 };
 
 /**
- * @brief 文件变化回调
+ * @brief File change callback
  */
 using FileChangeCallback = std::function<void(const FileChange&)>;
 
 /**
- * @brief 文件监控接口
+ * @brief File watcher interface
  *
- * 监控目录或文件的变化，支持递归监控。
+ * Monitor directory or file changes, supports recursive watching.
  */
 class IFileWatcher {
 public:
     virtual ~IFileWatcher() = default;
 
-    // ========== 初始化 ==========
+    // ========== Initialization ==========
 
     /**
-     * @brief 初始化文件监控器
+     * @brief Initialize file watcher
      */
     virtual bool initialize() = 0;
 
     /**
-     * @brief 关闭文件监控器
+     * @brief Shutdown file watcher
      */
     virtual void shutdown() = 0;
 
-    // ========== 监控管理 ==========
+    // ========== Watch management ==========
 
     /**
-     * @brief 添加监控路径
-     * @param path 要监控的目录或文件路径
-     * @param recursive 是否递归监控子目录
-     * @param callback 变化回调函数
-     * @return 成功返回监控 ID，失败返回 0
+     * @brief Add watch path
+     * @param path Directory or file path to watch
+     * @param recursive Whether to recursively watch subdirectories
+     * @param callback Change callback function
+     * @return Returns watch ID on success, 0 on failure
      */
     virtual uint64_t watch(const std::string& path, bool recursive, FileChangeCallback callback) = 0;
 
     /**
-     * @brief 移除监控
-     * @param watchId 监控 ID
-     * @return 成功返回 true
+     * @brief Remove watch
+     * @param watchId Watch ID
+     * @return Returns true on success
      */
     virtual bool unwatch(uint64_t watchId) = 0;
 
     /**
-     * @brief 移除路径的所有监控
-     * @param path 路径
-     * @return 移除的监控数量
+     * @brief Remove all watches for a path
+     * @param path Path
+     * @return Number of watches removed
      */
     virtual size_t unwatchPath(const std::string& path) = 0;
 
-    // ========== 状态查询 ==========
+    // ========== Status query ==========
 
     /**
-     * @brief 获取活跃监控数量
+     * @brief Get active watch count
      */
     virtual size_t getWatchCount() const = 0;
 
     /**
-     * @brief 检查是否有活跃监控
+     * @brief Check if there are active watches
      */
     virtual bool hasWatches() const = 0;
 
-    // ========== 后端信息 ==========
+    // ========== Backend information ==========
 
     /**
-     * @brief 获取后端名称
+     * @brief Get backend name
      */
     virtual std::string getBackendName() const = 0;
 
     /**
-     * @brief 获取后端信息
+     * @brief Get backend info
      */
     virtual BackendInfo getBackendInfo() const = 0;
 };

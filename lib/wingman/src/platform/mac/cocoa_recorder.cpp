@@ -28,7 +28,7 @@ static unsigned long getTickCount() {
     return static_cast<unsigned long>(tv.tv_sec * 1000 + tv.tv_usec / 1000);
 }
 
-// CGEventTap 回调
+// CGEventTap callback
 static CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type,
                                     CGEventRef event, void* refcon) {
     if (!g_instance || !g_instance->isRecording() || g_instance->isPaused()) {
@@ -137,7 +137,7 @@ static CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type,
     return event;
 }
 
-// RunLoop 线程函数
+// RunLoop thread function
 static void runLoopThreadFunc() {
     CFRunLoopRef runLoop = CFRunLoopGetCurrent();
     g_runLoopRunning = true;
@@ -167,7 +167,7 @@ void MacroRecorder::start() {
     m_paused = false;
     m_startTime = getTickCount();
 
-    // 创建 Event Tap
+    // Create Event Tap
     CGEventMask eventMask = CGEventMaskBit(kCGEventMouseMoved) |
                            CGEventMaskBit(kCGEventLeftMouseDragged) |
                            CGEventMaskBit(kCGEventRightMouseDragged) |
@@ -204,11 +204,11 @@ void MacroRecorder::start() {
         return;
     }
 
-    // 启动 RunLoop 线程
+    // Start RunLoop thread
     g_runLoopRunning = false;
     g_runLoopThread = std::thread(runLoopThreadFunc);
 
-    // 等待 RunLoop 启动
+    // Wait for RunLoop to start
     while (!g_runLoopRunning) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }

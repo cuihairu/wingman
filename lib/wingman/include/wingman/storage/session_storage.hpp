@@ -7,18 +7,18 @@
 
 namespace wingman {
 
-// SessionStorage: 内存存储，进程退出后数据清空
-// 类似浏览器的 sessionStorage，适合临时会话数据
+// SessionStorage: In-memory storage, data cleared on process exit
+// Similar to browser sessionStorage, suitable for temporary session data
 class SessionStorage : public IStorage {
 public:
     SessionStorage() = default;
     ~SessionStorage() override = default;
 
-    // 禁止拷贝
+    // Non-copyable
     SessionStorage(const SessionStorage&) = delete;
     SessionStorage& operator=(const SessionStorage&) = delete;
 
-    // IStorage 接口实现
+    // IStorage interface implementation
     size_t length() const override;
 
     std::vector<std::string> keys() const override;
