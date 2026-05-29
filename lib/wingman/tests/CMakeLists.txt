@@ -52,6 +52,12 @@ if(BUILD_CORE_TESTS)
         if(WIN32)
             target_sources(core_tests PRIVATE smart_trigger_test.cpp)
         endif()
+
+        target_include_directories(core_tests PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        )
+
+        target_link_libraries(core_tests PRIVATE
             GTest::gtest
             GTest::gtest_main
             wingman

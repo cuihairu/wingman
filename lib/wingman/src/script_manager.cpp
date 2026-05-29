@@ -6,6 +6,7 @@
 #include <chrono>
 #include <thread>
 #include <algorithm>
+#include <utility>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -51,33 +52,59 @@ std::unique_ptr<script::IScriptEngine> ScriptManager::createEngineForLanguage(co
 // ========== Script Loading Management ==========
 
 bool ScriptManager::loadScript(const std::string& name, const std::string& path, const ScriptConfig& config) {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	ScriptEventCallback callback;
+	std::vector<std::pair<ScriptEvent, std::string>> events;
 
-	if (!std::filesystem::exists(path)) {
-		triggerEvent(name, ScriptEvent::error, "file not found: " + path);
-		return false;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+
+		if (!std::filesystem::exists(path)) {
+			callback = m_eventCallback;
+			events.emplace_back(ScriptEvent::error, "file not found: " + path);
+		} else {
+			if (m_scripts.find(name) != m_scripts.end()) {
+				unloadScript_Locked(name);
+				events.emplace_back(ScriptEvent::unloaded, "");
+			}
+
+			auto info = std::make_unique<ScriptInfo>();
+			info->config = config;
+			info->config.name = name;
+			info->config.path = path;
+			info->lastModified = getFileModifiedTime(path);
+			info->language = detectLanguage(path);
+
+			m_scripts[name] = std::move(info);
+
+			callback = m_eventCallback;
+			events.emplace_back(ScriptEvent::loaded, "");
+		}
 	}
 
-	if (m_scripts.find(name) != m_scripts.end()) {
-		unloadScript_Locked(name);
+	if (callback) {
+		for (const auto& [event, message] : events) {
+			callback(name, event, message);
+		}
 	}
-
-	auto info = std::make_unique<ScriptInfo>();
-	info->config = config;
-	info->config.name = name;
-	info->config.path = path;
-	info->lastModified = getFileModifiedTime(path);
-	info->language = detectLanguage(path);
-
-	m_scripts[name] = std::move(info);
-
-	triggerEvent(name, ScriptEvent::loaded, "");
-	return true;
+	return !events.empty() && events.back().first == ScriptEvent::loaded;
 }
 
 bool ScriptManager::unloadScript(const std::string& name) {
-	std::lock_guard<std::mutex> lock(m_mutex);
-	return unloadScript_Locked(name);
+	ScriptEventCallback callback;
+	bool unloaded = false;
+
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		unloaded = unloadScript_Locked(name);
+		if (unloaded) {
+			callback = m_eventCallback;
+		}
+	}
+
+	if (unloaded && callback) {
+		callback(name, ScriptEvent::unloaded, "");
+	}
+	return unloaded;
 }
 
 bool ScriptManager::unloadScript_Locked(const std::string& name) {
@@ -90,14 +117,26 @@ bool ScriptManager::unloadScript_Locked(const std::string& name) {
 		stopScript_Locked(name);
 	}
 
-	triggerEvent(name, ScriptEvent::unloaded, "");
 	m_scripts.erase(it);
 	return true;
 }
 
 bool ScriptManager::reloadScript(const std::string& name) {
-	std::lock_guard<std::mutex> lock(m_mutex);
-	return reloadScript_Locked(name);
+	ScriptEventCallback callback;
+	bool reloaded = false;
+
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		reloaded = reloadScript_Locked(name);
+		if (reloaded) {
+			callback = m_eventCallback;
+		}
+	}
+
+	if (reloaded && callback) {
+		callback(name, ScriptEvent::reloaded, "");
+	}
+	return reloaded;
 }
 
 bool ScriptManager::reloadScript_Locked(const std::string& name) {
@@ -121,7 +160,6 @@ bool ScriptManager::reloadScript_Locked(const std::string& name) {
 		runScript_Locked(name);
 	}
 
-	triggerEvent(name, ScriptEvent::reloaded, "");
 	return true;
 }
 
@@ -164,8 +202,33 @@ void ScriptManager::checkAllReloads_Locked() {
 // ========== Script Execution ==========
 
 bool ScriptManager::runScript(const std::string& name) {
-	std::lock_guard<std::mutex> lock(m_mutex);
-	return runScript_Locked(name);
+	ScriptEventCallback callback;
+	ScriptEvent event = ScriptEvent::started;
+	std::string message;
+	bool result = false;
+	bool hasEvent = false;
+
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		result = runScript_Locked(name);
+		auto it = m_scripts.find(name);
+		if (it != m_scripts.end()) {
+			callback = m_eventCallback;
+			if (result) {
+				event = ScriptEvent::started;
+				hasEvent = true;
+			} else if (it->second->state == ScriptState::error) {
+				event = ScriptEvent::error;
+				message = it->second->lastError;
+				hasEvent = true;
+			}
+		}
+	}
+
+	if (hasEvent && callback) {
+		callback(name, event, message);
+	}
+	return result;
 }
 
 bool ScriptManager::runScript_Locked(const std::string& name) {
@@ -186,7 +249,6 @@ bool ScriptManager::runScript_Locked(const std::string& name) {
 		if (!infoPtr->engine) {
 			infoPtr->state = ScriptState::error;
 			infoPtr->lastError = "failed to create engine for language: " + infoPtr->language;
-			triggerEvent(name, ScriptEvent::error, infoPtr->lastError);
 			return false;
 		}
 	}
@@ -200,7 +262,6 @@ bool ScriptManager::runScript_Locked(const std::string& name) {
 	if (!infoPtr->engine->executeFile(infoPtr->config.path)) {
 		infoPtr->state = ScriptState::error;
 		infoPtr->lastError = infoPtr->engine->getLastError();
-		triggerEvent(name, ScriptEvent::error, infoPtr->lastError);
 		return false;
 	}
 
@@ -209,13 +270,25 @@ bool ScriptManager::runScript_Locked(const std::string& name) {
 		std::chrono::steady_clock::now().time_since_epoch()
 	).count();
 
-	triggerEvent(name, ScriptEvent::started, "");
 	return true;
 }
 
 bool ScriptManager::stopScript(const std::string& name) {
-	std::lock_guard<std::mutex> lock(m_mutex);
-	return stopScript_Locked(name);
+	ScriptEventCallback callback;
+	bool stopped = false;
+
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		stopped = stopScript_Locked(name);
+		if (stopped) {
+			callback = m_eventCallback;
+		}
+	}
+
+	if (stopped && callback) {
+		callback(name, ScriptEvent::stopped, "");
+	}
+	return stopped;
 }
 
 bool ScriptManager::stopScript_Locked(const std::string& name) {
@@ -229,7 +302,6 @@ bool ScriptManager::stopScript_Locked(const std::string& name) {
 	}
 
 	it->second->state = ScriptState::loaded;
-	triggerEvent(name, ScriptEvent::stopped, "");
 	return true;
 }
 
@@ -634,6 +706,17 @@ bool ScriptManager::loadIniConfig(const std::string& path) {
 }
 
 void ScriptManager::triggerEvent(const std::string& name, ScriptEvent event, const std::string& message) {
+	ScriptEventCallback callback;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		callback = m_eventCallback;
+	}
+	if (callback) {
+		callback(name, event, message);
+	}
+}
+
+void ScriptManager::triggerEventUnlocked(const std::string& name, ScriptEvent event, const std::string& message) {
 	if (m_eventCallback) {
 		m_eventCallback(name, event, message);
 	}

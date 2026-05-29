@@ -164,7 +164,8 @@ private:
 	uint64_t getFileModifiedTime(const std::string& path);
 	bool loadJsonConfig(const std::string& path);
 	bool loadIniConfig(const std::string& path);
-	void triggerEvent(const std::string& name, ScriptEvent event, const std::string& message = "");
+    void triggerEvent(const std::string& name, ScriptEvent event, const std::string& message = "");
+    void triggerEventUnlocked(const std::string& name, ScriptEvent event, const std::string& message = "");
 
 	// Internal implementations (caller must hold m_mutex)
 	bool stopScript_Locked(const std::string& name);

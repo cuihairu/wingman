@@ -9,7 +9,7 @@
 
 namespace wingman {
 
-// ========== SmartTrigger 实现 ==========
+// ========== SmartTrigger implementation ==========
 
 SmartTrigger::SmartTrigger(const std::string& name) : name_(name) {}
 
@@ -56,23 +56,13 @@ bool SmartTrigger::start() {
 }
 
 void SmartTrigger::stop() {
-    if (!running_) return;
+    const bool joinable = watchThread_.joinable();
+    const bool isSelfStop = joinable && std::this_thread::get_id() == watchThread_.get_id();
 
     running_ = false;
 
-    bool isSelfStop = watchThread_.joinable() &&
-                      std::this_thread::get_id() == watchThread_.get_id();
-
-    if (isSelfStop) {
-        // Cannot join self -- detach so the thread cleans up on exit
-        if (watchThread_.joinable()) {
-            watchThread_.detach();
-        }
-    } else {
-        // External caller: join to ensure clean shutdown
-        if (watchThread_.joinable()) {
-            watchThread_.join();
-        }
+    if (joinable && !isSelfStop) {
+        watchThread_.join();
     }
 
     spdlog::info("Trigger '{}' stopped", name_);
@@ -181,7 +171,7 @@ void SmartTrigger::executeActions() {
                 break;
 
             case TriggerActionType::STOP:
-                stop();
+                running_ = false;
                 spdlog::info("Trigger '{}': stopped by action", name_);
                 break;
 
@@ -206,7 +196,7 @@ void SmartTrigger::watchLoop() {
 
             if (maxTriggers_ > 0 && triggerCount_ >= maxTriggers_) {
                 spdlog::info("Trigger '{}' reached max triggers ({})", name_, maxTriggers_);
-                stop();
+                running_ = false;
                 break;
             }
         }
@@ -215,7 +205,7 @@ void SmartTrigger::watchLoop() {
     }
 }
 
-// ========== SmartTriggerManager 实现 ==========
+// ========== SmartTriggerManager implementation ==========
 
 SmartTriggerManager& SmartTriggerManager::instance() {
     static SmartTriggerManager instance;
