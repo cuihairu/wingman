@@ -33,7 +33,35 @@ Bitmap::Bitmap(const Bitmap& other)
     std::memcpy(m_data.get(), other.m_data.get(), m_width * m_height * 4);
 }
 
+Bitmap::Bitmap(Bitmap&& other) noexcept
+    : m_width(other.m_width), m_height(other.m_height),
+      m_data(std::move(other.m_data)) {
+    other.m_width = 0;
+    other.m_height = 0;
+}
+
 Bitmap::~Bitmap() = default;
+
+Bitmap& Bitmap::operator=(const Bitmap& other) {
+    if (this != &other) {
+        m_width = other.m_width;
+        m_height = other.m_height;
+        m_data.reset(new uint8_t[m_width * m_height * 4]);
+        std::memcpy(m_data.get(), other.m_data.get(), m_width * m_height * 4);
+    }
+    return *this;
+}
+
+Bitmap& Bitmap::operator=(Bitmap&& other) noexcept {
+    if (this != &other) {
+        m_width = other.m_width;
+        m_height = other.m_height;
+        m_data = std::move(other.m_data);
+        other.m_width = 0;
+        other.m_height = 0;
+    }
+    return *this;
+}
 
 Color Bitmap::getPixel(int x, int y) const {
     if (x < 0 || x >= m_width || y < 0 || y >= m_height) {

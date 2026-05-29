@@ -88,7 +88,11 @@ class Bitmap {
 public:
     Bitmap(int width, int height);
     Bitmap(const Bitmap& other);
+    Bitmap(Bitmap&& other) noexcept;
     ~Bitmap();
+
+    Bitmap& operator=(const Bitmap& other);
+    Bitmap& operator=(Bitmap&& other) noexcept;
 
     int getWidth() const { return m_width; }
     int getHeight() const { return m_height; }
