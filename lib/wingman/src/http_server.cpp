@@ -16,7 +16,7 @@ HTTPServer::HTTPServer(const std::string& dbPath, int port, const std::string& s
       authManager_(std::make_unique<AuthManager>(dbPath)),
       scriptManager_(std::make_unique<ScriptManager>()) {
 
-    // 扫描并加载 scripts 目录下的所有脚本（支持多语言）
+    // Scan and load all scripts in the scripts directory (multi-language support)
     std::string scriptsDir = "scripts";
     if (std::filesystem::exists(scriptsDir) && std::filesystem::is_directory(scriptsDir)) {
         for (const auto& entry : std::filesystem::recursive_directory_iterator(scriptsDir)) {
@@ -30,7 +30,7 @@ HTTPServer::HTTPServer(const std::string& dbPath, int port, const std::string& s
         }
     }
 
-    // 设置调试器事件回调
+    // Set debugger event callback
     auto& debugger = wingman::getDebugger();
     debugger.setEventCallback([this](wingman::DebuggerEvent event, const std::string& file, int line) {
         std::string eventType;
@@ -68,7 +68,7 @@ HTTPServer::~HTTPServer() {
 }
 
 void HTTPServer::setupWebSocketRoutes() {
-    // WebSocket 路由 - 用于实时推送
+    // WebSocket route - for real-time push
     CROW_WEBSOCKET_ROUTE(app_, "/ws")
         .onopen([this](crow::websocket::connection& conn) {
             onWSOpen(conn.get_shared_this());
@@ -85,10 +85,10 @@ void HTTPServer::setupWebSocketRoutes() {
 }
 
 void HTTPServer::setupRoutes() {
-    // 设置 WebSocket 路由
+    // Set up WebSocket routes
     setupWebSocketRoutes();
 
-    // 静态文件服务 - 提供 dashboard 前端
+    // Static file serving - provide dashboard frontend
     CROW_ROUTE(app_, "/")
     ([this](const crow::request& req) {
         crow::response resp;
@@ -107,24 +107,24 @@ void HTTPServer::setupRoutes() {
         return resp;
     });
 
-    // 静态资源路由
+    // Static resource route
     CROW_ROUTE(app_, "/<path>")
     ([this](const crow::request& req, const std::string& path) {
-        // 如果是 API 请求，返回 404
+        // If API request, return 404
         if (path.find("api/") == 0) {
             crow::response resp("API endpoint not found: " + path);
             resp.code = 404;
             return resp;
         }
 
-        // 尝试提供静态文件
+        // Try to serve static file
         std::string filePath = staticDir_ + "/" + path;
         std::ifstream file(filePath, std::ios::binary);
         if (file.is_open()) {
             std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
             crow::response resp(content);
 
-            // 设置正确的 Content-Type
+            // Set correct Content-Type
             if (path.find(".html") != std::string::npos) {
                 resp.set_header("Content-Type", "text/html; charset=utf-8");
             } else if (path.find(".js") != std::string::npos) {
@@ -144,7 +144,7 @@ void HTTPServer::setupRoutes() {
             return resp;
         }
 
-        // 文件不存在，返回 index.html (SPA 路由支持)
+        // File not found, return index.html (SPA routing support)
         std::string indexPath = staticDir_ + "/index.html";
         std::ifstream indexFile(indexPath);
         if (indexFile.is_open()) {
@@ -240,7 +240,7 @@ void HTTPServer::setupRoutes() {
         });
 
     // ========== Debugger API Routes ==========
-    // 使用 /api/debugger 前缀（不带 v1）以兼容 VS Code 扩展
+    // Use /api/debugger prefix (without v1) for VS Code extension compatibility
 
     CROW_ROUTE(app_, "/api/debugger/connect").methods("POST"_method)(
         [this](const crow::request& req) {
@@ -302,7 +302,7 @@ void HTTPServer::setupRoutes() {
             return resp;
         });
 
-    // 兼容旧路径 /api/（重定向到 /api/v1/）
+    // Compatible with legacy /api/ path (redirect to /api/v1/)
     CROW_ROUTE(app_, "/api/auth/login").methods("POST"_method)(
         [this](const crow::request& req) {
             crow::response resp = handleLogin(req);
@@ -415,7 +415,7 @@ crow::response HTTPServer::handleScripts(const crow::request& req) {
     }
 
     if (req.method == "GET"_method) {
-        // 获取脚本列表
+        // Get script list
         nlohmann::json j;
         j["success"] = true;
         nlohmann::json arr = nlohmann::json::array();
@@ -439,7 +439,7 @@ crow::response HTTPServer::handleScripts(const crow::request& req) {
         j["data"] = arr;
         return jsonResponse(j);
     } else if (req.method == "POST"_method) {
-        // 创建新脚本
+        // Create new script
         try {
             auto body = nlohmann::json::parse(req.body);
             std::string name = body.value("name", "");
@@ -449,10 +449,10 @@ crow::response HTTPServer::handleScripts(const crow::request& req) {
                 return errorResponse("Script name must end with .lua");
             }
 
-            std::string scriptName = name.substr(0, name.length() - 4); // 移除 .lua
+            std::string scriptName = name.substr(0, name.length() - 4); // Remove .lua
             std::string scriptPath = "scripts/" + name;
 
-            // 创建脚本文件
+            // Create script file
             std::ofstream scriptFile(scriptPath);
             if (!scriptFile.is_open()) {
                 return errorResponse("Failed to create script file");
@@ -466,7 +466,7 @@ crow::response HTTPServer::handleScripts(const crow::request& req) {
             scriptFile << "main()\n";
             scriptFile.close();
 
-            // 加载脚本
+            // Load script
             if (scriptManager_->loadScript(scriptName, scriptPath)) {
                 nlohmann::json j;
                 j["success"] = true;
@@ -483,7 +483,7 @@ crow::response HTTPServer::handleScripts(const crow::request& req) {
             return errorResponse(e.what());
         }
     } else if (req.method == "DELETE"_method) {
-        // 删除脚本
+        // Delete script
         try {
             auto body = nlohmann::json::parse(req.body);
             std::string path = body.value("path", "");
@@ -492,11 +492,11 @@ crow::response HTTPServer::handleScripts(const crow::request& req) {
                 return errorResponse("Path is required");
             }
 
-            // 卸载脚本
+            // Unload script
             std::string scriptName = std::filesystem::path(path).stem().string();
             scriptManager_->unloadScript(scriptName);
 
-            // 删除文件
+            // Delete file
             if (std::filesystem::remove(path)) {
                 nlohmann::json j;
                 j["success"] = true;
@@ -526,7 +526,7 @@ crow::response HTTPServer::handleScriptContent(const crow::request& req) {
             return errorResponse("Path is required");
         }
 
-        // 读取文件内容
+        // Read file content
         std::ifstream file(path);
         if (!file.is_open()) {
             return errorResponse("Failed to open script file");
@@ -560,7 +560,7 @@ crow::response HTTPServer::handleScriptSave(const crow::request& req) {
             return errorResponse("Path is required");
         }
 
-        // 写入文件
+        // Write file
         std::ofstream file(path);
         if (!file.is_open()) {
             return errorResponse("Failed to open script file for writing");
@@ -569,7 +569,7 @@ crow::response HTTPServer::handleScriptSave(const crow::request& req) {
         file << content;
         file.close();
 
-        // 重新加载脚本
+        // Reload script
         std::string scriptName = std::filesystem::path(path).stem().string();
         scriptManager_->reloadScript(scriptName);
 
@@ -644,8 +644,8 @@ crow::response HTTPServer::handleScriptLogs(const crow::request& req) {
         return crow::response(401);
     }
 
-    // TODO: 实现日志收集功能
-    // 目前返回空数组
+    // TODO: Implement log collection functionality
+    // Currently returns empty array
     nlohmann::json j;
     j["success"] = true;
     j["data"] = nlohmann::json::array();
@@ -747,13 +747,13 @@ void HTTPServer::start() {
 }
 
 void HTTPServer::stop() {
-    // 停止心跳线程
+    // Stop heartbeat thread
     wsHeartbeatRunning_ = false;
     if (wsHeartbeatThread_.joinable()) {
         wsHeartbeatThread_.join();
     }
 
-    // 关闭所有 WebSocket 连接
+    // Close all WebSocket connections
     {
         std::lock_guard<std::mutex> lock(wsMutex_);
         for (auto& ws : wsConnections_) {
@@ -765,7 +765,7 @@ void HTTPServer::stop() {
     app_.stop();
 }
 
-// ========== WebSocket 实现 ==========
+// ========== WebSocket Implementation ==========
 
 void HTTPServer::onWSOpen(std::shared_ptr<crow::websocket::connection> conn) {
     std::string connId = "ws_" + std::to_string(++wsConnectionIdCounter_);
@@ -778,14 +778,14 @@ void HTTPServer::onWSOpen(std::shared_ptr<crow::websocket::connection> conn) {
 
     spdlog::info("[WS] Connection opened: {} (total: {})", connId, wsConnections_.size());
 
-    // 发送欢迎消息
+    // Send welcome message
     nlohmann::json welcome;
     welcome["type"] = "connected";
     welcome["connectionId"] = connId;
     welcome["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
     wsConn->send(welcome.dump());
 
-    // 启动心跳线程（如果还没启动）
+    // Start heartbeat thread (if not already started)
     if (!wsHeartbeatRunning_) {
         wsHeartbeatRunning_ = true;
         wsHeartbeatThread_ = std::thread([this]() {
@@ -799,12 +799,12 @@ void HTTPServer::onWSOpen(std::shared_ptr<crow::websocket::connection> conn) {
 
                 for (auto& ws : wsConnections_) {
                     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - ws->lastPing).count();
-                    if (elapsed > 60) { // 60秒超时
+                    if (elapsed > 60) { // 60-second timeout
                         spdlog::warn("[WS] Connection {} timeout, closing", ws->id);
                         ws->close();
                         toRemove.push_back(ws);
                     } else {
-                        // 发送心跳
+                        // Send heartbeat
                         nlohmann::json ping;
                         ping["type"] = "ping";
                         ping["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
@@ -812,7 +812,7 @@ void HTTPServer::onWSOpen(std::shared_ptr<crow::websocket::connection> conn) {
                     }
                 }
 
-                // 移除超时连接
+                // Remove timed-out connections
                 for (auto& ws : toRemove) {
                     wsConnections_.erase(ws);
                 }
@@ -829,7 +829,7 @@ void HTTPServer::onWSMessage(std::shared_ptr<crow::websocket::connection> conn, 
 
         spdlog::debug("[WS] Received message type: {}", type);
 
-        // 获取连接ID
+        // Get connection ID
         std::string connId;
         {
             std::lock_guard<std::mutex> lock(wsMutex_);
@@ -846,7 +846,7 @@ void HTTPServer::onWSMessage(std::shared_ptr<crow::websocket::connection> conn, 
             return;
         }
 
-        // 处理 pong 响应
+        // Handle pong response
         if (type == "pong") {
             std::lock_guard<std::mutex> lock(wsMutex_);
             for (auto& ws : wsConnections_) {
@@ -856,18 +856,18 @@ void HTTPServer::onWSMessage(std::shared_ptr<crow::websocket::connection> conn, 
                 }
             }
         }
-        // 加入房间
+        // Join room
         else if (type == "join_room") {
             std::string roomId = j.value("roomId", "");
             if (!roomId.empty()) {
                 joinRoom(connId, roomId);
             }
         }
-        // 离开房间
+        // Leave room
         else if (type == "leave_room") {
             leaveRoom(connId);
         }
-        // 房间消息
+        // Room message
         else if (type == "room_message") {
             std::string roomId = j.value("roomId", "");
             std::string action = j.value("action", "");
@@ -883,10 +883,10 @@ void HTTPServer::onWSMessage(std::shared_ptr<crow::websocket::connection> conn, 
                 msg["from"] = connId;
                 msg["timestamp"] = std::chrono::system_clock::now().time_since_epoch().count();
 
-                // 广播给房间其他人
+                // Broadcast to other room members
                 broadcastToRoom(roomId, connId, msg);
 
-                // 也回送给发送者（确认）
+                // Also send back to sender (acknowledgment)
                 {
                     std::lock_guard<std::mutex> lock(wsMutex_);
                     for (auto& ws : wsConnections_) {
@@ -928,7 +928,7 @@ void HTTPServer::onWSClose(std::shared_ptr<crow::websocket::connection> conn, co
         }
     }
 
-    // 离开房间
+    // Leave room
     if (!connId.empty() && !currentRoom.empty()) {
         leaveRoom(connId);
     }
@@ -1029,13 +1029,13 @@ void HTTPServer::broadcastDebuggerEvent(const std::string& eventType, const nloh
     }
 }
 
-// ========== Room 管理 ==========
+// ========== Room Management ==========
 
 void HTTPServer::joinRoom(const std::string& connId, const std::string& roomId) {
     std::lock_guard<std::mutex> wsLock(wsMutex_);
     std::lock_guard<std::mutex> roomLock(roomMutex_);
 
-    // 找到连接
+    // Find connection
     std::shared_ptr<WSConnection> targetConn;
     for (auto& ws : wsConnections_) {
         if (ws->id == connId) {
@@ -1049,12 +1049,12 @@ void HTTPServer::joinRoom(const std::string& connId, const std::string& roomId) 
         return;
     }
 
-    // 如果之前在房间，先离开
+    // If previously in a room, leave first
     if (!targetConn->currentRoom.empty()) {
         leaveRoom(connId);
     }
 
-    // 加入新房间
+    // Join new room
     auto& room = rooms_[roomId];
     room.roomId = roomId;
     room.connectionIds.insert(connId);
@@ -1062,7 +1062,7 @@ void HTTPServer::joinRoom(const std::string& connId, const std::string& roomId) 
 
     spdlog::info("[Room] Connection {} joined room {} (size: {})", connId, roomId, room.size());
 
-    // 发送加入成功消息
+    // Send join success message
     nlohmann::json msg;
     msg["type"] = "room";
     msg["event"] = "joined";
@@ -1071,7 +1071,7 @@ void HTTPServer::joinRoom(const std::string& connId, const std::string& roomId) 
     msg["roomSize"] = static_cast<int>(room.size());
     targetConn->send(msg.dump());
 
-    // 通知房间其他人
+    // Notify other room members
     nlohmann::json notify;
     notify["type"] = "room";
     notify["event"] = "user_joined";
@@ -1084,7 +1084,7 @@ void HTTPServer::leaveRoom(const std::string& connId) {
     std::lock_guard<std::mutex> wsLock(wsMutex_);
     std::lock_guard<std::mutex> roomLock(roomMutex_);
 
-    // 找到连接
+    // Find connection
     std::shared_ptr<WSConnection> targetConn;
     for (auto& ws : wsConnections_) {
         if (ws->id == connId) {
@@ -1099,12 +1099,12 @@ void HTTPServer::leaveRoom(const std::string& connId) {
 
     std::string roomId = targetConn->currentRoom;
 
-    // 从房间移除
+    // Remove from room
     auto it = rooms_.find(roomId);
     if (it != rooms_.end()) {
         it->second.connectionIds.erase(connId);
 
-        // 通知房间其他人
+        // Notify other room members
         nlohmann::json notify;
         notify["type"] = "room";
         notify["event"] = "user_left";
@@ -1112,7 +1112,7 @@ void HTTPServer::leaveRoom(const std::string& connId) {
         notify["connectionId"] = connId;
         broadcastToRoom(roomId, connId, notify);
 
-        // 如果房间空了，删除房间
+        // If room is empty, delete it
         if (it->second.empty()) {
             rooms_.erase(it);
             spdlog::info("[Room] Room {} removed (empty)", roomId);
@@ -1159,7 +1159,7 @@ void HTTPServer::broadcastToRoom(const std::string& roomId, const std::string& e
 
     std::string msgStr = message.dump();
     for (const auto& connId : it->second.connectionIds) {
-        if (connId == excludeConnId) continue;  // 跳过发送者
+        if (connId == excludeConnId) continue;  // Skip sender
 
         for (auto& ws : wsConnections_) {
             if (ws->id == connId && ws->isOpen()) {
@@ -1192,7 +1192,7 @@ std::vector<std::string> HTTPServer::getRoomConnections(const std::string& roomI
 // ========== Debugger API Handlers ==========
 
 crow::response HTTPServer::handleDebuggerConnect(const crow::request& req) {
-    // 调试器连接请求（无需认证，简化 VS Code 扩展连接）
+    // Debugger connection request (no authentication required, simplified VS Code extension connection)
     nlohmann::json j;
     j["success"] = true;
     j["message"] = "Debugger connected";
@@ -1235,7 +1235,7 @@ crow::response HTTPServer::handleDebuggerBreakpoints(const crow::request& req) {
         auto& bpManager = debugger.breakpoints();
 
         if (req.method == "GET"_method) {
-            // 获取所有断点
+            // Get all breakpoints
             auto bps = bpManager.getAllBreakpoints();
             nlohmann::json arr = nlohmann::json::array();
             for (const auto& bp : bps) {
@@ -1253,12 +1253,12 @@ crow::response HTTPServer::handleDebuggerBreakpoints(const crow::request& req) {
             response["breakpoints"] = arr;
             return jsonResponse(response);
         } else {
-            // POST - 设置断点
+            // POST - Set breakpoints
             auto body = nlohmann::json::parse(req.body);
             std::string file = body.value("file", "");
             auto breakpoints = body.value("breakpoints", nlohmann::json::array());
 
-            // 清除该文件的旧断点
+            // Clear old breakpoints for this file
             if (!file.empty()) {
                 bpManager.removeBreakpointsForFile(file);
             }
@@ -1330,7 +1330,7 @@ crow::response HTTPServer::handleDebuggerVariables(const crow::request& req) {
 }
 
 crow::response HTTPServer::handleDebuggerEvaluate(const crow::request& req) {
-    // 简化版不支持表达式求值
+    // Simplified version does not support expression evaluation
     nlohmann::json j;
     j["success"] = false;
     j["message"] = "Expression evaluation not supported in basic debugger";
@@ -1338,7 +1338,7 @@ crow::response HTTPServer::handleDebuggerEvaluate(const crow::request& req) {
 }
 
 crow::response HTTPServer::handleDebuggerSetVariable(const crow::request& req) {
-    // 简化版不支持修改变量
+    // Simplified version does not support variable modification
     nlohmann::json j;
     j["success"] = false;
     j["message"] = "Variable modification not supported in basic debugger";

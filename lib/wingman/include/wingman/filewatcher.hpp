@@ -7,58 +7,58 @@
 
 namespace wingman {
 
-// 前向声明
+// Forward declaration
 namespace platform {
     class IFileWatcher;
     struct FileChange;
 }
 
 /**
- * @brief 文件监控管理类
+ * @brief File watcher management class
  *
- * 提供跨平台的文件变化监控功能。
+ * Provides cross-platform file change monitoring functionality.
  */
 class FileWatcher {
 public:
     /**
-     * @brief 获取监控器单例
+     * @brief Get watcher singleton
      */
     static platform::IFileWatcher& instance();
 
-    // ========== 便捷静态方法 ==========
+    // ========== Convenience static methods ==========
 
     /**
-     * @brief 监控单个目录
-     * @param path 目录路径
-     * @param callback 变化回调
-     * @param recursive 是否递归监控子目录
-     * @return 监控 ID，失败返回 0
+     * @brief Watch a single directory
+     * @param path Directory path
+     * @param callback Change callback
+     * @param recursive Whether to recursively watch subdirectories
+     * @return Watch ID, returns 0 on failure
      */
     static uint64_t watch(const std::string& path,
                           std::function<void(const platform::FileChange&)> callback,
                           bool recursive = true);
 
     /**
-     * @brief 取消监控
-     * @param watchId 监控 ID
-     * @return 成功返回 true
+     * @brief Unwatch
+     * @param watchId Watch ID
+     * @return True on success
      */
     static bool unwatch(uint64_t watchId);
 
     /**
-     * @brief 取消路径的所有监控
-     * @param path 路径
-     * @return 取消的监控数量
+     * @brief Unwatch all watches for a path
+     * @param path Path
+     * @return Number of watches removed
      */
     static size_t unwatchPath(const std::string& path);
 
     /**
-     * @brief 获取活跃监控数量
+     * @brief Get active watch count
      */
     static size_t getWatchCount();
 
     /**
-     * @brief 检查是否有活跃监控
+     * @brief Check if there are active watches
      */
     static bool hasWatches();
 };

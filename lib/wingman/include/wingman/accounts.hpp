@@ -9,17 +9,17 @@
 
 namespace wingman {
 
-// 账号状态
+// Account status
 enum class AccountStatus {
-    Idle,          // 空闲
-    Running,       // 运行中
-    Success,       // 成功
-    Failed,        // 失败
-    Banned,        // 封禁
-    NeedVerify,    // 需要验证
+    Idle,          // Idle
+    Running,       // Running
+    Success,       // Success
+    Failed,        // Failed
+    Banned,        // Banned
+    NeedVerify,    // Need verification
 };
 
-// 账号状态转字符串
+// Convert account status to string
 inline std::string accountStatusToString(AccountStatus status) {
     switch (status) {
         case AccountStatus::Idle: return "idle";
@@ -32,7 +32,7 @@ inline std::string accountStatusToString(AccountStatus status) {
     }
 }
 
-// 字符串转账号状态
+// Convert string to account status
 inline AccountStatus stringToAccountStatus(const std::string& str) {
     if (str == "idle") return AccountStatus::Idle;
     if (str == "running") return AccountStatus::Running;
@@ -43,31 +43,31 @@ inline AccountStatus stringToAccountStatus(const std::string& str) {
     return AccountStatus::Idle;
 }
 
-// 账号信息
+// Account information
 struct Account {
-    std::string id;              // 账号 ID
-    std::string game;            // 游戏名称
-    std::string username;        // 用户名
-    std::string password;        // 密码（加密）
-    std::string email;           // 邮箱
-    std::string totpSecret;      // TOTP 密钥（加密）
-    std::string group;           // 分组名称
-    std::map<std::string, std::string> attributes;  // 自定义属性
+    std::string id;              // Account ID
+    std::string game;            // Game name
+    std::string username;        // Username
+    std::string password;        // Password (encrypted)
+    std::string email;           // Email
+    std::string totpSecret;      // TOTP secret (encrypted)
+    std::string group;           // Group name
+    std::map<std::string, std::string> attributes;  // Custom attributes
 
-    // 登录凭证
+    // Login credentials
     std::string token;           // access token
     std::string cookie;          // cookie
     std::chrono::system_clock::time_point tokenExpiry;
 
-    // 序列化
+    // Serialization
     nlohmann::json toJson() const {
         nlohmann::json j;
         j["id"] = id;
         j["game"] = game;
         j["username"] = username;
-        j["password"] = password;  // 实际使用时应加密
+        j["password"] = password;  // Should be encrypted in production
         j["email"] = email;
-        j["totp_secret"] = totpSecret;  // 实际使用时应加密
+        j["totp_secret"] = totpSecret;  // Should be encrypted in production
         j["group"] = group;
         j["attributes"] = attributes;
         j["token"] = token;
@@ -93,19 +93,19 @@ struct Account {
     }
 };
 
-// 批次信息
+// Batch information
 struct Batch {
-    std::string id;              // 批次 ID
-    std::string game;            // 游戏名称
-    std::string name;            // 批次名称
-    std::vector<std::string> accountIds;  // 账号 ID 列表
+    std::string id;              // Batch ID
+    std::string game;            // Game name
+    std::string name;            // Batch name
+    std::vector<std::string> accountIds;  // Account ID list
 
-    // 进度跟踪
-    std::map<std::string, AccountStatus> status;  // 账号状态
-    std::map<std::string, std::string> currentStep;  // 当前步骤
-    std::map<std::string, std::string> errorMessage;  // 错误信息
+    // Progress tracking
+    std::map<std::string, AccountStatus> status;  // Account status
+    std::map<std::string, std::string> currentStep;  // Current step
+    std::map<std::string, std::string> errorMessage;  // Error message
 
-    // 统计
+    // Statistics
     int total = 0;
     int completed = 0;
     int success = 0;
@@ -115,7 +115,7 @@ struct Batch {
     std::chrono::system_clock::time_point startTime;
     std::chrono::system_clock::time_point endTime;
 
-    // 序列化
+    // Serialization
     nlohmann::json toJson() const {
         nlohmann::json j;
         j["id"] = id;
@@ -171,7 +171,7 @@ struct Batch {
     }
 };
 
-// 批次进度
+// Batch progress
 struct BatchProgress {
     int total = 0;
     int completed = 0;
@@ -181,79 +181,79 @@ struct BatchProgress {
     double percent = 0.0;
 };
 
-// 账号管理器
+// Account manager
 class AccountManager {
 public:
     AccountManager(const std::string& dataDir = "data/accounts");
     ~AccountManager();
 
-    // ========== 账号管理 ==========
+    // ========== Account management ==========
 
-    // 添加账号
+    // Add account
     bool addAccount(const Account& account);
 
-    // 删除账号
+    // Remove account
     bool removeAccount(const std::string& gameId, const std::string& accountId);
 
-    // 获取账号
+    // Get account
     std::optional<Account> getAccount(const std::string& gameId, const std::string& accountId);
 
-    // 列出游戏的所有账号
+    // List all accounts for a game
     std::vector<Account> listAccounts(const std::string& game);
 
-    // 列出分组的账号
+    // List accounts by group
     std::vector<Account> listByGroup(const std::string& game, const std::string& group);
 
-    // 更新账号
+    // Update account
     bool updateAccount(const std::string& gameId, const Account& account);
 
-    // ========== 批次管理 ==========
+    // ========== Batch management ==========
 
-    // 创建批次
+    // Create batch
     std::string createBatch(const std::string& game, const std::string& name,
                             const std::vector<std::string>& accountIds);
 
-    // 获取批次
+    // Get batch
     std::optional<Batch> getBatch(const std::string& batchId);
 
-    // 列出批次
+    // List batches
     std::vector<Batch> listBatches(const std::string& game = "");
 
-    // 删除批次
+    // Remove batch
     bool removeBatch(const std::string& batchId);
 
-    // 更新批次状态
+    // Update batch status
     bool updateBatchStatus(const std::string& batchId,
                            const std::string& accountId,
                            AccountStatus status,
                            const std::string& step = "",
                            const std::string& error = "");
 
-    // 获取批次进度
+    // Get batch progress
     BatchProgress getBatchProgress(const std::string& batchId);
 
-    // ========== 分组管理 ==========
+    // ========== Group management ==========
 
-    // 创建分组
+    // Create group
     bool createGroup(const std::string& game, const std::string& group);
 
-    // 删除分组
+    // Remove group
     bool removeGroup(const std::string& game, const std::string& group);
 
-    // 列出分组
+    // List groups
     std::vector<std::string> listGroups(const std::string& game);
 
-    // 将账号添加到分组
+    // Add account to group
     bool addToGroup(const std::string& gameId, const std::string& accountId,
                     const std::string& group);
 
-    // ========== 导入/导出 ==========
+    // ========== Import/Export ==========
 
-    // 导入账号（CSV/JSON）
+    // Import accounts (CSV/JSON)
     bool importAccounts(const std::string& game, const std::string& filePath,
                         const std::string& format = "json");
 
-    // 导出账号
+    // Export accounts
     bool exportAccounts(const std::string& game, const std::string& filePath,
                         const std::string& format = "json");
 
@@ -262,7 +262,7 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-// 批次管理器（独立类，便于 Lua 绑定）
+// Batch manager (standalone class, convenient for Lua binding)
 class BatchManager {
 public:
     BatchManager(AccountManager& accountManager);

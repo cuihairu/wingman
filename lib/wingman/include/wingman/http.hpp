@@ -6,65 +6,65 @@
 
 namespace wingman {
 
-// HTTP 响应
+// HTTP response
 struct HttpResponse {
-    int statusCode;          // HTTP 状态码
-    std::string body;        // 响应体
-    std::unordered_map<std::string, std::string> headers;  // 响应头
-    std::string error;       // 错误信息
-    double elapsed;          // 请求耗时（秒）
+    int statusCode;          // HTTP status code
+    std::string body;        // Response body
+    std::unordered_map<std::string, std::string> headers;  // Response headers
+    std::string error;       // Error message
+    double elapsed;          // Request duration (seconds)
 
     HttpResponse() : statusCode(0), elapsed(0) {}
     bool isSuccess() const { return statusCode >= 200 && statusCode < 300; }
 };
 
-// HTTP 请求选项
+// HTTP request options
 struct HttpOptions {
-    int timeout = 30;        // 超时时间（秒）
+    int timeout = 30;        // Timeout (seconds)
     std::unordered_map<std::string, std::string> headers;
     bool followRedirects = true;
     int maxRedirects = 5;
 };
 
-// HTTP 客户端
+// HTTP client
 class HttpClient {
 public:
     HttpClient();
     ~HttpClient();
 
-    // GET 请求
+    // GET request
     HttpResponse get(const std::string& url, const HttpOptions& options = {});
 
-    // POST 请求 (JSON body)
+    // POST request (JSON body)
     HttpResponse post(const std::string& url,
                       const std::string& jsonBody,
                       const HttpOptions& options = {});
 
-    // POST 表单
+    // POST form
     HttpResponse postForm(const std::string& url,
                           const std::unordered_map<std::string, std::string>& fields,
                           const HttpOptions& options = {});
 
-    // PUT 请求
+    // PUT request
     HttpResponse put(const std::string& url,
                      const std::string& jsonBody,
                      const HttpOptions& options = {});
 
-    // DELETE 请求
+    // DELETE request
     HttpResponse del(const std::string& url, const HttpOptions& options = {});
 
-    // 设置默认请求头
+    // Set default request header
     void setDefaultHeader(const std::string& key, const std::string& value);
 
-    // 设置全局超时
+    // Set global timeout
     void setDefaultTimeout(int seconds);
 
 private:
-    void* m_curl;  // CURL* (void* 避免在头文件中包含 curl.h)
+    void* m_curl;  // CURL* (void* to avoid including curl.h in header)
     std::unordered_map<std::string, std::string> m_defaultHeaders;
     int m_defaultTimeout;
 
-    // 执行请求
+    // Execute request
     HttpResponse perform(const std::string& url,
                          const std::string& method,
                          const std::string& body,

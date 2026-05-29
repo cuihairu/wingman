@@ -25,7 +25,7 @@ protected:
     std::string testDbPath;
 };
 
-// ========== 字符串操作 ==========
+// ========== String Operations ==========
 
 TEST_F(KeyValueStoreTest, SetAndGet) {
     store->set("key1", "value1");
@@ -63,7 +63,7 @@ TEST_F(KeyValueStoreTest, KeysPattern) {
     store->set("user:2:name", "Bob");
     store->set("session:abc", "data");
 
-    // keys() 使用正则表达式，而不是通配符
+    // keys() uses regex, not wildcards
     auto keys = store->keys("user:.*:name");
     EXPECT_EQ(keys.size(), 2);
 }
@@ -76,7 +76,7 @@ TEST_F(KeyValueStoreTest, SetNX) {
     EXPECT_EQ(store->get("key1"), "value1");
 
     store->set("key1", "value2", options);
-    EXPECT_EQ(store->get("key1"), "value1");  // 不应覆盖
+    EXPECT_EQ(store->get("key1"), "value1");  // Should not overwrite
 }
 
 TEST_F(KeyValueStoreTest, SetXX) {
@@ -84,11 +84,11 @@ TEST_F(KeyValueStoreTest, SetXX) {
     options.xx = true;
 
     store->set("key1", "value1", options);
-    EXPECT_EQ(store->get("key1"), "");  // 不应创建
+    EXPECT_EQ(store->get("key1"), "");  // Should not create
 
     store->set("key1", "value1");
     store->set("key1", "value2", options);
-    EXPECT_EQ(store->get("key1"), "value2");  // 应覆盖
+    EXPECT_EQ(store->get("key1"), "value2");  // Should overwrite
 }
 
 TEST_F(KeyValueStoreTest, Incr) {
@@ -100,7 +100,7 @@ TEST_F(KeyValueStoreTest, Incr) {
     EXPECT_EQ(store->get("counter"), "16");
 }
 
-// ========== Hash 操作 ==========
+// ========== Hash Operations ==========
 
 TEST_F(KeyValueStoreTest, HSetAndGet) {
     store->hset("user:1", "name", "Alice");
@@ -145,7 +145,7 @@ TEST_F(KeyValueStoreTest, HKeys) {
     EXPECT_EQ(keys.size(), 3);
 }
 
-// ========== List 操作 ==========
+// ========== List Operations ==========
 
 TEST_F(KeyValueStoreTest, LPushAndRPop) {
     store->lpush("mylist", "item1");
@@ -194,7 +194,7 @@ TEST_F(KeyValueStoreTest, LRem) {
     EXPECT_EQ(store->llen("mylist"), 2);
 }
 
-// ========== 发布订阅 ==========
+// ========== Publish/Subscribe ==========
 
 TEST_F(KeyValueStoreTest, PublishSubscribe) {
     bool received = false;
@@ -239,7 +239,7 @@ TEST_F(KeyValueStoreTest, SetWithTTL) {
     EXPECT_EQ(store->get("key1"), "");
 }
 
-// ========== 持久化 ==========
+// ========== Persistence ==========
 
 TEST_F(KeyValueStoreTest, SaveAndLoad) {
     store->set("key1", "value1");
@@ -253,10 +253,10 @@ TEST_F(KeyValueStoreTest, SaveAndLoad) {
 
     EXPECT_EQ(newStore->get("key1"), "value1");
     EXPECT_EQ(newStore->get("key2"), "value2");
-    // Note: hash 和 list 当前不持久化，仅测试字符串键值
+    // Note: hash and list are not currently persisted, only testing string key-values
 }
 
-// ========== 统计信息 ==========
+// ========== Statistics ==========
 
 TEST_F(KeyValueStoreTest, Stats) {
     store->set("key1", "value1");

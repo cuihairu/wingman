@@ -259,7 +259,7 @@ public:
     std::shared_ptr<IUIAElement> findElement(const UIASelector& selector) override {
         if (!initialized_) return nullptr;
 
-        // 获取系统范围内的所有应用程序
+        // Get all applications in the system scope
         CFArrayRef applications = AXUIElementCreateApplicationList();
         if (!applications) return nullptr;
 
@@ -296,7 +296,7 @@ private:
             return current;
         }
 
-        // 递归查找子元素
+        // Recursively find child elements
         CFArrayRef children = nullptr;
         if (AXUIElementCopyAttributeValues(parent, kAXChildrenAttribute, 0, 100, &children) != kAXErrorSuccess || !children) {
             return nullptr;

@@ -10,10 +10,11 @@
 #include <functional>
 #include <filesystem>
 #include <thread>
+#include <atomic>
 
 namespace wingman {
 
-// 脚本配置
+// Script configuration
 struct ScriptConfig {
 	std::string name;
 	std::string path;
@@ -23,7 +24,7 @@ struct ScriptConfig {
 	std::unordered_map<std::string, std::string> env;
 };
 
-// 脚本状态
+// Script state
 enum class ScriptState {
 	unloaded,
 	loaded,
@@ -32,7 +33,7 @@ enum class ScriptState {
 	error
 };
 
-// 脚本信息
+// Script info
 struct ScriptInfo {
 	ScriptConfig config;
 	ScriptState state = ScriptState::unloaded;
@@ -40,15 +41,15 @@ struct ScriptInfo {
 	uint64_t lastModified = 0;
 	uint64_t lastLoaded = 0;
 
-	// 语言无关的脚本引擎实例
+	// Language-agnostic script engine instance
 	std::unique_ptr<script::IScriptEngine> engine;
 	std::string language;
 
-	// 脚本存储的数据
+	// Script stored data
 	std::unordered_map<std::string, std::string> data;
 };
 
-// 沙箱配置
+// Sandbox configuration
 struct SandboxConfig {
 	bool disableIO = true;
 	bool disableOS = true;
@@ -60,7 +61,7 @@ struct SandboxConfig {
 	uint64_t timeLimitMs = 30000;
 };
 
-// 脚本事件
+// Script events
 enum class ScriptEvent {
 	loaded,
 	unloaded,
@@ -78,7 +79,7 @@ public:
 	ScriptManager();
 	~ScriptManager();
 
-	// ========== 脚本加载管理 ==========
+	// ========== Script Loading Management ==========
 
 	bool loadScript(const std::string& name, const std::string& path, const ScriptConfig& config = {});
 	bool unloadScript(const std::string& name);
@@ -86,7 +87,7 @@ public:
 	bool checkReload(const std::string& name);
 	void checkAllReloads();
 
-	// ========== 脚本执行 ==========
+	// ========== Script Execution ==========
 
 	bool runScript(const std::string& name);
 	bool stopScript(const std::string& name);
@@ -97,7 +98,7 @@ public:
 	                  const std::vector<std::string>& args = {},
 	                  std::string* result = nullptr);
 
-	// ========== 配置管理 ==========
+	// ========== Configuration Management ==========
 
 	bool loadConfig(const std::string& path);
 	bool saveConfig(const std::string& path);
@@ -106,7 +107,7 @@ public:
 	std::string getEnv(const std::string& key) const;
 	void setEnv(const std::string& key, const std::string& value);
 
-	// ========== 状态查询 ==========
+	// ========== State Query ==========
 
 	ScriptInfo* getScriptInfo(const std::string& name);
 	std::vector<ScriptInfo> getAllScriptInfos() const;
@@ -114,29 +115,29 @@ public:
 	std::vector<std::string> getRunningScripts() const;
 	bool hasScript(const std::string& name) const;
 
-	// ========== 引擎访问 ==========
+	// ========== Engine Access ==========
 
-	// 获取脚本的引擎实例
+	// Get the script engine instance
 	script::IScriptEngine* getEngine(const std::string& name);
 
-	// 根据文件路径检测语言
+	// Detect language from file path
 	std::string detectLanguage(const std::string& path) const;
 
-	// 获取所有可用语言
+	// Get all available languages
 	std::vector<std::string> getAvailableLanguages() const;
 
-	// ========== 事件回调 ==========
+	// ========== Event Callbacks ==========
 
 	void setEventCallback(ScriptEventCallback callback);
 	void setOutputCallback(ScriptOutputCallback callback);
 	void logScriptOutput(const std::string& scriptName, const std::string& output);
 
-	// ========== 沙箱管理 ==========
+	// ========== Sandbox Management ==========
 
 	void setSandboxConfig(const SandboxConfig& config);
 	const SandboxConfig& getSandboxConfig() const;
 
-	// ========== 热加载控制 ==========
+	// ========== Hot Reload Control ==========
 
 	void setAutoReload(const std::string& name, bool enabled);
 	void setGlobalAutoReload(bool enabled);
@@ -152,18 +153,27 @@ private:
 	ScriptEventCallback m_eventCallback;
 	ScriptOutputCallback m_outputCallback;
 	bool m_globalAutoReload = false;
-	bool m_hotReloadRunning = false;
+	std::atomic<bool> m_hotReloadRunning{false};
 	std::thread m_hotReloadThread;
 
-	// 创建引擎并注册所有模块
+	// Create engine and register all modules
 	std::unique_ptr<script::IScriptEngine> createEngineForLanguage(const std::string& language);
 
-	// 私有方法
+	// Private helpers (caller must NOT hold m_mutex)
 	bool checkTimeLimit(const std::string& name);
 	uint64_t getFileModifiedTime(const std::string& path);
 	bool loadJsonConfig(const std::string& path);
 	bool loadIniConfig(const std::string& path);
 	void triggerEvent(const std::string& name, ScriptEvent event, const std::string& message = "");
+
+	// Internal implementations (caller must hold m_mutex)
+	bool stopScript_Locked(const std::string& name);
+	bool unloadScript_Locked(const std::string& name);
+	bool runScript_Locked(const std::string& name);
+	bool reloadScript_Locked(const std::string& name);
+	bool checkReload_Locked(const std::string& name);
+	void checkAllReloads_Locked();
+	std::vector<std::string> getScriptNames_Locked() const;
 };
 
 } // namespace wingman

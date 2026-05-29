@@ -287,10 +287,10 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
 
             case BasicTriggerAction::RunScript: {
                 if (!action.value.empty()) {
-                    // 通过 ScriptManager 执行脚本（语言无关）
-                    // 创建临时引擎执行脚本片段
+                    // Execute script via ScriptManager (language-agnostic)
+                    // Create a temporary engine to execute script snippet
                     auto& factory = script::ScriptEngineFactory::instance();
-                    std::string lang = factory.detectLanguage("script.lua"); // 默认 Lua
+                    std::string lang = factory.detectLanguage("script.lua"); // Default Lua
                     auto engine = factory.createEngine(lang);
                     if (engine && engine->initialize()) {
                         if (engine->executeString(action.value)) {

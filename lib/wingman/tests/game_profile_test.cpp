@@ -3,7 +3,7 @@
 
 using namespace wingman;
 
-// ========== GameProfile 结构体 ==========
+// ========== GameProfile Struct ==========
 
 TEST(GameProfileTest, DefaultValues) {
     GameProfile profile;

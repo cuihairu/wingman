@@ -5,7 +5,7 @@
 
 using namespace wingman;
 
-// ========== HumanMouse 配置测试 ==========
+// ========== HumanMouse Configuration Tests ==========
 
 TEST(HumanMouseTest, DefaultConfig) {
     HumanMouse mouse;
@@ -32,7 +32,7 @@ TEST(HumanMouseTest, SetConfig) {
     EXPECT_EQ(retrieved.pathVariance, 5);
 }
 
-// ========== 路径生成测试 ==========
+// ========== Path Generation Tests ==========
 
 TEST(HumanMouseTest, GenerateLinearPath) {
     HumanMouse mouse;
@@ -54,7 +54,7 @@ TEST(HumanMouseTest, GenerateDiagonalPath) {
     std::vector<Point> path = mouse.generateBezierPath(start, end);
 
     EXPECT_FALSE(path.empty());
-    EXPECT_GE(path.size(), 20);  // 至少20个采样点
+    EXPECT_GE(path.size(), 20);  // At least 20 sample points
 }
 
 TEST(HumanMouseTest, PathLengthCalculation) {
@@ -71,7 +71,7 @@ TEST(HumanMouseTest, PathLengthCalculation) {
     EXPECT_NEAR(length, 200, 1);  // 100 + 100 = 200
 }
 
-// ========== 随机性测试 ==========
+// ========== Randomness Tests ==========
 
 TEST(HumanMouseTest, RandomDelay) {
     HumanMouse mouse;
@@ -81,7 +81,7 @@ TEST(HumanMouseTest, RandomDelay) {
     auto end = std::chrono::steady_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    EXPECT_GE(duration, 40);  // 允许小误差
+    EXPECT_GE(duration, 40);  // Allow small error margin
     EXPECT_LE(duration, 150);
 }
 
@@ -94,11 +94,11 @@ TEST(HumanMouseTest, PathRandomness) {
     Point start(0, 0);
     Point end(200, 200);
 
-    // 生成两条路径，应该不同
+    // Generate two paths, they should differ
     auto path1 = mouse.generateBezierPath(start, end);
     auto path2 = mouse.generateBezierPath(start, end);
 
-    // 路径应该不完全相同（由于随机性）
+    // Paths should not be identical (due to randomness)
     bool different = false;
     for (size_t i = 1; i < path1.size() - 1; ++i) {
         if (path1[i].x != path2[i].x || path1[i].y != path2[i].y) {
@@ -109,7 +109,7 @@ TEST(HumanMouseTest, PathRandomness) {
     EXPECT_TRUE(different);
 }
 
-// ========== HumanKeyboard 测试 ==========
+// ========== HumanKeyboard Tests ==========
 
 TEST(HumanKeyboardTest, DefaultConfig) {
     HumanKeyboard keyboard;
@@ -147,7 +147,7 @@ TEST(HumanKeyboardTest, RandomDelayKeyboard) {
     EXPECT_GE(duration, 0);
 }
 
-// ========== Human 总接口测试 ==========
+// ========== Human Interface Tests ==========
 
 TEST(HumanTest, MouseSingleton) {
     auto& mouse1 = Human::mouse();
@@ -177,15 +177,15 @@ TEST(HumanTest, SetGlobalConfig) {
     EXPECT_EQ(retrieved.maxMoveDuration, 250);
 }
 
-// ========== 边界条件测试 ==========
+// ========== Boundary Condition Tests ==========
 
 TEST(HumanMouseTest, MoveToSamePosition) {
     HumanMouse mouse;
     Point pos(100, 100);
 
-    // 移动到相同位置应该是安全的
-    // 注意：实际会调用 Input::move，需要测试环境支持
-    // 这里只测试不会崩溃
+    // Moving to the same position should be safe
+    // Note: this actually calls Input::move, which requires test environment support
+    // Here we only test that it does not crash
     SUCCEED();
 }
 

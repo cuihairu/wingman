@@ -263,42 +263,42 @@ std::vector<Point> Screen::findColors(const Color& color, const Rect& region,
 #ifdef _WIN32
 bool Screen::findImage(const std::string& imagePath, const Rect& region,
                        double threshold, Point& result) {
-    // 加载模板图像
+    // Load template image
     cv::Mat templateImg = cv::imread(imagePath, cv::IMREAD_COLOR);
     if (templateImg.empty()) {
         return false;
     }
 
-    // 截取屏幕区域
+    // Capture screen region
     auto screenBitmap = capture(region);
     if (!screenBitmap) {
         return false;
     }
 
-    // 转换 Bitmap 到 OpenCV Mat
+    // Convert Bitmap to OpenCV Mat
     int width = screenBitmap->getWidth();
     int height = screenBitmap->getHeight();
     cv::Mat screenMat(height, width, CV_8UC4, screenBitmap->getData());
 
-    // 转换 BGRA 到 BGR
+    // Convert BGRA to BGR
     cv::Mat screenBGR;
     cv::cvtColor(screenMat, screenBGR, cv::COLOR_BGRA2BGR);
 
-    // 模板图像太大则跳过
+    // Skip if template image is too large
     if (templateImg.rows > screenBGR.rows || templateImg.cols > screenBGR.cols) {
         return false;
     }
 
-    // 执行模板匹配
+    // Execute template matching
     cv::Mat matchResult;
     cv::matchTemplate(screenBGR, templateImg, matchResult, cv::TM_CCOEFF_NORMED);
 
-    // 查找最佳匹配位置
+    // Find best match position
     double minVal, maxVal;
     cv::Point minLoc, maxLoc;
     cv::minMaxLoc(matchResult, &minVal, &maxVal, &minLoc, &maxLoc);
 
-    // 检查阈值
+    // Check threshold
     if (maxVal >= threshold) {
         result.x = region.x + maxLoc.x;
         result.y = region.y + maxLoc.y;

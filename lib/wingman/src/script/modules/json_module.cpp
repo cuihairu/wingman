@@ -13,7 +13,7 @@ static ScriptValue jsonToScriptValue(const JsonValue& jv) {
 	case JsonType::Null: return ScriptValue::null();
 	case JsonType::Boolean: return ScriptValue::fromBool(jv.asBool());
 	case JsonType::Number: {
-		// 尝试作为整数返回，若非整数则返回浮点
+		// Try to return as integer, otherwise return as float
 		double d = jv.asDouble();
 		int64_t i = jv.asInt64();
 		if (d == static_cast<double>(i) && i > -1000000000 && i < 1000000000) {

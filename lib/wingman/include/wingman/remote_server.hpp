@@ -10,14 +10,14 @@
 #include <mutex>
 
 #ifdef _WIN32
-// Windows socket 类型
+// Windows socket type
 typedef unsigned long long SOCKET;
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
 #else
-// POSIX socket 类型
+// POSIX socket type
 typedef int SOCKET;
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
@@ -25,17 +25,17 @@ typedef int SOCKET;
 
 namespace wingman {
 
-// ========== 远程控制请求/响应 ==========
+// ========== Remote control request/response ==========
 
 struct RemoteRequest {
-    std::string action;      // 动作类型
-    nlohmann::json params;   // 参数
+    std::string action;      // Action type
+    nlohmann::json params;   // Parameters
 
-    // 从JSON解析
+    // Parse from JSON
     static RemoteRequest fromJson(const std::string& jsonStr);
     static RemoteRequest fromJson(const nlohmann::json& j);
 
-    // 转换为JSON
+    // Convert to JSON
     nlohmann::json toJson() const;
 };
 
@@ -44,43 +44,43 @@ struct RemoteResponse {
     nlohmann::json data;
     std::string error;
 
-    // 转换为JSON字符串
+    // Convert to JSON string
     std::string toJsonString() const;
     static RemoteResponse fromJson(const nlohmann::json& j);
 };
 
-// ========== 远程控制服务器 ==========
+// ========== Remote control server ==========
 
 class RemoteServer {
 public:
     RemoteServer();
     ~RemoteServer();
 
-    // 启动服务器
+    // Start server
     bool start(int port = 9999);
 
-    // 停止服务器
+    // Stop server
     void stop();
 
-    // 检查运行状态
+    // Check running state
     bool isRunning() const { return running_; }
 
-    // 获取端口
+    // Get port
     int getPort() const { return port_; }
 
-    // 获取客户端连接数
+    // Get client connection count
     size_t getConnectionCount() const { return connectionCount_; }
 
 private:
-    // 处理客户端连接
+    // Handle client connection
     void handleClient(SOCKET clientSocket);
 
-    // 处理请求
+    // Handle request
     RemoteResponse handleRequest(const RemoteRequest& req);
 
-    // ========== 动作处理器 ==========
+    // ========== Action handlers ==========
 
-    // 屏幕操作
+    // Screen operations
 #ifdef WINGMAN_ENABLE_VISION
     RemoteResponse handleCaptureScreen(const nlohmann::json& params);
     RemoteResponse handleFindImage(const nlohmann::json& params);
@@ -88,66 +88,66 @@ private:
     RemoteResponse handleGetPixel(const nlohmann::json& params);
     RemoteResponse handleFindColor(const nlohmann::json& params);
 
-    // 输入模拟
+    // Input simulation
     RemoteResponse handleClick(const nlohmann::json& params);
     RemoteResponse handleMove(const nlohmann::json& params);
     RemoteResponse handleKey(const nlohmann::json& params);
     RemoteResponse handleTypeText(const nlohmann::json& params);
 
-    // 触发器管理
+    // Trigger management
     RemoteResponse handleAddTrigger(const nlohmann::json& params);
     RemoteResponse handleRemoveTrigger(const nlohmann::json& params);
     RemoteResponse handleEnableTrigger(const nlohmann::json& params);
     RemoteResponse handleDisableTrigger(const nlohmann::json& params);
     RemoteResponse handleListTriggers(const nlohmann::json& params);
 
-    // 宏操作
+    // Macro operations
     RemoteResponse handleRecordMacro(const nlohmann::json& params);
     RemoteResponse handleStopMacroRecording(const nlohmann::json& params);
     RemoteResponse handlePlayMacro(const nlohmann::json& params);
 
-    // 系统信息
+    // System information
     RemoteResponse handlePing(const nlohmann::json& params);
     RemoteResponse handleGetVersion(const nlohmann::json& params);
 
-    // ========== 服务器状态 ==========
+    // ========== Server state ==========
     bool running_ = false;
     int port_ = 9999;
     size_t connectionCount_ = 0;
 
-    // ========== 核心组件 ==========
+    // ========== Core components ==========
     std::unique_ptr<TriggerManager> triggerManager_;
     std::unique_ptr<MacroRecorder> macroRecorder_;
     std::mutex mutex_;
 
-    // ========== 实现细节 ==========
+    // ========== Implementation details ==========
     class Impl;
     std::unique_ptr<Impl> impl_;
 };
 
-// ========== 远程控制客户端 ==========
+// ========== Remote control client ==========
 
 class RemoteClient {
 public:
     RemoteClient();
     ~RemoteClient();
 
-    // 连接到服务器
+    // Connect to server
     bool connect(const std::string& host, int port = 9999);
 
-    // 断开连接
+    // Disconnect
     void disconnect();
 
-    // 检查连接状态
+    // Check connection state
     bool isConnected() const { return connected_; }
 
-    // 发送请求
+    // Send request
     RemoteResponse send(const RemoteRequest& req);
     RemoteResponse send(const std::string& action, const nlohmann::json& params = {});
 
-    // ========== 便捷方法 ==========
+    // ========== Convenience methods ==========
 
-    // 屏幕操作
+    // Screen operations
     RemoteResponse captureScreen(int x = 0, int y = 0, int width = 0, int height = 0);
     RemoteResponse getPixel(int x, int y);
     RemoteResponse findColor(uint32_t color, int x, int y, int width, int height, int tolerance = 10);
@@ -158,13 +158,13 @@ public:
     RemoteResponse key(int keyCode);
     RemoteResponse typeText(const std::string& text, int delayMs = 50);
 
-    // 触发器
+    // Triggers
     RemoteResponse addTrigger(const nlohmann::json& config);
     RemoteResponse listTriggers();
     RemoteResponse enableTrigger(const std::string& id);
     RemoteResponse disableTrigger(const std::string& id);
 
-    // 系统信息
+    // System information
     RemoteResponse ping();
 
 private:

@@ -44,7 +44,7 @@ protected:
 
 } // anonymous namespace
 
-// ========== 生命周期测试 ==========
+// ========== Lifecycle Tests ==========
 
 TEST(ComponentTest, FullLifecycle) {
     TestComponent c;
@@ -201,7 +201,7 @@ TEST(ComponentTest, ShutdownStopsRunningComponent) {
     EXPECT_TRUE(c.stopCalled);
 }
 
-// ========== 查询方法 ==========
+// ========== Query Methods ==========
 
 TEST(ComponentTest, IsReady) {
     TestComponent c;
@@ -252,7 +252,7 @@ TEST(ComponentTest, ExceptionWhat) {
     EXPECT_NE(msg.find("init error"), std::string::npos);
 }
 
-// ========== 析构不抛异常 ==========
+// ========== Destructor Does Not Throw ==========
 
 TEST(ComponentTest, DestructorDoesNotThrow) {
     {
@@ -262,7 +262,7 @@ TEST(ComponentTest, DestructorDoesNotThrow) {
     }
 }
 
-// ========== 新增测试：边界状态操作 ==========
+// ========== Additional Tests: Boundary State Operations ==========
 
 TEST(ComponentTest, StopFromUninitializedFails) {
     TestComponent c;

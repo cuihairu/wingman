@@ -57,7 +57,7 @@ struct Color {
     Color(uint8_t r = 0, uint8_t g = 0, uint8_t b = 0, uint8_t a = 255)
         : r(r), g(g), b(b), a(a) {}
 
-    // 从 0xRRGGBB 格式创建
+    // Create from 0xRRGGBB format
     static Color fromRGB(uint32_t rgb) {
         return Color(
             static_cast<uint8_t>((rgb >> 16) & 0xFF),
@@ -66,12 +66,12 @@ struct Color {
         );
     }
 
-    // 转换为 0xRRGGBB 格式
+    // Convert to 0xRRGGBB format
     uint32_t toRGB() const {
         return (r << 16) | (g << 8) | b;
     }
 
-    // 计算颜色差异（欧氏距离）
+    // Calculate color distance (Euclidean distance)
     int distance(const Color& other) const {
         int dr = r - other.r;
         int dg = g - other.g;
@@ -102,11 +102,11 @@ public:
     Color getPixel(int x, int y) const;
     void setPixel(int x, int y, const Color& color);
 
-    // 保存为文件
+    // Save to file
     bool save(const std::string& filepath) const;
 
 #ifdef _WIN32
-    // 从 HBITMAP 创建
+    // Create from HBITMAP
     static std::unique_ptr<Bitmap> fromHBITMAP(HBITMAP hbitmap);
 #endif
 
@@ -119,32 +119,32 @@ private:
 class Screen {
 public:
 #ifdef _WIN32
-    // 截取整个屏幕
+    // Capture entire screen
     static std::unique_ptr<Bitmap> capture();
 
-    // 截取指定区域
+    // Capture specified region
     static std::unique_ptr<Bitmap> capture(const Rect& region);
 
-    // 获取指定位置的颜色
+    // Get color at specified position
     static Color getPixel(int x, int y);
 
-    // 查找单个颜色点
+    // Find single color point
     static bool findColor(const Color& color, const Rect& region,
                          int tolerance, Point& result);
 
-    // 查找所有颜色点
+    // Find all color points
     static std::vector<Point> findColors(const Color& color, const Rect& region,
                                          int tolerance, int maxCount = 0);
 
-    // 图像匹配
+    // Image matching
     static bool findImage(const std::string& imagePath, const Rect& region,
                           double threshold, Point& result);
 
-    // 获取屏幕尺寸
+    // Get screen dimensions
     static int getScreenWidth();
     static int getScreenHeight();
 
-    // 获取主显示器尺寸
+    // Get primary monitor bounds
     static Rect getScreenBounds();
 #endif // _WIN32
 };

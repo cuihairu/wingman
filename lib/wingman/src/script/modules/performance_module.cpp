@@ -1,7 +1,7 @@
 #include "wingman/script/iscript_engine.hpp"
 #include "module_helpers.hpp"
 
-// performance.hpp 依赖 OpenCV，当 OpenCV 不可用时提供 stub 模块
+// performance.hpp depends on OpenCV; provides stub module when OpenCV is unavailable
 #ifdef HAS_OPENCV
 #include "wingman/performance.hpp"
 #endif

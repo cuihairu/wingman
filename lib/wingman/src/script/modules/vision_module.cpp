@@ -48,11 +48,11 @@ ModuleDescriptor createVisionModule() {
 
 		ImageMatch result;
 		if (args.size() > 2 && !args[2].isNull()) {
-			// 带搜索区域
+			// With search region
 			Rect region = toRect(args[2]);
 			result = Vision::findImage(templatePath, region, threshold);
 		} else {
-			// 全屏搜索
+			// Full-screen search
 			result = Vision::findImage(templatePath, threshold);
 		}
 

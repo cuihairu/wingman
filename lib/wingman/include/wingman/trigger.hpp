@@ -15,116 +15,116 @@
 
 namespace wingman {
 
-// 触发器类型
+// Trigger types
 enum class TriggerType {
-    ColorFound,      // 颜色出现
-    ColorLost,       // 颜色消失
-    ImageFound,      // 图像出现
-    ImageLost,       // 图像消失
-    WindowOpened,    // 窗口打开
-    WindowClosed,    // 窗口关闭
-    ProcessStarted,  // 进程启动
-    ProcessStopped,  // 进程停止
-    TimeElapsed,     // 时间经过
-    HotkeyPressed,   // 热键按下
-    PixelChanged,    // 像素变化
+    ColorFound,      // Color found
+    ColorLost,       // Color lost
+    ImageFound,      // Image found
+    ImageLost,       // Image lost
+    WindowOpened,    // Window opened
+    WindowClosed,    // Window closed
+    ProcessStarted,  // Process started
+    ProcessStopped,  // Process stopped
+    TimeElapsed,     // Time elapsed
+    HotkeyPressed,   // Hotkey pressed
+    PixelChanged,    // Pixel changed
 };
 
-// 触发器条件
+// Trigger condition
 struct BasicTriggerCondition {
     TriggerType type;
-    std::string value;      // 具体值（如颜色、窗口标题等）
-    Rect region;           // 搜索区域
-    int tolerance;         // 容差
-    int interval;          // 检查间隔 (ms)
+    std::string value;      // Specific value (e.g. color, window title, etc.)
+    Rect region;           // Search region
+    int tolerance;         // Tolerance
+    int interval;          // Check interval (ms)
     bool enabled;
 };
 
-// 触发器动作
+// Trigger action
 enum class BasicTriggerAction {
-    RunScript,       // 运行脚本
-    Click,           // 点击
-    KeyPress,        // 按键
-    Type,            // 输入
-    StopScript,      // 停止脚本
-    PauseScript,     // 暂停脚本
-    ShowMessage,     // 显示消息
-    PlayAudio,       // 播放声音
-    Log,             // 记录日志
+    RunScript,       // Run script
+    Click,           // Click
+    KeyPress,        // Key press
+    Type,            // Type text
+    StopScript,      // Stop script
+    PauseScript,     // Pause script
+    ShowMessage,     // Show message
+    PlayAudio,       // Play audio
+    Log,             // Log
 };
 
 struct TriggerActionData {
     BasicTriggerAction type;
     std::string value;
-    int x, y;           // 坐标
-    int delay;          // 延迟
+    int x, y;           // Coordinates
+    int delay;          // Delay
 };
 
-// 触发器配置
+// Trigger configuration
 struct TriggerConfig {
     std::string name;
     BasicTriggerCondition condition;
     std::vector<TriggerActionData> actions;
-    bool oneShot;        // 只触发一次
-    int cooldown;        // 冷却时间 (ms)
+    bool oneShot;        // Trigger only once
+    int cooldown;        // Cooldown (ms)
     bool enabled;
 };
 
-// 触发器实例（运行时数据）
+// Trigger instance (runtime data)
 struct TriggerInstance {
     size_t id;
     TriggerConfig config;
-    uint64_t startTime;       // 触发器启动时间
+    uint64_t startTime;       // Trigger start time
     uint64_t lastTriggerTime;
     bool triggered;
 };
 
-// 触发器管理器
+// Trigger manager
 class TriggerManager {
 public:
     TriggerManager();
     explicit TriggerManager(std::shared_ptr<spdlog::logger> logger);
     ~TriggerManager();
 
-    // 添加触发器
+    // Add trigger
     size_t add(const TriggerConfig& config);
 
-    // 更新触发器配置
+    // Update trigger configuration
     bool update(size_t id, const TriggerConfig& config);
 
-    // 移除触发器
+    // Remove trigger
     void remove(size_t id);
 
-    // 启动/停止触发器
+    // Enable/disable trigger
     void enable(size_t id);
     void disable(size_t id);
 
-    // 启动/停止所有触发器
+    // Start/stop all triggers
     void start();
     void stop();
 
-    // 获取触发器状态
+    // Get trigger state
     bool isRunning(size_t id) const;
 
-    // 获取所有触发器配置
+    // Get all trigger configurations
     std::vector<TriggerConfig> getAllTriggerConfigs() const;
 
-    // 获取所有触发器实例（含状态）
+    // Get all trigger instances (with state)
     std::vector<TriggerInstance> getAllTriggerInstances() const;
 
-    // 根据ID获取配置
+    // Get configuration by ID
     std::optional<TriggerConfig> getTriggerConfig(size_t id) const;
 
-    // 检查触发器是否存在
+    // Check if trigger exists
     bool hasTrigger(size_t id) const;
 
-    // 获取触发器数量
+    // Get trigger count
     size_t getTriggerCount() const;
 
-    // 设置脚本引擎工厂（用于执行脚本动作）
+    // Set script engine factory (for executing script actions)
     void setScriptManager(class ScriptManager* mgr);
 
-    // 设置日志器
+    // Set logger
     void setLogger(std::shared_ptr<spdlog::logger> logger);
 
 private:
@@ -135,19 +135,19 @@ private:
     class ScriptManager* m_scriptManager;
     std::shared_ptr<spdlog::logger> m_logger;
 
-    // 触发器检查线程
+    // Trigger check thread
     void checkThread();
 
-    // 检查单个触发器
+    // Check single trigger
     bool checkTrigger(TriggerInstance& trigger);
 
-    // 执行动作
+    // Execute actions
     void executeActions(const std::vector<TriggerActionData>& actions);
 
-    // 平台特定的消息框
+    // Platform-specific message box
     static void showMessage(const std::string& message);
 
-    // 平台特定的音频播放
+    // Platform-specific audio playback
     static void playAudio(const std::string& filepath);
 };
 

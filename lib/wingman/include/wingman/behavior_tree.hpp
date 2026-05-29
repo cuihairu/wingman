@@ -10,14 +10,14 @@
 
 namespace wingman {
 
-// 节点状态
+// Node status
 enum class NodeStatus {
-    SUCCESS,    // 成功
-    FAILURE,    // 失败
-    RUNNING     // 运行中
+    SUCCESS,    // Success
+    FAILURE,    // Failure
+    RUNNING     // Running
 };
 
-// 行为树节点基类
+// Behavior tree node base class
 class BehaviorNode {
 public:
     virtual ~BehaviorNode() = default;
@@ -25,7 +25,7 @@ public:
     virtual std::string getName() const = 0;
 };
 
-// 行为树上下文
+// Behavior tree context
 class BehaviorContext {
 public:
     std::map<std::string, std::string> variables;
@@ -40,9 +40,9 @@ public:
     void set(const std::string& key, bool value) { flags[key] = value; }
 };
 
-// ========== 复合节点 ==========
+// ========== Composite nodes ==========
 
-// Sequence: 顺序执行所有子节点，全部成功才返回 SUCCESS
+// Sequence: execute all children in order, returns SUCCESS only if all succeed
 class SequenceNode : public BehaviorNode {
 public:
     SequenceNode(const std::string& name = "Sequence");
@@ -56,7 +56,7 @@ private:
     size_t currentChild_ = 0;
 };
 
-// Selector: 选择执行子节点，任一成功就返回 SUCCESS
+// Selector: execute children in order, returns SUCCESS if any succeeds
 class SelectorNode : public BehaviorNode {
 public:
     SelectorNode(const std::string& name = "Selector");
@@ -70,14 +70,14 @@ private:
     size_t currentChild_ = 0;
 };
 
-// Parallel: 并行执行所有子节点
+// Parallel: execute all children in parallel
 class ParallelNode : public BehaviorNode {
 public:
     enum class Policy {
-        SUCCEED_ON_ALL,      // 全部成功
-        SUCCEED_ON_ONE,      // 任一成功
-        FAIL_ON_ALL,         // 全部失败
-        FAIL_ON_ONE          // 任一失败
+        SUCCEED_ON_ALL,      // All succeed
+        SUCCEED_ON_ONE,      // Any succeeds
+        FAIL_ON_ALL,         // All fail
+        FAIL_ON_ONE          // Any fails
     };
 
     ParallelNode(const std::string& name = "Parallel", Policy successPolicy = Policy::SUCCEED_ON_ALL);
@@ -91,10 +91,10 @@ private:
     Policy successPolicy_;
 };
 
-// Repeat: 重复执行子节点
+// Repeat: repeat child execution
 class RepeatNode : public BehaviorNode {
 public:
-    RepeatNode(std::shared_ptr<BehaviorNode> child, int count = -1);  // -1 = 无限
+    RepeatNode(std::shared_ptr<BehaviorNode> child, int count = -1);  // -1 = infinite
     NodeStatus tick() override;
     std::string getName() const override { return "Repeat"; }
 
@@ -104,7 +104,7 @@ private:
     int current_ = 0;
 };
 
-// Retry: 失败时重试
+// Retry: retry on failure
 class RetryNode : public BehaviorNode {
 public:
     RetryNode(std::shared_ptr<BehaviorNode> child, int maxRetries = 3);
@@ -117,7 +117,7 @@ private:
     int currentRetries_ = 0;
 };
 
-// Inverter: 反转子节点结果
+// Inverter: invert child result
 class InverterNode : public BehaviorNode {
 public:
     InverterNode(std::shared_ptr<BehaviorNode> child);
@@ -128,9 +128,9 @@ private:
     std::shared_ptr<BehaviorNode> child_;
 };
 
-// ========== 条件节点 ==========
+// ========== Condition nodes ==========
 
-// Condition: 条件判断
+// Condition: conditional check
 class ConditionNode : public BehaviorNode {
 public:
     using ConditionFunc = std::function<bool(BehaviorContext&)>;
@@ -144,7 +144,7 @@ private:
     ConditionFunc condition_;
 };
 
-// Check: 检查变量值
+// Check: check variable value
 class CheckNode : public BehaviorNode {
 public:
     enum class Op { EQUAL, NOT_EQUAL, GREATER, LESS, GREATER_EQUAL, LESS_EQUAL };
@@ -159,9 +159,9 @@ private:
     Op op_;
 };
 
-// ========== 动作节点 ==========
+// ========== Action nodes ==========
 
-// Action: 执行动作
+// Action: execute action
 class ActionNode : public BehaviorNode {
 public:
     using ActionFunc = std::function<NodeStatus(BehaviorContext&)>;
@@ -175,7 +175,7 @@ private:
     ActionFunc action_;
 };
 
-// Wait: 等待指定时间
+// Wait: wait for specified duration
 class WaitNode : public BehaviorNode {
 public:
     WaitNode(int milliseconds);
@@ -187,7 +187,7 @@ private:
     std::chrono::steady_clock::time_point startTime_;
 };
 
-// Delay: 延迟执行
+// Delay: delayed execution
 class DelayNode : public BehaviorNode {
 public:
     DelayNode(std::shared_ptr<BehaviorNode> child, int milliseconds);
@@ -200,7 +200,7 @@ private:
     std::chrono::steady_clock::time_point startTime_;
 };
 
-// ========== 行为树 ==========
+// ========== Behavior tree ==========
 
 class BehaviorTree {
 public:
@@ -214,7 +214,7 @@ public:
     const std::string& getName() const { return name_; }
     BehaviorContext& getContext() { return context_; }
 
-    // 创建常用节点的工厂方法
+    // Factory methods for common nodes
     static std::shared_ptr<SequenceNode> sequence(const std::string& name = "");
     static std::shared_ptr<SelectorNode> selector(const std::string& name = "");
     static std::shared_ptr<ParallelNode> parallel(const std::string& name = "", ParallelNode::Policy policy = ParallelNode::Policy::SUCCEED_ON_ALL);
@@ -227,7 +227,7 @@ private:
     BehaviorContext context_;
 };
 
-// ========== 行为树管理器 ==========
+// ========== Behavior tree manager ==========
 
 class BehaviorTreeManager {
 public:
@@ -238,7 +238,7 @@ public:
     void removeTree(const std::string& name);
     std::vector<std::shared_ptr<BehaviorTree>> getAllTrees() const;
 
-    // 启动/停止所有树
+    // Start/stop all trees
     void startAll();
     void stopAll();
 

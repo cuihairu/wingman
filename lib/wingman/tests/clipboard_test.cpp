@@ -5,7 +5,7 @@
 
 using namespace wingman;
 
-// ========== 文本操作测试 ==========
+// ========== Text Operation Tests ==========
 
 TEST(ClipboardTest, SetAndGetText) {
     std::string testText = "Hello, Wingman!";
@@ -41,7 +41,7 @@ TEST(ClipboardTest, HasText) {
 }
 
 TEST(ClipboardTest, LongText) {
-    std::string longText(10000, 'A');  // 10KB 文本
+    std::string longText(10000, 'A');  // 10KB text
 
     EXPECT_TRUE(Clipboard::setText(longText));
     std::string result = Clipboard::getText();
@@ -49,7 +49,7 @@ TEST(ClipboardTest, LongText) {
     EXPECT_EQ(result, longText);
 }
 
-// ========== HTML 操作测试 ==========
+// ========== HTML Operation Tests ==========
 
 TEST(ClipboardTest, SetAndGetHTML) {
     std::string testHTML = "<html><body><b>Bold</b> and <i>italic</i></body></html>";
@@ -57,7 +57,7 @@ TEST(ClipboardTest, SetAndGetHTML) {
     EXPECT_TRUE(Clipboard::setHTML(testHTML));
     std::string result = Clipboard::getHTML();
 
-    // HTML 可能会被添加格式头，只检查核心内容
+    // HTML may have format headers added, only check core content
     EXPECT_FALSE(result.empty());
 }
 
@@ -70,15 +70,15 @@ TEST(ClipboardTest, HasHTML) {
     EXPECT_TRUE(Clipboard::hasHTML());
 }
 
-// ========== 图像操作测试 ==========
+// ========== Image Operation Tests ==========
 
 TEST(ClipboardTest, SetAndGetImage) {
-    // 创建一个简单的 2x2 红色图像 (BGRA)
+    // Create a simple 2x2 red image (BGRA)
     int width = 2;
     int height = 2;
     std::vector<uint8_t> imageData;
 
-    // BGRA: 蓝色=0, 绿色=0, 红色=255, Alpha=255
+    // BGRA: Blue=0, Green=0, Red=255, Alpha=255
     for (int i = 0; i < width * height; ++i) {
         imageData.push_back(0);    // B
         imageData.push_back(0);    // G
@@ -101,17 +101,17 @@ TEST(ClipboardTest, HasImage) {
 
     EXPECT_FALSE(Clipboard::hasImage());
 
-    // 设置一个小图像
-    std::vector<uint8_t> imageData(16, 255);  // 1x1 像素
+    // Set a small image
+    std::vector<uint8_t> imageData(16, 255);  // 1x1 pixel
     Clipboard::setImage(imageData, 1, 1);
 
     EXPECT_TRUE(Clipboard::hasImage());
 }
 
-// ========== 文件操作测试 ==========
+// ========== File Operation Tests ==========
 
 TEST(ClipboardTest, SetAndGetFiles) {
-    // 注意：实际文件路径需要存在
+    // Note: actual file paths must exist
     std::vector<std::string> files = {
         "C:\\Windows\\System32\\notepad.exe",
         "C:\\Windows\\System32\\calc.exe"
@@ -138,7 +138,7 @@ TEST(ClipboardTest, HasFiles) {
     EXPECT_TRUE(Clipboard::hasFiles());
 }
 
-// ========== 通用操作测试 ==========
+// ========== General Operation Tests ==========
 
 TEST(ClipboardTest, Clear) {
     Clipboard::setText("Some content");
@@ -156,10 +156,10 @@ TEST(ClipboardTest, IsEmpty) {
     EXPECT_FALSE(Clipboard::isEmpty());
 }
 
-// ========== 边界条件测试 ==========
+// ========== Boundary Condition Tests ==========
 
 TEST(ClipboardTest, MultipleOperations) {
-    // 测试连续多次操作
+    // Test consecutive multiple operations
     for (int i = 0; i < 10; ++i) {
         std::string text = "Iteration " + std::to_string(i);
         EXPECT_TRUE(Clipboard::setText(text));
@@ -168,15 +168,15 @@ TEST(ClipboardTest, MultipleOperations) {
 }
 
 TEST(ClipboardTest, FormatOverride) {
-    // 先设置文本
+    // Set text first
     Clipboard::setText("Text content");
     EXPECT_TRUE(Clipboard::hasText());
 
-    // 再设置图像，应该覆盖文本
+    // Then set image, should override text
     std::vector<uint8_t> imageData(16, 255);
     Clipboard::setImage(imageData, 1, 1);
 
-    // 图像应该存在，文本可能被覆盖
+    // Image should exist, text may be overridden
     EXPECT_TRUE(Clipboard::hasImage());
 }
 

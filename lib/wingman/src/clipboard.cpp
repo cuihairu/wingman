@@ -54,7 +54,7 @@ using PlatformClipboard = wingman::platform::NullClipboard;
 
 namespace wingman {
 
-// ========== Clipboard 实现 ==========
+// ========== Clipboard Implementation ==========
 
 platform::IClipboard& Clipboard::instance() {
     static std::unique_ptr<PlatformClipboard> instance = [] {
@@ -67,7 +67,7 @@ platform::IClipboard& Clipboard::instance() {
     return *instance;
 }
 
-// ========== 便捷静态方法 ==========
+// ========== Convenience Static Methods ==========
 
 bool Clipboard::setText(const std::string& text) {
     return instance().setText(text);

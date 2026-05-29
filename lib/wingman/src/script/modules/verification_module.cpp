@@ -5,7 +5,7 @@ namespace wingman {
 namespace script {
 namespace modules {
 
-// 模块级共享 VerificationManager 实例
+// Module-level shared VerificationManager instance
 static VerificationManager& getVerificationManager() {
 	static VerificationManager instance;
 	return instance;

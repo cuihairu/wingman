@@ -59,8 +59,20 @@ void SmartTrigger::stop() {
     if (!running_) return;
 
     running_ = false;
-    if (watchThread_.joinable()) {
-        watchThread_.join();
+
+    bool isSelfStop = watchThread_.joinable() &&
+                      std::this_thread::get_id() == watchThread_.get_id();
+
+    if (isSelfStop) {
+        // Cannot join self -- detach so the thread cleans up on exit
+        if (watchThread_.joinable()) {
+            watchThread_.detach();
+        }
+    } else {
+        // External caller: join to ensure clean shutdown
+        if (watchThread_.joinable()) {
+            watchThread_.join();
+        }
     }
 
     spdlog::info("Trigger '{}' stopped", name_);
@@ -188,6 +200,9 @@ void SmartTrigger::watchLoop() {
             spdlog::info("Trigger '{}' triggered (count: {})", name_, triggerCount_.load());
 
             executeActions();
+
+            // Fast exit after self-stop via STOP action
+            if (!running_) break;
 
             if (maxTriggers_ > 0 && triggerCount_ >= maxTriggers_) {
                 spdlog::info("Trigger '{}' reached max triggers ({})", name_, maxTriggers_);

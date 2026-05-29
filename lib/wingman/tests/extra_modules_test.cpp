@@ -7,7 +7,7 @@
 
 using namespace wingman;
 
-// ========== TriggerType 枚举 ==========
+// ========== TriggerType Enum ==========
 
 TEST(TriggerEnumsTest, TriggerTypeValues) {
     EXPECT_EQ(static_cast<int>(TriggerType::ColorFound), 0);
@@ -19,7 +19,7 @@ TEST(TriggerEnumsTest, BasicTriggerActionValues) {
     EXPECT_EQ(static_cast<int>(BasicTriggerAction::Log), 8);
 }
 
-// ========== TriggerConfig 结构体 ==========
+// ========== TriggerConfig Struct ==========
 
 TEST(TriggerConfigTest, DefaultValues) {
     TriggerConfig cfg{};
@@ -88,7 +88,7 @@ TEST(PerformanceStatsTest, DefaultValues) {
     EXPECT_DOUBLE_EQ(stats.avgImageSearchTime, 0);
 }
 
-// ========== PerformanceManager 单例 ==========
+// ========== PerformanceManager Singleton ==========
 
 TEST(PerformanceManagerTest, SingletonInstance) {
     auto& mgr1 = PerformanceManager::instance();
@@ -144,7 +144,7 @@ TEST(CachedImageTest, DefaultValues) {
     EXPECT_TRUE(img.path.empty());
 }
 
-// ========== SmartTriggerCondition / Action 配置 ==========
+// ========== SmartTriggerCondition / Action Configuration ==========
 
 TEST(SmartTriggerConditionTest, DefaultValues) {
     TriggerCondition cond;
@@ -161,7 +161,7 @@ TEST(SmartTriggerActionTest, DefaultValues) {
     EXPECT_TRUE(action.logMessage.empty());
 }
 
-// ========== SmartTrigger 基础 ==========
+// ========== SmartTrigger Basics ==========
 
 TEST(SmartTriggerTest, CreateAndGetName) {
     SmartTrigger trigger("test_trigger");

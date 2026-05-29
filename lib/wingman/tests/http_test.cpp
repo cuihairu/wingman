@@ -48,7 +48,7 @@ TEST(HttpOptionsTest, DefaultValues) {
     EXPECT_EQ(opts.maxRedirects, 5);
 }
 
-// ========== HttpClient 构造/析构 ==========
+// ========== HttpClient Construction/Destruction ==========
 
 TEST(HttpClientTest, ConstructionDoesNotCrash) {
     EXPECT_NO_THROW(HttpClient client);
@@ -59,7 +59,7 @@ TEST(HttpClientTest, GetInvalidUrlReturnsError) {
     HttpOptions opts;
     opts.timeout = 2;
     HttpResponse resp = client.get("http://127.0.0.1:1/nonexistent", opts);
-    // 连接应该失败，但不应崩溃
+    // Connection should fail, but should not crash
     EXPECT_NE(resp.statusCode, 200);
 }
 

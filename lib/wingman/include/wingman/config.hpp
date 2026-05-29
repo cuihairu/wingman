@@ -8,61 +8,61 @@
 
 namespace wingman {
 
-// 服务器连接配置
+// Server connection configuration
 struct ServerConfig {
     std::string host = "localhost";
     int port = 9527;
     std::string username;
-    std::string password;  // 注意：实际使用时应该加密存储
+    std::string password;  // Note: should be encrypted in production
     bool autoConnect = false;
-    bool serverControlled = false;  // 服务器控制模式：允许远程下发脚本
+    bool serverControlled = false;  // Server control mode: allows remote script deployment
 
-    // 转换为 JSON
+    // Convert to JSON
     std::string toJson() const;
 
-    // 从 JSON 解析
+    // Parse from JSON
     static ServerConfig fromJson(const std::string& json);
 
-    // 验证配置
+    // Validate configuration
     bool isValid() const { return !host.empty() && port > 0 && port <= 65535; }
 };
 
-// 自动运行配置
+// Auto-run configuration
 struct AutoRunConfig {
-    bool enabled = false;           // 是否启用自动运行
-    std::string scriptPath;         // 脚本路径
-    int delaySeconds = 0;           // 启动延迟（秒）
-    bool repeat = false;            // 是否重复运行
-    int repeatInterval = 0;         // 重复间隔（秒），0 表示脚本自己控制循环
+    bool enabled = false;           // Whether to enable auto-run
+    std::string scriptPath;         // Script path
+    int delaySeconds = 0;           // Startup delay (seconds)
+    bool repeat = false;            // Whether to repeat
+    int repeatInterval = 0;         // Repeat interval (seconds), 0 means script controls its own loop
 
     std::string toJson() const;
     static AutoRunConfig fromJson(const std::string& json);
 };
 
-// 心跳配置
+// Heartbeat configuration
 struct HeartbeatConfig {
-    bool enabled = true;            // 是否启用心跳
-    int intervalSeconds = 30;       // 心跳间隔（秒）
-    int timeoutSeconds = 90;        // 超时时间（秒），服务器超过此时间未收到心跳认为节点离线
+    bool enabled = true;            // Whether to enable heartbeat
+    int intervalSeconds = 30;       // Heartbeat interval (seconds)
+    int timeoutSeconds = 90;        // Timeout (seconds), server considers node offline if no heartbeat received within this time
 
     std::string toJson() const;
     static HeartbeatConfig fromJson(const std::string& json);
 };
 
-// 游戏配置
+// Game configuration
 struct GameConfig {
-    std::string name;               // 游戏名称
-    std::string path;               // 游戏可执行文件路径
-    std::string args;               // 启动参数
-    std::string workingDir;         // 工作目录
-    bool autoStart = false;         // 是否自动启动游戏
-    std::string scriptPath;         // 关联的自动脚本
-    std::string windowTitle;        // 窗口标题（用于检测）
-    int delaySeconds = 5;           // 游戏启动后等待时间（秒）
-    bool autoRestart = false;       // 游戏关闭后是否自动重启
-    int restartDelay = 10;          // 重启延迟（秒）
-    int maxRestarts = 3;            // 最大重启次数（0 = 无限）
-    int restartCount = 0;           // 当前重启次数（内部使用）
+    std::string name;               // Game name
+    std::string path;               // Game executable path
+    std::string args;               // Launch arguments
+    std::string workingDir;         // Working directory
+    bool autoStart = false;         // Whether to auto-start the game
+    std::string scriptPath;         // Associated auto script
+    std::string windowTitle;        // Window title (for detection)
+    int delaySeconds = 5;           // Wait time after game launch (seconds)
+    bool autoRestart = false;       // Whether to auto-restart after game closes
+    int restartDelay = 10;          // Restart delay (seconds)
+    int maxRestarts = 3;            // Max restart count (0 = unlimited)
+    int restartCount = 0;           // Current restart count (internal use)
 
     std::string toJson() const;
     static GameConfig fromJson(const std::string& json);
@@ -70,46 +70,46 @@ struct GameConfig {
     bool isValid() const { return !path.empty(); }
 };
 
-// 通用配置管理器
+// General configuration manager
 class ConfigManager {
 public:
     explicit ConfigManager(const std::string& configDir = "config");
     ~ConfigManager();
 
-    // 禁止拷贝
+    // Non-copyable
     ConfigManager(const ConfigManager&) = delete;
     ConfigManager& operator=(const ConfigManager&) = delete;
 
-    // 服务器配置
+    // Server configuration
     ServerConfig getServerConfig() const;
     bool setServerConfig(const ServerConfig& config);
 
-    // 自动运行配置
+    // Auto-run configuration
     AutoRunConfig getAutoRunConfig() const;
     bool setAutoRunConfig(const AutoRunConfig& config);
 
-    // 心跳配置
+    // Heartbeat configuration
     HeartbeatConfig getHeartbeatConfig() const;
     bool setHeartbeatConfig(const HeartbeatConfig& config);
 
-    // 游戏配置
+    // Game configuration
     std::vector<GameConfig> getGameConfigList() const;
     bool writeGameConfigList(const std::vector<GameConfig>& games);
     bool addGameConfig(const GameConfig& game);
     bool removeGameConfig(const std::string& name);
 
-    // 通用键值对访问
+    // Generic key-value access
     std::optional<std::string> get(const std::string& key) const;
     bool set(const std::string& key, const std::string& value);
     bool remove(const std::string& key);
 
-    // 保存到磁盘
+    // Save to disk
     bool save();
 
-    // 从磁盘重新加载
+    // Reload from disk
     bool load();
 
-    // 获取配置目录
+    // Get config directory
     const std::string& getConfigDir() const;
 
 private:

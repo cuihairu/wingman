@@ -33,7 +33,7 @@ using PlatformFileWatcher = wingman::platform::NullFileWatcher;
 
 namespace wingman {
 
-// ========== FileWatcher 实现 ==========
+// ========== FileWatcher Implementation ==========
 
 platform::IFileWatcher& FileWatcher::instance() {
     static std::unique_ptr<PlatformFileWatcher> instance = [] {
@@ -46,7 +46,7 @@ platform::IFileWatcher& FileWatcher::instance() {
     return *instance;
 }
 
-// ========== 便捷静态方法 ==========
+// ========== Convenience Static Methods ==========
 
 uint64_t FileWatcher::watch(const std::string& path,
                             std::function<void(const platform::FileChange&)> callback,

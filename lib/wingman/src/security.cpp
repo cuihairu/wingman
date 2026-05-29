@@ -36,7 +36,7 @@ void SecurityManager::initRandomEngine() {
     m_randomEngine.seed(rd());
 }
 
-// ========== 防检测 ==========
+// ========== Anti-Detection ==========
 
 void SecurityManager::setAntiDetectionConfig(const AntiDetectionConfig& config) {
     m_antiDetection = config;
@@ -65,12 +65,12 @@ std::pair<double, double> SecurityManager::getClickJitter() const {
 }
 
 void SecurityManager::simulateHumanBehavior() {
-    // 模拟人类微小的随机停顿和动作变化
+    // Simulate tiny random pauses and action variations like a human
     int delay = getRandomDelay();
     Sleep(delay);
 }
 
-// ========== 进程保护 ==========
+// ========== Process Protection ==========
 
 void SecurityManager::setProcessProtectionConfig(const ProcessProtectionConfig& config) {
     m_processProtection = config;
@@ -85,7 +85,7 @@ bool SecurityManager::enableProcessProtection() {
         return true;
     }
 
-    // Windows 进程保护需要管理员权限
+    // Windows process protection requires administrator privileges
     HANDLE hToken = nullptr;
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken)) {
         return false;
@@ -110,7 +110,7 @@ bool SecurityManager::enableProcessProtection() {
 }
 
 void SecurityManager::disableProcessProtection() {
-    // 进程保护禁用通常不需要特殊操作
+    // Disabling process protection typically does not require special operations
 }
 
 bool SecurityManager::isDebuggerPresent() {
@@ -122,7 +122,7 @@ bool SecurityManager::isDebuggerPresent() {
 }
 
 bool SecurityManager::checkDebuggerPEB() {
-    // 检查 PEB 中的 BeingDebugged 标志
+    // Check the BeingDebugged flag in PEB
     typedef struct _PEB {
         BYTE Reserved1[2];
         BYTE BeingDebugged;
@@ -138,7 +138,7 @@ bool SecurityManager::checkDebuggerPEB() {
         PVOID Reserved3;
     } PROCESS_BASIC_INFORMATION;
 
-    // 使用 NtQueryInformationProcess 检查
+    // Check using NtQueryInformationProcess
     typedef NTSTATUS(NTAPI* pNtQueryInformationProcess)(
         HANDLE, ULONG, PVOID, ULONG, PULONG);
 
@@ -164,10 +164,10 @@ bool SecurityManager::checkDebuggerPEB() {
 }
 
 bool SecurityManager::checkDebuggerFlags() {
-    // 检查其他调试器标志
+    // Check other debugger flags
     if (IsDebuggerPresent()) return true;
 
-    // 检查调试器窗口
+    // Check for debugger windows
     HWND hWnd = FindWindowA(nullptr, "WinDbgFrameClass");
     if (hWnd) return true;
 
@@ -188,7 +188,7 @@ bool SecurityManager::checkHardwareBreakpoints() {
         return false;
     }
 
-    // 检查调试寄存器
+    // Check debug registers
     return (ctx.Dr0 != 0 || ctx.Dr1 != 0 || ctx.Dr2 != 0 || ctx.Dr3 != 0 ||
             (ctx.Dr7 & 0xFF) != 0);
 }
@@ -202,7 +202,7 @@ bool SecurityManager::isRunningInVM() {
 }
 
 bool SecurityManager::checkVMRegistry() {
-    // 检查 VM 相关的注册表键
+    // Check VM-related registry keys
     const char* vmKeys[] = {
         "HARDWARE\\DEVICEMAP\\Scsi\\Scsi Port 0\\Scsi Bus 0\\Target Id 0\\Logical Unit Id 0",
         "HARDWARE\\ACPI\\DSDT\\VBOX__",
@@ -224,7 +224,7 @@ bool SecurityManager::checkVMRegistry() {
 }
 
 bool SecurityManager::checkVMProcesses() {
-    // 检查 VM 相关进程
+    // Check VM-related processes
     const char* vmProcesses[] = {
         "vmwareservice.exe",
         "vmwareuser.exe",
@@ -266,7 +266,7 @@ bool SecurityManager::checkVMProcesses() {
 }
 
 bool SecurityManager::checkVMDrivers() {
-    // 检查 VM 相关驱动
+    // Check VM-related drivers
     const char* vmDrivers[] = {
         "\\\\.\\VBoxMiniRdrDN",
         "\\\\.\\VBoxGuest",
@@ -287,16 +287,16 @@ bool SecurityManager::checkVMDrivers() {
 }
 
 bool SecurityManager::checkVMCPUID() {
-    // 使用 CPUID 指令检测虚拟机
+    // Detect virtual machine using CPUID instruction
     int regs[4] = {0};
 
-    // 检查 VMWare
+    // Check VMWare
     __cpuid(regs, 0x40000000);
     if (regs[1] == 0x61774D56 && regs[2] == 0x4D566572 && regs[3] == 0x656C6966) { // "VMware" in reverse
         return true;
     }
 
-    // 检查 VirtualBox
+    // Check VirtualBox
     if (regs[1] == 0x6F626F78 && regs[2] == 0x72615761 && regs[3] == 0x74656E69) { // "VirtualBox" parts
         return true;
     }
@@ -309,7 +309,7 @@ bool SecurityManager::verifyIntegrity() {
         return true;
     }
 
-    // 获取当前模块句柄
+    // Get current module handle
     HMODULE hModule = GetModuleHandleA(nullptr);
     if (!hModule) return false;
 
@@ -318,7 +318,7 @@ bool SecurityManager::verifyIntegrity() {
         return false;
     }
 
-    // 计算模块哈希
+    // Calculate module hash
     HCRYPTPROV hProv = 0;
     if (!CryptAcquireContextA(&hProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
         return false;
@@ -332,7 +332,7 @@ bool SecurityManager::verifyIntegrity() {
 
     bool valid = CryptHashData(hHash, (BYTE*)hModule, modInfo.SizeOfImage, 0);
 
-    // TODO: 与存储的哈希比较
+    // TODO: Compare with stored hash
 
     CryptDestroyHash(hHash);
     CryptReleaseContext(hProv, 0);
@@ -340,10 +340,10 @@ bool SecurityManager::verifyIntegrity() {
     return valid;
 }
 
-// ========== 代码签名 ==========
+// ========== Code Signing ==========
 
 bool SecurityManager::verifySignature() {
-    // Windows 验证代码签名
+    // Windows verify code signature
     WINTRUST_FILE_INFO fileInfo = {0};
     fileInfo.cbStruct = sizeof(WINTRUST_FILE_INFO);
     fileInfo.pcwszFilePath = L"wingman.exe";
@@ -365,18 +365,18 @@ bool SecurityManager::verifySignature() {
 CodeSignature SecurityManager::getSignatureInfo() {
     CodeSignature info;
 
-    // TODO: 实现签名信息提取
+    // TODO: Implement signature info extraction
 
     return info;
 }
 
 bool SecurityManager::selfSign(const std::string& certPath, const std::string& keyPath) {
-    // 自签名仅用于开发环境
-    // 生产环境应使用正式证书
+    // Self-signing is only for development environment
+    // Production should use proper certificates
     return false;
 }
 
-// ========== 混淆 ==========
+// ========== Obfuscation ==========
 
 std::string SecurityManager::encryptString(const std::string& input, const std::string& key) {
     std::string output;
@@ -391,7 +391,7 @@ std::string SecurityManager::encryptString(const std::string& input, const std::
 }
 
 std::string SecurityManager::decryptString(const std::string& input, const std::string& key) {
-    return encryptString(input, key); // XOR 对称
+    return encryptString(input, key); // XOR is symmetric
 }
 
 std::string SecurityManager::generateRandomString(size_t length) {
@@ -412,7 +412,7 @@ std::string SecurityManager::generateRandomString(size_t length) {
 }
 
 std::string SecurityManager::hashString(const std::string& input) {
-    // 使用 BCrypt 进行哈希
+    // Hash using BCrypt
     BCRYPT_ALG_HANDLE hAlg = nullptr;
     NTSTATUS status = BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_SHA256_ALGORITHM, nullptr, 0);
     if (status != 0) return "";
@@ -439,7 +439,7 @@ std::string SecurityManager::hashString(const std::string& input) {
 
     if (status != 0) return "";
 
-    // 转换为十六进制字符串
+    // Convert to hexadecimal string
     std::stringstream ss;
     for (size_t i = 0; i < sizeof(hash); ++i) {
         ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
@@ -448,7 +448,7 @@ std::string SecurityManager::hashString(const std::string& input) {
     return ss.str();
 }
 
-// ========== 内存保护 ==========
+// ========== Memory Protection ==========
 
 bool SecurityManager::protectMemory(void* addr, size_t size, bool protect) {
     DWORD oldProtect;
@@ -469,10 +469,10 @@ void SecurityManager::unlockMemory(void* ptr, size_t size) {
     VirtualUnlock(ptr, size);
 }
 
-// ========== 日志安全 ==========
+// ========== Log Security ==========
 
 void SecurityManager::secureLog(const std::string& message) {
-    // 过滤敏感信息后记录
+    // Log after filtering sensitive information
     std::string filtered = filterSensitive(message);
     OutputDebugStringA(filtered.c_str());
 }
@@ -480,7 +480,7 @@ void SecurityManager::secureLog(const std::string& message) {
 std::string SecurityManager::filterSensitive(const std::string& input) {
     std::string output = input;
 
-    // 过滤常见敏感信息模式
+    // Filter common sensitive information patterns
     const char* patterns[] = {
         "password",
         "passwd",

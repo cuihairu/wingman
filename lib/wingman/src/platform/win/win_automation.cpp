@@ -137,12 +137,12 @@ public:
         CComPtr<IUIAutomationTogglePattern> togglePattern;
         if (element_ && SUCCEEDED(element_->GetCurrentPatternAs(UIA_TogglePatternId,
             __uuidof(IUIAutomationTogglePattern), reinterpret_cast<void**>(&togglePattern))) && togglePattern) {
-            // 先检查当前状态
+            // Check current state first
             ToggleState current;
             if (SUCCEEDED(togglePattern->get_CurrentToggleState(&current))) {
                 bool isCurrentlyChecked = (current == ToggleState_On);
                 if (isCurrentlyChecked != checked) {
-                    // 状态不匹配，切换它
+                    // State mismatch, toggle it
                     return SUCCEEDED(togglePattern->Toggle());
                 }
                 return true;
@@ -239,13 +239,13 @@ private:
     std::shared_ptr<IUIAElement> findElementRecursive(CComPtr<IUIAutomationElement> parent, const UIASelector& selector) {
         if (!parent) return nullptr;
 
-        // 检查当前元素是否匹配
+        // Check if current element matches
         auto current = std::make_shared<UIAElement>(parent);
         if (selector.matches(current->getInfo())) {
             return current;
         }
 
-        // 递归查找子元素
+        // Recursively find child elements
         CComPtr<IUIAutomationTreeWalker> walker;
         if (FAILED(automation_->get_ControlViewWalker(&walker)) || !walker) return nullptr;
 

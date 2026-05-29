@@ -324,12 +324,12 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
 
 void TriggerManager::showMessage(const std::string& message) {
 #if defined(__linux__)
-    // Linux: 使用 zenity 或 kdialog
+    // Linux: use zenity or kdialog
     system(("zenity --info --text='" + message + "' 2>/dev/null || "
            "kdialog --msgbox '" + message + "' 2>/dev/null || "
            "echo '" + message + "'").c_str());
 #elif defined(__APPLE__)
-    // macOS: 使用 osascript
+    // macOS: use osascript
     system(("osascript -e 'display dialog \"" + message + "\" buttons \"OK\"' 2>/dev/null || "
            "echo '" + message + "'").c_str());
 #endif
@@ -337,11 +337,11 @@ void TriggerManager::showMessage(const std::string& message) {
 
 void TriggerManager::playAudio(const std::string& filepath) {
 #if defined(__linux__)
-    // Linux: 使用 aplay 或 paplay
+    // Linux: use aplay or paplay
     system(("aplay '" + filepath + "' 2>/dev/null || "
            "paplay '" + filepath + "' 2>/dev/null").c_str());
 #elif defined(__APPLE__)
-    // macOS: 使用 afplay
+    // macOS: use afplay
     system(("afplay '" + filepath + "' 2>/dev/null").c_str());
 #endif
 }

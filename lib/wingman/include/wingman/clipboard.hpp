@@ -12,92 +12,92 @@
 
 namespace wingman {
 
-// 前向声明
+// Forward declaration
 namespace platform {
     class IClipboard;
 }
 
 /**
- * @brief 剪贴板管理类
+ * @brief Clipboard management class
  *
- * 提供跨平台的剪贴板访问接口，自动使用平台最佳实现。
+ * Provides cross-platform clipboard access interface, automatically using the best platform implementation.
  */
 class Clipboard {
 public:
     /**
-     * @brief 获取剪贴板单例
+     * @brief Get clipboard singleton
      */
     static platform::IClipboard& instance();
 
-    // ========== 便捷静态方法 ==========
+    // ========== Convenience static methods ==========
 
     /**
-     * @brief 设置剪贴板文本
+     * @brief Set clipboard text
      */
     static bool setText(const std::string& text);
 
     /**
-     * @brief 获取剪贴板文本
+     * @brief Get clipboard text
      */
     static std::string getText();
 
     /**
-     * @brief 检查剪贴板是否包含文本
+     * @brief Check if clipboard contains text
      */
     static bool hasText();
 
     /**
-     * @brief 设置剪贴板 HTML
+     * @brief Set clipboard HTML
      */
     static bool setHTML(const std::string& html);
 
     /**
-     * @brief 获取剪贴板 HTML
+     * @brief Get clipboard HTML
      */
     static std::string getHTML();
 
     /**
-     * @brief 检查剪贴板是否包含 HTML
+     * @brief Check if clipboard contains HTML
      */
     static bool hasHTML();
 
     /**
-     * @brief 设置剪贴板图像
+     * @brief Set clipboard image
      */
     static bool setImage(const std::vector<uint8_t>& imageData, int width, int height);
 
     /**
-     * @brief 获取剪贴板图像
+     * @brief Get clipboard image
      */
     static std::vector<uint8_t> getImage(int* outWidth, int* outHeight);
 
     /**
-     * @brief 检查剪贴板是否包含图像
+     * @brief Check if clipboard contains image
      */
     static bool hasImage();
 
     /**
-     * @brief 设置剪贴板文件列表
+     * @brief Set clipboard file list
      */
     static bool setFiles(const std::vector<std::string>& files);
 
     /**
-     * @brief 获取剪贴板文件列表
+     * @brief Get clipboard file list
      */
     static std::vector<std::string> getFiles();
 
     /**
-     * @brief 检查剪贴板是否包含文件
+     * @brief Check if clipboard contains files
      */
     static bool hasFiles();
 
     /**
-     * @brief 清空剪贴板
+     * @brief Clear clipboard
      */
     static void clear();
 
     /**
-     * @brief 检查剪贴板是否为空
+     * @brief Check if clipboard is empty
      */
     static bool isEmpty();
 };

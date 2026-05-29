@@ -10,83 +10,83 @@
 namespace wingman::capture {
 
 /**
- * @brief 捕获源抽象接口
+ * @brief Capture source abstract interface
  *
- * 支持不同的捕获源：屏幕、窗口、相机等
+ * Supports different capture sources: screen, window, camera, etc.
  */
 class ICaptureSource {
 public:
     virtual ~ICaptureSource() = default;
 
     /**
-     * @brief 捕获画面
-     * @param region 捕获区域（空则捕获全部）
-     * @return 捕获的位图
+     * @brief Capture frame
+     * @param region Capture region (empty captures all)
+     * @return Captured bitmap
      */
     virtual std::unique_ptr<Bitmap> capture(const Rect& region = {}) = 0;
 
     /**
-     * @brief 获取边界
-     * @return 捕获源的边界矩形
+     * @brief Get bounds
+     * @return Capture source bounding rectangle
      */
     virtual Rect getBounds() const = 0;
 
     /**
-     * @brief 检查可用性
-     * @return 可用返回 true
+     * @brief Check availability
+     * @return True if available
      */
     virtual bool isAvailable() const = 0;
 
     /**
-     * @brief 获取名称
-     * @return 捕获源名称
+     * @brief Get name
+     * @return Capture source name
      */
     virtual std::string getName() const = 0;
 
     /**
-     * @brief 获取宽度
+     * @brief Get width
      */
     virtual int getWidth() const { return getBounds().width; }
 
     /**
-     * @brief 获取高度
+     * @brief Get height
      */
     virtual int getHeight() const { return getBounds().height; }
 };
 
 /**
- * @brief 屏幕捕获源
+ * @brief Screen capture source
  *
- * 捕获整个显示器或指定显示器
+ * Captures the entire display or a specified monitor
  */
 class ScreenCaptureSource : public core::ComponentBase, public ICaptureSource {
 public:
     /**
-     * @brief 构造函数
-     * @param monitorIndex 显示器索引（0 为主显示器）
+     * @brief Constructor
+     * @param monitorIndex Monitor index (0 is primary monitor)
      */
     explicit ScreenCaptureSource(int monitorIndex = 0);
 
     ~ScreenCaptureSource() override = default;
 
-    // ICaptureSource 接口
+    // ICaptureSource interface
     std::unique_ptr<Bitmap> capture(const Rect& region = {}) override;
     Rect getBounds() const override;
     bool isAvailable() const override;
     std::string getName() const override;
 
     /**
-     * @brief 获取显示器索引
+     * @brief Get monitor index
      */
     int getMonitorIndex() const { return monitorIndex_; }
 
     /**
-     * @brief 获取显示器数量
+     * @brief Get monitor count
      */
     static int getMonitorCount();
 
     /**
-     * @brief 获取主显示器捕获源
+     * @brief Get primary screen capture source
      */
     static std::shared_ptr<ScreenCaptureSource> getPrimaryScreen();
 
@@ -105,53 +105,53 @@ private:
 
 #ifdef _WIN32
 /**
- * @brief 窗口捕获源
+ * @brief Window capture source
  *
- * 捕获特定窗口的内容
+ * Captures the content of a specific window
  */
 class WindowCaptureSource : public core::ComponentBase, public ICaptureSource {
 public:
     /**
-     * @brief 构造函数
-     * @param hwnd 窗口句柄
+     * @brief Constructor
+     * @param hwnd Window handle
      */
     explicit WindowCaptureSource(HWND hwnd);
 
     ~WindowCaptureSource() override = default;
 
-    // ICaptureSource 接口
+    // ICaptureSource interface
     std::unique_ptr<Bitmap> capture(const Rect& region = {}) override;
     Rect getBounds() const override;
     bool isAvailable() const override;
     std::string getName() const override;
 
     /**
-     * @brief 获取窗口句柄
+     * @brief Get window handle
      */
     HWND getHwnd() const { return hwnd_; }
 
     /**
-     * @brief 获取窗口标题
+     * @brief Get window title
      */
     const std::string& getWindowTitle() const { return windowTitle_; }
 
     /**
-     * @brief 按标题查找窗口
-     * @param title 窗口标题（支持部分匹配）
-     * @return 窗口捕获源，未找到返回 nullptr
+     * @brief Find window by title
+     * @param title Window title (supports partial match)
+     * @return Window capture source, nullptr if not found
      */
     static std::unique_ptr<WindowCaptureSource> findByTitle(const std::string& title);
 
     /**
-     * @brief 按类名查找窗口
-     * @param className 窗口类名
-     * @return 窗口捕获源，未找到返回 nullptr
+     * @brief Find window by class name
+     * @param className Window class name
+     * @return Window capture source, nullptr if not found
      */
     static std::unique_ptr<WindowCaptureSource> findByClassName(const std::string& className);
 
     /**
-     * @brief 列出所有顶层窗口
-     * @return 窗口句柄列表
+     * @brief List all top-level windows
+     * @return Window handle list
      */
     static std::vector<HWND> listTopLevelWindows();
 
@@ -172,63 +172,63 @@ private:
 #endif // _WIN32
 
 /**
- * @brief 捕获源管理器
+ * @brief Capture source manager
  *
- * 管理所有注册的捕获源
+ * Manages all registered capture sources
  */
 class CaptureSourceManager {
 public:
     static CaptureSourceManager& instance();
 
-    // 禁止拷贝
+    // Non-copyable
     CaptureSourceManager(const CaptureSourceManager&) = delete;
     CaptureSourceManager& operator=(const CaptureSourceManager&) = delete;
 
     /**
-     * @brief 注册捕获源
-     * @param source 捕获源
+     * @brief Register capture source
+     * @param source Capture source
      */
     void registerSource(std::shared_ptr<ICaptureSource> source);
 
     /**
-     * @brief 移除捕获源
-     * @param name 捕获源名称
+     * @brief Remove capture source
+     * @param name Capture source name
      */
     void removeSource(const std::string& name);
 
     /**
-     * @brief 获取捕获源
-     * @param name 捕获源名称
-     * @return 捕获源指针，不存在返回 nullptr
+     * @brief Get capture source
+     * @param name Capture source name
+     * @return Capture source pointer, nullptr if not found
      */
     std::shared_ptr<ICaptureSource> getSource(const std::string& name) const;
 
     /**
-     * @brief 获取默认屏幕捕获源
-     * @return 主显示器捕获源
+     * @brief Get default screen capture source
+     * @return Primary monitor capture source
      */
     std::shared_ptr<ScreenCaptureSource> getPrimaryScreen();
 
     /**
-     * @brief 按名称获取屏幕捕获源
+     * @brief Get screen capture source by name
      */
     std::shared_ptr<ScreenCaptureSource> getScreenSource(const std::string& name);
 
 #ifdef _WIN32
     /**
-     * @brief 按名称获取窗口捕获源
+     * @brief Get window capture source by name
      */
     std::shared_ptr<WindowCaptureSource> getWindowSource(const std::string& name);
 #endif // _WIN32
 
     /**
-     * @brief 列出所有捕获源
-     * @return 捕获源列表
+     * @brief List all capture sources
+     * @return Capture source list
      */
     std::vector<std::shared_ptr<ICaptureSource>> listSources() const;
 
     /**
-     * @brief 列出指定类型的捕获源
+     * @brief List capture sources by type
      */
     template<typename T>
     std::vector<std::shared_ptr<T>> listSourcesByType() const {
@@ -244,12 +244,12 @@ public:
     }
 
     /**
-     * @brief 清空所有捕获源
+     * @brief Clear all capture sources
      */
     void clear();
 
     /**
-     * @brief 获取捕获源数量
+     * @brief Get capture source count
      */
     size_t getSourceCount() const {
         std::lock_guard<std::mutex> lock(mutex_);

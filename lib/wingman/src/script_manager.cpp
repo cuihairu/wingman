@@ -29,7 +29,7 @@ ScriptManager::~ScriptManager() {
 	}
 }
 
-// ========== 引擎创建 ==========
+// ========== Engine Creation ==========
 
 std::unique_ptr<script::IScriptEngine> ScriptManager::createEngineForLanguage(const std::string& language) {
 	auto engine = script::ScriptEngineFactory::instance().createEngine(language);
@@ -42,13 +42,13 @@ std::unique_ptr<script::IScriptEngine> ScriptManager::createEngineForLanguage(co
 		return nullptr;
 	}
 
-	// 注册所有模块描述符
+	// Register all module descriptors
 	script::modules::registerAllModules(*engine);
 
 	return engine;
 }
 
-// ========== 脚本加载管理 ==========
+// ========== Script Loading Management ==========
 
 bool ScriptManager::loadScript(const std::string& name, const std::string& path, const ScriptConfig& config) {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -59,7 +59,7 @@ bool ScriptManager::loadScript(const std::string& name, const std::string& path,
 	}
 
 	if (m_scripts.find(name) != m_scripts.end()) {
-		unloadScript(name);
+		unloadScript_Locked(name);
 	}
 
 	auto info = std::make_unique<ScriptInfo>();
@@ -77,14 +77,17 @@ bool ScriptManager::loadScript(const std::string& name, const std::string& path,
 
 bool ScriptManager::unloadScript(const std::string& name) {
 	std::lock_guard<std::mutex> lock(m_mutex);
+	return unloadScript_Locked(name);
+}
 
+bool ScriptManager::unloadScript_Locked(const std::string& name) {
 	auto it = m_scripts.find(name);
 	if (it == m_scripts.end()) {
 		return false;
 	}
 
 	if (it->second->state == ScriptState::running) {
-		stopScript(name);
+		stopScript_Locked(name);
 	}
 
 	triggerEvent(name, ScriptEvent::unloaded, "");
@@ -94,7 +97,10 @@ bool ScriptManager::unloadScript(const std::string& name) {
 
 bool ScriptManager::reloadScript(const std::string& name) {
 	std::lock_guard<std::mutex> lock(m_mutex);
+	return reloadScript_Locked(name);
+}
 
+bool ScriptManager::reloadScript_Locked(const std::string& name) {
 	auto it = m_scripts.find(name);
 	if (it == m_scripts.end()) {
 		return false;
@@ -104,7 +110,7 @@ bool ScriptManager::reloadScript(const std::string& name) {
 	bool wasRunning = info->state == ScriptState::running;
 
 	if (wasRunning) {
-		stopScript(name);
+		stopScript_Locked(name);
 	}
 
 	info->lastModified = getFileModifiedTime(info->config.path);
@@ -112,7 +118,7 @@ bool ScriptManager::reloadScript(const std::string& name) {
 	info->lastError.clear();
 
 	if (wasRunning) {
-		runScript(name);
+		runScript_Locked(name);
 	}
 
 	triggerEvent(name, ScriptEvent::reloaded, "");
@@ -121,7 +127,10 @@ bool ScriptManager::reloadScript(const std::string& name) {
 
 bool ScriptManager::checkReload(const std::string& name) {
 	std::lock_guard<std::mutex> lock(m_mutex);
+	return checkReload_Locked(name);
+}
 
+bool ScriptManager::checkReload_Locked(const std::string& name) {
 	auto it = m_scripts.find(name);
 	if (it == m_scripts.end()) {
 		return false;
@@ -134,24 +143,32 @@ bool ScriptManager::checkReload(const std::string& name) {
 
 	uint64_t currentModified = getFileModifiedTime(info->config.path);
 	if (currentModified > info->lastModified) {
-		return reloadScript(name);
+		return reloadScript_Locked(name);
 	}
 
 	return false;
 }
 
 void ScriptManager::checkAllReloads() {
-	std::vector<std::string> names = getScriptNames();
+	std::lock_guard<std::mutex> lock(m_mutex);
+	checkAllReloads_Locked();
+}
+
+void ScriptManager::checkAllReloads_Locked() {
+	std::vector<std::string> names = getScriptNames_Locked();
 	for (const auto& name : names) {
-		checkReload(name);
+		checkReload_Locked(name);
 	}
 }
 
-// ========== 脚本执行 ==========
+// ========== Script Execution ==========
 
 bool ScriptManager::runScript(const std::string& name) {
 	std::lock_guard<std::mutex> lock(m_mutex);
+	return runScript_Locked(name);
+}
 
+bool ScriptManager::runScript_Locked(const std::string& name) {
 	auto it = m_scripts.find(name);
 	if (it == m_scripts.end()) {
 		return false;
@@ -160,10 +177,10 @@ bool ScriptManager::runScript(const std::string& name) {
 	auto& infoPtr = it->second;
 
 	if (infoPtr->state == ScriptState::running) {
-		stopScript(name);
+		stopScript_Locked(name);
 	}
 
-	// 创建引擎实例
+	// Create engine instance
 	if (!infoPtr->engine) {
 		infoPtr->engine = createEngineForLanguage(infoPtr->language);
 		if (!infoPtr->engine) {
@@ -174,12 +191,12 @@ bool ScriptManager::runScript(const std::string& name) {
 		}
 	}
 
-	// 设置环境变量
+	// Set environment variables
 	for (const auto& [k, v] : infoPtr->config.env) {
 		infoPtr->engine->setGlobal(k, script::ScriptValue::fromString(v));
 	}
 
-	// 执行脚本文件
+	// Execute script file
 	if (!infoPtr->engine->executeFile(infoPtr->config.path)) {
 		infoPtr->state = ScriptState::error;
 		infoPtr->lastError = infoPtr->engine->getLastError();
@@ -198,7 +215,10 @@ bool ScriptManager::runScript(const std::string& name) {
 
 bool ScriptManager::stopScript(const std::string& name) {
 	std::lock_guard<std::mutex> lock(m_mutex);
+	return stopScript_Locked(name);
+}
 
+bool ScriptManager::stopScript_Locked(const std::string& name) {
 	auto it = m_scripts.find(name);
 	if (it == m_scripts.end()) {
 		return false;
@@ -260,7 +280,7 @@ bool ScriptManager::callFunction(const std::string& name, const std::string& fun
 		return false;
 	}
 
-	// 转换参数
+	// Convert arguments
 	std::vector<script::ScriptValue> svArgs;
 	svArgs.reserve(args.size());
 	for (const auto& arg : args) {
@@ -273,7 +293,7 @@ bool ScriptManager::callFunction(const std::string& name, const std::string& fun
 		return false;
 	}
 
-	// 转换结果
+	// Convert result
 	if (result) {
 		if (svResult.isString()) {
 			*result = svResult.asString();
@@ -291,7 +311,7 @@ bool ScriptManager::callFunction(const std::string& name, const std::string& fun
 	return true;
 }
 
-// ========== 配置管理 ==========
+// ========== Configuration Management ==========
 
 bool ScriptManager::loadConfig(const std::string& path) {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -377,7 +397,7 @@ void ScriptManager::setEnv(const std::string& key, const std::string& value) {
 	m_env[key] = value;
 }
 
-// ========== 状态查询 ==========
+// ========== State Query ==========
 
 ScriptInfo* ScriptManager::getScriptInfo(const std::string& name) {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -391,7 +411,10 @@ ScriptInfo* ScriptManager::getScriptInfo(const std::string& name) {
 
 std::vector<std::string> ScriptManager::getScriptNames() const {
 	std::lock_guard<std::mutex> lock(m_mutex);
+	return getScriptNames_Locked();
+}
 
+std::vector<std::string> ScriptManager::getScriptNames_Locked() const {
 	std::vector<std::string> names;
 	names.reserve(m_scripts.size());
 	for (const auto& pair : m_scripts) {
@@ -417,7 +440,7 @@ bool ScriptManager::hasScript(const std::string& name) const {
 	return m_scripts.find(name) != m_scripts.end();
 }
 
-// ========== 引擎访问 ==========
+// ========== Engine Access ==========
 
 script::IScriptEngine* ScriptManager::getEngine(const std::string& name) {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -437,7 +460,7 @@ std::vector<std::string> ScriptManager::getAvailableLanguages() const {
 	return script::ScriptEngineFactory::instance().getAvailableLanguages();
 }
 
-// ========== 事件回调 ==========
+// ========== Event Callbacks ==========
 
 void ScriptManager::setEventCallback(ScriptEventCallback callback) {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -475,7 +498,7 @@ std::vector<ScriptInfo> ScriptManager::getAllScriptInfos() const {
 	return infos;
 }
 
-// ========== 沙箱管理 ==========
+// ========== Sandbox Management ==========
 
 void ScriptManager::setSandboxConfig(const SandboxConfig& config) {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -486,7 +509,7 @@ const SandboxConfig& ScriptManager::getSandboxConfig() const {
 	return m_sandboxConfig;
 }
 
-// ========== 热加载控制 ==========
+// ========== Hot Reload Control ==========
 
 void ScriptManager::setAutoReload(const std::string& name, bool enabled) {
 	std::lock_guard<std::mutex> lock(m_mutex);
@@ -519,19 +542,26 @@ void ScriptManager::startHotReload() {
 }
 
 void ScriptManager::stopHotReload() {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::thread threadToJoin;
 
-	if (!m_hotReloadRunning) {
-		return;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		if (!m_hotReloadRunning) {
+			return;
+		}
+		m_hotReloadRunning = false;
+		if (m_hotReloadThread.joinable()) {
+			threadToJoin = std::move(m_hotReloadThread);
+		}
 	}
 
-	m_hotReloadRunning = false;
-	if (m_hotReloadThread.joinable()) {
-		m_hotReloadThread.join();
+	// Join outside the lock to avoid deadlock with the hot-reload thread
+	if (threadToJoin.joinable()) {
+		threadToJoin.join();
 	}
 }
 
-// ========== 私有方法 ==========
+// ========== Private Helpers ==========
 
 bool ScriptManager::checkTimeLimit(const std::string& name) {
 	auto it = m_scripts.find(name);
@@ -570,7 +600,7 @@ uint64_t ScriptManager::getFileModifiedTime(const std::string& path) {
 }
 
 bool ScriptManager::loadJsonConfig(const std::string& /*path*/) {
-	// TODO: 使用 nlohmann/json 解析
+	// TODO: Parse using nlohmann/json
 	return false;
 }
 

@@ -6,18 +6,18 @@
 
 namespace wingman {
 
-// 防检测配置
+// Anti-detection configuration
 struct AntiDetectionConfig {
     bool enableRandomDelay = true;
     bool enableBezierMovement = true;
     bool enableRandomClick = true;
     int minDelayMs = 50;
     int maxDelayMs = 150;
-    double clickJitter = 2.0; // 像素抖动范围
-    double movementVariance = 0.1; // 移动速度变化
+    double clickJitter = 2.0; // Pixel jitter range
+    double movementVariance = 0.1; // Movement speed variation
 };
 
-// 进程保护配置
+// Process protection configuration
 struct ProcessProtectionConfig {
     bool protectFromTermination = false;
     bool hideFromTaskManager = false;
@@ -26,7 +26,7 @@ struct ProcessProtectionConfig {
     bool enableIntegrityCheck = false;
 };
 
-// 代码签名信息
+// Code signature information
 struct CodeSignature {
     bool isSigned = false;
     std::string issuer;
@@ -36,7 +36,7 @@ struct CodeSignature {
     std::chrono::system_clock::time_point validTo;
 };
 
-// 混淆配置
+// Obfuscation configuration
 struct ObfuscationConfig {
     bool enableStringEncryption = false;
     bool enableControlFlowFlattening = false;
@@ -51,88 +51,88 @@ public:
         return inst;
     }
 
-    // ========== 防检测 ==========
+    // ========== Anti-detection ==========
 
-    // 设置防检测配置
+    // Set anti-detection configuration
     void setAntiDetectionConfig(const AntiDetectionConfig& config);
     const AntiDetectionConfig& getAntiDetectionConfig() const;
 
-    // 获取随机延迟 (毫秒)
+    // Get random delay (milliseconds)
     int getRandomDelay() const;
 
-    // 获取随机偏移 (像素)
+    // Get random offset (pixels)
     std::pair<double, double> getRandomOffset() const;
 
-    // 获取随机点击偏移
+    // Get random click jitter
     std::pair<double, double> getClickJitter() const;
 
-    // 模拟人类行为模式
+    // Simulate human behavior pattern
     void simulateHumanBehavior();
 
-    // ========== 进程保护 ==========
+    // ========== Process protection ==========
 
-    // 设置进程保护配置
+    // Set process protection configuration
     void setProcessProtectionConfig(const ProcessProtectionConfig& config);
     const ProcessProtectionConfig& getProcessProtectionConfig() const;
 
-    // 启用进程保护
+    // Enable process protection
     bool enableProcessProtection();
 
-    // 禁用进程保护
+    // Disable process protection
     void disableProcessProtection();
 
-    // 检查调试器
+    // Check for debugger
     bool isDebuggerPresent();
 
-    // 检查虚拟机
+    // Check for virtual machine
     bool isRunningInVM();
 
-    // 完整性检查
+    // Integrity check
     bool verifyIntegrity();
 
-    // ========== 代码签名 ==========
+    // ========== Code signature ==========
 
-    // 验证代码签名
+    // Verify code signature
     bool verifySignature();
 
-    // 获取签名信息
+    // Get signature information
     CodeSignature getSignatureInfo();
 
-    // 自签名 (开发用)
+    // Self-sign (for development)
     bool selfSign(const std::string& certPath, const std::string& keyPath);
 
-    // ========== 混淆 ==========
+    // ========== Obfuscation ==========
 
-    // 加密字符串
+    // Encrypt string
     static std::string encryptString(const std::string& input, const std::string& key);
     static std::string decryptString(const std::string& input, const std::string& key);
 
-    // 生成随机字符串
+    // Generate random string
     static std::string generateRandomString(size_t length);
 
-    // 哈希函数
+    // Hash function
     static std::string hashString(const std::string& input);
 
-    // ========== 内存保护 ==========
+    // ========== Memory protection ==========
 
-    // 保护内存区域
+    // Protect memory region
     bool protectMemory(void* addr, size_t size, bool protect = true);
 
-    // 清除敏感数据
+    // Clear sensitive data
     void secureZero(void* ptr, size_t size);
 
-    // 内存锁定 (防止交换到磁盘)
+    // Lock memory (prevent swapping to disk)
     bool lockMemory(void* ptr, size_t size);
 
-    // 解锁内存
+    // Unlock memory
     void unlockMemory(void* ptr, size_t size);
 
-    // ========== 日志安全 ==========
+    // ========== Log security ==========
 
-    // 安全日志 (不记录敏感信息)
+    // Secure log (does not log sensitive information)
     void secureLog(const std::string& message);
 
-    // 过滤敏感信息
+    // Filter sensitive information
     static std::string filterSensitive(const std::string& input);
 
 private:
@@ -143,15 +143,15 @@ private:
     ProcessProtectionConfig m_processProtection;
     mutable std::mt19937 m_randomEngine;
 
-    // 初始化随机引擎
+    // Initialize random engine
     void initRandomEngine();
 
-    // 反调试检查
+    // Anti-debug checks
     bool checkDebuggerPEB();
     bool checkDebuggerFlags();
     bool checkHardwareBreakpoints();
 
-    // 反虚拟机检查
+    // Anti-VM checks
     bool checkVMRegistry();
     bool checkVMProcesses();
     bool checkVMDrivers();

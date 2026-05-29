@@ -13,27 +13,27 @@
 
 namespace wingman {
 
-// WebSocket 消息类型
+// WebSocket message types
 enum class WSMessageType {
-    // Agent 事件
+    // Agent events
     AgentConnected,
     AgentDisconnected,
     AgentStatusChanged,
-    // 工作流事件
+    // Workflow events
     WorkflowSubmitted,
     WorkflowStatusChanged,
     WorkflowProgress,
-    // Team Room 事件
+    // Team Room events
     RoomJoined,
     RoomLeft,
     RoomMessage,
     RoomBroadcast,
-    // 系统事件
+    // System events
     SystemStatus,
     Error
 };
 
-// WebSocket 消息
+// WebSocket message
 struct WSMessage {
     WSMessageType type;
     std::string data;  // JSON string
@@ -50,12 +50,12 @@ struct WSMessage {
     }
 };
 
-// WebSocket 连接包装
+// WebSocket connection wrapper
 class WSConnection {
 public:
     std::shared_ptr<crow::websocket::connection> connection;
     std::string id;
-    std::string currentRoom;  // 当前加入的房间ID
+    std::string currentRoom;  // Currently joined room ID
     std::chrono::system_clock::time_point lastPing;
 
     WSConnection(std::shared_ptr<crow::websocket::connection> conn, const std::string& id)
@@ -78,11 +78,11 @@ public:
     }
 };
 
-// Room 结构 - 用于 Team Room 等多播场景
+// Room structure - used for Team Room and other multicast scenarios
 struct Room {
     std::string roomId;
-    std::unordered_set<std::string> connectionIds;  // 房间内的连接ID
-    nlohmann::json metadata;  // 房间元数据
+    std::unordered_set<std::string> connectionIds;  // Connection IDs in the room
+    nlohmann::json metadata;  // Room metadata
 
     size_t size() const { return connectionIds.size(); }
     bool empty() const { return connectionIds.empty(); }
@@ -99,35 +99,35 @@ public:
     void setPort(int port) { port_ = port; }
     void setStaticDir(const std::string& dir) { staticDir_ = dir; }
 
-    // ========== WebSocket 广播 ==========
+    // ========== WebSocket broadcast ==========
 
-    // 广播消息到所有连接
+    // Broadcast message to all connections
     void broadcast(const WSMessage& message);
 
-    // 广播 Agent 事件
+    // Broadcast agent event
     void broadcastAgentEvent(const std::string& eventType, const nlohmann::json& agentData);
 
-    // 广播工作流事件
+    // Broadcast workflow event
     void broadcastWorkflowEvent(const std::string& eventType, const nlohmann::json& workflowData);
 
-    // 广播调试器事件
+    // Broadcast debugger event
     void broadcastDebuggerEvent(const std::string& eventType, const nlohmann::json& data);
 
-    // ========== Room 管理 ==========
+    // ========== Room management ==========
 
-    // 加入房间
+    // Join room
     void joinRoom(const std::string& connId, const std::string& roomId);
 
-    // 离开房间
+    // Leave room
     void leaveRoom(const std::string& connId);
 
-    // 发送消息到指定房间
+    // Send message to specified room
     void sendToRoom(const std::string& roomId, const nlohmann::json& message);
 
-    // 广播消息到指定房间（除了发送者）
+    // Broadcast message to specified room (excluding sender)
     void broadcastToRoom(const std::string& roomId, const std::string& excludeConnId, const nlohmann::json& message);
 
-    // 获取房间信息
+    // Get room information
     std::vector<std::string> getRoomConnections(const std::string& roomId);
 
 private:
@@ -137,25 +137,25 @@ private:
     std::unique_ptr<ScriptManager> scriptManager_;
     crow::SimpleApp app_;
 
-    // WebSocket 连接管理
+    // WebSocket connection management
     std::unordered_set<std::shared_ptr<WSConnection>> wsConnections_;
     std::mutex wsMutex_;
     std::atomic<uint64_t> wsConnectionIdCounter_{0};
 
-    // Room 管理
+    // Room management
     std::unordered_map<std::string, Room> rooms_;
     std::mutex roomMutex_;
 
-    // WebSocket 心跳检测
+    // WebSocket heartbeat detection
     std::thread wsHeartbeatThread_;
     std::atomic<bool> wsHeartbeatRunning_{false};
 
     void setupRoutes();
 
-    // WebSocket 路由设置
+    // WebSocket route setup
     void setupWebSocketRoutes();
 
-    // WebSocket 事件处理
+    // WebSocket event handling
     void onWSOpen(std::shared_ptr<crow::websocket::connection> conn);
     void onWSMessage(std::shared_ptr<crow::websocket::connection> conn, const std::string& message, bool is_binary);
     void onWSClose(std::shared_ptr<crow::websocket::connection> conn, const std::string& reason);

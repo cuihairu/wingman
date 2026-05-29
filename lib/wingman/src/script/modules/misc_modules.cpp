@@ -46,7 +46,7 @@ ModuleDescriptor createQrcodeModule() {
 	ModuleDescriptor mod;
 	mod.name = "qrcode";
 
-	// 模块级共享 QRLoginManager 实例
+	// Module-level shared QRLoginManager instance
 	static QRLoginManager qrManager;
 
 	mod.functions.push_back({"get", [](const std::vector<ScriptValue>& args) -> ScriptValue {

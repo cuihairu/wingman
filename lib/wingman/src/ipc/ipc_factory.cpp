@@ -8,18 +8,18 @@ using NamedPipeChannel = wingman::ipc::windows::NamedPipeChannel;
 
 namespace wingman::ipc {
 
-// ========== IpcFactory 实现 ==========
+// ========== IpcFactory Implementation ==========
 
 std::unique_ptr<IIpcChannel> IpcFactory::createServer(const IpcConfig& config) {
     std::string endpoint = config.serverName.empty() ? getDefaultEndpoint() : config.serverName;
     IpcTransport transport = config.preferredTransport;
 
-    // 自动选择
+    // Auto-select
     if (transport == IpcTransport::Auto) {
         transport = getPreferredTransport();
     }
 
-    // 尝试创建通道
+    // Try to create channel
     switch (transport) {
 #ifdef _WIN32
         case IpcTransport::NamedPipe:
@@ -38,9 +38,9 @@ std::unique_ptr<IIpcChannel> IpcFactory::createServer(const IpcConfig& config) {
             break;
     }
 
-    // 回退到 TCP
+    // Fallback to TCP
     spdlog::warn("[IpcFactory] Preferred transport not available, falling back to TCP");
-    // TODO: 实现 TCP 通道
+    // TODO: Implement TCP channel
     return nullptr;
 }
 
@@ -88,13 +88,13 @@ std::string IpcFactory::getDefaultEndpoint() {
 
 IpcTransport IpcFactory::getPreferredTransport() {
 #ifdef _WIN32
-    // Windows: Named Pipe 优先
+    // Windows: Named Pipe preferred
     return IpcTransport::NamedPipe;
 #elif defined(__linux__)
-    // Linux: Unix Socket 优先
+    // Linux: Unix Socket preferred
     return IpcTransport::UnixSocket;
 #elif defined(__APPLE__)
-    // macOS: Unix Socket 优先
+    // macOS: Unix Socket preferred
     return IpcTransport::UnixSocket;
 #else
     return IpcTransport::TcpPipe;
@@ -104,20 +104,20 @@ IpcTransport IpcFactory::getPreferredTransport() {
 bool IpcFactory::isTransportAvailable(IpcTransport transport) {
 #ifdef _WIN32
     if (transport == IpcTransport::NamedPipe) {
-        return true;  // Windows 总是支持 Named Pipe
+        return true;  // Windows always supports Named Pipe
     }
-    // Windows 10 1803+ 支持 Unix Socket
+    // Windows 10 1803+ supports Unix Socket
     if (transport == IpcTransport::UnixSocket) {
-        // 可以检查版本，这里简化处理
+        // Could check version; simplified here
         return true;
     }
 #elif defined(__linux__) || defined(__APPLE__)
     if (transport == IpcTransport::UnixSocket) {
-        return true;  // Unix 系统总是支持 Unix Socket
+        return true;  // Unix systems always support Unix Socket
     }
 #endif
     if (transport == IpcTransport::TcpPipe) {
-        return true;  // TCP 总是可用
+        return true;  // TCP is always available
     }
     return false;
 }

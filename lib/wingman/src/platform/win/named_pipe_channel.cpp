@@ -23,7 +23,7 @@ NamedPipeChannel::NamedPipeChannel(bool serverMode, const std::string& pipeName)
     , pipeHandle_(INVALID_HANDLE_VALUE)
     , ioPending_(false)
 {
-    // 构建 Named Pipe 路径
+    // Build Named Pipe path
     fullPipeName_ = "\\\\.\\pipe\\" + pipeName;
 }
 
@@ -88,7 +88,7 @@ bool NamedPipeChannel::send(const IpcMessage& message) {
     std::string json = serializeMessage(message);
     std::vector<uint8_t> data(json.begin(), json.end());
 
-    // 写入消息长度（4 字节）
+    // Write message length (4 bytes)
     uint32_t length = static_cast<uint32_t>(data.size());
     DWORD bytesWritten = 0;
 
@@ -98,7 +98,7 @@ bool NamedPipeChannel::send(const IpcMessage& message) {
         return false;
     }
 
-    // 写入消息内容
+    // Write message content
     if (!WriteFile(pipeHandle_, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, nullptr)) {
         spdlog::error("[NamedPipe] Failed to write message: {}", GetLastError());
         setState(IpcState::Error);
@@ -185,14 +185,14 @@ void NamedPipeChannel::setState(IpcState state) {
 }
 
 bool NamedPipeChannel::createServerPipe() {
-    // 创建 Named Pipe
+    // Create Named Pipe
     pipeHandle_ = CreateNamedPipeA(
         fullPipeName_.c_str(),
         PIPE_ACCESS_DUPLEX,
         PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
         PIPE_UNLIMITED_INSTANCES,
-        65536,  // 输出缓冲区
-        65536,  // 输入缓冲区
+        65536,  // Output buffer
+        65536,  // Input buffer
         0,
         nullptr
     );
@@ -203,7 +203,7 @@ bool NamedPipeChannel::createServerPipe() {
         return false;
     }
 
-    // 等待客户端连接
+    // Wait for client connection
     spdlog::info("[NamedPipe] Server waiting for connection on: {}", fullPipeName_);
 
     BOOL connected = ConnectNamedPipe(pipeHandle_, nullptr);
@@ -226,8 +226,8 @@ bool NamedPipeChannel::createServerPipe() {
 }
 
 bool NamedPipeChannel::connectToServer() {
-    // 等待 Named Pipe 可用
-    for (int i = 0; i < 50; ++i) {  // 最多等待 5 秒
+    // Wait for Named Pipe to become available
+    for (int i = 0; i < 50; ++i) {  // Wait up to 5 seconds
     pipeHandle_ = CreateFileA(
             fullPipeName_.c_str(),
             GENERIC_READ | GENERIC_WRITE,
@@ -244,7 +244,7 @@ bool NamedPipeChannel::connectToServer() {
 
         DWORD error = GetLastError();
         if (error == ERROR_PIPE_BUSY) {
-            // 等待管道可用
+            // Wait for pipe to become available
             if (!WaitNamedPipeA(fullPipeName_.c_str(), 100)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 continue;
@@ -262,7 +262,7 @@ bool NamedPipeChannel::connectToServer() {
         return false;
     }
 
-    // 设置管道模式
+    // Set pipe mode
     DWORD mode = PIPE_READMODE_MESSAGE;
     if (!SetNamedPipeHandleState(pipeHandle_, &mode, nullptr, nullptr)) {
         spdlog::warn("[NamedPipe] SetNamedPipeHandleState failed: {}", GetLastError());
@@ -275,7 +275,7 @@ bool NamedPipeChannel::connectToServer() {
 
 void NamedPipeChannel::receiveLoop() {
     while (!stopping_ && isConnected()) {
-        // 读取消息长度
+        // Read message length
         uint32_t messageLength = 0;
         DWORD bytesRead = 0;
 
@@ -297,7 +297,7 @@ void NamedPipeChannel::receiveLoop() {
             break;
         }
 
-        // 读取消息内容
+        // Read message content
         std::vector<uint8_t> buffer(messageLength);
         result = ReadFile(
             pipeHandle_,
@@ -312,11 +312,11 @@ void NamedPipeChannel::receiveLoop() {
             break;
         }
 
-        // 解析消息
+        // Parse message
         std::string json(buffer.begin(), buffer.end());
         IpcMessage message = deserializeMessage(json);
 
-        // 调用回调
+        // Invoke callback
         std::lock_guard<std::mutex> lock(callbacksMutex_);
         if (messageCallback_) {
             messageCallback_(message);
@@ -329,7 +329,7 @@ void NamedPipeChannel::receiveLoop() {
 }
 
 std::string NamedPipeChannel::serializeMessage(const IpcMessage& msg) {
-    // 简单 JSON 序列化
+    // Simple JSON serialization
     std::string json = "{";
     json += "\"type\":" + std::to_string(static_cast<int>(msg.type)) + ",";
     json += "\"method\":\"" + msg.method + "\",";
@@ -342,8 +342,8 @@ std::string NamedPipeChannel::serializeMessage(const IpcMessage& msg) {
 
 IpcMessage NamedPipeChannel::deserializeMessage(const std::string& json) {
     IpcMessage msg;
-    // 简化解析（实际应使用 nlohmann/json）
-    // 这里只做演示，实际应该用 JSON 库
+    // Simplified parsing (should use nlohmann/json in practice)
+    // This is for demonstration only; should use a JSON library in practice
     // ...
     return msg;
 }

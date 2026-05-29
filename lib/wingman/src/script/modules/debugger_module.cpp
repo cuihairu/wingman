@@ -1,6 +1,6 @@
 #include "wingman/script/iscript_engine.hpp"
 
-// debugger 头文件尚未实现，提供 stub 函数
+// debugger header not yet implemented, providing stub functions
 
 namespace wingman {
 namespace script {

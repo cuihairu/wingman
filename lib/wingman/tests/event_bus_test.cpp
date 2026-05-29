@@ -27,7 +27,7 @@ public:
 
 } // anonymous namespace
 
-// ========== 同步发布 ==========
+// ========== Synchronous Publish ==========
 
 TEST(EventBusTest, SubscribeAndPublish) {
     EventBus bus;
@@ -103,7 +103,7 @@ TEST(EventBusTest, OnceSubscription) {
     EXPECT_EQ(count.load(), 1);
 }
 
-// ========== 事件属性 ==========
+// ========== Event Properties ==========
 
 TEST(EventBusTest, EventProperties) {
     TestEvent e1;
@@ -126,7 +126,7 @@ TEST(EventBusTest, IsNotRunningByDefault) {
     EXPECT_FALSE(bus.isRunning());
 }
 
-// ========== 异步发布（简化测试避免线程问题） ==========
+// ========== Asynchronous Publish (simplified test to avoid threading issues) ==========
 
 TEST(EventBusTest, StartStop) {
     EventBus bus;

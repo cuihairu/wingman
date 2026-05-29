@@ -8,7 +8,7 @@ namespace wingman {
 namespace script {
 namespace modules {
 
-// 前置声明（这些模块的 create 函数在各自 .cpp 中定义，无独立头文件）
+// Forward declarations (these modules' create functions are defined in their own .cpp files, no separate headers)
 ModuleDescriptor createProcessModule();
 ModuleDescriptor createUtilModule();
 ModuleDescriptor createSystemModule();

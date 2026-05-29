@@ -1,7 +1,7 @@
 #pragma once
 
 // ========== wingman-core ==========
-// 核心功能模块统一头文件
+// Core module unified header
 
 #include "wingman/screen.hpp"
 #include "wingman/input.hpp"
@@ -26,23 +26,23 @@
 
 namespace wingman::core {
 
-// 核心管理器
+// Core manager
 class CoreManager {
 public:
     static CoreManager& instance();
 
-    // 初始化
+    // Initialize
     bool initialize(const std::string& configPath);
     void shutdown();
 
-    // 获取各个模块
+    // Get modules
     class ScreenManager& screen();
     class InputManager& input();
     class WindowFinder& window();
     class TriggerManager& trigger();
     class AccountManager& accounts();
 
-    // 运行状态
+    // Running state
     bool isRunning() const { return running_; }
 
 private:
