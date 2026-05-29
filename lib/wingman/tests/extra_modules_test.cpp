@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 #include "wingman/trigger.hpp"
 #include "wingman/trigger_engine.hpp"
+#ifdef _WIN32
 #include "wingman/smart_trigger.hpp"
+#endif
 #include "wingman/performance.hpp"
 #include "wingman/screen.hpp"
 
@@ -144,7 +146,9 @@ TEST(CachedImageTest, DefaultValues) {
     EXPECT_TRUE(img.path.empty());
 }
 
-// ========== SmartTriggerCondition / Action Configuration ==========
+// ========== SmartTriggerCondition / Action Configuration (Windows only) ==========
+
+#ifdef _WIN32
 
 TEST(SmartTriggerConditionTest, DefaultValues) {
     TriggerCondition cond;
@@ -221,6 +225,8 @@ TEST(SmartTriggerManagerTest, StopAllDoesNotCrash) {
     auto& mgr = SmartTriggerManager::instance();
     EXPECT_NO_THROW(mgr.stopAll());
 }
+
+#endif // _WIN32
 
 // ========== TriggerEngine::Stats ==========
 

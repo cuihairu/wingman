@@ -108,7 +108,9 @@ TEST(ScreenTest, RectContains) {
     EXPECT_FALSE(r.contains(p5));
 }
 
-// ========== Screen 功能测试 ==========
+// ========== Screen Functional Tests (Windows only) ==========
+
+#ifdef _WIN32
 
 TEST(ScreenTest, GetScreenBounds) {
     Rect bounds = Screen::getScreenBounds();
@@ -130,7 +132,7 @@ TEST(ScreenTest, GetScreenHeight) {
 
 TEST(ScreenTest, GetPixel) {
     Color c = Screen::getPixel(0, 0);
-    // 只要不崩溃就算通过
+    // Just verify it doesn't crash
     SUCCEED();
 }
 
@@ -150,14 +152,14 @@ TEST(ScreenTest, CaptureRegion) {
 }
 
 TEST(ScreenTest, FindColorSimple) {
-    // 在屏幕左上角查找黑色
+    // Search for black in top-left corner
     Color targetColor(0, 0, 0);
     Rect region(0, 0, 100, 100);
     Point result;
 
-    // 容差设为0，精确匹配
+    // Exact match with zero tolerance
     bool found = Screen::findColor(targetColor, region, 0, result);
-    // 结果取决于屏幕内容，只检查不崩溃
+    // Result depends on screen content, just verify no crash
     SUCCEED();
 }
 
@@ -166,9 +168,11 @@ TEST(ScreenTest, FindColorsMultiple) {
     Rect region(0, 0, 100, 100);
 
     auto points = Screen::findColors(targetColor, region, 10, 10);
-    // 结果取决于屏幕内容，只检查不崩溃
+    // Result depends on screen content, just verify no crash
     EXPECT_GE(points.size(), 0);
 }
+
+#endif // _WIN32
 
 // ========== Bitmap 测试 ==========
 

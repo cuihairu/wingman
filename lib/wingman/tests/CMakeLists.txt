@@ -47,16 +47,11 @@ if(BUILD_CORE_TESTS)
             http_test.cpp
             ui_automation_test.cpp
             ml_test.cpp
-            smart_trigger_test.cpp
         )
 
-        # 添加 include 目录
-        target_include_directories(core_tests PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/../include
-        )
-
-        # 链接库 - 使用 vcpkg 的 GTest target
-        target_link_libraries(core_tests PRIVATE
+        if(WIN32)
+            target_sources(core_tests PRIVATE smart_trigger_test.cpp)
+        endif()
             GTest::gtest
             GTest::gtest_main
             wingman
@@ -104,8 +99,11 @@ if(BUILD_CORE_TESTS)
                 ml_test.cpp
                 ocr_test.cpp
                 script_function_test.cpp
-                smart_trigger_test.cpp
             )
+
+            if(WIN32)
+                target_sources(core_tests PRIVATE smart_trigger_test.cpp)
+            endif()
 
             target_include_directories(core_tests PRIVATE
                 ${CMAKE_CURRENT_SOURCE_DIR}/../include
@@ -161,8 +159,11 @@ if(BUILD_CORE_TESTS)
                 ml_test.cpp
                 ocr_test.cpp
                 script_function_test.cpp
-                smart_trigger_test.cpp
             )
+
+            if(WIN32)
+                target_sources(core_tests PRIVATE smart_trigger_test.cpp)
+            endif()
 
             target_include_directories(core_tests PRIVATE
                 ${CMAKE_CURRENT_SOURCE_DIR}/../include
