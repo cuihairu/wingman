@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Wingman"
   text: "游戏自动化可编程控制引擎"
-  tagline: "C++ + Lua 的高性能游戏自动化框架"
+  tagline: "C++ 核心，支持 Lua 和 Python 脚本"
   actions:
     - theme: brand
       text: 快速开始
@@ -19,11 +19,11 @@ hero:
 
 features:
   - title: 🚀 高性能
-    details: C++ 核心引擎，Lua 脚本执行，毫秒级响应
+    details: C++ 核心引擎，Lua/Python 脚本执行，毫秒级响应
   - title: 🔒 安全可靠
     details: 纯用户态运行，使用合法 Windows API，不读写游戏内存
-  - title: 🎮 可编程
-    details: Lua 脚本控制，无限扩展可能，支持复杂业务逻辑
+  - title: 🎮 多语言支持
+    details: 支持 Lua 和 Python 两种脚本语言，灵活选择
   - title: 🌐 远程控制
     details: 支持 TCP Server/Client 模式，可远程统一调度
   - title: 🐛 强大的调试
@@ -38,7 +38,7 @@ features:
 **Wingman** 是一个为了游戏自动化而生的可编程控制项目。
 
 - 基于 **C++** 开发核心引擎，提供高性能的屏幕操作和输入模拟能力
-- 使用 **Lua** 作为脚本引擎，灵活可扩展
+- 支持 **Lua** 和 **Python** 两种脚本引擎，灵活可扩展
 - 纯**用户态**运行，使用合法 Windows API，安全可靠
 - 支持**远程控制**，TCP Server/Client 模式，暴露 API 供外部调用
 
@@ -59,6 +59,39 @@ features:
 
 ## 快速开始
 
+### Lua 脚本
+
+```lua
+-- hello.lua
+local wingman = require("wingman")
+
+-- 截图
+local img = wingman.screen.capture(0, 0, 1920, 1080)
+
+-- 查找颜色
+local x, y = wingman.screen.findColor(img, 255, 0, 0, 0, 0, 1920, 1080)
+if x then
+    wingman.input.click(x, y)
+end
+```
+
+### Python 脚本
+
+```python
+# hello.py
+from wingman import screen, input
+
+# 截图
+img = screen.capture(0, 0, 1920, 1080)
+
+# 查找颜色
+result = screen.find_color(img, (255, 0, 0), 0, 0, 1920, 1080)
+if result:
+    input.click(result['x'], result['y'])
+```
+
+## 编译项目
+
 ```bash
 # 克隆仓库
 git clone https://github.com/cuihairu/wingman.git
@@ -67,9 +100,16 @@ cd wingman
 # 编译项目（需要 CMake + Visual Studio）
 cmake -B build -S . -G "Visual Studio 17 2022"
 cmake --build build --config Release
+```
 
-# 运行示例
+## 运行示例
+
+```bash
+# Lua 示例
 wingman.exe scripts/examples/hello.lua
+
+# Python 示例
+wingman.exe scripts/examples/hello.py
 ```
 
 ## 许可证
