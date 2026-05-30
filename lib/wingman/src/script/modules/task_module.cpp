@@ -64,11 +64,37 @@ public:
 
 		emitEvent("task.started");
 
+		// Start timeout monitor thread if timeoutMs > 0
+		std::thread timeoutThread;
+		if (options_.timeoutMs > 0) {
+			timeoutThread = std::thread([this]() {
+				std::unique_lock<std::mutex> lock(mutex_);
+				// Wait for timeout or task completion
+				if (cond_.wait_for(lock, std::chrono::milliseconds(options_.timeoutMs),
+					[this] { return status_ != TaskStatus::running; })) {
+					// Task completed before timeout
+					return;
+				}
+				// Timeout reached - set status to timeout if still running
+				if (status_ == TaskStatus::running) {
+					status_ = TaskStatus::timeout;
+				}
+			});
+		}
+
 		int attempts = 0;
 		while (attempts <= options_.maxRetries) {
 			if (isCanceled()) {
 				setStatus(TaskStatus::canceled);
 				emitEvent("task.canceled");
+				if (timeoutThread.joinable()) timeoutThread.join();
+				return;
+			}
+
+			// Check if already timed out
+			if (status() == TaskStatus::timeout) {
+				emitEvent("task.timeout");
+				if (timeoutThread.joinable()) timeoutThread.join();
 				return;
 			}
 
@@ -82,14 +108,15 @@ public:
 					if (status_ == TaskStatus::running) {
 						result_ = result;
 						status_ = TaskStatus::succeeded;
-						// Emit event inside the lock and after setting status
-						// Note: emitEvent releases lock before calling EventHub
 					}
 				}
 				// Only emit succeeded event if status is succeeded
 				if (status() == TaskStatus::succeeded) {
 					emitEvent("task.succeeded");
+				} else if (status() == TaskStatus::timeout) {
+					emitEvent("task.timeout");
 				}
+				if (timeoutThread.joinable()) timeoutThread.join();
 				return;
 			} catch (const std::exception& e) {
 				{
@@ -116,6 +143,7 @@ public:
 		// All retries exhausted or error
 		setStatus(TaskStatus::failed);
 		emitEvent("task.failed");
+		if (timeoutThread.joinable()) timeoutThread.join();
 	}
 
 	void cancel() {
@@ -228,12 +256,13 @@ public:
 	TaskManager() : nextTaskId_(1) {}
 
 	std::string submit(ScriptValue::CallableFunc work, Task::Options opts) {
-		std::string taskId = "task-" + std::to_string(nextTaskId_++);
-
-		auto task = std::make_shared<Task>(taskId, std::move(work), std::move(opts));
+		std::shared_ptr<Task> task;
+		std::string taskId;
 
 		{
 			std::lock_guard<std::mutex> lock(mutex_);
+			taskId = "task-" + std::to_string(nextTaskId_++);
+			task = std::make_shared<Task>(taskId, std::move(work), std::move(opts));
 			tasks_[taskId] = task;
 		}
 
@@ -258,10 +287,15 @@ public:
 	}
 
 	bool cancel(const std::string& taskId) {
-		std::lock_guard<std::mutex> lock(mutex_);
-		auto it = tasks_.find(taskId);
-		if (it == tasks_.end()) return false;
-		it->second->cancel();
+		std::shared_ptr<Task> task;
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			auto it = tasks_.find(taskId);
+			if (it == tasks_.end()) return false;
+			task = it->second;
+		}
+		// Call cancel() after releasing lock to avoid deadlock on task.canceled event
+		task->cancel();
 		return true;
 	}
 
@@ -375,11 +409,31 @@ ModuleDescriptor createTaskModule() {
 
 		if (args.size() > 1 && args[1].isObject()) {
 			if (auto* v = args[1].get("timeoutMs")) opts.timeoutMs = static_cast<int>(v->asInt());
-			if (auto* v = args[1].get("maxRetries")) opts.maxRetries = static_cast<int>(v->asInt());
-			if (auto* v = args[1].get("backoffMs")) opts.backoffMs = static_cast<int>(v->asInt());
-			if (auto* v = args[1].get("backoffFactor")) opts.backoffFactor = static_cast<float>(v->asFloat());
 			if (auto* v = args[1].get("metadata")) opts.metadata = toJson(*v);
 			if (auto* v = args[1].get("async")) opts.async = v->asBool();
+
+			// Support both flat (maxRetries, backoffMs, backoffFactor) and nested (retry.max, retry.backoffMs, retry.factor) formats
+			// Nested format takes precedence if both are provided
+			if (auto* retry = args[1].get("retry")) {
+				if (retry->isObject()) {
+					if (auto* v = retry->get("max")) opts.maxRetries = static_cast<int>(v->asInt());
+					if (auto* v = retry->get("backoffMs")) opts.backoffMs = static_cast<int>(v->asInt());
+					if (auto* v = retry->get("factor")) opts.backoffFactor = static_cast<float>(v->asFloat());
+				}
+			} else {
+				// Fall back to flat format
+				if (auto* v = args[1].get("maxRetries")) opts.maxRetries = static_cast<int>(v->asInt());
+				if (auto* v = args[1].get("backoffMs")) opts.backoffMs = static_cast<int>(v->asInt());
+				if (auto* v = args[1].get("backoffFactor")) opts.backoffFactor = static_cast<float>(v->asFloat());
+			}
+		}
+
+		// Runtime check: reject async=true for non-thread-safe callables (e.g., Lua functions)
+		if (opts.async && !args[0].callableThreadSafe) {
+			EventHub::instance().emit("task.error", {
+				{"error", "async=true is not supported for non-thread-safe callables (e.g., Lua functions). Use async=false or switch to Python."}
+			}, "task");
+			return ScriptValue::fromBool(false);
 		}
 
 		std::string taskId = g_taskManager.submit(args[0].callableVal, std::move(opts));

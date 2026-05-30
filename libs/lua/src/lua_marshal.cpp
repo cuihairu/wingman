@@ -79,7 +79,7 @@ script::ScriptValue toScriptValue(const sol::object& obj) {
 	default: {
 		// Check if callable (function or cxxfunction)
 		if (obj.valid() && (obj.get_type() == sol::type::function || obj.is<sol::function>())) {
-			// Wrap Lua function as ScriptValue callable
+			// Wrap Lua function as ScriptValue callable (NOT thread-safe)
 			sol::function func = obj;
 			return script::ScriptValue::fromCallable([func](const std::vector<script::ScriptValue>& args) -> script::ScriptValue {
 				std::vector<sol::object> luaArgs;
@@ -94,7 +94,7 @@ script::ScriptValue toScriptValue(const sol::object& obj) {
 					return toScriptValue(result.get<sol::object>());
 				}
 				return script::ScriptValue::null();
-			});
+			}, false);  // Lua callables are NOT thread-safe
 		}
 		return script::ScriptValue::null();
 	}

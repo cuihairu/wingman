@@ -25,6 +25,7 @@ struct ScriptValue {
 	// Callable support: holds a function that can be called from C++
 	using CallableFunc = std::function<ScriptValue(const std::vector<ScriptValue>&)>;
 	CallableFunc callableVal;
+	bool callableThreadSafe = false;  // Indicates if callable is safe to call from any thread
 
 	ScriptValue() = default;
 
@@ -37,7 +38,13 @@ struct ScriptValue {
 	static ScriptValue fromString(std::string&& v) { ScriptValue sv; sv.type = String; sv.strVal = std::move(v); return sv; }
 	static ScriptValue fromArray(std::vector<ScriptValue>&& v) { ScriptValue sv; sv.type = Array; sv.arrayVal = std::move(v); return sv; }
 	static ScriptValue fromObject(std::unordered_map<std::string, ScriptValue>&& v) { ScriptValue sv; sv.type = Object; sv.objectVal = std::move(v); return sv; }
-	static ScriptValue fromCallable(CallableFunc v) { ScriptValue sv; sv.type = Callable; sv.callableVal = std::move(v); return sv; }
+	static ScriptValue fromCallable(CallableFunc v, bool threadSafe = false) {
+		ScriptValue sv;
+		sv.type = Callable;
+		sv.callableVal = std::move(v);
+		sv.callableThreadSafe = threadSafe;
+		return sv;
+	}
 
 	// Convenience access
 	bool isNull() const { return type == Null; }

@@ -196,8 +196,8 @@ private:
 	uint64_t nextTransitionId_ = 1;
 };
 
-// Global state machine registry
-std::unordered_map<std::string, std::unique_ptr<StateMachine>> g_stateMachines;
+// Global state machine registry (using shared_ptr for safe lock-free access)
+std::unordered_map<std::string, std::shared_ptr<StateMachine>> g_stateMachines;
 uint64_t g_nextMachineId = 1;
 std::mutex g_stateMachinesMutex;  // Protects g_stateMachines and g_nextMachineId
 
@@ -233,7 +233,19 @@ nlohmann::json toJson(const ScriptValue& value) {
 	}
 }
 
+// Cleanup function for global state (implementation)
+void cleanupFsmModuleInternal() {
+	std::lock_guard<std::mutex> lock(g_stateMachinesMutex);
+	g_stateMachines.clear();
+	g_nextMachineId = 1;
+}
+
 } // namespace
+
+// Cleanup function for global state (called during engine shutdown)
+void cleanupFsmModule() {
+	cleanupFsmModuleInternal();
+}
 
 ModuleDescriptor createFsmModule() {
 	ModuleDescriptor mod;
@@ -250,7 +262,7 @@ ModuleDescriptor createFsmModule() {
 		{
 			std::lock_guard<std::mutex> lock(g_stateMachinesMutex);
 			machineId = "fsm-" + name + "-" + std::to_string(g_nextMachineId++);
-			g_stateMachines[machineId] = std::make_unique<StateMachine>(name, initial);
+			g_stateMachines[machineId] = std::make_shared<StateMachine>(name, initial);
 		}
 
 		return ScriptValue::fromString(machineId);
@@ -304,13 +316,16 @@ ModuleDescriptor createFsmModule() {
 		std::string event = args[1].asString();
 		nlohmann::json payload = args.size() > 2 ? toJson(args[2]) : nlohmann::json::object();
 
-		bool result;
+		// Find state machine and copy shared_ptr under lock
+		std::shared_ptr<StateMachine> machine;
 		{
 			std::lock_guard<std::mutex> lock(g_stateMachinesMutex);
 			auto it = g_stateMachines.find(machineId);
 			if (it == g_stateMachines.end()) return ScriptValue::fromBool(false);
-			result = it->second->dispatch(event, payload);
+			machine = it->second;
 		}
+		// Call dispatch() after releasing lock to avoid deadlock on callbacks
+		bool result = machine->dispatch(event, payload);
 		return ScriptValue::fromBool(result);
 	}, "machineId:string, event:string, payload?:object -> bool"});
 

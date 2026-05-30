@@ -269,7 +269,8 @@ ModuleDescriptor createNotifyModule() {
 		return ScriptValue::null();
 	}, "url:string, payload?:object, options?:object -> nil"});
 
-	// bridge(eventName, target, options?) - exact event name match (not pattern)
+	// bridge(eventName, target, options?) - exact event name match (wildcards not supported)
+	// To listen to multiple events, call bridge() multiple times with exact event names
 	mod.functions.push_back({"bridge", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		if (args.size() < 2 || !args[0].isString() || !args[1].isString()) {
 			return ScriptValue::null();

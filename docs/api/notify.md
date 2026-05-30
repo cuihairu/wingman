@@ -365,11 +365,13 @@ notify.bridge("task.error", "http://alert-server.com/api/alerts")
 - `payload` - 请求体（JSON 对象）
 - `options` - 可选配置（预留）
 
-### `bridge(eventPattern, target, options?)` / `bridge(eventPattern, target, options?)`
+### `bridge(eventName, target, options?)` / `bridge(eventName, target, options?)`
 
 桥接事件到其他目标。
 
 **参数：**
-- `eventPattern` - 事件匹配模式（支持通配符）
+- `eventName` - 事件名称（精确匹配，暂不支持通配符）
 - `target` - 目标地址（支持 `event://` 协议或 HTTP URL）
 - `options` - 可选配置（预留）
+
+**注意：** 当前实现仅支持精确匹配，不支持通配符模式。如需监听多个事件，请多次调用 `bridge()`。

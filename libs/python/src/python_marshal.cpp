@@ -98,7 +98,7 @@ script::ScriptValue toScriptValue(const py::object& obj) {
 					// Return null on exception
 					return script::ScriptValue::null();
 				}
-			});
+			}, true);  // Python callables are thread-safe (due to GIL)
 		}
 	} catch (const py::error_already_set&) {
 		return script::ScriptValue::null();

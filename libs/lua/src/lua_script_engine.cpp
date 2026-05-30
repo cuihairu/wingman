@@ -1,8 +1,17 @@
 #include "wingman/lua/lua_script_engine.hpp"
 #include "wingman/lua/lua_marshal.hpp"
 #include "wingman/script/script_engine_factory.hpp"
+#include "wingman/event.hpp"
 #include <memory>
 #include <iostream>
+
+namespace wingman {
+namespace script {
+namespace modules {
+	void cleanupFsmModule();
+}
+}
+}
 
 namespace wingman {
 namespace lua {
@@ -48,6 +57,10 @@ bool LuaScriptEngine::initialize(const script::EngineConfig& config) {
 void LuaScriptEngine::shutdown() {
 	if (initialized_) {
 		lua_ = sol::state();
+		// Clear event subscriptions to prevent dangling callbacks
+		EventHub::instance().clear();
+		// Clear FSM global state
+		script::modules::cleanupFsmModule();
 		initialized_ = false;
 	}
 }

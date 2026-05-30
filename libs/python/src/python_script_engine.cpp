@@ -1,9 +1,18 @@
 #include "wingman/python/python_script_engine.hpp"
 #include "wingman/python/python_marshal.hpp"
 #include "wingman/script/script_engine_factory.hpp"
+#include "wingman/event.hpp"
 #include <memory>
 #include <iostream>
 #include <filesystem>
+
+namespace wingman {
+namespace script {
+namespace modules {
+	void cleanupFsmModule();
+}
+}
+}
 
 namespace wingman {
 namespace python {
@@ -76,6 +85,11 @@ void PythonScriptEngine::shutdown() {
 	} catch (...) {
 		// 忽略 shutdown 时的异常
 	}
+
+	// Clear event subscriptions to prevent dangling callbacks
+	EventHub::instance().clear();
+	// Clear FSM global state
+	script::modules::cleanupFsmModule();
 
 	// 注意：不调用 Py_Finalize()，因为其他 Python 对象可能仍存在
 	// CPython 会在进程退出时清理
