@@ -1,0 +1,27 @@
+{
+  "autoRun": {
+    "delaySeconds": 0,
+    "enabled": false,
+    "repeat": false,
+    "repeatInterval": 0,
+    "scriptPath": ""
+  },
+  "games": [],
+  "heartbeat": {
+    "enabled": true,
+    "intervalSeconds": 30,
+    "timeoutSeconds": 90
+  },
+  "json_key": {
+    "count": 42,
+    "nested": true
+  },
+  "server": {
+    "autoConnect": false,
+    "host": "localhost",
+    "password": "",
+    "port": 9527,
+    "serverControlled": false,
+    "username": ""
+  }
+}

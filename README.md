@@ -16,7 +16,7 @@ C++ + Lua/Python 的高性能游戏自动化框架
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-[文档](docs/) | [快速开始](#快速开始) | [API](docs/api/) | [示例](examples/)
+[文档](https://cuihairu.github.io/wingman/) | [快速开始](#快速开始) | [API](https://cuihairu.github.io/wingman/api/) | [示例](https://cuihairu.github.io/wingman/examples/)
 
 </div>
 
@@ -294,7 +294,11 @@ ctest --test-dir build --config Release
 ## 文档
 
 - [构建指南](BUILD.md)
-- [API 文档](docs/API.md)
+- [在线文档](https://cuihairu.github.io/wingman/)
+  - [快速开始](https://cuihairu.github.io/wingman/guide/getting-started)
+  - [API 参考](https://cuihairu.github.io/wingman/api/)
+  - [示例脚本](https://cuihairu.github.io/wingman/examples/)
+  - [YOLO 模型使用指南](https://cuihairu.github.io/wingman/guides/yolo-guide)
 - [架构设计](docs/architecture.md)
 - [平台抽象层设计](docs/platform-abstraction-design.md)
 - [开发路线图](ROADMAP.md)

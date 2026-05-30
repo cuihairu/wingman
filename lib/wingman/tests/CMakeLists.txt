@@ -34,6 +34,7 @@ if(BUILD_CORE_TESTS)
             event_bus_test.cpp
             event_test.cpp
             event_module_test.cpp
+            task_module_test.cpp
             behavior_tree_test.cpp
             config_test.cpp
             verification_test.cpp
@@ -93,6 +94,7 @@ if(BUILD_CORE_TESTS)
                 event_bus_test.cpp
                 event_test.cpp
                 event_module_test.cpp
+                task_module_test.cpp
                 behavior_tree_test.cpp
                 config_test.cpp
                 verification_test.cpp
@@ -156,6 +158,7 @@ if(BUILD_CORE_TESTS)
                 event_bus_test.cpp
                 event_test.cpp
                 event_module_test.cpp
+                task_module_test.cpp
                 behavior_tree_test.cpp
                 config_test.cpp
                 verification_test.cpp

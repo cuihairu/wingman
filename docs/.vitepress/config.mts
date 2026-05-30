@@ -67,7 +67,16 @@ export default defineConfig({
         {
           text: 'UI Automation',
           items: [
-            { text: 'wingman.uia', link: '/api/uia' }
+            { text: '概述', link: '/api/uia/' },
+            { text: 'Button 按钮', link: '/api/uia/button' },
+            { text: 'Edit 编辑框', link: '/api/uia/edit' },
+            { text: 'ComboBox 下拉框', link: '/api/uia/combobox' },
+            { text: 'List 列表', link: '/api/uia/list' },
+            { text: 'CheckBox 复选框', link: '/api/uia/checkbox' },
+            { text: 'RadioButton 单选按钮', link: '/api/uia/radiobutton' },
+            { text: 'Tab 标签页', link: '/api/uia/tab' },
+            { text: 'Menu 菜单', link: '/api/uia/menu' },
+            { text: 'Tree 树形控件', link: '/api/uia/tree' }
           ]
         },
         {

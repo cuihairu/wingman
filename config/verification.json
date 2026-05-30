@@ -1,3 +1,32 @@
 {
+  "email": {
+    "test_email_full_fields": {
+      "imapPort": 143,
+      "imapServer": "imap.test.com",
+      "password": "secret_pass",
+      "senderFilter": "sender@filter.com",
+      "timeoutSeconds": 120,
+      "useSSL": false,
+      "username": "fullfield@test.com"
+    },
+    "test_email_overwrite": {
+      "imapPort": 993,
+      "imapServer": "new.server.com",
+      "password": "",
+      "senderFilter": "",
+      "timeoutSeconds": 60,
+      "useSSL": true,
+      "username": "new_user"
+    },
+    "test_email_save": {
+      "imapPort": 993,
+      "imapServer": "imap.example.com",
+      "password": "app_password",
+      "senderFilter": "noreply@example.com",
+      "timeoutSeconds": 60,
+      "useSSL": true,
+      "username": "user@example.com"
+    }
+  },
   "totp": {}
 }

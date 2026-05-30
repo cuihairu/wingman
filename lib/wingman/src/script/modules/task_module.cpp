@@ -136,16 +136,23 @@ public:
 
 	bool wait(int timeoutMs = 30000) {
 		auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
-		std::unique_lock<std::mutex> lock(mutex_);
-		while (status_ == TaskStatus::pending || status_ == TaskStatus::running) {
-			if (cond_.wait_until(lock, deadline) == std::cv_status::timeout) {
-				// Check if still running
-				if (status_ == TaskStatus::pending || status_ == TaskStatus::running) {
-					status_ = TaskStatus::timeout;
-					emitEvent("task.timeout");
-					return false;
+		bool timedOut = false;
+		{
+			std::unique_lock<std::mutex> lock(mutex_);
+			while (status_ == TaskStatus::pending || status_ == TaskStatus::running) {
+				if (cond_.wait_until(lock, deadline) == std::cv_status::timeout) {
+					if (status_ == TaskStatus::pending || status_ == TaskStatus::running) {
+						status_ = TaskStatus::timeout;
+						timedOut = true;
+						cond_.notify_all();
+						break;
+					}
 				}
 			}
+		}
+		if (timedOut) {
+			emitEvent("task.timeout");
+			return false;
 		}
 		return true;
 	}

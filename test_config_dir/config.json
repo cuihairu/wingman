@@ -1,0 +1,23 @@
+{
+  "autoRun": {
+    "delaySeconds": 0,
+    "enabled": true,
+    "repeat": false,
+    "repeatInterval": 0,
+    "scriptPath": "test.lua"
+  },
+  "games": [],
+  "heartbeat": {
+    "enabled": false,
+    "intervalSeconds": 10,
+    "timeoutSeconds": 90
+  },
+  "server": {
+    "autoConnect": false,
+    "host": "example.com",
+    "password": "",
+    "port": 9999,
+    "serverControlled": false,
+    "username": ""
+  }
+}
