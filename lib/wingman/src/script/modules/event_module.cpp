@@ -81,6 +81,58 @@ ModuleDescriptor createEventModule() {
 	ModuleDescriptor mod;
 	mod.name = "event";
 
+	// on(type: string, callback: function, name?: string) -> subscriptionId
+	mod.functions.push_back({"on", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.size() < 2) return ScriptValue::fromBool(false);
+
+		std::string type = args[0].asString();
+		if (!args[1].isCallable()) return ScriptValue::fromBool(false);
+
+		ScriptValue::CallableFunc callback = args[1].callableVal;
+		std::string name = args.size() > 2 && args[2].isString() ? args[2].asString() : "";
+
+		// Wrap the callback to convert EventMessage to ScriptValue
+		uint64_t id = EventHub::instance().subscribe(type, [callback](const EventMessage& msg) {
+			std::vector<ScriptValue> cbArgs;
+			cbArgs.push_back(ScriptValue::fromObject({
+				{"type", ScriptValue::fromString(msg.type)},
+				{"source", ScriptValue::fromString(msg.source)},
+				{"correlationId", ScriptValue::fromString(msg.correlationId)},
+				{"timestamp", ScriptValue::fromInt(static_cast<int64_t>(msg.timestamp))},
+				{"priority", ScriptValue::fromInt(msg.priority)},
+				{"payload", fromJson(msg.payload)}
+			}));
+			callback(cbArgs);
+		}, name, false);
+
+		return ScriptValue::fromInt(static_cast<int64_t>(id));
+	}, "type:string, callback:function, name?:string -> subscriptionId:int"});
+
+	// once(type: string, callback: function) -> subscriptionId
+	mod.functions.push_back({"once", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.size() < 2) return ScriptValue::fromBool(false);
+
+		std::string type = args[0].asString();
+		if (!args[1].isCallable()) return ScriptValue::fromBool(false);
+
+		ScriptValue::CallableFunc callback = args[1].callableVal;
+
+		uint64_t id = EventHub::instance().subscribe(type, [callback](const EventMessage& msg) {
+			std::vector<ScriptValue> cbArgs;
+			cbArgs.push_back(ScriptValue::fromObject({
+				{"type", ScriptValue::fromString(msg.type)},
+				{"source", ScriptValue::fromString(msg.source)},
+				{"correlationId", ScriptValue::fromString(msg.correlationId)},
+				{"timestamp", ScriptValue::fromInt(static_cast<int64_t>(msg.timestamp))},
+				{"priority", ScriptValue::fromInt(msg.priority)},
+				{"payload", fromJson(msg.payload)}
+			}));
+			callback(cbArgs);
+		}, "", true);
+
+		return ScriptValue::fromInt(static_cast<int64_t>(id));
+	}, "type:string, callback:function -> subscriptionId:int"});
+
 	mod.functions.push_back({"emit", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		if (args.empty()) return ScriptValue::fromBool(false);
 

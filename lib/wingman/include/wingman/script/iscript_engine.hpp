@@ -11,7 +11,7 @@ namespace script {
 
 // Language-independent value type (tagged union)
 struct ScriptValue {
-	enum Type { Null, Bool, Int, Float, String, Array, Object };
+	enum Type { Null, Bool, Int, Float, String, Array, Object, Callable };
 
 	Type type = Null;
 
@@ -21,6 +21,10 @@ struct ScriptValue {
 	std::string strVal;
 	std::vector<ScriptValue> arrayVal;
 	std::unordered_map<std::string, ScriptValue> objectVal;
+
+	// Callable support: holds a function that can be called from C++
+	using CallableFunc = std::function<ScriptValue(const std::vector<ScriptValue>&)>;
+	CallableFunc callableVal;
 
 	ScriptValue() = default;
 
@@ -33,6 +37,7 @@ struct ScriptValue {
 	static ScriptValue fromString(std::string&& v) { ScriptValue sv; sv.type = String; sv.strVal = std::move(v); return sv; }
 	static ScriptValue fromArray(std::vector<ScriptValue>&& v) { ScriptValue sv; sv.type = Array; sv.arrayVal = std::move(v); return sv; }
 	static ScriptValue fromObject(std::unordered_map<std::string, ScriptValue>&& v) { ScriptValue sv; sv.type = Object; sv.objectVal = std::move(v); return sv; }
+	static ScriptValue fromCallable(CallableFunc v) { ScriptValue sv; sv.type = Callable; sv.callableVal = std::move(v); return sv; }
 
 	// Convenience access
 	bool isNull() const { return type == Null; }
@@ -42,6 +47,7 @@ struct ScriptValue {
 	bool isString() const { return type == String; }
 	bool isArray() const { return type == Array; }
 	bool isObject() const { return type == Object; }
+	bool isCallable() const { return type == Callable; }
 
 	bool asBool(bool def = false) const { return type == Bool ? boolVal : def; }
 	int64_t asInt(int64_t def = 0) const { return type == Int ? intVal : def; }
@@ -67,6 +73,14 @@ struct ScriptValue {
 		return idx < arrayVal.size() ? arrayVal[idx] : s_null;
 	}
 	size_t size() const { return type == Array ? arrayVal.size() : 0; }
+
+	// Callable invocation
+	ScriptValue call(const std::vector<ScriptValue>& args = {}) const {
+		if (type == Callable && callableVal) {
+			return callableVal(args);
+		}
+		return ScriptValue::null();
+	}
 };
 
 // Script function signature

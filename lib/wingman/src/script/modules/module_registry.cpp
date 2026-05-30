@@ -30,6 +30,9 @@ ModuleDescriptor createHttpModule();
 ModuleDescriptor createJsonModule();
 ModuleDescriptor createKvModule();
 ModuleDescriptor createEventModule();
+ModuleDescriptor createFsmModule();
+ModuleDescriptor createTaskModule();
+ModuleDescriptor createNotifyModule();
 ModuleDescriptor createOrchestrationModule();
 ModuleDescriptor createTeamModule();
 
@@ -59,6 +62,9 @@ std::vector<ModuleDescriptor> getAllModules() {
 	modules.push_back(createJsonModule());
 	modules.push_back(createKvModule());
 	modules.push_back(createEventModule());
+	modules.push_back(createFsmModule());
+	modules.push_back(createTaskModule());
+	modules.push_back(createNotifyModule());
 	modules.push_back(createOrchestrationModule());
 	modules.push_back(createTeamModule());
 	return modules;

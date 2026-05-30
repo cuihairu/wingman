@@ -120,6 +120,8 @@ public:
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;
+    std::mutex asyncMutex_;
+    std::thread asyncThread_;
 };
 
 } // namespace wingman

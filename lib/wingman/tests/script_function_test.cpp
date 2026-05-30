@@ -517,14 +517,14 @@ TEST(KvModuleFunctionsTest, SetWithOptionsDoesNotCrash) {
 }
 
 TEST(KvModuleFunctionsTest, DelWithStringKey) {
-    auto fn = findFunction("kv", "del");
+    auto fn = findFunction("kv", "delete");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({ScriptValue::fromString("key")});
     EXPECT_TRUE(result.isNull());
 }
 
 TEST(KvModuleFunctionsTest, DelWithArrayKey) {
-    auto fn = findFunction("kv", "del");
+    auto fn = findFunction("kv", "delete");
     auto keys = ScriptValue::fromArray({ScriptValue::fromString("k1"), ScriptValue::fromString("k2")});
     EXPECT_NO_THROW(fn({keys}));
 }
@@ -1039,7 +1039,7 @@ TEST(HttpModuleFunctionsTest, PutReturnsObject) {
 }
 
 TEST(HttpModuleFunctionsTest, DelReturnsObject) {
-    auto fn = findFunction("http", "del");
+    auto fn = findFunction("http", "delete");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({ScriptValue::fromString("http://127.0.0.1:1")});
     EXPECT_TRUE(result.isObject());

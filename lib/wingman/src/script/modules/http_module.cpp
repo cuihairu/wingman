@@ -68,7 +68,7 @@ ModuleDescriptor createHttpModule() {
 		return fromHttpResponse(getHttpClient()->put(args[0].asString(), body, options));
 	}, "url:string, body:string?, options? -> {status,body,...}"});
 
-	mod.functions.push_back({"del", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+	mod.functions.push_back({"delete", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		HttpOptions options = args.size() > 1 ? toHttpOptions(args[1]) : HttpOptions();
 		return fromHttpResponse(getHttpClient()->del(args[0].asString(), options));
 	}, "url:string, options? -> {status,body,...}"});

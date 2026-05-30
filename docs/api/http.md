@@ -81,6 +81,6 @@ local resp = http.postForm("https://example.com/login", {
 
 发送 PUT 请求。
 
-### http.del(url, options)
+### http.delete(url, options)
 
 发送 DELETE 请求。

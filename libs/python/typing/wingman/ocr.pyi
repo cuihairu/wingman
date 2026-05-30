@@ -1,0 +1,6 @@
+from __future__ import annotations
+
+from .types import Rect
+
+def recognize(region: Rect | dict) -> dict: ...
+def recognizeText(region: Rect | dict) -> str | None: ...

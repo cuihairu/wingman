@@ -31,13 +31,13 @@ kv.set("counter", "1", {nx = true})      -- 仅当不存在时设置
 **返回：**
 - `value` (string) - 值，不存在返回空字符串
 
-#### kv.del(key)
+#### kv.delete(key)
 
 删除键。
 
 ```lua
-kv.del("token")
-kv.del({"key1", "key2", "key3"})  -- 批量删除
+kv.delete("token")
+kv.delete({"key1", "key2", "key3"})  -- 批量删除
 ```
 
 #### kv.exists(key)

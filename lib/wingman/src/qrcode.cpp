@@ -124,7 +124,23 @@ public:
 QRLoginManager::QRLoginManager()
     : impl_(std::make_unique<Impl>()) {}
 
-QRLoginManager::~QRLoginManager() = default;
+QRLoginManager::~QRLoginManager() {
+    cancel();
+
+    std::thread asyncThread;
+    {
+        std::lock_guard<std::mutex> lock(asyncMutex_);
+        asyncThread = std::move(asyncThread_);
+    }
+
+    if (asyncThread.joinable()) {
+        if (asyncThread.get_id() == std::this_thread::get_id()) {
+            asyncThread.detach();
+        } else {
+            asyncThread.join();
+        }
+    }
+}
 
 // ========== Get QR Code ==========
 
@@ -236,10 +252,18 @@ QRLoginResult QRLoginManager::login(const QRLoginConfig& config) {
 
 void QRLoginManager::loginAsync(const QRLoginConfig& config,
                                  std::function<void(const QRLoginResult&)> callback) {
-    std::thread([this, config, callback]() {
+    std::thread worker([this, config, callback = std::move(callback)]() {
         QRLoginResult result = login(config);
-        callback(result);
-    }).detach();
+        if (callback) {
+            callback(result);
+        }
+    });
+
+    std::lock_guard<std::mutex> lock(asyncMutex_);
+    if (asyncThread_.joinable()) {
+        asyncThread_.join();
+    }
+    asyncThread_ = std::move(worker);
 }
 
 QRLoginResult QRLoginManager::pollStatus(const QRLoginConfig& config) {

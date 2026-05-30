@@ -38,7 +38,7 @@ ModuleDescriptor createKvModule() {
 		return ScriptValue::fromString(store->get(args[0].asString()));
 	}, "key:string -> string"});
 
-	mod.functions.push_back({"del", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+	mod.functions.push_back({"delete", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		auto* store = getKVStore();
 		if (!store) return ScriptValue::null();
 		if (args[0].isArray()) {

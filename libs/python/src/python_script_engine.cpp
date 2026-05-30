@@ -48,6 +48,16 @@ bool PythonScriptEngine::initialize(const script::EngineConfig& config) {
 			py::module_::import("os").attr("environ")[k] = v;
 		}
 
+		// Create the root Wingman package up front so every registered module
+		// lives under a single public namespace: wingman.<module>.
+		py::module_ types = py::module_::import("types");
+		py::module_ sys = py::module_::import("sys");
+		py::dict sysModules = sys.attr("modules").cast<py::dict>();
+		py::object wingmanModule = types.attr("ModuleType")("wingman");
+		wingmanModule.attr("__path__") = py::list();
+		sysModules["wingman"] = wingmanModule;
+		globals_["wingman"] = wingmanModule;
+
 		initialized_ = true;
 		return true;
 	} catch (const py::error_already_set& e) {
@@ -153,15 +163,28 @@ void PythonScriptEngine::registerModule(const script::ModuleDescriptor& module) 
 	try {
 		py::gil_scoped_acquire gil;
 
-		// 创建模块字典作为命名空间
-		py::dict modDict;
+		py::module_ types = py::module_::import("types");
+		py::module_ sys = py::module_::import("sys");
+		py::dict sysModules = sys.attr("modules").cast<py::dict>();
+
+		py::object wingmanModule;
+		if (sysModules.contains("wingman")) {
+			wingmanModule = sysModules["wingman"];
+		} else {
+			wingmanModule = types.attr("ModuleType")("wingman");
+			wingmanModule.attr("__path__") = py::list();
+			sysModules["wingman"] = wingmanModule;
+			globals_["wingman"] = wingmanModule;
+		}
+
+		const std::string fullName = "wingman." + module.name;
+		py::object moduleObject = types.attr("ModuleType")(fullName);
 
 		for (const auto& fn : module.functions) {
 			// 将 ScriptFunction 包装为 Python 可调用对象
 			script::ScriptFunction funcCopy = fn.func;
-			std::string funcName = fn.name;
 
-			modDict[fn.name.c_str()] = py::cpp_function(
+			moduleObject.attr(fn.name.c_str()) = py::cpp_function(
 				[funcCopy = std::move(funcCopy)](py::args args) -> py::object {
 					std::vector<script::ScriptValue> svArgs;
 					svArgs.reserve(args.size());
@@ -182,14 +205,8 @@ void PythonScriptEngine::registerModule(const script::ModuleDescriptor& module) 
 			);
 		}
 
-		// 注册到 globals 中
-		globals_[module.name.c_str()] = modDict;
-
-		// 同时注册为一个可 import 的模块
-		// 创建 py::module_ 并注册到 sys.modules
-		py::module_ sys = py::module_::import("sys");
-		py::dict sysModules = sys.attr("modules").cast<py::dict>();
-		sysModules[module.name.c_str()] = modDict;
+		wingmanModule.attr(module.name.c_str()) = moduleObject;
+		sysModules[fullName.c_str()] = moduleObject;
 
 	} catch (const py::error_already_set& e) {
 		lastError_ = e.what();

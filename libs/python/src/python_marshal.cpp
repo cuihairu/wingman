@@ -29,6 +29,17 @@ py::object toPythonObject(const script::ScriptValue& value) {
 		}
 		return dct;
 	}
+	case script::ScriptValue::Callable: {
+		// Wrap C++ callable as Python function
+		return py::cpp_function([callable = value.callableVal](py::args args) -> py::object {
+			std::vector<script::ScriptValue> svArgs;
+			svArgs.reserve(args.size());
+			for (py::ssize_t i = 0; i < args.size(); ++i) {
+				svArgs.push_back(toScriptValue(args[i].cast<py::object>()));
+			}
+			return toPythonObject(callable(svArgs));
+		});
+	}
 	}
 	return py::none();
 }
@@ -66,6 +77,29 @@ script::ScriptValue toScriptValue(const py::object& obj) {
 				arr.push_back(toScriptValue(tpl[i].cast<py::object>()));
 			}
 			return script::ScriptValue::fromArray(std::move(arr));
+		}
+		// Check if callable (function, lambda, etc.)
+		if (py::isinstance<py::function>(obj) || PyObject_HasAttrString(obj.ptr(), "__call__")) {
+			// Keep a reference to the Python object
+			py::object pyCallable = obj;
+			return script::ScriptValue::fromCallable([pyCallable](const std::vector<script::ScriptValue>& args) -> script::ScriptValue {
+				py::gil_scoped_acquire gil;
+				try {
+					// Convert ScriptValue args to Python args
+					py::list pyArgs;
+					pyArgs.reserve(args.size());
+					for (const auto& arg : args) {
+						pArgs.append(toPythonObject(arg));
+					}
+					// Call the Python callable
+					py::object result = pyCallable(*pyArgs);
+					// Convert result back to ScriptValue
+					return toScriptValue(result);
+				} catch (const py::error_already_set& e) {
+					// Return null on exception
+					return script::ScriptValue::null();
+				}
+			});
 		}
 	} catch (const py::error_already_set&) {
 		return script::ScriptValue::null();

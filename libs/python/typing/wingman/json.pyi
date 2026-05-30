@@ -1,0 +1,6 @@
+from __future__ import annotations
+
+from typing import Any
+
+def decode(jsonString: str) -> Any: ...
+def encode(value: object, indent: int = ...) -> str: ...
