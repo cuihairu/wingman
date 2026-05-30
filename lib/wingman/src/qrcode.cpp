@@ -89,6 +89,10 @@ public:
 
     // Build URL parameters
     std::string buildUrl(const std::string& baseUrl, const nlohmann::json& params) {
+        if (baseUrl.empty()) {
+            return "";
+        }
+
         if (params.empty()) {
             return baseUrl;
         }
@@ -241,6 +245,13 @@ void QRLoginManager::loginAsync(const QRLoginConfig& config,
 QRLoginResult QRLoginManager::pollStatus(const QRLoginConfig& config) {
     QRLoginResult result;
     result.state = QRLoginState::Pending;
+
+    // Validate status URL before attempting request
+    if (config.statusUrl.empty()) {
+        result.state = QRLoginState::Error;
+        result.message = "Status URL is empty";
+        return result;
+    }
 
     std::string url = impl_->buildUrl(config.statusUrl, config.statusParams);
 
