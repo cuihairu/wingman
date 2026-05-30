@@ -12,17 +12,18 @@
     "esbuild": "^0.24.0",
     "vitepress": "^1.6.0"
   },
-  "pnpm": {
-    "overrides": {
-      "vite": "^8.0.13",
-      "rollup": "^3.30.0",
-      "axios": "^1.16.1",
-      "tar": "^7.5.15",
-      "tar-fs": "^2.0.1",
-      "@tootallnate/once": "^3.0.0"
-    }
-  },
   "dependencies": {
     "vitepress-plugin-tabs": "^0.9.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
+  "overrides": {
+    "vite": "^8.0.13",
+    "rollup": "^3.30.0",
+    "axios": "^1.16.1",
+    "tar": "^7.5.15",
+    "tar-fs": "^2.0.1",
+    "@tootallnate/once": "^3.0.0"
   }
 }
