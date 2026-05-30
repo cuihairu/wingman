@@ -86,8 +86,14 @@ end
 **说明**：设置滚动条的滚动位置。值为 0 表示滚动到顶部/左侧，100 表示滚动到底部/右侧。
 
 **方法签名**：
-- Python: `set_value(value: number) -> None`
-- Lua: `:setValue(value: number) -> None`
+
+```python
+UIElement.set_value(value: number) -> None
+```
+
+```lua
+UIElement:setValue(value: number) -> None
+```
 
 **参数**：
 - `value` - 滚动位置（0-100）

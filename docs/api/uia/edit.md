@@ -9,8 +9,14 @@
 **说明**：按编辑框的标签名称查找。通常编辑框旁边会有标签提示（如"用户名："），标签文字就是 Name。
 
 **函数签名**：
-- Python: `find_edit(name: str) -> UIElement | None`
-- Lua: `findEdit(name: string) -> UIElement | nil`
+
+```python
+find_edit(name: str) -> UIElement | None
+```
+
+```lua
+findEdit(name: string) -> UIElement | nil
+```
 
 **参数**：
 - `name` - 编辑框的标签名称（如"用户名"、"搜索"、"密码"）
@@ -98,8 +104,14 @@ end
 **说明**：读取编辑框中当前的文本内容。
 
 **方法签名**：
-- Python: `get_value() -> str`
-- Lua: `:getValue() -> string`
+
+```python
+UIElement.get_value() -> str
+```
+
+```lua
+UIElement:getValue() -> string
+```
 
 **返回**：编辑框中的文本内容
 
@@ -142,8 +154,14 @@ end
 **说明**：设置编辑框的文本内容。这会**替换**原有的所有内容。
 
 **方法签名**：
-- Python: `set_value(text: str) -> None`
-- Lua: `:setValue(text: string) -> None`
+
+```python
+UIElement.set_value(text: str) -> None
+```
+
+```lua
+UIElement:setValue(text: string) -> None
+```
 
 **参数**：
 - `text` - 要设置的文本内容
@@ -412,8 +430,14 @@ end
 - 配合 `input.send_keys()` 使用
 
 **方法签名**：
-- Python: `focus() -> None`
-- Lua: `:focus() -> None`
+
+```python
+UIElement.focus() -> None
+```
+
+```lua
+UIElement:focus() -> None
+```
 
 :::tabs
 

@@ -27,6 +27,37 @@ Wingman 使用屏幕左上角为原点 (0, 0) 的坐标系统：
   Y
 ```
 
+### 数据类型
+
+> **详细说明**：查看 [数据类型参考](./types.md) 了解以下对象的完整结构。
+
+#### Image 对象
+
+`capture()` 函数返回的 Image 对象表示截取的图像区域。该对象可以用于：
+
+- 传递给 `find_image()` 作为模板进行图像匹配
+- 传递给 `wait_for_image()` 等待图像出现
+
+**注意**：Image 对象主要用于内部图像匹配操作，不直接暴露像素数据。如需获取像素颜色，请使用 `get_pixel()` 函数。
+
+#### 匹配结果对象
+
+`find_image()` 和 `wait_for_image()` 返回的匹配结果包含：
+
+**Python**: `(x: int, y: int, confidence: float)` 元组
+- `x` - 匹配位置 X 坐标
+- `y` - 匹配位置 Y 坐标
+- `confidence` - 相似度（0.0-1.0）
+
+**Lua**: `{x: number, y: number, confidence: number}` 表格
+- `x` - 匹配位置 X 坐标
+- `y` - 匹配位置 Y 坐标
+- `confidence` - 相似度（0.0-1.0）
+
+#### 颜色值
+
+RGB 颜色值使用 24 位整数表示，格式为 `0xRRGGBB`。参见 [颜色值](./types.md#颜色值) 了解详情。
+
 ---
 
 ## 截取屏幕
@@ -36,14 +67,22 @@ Wingman 使用屏幕左上角为原点 (0, 0) 的坐标系统：
 **说明**：截取屏幕的指定区域，返回图像对象。
 
 **函数签名**：
-- Python: `capture(x: int, y: int, width: int, height: int) -> Image`
-- Lua: `capture(x: number, y: number, width: number, height: number) -> Image`
+
+```python
+capture(x: int, y: int, width: int, height: int) -> Image
+```
+
+```lua
+capture(x: number, y: number, width: number, height: number) -> Image
+```
 
 **参数**：
 - `x, y` - 截取区域的左上角坐标
 - `width, height` - 截取区域的宽度和高度
 
-**返回**：Image 对象，可用于后续的颜色获取或图像匹配
+**返回**：Image 对象，可用于：
+- 作为 `find_image()` 的模板参数进行图像匹配
+- 作为 `wait_for_image()` 的等待目标
 
 :::tabs
 
@@ -88,8 +127,14 @@ local region = screen.capture(500, 200, 200, 50)
 **说明**：获取指定坐标的像素颜色值。
 
 **函数签名**：
-- Python: `get_pixel(x: int, y: int) -> int`
-- Lua: `getPixel(x: number, y: number) -> number`
+
+```python
+get_pixel(x: int, y: int) -> int
+```
+
+```lua
+getPixel(x: number, y: number) -> number
+```
 
 **参数**：
 - `x, y` - 像素坐标
@@ -155,8 +200,14 @@ print(string.format("R=%d, G=%d, B=%d", r, g, b))
 **说明**：在指定区域内查找第一个匹配指定颜色的像素。
 
 **函数签名**：
-- Python: `find_pixel(color: int, x: int, y: int, width: int, height: int, tolerance: int = 10) -> tuple(x, y) | None`
-- Lua: `findPixel(color: number, x: number, y: number, width: number, height: number, tolerance: number = 10) -> number x, number y | nil, nil`
+
+```python
+find_pixel(color: int, x: int, y: int, width: int, height: int, tolerance: int = 10) -> tuple[int, int] | None
+```
+
+```lua
+findPixel(color: number, x: number, y: number, width: number, height: number, tolerance: number = 10) -> number, number | nil, nil
+```
 
 **参数**：
 - `color` - 目标颜色（RGB 值）
@@ -216,8 +267,14 @@ local x, y = screen.findPixel(0x00FF00, 100, 100, 500, 500, 0)
 **说明**：在指定区域内查找所有匹配指定颜色的像素。
 
 **函数签名**：
-- Python: `find_color(color: int, x: int, y: int, width: int, height: int, tolerance: int = 10) -> list[tuple(x, y)]`
-- Lua: `findColor(color: number, x: number, y: number, width: number, height: number, tolerance: number = 10) -> table[{x, y}]`
+
+```python
+find_color(color: int, x: int, y: int, width: int, height: int, tolerance: int = 10) -> list[tuple[int, int]]
+```
+
+```lua
+findColor(color: number, x: number, y: number, width: number, height: number, tolerance: number = 10) -> table[{x: number, y: number}]
+```
 
 **参数**：
 - `color` - 目标颜色（RGB 值）
@@ -270,8 +327,14 @@ end
 **说明**：在屏幕指定区域中查找与模板图像匹配的位置。
 
 **函数签名**：
-- Python: `find_image(image_path: str, x: int, y: int, width: int, height: int, threshold: float = 0.9) -> tuple(x, y, confidence) | None`
-- Lua: `findImage(imagePath: string, x: number, y: number, width: number, height: number, threshold: number = 0.9) -> table{x, y, confidence} | nil`
+
+```python
+find_image(image_path: str, x: int, y: int, width: int, height: int, threshold: float = 0.9) -> tuple[int, int, float] | None
+```
+
+```lua
+findImage(imagePath: string, x: number, y: number, width: number, height: number, threshold: number = 0.9) -> table{x: number, y: number, confidence: number} | nil
+```
 
 **参数**：
 - `image_path` / `imagePath` - 模板图像文件路径（支持 PNG、JPG 等格式）
@@ -337,8 +400,14 @@ local result = screen.findImage("button.png", 100, 100, 500, 500, 0.8)
 **说明**：等待指定图像在屏幕上出现。每隔一段时间检查一次，直到找到图像或超时。
 
 **函数签名**：
-- Python: `wait_for_image(image_path: str, timeout: int, threshold: float = 0.9) -> tuple(x, y, confidence) | None`
-- Lua: `waitForImage(imagePath: string, timeout: number, threshold: number = 0.9) -> table{x, y, confidence} | nil`
+
+```python
+wait_for_image(image_path: str, timeout: int, threshold: float = 0.9) -> tuple[int, int, float] | None
+```
+
+```lua
+waitForImage(imagePath: string, timeout: number, threshold: number = 0.9) -> table{x: number, y: number, confidence: number} | nil
+```
 
 **参数**：
 - `image_path` / `imagePath` - 模板图像文件路径

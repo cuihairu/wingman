@@ -56,6 +56,13 @@ export default defineConfig({
       ],
       '/api/': [
         {
+          text: '参考',
+          items: [
+            { text: '数据类型', link: '/api/types' },
+            { text: '概览', link: '/api/' }
+          ]
+        },
+        {
           text: '核心模块',
           items: [
             { text: 'wingman.screen', link: '/api/screen' },
@@ -119,7 +126,8 @@ export default defineConfig({
             { text: 'wingman.verification', link: '/api/verification' },
             { text: 'wingman.gameprofile', link: '/api/gameprofile' },
             { text: 'wingman.debugger', link: '/api/debugger' },
-            { text: 'wingman.util', link: '/api/util' }
+            { text: 'wingman.util', link: '/api/util' },
+            { text: '数据类型', link: '/api/types' }
           ]
         },
         {

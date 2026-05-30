@@ -9,8 +9,14 @@
 **说明**：获取当前活动窗口的 UI 根元素。这是最常用的方式。
 
 **函数签名**：
-- Python: `from_foreground() -> UIElement | None`
-- Lua: `fromForeground() -> UIElement | nil`
+
+```python
+from_foreground() -> UIElement | None
+```
+
+```lua
+fromForeground() -> UIElement | nil
+```
 
 :::tabs
 
@@ -48,8 +54,14 @@ end
 **说明**：如果已经知道窗口句柄（HWND），可以直接获取其 UI 根元素。
 
 **函数签名**：
-- Python: `from_window(hwnd: int) -> UIElement | None`
-- Lua: `fromWindow(hwnd: number) -> UIElement | nil`
+
+```python
+from_window(hwnd: int) -> UIElement | None
+```
+
+```lua
+fromWindow(hwnd: number) -> UIElement | nil
+```
 
 **参数**：
 - `hwnd` - 窗口句柄

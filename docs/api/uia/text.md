@@ -9,8 +9,14 @@
 **说明**：文本控件通过其显示的文本来查找。
 
 **函数签名**：
-- Python: `find_text(name: str) -> UIElement | None`
-- Lua: `findText(name: string) -> UIElement | nil`
+
+```python
+find_text(name: str) -> UIElement | None
+```
+
+```lua
+findText(name: string) -> UIElement | nil
+```
 
 :::tabs
 

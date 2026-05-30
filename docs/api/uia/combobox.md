@@ -11,8 +11,14 @@
 **说明**：下拉框通常有标签文字，可以通过名称查找。
 
 **函数签名**：
-- Python: `find_by_name(name: str) -> UIElement | None`
-- Lua: `findByName(name: string) -> UIElement | nil`
+
+```python
+find_by_name(name: str) -> UIElement | None
+```
+
+```lua
+findByName(name: string) -> UIElement | nil
+```
 
 :::tabs
 

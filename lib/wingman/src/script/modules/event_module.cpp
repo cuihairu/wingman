@@ -102,7 +102,14 @@ ModuleDescriptor createEventModule() {
 				{"priority", ScriptValue::fromInt(msg.priority)},
 				{"payload", fromJson(msg.payload)}
 			}));
-			callback(cbArgs);
+			// Wrap callback in try-catch to prevent exception propagation
+			try {
+				callback(cbArgs);
+			} catch (const std::exception& e) {
+				// Log callback exception (TODO: add proper logging)
+			} catch (...) {
+				// Ignore unknown exceptions
+			}
 		}, name, false);
 
 		return ScriptValue::fromInt(static_cast<int64_t>(id));
@@ -127,7 +134,14 @@ ModuleDescriptor createEventModule() {
 				{"priority", ScriptValue::fromInt(msg.priority)},
 				{"payload", fromJson(msg.payload)}
 			}));
-			callback(cbArgs);
+			// Wrap callback in try-catch to prevent exception propagation
+			try {
+				callback(cbArgs);
+			} catch (const std::exception& e) {
+				// Log callback exception (TODO: add proper logging)
+			} catch (...) {
+				// Ignore unknown exceptions
+			}
 		}, "", true);
 
 		return ScriptValue::fromInt(static_cast<int64_t>(id));

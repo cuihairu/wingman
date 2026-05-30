@@ -83,7 +83,10 @@ public:
 				emitEvent("task.succeeded");
 				return;
 			} catch (const std::exception& e) {
-				error_ = e.what();
+				{
+					std::lock_guard<std::mutex> lock(mutex_);
+					error_ = e.what();
+				}
 				attempts++;
 
 				if (attempts <= options_.maxRetries) {
@@ -93,7 +96,10 @@ public:
 					std::this_thread::sleep_for(std::chrono::milliseconds(backoff));
 				}
 			} catch (...) {
-				error_ = "Unknown exception";
+				{
+					std::lock_guard<std::mutex> lock(mutex_);
+					error_ = "Unknown exception";
+				}
 				break;
 			}
 		}
@@ -137,6 +143,8 @@ public:
 	bool wait(int timeoutMs = 30000) {
 		auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 		bool timedOut = false;
+		TaskStatus cachedStatus;
+		nlohmann::json cachedMetadata;
 		{
 			std::unique_lock<std::mutex> lock(mutex_);
 			while (status_ == TaskStatus::pending || status_ == TaskStatus::running) {
@@ -145,19 +153,32 @@ public:
 						status_ = TaskStatus::timeout;
 						timedOut = true;
 						cond_.notify_all();
+						// Cache status and metadata BEFORE releasing lock
+						cachedStatus = status_;
+						cachedMetadata = options_.metadata;
 						break;
 					}
 				}
 			}
+			cachedStatus = status_;
+			cachedMetadata = options_.metadata;
 		}
 		if (timedOut) {
-			emitEvent("task.timeout");
+			// Emit event AFTER releasing lock, using cached values
+			EventHub::instance().emit("task.timeout", {
+				{"taskId", id_},
+				{"status", taskStatusToString(cachedStatus)},
+				{"metadata", cachedMetadata}
+			}, "task");
 			return false;
 		}
 		return true;
 	}
 
 	const std::string& id() const { return id_; }
+	
+	const ScriptValue::CallableFunc& getWork() const { return work_; }
+	const Task::Options& getOptions() const { return options_; }
 
 private:
 	void setStatus(TaskStatus s) {
@@ -262,8 +283,6 @@ public:
 	}
 
 	bool retry(const std::string& taskId, Task::Options opts) {
-		// For simplicity, retry creates a new task
-		// In a full implementation, we might want to reuse the same task ID
 		std::shared_ptr<Task> oldTask;
 		{
 			std::lock_guard<std::mutex> lock(mutex_);
@@ -271,10 +290,13 @@ public:
 			if (it == tasks_.end()) return false;
 			oldTask = it->second;
 		}
-
-		// Get the original work function - this is a simplification
-		// In practice, we'd need to store the work function separately
-		return false;
+		
+		// Use the original work function with new options
+		std::string newTaskId = submit(oldTask->getWork(), std::move(opts));
+		
+		// Optionally, we could update the original task ID to point to the new task
+		// For now, just return success
+		return !newTaskId.empty();
 	}
 
 private:

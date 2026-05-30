@@ -11,8 +11,14 @@
 **说明**：复选框通常有标签文字（如"记住密码"、"同意协议"），可以通过名称查找。
 
 **函数签名**：
-- Python: `find_by_name(name: str) -> UIElement | None`
-- Lua: `findByName(name: string) -> UIElement | nil`
+
+```python
+find_by_name(name: str) -> UIElement | None
+```
+
+```lua
+findByName(name: string) -> UIElement | nil
+```
 
 :::tabs
 
@@ -50,8 +56,14 @@ end
 **说明**：直接设置复选框为勾选或未勾选状态。
 
 **方法签名**：
-- Python: `set_value(value: bool) -> None`
-- Lua: `:setValue(value: boolean) -> None`
+
+```python
+UIElement.set_value(value: bool) -> None
+```
+
+```lua
+UIElement:setValue(value: boolean) -> None
+```
 
 **参数**：
 - `value` - True 勾选，False 取消勾选
@@ -178,8 +190,14 @@ end
 **说明**：获取复选框的当前勾选状态。
 
 **方法签名**：
-- Python: `get_value() -> bool`
-- Lua: `:getValue() -> boolean`
+
+```python
+UIElement.get_value() -> bool
+```
+
+```lua
+UIElement:getValue() -> boolean
+```
 
 **返回**：True 表示已勾选，False 表示未勾选
 
@@ -238,8 +256,14 @@ end
 ### 设置三态
 
 **方法签名**：
-- Python: `set_toggle_state(state: str) -> None`
-- Lua: `:setToggleState(state: string) -> None`
+
+```python
+UIElement.set_toggle_state(state: str) -> None
+```
+
+```lua
+UIElement:setToggleState(state: string) -> None
+```
 
 **参数**：
 - `state` - 状态值：'On'、'Off'、'Indeterminate'

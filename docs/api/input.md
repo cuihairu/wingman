@@ -2,6 +2,8 @@
 
 输入模拟模块，提供鼠标和键盘输入的模拟功能，支持人性化模拟。
 
+> **💡 提示**：查看 [数据类型参考](./types.md) 了解 API 中使用的各种对象和数据结构。
+
 ## 模块概述
 
 input 模块用于模拟用户的鼠标和键盘操作，主要功能包括：
@@ -25,8 +27,14 @@ input 模块用于模拟用户的鼠标和键盘操作，主要功能包括：
 **说明**：在指定位置执行鼠标点击。
 
 **函数签名**：
-- Python: `click(x: int, y: int, button: str = "left") -> None`
-- Lua: `click(x: number, y: number, button: string = "left") -> None`
+
+```python
+click(x: int, y: int, button: str = "left") -> None
+```
+
+```lua
+click(x: number, y: number, button: string = "left") -> nil
+```
 
 **参数**：
 - `x, y` - 点击位置坐标
@@ -75,8 +83,14 @@ input.click(100, 100, "middle")
 **说明**：移动鼠标到指定位置。
 
 **函数签名**：
-- Python: `move(x: int, y: int, smooth: bool = False) -> None`
-- Lua: `move(x: number, y: number, smooth: boolean = false) -> None`
+
+```python
+move(x: int, y: int, smooth: bool = False) -> None
+```
+
+```lua
+move(x: number, y: number, smooth: boolean = false) -> nil
+```
 
 **参数**：
 - `x, y` - 目标位置坐标
@@ -123,8 +137,14 @@ input.move(500, 300, true)
 **说明**：按住鼠标左键从起点拖拽到终点。
 
 **函数签名**：
-- Python: `drag(from_x: int, from_y: int, to_x: int, to_y: int, duration: int = 500) -> None`
-- Lua: `drag(fromX: number, fromY: number, toX: number, toY: number, duration: number = 500) -> None`
+
+```python
+drag(from_x: int, from_y: int, to_x: int, to_y: int, duration: int = 500) -> None
+```
+
+```lua
+drag(fromX: number, fromY: number, toX: number, toY: number, duration: number = 500) -> nil
+```
 
 **参数**：
 - `from_x, from_y` - 起点坐标
@@ -168,8 +188,14 @@ input.drag(100, 100, 500, 300, 200)
 **说明**：在指定位置执行滚轮滚动。
 
 **函数签名**：
-- Python: `scroll(x: int, y: int, delta: int) -> None`
-- Lua: `scroll(x: number, y: number, delta: number) -> None`
+
+```python
+scroll(x: int, y: int, delta: int) -> None
+```
+
+```lua
+scroll(x: number, y: number, delta: number) -> nil
+```
 
 **参数**：
 - `x, y` - 滚动位置坐标
@@ -217,8 +243,14 @@ input.scroll(500, 300, -360)
 **说明**：发送键盘按键或组合键。
 
 **函数签名**：
-- Python: `send_keys(keys: str) -> None`
-- Lua: `sendKeys(keys: string) -> None`
+
+```python
+send_keys(keys: str) -> None
+```
+
+```lua
+sendKeys(keys: string) -> nil
+```
 
 **参数**：
 - `keys` - 按键字符串
@@ -293,6 +325,16 @@ input.sendKeys("{DELETE}")
 ### get_mouse_pos() / getMousePos()
 
 **说明**：获取当前鼠标位置。
+
+**函数签名**：
+
+```python
+get_mouse_pos() -> tuple[int, int]
+```
+
+```lua
+getMousePos() -> number, number
+```
 
 **返回**：
 - Python: `(x, y)` 元组

@@ -9,8 +9,14 @@
 **说明**：按按钮上显示的文本查找。这是最直观的方式，但可能因为界面改版或语言变化而失效。
 
 **函数签名**：
-- Python: `find_button(name: str) -> UIElement | None`
-- Lua: `findButton(name: string) -> UIElement | nil`
+
+```python
+find_button(name: str) -> UIElement | None
+```
+
+```lua
+findButton(name: string) -> UIElement | nil
+```
 
 **参数**：
 - `name` - 按钮上显示的文本（如"确定"、"取消"、"提交"）
@@ -51,8 +57,14 @@ end
 **如何获取 AutomationId**：参考 [概述文档中的说明](./index.md#查找控件的优先级)
 
 **函数签名**：
-- Python: `find_by_id(id: str) -> UIElement | None`
-- Lua: `findById(id: string) -> UIElement | nil`
+
+```python
+find_by_id(id: str) -> UIElement | None
+```
+
+```lua
+findById(id: string) -> UIElement | nil
+```
 
 **参数**：
 - `id` - 控件的 AutomationId（如"btnSubmit"、"btnOK"）
@@ -93,8 +105,14 @@ end
 **说明**：模拟鼠标点击按钮。这是最常见的操作，用于触发按钮关联的动作。
 
 **方法签名**：
-- Python: `click() -> None`
-- Lua: `:click()`
+
+```python
+UIElement.click() -> None
+```
+
+```lua
+UIElement:click()
+```
 
 :::tabs
 
@@ -128,8 +146,14 @@ end
 **说明**：模拟鼠标双击按钮。某些应用程序的双击按钮有特殊功能（如"运行"按钮可能双击会以调试模式启动）。
 
 **方法签名**：
-- Python: `double_click() -> None`
-- Lua: `:doubleClick()`
+
+```python
+UIElement.double_click() -> None
+```
+
+```lua
+UIElement:doubleClick()
+```
 
 :::tabs
 

@@ -46,7 +46,7 @@ public:
 	};
 
 	StateMachine(std::string name, std::string initial)
-		: name_(std::move(name)), currentState_(std::move(initial)) {
+		: name_(std::move(name)), initialState_(initial), currentState_(std::move(initial)) {
 		// Initialize the initial state if not yet defined
 		if (states_.find(currentState_) == states_.end()) {
 			states_[currentState_] = StateConfig();

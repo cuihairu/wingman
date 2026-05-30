@@ -75,8 +75,14 @@ end
 **说明**：设置滑块的值。值必须在滑块的最小值和最大值之间。
 
 **方法签名**：
-- Python: `set_value(value: number) -> None`
-- Lua: `:setValue(value: number) -> None`
+
+```python
+UIElement.set_value(value: number) -> None
+```
+
+```lua
+UIElement:setValue(value: number) -> None
+```
 
 **参数**：
 - `value` - 要设置的值

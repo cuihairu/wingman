@@ -85,11 +85,10 @@ script::ScriptValue toScriptValue(const py::object& obj) {
 			return script::ScriptValue::fromCallable([pyCallable](const std::vector<script::ScriptValue>& args) -> script::ScriptValue {
 				py::gil_scoped_acquire gil;
 				try {
-					// Convert ScriptValue args to Python args
-					py::list pyArgs;
-					pyArgs.reserve(args.size());
-					for (const auto& arg : args) {
-						pArgs.append(toPythonObject(arg));
+					// Convert ScriptValue args to Python tuple
+					py::tuple pyArgs(args.size());
+					for (size_t i = 0; i < args.size(); ++i) {
+						pyArgs[i] = toPythonObject(args[i]);
 					}
 					// Call the Python callable
 					py::object result = pyCallable(*pyArgs);
