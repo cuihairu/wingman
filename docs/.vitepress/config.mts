@@ -70,13 +70,19 @@ export default defineConfig({
             { text: '概述', link: '/api/uia/' },
             { text: 'Button 按钮', link: '/api/uia/button' },
             { text: 'Edit 编辑框', link: '/api/uia/edit' },
+            { text: 'Text 文本', link: '/api/uia/text' },
             { text: 'ComboBox 下拉框', link: '/api/uia/combobox' },
             { text: 'List 列表', link: '/api/uia/list' },
             { text: 'CheckBox 复选框', link: '/api/uia/checkbox' },
             { text: 'RadioButton 单选按钮', link: '/api/uia/radiobutton' },
             { text: 'Tab 标签页', link: '/api/uia/tab' },
             { text: 'Menu 菜单', link: '/api/uia/menu' },
-            { text: 'Tree 树形控件', link: '/api/uia/tree' }
+            { text: 'Tree 树形控件', link: '/api/uia/tree' },
+            { text: 'Window 窗口', link: '/api/uia/window' },
+            { text: 'ScrollBar 滚动条', link: '/api/uia/scrollbar' },
+            { text: 'ProgressBar 进度条', link: '/api/uia/progressbar' },
+            { text: 'Slider 滑块', link: '/api/uia/slider' },
+            { text: 'ToolTip 工具提示', link: '/api/uia/tooltip' }
           ]
         },
         {

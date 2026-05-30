@@ -710,6 +710,7 @@ end
 
 - [Button 按钮](./button.md) - 按钮控件的详细文档
 - [Edit 编辑框](./edit.md) - 编辑框控件的详细文档
+- [Text 文本](./text.md) - 文本控件的详细文档
 - [ComboBox 下拉框](./combobox.md) - 下拉框控件的详细文档
 - [List 列表](./list.md) - 列表控件的详细文档
 - [CheckBox 复选框](./checkbox.md) - 复选框控件的详细文档
@@ -717,3 +718,8 @@ end
 - [Tab 标签页](./tab.md) - 标签页控件的详细文档
 - [Menu 菜单](./menu.md) - 菜单控件的详细文档
 - [Tree 树形控件](./tree.md) - 树形控件的详细文档
+- [Window 窗口](./window.md) - 窗口控件的详细文档
+- [ScrollBar 滚动条](./scrollbar.md) - 滚动条控件的详细文档
+- [ProgressBar 进度条](./progressbar.md) - 进度条控件的详细文档
+- [Slider 滑块](./slider.md) - 滑块控件的详细文档
+- [ToolTip 工具提示](./tooltip.md) - 工具提示控件的详细文档
