@@ -20,6 +20,17 @@ cmake_args=(
   -DWINGMAN_COMPAT_BUILD=ON
 )
 
+# macOS-specific settings
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  cmake_args+=(
+    -DCMAKE_CXX_COMPILER=clang++
+    -DCMAKE_C_COMPILER=clang
+  )
+  if [ -n "${MACOSX_DEPLOYMENT_TARGET:-}" ]; then
+    cmake_args+=(-DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET")
+  fi
+fi
+
 if [ -n "$version_suffix" ]; then
   cmake_args+=("-DWINGMAN_VERSION_SUFFIX=$version_suffix")
 fi

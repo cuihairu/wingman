@@ -93,7 +93,9 @@ jobs:
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
-        run: brew install ninja
+        run: |
+          brew install ninja
+          echo "MACOSX_DEPLOYMENT_TARGET=12" >> $GITHUB_ENV
 
       - name: Setup vcpkg
         run: bash ./build-scripts/ci/setup-vcpkg.sh
