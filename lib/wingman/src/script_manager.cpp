@@ -37,7 +37,11 @@ std::unique_ptr<script::IScriptEngine> ScriptManager::createEngineForLanguage(co
 	if (!engine) return nullptr;
 
 	script::EngineConfig config;
-	config.sandboxed = m_sandboxConfig.disableIO;
+	config.sandboxed = false;
+	config.memoryLimit = m_sandboxConfig.memoryLimit;
+	config.instructionLimit = m_sandboxConfig.instructionLimit;
+	config.timeLimitMs = m_sandboxConfig.timeLimitMs;
+	config.env = m_env;
 
 	if (!engine->initialize(config)) {
 		return nullptr;

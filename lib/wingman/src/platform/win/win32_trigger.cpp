@@ -123,14 +123,17 @@ void TriggerManager::disable(size_t id) {
 }
 
 void TriggerManager::start() {
-    if (m_running) return;
-    m_running = true;
+    bool expected = false;
+    if (!m_running.compare_exchange_strong(expected, true)) {
+        return;
+    }
     m_thread = std::thread(&TriggerManager::checkThread, this);
 }
 
 void TriggerManager::stop() {
-    if (!m_running) return;
-    m_running = false;
+    if (!m_running.exchange(false)) {
+        return;
+    }
     if (m_thread.joinable()) {
         m_thread.join();
     }
@@ -187,24 +190,54 @@ size_t TriggerManager::getTriggerCount() const {
 }
 
 void TriggerManager::checkThread() {
-    while (m_running) {
-        std::lock_guard<std::mutex> lock(m_mutex);
-
-        for (auto& trigger : m_triggers) {
-            if (!trigger.config.enabled) continue;
-
-            if (checkTrigger(trigger)) {
-                uint64_t now = getTickCount();
-                if (now - trigger.lastTriggerTime >= static_cast<uint64_t>(trigger.config.cooldown)) {
-                    trigger.lastTriggerTime = now;
-                    executeActions(trigger.config.actions);
-
-                    if (trigger.config.oneShot) {
-                        trigger.config.enabled = false;
-                        trigger.triggered = true;
-                    }
+    while (m_running.load()) {
+        std::vector<TriggerInstance> snapshot;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            snapshot.reserve(m_triggers.size());
+            for (const auto& trigger : m_triggers) {
+                if (trigger.config.enabled) {
+                    snapshot.push_back(trigger);
                 }
             }
+        }
+
+        for (auto& trigger : snapshot) {
+            if (!m_running.load()) {
+                break;
+            }
+
+            if (!checkTrigger(trigger)) {
+                continue;
+            }
+
+            std::vector<TriggerActionData> actions;
+            const uint64_t now = getTickCount();
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                auto it = std::find_if(m_triggers.begin(), m_triggers.end(),
+                    [id = trigger.id](const TriggerInstance& candidate) {
+                        return candidate.id == id;
+                    });
+
+                if (it == m_triggers.end() || !it->config.enabled) {
+                    continue;
+                }
+
+                if (now - it->lastTriggerTime < static_cast<uint64_t>(it->config.cooldown)) {
+                    continue;
+                }
+
+                it->lastTriggerTime = now;
+                actions = it->config.actions;
+
+                if (it->config.oneShot) {
+                    it->config.enabled = false;
+                    it->triggered = true;
+                }
+            }
+
+            executeActions(actions);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -293,6 +326,7 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
                     std::string lang = factory.detectLanguage("script.lua"); // Default Lua
                     auto engine = factory.createEngine(lang);
                     if (engine && engine->initialize()) {
+                        script::modules::registerAllModules(*engine);
                         if (engine->executeString(action.value)) {
                             if (m_logger) m_logger->info("Trigger action: executed script successfully");
                         } else {

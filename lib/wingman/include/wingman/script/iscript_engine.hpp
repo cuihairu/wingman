@@ -78,6 +78,10 @@ struct ModuleDescriptor {
 		std::string name;
 		ScriptFunction func;
 		std::string signature; // For documentation purposes, e.g. "x:int, y:int -> bool"
+
+		ScriptValue operator()(const std::vector<ScriptValue>& args) const {
+			return func ? func(args) : ScriptValue::null();
+		}
 	};
 
 	std::string name;
@@ -86,7 +90,7 @@ struct ModuleDescriptor {
 
 // Engine configuration
 struct EngineConfig {
-	bool sandboxed = true;
+	bool sandboxed = false;
 	uint64_t memoryLimit = 100 * 1024 * 1024;   // 100MB
 	uint64_t instructionLimit = 1000000;          // 1M instructions
 	uint64_t timeLimitMs = 30000;                 // 30 seconds

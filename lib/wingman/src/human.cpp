@@ -95,6 +95,10 @@ Point HumanMouse::calculateBezierPoint(double t, const std::vector<Point>& contr
 }
 
 std::vector<Point> HumanMouse::generateBezierPath(const Point& start, const Point& end) {
+    if (start == end) {
+        return {start};
+    }
+
     std::vector<Point> controlPoints;
     controlPoints.push_back(start);
 

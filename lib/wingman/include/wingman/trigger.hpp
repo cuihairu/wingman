@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <mutex>
 #include <thread>
+#include <atomic>
 
 #include <spdlog/logger.h>
 
@@ -129,7 +130,7 @@ public:
 
 private:
     std::vector<TriggerInstance> m_triggers;
-    bool m_running;
+    std::atomic<bool> m_running{false};
     std::thread m_thread;
     mutable std::mutex m_mutex;
     class ScriptManager* m_scriptManager;

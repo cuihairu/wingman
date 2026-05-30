@@ -9,7 +9,7 @@ print("=== Wingman 脚本管理示例 ===\n")
 print("1. 脚本配置")
 local config = {
     autoReload = true,      -- 启用热加载
-    sandboxed = true,       -- 启用沙箱模式
+    sandboxed = false,      -- 沙箱暂时关闭
     timeout = 30000         -- 超时时间 (ms)
 }
 
@@ -52,7 +52,7 @@ print("7. 动态加载子脚本")
 --[[
     local subScriptLoaded = script.load("sub", "scripts/sub_script.lua", {
         autoReload = false,
-        sandboxed = true,
+        sandboxed = false,
         timeout = 5000
     })
     print("子脚本加载: " .. tostring(subScriptLoaded))

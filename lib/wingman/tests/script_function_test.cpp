@@ -4,6 +4,7 @@
 #include "wingman/json.hpp"
 #include "wingman/behavior_tree.hpp"
 #include "wingman/smart_trigger.hpp"
+#include <algorithm>
 
 using namespace wingman;
 using namespace wingman::script;
@@ -17,6 +18,16 @@ static ModuleDescriptor::FunctionEntry findFunction(const std::string& moduleNam
             for (const auto& fn : mod.functions) {
                 if (fn.name == funcName) return fn;
             }
+        }
+    }
+    return {};
+}
+
+static ModuleDescriptor::FunctionEntry findFunction(const std::string& funcName) {
+    auto modules = getAllModules();
+    for (const auto& mod : modules) {
+        for (const auto& fn : mod.functions) {
+            if (fn.name == funcName) return fn;
         }
     }
     return {};
@@ -1283,7 +1294,17 @@ TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
     auto modules = getAllModules();
     for (const auto& mod : modules) {
         for (const auto& fn : mod.functions) {
-            EXPECT_NO_THROW(fn.func({ScriptValue::fromString("test")}))
+            std::vector<ScriptValue> args;
+            if (fn.signature.find("key:string") != std::string::npos ||
+                fn.signature.find("name:string") != std::string::npos ||
+                fn.signature.find("path:string") != std::string::npos ||
+                fn.signature.find("secret:string") != std::string::npos ||
+                fn.signature.find("account:string") != std::string::npos ||
+                fn.signature.find("id:string") != std::string::npos ||
+                fn.signature.find("title:string") != std::string::npos) {
+                args.push_back(ScriptValue::fromString("test"));
+            }
+            EXPECT_NO_THROW(fn.func(args))
                 << "Module '" << mod.name << "' function '" << fn.name << "' threw";
         }
     }

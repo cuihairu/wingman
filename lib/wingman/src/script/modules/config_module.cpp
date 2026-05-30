@@ -1,5 +1,6 @@
 #include "wingman/script/iscript_engine.hpp"
 #include "wingman/config.hpp"
+#include <nlohmann/json.hpp>
 
 namespace wingman {
 namespace script {
@@ -11,13 +12,24 @@ static ConfigManager& getConfigManager() {
 	return instance;
 }
 
+static std::string unwrapConfigString(const std::string& value) {
+	try {
+		auto json = nlohmann::json::parse(value);
+		if (json.is_string()) {
+			return json.get<std::string>();
+		}
+	} catch (...) {
+	}
+	return value;
+}
+
 ModuleDescriptor createConfigModule() {
 	ModuleDescriptor mod;
 	mod.name = "config";
 
 	mod.functions.push_back({"get", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		auto val = getConfigManager().get(args[0].asString());
-		if (val) return ScriptValue::fromString(*val);
+		if (val) return ScriptValue::fromString(unwrapConfigString(*val));
 		return ScriptValue::null();
 	}, "key:string -> string?"});
 

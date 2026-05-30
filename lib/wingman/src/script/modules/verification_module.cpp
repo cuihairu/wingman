@@ -17,6 +17,8 @@ ModuleDescriptor createVerificationModule() {
 
 	mod.functions.push_back({"totp", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		TOTPConfig config;
+		config.type = TOTPType::Google;
+		config.digits = 6;
 		config.secret = args[0].asString();
 		if (args.size() > 1) config.digits = static_cast<int>(args[1].asInt(6));
 		if (args.size() > 2) config.period = static_cast<int>(args[2].asInt(30));
@@ -29,6 +31,8 @@ ModuleDescriptor createVerificationModule() {
 
 	mod.functions.push_back({"saveTOTP", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		TOTPConfig config;
+		config.type = TOTPType::Google;
+		config.digits = 6;
 		config.secret = args[1].asString();
 		if (args.size() > 2) config.digits = static_cast<int>(args[2].asInt(6));
 		if (args.size() > 3) config.period = static_cast<int>(args[3].asInt(30));
@@ -54,6 +58,8 @@ ModuleDescriptor createVerificationModule() {
 
 	mod.functions.push_back({"getRemaining", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		TOTPConfig config;
+		config.type = TOTPType::Google;
+		config.digits = 6;
 		config.secret = args[0].asString();
 		if (args.size() > 1) config.period = static_cast<int>(args[1].asInt(30));
 		return ScriptValue::fromInt(getVerificationManager().getRemainingSeconds(config));

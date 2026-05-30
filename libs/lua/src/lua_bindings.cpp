@@ -1200,7 +1200,7 @@ static int load(lua_State* L) {
 
     // 可选的配置表
     bool autoReload = false;
-    bool sandboxed = true;
+    bool sandboxed = false;
     int timeoutMs = 30000;
 
     if (lua_istable(L, 3)) {

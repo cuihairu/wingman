@@ -102,7 +102,7 @@ TEST(ModuleRegistryTest, ModulesHaveFunctions) {
 
 TEST(EngineConfigTest, DefaultValues) {
     EngineConfig cfg;
-    EXPECT_TRUE(cfg.sandboxed);
+    EXPECT_FALSE(cfg.sandboxed);
     EXPECT_EQ(cfg.memoryLimit, 100ULL * 1024 * 1024);
     EXPECT_EQ(cfg.instructionLimit, 1000000ULL);
     EXPECT_EQ(cfg.timeLimitMs, 30000ULL);

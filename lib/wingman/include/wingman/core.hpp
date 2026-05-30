@@ -3,6 +3,8 @@
 // ========== wingman-core ==========
 // Core module unified header
 
+#include <string>
+
 #include "wingman/screen.hpp"
 #include "wingman/input.hpp"
 #include "wingman/window.hpp"
@@ -29,27 +31,33 @@ namespace wingman::core {
 // Core manager
 class CoreManager {
 public:
-    static CoreManager& instance();
+    static CoreManager& instance() {
+        static CoreManager manager;
+        return manager;
+    }
 
     // Initialize
-    bool initialize(const std::string& configPath);
-    void shutdown();
+    bool initialize(const std::string& configPath = {}) {
+        configPath_ = configPath;
+        running_ = true;
+        return true;
+    }
 
-    // Get modules
-    class ScreenManager& screen();
-    class InputManager& input();
-    class WindowFinder& window();
-    class TriggerManager& trigger();
-    class AccountManager& accounts();
+    void shutdown() {
+        running_ = false;
+    }
 
     // Running state
     bool isRunning() const { return running_; }
+
+    const std::string& configPath() const { return configPath_; }
 
 private:
     CoreManager() = default;
     ~CoreManager() = default;
 
     bool running_ = false;
+    std::string configPath_;
 };
 
 } // namespace wingman::core

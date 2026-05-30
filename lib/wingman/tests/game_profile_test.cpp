@@ -68,8 +68,8 @@ TEST(GameProfileTest, TriggerConfig) {
     EXPECT_FALSE(trigger.enabled);
 }
 
-TEST(GameProfileTest, ScriptConfig) {
-    ScriptConfig script;
+TEST(GameProfileTest, GameScriptConfig) {
+    GameScriptConfig script;
     script.name = "main_bot";
     script.path = "scripts/main.lua";
     script.autoStart = true;

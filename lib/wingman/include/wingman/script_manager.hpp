@@ -16,10 +16,32 @@ namespace wingman {
 
 // Script configuration
 struct ScriptConfig {
+	ScriptConfig() = default;
+	ScriptConfig(const ScriptConfig& other)
+		: name(other.name),
+		  path(other.path),
+		  autoReload(other.autoReload),
+		  sandboxed(other.sandboxed),
+		  timeoutMs(other.timeoutMs),
+		  env(other.env) {}
+	ScriptConfig(ScriptConfig&&) noexcept = default;
+	ScriptConfig& operator=(const ScriptConfig& other) {
+		if (this != &other) {
+			name = other.name;
+			path = other.path;
+			autoReload = other.autoReload;
+			sandboxed = other.sandboxed;
+			timeoutMs = other.timeoutMs;
+			env = other.env;
+		}
+		return *this;
+	}
+	ScriptConfig& operator=(ScriptConfig&&) noexcept = default;
+
 	std::string name;
 	std::string path;
 	bool autoReload = false;
-	bool sandboxed = true;
+	bool sandboxed = false;
 	int timeoutMs = 30000;
 	std::unordered_map<std::string, std::string> env;
 };
@@ -51,10 +73,10 @@ struct ScriptInfo {
 
 // Sandbox configuration
 struct SandboxConfig {
-	bool disableIO = true;
-	bool disableOS = true;
-	bool disableDebug = true;
-	bool disablePackage = true;
+	bool disableIO = false;
+	bool disableOS = false;
+	bool disableDebug = false;
+	bool disablePackage = false;
 	bool disableCoroutine = false;
 	uint64_t memoryLimit = 100 * 1024 * 1024;
 	uint64_t instructionLimit = 1000000;

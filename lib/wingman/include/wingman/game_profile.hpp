@@ -42,8 +42,8 @@ struct GameTriggerConfig {
     bool enabled = true;
 };
 
-// Script configuration
-struct ScriptConfig {
+// Script configuration attached to a game profile.
+struct GameScriptConfig {
     std::string name;
     std::string path;
     bool autoStart = false;
@@ -62,7 +62,7 @@ struct GameProfile {
     std::vector<ColorConfig> colors;
     std::vector<ImageConfig> images;
     std::vector<GameTriggerConfig> triggers;
-    std::vector<ScriptConfig> scripts;
+    std::vector<GameScriptConfig> scripts;
 
     // Advanced settings
     std::unordered_map<std::string, std::string> settings;

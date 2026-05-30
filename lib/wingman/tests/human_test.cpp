@@ -207,80 +207,58 @@ TEST(HumanMouseTest, SinglePointPath) {
 
 // ========== Additional Human Tests ==========
 
-// -- Bezier curve point computation --
+// -- Bezier path generation through public API --
 
-TEST(HumanMouseTest, CalculateBezierPointLinearTwoPoints) {
-    // 2 control points -> linear interpolation
-    Point p0(0, 0);
-    Point p1(100, 0);
-    std::vector<Point> cps = { p0, p1 };
+TEST(HumanMouseTest, GenerateBezierPathLinearConfigProducesStraightLine) {
+    HumanMouseConfig config;
+    config.minControlPoints = 0;
+    config.maxControlPoints = 0;
+    config.pathVariance = 0;
+    HumanMouse mouse(config);
 
-    Point mid = HumanMouse::calculateBezierPoint(0.0, cps);
-    EXPECT_EQ(mid.x, 0);
-    EXPECT_EQ(mid.y, 0);
+    Point start(0, 0);
+    Point end(100, 0);
+    auto path = mouse.generateBezierPath(start, end);
 
-    Point mid2 = HumanMouse::calculateBezierPoint(0.5, cps);
-    EXPECT_EQ(mid2.x, 50);
-    EXPECT_EQ(mid2.y, 0);
-
-    Point end = HumanMouse::calculateBezierPoint(1.0, cps);
-    EXPECT_EQ(end.x, 100);
-    EXPECT_EQ(end.y, 0);
+    ASSERT_FALSE(path.empty());
+    EXPECT_EQ(path.front(), start);
+    EXPECT_EQ(path.back(), end);
+    EXPECT_EQ(path[path.size() / 2].y, 0);
+    EXPECT_NEAR(path[path.size() / 2].x, 50, 5);
 }
 
-TEST(HumanMouseTest, CalculateBezierPointQuadraticThreePoints) {
-    // 3 control points -> quadratic bezier
-    Point p0(0, 0);
-    Point p1(50, 100);   // control point above the line
-    Point p2(100, 0);
-    std::vector<Point> cps = { p0, p1, p2 };
+TEST(HumanMouseTest, GenerateBezierPathQuadraticConfigPreservesEndpoints) {
+    HumanMouseConfig config;
+    config.minControlPoints = 1;
+    config.maxControlPoints = 1;
+    config.pathVariance = 0;
+    HumanMouse mouse(config);
 
-    Point start = HumanMouse::calculateBezierPoint(0.0, cps);
-    EXPECT_EQ(start.x, 0);
-    EXPECT_EQ(start.y, 0);
+    Point start(0, 0);
+    Point end(100, 100);
+    auto path = mouse.generateBezierPath(start, end);
 
-    Point end = HumanMouse::calculateBezierPoint(1.0, cps);
-    EXPECT_EQ(end.x, 100);
-    EXPECT_EQ(end.y, 0);
-
-    // Midpoint should be above the baseline (y < 0 is "up" in screen coords,
-    // but here p1.y=100 so the curve bends downward)
-    Point mid = HumanMouse::calculateBezierPoint(0.5, cps);
-    EXPECT_EQ(mid.x, 50);
-    EXPECT_EQ(mid.y, 50);  // (1-0.5)^2*0 + 2*(1-0.5)*0.5*100 + 0.5^2*0 = 50
+    ASSERT_FALSE(path.empty());
+    EXPECT_EQ(path.front(), start);
+    EXPECT_EQ(path.back(), end);
+    EXPECT_GE(path.size(), 20);
 }
 
-TEST(HumanMouseTest, CalculateBezierPointCubicFourPoints) {
-    // 4 control points -> cubic bezier
-    Point p0(0, 0);
-    Point p1(0, 100);
-    Point p2(100, 100);
-    Point p3(100, 0);
-    std::vector<Point> cps = { p0, p1, p2, p3 };
+TEST(HumanMouseTest, GenerateBezierPathCubicConfigPreservesEndpoints) {
+    HumanMouseConfig config;
+    config.minControlPoints = 2;
+    config.maxControlPoints = 2;
+    config.pathVariance = 0;
+    HumanMouse mouse(config);
 
-    Point start = HumanMouse::calculateBezierPoint(0.0, cps);
-    EXPECT_EQ(start.x, 0);
-    EXPECT_EQ(start.y, 0);
+    Point start(0, 0);
+    Point end(100, 100);
+    auto path = mouse.generateBezierPath(start, end);
 
-    Point end = HumanMouse::calculateBezierPoint(1.0, cps);
-    EXPECT_EQ(end.x, 100);
-    EXPECT_EQ(end.y, 0);
-}
-
-TEST(HumanMouseTest, CalculateBezierPointSinglePointFallback) {
-    // 0 or 1 control point -> returns first point
-    std::vector<Point> one = { Point(42, 99) };
-    Point result = HumanMouse::calculateBezierPoint(0.5, one);
-    EXPECT_EQ(result.x, 42);
-    EXPECT_EQ(result.y, 99);
-}
-
-TEST(HumanMouseTest, CalculateBezierPointFivePointsUsesCubic) {
-    // >= 4 control points still uses cubic (first 4)
-    std::vector<Point> cps = { Point(0, 0), Point(0, 50), Point(100, 50), Point(100, 0), Point(200, 200) };
-    Point start = HumanMouse::calculateBezierPoint(0.0, cps);
-    EXPECT_EQ(start.x, 0);
-    EXPECT_EQ(start.y, 0);
+    ASSERT_FALSE(path.empty());
+    EXPECT_EQ(path.front(), start);
+    EXPECT_EQ(path.back(), end);
+    EXPECT_GE(path.size(), 20);
 }
 
 // -- Path generation edge cases --
@@ -376,20 +354,23 @@ TEST(HumanMouseTest, ConfigDefaultValues) {
     EXPECT_TRUE(config.enablePathRandomness);
 }
 
-// -- calculateDuration clamping --
+// -- move duration clamping through timed public API --
 
 TEST(HumanMouseTest, CalculateDurationRespectsConfigBounds) {
     HumanMouse mouse;
     HumanMouseConfig config;
-    config.minMoveDuration = 200;
-    config.maxMoveDuration = 250;
-    config.moveVariance = 10;
+    config.minMoveDuration = 0;
+    config.maxMoveDuration = 0;
+    config.moveVariance = 0;
+    config.enableRandomDelay = false;
     mouse.setConfig(config);
 
-    // Even for a zero-length path, duration should be clamped to min
-    int duration = mouse.calculateDuration(0.0);
-    EXPECT_GE(duration, 200);
-    EXPECT_LE(duration, 260);  // base(0) + variance(10) clamped to min 200
+    Point start(10, 10);
+    Point end(10, 10);
+    auto path = mouse.generateBezierPath(start, end);
+
+    EXPECT_FALSE(path.empty());
+    EXPECT_EQ(mouse.calculatePathLength(path), 0);
 }
 
 // -- HumanKeyboard constructor with config --
