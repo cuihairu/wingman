@@ -4,16 +4,20 @@
 
 ## 创建状态机
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import fsm
 
 # 创建状态机
 machine_id = fsm.create("combat", "idle")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local fsm = require("wingman.fsm")
 
 -- 创建状态机
@@ -24,9 +28,11 @@ local machineId = fsm.create("combat", "idle")
 
 ## 定义状态及回调
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import fsm
 
 machine_id = fsm.create("combat", "idle")
@@ -36,7 +42,9 @@ fsm.state(machine_id, "idle", on_enter=lambda ctx: print("进入空闲状态"))
 fsm.state(machine_id, "fight", on_enter=lambda ctx: print("进入战斗状态"))
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local fsm = require("wingman.fsm")
 
 local machineId = fsm.create("combat", "idle")
@@ -55,9 +63,11 @@ fsm.state(machineId, "fight")
 
 ## 定义状态转移
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import fsm
 
 # 定义状态转移
@@ -65,7 +75,9 @@ fsm.transition(machine_id, "idle", "fight", on="enemy_found")
 fsm.transition(machine_id, "fight", "idle", on="enemy_lost")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local fsm = require("wingman.fsm")
 
 -- 定义状态转移
@@ -77,16 +89,20 @@ fsm.transition(machineId, "fight", "idle", "enemy_lost")
 
 ## 派发事件
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import fsm
 
 # 派发事件
 fsm.dispatch(machine_id, "enemy_found", {"target": "boss"})
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local fsm = require("wingman.fsm")
 
 -- 派发事件
@@ -97,9 +113,11 @@ fsm.dispatch(machineId, "enemy_found", { target = "boss" })
 
 ## 获取当前状态
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import fsm
 
 # 获取当前状态
@@ -107,7 +125,9 @@ current = fsm.current(machine_id)
 print(f"当前状态: {current}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local fsm = require("wingman.fsm")
 
 -- 获取当前状态
@@ -119,16 +139,20 @@ print("当前状态: " .. current)
 
 ## 重置状态机
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import fsm
 
 # 重置状态机
 fsm.reset(machine_id)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local fsm = require("wingman.fsm")
 
 -- 重置状态机
@@ -143,9 +167,11 @@ fsm.reset(machineId)
 
 ### 游戏战斗状态机
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import fsm, vision, input
 
 # 创建战斗状态机
@@ -185,7 +211,9 @@ while True:
         fsm.dispatch(combat_id, "hp_recovered", {"hp": hp})
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local fsm = require("wingman.fsm")
 local vision = require("wingman.vision")
 local input = require("wingman.input")
@@ -237,9 +265,11 @@ end
 
 ### 带守卫的状态转移
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import fsm
 
 # 创建状态机
@@ -272,7 +302,9 @@ fsm.dispatch(task_id, "start", {"ready": True})  # 会转移
 print(fsm.current(task_id))  # "running"
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local fsm = require("wingman.fsm")
 
 -- 创建状态机

@@ -4,9 +4,11 @@ JSON 解析和序列化。
 
 ## 解析 JSON
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import json
 
 # 解析 JSON 字符串
@@ -15,7 +17,9 @@ print(data['name'])      # "Player1"
 print(data['score'])     # 100
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local json = require("wingman.json")
 
 -- 解析 JSON 字符串
@@ -28,9 +32,11 @@ print(data.score)     -- 100
 
 ## 序列化 JSON
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import json
 
 obj = {
@@ -47,7 +53,9 @@ formatted = json.encode(obj, indent=2)
 print(formatted)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local json = require("wingman.json")
 
 local obj = {
@@ -68,9 +76,11 @@ print(formatted)
 
 ## JSON null 值
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import json
 
 obj = {
@@ -79,7 +89,9 @@ obj = {
 }
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local json = require("wingman.json")
 
 local obj = {

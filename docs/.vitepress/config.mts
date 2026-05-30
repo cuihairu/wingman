@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
 
 export default defineConfig({
   title: 'Wingman',
@@ -25,6 +26,12 @@ export default defineConfig({
           ]
         },
         {
+          text: '进阶指南',
+          items: [
+            { text: 'YOLO 模型使用', link: '/guides/yolo-guide' }
+          ]
+        },
+        {
           text: '功能',
           items: [
             { text: '屏幕操作', link: '/guide/screen' },
@@ -48,10 +55,13 @@ export default defineConfig({
       ],
       '/api/': [
         {
-          text: '核心 API',
+          text: '核心模块',
           items: [
             { text: 'wingman.screen', link: '/api/screen' },
-            { text: 'wingman.input', link: '/api/input' }
+            { text: 'wingman.input', link: '/api/input' },
+            { text: 'wingman.window', link: '/api/window' },
+            { text: 'wingman.process', link: '/api/process' },
+            { text: 'wingman.uia', link: '/api/uia' }
           ]
         },
         {
@@ -64,6 +74,10 @@ export default defineConfig({
         {
           text: '自动化系统',
           items: [
+            { text: 'wingman.event', link: '/api/event' },
+            { text: 'wingman.fsm', link: '/api/fsm' },
+            { text: 'wingman.task', link: '/api/task' },
+            { text: 'wingman.notify', link: '/api/notify' },
             { text: 'wingman.smart-trigger', link: '/api/smart-trigger' },
             { text: 'wingman.behavior-tree', link: '/api/behavior-tree' }
           ]
@@ -73,8 +87,19 @@ export default defineConfig({
           items: [
             { text: 'wingman.http', link: '/api/http' },
             { text: 'wingman.json', link: '/api/json' },
-            { text: 'wingman.kv', link: '/api/kv' },
-            { text: 'wingman.config', link: '/api/config' }
+            { text: 'wingman.kv', link: '/api/kv' }
+          ]
+        },
+        {
+          text: '辅助功能',
+          items: [
+            { text: 'wingman.human', link: '/api/human' },
+            { text: 'wingman.config', link: '/api/config' },
+            { text: 'wingman.verification', link: '/api/verification' },
+            { text: 'wingman.gameprofile', link: '/api/gameprofile' },
+            { text: 'wingman.debugger', link: '/api/debugger' },
+            { text: 'wingman.util', link: '/api/util' },
+            { text: 'wingman.tray', link: '/api/tray' }
           ]
         },
         {
@@ -93,7 +118,8 @@ export default defineConfig({
             { text: '像素检测', link: '/examples/pixel-detection' },
             { text: '图像匹配', link: '/examples/image-matching' },
             { text: '自动化循环', link: '/examples/auto-loop' },
-            { text: '宏录制', link: '/examples/macro-record' }
+            { text: '宏录制', link: '/examples/macro-record' },
+            { text: 'UI 自动化', link: '/examples/ui-automation' }
           ]
         }
       ]
@@ -110,6 +136,9 @@ export default defineConfig({
 
   markdown: {
     ignoreDeadLinks: true,
+    config: (md) => {
+      md.use(tabsMarkdownPlugin)
+    },
     codeTransformers: [
       {
         postTransform: (code, node) => {

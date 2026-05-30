@@ -4,9 +4,11 @@
 
 ## 截取屏幕
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 # 截取全屏
 img = screen.capture(0, 0, 1920, 1080)
 
@@ -14,7 +16,9 @@ img = screen.capture(0, 0, 1920, 1080)
 img = screen.capture(100, 100, 500, 500)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 -- 截取全屏
 local img = screen.capture(0, 0, 1920, 1080)
 
@@ -26,14 +30,18 @@ local img = screen.capture(100, 100, 500, 500)
 
 ## 获取像素颜色
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 color = screen.get_pixel(100, 100)
 print(f"Color: 0x{color:06X}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local color = screen.getPixel(100, 100)
 print(string.format("Color: 0x%06X", color))
 ```
@@ -42,9 +50,11 @@ print(string.format("Color: 0x%06X", color))
 
 ## 查找像素
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 # 查找单个像素
 result = screen.find_pixel(0xFF0000, 0, 0, 1920, 1080, 10)
 if result:
@@ -52,7 +62,9 @@ if result:
     print(f"Found at: {x}, {y}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 -- 查找单个像素
 local x, y = screen.findPixel(0xFF0000, 0, 0, 1920, 1080, 10)
 if x then
@@ -64,16 +76,20 @@ end
 
 ## 查找颜色
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 # 查找指定颜色
 results = screen.find_color(0xFF0000, 0, 0, 1920, 1080)
 for x, y in results:
     print(f"Found red pixel at: {x}, {y}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 -- 查找指定颜色
 local results = screen.findColor(0xFF0000, 0, 0, 1920, 1080)
 for i, result in ipairs(results) do
@@ -86,9 +102,11 @@ end
 
 ## 图像匹配
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 # 查找图像
 result = screen.find_image("target.png", 0, 0, 1920, 1080)
 if result:
@@ -96,7 +114,9 @@ if result:
     print(f"Found at: {x}, {y} (confidence: {confidence})")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 -- 查找图像
 local result = screen.findImage("target.png", 0, 0, 1920, 1080)
 if result then
@@ -109,16 +129,20 @@ end
 
 ## 等待图像出现
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 # 等待图像出现（最多等待 5 秒）
 result = screen.wait_for_image("loading.png", 5000)
 if result:
     print("加载完成")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 -- 等待图像出现（最多等待 5 秒）
 local result = screen.waitForImage("loading.png", 5000)
 if result then
@@ -134,9 +158,11 @@ end
 
 ### 游戏挂机脚本
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import screen, input, util
 
 # 等待游戏窗口激活
@@ -162,7 +188,9 @@ while True:
         util.sleep(1000)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local screen = require("wingman.screen")
 local input = require("wingman.input")
 local util = require("wingman.util")

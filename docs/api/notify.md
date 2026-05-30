@@ -4,9 +4,11 @@
 
 ## 日志通知
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import notify
 
 # 各级别日志
@@ -16,7 +18,9 @@ notify.warn("资源不足", {"hp": 10})
 notify.error("任务失败", {"error": "timeout"})
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local notify = require("wingman.notify")
 
 -- 各级别日志
@@ -30,9 +34,11 @@ notify.error("任务失败", { error = "timeout" })
 
 ## Toast 通知
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import notify
 
 # Toast 通知
@@ -40,7 +46,9 @@ notify.toast("Wingman", "任务完成", level="success")
 notify.toast("警告", "血量过低", level="warning")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local notify = require("wingman.notify")
 
 -- Toast 通知
@@ -52,9 +60,11 @@ notify.toast("警告", "血量过低", "warning")
 
 ## Webhook
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import notify
 
 # Webhook
@@ -64,7 +74,9 @@ notify.webhook("http://127.0.0.1:9000/hook", {
 })
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local notify = require("wingman.notify")
 
 -- Webhook
@@ -78,9 +90,11 @@ notify.webhook("http://127.0.0.1:9000/hook", {
 
 ## 事件桥接
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import notify
 
 # 事件桥接
@@ -88,7 +102,9 @@ notify.bridge("combat.*", "event://logging.combat_events")
 notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local notify = require("wingman.notify")
 
 -- 事件桥接
@@ -104,9 +120,11 @@ notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
 
 ### 游戏监控通知系统
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import notify, vision, util
 
 def check_game_status():
@@ -134,7 +152,9 @@ def check_game_status():
 check_game_status()
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local notify = require("wingman.notify")
 local vision = require("wingman.vision")
 local util = require("wingman.util")
@@ -173,9 +193,11 @@ checkGameStatus()
 
 ### Webhook 远程通知
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import notify, vision, input
 
 def combat_bot():
@@ -206,7 +228,9 @@ def combat_bot():
 combat_bot()
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local notify = require("wingman.notify")
 local vision = require("wingman.vision")
 local input = require("wingman.input")
@@ -248,9 +272,11 @@ combatBot()
 
 ### 事件桥接集成
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import notify, event
 
 # 设置事件桥接
@@ -265,7 +291,9 @@ event.emit("system.low_memory", {"available_mb": 512})   # 自动 POST 到监控
 notify.bridge("task.error", "http://alert-server.com/api/alerts")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local notify = require("wingman.notify")
 local event = require("wingman.event")
 

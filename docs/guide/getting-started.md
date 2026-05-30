@@ -14,6 +14,12 @@ title: 快速开始
 - **Git** - 版本控制
 - **vcpkg** - C++ 包管理器
 
+### Python 环境（可选）
+
+如需使用 Python 脚本：
+- **Python 3.8+**
+- **pybind11**
+
 ### vcpkg 安装
 
 ```bash
@@ -88,8 +94,11 @@ start build/Wingman.sln
 ### 5. 运行
 
 ```bash
-# 运行示例脚本
+# 运行 Lua 示例脚本
 .\build\Release\wingman.exe scripts\examples\hello.lua
+
+# 运行 Python 示例脚本
+.\build\Release\wingman.exe scripts\examples\hello.py
 ```
 
 ## vcpkg.json
@@ -119,6 +128,7 @@ start build/Wingman.sln
 ```bash
 # 本地模式 - 执行脚本
 wingman.exe script.lua
+wingman.exe script.py
 
 # Server 模式 - 被动监听
 wingman.exe --server --port 8888
@@ -136,21 +146,42 @@ wingman.exe --help
 
 ## 第一个脚本
 
+### Python 版本
+
+创建文件 `hello.py`：
+
+```python
+from wingman import screen, util
+
+# 打印问候
+print("Hello from Wingman!")
+
+# 获取屏幕尺寸
+width, height = screen.get_size()
+print(f"Screen size: {width}x{height}")
+
+# 延迟 1 秒
+util.sleep(1000)
+
+print("Script completed!")
+```
+
+### Lua 版本
+
 创建文件 `hello.lua`：
 
 ```lua
-local wingman = require("wingman")
+local screen = require("wingman.screen")
+local util = require("wingman.util")
 
 -- 打印问候
 print("Hello from Wingman!")
 
 -- 获取屏幕尺寸
-local screen = require("wingman.screen")
 local width, height = screen.getSize()
 print(string.format("Screen size: %dx%d", width, height))
 
 -- 延迟 1 秒
-local util = require("wingman.util")
 util.sleep(1000)
 
 print("Script completed!")
@@ -159,8 +190,27 @@ print("Script completed!")
 运行：
 
 ```bash
+# Python
+wingman.exe hello.py
+
+# Lua
 wingman.exe hello.lua
 ```
+
+## 选择脚本语言
+
+Wingman 同时支持 Python 和 Lua，如何选择？
+
+### 使用 Python 如果你：
+- 熟悉 Python 语法
+- 需要使用丰富的 Python 库
+- 需要更好的 IDE 支持（类型提示、自动补全）
+- 开发复杂的项目
+
+### 使用 Lua 如果你：
+- 需要最快的启动速度
+- 内存受限的环境
+- 偏好简洁的语法
 
 ## 开发容器（可选）
 
@@ -177,3 +227,4 @@ code .
 - [示例脚本](/examples/) - 学习更多用法
 - [调试指南](/guide/debugging) - 如何调试脚本
 - [远程控制](/guide/remote) - 使用 TCP 远程控制
+- [YOLO 模型使用](/guides/yolo-guide) - 使用 YOLO 进行目标检测

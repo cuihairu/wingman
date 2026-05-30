@@ -4,15 +4,19 @@
 
 ## 创建托盘图标
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray
 
 icon = tray.create("Wingman")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 
 local icon = tray.create("Wingman")
@@ -22,9 +26,11 @@ local icon = tray.create("Wingman")
 
 ## 获取/移除托盘图标
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray
 
 # 获取
@@ -34,7 +40,9 @@ icon = tray.get("main")
 tray.remove("main")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 
 -- 获取
@@ -48,16 +56,20 @@ tray.remove("main")
 
 ## 设置图标
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray
 
 icon = tray.create("Wingman")
 icon.set_icon("C:/path/to/icon.ico")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 
 local icon = tray.create("Wingman")
@@ -68,15 +80,19 @@ icon:setIcon("C:/path/to/icon.ico")
 
 ## 设置提示文本
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray
 
 icon.set_tooltip("Wingman 自动化引擎")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 
 icon:setTooltip("Wingman 自动化引擎")
@@ -86,15 +102,19 @@ icon:setTooltip("Wingman 自动化引擎")
 
 ## 添加菜单项
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray
 
 icon.add_item("start", "启动脚本", lambda: print("启动脚本!"))
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 
 icon:addItem("start", "启动脚本", function()
@@ -106,15 +126,19 @@ end)
 
 ## 添加分隔线
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray
 
 icon.add_separator("sep1")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 
 icon:addSeparator("sep1")
@@ -124,9 +148,11 @@ icon:addSeparator("sep1")
 
 ## 添加子菜单
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray
 
 icon.add_submenu("scripts", "脚本", [
@@ -135,7 +161,9 @@ icon.add_submenu("scripts", "脚本", [
 ])
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 
 icon:addSubmenu("scripts", "脚本", {
@@ -148,9 +176,11 @@ icon:addSubmenu("scripts", "脚本", {
 
 ## 移除/清空菜单项
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray
 
 # 移除单项
@@ -160,7 +190,9 @@ icon.remove_item("start")
 icon.clear_items()
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 
 -- 移除单项
@@ -174,9 +206,11 @@ icon:clearItems()
 
 ## 显示/隐藏图标
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray
 
 # 显示
@@ -186,7 +220,9 @@ icon.show()
 icon.hide()
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 
 -- 显示
@@ -200,16 +236,20 @@ icon:hide()
 
 ## 检查可见性
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray
 
 if icon.is_visible():
     print("图标可见")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 
 if icon:isVisible() then
@@ -221,15 +261,19 @@ end
 
 ## 销毁图标
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray
 
 icon.destroy()
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 
 icon:destroy()
@@ -241,9 +285,11 @@ icon:destroy()
 
 ## 完整示例
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import tray, util
 
 # 创建托盘图标
@@ -276,7 +322,9 @@ while True:
     util.sleep(1000)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local tray = require("wingman.tray")
 local util = require("wingman.util")
 

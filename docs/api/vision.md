@@ -4,9 +4,11 @@
 
 ## 查找颜色
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import vision
 
 # 查找红色
@@ -15,7 +17,9 @@ if pos:
     print(f"找到颜色: {pos['x']}, {pos['y']}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local vision = require("wingman.vision")
 
 -- 查找红色
@@ -29,9 +33,11 @@ end
 
 ## 查找所有颜色
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import vision
 
 positions = vision.find_all_colors({"r": 255, "g": 0, "b": 0}, 5)
@@ -39,7 +45,9 @@ for i, pos in enumerate(positions):
     print(f"位置 {i}: {pos['x']}, {pos['y']}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local vision = require("wingman.vision")
 
 local positions = vision.findAllColors({r=255, g=0, b=0}, 5)
@@ -52,16 +60,20 @@ end
 
 ## 检查颜色存在
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import vision
 
 if vision.has_color({"r": 0, "g": 255, "b": 0}, 10):
     print("找到了绿色")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local vision = require("wingman.vision")
 
 if vision.hasColor({r=0, g=255, b=0}, 10) then
@@ -73,16 +85,20 @@ end
 
 ## 获取主要颜色
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import vision
 
 color = vision.get_dominant_color({"x": 0, "y": 0, "width": 200, "height": 200})
 print(f"主要颜色: {color['r']}, {color['g']}, {color['b']}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local vision = require("wingman.vision")
 
 local color = vision.getDominantColor({x=0, y=0, width=200, height=200})
@@ -93,9 +109,11 @@ print("主要颜色:", color.r, color.g, color.b)
 
 ## 查找图像
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import vision
 
 result = vision.find_image("target.png", 0.8)
@@ -104,7 +122,9 @@ if result['found']:
     print(f"置信度: {result['confidence']}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local vision = require("wingman.vision")
 
 local result = vision.findImage("target.png", 0.8)
@@ -118,16 +138,20 @@ end
 
 ## 检测边缘
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import vision
 
 edges = vision.detect_edges({"x": 0, "y": 0, "width": 800, "height": 600}, 50, 150)
 print(f"检测到 {len(edges)} 个边缘点")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local vision = require("wingman.vision")
 
 local edges = vision.detectEdges({x=0, y=0, width=800, height=600}, 50, 150)
@@ -138,9 +162,11 @@ print("检测到", #edges, "个边缘点")
 
 ## 检测轮廓
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import vision
 
 contours = vision.detect_contours({"x": 0, "y": 0, "width": 800, "height": 600})
@@ -148,7 +174,9 @@ for i, contour in enumerate(contours):
     print(f"轮廓 {i}: {len(contour)} 个点")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local vision = require("wingman.vision")
 
 local contours = vision.detectContours({x=0, y=0, width=800, height=600})
@@ -161,9 +189,11 @@ end
 
 ## 检测圆形
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import vision
 
 circles = vision.detect_circles({"x": 0, "y": 0, "width": 800, "height": 600}, 10, 100)
@@ -171,7 +201,9 @@ for i, circle in enumerate(circles):
     print(f"圆 {i}: center({circle['x']}, {circle['y']}) radius={circle['radius']}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local vision = require("wingman.vision")
 
 local circles = vision.detectCircles({x=0, y=0, width=800, height=600}, 10, 100)
@@ -184,15 +216,19 @@ end
 
 ## 截取区域
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import vision
 
 vision.capture_region({"x": 0, "y": 0, "width": 1920, "height": 1080}, "screenshot.png")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local vision = require("wingman.vision")
 
 vision.captureRegion({x=0, y=0, width=1920, height=1080}, "screenshot.png")

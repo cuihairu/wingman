@@ -4,9 +4,11 @@
 
 ## 验证码识别
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import verification
 
 # 识别图像验证码
@@ -18,7 +20,9 @@ else:
     print("识别失败")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local verification = require("wingman.verification")
 
 -- 识别图像验证码
@@ -35,9 +39,11 @@ end
 
 ## 识别屏幕区域验证码
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import verification, screen
 
 # 截取屏幕区域
@@ -49,7 +55,9 @@ if result['success']:
     print(f"验证码: {result['text']}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local verification = require("wingman.verification")
 local screen = require("wingman.screen")
 
@@ -67,9 +75,11 @@ end
 
 ## TOTP 生成
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import verification
 
 # 生成 TOTP 验证码
@@ -78,7 +88,9 @@ code = verification.generate_totp(secret)
 print(f"当前 TOTP 验证码: {code}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local verification = require("wingman.verification")
 
 -- 生成 TOTP 验证码
@@ -91,9 +103,11 @@ print("当前 TOTP 验证码: " .. code)
 
 ## 批量生成 TOTP
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import verification
 
 # 批量生成多个账户的 TOTP
@@ -107,7 +121,9 @@ for name, secret in accounts.items():
     print(f"{name}: {code}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local verification = require("wingman.verification")
 
 -- 批量生成多个账户的 TOTP
@@ -126,9 +142,11 @@ end
 
 ## 设置 TOTP 时间步长
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import verification
 
 # 设置 TOTP 时间步长（默认 30 秒）
@@ -138,7 +156,9 @@ verification.set_totp_step(30)
 verification.set_totp_step(60)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local verification = require("wingman.verification")
 
 -- 设置 TOTP 时间步长（默认 30 秒）
@@ -152,9 +172,11 @@ verification.setTotpStep(60)
 
 ## 存储验证码密钥
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import verification, kv
 
 # 存储验证码密钥
@@ -167,7 +189,9 @@ secret = verification.load_secret("game_account")
 verification.delete_secret("game_account")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local verification = require("wingman.verification")
 
 -- 存储验证码密钥
@@ -188,9 +212,11 @@ verification.deleteSecret("game_account")
 
 ### 验证码识别流程
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import verification, input, screen, util
 
 # 截取验证码区域
@@ -213,7 +239,9 @@ else:
     print("验证码识别失败，尝试手动输入")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local verification = require("wingman.verification")
 local input = require("wingman.input")
 local screen = require("wingman.screen")
@@ -244,9 +272,11 @@ end
 
 ### TOTP 登录流程
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import verification, input, util
 
 # 账户信息
@@ -273,7 +303,9 @@ else:
     input.click(400, 350)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local verification = require("wingman.verification")
 local input = require("wingman.input")
 local util = require("wingman.util")

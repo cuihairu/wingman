@@ -4,9 +4,11 @@
 
 ## 设置断点
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import debugger
 
 # 在当前行设置断点
@@ -19,7 +21,9 @@ debugger.breakpoint_if(lambda: x > 10)
 debugger.log_point("变量 x 的值: {}", x)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local debugger = require("wingman.debugger")
 
 -- 在当前行设置断点
@@ -36,16 +40,20 @@ debugger.logPoint("变量 x 的值: " .. tostring(x), x)
 
 ## 启动调试服务器
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import debugger
 
 # 启动调试服务器
 debugger.start_server(9999)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local debugger = require("wingman.debugger")
 
 -- 启动调试服务器
@@ -56,16 +64,20 @@ debugger.startServer(9999)
 
 ## 连接调试器
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import debugger
 
 # 连接到远程调试器
 debugger.connect("localhost", 9999)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local debugger = require("wingman.debugger")
 
 -- 连接到远程调试器
@@ -76,9 +88,11 @@ debugger.connect("localhost", 9999)
 
 ## 输出调试信息
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import debugger
 
 # 输出调试信息
@@ -89,7 +103,9 @@ debugger.log(f"当前状态: {status}")
 debugger.inspect({"x": x, "y": y, "status": status})
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local debugger = require("wingman.debugger")
 
 -- 输出调试信息
@@ -104,9 +120,11 @@ debugger.inspect({x = x, y = y, status = status})
 
 ## 获取调用栈
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import debugger
 
 # 获取当前调用栈
@@ -115,7 +133,9 @@ for frame in stack:
     print(f"  {frame['file']}:{frame['line']} in {frame['function']}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local debugger = require("wingman.debugger")
 
 -- 获取当前调用栈
@@ -129,9 +149,11 @@ end
 
 ## 单步执行
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import debugger
 
 # 单步进入
@@ -147,7 +169,9 @@ debugger.step_out()
 debugger.resume()
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local debugger = require("wingman.debugger")
 
 -- 单步进入
@@ -167,9 +191,11 @@ debugger.resume()
 
 ## 检查变量
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import debugger
 
 # 检查局部变量
@@ -185,7 +211,9 @@ result = debugger.eval("x + y")
 print(f"x + y = {result}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local debugger = require("wingman.debugger")
 
 -- 检查局部变量

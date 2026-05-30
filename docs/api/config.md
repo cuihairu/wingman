@@ -4,9 +4,11 @@
 
 ## 获取服务器配置
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 server = config.get_server()
@@ -20,7 +22,9 @@ server = config.get_server()
 # }
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 local server = config.getServer()
@@ -38,9 +42,11 @@ local server = config.getServer()
 
 ## 设置服务器配置
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 config.set_server({
@@ -53,7 +59,9 @@ config.set_server({
 })
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 config.setServer({
@@ -70,9 +78,11 @@ config.setServer({
 
 ## 获取托盘配置
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 tray = config.get_tray()
@@ -83,7 +93,9 @@ tray = config.get_tray()
 # }
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 local tray = config.getTray()
@@ -98,9 +110,11 @@ local tray = config.getTray()
 
 ## 设置托盘配置
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 config.set_tray({
@@ -110,7 +124,9 @@ config.set_tray({
 })
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 config.setTray({
@@ -124,9 +140,11 @@ config.setTray({
 
 ## 获取自动运行配置
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 auto_run = config.get_auto_run()
@@ -139,7 +157,9 @@ auto_run = config.get_auto_run()
 # }
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 local autoRun = config.getAutoRun()
@@ -156,9 +176,11 @@ local autoRun = config.getAutoRun()
 
 ## 设置自动运行配置
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 config.set_auto_run({
@@ -170,7 +192,9 @@ config.set_auto_run({
 })
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 config.setAutoRun({
@@ -186,9 +210,11 @@ config.setAutoRun({
 
 ## 获取自定义配置值
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 value = config.get("myKey")
@@ -196,7 +222,9 @@ if value:
     print(value)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 local value = config.get("myKey")
@@ -209,9 +237,11 @@ end
 
 ## 设置自定义配置值
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 config.set("myKey", "myValue")
@@ -219,7 +249,9 @@ config.set("count", 42)
 config.set("enabled", True)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 config.set("myKey", "myValue")
@@ -231,15 +263,19 @@ config.set("enabled", true)
 
 ## 删除自定义配置值
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 removed = config.remove("myKey")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 local removed = config.remove("myKey")
@@ -253,9 +289,11 @@ local removed = config.remove("myKey")
 
 ### 读取并显示当前配置
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 server = config.get_server()
@@ -264,7 +302,9 @@ print(f"自动连接: {server['autoConnect']}")
 print(f"服务器控制: {server['serverControlled']}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 local server = config.getServer()
@@ -277,9 +317,11 @@ print("服务器控制: " .. tostring(server.serverControlled))
 
 ### 启用服务器控制模式
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 server = config.get_server()
@@ -294,7 +336,9 @@ config.set_server(server)
 print("已启用服务器控制模式")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 local server = config.getServer()
@@ -313,9 +357,11 @@ print("已启用服务器控制模式")
 
 ### 自定义配置存储
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import config
 
 # 存储游戏配置
@@ -333,7 +379,9 @@ print(f"服务器: {server}")
 print(f"自动喝药: {auto_potion}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local config = require("wingman.config")
 
 -- 存储游戏配置

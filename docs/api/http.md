@@ -4,9 +4,11 @@ HTTP 客户端，支持 GET/POST/PUT/DELETE 请求和表单提交。
 
 ## GET 请求
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import http
 
 resp = http.get("https://api.example.com/data", {
@@ -20,7 +22,9 @@ else:
     print(f"Error: {resp['status']}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local http = require("wingman.http")
 
 local resp = http.get("https://api.example.com/data", {
@@ -39,9 +43,11 @@ end
 
 ## POST 请求（JSON）
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import http
 
 resp = http.post("https://api.example.com/submit", {
@@ -52,7 +58,9 @@ resp = http.post("https://api.example.com/submit", {
 })
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local http = require("wingman.http")
 local json = require("wingman.json")
 
@@ -68,9 +76,11 @@ local resp = http.post("https://api.example.com/submit", json.encode({
 
 ## POST 表单
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import http
 
 resp = http.post_form("https://example.com/login", {
@@ -79,7 +89,9 @@ resp = http.post_form("https://example.com/login", {
 })
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local http = require("wingman.http")
 
 local resp = http.postForm("https://example.com/login", {
@@ -92,9 +104,11 @@ local resp = http.postForm("https://example.com/login", {
 
 ## PUT 请求
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import http
 
 resp = http.put("https://api.example.com/update", {
@@ -103,7 +117,9 @@ resp = http.put("https://api.example.com/update", {
 })
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local http = require("wingman.http")
 
 local resp = http.put("https://api.example.com/update", json.encode({
@@ -116,15 +132,19 @@ local resp = http.put("https://api.example.com/update", json.encode({
 
 ## DELETE 请求
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import http
 
 resp = http.delete("https://api.example.com/items/123")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local http = require("wingman.http")
 
 local resp = http.delete("https://api.example.com/items/123")

@@ -4,9 +4,11 @@
 
 ## 订阅事件
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import event
 
 # 订阅事件
@@ -16,7 +18,9 @@ def on_enemy(e: event.EventMessage) -> None:
 sub_id = event.on("combat.enemy_found", on_enemy, name="my-handler")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local event = require("wingman.event")
 
 -- 订阅事件
@@ -31,16 +35,20 @@ local id = event.on("combat.enemy_found", onEnemy, "my-handler")
 
 ## 一次性订阅
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import event
 
 # 一次性订阅
 event.once("task.done", lambda e: print("Task done!"))
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local event = require("wingman.event")
 
 -- 一次性订阅
@@ -53,16 +61,20 @@ end)
 
 ## 触发事件
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import event
 
 # 触发事件
 event.emit("combat.enemy_found", {"x": 100, "y": 200}, {"source": "vision"})
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local event = require("wingman.event")
 
 -- 触发事件
@@ -73,9 +85,11 @@ event.emit("combat.enemy_found", { x = 100, y = 200 }, { source = "vision" })
 
 ## 取消订阅
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import event
 
 # 取消订阅
@@ -85,7 +99,9 @@ event.off(sub_id)
 event.clear()
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local event = require("wingman.event")
 
 -- 取消订阅
@@ -103,9 +119,11 @@ event.clear()
 
 ### 游戏战斗事件系统
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import event, vision
 
 # 定义战斗事件处理
@@ -139,7 +157,9 @@ while True:
         event.emit("combat.low_hp", {"hp": hp})
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local event = require("wingman.event")
 local vision = require("wingman.vision")
 
@@ -185,9 +205,11 @@ end
 
 ### 任务协作事件
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import event, task
 
 # 任务状态监听
@@ -219,7 +241,9 @@ def run_combat():
         event.emit("task.fail", {"task_id": 1, "error": str(e)})
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local event = require("wingman.event")
 local task = require("wingman.task")
 

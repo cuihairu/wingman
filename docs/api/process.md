@@ -4,9 +4,11 @@
 
 ## 查找进程
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import process
 
 pid, found = process.find("notepad")
@@ -14,7 +16,9 @@ if found:
     print(f"找到记事本进程，PID: {pid}")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local process = require("wingman.process")
 
 local pid, found = process.find("notepad")
@@ -27,9 +31,11 @@ end
 
 ## 启动进程
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import process
 
 # 启动记事本
@@ -42,7 +48,9 @@ pid = process.start("cmd.exe", args="/c dir C:\\")
 pid = process.start("cmd.exe", working_dir="C:\\Temp")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local process = require("wingman.process")
 
 -- 启动记事本
@@ -59,9 +67,11 @@ local pid = process.start("cmd.exe", "", "C:\\Temp")
 
 ## 等待进程结束
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import process
 
 pid = process.start("notepad.exe")
@@ -77,7 +87,9 @@ else:
     print("等待超时")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local process = require("wingman.process")
 
 local pid = process.start("notepad.exe")
@@ -99,9 +111,11 @@ end
 
 ## 终止进程
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import process
 
 pid, found = process.find("notepad")
@@ -110,7 +124,9 @@ if found:
         print("进程已终止")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local process = require("wingman.process")
 
 local pid, found = process.find("notepad")
@@ -125,9 +141,11 @@ end
 
 ## 检查进程是否存在
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import process
 
 pid = 1234
@@ -137,7 +155,9 @@ else:
     print(f"进程 {pid} 不存在")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local process = require("wingman.process")
 
 local pid = 1234
@@ -152,9 +172,11 @@ end
 
 ## 等待进程出现
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import process
 
 # 启动应用程序
@@ -169,7 +191,9 @@ else:
     print("超时：进程未启动")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local process = require("wingman.process")
 
 -- 启动应用程序
@@ -191,9 +215,11 @@ end
 
 ## 完整示例
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import process, util
 
 # 检查记事本是否运行
@@ -218,7 +244,9 @@ if found:
         print("进程已终止")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local process = require("wingman.process")
 local util = require("wingman.util")
 

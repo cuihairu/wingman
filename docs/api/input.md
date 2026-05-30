@@ -4,9 +4,11 @@
 
 ## 鼠标点击
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import input
 
 # 左键点击
@@ -19,7 +21,9 @@ input.click(100, 100, "right")
 input.click(100, 100, "middle")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local input = require("wingman.input")
 
 -- 左键点击
@@ -36,9 +40,11 @@ input.click(100, 100, "middle")
 
 ## 鼠标移动
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 # 瞬间移动
 input.move(500, 300)
 
@@ -46,7 +52,9 @@ input.move(500, 300)
 input.move(500, 300, smooth=True)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 -- 瞬间移动
 input.move(500, 300)
 
@@ -58,14 +66,18 @@ input.move(500, 300, true)
 
 ## 拖拽
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 # 拖拽 500ms
 input.drag(100, 100, 500, 300, 500)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 -- 拖拽 500ms
 input.drag(100, 100, 500, 300, 500)
 ```
@@ -74,9 +86,11 @@ input.drag(100, 100, 500, 300, 500)
 
 ## 按键操作
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 # 按下按键
 input.key_down("W")
 
@@ -90,7 +104,9 @@ input.key_press("SPACE")
 input.key_press("E", 200)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 -- 按下按键
 input.keyDown("W")
 
@@ -108,13 +124,17 @@ input.keyPress("E", 200)
 
 ## 输入文本
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 input.key_text("Hello World")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 input.keyText("Hello World")
 ```
 

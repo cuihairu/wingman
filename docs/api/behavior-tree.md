@@ -4,15 +4,19 @@
 
 ## 创建行为树
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import behavior_tree
 
 behavior_tree.create("my_tree")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local bt = require("wingman.behavior_tree")
 
 bt.create("my_tree")
@@ -24,15 +28,19 @@ bt.create("my_tree")
 
 ### 序列节点（Sequence）
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import behavior_tree
 
 seq = behavior_tree.sequence("attack_sequence")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local bt = require("wingman.behavior_tree")
 
 local seq = bt.sequence("attack_sequence")
@@ -42,15 +50,19 @@ local seq = bt.sequence("attack_sequence")
 
 ### 选择节点（Selector）
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import behavior_tree
 
 sel = behavior_tree.selector("task_selector")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local bt = require("wingman.behavior_tree")
 
 local sel = bt.selector("task_selector")
@@ -60,15 +72,19 @@ local sel = bt.selector("task_selector")
 
 ### 条件节点（Condition）
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import behavior_tree, vision
 
 cond = behavior_tree.condition("has_enemy", lambda: vision.find_image("enemy.png") is not None)
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local bt = require("wingman.behavior_tree")
 local vision = require("wingman.vision")
 
@@ -82,9 +98,11 @@ end)
 
 ### 动作节点（Action）
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import behavior_tree, input
 
 act = behavior_tree.action("attack", lambda: (
@@ -93,7 +111,9 @@ act = behavior_tree.action("attack", lambda: (
 )[-1])
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local bt = require("wingman.behavior_tree")
 local input = require("wingman.input")
 
@@ -107,16 +127,20 @@ end)
 
 ## 执行行为树
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import behavior_tree
 
 status = behavior_tree.tick("my_tree")
 print(f"状态: {status}")  # SUCCESS/FAILURE/RUNNING
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local bt = require("wingman.behavior_tree")
 
 local status = bt.tick("my_tree")
@@ -127,15 +151,19 @@ print("状态:", status)  -- SUCCESS/FAILURE/RUNNING
 
 ## 移除行为树
 
-::: code-group
+:::tabs
 
-```python [Python]
+== Python
+
+```python
 from wingman import behavior_tree
 
 behavior_tree.remove("my_tree")
 ```
 
-```lua [Lua]
+== Lua
+
+```lua
 local bt = require("wingman.behavior_tree")
 
 bt.remove("my_tree")
