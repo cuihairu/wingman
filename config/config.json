@@ -16,7 +16,7 @@
     "autoConnect": false,
     "host": "localhost",
     "password": "",
-    "port": 9527,
+    "port": 8080,
     "serverControlled": false,
     "username": ""
   }

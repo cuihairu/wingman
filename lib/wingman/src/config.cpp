@@ -63,6 +63,7 @@ std::string ServerConfig::toJson() const {
     j["username"] = username;
     j["password"] = password;
     j["autoConnect"] = autoConnect;
+    j["serverControlled"] = serverControlled;
     return j.dump();
 }
 
@@ -75,6 +76,7 @@ ServerConfig ServerConfig::fromJson(const std::string& json) {
         if (j.contains("username")) config.username = j["username"];
         if (j.contains("password")) config.password = j["password"];
         if (j.contains("autoConnect")) config.autoConnect = j["autoConnect"];
+        if (j.contains("serverControlled")) config.serverControlled = j["serverControlled"];
     } catch (...) {
         // Parse failed, return default config
     }
