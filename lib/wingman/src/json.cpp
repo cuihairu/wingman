@@ -51,7 +51,18 @@ bool JsonValue::isString() const { return m_impl->data.is_string(); }
 bool JsonValue::isArray() const { return m_impl->data.is_array(); }
 bool JsonValue::isObject() const { return m_impl->data.is_object(); }
 
-bool JsonValue::asBool() const { return m_impl->data.get<bool>(); }
+bool JsonValue::asBool() const {
+    if (m_impl->data.is_boolean()) {
+        return m_impl->data.get<bool>();
+    }
+    if (m_impl->data.is_number()) {
+        return m_impl->data.get<int>() != 0;
+    }
+    if (m_impl->data.is_string()) {
+        return !m_impl->data.get<std::string>().empty();
+    }
+    return false;
+}
 int JsonValue::asInt() const { return m_impl->data.get<int>(); }
 int64_t JsonValue::asInt64() const { return m_impl->data.get<int64_t>(); }
 double JsonValue::asDouble() const { return m_impl->data.get<double>(); }
