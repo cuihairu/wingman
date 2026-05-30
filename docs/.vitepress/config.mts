@@ -107,7 +107,8 @@ export default defineConfig({
             { text: 'wingman.task', link: '/api/task' },
             { text: 'wingman.notify', link: '/api/notify' },
             { text: 'wingman.smart-trigger', link: '/api/smart-trigger' },
-            { text: 'wingman.behavior-tree', link: '/api/behavior-tree' }
+            { text: 'wingman.behavior-tree', link: '/api/behavior-tree' },
+            { text: 'wingman.orchestration', link: '/api/orchestration' }
           ]
         },
         {
@@ -124,9 +125,12 @@ export default defineConfig({
             { text: 'wingman.human', link: '/api/human' },
             { text: 'wingman.config', link: '/api/config' },
             { text: 'wingman.verification', link: '/api/verification' },
+            { text: 'wingman.security', link: '/api/security' },
             { text: 'wingman.gameprofile', link: '/api/gameprofile' },
             { text: 'wingman.debugger', link: '/api/debugger' },
             { text: 'wingman.util', link: '/api/util' },
+            { text: 'wingman.perf', link: '/api/perf' },
+            { text: 'wingman.system', link: '/api/system' },
             { text: '数据类型', link: '/api/types' }
           ]
         },
