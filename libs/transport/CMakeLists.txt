@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(wingman_transport LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找 asio（可选）
@@ -68,7 +68,7 @@ endif()
 add_library(wingman::transport ALIAS wingman_transport)
 
 # 编译选项
-target_compile_features(wingman_transport PUBLIC cxx_std_20)
+target_compile_features(wingman_transport PUBLIC cxx_std_23)
 
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(wingman_transport PRIVATE /W4 /utf-8 /EHsc)

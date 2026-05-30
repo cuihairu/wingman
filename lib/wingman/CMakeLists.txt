@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(wingman LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找依赖
@@ -258,7 +258,7 @@ endif()
 add_library(wingman::wingman ALIAS wingman)
 
 # ========== 编译选项 ==========
-target_compile_features(wingman PUBLIC cxx_std_17)
+target_compile_features(wingman PUBLIC cxx_std_23)
 
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(wingman PRIVATE /W4 /utf-8)

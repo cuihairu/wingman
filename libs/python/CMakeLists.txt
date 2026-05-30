@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(wingman_python LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找依赖
@@ -45,7 +45,7 @@ target_link_libraries(wingman_python PUBLIC
 add_library(wingman::python ALIAS wingman_python)
 
 # ========== 编译选项 ==========
-target_compile_features(wingman_python PUBLIC cxx_std_17)
+target_compile_features(wingman_python PUBLIC cxx_std_23)
 
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(wingman_python PRIVATE /W4 /utf-8)
