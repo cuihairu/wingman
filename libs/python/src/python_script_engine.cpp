@@ -140,15 +140,13 @@ bool PythonScriptEngine::callFunction(const std::string& name,
 		}
 
 		// 构建参数
-		py::args pyArgs;
-		std::vector<py::object> argObjs;
-		argObjs.reserve(args.size());
-		for (const auto& arg : args) {
-			argObjs.push_back(toPythonObject(arg));
+		py::tuple pyArgs(args.size());
+		for (size_t i = 0; i < args.size(); ++i) {
+			pyArgs[i] = toPythonObject(args[i]);
 		}
 
-		// 调用
-		py::object pyResult = func(*argObjs.data());
+		// 调用（解包 tuple）
+		py::object pyResult = func(*pyArgs);
 		result = toScriptValue(pyResult);
 		return true;
 	} catch (const py::error_already_set& e) {

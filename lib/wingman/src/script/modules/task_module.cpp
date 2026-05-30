@@ -48,6 +48,7 @@ public:
 		int backoffMs = 500;
 		float backoffFactor = 2.0f;
 		nlohmann::json metadata;
+		bool async = false;  // Execute in background thread (default: false for Lua safety)
 	};
 
 	Task(std::string id, ScriptValue::CallableFunc work, Options opts)
@@ -77,10 +78,18 @@ public:
 
 				{
 					std::lock_guard<std::mutex> lock(mutex_);
-					result_ = result;
-					status_ = TaskStatus::succeeded;
+					// Only set succeeded if status is still running (not timeout/canceled)
+					if (status_ == TaskStatus::running) {
+						result_ = result;
+						status_ = TaskStatus::succeeded;
+						// Emit event inside the lock and after setting status
+						// Note: emitEvent releases lock before calling EventHub
+					}
 				}
-				emitEvent("task.succeeded");
+				// Only emit succeeded event if status is succeeded
+				if (status() == TaskStatus::succeeded) {
+					emitEvent("task.succeeded");
+				}
 				return;
 			} catch (const std::exception& e) {
 				{
@@ -234,10 +243,16 @@ public:
 			{"metadata", opts.metadata}
 		}, "task");
 
-		// Execute in background thread
-		std::thread([task]() {
+		// Execute in background thread only if async is true
+		// Note: Lua is NOT thread-safe, so async must be false for Lua callbacks
+		if (opts.async) {
+			std::thread([task]() {
+				task->execute();
+			}).detach();
+		} else {
+			// Synchronous execution (safe for Lua)
 			task->execute();
-		}).detach();
+		}
 
 		return taskId;
 	}
@@ -364,11 +379,12 @@ ModuleDescriptor createTaskModule() {
 			if (auto* v = args[1].get("backoffMs")) opts.backoffMs = static_cast<int>(v->asInt());
 			if (auto* v = args[1].get("backoffFactor")) opts.backoffFactor = static_cast<float>(v->asFloat());
 			if (auto* v = args[1].get("metadata")) opts.metadata = toJson(*v);
+			if (auto* v = args[1].get("async")) opts.async = v->asBool();
 		}
 
 		std::string taskId = g_taskManager.submit(args[0].callableVal, std::move(opts));
 		return ScriptValue::fromString(taskId);
-	}, "work:function, options?:{timeoutMs?,maxRetries?,backoffMs?,backoffFactor?,metadata?} -> taskId:string"});
+	}, "work:function, options?:{timeoutMs?,maxRetries?,backoffMs?,backoffFactor?,metadata?,async?} -> taskId:string"});
 
 	// cancel(taskId) -> bool
 	mod.functions.push_back({"cancel", [](const std::vector<ScriptValue>& args) -> ScriptValue {

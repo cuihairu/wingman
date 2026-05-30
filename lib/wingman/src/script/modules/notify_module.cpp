@@ -1,4 +1,5 @@
 #include "wingman/event.hpp"
+#include "wingman/http.hpp"
 #include "wingman/script/iscript_engine.hpp"
 
 #include <nlohmann/json.hpp>
@@ -17,20 +18,41 @@ namespace modules {
 
 namespace {
 
-// HTTP webhook sender (simplified - would use http_module in full implementation)
+// HTTP webhook sender
 class WebhookSender {
 public:
 	static void send(const std::string& url, const nlohmann::json& payload, const std::function<void(bool, std::string)>& callback) {
-		// In a full implementation, this would use http_module or a proper HTTP client
-		// For now, we'll just emit an event and return success
-		EventHub::instance().emit("notify.webhook.sent", {
+		// Emit pending event
+		EventHub::instance().emit("notify.webhook.pending", {
 			{"url", url},
 			{"payload", payload}
 		}, "notify");
 
-		// Call the callback asynchronously
-		std::thread([callback]() {
-			callback(true, "");
+		// Send HTTP request asynchronously
+		std::thread([url, payload, callback]() {
+			try {
+				HttpClient client;
+				std::string jsonBody = payload.dump();
+				HttpResponse response = client.post(url, jsonBody, {});
+				
+				bool success = response.isSuccess();
+				std::string error = success ? "" : response.error;
+				
+				// Emit result event
+				EventHub::instance().emit(success ? "notify.webhook.success" : "notify.webhook.failed", {
+					{"url", url},
+					{"statusCode", response.statusCode},
+					{"error", error}
+				}, "notify");
+				
+				callback(success, error);
+			} catch (const std::exception& e) {
+				EventHub::instance().emit("notify.webhook.failed", {
+					{"url", url},
+					{"error", e.what()}
+				}, "notify");
+				callback(false, e.what());
+			}
 		}).detach();
 	}
 };
@@ -77,11 +99,11 @@ public:
 		});
 	}
 
-	void bridge(const std::string& eventPattern, const std::string& target, const nlohmann::json& options) {
+	void bridge(const std::string& eventName, const std::string& target, const nlohmann::json& options) {
 		std::lock_guard<std::mutex> lock(mutex_);
 
-		// Create a bridge subscription
-		uint64_t subId = EventHub::instance().subscribe(eventPattern, [target, options](const EventMessage& msg) {
+		// Create a bridge subscription (exact event name match only, not pattern)
+		uint64_t subId = EventHub::instance().subscribe(eventName, [target, options](const EventMessage& msg) {
 			// Forward to target (could be another event, webhook, etc.)
 			nlohmann::json payload = options.value("transform", nlohmann::json::object());
 			payload["original"] = msg.payload;
@@ -96,7 +118,7 @@ public:
 			}
 		}, "notify.bridge." + target, false);
 
-		bridges_[subId] = {eventPattern, target};
+		bridges_[subId] = {eventName, target};
 	}
 
 	void clearBridges() {
@@ -128,7 +150,7 @@ private:
 	}
 
 	struct BridgeInfo {
-		std::string eventPattern;
+		std::string eventName;  // Exact event name (not pattern)
 		std::string target;
 	};
 
@@ -247,19 +269,19 @@ ModuleDescriptor createNotifyModule() {
 		return ScriptValue::null();
 	}, "url:string, payload?:object, options?:object -> nil"});
 
-	// bridge(eventPattern, target, options?)
+	// bridge(eventName, target, options?) - exact event name match (not pattern)
 	mod.functions.push_back({"bridge", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		if (args.size() < 2 || !args[0].isString() || !args[1].isString()) {
 			return ScriptValue::null();
 		}
 
-		std::string eventPattern = args[0].asString();
+		std::string eventName = args[0].asString();
 		std::string target = args[1].asString();
 		nlohmann::json options = args.size() > 2 ? toJson(args[2]) : nlohmann::json::object();
 
-		g_notifyManager.bridge(eventPattern, target, options);
+		g_notifyManager.bridge(eventName, target, options);
 		return ScriptValue::null();
-	}, "eventPattern:string, target:string, options?:object -> nil"});
+	}, "eventName:string, target:string, options?:object -> nil"});
 
 	return mod;
 }

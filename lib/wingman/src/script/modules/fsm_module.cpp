@@ -1,6 +1,7 @@
 #include "wingman/event.hpp"
 #include "wingman/script/iscript_engine.hpp"
 
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <unordered_map>
 #include <vector>
@@ -198,6 +199,7 @@ private:
 // Global state machine registry
 std::unordered_map<std::string, std::unique_ptr<StateMachine>> g_stateMachines;
 uint64_t g_nextMachineId = 1;
+std::mutex g_stateMachinesMutex;  // Protects g_stateMachines and g_nextMachineId
 
 // Helper to convert ScriptValue to JSON
 nlohmann::json toJson(const ScriptValue& value) {
@@ -244,8 +246,12 @@ ModuleDescriptor createFsmModule() {
 		std::string name = args[0].asString();
 		std::string initial = args[1].asString();
 
-		std::string machineId = "fsm-" + name + "-" + std::to_string(g_nextMachineId++);
-		g_stateMachines[machineId] = std::make_unique<StateMachine>(name, initial);
+		std::string machineId;
+		{
+			std::lock_guard<std::mutex> lock(g_stateMachinesMutex);
+			machineId = "fsm-" + name + "-" + std::to_string(g_nextMachineId++);
+			g_stateMachines[machineId] = std::make_unique<StateMachine>(name, initial);
+		}
 
 		return ScriptValue::fromString(machineId);
 	}, "name:string, initial:string -> machineId:string"});
@@ -257,13 +263,15 @@ ModuleDescriptor createFsmModule() {
 		std::string machineId = args[0].asString();
 		std::string stateName = args[1].asString();
 
-		auto it = g_stateMachines.find(machineId);
-		if (it == g_stateMachines.end()) return ScriptValue::fromBool(false);
-
 		ScriptValue::CallableFunc onEnter = args.size() > 2 && args[2].isCallable() ? args[2].callableVal : nullptr;
 		ScriptValue::CallableFunc onExit = args.size() > 3 && args[3].isCallable() ? args[3].callableVal : nullptr;
 
-		it->second->state(stateName, std::move(onEnter), std::move(onExit));
+		{
+			std::lock_guard<std::mutex> lock(g_stateMachinesMutex);
+			auto it = g_stateMachines.find(machineId);
+			if (it == g_stateMachines.end()) return ScriptValue::fromBool(false);
+			it->second->state(stateName, std::move(onEnter), std::move(onExit));
+		}
 		return ScriptValue::fromBool(true);
 	}, "machineId:string, stateName:string, onEnter?:function, onExit?:function -> bool"});
 
@@ -276,13 +284,15 @@ ModuleDescriptor createFsmModule() {
 		std::string to = args[2].asString();
 		std::string on = args.size() > 3 && args[3].isString() ? args[3].asString() : "";
 
-		auto it = g_stateMachines.find(machineId);
-		if (it == g_stateMachines.end()) return ScriptValue::fromBool(false);
-
 		ScriptValue::CallableFunc guard = args.size() > 4 && args[4].isCallable() ? args[4].callableVal : nullptr;
 		ScriptValue::CallableFunc action = args.size() > 5 && args[5].isCallable() ? args[5].callableVal : nullptr;
 
-		it->second->transition(from, to, on, std::move(guard), std::move(action));
+		{
+			std::lock_guard<std::mutex> lock(g_stateMachinesMutex);
+			auto it = g_stateMachines.find(machineId);
+			if (it == g_stateMachines.end()) return ScriptValue::fromBool(false);
+			it->second->transition(from, to, on, std::move(guard), std::move(action));
+		}
 		return ScriptValue::fromBool(true);
 	}, "machineId:string, from:string, to:string, on?:string, guard?:function, action?:function -> bool"});
 
@@ -292,13 +302,15 @@ ModuleDescriptor createFsmModule() {
 
 		std::string machineId = args[0].asString();
 		std::string event = args[1].asString();
-
-		auto it = g_stateMachines.find(machineId);
-		if (it == g_stateMachines.end()) return ScriptValue::fromBool(false);
-
 		nlohmann::json payload = args.size() > 2 ? toJson(args[2]) : nlohmann::json::object();
 
-		bool result = it->second->dispatch(event, payload);
+		bool result;
+		{
+			std::lock_guard<std::mutex> lock(g_stateMachinesMutex);
+			auto it = g_stateMachines.find(machineId);
+			if (it == g_stateMachines.end()) return ScriptValue::fromBool(false);
+			result = it->second->dispatch(event, payload);
+		}
 		return ScriptValue::fromBool(result);
 	}, "machineId:string, event:string, payload?:object -> bool"});
 
@@ -308,10 +320,14 @@ ModuleDescriptor createFsmModule() {
 
 		std::string machineId = args[0].asString();
 
-		auto it = g_stateMachines.find(machineId);
-		if (it == g_stateMachines.end()) return ScriptValue::null();
-
-		return ScriptValue::fromString(it->second->current());
+		std::string result;
+		{
+			std::lock_guard<std::mutex> lock(g_stateMachinesMutex);
+			auto it = g_stateMachines.find(machineId);
+			if (it == g_stateMachines.end()) return ScriptValue::null();
+			result = it->second->current();
+		}
+		return ScriptValue::fromString(result);
 	}, "machineId:string -> stateName:string"});
 
 	// reset(machineId)
@@ -320,10 +336,12 @@ ModuleDescriptor createFsmModule() {
 
 		std::string machineId = args[0].asString();
 
-		auto it = g_stateMachines.find(machineId);
-		if (it == g_stateMachines.end()) return ScriptValue::fromBool(false);
-
-		it->second->reset();
+		{
+			std::lock_guard<std::mutex> lock(g_stateMachinesMutex);
+			auto it = g_stateMachines.find(machineId);
+			if (it == g_stateMachines.end()) return ScriptValue::fromBool(false);
+			it->second->reset();
+		}
 		return ScriptValue::fromBool(true);
 	}, "machineId:string -> bool"});
 
