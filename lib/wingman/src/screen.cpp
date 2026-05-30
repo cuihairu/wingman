@@ -25,7 +25,9 @@ namespace wingman {
 
 Bitmap::Bitmap(int width, int height)
     : m_width(width), m_height(height),
-      m_data(new uint8_t[width * height * 4]) {}
+      m_data(new uint8_t[width * height * 4]()) {
+    // Value-initialize array to zeros (prevents garbage data)
+}
 
 Bitmap::Bitmap(const Bitmap& other)
     : m_width(other.m_width), m_height(other.m_height),

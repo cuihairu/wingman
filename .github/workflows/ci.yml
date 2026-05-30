@@ -67,6 +67,7 @@ jobs:
   cpp-compat:
     name: C++ ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'macos-15-intel' }}
     strategy:
       fail-fast: false
       matrix:

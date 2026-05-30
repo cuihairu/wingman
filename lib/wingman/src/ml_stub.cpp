@@ -22,9 +22,15 @@ size_t TensorData::byteSize() const {
     switch (dataType) {
         case TensorDataType::FLOAT32: elemSize = 4; break;
         case TensorDataType::FLOAT64: elemSize = 8; break;
+        case TensorDataType::INT8:    elemSize = 1; break;
+        case TensorDataType::INT16:   elemSize = 2; break;
         case TensorDataType::INT32:   elemSize = 4; break;
         case TensorDataType::INT64:   elemSize = 8; break;
         case TensorDataType::UINT8:   elemSize = 1; break;
+        case TensorDataType::UINT16:  elemSize = 2; break;
+        case TensorDataType::UINT32:  elemSize = 4; break;
+        case TensorDataType::UINT64:  elemSize = 8; break;
+        case TensorDataType::BOOL:    elemSize = 1; break;
         default: break;
     }
     return elementCount() * elemSize;

@@ -52,28 +52,18 @@ struct UIAutomation::Impl {
     }
 
     std::shared_ptr<IUIAElement> find(const UIASelector& selector) {
-        ensureInitialized();
         if (!manager) return nullptr;
         return manager->findElement(selector);
     }
 
     std::shared_ptr<IUIAElement> getFocused() {
-        ensureInitialized();
         if (!manager) return nullptr;
         return manager->getFocusedElement();
     }
 
     std::shared_ptr<IUIAElement> fromPoint(int x, int y) {
-        ensureInitialized();
         if (!manager) return nullptr;
         return manager->getElementFromPoint(Point{x, y});
-    }
-
-private:
-    void ensureInitialized() {
-        if (!manager) {
-            initialize();
-        }
     }
 };
 
