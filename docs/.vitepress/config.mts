@@ -96,7 +96,8 @@ export default defineConfig({
           text: '视觉与 AI',
           items: [
             { text: 'wingman.vision', link: '/api/vision' },
-            { text: 'wingman.ocr', link: '/api/ocr' }
+            { text: 'wingman.ocr', link: '/api/ocr' },
+            { text: 'wingman.ml', link: '/api/ml' }
           ]
         },
         {
