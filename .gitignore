@@ -120,6 +120,7 @@ dashboard/node_modules/
 dashboard/dist/
 dashboard/.turbo/
 dashboard/config/local.ts
+!orchestrator/dashboard
 
 # GUI (Tauri + Svelte)
 apps/gui/node_modules/
