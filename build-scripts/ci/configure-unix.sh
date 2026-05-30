@@ -29,6 +29,12 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
   if [ -n "${MACOSX_DEPLOYMENT_TARGET:-}" ]; then
     cmake_args+=(-DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET")
   fi
+  # 确保使用 Homebrew 的 ninja（如果存在）
+  if command -v ninja &> /dev/null; then
+    NINJA_PATH=$(command -v ninja)
+    cmake_args+=(-DCMAKE_MAKE_PROGRAM="$NINJA_PATH")
+    export PATH="$(dirname "$NINJA_PATH"):$PATH"
+  fi
 fi
 
 if [ -n "$version_suffix" ]; then

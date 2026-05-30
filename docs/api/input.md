@@ -2,18 +2,29 @@
 
 输入模拟模块。
 
-## 函数
+## 鼠标点击
 
-### click(x, y, button)
+<CodeTabs>
 
-在指定位置点击鼠标。
+:::slot python
 
-**参数：**
-- `x` (number) - X 坐标
-- `y` (number) - Y 坐标
-- `button` (string) - 按键类型，可选值：`"left"`, `"right"`, `"middle"` (默认 `"left"`)
+```python
+from wingman import input
 
-**示例：**
+# 左键点击
+input.click(100, 100)
+
+# 右键点击
+input.click(100, 100, "right")
+
+# 中键点击
+input.click(100, 100, "middle")
+```
+
+:::
+
+:::slot lua
+
 ```lua
 local input = require("wingman.input")
 
@@ -27,16 +38,28 @@ input.click(100, 100, "right")
 input.click(100, 100, "middle")
 ```
 
-### move(x, y, smooth)
+:::
 
-移动鼠标到指定位置。
+</CodeTabs>
 
-**参数：**
-- `x` (number) - 目标 X 坐标
-- `y` (number) - 目标 Y 坐标
-- `smooth` (boolean) - 是否平滑移动 (默认 false)
+## 鼠标移动
 
-**示例：**
+<CodeTabs>
+
+:::slot python
+
+```python
+# 瞬间移动
+input.move(500, 300)
+
+# 平滑移动
+input.move(500, 300, smooth=True)
+```
+
+:::
+
+:::slot lua
+
 ```lua
 -- 瞬间移动
 input.move(500, 300)
@@ -45,7 +68,121 @@ input.move(500, 300)
 input.move(500, 300, true)
 ```
 
-### drag(x1, y1, x2, y2, duration)
+:::
+
+</CodeTabs>
+
+## 拖拽
+
+<CodeTabs>
+
+:::slot python
+
+```python
+# 拖拽 500ms
+input.drag(100, 100, 500, 300, 500)
+```
+
+:::
+
+:::slot lua
+
+```lua
+-- 拖拽 500ms
+input.drag(100, 100, 500, 300, 500)
+```
+
+:::
+
+</CodeTabs>
+
+## 按键操作
+
+<CodeTabs>
+
+:::slot python
+
+```python
+# 按下按键
+input.key_down("W")
+
+# 释放按键
+input.key_up("W")
+
+# 普通按键（按下后立即释放）
+input.key_press("SPACE")
+
+# 长按 200ms
+input.key_press("E", 200)
+```
+
+:::
+
+:::slot lua
+
+```lua
+-- 按下按键
+input.keyDown("W")
+
+-- 释放按键
+input.keyUp("W")
+
+-- 普通按键（按下后立即释放）
+input.keyPress("SPACE")
+
+-- 长按 200ms
+input.keyPress("E", 200)
+```
+
+:::
+
+</CodeTabs>
+
+## 输入文本
+
+<CodeTabs>
+
+:::slot python
+
+```python
+input.key_text("Hello World")
+```
+
+:::
+
+:::slot lua
+
+```lua
+input.keyText("Hello World")
+```
+
+:::
+
+</CodeTabs>
+
+---
+
+## 可用接口
+
+### `click(x, y, button?)`
+
+在指定位置点击鼠标。
+
+**参数：**
+- `x` (number) - X 坐标
+- `y` (number) - Y 坐标
+- `button` (string) - 按键类型，可选值：`"left"`, `"right"`, `"middle"` (默认 `"left"`)
+
+### `move(x, y, smooth?)`
+
+移动鼠标到指定位置。
+
+**参数：**
+- `x` (number) - 目标 X 坐标
+- `y` (number) - 目标 Y 坐标
+- `smooth` (boolean) - 是否平滑移动 (默认 false)
+
+### `drag(x1, y1, x2, y2, duration)`
 
 拖拽鼠标。
 
@@ -54,13 +191,7 @@ input.move(500, 300, true)
 - `x2, y2` (number) - 结束位置
 - `duration` (number) - 拖拽时长（毫秒）
 
-**示例：**
-```lua
--- 拖拽 500ms
-input.drag(100, 100, 500, 300, 500)
-```
-
-### keyDown(key)
+### `key_down(key)` / `keyDown(key)`
 
 按下按键。
 
@@ -74,26 +205,14 @@ input.drag(100, 100, 500, 300, 500)
 - 特殊键：`"SPACE"`, `"ENTER"`, `"ESC"`, `"TAB"`, `"SHIFT"`, `"CTRL"`, `"ALT"`
 - 方向键：`"UP"`, `"DOWN"`, `"LEFT"`, `"RIGHT"`
 
-**示例：**
-```lua
-input.keyDown("W")
--- ... 做一些操作
-input.keyUp("W")
-```
-
-### keyUp(key)
+### `key_up(key)` / `keyUp(key)`
 
 释放按键。
 
 **参数：**
 - `key` (string) - 按键名称
 
-**示例：**
-```lua
-input.keyUp("W")
-```
-
-### keyPress(key, duration)
+### `key_press(key, duration?)` / `keyPress(key, duration?)`
 
 按键（按下后立即释放）。
 
@@ -101,23 +220,9 @@ input.keyUp("W")
 - `key` (string) - 按键名称
 - `duration` (number) - 按键时长（毫秒），默认 50
 
-**示例：**
-```lua
--- 普通按键
-input.keyPress("SPACE")
-
--- 长按 200ms
-input.keyPress("E", 200)
-```
-
-### keyText(text)
+### `key_text(text)` / `keyText(text)`
 
 输入文本。
 
 **参数：**
 - `text` (string) - 要输入的文本
-
-**示例：**
-```lua
-input.keyText("Hello World")
-```

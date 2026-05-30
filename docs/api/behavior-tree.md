@@ -1,83 +1,205 @@
-# BehaviorTree API
+# API: wingman.behavior_tree
 
 行为树引擎提供灵活的 AI 决策系统。
 
-## Lua API
+## 创建行为树
 
-### bt.create(name)
+<CodeTabs>
 
-创建一个新的行为树。
+:::slot python
+
+```python
+from wingman import behavior_tree
+
+behavior_tree.create("my_tree")
+```
+
+:::
+
+:::slot lua
 
 ```lua
+local bt = require("wingman.behavior_tree")
+
 bt.create("my_tree")
 ```
 
----
+:::
 
-### bt.sequence(name?)
+</CodeTabs>
 
-创建序列节点（所有子节点必须全部成功）。
+## 创建节点
+
+### 序列节点（Sequence）
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import behavior_tree
+
+seq = behavior_tree.sequence("attack_sequence")
+```
+
+:::
+
+:::slot lua
 
 ```lua
+local bt = require("wingman.behavior_tree")
+
 local seq = bt.sequence("attack_sequence")
 ```
 
----
+:::
 
-### bt.selector(name?)
+</CodeTabs>
 
-创建选择节点（任一子节点成功即可）。
+### 选择节点（Selector）
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import behavior_tree
+
+sel = behavior_tree.selector("task_selector")
+```
+
+:::
+
+:::slot lua
 
 ```lua
+local bt = require("wingman.behavior_tree")
+
 local sel = bt.selector("task_selector")
 ```
 
----
+:::
 
-### bt.condition(name, fn)
+</CodeTabs>
 
-创建条件节点。
+### 条件节点（Condition）
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import behavior_tree, vision
+
+cond = behavior_tree.condition("has_enemy", lambda: vision.find_image("enemy.png") is not None)
+```
+
+:::
+
+:::slot lua
 
 ```lua
+local bt = require("wingman.behavior_tree")
+local vision = require("wingman.vision")
+
 local cond = bt.condition("has_enemy", function()
     local enemy = vision.findImage("enemy.png")
     return enemy ~= nil
 end)
 ```
 
----
+:::
 
-### bt.action(name, fn)
+</CodeTabs>
 
-创建动作节点。
+### 动作节点（Action）
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import behavior_tree, input
+
+act = behavior_tree.action("attack", lambda: (
+    input.click(100, 200),
+    "SUCCESS"
+)[-1])
+```
+
+:::
+
+:::slot lua
 
 ```lua
+local bt = require("wingman.behavior_tree")
+local input = require("wingman.input")
+
 local act = bt.action("attack", function()
     input.click(100, 200)
     return "SUCCESS"
 end)
 ```
 
----
+:::
 
-### bt.tick(treeName)
+</CodeTabs>
 
-执行行为树一次。
+## 执行行为树
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import behavior_tree
+
+status = behavior_tree.tick("my_tree")
+print(f"状态: {status}")  # SUCCESS/FAILURE/RUNNING
+```
+
+:::
+
+:::slot lua
 
 ```lua
+local bt = require("wingman.behavior_tree")
+
 local status = bt.tick("my_tree")
 print("状态:", status)  -- SUCCESS/FAILURE/RUNNING
 ```
 
----
+:::
 
-### bt.remove(treeName)
+</CodeTabs>
 
-移除行为树。
+## 移除行为树
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import behavior_tree
+
+behavior_tree.remove("my_tree")
+```
+
+:::
+
+:::slot lua
 
 ```lua
+local bt = require("wingman.behavior_tree")
+
 bt.remove("my_tree")
 ```
+
+:::
+
+</CodeTabs>
+
+---
 
 ## 节点状态
 
@@ -88,6 +210,8 @@ bt.remove("my_tree")
 | `SUCCESS` | 成功 |
 | `FAILURE` | 失败 |
 | `RUNNING` | 运行中 |
+
+---
 
 ## 节点类型
 
@@ -175,57 +299,34 @@ bt.remove("my_tree")
 └────────────┘
 ```
 
-## C++ API
+---
 
-### 创建行为树
+## 可用接口
 
-```cpp
-#include "wingman/behavior_tree.hpp"
+### `create(name)`
 
-auto tree = BehaviorTreeManager::instance().createTree("combat");
+创建一个新的行为树。
 
-// 创建序列节点
-auto sequence = BehaviorTree::sequence("attack");
-sequence->addChild(BehaviorTree::action("find_target", []() {
-    // 查找目标逻辑
-    return NodeStatus::SUCCESS;
-}));
-sequence->addChild(BehaviorTree::action("attack_target", []() {
-    // 攻击逻辑
-    return NodeStatus::SUCCESS;
-}));
+### `sequence(name?)`
 
-tree->setRoot(sequence);
+创建序列节点。
 
-// 执行
-NodeStatus status = tree->tick();
-```
+### `selector(name?)`
 
-### 复杂行为树示例
+创建选择节点。
 
-```cpp
-// 构建复杂行为树
-auto root = BehaviorTree::sequence("main");
+### `condition(name, fn)`
 
-// 并行执行移动和攻击
-auto parallel = BehaviorTree::parallel("combat", ParallelNode::Policy::SUCCEED_ON_ALL);
-parallel->addChild(BehaviorTree::action("move", []() {
-    Input::move(100, 100);
-    return NodeStatus::SUCCESS;
-}));
-parallel->addChild(BehaviorTree::action("attack", []() {
-    Input::click(100, 100);
-    return NodeStatus::SUCCESS;
-}));
+创建条件节点。
 
-root->addChild(parallel);
+### `action(name, fn)`
 
-// 检查是否完成
-auto checkDone = BehaviorTree::condition("is_done", []() {
-    return !hasEnemy();
-});
+创建动作节点。
 
-root->addChild(checkDone);
+### `tick(tree_name)` / `tick(treeName)`
 
-tree->setRoot(root);
-```
+执行行为树一次。
+
+### `remove(tree_name)`
+
+移除行为树。

@@ -2,126 +2,402 @@
 
 `wingman.notify` 提供统一的通知与告警出口，支持日志、toast、webhook 和事件桥接。
 
-## Python
+## 日志通知
+
+<CodeTabs>
+
+:::slot python
 
 ```python
 from wingman import notify
 
-# 日志通知
+# 各级别日志
 notify.debug("调试信息", {"module": "combat"})
 notify.info("脚本启动", {"script": "farm.py"})
 notify.warn("资源不足", {"hp": 10})
 notify.error("任务失败", {"error": "timeout"})
+```
+
+:::
+
+:::slot lua
+
+```lua
+local notify = require("wingman.notify")
+
+-- 各级别日志
+notify.debug("调试信息", { module = "combat" })
+notify.info("脚本启动", { script = "farm.lua" })
+notify.warn("资源不足", { hp = 10 })
+notify.error("任务失败", { error = "timeout" })
+```
+
+:::
+
+</CodeTabs>
+
+## Toast 通知
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import notify
 
 # Toast 通知
 notify.toast("Wingman", "任务完成", level="success")
+notify.toast("警告", "血量过低", level="warning")
+```
+
+:::
+
+:::slot lua
+
+```lua
+local notify = require("wingman.notify")
+
+-- Toast 通知
+notify.toast("Wingman", "任务完成", "success")
+notify.toast("警告", "血量过低", "warning")
+```
+
+:::
+
+</CodeTabs>
+
+## Webhook
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import notify
 
 # Webhook
 notify.webhook("http://127.0.0.1:9000/hook", {
     "event": "task.done",
     "result": 42
 })
+```
+
+:::
+
+:::slot lua
+
+```lua
+local notify = require("wingman.notify")
+
+-- Webhook
+notify.webhook("http://127.0.0.1:9000/hook", {
+    event = "task.done",
+    result = 42
+})
+```
+
+:::
+
+</CodeTabs>
+
+## 事件桥接
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import notify
 
 # 事件桥接
 notify.bridge("combat.*", "event://logging.combat_events")
 notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
 ```
 
-## Lua
+:::
+
+:::slot lua
 
 ```lua
 local notify = require("wingman.notify")
 
-notify.debug("调试信息", { module = "combat" })
-notify.info("脚本启动", { script = "farm.py" })
-notify.warn("资源不足", { hp = 10 })
-notify.error("任务失败", { error = "timeout" })
-
-notify.toast("Wingman", "任务完成", "success")
-
-notify.webhook("http://127.0.0.1:9000/hook", {
-    event = "task.done",
-    result = 42
-})
-
+-- 事件桥接
 notify.bridge("combat.*", "event://logging.combat_events")
 notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
 ```
 
+:::
+
+</CodeTabs>
+
+---
+
+## 完整示例
+
+### 游戏监控通知系统
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import notify, vision, util
+
+def check_game_status():
+    while True:
+        # 检查血量
+        hp = vision.get_hp()
+        if hp < 30:
+            notify.warn("血量过低", {"hp": hp})
+            notify.toast("警告", f"血量仅剩 {hp}", level="warning")
+
+        # 检查蓝量
+        mp = vision.get_mp()
+        if mp < 10:
+            notify.error("蓝量耗尽", {"mp": mp})
+            notify.toast("危险", "蓝量已耗尽", level="error")
+
+        # 检查背包
+        inventory_full = vision.check_inventory_full()
+        if inventory_full:
+            notify.info("背包已满", {"slots": 0})
+            notify.toast("提示", "背包已满，请清理", level="info")
+
+        util.sleep(5000)
+
+check_game_status()
+```
+
+:::
+
+:::slot lua
+
+```lua
+local notify = require("wingman.notify")
+local vision = require("wingman.vision")
+local util = require("wingman.util")
+
+local function checkGameStatus()
+    while true do
+        -- 检查血量
+        local hp = vision.getHp()
+        if hp < 30 then
+            notify.warn("血量过低", { hp = hp })
+            notify.toast("警告", "血量仅剩 " .. hp, "warning")
+        end
+
+        -- 检查蓝量
+        local mp = vision.getMp()
+        if mp < 10 then
+            notify.error("蓝量耗尽", { mp = mp })
+            notify.toast("危险", "蓝量已耗尽", "error")
+        end
+
+        -- 检查背包
+        local inventoryFull = vision.checkInventoryFull()
+        if inventoryFull then
+            notify.info("背包已满", { slots = 0 })
+            notify.toast("提示", "背包已满，请清理", "info")
+        end
+
+        util.sleep(5000)
+    end
+end
+
+checkGameStatus()
+```
+
+:::
+
+</CodeTabs>
+
+### Webhook 远程通知
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import notify, vision, input
+
+def combat_bot():
+    notify.info("战斗脚本启动", {"mode": "auto"})
+
+    kills = 0
+    while True:
+        # 查找敌人
+        enemy = vision.find_enemy()
+        if enemy:
+            # 战斗逻辑
+            input.click(enemy['x'], enemy['y'])
+            kills += 1
+
+            # 每10杀通知一次
+            if kills % 10 == 0:
+                notify.webhook("http://your-server.com/api/progress", {
+                    "event": "milestone",
+                    "kills": kills,
+                    "level": vision.get_level()
+                })
+                notify.toast("进度", f"已击杀 {kills} 个敌人", level="info")
+
+        util.sleep(1000)
+
+    notify.info("战斗脚本结束", {"total_kills": kills})
+
+combat_bot()
+```
+
+:::
+
+:::slot lua
+
+```lua
+local notify = require("wingman.notify")
+local vision = require("wingman.vision")
+local input = require("wingman.input")
+local util = require("wingman.util")
+
+local function combatBot()
+    notify.info("战斗脚本启动", { mode = "auto" })
+
+    local kills = 0
+    while true do
+        -- 查找敌人
+        local enemy = vision.findEnemy()
+        if enemy then
+            -- 战斗逻辑
+            input.click(enemy.x, enemy.y)
+            kills = kills + 1
+
+            -- 每10杀通知一次
+            if kills % 10 == 0 then
+                notify.webhook("http://your-server.com/api/progress", {
+                    event = "milestone",
+                    kills = kills,
+                    level = vision.getLevel()
+                })
+                notify.toast("进度", "已击杀 " .. kills .. " 个敌人", "info")
+            end
+        end
+
+        util.sleep(1000)
+    end
+
+    notify.info("战斗脚本结束", { total_kills = kills })
+end
+
+combatBot()
+```
+
+:::
+
+</CodeTabs>
+
+### 事件桥接集成
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import notify, event
+
+# 设置事件桥接
+notify.bridge("combat.*", "event://logging.combat_events")
+notify.bridge("system.*", "http://monitoring-server.com/api/events")
+
+# 现在所有匹配的事件都会自动转发
+event.emit("combat.enemy_found", {"x": 100, "y": 200})  # 自动桥接到日志系统
+event.emit("system.low_memory", {"available_mb": 512})   # 自动 POST 到监控服务器
+
+# 也可以桥接特定事件
+notify.bridge("task.error", "http://alert-server.com/api/alerts")
+```
+
+:::
+
+:::slot lua
+
+```lua
+local notify = require("wingman.notify")
+local event = require("wingman.event")
+
+-- 设置事件桥接
+notify.bridge("combat.*", "event://logging.combat_events")
+notify.bridge("system.*", "http://monitoring-server.com/api/events")
+
+-- 现在所有匹配的事件都会自动转发
+event.emit("combat.enemy_found", { x = 100, y = 200 })  -- 自动桥接到日志系统
+event.emit("system.low_memory", { available_mb = 512 })   -- 自动 POST 到监控服务器
+
+-- 也可以桥接特定事件
+notify.bridge("task.error", "http://alert-server.com/api/alerts")
+```
+
+:::
+
+</CodeTabs>
+
+---
+
 ## 可用接口
 
-### `debug(message, meta?)`
+### `debug(message, meta?)` / `debug(message, meta?)`
 
 输出调试级别日志。
 
-- `message`: 日志消息
-- `meta`: 可选，元数据对象
+**参数：**
+- `message` - 日志消息
+- `meta` - 可选，元数据对象
 
-### `info(message, meta?)`
+### `info(message, meta?)` / `info(message, meta?)`
 
 输出信息级别日志。
 
-- `message`: 日志消息
-- `meta`: 可选，元数据对象
+**参数：**
+- `message` - 日志消息
+- `meta` - 可选，元数据对象
 
-### `warn(message, meta?)`
+### `warn(message, meta?)` / `warn(message, meta?)`
 
 输出警告级别日志。
 
-- `message`: 日志消息
-- `meta`: 可选，元数据对象
+**参数：**
+- `message` - 日志消息
+- `meta` - 可选，元数据对象
 
-### `error(message, meta?)`
+### `error(message, meta?)` / `error(message, meta?)`
 
 输出错误级别日志。
 
-- `message`: 日志消息
-- `meta`: 可选，元数据对象
+**参数：**
+- `message` - 日志消息
+- `meta` - 可选，元数据对象
 
-### `toast(title, message, level?)`
+### `toast(title, message, level?)` / `toast(title, message, level?)`
 
 显示桌面 toast 通知。
 
-- `title`: 标题
-- `message`: 消息内容
-- `level`: 可选，级别：`"info"`, `"success"`, `"warning"`, `"error"`，默认 `"info"`
+**参数：**
+- `title` - 标题
+- `message` - 消息内容
+- `level` - 可选，级别：`"info"`, `"success"`, `"warning"`, `"error"`，默认 `"info"`
 
-### `webhook(url, payload, options?)`
+### `webhook(url, payload, options?)` / `webhook(url, payload, options?)`
 
 发送 HTTP POST webhook。
 
-- `url`: 目标 URL
-- `payload`: 请求体（JSON 对象）
-- `options`: 可选配置（预留）
+**参数：**
+- `url` - 目标 URL
+- `payload` - 请求体（JSON 对象）
+- `options` - 可选配置（预留）
 
-### `bridge(eventPattern, target, options?)`
+### `bridge(eventPattern, target, options?)` / `bridge(eventPattern, target, options?)`
 
 桥接事件到其他目标。
 
-- `eventPattern`: 事件模式（支持通配符）
-- `target`: 目标位置
-  - `event://<event_name>`: 转发到另一个事件
-  - `http://<url>`: 转发到 webhook
-- `options`: 可选配置
-  - `transform`: 转换函数，用于修改载荷
-
-## 事件
-
-通知系统会发出以下事件：
-
-```python
-event.on("notify.log", lambda e: print(f"[{e['payload']['level']}] {e['payload']['message']}"))
-event.on("notify.toast", lambda e: print(f"Toast: {e['payload']['title']} - {e['payload']['message']}"))
-event.on("notify.failed", lambda e: print(f"通知失败: {e['payload']['type']}"))
-```
-
-### 事件类型
-
-- `notify.log`: 任何日志（包含 `level`, `message`, `timestamp`, `meta`）
-- `notify.log.DEBUG`: 调试日志
-- `notify.log.INFO`: 信息日志
-- `notify.log.WARN`: 警告日志
-- `notify.log.ERROR`: 错误日志
-- `notify.toast`: Toast 通知（包含 `title`, `message`, `level`）
-- `notify.webhook.sent`: Webhook 已发送
-- `notify.failed`: 通知发送失败（包含 `type`, `url/error`, `error`）
+**参数：**
+- `eventPattern` - 事件匹配模式（支持通配符）
+- `target` - 目标地址（支持 `event://` 协议或 HTTP URL）
+- `options` - 可选配置（预留）

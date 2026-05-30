@@ -1,10 +1,124 @@
-# JSON 模块
+# API: wingman.json
 
 JSON 解析和序列化。
 
-## Lua API
+## 解析 JSON
 
-### json.decode(str)
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import json
+
+# 解析 JSON 字符串
+data = json.decode('{"name": "Player1", "score": 100}')
+print(data['name'])      # "Player1"
+print(data['score'])     # 100
+```
+
+:::
+
+:::slot lua
+
+```lua
+local json = require("wingman.json")
+
+-- 解析 JSON 字符串
+local data = json.decode('{"name": "Player1", "score": 100}')
+print(data.name)      -- "Player1"
+print(data.score)     -- 100
+```
+
+:::
+
+</CodeTabs>
+
+## 序列化 JSON
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import json
+
+obj = {
+    "name": "Player1",
+    "score": 100,
+    "items": ["sword", "shield"]
+}
+
+# 压缩格式
+compressed = json.encode(obj)
+
+# 格式化，2 空格缩进
+formatted = json.encode(obj, indent=2)
+print(formatted)
+```
+
+:::
+
+:::slot lua
+
+```lua
+local json = require("wingman.json")
+
+local obj = {
+    name = "Player1",
+    score = 100,
+    items = {"sword", "shield"}
+}
+
+-- 压缩格式
+local compressed = json.encode(obj)
+
+-- 格式化，2 空格缩进
+local formatted = json.encode(obj, 2)
+print(formatted)
+```
+
+:::
+
+</CodeTabs>
+
+## JSON null 值
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import json
+
+obj = {
+    "name": "Player1",
+    "nickname": json.null()  # JSON null
+}
+```
+
+:::
+
+:::slot lua
+
+```lua
+local json = require("wingman.json")
+
+local obj = {
+    name = "Player1",
+    nickname = json.null()  -- JSON null
+}
+```
+
+:::
+
+</CodeTabs>
+
+---
+
+## 可用接口
+
+### `decode(str)`
 
 解析 JSON 字符串。
 
@@ -12,46 +126,22 @@ JSON 解析和序列化。
 - `str` (string) - JSON 字符串
 
 **返回：**
-- `value` - 解析后的 Lua 值（table、string、number、boolean、nil）
+- 解析后的值（dict/list/string/number/boolean/None 或 nil）
 
-**示例：**
-```lua
-local data = json.decode('{"name": "Player1", "score": 100}')
-print(data.name)      -- "Player1"
-print(data.score)     -- 100
-```
-
-### json.encode(value, indent)
+### `encode(value, indent?)`
 
 序列化为 JSON 字符串。
 
 **参数：**
-- `value` - Lua 值
-- `indent` (number, 可选) - 缩进空格数，-1 表示压缩
+- `value` - 要序列化的值
+- `indent` (number, 可选) - 缩进空格数，-1 表示压缩，None/nil 表示压缩
 
 **返回：**
 - `str` (string) - JSON 字符串
 
-**示例：**
-```lua
-local obj = {
-    name = "Player1",
-    score = 100,
-    items = {"sword", "shield"}
-}
+### `null()`
 
-local compressed = json.encode(obj)           -- 压缩格式
-local formatted = json.encode(obj, 2)         -- 格式化，2 空格缩进
-```
+返回 JSON null 值（在 Python 中为 None，Lua 中为 nil）。
 
-### json.null()
-
-返回 JSON null 值（在 Lua 中表示为 nil）。
-
-**示例：**
-```lua
-local obj = {
-    name = "Player1",
-    nickname = json.null()  -- JSON null
-}
-```
+**返回：**
+- `null` 值

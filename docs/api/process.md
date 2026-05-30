@@ -1,42 +1,64 @@
-# API: process
+# API: wingman.process
 
 进程管理模块。
 
-## 函数
+## 查找进程
 
-### find(name)
+<CodeTabs>
 
-查找指定名称的进程。
+:::slot python
 
-**参数：**
-- `name` (string) - 进程名称（不需要 .exe 后缀）
+```python
+from wingman import process
 
-**返回：**
-- `number` | `nil` - 进程 ID (PID)，未找到返回 nil
-- `boolean` - 是否找到
+pid, found = process.find("notepad")
+if found:
+    print(f"找到记事本进程，PID: {pid}")
+```
 
-**示例：**
+:::
+
+:::slot lua
+
 ```lua
+local process = require("wingman.process")
+
 local pid, found = process.find("notepad")
 if found then
     print("找到记事本进程，PID: " .. pid)
 end
 ```
 
-### start(path, args, workingDir)
+:::
 
-启动新进程。
+</CodeTabs>
 
-**参数：**
-- `path` (string) - 可执行文件路径
-- `args` (string, 可选) - 命令行参数
-- `workingDir` (string, 可选) - 工作目录
+## 启动进程
 
-**返回：**
-- `number` - 新进程的 PID
+<CodeTabs>
 
-**示例：**
+:::slot python
+
+```python
+from wingman import process
+
+# 启动记事本
+pid = process.start("notepad.exe")
+
+# 启动带参数的程序
+pid = process.start("cmd.exe", args="/c dir C:\\")
+
+# 指定工作目录
+pid = process.start("cmd.exe", working_dir="C:\\Temp")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local process = require("wingman.process")
+
 -- 启动记事本
 local pid = process.start("notepad.exe")
 
@@ -47,19 +69,39 @@ local pid = process.start("cmd.exe", "/c dir C:\\")
 local pid = process.start("cmd.exe", "", "C:\\Temp")
 ```
 
-### wait(pid, timeout)
+:::
 
-等待进程结束。
+</CodeTabs>
 
-**参数：**
-- `pid` (number) - 进程 ID
-- `timeout` (number, 可选) - 超时时间（毫秒），0 表示无限等待
+## 等待进程结束
 
-**返回：**
-- `boolean` - 进程是否已结束（超时返回 false）
+<CodeTabs>
 
-**示例：**
+:::slot python
+
+```python
+from wingman import process
+
+pid = process.start("notepad.exe")
+
+# 等待进程结束（无限等待）
+if process.wait(pid):
+    print("进程已结束")
+
+# 带超时等待
+if process.wait(pid, 5000):
+    print("进程在5秒内结束")
+else:
+    print("等待超时")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local process = require("wingman.process")
+
 local pid = process.start("notepad.exe")
 
 -- 等待进程结束（无限等待）
@@ -75,19 +117,32 @@ else
 end
 ```
 
-### terminate(pid, force)
+:::
 
-终止进程。
+</CodeTabs>
 
-**参数：**
-- `pid` (number) - 进程 ID
-- `force` (boolean) - 是否强制终止
+## 终止进程
 
-**返回：**
-- `boolean` - 是否成功
+<CodeTabs>
 
-**示例：**
+:::slot python
+
+```python
+from wingman import process
+
+pid, found = process.find("notepad")
+if found:
+    if process.terminate(pid, force=False):
+        print("进程已终止")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local process = require("wingman.process")
+
 local pid, found = process.find("notepad")
 if found then
     if process.terminate(pid, false) then
@@ -96,18 +151,33 @@ if found then
 end
 ```
 
-### exists(pid)
+:::
 
-检查进程是否存在。
+</CodeTabs>
 
-**参数：**
-- `pid` (number) - 进程 ID
+## 检查进程是否存在
 
-**返回：**
-- `boolean` - 进程是否存在
+<CodeTabs>
 
-**示例：**
+:::slot python
+
+```python
+from wingman import process
+
+pid = 1234
+if process.exists(pid):
+    print(f"进程 {pid} 正在运行")
+else:
+    print(f"进程 {pid} 不存在")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local process = require("wingman.process")
+
 local pid = 1234
 if process.exists(pid) then
     print("进程 " .. pid .. " 正在运行")
@@ -116,19 +186,38 @@ else
 end
 ```
 
-### waitFor(name, timeout)
+:::
 
-等待进程出现。
+</CodeTabs>
 
-**参数：**
-- `name` (string) - 进程名称
-- `timeout` (number) - 超时时间（毫秒），默认 5000
+## 等待进程出现
 
-**返回：**
-- `boolean` - 是否在超时前找到进程
+<CodeTabs>
 
-**示例：**
+:::slot python
+
+```python
+from wingman import process
+
+# 启动应用程序
+process.start("notepad.exe")
+
+# 等待进程出现
+if process.wait_for("notepad", 5000):
+    print("记事本进程已启动")
+    pid, found = process.find("notepad")
+    print(f"PID: {pid}")
+else:
+    print("超时：进程未启动")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local process = require("wingman.process")
+
 -- 启动应用程序
 process.start("notepad.exe")
 
@@ -142,16 +231,56 @@ else
 end
 ```
 
+:::
+
+</CodeTabs>
+
+---
+
 ## 完整示例
 
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import process, util
+
+# 检查记事本是否运行
+pid, found = process.find("notepad")
+if not found:
+    print("记事本未运行，正在启动...")
+    pid = process.start("notepad.exe")
+    util.sleep(500)
+
+# 获取进程信息
+pid, found = process.find("notepad")
+if found:
+    print(f"记事本 PID: {pid}")
+
+    # 检查进程是否存在
+    if process.exists(pid):
+        print("进程正在运行")
+
+    # 等待5秒后终止
+    util.sleep(5000)
+    if process.terminate(pid, force=False):
+        print("进程已终止")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local process = require("wingman.process")
+local util = require("wingman.util")
+
 -- 检查记事本是否运行
 local pid, found = process.find("notepad")
 if not found then
     print("记事本未运行，正在启动...")
     pid = process.start("notepad.exe")
-
-    -- 等待进程启动
     util.sleep(500)
 end
 
@@ -173,47 +302,75 @@ if found then
 end
 ```
 
-## 常见使用场景
+:::
 
-### 启动并等待程序完成
+</CodeTabs>
 
-```lua
--- 启动命令行程序并等待完成
-local pid = process.start("cmd.exe", "/c timeout 3")
-if process.wait(pid, 5000) then
-    print("命令执行完成")
-end
-```
+---
 
-### 确保只有一个实例
+## 可用接口
 
-```lua
--- 检查程序是否已运行
-local pid, found = process.find("myapp")
-if found then
-    print("程序已在运行，PID: " .. pid)
-else
-    print("启动新实例...")
-    process.start("myapp.exe")
-end
-```
+### `find(name)`
 
-### 关闭所有匹配的进程
+查找指定名称的进程。
 
-```lua
--- 注意：需要实现 process.findAll 才能列出所有匹配进程
--- 当前版本只能查找到的第一个进程
-local pid, found = process.find("notepad")
-while found do
-    process.terminate(pid, true)
-    util.sleep(100)
-    pid, found = process.find("notepad")
-end
-```
+**参数：**
+- `name` (string) - 进程名称（不需要 .exe 后缀）
 
-## 注意事项
+**返回：**
+- `(number, boolean)` - 进程 ID (PID)，是否找到
 
-1. 进程 ID (PID) 是系统分配的数字，每次运行可能不同
-2. 终止系统关键进程可能导致系统不稳定
-3. 管理员权限的进程需要管理员权限才能操作
-4. 使用 `force=false` 优先让进程正常退出，`force=true` 强制杀死
+### `start(path, args?, working_dir?)`
+
+启动新进程。
+
+**参数：**
+- `path` (string) - 可执行文件路径
+- `args` (string, 可选) - 命令行参数
+- `working_dir` (string, 可选) - 工作目录
+
+**返回：**
+- `number` - 新进程的 PID
+
+### `wait(pid, timeout?)`
+
+等待进程结束。
+
+**参数：**
+- `pid` (number) - 进程 ID
+- `timeout` (number, 可选) - 超时时间（毫秒），0 表示无限等待
+
+**返回：**
+- `boolean` - 进程是否已结束（超时返回 false）
+
+### `terminate(pid, force)`
+
+终止进程。
+
+**参数：**
+- `pid` (number) - 进程 ID
+- `force` (boolean) - 是否强制终止
+
+**返回：**
+- `boolean` - 是否成功
+
+### `exists(pid)`
+
+检查进程是否存在。
+
+**参数：**
+- `pid` (number) - 进程 ID
+
+**返回：**
+- `boolean` - 进程是否存在
+
+### `wait_for(name, timeout?)` / `waitFor(name, timeout?)`
+
+等待进程出现。
+
+**参数：**
+- `name` (string) - 进程名称
+- `timeout` (number, 可选) - 超时时间（毫秒），默认 5000
+
+**返回：**
+- `boolean` - 是否在超时前找到进程

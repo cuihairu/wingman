@@ -1,93 +1,151 @@
-# API: window
+# API: wingman.window
 
 窗口管理模块。
 
-## 函数
+## 查找窗口
 
-### find(title)
+<CodeTabs>
 
-查找指定标题的窗口。
+:::slot python
 
-**参数：**
-- `title` (string) - 窗口标题（支持部分匹配）
+```python
+from wingman import window
 
-**返回：**
-- `number` | `nil` - 窗口句柄 (HWND)，未找到返回 nil
-- `boolean` - 是否找到
+hwnd, found = window.find("记事本")
+if found:
+    print(f"找到记事本窗口，句柄: {hwnd}")
+```
 
-**示例：**
+:::
+
+:::slot lua
+
 ```lua
+local window = require("wingman.window")
+
 local hwnd, found = window.find("记事本")
 if found then
     print("找到记事本窗口，句柄: " .. hwnd)
 end
 ```
 
-### activate(hwnd)
+:::
 
-激活窗口（置顶）。
+</CodeTabs>
 
-**参数：**
-- `hwnd` (number) - 窗口句柄
+## 激活窗口
 
-**返回：**
-- `boolean` - 是否成功
+<CodeTabs>
 
-**示例：**
+:::slot python
+
+```python
+from wingman import window
+
+hwnd, found = window.find("记事本")
+if found:
+    window.activate(hwnd)
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local window = require("wingman.window")
+
 local hwnd, found = window.find("记事本")
 if found then
     window.activate(hwnd)
 end
 ```
 
-### getForeground()
+:::
 
-获取当前前台窗口。
+</CodeTabs>
 
-**返回：**
-- `number` - 前台窗口句柄 (HWND)
+## 获取前台窗口
 
-**示例：**
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import window
+
+hwnd = window.get_foreground()
+title = window.get_title(hwnd)
+print(f"前台窗口: {title}")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local window = require("wingman.window")
+
 local hwnd = window.getForeground()
 local title = window.getTitle(hwnd)
 print("前台窗口: " .. title)
 ```
 
-### getTitle(hwnd)
+:::
 
-获取窗口标题。
+</CodeTabs>
 
-**参数：**
-- `hwnd` (number) - 窗口句柄
+## 获取窗口标题
 
-**返回：**
-- `string` - 窗口标题
+<CodeTabs>
 
-**示例：**
+:::slot python
+
+```python
+from wingman import window
+
+hwnd = window.get_foreground()
+title = window.get_title(hwnd)
+print(f"标题: {title}")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local window = require("wingman.window")
+
 local hwnd = window.getForeground()
 local title = window.getTitle(hwnd)
 print("标题: " .. title)
 ```
 
-### getBounds(hwnd)
+:::
 
-获取窗口边界。
+</CodeTabs>
 
-**参数：**
-- `hwnd` (number) - 窗口句柄
+## 获取窗口边界
 
-**返回：**
-- `table` - 包含以下字段：
-    - `x` - X 坐标
-    - `y` - Y 坐标
-    - `width` - 宽度
-    - `height` - 高度
+<CodeTabs>
 
-**示例：**
+:::slot python
+
+```python
+from wingman import window
+
+hwnd, found = window.find("记事本")
+if found:
+    bounds = window.get_bounds(hwnd)
+    print(f"位置: ({bounds['x']}, {bounds['y']}), 大小: {bounds['width']}x{bounds['height']}")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local window = require("wingman.window")
+
 local hwnd, found = window.find("记事本")
 if found then
     local bounds = window.getBounds(hwnd)
@@ -96,19 +154,40 @@ if found then
 end
 ```
 
-### waitFor(title, timeout)
+:::
 
-等待窗口出现。
+</CodeTabs>
 
-**参数：**
-- `title` (string) - 窗口标题（支持部分匹配）
-- `timeout` (number) - 超时时间（毫秒），默认 5000
+## 等待窗口出现
 
-**返回：**
-- `boolean` - 是否在超时前找到窗口
+<CodeTabs>
 
-**示例：**
+:::slot python
+
+```python
+from wingman import window, process
+
+# 启动应用程序
+process.start("notepad.exe")
+
+# 等待窗口出现
+if window.wait_for("记事本", 5000):
+    print("记事本已启动")
+    hwnd, found = window.find("记事本")
+    if found:
+        window.activate(hwnd)
+else:
+    print("超时：记事本未启动")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local window = require("wingman.window")
+local process = require("wingman.process")
+
 -- 启动应用程序
 process.start("notepad.exe")
 
@@ -124,9 +203,57 @@ else
 end
 ```
 
+:::
+
+</CodeTabs>
+
+---
+
 ## 完整示例
 
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import window, process, util, input
+
+# 查找并激活记事本
+hwnd, found = window.find("记事本")
+if not found:
+    print("未找到记事本，尝试启动...")
+    process.start("notepad.exe")
+
+    # 等待窗口出现
+    if not window.wait_for("记事本", 3000):
+        print("启动失败")
+        exit(1)
+
+    hwnd, found = window.find("记事本")
+
+if found:
+    # 激活窗口
+    window.activate(hwnd)
+    util.sleep(200)
+
+    # 获取窗口信息
+    title = window.get_title(hwnd)
+    print(f"标题: {title}")
+
+    bounds = window.get_bounds(hwnd)
+    print(f"位置: ({bounds['x']}, {bounds['y']})")
+    print(f"大小: {bounds['width']}x{bounds['height']}")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local window = require("wingman.window")
+local process = require("wingman.process")
+local util = require("wingman.util")
+
 -- 查找并激活记事本
 local hwnd, found = window.find("记事本")
 if not found then
@@ -157,9 +284,65 @@ if found then
 end
 ```
 
-## 注意事项
+:::
 
-1. 窗口句柄 (HWND) 是一个数字，在窗口生命周期内有效
-2. 窗口关闭后，句柄变为无效
-3. 某些应用程序可能阻止窗口激活操作
-4. 管理员权限的应用可能需要管理员权限才能操作
+</CodeTabs>
+
+---
+
+## 可用接口
+
+### `find(title)`
+
+查找指定标题的窗口。
+
+**参数：**
+- `title` (string) - 窗口标题（支持部分匹配）
+
+**返回：**
+- `(number, boolean)` - 窗口句柄 (HWND)，是否找到
+
+### `activate(hwnd)`
+
+激活窗口（置顶）。
+
+**参数：**
+- `hwnd` (number) - 窗口句柄
+
+**返回：**
+- `boolean` - 是否成功
+
+### `get_foreground()` / `getForeground()`
+
+获取当前前台窗口。
+
+**返回：**
+- `number` - 前台窗口句柄 (HWND)
+
+### `get_title(hwnd)` / `getTitle(hwnd)`
+
+获取窗口标题。
+
+**参数：**
+- `hwnd` (number) - 窗口句柄
+
+**返回：**
+- `string` - 窗口标题
+
+### `get_bounds(hwnd)` / `getBounds(hwnd)`
+
+获取窗口边界。
+
+**返回：**
+- `dict/table` - 包含 `x`, `y`, `width`, `height`
+
+### `wait_for(title, timeout)` / `waitFor(title, timeout)`
+
+等待窗口出现。
+
+**参数：**
+- `title` (string) - 窗口标题（支持部分匹配）
+- `timeout` (number) - 超时时间（毫秒），默认 5000
+
+**返回：**
+- `boolean` - 是否在超时前找到窗口

@@ -1,14 +1,31 @@
-# OCR API
+# API: wingman.ocr
 
 OCR 模块提供文字识别功能，基于 Tesseract 引擎。
 
-## Lua API
+## 识别文字
 
-### ocr.recognize(region?)
+<CodeTabs>
 
-识别指定区域的文字。
+:::slot python
+
+```python
+from wingman import ocr
+
+# 识别指定区域
+result = ocr.recognize({"x": 100, "y": 100, "width": 200, "height": 50})
+if result['success']:
+    print(f"识别成功: {result['text']}")
+    print(f"置信度: {result['confidence']}")
+```
+
+:::
+
+:::slot lua
 
 ```lua
+local ocr = require("wingman.ocr")
+
+-- 识别指定区域
 local result = ocr.recognize({x=100, y=100, width=200, height=50})
 if result.success then
     print("识别成功:", result.text)
@@ -16,55 +33,134 @@ if result.success then
 end
 ```
 
-**参数:**
-- `region` - 识别区域 `{x, y, width, height}`，默认全屏
+:::
 
-**返回:** `{success: boolean, text: string, confidence: number}`
+</CodeTabs>
 
----
+## 简化版识别
 
-### ocr.recognizeText(region?)
+<CodeTabs>
 
-简化版文字识别，直接返回文本。
+:::slot python
+
+```python
+from wingman import ocr
+
+text = ocr.recognize_text({"x": 0, "y": 0, "width": 300, "height": 100})
+if text:
+    print(f"识别到: {text}")
+```
+
+:::
+
+:::slot lua
 
 ```lua
+local ocr = require("wingman.ocr")
+
 local text = ocr.recognizeText({x=0, y=0, width=300, height=100})
 if text then
     print("识别到:", text)
 end
 ```
 
-**返回:** `string` 或 `nil`
+:::
 
-## C++ API
+</CodeTabs>
 
-### OCR::recognize()
+## 设置语言
 
-```cpp
-#include "wingman/ocr.hpp"
+<CodeTabs>
 
-// 识别全屏
-auto result = OCR::recognize();
+:::slot python
 
-// 识别指定区域
-Rect region{100, 100, 200, 50};
-auto result = OCR::recognize(region);
+```python
+from wingman import ocr
 
-if (result.success) {
-    std::cout << "识别结果: " << result.text << std::endl;
-}
+# 单语言
+ocr.set_language("eng")      # 仅英文
+ocr.set_language("chi_sim")  # 仅简体中文
+
+# 多语言（用 + 连接）
+ocr.set_language("chi_sim+eng")  # 中英文混合
 ```
 
-### OcrResult 结构
+:::
 
-```cpp
-struct OcrResult {
-    bool success;              // 是否成功
-    std::string text;          // 识别文本
-    double confidence;         // 置信度 0.0-1.0
-    std::vector<Rect> charRegions;  // 每个字符的位置
-};
+:::slot lua
+
+```lua
+local ocr = require("wingman.ocr")
+
+-- 单语言
+ocr.setLanguage("eng")      -- 仅英文
+ocr.setLanguage("chi_sim")  -- 仅简体中文
+
+-- 多语言（用 + 连接）
+ocr.setLanguage("chi_sim+eng")  -- 中英文混合
 ```
+
+:::
+
+</CodeTabs>
+
+## 设置语言包路径
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import ocr
+
+ocr.set_data_path("C:/path/to/tessdata")
+```
+
+:::
+
+:::slot lua
+
+```lua
+local ocr = require("wingman.ocr")
+
+ocr.setDataPath("C:/path/to/tessdata")
+```
+
+:::
+
+</CodeTabs>
+
+---
+
+## 可用接口
+
+### `recognize(region?)`
+
+识别指定区域的文字。
+
+**参数：**
+- `region` - 识别区域 `{x, y, width, height}`，默认全屏
+
+**返回：** `{success: boolean, text: string, confidence: number}`
+
+### `recognize_text(region?)` / `recognizeText(region?)`
+
+简化版文字识别，直接返回文本。
+
+**返回：** `string` 或 `None`/`nil`
+
+### `set_language(lang)` / `setLanguage(lang)`
+
+指定识别语言。
+
+**参数：**
+- `lang` - 语言代码（如 `"eng"`, `"chi_sim"`, `"chi_sim+eng"`）
+
+### `set_data_path(path)` / `setDataPath(path)`
+
+设置 Tesseract 语言包目录。
+
+---
 
 ## 语言包配置
 
@@ -91,29 +187,11 @@ Tesseract 语言包需要单独下载。
 <vcpkg-root>\installed\x64-windows\share\tesseract\tessdata\
 ```
 
-或者通过代码指定语言包路径：
-```lua
--- 设置语言包目录
-ocr.setDataPath("C:/path/to/tessdata")
-
--- 指定使用的中英文语言包
-ocr.setLanguage("chi_sim+eng")
-```
-
-### 指定识别语言
-
-```lua
--- 单语言
-ocr.setLanguage("eng")      -- 仅英文
-ocr.setLanguage("chi_sim")  -- 仅简体中文
-
--- 多语言（用 + 连接）
-ocr.setLanguage("chi_sim+eng")  -- 中英文混合
-```
+---
 
 ## 编译选项
 
-OCR 功能默认启用，需要安装 Tesseract：
+OCR 功能需要安装 Tesseract：
 
 ```bash
 vcpkg install tesseract

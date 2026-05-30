@@ -1,4 +1,4 @@
-# 组队编排模块
+# API: wingman.team
 
 多 Client 协同组队、投票协调功能。
 
@@ -25,13 +25,41 @@
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Lua API 使用示例
+## 注册 Client 并汇报状态
 
-### 注册 Client 并汇报状态
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import http, json
+
+# 向账号池请求账号
+resp = http.post("http://account-pool/alloc", json.encode({
+    "count": 1
+}))
+
+if resp['success']:
+    account = json.decode(resp['body'])
+    # 登录游戏...
+    login(account['username'], account['password'])
+
+# 向 Server 汇报状态
+resp = http.post("http://server/api/client/heartbeat", json.encode({
+    "clientId": client_id,
+    "status": "logged_in",
+    "gameId": game_id,
+    "username": player_name
+}))
+```
+
+:::
+
+:::slot lua
 
 ```lua
-local http = require("http")
-local json = require("json")
+local http = require("wingman.http")
+local json = require("wingman.json")
 
 -- 向账号池请求账号
 local resp = http.post("http://account-pool/alloc", json.encode({
@@ -53,9 +81,44 @@ local resp = http.post("http://server/api/client/heartbeat", json.encode({
 }))
 ```
 
-### 请求组队分配
+:::
+
+</CodeTabs>
+
+## 请求组队分配
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import http, json
+
+resp = http.post("http://server/api/team/allocate", json.encode({
+    "clientId": client_id,
+    "username": player_name,
+    "preferredSize": 3  # 期望队伍大小
+}))
+
+if resp['success']:
+    result = json.decode(resp['body'])
+    print(f"队伍ID: {result['teamId']}")
+    print(f"是否队长: {result['isLeader']}")
+    print(f"队友: {', '.join(result['teammates'])}")
+
+    # 游戏内组队
+    for teammate in result['teammates']:
+        invite_to_team(teammate)
+```
+
+:::
+
+:::slot lua
 
 ```lua
+local http = require("wingman.http")
+local json = require("wingman.json")
+
 local resp = http.post("http://server/api/team/allocate", json.encode({
     clientId = client_id,
     username = player_name,
@@ -65,7 +128,7 @@ local resp = http.post("http://server/api/team/allocate", json.encode({
 if resp.success then
     local result = json.decode(resp.body)
     print("队伍ID:", result.teamId)
-    print("是否队长:", result.isLeader)
+    print("是否队长:", tostring(result.isLeader))
     print("队友:", table.concat(result.teammates, ", "))
 
     -- 游戏内组队
@@ -75,16 +138,57 @@ if resp.success then
 end
 ```
 
-### 投票协调
+:::
+
+</CodeTabs>
+
+## 投票协调
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import http, json, util
+
+def report_vote(vote_type, target, initiator):
+    resp = http.post("http://server/api/vote/report", json.encode({
+        "teamId": team_id,
+        "type": vote_type,
+        "target": target,
+        "initiator": initiator
+    }))
+
+# 轮询待处理的投票动作
+while True:
+    resp = http.get(f"http://server/api/vote/pending?clientId={client_id}")
+    if resp['success']:
+        actions = json.decode(resp['body'])
+        for action in actions:
+            # Server 建议同意
+            if action['agree']:
+                click_vote_button("agree")
+            else:
+                click_vote_button("disagree")
+    util.sleep(1000)
+```
+
+:::
+
+:::slot lua
 
 ```lua
+local http = require("wingman.http")
+local json = require("wingman.json")
+local util = require("wingman.util")
+
 -- 汇报投票事件
 local function reportVote(voteType, target, initiator)
     local resp = http.post("http://server/api/vote/report", json.encode({
         teamId = team_id,
-        type = voteType,      -- "kick", "surrender", etc.
-        target = target,      -- 被投票目标
-        initiator = initiator  -- 发起人
+        type = voteType,
+        target = target,
+        initiator = initiator
     }))
 end
 
@@ -102,14 +206,21 @@ while true do
             end
         end
     end
-    sleep(1000)
+    util.sleep(1000)
 end
 ```
+
+:::
+
+</CodeTabs>
+
+---
 
 ## Server API 接口
 
 ### POST /api/client/register
-注册新 Client
+
+注册新 Client。
 
 **请求：**
 ```json
@@ -119,83 +230,126 @@ end
 **响应：**
 ```json
 {
-    "clientId": "client_1234567890"
+  "clientId": "client_1234567890"
 }
 ```
 
 ### POST /api/client/heartbeat
-Client 心跳汇报
+
+Client 心跳汇报。
 
 **请求：**
 ```json
 {
-    "clientId": "client_123",
-    "status": "logged_in",
-    "gameId": "game_account_1",
-    "username": "PlayerName"
+  "clientId": "client_123",
+  "status": "logged_in",
+  "gameId": "game_account_1",
+  "username": "PlayerName"
 }
 ```
 
 ### POST /api/team/allocate
-请求组队分配
+
+请求组队分配。
 
 **请求：**
 ```json
 {
-    "clientId": "client_123",
-    "username": "PlayerName",
-    "preferredSize": 3
+  "clientId": "client_123",
+  "username": "PlayerName",
+  "preferredSize": 3
 }
 ```
 
 **响应：**
 ```json
 {
-    "success": true,
-    "teamId": "team_456",
-    "message": "Created new team",
-    "isLeader": true,
-    "teammates": ["PlayerName"]
+  "success": true,
+  "teamId": "team_456",
+  "message": "Created new team",
+  "isLeader": true,
+  "teammates": ["PlayerName"]
 }
 ```
 
 ### POST /api/vote/report
-汇报投票事件
+
+汇报投票事件。
 
 **请求：**
 ```json
 {
-    "teamId": "team_456",
-    "type": "kick",
-    "target": "RandomPlayer",
-    "initiator": "TeammateA"
+  "teamId": "team_456",
+  "type": "kick",
+  "target": "RandomPlayer",
+  "initiator": "TeammateA"
 }
 ```
 
 **响应：**
 ```json
 {
-    "voteId": "vote_789",
-    "recommendAction": "agree"
+  "voteId": "vote_789",
+  "recommendAction": "agree"
 }
 ```
 
 ### GET /api/vote/pending?clientId=xxx
-获取待处理的投票动作
+
+获取待处理的投票动作。
 
 **响应：**
 ```json
 [
-    {
-        "voteId": "vote_789",
-        "agree": true
-    }
+  {
+    "voteId": "vote_789",
+    "agree": true
+  }
 ]
 ```
 
+---
+
 ## KV 数据结构
 
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import kv
+
+# 队伍信息
+kv.hset("team:123", "leader", "client_a")
+kv.hset("team:123", "state", "matching")
+kv.hset("team:123", "maxSize", "5")
+
+# 队伍成员
+kv.lpush("team:123:members", "client_a")
+kv.lpush("team:123:members", "client_b")
+
+# Client 状态
+kv.hset("client:a", "status", "in_team")
+kv.hset("client:a", "teamId", "123")
+kv.hset("client:a", "username", "PlayerA")
+
+# 游戏名 → Client 映射（判断是不是自己人）
+kv.set("teammate:PlayerA", "client_a")
+kv.set("teammate:PlayerB", "client_b")
+
+# 投票状态
+kv.hset("vote:789", "target", "路人X")
+kv.hset("vote:789", "initiator", "PlayerA")
+kv.hset("vote:789", "recommendAction", "agree")
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local kv = require("wingman.kv")
+
 -- 队伍信息
 kv.hset("team:123", "leader", "client_a")
 kv.hset("team:123", "state", "matching")
@@ -219,3 +373,7 @@ kv.hset("vote:789", "target", "路人X")
 kv.hset("vote:789", "initiator", "PlayerA")
 kv.hset("vote:789", "recommendAction", "agree")
 ```
+
+:::
+
+</CodeTabs>

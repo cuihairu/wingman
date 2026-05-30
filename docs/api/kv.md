@@ -1,96 +1,232 @@
-# KV 模块
+# API: wingman.kv
 
 类 Redis 的键值存储，支持 String、Hash、List 操作。
 
-## Lua API
+## 字符串操作
 
-### 字符串操作
+### 设置键值
 
-#### kv.set(key, value, options)
+<CodeTabs>
 
-设置键值。
+:::slot python
 
-**参数：**
-- `key` (string) - 键名
-- `value` (string) - 值
-- `options` (table, 可选)
-  - `ttl` (number) - 过期时间（秒）
-  - `nx` (boolean) - 仅当键不存在时设置
-  - `xx` (boolean) - 仅当键存在时设置
+```python
+from wingman import kv
 
-**示例：**
+# 设置键值
+kv.set("token", "abc123", {"ttl": 3600})  # 1小时后过期
+
+# 仅当键不存在时设置
+kv.set("counter", "1", {"nx": True})
+```
+
+:::
+
+:::slot lua
+
 ```lua
+local kv = require("wingman.kv")
+
+-- 设置键值
 kv.set("token", "abc123", {ttl = 3600})  -- 1小时后过期
-kv.set("counter", "1", {nx = true})      -- 仅当不存在时设置
+
+-- 仅当键不存在时设置
+kv.set("counter", "1", {nx = true})
 ```
 
-#### kv.get(key)
+:::
 
-获取值。
+</CodeTabs>
 
-**返回：**
-- `value` (string) - 值，不存在返回空字符串
+### 获取值
 
-#### kv.delete(key)
+<CodeTabs>
 
-删除键。
+:::slot python
+
+```python
+value = kv.get("token")
+```
+
+:::
+
+:::slot lua
 
 ```lua
-kv.delete("token")
-kv.delete({"key1", "key2", "key3"})  -- 批量删除
+local value = kv.get("token")
 ```
 
-#### kv.exists(key)
+:::
 
-检查键是否存在。
+</CodeTabs>
 
-**返回：**
-- `boolean` - 是否存在
+### 删除键
 
-#### kv.ttl(key)
+<CodeTabs>
 
-获取剩余过期时间。
+:::slot python
 
-**返回：**
-- `number` - 剩余秒数，-1 表示无过期，-2 表示已过期
+```python
+# 删除单个键
+kv.delete("token")
 
-#### kv.incr(key, delta)
+# 批量删除
+kv.delete(["key1", "key2", "key3"])
+```
 
-自增。
+:::
 
-**参数：**
-- `key` (string) - 键名
-- `delta` (number, 可选) - 增量，默认 1
+:::slot lua
 
-**返回：**
-- `number` - 新值
+```lua
+-- 删除单个键
+kv.delete("token")
+
+-- 批量删除
+kv.delete({"key1", "key2", "key3"})
+```
+
+:::
+
+</CodeTabs>
+
+### 检查键是否存在
+
+<CodeTabs>
+
+:::slot python
+
+```python
+exists = kv.exists("token")
+```
+
+:::
+
+:::slot lua
+
+```lua
+local exists = kv.exists("token")
+```
+
+:::
+
+</CodeTabs>
+
+### 获取过期时间
+
+<CodeTabs>
+
+:::slot python
+
+```python
+# 返回剩余秒数，-1 表示无过期，-2 表示已过期
+ttl = kv.ttl("token")
+```
+
+:::
+
+:::slot lua
+
+```lua
+-- 返回剩余秒数，-1 表示无过期，-2 表示已过期
+local ttl = kv.ttl("token")
+```
+
+:::
+
+</CodeTabs>
+
+### 自增
+
+<CodeTabs>
+
+:::slot python
+
+```python
+kv.set("counter", "10")
+new_value = kv.incr("counter", 5)  # 返回 15
+```
+
+:::
+
+:::slot lua
 
 ```lua
 kv.set("counter", "10")
 local new = kv.incr("counter", 5)  -- 返回 15
 ```
 
-### Hash 操作
+:::
 
-#### kv.hset(hash, field, value)
+</CodeTabs>
 
-设置 hash 字段。
+## Hash 操作
 
-```lua
+### 设置字段
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import kv
+
 kv.hset("team:123", "leader", "PlayerA")
 kv.hset("team:123", "state", "ready")
 ```
 
-#### kv.hget(hash, field)
+:::
 
-获取 hash 字段值。
+:::slot lua
 
-#### kv.hgetall(hash)
+```lua
+local kv = require("wingman.kv")
 
-获取所有字段。
+kv.hset("team:123", "leader", "PlayerA")
+kv.hset("team:123", "state", "ready")
+```
 
-**返回：**
-- `table` - 字段键值对
+:::
+
+</CodeTabs>
+
+### 获取字段
+
+<CodeTabs>
+
+:::slot python
+
+```python
+value = kv.hget("team:123", "leader")
+```
+
+:::
+
+:::slot lua
+
+```lua
+local value = kv.hget("team:123", "leader")
+```
+
+:::
+
+</CodeTabs>
+
+### 获取所有字段
+
+<CodeTabs>
+
+:::slot python
+
+```python
+info = kv.hgetall("team:123")
+print(info["leader"])  # "PlayerA"
+print(info["state"])   # "ready"
+```
+
+:::
+
+:::slot lua
 
 ```lua
 local info = kv.hgetall("team:123")
@@ -98,65 +234,224 @@ print(info.leader)  -- "PlayerA"
 print(info.state)   -- "ready"
 ```
 
-#### kv.hdel(hash, field)
+:::
 
-删除 hash 字段。
+</CodeTabs>
 
-#### kv.hexists(hash, field)
+### 删除字段
 
-检查字段是否存在。
+<CodeTabs>
 
-#### kv.hkeys(hash)
+:::slot python
 
-获取所有字段名。
+```python
+kv.hdel("team:123", "leader")
+```
 
-### List 操作
+:::
 
-#### kv.lpush(list, value)
-
-左端推入元素。
+:::slot lua
 
 ```lua
+kv.hdel("team:123", "leader")
+```
+
+:::
+
+</CodeTabs>
+
+### 检查字段是否存在
+
+<CodeTabs>
+
+:::slot python
+
+```python
+exists = kv.hexists("team:123", "leader")
+```
+
+:::
+
+:::slot lua
+
+```lua
+local exists = kv.hexists("team:123", "leader")
+```
+
+:::
+
+</CodeTabs>
+
+### 获取所有字段名
+
+<CodeTabs>
+
+:::slot python
+
+```python
+keys = kv.hkeys("team:123")
+```
+
+:::
+
+:::slot lua
+
+```lua
+local keys = kv.hkeys("team:123")
+```
+
+:::
+
+</CodeTabs>
+
+## List 操作
+
+### 推入元素
+
+<CodeTabs>
+
+:::slot python
+
+```python
+from wingman import kv
+
+# 左端推入
 kv.lpush("log", "error: connection failed")
 kv.lpush("log", "info: retrying...")
+
+# 右端推入
+kv.rpush("log", "warning: high latency")
 ```
 
-#### kv.rpush(list, value)
+:::
 
-右端推入元素。
-
-#### kv.lpop(list)
-
-左端弹出元素。
-
-#### kv.rpop(list)
-
-右端弹出元素。
-
-#### kv.llen(list)
-
-获取列表长度。
-
-#### kv.lrange(list, start, stop)
-
-获取范围元素。
-
-**参数：**
-- `start` (number) - 起始索引，0 表示开头，-1 表示末尾
-- `stop` (number) - 结束索引
+:::slot lua
 
 ```lua
-local logs = kv.lrange("log", 0, -1)  -- 获取全部
-local recent = kv.lrange("log", 0, 9)  -- 获取前10条
+local kv = require("wingman.kv")
+
+-- 左端推入
+kv.lpush("log", "error: connection failed")
+kv.lpush("log", "info: retrying...")
+
+-- 右端推入
+kv.rpush("log", "warning: high latency")
 ```
+
+:::
+
+</CodeTabs>
+
+### 弹出元素
+
+<CodeTabs>
+
+:::slot python
+
+```python
+# 左端弹出
+value = kv.lpop("log")
+
+# 右端弹出
+value = kv.rpop("log")
+```
+
+:::
+
+:::slot lua
+
+```lua
+-- 左端弹出
+local value = kv.lpop("log")
+
+-- 右端弹出
+local value = kv.rpop("log")
+```
+
+:::
+
+</CodeTabs>
+
+### 获取列表长度
+
+<CodeTabs>
+
+:::slot python
+
+```python
+length = kv.llen("log")
+```
+
+:::
+
+:::slot lua
+
+```lua
+local length = kv.llen("log")
+```
+
+:::
+
+</CodeTabs>
+
+### 获取范围元素
+
+<CodeTabs>
+
+:::slot python
+
+```python
+# 获取全部
+logs = kv.lrange("log", 0, -1)
+
+# 获取前10条
+recent = kv.lrange("log", 0, 9)
+```
+
+:::
+
+:::slot lua
+
+```lua
+-- 获取全部
+local logs = kv.lrange("log", 0, -1)
+
+-- 获取前10条
+local recent = kv.lrange("log", 0, 9)
+```
+
+:::
+
+</CodeTabs>
+
+---
 
 ## 持久化
 
-KV 存储支持持久化到 SQLite：
+KV 存储支持持久化到 SQLite（C++ 层调用）：
+
+<CodeTabs>
+
+:::slot python
+
+```python
+# 这些函数在 C++ 层调用
+kv.save("data.db")           # 保存
+kv.load("data.db")           # 加载
+kv.enable_auto_save("data.db", 60)  # 每60秒自动保存
+```
+
+:::
+
+:::slot lua
 
 ```lua
--- C++ 中调用
+-- 这些函数在 C++ 层调用
 kv.save("data.db")           -- 保存
 kv.load("data.db")           -- 加载
 kv.enableAutoSave("data.db", 60)  -- 每60秒自动保存
 ```
+
+:::
+
+</CodeTabs>

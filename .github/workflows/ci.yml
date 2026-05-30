@@ -97,6 +97,10 @@ jobs:
           if ! command -v ninja &> /dev/null; then
             brew install ninja
           fi
+          # 确保 Ninja 在 PATH 中，让 vcpkg 构建包时能找到
+          NINJA_PATH=$(command -v ninja)
+          echo "$NINJA_PATH" >> $GITHUB_PATH
+          echo "CMAKE_MAKE_PROGRAM=$NINJA_PATH" >> $GITHUB_ENV
           echo "MACOSX_DEPLOYMENT_TARGET=12" >> $GITHUB_ENV
 
       - name: Setup vcpkg
