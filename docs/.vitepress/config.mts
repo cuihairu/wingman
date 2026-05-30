@@ -28,6 +28,7 @@ export default defineConfig({
         {
           text: '进阶指南',
           items: [
+            { text: 'UI Automation', link: '/guides/uia-guide' },
             { text: 'YOLO 模型使用', link: '/guides/yolo-guide' }
           ]
         },
