@@ -1,8 +1,13 @@
 # API: UIA Menu
 
-菜单控件，用于组织命令和选项。
+菜单（Menu）控件用于组织命令和选项，常见于：
+- 应用程序顶部菜单栏（文件、编辑、查看...）
+- 右键上下文菜单
+- 下拉菜单
 
 ## 查找菜单
+
+**说明**：菜单通常有名称（如"文件"、"编辑"），可以通过名称查找。
 
 :::tabs
 
@@ -11,6 +16,7 @@
 ```python:line-numbers
 from wingman import uia
 
+# 查找名为"文件"的菜单
 menu = uia.find_by_name("文件")
 if menu:
     print("找到菜单")
@@ -21,6 +27,7 @@ if menu:
 ```lua:line-numbers
 local uia = require("wingman.uia")
 
+-- 查找名为"文件"的菜单
 local menu = uia.findByName("文件")
 if menu then
     print("找到菜单")
@@ -35,6 +42,14 @@ end
 
 ### 展开菜单并点击菜单项
 
+**说明**：先展开菜单，然后查找并点击目标菜单项。
+
+**步骤**：
+1. 查找菜单控件
+2. 使用 `expand()` 展开菜单
+3. 等待菜单项出现
+4. 查找并点击目标菜单项
+
 :::tabs
 
 == Python
@@ -42,16 +57,21 @@ end
 ```python:line-numbers
 from wingman import uia, util
 
-# 查找并展开菜单
+# 查找并展开"文件"菜单
 menu = uia.find_by_name("文件")
 if menu:
+    # 展开菜单
     menu.expand()
+    print("已展开文件菜单")
+
+    # 等待菜单项出现
     util.sleep(300)
 
-    # 查找并点击菜单项
+    # 查找并点击"新建"菜单项
     new_item = uia.find_by_name("新建")
     if new_item:
         new_item.click()
+        print("已点击新建")
 ```
 
 == Lua
@@ -60,23 +80,30 @@ if menu:
 local uia = require("wingman.uia")
 local util = require("wingman.util")
 
--- 查找并展开菜单
+-- 查找并展开"文件"菜单
 local menu = uia.findByName("文件")
 if menu then
+    -- 展开菜单
     menu:expand()
+    print("已展开文件菜单")
+
+    -- 等待菜单项出现
     util.sleep(300)
 
-    -- 查找并点击菜单项
+    -- 查找并点击"新建"菜单项
     local newItem = uia.findByName("新建")
     if newItem then
         newItem:click()
+        print("已点击新建")
     end
 end
 ```
 
 :::
 
-### 直接点击菜单项（某些应用支持）
+### 直接点击菜单项
+
+**说明**：某些应用程序支持直接点击菜单项，无需先展开菜单。
 
 :::tabs
 
@@ -89,6 +116,7 @@ from wingman import uia
 save_item = uia.find_by_name("保存")
 if save_item:
     save_item.click()
+    print("已点击保存")
 ```
 
 == Lua
@@ -100,6 +128,7 @@ local uia = require("wingman.uia")
 local saveItem = uia.findByName("保存")
 if saveItem then
     saveItem:click()
+    print("已点击保存")
 end
 ```
 
@@ -109,7 +138,12 @@ end
 
 ## 右键菜单（上下文菜单）
 
-### 打开并操作右键菜单
+**说明**：右键菜单是通过鼠标右键触发的上下文菜单。
+
+**操作步骤**：
+1. 右键点击目标位置
+2. 等待菜单出现
+3. 查找并点击菜单项
 
 :::tabs
 
@@ -118,14 +152,18 @@ end
 ```python:line-numbers
 from wingman import uia, input, util
 
-# 右键打开上下文菜单
+# 在指定位置右键
 input.right_click(100, 100)
+print("已右键")
+
+# 等待上下文菜单出现
 util.sleep(300)
 
 # 操作菜单项
 copy_item = uia.find_by_name("复制")
 if copy_item:
     copy_item.click()
+    print("已点击复制")
 ```
 
 == Lua
@@ -135,14 +173,18 @@ local uia = require("wingman.uia")
 local input = require("wingman.input")
 local util = require("wingman.util")
 
--- 右键打开上下文菜单
+-- 在指定位置右键
 input.rightClick(100, 100)
+print("已右键")
+
+-- 等待上下文菜单出现
 util.sleep(300)
 
 -- 操作菜单项
 local copyItem = uia.findByName("复制")
 if copyItem then
     copyItem:click()
+    print("已点击复制")
 end
 ```
 
@@ -151,6 +193,8 @@ end
 ---
 
 ## 获取菜单项列表
+
+**说明**：展开菜单后，可以遍历所有菜单项。
 
 :::tabs
 
@@ -167,9 +211,12 @@ if menu:
 
     # 获取所有菜单项
     items = menu.get_children()
+
+    print(f"文件菜单共有 {len(items)} 个项目：")
     for item in items:
         info = item.get_info()
-        print(f"菜单项: {info['name']}")
+        name = info.get('name', '(无名称)')
+        print(f"  - {name}")
 ```
 
 == Lua
@@ -186,9 +233,12 @@ if menu then
 
     -- 获取所有菜单项
     local items = menu:getChildren()
+
+    print("文件菜单共有 " .. #items .. " 个项目：")
     for i, item in ipairs(items) do
         local info = item:getInfo()
-        print("菜单项: " .. info.name)
+        local name = info.name or "(无名称)"
+        print("  - " .. name)
     end
 end
 ```
@@ -198,15 +248,6 @@ end
 ---
 
 ## 可用接口
-
-### 查找菜单
-
-| Python 函数 | Lua 函数 | 说明 |
-|------------|---------|------|
-| `find_by_name(name)` | `findByName(name)` | 按名称查找菜单 |
-| `find_by_id(id)` | `findById(id)` | 按 AutomationId 查找 |
-
-### 菜单操作
 
 | Python 方法 | Lua 方法 | 说明 |
 |------------|---------|------|

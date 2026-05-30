@@ -1,10 +1,16 @@
 # API: UIA Window
 
-窗口控件，代表应用程序的主窗口或对话框。
+窗口（Window）控件代表应用程序的主窗口、对话框或弹出窗口。
 
-## 查找窗口
+## 获取窗口
 
-窗口通常作为 UI 树的根元素，通过以下方式获取：
+### 获取前台窗口
+
+**说明**：获取当前活动窗口的 UI 根元素。这是最常用的方式。
+
+**函数签名**：
+- Python: `from_foreground() -> UIElement | None`
+- Lua: `fromForeground() -> UIElement | nil`
 
 :::tabs
 
@@ -13,11 +19,12 @@
 ```python:line-numbers
 from wingman import uia
 
-# 获取前台窗口（最常用）
+# 获取前台窗口
 root = uia.from_foreground()
 if root:
     info = root.get_info()
-    print(f"窗口名称: {info['name']}")
+    print(f"窗口名称: {info.get('name', '')}")
+    print(f"控件类型: {info.get('control_type', '')}")
 ```
 
 == Lua
@@ -25,21 +32,27 @@ if root:
 ```lua:line-numbers
 local uia = require("wingman.uia")
 
--- 获取前台窗口（最常用）
+-- 获取前台窗口
 local root = uia.fromForeground()
 if root then
     local info = root:getInfo()
-    print("窗口名称: " .. info.name)
+    print("窗口名称: " .. (info.name or ""))
+    print("控件类型: " .. (info.controlType or ""))
 end
 ```
 
 :::
 
----
+### 从窗口句柄获取
 
-## 从窗口句柄获取
+**说明**：如果已经知道窗口句柄（HWND），可以直接获取其 UI 根元素。
 
-如果已经知道窗口句柄：
+**函数签名**：
+- Python: `from_window(hwnd: int) -> UIElement | None`
+- Lua: `fromWindow(hwnd: number) -> UIElement | nil`
+
+**参数**：
+- `hwnd` - 窗口句柄
 
 :::tabs
 
@@ -48,8 +61,10 @@ end
 ```python:line-numbers
 from wingman import window, uia
 
+# 先查找窗口句柄
 hwnd, found = window.find("记事本")
 if found:
+    # 从句柄获取 UI 根元素
     root = uia.from_window(hwnd)
     if root:
         print("记事本 UI 根元素获取成功")
@@ -61,8 +76,10 @@ if found:
 local window = require("wingman.window")
 local uia = require("wingman.uia")
 
+-- 先查找窗口句柄
 local hwnd, found = window.find("记事本")
 if found then
+    -- 从句柄获取 UI 根元素
     local root = uia.fromWindow(hwnd)
     if root then
         print("记事本 UI 根元素获取成功")
@@ -74,9 +91,9 @@ end
 
 ---
 
-## 查找子窗口
+## 查找子窗口/对话框
 
-某些应用包含多个子窗口或对话框：
+**说明**：某些应用包含多个子窗口或对话框。
 
 :::tabs
 
@@ -85,13 +102,13 @@ end
 ```python:line-numbers
 from wingman import uia
 
-root = uia.from_foreground()
-if root:
-    # 查找所有子窗口
-    windows = uia.find_all_by_control_type("Window")
-    for win in windows:
-        info = win.get_info()
-        print(f"子窗口: {info['name']}")
+# 查找所有 Window 类型的控件
+windows = uia.find_all_by_control_type("Window")
+
+print(f"找到 {len(windows)} 个窗口：")
+for win in windows:
+    info = win.get_info()
+    print(f"  - {info.get('name', '(无名称)')}")
 ```
 
 == Lua
@@ -99,14 +116,13 @@ if root:
 ```lua:line-numbers
 local uia = require("wingman.uia")
 
-local root = uia.fromForeground()
-if root then
-    -- 查找所有子窗口
-    local windows = uia.findAllByControlType("Window")
-    for i, win in ipairs(windows) do
-        local info = win:getInfo()
-        print("子窗口: " .. info.name)
-    end
+-- 查找所有 Window 类型的控件
+local windows = uia.findAllByControlType("Window")
+
+print("找到 " .. #windows .. " 个窗口：")
+for i, win in ipairs(windows) do
+    local info = win:getInfo()
+    print("  - " .. (info.name or "(无名称)"))
 end
 ```
 
@@ -114,7 +130,9 @@ end
 
 ---
 
-## 查找对话框
+## 等待对话框出现
+
+**说明**：对话框可能需要时间加载，可以轮询等待。
 
 :::tabs
 
@@ -123,7 +141,7 @@ end
 ```python:line-numbers
 from wingman import uia
 
-# 等待对话框出现
+# 等待对话框出现（最多 3 秒）
 dialog = uia.wait_for_name("设置", 3000)
 if dialog:
     info = dialog.get_info()
@@ -136,7 +154,7 @@ if dialog:
 ```lua:line-numbers
 local uia = require("wingman.uia")
 
--- 等待对话框出现
+-- 等待对话框出现（最多 3 秒）
 local dialog = uia.waitForName("设置", 3000)
 if dialog then
     local info = dialog:getInfo()
@@ -152,6 +170,8 @@ end
 
 ## 窗口属性
 
+**说明**：获取窗口的各种属性信息。
+
 :::tabs
 
 == Python
@@ -162,11 +182,13 @@ from wingman import uia
 root = uia.from_foreground()
 if root:
     info = root.get_info()
+
     print(f"窗口标题: {info.get('name', '')}")
     print(f"控件类型: {info.get('control_type', '')}")
     print(f"是否可见: {info.get('is_visible', True)}")
     print(f"是否启用: {info.get('is_enabled', True)}")
 
+    # 位置和大小
     if 'bounding_rect' in info:
         rect = info['bounding_rect']
         print(f"位置: ({rect['left']}, {rect['top']})")
@@ -181,11 +203,13 @@ local uia = require("wingman.uia")
 local root = uia.fromForeground()
 if root then
     local info = root:getInfo()
+
     print("窗口标题: " .. (info.name or ""))
     print("控件类型: " .. (info.controlType or ""))
     print("是否可见: " .. tostring(info.isVisible or true))
     print("是否启用: " .. tostring(info.isEnabled or true))
 
+    -- 位置和大小
     if info.boundingRect then
         local rect = info.boundingRect
         print(string.format("位置: (%d, %d)", rect.left, rect.top))

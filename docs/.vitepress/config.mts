@@ -119,8 +119,7 @@ export default defineConfig({
             { text: 'wingman.verification', link: '/api/verification' },
             { text: 'wingman.gameprofile', link: '/api/gameprofile' },
             { text: 'wingman.debugger', link: '/api/debugger' },
-            { text: 'wingman.util', link: '/api/util' },
-            { text: 'wingman.tray', link: '/api/tray' }
+            { text: 'wingman.util', link: '/api/util' }
           ]
         },
         {

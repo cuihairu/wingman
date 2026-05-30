@@ -1,8 +1,10 @@
 # API: UIA ScrollBar
 
-滚动条控件，用于滚动内容区域。
+滚动条（ScrollBar）控件用于滚动内容区域，有水平和垂直两种类型。
 
 ## 查找滚动条
+
+**说明**：滚动条通常有名称或可通过类型查找。
 
 :::tabs
 
@@ -46,6 +48,8 @@ end
 
 ## 获取滚动位置
 
+**说明**：查看滚动条当前的滚动位置（通常为 0-100 的百分比）。
+
 :::tabs
 
 == Python
@@ -57,7 +61,7 @@ v_scroll = uia.find_by_name("垂直滚动条")
 if v_scroll:
     info = v_scroll.get_info()
     value = info.get('value', 0)
-    print(f"当前滚动位置: {value}")
+    print(f"当前滚动位置: {value}%")
 ```
 
 == Lua
@@ -69,7 +73,7 @@ local vScroll = uia.findByName("垂直滚动条")
 if vScroll then
     local info = vScroll:getInfo()
     local value = info.value or 0
-    print("当前滚动位置: " .. value)
+    print("当前滚动位置: " .. value .. "%")
 end
 ```
 
@@ -78,6 +82,15 @@ end
 ---
 
 ## 设置滚动位置
+
+**说明**：设置滚动条的滚动位置。值为 0 表示滚动到顶部/左侧，100 表示滚动到底部/右侧。
+
+**方法签名**：
+- Python: `set_value(value: number) -> None`
+- Lua: `:setValue(value: number) -> None`
+
+**参数**：
+- `value` - 滚动位置（0-100）
 
 :::tabs
 
@@ -122,6 +135,8 @@ end
 
 ## 获取滚动范围
 
+**说明**：查看滚动条的最小值和最大值。
+
 :::tabs
 
 == Python
@@ -163,17 +178,12 @@ end
 
 ## 可用接口
 
-### 查找滚动条
-
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
 | `find_by_name(name)` | `findByName(name)` | 按名称查找 |
-| `find_by_id(id)` | `findById(id)` | 按 AutomationId 查找 |
-
-### 滚动条操作
 
 | Python 方法 | Lua 方法 | 说明 |
 |------------|---------|------|
 | `get_value()` | `:getValue()` | 获取当前滚动位置 |
 | `set_value(value)` | `:setValue(value)` | 设置滚动位置（0-100） |
-| `get_info()` | `:getInfo()` | 获取滚动条信息（包含 minimum/maximum） |
+| `get_info()` | `:getInfo()` | 获取滚动条信息 |
