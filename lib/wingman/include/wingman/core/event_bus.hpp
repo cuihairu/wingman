@@ -64,7 +64,7 @@ private:
     }
 
     static uint64_t& nextSequenceId() {
-        static uint64_t id = 0;
+        static uint64_t id = 1;
         return id;
     }
 };
@@ -162,6 +162,9 @@ private:
                                GenericEventCallback callback,
                                const std::string& subscriberName,
                                bool once);
+
+    // Internal unsubscribe without lock (must be called with lock held)
+    void unsubscribeInternal(uint64_t subscriptionId);
 
     struct QueuedEvent {
         std::unique_ptr<Event> event;

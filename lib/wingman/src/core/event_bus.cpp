@@ -20,7 +20,10 @@ uint64_t EventBus::subscribe(EventType type,
 
 void EventBus::unsubscribe(uint64_t subscriptionId) {
     std::lock_guard<std::mutex> lock(mutex_);
+    unsubscribeInternal(subscriptionId);
+}
 
+void EventBus::unsubscribeInternal(uint64_t subscriptionId) {
     auto it = subscriptionIdToType_.find(subscriptionId);
     if (it == subscriptionIdToType_.end()) {
         return;
@@ -49,7 +52,7 @@ void EventBus::unsubscribe(const std::string& subscriberName) {
     }
 
     for (uint64_t id : toRemove) {
-        unsubscribe(id);
+        unsubscribeInternal(id);
     }
 }
 
@@ -58,11 +61,12 @@ void EventBus::publish(const Event& event) {
 }
 
 void EventBus::publishAsync(std::unique_ptr<Event> event) {
+    uint64_t timestamp = event->getTimestamp();
     {
         std::lock_guard<std::mutex> lock(mutex_);
         eventQueue_.push(QueuedEvent{
             std::move(event),
-            event->getTimestamp()
+            timestamp
         });
     }
     queueCondition_.notify_one();
@@ -92,7 +96,7 @@ void EventBus::stop() {
 void EventBus::processEvents() {
     std::unique_lock<std::mutex> lock(mutex_);
 
-    while (!eventQueue_.empty() && running_.load()) {
+    while (!eventQueue_.empty()) {
         auto queued = std::move(eventQueue_.front());
         eventQueue_.pop();
 
