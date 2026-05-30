@@ -4,11 +4,9 @@ HTTP 客户端，支持 GET/POST/PUT/DELETE 请求和表单提交。
 
 ## GET 请求
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import http
 
 resp = http.get("https://api.example.com/data", {
@@ -22,11 +20,7 @@ else:
     print(f"Error: {resp['status']}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local http = require("wingman.http")
 
 local resp = http.get("https://api.example.com/data", {
@@ -43,15 +37,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## POST 请求（JSON）
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import http
 
 resp = http.post("https://api.example.com/submit", {
@@ -62,11 +52,7 @@ resp = http.post("https://api.example.com/submit", {
 })
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local http = require("wingman.http")
 local json = require("wingman.json")
 
@@ -80,15 +66,11 @@ local resp = http.post("https://api.example.com/submit", json.encode({
 
 :::
 
-</CodeTabs>
-
 ## POST 表单
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import http
 
 resp = http.post_form("https://example.com/login", {
@@ -97,11 +79,7 @@ resp = http.post_form("https://example.com/login", {
 })
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local http = require("wingman.http")
 
 local resp = http.postForm("https://example.com/login", {
@@ -112,15 +90,11 @@ local resp = http.postForm("https://example.com/login", {
 
 :::
 
-</CodeTabs>
-
 ## PUT 请求
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import http
 
 resp = http.put("https://api.example.com/update", {
@@ -129,11 +103,7 @@ resp = http.put("https://api.example.com/update", {
 })
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local http = require("wingman.http")
 
 local resp = http.put("https://api.example.com/update", json.encode({
@@ -144,33 +114,23 @@ local resp = http.put("https://api.example.com/update", json.encode({
 
 :::
 
-</CodeTabs>
-
 ## DELETE 请求
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import http
 
 resp = http.delete("https://api.example.com/items/123")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local http = require("wingman.http")
 
 local resp = http.delete("https://api.example.com/items/123")
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

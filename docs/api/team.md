@@ -27,11 +27,9 @@
 
 ## 注册 Client 并汇报状态
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import http, json
 
 # 向账号池请求账号
@@ -53,11 +51,7 @@ resp = http.post("http://server/api/client/heartbeat", json.encode({
 }))
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local http = require("wingman.http")
 local json = require("wingman.json")
 
@@ -83,15 +77,11 @@ local resp = http.post("http://server/api/client/heartbeat", json.encode({
 
 :::
 
-</CodeTabs>
-
 ## 请求组队分配
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import http, json
 
 resp = http.post("http://server/api/team/allocate", json.encode({
@@ -111,11 +101,7 @@ if resp['success']:
         invite_to_team(teammate)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local http = require("wingman.http")
 local json = require("wingman.json")
 
@@ -140,15 +126,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 投票协调
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import http, json, util
 
 def report_vote(vote_type, target, initiator):
@@ -173,11 +155,7 @@ while True:
     util.sleep(1000)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local http = require("wingman.http")
 local json = require("wingman.json")
 local util = require("wingman.util")
@@ -211,8 +189,6 @@ end
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 
@@ -312,11 +288,9 @@ Client 心跳汇报。
 
 ## KV 数据结构
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import kv
 
 # 队伍信息
@@ -343,11 +317,7 @@ kv.hset("vote:789", "initiator", "PlayerA")
 kv.hset("vote:789", "recommendAction", "agree")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local kv = require("wingman.kv")
 
 -- 队伍信息
@@ -375,5 +345,3 @@ kv.hset("vote:789", "recommendAction", "agree")
 ```
 
 :::
-
-</CodeTabs>

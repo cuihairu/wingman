@@ -4,11 +4,9 @@
 
 ## 验证码识别
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import verification
 
 # 识别图像验证码
@@ -20,11 +18,7 @@ else:
     print("识别失败")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local verification = require("wingman.verification")
 
 -- 识别图像验证码
@@ -39,15 +33,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 识别屏幕区域验证码
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import verification, screen
 
 # 截取屏幕区域
@@ -59,11 +49,7 @@ if result['success']:
     print(f"验证码: {result['text']}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local verification = require("wingman.verification")
 local screen = require("wingman.screen")
 
@@ -79,15 +65,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## TOTP 生成
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import verification
 
 # 生成 TOTP 验证码
@@ -96,11 +78,7 @@ code = verification.generate_totp(secret)
 print(f"当前 TOTP 验证码: {code}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local verification = require("wingman.verification")
 
 -- 生成 TOTP 验证码
@@ -111,15 +89,11 @@ print("当前 TOTP 验证码: " .. code)
 
 :::
 
-</CodeTabs>
-
 ## 批量生成 TOTP
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import verification
 
 # 批量生成多个账户的 TOTP
@@ -133,11 +107,7 @@ for name, secret in accounts.items():
     print(f"{name}: {code}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local verification = require("wingman.verification")
 
 -- 批量生成多个账户的 TOTP
@@ -154,15 +124,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 设置 TOTP 时间步长
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import verification
 
 # 设置 TOTP 时间步长（默认 30 秒）
@@ -172,11 +138,7 @@ verification.set_totp_step(30)
 verification.set_totp_step(60)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local verification = require("wingman.verification")
 
 -- 设置 TOTP 时间步长（默认 30 秒）
@@ -188,15 +150,11 @@ verification.setTotpStep(60)
 
 :::
 
-</CodeTabs>
-
 ## 存储验证码密钥
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import verification, kv
 
 # 存储验证码密钥
@@ -209,11 +167,7 @@ secret = verification.load_secret("game_account")
 verification.delete_secret("game_account")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local verification = require("wingman.verification")
 
 -- 存储验证码密钥
@@ -228,19 +182,15 @@ verification.deleteSecret("game_account")
 
 :::
 
-</CodeTabs>
-
 ---
 
 ## 完整示例
 
 ### 验证码识别流程
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import verification, input, screen, util
 
 # 截取验证码区域
@@ -263,11 +213,7 @@ else:
     print("验证码识别失败，尝试手动输入")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local verification = require("wingman.verification")
 local input = require("wingman.input")
 local screen = require("wingman.screen")
@@ -296,15 +242,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ### TOTP 登录流程
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import verification, input, util
 
 # 账户信息
@@ -331,11 +273,7 @@ else:
     input.click(400, 350)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local verification = require("wingman.verification")
 local input = require("wingman.input")
 local util = require("wingman.util")
@@ -366,8 +304,6 @@ end
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

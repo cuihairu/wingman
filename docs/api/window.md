@@ -4,11 +4,9 @@
 
 ## 查找窗口
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import window
 
 hwnd, found = window.find("记事本")
@@ -16,11 +14,7 @@ if found:
     print(f"找到记事本窗口，句柄: {hwnd}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local window = require("wingman.window")
 
 local hwnd, found = window.find("记事本")
@@ -31,15 +25,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 激活窗口
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import window
 
 hwnd, found = window.find("记事本")
@@ -47,11 +37,7 @@ if found:
     window.activate(hwnd)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local window = require("wingman.window")
 
 local hwnd, found = window.find("记事本")
@@ -62,15 +48,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 获取前台窗口
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import window
 
 hwnd = window.get_foreground()
@@ -78,11 +60,7 @@ title = window.get_title(hwnd)
 print(f"前台窗口: {title}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local window = require("wingman.window")
 
 local hwnd = window.getForeground()
@@ -92,15 +70,11 @@ print("前台窗口: " .. title)
 
 :::
 
-</CodeTabs>
-
 ## 获取窗口标题
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import window
 
 hwnd = window.get_foreground()
@@ -108,11 +82,7 @@ title = window.get_title(hwnd)
 print(f"标题: {title}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local window = require("wingman.window")
 
 local hwnd = window.getForeground()
@@ -122,15 +92,11 @@ print("标题: " .. title)
 
 :::
 
-</CodeTabs>
-
 ## 获取窗口边界
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import window
 
 hwnd, found = window.find("记事本")
@@ -139,11 +105,7 @@ if found:
     print(f"位置: ({bounds['x']}, {bounds['y']}), 大小: {bounds['width']}x{bounds['height']}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local window = require("wingman.window")
 
 local hwnd, found = window.find("记事本")
@@ -156,15 +118,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 等待窗口出现
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import window, process
 
 # 启动应用程序
@@ -180,11 +138,7 @@ else:
     print("超时：记事本未启动")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local window = require("wingman.window")
 local process = require("wingman.process")
 
@@ -205,17 +159,13 @@ end
 
 :::
 
-</CodeTabs>
-
 ---
 
 ## 完整示例
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import window, process, util, input
 
 # 查找并激活记事本
@@ -245,11 +195,7 @@ if found:
     print(f"大小: {bounds['width']}x{bounds['height']}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local window = require("wingman.window")
 local process = require("wingman.process")
 local util = require("wingman.util")
@@ -285,8 +231,6 @@ end
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

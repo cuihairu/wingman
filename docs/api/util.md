@@ -4,11 +4,9 @@
 
 ## 延迟执行
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import util
 
 # 延迟 1000 毫秒
@@ -18,11 +16,7 @@ util.sleep(1000)
 util.sleep(2000)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local util = require("wingman.util")
 
 -- 延迟 1000 毫秒
@@ -34,15 +28,11 @@ util.sleep(2000)
 
 :::
 
-</CodeTabs>
-
 ## 获取时间戳
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import util
 
 # 获取当前时间戳（毫秒）
@@ -50,11 +40,7 @@ timestamp = util.time()
 print(f"当前时间戳: {timestamp}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local util = require("wingman.util")
 
 -- 获取当前时间戳（毫秒）
@@ -64,15 +50,11 @@ print("当前时间戳: " .. timestamp)
 
 :::
 
-</CodeTabs>
-
 ## 格式化时间
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import util
 
 # 格式化时间为字符串
@@ -80,11 +62,7 @@ formatted = util.format_time("%Y-%m-%d %H:%M:%S")
 print(f"当前时间: {formatted}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local util = require("wingman.util")
 
 -- 格式化时间为字符串
@@ -94,15 +72,11 @@ print("当前时间: " .. formatted)
 
 :::
 
-</CodeTabs>
-
 ## 生成随机数
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import util
 
 # 生成 0-1 之间的随机浮点数
@@ -119,11 +93,7 @@ choices = ["A", "B", "C"]
 selected = random.choice(choices)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local util = require("wingman.util")
 
 -- 生成 0-1 之间的随机浮点数
@@ -142,15 +112,11 @@ print("随机选择: " .. choice)
 
 :::
 
-</CodeTabs>
-
 ## 执行 Shell 命令
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import util
 
 # 执行命令并获取输出
@@ -158,11 +124,7 @@ output = util.shell_exec("dir C:\\")
 print(output)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local util = require("wingman.util")
 
 -- 执行命令并获取输出
@@ -172,15 +134,11 @@ print(output)
 
 :::
 
-</CodeTabs>
-
 ## 获取系统信息
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import util
 
 # 获取系统信息
@@ -190,11 +148,7 @@ print(f"架构: {info['arch']}")
 print(f"Wingman 版本: {info['version']}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local util = require("wingman.util")
 
 -- 获取系统信息
@@ -206,15 +160,11 @@ print("Wingman 版本: " .. info.version)
 
 :::
 
-</CodeTabs>
-
 ## 获取脚本路径
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import util
 
 # 获取当前脚本路径
@@ -226,11 +176,7 @@ script_dir = util.get_script_dir()
 print(f"脚本目录: {script_dir}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local util = require("wingman.util")
 
 -- 获取当前脚本路径
@@ -244,15 +190,11 @@ print("脚本目录: " .. scriptDir)
 
 :::
 
-</CodeTabs>
-
 ## 日志输出
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import util
 
 # 输出日志
@@ -261,11 +203,7 @@ util.log("warn", "这是一条警告")
 util.log("error", "这是一条错误")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local util = require("wingman.util")
 
 -- 输出日志
@@ -275,8 +213,6 @@ util.log("error", "这是一条错误")
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

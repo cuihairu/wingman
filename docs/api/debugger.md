@@ -4,11 +4,9 @@
 
 ## 设置断点
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import debugger
 
 # 在当前行设置断点
@@ -21,11 +19,7 @@ debugger.breakpoint_if(lambda: x > 10)
 debugger.log_point("变量 x 的值: {}", x)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local debugger = require("wingman.debugger")
 
 -- 在当前行设置断点
@@ -40,26 +34,18 @@ debugger.logPoint("变量 x 的值: " .. tostring(x), x)
 
 :::
 
-</CodeTabs>
-
 ## 启动调试服务器
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import debugger
 
 # 启动调试服务器
 debugger.start_server(9999)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local debugger = require("wingman.debugger")
 
 -- 启动调试服务器
@@ -68,26 +54,18 @@ debugger.startServer(9999)
 
 :::
 
-</CodeTabs>
-
 ## 连接调试器
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import debugger
 
 # 连接到远程调试器
 debugger.connect("localhost", 9999)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local debugger = require("wingman.debugger")
 
 -- 连接到远程调试器
@@ -96,15 +74,11 @@ debugger.connect("localhost", 9999)
 
 :::
 
-</CodeTabs>
-
 ## 输出调试信息
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import debugger
 
 # 输出调试信息
@@ -115,11 +89,7 @@ debugger.log(f"当前状态: {status}")
 debugger.inspect({"x": x, "y": y, "status": status})
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local debugger = require("wingman.debugger")
 
 -- 输出调试信息
@@ -132,15 +102,11 @@ debugger.inspect({x = x, y = y, status = status})
 
 :::
 
-</CodeTabs>
-
 ## 获取调用栈
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import debugger
 
 # 获取当前调用栈
@@ -149,11 +115,7 @@ for frame in stack:
     print(f"  {frame['file']}:{frame['line']} in {frame['function']}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local debugger = require("wingman.debugger")
 
 -- 获取当前调用栈
@@ -165,15 +127,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 单步执行
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import debugger
 
 # 单步进入
@@ -189,11 +147,7 @@ debugger.step_out()
 debugger.resume()
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local debugger = require("wingman.debugger")
 
 -- 单步进入
@@ -211,15 +165,11 @@ debugger.resume()
 
 :::
 
-</CodeTabs>
-
 ## 检查变量
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import debugger
 
 # 检查局部变量
@@ -235,11 +185,7 @@ result = debugger.eval("x + y")
 print(f"x + y = {result}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local debugger = require("wingman.debugger")
 
 -- 检查局部变量
@@ -256,8 +202,6 @@ print("x + y = " .. tostring(result))
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

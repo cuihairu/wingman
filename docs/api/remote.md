@@ -6,11 +6,9 @@
 
 ### 启动服务器
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import remote
 
 ok = remote.start(8888)
@@ -18,11 +16,7 @@ if ok:
     print("Server started on port 8888")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local remote = require("wingman.remote")
 
 local ok = remote.start(8888)
@@ -33,15 +27,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ### 注册事件处理器
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import remote
 
 def on_execute(req):
@@ -55,11 +45,7 @@ def on_execute(req):
 remote.on("execute_script", on_execute)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local remote = require("wingman.remote")
 
 remote.on("execute_script", function(req)
@@ -76,25 +62,17 @@ end)
 
 :::
 
-</CodeTabs>
-
 ### 停止服务器
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import remote
 
 remote.stop()
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local remote = require("wingman.remote")
 
 remote.stop()
@@ -102,15 +80,11 @@ remote.stop()
 
 :::
 
-</CodeTabs>
-
 ### 广播消息
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import remote
 
 remote.broadcast({
@@ -119,11 +93,7 @@ remote.broadcast({
 })
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local remote = require("wingman.remote")
 
 remote.broadcast({
@@ -134,27 +104,19 @@ remote.broadcast({
 
 :::
 
-</CodeTabs>
-
 ## Client 模式
 
 ### 连接服务器
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import remote
 
 client = remote.connect("192.168.1.100", 8888)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local remote = require("wingman.remote")
 
 local client = remote.connect("192.168.1.100", 8888)
@@ -162,15 +124,11 @@ local client = remote.connect("192.168.1.100", 8888)
 
 :::
 
-</CodeTabs>
-
 ### 发送请求
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import remote
 
 client = remote.connect("192.168.1.100", 8888)
@@ -184,11 +142,7 @@ response = client.send({
 print(response['message'])
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local remote = require("wingman.remote")
 
 local client = remote.connect("192.168.1.100", 8888)
@@ -204,33 +158,23 @@ print(response.message)
 
 :::
 
-</CodeTabs>
-
 ### 断开连接
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import remote
 
 client.disconnect()
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local remote = require("wingman.remote")
 
 client:disconnect()
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

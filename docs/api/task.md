@@ -4,11 +4,9 @@
 
 ## 提交任务
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import task
 
 # 提交任务
@@ -22,11 +20,7 @@ task_id = task.submit(my_work, {
 })
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local task = require("wingman.task")
 
 -- 提交任务
@@ -44,15 +38,11 @@ local taskId = task.submit(myWork, {
 
 :::
 
-</CodeTabs>
-
 ## 检查任务状态
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import task
 
 # 检查状态
@@ -60,11 +50,7 @@ status = task.status(task_id)
 print(f"任务状态: {status}")  # "running", "succeeded", "failed", etc.
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local task = require("wingman.task")
 
 -- 检查状态
@@ -74,15 +60,11 @@ print("任务状态: " .. status)
 
 :::
 
-</CodeTabs>
-
 ## 等待任务完成
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import task
 
 # 等待完成
@@ -94,11 +76,7 @@ else:
     print(f"任务失败: {error}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local task = require("wingman.task")
 
 -- 等待完成
@@ -113,26 +91,18 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 取消任务
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import task
 
 # 取消任务
 task.cancel(task_id)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local task = require("wingman.task")
 
 -- 取消任务
@@ -141,26 +111,18 @@ task.cancel(taskId)
 
 :::
 
-</CodeTabs>
-
 ## 重试任务
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import task
 
 # 重试失败的任务
 task.retry(task_id, {"max": 5, "backoffMs": 1000})
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local task = require("wingman.task")
 
 -- 重试失败的任务
@@ -169,19 +131,15 @@ task.retry(taskId, { maxRetries = 5, backoffMs = 1000 })
 
 :::
 
-</CodeTabs>
-
 ---
 
 ## 完整示例
 
 ### 异步图像处理任务
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import task, screen, vision
 
 def process_image(ctx):
@@ -208,11 +166,7 @@ else:
     print("图像处理超时")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local task = require("wingman.task")
 local screen = require("wingman.screen")
 local vision = require("wingman.vision")
@@ -241,15 +195,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ### 带重试的网络请求
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import task, http
 
 def fetch_api(ctx):
@@ -275,11 +225,7 @@ else:
     print(f"请求失败: {error}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local task = require("wingman.task")
 local http = require("wingman.http")
 
@@ -312,15 +258,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ### 批量任务处理
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import task, vision, input
 
 def click_target(ctx):
@@ -348,11 +290,7 @@ for task_id in task_ids:
 print(f"已点击 {len(results)} 个目标")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local task = require("wingman.task")
 local vision = require("wingman.vision")
 local input = require("wingman.input")
@@ -388,19 +326,15 @@ print("已点击 " .. #results .. " 个目标")
 
 :::
 
-</CodeTabs>
-
 ---
 
 ## 生命周期事件
 
 任务生命周期会触发以下事件：
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import event
 
 event.on("task.submitted", lambda e: print(f"任务提交: {e['payload']['taskId']}"))
@@ -411,11 +345,7 @@ event.on("task.canceled", lambda e: print(f"任务取消"))
 event.on("task.timeout", lambda e: print(f"任务超时"))
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local event = require("wingman.event")
 
 event.on("task.submitted", function(e)
@@ -439,8 +369,6 @@ end)
 ```
 
 :::
-
-</CodeTabs>
 
 事件载荷包含：
 - `taskId`: 任务 ID

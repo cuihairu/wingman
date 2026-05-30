@@ -4,11 +4,9 @@
 
 ## 订阅事件
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import event
 
 # 订阅事件
@@ -18,11 +16,7 @@ def on_enemy(e: event.EventMessage) -> None:
 sub_id = event.on("combat.enemy_found", on_enemy, name="my-handler")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local event = require("wingman.event")
 
 -- 订阅事件
@@ -35,26 +29,18 @@ local id = event.on("combat.enemy_found", onEnemy, "my-handler")
 
 :::
 
-</CodeTabs>
-
 ## 一次性订阅
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import event
 
 # 一次性订阅
 event.once("task.done", lambda e: print("Task done!"))
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local event = require("wingman.event")
 
 -- 一次性订阅
@@ -65,26 +51,18 @@ end)
 
 :::
 
-</CodeTabs>
-
 ## 触发事件
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import event
 
 # 触发事件
 event.emit("combat.enemy_found", {"x": 100, "y": 200}, {"source": "vision"})
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local event = require("wingman.event")
 
 -- 触发事件
@@ -93,15 +71,11 @@ event.emit("combat.enemy_found", { x = 100, y = 200 }, { source = "vision" })
 
 :::
 
-</CodeTabs>
-
 ## 取消订阅
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import event
 
 # 取消订阅
@@ -111,11 +85,7 @@ event.off(sub_id)
 event.clear()
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local event = require("wingman.event")
 
 -- 取消订阅
@@ -127,19 +97,15 @@ event.clear()
 
 :::
 
-</CodeTabs>
-
 ---
 
 ## 完整示例
 
 ### 游戏战斗事件系统
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import event, vision
 
 # 定义战斗事件处理
@@ -173,11 +139,7 @@ while True:
         event.emit("combat.low_hp", {"hp": hp})
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local event = require("wingman.event")
 local vision = require("wingman.vision")
 
@@ -221,15 +183,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ### 任务协作事件
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import event, task
 
 # 任务状态监听
@@ -261,11 +219,7 @@ def run_combat():
         event.emit("task.fail", {"task_id": 1, "error": str(e)})
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local event = require("wingman.event")
 local task = require("wingman.task")
 
@@ -303,8 +257,6 @@ end
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

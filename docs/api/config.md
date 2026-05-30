@@ -4,11 +4,9 @@
 
 ## 获取服务器配置
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 server = config.get_server()
@@ -22,11 +20,7 @@ server = config.get_server()
 # }
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 local server = config.getServer()
@@ -42,15 +36,11 @@ local server = config.getServer()
 
 :::
 
-</CodeTabs>
-
 ## 设置服务器配置
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 config.set_server({
@@ -63,11 +53,7 @@ config.set_server({
 })
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 config.setServer({
@@ -82,15 +68,11 @@ config.setServer({
 
 :::
 
-</CodeTabs>
-
 ## 获取托盘配置
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 tray = config.get_tray()
@@ -101,11 +83,7 @@ tray = config.get_tray()
 # }
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 local tray = config.getTray()
@@ -118,15 +96,11 @@ local tray = config.getTray()
 
 :::
 
-</CodeTabs>
-
 ## 设置托盘配置
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 config.set_tray({
@@ -136,11 +110,7 @@ config.set_tray({
 })
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 config.setTray({
@@ -152,15 +122,11 @@ config.setTray({
 
 :::
 
-</CodeTabs>
-
 ## 获取自动运行配置
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 auto_run = config.get_auto_run()
@@ -173,11 +139,7 @@ auto_run = config.get_auto_run()
 # }
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 local autoRun = config.getAutoRun()
@@ -192,15 +154,11 @@ local autoRun = config.getAutoRun()
 
 :::
 
-</CodeTabs>
-
 ## 设置自动运行配置
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 config.set_auto_run({
@@ -212,11 +170,7 @@ config.set_auto_run({
 })
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 config.setAutoRun({
@@ -230,15 +184,11 @@ config.setAutoRun({
 
 :::
 
-</CodeTabs>
-
 ## 获取自定义配置值
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 value = config.get("myKey")
@@ -246,11 +196,7 @@ if value:
     print(value)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 local value = config.get("myKey")
@@ -261,15 +207,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 设置自定义配置值
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 config.set("myKey", "myValue")
@@ -277,11 +219,7 @@ config.set("count", 42)
 config.set("enabled", True)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 config.set("myKey", "myValue")
@@ -291,25 +229,17 @@ config.set("enabled", true)
 
 :::
 
-</CodeTabs>
-
 ## 删除自定义配置值
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 removed = config.remove("myKey")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 local removed = config.remove("myKey")
@@ -317,19 +247,15 @@ local removed = config.remove("myKey")
 
 :::
 
-</CodeTabs>
-
 ---
 
 ## 完整示例
 
 ### 读取并显示当前配置
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 server = config.get_server()
@@ -338,11 +264,7 @@ print(f"自动连接: {server['autoConnect']}")
 print(f"服务器控制: {server['serverControlled']}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 local server = config.getServer()
@@ -353,15 +275,11 @@ print("服务器控制: " .. tostring(server.serverControlled))
 
 :::
 
-</CodeTabs>
-
 ### 启用服务器控制模式
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 server = config.get_server()
@@ -376,11 +294,7 @@ config.set_server(server)
 print("已启用服务器控制模式")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 local server = config.getServer()
@@ -397,15 +311,11 @@ print("已启用服务器控制模式")
 
 :::
 
-</CodeTabs>
-
 ### 自定义配置存储
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import config
 
 # 存储游戏配置
@@ -423,11 +333,7 @@ print(f"服务器: {server}")
 print(f"自动喝药: {auto_potion}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local config = require("wingman.config")
 
 -- 存储游戏配置
@@ -446,8 +352,6 @@ print("自动喝药: " .. tostring(autoPotion == "true"))
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

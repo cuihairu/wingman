@@ -4,11 +4,9 @@
 
 ## 随机延迟
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import human
 
 # 随机延迟 50-150 毫秒
@@ -18,11 +16,7 @@ human.random_delay(50, 150)
 human.random_delay()
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local human = require("wingman.human")
 
 -- 随机延迟 50-150 毫秒
@@ -34,26 +28,18 @@ human.randomDelay()
 
 :::
 
-</CodeTabs>
-
 ## 贝塞尔曲线鼠标移动
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import human, input
 
 # 使用贝塞尔曲线平滑移动鼠标
 human.move_mouse(100, 100, 500, 300, duration=500)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local human = require("wingman.human")
 local input = require("wingman.input")
 
@@ -63,26 +49,18 @@ human.moveMouse(100, 100, 500, 300, 500)
 
 :::
 
-</CodeTabs>
-
 ## 模拟人类点击节奏
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import human, input
 
 # 模拟人类点击节奏（带随机延迟）
 human.natural_click(100, 200)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local human = require("wingman.human")
 local input = require("wingman.input")
 
@@ -92,26 +70,18 @@ human.naturalClick(100, 200)
 
 :::
 
-</CodeTabs>
-
 ## 模拟人类输入节奏
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import human, input
 
 # 模拟人类输入节奏（带随机按键延迟）
 human.natural_type("Hello World")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local human = require("wingman.human")
 local input = require("wingman.input")
 
@@ -121,15 +91,11 @@ human.naturalType("Hello World")
 
 :::
 
-</CodeTabs>
-
 ## 设置人性化参数
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import human
 
 # 设置全局随机延迟范围
@@ -142,11 +108,7 @@ human.set_move_speed(0.8)
 human.set_typing_variance(0.3)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local human = require("wingman.human")
 
 -- 设置全局随机延迟范围
@@ -161,15 +123,11 @@ human.setTypingVariance(0.3)
 
 :::
 
-</CodeTabs>
-
 ## 获取当前配置
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import human
 
 config = human.get_config()
@@ -178,11 +136,7 @@ print(f"移动速度: {config['move_speed']}")
 print(f"输入变异度: {config['typing_variance']}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local human = require("wingman.human")
 
 local config = human.getConfig()
@@ -193,17 +147,13 @@ print("输入变异度: " .. config.typing_variance)
 
 :::
 
-</CodeTabs>
-
 ---
 
 ## 完整示例
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import human, input, screen
 
 # 设置人性化参数
@@ -230,11 +180,7 @@ human.random_delay(100, 200)
 human.natural_click(450, 400)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local human = require("wingman.human")
 local input = require("wingman.input")
 
@@ -263,8 +209,6 @@ human.naturalClick(450, 400)
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

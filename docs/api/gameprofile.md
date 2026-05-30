@@ -4,11 +4,9 @@
 
 ## 创建游戏档案
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import gameprofile
 
 # 创建新的游戏档案
@@ -19,11 +17,7 @@ gameprofile.create("my_game", {
 })
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local gameprofile = require("wingman.gameprofile")
 
 -- 创建新的游戏档案
@@ -36,15 +30,11 @@ gameprofile.create("my_game", {
 
 :::
 
-</CodeTabs>
-
 ## 加载游戏档案
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import gameprofile
 
 # 加载游戏档案
@@ -54,11 +44,7 @@ if profile:
     print(f"可执行文件: {profile['executable']}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local gameprofile = require("wingman.gameprofile")
 
 -- 加载游戏档案
@@ -71,15 +57,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 保存游戏档案
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import gameprofile
 
 # 获取并修改档案
@@ -90,11 +72,7 @@ profile['resolution'] = {"width": 1920, "height": 1080}
 gameprofile.save("my_game", profile)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local gameprofile = require("wingman.gameprofile")
 
 -- 获取并修改档案
@@ -107,15 +85,11 @@ gameprofile.save("my_game", profile)
 
 :::
 
-</CodeTabs>
-
 ## 列出所有档案
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import gameprofile
 
 # 列出所有游戏档案
@@ -125,11 +99,7 @@ for profile_id in profiles:
     print(f"- {profile['name']} ({profile_id})")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local gameprofile = require("wingman.gameprofile")
 
 -- 列出所有游戏档案
@@ -142,26 +112,18 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 删除档案
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import gameprofile
 
 # 删除游戏档案
 gameprofile.delete("my_game")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local gameprofile = require("wingman.gameprofile")
 
 -- 删除游戏档案
@@ -170,15 +132,11 @@ gameprofile.delete("my_game")
 
 :::
 
-</CodeTabs>
-
 ## 设置/获取当前游戏
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import gameprofile
 
 # 设置当前游戏
@@ -189,11 +147,7 @@ current = gameprofile.get_current()
 print(f"当前游戏: {current}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local gameprofile = require("wingman.gameprofile")
 
 -- 设置当前游戏
@@ -205,8 +159,6 @@ print("当前游戏: " .. current)
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

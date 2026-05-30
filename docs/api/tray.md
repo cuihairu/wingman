@@ -4,21 +4,15 @@
 
 ## 创建托盘图标
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray
 
 icon = tray.create("Wingman")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 
 local icon = tray.create("Wingman")
@@ -26,15 +20,11 @@ local icon = tray.create("Wingman")
 
 :::
 
-</CodeTabs>
-
 ## 获取/移除托盘图标
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray
 
 # 获取
@@ -44,11 +34,7 @@ icon = tray.get("main")
 tray.remove("main")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 
 -- 获取
@@ -60,26 +46,18 @@ tray.remove("main")
 
 :::
 
-</CodeTabs>
-
 ## 设置图标
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray
 
 icon = tray.create("Wingman")
 icon.set_icon("C:/path/to/icon.ico")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 
 local icon = tray.create("Wingman")
@@ -88,25 +66,17 @@ icon:setIcon("C:/path/to/icon.ico")
 
 :::
 
-</CodeTabs>
-
 ## 设置提示文本
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray
 
 icon.set_tooltip("Wingman 自动化引擎")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 
 icon:setTooltip("Wingman 自动化引擎")
@@ -114,25 +84,17 @@ icon:setTooltip("Wingman 自动化引擎")
 
 :::
 
-</CodeTabs>
-
 ## 添加菜单项
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray
 
 icon.add_item("start", "启动脚本", lambda: print("启动脚本!"))
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 
 icon:addItem("start", "启动脚本", function()
@@ -142,25 +104,17 @@ end)
 
 :::
 
-</CodeTabs>
-
 ## 添加分隔线
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray
 
 icon.add_separator("sep1")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 
 icon:addSeparator("sep1")
@@ -168,15 +122,11 @@ icon:addSeparator("sep1")
 
 :::
 
-</CodeTabs>
-
 ## 添加子菜单
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray
 
 icon.add_submenu("scripts", "脚本", [
@@ -185,11 +135,7 @@ icon.add_submenu("scripts", "脚本", [
 ])
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 
 icon:addSubmenu("scripts", "脚本", {
@@ -200,15 +146,11 @@ icon:addSubmenu("scripts", "脚本", {
 
 :::
 
-</CodeTabs>
-
 ## 移除/清空菜单项
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray
 
 # 移除单项
@@ -218,11 +160,7 @@ icon.remove_item("start")
 icon.clear_items()
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 
 -- 移除单项
@@ -234,15 +172,11 @@ icon:clearItems()
 
 :::
 
-</CodeTabs>
-
 ## 显示/隐藏图标
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray
 
 # 显示
@@ -252,11 +186,7 @@ icon.show()
 icon.hide()
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 
 -- 显示
@@ -268,26 +198,18 @@ icon:hide()
 
 :::
 
-</CodeTabs>
-
 ## 检查可见性
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray
 
 if icon.is_visible():
     print("图标可见")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 
 if icon:isVisible() then
@@ -297,25 +219,17 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 销毁图标
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray
 
 icon.destroy()
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 
 icon:destroy()
@@ -323,17 +237,13 @@ icon:destroy()
 
 :::
 
-</CodeTabs>
-
 ---
 
 ## 完整示例
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import tray, util
 
 # 创建托盘图标
@@ -366,11 +276,7 @@ while True:
     util.sleep(1000)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local tray = require("wingman.tray")
 local util = require("wingman.util")
 
@@ -413,8 +319,6 @@ end
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

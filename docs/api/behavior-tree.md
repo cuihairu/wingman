@@ -4,21 +4,15 @@
 
 ## 创建行为树
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import behavior_tree
 
 behavior_tree.create("my_tree")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local bt = require("wingman.behavior_tree")
 
 bt.create("my_tree")
@@ -26,27 +20,19 @@ bt.create("my_tree")
 
 :::
 
-</CodeTabs>
-
 ## 创建节点
 
 ### 序列节点（Sequence）
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import behavior_tree
 
 seq = behavior_tree.sequence("attack_sequence")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local bt = require("wingman.behavior_tree")
 
 local seq = bt.sequence("attack_sequence")
@@ -54,25 +40,17 @@ local seq = bt.sequence("attack_sequence")
 
 :::
 
-</CodeTabs>
-
 ### 选择节点（Selector）
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import behavior_tree
 
 sel = behavior_tree.selector("task_selector")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local bt = require("wingman.behavior_tree")
 
 local sel = bt.selector("task_selector")
@@ -80,25 +58,17 @@ local sel = bt.selector("task_selector")
 
 :::
 
-</CodeTabs>
-
 ### 条件节点（Condition）
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import behavior_tree, vision
 
 cond = behavior_tree.condition("has_enemy", lambda: vision.find_image("enemy.png") is not None)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local bt = require("wingman.behavior_tree")
 local vision = require("wingman.vision")
 
@@ -110,15 +80,11 @@ end)
 
 :::
 
-</CodeTabs>
-
 ### 动作节点（Action）
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import behavior_tree, input
 
 act = behavior_tree.action("attack", lambda: (
@@ -127,11 +93,7 @@ act = behavior_tree.action("attack", lambda: (
 )[-1])
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local bt = require("wingman.behavior_tree")
 local input = require("wingman.input")
 
@@ -143,26 +105,18 @@ end)
 
 :::
 
-</CodeTabs>
-
 ## 执行行为树
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import behavior_tree
 
 status = behavior_tree.tick("my_tree")
 print(f"状态: {status}")  # SUCCESS/FAILURE/RUNNING
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local bt = require("wingman.behavior_tree")
 
 local status = bt.tick("my_tree")
@@ -171,33 +125,23 @@ print("状态:", status)  -- SUCCESS/FAILURE/RUNNING
 
 :::
 
-</CodeTabs>
-
 ## 移除行为树
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import behavior_tree
 
 behavior_tree.remove("my_tree")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local bt = require("wingman.behavior_tree")
 
 bt.remove("my_tree")
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

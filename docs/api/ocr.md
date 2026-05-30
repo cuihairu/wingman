@@ -4,11 +4,9 @@ OCR 模块提供文字识别功能，基于 Tesseract 引擎。
 
 ## 识别文字
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import ocr
 
 # 识别指定区域
@@ -18,11 +16,7 @@ if result['success']:
     print(f"置信度: {result['confidence']}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local ocr = require("wingman.ocr")
 
 -- 识别指定区域
@@ -35,15 +29,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 简化版识别
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import ocr
 
 text = ocr.recognize_text({"x": 0, "y": 0, "width": 300, "height": 100})
@@ -51,11 +41,7 @@ if text:
     print(f"识别到: {text}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local ocr = require("wingman.ocr")
 
 local text = ocr.recognizeText({x=0, y=0, width=300, height=100})
@@ -66,15 +52,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 设置语言
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import ocr
 
 # 单语言
@@ -85,11 +67,7 @@ ocr.set_language("chi_sim")  # 仅简体中文
 ocr.set_language("chi_sim+eng")  # 中英文混合
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local ocr = require("wingman.ocr")
 
 -- 单语言
@@ -102,33 +80,23 @@ ocr.setLanguage("chi_sim+eng")  -- 中英文混合
 
 :::
 
-</CodeTabs>
-
 ## 设置语言包路径
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import ocr
 
 ocr.set_data_path("C:/path/to/tessdata")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local ocr = require("wingman.ocr")
 
 ocr.setDataPath("C:/path/to/tessdata")
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

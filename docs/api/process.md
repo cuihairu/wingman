@@ -4,11 +4,9 @@
 
 ## 查找进程
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import process
 
 pid, found = process.find("notepad")
@@ -16,11 +14,7 @@ if found:
     print(f"找到记事本进程，PID: {pid}")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local process = require("wingman.process")
 
 local pid, found = process.find("notepad")
@@ -31,15 +25,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 启动进程
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import process
 
 # 启动记事本
@@ -52,11 +42,7 @@ pid = process.start("cmd.exe", args="/c dir C:\\")
 pid = process.start("cmd.exe", working_dir="C:\\Temp")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local process = require("wingman.process")
 
 -- 启动记事本
@@ -71,15 +57,11 @@ local pid = process.start("cmd.exe", "", "C:\\Temp")
 
 :::
 
-</CodeTabs>
-
 ## 等待进程结束
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import process
 
 pid = process.start("notepad.exe")
@@ -95,11 +77,7 @@ else:
     print("等待超时")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local process = require("wingman.process")
 
 local pid = process.start("notepad.exe")
@@ -119,15 +97,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 终止进程
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import process
 
 pid, found = process.find("notepad")
@@ -136,11 +110,7 @@ if found:
         print("进程已终止")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local process = require("wingman.process")
 
 local pid, found = process.find("notepad")
@@ -153,15 +123,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 检查进程是否存在
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import process
 
 pid = 1234
@@ -171,11 +137,7 @@ else:
     print(f"进程 {pid} 不存在")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local process = require("wingman.process")
 
 local pid = 1234
@@ -188,15 +150,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 等待进程出现
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import process
 
 # 启动应用程序
@@ -211,11 +169,7 @@ else:
     print("超时：进程未启动")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local process = require("wingman.process")
 
 -- 启动应用程序
@@ -233,17 +187,13 @@ end
 
 :::
 
-</CodeTabs>
-
 ---
 
 ## 完整示例
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import process, util
 
 # 检查记事本是否运行
@@ -268,11 +218,7 @@ if found:
         print("进程已终止")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local process = require("wingman.process")
 local util = require("wingman.util")
 
@@ -303,8 +249,6 @@ end
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 

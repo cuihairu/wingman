@@ -4,11 +4,9 @@
 
 ## 创建触发器
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import smart_trigger
 
 ok = smart_trigger.create("my_trigger")
@@ -16,11 +14,7 @@ if not ok:
     print("创建失败")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local smarttrigger = require("wingman.smarttrigger")
 
 local ok = smarttrigger.create("my_trigger")
@@ -31,15 +25,11 @@ end
 
 :::
 
-</CodeTabs>
-
 ## 添加触发条件
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import smart_trigger
 
 # 颜色检测条件
@@ -55,11 +45,7 @@ smart_trigger.add_condition("my_trigger", "OCR_CONTAINS",
     "敌人", {"x": 0, "y": 0, "width": 200, "height": 50})
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local smarttrigger = require("wingman.smarttrigger")
 
 -- 颜色检测条件
@@ -77,15 +63,11 @@ smarttrigger.addCondition("my_trigger", "OCR_CONTAINS",
 
 :::
 
-</CodeTabs>
-
 ## 添加触发动作
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import smart_trigger
 
 # 点击动作
@@ -101,11 +83,7 @@ smart_trigger.add_action("my_trigger", "WAIT", 500)
 smart_trigger.add_action("my_trigger", "LOG", "触发器被激活！")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local smarttrigger = require("wingman.smarttrigger")
 
 -- 点击动作
@@ -123,15 +101,11 @@ smarttrigger.addAction("my_trigger", "LOG", "触发器被激活！")
 
 :::
 
-</CodeTabs>
-
 ## 启动/停止触发器
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import smart_trigger
 
 # 启动
@@ -141,11 +115,7 @@ ok = smart_trigger.start("my_trigger")
 smart_trigger.stop("my_trigger")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local smarttrigger = require("wingman.smarttrigger")
 
 -- 启动
@@ -157,25 +127,17 @@ smarttrigger.stop("my_trigger")
 
 :::
 
-</CodeTabs>
-
 ## 移除触发器
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import smart_trigger
 
 smart_trigger.remove("my_trigger")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local smarttrigger = require("wingman.smarttrigger")
 
 smarttrigger.remove("my_trigger")
@@ -183,15 +145,11 @@ smarttrigger.remove("my_trigger")
 
 :::
 
-</CodeTabs>
-
 ## 设置参数
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import smart_trigger
 
 # 设置检查间隔（毫秒）
@@ -201,11 +159,7 @@ smart_trigger.set_check_interval("my_trigger", 50)
 smart_trigger.set_max_triggers("my_trigger", 10)
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local smarttrigger = require("wingman.smarttrigger")
 
 -- 设置检查间隔（毫秒）
@@ -217,26 +171,18 @@ smarttrigger.setMaxTriggers("my_trigger", 10)
 
 :::
 
-</CodeTabs>
-
 ## 获取触发次数
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import smart_trigger
 
 count = smart_trigger.get_trigger_count("my_trigger")
 print(f"已触发 {count} 次")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local smarttrigger = require("wingman.smarttrigger")
 
 local count = smarttrigger.getTriggerCount("my_trigger")
@@ -245,17 +191,13 @@ print("已触发", count, "次")
 
 :::
 
-</CodeTabs>
-
 ---
 
 ## 完整示例
 
-<CodeTabs>
+::: code-group
 
-:::slot python
-
-```python
+```python [Python]
 from wingman import smart_trigger
 
 # 自动喝药触发器
@@ -275,11 +217,7 @@ smart_trigger.add_action("enemy_alert", "LOG", "发现敌人！")
 smart_trigger.start("enemy_alert")
 ```
 
-:::
-
-:::slot lua
-
-```lua
+```lua [Lua]
 local smarttrigger = require("wingman.smarttrigger")
 
 -- 自动喝药触发器
@@ -300,8 +238,6 @@ smarttrigger.start("enemy_alert")
 ```
 
 :::
-
-</CodeTabs>
 
 ---
 
