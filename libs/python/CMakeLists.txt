@@ -57,3 +57,10 @@ endif()
 if(WIN32)
     target_compile_definitions(wingman_python PUBLIC Py_NO_LIMIT_API)
 endif()
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/typing/
+    DESTINATION python/wingman
+    FILES_MATCHING
+        PATTERN "*.pyi"
+        PATTERN "py.typed"
+)

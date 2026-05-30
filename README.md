@@ -246,8 +246,7 @@ end
 ### Python
 
 ```python
-import screen
-import input
+from wingman import screen, input
 
 # 截图
 screen.capture()

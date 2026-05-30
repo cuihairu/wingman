@@ -22,6 +22,89 @@
 
 ---
 
+## 当前缺口清单
+
+### 脚本与运行时
+- [ ] 统一 Lua / Python API 形状与文档
+- [x] Python typing 基础包已提供
+- [ ] 补齐事件/状态机/任务/通知模块的 typing 文件
+- [ ] 统一模块命名和函数命名风格
+- [ ] 所有 Python 公开 API 统一到 `wingman.*`
+
+### 事件与状态
+- [ ] `wingman.event`
+  - [ ] `on(name, handler)` 注册持久监听
+  - [ ] `once(name, handler)` 注册一次性监听
+  - [ ] `off(id | name)` 按订阅 ID 或名称取消
+  - [ ] `emit(name, payload?, meta?)` 触发事件
+  - [ ] `listener(name)` / `listeners(name)` 查询监听器
+  - [ ] `clear(name?)` 清理全部或指定事件
+  - [ ] 事件对象统一字段：`name/type/source/correlationId/priority/timestamp/payload`
+  - [ ] 预留桥接：脚本事件 -> 任务事件 -> 通知事件
+- [ ] `wingman.fsm`
+  - [ ] `create(name, initialState, options?)`
+  - [ ] `addState(name, spec)`
+  - [ ] `transition(from, to, guard?, action?)`
+  - [ ] `onEnter(state, handler)` / `onExit(state, handler)`
+  - [ ] `onEvent(eventName, handler)` 驱动状态转移
+  - [ ] `dispatch(eventName, payload?)`
+  - [ ] `getState()` / `setState()`
+  - [ ] 状态变更自动发出 `fsm.changed`
+- [ ] `wingman.task`
+  - [ ] `submit(fn | workflow, options?)`
+  - [ ] `cancel(taskId)`
+  - [ ] `status(taskId)` / `wait(taskId, timeout?)`
+  - [ ] `retry(taskId, options?)`
+  - [ ] `pause(taskId)` / `resume(taskId)`
+  - [ ] `result(taskId)` / `error(taskId)`
+  - [ ] 任务生命周期事件：`task.submitted/started/succeeded/failed/canceled/timeout`
+- [ ] `wingman.notify`
+  - [ ] `info/warn/error/debug`
+  - [ ] `toast(title, message, level?)`
+  - [ ] `log(channel, message, meta?)`
+  - [ ] `webhook(url, payload, options?)`
+  - [ ] `tray.show()/hide()/setBadge()`
+  - [ ] 订阅 `event.*` 与 `task.*` 的通知桥接
+
+### 编排与恢复
+- [ ] `wingman.orchestration`
+  - [ ] 工作流定义
+  - [ ] 依赖关系
+  - [ ] 并发控制
+  - [ ] 条件分支
+  - [ ] 子任务聚合
+  - [ ] 流程级状态事件
+- [ ] 任务重试、超时、退避封装
+- [ ] 任务状态持久化与恢复
+- [ ] 事件订阅持久化与断线重连
+- [ ] 统一回调/通知策略，避免 Lua 和 Python 语义分裂
+
+### 常用工具补齐
+- [ ] 剪贴板模块
+- [ ] 文件系统模块
+- [ ] 热键监听模块
+- [ ] 定时器 / 计划任务模块
+- [ ] 更完整的 UI 控件树遍历与等待
+- [ ] 图像模板批量管理与识别
+- [ ] 录制 / 回放闭环
+- [ ] UIA 事件统一抽象
+- [ ] 进程/窗口/文件变化统一事件源
+
+### 优先级建议
+- [ ] P0: `event`、`task`、`fsm`
+- [ ] P1: `notify`、`orchestration`
+- [ ] P2: `clipboard`、`file`、`hotkey`、`timer`
+- [ ] P3: UI 树、模板管理、录制回放增强
+
+### 建议的落地顺序
+1. `event` 先补齐事件对象、订阅管理和一次性监听
+2. `fsm` 直接建立在 `event` 之上，统一状态迁移事件
+3. `task` 引入任务生命周期和重试/超时封装
+4. `notify` 消费 `event` / `task`，统一输出到日志、托盘和 webhook
+5. `orchestration` 复用 `task` + `fsm` 做工作流编排
+
+---
+
 ## Phase 1: 核心引擎 (C++) ✅
 
 ### 1.1 屏幕操作模块 ✅
@@ -82,6 +165,7 @@
 - [x] 窗口触发器 - 窗口出现/消失
 - [x] 进程触发器 - 进程启动/停止
 - [x] 像素变化触发器
+- [ ] 触发器统一接入 `wingman.event`
 
 ### 2.2 触发器动作 ✅
 - [x] 发送按键
@@ -90,6 +174,7 @@
 - [x] 播放声音
 - [x] 执行 Lua 函数 (RunScript 动作)
 - [x] 日志输出 (Log 动作)
+- [ ] 触发器动作事件通知
 
 ---
 
@@ -107,6 +192,8 @@
 - [x] `macro.save(name, path)` - 保存宏
 - [x] 回放速度控制
 - [x] 循环播放
+- [ ] 宏录制事件流导出
+- [ ] 宏回放状态事件
 
 ---
 
@@ -123,6 +210,7 @@
 - [x] 文件输出
 - [x] 控制台输出
 - [ ] 性能统计
+- [ ] 事件通知桥接
 
 ---
 
@@ -133,6 +221,8 @@
 - [x] 配置文件解析
 - [x] 环境变量支持
 - [x] 脚本沙箱
+- [ ] 任务状态机
+- [ ] 工作流编排
 
 ### 7.2 性能优化 ✅
 - [x] 像素检测加速 - 使用 OpenCV

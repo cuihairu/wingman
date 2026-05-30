@@ -21,6 +21,7 @@ set(WINGMAN_SOURCES
     # 核心架构
     src/core/component.cpp
     src/core/event_bus.cpp
+    src/event.cpp
 
     # 视觉与捕获
     src/capture/capture_source.cpp
@@ -86,6 +87,7 @@ set(WINGMAN_SOURCES
     src/script/modules/http_module.cpp
     src/script/modules/json_module.cpp
     src/script/modules/kv_module.cpp
+    src/script/modules/event_module.cpp
     src/script/modules/orchestration_module.cpp
     src/script/modules/module_registry.cpp
 )
