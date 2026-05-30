@@ -91,20 +91,313 @@ UIA 解决了这些问题：
 
 推荐按以下优先级查找控件：
 
-1. **AutomationId** - 最稳定，开发者设置的唯一 ID
-   ```python
-   btn = uia.find_by_id("btnSubmit")
-   ```
+#### 1. AutomationId（最推荐）
 
-2. **Name + ControlType** - 次稳定，显示名称可能变化
-   ```python
-   btn = uia.find_button("确定")
-   ```
+**什么是 AutomationId？**
 
-3. **纯名称** - 可能找到多个同名元素
-   ```python
-   element = uia.find_by_name("确定")
-   ```
+AutomationId 是控件开发者在编写代码时设置的唯一标识符。就像每个人都有身份证号一样，每个控件也可以有一个 AutomationId。
+
+**为什么 AutomationId 最稳定？**
+
+- **开发者指定**：AutomationId 是开发者在代码中写死的，通常不会改变
+- **唯一性**：在一个窗口内，AutomationId 通常是唯一的
+- **语言无关**：即使界面语言从"确定"改成"OK"，AutomationId 仍然不变
+
+**如何获取 AutomationId？**
+
+可以使用以下脚本查看任意控件的 AutomationId：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+# 获取前台窗口
+root = uia.from_foreground()
+if root:
+    # 递归打印所有控件的 AutomationId
+    def print_automation_ids(element, depth=0):
+        indent = "  " * depth
+        info = element.get_info()
+        name = info.get('name', '') or '(无名称)'
+        ctrl_type = info.get('control_type', 'Unknown')
+        auto_id = info.get('automation_id', '')
+
+        print(f"{indent}{name} ({ctrl_type})")
+        if auto_id:
+            print(f"{indent}  └─ AutomationId: {auto_id}")
+
+        # 递归子元素
+        children = element.get_children()
+        for child in children:
+            print_automation_ids(child, depth + 1)
+
+    print_automation_ids(root)
+```
+
+== Lua
+
+```lua:line-numbers
+local uia = require("wingman.uia")
+
+-- 获取前台窗口
+local root = uia.fromForeground()
+if root then
+    -- 递归打印所有控件的 AutomationId
+    local function printAutomationIds(element, depth)
+        depth = depth or 0
+        local indent = string.rep("  ", depth)
+        local info = element:getInfo()
+        local name = info.name or "(无名称)"
+        local ctrlType = info.controlType or "Unknown"
+        local autoId = info.automationId or ""
+
+        print(indent .. name .. " (" .. ctrlType .. ")")
+        if autoId ~= "" then
+            print(indent .. "  └─ AutomationId: " .. autoId)
+        end
+
+        -- 递归子元素
+        local children = element:getChildren()
+        for i, child in ipairs(children) do
+            printAutomationIds(child, depth + 1)
+        end
+    end
+
+    printAutomationIds(root)
+end
+```
+
+:::
+
+运行上述脚本后，你会看到类似这样的输出：
+
+```
+记事本 (Window)
+  └─ AutomationId: NotepadWindow
+文件 (MenuItem)
+  └─ AutomationId: MenuItem_File
+新建 (MenuItem)
+  └─ AutomationId: MenuItem_New
+  (Edit)
+  └─ AutomationId: TextBox1
+```
+
+然后你就可以使用 AutomationId 来查找控件：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+# 使用 AutomationId 查找（最稳定）
+btn = uia.find_by_id("btnSubmit")
+if btn:
+    btn.click()
+```
+
+== Lua
+
+```lua:line-numbers
+local uia = require("wingman.uia")
+
+-- 使用 AutomationId 查找（最稳定）
+local btn = uia.findById("btnSubmit")
+if btn then
+    btn:click()
+end
+```
+
+:::
+
+#### 2. Name + ControlType（次推荐）
+
+**什么是 Name？**
+
+Name 是控件的显示文本，也就是用户在界面上看到的文字。比如按钮上显示的"确定"、标签显示的"用户名："等。
+
+**为什么不如 AutomationId 稳定？**
+
+- **可能变化**：界面改版或语言切换时，显示文本可能改变
+- **可能重复**：同一个窗口内可能有多个同名控件
+- **可能为空**：很多控件没有显示名称
+
+但 Name 的优势是直观，你可以直接看到按钮上写什么就用什么来查找：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+# 使用专用的查找函数（推荐）
+btn = uia.find_button("确定")
+if btn:
+    btn.click()
+
+# 或使用通用查找（不太推荐，可能找到其他控件）
+element = uia.find_by_name("确定")
+if element and element.get_info().get('control_type') == 'Button':
+    element.click()
+```
+
+== Lua
+
+```lua:line-numbers
+local uia = require("wingman.uia")
+
+-- 使用专用的查找函数（推荐）
+local btn = uia.findButton("确定")
+if btn then
+    btn:click()
+end
+
+-- 或使用通用查找（不太推荐，可能找到其他控件）
+local element = uia.findByName("确定")
+if element then
+    local info = element:getInfo()
+    if info.controlType == "Button" then
+        element:click()
+    end
+end
+```
+
+:::
+
+#### 3. 纯名称查找（不推荐）
+
+直接按名称查找可能找到多个同名的控件，不够精确：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+# 可能找到多个"确定"按钮
+elements = uia.find_all_by_name("确定")
+for element in elements:
+    info = element.get_info()
+    print(f"找到: {info['name']} ({info['control_type']})")
+```
+
+== Lua
+
+```lua:line-numbers
+local uia = require("wingman.uia")
+
+-- 可能找到多个"确定"按钮
+-- 注意：需要先获取所有元素再筛选
+local root = uia.fromForeground()
+if root then
+    local elements = uia.findAllByControlType("Button")
+    for i, element in ipairs(elements) do
+        local info = element:getInfo()
+        if info.name == "确定" then
+            print("找到确定按钮")
+        end
+    end
+end
+```
+
+:::
+
+---
+
+## 查找控件的最佳实践
+
+### 推荐做法
+
+1. **开发阶段**：使用上面的脚本打印 AutomationId，记录下关键控件的 ID
+2. **生产脚本**：优先使用 AutomationId 查找
+3. **备用方案**：当 AutomationId 不存在时，再使用 Name 查找
+4. **组合使用**：同时检查 AutomationId 和 Name，确保准确性
+
+### 示例：健壮的控件查找
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+def find_submit_button():
+    """健壮地查找提交按钮"""
+
+    # 方法 1: 优先使用 AutomationId
+    btn = uia.find_by_id("btnSubmit")
+    if btn:
+        return btn
+
+    # 方法 2: 回退到按名称+类型查找
+    btn = uia.find_button("提交")
+    if btn:
+        return btn
+
+    # 方法 3: 最后尝试纯名称查找并验证类型
+    btn = uia.find_by_name("提交")
+    if btn:
+        info = btn.get_info()
+        if info.get('control_type') == 'Button' and info.get('is_enabled', True):
+            return btn
+
+    return None
+
+# 使用
+btn = find_submit_button()
+if btn:
+    btn.click()
+else:
+    print("未找到提交按钮")
+```
+
+== Lua
+
+```lua:line-numbers
+local uia = require("wingman.uia")
+
+local function findSubmitButton()
+    -- 方法 1: 优先使用 AutomationId
+    local btn = uia.findById("btnSubmit")
+    if btn then
+        return btn
+    end
+
+    -- 方法 2: 回退到按名称+类型查找
+    btn = uia.findButton("提交")
+    if btn then
+        return btn
+    end
+
+    -- 方法 3: 最后尝试纯名称查找并验证类型
+    local btn = uia.findByName("提交")
+    if btn then
+        local info = btn:getInfo()
+        if info.controlType == "Button" and info.isEnabled then
+            return btn
+        end
+    end
+
+    return nil
+end
+
+-- 使用
+local btn = findSubmitButton()
+if btn then
+    btn:click()
+else
+    print("未找到提交按钮")
+end
+```
+
+:::
 
 ---
 
