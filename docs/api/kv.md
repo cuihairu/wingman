@@ -10,7 +10,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import kv
 
 # 设置键值
@@ -22,7 +22,7 @@ kv.set("counter", "1", {"nx": True})
 
 == Lua
 
-```lua
+```lua:line-numbers
 local kv = require("wingman.kv")
 
 -- 设置键值
@@ -40,13 +40,13 @@ kv.set("counter", "1", {nx = true})
 
 == Python
 
-```python
+```python:line-numbers
 value = kv.get("token")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local value = kv.get("token")
 ```
 
@@ -58,7 +58,7 @@ local value = kv.get("token")
 
 == Python
 
-```python
+```python:line-numbers
 # 删除单个键
 kv.delete("token")
 
@@ -68,7 +68,7 @@ kv.delete(["key1", "key2", "key3"])
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 删除单个键
 kv.delete("token")
 
@@ -84,13 +84,13 @@ kv.delete({"key1", "key2", "key3"})
 
 == Python
 
-```python
+```python:line-numbers
 exists = kv.exists("token")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local exists = kv.exists("token")
 ```
 
@@ -102,14 +102,14 @@ local exists = kv.exists("token")
 
 == Python
 
-```python
+```python:line-numbers
 # 返回剩余秒数，-1 表示无过期，-2 表示已过期
 ttl = kv.ttl("token")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 返回剩余秒数，-1 表示无过期，-2 表示已过期
 local ttl = kv.ttl("token")
 ```
@@ -122,14 +122,14 @@ local ttl = kv.ttl("token")
 
 == Python
 
-```python
+```python:line-numbers
 kv.set("counter", "10")
 new_value = kv.incr("counter", 5)  # 返回 15
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 kv.set("counter", "10")
 local new = kv.incr("counter", 5)  -- 返回 15
 ```
@@ -144,7 +144,7 @@ local new = kv.incr("counter", 5)  -- 返回 15
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import kv
 
 kv.hset("team:123", "leader", "PlayerA")
@@ -153,7 +153,7 @@ kv.hset("team:123", "state", "ready")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local kv = require("wingman.kv")
 
 kv.hset("team:123", "leader", "PlayerA")
@@ -168,13 +168,13 @@ kv.hset("team:123", "state", "ready")
 
 == Python
 
-```python
+```python:line-numbers
 value = kv.hget("team:123", "leader")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local value = kv.hget("team:123", "leader")
 ```
 
@@ -186,7 +186,7 @@ local value = kv.hget("team:123", "leader")
 
 == Python
 
-```python
+```python:line-numbers
 info = kv.hgetall("team:123")
 print(info["leader"])  # "PlayerA"
 print(info["state"])   # "ready"
@@ -194,7 +194,7 @@ print(info["state"])   # "ready"
 
 == Lua
 
-```lua
+```lua:line-numbers
 local info = kv.hgetall("team:123")
 print(info.leader)  -- "PlayerA"
 print(info.state)   -- "ready"
@@ -208,13 +208,13 @@ print(info.state)   -- "ready"
 
 == Python
 
-```python
+```python:line-numbers
 kv.hdel("team:123", "leader")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 kv.hdel("team:123", "leader")
 ```
 
@@ -226,13 +226,13 @@ kv.hdel("team:123", "leader")
 
 == Python
 
-```python
+```python:line-numbers
 exists = kv.hexists("team:123", "leader")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local exists = kv.hexists("team:123", "leader")
 ```
 
@@ -244,13 +244,13 @@ local exists = kv.hexists("team:123", "leader")
 
 == Python
 
-```python
+```python:line-numbers
 keys = kv.hkeys("team:123")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local keys = kv.hkeys("team:123")
 ```
 
@@ -264,7 +264,7 @@ local keys = kv.hkeys("team:123")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import kv
 
 # 左端推入
@@ -277,7 +277,7 @@ kv.rpush("log", "warning: high latency")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local kv = require("wingman.kv")
 
 -- 左端推入
@@ -296,7 +296,7 @@ kv.rpush("log", "warning: high latency")
 
 == Python
 
-```python
+```python:line-numbers
 # 左端弹出
 value = kv.lpop("log")
 
@@ -306,7 +306,7 @@ value = kv.rpop("log")
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 左端弹出
 local value = kv.lpop("log")
 
@@ -322,13 +322,13 @@ local value = kv.rpop("log")
 
 == Python
 
-```python
+```python:line-numbers
 length = kv.llen("log")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local length = kv.llen("log")
 ```
 
@@ -340,7 +340,7 @@ local length = kv.llen("log")
 
 == Python
 
-```python
+```python:line-numbers
 # 获取全部
 logs = kv.lrange("log", 0, -1)
 
@@ -350,7 +350,7 @@ recent = kv.lrange("log", 0, 9)
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 获取全部
 local logs = kv.lrange("log", 0, -1)
 
@@ -370,7 +370,7 @@ KV 存储支持持久化到 SQLite（C++ 层调用）：
 
 == Python
 
-```python
+```python:line-numbers
 # 这些函数在 C++ 层调用
 kv.save("data.db")           # 保存
 kv.load("data.db")           # 加载
@@ -379,7 +379,7 @@ kv.enable_auto_save("data.db", 60)  # 每60秒自动保存
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 这些函数在 C++ 层调用
 kv.save("data.db")           -- 保存
 kv.load("data.db")           -- 加载

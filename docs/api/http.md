@@ -8,7 +8,7 @@ HTTP 客户端，支持 GET/POST/PUT/DELETE 请求和表单提交。
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import http
 
 resp = http.get("https://api.example.com/data", {
@@ -24,7 +24,7 @@ else:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local http = require("wingman.http")
 
 local resp = http.get("https://api.example.com/data", {
@@ -47,7 +47,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import http
 
 resp = http.post("https://api.example.com/submit", {
@@ -60,7 +60,7 @@ resp = http.post("https://api.example.com/submit", {
 
 == Lua
 
-```lua
+```lua:line-numbers
 local http = require("wingman.http")
 local json = require("wingman.json")
 
@@ -80,7 +80,7 @@ local resp = http.post("https://api.example.com/submit", json.encode({
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import http
 
 resp = http.post_form("https://example.com/login", {
@@ -91,7 +91,7 @@ resp = http.post_form("https://example.com/login", {
 
 == Lua
 
-```lua
+```lua:line-numbers
 local http = require("wingman.http")
 
 local resp = http.postForm("https://example.com/login", {
@@ -108,7 +108,7 @@ local resp = http.postForm("https://example.com/login", {
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import http
 
 resp = http.put("https://api.example.com/update", {
@@ -119,7 +119,7 @@ resp = http.put("https://api.example.com/update", {
 
 == Lua
 
-```lua
+```lua:line-numbers
 local http = require("wingman.http")
 
 local resp = http.put("https://api.example.com/update", json.encode({
@@ -136,7 +136,7 @@ local resp = http.put("https://api.example.com/update", json.encode({
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import http
 
 resp = http.delete("https://api.example.com/items/123")
@@ -144,7 +144,7 @@ resp = http.delete("https://api.example.com/items/123")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local http = require("wingman.http")
 
 local resp = http.delete("https://api.example.com/items/123")

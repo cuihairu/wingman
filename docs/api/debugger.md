@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import debugger
 
 # 在当前行设置断点
@@ -23,7 +23,7 @@ debugger.log_point("变量 x 的值: {}", x)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local debugger = require("wingman.debugger")
 
 -- 在当前行设置断点
@@ -44,7 +44,7 @@ debugger.logPoint("变量 x 的值: " .. tostring(x), x)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import debugger
 
 # 启动调试服务器
@@ -53,7 +53,7 @@ debugger.start_server(9999)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local debugger = require("wingman.debugger")
 
 -- 启动调试服务器
@@ -68,7 +68,7 @@ debugger.startServer(9999)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import debugger
 
 # 连接到远程调试器
@@ -77,7 +77,7 @@ debugger.connect("localhost", 9999)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local debugger = require("wingman.debugger")
 
 -- 连接到远程调试器
@@ -92,7 +92,7 @@ debugger.connect("localhost", 9999)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import debugger
 
 # 输出调试信息
@@ -105,7 +105,7 @@ debugger.inspect({"x": x, "y": y, "status": status})
 
 == Lua
 
-```lua
+```lua:line-numbers
 local debugger = require("wingman.debugger")
 
 -- 输出调试信息
@@ -124,7 +124,7 @@ debugger.inspect({x = x, y = y, status = status})
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import debugger
 
 # 获取当前调用栈
@@ -135,7 +135,7 @@ for frame in stack:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local debugger = require("wingman.debugger")
 
 -- 获取当前调用栈
@@ -153,7 +153,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import debugger
 
 # 单步进入
@@ -171,7 +171,7 @@ debugger.resume()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local debugger = require("wingman.debugger")
 
 -- 单步进入
@@ -195,7 +195,7 @@ debugger.resume()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import debugger
 
 # 检查局部变量
@@ -213,7 +213,7 @@ print(f"x + y = {result}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local debugger = require("wingman.debugger")
 
 -- 检查局部变量

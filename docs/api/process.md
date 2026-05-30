@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import process
 
 pid, found = process.find("notepad")
@@ -18,7 +18,7 @@ if found:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local process = require("wingman.process")
 
 local pid, found = process.find("notepad")
@@ -35,7 +35,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import process
 
 # 启动记事本
@@ -50,7 +50,7 @@ pid = process.start("cmd.exe", working_dir="C:\\Temp")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local process = require("wingman.process")
 
 -- 启动记事本
@@ -71,7 +71,7 @@ local pid = process.start("cmd.exe", "", "C:\\Temp")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import process
 
 pid = process.start("notepad.exe")
@@ -89,7 +89,7 @@ else:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local process = require("wingman.process")
 
 local pid = process.start("notepad.exe")
@@ -115,7 +115,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import process
 
 pid, found = process.find("notepad")
@@ -126,7 +126,7 @@ if found:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local process = require("wingman.process")
 
 local pid, found = process.find("notepad")
@@ -145,7 +145,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import process
 
 pid = 1234
@@ -157,7 +157,7 @@ else:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local process = require("wingman.process")
 
 local pid = 1234
@@ -176,7 +176,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import process
 
 # 启动应用程序
@@ -193,7 +193,7 @@ else:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local process = require("wingman.process")
 
 -- 启动应用程序
@@ -219,7 +219,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import process, util
 
 # 检查记事本是否运行
@@ -246,7 +246,7 @@ if found:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local process = require("wingman.process")
 local util = require("wingman.util")
 

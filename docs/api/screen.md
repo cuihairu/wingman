@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 # 截取全屏
 img = screen.capture(0, 0, 1920, 1080)
 
@@ -18,7 +18,7 @@ img = screen.capture(100, 100, 500, 500)
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 截取全屏
 local img = screen.capture(0, 0, 1920, 1080)
 
@@ -34,14 +34,14 @@ local img = screen.capture(100, 100, 500, 500)
 
 == Python
 
-```python
+```python:line-numbers
 color = screen.get_pixel(100, 100)
 print(f"Color: 0x{color:06X}")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local color = screen.getPixel(100, 100)
 print(string.format("Color: 0x%06X", color))
 ```
@@ -54,7 +54,7 @@ print(string.format("Color: 0x%06X", color))
 
 == Python
 
-```python
+```python:line-numbers
 # 查找单个像素
 result = screen.find_pixel(0xFF0000, 0, 0, 1920, 1080, 10)
 if result:
@@ -64,7 +64,7 @@ if result:
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 查找单个像素
 local x, y = screen.findPixel(0xFF0000, 0, 0, 1920, 1080, 10)
 if x then
@@ -80,7 +80,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 # 查找指定颜色
 results = screen.find_color(0xFF0000, 0, 0, 1920, 1080)
 for x, y in results:
@@ -89,7 +89,7 @@ for x, y in results:
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 查找指定颜色
 local results = screen.findColor(0xFF0000, 0, 0, 1920, 1080)
 for i, result in ipairs(results) do
@@ -106,7 +106,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 # 查找图像
 result = screen.find_image("target.png", 0, 0, 1920, 1080)
 if result:
@@ -116,7 +116,7 @@ if result:
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 查找图像
 local result = screen.findImage("target.png", 0, 0, 1920, 1080)
 if result then
@@ -133,7 +133,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 # 等待图像出现（最多等待 5 秒）
 result = screen.wait_for_image("loading.png", 5000)
 if result:
@@ -142,7 +142,7 @@ if result:
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 等待图像出现（最多等待 5 秒）
 local result = screen.waitForImage("loading.png", 5000)
 if result then
@@ -162,7 +162,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import screen, input, util
 
 # 等待游戏窗口激活
@@ -190,7 +190,7 @@ while True:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local screen = require("wingman.screen")
 local input = require("wingman.input")
 local util = require("wingman.util")

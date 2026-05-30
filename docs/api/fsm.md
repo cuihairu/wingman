@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import fsm
 
 # 创建状态机
@@ -17,7 +17,7 @@ machine_id = fsm.create("combat", "idle")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local fsm = require("wingman.fsm")
 
 -- 创建状态机
@@ -32,7 +32,7 @@ local machineId = fsm.create("combat", "idle")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import fsm
 
 machine_id = fsm.create("combat", "idle")
@@ -44,7 +44,7 @@ fsm.state(machine_id, "fight", on_enter=lambda ctx: print("进入战斗状态"))
 
 == Lua
 
-```lua
+```lua:line-numbers
 local fsm = require("wingman.fsm")
 
 local machineId = fsm.create("combat", "idle")
@@ -67,7 +67,7 @@ fsm.state(machineId, "fight")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import fsm
 
 # 定义状态转移
@@ -77,7 +77,7 @@ fsm.transition(machine_id, "fight", "idle", on="enemy_lost")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local fsm = require("wingman.fsm")
 
 -- 定义状态转移
@@ -93,7 +93,7 @@ fsm.transition(machineId, "fight", "idle", "enemy_lost")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import fsm
 
 # 派发事件
@@ -102,7 +102,7 @@ fsm.dispatch(machine_id, "enemy_found", {"target": "boss"})
 
 == Lua
 
-```lua
+```lua:line-numbers
 local fsm = require("wingman.fsm")
 
 -- 派发事件
@@ -117,7 +117,7 @@ fsm.dispatch(machineId, "enemy_found", { target = "boss" })
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import fsm
 
 # 获取当前状态
@@ -127,7 +127,7 @@ print(f"当前状态: {current}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local fsm = require("wingman.fsm")
 
 -- 获取当前状态
@@ -143,7 +143,7 @@ print("当前状态: " .. current)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import fsm
 
 # 重置状态机
@@ -152,7 +152,7 @@ fsm.reset(machine_id)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local fsm = require("wingman.fsm")
 
 -- 重置状态机
@@ -171,7 +171,7 @@ fsm.reset(machineId)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import fsm, vision, input
 
 # 创建战斗状态机
@@ -213,7 +213,7 @@ while True:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local fsm = require("wingman.fsm")
 local vision = require("wingman.vision")
 local input = require("wingman.input")
@@ -269,7 +269,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import fsm
 
 # 创建状态机
@@ -304,7 +304,7 @@ print(fsm.current(task_id))  # "running"
 
 == Lua
 
-```lua
+```lua:line-numbers
 local fsm = require("wingman.fsm")
 
 -- 创建状态机

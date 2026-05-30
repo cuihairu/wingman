@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import notify
 
 # 各级别日志
@@ -20,7 +20,7 @@ notify.error("任务失败", {"error": "timeout"})
 
 == Lua
 
-```lua
+```lua:line-numbers
 local notify = require("wingman.notify")
 
 -- 各级别日志
@@ -38,7 +38,7 @@ notify.error("任务失败", { error = "timeout" })
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import notify
 
 # Toast 通知
@@ -48,7 +48,7 @@ notify.toast("警告", "血量过低", level="warning")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local notify = require("wingman.notify")
 
 -- Toast 通知
@@ -64,7 +64,7 @@ notify.toast("警告", "血量过低", "warning")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import notify
 
 # Webhook
@@ -76,7 +76,7 @@ notify.webhook("http://127.0.0.1:9000/hook", {
 
 == Lua
 
-```lua
+```lua:line-numbers
 local notify = require("wingman.notify")
 
 -- Webhook
@@ -94,7 +94,7 @@ notify.webhook("http://127.0.0.1:9000/hook", {
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import notify
 
 # 事件桥接
@@ -104,7 +104,7 @@ notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local notify = require("wingman.notify")
 
 -- 事件桥接
@@ -124,7 +124,7 @@ notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import notify, vision, util
 
 def check_game_status():
@@ -154,7 +154,7 @@ check_game_status()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local notify = require("wingman.notify")
 local vision = require("wingman.vision")
 local util = require("wingman.util")
@@ -197,7 +197,7 @@ checkGameStatus()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import notify, vision, input
 
 def combat_bot():
@@ -230,7 +230,7 @@ combat_bot()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local notify = require("wingman.notify")
 local vision = require("wingman.vision")
 local input = require("wingman.input")
@@ -276,7 +276,7 @@ combatBot()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import notify, event
 
 # 设置事件桥接
@@ -293,7 +293,7 @@ notify.bridge("task.error", "http://alert-server.com/api/alerts")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local notify = require("wingman.notify")
 local event = require("wingman.event")
 

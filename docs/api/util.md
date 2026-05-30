@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import util
 
 # 延迟 1000 毫秒
@@ -20,7 +20,7 @@ util.sleep(2000)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local util = require("wingman.util")
 
 -- 延迟 1000 毫秒
@@ -38,7 +38,7 @@ util.sleep(2000)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import util
 
 # 获取当前时间戳（毫秒）
@@ -48,7 +48,7 @@ print(f"当前时间戳: {timestamp}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local util = require("wingman.util")
 
 -- 获取当前时间戳（毫秒）
@@ -64,7 +64,7 @@ print("当前时间戳: " .. timestamp)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import util
 
 # 格式化时间为字符串
@@ -74,7 +74,7 @@ print(f"当前时间: {formatted}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local util = require("wingman.util")
 
 -- 格式化时间为字符串
@@ -90,7 +90,7 @@ print("当前时间: " .. formatted)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import util
 
 # 生成 0-1 之间的随机浮点数
@@ -109,7 +109,7 @@ selected = random.choice(choices)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local util = require("wingman.util")
 
 -- 生成 0-1 之间的随机浮点数
@@ -134,7 +134,7 @@ print("随机选择: " .. choice)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import util
 
 # 执行命令并获取输出
@@ -144,7 +144,7 @@ print(output)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local util = require("wingman.util")
 
 -- 执行命令并获取输出
@@ -160,7 +160,7 @@ print(output)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import util
 
 # 获取系统信息
@@ -172,7 +172,7 @@ print(f"Wingman 版本: {info['version']}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local util = require("wingman.util")
 
 -- 获取系统信息
@@ -190,7 +190,7 @@ print("Wingman 版本: " .. info.version)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import util
 
 # 获取当前脚本路径
@@ -204,7 +204,7 @@ print(f"脚本目录: {script_dir}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local util = require("wingman.util")
 
 -- 获取当前脚本路径
@@ -224,7 +224,7 @@ print("脚本目录: " .. scriptDir)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import util
 
 # 输出日志
@@ -235,7 +235,7 @@ util.log("error", "这是一条错误")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local util = require("wingman.util")
 
 -- 输出日志

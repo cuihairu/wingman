@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import event
 
 # 订阅事件
@@ -20,7 +20,7 @@ sub_id = event.on("combat.enemy_found", on_enemy, name="my-handler")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local event = require("wingman.event")
 
 -- 订阅事件
@@ -39,7 +39,7 @@ local id = event.on("combat.enemy_found", onEnemy, "my-handler")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import event
 
 # 一次性订阅
@@ -48,7 +48,7 @@ event.once("task.done", lambda e: print("Task done!"))
 
 == Lua
 
-```lua
+```lua:line-numbers
 local event = require("wingman.event")
 
 -- 一次性订阅
@@ -65,7 +65,7 @@ end)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import event
 
 # 触发事件
@@ -74,7 +74,7 @@ event.emit("combat.enemy_found", {"x": 100, "y": 200}, {"source": "vision"})
 
 == Lua
 
-```lua
+```lua:line-numbers
 local event = require("wingman.event")
 
 -- 触发事件
@@ -89,7 +89,7 @@ event.emit("combat.enemy_found", { x = 100, y = 200 }, { source = "vision" })
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import event
 
 # 取消订阅
@@ -101,7 +101,7 @@ event.clear()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local event = require("wingman.event")
 
 -- 取消订阅
@@ -123,7 +123,7 @@ event.clear()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import event, vision
 
 # 定义战斗事件处理
@@ -159,7 +159,7 @@ while True:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local event = require("wingman.event")
 local vision = require("wingman.vision")
 
@@ -209,7 +209,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import event, task
 
 # 任务状态监听
@@ -243,7 +243,7 @@ def run_combat():
 
 == Lua
 
-```lua
+```lua:line-numbers
 local event = require("wingman.event")
 local task = require("wingman.task")
 

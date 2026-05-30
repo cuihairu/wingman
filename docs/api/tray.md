@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray
 
 icon = tray.create("Wingman")
@@ -16,7 +16,7 @@ icon = tray.create("Wingman")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 
 local icon = tray.create("Wingman")
@@ -30,7 +30,7 @@ local icon = tray.create("Wingman")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray
 
 # 获取
@@ -42,7 +42,7 @@ tray.remove("main")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 
 -- 获取
@@ -60,7 +60,7 @@ tray.remove("main")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray
 
 icon = tray.create("Wingman")
@@ -69,7 +69,7 @@ icon.set_icon("C:/path/to/icon.ico")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 
 local icon = tray.create("Wingman")
@@ -84,7 +84,7 @@ icon:setIcon("C:/path/to/icon.ico")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray
 
 icon.set_tooltip("Wingman 自动化引擎")
@@ -92,7 +92,7 @@ icon.set_tooltip("Wingman 自动化引擎")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 
 icon:setTooltip("Wingman 自动化引擎")
@@ -106,7 +106,7 @@ icon:setTooltip("Wingman 自动化引擎")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray
 
 icon.add_item("start", "启动脚本", lambda: print("启动脚本!"))
@@ -114,7 +114,7 @@ icon.add_item("start", "启动脚本", lambda: print("启动脚本!"))
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 
 icon:addItem("start", "启动脚本", function()
@@ -130,7 +130,7 @@ end)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray
 
 icon.add_separator("sep1")
@@ -138,7 +138,7 @@ icon.add_separator("sep1")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 
 icon:addSeparator("sep1")
@@ -152,7 +152,7 @@ icon:addSeparator("sep1")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray
 
 icon.add_submenu("scripts", "脚本", [
@@ -163,7 +163,7 @@ icon.add_submenu("scripts", "脚本", [
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 
 icon:addSubmenu("scripts", "脚本", {
@@ -180,7 +180,7 @@ icon:addSubmenu("scripts", "脚本", {
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray
 
 # 移除单项
@@ -192,7 +192,7 @@ icon.clear_items()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 
 -- 移除单项
@@ -210,7 +210,7 @@ icon:clearItems()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray
 
 # 显示
@@ -222,7 +222,7 @@ icon.hide()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 
 -- 显示
@@ -240,7 +240,7 @@ icon:hide()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray
 
 if icon.is_visible():
@@ -249,7 +249,7 @@ if icon.is_visible():
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 
 if icon:isVisible() then
@@ -265,7 +265,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray
 
 icon.destroy()
@@ -273,7 +273,7 @@ icon.destroy()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 
 icon:destroy()
@@ -289,7 +289,7 @@ icon:destroy()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import tray, util
 
 # 创建托盘图标
@@ -324,7 +324,7 @@ while True:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local tray = require("wingman.tray")
 local util = require("wingman.util")
 

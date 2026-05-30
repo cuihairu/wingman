@@ -27,7 +27,7 @@ UI Automation (UIA) 允许脚本直接操作应用程序的 UI 控件，而不�
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 root = uia.from_foreground()
@@ -38,7 +38,7 @@ if root:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local uia = require("wingman.uia")
 
 local root = uia.fromForeground()
@@ -56,7 +56,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import window, uia
 
 hwnd, found = window.find("记事本")
@@ -68,7 +68,7 @@ if found:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local window = require("wingman.window")
 local uia = require("wingman.uia")
 
@@ -89,7 +89,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import input, uia
 
 # 获取鼠标位置
@@ -102,7 +102,7 @@ if element:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local input = require("wingman.input")
 local uia = require("wingman.uia")
 
@@ -123,7 +123,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 file_menu = uia.find_by_name("文件")
@@ -133,7 +133,7 @@ if file_menu:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local uia = require("wingman.uia")
 
 local fileMenu = uia.findByName("文件")
@@ -150,7 +150,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 ok_btn = uia.find_button("确定")
@@ -160,7 +160,7 @@ if ok_btn:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local uia = require("wingman.uia")
 
 local okBtn = uia.findButton("确定")
@@ -177,7 +177,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 edit = uia.find_edit("")
@@ -187,7 +187,7 @@ if edit:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local uia = require("wingman.uia")
 
 local edit = uia.findEdit("")
@@ -204,7 +204,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 dialog = uia.wait_for_name("对话框", 3000)
@@ -214,7 +214,7 @@ if dialog:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local uia = require("wingman.uia")
 
 local dialog = uia.waitForName("对话框", 3000)
@@ -231,7 +231,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 def on_property_change(prop, value):
@@ -244,7 +244,7 @@ if listener_id:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local uia = require("wingman.uia")
 
 local listenerId = uia.onPropertyChanged("编辑框", function(propertyName, value)
@@ -264,7 +264,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 listener_id = uia.on_property_changed("按钮", lambda prop, val: print(f"属性变化: {prop}"))
@@ -277,7 +277,7 @@ if listener_id:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local uia = require("wingman.uia")
 
 local listenerId = uia.onPropertyChanged("按钮", function(prop, val)
@@ -303,7 +303,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 element = uia.from_foreground()
@@ -313,7 +313,7 @@ print(f"Name: {info['name']}, Type: {info['control_type']}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local uia = require("wingman.uia")
 
 local element = uia.fromForeground()
@@ -329,7 +329,7 @@ print(string.format("Name: %s, Type: %s", info.name, info.controlType))
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 element.click()
@@ -337,7 +337,7 @@ element.click()
 
 == Lua
 
-```lua
+```lua:line-numbers
 element:click()
 ```
 
@@ -349,7 +349,7 @@ element:click()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 element.focus()
@@ -357,7 +357,7 @@ element.focus()
 
 == Lua
 
-```lua
+```lua:line-numbers
 element:focus()
 ```
 
@@ -369,7 +369,7 @@ element:focus()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 # 获取值
@@ -381,7 +381,7 @@ element.set_value("Hello World")
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 获取值
 local value = element:getValue()
 
@@ -397,7 +397,7 @@ element:setValue("Hello World")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 root = uia.from_foreground()
@@ -409,7 +409,7 @@ for i, child in enumerate(children):
 
 == Lua
 
-```lua
+```lua:line-numbers
 local uia = require("wingman.uia")
 
 local root = uia.fromForeground()
@@ -428,7 +428,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import uia
 
 tree = uia.find_by_name("树形控件")
@@ -438,7 +438,7 @@ if tree and not tree.is_expanded():
 
 == Lua
 
-```lua
+```lua:line-numbers
 local uia = require("wingman.uia")
 
 local tree = uia.findByName("树形控件")
@@ -457,7 +457,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import window, uia, process, util
 
 # 等待记事本窗口
@@ -507,7 +507,7 @@ if edit:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local window = require("wingman.window")
 local uia = require("wingman.uia")
 local process = require("wingman.process")

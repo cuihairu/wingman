@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 server = config.get_server()
@@ -24,7 +24,7 @@ server = config.get_server()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 local server = config.getServer()
@@ -46,7 +46,7 @@ local server = config.getServer()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 config.set_server({
@@ -61,7 +61,7 @@ config.set_server({
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 config.setServer({
@@ -82,7 +82,7 @@ config.setServer({
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 tray = config.get_tray()
@@ -95,7 +95,7 @@ tray = config.get_tray()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 local tray = config.getTray()
@@ -114,7 +114,7 @@ local tray = config.getTray()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 config.set_tray({
@@ -126,7 +126,7 @@ config.set_tray({
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 config.setTray({
@@ -144,7 +144,7 @@ config.setTray({
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 auto_run = config.get_auto_run()
@@ -159,7 +159,7 @@ auto_run = config.get_auto_run()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 local autoRun = config.getAutoRun()
@@ -180,7 +180,7 @@ local autoRun = config.getAutoRun()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 config.set_auto_run({
@@ -194,7 +194,7 @@ config.set_auto_run({
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 config.setAutoRun({
@@ -214,7 +214,7 @@ config.setAutoRun({
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 value = config.get("myKey")
@@ -224,7 +224,7 @@ if value:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 local value = config.get("myKey")
@@ -241,7 +241,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 config.set("myKey", "myValue")
@@ -251,7 +251,7 @@ config.set("enabled", True)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 config.set("myKey", "myValue")
@@ -267,7 +267,7 @@ config.set("enabled", true)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 removed = config.remove("myKey")
@@ -275,7 +275,7 @@ removed = config.remove("myKey")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 local removed = config.remove("myKey")
@@ -293,7 +293,7 @@ local removed = config.remove("myKey")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 server = config.get_server()
@@ -304,7 +304,7 @@ print(f"服务器控制: {server['serverControlled']}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 local server = config.getServer()
@@ -321,7 +321,7 @@ print("服务器控制: " .. tostring(server.serverControlled))
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 server = config.get_server()
@@ -338,7 +338,7 @@ print("已启用服务器控制模式")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 local server = config.getServer()
@@ -361,7 +361,7 @@ print("已启用服务器控制模式")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import config
 
 # 存储游戏配置
@@ -381,7 +381,7 @@ print(f"自动喝药: {auto_potion}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local config = require("wingman.config")
 
 -- 存储游戏配置

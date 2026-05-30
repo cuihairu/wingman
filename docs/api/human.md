@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import human
 
 # 随机延迟 50-150 毫秒
@@ -20,7 +20,7 @@ human.random_delay()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local human = require("wingman.human")
 
 -- 随机延迟 50-150 毫秒
@@ -38,7 +38,7 @@ human.randomDelay()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import human, input
 
 # 使用贝塞尔曲线平滑移动鼠标
@@ -47,7 +47,7 @@ human.move_mouse(100, 100, 500, 300, duration=500)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local human = require("wingman.human")
 local input = require("wingman.input")
 
@@ -63,7 +63,7 @@ human.moveMouse(100, 100, 500, 300, 500)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import human, input
 
 # 模拟人类点击节奏（带随机延迟）
@@ -72,7 +72,7 @@ human.natural_click(100, 200)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local human = require("wingman.human")
 local input = require("wingman.input")
 
@@ -88,7 +88,7 @@ human.naturalClick(100, 200)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import human, input
 
 # 模拟人类输入节奏（带随机按键延迟）
@@ -97,7 +97,7 @@ human.natural_type("Hello World")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local human = require("wingman.human")
 local input = require("wingman.input")
 
@@ -113,7 +113,7 @@ human.naturalType("Hello World")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import human
 
 # 设置全局随机延迟范围
@@ -128,7 +128,7 @@ human.set_typing_variance(0.3)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local human = require("wingman.human")
 
 -- 设置全局随机延迟范围
@@ -149,7 +149,7 @@ human.setTypingVariance(0.3)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import human
 
 config = human.get_config()
@@ -160,7 +160,7 @@ print(f"输入变异度: {config['typing_variance']}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local human = require("wingman.human")
 
 local config = human.getConfig()
@@ -179,7 +179,7 @@ print("输入变异度: " .. config.typing_variance)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import human, input, screen
 
 # 设置人性化参数
@@ -208,7 +208,7 @@ human.natural_click(450, 400)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local human = require("wingman.human")
 local input = require("wingman.input")
 

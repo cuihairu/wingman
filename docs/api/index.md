@@ -69,12 +69,12 @@ Wingman 提供以下 API 模块，同时支持 **Python** 和 **Lua** 两种脚�
 ### 导入方式
 
 **Python:**
-```python
+```python:line-numbers
 from wingman import screen, input, event
 ```
 
 **Lua:**
-```lua
+```lua:line-numbers
 local screen = require("wingman.screen")
 local input = require("wingman.input")
 local event = require("wingman.event")
@@ -83,12 +83,12 @@ local event = require("wingman.event")
 ### 回调函数
 
 **Python:**
-```python
+```python:line-numbers
 event.on("my_event", lambda e: print(f"Received: {e}"))
 ```
 
 **Lua:**
-```lua
+```lua:line-numbers
 event.on("my_event", function(e)
     print("Received: " .. e["payload"])
 end)

@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import task
 
 # 提交任务
@@ -24,7 +24,7 @@ task_id = task.submit(my_work, {
 
 == Lua
 
-```lua
+```lua:line-numbers
 local task = require("wingman.task")
 
 -- 提交任务
@@ -48,7 +48,7 @@ local taskId = task.submit(myWork, {
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import task
 
 # 检查状态
@@ -58,7 +58,7 @@ print(f"任务状态: {status}")  # "running", "succeeded", "failed", etc.
 
 == Lua
 
-```lua
+```lua:line-numbers
 local task = require("wingman.task")
 
 -- 检查状态
@@ -74,7 +74,7 @@ print("任务状态: " .. status)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import task
 
 # 等待完成
@@ -88,7 +88,7 @@ else:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local task = require("wingman.task")
 
 -- 等待完成
@@ -109,7 +109,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import task
 
 # 取消任务
@@ -118,7 +118,7 @@ task.cancel(task_id)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local task = require("wingman.task")
 
 -- 取消任务
@@ -133,7 +133,7 @@ task.cancel(taskId)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import task
 
 # 重试失败的任务
@@ -142,7 +142,7 @@ task.retry(task_id, {"max": 5, "backoffMs": 1000})
 
 == Lua
 
-```lua
+```lua:line-numbers
 local task = require("wingman.task")
 
 -- 重试失败的任务
@@ -161,7 +161,7 @@ task.retry(taskId, { maxRetries = 5, backoffMs = 1000 })
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import task, screen, vision
 
 def process_image(ctx):
@@ -190,7 +190,7 @@ else:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local task = require("wingman.task")
 local screen = require("wingman.screen")
 local vision = require("wingman.vision")
@@ -225,7 +225,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import task, http
 
 def fetch_api(ctx):
@@ -253,7 +253,7 @@ else:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local task = require("wingman.task")
 local http = require("wingman.http")
 
@@ -292,7 +292,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import task, vision, input
 
 def click_target(ctx):
@@ -322,7 +322,7 @@ print(f"已点击 {len(results)} 个目标")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local task = require("wingman.task")
 local vision = require("wingman.vision")
 local input = require("wingman.input")
@@ -368,7 +368,7 @@ print("已点击 " .. #results .. " 个目标")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import event
 
 event.on("task.submitted", lambda e: print(f"任务提交: {e['payload']['taskId']}"))
@@ -381,7 +381,7 @@ event.on("task.timeout", lambda e: print(f"任务超时"))
 
 == Lua
 
-```lua
+```lua:line-numbers
 local event = require("wingman.event")
 
 event.on("task.submitted", function(e)

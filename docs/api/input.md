@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import input
 
 # 左键点击
@@ -23,7 +23,7 @@ input.click(100, 100, "middle")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local input = require("wingman.input")
 
 -- 左键点击
@@ -44,7 +44,7 @@ input.click(100, 100, "middle")
 
 == Python
 
-```python
+```python:line-numbers
 # 瞬间移动
 input.move(500, 300)
 
@@ -54,7 +54,7 @@ input.move(500, 300, smooth=True)
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 瞬间移动
 input.move(500, 300)
 
@@ -70,14 +70,14 @@ input.move(500, 300, true)
 
 == Python
 
-```python
+```python:line-numbers
 # 拖拽 500ms
 input.drag(100, 100, 500, 300, 500)
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 拖拽 500ms
 input.drag(100, 100, 500, 300, 500)
 ```
@@ -90,7 +90,7 @@ input.drag(100, 100, 500, 300, 500)
 
 == Python
 
-```python
+```python:line-numbers
 # 按下按键
 input.key_down("W")
 
@@ -106,7 +106,7 @@ input.key_press("E", 200)
 
 == Lua
 
-```lua
+```lua:line-numbers
 -- 按下按键
 input.keyDown("W")
 
@@ -128,13 +128,13 @@ input.keyPress("E", 200)
 
 == Python
 
-```python
+```python:line-numbers
 input.key_text("Hello World")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 input.keyText("Hello World")
 ```
 

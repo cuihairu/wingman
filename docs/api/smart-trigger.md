@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import smart_trigger
 
 ok = smart_trigger.create("my_trigger")
@@ -18,7 +18,7 @@ if not ok:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local smarttrigger = require("wingman.smarttrigger")
 
 local ok = smarttrigger.create("my_trigger")
@@ -35,7 +35,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import smart_trigger
 
 # 颜色检测条件
@@ -53,7 +53,7 @@ smart_trigger.add_condition("my_trigger", "OCR_CONTAINS",
 
 == Lua
 
-```lua
+```lua:line-numbers
 local smarttrigger = require("wingman.smarttrigger")
 
 -- 颜色检测条件
@@ -77,7 +77,7 @@ smarttrigger.addCondition("my_trigger", "OCR_CONTAINS",
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import smart_trigger
 
 # 点击动作
@@ -95,7 +95,7 @@ smart_trigger.add_action("my_trigger", "LOG", "触发器被激活！")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local smarttrigger = require("wingman.smarttrigger")
 
 -- 点击动作
@@ -119,7 +119,7 @@ smarttrigger.addAction("my_trigger", "LOG", "触发器被激活！")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import smart_trigger
 
 # 启动
@@ -131,7 +131,7 @@ smart_trigger.stop("my_trigger")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local smarttrigger = require("wingman.smarttrigger")
 
 -- 启动
@@ -149,7 +149,7 @@ smarttrigger.stop("my_trigger")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import smart_trigger
 
 smart_trigger.remove("my_trigger")
@@ -157,7 +157,7 @@ smart_trigger.remove("my_trigger")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local smarttrigger = require("wingman.smarttrigger")
 
 smarttrigger.remove("my_trigger")
@@ -171,7 +171,7 @@ smarttrigger.remove("my_trigger")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import smart_trigger
 
 # 设置检查间隔（毫秒）
@@ -183,7 +183,7 @@ smart_trigger.set_max_triggers("my_trigger", 10)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local smarttrigger = require("wingman.smarttrigger")
 
 -- 设置检查间隔（毫秒）
@@ -201,7 +201,7 @@ smarttrigger.setMaxTriggers("my_trigger", 10)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import smart_trigger
 
 count = smart_trigger.get_trigger_count("my_trigger")
@@ -210,7 +210,7 @@ print(f"已触发 {count} 次")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local smarttrigger = require("wingman.smarttrigger")
 
 local count = smarttrigger.getTriggerCount("my_trigger")
@@ -227,7 +227,7 @@ print("已触发", count, "次")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import smart_trigger
 
 # 自动喝药触发器
@@ -249,7 +249,7 @@ smart_trigger.start("enemy_alert")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local smarttrigger = require("wingman.smarttrigger")
 
 -- 自动喝药触发器

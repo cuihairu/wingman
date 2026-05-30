@@ -8,7 +8,7 @@ OCR 模块提供文字识别功能，基于 Tesseract 引擎。
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import ocr
 
 # 识别指定区域
@@ -20,7 +20,7 @@ if result['success']:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local ocr = require("wingman.ocr")
 
 -- 识别指定区域
@@ -39,7 +39,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import ocr
 
 text = ocr.recognize_text({"x": 0, "y": 0, "width": 300, "height": 100})
@@ -49,7 +49,7 @@ if text:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local ocr = require("wingman.ocr")
 
 local text = ocr.recognizeText({x=0, y=0, width=300, height=100})
@@ -66,7 +66,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import ocr
 
 # 单语言
@@ -79,7 +79,7 @@ ocr.set_language("chi_sim+eng")  # 中英文混合
 
 == Lua
 
-```lua
+```lua:line-numbers
 local ocr = require("wingman.ocr")
 
 -- 单语言
@@ -98,7 +98,7 @@ ocr.setLanguage("chi_sim+eng")  -- 中英文混合
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import ocr
 
 ocr.set_data_path("C:/path/to/tessdata")
@@ -106,7 +106,7 @@ ocr.set_data_path("C:/path/to/tessdata")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local ocr = require("wingman.ocr")
 
 ocr.setDataPath("C:/path/to/tessdata")

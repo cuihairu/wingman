@@ -10,7 +10,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import remote
 
 ok = remote.start(8888)
@@ -20,7 +20,7 @@ if ok:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local remote = require("wingman.remote")
 
 local ok = remote.start(8888)
@@ -37,7 +37,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import remote
 
 def on_execute(req):
@@ -53,7 +53,7 @@ remote.on("execute_script", on_execute)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local remote = require("wingman.remote")
 
 remote.on("execute_script", function(req)
@@ -76,7 +76,7 @@ end)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import remote
 
 remote.stop()
@@ -84,7 +84,7 @@ remote.stop()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local remote = require("wingman.remote")
 
 remote.stop()
@@ -98,7 +98,7 @@ remote.stop()
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import remote
 
 remote.broadcast({
@@ -109,7 +109,7 @@ remote.broadcast({
 
 == Lua
 
-```lua
+```lua:line-numbers
 local remote = require("wingman.remote")
 
 remote.broadcast({
@@ -128,7 +128,7 @@ remote.broadcast({
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import remote
 
 client = remote.connect("192.168.1.100", 8888)
@@ -136,7 +136,7 @@ client = remote.connect("192.168.1.100", 8888)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local remote = require("wingman.remote")
 
 local client = remote.connect("192.168.1.100", 8888)
@@ -150,7 +150,7 @@ local client = remote.connect("192.168.1.100", 8888)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import remote
 
 client = remote.connect("192.168.1.100", 8888)
@@ -166,7 +166,7 @@ print(response['message'])
 
 == Lua
 
-```lua
+```lua:line-numbers
 local remote = require("wingman.remote")
 
 local client = remote.connect("192.168.1.100", 8888)
@@ -188,7 +188,7 @@ print(response.message)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import remote
 
 client.disconnect()
@@ -196,7 +196,7 @@ client.disconnect()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local remote = require("wingman.remote")
 
 client:disconnect()

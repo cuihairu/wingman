@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import gameprofile
 
 # 创建新的游戏档案
@@ -21,7 +21,7 @@ gameprofile.create("my_game", {
 
 == Lua
 
-```lua
+```lua:line-numbers
 local gameprofile = require("wingman.gameprofile")
 
 -- 创建新的游戏档案
@@ -40,7 +40,7 @@ gameprofile.create("my_game", {
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import gameprofile
 
 # 加载游戏档案
@@ -52,7 +52,7 @@ if profile:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local gameprofile = require("wingman.gameprofile")
 
 -- 加载游戏档案
@@ -71,7 +71,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import gameprofile
 
 # 获取并修改档案
@@ -84,7 +84,7 @@ gameprofile.save("my_game", profile)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local gameprofile = require("wingman.gameprofile")
 
 -- 获取并修改档案
@@ -103,7 +103,7 @@ gameprofile.save("my_game", profile)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import gameprofile
 
 # 列出所有游戏档案
@@ -115,7 +115,7 @@ for profile_id in profiles:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local gameprofile = require("wingman.gameprofile")
 
 -- 列出所有游戏档案
@@ -134,7 +134,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import gameprofile
 
 # 删除游戏档案
@@ -143,7 +143,7 @@ gameprofile.delete("my_game")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local gameprofile = require("wingman.gameprofile")
 
 -- 删除游戏档案
@@ -158,7 +158,7 @@ gameprofile.delete("my_game")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import gameprofile
 
 # 设置当前游戏
@@ -171,7 +171,7 @@ print(f"当前游戏: {current}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local gameprofile = require("wingman.gameprofile")
 
 -- 设置当前游戏

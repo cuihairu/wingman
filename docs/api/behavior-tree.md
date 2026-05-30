@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import behavior_tree
 
 behavior_tree.create("my_tree")
@@ -16,7 +16,7 @@ behavior_tree.create("my_tree")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local bt = require("wingman.behavior_tree")
 
 bt.create("my_tree")
@@ -32,7 +32,7 @@ bt.create("my_tree")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import behavior_tree
 
 seq = behavior_tree.sequence("attack_sequence")
@@ -40,7 +40,7 @@ seq = behavior_tree.sequence("attack_sequence")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local bt = require("wingman.behavior_tree")
 
 local seq = bt.sequence("attack_sequence")
@@ -54,7 +54,7 @@ local seq = bt.sequence("attack_sequence")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import behavior_tree
 
 sel = behavior_tree.selector("task_selector")
@@ -62,7 +62,7 @@ sel = behavior_tree.selector("task_selector")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local bt = require("wingman.behavior_tree")
 
 local sel = bt.selector("task_selector")
@@ -76,7 +76,7 @@ local sel = bt.selector("task_selector")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import behavior_tree, vision
 
 cond = behavior_tree.condition("has_enemy", lambda: vision.find_image("enemy.png") is not None)
@@ -84,7 +84,7 @@ cond = behavior_tree.condition("has_enemy", lambda: vision.find_image("enemy.png
 
 == Lua
 
-```lua
+```lua:line-numbers
 local bt = require("wingman.behavior_tree")
 local vision = require("wingman.vision")
 
@@ -102,7 +102,7 @@ end)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import behavior_tree, input
 
 act = behavior_tree.action("attack", lambda: (
@@ -113,7 +113,7 @@ act = behavior_tree.action("attack", lambda: (
 
 == Lua
 
-```lua
+```lua:line-numbers
 local bt = require("wingman.behavior_tree")
 local input = require("wingman.input")
 
@@ -131,7 +131,7 @@ end)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import behavior_tree
 
 status = behavior_tree.tick("my_tree")
@@ -140,7 +140,7 @@ print(f"状态: {status}")  # SUCCESS/FAILURE/RUNNING
 
 == Lua
 
-```lua
+```lua:line-numbers
 local bt = require("wingman.behavior_tree")
 
 local status = bt.tick("my_tree")
@@ -155,7 +155,7 @@ print("状态:", status)  -- SUCCESS/FAILURE/RUNNING
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import behavior_tree
 
 behavior_tree.remove("my_tree")
@@ -163,7 +163,7 @@ behavior_tree.remove("my_tree")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local bt = require("wingman.behavior_tree")
 
 bt.remove("my_tree")

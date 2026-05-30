@@ -8,7 +8,7 @@ JSON 解析和序列化。
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import json
 
 # 解析 JSON 字符串
@@ -19,7 +19,7 @@ print(data['score'])     # 100
 
 == Lua
 
-```lua
+```lua:line-numbers
 local json = require("wingman.json")
 
 -- 解析 JSON 字符串
@@ -36,7 +36,7 @@ print(data.score)     -- 100
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import json
 
 obj = {
@@ -55,7 +55,7 @@ print(formatted)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local json = require("wingman.json")
 
 local obj = {
@@ -80,7 +80,7 @@ print(formatted)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import json
 
 obj = {
@@ -91,7 +91,7 @@ obj = {
 
 == Lua
 
-```lua
+```lua:line-numbers
 local json = require("wingman.json")
 
 local obj = {

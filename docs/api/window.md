@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import window
 
 hwnd, found = window.find("记事本")
@@ -18,7 +18,7 @@ if found:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local window = require("wingman.window")
 
 local hwnd, found = window.find("记事本")
@@ -35,7 +35,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import window
 
 hwnd, found = window.find("记事本")
@@ -45,7 +45,7 @@ if found:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local window = require("wingman.window")
 
 local hwnd, found = window.find("记事本")
@@ -62,7 +62,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import window
 
 hwnd = window.get_foreground()
@@ -72,7 +72,7 @@ print(f"前台窗口: {title}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local window = require("wingman.window")
 
 local hwnd = window.getForeground()
@@ -88,7 +88,7 @@ print("前台窗口: " .. title)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import window
 
 hwnd = window.get_foreground()
@@ -98,7 +98,7 @@ print(f"标题: {title}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local window = require("wingman.window")
 
 local hwnd = window.getForeground()
@@ -114,7 +114,7 @@ print("标题: " .. title)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import window
 
 hwnd, found = window.find("记事本")
@@ -125,7 +125,7 @@ if found:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local window = require("wingman.window")
 
 local hwnd, found = window.find("记事本")
@@ -144,7 +144,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import window, process
 
 # 启动应用程序
@@ -162,7 +162,7 @@ else:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local window = require("wingman.window")
 local process = require("wingman.process")
 
@@ -191,7 +191,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import window, process, util, input
 
 # 查找并激活记事本
@@ -223,7 +223,7 @@ if found:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local window = require("wingman.window")
 local process = require("wingman.process")
 local util = require("wingman.util")

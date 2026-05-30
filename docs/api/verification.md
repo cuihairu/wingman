@@ -8,7 +8,7 @@
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import verification
 
 # 识别图像验证码
@@ -22,7 +22,7 @@ else:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local verification = require("wingman.verification")
 
 -- 识别图像验证码
@@ -43,7 +43,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import verification, screen
 
 # 截取屏幕区域
@@ -57,7 +57,7 @@ if result['success']:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local verification = require("wingman.verification")
 local screen = require("wingman.screen")
 
@@ -79,7 +79,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import verification
 
 # 生成 TOTP 验证码
@@ -90,7 +90,7 @@ print(f"当前 TOTP 验证码: {code}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local verification = require("wingman.verification")
 
 -- 生成 TOTP 验证码
@@ -107,7 +107,7 @@ print("当前 TOTP 验证码: " .. code)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import verification
 
 # 批量生成多个账户的 TOTP
@@ -123,7 +123,7 @@ for name, secret in accounts.items():
 
 == Lua
 
-```lua
+```lua:line-numbers
 local verification = require("wingman.verification")
 
 -- 批量生成多个账户的 TOTP
@@ -146,7 +146,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import verification
 
 # 设置 TOTP 时间步长（默认 30 秒）
@@ -158,7 +158,7 @@ verification.set_totp_step(60)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local verification = require("wingman.verification")
 
 -- 设置 TOTP 时间步长（默认 30 秒）
@@ -176,7 +176,7 @@ verification.setTotpStep(60)
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import verification, kv
 
 # 存储验证码密钥
@@ -191,7 +191,7 @@ verification.delete_secret("game_account")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local verification = require("wingman.verification")
 
 -- 存储验证码密钥
@@ -216,7 +216,7 @@ verification.deleteSecret("game_account")
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import verification, input, screen, util
 
 # 截取验证码区域
@@ -241,7 +241,7 @@ else:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local verification = require("wingman.verification")
 local input = require("wingman.input")
 local screen = require("wingman.screen")
@@ -276,7 +276,7 @@ end
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import verification, input, util
 
 # 账户信息
@@ -305,7 +305,7 @@ else:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local verification = require("wingman.verification")
 local input = require("wingman.input")
 local util = require("wingman.util")
