@@ -61,7 +61,12 @@ export default defineConfig({
             { text: 'wingman.screen', link: '/api/screen' },
             { text: 'wingman.input', link: '/api/input' },
             { text: 'wingman.window', link: '/api/window' },
-            { text: 'wingman.process', link: '/api/process' },
+            { text: 'wingman.process', link: '/api/process' }
+          ]
+        },
+        {
+          text: 'UI Automation',
+          items: [
             { text: 'wingman.uia', link: '/api/uia' }
           ]
         },
