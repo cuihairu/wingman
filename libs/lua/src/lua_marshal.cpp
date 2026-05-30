@@ -30,6 +30,20 @@ sol::object toLuaObject(sol::state_view& lua, const script::ScriptValue& value) 
 		}
 		return tbl;
 	}
+	case script::ScriptValue::Callable: {
+		// Wrap C++ callable as Lua function
+		return sol::make_object(lua, [callable = value.callableVal](sol::variadic_args va) -> sol::object {
+			std::vector<script::ScriptValue> args;
+			args.reserve(va.size());
+			sol::state_view lua(va.lua_state());
+			for (const auto& a : va) {
+				args.push_back(toScriptValue(sol::object(a)));
+			}
+
+			script::ScriptValue result = callable(args);
+			return toLuaObject(lua, result);
+		});
+	}
 	}
 	return sol::make_object(lua, sol::nil);
 }
@@ -62,8 +76,28 @@ script::ScriptValue toScriptValue(const sol::object& obj) {
 		return script::ScriptValue::fromString(obj.as<std::string>());
 	case sol::type::table:
 		return tableToScriptValue(obj.as<sol::table>());
-	default:
+	default: {
+		// Check if callable (function or cxxfunction)
+		if (obj.valid() && (obj.get_type() == sol::type::function || obj.is<sol::function>())) {
+			// Wrap Lua function as ScriptValue callable
+			sol::function func = obj;
+			return script::ScriptValue::fromCallable([func](const std::vector<script::ScriptValue>& args) -> script::ScriptValue {
+				std::vector<sol::object> luaArgs;
+				luaArgs.reserve(args.size());
+				sol::state_view lua(func.lua_state());
+				for (const auto& arg : args) {
+					luaArgs.push_back(toLuaObject(lua, arg));
+				}
+
+				auto result = func(sol::as_args(luaArgs));
+				if (result.valid()) {
+					return toScriptValue(result.get<sol::object>());
+				}
+				return script::ScriptValue::null();
+			});
+		}
 		return script::ScriptValue::null();
+	}
 	}
 }
 
