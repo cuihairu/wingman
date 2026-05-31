@@ -80,6 +80,8 @@ class TransportClient : public Transport {
 public:
     static std::unique_ptr<TransportClient> create(TransportType type);
 
+    using Transport::getSession;
+
     // 连接
     virtual bool connect(const std::string& host, int port) = 0;
     virtual void disconnect() = 0;

@@ -154,7 +154,7 @@ public:
         return session_.get();
     }
 
-    Session* getSession() {
+    Session* getSession() override {
         return session_.get();
     }
 
