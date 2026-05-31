@@ -1,6 +1,7 @@
 #include "wingman/transport/stream_channel.hpp"
 #include <cstring>
 #include <algorithm>
+#include <cstdint>
 
 #ifdef _WIN32
     #include <winsock2.h>
@@ -18,6 +19,18 @@
 #endif
 
 namespace wingman::transport {
+
+namespace {
+
+bool isValidPort(int port) {
+    return port >= 0 && port <= 65535;
+}
+
+std::uint16_t toPortValue(int port) {
+    return static_cast<std::uint16_t>(port);
+}
+
+} // namespace
 
 // ========== StreamChannel 实现 ==========
 
@@ -40,6 +53,11 @@ StreamChannel::~StreamChannel() {
 
 bool StreamChannel::connect(const std::string& host, int port) {
     if (state_.load() != StreamState::Disconnected) {
+        return false;
+    }
+
+    if (!isValidPort(port)) {
+        setState(StreamState::Error);
         return false;
     }
 
@@ -73,7 +91,7 @@ bool StreamChannel::connect(const std::string& host, int port) {
     // 连接到服务器
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    addr.sin_port = htons(toPortValue(port));
 
     if (inet_pton(AF_INET, host.c_str(), &addr.sin_addr) <= 0) {
         // 尝试解析域名
@@ -115,6 +133,11 @@ bool StreamChannel::listen(const std::string& host, int port) {
         return false;
     }
 
+    if (!isValidPort(port)) {
+        setState(StreamState::Error);
+        return false;
+    }
+
     setState(StreamState::Connecting);
 
 #ifdef _WIN32
@@ -143,7 +166,7 @@ bool StreamChannel::listen(const std::string& host, int port) {
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(port);
+    addr.sin_port = htons(toPortValue(port));
 
     if (!host.empty() && host != "0.0.0.0") {
         inet_pton(AF_INET, host.c_str(), &addr.sin_addr);
