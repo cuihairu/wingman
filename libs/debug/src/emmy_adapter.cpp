@@ -265,7 +265,7 @@ bool EmmyAdapter::setBreakpoint(const std::string& file, int line) {
         return false;
     }
 
-    spdlog::info("Setting breakpoint: {}:{}: {}", file, line);
+    spdlog::info("Setting breakpoint: {}:{}", file, line);
 
     // EmmyLua 的断点设置需要在 Lua 中完成
     // 这里只是记录，实际断点由 Lua API 设置
