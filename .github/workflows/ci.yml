@@ -10,11 +10,17 @@ on:
 permissions:
   contents: read
   id-token: write
+  packages: read
 
 env:
   ACTIONS_NODE_VERSION: '24'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
+  USERNAME: ${{ github.repository_owner }}
+  VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+  FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
 
 jobs:
   cpp-windows:
@@ -30,8 +36,36 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-
+
       - name: Setup vcpkg
         run: ./build-scripts/ci/setup-vcpkg.ps1
+
+      - name: Add NuGet sources (GitHub Packages)
+        run: |
+          $patToken = "${{ secrets.VCPKG_PAT_TOKEN }}"
+          if ([string]::IsNullOrEmpty($patToken)) {
+            Write-Host "VCPKG_PAT_TOKEN not found, using GITHUB_TOKEN"
+            $patToken = "${{ github.token }}"
+          }
+
+          .\vcpkg\vcpkg fetch nuget | ForEach-Object { & $_ sources add `
+            -Source "${{ env.FEED_URL }}" `
+            -StorePasswordInClearText `
+            -Name "GitHubPackages" `
+            -UserName "${{ env.USERNAME }}" `
+            -Password $patToken }
+
+          .\vcpkg\vcpkg fetch nuget | ForEach-Object { & $_ setapikey $patToken -Source "${{ env.FEED_URL }}" }
+
+      - name: Prepare vcpkg cache
+        run: New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}" | Out-Null
 
       - name: Configure CMake
         run: ./build-scripts/ci/configure-windows.ps1 -BuildDir build -Config Debug -EnableTests
@@ -98,14 +132,24 @@ jobs:
           if ! command -v ninja &> /dev/null; then
             brew install ninja
           fi
-          # 确保 Ninja 在 PATH 中，让 vcpkg 构建包时能找到
           NINJA_PATH=$(command -v ninja)
           echo "$NINJA_PATH" >> $GITHUB_PATH
           echo "CMAKE_MAKE_PROGRAM=$NINJA_PATH" >> $GITHUB_ENV
           echo "MACOSX_DEPLOYMENT_TARGET=12" >> $GITHUB_ENV
 
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/vcpkg/archives
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-
+
       - name: Setup vcpkg
         run: bash ./build-scripts/ci/setup-vcpkg.sh
+
+      - name: Prepare vcpkg cache
+        run: mkdir -p "${{ github.workspace }}/vcpkg/archives"
 
       - name: Configure CMake
         run: bash ./build-scripts/ci/configure-unix.sh "${{ matrix.triplet }}" "Ninja" "build"
