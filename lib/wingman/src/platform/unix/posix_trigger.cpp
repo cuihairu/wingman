@@ -236,6 +236,8 @@ void TriggerManager::checkThread() {
 bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
     const auto& cond = trigger.config.condition;
 
+    if (!cond.enabled) return false;
+
     switch (cond.type) {
         case TriggerType::ColorFound: {
             Point result;
@@ -364,6 +366,10 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
                 if (m_logger) {
                     m_logger->info("Trigger log: {}", action.value);
                 }
+                break;
+
+            case BasicTriggerAction::Delay:
+                Input::delay(action.delay > 0 ? action.delay : 100);
                 break;
         }
 

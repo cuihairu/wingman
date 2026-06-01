@@ -52,6 +52,7 @@ enum class BasicTriggerAction {
     ShowMessage,     // Show message
     PlayAudio,       // Play audio
     Log,             // Log
+    Delay,           // Delay
 };
 
 struct TriggerActionData {

@@ -56,6 +56,7 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
         if (strcmp(type, "ShowMessage") == 0) return BasicTriggerAction::ShowMessage;
         if (strcmp(type, "PlayAudio") == 0) return BasicTriggerAction::PlayAudio;
         if (strcmp(type, "Log") == 0) return BasicTriggerAction::Log;
+        if (strcmp(type, "Delay") == 0) return BasicTriggerAction::Delay;
         return std::nullopt;
     };
 
@@ -147,8 +148,9 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
     lua_pushnil(L);
     while (lua_next(L, -2) != 0) {
         if (lua_istable(L, -1)) {
-            TriggerConfig config;
+            TriggerConfig config{};
             config.enabled = true;
+            std::optional<TriggerType> parsedConditionType;
 
             lua_getfield(L, -1, "name");
             if (lua_isstring(L, -1)) config.name = lua_tostring(L, -1);
@@ -167,7 +169,10 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
             if (lua_istable(L, -1)) {
                 lua_getfield(L, -1, "type");
                 auto ct = parseConditionType(lua_tostring(L, -1));
-                if (ct) config.condition.type = *ct;
+                if (ct) {
+                    config.condition.type = *ct;
+                    parsedConditionType = ct;
+                }
                 lua_pop(L, 1);
 
                 // Support both "value" and "color" field names
@@ -226,7 +231,7 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
             lua_pop(L, 1);
 
             // Skip triggers with unrecognized or missing condition type
-            if (config.condition.type == TriggerType{}) {
+            if (!parsedConditionType.has_value()) {
                 spdlog::warn("Skipping trigger '{}': unknown or missing condition.type", config.name);
                 lua_pop(L, 1);
                 continue;

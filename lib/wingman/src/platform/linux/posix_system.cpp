@@ -3,6 +3,7 @@
 #if defined(__linux__) || defined(__APPLE__)
 
 #include <fstream>
+#include <filesystem>
 #include <sstream>
 #include <cstring>
 #include <ctime>
@@ -739,15 +740,28 @@ int System::getProcessCount() {
 }
 
 int System::getThreadCount() {
-    // Read /proc/self/status for Threads: count
-    std::ifstream ifs("/proc/self/status");
-    std::string line;
-    while (std::getline(ifs, line)) {
-        if (line.rfind("Threads:", 0) == 0) {
-            return std::stoi(line.substr(8));
+    // Sum threads across all processes from /proc/[pid]/stat
+    int count = 0;
+    for (const auto& entry : std::filesystem::directory_iterator("/proc")) {
+        std::string name = entry.path().filename().string();
+        if (std::all_of(name.begin(), name.end(), ::isdigit)) {
+            std::ifstream ifs(entry.path() / "stat");
+            std::string line;
+            if (std::getline(ifs, line)) {
+                // Format: pid (comm) state ... num_threads ...
+                // Find closing ')' then skip 17 fields to num_threads
+                auto pos = line.rfind(')');
+                if (pos != std::string::npos) {
+                    std::istringstream iss(line.substr(pos + 2));
+                    std::string field;
+                    for (int i = 0; i < 17 && iss >> field; ++i) {}
+                    int threads = 0;
+                    if (iss >> threads) count += threads;
+                }
+            }
         }
     }
-    return 0;
+    return count;
 }
 
 } // namespace wingman
