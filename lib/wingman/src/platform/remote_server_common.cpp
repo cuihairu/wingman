@@ -372,7 +372,18 @@ RemoteResponse RemoteServer::handleAddTrigger(const nlohmann::json& params) {
         else if (typeStr == "ColorLost") config.condition.type = TriggerType::ColorLost;
         else if (typeStr == "ImageFound") config.condition.type = TriggerType::ImageFound;
         else if (typeStr == "ImageLost") config.condition.type = TriggerType::ImageLost;
-        else config.condition.type = TriggerType::ColorFound;
+        else if (typeStr == "WindowOpened") config.condition.type = TriggerType::WindowOpened;
+        else if (typeStr == "WindowClosed") config.condition.type = TriggerType::WindowClosed;
+        else if (typeStr == "ProcessStarted") config.condition.type = TriggerType::ProcessStarted;
+        else if (typeStr == "ProcessStopped") config.condition.type = TriggerType::ProcessStopped;
+        else if (typeStr == "TimeElapsed") config.condition.type = TriggerType::TimeElapsed;
+        else if (typeStr == "HotkeyPressed") config.condition.type = TriggerType::HotkeyPressed;
+        else if (typeStr == "PixelChanged") config.condition.type = TriggerType::PixelChanged;
+        else {
+            resp.success = false;
+            resp.error = "Unknown condition type: " + typeStr;
+            return resp;
+        }
 
         config.condition.value = cond.value("value", "");
         config.condition.tolerance = cond.value("tolerance", 10);
@@ -386,14 +397,20 @@ RemoteResponse RemoteServer::handleAddTrigger(const nlohmann::json& params) {
             config.condition.region.height = cond["region"].value("height", 0);
         }
 
-        auto parseAction = [](const nlohmann::json& actionJson) -> TriggerActionData {
+        auto parseAction = [](const nlohmann::json& actionJson) -> std::optional<TriggerActionData> {
             TriggerActionData action;
             std::string actionType = actionJson.value("type", "Click");
             if (actionType == "RunScript") action.type = BasicTriggerAction::RunScript;
             else if (actionType == "Click") action.type = BasicTriggerAction::Click;
             else if (actionType == "KeyPress") action.type = BasicTriggerAction::KeyPress;
             else if (actionType == "Type") action.type = BasicTriggerAction::Type;
-            else action.type = BasicTriggerAction::Click;
+            else if (actionType == "StopScript") action.type = BasicTriggerAction::StopScript;
+            else if (actionType == "PauseScript") action.type = BasicTriggerAction::PauseScript;
+            else if (actionType == "ShowMessage") action.type = BasicTriggerAction::ShowMessage;
+            else if (actionType == "PlayAudio") action.type = BasicTriggerAction::PlayAudio;
+            else if (actionType == "Log") action.type = BasicTriggerAction::Log;
+            else if (actionType == "Delay") action.type = BasicTriggerAction::Delay;
+            else return std::nullopt;
 
             action.value = actionJson.value("value", "");
             action.x = actionJson.value("x", 0);
@@ -404,10 +421,22 @@ RemoteResponse RemoteServer::handleAddTrigger(const nlohmann::json& params) {
 
         if (params["config"].contains("actions")) {
             for (const auto& actionJson : params["config"]["actions"]) {
-                config.actions.push_back(parseAction(actionJson));
+                auto act = parseAction(actionJson);
+                if (!act) {
+                    resp.success = false;
+                    resp.error = "Unknown action type: " + actionJson.value("type", "");
+                    return resp;
+                }
+                config.actions.push_back(*act);
             }
         } else if (params["config"].contains("action")) {
-            config.actions.push_back(parseAction(params["config"]["action"]));
+            auto act = parseAction(params["config"]["action"]);
+            if (!act) {
+                resp.success = false;
+                resp.error = "Unknown action type: " + params["config"]["action"].value("type", "");
+                return resp;
+            }
+            config.actions.push_back(*act);
         }
 
         size_t id = triggerManager_->add(config);

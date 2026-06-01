@@ -260,6 +260,37 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
             return Screen::findImage(cond.value, cond.region, cond.tolerance / 100.0, result);
         }
 
+        case TriggerType::ColorLost: {
+            Point result;
+            unsigned long colorVal = 0;
+            try {
+                colorVal = std::stoul(cond.value, nullptr, 0);
+            } catch (...) {
+                return false;
+            }
+            return !Screen::findColor(
+                Color::fromRGB(colorVal),
+                cond.region,
+                cond.tolerance,
+                result
+            );
+        }
+
+        case TriggerType::ImageLost: {
+            Point result;
+            return !Screen::findImage(cond.value, cond.region, cond.tolerance / 100.0, result);
+        }
+
+        case TriggerType::HotkeyPressed: {
+            int vk = 0;
+            try {
+                vk = std::stoi(cond.value);
+            } catch (...) {
+                return false;
+            }
+            return Input::isKeyDown(vk);
+        }
+
         case TriggerType::WindowOpened: {
             return Window::find(cond.value) != nullptr;
         }
