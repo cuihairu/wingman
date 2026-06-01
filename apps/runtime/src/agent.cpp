@@ -281,7 +281,7 @@ std::vector<uint8_t> Agent::handleMessage(const std::string& sessionId, const st
             } else {
                 std::string scriptId = request["script_id"];
                 response["data"]["script_id"] = scriptId;
-                if (auto* info = getScriptManager().getScriptInfo(scriptId)) {
+                if (auto info = getScriptManager().getScriptInfo(scriptId)) {
                     response["success"] = true;
                     response["data"]["status"] = info->state == ::wingman::ScriptState::running ? "running" :
                                               info->state == ::wingman::ScriptState::paused ? "paused" :

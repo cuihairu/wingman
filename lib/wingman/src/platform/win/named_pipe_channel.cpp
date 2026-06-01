@@ -156,8 +156,9 @@ void NamedPipeChannel::stopReceiving() {
     stopping_ = true;
 
     if (receiveThread_.joinable()) {
-        if (pipeHandle_ != INVALID_HANDLE_VALUE) {
-            CancelSynchronousIo(reinterpret_cast<HANDLE>(receiveThread_.native_handle()));
+        HANDLE nativeHandle = reinterpret_cast<HANDLE>(receiveThread_.native_handle());
+        if (pipeHandle_ != INVALID_HANDLE_VALUE && nativeHandle != nullptr) {
+            CancelSynchronousIo(nativeHandle);
         }
         eventCondition_.notify_all();
         receiveThread_.join();

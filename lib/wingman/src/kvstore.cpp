@@ -70,30 +70,33 @@ public:
     }
 
 #ifdef WINGMAN_HAS_SQLITE
-    bool saveToSqlite(const std::string& filepath) {
+    struct SqliteRaii {
         sqlite3* db = nullptr;
-        if (sqlite3_open(filepath.c_str(), &db) != SQLITE_OK) {
+        explicit SqliteRaii(sqlite3* d) : db(d) {}
+        ~SqliteRaii() { if (db) sqlite3_close(db); }
+        SqliteRaii(const SqliteRaii&) = delete;
+        SqliteRaii& operator=(const SqliteRaii&) = delete;
+    };
+
+    bool saveToSqlite(const std::string& filepath) {
+        sqlite3* raw = nullptr;
+        if (sqlite3_open(filepath.c_str(), &raw) != SQLITE_OK) {
             return false;
         }
+        SqliteRaii db(raw);
 
-        // Create table
         const char* createTable =
             "CREATE TABLE IF NOT EXISTS kv_store ("
             "key TEXT PRIMARY KEY, value TEXT, expire_time INTEGER);";
-        if (sqlite3_exec(db, createTable, nullptr, nullptr, nullptr) != SQLITE_OK) {
-            sqlite3_close(db);
+        if (sqlite3_exec(db.db, createTable, nullptr, nullptr, nullptr) != SQLITE_OK) {
             return false;
         }
 
-        // Begin transaction
-        sqlite3_exec(db, "BEGIN;", nullptr, nullptr, nullptr);
+        sqlite3_exec(db.db, "BEGIN;", nullptr, nullptr, nullptr);
+        sqlite3_exec(db.db, "DELETE FROM kv_store;", nullptr, nullptr, nullptr);
 
-        // Clear old data
-        sqlite3_exec(db, "DELETE FROM kv_store;", nullptr, nullptr, nullptr);
-
-        // Insert data
         sqlite3_stmt* stmt = nullptr;
-        if (sqlite3_prepare_v2(db, "INSERT INTO kv_store (key, value, expire_time) VALUES (?, ?, ?);",
+        if (sqlite3_prepare_v2(db.db, "INSERT INTO kv_store (key, value, expire_time) VALUES (?, ?, ?);",
                                -1, &stmt, nullptr) == SQLITE_OK) {
             for (const auto& [key, item] : store) {
                 sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT);
@@ -105,19 +108,19 @@ public:
             sqlite3_finalize(stmt);
         }
 
-        sqlite3_exec(db, "COMMIT;", nullptr, nullptr, nullptr);
-        sqlite3_close(db);
+        sqlite3_exec(db.db, "COMMIT;", nullptr, nullptr, nullptr);
         return true;
     }
 
     bool loadFromSqlite(const std::string& filepath) {
-        sqlite3* db = nullptr;
-        if (sqlite3_open(filepath.c_str(), &db) != SQLITE_OK) {
+        sqlite3* raw = nullptr;
+        if (sqlite3_open(filepath.c_str(), &raw) != SQLITE_OK) {
             return false;
         }
+        SqliteRaii db(raw);
 
         sqlite3_stmt* stmt = nullptr;
-        if (sqlite3_prepare_v2(db, "SELECT key, value, expire_time FROM kv_store;",
+        if (sqlite3_prepare_v2(db.db, "SELECT key, value, expire_time FROM kv_store;",
                                -1, &stmt, nullptr) == SQLITE_OK) {
             std::lock_guard<std::mutex> lock(mutex);
             while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -132,7 +135,6 @@ public:
             sqlite3_finalize(stmt);
         }
 
-        sqlite3_close(db);
         return true;
     }
 #endif // WINGMAN_HAS_SQLITE

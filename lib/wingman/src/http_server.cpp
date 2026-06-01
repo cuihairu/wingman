@@ -422,7 +422,7 @@ crow::response HTTPServer::handleScripts(const crow::request& req) {
 
         auto scriptNames = scriptManager_->getScriptNames();
         for (const auto& name : scriptNames) {
-            auto* info = scriptManager_->getScriptInfo(name);
+            auto info = scriptManager_->getScriptInfo(name);
             if (info) {
                 nlohmann::json script;
                 script["id"] = name;

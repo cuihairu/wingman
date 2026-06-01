@@ -37,7 +37,7 @@
 namespace wingman {
 
 static uint64_t getTickCount() {
-    return GetTickCount();
+    return GetTickCount64();
 }
 
 TriggerManager::TriggerManager() : m_running(false), m_scriptManager(nullptr) {
@@ -285,8 +285,15 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
         }
 
         case TriggerType::PixelChanged: {
-            static Color lastPixel;
+            static Color lastPixel{};
+            static bool firstCheck = true;
             Color currentPixel = Screen::getPixel(cond.region.x, cond.region.y);
+
+            if (firstCheck) {
+                lastPixel = currentPixel;
+                firstCheck = false;
+                return false;
+            }
 
             if (lastPixel.distance(currentPixel) > cond.tolerance * cond.tolerance) {
                 lastPixel = currentPixel;

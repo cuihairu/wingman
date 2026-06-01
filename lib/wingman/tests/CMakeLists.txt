@@ -7,10 +7,6 @@ if(BUILD_CORE_TESTS)
     option(CODE_COVERAGE "Enable code coverage" OFF)
 
     # 检查是否已经通过 vcpkg 安装了 GTest
-    # 设置 GTest_DIR 指向全局 vcpkg 安装（如果存在）
-    if(EXISTS "C:/Users/admin/vcpkg/installed/x64-windows-static/share/gtest/GTestConfig.cmake")
-        set(GTest_DIR "C:/Users/admin/vcpkg/installed/x64-windows-static/share/gtest")
-    endif()
     find_package(GTest CONFIG QUIET)
 
     if(GTest_FOUND)

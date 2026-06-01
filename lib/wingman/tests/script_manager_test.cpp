@@ -312,7 +312,7 @@ TEST_F(ScriptManagerFileTest, LoadAndUnloadScript) {
     EXPECT_TRUE(mgr.hasScript("test"));
     EXPECT_EQ(mgr.getScriptNames().size(), 1u);
 
-    auto* info = mgr.getScriptInfo("test");
+    auto info = mgr.getScriptInfo("test");
     ASSERT_NE(info, nullptr);
     // loadScript sets language but does not change state from unloaded
     EXPECT_EQ(info->language, "lua");
@@ -371,7 +371,7 @@ TEST_F(ScriptManagerFileTest, ReloadNonRunningScript) {
     mgr.loadScript("reload", path);
 
     EXPECT_TRUE(mgr.reloadScript("reload"));
-    auto* info = mgr.getScriptInfo("reload");
+    auto info = mgr.getScriptInfo("reload");
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->state, ScriptState::loaded);
 }
@@ -443,7 +443,7 @@ TEST_F(ScriptManagerFileTest, ScriptConfigSandboxedField) {
     ScriptManager mgr;
     EXPECT_TRUE(mgr.loadScript("cfg_test", path, cfg));
 
-    auto* info = mgr.getScriptInfo("cfg_test");
+    auto info = mgr.getScriptInfo("cfg_test");
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->config.sandboxed, false);
     EXPECT_EQ(info->config.timeoutMs, 5000);
@@ -461,7 +461,7 @@ TEST_F(ScriptManagerFileTest, ScriptConfigEnvField) {
     ScriptManager mgr;
     mgr.loadScript("env_test", path, cfg);
 
-    auto* info = mgr.getScriptInfo("env_test");
+    auto info = mgr.getScriptInfo("env_test");
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->config.env.at("A"), "1");
     EXPECT_EQ(info->config.env.at("B"), "2");
@@ -472,7 +472,7 @@ TEST_F(ScriptManagerFileTest, ScriptStateTransitionLoaded) {
     std::string path = createTempScript("state.lua", "-- state");
     mgr.loadScript("state", path);
 
-    auto* info = mgr.getScriptInfo("state");
+    auto info = mgr.getScriptInfo("state");
     ASSERT_NE(info, nullptr);
     // loadScript does not change state from unloaded in the current impl
     // but language must be set

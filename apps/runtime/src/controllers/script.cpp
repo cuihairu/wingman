@@ -185,7 +185,7 @@ std::vector<ScriptInfo> ScriptCtrl::scanScripts(const std::string& dir) {
             info.name = entry.path().filename().string();
             info.path = entry.path().string();
             info.size = entry.file_size();
-            auto* scriptInfo = getScriptManager().getScriptInfo(info.id);
+            auto scriptInfo = getScriptManager().getScriptInfo(info.id);
             info.isRunning = scriptInfo && scriptInfo->state == ScriptState::running;
             scripts.push_back(info);
         }

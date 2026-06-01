@@ -71,7 +71,7 @@ bool ScriptManager::loadScript(const std::string& name, const std::string& path,
 				events.emplace_back(ScriptEvent::unloaded, "");
 			}
 
-			auto info = std::make_unique<ScriptInfo>();
+			auto info = std::make_shared<ScriptInfo>();
 			info->config = config;
 			info->config.name = name;
 			info->config.path = path;
@@ -454,9 +454,11 @@ std::string ScriptManager::getEnv(const std::string& key) const {
 	}
 
 #ifdef _WIN32
-	char buffer[4096];
-	if (GetEnvironmentVariableA(key.c_str(), buffer, sizeof(buffer)) > 0) {
-		return buffer;
+	DWORD needed = GetEnvironmentVariableA(key.c_str(), nullptr, 0);
+	if (needed > 0) {
+		std::string buf(needed - 1, '\0');
+		GetEnvironmentVariableA(key.c_str(), buf.data(), needed);
+		return buf;
 	}
 #else
 	const char* val = std::getenv(key.c_str());
@@ -475,12 +477,12 @@ void ScriptManager::setEnv(const std::string& key, const std::string& value) {
 
 // ========== State Query ==========
 
-ScriptInfo* ScriptManager::getScriptInfo(const std::string& name) {
+std::shared_ptr<ScriptInfo> ScriptManager::getScriptInfo(const std::string& name) {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	auto it = m_scripts.find(name);
 	if (it != m_scripts.end()) {
-		return it->second.get();
+		return it->second;
 	}
 	return nullptr;
 }
@@ -631,7 +633,8 @@ void ScriptManager::stopHotReload() {
 		}
 	}
 
-	// Join outside the lock to avoid deadlock with the hot-reload thread
+	// Join outside the lock to avoid deadlock with the hot-reload thread.
+	// The thread checks m_hotReloadRunning every 1s, so join completes promptly.
 	if (threadToJoin.joinable()) {
 		threadToJoin.join();
 	}

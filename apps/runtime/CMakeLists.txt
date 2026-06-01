@@ -39,8 +39,10 @@ if(NOT clasp_FOUND)
     endif()
 endif()
 
-# Drogon HTTP 框架
-find_package(Drogon CONFIG REQUIRED)
+# Drogon HTTP 框架 (not available on macOS)
+if(NOT APPLE)
+    find_package(Drogon CONFIG REQUIRED)
+endif()
 
 # 修复 Jsoncpp_lib 不正确的 debug/release 库链接
 # Drogon 的 FindJsoncpp.cmake 没有正确处理多配置生成
@@ -74,11 +76,6 @@ set(CLIENT_SOURCES
     src/packer.cpp
     src/resource_loader.cpp
     src/runtime_context.cpp
-    # Drogon 控制器
-    src/controllers/websocket.cpp
-    src/controllers/script.cpp
-    src/controllers/system.cpp
-    src/controllers/api.cpp
     # 命令实现
     src/commands/start_command.cpp
     src/commands/stop_command.cpp
@@ -86,6 +83,16 @@ set(CLIENT_SOURCES
     src/commands/build_command.cpp
     src/commands/serve_command.cpp
 )
+
+# Drogon controllers (not available on macOS)
+if(NOT APPLE)
+    list(APPEND CLIENT_SOURCES
+        src/controllers/websocket.cpp
+        src/controllers/script.cpp
+        src/controllers/system.cpp
+        src/controllers/api.cpp
+    )
+endif()
 
 # 创建可执行文件
 add_executable(wingman-runtime ${CLIENT_SOURCES})
@@ -106,8 +113,10 @@ target_link_libraries(wingman-runtime PRIVATE
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     clasp::clasp
-    Drogon::Drogon
 )
+if(NOT APPLE)
+    target_link_libraries(wingman-runtime PRIVATE Drogon::Drogon)
+endif()
 
 # Python 引擎（可选）
 if(WINGMAN_ENABLE_PYTHON)

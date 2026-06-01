@@ -131,7 +131,7 @@ public:
 
 	// ========== State Query ==========
 
-	ScriptInfo* getScriptInfo(const std::string& name);
+	std::shared_ptr<ScriptInfo> getScriptInfo(const std::string& name);
 	std::vector<ScriptInfo> getAllScriptInfos() const;
 	std::vector<std::string> getScriptNames() const;
 	std::vector<std::string> getRunningScripts() const;
@@ -168,7 +168,7 @@ public:
 
 private:
 	mutable std::mutex m_mutex;
-	std::unordered_map<std::string, std::unique_ptr<ScriptInfo>> m_scripts;
+	std::unordered_map<std::string, std::shared_ptr<ScriptInfo>> m_scripts;
 	std::unordered_map<std::string, std::string> m_config;
 	std::unordered_map<std::string, std::string> m_env;
 	SandboxConfig m_sandboxConfig;
