@@ -12,6 +12,7 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <spdlog/spdlog.h>
 
 #pragma comment(lib, "bcrypt.lib")
 
