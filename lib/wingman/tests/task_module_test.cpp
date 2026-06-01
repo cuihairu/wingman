@@ -45,7 +45,7 @@ TEST(TaskModuleTest, WaitTimeoutDoesNotDeadlock) {
 		ScriptValue::fromCallable([](const std::vector<ScriptValue>&) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(200));
 			return ScriptValue::fromString("done");
-		}),
+		}, true),
 		ScriptValue::fromObject({
 			{"async", ScriptValue::fromBool(true)},
 			{"timeoutMs", ScriptValue::fromInt(1000)}
