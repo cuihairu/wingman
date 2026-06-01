@@ -1,18 +1,53 @@
-# Orchestration API
+# API: wingman.orchestration
 
-`wingman.orchestration` 提供工作流提交和管理功能，支持将复杂的自动化任务定义为工作流并执行。
+工作流模块，提供工作流提交和管理功能。
 
 ::: warning 注意
 此模块需要服务器组件支持，当前为存根实现。
 :::
 
+## 模块概述
+
+orchestration 模块提供工作流管理功能：
+- **提交工作流** - 提交新的工作流执行
+- **取消工作流** - 取消正在执行的工作流
+- **查询工作流** - 获取工作流详细信息
+- **列出工作流** - 获取所有工作流列表
+
+---
+
 ## 提交工作流
+
+### submit_workflow(workflow) / submitWorkflow(workflow)
+
+**说明**：提交一个新的工作流执行。
+
+**函数签名**：
+
+```python
+submit_workflow(workflow: dict) -> str | None
+```
+
+```lua
+submitWorkflow(workflow: table) -> string | nil
+```
+
+**参数**：
+- `workflow` - 工作流定义对象
+  - `name` / `name` - 工作流名称
+  - `steps` / `steps` - 步骤数组
+  - `timeout` / `timeout` - 可选，超时时间
+  - `metadata` / `metadata` - 可选，元数据
+
+**返回**：
+- Python: 工作流 ID，失败返回 `None`
+- Lua: 工作流 ID，失败返回 `nil`
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import orchestration
 
 # 提交工作流
@@ -28,11 +63,11 @@ workflow_id = orchestration.submit_workflow({
 
 == Lua
 
-```lua
+```lua:line-numbers
 local orchestration = require("wingman.orchestration")
 
 -- 提交工作流
-local workflowId = orchestration.submit_workflow({
+local workflowId = orchestration.submitWorkflow({
     name = "combat_loop",
     steps = {
         { type = "vision", action = "find_enemy" },
@@ -44,13 +79,35 @@ local workflowId = orchestration.submit_workflow({
 
 :::
 
+---
+
 ## 取消工作流
+
+### cancel_workflow(workflow_id) / cancelWorkflow(workflowId)
+
+**说明**：取消正在执行的工作流。
+
+**函数签名**：
+
+```python
+cancel_workflow(workflow_id: str) -> bool
+```
+
+```lua
+cancelWorkflow(workflowId: string) -> boolean
+```
+
+**参数**：
+- `workflow_id` / `workflowId` - 工作流 ID
+
+**返回**：
+- 是否成功
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import orchestration
 
 # 取消工作流
@@ -59,22 +116,45 @@ orchestration.cancel_workflow(workflow_id)
 
 == Lua
 
-```lua
+```lua:line-numbers
 local orchestration = require("wingman.orchestration")
 
 -- 取消工作流
-orchestration.cancel_workflow(workflowId)
+orchestration.cancelWorkflow(workflowId)
 ```
 
 :::
 
+---
+
 ## 获取工作流信息
+
+### get_workflow(workflow_id) / getWorkflow(workflowId)
+
+**说明**：获取工作流详细信息。
+
+**函数签名**：
+
+```python
+get_workflow(workflow_id: str) -> dict | None
+```
+
+```lua
+getWorkflow(workflowId: string) -> table | nil
+```
+
+**参数**：
+- `workflow_id` / `workflowId` - 工作流 ID
+
+**返回**：
+- Python: 工作流对象，不存在返回 `None`
+- Lua: 工作流对象，不存在返回 `nil`
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import orchestration
 
 # 获取工作流信息
@@ -85,11 +165,11 @@ if workflow:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local orchestration = require("wingman.orchestration")
 
 -- 获取工作流信息
-local workflow = orchestration.get_workflow(workflowId)
+local workflow = orchestration.getWorkflow(workflowId)
 if workflow then
     print("状态: " .. workflow.status)
 end
@@ -97,13 +177,33 @@ end
 
 :::
 
+---
+
 ## 获取所有工作流
+
+### get_all_workflows() / getAllWorkflows()
+
+**说明**：获取所有工作流列表。
+
+**函数签名**：
+
+```python
+get_all_workflows() -> list[dict]
+```
+
+```lua
+getAllWorkflows() -> table
+```
+
+**返回**：
+- Python: 工作流对象列表
+- Lua: 工作流对象数组
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import orchestration
 
 # 获取所有工作流
@@ -114,11 +214,11 @@ for wf in workflows:
 
 == Lua
 
-```lua
+```lua:line-numbers
 local orchestration = require("wingman.orchestration")
 
 -- 获取所有工作流
-local workflows = orchestration.get_all_workflows()
+local workflows = orchestration.getAllWorkflows()
 for i, wf in ipairs(workflows) do
     print(wf.id .. ": " .. wf.name)
 end
@@ -130,46 +230,12 @@ end
 
 ## 可用接口
 
-### `submit_workflow(workflow)` / `submit_workflow(workflow)`
-
-提交一个新的工作流执行。
-
-**参数：**
-- `workflow` - 工作流定义对象
-  - `name` - 工作流名称
-  - `steps` - 步骤数组
-  - `timeout` - 可选，超时时间
-  - `metadata` - 可选，元数据
-
-**返回：**
-- `string?` - 工作流 ID，失败返回 `null`/`nil`
-
-### `cancel_workflow(workflowId)` / `cancel_workflow(workflowId)`
-
-取消正在执行的工作流。
-
-**参数：**
-- `workflowId` - 工作流 ID
-
-**返回：**
-- `boolean` - 是否成功
-
-### `get_workflow(workflowId)` / `get_workflow(workflowId)`
-
-获取工作流详细信息。
-
-**参数：**
-- `workflowId` - 工作流 ID
-
-**返回：**
-- `dict?` - 工作流对象，不存在返回 `null`/`nil`
-
-### `get_all_workflows()` / `get_all_workflows()`
-
-获取所有工作流列表。
-
-**返回：**
-- `array` - 工作流对象数组
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `submit_workflow(workflow)` | `submitWorkflow(workflow)` | 提交工作流 | workflow: 工作流定义对象<br>返回: 工作流ID或None/nil |
+| `cancel_workflow(workflowId)` | `cancelWorkflow(workflowId)` | 取消工作流 | workflowId: 工作流ID<br>返回: 是否成功 |
+| `get_workflow(workflowId)` | `getWorkflow(workflowId)` | 获取工作流信息 | workflowId: 工作流ID<br>返回: 工作流对象或None/nil |
+| `get_all_workflows()` | `getAllWorkflows()` | 获取所有工作流 | 返回: 工作流对象数组 |
 
 ---
 
@@ -179,11 +245,11 @@ end
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| id | string | 工作流唯一 ID |
-| name | string | 工作流名称 |
-| status | string | 状态：`pending`, `running`, `completed`, `failed`, `canceled` |
-| steps | array | 步骤定义 |
-| result | any | 执行结果 |
-| error | string | 错误信息 |
-| createdAt | number | 创建时间戳 |
-| updatedAt | number | 更新时间戳 |
+| `id` | string | 工作流唯一 ID |
+| `name` | string | 工作流名称 |
+| `status` | string | 状态：`pending`, `running`, `completed`, `failed`, `canceled` |
+| `steps` | array | 步骤定义 |
+| `result` | any | 执行结果 |
+| `error` | string | 错误信息 |
+| `createdAt` | number | 创建时间戳 |
+| `updatedAt` | number | 更新时间戳 |

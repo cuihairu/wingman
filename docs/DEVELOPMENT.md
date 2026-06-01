@@ -16,8 +16,30 @@
 # Clone and build
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
-cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=[vcpkg]/scripts/buildsystems/vcpkg.cmake
+cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=[vcpkg]/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 cmake --build build --config Release
+```
+
+## Project Structure
+
+```
+wingman/
+├── apps/                    # Applications
+│   ├── runtime/             # CLI runtime
+│   ├── gui/                 # Tauri GUI
+│   └── inspector/           # Inspector tool
+├── lib/                     # Core library
+│   └── wingman/             # Core functionality
+├── libs/                    # Support libraries
+│   ├── clasp/               # Command-line library
+│   ├── debug/               # EmmyLua debugger adapter
+│   ├── lua/                 # Lua engine binding
+│   ├── python/              # Python engine binding
+│   ├── proto/               # Protobuf wrapper
+│   └── transport/           # TCP/WebSocket transport
+└── orchestrator/            # Orchestration layer
+    ├── dashboard/           # Web dashboard
+    └── server/             # Go server
 ```
 
 ## Lua Development Tools
@@ -29,19 +51,19 @@ Wingman includes Lua scripting support. For Lua development, you can optionally 
 LuaRocks is a package manager for Lua modules, similar to npm for Node.js.
 
 **Installation:**
-```bash
+```cmd
 scripts\install-luarocks.cmd
 ```
 
 **Usage:**
-```bash
-# Add to PATH (temporary)
+```cmd
+REM Add to PATH (temporary)
 set PATH=%CD%\scripts\luarocks;%PATH%
 
-# Install a package
+REM Install a package
 luarocks install lua-cjson
 
-# List installed packages
+REM List installed packages
 luarocks list
 ```
 
@@ -50,35 +72,20 @@ luarocks list
 Busted is a unit testing framework for Lua.
 
 **Installation:**
-```bash
-# First install LuaRocks, then:
+```cmd
+REM First install LuaRocks, then:
 scripts\install-busted.cmd
 ```
 
 **Run Tests:**
-```bash
+```cmd
 scripts\run-lua-tests.cmd
 ```
 
 **Or manually:**
-```bash
+```cmd
 set PATH=%CD%\scripts\luarocks;%PATH%
 busted tests -o utfTerminal
-```
-
-### Project Structure
-
-```
-wingman/
-├── include/           # C++ headers
-├── src/              # C++ source files
-├── bindings/         # Lua C API bindings
-├── scripts/          # Lua scripts and developer tools
-│   ├── install-luarocks.cmd
-│   ├── install-busted.cmd
-│   └── run-lua-tests.cmd
-├── tests/            # Lua tests
-└── docs/             # Documentation
 ```
 
 ## Creating Lua Scripts
@@ -98,19 +105,19 @@ print("Screen: " .. width .. "x" .. height)
 
 -- Get pixel color
 local color = screen.getPixel(100, 100)
-print("Color at (100, 100): " .. color:toHex())
+print("Color at (100, 100): " .. string.format("0x%06X", color))
 
 -- Move mouse
-input.move(500, 300)
+input.click(500, 300)
 ```
 
 ### Installing External Lua Packages
 
-```bash
-# Using LuaRocks
-luarocks install lua-cjson     # JSON parser
-luarocks install luafilesystem # File operations
-luarocks install penlight      # Lua utility libraries
+```cmd
+REM Using LuaRocks
+luarocks install lua-cjson     -- JSON parser
+luarocks install luafilesystem -- File operations
+luarocks install penlight      -- Lua utility libraries
 ```
 
 Then in your script:
@@ -126,19 +133,19 @@ local data = cjson.encode({name = "Wingman", version = "0.1.0"})
 
 ### C++ Unit Tests
 
-```bash
-# Build with tests enabled
+```cmd
+REM Build with tests enabled
 cmake -B build -DWINGMAN_BUILD_TESTS=ON
 cmake --build build --config Debug
 
-# Run tests
-.\build\tests\cpp\Debug\wingman_tests.exe
+REM Run tests
+.\build\lib\wingman\tests\Debug\core_tests.exe
 ```
 
 ### Lua Tests
 
-```bash
-# Requires LuaRocks and Busted (see above)
+```cmd
+REM Requires LuaRocks and Busted (see above)
 scripts\run-lua-tests.cmd
 ```
 
@@ -146,7 +153,7 @@ scripts\run-lua-tests.cmd
 
 The project uses GitHub Actions for continuous integration:
 
-- **Build**: Builds on push to main/develop
+- **Build**: Builds on push to main
 - **Test**: Runs C++ unit tests (Lua tests skipped in CI)
 - **Nightly**: Daily automated builds with version tagging
 

@@ -4,96 +4,146 @@
 
 ```
 wingman/
-├── assets/           # 资源文件（图标、图片等）
-├── build/            # CMake 构建临时目录（.gitignore）
-├── client/           # C++ 客户端
-├── cmake/            # CMake 模块（FindScoopLua.cmake）
-├── dashboard/        # Web 前端（VitePress + Vue）
-├── docs/             # 项目文档
-├── examples/         # 示例和模板
-│   ├── configs/      # 应用配置示例（config.json）
-│   ├── lua_scripts/  # Lua 脚本示例
-│   └── profiles/     # 游戏配置示例（profile.json）
-├── libs/             # 共享库
-│   ├── core/         # 核心功能（Screen/Input/Trigger/Window 等）
-│   ├── debug/        # 调试器适配（EmmyLua 集成）
-│   ├── lua/          # Lua 引擎 + 绑定
-│   ├── proto/        # Protobuf 协议封装
-│   └── transport/    # 传输层（TCP/WebSocket）
-├── protobuf/         # Protobuf 协议定义（.proto 文件）
-├── scripts/          # 构建脚本（.ps1, .bat, .sh）
-├── server/           # Go 服务端
-├── setup/            # Windows 发布脚本（InnoSetup）
-├── tests/            # 测试代码
-│   ├── cpp/          # C++ 单元测试
-│   ├── integration/  # 集成测试
-│   └── unit/         # 单元测试
-└── tools/            # 开发工具
-    └── inspector/    # 图形化检查工具（wingman-lab）
+├── apps/                    # 应用程序
+│   ├── runtime/             # CLI 运行时 (C++)
+│   ├── gui/                 # Tauri GUI 应用
+│   └── inspector/           # 图形化检查工具
+├── lib/                     # 核心库
+│   └── wingman/             # 核心功能库
+├── libs/                    # 辅助库
+│   ├── clasp/               # 命令行库
+│   ├── debug/               # EmmyLua 调试器适配
+│   ├── lua/                 # Lua 引擎绑定
+│   ├── python/              # Python 引擎绑定
+│   ├── proto/               # Protobuf 协议封装
+│   └── transport/           # TCP/WebSocket 传输层
+├── orchestrator/            # 编排层
+│   ├── dashboard/           # Web 控制面板
+│   └── server/             # Go 服务端
+├── protobuf/                # Protobuf 协议定义
+├── assets/                  # 资源文件
+├── build-scripts/          # 构建脚本
+├── cmake/                   # CMake 模块
+├── config/                  # 配置文件
+├── docs/                    # 项目文档
+├── examples/                # 示例和模板
+└── vcpkg-ports/             # 本地 vcpkg ports
 ```
 
 ## 模块说明
 
-### client/
-C++ 客户端程序，支持三种运行模式：
-- ActiveMode：主动连接 Server
-- PassiveMode：被动监听端口
-- StandaloneMode：单机脚本执行
+### apps/
 
-### server/
-Go 服务端程序，提供 HTTP API 和 WebSocket 控制。
+应用程序目录，包含所有可执行程序：
+
+#### runtime/
+C++ CLI 运行时，支持三种运行模式：
+- **ActiveMode**：主动连接到服务器
+- **PassiveMode**：被动监听，等待连接
+- **StandaloneMode**：单机模式，无网络
+
+#### gui/
+Tauri 2.0 桌面 GUI 应用（Rust 后端 + Svelte 5 前端）
+
+#### inspector/
+图形化开发工具，用于快速验证功能（截图、像素检测、图像匹配等）
+
+### lib/wingman/
+
+核心库，包含主要功能模块：
+
+- **screen** - 屏幕捕获、像素操作
+- **input** - 输入模拟（鼠标、键盘）
+- **window** - 窗口管理
+- **process** - 进程管理
+- **trigger** - 触发器系统
+- **vision** - 视觉识别
+- **behavior_tree** - 行为树
+- **ocr** - OCR 文字识别
 
 ### libs/
-共享库目录，各模块独立编译：
-- **core**：核心功能（屏幕捕获、输入模拟、窗口管理等）
-- **debug**：EmmyLua 调试器适配层
-- **lua**：Lua 引擎绑定和脚本管理
-- **proto**：Protobuf 协议封装
-- **transport**：TCP/WebSocket 传输层
+
+辅助库，各模块独立编译：
+
+| 模块 | 说明 |
+|------|------|
+| **clasp** | 命令行库（通过 overlay ports 管理） |
+| **debug** | EmmyLua 调试器适配层 |
+| **lua** | Lua 引擎绑定（sol2） |
+| **python** | Python 引擎绑定（pybind11） |
+| **proto** | Protobuf 协议封装 |
+| **transport** | TCP/WebSocket 传输层 |
+
+### orchestrator/
+
+编排层，提供 Web 控制和服务端功能：
+
+#### dashboard/
+Web 控制面板（基于 Tauri）
+
+#### server/
+Go 服务端程序，提供远程控制和 API 服务
 
 ### protobuf/
+
 Protobuf 协议定义文件：
-- `agent_api.proto`：Agent API 服务定义
-- `common.proto`：公共类型定义
-- `debug.proto`：调试协议定义
+- `agent_api.proto` - Agent API 服务定义
+- `common.proto` - 公共类型定义
+- `debug.proto` - 调试协议定义
 
-### examples/
-各类示例和模板文件，供用户参考和复制。
+## 调用链
 
-### dashboard/
-Web 前端，基于 VitePress + Vue 构建。
+```
+Lua/Python 脚本 (.lua / .py)
+    ↓
+libs/lua/ 或 libs/python/ (引擎绑定)
+    ↓
+lib/wingman/ (核心功能：screen, input, trigger...)
+    ↓
+apps/runtime/ (应用：CLI/GUI + 运行模式)
+    ↓
+orchestrator/server/ (可选：远程控制)
+```
 
-### tools/inspector/
-图形化开发工具，用于快速验证功能（截图、像素检测、图像匹配等）。
+## 运行模式
+
+| 模式 | 说明 | Transport |
+|------|------|-----------|
+| ActiveMode | 主动连接到服务器 | TcpClient |
+| PassiveMode | 被动监听，等待连接 | TcpServer |
+| StandaloneMode | 单机模式，无网络 | - |
+
+## 设计原则
+
+1. **核心库独立** - `lib/wingman/` 不依赖 `apps/`，可单独复用
+2. **就近测试** - 每个模块都有自己的 `tests/` 目录
+3. **职责清晰** - apps（应用）、lib（核心库）、libs（辅助库）分离
+4. **命名空间对应** - `include/wingman/xxx.hpp` → `namespace wingman::xxx`
 
 ## 构建说明
 
 使用 vcpkg 管理依赖：
+
 ```bash
-cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake -B build -S . -G "Visual Studio 17 2022" -A x64 \
+    -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake \
+    -DVCPKG_TARGET_TRIPLET=x64-windows-static
 cmake --build build --config Release
 ```
 
-详细构建步骤请参考 [README](../README.md#快速开始)。
+详细构建步骤请参考 [BUILD.md](../BUILD.md)。
 
 ## 测试
 
 ### 测试覆盖
-- C++ 单元测试：`tests/cpp/` (30+ 测试文件)
-- Lua 单元测试：`tests/unit/` (busted 框架)
-- 集成测试：`tests/integration/`
+
+- C++ 单元测试：`lib/wingman/tests/`
+- Lua 单元测试：`libs/lua/tests/`
+- Python 单元测试：`libs/python/tests/`
+- 集成测试：`libs/transport/tests/`
 
 启用测试构建：
-```bash
-cmake -DWINGMAN_BUILD_TESTS=ON ...
-```
 
-### 测试覆盖
-- C++ 单元测试：`tests/cpp/`
-- Lua 单元测试：`tests/unit/` (busted 框架)
-- 集成测试：`tests/integration/`
-
-启用测试构建：
 ```bash
-cmake -DWINGMAN_BUILD_TESTS=ON ...
+cmake -B build -DWINGMAN_BUILD_TESTS=ON ...
 ```

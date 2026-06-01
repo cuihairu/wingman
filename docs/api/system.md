@@ -1,14 +1,50 @@
-# System API
+# API: wingman.system
 
-`wingman.system` 提供系统信息查询功能，包括 CPU、内存、磁盘、GPU 和操作系统信息。
+系统模块，提供 CPU、内存、磁盘、GPU 和操作系统信息查询功能。
 
-## CPU 信息
+## 模块概述
+
+system 模块提供系统信息查询功能：
+- **CPU 信息** - 处理器型号、核心数、使用率
+- **内存信息** - 总内存、可用内存、使用率
+- **磁盘信息** - 磁盘容量、可用空间、使用率
+- **GPU 信息** - 显卡名称
+- **系统信息** - 操作系统版本、架构、计算机名
+
+---
+
+## 获取 CPU 信息
+
+### get_cpu_info() / getCpuInfo()
+
+**说明**：获取 CPU 详细信息。
+
+**函数签名**：
+
+```python
+get_cpu_info() -> dict
+```
+
+```lua
+getCpuInfo() -> table
+```
+
+**返回**：
+- CPU 信息对象：
+  - `vendor` / `vendor` - 制造商（如 "GenuineIntel"）
+  - `brand` / `brand` - 型号（如 "Intel(R) Core(TM) i7-10700K"）
+  - `cores` / `cores` - 物理核心数
+  - `threads` / `threads` - 逻辑线程数
+  - `maxClock` / `maxClock` - 最大频率（MHz）
+  - `currentClock` / `currentClock` - 当前频率（MHz）
+  - `usage` / `usage` - 使用率（0-100）
+  - `temperature` / `temperature` - 温度（摄氏度，如果可用）
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import system
 
 # 获取 CPU 信息
@@ -17,15 +53,11 @@ print(f"处理器: {cpu['brand']}")
 print(f"核心数: {cpu['cores']}")
 print(f"线程数: {cpu['threads']}")
 print(f"使用率: {cpu['usage']}%")
-
-# 仅获取使用率
-usage = system.get_cpu_usage()
-print(f"CPU 使用率: {usage}%")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local system = require("wingman.system")
 
 -- 获取 CPU 信息
@@ -34,21 +66,61 @@ print("处理器: " .. cpu.brand)
 print("核心数: " .. cpu.cores)
 print("线程数: " .. cpu.threads)
 print("使用率: " .. cpu.usage .. "%")
-
--- 仅获取使用率
-local usage = system.getCpuUsage()
-print("CPU 使用率: " .. usage .. "%")
 ```
 
 :::
 
-## 内存信息
+---
+
+## 获取 CPU 使用率
+
+### get_cpu_usage() / getCpuUsage()
+
+**说明**：快速获取 CPU 使用率。
+
+**函数签名**：
+
+```python
+get_cpu_usage() -> float
+```
+
+```lua
+getCpuUsage() -> number
+```
+
+**返回**：
+- CPU 使用率（0-100）
+
+---
+
+## 获取内存信息
+
+### get_memory_info() / getMemoryInfo()
+
+**说明**：获取内存信息。
+
+**函数签名**：
+
+```python
+get_memory_info() -> dict
+```
+
+```lua
+getMemoryInfo() -> table
+```
+
+**返回**：
+- 内存信息对象：
+  - `total` / `total` - 总内存（字节）
+  - `available` / `available` - 可用内存（字节）
+  - `used` / `used` - 已用内存（字节）
+  - `usage` / `usage` - 使用率（0-100）
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import system
 
 # 获取内存信息
@@ -60,7 +132,7 @@ print(f"使用率: {mem['usage']:.1f}%")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local system = require("wingman.system")
 
 -- 获取内存信息
@@ -72,13 +144,44 @@ print("使用率: " .. string.format("%.1f", mem.usage) .. "%")
 
 :::
 
-## 磁盘信息
+---
+
+## 获取磁盘信息
+
+### get_disk_info(drive?) / getDiskInfo(drive?)
+
+**说明**：获取磁盘信息。
+
+**函数签名**：
+
+```python
+get_disk_info(drive: str = None) -> dict | list[dict]
+```
+
+```lua
+getDiskInfo(drive: string = nil) -> table | table
+```
+
+**参数**：
+- `drive` - 可选，指定驱动器（如 "C:"），不指定则返回所有磁盘
+
+**返回**：
+- Python: 单个磁盘信息字典或磁盘信息列表
+- Lua: 单个磁盘信息表格或磁盘信息数组
+
+**磁盘信息对象包含**：
+- `drive` / `drive` - 驱动器号
+- `total` / `total` - 总容量（字节）
+- `free` / `free` - 可用空间（字节）
+- `used` / `used` - 已用空间（字节）
+- `usage` / `usage` - 使用率（0-100）
+- `fileSystem` / `fileSystem` - 文件系统类型（如 "NTFS"）
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import system
 
 # 获取所有磁盘信息
@@ -93,7 +196,7 @@ print(f"C 盘使用率: {c_drive['usage']:.1f}%")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local system = require("wingman.system")
 
 -- 获取所有磁盘信息
@@ -110,13 +213,33 @@ print("C 盘使用率: " .. string.format("%.1f", cDrive.usage) .. "%")
 
 :::
 
-## GPU 信息
+---
+
+## 获取 GPU 信息
+
+### get_gpu_info() / getGpuInfo()
+
+**说明**：获取 GPU 信息。
+
+**函数签名**：
+
+```python
+get_gpu_info() -> dict
+```
+
+```lua
+getGpuInfo() -> table
+```
+
+**返回**：
+- GPU 信息对象：
+  - `name` / `name` - 显卡名称
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import system
 
 # 获取 GPU 信息
@@ -126,7 +249,7 @@ print(f"显卡: {gpu['name']}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local system = require("wingman.system")
 
 -- 获取 GPU 信息
@@ -136,13 +259,38 @@ print("显卡: " .. gpu.name)
 
 :::
 
-## 操作系统信息
+---
+
+## 获取系统信息
+
+### get_os_info() / getOsInfo()
+
+**说明**：获取操作系统信息。
+
+**函数签名**：
+
+```python
+get_os_info() -> dict
+```
+
+```lua
+getOsInfo() -> table
+```
+
+**返回**：
+- 系统信息对象：
+  - `platform` / `platform` - 平台名称（如 "Windows"）
+  - `version` / `version` - 版本号
+  - `build` / `build` - 构建号
+  - `architecture` / `architecture` - 架构（如 "AMD64"）
+  - `computerName` / `computerName` - 计算机名
+  - `userName` / `userName` - 当前用户名
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import system
 
 # 获取系统信息
@@ -155,7 +303,7 @@ print(f"用户名: {os_info['userName']}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local system = require("wingman.system")
 
 -- 获取系统信息
@@ -170,209 +318,67 @@ print("用户名: " .. osInfo.userName)
 
 ---
 
-## 完整示例
+## 可用接口
 
-### 系统监控脚本
-
-:::tabs
-
-== Python
-
-```python
-from wingman import system
-import time
-
-def print_system_status():
-    """打印系统状态"""
-    # CPU
-    cpu = system.get_cpu_info()
-    print(f"CPU: {cpu['brand']}")
-    print(f"  使用率: {cpu['usage']}%")
-
-    # 内存
-    mem = system.get_memory_info()
-    used_gb = mem['used'] / 1024 / 1024 / 1024
-    total_gb = mem['total'] / 1024 / 1024 / 1024
-    print(f"内存: {used_gb:.1f}GB / {total_gb:.1f}GB ({mem['usage']:.1f}%)")
-
-    # 磁盘
-    disks = system.get_disk_info()
-    for disk in disks:
-        print(f"磁盘 {disk['drive']}: {disk['usage']:.1f}% 使用")
-
-    print()
-
-# 每 5 秒打印一次系统状态
-while True:
-    print_system_status()
-    time.sleep(5)
-```
-
-== Lua
-
-```lua
-local system = require("wingman.system")
-
-local function printSystemStatus()
-    -- CPU
-    local cpu = system.getCpuInfo()
-    print("CPU: " .. cpu.brand)
-    print("  使用率: " .. cpu.usage .. "%")
-
-    -- 内存
-    local mem = system.getMemoryInfo()
-    local usedGb = mem.used / 1024 / 1024 / 1024
-    local totalGb = mem.total / 1024 / 1024 / 1024
-    print(string.format("内存: %.1fGB / %.1fGB (%.1f%%)", usedGb, totalGb, mem.usage))
-
-    -- 磁盘
-    local disks = system.getDiskInfo()
-    for i, disk in ipairs(disks) do
-        print(string.format("磁盘 %s: %.1f%% 使用", disk.drive, disk.usage))
-    end
-
-    print()
-end
-
--- 每 5 秒打印一次系统状态
-while true do
-    printSystemStatus()
-    os.execute("timeout /t 5 >nul")
-end
-```
-
-:::
-
-### 检查系统资源是否充足
-
-:::tabs
-
-== Python
-
-```python
-from wingman import system
-
-def check_resources():
-    """检查系统资源是否充足"""
-    cpu = system.get_cpu_info()
-    mem = system.get_memory_info()
-
-    if cpu['usage'] > 90:
-        print("警告: CPU 使用率过高")
-        return False
-
-    if mem['usage'] > 90:
-        print("警告: 内存使用率过高")
-        return False
-
-    print("系统资源充足")
-    return True
-
-if check_resources():
-    # 继续执行任务
-    pass
-```
-
-== Lua
-
-```lua
-local system = require("wingman.system")
-
-local function checkResources()
-    local cpu = system.getCpuInfo()
-    local mem = system.getMemoryInfo()
-
-    if cpu.usage > 90 then
-        print("警告: CPU 使用率过高")
-        return false
-    end
-
-    if mem.usage > 90 then
-        print("警告: 内存使用率过高")
-        return false
-    end
-
-    print("系统资源充足")
-    return true
-end
-
-if checkResources() then
-    -- 继续执行任务
-end
-```
-
-:::
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `get_cpu_info()` | `getCpuInfo()` | 获取CPU信息 | 返回: CPU信息对象 |
+| `get_cpu_usage()` | `getCpuUsage()` | 获取CPU使用率 | 返回: 使用率(0-100) |
+| `get_memory_info()` | `getMemoryInfo()` | 获取内存信息 | 返回: 内存信息对象 |
+| `get_disk_info(drive?)` | `getDiskInfo(drive?)` | 获取磁盘信息 | drive: 驱动器号(可选)<br>返回: 磁盘信息对象或数组 |
+| `get_gpu_info()` | `getGpuInfo()` | 获取GPU信息 | 返回: GPU信息对象 |
+| `get_os_info()` | `getOsInfo()` | 获取系统信息 | 返回: 系统信息对象 |
 
 ---
 
-## 可用接口
+## 返回值结构
 
-### `get_cpu_info()` / `getCpuInfo()`
+### CPU 信息对象
 
-获取 CPU 详细信息。
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `vendor` | string | 制造商（如 "GenuineIntel"） |
+| `brand` | string | 型号（如 "Intel(R) Core(TM) i7-10700K"） |
+| `cores` | number | 物理核心数 |
+| `threads` | number | 逻辑线程数 |
+| `maxClock` | number | 最大频率（MHz） |
+| `currentClock` | number | 当前频率（MHz） |
+| `usage` | number | 使用率（0-100） |
+| `temperature` | number | 温度（摄氏度，如果可用） |
 
-**返回：**
-- `dict/table` - CPU 信息对象
-  - `vendor` - 制造商（如 "GenuineIntel"）
-  - `brand` - 型号（如 "Intel(R) Core(TM) i7-10700K"）
-  - `cores` - 物理核心数
-  - `threads` - 逻辑线程数
-  - `maxClock` - 最大频率（MHz）
-  - `currentClock` - 当前频率（MHz）
-  - `usage` - 使用率（0-100）
-  - `temperature` - 温度（摄氏度，如果可用）
+### 内存信息对象
 
-### `get_cpu_usage()` / `getCpuUsage()`
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `total` | number | 总内存（字节） |
+| `available` | number | 可用内存（字节） |
+| `used` | number | 已用内存（字节） |
+| `usage` | number | 使用率（0-100） |
 
-快速获取 CPU 使用率。
+### 磁盘信息对象
 
-**返回：**
-- `number` - CPU 使用率（0-100）
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `drive` | string | 驱动器号 |
+| `total` | number | 总容量（字节） |
+| `free` | number | 可用空间（字节） |
+| `used` | number | 已用空间（字节） |
+| `usage` | number | 使用率（0-100） |
+| `fileSystem` | string | 文件系统类型（如 "NTFS"） |
 
-### `get_memory_info()` / `getMemoryInfo()`
+### GPU 信息对象
 
-获取内存信息。
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `name` | string | 显卡名称 |
 
-**返回：**
-- `dict/table` - 内存信息对象
-  - `total` - 总内存（字节）
-  - `available` - 可用内存（字节）
-  - `used` - 已用内存（字节）
-  - `usage` - 使用率（0-100）
+### 系统信息对象
 
-### `get_disk_info(drive?)` / `getDiskInfo(drive?)`
-
-获取磁盘信息。
-
-**参数：**
-- `drive` - 可选，指定驱动器（如 "C:"），不指定则返回所有磁盘
-
-**返回：**
-- `dict/table` 或 `array` - 单个磁盘信息或磁盘数组
-  - `drive` - 驱动器号
-  - `total` - 总容量（字节）
-  - `free` - 可用空间（字节）
-  - `used` - 已用空间（字节）
-  - `usage` - 使用率（0-100）
-  - `fileSystem` - 文件系统类型（如 "NTFS"）
-
-### `get_gpu_info()` / `getGpuInfo()`
-
-获取 GPU 信息。
-
-**返回：**
-- `dict/table` - GPU 信息对象
-  - `name` - 显卡名称
-
-### `get_os_info()` / `getOsInfo()`
-
-获取操作系统信息。
-
-**返回：**
-- `dict/table` - 系统信息对象
-  - `platform` - 平台名称（如 "Windows"）
-  - `version` - 版本号
-  - `build` - 构建号
-  - `architecture` - 架构（如 "AMD64"）
-  - `computerName` - 计算机名
-  - `userName` - 当前用户名
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `platform` | string | 平台名称（如 "Windows"） |
+| `version` | string | 版本号 |
+| `build` | string | 构建号 |
+| `architecture` | string | 架构（如 "AMD64"） |
+| `computerName` | string | 计算机名 |
+| `userName` | string | 当前用户名 |

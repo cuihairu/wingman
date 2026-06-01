@@ -1,14 +1,47 @@
-# Performance API
+# API: wingman.perf
 
-`wingman.perf` 提供性能优化配置，包括图像缓存、并行处理等功能。
+性能优化模块，提供图像缓存、并行处理等性能优化配置。
 
-## 配置性能选项
+## 模块概述
+
+perf 模块提供性能优化功能：
+- **配置管理** - 设置和获取性能配置
+- **图像缓存** - 预加载和清理图像缓存
+- **缓存统计** - 获取缓存使用情况
+
+---
+
+## 设置性能配置
+
+### set_config(config) / setConfig(config)
+
+**说明**：设置性能配置。
+
+**函数签名**：
+
+```python
+set_config(config: dict) -> None
+```
+
+```lua
+setConfig(config: table) -> nil
+```
+
+**参数**：
+- `config` - 配置对象
+  - `enableImageCache` / `enableImageCache` - 是否启用图像缓存，默认 `true`
+  - `maxCacheSize` / `maxCacheSize` - 最大缓存大小（MB），默认 `100`
+  - `enableParallelProcessing` / `enableParallelProcessing` - 是否启用并行处理，默认 `true`
+  - `numThreads` / `numThreads` - 线程数，默认 `4`
+
+**返回**：
+- 无
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import perf
 
 # 配置性能选项
@@ -22,7 +55,7 @@ perf.set_config({
 
 == Lua
 
-```lua
+```lua:line-numbers
 local perf = require("wingman.perf")
 
 -- 配置性能选项
@@ -36,13 +69,33 @@ perf.setConfig({
 
 :::
 
-## 获取当前配置
+---
+
+## 获取性能配置
+
+### get_config() / getConfig()
+
+**说明**：获取当前性能配置。
+
+**函数签名**：
+
+```python
+get_config() -> dict
+```
+
+```lua
+getConfig() -> table
+```
+
+**返回**：
+- Python: 配置字典
+- Lua: 配置表格
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import perf
 
 # 获取配置
@@ -53,7 +106,7 @@ print(f"最大缓存: {config['maxCacheSize']} MB")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local perf = require("wingman.perf")
 
 -- 获取配置
@@ -64,13 +117,35 @@ print("最大缓存: " .. config.maxCacheSize .. " MB")
 
 :::
 
+---
+
 ## 预加载图像
+
+### preload_image(path) / preloadImage(path)
+
+**说明**：预加载图像到缓存。
+
+**函数签名**：
+
+```python
+preload_image(path: str) -> None
+```
+
+```lua
+preloadImage(path: string) -> nil
+```
+
+**参数**：
+- `path` - 图像文件路径
+
+**返回**：
+- 无
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import perf
 
 # 预加载图像到缓存
@@ -80,7 +155,7 @@ perf.preload_image("assets/button.png")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local perf = require("wingman.perf")
 
 -- 预加载图像到缓存
@@ -90,13 +165,32 @@ perf.preloadImage("assets/button.png")
 
 :::
 
+---
+
 ## 清理缓存
+
+### clear_cache() / clearCache()
+
+**说明**：清理图像缓存。
+
+**函数签名**：
+
+```python
+clear_cache() -> None
+```
+
+```lua
+clearCache() -> nil
+```
+
+**返回**：
+- 无
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import perf
 
 # 清理图像缓存
@@ -105,7 +199,7 @@ perf.clear_cache()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local perf = require("wingman.perf")
 
 -- 清理图像缓存
@@ -114,13 +208,37 @@ perf.clearCache()
 
 :::
 
+---
+
 ## 获取缓存统计
+
+### get_cache_stats() / getCacheStats()
+
+**说明**：获取缓存统计信息。
+
+**函数签名**：
+
+```python
+get_cache_stats() -> dict
+```
+
+```lua
+getCacheStats() -> table
+```
+
+**返回**：
+- 统计对象：
+  - `cached_count` / `cached_count` - 已缓存图像数量
+  - `total_size` / `total_size` - 总缓存大小（字节）
+  - `hits` / `hits` - 缓存命中次数
+  - `misses` / `misses` - 缓存未命中次数
+  - `hit_rate` / `hit_rate` - 命中率（0-1）
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import perf
 
 # 获取缓存统计
@@ -132,7 +250,7 @@ print(f"未命中次数: {stats['misses']}")
 
 == Lua
 
-```lua
+```lua:line-numbers
 local perf = require("wingman.perf")
 
 -- 获取缓存统计
@@ -146,117 +264,23 @@ print("未命中次数: " .. stats.misses)
 
 ---
 
-## 完整示例
+## 可用接口
 
-### 游戏脚本性能优化
-
-:::tabs
-
-== Python
-
-```python
-from wingman import perf, screen, vision
-
-# 启用图像缓存和并行处理
-perf.set_config({
-    "enableImageCache": True,
-    "maxCacheSize": 200,
-    "enableParallelProcessing": True,
-    "numThreads": 8
-})
-
-# 预加载常用图像
-perf.preload_image("ui/enemy.png")
-perf.preload_image("ui/ally.png")
-perf.preload_image("ui/loot.png")
-
-# 主循环
-while True:
-    img = screen.capture(0, 0, 1920, 1080)
-    enemies = vision.find_all_images(img, "ui/enemy.png")
-    # 使用缓存的图像匹配会更快
-```
-
-== Lua
-
-```lua
-local perf = require("wingman.perf")
-local screen = require("wingman.screen")
-local vision = require("wingman.vision")
-
--- 启用图像缓存和并行处理
-perf.setConfig({
-    enableImageCache = true,
-    maxCacheSize = 200,
-    enableParallelProcessing = true,
-    numThreads = 8
-})
-
--- 预加载常用图像
-perf.preloadImage("ui/enemy.png")
-perf.preloadImage("ui/ally.png")
-perf.preloadImage("ui/loot.png")
-
--- 主循环
-while true do
-    local img = screen.capture(0, 0, 1920, 1080)
-    local enemies = vision.findAllImages(img, "ui/enemy.png")
-    -- 使用缓存的图像匹配会更快
-end
-```
-
-:::
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `set_config(config)` | `setConfig(config)` | 设置性能配置 | config: 配置对象 |
+| `get_config()` | `getConfig()` | 获取性能配置 | 返回: 配置对象 |
+| `preload_image(path)` | `preloadImage(path)` | 预加载图像 | path: 图像文件路径 |
+| `clear_cache()` | `clearCache()` | 清理缓存 | 无返回值 |
+| `get_cache_stats()` | `getCacheStats()` | 获取缓存统计 | 返回: 统计对象 |
 
 ---
 
-## 可用接口
+## 配置选项
 
-### `set_config(config)` / `setConfig(config)`
-
-设置性能配置。
-
-**参数：**
-- `config` - 配置对象
-  - `enableImageCache` - 是否启用图像缓存，默认 `true`
-  - `maxCacheSize` - 最大缓存大小（MB），默认 `100`
-  - `enableParallelProcessing` - 是否启用并行处理，默认 `true`
-  - `numThreads` - 线程数，默认 `4`
-
-**返回：**
-- `nil`
-
-### `get_config()` / `getConfig()`
-
-获取当前性能配置。
-
-**返回：**
-- `dict/table` - 配置对象
-
-### `preload_image(path)` / `preloadImage(path)`
-
-预加载图像到缓存。
-
-**参数：**
-- `path` - 图像文件路径
-
-**返回：**
-- `nil`
-
-### `clear_cache()` / `clearCache()`
-
-清理图像缓存。
-
-**返回：**
-- `nil`
-
-### `get_cache_stats()` / `getCacheStats()`
-
-获取缓存统计信息。
-
-**返回：**
-- `dict/table` - 统计对象
-  - `cached_count` - 已缓存图像数量
-  - `total_size` - 总缓存大小（字节）
-  - `hits` - 缓存命中次数
-  - `misses` - 缓存未命中次数
-  - `hit_rate` - 命中率（0-1）
+| 选项 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `enableImageCache` | boolean | `true` | 是否启用图像缓存 |
+| `maxCacheSize` | number | `100` | 最大缓存大小（MB） |
+| `enableParallelProcessing` | boolean | `true` | 是否启用并行处理 |
+| `numThreads` | number | `4` | 线程数 |

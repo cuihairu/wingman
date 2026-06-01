@@ -21,11 +21,11 @@ features:
   - title: 🚀 高性能
     details: C++ 核心引擎，Lua/Python 脚本执行，毫秒级响应
   - title: 🔒 安全可靠
-    details: 纯用户态运行，使用合法 Windows API，不读写游戏内存
+    details: 纯用户态运行，使用合法平台 API，不读写游戏内存
   - title: 🎮 多语言支持
     details: 支持 Lua 和 Python 两种脚本语言，灵活选择
-  - title: 🌐 远程控制
-    details: 支持 TCP Server/Client 模式，可远程统一调度
+  - title: 🌐 跨平台
+    details: 支持 Windows、macOS、Linux，统一接口抽象
   - title: 🐛 强大的调试
     details: VS Code 插件支持，断点调试、变量查看、性能分析
   - title: 🤖 人性化模拟
@@ -35,11 +35,11 @@ features:
 
 ## 简介
 
-**Wingman** 是一个为了游戏自动化而生的可编程控制项目。
+**Wingman** 是一个跨平台的游戏自动化工具。
 
 - 基于 **C++** 开发核心引擎，提供高性能的屏幕操作和输入模拟能力
 - 支持 **Lua** 和 **Python** 两种脚本引擎，灵活可扩展
-- 纯**用户态**运行，使用合法 Windows API，安全可靠
+- 纯**用户态**运行，使用合法平台 API，安全可靠
 - 支持**远程控制**，TCP Server/Client 模式，暴露 API 供外部调用
 
 ## 核心特性
@@ -63,15 +63,16 @@ features:
 
 ```lua
 -- hello.lua
-local wingman = require("wingman")
+local screen = require("wingman.screen")
+local input = require("wingman.input")
 
 -- 截图
-local img = wingman.screen.capture(0, 0, 1920, 1080)
+local img = screen.capture(0, 0, 1920, 1080)
 
--- 查找颜色
-local x, y = wingman.screen.findColor(img, 255, 0, 0, 0, 0, 1920, 1080)
+-- 查找颜色（Lua 使用 camelCase 命名）
+local x, y = screen.findPixel(0xFF0000, 0, 0, 1920, 1080, 10)
 if x then
-    wingman.input.click(x, y)
+    input.click(x, y)
 end
 ```
 
@@ -84,10 +85,11 @@ from wingman import screen, input
 # 截图
 img = screen.capture(0, 0, 1920, 1080)
 
-# 查找颜色
-result = screen.find_color(img, (255, 0, 0), 0, 0, 1920, 1080)
+# 查找颜色（Python 使用 snake_case 命名）
+result = screen.find_pixel(0xFF0000, 0, 0, 1920, 1080, 10)
 if result:
-    input.click(result['x'], result['y'])
+    x, y = result
+    input.click(x, y)
 ```
 
 ## 编译项目
@@ -97,20 +99,46 @@ if result:
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
 
-# 编译项目（需要 CMake + Visual Studio）
-cmake -B build -S . -G "Visual Studio 17 2022"
+# Windows (MSVC)
+cmake -B build -S . -G "Visual Studio 17 2022" -A x64 `
+    -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
+
+# macOS/Linux (GCC/Clang)
+cmake -B build -S . -G Ninja \
+    -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake \
+    -DVCPKG_TARGET_TRIPLET=x64-linux
+
+# 编译
 cmake --build build --config Release
 ```
 
 ## 运行示例
 
 ```bash
-# Lua 示例
-wingman.exe scripts/examples/hello.lua
+# CLI 运行时
+./build/apps/runtime/Release/wingman-runtime script examples/hello.lua
 
-# Python 示例
-wingman.exe scripts/examples/hello.py
+# 或 Python 脚本（需要启用 WINGMAN_ENABLE_PYTHON）
+./build/apps/runtime/Release/wingman-runtime script examples/hello.py
 ```
+
+## 系统要求
+
+### Windows
+- Windows 10/11 (x64)
+- Visual Studio 2022
+
+### macOS
+- macOS 12+ (Monterey 或更高)
+- Xcode 14+ 或 Clang
+
+### Linux
+- Ubuntu 22.04+ 或等效发行版
+- GCC 11+ 或 Clang 14+
+
+### 通用
+- CMake 3.20+
+- vcpkg
 
 ## 许可证
 

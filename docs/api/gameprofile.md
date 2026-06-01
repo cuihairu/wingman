@@ -2,7 +2,43 @@
 
 游戏配置档案模块，用于管理游戏相关的配置信息。
 
+## 模块概述
+
+gameprofile 模块提供游戏档案的管理功能：
+- **创建档案** - 创建新的游戏配置档案
+- **加载档案** - 加载已有游戏档案
+- **保存档案** - 保存游戏配置修改
+- **列出档案** - 获取所有游戏档案列表
+- **删除档案** - 删除指定游戏档案
+- **当前游戏** - 设置和获取当前游戏
+
+---
+
 ## 创建游戏档案
+
+### create(id, profile) / create(id, profile)
+
+**说明**：创建新的游戏档案。
+
+**函数签名**：
+
+```python
+create(id: str, profile: dict) -> None
+```
+
+```lua
+create(id: string, profile: table) -> nil
+```
+
+**参数**：
+- `id` - 档案唯一标识
+- `profile` - 档案数据，通常包含：
+  - `name` / `name` - 游戏名称
+  - `executable` / `executable` - 可执行文件路径
+  - `window_title` / `window_title` - 游戏窗口标题
+
+**返回**：
+- 无
 
 :::tabs
 
@@ -34,7 +70,30 @@ gameprofile.create("my_game", {
 
 :::
 
+---
+
 ## 加载游戏档案
+
+### load(id) / load(id)
+
+**说明**：加载游戏档案。
+
+**函数签名**：
+
+```python
+load(id: str) -> dict | None
+```
+
+```lua
+load(id: string) -> table | nil
+```
+
+**参数**：
+- `id` - 档案标识
+
+**返回**：
+- Python: 档案数据字典，不存在返回 `None`
+- Lua: 档案数据表格，不存在返回 `nil`
 
 :::tabs
 
@@ -65,7 +124,30 @@ end
 
 :::
 
+---
+
 ## 保存游戏档案
+
+### save(id, profile) / save(id, profile)
+
+**说明**：保存游戏档案。
+
+**函数签名**：
+
+```python
+save(id: str, profile: dict) -> None
+```
+
+```lua
+save(id: string, profile: table) -> nil
+```
+
+**参数**：
+- `id` - 档案标识
+- `profile` - 档案数据
+
+**返回**：
+- 无
 
 :::tabs
 
@@ -97,7 +179,27 @@ gameprofile.save("my_game", profile)
 
 :::
 
+---
+
 ## 列出所有档案
+
+### list_all() / listAll()
+
+**说明**：列出所有游戏档案。
+
+**函数签名**：
+
+```python
+list_all() -> list[str]
+```
+
+```lua
+listAll() -> table
+```
+
+**返回**：
+- Python: 档案 ID 列表
+- Lua: 档案 ID 数组
 
 :::tabs
 
@@ -128,7 +230,29 @@ end
 
 :::
 
+---
+
 ## 删除档案
+
+### delete(id) / delete(id)
+
+**说明**：删除游戏档案。
+
+**函数签名**：
+
+```python
+delete(id: str) -> None
+```
+
+```lua
+delete(id: string) -> nil
+```
+
+**参数**：
+- `id` - 档案标识
+
+**返回**：
+- 无
 
 :::tabs
 
@@ -152,7 +276,50 @@ gameprofile.delete("my_game")
 
 :::
 
-## 设置/获取当前游戏
+---
+
+## 设置当前游戏
+
+### set_current(id) / setCurrent(id)
+
+**说明**：设置当前游戏。
+
+**函数签名**：
+
+```python
+set_current(id: str) -> None
+```
+
+```lua
+setCurrent(id: string) -> nil
+```
+
+**参数**：
+- `id` - 档案标识
+
+**返回**：
+- 无
+
+---
+
+## 获取当前游戏
+
+### get_current() / getCurrent()
+
+**说明**：获取当前游戏 ID。
+
+**函数签名**：
+
+```python
+get_current() -> str
+```
+
+```lua
+getCurrent() -> string
+```
+
+**返回**：
+- 当前游戏 ID，未设置返回空字符串
 
 :::tabs
 
@@ -188,56 +355,12 @@ print("当前游戏: " .. current)
 
 ## 可用接口
 
-### `create(id, profile)` / `create(id, profile)`
-
-创建新的游戏档案。
-
-**参数：**
-- `id` - 档案唯一标识
-- `profile` / `Profile` - 档案数据
-
-### `load(id)` / `load(id)`
-
-加载游戏档案。
-
-**参数：**
-- `id` - 档案标识
-
-**返回：**
-- `dict/table` - 档案数据，不存在返回 None/nil
-
-### `save(id, profile)` / `save(id, profile)`
-
-保存游戏档案。
-
-**参数：**
-- `id` - 档案标识
-- `profile` / `Profile` - 档案数据
-
-### `list_all()` / `listAll()`
-
-列出所有游戏档案。
-
-**返回：**
-- `list/table` - 档案 ID 列表
-
-### `delete(id)` / `delete(id)`
-
-删除游戏档案。
-
-**参数：**
-- `id` - 档案标识
-
-### `set_current(id)` / `setCurrent(id)`
-
-设置当前游戏。
-
-**参数：**
-- `id` - 档案标识
-
-### `get_current()` / `getCurrent()`
-
-获取当前游戏。
-
-**返回：**
-- `string` - 当前游戏 ID，未设置返回空字符串
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `create(id, profile)` | `create(id, profile)` | 创建档案 | id: 档案ID<br>profile: 档案数据 |
+| `load(id)` | `load(id)` | 加载档案 | id: 档案ID<br>返回: 档案数据或None/nil |
+| `save(id, profile)` | `save(id, profile)` | 保存档案 | id: 档案ID<br>profile: 档案数据 |
+| `list_all()` | `listAll()` | 列出所有档案 | 返回: 档案ID列表 |
+| `delete(id)` | `delete(id)` | 删除档案 | id: 档案ID |
+| `set_current(id)` | `setCurrent(id)` | 设置当前游戏 | id: 档案ID |
+| `get_current()` | `getCurrent()` | 获取当前游戏 | 返回: 当前游戏ID或空字符串 |

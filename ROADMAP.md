@@ -4,7 +4,7 @@
 
 > **✅ 架构重构已完成 (2025)** - 采用 apps + lib 架构，详见 docs/architecture.md
 
-> **📌 平台说明：第一版本仅支持 Windows，跨平台支持不在计划内**
+> **📌 平台说明：支持 Windows（主要）、macOS、Linux。跨平台通过平台抽象层实现，详见 docs/architecture.md**
 
 > **🔥 脚本层多语言抽象已完成 (2026-05)** - 支持 Lua (sol2) 和 Python (pybind11)，详见下文 "脚本引擎抽象"
 

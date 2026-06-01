@@ -2,7 +2,38 @@
 
 工具函数模块，提供常用的辅助功能。
 
+## 模块概述
+
+util 模块提供通用工具函数：
+- **时间函数** - 获取时间戳、格式化时间、延迟执行
+- **随机数** - 生成随机浮点数和随机整数
+- **系统信息** - 获取系统信息、脚本路径
+- **命令执行** - 执行 Shell 命令
+- **日志输出** - 输出不同级别的日志
+
+---
+
 ## 延迟执行
+
+### sleep(milliseconds) / sleep(milliseconds)
+
+**说明**：延迟执行指定毫秒数。
+
+**函数签名**：
+
+```python
+sleep(milliseconds: int) -> None
+```
+
+```lua
+sleep(milliseconds: number) -> nil
+```
+
+**参数**：
+- `milliseconds` - 延迟的毫秒数
+
+**返回**：
+- 无
 
 :::tabs
 
@@ -32,7 +63,26 @@ util.sleep(2000)
 
 :::
 
+---
+
 ## 获取时间戳
+
+### time() / time()
+
+**说明**：获取当前时间戳（毫秒）。
+
+**函数签名**：
+
+```python
+time() -> int
+```
+
+```lua
+time() -> number
+```
+
+**返回**：
+- 当前时间戳（毫秒）
 
 :::tabs
 
@@ -58,7 +108,29 @@ print("当前时间戳: " .. timestamp)
 
 :::
 
+---
+
 ## 格式化时间
+
+### format_time(format) / formatTime(format)
+
+**说明**：格式化当前时间为字符串。
+
+**函数签名**：
+
+```python
+format_time(format: str) -> str
+```
+
+```lua
+formatTime(format: string) -> string
+```
+
+**参数**：
+- `format` - 时间格式字符串（如 `"%Y-%m-%d %H:%M:%S"`）
+
+**返回**：
+- 格式化后的时间字符串
 
 :::tabs
 
@@ -84,7 +156,26 @@ print("当前时间: " .. formatted)
 
 :::
 
-## 生成随机数
+---
+
+## 生成随机浮点数
+
+### random() / random()
+
+**说明**：生成 0-1 之间的随机浮点数。
+
+**函数签名**：
+
+```python
+random() -> float
+```
+
+```lua
+random() -> number
+```
+
+**返回**：
+- 0-1 之间的随机浮点数
 
 :::tabs
 
@@ -96,15 +187,6 @@ from wingman import util
 # 生成 0-1 之间的随机浮点数
 rand = util.random()
 print(f"随机数: {rand}")
-
-# 生成指定范围内的随机整数
-rand_int = util.random_int(1, 100)
-print(f"随机整数: {rand_int}")
-
-# 从数组中随机选择一个
-import random
-choices = ["A", "B", "C"]
-selected = random.choice(choices)
 ```
 
 == Lua
@@ -115,20 +197,82 @@ local util = require("wingman.util")
 -- 生成 0-1 之间的随机浮点数
 local rand = util.random()
 print("随机数: " .. rand)
-
--- 生成指定范围内的随机整数
-local randInt = util.randomInt(1, 100)
-print("随机整数: " .. randInt)
-
--- Lua 原生随机数
-math.randomseed(util.time())
-local choice = ({"A", "B", "C"})[math.random(3)]
-print("随机选择: " .. choice)
 ```
 
 :::
 
+---
+
+## 生成随机整数
+
+### random_int(min, max) / randomInt(min, max)
+
+**说明**：生成指定范围内的随机整数。
+
+**函数签名**：
+
+```python
+random_int(min: int, max: int) -> int
+```
+
+```lua
+randomInt(min: number, max: number) -> number
+```
+
+**参数**：
+- `min` - 最小值（包含）
+- `max` - 最大值（包含）
+
+**返回**：
+- 指定范围内的随机整数
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import util
+
+# 生成指定范围内的随机整数
+rand_int = util.random_int(1, 100)
+print(f"随机整数: {rand_int}")
+```
+
+== Lua
+
+```lua:line-numbers
+local util = require("wingman.util")
+
+-- 生成指定范围内的随机整数
+local randInt = util.randomInt(1, 100)
+print("随机整数: " .. randInt)
+```
+
+:::
+
+---
+
 ## 执行 Shell 命令
+
+### shell_exec(command) / shellExec(command)
+
+**说明**：执行 Shell 命令并获取输出。
+
+**函数签名**：
+
+```python
+shell_exec(command: str) -> str
+```
+
+```lua
+shellExec(command: string) -> string
+```
+
+**参数**：
+- `command` - 要执行的命令
+
+**返回**：
+- 命令的标准输出
 
 :::tabs
 
@@ -138,7 +282,7 @@ print("随机选择: " .. choice)
 from wingman import util
 
 # 执行命令并获取输出
-output = util.shell_exec("dir C:\\")
+output = util.shell_exec("ls -la")
 print(output)
 ```
 
@@ -148,13 +292,33 @@ print(output)
 local util = require("wingman.util")
 
 -- 执行命令并获取输出
-local output = util.shellExec("dir C:\\")
+local output = util.shellExec("ls -la")
 print(output)
 ```
 
 :::
 
+---
+
 ## 获取系统信息
+
+### get_system_info() / getSystemInfo()
+
+**说明**：获取系统信息。
+
+**函数签名**：
+
+```python
+get_system_info() -> dict
+```
+
+```lua
+getSystemInfo() -> table
+```
+
+**返回**：
+- Python: 字典，包含 `os`, `arch`, `version` 等字段
+- Lua: 表格，包含 `os`, `arch`, `version` 等字段
 
 :::tabs
 
@@ -184,7 +348,45 @@ print("Wingman 版本: " .. info.version)
 
 :::
 
+---
+
 ## 获取脚本路径
+
+### get_script_path() / getScriptPath()
+
+**说明**：获取当前脚本的完整路径。
+
+**函数签名**：
+
+```python
+get_script_path() -> str
+```
+
+```lua
+getScriptPath() -> string
+```
+
+**返回**：
+- 脚本完整路径
+
+---
+
+### get_script_dir() / getScriptDir()
+
+**说明**：获取当前脚本所在目录。
+
+**函数签名**：
+
+```python
+get_script_dir() -> str
+```
+
+```lua
+getScriptDir() -> string
+```
+
+**返回**：
+- 目录路径
 
 :::tabs
 
@@ -218,7 +420,30 @@ print("脚本目录: " .. scriptDir)
 
 :::
 
-## 日志输出
+---
+
+## 输出日志
+
+### log(level, message) / log(level, message)
+
+**说明**：输出日志到控制台。
+
+**函数签名**：
+
+```python
+log(level: str, message: str) -> None
+```
+
+```lua
+log(level: string, message: string) -> nil
+```
+
+**参数**：
+- `level` - 日志级别：`"info"`, `"warn"`, `"error"`
+- `message` - 日志消息
+
+**返回**：
+- 无
 
 :::tabs
 
@@ -250,77 +475,15 @@ util.log("error", "这是一条错误")
 
 ## 可用接口
 
-### `sleep(milliseconds)`
-
-延迟执行指定毫秒数。
-
-### `time()`
-
-获取当前时间戳（毫秒）。
-
-### `format_time(format)` / `formatTime(format)`
-
-格式化时间为字符串。
-
-**参数：**
-- `format` - 时间格式字符串（如 `"%Y-%m-%d %H:%M:%S"`）
-
-**返回：**
-- `string` - 格式化后的时间字符串
-
-### `random()`
-
-生成 0-1 之间的随机浮点数。
-
-**返回：**
-- `number` - 随机数
-
-### `random_int(min, max)` / `randomInt(min, max)`
-
-生成指定范围内的随机整数。
-
-**参数：**
-- `min` - 最小值
-- `max` - 最大值
-
-**返回：**
-- `number` - 随机整数
-
-### `shell_exec(command)` / `shellExec(command)`
-
-执行 Shell 命令并获取输出。
-
-**参数：**
-- `command` - 要执行的命令
-
-**返回：**
-- `string` - 命令输出
-
-### `get_system_info()` / `getSystemInfo()`
-
-获取系统信息。
-
-**返回：**
-- `dict/table` - 包含 `os`, `arch`, `version` 等字段
-
-### `get_script_path()` / `getScriptPath()`
-
-获取当前脚本路径。
-
-**返回：**
-- `string` - 脚本完整路径
-
-### `get_script_dir()` / `getScriptDir()`
-
-获取当前脚本所在目录。
-
-**返回：**
-- `string` - 目录路径
-
-### `log(level, message)`
-
-输出日志。
-
-**参数：**
-- `level` - 日志级别：`"info"`, `"warn"`, `"error"`
-- `message` - 日志消息
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `sleep(milliseconds)` | `sleep(milliseconds)` | 延迟执行 | milliseconds: 毫秒数 |
+| `time()` | `time()` | 获取时间戳 | 返回: 毫秒时间戳 |
+| `format_time(format)` | `formatTime(format)` | 格式化时间 | format: 格式字符串<br>返回: 格式化后的字符串 |
+| `random()` | `random()` | 随机浮点数 | 返回: 0-1 之间的浮点数 |
+| `random_int(min, max)` | `randomInt(min, max)` | 随机整数 | min: 最小值<br>max: 最大值<br>返回: 随机整数 |
+| `shell_exec(command)` | `shellExec(command)` | 执行命令 | command: 命令字符串<br>返回: 命令输出 |
+| `get_system_info()` | `getSystemInfo()` | 获取系统信息 | 返回: 信息字典/表格 |
+| `get_script_path()` | `getScriptPath()` | 获取脚本路径 | 返回: 脚本完整路径 |
+| `get_script_dir()` | `getScriptDir()` | 获取脚本目录 | 返回: 目录路径 |
+| `log(level, message)` | `log(level, message)` | 输出日志 | level: 日志级别<br>message: 日志消息 |

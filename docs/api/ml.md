@@ -1,85 +1,175 @@
-# ML API
+# API: wingman.ml
 
-`wingman.ml` 提供机器学习模型推理功能，支持 ONNX 格式模型（如 YOLO 目标检测）。
+机器学习模型推理模块，支持 ONNX 格式模型（如 YOLO 目标检测）。
 
 ::: warning 注意
 此模块需要编译时启用 `WINGMAN_ENABLE_ML` 选项。未启用时返回存根实现。
 :::
 
-## 加载模型
+## 模块概述
+
+ml 模块提供 ONNX 模型的加载和推理功能：
+- **模型加载** - 支持动态指定执行提供器（CPU/CUDA/DirectML）
+- **目标检测** - YOLO 系列模型的目标检测
+- **图像分类** - ResNet 等模型的图像分类
+- **模型管理** - 获取模型信息、卸载模型释放内存
+
+---
+
+## 加载 ONNX 模型
+
+### load_model(path, provider?) / loadModel(path, provider?)
+
+**说明**：加载 ONNX 格式的机器学习模型。
+
+**函数签名**：
+
+```python
+load_model(path: str, provider: str = "cpu") -> Model
+```
+
+```lua
+loadModel(path: string, provider: string = "cpu") -> Model | nil, string | nil
+```
+
+**参数**：
+- `path` - 模型文件路径（.onnx）
+- `provider` - 可选，执行提供器：
+  - `"cpu"` - CPU 执行（默认）
+  - `"cuda"` - CUDA GPU 执行（需要 NVIDIA GPU）
+  - `"dml"` - DirectML GPU 执行（Windows）
+
+**返回**：
+- Python: `Model` 对象，失败返回 `None`
+- Lua: `Model` 对象，失败返回 `nil, error_message`
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import ml
 
-# 加载 ONNX 模型
+# 加载 ONNX 模型（CPU）
 model = ml.load_model("models/yolov8n.onnx")
 if model:
     print("模型加载成功")
-```
-
-== Lua
-
-```lua
-local ml = require("wingman.ml")
-
--- 加载 ONNX 模型
-local model, err = ml.loadModel("models/yolov8n.onnx")
-if model then
-    print("模型加载成功")
-else
-    print("加载失败: " .. tostring(err))
-end
-```
-
-:::
-
-## 指定执行提供器
-
-:::tabs
-
-== Python
-
-```python
-from wingman import ml
 
 # 使用 CUDA 执行提供器（需要 GPU）
 model = ml.load_model("models/yolov8n.onnx", "cuda")
 
 # 使用 DirectML 执行提供器（Windows GPU）
 model = ml.load_model("models/yolov8n.onnx", "dml")
-
-# 使用 CPU 执行提供器（默认）
-model = ml.load_model("models/yolov8n.onnx", "cpu")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local ml = require("wingman.ml")
 
--- 使用 CUDA 执行提供器（需要 GPU）
+-- 加载 ONNX 模型（CPU）
+local model, err = ml.loadModel("models/yolov8n.onnx")
+if model then
+    print("模型加载成功")
+else
+    print("加载失败: " .. tostring(err))
+end
+
+-- 使用 CUDA 执行提供器
 local model = ml.loadModel("models/yolov8n.onnx", "cuda")
 
--- 使用 DirectML 执行提供器（Windows GPU）
+-- 使用 DirectML 执行提供器
 local model = ml.loadModel("models/yolov8n.onnx", "dml")
-
--- 使用 CPU 执行提供器（默认）
-local model = ml.loadModel("models/yolov8n.onnx", "cpu")
 ```
 
 :::
 
-## 目标检测
+---
+
+## 获取可用执行提供器
+
+### get_available_execution_providers() / getAvailableExecutionProviders()
+
+**说明**：获取系统可用的执行提供器列表。
+
+**函数签名**：
+
+```python
+get_available_execution_providers() -> list[str]
+```
+
+```lua
+getAvailableExecutionProviders() -> table
+```
+
+**返回**：
+- Python: 执行提供器名称列表
+- Lua: 执行提供器名称数组
+
+**常见返回值**：
+- `"CPUExecutionProvider"` - CPU 执行（始终可用）
+- `"CUDAExecutionProvider"` - CUDA GPU（需要 NVIDIA GPU）
+- `"DmlExecutionProvider"` - DirectML（Windows）
 
 :::tabs
 
 == Python
 
+```python:line-numbers
+from wingman import ml
+
+providers = ml.get_available_execution_providers()
+print(f"可用的执行提供器: {providers}")
+# 例如：['CPUExecutionProvider', 'CUDAExecutionProvider']
+```
+
+== Lua
+
+```lua:line-numbers
+local ml = require("wingman.ml")
+
+local providers = ml.getAvailableExecutionProviders()
+print("可用的执行提供器: " .. table.concat(providers, ", "))
+-- 例如：CPUExecutionProvider, CUDAExecutionProvider
+```
+
+:::
+
+---
+
+## Model 对象：目标检测
+
+### detect(image, confidence_threshold?, nms_threshold?) / detect(image, confidenceThreshold?, nmsThreshold?)
+
+**说明**：运行目标检测（用于 YOLO 等检测模型）。
+
+**函数签名**：
+
 ```python
+model.detect(image: Image, confidence_threshold: float = 0.5, nms_threshold: float = 0.45) -> list[dict]
+```
+
+```lua
+model.detect(image: Image, confidenceThreshold: number = 0.5, nmsThreshold: number = 0.45) -> table
+```
+
+**参数**：
+- `image` - 图像对象（来自 `screen.capture()`）
+- `confidence_threshold` - 可选，置信度阈值（0-1），默认 0.5
+- `nms_threshold` - 可选，NMS 阈值（0-1），默认 0.45
+
+**返回**：
+- 检测结果数组，每个元素包含：
+  - `class` / `label` - 类别名称
+  - `confidence` - 置信度（0-1）
+  - `center` - 中心坐标 `{x: number, y: number}`
+  - `bbox` - 边界框 `{x: number, y: number, width: number, height: number}`
+
+:::tabs
+
+== Python
+
+```python:line-numbers
 from wingman import ml, screen
 
 # 加载 YOLO 模型
@@ -94,14 +184,14 @@ results = model.detect(img, 0.5)
 # 处理检测结果
 for obj in results:
     print(f"类别: {obj['class']}")
-    print(f"置信度: {obj['confidence']}")
-    print(f"位置: ({obj['center']['x']}, {obj['center']['y']})")
+    print(f"置信度: {obj['confidence']:.2f}")
+    print(f"中心: ({obj['center']['x']}, {obj['center']['y']})")
     print(f"边界框: {obj['bbox']}")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local ml = require("wingman.ml")
 local screen = require("wingman.screen")
 
@@ -117,21 +207,43 @@ local results = model.detect(img, 0.5)
 -- 处理检测结果
 for i, obj in ipairs(results) do
     print("类别: " .. (obj.class or obj.label))
-    print("置信度: " .. obj.confidence)
-    print("位置: (" .. obj.center.x .. ", " .. obj.center.y .. ")")
-    print("边界框: " .. tostring(obj.bbox))
+    print("置信度: " .. string.format("%.2f", obj.confidence))
+    print("中心: (" .. obj.center.x .. ", " .. obj.center.y .. ")")
 end
 ```
 
 :::
 
-## 图像分类
+---
+
+## Model 对象：图像分类
+
+### classify(image) / classify(image)
+
+**说明**：运行图像分类。
+
+**函数签名**：
+
+```python
+model.classify(image: Image) -> tuple[str, float]
+```
+
+```lua
+model.classify(image: Image) -> string, number
+```
+
+**参数**：
+- `image` - 图像对象（来自 `screen.capture()`）
+
+**返回**：
+- Python: `(label: str, confidence: float)` 元组
+- Lua: 两个返回值 `label, confidence`
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import ml, screen
 
 # 加载分类模型
@@ -142,13 +254,12 @@ img = screen.capture(0, 0, 1920, 1080)
 
 # 运行分类
 label, confidence = model.classify(img)
-
-print(f"类别: {label}, 置信度: {confidence}")
+print(f"类别: {label}, 置信度: {confidence:.2f}")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local ml = require("wingman.ml")
 local screen = require("wingman.screen")
 
@@ -160,41 +271,51 @@ local img = screen.capture(0, 0, 1920, 1080)
 
 -- 运行分类
 local label, confidence = model.classify(img)
-
-print("类别: " .. label .. ", 置信度: " .. confidence)
+print("类别: " .. label .. ", 置信度: " .. string.format("%.2f", confidence))
 ```
 
 :::
 
-## 获取模型信息
+---
+
+## Model 对象：获取输入信息
+
+### get_input_info() / getInputInfo()
+
+**说明**：获取模型输入信息。
+
+**函数签名**：
+
+```python
+model.get_input_info() -> dict[str, tuple]
+```
+
+```lua
+model.getInputInfo() -> table
+```
+
+**返回**：
+- Python: 字典 `{name: (shape, type)}`
+- Lua: 数组 `[{name: string, shape: table, type: string}]`
 
 :::tabs
 
 == Python
 
-```python
+```python:line-numbers
 from wingman import ml
 
 model = ml.load_model("models/yolov8n.onnx")
 
 # 获取输入信息
 inputs = model.get_input_info()
-for name, shape in inputs.items():
-    print(f"输入: {name}, 形状: {shape}")
-
-# 获取输出信息
-outputs = model.get_output_info()
-for name, shape in outputs.items():
-    print(f"输出: {name}, 形状: {shape}")
-
-# 获取可用的执行提供器
-providers = ml.get_available_execution_providers()
-print(f"可用的执行提供器: {providers}")
+for name, (shape, dtype) in inputs.items():
+    print(f"输入: {name}, 形状: {shape}, 类型: {dtype}")
 ```
 
 == Lua
 
-```lua
+```lua:line-numbers
 local ml = require("wingman.ml")
 
 local model = ml.loadModel("models/yolov8n.onnx")
@@ -202,29 +323,95 @@ local model = ml.loadModel("models/yolov8n.onnx")
 -- 获取输入信息
 local inputs = model.getInputInfo()
 for i, info in ipairs(inputs) do
-    print("输入: " .. info.name .. ", 形状: " .. tostring(info.shape))
+    print("输入: " .. info.name)
+    print("  形状: " .. table.concat(info.shape, "x"))
+    print("  类型: " .. info.type)
 end
-
--- 获取输出信息
-local outputs = model.getOutputInfo()
-for i, info in ipairs(outputs) do
-    print("输出: " .. info.name .. ", 形状: " .. tostring(info.shape))
-end
-
--- 获取可用的执行提供器
-local providers = ml.getAvailableExecutionProviders()
-print("可用的执行提供器: " .. table.concat(providers, ", "))
 ```
 
 :::
 
-## 卸载模型
+---
+
+## Model 对象：获取输出信息
+
+### get_output_info() / getOutputInfo()
+
+**说明**：获取模型输出信息。
+
+**函数签名**：
+
+```python
+model.get_output_info() -> dict[str, tuple]
+```
+
+```lua
+model.getOutputInfo() -> table
+```
+
+**返回**：
+- Python: 字典 `{name: (shape, type)}`
+- Lua: 数组 `[{name: string, shape: table, type: string}]`
 
 :::tabs
 
 == Python
 
+```python:line-numbers
+from wingman import ml
+
+model = ml.load_model("models/yolov8n.onnx")
+
+# 获取输出信息
+outputs = model.get_output_info()
+for name, (shape, dtype) in outputs.items():
+    print(f"输出: {name}, 形状: {shape}, 类型: {dtype}")
+```
+
+== Lua
+
+```lua:line-numbers
+local ml = require("wingman.ml")
+
+local model = ml.loadModel("models/yolov8n.onnx")
+
+-- 获取输出信息
+local outputs = model.getOutputInfo()
+for i, info in ipairs(outputs) do
+    print("输出: " .. info.name)
+    print("  形状: " .. table.concat(info.shape, "x"))
+    print("  类型: " .. info.type)
+end
+```
+
+:::
+
+---
+
+## Model 对象：卸载模型
+
+### unload() / unload()
+
+**说明**：卸载模型，释放内存。
+
+**函数签名**：
+
 ```python
+model.unload() -> None
+```
+
+```lua
+model.unload() -> nil
+```
+
+**返回**：
+- 无
+
+:::tabs
+
+== Python
+
+```python:line-numbers
 from wingman import ml
 
 model = ml.load_model("models/yolov8n.onnx")
@@ -235,7 +422,7 @@ model.unload()
 
 == Lua
 
-```lua
+```lua:line-numbers
 local ml = require("wingman.ml")
 
 local model = ml.loadModel("models/yolov8n.onnx")
@@ -248,227 +435,24 @@ model.unload()
 
 ---
 
-## 完整示例
-
-### YOLO 目标检测自动点击
-
-:::tabs
-
-== Python
-
-```python
-from wingman import ml, screen, input, window
-
-# 加载 YOLOv8 模型
-model = ml.load_model("models/yolov8n.onnx")
-if not model:
-    print("模型加载失败")
-    exit(1)
-
-# 获取前台窗口
-hwnd = window.get_foreground()
-print(f"前台窗口: {window.get_title(hwnd)}")
-
-# 目标类别和置信度阈值
-TARGET_CLASS = "enemy"
-CONFIDENCE_THRESHOLD = 0.5
-
-# 检测循环
-for i in range(10):
-    # 截图
-    img = screen.capture_window(hwnd)
-
-    # 运行检测
-    results = model.detect(img, CONFIDENCE_THRESHOLD)
-
-    # 点击目标
-    for obj in results:
-        if obj['class'] == TARGET_CLASS:
-            print(f"检测到 {obj['class']}: {obj['confidence']:.2f}")
-            input.click(obj['center']['x'], obj['center']['y'])
-
-    util.sleep(500)
-```
-
-== Lua
-
-```lua
-local ml = require("wingman.ml")
-local screen = require("wingman.screen")
-local input = require("wingman.input")
-local window = require("wingman.window")
-local util = require("wingman.util")
-
--- 加载 YOLOv8 模型
-local model = ml.loadModel("models/yolov8n.onnx")
-if not model then
-    print("模型加载失败")
-    return
-end
-
--- 获取前台窗口
-local hwnd = window.getForeground()
-print("前台窗口: " .. window.getTitle(hwnd))
-
--- 目标类别和置信度阈值
-local TARGET_CLASS = "enemy"
-local CONFIDENCE_THRESHOLD = 0.5
-
--- 检测循环
-for i = 1, 10 do
-    -- 截图
-    local img = screen.captureWindow(hwnd)
-
-    -- 运行检测
-    local results = model.detect(img, CONFIDENCE_THRESHOLD)
-
-    -- 点击目标
-    for _, obj in ipairs(results) do
-        if obj.class == TARGET_CLASS or obj.label == TARGET_CLASS then
-            print(string.format("检测到 %s: %.2f", obj.class or obj.label, obj.confidence))
-            input.click(obj.center.x, obj.center.y)
-        end
-    end
-
-    util.sleep(500)
-end
-```
-
-:::
-
-### 图像分类
-
-:::tabs
-
-== Python
-
-```python
-from wingman import ml, screen
-
-# 加载分类模型（如 ResNet）
-model = ml.load_model("models/resnet.onnx")
-if not model:
-    print("模型加载失败")
-    exit(1)
-
-# 截图
-img = screen.capture(0, 0, 1920, 1080)
-
-# 运行分类
-label, confidence = model.classify(img)
-
-print(f"分类结果: {label}")
-print(f"置信度: {confidence:.2f}")
-
-# 根据分类结果执行操作
-if label == "combat":
-    print("检测到战斗场景")
-elif label == "menu":
-    print("检测到菜单界面")
-```
-
-== Lua
-
-```lua
-local ml = require("wingman.ml")
-local screen = require("wingman.screen")
-
--- 加载分类模型（如 ResNet）
-local model = ml.loadModel("models/resnet.onnx")
-if not model then
-    print("模型加载失败")
-    return
-end
-
--- 截图
-local img = screen.capture(0, 0, 1920, 1080)
-
--- 运行分类
-local label, confidence = model.classify(img)
-
-print("分类结果: " .. label)
-print("置信度: " .. string.format("%.2f", confidence))
-
--- 根据分类结果执行操作
-if label == "combat" then
-    print("检测到战斗场景")
-elseif label == "menu" then
-    print("检测到菜单界面")
-end
-```
-
-:::
-
----
-
 ## 可用接口
 
-### `load_model(path, provider?)` / `loadModel(path, provider?)`
+### 模块函数
 
-加载 ONNX 格式模型。
-
-**参数：**
-- `path` - 模型文件路径（.onnx）
-- `provider` - 可选，执行提供器：`"cpu"`（默认）、`"cuda"`（GPU）、`"dml"`（DirectML）
-
-**返回：**
-- `Model` - 模型对象，失败返回 `null`/`nil`
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `load_model(path, provider?)` | `loadModel(path, provider?)` | 加载 ONNX 模型 | path: 模型路径<br>provider: 执行提供器（cpu/cuda/dml）<br>返回: Model 对象 |
+| `get_available_execution_providers()` | `getAvailableExecutionProviders()` | 获取可用执行提供器 | 返回: 提供器名称列表 |
 
 ### Model 对象方法
 
-#### `detect(image, confidenceThreshold?, nmsThreshold?)` / `detect(image, confidenceThreshold?, nmsThreshold?)`
-
-运行目标检测（用于 YOLO 等检测模型）。
-
-**参数：**
-- `image` - 图像对象
-- `confidenceThreshold` - 可选，置信度阈值（0-1），默认 0.5
-- `nmsThreshold` - 可选，NMS 阈值（0-1），默认 0.45
-
-**返回：**
-- `array` - 检测结果数组
-  - `class` / `label` - 类别名称
-  - `confidence` - 置信度（0-1）
-  - `center` - 中心坐标 `{x, y}`
-  - `bbox` - 边界框 `{x, y, width, height}`
-
-#### `classify(image)` / `classify(image)`
-
-运行图像分类。
-
-**参数：**
-- `image` - 图像对象
-
-**返回：**
-- `string, number` - 类别名称和置信度
-
-#### `get_input_info()` / `getInputInfo()`
-
-获取模型输入信息。
-
-**返回：**
-- `array` - 输入信息数组 `[{name, shape}]`
-
-#### `get_output_info()` / `getOutputInfo()`
-
-获取模型输出信息。
-
-**返回：**
-- `array` - 输出信息数组 `[{name, shape}]`
-
-#### `unload()` / `unload()`
-
-卸载模型，释放内存。
-
-**返回：**
-- `nil`
-
-### `get_available_execution_providers()` / `getAvailableExecutionProviders()`
-
-获取系统可用的执行提供器列表。
-
-**返回：**
-- `array` - 执行提供器名称数组
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `detect(img, conf?, nms?)` | `detect(img, conf?, nms?)` | 目标检测 | img: 图像对象<br>conf: 置信度阈值(默认0.5)<br>nms: NMS阈值(默认0.45)<br>返回: 检测结果数组 |
+| `classify(img)` | `classify(img)` | 图像分类 | img: 图像对象<br>返回: (label, confidence) |
+| `get_input_info()` | `getInputInfo()` | 获取输入信息 | 返回: 输入信息 |
+| `get_output_info()` | `getOutputInfo()` | 获取输出信息 | 返回: 输出信息 |
+| `unload()` | `unload()` | 卸载模型 | 无返回值 |
 
 ---
 
@@ -489,7 +473,7 @@ cp yolov8n.onnx models/
 
 ### 支持的模型格式
 
-- ONNX (.onnx) - 通用格式
+- **ONNX (.onnx)** - 通用格式
 - 支持的模型类型：
   - 目标检测：YOLOv5、YOLOv8 等
   - 图像分类：ResNet、EfficientNet 等

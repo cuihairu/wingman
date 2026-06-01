@@ -15,21 +15,23 @@
 
 1. **克隆 vcpkg**（在网络恢复后）
    ```cmd
-   cd D:\workspaces\wingman
+   cd wingman
    git clone https://github.com/Microsoft/vcpkg.git
    cd vcpkg
    bootstrap-vcpkg.bat -disableMetrics
    ```
 
-2. **安装依赖**
+2. **安装依赖**（使用静态链接）
    ```cmd
-   vcpkg install --triplet=x64-windows lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf imgui
+   vcpkg install --triplet=x64-windows-static lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf imgui
    ```
 
 3. **配置项目**
    ```cmd
    cd ..
-   cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=vcpkg\scripts\buildsystems\vcpkg.cmake
+   cmake -B build -S . -G "Visual Studio 17 2022" -A x64 `
+       -DCMAKE_TOOLCHAIN_FILE=vcpkg\scripts\buildsystems\vcpkg.cmake `
+       -DVCPKG_TARGET_TRIPLET=x64-windows-static
    ```
 
 ## 方法 2：使用预构建依赖包

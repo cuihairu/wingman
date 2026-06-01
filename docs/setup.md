@@ -31,7 +31,7 @@ configure.bat
 ### 3. 构建
 
 ```cmd
-cmake --build build --config Debug
+cmake --build build --config Release
 ```
 
 或打开 `build\Wingman.sln` 在 Visual Studio 中开发。
@@ -51,43 +51,61 @@ bootstrap-vcpkg.bat -disableMetrics
 ### 安装依赖
 
 ```cmd
-vcpkg install --triplet=x64-windows lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf
+vcpkg install --triplet=x64-windows-static lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf imgui
 ```
 
 ### 配置 CMake
 
 ```cmd
-cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=vcpkg\scripts\buildsystems\vcpkg.cmake
+cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```
 
 ## 项目结构
 
 ```
 wingman/
-├── client/             # Client 可执行文件
-│   ├── src/           # 源文件
-│   ├── include/       # 头文件
-│   └── config/        # 配置文件
-├── libs/              # 共享库
-│   ├── proto/               # Protobuf 封装
-│   ├── transport/           # 传输层
-│   ├── core/                # 核心功能
-│   ├── lua/                 # Lua 引擎
-│   └── debug/               # 调试器适配器
-├── protobuf/              # Protobuf 定义
-├── server/             # Go Server
-└── build/              # 构建输出
+├── apps/                    # 应用程序
+│   ├── runtime/             # CLI 运行时
+│   ├── gui/                 # Tauri GUI 应用
+│   └── inspector/           # 图形化检查工具
+├── lib/                     # 核心库
+│   └── wingman/             # 核心功能库
+├── libs/                    # 辅助库
+│   ├── clasp/               # 命令行库
+│   ├── debug/               # EmmyLua 调试器适配
+│   ├── lua/                 # Lua 引擎绑定
+│   ├── python/              # Python 引擎绑定
+│   ├── proto/               # Protobuf 协议封装
+│   └── transport/           # TCP/WebSocket 传输层
+├── orchestrator/            # 编排层
+│   ├── dashboard/           # Web 控制面板
+│   └── server/             # Go 服务端
+├── protobuf/                # Protobuf 协议定义
+├── examples/                # 示例和模板
+└── build/                   # 构建输出
 ```
 
-## 模块说明
+详细说明请参考 [项目结构文档](./project-structure.md)。
+
+## 运行模式
 
 ### Client 模式
 
-- **ActiveMode**: 主动连接服务器
-- **PassiveMode**: 监听客户端连接
-- **StandaloneMode**: 单机脚本执行
+- **ActiveMode**：主动连接服务器
+- **PassiveMode**：监听客户端连接
+- **StandaloneMode**：单机脚本执行
 
-### 依赖包
+### 启动应用
+
+```cmd
+# CLI 运行时
+.\build\apps\runtime\Release\wingman-runtime.exe
+
+# GUI 应用
+.\build\apps\gui\Release\wingman-gui.exe
+```
+
+## 依赖包
 
 | 包名 | 用途 |
 |------|------|
@@ -99,6 +117,7 @@ wingman/
 | curl | HTTP 客户端 |
 | sqlite3 | 数据库 |
 | protobuf | 序列化协议 |
+| imgui | GUI（可选） |
 
 ## 故障排除
 
@@ -116,6 +135,6 @@ wingman/
 
 ### 编译错误
 
-- 确保使用 C++17 标准
+- 确保使用 C++23 标准
 - 检查所有依赖是否正确链接
 - 清理 `build` 目录后重新配置

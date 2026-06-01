@@ -1,8 +1,46 @@
-# Task API
+# API: wingman.task
 
-`wingman.task` 提供异步任务提交与生命周期管理功能，支持重试、超时等特性。
+异步任务模块，提供异步任务提交与生命周期管理功能，支持重试、超时等特性。
+
+## 模块概述
+
+task 模块提供异步任务管理功能：
+- **提交任务** - 提交异步任务到后台执行
+- **状态查询** - 获取任务状态
+- **等待完成** - 等待任务执行完成
+- **获取结果** - 获取任务执行结果
+- **取消任务** - 取消正在执行的任务
+- **重试任务** - 重试失败的任务
+
+---
 
 ## 提交任务
+
+### submit(work, options?) / submit(work, options?)
+
+**说明**：提交一个异步任务。
+
+**函数签名**：
+
+```python
+submit(work: Callable, options: dict = None) -> str
+```
+
+```lua
+submit(work: function, options: table = nil) -> string
+```
+
+**参数**：
+- `work` - 工作函数，将在后台线程执行，接收上下文对象
+- `options` - 可选配置
+  - `timeoutMs` / `timeoutMs` - 超时时间（毫秒），默认 30000
+  - `maxRetries` / `maxRetries` - 最大重试次数，默认 0
+  - `backoffMs` / `backoffMs` - 重试退避基数（毫秒），默认 500
+  - `backoffFactor` / `backoffFactor` - 退避因子，默认 2.0
+  - `metadata` / `metadata` - 元数据（任意对象）
+
+**返回**：
+- 任务 ID
 
 :::tabs
 
@@ -42,7 +80,29 @@ local taskId = task.submit(myWork, {
 
 :::
 
-## 检查任务状态
+---
+
+## 获取任务状态
+
+### status(task_id) / status(taskId)
+
+**说明**：获取任务状态。
+
+**函数签名**：
+
+```python
+status(task_id: str) -> str
+```
+
+```lua
+status(taskId: string) -> string
+```
+
+**参数**：
+- `task_id` / `taskId` - 任务 ID
+
+**返回**：
+- 状态字符串：`"pending"`, `"running"`, `"succeeded"`, `"failed"`, `"canceled"`, `"timeout"`
 
 :::tabs
 
@@ -53,7 +113,7 @@ from wingman import task
 
 # 检查状态
 status = task.status(task_id)
-print(f"任务状态: {status}")  # "running", "succeeded", "failed", etc.
+print(f"任务状态: {status}")
 ```
 
 == Lua
@@ -68,7 +128,30 @@ print("任务状态: " .. status)
 
 :::
 
+---
+
 ## 等待任务完成
+
+### wait(task_id, timeout_ms?) / wait(taskId, timeoutMs?)
+
+**说明**：等待任务完成。
+
+**函数签名**：
+
+```python
+wait(task_id: str, timeout_ms: int = 30000) -> bool
+```
+
+```lua
+wait(taskId: string, timeoutMs: number = 30000) -> boolean
+```
+
+**参数**：
+- `task_id` / `taskId` - 任务 ID
+- `timeout_ms` / `timeoutMs` - 可选，等待超时（毫秒），默认 30000
+
+**返回**：
+- 是否在超时前完成
 
 :::tabs
 
@@ -103,7 +186,78 @@ end
 
 :::
 
+---
+
+## 获取任务结果
+
+### result(task_id) / result(taskId)
+
+**说明**：获取任务结果。
+
+**函数签名**：
+
+```python
+result(task_id: str) -> Any
+```
+
+```lua
+result(taskId: string) -> any
+```
+
+**参数**：
+- `task_id` / `taskId` - 任务 ID
+
+**返回**：
+- Python: 任务返回值，如果任务失败或未完成返回 `None`
+- Lua: 任务返回值，如果任务失败或未完成返回 `nil`
+
+---
+
+## 获取错误信息
+
+### error(task_id) / error(taskId)
+
+**说明**：获取任务错误信息。
+
+**函数签名**：
+
+```python
+error(task_id: str) -> str
+```
+
+```lua
+error(taskId: string) -> string
+```
+
+**参数**：
+- `task_id` / `taskId` - 任务 ID
+
+**返回**：
+- 错误信息字符串，无错误返回空字符串
+
+---
+
 ## 取消任务
+
+### cancel(task_id) / cancel(taskId)
+
+**说明**：取消任务。
+
+**函数签名**：
+
+```python
+cancel(task_id: str) -> bool
+```
+
+```lua
+cancel(taskId: string) -> boolean
+```
+
+**参数**：
+- `task_id` / `taskId` - 任务 ID
+
+**返回**：
+- 是否成功
 
 :::tabs
 
@@ -127,7 +281,32 @@ task.cancel(taskId)
 
 :::
 
+---
+
 ## 重试任务
+
+### retry(task_id, options?) / retry(taskId, options?)
+
+**说明**：重试失败的任务。
+
+**函数签名**：
+
+```python
+retry(task_id: str, options: dict = None) -> bool
+```
+
+```lua
+retry(taskId: string, options: table = nil) -> boolean
+```
+
+**参数**：
+- `task_id` / `taskId` - 任务 ID
+- `options` - 可选重试配置
+  - `maxRetries` / `maxRetries` - 最大重试次数
+  - `backoffMs` / `backoffMs` - 重试退避基数
+
+**返回**：
+- 是否成功发起重试
 
 :::tabs
 
@@ -153,216 +332,32 @@ task.retry(taskId, { maxRetries = 5, backoffMs = 1000 })
 
 ---
 
-## 完整示例
+## 可用接口
 
-### 异步图像处理任务
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import task, screen, vision
-
-def process_image(ctx):
-    """在后台线程处理图像"""
-    # 截图
-    img = screen.capture(0, 0, 1920, 1080)
-
-    # 耗时操作：查找所有目标
-    targets = vision.find_all_colors(img, (255, 0, 0))
-
-    return {"count": len(targets), "targets": targets}
-
-# 提交任务
-task_id = task.submit(process_image, {"timeoutMs": 10000})
-
-# 在等待期间可以做其他事情
-print("任务已提交，继续执行其他操作...")
-
-# 等待结果
-if task.wait(task_id, 15000):
-    result = task.result(task_id)
-    print(f"找到 {result['count']} 个目标")
-else:
-    print("图像处理超时")
-```
-
-== Lua
-
-```lua:line-numbers
-local task = require("wingman.task")
-local screen = require("wingman.screen")
-local vision = require("wingman.vision")
-
-local function processImage(ctx)
-    -- 在后台线程处理图像
-    local img = screen.capture(0, 0, 1920, 1080)
-    local targets = vision.findAllColors(img, {255, 0, 0})
-    return { count = #targets, targets = targets }
-end
-
--- 提交任务
-local taskId = task.submit(processImage, { timeoutMs = 10000 })
-
--- 在等待期间可以做其他事情
-print("任务已提交，继续执行其他操作...")
-
--- 等待结果
-if task.wait(taskId, 15000) then
-    local result = task.result(taskId)
-    print("找到 " .. result.count .. " 个目标")
-else
-    print("图像处理超时")
-end
-```
-
-:::
-
-### 带重试的网络请求
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import task, http
-
-def fetch_api(ctx):
-    """可能失败的网络请求"""
-    response = http.get("https://api.example.com/data")
-
-    if response['status'] != 200:
-        raise Exception(f"HTTP {response['status']}")
-
-    return response['json']
-
-# 提交带重试的任务
-task_id = task.submit(fetch_api, {
-    "timeoutMs": 5000,
-    "retry": {"max": 3, "backoffMs": 1000}
-})
-
-if task.wait(task_id, 20000):
-    result = task.result(task_id)
-    print(f"获取数据成功: {result}")
-else:
-    error = task.error(task_id)
-    print(f"请求失败: {error}")
-```
-
-== Lua
-
-```lua:line-numbers
-local task = require("wingman.task")
-local http = require("wingman.http")
-
-local function fetchApi(ctx)
-    -- 可能失败的网络请求
-    local response = http.get("https://api.example.com/data")
-
-    if response.status ~= 200 then
-        error("HTTP " .. response.status)
-    end
-
-    return response.json
-end
-
--- 提交带重试的任务
-local taskId = task.submit(fetchApi, {
-    timeoutMs = 5000,
-    maxRetries = 3,
-    backoffMs = 1000
-})
-
-if task.wait(taskId, 20000) then
-    local result = task.result(taskId)
-    print("获取数据成功: " .. result.value)
-else
-    local err = task.error(taskId)
-    print("请求失败: " .. err)
-end
-```
-
-:::
-
-### 批量任务处理
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import task, vision, input
-
-def click_target(ctx):
-    """点击单个目标"""
-    x, y = ctx['target']
-    input.click(x, y)
-    return {"clicked": (x, y)}
-
-# 批量提交任务
-targets = vision.find_all_colors((255, 0, 0))
-task_ids = []
-
-for target in targets:
-    task_id = task.submit(click_target, {
-        "metadata": {"target": target}
-    })
-    task_ids.append(task_id)
-
-# 等待所有任务完成
-results = []
-for task_id in task_ids:
-    if task.wait(task_id, 5000):
-        results.append(task.result(task_id))
-
-print(f"已点击 {len(results)} 个目标")
-```
-
-== Lua
-
-```lua:line-numbers
-local task = require("wingman.task")
-local vision = require("wingman.vision")
-local input = require("wingman.input")
-
-local function clickTarget(ctx)
-    -- 点击单个目标
-    local t = ctx.target
-    input.click(t.x, t.y)
-    return { clicked = {x = t.x, y = t.y} }
-end
-
--- 批量提交任务
-local targets = vision.findAllColors({255, 0, 0})
-local taskIds = {}
-
-for i, target in ipairs(targets) do
-    local taskId = task.submit(clickTarget, {
-        metadata = { target = target }
-    })
-    table.insert(taskIds, taskId)
-end
-
--- 等待所有任务完成
-local results = {}
-for i, taskId in ipairs(taskIds) do
-    if task.wait(taskId, 5000) then
-        table.insert(results, task.result(taskId))
-    end
-end
-
-print("已点击 " .. #results .. " 个目标")
-```
-
-:::
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `submit(work, options?)` | `submit(work, options?)` | 提交任务 | work: 工作函数<br>options: 配置(可选)<br>返回: 任务ID |
+| `cancel(taskId)` | `cancel(taskId)` | 取消任务 | taskId: 任务ID<br>返回: 是否成功 |
+| `status(taskId)` | `status(taskId)` | 获取状态 | taskId: 任务ID<br>返回: 状态字符串 |
+| `wait(taskId, timeoutMs?)` | `wait(taskId, timeoutMs?)` | 等待完成 | taskId: 任务ID<br>timeoutMs: 等待超时(默认30000)<br>返回: 是否完成 |
+| `result(taskId)` | `result(taskId)` | 获取结果 | taskId: 任务ID<br>返回: 任务结果 |
+| `error(taskId)` | `error(taskId)` | 获取错误 | taskId: 任务ID<br>返回: 错误信息 |
+| `retry(taskId, options?)` | `retry(taskId, options?)` | 重试任务 | taskId: 任务ID<br>options: 重试配置(可选)<br>返回: 是否成功 |
 
 ---
 
 ## 生命周期事件
 
 任务生命周期会触发以下事件：
+
+| 事件名 | 说明 | 载荷字段 |
+|--------|------|---------|
+| `task.submitted` | 任务已提交 | taskId, metadata |
+| `task.started` | 任务开始执行 | taskId, metadata |
+| `task.succeeded` | 任务成功 | taskId, metadata |
+| `task.failed` | 任务失败 | taskId, metadata, error |
+| `task.canceled` | 任务已取消 | taskId, metadata |
+| `task.timeout` | 任务超时 | taskId, metadata, error |
 
 :::tabs
 
@@ -372,11 +367,11 @@ print("已点击 " .. #results .. " 个目标")
 from wingman import event
 
 event.on("task.submitted", lambda e: print(f"任务提交: {e['payload']['taskId']}"))
-event.on("task.started", lambda e: print(f"任务开始"))
-event.on("task.succeeded", lambda e: print(f"任务成功"))
+event.on("task.started", lambda e: print("任务开始"))
+event.on("task.succeeded", lambda e: print("任务成功"))
 event.on("task.failed", lambda e: print(f"任务失败: {e['payload']['error']}"))
-event.on("task.canceled", lambda e: print(f"任务取消"))
-event.on("task.timeout", lambda e: print(f"任务超时"))
+event.on("task.canceled", lambda e: print("任务取消"))
+event.on("task.timeout", lambda e: print("任务超时"))
 ```
 
 == Lua
@@ -405,93 +400,3 @@ end)
 ```
 
 :::
-
-事件载荷包含：
-- `taskId`: 任务 ID
-- `status`: 当前状态
-- `metadata`: 元数据
-- `error`: 错误信息（仅失败/超时时）
-
----
-
-## 可用接口
-
-### `submit(work, options?)` / `submit(work, options?)`
-
-提交一个异步任务。
-
-**参数：**
-- `work` - 工作函数，将在后台线程执行
-- `options` - 可选配置
-  - `timeoutMs` - 超时时间（毫秒），默认 30000
-  - `maxRetries` / `retry.max` - 最大重试次数，默认 0
-  - `backoffMs` / `retry.backoffMs` - 重试退避基数（毫秒），默认 500
-  - `backoffFactor` / `retry.backoffFactor` - 退避因子，默认 2.0
-  - `metadata` - 元数据（任意 JSON 对象）
-
-**返回：**
-- `number/string` - 任务 ID
-
-### `cancel(taskId)` / `cancel(taskId)`
-
-取消任务。
-
-**参数：**
-- `taskId` - 任务 ID
-
-**返回：**
-- `boolean` - 是否成功
-
-### `status(taskId)` / `status(taskId)`
-
-获取任务状态。
-
-**参数：**
-- `taskId` - 任务 ID
-
-**返回：**
-- `string` - 状态字符串：`"pending"`, `"running"`, `"succeeded"`, `"failed"`, `"canceled"`, `"timeout"`
-
-### `wait(taskId, timeoutMs?)` / `wait(taskId, timeoutMs?)`
-
-等待任务完成。
-
-**参数：**
-- `taskId` - 任务 ID
-- `timeoutMs` - 可选，等待超时（毫秒），默认 30000
-
-**返回：**
-- `boolean` - 是否在超时前完成
-
-### `result(taskId)` / `result(taskId)`
-
-获取任务结果。
-
-**参数：**
-- `taskId` - 任务 ID
-
-**返回：**
-- `any` - 任务返回值，如果任务失败或未完成返回 `null`/`nil`
-
-### `error(taskId)` / `error(taskId)`
-
-获取任务错误信息。
-
-**参数：**
-- `taskId` - 任务 ID
-
-**返回：**
-- `string` - 错误信息字符串，无错误返回空字符串
-
-### `retry(taskId, options?)` / `retry(taskId, options?)`
-
-重试失败的任务。
-
-**参数：**
-- `taskId` - 任务 ID
-- `options` - 可选重试配置
-  - `maxRetries` / `max` - 最大重试次数
-  - `backoffMs` - 重试退避基数
-
-**返回：**
-- `boolean` - 是否成功发起重试

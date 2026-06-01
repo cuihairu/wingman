@@ -2,7 +2,39 @@
 
 人性化模拟模块，为自动化操作添加随机性和自然感。
 
+## 模块概述
+
+human 模块提供人性化操作模拟功能：
+- **随机延迟** - 在指定范围内随机延迟
+- **平滑移动** - 使用贝塞尔曲线平滑移动鼠标
+- **自然点击** - 模拟人类点击节奏
+- **自然输入** - 模拟人类输入节奏
+- **参数配置** - 设置延迟范围、移动速度、变异度
+
+---
+
 ## 随机延迟
+
+### random_delay(min?, max?) / randomDelay(min?, max?)
+
+**说明**：在指定范围内随机延迟。
+
+**函数签名**：
+
+```python
+random_delay(min: int = 100, max: int = 300) -> None
+```
+
+```lua
+randomDelay(min: number = 100, max: number = 300) -> nil
+```
+
+**参数**：
+- `min` - 可选，最小延迟（毫秒），默认 100
+- `max` - 可选，最大延迟（毫秒），默认 300
+
+**返回**：
+- 无
 
 :::tabs
 
@@ -32,14 +64,38 @@ human.randomDelay()
 
 :::
 
-## 贝塞尔曲线鼠标移动
+---
+
+## 平滑移动鼠标
+
+### move_mouse(x1, y1, x2, y2, duration?) / moveMouse(x1, y1, x2, y2, duration?)
+
+**说明**：使用贝塞尔曲线平滑移动鼠标。
+
+**函数签名**：
+
+```python
+move_mouse(x1: int, y1: int, x2: int, y2: int, duration: int = 500) -> None
+```
+
+```lua
+moveMouse(x1: number, y1: number, x2: number, y2: number, duration: number = 500) -> nil
+```
+
+**参数**：
+- `x1, y1` - 起始坐标
+- `x2, y2` - 目标坐标
+- `duration` - 可选，移动时长（毫秒），默认 500
+
+**返回**：
+- 无
 
 :::tabs
 
 == Python
 
 ```python:line-numbers
-from wingman import human, input
+from wingman import human
 
 # 使用贝塞尔曲线平滑移动鼠标
 human.move_mouse(100, 100, 500, 300, duration=500)
@@ -49,7 +105,6 @@ human.move_mouse(100, 100, 500, 300, duration=500)
 
 ```lua:line-numbers
 local human = require("wingman.human")
-local input = require("wingman.input")
 
 -- 使用贝塞尔曲线平滑移动鼠标
 human.moveMouse(100, 100, 500, 300, 500)
@@ -57,14 +112,37 @@ human.moveMouse(100, 100, 500, 300, 500)
 
 :::
 
-## 模拟人类点击节奏
+---
+
+## 模拟人类点击
+
+### natural_click(x, y, button?) / naturalClick(x, y, button?)
+
+**说明**：模拟人类点击节奏（包含随机延迟）。
+
+**函数签名**：
+
+```python
+natural_click(x: int, y: int, button: str = "left") -> None
+```
+
+```lua
+naturalClick(x: number, y: number, button: string = "left") -> nil
+```
+
+**参数**：
+- `x, y` - 点击坐标
+- `button` - 可选，按键类型，默认 `"left"`，可选 `"left"`, `"right"`, `"middle"`
+
+**返回**：
+- 无
 
 :::tabs
 
 == Python
 
 ```python:line-numbers
-from wingman import human, input
+from wingman import human
 
 # 模拟人类点击节奏（带随机延迟）
 human.natural_click(100, 200)
@@ -74,7 +152,6 @@ human.natural_click(100, 200)
 
 ```lua:line-numbers
 local human = require("wingman.human")
-local input = require("wingman.input")
 
 -- 模拟人类点击节奏（带随机延迟）
 human.naturalClick(100, 200)
@@ -82,14 +159,36 @@ human.naturalClick(100, 200)
 
 :::
 
-## 模拟人类输入节奏
+---
+
+## 模拟人类输入
+
+### natural_type(text) / naturalType(text)
+
+**说明**：模拟人类输入节奏（包含随机按键延迟）。
+
+**函数签名**：
+
+```python
+natural_type(text: str) -> None
+```
+
+```lua
+naturalType(text: string) -> nil
+```
+
+**参数**：
+- `text` - 要输入的文本
+
+**返回**：
+- 无
 
 :::tabs
 
 == Python
 
 ```python:line-numbers
-from wingman import human, input
+from wingman import human
 
 # 模拟人类输入节奏（带随机按键延迟）
 human.natural_type("Hello World")
@@ -99,7 +198,6 @@ human.natural_type("Hello World")
 
 ```lua:line-numbers
 local human = require("wingman.human")
-local input = require("wingman.input")
 
 -- 模拟人类输入节奏（带随机按键延迟）
 human.naturalType("Hello World")
@@ -107,7 +205,103 @@ human.naturalType("Hello World")
 
 :::
 
-## 设置人性化参数
+---
+
+## 设置延迟范围
+
+### set_delay_range(min, max) / setDelayRange(min, max)
+
+**说明**：设置全局随机延迟范围。
+
+**函数签名**：
+
+```python
+set_delay_range(min: int, max: int) -> None
+```
+
+```lua
+setDelayRange(min: number, max: number) -> nil
+```
+
+**参数**：
+- `min` - 最小延迟（毫秒）
+- `max` - 最大延迟（毫秒）
+
+**返回**：
+- 无
+
+---
+
+## 设置移动速度
+
+### set_move_speed(speed) / setMoveSpeed(speed)
+
+**说明**：设置鼠标移动速度。
+
+**函数签名**：
+
+```python
+set_move_speed(speed: float) -> None
+```
+
+```lua
+setMoveSpeed(speed: number) -> nil
+```
+
+**参数**：
+- `speed` - 速度系数（0.1-2.0），1.0 为正常速度
+
+**返回**：
+- 无
+
+---
+
+## 设置输入变异度
+
+### set_typing_variance(variance) / setTypingVariance(variance)
+
+**说明**：设置输入节奏变异度。
+
+**函数签名**：
+
+```python
+set_typing_variance(variance: float) -> None
+```
+
+```lua
+setTypingVariance(variance: number) -> nil
+```
+
+**参数**：
+- `variance` - 变异度（0.0-1.0），0 为完全规律，1 为高度随机
+
+**返回**：
+- 无
+
+---
+
+## 设置参数
+
+### set_config(key, value) / setConfig(key, value)
+
+**说明**：设置单个配置参数。
+
+**函数签名**：
+
+```python
+set_config(key: str, value: Any) -> None
+```
+
+```lua
+setConfig(key: string, value: any) -> nil
+```
+
+**参数**：
+- `key` - 参数名
+- `value` - 参数值
+
+**返回**：
+- 无
 
 :::tabs
 
@@ -143,7 +337,27 @@ human.setTypingVariance(0.3)
 
 :::
 
-## 获取当前配置
+---
+
+## 获取配置
+
+### get_config() / getConfig()
+
+**说明**：获取当前人性化配置。
+
+**函数签名**：
+
+```python
+get_config() -> dict
+```
+
+```lua
+getConfig() -> table
+```
+
+**返回**：
+- Python: 配置字典，包含 `delay_min`, `delay_max`, `move_speed`, `typing_variance` 等字段
+- Lua: 配置表格
 
 :::tabs
 
@@ -173,132 +387,16 @@ print("输入变异度: " .. config.typing_variance)
 
 ---
 
-## 完整示例
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import human, input, screen
-
-# 设置人性化参数
-human.set_delay_range(80, 200)
-human.set_move_speed(0.7)
-
-# 模拟人类操作流程
-# 1. 随机延迟
-human.random_delay()
-
-# 2. 平滑移动到按钮
-human.move_mouse(400, 300, 450, 350, duration=400)
-human.random_delay(50, 100)
-
-# 3. 自然点击
-human.natural_click(450, 350)
-human.random_delay()
-
-# 4. 输入文本（带随机节奏）
-human.natural_type("player123")
-human.random_delay(100, 200)
-
-# 5. 点击登录按钮
-human.natural_click(450, 400)
-```
-
-== Lua
-
-```lua:line-numbers
-local human = require("wingman.human")
-local input = require("wingman.input")
-
--- 设置人性化参数
-human.setDelayRange(80, 200)
-human.setMoveSpeed(0.7)
-
--- 模拟人类操作流程
--- 1. 随机延迟
-human.randomDelay()
-
--- 2. 平滑移动到按钮
-human.moveMouse(400, 300, 450, 350, 500)
-human.randomDelay(50, 100)
-
--- 3. 自然点击
-human.naturalClick(450, 350)
-human.randomDelay()
-
--- 4. 输入文本（带随机节奏）
-human.naturalType("player123")
-human.randomDelay(100, 200)
-
--- 5. 点击登录按钮
-human.naturalClick(450, 400)
-```
-
-:::
-
----
-
 ## 可用接口
 
-### `random_delay(min?, max?)` / `randomDelay(min?, max?)`
-
-随机延迟。
-
-**参数：**
-- `min` - 最小延迟（毫秒），默认 100
-- `max` - 最大延迟（毫秒），默认 300
-
-### `move_mouse(x1, y1, x2, y2, duration?)` / `moveMouse(x1, y1, x2, y2, duration?)`
-
-使用贝塞尔曲线平滑移动鼠标。
-
-**参数：**
-- `x1, y1` - 起始坐标
-- `x2, y2` - 目标坐标
-- `duration` - 移动时长（毫秒），默认 500
-
-### `natural_click(x, y, button?)` / `naturalClick(x, y, button?)`
-
-模拟人类点击节奏。
-
-**参数：**
-- `x, y` - 点击坐标
-- `button` - 按键类型，默认 `"left"`
-
-### `natural_type(text)` / `naturalType(text)`
-
-模拟人类输入节奏。
-
-**参数：**
-- `text` - 要输入的文本
-
-### `set_delay_range(min, max)` / `setDelayRange(min, max)`
-
-设置全局随机延迟范围。
-
-**参数：**
-- `min` - 最小延迟（毫秒）
-- `max` - 最大延迟（毫秒）
-
-### `set_move_speed(speed)` / `setMoveSpeed(speed)`
-
-设置鼠标移动速度。
-
-**参数：**
-- `speed` - 速度系数（0.1-2.0），1.0 为正常速度
-
-### `set_typing_variance(variance)` / `setTypingVariance(variance)`
-
-设置输入节奏变异度。
-
-**参数：**
-- `variance` - 变异度（0.0-1.0），0 为完全规律，1 为高度随机
-
-### `get_config()` / `getConfig()`
-
-获取当前人性化配置。
-
-**返回：**
-- `dict/table` - 包含当前配置参数
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `random_delay(min?, max?)` | `randomDelay(min?, max?)` | 随机延迟 | min: 最小延迟(默认100)<br>max: 最大延迟(默认300) |
+| `move_mouse(x1, y1, x2, y2, duration?)` | `moveMouse(x1, y1, x2, y2, duration?)` | 平滑移动鼠标 | x1, y1: 起始坐标<br>x2, y2: 目标坐标<br>duration: 时长(默认500) |
+| `natural_click(x, y, button?)` | `naturalClick(x, y, button?)` | 模拟人类点击 | x, y: 点击坐标<br>button: 按键类型(默认left) |
+| `natural_type(text)` | `naturalType(text)` | 模拟人类输入 | text: 要输入的文本 |
+| `set_delay_range(min, max)` | `setDelayRange(min, max)` | 设置延迟范围 | min: 最小延迟<br>max: 最大延迟 |
+| `set_move_speed(speed)` | `setMoveSpeed(speed)` | 设置移动速度 | speed: 速度系数(0.1-2.0) |
+| `set_typing_variance(variance)` | `setTypingVariance(variance)` | 设置输入变异度 | variance: 变异度(0.0-1.0) |
+| `set_config(key, value)` | `setConfig(key, value)` | 设置配置参数 | key: 参数名<br>value: 参数值 |
+| `get_config()` | `getConfig()` | 获取配置 | 返回: 配置对象 |
