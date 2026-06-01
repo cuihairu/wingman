@@ -132,7 +132,7 @@ bool Process::wait(ProcessId pid, int timeoutMs) {
     return result == WAIT_OBJECT_0;
 }
 
-bool Process::terminate(ProcessId pid, bool force) {
+bool Process::terminate(ProcessId pid, bool /*force*/) {
     HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
     if (!hProcess) {
         return false;

@@ -34,7 +34,7 @@ std::string System::readRegistryValue(const std::string& path, const std::string
 
     char buffer[256];
     DWORD size = sizeof(buffer);
-    DWORD type = REG_SZ;
+    [[maybe_unused]] DWORD type = REG_SZ;
 
     if (RegQueryValueExA(hKey, value.c_str(), nullptr, nullptr,
                         reinterpret_cast<LPBYTE>(buffer), &size) != ERROR_SUCCESS) {

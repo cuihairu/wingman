@@ -285,7 +285,6 @@ public:
             int result;
         } data = {point, -1};
 
-        int index = 0;
         EnumDisplayMonitors(nullptr, nullptr,
             [](HMONITOR hMonitor, HDC, LPRECT, LPARAM lParam) -> BOOL {
                 auto* d = reinterpret_cast<PointData*>(lParam);
@@ -313,7 +312,6 @@ public:
             int result;
         } data = {hMonitor, -1};
 
-        int index = 0;
         EnumDisplayMonitors(nullptr, nullptr,
             [](HMONITOR hMonitor, HDC, LPRECT, LPARAM lParam) -> BOOL {
                 auto* d = reinterpret_cast<MonitorData*>(lParam);

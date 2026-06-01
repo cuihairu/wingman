@@ -166,7 +166,7 @@ public:
                 continue;
             }
 
-            WORD scanCode = MapVirtualKeyA(LOBYTE(vk), 0);
+            WORD scanCode = static_cast<WORD>(MapVirtualKeyA(LOBYTE(vk), 0));
 
             INPUT inputs[2] = {};
             inputs[0].type = INPUT_KEYBOARD;

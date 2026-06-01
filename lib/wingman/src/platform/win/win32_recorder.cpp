@@ -190,10 +190,10 @@ void MacroRecorder::playback(int speed, int repeat) const {
     if (m_events.empty()) return;
 
     for (int r = 0; r < repeat; ++r) {
-        DWORD lastTimestamp = m_events[0].timestamp;
+        DWORD lastTimestamp = static_cast<DWORD>(m_events[0].timestamp);
 
         for (const auto& event : m_events) {
-            DWORD delay = (event.timestamp - lastTimestamp) * 100 / speed;
+            DWORD delay = static_cast<DWORD>((event.timestamp - lastTimestamp) * 100 / speed);
             if (delay > 0) {
                 Input::delay(delay);
             }
@@ -223,7 +223,7 @@ void MacroRecorder::playback(int speed, int repeat) const {
                     break;
             }
 
-            lastTimestamp = event.timestamp;
+            lastTimestamp = static_cast<DWORD>(event.timestamp);
         }
     }
 }

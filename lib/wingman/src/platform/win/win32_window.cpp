@@ -162,7 +162,7 @@ public:
         return setBounds(hwnd, bounds);
     }
 
-    bool center(WindowHandle hwnd, int monitorIndex) override {
+    bool center(WindowHandle hwnd, int /*monitorIndex*/) override {
         if (!isValid(hwnd)) {
             return false;
         }
