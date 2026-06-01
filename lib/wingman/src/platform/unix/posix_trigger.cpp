@@ -14,8 +14,12 @@
 #include <chrono>
 #include <thread>
 #include <algorithm>
+#include <unordered_map>
 #include <cstring>
 #include <sys/time.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 namespace wingman {
 
@@ -235,8 +239,14 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
     switch (cond.type) {
         case TriggerType::ColorFound: {
             Point result;
+            unsigned long colorVal = 0;
+            try {
+                colorVal = std::stoul(cond.value, nullptr, 0);
+            } catch (...) {
+                return false;
+            }
             return Screen::findColor(
-                Color::fromRGB(std::stoul(cond.value)),
+                Color::fromRGB(colorVal),
                 cond.region,
                 cond.tolerance,
                 result
@@ -270,9 +280,19 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
         }
 
         case TriggerType::PixelChanged: {
-            static Color lastPixel;
-            Color currentPixel = Screen::getPixel(cond.region.x, cond.region.y);
+            static std::unordered_map<size_t, Color> lastPixelMap;
+            static std::unordered_map<size_t, bool> firstCheckMap;
 
+            Color currentPixel = Screen::getPixel(cond.region.x, cond.region.y);
+            bool& firstCheck = firstCheckMap[trigger.id];
+
+            if (firstCheckMap.find(trigger.id) == firstCheckMap.end() || firstCheck) {
+                lastPixelMap[trigger.id] = currentPixel;
+                firstCheck = false;
+                return false;
+            }
+
+            Color& lastPixel = lastPixelMap[trigger.id];
             if (lastPixel.distance(currentPixel) > cond.tolerance * cond.tolerance) {
                 lastPixel = currentPixel;
                 return true;
@@ -357,26 +377,68 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
 }
 
 void TriggerManager::showMessage(const std::string& message) {
+    // Sanitize: only allow printable ASCII, reject shell metacharacters
+    auto sanitize = [](const std::string& s) -> std::string {
+        std::string out;
+        for (char c : s) {
+            if (c >= ' ' && c <= '~' && c != '\'' && c != '"' &&
+                c != '\\' && c != '$' && c != '`' && c != '!' && c != '(' && c != ')') {
+                out += c;
+            }
+        }
+        return out;
+    };
+    std::string safe = sanitize(message);
+
 #if defined(__linux__)
-    // Linux: use zenity or kdialog
-    system(("zenity --info --text='" + message + "' 2>/dev/null || "
-           "kdialog --msgbox '" + message + "' 2>/dev/null || "
-           "echo '" + message + "'").c_str());
+    // Use execvp via fork to avoid shell injection
+    pid_t pid = fork();
+    if (pid == 0) {
+        execlp("zenity", "zenity", "--info", "--text", safe.c_str(), nullptr);
+        _exit(127);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+    }
 #elif defined(__APPLE__)
-    // macOS: use osascript
-    system(("osascript -e 'display dialog \"" + message + "\" buttons \"OK\"' 2>/dev/null || "
-           "echo '" + message + "'").c_str());
+    pid_t pid = fork();
+    if (pid == 0) {
+        execlp("osascript", "osascript", "-e",
+               ("display dialog \"" + safe + "\" buttons \"OK\"").c_str(), nullptr);
+        _exit(127);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+    }
 #endif
 }
 
 void TriggerManager::playAudio(const std::string& filepath) {
+    // Validate filepath exists and is a regular file
+    struct stat st;
+    if (stat(filepath.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {
+        spdlog::warn("playAudio: invalid file path: {}", filepath);
+        return;
+    }
+
 #if defined(__linux__)
-    // Linux: use aplay or paplay
-    system(("aplay '" + filepath + "' 2>/dev/null || "
-           "paplay '" + filepath + "' 2>/dev/null").c_str());
+    pid_t pid = fork();
+    if (pid == 0) {
+        execlp("aplay", "aplay", filepath.c_str(), nullptr);
+        _exit(127);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+    }
 #elif defined(__APPLE__)
-    // macOS: use afplay
-    system(("afplay '" + filepath + "' 2>/dev/null").c_str());
+    pid_t pid = fork();
+    if (pid == 0) {
+        execlp("afplay", "afplay", filepath.c_str(), nullptr);
+        _exit(127);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+    }
 #endif
 }
 

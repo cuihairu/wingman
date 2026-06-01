@@ -309,35 +309,9 @@ bool SecurityManager::verifyIntegrity() {
         return true;
     }
 
-    // Get current module handle
-    HMODULE hModule = GetModuleHandleA(nullptr);
-    if (!hModule) return false;
-
-    MODULEINFO modInfo;
-    if (!GetModuleInformation(GetCurrentProcess(), hModule, &modInfo, sizeof(modInfo))) {
-        return false;
-    }
-
-    // Calculate module hash
-    HCRYPTPROV hProv = 0;
-    if (!CryptAcquireContextA(&hProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
-        return false;
-    }
-
-    HCRYPTHASH hHash = 0;
-    if (!CryptCreateHash(hProv, CALG_SHA1, 0, 0, &hHash)) {
-        CryptReleaseContext(hProv, 0);
-        return false;
-    }
-
-    bool valid = CryptHashData(hHash, (BYTE*)hModule, modInfo.SizeOfImage, 0);
-
-    // TODO: Compare with stored hash
-
-    CryptDestroyHash(hHash);
-    CryptReleaseContext(hProv, 0);
-
-    return valid;
+    spdlog::warn("verifyIntegrity: integrity checking is not yet implemented "
+                 "(no baseline hash configured). Returning false.");
+    return false;
 }
 
 // ========== Code Signing ==========

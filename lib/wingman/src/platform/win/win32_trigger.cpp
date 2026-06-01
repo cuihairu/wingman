@@ -250,8 +250,15 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
     switch (cond.type) {
         case TriggerType::ColorFound: {
             Point result;
+            // Support "0xFF0000" (hex with prefix) and "16711680" (decimal)
+            unsigned long colorVal = 0;
+            try {
+                colorVal = std::stoul(cond.value, nullptr, 0);  // auto-detect base from "0x" prefix
+            } catch (...) {
+                return false;
+            }
             return Screen::findColor(
-                Color::fromRGB(std::stoul(cond.value)),
+                Color::fromRGB(colorVal),
                 cond.region,
                 cond.tolerance,
                 result
@@ -285,16 +292,20 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
         }
 
         case TriggerType::PixelChanged: {
-            static Color lastPixel{};
-            static bool firstCheck = true;
+            // Per-trigger pixel state to avoid cross-trigger pollution
+            static std::unordered_map<size_t, Color> lastPixelMap;
+            static std::unordered_map<size_t, bool> firstCheckMap;
+
             Color currentPixel = Screen::getPixel(cond.region.x, cond.region.y);
+            bool& firstCheck = firstCheckMap[trigger.id];
 
             if (firstCheck) {
-                lastPixel = currentPixel;
+                lastPixelMap[trigger.id] = currentPixel;
                 firstCheck = false;
                 return false;
             }
 
+            Color& lastPixel = lastPixelMap[trigger.id];
             if (lastPixel.distance(currentPixel) > cond.tolerance * cond.tolerance) {
                 lastPixel = currentPixel;
                 return true;

@@ -739,7 +739,14 @@ int System::getProcessCount() {
 }
 
 int System::getThreadCount() {
-    // Not supported yet
+    // Read /proc/self/status for Threads: count
+    std::ifstream ifs("/proc/self/status");
+    std::string line;
+    while (std::getline(ifs, line)) {
+        if (line.rfind("Threads:", 0) == 0) {
+            return std::stoi(line.substr(8));
+        }
+    }
     return 0;
 }
 

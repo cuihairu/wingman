@@ -45,92 +45,181 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
         return false;
     }
 
+    auto parseActionType = [](const char* type) -> std::optional<BasicTriggerAction> {
+        if (!type) return std::nullopt;
+        if (strcmp(type, "key") == 0 || strcmp(type, "KeyPress") == 0) return BasicTriggerAction::KeyPress;
+        if (strcmp(type, "click") == 0 || strcmp(type, "Click") == 0) return BasicTriggerAction::Click;
+        if (strcmp(type, "macro") == 0 || strcmp(type, "RunScript") == 0) return BasicTriggerAction::RunScript;
+        if (strcmp(type, "Type") == 0) return BasicTriggerAction::Type;
+        if (strcmp(type, "StopScript") == 0) return BasicTriggerAction::StopScript;
+        if (strcmp(type, "PauseScript") == 0) return BasicTriggerAction::PauseScript;
+        if (strcmp(type, "ShowMessage") == 0) return BasicTriggerAction::ShowMessage;
+        if (strcmp(type, "PlayAudio") == 0) return BasicTriggerAction::PlayAudio;
+        if (strcmp(type, "Log") == 0) return BasicTriggerAction::Log;
+        return std::nullopt;
+    };
+
+    auto parseConditionType = [](const char* type) -> std::optional<TriggerType> {
+        if (!type) return std::nullopt;
+        if (strcmp(type, "pixel") == 0 || strcmp(type, "ColorFound") == 0) return TriggerType::ColorFound;
+        if (strcmp(type, "ColorLost") == 0) return TriggerType::ColorLost;
+        if (strcmp(type, "image") == 0 || strcmp(type, "ImageFound") == 0) return TriggerType::ImageFound;
+        if (strcmp(type, "ImageLost") == 0) return TriggerType::ImageLost;
+        if (strcmp(type, "WindowOpened") == 0) return TriggerType::WindowOpened;
+        if (strcmp(type, "WindowClosed") == 0) return TriggerType::WindowClosed;
+        if (strcmp(type, "ProcessStarted") == 0) return TriggerType::ProcessStarted;
+        if (strcmp(type, "ProcessStopped") == 0) return TriggerType::ProcessStopped;
+        if (strcmp(type, "TimeElapsed") == 0) return TriggerType::TimeElapsed;
+        if (strcmp(type, "HotkeyPressed") == 0) return TriggerType::HotkeyPressed;
+        if (strcmp(type, "PixelChanged") == 0) return TriggerType::PixelChanged;
+        return std::nullopt;
+    };
+
+    // Parse a single action table at stack top
+    auto parseAction = [&](lua_State* Ls) -> TriggerActionData {
+        TriggerActionData action{};
+
+        lua_getfield(Ls, -1, "type");
+        auto at = parseActionType(lua_tostring(Ls, -1));
+        if (at) action.type = *at;
+        lua_pop(Ls, 1);
+
+        lua_getfield(Ls, -1, "value");
+        if (lua_isstring(Ls, -1)) action.value = lua_tostring(Ls, -1);
+        lua_pop(Ls, 1);
+
+        lua_getfield(Ls, -1, "key");
+        if (lua_isstring(Ls, -1)) action.value = lua_tostring(Ls, -1);
+        lua_pop(Ls, 1);
+
+        lua_getfield(Ls, -1, "x");
+        action.x = static_cast<int>(lua_tointeger(Ls, -1));
+        lua_pop(Ls, 1);
+
+        lua_getfield(Ls, -1, "y");
+        action.y = static_cast<int>(lua_tointeger(Ls, -1));
+        lua_pop(Ls, 1);
+
+        lua_getfield(Ls, -1, "delay");
+        action.delay = static_cast<int>(lua_tointeger(Ls, -1));
+        lua_pop(Ls, 1);
+
+        return action;
+    };
+
+    // Parse region: supports both array {x,y,w,h} and object {x=,y=,width=,height=}
+    auto parseRegion = [](lua_State* Ls, Rect& region) {
+        if (!lua_istable(Ls, -1)) return;
+
+        // Try object format first
+        lua_getfield(Ls, -1, "x");
+        if (lua_isnumber(Ls, -1)) {
+            region.x = static_cast<int>(lua_tointeger(Ls, -1));
+            lua_pop(Ls, 1);
+            lua_getfield(Ls, -1, "y");
+            region.y = static_cast<int>(lua_tointeger(Ls, -1));
+            lua_pop(Ls, 1);
+            lua_getfield(Ls, -1, "width");
+            region.width = static_cast<int>(lua_tointeger(Ls, -1));
+            lua_pop(Ls, 1);
+            lua_getfield(Ls, -1, "height");
+            region.height = static_cast<int>(lua_tointeger(Ls, -1));
+            lua_pop(Ls, 1);
+            return;
+        }
+        lua_pop(Ls, 1);
+
+        // Fallback to array format {x, y, w, h}
+        lua_rawgeti(Ls, -1, 1);
+        region.x = static_cast<int>(lua_tointeger(Ls, -1));
+        lua_pop(Ls, 1);
+        lua_rawgeti(Ls, -1, 2);
+        region.y = static_cast<int>(lua_tointeger(Ls, -1));
+        lua_pop(Ls, 1);
+        lua_rawgeti(Ls, -1, 3);
+        region.width = static_cast<int>(lua_tointeger(Ls, -1));
+        lua_pop(Ls, 1);
+        lua_rawgeti(Ls, -1, 4);
+        region.height = static_cast<int>(lua_tointeger(Ls, -1));
+        lua_pop(Ls, 1);
+    };
+
     lua_pushnil(L);
     while (lua_next(L, -2) != 0) {
         if (lua_istable(L, -1)) {
             TriggerConfig config;
+            config.enabled = true;
 
             lua_getfield(L, -1, "name");
-            if (lua_isstring(L, -1)) {
-                config.name = lua_tostring(L, -1);
-            }
+            if (lua_isstring(L, -1)) config.name = lua_tostring(L, -1);
             lua_pop(L, 1);
 
             lua_getfield(L, -1, "enabled");
-            config.enabled = lua_toboolean(L, -1);
+            if (lua_isboolean(L, -1)) config.enabled = lua_toboolean(L, -1);
             lua_pop(L, 1);
 
+            lua_getfield(L, -1, "oneShot");
+            config.oneShot = lua_toboolean(L, -1);
+            lua_pop(L, 1);
+
+            // Parse condition
             lua_getfield(L, -1, "condition");
             if (lua_istable(L, -1)) {
                 lua_getfield(L, -1, "type");
-                const char* type = lua_tostring(L, -1);
-                if (type) {
-                    if (strcmp(type, "pixel") == 0) {
-                        config.condition.type = TriggerType::ColorFound;
-                    } else if (strcmp(type, "image") == 0) {
-                        config.condition.type = TriggerType::ImageFound;
-                    }
-                }
+                auto ct = parseConditionType(lua_tostring(L, -1));
+                if (ct) config.condition.type = *ct;
                 lua_pop(L, 1);
 
-                lua_getfield(L, -1, "color");
-                if (lua_isstring(L, -1)) {
-                    config.condition.value = lua_tostring(L, -1);
-                }
+                // Support both "value" and "color" field names
+                lua_getfield(L, -1, "value");
+                if (lua_isstring(L, -1)) config.condition.value = lua_tostring(L, -1);
                 lua_pop(L, 1);
+
+                if (config.condition.value.empty()) {
+                    lua_getfield(L, -1, "color");
+                    if (lua_isstring(L, -1)) config.condition.value = lua_tostring(L, -1);
+                    lua_pop(L, 1);
+                }
 
                 lua_getfield(L, -1, "region");
-                if (lua_istable(L, -1)) {
-                    lua_rawgeti(L, -1, 1);
-                    config.condition.region.x = static_cast<int>(lua_tointeger(L, -1));
-                    lua_pop(L, 1);
-
-                    lua_rawgeti(L, -1, 2);
-                    config.condition.region.y = static_cast<int>(lua_tointeger(L, -1));
-                    lua_pop(L, 1);
-
-                    lua_rawgeti(L, -1, 3);
-                    config.condition.region.width = static_cast<int>(lua_tointeger(L, -1));
-                    lua_pop(L, 1);
-
-                    lua_rawgeti(L, -1, 4);
-                    config.condition.region.height = static_cast<int>(lua_tointeger(L, -1));
-                    lua_pop(L, 1);
-                }
+                parseRegion(L, config.condition.region);
                 lua_pop(L, 1);
 
                 lua_getfield(L, -1, "tolerance");
                 config.condition.tolerance = static_cast<int>(lua_tointeger(L, -1));
                 lua_pop(L, 1);
+
+                lua_getfield(L, -1, "interval");
+                config.condition.interval = static_cast<int>(lua_tointeger(L, -1));
+                lua_pop(L, 1);
+
+                lua_getfield(L, -1, "enabled");
+                if (lua_isboolean(L, -1)) config.condition.enabled = lua_toboolean(L, -1);
+                lua_pop(L, 1);
             }
             lua_pop(L, 1);
 
-            lua_getfield(L, -1, "action");
+            // Parse actions array
+            lua_getfield(L, -1, "actions");
             if (lua_istable(L, -1)) {
-                TriggerActionData action;
-
-                lua_getfield(L, -1, "type");
-                const char* type = lua_tostring(L, -1);
-                if (type) {
-                    if (strcmp(type, "key") == 0) {
-                        action.type = BasicTriggerAction::KeyPress;
-                    } else if (strcmp(type, "click") == 0) {
-                        action.type = BasicTriggerAction::Click;
-                    } else if (strcmp(type, "macro") == 0) {
-                        action.type = BasicTriggerAction::RunScript;
+                lua_pushnil(L);
+                while (lua_next(L, -2) != 0) {
+                    if (lua_istable(L, -1)) {
+                        config.actions.push_back(parseAction(L));
                     }
+                    lua_pop(L, 1);
                 }
-                lua_pop(L, 1);
-
-                lua_getfield(L, -1, "key");
-                if (lua_isstring(L, -1)) {
-                    action.value = lua_tostring(L, -1);
-                }
-                lua_pop(L, 1);
-
-                config.actions.push_back(action);
             }
             lua_pop(L, 1);
+
+            // Fallback: single "action" table
+            if (config.actions.empty()) {
+                lua_getfield(L, -1, "action");
+                if (lua_istable(L, -1)) {
+                    config.actions.push_back(parseAction(L));
+                }
+                lua_pop(L, 1);
+            }
 
             lua_getfield(L, -1, "cooldown");
             config.cooldown = static_cast<int>(lua_tointeger(L, -1));

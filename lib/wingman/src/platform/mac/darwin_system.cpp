@@ -145,7 +145,7 @@ MemoryInfo System::getMemoryInfo() {
 
     vm_statistics64_data_t vmStats;
     mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
-    if (host_statistics64(mach_host_self(), HOST_VM_INFO,
+    if (host_statistics64(mach_host_self(), HOST_VM_INFO64,
                          (host_info64_t)&vmStats, &count) == KERN_SUCCESS) {
         uint64_t used = (vmStats.active_count + vmStats.wire_count) * pageSize;
         info.used = used;
@@ -372,12 +372,19 @@ std::string System::getTimeZone() {
 }
 
 int System::getProcessCount() {
-    int pidCount = proc_listpids(PROC_ALL_PIDS, 0, nullptr, 0);
-    return pidCount;
+    int bufSize = proc_listpids(PROC_ALL_PIDS, 0, nullptr, 0);
+    if (bufSize <= 0) return 0;
+    return bufSize / sizeof(pid_t);
 }
 
 int System::getThreadCount() {
-    return 0;
+    task_threads_info taskInfo;
+    mach_msg_type_number_t count = TASK_THREADS_INFO_COUNT;
+    if (task_info(mach_task_self(), TASK_THREADS_INFO,
+                  (task_info_t)&taskInfo, &count) != KERN_SUCCESS) {
+        return 0;
+    }
+    return taskInfo.thread_count;
 }
 
 } // namespace wingman
