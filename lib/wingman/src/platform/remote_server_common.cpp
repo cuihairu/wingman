@@ -385,22 +385,28 @@ RemoteResponse RemoteServer::handleAddTrigger(const nlohmann::json& params) {
             config.condition.region.height = cond["region"].value("height", 0);
         }
 
+        auto parseAction = [](const nlohmann::json& actionJson) -> TriggerActionData {
+            TriggerActionData action;
+            std::string actionType = actionJson.value("type", "Click");
+            if (actionType == "RunScript") action.type = BasicTriggerAction::RunScript;
+            else if (actionType == "Click") action.type = BasicTriggerAction::Click;
+            else if (actionType == "KeyPress") action.type = BasicTriggerAction::KeyPress;
+            else if (actionType == "Type") action.type = BasicTriggerAction::Type;
+            else action.type = BasicTriggerAction::Click;
+
+            action.value = actionJson.value("value", "");
+            action.x = actionJson.value("x", 0);
+            action.y = actionJson.value("y", 0);
+            action.delay = actionJson.value("delay", 0);
+            return action;
+        };
+
         if (params["config"].contains("actions")) {
             for (const auto& actionJson : params["config"]["actions"]) {
-                TriggerActionData action;
-                std::string actionType = actionJson.value("type", "Click");
-                if (actionType == "RunScript") action.type = BasicTriggerAction::RunScript;
-                else if (actionType == "Click") action.type = BasicTriggerAction::Click;
-                else if (actionType == "KeyPress") action.type = BasicTriggerAction::KeyPress;
-                else if (actionType == "Type") action.type = BasicTriggerAction::Type;
-                else action.type = BasicTriggerAction::Click;
-
-                action.value = actionJson.value("value", "");
-                action.x = actionJson.value("x", 0);
-                action.y = actionJson.value("y", 0);
-                action.delay = actionJson.value("delay", 0);
-                config.actions.push_back(action);
+                config.actions.push_back(parseAction(actionJson));
             }
+        } else if (params["config"].contains("action")) {
+            config.actions.push_back(parseAction(params["config"]["action"]));
         }
 
         size_t id = triggerManager_->add(config);
@@ -467,18 +473,51 @@ RemoteResponse RemoteServer::handleDisableTrigger(const nlohmann::json& params) 
 RemoteResponse RemoteServer::handleListTriggers(const nlohmann::json& /*params*/) {
     RemoteResponse resp;
 
-    auto triggers = triggerManager_->getAllTriggerConfigs();
+    auto instances = triggerManager_->getAllTriggerInstances();
     nlohmann::json j = nlohmann::json::array();
-    for (const auto& t : triggers) {
+    for (const auto& inst : instances) {
         nlohmann::json item;
-        item["name"] = t.name;
-        item["enabled"] = t.enabled;
+        item["id"] = inst.id;
+        item["name"] = inst.config.name;
+        item["enabled"] = inst.config.enabled;
+
+        nlohmann::json cfg;
+        cfg["oneShot"] = inst.config.oneShot;
+        cfg["cooldown"] = inst.config.cooldown;
+
+        nlohmann::json cond;
+        cond["type"] = static_cast<int>(inst.config.condition.type);
+        cond["value"] = inst.config.condition.value;
+        cond["tolerance"] = inst.config.condition.tolerance;
+        cond["interval"] = inst.config.condition.interval;
+        cond["enabled"] = inst.config.condition.enabled;
+        nlohmann::json region;
+        region["x"] = inst.config.condition.region.x;
+        region["y"] = inst.config.condition.region.y;
+        region["width"] = inst.config.condition.region.width;
+        region["height"] = inst.config.condition.region.height;
+        cond["region"] = region;
+        cfg["condition"] = cond;
+
+        nlohmann::json actionsArr = nlohmann::json::array();
+        for (const auto& act : inst.config.actions) {
+            nlohmann::json a;
+            a["type"] = static_cast<int>(act.type);
+            a["value"] = act.value;
+            a["x"] = act.x;
+            a["y"] = act.y;
+            a["delay"] = act.delay;
+            actionsArr.push_back(a);
+        }
+        cfg["actions"] = actionsArr;
+        item["config"] = cfg;
+
         j.push_back(item);
     }
 
     resp.success = true;
     resp.data["triggers"] = j;
-    resp.data["count"] = triggers.size();
+    resp.data["count"] = instances.size();
     return resp;
 }
 
