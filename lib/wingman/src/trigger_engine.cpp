@@ -225,6 +225,13 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
             config.cooldown = static_cast<int>(lua_tointeger(L, -1));
             lua_pop(L, 1);
 
+            // Skip triggers with unrecognized or missing condition type
+            if (config.condition.type == TriggerType{}) {
+                spdlog::warn("Skipping trigger '{}': unknown or missing condition.type", config.name);
+                lua_pop(L, 1);
+                continue;
+            }
+
             size_t id = m_manager->add(config);
             m_triggerNames.push_back(config.name);
             m_triggerIds.push_back(id);

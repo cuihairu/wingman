@@ -281,20 +281,17 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
 
         case TriggerType::PixelChanged: {
             static std::unordered_map<size_t, Color> lastPixelMap;
-            static std::unordered_map<size_t, bool> firstCheckMap;
 
             Color currentPixel = Screen::getPixel(cond.region.x, cond.region.y);
-            bool& firstCheck = firstCheckMap[trigger.id];
+            auto it = lastPixelMap.find(trigger.id);
 
-            if (firstCheckMap.find(trigger.id) == firstCheckMap.end() || firstCheck) {
+            if (it == lastPixelMap.end()) {
                 lastPixelMap[trigger.id] = currentPixel;
-                firstCheck = false;
                 return false;
             }
 
-            Color& lastPixel = lastPixelMap[trigger.id];
-            if (lastPixel.distance(currentPixel) > cond.tolerance * cond.tolerance) {
-                lastPixel = currentPixel;
+            if (it->second.distance(currentPixel) > cond.tolerance * cond.tolerance) {
+                it->second = currentPixel;
                 return true;
             }
             return false;
