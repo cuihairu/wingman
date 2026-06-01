@@ -4,7 +4,12 @@
   "description": "Modern C++ command-line library inspired by Go Cobra",
   "homepage": "https://github.com/cuihairu/clasp",
   "license": "Apache-2.0",
-  "dependencies": [],
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    }
+  ],
   "features": {
     "tests": {
       "description": "Build clasp tests"
