@@ -144,6 +144,7 @@ apps/*/config/user.*
 # Test working directories
 test_config_*/
 my_config_dir/
+nonexistent_config_dir_xyz/
 
 # Package manager temporary files (using vcpkg, not conan)
 conan-build/
