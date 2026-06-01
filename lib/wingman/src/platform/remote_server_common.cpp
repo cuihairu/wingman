@@ -377,6 +377,7 @@ RemoteResponse RemoteServer::handleAddTrigger(const nlohmann::json& params) {
         config.condition.value = cond.value("value", "");
         config.condition.tolerance = cond.value("tolerance", 10);
         config.condition.interval = cond.value("interval", 100);
+        config.condition.enabled = cond.value("enabled", true);
 
         if (cond.contains("region")) {
             config.condition.region.x = cond["region"].value("x", 0);
@@ -486,7 +487,13 @@ RemoteResponse RemoteServer::handleListTriggers(const nlohmann::json& /*params*/
         cfg["cooldown"] = inst.config.cooldown;
 
         nlohmann::json cond;
-        cond["type"] = static_cast<int>(inst.config.condition.type);
+        const char* triggerTypeNames[] = {
+            "ColorFound", "ColorLost", "ImageFound", "ImageLost",
+            "WindowOpened", "WindowClosed", "ProcessStarted", "ProcessStopped",
+            "TimeElapsed", "HotkeyPressed", "PixelChanged"
+        };
+        int ti = static_cast<int>(inst.config.condition.type);
+        cond["type"] = (ti >= 0 && ti < 11) ? triggerTypeNames[ti] : "ColorFound";
         cond["value"] = inst.config.condition.value;
         cond["tolerance"] = inst.config.condition.tolerance;
         cond["interval"] = inst.config.condition.interval;
@@ -499,10 +506,15 @@ RemoteResponse RemoteServer::handleListTriggers(const nlohmann::json& /*params*/
         cond["region"] = region;
         cfg["condition"] = cond;
 
+        const char* actionTypeNames[] = {
+            "RunScript", "Click", "KeyPress", "Type",
+            "StopScript", "PauseScript", "ShowMessage", "PlayAudio", "Log", "Delay"
+        };
         nlohmann::json actionsArr = nlohmann::json::array();
         for (const auto& act : inst.config.actions) {
             nlohmann::json a;
-            a["type"] = static_cast<int>(act.type);
+            int ai = static_cast<int>(act.type);
+            a["type"] = (ai >= 0 && ai < 10) ? actionTypeNames[ai] : "Click";
             a["value"] = act.value;
             a["x"] = act.x;
             a["y"] = act.y;

@@ -388,7 +388,7 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
                 break;
         }
 
-        if (action.delay > 0) {
+        if (action.type != BasicTriggerAction::Delay && action.delay > 0) {
             Input::delay(action.delay);
         }
     }
