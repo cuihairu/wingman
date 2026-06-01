@@ -1,6 +1,6 @@
 #include "wingman/input.hpp"
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -199,6 +199,82 @@ bool Input::isMouseDown(MouseButton button) {
         case MouseButton::Middle:
             return (GetKeyState(VK_MBUTTON) & 0x8000) != 0;
     }
+    return false;
+}
+
+} // namespace wingman
+
+#else
+
+#include <random>
+
+namespace wingman {
+
+void Input::delay(int milliseconds) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+}
+
+void Input::randomDelay(int minMs, int maxMs) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dist(minMs, maxMs);
+    delay(dist(gen));
+}
+
+Point Input::getMousePosition() {
+    return Point{};
+}
+
+void Input::move(int, int) {}
+
+void Input::move(int, int, int durationMs) {
+    if (durationMs > 0) {
+        delay(durationMs);
+    }
+}
+
+void Input::click(int, int, MouseButton) {}
+
+void Input::doubleClick(int x, int y, MouseButton button) {
+    click(x, y, button);
+    randomDelay(50, 100);
+    click(x, y, button);
+}
+
+void Input::mouseDown(MouseButton) {}
+
+void Input::mouseUp(MouseButton) {}
+
+void Input::scroll(int, int, int) {}
+
+void Input::keyDown(int) {}
+
+void Input::keyUp(int) {}
+
+void Input::key(int vkCode) {
+    keyDown(vkCode);
+    randomDelay(10, 30);
+    keyUp(vkCode);
+}
+
+void Input::type(const std::string& text) {
+    type(text, 10);
+}
+
+void Input::type(const std::string& text, int delayMs) {
+    for (char c : text) {
+        (void)c;
+        if (delayMs > 0) {
+            randomDelay(delayMs - 5, delayMs + 5);
+        }
+    }
+}
+
+bool Input::isKeyDown(int) {
+    return false;
+}
+
+bool Input::isMouseDown(MouseButton) {
     return false;
 }
 

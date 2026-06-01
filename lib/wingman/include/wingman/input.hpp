@@ -5,7 +5,7 @@
 #include <thread>
 #include <chrono>
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -14,12 +14,14 @@
 
 namespace wingman {
 
-#ifdef _WIN32
-
 enum class MouseButton {
     Left,
     Middle,
-    Right
+    Right,
+#if !defined(_WIN32)
+    X1,
+    X2
+#endif
 };
 
 class Input {
@@ -46,11 +48,11 @@ public:
     static void randomDelay(int minMs, int maxMs);
 
 private:
+#ifdef _WIN32
     static void sendMouseInput(int flags, int dx, int dy, int data);
     static void sendKeyInput(int vkCode, bool isDown);
     static int getMouseFlag(MouseButton button, bool isDown);
+#endif
 };
-
-#endif // _WIN32
 
 } // namespace wingman

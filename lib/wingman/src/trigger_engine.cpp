@@ -77,13 +77,16 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
     };
 
     // Parse a single action table at stack top
-    auto parseAction = [&](lua_State* Ls) -> TriggerActionData {
+    auto parseAction = [&](lua_State* Ls) -> std::optional<TriggerActionData> {
         TriggerActionData action{};
 
         lua_getfield(Ls, -1, "type");
         auto at = parseActionType(lua_tostring(Ls, -1));
-        if (at) action.type = *at;
         lua_pop(Ls, 1);
+        if (!at) {
+            return std::nullopt;
+        }
+        action.type = *at;
 
         lua_getfield(Ls, -1, "value");
         if (lua_isstring(Ls, -1)) action.value = lua_tostring(Ls, -1);
@@ -149,6 +152,7 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
     while (lua_next(L, -2) != 0) {
         if (lua_istable(L, -1)) {
             TriggerConfig config{};
+            config.condition.enabled = true;
             config.enabled = true;
             std::optional<TriggerType> parsedConditionType;
 
@@ -205,12 +209,20 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
             lua_pop(L, 1);
 
             // Parse actions array
+            bool hasInvalidAction = false;
+
             lua_getfield(L, -1, "actions");
             if (lua_istable(L, -1)) {
                 lua_pushnil(L);
                 while (lua_next(L, -2) != 0) {
                     if (lua_istable(L, -1)) {
-                        config.actions.push_back(parseAction(L));
+                        auto action = parseAction(L);
+                        if (!action) {
+                            spdlog::warn("Skipping action in trigger '{}': unknown action.type", config.name);
+                            hasInvalidAction = true;
+                        } else {
+                            config.actions.push_back(*action);
+                        }
                     }
                     lua_pop(L, 1);
                 }
@@ -221,7 +233,13 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
             if (config.actions.empty()) {
                 lua_getfield(L, -1, "action");
                 if (lua_istable(L, -1)) {
-                    config.actions.push_back(parseAction(L));
+                    auto action = parseAction(L);
+                    if (!action) {
+                        spdlog::warn("Skipping trigger '{}': unknown action.type", config.name);
+                        hasInvalidAction = true;
+                    } else {
+                        config.actions.push_back(*action);
+                    }
                 }
                 lua_pop(L, 1);
             }
@@ -233,6 +251,18 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
             // Skip triggers with unrecognized or missing condition type
             if (!parsedConditionType.has_value()) {
                 spdlog::warn("Skipping trigger '{}': unknown or missing condition.type", config.name);
+                lua_pop(L, 1);
+                continue;
+            }
+
+            if (hasInvalidAction) {
+                spdlog::warn("Skipping trigger '{}': contains unknown action.type", config.name);
+                lua_pop(L, 1);
+                continue;
+            }
+
+            if (config.actions.empty()) {
+                spdlog::warn("Skipping trigger '{}': no valid actions", config.name);
                 lua_pop(L, 1);
                 continue;
             }
