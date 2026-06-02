@@ -117,9 +117,10 @@ private:
     size_t connectionCount_ = 0;
 
     // ========== Core components ==========
+    // Note: input_ must be declared before triggerManager_ to ensure correct initialization order
+    std::shared_ptr<platform::IInput> input_;
     std::unique_ptr<TriggerManager> triggerManager_;
     std::unique_ptr<MacroRecorder> macroRecorder_;
-    std::shared_ptr<platform::IInput> input_;
     std::mutex mutex_;
 
     // ========== Implementation details ==========
