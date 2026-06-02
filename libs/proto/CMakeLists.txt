@@ -8,6 +8,8 @@ project(wingman_proto LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/EnsureNlohmannJson.cmake)
+
 # 查找 Protobuf（可选）
 find_package(Protobuf QUIET)
 
@@ -77,11 +79,9 @@ else()
     )
 
     # 添加 nlohmann_json 支持
-    find_package(nlohmann_json CONFIG QUIET)
-    if(nlohmann_json_FOUND)
-        target_link_libraries(wingman_proto PUBLIC nlohmann_json::nlohmann_json)
-        target_compile_definitions(wingman_proto PUBLIC WINGMAN_HAS_JSON)
-    endif()
+    wingman_ensure_nlohmann_json()
+    target_link_libraries(wingman_proto PUBLIC nlohmann_json::nlohmann_json)
+    target_compile_definitions(wingman_proto PUBLIC WINGMAN_HAS_JSON)
 
     # 创建命名空间别名
     add_library(wingman::proto ALIAS wingman_proto)
