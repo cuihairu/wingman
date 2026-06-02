@@ -360,7 +360,7 @@ RemoteResponse RemoteServer::handleAddTrigger(const nlohmann::json& params) {
     RemoteResponse resp;
 
     try {
-        TriggerConfig config;
+        TriggerConfig config{};
         config.name = params["config"]["name"];
         config.enabled = params["config"].value("enabled", true);
         config.oneShot = params["config"].value("one_shot", false);
@@ -437,6 +437,12 @@ RemoteResponse RemoteServer::handleAddTrigger(const nlohmann::json& params) {
                 return resp;
             }
             config.actions.push_back(*act);
+        }
+
+        if (config.actions.empty()) {
+            resp.success = false;
+            resp.error = "Trigger must have at least one action";
+            return resp;
         }
 
         size_t id = triggerManager_->add(config);

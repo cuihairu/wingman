@@ -344,8 +344,12 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
                 break;
 
             case BasicTriggerAction::KeyPress:
-                Input::key(std::stoi(action.value));
-                if (m_logger) m_logger->debug("Trigger action: key press '{}'", action.value);
+                try {
+                    Input::key(std::stoi(action.value));
+                    if (m_logger) m_logger->debug("Trigger action: key press '{}'", action.value);
+                } catch (const std::exception& e) {
+                    if (m_logger) m_logger->error("Trigger action: invalid key value '{}': {}", action.value, e.what());
+                }
                 break;
 
             case BasicTriggerAction::Type:
