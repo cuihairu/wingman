@@ -6,7 +6,9 @@
 #include <regex>
 #include <thread>
 #include <condition_variable>
+#ifdef WINGMAN_HAS_SQLITE
 #include <sqlite3.h>
+#endif
 
 namespace wingman {
 

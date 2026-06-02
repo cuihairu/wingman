@@ -10,6 +10,7 @@
 #include <mutex>
 #include "wingman/vision.hpp"
 #include "wingman/ocr.hpp"
+#include "wingman/platform/iinput.hpp"
 
 namespace wingman {
 
@@ -66,6 +67,7 @@ struct TriggerAction {
 class SmartTrigger {
 public:
     SmartTrigger(const std::string& name);
+    SmartTrigger(const std::string& name, std::shared_ptr<platform::IInput> input);
     ~SmartTrigger();
 
     // Add condition
@@ -100,6 +102,7 @@ public:
 
 private:
     std::string name_;
+    std::shared_ptr<platform::IInput> input_;
     std::vector<TriggerCondition> conditions_;
     std::vector<TriggerAction> actions_;
     int checkIntervalMs_ = 100;
@@ -123,6 +126,8 @@ class SmartTriggerManager {
 public:
     static SmartTriggerManager& instance();
 
+    SmartTriggerManager();
+
     // Create trigger
     std::shared_ptr<SmartTrigger> createTrigger(const std::string& name);
 
@@ -142,6 +147,7 @@ public:
     std::vector<std::shared_ptr<SmartTrigger>> getAllTriggers() const;
 
 private:
+    std::shared_ptr<platform::IInput> input_;
     std::map<std::string, std::shared_ptr<SmartTrigger>> triggers_;
     mutable std::mutex mutex_;
 };

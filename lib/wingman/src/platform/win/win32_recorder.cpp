@@ -2,13 +2,32 @@
 
 #ifdef _WIN32
 
-#include "wingman/input.hpp"
+#include "wingman/platform/input_factory.hpp"
 #include <nlohmann/json.hpp>
 
 #include <fstream>
+#include <chrono>
+#include <memory>
 #include <thread>
 
 namespace wingman {
+
+namespace {
+
+platform::IInput& getInput() {
+    static std::shared_ptr<platform::IInput> input = platform::defaultSharedInput();
+    return *input;
+}
+
+void sleepMs(unsigned long milliseconds) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+}
+
+platform::MouseButton toPlatformMouseButton(int button) {
+    return static_cast<platform::MouseButton>(button);
+}
+
+} // namespace
 
 static MacroRecorder* g_instance = nullptr;
 
@@ -195,28 +214,33 @@ void MacroRecorder::playback(int speed, int repeat) const {
         for (const auto& event : m_events) {
             DWORD delay = static_cast<DWORD>((event.timestamp - lastTimestamp) * 100 / speed);
             if (delay > 0) {
-                Input::delay(delay);
+                sleepMs(delay);
             }
 
             switch (event.type) {
                 case RecordedEventType::MouseMove:
-                    Input::move(event.x, event.y);
+                    getInput().mouseMove(event.x, event.y);
                     break;
 
                 case RecordedEventType::MouseClick:
-                    Input::click(event.x, event.y, static_cast<MouseButton>(event.button));
+                    getInput().mouseMove(event.x, event.y);
+                    getInput().mouseClick(toPlatformMouseButton(event.button));
                     break;
 
                 case RecordedEventType::Scroll:
-                    Input::scroll(event.x, event.y, event.delay);
+                    getInput().mouseMove(event.x, event.y);
+                    getInput().mouseWheel(event.delay);
                     break;
 
                 case RecordedEventType::KeyDown:
-                    Input::key(event.keyCode);
+                    getInput().keyPress(static_cast<platform::KeyCode>(event.keyCode));
                     break;
 
                 case RecordedEventType::Type:
-                    Input::type(event.text, event.delay);
+                    getInput().textInput(event.text);
+                    if (event.delay > 0) {
+                        sleepMs(static_cast<unsigned long>(event.delay));
+                    }
                     break;
 
                 default:

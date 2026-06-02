@@ -19,8 +19,7 @@ $args = @(
     "-A", "x64",
     "-DCMAKE_TOOLCHAIN_FILE=$vcpkgRoot/scripts/buildsystems/vcpkg.cmake",
     "-DVCPKG_OVERLAY_PORTS=$overlayPorts",
-    "-DVCPKG_TARGET_TRIPLET=x64-windows-static",
-    "-DWINGMAN_BUILD_GUI=OFF"
+    "-DVCPKG_TARGET_TRIPLET=x64-windows-static"
 )
 
 if ($Config) {

@@ -10,11 +10,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找依赖
 find_package(OpenCV CONFIG)
-find_package(spdlog CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(CURL CONFIG REQUIRED)
+include(${CMAKE_SOURCE_DIR}/cmake/EnsureSpdlog.cmake)
+wingman_ensure_spdlog()
+include(${CMAKE_SOURCE_DIR}/cmake/EnsureNlohmannJson.cmake)
+wingman_ensure_nlohmann_json()
+find_package(CURL QUIET)
 find_package(unofficial-sqlite3 CONFIG)
-find_package(unofficial-lua CONFIG)
+if(WINGMAN_BUILD_LUA)
+    find_package(unofficial-lua CONFIG)
+endif()
 
 # ========== 源文件 ==========
 set(WINGMAN_SOURCES
@@ -29,7 +33,6 @@ set(WINGMAN_SOURCES
 
     # 输入输出
     src/screen.cpp
-    src/input.cpp
     src/window.cpp
     src/ui_automation.cpp
     src/clipboard.cpp
@@ -93,6 +96,8 @@ set(WINGMAN_SOURCES
     src/script/modules/notify_module.cpp
     src/script/modules/orchestration_module.cpp
     src/script/modules/module_registry.cpp
+    src/platform/input_factory.cpp
+    src/platform/mock/mock_input.cpp
 )
 
 # OCR 支持（可选）
@@ -201,7 +206,6 @@ target_include_directories(wingman PUBLIC ${WINGMAN_GENERATED_DIR})
 # 链接库
 set(WINGMAN_LINK_LIBS
     nlohmann_json::nlohmann_json
-    CURL::libcurl
 )
 
 # 添加 OpenCV（如果可用）
@@ -209,13 +213,23 @@ if(TARGET opencv_core)
     list(APPEND WINGMAN_LINK_LIBS opencv_core opencv_imgproc opencv_imgcodecs)
 endif()
 
+# 添加 CURL（如果可用）
+if(TARGET CURL::libcurl)
+    list(APPEND WINGMAN_LINK_LIBS CURL::libcurl)
+    target_compile_definitions(wingman PRIVATE WINGMAN_HAS_CURL)
+    message(STATUS "HTTP support enabled (CURL found)")
+else()
+    message(STATUS "HTTP support disabled (CURL not found)")
+endif()
+
 # 添加 sqlite3（如果可用）
 if(TARGET unofficial::sqlite3::sqlite3)
     list(APPEND WINGMAN_LINK_LIBS unofficial::sqlite3::sqlite3)
+    target_compile_definitions(wingman PUBLIC WINGMAN_HAS_SQLITE)
 endif()
 
 # 添加 Lua（如果可用）
-if(TARGET unofficial::lua::lua)
+if(WINGMAN_BUILD_LUA AND TARGET unofficial::lua::lua)
     list(APPEND WINGMAN_LINK_LIBS unofficial::lua::lua)
 endif()
 

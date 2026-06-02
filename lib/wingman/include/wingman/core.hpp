@@ -6,7 +6,7 @@
 #include <string>
 
 #include "wingman/screen.hpp"
-#include "wingman/input.hpp"
+#include "wingman/platform/input_factory.hpp"
 #include "wingman/window.hpp"
 #include "wingman/process.hpp"
 #include "wingman/human.hpp"

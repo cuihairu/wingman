@@ -1,5 +1,7 @@
 #include "wingman/runtime/commands/script_command.hpp"
+#ifdef WINGMAN_HAS_LUA
 #include "wingman/lua/lua_engine.hpp"
+#endif
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <fstream>
@@ -28,6 +30,7 @@ int scriptCommand(const std::string& scriptPath, const std::vector<std::string>&
 
     // 创建 Lua 实例并执行
     try {
+#ifdef WINGMAN_HAS_LUA
         auto lua = std::make_unique<wingman::lua::LuaEngine>();
         if (!lua->initialize()) {
             spdlog::error("Failed to initialize Lua engine");
@@ -52,6 +55,10 @@ int scriptCommand(const std::string& scriptPath, const std::vector<std::string>&
 
         spdlog::info("Script completed successfully");
         return 0;
+#else
+        spdlog::error("Script execution requires Lua support");
+        return 1;
+#endif
 
     } catch (const std::exception& e) {
         spdlog::error("Exception while running script: {}", e.what());

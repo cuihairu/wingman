@@ -506,7 +506,7 @@ Wingman 远程控制协议是基于 TCP 的 JSON-RPC 风格协议，用于通过
 ```cpp
 #include "wingman/remote_client.hpp"
 
-wingman::RemoteClient client;
+wingman::RemoteControlClient client;
 
 // 连接
 if (client.connect("192.168.1.100", 9999)) {

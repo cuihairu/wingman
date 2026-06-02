@@ -16,7 +16,6 @@ cmake_args=(
   -DVCPKG_OVERLAY_PORTS="$overlay_ports"
   -DVCPKG_TARGET_TRIPLET="$triplet"
   -DCMAKE_BUILD_TYPE="$build_type"
-  -DWINGMAN_BUILD_GUI=OFF
   -DWINGMAN_COMPAT_BUILD=ON
 )
 

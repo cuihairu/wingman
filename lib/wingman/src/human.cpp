@@ -1,6 +1,6 @@
 #include "wingman/human.hpp"
 
-#include "wingman/input.hpp"
+#include "wingman/platform/input_factory.hpp"
 #include "wingman/screen.hpp"
 #include <spdlog/spdlog.h>
 #include <cmath>
@@ -10,6 +10,15 @@
 #include <chrono>
 
 namespace wingman {
+
+namespace {
+
+platform::IInput& getInput() {
+    static std::shared_ptr<platform::IInput> input = platform::defaultSharedInput();
+    return *input;
+}
+
+}
 
 // ========== HumanMouse Implementation ==========
 
@@ -34,7 +43,8 @@ HumanMouse& HumanMouse::instance() {
 }
 
 Point HumanMouse::getCurrentPosition() const {
-    return Input::getMousePosition();
+    auto p = getInput().getMousePosition();
+    return Point{p.x, p.y};
 }
 
 int HumanMouse::randomInt(int min, int max) const {
@@ -201,7 +211,7 @@ void HumanMouse::moveAlongPath(const std::vector<Point>& path) {
     // Calculate delay between each point
     int numSegments = static_cast<int>(path.size()) - 1;
     if (numSegments <= 0) {
-        Input::move(path[0].x, path[0].y);
+        getInput().mouseMove(path[0].x, path[0].y);
         return;
     }
 
@@ -209,7 +219,7 @@ void HumanMouse::moveAlongPath(const std::vector<Point>& path) {
 
     // Move along path
     for (size_t i = 0; i < path.size(); ++i) {
-        Input::move(path[i].x, path[i].y);
+        getInput().mouseMove(path[i].x, path[i].y);
 
         // No delay needed for last point
         if (i < path.size() - 1) {
@@ -270,7 +280,8 @@ void HumanMouse::click(const Point& pos) {
     randomDelay(config_.clickDelayMin, config_.clickDelayMax);
 
     // Click
-    Input::click(pos.x, pos.y);
+    getInput().mouseMove(pos.x, pos.y);
+    getInput().mouseClick(platform::MouseButton::Left);
 
     spdlog::debug("HumanMouse: clicked at ({}, {})", pos.x, pos.y);
 }
@@ -283,7 +294,8 @@ void HumanMouse::rightClick(int x, int y) {
     randomDelay(config_.clickDelayMin, config_.clickDelayMax);
 
     // Right click
-    Input::click(x, y, MouseButton::Right);
+    getInput().mouseMove(x, y);
+    getInput().mouseClick(platform::MouseButton::Right);
 
     spdlog::debug("HumanMouse: right-clicked at ({}, {})", x, y);
 }
@@ -296,13 +308,15 @@ void HumanMouse::doubleClick(int x, int y) {
     randomDelay(config_.clickDelayMin, config_.clickDelayMax);
 
     // First click
-    Input::click(x, y);
+    getInput().mouseMove(x, y);
+    getInput().mouseClick(platform::MouseButton::Left);
 
     // Double-click interval delay
     randomDelay(config_.doubleClickIntervalMin, config_.doubleClickIntervalMax);
 
     // Second click
-    Input::click(x, y);
+    getInput().mouseMove(x, y);
+    getInput().mouseClick(platform::MouseButton::Left);
 
     spdlog::debug("HumanMouse: double-clicked at ({}, {})", x, y);
 }
@@ -319,7 +333,7 @@ void HumanMouse::drag(const Point& from, const Point& to) {
     randomDelay(config_.clickDelayMin, config_.clickDelayMax);
 
     // Press mouse
-    Input::mouseDown(MouseButton::Left);
+    getInput().mouseDown(platform::MouseButton::Left);
 
     // Press duration
     randomDelay(config_.clickDurationMin, config_.clickDurationMax);
@@ -331,7 +345,7 @@ void HumanMouse::drag(const Point& from, const Point& to) {
     randomDelay(config_.clickDurationMin, config_.clickDurationMax);
 
     // Release mouse
-    Input::mouseUp(MouseButton::Left);
+    getInput().mouseUp(platform::MouseButton::Left);
 
     spdlog::debug("HumanMouse: dragged from ({}, {}) to ({}, {})", from.x, from.y, to.x, to.y);
 }
@@ -344,7 +358,8 @@ void HumanMouse::scroll(int x, int y, int delta) {
     randomDelay(config_.scrollDelayMin, config_.scrollDelayMax);
 
     // Scroll
-    Input::scroll(x, y, delta);
+    getInput().mouseMove(x, y);
+    getInput().mouseWheel(delta);
 
     spdlog::debug("HumanMouse: scrolled at ({}, {}) by {}", x, y, delta);
 }
@@ -386,18 +401,18 @@ void HumanKeyboard::randomDelay() {
 
 void HumanKeyboard::key(int vkCode) {
     randomDelay();
-    Input::key(vkCode);
+    getInput().keyPress(static_cast<platform::KeyCode>(vkCode));
     spdlog::debug("HumanKeyboard: keyed VK code {}", vkCode);
 }
 
 void HumanKeyboard::keyDown(int vkCode) {
     randomDelay();
-    Input::keyDown(vkCode);
+    getInput().keyDown(static_cast<platform::KeyCode>(vkCode));
     spdlog::debug("HumanKeyboard: key down VK code {}", vkCode);
 }
 
 void HumanKeyboard::keyUp(int vkCode) {
-    Input::keyUp(vkCode);
+    getInput().keyUp(static_cast<platform::KeyCode>(vkCode));
     spdlog::debug("HumanKeyboard: key up VK code {}", vkCode);
 }
 
@@ -418,7 +433,7 @@ void HumanKeyboard::type(const std::string& text, bool randomCase) {
 
         // Random delay between each character
         int delay = randomInt(config_.typeDelayMin, config_.typeDelayMax);
-        Input::type(std::string(1, c));
+        getInput().textInput(std::string(1, c));
         std::this_thread::sleep_for(std::chrono::milliseconds(delay));
     }
     spdlog::debug("HumanKeyboard: typed text (length={})", text.length());

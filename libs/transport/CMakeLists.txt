@@ -10,7 +10,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找 asio（可选）
 find_package(asio CONFIG QUIET)
-find_package(spdlog CONFIG REQUIRED)
+include(${CMAKE_SOURCE_DIR}/cmake/EnsureSpdlog.cmake)
+wingman_ensure_spdlog()
 
 if(NOT asio_FOUND)
     # 使用 FetchContent 下载 asio（header-only）

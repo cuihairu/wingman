@@ -11,8 +11,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 查找依赖
 # sol2 是 header-only 库，会自动链接 Lua
 find_package(sol2 CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
+include(${CMAKE_SOURCE_DIR}/cmake/EnsureSpdlog.cmake)
+wingman_ensure_spdlog()
+include(${CMAKE_SOURCE_DIR}/cmake/EnsureNlohmannJson.cmake)
+wingman_ensure_nlohmann_json()
 
 message(STATUS "Found sol2 for Lua bindings")
 

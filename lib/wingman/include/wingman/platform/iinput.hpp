@@ -110,6 +110,13 @@ public:
     virtual void keyPress(KeyCode key) = 0;
 
     /**
+     * @brief Key combination press
+     * @param modifiers Modifier keys pressed before the main key
+     * @param key Main key code
+     */
+    virtual void keyCombination(const std::vector<KeyCode>& modifiers, KeyCode key) = 0;
+
+    /**
      * @brief Input text
      * @param text Text content
      */
@@ -133,6 +140,39 @@ public:
      * @param button Mouse button
      */
     virtual bool isMousePressed(MouseButton button) = 0;
+
+    /**
+     * @brief Begin drag with mouse button held down
+     * @param button Mouse button
+     */
+    virtual void mouseDragBegin(MouseButton button) = 0;
+
+    /**
+     * @brief End drag and release mouse button
+     * @param button Mouse button
+     */
+    virtual void mouseDragEnd(MouseButton button) = 0;
+
+    /**
+     * @brief Set backend input delay in microseconds
+     * @param delayMicroseconds Delay between low-level input events
+     */
+    virtual void setInputDelay(int delayMicroseconds) = 0;
+
+    /**
+     * @brief Get current input configuration
+     */
+    virtual InputConfig getConfig() const = 0;
+
+    /**
+     * @brief Whether backend supports direct text input
+     */
+    virtual bool supportsTextInput() const = 0;
+
+    /**
+     * @brief Whether backend supports relative mouse movement
+     */
+    virtual bool supportsRelativeMovement() const = 0;
 
     // ========== Backend information ==========
 

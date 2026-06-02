@@ -7,6 +7,7 @@
 #include <Carbon/Carbon.h>
 #include <thread>
 #include <chrono>
+#include <memory>
 #include <unordered_map>
 
 namespace wingman::platform::mac {
@@ -210,7 +211,7 @@ public:
         return CGEventSourceKeyState(kCGEventSourceStateCombinedSessionState, cgKeyCode) != 0;
     }
 
-    bool isMouseButtonPressed(MouseButton button) override {
+    bool isMousePressed(MouseButton button) override {
         CGPoint pos = getCurrentMousePosition();
         CGEventRef event = CGEventCreateMouseEvent(nullptr, kCGEventMouseMoved, pos, kCGMouseButtonLeft);
 
@@ -313,18 +314,18 @@ private:
             {KeyCode::S, kVK_ANSI_S}, {KeyCode::T, kVK_ANSI_T}, {KeyCode::U, kVK_ANSI_U},
             {KeyCode::V, kVK_ANSI_V}, {KeyCode::W, kVK_ANSI_W}, {KeyCode::X, kVK_ANSI_X},
             {KeyCode::Y, kVK_ANSI_Y}, {KeyCode::Z, kVK_ANSI_Z},
-            {KeyCode::D0, kVK_ANSI_0}, {KeyCode::D1, kVK_ANSI_1}, {KeyCode::D2, kVK_ANSI_2},
-            {KeyCode::D3, kVK_ANSI_3}, {KeyCode::D4, kVK_ANSI_4}, {KeyCode::D5, kVK_ANSI_5},
-            {KeyCode::D6, kVK_ANSI_6}, {KeyCode::D7, kVK_ANSI_7}, {KeyCode::D8, kVK_ANSI_8},
-            {KeyCode::D9, kVK_ANSI_9},
+            {KeyCode::Num0, kVK_ANSI_0}, {KeyCode::Num1, kVK_ANSI_1}, {KeyCode::Num2, kVK_ANSI_2},
+            {KeyCode::Num3, kVK_ANSI_3}, {KeyCode::Num4, kVK_ANSI_4}, {KeyCode::Num5, kVK_ANSI_5},
+            {KeyCode::Num6, kVK_ANSI_6}, {KeyCode::Num7, kVK_ANSI_7}, {KeyCode::Num8, kVK_ANSI_8},
+            {KeyCode::Num9, kVK_ANSI_9},
             {KeyCode::F1, kVK_F1}, {KeyCode::F2, kVK_F2}, {KeyCode::F3, kVK_F3},
             {KeyCode::F4, kVK_F4}, {KeyCode::F5, kVK_F5}, {KeyCode::F6, kVK_F6},
             {KeyCode::F7, kVK_F7}, {KeyCode::F8, kVK_F8}, {KeyCode::F9, kVK_F9},
             {KeyCode::F10, kVK_F10}, {KeyCode::F11, kVK_F11}, {KeyCode::F12, kVK_F12},
-            {KeyCode::Return, kVK_Return}, {KeyCode::Tab, kVK_Tab}, {KeyCode::Space, kVK_Space},
+            {KeyCode::Enter, kVK_Return}, {KeyCode::Tab, kVK_Tab}, {KeyCode::Space, kVK_Space},
             {KeyCode::Escape, kVK_Escape}, {KeyCode::Backspace, kVK_Delete},
             {KeyCode::Shift, kVK_Shift}, {KeyCode::Control, kVK_Control},
-            {KeyCode::Alt, kVK_Option}, {KeyCode::Meta, kVK_Command},
+            {KeyCode::Alt, kVK_Option},
             {KeyCode::Left, kVK_LeftArrow}, {KeyCode::Right, kVK_RightArrow},
             {KeyCode::Up, kVK_UpArrow}, {KeyCode::Down, kVK_DownArrow},
         };
@@ -333,6 +334,12 @@ private:
         return it != keyMap.end() ? it->second : kVK_Space;
     }
 };
+
+std::unique_ptr<IInput> createCGEventInput(const InputConfig& config) {
+    auto input = std::make_unique<CGEventInput>();
+    input->initialize(config);
+    return input;
+}
 
 } // namespace wingman::platform::mac
 #endif // __APPLE__

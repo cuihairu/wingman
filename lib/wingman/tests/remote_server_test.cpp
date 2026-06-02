@@ -6,11 +6,11 @@
 
 using namespace wingman;
 
-class RemoteServerTest : public ::testing::Test {
+class RemoteControlTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        server = std::make_unique<RemoteServer>();
-        client = std::make_unique<RemoteClient>();
+        server = std::make_unique<RemoteControlServer>();
+        client = std::make_unique<RemoteControlClient>();
     }
 
     void TearDown() override {
@@ -24,13 +24,13 @@ protected:
         client.reset();
     }
 
-    std::unique_ptr<RemoteServer> server;
-    std::unique_ptr<RemoteClient> client;
+    std::unique_ptr<RemoteControlServer> server;
+    std::unique_ptr<RemoteControlClient> client;
 };
 
 // ========== RemoteRequest/Response ==========
 
-TEST_F(RemoteServerTest, RemoteRequestFromJson) {
+TEST_F(RemoteControlTest, RemoteRequestFromJson) {
     nlohmann::json j;
     j["action"] = "ping";
     j["params"] = nlohmann::json::object();
@@ -40,7 +40,7 @@ TEST_F(RemoteServerTest, RemoteRequestFromJson) {
     EXPECT_TRUE(req.params.is_null() || req.params.is_object());
 }
 
-TEST_F(RemoteServerTest, RemoteRequestToJson) {
+TEST_F(RemoteControlTest, RemoteRequestToJson) {
     RemoteRequest req;
     req.action = "click";
     req.params = {{"x", 100}, {"y", 200}};
@@ -51,7 +51,7 @@ TEST_F(RemoteServerTest, RemoteRequestToJson) {
     EXPECT_EQ(j["params"]["y"], 200);
 }
 
-TEST_F(RemoteServerTest, RemoteResponseToJsonString) {
+TEST_F(RemoteControlTest, RemoteResponseToJsonString) {
     RemoteResponse resp;
     resp.success = true;
     resp.data = {{"result", "ok"}};
@@ -64,14 +64,14 @@ TEST_F(RemoteServerTest, RemoteResponseToJsonString) {
     EXPECT_EQ(j["data"]["result"], "ok");
 }
 
-// ========== RemoteServer ==========
+// ========== RemoteControlServer ==========
 
-TEST_F(RemoteServerTest, ServerInitialState) {
+TEST_F(RemoteControlTest, ServerInitialState) {
     EXPECT_FALSE(server->isRunning());
     EXPECT_EQ(server->getConnectionCount(), 0);
 }
 
-TEST_F(RemoteServerTest, ServerStartStop) {
+TEST_F(RemoteControlTest, ServerStartStop) {
     EXPECT_TRUE(server->start(9999));
     EXPECT_TRUE(server->isRunning());
     EXPECT_EQ(server->getPort(), 9999);
@@ -83,13 +83,13 @@ TEST_F(RemoteServerTest, ServerStartStop) {
     EXPECT_FALSE(server->isRunning());
 }
 
-// ========== RemoteClient ==========
+// ========== RemoteControlClient ==========
 
-TEST_F(RemoteServerTest, ClientInitialState) {
+TEST_F(RemoteControlTest, ClientInitialState) {
     EXPECT_FALSE(client->isConnected());
 }
 
-TEST_F(RemoteServerTest, ClientConnectDisconnect) {
+TEST_F(RemoteControlTest, ClientConnectDisconnect) {
     // Start server
     ASSERT_TRUE(server->start(9998));
 
@@ -115,7 +115,7 @@ TEST_F(RemoteServerTest, ClientConnectDisconnect) {
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 }
 
-TEST_F(RemoteServerTest, ClientPing) {
+TEST_F(RemoteControlTest, ClientPing) {
     ASSERT_TRUE(server->start(9997));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -128,7 +128,7 @@ TEST_F(RemoteServerTest, ClientPing) {
     client->disconnect();
 }
 
-TEST_F(RemoteServerTest, ClientGetVersion) {
+TEST_F(RemoteControlTest, ClientGetVersion) {
     ASSERT_TRUE(server->start(9996));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -145,7 +145,7 @@ TEST_F(RemoteServerTest, ClientGetVersion) {
     client->disconnect();
 }
 
-TEST_F(RemoteServerTest, ClientSend) {
+TEST_F(RemoteControlTest, ClientSend) {
     ASSERT_TRUE(server->start(9995));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -162,7 +162,7 @@ TEST_F(RemoteServerTest, ClientSend) {
     client->disconnect();
 }
 
-TEST_F(RemoteServerTest, ClientGetPixel) {
+TEST_F(RemoteControlTest, ClientGetPixel) {
     ASSERT_TRUE(server->start(9994));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -177,7 +177,7 @@ TEST_F(RemoteServerTest, ClientGetPixel) {
     client->disconnect();
 }
 
-TEST_F(RemoteServerTest, ClientListTriggers) {
+TEST_F(RemoteControlTest, ClientListTriggers) {
     // Use port 9988 to avoid conflict with other tests
     ASSERT_TRUE(server->start(9988));
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -199,12 +199,12 @@ TEST_F(RemoteServerTest, ClientListTriggers) {
 
 // ========== Error Handling ==========
 
-TEST_F(RemoteServerTest, ClientConnectToNonExistentServer) {
+TEST_F(RemoteControlTest, ClientConnectToNonExistentServer) {
     EXPECT_FALSE(client->connect("127.0.0.1", 9990));
     EXPECT_FALSE(client->isConnected());
 }
 
-TEST_F(RemoteServerTest, UnknownAction) {
+TEST_F(RemoteControlTest, UnknownAction) {
     ASSERT_TRUE(server->start(9992));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 

@@ -4,6 +4,7 @@
 #include "wingman/window.hpp"
 #include "wingman/vision.hpp"
 #include "wingman/screen.hpp"
+#include "wingman/platform/input_factory.hpp"
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <chrono>
@@ -82,9 +83,9 @@ RemoteResponse RemoteResponse::fromJson(const nlohmann::json& j) {
     return resp;
 }
 
-// ========== RemoteServer Request Handling ==========
+// ========== RemoteControlServer Request Handling ==========
 
-RemoteResponse RemoteServer::handleRequest(const RemoteRequest& req) {
+RemoteResponse RemoteControlServer::handleRequest(const RemoteRequest& req) {
     try {
         if (req.action == "ping") return handlePing(req.params);
         if (req.action == "get_version") return handleGetVersion(req.params);
@@ -129,7 +130,7 @@ RemoteResponse RemoteServer::handleRequest(const RemoteRequest& req) {
 
 // ========== Action Handlers ==========
 
-RemoteResponse RemoteServer::handlePing(const nlohmann::json& /*params*/) {
+RemoteResponse RemoteControlServer::handlePing(const nlohmann::json& /*params*/) {
     RemoteResponse resp;
     resp.success = true;
     resp.data["status"] = "ok";
@@ -137,7 +138,7 @@ RemoteResponse RemoteServer::handlePing(const nlohmann::json& /*params*/) {
     return resp;
 }
 
-RemoteResponse RemoteServer::handleGetVersion(const nlohmann::json& /*params*/) {
+RemoteResponse RemoteControlServer::handleGetVersion(const nlohmann::json& /*params*/) {
     RemoteResponse resp;
     resp.success = true;
     resp.data["version"] = WINGMAN_VERSION;
@@ -147,7 +148,7 @@ RemoteResponse RemoteServer::handleGetVersion(const nlohmann::json& /*params*/) 
 
 #ifdef WINGMAN_ENABLE_VISION
 
-RemoteResponse RemoteServer::handleCaptureScreen(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleCaptureScreen(const nlohmann::json& params) {
     RemoteResponse resp;
 
     try {
@@ -210,7 +211,7 @@ RemoteResponse RemoteServer::handleCaptureScreen(const nlohmann::json& params) {
     return resp;
 }
 
-RemoteResponse RemoteServer::handleFindImage(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleFindImage(const nlohmann::json& params) {
     RemoteResponse resp;
 
     try {
@@ -251,7 +252,7 @@ RemoteResponse RemoteServer::handleFindImage(const nlohmann::json& params) {
 
 #endif // WINGMAN_ENABLE_VISION
 
-RemoteResponse RemoteServer::handleGetPixel(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleGetPixel(const nlohmann::json& params) {
     RemoteResponse resp;
 
     int x = params["x"];
@@ -274,7 +275,7 @@ RemoteResponse RemoteServer::handleGetPixel(const nlohmann::json& params) {
     return resp;
 }
 
-RemoteResponse RemoteServer::handleFindColor(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleFindColor(const nlohmann::json& params) {
     RemoteResponse resp;
 
     std::string colorStr = params["color"];
@@ -308,55 +309,72 @@ RemoteResponse RemoteServer::handleFindColor(const nlohmann::json& params) {
     return resp;
 }
 
-RemoteResponse RemoteServer::handleClick(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleClick(const nlohmann::json& params) {
     RemoteResponse resp;
 
     int x = params["x"];
     int y = params["y"];
     std::string button = params.value("button", "left");
 
-    MouseButton btn = MouseButton::Left;
-    if (button == "right") btn = MouseButton::Right;
-    else if (button == "middle") btn = MouseButton::Middle;
+    platform::MouseButton btn = platform::MouseButton::Left;
+    if (button == "right") btn = platform::MouseButton::Right;
+    else if (button == "middle") btn = platform::MouseButton::Middle;
 
-    Input::click(x, y, btn);
+    if (input_) {
+        input_->mouseMove(x, y);
+        input_->mouseClick(btn);
+    }
     resp.success = true;
     return resp;
 }
 
-RemoteResponse RemoteServer::handleMove(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleMove(const nlohmann::json& params) {
     RemoteResponse resp;
 
     int x = params["x"];
     int y = params["y"];
     int duration = params.value("duration", 100);
 
-    Input::move(x, y, duration);
+    if (input_) {
+        if (duration > 0) {
+            input_->mouseMove(x, y);
+            std::this_thread::sleep_for(std::chrono::milliseconds(duration));
+        } else {
+            input_->mouseMove(x, y);
+        }
+    }
     resp.success = true;
     return resp;
 }
 
-RemoteResponse RemoteServer::handleKey(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleKey(const nlohmann::json& params) {
     RemoteResponse resp;
 
     int keyCode = params["key"];
-    Input::key(keyCode);
+    if (input_) {
+        input_->keyPress(static_cast<platform::KeyCode>(keyCode));
+    }
     resp.success = true;
     return resp;
 }
 
-RemoteResponse RemoteServer::handleTypeText(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleTypeText(const nlohmann::json& params) {
     RemoteResponse resp;
 
     std::string text = params["text"];
     int delay = params.value("delay", 50);
 
-    Input::type(text, delay);
+    if (input_) {
+        input_->textInput(text);
+    }
+    if (delay > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    }
     resp.success = true;
     return resp;
 }
 
-RemoteResponse RemoteServer::handleAddTrigger(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleAddTrigger(const nlohmann::json& params) {
     RemoteResponse resp;
 
     try {
@@ -458,7 +476,7 @@ RemoteResponse RemoteServer::handleAddTrigger(const nlohmann::json& params) {
     return resp;
 }
 
-RemoteResponse RemoteServer::handleRemoveTrigger(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleRemoveTrigger(const nlohmann::json& params) {
     RemoteResponse resp;
 
     try {
@@ -474,7 +492,7 @@ RemoteResponse RemoteServer::handleRemoveTrigger(const nlohmann::json& params) {
     return resp;
 }
 
-RemoteResponse RemoteServer::handleEnableTrigger(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleEnableTrigger(const nlohmann::json& params) {
     RemoteResponse resp;
 
     try {
@@ -490,7 +508,7 @@ RemoteResponse RemoteServer::handleEnableTrigger(const nlohmann::json& params) {
     return resp;
 }
 
-RemoteResponse RemoteServer::handleDisableTrigger(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handleDisableTrigger(const nlohmann::json& params) {
     RemoteResponse resp;
 
     try {
@@ -506,7 +524,7 @@ RemoteResponse RemoteServer::handleDisableTrigger(const nlohmann::json& params) 
     return resp;
 }
 
-RemoteResponse RemoteServer::handleListTriggers(const nlohmann::json& /*params*/) {
+RemoteResponse RemoteControlServer::handleListTriggers(const nlohmann::json& /*params*/) {
     RemoteResponse resp;
 
     auto instances = triggerManager_->getAllTriggerInstances();
@@ -568,7 +586,7 @@ RemoteResponse RemoteServer::handleListTriggers(const nlohmann::json& /*params*/
     return resp;
 }
 
-RemoteResponse RemoteServer::handleRecordMacro(const nlohmann::json& /*params*/) {
+RemoteResponse RemoteControlServer::handleRecordMacro(const nlohmann::json& /*params*/) {
     RemoteResponse resp;
     macroRecorder_->start();
     resp.success = true;
@@ -576,7 +594,7 @@ RemoteResponse RemoteServer::handleRecordMacro(const nlohmann::json& /*params*/)
     return resp;
 }
 
-RemoteResponse RemoteServer::handleStopMacroRecording(const nlohmann::json& /*params*/) {
+RemoteResponse RemoteControlServer::handleStopMacroRecording(const nlohmann::json& /*params*/) {
     RemoteResponse resp;
     macroRecorder_->stop();
     resp.success = true;
@@ -584,7 +602,7 @@ RemoteResponse RemoteServer::handleStopMacroRecording(const nlohmann::json& /*pa
     return resp;
 }
 
-RemoteResponse RemoteServer::handlePlayMacro(const nlohmann::json& params) {
+RemoteResponse RemoteControlServer::handlePlayMacro(const nlohmann::json& params) {
     RemoteResponse resp;
     int speed = params.value("speed", 100);
     int repeat = params.value("repeat", 1);

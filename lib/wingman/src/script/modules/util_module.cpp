@@ -1,18 +1,26 @@
 #include "wingman/script/iscript_engine.hpp"
-#include "wingman/input.hpp"
 #include <chrono>
 #include <iostream>
+#include <thread>
 
 namespace wingman {
 namespace script {
 namespace modules {
+
+namespace {
+
+void sleepMs(int milliseconds) {
+	std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+}
+
+} // namespace
 
 ModuleDescriptor createUtilModule() {
 	ModuleDescriptor mod;
 	mod.name = "util";
 
 	mod.functions.push_back({"sleep", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		Input::delay(static_cast<int>(args[0].asInt()));
+		sleepMs(static_cast<int>(args[0].asInt()));
 		return ScriptValue::null();
 	}, "ms:int -> nil"});
 

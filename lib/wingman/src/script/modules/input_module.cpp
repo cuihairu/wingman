@@ -1,9 +1,29 @@
 #include "input_module.hpp"
-#include "wingman/input.hpp"
+#include "wingman/platform/input_factory.hpp"
+
+#include <chrono>
+#include <memory>
+#include <random>
+#include <thread>
 
 namespace wingman {
 namespace script {
 namespace modules {
+
+namespace {
+
+platform::IInput& getInput() {
+	static std::shared_ptr<platform::IInput> input = platform::defaultSharedInput();
+	return *input;
+}
+
+void sleepMs(int ms) {
+	if (ms > 0) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+	}
+}
+
+}
 
 ModuleDescriptor createInputModule() {
 	ModuleDescriptor mod;
@@ -13,10 +33,11 @@ ModuleDescriptor createInputModule() {
 		int x = args[0].asInt();
 		int y = args[1].asInt();
 		int button = args.size() > 2 ? args[2].asInt(0) : 0;
-		MouseButton btn = MouseButton::Left;
-		if (button == 1) btn = MouseButton::Middle;
-		else if (button == 2) btn = MouseButton::Right;
-		Input::click(x, y, btn);
+		platform::MouseButton btn = platform::MouseButton::Left;
+		if (button == 1) btn = platform::MouseButton::Middle;
+		else if (button == 2) btn = platform::MouseButton::Right;
+		getInput().mouseMove(x, y);
+		getInput().mouseClick(btn);
 		return ScriptValue::null();
 	}, "x:int, y:int, button:int -> nil"});
 
@@ -24,11 +45,8 @@ ModuleDescriptor createInputModule() {
 		int x = args[0].asInt();
 		int y = args[1].asInt();
 		int duration = args.size() > 2 ? args[2].asInt(0) : 0;
-		if (duration > 0) {
-			Input::move(x, y, duration);
-		} else {
-			Input::move(x, y);
-		}
+		getInput().mouseMove(x, y);
+		sleepMs(duration);
 		return ScriptValue::null();
 	}, "x:int, y:int, duration:int -> nil"});
 
@@ -36,41 +54,49 @@ ModuleDescriptor createInputModule() {
 		int x = args[0].asInt();
 		int y = args[1].asInt();
 		int delta = args[2].asInt();
-		Input::scroll(x, y, delta);
+		getInput().mouseMove(x, y);
+		getInput().mouseWheel(delta);
 		return ScriptValue::null();
 	}, "x:int, y:int, delta:int -> nil"});
 
 	mod.functions.push_back({"keyDown", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		Input::keyDown(static_cast<int>(args[0].asInt()));
+		getInput().keyDown(static_cast<platform::KeyCode>(args[0].asInt()));
 		return ScriptValue::null();
 	}, "vkCode:int -> nil"});
 
 	mod.functions.push_back({"keyUp", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		Input::keyUp(static_cast<int>(args[0].asInt()));
+		getInput().keyUp(static_cast<platform::KeyCode>(args[0].asInt()));
 		return ScriptValue::null();
 	}, "vkCode:int -> nil"});
 
 	mod.functions.push_back({"key", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		Input::key(static_cast<int>(args[0].asInt()));
+		getInput().keyPress(static_cast<platform::KeyCode>(args[0].asInt()));
 		return ScriptValue::null();
 	}, "vkCode:int -> nil"});
 
 	mod.functions.push_back({"type", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		std::string text = args[0].asString();
 		int delay = args.size() > 1 ? args[1].asInt(10) : 10;
-		Input::type(text, delay);
+		getInput().textInput(text);
+		sleepMs(delay);
 		return ScriptValue::null();
 	}, "text:string, delay:int -> nil"});
 
 	mod.functions.push_back({"delay", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		Input::delay(static_cast<int>(args[0].asInt()));
+		sleepMs(static_cast<int>(args[0].asInt()));
 		return ScriptValue::null();
 	}, "ms:int -> nil"});
 
 	mod.functions.push_back({"randomDelay", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		int minMs = static_cast<int>(args[0].asInt());
 		int maxMs = static_cast<int>(args[1].asInt());
-		Input::randomDelay(minMs, maxMs);
+		if (maxMs < minMs) {
+			std::swap(minMs, maxMs);
+		}
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		std::uniform_int_distribution<> dist(minMs, maxMs);
+		sleepMs(dist(gen));
 		return ScriptValue::null();
 	}, "min:int, max:int -> nil"});
 

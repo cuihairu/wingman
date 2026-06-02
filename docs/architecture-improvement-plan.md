@@ -1481,7 +1481,7 @@ bus->subscribe<ScreenCapturedEvent>([](const ScreenCapturedEvent& e) {
 bus->subscribe<ColorFoundEvent>([](const ColorFoundEvent& e) {
     auto pos = e.getPosition();
     // 在找到的位置执行操作
-    Input::click(pos.x, pos.y);
+    input->mouseClick(MouseButton::Left);
 }, "ClickHandler");
 
 // 发布事件

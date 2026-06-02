@@ -51,7 +51,7 @@ bootstrap-vcpkg.bat -disableMetrics
 ### 安装依赖
 
 ```cmd
-vcpkg install --triplet=x64-windows-static lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf imgui
+vcpkg install --triplet=x64-windows-static lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf
 ```
 
 ### 配置 CMake
@@ -117,7 +117,6 @@ wingman/
 | curl | HTTP 客户端 |
 | sqlite3 | 数据库 |
 | protobuf | 序列化协议 |
-| imgui | GUI（可选） |
 
 ## 故障排除
 

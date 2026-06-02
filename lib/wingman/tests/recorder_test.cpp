@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 #include "wingman/recorder.hpp"
-#include "wingman/input.hpp"
 #include <fstream>
 #include <filesystem>
 

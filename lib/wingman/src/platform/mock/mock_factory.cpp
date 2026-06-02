@@ -1,4 +1,5 @@
 #include "wingman/platform/mock_factory.hpp"
+#include "wingman/platform/mock_input.hpp"
 
 // Forward declare Mock implementation classes
 namespace wingman::platform::mock {
@@ -7,7 +8,6 @@ namespace wingman::platform::mock {
 }
 
 #include "mock_capture.cpp"
-#include "mock_input.cpp"
 
 namespace wingman::platform::mock {
 

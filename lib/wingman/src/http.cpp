@@ -1,25 +1,42 @@
 #include "wingman/http.hpp"
 
-#include <curl/curl.h>
-#include <cstring>
 #include <chrono>
+
+#ifdef WINGMAN_HAS_CURL
+#include <curl/curl.h>
+#endif
 
 namespace wingman {
 
-// Callback: write response body
-static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-    size_t totalSize = size * nmemb;
-    std::string* response = static_cast<std::string*>(userp);
+namespace {
+
+HttpResponse makeUnavailableResponse() {
+    HttpResponse response;
+    response.error = "HTTP support is not enabled in this build";
+    return response;
+}
+
+#ifdef WINGMAN_HAS_CURL
+
+void ensureCurlGlobalInit() {
+    static const bool initialized = []() {
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+        return true;
+    }();
+    (void)initialized;
+}
+
+size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+    const size_t totalSize = size * nmemb;
+    auto* response = static_cast<std::string*>(userp);
     response->append(static_cast<char*>(contents), totalSize);
     return totalSize;
 }
 
-// Callback: write response headers
-static size_t HeaderCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-    size_t totalSize = size * nmemb;
+size_t HeaderCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+    const size_t totalSize = size * nmemb;
     std::string header(static_cast<char*>(contents), totalSize);
 
-    // Remove \r\n
     if (!header.empty() && header.back() == '\n') {
         header.pop_back();
         if (!header.empty() && header.back() == '\r') {
@@ -28,12 +45,11 @@ static size_t HeaderCallback(void* contents, size_t size, size_t nmemb, void* us
     }
 
     if (!header.empty()) {
-        size_t colonPos = header.find(':');
+        const size_t colonPos = header.find(':');
         if (colonPos != std::string::npos) {
             std::string key = header.substr(0, colonPos);
             std::string value = header.substr(colonPos + 1);
 
-            // Trim spaces
             while (!value.empty() && value.front() == ' ') {
                 value.erase(0, 1);
             }
@@ -46,14 +62,23 @@ static size_t HeaderCallback(void* contents, size_t size, size_t nmemb, void* us
     return totalSize;
 }
 
+#endif
+
+} // namespace
+
 HttpClient::HttpClient() : m_curl(nullptr), m_defaultTimeout(30) {
+#ifdef WINGMAN_HAS_CURL
+    ensureCurlGlobalInit();
     m_curl = curl_easy_init();
+#endif
 }
 
 HttpClient::~HttpClient() {
+#ifdef WINGMAN_HAS_CURL
     if (m_curl) {
-        curl_easy_cleanup(m_curl);
+        curl_easy_cleanup(static_cast<CURL*>(m_curl));
     }
+#endif
 }
 
 void HttpClient::setDefaultHeader(const std::string& key, const std::string& value) {
@@ -65,97 +90,90 @@ void HttpClient::setDefaultTimeout(int seconds) {
 }
 
 HttpResponse HttpClient::perform(const std::string& url,
-                                  const std::string& method,
-                                  const std::string& body,
-                                  const HttpOptions& options) {
+                                 const std::string& method,
+                                 const std::string& body,
+                                 const HttpOptions& options) {
+#ifndef WINGMAN_HAS_CURL
+    (void)url;
+    (void)method;
+    (void)body;
+    (void)options;
+    return makeUnavailableResponse();
+#else
     HttpResponse response;
-    if (!m_curl) {
+    auto* curl = static_cast<CURL*>(m_curl);
+    if (!curl) {
         response.error = "CURL not initialized";
         return response;
     }
 
-    auto startTime = std::chrono::steady_clock::now();
+    const auto startTime = std::chrono::steady_clock::now();
 
-    // Set URL
-    curl_easy_setopt(m_curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
-    // Set timeout
-    long timeout = options.timeout > 0 ? options.timeout : m_defaultTimeout;
-    curl_easy_setopt(m_curl, CURLOPT_TIMEOUT, timeout);
-    curl_easy_setopt(m_curl, CURLOPT_CONNECTTIMEOUT, 10L);
+    const long timeout = options.timeout > 0 ? options.timeout : m_defaultTimeout;
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
 
-    // Set follow redirects
-    curl_easy_setopt(m_curl, CURLOPT_FOLLOWLOCATION, options.followRedirects ? 1L : 0L);
-    curl_easy_setopt(m_curl, CURLOPT_MAXREDIRS, static_cast<long>(options.maxRedirects));
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, options.followRedirects ? 1L : 0L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, static_cast<long>(options.maxRedirects));
 
-    // Set response callback
-    curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &response.body);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response.body);
 
-    curl_easy_setopt(m_curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
-    curl_easy_setopt(m_curl, CURLOPT_HEADERDATA, &response.headers);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response.headers);
 
-    // Set request headers
-    struct curl_slist* headers = nullptr;
-
-    // Default headers
+    curl_slist* headers = nullptr;
     for (const auto& [key, value] : m_defaultHeaders) {
-        std::string header = key + ": " + value;
+        const std::string header = key + ": " + value;
         headers = curl_slist_append(headers, header.c_str());
     }
 
-    // Option headers
     for (const auto& [key, value] : options.headers) {
-        std::string header = key + ": " + value;
+        const std::string header = key + ": " + value;
         headers = curl_slist_append(headers, header.c_str());
     }
 
     if (headers) {
-        curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     }
 
-    // Set method and request body
     if (method == "POST") {
-        curl_easy_setopt(m_curl, CURLOPT_POST, 1L);
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
         if (!body.empty()) {
-            curl_easy_setopt(m_curl, CURLOPT_POSTFIELDS, body.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
         }
     } else if (method == "PUT") {
-        curl_easy_setopt(m_curl, CURLOPT_CUSTOMREQUEST, "PUT");
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
         if (!body.empty()) {
-            curl_easy_setopt(m_curl, CURLOPT_POSTFIELDS, body.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
         }
     } else if (method == "DELETE") {
-        curl_easy_setopt(m_curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
     } else if (method == "HEAD") {
-        curl_easy_setopt(m_curl, CURLOPT_NOBODY, 1L);
+        curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
     }
-    // GET is default
 
-    // Execute request
-    CURLcode res = curl_easy_perform(m_curl);
-
+    const CURLcode res = curl_easy_perform(curl);
     if (res == CURLE_OK) {
         long httpCode = 0;
-        curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &httpCode);
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
         response.statusCode = static_cast<int>(httpCode);
     } else {
         response.error = curl_easy_strerror(res);
     }
 
-    // Cleanup
     if (headers) {
         curl_slist_free_all(headers);
     }
 
-    // Reset options (prepare for next request)
-    curl_easy_reset(m_curl);
+    curl_easy_reset(curl);
 
-    // Calculate elapsed time
-    auto endTime = std::chrono::steady_clock::now();
+    const auto endTime = std::chrono::steady_clock::now();
     response.elapsed = std::chrono::duration<double>(endTime - startTime).count();
-
     return response;
+#endif
 }
 
 HttpResponse HttpClient::get(const std::string& url, const HttpOptions& options) {
@@ -163,8 +181,8 @@ HttpResponse HttpClient::get(const std::string& url, const HttpOptions& options)
 }
 
 HttpResponse HttpClient::post(const std::string& url,
-                               const std::string& jsonBody,
-                               const HttpOptions& options) {
+                              const std::string& jsonBody,
+                              const HttpOptions& options) {
     HttpOptions opts = options;
     if (opts.headers.find("Content-Type") == opts.headers.end()) {
         opts.headers["Content-Type"] = "application/json";
@@ -175,7 +193,6 @@ HttpResponse HttpClient::post(const std::string& url,
 HttpResponse HttpClient::postForm(const std::string& url,
                                   const std::unordered_map<std::string, std::string>& fields,
                                   const HttpOptions& options) {
-    // Build form data
     std::string formBody;
     for (auto it = fields.begin(); it != fields.end(); ++it) {
         if (it != fields.begin()) {
@@ -191,8 +208,8 @@ HttpResponse HttpClient::postForm(const std::string& url,
 }
 
 HttpResponse HttpClient::put(const std::string& url,
-                              const std::string& jsonBody,
-                              const HttpOptions& options) {
+                             const std::string& jsonBody,
+                             const HttpOptions& options) {
     HttpOptions opts = options;
     if (opts.headers.find("Content-Type") == opts.headers.end()) {
         opts.headers["Content-Type"] = "application/json";

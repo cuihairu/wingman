@@ -5,7 +5,9 @@
 #include "wingman/runtime/commands/script_command.hpp"
 #include "wingman/runtime/commands/build_command.hpp"
 #include "wingman/runtime/commands/serve_command.hpp"
+#ifdef WINGMAN_HAS_LUA
 #include "wingman/lua/lua_engine.hpp"
+#endif
 #include "wingman/lua/lua_script_engine.hpp"
 #ifdef WINGMAN_ENABLE_PYTHON
 #include "wingman/python/python_script_engine.hpp"
@@ -43,6 +45,7 @@ bool runEmbeddedScript() {
 
     // 创建 Lua 实例并执行
     try {
+#ifdef WINGMAN_HAS_LUA
         auto lua = std::make_unique<wingman::lua::LuaEngine>();
         if (!lua->initialize()) {
             spdlog::error("Failed to initialize Lua engine");
@@ -69,6 +72,10 @@ bool runEmbeddedScript() {
 
         spdlog::info("Embedded script completed successfully");
         return true;
+#else
+        spdlog::error("Embedded script execution requires Lua support");
+        return true;
+#endif
 
     } catch (const std::exception& e) {
         spdlog::error("Exception while running embedded script: {}", e.what());
@@ -80,7 +87,7 @@ bool runEmbeddedScript() {
 int runGuiMode() {
     spdlog::info("Starting GUI mode...");
 
-    // TODO: 启动 ImGui GUI
+    // GUI 由独立的 Tauri 应用管理。
     // 目前先启动 agent
     return wingman::runtime::commands::startCommand("agent.toml");
 }
@@ -93,7 +100,9 @@ int main(int argc, char** argv) {
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
 
     // 注册脚本引擎
+#ifdef WINGMAN_HAS_LUA
     wingman::lua::registerLuaEngine();
+#endif
 #ifdef WINGMAN_ENABLE_PYTHON
     wingman::python::registerPythonEngine();
 #endif

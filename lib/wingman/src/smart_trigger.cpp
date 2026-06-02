@@ -1,6 +1,6 @@
 #include "wingman/smart_trigger.hpp"
 
-#include "wingman/input.hpp"
+#include "wingman/platform/input_factory.hpp"
 #include "wingman/screen.hpp"
 #include <spdlog/spdlog.h>
 #include <algorithm>
@@ -11,7 +11,11 @@ namespace wingman {
 
 // ========== SmartTrigger implementation ==========
 
-SmartTrigger::SmartTrigger(const std::string& name) : name_(name) {}
+SmartTrigger::SmartTrigger(const std::string& name)
+    : SmartTrigger(name, platform::defaultSharedInput()) {}
+
+SmartTrigger::SmartTrigger(const std::string& name, std::shared_ptr<platform::IInput> input)
+    : name_(name), input_(std::move(input)) {}
 
 SmartTrigger::~SmartTrigger() {
     stop();
@@ -143,15 +147,20 @@ bool SmartTrigger::checkConditions() {
 }
 
 void SmartTrigger::executeActions() {
+    if (!input_) {
+        input_ = platform::defaultSharedInput();
+    }
+
     for (const auto& action : actions_) {
         switch (action.type) {
             case TriggerActionType::CLICK:
-                Input::click(action.clickPosition.x, action.clickPosition.y);
+                input_->mouseMove(action.clickPosition.x, action.clickPosition.y);
+                input_->mouseClick(platform::MouseButton::Left);
                 spdlog::debug("Trigger '{}': clicked ({}, {})", name_, action.clickPosition.x, action.clickPosition.y);
                 break;
 
             case TriggerActionType::KEY_PRESS:
-                Input::key(action.keyCode);
+                input_->keyPress(static_cast<platform::KeyCode>(action.keyCode));
                 spdlog::debug("Trigger '{}': pressed key {}", name_, action.keyCode);
                 break;
 
@@ -207,6 +216,9 @@ void SmartTrigger::watchLoop() {
 
 // ========== SmartTriggerManager implementation ==========
 
+SmartTriggerManager::SmartTriggerManager()
+    : input_(platform::defaultSharedInput()) {}
+
 SmartTriggerManager& SmartTriggerManager::instance() {
     static SmartTriggerManager instance;
     return instance;
@@ -220,7 +232,7 @@ std::shared_ptr<SmartTrigger> SmartTriggerManager::createTrigger(const std::stri
         return triggers_[name];
     }
 
-    auto trigger = std::make_shared<SmartTrigger>(name);
+    auto trigger = std::make_shared<SmartTrigger>(name, input_);
     triggers_[name] = trigger;
 
     spdlog::info("Created trigger '{}'", name);

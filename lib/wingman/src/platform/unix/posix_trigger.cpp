@@ -2,11 +2,11 @@
 #include "wingman/script_manager.hpp"
 #include "wingman/script/script_engine_factory.hpp"
 #include "wingman/script/module_registry.hpp"
+#include "wingman/platform/input_factory.hpp"
 
 #if defined(__linux__) || defined(__APPLE__)
 
 #include "wingman/screen.hpp"
-#include "wingman/input.hpp"
 #include "wingman/window.hpp"
 #include "wingman/process.hpp"
 #include <spdlog/spdlog.h>
@@ -29,12 +29,17 @@ static uint64_t getTickCount() {
     return static_cast<uint64_t>(tv.tv_sec * 1000 + tv.tv_usec / 1000);
 }
 
-TriggerManager::TriggerManager() : m_running(false), m_scriptManager(nullptr) {
-    m_logger = spdlog::default_logger();
-}
+TriggerManager::TriggerManager()
+    : TriggerManager(platform::defaultSharedInput()) {}
 
 TriggerManager::TriggerManager(std::shared_ptr<spdlog::logger> logger)
-    : m_running(false), m_scriptManager(nullptr), m_logger(logger) {
+    : TriggerManager(platform::defaultSharedInput(), logger) {}
+
+TriggerManager::TriggerManager(std::shared_ptr<platform::IInput> input)
+    : TriggerManager(std::move(input), spdlog::default_logger()) {}
+
+TriggerManager::TriggerManager(std::shared_ptr<platform::IInput> input, std::shared_ptr<spdlog::logger> logger)
+    : m_running(false), m_scriptManager(nullptr), m_logger(logger), m_input(std::move(input)) {
     if (!m_logger) {
         m_logger = spdlog::default_logger();
     }
@@ -52,6 +57,11 @@ void TriggerManager::setScriptManager(ScriptManager* mgr) {
 void TriggerManager::setLogger(std::shared_ptr<spdlog::logger> logger) {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_logger = logger ? logger : spdlog::default_logger();
+}
+
+void TriggerManager::setInput(std::shared_ptr<platform::IInput> input) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_input = std::move(input);
 }
 
 size_t TriggerManager::add(const TriggerConfig& config) {
@@ -288,7 +298,7 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
             } catch (...) {
                 return false;
             }
-            return Input::isKeyDown(vk);
+            return m_input && m_input->isKeyPressed(static_cast<platform::KeyCode>(vk));
         }
 
         case TriggerType::WindowOpened: {
@@ -339,13 +349,18 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
     for (const auto& action : actions) {
         switch (action.type) {
             case BasicTriggerAction::Click:
-                Input::click(action.x, action.y);
+                if (m_input) {
+                    m_input->mouseMove(action.x, action.y);
+                    m_input->mouseClick(platform::MouseButton::Left);
+                }
                 if (m_logger) m_logger->debug("Trigger action: click at ({}, {})", action.x, action.y);
                 break;
 
             case BasicTriggerAction::KeyPress:
                 try {
-                    Input::key(std::stoi(action.value));
+                    if (m_input) {
+                        m_input->keyPress(static_cast<platform::KeyCode>(std::stoi(action.value)));
+                    }
                     if (m_logger) m_logger->debug("Trigger action: key press '{}'", action.value);
                 } catch (const std::exception& e) {
                     if (m_logger) m_logger->error("Trigger action: invalid key value '{}': {}", action.value, e.what());
@@ -353,7 +368,12 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
                 break;
 
             case BasicTriggerAction::Type:
-                Input::type(action.value, action.delay);
+                if (m_input) {
+                    m_input->textInput(action.value);
+                }
+                if (action.delay > 0) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(action.delay));
+                }
                 if (m_logger) m_logger->debug("Trigger action: type text");
                 break;
 
@@ -404,12 +424,12 @@ void TriggerManager::executeActions(const std::vector<TriggerActionData>& action
                 break;
 
             case BasicTriggerAction::Delay:
-                Input::delay(action.delay > 0 ? action.delay : 100);
+                std::this_thread::sleep_for(std::chrono::milliseconds(action.delay > 0 ? action.delay : 100));
                 break;
         }
 
         if (action.type != BasicTriggerAction::Delay && action.delay > 0) {
-            Input::delay(action.delay);
+            std::this_thread::sleep_for(std::chrono::milliseconds(action.delay));
         }
     }
 }

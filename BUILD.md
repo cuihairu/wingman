@@ -136,7 +136,6 @@ cmake --build build --config Release --target kvstore_bench
 
 | 选项 | 默认值 | 说明 |
 |------|--------|------|
-| `WINGMAN_BUILD_GUI` | ON | 构建原生 GUI (需要 ImGui) |
 | `WINGMAN_ENABLE_OCR` | OFF | 启用 OCR 支持 (需要 Tesseract) |
 | `WINGMAN_ENABLE_ML` | OFF | 启用 ML/AI 支持 (需要 ONNX Runtime) |
 | `WINGMAN_BUILD_TESTS` | OFF | 构建测试 |
@@ -152,11 +151,8 @@ cmake --build build --config Release --target kvstore_bench
 # 启用 tests feature (安装 GTest)
 -DVCPKG_MANIFEST_FEATURES=tests
 
-# 启用 gui feature (安装 ImGui)
--DVCPKG_MANIFEST_FEATURES=gui
-
 # 启用多个 features
--DVCPKG_MANIFEST_FEATURES=tests;gui
+-DVCPKG_MANIFEST_FEATURES=tests;ocr
 ```
 
 ## 依赖项
@@ -172,7 +168,6 @@ cmake --build build --config Release --target kvstore_bench
 - protobuf
 
 ### 可选依赖
-- imgui (GUI)
 - tesseract (OCR)
 - onnxruntime (ML/AI)
 - gtest (测试)

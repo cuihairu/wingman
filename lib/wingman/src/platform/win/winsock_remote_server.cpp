@@ -2,6 +2,7 @@
 
 #ifdef _WIN32
 
+#include "wingman/platform/input_factory.hpp"
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <vector>
@@ -20,9 +21,9 @@
 
 namespace wingman {
 
-// ========== RemoteServer Platform Implementation ==========
+// ========== RemoteControlServer Platform Implementation ==========
 
-class RemoteServer::Impl {
+class RemoteControlServer::Impl {
 public:
     SOCKET listenSocket = INVALID_SOCKET;
     std::thread acceptThread;
@@ -31,20 +32,29 @@ public:
     bool shouldStop = false;
 };
 
-RemoteServer::RemoteServer()
+RemoteControlServer::RemoteControlServer()
     : impl_(std::make_unique<Impl>())
-    , triggerManager_(std::make_unique<TriggerManager>())
+    , input_(platform::defaultSharedInput())
+    , triggerManager_(std::make_unique<TriggerManager>(input_))
     , macroRecorder_(std::make_unique<MacroRecorder>())
 {
 }
 
-RemoteServer::~RemoteServer() {
+RemoteControlServer::RemoteControlServer(std::shared_ptr<platform::IInput> input)
+    : impl_(std::make_unique<Impl>())
+    , input_(std::move(input))
+    , triggerManager_(std::make_unique<TriggerManager>(input_))
+    , macroRecorder_(std::make_unique<MacroRecorder>())
+{
+}
+
+RemoteControlServer::~RemoteControlServer() {
     stop();
 }
 
-bool RemoteServer::start(int port) {
+bool RemoteControlServer::start(int port) {
     if (running_) {
-        spdlog::warn("RemoteServer already running on port {}", port_);
+        spdlog::warn("RemoteControlServer already running on port {}", port_);
         return true;
     }
 
@@ -86,7 +96,7 @@ bool RemoteServer::start(int port) {
     }
 
     running_ = true;
-    spdlog::info("RemoteServer started on port {}", port_);
+    spdlog::info("RemoteControlServer started on port {}", port_);
 
     impl_->acceptThread = std::thread([this]() {
         while (running_ && !impl_->shouldStop) {
@@ -122,7 +132,7 @@ bool RemoteServer::start(int port) {
     return true;
 }
 
-void RemoteServer::stop() {
+void RemoteControlServer::stop() {
     if (!running_) return;
 
     running_ = false;
@@ -148,10 +158,10 @@ void RemoteServer::stop() {
     }
 
     WSACleanup();
-    spdlog::info("RemoteServer stopped");
+    spdlog::info("RemoteControlServer stopped");
 }
 
-void RemoteServer::handleClient(SOCKET clientSocket) {
+void RemoteControlServer::handleClient(SOCKET clientSocket) {
     char buffer[4096];
     std::string requestBuffer;
 
@@ -193,23 +203,23 @@ void RemoteServer::handleClient(SOCKET clientSocket) {
     }
 }
 
-// ========== RemoteClient Platform Implementation ==========
+// ========== RemoteControlClient Platform Implementation ==========
 
-class RemoteClient::Impl {
+class RemoteControlClient::Impl {
 public:
     SOCKET socket = INVALID_SOCKET;
 };
 
-RemoteClient::RemoteClient()
+RemoteControlClient::RemoteControlClient()
     : impl_(std::make_unique<Impl>())
 {
 }
 
-RemoteClient::~RemoteClient() {
+RemoteControlClient::~RemoteControlClient() {
     disconnect();
 }
 
-bool RemoteClient::connect(const std::string& host, int port) {
+bool RemoteControlClient::connect(const std::string& host, int port) {
     host_ = host;
     port_ = port;
 
@@ -261,7 +271,7 @@ bool RemoteClient::connect(const std::string& host, int port) {
     return true;
 }
 
-void RemoteClient::disconnect() {
+void RemoteControlClient::disconnect() {
     if (!connected_) return;
 
     if (impl_->socket != INVALID_SOCKET) {
@@ -274,7 +284,7 @@ void RemoteClient::disconnect() {
     spdlog::info("Disconnected from {}:{}", host_, port_);
 }
 
-RemoteResponse RemoteClient::send(const RemoteRequest& req) {
+RemoteResponse RemoteControlClient::send(const RemoteRequest& req) {
     RemoteResponse resp;
     if (!connected_) {
         resp.success = false;
@@ -309,14 +319,14 @@ RemoteResponse RemoteClient::send(const RemoteRequest& req) {
     return resp;
 }
 
-RemoteResponse RemoteClient::send(const std::string& action, const nlohmann::json& params) {
+RemoteResponse RemoteControlClient::send(const std::string& action, const nlohmann::json& params) {
     RemoteRequest req;
     req.action = action;
     req.params = params;
     return send(req);
 }
 
-RemoteResponse RemoteClient::captureScreen(int x, int y, int width, int height) {
+RemoteResponse RemoteControlClient::captureScreen(int x, int y, int width, int height) {
     nlohmann::json params;
     params["x"] = x;
     params["y"] = y;
@@ -325,14 +335,14 @@ RemoteResponse RemoteClient::captureScreen(int x, int y, int width, int height) 
     return send("capture_screen", params);
 }
 
-RemoteResponse RemoteClient::getPixel(int x, int y) {
+RemoteResponse RemoteControlClient::getPixel(int x, int y) {
     nlohmann::json params;
     params["x"] = x;
     params["y"] = y;
     return send("get_pixel", params);
 }
 
-RemoteResponse RemoteClient::findColor(uint32_t color, int x, int y, int width, int height, int tolerance) {
+RemoteResponse RemoteControlClient::findColor(uint32_t color, int x, int y, int width, int height, int tolerance) {
     nlohmann::json params;
 
     char colorHex[16];
@@ -347,7 +357,7 @@ RemoteResponse RemoteClient::findColor(uint32_t color, int x, int y, int width, 
     return send("find_color", params);
 }
 
-RemoteResponse RemoteClient::click(int x, int y, const std::string& button) {
+RemoteResponse RemoteControlClient::click(int x, int y, const std::string& button) {
     nlohmann::json params;
     params["x"] = x;
     params["y"] = y;
@@ -355,7 +365,7 @@ RemoteResponse RemoteClient::click(int x, int y, const std::string& button) {
     return send("click", params);
 }
 
-RemoteResponse RemoteClient::move(int x, int y, int durationMs) {
+RemoteResponse RemoteControlClient::move(int x, int y, int durationMs) {
     nlohmann::json params;
     params["x"] = x;
     params["y"] = y;
@@ -363,45 +373,46 @@ RemoteResponse RemoteClient::move(int x, int y, int durationMs) {
     return send("move", params);
 }
 
-RemoteResponse RemoteClient::key(int keyCode) {
+RemoteResponse RemoteControlClient::key(int keyCode) {
     nlohmann::json params;
     params["key"] = keyCode;
     return send("key", params);
 }
 
-RemoteResponse RemoteClient::typeText(const std::string& text, int delayMs) {
+RemoteResponse RemoteControlClient::typeText(const std::string& text, int delayMs) {
     nlohmann::json params;
     params["text"] = text;
     params["delay"] = delayMs;
     return send("type_text", params);
 }
 
-RemoteResponse RemoteClient::addTrigger(const nlohmann::json& config) {
+RemoteResponse RemoteControlClient::addTrigger(const nlohmann::json& config) {
     nlohmann::json params;
     params["config"] = config;
     return send("add_trigger", params);
 }
 
-RemoteResponse RemoteClient::listTriggers() {
+RemoteResponse RemoteControlClient::listTriggers() {
     return send("list_triggers");
 }
 
-RemoteResponse RemoteClient::enableTrigger(const std::string& id) {
+RemoteResponse RemoteControlClient::enableTrigger(const std::string& id) {
     nlohmann::json params;
     params["id"] = id;
     return send("enable_trigger", params);
 }
 
-RemoteResponse RemoteClient::disableTrigger(const std::string& id) {
+RemoteResponse RemoteControlClient::disableTrigger(const std::string& id) {
     nlohmann::json params;
     params["id"] = id;
     return send("disable_trigger", params);
 }
 
-RemoteResponse RemoteClient::ping() {
+RemoteResponse RemoteControlClient::ping() {
     return send("ping");
 }
 
 } // namespace wingman
 
 #endif // _WIN32
+#include "wingman/platform/input_factory.hpp"

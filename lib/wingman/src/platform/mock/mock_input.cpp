@@ -1,236 +1,189 @@
-#include "wingman/platform/iinput.hpp"
-#include <map>
-#include <mutex>
+#include "wingman/platform/mock_input.hpp"
 
 namespace wingman::platform::mock {
 
-/**
- * @brief Mock input implementation (for testing)
- */
-class MockInput : public IInput {
-public:
-    MockInput() = default;
-    ~MockInput() override {
-        shutdown();
+bool MockInput::initialize(const InputConfig& config) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    config_ = config;
+    initialized_ = true;
+    return true;
+}
+
+void MockInput::shutdown() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    initialized_ = false;
+}
+
+void MockInput::mouseMove(int x, int y) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    mousePosition_ = Point{x, y};
+    mouseMoveCallCount_++;
+}
+
+void MockInput::mouseMoveRelative(int deltaX, int deltaY) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    mousePosition_.x += deltaX;
+    mousePosition_.y += deltaY;
+}
+
+void MockInput::mouseDown(MouseButton button) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    mouseButtonStates_[button] = true;
+    mouseDownCallCount_[button]++;
+}
+
+void MockInput::mouseUp(MouseButton button) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    mouseButtonStates_[button] = false;
+    mouseUpCallCount_[button]++;
+}
+
+void MockInput::mouseClick(MouseButton button) {
+    mouseDown(button);
+    mouseUp(button);
+    clickCallCount_[button]++;
+}
+
+void MockInput::mouseDoubleClick(MouseButton button) {
+    mouseClick(button);
+    mouseClick(button);
+}
+
+void MockInput::mouseWheel(int delta) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    scrollDelta_ += delta;
+}
+
+void MockInput::mouseWheelHorizontal(int delta) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    hScrollDelta_ += delta;
+}
+
+void MockInput::keyDown(KeyCode key) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    keyStates_[key] = true;
+    keyDownCallCount_[key]++;
+}
+
+void MockInput::keyUp(KeyCode key) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    keyStates_[key] = false;
+    keyUpCallCount_[key]++;
+}
+
+void MockInput::keyPress(KeyCode key) {
+    keyDown(key);
+    keyUp(key);
+    keyPressCallCount_[key]++;
+}
+
+void MockInput::keyCombination(const std::vector<KeyCode>& modifiers, KeyCode key) {
+    for (KeyCode mod : modifiers) {
+        keyDown(mod);
     }
-
-    bool initialize(const InputConfig& config) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        config_ = config;
-        initialized_ = true;
-        return true;
+    keyPress(key);
+    for (auto it = modifiers.rbegin(); it != modifiers.rend(); ++it) {
+        keyUp(*it);
     }
+}
 
-    void shutdown() override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        initialized_ = false;
-    }
+void MockInput::textInput(const std::string& text) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    inputText_ += text;
+}
 
-    void mouseMove(int x, int y) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        mousePosition_ = Point{x, y};
-        mouseMoveCallCount_++;
-    }
+Point MockInput::getMousePosition() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return mousePosition_;
+}
 
-    void mouseMoveRelative(int deltaX, int deltaY) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        mousePosition_.x += deltaX;
-        mousePosition_.y += deltaY;
-    }
+bool MockInput::isKeyPressed(KeyCode key) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = keyStates_.find(key);
+    return it != keyStates_.end() && it->second;
+}
 
-    void mouseDown(MouseButton button) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        mouseButtonStates_[button] = true;
-        mouseDownCallCount_[button]++;
-    }
+bool MockInput::isMousePressed(MouseButton button) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = mouseButtonStates_.find(button);
+    return it != mouseButtonStates_.end() && it->second;
+}
 
-    void mouseUp(MouseButton button) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        mouseButtonStates_[button] = false;
-        mouseUpCallCount_[button]++;
-    }
+void MockInput::mouseDragBegin(MouseButton button) {
+    mouseDown(button);
+}
 
-    void mouseClick(MouseButton button) override {
-        mouseDown(button);
-        mouseUp(button);
-        clickCallCount_[button]++;
-    }
+void MockInput::mouseDragEnd(MouseButton button) {
+    mouseUp(button);
+}
 
-    void mouseDoubleClick(MouseButton button) override {
-        mouseClick(button);
-        mouseClick(button);
-    }
+void MockInput::setInputDelay(int delayMicroseconds) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    config_.inputDelay = delayMicroseconds;
+}
 
-    void mouseWheel(int delta) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        scrollDelta_ += delta;
-    }
+InputConfig MockInput::getConfig() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return config_;
+}
 
-    void mouseWheelHorizontal(int delta) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        hScrollDelta_ += delta;
-    }
+bool MockInput::supportsTextInput() const {
+    return true;
+}
 
-    void keyDown(KeyCode key) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        keyStates_[key] = true;
-        keyDownCallCount_[key]++;
-    }
+bool MockInput::supportsRelativeMovement() const {
+    return true;
+}
 
-    void keyUp(KeyCode key) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        keyStates_[key] = false;
-        keyUpCallCount_[key]++;
-    }
+std::string MockInput::getBackendName() const {
+    return "Mock";
+}
 
-    void keyPress(KeyCode key) override {
-        keyDown(key);
-        keyUp(key);
-        keyPressCallCount_[key]++;
-    }
+BackendInfo MockInput::getBackendInfo() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return BackendInfo{
+        "Mock",
+        "1.0",
+        initialized_,
+        "Mock Input for Testing"
+    };
+}
 
-    void keyCombination(const std::vector<KeyCode>& modifiers, KeyCode key) override {
-        for (KeyCode mod : modifiers) {
-            keyDown(mod);
-        }
-        keyPress(key);
-        for (auto it = modifiers.rbegin(); it != modifiers.rend(); ++it) {
-            keyUp(*it);
-        }
-    }
+bool MockInput::isInitialized() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return initialized_;
+}
 
-    void textInput(const std::string& text) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        inputText_ += text;
-    }
+int MockInput::getMouseMoveCallCount() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return mouseMoveCallCount_;
+}
 
-    Point getMousePosition() override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return mousePosition_;
-    }
+int MockInput::getClickCallCount(MouseButton button) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = clickCallCount_.find(button);
+    return it != clickCallCount_.end() ? it->second : 0;
+}
 
-    bool isKeyPressed(KeyCode key) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto it = keyStates_.find(key);
-        return it != keyStates_.end() && it->second;
-    }
+int MockInput::getKeyPressCallCount(KeyCode key) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = keyPressCallCount_.find(key);
+    return it != keyPressCallCount_.end() ? it->second : 0;
+}
 
-    bool isMouseButtonPressed(MouseButton button) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto it = mouseButtonStates_.find(button);
-        return it != mouseButtonStates_.end() && it->second;
-    }
+int MockInput::getScrollDelta() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return scrollDelta_;
+}
 
-    void mouseDragBegin(MouseButton button) override {
-        mouseDown(button);
-    }
+int MockInput::getHorizontalScrollDelta() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return hScrollDelta_;
+}
 
-    void mouseDragEnd(MouseButton button) override {
-        mouseUp(button);
-    }
-
-    void setInputDelay(int delayMicroseconds) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        config_.inputDelay = delayMicroseconds;
-    }
-
-    std::string getBackendName() const override {
-        return "Mock";
-    }
-
-    BackendInfo getBackendInfo() const override {
-        return BackendInfo{
-            "Mock",
-            "1.0",
-            initialized_,
-            "Mock Input for Testing"
-        };
-    }
-
-    InputConfig getConfig() const override {
-        return config_;
-    }
-
-    bool supportsTextInput() const override {
-        return true;
-    }
-
-    bool supportsRelativeMovement() const override {
-        return true;
-    }
-
-    // ========== Mock-Specific Methods (for test assertions) ==========
-
-    int getMouseMoveCallCount() const {
-        return mouseMoveCallCount_;
-    }
-
-    int getMouseDownCallCount(MouseButton button) const {
-        auto it = mouseDownCallCount_.find(button);
-        return it != mouseDownCallCount_.end() ? it->second : 0;
-    }
-
-    int getMouseUpCallCount(MouseButton button) const {
-        auto it = mouseUpCallCount_.find(button);
-        return it != mouseUpCallCount_.end() ? it->second : 0;
-    }
-
-    int getClickCallCount(MouseButton button) const {
-        auto it = clickCallCount_.find(button);
-        return it != clickCallCount_.end() ? it->second : 0;
-    }
-
-    int getKeyDownCallCount(KeyCode key) const {
-        auto it = keyDownCallCount_.find(key);
-        return it != keyDownCallCount_.end() ? it->second : 0;
-    }
-
-    int getKeyUpCallCount(KeyCode key) const {
-        auto it = keyUpCallCount_.find(key);
-        return it != keyUpCallCount_.end() ? it->second : 0;
-    }
-
-    int getKeyPressCallCount(KeyCode key) const {
-        auto it = keyPressCallCount_.find(key);
-        return it != keyPressCallCount_.end() ? it->second : 0;
-    }
-
-    std::string getInputText() const {
-        return inputText_;
-    }
-
-    void clearInputText() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        inputText_.clear();
-    }
-
-    void setMockKeyState(KeyCode key, bool pressed) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        keyStates_[key] = pressed;
-    }
-
-    void setMockMouseButtonState(MouseButton button, bool pressed) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        mouseButtonStates_[button] = pressed;
-    }
-
-private:
-    InputConfig config_;
-    bool initialized_ = false;
-    Point mousePosition_{0, 0};
-    int mouseMoveCallCount_ = 0;
-    std::map<MouseButton, bool> mouseButtonStates_;
-    std::map<MouseButton, int> mouseDownCallCount_;
-    std::map<MouseButton, int> mouseUpCallCount_;
-    std::map<MouseButton, int> clickCallCount_;
-    int scrollDelta_ = 0;
-    int hScrollDelta_ = 0;
-    std::map<KeyCode, bool> keyStates_;
-    std::map<KeyCode, int> keyDownCallCount_;
-    std::map<KeyCode, int> keyUpCallCount_;
-    std::map<KeyCode, int> keyPressCallCount_;
-    std::string inputText_;
-    mutable std::mutex mutex_;
-};
+std::string MockInput::getInputText() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return inputText_;
+}
 
 } // namespace wingman::platform::mock

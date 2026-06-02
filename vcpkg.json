@@ -40,19 +40,6 @@
     }
   ],
   "features": {
-    "gui": {
-      "description": "Build native GUI (ImGui)",
-      "dependencies": [
-        {
-          "name": "imgui",
-          "platform": "windows"
-        },
-        {
-          "name": "directxtex",
-          "platform": "windows"
-        }
-      ]
-    },
     "ocr": {
       "description": "Enable OCR support (Tesseract)",
       "dependencies": [

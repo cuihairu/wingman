@@ -13,6 +13,7 @@
 #include <spdlog/logger.h>
 
 #include "wingman/screen.hpp"  // For Rect type
+#include "wingman/platform/iinput.hpp"
 
 namespace wingman {
 
@@ -86,6 +87,8 @@ class TriggerManager {
 public:
     TriggerManager();
     explicit TriggerManager(std::shared_ptr<spdlog::logger> logger);
+    explicit TriggerManager(std::shared_ptr<platform::IInput> input);
+    TriggerManager(std::shared_ptr<platform::IInput> input, std::shared_ptr<spdlog::logger> logger);
     ~TriggerManager();
 
     // Add trigger
@@ -129,6 +132,9 @@ public:
     // Set logger
     void setLogger(std::shared_ptr<spdlog::logger> logger);
 
+    // Set input backend
+    void setInput(std::shared_ptr<platform::IInput> input);
+
 private:
     std::vector<TriggerInstance> m_triggers;
     std::atomic<bool> m_running{false};
@@ -136,6 +142,7 @@ private:
     mutable std::mutex m_mutex;
     class ScriptManager* m_scriptManager;
     std::shared_ptr<spdlog::logger> m_logger;
+    std::shared_ptr<platform::IInput> m_input;
 
     // Trigger check thread
     void checkThread();

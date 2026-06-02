@@ -9,8 +9,10 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 依赖库
-find_package(spdlog CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
+include(${CMAKE_SOURCE_DIR}/cmake/EnsureSpdlog.cmake)
+wingman_ensure_spdlog()
+include(${CMAKE_SOURCE_DIR}/cmake/EnsureNlohmannJson.cmake)
+wingman_ensure_nlohmann_json()
 find_package(clasp CONFIG QUIET)  # Clasp 命令行库（可选）
 
 # 如果找不到 clasp，使用源码树中的本地副本或 FetchContent
@@ -63,8 +65,6 @@ if(TARGET Jsoncpp_lib)
     endif()
 endif()
 
-# Lua 库通过 wingman::lua 依赖自动链接
-
 # Client 源文件
 set(CLIENT_SOURCES
     src/main.cpp
@@ -108,12 +108,20 @@ target_link_libraries(wingman-runtime PRIVATE
     wingman::proto
     wingman::transport
     wingman
-    wingman::lua
-    wingman::debug
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     clasp::clasp
 )
+
+if(TARGET wingman::lua)
+    target_link_libraries(wingman-runtime PRIVATE wingman::lua)
+    target_compile_definitions(wingman-runtime PRIVATE WINGMAN_HAS_LUA)
+endif()
+
+if(TARGET wingman::debug)
+    target_link_libraries(wingman-runtime PRIVATE wingman::debug)
+    target_compile_definitions(wingman-runtime PRIVATE WINGMAN_HAS_DEBUG)
+endif()
 if(NOT APPLE)
     target_link_libraries(wingman-runtime PRIVATE Drogon::Drogon)
 endif()

@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include <thread>
 #include <chrono>
+#include <memory>
 
 namespace wingman::platform::win {
 
@@ -142,7 +143,7 @@ public:
         keyUp(key);
     }
 
-    void keyCombination(const std::vector<KeyCode>& modifiers, KeyCode key) {
+    void keyCombination(const std::vector<KeyCode>& modifiers, KeyCode key) override {
         if (!initialized_) return;
 
         for (KeyCode mod : modifiers) {
@@ -198,19 +199,19 @@ public:
         return (GetKeyState(static_cast<int>(key)) & 0x8000) != 0;
     }
 
-    bool isMouseButtonPressed(MouseButton button) {
+    bool isMousePressed(MouseButton button) override {
         return (GetKeyState(getVirtualKeyCode(button)) & 0x8000) != 0;
     }
 
-    void mouseDragBegin(MouseButton button) {
+    void mouseDragBegin(MouseButton button) override {
         mouseDown(button);
     }
 
-    void mouseDragEnd(MouseButton button) {
+    void mouseDragEnd(MouseButton button) override {
         mouseUp(button);
     }
 
-    void setInputDelay(int delayMicroseconds) {
+    void setInputDelay(int delayMicroseconds) override {
         config_.inputDelay = delayMicroseconds;
     }
 
@@ -227,15 +228,15 @@ public:
         };
     }
 
-    InputConfig getConfig() const {
+    InputConfig getConfig() const override {
         return config_;
     }
 
-    bool supportsTextInput() const {
+    bool supportsTextInput() const override {
         return true;
     }
 
-    bool supportsRelativeMovement() const {
+    bool supportsRelativeMovement() const override {
         return true;
     }
 
@@ -287,6 +288,12 @@ private:
         }
     }
 };
+
+std::unique_ptr<IInput> createSendInputInput(const InputConfig& config) {
+    auto input = std::make_unique<SendInputInput>();
+    input->initialize(config);
+    return input;
+}
 
 } // namespace wingman::platform::win
 #endif // _WIN32

@@ -184,7 +184,7 @@ TEST(HumanMouseTest, MoveToSamePosition) {
     Point pos(100, 100);
 
     // Moving to the same position should be safe
-    // Note: this actually calls Input::move, which requires test environment support
+    // Note: real movement requires test environment support
     // Here we only test that it does not crash
     SUCCEED();
 }

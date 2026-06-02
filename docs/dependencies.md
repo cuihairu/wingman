@@ -23,7 +23,7 @@
 
 2. **安装依赖**（使用静态链接）
    ```cmd
-   vcpkg install --triplet=x64-windows-static lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf imgui
+   vcpkg install --triplet=x64-windows-static lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf
    ```
 
 3. **配置项目**
@@ -67,7 +67,6 @@ scoop install lua
 - curl (HTTP)
 - sqlite3 (数据库)
 - protobuf (序列化)
-- imgui (GUI)
 
 ## 临时方案
 

@@ -96,7 +96,7 @@ wingman/
 │   │   ├── src/
 │   │   │   └── main.cpp  # 入口 (支持 Lua/Python)
 │   │   └── CMakeLists.txt
-│   └── gui/              # GUI 界面 (Tauri 2.0 + Svelte 5)
+│   └── inspector/        # 检查工具 (Tauri 2.0 + Svelte 5)
 │       ├── src/          # Svelte 5 前端
 │       └── src-tauri/    # Rust 后端
 │
@@ -104,7 +104,7 @@ wingman/
 │   ├── include/wingman/
 │   │   ├── script/       # IScriptEngine, ScriptValue, ModuleDescriptor
 │   │   ├── screen.hpp    # 屏幕捕获
-│   │   ├── input.hpp     # 输入模拟
+│   │   ├── platform/iinput.hpp # 输入模拟
 │   │   ├── trigger.hpp   # 触发器
 │   │   ├── vision.hpp    # 视觉识别
 │   │   ├── behavior_tree.hpp # 行为树

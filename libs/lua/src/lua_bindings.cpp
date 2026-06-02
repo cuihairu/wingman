@@ -10,7 +10,6 @@
 #include "lua_extensions.hpp"
 
 #include "wingman/screen.hpp"
-#include "wingman/input.hpp"
 #include "wingman/window.hpp"
 #include "wingman/process.hpp"
 #include "wingman/system.hpp"
@@ -30,13 +29,17 @@
 #include "wingman/version.hpp"
 #include "wingman/script_manager.hpp"
 #include "wingman/human.hpp"
+#include "wingman/platform/input_factory.hpp"
 #include "wingman/debugger/debugger.hpp"
 
+#include <chrono>
 #include <cstring>
 #include <ctime>
 #include <iostream>
-#include <unordered_map>
 #include <atomic>
+#include <random>
+#include <thread>
+#include <unordered_map>
 #include <windows.h>
 
 namespace wingman::lua {
@@ -365,16 +368,32 @@ void LuaState::registerScreenModule() {
 
 namespace input {
 
+namespace {
+
+platform::IInput& getInput() {
+    static std::shared_ptr<platform::IInput> input = platform::defaultSharedInput();
+    return *input;
+}
+
+void sleepMs(int ms) {
+    if (ms > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    }
+}
+
+}
+
 int click(lua_State* L) {
     int x = luaL_checkinteger(L, 1);
     int y = luaL_checkinteger(L, 2);
     int button = luaL_optinteger(L, 3, 0);  // 0=Left, 1=Middle, 2=Right
 
-    MouseButton btn = MouseButton::Left;
-    if (button == 1) btn = MouseButton::Middle;
-    else if (button == 2) btn = MouseButton::Right;
+    platform::MouseButton btn = platform::MouseButton::Left;
+    if (button == 1) btn = platform::MouseButton::Middle;
+    else if (button == 2) btn = platform::MouseButton::Right;
 
-    Input::click(x, y, btn);
+    getInput().mouseMove(x, y);
+    getInput().mouseClick(btn);
     return 0;
 }
 
@@ -383,11 +402,8 @@ int move(lua_State* L) {
     int y = luaL_checkinteger(L, 2);
     int duration = luaL_optinteger(L, 3, 0);
 
-    if (duration > 0) {
-        Input::move(x, y, duration);
-    } else {
-        Input::move(x, y);
-    }
+    getInput().mouseMove(x, y);
+    sleepMs(duration);
     return 0;
 }
 
@@ -396,25 +412,26 @@ int scroll(lua_State* L) {
     int y = luaL_checkinteger(L, 2);
     int delta = luaL_checkinteger(L, 3);
 
-    Input::scroll(x, y, delta);
+    getInput().mouseMove(x, y);
+    getInput().mouseWheel(delta);
     return 0;
 }
 
 int keyDown(lua_State* L) {
     int vkCode = luaL_checkinteger(L, 1);
-    Input::keyDown(vkCode);
+    getInput().keyDown(static_cast<platform::KeyCode>(vkCode));
     return 0;
 }
 
 int keyUp(lua_State* L) {
     int vkCode = luaL_checkinteger(L, 1);
-    Input::keyUp(vkCode);
+    getInput().keyUp(static_cast<platform::KeyCode>(vkCode));
     return 0;
 }
 
 int key(lua_State* L) {
     int vkCode = luaL_checkinteger(L, 1);
-    Input::key(vkCode);
+    getInput().keyPress(static_cast<platform::KeyCode>(vkCode));
     return 0;
 }
 
@@ -422,20 +439,27 @@ int type(lua_State* L) {
     const char* text = luaL_checkstring(L, 1);
     int delay = luaL_optinteger(L, 2, 10);
 
-    Input::type(text, delay);
+    getInput().textInput(text);
+    sleepMs(delay);
     return 0;
 }
 
 int delay(lua_State* L) {
     int ms = luaL_checkinteger(L, 1);
-    Input::delay(ms);
+    sleepMs(ms);
     return 0;
 }
 
 int randomDelay(lua_State* L) {
     int min = luaL_checkinteger(L, 1);
     int max = luaL_checkinteger(L, 2);
-    Input::randomDelay(min, max);
+    if (max < min) {
+        std::swap(min, max);
+    }
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dist(min, max);
+    sleepMs(dist(gen));
     return 0;
 }
 
@@ -667,7 +691,7 @@ namespace util {
 
 int sleep(lua_State* L) {
     int ms = luaL_checkinteger(L, 1);
-    Input::delay(ms);
+    sleepMs(ms);
     return 0;
 }
 

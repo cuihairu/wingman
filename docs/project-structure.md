@@ -6,8 +6,7 @@
 wingman/
 ├── apps/                    # 应用程序
 │   ├── runtime/             # CLI 运行时 (C++)
-│   ├── gui/                 # Tauri GUI 应用
-│   └── inspector/           # 图形化检查工具
+│   └── inspector/           # Tauri 检查工具
 ├── lib/                     # 核心库
 │   └── wingman/             # 核心功能库
 ├── libs/                    # 辅助库
@@ -42,11 +41,8 @@ C++ CLI 运行时，支持三种运行模式：
 - **PassiveMode**：被动监听，等待连接
 - **StandaloneMode**：单机模式，无网络
 
-#### gui/
-Tauri 2.0 桌面 GUI 应用（Rust 后端 + Svelte 5 前端）
-
 #### inspector/
-图形化开发工具，用于快速验证功能（截图、像素检测、图像匹配等）
+Tauri 2.0 开发检查工具，用于快速验证功能（截图、像素检测、图像匹配等）
 
 ### lib/wingman/
 
@@ -100,7 +96,7 @@ libs/lua/ 或 libs/python/ (引擎绑定)
     ↓
 lib/wingman/ (核心功能：screen, input, trigger...)
     ↓
-apps/runtime/ (应用：CLI/GUI + 运行模式)
+apps/runtime/ (应用：CLI + 运行模式)
     ↓
 orchestrator/server/ (可选：远程控制)
 ```

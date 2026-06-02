@@ -35,7 +35,6 @@ endif()
 option(WINGMAN_BUILD_SERVER "Build network server (legacy)" OFF)  # 默认关闭，使用新架构
 option(WINGMAN_BUILD_DEBUGGER "Build debugger (legacy)" OFF)       # 默认关闭，使用 EmmyLua
 option(WINGMAN_BUILD_TESTS "Build tests" OFF)
-option(WINGMAN_BUILD_GUI "Build native GUI (requires ImGui)" ON)
 option(WINGMAN_ENABLE_OCR "Enable OCR support (requires Tesseract)" OFF)  # 默认关闭
 option(WINGMAN_ENABLE_ML "Enable ML/AI support (requires ONNX Runtime)" OFF)  # 默认关闭
 option(WINGMAN_ENABLE_PYTHON "Enable Python scripting engine (requires CPython + pybind11)" OFF)
@@ -44,6 +43,29 @@ option(WINGMAN_COMPAT_BUILD "Build only portable compatibility targets" OFF)
 # ========== 新架构选项 ==========
 option(WINGMAN_BUILD_AGENT "Build new Agent (multi-module)" ON)
 option(WINGMAN_ENABLE_EMMY "Enable EmmyLua Debugger integration" ON)
+option(WINGMAN_BUILD_PROTO "Build protobuf module" ${WINGMAN_BUILD_AGENT})
+option(WINGMAN_BUILD_TRANSPORT "Build transport module" ${WINGMAN_BUILD_AGENT})
+option(WINGMAN_BUILD_CORE "Build core wingman library" ${WINGMAN_BUILD_AGENT})
+option(WINGMAN_BUILD_LUA "Build Lua module" ${WINGMAN_BUILD_AGENT})
+option(WINGMAN_BUILD_DEBUG "Build debug module" ${WINGMAN_BUILD_AGENT})
+option(WINGMAN_BUILD_RUNTIME "Build runtime app" ${WINGMAN_BUILD_AGENT})
+
+if(WINGMAN_BUILD_RUNTIME)
+    if(NOT WINGMAN_BUILD_CORE)
+        message(FATAL_ERROR "WINGMAN_BUILD_RUNTIME=ON requires WINGMAN_BUILD_CORE=ON")
+    endif()
+    if(NOT WINGMAN_BUILD_PROTO)
+        message(FATAL_ERROR "WINGMAN_BUILD_RUNTIME=ON requires WINGMAN_BUILD_PROTO=ON")
+    endif()
+    if(NOT WINGMAN_BUILD_TRANSPORT)
+        message(FATAL_ERROR "WINGMAN_BUILD_RUNTIME=ON requires WINGMAN_BUILD_TRANSPORT=ON")
+    endif()
+endif()
+
+if(WINGMAN_BUILD_DEBUG AND NOT WINGMAN_BUILD_LUA)
+    message(STATUS "WINGMAN_BUILD_DEBUG requested without Lua support; disabling debug module")
+    set(WINGMAN_BUILD_DEBUG OFF CACHE BOOL "Build debug module" FORCE)
+endif()
 
 # ========== 测试选项 ==========
 option(BUILD_CLIENT_TESTS "Build client tests" OFF)
@@ -53,48 +75,10 @@ option(BUILD_LUA_TESTS "Build lua library tests" OFF)
 option(BUILD_PROTO_TESTS "Build proto library tests" OFF)
 option(BUILD_DEBUG_TESTS "Build debug library tests" OFF)
 
-# ========== 核心依赖（必需）==========
-find_package(asio CONFIG REQUIRED)
-find_package(Protobuf CONFIG)
-
-if(NOT WINGMAN_COMPAT_BUILD)
-    find_package(unofficial-lua CONFIG REQUIRED)
-    find_package(spdlog CONFIG REQUIRED)
-    find_package(nlohmann_json CONFIG REQUIRED)
-    find_package(CURL CONFIG REQUIRED)
-    find_package(Threads REQUIRED)
-    find_package(OpenCV CONFIG)
-    find_package(unofficial-sqlite3 CONFIG)
-
-    if(TARGET unofficial::lua::lua)
-        set(LUA_LIBRARIES unofficial::lua::lua)
-        set(LUA_INCLUDE_DIR "${unofficial-lua_DIR}/../../include")
-    endif()
-else()
-    find_package(nlohmann_json CONFIG QUIET)
-endif()
+# ========== 顶层依赖（仅顶层自身使用）==========
 
 # 测试依赖 - GTest 在各测试子目录中单独查找
 # 这样可以避免在主配置阶段因找不到 GTest 而失败
-
-# SQLite3 支持
-if(NOT WINGMAN_COMPAT_BUILD)
-    add_compile_definitions(WINGMAN_HAS_SQLITE)
-    message(STATUS "SQLite3 persistence enabled")
-endif()
-
-# GUI 支持
-if(WINGMAN_BUILD_GUI AND NOT WINGMAN_COMPAT_BUILD)
-    find_package(imgui CONFIG QUIET)
-    if(imgui_FOUND)
-        add_compile_definitions(WINGMAN_BUILD_GUI)
-        message(STATUS "Native GUI support enabled")
-    else()
-        message(WARNING "imgui not found, GUI support disabled")
-    endif()
-elseif(WINGMAN_BUILD_GUI AND WINGMAN_COMPAT_BUILD)
-    message(STATUS "Compatibility build enabled: skipping GUI dependency discovery")
-endif()
 
 # OCR 支持
 if(WINGMAN_ENABLE_OCR AND NOT WINGMAN_COMPAT_BUILD)
@@ -109,7 +93,7 @@ if(WINGMAN_ENABLE_ML AND NOT WINGMAN_COMPAT_BUILD)
 endif()
 
 # EmmyLua 支持
-if(WINGMAN_ENABLE_EMMY)
+if(WINGMAN_ENABLE_EMMY AND WINGMAN_BUILD_LUA)
     add_compile_definitions(WINGMAN_ENABLE_EMMY)
     message(STATUS "EmmyLua Debugger enabled")
 endif()
@@ -125,44 +109,42 @@ configure_file(
 # ========== 多模块架构 ==========
 
 # 共享库子目录
-if(WINGMAN_BUILD_AGENT)
+if(WINGMAN_BUILD_PROTO)
     add_subdirectory(libs/proto)
-    add_subdirectory(libs/transport)
-    if(NOT WINGMAN_COMPAT_BUILD)
-        add_subdirectory(libs/lua)
-        add_subdirectory(libs/debug)
-    endif()
-
-    # Python 引擎（可选）
-    if(WINGMAN_ENABLE_PYTHON AND NOT WINGMAN_COMPAT_BUILD)
-        find_package(pybind11 CONFIG REQUIRED)
-        find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
-        add_subdirectory(libs/python)
-        add_compile_definitions(WINGMAN_ENABLE_PYTHON)
-        message(STATUS "Python scripting engine enabled")
-    endif()
-
-    # 核心库
-    if(NOT WINGMAN_COMPAT_BUILD)
-        add_subdirectory(lib/wingman)
-    endif()
-
-    # 应用
-    if(NOT WINGMAN_COMPAT_BUILD)
-        add_subdirectory(apps/runtime)
-    else()
-        message(STATUS "Compatibility build enabled: compiling portable targets only")
-    endif()
-    # add_subdirectory(apps/inspector)  # 暂时禁用，需要 imgui
-
-    message(STATUS "Multi-module build enabled")
 endif()
 
-# GUI 应用 (Tauri - 如果启用则构建)
-if(WINGMAN_BUILD_GUI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/apps/gui/CMakeLists.txt")
-    add_subdirectory(apps/gui)
-elseif(WINGMAN_BUILD_GUI)
-    message(WARNING "apps/gui/CMakeLists.txt not found, skipping CMake GUI target (Tauri GUI is managed separately)")
+if(WINGMAN_BUILD_TRANSPORT)
+    add_subdirectory(libs/transport)
+endif()
+
+if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_LUA)
+    add_subdirectory(libs/lua)
+endif()
+
+if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DEBUG AND WINGMAN_BUILD_LUA)
+    add_subdirectory(libs/debug)
+endif()
+
+if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_ENABLE_PYTHON)
+    find_package(pybind11 CONFIG REQUIRED)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+    add_subdirectory(libs/python)
+    add_compile_definitions(WINGMAN_ENABLE_PYTHON)
+    message(STATUS "Python scripting engine enabled")
+endif()
+
+if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_CORE)
+    add_subdirectory(lib/wingman)
+endif()
+
+if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_RUNTIME)
+    add_subdirectory(apps/runtime)
+elseif(WINGMAN_BUILD_RUNTIME)
+    message(STATUS "Compatibility build enabled: skipping runtime app")
+endif()
+
+if(WINGMAN_BUILD_AGENT)
+    message(STATUS "Multi-module build enabled")
 endif()
 
 # ========== 测试（新架构）==========
@@ -170,17 +152,17 @@ if(WINGMAN_BUILD_TESTS)
     enable_testing()
 
     # 各模块测试（transport、lua、proto、debug 在各自模块内处理）
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/wingman/tests/CMakeLists.txt")
+    if(WINGMAN_BUILD_CORE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/wingman/tests/CMakeLists.txt")
         add_subdirectory(lib/wingman/tests)
     endif()
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/apps/runtime/tests/CMakeLists.txt")
+    if(WINGMAN_BUILD_RUNTIME AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/apps/runtime/tests/CMakeLists.txt")
         add_subdirectory(apps/runtime/tests)
     endif()
 endif()
 
 # ========== 性能基准测试 ==========
 option(WINGMAN_BUILD_BENCHMARKS "Build performance benchmarks" OFF)
-if(WINGMAN_BUILD_BENCHMARKS)
+if(WINGMAN_BUILD_BENCHMARKS AND WINGMAN_BUILD_CORE)
     add_subdirectory(lib/wingman/tests/benchmarks)
 endif()
 

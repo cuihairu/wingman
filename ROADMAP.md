@@ -28,29 +28,20 @@
 ```
 wingman/
 ├── apps/                         ← 所有可执行程序
-│   ├── client/                   ← 主应用
+│   ├── runtime/                  ← 主运行时
 │   │   ├── src/
 │   │   │   ├── main.cpp          ← 入口
-│   │   │   ├── cli/              ← CLI 命令（一个文件一个命令）
-│   │   │   │   ├── start.cpp
-│   │   │   │   ├── stop.cpp
-│   │   │   │   └── status.cpp
-│   │   │   ├── modes/            ← 运行模式
-│   │   │   │   ├── active_mode.cpp      ← 使用 TcpClient
-│   │   │   │   ├── passive_mode.cpp     ← 使用 TcpServer
-│   │   │   │   └── standalone_mode.cpp
-│   │   │   └── gui/              ← GUI
-│   │   │       ├── app.cpp
-│   │   │       ├── panels/
-│   │   │       └── widgets/
-│   │   ├── include/wingman/client/
+│   │   │   ├── active_mode.cpp   ← 主动连接模式
+│   │   │   ├── passive_mode.cpp  ← 被动监听模式
+│   │   │   └── standalone_mode.cpp
+│   │   ├── include/wingman/runtime/
 │   │   ├── tests/
 │   │   └── CMakeLists.txt
 │   │
-│   └── inspector/                ← 检查工具
+│   └── inspector/                ← Tauri 检查工具
+│       ├── src-tauri/
 │       ├── src/
-│       ├── include/
-│       └── CMakeLists.txt
+│       └── package.json
 │
 ├── lib/wingman/                  ← 核心库
 │   ├── include/wingman/
@@ -130,7 +121,7 @@ ModuleDescriptor (25+ 语言无关模块) → C++ 核心 API
     ↓
 lib/wingman/ (核心功能：screen, input, trigger...)
     ↓
-apps/client/ (应用：CLI/GUI + 运行模式)
+apps/runtime/ (应用：CLI + 运行模式)
 ```
 
 ### 脚本引擎抽象
@@ -188,7 +179,7 @@ vcpkg install pybind11
 | Phase 2 | 目录结构重组 (apps + lib) | ✅ 已完成 |
 | Phase 3 | 核心库迁移 (libs/core → lib/wingman) | ✅ 已完成 |
 | Phase 4 | Client 重构 (主动/被动/单机) | ✅ 已完成 |
-| Phase 5 | GUI 迁移到 apps/client | ✅ 已完成 |
+| Phase 5 | Inspector/Tauri 应用整理 | ✅ 已完成 |
 | Phase 6 | EmmyLua 集成 | ✅ 已完成 |
 | Phase 7 | 测试与文档 | ✅ 已完成 |
 | Phase 8 | 脚本层多语言抽象 (Lua + Python) | ✅ 已完成 |
@@ -360,7 +351,6 @@ class TriggerEngine {
 - ✅ 前端界面原型
 
 **待完成**:
-- ⏳ Dear ImGui 游戏内调试界面
 - ⏳ 触发器可视化配置
 - ⏳ 屏幕预览面板
 - ⏳ 日志实时显示
@@ -387,7 +377,7 @@ class TriggerEngine {
 ```
 
 ### 5.2 技术选型
-- **Dear ImGui** - 轻量级，游戏内调试
+- **Tauri 2.0 + Web UI** - 桌面控制台与检查工具
 
 **交付物**: 图形化配置工具
 

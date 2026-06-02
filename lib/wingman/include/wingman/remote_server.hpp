@@ -1,9 +1,9 @@
 #pragma once
 
 #include "wingman/screen.hpp"
-#include "wingman/input.hpp"
 #include "wingman/trigger.hpp"
 #include "wingman/recorder.hpp"
+#include "wingman/platform/iinput.hpp"
 #include <nlohmann/json.hpp>
 #include <memory>
 #include <unordered_map>
@@ -51,10 +51,11 @@ struct RemoteResponse {
 
 // ========== Remote control server ==========
 
-class RemoteServer {
+class RemoteControlServer {
 public:
-    RemoteServer();
-    ~RemoteServer();
+    RemoteControlServer();
+    explicit RemoteControlServer(std::shared_ptr<platform::IInput> input);
+    ~RemoteControlServer();
 
     // Start server
     bool start(int port = 9999);
@@ -118,6 +119,7 @@ private:
     // ========== Core components ==========
     std::unique_ptr<TriggerManager> triggerManager_;
     std::unique_ptr<MacroRecorder> macroRecorder_;
+    std::shared_ptr<platform::IInput> input_;
     std::mutex mutex_;
 
     // ========== Implementation details ==========
@@ -127,10 +129,10 @@ private:
 
 // ========== Remote control client ==========
 
-class RemoteClient {
+class RemoteControlClient {
 public:
-    RemoteClient();
-    ~RemoteClient();
+    RemoteControlClient();
+    ~RemoteControlClient();
 
     // Connect to server
     bool connect(const std::string& host, int port = 9999);
