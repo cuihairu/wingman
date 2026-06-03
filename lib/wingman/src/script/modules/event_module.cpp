@@ -35,6 +35,8 @@ nlohmann::json toJson(const ScriptValue& value) {
 		}
 		return obj;
 	}
+	case ScriptValue::Callable:
+		return nullptr;
 	}
 	return nullptr;
 }

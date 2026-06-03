@@ -8,7 +8,26 @@
 #include <mutex>
 #include <unordered_map>
 #include <cstdint>
+
+#ifdef WINGMAN_ENABLE_VISION
 #include <opencv2/opencv.hpp>
+#else
+namespace cv {
+struct Mat {};
+struct Point {
+    int x = 0;
+    int y = 0;
+};
+
+inline int64_t getTickCount() {
+    return 0;
+}
+
+inline double getTickFrequency() {
+    return 1.0;
+}
+} // namespace cv
+#endif
 
 namespace wingman {
 

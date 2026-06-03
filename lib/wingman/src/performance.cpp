@@ -300,7 +300,7 @@ std::vector<Point> PerformanceManager::parallelFindColors(
         for (int x = 0; x < width; ++x) {
             if (maskRow[x]) {
                 results.emplace_back(region.x + x, region.y + y);
-                if (maxCount > 0 && results.size() >= maxCount) {
+                if (maxCount > 0 && results.size() >= static_cast<size_t>(maxCount)) {
                     return results;
                 }
             }

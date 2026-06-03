@@ -5,6 +5,10 @@
 #include <thread>
 #include <cstdint>
 
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -73,6 +77,10 @@ public:
     bool isPaused() const { return m_paused; }
     size_t getEventCount() const { return m_events.size(); }
 
+    // Platform callbacks use these accessors from free functions.
+    void recordEvent(const RecordedEvent& event);
+    uint64_t getStartTime() const;
+
 private:
     std::vector<RecordedEvent> m_events;
     bool m_recording;
@@ -87,24 +95,18 @@ private:
     void* m_recordContext;
     std::thread m_processThread;
 #elif defined(__APPLE__)
-    void* m_eventTap;
-    void* m_runLoopSource;
+    CFMachPortRef m_eventTap;
+    CFRunLoopSourceRef m_runLoopSource;
 #endif
 
     // Get instance
     static MacroRecorder* getInstance();
-
-    // Record event
-    void recordEvent(const RecordedEvent& event);
 
 #ifdef _WIN32
     // Windows Hook callback function
     static LRESULT WINAPI mouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
     static LRESULT WINAPI keyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam);
 #endif
-
-    // Get start time (for platform implementation)
-    uint64_t getStartTime() const { return m_startTime; }
 };
 
 } // namespace wingman

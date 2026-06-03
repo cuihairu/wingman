@@ -86,9 +86,9 @@ public:
 		}, "notify");
 	}
 
-	void webhook(const std::string& url, const nlohmann::json& payload, const nlohmann::json& options) {
+	void webhook(const std::string& url, const nlohmann::json& payload, const nlohmann::json& /*options*/) {
 		// Send webhook asynchronously
-		WebhookSender::send(url, payload, [this, url](bool success, std::string error) {
+		WebhookSender::send(url, payload, [url](bool success, std::string error) {
 			if (!success) {
 				EventHub::instance().emit("notify.failed", {
 					{"type", "webhook"},

@@ -192,11 +192,13 @@ private:
 	// Internal implementations (caller must hold m_mutex)
 	bool stopScript_Locked(const std::string& name);
 	bool unloadScript_Locked(const std::string& name);
-	bool runScript_Locked(const std::string& name);
 	bool reloadScript_Locked(const std::string& name);
 	bool checkReload_Locked(const std::string& name);
 	void checkAllReloads_Locked();
 	std::vector<std::string> getScriptNames_Locked() const;
+
+	// Runs script execution outside m_mutex.
+	bool runScriptInternal(const std::string& name);
 };
 
 } // namespace wingman

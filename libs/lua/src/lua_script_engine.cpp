@@ -196,12 +196,12 @@ void LuaScriptEngine::disableSandbox() {
 	sandboxed_ = false;
 }
 
-void LuaScriptEngine::applySandbox(const script::EngineConfig& config) {
+void LuaScriptEngine::applySandbox(const script::EngineConfig& /*config*/) {
 	// 移除危险库和函数
-	lua_["io"] = sol::nil;
-	lua_["os"] = sol::nil;
-	lua_["dofile"] = sol::nil;
-	lua_["loadfile"] = sol::nil;
+	lua_["io"] = sol::lua_nil;
+	lua_["os"] = sol::lua_nil;
+	lua_["dofile"] = sol::lua_nil;
+	lua_["loadfile"] = sol::lua_nil;
 }
 
 // ========== 自注册 ==========

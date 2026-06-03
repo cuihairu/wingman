@@ -11,10 +11,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 查找依赖
 # sol2 是 header-only 库，会自动链接 Lua
 find_package(sol2 CONFIG REQUIRED)
-include(${CMAKE_SOURCE_DIR}/cmake/EnsureSpdlog.cmake)
-wingman_ensure_spdlog()
-include(${CMAKE_SOURCE_DIR}/cmake/EnsureNlohmannJson.cmake)
-wingman_ensure_nlohmann_json()
+find_package(spdlog CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 message(STATUS "Found sol2 for Lua bindings")
 
@@ -29,15 +27,10 @@ set(LUA_SOURCES
     # src/script_manager.cpp  # TODO: 依赖 lua_bindings
 )
 
-# 如果源文件不存在，使用空实现
+# 配置阶段只校验源文件，不向源码目录写入占位实现。
 foreach(src ${LUA_SOURCES})
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
-        message(WARNING "Source file ${src} not found, creating stub")
-        file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/${src}"
-            "// Auto-generated stub for ${src}\n"
-            "#include \"wingman/lua/lua_engine.hpp\"\n"
-            "// TODO: Implement ${src}\n"
-        )
+        message(FATAL_ERROR "Required Lua source file not found: ${src}")
     endif()
 endforeach()
 

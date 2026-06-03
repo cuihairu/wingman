@@ -194,7 +194,8 @@ public:
 
         for (char c : text) {
             CGEventRef event = CGEventCreateKeyboardEvent(nullptr, 0, true);
-            CGEventKeyboardSetUnicodeString(event, 1, &c);
+            UniChar uc = static_cast<unsigned char>(c);
+            CGEventKeyboardSetUnicodeString(event, 1, &uc);
             CGEventPost(kCGHIDEventTap, event);
             CFRelease(event);
             sleep();

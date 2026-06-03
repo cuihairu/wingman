@@ -2,14 +2,17 @@
 
 #include "wingman/trigger.hpp"
 #include <spdlog/spdlog.h>
+#include <cstring>
 #include <fstream>
 
+#ifdef WINGMAN_HAS_LUA
 // Lua config parsing
 extern "C" {
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
 }
+#endif
 
 namespace wingman {
 
@@ -24,6 +27,10 @@ TriggerEngine::~TriggerEngine() {
 }
 
 bool TriggerEngine::loadFromLua(const std::string& filepath) {
+#ifndef WINGMAN_HAS_LUA
+    spdlog::error("Lua trigger config loading is unavailable because Wingman was built without Lua support: {}", filepath);
+    return false;
+#else
     lua_State* L = luaL_newstate();
     if (!L) {
         spdlog::error("Failed to create Lua state");
@@ -279,6 +286,7 @@ bool TriggerEngine::loadFromLua(const std::string& filepath) {
 
     lua_close(L);
     return true;
+#endif
 }
 
 bool TriggerEngine::loadFromYAML(const std::string& /*filepath*/) {

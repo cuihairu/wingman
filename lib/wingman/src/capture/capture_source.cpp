@@ -113,6 +113,7 @@ std::unique_ptr<Bitmap> ScreenCaptureSource::capture(const Rect& region) {
 
     return bitmap;
 #else
+    (void)region;
     spdlog::warn("[ScreenCaptureSource] Screen capture not implemented on this platform");
     return nullptr;
 #endif

@@ -59,7 +59,7 @@ struct ScriptValue {
 	bool asBool(bool def = false) const { return type == Bool ? boolVal : def; }
 	int64_t asInt(int64_t def = 0) const { return type == Int ? intVal : def; }
 	double asFloat(double def = 0.0) const { return type == Float ? floatVal : (type == Int ? static_cast<double>(intVal) : def); }
-	const std::string& asString(const std::string& def = "") const { return type == String ? strVal : def; }
+	std::string asString(const std::string& def = "") const { return type == String ? strVal : def; }
 
 	// Object access
 	const ScriptValue* get(const std::string& key) const {

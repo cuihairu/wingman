@@ -8,27 +8,8 @@ project(wingman_transport LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 查找 asio（可选）
-find_package(asio CONFIG QUIET)
-include(${CMAKE_SOURCE_DIR}/cmake/EnsureSpdlog.cmake)
-wingman_ensure_spdlog()
-
-if(NOT asio_FOUND)
-    # 使用 FetchContent 下载 asio（header-only）
-    message(STATUS "asio not found via find_package, using FetchContent")
-    include(FetchContent)
-
-    FetchContent_Declare(
-        asio
-        GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
-        GIT_TAG        asio-1-28-2
-    )
-
-    # asio 是 header-only 库，不需要构建
-    FetchContent_MakeAvailable(asio)
-else()
-    message(STATUS "asio found via CONFIG")
-endif()
+find_package(asio CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
 
 # 源文件
 set(TRANSPORT_SOURCES
@@ -51,10 +32,7 @@ target_include_directories(wingman_transport PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# 链接 asio（如果通过 CONFIG 找到）
-if(TARGET asio::asio)
-    target_link_libraries(wingman_transport PUBLIC asio::asio)
-endif()
+target_link_libraries(wingman_transport PUBLIC asio::asio)
 
 target_link_libraries(wingman_transport PRIVATE spdlog::spdlog_header_only)
 
@@ -75,11 +53,6 @@ if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(wingman_transport PRIVATE /W4 /utf-8 /EHsc)
 else()
     target_compile_options(wingman_transport PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-# FetchContent 路径修复
-if(asio_SOURCE_DIR)
-    target_include_directories(wingman_transport PRIVATE ${asio_SOURCE_DIR}/asio/include)
 endif()
 
 # ========== 测试 ==========

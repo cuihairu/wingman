@@ -136,7 +136,7 @@ static uint64_t getCurrentTimeCounter(int period = 30) {
     return static_cast<uint64_t>(timestamp / period);
 }
 
-static std::string generateTOTPInternal(const std::string& secret, int digits, int period, uint64_t timeCounter) {
+static std::string generateTOTPInternal(const std::string& secret, int digits, int /*period*/, uint64_t timeCounter) {
     // 1. Decode Base32 secret key
     std::string key = base32Decode(secret);
     if (key.empty()) {

@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 依赖
-find_package(Lua REQUIRED)
+find_package(unofficial-lua CONFIG REQUIRED)
 
 # 调试器源文件
 set(DEBUG_SOURCES
@@ -21,11 +21,10 @@ add_library(wingman_debug STATIC ${DEBUG_SOURCES})
 
 target_include_directories(wingman_debug PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${LUA_INCLUDE_DIR}
 )
 
 target_link_libraries(wingman_debug PUBLIC
-    ${LUA_LIBRARIES}
+    unofficial::lua::lua
 )
 
 # EmmyLua Debugger 路径配置

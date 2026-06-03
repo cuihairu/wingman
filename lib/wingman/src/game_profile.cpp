@@ -4,7 +4,9 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
+#ifdef _WIN32
 #include <Windows.h>
+#endif
 #include <fstream>
 #include <sstream>
 #include <filesystem>
@@ -21,9 +23,13 @@ GameProfileManager& GameProfileManager::instance() {
 
 GameProfileManager::GameProfileManager() {
     // Set default config directory
+#ifdef _WIN32
     char exePath[MAX_PATH];
     GetModuleFileNameA(nullptr, exePath, MAX_PATH);
     std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
+#else
+    std::filesystem::path exeDir = std::filesystem::current_path();
+#endif
     m_profilesDirectory = (exeDir / "profiles").string();
 }
 
@@ -214,7 +220,7 @@ std::string GameProfileManager::exportProfileToJson(const std::string& id) const
     return ss.str();
 }
 
-bool GameProfileManager::importProfileFromJson(const std::string& json, const std::string& id) {
+bool GameProfileManager::importProfileFromJson(const std::string& /*json*/, const std::string& /*id*/) {
     // TODO: Use nlohmann/json for parsing
     return false;
 }
@@ -233,12 +239,14 @@ bool GameProfileManager::exportProfilePackage(const std::string& id, const std::
     std::filesystem::copy(getProfilePath(id), tempDir,
         std::filesystem::copy_options::recursive);
 
+    (void)outputPath;
+
     // TODO: Create ZIP archive
 
     return true;
 }
 
-bool GameProfileManager::importProfilePackage(const std::string& packagePath) {
+bool GameProfileManager::importProfilePackage(const std::string& /*packagePath*/) {
     // TODO: Extract ZIP archive
     return false;
 }

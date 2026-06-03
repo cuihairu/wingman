@@ -62,6 +62,9 @@ bool RemoteClient::start() {
             case transport::SessionEvent::Error:
                 onEvent(ConnectionState::Error, "Connection error");
                 break;
+            case transport::SessionEvent::Timeout:
+                onEvent(ConnectionState::Error, "Connection timeout");
+                break;
         }
     });
 

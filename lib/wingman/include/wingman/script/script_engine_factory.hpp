@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 #include <mutex>
+#include <utility>
+#include <cctype>
 
 namespace wingman {
 namespace script {
@@ -25,13 +27,18 @@ public:
 	}
 
 	std::unique_ptr<IScriptEngine> createEngine(const std::string& language) {
-		std::lock_guard<std::mutex> lock(mutex_);
-		auto it = creators_.find(language);
-		if (it == creators_.end()) return nullptr;
-		return it->second();
+		Creator creator;
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			auto it = creators_.find(language);
+			if (it == creators_.end()) return nullptr;
+			creator = it->second;
+		}
+		return creator();
 	}
 
 	std::vector<std::string> getAvailableLanguages() const {
+		std::lock_guard<std::mutex> lock(mutex_);
 		std::vector<std::string> languages;
 		for (const auto& [lang, _] : creators_) {
 			languages.push_back(lang);
@@ -46,7 +53,16 @@ public:
 		// Convert to lowercase
 		for (auto& c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
-		for (const auto& [lang, creator] : creators_) {
+		std::vector<std::pair<std::string, Creator>> creators;
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			creators.reserve(creators_.size());
+			for (const auto& [lang, creator] : creators_) {
+				creators.emplace_back(lang, creator);
+			}
+		}
+
+		for (const auto& [lang, creator] : creators) {
 			auto engine = creator();
 			if (!engine) continue;
 			auto exts = engine->getSupportedExtensions();

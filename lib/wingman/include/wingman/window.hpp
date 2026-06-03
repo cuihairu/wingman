@@ -14,8 +14,10 @@
 namespace wingman {
 
 #ifdef _WIN32
-
 using WindowHandle = HWND;
+#else
+using WindowHandle = uint64_t;
+#endif
 
 struct WindowInfo {
     WindowHandle handle;
@@ -95,7 +97,5 @@ public:
     // Wait for window to close
     static bool waitClose(const std::string& title, int timeoutMs = 5000);
 };
-
-#endif // _WIN32
 
 } // namespace wingman

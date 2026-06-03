@@ -36,7 +36,6 @@ platform::MouseButton toPlatformMouseButton(int button) {
 
 static MacroRecorder* g_instance = nullptr;
 static CFMachPortRef g_eventTap = nullptr;
-static CFRunLoopSourceRef g_runLoopSource = nullptr;
 static std::thread g_runLoopThread;
 static bool g_runLoopRunning = false;
 
@@ -47,8 +46,8 @@ static unsigned long getTickCount() {
 }
 
 // CGEventTap callback
-static CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type,
-                                    CGEventRef event, void* refcon) {
+static CGEventRef eventTapCallback(CGEventTapProxy /*proxy*/, CGEventType type,
+                                    CGEventRef event, void* /*refcon*/) {
     if (!g_instance || !g_instance->isRecording() || g_instance->isPaused()) {
         return event;
     }
@@ -157,7 +156,7 @@ static CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type,
 
 // RunLoop thread function
 static void runLoopThreadFunc() {
-    CFRunLoopRef runLoop = CFRunLoopGetCurrent();
+    (void)CFRunLoopGetCurrent();
     g_runLoopRunning = true;
 
     while (g_runLoopRunning) {
@@ -450,7 +449,7 @@ void MacroRecorder::recordEvent(const RecordedEvent& event) {
     m_events.push_back(event);
 }
 
-unsigned long MacroRecorder::getStartTime() const {
+uint64_t MacroRecorder::getStartTime() const {
     return m_startTime;
 }
 

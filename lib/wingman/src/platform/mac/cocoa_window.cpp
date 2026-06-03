@@ -77,7 +77,7 @@ public:
         return results;
     }
 
-    WindowHandle findByClassName(const std::string& className) override {
+    WindowHandle findByClassName(const std::string& /*className*/) override {
         // macOS does not use window class name concept
         return NullWindowHandle;
     }
@@ -208,7 +208,7 @@ public:
 
                         NSRunningApplication* app = [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
                         if (app) {
-                            [app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+                            [app activateWithOptions:0];
                             CFRelease(windows);
                             return true;
                         }
@@ -443,14 +443,14 @@ public:
                 CGDisplayCount displayCount;
                 CGGetOnlineDisplayList(0, nullptr, &displayCount);
 
-                if (monitorIndex >= displayCount) {
+                if (monitorIndex < 0 || static_cast<CGDisplayCount>(monitorIndex) >= displayCount) {
                     monitorIndex = 0;
                 }
 
                 std::vector<CGDirectDisplayID> displays(displayCount);
                 CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
 
-                CGRect displayRect = CGDisplayBounds(displays[monitorIndex]);
+                CGRect displayRect = CGDisplayBounds(displays[static_cast<size_t>(monitorIndex)]);
 
                 // Get current window size
                 Rect windowBounds = getBounds(hwnd);

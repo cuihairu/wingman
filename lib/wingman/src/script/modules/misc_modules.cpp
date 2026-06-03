@@ -167,7 +167,7 @@ ModuleDescriptor createNodeModule() {
 		});
 	}, "() -> {json,nodeId,version}"});
 
-	mod.functions.push_back({"sendHeartbeat", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+	mod.functions.push_back({"sendHeartbeat", [](const std::vector<ScriptValue>& /*args*/) -> ScriptValue {
 		// Simplified implementation: log heartbeat
 		return ScriptValue::null();
 	}, "heartbeat:{...} -> nil"});

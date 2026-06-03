@@ -3,8 +3,43 @@
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <fstream>
+#include <optional>
+#include <vector>
 
 namespace wingman::runtime::commands {
+
+namespace {
+
+std::vector<std::filesystem::path> candidateStubPaths() {
+#ifdef _WIN32
+    constexpr const char* stubName = "wingman-runtime.exe";
+    return {
+        std::filesystem::path(stubName),
+        std::filesystem::path("build/apps/runtime/Release") / stubName,
+        std::filesystem::path("../build/apps/runtime/Release") / stubName,
+        std::filesystem::path("build/apps/runtime/Debug") / stubName,
+        std::filesystem::path("../build/apps/runtime/Debug") / stubName,
+    };
+#else
+    constexpr const char* stubName = "wingman-runtime";
+    return {
+        std::filesystem::path(stubName),
+        std::filesystem::path("build/apps/runtime") / stubName,
+        std::filesystem::path("../build/apps/runtime") / stubName,
+    };
+#endif
+}
+
+std::optional<std::filesystem::path> resolveStubPath() {
+    for (const auto& candidate : candidateStubPaths()) {
+        if (std::filesystem::exists(candidate)) {
+            return std::filesystem::absolute(candidate);
+        }
+    }
+    return std::nullopt;
+}
+
+} // namespace
 
 int buildCommand(const BuildOptions& options) {
     spdlog::info("=== Wingman Build ===");
@@ -20,15 +55,10 @@ int buildCommand(const BuildOptions& options) {
         return 1;
     }
 
-    // 检查 stub 程序（当前运行的 wingman-runtime.exe）
-    std::string stubPath = "wingman-runtime.exe";
-    if (!std::filesystem::exists(stubPath)) {
-        // 尝试从构建目录获取
-        stubPath = "../build/apps/runtime/Release/wingman-runtime.exe";
-        if (!std::filesystem::exists(stubPath)) {
-            spdlog::error("Stub executable not found. Please ensure wingman-runtime.exe is in current directory.");
-            return 1;
-        }
+    const auto stubPath = resolveStubPath();
+    if (!stubPath) {
+        spdlog::error("Stub executable not found. Expected one of the configured wingman-runtime build outputs.");
+        return 1;
     }
 
     // 准备打包选项
@@ -36,7 +66,7 @@ int buildCommand(const BuildOptions& options) {
     packerOptions.scriptPath = options.scriptPath;
     packerOptions.outputPath = options.outputPath;
     packerOptions.iconPath = options.iconPath;
-    packerOptions.stubPath = stubPath;
+    packerOptions.stubPath = stubPath->string();
     packerOptions.encrypt = options.encrypt;
     packerOptions.compress = options.compress;
 

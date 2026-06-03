@@ -91,7 +91,7 @@ public:
         }
 
         // 重置 IO 上下文
-        ioContext_.reset();
+        ioContext_.restart();
         socket_ = asio::ip::tcp::socket(ioContext_);
     }
 

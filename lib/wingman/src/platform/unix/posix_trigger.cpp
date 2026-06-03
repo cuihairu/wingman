@@ -302,11 +302,11 @@ bool TriggerManager::checkTrigger(TriggerInstance& trigger) {
         }
 
         case TriggerType::WindowOpened: {
-            return Window::find(cond.value) != nullptr;
+            return Window::find(cond.value) != platform::NullWindowHandle;
         }
 
         case TriggerType::WindowClosed: {
-            return Window::find(cond.value) == nullptr;
+            return Window::find(cond.value) == platform::NullWindowHandle;
         }
 
         case TriggerType::ProcessStarted: {

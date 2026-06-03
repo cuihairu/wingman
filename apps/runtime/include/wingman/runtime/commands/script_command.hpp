@@ -5,7 +5,7 @@
 
 namespace wingman::runtime::commands {
 
-/// 运行 Lua 脚本
+/// 运行已注册脚本引擎支持的脚本
 /// @param scriptPath 脚本文件路径
 /// @param args 命令行参数
 /// @return 退出码

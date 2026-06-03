@@ -10,11 +10,13 @@ namespace wingman {
 
 namespace {
 
+#ifndef WINGMAN_HAS_CURL
 HttpResponse makeUnavailableResponse() {
     HttpResponse response;
     response.error = "HTTP support is not enabled in this build";
     return response;
 }
+#endif
 
 #ifdef WINGMAN_HAS_CURL
 

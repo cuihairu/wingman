@@ -399,7 +399,7 @@ void MacroRecorder::recordEvent(const RecordedEvent& event) {
     m_events.push_back(event);
 }
 
-unsigned long MacroRecorder::getStartTime() const {
+uint64_t MacroRecorder::getStartTime() const {
     return m_startTime;
 }
 

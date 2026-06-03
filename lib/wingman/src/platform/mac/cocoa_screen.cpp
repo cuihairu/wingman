@@ -3,10 +3,43 @@
 #include <spdlog/spdlog.h>
 
 #ifdef __APPLE__
+#import <Cocoa/Cocoa.h>
 #include <CoreGraphics/CoreGraphics.h>
+#include <cstdlib>
 #include <vector>
 
 namespace wingman::platform::mac {
+
+namespace {
+
+bool isValidMonitorIndex(int monitorIndex, CGDisplayCount displayCount) {
+    return monitorIndex >= 0 &&
+           static_cast<CGDisplayCount>(monitorIndex) < displayCount;
+}
+
+std::vector<CGDirectDisplayID> getDisplays() {
+    CGDisplayCount displayCount = 0;
+    CGGetOnlineDisplayList(0, nullptr, &displayCount);
+
+    std::vector<CGDirectDisplayID> displays(displayCount);
+    if (displayCount > 0) {
+        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
+        displays.resize(displayCount);
+    }
+    return displays;
+}
+
+NSScreen* getScreenForDisplay(CGDirectDisplayID displayID) {
+    for (NSScreen* screen in [NSScreen screens]) {
+        NSNumber* screenNumber = screen.deviceDescription[@"NSScreenNumber"];
+        if (screenNumber && static_cast<CGDirectDisplayID>(screenNumber.unsignedIntValue) == displayID) {
+            return screen;
+        }
+    }
+    return nil;
+}
+
+} // namespace
 
 /**
  * @brief macOS Cocoa screen management implementation
@@ -35,16 +68,11 @@ public:
 
     int getPrimaryMonitorIndex() override {
         CGDirectDisplayID mainDisplay = CGMainDisplayID();
+        const auto displays = getDisplays();
 
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        for (int i = 0; i < displayCount; ++i) {
+        for (size_t i = 0; i < displays.size(); ++i) {
             if (displays[i] == mainDisplay) {
-                return i;
+                return static_cast<int>(i);
             }
         }
 
@@ -56,17 +84,12 @@ public:
     }
 
     Rect getMonitorBounds(int monitorIndex) override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
+        const auto displays = getDisplays();
+        if (!isValidMonitorIndex(monitorIndex, static_cast<CGDisplayCount>(displays.size()))) {
             return Rect{};
         }
 
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        CGRect rect = CGDisplayBounds(displays[monitorIndex]);
+        CGRect rect = CGDisplayBounds(displays[static_cast<size_t>(monitorIndex)]);
 
         return Rect{
             static_cast<int>(rect.origin.x),
@@ -77,28 +100,42 @@ public:
     }
 
     Rect getMonitorWorkArea(int monitorIndex) override {
-        // macOS workspace needs NSScreen, simplified here
-        return getMonitorBounds(monitorIndex);
+        const auto displays = getDisplays();
+        if (!isValidMonitorIndex(monitorIndex, static_cast<CGDisplayCount>(displays.size()))) {
+            return Rect{};
+        }
+
+        @autoreleasepool {
+            NSScreen* screen = getScreenForDisplay(displays[static_cast<size_t>(monitorIndex)]);
+            if (!screen) {
+                return getMonitorBounds(monitorIndex);
+            }
+
+            NSRect visible = screen.visibleFrame;
+            return Rect{
+                static_cast<int>(visible.origin.x),
+                static_cast<int>(visible.origin.y),
+                static_cast<int>(visible.size.width),
+                static_cast<int>(visible.size.height)
+            };
+        }
     }
 
     std::string getMonitorName(int monitorIndex) override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
+        const auto displays = getDisplays();
+        if (!isValidMonitorIndex(monitorIndex, static_cast<CGDisplayCount>(displays.size()))) {
             return "";
         }
 
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        CFStringRef name = CGDisplayLocalizedName(displays[monitorIndex]);
-        if (name) {
-            char buffer[256];
-            CFStringGetCString(name, buffer, sizeof(buffer), kCFStringEncodingUTF8);
-            return std::string(buffer);
+        @autoreleasepool {
+            NSScreen* screen = getScreenForDisplay(displays[static_cast<size_t>(monitorIndex)]);
+            if (screen && [screen respondsToSelector:@selector(localizedName)]) {
+                NSString* localizedName = screen.localizedName;
+                if (localizedName.length > 0) {
+                    return std::string(localizedName.UTF8String);
+                }
+            }
         }
-
         return "Display " + std::to_string(monitorIndex);
     }
 
@@ -107,19 +144,17 @@ public:
     }
 
     double getDpiScale(int monitorIndex) override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
+        const auto displays = getDisplays();
+        if (!isValidMonitorIndex(monitorIndex, static_cast<CGDisplayCount>(displays.size()))) {
             return 1.0;
         }
 
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        CGDirectDisplayID displayID = displays[monitorIndex];
+        CGDirectDisplayID displayID = displays[static_cast<size_t>(monitorIndex)];
         CGSize size = CGDisplayScreenSize(displayID);
         CGRect rect = CGDisplayBounds(displayID);
+        if (size.width <= 0.0) {
+            return 1.0;
+        }
 
         // Calculate DPI (assuming 1 inch = 25.4 mm)
         double dpiX = (rect.size.width / size.width) * 25.4;
@@ -148,25 +183,19 @@ public:
     }
 
     std::vector<DisplayMode> getSupportedDisplayModes(int monitorIndex) override {
-        std::vector<DisplayMode> modes;
-
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
-            return modes;
+        std::vector<DisplayMode> displayModes;
+        const auto displays = getDisplays();
+        if (!isValidMonitorIndex(monitorIndex, static_cast<CGDisplayCount>(displays.size()))) {
+            return displayModes;
         }
 
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
+        CGDirectDisplayID displayID = displays[static_cast<size_t>(monitorIndex)];
+        CFArrayRef cgModes = CGDisplayCopyAllDisplayModes(displayID, nullptr);
 
-        CGDirectDisplayID displayID = displays[monitorIndex];
-        CFArrayRef modes = CGDisplayCopyAllDisplayModes(displayID, nullptr);
-
-        if (modes) {
-            CFIndex count = CFArrayGetCount(modes);
+        if (cgModes) {
+            CFIndex count = CFArrayGetCount(cgModes);
             for (CFIndex i = 0; i < count; ++i) {
-                CGDisplayModeRef mode = (CGDisplayModeRef)CFArrayGetValueAtIndex(modes, i);
+                CGDisplayModeRef mode = (CGDisplayModeRef)CFArrayGetValueAtIndex(cgModes, i);
 
                 DisplayMode dm{
                     static_cast<int>(CGDisplayModeGetWidth(mode)),
@@ -174,26 +203,21 @@ public:
                     static_cast<int>(CGDisplayModeGetRefreshRate(mode)),
                     32
                 };
-                modes.push_back(dm);
+                displayModes.push_back(dm);
             }
-            CFRelease(modes);
+            CFRelease(cgModes);
         }
 
-        return modes;
+        return displayModes;
     }
 
     std::optional<DisplayMode> getCurrentDisplayMode(int monitorIndex) override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
+        const auto displays = getDisplays();
+        if (!isValidMonitorIndex(monitorIndex, static_cast<CGDisplayCount>(displays.size()))) {
             return std::nullopt;
         }
 
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        CGDirectDisplayID displayID = displays[monitorIndex];
+        CGDirectDisplayID displayID = displays[static_cast<size_t>(monitorIndex)];
         CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayID);
 
         if (mode) {
@@ -211,17 +235,12 @@ public:
     }
 
     bool setDisplayMode(int monitorIndex, const DisplayMode& mode) override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
+        const auto displays = getDisplays();
+        if (!isValidMonitorIndex(monitorIndex, static_cast<CGDisplayCount>(displays.size()))) {
             return false;
         }
 
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        CGDirectDisplayID displayID = displays[monitorIndex];
+        CGDirectDisplayID displayID = displays[static_cast<size_t>(monitorIndex)];
 
         // Find matching display mode
         CFArrayRef modes = CGDisplayCopyAllDisplayModes(displayID, nullptr);
@@ -230,8 +249,8 @@ public:
             for (CFIndex i = 0; i < count; ++i) {
                 CGDisplayModeRef cgMode = (CGDisplayModeRef)CFArrayGetValueAtIndex(modes, i);
 
-                if (CGDisplayModeGetWidth(cgMode) == mode.width &&
-                    CGDisplayModeGetHeight(cgMode) == mode.height &&
+                if (static_cast<int>(CGDisplayModeGetWidth(cgMode)) == mode.width &&
+                    static_cast<int>(CGDisplayModeGetHeight(cgMode)) == mode.height &&
                     CGDisplayModeGetRefreshRate(cgMode) == mode.refreshRate) {
 
                     CGDisplayConfigRef config;
@@ -250,31 +269,28 @@ public:
     }
 
     bool resetDisplayMode(int monitorIndex) override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
+        const auto displays = getDisplays();
+        if (!isValidMonitorIndex(monitorIndex, static_cast<CGDisplayCount>(displays.size()))) {
             return false;
         }
-
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        CGDisplayRestoreDisplaySettings(displays[monitorIndex]);
+        CGRestorePermanentDisplayConfiguration();
         return true;
     }
 
     bool isScreenSaverRunning() override {
         @autoreleasepool {
-            NSDictionary* info = [[NSWorkspace sharedWorkspace] screenSaverIsRunning] ? @{@(YES) : @NO} : nil;
-            return [info[@(YES)] boolValue];
+            NSArray<NSRunningApplication*>* apps =
+                [NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.apple.ScreenSaver.Engine"];
+            return apps.count > 0;
         }
-        return false;
     }
 
     void startScreenSaver() override {
         @autoreleasepool {
-            [[NSWorkspace sharedWorkspace] openFile:@"/System/Library/Frameworks/ScreenSaver.framework/Resources/ScreenSaverEngine.app"];
+            NSURL* url = [NSURL fileURLWithPath:@"/System/Library/CoreServices/ScreenSaverEngine.app"];
+            if (url) {
+                [[NSWorkspace sharedWorkspace] openURL:url];
+            }
         }
     }
 
@@ -283,20 +299,19 @@ public:
     }
 
     void wakeUpMonitor() override {
-        // macOS requires Power Management API
+        std::system("/usr/bin/caffeinate -u -t 1 >/dev/null 2>&1");
     }
 
     Rect getVirtualScreenBounds() override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
+        const auto displays = getDisplays();
+        if (displays.empty()) {
+            return Rect{};
+        }
 
         int minX = INT_MAX, minY = INT_MAX;
         int maxX = INT_MIN, maxY = INT_MIN;
 
-        for (CGDisplayCount i = 0; i < displayCount; ++i) {
+        for (size_t i = 0; i < displays.size(); ++i) {
             CGRect rect = CGDisplayBounds(displays[i]);
             minX = std::min(minX, static_cast<int>(rect.origin.x));
             minY = std::min(minY, static_cast<int>(rect.origin.y));
@@ -308,15 +323,11 @@ public:
     }
 
     int getMonitorFromPoint(const Point& point) override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
+        const auto displays = getDisplays();
 
         CGPoint cgPoint = CGPointMake(point.x, point.y);
 
-        for (CGDisplayCount i = 0; i < displayCount; ++i) {
+        for (size_t i = 0; i < displays.size(); ++i) {
             CGRect rect = CGDisplayBounds(displays[i]);
             if (CGRectContainsPoint(rect, cgPoint)) {
                 return static_cast<int>(i);
@@ -327,9 +338,41 @@ public:
     }
 
     int getMonitorFromWindow(WindowHandle hwnd) override {
-        // macOS needs to get via NSWindow
-        CGDisplayID display = CGMainDisplayID();
-        return getPrimaryMonitorIndex();
+        if (hwnd == NullWindowHandle) {
+            return getPrimaryMonitorIndex();
+        }
+
+        CGWindowID windowID = static_cast<CGWindowID>(hwnd);
+        CFArrayRef windowIds = CFArrayCreate(nullptr, reinterpret_cast<const void**>(&windowID), 1, nullptr);
+        if (!windowIds) {
+            return getPrimaryMonitorIndex();
+        }
+
+        CFArrayRef descriptions = CGWindowListCreateDescriptionFromArray(windowIds);
+        CFRelease(windowIds);
+        if (!descriptions || CFArrayGetCount(descriptions) == 0) {
+            if (descriptions) {
+                CFRelease(descriptions);
+            }
+            return getPrimaryMonitorIndex();
+        }
+
+        CFDictionaryRef windowInfo = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(descriptions, 0));
+        CFDictionaryRef boundsRef = static_cast<CFDictionaryRef>(CFDictionaryGetValue(windowInfo, kCGWindowBounds));
+        CGRect bounds = CGRectNull;
+        if (boundsRef) {
+            CGRectMakeWithDictionaryRepresentation(boundsRef, &bounds);
+        }
+        CFRelease(descriptions);
+
+        if (CGRectIsNull(bounds)) {
+            return getPrimaryMonitorIndex();
+        }
+
+        return getMonitorFromPoint(Point{
+            static_cast<int>(CGRectGetMidX(bounds)),
+            static_cast<int>(CGRectGetMidY(bounds))
+        });
     }
 
     std::string getBackendName() const override {

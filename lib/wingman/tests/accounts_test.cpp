@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <thread>
 
 using namespace wingman;
 

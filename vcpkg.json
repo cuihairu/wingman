@@ -12,7 +12,16 @@
     },
     {
       "name": "opencv4",
-      "platform": "windows"
+      "platform": "windows",
+      "default-features": false,
+      "features": [
+        "intrinsics",
+        "jpeg",
+        "png",
+        "thread",
+        "tiff",
+        "webp"
+      ]
     },
     {
       "name": "spdlog"

@@ -7,6 +7,33 @@
 
 namespace wingman {
 
+namespace {
+
+bool copyBoolAttribute(AXUIElementRef element, CFStringRef attribute, bool defaultValue) {
+    if (!element) return defaultValue;
+
+    CFTypeRef value = nullptr;
+    if (AXUIElementCopyAttributeValue(element, attribute, &value) != kAXErrorSuccess || !value) {
+        return defaultValue;
+    }
+
+    bool result = defaultValue;
+    CFTypeID typeId = CFGetTypeID(value);
+    if (typeId == CFBooleanGetTypeID()) {
+        result = CFBooleanGetValue(static_cast<CFBooleanRef>(value));
+    } else if (typeId == CFNumberGetTypeID()) {
+        int intValue = 0;
+        if (CFNumberGetValue(static_cast<CFNumberRef>(value), kCFNumberIntType, &intValue)) {
+            result = intValue != 0;
+        }
+    }
+
+    CFRelease(value);
+    return result;
+}
+
+} // namespace
+
 class UIAElement : public IUIAElement {
 public:
     explicit UIAElement(AXUIElementRef element) : element_(element) {
@@ -65,8 +92,8 @@ public:
 
             CGPoint pt;
             CGSize sz;
-            if (AXValueGetValue(position, kAXValueCGPointType, &pt) &&
-                AXValueGetValue(size, kAXValueCGSizeType, &sz)) {
+            if (AXValueGetValue(position, static_cast<AXValueType>(kAXValueCGPointType), &pt) &&
+                AXValueGetValue(size, static_cast<AXValueType>(kAXValueCGSizeType), &sz)) {
 
                 CFRelease(positionRef);
                 CFRelease(sizeRef);
@@ -94,11 +121,16 @@ public:
 
     std::string getText() const override {
         if (!element_) return "";
-        CFStringRef value = nullptr;
-        if (AXUIElementCopyAttributeValue(element_, kAXValueAttribute, (CFTypeRef*)&value) == kAXErrorSuccess && value) {
-            std::string result = cfStringToStdString(value);
+        CFTypeRef value = nullptr;
+        if (AXUIElementCopyAttributeValue(element_, kAXValueAttribute, &value) == kAXErrorSuccess && value &&
+            CFGetTypeID(value) == CFStringGetTypeID()) {
+            CFStringRef stringValue = static_cast<CFStringRef>(value);
+            std::string result = cfStringToStdString(stringValue);
             CFRelease(value);
             return result;
+        }
+        if (value) {
+            CFRelease(value);
         }
         return getName();
     }
@@ -137,25 +169,13 @@ public:
     }
 
     bool isChecked() const override {
-        if (!element_) return false;
-        CFNumberRef value = nullptr;
-        if (AXUIElementCopyAttributeValue(element_, kAXCheckedAttribute, (CFTypeRef*)&value) == kAXErrorSuccess && value) {
-            int intValue = 0;
-            CFNumberGetValue(value, kCFNumberIntType, &intValue);
-            CFRelease(value);
-            return intValue == 1;
-        }
-        return false;
+        return copyBoolAttribute(element_, kAXValueAttribute, false);
     }
 
     bool setChecked(bool checked) override {
         if (!element_) return false;
-        int value = checked ? 1 : 0;
-        CFNumberRef cfValue = CFNumberCreate(nullptr, kCFNumberIntType, &value);
-        if (!cfValue) return false;
-
-        AXError err = AXUIElementSetAttributeValue(element_, kAXCheckedAttribute, cfValue);
-        CFRelease(cfValue);
+        CFBooleanRef cfValue = checked ? kCFBooleanTrue : kCFBooleanFalse;
+        AXError err = AXUIElementSetAttributeValue(element_, kAXValueAttribute, cfValue);
         return err == kAXErrorSuccess;
     }
 
@@ -163,6 +183,9 @@ public:
         if (!element_) return false;
         CFBooleanRef focused = nullptr;
         AXError err = AXUIElementCopyAttributeValue(element_, kAXFocusedAttribute, (CFTypeRef*)&focused);
+        if (focused) {
+            CFRelease(focused);
+        }
         return err == kAXErrorSuccess || err == kAXErrorNoValue;
     }
 
@@ -201,12 +224,12 @@ private:
     }
 
     static UIARole roleToElementRole(CFStringRef role) {
-        std::string roleStr = cfStringToStdString(role);
-        if (roleStr == kAXWindowRole) return UIARole::Window;
-        if (roleStr == kAXButtonRole) return UIARole::Button;
-        if (roleStr == kAXCheckBoxRole) return UIARole::CheckBox;
-        if (roleStr == kAXRadioButtonRole) return UIARole::RadioButton;
-        if (roleStr == kAXTextFieldRole) return UIARole::TextBox;
+        if (!role) return UIARole::Unknown;
+        if (CFEqual(role, kAXWindowRole)) return UIARole::Window;
+        if (CFEqual(role, kAXButtonRole)) return UIARole::Button;
+        if (CFEqual(role, kAXCheckBoxRole)) return UIARole::CheckBox;
+        if (CFEqual(role, kAXRadioButtonRole)) return UIARole::RadioButton;
+        if (CFEqual(role, kAXTextFieldRole)) return UIARole::TextBox;
         return UIARole::Unknown;
     }
 };
@@ -247,8 +270,12 @@ public:
     std::shared_ptr<IUIAElement> getElementFromPoint(const Point& point) override {
         if (!initialized_) return nullptr;
 
+        AXUIElementRef systemWide = AXUIElementCreateSystemWide();
+        if (!systemWide) return nullptr;
+
         AXUIElementRef element = nullptr;
-        AXError err = AXUIElementCopyElementAtPosition(AXUIElementCreateSystemWide(), point.x, point.y, &element);
+        AXError err = AXUIElementCopyElementAtPosition(systemWide, point.x, point.y, &element);
+        CFRelease(systemWide);
         if (err != kAXErrorSuccess || !element) return nullptr;
 
         auto result = std::make_shared<UIAElement>(element);
@@ -259,27 +286,20 @@ public:
     std::shared_ptr<IUIAElement> findElement(const UIASelector& selector) override {
         if (!initialized_) return nullptr;
 
-        // Get all applications in the system scope
-        CFArrayRef applications = AXUIElementCreateApplicationList();
-        if (!applications) return nullptr;
+        AXUIElementRef systemWide = AXUIElementCreateSystemWide();
+        if (!systemWide) return nullptr;
 
-        CFIndex count = CFArrayGetCount(applications);
-        for (CFIndex i = 0; i < count; ++i) {
-            AXUIElementRef app = (AXUIElementRef)CFArrayGetValueAtIndex(applications, i);
-            if (!app) continue;
-
-            CFRetain(app);
-            auto result = findElementRecursive(app, selector);
-            CFRelease(app);
-
-            if (result) {
-                CFRelease(applications);
-                return result;
-            }
+        AXUIElementRef focusedApp = nullptr;
+        AXError err = AXUIElementCopyAttributeValue(systemWide, kAXFocusedApplicationAttribute,
+                                                    reinterpret_cast<CFTypeRef*>(&focusedApp));
+        CFRelease(systemWide);
+        if (err != kAXErrorSuccess || !focusedApp) {
+            return nullptr;
         }
 
-        CFRelease(applications);
-        return nullptr;
+        auto result = findElementRecursive(focusedApp, selector);
+        CFRelease(focusedApp);
+        return result;
     }
 
     std::string getBackendName() const override { return "macOS Accessibility API"; }

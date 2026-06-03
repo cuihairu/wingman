@@ -12,9 +12,6 @@ if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
 endif()
 
-# 使用 spdlog header-only 模式避免符号重复
-add_compile_definitions(SPDLOG_HEADER_ONLY)
-
 # Add UTF-8 compiler flag (MSVC only)
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(/utf-8)
@@ -27,9 +24,10 @@ add_compile_definitions(WIN32_LEAN_AND_MEAN)
 add_compile_definitions(NOMINMAX)
 
 # ========== vcpkg 集成 ==========
-if(DEFINED CMAKE_TOOLCHAIN_FILE)
-    message(STATUS "Using vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE OR NOT CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg[\\\\/]scripts[\\\\/]buildsystems[\\\\/]vcpkg\\.cmake$")
+    message(FATAL_ERROR "This project requires the vcpkg toolchain. Configure CMake with -DCMAKE_TOOLCHAIN_FILE=<vcpkg-root>/scripts/buildsystems/vcpkg.cmake")
 endif()
+message(STATUS "Using vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
 
 # ========== 构建选项 ==========
 option(WINGMAN_BUILD_DEBUGGER "Build debugger (legacy)" OFF)       # 默认关闭，使用 EmmyLua

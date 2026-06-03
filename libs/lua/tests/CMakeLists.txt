@@ -13,15 +13,12 @@ if(BUILD_LUA_TESTS)
 
     target_include_directories(lua_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
-        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/include
     )
 
-    # 直接链接库文件
     target_link_libraries(lua_tests PRIVATE
         GTest::gtest
         GTest::gtest_main
-        ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib/lua.lib
-        wingman_lua
+        wingman::lua
     )
 
     # 注册测试

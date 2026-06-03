@@ -118,7 +118,6 @@ private:
 
 class Screen {
 public:
-#ifdef _WIN32
     // Capture entire screen
     static std::unique_ptr<Bitmap> capture();
 
@@ -146,7 +145,6 @@ public:
 
     // Get primary monitor bounds
     static Rect getScreenBounds();
-#endif // _WIN32
 };
 
 } // namespace wingman

@@ -128,13 +128,20 @@ bool ScriptManager::unloadScript_Locked(const std::string& name) {
 bool ScriptManager::reloadScript(const std::string& name) {
 	ScriptEventCallback callback;
 	bool reloaded = false;
+	bool restart = false;
 
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
+		auto it = m_scripts.find(name);
+		restart = it != m_scripts.end() && it->second->state == ScriptState::running;
 		reloaded = reloadScript_Locked(name);
 		if (reloaded) {
 			callback = m_eventCallback;
 		}
+	}
+
+	if (reloaded && restart) {
+		runScript(name);
 	}
 
 	if (reloaded && callback) {
@@ -160,16 +167,23 @@ bool ScriptManager::reloadScript_Locked(const std::string& name) {
 	info->state = ScriptState::loaded;
 	info->lastError.clear();
 
-	if (wasRunning) {
-		runScript_Locked(name);
-	}
-
 	return true;
 }
 
 bool ScriptManager::checkReload(const std::string& name) {
-	std::lock_guard<std::mutex> lock(m_mutex);
-	return checkReload_Locked(name);
+	bool restart = false;
+	bool reloaded = false;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		auto it = m_scripts.find(name);
+		restart = it != m_scripts.end() && it->second->state == ScriptState::running;
+		reloaded = checkReload_Locked(name);
+	}
+
+	if (reloaded && restart) {
+		runScript(name);
+	}
+	return reloaded;
 }
 
 bool ScriptManager::checkReload_Locked(const std::string& name) {
@@ -192,8 +206,22 @@ bool ScriptManager::checkReload_Locked(const std::string& name) {
 }
 
 void ScriptManager::checkAllReloads() {
-	std::lock_guard<std::mutex> lock(m_mutex);
-	checkAllReloads_Locked();
+	std::vector<std::string> restartNames;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		std::vector<std::string> names = getScriptNames_Locked();
+		for (const auto& name : names) {
+			auto it = m_scripts.find(name);
+			bool restart = it != m_scripts.end() && it->second->state == ScriptState::running;
+			if (checkReload_Locked(name) && restart) {
+				restartNames.push_back(name);
+			}
+		}
+	}
+
+	for (const auto& name : restartNames) {
+		runScript(name);
+	}
 }
 
 void ScriptManager::checkAllReloads_Locked() {
@@ -214,7 +242,16 @@ bool ScriptManager::runScript(const std::string& name) {
 
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
-		result = runScript_Locked(name);
+		auto it = m_scripts.find(name);
+		if (it != m_scripts.end()) {
+			callback = m_eventCallback;
+		}
+	}
+
+	result = runScriptInternal(name);
+
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
 		auto it = m_scripts.find(name);
 		if (it != m_scripts.end()) {
 			callback = m_eventCallback;
@@ -235,44 +272,59 @@ bool ScriptManager::runScript(const std::string& name) {
 	return result;
 }
 
-bool ScriptManager::runScript_Locked(const std::string& name) {
-	auto it = m_scripts.find(name);
-	if (it == m_scripts.end()) {
-		return false;
-	}
+bool ScriptManager::runScriptInternal(const std::string& name) {
+	std::shared_ptr<ScriptInfo> infoPtr;
 
-	auto& infoPtr = it->second;
-
-	if (infoPtr->state == ScriptState::running) {
-		stopScript_Locked(name);
-	}
-
-	// Create engine instance
-	if (!infoPtr->engine) {
-		infoPtr->engine = createEngineForLanguage(infoPtr->language);
-		if (!infoPtr->engine) {
-			infoPtr->state = ScriptState::error;
-			infoPtr->lastError = "failed to create engine for language: " + infoPtr->language;
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		auto it = m_scripts.find(name);
+		if (it == m_scripts.end()) {
 			return false;
 		}
-	}
 
-	// Set environment variables
-	for (const auto& [k, v] : infoPtr->config.env) {
-		infoPtr->engine->setGlobal(k, script::ScriptValue::fromString(v));
+		infoPtr = it->second;
+
+		if (infoPtr->state == ScriptState::running) {
+			stopScript_Locked(name);
+		}
+
+		// Create engine instance
+		if (!infoPtr->engine) {
+			infoPtr->engine = createEngineForLanguage(infoPtr->language);
+			if (!infoPtr->engine) {
+				infoPtr->state = ScriptState::error;
+				infoPtr->lastError = "failed to create engine for language: " + infoPtr->language;
+				return false;
+			}
+		}
+
+		// Set environment variables
+		for (const auto& [k, v] : infoPtr->config.env) {
+			infoPtr->engine->setGlobal(k, script::ScriptValue::fromString(v));
+		}
+
 	}
 
 	// Execute script file
 	if (!infoPtr->engine->executeFile(infoPtr->config.path)) {
+		std::lock_guard<std::mutex> lock(m_mutex);
 		infoPtr->state = ScriptState::error;
 		infoPtr->lastError = infoPtr->engine->getLastError();
 		return false;
 	}
 
-	infoPtr->state = ScriptState::running;
-	infoPtr->lastLoaded = std::chrono::duration_cast<std::chrono::milliseconds>(
-		std::chrono::steady_clock::now().time_since_epoch()
-	).count();
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		auto it = m_scripts.find(name);
+		if (it == m_scripts.end() || it->second != infoPtr) {
+			return false;
+		}
+
+		infoPtr->state = ScriptState::running;
+		infoPtr->lastLoaded = std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::steady_clock::now().time_since_epoch()
+		).count();
+	}
 
 	return true;
 }

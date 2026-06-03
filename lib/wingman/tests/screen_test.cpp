@@ -2,6 +2,7 @@
 #include "wingman/screen.hpp"
 #include <fstream>
 #include <algorithm>
+#include <filesystem>
 
 using namespace wingman;
 
@@ -207,6 +208,23 @@ TEST(ScreenTest, BitmapCopy) {
     EXPECT_EQ(result.b, c.b);
 }
 
+TEST(ScreenTest, BitmapSaveWritesFile) {
+    Bitmap bmp(2, 2);
+    bmp.setPixel(0, 0, Color(255, 0, 0));
+    bmp.setPixel(1, 0, Color(0, 255, 0));
+    bmp.setPixel(0, 1, Color(0, 0, 255));
+    bmp.setPixel(1, 1, Color(255, 255, 255));
+
+    const auto outputPath = std::filesystem::temp_directory_path() / "wingman-screen-test.png";
+    std::error_code ec;
+    std::filesystem::remove(outputPath, ec);
+
+    EXPECT_TRUE(bmp.save(outputPath.string()));
+    EXPECT_TRUE(std::filesystem::exists(outputPath));
+
+    std::filesystem::remove(outputPath, ec);
+}
+
 // ========== Additional Color Tests ==========
 
 TEST(ScreenTest, ColorDefaultConstructor) {
@@ -326,3 +344,18 @@ TEST(ScreenTest, BitmapMultipleSetPixel) {
     EXPECT_EQ(bmp.getPixel(9, 9).g, 255);
     EXPECT_EQ(bmp.getPixel(5, 5).b, 255);
 }
+
+#ifdef __APPLE__
+
+TEST(ScreenTest, GetScreenBoundsOnMac) {
+    Rect bounds = Screen::getScreenBounds();
+    EXPECT_GT(bounds.width, 0);
+    EXPECT_GT(bounds.height, 0);
+}
+
+TEST(ScreenTest, GetScreenDimensionsOnMac) {
+    EXPECT_GT(Screen::getScreenWidth(), 0);
+    EXPECT_GT(Screen::getScreenHeight(), 0);
+}
+
+#endif // __APPLE__

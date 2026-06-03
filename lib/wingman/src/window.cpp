@@ -226,3 +226,87 @@ bool Window::waitClose(const std::string& title, int timeoutMs) {
 } // namespace wingman
 
 #endif // _WIN32
+
+#ifndef _WIN32
+
+namespace wingman {
+
+WindowHandle Window::find(const std::string& /*title*/) {
+    return 0;
+}
+
+std::vector<WindowHandle> Window::findAll(const std::string& /*title*/) {
+    return {};
+}
+
+WindowHandle Window::getForeground() {
+    return 0;
+}
+
+std::vector<WindowInfo> Window::enumerate() {
+    return {};
+}
+
+bool Window::activate(WindowHandle /*hwnd*/) {
+    return false;
+}
+
+bool Window::minimize(WindowHandle /*hwnd*/) {
+    return false;
+}
+
+bool Window::maximize(WindowHandle /*hwnd*/) {
+    return false;
+}
+
+bool Window::restore(WindowHandle /*hwnd*/) {
+    return false;
+}
+
+bool Window::close(WindowHandle /*hwnd*/) {
+    return false;
+}
+
+std::string Window::getTitle(WindowHandle /*hwnd*/) {
+    return "";
+}
+
+Rect Window::getBounds(WindowHandle /*hwnd*/) {
+    return Rect();
+}
+
+bool Window::setBounds(WindowHandle /*hwnd*/, const Rect& /*bounds*/) {
+    return false;
+}
+
+bool Window::isValid(WindowHandle /*hwnd*/) {
+    return false;
+}
+
+bool Window::isForeground(WindowHandle /*hwnd*/) {
+    return false;
+}
+
+bool Window::isVisible(WindowHandle /*hwnd*/) {
+    return false;
+}
+
+bool Window::move(WindowHandle /*hwnd*/, int /*x*/, int /*y*/) {
+    return false;
+}
+
+bool Window::resize(WindowHandle /*hwnd*/, int /*width*/, int /*height*/) {
+    return false;
+}
+
+bool Window::waitFor(const std::string& /*title*/, int /*timeoutMs*/) {
+    return false;
+}
+
+bool Window::waitClose(const std::string& /*title*/, int /*timeoutMs*/) {
+    return false;
+}
+
+} // namespace wingman
+
+#endif

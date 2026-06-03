@@ -14,8 +14,15 @@
 #include <opencv2/opencv.hpp>
 #endif
 
+#ifdef __APPLE__
+#include <ApplicationServices/ApplicationServices.h>
+#include <ImageIO/ImageIO.h>
+#include <unistd.h>
+#endif
+
 #include <cstring>
 #include <algorithm>
+#include <filesystem>
 
 namespace wingman {
 
@@ -152,10 +159,6 @@ bool Bitmap::save(const std::string& filepath) const {
     return status == Gdiplus::Ok;
 }
 
-// ============================================================================
-// Screen Implementation
-// ============================================================================
-
 std::unique_ptr<Bitmap> Screen::capture() {
     int width = GetSystemMetrics(SM_CXSCREEN);
     int height = GetSystemMetrics(SM_CYSCREEN);
@@ -262,7 +265,6 @@ std::vector<Point> Screen::findColors(const Color& color, const Rect& region,
     return results;
 }
 
-#ifdef _WIN32
 bool Screen::findImage(const std::string& imagePath, const Rect& region,
                        double threshold, Point& result) {
     // Load template image
@@ -309,7 +311,6 @@ bool Screen::findImage(const std::string& imagePath, const Rect& region,
 
     return false;
 }
-#endif // _WIN32
 
 int Screen::getScreenWidth() {
     return GetSystemMetrics(SM_CXSCREEN);
@@ -321,6 +322,295 @@ int Screen::getScreenHeight() {
 
 Rect Screen::getScreenBounds() {
     return Rect(0, 0, getScreenWidth(), getScreenHeight());
+}
+#elif defined(__APPLE__)
+namespace {
+
+std::unique_ptr<Bitmap> bitmapFromCGImage(CGImageRef image) {
+    if (!image) {
+        return nullptr;
+    }
+
+    const int width = static_cast<int>(CGImageGetWidth(image));
+    const int height = static_cast<int>(CGImageGetHeight(image));
+    if (width <= 0 || height <= 0) {
+        return nullptr;
+    }
+
+    auto bitmap = std::make_unique<Bitmap>(width, height);
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    if (!colorSpace) {
+        return nullptr;
+    }
+
+    CGContextRef context = CGBitmapContextCreate(
+        bitmap->getData(),
+        static_cast<size_t>(width),
+        static_cast<size_t>(height),
+        8,
+        static_cast<size_t>(width * 4),
+        colorSpace,
+        static_cast<CGBitmapInfo>(kCGImageAlphaPremultipliedFirst) | kCGBitmapByteOrder32Little
+    );
+    CGColorSpaceRelease(colorSpace);
+
+    if (!context) {
+        return nullptr;
+    }
+
+    CGContextDrawImage(context, CGRectMake(0, 0, width, height), image);
+    CGContextRelease(context);
+    return bitmap;
+}
+
+CGImageRef captureImage(const Rect& region) {
+    char pathTemplate[] = "/tmp/wingman-capture-XXXXXX.png";
+    const int fd = mkstemps(pathTemplate, 4);
+    if (fd == -1) {
+        return nullptr;
+    }
+    close(fd);
+
+    const std::filesystem::path imagePath(pathTemplate);
+    const std::string command = "/usr/sbin/screencapture -x -R" +
+        std::to_string(region.x) + "," +
+        std::to_string(region.y) + "," +
+        std::to_string(region.width) + "," +
+        std::to_string(region.height) + " \"" +
+        imagePath.string() + "\" >/dev/null 2>&1";
+
+    if (std::system(command.c_str()) != 0) {
+        std::error_code ec;
+        std::filesystem::remove(imagePath, ec);
+        return nullptr;
+    }
+
+    CFURLRef url = CFURLCreateFromFileSystemRepresentation(
+        kCFAllocatorDefault,
+        reinterpret_cast<const UInt8*>(imagePath.string().c_str()),
+        static_cast<CFIndex>(imagePath.string().size()),
+        false
+    );
+    if (!url) {
+        std::error_code ec;
+        std::filesystem::remove(imagePath, ec);
+        return nullptr;
+    }
+
+    CGImageSourceRef source = CGImageSourceCreateWithURL(url, nullptr);
+    CFRelease(url);
+    if (!source) {
+        std::error_code ec;
+        std::filesystem::remove(imagePath, ec);
+        return nullptr;
+    }
+
+    CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, nullptr);
+    CFRelease(source);
+
+    std::error_code ec;
+    std::filesystem::remove(imagePath, ec);
+    return image;
+}
+
+} // namespace
+
+bool Bitmap::save(const std::string& filepath) const {
+    if (m_width <= 0 || m_height <= 0) {
+        return false;
+    }
+
+    CFURLRef url = CFURLCreateFromFileSystemRepresentation(
+        kCFAllocatorDefault,
+        reinterpret_cast<const UInt8*>(filepath.c_str()),
+        static_cast<CFIndex>(filepath.size()),
+        false
+    );
+    if (!url) {
+        return false;
+    }
+
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    if (!colorSpace) {
+        CFRelease(url);
+        return false;
+    }
+
+    CGContextRef context = CGBitmapContextCreate(
+        const_cast<uint8_t*>(m_data.get()),
+        static_cast<size_t>(m_width),
+        static_cast<size_t>(m_height),
+        8,
+        static_cast<size_t>(m_width * 4),
+        colorSpace,
+        static_cast<CGBitmapInfo>(kCGImageAlphaPremultipliedFirst) | kCGBitmapByteOrder32Little
+    );
+    CGColorSpaceRelease(colorSpace);
+
+    if (!context) {
+        CFRelease(url);
+        return false;
+    }
+
+    CGImageRef image = CGBitmapContextCreateImage(context);
+    CGContextRelease(context);
+    if (!image) {
+        CFRelease(url);
+        return false;
+    }
+
+    CGImageDestinationRef destination = CGImageDestinationCreateWithURL(url, CFSTR("public.png"), 1, nullptr);
+    CFRelease(url);
+    if (!destination) {
+        CGImageRelease(image);
+        return false;
+    }
+
+    CGImageDestinationAddImage(destination, image, nullptr);
+    const bool success = CGImageDestinationFinalize(destination);
+    CFRelease(destination);
+    CGImageRelease(image);
+    return success;
+}
+
+std::unique_ptr<Bitmap> Screen::capture() {
+    return capture(getScreenBounds());
+}
+
+std::unique_ptr<Bitmap> Screen::capture(const Rect& region) {
+    if (region.isEmpty()) {
+        return nullptr;
+    }
+
+    CGImageRef image = captureImage(region);
+    if (!image) {
+        return nullptr;
+    }
+
+    auto bitmap = bitmapFromCGImage(image);
+    CGImageRelease(image);
+    return bitmap;
+}
+
+Color Screen::getPixel(int x, int y) {
+    auto bitmap = capture(Rect(x, y, 1, 1));
+    if (!bitmap) {
+        return Color();
+    }
+    return bitmap->getPixel(0, 0);
+}
+
+bool Screen::findColor(const Color& color, const Rect& region,
+                      int tolerance, Point& result) {
+    auto bitmap = capture(region);
+    if (!bitmap) {
+        return false;
+    }
+
+    for (int y = 0; y < bitmap->getHeight(); ++y) {
+        for (int x = 0; x < bitmap->getWidth(); ++x) {
+            const Color pixel = bitmap->getPixel(x, y);
+            if (pixel.matches(color, tolerance)) {
+                result = Point(region.x + x, region.y + y);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+std::vector<Point> Screen::findColors(const Color& color, const Rect& region,
+                                      int tolerance, int maxCount) {
+    std::vector<Point> results;
+    auto bitmap = capture(region);
+    if (!bitmap) {
+        return results;
+    }
+
+    for (int y = 0; y < bitmap->getHeight(); ++y) {
+        for (int x = 0; x < bitmap->getWidth(); ++x) {
+            const Color pixel = bitmap->getPixel(x, y);
+            if (pixel.matches(color, tolerance)) {
+                results.emplace_back(region.x + x, region.y + y);
+                if (maxCount > 0 && static_cast<int>(results.size()) >= maxCount) {
+                    return results;
+                }
+            }
+        }
+    }
+
+    return results;
+}
+
+bool Screen::findImage(const std::string& /*imagePath*/, const Rect& /*region*/,
+                       double /*threshold*/, Point& /*result*/) {
+    return false;
+}
+
+int Screen::getScreenWidth() {
+    return static_cast<int>(CGDisplayPixelsWide(CGMainDisplayID()));
+}
+
+int Screen::getScreenHeight() {
+    return static_cast<int>(CGDisplayPixelsHigh(CGMainDisplayID()));
+}
+
+Rect Screen::getScreenBounds() {
+    const CGRect bounds = CGDisplayBounds(CGMainDisplayID());
+    return Rect(
+        static_cast<int>(bounds.origin.x),
+        static_cast<int>(bounds.origin.y),
+        static_cast<int>(bounds.size.width),
+        static_cast<int>(bounds.size.height)
+    );
+}
+#else
+bool Bitmap::save(const std::string& /*filepath*/) const {
+    return false;
+}
+
+// ============================================================================
+// Screen Implementation
+// ============================================================================
+
+std::unique_ptr<Bitmap> Screen::capture() {
+    return nullptr;
+}
+
+std::unique_ptr<Bitmap> Screen::capture(const Rect& /*region*/) {
+    return nullptr;
+}
+
+Color Screen::getPixel(int /*x*/, int /*y*/) {
+    return Color();
+}
+
+bool Screen::findColor(const Color& /*color*/, const Rect& /*region*/,
+                      int /*tolerance*/, Point& /*result*/) {
+    return false;
+}
+
+std::vector<Point> Screen::findColors(const Color& /*color*/, const Rect& /*region*/,
+                                      int /*tolerance*/, int /*maxCount*/) {
+    return {};
+}
+
+bool Screen::findImage(const std::string& /*imagePath*/, const Rect& /*region*/,
+                       double /*threshold*/, Point& /*result*/) {
+    return false;
+}
+
+int Screen::getScreenWidth() {
+    return 0;
+}
+
+int Screen::getScreenHeight() {
+    return 0;
+}
+
+Rect Screen::getScreenBounds() {
+    return Rect();
 }
 
 #endif // _WIN32

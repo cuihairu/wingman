@@ -5,7 +5,7 @@ if(BUILD_PROTO_TESTS)
 
     # 查找 GoogleTest
     find_package(GTest CONFIG REQUIRED)
-    wingman_ensure_nlohmann_json()
+    find_package(nlohmann_json CONFIG REQUIRED)
 
     # 创建测试可执行文件
     add_executable(proto_tests

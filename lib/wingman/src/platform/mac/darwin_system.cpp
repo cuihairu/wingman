@@ -10,11 +10,14 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 #include <ifaddrs.h>
+#include <net/if.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <libproc.h>
 #include <sys/sysctl.h>
 #include <mach/mach.h>
 #include <mach/host_info.h>
@@ -378,13 +381,19 @@ int System::getProcessCount() {
 }
 
 int System::getThreadCount() {
-    task_threads_info taskInfo;
-    mach_msg_type_number_t count = TASK_THREADS_INFO_COUNT;
-    if (task_info(mach_task_self(), TASK_THREADS_INFO,
-                  (task_info_t)&taskInfo, &count) != KERN_SUCCESS) {
+    thread_act_array_t threads = nullptr;
+    mach_msg_type_number_t threadCount = 0;
+    if (task_threads(mach_task_self(), &threads, &threadCount) != KERN_SUCCESS) {
         return 0;
     }
-    return taskInfo.thread_count;
+
+    if (threads != nullptr) {
+        vm_deallocate(mach_task_self(),
+                      reinterpret_cast<vm_address_t>(threads),
+                      static_cast<vm_size_t>(threadCount * sizeof(thread_t)));
+    }
+
+    return static_cast<int>(threadCount);
 }
 
 } // namespace wingman

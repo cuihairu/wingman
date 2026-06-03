@@ -1,10 +1,7 @@
 #include "wingman/runtime/commands/script_command.hpp"
-#ifdef WINGMAN_HAS_LUA
-#include "wingman/lua/lua_engine.hpp"
-#endif
+#include "wingman/runtime/runtime_context.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>
-#include <fstream>
 
 namespace wingman::runtime::commands {
 
@@ -17,48 +14,33 @@ int scriptCommand(const std::string& scriptPath, const std::vector<std::string>&
 
     spdlog::info("Running script: {}", scriptPath);
 
-    // 读取脚本内容
-    std::ifstream file(scriptPath);
-    if (!file.is_open()) {
-        spdlog::error("Failed to open script file: {}", scriptPath);
-        return 1;
-    }
-
-    std::string content((std::istreambuf_iterator<char>(file)),
-                        std::istreambuf_iterator<char>());
-    file.close();
-
-    // 创建 Lua 实例并执行
     try {
-#ifdef WINGMAN_HAS_LUA
-        auto lua = std::make_unique<wingman::lua::LuaEngine>();
-        if (!lua->initialize()) {
-            spdlog::error("Failed to initialize Lua engine");
+        auto& manager = wingman::runtime::getScriptManager();
+        const std::string scriptName = "__cli__:" + std::filesystem::absolute(scriptPath).string();
+
+        wingman::ScriptConfig config;
+        config.name = scriptName;
+        config.path = scriptPath;
+        for (size_t i = 0; i < args.size(); ++i) {
+            config.env["arg" + std::to_string(i + 1)] = args[i];
+        }
+
+        if (!manager.loadScript(scriptName, scriptPath, config)) {
+            spdlog::error("Failed to load script: {}", scriptPath);
             return 1;
         }
 
-        // 设置命令行参数
-        // TODO: 传递参数到 Lua
-        (void)args;  // 暂时忽略参数
-
-        // 设置错误回调
-        std::string lastError;
-        lua->setErrorCallback([&lastError](const std::string& err) {
-            lastError = err;
-        });
-
-        // 执行脚本
-        if (!lua->executeString(content)) {
-            spdlog::error("Script execution failed: {}", lastError.empty() ? "unknown error" : lastError);
+        if (!manager.runScript(scriptName)) {
+            auto info = manager.getScriptInfo(scriptName);
+            spdlog::error("Script execution failed: {}",
+                          info && !info->lastError.empty() ? info->lastError : "unknown error");
+            manager.unloadScript(scriptName);
             return 1;
         }
 
+        manager.unloadScript(scriptName);
         spdlog::info("Script completed successfully");
         return 0;
-#else
-        spdlog::error("Script execution requires Lua support");
-        return 1;
-#endif
 
     } catch (const std::exception& e) {
         spdlog::error("Exception while running script: {}", e.what());

@@ -3,18 +3,27 @@ cmake_minimum_required(VERSION 3.20)
 # ========== wingman ==========
 # 核心功能模块 - 输入输出、屏幕、窗口、触发器等
 
-project(wingman LANGUAGES CXX)
+if(APPLE)
+    project(wingman LANGUAGES CXX OBJCXX)
+else()
+    project(wingman LANGUAGES CXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找依赖
-find_package(OpenCV CONFIG)
-include(${CMAKE_SOURCE_DIR}/cmake/EnsureSpdlog.cmake)
-wingman_ensure_spdlog()
-include(${CMAKE_SOURCE_DIR}/cmake/EnsureNlohmannJson.cmake)
-wingman_ensure_nlohmann_json()
+find_package(OpenCV CONFIG QUIET)
+if(OpenCV_FOUND)
+    if(NOT OpenCV_DIR MATCHES "/vcpkg_installed/")
+        message(STATUS "Ignoring non-vcpkg OpenCV at ${OpenCV_DIR}")
+        set(OpenCV_FOUND FALSE)
+    endif()
+endif()
+find_package(spdlog CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 find_package(CURL QUIET)
+find_package(OpenSSL QUIET)
 find_package(unofficial-sqlite3 CONFIG)
 if(WINGMAN_BUILD_LUA)
     find_package(unofficial-lua CONFIG)
@@ -59,7 +68,6 @@ set(WINGMAN_SOURCES
 
     # 网络与通信
     src/http.cpp
-    src/screenshot_reporter.cpp
     src/node_status.cpp
 
     # 其他功能
@@ -67,6 +75,8 @@ set(WINGMAN_SOURCES
     src/verification.cpp
     src/behavior_tree.cpp
     src/game_profile.cpp
+    src/human.cpp
+    src/smart_trigger.cpp
 
     # 脚本抽象层（语言无关的模块描述符）
     src/script_manager.cpp
@@ -116,25 +126,24 @@ else()
     list(APPEND WINGMAN_SOURCES src/ml_stub.cpp)
 endif()
 
-# Vision 支持（可选，需要 OpenCV）
-if(TARGET opencv_core)
+# Vision 支持（可选，需要 vcpkg OpenCV）
+if(OpenCV_FOUND AND TARGET opencv_core)
     list(APPEND WINGMAN_SOURCES
         src/vision.cpp
         src/performance.cpp
     )
     add_compile_definitions(WINGMAN_ENABLE_VISION)
-    message(STATUS "Vision support enabled (OpenCV found)")
+    message(STATUS "Vision support enabled (vcpkg OpenCV found)")
 else()
     # 使用 stub 实现
     list(APPEND WINGMAN_SOURCES src/vision_stub.cpp)
-    message(STATUS "Vision support disabled (OpenCV not found)")
+    message(STATUS "Vision support disabled (vcpkg OpenCV not found)")
 endif()
 
 # ========== 平台特定源文件 ==========
 if(WIN32)
     list(APPEND WINGMAN_SOURCES
-        src/human.cpp
-        src/smart_trigger.cpp
+        src/screenshot_reporter.cpp
         src/platform/win/win32_clipboard.cpp
         src/platform/win/win32_filewatcher.cpp
         src/platform/win/named_pipe_channel.cpp
@@ -150,7 +159,6 @@ if(WIN32)
     )
 elseif(APPLE)
     list(APPEND WINGMAN_SOURCES
-        src/platform/mac/sccapture_capture.cpp
         src/platform/mac/cgevent_input.cpp
         src/platform/mac/cocoa_window.cpp
         src/platform/mac/cocoa_screen.cpp
@@ -159,6 +167,14 @@ elseif(APPLE)
         src/platform/mac/darwin_system.cpp
         src/platform/mac/cocoa_recorder.cpp
         src/platform/unix/posix_trigger.cpp
+    )
+    set_source_files_properties(
+        src/platform/mac/cgevent_input.cpp
+        src/platform/mac/cocoa_window.cpp
+        src/platform/mac/cocoa_screen.cpp
+        src/platform/mac/mac_automation.cpp
+        src/platform/mac/cocoa_recorder.cpp
+        PROPERTIES LANGUAGE OBJCXX
     )
     # macOS 需要 Cocoa 框架
     find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
@@ -203,7 +219,7 @@ set(WINGMAN_LINK_LIBS
 )
 
 # 添加 OpenCV（如果可用）
-if(TARGET opencv_core)
+if(OpenCV_FOUND AND TARGET opencv_core)
     list(APPEND WINGMAN_LINK_LIBS opencv_core opencv_imgproc opencv_imgcodecs)
 endif()
 
@@ -216,6 +232,10 @@ else()
     message(STATUS "HTTP support disabled (CURL not found)")
 endif()
 
+if(TARGET OpenSSL::Crypto)
+    list(APPEND WINGMAN_LINK_LIBS OpenSSL::Crypto)
+endif()
+
 # 添加 sqlite3（如果可用）
 if(TARGET unofficial::sqlite3::sqlite3)
     list(APPEND WINGMAN_LINK_LIBS unofficial::sqlite3::sqlite3)
@@ -225,6 +245,7 @@ endif()
 # 添加 Lua（如果可用）
 if(WINGMAN_BUILD_LUA AND TARGET unofficial::lua::lua)
     list(APPEND WINGMAN_LINK_LIBS unofficial::lua::lua)
+    target_compile_definitions(wingman PUBLIC WINGMAN_HAS_LUA)
 endif()
 
 target_link_libraries(wingman PUBLIC ${WINGMAN_LINK_LIBS})
@@ -235,6 +256,7 @@ if(APPLE)
         "-framework Foundation"
         "-framework Cocoa"
         "-framework CoreGraphics"
+        "-framework ImageIO"
     )
     if(SCREENCAPTUREKIT_FRAMEWORK)
         target_link_libraries(wingman PUBLIC "-framework ScreenCaptureKit")
