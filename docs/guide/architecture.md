@@ -243,22 +243,20 @@ stateDiagram-v2
 
 ## 核心模块
 
-### 中控机模块
+### 控制平面模块
 
 | 模块 | 职责 | 文件 |
 |-----|------|------|
-| **TCPServer** | TCP 长连接服务 | `server/src/server.cpp` |
-| **AgentManager** | 客户端会话管理 | `server/src/agent_manager.cpp` |
-| **Orchestrator** | 任务编排引擎 | `server/src/orchestrator.cpp` |
-| **WorkflowStore** | 工作流状态存储 | `server/src/workflow_store.cpp` |
+| **Go Orchestrator** | 任务编排、节点管理、工作流调度 | `orchestrator/server/` |
+| **Dashboard** | Web 控制台与可视化监控 | `orchestrator/dashboard/` |
 
-### 受控机模块
+### 执行平面模块
 
 | 模块 | 职责 | 文件 |
 |-----|------|------|
-| **TCPClient** | TCP 客户端 | `server/src/client.cpp` |
-| **Heartbeat** | 心跳保活 | `server/src/heartbeat.cpp` |
-| **TaskExecutor** | 任务执行器 | `server/src/task_executor.cpp` |
+| **RemoteClient** | 主动连接编排器并收发任务 | `apps/runtime/src/remote_client.cpp` |
+| **Transport** | 连接、会话与消息收发 | `libs/transport/` |
+| **Runtime Agent** | 本机任务执行与状态上报 | `apps/runtime/` |
 
 ### 核心能力模块
 
@@ -303,7 +301,7 @@ wingman/
 │   │   └── src/
 │   │       ├── agent.cpp          # Agent 主逻辑
 │   │       ├── remote_client.cpp  # 远程客户端
-│   │       ├── remote_server.cpp  # 远程服务端（transport TCP）
+│   │       ├── remote_client.cpp  # 远程客户端（transport TCP）
 │   │       ├── standalone_mode.cpp
 │   │       └── commands/          # CLI 子命令
 │   ├── gui/                 # Tauri/Svelte GUI

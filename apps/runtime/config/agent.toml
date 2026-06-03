@@ -1,0 +1,28 @@
+# Wingman Runtime Configuration
+
+# ========== 运行模式配置 ==========
+enable_remote = true
+
+# ========== 远程模式配置 ==========
+[remote]
+server_ip = "127.0.0.1"
+server_port = 9527
+reconnect_interval = 5
+heartbeat_interval = 30
+connect_timeout = 10
+
+# ========== 单机模式配置 ==========
+[standalone]
+script_dir = "./scripts"
+
+# ========== 调试器配置 ==========
+[debugger]
+enable = true
+listen_port = 9966
+wait_for_ide = false
+
+# ========== 日志配置 ==========
+[logging]
+level = "info"
+file = "wingman-agent.log"
+console = true

@@ -3,6 +3,7 @@
 $Version = "0.1.0"
 $PortableDir = "portable\wingman"
 $OutputZip = "wingman-portable-$Version.zip"
+$RuntimeExe = "build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe"
 
 Write-Host "=== Wingman 便携版打包 ===" -ForegroundColor Green
 
@@ -24,9 +25,9 @@ New-Item -ItemType Directory -Force -Path "$PortableDir\cache" | Out-Null
 
 # 复制主程序和 DLL
 Write-Host "复制主程序..." -ForegroundColor Yellow
-if (Test-Path "build\Release\wingman.exe") {
-    Copy-Item -Path "build\Release\wingman.exe" -Destination "$PortableDir\" -Force
-    Copy-Item -Path "build\Release\*.dll" -Destination "$PortableDir\" -Force -ErrorAction SilentlyContinue
+if (Test-Path $RuntimeExe) {
+    Copy-Item -Path $RuntimeExe -Destination "$PortableDir\" -Force
+    Copy-Item -Path "build-msvc-ninja-vcpkg\apps\runtime\*.dll" -Destination "$PortableDir\" -Force -ErrorAction SilentlyContinue
 } else {
     Write-Host "错误: 找不到编译后的主程序，请先编译！" -ForegroundColor Red
     exit 1
@@ -34,8 +35,8 @@ if (Test-Path "build\Release\wingman.exe") {
 
 # 复制 Dashboard
 Write-Host "复制 Dashboard..." -ForegroundColor Yellow
-if (Test-Path "build\dist") {
-    Copy-Item -Path "build\dist\*" -Destination "$PortableDir\dist\" -Recurse -Force
+if (Test-Path "orchestrator\dashboard\dist") {
+    Copy-Item -Path "orchestrator\dashboard\dist\*" -Destination "$PortableDir\dist\" -Recurse -Force
 }
 
 # 复制示例脚本
@@ -46,8 +47,8 @@ if (Test-Path "scripts\examples") {
 
 # 复制配置文件
 Write-Host "复制配置文件..." -ForegroundColor Yellow
-if (Test-Path "config") {
-    Copy-Item -Path "config\*" -Destination "$PortableDir\config\" -Recurse -Force -ErrorAction SilentlyContinue
+if (Test-Path "apps\runtime\config\agent.toml") {
+    Copy-Item -Path "apps\runtime\config\agent.toml" -Destination "$PortableDir\config\" -Force
 }
 
 # 复制文档
@@ -64,13 +65,13 @@ echo === Wingman 便携版 ===
 echo.
 
 REM 检查配置文件
-if not exist "config\user.json" (
+if not exist "config\agent.toml" (
     echo 首次运行，创建默认配置...
-    xcopy "config\default.json" "config\user.json*" /Y
+    copy ".\config\agent.toml" "config\agent.toml" >nul
 )
 
 REM 启动主程序
-start "" wingman.exe
+start "" wingman-runtime.exe
 
 echo Wingman 已启动！
 echo.

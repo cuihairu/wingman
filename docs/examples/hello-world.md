@@ -24,7 +24,7 @@ print("Done!")
 ## 运行
 
 ```bash
-wingman.exe scripts/examples/hello-world.lua
+wingman-runtime.exe script scripts/examples/hello-world.lua
 ```
 
 ## 输出

@@ -99,17 +99,14 @@ if result:
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
 
-# Windows (MSVC)
-cmake -B build -S . -G "Visual Studio 17 2022" -A x64 `
-    -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
+# Windows (MSVC + Ninja + vcpkg)
+build-scripts\build-runtime-msvc-ninja.bat
 
 # macOS/Linux (GCC/Clang)
 cmake -B build -S . -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake \
     -DVCPKG_TARGET_TRIPLET=x64-linux
 
-# 编译
-cmake --build build --config Release
 ```
 
 ## 运行示例

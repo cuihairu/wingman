@@ -104,7 +104,7 @@ lib/wingman/ (核心功能：screen, input, trigger...)
     ↓
 apps/runtime/ (应用：CLI + 运行模式)
     ↓
-orchestrator/server/ (可选：远程控制)
+orchestrator/server/ (Go 编排服务)
 ```
 
 ## 运行模式
@@ -130,10 +130,7 @@ Runtime 作为主动 Agent 运行，通过 outbound 连接到编排器。
 使用 vcpkg 管理依赖：
 
 ```bash
-cmake -B build -S . -G "Visual Studio 18 2026" -A x64 \
-    -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake \
-    -DVCPKG_TARGET_TRIPLET=x64-windows-static
-cmake --build build --config Release
+build-scripts\build-runtime-msvc-ninja.bat
 ```
 
 详细构建步骤请参考 [BUILD.md](../BUILD.md)。

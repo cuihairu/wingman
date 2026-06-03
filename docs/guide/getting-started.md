@@ -72,33 +72,23 @@ vcpkg install
 ### 3. 使用 CMake 生成项目
 
 ```bash
-# 指定 vcpkg 工具链
-cmake -B build -S . -G "Visual Studio 17 2022" `
-    -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake
-
-# 或设置环境变量后简化命令
-set CMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake
-cmake -B build -S . -G "Visual Studio 17 2022"
+build-scripts\configure-msvc-ninja.bat
 ```
 
 ### 4. 编译
 
 ```bash
-# 编译 Release 版本
-cmake --build build --config Release
-
-# 或打开 Visual Studio
-start build/Wingman.sln
+build-scripts\build-runtime-msvc-ninja.bat
 ```
 
 ### 5. 运行
 
 ```bash
 # 运行 Lua 示例脚本
-.\build\Release\wingman.exe scripts\examples\hello.lua
+.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script scripts\examples\hello.lua
 
 # 运行 Python 示例脚本
-.\build\Release\wingman.exe scripts\examples\hello.py
+.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script scripts\examples\hello.py
 ```
 
 ## vcpkg.json
@@ -126,22 +116,18 @@ start build/Wingman.sln
 ## 命令行参数
 
 ```bash
-# 本地模式 - 执行脚本
-wingman.exe script.lua
-wingman.exe script.py
+# 执行脚本
+wingman-runtime.exe script script.lua
+wingman-runtime.exe script script.py
 
-# Server 模式 - 被动监听
-wingman.exe --server --port 8888
+# 启动 Agent（读取 agent.toml）
+wingman-runtime.exe start
 
-# Client 模式 - 主动连接
-wingman.exe --connect nebula.server.com:9999
-
-# 调试模式
-wingman.exe --debug script.lua
-wingman.exe --debug --listen 9999 script.lua
+# 打包单文件脚本运行时
+wingman-runtime.exe build --script script.lua --output script-runtime.exe
 
 # 帮助信息
-wingman.exe --help
+wingman-runtime.exe --help
 ```
 
 ## 第一个脚本
@@ -191,10 +177,10 @@ print("Script completed!")
 
 ```bash
 # Python
-wingman.exe hello.py
+wingman-runtime.exe script hello.py
 
 # Lua
-wingman.exe hello.lua
+wingman-runtime.exe script hello.lua
 ```
 
 ## 选择脚本语言

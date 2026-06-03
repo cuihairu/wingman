@@ -63,8 +63,8 @@ echo Setup Complete!
 echo ========================================
 echo.
 echo Next steps:
-echo 1. Open Visual Studio 2022
-echo 2. Or run: configure.bat
+echo 1. Run: build-scripts\build-runtime-msvc-ninja.bat
+echo 2. Binary output: build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe
 echo.
 
 pause

@@ -41,5 +41,5 @@ end
 ## 运行
 
 ```bash
-wingman.exe scripts/examples/pixel-detection.lua
+wingman-runtime.exe script scripts/examples/pixel-detection.lua
 ```

@@ -76,7 +76,6 @@ if(BUILD_CORE_TESTS)
                 kvstore_test.cpp
                 trigger_test.cpp
                 recorder_test.cpp
-                remote_server_test.cpp
                 screen_test.cpp
                 input_test.cpp
                 vision_test.cpp
@@ -140,7 +139,6 @@ if(BUILD_CORE_TESTS)
                 kvstore_test.cpp
                 trigger_test.cpp
                 recorder_test.cpp
-                remote_server_test.cpp
                 screen_test.cpp
                 input_test.cpp
                 vision_test.cpp

@@ -45,11 +45,8 @@ C:\vcpkg\bootstrap-vcpkg.bat
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
 
-# 配置 CMake (使用 overlay ports)
-cmake -B build -G "Visual Studio 17 2022" `
-    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
-    -DVCPKG_OVERLAY_PORTS="vcpkg-ports" `
-    -DVCPKG_TARGET_TRIPLET=x64-windows-static
+# 配置 MSVC + Ninja + vcpkg
+build-scripts\configure-msvc-ninja.bat
 
 # 如果 clasp 不在默认位置，设置环境变量
 # $env:CLASP_SOURCE_DIR = "C:\path\to\clasp"
@@ -58,13 +55,13 @@ cmake -B build -G "Visual Studio 17 2022" `
 ### 3. 编译
 
 ```bash
-cmake --build build --config Release
+build-scripts\build-runtime-msvc-ninja.bat
 ```
 
 ### 4. 运行
 
 ```bash
-.\build\apps\runtime\Release\wingman-runtime.exe
+.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe
 ```
 
 ## 测试
@@ -72,29 +69,23 @@ cmake --build build --config Release
 ### 启用测试
 
 ```bash
-cmake -B build -G "Visual Studio 17 2022" `
-    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
-    -DVCPKG_TARGET_TRIPLET=x64-windows-static `
-    -DVCPKG_MANIFEST_FEATURES=tests `
-    -DWINGMAN_BUILD_TESTS=ON `
-    -DBUILD_CORE_TESTS=ON `
-    -DBUILD_TRANSPORT_TESTS=ON
+cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake -S . -B build-msvc-ninja-vcpkg -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:\Users\admin\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DWINGMAN_BUILD_TESTS=ON -DBUILD_CORE_TESTS=ON -DBUILD_TRANSPORT_TESTS=ON"
 ```
 
 ### 运行测试
 
 ```bash
 # 核心库测试 (25 个测试)
-.\build\lib\wingman\tests\Release\core_tests.exe
+.\build-msvc-ninja-vcpkg\lib\wingman\tests\core_tests.exe
 
 # 传输库测试 (7 个测试)
-.\build\libs\transport\tests\Release\transport_tests.exe
+.\build-msvc-ninja-vcpkg\libs\transport\tests\transport_tests.exe
 
 # 协议库测试 (7 个测试)
-.\build\libs\proto\tests\Release\proto_tests.exe
+.\build-msvc-ninja-vcpkg\libs\proto\tests\proto_tests.exe
 
 # 调试库测试 (4 个测试)
-.\build\libs\debug\tests\Release\debug_tests.exe
+.\build-msvc-ninja-vcpkg\libs\debug\tests\debug_tests.exe
 ```
 
 ## 性能基准测试
@@ -102,18 +93,14 @@ cmake -B build -G "Visual Studio 17 2022" `
 ### 编译基准测试
 
 ```bash
-cmake -B build -G "Visual Studio 17 2022" `
-    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
-    -DVCPKG_TARGET_TRIPLET=x64-windows-static `
-    -DWINGMAN_BUILD_BENCHMARKS=ON
-
-cmake --build build --config Release --target kvstore_bench
+cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake -S . -B build-msvc-ninja-vcpkg -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:\Users\admin\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DWINGMAN_BUILD_BENCHMARKS=ON"
+cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake --build build-msvc-ninja-vcpkg --target kvstore_bench --config Debug"
 ```
 
 ### 运行基准测试
 
 ```bash
-.\build\benchmarks\Release\kvstore_bench.exe
+.\build-msvc-ninja-vcpkg\lib\wingman\tests\benchmarks\kvstore_bench.exe
 ```
 
 ### 性能指标

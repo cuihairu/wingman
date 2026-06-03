@@ -7,20 +7,7 @@ namespace wingman::runtime {
 // ========== AgentConfig 实现 ==========
 
 RunMode AgentConfig::getRunMode() const {
-    if (!enableActive && !enablePassive) {
-        return RunMode::Standalone;
-    }
-    if (enableActive && !enablePassive) {
-        return RunMode::Active;
-    }
-    if (!enableActive && enablePassive) {
-        return RunMode::Passive;
-    }
-    // 两者都启用
-    if (connectionStrategy == "primary") {
-        return RunMode::Active;
-    }
-    return RunMode::Both;  // parallel 或 fallback
+    return enableRemote ? RunMode::Remote : RunMode::Standalone;
 }
 
 AgentConfig AgentConfig::loadFromFile(const std::string& path) {
@@ -59,14 +46,12 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
 
             // 解析布尔值
             if (value == "true") {
-                if (key == "enable_active") config.enableActive = true;
-                if (key == "enable_passive") config.enablePassive = true;
+                if (key == "enable_remote") config.enableRemote = true;
                 if (key == "wait_for_ide") config.debugger.waitForIde = true;
                 if (key == "enable") config.debugger.enable = true;
                 if (key == "console") config.logging.console = true;
             } else if (value == "false") {
-                if (key == "enable_active") config.enableActive = false;
-                if (key == "enable_passive") config.enablePassive = false;
+                if (key == "enable_remote") config.enableRemote = false;
                 if (key == "wait_for_ide") config.debugger.waitForIde = false;
                 if (key == "enable") config.debugger.enable = false;
                 if (key == "console") config.logging.console = false;
@@ -75,14 +60,10 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
             else if (value.find_first_not_of("0123456789") == std::string::npos) {
                 int intValue = std::stoi(value);
                 if (key == "server_port") config.remoteClient.serverPort = intValue;
-                if (key == "listen_port") {
-                    config.remoteServer.listenPort = intValue;
-                    config.debugger.listenPort = intValue;
-                }
+                if (key == "listen_port") config.debugger.listenPort = intValue;
                 if (key == "reconnect_interval") config.remoteClient.reconnectInterval = intValue;
                 if (key == "heartbeat_interval") config.remoteClient.heartbeatInterval = intValue;
                 if (key == "connect_timeout") config.remoteClient.connectTimeout = intValue;
-                if (key == "max_connections") config.remoteServer.maxConnections = intValue;
                 if (key == "screenshot_cache_size") config.performance.screenshotCacheSize = intValue;
                 if (key == "match_thread_pool_size") config.performance.matchThreadPoolSize = intValue;
                 if (key == "memory_limit_mb") config.performance.memoryLimitMb = intValue;
@@ -90,8 +71,6 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
             // 解析字符串
             else {
                 if (key == "server_ip") config.remoteClient.serverIp = value;
-                if (key == "listen_ip") config.remoteServer.listenIp = value;
-                if (key == "connection_strategy") config.connectionStrategy = value;
                 if (key == "script_dir") config.standalone.scriptDir = value;
                 if (key == "level") config.logging.level = value;
                 if (key == "file") config.logging.file = value;
@@ -111,23 +90,15 @@ bool AgentConfig::saveToFile(const std::string& path) const {
     file << "# Wingman Agent 配置文件\n\n";
 
     file << "# ========== 运行模式配置 ==========\n";
-    file << "enable_active = " << (enableActive ? "true" : "false") << "\n";
-    file << "enable_passive = " << (enablePassive ? "true" : "false") << "\n";
-    file << "connection_strategy = \"" << connectionStrategy << "\"\n\n";
+    file << "enable_remote = " << (enableRemote ? "true" : "false") << "\n\n";
 
-    file << "# ========== 主动模式配置 ==========\n";
-    file << "[active]\n";
+    file << "# ========== 远程模式配置 ==========\n";
+    file << "[remote]\n";
     file << "server_ip = \"" << remoteClient.serverIp << "\"\n";
     file << "server_port = " << remoteClient.serverPort << "\n";
     file << "reconnect_interval = " << remoteClient.reconnectInterval << "\n";
     file << "heartbeat_interval = " << remoteClient.heartbeatInterval << "\n";
     file << "connect_timeout = " << remoteClient.connectTimeout << "\n\n";
-
-    file << "# ========== 被动模式配置 ==========\n";
-    file << "[passive]\n";
-    file << "listen_ip = \"" << remoteServer.listenIp << "\"\n";
-    file << "listen_port = " << remoteServer.listenPort << "\n";
-    file << "max_connections = " << remoteServer.maxConnections << "\n\n";
 
     file << "# ========== 单机模式配置 ==========\n";
     file << "[standalone]\n";

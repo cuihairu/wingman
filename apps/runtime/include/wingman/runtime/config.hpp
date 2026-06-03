@@ -10,10 +10,8 @@ namespace wingman::runtime {
 
 enum class RunMode {
     Unknown = 0,
-    Active,      // 主动连接 Server
-    Passive,     // 被动监听端口
+    Remote,      // 主动连接 Go Orchestrator
     Standalone,  // 单机模式（仅脚本）
-    Both         // 同时主动+被动（双保险）
 };
 
 // ========== 配置结构 ==========
@@ -24,12 +22,6 @@ struct RemoteClientConfig {
     int reconnectInterval = 5;      // 秒
     int heartbeatInterval = 30;     // 秒
     int connectTimeout = 10;        // 秒
-};
-
-struct RemoteServerConfig {
-    std::string listenIp = "0.0.0.0";
-    int listenPort = 9528;
-    int maxConnections = 10;
 };
 
 struct StandaloneModeConfig {
@@ -57,12 +49,9 @@ struct PerformanceConfig {
 
 struct AgentConfig {
     // 模式配置
-    bool enableActive = true;
-    bool enablePassive = true;
-    std::string connectionStrategy = "parallel";  // fallback | parallel | primary
+    bool enableRemote = true;
 
     RemoteClientConfig remoteClient;
-    RemoteServerConfig remoteServer;
     StandaloneModeConfig standalone;
     DebuggerConfig debugger;
     LoggingConfig logging;

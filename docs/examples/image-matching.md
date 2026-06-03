@@ -40,5 +40,5 @@ end
 ## 运行
 
 ```bash
-wingman.exe scripts/examples/image-matching.lua
+wingman-runtime.exe script scripts/examples/image-matching.lua
 ```

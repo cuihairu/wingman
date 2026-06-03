@@ -4,14 +4,12 @@
 #include <memory>
 #include <atomic>
 #include <string>
-#include <vector>
 
 namespace wingman::runtime {
 
 // ========== 前向声明 ==========
 
 class RemoteClient;
-class RemoteServer;
 class StandaloneMode;
 
 // ========== Agent 主类 ==========
@@ -44,16 +42,11 @@ public:
 
     // 获取各模式实例（用于高级控制）
     RemoteClient* getRemoteClient();
-    RemoteServer* getRemoteServer();
     StandaloneMode* getStandaloneMode();
-
-    // TCP 消息处理（供 RemoteServer 回调使用）
-    std::vector<uint8_t> handleMessage(const std::string& sessionId, const std::vector<uint8_t>& data);
 
 private:
     // 初始化各模式
     bool initRemoteClient();
-    bool initRemoteServer();
     bool initStandaloneMode();
 
     // P-Impl

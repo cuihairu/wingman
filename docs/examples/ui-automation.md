@@ -15,7 +15,7 @@
 
     使用方法:
     1. 打开记事本 (notepad.exe)
-    2. 运行此脚本: wingman.exe script scripts/ui_automation_example.lua
+    2. 运行此脚本: wingman-runtime.exe script scripts/ui_automation_example.lua
 ]]
 
 -- 等待记事本窗口出现
@@ -266,7 +266,7 @@ end
 ## 运行示例
 
 ```bash
-wingman.exe script scripts/ui_automation_example.lua
+wingman-runtime.exe script scripts/ui_automation_example.lua
 ```
 
 ## 调试技巧

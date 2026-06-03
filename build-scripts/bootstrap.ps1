@@ -86,6 +86,5 @@ Write-Host "  依赖安装完成！" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "接下来运行:" -ForegroundColor Cyan
-Write-Host "  cmake -B build -S . -G `"Visual Studio 17 2022`" -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" -ForegroundColor White
-Write-Host "  cmake --build build --config Release" -ForegroundColor White
+Write-Host "  build-scripts\build-runtime-msvc-ninja.bat" -ForegroundColor White
 Write-Host ""

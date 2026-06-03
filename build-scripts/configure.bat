@@ -1,6 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
+echo [LEGACY] This script is kept for compatibility. Use build-scripts\build-runtime-msvc-ninja.bat for the primary Windows build path.
+echo.
+
 echo ========================================
 echo Wingman CMake Configuration
 echo ========================================
@@ -50,9 +53,7 @@ echo Configuration Complete!
 echo ========================================
 echo.
 echo To build the project:
-echo   cmake --build build --config Debug
-echo.
-echo Or open build\Wingman.sln in Visual Studio
+echo   build-scripts\build-runtime-msvc-ninja.bat
 echo.
 
 pause

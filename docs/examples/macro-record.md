@@ -38,7 +38,7 @@ end
 ## 运行
 
 ```bash
-wingman.exe scripts/examples/macro-record.lua
+wingman-runtime.exe script scripts/examples/macro-record.lua
 ```
 
 ## 说明

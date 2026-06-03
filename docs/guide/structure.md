@@ -121,7 +121,7 @@ wingman/
 ### server/ - 网络服务层
 
 实现 TCP Server/Client，支持远程控制：
-- **Server 模式**：被动监听，等待连接
+- **Remote 模式**：主动连接编排器
 - **Client 模式**：主动连接 Nebula
 
 ### core/ - 核心引擎

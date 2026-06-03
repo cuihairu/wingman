@@ -234,5 +234,4 @@ end
 
 高级功能模块。
 
-- [remote](./remote) - 远程控制协议
 - [team](./team) - 组队编排

@@ -1,13 +1,7 @@
 #include "wingman/runtime/agent.hpp"
 #include "wingman/runtime/remote_client.hpp"
-#include "wingman/runtime/remote_server.hpp"
 #include "wingman/runtime/standalone_mode.hpp"
-#include "wingman/runtime/runtime_context.hpp"
-#include "wingman/system.hpp"
-#include "wingman/window.hpp"
-#include <filesystem>
 #include <spdlog/spdlog.h>
-#include <nlohmann/json.hpp>
 
 namespace wingman::runtime {
 
@@ -19,7 +13,6 @@ public:
     RunMode mode = RunMode::Unknown;
 
     std::unique_ptr<RemoteClient> remoteClient;
-    std::unique_ptr<RemoteServer> remoteServer;
     std::unique_ptr<StandaloneMode> standaloneMode;
 };
 
@@ -52,21 +45,12 @@ bool Agent::initialize(const AgentConfig& config) {
     impl_->mode = config.getRunMode();
 
     spdlog::info("Initializing Agent, mode: {}",
-        impl_->mode == RunMode::Active ? "active" :
-        impl_->mode == RunMode::Passive ? "passive" :
-        impl_->mode == RunMode::Standalone ? "standalone" : "both");
+        impl_->mode == RunMode::Remote ? "remote" : "standalone");
 
     // 初始化对应模式
-    if (impl_->mode == RunMode::Active || impl_->mode == RunMode::Both) {
+    if (impl_->mode == RunMode::Remote) {
         if (!initRemoteClient()) {
-            spdlog::error("Failed to initialize active mode");
-            return false;
-        }
-    }
-
-    if (impl_->mode == RunMode::Passive || impl_->mode == RunMode::Both) {
-        if (!initRemoteServer()) {
-            spdlog::error("Failed to initialize passive mode");
+            spdlog::error("Failed to initialize remote mode");
             return false;
         }
     }
@@ -89,11 +73,6 @@ void Agent::shutdown() {
         impl_->remoteClient.reset();
     }
 
-    if (impl_->remoteServer) {
-        impl_->remoteServer->stop();
-        impl_->remoteServer.reset();
-    }
-
     if (impl_->standaloneMode) {
         impl_->standaloneMode->stop();
         impl_->standaloneMode.reset();
@@ -107,16 +86,9 @@ bool Agent::start() {
 
     bool success = true;
 
-    if (impl_->remoteClient && (impl_->mode == RunMode::Active || impl_->mode == RunMode::Both)) {
+    if (impl_->remoteClient && impl_->mode == RunMode::Remote) {
         if (!impl_->remoteClient->start()) {
-            spdlog::error("Failed to start active mode");
-            success = false;
-        }
-    }
-
-    if (impl_->remoteServer && (impl_->mode == RunMode::Passive || impl_->mode == RunMode::Both)) {
-        if (!impl_->remoteServer->start()) {
-            spdlog::error("Failed to start passive mode");
+            spdlog::error("Failed to start remote mode");
             success = false;
         }
     }
@@ -140,16 +112,11 @@ void Agent::stop() {
     running_.store(false);
 
     if (impl_->remoteClient) impl_->remoteClient->stop();
-    if (impl_->remoteServer) impl_->remoteServer->stop();
     if (impl_->standaloneMode) impl_->standaloneMode->stop();
 }
 
 RemoteClient* Agent::getRemoteClient() {
     return impl_->remoteClient.get();
-}
-
-RemoteServer* Agent::getRemoteServer() {
-    return impl_->remoteServer.get();
 }
 
 StandaloneMode* Agent::getStandaloneMode() {
@@ -169,161 +136,9 @@ bool Agent::initRemoteClient() {
     return true;
 }
 
-bool Agent::initRemoteServer() {
-    impl_->remoteServer = std::make_unique<RemoteServer>(impl_->config.remoteServer);
-
-    // 设置消息处理器
-    impl_->remoteServer->setMessageHandler([this](const std::string& sessionId, const std::vector<uint8_t>& data) {
-        return handleMessage(sessionId, data);
-    });
-
-    return true;
-}
-
 bool Agent::initStandaloneMode() {
     impl_->standaloneMode = std::make_unique<StandaloneMode>(impl_->config.standalone);
     return true;
-}
-
-// ========== TCP 消息处理 ==========
-
-std::vector<uint8_t> Agent::handleMessage(const std::string& sessionId, const std::vector<uint8_t>& data) {
-    nlohmann::json response;
-    response["success"] = false;
-    response["message"] = "unknown error";
-
-    try {
-        // 解析 JSON 请求
-        nlohmann::json request = nlohmann::json::parse(data.begin(), data.end());
-
-        if (!request.contains("type")) {
-            response["message"] = "missing 'type' field";
-            std::string responseStr = response.dump();
-            return std::vector<uint8_t>(responseStr.begin(), responseStr.end());
-        }
-
-        std::string type = request["type"];
-        spdlog::debug("Received message type: {}", type);
-
-        // 路由消息类型
-        if (type == "ping") {
-            response["success"] = true;
-            response["message"] = "pong";
-            response["data"]["status"] = "ok";
-            response["data"]["mode"] = impl_->mode == RunMode::Active ? "active" :
-                                      impl_->mode == RunMode::Passive ? "passive" :
-                                      impl_->mode == RunMode::Standalone ? "standalone" : "both";
-        }
-        else if (type == "get_status") {
-            response["success"] = true;
-            response["data"]["running"] = running_.load();
-            response["data"]["mode"] = impl_->mode == RunMode::Active ? "active" :
-                                      impl_->mode == RunMode::Passive ? "passive" :
-                                      impl_->mode == RunMode::Standalone ? "standalone" : "both";
-            response["data"]["runningScripts"] = getScriptManager().getRunningScripts().size();
-            response["data"]["totalScripts"] = getScriptManager().getScriptNames().size();
-            response["data"]["cpuUsage"] = System::getCpuUsage();
-            response["data"]["memoryUsage"] = System::getMemoryInfo().usage;
-            response["data"]["totalWindows"] = 0;
-#ifdef _WIN32
-            response["data"]["totalWindows"] = Window::enumerate().size();
-#endif
-        }
-        else if (type == "list_scripts") {
-            auto scripts = getScriptManager().getAllScriptInfos();
-            response["success"] = true;
-            response["data"]["scripts"] = nlohmann::json::array();
-            for (const auto& script : scripts) {
-                nlohmann::json item;
-                item["id"] = script.config.name;
-                item["name"] = script.config.name;
-                item["path"] = script.config.path;
-                item["isRunning"] = script.state == ::wingman::ScriptState::running;
-                item["status"] = script.state == ::wingman::ScriptState::running ? "running" :
-                                 script.state == ::wingman::ScriptState::paused ? "paused" :
-                                 script.state == ::wingman::ScriptState::error ? "error" : "loaded";
-                response["data"]["scripts"].push_back(item);
-            }
-        }
-        else if (type == "run_script") {
-            if (!request.contains("path")) {
-                response["message"] = "missing 'path' field";
-            } else {
-                std::string path = request["path"];
-                std::string name = std::filesystem::path(path).stem().string();
-                if (getScriptManager().hasScript(name) || getScriptManager().loadScript(name, path)) {
-                    if (getScriptManager().runScript(name)) {
-                        response["success"] = true;
-                        response["message"] = "script execution started";
-                        response["data"]["script_id"] = name;
-                        response["data"]["status"] = "running";
-                    } else {
-                        response["message"] = "failed to run script";
-                    }
-                } else {
-                    response["message"] = "failed to load script";
-                }
-            }
-        }
-        else if (type == "stop_script") {
-            if (!request.contains("script_id")) {
-                response["message"] = "missing 'script_id' field";
-            } else {
-                std::string scriptId = request["script_id"];
-                response["success"] = getScriptManager().stopScript(scriptId);
-                response["message"] = response["success"] ? "script stopped" : "failed to stop script";
-                response["data"]["script_id"] = scriptId;
-            }
-        }
-        else if (type == "get_script_status") {
-            if (!request.contains("script_id")) {
-                response["message"] = "missing 'script_id' field";
-            } else {
-                std::string scriptId = request["script_id"];
-                response["data"]["script_id"] = scriptId;
-                if (auto info = getScriptManager().getScriptInfo(scriptId)) {
-                    response["success"] = true;
-                    response["data"]["status"] = info->state == ::wingman::ScriptState::running ? "running" :
-                                              info->state == ::wingman::ScriptState::paused ? "paused" :
-                                              info->state == ::wingman::ScriptState::error ? "error" : "loaded";
-                } else {
-                    response["message"] = "script not found";
-                }
-            }
-        }
-        else if (type == "list_windows") {
-            response["success"] = true;
-            response["data"]["windows"] = nlohmann::json::array();
-
-#ifdef _WIN32
-            for (const auto& window : Window::enumerate()) {
-                nlohmann::json item;
-                item["handle"] = reinterpret_cast<uint64_t>(window.handle);
-                item["title"] = window.title;
-                item["x"] = window.bounds.x;
-                item["y"] = window.bounds.y;
-                item["width"] = window.bounds.width;
-                item["height"] = window.bounds.height;
-                item["isForeground"] = window.isForeground;
-                response["data"]["windows"].push_back(item);
-            }
-#endif
-        }
-        else {
-            response["message"] = "unknown message type: " + type;
-        }
-
-    } catch (const nlohmann::json::parse_error& e) {
-        spdlog::error("JSON parse error: {}", e.what());
-        response["message"] = "json parse error: " + std::string(e.what());
-    } catch (const std::exception& e) {
-        spdlog::error("Message handling error: {}", e.what());
-        response["message"] = "error: " + std::string(e.what());
-    }
-
-    // 转换为 JSON 字符串并返回
-    std::string responseStr = response.dump();
-    return std::vector<uint8_t>(responseStr.begin(), responseStr.end());
 }
 
 } // namespace wingman::runtime

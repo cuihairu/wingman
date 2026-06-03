@@ -9,7 +9,7 @@ echo === Wingman EXE 签名 ===
 REM 设置路径
 set CERT_FILE=setup\wingman-cert.pfx
 set CERT_PASS=Wingman2024
-set EXE_PATH=build\Release\wingman.exe
+set EXE_PATH=build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe
 
 REM 检查证书文件
 if not exist "%CERT_FILE%" (
@@ -22,7 +22,7 @@ if not exist "%CERT_FILE%" (
 REM 检查 EXE 文件
 if not exist "%EXE_PATH%" (
     echo 错误: 找不到编译后的程序！
-    echo 请先编译项目: cmake --build build --config Release
+    echo 请先编译项目: build-scripts\build-runtime-msvc-ninja.bat
     pause
     exit /b 1
 )

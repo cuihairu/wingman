@@ -25,16 +25,14 @@ setup.bat
 ### 2. 配置 CMake
 
 ```cmd
-configure.bat
+build-scripts\configure-msvc-ninja.bat
 ```
 
 ### 3. 构建
 
 ```cmd
-cmake --build build --config Release
+build-scripts\build-runtime-msvc-ninja.bat
 ```
-
-或打开 `build\Wingman.sln` 在 Visual Studio 中开发。
 
 ## 手动设置
 
@@ -57,7 +55,8 @@ vcpkg install --triplet=x64-windows-static lua opencv4 spdlog nlohmann-json asio
 ### 配置 CMake
 
 ```cmd
-cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+build-scripts\configure-msvc-ninja.bat
+build-scripts\build-runtime-msvc-ninja.bat
 ```
 
 ## 项目结构
@@ -91,15 +90,14 @@ wingman/
 
 ### Client 模式
 
-- **ActiveMode**：主动连接服务器
-- **PassiveMode**：监听客户端连接
+- **Remote Mode**：主动连接 Go 编排器
 - **StandaloneMode**：单机脚本执行
 
 ### 启动应用
 
 ```cmd
 # CLI 运行时
-.\build\apps\runtime\Release\wingman-runtime.exe
+.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe
 
 # GUI 应用
 .\build\apps\gui\Release\wingman-gui.exe

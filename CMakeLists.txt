@@ -32,7 +32,6 @@ if(DEFINED CMAKE_TOOLCHAIN_FILE)
 endif()
 
 # ========== 构建选项 ==========
-option(WINGMAN_BUILD_SERVER "Build network server (legacy)" OFF)  # 默认关闭，使用新架构
 option(WINGMAN_BUILD_DEBUGGER "Build debugger (legacy)" OFF)       # 默认关闭，使用 EmmyLua
 option(WINGMAN_BUILD_TESTS "Build tests" OFF)
 option(WINGMAN_ENABLE_OCR "Enable OCR support (requires Tesseract)" OFF)  # 默认关闭

@@ -10,7 +10,7 @@ wingman/
 │   │   │   ├── main.cpp          ← 入口
 │   │   │   ├── agent.cpp         ← Agent 主逻辑（主动连接编排器）
 │   │   │   ├── remote_client.cpp ← 远程客户端（连接编排器）
-│   │   │   ├── remote_server.cpp ← 远程服务端（transport TCP）
+│   │   │   ├── remote_client.cpp ← 远程客户端（transport TCP）
 │   │   │   ├── standalone_mode.cpp ← 单机模式
 │   │   │   └── commands/         ← CLI 子命令
 │   │   ├── include/wingman/runtime/
@@ -114,7 +114,7 @@ Runtime 作为主动 Agent 运行，通过 outbound 连接到编排器（Go orch
 | StandaloneMode | 单机模式，无网络 | - |
 
 > **注意**: 旧的 PassiveMode（被动监听模式）和 `serve` 命令已被移除。Runtime 不再作为被动服务器运行。
-> 远程控制现在通过 `wingman::runtime::RemoteServer`（基于 transport 的 TCP）实现 Agent 到编排器的通信，
+> 远程控制现在通过 `wingman::runtime::RemoteClient`（基于 transport 的 TCP）实现 Agent 到编排器的通信，
 > 或通过 Tauri IPC 由 GUI 直接调用 C++ API。
 
 ## 设计原则

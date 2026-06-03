@@ -1,5 +1,7 @@
 $ErrorActionPreference = "Stop"
 
+Write-Host "[LEGACY] Use build-scripts\build-runtime-msvc-ninja.bat instead." -ForegroundColor Yellow
+
 # 设置 Visual Studio 环境
 & "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
 

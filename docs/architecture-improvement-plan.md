@@ -65,7 +65,7 @@
 │    ┌─────────────────────────┐                                             │
 │    │ StandaloneMode          │                                             │
 │    │ ActiveMode (TcpClient)  │                                             │
-│    │ PassiveMode (TcpServer) │                                             │
+│    │ RemoteClient (TcpClient)│                                             │
 │    └─────────────────────────┘                                             │
 │               │                                                               │
 │               ▼                                                               │

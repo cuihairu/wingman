@@ -29,9 +29,7 @@
 3. **配置项目**
    ```cmd
    cd ..
-   cmake -B build -S . -G "Visual Studio 17 2022" -A x64 `
-       -DCMAKE_TOOLCHAIN_FILE=vcpkg\scripts\buildsystems\vcpkg.cmake `
-       -DVCPKG_TARGET_TRIPLET=x64-windows-static
+   build-scripts\build-runtime-msvc-ninja.bat
    ```
 
 ## 方法 2：使用预构建依赖包
@@ -70,7 +68,7 @@ scoop install lua
 
 ## 临时方案
 
-可以使用 `configure_minimal.bat` 配置最小化构建，但这需要修改 CMakeLists.txt 使所有依赖变为可选。
+可以使用 `build-scripts\configure_minimal.bat` 配置最小化构建，但这是备用路径，功能受限。
 
 ## 建议
 
@@ -83,5 +81,5 @@ scoop install lua
 如果有 vcpkg 安装包的副本：
 
 1. 将 vcpkg 目录复制到项目根目录
-2. 运行 `configure.bat`
+2. 运行 `build-scripts\build-runtime-msvc-ninja.bat`
 3. 构建项目

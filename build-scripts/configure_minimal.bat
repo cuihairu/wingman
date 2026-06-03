@@ -1,6 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
+echo [MINIMAL] This script is for reduced-feature builds only. Use build-scripts\build-runtime-msvc-ninja.bat for the primary Windows build path.
+echo.
+
 echo ========================================
 echo Wingman Minimal Build Configuration
 echo ========================================

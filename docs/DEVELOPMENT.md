@@ -16,8 +16,7 @@
 # Clone and build
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
-cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=[vcpkg]/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
-cmake --build build --config Release
+build-scripts\build-runtime-msvc-ninja.bat
 ```
 
 ## Project Structure
@@ -135,11 +134,11 @@ local data = cjson.encode({name = "Wingman", version = "0.1.0"})
 
 ```cmd
 REM Build with tests enabled
-cmake -B build -DWINGMAN_BUILD_TESTS=ON
-cmake --build build --config Debug
+cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake -S . -B build-msvc-ninja-vcpkg -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:\Users\admin\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DWINGMAN_BUILD_TESTS=ON -DBUILD_CORE_TESTS=ON"
+cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake --build build-msvc-ninja-vcpkg --config Debug"
 
 REM Run tests
-.\build\lib\wingman\tests\Debug\core_tests.exe
+.\build-msvc-ninja-vcpkg\lib\wingman\tests\core_tests.exe
 ```
 
 ### Lua Tests

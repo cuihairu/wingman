@@ -17,5 +17,5 @@
 ## 运行示例
 
 ```bash
-wingman.exe scripts/examples/hello-world.lua
+wingman-runtime.exe script scripts/examples/hello-world.lua
 ```

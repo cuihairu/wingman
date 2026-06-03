@@ -32,7 +32,7 @@ wingman/
 │   │   ├── src/
 │   │   │   ├── main.cpp          ← 入口
 │   │   │   ├── active_mode.cpp   ← 主动连接模式
-│   │   │   ├── passive_mode.cpp  ← 被动监听模式
+│   │   │   ├── remote_client.cpp ← 主动连接编排器
 │   │   │   └── standalone_mode.cpp
 │   │   ├── include/wingman/runtime/
 │   │   ├── tests/
@@ -161,7 +161,7 @@ vcpkg install pybind11
 | 模式 | 说明 | Transport |
 |------|------|-----------|
 | ActiveMode | 主动连接到服务器 | TcpClient |
-| PassiveMode | 被动监听，等待连接 | TcpServer |
+| RemoteClient | 主动连接编排器 | TcpClient |
 | StandaloneMode | 单机模式，无网络 | - |
 
 ### 设计原则
@@ -323,7 +323,7 @@ class TriggerEngine {
 - ✅ TCP 协议实现 (端口 9999)
 - ✅ JSON-RPC 风格请求/响应
 - ✅ 18 个 API 端点
-- ✅ RemoteServer/RemoteClient C++ API
+- ✅ RemoteClient C++ API
 - ✅ 协议文档 (`docs/remote_protocol.md`)
 - ✅ 完整测试覆盖
 

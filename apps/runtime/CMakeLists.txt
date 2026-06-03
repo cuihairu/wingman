@@ -46,7 +46,6 @@ set(RUNTIME_SOURCES
     src/main.cpp
     src/agent.cpp
     src/remote_client.cpp
-    src/remote_server.cpp
     src/standalone_mode.cpp
     src/agent_config.cpp
     src/packer.cpp
@@ -95,8 +94,8 @@ endif()
 
 # 复制配置文件到输出目录
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/config/client.toml
-    ${CMAKE_BINARY_DIR}/client.toml
+    ${CMAKE_CURRENT_SOURCE_DIR}/config/agent.toml
+    ${CMAKE_BINARY_DIR}/agent.toml
     COPYONLY
 )
 

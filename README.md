@@ -175,10 +175,7 @@ C:\vcpkg\vcpkg integrate install
 
 **Windows:**
 ```bash
-cmake -B build -G "Visual Studio 17 2022" ^
-    -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" ^
-    -DVCPKG_TARGET_TRIPLET=x64-windows-static
-cmake --build build --config Release
+build-scripts\build-runtime-msvc-ninja.bat
 ```
 
 **启用 Python 支持:**
@@ -202,16 +199,16 @@ cmake --build build
 
 ```bash
 # Lua 脚本
-.\build\apps\runtime\Release\wingman-runtime.exe script examples\hello.lua
+.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script examples\hello.lua
 
 # Python 脚本 (需要启用 WINGMAN_ENABLE_PYTHON)
-.\build\apps\runtime\Release\wingman-runtime.exe script examples\hello.py
+.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script examples\hello.py
 
-# 启动服务模式
-.\build\apps\runtime\Release\wingman-runtime.exe start
+# 启动 Agent
+.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe start
 
 # 启动 GUI
-.\build\apps\runtime\Release\wingman-runtime.exe
+.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe
 ```
 
 ---
@@ -284,9 +281,9 @@ if point:
 ### 单元测试
 
 ```bash
-cmake -B build -DWINGMAN_BUILD_TESTS=ON
-cmake --build build --config Release
-ctest --test-dir build --config Release
+cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake -S . -B build-msvc-ninja-vcpkg -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:\Users\admin\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DWINGMAN_BUILD_TESTS=ON -DBUILD_CORE_TESTS=ON"
+cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake --build build-msvc-ninja-vcpkg --config Debug"
+cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && ctest --test-dir build-msvc-ninja-vcpkg -C Debug"
 ```
 
 ---

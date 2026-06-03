@@ -28,7 +28,7 @@ code --install-extension wingman.debugger
       "request": "launch",
       "name": "Launch Wingman Script",
       "program": "${workspaceFolder}/scripts/main.lua",
-      "wingmanPath": "${workspaceFolder}/build/Debug/wingman.exe"
+      "wingmanPath": "${workspaceFolder}/build-msvc-ninja-vcpkg/apps/runtime/wingman-runtime.exe"
     }
   ]
 }

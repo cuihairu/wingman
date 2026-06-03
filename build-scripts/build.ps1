@@ -63,5 +63,5 @@ Write-Host "  构建完成！" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "运行程序:" -ForegroundColor White
-Write-Host "  .\build\Release\wingman.exe" -ForegroundColor Gray
+Write-Host "  .\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe" -ForegroundColor Gray
 Write-Host ""

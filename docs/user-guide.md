@@ -65,6 +65,12 @@ cmake -B build -S . -G Ninja \
 cmake --build build --config Release
 ```
 
+### Windows
+
+```cmd
+build-scripts\build-runtime-msvc-ninja.bat
+```
+
 ## 快速入门
 
 ### Hello World

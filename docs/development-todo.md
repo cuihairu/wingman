@@ -477,7 +477,7 @@
   - `UNKNOWN` → `REQ_UNKNOWN` (RequestType)
   - `BUSY` → `ERR_BUSY` (ErrorCode)
 - [x] 修复 lua_extensions.cpp 条件编译
-  - 添加 `#ifdef WINGMAN_BUILD_SERVER` 支持
+  - 清理已废弃的旧 server 条件编译残留
   - 未构建 server 模块时使用存根类型
 
 ### Phase 14: UIA 功能增强 ✅

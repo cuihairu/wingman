@@ -51,5 +51,5 @@ end
 ## 运行
 
 ```bash
-wingman.exe scripts/examples/auto-loop.lua
+wingman-runtime.exe script scripts/examples/auto-loop.lua
 ```
