@@ -1,565 +1,110 @@
 # Wingman 远程控制协议文档
 
-## 概述
+## 协议演进说明
 
-Wingman 远程控制协议是基于 TCP 的 JSON-RPC 风格协议，用于通过网络远程控制游戏自动化功能。
+> **已废弃**: 旧的 JSON-RPC 风格远程控制协议（基于 `wingman::RemoteControlServer` / `wingman::RemoteControlClient`，默认端口 9999）已被移除。
+> `wingman::RemoteControlServer` 和 `wingman::RemoteControlClient` 类已从核心库中删除。
+> Runtime 的 `serve` 命令（被动监听模式 PassiveMode）也已移除。
 
-**默认端口**: 9999
+## 当前架构
 
-**连接**: TCP Socket
+Runtime 现在作为**主动 Agent** 运行，通过以下两种方式提供远程控制能力：
 
-**编码**: UTF-8 JSON
+### 1. Transport TCP（Agent 到编排器）
 
----
+Agent 通过 `wingman::runtime::RemoteServer`（基于 transport 层的 TCP）主动连接到 Go 编排器（orchestrator），通信采用 **Protobuf** 序列化格式，而非旧的 JSON-RPC。
 
-## 协议格式
-
-### 请求格式
-
-```json
-{
-  "action": "动作名称",
-  "params": {
-    // 动作参数
-  }
-}
+```
+Agent (Runtime)  ──主动连接──>  Go Orchestrator (TCP Server)
+                               ├── 任务下发
+                               ├── 状态上报
+                               ├── 心跳保活
+                               └── 工作流编排
 ```
 
-### 响应格式
+关键实现文件：
+- `apps/runtime/src/remote_client.cpp` - 远程客户端，主动连接编排器
+- `apps/runtime/src/remote_server.cpp` - 基于 transport 层的 TCP 服务
+- `libs/transport/` - 网络传输层（TCP/WebSocket）
+- `libs/proto/` - Protobuf 协议封装
 
-```json
-{
-  "success": true/false,
-  "data": {
-    // 返回数据
-  },
-  "error": "错误信息（仅失败时）"
-}
+### 2. Tauri IPC（GUI 直接调用）
+
+Tauri/Svelte GUI（`apps/gui/`）通过 Tauri IPC 直接调用 C++ 核心库 API，无需经过网络协议。
+
+```
+Tauri GUI (Svelte)  ──Tauri IPC──>  C++ Core Library
+                                      ├── 屏幕捕获
+                                      ├── 输入模拟
+                                      ├── 触发器管理
+                                      └── ...
 ```
 
----
+### 3. Web Dashboard（React/Umi）
 
-## API 端点
+Dashboard（`orchestrator/dashboard/`）通过 WebSocket 连接到 Go 编排器，由编排器转发命令到各 Agent。
+
+```
+Web Dashboard (React/Umi)  ──WebSocket──>  Go Orchestrator  ──Transport TCP──>  Agent
+```
+
+## API 端点（由 Go 编排器提供服务）
+
+以下 API 端点概念仍然存在，但现在由 Go 编排器（`orchestrator/server/`）提供服务，而非 C++ runtime 直接暴露。
 
 ### 系统操作
 
-#### ping
-
-健康检查。
-
-**请求**:
-```json
-{"action": "ping"}
-```
-
-**响应**:
-```json
-{"success": true, "data": {"status": "ok"}}
-```
-
----
-
-#### get_version
-
-获取版本信息。
-
-**请求**:
-```json
-{"action": "get_version"}
-```
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "name": "Wingman",
-    "version": "0.1.0"
-  }
-}
-```
-
----
+| 动作 | 说明 |
+|------|------|
+| ping | 健康检查 |
+| get_version | 获取版本信息 |
 
 ### 屏幕操作
 
-#### capture_screen
-
-截取屏幕区域。
-
-**请求**:
-```json
-{
-  "action": "capture_screen",
-  "params": {
-    "x": 0,
-    "y": 0,
-    "width": 1920,
-    "height": 1080,
-    "format": "jpg",    // jpg 或 png
-    "quality": 90       // JPEG 质量 1-100
-  }
-}
-```
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "image": "base64_encoded_image_data",
-    "width": 1920,
-    "height": 1080,
-    "format": "jpg"
-  }
-}
-```
-
----
-
-#### get_pixel
-
-获取指定坐标的像素颜色。
-
-**请求**:
-```json
-{
-  "action": "get_pixel",
-  "params": {
-    "x": 100,
-    "y": 200
-  }
-}
-```
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "r": 255,
-    "g": 128,
-    "b": 64,
-    "color": 0xFF8040
-  }
-}
-```
-
----
-
-#### find_color
-
-在指定区域查找颜色。
-
-**请求**:
-```json
-{
-  "action": "find_color",
-  "params": {
-    "color": 0xFF0000,      // 要查找的颜色 (BGR)
-    "x": 0,
-    "y": 0,
-    "width": 1920,
-    "height": 1080,
-    "tolerance": 10,        // 颜色容差 0-255
-    "limit": 1              // 最多返回点数
-  }
-}
-```
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "points": [
-      {"x": 100, "y": 200},
-      {"x": 150, "y": 250}
-    ],
-    "count": 2
-  }
-}
-```
-
----
-
-#### find_image
-
-在屏幕上查找图像。
-
-**请求**:
-```json
-{
-  "action": "find_image",
-  "params": {
-    "image": "base64_encoded_template_image",
-    "x": 0,
-    "y": 0,
-    "width": 1920,
-    "height": 1080,
-    "threshold": 0.9         // 匹配阈值 0.0-1.0
-  }
-}
-```
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "found": true,
-    "x": 100,
-    "y": 200,
-    "confidence": 0.95
-  }
-}
-```
-
----
+| 动作 | 说明 |
+|------|------|
+| capture_screen | 截取屏幕区域 |
+| get_pixel | 获取指定坐标像素颜色 |
+| find_color | 在指定区域查找颜色 |
+| find_image | 在屏幕上查找图像 |
 
 ### 输入模拟
 
-#### click
-
-模拟鼠标点击。
-
-**请求**:
-```json
-{
-  "action": "click",
-  "params": {
-    "x": 100,
-    "y": 200,
-    "button": "left"        // left, right, middle
-  }
-}
-```
-
-**响应**:
-```json
-{"success": true}
-```
-
----
-
-#### move
-
-移动鼠标到指定位置。
-
-**请求**:
-```json
-{
-  "action": "move",
-  "params": {
-    "x": 100,
-    "y": 200,
-    "duration": 100         // 移动时长（毫秒）
-  }
-}
-```
-
-**响应**:
-```json
-{"success": true}
-```
-
----
-
-#### key
-
-模拟键盘按键。
-
-**请求**:
-```json
-{
-  "action": "key",
-  "params": {
-    "keyCode": 65,          // 虚拟键码
-    "down": true            // true=按下, false=释放
-  }
-}
-```
-
-**响应**:
-```json
-{"success": true}
-```
-
----
-
-#### type_text
-
-输入文本。
-
-**请求**:
-```json
-{
-  "action": "type_text",
-  "params": {
-    "text": "Hello World",
-    "delay": 50             // 每字符延迟（毫秒）
-  }
-}
-```
-
-**响应**:
-```json
-{"success": true}
-```
-
----
+| 动作 | 说明 |
+|------|------|
+| click | 模拟鼠标点击 |
+| move | 移动鼠标 |
+| key | 模拟键盘按键 |
+| type_text | 输入文本 |
 
 ### 触发器管理
 
-#### list_triggers
-
-列出所有触发器。
-
-**请求**:
-```json
-{"action": "list_triggers"}
-```
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "count": 2,
-    "triggers": [
-      {
-        "id": "trigger_1",
-        "enabled": true,
-        "config": {...}
-      }
-    ]
-  }
-}
-```
-
----
-
-#### add_trigger
-
-添加新触发器。
-
-**请求**:
-```json
-{
-  "action": "add_trigger",
-  "params": {
-    "id": "my_trigger",
-    "enabled": true,
-    "condition": {...},
-    "action": {...},
-    "cooldown": 500
-  }
-}
-```
-
-**响应**:
-```json
-{"success": true}
-```
-
----
-
-#### remove_trigger
-
-删除触发器。
-
-**请求**:
-```json
-{
-  "action": "remove_trigger",
-  "params": {
-    "id": "my_trigger"
-  }
-}
-```
-
-**响应**:
-```json
-{"success": true}
-```
-
----
-
-#### enable_trigger
-
-启用触发器。
-
-**请求**:
-```json
-{
-  "action": "enable_trigger",
-  "params": {
-    "id": "my_trigger"
-  }
-}
-```
-
-**响应**:
-```json
-{"success": true}
-```
-
----
-
-#### disable_trigger
-
-禁用触发器。
-
-**请求**:
-```json
-{
-  "action": "disable_trigger",
-  "params": {
-    "id": "my_trigger"
-  }
-}
-```
-
-**响应**:
-```json
-{"success": true}
-```
-
----
+| 动作 | 说明 |
+|------|------|
+| list_triggers | 列出所有触发器 |
+| add_trigger | 添加新触发器 |
+| remove_trigger | 删除触发器 |
+| enable_trigger | 启用触发器 |
+| disable_trigger | 禁用触发器 |
 
 ### 宏操作
 
-#### record_macro
-
-开始录制宏。
-
-**请求**:
-```json
-{"action": "record_macro"}
-```
-
-**响应**:
-```json
-{"success": true}
-```
-
----
-
-#### stop_macro_recording
-
-停止宏录制。
-
-**请求**:
-```json
-{"action": "stop_macro_recording"}
-```
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "eventCount": 42
-  }
-}
-```
-
----
-
-#### play_macro
-
-回放宏。
-
-**请求**:
-```json
-{
-  "action": "play_macro",
-  "params": {
-    "speed": 100,           // 速度百分比
-    "repeat": 1             // 重复次数
-  }
-}
-```
-
-**响应**:
-```json
-{"success": true}
-```
-
----
-
-## 错误码
-
-| 错误 | 说明 |
+| 动作 | 说明 |
 |------|------|
-| `unknown_action` | 未知的动作类型 |
-| `invalid_params` | 参数格式错误 |
-| `capture_failed` | 屏幕捕获失败 |
-| `not_found` | 资源不存在 |
+| record_macro | 开始录制宏 |
+| stop_macro_recording | 停止宏录制 |
+| play_macro | 回放宏 |
 
----
+## 迁移指南
 
-## 使用示例
+### 从旧 RemoteControlServer 迁移
 
-### C++ 客户端
+1. **服务端模式已移除** - Runtime 不再支持 `serve` 命令（被动监听）。如需集中控制多个 Agent，请使用 Go 编排器（`orchestrator/server/`）。
 
-```cpp
-#include "wingman/remote_client.hpp"
+2. **连接方向变更** - 旧模式中 Runtime 被动等待外部连接；新模式中 Runtime 主动连接到编排器。
 
-wingman::RemoteControlClient client;
+3. **协议变更** - 旧的 JSON-RPC over raw TCP 已替换为 Protobuf over transport TCP。消息格式定义在 `protobuf/` 目录。
 
-// 连接
-if (client.connect("192.168.1.100", 9999)) {
-    // 截图
-    auto resp = client.captureScreen(0, 0, 1920, 1080);
+4. **客户端库** - `wingman::RemoteControlClient` 已移除。外部工具应通过 Go 编排器的 REST/WebSocket API 间接控制 Agent。
 
-    // 查找颜色
-    resp = client.findColor(0xFF0000, 0, 0, 1920, 1080, 10);
-
-    // 点击
-    if (resp.success && resp.data["count"] > 0) {
-        auto x = resp.data["points"][0]["x"];
-        auto y = resp.data["points"][0]["y"];
-        client.click(x, y);
-    }
-
-    client.disconnect();
-}
-```
-
-### Python 客户端
-
-```python
-import socket
-import json
-
-def call_remote(host, port, action, params=None):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((host, port))
-
-    request = {"action": action, "params": params or {}}
-    sock.sendall(json.dumps(request).encode() + b"\n")
-
-    data = b""
-    while b"\n" not in data:
-        data += sock.recv(4096)
-    sock.close()
-
-    return json.loads(data.decode())
-
-# 使用
-resp = call_remote("192.168.1.100", 9999, "capture_screen", {
-    "width": 1920,
-    "height": 1080,
-    "format": "jpg"
-})
-```
-
----
-
-## 安全建议
-
-1. **不要暴露在公网** - 仅在可信局域网使用
-2. **添加认证** - 生产环境应实现 Token 认证
-3. **限制来源** - 使用防火墙限制访问 IP
-4. **加密传输** - 敏感场景应使用 TLS
+5. **GUI 直接访问** - 如果只需要本地控制，使用 Tauri GUI（`apps/gui/`）通过 IPC 直接调用核心库，无需任何网络通信。

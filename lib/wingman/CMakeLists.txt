@@ -123,7 +123,6 @@ if(TARGET opencv_core)
     list(APPEND WINGMAN_SOURCES
         src/vision.cpp
         src/performance.cpp
-        src/platform/remote_server_common.cpp
     )
     add_compile_definitions(WINGMAN_ENABLE_VISION)
     message(STATUS "Vision support enabled (OpenCV found)")
@@ -150,7 +149,6 @@ if(WIN32)
         src/platform/win/win32_system.cpp
         src/platform/win/win32_recorder.cpp
         src/platform/win/win32_trigger.cpp
-        src/platform/win/winsock_remote_server.cpp
     )
 elseif(APPLE)
     list(APPEND WINGMAN_SOURCES
@@ -163,7 +161,6 @@ elseif(APPLE)
         src/platform/mac/darwin_system.cpp
         src/platform/mac/cocoa_recorder.cpp
         src/platform/unix/posix_trigger.cpp
-        src/platform/unix/berkeley_remote_server.cpp
     )
     # macOS 需要 Cocoa 框架
     find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
@@ -177,7 +174,6 @@ elseif(UNIX AND NOT APPLE)
         src/platform/linux/posix_system.cpp
         src/platform/linux/x11_recorder.cpp
         src/platform/unix/posix_trigger.cpp
-        src/platform/unix/berkeley_remote_server.cpp
     )
     # Linux 需要 X11 和 XRandR
     find_package(PkgConfig REQUIRED)

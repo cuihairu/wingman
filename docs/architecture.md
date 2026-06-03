@@ -5,20 +5,29 @@
 ```
 wingman/
 ├── apps/                         ← 所有可执行程序
-│   ├── runtime/                  ← 主运行时
+│   ├── runtime/                  ← 主运行时（主动 Agent）
 │   │   ├── src/
 │   │   │   ├── main.cpp          ← 入口
-│   │   │   ├── active_mode.cpp   ← 主动连接模式
-│   │   │   ├── passive_mode.cpp  ← 被动监听模式
-│   │   │   └── standalone_mode.cpp
+│   │   │   ├── agent.cpp         ← Agent 主逻辑（主动连接编排器）
+│   │   │   ├── remote_client.cpp ← 远程客户端（连接编排器）
+│   │   │   ├── remote_server.cpp ← 远程服务端（transport TCP）
+│   │   │   ├── standalone_mode.cpp ← 单机模式
+│   │   │   └── commands/         ← CLI 子命令
 │   │   ├── include/wingman/runtime/
 │   │   ├── tests/                ← 应用测试
 │   │   └── CMakeLists.txt
 │   │
-│   └── inspector/                ← Tauri 检查工具
-│       ├── src-tauri/
-│       ├── src/
-│       └── package.json
+│   ├── gui/                      ← Tauri/Svelte GUI
+│   │   ├── src-tauri/
+│   │   ├── src/
+│   │   └── package.json
+│   │
+│   ├── inspector/                ← Tauri 检查工具
+│   │   ├── src-tauri/
+│   │   ├── src/
+│   │   └── package.json
+│   │
+│   └── client/                   ← 客户端库
 │
 ├── lib/wingman/                  ← 核心库
 │   ├── include/wingman/
@@ -63,15 +72,16 @@ wingman/
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    apps/                                 │
-│  ┌──────────────┐           ┌──────────────┐           │
-│  │   runtime    │           │  inspector   │           │
-│  │  (应用入口)   │           │  (检查工具)   │           │
-│  └──────┬───────┘           └──────────────┘           │
-└─────────┼───────────────────────────────────────────────┘
-          │
+│  ┌──────────────┐  ┌──────────┐  ┌──────────────┐     │
+│  │   runtime    │  │   gui    │  │  inspector   │     │
+│  │ (主动 Agent) │  │(Tauri GUI)│  │  (检查工具)   │     │
+│  └──────┬───────┘  └────┬─────┘  └──────────────┘     │
+└─────────┼───────────────┼──────────────────────────────┘
+          │               │
 ┌─────────▼───────────────────────────────────────────────┐
 │              lib/wingman/ (核心库)                        │
 │  屏幕捕获、输入模拟、触发器、视觉识别、行为树、OCR...     │
+│              (GUI 通过 Tauri IPC 直接调用核心库)         │
 └─────────┬───────────────────────────────────────────────┘
           │
 ┌─────────▼───────────────────────────────────────────────┐
@@ -96,11 +106,16 @@ apps/runtime/ (应用：CLI + 运行模式)
 
 ## 运行模式
 
+Runtime 作为主动 Agent 运行，通过 outbound 连接到编排器（Go orchestrator）或单机运行。
+
 | 模式 | 说明 | Transport |
 |------|------|-----------|
-| ActiveMode | 主动连接到服务器 | TcpClient |
-| PassiveMode | 被动监听，等待连接 | TcpServer |
+| Agent 模式 | 主动连接到编排器服务器 | TcpClient (transport) |
 | StandaloneMode | 单机模式，无网络 | - |
+
+> **注意**: 旧的 PassiveMode（被动监听模式）和 `serve` 命令已被移除。Runtime 不再作为被动服务器运行。
+> 远程控制现在通过 `wingman::runtime::RemoteServer`（基于 transport 的 TCP）实现 Agent 到编排器的通信，
+> 或通过 Tauri IPC 由 GUI 直接调用 C++ API。
 
 ## 设计原则
 

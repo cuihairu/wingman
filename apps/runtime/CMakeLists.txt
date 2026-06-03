@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
-# ========== Wingman Client ==========
-# 无 UI 的命令行客户端，使用 Drogon 提供 WebSocket API
+# ========== Wingman Runtime ==========
+# CLI runtime agent, connects outbound to orchestrator
 
-project(wingman_client LANGUAGES CXX)
+project(wingman_runtime LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -41,32 +41,8 @@ if(NOT clasp_FOUND)
     endif()
 endif()
 
-# Drogon HTTP 框架 (not available on macOS)
-if(NOT APPLE)
-    find_package(Drogon CONFIG REQUIRED)
-endif()
-
-# 修复 Jsoncpp_lib 不正确的 debug/release 库链接
-# Drogon 的 FindJsoncpp.cmake 没有正确处理多配置生成
-if(TARGET Jsoncpp_lib)
-    # 重新定义 Jsoncpp_lib 以正确处理 debug/release
-    get_target_property(_old_libs Jsoncpp_lib INTERFACE_LINK_LIBRARIES)
-    if(NOT _old_libs MATCHES "\\$<\\$")
-        # 查找 debug 和 release 版本的库
-        find_library(JSONCPP_LIB_RELEASE NAMES jsoncpp PATHS "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/lib" NO_DEFAULT_PATH)
-        find_library(JSONCPP_LIB_DEBUG NAMES jsoncpp PATHS "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows-static/debug/lib" NO_DEFAULT_PATH)
-
-        if(JSONCPP_LIB_RELEASE AND JSONCPP_LIB_DEBUG)
-            # 使用生成器表达式：debug 配置用 debug 库，其他用 release 库
-            set_target_properties(Jsoncpp_lib PROPERTIES
-                INTERFACE_LINK_LIBRARIES "$<$<CONFIG:DEBUG,RELWITHDEBINFO>:${JSONCPP_LIB_DEBUG}>$<$<NOT:$<CONFIG:DEBUG,RELWITHDEBINFO>>:${JSONCPP_LIB_RELEASE}>"
-            )
-        endif()
-    endif()
-endif()
-
-# Client 源文件
-set(CLIENT_SOURCES
+# Runtime 源文件
+set(RUNTIME_SOURCES
     src/main.cpp
     src/agent.cpp
     src/remote_client.cpp
@@ -81,21 +57,10 @@ set(CLIENT_SOURCES
     src/commands/stop_command.cpp
     src/commands/script_command.cpp
     src/commands/build_command.cpp
-    src/commands/serve_command.cpp
 )
 
-# Drogon controllers (not available on macOS)
-if(NOT APPLE)
-    list(APPEND CLIENT_SOURCES
-        src/controllers/websocket.cpp
-        src/controllers/script.cpp
-        src/controllers/system.cpp
-        src/controllers/api.cpp
-    )
-endif()
-
 # 创建可执行文件
-add_executable(wingman-runtime ${CLIENT_SOURCES})
+add_executable(wingman-runtime ${RUNTIME_SOURCES})
 
 # 包含目录
 target_include_directories(wingman-runtime PRIVATE
@@ -121,9 +86,6 @@ endif()
 if(TARGET wingman::debug)
     target_link_libraries(wingman-runtime PRIVATE wingman::debug)
     target_compile_definitions(wingman-runtime PRIVATE WINGMAN_HAS_DEBUG)
-endif()
-if(NOT APPLE)
-    target_link_libraries(wingman-runtime PRIVATE Drogon::Drogon)
 endif()
 
 # Python 引擎（可选）

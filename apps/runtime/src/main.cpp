@@ -4,7 +4,6 @@
 #include "wingman/runtime/commands/stop_command.hpp"
 #include "wingman/runtime/commands/script_command.hpp"
 #include "wingman/runtime/commands/build_command.hpp"
-#include "wingman/runtime/commands/serve_command.hpp"
 #ifdef WINGMAN_HAS_LUA
 #include "wingman/lua/lua_engine.hpp"
 #endif
@@ -186,24 +185,12 @@ int main(int argc, char** argv) {
             return wingman::runtime::commands::buildCommand(options);
         });
 
-    // ========== serve 命令 ==========
-    clasp::Command serveCmd("serve", "Start WebSocket server for UI communication");
-    serveCmd
-        .withFlag("--port", "-p", "port", "Server port", 8080)
-        .withFlag("--host", "-H", "host", "Server host", std::string("127.0.0.1"))
-        .action([](clasp::Command& cmd, const clasp::Parser& parser, const std::vector<std::string>& args) {
-            const auto host = parser.getFlag<std::string>("--host");
-            const auto port = parser.getFlag<int>("--port");
-            return wingman::runtime::commands::serveCommand(host.empty() ? "127.0.0.1" : host, port);
-        });
-
     // 注册所有命令
     rootCmd.addCommand(std::move(startCmd));
     rootCmd.addCommand(std::move(stopCmd));
     rootCmd.addCommand(std::move(statusCmd));
     rootCmd.addCommand(std::move(scriptCmd));
     rootCmd.addCommand(std::move(buildCmd));
-    rootCmd.addCommand(std::move(serveCmd));
 
     // 运行
     return rootCmd.run(argc, argv);

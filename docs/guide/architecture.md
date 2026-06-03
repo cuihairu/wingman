@@ -5,11 +5,12 @@
 ```mermaid
 graph TB
     subgraph "用户层"
-        UI[Web Dashboard<br/>监控与控制]
+        UI[Web Dashboard<br/>监控与控制<br/>React/Umi]
+        GUI[Tauri GUI<br/>桌面应用<br/>Svelte]
         CLI[CLI Client<br/>命令行工具]
     end
 
-    subgraph "中控机 Server"
+    subgraph "中控机 Server (Go)"
         Orchestrator[任务编排器<br/>Orchestrator]
         AgentMgr[客户端管理<br/>AgentManager]
         TCPServer[TCP Server<br/>asio 异步]
@@ -17,32 +18,33 @@ graph TB
     end
 
     subgraph "受控机 1"
-        Client1[TCP Client]
+        Client1[TCP Client<br/>主动连接]
         Lua1[Lua Engine]
         Core1[C++ Core]
     end
 
     subgraph "受控机 2"
-        Client2[TCP Client]
+        Client2[TCP Client<br/>主动连接]
         Lua2[Lua Engine]
         Core2[C++ Core]
     end
 
     subgraph "受控机 N"
-        ClientN[TCP Client]
+        ClientN[TCP Client<br/>主动连接]
         LuaN[Lua Engine]
         CoreN[C++ Core]
     end
 
     UI -->|WebSocket| TCPServer
+    GUI -->|Tauri IPC| Core1
     CLI -->|TCP| TCPServer
     TCPServer --> AgentMgr
     TCPServer --> Orchestrator
     Orchestrator --> Storage
 
-    TCPServer -->|TCP 长连接| Client1
-    TCPServer -->|TCP 长连接| Client2
-    TCPServer -->|TCP 长连接| ClientN
+    Client1 -.->|主动连接 outbound| TCPServer
+    Client2 -.->|主动连接 outbound| TCPServer
+    ClientN -.->|主动连接 outbound| TCPServer
 
     Client1 --> Lua1
     Client2 --> Lua2
@@ -296,17 +298,31 @@ stateDiagram-v2
 ```
 wingman/
 ├── .github/workflows/       # CI/CD 配置
-├── docs/                    # VitePress 文档
-├── server/                  # 网络服务层
-│   ├── include/wingman/server/
-│   │   ├── server.hpp       # TCP Server
-│   │   ├── client.hpp       # TCP Client
-│   │   ├── protocol.hpp     # 通信协议
-│   │   └── orchestrator.hpp # 任务编排
-│   └── src/
-├── src/                     # C++ 核心引擎
-├── include/wingman/         # 公共头文件
-├── bindings/                # Lua 绑定
+├── apps/                    # 应用程序
+│   ├── runtime/             # C++ 运行时（主动 Agent）
+│   │   └── src/
+│   │       ├── agent.cpp          # Agent 主逻辑
+│   │       ├── remote_client.cpp  # 远程客户端
+│   │       ├── remote_server.cpp  # 远程服务端（transport TCP）
+│   │       ├── standalone_mode.cpp
+│   │       └── commands/          # CLI 子命令
+│   ├── gui/                 # Tauri/Svelte GUI
+│   │   ├── src-tauri/
+│   │   └── src/
+│   ├── inspector/           # Tauri 检查工具
+│   └── client/              # 客户端库
+├── lib/wingman/             # C++ 核心引擎
+├── libs/                    # 辅助库
+│   ├── transport/           # TCP/WebSocket 传输层
+│   ├── lua/                 # Lua 绑定
+│   ├── python/              # Python 绑定
+│   ├── proto/               # Protobuf 封装
+│   └── debug/               # EmmyLua 调试器
+├── orchestrator/            # 编排层
+│   ├── dashboard/           # Web 控制面板 (React/Umi)
+│   └── server/              # Go 服务端
+├── protobuf/                # Protobuf 协议定义
+├── docs/                    # 文档
 ├── scripts/                 # Lua 脚本示例
 └── tests/                   # 测试
 ```

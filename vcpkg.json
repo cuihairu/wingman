@@ -32,11 +32,6 @@
     {
       "$comment": "Protobuf for Agent-Server communication",
       "name": "protobuf"
-    },
-    {
-      "$comment": "Drogon HTTP/WebSocket framework for UI communication",
-      "name": "drogon",
-      "platform": "!osx"
     }
   ],
   "features": {
