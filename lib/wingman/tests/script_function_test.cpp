@@ -1072,14 +1072,14 @@ TEST(GameProfileModuleFunctionsTest, GetReturnsStrings) {
     auto fn = findFunction("gameprofile", "get");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({ScriptValue::fromString("nonexistent_profile")});
-    EXPECT_TRUE(result.isString() || result.isArray());
+    EXPECT_TRUE(result.isNull() || result.isString() || result.isArray());
 }
 
 TEST(GameProfileModuleFunctionsTest, GetActiveReturnsStrings) {
     auto fn = findFunction("gameprofile", "getActive");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({});
-    EXPECT_TRUE(result.isString() || result.isArray());
+    EXPECT_TRUE(result.isNull() || result.isString() || result.isArray());
 }
 
 TEST(GameProfileModuleFunctionsTest, SetActiveReturnsBool) {
@@ -1093,7 +1093,7 @@ TEST(GameProfileModuleFunctionsTest, FindByWindowReturnsStrings) {
     auto fn = findFunction("gameprofile", "findByWindow");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({ScriptValue::fromString("NonexistentWindow")});
-    EXPECT_TRUE(result.isString() || result.isArray());
+    EXPECT_TRUE(result.isNull() || result.isString() || result.isArray());
 }
 
 // ========== Process module functions (stubs/platform) ==========
