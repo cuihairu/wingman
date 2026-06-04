@@ -104,6 +104,7 @@ jobs:
     continue-on-error: ${{ matrix.os == 'macos-15-intel' }}
     env:
       VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/vcpkg/archives,readwrite"
+      VCPKG_ASSET_SOURCES: "clear;files,${{ github.workspace }}/vcpkg/downloads,readwrite"
     strategy:
       fail-fast: false
       matrix:
@@ -139,10 +140,12 @@ jobs:
           echo "CMAKE_MAKE_PROGRAM=$NINJA_PATH" >> $GITHUB_ENV
           echo "MACOSX_DEPLOYMENT_TARGET=12" >> $GITHUB_ENV
 
-      - name: Cache vcpkg binaries
+      - name: Cache vcpkg binaries and downloads
         uses: actions/cache@v5
         with:
-          path: ${{ github.workspace }}/vcpkg/archives
+          path: |
+            ${{ github.workspace }}/vcpkg/archives
+            ${{ github.workspace }}/vcpkg/downloads
           key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
             ${{ runner.os }}-vcpkg-
@@ -151,7 +154,7 @@ jobs:
         run: bash ./build-scripts/ci/setup-vcpkg.sh
 
       - name: Prepare vcpkg cache
-        run: mkdir -p "${{ github.workspace }}/vcpkg/archives"
+        run: mkdir -p "${{ github.workspace }}/vcpkg/archives" "${{ github.workspace }}/vcpkg/downloads"
 
       - name: Configure CMake
         run: bash ./build-scripts/ci/configure-unix.sh "${{ matrix.triplet }}" "Ninja" "build"
