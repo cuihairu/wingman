@@ -99,3 +99,221 @@ TEST(EventModuleTest, OnceReturnsSubscriptionId) {
 	EXPECT_TRUE(result.isInt());
 	EXPECT_GT(result.asInt(), 0);
 }
+
+TEST(EventModuleTest, EmitReturnsBool) {
+	auto mod = createEventModule();
+	const ScriptFunction* emitFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "emit") { emitFunc = &fn.func; break; }
+	}
+	ASSERT_NE(emitFunc, nullptr);
+
+	auto result = (*emitFunc)({ScriptValue::fromString("test.emit")});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_TRUE(result.asBool());
+}
+
+TEST(EventModuleTest, EmitWithPayload) {
+	auto mod = createEventModule();
+	const ScriptFunction* emitFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "emit") { emitFunc = &fn.func; break; }
+	}
+	ASSERT_NE(emitFunc, nullptr);
+
+	auto result = (*emitFunc)({
+		ScriptValue::fromString("test.emit.payload"),
+		ScriptValue::fromObject({{"key", ScriptValue::fromString("value")}})
+	});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_TRUE(result.asBool());
+}
+
+TEST(EventModuleTest, EmitWithMeta) {
+	auto mod = createEventModule();
+	const ScriptFunction* emitFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "emit") { emitFunc = &fn.func; break; }
+	}
+	ASSERT_NE(emitFunc, nullptr);
+
+	auto result = (*emitFunc)({
+		ScriptValue::fromString("test.emit.meta"),
+		ScriptValue::fromObject({{"data", ScriptValue::fromInt(42)}}),
+		ScriptValue::fromObject({
+			{"source", ScriptValue::fromString("test")},
+			{"correlationId", ScriptValue::fromString("abc")},
+			{"priority", ScriptValue::fromInt(1)}
+		})
+	});
+	EXPECT_TRUE(result.isBool());
+}
+
+TEST(EventModuleTest, EmitEmptyArgsReturnsFalse) {
+	auto mod = createEventModule();
+	const ScriptFunction* emitFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "emit") { emitFunc = &fn.func; break; }
+	}
+	ASSERT_NE(emitFunc, nullptr);
+
+	auto result = (*emitFunc)({});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_FALSE(result.asBool());
+}
+
+TEST(EventModuleTest, OffWithSubscriptionId) {
+	auto mod = createEventModule();
+	const ScriptFunction* onFunc = nullptr;
+	const ScriptFunction* offFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "on") { onFunc = &fn.func; }
+		if (fn.name == "off") { offFunc = &fn.func; }
+	}
+	ASSERT_NE(onFunc, nullptr);
+	ASSERT_NE(offFunc, nullptr);
+
+	auto callback = [](const std::vector<ScriptValue>&) -> ScriptValue {
+		return ScriptValue::null();
+	};
+	auto subId = (*onFunc)({
+		ScriptValue::fromString("test.off.event"),
+		ScriptValue::fromCallable(callback)
+	});
+	EXPECT_TRUE(subId.isInt());
+
+	auto result = (*offFunc)({subId});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_TRUE(result.asBool());
+}
+
+TEST(EventModuleTest, OffWithStringType) {
+	auto mod = createEventModule();
+	const ScriptFunction* offFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "off") { offFunc = &fn.func; break; }
+	}
+	ASSERT_NE(offFunc, nullptr);
+
+	auto result = (*offFunc)({ScriptValue::fromString("test.off.type")});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_TRUE(result.asBool());
+}
+
+TEST(EventModuleTest, OffEmptyArgsReturnsFalse) {
+	auto mod = createEventModule();
+	const ScriptFunction* offFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "off") { offFunc = &fn.func; break; }
+	}
+	ASSERT_NE(offFunc, nullptr);
+
+	auto result = (*offFunc)({});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_FALSE(result.asBool());
+}
+
+TEST(EventModuleTest, ClearReturnsNull) {
+	auto mod = createEventModule();
+	const ScriptFunction* clearFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "clear") { clearFunc = &fn.func; break; }
+	}
+	ASSERT_NE(clearFunc, nullptr);
+
+	auto result = (*clearFunc)({});
+	EXPECT_TRUE(result.isNull());
+}
+
+TEST(EventModuleTest, MessageCreatesEventObject) {
+	auto mod = createEventModule();
+	const ScriptFunction* msgFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "message") { msgFunc = &fn.func; break; }
+	}
+	ASSERT_NE(msgFunc, nullptr);
+
+	auto result = (*msgFunc)({ScriptValue::fromString("test.msg")});
+	EXPECT_TRUE(result.isObject());
+	auto* type = result.get("type");
+	ASSERT_NE(type, nullptr);
+	EXPECT_EQ(type->asString(), "test.msg");
+}
+
+TEST(EventModuleTest, MessageWithPayloadAndMeta) {
+	auto mod = createEventModule();
+	const ScriptFunction* msgFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "message") { msgFunc = &fn.func; break; }
+	}
+	ASSERT_NE(msgFunc, nullptr);
+
+	auto result = (*msgFunc)({
+		ScriptValue::fromString("test.msg.full"),
+		ScriptValue::fromObject({{"data", ScriptValue::fromInt(123)}}),
+		ScriptValue::fromObject({
+			{"source", ScriptValue::fromString("src")},
+			{"correlationId", ScriptValue::fromString("corr")},
+			{"priority", ScriptValue::fromInt(2)}
+		})
+	});
+	EXPECT_TRUE(result.isObject());
+}
+
+TEST(EventModuleTest, OnWithNonCallableReturnsFalse) {
+	auto mod = createEventModule();
+	const ScriptFunction* onFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "on") { onFunc = &fn.func; break; }
+	}
+	ASSERT_NE(onFunc, nullptr);
+
+	auto result = (*onFunc)({
+		ScriptValue::fromString("test.event"),
+		ScriptValue::fromString("not a callable")
+	});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_FALSE(result.asBool());
+}
+
+TEST(EventModuleTest, OnEmptyArgsReturnsFalse) {
+	auto mod = createEventModule();
+	const ScriptFunction* onFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "on") { onFunc = &fn.func; break; }
+	}
+	ASSERT_NE(onFunc, nullptr);
+
+	auto result = (*onFunc)({});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_FALSE(result.asBool());
+}
+
+TEST(EventModuleTest, OnceWithNonCallableReturnsFalse) {
+	auto mod = createEventModule();
+	const ScriptFunction* onceFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "once") { onceFunc = &fn.func; break; }
+	}
+	ASSERT_NE(onceFunc, nullptr);
+
+	auto result = (*onceFunc)({
+		ScriptValue::fromString("test.event"),
+		ScriptValue::fromInt(42)
+	});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_FALSE(result.asBool());
+}
+
+TEST(EventModuleTest, OnceEmptyArgsReturnsFalse) {
+	auto mod = createEventModule();
+	const ScriptFunction* onceFunc = nullptr;
+	for (const auto& fn : mod.functions) {
+		if (fn.name == "once") { onceFunc = &fn.func; break; }
+	}
+	ASSERT_NE(onceFunc, nullptr);
+
+	auto result = (*onceFunc)({});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_FALSE(result.asBool());
+}

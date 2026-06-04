@@ -28,6 +28,8 @@ if(BUILD_CORE_TESTS)
         event_test.cpp
         event_module_test.cpp
         task_module_test.cpp
+        notify_module_test.cpp
+        fsm_module_test.cpp
         behavior_tree_test.cpp
         config_test.cpp
         verification_test.cpp
