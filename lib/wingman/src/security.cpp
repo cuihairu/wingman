@@ -485,7 +485,114 @@ bool SecurityManager::verifySignature() {
 CodeSignature SecurityManager::getSignatureInfo() {
     CodeSignature info;
 
-    // TODO: Implement signature info extraction
+#ifdef _WIN32
+    // Get current executable path
+    WCHAR modulePath[MAX_PATH];
+    DWORD len = GetModuleFileNameW(nullptr, modulePath, MAX_PATH);
+    if (len == 0 || len == MAX_PATH) return info;
+
+    // Query signature from file
+    DWORD encoding = 0, contentType = 0, formatType = 0;
+    HCERTSTORE hStore = nullptr;
+    HCRYPTMSG hMsg = nullptr;
+    PCCERT_CONTEXT pSignerCert = nullptr;
+
+    BOOL ok = CryptQueryObject(CERT_QUERY_OBJECT_FILE,
+        modulePath,
+        CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED_EMBED,
+        CERT_QUERY_FORMAT_FLAG_BINARY,
+        0, &encoding, &contentType, &formatType, &hStore, &hMsg, nullptr);
+
+    if (!ok) return info;
+
+    info.isSigned = true;
+
+    // Get signer certificate
+    DWORD signerInfoSize = 0;
+    CryptMsgGetParam(hMsg, CMSG_SIGNER_INFO_PARAM, 0, nullptr, &signerInfoSize);
+    if (signerInfoSize == 0) goto cleanup;
+
+    {
+        auto* signerInfo = static_cast<PCMSG_SIGNER_INFO>(malloc(signerInfoSize));
+        if (!signerInfo) goto cleanup;
+
+        if (!CryptMsgGetParam(hMsg, CMSG_SIGNER_INFO_PARAM, 0, signerInfo, &signerInfoSize)) {
+            free(signerInfo);
+            goto cleanup;
+        }
+
+        // Find signer certificate in the store
+        CERT_INFO certInfo = {};
+        certInfo.Issuer = signerInfo->Issuer;
+        certInfo.SerialNumber = signerInfo->SerialNumber;
+
+        pSignerCert = CertFindCertificateInStore(hStore,
+            X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+            0, CERT_FIND_SUBJECT_CERT, &certInfo, nullptr);
+
+        free(signerInfo);
+    }
+
+    if (pSignerCert) {
+        // Issuer
+        WCHAR issuerName[256] = {};
+        CertGetNameStringW(pSignerCert, CERT_NAME_SIMPLE_DISPLAY_TYPE,
+            CERT_NAME_ISSUER_FLAG, nullptr, issuerName, 256);
+        std::wstring ws(issuerName);
+        info.issuer = std::string(ws.begin(), ws.end());
+
+        // Subject
+        WCHAR subjectName[256] = {};
+        CertGetNameStringW(pSignerCert, CERT_NAME_SIMPLE_DISPLAY_TYPE,
+            0, nullptr, subjectName, 256);
+        std::wstring ws2(subjectName);
+        info.subject = std::string(ws2.begin(), ws2.end());
+
+        // Thumbprint (SHA1 hash)
+        DWORD thumbprintSize = 20;
+        std::vector<BYTE> thumbprint(thumbprintSize);
+        if (CertGetCertificateContextProperty(pSignerCert, CERT_SHA1_HASH_PROP_ID,
+            thumbprint.data(), &thumbprintSize)) {
+            std::ostringstream oss;
+            for (DWORD i = 0; i < thumbprintSize; ++i) {
+                oss << std::hex << std::uppercase << std::setfill('0') << std::setw(2)
+                    << static_cast<int>(thumbprint[i]);
+            }
+            info.thumbprint = oss.str();
+        }
+
+        // Validity period
+        if (pSignerCert->pCertInfo) {
+            FILETIME ft = pSignerCert->pCertInfo->NotBefore;
+            SYSTEMTIME st = {};
+            FileTimeToSystemTime(&ft, &st);
+            struct tm tm = {};
+            tm.tm_year = st.wYear - 1900;
+            tm.tm_mon = st.wMonth - 1;
+            tm.tm_mday = st.wDay;
+            tm.tm_hour = st.wHour;
+            tm.tm_min = st.wMinute;
+            tm.tm_sec = st.wSecond;
+            info.validFrom = std::chrono::system_clock::from_time_t(mktime(&tm));
+
+            ft = pSignerCert->pCertInfo->NotAfter;
+            FileTimeToSystemTime(&ft, &st);
+            tm = {};
+            tm.tm_year = st.wYear - 1900;
+            tm.tm_mon = st.wMonth - 1;
+            tm.tm_mday = st.wDay;
+            tm.tm_hour = st.wHour;
+            tm.tm_min = st.wMinute;
+            tm.tm_sec = st.wSecond;
+            info.validTo = std::chrono::system_clock::from_time_t(mktime(&tm));
+        }
+    }
+
+cleanup:
+    if (pSignerCert) CertFreeCertificateContext(pSignerCert);
+    if (hStore) CertCloseStore(hStore, 0);
+    if (hMsg) CryptMsgClose(hMsg);
+#endif
 
     return info;
 }

@@ -105,6 +105,9 @@ public:
     // Save to file
     bool save(const std::string& filepath) const;
 
+    // Load from image file (PNG, BMP, JPG, etc.)
+    static std::unique_ptr<Bitmap> fromFile(const std::string& filepath);
+
 #ifdef _WIN32
     // Create from HBITMAP
     static std::unique_ptr<Bitmap> fromHBITMAP(HBITMAP hbitmap);

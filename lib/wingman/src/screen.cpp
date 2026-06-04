@@ -123,7 +123,63 @@ std::unique_ptr<Bitmap> Bitmap::fromHBITMAP(HBITMAP hbitmap) {
 
     return bitmap;
 }
+#endif
 
+std::unique_ptr<Bitmap> Bitmap::fromFile(const std::string& filepath) {
+    if (!std::filesystem::exists(filepath)) {
+        return nullptr;
+    }
+
+#ifdef _WIN32
+    static bool gdiplusInitialized = false;
+    static ULONG_PTR gdiplusToken;
+
+    if (!gdiplusInitialized) {
+        Gdiplus::GdiplusStartupInput startupInput = {};
+        Gdiplus::GdiplusStartup(&gdiplusToken, &startupInput, nullptr);
+        gdiplusInitialized = true;
+    }
+
+    std::wstring widePath(filepath.begin(), filepath.end());
+    auto* gdiBmp = Gdiplus::Bitmap::FromFile(widePath.c_str());
+    if (!gdiBmp || gdiBmp->GetLastStatus() != Gdiplus::Ok) {
+        delete gdiBmp;
+        return nullptr;
+    }
+
+    UINT w = gdiBmp->GetWidth();
+    UINT h = gdiBmp->GetHeight();
+    auto bitmap = std::make_unique<Bitmap>(static_cast<int>(w), static_cast<int>(h));
+
+    Gdiplus::BitmapData bmpData = {};
+    Gdiplus::Rect rect(0, 0, static_cast<INT>(w), static_cast<INT>(h));
+    if (gdiBmp->LockBits(&rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bmpData) != Gdiplus::Ok) {
+        delete gdiBmp;
+        return nullptr;
+    }
+
+    for (UINT y = 0; y < h; ++y) {
+        const uint8_t* srcRow = static_cast<const uint8_t*>(bmpData.Scan0) + y * bmpData.Stride;
+        uint8_t* dstRow = bitmap->getData() + y * w * 4;
+        // GDI+ ARGB → internal BGRA
+        for (UINT x = 0; x < w; ++x) {
+            dstRow[x * 4 + 0] = srcRow[x * 4 + 0]; // B
+            dstRow[x * 4 + 1] = srcRow[x * 4 + 1]; // G
+            dstRow[x * 4 + 2] = srcRow[x * 4 + 2]; // R
+            dstRow[x * 4 + 3] = srcRow[x * 4 + 3]; // A
+        }
+    }
+
+    gdiBmp->UnlockBits(&bmpData);
+    delete gdiBmp;
+    return bitmap;
+#else
+    // Non-Windows: use stb_image if available, otherwise return nullptr
+    return nullptr;
+#endif
+}
+
+#ifdef _WIN32
 bool Bitmap::save(const std::string& filepath) const {
     static bool gdiplusInitialized = false;
     static ULONG_PTR gdiplusToken;

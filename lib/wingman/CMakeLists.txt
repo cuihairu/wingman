@@ -63,6 +63,7 @@ set(WINGMAN_SOURCES
 
     # IPC 通信
     src/ipc/ipc_factory.cpp
+    src/ipc/tcp_channel.cpp
 
     # 网络与通信
     src/http.cpp
@@ -270,6 +271,7 @@ if(WIN32)
         user32
         gdi32
         comdlg32
+        ws2_32
     )
     target_compile_definitions(wingman PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX)
 endif()

@@ -82,12 +82,12 @@ std::optional<ImageMatch> ImageAnalyzer::findImage(
     const Rect& region,
     double threshold
 ) {
-    (void)bitmap;
-    (void)templatePath;
-    (void)region;
-    (void)threshold;
-    spdlog::warn("[ImageAnalyzer] findImage from file not implemented yet");
-    return std::nullopt;
+    auto templateBitmap = Bitmap::fromFile(templatePath);
+    if (!templateBitmap) {
+        spdlog::warn("[ImageAnalyzer] Failed to load template image: {}", templatePath);
+        return std::nullopt;
+    }
+    return findImage(bitmap, *templateBitmap, region, threshold);
 }
 
 std::optional<ImageMatch> ImageAnalyzer::findImage(

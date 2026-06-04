@@ -52,6 +52,11 @@ NodeStatus SequenceNode::tick() {
     return NodeStatus::SUCCESS;
 }
 
+void SequenceNode::reset() {
+    currentChild_ = 0;
+    for (auto& child : children_) child->reset();
+}
+
 // ========== SelectorNode Implementation ==========
 
 SelectorNode::SelectorNode(const std::string& name) : name_(name) {}
@@ -77,6 +82,11 @@ NodeStatus SelectorNode::tick() {
 
     currentChild_ = 0;
     return NodeStatus::FAILURE;
+}
+
+void SelectorNode::reset() {
+    currentChild_ = 0;
+    for (auto& child : children_) child->reset();
 }
 
 // ========== ParallelNode Implementation ==========
@@ -148,6 +158,11 @@ NodeStatus RepeatNode::tick() {
     return NodeStatus::RUNNING;
 }
 
+void RepeatNode::reset() {
+    current_ = 0;
+    child_->reset();
+}
+
 // ========== RetryNode Implementation ==========
 
 RetryNode::RetryNode(std::shared_ptr<BehaviorNode> child, int maxRetries)
@@ -171,6 +186,11 @@ NodeStatus RetryNode::tick() {
 
     currentRetries_ = 0;
     return NodeStatus::FAILURE;
+}
+
+void RetryNode::reset() {
+    currentRetries_ = 0;
+    child_->reset();
 }
 
 // ========== InverterNode Implementation ==========
@@ -249,6 +269,10 @@ NodeStatus WaitNode::tick() {
     return NodeStatus::RUNNING;
 }
 
+void WaitNode::reset() {
+    startTime_ = std::chrono::steady_clock::time_point();
+}
+
 // ========== DelayNode Implementation ==========
 
 DelayNode::DelayNode(std::shared_ptr<BehaviorNode> child, int milliseconds)
@@ -270,6 +294,11 @@ NodeStatus DelayNode::tick() {
     }
 
     return NodeStatus::RUNNING;
+}
+
+void DelayNode::reset() {
+    startTime_ = std::chrono::steady_clock::time_point();
+    child_->reset();
 }
 
 // ========== BehaviorTree Implementation ==========
@@ -294,7 +323,9 @@ NodeStatus BehaviorTree::tick() {
 }
 
 void BehaviorTree::reset() {
-    // TODO: Reset all node states
+    if (root_) {
+        root_->reset();
+    }
 }
 
 std::shared_ptr<SequenceNode> BehaviorTree::sequence(const std::string& name) {

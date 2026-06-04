@@ -1,4 +1,5 @@
 #include "wingman/ipc/ipc_factory.hpp"
+#include "wingman/ipc/tcp_channel.hpp"
 #include <spdlog/spdlog.h>
 
 #ifdef _WIN32
@@ -39,9 +40,9 @@ std::unique_ptr<IIpcChannel> IpcFactory::createServer(const IpcConfig& config) {
     }
 
     // Fallback to TCP
-    spdlog::warn("[IpcFactory] Preferred transport not available, falling back to TCP");
-    // TODO: Implement TCP channel
-    return nullptr;
+    spdlog::info("[IpcFactory] Preferred transport not available, falling back to TCP");
+    int port = config.tcpPort > 0 ? config.tcpPort : 9800;
+    return std::make_unique<TcpChannel>(true, "127.0.0.1", port);
 }
 
 std::unique_ptr<IIpcChannel> IpcFactory::createClient(const IpcConfig& config) {
@@ -70,8 +71,9 @@ std::unique_ptr<IIpcChannel> IpcFactory::createClient(const IpcConfig& config) {
             break;
     }
 
-    spdlog::warn("[IpcFactory] Preferred transport not available, falling back to TCP");
-    return nullptr;
+    spdlog::info("[IpcFactory] Preferred transport not available, falling back to TCP");
+    int port = config.tcpPort > 0 ? config.tcpPort : 9800;
+    return std::make_unique<TcpChannel>(false, "127.0.0.1", port);
 }
 
 std::string IpcFactory::getDefaultEndpoint() {

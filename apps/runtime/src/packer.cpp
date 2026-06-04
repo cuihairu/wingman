@@ -13,6 +13,10 @@
 #pragma comment(lib, "imagehlp.lib")
 #endif
 
+#ifdef WINGMAN_HAS_LUA
+#include <sol/sol.hpp>
+#endif
+
 namespace wingman::runtime {
 
 // ========== 资源类型定义 ==========
@@ -425,10 +429,52 @@ std::vector<uint8_t> Packer::processScript() {
 }
 
 std::vector<uint8_t> Packer::compileToBytecode(const std::string& source) {
-    // TODO: 实现 Lua 字节码编译
-    // 可以使用 luac 或 LuaLCompileBuffer
-    spdlog::warn("Bytecode compilation not yet implemented, using source code");
+#ifdef WINGMAN_HAS_LUA
+    // Use Lua C API to compile source to bytecode
+    sol::state lua;
+    // Load source without executing
+    auto result = lua.load(source, "packed_script");
+    if (!result.valid()) {
+        sol::error err = result;
+        spdlog::error("Failed to compile Lua script: {}", err.what());
+        return std::vector<uint8_t>(source.begin(), source.end());
+    }
+
+    // Dump bytecode from the compiled function
+    std::vector<uint8_t> bytecode;
+    sol::protected_function fn = result;
+
+    lua_State* L = lua.lua_state();
+    // Push the function onto the stack
+    fn.push(L);
+
+    // Dump bytecode
+    struct BytecodeWriter {
+        std::vector<uint8_t>* output;
+        BytecodeWriter(std::vector<uint8_t>* out) : output(out) {}
+    };
+
+    auto writer = [](lua_State* /*L*/, const void* data, size_t sz, void* ud) -> int {
+        auto* writer = static_cast<BytecodeWriter*>(ud);
+        const uint8_t* bytes = static_cast<const uint8_t*>(data);
+        writer->output->insert(writer->output->end(), bytes, bytes + sz);
+        return 0;
+    };
+
+    BytecodeWriter bw(&bytecode);
+    if (lua_dump(L, writer, &bw, 0) != 0) {
+        spdlog::error("Failed to dump Lua bytecode");
+        lua_pop(L, 1);
+        return std::vector<uint8_t>(source.begin(), source.end());
+    }
+
+    lua_pop(L, 1);
+    spdlog::info("Compiled to Lua bytecode: {} bytes", bytecode.size());
+    return bytecode;
+#else
+    spdlog::warn("Lua not available, using source code");
     return std::vector<uint8_t>(source.begin(), source.end());
+#endif
 }
 
 std::vector<uint8_t> Packer::encryptData(const std::vector<uint8_t>& data) {
@@ -472,9 +518,167 @@ bool Packer::replaceIcon() {
 }
 
 bool Packer::setVersionInfo() {
-    // TODO: 实现 PE 版本信息设置
-    spdlog::warn("Version info setting not yet implemented");
+#ifdef _WIN32
+    std::wstring outputPathW;
+    outputPathW.assign(impl_->options.outputPath.begin(), impl_->options.outputPath.end());
+
+    HANDLE hUpdate = BeginUpdateResourceW(outputPathW.c_str(), FALSE);
+    if (!hUpdate) {
+        spdlog::warn("Failed to begin resource update for version info");
+        return false;
+    }
+
+    // Parse version string (e.g. "1.2.3")
+    WORD major = 1, minor = 0, patch = 0, build = 0;
+    sscanf(impl_->options.appVersion.c_str(), "%hu.%hu.%hu.%hu", &major, &minor, &patch, &build);
+
+    // Build VS_VERSIONINFO resource
+    struct {
+        VS_FIXEDFILEINFO ffi;
+    } versionData = {};
+
+    versionData.ffi.dwSignature = 0xFEEF04BD;
+    versionData.ffi.dwStrucVersion = 0x00010000;
+    versionData.ffi.dwFileVersionMS = MAKELONG(minor, major);
+    versionData.ffi.dwFileVersionLS = MAKELONG(build, patch);
+    versionData.ffi.dwProductVersionMS = MAKELONG(minor, major);
+    versionData.ffi.dwProductVersionLS = MAKELONG(build, patch);
+    versionData.ffi.dwFileFlagsMask = 0x3F;
+    versionData.ffi.dwFileFlags = 0;
+    versionData.ffi.dwFileOS = VOS_NT_WINDOWS32;
+    versionData.ffi.dwFileType = VFT_APP;
+    versionData.ffi.dwFileSubtype = VFT2_UNKNOWN;
+    versionData.ffi.dwFileDateMS = 0;
+    versionData.ffi.dwFileDateLS = 0;
+
+    // Build full version info resource with string table
+    // The resource format is complex, we build a minimal valid block
+    std::wstring appNameW(impl_->options.appName.begin(), impl_->options.appName.end());
+    std::wstring versionW(impl_->options.appVersion.begin(), impl_->options.appVersion.end());
+
+    // Calculate total size needed for VS_VERSIONINFO + StringFileInfo
+    size_t headerSize = sizeof(VS_FIXEDFILEINFO) + 40; // VS_VERSIONINFO header
+    size_t strTableSize = 0;
+
+    // String entries: each has key + value (wchar_t aligned)
+    struct StrEntry { const wchar_t* key; const std::wstring& value; };
+    StrEntry entries[] = {
+        {L"ProductName", appNameW},
+        {L"FileDescription", appNameW},
+        {L"FileVersion", versionW},
+        {L"ProductVersion", versionW},
+        {L"OriginalFilename", appNameW},
+        {L"CompanyName", std::wstring(L"")},
+    };
+
+    for (const auto& e : entries) {
+        size_t keyLen = wcslen(e.key);
+        size_t valLen = e.value.size();
+        // String structure: sizeof(WORD)*6 + key wchars + padding + value wchars + padding
+        strTableSize += 6 * sizeof(WORD) + keyLen * sizeof(wchar_t);
+        strTableSize = (strTableSize + 3) & ~3; // align
+        strTableSize += valLen * sizeof(wchar_t);
+        strTableSize = (strTableSize + 3) & ~3;
+    }
+
+    size_t strTableHeaderSize = 6 * sizeof(WORD) + 8; // StringTable header + "040904b0"
+    size_t strFileInfoHeaderSize = 6 * sizeof(WORD) + 14 * sizeof(wchar_t); // "StringFileInfo"
+    size_t totalSize = headerSize + strFileInfoHeaderSize + strTableHeaderSize + strTableSize;
+    totalSize = (totalSize + 3) & ~3;
+
+    std::vector<uint8_t> resource(totalSize, 0);
+    uint8_t* p = resource.data();
+
+    // VS_VERSIONINFO header
+    auto writeWord = [&p](WORD w) { memcpy(p, &w, sizeof(WORD)); p += sizeof(WORD); };
+    auto writeDword = [&p](DWORD dw) { memcpy(p, &dw, sizeof(DWORD)); p += sizeof(DWORD); };
+    auto writeWString = [&p](const wchar_t* s, size_t len) {
+        memcpy(p, s, len * sizeof(wchar_t));
+        p += len * sizeof(wchar_t);
+    };
+    auto align = [&p]() { p = (uint8_t*)(((uintptr_t)p + 3) & ~3); };
+
+    // Write VS_FIXEDFILEINFO directly at the correct offset
+    // VS_VERSIONINFO starts at offset 0
+    WORD vsVersionInfoLen = (WORD)(headerSize + strFileInfoHeaderSize + strTableHeaderSize + strTableSize);
+    writeWord(vsVersionInfoLen);  // wLength
+    writeWord(sizeof(VS_FIXEDFILEINFO) + 40); // wValueLength
+    writeWord(0);  // wType (binary)
+    writeWString(L"VS_VERSION_INFO", 15);
+    align();
+    memcpy(p, &versionData.ffi, sizeof(VS_FIXEDFILEINFO));
+    p += sizeof(VS_FIXEDFILEINFO);
+    align();
+
+    // StringFileInfo block
+    size_t sfiStart = p - resource.data();
+    writeWord(0); // placeholder for length
+    writeWord(0); // wValueLength
+    writeWord(1); // wType (text)
+    writeWString(L"StringFileInfo", 14);
+    align();
+
+    // StringTable
+    size_t stStart = p - resource.data();
+    writeWord(0); // placeholder for length
+    writeWord(0); // wValueLength
+    writeWord(1); // wType (text)
+    writeWString(L"040904b0", 8);
+    align();
+
+    // String entries
+    for (const auto& e : entries) {
+        size_t entryStart = p - resource.data();
+        size_t keyLen = wcslen(e.key);
+        size_t valLen = e.value.size();
+
+        writeWord(0); // placeholder for length
+        writeWord((WORD)valLen);
+        writeWord(1); // wType (text)
+        writeWString(e.key, keyLen);
+        align();
+        if (valLen > 0) writeWString(e.value.c_str(), valLen);
+        align();
+
+        // Fill in length
+        size_t entryLen = (p - resource.data()) - entryStart;
+        *(WORD*)(resource.data() + entryStart) = (WORD)entryLen;
+    }
+
+    // Fill in StringTable length
+    *(WORD*)(resource.data() + stStart) = (WORD)((p - resource.data()) - stStart);
+    // Fill in StringFileInfo length
+    *(WORD*)(resource.data() + sfiStart) = (WORD)((p - resource.data()) - sfiStart);
+
+    // Update total resource length
+    *(WORD*)(resource.data()) = (WORD)(p - resource.data());
+
+    BOOL result = UpdateResourceA(
+        hUpdate,
+        RT_VERSION,
+        MAKEINTRESOURCEA(VS_VERSION_INFO),
+        MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+        resource.data(),
+        static_cast<DWORD>(p - resource.data())
+    );
+
+    if (!result) {
+        spdlog::warn("Failed to update version info resource: {}", GetLastError());
+        EndUpdateResource(hUpdate, TRUE);
+        return false;
+    }
+
+    if (!EndUpdateResource(hUpdate, FALSE)) {
+        spdlog::warn("Failed to end version info update: {}", GetLastError());
+        return false;
+    }
+
+    spdlog::info("Version info set: {} v{}", impl_->options.appName, impl_->options.appVersion);
     return true;
+#else
+    spdlog::warn("Version info not supported on this platform");
+    return true;
+#endif
 }
 
 std::vector<uint8_t> Packer::generateKey() {

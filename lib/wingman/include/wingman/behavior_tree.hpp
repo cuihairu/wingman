@@ -23,6 +23,7 @@ public:
     virtual ~BehaviorNode() = default;
     virtual NodeStatus tick() = 0;
     virtual std::string getName() const = 0;
+    virtual void reset() {}
 };
 
 // Behavior tree context
@@ -49,6 +50,7 @@ public:
     void addChild(std::shared_ptr<BehaviorNode> child);
     NodeStatus tick() override;
     std::string getName() const override { return name_; }
+    void reset() override;
 
 private:
     std::string name_;
@@ -63,6 +65,7 @@ public:
     void addChild(std::shared_ptr<BehaviorNode> child);
     NodeStatus tick() override;
     std::string getName() const override { return name_; }
+    void reset() override;
 
 private:
     std::string name_;
@@ -97,6 +100,7 @@ public:
     RepeatNode(std::shared_ptr<BehaviorNode> child, int count = -1);  // -1 = infinite
     NodeStatus tick() override;
     std::string getName() const override { return "Repeat"; }
+    void reset() override;
 
 private:
     std::shared_ptr<BehaviorNode> child_;
@@ -110,6 +114,7 @@ public:
     RetryNode(std::shared_ptr<BehaviorNode> child, int maxRetries = 3);
     NodeStatus tick() override;
     std::string getName() const override { return "Retry"; }
+    void reset() override;
 
 private:
     std::shared_ptr<BehaviorNode> child_;
@@ -181,6 +186,7 @@ public:
     WaitNode(int milliseconds);
     NodeStatus tick() override;
     std::string getName() const override { return "Wait"; }
+    void reset() override;
 
 private:
     int milliseconds_;
@@ -193,6 +199,7 @@ public:
     DelayNode(std::shared_ptr<BehaviorNode> child, int milliseconds);
     NodeStatus tick() override;
     std::string getName() const override { return "Delay"; }
+    void reset() override;
 
 private:
     std::shared_ptr<BehaviorNode> child_;

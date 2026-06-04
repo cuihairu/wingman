@@ -2,6 +2,7 @@
 #include "wingman/script/iscript_engine.hpp"
 
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 namespace wingman {
 namespace script {
@@ -94,7 +95,7 @@ ModuleDescriptor createEventModule() {
 		std::string name = args.size() > 2 && args[2].isString() ? args[2].asString() : "";
 
 		// Wrap the callback to convert EventMessage to ScriptValue
-		uint64_t id = EventHub::instance().subscribe(type, [callback](const EventMessage& msg) {
+		uint64_t id = EventHub::instance().subscribe(type, [callback, type](const EventMessage& msg) {
 			std::vector<ScriptValue> cbArgs;
 			cbArgs.push_back(ScriptValue::fromObject({
 				{"type", ScriptValue::fromString(msg.type)},
@@ -108,9 +109,9 @@ ModuleDescriptor createEventModule() {
 			try {
 				callback(cbArgs);
 			} catch (const std::exception& e) {
-				// Log callback exception (TODO: add proper logging)
+				spdlog::error("[event] on callback exception for '{}': {}", type, e.what());
 			} catch (...) {
-				// Ignore unknown exceptions
+				spdlog::error("[event] on callback unknown exception for '{}'", type);
 			}
 		}, name, false);
 
@@ -126,7 +127,7 @@ ModuleDescriptor createEventModule() {
 
 		ScriptValue::CallableFunc callback = args[1].callableVal;
 
-		uint64_t id = EventHub::instance().subscribe(type, [callback](const EventMessage& msg) {
+		uint64_t id = EventHub::instance().subscribe(type, [callback, type](const EventMessage& msg) {
 			std::vector<ScriptValue> cbArgs;
 			cbArgs.push_back(ScriptValue::fromObject({
 				{"type", ScriptValue::fromString(msg.type)},
@@ -140,9 +141,9 @@ ModuleDescriptor createEventModule() {
 			try {
 				callback(cbArgs);
 			} catch (const std::exception& e) {
-				// Log callback exception (TODO: add proper logging)
+				spdlog::error("[event] on callback exception for '{}': {}", type, e.what());
 			} catch (...) {
-				// Ignore unknown exceptions
+				spdlog::error("[event] on callback unknown exception for '{}'", type);
 			}
 		}, "", true);
 

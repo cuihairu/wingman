@@ -7,6 +7,7 @@
 #include <thread>
 #include <algorithm>
 #include <utility>
+#include <nlohmann/json.hpp>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -730,10 +731,30 @@ uint64_t ScriptManager::getFileModifiedTime(const std::string& path) {
 	return 0;
 }
 
-bool ScriptManager::loadJsonConfig(const std::string& /*path*/) {
-	// TODO: Parse using nlohmann/json
-	return false;
-}
+	bool ScriptManager::loadJsonConfig(const std::string& path) {
+		std::ifstream file(path);
+		if (!file.is_open()) {
+			return false;
+		}
+
+		try {
+			auto j = nlohmann::json::parse(file);
+			if (!j.is_object()) {
+				return false;
+			}
+
+			for (auto it = j.begin(); it != j.end(); ++it) {
+				if (it->is_string()) {
+					m_config[it.key()] = it->get<std::string>();
+				} else {
+					m_config[it.key()] = it->dump();
+				}
+			}
+			return true;
+		} catch (const nlohmann::json::exception&) {
+			return false;
+		}
+	}
 
 bool ScriptManager::loadIniConfig(const std::string& path) {
 	std::ifstream file(path);
