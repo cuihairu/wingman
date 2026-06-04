@@ -166,7 +166,12 @@ jobs:
             # GitHub archive extracts to lua-lua-5.5.0/, repack as lua-5.5.0/
             mkdir -p /tmp/lua-repack
             tar xzf /tmp/lua-gh.tar.gz -C /tmp/lua-repack
-            mv /tmp/lua-repack/lua-lua-5.5.0 /tmp/lua-repack/lua-5.5.0
+            # Find the extracted directory (handles different naming conventions)
+            EXTRACTED_DIR=$(ls -d /tmp/lua-repack/lua-* 2>/dev/null | head -1)
+            if [ -n "$EXTRACTED_DIR" ] && [ "$EXTRACTED_DIR" != "/tmp/lua-repack/lua-5.5.0" ]; then
+              rm -rf /tmp/lua-repack/lua-5.5.0
+              mv "$EXTRACTED_DIR" /tmp/lua-repack/lua-5.5.0
+            fi
             tar czf "$LUA_TAR" -C /tmp/lua-repack lua-5.5.0
             rm -rf /tmp/lua-gh.tar.gz /tmp/lua-repack
             echo "lua source prefetched to $LUA_TAR"
