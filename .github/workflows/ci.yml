@@ -140,8 +140,9 @@ jobs:
           echo "CMAKE_MAKE_PROGRAM=$NINJA_PATH" >> $GITHUB_ENV
           echo "MACOSX_DEPLOYMENT_TARGET=12" >> $GITHUB_ENV
 
-      - name: Cache vcpkg binaries and downloads
-        uses: actions/cache@v5
+      - name: Restore vcpkg cache
+        id: cache-vcpkg
+        uses: actions/cache/restore@v5
         with:
           path: |
             ${{ github.workspace }}/vcpkg/archives
@@ -161,6 +162,15 @@ jobs:
 
       - name: Build
         run: cmake --build build --parallel --target wingman_proto wingman_transport
+
+      - name: Save vcpkg cache
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg/archives
+            ${{ github.workspace }}/vcpkg/downloads
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
 
   go-build:
     name: Go Server
