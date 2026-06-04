@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 # ========== wingman ==========
-# 核心功能模块 - 输入输出、屏幕、窗口、触发器等
+# Core functionality module - I/O, screen, window, triggers, etc.
 
 if(APPLE)
     project(wingman LANGUAGES CXX OBJCXX)
@@ -12,7 +12,7 @@ endif()
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 查找依赖
+# Find dependencies
 find_package(OpenCV CONFIG QUIET)
 if(OpenCV_FOUND)
     if(NOT OpenCV_DIR MATCHES "/vcpkg_installed/")
@@ -29,54 +29,54 @@ if(WINGMAN_BUILD_LUA)
     find_package(unofficial-lua CONFIG)
 endif()
 
-# ========== 源文件 ==========
+# ========== Source Files ==========
 set(WINGMAN_SOURCES
-    # 核心架构
+    # Core architecture
     src/core/component.cpp
     src/core/event_bus.cpp
     src/event.cpp
 
-    # 视觉与捕获
+    # Vision and capture
     src/capture/capture_source.cpp
     src/vision/image_analyzer.cpp
 
-    # 输入输出
+    # I/O
     src/screen.cpp
     src/window.cpp
     src/ui_automation.cpp
     src/clipboard.cpp
     src/filewatcher.cpp
 
-    # 触发器与视觉
+    # Triggers
     src/trigger_engine.cpp
 
-    # 系统模块（注意：performance.cpp 需要 OpenCV，在后面添加）
+    # System modules (note: performance.cpp needs OpenCV, added later)
     src/security.cpp
 
-    # 存储
+    # Storage
     src/storage.cpp
 
-    # 配置与工具
+    # Configuration and utilities
     src/config.cpp
     src/json.cpp
     src/kvstore.cpp
 
-    # IPC 通信
+    # IPC communication
     src/ipc/ipc_factory.cpp
     src/ipc/tcp_channel.cpp
 
-    # 网络与通信
+    # Network
     src/http.cpp
     src/node_status.cpp
 
-    # TOTP 工具
+    # TOTP utilities
     src/verification.cpp
     src/behavior_tree.cpp
     src/game_profile.cpp
     src/human.cpp
     src/smart_trigger.cpp
 
-    # 脚本抽象层（语言无关的模块描述符）
+    # Script abstraction layer (language-agnostic module descriptors)
     src/script_manager.cpp
     src/script/modules/screen_module.cpp
     src/script/modules/input_module.cpp
@@ -106,25 +106,25 @@ set(WINGMAN_SOURCES
     src/platform/mock/mock_input.cpp
 )
 
-# OCR 支持（可选）
+# OCR support (optional)
 if(DEFINED WINGMAN_ENABLE_OCR AND WINGMAN_ENABLE_OCR)
     list(APPEND WINGMAN_SOURCES src/ocr.cpp)
     add_compile_definitions(WINGMAN_ENABLE_OCR)
 else()
-    # 使用 stub 实现
+    # Use stub implementation
     list(APPEND WINGMAN_SOURCES src/ocr_stub.cpp)
 endif()
 
-# ML 支持（可选）
+# ML support (optional)
 if(DEFINED WINGMAN_ENABLE_ML AND WINGMAN_ENABLE_ML)
     list(APPEND WINGMAN_SOURCES src/ml.cpp)
     add_compile_definitions(WINGMAN_ENABLE_ML)
 else()
-    # 使用 stub 实现
+    # Use stub implementation
     list(APPEND WINGMAN_SOURCES src/ml_stub.cpp)
 endif()
 
-# Vision 支持（可选，需要 vcpkg OpenCV）
+# Vision support (optional, requires vcpkg OpenCV)
 if(OpenCV_FOUND AND TARGET opencv_core)
     list(APPEND WINGMAN_SOURCES
         src/vision.cpp
@@ -133,12 +133,12 @@ if(OpenCV_FOUND AND TARGET opencv_core)
     add_compile_definitions(WINGMAN_ENABLE_VISION)
     message(STATUS "Vision support enabled (vcpkg OpenCV found)")
 else()
-    # 使用 stub 实现
+    # Use stub implementation
     list(APPEND WINGMAN_SOURCES src/vision_stub.cpp)
     message(STATUS "Vision support disabled (vcpkg OpenCV not found)")
 endif()
 
-# ========== 平台特定源文件 ==========
+# ========== Platform-Specific Source Files ==========
 if(WIN32)
     list(APPEND WINGMAN_SOURCES
         src/screenshot_reporter.cpp
@@ -174,7 +174,7 @@ elseif(APPLE)
         src/platform/mac/cocoa_recorder.cpp
         PROPERTIES LANGUAGE OBJCXX
     )
-    # macOS 需要 Cocoa 框架
+    # macOS requires Cocoa framework
     find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
     find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
     find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
@@ -187,7 +187,7 @@ elseif(UNIX AND NOT APPLE)
         src/platform/linux/x11_recorder.cpp
         src/platform/unix/posix_trigger.cpp
     )
-    # Linux 需要 X11 和 XRandR
+    # Linux requires X11 and XRandR
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(X11 REQUIRED x11)
     pkg_check_modules(XRANDR REQUIRED xrandr)
@@ -195,33 +195,33 @@ elseif(UNIX AND NOT APPLE)
     pkg_check_modules(XTST REQUIRED xtst)
 endif()
 
-# ========== 创建库 ==========
+# ========== Create Library ==========
 find_package(Threads REQUIRED)
 add_library(wingman STATIC ${WINGMAN_SOURCES})
 target_link_libraries(wingman PRIVATE Threads::Threads)
 
-# 调试信息
+# Debug info
 message(STATUS "WINGMAN_GENERATED_DIR in wingman: ${WINGMAN_GENERATED_DIR}")
 
-# 包含目录
+# Include directories
 target_include_directories(wingman PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-# 添加生成的头文件目录 (不使用生成器表达式)
+# Add generated header file directory (without generator expression)
 target_include_directories(wingman PUBLIC ${WINGMAN_GENERATED_DIR})
 
-# 链接库
+# Link libraries
 set(WINGMAN_LINK_LIBS
     nlohmann_json::nlohmann_json
 )
 
-# 添加 OpenCV（如果可用）
+# Add OpenCV (if available)
 if(OpenCV_FOUND AND TARGET opencv_core)
     list(APPEND WINGMAN_LINK_LIBS opencv_core opencv_imgproc opencv_imgcodecs)
 endif()
 
-# 添加 CURL（如果可用）
+# Add CURL (if available)
 if(TARGET CURL::libcurl)
     list(APPEND WINGMAN_LINK_LIBS CURL::libcurl)
     target_compile_definitions(wingman PRIVATE WINGMAN_HAS_CURL)
@@ -234,13 +234,13 @@ if(TARGET OpenSSL::Crypto)
     list(APPEND WINGMAN_LINK_LIBS OpenSSL::Crypto)
 endif()
 
-# 添加 sqlite3（如果可用）
+# Add sqlite3 (if available)
 if(TARGET unofficial::sqlite3::sqlite3)
     list(APPEND WINGMAN_LINK_LIBS unofficial::sqlite3::sqlite3)
     target_compile_definitions(wingman PUBLIC WINGMAN_HAS_SQLITE)
 endif()
 
-# 添加 Lua（如果可用）
+# Add Lua (if available)
 if(WINGMAN_BUILD_LUA AND TARGET unofficial::lua::lua)
     list(APPEND WINGMAN_LINK_LIBS unofficial::lua::lua)
     target_compile_definitions(wingman PUBLIC WINGMAN_HAS_LUA)
@@ -248,7 +248,7 @@ endif()
 
 target_link_libraries(wingman PUBLIC ${WINGMAN_LINK_LIBS})
 
-# macOS 特定框架
+# macOS-specific frameworks
 if(APPLE)
     target_link_libraries(wingman PUBLIC
         "-framework Foundation"
@@ -261,10 +261,10 @@ if(APPLE)
         target_compile_definitions(wingman PUBLIC HAVE_SCREENCAPTUREKIT)
     endif()
 endif()
-# spdlog 使用 header-only，不传递链接依赖
+# spdlog uses header-only, no transitive link dependencies
 target_link_libraries(wingman PRIVATE spdlog::spdlog_header_only)
 
-# Windows 特定库
+# Windows-specific libraries
 if(WIN32)
     target_link_libraries(wingman PUBLIC
         gdiplus
@@ -276,17 +276,17 @@ if(WIN32)
     target_compile_definitions(wingman PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX)
 endif()
 
-# Linux 特定库
+# Linux-specific libraries
 if(UNIX AND NOT APPLE)
     target_include_directories(wingman PRIVATE ${X11_INCLUDE_DIRS} ${XRANDR_INCLUDE_DIRS} ${XEXT_INCLUDE_DIRS} ${XTST_INCLUDE_DIRS})
     target_link_libraries(wingman PUBLIC ${X11_LIBRARIES} ${XRANDR_LIBRARIES} ${XEXT_LIBRARIES} ${XTST_LIBRARIES})
     target_compile_definitions(wingman PUBLIC LINUX_PLATFORM)
 endif()
 
-# 导出库
+# Export library
 add_library(wingman::wingman ALIAS wingman)
 
-# ========== 编译选项 ==========
+# ========== Compile Options ==========
 target_compile_features(wingman PUBLIC cxx_std_23)
 
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")

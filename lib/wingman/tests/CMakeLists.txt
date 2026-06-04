@@ -3,7 +3,7 @@
 if(BUILD_CORE_TESTS)
     enable_testing()
 
-    # 代码覆盖率选项
+    # Code coverage option
     option(CODE_COVERAGE "Enable code coverage" OFF)
 
     find_package(GTest CONFIG REQUIRED)
@@ -45,6 +45,8 @@ if(BUILD_CORE_TESTS)
         ml_test.cpp
         ocr_test.cpp
         script_function_test.cpp
+        game_profile_io_test.cpp
+        tcp_channel_test.cpp
     )
 
     if(WIN32)
@@ -62,22 +64,22 @@ if(BUILD_CORE_TESTS)
         wingman
     )
 
-    # 应用覆盖率选项（必须在目标创建之后）
+    # Apply coverage options (must be after target creation)
     if(CODE_COVERAGE)
         message(STATUS "Code coverage enabled")
 
-        # GCC/Clang 覆盖率标志
+        # GCC/Clang coverage flags
         if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
             target_compile_options(core_tests PRIVATE --coverage)
             target_link_options(core_tests PRIVATE --coverage)
-        # MSVC 覆盖率标志
+        # MSVC coverage flags
         elseif(MSVC)
             target_compile_options(core_tests PRIVATE /profile)
             target_link_options(core_tests PRIVATE /PROFILE)
         endif()
     endif()
 
-    # 注册测试
+    # Register tests
     include(GoogleTest)
     gtest_discover_tests(core_tests)
 
