@@ -25,7 +25,7 @@ TEST(WindowTest, FindAllWindows) {
 
 TEST(WindowTest, GetForegroundWindow) {
     auto hwnd = Window::getForeground();
-    EXPECT_NE(hwnd, 0);
+    EXPECT_NE(hwnd, nullptr);
     EXPECT_TRUE(Window::isValid(hwnd));
 }
 
@@ -35,7 +35,7 @@ TEST(WindowTest, EnumerateWindows) {
 
     // Check returned data
     for (const auto& win : windows) {
-        EXPECT_NE(win.handle, 0);
+        EXPECT_NE(win.handle, nullptr);
         EXPECT_FALSE(win.title.empty());
     }
 }
@@ -52,7 +52,7 @@ TEST(WindowTest, FindNonExistentWindow) {
 
 TEST(WindowTest, GetWindowTitle) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, nullptr);
 
     std::string title = Window::getTitle(hwnd);
     EXPECT_FALSE(title.empty());
@@ -60,7 +60,7 @@ TEST(WindowTest, GetWindowTitle) {
 
 TEST(WindowTest, GetWindowBounds) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, nullptr);
 
     Rect bounds = Window::getBounds(hwnd);
     EXPECT_GT(bounds.width, 0);
@@ -78,14 +78,14 @@ TEST(WindowTest, IsWindowValid) {
 
 TEST(WindowTest, IsWindowForeground) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, nullptr);
 
     EXPECT_TRUE(Window::isForeground(hwnd));
 }
 
 TEST(WindowTest, IsWindowVisible) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, nullptr);
 
     // Foreground window should be visible
     EXPECT_TRUE(Window::isVisible(hwnd));
@@ -95,7 +95,7 @@ TEST(WindowTest, IsWindowVisible) {
 
 TEST(WindowTest, ActivateWindow) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, nullptr);
 
     // Try to activate (may already be the foreground window)
     bool result = Window::activate(hwnd);
@@ -105,7 +105,7 @@ TEST(WindowTest, ActivateWindow) {
 
 TEST(WindowTest, MinimizeWindow) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, nullptr);
 
     // Minimize
     bool result = Window::minimize(hwnd);
@@ -120,7 +120,7 @@ TEST(WindowTest, MinimizeWindow) {
 
 TEST(WindowTest, MaximizeWindow) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, nullptr);
 
     // Maximize
     bool result = Window::maximize(hwnd);
@@ -135,7 +135,7 @@ TEST(WindowTest, MaximizeWindow) {
 
 TEST(WindowTest, RestoreWindow) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, nullptr);
 
     bool result = Window::restore(hwnd);
     SUCCEED();
@@ -155,7 +155,7 @@ TEST(WindowTest, MoveWindow) {
 
 TEST(WindowTest, ResizeWindow) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, nullptr);
 
     Rect original = Window::getBounds(hwnd);
 
@@ -213,7 +213,7 @@ TEST(WindowTest, EmptyTitleSearch) {
 
 TEST(WindowTest, SetBoundsZeroSize) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, nullptr);
 
     Rect original = Window::getBounds(hwnd);
 
