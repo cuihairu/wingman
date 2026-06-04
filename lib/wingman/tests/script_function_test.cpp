@@ -5,6 +5,7 @@
 #include "wingman/behavior_tree.hpp"
 #include "wingman/smart_trigger.hpp"
 #include <algorithm>
+#include <set>
 
 using namespace wingman;
 using namespace wingman::script;
@@ -1291,9 +1292,16 @@ TEST(ModulePresenceTest, AllExpectedModulesExist) {
 }
 
 TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
+    // Functions that perform blocking I/O (network polling, process waiting)
+    // and must be skipped in this smoke test.
+    static const std::set<std::pair<std::string, std::string>> blockedFunctions = {
+        {"qrcode", "login"},   // polls invalid URL indefinitely
+    };
+
     auto modules = getAllModules();
     for (const auto& mod : modules) {
         for (const auto& fn : mod.functions) {
+            if (blockedFunctions.count({mod.name, fn.name})) continue;
             std::vector<ScriptValue> args;
             if (fn.signature.find("key:string") != std::string::npos ||
                 fn.signature.find("name:string") != std::string::npos ||
