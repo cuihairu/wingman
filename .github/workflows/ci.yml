@@ -157,28 +157,6 @@ jobs:
       - name: Prepare vcpkg cache
         run: mkdir -p "${{ github.workspace }}/vcpkg/archives" "${{ github.workspace }}/vcpkg/downloads"
 
-      - name: Prefetch lua source (lua.org unreliable)
-        run: |
-          LUA_TAR="${{ github.workspace }}/vcpkg/downloads/lua-5.5.0.tar.gz"
-          if [ ! -f "$LUA_TAR" ]; then
-            echo "Downloading lua from GitHub..."
-            curl -sL -o /tmp/lua-gh.tar.gz "https://github.com/lua/lua/archive/refs/tags/v5.5.0.tar.gz"
-            # GitHub archive extracts to lua-lua-5.5.0/, repack as lua-5.5.0/
-            mkdir -p /tmp/lua-repack
-            tar xzf /tmp/lua-gh.tar.gz -C /tmp/lua-repack
-            # Find the extracted directory (handles different naming conventions)
-            EXTRACTED_DIR=$(ls -d /tmp/lua-repack/lua-* 2>/dev/null | head -1)
-            if [ -n "$EXTRACTED_DIR" ] && [ "$EXTRACTED_DIR" != "/tmp/lua-repack/lua-5.5.0" ]; then
-              rm -rf /tmp/lua-repack/lua-5.5.0
-              mv "$EXTRACTED_DIR" /tmp/lua-repack/lua-5.5.0
-            fi
-            tar czf "$LUA_TAR" -C /tmp/lua-repack lua-5.5.0
-            rm -rf /tmp/lua-gh.tar.gz /tmp/lua-repack
-            echo "lua source prefetched to $LUA_TAR"
-          else
-            echo "lua source already cached"
-          fi
-
       - name: Configure CMake
         run: bash ./build-scripts/ci/configure-unix.sh "${{ matrix.triplet }}" "Ninja" "build"
 
