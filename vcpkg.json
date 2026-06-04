@@ -5,10 +5,12 @@
   "description": "Game Automation Programmable Control Engine",
   "dependencies": [
     {
-      "name": "lua"
+      "name": "lua",
+      "platform": "windows"
     },
     {
-      "name": "sol2"
+      "name": "sol2",
+      "platform": "windows"
     },
     {
       "name": "opencv4",
