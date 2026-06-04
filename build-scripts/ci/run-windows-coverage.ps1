@@ -32,11 +32,12 @@ Write-Host "Found test executable: $($testExe.FullName)"
 Write-Host "Running with OpenCppCoverage..."
 
 # Run coverage directly on test executable (much faster than --cover_children with ctest)
-# Only cover project source files, not third-party dependencies
+# Only cover project source files, not third-party dependencies or platform-specific code
 & $coverageExe `
     --quiet `
     --sources "$projectRoot\lib\wingman\src" `
     --sources "$projectRoot\lib\wingman\include" `
+    --excluded_sources "$projectRoot\lib\wingman\src\platform" `
     --export_type "cobertura:$absoluteCoverageFile" `
     -- `
     $testExe.FullName "--gtest_filter=*"
