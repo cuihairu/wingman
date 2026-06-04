@@ -73,16 +73,19 @@ TEST(IpcFactoryTest, CreateClientWithExplicitTransport) {
 TEST(IpcFactoryTest, CreateServerWithTcpFallback) {
     IpcConfig cfg;
     cfg.preferredTransport = IpcTransport::TcpPipe;
-    // TCP is not fully implemented yet, should return nullptr
     auto channel = IpcFactory::createServer(cfg);
-    EXPECT_EQ(channel, nullptr);
+    ASSERT_NE(channel, nullptr);
+    EXPECT_EQ(channel->getTransport(), IpcTransport::TcpPipe);
+    EXPECT_EQ(channel->getBackendName(), "TCP");
 }
 
 TEST(IpcFactoryTest, CreateClientWithTcpFallback) {
     IpcConfig cfg;
     cfg.preferredTransport = IpcTransport::TcpPipe;
     auto channel = IpcFactory::createClient(cfg);
-    EXPECT_EQ(channel, nullptr);
+    ASSERT_NE(channel, nullptr);
+    EXPECT_EQ(channel->getTransport(), IpcTransport::TcpPipe);
+    EXPECT_EQ(channel->getBackendName(), "TCP");
 }
 
 // ========== Additional IPC Tests ==========

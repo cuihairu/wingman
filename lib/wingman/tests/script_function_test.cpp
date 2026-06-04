@@ -524,19 +524,19 @@ TEST(KvModuleFunctionsTest, TtlReturnsMinusOneWhenNoStore) {
     EXPECT_EQ(result.asInt(), -1);
 }
 
-TEST(KvModuleFunctionsTest, IncrReturnsZeroWhenNoStore) {
+TEST(KvModuleFunctionsTest, IncrCreatesKeyWithDefaultDelta) {
     auto fn = findFunction("kv", "incr");
     ASSERT_FALSE(fn.name.empty());
-    auto result = fn({ScriptValue::fromString("counter")});
+    auto result = fn({ScriptValue::fromString("incr_test_key")});
     EXPECT_TRUE(result.isInt());
-    EXPECT_EQ(result.asInt(), 0);
+    EXPECT_EQ(result.asInt(), 1);  // incr on non-existent key creates it with delta=1
 }
 
-TEST(KvModuleFunctionsTest, IncrWithDeltaReturnsZeroWhenNoStore) {
+TEST(KvModuleFunctionsTest, IncrCreatesKeyWithCustomDelta) {
     auto fn = findFunction("kv", "incr");
-    auto result = fn({ScriptValue::fromString("counter"), ScriptValue::fromInt(5)});
+    auto result = fn({ScriptValue::fromString("incr_test_key2"), ScriptValue::fromInt(5)});
     EXPECT_TRUE(result.isInt());
-    EXPECT_EQ(result.asInt(), 0);
+    EXPECT_EQ(result.asInt(), 5);  // incr on non-existent key creates it with delta=5
 }
 
 TEST(KvModuleFunctionsTest, HashOperationsWhenNoStore) {
@@ -1263,9 +1263,30 @@ TEST(ModulePresenceTest, AllExpectedModulesExist) {
 }
 
 TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
-    // Functions that perform blocking I/O (network polling, process waiting)
-    // and must be skipped in this smoke test.
+    // Functions that perform blocking I/O (network requests, process waiting)
+    // or require specific runtime state and must be skipped in this smoke test.
     static const std::set<std::pair<std::string, std::string>> blockedFunctions = {
+        // HTTP — performs network I/O with timeout
+        {"http", "get"},
+        {"http", "post"},
+        {"http", "put"},
+        {"http", "delete"},
+        // Process — waits/polls for external processes
+        {"process", "wait"},
+        {"process", "waitFor"},
+        {"process", "start"},
+        // Window — polls for external window state
+        {"window", "waitFor"},
+        // Task — waits on condition variable with timeout
+        {"task", "wait"},
+        {"task", "submit"},
+        {"task", "retry"},
+        // Notify — webhook performs network I/O
+        {"notify", "webhook"},
+        {"notify", "bridge"},
+        // Event — registers persistent callbacks
+        {"event", "on"},
+        {"event", "once"},
     };
 
     auto modules = getAllModules();
@@ -1273,14 +1294,29 @@ TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
         for (const auto& fn : mod.functions) {
             if (blockedFunctions.count({mod.name, fn.name})) continue;
             std::vector<ScriptValue> args;
-            if (fn.signature.find("key:string") != std::string::npos ||
-                fn.signature.find("name:string") != std::string::npos ||
-                fn.signature.find("path:string") != std::string::npos ||
-                fn.signature.find("secret:string") != std::string::npos ||
-                fn.signature.find("account:string") != std::string::npos ||
-                fn.signature.find("id:string") != std::string::npos ||
-                fn.signature.find("title:string") != std::string::npos) {
-                args.push_back(ScriptValue::fromString("test"));
+            // Build minimal args from signature to avoid UB on empty vector access.
+            // Count parameters by counting commas before "->", then provide that many defaults.
+            const auto& sig = fn.signature;
+            auto arrowPos = sig.find(" -> ");
+            std::string paramsPart = (arrowPos != std::string::npos) ? sig.substr(0, arrowPos) : sig;
+            bool hasParams = !paramsPart.empty() && paramsPart != "()";
+            if (hasParams) {
+                // Count commas to determine parameter count
+                int paramCount = 1;
+                for (char c : paramsPart) {
+                    if (c == ',') paramCount++;
+                }
+                // Determine first param type for the first arg
+                auto colonPos = paramsPart.find(':');
+                if (colonPos != std::string::npos && paramsPart.substr(colonPos, 7) == ":string") {
+                    args.push_back(ScriptValue::fromString("test"));
+                } else {
+                    args.push_back(ScriptValue::fromInt(1));
+                }
+                // Fill remaining args with int defaults
+                for (int i = 1; i < paramCount; ++i) {
+                    args.push_back(ScriptValue::fromInt(1));
+                }
             }
             EXPECT_NO_THROW(fn.func(args))
                 << "Module '" << mod.name << "' function '" << fn.name << "' threw";
