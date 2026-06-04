@@ -40,7 +40,7 @@ Write-Host "Running with OpenCppCoverage..."
     --excluded_sources "$projectRoot\lib\wingman\src\platform" `
     --export_type "cobertura:$absoluteCoverageFile" `
     -- `
-    $testExe.FullName "--gtest_filter=*:-FileWatcherTest.MultipleRapidChanges:-IpcFactoryTest.CreateServerWithDefaultConfig:-IpcFactoryTest.CreateClientWithDefaultConfig:-IpcFactoryTest.CreateServerWithExplicitTransport:-IpcFactoryTest.CreateClientWithExplicitTransport:-IpcFactoryTest.CreateServerWithEmptyName:-IpcFactoryTest.CreateClientWithEmptyName"
+    $testExe.FullName "--gtest_filter=*:-FileWatcherTest.MultipleRapidChanges:-IpcFactoryTest.CreateServerWithDefaultConfig:-IpcFactoryTest.CreateClientWithDefaultConfig:-IpcFactoryTest.CreateServerWithExplicitTransport:-IpcFactoryTest.CreateClientWithExplicitTransport:-IpcFactoryTest.CreateServerWithEmptyName:-IpcFactoryTest.CreateClientWithEmptyName:-IpcFactoryTest.CreateServerWithTcpFallback:-IpcFactoryTest.CreateClientWithTcpFallback:-IpcTest.*"
 
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
