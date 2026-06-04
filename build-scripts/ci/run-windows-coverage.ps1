@@ -31,16 +31,14 @@ if (-not $testExe) {
 Write-Host "Found test executable: $($testExe.FullName)"
 Write-Host "Running with OpenCppCoverage..."
 
+# Exclude IPC and FileWatcher tests that crash under OpenCppCoverage instrumentation.
+# GTest reads GTEST_FILTER env var when --gtest_filter is not on the command line.
+$env:GTEST_FILTER = "*:-IpcTest.*:-IpcFactoryTest.CreateServerWithDefaultConfig:-IpcFactoryTest.CreateClientWithDefaultConfig:-IpcFactoryTest.CreateServerWithExplicitTransport:-IpcFactoryTest.CreateClientWithExplicitTransport:-IpcFactoryTest.CreateServerWithEmptyName:-IpcFactoryTest.CreateClientWithEmptyName:-IpcFactoryTest.CreateServerWithTcpFallback:-IpcFactoryTest.CreateClientWithTcpFallback:-FileWatcherTest.MultipleRapidChanges"
+
 # Run coverage directly on test executable (much faster than --cover_children with ctest)
 # Only cover project source files, not third-party dependencies or platform-specific code
-& $coverageExe `
-    --quiet `
-    --sources "$projectRoot\lib\wingman\src" `
-    --sources "$projectRoot\lib\wingman\include" `
-    --excluded_sources "$projectRoot\lib\wingman\src\platform" `
-    --export_type "cobertura:$absoluteCoverageFile" `
-    -- `
-    $testExe.FullName "--gtest_filter=*:-FileWatcherTest.MultipleRapidChanges:-IpcFactoryTest.CreateServerWithDefaultConfig:-IpcFactoryTest.CreateClientWithDefaultConfig:-IpcFactoryTest.CreateServerWithExplicitTransport:-IpcFactoryTest.CreateClientWithExplicitTransport:-IpcFactoryTest.CreateServerWithEmptyName:-IpcFactoryTest.CreateClientWithEmptyName:-IpcFactoryTest.CreateServerWithTcpFallback:-IpcFactoryTest.CreateClientWithTcpFallback:-IpcTest.*"
+$cmd = "`"$coverageExe`" --quiet --sources `"$projectRoot\lib\wingman\src`" --sources `"$projectRoot\lib\wingman\include`" --excluded_sources `"$projectRoot\lib\wingman\src\platform`" --export_type `"cobertura:$absoluteCoverageFile`" -- `"$($testExe.FullName)`""
+cmd /c $cmd
 
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
