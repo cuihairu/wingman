@@ -17,7 +17,6 @@ ModuleDescriptor createSecurityModule();
 ModuleDescriptor createGameProfileModule();
 ModuleDescriptor createVisionModule();
 ModuleDescriptor createOcrModule();
-ModuleDescriptor createQrcodeModule();
 ModuleDescriptor createSmartTriggerModule();
 ModuleDescriptor createBehaviorTreeModule();
 ModuleDescriptor createNodeModule();
@@ -49,7 +48,6 @@ std::vector<ModuleDescriptor> getAllModules() {
 	modules.push_back(createGameProfileModule());
 	modules.push_back(createVisionModule());
 	modules.push_back(createOcrModule());
-	modules.push_back(createQrcodeModule());
 	modules.push_back(createSmartTriggerModule());
 	modules.push_back(createBehaviorTreeModule());
 	modules.push_back(createNodeModule());

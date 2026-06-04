@@ -53,10 +53,8 @@ set(WINGMAN_SOURCES
     # 系统模块（注意：performance.cpp 需要 OpenCV，在后面添加）
     src/security.cpp
 
-    # 账号与存储
-    src/accounts.cpp
+    # 存储
     src/storage.cpp
-    # src/auth.cpp  # TODO: 检查依赖
 
     # 配置与工具
     src/config.cpp
@@ -70,8 +68,7 @@ set(WINGMAN_SOURCES
     src/http.cpp
     src/node_status.cpp
 
-    # 其他功能
-    src/qrcode.cpp
+    # TOTP 工具
     src/verification.cpp
     src/behavior_tree.cpp
     src/game_profile.cpp

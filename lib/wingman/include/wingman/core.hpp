@@ -19,9 +19,7 @@
 #include "wingman/performance.hpp"
 #include "wingman/security.hpp"
 
-#include "wingman/accounts.hpp"
 #include "wingman/storage.hpp"
-#include "wingman/auth.hpp"
 
 #include "wingman/config.hpp"
 #include "wingman/recorder.hpp"

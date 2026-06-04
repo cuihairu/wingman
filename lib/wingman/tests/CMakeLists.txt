@@ -32,11 +32,9 @@ if(BUILD_CORE_TESTS)
         config_test.cpp
         verification_test.cpp
         game_profile_test.cpp
-        qrcode_test.cpp
         script_modules_test.cpp
         security_test.cpp
         ipc_factory_test.cpp
-        accounts_test.cpp
         storage_test.cpp
         extra_modules_test.cpp
         script_manager_test.cpp

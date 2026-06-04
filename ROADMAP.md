@@ -170,6 +170,7 @@ vcpkg install pybind11
 2. **就近测试** - 每个模块都有自己的 `tests/` 目录
 3. **职责清晰** - apps（应用）、lib（核心库）、libs（辅助库）分离
 4. **命名空间对应** - `include/wingman/xxx.hpp` → `namespace wingman::xxx`
+5. **不涉及账号管理** - 不做账号 CRUD、登录轮询、用户认证等业务功能；工具类函数（如 TOTP 验证码生成）保留为无状态纯函数，持久化需求由 kv 模块承担
 
 ### 重构里程碑
 

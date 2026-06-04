@@ -374,14 +374,6 @@ TEST(BtModuleFunctionsTest, RemoveDoesNotCrash) {
     EXPECT_NO_THROW(fn({ScriptValue::fromString("nonexistent_bt")}));
 }
 
-// ========== QRCode module functions ==========
-
-TEST(QrcodeModuleFunctionsTest, CancelDoesNotCrash) {
-    auto fn = findFunction("qrcode", "cancel");
-    ASSERT_FALSE(fn.name.empty());
-    EXPECT_NO_THROW(fn({}));
-}
-
 // ========== Verification module functions ==========
 
 TEST(VerificationModuleFunctionsTest, TotpGeneratesCode) {
@@ -414,31 +406,10 @@ TEST(VerificationModuleFunctionsTest, SteamGuardGeneratesCode) {
     EXPECT_EQ(result.asString().size(), 5u);
 }
 
-TEST(VerificationModuleFunctionsTest, SaveLoadRemoveTotps) {
-    auto saveFn = findFunction("verification", "saveTOTP");
-    auto loadFn = findFunction("verification", "loadTOTP");
-    auto listFn = findFunction("verification", "listTOTP");
-    auto removeFn = findFunction("verification", "removeTOTP");
-
-    ASSERT_FALSE(saveFn.name.empty());
-
-    auto saveResult = saveFn({ScriptValue::fromString("test_account"), ScriptValue::fromString("JBSWY3DPEHPK3PXP")});
-    EXPECT_TRUE(saveResult.isBool());
-
-    auto listResult = listFn({});
-    EXPECT_TRUE(listResult.isArray());
-
-    auto loadResult = loadFn({ScriptValue::fromString("test_account")});
-    EXPECT_TRUE(result_is_string_or_null(loadResult));
-
-    auto removeResult = removeFn({ScriptValue::fromString("test_account")});
-    EXPECT_TRUE(removeResult.isBool());
-}
-
-TEST(VerificationModuleFunctionsTest, GetRemainingSeconds) {
-    auto fn = findFunction("verification", "getRemaining");
+TEST(VerificationModuleFunctionsTest, RemainingSeconds) {
+    auto fn = findFunction("verification", "remaining");
     ASSERT_FALSE(fn.name.empty());
-    auto result = fn({ScriptValue::fromString("JBSWY3DPEHPK3PXP")});
+    auto result = fn({ScriptValue::fromInt(30)});
     EXPECT_TRUE(result.isInt());
     int remaining = result.asInt();
     EXPECT_GE(remaining, 0);
@@ -1279,7 +1250,7 @@ TEST(UiaModuleFunctionsTest, FindWithSelectorDoesNotCrash) {
 TEST(ModulePresenceTest, AllExpectedModulesExist) {
     std::vector<std::string> expectedModules = {
         "json", "system", "orchestration", "team",
-        "smarttrigger", "bt", "qrcode", "ocr",
+        "smarttrigger", "bt", "ocr",
         "screen", "input", "window", "vision",
         "http", "human", "verification", "gameprofile",
         "perf", "config", "kv", "debugger",
@@ -1295,7 +1266,6 @@ TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
     // Functions that perform blocking I/O (network polling, process waiting)
     // and must be skipped in this smoke test.
     static const std::set<std::pair<std::string, std::string>> blockedFunctions = {
-        {"qrcode", "login"},   // polls invalid URL indefinitely
     };
 
     auto modules = getAllModules();

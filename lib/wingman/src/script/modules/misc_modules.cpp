@@ -1,6 +1,5 @@
 #include "wingman/script/iscript_engine.hpp"
 #include "wingman/ocr.hpp"
-#include "wingman/qrcode.hpp"
 #include "wingman/ui_automation.hpp"
 #include "wingman/smart_trigger.hpp"
 #include "wingman/behavior_tree.hpp"
@@ -33,53 +32,6 @@ ModuleDescriptor createOcrModule() {
 		Rect region = toRect(args[0]);
 		auto result = OCR::recognize(region);
 		if (result.success) return ScriptValue::fromString(result.text);
-		return ScriptValue::null();
-	}, "region:{x,y,width,height} -> string?"});
-
-	return mod;
-}
-
-// ============================================================================
-// QRCode Module
-// ============================================================================
-ModuleDescriptor createQrcodeModule() {
-	ModuleDescriptor mod;
-	mod.name = "qrcode";
-
-	// Module-level shared QRLoginManager instance
-	static QRLoginManager qrManager;
-
-	mod.functions.push_back({"get", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		QRLoginConfig config = QRLoginManager::genericConfig(args[0].asString(), args[1].asString());
-		auto qr = qrManager.getQRCode(config);
-		if (qr) return ScriptValue::fromString(*qr);
-		return ScriptValue::null();
-	}, "qrUrl:string, statusUrl:string -> string?"});
-
-	mod.functions.push_back({"login", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		QRLoginConfig config = QRLoginManager::genericConfig(args[0].asString(), args[1].asString());
-		if (args.size() > 2) {
-			config.pollInterval = static_cast<int>(args[2].asInt(2000));
-		}
-		auto result = qrManager.login(config);
-		auto obj = std::unordered_map<std::string, ScriptValue>{
-			{"state", ScriptValue::fromString(qrLoginStateToString(result.state))},
-			{"message", ScriptValue::fromString(result.message)}
-		};
-		if (!result.token.empty()) obj["token"] = ScriptValue::fromString(result.token);
-		if (!result.sessionId.empty()) obj["sessionId"] = ScriptValue::fromString(result.sessionId);
-		return ScriptValue::fromObject(std::move(obj));
-	}, "qrUrl:string, statusUrl:string, pollInterval:int? -> {state,message,...}"});
-
-	mod.functions.push_back({"cancel", [](const std::vector<ScriptValue>&) -> ScriptValue {
-		qrManager.cancel();
-		return ScriptValue::null();
-	}, "() -> nil"});
-
-	mod.functions.push_back({"detect", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		Rect region = toRect(args[0]);
-		auto result = qrManager.detectQRCode(region.x, region.y, region.width, region.height);
-		if (result) return ScriptValue::fromString(*result);
 		return ScriptValue::null();
 	}, "region:{x,y,width,height} -> string?"});
 
