@@ -403,3 +403,93 @@ TEST(NotifyModuleTest, ErrorWithBoolMeta) {
 	});
 	EXPECT_TRUE(result.isNull());
 }
+
+// ========== Bridge with event:// target ==========
+
+TEST(NotifyModuleTest, BridgeWithEventTarget) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "bridge");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("source.event"),
+		ScriptValue::fromString("event://target.event"),
+		ScriptValue::fromObject({{"transform", ScriptValue::fromObject({{"key", ScriptValue::fromString("val")}})}})
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+// ========== Webhook with options ==========
+
+TEST(NotifyModuleTest, WebhookWithOptions) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "webhook");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("https://example.com/hook"),
+		ScriptValue::fromObject({{"data", ScriptValue::fromString("test")}}),
+		ScriptValue::fromObject({{"timeout", ScriptValue::fromInt(5000)}})
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+// ========== Debug with Object Meta containing all types ==========
+
+TEST(NotifyModuleTest, DebugWithObjectMetaAllTypes) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "debug");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("debug with object"),
+		ScriptValue::fromObject({
+			{"nested", ScriptValue::fromObject({{"a", ScriptValue::fromInt(1)}})},
+			{"flag", ScriptValue::fromBool(true)},
+			{"ratio", ScriptValue::fromFloat(2.5)},
+			{"nothing", ScriptValue::null()},
+			{"items", ScriptValue::fromArray({ScriptValue::fromString("x")})}
+		})
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+// ========== Toast with non-string level ==========
+
+TEST(NotifyModuleTest, ToastWithNonStringLevelUsesDefault) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "toast");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("Title"),
+		ScriptValue::fromString("Message"),
+		ScriptValue::fromInt(42)  // non-string level, should use default "info"
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+// ========== Warn with null meta ==========
+
+TEST(NotifyModuleTest, WarnWithNullMeta) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "warn");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("warn msg"),
+		ScriptValue::null()
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+// ========== Error with non-string arg ==========
+
+TEST(NotifyModuleTest, ErrorWithNonStringArgReturnsNull) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "error");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({ScriptValue::fromInt(500)});
+	EXPECT_TRUE(result.isNull());
+}
