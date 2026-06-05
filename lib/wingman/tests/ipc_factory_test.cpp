@@ -144,7 +144,7 @@ TEST(IpcFactoryTest, CreateClientWithEmptyName) {
 }
 
 TEST(IpcFactoryTest, AllTransportAvailabilityChecks) {
-    for (auto t : {IpcTransport::Auto, IpcTransport::NamedPipe, IpcTransport::TcpPipe}) {
+    for (auto t : {IpcTransport::Auto, IpcTransport::NamedPipe, IpcTransport::TcpPipe, IpcTransport::UnixSocket}) {
         EXPECT_NO_THROW(IpcFactory::isTransportAvailable(t));
     }
 }

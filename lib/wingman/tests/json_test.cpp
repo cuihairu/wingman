@@ -361,3 +361,8 @@ TEST(JsonValueTest, NonArrayAtThrows) {
     JsonValue v("string");
     EXPECT_THROW(v.at(0), std::exception);
 }
+
+TEST(JsonValueTest, AsBoolOnNullReturnsFalse) {
+    JsonValue v(nullptr);
+    EXPECT_FALSE(v.asBool());
+}

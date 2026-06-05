@@ -652,6 +652,25 @@ TEST(RepeatNodeTest, RepeatChildReturnsRunning) {
     EXPECT_EQ(repeat->tick(), NodeStatus::RUNNING);
 }
 
+TEST(RepeatNodeTest, TickAfterCompletionResetsAndReturnsSuccess) {
+    auto repeat = std::make_shared<RepeatNode>(
+        std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }),
+        1
+    );
+    // First tick: child succeeds, current_ = 1 >= 1, resets and returns SUCCESS
+    EXPECT_EQ(repeat->tick(), NodeStatus::SUCCESS);
+    // Second tick: current_ (0) < count_ (1) at entry, so child runs again
+    EXPECT_EQ(repeat->tick(), NodeStatus::SUCCESS);
+    // Third tick after second completion: covers early return path
+    EXPECT_EQ(repeat->tick(), NodeStatus::SUCCESS);
+}
+
+TEST(WaitNodeTest, WaitNotElapsedReturnsRunning) {
+    WaitNode wait(10000);  // 10 seconds — will not elapse between ticks
+    EXPECT_EQ(wait.tick(), NodeStatus::RUNNING);   // starts timer
+    EXPECT_EQ(wait.tick(), NodeStatus::RUNNING);   // elapsed < 10s
+}
+
 // ========== WaitNode Elapsed Time ==========
 
 TEST(WaitNodeTest, WaitShortDurationCompletes) {
