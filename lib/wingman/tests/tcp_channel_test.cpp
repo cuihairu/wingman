@@ -112,3 +112,88 @@ TEST(TcpChannelTest, MultipleConstructDestructDoesNotCrash) {
         EXPECT_EQ(channel.getState(), IpcState::Disconnected);
     }
 }
+
+// ========== Endpoint Formatting ==========
+
+TEST(TcpChannelTest, GetEndpointFormatsHostPort) {
+    TcpChannel channel(false, "192.168.1.1", 8080);
+    EXPECT_EQ(channel.getEndpoint(), "192.168.1.1:8080");
+}
+
+TEST(TcpChannelTest, GetEndpointDifferentPorts) {
+    TcpChannel c1(false, "127.0.0.1", 1);
+    TcpChannel c2(false, "127.0.0.1", 65535);
+    EXPECT_EQ(c1.getEndpoint(), "127.0.0.1:1");
+    EXPECT_EQ(c2.getEndpoint(), "127.0.0.1:65535");
+}
+
+// ========== Multiple Send Attempts ==========
+
+TEST(TcpChannelTest, MultipleSendWhenDisconnected) {
+    TcpChannel channel(false, "127.0.0.1", 9999);
+    IpcMessage msg;
+    msg.type = IpcMessageType::Request;
+    msg.method = "test";
+    for (int i = 0; i < 5; ++i) {
+        EXPECT_FALSE(channel.send(msg));
+    }
+}
+
+TEST(TcpChannelTest, SendEventMultipleWhenDisconnected) {
+    TcpChannel channel(false, "127.0.0.1", 9999);
+    for (int i = 0; i < 5; ++i) {
+        EXPECT_FALSE(channel.sendEvent("evt", "data"));
+    }
+}
+
+TEST(TcpChannelTest, SendRequestMultipleWhenDisconnected) {
+    TcpChannel channel(false, "127.0.0.1", 9999);
+    for (int i = 0; i < 5; ++i) {
+        EXPECT_EQ(channel.sendRequest("method", "payload"), 0u);
+    }
+}
+
+// ========== Message Types ==========
+
+TEST(TcpChannelTest, IpcMessageTypeValues) {
+    EXPECT_EQ(static_cast<int>(IpcMessageType::Request), 0);
+    EXPECT_EQ(static_cast<int>(IpcMessageType::Response), 1);
+    EXPECT_EQ(static_cast<int>(IpcMessageType::Event), 2);
+}
+
+TEST(TcpChannelTest, IpcStateValues) {
+    EXPECT_EQ(static_cast<int>(IpcState::Disconnected), 0);
+    EXPECT_EQ(static_cast<int>(IpcState::Connecting), 1);
+    EXPECT_EQ(static_cast<int>(IpcState::Connected), 2);
+    EXPECT_EQ(static_cast<int>(IpcState::Disconnecting), 3);
+    EXPECT_EQ(static_cast<int>(IpcState::Error), 4);
+}
+
+TEST(TcpChannelTest, IpcTransportValues) {
+    // Verify enum values are accessible (exact values depend on header definition)
+    EXPECT_NO_THROW(static_cast<int>(IpcTransport::NamedPipe));
+    EXPECT_NO_THROW(static_cast<int>(IpcTransport::TcpPipe));
+    EXPECT_NE(static_cast<int>(IpcTransport::NamedPipe),
+              static_cast<int>(IpcTransport::TcpPipe));
+}
+
+// ========== Message With Various Fields ==========
+
+TEST(TcpChannelTest, IpcMessageWithEmptyMethod) {
+    IpcMessage msg;
+    msg.type = IpcMessageType::Response;
+    msg.method = "";
+    msg.payload = "data";
+    msg.id = 999;
+    EXPECT_EQ(msg.type, IpcMessageType::Response);
+    EXPECT_TRUE(msg.method.empty());
+    EXPECT_EQ(msg.id, 999u);
+}
+
+TEST(TcpChannelTest, IpcMessageWithLargePayload) {
+    IpcMessage msg;
+    msg.type = IpcMessageType::Event;
+    msg.method = "bulk";
+    msg.payload = std::string(10000, 'x');
+    EXPECT_EQ(msg.payload.size(), 10000u);
+}

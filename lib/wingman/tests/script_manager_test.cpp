@@ -682,3 +682,190 @@ TEST_F(ScriptManagerFileTest, OutputCallbackReceivesMultipleOutputs) {
     EXPECT_EQ(captured[1], "s1=out2");
     EXPECT_EQ(captured[2], "s2=out3");
 }
+
+// ========== JSON Config Loading ==========
+
+TEST_F(ScriptManagerFileTest, LoadJsonConfigWithStringValues) {
+    ScriptManager mgr;
+    std::string path = createTempScript("test.json", R"({"key1":"val1","key2":"val2"})");
+    EXPECT_TRUE(mgr.loadConfig(path));
+    EXPECT_EQ(mgr.getConfig("key1"), "val1");
+    EXPECT_EQ(mgr.getConfig("key2"), "val2");
+}
+
+TEST_F(ScriptManagerFileTest, LoadJsonConfigWithNonStringValues) {
+    ScriptManager mgr;
+    std::string path = createTempScript("mixed.json", R"({"str":"hello","num":42,"flag":true})");
+    EXPECT_TRUE(mgr.loadConfig(path));
+    EXPECT_EQ(mgr.getConfig("str"), "hello");
+    // Non-string values are stored as their JSON dump
+    EXPECT_EQ(mgr.getConfig("num"), "42");
+    EXPECT_EQ(mgr.getConfig("flag"), "true");
+}
+
+TEST_F(ScriptManagerFileTest, LoadJsonConfigInvalidJsonReturnsFalse) {
+    ScriptManager mgr;
+    std::string path = createTempScript("bad.json", "{not valid json}");
+    EXPECT_FALSE(mgr.loadConfig(path));
+}
+
+TEST_F(ScriptManagerFileTest, LoadJsonConfigNonObjectReturnsFalse) {
+    ScriptManager mgr;
+    std::string path = createTempScript("array.json", R"(["a","b","c"])");
+    EXPECT_FALSE(mgr.loadConfig(path));
+}
+
+TEST_F(ScriptManagerFileTest, LoadJsonConfigEmptyObjectSucceeds) {
+    ScriptManager mgr;
+    std::string path = createTempScript("empty.json", R"({})");
+    EXPECT_TRUE(mgr.loadConfig(path));
+}
+
+// ========== saveConfig to Valid Path ==========
+
+TEST_F(ScriptManagerFileTest, SaveConfigToValidPath) {
+    ScriptManager mgr;
+    mgr.setConfig("alpha", "one");
+    mgr.setConfig("beta", "two");
+
+    std::string path = tempDir + "/saved_config.cfg";
+    EXPECT_TRUE(mgr.saveConfig(path));
+    EXPECT_TRUE(std::filesystem::exists(path));
+
+    // Verify the file can be loaded back
+    ScriptManager mgr2;
+    EXPECT_TRUE(mgr2.loadConfig(path));
+    EXPECT_EQ(mgr2.getConfig("alpha"), "one");
+    EXPECT_EQ(mgr2.getConfig("beta"), "two");
+}
+
+TEST_F(ScriptManagerFileTest, SaveEmptyConfig) {
+    ScriptManager mgr;
+    std::string path = tempDir + "/empty_config.cfg";
+    EXPECT_TRUE(mgr.saveConfig(path));
+    EXPECT_TRUE(std::filesystem::exists(path));
+}
+
+// ========== triggerEvent ==========
+
+TEST_F(ScriptManagerFileTest, TriggerEventWithCallbackOnLoadError) {
+    ScriptManager mgr;
+    std::vector<std::string> events;
+    mgr.setEventCallback([&](const std::string& name, ScriptEvent evt, const std::string& msg) {
+        events.push_back(name + ":" + std::to_string(static_cast<int>(evt)) + ":" + msg);
+    });
+
+    // Loading a nonexistent file triggers an error event
+    mgr.loadScript("err_script", "/nonexistent/path.lua");
+    ASSERT_FALSE(events.empty());
+    EXPECT_NE(events[0].find("err_script:4"), std::string::npos);  // error=4
+}
+
+TEST_F(ScriptManagerFileTest, TriggerEventWithCallbackOnUnload) {
+    ScriptManager mgr;
+    std::vector<std::string> events;
+    mgr.setEventCallback([&](const std::string& name, ScriptEvent evt, const std::string& msg) {
+        events.push_back(std::to_string(static_cast<int>(evt)));
+    });
+
+    std::string path = createTempScript("trig.lua", "-- trig");
+    mgr.loadScript("trig", path);
+    mgr.unloadScript("trig");
+
+    ASSERT_GE(events.size(), 2u);
+    EXPECT_EQ(events[0], "0");  // loaded
+    EXPECT_EQ(events[1], "1");  // unloaded
+}
+
+TEST_F(ScriptManagerFileTest, TriggerEventWithoutCallbackDoesNotCrash) {
+    ScriptManager mgr;
+    // No callback set — loadScript should still work
+    std::string path = createTempScript("nocb.lua", "-- nocb");
+    EXPECT_TRUE(mgr.loadScript("nocb", path));
+}
+
+// ========== checkReload with Auto-Reload ==========
+
+TEST_F(ScriptManagerFileTest, CheckReloadWithAutoReloadEnabled) {
+    ScriptManager mgr;
+    ScriptConfig cfg;
+    cfg.autoReload = true;
+    std::string path = createTempScript("autoreload.lua", "-- v1");
+    mgr.loadScript("autoreload", path, cfg);
+
+    // checkReload should return false since file hasn't changed
+    EXPECT_FALSE(mgr.checkReload("autoreload"));
+}
+
+TEST_F(ScriptManagerFileTest, CheckReloadWithGlobalAutoReload) {
+    ScriptManager mgr;
+    mgr.setGlobalAutoReload(true);
+    std::string path = createTempScript("globalar.lua", "-- v1");
+    mgr.loadScript("globalar", path);
+
+    EXPECT_FALSE(mgr.checkReload("globalar"));
+}
+
+TEST_F(ScriptManagerFileTest, CheckAllReloadsWithScripts) {
+    ScriptManager mgr;
+    ScriptConfig cfg;
+    cfg.autoReload = true;
+    std::string path = createTempScript("checkall.lua", "-- v1");
+    mgr.loadScript("checkall", path, cfg);
+
+    EXPECT_NO_THROW(mgr.checkAllReloads());
+}
+
+// ========== getAllScriptInfos with Loaded Scripts ==========
+
+TEST_F(ScriptManagerFileTest, GetAllScriptInfosAfterLoad) {
+    ScriptManager mgr;
+    std::string p1 = createTempScript("info1.lua", "-- info1");
+    std::string p2 = createTempScript("info2.lua", "-- info2");
+    mgr.loadScript("info1", p1);
+    mgr.loadScript("info2", p2);
+
+    auto infos = mgr.getAllScriptInfos();
+    EXPECT_EQ(infos.size(), 2u);
+    for (const auto& info : infos) {
+        EXPECT_EQ(info.language, "lua");
+        EXPECT_TRUE(info.lastError.empty());
+    }
+}
+
+// ========== loadScript with Config ==========
+
+TEST_F(ScriptManagerFileTest, LoadScriptWithTimeoutConfig) {
+    ScriptManager mgr;
+    ScriptConfig cfg;
+    cfg.timeoutMs = 5000;
+    cfg.sandboxed = true;
+    std::string path = createTempScript("timeout.lua", "-- timeout");
+    EXPECT_TRUE(mgr.loadScript("timeout", path, cfg));
+
+    auto info = mgr.getScriptInfo("timeout");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->config.timeoutMs, 5000);
+    EXPECT_TRUE(info->config.sandboxed);
+}
+
+// ========== loadScript Reloads Existing ==========
+
+TEST_F(ScriptManagerFileTest, LoadScriptSameNameTriggersUnloadAndReload) {
+    ScriptManager mgr;
+    std::vector<std::string> events;
+    mgr.setEventCallback([&](const std::string&, ScriptEvent evt, const std::string&) {
+        events.push_back(std::to_string(static_cast<int>(evt)));
+    });
+
+    std::string p1 = createTempScript("reload_a.lua", "-- v1");
+    std::string p2 = createTempScript("reload_b.lua", "-- v2");
+
+    mgr.loadScript("dup", p1);
+    mgr.loadScript("dup", p2);  // should unload old, load new
+
+    ASSERT_GE(events.size(), 3u);
+    EXPECT_EQ(events[0], "0");  // loaded
+    EXPECT_EQ(events[1], "1");  // unloaded (from reload)
+    EXPECT_EQ(events[2], "0");  // loaded again
+}

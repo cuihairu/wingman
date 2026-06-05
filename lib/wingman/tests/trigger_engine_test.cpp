@@ -476,3 +476,127 @@ triggers = {
     EXPECT_EQ(stats.totalTriggers, 2u);
     EXPECT_EQ(stats.enabledTriggers, 2u);
 }
+
+// ========== Start/Stop ==========
+
+TEST_F(TriggerEngineLuaTest, StartStopDoesNotCrash) {
+    EXPECT_NO_THROW(engine.start());
+    EXPECT_TRUE(engine.isRunning());
+    EXPECT_NO_THROW(engine.stop());
+    EXPECT_FALSE(engine.isRunning());
+}
+
+TEST_F(TriggerEngineLuaTest, StartTwiceReturnsTrue) {
+    engine.start();
+    EXPECT_TRUE(engine.start());  // second call is no-op
+    engine.stop();
+}
+
+TEST_F(TriggerEngineLuaTest, StopWhenNotRunningIsNoOp) {
+    EXPECT_FALSE(engine.isRunning());
+    EXPECT_NO_THROW(engine.stop());
+    EXPECT_FALSE(engine.isRunning());
+}
+
+TEST_F(TriggerEngineLuaTest, LoadFromYAMLReturnsFalse) {
+    auto path = writeTempLua("test: yaml", "test.yaml");
+    EXPECT_FALSE(engine.loadFromYAML(path));
+}
+
+TEST_F(TriggerEngineLuaTest, LoadFromNonexistentFileReturnsFalse) {
+    EXPECT_FALSE(engine.loadFromLua("/nonexistent/triggers.lua"));
+}
+
+TEST_F(TriggerEngineLuaTest, StartAfterLoadDoesNotCrash) {
+    std::string lua = R"(
+triggers = {
+    {
+        name = "start_test",
+        enabled = true,
+        condition = {
+            type = "TimeElapsed",
+            interval = 1000,
+            enabled = true
+        },
+        actions = {
+            { type = "Log", value = "tick" }
+        }
+    }
+}
+)";
+    auto path = writeTempLua(lua, "start_test.lua");
+    ASSERT_TRUE(engine.loadFromLua(path));
+    EXPECT_NO_THROW(engine.start());
+    EXPECT_NO_THROW(engine.stop());
+}
+
+TEST_F(TriggerEngineLuaTest, StatsAfterStartStop) {
+    std::string lua = R"(
+triggers = {
+    {
+        name = "stats_trigger",
+        enabled = true,
+        condition = {
+            type = "ColorFound",
+            value = "0xFF0000",
+            enabled = true
+        },
+        actions = {
+            { type = "Log", value = "test" }
+        }
+    }
+}
+)";
+    auto path = writeTempLua(lua, "stats_ss.lua");
+    ASSERT_TRUE(engine.loadFromLua(path));
+
+    auto stats = engine.getStats();
+    EXPECT_EQ(stats.totalTriggers, 1u);
+    EXPECT_EQ(stats.enabledTriggers, 1u);
+    EXPECT_EQ(stats.totalTriggered, 0u);
+}
+
+TEST_F(TriggerEngineLuaTest, EnableDisableMultipleTriggers) {
+    std::string lua = R"(
+triggers = {
+    {
+        name = "trig_a",
+        enabled = true,
+        condition = { type = "ColorFound", value = "0xFF0000", enabled = true },
+        actions = { { type = "Log", value = "a" } }
+    },
+    {
+        name = "trig_b",
+        enabled = true,
+        condition = { type = "ColorFound", value = "0x00FF00", enabled = true },
+        actions = { { type = "Log", value = "b" } }
+    }
+}
+)";
+    auto path = writeTempLua(lua, "multi_enable.lua");
+    ASSERT_TRUE(engine.loadFromLua(path));
+
+    EXPECT_TRUE(engine.disableTrigger("trig_a"));
+    EXPECT_TRUE(engine.enableTrigger("trig_a"));
+    EXPECT_TRUE(engine.disableTrigger("trig_b"));
+    EXPECT_TRUE(engine.enableTrigger("trig_b"));
+}
+
+// ========== TriggerEngine Construction ==========
+
+TEST(TriggerEngineBasicTest, DefaultConstruction) {
+    TriggerEngine engine;
+    EXPECT_FALSE(engine.isRunning());
+}
+
+TEST(TriggerEngineBasicTest, LoadFromLuaWithoutLuaSupport) {
+    TriggerEngine engine;
+    // Without WINGMAN_HAS_LUA, loadFromLua should return false
+    // and log an error
+    EXPECT_FALSE(engine.loadFromLua("/any/path.lua"));
+}
+
+TEST(TriggerEngineBasicTest, LoadFromYAMLNotImplemented) {
+    TriggerEngine engine;
+    EXPECT_FALSE(engine.loadFromYAML("/any/path.yaml"));
+}
