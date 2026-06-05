@@ -184,6 +184,7 @@ vcpkg install pybind11
 | Phase 6 | EmmyLua 集成 | ✅ 已完成 |
 | Phase 7 | 测试与文档 | ✅ 已完成 |
 | Phase 8 | 脚本层多语言抽象 (Lua + Python) | ✅ 已完成 |
+| Phase 9 | 移除账号/二维码/认证模块，TOTP 重构为纯函数 | ✅ 已完成 |
 | Milestone 1 | MVP (最小可行产品) | ✅ 已完成 |
 
 ---
@@ -562,26 +563,32 @@ local wingman = require('wingman')
 | 优先级 | 任务 | 预计时间 | 状态 |
 |--------|------|----------|------|
 | P0 | Milestone 5: GUI 界面 | 4周 | 🚧 进行中 |
-| P1 | Milestone 6: 人性化模拟 | 1周 | 🚧 进行中 |
-| P1 | 修复测试失败 | 1天 | ✅ 已完成 |
+| P1 | Milestone 6: 人性化模拟 | 1周 | ✅ 已完成 |
+| P1 | 代码覆盖率 90% | 1天 | ✅ 已完成 |
 | P1 | 脚本层多语言抽象 | 2周 | ✅ 已完成 |
+| P1 | 移除账号/二维码/认证模块 | 1天 | ✅ 已完成 |
 
 ### 📋 检查清单
 
 #### Phase 7: 测试与文档 (已完成)
 - [x] Windows 构建 - MSVC + x64-windows-static
-- [x] 集成测试覆盖 - 57 个测试通过
+- [x] 集成测试覆盖 - 1584 个测试用例
+- [x] 代码覆盖率 - 90.04% (6652/7388 行)
 - [x] 性能基准测试 - KVStore 性能指标
 - [x] 文档完善 - BUILD.md + 更新 README
 
 #### 测试覆盖详情
 | 模块 | 测试数 | 状态 |
 |------|--------|------|
-| core | 58/58 | ✅ KVStore + Trigger + Recorder |
-| transport | 7/7 | ✅ Message 序列化 |
-| proto | 7/7 | ✅ JSON 封装 |
-| debug | 4/4 | ✅ 状态枚举 |
-| **总计** | **76/76** | ✅ **全部通过** |
+| screen / vision | 屏幕捕获、颜色查找、图像匹配、Bitmap | ✅ |
+| input / human | 输入模拟、人性化鼠标/键盘 | ✅ |
+| behavior_tree | 行为树节点、策略、重试/重复 | ✅ |
+| config / storage | 配置管理、本地/会话存储 | ✅ |
+| ipc / tcp_channel | IPC 工厂、TCP 通道 | ✅ |
+| script modules | screen/input/window/event/kv/config/json/verification | ✅ |
+| kvstore | KV + Hash + List 操作 | ✅ |
+| security / window / json / ... | 其他核心模块 | ✅ |
+| **总计** | **1584 tests / 143 suites** | ✅ **90.04% 行覆盖率** |
 
 #### Milestone 2: 触发器系统 (已完成)
 - [x] TriggerManager - 完整的触发器生命周期管理
