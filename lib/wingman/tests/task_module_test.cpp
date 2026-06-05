@@ -494,3 +494,87 @@ TEST(TaskModuleTest, RetryExistingTaskReturnsBool) {
 	EXPECT_TRUE(result.isBool());
 	EXPECT_TRUE(result.asBool());
 }
+
+// ========== toJson Coverage Tests ==========
+
+TEST(TaskModuleTest, SubmitWithNullMetadata) {
+	auto mod = createTaskModule();
+	auto submit = findTaskFunction(mod, "submit");
+
+	auto taskId = submit({
+		ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+			return ScriptValue::fromString("ok");
+		}),
+		ScriptValue::fromObject({
+			{"metadata", ScriptValue::fromObject({{"key", ScriptValue::null()}})}
+		})
+	});
+	EXPECT_TRUE(taskId.isString());
+}
+
+TEST(TaskModuleTest, SubmitWithBoolMetadata) {
+	auto mod = createTaskModule();
+	auto submit = findTaskFunction(mod, "submit");
+
+	auto taskId = submit({
+		ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+			return ScriptValue::fromString("ok");
+		}),
+		ScriptValue::fromObject({
+			{"metadata", ScriptValue::fromObject({{"active", ScriptValue::fromBool(true)}})}
+		})
+	});
+	EXPECT_TRUE(taskId.isString());
+}
+
+TEST(TaskModuleTest, SubmitWithFloatMetadata) {
+	auto mod = createTaskModule();
+	auto submit = findTaskFunction(mod, "submit");
+
+	auto taskId = submit({
+		ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+			return ScriptValue::fromString("ok");
+		}),
+		ScriptValue::fromObject({
+			{"metadata", ScriptValue::fromObject({{"score", ScriptValue::fromFloat(3.14)}})}
+		})
+	});
+	EXPECT_TRUE(taskId.isString());
+}
+
+TEST(TaskModuleTest, SubmitWithArrayMetadata) {
+	auto mod = createTaskModule();
+	auto submit = findTaskFunction(mod, "submit");
+
+	auto taskId = submit({
+		ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+			return ScriptValue::fromString("ok");
+		}),
+		ScriptValue::fromObject({
+			{"metadata", ScriptValue::fromObject({{"items", ScriptValue::fromArray({
+				ScriptValue::fromInt(1),
+				ScriptValue::fromString("two"),
+				ScriptValue::fromBool(true)
+			})}})}
+		})
+	});
+	EXPECT_TRUE(taskId.isString());
+}
+
+TEST(TaskModuleTest, SubmitWithNestedArrayMetadata) {
+	auto mod = createTaskModule();
+	auto submit = findTaskFunction(mod, "submit");
+
+	auto taskId = submit({
+		ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+			return ScriptValue::fromString("ok");
+		}),
+		ScriptValue::fromObject({
+			{"metadata", ScriptValue::fromObject({{"matrix", ScriptValue::fromArray({
+				ScriptValue::fromArray({ScriptValue::fromInt(1), ScriptValue::fromInt(2)}),
+				ScriptValue::fromArray({ScriptValue::fromInt(3), ScriptValue::fromInt(4)})
+			})}})}
+		})
+	});
+	EXPECT_TRUE(taskId.isString());
+}

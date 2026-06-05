@@ -295,3 +295,111 @@ TEST(NotifyModuleTest, BridgeInsufficientArgsReturnsNull) {
 	auto result = fn({ScriptValue::fromString("only one")});
 	EXPECT_TRUE(result.isNull());
 }
+
+// ========== toJson Coverage Tests ==========
+
+TEST(NotifyModuleTest, DebugWithArrayMeta) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "debug");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("debug with array"),
+		ScriptValue::fromObject({{"items", ScriptValue::fromArray({
+			ScriptValue::fromInt(1),
+			ScriptValue::fromString("two"),
+			ScriptValue::fromBool(true)
+		})}})
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+TEST(NotifyModuleTest, DebugWithFloatMeta) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "debug");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("debug with float"),
+		ScriptValue::fromObject({{"pi", ScriptValue::fromFloat(3.14)}})
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+TEST(NotifyModuleTest, DebugWithBoolMeta) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "debug");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("debug with bool"),
+		ScriptValue::fromObject({{"active", ScriptValue::fromBool(true)}})
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+TEST(NotifyModuleTest, DebugWithNullMeta) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "debug");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("debug with null"),
+		ScriptValue::fromObject({{"data", ScriptValue::null()}})
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+TEST(NotifyModuleTest, DebugWithNestedArrayMeta) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "debug");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("nested"),
+		ScriptValue::fromObject({{"matrix", ScriptValue::fromArray({
+			ScriptValue::fromArray({ScriptValue::fromInt(1), ScriptValue::fromInt(2)}),
+			ScriptValue::fromArray({ScriptValue::fromInt(3), ScriptValue::fromInt(4)})
+		})}})
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+TEST(NotifyModuleTest, InfoWithNullMeta) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "info");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("info with null"),
+		ScriptValue::fromObject({{"nothing", ScriptValue::null()}})
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+TEST(NotifyModuleTest, WarnWithArrayMeta) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "warn");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("warn with array"),
+		ScriptValue::fromObject({{"errors", ScriptValue::fromArray({
+			ScriptValue::fromString("err1"),
+			ScriptValue::fromString("err2")
+		})}})
+	});
+	EXPECT_TRUE(result.isNull());
+}
+
+TEST(NotifyModuleTest, ErrorWithBoolMeta) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "error");
+	ASSERT_FALSE(fn.name.empty());
+
+	auto result = fn({
+		ScriptValue::fromString("error with bool"),
+		ScriptValue::fromObject({{"fatal", ScriptValue::fromBool(false)}})
+	});
+	EXPECT_TRUE(result.isNull());
+}

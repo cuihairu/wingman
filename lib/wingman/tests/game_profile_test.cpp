@@ -388,3 +388,109 @@ TEST(GameProfileTest, SettingsMapOperations) {
     EXPECT_EQ(profile.settings.size(), 2u);
     EXPECT_EQ(profile.settings.count("fps"), 0u);
 }
+
+// ========== toJson Coverage Tests ==========
+
+TEST(GameProfileManagerTest, ExportProfileWithAllConfigTypes) {
+    auto& mgr = GameProfileManager::instance();
+
+    GameProfile profile;
+    profile.id = "test_tojson_500";
+    profile.name = "ToJson Test";
+    profile.version = "1.0";
+    profile.description = "Tests toJson helpers";
+    profile.window.title = "ToJsonWnd";
+    profile.window.processName = "tojson.exe";
+
+    // ColorConfig
+    ColorConfig color;
+    color.name = "health_red";
+    color.r = 255;
+    color.g = 0;
+    color.b = 0;
+    color.tolerance = 15;
+    profile.colors.push_back(color);
+
+    // ImageConfig
+    ImageConfig img;
+    img.name = "btn_start";
+    img.path = "images/start.png";
+    img.threshold = 0.95;
+    img.preload = true;
+    profile.images.push_back(img);
+
+    // GameTriggerConfig
+    GameTriggerConfig trigger;
+    trigger.name = "auto_click";
+    trigger.type = "color";
+    trigger.action = "click";
+    trigger.target = "100,200";
+    trigger.interval = 1000;
+    trigger.enabled = true;
+    profile.triggers.push_back(trigger);
+
+    // GameScriptConfig
+    GameScriptConfig script;
+    script.name = "main_script";
+    script.path = "scripts/main.lua";
+    script.autoStart = true;
+    script.restartOnCrash = false;
+    script.priority = 1;
+    profile.scripts.push_back(script);
+
+    // Settings
+    profile.settings["resolution"] = "1920x1080";
+
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    std::string json = mgr.exportProfileToJson("test_tojson_500");
+    EXPECT_FALSE(json.empty());
+    EXPECT_NE(json.find("health_red"), std::string::npos);
+    EXPECT_NE(json.find("btn_start"), std::string::npos);
+    EXPECT_NE(json.find("auto_click"), std::string::npos);
+    EXPECT_NE(json.find("main_script"), std::string::npos);
+
+    mgr.deleteProfile("test_tojson_500");
+}
+
+TEST(GameProfileManagerTest, ExportProfileWithEmptyCollections) {
+    auto& mgr = GameProfileManager::instance();
+
+    GameProfile profile;
+    profile.id = "test_tojson_501";
+    profile.name = "Empty Collections";
+    profile.window.title = "EmptyWnd";
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    std::string json = mgr.exportProfileToJson("test_tojson_501");
+    EXPECT_FALSE(json.empty());
+    EXPECT_NE(json.find("EmptyWnd"), std::string::npos);
+
+    mgr.deleteProfile("test_tojson_501");
+}
+
+TEST(GameProfileManagerTest, ImportProfileFromJson) {
+    auto& mgr = GameProfileManager::instance();
+
+    std::string json = R"({
+        "id": "test_import_502",
+        "name": "Import Test",
+        "version": "1.0",
+        "window": {"title": "ImportWnd", "processName": "import.exe", "exactMatch": false, "fullscreen": false}
+    })";
+
+    EXPECT_TRUE(mgr.importProfileFromJson(json, "test_import_502"));
+    EXPECT_TRUE(mgr.hasProfile("test_import_502"));
+
+    mgr.deleteProfile("test_import_502");
+}
+
+TEST(GameProfileManagerTest, ImportInvalidJsonReturnsFalse) {
+    auto& mgr = GameProfileManager::instance();
+    EXPECT_FALSE(mgr.importProfileFromJson("not valid json", "test_import_503"));
+}
+
+TEST(GameProfileManagerTest, ExportProfilePackageNonexistentReturnsFalse) {
+    auto& mgr = GameProfileManager::instance();
+    EXPECT_FALSE(mgr.exportProfilePackage("nonexistent_pkg", "/tmp/pkg.json"));
+}

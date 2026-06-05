@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <cstring>
+#include <vector>
 #include "wingman/security.hpp"
 
 using namespace wingman;
@@ -808,4 +809,220 @@ TEST(SecurityManagerTest, IsRunningInVMWithChecksEnabled) {
 
     // May or may not detect VM, just should not crash
     EXPECT_NO_THROW(mgr.isRunningInVM());
+}
+
+// ========== verifySignature ==========
+
+TEST(SecurityManagerTest, VerifySignatureReturnsBool) {
+    auto& mgr = SecurityManager::instance();
+    // On unsigned test binary, should return false
+    bool result = mgr.verifySignature();
+    EXPECT_FALSE(result);
+}
+
+// ========== getSignatureInfo ==========
+
+TEST(SecurityManagerTest, GetSignatureInfoReturnsDefaultOnUnsigned) {
+    auto& mgr = SecurityManager::instance();
+    auto info = mgr.getSignatureInfo();
+    // Unsigned test binary should have default/empty signature info
+    EXPECT_FALSE(info.isSigned);
+}
+
+// ========== filterSensitive (additional patterns) ==========
+
+TEST(SecurityManagerTest, FilterSensitiveMultiplePatterns) {
+    std::string input = "password=abc123 token=xyz secret=hello api_key=12345 key=foo";
+    std::string result = SecurityManager::filterSensitive(input);
+    EXPECT_NE(result.find("***"), std::string::npos);
+    // filterSensitive replaces pattern keywords, not values after =
+    EXPECT_EQ(result.find("password"), std::string::npos);
+    EXPECT_EQ(result.find("token"), std::string::npos);
+    EXPECT_EQ(result.find("secret"), std::string::npos);
+}
+
+TEST(SecurityManagerTest, FilterSensitiveNoPatterns) {
+    std::string input = "normal log message with no confidential data";
+    std::string result = SecurityManager::filterSensitive(input);
+    EXPECT_EQ(result, input);
+}
+
+TEST(SecurityManagerTest, FilterSensitiveRepeatedPattern) {
+    std::string input = "password=1 and password=2 and password=3";
+    std::string result = SecurityManager::filterSensitive(input);
+    EXPECT_EQ(result.find("password"), std::string::npos);
+}
+
+TEST(SecurityManagerTest, FilterSensitiveCaseSensitive) {
+    std::string input = "PASSWORD=abc123";
+    std::string result = SecurityManager::filterSensitive(input);
+    // "PASSWORD" (uppercase) should NOT be filtered
+    EXPECT_NE(result.find("PASSWORD"), std::string::npos);
+}
+
+TEST(SecurityManagerTest, FilterSensitivePwd) {
+    std::string result = SecurityManager::filterSensitive("pwd=secret123");
+    // "pwd" is replaced; "secret" inside "secret123" is also replaced
+    EXPECT_EQ(result.find("pwd"), std::string::npos);
+    EXPECT_NE(result.find("***"), std::string::npos);
+}
+
+TEST(SecurityManagerTest, FilterSensitivePasswd) {
+    std::string result = SecurityManager::filterSensitive("passwd=mypass");
+    EXPECT_EQ(result.find("passwd"), std::string::npos);
+    EXPECT_NE(result.find("***"), std::string::npos);
+}
+
+TEST(SecurityManagerTest, FilterSensitiveApikey) {
+    std::string result = SecurityManager::filterSensitive("apikey=AKIA123");
+    EXPECT_EQ(result.find("apikey"), std::string::npos);
+    EXPECT_NE(result.find("***"), std::string::npos);
+}
+
+// ========== protectMemory on Heap Buffer ==========
+
+TEST(SecurityManagerTest, ProtectMemoryOnHeapBuffer) {
+    auto& mgr = SecurityManager::instance();
+    auto* buffer = new char[4096]();
+    memset(buffer, 0xAB, 4096);
+
+    // Protect (read-only) then unprotect
+    bool protectedOk = mgr.protectMemory(buffer, 4096, true);
+    bool unprotectedOk = mgr.protectMemory(buffer, 4096, false);
+
+    // On Windows with sufficient privileges, both should succeed
+    // On failure, they return false but should not crash
+    EXPECT_NO_THROW(mgr.protectMemory(buffer, 4096, true));
+    EXPECT_NO_THROW(mgr.protectMemory(buffer, 4096, false));
+
+    delete[] buffer;
+}
+
+// ========== lockMemory / unlockMemory with Zero Size ==========
+
+TEST(SecurityManagerTest, LockMemoryZeroSize) {
+    auto& mgr = SecurityManager::instance();
+    char buf[1];
+    // Zero-size lock/unlock should be a no-op
+    EXPECT_NO_THROW(mgr.lockMemory(buf, 0));
+    EXPECT_NO_THROW(mgr.unlockMemory(buf, 0));
+}
+
+// ========== secureZero with Various Sizes ==========
+
+TEST(SecurityManagerTest, SecureZeroLargeBuffer) {
+    auto& mgr = SecurityManager::instance();
+    std::vector<char> buf(65536, 0xFF);
+    mgr.secureZero(buf.data(), buf.size());
+    for (size_t i = 0; i < buf.size(); ++i) {
+        EXPECT_EQ(buf[i], 0);
+    }
+}
+
+TEST(SecurityManagerTest, SecureZeroSingleByte) {
+    auto& mgr = SecurityManager::instance();
+    char buf = 0xFF;
+    mgr.secureZero(&buf, 1);
+    EXPECT_EQ(buf, 0);
+}
+
+// ========== generateRandomString Various Lengths ==========
+
+TEST(SecurityManagerTest, GenerateRandomStringLength10) {
+    std::string s = SecurityManager::generateRandomString(10);
+    EXPECT_EQ(s.size(), 10u);
+    for (char c : s) {
+        EXPECT_TRUE((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'));
+    }
+}
+
+TEST(SecurityManagerTest, GenerateRandomStringLength100) {
+    std::string s = SecurityManager::generateRandomString(100);
+    EXPECT_EQ(s.size(), 100u);
+}
+
+TEST(SecurityManagerTest, GenerateRandomStringsAreDifferent) {
+    std::string a = SecurityManager::generateRandomString(32);
+    std::string b = SecurityManager::generateRandomString(32);
+    // Extremely unlikely to be equal
+    EXPECT_NE(a, b);
+}
+
+// ========== encryptString / decryptString Edge Cases ==========
+
+TEST(SecurityManagerTest, EncryptDecryptBinaryData) {
+    std::string binary;
+    for (int i = 0; i < 256; ++i) {
+        binary += static_cast<char>(i);
+    }
+    std::string key = "binarykey";
+    std::string encrypted = SecurityManager::encryptString(binary, key);
+    EXPECT_EQ(encrypted.size(), binary.size());
+    std::string decrypted = SecurityManager::decryptString(encrypted, key);
+    EXPECT_EQ(decrypted, binary);
+}
+
+TEST(SecurityManagerTest, EncryptWithLongKey) {
+    std::string input = "short";
+    std::string key = "this_is_a_very_long_key_that_exceeds_input_length";
+    std::string encrypted = SecurityManager::encryptString(input, key);
+    std::string decrypted = SecurityManager::decryptString(encrypted, key);
+    EXPECT_EQ(decrypted, input);
+}
+
+// ========== hashString Determinism ==========
+
+TEST(SecurityManagerTest, HashStringIsDeterministic) {
+    std::string hash1 = SecurityManager::hashString("deterministic");
+    std::string hash2 = SecurityManager::hashString("deterministic");
+    EXPECT_EQ(hash1, hash2);
+}
+
+TEST(SecurityManagerTest, HashStringDifferentInputsDifferentHashes) {
+    std::string hash1 = SecurityManager::hashString("input1");
+    std::string hash2 = SecurityManager::hashString("input2");
+    EXPECT_NE(hash1, hash2);
+}
+
+// ========== setAntiDetectionConfig and verify ==========
+
+TEST(SecurityManagerTest, SetAntiDetectionConfigFullCycle) {
+    auto& mgr = SecurityManager::instance();
+    auto orig = mgr.getAntiDetectionConfig();
+
+    AntiDetectionConfig cfg;
+    cfg.enableRandomDelay = false;
+    cfg.enableBezierMovement = false;
+    cfg.enableRandomClick = false;
+    cfg.minDelayMs = 100;
+    cfg.maxDelayMs = 300;
+    cfg.clickJitter = 1.5;
+    cfg.movementVariance = 0.2;
+    mgr.setAntiDetectionConfig(cfg);
+
+    auto retrieved = mgr.getAntiDetectionConfig();
+    EXPECT_FALSE(retrieved.enableRandomDelay);
+    EXPECT_FALSE(retrieved.enableBezierMovement);
+    EXPECT_FALSE(retrieved.enableRandomClick);
+    EXPECT_EQ(retrieved.minDelayMs, 100);
+    EXPECT_EQ(retrieved.maxDelayMs, 300);
+    EXPECT_DOUBLE_EQ(retrieved.clickJitter, 1.5);
+    EXPECT_DOUBLE_EQ(retrieved.movementVariance, 0.2);
+
+    mgr.setAntiDetectionConfig(orig);
+}
+
+// ========== getRandomDelay with Random Delay Enabled ==========
+
+TEST(SecurityManagerTest, GetRandomDelayWithEnabledReturnsPositive) {
+    auto& mgr = SecurityManager::instance();
+    AntiDetectionConfig cfg;
+    cfg.enableRandomDelay = true;
+    cfg.minDelayMs = 10;
+    cfg.maxDelayMs = 100;
+    mgr.setAntiDetectionConfig(cfg);
+
+    int delay = mgr.getRandomDelay();
+    EXPECT_GE(delay, 10);
+    EXPECT_LE(delay, 100);
 }

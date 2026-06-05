@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "wingman/behavior_tree.hpp"
+#include <thread>
 
 using namespace wingman;
 
@@ -576,4 +577,139 @@ TEST(BehaviorTreeManagerTest, StartAllDoesNotCrash) {
 TEST(BehaviorTreeManagerTest, StopAllDoesNotCrash) {
     auto& mgr = BehaviorTreeManager::instance();
     EXPECT_NO_THROW(mgr.stopAll());
+}
+
+// ========== SelectorNode RUNNING child ==========
+
+TEST(SelectorNodeTest, ChildReturnsRunning) {
+    auto sel = std::make_shared<SelectorNode>();
+    sel->addChild(std::make_shared<ActionNode>("fail", [](BehaviorContext&) { return NodeStatus::FAILURE; }));
+    sel->addChild(std::make_shared<ActionNode>("running", [](BehaviorContext&) { return NodeStatus::RUNNING; }));
+    EXPECT_EQ(sel->tick(), NodeStatus::RUNNING);
+}
+
+// ========== ParallelNode Policies ==========
+
+TEST(ParallelNodeTest, SucceedOnOneWithMixedResults) {
+    auto par = std::make_shared<ParallelNode>("par", ParallelNode::Policy::SUCCEED_ON_ONE);
+    par->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::FAILURE; }));
+    par->addChild(std::make_shared<ActionNode>("b", [](BehaviorContext&) { return NodeStatus::SUCCESS; }));
+    EXPECT_EQ(par->tick(), NodeStatus::SUCCESS);
+}
+
+TEST(ParallelNodeTest, FailOnAllWithMixedResults) {
+    auto par = std::make_shared<ParallelNode>("par", ParallelNode::Policy::FAIL_ON_ALL);
+    par->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }));
+    par->addChild(std::make_shared<ActionNode>("b", [](BehaviorContext&) { return NodeStatus::FAILURE; }));
+    EXPECT_EQ(par->tick(), NodeStatus::SUCCESS);
+}
+
+TEST(ParallelNodeTest, FailOnOneWithMixedResults) {
+    auto par = std::make_shared<ParallelNode>("par", ParallelNode::Policy::FAIL_ON_ONE);
+    par->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }));
+    par->addChild(std::make_shared<ActionNode>("b", [](BehaviorContext&) { return NodeStatus::FAILURE; }));
+    EXPECT_EQ(par->tick(), NodeStatus::FAILURE);
+}
+
+TEST(ParallelNodeTest, FailOnAllAllFail) {
+    auto par = std::make_shared<ParallelNode>("par", ParallelNode::Policy::FAIL_ON_ALL);
+    par->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::FAILURE; }));
+    par->addChild(std::make_shared<ActionNode>("b", [](BehaviorContext&) { return NodeStatus::FAILURE; }));
+    EXPECT_EQ(par->tick(), NodeStatus::FAILURE);
+}
+
+TEST(ParallelNodeTest, FailOnOneNoFailures) {
+    auto par = std::make_shared<ParallelNode>("par", ParallelNode::Policy::FAIL_ON_ONE);
+    par->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }));
+    par->addChild(std::make_shared<ActionNode>("b", [](BehaviorContext&) { return NodeStatus::SUCCESS; }));
+    EXPECT_EQ(par->tick(), NodeStatus::SUCCESS);
+}
+
+TEST(ParallelNodeTest, ResetClearsState) {
+    auto par = std::make_shared<ParallelNode>("par", ParallelNode::Policy::SUCCEED_ON_ALL);
+    par->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }));
+    EXPECT_NO_THROW(par->reset());
+}
+
+// ========== RepeatNode Completion ==========
+
+TEST(RepeatNodeTest, RepeatCountExhaustedReturnsSuccess) {
+    auto repeat = std::make_shared<RepeatNode>(
+        std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }),
+        2
+    );
+    // First tick: child succeeds, current_ = 1 < 2, returns RUNNING
+    EXPECT_EQ(repeat->tick(), NodeStatus::RUNNING);
+    // Second tick: child succeeds, current_ = 2 >= 2, resets and returns SUCCESS
+    EXPECT_EQ(repeat->tick(), NodeStatus::SUCCESS);
+}
+
+TEST(RepeatNodeTest, RepeatChildReturnsRunning) {
+    auto repeat = std::make_shared<RepeatNode>(
+        std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::RUNNING; }),
+        3
+    );
+    EXPECT_EQ(repeat->tick(), NodeStatus::RUNNING);
+}
+
+// ========== WaitNode Elapsed Time ==========
+
+TEST(WaitNodeTest, WaitShortDurationCompletes) {
+    WaitNode wait(1);  // 1ms
+    EXPECT_EQ(wait.tick(), NodeStatus::RUNNING);  // First tick starts timer
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    EXPECT_EQ(wait.tick(), NodeStatus::SUCCESS);  // Second tick should succeed
+}
+
+TEST(WaitNodeTest, WaitResetAndRestart) {
+    WaitNode wait(1);
+    EXPECT_EQ(wait.tick(), NodeStatus::RUNNING);
+    wait.reset();
+    EXPECT_EQ(wait.tick(), NodeStatus::RUNNING);  // After reset, starts fresh
+}
+
+// ========== DelayNode Elapsed Time ==========
+
+TEST(DelayNodeTest, DelayShortDurationCompletes) {
+    auto delay = std::make_shared<DelayNode>(
+        std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }),
+        1
+    );
+    EXPECT_EQ(delay->tick(), NodeStatus::RUNNING);  // First tick starts timer
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    EXPECT_EQ(delay->tick(), NodeStatus::SUCCESS);  // Second tick should succeed
+}
+
+TEST(DelayNodeTest, DelayResetAndRestart) {
+    auto delay = std::make_shared<DelayNode>(
+        std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }),
+        1
+    );
+    EXPECT_EQ(delay->tick(), NodeStatus::RUNNING);
+    delay->reset();
+    EXPECT_EQ(delay->tick(), NodeStatus::RUNNING);  // After reset, starts fresh
+}
+
+// ========== InverterNode with RUNNING ==========
+
+TEST(InverterNodeTest, InvertRunningReturnsRunning) {
+    auto inv = std::make_shared<InverterNode>(
+        std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::RUNNING; })
+    );
+    EXPECT_EQ(inv->tick(), NodeStatus::RUNNING);
+}
+
+// ========== RetryNode Exhausted ==========
+
+TEST(RetryNodeTest, AllFailuresReturnsFailure) {
+    int attempts = 0;
+    auto retry = std::make_shared<RetryNode>(
+        std::make_shared<ActionNode>("a", [&attempts](BehaviorContext&) {
+            attempts++;
+            return NodeStatus::FAILURE;
+        }),
+        2
+    );
+    EXPECT_EQ(retry->tick(), NodeStatus::FAILURE);
+    EXPECT_EQ(attempts, 3);  // initial + 2 retries
 }

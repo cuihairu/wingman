@@ -612,3 +612,70 @@ TEST_F(KeyValueStoreTest, LRemCountZero) {
 TEST_F(KeyValueStoreTest, UnsubscribeWithNoSubscriptions) {
     EXPECT_NO_THROW(store->unsubscribe("unsub_channel"));
 }
+
+// ========== exists() with expired key ==========
+
+TEST_F(KeyValueStoreTest, ExistsReturnsFalseForExpiredKey) {
+    wingman::KvOptions options;
+    options.ttl = 1;
+    store->set("exp_key", "value", options);
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    // exists() should return false and clean up the expired entry
+    EXPECT_FALSE(store->exists("exp_key"));
+    EXPECT_EQ(store->get("exp_key"), "");
+}
+
+// ========== lrem edge cases ==========
+
+TEST_F(KeyValueStoreTest, LRemRemovesMatchingValues) {
+    store->rpush("rem_list", "a");
+    store->rpush("rem_list", "b");
+    store->rpush("rem_list", "a");
+    store->rpush("rem_list", "c");
+    store->rpush("rem_list", "a");
+
+    // Remove 2 occurrences of "a" from right
+    int removed = store->lrem("rem_list", 2, "a");
+    EXPECT_EQ(removed, 2);
+    EXPECT_EQ(store->llen("rem_list"), 3);
+}
+
+TEST_F(KeyValueStoreTest, LRemAllMatchingEmptiesList) {
+    store->rpush("rem_all", "x");
+    store->rpush("rem_all", "x");
+
+    int removed = store->lrem("rem_all", 0, "x");
+    EXPECT_EQ(removed, 2);
+    EXPECT_EQ(store->llen("rem_all"), 0);
+}
+
+TEST_F(KeyValueStoreTest, LRemNoMatchReturnsZero) {
+    store->rpush("rem_nomatch", "a");
+    store->rpush("rem_nomatch", "b");
+
+    int removed = store->lrem("rem_nomatch", 0, "z");
+    EXPECT_EQ(removed, 0);
+    EXPECT_EQ(store->llen("rem_nomatch"), 2);
+}
+
+// ========== save/load with SQLite ==========
+
+TEST_F(KeyValueStoreTest, SaveAndLoadRoundtripWithTTL) {
+    wingman::KvOptions options;
+    options.ttl = 300;
+    store->set("ttl_key", "ttl_value", options);
+    store->set("perm_key", "perm_value");
+
+    std::string path = "test_kvstore_roundtrip_ttl.json";
+    EXPECT_TRUE(store->save(path));
+
+    auto store2 = std::make_unique<wingman::KeyValueStore>();
+    EXPECT_TRUE(store2->load(path));
+
+    EXPECT_EQ(store2->get("perm_key"), "perm_value");
+    // TTL key may or may not be loaded depending on expiry
+
+    std::filesystem::remove(path);
+}

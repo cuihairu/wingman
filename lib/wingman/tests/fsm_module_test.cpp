@@ -650,3 +650,147 @@ TEST_F(FsmModuleTest, TransitionInsufficientArgsReturnsFalse) {
 	EXPECT_TRUE(result.isBool());
 	EXPECT_FALSE(result.asBool());
 }
+
+// ========== toJson/fromJson Coverage Tests ==========
+
+TEST_F(FsmModuleTest, DispatchWithArrayPayload) {
+	auto mod = createFsmModule();
+	auto create = findFsmFunction(mod, "create");
+	auto transition = findFsmFunction(mod, "transition");
+	auto dispatch = findFsmFunction(mod, "dispatch");
+
+	auto machineId = create({
+		ScriptValue::fromString("arr_payload"),
+		ScriptValue::fromString("idle")
+	});
+	ASSERT_TRUE(machineId.isString());
+
+	transition({
+		machineId,
+		ScriptValue::fromString("idle"),
+		ScriptValue::fromString("active"),
+		ScriptValue::fromString("go")
+	});
+
+	auto result = dispatch({
+		machineId,
+		ScriptValue::fromString("go"),
+		ScriptValue::fromArray({
+			ScriptValue::fromInt(1),
+			ScriptValue::fromString("two"),
+			ScriptValue::fromBool(true)
+		})
+	});
+	EXPECT_TRUE(result.asBool());
+}
+
+TEST_F(FsmModuleTest, DispatchWithFloatPayload) {
+	auto mod = createFsmModule();
+	auto create = findFsmFunction(mod, "create");
+	auto transition = findFsmFunction(mod, "transition");
+	auto dispatch = findFsmFunction(mod, "dispatch");
+
+	auto machineId = create({
+		ScriptValue::fromString("float_payload"),
+		ScriptValue::fromString("idle")
+	});
+	ASSERT_TRUE(machineId.isString());
+
+	transition({
+		machineId,
+		ScriptValue::fromString("idle"),
+		ScriptValue::fromString("active"),
+		ScriptValue::fromString("go")
+	});
+
+	auto result = dispatch({
+		machineId,
+		ScriptValue::fromString("go"),
+		ScriptValue::fromObject({{"speed", ScriptValue::fromFloat(3.14)}})
+	});
+	EXPECT_TRUE(result.asBool());
+}
+
+TEST_F(FsmModuleTest, DispatchWithBoolPayload) {
+	auto mod = createFsmModule();
+	auto create = findFsmFunction(mod, "create");
+	auto transition = findFsmFunction(mod, "transition");
+	auto dispatch = findFsmFunction(mod, "dispatch");
+
+	auto machineId = create({
+		ScriptValue::fromString("bool_payload"),
+		ScriptValue::fromString("idle")
+	});
+	ASSERT_TRUE(machineId.isString());
+
+	transition({
+		machineId,
+		ScriptValue::fromString("idle"),
+		ScriptValue::fromString("active"),
+		ScriptValue::fromString("go")
+	});
+
+	auto result = dispatch({
+		machineId,
+		ScriptValue::fromString("go"),
+		ScriptValue::fromObject({{"flag", ScriptValue::fromBool(true)}})
+	});
+	EXPECT_TRUE(result.asBool());
+}
+
+TEST_F(FsmModuleTest, DispatchWithNullPayload) {
+	auto mod = createFsmModule();
+	auto create = findFsmFunction(mod, "create");
+	auto transition = findFsmFunction(mod, "transition");
+	auto dispatch = findFsmFunction(mod, "dispatch");
+
+	auto machineId = create({
+		ScriptValue::fromString("null_payload"),
+		ScriptValue::fromString("idle")
+	});
+	ASSERT_TRUE(machineId.isString());
+
+	transition({
+		machineId,
+		ScriptValue::fromString("idle"),
+		ScriptValue::fromString("active"),
+		ScriptValue::fromString("go")
+	});
+
+	auto result = dispatch({
+		machineId,
+		ScriptValue::fromString("go"),
+		ScriptValue::fromObject({{"data", ScriptValue::null()}})
+	});
+	EXPECT_TRUE(result.asBool());
+}
+
+TEST_F(FsmModuleTest, DispatchWithNestedArrayPayload) {
+	auto mod = createFsmModule();
+	auto create = findFsmFunction(mod, "create");
+	auto transition = findFsmFunction(mod, "transition");
+	auto dispatch = findFsmFunction(mod, "dispatch");
+
+	auto machineId = create({
+		ScriptValue::fromString("nested_arr"),
+		ScriptValue::fromString("idle")
+	});
+	ASSERT_TRUE(machineId.isString());
+
+	transition({
+		machineId,
+		ScriptValue::fromString("idle"),
+		ScriptValue::fromString("active"),
+		ScriptValue::fromString("go")
+	});
+
+	auto result = dispatch({
+		machineId,
+		ScriptValue::fromString("go"),
+		ScriptValue::fromArray({
+			ScriptValue::fromArray({ScriptValue::fromInt(1), ScriptValue::fromInt(2)}),
+			ScriptValue::fromObject({{"key", ScriptValue::fromString("val")}})
+		})
+	});
+	EXPECT_TRUE(result.asBool());
+}
