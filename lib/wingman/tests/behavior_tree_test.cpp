@@ -713,3 +713,39 @@ TEST(RetryNodeTest, AllFailuresReturnsFailure) {
     EXPECT_EQ(retry->tick(), NodeStatus::FAILURE);
     EXPECT_EQ(attempts, 3);  // initial + 2 retries
 }
+
+// ========== getName Coverage ==========
+
+TEST(RepeatNodeTest, GetName) {
+    auto child = std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; });
+    RepeatNode node(child, 3);
+    EXPECT_EQ(node.getName(), "Repeat");
+}
+
+TEST(RetryNodeTest, GetName) {
+    auto child = std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; });
+    RetryNode node(child, 3);
+    EXPECT_EQ(node.getName(), "Retry");
+}
+
+TEST(ActionNodeTest, GetName) {
+    ActionNode node("my_action", [](BehaviorContext&) { return NodeStatus::SUCCESS; });
+    EXPECT_EQ(node.getName(), "my_action");
+}
+
+TEST(WaitNodeTest, GetName) {
+    WaitNode node(1000);
+    EXPECT_EQ(node.getName(), "Wait");
+}
+
+TEST(DelayNodeTest, GetName) {
+    auto child = std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; });
+    DelayNode node(child, 1000);
+    EXPECT_EQ(node.getName(), "Delay");
+}
+
+TEST(InverterNodeTest, GetName) {
+    auto child = std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; });
+    InverterNode node(child);
+    EXPECT_EQ(node.getName(), "Inverter");
+}
