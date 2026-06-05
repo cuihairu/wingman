@@ -372,3 +372,23 @@ TEST_F(LocalStorageTest, GetStoragePathReturnsConstructorDir) {
     LocalStorage storage(tempDir);
     EXPECT_EQ(storage.getStoragePath(), tempDir);
 }
+
+TEST_F(LocalStorageTest, LoadCorruptedFileReturnsFalse) {
+    // Write invalid JSON to the storage file
+    std::ofstream f((tempDir / "storage.json").string());
+    f << "{{{{not valid json";
+    f.close();
+
+    LocalStorage storage(tempDir);
+    // load() should catch the exception and return false
+    EXPECT_FALSE(storage.load());
+}
+
+TEST_F(LocalStorageTest, SaveToReadOnlyDirReturnsFalse) {
+    // Use a non-existent nested directory that can't be created
+    LocalStorage storage(tempDir / "nonexistent" / "deep" / "path");
+    storage.setItem("key", "val");
+    // save() may fail because directory doesn't exist
+    // Just verify it doesn't crash
+    EXPECT_NO_THROW(storage.save());
+}

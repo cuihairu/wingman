@@ -435,3 +435,49 @@ TEST(HumanTest, SetGlobalKeyboardConfig) {
     EXPECT_EQ(retrieved.keyDownDelayMax, 20);
     EXPECT_EQ(retrieved.typeDelayMin, 30);
 }
+
+// -- HumanMouse::randomDelay with delay disabled --
+
+TEST(HumanMouseTest, RandomDelayDisabledUsesAverage) {
+    HumanMouse mouse;
+    HumanMouseConfig config;
+    config.enableRandomDelay = false;
+    mouse.setConfig(config);
+
+    auto start = std::chrono::steady_clock::now();
+    mouse.randomDelay(10, 20);
+    auto end = std::chrono::steady_clock::now();
+
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    // When disabled, uses average = (10+20)/2 = 15ms
+    EXPECT_GE(duration, 10);
+}
+
+// -- HumanKeyboard::type --
+
+TEST(HumanKeyboardTest, TypeDoesNotCrash) {
+    HumanKeyboard keyboard;
+    HumanKeyboardConfig config;
+    config.typeDelayMin = 0;
+    config.typeDelayMax = 1;
+    config.keyDownDelayMin = 0;
+    config.keyDownDelayMax = 1;
+    config.keyDurationMin = 0;
+    config.keyDurationMax = 1;
+    keyboard.setConfig(config);
+    // type() calls keyPress for each character; just verify no crash
+    EXPECT_NO_THROW(keyboard.type("ab"));
+}
+
+TEST(HumanKeyboardTest, TypeWithRandomCaseDoesNotCrash) {
+    HumanKeyboard keyboard;
+    HumanKeyboardConfig config;
+    config.typeDelayMin = 0;
+    config.typeDelayMax = 1;
+    config.keyDownDelayMin = 0;
+    config.keyDownDelayMax = 1;
+    config.keyDurationMin = 0;
+    config.keyDurationMax = 1;
+    keyboard.setConfig(config);
+    EXPECT_NO_THROW(keyboard.type("abc", true));
+}
