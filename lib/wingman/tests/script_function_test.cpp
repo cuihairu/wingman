@@ -887,6 +887,20 @@ TEST(ScreenModuleFunctionsTest, FindColorsWithObjectColor) {
     EXPECT_TRUE(result.isArray());
 }
 
+TEST(ScreenModuleFunctionsTest, FindColorWithStringColorFallback) {
+    auto fn = findFunction("screen", "findColor");
+    ASSERT_FALSE(fn.name.empty());
+    // String color triggers toColor fallback (not int, not object)
+    auto region = ScriptValue::fromObject({
+        {"x", ScriptValue::fromInt(0)},
+        {"y", ScriptValue::fromInt(0)},
+        {"width", ScriptValue::fromInt(10)},
+        {"height", ScriptValue::fromInt(10)}
+    });
+    auto result = fn({ScriptValue::fromString("red"), region});
+    EXPECT_TRUE(result.isArray());
+}
+
 TEST(ScreenModuleFunctionsTest, GetScreenWidth) {
     auto fn = findFunction("screen", "getScreenWidth");
     ASSERT_FALSE(fn.name.empty());
