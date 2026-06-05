@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include "wingman/game_profile.hpp"
+#include <filesystem>
+#include <fstream>
 
 using namespace wingman;
 
@@ -493,4 +495,146 @@ TEST(GameProfileManagerTest, ImportInvalidJsonReturnsFalse) {
 TEST(GameProfileManagerTest, ExportProfilePackageNonexistentReturnsFalse) {
     auto& mgr = GameProfileManager::instance();
     EXPECT_FALSE(mgr.exportProfilePackage("nonexistent_pkg", "/tmp/pkg.json"));
+}
+
+// ========== Import/Export Package Tests ==========
+
+TEST(GameProfileManagerTest, ExportAndImportProfilePackage) {
+    auto& mgr = GameProfileManager::instance();
+
+    GameProfile profile;
+    profile.id = "test_pkg_roundtrip";
+    profile.name = "Package Test";
+    profile.window.title = "PkgWindow";
+    profile.window.processName = "pkg.exe";
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    auto tempDir = std::filesystem::temp_directory_path() / "wingman_pkg_test";
+    std::filesystem::create_directories(tempDir);
+    std::string pkgPath = (tempDir / "profile.json").string();
+
+    EXPECT_TRUE(mgr.exportProfilePackage("test_pkg_roundtrip", pkgPath));
+    EXPECT_TRUE(std::filesystem::exists(pkgPath));
+
+    // Remove original, re-import from file
+    mgr.deleteProfile("test_pkg_roundtrip");
+    EXPECT_FALSE(mgr.hasProfile("test_pkg_roundtrip"));
+
+    EXPECT_TRUE(mgr.importProfilePackage(pkgPath));
+    EXPECT_TRUE(mgr.hasProfile("test_pkg_roundtrip"));
+
+    mgr.deleteProfile("test_pkg_roundtrip");
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST(GameProfileManagerTest, ImportProfilePackageNonexistentFile) {
+    auto& mgr = GameProfileManager::instance();
+    EXPECT_FALSE(mgr.importProfilePackage("/nonexistent/path/profile.json"));
+}
+
+TEST(GameProfileManagerTest, ImportProfileFromJsonWithEmptyIdOverride) {
+    auto& mgr = GameProfileManager::instance();
+
+    std::string json = R"({
+        "id": "original_id",
+        "name": "Override Test",
+        "window": {"title": "OverrideWnd"}
+    })";
+
+    // Empty id override should keep original id
+    EXPECT_TRUE(mgr.importProfileFromJson(json, ""));
+    EXPECT_TRUE(mgr.hasProfile("original_id"));
+    mgr.deleteProfile("original_id");
+}
+
+TEST(GameProfileManagerTest, ImportProfileFromJsonWithColorsImagesTriggersScripts) {
+    auto& mgr = GameProfileManager::instance();
+
+    std::string json = R"({
+        "id": "test_import_full",
+        "name": "Full Import",
+        "version": "2.0",
+        "description": "Full profile import",
+        "window": {"title": "FullWnd", "className": "WndClass", "processName": "full.exe", "exactMatch": true, "fullscreen": true},
+        "colors": [{"name": "red", "r": 255, "g": 0, "b": 0, "tolerance": 10}],
+        "images": [{"name": "btn", "path": "btn.png", "threshold": 0.9, "preload": true}],
+        "triggers": [{"name": "trig", "type": "color", "action": "click", "target": "100,200", "interval": 500, "enabled": true}],
+        "scripts": [{"name": "scr", "path": "scr.lua", "autoStart": true, "restartOnCrash": false, "priority": 3}],
+        "settings": {"key1": "val1", "key2": "val2"}
+    })";
+
+    EXPECT_TRUE(mgr.importProfileFromJson(json, "test_import_full"));
+    auto* p = mgr.getProfile("test_import_full");
+    ASSERT_NE(p, nullptr);
+    EXPECT_EQ(p->name, "Full Import");
+    EXPECT_EQ(p->version, "2.0");
+    EXPECT_EQ(p->description, "Full profile import");
+    EXPECT_EQ(p->window.className, "WndClass");
+    EXPECT_TRUE(p->window.exactMatch);
+    EXPECT_TRUE(p->window.fullscreen);
+    EXPECT_EQ(p->colors.size(), 1u);
+    EXPECT_EQ(p->colors[0].name, "red");
+    EXPECT_EQ(p->images.size(), 1u);
+    EXPECT_EQ(p->images[0].name, "btn");
+    EXPECT_EQ(p->triggers.size(), 1u);
+    EXPECT_EQ(p->triggers[0].name, "trig");
+    EXPECT_EQ(p->scripts.size(), 1u);
+    EXPECT_EQ(p->scripts[0].name, "scr");
+    EXPECT_EQ(p->settings.size(), 2u);
+
+    mgr.deleteProfile("test_import_full");
+}
+
+// ========== INI Format Parsing ==========
+
+TEST(GameProfileManagerTest, LoadProfileFromIniFormat) {
+    auto& mgr = GameProfileManager::instance();
+
+    auto tempDir = std::filesystem::temp_directory_path() / "wingman_ini_test";
+    std::filesystem::create_directories(tempDir);
+    std::string iniPath = (tempDir / "profile.ini").string();
+
+    std::ofstream f(iniPath);
+    f << "# comment line\n";
+    f << "; another comment\n";
+    f << "[profile]\n";
+    f << "id = ini_test_profile\n";
+    f << "name = INI Test\n";
+    f << "version = 1.0\n";
+    f << "description = Test INI parsing\n";
+    f << "[window]\n";
+    f << "title = IniWindow\n";
+    f << "process = ini.exe\n";
+    f << "exact_match = true\n";
+    f.close();
+
+    EXPECT_TRUE(mgr.loadProfileFromFile(iniPath));
+    EXPECT_TRUE(mgr.hasProfile("ini_test_profile"));
+
+    auto* p = mgr.getProfile("ini_test_profile");
+    ASSERT_NE(p, nullptr);
+    EXPECT_EQ(p->name, "INI Test");
+    EXPECT_EQ(p->window.title, "IniWindow");
+    EXPECT_EQ(p->window.processName, "ini.exe");
+    EXPECT_TRUE(p->window.exactMatch);
+
+    mgr.deleteProfile("ini_test_profile");
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST(GameProfileManagerTest, LoadProfileFromInvalidFileReturnsFalse) {
+    auto& mgr = GameProfileManager::instance();
+    EXPECT_FALSE(mgr.loadProfileFromFile("/nonexistent/path.json"));
+}
+
+TEST(GameProfileManagerTest, SaveProfileWithEmptyIdReturnsFalse) {
+    auto& mgr = GameProfileManager::instance();
+    GameProfile profile;
+    profile.name = "No ID";
+    EXPECT_FALSE(mgr.saveProfile(profile));
+}
+
+TEST(GameProfileManagerTest, LoadProfileFromDirNonexistent) {
+    auto& mgr = GameProfileManager::instance();
+    EXPECT_FALSE(mgr.loadProfileFromDir("/nonexistent_dir_xyz"));
 }
