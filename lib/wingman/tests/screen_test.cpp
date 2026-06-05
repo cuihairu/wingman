@@ -359,3 +359,94 @@ TEST(ScreenTest, GetScreenDimensionsOnMac) {
 }
 
 #endif // __APPLE__
+
+// ========== Bitmap move semantics ==========
+
+TEST(ScreenTest, BitmapMoveConstructor) {
+    Bitmap bmp1(50, 50);
+    bmp1.setPixel(10, 10, Color(255, 128, 64));
+    Bitmap bmp2(std::move(bmp1));
+    EXPECT_EQ(bmp2.getWidth(), 50);
+    EXPECT_EQ(bmp2.getHeight(), 50);
+    Color c = bmp2.getPixel(10, 10);
+    EXPECT_EQ(c.r, 255);
+    EXPECT_EQ(c.g, 128);
+    EXPECT_EQ(c.b, 64);
+    EXPECT_EQ(bmp1.getWidth(), 0);
+    EXPECT_EQ(bmp1.getHeight(), 0);
+}
+
+TEST(ScreenTest, BitmapMoveAssignment) {
+    Bitmap bmp1(30, 30);
+    bmp1.setPixel(5, 5, Color(10, 20, 30));
+    Bitmap bmp2(10, 10);
+    bmp2 = std::move(bmp1);
+    EXPECT_EQ(bmp2.getWidth(), 30);
+    EXPECT_EQ(bmp2.getHeight(), 30);
+    Color c = bmp2.getPixel(5, 5);
+    EXPECT_EQ(c.r, 10);
+    EXPECT_EQ(c.g, 20);
+    EXPECT_EQ(c.b, 30);
+    EXPECT_EQ(bmp1.getWidth(), 0);
+}
+
+TEST(ScreenTest, BitmapCopyAssignment) {
+    Bitmap bmp1(20, 20);
+    bmp1.setPixel(3, 3, Color(100, 150, 200));
+    Bitmap bmp2(5, 5);
+    bmp2 = bmp1;
+    EXPECT_EQ(bmp2.getWidth(), 20);
+    EXPECT_EQ(bmp2.getHeight(), 20);
+    Color c = bmp2.getPixel(3, 3);
+    EXPECT_EQ(c.r, 100);
+    EXPECT_EQ(c.g, 150);
+    EXPECT_EQ(c.b, 200);
+}
+
+TEST(ScreenTest, BitmapSelfAssignment) {
+    Bitmap bmp(15, 15);
+    bmp.setPixel(7, 7, Color(42, 42, 42));
+    bmp = bmp;
+    EXPECT_EQ(bmp.getWidth(), 15);
+    Color c = bmp.getPixel(7, 7);
+    EXPECT_EQ(c.r, 42);
+}
+
+TEST(ScreenTest, BitmapGetPixelOutOfBounds) {
+    Bitmap bmp(10, 10);
+    Color c = bmp.getPixel(-1, 0);
+    EXPECT_EQ(c.r, 0);
+    EXPECT_EQ(c.g, 0);
+    EXPECT_EQ(c.b, 0);
+    c = bmp.getPixel(10, 0);
+    EXPECT_EQ(c.r, 0);
+    c = bmp.getPixel(0, -1);
+    EXPECT_EQ(c.r, 0);
+    c = bmp.getPixel(0, 10);
+    EXPECT_EQ(c.r, 0);
+}
+
+TEST(ScreenTest, BitmapSetPixelOutOfBounds) {
+    Bitmap bmp(10, 10);
+    // Should not crash
+    bmp.setPixel(-1, 0, Color(255, 0, 0));
+    bmp.setPixel(10, 0, Color(255, 0, 0));
+    bmp.setPixel(0, -1, Color(255, 0, 0));
+    bmp.setPixel(0, 10, Color(255, 0, 0));
+}
+
+TEST(ScreenTest, BitmapFromNonexistentFileReturnsNull) {
+    auto bmp = Bitmap::fromFile("/nonexistent/path/image.png");
+    EXPECT_EQ(bmp, nullptr);
+}
+
+TEST(ScreenTest, BitmapGetDataReturnsValidPointer) {
+    Bitmap bmp(5, 5);
+    EXPECT_NE(bmp.getData(), nullptr);
+}
+
+TEST(ScreenTest, BitmapWidthHeight) {
+    Bitmap bmp(10, 20);
+    EXPECT_EQ(bmp.getWidth(), 10);
+    EXPECT_EQ(bmp.getHeight(), 20);
+}
