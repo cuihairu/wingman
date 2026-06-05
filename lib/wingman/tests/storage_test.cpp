@@ -4,6 +4,8 @@
 #include "wingman/storage/storage_all.hpp"
 
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 
 using namespace wingman;
 
@@ -306,4 +308,67 @@ TEST_F(LocalStorageTest, PersistMultipleItems) {
         EXPECT_EQ(*storage.getItem("c"), "3");
         EXPECT_EQ(storage.length(), 3u);
     }
+}
+
+TEST_F(LocalStorageTest, NamespaceUsesSeparateFile) {
+    {
+        LocalStorage storage(tempDir);
+        storage.setNamespace("my_ns");
+        storage.setItem("key1", "val1");
+    }
+    // The file should be named my_ns.json (saved with namespace prefix)
+    std::string expectedFile = (tempDir / "my_ns.json").string();
+    EXPECT_TRUE(std::filesystem::exists(expectedFile));
+
+    // Verify file content contains the namespaced key
+    std::ifstream file(expectedFile);
+    std::string content((std::istreambuf_iterator<char>(file)),
+                        std::istreambuf_iterator<char>());
+    EXPECT_NE(content.find("my_ns:key1"), std::string::npos);
+    EXPECT_NE(content.find("val1"), std::string::npos);
+}
+
+TEST_F(LocalStorageTest, DefaultNamespaceUsesStorageJson) {
+    {
+        LocalStorage storage(tempDir);
+        // No namespace set — should use storage.json
+        storage.setItem("default_key", "default_val");
+    }
+    std::string expectedFile = (tempDir / "storage.json").string();
+    EXPECT_TRUE(std::filesystem::exists(expectedFile));
+
+    {
+        LocalStorage storage(tempDir);
+        auto val = storage.getItem("default_key");
+        ASSERT_TRUE(val.has_value());
+        EXPECT_EQ(*val, "default_val");
+    }
+}
+
+TEST_F(LocalStorageTest, RemoveItemFromNamespacedStorage) {
+    LocalStorage storage(tempDir);
+    storage.setNamespace("rm_ns");
+    storage.setItem("to_remove", "value");
+    EXPECT_TRUE(storage.hasItem("to_remove"));
+    EXPECT_TRUE(storage.removeItem("to_remove"));
+    EXPECT_FALSE(storage.hasItem("to_remove"));
+}
+
+TEST_F(LocalStorageTest, ClearNamespacedStorage) {
+    LocalStorage storage(tempDir);
+    storage.setNamespace("clear_ns");
+    storage.setItem("a", "1");
+    storage.setItem("b", "2");
+    storage.clear();
+    EXPECT_EQ(storage.length(), 0u);
+}
+
+TEST_F(LocalStorageTest, GetNamespaceDefaultEmpty) {
+    LocalStorage storage(tempDir);
+    EXPECT_TRUE(storage.getNamespace().empty());
+}
+
+TEST_F(LocalStorageTest, GetStoragePathReturnsConstructorDir) {
+    LocalStorage storage(tempDir);
+    EXPECT_EQ(storage.getStoragePath(), tempDir);
 }

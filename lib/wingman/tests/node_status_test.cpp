@@ -182,3 +182,85 @@ TEST(ServerCommandDataTest, AllCommands) {
         EXPECT_EQ(restored.command, cmd);
     }
 }
+
+// ========== Invalid JSON Error Paths ==========
+
+TEST(GameWindowStatusTest, FromJsonInvalidReturnsDefault) {
+    auto status = GameWindowStatus::fromJson("not valid json {{{");
+    EXPECT_TRUE(status.title.empty());
+    EXPECT_TRUE(status.processName.empty());
+    EXPECT_EQ(status.handle, uintptr_t(0));
+    EXPECT_EQ(status.x, 0);
+    EXPECT_EQ(status.y, 0);
+    EXPECT_EQ(status.width, 0);
+    EXPECT_EQ(status.height, 0);
+    EXPECT_FALSE(status.isForeground);
+}
+
+TEST(GameWindowStatusTest, FromJsonEmptyObject) {
+    auto status = GameWindowStatus::fromJson("{}");
+    EXPECT_TRUE(status.title.empty());
+    EXPECT_EQ(status.handle, uintptr_t(0));
+}
+
+TEST(ScriptStatusTest, FromJsonInvalidReturnsDefault) {
+    auto status = ScriptStatus::fromJson("broken json");
+    EXPECT_TRUE(status.name.empty());
+    EXPECT_TRUE(status.state.empty());
+    EXPECT_EQ(status.uptimeSeconds, 0u);
+    EXPECT_TRUE(status.lastError.empty());
+}
+
+TEST(ScriptStatusTest, FromJsonEmptyObject) {
+    auto status = ScriptStatus::fromJson("{}");
+    EXPECT_TRUE(status.name.empty());
+}
+
+TEST(NodeHeartbeatTest, FromJsonInvalidReturnsDefault) {
+    auto hb = NodeHeartbeat::fromJson("{invalid");
+    EXPECT_TRUE(hb.nodeId.empty());
+    EXPECT_TRUE(hb.hostname.empty());
+    EXPECT_EQ(hb.timestamp, 0);
+    EXPECT_TRUE(hb.games.empty());
+    EXPECT_TRUE(hb.scripts.empty());
+}
+
+TEST(NodeHeartbeatTest, FromJsonEmptyObject) {
+    auto hb = NodeHeartbeat::fromJson("{}");
+    EXPECT_TRUE(hb.nodeId.empty());
+}
+
+TEST(ServerCommandDataTest, FromJsonInvalidReturnsDefault) {
+    auto data = ServerCommandData::fromJson("not json");
+    EXPECT_EQ(data.command, ServerCommand::None);
+    EXPECT_EQ(data.timestamp, 0);
+    EXPECT_TRUE(data.scriptPath.empty());
+    EXPECT_TRUE(data.configData.empty());
+}
+
+TEST(ServerCommandDataTest, FromJsonEmptyObject) {
+    auto data = ServerCommandData::fromJson("{}");
+    EXPECT_EQ(data.command, ServerCommand::None);
+}
+
+TEST(ServerCommandDataTest, FromJsonUnknownCommand) {
+    auto data = ServerCommandData::fromJson(R"({"command":"unknown_command","timestamp":100})");
+    // Unknown command string should leave command as default None
+    EXPECT_EQ(data.command, ServerCommand::None);
+    EXPECT_EQ(data.timestamp, 100);
+}
+
+TEST(NodeHeartbeatTest, FromJsonUnknownStatus) {
+    auto hb = NodeHeartbeat::fromJson(R"({"nodeId":"n1","status":"unknown_state"})");
+    // Unknown status string should leave status as default Online
+    EXPECT_EQ(hb.nodeId, "n1");
+    EXPECT_EQ(hb.status, NodeState::Online);
+}
+
+TEST(NodeHeartbeatTest, FromJsonNonArrayGamesAndScripts) {
+    // games/scripts fields that are not arrays should be ignored
+    auto hb = NodeHeartbeat::fromJson(R"({"nodeId":"n2","games":"not_array","scripts":42})");
+    EXPECT_EQ(hb.nodeId, "n2");
+    EXPECT_TRUE(hb.games.empty());
+    EXPECT_TRUE(hb.scripts.empty());
+}

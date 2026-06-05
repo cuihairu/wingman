@@ -638,3 +638,131 @@ TEST(GameProfileManagerTest, LoadProfileFromDirNonexistent) {
     auto& mgr = GameProfileManager::instance();
     EXPECT_FALSE(mgr.loadProfileFromDir("/nonexistent_dir_xyz"));
 }
+
+TEST(GameProfileManagerTest, ScanProfilesDirectory) {
+    auto& mgr = GameProfileManager::instance();
+
+    auto tempDir = std::filesystem::temp_directory_path() / "wingman_scan_test";
+    std::filesystem::create_directories(tempDir);
+
+    // Create a subdirectory with a profile config
+    std::string profileDir = (tempDir / "test_scan_profile").string();
+    std::filesystem::create_directories(profileDir);
+    std::string configPath = profileDir + "/profile.json";
+
+    std::ofstream f(configPath);
+    f << R"({"id":"scan_test_123","name":"Scan Test","window":{"title":"ScanWnd"}})";
+    f.close();
+
+    mgr.setProfilesDirectory(tempDir.string());
+
+    EXPECT_TRUE(mgr.hasProfile("scan_test_123"));
+    mgr.deleteProfile("scan_test_123");
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST(GameProfileManagerTest, LoadProfileFromDirWithValidDir) {
+    auto& mgr = GameProfileManager::instance();
+
+    auto tempDir = std::filesystem::temp_directory_path() / "wingman_loaddir_test";
+    std::filesystem::create_directories(tempDir);
+    std::string configPath = (tempDir / "profile.json").string();
+
+    std::ofstream f(configPath);
+    f << R"({"id":"loaddir_test_456","name":"LoadDir Test","window":{"title":"LoadDirWnd"}})";
+    f.close();
+
+    EXPECT_TRUE(mgr.loadProfileFromDir(tempDir.string()));
+    EXPECT_TRUE(mgr.hasProfile("loaddir_test_456"));
+
+    mgr.deleteProfile("loaddir_test_456");
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST(GameProfileManagerTest, ScanProfilesDirectoryNonexistentDoesNotCrash) {
+    auto& mgr = GameProfileManager::instance();
+    auto origDir = mgr.getProfilesDirectory();
+    mgr.setProfilesDirectory("/nonexistent_scan_dir_xyz");
+    // Should not crash, just return
+    mgr.setProfilesDirectory(origDir);
+}
+
+TEST(GameProfileManagerTest, ImportProfileFromJsonInvalidWindow) {
+    auto& mgr = GameProfileManager::instance();
+    // JSON with missing "window" field should fail validation (no title or processName)
+    std::string json = R"({"id":"no_window_imp","name":"No Window"})";
+    EXPECT_FALSE(mgr.importProfileFromJson(json, "no_window_imp"));
+}
+
+TEST(GameProfileManagerTest, SaveProfileWithEmptyNameReturnsFalse) {
+    auto& mgr = GameProfileManager::instance();
+    GameProfile profile;
+    profile.id = "no_name_save";
+    profile.window.title = "SomeWnd";
+    // name is empty, should fail validation
+    EXPECT_FALSE(mgr.saveProfile(profile));
+}
+
+TEST(GameProfileManagerTest, ExportAndReimportWithTriggerIntervalAndEnabled) {
+    auto& mgr = GameProfileManager::instance();
+
+    GameProfile profile;
+    profile.id = "test_trigger_fields";
+    profile.name = "Trigger Fields";
+    profile.window.title = "TrigWnd";
+
+    GameTriggerConfig trigger;
+    trigger.name = "auto_detect";
+    trigger.type = "image";
+    trigger.action = "click";
+    trigger.target = "btn.png";
+    trigger.interval = 750;
+    trigger.enabled = false;
+    profile.triggers.push_back(trigger);
+
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    std::string json = mgr.exportProfileToJson("test_trigger_fields");
+    EXPECT_FALSE(json.empty());
+
+    // Re-import with override id
+    EXPECT_TRUE(mgr.importProfileFromJson(json, "test_trigger_fields_reimport"));
+    auto* p = mgr.getProfile("test_trigger_fields_reimport");
+    ASSERT_NE(p, nullptr);
+    EXPECT_EQ(p->triggers.size(), 1u);
+    EXPECT_EQ(p->triggers[0].interval, 750);
+    EXPECT_FALSE(p->triggers[0].enabled);
+
+    mgr.deleteProfile("test_trigger_fields");
+    mgr.deleteProfile("test_trigger_fields_reimport");
+}
+
+TEST(GameProfileManagerTest, ExportAndReimportWithImageThresholdAndPreload) {
+    auto& mgr = GameProfileManager::instance();
+
+    GameProfile profile;
+    profile.id = "test_img_fields";
+    profile.name = "Image Fields";
+    profile.window.title = "ImgWnd";
+
+    ImageConfig img;
+    img.name = "icon";
+    img.path = "icon.png";
+    img.threshold = 0.85;
+    img.preload = true;
+    profile.images.push_back(img);
+
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    std::string json = mgr.exportProfileToJson("test_img_fields");
+    EXPECT_TRUE(mgr.importProfileFromJson(json, "test_img_fields_reimport"));
+
+    auto* p = mgr.getProfile("test_img_fields_reimport");
+    ASSERT_NE(p, nullptr);
+    EXPECT_EQ(p->images.size(), 1u);
+    EXPECT_DOUBLE_EQ(p->images[0].threshold, 0.85);
+    EXPECT_TRUE(p->images[0].preload);
+
+    mgr.deleteProfile("test_img_fields");
+    mgr.deleteProfile("test_img_fields_reimport");
+}

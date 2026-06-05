@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "wingman/config.hpp"
 #include <filesystem>
+#include <fstream>
 
 using namespace wingman;
 
@@ -408,6 +409,77 @@ TEST(ConfigManagerTest, FileRoundtripWithTempDir) {
         EXPECT_EQ(ar.scriptPath, "rt_script.lua");
         EXPECT_EQ(ar.delaySeconds, 3);
     }
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST(ConfigManagerTest, SetNonJsonValueStoredAsString) {
+    auto tempDir = std::filesystem::temp_directory_path() / "wingman_config_test_setstr";
+    std::filesystem::remove_all(tempDir);
+    ConfigManager mgr(tempDir.string());
+
+    // Plain string (not valid JSON) should be stored as-is
+    bool ok = mgr.set("plain_key", "just a plain string");
+    EXPECT_TRUE(ok);
+
+    auto val = mgr.get("plain_key");
+    ASSERT_TRUE(val.has_value());
+    // The value is stored as a JSON string, so it will be quoted
+    EXPECT_NE(val->find("just a plain string"), std::string::npos);
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST(ConfigManagerTest, GetGameConfigListEmpty) {
+    auto tempDir = std::filesystem::temp_directory_path() / "wingman_config_test_emptygames";
+    std::filesystem::remove_all(tempDir);
+    ConfigManager mgr(tempDir.string());
+
+    auto games = mgr.getGameConfigList();
+    // Default config has empty games array
+    EXPECT_TRUE(games.empty());
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST(ConfigManagerTest, WriteGameConfigList) {
+    auto tempDir = std::filesystem::temp_directory_path() / "wingman_config_test_writegames";
+    std::filesystem::remove_all(tempDir);
+    ConfigManager mgr(tempDir.string());
+
+    std::vector<GameConfig> games;
+    GameConfig g1;
+    g1.name = "Game1";
+    g1.path = "/g1";
+    games.push_back(g1);
+    GameConfig g2;
+    g2.name = "Game2";
+    g2.path = "/g2";
+    games.push_back(g2);
+
+    EXPECT_TRUE(mgr.writeGameConfigList(games));
+
+    auto loaded = mgr.getGameConfigList();
+    EXPECT_EQ(loaded.size(), 2u);
+
+    std::filesystem::remove_all(tempDir);
+}
+
+TEST(ConfigManagerTest, ExistingConfigFileIsPreserved) {
+    auto tempDir = std::filesystem::temp_directory_path() / "wingman_config_test_existing";
+    std::filesystem::remove_all(tempDir);
+    std::filesystem::create_directories(tempDir);
+
+    // Write a config file manually
+    std::ofstream f((tempDir / "config.json").string());
+    f << R"({"server":{"host":"custom.host","port":1234},"games":[]})";
+    f.close();
+
+    // Create ConfigManager — should load existing config, not overwrite
+    ConfigManager mgr(tempDir.string());
+    auto srv = mgr.getServerConfig();
+    EXPECT_EQ(srv.host, "custom.host");
+    EXPECT_EQ(srv.port, 1234);
 
     std::filesystem::remove_all(tempDir);
 }
