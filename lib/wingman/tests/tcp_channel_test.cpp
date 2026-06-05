@@ -197,3 +197,155 @@ TEST(TcpChannelTest, IpcMessageWithLargePayload) {
     msg.payload = std::string(10000, 'x');
     EXPECT_EQ(msg.payload.size(), 10000u);
 }
+
+// ========== Server-Client Connection ==========
+
+TEST(TcpChannelTest, ServerClientConnectAndDisconnect) {
+    // Use a random high port to avoid conflicts
+    int port = 19000 + (rand() % 1000);
+
+    TcpChannel server(true, "127.0.0.1", port);
+    TcpChannel client(false, "127.0.0.1", port);
+
+    // Start server in background (accept blocks)
+    std::thread serverThread([&server]() {
+        server.connect("");
+    });
+
+    // Give server time to start listening
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // Client connects
+    EXPECT_TRUE(client.connect(""));
+    EXPECT_TRUE(client.isConnected());
+
+    // Server should now be connected too
+    serverThread.join();
+    EXPECT_TRUE(server.isConnected());
+
+    // Disconnect both
+    client.disconnect();
+    EXPECT_FALSE(client.isConnected());
+
+    server.disconnect();
+    EXPECT_FALSE(server.isConnected());
+}
+
+TEST(TcpChannelTest, SendAndReceiveMessage) {
+    int port = 19500 + (rand() % 1000);
+
+    TcpChannel server(true, "127.0.0.1", port);
+    TcpChannel client(false, "127.0.0.1", port);
+
+    bool received = false;
+    server.setMessageCallback([&](const IpcMessage&) {
+        received = true;
+    });
+
+    // Connect
+    std::thread serverThread([&server]() { server.connect(""); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_TRUE(client.connect(""));
+    serverThread.join();
+
+    // Start receiving on server
+    server.startReceiving();
+
+    // Client sends a message
+    IpcMessage msg;
+    msg.type = IpcMessageType::Request;
+    msg.method = "test.method";
+    msg.payload = R"({"key":"value"})";
+    msg.id = 1;
+    EXPECT_TRUE(client.send(msg));
+
+    // Wait for message to arrive
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Callback should have been invoked (deserialization is stub, so fields may be empty)
+    EXPECT_TRUE(received);
+
+    // Disconnect client first so server's blocking recv() returns 0
+    client.disconnect();
+    server.stopReceiving();
+    server.disconnect();
+}
+
+TEST(TcpChannelTest, SendRequestReturnsNonZeroId) {
+    int port = 19600 + (rand() % 1000);
+
+    TcpChannel server(true, "127.0.0.1", port);
+    TcpChannel client(false, "127.0.0.1", port);
+
+    std::thread serverThread([&server]() { server.connect(""); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_TRUE(client.connect(""));
+    serverThread.join();
+
+    uint64_t id = client.sendRequest("test.method", "payload");
+    EXPECT_GT(id, 0u);
+
+    client.disconnect();
+    server.disconnect();
+}
+
+TEST(TcpChannelTest, SendEventReturnsTrue) {
+    int port = 19700 + (rand() % 1000);
+
+    TcpChannel server(true, "127.0.0.1", port);
+    TcpChannel client(false, "127.0.0.1", port);
+
+    std::thread serverThread([&server]() { server.connect(""); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_TRUE(client.connect(""));
+    serverThread.join();
+
+    EXPECT_TRUE(client.sendEvent("test.event", "event data"));
+
+    client.disconnect();
+    server.disconnect();
+}
+
+TEST(TcpChannelTest, ConnectWithEndpointString) {
+    int port = 19800 + (rand() % 1000);
+
+    TcpChannel server(true, "127.0.0.1", port);
+    TcpChannel client(false, "127.0.0.1", port);
+
+    std::thread serverThread([&server]() {
+        server.connect("");
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // Connect with endpoint string
+    std::string endpoint = "127.0.0.1:" + std::to_string(port);
+    EXPECT_TRUE(client.connect(endpoint));
+    EXPECT_TRUE(client.isConnected());
+
+    serverThread.join();
+    client.disconnect();
+    server.disconnect();
+}
+
+TEST(TcpChannelTest, ConnectAlreadyConnectedReturnsTrue) {
+    int port = 19900 + (rand() % 1000);
+
+    TcpChannel server(true, "127.0.0.1", port);
+    TcpChannel client(false, "127.0.0.1", port);
+
+    std::thread serverThread([&server]() { server.connect(""); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_TRUE(client.connect(""));
+    serverThread.join();
+
+    // Second connect should return true
+    EXPECT_TRUE(client.connect(""));
+
+    client.disconnect();
+    server.disconnect();
+}
+
+// Note: ErrorCallbackInvokedOnBindFailure is not testable on Windows because
+// SO_REUSEADDR allows multiple sockets to bind the same port.
+// Note: ClientConnectToNonExistentServerTimesOut removed — connect() retries
+// 50 times with ~2s system timeout each, causing ~100s test duration.
