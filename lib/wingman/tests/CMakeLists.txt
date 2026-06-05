@@ -48,6 +48,7 @@ if(BUILD_CORE_TESTS)
         game_profile_io_test.cpp
         tcp_channel_test.cpp
         trigger_engine_test.cpp
+        performance_test.cpp
     )
 
     if(WIN32)

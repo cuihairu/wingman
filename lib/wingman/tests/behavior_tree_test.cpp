@@ -366,3 +366,214 @@ TEST(BehaviorTreeManagerTest, CreateDuplicateReturnsExisting) {
     EXPECT_EQ(tree1, tree2);
     mgr.removeTree("dup_tree");
 }
+
+// ========== BehaviorContext get<T> template specializations ==========
+
+TEST(BehaviorContextTest, GetStringReturnsValue) {
+    BehaviorContext ctx;
+    ctx.variables["key"] = "hello";
+    EXPECT_EQ(ctx.get<std::string>("key", "default"), "hello");
+}
+
+TEST(BehaviorContextTest, GetStringReturnsDefault) {
+    BehaviorContext ctx;
+    EXPECT_EQ(ctx.get<std::string>("missing", "default"), "default");
+}
+
+TEST(BehaviorContextTest, GetDoubleReturnsValue) {
+    BehaviorContext ctx;
+    ctx.numbers["val"] = 3.14;
+    EXPECT_DOUBLE_EQ(ctx.get<double>("val", 0.0), 3.14);
+}
+
+TEST(BehaviorContextTest, GetDoubleReturnsDefault) {
+    BehaviorContext ctx;
+    EXPECT_DOUBLE_EQ(ctx.get<double>("missing", 1.0), 1.0);
+}
+
+TEST(BehaviorContextTest, GetBoolReturnsValue) {
+    BehaviorContext ctx;
+    ctx.flags["flag"] = true;
+    EXPECT_TRUE(ctx.get<bool>("flag", false));
+}
+
+TEST(BehaviorContextTest, GetBoolReturnsDefault) {
+    BehaviorContext ctx;
+    EXPECT_FALSE(ctx.get<bool>("missing", false));
+}
+
+// ========== Sequence/Selector reset ==========
+
+TEST(SequenceNodeTest, ResetDoesNotCrash) {
+    auto seq = std::make_shared<SequenceNode>();
+    seq->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }));
+    seq->tick();
+    EXPECT_NO_THROW(seq->reset());
+}
+
+TEST(SelectorNodeTest, ResetDoesNotCrash) {
+    auto sel = std::make_shared<SelectorNode>();
+    sel->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::FAILURE; }));
+    sel->tick();
+    EXPECT_NO_THROW(sel->reset());
+}
+
+TEST(SelectorNodeTest, GetName) {
+    SelectorNode sel("MySel");
+    EXPECT_EQ(sel.getName(), "MySel");
+}
+
+// ========== CheckNode all ops ==========
+
+TEST(CheckNodeTest, NotEqual) {
+    CheckNode check("x", 10.0, CheckNode::Op::NOT_EQUAL);
+    EXPECT_EQ(check.getName(), "Check");
+    check.tick();
+}
+
+TEST(CheckNodeTest, Greater) {
+    CheckNode check("x", 5.0, CheckNode::Op::GREATER);
+    check.tick();
+}
+
+TEST(CheckNodeTest, Less) {
+    CheckNode check("x", 5.0, CheckNode::Op::LESS);
+    check.tick();
+}
+
+TEST(CheckNodeTest, GreaterEqual) {
+    CheckNode check("x", 5.0, CheckNode::Op::GREATER_EQUAL);
+    check.tick();
+}
+
+TEST(CheckNodeTest, LessEqual) {
+    CheckNode check("x", 5.0, CheckNode::Op::LESS_EQUAL);
+    check.tick();
+}
+
+// ========== ParallelNode edge cases ==========
+
+TEST(ParallelNodeTest, SucceedOnAllWithRunning) {
+    auto par = std::make_shared<ParallelNode>("", ParallelNode::Policy::SUCCEED_ON_ALL);
+    par->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }));
+    par->addChild(std::make_shared<ActionNode>("b", [](BehaviorContext&) { return NodeStatus::RUNNING; }));
+    EXPECT_EQ(par->tick(), NodeStatus::RUNNING);
+}
+
+TEST(ParallelNodeTest, SucceedOnOneWithRunning) {
+    auto par = std::make_shared<ParallelNode>("", ParallelNode::Policy::SUCCEED_ON_ONE);
+    par->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::RUNNING; }));
+    par->addChild(std::make_shared<ActionNode>("b", [](BehaviorContext&) { return NodeStatus::RUNNING; }));
+    EXPECT_EQ(par->tick(), NodeStatus::RUNNING);
+}
+
+TEST(ParallelNodeTest, FailOnAllWithRunning) {
+    auto par = std::make_shared<ParallelNode>("", ParallelNode::Policy::FAIL_ON_ALL);
+    par->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::RUNNING; }));
+    EXPECT_EQ(par->tick(), NodeStatus::RUNNING);
+}
+
+TEST(ParallelNodeTest, FailOnOneWithRunning) {
+    auto par = std::make_shared<ParallelNode>("", ParallelNode::Policy::FAIL_ON_ONE);
+    par->addChild(std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::RUNNING; }));
+    EXPECT_EQ(par->tick(), NodeStatus::RUNNING);
+}
+
+// ========== RepeatNode edge cases ==========
+
+TEST(RepeatNodeTest, ResetDoesNotCrash) {
+    auto repeat = std::make_shared<RepeatNode>(
+        std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }),
+        3
+    );
+    repeat->tick();
+    EXPECT_NO_THROW(repeat->reset());
+}
+
+TEST(RepeatNodeTest, InfiniteRepeat) {
+    int count = 0;
+    auto repeat = std::make_shared<RepeatNode>(
+        std::make_shared<ActionNode>("a", [&](BehaviorContext&) { count++; return NodeStatus::SUCCESS; }),
+        0  // infinite
+    );
+    for (int i = 0; i < 5; ++i) {
+        EXPECT_EQ(repeat->tick(), NodeStatus::RUNNING);
+    }
+    EXPECT_EQ(count, 5);
+}
+
+// ========== RetryNode edge cases ==========
+
+TEST(RetryNodeTest, ResetDoesNotCrash) {
+    auto retry = std::make_shared<RetryNode>(
+        std::make_shared<ActionNode>("a", [](BehaviorContext&) { return NodeStatus::SUCCESS; }),
+        3
+    );
+    retry->tick();
+    EXPECT_NO_THROW(retry->reset());
+}
+
+TEST(RetryNodeTest, RunningChild) {
+    int attempt = 0;
+    auto retry = std::make_shared<RetryNode>(
+        std::make_shared<ActionNode>("a", [&](BehaviorContext&) {
+            attempt++;
+            return NodeStatus::RUNNING;
+        }),
+        3
+    );
+    EXPECT_EQ(retry->tick(), NodeStatus::RUNNING);
+    EXPECT_EQ(attempt, 1);
+}
+
+// ========== BehaviorTree::reset ==========
+
+TEST(BehaviorTreeTest, ResetDoesNotCrash) {
+    BehaviorTree tree("reset_test");
+    tree.setRoot(std::make_shared<ActionNode>("root", [](BehaviorContext&) { return NodeStatus::SUCCESS; }));
+    tree.tick();
+    EXPECT_NO_THROW(tree.reset());
+}
+
+TEST(BehaviorTreeTest, ResetWithoutRootDoesNotCrash) {
+    BehaviorTree tree("empty_reset");
+    EXPECT_NO_THROW(tree.reset());
+}
+
+// ========== Factory methods ==========
+
+TEST(BehaviorTreeTest, FactoryParallel) {
+    auto par = BehaviorTree::parallel("my_par", ParallelNode::Policy::SUCCEED_ON_ALL);
+    EXPECT_NE(par, nullptr);
+    EXPECT_EQ(par->getName(), "my_par");
+}
+
+TEST(BehaviorTreeTest, FactorySequenceEmptyName) {
+    auto seq = BehaviorTree::sequence("");
+    EXPECT_NE(seq, nullptr);
+    EXPECT_EQ(seq->getName(), "Sequence");
+}
+
+TEST(BehaviorTreeTest, FactorySelectorEmptyName) {
+    auto sel = BehaviorTree::selector("");
+    EXPECT_NE(sel, nullptr);
+    EXPECT_EQ(sel->getName(), "Selector");
+}
+
+TEST(BehaviorTreeTest, FactoryParallelEmptyName) {
+    auto par = BehaviorTree::parallel("");
+    EXPECT_NE(par, nullptr);
+    EXPECT_EQ(par->getName(), "Parallel");
+}
+
+// ========== BehaviorTreeManager startAll/stopAll ==========
+
+TEST(BehaviorTreeManagerTest, StartAllDoesNotCrash) {
+    auto& mgr = BehaviorTreeManager::instance();
+    EXPECT_NO_THROW(mgr.startAll());
+}
+
+TEST(BehaviorTreeManagerTest, StopAllDoesNotCrash) {
+    auto& mgr = BehaviorTreeManager::instance();
+    EXPECT_NO_THROW(mgr.stopAll());
+}
