@@ -450,3 +450,99 @@ TEST(ScreenTest, BitmapWidthHeight) {
     EXPECT_EQ(bmp.getWidth(), 10);
     EXPECT_EQ(bmp.getHeight(), 20);
 }
+
+TEST(ScreenTest, BitmapFromValidPngRoundtrip) {
+    // Create a bitmap with known pixel data
+    Bitmap original(4, 4);
+    original.setPixel(0, 0, Color(255, 0, 0));
+    original.setPixel(1, 0, Color(0, 255, 0));
+    original.setPixel(2, 0, Color(0, 0, 255));
+    original.setPixel(3, 0, Color(255, 255, 255));
+    original.setPixel(0, 1, Color(128, 64, 32));
+    original.setPixel(1, 1, Color(0, 0, 0));
+    original.setPixel(2, 1, Color(100, 150, 200));
+    original.setPixel(3, 1, Color(50, 50, 50));
+
+    const auto tempPath = std::filesystem::temp_directory_path() / "wingman_bmp_roundtrip.png";
+    std::error_code ec;
+    std::filesystem::remove(tempPath, ec);
+
+    ASSERT_TRUE(original.save(tempPath.string()));
+    ASSERT_TRUE(std::filesystem::exists(tempPath));
+
+    auto loaded = Bitmap::fromFile(tempPath.string());
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_EQ(loaded->getWidth(), 4);
+    EXPECT_EQ(loaded->getHeight(), 4);
+
+    // Verify pixel data survives the roundtrip
+    Color c00 = loaded->getPixel(0, 0);
+    EXPECT_EQ(c00.r, 255);
+    EXPECT_EQ(c00.g, 0);
+    EXPECT_EQ(c00.b, 0);
+
+    Color c10 = loaded->getPixel(1, 0);
+    EXPECT_EQ(c10.r, 0);
+    EXPECT_EQ(c10.g, 255);
+    EXPECT_EQ(c10.b, 0);
+
+    Color c20 = loaded->getPixel(2, 0);
+    EXPECT_EQ(c20.r, 0);
+    EXPECT_EQ(c20.g, 0);
+    EXPECT_EQ(c20.b, 255);
+
+    Color c30 = loaded->getPixel(3, 0);
+    EXPECT_EQ(c30.r, 255);
+    EXPECT_EQ(c30.g, 255);
+    EXPECT_EQ(c30.b, 255);
+
+    Color c01 = loaded->getPixel(0, 1);
+    EXPECT_EQ(c01.r, 128);
+    EXPECT_EQ(c01.g, 64);
+    EXPECT_EQ(c01.b, 32);
+
+    Color c11 = loaded->getPixel(1, 1);
+    EXPECT_EQ(c11.r, 0);
+    EXPECT_EQ(c11.g, 0);
+    EXPECT_EQ(c11.b, 0);
+
+    std::filesystem::remove(tempPath, ec);
+}
+
+TEST(ScreenTest, BitmapFromValidPngSinglePixel) {
+    Bitmap original(1, 1);
+    original.setPixel(0, 0, Color(42, 87, 213));
+
+    const auto tempPath = std::filesystem::temp_directory_path() / "wingman_bmp_1x1.png";
+    std::error_code ec;
+    std::filesystem::remove(tempPath, ec);
+
+    ASSERT_TRUE(original.save(tempPath.string()));
+
+    auto loaded = Bitmap::fromFile(tempPath.string());
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_EQ(loaded->getWidth(), 1);
+    EXPECT_EQ(loaded->getHeight(), 1);
+
+    Color c = loaded->getPixel(0, 0);
+    EXPECT_EQ(c.r, 42);
+    EXPECT_EQ(c.g, 87);
+    EXPECT_EQ(c.b, 213);
+
+    std::filesystem::remove(tempPath, ec);
+}
+
+TEST(ScreenTest, BitmapFromInvalidFileReturnsNull) {
+    // Create a non-image file
+    const auto tempPath = std::filesystem::temp_directory_path() / "wingman_bmp_invalid.png";
+    {
+        std::ofstream f(tempPath.string());
+        f << "this is not a valid PNG file";
+    }
+
+    auto loaded = Bitmap::fromFile(tempPath.string());
+    EXPECT_EQ(loaded, nullptr);
+
+    std::error_code ec;
+    std::filesystem::remove(tempPath, ec);
+}

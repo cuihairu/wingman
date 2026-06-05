@@ -244,6 +244,28 @@ TEST(TensorDataTest, ByteSizeUint16) {
     EXPECT_EQ(td.byteSize(), 6u);  // 3 * 2 bytes
 }
 
+TEST(TensorDataTest, ByteSizeUint32) {
+    TensorData td;
+    td.shape = {5};
+    td.dataType = TensorDataType::UINT32;
+    EXPECT_EQ(td.byteSize(), 20u);  // 5 * 4 bytes
+}
+
+TEST(TensorDataTest, ByteSizeUint64) {
+    TensorData td;
+    td.shape = {3};
+    td.dataType = TensorDataType::UINT64;
+    EXPECT_EQ(td.byteSize(), 24u);  // 3 * 8 bytes
+}
+
+TEST(TensorDataTest, ByteSizeDefaultCase) {
+    // Test with an out-of-range value to hit the default branch
+    TensorData td;
+    td.shape = {4};
+    td.dataType = static_cast<TensorDataType>(99);
+    EXPECT_EQ(td.byteSize(), 16u);  // 4 * 4 (default elemSize)
+}
+
 // ========== Tensor Edge Cases ==========
 
 TEST(TensorTest, CreateFloat32EmptyData) {
