@@ -951,3 +951,128 @@ TEST_F(FsmModuleTest, ResetOnFreshMachineIsNoop) {
 	EXPECT_TRUE(result.asBool());
 	EXPECT_EQ(current({machineId}).asString(), "idle");
 }
+
+// ========== Coverage: fromJson with array payload in guard callback ==========
+
+TEST_F(FsmModuleTest, GuardReceivesArrayPayload) {
+	auto mod = createFsmModule();
+	auto create = findFsmFunction(mod, "create");
+	auto transition = findFsmFunction(mod, "transition");
+	auto dispatch = findFsmFunction(mod, "dispatch");
+
+	auto machineId = create({
+		ScriptValue::fromString("guard_arr"),
+		ScriptValue::fromString("idle")
+	});
+	ASSERT_TRUE(machineId.isString());
+
+	bool guardCalled = false;
+	auto guard = ScriptValue::fromCallable([&guardCalled](const std::vector<ScriptValue>& args) -> ScriptValue {
+		guardCalled = true;
+		// Verify the payload contains array data
+		if (!args.empty() && args[0].isObject()) {
+			auto* payload = args[0].get("payload");
+			if (payload && payload->isArray()) {
+				return ScriptValue::fromBool(true);
+			}
+		}
+		return ScriptValue::fromBool(true);
+	});
+
+	// Transition with guard that receives array payload
+	transition({
+		machineId,
+		ScriptValue::fromString("idle"),
+		ScriptValue::fromString("active"),
+		ScriptValue::fromString("go"),
+		ScriptValue::null(), // action
+		guard
+	});
+
+	auto result = dispatch({
+		machineId,
+		ScriptValue::fromString("go"),
+		ScriptValue::fromArray({ScriptValue::fromInt(1), ScriptValue::fromString("two")})
+	});
+	EXPECT_TRUE(result.asBool());
+	EXPECT_TRUE(guardCalled);
+}
+
+// ========== Coverage: state onEnter receives array payload ==========
+
+TEST_F(FsmModuleTest, StateOnEnterReceivesArrayPayload) {
+	auto mod = createFsmModule();
+	auto create = findFsmFunction(mod, "create");
+	auto state = findFsmFunction(mod, "state");
+	auto transition = findFsmFunction(mod, "transition");
+	auto dispatch = findFsmFunction(mod, "dispatch");
+
+	auto machineId = create({
+		ScriptValue::fromString("enter_arr"),
+		ScriptValue::fromString("idle")
+	});
+	ASSERT_TRUE(machineId.isString());
+
+	bool onEnterCalled = false;
+	auto onEnter = ScriptValue::fromCallable([&onEnterCalled](const std::vector<ScriptValue>& args) -> ScriptValue {
+		onEnterCalled = true;
+		return ScriptValue::null();
+	});
+
+	// Add state with onEnter callback
+	state({
+		machineId,
+		ScriptValue::fromString("active"),
+		onEnter
+	});
+
+	transition({
+		machineId,
+		ScriptValue::fromString("idle"),
+		ScriptValue::fromString("active"),
+		ScriptValue::fromString("go")
+	});
+
+	auto result = dispatch({
+		machineId,
+		ScriptValue::fromString("go"),
+		ScriptValue::fromArray({ScriptValue::fromInt(42), ScriptValue::fromBool(true)})
+	});
+	EXPECT_TRUE(result.asBool());
+	EXPECT_TRUE(onEnterCalled);
+}
+
+// ========== Coverage: dispatch with nested object payload ==========
+
+TEST_F(FsmModuleTest, DispatchWithNestedObjectPayload) {
+	auto mod = createFsmModule();
+	auto create = findFsmFunction(mod, "create");
+	auto transition = findFsmFunction(mod, "transition");
+	auto dispatch = findFsmFunction(mod, "dispatch");
+
+	auto machineId = create({
+		ScriptValue::fromString("nested_obj"),
+		ScriptValue::fromString("idle")
+	});
+	ASSERT_TRUE(machineId.isString());
+
+	transition({
+		machineId,
+		ScriptValue::fromString("idle"),
+		ScriptValue::fromString("active"),
+		ScriptValue::fromString("go")
+	});
+
+	auto result = dispatch({
+		machineId,
+		ScriptValue::fromString("go"),
+		ScriptValue::fromObject({
+			{"nested", ScriptValue::fromObject({{"a", ScriptValue::fromInt(1)}})},
+			{"items", ScriptValue::fromArray({ScriptValue::fromString("x")})},
+			{"flag", ScriptValue::fromBool(true)},
+			{"ratio", ScriptValue::fromFloat(3.14)},
+			{"nothing", ScriptValue::null()}
+		})
+	});
+	EXPECT_TRUE(result.asBool());
+}

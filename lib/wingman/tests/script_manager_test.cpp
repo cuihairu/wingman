@@ -1219,3 +1219,319 @@ TEST_F(ScriptManagerFileTest, LoadScriptSameNameWithCallback) {
     EXPECT_EQ(loadCount, 2);
     EXPECT_EQ(unloadCount, 1);
 }
+
+// ========== runScript with real Lua script ==========
+
+TEST_F(ScriptManagerFileTest, RunSimpleLuaScript) {
+    ScriptManager mgr;
+    std::string path = createTempScript("simple.lua", "x = 1 + 2");
+    mgr.loadScript("simple", path);
+
+    std::vector<std::string> events;
+    mgr.setEventCallback([&](const std::string&, ScriptEvent evt, const std::string&) {
+        events.push_back(std::to_string(static_cast<int>(evt)));
+    });
+
+    bool result = mgr.runScript("simple");
+    EXPECT_TRUE(result);
+
+    auto info = mgr.getScriptInfo("simple");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->state, ScriptState::running);
+
+    // Should have triggered started event
+    EXPECT_FALSE(events.empty());
+
+    mgr.stopScript("simple");
+}
+
+TEST_F(ScriptManagerFileTest, RunScriptCreatesEngine) {
+    ScriptManager mgr;
+    std::string path = createTempScript("engine.lua", "y = 42");
+    mgr.loadScript("engine", path);
+
+    EXPECT_TRUE(mgr.runScript("engine"));
+    EXPECT_NE(mgr.getEngine("engine"), nullptr);
+
+    mgr.stopScript("engine");
+}
+
+TEST_F(ScriptManagerFileTest, RunScriptSetsStateToRunning) {
+    ScriptManager mgr;
+    std::string path = createTempScript("running.lua", "-- running");
+    mgr.loadScript("running", path);
+
+    mgr.runScript("running");
+
+    auto running = mgr.getRunningScripts();
+    EXPECT_EQ(running.size(), 1u);
+    EXPECT_EQ(running[0], "running");
+
+    mgr.stopScript("running");
+}
+
+TEST_F(ScriptManagerFileTest, RunScriptFiresStartedEvent) {
+    ScriptManager mgr;
+    std::string path = createTempScript("started.lua", "-- started");
+    mgr.loadScript("started", path);
+
+    bool startedEvent = false;
+    mgr.setEventCallback([&](const std::string&, ScriptEvent evt, const std::string&) {
+        if (evt == ScriptEvent::started) startedEvent = true;
+    });
+
+    mgr.runScript("started");
+    EXPECT_TRUE(startedEvent);
+
+    mgr.stopScript("started");
+}
+
+TEST_F(ScriptManagerFileTest, RunScriptInvalidLuaFiresErrorEvent) {
+    ScriptManager mgr;
+    std::string path = createTempScript("bad_syntax.lua", "this is not valid lua {{{");
+    mgr.loadScript("bad_syntax", path);
+
+    bool errorEvent = false;
+    mgr.setEventCallback([&](const std::string&, ScriptEvent evt, const std::string&) {
+        if (evt == ScriptEvent::error) errorEvent = true;
+    });
+
+    bool result = mgr.runScript("bad_syntax");
+    EXPECT_FALSE(result);
+
+    auto info = mgr.getScriptInfo("bad_syntax");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->state, ScriptState::error);
+    EXPECT_FALSE(info->lastError.empty());
+}
+
+TEST_F(ScriptManagerFileTest, StopRunningScript) {
+    ScriptManager mgr;
+    std::string path = createTempScript("stop_running.lua", "-- stop");
+    mgr.loadScript("stop_running", path);
+    mgr.runScript("stop_running");
+
+    EXPECT_TRUE(mgr.stopScript("stop_running"));
+
+    auto info = mgr.getScriptInfo("stop_running");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->state, ScriptState::loaded);
+}
+
+TEST_F(ScriptManagerFileTest, StopScriptFiresStoppedEvent) {
+    ScriptManager mgr;
+    std::string path = createTempScript("stop_evt.lua", "-- stop_evt");
+    mgr.loadScript("stop_evt", path);
+    mgr.runScript("stop_evt");
+
+    bool stoppedEvent = false;
+    mgr.setEventCallback([&](const std::string&, ScriptEvent evt, const std::string&) {
+        if (evt == ScriptEvent::stopped) stoppedEvent = true;
+    });
+
+    mgr.stopScript("stop_evt");
+    EXPECT_TRUE(stoppedEvent);
+}
+
+TEST_F(ScriptManagerFileTest, ReloadRunningScriptRestarts) {
+    ScriptManager mgr;
+    std::string path = createTempScript("reload_run.lua", "-- reload_run");
+    mgr.loadScript("reload_run", path);
+    mgr.runScript("reload_run");
+
+    EXPECT_TRUE(mgr.reloadScript("reload_run"));
+
+    // Should have restarted
+    auto info = mgr.getScriptInfo("reload_run");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->state, ScriptState::running);
+
+    mgr.stopScript("reload_run");
+}
+
+TEST_F(ScriptManagerFileTest, RunScriptSetsGlobalEnvVars) {
+    ScriptManager mgr;
+    ScriptConfig cfg;
+    cfg.env["TEST_VAR"] = "hello";
+    std::string path = createTempScript("env_run.lua", "-- env");
+    mgr.loadScript("env_run", path, cfg);
+
+    EXPECT_TRUE(mgr.runScript("env_run"));
+
+    mgr.stopScript("env_run");
+}
+
+TEST_F(ScriptManagerFileTest, RunScriptTwiceStopsAndRestarts) {
+    ScriptManager mgr;
+    std::string path = createTempScript("twice.lua", "-- twice");
+    mgr.loadScript("twice", path);
+
+    EXPECT_TRUE(mgr.runScript("twice"));
+    EXPECT_TRUE(mgr.runScript("twice"));  // Should stop and restart
+
+    auto info = mgr.getScriptInfo("twice");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->state, ScriptState::running);
+
+    mgr.stopScript("twice");
+}
+
+// ========== callFunction on running script ==========
+
+TEST_F(ScriptManagerFileTest, CallFunctionOnRunningScript) {
+    ScriptManager mgr;
+    std::string path = createTempScript("callfn.lua", R"(
+        function add(a, b)
+            return a + b
+        end
+    )");
+    mgr.loadScript("callfn", path);
+    mgr.runScript("callfn");
+
+    std::string result;
+    bool ok = mgr.callFunction("callfn", "add", {"3", "4"}, &result);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(result, "7");
+
+    mgr.stopScript("callfn");
+}
+
+TEST_F(ScriptManagerFileTest, CallFunctionReturnsBoolResult) {
+    ScriptManager mgr;
+    std::string path = createTempScript("callbool.lua", R"(
+        function isTrue()
+            return true
+        end
+    )");
+    mgr.loadScript("callbool", path);
+    mgr.runScript("callbool");
+
+    std::string result;
+    bool ok = mgr.callFunction("callbool", "isTrue", {}, &result);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(result, "true");
+
+    mgr.stopScript("callbool");
+}
+
+TEST_F(ScriptManagerFileTest, CallFunctionReturnsFalseResult) {
+    ScriptManager mgr;
+    std::string path = createTempScript("callfalse.lua", R"(
+        function isFalse()
+            return false
+        end
+    )");
+    mgr.loadScript("callfalse", path);
+    mgr.runScript("callfalse");
+
+    std::string result;
+    bool ok = mgr.callFunction("callfalse", "isFalse", {}, &result);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(result, "false");
+
+    mgr.stopScript("callfalse");
+}
+
+TEST_F(ScriptManagerFileTest, CallFunctionReturnsIntResult) {
+    ScriptManager mgr;
+    std::string path = createTempScript("callint.lua", R"(
+        function getNumber()
+            return 42
+        end
+    )");
+    mgr.loadScript("callint", path);
+    mgr.runScript("callint");
+
+    std::string result;
+    bool ok = mgr.callFunction("callint", "getNumber", {}, &result);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(result, "42");
+
+    mgr.stopScript("callint");
+}
+
+TEST_F(ScriptManagerFileTest, CallFunctionReturnsFloatResult) {
+    ScriptManager mgr;
+    std::string path = createTempScript("callfloat.lua", R"(
+        function getPi()
+            return 3.14
+        end
+    )");
+    mgr.loadScript("callfloat", path);
+    mgr.runScript("callfloat");
+
+    std::string result;
+    bool ok = mgr.callFunction("callfloat", "getPi", {}, &result);
+    EXPECT_TRUE(ok);
+    EXPECT_NE(result.find("3.14"), std::string::npos);
+
+    mgr.stopScript("callfloat");
+}
+
+TEST_F(ScriptManagerFileTest, CallFunctionReturnsNilResult) {
+    ScriptManager mgr;
+    std::string path = createTempScript("callnil.lua", R"(
+        function getNil()
+            return nil
+        end
+    )");
+    mgr.loadScript("callnil", path);
+    mgr.runScript("callnil");
+
+    std::string result;
+    bool ok = mgr.callFunction("callnil", "getNil", {}, &result);
+    EXPECT_TRUE(ok);
+    EXPECT_TRUE(result.empty());
+
+    mgr.stopScript("callnil");
+}
+
+TEST_F(ScriptManagerFileTest, CallFunctionWithoutResultPtr) {
+    ScriptManager mgr;
+    std::string path = createTempScript("callnores.lua", R"(
+        function noop()
+            return 1
+        end
+    )");
+    mgr.loadScript("callnores", path);
+    mgr.runScript("callnores");
+
+    // Call without result pointer
+    bool ok = mgr.callFunction("callnores", "noop", {});
+    EXPECT_TRUE(ok);
+
+    mgr.stopScript("callnores");
+}
+
+TEST_F(ScriptManagerFileTest, CallNonexistentFunctionReturnsFalse) {
+    ScriptManager mgr;
+    std::string path = createTempScript("callmiss.lua", "-- no functions");
+    mgr.loadScript("callmiss", path);
+    mgr.runScript("callmiss");
+
+    std::string result;
+    bool ok = mgr.callFunction("callmiss", "nonexistent", {}, &result);
+    EXPECT_FALSE(ok);
+
+    auto info = mgr.getScriptInfo("callmiss");
+    ASSERT_NE(info, nullptr);
+    EXPECT_FALSE(info->lastError.empty());
+
+    mgr.stopScript("callmiss");
+}
+
+// ========== checkReload with file modification ==========
+
+TEST_F(ScriptManagerFileTest, CheckReloadDetectsFileChange) {
+    ScriptManager mgr;
+    ScriptConfig cfg;
+    cfg.autoReload = true;
+    std::string path = createTempScript("check_change.lua", "-- v1");
+    mgr.loadScript("check_change", path, cfg);
+
+    // Modify the file
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::ofstream(path) << "-- v2 modified";
+
+    EXPECT_TRUE(mgr.checkReload("check_change"));
+}

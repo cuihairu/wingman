@@ -134,6 +134,33 @@ TEST(JsonModuleFunctionsTest, EncodeNull) {
     EXPECT_EQ(result.asString(), "null");
 }
 
+TEST(JsonModuleFunctionsTest, DecodeFloat) {
+    auto fn = findFunction("json", "decode");
+    ASSERT_FALSE(fn.name.empty());
+    auto result = fn({ScriptValue::fromString("3.14")});
+    EXPECT_TRUE(result.isFloat());
+    EXPECT_DOUBLE_EQ(result.asFloat(), 3.14);
+}
+
+TEST(JsonModuleFunctionsTest, EncodeFloat) {
+    auto fn = findFunction("encode");
+    ASSERT_FALSE(fn.name.empty());
+    auto result = fn({ScriptValue::fromFloat(2.718)});
+    EXPECT_TRUE(result.isString());
+    EXPECT_NE(result.asString().find("2.718"), std::string::npos);
+}
+
+TEST(JsonModuleFunctionsTest, EncodeCallableReturnsNull) {
+    auto fn = findFunction("encode");
+    ASSERT_FALSE(fn.name.empty());
+    // Callable type triggers default branch in scriptToJson
+    auto callable = ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+        return ScriptValue::null();
+    });
+    auto result = fn({callable});
+    EXPECT_EQ(result.asString(), "null");
+}
+
 // ========== System module functions ==========
 
 TEST(SystemModuleFunctionsTest, GetCpuInfo) {

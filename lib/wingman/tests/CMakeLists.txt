@@ -67,6 +67,12 @@ if(BUILD_CORE_TESTS)
         wingman
     )
 
+    # Propagate vision/OCR/ML compile definitions from parent library
+    if(WINGMAN_HAS_OPENCV)
+        target_compile_definitions(core_tests PRIVATE WINGMAN_ENABLE_VISION)
+        message(STATUS "Core tests: WINGMAN_ENABLE_VISION defined")
+    endif()
+
     # Apply coverage options (must be after target creation)
     if(CODE_COVERAGE)
         message(STATUS "Code coverage enabled")
