@@ -956,6 +956,13 @@ TEST(InputModuleFunctionsTest, RandomDelayDoesNotCrash) {
     EXPECT_NO_THROW(fn({ScriptValue::fromInt(1), ScriptValue::fromInt(2)}));
 }
 
+TEST(InputModuleFunctionsTest, RandomDelaySwapsWhenMaxLessThanMin) {
+    auto fn = findFunction("input", "randomDelay");
+    ASSERT_FALSE(fn.name.empty());
+    // max < min triggers std::swap branch
+    EXPECT_NO_THROW(fn({ScriptValue::fromInt(100), ScriptValue::fromInt(1)}));
+}
+
 // ========== Window module functions (stubs/platform) ==========
 
 TEST(WindowModuleFunctionsTest, FindReturnsResults) {
