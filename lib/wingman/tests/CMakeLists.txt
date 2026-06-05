@@ -49,6 +49,7 @@ if(BUILD_CORE_TESTS)
         tcp_channel_test.cpp
         trigger_engine_test.cpp
         performance_test.cpp
+        image_analyzer_test.cpp
     )
 
     if(WIN32)
