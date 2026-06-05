@@ -1374,11 +1374,12 @@ TEST_F(ScriptManagerFileTest, ReloadRunningScriptRestarts) {
     auto info = mgr.getScriptInfo("reload_run");
     ASSERT_NE(info, nullptr);
     if (result) {
+        // Script was running, reload restarts it
         EXPECT_EQ(info->state, ScriptState::running);
         mgr.stopScript("reload_run");
     } else {
-        // After reload, engine re-attempts and may still fail
-        EXPECT_TRUE(info->state == ScriptState::running || info->state == ScriptState::error);
+        // Script was in error state, reload resets to loaded
+        EXPECT_TRUE(info->state == ScriptState::loaded || info->state == ScriptState::error);
     }
 }
 
