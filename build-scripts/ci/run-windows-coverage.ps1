@@ -32,12 +32,12 @@ Write-Host "Found test executable: $($testExe.FullName)"
 Write-Host "Running with OpenCppCoverage..."
 
 # Exclude IPC and FileWatcher tests that crash under OpenCppCoverage instrumentation.
-# GTest reads GTEST_FILTER env var when --gtest_filter is not on the command line.
-$env:GTEST_FILTER = "*:-IpcTest.*:-IpcFactoryTest.CreateServerWithDefaultConfig:-IpcFactoryTest.CreateClientWithDefaultConfig:-IpcFactoryTest.CreateServerWithExplicitTransport:-IpcFactoryTest.CreateClientWithExplicitTransport:-IpcFactoryTest.CreateServerWithEmptyName:-IpcFactoryTest.CreateClientWithEmptyName:-IpcFactoryTest.CreateServerWithTcpFallback:-IpcFactoryTest.CreateClientWithTcpFallback:-FileWatcherTest.*"
+# Pass filter as command-line argument to ensure it reaches GTest through OpenCppCoverage.
+$gtestFilter = "*:-IpcTest.*:-IpcFactoryTest.CreateServerWithDefaultConfig:-IpcFactoryTest.CreateClientWithDefaultConfig:-IpcFactoryTest.CreateServerWithExplicitTransport:-IpcFactoryTest.CreateClientWithExplicitTransport:-IpcFactoryTest.CreateServerWithEmptyName:-IpcFactoryTest.CreateClientWithEmptyName:-IpcFactoryTest.CreateServerWithTcpFallback:-IpcFactoryTest.CreateClientWithTcpFallback:-FileWatcherTest.*"
 
 # Run coverage directly on test executable (much faster than --cover_children with ctest)
 # Only cover project source files, not third-party dependencies or platform-specific code
-$cmd = "`"$coverageExe`" --quiet --sources `"$projectRoot\lib\wingman\src`" --sources `"$projectRoot\lib\wingman\include`" --excluded_sources `"$projectRoot\lib\wingman\src\platform`" --export_type `"cobertura:$absoluteCoverageFile`" -- `"$($testExe.FullName)`""
+$cmd = "`"$coverageExe`" --quiet --sources `"$projectRoot\lib\wingman\src`" --sources `"$projectRoot\lib\wingman\include`" --excluded_sources `"$projectRoot\lib\wingman\src\platform`" --export_type `"cobertura:$absoluteCoverageFile`" -- `"$($testExe.FullName)`" --gtest_filter=`"$gtestFilter`""
 cmd /c $cmd
 
 # OpenCppCoverage may exit with code 3 (coverage instrumentation issues)
