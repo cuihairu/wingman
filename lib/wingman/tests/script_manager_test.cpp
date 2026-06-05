@@ -869,3 +869,111 @@ TEST_F(ScriptManagerFileTest, LoadScriptSameNameTriggersUnloadAndReload) {
     EXPECT_EQ(events[1], "1");  // unloaded (from reload)
     EXPECT_EQ(events[2], "0");  // loaded again
 }
+
+// ========== Environment Variable System Lookup ==========
+
+TEST_F(ScriptManagerFileTest, GetEnvFallsBackToSystemEnv) {
+    ScriptManager mgr;
+    // PATH should exist on all systems
+    auto val = mgr.getEnv("PATH");
+    EXPECT_FALSE(val.empty());
+}
+
+TEST_F(ScriptManagerFileTest, GetEnvCustomOverridesSystem) {
+    ScriptManager mgr;
+    mgr.setEnv("PATH", "custom_value");
+    EXPECT_EQ(mgr.getEnv("PATH"), "custom_value");
+}
+
+TEST_F(ScriptManagerFileTest, GetEnvNonexistentReturnsEmpty) {
+    ScriptManager mgr;
+    EXPECT_EQ(mgr.getEnv("WINGMAN_TOTALLY_NONEXISTENT_VAR_XYZ_12345"), "");
+}
+
+// ========== CFG Config Loading ==========
+
+TEST_F(ScriptManagerFileTest, LoadCfgConfig) {
+    ScriptManager mgr;
+    std::string path = createTempScript("test.cfg", "host=localhost\nport=8080\n");
+
+    EXPECT_TRUE(mgr.loadConfig(path));
+    EXPECT_EQ(mgr.getConfig("host"), "localhost");
+    EXPECT_EQ(mgr.getConfig("port"), "8080");
+}
+
+// ========== Pause/Resume Lifecycle ==========
+
+TEST_F(ScriptManagerFileTest, PauseNonRunningReturnsFalse) {
+    ScriptManager mgr;
+    std::string path = createTempScript("pause.lua", "-- test");
+    mgr.loadScript("pause", path);
+
+    // Script is loaded but not running, pause should fail
+    EXPECT_FALSE(mgr.pauseScript("pause"));
+}
+
+TEST_F(ScriptManagerFileTest, ResumeNonPausedReturnsFalse) {
+    ScriptManager mgr;
+    std::string path = createTempScript("resume.lua", "-- test");
+    mgr.loadScript("resume", path);
+
+    // Script is loaded but not paused, resume should fail
+    EXPECT_FALSE(mgr.resumeScript("resume"));
+}
+
+TEST_F(ScriptManagerFileTest, StopNonRunningLoadedScriptReturnsFalse) {
+    ScriptManager mgr;
+    std::string path = createTempScript("stop.lua", "-- test");
+    mgr.loadScript("stop", path);
+
+    // Script is loaded but not running, stop should fail
+    EXPECT_FALSE(mgr.stopScript("stop"));
+}
+
+// ========== Script Info After Load ==========
+
+TEST_F(ScriptManagerFileTest, ScriptInfoAfterLoad) {
+    ScriptManager mgr;
+    std::string path = createTempScript("info.lua", "-- test");
+    mgr.loadScript("info", path);
+
+    auto info = mgr.getScriptInfo("info");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->language, "lua");
+    EXPECT_TRUE(info->lastError.empty());
+    EXPECT_GT(info->lastModified, 0u);
+}
+
+// ========== SetAutoReload on Loaded Script ==========
+
+TEST_F(ScriptManagerFileTest, SetAutoReloadOnLoadedScript) {
+    ScriptManager mgr;
+    std::string path = createTempScript("ar.lua", "-- test");
+    mgr.loadScript("ar", path);
+
+    EXPECT_NO_THROW(mgr.setAutoReload("ar", true));
+    auto info = mgr.getScriptInfo("ar");
+    ASSERT_NE(info, nullptr);
+    EXPECT_TRUE(info->config.autoReload);
+
+    EXPECT_NO_THROW(mgr.setAutoReload("ar", false));
+    info = mgr.getScriptInfo("ar");
+    ASSERT_NE(info, nullptr);
+    EXPECT_FALSE(info->config.autoReload);
+}
+
+// ========== OutputCallback Invocation ==========
+
+TEST_F(ScriptManagerFileTest, OutputCallbackReceivesOutput) {
+    ScriptManager mgr;
+    std::string capturedName;
+    std::string capturedOutput;
+    mgr.setOutputCallback([&](const std::string& name, const std::string& output) {
+        capturedName = name;
+        capturedOutput = output;
+    });
+
+    mgr.logScriptOutput("my_script", "hello world");
+    EXPECT_EQ(capturedName, "my_script");
+    EXPECT_EQ(capturedOutput, "hello world");
+}

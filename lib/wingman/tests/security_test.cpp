@@ -667,3 +667,145 @@ TEST(SecurityManagerTest, GetRandomDelaySameMinMax) {
     int delay = mgr.getRandomDelay();
     EXPECT_EQ(delay, 50);
 }
+
+// ========== Encrypt with Empty Key ==========
+
+TEST(SecurityManagerTest, EncryptStringEmptyKeyReturnsInput) {
+    std::string input = "hello world";
+    std::string result = SecurityManager::encryptString(input, "");
+    EXPECT_EQ(result, input);
+}
+
+TEST(SecurityManagerTest, DecryptStringEmptyKeyReturnsInput) {
+    std::string input = "encrypted data";
+    std::string result = SecurityManager::decryptString(input, "");
+    EXPECT_EQ(result, input);
+}
+
+// ========== Hash String Format ==========
+
+TEST(SecurityManagerTest, HashStringReturns64HexChars) {
+    std::string hash = SecurityManager::hashString("test input");
+    EXPECT_EQ(hash.size(), 64u);
+    // All characters should be hex digits
+    for (char c : hash) {
+        EXPECT_TRUE((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'));
+    }
+}
+
+// ========== Random String ==========
+
+TEST(SecurityManagerTest, GenerateRandomStringZero) {
+    std::string s = SecurityManager::generateRandomString(0);
+    EXPECT_TRUE(s.empty());
+}
+
+// ========== SecureZero ==========
+
+TEST(SecurityManagerTest, SecureZeroClearsBuffer) {
+    auto& mgr = SecurityManager::instance();
+    char buf[16];
+    memset(buf, 0xAB, sizeof(buf));
+    mgr.secureZero(buf, sizeof(buf));
+    for (size_t i = 0; i < sizeof(buf); ++i) {
+        EXPECT_EQ(buf[i], 0);
+    }
+}
+
+// ========== Get Anti-Detection Config ==========
+
+TEST(SecurityManagerTest, GetAntiDetectionConfigReturnsCurrentValues) {
+    auto& mgr = SecurityManager::instance();
+    AntiDetectionConfig cfg;
+    cfg.enableRandomDelay = true;
+    cfg.minDelayMs = 10;
+    cfg.maxDelayMs = 200;
+    cfg.clickJitter = 5.0;
+    cfg.movementVariance = 0.3;
+    cfg.enableBezierMovement = true;
+    cfg.enableRandomClick = true;
+    mgr.setAntiDetectionConfig(cfg);
+
+    auto retrieved = mgr.getAntiDetectionConfig();
+    EXPECT_TRUE(retrieved.enableRandomDelay);
+    EXPECT_EQ(retrieved.minDelayMs, 10);
+    EXPECT_EQ(retrieved.maxDelayMs, 200);
+    EXPECT_DOUBLE_EQ(retrieved.clickJitter, 5.0);
+    EXPECT_DOUBLE_EQ(retrieved.movementVariance, 0.3);
+    EXPECT_TRUE(retrieved.enableBezierMovement);
+    EXPECT_TRUE(retrieved.enableRandomClick);
+}
+
+// ========== Get Process Protection Config ==========
+
+TEST(SecurityManagerTest, GetProcessProtectionConfigReturnsCurrentValues) {
+    auto& mgr = SecurityManager::instance();
+    ProcessProtectionConfig cfg;
+    cfg.protectFromTermination = true;
+    cfg.enableAntiDebug = true;
+    cfg.enableAntiVM = true;
+    mgr.setProcessProtectionConfig(cfg);
+
+    auto retrieved = mgr.getProcessProtectionConfig();
+    EXPECT_TRUE(retrieved.protectFromTermination);
+    EXPECT_TRUE(retrieved.enableAntiDebug);
+    EXPECT_TRUE(retrieved.enableAntiVM);
+}
+
+// ========== GetRandomOffset With Jitter ==========
+
+TEST(SecurityManagerTest, GetRandomOffsetWithJitter) {
+    auto& mgr = SecurityManager::instance();
+    AntiDetectionConfig cfg;
+    cfg.clickJitter = 3.0;
+    cfg.enableRandomClick = true;
+    mgr.setAntiDetectionConfig(cfg);
+
+    auto [x, y] = mgr.getRandomOffset();
+    // Values should be within [-3, 3] range
+    EXPECT_GE(x, -3.0);
+    EXPECT_LE(x, 3.0);
+    EXPECT_GE(y, -3.0);
+    EXPECT_LE(y, 3.0);
+}
+
+// ========== isDebuggerPresent / isRunningInVM ==========
+
+TEST(SecurityManagerTest, IsDebuggerPresentWithAllChecksDisabled) {
+    auto& mgr = SecurityManager::instance();
+    ProcessProtectionConfig cfg;
+    cfg.enableAntiDebug = false;
+    mgr.setProcessProtectionConfig(cfg);
+
+    // All sub-checks disabled, should return false
+    EXPECT_FALSE(mgr.isDebuggerPresent());
+}
+
+TEST(SecurityManagerTest, IsRunningInVMWithAllChecksDisabled) {
+    auto& mgr = SecurityManager::instance();
+    ProcessProtectionConfig cfg;
+    cfg.enableAntiVM = false;
+    mgr.setProcessProtectionConfig(cfg);
+
+    EXPECT_FALSE(mgr.isRunningInVM());
+}
+
+TEST(SecurityManagerTest, IsDebuggerPresentWithChecksEnabled) {
+    auto& mgr = SecurityManager::instance();
+    ProcessProtectionConfig cfg;
+    cfg.enableAntiDebug = true;
+    mgr.setProcessProtectionConfig(cfg);
+
+    // May or may not detect debugger, just should not crash
+    EXPECT_NO_THROW(mgr.isDebuggerPresent());
+}
+
+TEST(SecurityManagerTest, IsRunningInVMWithChecksEnabled) {
+    auto& mgr = SecurityManager::instance();
+    ProcessProtectionConfig cfg;
+    cfg.enableAntiVM = true;
+    mgr.setProcessProtectionConfig(cfg);
+
+    // May or may not detect VM, just should not crash
+    EXPECT_NO_THROW(mgr.isRunningInVM());
+}
