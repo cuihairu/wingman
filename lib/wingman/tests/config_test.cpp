@@ -483,3 +483,23 @@ TEST(ConfigManagerTest, ExistingConfigFileIsPreserved) {
 
     std::filesystem::remove_all(tempDir);
 }
+
+TEST(ConfigManagerTest, CorruptedConfigFileReturnsDefaults) {
+    auto tempDir = std::filesystem::temp_directory_path() / "wingman_config_test_corrupted";
+    std::filesystem::remove_all(tempDir);
+    std::filesystem::create_directories(tempDir);
+
+    // Write invalid JSON to trigger catch block in loadConfigJson
+    {
+        std::ofstream f((tempDir / "config.json").string());
+        f << "{{{{not valid json";
+    }
+
+    ConfigManager mgr(tempDir.string());
+    // Should return defaults, not crash
+    auto srv = mgr.getServerConfig();
+    EXPECT_EQ(srv.host, "localhost");
+    EXPECT_EQ(srv.port, 9527);
+
+    std::filesystem::remove_all(tempDir);
+}

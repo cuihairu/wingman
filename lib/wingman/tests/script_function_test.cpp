@@ -850,6 +850,43 @@ TEST(ScreenModuleFunctionsTest, FindColorsReturnsArray) {
     EXPECT_TRUE(result.isArray());
 }
 
+TEST(ScreenModuleFunctionsTest, FindColorWithObjectColor) {
+    auto fn = findFunction("screen", "findColor");
+    ASSERT_FALSE(fn.name.empty());
+    auto color = ScriptValue::fromObject({
+        {"r", ScriptValue::fromInt(255)},
+        {"g", ScriptValue::fromInt(0)},
+        {"b", ScriptValue::fromInt(0)}
+    });
+    auto region = ScriptValue::fromObject({
+        {"x", ScriptValue::fromInt(0)},
+        {"y", ScriptValue::fromInt(0)},
+        {"width", ScriptValue::fromInt(100)},
+        {"height", ScriptValue::fromInt(100)}
+    });
+    auto result = fn({color, region});
+    EXPECT_TRUE(result.isArray());
+}
+
+TEST(ScreenModuleFunctionsTest, FindColorsWithObjectColor) {
+    auto fn = findFunction("screen", "findColors");
+    ASSERT_FALSE(fn.name.empty());
+    auto color = ScriptValue::fromObject({
+        {"r", ScriptValue::fromInt(0)},
+        {"g", ScriptValue::fromInt(255)},
+        {"b", ScriptValue::fromInt(0)},
+        {"a", ScriptValue::fromInt(255)}
+    });
+    auto region = ScriptValue::fromObject({
+        {"x", ScriptValue::fromInt(0)},
+        {"y", ScriptValue::fromInt(0)},
+        {"width", ScriptValue::fromInt(100)},
+        {"height", ScriptValue::fromInt(100)}
+    });
+    auto result = fn({color, region, ScriptValue::fromInt(10)});
+    EXPECT_TRUE(result.isArray());
+}
+
 TEST(ScreenModuleFunctionsTest, GetScreenWidth) {
     auto fn = findFunction("screen", "getScreenWidth");
     ASSERT_FALSE(fn.name.empty());
@@ -972,6 +1009,18 @@ TEST(VisionModuleFunctionsTest, FindColorReturnsNull) {
     EXPECT_TRUE(result.isNull() || result.isObject());
 }
 
+TEST(VisionModuleFunctionsTest, FindColorWithObjectColor) {
+    auto fn = findFunction("vision", "findColor");
+    ASSERT_FALSE(fn.name.empty());
+    auto color = ScriptValue::fromObject({
+        {"r", ScriptValue::fromInt(255)},
+        {"g", ScriptValue::fromInt(0)},
+        {"b", ScriptValue::fromInt(0)}
+    });
+    auto result = fn({color});
+    EXPECT_TRUE(result.isNull() || result.isObject());
+}
+
 TEST(VisionModuleFunctionsTest, FindAllColorsReturnsArray) {
     auto fn = findFunction("vision", "findAllColors");
     ASSERT_FALSE(fn.name.empty());
@@ -979,10 +1028,34 @@ TEST(VisionModuleFunctionsTest, FindAllColorsReturnsArray) {
     EXPECT_TRUE(result.isArray());
 }
 
+TEST(VisionModuleFunctionsTest, FindAllColorsWithObjectColor) {
+    auto fn = findFunction("vision", "findAllColors");
+    ASSERT_FALSE(fn.name.empty());
+    auto color = ScriptValue::fromObject({
+        {"r", ScriptValue::fromInt(0)},
+        {"g", ScriptValue::fromInt(128)},
+        {"b", ScriptValue::fromInt(255)}
+    });
+    auto result = fn({color});
+    EXPECT_TRUE(result.isArray());
+}
+
 TEST(VisionModuleFunctionsTest, HasColorReturnsBool) {
     auto fn = findFunction("vision", "hasColor");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({ScriptValue::fromInt(0xFF0000)});
+    EXPECT_TRUE(result.isBool());
+}
+
+TEST(VisionModuleFunctionsTest, HasColorWithObjectColor) {
+    auto fn = findFunction("vision", "hasColor");
+    ASSERT_FALSE(fn.name.empty());
+    auto color = ScriptValue::fromObject({
+        {"r", ScriptValue::fromInt(100)},
+        {"g", ScriptValue::fromInt(100)},
+        {"b", ScriptValue::fromInt(100)}
+    });
+    auto result = fn({color});
     EXPECT_TRUE(result.isBool());
 }
 
