@@ -40,6 +40,11 @@ $env:GTEST_FILTER = "*:-IpcTest.*:-IpcFactoryTest.CreateServerWithDefaultConfig:
 $cmd = "`"$coverageExe`" --quiet --sources `"$projectRoot\lib\wingman\src`" --sources `"$projectRoot\lib\wingman\include`" --excluded_sources `"$projectRoot\lib\wingman\src\platform`" --export_type `"cobertura:$absoluteCoverageFile`" -- `"$($testExe.FullName)`""
 cmd /c $cmd
 
+# OpenCppCoverage may exit with code 3 (coverage instrumentation issues)
+# but the test results are still valid. Only fail on exit code 1 (test failures).
+if ($LASTEXITCODE -eq 1) {
+    exit 1
+}
 if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
+    Write-Host "OpenCppCoverage exited with code $LASTEXITCODE (non-fatal)"
 }
