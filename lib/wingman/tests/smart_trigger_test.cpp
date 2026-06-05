@@ -382,3 +382,392 @@ TEST(SmartTriggerTest, StopWhenNotRunningIsSafe) {
     EXPECT_NO_THROW(t.stop());  // double stop
     EXPECT_FALSE(t.isRunning());
 }
+
+// ========== Start with no actions (covers warning path) ==========
+
+TEST(SmartTriggerTest, StartWithNoActionsWarnsButSucceeds) {
+    SmartTrigger t("no_actions");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::COLOR_FOUND;
+    t.addCondition(cond);
+    // No actions added - start should still succeed (just warns)
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+// ========== Start with CUSTOM_CALLBACK action ==========
+
+TEST(SmartTriggerTest, StartWithCallbackActionDoesNotCrash) {
+    SmartTrigger t("cb_action");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::COLOR_FOUND;
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::CUSTOM_CALLBACK;
+    action.callback = []() {};
+    t.addAction(action);
+
+    t.setMaxTriggers(1);
+    t.setCheckInterval(10);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+// ========== Start with LOG action ==========
+
+TEST(SmartTriggerTest, StartWithLogActionDoesNotCrash) {
+    SmartTrigger t("log_action");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::COLOR_FOUND;
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "test log message";
+    t.addAction(action);
+
+    t.setMaxTriggers(1);
+    t.setCheckInterval(10);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+// ========== Start with STOP action ==========
+
+TEST(SmartTriggerTest, StartWithStopActionDoesNotCrash) {
+    SmartTrigger t("stop_action");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::COLOR_FOUND;
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::STOP;
+    t.addAction(action);
+
+    t.setMaxTriggers(1);
+    t.setCheckInterval(10);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+// ========== Start with WAIT action ==========
+
+TEST(SmartTriggerTest, StartWithWaitActionDoesNotCrash) {
+    SmartTrigger t("wait_action");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::COLOR_FOUND;
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::WAIT;
+    action.waitMs = 1;
+    t.addAction(action);
+
+    t.setMaxTriggers(1);
+    t.setCheckInterval(10);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+// ========== Start with CLICK action ==========
+
+TEST(SmartTriggerTest, StartWithClickActionDoesNotCrash) {
+    SmartTrigger t("click_action");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::COLOR_FOUND;
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::CLICK;
+    action.clickPosition = Point(100, 200);
+    t.addAction(action);
+
+    t.setMaxTriggers(1);
+    t.setCheckInterval(10);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+// ========== Start with KEY_PRESS action ==========
+
+TEST(SmartTriggerTest, StartWithKeyPressActionDoesNotCrash) {
+    SmartTrigger t("key_action");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::COLOR_FOUND;
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::KEY_PRESS;
+    action.keyCode = 0x41;  // 'A' key
+    t.addAction(action);
+
+    t.setMaxTriggers(1);
+    t.setCheckInterval(10);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+// ========== Multiple condition types ==========
+
+TEST(SmartTriggerTest, StartWithColorNotFoundCondition) {
+    SmartTrigger t("color_not_found");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::COLOR_NOT_FOUND;
+    cond.targetColor = Color(255, 0, 0);
+    cond.tolerance = 10;
+    cond.searchRegion = Rect(0, 0, 100, 100);
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "color not found triggered";
+    t.addAction(action);
+
+    t.setCheckInterval(10);
+    t.setMaxTriggers(1);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+TEST(SmartTriggerTest, StartWithImageFoundCondition) {
+    SmartTrigger t("img_found");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::IMAGE_FOUND;
+    cond.templatePath = "/nonexistent/image.png";
+    cond.threshold = 0.8;
+    cond.searchRegion = Rect(0, 0, 100, 100);
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "image found triggered";
+    t.addAction(action);
+
+    t.setCheckInterval(10);
+    t.setMaxTriggers(1);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+TEST(SmartTriggerTest, StartWithImageNotFoundCondition) {
+    SmartTrigger t("img_not_found");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::IMAGE_NOT_FOUND;
+    cond.templatePath = "/nonexistent/image.png";
+    cond.threshold = 0.8;
+    cond.searchRegion = Rect(0, 0, 100, 100);
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "image not found triggered";
+    t.addAction(action);
+
+    t.setCheckInterval(10);
+    t.setMaxTriggers(1);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+TEST(SmartTriggerTest, StartWithTextFoundCondition) {
+    SmartTrigger t("text_found");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::TEXT_FOUND;
+    cond.targetText = "hello";
+    cond.searchRegion = Rect(0, 0, 100, 100);
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "text found triggered";
+    t.addAction(action);
+
+    t.setCheckInterval(10);
+    t.setMaxTriggers(1);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+TEST(SmartTriggerTest, StartWithTextNotFoundCondition) {
+    SmartTrigger t("text_not_found");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::TEXT_NOT_FOUND;
+    cond.targetText = "hello";
+    cond.searchRegion = Rect(0, 0, 100, 100);
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "text not found triggered";
+    t.addAction(action);
+
+    t.setCheckInterval(10);
+    t.setMaxTriggers(1);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+TEST(SmartTriggerTest, StartWithOcrContainsCondition) {
+    SmartTrigger t("ocr_contains");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::OCR_CONTAINS;
+    cond.targetText = "test";
+    cond.searchRegion = Rect(0, 0, 100, 100);
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "ocr contains triggered";
+    t.addAction(action);
+
+    t.setCheckInterval(10);
+    t.setMaxTriggers(1);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+TEST(SmartTriggerTest, StartWithOcrEqualsCondition) {
+    SmartTrigger t("ocr_equals");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::OCR_EQUALS;
+    cond.targetText = "exact match";
+    cond.searchRegion = Rect(0, 0, 100, 100);
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "ocr equals triggered";
+    t.addAction(action);
+
+    t.setCheckInterval(10);
+    t.setMaxTriggers(1);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+TEST(SmartTriggerTest, StartWithEdgeDetectedCondition) {
+    SmartTrigger t("edge_detected");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::EDGE_DETECTED;
+    cond.searchRegion = Rect(0, 0, 100, 100);
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "edge detected triggered";
+    t.addAction(action);
+
+    t.setCheckInterval(10);
+    t.setMaxTriggers(1);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+TEST(SmartTriggerTest, StartWithColorChangedCondition) {
+    SmartTrigger t("color_changed");
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::COLOR_CHANGED;
+    cond.tolerance = 10;
+    cond.searchRegion = Rect(0, 0, 100, 100);
+    cond.hasPreviousColor = false;
+    t.addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "color changed triggered";
+    t.addAction(action);
+
+    t.setCheckInterval(10);
+    t.setMaxTriggers(1);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+// ========== Multiple conditions ==========
+
+TEST(SmartTriggerTest, StartWithMultipleConditions) {
+    SmartTrigger t("multi_cond");
+    TriggerCondition cond1;
+    cond1.type = TriggerConditionType::COLOR_FOUND;
+    cond1.targetColor = Color(255, 0, 0);
+    cond1.tolerance = 10;
+    cond1.searchRegion = Rect(0, 0, 100, 100);
+    t.addCondition(cond1);
+
+    TriggerCondition cond2;
+    cond2.type = TriggerConditionType::IMAGE_FOUND;
+    cond2.templatePath = "/nonexistent/image.png";
+    cond2.threshold = 0.8;
+    cond2.searchRegion = Rect(0, 0, 100, 100);
+    t.addCondition(cond2);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "all conditions met";
+    t.addAction(action);
+
+    t.setCheckInterval(10);
+    t.setMaxTriggers(1);
+    EXPECT_NO_THROW(t.start());
+    if (t.isRunning()) {
+        t.stop();
+    }
+}
+
+// ========== SmartTriggerManager startAll/stopAll with triggers ==========
+
+TEST(SmartTriggerManagerTest, StartAllStopAllWithTriggers) {
+    SmartTriggerManager mgr;
+    auto t1 = mgr.createTrigger("sa_t1");
+    auto t2 = mgr.createTrigger("sa_t2");
+
+    TriggerCondition cond;
+    cond.type = TriggerConditionType::COLOR_FOUND;
+    t1->addCondition(cond);
+    t2->addCondition(cond);
+
+    TriggerAction action;
+    action.type = TriggerActionType::LOG;
+    action.logMessage = "test";
+    t1->addAction(action);
+    t2->addAction(action);
+
+    EXPECT_NO_THROW(mgr.startAll());
+    EXPECT_NO_THROW(mgr.stopAll());
+
+    mgr.removeTrigger("sa_t1");
+    mgr.removeTrigger("sa_t2");
+}
