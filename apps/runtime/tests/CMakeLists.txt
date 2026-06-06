@@ -9,6 +9,12 @@ add_executable(runtime_tests
     ../src/cli.cpp
     ../src/packer.cpp
     ../src/runtime_context.cpp
+    ../src/agent.cpp
+    ../src/agent_config.cpp
+    ../src/remote_client.cpp
+    ../src/standalone_mode.cpp
+    ../src/local_ipc_server.cpp
+    ../src/rpc/handlers/script_handler.cpp
     ../src/commands/build_command.cpp
     ../src/commands/script_command.cpp
     ../src/commands/start_command.cpp
