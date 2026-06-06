@@ -11,6 +11,7 @@ add_executable(runtime_tests
     ../src/runtime_context.cpp
     ../src/commands/build_command.cpp
     ../src/commands/script_command.cpp
+    ../src/commands/start_command.cpp
     ../src/commands/stop_command.cpp
 )
 
