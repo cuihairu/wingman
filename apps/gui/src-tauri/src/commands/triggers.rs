@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 pub async fn get_triggers(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<TriggerInfo>, String> {
-    let mut client = state.ws_client.lock().await;
+    let mut client = state.ipc_client.lock().await;
     let response = client.send("trigger.list", json!({})).await?;
 
     if let Some(success) = response["data"]["success"].as_bool() {
@@ -33,7 +33,7 @@ pub async fn add_trigger(
     state: tauri::State<'_, AppState>,
     config: Value,
 ) -> Result<String, String> {
-    let mut client = state.ws_client.lock().await;
+    let mut client = state.ipc_client.lock().await;
     let response = client.send("trigger.add", json!({ "config": config })).await?;
 
     if let Some(success) = response["data"]["success"].as_bool() {
@@ -52,7 +52,7 @@ pub async fn remove_trigger(
     state: tauri::State<'_, AppState>,
     id: String,
 ) -> Result<(), String> {
-    let mut client = state.ws_client.lock().await;
+    let mut client = state.ipc_client.lock().await;
     let response = client
         .send("trigger.remove", json!({ "id": id }))
         .await?;
@@ -71,7 +71,7 @@ pub async fn update_trigger(
     id: String,
     config: Value,
 ) -> Result<(), String> {
-    let mut client = state.ws_client.lock().await;
+    let mut client = state.ipc_client.lock().await;
     let response = client
         .send("trigger.update", json!({ "id": id, "config": config }))
         .await?;
@@ -89,7 +89,7 @@ pub async fn toggle_trigger(
     state: tauri::State<'_, AppState>,
     id: String,
 ) -> Result<bool, String> {
-    let mut client = state.ws_client.lock().await;
+    let mut client = state.ipc_client.lock().await;
     let response = client
         .send("trigger.toggle", json!({ "id": id }))
         .await?;

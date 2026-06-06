@@ -40,7 +40,8 @@ features:
 - 基于 **C++** 开发核心引擎，提供高性能的屏幕操作和输入模拟能力
 - 支持 **Lua** 和 **Python** 两种脚本引擎，灵活可扩展
 - 纯**用户态**运行，使用合法平台 API，安全可靠
-- 支持**远程控制**，TCP Server/Client 模式，暴露 API 供外部调用
+- 支持**远程编排**，runtime agent 主动连接 Go server，由 Go server 统一中控
+- 支持**本地单机 UI**，Tauri 通过本地 IPC 控制 runtime，不通过 runtime WebSocket/HTTP server
 
 ## 核心特性
 
@@ -51,7 +52,7 @@ features:
 - ⚙️ **进程管理** - 启动/等待/终止进程
 - 🔄 **宏录制** - 录制鼠标键盘操作，自动回放
 - 🎯 **触发器系统** - 像素触发、定时触发、条件组合
-- 🌐 **网络层** - TCP Server/Client，支持远程控制
+- 🌐 **编排层** - Runtime agent 主动连接 Go server，Dashboard 只连接 Go server
 - 🐛 **调试器** - VS Code 插件，断点调试、变量查看
 - 🤖 **人性化模拟** - 贝塞尔曲线、随机延迟、自然操作
 - 💾 **存储系统** - 四层存储架构，支持本地和远程数据持久化

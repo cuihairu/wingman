@@ -1,6 +1,15 @@
 # Wingman Runtime API 文档
 
-Wingman Runtime 提供 WebSocket RPC 接口，供 Tauri UI 或其他客户端调用。
+> **已废弃/待迁移**: 本文记录的是旧 runtime WebSocket RPC 形态，不是当前目标架构。Runtime 不应提供 WebSocket/HTTP server 作为本地 UI 或远程控制面。
+>
+> 当前约束见 `docs/architecture-decisions.md`：
+>
+> - 远程编排: `runtime agent -> outbound transport -> Go orchestrator -> dashboard`
+> - 本地单机 UI: `Tauri UI -> Tauri Rust backend -> local IPC -> runtime`
+>
+> 后续应将本文迁移为 Go orchestrator API 和 local IPC command API 文档。
+
+Wingman Runtime 的本地控制面应通过本地 IPC 提供，供 Tauri UI 调用。
 
 ## 启动服务器
 
@@ -10,20 +19,16 @@ wingman-runtime start
 
 # 指定配置文件
 wingman-runtime start --config agent.toml
+
+# 本地 GUI / 单机模式，启动本地 IPC
+wingman-runtime start --standalone
 ```
 
-> 主机和端口在 `agent.toml` 中配置，参见 `server_ip` / `server_port` 字段。
+> 远程 Agent 使用 `agent.toml` 中的 `server_ip` / `server_port` 连接 Go orchestrator。本地 GUI 使用 `--standalone` 启动 runtime local IPC。
 
-## HTTP RESTful API
+## 本地 IPC 命令接口
 
-> **注意：** HTTP RESTful API 尚未实现，目前仅提供 WebSocket RPC 接口。HTTP API 在后续版本中计划支持。
-
-## WebSocket RPC 接口
-
-### 连接
-```
-ws://127.0.0.1:8080/ws
-```
+IPC 传输应使用长度前缀帧，例如 `uint32 length + JSON payload`。具体 transport 按平台自动选择：Windows 默认 Named Pipe，macOS/Linux 默认 Unix Domain Socket。
 
 ### 消息格式
 
@@ -179,27 +184,12 @@ ws://127.0.0.1:8080/ws
 
 ## 使用示例
 
-### JavaScript (WebSocket)
+### JavaScript (Tauri)
 ```javascript
-const ws = new WebSocket('ws://127.0.0.1:8080/ws');
+import { invoke } from '@tauri-apps/api/core';
 
-ws.onopen = () => {
-  console.log('Connected to Wingman');
-
-  // 获取系统状态
-  ws.send(JSON.stringify({
-    type: 'call',
-    method: 'system.getStatus',
-    params: {}
-  }));
-};
-
-ws.onmessage = (event) => {
-  const msg = JSON.parse(event.data);
-  console.log('Received:', msg);
-
-  if (msg.type === 'response' && msg.data.success) {
-    console.log('Result:', msg.data.result);
-  }
-};
+const status = await invoke('call_command', {
+  method: 'system.getStatus',
+  params: {}
+});
 ```

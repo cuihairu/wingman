@@ -1,5 +1,6 @@
 #include "wingman/runtime/config.hpp"
 #include <fstream>
+#include <stdexcept>
 #include <sstream>
 
 namespace wingman::runtime {

@@ -19,6 +19,7 @@ set(RUNTIME_SOURCES
     src/agent.cpp
     src/remote_client.cpp
     src/standalone_mode.cpp
+    src/local_ipc_server.cpp
     src/agent_config.cpp
     src/packer.cpp
     src/resource_loader.cpp

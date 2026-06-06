@@ -26,7 +26,6 @@ wingman/
 ├── apps/                    # Applications
 │   ├── runtime/             # CLI runtime
 │   ├── gui/                 # Tauri GUI
-│   └── inspector/           # Inspector tool
 ├── lib/                     # Core library
 │   └── wingman/             # Core functionality
 ├── libs/                    # Support libraries

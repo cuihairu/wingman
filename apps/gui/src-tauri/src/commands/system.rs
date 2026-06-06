@@ -7,7 +7,7 @@ use std::time::SystemTime;
 pub async fn get_system_status(
     state: tauri::State<'_, AppState>,
 ) -> Result<SystemStatus, String> {
-    let mut client = state.ws_client.lock().await;
+    let mut client = state.ipc_client.lock().await;
     let response = client.send("system.getStatus", json!({})).await?;
 
     if let Some(success) = response["data"]["success"].as_bool() {
@@ -37,7 +37,7 @@ pub async fn get_system_status(
 pub async fn get_version(
     state: tauri::State<'_, AppState>,
 ) -> Result<VersionInfo, String> {
-    let mut client = state.ws_client.lock().await;
+    let mut client = state.ipc_client.lock().await;
     let response = client.send("system.getVersion", json!({})).await?;
 
     if let Some(success) = response["data"]["success"].as_bool() {

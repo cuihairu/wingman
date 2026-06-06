@@ -1,5 +1,7 @@
 #include "wingman/ipc/windows/named_pipe_channel.hpp"
 #include <spdlog/spdlog.h>
+#include <nlohmann/json.hpp>
+#include <exception>
 #include <thread>
 #include <mutex>
 #include <atomic>
@@ -13,6 +15,70 @@
 #include <windows.h>
 
 namespace wingman::ipc::windows {
+
+namespace {
+
+bool writeAll(HANDLE handle, const void* data, DWORD size, std::atomic<bool>& stopping) {
+    OVERLAPPED overlapped{};
+    overlapped.hEvent = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+    if (!overlapped.hEvent) {
+        return false;
+    }
+
+    DWORD bytesWritten = 0;
+    BOOL result = WriteFile(handle, data, size, &bytesWritten, &overlapped);
+    if (!result && GetLastError() == ERROR_IO_PENDING) {
+        while (!stopping.load()) {
+            DWORD waitResult = WaitForSingleObject(overlapped.hEvent, 100);
+            if (waitResult == WAIT_OBJECT_0) {
+                result = GetOverlappedResult(handle, &overlapped, &bytesWritten, FALSE);
+                break;
+            }
+            if (waitResult != WAIT_TIMEOUT) {
+                result = FALSE;
+                break;
+            }
+        }
+    }
+
+    if (!result || stopping.load()) {
+        CancelIoEx(handle, &overlapped);
+    }
+    CloseHandle(overlapped.hEvent);
+    return result && bytesWritten == size && !stopping.load();
+}
+
+bool readAll(HANDLE handle, void* data, DWORD size, DWORD& bytesRead, std::atomic<bool>& stopping) {
+    OVERLAPPED overlapped{};
+    overlapped.hEvent = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+    if (!overlapped.hEvent) {
+        return false;
+    }
+
+    bytesRead = 0;
+    BOOL result = ReadFile(handle, data, size, &bytesRead, &overlapped);
+    if (!result && GetLastError() == ERROR_IO_PENDING) {
+        while (!stopping.load()) {
+            DWORD waitResult = WaitForSingleObject(overlapped.hEvent, 100);
+            if (waitResult == WAIT_OBJECT_0) {
+                result = GetOverlappedResult(handle, &overlapped, &bytesRead, FALSE);
+                break;
+            }
+            if (waitResult != WAIT_TIMEOUT) {
+                result = FALSE;
+                break;
+            }
+        }
+    }
+
+    if (!result || stopping.load()) {
+        CancelIoEx(handle, &overlapped);
+    }
+    CloseHandle(overlapped.hEvent);
+    return result && bytesRead == size && !stopping.load();
+}
+
+} // namespace
 
 NamedPipeChannel::NamedPipeChannel(bool serverMode, const std::string& pipeName)
     : serverMode_(serverMode)
@@ -51,16 +117,18 @@ bool NamedPipeChannel::connect(const std::string& endpoint) {
 }
 
 void NamedPipeChannel::disconnect() {
-    if (state_ == IpcState::Disconnected) {
+    if (state_ == IpcState::Disconnected && pipeHandle_ == INVALID_HANDLE_VALUE) {
         return;
     }
 
+    bool wasConnecting = state_ == IpcState::Connecting;
     setState(IpcState::Disconnecting);
     stopping_ = true;
 
     stopReceiving();
 
     if (pipeHandle_ != INVALID_HANDLE_VALUE) {
+        CancelIoEx(pipeHandle_, nullptr);
         if (serverMode_) {
             DisconnectNamedPipe(pipeHandle_);
         }
@@ -69,7 +137,9 @@ void NamedPipeChannel::disconnect() {
     }
 
     setState(IpcState::Disconnected);
-    stopping_ = false;
+    if (!wasConnecting) {
+        stopping_ = false;
+    }
 }
 
 bool NamedPipeChannel::isConnected() const {
@@ -90,16 +160,15 @@ bool NamedPipeChannel::send(const IpcMessage& message) {
 
     // Write message length (4 bytes)
     uint32_t length = static_cast<uint32_t>(data.size());
-    DWORD bytesWritten = 0;
 
-    if (!WriteFile(pipeHandle_, &length, sizeof(length), &bytesWritten, nullptr)) {
+    if (!writeAll(pipeHandle_, &length, sizeof(length), stopping_)) {
         spdlog::error("[NamedPipe] Failed to write message length: {}", GetLastError());
         setState(IpcState::Error);
         return false;
     }
 
     // Write message content
-    if (!WriteFile(pipeHandle_, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, nullptr)) {
+    if (!writeAll(pipeHandle_, data.data(), static_cast<DWORD>(data.size()), stopping_)) {
         spdlog::error("[NamedPipe] Failed to write message: {}", GetLastError());
         setState(IpcState::Error);
         return false;
@@ -179,9 +248,13 @@ std::string NamedPipeChannel::getEndpoint() const {
 
 void NamedPipeChannel::setState(IpcState state) {
     state_ = state;
-    if (state == IpcState::Error && errorCallback_) {
+    ErrorCallback callback;
+    if (state == IpcState::Error) {
         std::lock_guard<std::mutex> lock(callbacksMutex_);
-        errorCallback_("NamedPipe state error");
+        callback = errorCallback_;
+    }
+    if (callback) {
+        callback("NamedPipe state error");
     }
 }
 
@@ -189,7 +262,7 @@ bool NamedPipeChannel::createServerPipe() {
     // Create Named Pipe
     pipeHandle_ = CreateNamedPipeA(
         fullPipeName_.c_str(),
-        PIPE_ACCESS_DUPLEX,
+        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
         PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
         PIPE_UNLIMITED_INSTANCES,
         65536,  // Output buffer
@@ -207,18 +280,65 @@ bool NamedPipeChannel::createServerPipe() {
     // Wait for client connection
     spdlog::info("[NamedPipe] Server waiting for connection on: {}", fullPipeName_);
 
-    BOOL connected = ConnectNamedPipe(pipeHandle_, nullptr);
+    OVERLAPPED overlapped{};
+    overlapped.hEvent = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+    if (!overlapped.hEvent) {
+        spdlog::error("[NamedPipe] CreateEvent failed: {}", GetLastError());
+        CloseHandle(pipeHandle_);
+        pipeHandle_ = INVALID_HANDLE_VALUE;
+        setState(IpcState::Error);
+        return false;
+    }
+
+    BOOL connected = ConnectNamedPipe(pipeHandle_, &overlapped);
     if (!connected) {
         DWORD error = GetLastError();
         if (error == ERROR_PIPE_CONNECTED) {
             connected = TRUE;
+            SetEvent(overlapped.hEvent);
+        } else if (error == ERROR_IO_PENDING) {
+            while (!stopping_) {
+                DWORD waitResult = WaitForSingleObject(overlapped.hEvent, 100);
+                if (waitResult == WAIT_OBJECT_0) {
+                    DWORD bytesTransferred = 0;
+                    if (!GetOverlappedResult(pipeHandle_, &overlapped, &bytesTransferred, FALSE)) {
+                        error = GetLastError();
+                        CloseHandle(overlapped.hEvent);
+                        spdlog::error("[NamedPipe] ConnectNamedPipe completion failed: {}", error);
+                        CloseHandle(pipeHandle_);
+                        pipeHandle_ = INVALID_HANDLE_VALUE;
+                        setState(IpcState::Error);
+                        return false;
+                    }
+                    connected = TRUE;
+                    break;
+                }
+                if (waitResult != WAIT_TIMEOUT) {
+                    error = GetLastError();
+                    CloseHandle(overlapped.hEvent);
+                    spdlog::error("[NamedPipe] ConnectNamedPipe wait failed: {}", error);
+                    CloseHandle(pipeHandle_);
+                    pipeHandle_ = INVALID_HANDLE_VALUE;
+                    setState(IpcState::Error);
+                    return false;
+                }
+            }
         } else {
+            CloseHandle(overlapped.hEvent);
             spdlog::error("[NamedPipe] ConnectNamedPipe failed: {}", error);
             CloseHandle(pipeHandle_);
             pipeHandle_ = INVALID_HANDLE_VALUE;
             setState(IpcState::Error);
             return false;
         }
+    }
+
+    CloseHandle(overlapped.hEvent);
+    if (!connected || stopping_) {
+        CloseHandle(pipeHandle_);
+        pipeHandle_ = INVALID_HANDLE_VALUE;
+        setState(IpcState::Disconnected);
+        return false;
     }
 
     setState(IpcState::Connected);
@@ -229,13 +349,13 @@ bool NamedPipeChannel::createServerPipe() {
 bool NamedPipeChannel::connectToServer() {
     // Wait for Named Pipe to become available
     for (int i = 0; i < 50; ++i) {  // Wait up to 5 seconds
-    pipeHandle_ = CreateFileA(
+        pipeHandle_ = CreateFileA(
             fullPipeName_.c_str(),
             GENERIC_READ | GENERIC_WRITE,
             0,
             nullptr,
             OPEN_EXISTING,
-            0,
+            FILE_FLAG_OVERLAPPED,
             nullptr
         );
 
@@ -280,13 +400,7 @@ void NamedPipeChannel::receiveLoop() {
         uint32_t messageLength = 0;
         DWORD bytesRead = 0;
 
-        BOOL result = ReadFile(
-            pipeHandle_,
-            &messageLength,
-            sizeof(messageLength),
-            &bytesRead,
-            nullptr
-        );
+        BOOL result = readAll(pipeHandle_, &messageLength, sizeof(messageLength), bytesRead, stopping_);
 
         if (!result || bytesRead != sizeof(messageLength)) {
             DWORD error = GetLastError();
@@ -300,13 +414,7 @@ void NamedPipeChannel::receiveLoop() {
 
         // Read message content
         std::vector<uint8_t> buffer(messageLength);
-        result = ReadFile(
-            pipeHandle_,
-            buffer.data(),
-            messageLength,
-            &bytesRead,
-            nullptr
-        );
+        result = readAll(pipeHandle_, buffer.data(), messageLength, bytesRead, stopping_);
 
         if (!result || bytesRead != messageLength) {
             spdlog::error("[NamedPipe] ReadFile data failed: {}", GetLastError());
@@ -317,10 +425,13 @@ void NamedPipeChannel::receiveLoop() {
         std::string json(buffer.begin(), buffer.end());
         IpcMessage message = deserializeMessage(json);
 
-        // Invoke callback
-        std::lock_guard<std::mutex> lock(callbacksMutex_);
-        if (messageCallback_) {
-            messageCallback_(message);
+        MessageCallback callback;
+        {
+            std::lock_guard<std::mutex> lock(callbacksMutex_);
+            callback = messageCallback_;
+        }
+        if (callback) {
+            callback(message);
         }
     }
 
@@ -330,22 +441,46 @@ void NamedPipeChannel::receiveLoop() {
 }
 
 std::string NamedPipeChannel::serializeMessage(const IpcMessage& msg) {
-    // Simple JSON serialization
-    std::string json = "{";
-    json += "\"type\":" + std::to_string(static_cast<int>(msg.type)) + ",";
-    json += "\"method\":\"" + msg.method + "\",";
-    json += "\"payload\":" + (msg.payload.empty() ? "{}" : msg.payload) + ",";
-    json += "\"id\":" + std::to_string(msg.id) + ",";
-    json += "\"timestamp\":" + std::to_string(msg.timestamp);
-    json += "}";
-    return json;
+    nlohmann::json j;
+    j["type"] = static_cast<int>(msg.type);
+    j["method"] = msg.method;
+    j["id"] = msg.id;
+    j["timestamp"] = msg.timestamp;
+
+    if (msg.payload.empty()) {
+        j["payload"] = nlohmann::json::object();
+    } else {
+        try {
+            j["payload"] = nlohmann::json::parse(msg.payload);
+        } catch (...) {
+            j["payload"] = msg.payload;
+        }
+    }
+
+    return j.dump();
 }
 
 IpcMessage NamedPipeChannel::deserializeMessage(const std::string& json) {
     IpcMessage msg;
-    // Simplified parsing (should use nlohmann/json in practice)
-    // This is for demonstration only; should use a JSON library in practice
-    // ...
+    nlohmann::json parsed;
+    try {
+        parsed = nlohmann::json::parse(json);
+    } catch (const std::exception& e) {
+        msg.type = IpcMessageType::Error;
+        msg.payload = nlohmann::json{{"error", e.what()}}.dump();
+        return msg;
+    }
+
+    msg.type = static_cast<IpcMessageType>(parsed.value("type", static_cast<int>(IpcMessageType::Request)));
+    msg.method = parsed.value("method", "");
+    msg.id = parsed.value("id", uint64_t{0});
+    msg.timestamp = parsed.value("timestamp", uint64_t{0});
+
+    if (parsed.contains("payload")) {
+        msg.payload = parsed["payload"].is_string()
+            ? parsed["payload"].get<std::string>()
+            : parsed["payload"].dump();
+    }
     return msg;
 }
 

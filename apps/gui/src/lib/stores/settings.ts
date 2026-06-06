@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 
 interface Settings {
-	wsUrl: string;
+	ipcEndpoint: string;
 	autoReconnect: boolean;
 	minimizeOnStart: boolean;
 	theme: 'dark';
@@ -13,7 +13,7 @@ function loadSettings(): Settings {
 		if (saved) return JSON.parse(saved);
 	} catch { /* ignore */ }
 	return {
-		wsUrl: 'ws://127.0.0.1:8080/ws',
+		ipcEndpoint: 'wingman',
 		autoReconnect: true,
 		minimizeOnStart: false,
 		theme: 'dark',

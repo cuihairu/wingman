@@ -3,8 +3,11 @@
 #include "wingman/version.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <chrono>
 #include <csignal>
+#include <exception>
 #include <memory>
+#include <thread>
 
 namespace wingman::runtime::commands {
 
@@ -22,6 +25,12 @@ void signalHandler(int signal) {
 } // anonymous namespace
 
 int startCommand(const std::string& configPath) {
+    StartOptions options;
+    options.configPath = configPath;
+    return startCommand(options);
+}
+
+int startCommand(const StartOptions& options) {
     // 初始化日志
     auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_st>();
     spdlog::default_logger()->sinks().push_back(consoleSink);
@@ -44,9 +53,23 @@ int startCommand(const std::string& configPath) {
 #endif
 
     // 初始化
-    if (!agent.initialize(configPath)) {
-        spdlog::error("Failed to initialize agent");
-        return 1;
+    if (options.forceStandalone) {
+        AgentConfig config;
+        try {
+            config = AgentConfig::loadFromFile(options.configPath);
+        } catch (const std::exception& e) {
+            spdlog::warn("Failed to load config: {}, using default standalone configuration", e.what());
+        }
+        config.enableRemote = false;
+        if (!agent.initialize(config)) {
+            spdlog::error("Failed to initialize standalone runtime");
+            return 1;
+        }
+    } else {
+        if (!agent.initialize(options.configPath)) {
+            spdlog::error("Failed to initialize agent");
+            return 1;
+        }
     }
 
     // 启动

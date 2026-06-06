@@ -14,6 +14,7 @@ struct IpcConfig {
     std::string serverName;       // Server name (for naming)
     int tcpPort = 0;              // TCP port (0 = auto-select)
     int timeoutMs = 5000;         // Connection timeout
+    bool allowTcpFallback = false; // Local TCP is debug-only and disabled by default
 };
 
 /**

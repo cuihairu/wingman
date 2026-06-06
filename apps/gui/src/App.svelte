@@ -42,9 +42,8 @@
 			// 生产模式：自动连接
 			(async () => {
 				try {
-					const wsUrl = 'ws://127.0.0.1:8080/ws';
-					await connection.connect(wsUrl);
-					logs.add('已自动连接到服务器', 'success');
+					await connection.connect('wingman');
+					logs.add('已自动连接到本地 runtime IPC', 'success');
 					await loadAllData();
 				} catch {
 					logs.add('自动连接失败，请在设置中手动连接', 'warning');

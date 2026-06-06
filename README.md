@@ -42,6 +42,8 @@ C++ + Lua/Python 的高性能游戏自动化框架
 
 ## 架构设计
 
+> **控制面约束**: Go server 是远程中控编排器，runtime 作为 agent 主动 outbound 连接 Go server；本地 Tauri UI 通过本地 IPC 控制 runtime。Runtime 不应引入 HTTP/WebSocket server 作为本地 UI 或远程控制面。详见 [架构决策](docs/architecture-decisions.md)。
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │            Lua 脚本 (.lua) / Python 脚本 (.py)            │
@@ -96,9 +98,9 @@ wingman/
 │   │   ├── src/
 │   │   │   └── main.cpp  # 入口 (支持 Lua/Python)
 │   │   └── CMakeLists.txt
-│   └── inspector/        # 检查工具 (Tauri 2.0 + Svelte 5)
+│   └── gui/              # 本地 Tauri/Svelte GUI
 │       ├── src/          # Svelte 5 前端
-│       └── src-tauri/    # Rust 后端
+│       └── src-tauri/    # Rust 后端，通过本地 IPC 控制 runtime
 │
 ├── lib/wingman/          # 核心库
 │   ├── include/wingman/

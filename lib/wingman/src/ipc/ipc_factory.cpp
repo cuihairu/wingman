@@ -1,15 +1,46 @@
 #include "wingman/ipc/ipc_factory.hpp"
 #include "wingman/ipc/tcp_channel.hpp"
 #include <spdlog/spdlog.h>
+#include <cstdlib>
 
 #ifdef _WIN32
 #include "wingman/ipc/windows/named_pipe_channel.hpp"
+#include <winsock2.h>
 using NamedPipeChannel = wingman::ipc::windows::NamedPipeChannel;
 #elif defined(__unix__) || defined(__APPLE__)
 #include "wingman/ipc/unix_socket_channel.hpp"
 #endif
 
 namespace wingman::ipc {
+
+namespace {
+
+std::unique_ptr<IIpcChannel> createTcpChannel(bool serverMode, const IpcConfig& config) {
+    if (!config.allowTcpFallback && config.preferredTransport != IpcTransport::TcpPipe) {
+        spdlog::warn("[IpcFactory] TCP fallback disabled; refusing to create debug TCP IPC channel");
+        return nullptr;
+    }
+
+    int port = config.tcpPort > 0 ? config.tcpPort : 9800;
+    return std::make_unique<TcpChannel>(serverMode, "127.0.0.1", port);
+}
+
+#ifdef _WIN32
+bool probeWindowsUnixSocket() {
+#ifndef AF_UNIX
+    return false;
+#else
+    SOCKET s = ::socket(AF_UNIX, SOCK_STREAM, 0);
+    if (s == INVALID_SOCKET) {
+        return false;
+    }
+    ::closesocket(s);
+    return true;
+#endif
+}
+#endif
+
+} // namespace
 
 // ========== IpcFactory Implementation ==========
 
@@ -45,10 +76,12 @@ std::unique_ptr<IIpcChannel> IpcFactory::createServer(const IpcConfig& config) {
             break;
     }
 
-    // Fallback to TCP
-    spdlog::info("[IpcFactory] Preferred transport not available, falling back to TCP");
-    int port = config.tcpPort > 0 ? config.tcpPort : 9800;
-    return std::make_unique<TcpChannel>(true, "127.0.0.1", port);
+    if (transport == IpcTransport::TcpPipe) {
+        return createTcpChannel(true, config);
+    }
+
+    spdlog::warn("[IpcFactory] No supported IPC server transport available");
+    return createTcpChannel(true, config);
 }
 
 std::unique_ptr<IIpcChannel> IpcFactory::createClient(const IpcConfig& config) {
@@ -81,18 +114,27 @@ std::unique_ptr<IIpcChannel> IpcFactory::createClient(const IpcConfig& config) {
             break;
     }
 
-    spdlog::info("[IpcFactory] Preferred transport not available, falling back to TCP");
-    int port = config.tcpPort > 0 ? config.tcpPort : 9800;
-    return std::make_unique<TcpChannel>(false, "127.0.0.1", port);
+    if (transport == IpcTransport::TcpPipe) {
+        return createTcpChannel(false, config);
+    }
+
+    spdlog::warn("[IpcFactory] No supported IPC client transport available");
+    return createTcpChannel(false, config);
 }
 
 std::string IpcFactory::getDefaultEndpoint() {
 #ifdef _WIN32
     return "wingman";
 #elif defined(__linux__)
+    if (const char* runtimeDir = std::getenv("XDG_RUNTIME_DIR")) {
+        return std::string(runtimeDir) + "/wingman.sock";
+    }
     return "/tmp/wingman.sock";
 #elif defined(__APPLE__)
-    return "/var/run/wingman.sock";
+    if (const char* tmpDir = std::getenv("TMPDIR")) {
+        return std::string(tmpDir) + "wingman.sock";
+    }
+    return "/tmp/wingman.sock";
 #else
     return "wingman";
 #endif
@@ -118,10 +160,10 @@ bool IpcFactory::isTransportAvailable(IpcTransport transport) {
     if (transport == IpcTransport::NamedPipe) {
         return true;  // Windows always supports Named Pipe
     }
-    // Windows 10 1803+ supports Unix Socket
     if (transport == IpcTransport::UnixSocket) {
-        // Could check version; simplified here
-        return true;
+        // Windows AF_UNIX support can be detected, but this build does not
+        // provide a Windows UnixSocketChannel implementation yet.
+        return false;
     }
 #elif defined(__linux__) || defined(__APPLE__)
     if (transport == IpcTransport::UnixSocket) {

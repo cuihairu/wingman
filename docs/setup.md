@@ -66,7 +66,6 @@ wingman/
 ├── apps/                    # 应用程序
 │   ├── runtime/             # CLI 运行时
 │   ├── gui/                 # Tauri GUI 应用
-│   └── inspector/           # 图形化检查工具
 ├── lib/                     # 核心库
 │   └── wingman/             # 核心功能库
 ├── libs/                    # 辅助库

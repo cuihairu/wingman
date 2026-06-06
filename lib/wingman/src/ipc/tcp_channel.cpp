@@ -1,5 +1,6 @@
 #include "wingman/ipc/tcp_channel.hpp"
 #include <spdlog/spdlog.h>
+#include <nlohmann/json.hpp>
 #include <cstring>
 #include <chrono>
 
@@ -63,22 +64,33 @@ bool TcpChannel::connect(const std::string& endpoint) {
 }
 
 void TcpChannel::disconnect() {
-    if (state_ == IpcState::Disconnected) {
+    if (state_ == IpcState::Disconnected && dataSocket_ == INVALID_SOCKET && listenSocket_ == INVALID_SOCKET) {
         return;
     }
 
     setState(IpcState::Disconnecting);
     stopping_ = true;
-    stopReceiving();
 
     if (dataSocket_ != INVALID_SOCKET) {
+#ifdef _WIN32
+        shutdown(dataSocket_, SD_BOTH);
+#else
+        shutdown(dataSocket_, SHUT_RDWR);
+#endif
         closesocket(dataSocket_);
         dataSocket_ = INVALID_SOCKET;
     }
     if (listenSocket_ != INVALID_SOCKET) {
+#ifdef _WIN32
+        shutdown(listenSocket_, SD_BOTH);
+#else
+        shutdown(listenSocket_, SHUT_RDWR);
+#endif
         closesocket(listenSocket_);
         listenSocket_ = INVALID_SOCKET;
     }
+
+    stopReceiving();
 
     setState(IpcState::Disconnected);
     stopping_ = false;
@@ -176,9 +188,13 @@ std::string TcpChannel::getEndpoint() const {
 
 void TcpChannel::setState(IpcState state) {
     state_ = state;
-    if (state == IpcState::Error && errorCallback_) {
+    ErrorCallback callback;
+    if (state == IpcState::Error) {
         std::lock_guard<std::mutex> lock(callbacksMutex_);
-        errorCallback_("TCP channel error");
+        callback = errorCallback_;
+    }
+    if (callback) {
+        callback("TCP channel error");
     }
 }
 
@@ -292,9 +308,13 @@ void TcpChannel::receiveLoop() {
         std::string json(buffer.begin(), buffer.end());
         IpcMessage message = deserializeMessage(json);
 
-        std::lock_guard<std::mutex> lock(callbacksMutex_);
-        if (messageCallback_) {
-            messageCallback_(message);
+        MessageCallback callback;
+        {
+            std::lock_guard<std::mutex> lock(callbacksMutex_);
+            callback = messageCallback_;
+        }
+        if (callback) {
+            callback(message);
         }
     }
 
@@ -339,19 +359,46 @@ bool TcpChannel::recvRaw(void* data, size_t len) {
 }
 
 std::string TcpChannel::serializeMessage(const IpcMessage& msg) {
-    std::string json = "{";
-    json += "\"type\":" + std::to_string(static_cast<int>(msg.type)) + ",";
-    json += "\"method\":\"" + msg.method + "\",";
-    json += "\"payload\":" + (msg.payload.empty() ? "{}" : msg.payload) + ",";
-    json += "\"id\":" + std::to_string(msg.id) + ",";
-    json += "\"timestamp\":" + std::to_string(msg.timestamp);
-    json += "}";
-    return json;
+    nlohmann::json j;
+    j["type"] = static_cast<int>(msg.type);
+    j["method"] = msg.method;
+    j["id"] = msg.id;
+    j["timestamp"] = msg.timestamp;
+
+    if (msg.payload.empty()) {
+        j["payload"] = nlohmann::json::object();
+    } else {
+        try {
+            j["payload"] = nlohmann::json::parse(msg.payload);
+        } catch (...) {
+            j["payload"] = msg.payload;
+        }
+    }
+
+    return j.dump();
 }
 
-IpcMessage TcpChannel::deserializeMessage(const std::string& /*json*/) {
+IpcMessage TcpChannel::deserializeMessage(const std::string& json) {
     IpcMessage msg;
-    // Simplified parsing - same approach as NamedPipeChannel
+    nlohmann::json parsed;
+    try {
+        parsed = nlohmann::json::parse(json);
+    } catch (const std::exception& e) {
+        msg.type = IpcMessageType::Error;
+        msg.payload = nlohmann::json{{"error", e.what()}}.dump();
+        return msg;
+    }
+
+    msg.type = static_cast<IpcMessageType>(parsed.value("type", static_cast<int>(IpcMessageType::Request)));
+    msg.method = parsed.value("method", "");
+    msg.id = parsed.value("id", uint64_t{0});
+    msg.timestamp = parsed.value("timestamp", uint64_t{0});
+
+    if (parsed.contains("payload")) {
+        msg.payload = parsed["payload"].is_string()
+            ? parsed["payload"].get<std::string>()
+            : parsed["payload"].dump();
+    }
     return msg;
 }
 

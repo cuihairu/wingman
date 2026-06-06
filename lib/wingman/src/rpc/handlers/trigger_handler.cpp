@@ -22,14 +22,18 @@ void registerTriggerHandlers(RpcDispatcher& dispatcher, TriggerManager& manager)
     });
 
     dispatcher.registerHandler("trigger.add", [&manager](const json& params) -> json {
-        TriggerConfig config;
-        config.name = params.value("name", "Unnamed Trigger");
-        config.enabled = params.value("enabled", true);
-        config.oneShot = params.value("oneShot", false);
-        config.cooldown = params.value("cooldown", 0);
+        const json& source = params.contains("config") && params["config"].is_object()
+            ? params["config"]
+            : params;
 
-        if (params.contains("condition")) {
-            const auto& cond = params["condition"];
+        TriggerConfig config;
+        config.name = source.value("name", "Unnamed Trigger");
+        config.enabled = source.value("enabled", true);
+        config.oneShot = source.value("oneShot", false);
+        config.cooldown = source.value("cooldown", 0);
+
+        if (source.contains("condition")) {
+            const auto& cond = source["condition"];
             config.condition.type = static_cast<TriggerType>(cond.value("type", 0));
             config.condition.value = cond.value("value", "");
             config.condition.tolerance = cond.value("tolerance", 10);
@@ -44,8 +48,8 @@ void registerTriggerHandlers(RpcDispatcher& dispatcher, TriggerManager& manager)
             }
         }
 
-        if (params.contains("actions")) {
-            for (const auto& a : params["actions"]) {
+        if (source.contains("actions")) {
+            for (const auto& a : source["actions"]) {
                 TriggerActionData action;
                 action.type = static_cast<BasicTriggerAction>(a.value("type", 0));
                 action.value = a.value("value", "");
@@ -70,6 +74,9 @@ void registerTriggerHandlers(RpcDispatcher& dispatcher, TriggerManager& manager)
     dispatcher.registerHandler("trigger.update", [&manager](const json& params) -> json {
         std::string idStr = params.value("id", "0");
         size_t id = std::stoull(idStr);
+        const json& source = params.contains("config") && params["config"].is_object()
+            ? params["config"]
+            : params;
 
         auto existing = manager.getTriggerConfig(id);
         if (!existing) {
@@ -77,10 +84,10 @@ void registerTriggerHandlers(RpcDispatcher& dispatcher, TriggerManager& manager)
         }
 
         TriggerConfig config = *existing;
-        if (params.contains("name")) config.name = params["name"];
-        if (params.contains("enabled")) config.enabled = params["enabled"];
-        if (params.contains("oneShot")) config.oneShot = params["oneShot"];
-        if (params.contains("cooldown")) config.cooldown = params["cooldown"];
+        if (source.contains("name")) config.name = source["name"];
+        if (source.contains("enabled")) config.enabled = source["enabled"];
+        if (source.contains("oneShot")) config.oneShot = source["oneShot"];
+        if (source.contains("cooldown")) config.cooldown = source["cooldown"];
 
         manager.update(id, config);
         return {{"success", true}};

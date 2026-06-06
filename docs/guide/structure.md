@@ -118,11 +118,13 @@ wingman/
 - API 参考
 - 示例脚本
 
-### server/ - 网络服务层
+### orchestrator/ - 远程编排层
 
-实现 TCP Server/Client，支持远程控制：
-- **Remote 模式**：主动连接编排器
-- **Client 模式**：主动连接 Nebula
+Go server 是远程中控入口。Runtime 作为 agent 主动 outbound 连接 Go server，Dashboard 只连接 Go server。
+
+### local IPC - 本地单机控制
+
+Tauri GUI 通过 Tauri Rust backend 使用本地 IPC 控制 runtime。Runtime 不提供 WebSocket/HTTP server 作为本地 UI 控制面。
 
 ### core/ - 核心引擎
 

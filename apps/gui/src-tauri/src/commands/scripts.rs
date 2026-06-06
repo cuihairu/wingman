@@ -6,7 +6,7 @@ use serde_json::json;
 pub async fn get_scripts(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<ScriptInfo>, String> {
-    let mut client = state.ws_client.lock().await;
+    let mut client = state.ipc_client.lock().await;
     let response = client.send("script.list", json!({})).await?;
 
     if let Some(success) = response["data"]["success"].as_bool() {
@@ -33,7 +33,7 @@ pub async fn start_script(
     state: tauri::State<'_, AppState>,
     id: String,
 ) -> Result<ScriptStatus, String> {
-    let mut client = state.ws_client.lock().await;
+    let mut client = state.ipc_client.lock().await;
     let response = client
         .send("script.start", json!({ "path": format!("scripts/{}.lua", id) }))
         .await?;
@@ -60,7 +60,7 @@ pub async fn stop_script(
     state: tauri::State<'_, AppState>,
     script_id: String,
 ) -> Result<String, String> {
-    let mut client = state.ws_client.lock().await;
+    let mut client = state.ipc_client.lock().await;
     let response = client
         .send("script.stop", json!({ "scriptId": script_id }))
         .await?;

@@ -17,7 +17,6 @@
 | [MicroMacro](https://github.com/Fallas/micromacro) | C++/Lua | 游戏自动化框架 | Lua绑定设计 |
 | [Osenpa Auto Clicker](https://sourceforge.net/projects/osenpa-autoclicker) | C# | 图像/颜色检测 | UI设计 |
 | [EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) | C++ | Lua调试器 | 调试协议实现 |
-| [Drogon](https://github.com/drogonframework/drogon) | C++ | Web框架 | C++ HTTP服务 |
 
 ---
 
@@ -38,7 +37,7 @@ wingman/
 │   │   ├── tests/
 │   │   └── CMakeLists.txt
 │   │
-│   └── inspector/                ← Tauri 检查工具
+│   └── gui/                      ← 本地 Tauri GUI（通过 IPC 控制 runtime）
 │       ├── src-tauri/
 │       ├── src/
 │       └── package.json
@@ -88,8 +87,8 @@ wingman/
 ┌─────────────────────────────────────────────────────────┐
 │                    apps/                                 │
 │  ┌──────────────┐           ┌──────────────┐           │
-│  │   client     │           │  inspector   │           │
-│  │  (应用入口)   │           │  (检查工具)   │           │
+│  │   runtime    │           │     gui      │           │
+│  │ (主动 Agent) │           │ (本地 IPC UI)│           │
 │  └──────┬───────┘           └──────────────┘           │
 └─────────┼───────────────────────────────────────────────┘
           │
@@ -379,7 +378,7 @@ class TriggerEngine {
 ```
 
 ### 5.2 技术选型
-- **Tauri 2.0 + Web UI** - 桌面控制台与检查工具
+- **Tauri 2.0 + Web UI** - 本地桌面控制台，通过 IPC 控制 runtime
 
 **交付物**: 图形化配置工具
 

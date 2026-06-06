@@ -14,8 +14,8 @@
 				await connection.disconnect();
 				logs.add('已断开连接', 'warning');
 			} else {
-				await connection.connect($settings.wsUrl);
-				logs.add('已连接到服务器', 'success');
+				await connection.connect($settings.ipcEndpoint);
+				logs.add('已连接到本地 runtime IPC', 'success');
 			}
 		} catch (error: any) {
 			logs.add('连接失败: ' + error, 'error');
@@ -92,14 +92,14 @@
 	</div>
 	<div class="card-body">
 		<div class="form-group">
-			<span class="form-label">WebSocket 服务器地址</span>
+			<span class="form-label">本地 IPC 端点</span>
 			<div class="connect-config">
 				<input
 					type="text"
-					id="wsUrlInput"
+					id="ipcEndpointInput"
 					class="form-input"
-					value={$settings.wsUrl}
-					onchange={(e) => settings.update({ wsUrl: (e.target as HTMLInputElement).value })}
+					value={$settings.ipcEndpoint}
+					onchange={(e) => settings.update({ ipcEndpoint: (e.target as HTMLInputElement).value })}
 				>
 				<button class="btn btn-primary" onclick={handleConnect}>
 					{$connection.connected ? '断开' : '连接'}

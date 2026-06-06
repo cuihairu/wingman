@@ -307,7 +307,6 @@ wingman/
 │   ├── gui/                 # Tauri/Svelte GUI
 │   │   ├── src-tauri/
 │   │   └── src/
-│   ├── inspector/           # Tauri 检查工具
 │   └── client/              # 客户端库
 ├── lib/wingman/             # C++ 核心引擎
 ├── libs/                    # 辅助库

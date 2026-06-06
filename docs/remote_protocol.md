@@ -8,7 +8,7 @@
 
 ## 当前架构
 
-Runtime 现在作为**主动 Agent** 运行，通过以下两种方式提供远程控制能力：
+Runtime 现在作为**主动 Agent** 运行，通过 outbound transport 连接 Go 编排器。Runtime 不作为被动 HTTP/WebSocket/TCP 控制服务器。
 
 ### 1. Transport TCP（Agent 到编排器）
 
@@ -27,17 +27,24 @@ Agent (Runtime)  ──主动连接──>  Go Orchestrator (TCP Server)
 - `libs/transport/` - 网络传输层
 - `libs/proto/` - Protobuf 协议封装
 
-### 2. Tauri IPC（GUI 直接调用）
+### 2. Local IPC（本地 GUI 控制）
 
-Tauri/Svelte GUI（`apps/gui/`）通过 Tauri IPC 直接调用 C++ 核心库 API，无需经过网络协议。
+Tauri/Svelte GUI（`apps/gui/`）通过 Tauri `invoke()` 调用 Rust backend，Rust backend 通过本地 IPC 控制 runtime，无需经过网络协议。
 
 ```
-Tauri GUI (Svelte)  ──Tauri IPC──>  C++ Core Library
-                                      ├── 屏幕捕获
-                                      ├── 输入模拟
-                                      ├── 触发器管理
-                                      └── ...
+Tauri GUI (Svelte)  ──invoke──>  Tauri Rust backend  ──local IPC──>  Runtime
+                                                                        ├── 脚本管理
+                                                                        ├── 触发器管理
+                                                                        └── 核心能力调用
 ```
+
+本地 IPC 默认策略：
+
+| 平台 | 默认 IPC |
+|------|----------|
+| Windows | Named Pipe |
+| macOS/Linux | Unix Domain Socket |
+| 全平台 | Local TCP 仅显式 debug fallback |
 
 ### 3. Web Dashboard（React/Umi）
 
@@ -106,4 +113,4 @@ Web Dashboard (React/Umi)  ──WebSocket──>  Go Orchestrator  ──Transp
 
 4. **客户端库** - `wingman::RemoteControlClient` 已移除。外部工具应通过 Go 编排器的 REST/WebSocket API 间接控制 Agent。
 
-5. **GUI 直接访问** - 如果只需要本地控制，使用 Tauri GUI（`apps/gui/`）通过 IPC 直接调用核心库，无需任何网络通信。
+5. **GUI 本地访问** - 如果只需要本地控制，使用 Tauri GUI（`apps/gui/`）通过本地 IPC 控制 runtime，无需任何网络通信。

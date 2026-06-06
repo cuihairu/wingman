@@ -1,9 +1,9 @@
 # Wingman 项目待办
 
 ## P0
-- 收敛架构边界，明确只保留一条主链路：`lib/wingman` -> `apps/runtime` -> `apps/inspector` / `orchestrator`
+- 收敛架构边界，明确只保留两条控制链路：远程 `apps/runtime` -> `orchestrator/server`，本地 `apps/gui` -> IPC -> `apps/runtime`
 - 清理 legacy 入口与重复实现，删除或隔离 `WINGMAN_BUILD_SERVER`、`WINGMAN_BUILD_DEBUGGER` 相关旧路径
-- 补齐核心运行链路的真实实现，优先完成 `script`、`start/stop/status`、`serve`、`websocket`、`screenshot` 等主功能
+- 补齐核心运行链路的真实实现，优先完成 `script`、`start/stop/status`、agent outbound、local IPC、`screenshot` 等主功能
 - 统一配置、协议、模块导出与命名，避免 `apps/`、`libs/`、`orchestrator/` 之间出现职责重叠
 
 ## P1

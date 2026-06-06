@@ -7,7 +7,6 @@ wingman/
 ├── apps/                    # 应用程序
 │   ├── runtime/             # CLI 运行时 (C++)
 │   ├── gui/                 # Tauri/Svelte GUI
-│   ├── inspector/           # Tauri 检查工具
 │   └── client/              # 客户端库
 ├── lib/                     # 核心库
 │   └── wingman/             # 核心功能库
@@ -45,10 +44,7 @@ C++ CLI 运行时，作为主动 Agent 运行：
 > **注意**: 旧的 PassiveMode（被动监听）和 `serve` 命令已被移除。Runtime 不再作为被动服务器。
 
 #### gui/
-Tauri/Svelte 桌面 GUI 应用，通过 Tauri IPC 直接调用 C++ 核心库 API。
-
-#### inspector/
-Tauri 2.0 开发检查工具，用于快速验证功能（截图、像素检测、图像匹配等）
+Tauri/Svelte 桌面 GUI 应用，通过 Tauri Rust backend 使用本地 IPC 控制 runtime。
 
 ### lib/wingman/
 

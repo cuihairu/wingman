@@ -1,5 +1,6 @@
 #include "wingman/ipc/unix_socket_channel.hpp"
 #include <spdlog/spdlog.h>
+#include <nlohmann/json.hpp>
 #include <cstring>
 #include <chrono>
 
@@ -36,20 +37,23 @@ bool UnixSocketChannel::connect(const std::string& endpoint) {
 }
 
 void UnixSocketChannel::disconnect() {
-    if (state_ == IpcState::Disconnected) return;
+    if (state_ == IpcState::Disconnected && dataFd_ == INVALID_SOCKET && listenFd_ == INVALID_SOCKET) return;
 
     setState(IpcState::Disconnecting);
     stopping_ = true;
-    stopReceiving();
 
     if (dataFd_ != INVALID_SOCKET) {
+        shutdown(dataFd_, SHUT_RDWR);
         closesocket(dataFd_);
         dataFd_ = INVALID_SOCKET;
     }
     if (listenFd_ != INVALID_SOCKET) {
+        shutdown(listenFd_, SHUT_RDWR);
         closesocket(listenFd_);
         listenFd_ = INVALID_SOCKET;
     }
+
+    stopReceiving();
 
     // Remove socket file
     if (serverMode_) {
@@ -141,9 +145,13 @@ std::string UnixSocketChannel::getEndpoint() const {
 
 void UnixSocketChannel::setState(IpcState state) {
     state_ = state;
-    if (state == IpcState::Error && errorCallback_) {
+    ErrorCallback callback;
+    if (state == IpcState::Error) {
         std::lock_guard<std::mutex> lock(callbacksMutex_);
-        errorCallback_("UnixSocket channel error: " + socketPath_);
+        callback = errorCallback_;
+    }
+    if (callback) {
+        callback("UnixSocket channel error: " + socketPath_);
     }
 }
 
@@ -246,9 +254,13 @@ void UnixSocketChannel::receiveLoop() {
         std::string json(buffer.begin(), buffer.end());
         IpcMessage message = deserializeMessage(json);
 
-        std::lock_guard<std::mutex> lock(callbacksMutex_);
-        if (messageCallback_) {
-            messageCallback_(message);
+        MessageCallback callback;
+        {
+            std::lock_guard<std::mutex> lock(callbacksMutex_);
+            callback = messageCallback_;
+        }
+        if (callback) {
+            callback(message);
         }
     }
 
@@ -291,19 +303,46 @@ bool UnixSocketChannel::recvRaw(void* data, size_t len) {
 }
 
 std::string UnixSocketChannel::serializeMessage(const IpcMessage& msg) {
-    std::string json = "{";
-    json += "\"type\":" + std::to_string(static_cast<int>(msg.type)) + ",";
-    json += "\"method\":\"" + msg.method + "\",";
-    json += "\"payload\":" + (msg.payload.empty() ? "{}" : msg.payload) + ",";
-    json += "\"id\":" + std::to_string(msg.id) + ",";
-    json += "\"timestamp\":" + std::to_string(msg.timestamp);
-    json += "}";
-    return json;
+    nlohmann::json j;
+    j["type"] = static_cast<int>(msg.type);
+    j["method"] = msg.method;
+    j["id"] = msg.id;
+    j["timestamp"] = msg.timestamp;
+
+    if (msg.payload.empty()) {
+        j["payload"] = nlohmann::json::object();
+    } else {
+        try {
+            j["payload"] = nlohmann::json::parse(msg.payload);
+        } catch (...) {
+            j["payload"] = msg.payload;
+        }
+    }
+
+    return j.dump();
 }
 
-IpcMessage UnixSocketChannel::deserializeMessage(const std::string& /*json*/) {
+IpcMessage UnixSocketChannel::deserializeMessage(const std::string& json) {
     IpcMessage msg;
-    // Simplified parsing - same approach as TcpChannel
+    nlohmann::json parsed;
+    try {
+        parsed = nlohmann::json::parse(json);
+    } catch (const std::exception& e) {
+        msg.type = IpcMessageType::Error;
+        msg.payload = nlohmann::json{{"error", e.what()}}.dump();
+        return msg;
+    }
+
+    msg.type = static_cast<IpcMessageType>(parsed.value("type", static_cast<int>(IpcMessageType::Request)));
+    msg.method = parsed.value("method", "");
+    msg.id = parsed.value("id", uint64_t{0});
+    msg.timestamp = parsed.value("timestamp", uint64_t{0});
+
+    if (parsed.contains("payload")) {
+        msg.payload = parsed["payload"].is_string()
+            ? parsed["payload"].get<std::string>()
+            : parsed["payload"].dump();
+    }
     return msg;
 }
 

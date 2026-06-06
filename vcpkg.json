@@ -38,9 +38,6 @@
       "name": "curl"
     },
     {
-      "name": "ixwebsocket"
-    },
-    {
       "name": "sqlite3"
     },
     {

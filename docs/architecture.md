@@ -1,16 +1,17 @@
 # Wingman 项目架构
 
+> 架构硬约束见 `docs/architecture-decisions.md`。修改 runtime、GUI、orchestrator 或 transport 前必须先阅读该文档。
+
 ## 目录结构
 
 ```
 wingman/
 ├── apps/                         ← 所有可执行程序
-│   ├── runtime/                  ← 主运行时（主动 Agent）
+│   ├── runtime/                  ← 主运行时（主动 Agent + 本地 IPC 服务端）
 │   │   ├── src/
 │   │   │   ├── main.cpp          ← 入口
 │   │   │   ├── agent.cpp         ← Agent 主逻辑（主动连接编排器）
-│   │   │   ├── remote_client.cpp ← 远程客户端（连接编排器）
-│   │   │   ├── remote_client.cpp ← 远程客户端（transport TCP）
+│   │   │   ├── remote_client.cpp ← 远程客户端（主动 outbound 连接编排器）
 │   │   │   ├── standalone_mode.cpp ← 单机模式
 │   │   │   └── commands/         ← CLI 子命令
 │   │   ├── include/wingman/runtime/
@@ -18,11 +19,6 @@ wingman/
 │   │   └── CMakeLists.txt
 │   │
 │   ├── gui/                      ← Tauri/Svelte GUI
-│   │   ├── src-tauri/
-│   │   ├── src/
-│   │   └── package.json
-│   │
-│   ├── inspector/                ← Tauri 检查工具
 │   │   ├── src-tauri/
 │   │   ├── src/
 │   │   └── package.json
@@ -71,24 +67,20 @@ wingman/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    apps/                                 │
-│  ┌──────────────┐  ┌──────────┐  ┌──────────────┐     │
-│  │   runtime    │  │   gui    │  │  inspector   │     │
-│  │ (主动 Agent) │  │(Tauri GUI)│  │  (检查工具)   │     │
-│  └──────┬───────┘  └────┬─────┘  └──────────────┘     │
-└─────────┼───────────────┼──────────────────────────────┘
-          │               │
-┌─────────▼───────────────────────────────────────────────┐
-│              lib/wingman/ (核心库)                        │
-│  屏幕捕获、输入模拟、触发器、视觉识别、行为树、OCR...     │
-│              (GUI 通过 Tauri IPC 直接调用核心库)         │
-└─────────┬───────────────────────────────────────────────┘
-          │
-┌─────────▼───────────────────────────────────────────────┐
-│              libs/ (辅助库)                              │
-│  ┌──────────┐  ┌──────┐  ┌──────┐                      │
-│  │transport │  │ lua  │  │ proto│                      │
-│  └──────────┘  └──────┘  └──────┘                      │
+│                 Remote orchestration                     │
+│ dashboard/browser ──HTTP/WS──► Go orchestrator            │
+│                                      ▲                    │
+│                                      │ outbound transport │
+│                                      │                    │
+│                              runtime agent                │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│                  Local standalone UI                     │
+│ Tauri UI ──invoke──► Tauri Rust backend ──IPC──► runtime  │
+│                                                   │       │
+│                                                   ▼       │
+│                                        lib/wingman core   │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -104,18 +96,24 @@ lib/wingman/ (核心功能：screen, input, trigger...)
 apps/runtime/ (应用：CLI + 运行模式)
 ```
 
-## 运行模式
+## 控制面
 
-Runtime 作为主动 Agent 运行，通过 outbound 连接到编排器（Go orchestrator）或单机运行。
+Runtime 远程模式和本地单机 UI 是两条不同控制路径。
 
-| 模式 | 说明 | Transport |
-|------|------|-----------|
-| Agent 模式 | 主动连接到编排器服务器 | TcpClient (transport) |
-| StandaloneMode | 单机模式，无网络 | - |
+| 场景 | 控制路径 | 约束 |
+|------|----------|------|
+| 远程编排 | runtime agent 主动 outbound 连接 Go orchestrator | Go server 是唯一远程中控入口 |
+| 本地单机 UI | Tauri UI -> Rust backend -> local IPC -> runtime | 不使用 runtime HTTP/WebSocket server |
 
-> **注意**: 旧的 PassiveMode（被动监听模式）和 `serve` 命令已被移除。Runtime 不再作为被动服务器运行。
-> 远程控制现在通过 `wingman::runtime::RemoteClient`（基于 transport 的 TCP）实现 Agent 到编排器的通信，
-> 或通过 Tauri IPC 由 GUI 直接调用 C++ API。
+> **禁止**: Runtime 不得引入 HTTP/WebSocket server 作为本地 UI 或远程控制面。WebSocket 只允许用于 dashboard/browser 与 Go server 通信。
+
+## 本地 IPC 策略
+
+| 平台 | 默认 IPC | 备注 |
+|------|----------|------|
+| Windows | Named Pipe | Windows Unix Domain Socket 可探测支持，但不作为默认主路径 |
+| macOS/Linux | Unix Domain Socket | 使用用户运行时目录下的 socket |
+| 全平台 | Local TCP | 仅显式 debug fallback，默认关闭 |
 
 ## 设计原则
 
@@ -123,6 +121,7 @@ Runtime 作为主动 Agent 运行，通过 outbound 连接到编排器（Go orch
 2. **就近测试** - 每个模块都有自己的 `tests/` 目录
 3. **职责清晰** - apps（应用）、lib（核心库）、libs（辅助库）分离
 4. **命名空间对应** - `include/wingman/xxx.hpp` → `namespace wingman::xxx`
+5. **控制面分离** - 远程编排走 Go server，本地 UI 走 IPC，runtime 不暴露 WebSocket/HTTP 控制面
 
 ## 参考项目
 

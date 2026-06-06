@@ -1,17 +1,17 @@
 mod commands;
+mod ipc;
 mod models;
 mod state;
-mod ws;
 
 use state::AppState;
 
 fn main() {
     tauri::Builder::default()
-        .manage(AppState::new("ws://127.0.0.1:8080/ws"))
+        .manage(AppState::new("wingman"))
         .invoke_handler(tauri::generate_handler![
             // 连接管理
-            commands::connection::connect_websocket,
-            commands::connection::disconnect_websocket,
+            commands::connection::connect_ipc,
+            commands::connection::disconnect_ipc,
             commands::connection::is_connected,
             // 脚本管理
             commands::scripts::get_scripts,

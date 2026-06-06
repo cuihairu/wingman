@@ -4,7 +4,7 @@ interface ConnectionState {
 	connected: boolean;
 	version: string;
 	paused: boolean;
-	wsUrl: string;
+	ipcEndpoint: string;
 }
 
 function createConnectionStore() {
@@ -12,7 +12,7 @@ function createConnectionStore() {
 		connected: false,
 		version: '-',
 		paused: false,
-		wsUrl: 'ws://127.0.0.1:8080/ws',
+		ipcEndpoint: 'wingman',
 	});
 
 	const invoke = (window as any).__TAURI_INVOKE__;
@@ -33,24 +33,24 @@ function createConnectionStore() {
 		setPaused(paused: boolean) {
 			store.update(s => ({ ...s, paused }));
 		},
-		setWsUrl(url: string) {
-			store.update(s => ({ ...s, wsUrl: url }));
+		setIpcEndpoint(endpoint: string) {
+			store.update(s => ({ ...s, ipcEndpoint: endpoint }));
 		},
-		async connect(url?: string) {
+		async connect(endpoint?: string) {
 			if (!invoke) {
 				store.update(s => ({ ...s, connected: true, version: 'wingman 0.1.0 (dev)' }));
 				return;
 			}
-			const wsUrl = url || 'ws://127.0.0.1:8080/ws';
-			await invoke('connect_websocket', { url: wsUrl });
-			store.update(s => ({ ...s, connected: true, wsUrl }));
+			const ipcEndpoint = endpoint || 'wingman';
+			await invoke('connect_ipc', { endpoint: ipcEndpoint });
+			store.update(s => ({ ...s, connected: true, ipcEndpoint }));
 		},
 		async disconnect() {
 			if (!invoke) {
 				store.update(s => ({ ...s, connected: false }));
 				return;
 			}
-			await invoke('disconnect_websocket');
+			await invoke('disconnect_ipc');
 			store.update(s => ({ ...s, connected: false }));
 		},
 		async togglePause() {

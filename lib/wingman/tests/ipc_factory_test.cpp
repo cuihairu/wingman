@@ -11,6 +11,7 @@ TEST(IpcConfigTest, DefaultValues) {
     EXPECT_TRUE(cfg.serverName.empty());
     EXPECT_EQ(cfg.tcpPort, 0);
     EXPECT_EQ(cfg.timeoutMs, 5000);
+    EXPECT_FALSE(cfg.allowTcpFallback);
 }
 
 // ========== IpcFactory Static Methods ==========
@@ -96,11 +97,13 @@ TEST(IpcConfigTest, CustomValues) {
     cfg.serverName = "my_server";
     cfg.tcpPort = 8080;
     cfg.timeoutMs = 10000;
+    cfg.allowTcpFallback = true;
 
     EXPECT_EQ(cfg.preferredTransport, IpcTransport::NamedPipe);
     EXPECT_EQ(cfg.serverName, "my_server");
     EXPECT_EQ(cfg.tcpPort, 8080);
     EXPECT_EQ(cfg.timeoutMs, 10000);
+    EXPECT_TRUE(cfg.allowTcpFallback);
 }
 
 TEST(IpcFactoryTest, IpcMessageFieldAssignment) {

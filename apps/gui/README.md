@@ -1,6 +1,8 @@
 # Wingman GUI
 
-Tauri 桌面应用，用于控制 Wingman Client。
+Tauri 桌面应用，用于本地控制 Wingman runtime。
+
+> 架构约束: GUI 不连接 runtime WebSocket/HTTP server。GUI 前端通过 Tauri `invoke()` 调用 Rust backend，Rust backend 通过本地 IPC 连接 runtime。详见 `../../docs/architecture-decisions.md`。
 
 ## 前置要求
 
@@ -43,25 +45,30 @@ npm run tauri build
 
 ```
 Tauri GUI (Rust + HTML/JS)
-    ↓ WebSocket
-Wingman Client (C++ + Drogon)
+    ↓ Tauri invoke()
+Tauri Rust backend
+    ↓ Local IPC
+Wingman Runtime
     ↓
 Wingman Core
 ```
 
-## WebSocket API
+## Local IPC
 
-- **URL**: `ws://127.0.0.1:8080/ws`
-- **协议**: 详见 `../../docs/API.md`
+- Start runtime for local UI with `wingman-runtime start --standalone`.
+- Windows 默认使用 Named Pipe。
+- macOS/Linux 默认使用 Unix Domain Socket。
+- Windows Unix Domain Socket 可做运行时探测支持，但不是默认主路径。
+- Local TCP 仅允许显式 debug fallback，默认关闭。
 
 ## Tauri 命令
 
 | 命令 | 参数 | 说明 |
 |------|------|------|
-| `connect_websocket` | `url?: string` | 连接到 WebSocket 服务器 |
+| `connect_ipc` | `endpoint?: string` | 连接到本地 runtime IPC |
 | `get_scripts` | - | 获取脚本列表 |
 | `start_script` | `id: string` | 启动脚本 |
 | `stop_script` | `script_id: string` | 停止脚本 |
 | `get_system_status` | - | 获取系统状态 |
 | `get_version` | - | 获取版本信息 |
-| `call_rpc` | `method: string, params?: object` | 通用 RPC 调用 |
+| `call_command` | `method: string, params?: object` | 通用本地命令调用 |

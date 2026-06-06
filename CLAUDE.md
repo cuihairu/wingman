@@ -1,5 +1,17 @@
 # Wingman 项目说明
 
+## 架构硬约束
+
+在修改 runtime、GUI、orchestrator 或 transport 前，必须先阅读 `docs/architecture-decisions.md`。
+
+核心约束：
+
+1. Go server 是远程中控编排器。
+2. Runtime 作为 agent 主动 outbound 连接 Go server。
+3. 本地 Tauri UI 通过本地 IPC 控制 runtime。
+4. Runtime 禁止引入 HTTP/WebSocket server 作为本地 UI 或远程控制面。
+5. Dashboard/远程客户端只连接 Go server，不直接连接 runtime。
+
 ## 构建配置
 
 **重要**: 此项目使用 vcpkg 静态库 (x64-windows-static) 进行构建。

@@ -17,7 +17,7 @@ void printUsage() {
     std::cout
         << "wingman-runtime <command> [options]\n"
         << "Commands:\n"
-        << "  start   [--config|-c <path>]\n"
+        << "  start   [--config|-c <path>] [--standalone]\n"
         << "  stop\n"
         << "  status\n"
         << "  script  <script-path> [args...]\n"
@@ -34,19 +34,21 @@ bool requireValue(const Args& args, size_t& index, const char* flag, std::string
 }
 
 int runStart(const Args& args) {
-    std::string configPath = "agent.toml";
+    commands::StartOptions options;
     for (size_t i = 0; i < args.size(); ++i) {
         const auto& arg = args[i];
         if (arg == "--config" || arg == "-c") {
-            if (!requireValue(args, i, arg.c_str(), configPath)) {
+            if (!requireValue(args, i, arg.c_str(), options.configPath)) {
                 return 1;
             }
+        } else if (arg == "--standalone") {
+            options.forceStandalone = true;
         } else {
             std::cerr << "Error: unknown option for start: " << arg << "\n";
             return 1;
         }
     }
-    return commands::startCommand(configPath);
+    return commands::startCommand(options);
 }
 
 int runScript(const Args& args) {
