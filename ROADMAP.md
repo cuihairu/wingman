@@ -27,12 +27,13 @@
 ```
 wingman/
 ├── apps/                         ← 所有可执行程序
-│   ├── runtime/                  ← 主运行时
+│   ├── runtime/                  ← 主运行时（outbound agent + 本地 IPC 控制面）
 │   │   ├── src/
 │   │   │   ├── main.cpp          ← 入口
-│   │   │   ├── active_mode.cpp   ← 主动连接模式
-│   │   │   ├── remote_client.cpp ← 主动连接编排器
-│   │   │   └── standalone_mode.cpp
+│   │   │   ├── agent.cpp         ← 运行时编排入口
+│   │   │   ├── remote_client.cpp ← 主动 outbound 连接 Go orchestrator
+│   │   │   ├── local_ipc_server.cpp ← 本地 IPC 控制面
+│   │   │   └── standalone_mode.cpp  ← 本地脚本/触发器执行能力
 │   │   ├── include/wingman/runtime/
 │   │   ├── tests/
 │   │   └── CMakeLists.txt
@@ -120,7 +121,7 @@ ModuleDescriptor (25+ 语言无关模块) → C++ 核心 API
     ↓
 lib/wingman/ (核心功能：screen, input, trigger...)
     ↓
-apps/runtime/ (应用：CLI + 运行模式)
+apps/runtime/ (应用：CLI + outbound agent + local IPC)
 ```
 
 ### 脚本引擎抽象
@@ -155,13 +156,19 @@ cmake -B build -DWINGMAN_ENABLE_PYTHON=ON ...
 vcpkg install pybind11
 ```
 
-### 运行模式
+### Runtime 控制面能力
 
-| 模式 | 说明 | Transport |
-|------|------|-----------|
-| ActiveMode | 主动连接到服务器 | TcpClient |
-| RemoteClient | 主动连接编排器 | TcpClient |
-| StandaloneMode | 单机模式，无网络 | - |
+Runtime 不再按互斥“运行模式”建模。远程编排和本地 UI 控制是两条可以共存的控制面：
+
+| 能力 | 说明 | 默认关系 |
+|------|------|----------|
+| Remote Agent | runtime 主动 outbound 连接 Go orchestrator，由 Go server 做中控编排 | 可与本地 IPC 同时启用 |
+| Local IPC Control | Tauri UI -> Rust backend -> local IPC -> runtime，用于本机控制 | 可与 Remote Agent 同时启用 |
+| Standalone Execution | 本地脚本、触发器和自动化执行能力 | 被 Local IPC 和 CLI 复用 |
+
+`wingman-runtime start --standalone` 只是便捷启动参数：它强制关闭远程连接，只启动本地执行能力和 local IPC。它不是说本地 UI 与远程 agent 在架构上互斥。
+
+禁止把本地 UI 控制实现成 runtime HTTP/WebSocket server。Local TCP 只允许显式 debug fallback，默认关闭。
 
 ### 设计原则
 
@@ -178,8 +185,8 @@ vcpkg install pybind11
 | Phase 1 | Protobuf 协议定义 + 多模块 CMake | ✅ 已完成 |
 | Phase 2 | 目录结构重组 (apps + lib) | ✅ 已完成 |
 | Phase 3 | 核心库迁移 (libs/core → lib/wingman) | ✅ 已完成 |
-| Phase 4 | Client 重构 (主动/被动/单机) | ✅ 已完成 |
-| Phase 5 | Inspector/Tauri 应用整理 | ✅ 已完成 |
+| Phase 4 | Runtime outbound agent + local execution 能力整理 | 🚧 进行中 |
+| Phase 5 | Tauri GUI 通过 local IPC 控制 runtime | 🚧 进行中 |
 | Phase 6 | EmmyLua 集成 | ✅ 已完成 |
 | Phase 7 | 测试与文档 | ✅ 已完成 |
 | Phase 8 | 脚本层多语言抽象 (Lua + Python) | ✅ 已完成 |
@@ -314,28 +321,29 @@ class TriggerEngine {
 
 ---
 
-## Milestone 4: 远程控制 ✅
+## Milestone 4: 远程编排 🚧
 
-**目标**: 通过网络远程控制游戏
+**目标**: runtime 作为 agent 主动连接 Go orchestrator，由 Go server 做远程中控编排
 
-**状态**: 已完成 (2026-05)
+**状态**: 重构中 (2026-06)
 
 **交付物**:
-- ✅ TCP 协议实现 (端口 9999)
-- ✅ JSON-RPC 风格请求/响应
-- ✅ 18 个 API 端点
-- ✅ RemoteClient C++ API
-- ✅ 协议文档 (`docs/remote_protocol.md`)
-- ✅ 完整测试覆盖
+- ✅ Runtime outbound client 基础实现
+- ✅ Go orchestrator 作为远程中控边界
+- 🚧 Agent 注册、心跳、命令下发、结果回传协议版本化
+- 🚧 跨语言 frame/protocol 测试
+- 🚧 Dashboard 仅连接 Go server，不直接连接 runtime
 
-**实现端点**:
-| 类别 | 端点 |
-|------|------|
-| 系统 | ping, get_version |
-| 屏幕 | capture_screen, get_pixel, find_color, find_image |
-| 输入 | click, move, key, type_text |
-| 触发器 | add_trigger, remove_trigger, enable_trigger, disable_trigger, list_triggers |
-| 宏 | record_macro, stop_macro_recording, play_macro |
+**目标命令流**:
+
+```text
+runtime -> Go server: agent.register / agent.heartbeat / event.*
+Go server -> runtime: command.*
+runtime -> Go server: command.result
+dashboard/browser -> Go server: HTTP/WebSocket
+```
+
+Runtime 不作为远程控制 server 被 Go server 反向拨入。
 
 ---
 
@@ -347,11 +355,12 @@ class TriggerEngine {
 
 **已完成**:
 - ✅ Tauri 2.0 框架集成
-- ✅ WebSocket 控制器实现
-- ✅ RPC 方法路由 (script.start, script.stop, script.list, system.*)
+- ✅ Rust backend 通过 local IPC 连接 runtime
+- ✅ IPC 方法路由 (script.start, script.stop, script.list, system.*)
 - ✅ 前端界面原型
 
 **待完成**:
+- ⏳ IPC 连接状态、断线重连、错误提示完善
 - ⏳ 触发器可视化配置
 - ⏳ 屏幕预览面板
 - ⏳ 日志实时显示
@@ -378,7 +387,9 @@ class TriggerEngine {
 ```
 
 ### 5.2 技术选型
-- **Tauri 2.0 + Web UI** - 本地桌面控制台，通过 IPC 控制 runtime
+- **Tauri 2.0 + Web UI** - 本地桌面控制台
+- **Tauri invoke + Rust IPC client** - GUI 前端不直接连接 runtime；Rust backend 通过本地 IPC 控制 runtime
+- **Windows Named Pipe / macOS/Linux Unix Domain Socket** - 默认 local IPC；Local TCP 仅显式 debug fallback
 
 **交付物**: 图形化配置工具
 

@@ -172,10 +172,10 @@
 				<div class="profile-list">
 					{#each $profiles as profile}
 						<div class="profile-card" class:active={$activeProfile?.id === profile.id}>
-							<div class="profile-card-info" onclick={() => selectProfile(profile.id)}>
+							<button class="profile-card-info" onclick={() => selectProfile(profile.id)}>
 								<div class="profile-card-name">{profile.name}</div>
 								<div class="profile-card-desc">{profile.description || profile.id}</div>
-							</div>
+							</button>
 							<div class="profile-card-actions">
 								{#if $activeProfile?.id !== profile.id}
 									<button class="btn-icon-sm" title="激活" onclick={() => profiles.setActive(profile.id)}>
@@ -440,7 +440,10 @@
 	}
 	.profile-card:hover { background: var(--bg-tertiary); }
 	.profile-card.active { background: var(--bg-tertiary); border-color: var(--accent-blue); }
-	.profile-card-info { cursor: pointer; flex: 1; min-width: 0; }
+	.profile-card-info {
+		cursor: pointer; flex: 1; min-width: 0;
+		background: transparent; border: none; padding: 0; text-align: left;
+	}
 	.profile-card-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
 	.profile-card-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

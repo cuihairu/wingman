@@ -3,7 +3,9 @@
 
 > **版本**: v1.0
 > **日期**: 2026-05-13
-> **状态**: 设计草案
+> **状态**: 历史设计草案，部分内容已过期
+
+> **当前硬约束**: 以 `docs/architecture-decisions.md` 为准。Runtime 远程控制必须是 outbound agent 连接 Go orchestrator；本地 UI 必须通过 local IPC 控制 runtime；runtime 不提供本地 UI/远程控制用 HTTP/WebSocket server。本文中的多 socket、client/server、Active/Passive 等描述只能作为传输层重构参考，不能覆盖当前控制面架构。
 
 ---
 
@@ -63,9 +65,9 @@
 │                                                                             │
 │    apps/runtime                                                              │
 │    ┌─────────────────────────┐                                             │
-│    │ StandaloneMode          │                                             │
-│    │ ActiveMode (TcpClient)  │                                             │
-│    │ RemoteClient (TcpClient)│                                             │
+│    │ Remote Agent (outbound) │                                             │
+│    │ Local IPC Control       │                                             │
+│    │ Standalone Execution    │                                             │
 │    └─────────────────────────┘                                             │
 │               │                                                               │
 │               ▼                                                               │
@@ -96,7 +98,7 @@
 |------|------|
 | **模块化** | apps + lib + libs 分层清晰 |
 | **可测试** | 每个模块有独立测试 |
-| **多模式** | Active/Passive/Standalone 三种运行模式 |
+| **控制面可组合** | Remote Agent、Local IPC Control、Standalone Execution 可按配置组合 |
 | **Transport 抽象** | 支持 TCP/WebSocket 切换 |
 | **Lua 集成** | 脚本能力完善 |
 

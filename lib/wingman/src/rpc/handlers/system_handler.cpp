@@ -8,7 +8,7 @@ void registerSystemHandlers(RpcDispatcher& dispatcher, const std::string& versio
 
     auto startTime = std::chrono::steady_clock::now();
 
-    dispatcher.registerHandler("system.getStatus", [&startTime](const json&) -> json {
+    dispatcher.registerHandler("system.getStatus", [startTime](const json&) -> json {
         auto now = std::chrono::steady_clock::now();
         auto uptime = std::chrono::duration_cast<std::chrono::seconds>(now - startTime).count();
         return {
@@ -20,7 +20,7 @@ void registerSystemHandlers(RpcDispatcher& dispatcher, const std::string& versio
         };
     });
 
-    dispatcher.registerHandler("system.getVersion", [&version](const json&) -> json {
+    dispatcher.registerHandler("system.getVersion", [version](const json&) -> json {
         return {
             {"server", "wingman"},
             {"version", version},

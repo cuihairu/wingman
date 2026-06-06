@@ -93,6 +93,36 @@ macOS/Linux:
   LocalTcp only if allowTcpFallback is true
 ```
 
+### Local IPC Wire Contract
+
+The local IPC wire format is:
+
+```text
+uint32 little-endian payload_length
+JSON envelope bytes
+```
+
+The JSON envelope is transport-level and must stay independent from Tauri, browser, HTTP, and WebSocket concepts:
+
+```json
+{
+  "type": 0,
+  "method": "system.getStatus",
+  "payload": {},
+  "id": 1,
+  "timestamp": 1715299200000
+}
+```
+
+`type` uses the C++ `IpcMessageType` numeric enum:
+
+- `0`: request
+- `1`: response
+- `2`: event
+- `3`: error
+
+The dispatcher response is carried inside the response envelope `payload`. GUI code should not parse or construct WebSocket JSON-RPC messages for local runtime control.
+
 ## Forbidden Changes
 
 Do not add these without explicit owner approval:

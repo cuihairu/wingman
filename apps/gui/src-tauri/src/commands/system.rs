@@ -1,7 +1,6 @@
 use crate::models::{RuntimeInfo, SystemStatus, VersionInfo};
 use crate::state::AppState;
 use serde_json::json;
-use std::time::SystemTime;
 
 #[tauri::command]
 pub async fn get_system_status(
@@ -66,7 +65,7 @@ pub async fn get_runtime_info(state: tauri::State<'_, AppState>) -> Result<Runti
     let paused = *state.paused.lock().await;
     let start_time = *state.start_time.lock().await;
     let uptime = if let Some(st) = start_time {
-        st.duration_since(SystemTime::UNIX_EPOCH)
+        st.elapsed()
             .unwrap_or_default()
             .as_secs()
     } else {

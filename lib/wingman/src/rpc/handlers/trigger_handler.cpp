@@ -3,6 +3,47 @@
 
 namespace wingman::rpc {
 
+namespace {
+
+std::string triggerTypeToString(TriggerType type) {
+    switch (type) {
+        case TriggerType::ColorFound: return "ColorFound";
+        case TriggerType::ColorLost: return "ColorLost";
+        case TriggerType::ImageFound: return "ImageFound";
+        case TriggerType::ImageLost: return "ImageLost";
+        case TriggerType::WindowOpened: return "WindowOpened";
+        case TriggerType::WindowClosed: return "WindowClosed";
+        case TriggerType::ProcessStarted: return "ProcessStarted";
+        case TriggerType::ProcessStopped: return "ProcessStopped";
+        case TriggerType::TimeElapsed: return "TimeElapsed";
+        case TriggerType::HotkeyPressed: return "HotkeyPressed";
+        case TriggerType::PixelChanged: return "PixelChanged";
+    }
+    return "ColorFound";
+}
+
+TriggerType triggerTypeFromJson(const nlohmann::json& value) {
+    if (value.is_number_integer()) {
+        return static_cast<TriggerType>(value.get<int>());
+    }
+
+    const std::string type = value.is_string() ? value.get<std::string>() : "";
+    if (type == "ColorFound" || type == "pixel") return TriggerType::ColorFound;
+    if (type == "ColorLost") return TriggerType::ColorLost;
+    if (type == "ImageFound" || type == "image") return TriggerType::ImageFound;
+    if (type == "ImageLost") return TriggerType::ImageLost;
+    if (type == "WindowOpened") return TriggerType::WindowOpened;
+    if (type == "WindowClosed") return TriggerType::WindowClosed;
+    if (type == "ProcessStarted") return TriggerType::ProcessStarted;
+    if (type == "ProcessStopped") return TriggerType::ProcessStopped;
+    if (type == "TimeElapsed") return TriggerType::TimeElapsed;
+    if (type == "HotkeyPressed") return TriggerType::HotkeyPressed;
+    if (type == "PixelChanged") return TriggerType::PixelChanged;
+    return TriggerType::ColorFound;
+}
+
+} // namespace
+
 void registerTriggerHandlers(RpcDispatcher& dispatcher, TriggerManager& manager) {
     using json = nlohmann::json;
 
@@ -14,7 +55,7 @@ void registerTriggerHandlers(RpcDispatcher& dispatcher, TriggerManager& manager)
                 {"id", std::to_string(inst.id)},
                 {"name", inst.config.name},
                 {"enabled", inst.config.enabled},
-                {"type", static_cast<int>(inst.config.condition.type)},
+                {"type", triggerTypeToString(inst.config.condition.type)},
                 {"lastTriggered", inst.triggered}
             });
         }
@@ -34,7 +75,7 @@ void registerTriggerHandlers(RpcDispatcher& dispatcher, TriggerManager& manager)
 
         if (source.contains("condition")) {
             const auto& cond = source["condition"];
-            config.condition.type = static_cast<TriggerType>(cond.value("type", 0));
+            config.condition.type = triggerTypeFromJson(cond.value("type", json{0}));
             config.condition.value = cond.value("value", "");
             config.condition.tolerance = cond.value("tolerance", 10);
             config.condition.interval = cond.value("interval", 1000);

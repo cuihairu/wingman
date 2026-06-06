@@ -184,14 +184,11 @@ void LocalIpcServer::stop() {
 
     impl_->stopping.store(true);
 
-    ipc::IIpcChannel* channel = nullptr;
     {
         std::lock_guard<std::mutex> lock(impl_->channelMutex);
-        channel = impl_->currentChannel;
-    }
-
-    if (channel) {
-        channel->disconnect();
+        if (impl_->currentChannel) {
+            impl_->currentChannel->disconnect();
+        }
     }
 
     if (impl_->serverThread.joinable()) {

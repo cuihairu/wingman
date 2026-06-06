@@ -14,7 +14,7 @@ impl AppState {
         Self {
             ipc_client: Arc::new(Mutex::new(IpcClient::new(ipc_endpoint.to_string()))),
             paused: Arc::new(Mutex::new(false)),
-            start_time: Arc::new(Mutex::new(Some(SystemTime::now()))),
+            start_time: Arc::new(Mutex::new(None)),
         }
     }
 }

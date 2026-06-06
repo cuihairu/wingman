@@ -1,11 +1,11 @@
 use serde_json::{json, Value};
+use std::env;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn profiles_dir() -> PathBuf {
-    let mut path = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
+    let mut path = local_data_dir();
     path.push("wingman");
     path.push("profiles");
     fs::create_dir_all(&path).ok();
@@ -23,6 +23,44 @@ fn profile_path(id: &str) -> PathBuf {
     let mut path = profiles_dir();
     path.push(format!("{}.json", id));
     path
+}
+
+fn local_data_dir() -> PathBuf {
+    #[cfg(windows)]
+    {
+        if let Some(value) = env::var_os("LOCALAPPDATA") {
+            return PathBuf::from(value);
+        }
+        if let Some(value) = env::var_os("APPDATA") {
+            return PathBuf::from(value);
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(value) = env::var_os("HOME") {
+            return PathBuf::from(value).join("Library").join("Application Support");
+        }
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        if let Some(value) = env::var_os("XDG_DATA_HOME") {
+            return PathBuf::from(value);
+        }
+        if let Some(value) = env::var_os("HOME") {
+            return PathBuf::from(value).join(".local").join("share");
+        }
+    }
+
+    PathBuf::from(".")
+}
+
+fn timestamp_millis() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or_default()
 }
 
 fn load_all_profiles() -> Vec<Value> {
@@ -74,7 +112,7 @@ pub async fn set_active_profile(id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn create_profile(name: String) -> Result<String, String> {
-    let id = format!("profile_{}", chrono::Utc::now().timestamp_millis());
+    let id = format!("profile_{}", timestamp_millis());
     let profile = json!({
         "id": id,
         "name": name,

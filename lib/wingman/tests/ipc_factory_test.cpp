@@ -46,8 +46,6 @@ TEST(IpcFactoryTest, IpcMessageDefaultValues) {
 
 TEST(IpcFactoryTest, CreateServerWithDefaultConfig) {
     IpcConfig cfg;
-    // On Windows, this should try NamedPipe and create a channel
-    auto channel = IpcFactory::createServer(cfg);
     // Result depends on platform — just test it doesn't crash
     EXPECT_NO_THROW(IpcFactory::createServer(cfg));
 }

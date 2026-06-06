@@ -5,7 +5,6 @@
 
 #ifdef _WIN32
 #include "wingman/ipc/windows/named_pipe_channel.hpp"
-#include <winsock2.h>
 using NamedPipeChannel = wingman::ipc::windows::NamedPipeChannel;
 #elif defined(__unix__) || defined(__APPLE__)
 #include "wingman/ipc/unix_socket_channel.hpp"
@@ -24,21 +23,6 @@ std::unique_ptr<IIpcChannel> createTcpChannel(bool serverMode, const IpcConfig& 
     int port = config.tcpPort > 0 ? config.tcpPort : 9800;
     return std::make_unique<TcpChannel>(serverMode, "127.0.0.1", port);
 }
-
-#ifdef _WIN32
-bool probeWindowsUnixSocket() {
-#ifndef AF_UNIX
-    return false;
-#else
-    SOCKET s = ::socket(AF_UNIX, SOCK_STREAM, 0);
-    if (s == INVALID_SOCKET) {
-        return false;
-    }
-    ::closesocket(s);
-    return true;
-#endif
-}
-#endif
 
 } // namespace
 

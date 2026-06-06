@@ -115,6 +115,20 @@ Runtime 远程模式和本地单机 UI 是两条不同控制路径。
 | macOS/Linux | Unix Domain Socket | 使用用户运行时目录下的 socket |
 | 全平台 | Local TCP | 仅显式 debug fallback，默认关闭 |
 
+本地 IPC wire 格式固定为 `uint32 little-endian length + JSON envelope`。Envelope 使用 transport-level 字段：
+
+```json
+{
+  "type": 0,
+  "method": "system.getStatus",
+  "payload": {},
+  "id": 1,
+  "timestamp": 1715299200000
+}
+```
+
+`payload` 承载 dispatcher 请求/响应数据。GUI 不应构造 WebSocket JSON-RPC；runtime 也不应为了本地 UI 增加 HTTP/WebSocket listener。
+
 ## 设计原则
 
 1. **核心库独立** - `lib/wingman/` 不依赖 `apps/`，可单独复用

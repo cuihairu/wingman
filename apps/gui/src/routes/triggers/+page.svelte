@@ -86,6 +86,13 @@
 	function toggleTrigger(id: string) {
 		triggers.toggle(id);
 	}
+
+	function handleTriggerKeydown(event: KeyboardEvent, id: string) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			selectTrigger(id);
+		}
+	}
 </script>
 
 <div class="page-header">
@@ -109,10 +116,13 @@
 			{:else}
 				<div class="trigger-items">
 					{#each $triggers as trigger}
-						<button
+						<div
 							class="trigger-item"
 							class:active={selectedId === trigger.id}
+							role="button"
+							tabindex="0"
 							onclick={() => selectTrigger(trigger.id)}
+							onkeydown={(event) => handleTriggerKeydown(event, trigger.id)}
 						>
 							<div class="trigger-info">
 								<div class="trigger-name">{trigger.name}</div>
@@ -121,12 +131,12 @@
 							<button
 								class="toggle-btn"
 								class:enabled={trigger.enabled}
-								onclick|stopPropagation={() => toggleTrigger(trigger.id)}
+								onclick={(event) => { event.stopPropagation(); toggleTrigger(trigger.id); }}
 								title={trigger.enabled ? '点击禁用' : '点击启用'}
 							>
 								{trigger.enabled ? '开' : '关'}
 							</button>
-						</button>
+						</div>
 					{/each}
 				</div>
 			{/if}
@@ -148,16 +158,16 @@
 				<div class="editor-form">
 					<!-- 基本信息 -->
 					<div class="form-group">
-						<label>名称</label>
-						<input type="text" bind:value={editing.name} placeholder="触发器名称" />
+						<label for="triggerNameInput">名称</label>
+						<input id="triggerNameInput" type="text" bind:value={editing.name} placeholder="触发器名称" />
 					</div>
 
 					<!-- 条件配置 -->
 					<div class="form-section">
 						<h4>触发条件</h4>
 						<div class="form-group">
-							<label>条件类型</label>
-							<select bind:value={editing.condition.type}>
+							<label for="triggerConditionTypeSelect">条件类型</label>
+							<select id="triggerConditionTypeSelect" bind:value={editing.condition.type}>
 								{#each conditionTypes as ct}
 									<option value={ct.value}>{ct.label}</option>
 								{/each}
@@ -166,36 +176,36 @@
 
 						{#if editing.condition.type === 'color_found' || editing.condition.type === 'color_lost'}
 							<div class="form-group">
-								<label>目标颜色</label>
+								<span class="field-label">目标颜色</span>
 								<ColorPicker bind:value={editing.condition.value} bind:tolerance={editing.condition.tolerance} />
 							</div>
 						{:else if editing.condition.type === 'image_found' || editing.condition.type === 'image_lost'}
 							<div class="form-group">
-								<label>模板图片路径</label>
-								<input type="text" bind:value={editing.condition.value} placeholder="images/template.png" />
+								<label for="triggerImagePathInput">模板图片路径</label>
+								<input id="triggerImagePathInput" type="text" bind:value={editing.condition.value} placeholder="images/template.png" />
 							</div>
 						{:else if editing.condition.type === 'time_elapsed'}
 							<div class="form-group">
-								<label>间隔 (ms)</label>
-								<input type="number" bind:value={editing.condition.interval} placeholder="1000" />
+								<label for="triggerTimeElapsedInput">间隔 (ms)</label>
+								<input id="triggerTimeElapsedInput" type="number" bind:value={editing.condition.interval} placeholder="1000" />
 							</div>
 						{:else if editing.condition.type === 'hotkey_pressed'}
 							<div class="form-group">
-								<label>热键</label>
-								<input type="text" bind:value={editing.condition.value} placeholder="F9" />
+								<label for="triggerHotkeyInput">热键</label>
+								<input id="triggerHotkeyInput" type="text" bind:value={editing.condition.value} placeholder="F9" />
 							</div>
 						{/if}
 
 						{#if editing.condition.type !== 'time_elapsed' && editing.condition.type !== 'hotkey_pressed'}
 							<div class="form-group">
-								<label>搜索区域</label>
+								<span class="field-label">搜索区域</span>
 								<RegionPicker bind:value={editing.condition.region} />
 							</div>
 						{/if}
 
 						<div class="form-group">
-							<label>检查间隔 (ms)</label>
-							<input type="number" bind:value={editing.condition.interval} placeholder="1000" />
+							<label for="triggerCheckIntervalInput">检查间隔 (ms)</label>
+							<input id="triggerCheckIntervalInput" type="number" bind:value={editing.condition.interval} placeholder="1000" />
 						</div>
 					</div>
 
@@ -238,8 +248,8 @@
 							<span>仅触发一次</span>
 						</label>
 						<div class="form-group">
-							<label>冷却时间 (ms)</label>
-							<input type="number" bind:value={editing.cooldown} placeholder="0" />
+							<label for="triggerCooldownInput">冷却时间 (ms)</label>
+							<input id="triggerCooldownInput" type="number" bind:value={editing.cooldown} placeholder="0" />
 						</div>
 					</div>
 
@@ -303,7 +313,7 @@
 	.form-section { border-top: 1px solid var(--border-color); padding-top: 16px; }
 	.form-section h4 { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
 	.form-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-	.form-group label { font-size: 12px; color: var(--text-secondary); }
+	.form-group label, .form-group .field-label { font-size: 12px; color: var(--text-secondary); }
 	.form-group input, .form-group select {
 		padding: 6px 8px; background: var(--bg-tertiary);
 		border: 1px solid var(--border-color); border-radius: 4px;
