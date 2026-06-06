@@ -1,158 +1,42 @@
 # API: wingman.verification
 
-验证码识别与 TOTP（双因素认证）模块。
+TOTP（双因素认证）纯工具函数模块。
 
 ## 模块概述
 
-verification 模块提供验证功能：
-- **验证码识别** - 识别图像验证码、屏幕区域验证码
-- **TOTP 生成** - 生成 TOTP 双因素认证验证码
-- **密钥管理** - 存储、读取、删除 TOTP 密钥
+verification 模块提供无状态的 TOTP 工具函数：
+- **TOTP 生成** - 生成基于时间的一次性验证码
+- **Steam Guard** - 生成 Steam Guard 验证码
+- **验证码校验** - 验证 TOTP 验证码是否有效
+- **剩余时间** - 获取当前验证码剩余有效秒数
 
----
-
-## 识别图像验证码
-
-### recognize_captcha(image_path) / recognizeCaptcha(imagePath)
-
-**说明**：识别图像验证码。
-
-**函数签名**：
-
-```python
-recognize_captcha(image_path: str) -> dict
-```
-
-```lua
-recognizeCaptcha(imagePath: string) -> table
-```
-
-**参数**：
-- `image_path` / `imagePath` - 验证码图片路径
-
-**返回**：
-- 识别结果对象：
-  - `success` / `success` - 是否成功
-  - `text` / `text` - 识别的文本
-  - `confidence` / `confidence` - 置信度（0-1）
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import verification
-
-# 识别图像验证码
-result = verification.recognize_captcha("captcha.png")
-if result['success']:
-    print(f"验证码: {result['text']}")
-    print(f"置信度: {result['confidence']}")
-else:
-    print("识别失败")
-```
-
-== Lua
-
-```lua:line-numbers
-local verification = require("wingman.verification")
-
--- 识别图像验证码
-local result = verification.recognizeCaptcha("captcha.png")
-if result.success then
-    print("验证码: " .. result.text)
-    print("置信度: " .. result.confidence)
-else
-    print("识别失败")
-end
-```
-
-:::
-
----
-
-## 识别屏幕区域验证码
-
-### recognize_captcha_from_image(image) / recognizeCaptchaFromImage(image)
-
-**说明**：从图像对象识别验证码。
-
-**函数签名**：
-
-```python
-recognize_captcha_from_image(image) -> dict
-```
-
-```lua
-recognizeCaptchaFromImage(image) -> table
-```
-
-**参数**：
-- `image` - 图像对象（由 `screen.capture()` 返回）
-
-**返回**：
-- 识别结果对象：
-  - `success` / `success` - 是否成功
-  - `text` / `text` - 识别的文本
-  - `confidence` / `confidence` - 置信度（0-1）
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import verification, screen
-
-# 截取屏幕区域
-img = screen.capture(100, 100, 200, 50)
-
-# 识别验证码
-result = verification.recognize_captcha_from_image(img)
-if result['success']:
-    print(f"验证码: {result['text']}")
-```
-
-== Lua
-
-```lua:line-numbers
-local verification = require("wingman.verification")
-local screen = require("wingman.screen")
-
--- 截取屏幕区域
-local img = screen.capture(100, 100, 200, 50)
-
--- 识别验证码
-local result = verification.recognizeCaptchaFromImage(img)
-if result.success then
-    print("验证码: " .. result.text)
-end
-```
-
-:::
+> 所有函数均为无状态纯函数，不涉及密钥持久化。如需存储密钥，请使用 `wingman.kv` 模块。
 
 ---
 
 ## 生成 TOTP 验证码
 
-### generate_totp(secret) / generateTotp(secret)
+### totp(secret, digits?, period?) / totp(secret, digits?, period?)
 
-**说明**：生成 TOTP 验证码。
+**说明**：生成基于时间的一次性验证码（TOTP, RFC 6238）。
 
 **函数签名**：
 
 ```python
-generate_totp(secret: str) -> str
+totp(secret: str, digits: int = 6, period: int = 30) -> str
 ```
 
 ```lua
-generateTotp(secret: string) -> string
+totp(secret: string, digits: number?, period: number?) -> string
 ```
 
 **参数**：
 - `secret` - Base32 编码的密钥
+- `digits` - 验证码位数，默认 6
+- `period` - 时间步长（秒），默认 30
 
 **返回**：
-- 6 位数字验证码
+- 数字验证码字符串
 
 :::tabs
 
@@ -161,10 +45,120 @@ generateTotp(secret: string) -> string
 ```python:line-numbers
 from wingman import verification
 
-# 生成 TOTP 验证码
+# 默认 6 位，30 秒步长
+code = verification.totp("JBSWY3DPEHPK3PXP")
+print(f"TOTP: {code}")
+
+# 自定义 8 位，60 秒步长
+code = verification.totp("JBSWY3DPEHPK3PXP", digits=8, period=60)
+```
+
+== Lua
+
+```lua:line-numbers
+local verification = require("wingman.verification")
+
+-- 默认 6 位，30 秒步长
+local code = verification.totp("JBSWY3DPEHPK3PXP")
+print("TOTP: " .. code)
+
+-- 自定义 8 位，60 秒步长
+local code = verification.totp("JBSWY3DPEHPK3PXP", 8, 60)
+```
+
+:::
+
+---
+
+## 生成 Steam Guard 验证码
+
+### steamGuard(secret) / steamGuard(secret)
+
+**说明**：生成 Steam Guard 验证码（5 位字母）。
+
+**函数签名**：
+
+```python
+steam_guard(secret: str) -> str
+```
+
+```lua
+steamGuard(secret: string) -> string
+```
+
+**参数**：
+- `secret` - Steam Guard 密钥
+
+**返回**：
+- 5 位字母验证码
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import verification
+
+code = verification.steam_guard("STEAM_GUARD_SECRET")
+print(f"Steam Guard: {code}")
+```
+
+== Lua
+
+```lua:line-numbers
+local verification = require("wingman.verification")
+
+local code = verification.steamGuard("STEAM_GUARD_SECRET")
+print("Steam Guard: " .. code)
+```
+
+:::
+
+---
+
+## 验证 TOTP 验证码
+
+### verify(secret, code, digits?, period?, window?) / verify(secret, code, digits?, period?, window?)
+
+**说明**：验证 TOTP 验证码是否有效。支持时间窗口容错。
+
+**函数签名**：
+
+```python
+verify(secret: str, code: str, digits: int = 6, period: int = 30, window: int = 1) -> bool
+```
+
+```lua
+verify(secret: string, code: string, digits: number?, period: number?, window: number?) -> boolean
+```
+
+**参数**：
+- `secret` - Base32 编码的密钥
+- `code` - 要验证的验证码
+- `digits` - 验证码位数，默认 6
+- `period` - 时间步长（秒），默认 30
+- `window` - 时间窗口容错数，默认 1（允许前/后各 1 个周期）
+
+**返回**：
+- 验证码是否有效
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import verification
+
 secret = "JBSWY3DPEHPK3PXP"
-code = verification.generate_totp(secret)
-print(f"当前 TOTP 验证码: {code}")
+code = verification.totp(secret)
+
+# 验证当前验证码
+if verification.verify(secret, code):
+    print("验证通过")
+
+# 带容错窗口（允许前后各 2 个周期）
+if verification.verify(secret, code, window=2):
+    print("验证通过（宽松模式）")
 ```
 
 == Lua
@@ -172,37 +166,45 @@ print(f"当前 TOTP 验证码: {code}")
 ```lua:line-numbers
 local verification = require("wingman.verification")
 
--- 生成 TOTP 验证码
 local secret = "JBSWY3DPEHPK3PXP"
-local code = verification.generateTotp(secret)
-print("当前 TOTP 验证码: " .. code)
+local code = verification.totp(secret)
+
+-- 验证当前验证码
+if verification.verify(secret, code) then
+    print("验证通过")
+end
+
+-- 带容错窗口（允许前后各 2 个周期）
+if verification.verify(secret, code, 6, 30, 2) then
+    print("验证通过（宽松模式）")
+end
 ```
 
 :::
 
 ---
 
-## 设置 TOTP 时间步长
+## 获取剩余有效时间
 
-### set_totp_step(seconds) / setTotpStep(seconds)
+### remaining(period?) / remaining(period?)
 
-**说明**：设置 TOTP 时间步长。
+**说明**：获取当前 TOTP 验证码剩余有效秒数。
 
 **函数签名**：
 
 ```python
-set_totp_step(seconds: int) -> None
+remaining(period: int = 30) -> int
 ```
 
 ```lua
-setTotpStep(seconds: number) -> nil
+remaining(period: number?) -> number
 ```
 
 **参数**：
-- `seconds` - 时间步长（秒），默认 30
+- `period` - 时间步长（秒），默认 30
 
 **返回**：
-- 无
+- 剩余有效秒数
 
 :::tabs
 
@@ -211,11 +213,12 @@ setTotpStep(seconds: number) -> nil
 ```python:line-numbers
 from wingman import verification
 
-# 设置 TOTP 时间步长（默认 30 秒）
-verification.set_totp_step(30)
+# 默认 30 秒步长
+secs = verification.remaining()
+print(f"验证码还有 {secs} 秒有效")
 
-# 设置为 60 秒
-verification.set_totp_step(60)
+# 自定义步长
+secs = verification.remaining(60)
 ```
 
 == Lua
@@ -223,119 +226,12 @@ verification.set_totp_step(60)
 ```lua:line-numbers
 local verification = require("wingman.verification")
 
--- 设置 TOTP 时间步长（默认 30 秒）
-verification.setTotpStep(30)
+-- 默认 30 秒步长
+local secs = verification.remaining()
+print("验证码还有 " .. secs .. " 秒有效")
 
--- 设置为 60 秒
-verification.setTotpStep(60)
-```
-
-:::
-
----
-
-## 存储验证码密钥
-
-### save_secret(name, secret) / saveSecret(name, secret)
-
-**说明**：存储验证码密钥。
-
-**函数签名**：
-
-```python
-save_secret(name: str, secret: str) -> None
-```
-
-```lua
-saveSecret(name: string, secret: string) -> nil
-```
-
-**参数**：
-- `name` - 密钥名称
-- `secret` - 密钥值
-
-**返回**：
-- 无
-
----
-
-## 读取验证码密钥
-
-### load_secret(name) / loadSecret(name)
-
-**说明**：读取验证码密钥。
-
-**函数签名**：
-
-```python
-load_secret(name: str) -> str | None
-```
-
-```lua
-loadSecret(name: string) -> string | nil
-```
-
-**参数**：
-- `name` - 密钥名称
-
-**返回**：
-- Python: 密钥值，不存在返回 `None`
-- Lua: 密钥值，不存在返回 `nil`
-
----
-
-## 删除验证码密钥
-
-### delete_secret(name) / deleteSecret(name)
-
-**说明**：删除验证码密钥。
-
-**函数签名**：
-
-```python
-delete_secret(name: str) -> None
-```
-
-```lua
-deleteSecret(name: string) -> nil
-```
-
-**参数**：
-- `name` - 密钥名称
-
-**返回**：
-- 无
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import verification
-
-# 存储验证码密钥
-verification.save_secret("game_account", "JBSWY3DPEHPK3PXP")
-
-# 读取密钥
-secret = verification.load_secret("game_account")
-
-# 删除密钥
-verification.delete_secret("game_account")
-```
-
-== Lua
-
-```lua:line-numbers
-local verification = require("wingman.verification")
-
--- 存储验证码密钥
-verification.saveSecret("game_account", "JBSWY3DPEHPK3PXP")
-
--- 读取密钥
-local secret = verification.loadSecret("game_account")
-
--- 删除密钥
-verification.deleteSecret("game_account")
+-- 自定义步长
+local secs = verification.remaining(60)
 ```
 
 :::
@@ -345,23 +241,8 @@ verification.deleteSecret("game_account")
 ## 可用接口
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
-|------------|---------|------|-----|
-| `recognize_captcha(imagePath)` | `recognizeCaptcha(imagePath)` | 识别图像验证码 | imagePath: 图片路径<br>返回: 结果对象 |
-| `recognize_captcha_from_image(image)` | `recognizeCaptchaFromImage(image)` | 识别屏幕验证码 | image: 图像对象<br>返回: 结果对象 |
-| `generate_totp(secret)` | `generateTotp(secret)` | 生成TOTP验证码 | secret: Base32密钥<br>返回: 6位验证码 |
-| `set_totp_step(seconds)` | `setTotpStep(seconds)` | 设置时间步长 | seconds: 秒数 |
-| `save_secret(name, secret)` | `saveSecret(name, secret)` | 存储密钥 | name: 密钥名称<br>secret: 密钥值 |
-| `load_secret(name)` | `loadSecret(name)` | 读取密钥 | name: 密钥名称<br>返回: 密钥值或None/nil |
-| `delete_secret(name)` | `deleteSecret(name)` | 删除密钥 | name: 密钥名称 |
-
----
-
-## 返回值结构
-
-### 验证码识别结果
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `success` | boolean | 是否识别成功 |
-| `text` | string | 识别的文本内容 |
-| `confidence` | number | 识别置信度（0-1） |
+|------------|---------|------|------|
+| `totp(secret, digits?, period?)` | `totp(secret, digits?, period?)` | 生成 TOTP 验证码 | secret: Base32 密钥<br>digits: 位数 (默认 6)<br>period: 步长秒数 (默认 30)<br>返回: 验证码字符串 |
+| `steam_guard(secret)` | `steamGuard(secret)` | 生成 Steam Guard 验证码 | secret: 密钥<br>返回: 5 位字母验证码 |
+| `verify(secret, code, digits?, period?, window?)` | `verify(secret, code, digits?, period?, window?)` | 验证 TOTP 验证码 | secret: 密钥<br>code: 验证码<br>window: 容错窗口 (默认 1)<br>返回: 是否有效 |
+| `remaining(period?)` | `remaining(period?)` | 剩余有效秒数 | period: 步长秒数 (默认 30)<br>返回: 剩余秒数 |

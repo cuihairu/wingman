@@ -11,8 +11,7 @@ export default defineConfig({
     nav: [
       { text: '指南', link: '/guide/introduction' },
       { text: 'API', link: '/api/' },
-      { text: '示例', link: '/examples/' },
-      { text: 'GitHub', link: 'https://github.com/cuihairu/wingman' }
+      { text: '示例', link: '/examples/' }
     ],
 
     sidebar: {
@@ -33,24 +32,10 @@ export default defineConfig({
           ]
         },
         {
-          text: '功能',
-          items: [
-            { text: '屏幕操作', link: '/guide/screen' },
-            { text: '输入模拟', link: '/guide/input' },
-            { text: '窗口管理', link: '/guide/window' },
-            { text: '进程管理', link: '/guide/process' },
-            { text: '宏录制', link: '/guide/macro' },
-            { text: '触发器', link: '/guide/trigger' },
-            { text: '人性化模拟', link: '/guide/human' }
-          ]
-        },
-        {
           text: '高级',
           items: [
             { text: '配置系统', link: '/guide/config' },
-            { text: '远程控制', link: '/guide/remote' },
-            { text: '调试指南', link: '/guide/debugging' },
-            { text: '性能优化', link: '/guide/performance' }
+            { text: '调试指南', link: '/guide/debugging' }
           ]
         }
       ],
@@ -138,7 +123,6 @@ export default defineConfig({
         {
           text: '高级功能',
           items: [
-            { text: 'wingman.remote', link: '/api/remote' },
             { text: 'wingman.team', link: '/api/team' }
           ]
         }
