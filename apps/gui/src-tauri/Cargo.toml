@@ -19,6 +19,8 @@ tokio-tungstenite = "0.24"
 url = "2.5"
 uuid = { version = "1.0", features = ["v4"] }
 futures-util = "0.3"
+chrono = "0.4"
+dirs = "5.0"
 
 [features]
 default = ["custom-protocol"]

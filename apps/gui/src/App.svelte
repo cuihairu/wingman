@@ -3,6 +3,10 @@
 	import TopBar from '$lib/components/layout/TopBar.svelte';
 	import { router } from '$lib/router.svelte';
 	import { connection } from '$lib/stores/connection';
+	import { settings } from '$lib/stores/settings';
+	import { scripts } from '$lib/stores/scripts';
+	import { triggers } from '$lib/stores/triggers';
+	import { profiles } from '$lib/stores/profiles';
 	import { logs } from '$lib/stores/logs';
 
 	import DashboardPage from './routes/dashboard/+page.svelte';
@@ -12,17 +16,40 @@
 	import TriggersPage from './routes/triggers/+page.svelte';
 	import EditorPage from './routes/editor/+page.svelte';
 
-	// 初始化路由
 	router.init();
 
-	// 开发模式模拟数据
 	const invoke = (window as any).__TAURI_INVOKE__;
+
+	async function loadAllData() {
+		await Promise.allSettled([
+			scripts.load(),
+			triggers.load(),
+			profiles.load(),
+			profiles.loadActive(),
+		]);
+	}
 
 	$effect(() => {
 		if (!invoke) {
+			// 开发模式：加载模拟数据
 			connection.setConnected(true);
 			connection.setVersion('wingman 0.1.0 (dev)');
+			scripts.loadDevData();
+			triggers.loadDevData();
+			profiles.loadDevData();
 			logs.add('开发模式已启动', 'info');
+		} else {
+			// 生产模式：自动连接
+			(async () => {
+				try {
+					const wsUrl = 'ws://127.0.0.1:8080/ws';
+					await connection.connect(wsUrl);
+					logs.add('已自动连接到服务器', 'success');
+					await loadAllData();
+				} catch {
+					logs.add('自动连接失败，请在设置中手动连接', 'warning');
+				}
+			})();
 		}
 	});
 </script>

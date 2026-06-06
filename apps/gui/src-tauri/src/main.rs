@@ -31,6 +31,15 @@ fn main() {
             commands::triggers::remove_trigger,
             commands::triggers::update_trigger,
             commands::triggers::toggle_trigger,
+            // 配置管理
+            commands::profiles::get_profiles,
+            commands::profiles::get_active_profile,
+            commands::profiles::set_active_profile,
+            commands::profiles::create_profile,
+            commands::profiles::delete_profile,
+            commands::profiles::update_profile,
+            commands::profiles::export_profile_json,
+            commands::profiles::import_profile_json,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
