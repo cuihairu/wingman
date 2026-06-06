@@ -173,6 +173,9 @@ elseif(APPLE)
         src/platform/mac/posix_process.cpp
         src/platform/mac/darwin_system.cpp
         src/platform/mac/cocoa_recorder.cpp
+        src/platform/mac/sccapture_capture.cpp
+        src/platform/mac/cocoa_clipboard.cpp
+        src/platform/mac/fsevents_filewatcher.cpp
         src/platform/unix/posix_trigger.cpp
     )
     set_source_files_properties(
@@ -181,6 +184,9 @@ elseif(APPLE)
         src/platform/mac/cocoa_screen.cpp
         src/platform/mac/mac_automation.cpp
         src/platform/mac/cocoa_recorder.cpp
+        src/platform/mac/sccapture_capture.cpp
+        src/platform/mac/cocoa_clipboard.cpp
+        src/platform/mac/fsevents_filewatcher.cpp
         PROPERTIES LANGUAGE OBJCXX
     )
     # macOS requires Cocoa framework
