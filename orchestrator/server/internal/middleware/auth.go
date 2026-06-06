@@ -108,3 +108,29 @@ func GetCurrentUser(c *gin.Context) (uint, string, string) {
 	}
 	return 0, "", ""
 }
+
+// RoleRequired 角色检查中间件
+func RoleRequired(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{"success": false, "error": "forbidden"})
+			c.Abort()
+			return
+		}
+		userRole, ok := role.(string)
+		if !ok {
+			c.JSON(http.StatusForbidden, gin.H{"success": false, "error": "forbidden"})
+			c.Abort()
+			return
+		}
+		for _, r := range roles {
+			if userRole == r {
+				c.Next()
+				return
+			}
+		}
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "error": "insufficient permissions"})
+		c.Abort()
+	}
+}

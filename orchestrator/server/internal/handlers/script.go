@@ -238,11 +238,33 @@ func (h *ScriptHandler) HandleStop(c *gin.Context) {
 func (h *ScriptHandler) HandleLogs(c *gin.Context) {
 	var req struct {
 		ExecutionID string `json:"executionId" binding:"required"`
+		Offset      int    `json:"offset"`
+		Limit       int    `json:"limit"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": []interface{}{}})
+	if req.Limit <= 0 || req.Limit > 500 {
+		req.Limit = 100
+	}
+
+	var logs []models.ExecutionLog
+	query := h.db.Where("script_id = ?", req.ExecutionID).Order("id ASC")
+	if req.Offset > 0 {
+		query = query.Offset(req.Offset)
+	}
+	query.Limit(req.Limit).Find(&logs)
+
+	data := make([]gin.H, 0, len(logs))
+	for _, l := range logs {
+		data = append(data, gin.H{
+			"timestamp": l.CreatedAt.UnixMilli(),
+			"level":     l.Level,
+			"message":   l.Output,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": data})
 }

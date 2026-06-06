@@ -44,5 +44,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&Script{},
 		&Settings{},
 		&ExecutionLog{},
+		&Agent{},
+		&Workflow{},
+		&StepStatus{},
 	)
 }

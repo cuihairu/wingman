@@ -4,10 +4,13 @@ import (
 	"log"
 	"os"
 
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/config"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/handlers"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/workflow"
+	agentPkg "github.com/cuihaitao/wingman/orchestrator/server/pkg/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
@@ -39,6 +42,37 @@ func main() {
 	wsHub := websocket.NewHub()
 	go wsHub.Run()
 
+	// Agent 注册表
+	registry := agent.NewRegistry(wsHub)
+	go registry.StartHeartbeatCheck()
+
+	// TCP Frame Listener（接受 runtime outbound 连接）
+	frameListener := agentPkg.NewFrameListener(registry, wsHub)
+	agentListenAddr := cfg.AgentAddr
+	go func() {
+		if err := frameListener.Start(agentListenAddr); err != nil {
+			log.Printf("[FrameListener] Failed to start: %v (runtime outbound connection disabled)", err)
+		}
+	}()
+
+	// 脚本输出持久化回调
+	frameListener.SetScriptOutputHandler(func(agentID string, data map[string]any) {
+		scriptID, _ := data["scriptId"].(string)
+		message, _ := data["message"].(string)
+		level, _ := data["level"].(string)
+		if level == "" {
+			level = "info"
+		}
+		db.Create(&models.ExecutionLog{
+			ScriptID: scriptID,
+			Output:   message,
+			Level:    level,
+		})
+	})
+
+	// 工作流引擎
+	wfEngine := workflow.NewEngine(db, registry, wsHub)
+
 	r := gin.Default()
 	r.Use(middleware.CORS())
 
@@ -48,6 +82,7 @@ func main() {
 		c.File(cfg.StaticDir + "/index.html")
 	})
 
+	// ====== API v1 路由（保留兼容） ======
 	v1 := r.Group("/api/v1")
 	{
 		v1.POST("/auth/login", authHandler.HandleLogin)
@@ -81,8 +116,40 @@ func main() {
 		}
 	}
 
+	// ====== Dashboard 兼容路由（无 v1 前缀，匹配前端 wingman.ts） ======
+	api := r.Group("/api")
+	api.Use(middleware.AuthRequired())
+	{
+		// Agent 管理
+		agentHandler := handlers.NewAgentHandler(registry, db)
+		api.GET("/agents", agentHandler.HandleList)
+		api.GET("/agents/:agentId", agentHandler.HandleGet)
+		api.POST("/agents/:agentId/shutdown", agentHandler.HandleShutdown)
+
+		// 工作流管理
+		wfHandler := handlers.NewWorkflowHandler(wfEngine, db)
+		api.GET("/workflows", wfHandler.HandleList)
+		api.GET("/workflows/:id", wfHandler.HandleGet)
+		api.POST("/workflows", wfHandler.HandleCreate)
+		api.POST("/workflows/:id/cancel", wfHandler.HandleCancel)
+		api.GET("/workflows/:id/workers", wfHandler.HandleGetWorkers)
+		api.GET("/workflows/:id/steps/:stepId/status", wfHandler.HandleGetStepStatus)
+
+		// 脚本管理（复用 ScriptHandler）
+		scriptHandlerAPI := handlers.NewScriptHandler(db, cfg.ScriptsDir, cfg.AgentAddr)
+		api.GET("/scripts", scriptHandlerAPI.HandleList)
+		api.POST("/scripts", scriptHandlerAPI.HandleCreate)
+		api.DELETE("/scripts", scriptHandlerAPI.HandleDelete)
+		api.POST("/scripts/content", scriptHandlerAPI.HandleGetContent)
+		api.POST("/scripts/save", scriptHandlerAPI.HandleSave)
+		api.POST("/scripts/run", scriptHandlerAPI.HandleRun)
+		api.POST("/scripts/stop", scriptHandlerAPI.HandleStop)
+		api.POST("/scripts/logs", scriptHandlerAPI.HandleLogs)
+	}
+
+	// ====== Debugger 路由（仅 admin） ======
 	debugger := r.Group("/api/debugger")
-	debugger.Use(middleware.AuthRequired())
+	debugger.Use(middleware.AuthRequired(), middleware.RoleRequired("admin"))
 	{
 		debugger.POST("/connect", handlers.HandleDebuggerConnect)
 		debugger.POST("/command", handlers.HandleDebuggerCommand)

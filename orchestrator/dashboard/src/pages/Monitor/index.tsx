@@ -19,7 +19,7 @@ import {
   List,
   Divider,
   Tooltip,
-} from '@ant-design/icons';
+} from 'antd';
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
