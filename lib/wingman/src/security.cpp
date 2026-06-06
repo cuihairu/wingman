@@ -539,10 +539,10 @@ CodeSignature SecurityManager::getSignatureInfo() {
         CertGetNameStringW(pSignerCert, CERT_NAME_SIMPLE_DISPLAY_TYPE,
             CERT_NAME_ISSUER_FLAG, nullptr, issuerName, 256);
         {
-            int len = WideCharToMultiByte(CP_UTF8, 0, issuerName, -1, nullptr, 0, nullptr, nullptr);
-            if (len > 0) {
-                info.issuer.resize(len - 1);
-                WideCharToMultiByte(CP_UTF8, 0, issuerName, -1, info.issuer.data(), len, nullptr, nullptr);
+            int nameLen = WideCharToMultiByte(CP_UTF8, 0, issuerName, -1, nullptr, 0, nullptr, nullptr);
+            if (nameLen > 0) {
+                info.issuer.resize(nameLen - 1);
+                WideCharToMultiByte(CP_UTF8, 0, issuerName, -1, info.issuer.data(), nameLen, nullptr, nullptr);
             }
         }
 
@@ -551,10 +551,10 @@ CodeSignature SecurityManager::getSignatureInfo() {
         CertGetNameStringW(pSignerCert, CERT_NAME_SIMPLE_DISPLAY_TYPE,
             0, nullptr, subjectName, 256);
         {
-            int len = WideCharToMultiByte(CP_UTF8, 0, subjectName, -1, nullptr, 0, nullptr, nullptr);
-            if (len > 0) {
-                info.subject.resize(len - 1);
-                WideCharToMultiByte(CP_UTF8, 0, subjectName, -1, info.subject.data(), len, nullptr, nullptr);
+            int nameLen = WideCharToMultiByte(CP_UTF8, 0, subjectName, -1, nullptr, 0, nullptr, nullptr);
+            if (nameLen > 0) {
+                info.subject.resize(nameLen - 1);
+                WideCharToMultiByte(CP_UTF8, 0, subjectName, -1, info.subject.data(), nameLen, nullptr, nullptr);
             }
         }
 
