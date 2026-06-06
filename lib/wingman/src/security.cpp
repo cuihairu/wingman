@@ -538,15 +538,25 @@ CodeSignature SecurityManager::getSignatureInfo() {
         WCHAR issuerName[256] = {};
         CertGetNameStringW(pSignerCert, CERT_NAME_SIMPLE_DISPLAY_TYPE,
             CERT_NAME_ISSUER_FLAG, nullptr, issuerName, 256);
-        std::wstring ws(issuerName);
-        info.issuer = std::string(ws.begin(), ws.end());
+        {
+            int len = WideCharToMultiByte(CP_UTF8, 0, issuerName, -1, nullptr, 0, nullptr, nullptr);
+            if (len > 0) {
+                info.issuer.resize(len - 1);
+                WideCharToMultiByte(CP_UTF8, 0, issuerName, -1, info.issuer.data(), len, nullptr, nullptr);
+            }
+        }
 
         // Subject
         WCHAR subjectName[256] = {};
         CertGetNameStringW(pSignerCert, CERT_NAME_SIMPLE_DISPLAY_TYPE,
             0, nullptr, subjectName, 256);
-        std::wstring ws2(subjectName);
-        info.subject = std::string(ws2.begin(), ws2.end());
+        {
+            int len = WideCharToMultiByte(CP_UTF8, 0, subjectName, -1, nullptr, 0, nullptr, nullptr);
+            if (len > 0) {
+                info.subject.resize(len - 1);
+                WideCharToMultiByte(CP_UTF8, 0, subjectName, -1, info.subject.data(), len, nullptr, nullptr);
+            }
+        }
 
         // Thumbprint (SHA1 hash)
         DWORD thumbprintSize = 20;

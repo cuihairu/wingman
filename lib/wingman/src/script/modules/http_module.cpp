@@ -19,7 +19,7 @@ static HttpOptions toHttpOptions(const ScriptValue& v) {
 	auto* followRedirects = v.get("followRedirects");
 	if (followRedirects) options.followRedirects = followRedirects->asBool();
 	auto* maxRedirects = v.get("maxRedirects");
-	if (maxRedirects) options.maxRedirects = static_cast<size_t>(maxRedirects->asInt());
+	if (maxRedirects) options.maxRedirects = static_cast<int>(maxRedirects->asInt());
 	auto* headers = v.get("headers");
 	if (headers && headers->isObject()) {
 		for (const auto& [key, val] : headers->objectVal) {

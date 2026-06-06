@@ -155,7 +155,7 @@ public:
         return bitmap;
     }
 
-    std::unique_ptr<Bitmap> captureWindowByTitle(const std::string& title) {
+    std::unique_ptr<Bitmap> captureWindowByTitle(const std::string& /*title*/) {
         // Need to depend on IWindow interface to find window
         // Return nullptr for now, coordinated by factory layer
         return nullptr;
