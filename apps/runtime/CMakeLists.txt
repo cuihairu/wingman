@@ -28,6 +28,8 @@ set(RUNTIME_SOURCES
     src/commands/stop_command.cpp
     src/commands/script_command.cpp
     src/commands/build_command.cpp
+    # RPC handlers
+    src/rpc/handlers/script_handler.cpp
 )
 
 # 创建可执行文件

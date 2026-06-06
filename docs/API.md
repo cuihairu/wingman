@@ -5,12 +5,14 @@ Wingman Runtime 同时提供 HTTP RESTful API 和 WebSocket RPC 接口，供 Tau
 ## 启动服务器
 
 ```bash
-# 默认配置 (127.0.0.1:8080)
-wingman-runtime serve
+# 默认配置
+wingman-runtime start
 
-# 自定义主机和端口
-wingman-runtime serve --host 0.0.0.0 --port 9000
+# 指定配置文件
+wingman-runtime start --config agent.toml
 ```
+
+> 主机和端口在 `agent.toml` 中配置，参见 `server_ip` / `server_port` 字段。
 
 ## HTTP RESTful API
 

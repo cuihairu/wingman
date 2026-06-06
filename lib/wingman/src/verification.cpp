@@ -34,7 +34,7 @@ static std::string base32Decode(const std::string& encoded) {
         const char* p = std::strchr(BASE32_ALPHABET, std::toupper(c));
         if (!p) continue;
 
-        int value = p - BASE32_ALPHABET;
+        int value = static_cast<int>(p - BASE32_ALPHABET);
         buffer = (buffer << 5) | value;
         bitsLeft += 5;
 
@@ -62,7 +62,7 @@ static std::vector<uint8_t> sha1(const std::vector<uint8_t>& data) {
         CryptReleaseContext(hProv, 0);
         return result;
     }
-    if (!CryptHashData(hHash, reinterpret_cast<const BYTE*>(data.data()), data.size(), 0)) {
+    if (!CryptHashData(hHash, reinterpret_cast<const BYTE*>(data.data()), static_cast<DWORD>(data.size()), 0)) {
         CryptDestroyHash(hHash);
         CryptReleaseContext(hProv, 0);
         return result;
@@ -162,7 +162,7 @@ static std::string base64DecodeSteam(const std::string& encoded) {
         size_t pos = alphabet.find(c);
         if (pos == std::string::npos) continue;
 
-        buffer = (buffer << 6) | pos;
+        buffer = (buffer << 6) | static_cast<int>(pos);
         bitsLeft += 6;
 
         if (bitsLeft >= 8) {

@@ -64,7 +64,7 @@ ModuleDescriptor createWindowModule() {
 
 	mod.functions.push_back({"waitFor", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		std::string title = args[0].asString();
-		int timeout = args.size() > 1 ? args[1].asInt(5000) : 5000;
+		int timeout = args.size() > 1 ? static_cast<int>(args[1].asInt(5000)) : 5000;
 		return ScriptValue::fromBool(Window::waitFor(title, timeout));
 	}, "title:string, timeout:int -> bool"});
 

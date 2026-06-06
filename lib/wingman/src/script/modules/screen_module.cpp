@@ -22,8 +22,8 @@ ModuleDescriptor createScreenModule() {
 	}, "region:{x,y,width,height} -> boolean"});
 
 	mod.functions.push_back({"getPixel", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		int x = args[0].asInt();
-		int y = args[1].asInt();
+		int x = static_cast<int>(args[0].asInt());
+		int y = static_cast<int>(args[1].asInt());
 		Color color = Screen::getPixel(x, y);
 		return fromColor(color);
 	}, "x:int, y:int -> {r,g,b,a}"});
@@ -31,7 +31,7 @@ ModuleDescriptor createScreenModule() {
 	mod.functions.push_back({"findColor", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		Color color = toColor(args[0]);
 		Rect region = toRect(args[1]);
-		int tolerance = args.size() > 2 ? args[2].asInt(10) : 10;
+		int tolerance = args.size() > 2 ? static_cast<int>(args[2].asInt(10)) : 10;
 		Point result;
 		if (Screen::findColor(color, region, tolerance, result)) {
 			return ScriptValue::fromArray({fromPoint(result), ScriptValue::fromBool(true)});
@@ -42,8 +42,8 @@ ModuleDescriptor createScreenModule() {
 	mod.functions.push_back({"findColors", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		Color color = toColor(args[0]);
 		Rect region = toRect(args[1]);
-		int tolerance = args.size() > 2 ? args[2].asInt(10) : 10;
-		int maxCount = args.size() > 3 ? args[3].asInt(0) : 0;
+		int tolerance = args.size() > 2 ? static_cast<int>(args[2].asInt(10)) : 10;
+		int maxCount = args.size() > 3 ? static_cast<int>(args[3].asInt(0)) : 0;
 		auto points = Screen::findColors(color, region, tolerance, maxCount);
 		std::vector<ScriptValue> arr;
 		for (const auto& p : points) {

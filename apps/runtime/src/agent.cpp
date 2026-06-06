@@ -1,6 +1,13 @@
 #include "wingman/runtime/agent.hpp"
 #include "wingman/runtime/remote_client.hpp"
 #include "wingman/runtime/standalone_mode.hpp"
+#include "wingman/rpc/ws_server.hpp"
+#include "wingman/rpc/rpc_dispatcher.hpp"
+#include "wingman/rpc/trigger_handler.hpp"
+#include "wingman/rpc/system_handler.hpp"
+#include "wingman/rpc/script_handler.hpp"
+#include "wingman/trigger.hpp"
+#include "wingman/version.hpp"
 #include <spdlog/spdlog.h>
 
 namespace wingman::runtime {
@@ -14,6 +21,11 @@ public:
 
     std::unique_ptr<RemoteClient> remoteClient;
     std::unique_ptr<StandaloneMode> standaloneMode;
+
+    // RPC bridge
+    std::unique_ptr<rpc::WsServer> wsServer;
+    std::unique_ptr<rpc::RpcDispatcher> dispatcher;
+    std::unique_ptr<TriggerManager> triggerManager;
 };
 
 Agent::Agent() : impl_(std::make_unique<Impl>()) {}
@@ -68,6 +80,11 @@ bool Agent::initialize(const AgentConfig& config) {
 void Agent::shutdown() {
     spdlog::info("Shutting down Agent");
 
+    if (impl_->wsServer) {
+        impl_->wsServer->stop();
+        impl_->wsServer.reset();
+    }
+
     if (impl_->remoteClient) {
         impl_->remoteClient->stop();
         impl_->remoteClient.reset();
@@ -77,6 +94,9 @@ void Agent::shutdown() {
         impl_->standaloneMode->stop();
         impl_->standaloneMode.reset();
     }
+
+    impl_->dispatcher.reset();
+    impl_->triggerManager.reset();
 
     running_.store(false);
 }
@@ -100,6 +120,22 @@ bool Agent::start() {
         }
     }
 
+    // Start RPC bridge (WebSocket server)
+    impl_->triggerManager = std::make_unique<TriggerManager>();
+    impl_->dispatcher = std::make_unique<rpc::RpcDispatcher>();
+
+    rpc::registerSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION);
+    rpc::registerTriggerHandlers(*impl_->dispatcher, *impl_->triggerManager);
+    if (impl_->standaloneMode) {
+        rpc::registerScriptHandlers(*impl_->dispatcher, *impl_->standaloneMode);
+    }
+
+    impl_->wsServer = std::make_unique<rpc::WsServer>(8080);
+    impl_->wsServer->onMessage([this](const std::string& msg) -> std::string {
+        return impl_->dispatcher->dispatch(msg);
+    });
+    impl_->wsServer->start();
+
     if (success) {
         spdlog::info("Agent started successfully");
     }
@@ -111,6 +147,7 @@ void Agent::stop() {
     spdlog::info("Stopping Agent");
     running_.store(false);
 
+    if (impl_->wsServer) impl_->wsServer->stop();
     if (impl_->remoteClient) impl_->remoteClient->stop();
     if (impl_->standaloneMode) impl_->standaloneMode->stop();
 }

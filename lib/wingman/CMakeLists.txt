@@ -27,6 +27,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(CURL QUIET)
 find_package(OpenSSL QUIET)
 find_package(unofficial-sqlite3 CONFIG)
+find_package(ixwebsocket CONFIG QUIET)
 if(WINGMAN_BUILD_LUA)
     find_package(unofficial-lua CONFIG)
 endif()
@@ -106,6 +107,12 @@ set(WINGMAN_SOURCES
     src/script/modules/module_registry.cpp
     src/platform/input_factory.cpp
     src/platform/mock/mock_input.cpp
+
+    # RPC bridge (WebSocket server + dispatcher)
+    src/rpc/ws_server.cpp
+    src/rpc/rpc_dispatcher.cpp
+    src/rpc/handlers/trigger_handler.cpp
+    src/rpc/handlers/system_handler.cpp
 )
 
 # OCR support (optional)
@@ -230,6 +237,15 @@ if(TARGET CURL::libcurl)
     message(STATUS "HTTP support enabled (CURL found)")
 else()
     message(STATUS "HTTP support disabled (CURL not found)")
+endif()
+
+# Add ixwebsocket (if available)
+if(TARGET ixwebsocket::ixwebsocket)
+    list(APPEND WINGMAN_LINK_LIBS ixwebsocket::ixwebsocket)
+    target_compile_definitions(wingman PRIVATE WINGMAN_HAS_WEBSOCKET)
+    message(STATUS "WebSocket support enabled (ixwebsocket found)")
+else()
+    message(STATUS "WebSocket support disabled (ixwebsocket not found)")
 endif()
 
 if(TARGET OpenSSL::Crypto)

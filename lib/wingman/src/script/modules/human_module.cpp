@@ -12,8 +12,8 @@ ModuleDescriptor createHumanModule() {
 
 	// Mouse sub-module functions
 	mod.functions.push_back({"mouse_move", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		int x = args[0].asInt(), y = args[1].asInt();
-		int duration = args.size() > 2 ? args[2].asInt(0) : 0;
+		int x = static_cast<int>(args[0].asInt()), y = static_cast<int>(args[1].asInt());
+		int duration = args.size() > 2 ? static_cast<int>(args[2].asInt(0)) : 0;
 		Human::mouse().moveTo(x, y, duration);
 		return ScriptValue::null();
 	}, "x:int, y:int, duration:int? -> nil"});

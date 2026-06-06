@@ -15,10 +15,10 @@ namespace modules {
 inline Rect toRect(const ScriptValue& v) {
 	Rect r;
 	if (v.isObject()) {
-		r.x = v.get("x")->asInt();
-		r.y = v.get("y")->asInt();
-		r.width = v.get("width", ScriptValue::fromInt(0)).asInt();
-		r.height = v.get("height", ScriptValue::fromInt(0)).asInt();
+		r.x = static_cast<int>(v.get("x")->asInt());
+		r.y = static_cast<int>(v.get("y")->asInt());
+		r.width = static_cast<int>(v.get("width", ScriptValue::fromInt(0)).asInt());
+		r.height = static_cast<int>(v.get("height", ScriptValue::fromInt(0)).asInt());
 	}
 	return r;
 }

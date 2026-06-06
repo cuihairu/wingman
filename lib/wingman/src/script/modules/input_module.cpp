@@ -30,9 +30,9 @@ ModuleDescriptor createInputModule() {
 	mod.name = "input";
 
 	mod.functions.push_back({"click", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		int x = args[0].asInt();
-		int y = args[1].asInt();
-		int button = args.size() > 2 ? args[2].asInt(0) : 0;
+		int x = static_cast<int>(args[0].asInt());
+		int y = static_cast<int>(args[1].asInt());
+		int button = args.size() > 2 ? static_cast<int>(args[2].asInt(0)) : 0;
 		platform::MouseButton btn = platform::MouseButton::Left;
 		if (button == 1) btn = platform::MouseButton::Middle;
 		else if (button == 2) btn = platform::MouseButton::Right;
@@ -42,18 +42,18 @@ ModuleDescriptor createInputModule() {
 	}, "x:int, y:int, button:int -> nil"});
 
 	mod.functions.push_back({"move", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		int x = args[0].asInt();
-		int y = args[1].asInt();
-		int duration = args.size() > 2 ? args[2].asInt(0) : 0;
+		int x = static_cast<int>(args[0].asInt());
+		int y = static_cast<int>(args[1].asInt());
+		int duration = args.size() > 2 ? static_cast<int>(args[2].asInt(0)) : 0;
 		getInput().mouseMove(x, y);
 		sleepMs(duration);
 		return ScriptValue::null();
 	}, "x:int, y:int, duration:int -> nil"});
 
 	mod.functions.push_back({"scroll", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		int x = args[0].asInt();
-		int y = args[1].asInt();
-		int delta = args[2].asInt();
+		int x = static_cast<int>(args[0].asInt());
+		int y = static_cast<int>(args[1].asInt());
+		int delta = static_cast<int>(args[2].asInt());
 		getInput().mouseMove(x, y);
 		getInput().mouseWheel(delta);
 		return ScriptValue::null();
@@ -76,7 +76,7 @@ ModuleDescriptor createInputModule() {
 
 	mod.functions.push_back({"type", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		std::string text = args[0].asString();
-		int delay = args.size() > 1 ? args[1].asInt(10) : 10;
+		int delay = args.size() > 1 ? static_cast<int>(args[1].asInt(10)) : 10;
 		getInput().textInput(text);
 		sleepMs(delay);
 		return ScriptValue::null();
