@@ -67,6 +67,7 @@ set(WINGMAN_SOURCES
     # IPC communication
     src/ipc/ipc_factory.cpp
     src/ipc/tcp_channel.cpp
+    src/ipc/unix_socket_channel.cpp
 
     # Network
     src/http.cpp
