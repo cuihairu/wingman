@@ -17,16 +17,20 @@ if (Test-Path $VcpkgRoot) {
     Remove-Item -Recurse -Force $VcpkgRoot
 }
 
-# Pin vcpkg to a specific version for reproducibility and supply chain security
-# Matches the builtin-baseline in vcpkg.json (can be overridden via VCPKG_VERSION env var)
-$vcpkgVersion = if ($env:VCPKG_VERSION) { $env:VCPKG_VERSION } else { "2024.06.15" }
+# Pin vcpkg to a specific commit for reproducibility and supply chain security
+# Use the builtin-baseline from vcpkg.json (can be overridden via VCPKG_COMMIT env var)
+$vcpkgCommit = if ($env:VCPKG_COMMIT) { $env:VCPKG_COMMIT } else { "00d899c410b31467733472fc3a83a25729046b13" }
 
-Write-Host "Cloning vcpkg version $vcpkgVersion"
+Write-Host "Cloning vcpkg and checking out commit $vcpkgCommit"
 
-git clone --depth 1 --branch $vcpkgVersion https://github.com/Microsoft/vcpkg.git $VcpkgRoot
+git clone https://github.com/Microsoft/vcpkg.git $VcpkgRoot
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to clone vcpkg at version $vcpkgVersion, falling back to latest"
-    git clone https://github.com/Microsoft/vcpkg.git $VcpkgRoot
+    throw "Failed to clone vcpkg"
+}
+
+git -C $VcpkgRoot checkout $vcpkgCommit
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Failed to checkout vcpkg at commit $vcpkgCommit, using current HEAD"
 }
 
 & (Join-Path $VcpkgRoot "bootstrap-vcpkg.bat")

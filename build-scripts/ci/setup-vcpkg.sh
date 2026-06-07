@@ -10,15 +10,19 @@ fi
 
 rm -rf "$vcpkg_root"
 
-# Pin vcpkg to a specific version for reproducibility and supply chain security
-# Matches the builtin-baseline in vcpkg.json (can be overridden via VCPKG_VERSION env var)
-vcpkg_version="${VCPKG_VERSION:-2024.06.15}"
+# Pin vcpkg to a specific commit for reproducibility and supply chain security
+# Use the builtin-baseline from vcpkg.json (can be overridden via VCPKG_COMMIT env var)
+vcpkg_commit="${VCPKG_COMMIT:-00d899c410b31467733472fc3a83a25729046b13}"
 
-echo "Cloning vcpkg version $vcpkg_version"
+echo "Cloning vcpkg and checking out commit $vcpkg_commit"
 
-if ! git clone --depth 1 --branch "$vcpkg_version" https://github.com/Microsoft/vcpkg.git "$vcpkg_root"; then
-    echo "Failed to clone vcpkg at version $vcpkg_version, falling back to latest"
-    git clone https://github.com/Microsoft/vcpkg.git "$vcpkg_root"
+if ! git clone https://github.com/Microsoft/vcpkg.git "$vcpkg_root"; then
+    echo "Failed to clone vcpkg"
+    exit 1
+fi
+
+if ! git -C "$vcpkg_root" checkout "$vcpkg_commit"; then
+    echo "Failed to checkout vcpkg at commit $vcpkg_commit, using current HEAD"
 fi
 
 "$vcpkg_root/bootstrap-vcpkg.sh"
