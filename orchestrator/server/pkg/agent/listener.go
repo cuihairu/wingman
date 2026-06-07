@@ -58,6 +58,7 @@ type FrameListener struct {
 	mu        sync.RWMutex
 	connCount uint64
 	stopCh    chan struct{}
+	stopOnce  sync.Once
 	onScript  ScriptOutputHandler
 }
 
@@ -113,16 +114,18 @@ func (l *FrameListener) Start(addr string) error {
 
 // Stop shuts down the listener and all connections.
 func (l *FrameListener) Stop() {
-	close(l.stopCh)
-	if l.listener != nil {
-		l.listener.Close()
-	}
-	l.mu.Lock()
-	for id, ac := range l.conns {
-		ac.conn.Close()
-		delete(l.conns, id)
-	}
-	l.mu.Unlock()
+	l.stopOnce.Do(func() {
+		close(l.stopCh)
+		if l.listener != nil {
+			l.listener.Close()
+		}
+		l.mu.Lock()
+		for id, ac := range l.conns {
+			ac.conn.Close()
+			delete(l.conns, id)
+		}
+		l.mu.Unlock()
+	})
 }
 
 // acceptLoop accepts incoming connections.

@@ -91,11 +91,11 @@ func main() {
 		auth := v1.Group("")
 		auth.Use(middleware.AuthRequired())
 		{
-			statusHandler := handlers.NewStatusHandler(db, cfg.AgentAddr)
+			statusHandler := handlers.NewStatusHandler(db, registry)
 			auth.GET("/status", statusHandler.HandleStatus)
 			auth.GET("/health", statusHandler.HandleHealth)
 
-			scriptHandler := handlers.NewScriptHandler(db, cfg.ScriptsDir, cfg.AgentAddr)
+			scriptHandler := handlers.NewScriptHandler(db, cfg.ScriptsDir, registry)
 			auth.GET("/scripts", scriptHandler.HandleList)
 			auth.POST("/scripts", scriptHandler.HandleCreate)
 			auth.DELETE("/scripts", scriptHandler.HandleDelete)
@@ -105,7 +105,7 @@ func main() {
 			auth.POST("/scripts/stop", scriptHandler.HandleStop)
 			auth.POST("/scripts/logs", scriptHandler.HandleLogs)
 
-			windowHandler := handlers.NewWindowHandler(cfg.AgentAddr)
+			windowHandler := handlers.NewWindowHandler(registry)
 			auth.GET("/windows", windowHandler.HandleList)
 
 			auth.GET("/settings", handlers.HandleGetSettings)
@@ -136,7 +136,7 @@ func main() {
 		api.GET("/workflows/:id/steps/:stepId/status", wfHandler.HandleGetStepStatus)
 
 		// 脚本管理（复用 ScriptHandler）
-		scriptHandlerAPI := handlers.NewScriptHandler(db, cfg.ScriptsDir, cfg.AgentAddr)
+		scriptHandlerAPI := handlers.NewScriptHandler(db, cfg.ScriptsDir, registry)
 		api.GET("/scripts", scriptHandlerAPI.HandleList)
 		api.POST("/scripts", scriptHandlerAPI.HandleCreate)
 		api.DELETE("/scripts", scriptHandlerAPI.HandleDelete)

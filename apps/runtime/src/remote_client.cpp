@@ -85,9 +85,9 @@ bool RemoteClient::start() {
 
     impl_->shouldStop.store(false);
 
-    // 设置消息处理回调
+    // 设置消息处理回调（传递完整消息，包含 header）
     impl_->client->setMessageHandler([this](const transport::MessagePtr& msg) {
-        onMessage(std::vector<uint8_t>(msg->body.begin(), msg->body.end()));
+        onMessage(msg);
     });
 
     // 设置事件处理回调
@@ -299,56 +299,114 @@ void RemoteClient::handleRegisterAck(const std::string& data) {
     }
 }
 
-void RemoteClient::onMessage(const std::vector<uint8_t>& data) {
-    try {
-        // 解析 JSON 消息
-        std::string body(data.begin(), data.end());
-        auto msg = nlohmann::json::parse(body);
+void RemoteClient::onMessage(const transport::MessagePtr& msg) {
+    // 处理不同类型的消息
+    switch (msg->header.type) {
+        case transport::MessageType::Notify:
+            // Notify 消息（注册确认、心跳响应等）
+            handleNotifyMessage(msg);
+            break;
 
-        std::string type = msg.value("type", "");
-        std::string event = msg.value("event", "");
+        case transport::MessageType::Request:
+            // Request 消息（server 下发命令，需要回复 Response）
+            handleRequestMessage(msg);
+            break;
+
+        case transport::MessageType::Response:
+            // Response 消息（我们暂时不主动发请求，所以忽略）
+            spdlog::trace("Received Response message (seq={})", msg->header.sequence);
+            break;
+
+        default:
+            spdlog::warn("Unknown message type: {}", static_cast<int>(msg->header.type));
+            break;
+    }
+}
+
+void RemoteClient::handleNotifyMessage(const transport::MessagePtr& msg) {
+    try {
+        std::string body(msg->body.begin(), msg->body.end());
+        auto json = nlohmann::json::parse(body);
+
+        std::string type = json.value("type", "");
 
         if (type == "agent.register_ack") {
             handleRegisterAck(body);
-        } else if (event == "shutdown") {
-            // server 下发的 system.shutdown 命令
-            spdlog::info("Received shutdown command from server");
-            if (commandCallback_) {
-                CommandData cmdData;
-                if (msg.contains("data") && msg["data"].is_object()) {
-                    for (auto& [key, value] : msg["data"].items()) {
-                        if (value.is_string()) {
-                            cmdData[key] = value.get<std::string>();
-                        }
-                    }
-                }
-                commandCallback_("system.shutdown", cmdData);
-            }
-        } else if (type == "run_script") {
-            // server 下发的 run_script 命令
-            spdlog::info("Received run_script command from server");
-            if (commandCallback_) {
-                CommandData cmdData;
-                for (auto& [key, value] : msg.items()) {
-                    if (key != "type" && value.is_string()) {
-                        cmdData[key] = value.get<std::string>();
-                    }
-                }
-                commandCallback_("run_script", cmdData);
-            }
         } else {
-            spdlog::debug("Received message: type={}, event={}", type, event);
+            spdlog::debug("Received Notify: type={}", type);
         }
     } catch (const std::exception& e) {
-        // 如果不是 JSON，尝试旧的 PING/PONG 处理
-        if (data.size() >= 4) {
-            std::string type(data.begin(), data.begin() + 4);
-            if (type == "PONG") {
-                spdlog::trace("Heartbeat acknowledged (legacy format)");
-                return;
-            }
+        spdlog::error("Failed to parse Notify message: {}", e.what());
+    }
+}
+
+void RemoteClient::handleRequestMessage(const transport::MessagePtr& msg) {
+    try {
+        std::string body(msg->body.begin(), msg->body.end());
+        auto json = nlohmann::json::parse(body);
+
+        std::string method = json.value("method", "");
+        std::string type = json.value("type", "");
+
+        // 兼容旧格式：type 就是 method
+        if (method.empty() && !type.empty()) {
+            method = type;
         }
-        spdlog::debug("Received message: {} bytes (not JSON)", data.size());
+
+        spdlog::info("Received Request: method={}, seq={}", method, msg->header.sequence);
+
+        // 构造响应
+        nlohmann::json response = {
+            {"success", true},
+            {"method", method}
+        };
+
+        // 执行命令回调（如果有）
+        if (commandCallback_) {
+            CommandData cmdData;
+            for (auto& [key, value] : json.items()) {
+                if (key != "type" && key != "method" && key != "sequence") {
+                    if (value.is_string()) {
+                        cmdData[key] = value.get<std::string>();
+                    } else if (value.is_number()) {
+                        cmdData[key] = value.dump();  // 数字转为字符串存储
+                    } else {
+                        cmdData[key] = value.dump();  // 其他 JSON 值序列化
+                    }
+                }
+            }
+
+            // 执行命令（异步执行，但这里简化为同步）
+            commandCallback_(method, cmdData);
+        }
+
+        // 发送 Response（使用相同的 sequence）
+        auto responseMsg = std::make_shared<transport::Message>();
+        responseMsg->header.type = transport::MessageType::Response;
+        responseMsg->header.sequence = msg->header.sequence;  // 保持相同的 sequence
+        responseMsg->header.reserved = 0;
+        responseMsg->body = response.dump();
+
+        if (impl_->client->send(responseMsg)) {
+            spdlog::debug("Sent Response for method={}, seq={}", method, msg->header.sequence);
+        } else {
+            spdlog::warn("Failed to send Response for method={}, seq={}", method, msg->header.sequence);
+        }
+
+    } catch (const std::exception& e) {
+        spdlog::error("Failed to handle Request message: {}", e.what());
+
+        // 发送错误响应
+        auto responseMsg = std::make_shared<transport::Message>();
+        responseMsg->header.type = transport::MessageType::Response;
+        responseMsg->header.sequence = msg->header.sequence;
+        responseMsg->header.reserved = 0;
+        responseMsg->body = nlohmann::json{
+            {"success", false},
+            {"error", e.what()}
+        }.dump();
+
+        impl_->client->send(responseMsg);
     }
 }
 

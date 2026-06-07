@@ -33,6 +33,7 @@ type Registry struct {
 	hub       *ws.Hub
 	heartbeat time.Duration
 	stopCh    chan struct{}
+	stopOnce  sync.Once
 }
 
 // NewRegistry 创建 Agent 注册表
@@ -209,7 +210,9 @@ func (r *Registry) StartHeartbeatCheck() {
 
 // Stop 停止注册表
 func (r *Registry) Stop() {
-	close(r.stopCh)
+	r.stopOnce.Do(func() {
+		close(r.stopCh)
+	})
 }
 
 // checkHeartbeats 检查心跳超时

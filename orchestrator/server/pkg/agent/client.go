@@ -1,3 +1,9 @@
+// Package agent provides TCP client and listener for runtime communication.
+//
+// DEPRECATED: The Client and Pool types are deprecated and violate the architectural
+// constraint that "runtime actively connects to server, server doesn't dial runtime".
+// Use FrameListener and Registry instead - runtime connects via FrameListener,
+// and handlers use Registry to get agent connections.
 package agent
 
 import (
@@ -47,6 +53,8 @@ type Message struct {
 }
 
 // Client TCP 客户端，连接到 C++ Client
+// DEPRECATED: Use FrameListener and Registry instead. Runtime should actively connect
+// to server, not the other way around.
 type Client struct {
 	address  string
 	conn     net.Conn
@@ -230,6 +238,8 @@ func (c *Client) ListWindows() (map[string]interface{}, error) {
 }
 
 // Pool 客户端连接池
+// DEPRECATED: Use Registry.GetClient() instead. The pool approach violates the
+// architectural constraint that runtime actively connects to server.
 type Pool struct {
 	clients map[string]*Client
 	mu      sync.RWMutex

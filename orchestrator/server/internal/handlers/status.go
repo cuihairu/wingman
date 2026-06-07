@@ -3,22 +3,21 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
-	"github.com/cuihaitao/wingman/orchestrator/server/pkg/agent"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 // StatusHandler 状态处理器
 type StatusHandler struct {
-	db        *gorm.DB
-	pool      *agent.Pool
-	agentAddr string
+	db       *gorm.DB
+	registry *agent.Registry
 }
 
 // NewStatusHandler 创建状态处理器
-func NewStatusHandler(db *gorm.DB, agentAddr string) *StatusHandler {
-	return &StatusHandler{db: db, pool: agent.NewPool(), agentAddr: agentAddr}
+func NewStatusHandler(db *gorm.DB, registry *agent.Registry) *StatusHandler {
+	return &StatusHandler{db: db, registry: registry}
 }
 
 // HandleStatus 获取系统状态
@@ -32,8 +31,12 @@ func (h *StatusHandler) HandleStatus(c *gin.Context) {
 	totalWindows := int64(0)
 	cpuUsage := 0.0
 	memoryUsage := 0.0
-	if client, err := h.pool.Get(h.agentAddr); err == nil {
-		if resp, err := client.GetStatus(); err == nil {
+
+	// 从 registry 获取第一个可用的 agent
+	agents := h.registry.List()
+	if len(agents) > 0 && agents[0].Client != nil {
+		client := agents[0].Client
+		if resp, err := client.SendCommand("get_status", nil); err == nil {
 			if data, ok := resp["data"].(map[string]interface{}); ok {
 				if v, ok := data["totalScripts"].(float64); ok {
 					totalScripts = int64(v)
@@ -51,7 +54,7 @@ func (h *StatusHandler) HandleStatus(c *gin.Context) {
 					memoryUsage = v
 				}
 			}
-		} else if resp, err := client.ListWindows(); err == nil {
+		} else if resp, err := client.SendCommand("list_windows", nil); err == nil {
 			if data, ok := resp["data"].(map[string]interface{}); ok {
 				if windows, ok := data["windows"].([]interface{}); ok {
 					totalWindows = int64(len(windows))

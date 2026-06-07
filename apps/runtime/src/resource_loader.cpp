@@ -338,12 +338,25 @@ std::optional<LoadedScript> ResourceLoader::loadScript(const std::string& passwo
             resourceData.end()
         );
 
-        // 解密
-        // keyHash 字段存储的是加密密钥（不是哈希），从头部读取用于解密
+        // 解压（必须先解压，逆转 packer 的 compress → encrypt 顺序）
+        if (header.flags & PACK_FLAG_COMPRESSED) {
+            try {
+                payload = impl_->decompressData(payload);
+                impl_->resourceInfo.compressed = true;
+                spdlog::info("Decompressed to {} bytes", payload.size());
+            } catch (const std::exception& e) {
+                if (errorCallback_) {
+                    errorCallback_(std::string("Decompression failed: ") + e.what());
+                }
+                return std::nullopt;
+            }
+        }
+
+        // 解密（keyHash 字段存储的是加密密钥，从头部读取用于解密）
         std::vector<uint8_t> encryptionKey(header.keyHash, header.keyHash + 32);
         if (std::any_of(encryptionKey.begin(), encryptionKey.end(), [](uint8_t b) { return b != 0; })) {
             // 有加密，使用存储的加密密钥进行 AES 解密
-            // 注意：这与 packer.cpp 中 aesEncrypt 的实现相匹配
+            // 注意：packer 顺序是 encrypt → compress，所以 loader 顺序必须是 decompress → decrypt
             try {
                 payload = impl_->decryptData(payload, encryptionKey);
                 impl_->resourceInfo.encrypted = true;
@@ -356,26 +369,12 @@ std::optional<LoadedScript> ResourceLoader::loadScript(const std::string& passwo
             }
         }
 
-        // 验证哈希
+        // 验证哈希（对最终解密后的数据验证）
         std::vector<uint8_t> dataHash(header.dataHash, header.dataHash + 32);
         if (std::any_of(dataHash.begin(), dataHash.end(), [](uint8_t b) { return b != 0; })) {
             if (!impl_->verifyHash(payload, dataHash)) {
                 if (errorCallback_) {
                     errorCallback_("Hash verification failed");
-                }
-                return std::nullopt;
-            }
-        }
-
-        // 解压（使用 flags 判断而不是猜测）
-        if (header.flags & PACK_FLAG_COMPRESSED) {
-            try {
-                payload = impl_->decompressData(payload);
-                impl_->resourceInfo.compressed = true;
-                spdlog::info("Decompressed to {} bytes", payload.size());
-            } catch (const std::exception& e) {
-                if (errorCallback_) {
-                    errorCallback_(std::string("Decompression failed: ") + e.what());
                 }
                 return std::nullopt;
             }

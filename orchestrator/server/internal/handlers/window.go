@@ -3,33 +3,34 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/cuihaitao/wingman/orchestrator/server/pkg/agent"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/gin-gonic/gin"
 )
 
 // WindowHandler 窗口处理器
 type WindowHandler struct {
-	pool      *agent.Pool
-	agentAddr string
+	registry *agent.Registry
 }
 
 // NewWindowHandler 创建窗口处理器
-func NewWindowHandler(agentAddr string) *WindowHandler {
-	return &WindowHandler{pool: agent.NewPool(), agentAddr: agentAddr}
+func NewWindowHandler(registry *agent.Registry) *WindowHandler {
+	return &WindowHandler{registry: registry}
 }
 
 // HandleList 获取窗口列表
 func (h *WindowHandler) HandleList(c *gin.Context) {
-	client, err := h.pool.Get(h.agentAddr)
-	if err != nil {
+	// 从 registry 获取第一个可用的 agent
+	agents := h.registry.List()
+	if len(agents) == 0 || agents[0].Client == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "no available agent",
 		})
 		return
 	}
 
-	resp, err := client.ListWindows()
+	client := agents[0].Client
+	resp, err := client.SendCommand("list_windows", nil)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,

@@ -6,28 +6,26 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/scripts"
-	"github.com/cuihaitao/wingman/orchestrator/server/pkg/agent"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 // ScriptHandler 脚本处理器
 type ScriptHandler struct {
-	db        *gorm.DB
-	pool      *agent.Pool
-	agentAddr string
-	store     scripts.Store
+	db       *gorm.DB
+	registry *agent.Registry
+	store    scripts.Store
 }
 
 // NewScriptHandler 创建脚本处理器
-func NewScriptHandler(db *gorm.DB, scriptsDir, agentAddr string) *ScriptHandler {
+func NewScriptHandler(db *gorm.DB, scriptsDir string, registry *agent.Registry) *ScriptHandler {
 	return &ScriptHandler{
-		db:        db,
-		pool:      agent.NewPool(),
-		agentAddr: agentAddr,
-		store:     scripts.NewStore(scriptsDir),
+		db:       db,
+		registry: registry,
+		store:    scripts.NewStore(scriptsDir),
 	}
 }
 
@@ -176,12 +174,17 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		return
 	}
 
-	client, err := h.pool.Get(h.agentAddr)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": err.Error()})
+	// 从 registry 获取第一个可用的 agent
+	agents := h.registry.List()
+	if len(agents) == 0 || agents[0].Client == nil {
+		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "no available agent"})
 		return
 	}
-	resp, err := client.RunScript(scriptPath)
+
+	client := agents[0].Client
+	resp, err := client.SendCommand("run_script", map[string]any{
+		"path": scriptPath,
+	})
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": err.Error()})
 		return
@@ -216,12 +219,17 @@ func (h *ScriptHandler) HandleStop(c *gin.Context) {
 		return
 	}
 
-	client, err := h.pool.Get(h.agentAddr)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": err.Error()})
+	// 从 registry 获取第一个可用的 agent
+	agents := h.registry.List()
+	if len(agents) == 0 || agents[0].Client == nil {
+		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "no available agent"})
 		return
 	}
-	if _, err := client.StopScript(req.ExecutionID); err != nil {
+
+	client := agents[0].Client
+	if _, err := client.SendCommand("stop_script", map[string]any{
+		"script_id": req.ExecutionID,
+	}); err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": err.Error()})
 		return
 	}

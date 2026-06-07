@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wingman/runtime/config.hpp"
+#include "wingman/transport/transport.hpp"
 #include <atomic>
 #include <chrono>
 #include <memory>
@@ -79,7 +80,9 @@ private:
     void handleRegisterAck(const std::string& data);
 
     // 消息处理
-    void onMessage(const std::vector<uint8_t>& data);
+    void onMessage(const transport::MessagePtr& msg);  // 接收完整消息（含 header）
+    void handleNotifyMessage(const transport::MessagePtr& msg);  // 处理 Notify 消息
+    void handleRequestMessage(const transport::MessagePtr& msg);  // 处理 Request 消息并回复 Response
     void onEvent(ConnectionState state, const std::string& message);
 
     // P-Impl
