@@ -213,13 +213,10 @@ private:
 
         CFIndex length = CFStringGetLength(cfStr);
         CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-        char* buffer = new char[maxSize];
-        if (CFStringGetCString(cfStr, buffer, maxSize, kCFStringEncodingUTF8)) {
-            std::string result(buffer);
-            delete[] buffer;
-            return result;
+        std::vector<char> buffer(maxSize);
+        if (CFStringGetCString(cfStr, buffer.data(), maxSize, kCFStringEncodingUTF8)) {
+            return std::string(buffer.data());
         }
-        delete[] buffer;
         return "";
     }
 

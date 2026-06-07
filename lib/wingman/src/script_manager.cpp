@@ -7,6 +7,8 @@
 #include <thread>
 #include <algorithm>
 #include <utility>
+#include <future>
+#include <atomic>
 #include <nlohmann/json.hpp>
 
 #ifdef _WIN32
@@ -311,8 +313,39 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 
 	}
 
-	// Execute script file (synchronous execution)
-	if (!infoPtr->engine->executeFile(infoPtr->config.path)) {
+	// Execute script file with timeout support
+	std::atomic<bool> executed{false};
+	std::atomic<bool> success{false};
+
+	auto executeTask = std::async(std::launch::async, [&infoPtr, &executed, &success]() {
+		bool result = infoPtr->engine->executeFile(infoPtr->config.path);
+		success.store(result);
+		executed.store(true);
+		return result;
+	});
+
+	// Get timeout from config
+	int timeoutMs = infoPtr->config.timeoutMs > 0 ? infoPtr->config.timeoutMs : 30000;
+
+	// Wait for execution with timeout
+	auto status = executeTask.wait_for(std::chrono::milliseconds(timeoutMs));
+
+	if (status == std::future_status::timeout) {
+		// Timeout occurred - forcefully shutdown the engine
+		std::lock_guard<std::mutex> lock(m_mutex);
+		infoPtr->state = ScriptState::error;
+		infoPtr->lastError = "Script execution timeout after " + std::to_string(timeoutMs) + "ms";
+		// Shutdown the engine to interrupt execution
+		if (infoPtr->engine) {
+			infoPtr->engine->shutdown();
+		}
+		// The async task may still be running, but we've called shutdown
+		// Let it complete in the background
+		return false;
+	}
+
+	// Execution completed (or failed)
+	if (!success.load()) {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		infoPtr->state = ScriptState::error;
 		infoPtr->lastError = infoPtr->engine->getLastError();

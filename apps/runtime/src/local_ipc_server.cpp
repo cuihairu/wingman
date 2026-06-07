@@ -53,6 +53,11 @@ bool LocalIpcServer::start() {
     rpc::registerTriggerHandlers(*impl_->dispatcher, *impl_->triggerManager);
     rpc::registerScriptHandlers(*impl_->dispatcher, impl_->standalone);
 
+    {
+        std::lock_guard<std::mutex> lock(startMutex_);
+        startFailed_ = false;
+    }
+
     auto configureChannel = [this](ipc::IIpcChannel& channel) {
         auto* channelPtr = &channel;
         channel.setMessageCallback([this, channelPtr](const ipc::IpcMessage& message) {
@@ -128,7 +133,12 @@ bool LocalIpcServer::start() {
             auto channel = ipc::IpcFactory::createServer(config);
             if (!channel) {
                 spdlog::error("Failed to create local IPC server channel");
-                running_.store(false);
+                {
+                    std::lock_guard<std::mutex> lock(startMutex_);
+                    startFailed_ = true;
+                    running_.store(false);
+                    startCV_.notify_one();
+                }
                 return;
             }
 
@@ -150,12 +160,21 @@ bool LocalIpcServer::start() {
                 if (!impl_->stopping.load()) {
                     spdlog::error("Local IPC server failed to listen on {}", config.serverName);
                 }
-                running_.store(false);
+                {
+                    std::lock_guard<std::mutex> lock(startMutex_);
+                    startFailed_ = true;
+                    running_.store(false);
+                    startCV_.notify_one();
+                }
                 return;
             }
 
             channel->startReceiving();
-            running_.store(true);
+            {
+                std::lock_guard<std::mutex> lock(startMutex_);
+                running_.store(true);
+                startCV_.notify_one();
+            }
             spdlog::info("Local IPC server connected on {}", config.serverName);
 
             while (!impl_->stopping.load() && channel->isConnected()) {
@@ -173,10 +192,14 @@ bool LocalIpcServer::start() {
         }
     });
 
-    // Don't set running_ = true here; the worker thread sets it after
-    // channel->connect() succeeds. Callers should check isConnected()
-    // or add a synchronization mechanism if they need to wait for readiness.
-    return true;
+    // Wait for the worker thread to complete connection or fail
+    {
+        std::unique_lock<std::mutex> lock(startMutex_);
+        startCV_.wait(lock, [this] {
+            return running_.load() || startFailed_;
+        });
+        return running_.load() && !startFailed_;
+    }
 }
 
 void LocalIpcServer::stop() {
@@ -200,6 +223,12 @@ void LocalIpcServer::stop() {
     impl_->dispatcher.reset();
     impl_->triggerManager.reset();
     running_.store(false);
+
+    // Notify any waiting threads
+    {
+        std::lock_guard<std::mutex> lock(startMutex_);
+        startCV_.notify_all();
+    }
 }
 
 } // namespace wingman::runtime

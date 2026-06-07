@@ -21,6 +21,8 @@ namespace {
 // HTTP webhook sender
 class WebhookSender {
 public:
+	static constexpr size_t MAX_CONCURRENT_WEBHOOKS = 10;
+
 	WebhookSender() : shutdown_(false), webhooksEnabled_(true) {}
 
 	~WebhookSender() {
@@ -58,10 +60,9 @@ public:
 			return false;
 		}
 
-		// If no whitelist configured, allow all (backward compatibility)
-		// TODO: Consider making the default more restrictive
+		// If no whitelist configured, reject all for security (SSRF protection)
 		if (allowedHosts_.empty()) {
-			return true;
+			return false;
 		}
 
 		// Parse URL to extract hostname
@@ -108,6 +109,19 @@ public:
 				callback(false, "Webhook URL is not allowed");
 				return;
 			}
+
+			// Enforce maximum concurrent webhook limit
+			if (activeThreadCount_.load() >= MAX_CONCURRENT_WEBHOOKS) {
+				EventHub::instance().emit("notify.webhook.blocked", {
+					{"url", url},
+					{"reason", "Maximum concurrent webhook limit reached"}
+				}, "notify");
+				callback(false, "Maximum concurrent webhook limit reached");
+				return;
+			}
+
+			// Increment active thread counter
+			activeThreadCount_++;
 		}
 
 		// Emit pending event
@@ -117,7 +131,6 @@ public:
 		}, "notify");
 
 		// Send HTTP request asynchronously using managed thread
-		std::lock_guard<std::mutex> lock(mutex_);
 		workers_.emplace_back([this, url, payload, callback]() {
 			try {
 				HttpClient client;
@@ -142,7 +155,25 @@ public:
 				}, "notify");
 				callback(false, e.what());
 			}
+
+			// Decrement active thread counter when done
+			activeThreadCount_--;
 		});
+	}
+
+private:
+	void cleanupFinishedThreads() {
+		// Join finished threads and remove them from the workers vector
+		// Note: join() blocks if thread is still running, so we only join threads that have finished
+		// This is a best-effort cleanup - the vector might still contain running threads
+		workers_.erase(
+			std::remove_if(workers_.begin(), workers_.end(),
+				[](std::thread& t) {
+					// If thread is joinable and has finished, join() returns quickly
+					// We don't have a portable try_join, so we use a heuristic
+					return !t.joinable();  // Remove non-joinable threads
+				}),
+			workers_.end());
 	}
 
 private:
@@ -151,6 +182,7 @@ private:
 	std::atomic<bool> shutdown_;
 	std::atomic<bool> webhooksEnabled_;
 	std::vector<std::string> allowedHosts_;
+	std::atomic<size_t> activeThreadCount_{0};
 };
 
 // Global webhook sender instance

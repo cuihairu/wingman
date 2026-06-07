@@ -84,6 +84,11 @@ void ScreenshotReporter::updateConfig(const ScreenshotReporterConfig& config) {
     config_ = config;
 }
 
+void ScreenshotReporter::setCallback(ScreenshotCallback callback) {
+    std::lock_guard<std::mutex> lock(callbackMutex_);
+    callback_ = std::move(callback);
+}
+
 bool ScreenshotReporter::captureAndReport() {
     return captureAndSend();
 }
@@ -160,8 +165,12 @@ bool ScreenshotReporter::captureAndSend() {
             base64.push_back((i + 2 < jpegBuffer.size()) ? base64Chars[b2 & 0x3F] : '=');
         }
 
-        if (callback_) {
-            callback_(base64, width, height);
+        // Invoke callback with mutex protection
+        {
+            std::lock_guard<std::mutex> lock(callbackMutex_);
+            if (callback_) {
+                callback_(base64, width, height);
+            }
         }
 
         CURL* curl = curl_easy_init();

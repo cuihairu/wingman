@@ -52,11 +52,11 @@ public:
     std::mutex mutex;
     std::thread cleanupThread;
     std::thread saveThread;
-    bool running;
+    std::atomic<bool> running{false};
     std::string autoSavePath;
     int64_t autoSaveInterval;
 
-    Impl() : running(false), autoSaveInterval(0) {}
+    Impl() : autoSaveInterval(0) {}
 
     void cleanupExpired() {
         std::lock_guard<std::mutex> lock(mutex);
@@ -145,10 +145,15 @@ public:
 KeyValueStore::KeyValueStore() : m_impl(std::make_unique<Impl>()) {}
 
 KeyValueStore::~KeyValueStore() {
-    m_impl->running = false;
+    // Signal threads to stop
+    m_impl->running.store(false);
+
+    // Wait for cleanup thread to finish
     if (m_impl->cleanupThread.joinable()) {
         m_impl->cleanupThread.join();
     }
+
+    // Wait for save thread to finish
     if (m_impl->saveThread.joinable()) {
         m_impl->saveThread.join();
     }
@@ -554,21 +559,23 @@ bool KeyValueStore::load(const std::string& filepath) {
 void KeyValueStore::enableAutoSave(const std::string& filepath, int64_t intervalSeconds) {
     m_impl->autoSavePath = filepath;
     m_impl->autoSaveInterval = intervalSeconds;
-    m_impl->running = true;
+    m_impl->running.store(true);
 
     // Start cleanup thread
     m_impl->cleanupThread = std::thread([this]() {
-        while (m_impl->running) {
+        while (m_impl->running.load()) {
             std::this_thread::sleep_for(std::chrono::seconds(10));
-            m_impl->cleanupExpired();
+            if (m_impl->running.load()) {
+                m_impl->cleanupExpired();
+            }
         }
     });
 
     // Start auto-save thread
     m_impl->saveThread = std::thread([this]() {
-        while (m_impl->running) {
+        while (m_impl->running.load()) {
             std::this_thread::sleep_for(std::chrono::seconds(m_impl->autoSaveInterval));
-            if (!m_impl->autoSavePath.empty()) {
+            if (m_impl->running.load() && !m_impl->autoSavePath.empty()) {
                 save(m_impl->autoSavePath);
             }
         }

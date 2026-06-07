@@ -213,11 +213,19 @@ bool TcpChannel::createServer() {
 
     sockaddr_in addr = {};
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(static_cast<u_short>(port_));
 
+    // Bind to configured host, not INADDR_ANY, for security
+    if (inet_pton(AF_INET, host_.c_str(), &addr.sin_addr) <= 0) {
+        spdlog::error("[TCP] Invalid address {}: {}", host_, strerror(errno));
+        closesocket(listenSocket_);
+        listenSocket_ = INVALID_SOCKET;
+        setState(IpcState::Error);
+        return false;
+    }
+
     if (bind(listenSocket_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR) {
-        spdlog::error("[TCP] bind() failed on port {}", port_);
+        spdlog::error("[TCP] bind() failed on {}:{}", host_, port_);
         closesocket(listenSocket_);
         listenSocket_ = INVALID_SOCKET;
         setState(IpcState::Error);

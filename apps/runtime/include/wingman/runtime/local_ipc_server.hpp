@@ -1,7 +1,9 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <string>
 
 namespace wingman::runtime {
@@ -25,6 +27,9 @@ public:
 private:
     std::unique_ptr<Impl> impl_;
     std::atomic<bool> running_{false};
+    std::mutex startMutex_;
+    std::condition_variable startCV_;
+    bool startFailed_ = false;
 };
 
 } // namespace wingman::runtime

@@ -7,6 +7,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <unistd.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 namespace wingman::platform::linux {
 
@@ -37,23 +41,104 @@ public:
 
     bool setText(const std::string& text) override {
         if (!initialized_) return false;
-        // Use xclip as a reliable cross-toolkit method
-        std::string cmd = "echo -n '" + escapeShell(text) + "' | xclip -selection clipboard";
-        return system(cmd.c_str()) == 0;
+
+        // Use pipe to xclip without shell to avoid injection
+        int pipefd[2];
+        if (pipe(pipefd) == -1) {
+            spdlog::error("X11Clipboard: pipe() failed");
+            return false;
+        }
+
+        pid_t pid = fork();
+        if (pid == -1) {
+            spdlog::error("X11Clipboard: fork() failed");
+            close(pipefd[0]);
+            close(pipefd[1]);
+            return false;
+        }
+
+        if (pid == 0) {
+            // Child process
+            close(pipefd[1]);  // Close write end
+            dup2(pipefd[0], STDIN_FILENO);  // Redirect pipe to stdin
+            close(pipefd[0]);
+
+            // Execute xclip directly (no shell)
+            execlp("xclip", "xclip", "-selection", "clipboard", nullptr);
+
+            // If execlp returns, execution failed
+            _exit(1);
+        } else {
+            // Parent process
+            close(pipefd[0]);  // Close read end
+
+            // Write data to pipe
+            ssize_t written = write(pipefd[1], text.c_str(), text.size());
+            close(pipefd[1]);
+
+            // Wait for child and check status
+            int status;
+            waitpid(pid, &status, 0);
+
+            return WIFEXITED(status) && WEXITSTATUS(status) == 0 &&
+                   written == static_cast<ssize_t>(text.size());
+        }
     }
 
     std::string getText() override {
         if (!initialized_) return "";
-        // Use xclip to read clipboard
-        FILE* pipe = popen("xclip -selection clipboard -o 2>/dev/null", "r");
-        if (!pipe) return "";
-        std::string result;
-        char buffer[4096];
-        while (fgets(buffer, sizeof(buffer), pipe)) {
-            result += buffer;
+
+        // Use pipe to xclip without shell
+        int pipefd[2];
+        if (pipe(pipefd) == -1) {
+            spdlog::error("X11Clipboard: pipe() failed for read");
+            return "";
         }
-        pclose(pipe);
-        return result;
+
+        pid_t pid = fork();
+        if (pid == -1) {
+            spdlog::error("X11Clipboard: fork() failed for read");
+            close(pipefd[0]);
+            close(pipefd[1]);
+            return "";
+        }
+
+        if (pid == 0) {
+            // Child process
+            close(pipefd[0]);  // Close read end
+            dup2(pipefd[1], STDOUT_FILENO);  // Redirect stdout to pipe
+            close(pipefd[1]);
+
+            // Redirect stderr to /dev/null
+            int devnull = open("/dev/null", O_WRONLY);
+            if (devnull != -1) {
+                dup2(devnull, STDERR_FILENO);
+                close(devnull);
+            }
+
+            // Execute xclip directly (no shell)
+            execlp("xclip", "xclip", "-selection", "clipboard", "-o", nullptr);
+
+            // If execlp returns, execution failed
+            _exit(1);
+        } else {
+            // Parent process
+            close(pipefd[1]);  // Close write end
+
+            std::string result;
+            char buffer[4096];
+            ssize_t bytesRead;
+            while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
+                result.append(buffer, bytesRead);
+            }
+            close(pipefd[0]);
+
+            // Wait for child
+            int status;
+            waitpid(pid, &status, 0);
+
+            return result;
+        }
     }
 
     bool hasText() override {

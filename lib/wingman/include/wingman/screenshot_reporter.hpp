@@ -30,7 +30,7 @@ public:
     void stop();
     bool isRunning() const { return running_; }
     void updateConfig(const ScreenshotReporterConfig& config);
-    void setCallback(ScreenshotCallback callback) { callback_ = std::move(callback); }
+    void setCallback(ScreenshotCallback callback);
     bool captureAndReport();
     int64_t getLastCaptureTime() const { return lastCaptureTime_; }
 
@@ -40,6 +40,7 @@ private:
 
     ScreenshotReporterConfig config_;
     std::mutex configMutex_;
+    std::mutex callbackMutex_;
     std::atomic<bool> running_{false};
     std::thread worker_;
     std::atomic<int64_t> lastCaptureTime_{0};
