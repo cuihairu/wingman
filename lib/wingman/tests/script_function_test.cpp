@@ -295,20 +295,27 @@ TEST(OrchestrationModuleFunctionsTest, GetAllWorkflowsReturnsEmptyArray) {
 
 // ========== Team module ==========
 
-TEST(TeamModuleFunctionsTest, JoinTeamReturnsFalseWhenNotConnected) {
+TEST(TeamModuleFunctionsTest, JoinTeamReturnsTrueOptimistically) {
     auto fn = findFunction("team", "joinTeam");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({ScriptValue::fromString("team1")});
-    // Should return false when not connected to server
-    EXPECT_FALSE(result.asBool());
+    // Returns true optimistically (local state updated immediately)
+    // Actual server confirmation happens asynchronously via inbox
+    EXPECT_TRUE(result.asBool());
 }
 
-TEST(TeamModuleFunctionsTest, LeaveTeamReturnsFalseWhenNotJoined) {
+TEST(TeamModuleFunctionsTest, LeaveTeamReturnsTrueWhenInTeam) {
+    // First join a team
+    auto joinFn = findFunction("team", "joinTeam");
+    ASSERT_FALSE(joinFn.name.empty());
+    joinFn({ScriptValue::fromString("team1")});
+
+    // Then leave
     auto fn = findFunction("team", "leaveTeam");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({});
-    // Should return false when not in a team
-    EXPECT_FALSE(result.asBool());
+    // Should return true when in a team
+    EXPECT_TRUE(result.asBool());
 }
 
 TEST(TeamModuleFunctionsTest, CreateVoteReturnsFalseWhenNotJoined) {
