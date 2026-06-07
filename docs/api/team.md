@@ -1,288 +1,733 @@
 # API: wingman.team
 
-多 Client 协同组队、投票协调功能。
+Team 模块提供多 Runtime 协同组队、投票协调和群体通信功能。
 
 ## 模块概述
 
-team 模块提供多 Client 协同功能：
-- **组队分配** - 请求队伍分配、获取队友信息
-- **投票协调** - 汇报投票事件、获取投票建议
-- **状态汇报** - 注册 Client、汇报登录状态
+team 模块基于 inbox 消息队列实现分布式协同功能：
+
+- **组队管理**：加入/离开队伍，获取队友信息
+- **投票协调**：发起投票、参与投票、获取投票结果
+- **状态汇报**：上报自身状态，获取队友状态
+- **群体通信**：向所有队友广播消息
+- **事件订阅**：监听队伍相关事件
+
+### 架构设计
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Runtime A                                       │
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │                      Team Module                                 │  │
+│  │                                                                   │  │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │  │
+│  │  │joinTeam  │  │leaveTeam │  │broadcast │  │ on(event, cb)    │  │  │
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘  │  │
+│  │                                                                   │  │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────────────────────────┐   │  │
+│  │  │createVote│  │castVote  │      │ Local State (members, votes)│   │  │
+│  │  └──────────┘  └──────────┘      └──────────────────────────────┘   │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+│                                  ↑                                       │
+│                                  │ EventHub                              │
+│                                  │ team.outbound                         │
+│                                  ↓                                       │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │                      Inbox Module                                 │  │
+│  │                     (consume/ack/report)                          │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+│                                  ↑                                       │
+│                                  │ TCP                                   │
+│                                  ↓                                       │
+└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              Go Server                                   │
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │                         TeamManager                                │  │
+│  │                                                                   │  │
+│  │  ┌────────────────────────────────────────────────────────────┐  │  │
+│  │  │  Teams: teamId → {leaderId, members[], state}             │  │  │
+│  │  └────────────────────────────────────────────────────────────┘  │  │
+│  │                                                                   │  │
+│  │  ┌────────────────────────────────────────────────────────────┐  │  │
+│  │  │  Votes: voteId → {teamId, subject, responses{}, deadline}  │  │  │
+│  │  └────────────────────────────────────────────────────────────┘  │  │
+│  │                                                                   │  │
+│  │  ┌────────────────────────────────────────────────────────────┐  │  │
+│  │  │  Inboxes: agentId → {msgId → {type, payload, acked}}       │  │  │
+│  │  └────────────────────────────────────────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+                                   ▲
+                                   │ TCP
+                                   │
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Runtime B                                       │
+│                           (相同架构)                                       │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 架构概览
+## 加入队伍
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        账号池服务 (独立)                             │
-│                   REST API: /alloc, /release                        │
-└─────────────────────────────────────────────────────────────────────┘
-                              ▲
-                              │ HTTP
-                              │
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Wingman Server                              │
-│                                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────────────┐  │
-│  │ HTTP Server  │  │ 编排引擎     │  │   KeyValueStore         │  │
-│  │              │  │              │  │   (类 Redis)            │  │
-│  │ - 接收汇报   │←→│ - 队伍分配   │←→│   - team:{id}          │  │
-│  │ - 下发指令   │  │ - 投票协调   │  │   - client:{id}        │  │
-│  └──────────────┘  └──────────────┘  │   - vote:{id}          │  │
-│                                        │   - teammate:{name}    │  │
-└─────────────────────────────────────────────────────────────────────┘
-```
+### joinTeam(teamId, memberId?)
 
----
-
-## 注册 Client
-
-### register() / register()
-
-**说明**：注册新 Client。
+**说明**：加入指定队伍。
 
 **函数签名**：
 
 ```python
-register() -> str
+join_team(team_id: str, member_id: str = None) -> bool
 ```
 
 ```lua
-register() -> string
-```
-
-**返回**：
-- Client ID
-
----
-
-## 汇报状态
-
-### heartbeat(client_id, status, game_id?, username?) / heartbeat(clientId, status, gameId?, username?)
-
-**说明**：Client 心跳汇报。
-
-**函数签名**：
-
-```python
-heartbeat(client_id: str, status: str, game_id: str = "", username: str = "") -> dict
-```
-
-```lua
-heartbeat(clientId: string, status: string, gameId: string = "", username: string = "") -> table
-```
-
-**参数**：
-- `client_id` / `clientId` - Client ID
-- `status` - 状态：`"logged_in"`, `"in_team"` 等
-- `game_id` / `gameId` - 可选，游戏账号 ID
-- `username` - 可选，玩家名称
-
-**返回**：
-- HTTP 响应对象
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import http, json
-
-# 向 Server 汇报状态
-resp = http.post("http://server/api/client/heartbeat", json.encode({
-    "clientId": client_id,
-    "status": "logged_in",
-    "gameId": game_id,
-    "username": player_name
-}))
-```
-
-== Lua
-
-```lua:line-numbers
-local http = require("wingman.http")
-local json = require("wingman.json")
-
--- 向 Server 汇报状态
-local resp = http.post("http://server/api/client/heartbeat", json.encode({
-    clientId = clientId,
-    status = "logged_in",
-    gameId = gameId,
-    username = playerName
-}))
-```
-
-:::
-
----
-
-## 请求组队分配
-
-### allocate(client_id, username, preferred_size) / allocate(clientId, username, preferredSize)
-
-**说明**：请求组队分配。
-
-**函数签名**：
-
-```python
-allocate(client_id: str, username: str, preferred_size: int) -> dict
-```
-
-```lua
-allocate(clientId: string, username: string, preferredSize: number) -> table
-```
-
-**参数**：
-- `client_id` / `clientId` - Client ID
-- `username` - 玩家名称
-- `preferred_size` / `preferredSize` - 期望队伍大小
-
-**返回**：
-- 分配结果对象：
-  - `teamId` / `teamId` - 队伍 ID
-  - `isLeader` / `isLeader` - 是否是队长
-  - `teammates` / `teammates` - 队友名称列表
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import http, json
-
-resp = http.post("http://server/api/team/allocate", json.encode({
-    "clientId": client_id,
-    "username": player_name,
-    "preferredSize": 3
-}))
-
-if resp['success']:
-    result = json.decode(resp['body'])
-    print(f"队伍ID: {result['teamId']}")
-    print(f"是否队长: {result['isLeader']}")
-    print(f"队友: {', '.join(result['teammates'])}")
-```
-
-== Lua
-
-```lua:line-numbers
-local http = require("wingman.http")
-local json = require("wingman.json")
-
-local resp = http.post("http://server/api/team/allocate", json.encode({
-    clientId = clientId,
-    username = playerName,
-    preferredSize = 3
-}))
-
-if resp.success then
-    local result = json.decode(resp.body)
-    print("队伍ID:", result.teamId)
-    print("是否队长:", tostring(result.isLeader))
-    print("队友:", table.concat(result.teammates, ", "))
-end
-```
-
-:::
-
----
-
-## 汇报投票事件
-
-### report_vote(team_id, vote_type, target, initiator) / reportVote(teamId, voteType, target, initiator)
-
-**说明**：汇报投票事件。
-
-**函数签名**：
-
-```python
-report_vote(team_id: str, vote_type: str, target: str, initiator: str) -> dict
-```
-
-```lua
-reportVote(teamId: string, voteType: string, target: string, initiator: string) -> table
+joinTeam(teamId: str, memberId: str = nil) -> boolean
 ```
 
 **参数**：
 - `team_id` / `teamId` - 队伍 ID
-- `vote_type` / `voteType` - 投票类型（如 `"kick"`）
-- `target` - 投票目标
-- `initiator` - 发起人
+- `member_id` / `memberId` - 可选，成员 ID（默认自动生成）
 
-**返回**：
-- HTTP 响应对象
-
----
-
-## 获取待处理投票
-
-### get_pending_votes(client_id) / getPendingVotes(clientId)
-
-**说明**：获取待处理的投票动作。
-
-**函数签名**：
-
-```python
-get_pending_votes(client_id: str) -> list[dict]
-```
-
-```lua
-getPendingVotes(clientId: string) -> table
-```
-
-**参数**：
-- `client_id` / `clientId` - Client ID
-
-**返回**：
-- 待处理投票动作列表，每个动作包含：
-  - `voteId` / `voteId` - 投票 ID
-  - `agree` / `agree` - 是否建议同意
+**返回**：是否加入成功
 
 :::tabs
 
 == Python
 
 ```python:line-numbers
-from wingman import http, json, util
+from wingman import team
 
-# 轮询待处理的投票动作
-while True:
-    resp = http.get(f"http://server/api/vote/pending?clientId={client_id}")
-    if resp['success']:
-        actions = json.decode(resp['body'])
-        for action in actions:
-            # Server 建议同意
-            if action['agree']:
-                click_vote_button("agree")
-            else:
-                click_vote_button("disagree")
-    util.sleep(1000)
+# 加入队伍
+if team.join_team("team_001", "player_alice"):
+    print("已加入队伍")
+    
+    # 获取队伍信息
+    status = team.get_team_status()
+    print(f"队长: {status['leaderId']}")
+    print(f"队友: {status['members']}")
 ```
 
 == Lua
 
 ```lua:line-numbers
-local http = require("wingman.http")
+local team = require("wingman.team")
+
+-- 加入队伍
+if team.joinTeam("team_001", "player_alice") then
+    print("已加入队伍")
+    
+    -- 获取队伍信息
+    local status = team.getTeamStatus()
+    print("队长:", status.leaderId)
+    print("队友:", unpack(status.members))
+end
+```
+
+:::
+
+---
+
+## 离开队伍
+
+### leaveTeam()
+
+**说明**：离开当前队伍。
+
+**函数签名**：
+
+```python
+leave_team() -> bool
+```
+
+```lua
+leaveTeam() -> boolean
+```
+
+**返回**：是否离开成功
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import team
+
+# 离开队伍
+if team.leave_team():
+    print("已离开队伍")
+```
+
+== Lua
+
+```lua:line-numbers
+local team = require("wingman.team")
+
+-- 离开队伍
+if team.leaveTeam() then
+    print("已离开队伍")
+end
+```
+
+:::
+
+---
+
+## 投票功能
+
+### createVote(subject, timeout?)
+
+**说明**：发起投票。
+
+**函数签名**：
+
+```python
+create_vote(subject: str, timeout: int = 30000) -> bool
+```
+
+```lua
+createVote(subject: str, timeout: number = 30000) -> boolean
+```
+
+**参数**：
+- `subject` - 投票主题
+- `timeout` - 超时时间（毫秒，默认 30000）
+
+**返回**：是否发起成功
+
+---
+
+### castVote(voteId, response)
+
+**说明**：对指定投票进行投票。
+
+**函数签名**：
+
+```python
+cast_vote(vote_id: str, response: str) -> bool
+```
+
+```lua
+castVote(voteId: str, response: str) -> boolean
+```
+
+**参数**：
+- `vote_id` / `voteId` - 投票 ID
+- `response` - 投票响应内容
+
+**返回**：是否投票成功
+
+---
+
+### getVoteResult(voteId)
+
+**说明**：获取投票结果。
+
+**函数签名**：
+
+```python
+get_vote_result(vote_id: str) -> dict
+```
+
+```lua
+getVoteResult(voteId: str) -> string
+```
+
+**参数**：
+- `vote_id` / `voteId` - 投票 ID
+
+**返回**：投票结果对象（JSON 字符串）
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import team, json
+
+# 发起投票
+if team.create_vote("是否开始副本", 30000):
+    print("投票已发起")
+
+# 获取投票结果
+result_str = team.get_vote_result("vote_123")
+result = json.decode(result_str)
+print(f"投票主题: {result['subject']}")
+print(f"是否活跃: {result['active']}")
+print(f"投票响应: {result['responses']}")
+```
+
+== Lua
+
+```lua:line-numbers
+local team = require("wingman.team")
+local json = require("wingman.json")
+
+-- 发起投票
+if team.createVote("是否开始副本", 30000) then
+    print("投票已发起")
+end
+
+-- 获取投票结果
+local resultStr = team.getVoteResult("vote_123")
+local result = json.decode(resultStr)
+print("投票主题:", result.subject)
+print("是否活跃:", tostring(result.active))
+print("投票响应:", json.encode(result.responses))
+```
+
+:::
+
+---
+
+## 状态管理
+
+### reportStatus(status)
+
+**说明**：上报自身状态到队伍。
+
+**函数签名**：
+
+```python
+report_status(status: dict) -> bool
+```
+
+```lua
+reportStatus(status: table) -> boolean
+```
+
+**参数**：
+- `status` - 状态对象
+
+**返回**：是否上报成功
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import team
+
+# 汇报状态
+team.report_status({
+    "hp": 100,
+    "mp": 50,
+    "location": "town",
+    "ready": True
+})
+```
+
+== Lua
+
+```lua:line-numbers
+local team = require("wingman.team")
+
+-- 汇报状态
+team.reportStatus({
+    hp = 100,
+    mp = 50,
+    location = "town",
+    ready = true
+})
+```
+
+:::
+
+---
+
+### getTeamStatus()
+
+**说明**：获取当前队伍状态。
+
+**函数签名**：
+
+```python
+get_team_status() -> dict
+```
+
+```lua
+getTeamStatus() -> string
+```
+
+**返回**：队伍状态对象（JSON 字符串）
+- `teamId` - 队伍 ID
+- `leaderId` - 队长 ID
+- `members` - 成员列表
+- `state` - 队伍状态（idle/voting/working）
+- `lastUpdate` - 最后更新时间
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import team, json
+
+status_str = team.get_team_status()
+status = json.decode(status_str)
+
+print(f"队伍 ID: {status['teamId']}")
+print(f"队长: {status['leaderId']}")
+print(f"成员: {status['members']}")
+print(f"状态: {status['state']}")
+```
+
+== Lua
+
+```lua:line-numbers
+local team = require("wingman.team")
+local json = require("wingman.json")
+
+local statusStr = team.getTeamStatus()
+local status = json.decode(statusStr)
+
+print("队伍 ID:", status.teamId)
+print("队长:", status.leaderId)
+print("成员:", unpack(status.members))
+print("状态:", status.state)
+```
+
+:::
+
+---
+
+## 群体通信
+
+### broadcast(message)
+
+**说明**：向所有队友广播消息。
+
+**函数签名**：
+
+```python
+broadcast(message: dict | str) -> bool
+```
+
+```lua
+broadcast(message: table | string) -> boolean
+```
+
+**参数**：
+- `message` - 消息内容（对象或字符串）
+
+**返回**：是否发送成功
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import team
+
+# 广播消息
+team.broadcast({
+    "type": "coordination",
+    "action": "move_to",
+    "target": "boss_location",
+    "timestamp": 1234567890
+})
+```
+
+== Lua
+
+```lua:line-numbers
+local team = require("wingman.team")
+
+-- 广播消息
+team.broadcast({
+    type = "coordination",
+    action = "move_to",
+    target = "boss_location",
+    timestamp = 1234567890
+})
+```
+
+:::
+
+---
+
+## 事件订阅
+
+### on(event, callback)
+
+**说明**：订阅队伍事件。
+
+**函数签名**：
+
+```python
+on(event: str, callback: Callable) -> bool
+```
+
+```lua
+on(event: str, callback: function) -> boolean
+```
+
+**参数**：
+- `event` - 事件类型（无需 "team." 前缀）
+- `callback` - 回调函数
+
+**可用事件**：
+- `vote_started` - 投票开始
+- `vote_ended` - 投票结束
+- `broadcast_received` - 收到广播消息
+- `member_joined` - 队友加入
+- `member_left` - 队友离开
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import team, json
+
+# 监听投票开始
+team.on("vote_started", lambda data: print(f"新投票: {json.decode(data)['subject']}"))
+
+# 监听投票结束
+team.on("vote_ended", lambda data: print(f"投票结束: {json.decode(data)['result']}"))
+
+# 监听广播消息
+team.on("broadcast_received", lambda data: print(f"收到广播: {json.decode(data)['message']}"))
+```
+
+== Lua
+
+```lua:line-numbers
+local team = require("wingman.team")
+local json = require("wingman.json")
+
+-- 监听投票开始
+team.on("vote_started", function(data)
+    local msg = json.decode(data)
+    print("新投票:", msg.subject)
+end)
+
+-- 监听投票结束
+team.on("vote_ended", function(data)
+    local msg = json.decode(data)
+    print("投票结束:", json.encode(msg.result))
+end)
+
+-- 监听广播消息
+team.on("broadcast_received", function(data)
+    local msg = json.decode(data)
+    print("收到广播:", json.encode(msg.message))
+end)
+```
+
+:::
+
+---
+
+## 查询接口
+
+### isJoined()
+
+**说明**：检查是否已加入队伍。
+
+**函数签名**：
+
+```python
+is_joined() -> bool
+```
+
+```lua
+isJoined() -> boolean
+```
+
+**返回**：是否已加入队伍
+
+---
+
+### getMemberId()
+
+**说明**：获取当前成员 ID。
+
+**函数签名**：
+
+```python
+get_member_id() -> str
+```
+
+```lua
+getMemberId() -> string
+```
+
+**返回**：成员 ID
+
+---
+
+## 完整示例
+
+### 队伍协同
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import team, json, util
+
+# 1. 加入队伍
+if not team.join_team("dungeon_party", "warrior_01"):
+    print("加入队伍失败")
+    exit()
+
+print("已加入队伍")
+
+# 2. 监听队伍事件
+team.on("vote_started", lambda data: print(f"投票开始: {json.decode(data)['subject']}"))
+team.on("broadcast_received", lambda data: handle_broadcast(json.decode(data)))
+
+def handle_broadcast(msg):
+    print(f"收到 {msg['senderId']} 的广播")
+    if msg['message']['type'] == 'attack':
+        coordinate_attack(msg['message'])
+
+# 3. 汇报状态
+team.report_status({
+    "role": "warrior",
+    "level": 50,
+    "ready": True
+})
+
+# 4. 等待并处理消息
+while team.is_joined():
+    util.sleep(1000)
+    
+    # 检查投票
+    status = json.decode(team.get_team_status())
+    if status['state'] == 'voting':
+        print("队伍正在投票...")
+    
+    # 定期汇报状态
+    team.report_status({"hp": get_current_hp()})
+```
+
+== Lua
+
+```lua:line-numbers
+local team = require("wingman.team")
 local json = require("wingman.json")
 local util = require("wingman.util")
 
--- 轮询待处理的投票动作
-while true do
-    local resp = http.get("http://server/api/vote/pending?clientId=" .. clientId)
-    if resp.success then
-        local actions = json.decode(resp.body)
-        for _, action in ipairs(actions) do
-            -- Server 建议同意
-            if action.agree then
-                clickVoteButton("agree")
-            else
-                clickVoteButton("disagree")
-            end
-        end
-    end
-    util.sleep(1000)
+-- 1. 加入队伍
+if not team.joinTeam("dungeon_party", "warrior_01") then
+    print("加入队伍失败")
+    return
 end
+
+print("已加入队伍")
+
+-- 2. 监听队伍事件
+team.on("vote_started", function(data)
+    local msg = json.decode(data)
+    print("投票开始:", msg.subject)
+end)
+
+team.on("broadcast_received", function(data)
+    local msg = json.decode(data)
+    print("收到", msg.senderId, "的广播")
+    if msg.message.type == "attack" then
+        coordinateAttack(msg.message)
+    end
+end)
+
+-- 3. 汇报状态
+team.reportStatus({
+    role = "warrior",
+    level = 50,
+    ready = true
+})
+
+-- 4. 等待并处理消息
+while team.isJoined() do
+    util.sleep(1000)
+    
+    -- 检查投票
+    local status = json.decode(team.getTeamStatus())
+    if status.state == "voting" then
+        print("队伍正在投票...")
+    end
+    
+    -- 定期汇报状态
+    team.reportStatus({hp = getCurrentHp()})
+end
+```
+
+:::
+
+---
+
+### 投票流程
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import team, json, util
+
+# 监听投票事件
+team.on("vote_started", lambda data: handle_vote_start(json.decode(data)))
+team.on("vote_ended", lambda data: print(f"投票结果: {json.decode(data)['result']}"))
+
+def handle_vote_start(vote):
+    print(f"投票: {vote['subject']}")
+    print(f"截止时间: {vote['deadline']}")
+    
+    # 自动决策（示例）
+    if vote['subject'] == "是否休息":
+        team.cast_vote(vote['voteId'], "agree")
+    else:
+        team.cast_vote(vote['voteId'], "disagree")
+
+# 发起投票
+team.create_vote("是否前往BOSS区域", 30000)
+
+# 等待投票结果
+util.sleep(35000)
+
+result = json.decode(team.get_vote_result("vote_xxx"))
+print(f"最终结果: {result['responses']}")
+```
+
+== Lua
+
+```lua:line-numbers
+local team = require("wingman.team")
+local json = require("wingman.json")
+local util = require("wingman.util")
+
+-- 监听投票事件
+team.on("vote_started", function(data)
+    local vote = json.decode(data)
+    print("投票:", vote.subject)
+    print("截止时间:", vote.deadline)
+    
+    -- 自动决策（示例）
+    if vote.subject == "是否休息" then
+        team.castVote(vote.voteId, "agree")
+    else
+        team.castVote(vote.voteId, "disagree")
+    end
+end)
+
+team.on("vote_ended", function(data)
+    local msg = json.decode(data)
+    print("投票结果:", json.encode(msg.result))
+end)
+
+-- 发起投票
+team.createVote("是否前往BOSS区域", 30000)
+
+-- 等待投票结果
+util.sleep(35000)
+
+local result = json.decode(team.getVoteResult("vote_xxx"))
+print("最终结果:", json.encode(result.responses))
 ```
 
 :::
@@ -293,147 +738,187 @@ end
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `register()` | `register()` | 注册Client | 返回: Client ID |
-| `heartbeat(clientId, status, gameId?, username?)` | `heartbeat(clientId, status, gameId?, username?)` | 汇报状态 | clientId: ClientID<br>status: 状态<br>gameId: 游戏ID(可选)<br>username: 玩家名(可选)<br>返回: HTTP响应 |
-| `allocate(clientId, username, preferredSize)` | `allocate(clientId, username, preferredSize)` | 请求组队 | clientId: ClientID<br>username: 玩家名<br>preferredSize: 期望队伍大小<br>返回: 分配结果 |
-| `report_vote(teamId, voteType, target, initiator)` | `reportVote(teamId, voteType, target, initiator)` | 汇报投票 | teamId: 队伍ID<br>voteType: 投票类型<br>target: 目标<br>initiator: 发起人<br>返回: HTTP响应 |
-| `get_pending_votes(clientId)` | `getPendingVotes(clientId)` | 获取待处理投票 | clientId: ClientID<br>返回: 投票动作列表 |
+| `join_team(teamId, memberId?)` | `joinTeam(teamId, memberId?)` | 加入队伍 | teamId: 队伍ID<br>memberId: 成员ID<br>返回: bool |
+| `leave_team()` | `leaveTeam()` | 离开队伍 | 返回: bool |
+| `create_vote(subject, timeout?)` | `createVote(subject, timeout?)` | 发起投票 | subject: 主题<br>timeout: 超时(ms)<br>返回: bool |
+| `cast_vote(voteId, response)` | `castVote(voteId, response)` | 投票 | voteId: 投票ID<br>response: 响应<br>返回: bool |
+| `get_vote_result(voteId)` | `getVoteResult(voteId)` | 获取投票结果 | voteId: 投票ID<br>返回: JSON字符串 |
+| `report_status(status)` | `reportStatus(status)` | 汇报状态 | status: 状态对象<br>返回: bool |
+| `broadcast(message)` | `broadcast(message)` | 广播消息 | message: 消息对象<br>返回: bool |
+| `get_team_status()` | `getTeamStatus()` | 获取队伍状态 | 返回: JSON字符串 |
+| `is_joined()` | `isJoined()` | 是否已加入 | 返回: bool |
+| `get_member_id()` | `getMemberId()` | 获取成员ID | 返回: string |
+| `on(event, callback)` | `on(event, callback)` | 订阅事件 | event: 事件名<br>callback: 回调<br>返回: bool |
 
 ---
 
-## Server API 接口
+## 协议消息格式
 
-### POST /api/client/register
+### Runtime → Server
 
-注册新 Client。
-
-**请求：**
-```json
-{}
-```
-
-**响应：**
+**加入队伍**：
 ```json
 {
-  "clientId": "client_1234567890"
+  "type": "team.join",
+  "teamId": "team_001",
+  "memberId": "player_01",
+  "timestamp": 1234567890
 }
 ```
 
-### POST /api/client/heartbeat
-
-Client 心跳汇报。
-
-**请求：**
+**离开队伍**：
 ```json
 {
-  "clientId": "client_123",
-  "status": "logged_in",
-  "gameId": "game_account_1",
-  "username": "PlayerName"
+  "type": "team.leave",
+  "teamId": "team_001",
+  "memberId": "player_01",
+  "timestamp": 1234567890
 }
 ```
 
-### POST /api/team/allocate
-
-请求组队分配。
-
-**请求：**
+**发起投票**：
 ```json
 {
-  "clientId": "client_123",
-  "username": "PlayerName",
-  "preferredSize": 3
+  "type": "team.vote_create",
+  "teamId": "team_001",
+  "proposerId": "player_01",
+  "subject": "是否开始副本",
+  "timeout": 30000,
+  "timestamp": 1234567890
 }
 ```
 
-**响应：**
+**投票**：
 ```json
 {
-  "success": true,
-  "teamId": "team_456",
-  "message": "Created new team",
-  "isLeader": true,
-  "teammates": ["PlayerName"]
+  "type": "team.vote_cast",
+  "teamId": "team_001",
+  "voteId": "vote_123",
+  "memberId": "player_01",
+  "response": "agree",
+  "timestamp": 1234567890
 }
 ```
 
-### POST /api/vote/report
-
-汇报投票事件。
-
-**请求：**
+**广播**：
 ```json
 {
-  "teamId": "team_456",
-  "type": "kick",
-  "target": "RandomPlayer",
-  "initiator": "TeammateA"
+  "type": "team.broadcast",
+  "teamId": "team_001",
+  "memberId": "player_01",
+  "message": {"type": "coordination", "action": "move"},
+  "timestamp": 1234567890
 }
 ```
 
-**响应：**
+**状态汇报**：
 ```json
 {
-  "voteId": "vote_789",
-  "recommendAction": "agree"
+  "type": "team.status_report",
+  "teamId": "team_001",
+  "memberId": "player_01",
+  "status": {"hp": 100, "ready": true},
+  "timestamp": 1234567890
 }
 ```
 
-### GET /api/vote/pending?clientId=xxx
+### Server → Runtime
 
-获取待处理的投票动作。
-
-**响应：**
+**加入确认**：
 ```json
-[
-  {
-    "voteId": "vote_789",
-    "agree": true
-  }
-]
+{
+  "type": "team.joined",
+  "teamId": "team_001",
+  "leaderId": "player_leader",
+  "memberId": "player_01",
+  "members": ["player_leader", "player_01"],
+  "timestamp": 1234567890
+}
+```
+
+**队友加入**：
+```json
+{
+  "type": "team.member_joined",
+  "teamId": "team_001",
+  "memberId": "player_02",
+  "timestamp": 1234567890
+}
+```
+
+**队友离开**：
+```json
+{
+  "type": "team.member_left",
+  "teamId": "team_001",
+  "memberId": "player_02",
+  "timestamp": 1234567890
+}
+```
+
+**投票开始**：
+```json
+{
+  "type": "team.vote_started",
+  "voteId": "vote_123",
+  "teamId": "team_001",
+  "proposerId": "player_leader",
+  "subject": "是否开始副本",
+  "deadline": 1234599999,
+  "timestamp": 1234567890
+}
+```
+
+**投票结束**：
+```json
+{
+  "type": "team.vote_ended",
+  "voteId": "vote_123",
+  "result": {
+    "voteId": "vote_123",
+    "subject": "是否开始副本",
+    "responses": {"player_01": "agree", "player_02": "agree"},
+    "active": false
+  },
+  "timestamp": 1234567890
+}
+```
+
+**收到广播**：
+```json
+{
+  "type": "team.broadcast_received",
+  "senderId": "player_leader",
+  "teamId": "team_001",
+  "message": {"type": "coordination", "action": "attack"},
+  "timestamp": 1234567890
+}
 ```
 
 ---
 
-## KV 数据结构
+## 注意事项
 
-### 队伍信息
+1. **依赖 inbox 模块**：
+   - team 模块通过 inbox 接收服务器消息
+   - 需要先连接 inbox 才能使用 team 功能
 
-```
-team:{id}
-  ├─ leader: client_id
-  ├─ state: matching | ready | active
-  └─ maxSize: number
-```
+2. **本地状态同步**：
+   - `getTeamStatus()` 返回本地缓存的状态
+   - 实际状态以服务器为准，通过事件更新
 
-### 队伍成员
+3. **事件订阅时机**：
+   - 建议在 `joinTeam()` 之前订阅事件
+   - 确保不会错过任何事件通知
 
-```
-team:{id}:members (list)
-  └─ [client_id, ...]
-```
+4. **投票超时**：
+   - 投票有超时时间，超时后自动结束
+   - 超时后的投票结果仍可通过 `getVoteResult()` 获取
 
-### Client 状态
+5. **广播消息**：
+   - 广播消息由服务器转发给所有队友
+   - 发送者不会收到自己的广播（避免重复）
 
-```
-client:{id}
-  ├─ status: idle | in_team
-  ├─ teamId: team_id
-  └─ username: player_name
-```
-
-### 队友映射
-
-```
-teammate:{player_name}
-  └─ client_id
-```
-
-### 投票状态
-
-```
-vote:{id}
-  ├─ target: player_name
-  ├─ initiator: player_name
-  └─ recommendAction: agree | disagree
-```
+6. **线程安全**：
+   - 所有函数都是线程安全的
+   - 事件回调可能在独立线程中执行

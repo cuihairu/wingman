@@ -217,6 +217,7 @@ end
 
 - [http](./http) - HTTP 客户端（GET、POST、下载）
 - [transport](./transport) - TCP 客户端与服务器
+- [inbox](./inbox) - 消息收件箱（基于 TCP）
 - [json](./json) - JSON 解析与序列化
 - [kv](./kv) - 持久化键值存储
 

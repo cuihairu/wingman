@@ -51,15 +51,16 @@ type messageOrError struct {
 
 // FrameListener accepts outbound TCP connections from runtimes.
 type FrameListener struct {
-	listener  net.Listener
-	registry  AgentRegistrar
-	broadcast Broadcaster
-	conns     map[string]*agentConn
-	mu        sync.RWMutex
-	connCount uint64
-	stopCh    chan struct{}
-	stopOnce  sync.Once
-	onScript  ScriptOutputHandler
+	listener   net.Listener
+	registry   AgentRegistrar
+	broadcast  Broadcaster
+	conns      map[string]*agentConn
+	mu         sync.RWMutex
+	connCount  uint64
+	stopCh     chan struct{}
+	stopOnce   sync.Once
+	onScript   ScriptOutputHandler
+	teamMgr    *TeamManager
 }
 
 // agentConn represents a single agent TCP connection.
@@ -83,7 +84,22 @@ func NewFrameListener(registry AgentRegistrar, broadcast Broadcaster) *FrameList
 		broadcast: broadcast,
 		conns:     make(map[string]*agentConn),
 		stopCh:    make(chan struct{}),
+		teamMgr:   NewTeamManager(),
 	}
+}
+
+// SetTeamManager sets the team manager (for testing/customization).
+func (l *FrameListener) SetTeamManager(tm *TeamManager) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.teamMgr = tm
+}
+
+// GetTeamManager returns the team manager.
+func (l *FrameListener) GetTeamManager() *TeamManager {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.teamMgr
 }
 
 var listenerEndian = func() binary.ByteOrder {
@@ -367,6 +383,26 @@ func (ac *agentConn) handleNotify(body []byte) {
 		ac.handleHeartbeat(msg)
 	case "agent.event":
 		ac.handleEvent(msg)
+	case "inbox.register":
+		ac.handleInboxRegister(msg)
+	case "inbox.heartbeat":
+		ac.handleInboxHeartbeat(msg)
+	case "inbox.ack":
+		ac.handleInboxAck(msg)
+	case "inbox.report":
+		ac.handleInboxReport(msg)
+	case "team.join":
+		ac.handleTeamJoin(msg)
+	case "team.leave":
+		ac.handleTeamLeave(msg)
+	case "team.vote_create":
+		ac.handleTeamVoteCreate(msg)
+	case "team.vote_cast":
+		ac.handleTeamVoteCast(msg)
+	case "team.status_report":
+		ac.handleTeamStatusReport(msg)
+	case "team.broadcast":
+		ac.handleTeamBroadcast(msg)
 	default:
 		log.Printf("[FrameListener] Unknown notify type: %s", msgType)
 	}
@@ -514,4 +550,208 @@ func (ac *agentConn) readMsgHeader() (*MessageHeader, error) {
 		Reserved: listenerEndian.Uint32(buf[12:16]),
 	}
 	return h, nil
+}
+
+// ========== Inbox & Team Handlers ==========
+
+// handleInboxRegister handles inbox registration.
+func (ac *agentConn) handleInboxRegister(msg map[string]any) {
+	agentID, _ := msg["agentId"].(string)
+	if agentID == "" {
+		agentID = ac.agentID
+	}
+
+	// Send registration acknowledgment
+	ac.sendNotify("inbox.register_ack", map[string]any{
+		"success": true,
+		"agentId":  agentID,
+	})
+
+	log.Printf("[Inbox] Agent %s registered", agentID)
+}
+
+// handleInboxHeartbeat handles inbox heartbeat.
+func (ac *agentConn) handleInboxHeartbeat(msg map[string]any) {
+	agentID, _ := msg["agentId"].(string)
+	if agentID != "" {
+		ac.listener.registry.UpdateHeartbeat(agentID)
+	}
+
+	// Send heartbeat acknowledgment
+	ac.sendNotify("inbox.heartbeat_ack", map[string]any{
+		"timestamp": time.Now().UnixMilli(),
+	})
+}
+
+// handleInboxAck handles message acknowledgment.
+func (ac *agentConn) handleInboxAck(msg map[string]any) {
+	msgID, _ := msg["msgId"].(string)
+	agentID, _ := msg["agentId"].(string)
+	if agentID == "" {
+		agentID = ac.agentID
+	}
+
+	if ac.listener.teamMgr != nil {
+		if err := ac.listener.teamMgr.AckMessage(agentID, msgID); err != nil {
+			log.Printf("[Inbox] Ack failed: %v", err)
+		}
+	}
+}
+
+// handleInboxReport handles task completion report.
+func (ac *agentConn) handleInboxReport(msg map[string]any) {
+	msgID, _ := msg["msgId"].(string)
+	agentID, _ := msg["agentId"].(string)
+	result, _ := msg["result"].(map[string]any)
+
+	if agentID == "" {
+		agentID = ac.agentID
+	}
+
+	if ac.listener.teamMgr != nil {
+		if err := ac.listener.teamMgr.ReportMessage(agentID, msgID, result); err != nil {
+			log.Printf("[Inbox] Report failed: %v", err)
+		}
+	}
+}
+
+// handleTeamJoin handles team join request.
+func (ac *agentConn) handleTeamJoin(msg map[string]any) {
+	teamID, _ := msg["teamId"].(string)
+	memberID, _ := msg["memberId"].(string)
+	agentID, _ := msg["agentId"].(string)
+
+	if agentID == "" {
+		agentID = ac.agentID
+	}
+
+	if ac.listener.teamMgr != nil {
+		if err := ac.listener.teamMgr.JoinTeam(teamID, memberID, agentID); err != nil {
+			log.Printf("[Team] Join failed: %v", err)
+			ac.sendNotify("team.error", map[string]any{
+				"error": err.Error(),
+			})
+		}
+	}
+}
+
+// handleTeamLeave handles team leave request.
+func (ac *agentConn) handleTeamLeave(msg map[string]any) {
+	teamID, _ := msg["teamId"].(string)
+	memberID, _ := msg["memberId"].(string)
+	agentID, _ := msg["agentId"].(string)
+
+	if agentID == "" {
+		agentID = ac.agentID
+	}
+
+	// If memberId is empty, use agentID as memberId
+	if memberID == "" {
+		memberID = agentID
+	}
+
+	if ac.listener.teamMgr != nil {
+		if err := ac.listener.teamMgr.LeaveTeam(teamID, memberID); err != nil {
+			log.Printf("[Team] Leave failed: %v", err)
+		}
+	}
+}
+
+// handleTeamVoteCreate handles vote creation request.
+func (ac *agentConn) handleTeamVoteCreate(msg map[string]any) {
+	teamID, _ := msg["teamId"].(string)
+	proposerID, _ := msg["proposerId"].(string)
+	subject, _ := msg["subject"].(string)
+	timeoutVal, _ := msg["timeout"].(float64)
+
+	if ac.listener.teamMgr != nil {
+		timeout := time.Duration(timeoutVal) * time.Millisecond
+		if timeout == 0 {
+			timeout = 30 * time.Second // Default 30 seconds
+		}
+
+		vote, err := ac.listener.teamMgr.CreateVote(teamID, proposerID, subject, timeout)
+		if err != nil {
+			log.Printf("[Team] Vote create failed: %v", err)
+			ac.sendNotify("team.error", map[string]any{
+				"error": err.Error(),
+			})
+		} else {
+			log.Printf("[Team] Vote created: %s", vote.VoteID)
+		}
+	}
+}
+
+// handleTeamVoteCast handles vote casting.
+func (ac *agentConn) handleTeamVoteCast(msg map[string]any) {
+	voteID, _ := msg["voteId"].(string)
+	memberID, _ := msg["memberId"].(string)
+	response, _ := msg["response"].(string)
+
+	if ac.listener.teamMgr != nil {
+		if err := ac.listener.teamMgr.CastVote(voteID, memberID, response); err != nil {
+			log.Printf("[Team] Vote cast failed: %v", err)
+		}
+	}
+}
+
+// handleTeamStatusReport handles status report from team member.
+func (ac *agentConn) handleTeamStatusReport(msg map[string]any) {
+	teamID, _ := msg["teamId"].(string)
+	memberID, _ := msg["memberId"].(string)
+	status, _ := msg["status"].(map[string]any)
+
+	log.Printf("[Team] Status report from %s in team %s: %v", memberID, teamID, status)
+
+	// Broadcast status to other team members via inbox
+	if ac.listener.teamMgr != nil {
+		// Get team info to find other members
+		if teamInfo, err := ac.listener.teamMgr.GetTeamInfo(teamID); err == nil {
+			if members, ok := teamInfo["members"].([]string); ok {
+				for _, mid := range members {
+					if mid != memberID {
+						// Find agent ID for this member
+						// Note: This is simplified - in production you'd maintain a member->agent mapping
+					}
+				}
+			}
+		}
+	}
+}
+
+// handleTeamBroadcast handles broadcast message to all team members.
+func (ac *agentConn) handleTeamBroadcast(msg map[string]any) {
+	teamID, _ := msg["teamId"].(string)
+	senderMemberID, _ := msg["memberId"].(string)
+	message, _ := msg["message"].(map[string]any)
+
+	log.Printf("[Team] Broadcast from %s in team %s: %v", senderMemberID, teamID, message)
+
+	if ac.listener.teamMgr != nil {
+		// Get team info to find all members
+		if teamInfo, err := ac.listener.teamMgr.GetTeamInfo(teamID); err == nil {
+			if members, ok := teamInfo["members"].([]string); ok {
+				// Send message to all members via inbox
+				for _, memberID := range members {
+					// Skip the sender
+					if memberID == senderMemberID {
+						continue
+					}
+
+					// Create broadcast message
+					broadcastMsg := map[string]any{
+						"type":     "team.broadcast_received",
+						"teamId":   teamID,
+						"senderId": senderMemberID,
+						"message":  message,
+					}
+
+					// Send via inbox (requires mapping memberId to agentId)
+					// For now, we use a simple mapping: memberId -> agentId (same value)
+					// In production, you'd maintain a proper memberId -> agentId mapping
+					ac.listener.teamMgr.SendMessageToAgent(memberID, "team.broadcast_received", broadcastMsg)
+				}
+			}
+		}
+	}
 }

@@ -35,6 +35,7 @@ ModuleDescriptor createFsmModule();
 ModuleDescriptor createTaskModule();
 ModuleDescriptor createNotifyModule();
 ModuleDescriptor createOrchestrationModule();
+ModuleDescriptor createInboxModule();
 ModuleDescriptor createTeamModule();
 
 std::vector<ModuleDescriptor> getAllModules() {
@@ -68,6 +69,7 @@ std::vector<ModuleDescriptor> getAllModules() {
 	modules.push_back(createTaskModule());
 	modules.push_back(createNotifyModule());
 	modules.push_back(createOrchestrationModule());
+	modules.push_back(createInboxModule());
 	modules.push_back(createTeamModule());
 	return modules;
 }
