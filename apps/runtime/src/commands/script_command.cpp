@@ -21,6 +21,8 @@ int scriptCommand(const std::string& scriptPath, const std::vector<std::string>&
         wingman::ScriptConfig config;
         config.name = scriptName;
         config.path = scriptPath;
+        // Default to sandboxed mode for security (use --trusted flag in future to disable)
+        config.sandboxed = true;
         for (size_t i = 0; i < args.size(); ++i) {
             config.env["arg" + std::to_string(i + 1)] = args[i];
         }

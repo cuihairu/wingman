@@ -21,14 +21,9 @@ fn active_profile_path() -> PathBuf {
 
 fn profile_path(id: &str) -> PathBuf {
     // Validate that id is a safe filename to prevent path traversal attacks
-    // Only allow alphanumeric, underscore, hyphen, and dot (but not as path separator)
+    // Reject unsafe IDs instead of silently sanitizing (fail-closed approach)
     if !is_safe_filename(id) {
-        // If unsafe, use a sanitized version or reject
-        // For security, we'll sanitize by removing unsafe characters
-        let sanitized = sanitize_filename(id);
-        let mut path = profiles_dir();
-        path.push(format!("{}.json", sanitized));
-        return path;
+        panic!("Unsafe profile id detected: '{}'. Use set_active_profile() which validates before calling this.", id);
     }
 
     let mut path = profiles_dir();
@@ -52,14 +47,6 @@ fn is_safe_filename(id: &str) -> bool {
 }
 
 /// Sanitize a filename by removing unsafe characters
-fn sanitize_filename(id: &str) -> String {
-    id.chars()
-        .filter(|&c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.')
-        .collect::<String>()
-        .trim_start_matches('.')
-        .to_string()
-}
-
 fn local_data_dir() -> PathBuf {
     #[cfg(windows)]
     {

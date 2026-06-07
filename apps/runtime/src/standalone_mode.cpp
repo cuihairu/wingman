@@ -135,6 +135,8 @@ std::string StandaloneMode::loadScript(const std::string& path) {
     wingman::ScriptConfig scriptConfig;
     scriptConfig.name = id;
     scriptConfig.path = path;
+    // Default to sandboxed mode for security (trusted mode requires explicit configuration)
+    scriptConfig.sandboxed = true;
 
     if (!getScriptManager().loadScript(id, path, scriptConfig)) {
         spdlog::error("Failed to load script through ScriptManager: {}", path);

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/gin-gonic/gin"
@@ -40,7 +41,7 @@ func (h *WindowHandler) HandleList(c *gin.Context) {
 	}
 
 	client := onlineAgent.Client
-	resp, err := client.SendCommand("list_windows", nil)
+	resp, err := client.SendCommandWithTimeout("list_windows", nil, 10*time.Second)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,

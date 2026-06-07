@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
@@ -216,9 +217,10 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 	}
 
 	client := onlineAgent.Client
-	resp, err := client.SendCommand("run_script", map[string]any{
+	// Use 30 second timeout for script execution
+	resp, err := client.SendCommandWithTimeout("run_script", map[string]any{
 		"path": scriptPath,
-	})
+	}, 30*time.Second)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": err.Error()})
 		return

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/gin-gonic/gin"
@@ -73,7 +74,7 @@ func (h *AgentHandler) HandleShutdown(c *gin.Context) {
 	}
 
 	// 向 agent 发送关闭命令
-	_, err := conn.SendCommand("system.shutdown", nil)
+	_, err := conn.SendCommandWithTimeout("system.shutdown", nil, 10*time.Second)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,

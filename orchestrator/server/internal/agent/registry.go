@@ -12,6 +12,8 @@ import (
 // AgentConn 对 TCP 连接的抽象，用于向 agent 发送命令
 type AgentConn interface {
 	SendCommand(method string, data map[string]any) (map[string]any, error)
+	// SendCommandWithTimeout sends a command with a timeout. A timeout of 0 means wait indefinitely.
+	SendCommandWithTimeout(method string, data map[string]any, timeout time.Duration) (map[string]any, error)
 }
 
 // AgentInfo 内存中的 Agent 信息

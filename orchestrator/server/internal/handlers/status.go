@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
@@ -40,7 +41,7 @@ func (h *StatusHandler) HandleStatus(c *gin.Context) {
 
 	if onlineAgent != nil {
 		client := onlineAgent.Client
-		if resp, err := client.SendCommand("get_status", nil); err == nil {
+		if resp, err := client.SendCommandWithTimeout("get_status", nil, 10*time.Second); err == nil {
 			if data, ok := resp["data"].(map[string]interface{}); ok {
 				if v, ok := data["totalScripts"].(float64); ok {
 					totalScripts = int64(v)
@@ -58,7 +59,7 @@ func (h *StatusHandler) HandleStatus(c *gin.Context) {
 					memoryUsage = v
 				}
 			}
-		} else if resp, err := client.SendCommand("list_windows", nil); err == nil {
+		} else if resp, err := client.SendCommandWithTimeout("list_windows", nil, 10*time.Second); err == nil {
 			if data, ok := resp["data"].(map[string]interface{}); ok {
 				if windows, ok := data["windows"].([]interface{}); ok {
 					totalWindows = int64(len(windows))

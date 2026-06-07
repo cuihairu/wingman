@@ -314,38 +314,56 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 	}
 
 	// Execute script file with timeout support
-	std::atomic<bool> executed{false};
-	std::atomic<bool> success{false};
+	// Note: true interruptibility requires engine-level cooperation (e.g., debug hooks)
+	// This implementation provides timeout detection and state cleanup, but the engine
+	// may continue running in the background until it naturally completes or fails.
+	std::atomic<bool> scriptDone{false};
+	std::atomic<bool> scriptSuccess{false};
+	std::thread execThread;
 
-	auto executeTask = std::async(std::launch::async, [&infoPtr, &executed, &success]() {
+	// Launch execution in a detached thread
+	execThread = std::thread([&infoPtr, &scriptDone, &scriptSuccess]() {
 		bool result = infoPtr->engine->executeFile(infoPtr->config.path);
-		success.store(result);
-		executed.store(true);
-		return result;
+		scriptSuccess.store(result);
+		scriptDone.store(true);
 	});
 
 	// Get timeout from config
 	int timeoutMs = infoPtr->config.timeoutMs > 0 ? infoPtr->config.timeoutMs : 30000;
 
-	// Wait for execution with timeout
-	auto status = executeTask.wait_for(std::chrono::milliseconds(timeoutMs));
+	// Wait for completion with timeout
+	auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+	bool timedOut = false;
 
-	if (status == std::future_status::timeout) {
-		// Timeout occurred - forcefully shutdown the engine
+	while (!scriptDone.load()) {
+		if (std::chrono::steady_clock::now() >= deadline) {
+			timedOut = true;
+			break;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	}
+
+	if (timedOut) {
+		// Timeout occurred - mark as error and detach the execution thread
+		// The script may continue running in the background until it finishes
 		std::lock_guard<std::mutex> lock(m_mutex);
 		infoPtr->state = ScriptState::error;
 		infoPtr->lastError = "Script execution timeout after " + std::to_string(timeoutMs) + "ms";
-		// Shutdown the engine to interrupt execution
-		if (infoPtr->engine) {
-			infoPtr->engine->shutdown();
+		// Detach the thread to let it complete independently
+		if (execThread.joinable()) {
+			execThread.detach();
 		}
-		// The async task may still be running, but we've called shutdown
-		// Let it complete in the background
+		// Abandon the engine - a new one will be created on next run
 		return false;
 	}
 
-	// Execution completed (or failed)
-	if (!success.load()) {
+	// Execution completed - join the thread
+	if (execThread.joinable()) {
+		execThread.join();
+	}
+
+	// Check result
+	if (!scriptSuccess.load()) {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		infoPtr->state = ScriptState::error;
 		infoPtr->lastError = infoPtr->engine->getLastError();
@@ -359,8 +377,9 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 			return false;
 		}
 
-		// Now script is actively running
-		infoPtr->state = ScriptState::running;
+		// Script execution completed successfully
+		// Mark as completed since executeFile() has returned
+		infoPtr->state = ScriptState::completed;
 		infoPtr->lastLoaded = std::chrono::duration_cast<std::chrono::milliseconds>(
 			std::chrono::steady_clock::now().time_since_epoch()
 		).count();
@@ -727,7 +746,7 @@ void ScriptManager::stopHotReload() {
 	std::thread threadToJoin;
 
 	{
-		std::lock_guard<std::mutex> lock(m_mutex;
+		std::lock_guard<std::mutex> lock(m_mutex);
 		if (!m_hotReloadRunning) {
 			return;
 		}

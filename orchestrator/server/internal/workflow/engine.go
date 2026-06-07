@@ -459,7 +459,8 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 	go func() {
 		// 合并参数到脚本路径
 		data := map[string]any{
-			"path": step.Script,
+			"path":    step.Script,
+			"timeout": int(timeout.Milliseconds()), // Pass timeout to runtime for enforcement
 		}
 		maps.Copy(data, step.Parameters)
 
