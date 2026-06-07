@@ -26,7 +26,7 @@ type Claims struct {
 
 func jwtSecret() ([]byte, error) {
 	secret := os.Getenv("WINGMAN_JWT_SECRET")
-	if len(secret) < jwtSecretMinLength {
+	if len(secret) < jwtSecretMinLength || strings.TrimSpace(secret) != secret || len(strings.TrimSpace(secret)) < jwtSecretMinLength {
 		return nil, errJWTSecretNotConfigured
 	}
 	return []byte(secret), nil
