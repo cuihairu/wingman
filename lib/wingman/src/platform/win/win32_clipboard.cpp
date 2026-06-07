@@ -61,7 +61,17 @@ bool Win32Clipboard::setText(const std::string& text) {
     // Lock memory and copy data
     wchar_t* pData = static_cast<wchar_t*>(GlobalLock(hMem));
     if (pData) {
-        memcpy(pData, wideText.data(), bytes);
+        // Verify buffer size before copying
+        SIZE_T hMemSize = GlobalSize(hMem);
+        if (hMemSize >= bytes) {
+            memcpy(pData, wideText.data(), bytes);
+        } else {
+            spdlog::error("[Win32Clipboard] GlobalAlloc returned smaller buffer than requested");
+            GlobalUnlock(hMem);
+            GlobalFree(hMem);
+            closeClipboard();
+            return false;
+        }
         GlobalUnlock(hMem);
     }
 
@@ -93,11 +103,24 @@ std::string Win32Clipboard::getText() {
     if (hMem) {
         wchar_t* pData = static_cast<wchar_t*>(GlobalLock(hMem));
         if (pData) {
-            // Convert to UTF-8
-            int size = WideCharToMultiByte(CP_UTF8, 0, pData, -1, nullptr, 0, nullptr, nullptr);
-            if (size > 0) {
-                result.resize(size - 1);
-                WideCharToMultiByte(CP_UTF8, 0, pData, -1, &result[0], size, nullptr, nullptr);
+            // Get buffer size to validate bounds
+            SIZE_T hMemSize = GlobalSize(hMem);
+            if (hMemSize >= sizeof(wchar_t)) {
+                // Calculate maximum string length based on buffer size
+                size_t maxChars = hMemSize / sizeof(wchar_t);
+
+                // Find null terminator within buffer bounds
+                size_t length = 0;
+                while (length < maxChars && pData[length] != L'\0') {
+                    length++;
+                }
+
+                // Convert to UTF-8 with explicit length
+                int size = WideCharToMultiByte(CP_UTF8, 0, pData, static_cast<int>(length), nullptr, 0, nullptr, nullptr);
+                if (size > 0) {
+                    result.resize(size);
+                    WideCharToMultiByte(CP_UTF8, 0, pData, static_cast<int>(length), &result[0], size, nullptr, nullptr);
+                }
             }
             GlobalUnlock(hMem);
         }
@@ -145,7 +168,16 @@ bool Win32Clipboard::setHTML(const std::string& html) {
 
     wchar_t* pData = static_cast<wchar_t*>(GlobalLock(hMem));
     if (pData) {
-        memcpy(pData, wideHTML.data(), bytes);
+        SIZE_T hMemSize = GlobalSize(hMem);
+        if (hMemSize >= bytes) {
+            memcpy(pData, wideHTML.data(), bytes);
+        } else {
+            spdlog::error("[Win32Clipboard] GlobalAlloc returned smaller buffer than requested for HTML");
+            GlobalUnlock(hMem);
+            GlobalFree(hMem);
+            closeClipboard();
+            return false;
+        }
         GlobalUnlock(hMem);
     }
 
@@ -179,10 +211,24 @@ std::string Win32Clipboard::getHTML() {
     if (hMem) {
         wchar_t* pData = static_cast<wchar_t*>(GlobalLock(hMem));
         if (pData) {
-            int size = WideCharToMultiByte(CP_UTF8, 0, pData, -1, nullptr, 0, nullptr, nullptr);
-            if (size > 0) {
-                result.resize(size - 1);
-                WideCharToMultiByte(CP_UTF8, 0, pData, -1, &result[0], size, nullptr, nullptr);
+            // Get buffer size to validate bounds
+            SIZE_T hMemSize = GlobalSize(hMem);
+            if (hMemSize >= sizeof(wchar_t)) {
+                // Calculate maximum string length based on buffer size
+                size_t maxChars = hMemSize / sizeof(wchar_t);
+
+                // Find null terminator within buffer bounds
+                size_t length = 0;
+                while (length < maxChars && pData[length] != L'\0') {
+                    length++;
+                }
+
+                // Convert to UTF-8 with explicit length
+                int size = WideCharToMultiByte(CP_UTF8, 0, pData, static_cast<int>(length), nullptr, 0, nullptr, nullptr);
+                if (size > 0) {
+                    result.resize(size);
+                    WideCharToMultiByte(CP_UTF8, 0, pData, static_cast<int>(length), &result[0], size, nullptr, nullptr);
+                }
             }
             GlobalUnlock(hMem);
         }
@@ -215,6 +261,16 @@ bool Win32Clipboard::setImage(const std::vector<uint8_t>& imageData, int width, 
 
     uint8_t* pData = static_cast<uint8_t*>(GlobalLock(hMem));
     if (pData) {
+        // Verify buffer size
+        SIZE_T hMemSize = GlobalSize(hMem);
+        if (hMemSize < static_cast<SIZE_T>(totalSize)) {
+            spdlog::error("[Win32Clipboard] GlobalAlloc returned smaller buffer than required for image");
+            GlobalUnlock(hMem);
+            GlobalFree(hMem);
+            closeClipboard();
+            return false;
+        }
+
         // Fill BITMAPINFOHEADER
         BITMAPINFOHEADER* bmi = reinterpret_cast<BITMAPINFOHEADER*>(pData);
         bmi->biSize = sizeof(BITMAPINFOHEADER);
@@ -262,19 +318,26 @@ std::vector<uint8_t> Win32Clipboard::getImage(int* outWidth, int* outHeight) {
     if (hMem) {
         uint8_t* pData = static_cast<uint8_t*>(GlobalLock(hMem));
         if (pData) {
-            BITMAPINFOHEADER* bmi = reinterpret_cast<BITMAPINFOHEADER*>(pData);
+            // Verify buffer size is at least large enough for BITMAPINFOHEADER
+            SIZE_T hMemSize = GlobalSize(hMem);
+            if (hMemSize >= sizeof(BITMAPINFOHEADER)) {
+                BITMAPINFOHEADER* bmi = reinterpret_cast<BITMAPINFOHEADER*>(pData);
 
-            int width = bmi->biWidth;
-            int height = abs(bmi->biHeight);
-            int bitCount = bmi->biBitCount;
-            int imageSize = bmi->biSizeImage;
+                int width = bmi->biWidth;
+                int height = abs(bmi->biHeight);
+                int bitCount = bmi->biBitCount;
+                int imageSize = bmi->biSizeImage;
 
-            if (bitCount == 32 && imageSize > 0) {
-                result.resize(imageSize);
-                memcpy(result.data(), pData + sizeof(BITMAPINFOHEADER), imageSize);
+                // Verify the claimed image size fits in the buffer
+                if (imageSize > 0 && sizeof(BITMAPINFOHEADER) + static_cast<SIZE_T>(imageSize) <= hMemSize) {
+                    if (bitCount == 32) {
+                        result.resize(imageSize);
+                        memcpy(result.data(), pData + sizeof(BITMAPINFOHEADER), imageSize);
 
-                if (outWidth) *outWidth = width;
-                if (outHeight) *outHeight = height;
+                        if (outWidth) *outWidth = width;
+                        if (outHeight) *outHeight = height;
+                    }
+                }
             }
 
             GlobalUnlock(hMem);
@@ -297,14 +360,30 @@ bool Win32Clipboard::setFiles(const std::vector<std::string>& files) {
 
     if (!openClipboard()) return false;
 
-    // Calculate required memory size
+    // Calculate required memory size with overflow checking
     SIZE_T totalSize = sizeof(DROPFILES);
     for (const auto& file : files) {
         // Convert to wide character path
         int wideSize = MultiByteToWideChar(CP_UTF8, 0, file.c_str(), -1, nullptr, 0);
+        if (wideSize <= 0) {
+            closeClipboard();
+            return false;
+        }
+
+        // Check for overflow
+        if (totalSize > MAXSIZE - static_cast<SIZE_T>(wideSize * sizeof(wchar_t))) {
+            spdlog::error("[Win32Clipboard] Total size overflow when calculating file list size");
+            closeClipboard();
+            return false;
+        }
         totalSize += wideSize * sizeof(wchar_t);
     }
     // Null terminator
+    if (totalSize > MAXSIZE - sizeof(wchar_t)) {
+        spdlog::error("[Win32Clipboard] Total size overflow when adding null terminator");
+        closeClipboard();
+        return false;
+    }
     totalSize += sizeof(wchar_t);
 
     HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, totalSize);
@@ -356,26 +435,59 @@ std::vector<std::string> Win32Clipboard::getFiles() {
     if (hMem) {
         DROPFILES* pDropFiles = static_cast<DROPFILES*>(GlobalLock(hMem));
         if (pDropFiles) {
-            if (pDropFiles->fWide) {
-                wchar_t* pFiles = reinterpret_cast<wchar_t*>(
-                    reinterpret_cast<uint8_t*>(pDropFiles) + pDropFiles->pFiles);
+            // Get buffer size for bounds checking
+            SIZE_T hMemSize = GlobalSize(hMem);
+            if (hMemSize >= sizeof(DROPFILES) && pDropFiles->pFiles < hMemSize) {
+                if (pDropFiles->fWide) {
+                    wchar_t* pFiles = reinterpret_cast<wchar_t*>(
+                        reinterpret_cast<uint8_t*>(pDropFiles) + pDropFiles->pFiles);
 
-                while (*pFiles) {
-                    int size = WideCharToMultiByte(CP_UTF8, 0, pFiles, -1, nullptr, 0, nullptr, nullptr);
-                    if (size > 0) {
-                        std::string file(size - 1, 0);
-                        WideCharToMultiByte(CP_UTF8, 0, pFiles, -1, &file[0], size, nullptr, nullptr);
-                        result.push_back(file);
+                    // Calculate remaining space in buffer
+                    size_t remainingBytes = hMemSize - pDropFiles->pFiles;
+                    size_t maxChars = remainingBytes / sizeof(wchar_t);
+                    size_t charsProcessed = 0;
+
+                    while (charsProcessed < maxChars && pFiles[charsProcessed] != L'\0') {
+                        // Find null terminator within buffer bounds
+                        size_t length = 0;
+                        while ((charsProcessed + length) < maxChars && pFiles[charsProcessed + length] != L'\0') {
+                            length++;
+                        }
+
+                        if (length > 0) {
+                            int size = WideCharToMultiByte(CP_UTF8, 0, &pFiles[charsProcessed], static_cast<int>(length), nullptr, 0, nullptr, nullptr);
+                            if (size > 0) {
+                                std::string file(size, 0);
+                                WideCharToMultiByte(CP_UTF8, 0, &pFiles[charsProcessed], static_cast<int>(length), &file[0], size, nullptr, nullptr);
+                                result.push_back(file);
+                            }
+                            charsProcessed += length + 1; // Skip null terminator
+                        } else {
+                            break;
+                        }
                     }
-                    pFiles += wcslen(pFiles) + 1;
-                }
-            } else {
-                char* pFiles = reinterpret_cast<char*>(
-                    reinterpret_cast<uint8_t*>(pDropFiles) + pDropFiles->pFiles);
+                } else {
+                    char* pFiles = reinterpret_cast<char*>(
+                        reinterpret_cast<uint8_t*>(pDropFiles) + pDropFiles->pFiles);
 
-                while (*pFiles) {
-                    result.push_back(pFiles);
-                    pFiles += strlen(pFiles) + 1;
+                    // Calculate remaining space in buffer
+                    size_t remainingBytes = hMemSize - pDropFiles->pFiles;
+                    size_t charsProcessed = 0;
+
+                    while (charsProcessed < remainingBytes && pFiles[charsProcessed] != '\0') {
+                        // Find null terminator within buffer bounds
+                        size_t length = 0;
+                        while ((charsProcessed + length) < remainingBytes && pFiles[charsProcessed + length] != '\0') {
+                            length++;
+                        }
+
+                        if (length > 0) {
+                            result.push_back(std::string(&pFiles[charsProcessed], length));
+                            charsProcessed += length + 1; // Skip null terminator
+                        } else {
+                            break;
+                        }
+                    }
                 }
             }
 

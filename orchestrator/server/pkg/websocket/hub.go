@@ -108,16 +108,22 @@ func (h *Hub) Run() {
 			log.Printf("[WS] Disconnected: %s (total: %d)", conn.ID, len(h.connections))
 
 		case message := <-h.broadcast:
+			// Collect connections under read lock to avoid holding lock during sends
+			var conns []*Connection
 			h.mu.RLock()
-			var stale []string
 			for _, conn := range h.connections {
+				conns = append(conns, conn)
+			}
+			h.mu.RUnlock()
+
+			var stale []string
+			for _, conn := range conns {
 				select {
 				case conn.Send <- message:
 				default:
 					stale = append(stale, conn.ID)
 				}
 			}
-			h.mu.RUnlock()
 
 			if len(stale) > 0 {
 				h.mu.Lock()

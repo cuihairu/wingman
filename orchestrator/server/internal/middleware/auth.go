@@ -26,8 +26,29 @@ type Claims struct {
 
 func jwtSecret() ([]byte, error) {
 	secret := os.Getenv("WINGMAN_JWT_SECRET")
-	if len(secret) < jwtSecretMinLength || strings.TrimSpace(secret) != secret || len(strings.TrimSpace(secret)) < jwtSecretMinLength {
+	// Check minimum length
+	if len(secret) < jwtSecretMinLength {
 		return nil, errJWTSecretNotConfigured
+	}
+	// Trim and check again - reject secrets that are mostly whitespace
+	trimmed := strings.TrimSpace(secret)
+	if len(trimmed) < jwtSecretMinLength {
+		return nil, errJWTSecretNotConfigured
+	}
+	// Reject secrets with leading/trailing whitespace (security issue)
+	if trimmed != secret {
+		return nil, errors.New("WINGMAN_JWT_SECRET must not have leading or trailing whitespace")
+	}
+	// Additional check: ensure secret contains non-whitespace characters
+	hasNonWhitespace := false
+	for _, c := range secret {
+		if !strings.ContainsRune(" \t\n\r", c) {
+			hasNonWhitespace = true
+			break
+		}
+	}
+	if !hasNonWhitespace {
+		return nil, errors.New("WINGMAN_JWT_SECRET must contain non-whitespace characters")
 	}
 	return []byte(secret), nil
 }

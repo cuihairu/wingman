@@ -68,8 +68,8 @@ void EventBus::publishAsync(std::unique_ptr<Event> event) {
             std::move(event),
             timestamp
         });
+        queueCondition_.notify_one();
     }
-    queueCondition_.notify_one();
 }
 
 void EventBus::start() {
