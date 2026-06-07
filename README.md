@@ -142,6 +142,8 @@ wingman/
 | **OCR 识别** | Tesseract 文字识别 |
 | **多语言脚本** | Lua (sol2) 和 Python (pybind11) 双引擎 |
 | **EmmyLua 调试** | 支持 VS Code 断点调试 Lua 脚本 |
+| **数据持久化** | kv 键值存储、SQLite 数据库 (db 模块) |
+| **序列化格式** | JSON、INI 配置文件解析 (ini 模块) |
 
 ---
 
