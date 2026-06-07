@@ -293,8 +293,8 @@ public:
 				if (msg.contains("result")) {
 					auto& responses = msg["result"];
 					if (responses.is_object()) {
-						for (auto it = responses.begin(); it != responses.end(); ++it) {
-							it->second.get_to(it->key());
+						for (auto respIt = responses.begin(); respIt != responses.end(); ++respIt) {
+							it->second.responses[respIt.key()] = respIt.value().get<std::string>();
 						}
 					}
 				}

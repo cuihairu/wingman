@@ -108,6 +108,11 @@ public:
 		return connected_.load() && running_.load();
 	}
 
+	// 获取客户端 ID
+	const std::string& getClientId() const {
+		return clientId_;
+	}
+
 	// consume - 拉取消息（阻塞直到有消息或超时）
 	InboxMessage consume(int timeoutMs) {
 		std::unique_lock<std::mutex> lock(queueMutex_);
@@ -334,7 +339,7 @@ public:
 
 		// 检查是否已存在
 		for (const auto& [handle, client] : clients_) {
-			if (client && client->clientId_ == id) {
+			if (client && client->getClientId() == id) {
 				spdlog::warn("[Inbox] Client '{}' already exists", id);
 				return handle;
 			}
@@ -472,13 +477,13 @@ ModuleDescriptor createInboxModule() {
 			for (const auto& item : msg.payload) {
 				arr.push_back(ScriptValue::fromString(item.dump()));
 			}
-			payload = ScriptValue::fromArray(arr);
+			payload = ScriptValue::fromArray(std::move(arr));
 		} else if (msg.payload.is_object()) {
 			std::unordered_map<std::string, ScriptValue> obj;
 			for (auto it = msg.payload.begin(); it != msg.payload.end(); ++it) {
 				obj[it.key()] = ScriptValue::fromString(it.value().dump());
 			}
-			payload = ScriptValue::fromObject(obj);
+			payload = ScriptValue::fromObject(std::move(obj));
 		}
 
 		return ScriptValue::fromObject({
