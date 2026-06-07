@@ -97,10 +97,20 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
     // 简单解析（临时实现，应该使用 toml++ 库）
     std::istringstream stream(toml);
     std::string line;
+    std::string currentSection;  // Track current section for proper key scoping
 
     while (std::getline(stream, line)) {
         line = trim(stripInlineComment(line));
-        if (line.empty() || line[0] == '[') continue;
+        if (line.empty()) continue;
+
+        // Track section changes
+        if (line[0] == '[' && line.back() == ']') {
+            currentSection = line.substr(1, line.size() - 2);
+            continue;
+        }
+
+        // Skip empty sections or keys if we're in a section we don't handle
+        if (line[0] == '[') continue;
 
         // 解析 key = value
         size_t pos = line.find('=');
@@ -110,39 +120,79 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
 
             // 解析布尔值
             if (value == "true") {
-                if (key == "enable_remote") config.enableRemote = true;
-                if (key == "enable_local_ipc") config.enableLocalIpc = true;
-                if (key == "enable_standalone_script") config.enableStandaloneScript = true;
-                if (key == "wait_for_ide") config.debugger.waitForIde = true;
-                if (key == "enable") config.debugger.enable = true;
-                if (key == "console") config.logging.console = true;
+                // Global section keys (no section prefix)
+                if (currentSection.empty() || currentSection == "global") {
+                    if (key == "enable_remote") config.enableRemote = true;
+                    if (key == "enable_local_ipc") config.enableLocalIpc = true;
+                    if (key == "enable_standalone_script") config.enableStandaloneScript = true;
+                }
+                // Remote section keys
+                if (currentSection == "remote") {
+                    // No boolean keys in remote section currently
+                }
+                // Debugger section keys
+                if (currentSection == "debugger") {
+                    if (key == "wait_for_ide") config.debugger.waitForIde = true;
+                    if (key == "enable") config.debugger.enable = true;
+                }
+                // Logging section keys
+                if (currentSection == "logging") {
+                    if (key == "console") config.logging.console = true;
+                }
             } else if (value == "false") {
-                if (key == "enable_remote") config.enableRemote = false;
-                if (key == "enable_local_ipc") config.enableLocalIpc = false;
-                if (key == "enable_standalone_script") config.enableStandaloneScript = false;
-                if (key == "wait_for_ide") config.debugger.waitForIde = false;
-                if (key == "enable") config.debugger.enable = false;
-                if (key == "console") config.logging.console = false;
+                // Global section keys (no section prefix)
+                if (currentSection.empty() || currentSection == "global") {
+                    if (key == "enable_remote") config.enableRemote = false;
+                    if (key == "enable_local_ipc") config.enableLocalIpc = false;
+                    if (key == "enable_standalone_script") config.enableStandaloneScript = false;
+                }
+                // Debugger section keys
+                if (currentSection == "debugger") {
+                    if (key == "wait_for_ide") config.debugger.waitForIde = false;
+                    if (key == "enable") config.debugger.enable = false;
+                }
+                // Logging section keys
+                if (currentSection == "logging") {
+                    if (key == "console") config.logging.console = false;
+                }
             }
             // 解析整数
             else if (value.find_first_not_of("0123456789") == std::string::npos) {
                 int intValue = std::stoi(value);
-                if (key == "server_port") config.remoteClient.serverPort = intValue;
-                if (key == "listen_port") config.debugger.listenPort = intValue;
-                if (key == "reconnect_interval") config.remoteClient.reconnectInterval = intValue;
-                if (key == "heartbeat_interval") config.remoteClient.heartbeatInterval = intValue;
-                if (key == "connect_timeout") config.remoteClient.connectTimeout = intValue;
-                if (key == "screenshot_cache_size") config.performance.screenshotCacheSize = intValue;
-                if (key == "match_thread_pool_size") config.performance.matchThreadPoolSize = intValue;
-                if (key == "memory_limit_mb") config.performance.memoryLimitMb = intValue;
+                // Remote section keys
+                if (currentSection == "remote") {
+                    if (key == "server_port") config.remoteClient.serverPort = intValue;
+                    if (key == "reconnect_interval") config.remoteClient.reconnectInterval = intValue;
+                    if (key == "heartbeat_interval") config.remoteClient.heartbeatInterval = intValue;
+                    if (key == "connect_timeout") config.remoteClient.connectTimeout = intValue;
+                }
+                // Debugger section keys
+                if (currentSection == "debugger") {
+                    if (key == "listen_port") config.debugger.listenPort = intValue;
+                }
+                // Performance section keys
+                if (currentSection == "performance") {
+                    if (key == "screenshot_cache_size") config.performance.screenshotCacheSize = intValue;
+                    if (key == "match_thread_pool_size") config.performance.matchThreadPoolSize = intValue;
+                    if (key == "memory_limit_mb") config.performance.memoryLimitMb = intValue;
+                }
             }
             // 解析字符串
             else {
                 value = unquote(std::move(value));
-                if (key == "server_ip") config.remoteClient.serverIp = value;
-                if (key == "script_dir") config.standalone.scriptDir = value;
-                if (key == "level") config.logging.level = value;
-                if (key == "file") config.logging.file = value;
+                // Remote section keys
+                if (currentSection == "remote") {
+                    if (key == "server_ip") config.remoteClient.serverIp = value;
+                }
+                // Standalone section keys
+                if (currentSection == "standalone") {
+                    if (key == "script_dir") config.standalone.scriptDir = value;
+                }
+                // Logging section keys
+                if (currentSection == "logging") {
+                    if (key == "level") config.logging.level = value;
+                    if (key == "file") config.logging.file = value;
+                }
             }
         }
     }

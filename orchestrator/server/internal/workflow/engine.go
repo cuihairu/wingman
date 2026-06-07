@@ -364,29 +364,29 @@ func (e *Engine) validateSteps(steps []models.WorkflowStep) error {
 	seenIDs := make(map[string]bool)
 	stepIDs := make(map[string]bool)
 
-	for _, step := range steps {
+	for i := range steps {
 		// 检查 ID 非空
-		if step.ID == "" {
+		if steps[i].ID == "" {
 			return fmt.Errorf("step has empty ID")
 		}
 
 		// 检查 ID 唯一
-		if seenIDs[step.ID] {
-			return fmt.Errorf("duplicate step ID: %s", step.ID)
+		if seenIDs[steps[i].ID] {
+			return fmt.Errorf("duplicate step ID: %s", steps[i].ID)
 		}
-		seenIDs[step.ID] = true
-		stepIDs[step.ID] = true
+		seenIDs[steps[i].ID] = true
+		stepIDs[steps[i].ID] = true
 
 		// 验证脚本路径有效且在 scripts 目录内
-		scriptPath, err := e.store.Resolve(step.Script)
+		scriptPath, err := e.store.Resolve(steps[i].Script)
 		if err != nil {
-			return fmt.Errorf("step %s: invalid script path %q: %w", step.ID, step.Script, err)
+			return fmt.Errorf("step %s: invalid script path %q: %w", steps[i].ID, steps[i].Script, err)
 		}
-		// 将解析后的绝对路径存回 step.Script（供 executeStep 使用）
-		step.Script = scriptPath
+		// 将解析后的绝对路径存回 slice 元素（供 executeStep 使用）
+		steps[i].Script = scriptPath
 
 		// 检查依赖存在
-		for _, dep := range step.DependsOn {
+		for _, dep := range steps[i].DependsOn {
 			if !seenIDs[dep] {
 				// 依赖可能在此步骤之后定义，暂时允许
 				// 会在 detectCycle 中捕获环
@@ -464,7 +464,7 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 		}
 		maps.Copy(data, step.Parameters)
 
-		resp, err := conn.SendCommand("run_script", data)
+		resp, err := conn.SendCommandWithTimeout("run_script", data, timeout)
 		if err != nil {
 			done <- err
 			return

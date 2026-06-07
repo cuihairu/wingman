@@ -122,10 +122,46 @@ public:
 
 			// Increment active thread counter
 			activeThreadCount_++;
+
+			// Add worker thread to vector before releasing lock to prevent race with shutdown
+			workers_.emplace_back([this, url, payload, callback]() {
+				// Emit pending event outside lock
+				EventHub::instance().emit("notify.webhook.pending", {
+					{"url", url},
+					{"payload", payload}
+				}, "notify");
+
+				// Send HTTP request asynchronously
+				try {
+					HttpClient client;
+					std::string jsonBody = payload.dump();
+					HttpResponse response = client.post(url, jsonBody, {});
+
+					bool success = response.isSuccess();
+					std::string error = success ? "" : response.error;
+
+					// Emit result event
+					EventHub::instance().emit(success ? "notify.webhook.success" : "notify.webhook.failed", {
+						{"url", url},
+						{"statusCode", response.statusCode},
+						{"error", error}
+					}, "notify");
+
+					callback(success, error);
+				} catch (const std::exception& e) {
+					EventHub::instance().emit("notify.webhook.failed", {
+						{"url", url},
+						{"error", e.what()}
+					}, "notify");
+					callback(false, e.what());
+				}
+
+				// Decrement active thread counter when done
+				activeThreadCount_--;
+			});
 		}
 
-		// Emit pending event
-		EventHub::instance().emit("notify.webhook.pending", {
+		// Note: pending event moved inside worker lambda
 			{"url", url},
 			{"payload", payload}
 		}, "notify");

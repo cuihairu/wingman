@@ -57,8 +57,8 @@ struct PACK_HEADER {
     uint32_t flags;             // 标志位
     uint64_t originalSize;      // 原始大小
     uint64_t compressedSize;    // 压缩后大小
-    uint8_t keyHash[32];        // 加密密钥
-    uint8_t dataHash[32];       // 数据哈希
+    uint8_t keyHash[32];        // 密钥哈希（SHA-256 of key for verification - NOT the actual key）
+    uint8_t dataHash[32];       // 数据哈希（SHA-256 of original data）
     uint8_t reserved[64];       // 保留
 };
 
@@ -352,21 +352,15 @@ std::optional<LoadedScript> ResourceLoader::loadScript(const std::string& passwo
             }
         }
 
-        // 解密（keyHash 字段存储的是加密密钥，从头部读取用于解密）
-        std::vector<uint8_t> encryptionKey(header.keyHash, header.keyHash + 32);
-        if (std::any_of(encryptionKey.begin(), encryptionKey.end(), [](uint8_t b) { return b != 0; })) {
-            // 有加密，使用存储的加密密钥进行 AES 解密
-            // 注意：packer 顺序是 encrypt → compress，所以 loader 顺序必须是 decompress → decrypt
-            try {
-                payload = impl_->decryptData(payload, encryptionKey);
-                impl_->resourceInfo.encrypted = true;
-                spdlog::info("Decrypted {} bytes", payload.size());
-            } catch (const std::exception& e) {
-                if (errorCallback_) {
-                    errorCallback_(std::string("Decryption failed: ") + e.what());
-                }
-                return std::nullopt;
+        // 解密检查（keyHash 现在存储密钥哈希用于验证，不是实际密钥）
+        // 注意：packer 顺序是 encrypt → compress，所以 loader 顺序必须是 decompress → decrypt
+        if (header.flags & PACK_FLAG_ENCRYPTED) {
+            // 当前版本：暂不支持加密资源的加载，需要密码基础设施
+            // TODO: 实现基于密码的密钥派生 (PBKDF2) 来安全支持加密资源
+            if (errorCallback_) {
+                errorCallback_("Encrypted resources are not supported yet - password-based key derivation required");
             }
+            return std::nullopt;
         }
 
         // 验证哈希（对最终解密后的数据验证）

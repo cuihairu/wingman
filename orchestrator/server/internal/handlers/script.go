@@ -268,9 +268,9 @@ func (h *ScriptHandler) HandleStop(c *gin.Context) {
 	}
 
 	client := onlineAgent.Client
-	if _, err := client.SendCommand("stop_script", map[string]any{
+	if _, err := client.SendCommandWithTimeout("stop_script", map[string]any{
 		"script_id": req.ExecutionID,
-	}); err != nil {
+	}, 10*time.Second); err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": err.Error()})
 		return
 	}

@@ -557,6 +557,19 @@ bool KeyValueStore::load(const std::string& filepath) {
 }
 
 void KeyValueStore::enableAutoSave(const std::string& filepath, int64_t intervalSeconds) {
+    // Prevent restarting if already running to avoid thread overwrite
+    if (m_impl->running.load()) {
+        // Already running - update configuration without restarting threads
+        m_impl->autoSavePath = filepath;
+        m_impl->autoSaveInterval = intervalSeconds;
+        return;
+    }
+
+    // Validate interval to prevent busy loop
+    if (intervalSeconds <= 0) {
+        intervalSeconds = 60; // Default to 60 seconds if invalid
+    }
+
     m_impl->autoSavePath = filepath;
     m_impl->autoSaveInterval = intervalSeconds;
     m_impl->running.store(true);

@@ -65,8 +65,8 @@ struct PACK_HEADER {
     uint32_t flags;             // 标志位
     uint64_t originalSize;      // 原始大小
     uint64_t compressedSize;    // 压缩后大小
-    uint8_t keyHash[32];        // 加密密钥（字段名保留为 keyHash，实际存储加密 key）
-    uint8_t dataHash[32];       // 数据哈希（SHA-256）
+    uint8_t keyHash[32];        // 密钥哈希（SHA-256 of encryption key, for verification only - NOT the actual key）
+    uint8_t dataHash[32];       // 数据哈希（SHA-256 of original data for integrity verification）
     uint8_t reserved[64];       // 保留
 };
 
@@ -257,14 +257,20 @@ public:
             // 生成密钥
             std::vector<uint8_t> key = generateKeyImpl();
             payload = aesEncrypt(data, key);
-            std::memcpy(header.keyHash, key.data(), std::min(key.size(), size_t(32)));
+            // Security: Store hash of key instead of plaintext key for verification only.
+            // Actual encryption key must be provided externally via password for real security.
+            // This design makes encryption meaningful only when used with password protection.
+            std::vector<uint8_t> keyHash = sha256(key);
+            std::memcpy(header.keyHash, keyHash.data(), std::min(keyHash.size(), size_t(32)));
             header.flags |= PACK_FLAG_ENCRYPTED;
         }
 
         if (options.compress) {
+            // Track size before compression for flag setting
+            size_t preCompressSize = payload.size();
             payload = compress(payload);
-            // 只有当压缩确实减小了体积时才标记为已压缩
-            if (payload.size() < data.size()) {
+            // Only set compression flag if compression actually reduced size
+            if (payload.size() < preCompressSize) {
                 header.flags |= PACK_FLAG_COMPRESSED;
             }
         }

@@ -681,7 +681,7 @@ void ScriptManager::logScriptOutput(const std::string& scriptName, const std::st
 }
 
 std::vector<ScriptInfo> ScriptManager::getAllScriptInfos() const {
-	std::lock_guard<std::mutex> lock(m_mutex;
+	std::lock_guard<std::mutex> lock(m_mutex);
 
 	std::vector<ScriptInfo> infos;
 	infos.reserve(m_scripts.size());
@@ -713,7 +713,7 @@ const SandboxConfig& ScriptManager::getSandboxConfig() const {
 // ========== Hot Reload Control ==========
 
 void ScriptManager::setAutoReload(const std::string& name, bool enabled) {
-	std::lock_guard<std::mutex> lock(m_mutex;
+	std::lock_guard<std::mutex> lock(m_mutex);
 
 	auto it = m_scripts.find(name);
 	if (it != m_scripts.end()) {
@@ -722,12 +722,12 @@ void ScriptManager::setAutoReload(const std::string& name, bool enabled) {
 }
 
 void ScriptManager::setGlobalAutoReload(bool enabled) {
-	std::lock_guard<std::mutex> lock(m_mutex;
+	std::lock_guard<std::mutex> lock(m_mutex);
 	m_globalAutoReload = enabled;
 }
 
 void ScriptManager::startHotReload() {
-	std::lock_guard<std::mutex> lock(m_mutex;
+	std::lock_guard<std::mutex> lock(m_mutex);
 
 	if (m_hotReloadRunning) {
 		return;
@@ -858,7 +858,7 @@ bool ScriptManager::loadIniConfig(const std::string& path) {
 void ScriptManager::triggerEvent(const std::string& name, ScriptEvent event, const std::string& message) {
 	ScriptEventCallback callback;
 	{
-		std::lock_guard<std::mutex> lock(m_mutex;
+		std::lock_guard<std::mutex> lock(m_mutex);
 		callback = m_eventCallback;
 	}
 	if (callback) {
