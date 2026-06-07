@@ -50,8 +50,11 @@ struct ScriptConfig {
 enum class ScriptState {
 	unloaded,
 	loaded,
+	starting,   // 正在启动（初始化引擎）
 	running,
 	paused,
+	stopping,   // 正在停止
+	completed,  // 正常完成
 	error
 };
 
@@ -179,7 +182,7 @@ private:
 	std::thread m_hotReloadThread;
 
 	// Create engine and register all modules
-	std::unique_ptr<script::IScriptEngine> createEngineForLanguage(const std::string& language);
+	std::unique_ptr<script::IScriptEngine> createEngineForLanguage(const std::string& language, const ScriptConfig& scriptConfig);
 
 	// Private helpers (caller must NOT hold m_mutex)
 	bool checkTimeLimit(const std::string& name);

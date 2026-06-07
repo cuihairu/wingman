@@ -48,13 +48,15 @@ bool PythonScriptEngine::initialize(const script::EngineConfig& config) {
 		// 创建主模块命名空间
 		mainModule_ = py::module_::import("__main__");
 
-		if (config.sandboxed) {
-			applySandbox(config);
+		// 设置环境变量 (在沙箱之前，因为需要 os 模块)
+		if (!config.sandboxed) {
+			for (const auto& [k, v] : config.env) {
+				py::module_::import("os").attr("environ")[k] = v;
+			}
 		}
 
-		// 设置环境变量
-		for (const auto& [k, v] : config.env) {
-			py::module_::import("os").attr("environ")[k] = v;
+		if (config.sandboxed) {
+			applySandbox(config);
 		}
 
 		// Create the root Wingman package up front so every registered module
@@ -294,6 +296,14 @@ void PythonScriptEngine::applySandbox(const script::EngineConfig& config) {
 	}
 
 	globals_["__builtins__"] = safeBuiltins;
+
+	// 移除危险模块（防止通过 import 访问）
+	globals_["os"] = py::none();
+	globals_["sys"] = py::none();
+	globals_["subprocess"] = py::none();
+	globals_["io"] = py::none();
+	globals_["importlib"] = py::none();
+	globals_["__import__"] = py::none();  // 禁用 import
 }
 
 // ========== 自注册 ==========

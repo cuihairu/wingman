@@ -33,12 +33,13 @@ ScriptManager::~ScriptManager() {
 
 // ========== Engine Creation ==========
 
-std::unique_ptr<script::IScriptEngine> ScriptManager::createEngineForLanguage(const std::string& language) {
+std::unique_ptr<script::IScriptEngine> ScriptManager::createEngineForLanguage(const std::string& language, const ScriptConfig& scriptConfig) {
 	auto engine = script::ScriptEngineFactory::instance().createEngine(language);
 	if (!engine) return nullptr;
 
 	script::EngineConfig config;
-	config.sandboxed = false;
+	// Use script's sandboxed config instead of hardcoded false
+	config.sandboxed = scriptConfig.sandboxed;
 	config.memoryLimit = m_sandboxConfig.memoryLimit;
 	config.instructionLimit = m_sandboxConfig.instructionLimit;
 	config.timeLimitMs = m_sandboxConfig.timeLimitMs;
@@ -289,9 +290,13 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 			stopScript_Locked(name);
 		}
 
+		// Mark as starting (initializing engine)
+		infoPtr->state = ScriptState::starting;
+		infoPtr->lastError.clear();
+
 		// Create engine instance
 		if (!infoPtr->engine) {
-			infoPtr->engine = createEngineForLanguage(infoPtr->language);
+			infoPtr->engine = createEngineForLanguage(infoPtr->language, infoPtr->config);
 			if (!infoPtr->engine) {
 				infoPtr->state = ScriptState::error;
 				infoPtr->lastError = "failed to create engine for language: " + infoPtr->language;
@@ -306,7 +311,7 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 
 	}
 
-	// Execute script file
+	// Execute script file (synchronous execution)
 	if (!infoPtr->engine->executeFile(infoPtr->config.path)) {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		infoPtr->state = ScriptState::error;
@@ -321,6 +326,7 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 			return false;
 		}
 
+		// Now script is actively running
 		infoPtr->state = ScriptState::running;
 		infoPtr->lastLoaded = std::chrono::duration_cast<std::chrono::milliseconds>(
 			std::chrono::steady_clock::now().time_since_epoch()
@@ -354,8 +360,20 @@ bool ScriptManager::stopScript_Locked(const std::string& name) {
 		return false;
 	}
 
-	if (it->second->state != ScriptState::running && it->second->state != ScriptState::paused) {
+	if (it->second->state != ScriptState::running &&
+		it->second->state != ScriptState::paused &&
+		it->second->state != ScriptState::starting) {
 		return false;
+	}
+
+	// Mark as stopping (in cooperative model, script should check this)
+	it->second->state = ScriptState::stopping;
+
+	// For synchronous execution model, transition directly to loaded
+	// In async model, this would wait for the script to actually stop
+	if (it->second->engine) {
+		it->second->engine->shutdown();
+		it->second->engine.reset();
 	}
 
 	it->second->state = ScriptState::loaded;
@@ -611,7 +629,7 @@ void ScriptManager::logScriptOutput(const std::string& scriptName, const std::st
 }
 
 std::vector<ScriptInfo> ScriptManager::getAllScriptInfos() const {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::mutex> lock(m_mutex;
 
 	std::vector<ScriptInfo> infos;
 	infos.reserve(m_scripts.size());
@@ -643,7 +661,7 @@ const SandboxConfig& ScriptManager::getSandboxConfig() const {
 // ========== Hot Reload Control ==========
 
 void ScriptManager::setAutoReload(const std::string& name, bool enabled) {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::mutex> lock(m_mutex;
 
 	auto it = m_scripts.find(name);
 	if (it != m_scripts.end()) {
@@ -652,12 +670,12 @@ void ScriptManager::setAutoReload(const std::string& name, bool enabled) {
 }
 
 void ScriptManager::setGlobalAutoReload(bool enabled) {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::mutex> lock(m_mutex;
 	m_globalAutoReload = enabled;
 }
 
 void ScriptManager::startHotReload() {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::mutex> lock(m_mutex;
 
 	if (m_hotReloadRunning) {
 		return;
@@ -676,7 +694,7 @@ void ScriptManager::stopHotReload() {
 	std::thread threadToJoin;
 
 	{
-		std::lock_guard<std::mutex> lock(m_mutex);
+		std::lock_guard<std::mutex> lock(m_mutex;
 		if (!m_hotReloadRunning) {
 			return;
 		}
@@ -788,7 +806,7 @@ bool ScriptManager::loadIniConfig(const std::string& path) {
 void ScriptManager::triggerEvent(const std::string& name, ScriptEvent event, const std::string& message) {
 	ScriptEventCallback callback;
 	{
-		std::lock_guard<std::mutex> lock(m_mutex);
+		std::lock_guard<std::mutex> lock(m_mutex;
 		callback = m_eventCallback;
 	}
 	if (callback) {

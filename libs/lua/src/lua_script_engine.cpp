@@ -26,19 +26,28 @@ bool LuaScriptEngine::initialize(const script::EngineConfig& config) {
 	if (initialized_) return true;
 
 	try {
-		lua_.open_libraries(
-			sol::lib::base,
-			sol::lib::package,
-			sol::lib::string,
-			sol::lib::table,
-			sol::lib::math,
-			sol::lib::io,
-			sol::lib::os,
-			sol::lib::debug
-		);
-
 		if (config.sandboxed) {
+			// Sandbox mode: only open safe libraries
+			lua_.open_libraries(
+				sol::lib::base,
+				sol::lib::string,
+				sol::lib::table,
+				sol::lib::math
+			);
+			// Explicitly remove dangerous modules (even though they weren't loaded above)
 			applySandbox(config);
+		} else {
+			// Non-sandbox mode: open all libraries
+			lua_.open_libraries(
+				sol::lib::base,
+				sol::lib::package,
+				sol::lib::string,
+				sol::lib::table,
+				sol::lib::math,
+				sol::lib::io,
+				sol::lib::os,
+				sol::lib::debug
+			);
 		}
 
 		// 设置环境变量到 registry
@@ -200,8 +209,13 @@ void LuaScriptEngine::applySandbox(const script::EngineConfig& /*config*/) {
 	// 移除危险库和函数
 	lua_["io"] = sol::lua_nil;
 	lua_["os"] = sol::lua_nil;
+	lua_["debug"] = sol::lua_nil;
+	lua_["package"] = sol::lua_nil;
+	// 移除文件加载函数
 	lua_["dofile"] = sol::lua_nil;
 	lua_["loadfile"] = sol::lua_nil;
+	lua_["load"] = sol::lua_nil;
+	lua_["require"] = sol::lua_nil;
 }
 
 // ========== 自注册 ==========

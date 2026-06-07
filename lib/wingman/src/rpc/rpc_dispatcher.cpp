@@ -36,10 +36,18 @@ std::string RpcDispatcher::dispatch(const std::string& rawMessage) {
 
     try {
         json result = it->second(params);
+        // If handler returns a data object with success field, use it directly
+        // Otherwise wrap in success=true for backward compatibility
+        json responseData;
+        if (result.is_object() && result.contains("success")) {
+            responseData = result;
+        } else {
+            responseData = {{"success", true}, {"result", result}};
+        }
         return json{
             {"type", "response"},
             {"id", id},
-            {"data", {{"success", true}, {"result", result}}}
+            {"data", responseData}
         }.dump();
     } catch (const std::exception& e) {
         spdlog::error("RPC handler error for {}: {}", method, e.what());

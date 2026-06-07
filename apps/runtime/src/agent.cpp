@@ -197,9 +197,13 @@ CommandResult Agent::handleRemoteCommand(const std::string& command, const Comma
         // 加载并启动脚本
         std::string scriptId = impl_->standaloneMode->loadScript(pathIt->second);
         if (!scriptId.empty()) {
-            impl_->standaloneMode->startScript(scriptId);
-            spdlog::info("Script started: {} (path: {})", scriptId, pathIt->second);
-            return CommandResult::ok("script started: " + scriptId);
+            if (impl_->standaloneMode->startScript(scriptId)) {
+                spdlog::info("Script started: {} (path: {})", scriptId, pathIt->second);
+                return CommandResult::ok("script started: " + scriptId);
+            } else {
+                spdlog::error("Failed to start script: {}", scriptId);
+                return CommandResult::error("failed to start script: " + scriptId);
+            }
         } else {
             spdlog::error("Failed to load script: {}", pathIt->second);
             return CommandResult::error("failed to load script: " + pathIt->second);
@@ -225,9 +229,13 @@ CommandResult Agent::handleRemoteCommand(const std::string& command, const Comma
         auto scriptIdIt = data.find("script_id");
         if (scriptIdIt != data.end() && !scriptIdIt->second.empty()) {
             if (impl_->standaloneMode) {
-                impl_->standaloneMode->stopScript(scriptIdIt->second);
-                spdlog::info("Script stopped: {}", scriptIdIt->second);
-                return CommandResult::ok("script stopped: " + scriptIdIt->second);
+                if (impl_->standaloneMode->stopScript(scriptIdIt->second)) {
+                    spdlog::info("Script stopped: {}", scriptIdIt->second);
+                    return CommandResult::ok("script stopped: " + scriptIdIt->second);
+                } else {
+                    spdlog::error("Failed to stop script: {}", scriptIdIt->second);
+                    return CommandResult::error("failed to stop script: " + scriptIdIt->second);
+                }
             } else {
                 return CommandResult::error("StandaloneMode not available");
             }
