@@ -216,7 +216,7 @@ end
 网络请求与数据处理。
 
 - [http](./http) - HTTP 客户端（GET、POST、下载）
-- [transport](./transport) - TCP 客户端与服务器
+- [transport](./transport) - TCP 客户端、服务器与 UDP Socket
 - [inbox](./inbox) - 消息收件箱（基于 TCP）
 - [json](./json) - JSON 解析与序列化
 - [kv](./kv) - 持久化键值存储
