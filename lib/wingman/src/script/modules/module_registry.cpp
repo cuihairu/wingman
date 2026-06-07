@@ -27,6 +27,7 @@ ModuleDescriptor createHumanModule();
 ModuleDescriptor createDebuggerModule();
 ModuleDescriptor createUIAutomationModule();
 ModuleDescriptor createHttpModule();
+ModuleDescriptor createTransportModule();
 ModuleDescriptor createJsonModule();
 ModuleDescriptor createKvModule();
 ModuleDescriptor createEventModule();
@@ -59,6 +60,7 @@ std::vector<ModuleDescriptor> getAllModules() {
 	modules.push_back(createDebuggerModule());
 	modules.push_back(createUIAutomationModule());
 	modules.push_back(createHttpModule());
+	modules.push_back(createTransportModule());
 	modules.push_back(createJsonModule());
 	modules.push_back(createKvModule());
 	modules.push_back(createEventModule());

@@ -99,6 +99,7 @@ set(WINGMAN_SOURCES
     src/script/modules/human_module.cpp
     src/script/modules/debugger_module.cpp
     src/script/modules/http_module.cpp
+    src/script/modules/transport_module.cpp
     src/script/modules/json_module.cpp
     src/script/modules/kv_module.cpp
     src/script/modules/event_module.cpp
@@ -283,6 +284,23 @@ target_link_libraries(wingman PRIVATE spdlog::spdlog_header_only)
 # OpenSSL for AES-256-GCM encryption
 find_package(OpenSSL REQUIRED)
 target_link_libraries(wingman PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+
+# hiredis for Redis client (remote events)
+find_package(hiredis CONFIG QUIET)
+if(hiredis_FOUND)
+    target_link_libraries(wingman PUBLIC hiredis::hiredis)
+    target_compile_definitions(wingman PUBLIC WINGMAN_HAS_HIREDIS)
+    message(STATUS "Wingman: remote events enabled (hiredis)")
+else()
+    message(STATUS "Wingman: remote events disabled (hiredis not found)")
+endif()
+
+# Transport library for networking (TCP/UDP)
+if(TARGET wingman::transport)
+    target_link_libraries(wingman PUBLIC wingman::transport)
+    target_compile_definitions(wingman PUBLIC WINGMAN_HAS_TRANSPORT)
+    message(STATUS "Wingman: linking wingman::transport")
+endif()
 
 # Windows-specific libraries
 if(WIN32)

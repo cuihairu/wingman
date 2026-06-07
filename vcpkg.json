@@ -47,6 +47,10 @@
     {
       "$comment": "OpenSSL for AES-256-GCM encryption",
       "name": "openssl"
+    },
+    {
+      "$comment": "hiredis for Redis client (remote events)",
+      "name": "hiredis"
     }
   ],
   "features": {
