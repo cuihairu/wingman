@@ -43,6 +43,10 @@
     {
       "$comment": "Protobuf for Agent-Server communication",
       "name": "protobuf"
+    },
+    {
+      "$comment": "OpenSSL for AES-256-GCM encryption",
+      "name": "openssl"
     }
   ],
   "features": {

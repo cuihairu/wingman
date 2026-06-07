@@ -14,6 +14,7 @@ ModuleDescriptor createUtilModule();
 ModuleDescriptor createSystemModule();
 ModuleDescriptor createPerformanceModule();
 ModuleDescriptor createSecurityModule();
+ModuleDescriptor createCryptoModule();
 ModuleDescriptor createGameProfileModule();
 ModuleDescriptor createVisionModule();
 ModuleDescriptor createOcrModule();
@@ -45,6 +46,7 @@ std::vector<ModuleDescriptor> getAllModules() {
 	modules.push_back(createSystemModule());
 	modules.push_back(createPerformanceModule());
 	modules.push_back(createSecurityModule());
+	modules.push_back(createCryptoModule());
 	modules.push_back(createGameProfileModule());
 	modules.push_back(createVisionModule());
 	modules.push_back(createOcrModule());

@@ -797,4 +797,5 @@ std::string SecurityManager::filterSensitive(const std::string& input) {
     return output;
 }
 
+
 } // namespace wingman

@@ -107,13 +107,13 @@ public:
     // These functions use simple XOR which provides NO real security.
     // They are only suitable for basic obfuscation to hide data from casual inspection.
     // DO NOT use for protecting sensitive data, passwords, or secrets.
-    // For proper encryption, use AES-256-GCM with proper key derivation.
+    // For proper encryption, use the crypto module (crypto.encryptAES, crypto.decryptAES).
     //
-    // @deprecated Use proper encryption libraries (OpenSSL, libsodium) instead
-    [[deprecated("XOR obfuscation is not secure. Use proper encryption like AES-256-GCM.")]]
+    // @deprecated Use the crypto module instead for proper encryption
+    [[deprecated("XOR obfuscation is not secure. Use crypto.encryptAES instead.")]]
     static std::string encryptString(const std::string& input, const std::string& key);
 
-    [[deprecated("XOR obfuscation is not secure. Use proper encryption like AES-256-GCM.")]]
+    [[deprecated("XOR obfuscation is not secure. Use crypto.decryptAES instead.")]]
     static std::string decryptString(const std::string& input, const std::string& key);
 
     // Generate random string

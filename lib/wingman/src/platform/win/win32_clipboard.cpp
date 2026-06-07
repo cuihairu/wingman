@@ -371,7 +371,7 @@ bool Win32Clipboard::setFiles(const std::vector<std::string>& files) {
         }
 
         // Check for overflow
-        if (totalSize > MAXSIZE - static_cast<SIZE_T>(wideSize * sizeof(wchar_t))) {
+        if (totalSize > SIZE_MAX - static_cast<SIZE_T>(wideSize * sizeof(wchar_t))) {
             spdlog::error("[Win32Clipboard] Total size overflow when calculating file list size");
             closeClipboard();
             return false;
@@ -379,7 +379,7 @@ bool Win32Clipboard::setFiles(const std::vector<std::string>& files) {
         totalSize += wideSize * sizeof(wchar_t);
     }
     // Null terminator
-    if (totalSize > MAXSIZE - sizeof(wchar_t)) {
+    if (totalSize > SIZE_MAX - sizeof(wchar_t)) {
         spdlog::error("[Win32Clipboard] Total size overflow when adding null terminator");
         closeClipboard();
         return false;

@@ -54,6 +54,7 @@ set(WINGMAN_SOURCES
 
     # System modules (note: performance.cpp needs OpenCV, added later)
     src/security.cpp
+    src/crypt.cpp
 
     # Storage
     src/storage.cpp
@@ -88,6 +89,7 @@ set(WINGMAN_SOURCES
     src/script/modules/util_module.cpp
     src/script/modules/system_module.cpp
     src/script/modules/security_module.cpp
+    src/script/modules/crypto_module.cpp
     src/script/modules/performance_module.cpp
     src/script/modules/game_profile_module.cpp
     src/script/modules/vision_module.cpp
@@ -277,6 +279,10 @@ if(APPLE)
 endif()
 # spdlog uses header-only, no transitive link dependencies
 target_link_libraries(wingman PRIVATE spdlog::spdlog_header_only)
+
+# OpenSSL for AES-256-GCM encryption
+find_package(OpenSSL REQUIRED)
+target_link_libraries(wingman PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 
 # Windows-specific libraries
 if(WIN32)
