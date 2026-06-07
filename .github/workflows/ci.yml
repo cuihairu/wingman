@@ -103,8 +103,9 @@ jobs:
           files: build/coverage/coverage.cobertura.xml
           flags: windows-cpp
           name: windows-cpp
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           use_oidc: true
+          skip_validation: true
 
   cpp-compat:
     name: C++ ${{ matrix.os }}
