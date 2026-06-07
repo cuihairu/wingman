@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/binary"
 	"encoding/json"
+	"maps"
 	"fmt"
 	"io"
 	"log"
@@ -12,13 +13,13 @@ import (
 	"unsafe"
 )
 
-// Broadcaster WebSocket 广播接口（避免循环依赖 internal/agent ↔ pkg/websocket）
+// Broadcaster avoids circular dependency between internal/agent and pkg/websocket.
 type Broadcaster interface {
-	BroadcastAgentEvent(eventType string, data interface{})
-	BroadcastEvent(eventType string, data interface{})
+	BroadcastAgentEvent(eventType string, data any)
+	BroadcastEvent(eventType string, data any)
 }
 
-// AgentRegistrar Agent 注册接口（避免循环依赖）
+// AgentRegistrar avoids circular dependency.
 type AgentRegistrar interface {
 	Register(agentID, hostname, ip string, conn any)
 	Unregister(agentID string)
@@ -27,37 +28,52 @@ type AgentRegistrar interface {
 	SetClient(agentID string, conn any)
 }
 
-// AgentConnection Agent TCP 连接接口
+// AgentConnection is the interface for sending commands to a runtime agent.
 type AgentConnection interface {
-	SendCommand(method string, data map[string]interface{}) (map[string]interface{}, error)
+	SendCommand(method string, data map[string]any) (map[string]any, error)
 	Close()
 }
 
-// ScriptOutputHandler 脚本输出回调
+// ScriptOutputHandler is called when script output is received.
 type ScriptOutputHandler func(agentID string, data map[string]any)
 
-// FrameListener TCP 监听器，接受 runtime 的 outbound 连接
-type FrameListener struct {
-	listener   net.Listener
-	registry   AgentRegistrar
-	broadcast  Broadcaster
-	conns      map[string]*agentConn
-	mu         sync.RWMutex
-	connCount  uint64
-	stopCh     chan struct{}
-	onScript   ScriptOutputHandler // 脚本输出回调（用于持久化日志）
+// pendingResponse tracks an in-flight command awaiting a response.
+type pendingResponse struct {
+	ch chan *messageOrError
 }
 
-// agentConn 一个 agent TCP 连接
+type messageOrError struct {
+	msg map[string]any
+	err error
+}
+
+// FrameListener accepts outbound TCP connections from runtimes.
+type FrameListener struct {
+	listener  net.Listener
+	registry  AgentRegistrar
+	broadcast Broadcaster
+	conns     map[string]*agentConn
+	mu        sync.RWMutex
+	connCount uint64
+	stopCh    chan struct{}
+	onScript  ScriptOutputHandler
+}
+
+// agentConn represents a single agent TCP connection.
 type agentConn struct {
 	id       string
 	conn     net.Conn
 	agentID  string
 	listener *FrameListener
-	mu       sync.Mutex
+
+	// Only readLoop reads from conn. SendCommand registers a pending
+	// response keyed by sequence number; readLoop dispatches to it.
+	mu      sync.Mutex // protects writes + pending map
+	nextSeq uint32
+	pending map[uint32]*pendingResponse
 }
 
-// NewFrameListener 创建 TCP 监听器
+// NewFrameListener creates a TCP listener for runtime connections.
 func NewFrameListener(registry AgentRegistrar, broadcast Broadcaster) *FrameListener {
 	return &FrameListener{
 		registry:  registry,
@@ -67,7 +83,6 @@ func NewFrameListener(registry AgentRegistrar, broadcast Broadcaster) *FrameList
 	}
 }
 
-// listenerEndian 包级字节序
 var listenerEndian = func() binary.ByteOrder {
 	var x uint16 = 0x0102
 	if *(*byte)(unsafe.Pointer(&x)) == 0x02 {
@@ -76,12 +91,12 @@ var listenerEndian = func() binary.ByteOrder {
 	return binary.BigEndian
 }()
 
-// SetScriptOutputHandler 设置脚本输出回调
+// SetScriptOutputHandler sets the callback for script output events.
 func (l *FrameListener) SetScriptOutputHandler(handler ScriptOutputHandler) {
 	l.onScript = handler
 }
 
-// Start 启动监听
+// Start begins listening for connections.
 func (l *FrameListener) Start(addr string) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -94,7 +109,7 @@ func (l *FrameListener) Start(addr string) error {
 	return nil
 }
 
-// Stop 停止监听
+// Stop shuts down the listener and all connections.
 func (l *FrameListener) Stop() {
 	close(l.stopCh)
 	if l.listener != nil {
@@ -108,7 +123,7 @@ func (l *FrameListener) Stop() {
 	l.mu.Unlock()
 }
 
-// acceptLoop 接受连接循环
+// acceptLoop accepts incoming connections.
 func (l *FrameListener) acceptLoop() {
 	for {
 		select {
@@ -132,9 +147,10 @@ func (l *FrameListener) acceptLoop() {
 		connID := fmt.Sprintf("agent_conn_%d", n)
 
 		ac := &agentConn{
-			id:       connID,
-			conn:     conn,
+			id:      connID,
+			conn:    conn,
 			listener: l,
+			pending: make(map[uint32]*pendingResponse),
 		}
 
 		l.mu.Lock()
@@ -146,66 +162,76 @@ func (l *FrameListener) acceptLoop() {
 	}
 }
 
-// SendCommand 实现 AgentConnection 接口
-func (ac *agentConn) SendCommand(method string, data map[string]interface{}) (map[string]interface{}, error) {
+// SendCommand sends a command and waits for the response via readLoop dispatch.
+func (ac *agentConn) SendCommand(method string, data map[string]any) (map[string]any, error) {
 	ac.mu.Lock()
-	defer ac.mu.Unlock()
 
-	req := map[string]interface{}{
-		"type":   method,
-		"method": method,
+	seq := ac.nextSeq
+	ac.nextSeq++
+
+	req := map[string]any{
+		"type":     method,
+		"method":   method,
+		"sequence": float64(seq), // tell the runtime the sequence
 	}
-	for k, v := range data {
-		req[k] = v
-	}
+	maps.Copy(req, data)
 
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
+		ac.mu.Unlock()
 		return nil, err
 	}
 
 	header := MessageHeader{
-		Length: uint32(len(reqBytes)),
-		Type:   Request,
+		Length:   uint32(len(reqBytes)),
+		Type:     Request,
+		Sequence: seq,
 	}
-	if err := ac.writeMsgHeader(&header); err != nil {
+	if err := ac.writeMsgHeaderLocked(&header); err != nil {
+		ac.mu.Unlock()
 		return nil, err
 	}
 	if _, err := ac.conn.Write(reqBytes); err != nil {
+		ac.mu.Unlock()
 		return nil, err
 	}
 
-	// 读取响应
-	respHeader, err := ac.readMsgHeader()
-	if err != nil {
-		return nil, err
-	}
+	// Register pending response before unlocking so readLoop can't miss it.
+	p := &pendingResponse{ch: make(chan *messageOrError, 1)}
+	ac.pending[seq] = p
+	ac.mu.Unlock()
 
-	if respHeader.Length > maxResponseSize {
-		return nil, fmt.Errorf("response too large: %d", respHeader.Length)
-	}
+	// Wait for readLoop to deliver the response.
+	result := <-p.ch
 
-	respBody := make([]byte, respHeader.Length)
-	if _, err := io.ReadFull(ac.conn, respBody); err != nil {
-		return nil, err
-	}
+	// Clean up the pending entry.
+	ac.mu.Lock()
+	delete(ac.pending, seq)
+	ac.mu.Unlock()
 
-	var resp map[string]interface{}
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, err
-	}
-	return resp, nil
+	return result.msg, result.err
 }
 
-// Close 关闭连接
+// Close closes the connection.
 func (ac *agentConn) Close() {
 	ac.conn.Close()
 }
 
-// readLoop 读取消息循环
+// readLoop is the sole reader from the TCP connection.
+// It dispatches Response frames to the matching SendCommand caller;
+// all other frames are handled inline.
 func (ac *agentConn) readLoop() {
 	defer func() {
 		ac.conn.Close()
+
+		// Fail any pending commands so their goroutines don't hang.
+		ac.mu.Lock()
+		for seq, p := range ac.pending {
+			p.ch <- &messageOrError{err: fmt.Errorf("connection closed")}
+			delete(ac.pending, seq)
+		}
+		ac.mu.Unlock()
+
 		ac.listener.mu.Lock()
 		delete(ac.listener.conns, ac.id)
 		ac.listener.mu.Unlock()
@@ -244,11 +270,41 @@ func (ac *agentConn) readLoop() {
 			}
 		}
 
+		// If this is a Response with a sequence number, dispatch to the caller.
+		if header.Type == Response && header.Sequence > 0 {
+			ac.dispatchResponse(header.Sequence, body)
+			continue
+		}
+
 		ac.handleMessage(header, body)
 	}
 }
 
-// handleMessage 处理收到的消息
+// dispatchResponse delivers a response frame to the waiting SendCommand.
+func (ac *agentConn) dispatchResponse(seq uint32, body []byte) {
+	var msg map[string]any
+	if err := json.Unmarshal(body, &msg); err != nil {
+		// Still deliver the error so the caller doesn't hang.
+		ac.mu.Lock()
+		if p, ok := ac.pending[seq]; ok {
+			p.ch <- &messageOrError{err: fmt.Errorf("json parse error: %w", err)}
+		}
+		ac.mu.Unlock()
+		return
+	}
+
+	ac.mu.Lock()
+	p, ok := ac.pending[seq]
+	ac.mu.Unlock()
+
+	if ok {
+		p.ch <- &messageOrError{msg: msg}
+	} else {
+		log.Printf("[FrameListener] Orphan response for seq %d", seq)
+	}
+}
+
+// handleMessage processes inbound messages that are not command responses.
 func (ac *agentConn) handleMessage(header *MessageHeader, body []byte) {
 	switch header.Type {
 	case Notify:
@@ -260,9 +316,8 @@ func (ac *agentConn) handleMessage(header *MessageHeader, body []byte) {
 	}
 }
 
-// handleNotify 处理 Notify 消息
+// handleNotify processes Notify messages.
 func (ac *agentConn) handleNotify(body []byte) {
-	// 处理原始心跳（PING 文本）
 	if len(body) == 4 && string(body) == "PING" {
 		ac.sendPong()
 		if ac.agentID != "" {
@@ -271,7 +326,7 @@ func (ac *agentConn) handleNotify(body []byte) {
 		return
 	}
 
-	var msg map[string]interface{}
+	var msg map[string]any
 	if err := json.Unmarshal(body, &msg); err != nil {
 		log.Printf("[FrameListener] JSON parse error: %v", err)
 		return
@@ -291,9 +346,9 @@ func (ac *agentConn) handleNotify(body []byte) {
 	}
 }
 
-// handleRequest 处理 Request 消息
-func (ac *agentConn) handleRequest(header *MessageHeader, body []byte) {
-	resp := map[string]interface{}{
+// handleRequest processes Request messages (runtime asking the server).
+func (ac *agentConn) handleRequest(header *MessageHeader, _ []byte) {
+	resp := map[string]any{
 		"success": true,
 	}
 	respBytes, _ := json.Marshal(resp)
@@ -305,13 +360,13 @@ func (ac *agentConn) handleRequest(header *MessageHeader, body []byte) {
 	}
 
 	ac.mu.Lock()
-	ac.writeMsgHeader(&respHeader)
+	ac.writeMsgHeaderLocked(&respHeader)
 	ac.conn.Write(respBytes)
 	ac.mu.Unlock()
 }
 
-// handleRegister 处理 agent 注册
-func (ac *agentConn) handleRegister(msg map[string]interface{}) {
+// handleRegister processes agent registration.
+func (ac *agentConn) handleRegister(msg map[string]any) {
 	agentID, _ := msg["agentId"].(string)
 	hostname, _ := msg["hostname"].(string)
 
@@ -323,7 +378,7 @@ func (ac *agentConn) handleRegister(msg map[string]interface{}) {
 	ac.listener.registry.Register(agentID, hostname, ac.conn.RemoteAddr().String(), ac)
 	ac.listener.registry.SetClient(agentID, ac)
 
-	ac.sendNotify("agent.register_ack", map[string]interface{}{
+	ac.sendNotify("agent.register_ack", map[string]any{
 		"success": true,
 		"agentId": agentID,
 	})
@@ -331,8 +386,8 @@ func (ac *agentConn) handleRegister(msg map[string]interface{}) {
 	log.Printf("[FrameListener] Agent registered: %s (%s)", agentID, hostname)
 }
 
-// handleHeartbeat 处理心跳上报
-func (ac *agentConn) handleHeartbeat(msg map[string]interface{}) {
+// handleHeartbeat processes heartbeat reports.
+func (ac *agentConn) handleHeartbeat(msg map[string]any) {
 	if ac.agentID == "" {
 		return
 	}
@@ -346,14 +401,13 @@ func (ac *agentConn) handleHeartbeat(msg map[string]interface{}) {
 	ac.listener.registry.UpdateStatus(ac.agentID, status, resources)
 }
 
-// handleEvent 处理事件上报
-func (ac *agentConn) handleEvent(msg map[string]interface{}) {
+// handleEvent processes agent events.
+func (ac *agentConn) handleEvent(msg map[string]any) {
 	event, _ := msg["event"].(string)
 	data := msg["data"]
 
 	switch event {
 	case "script_output":
-		// 持久化日志
 		if ac.listener.onScript != nil {
 			dataMap, _ := data.(map[string]any)
 			if dataMap == nil {
@@ -361,12 +415,12 @@ func (ac *agentConn) handleEvent(msg map[string]interface{}) {
 			}
 			ac.listener.onScript(ac.agentID, dataMap)
 		}
-		ac.listener.broadcast.BroadcastEvent("script", map[string]interface{}{
+		ac.listener.broadcast.BroadcastEvent("script", map[string]any{
 			"event": "output",
 			"data":  data,
 		})
 	case "trigger_fired":
-		ac.listener.broadcast.BroadcastAgentEvent("trigger_fired", map[string]interface{}{
+		ac.listener.broadcast.BroadcastAgentEvent("trigger_fired", map[string]any{
 			"agentId": ac.agentID,
 			"data":    data,
 		})
@@ -375,7 +429,7 @@ func (ac *agentConn) handleEvent(msg map[string]interface{}) {
 	}
 }
 
-// sendPong 发送 PONG
+// sendPong sends a PONG reply.
 func (ac *agentConn) sendPong() {
 	ac.mu.Lock()
 	defer ac.mu.Unlock()
@@ -384,18 +438,16 @@ func (ac *agentConn) sendPong() {
 		Length: 4,
 		Type:   Notify,
 	}
-	ac.writeMsgHeader(&header)
+	ac.writeMsgHeaderLocked(&header)
 	ac.conn.Write([]byte("PONG"))
 }
 
-// sendNotify 发送 Notify 消息
-func (ac *agentConn) sendNotify(msgType string, data map[string]interface{}) {
-	msg := map[string]interface{}{
+// sendNotify sends a Notify message.
+func (ac *agentConn) sendNotify(msgType string, data map[string]any) {
+	msg := map[string]any{
 		"type": msgType,
 	}
-	for k, v := range data {
-		msg[k] = v
-	}
+	maps.Copy(msg, data)
 
 	body, _ := json.Marshal(msg)
 
@@ -406,12 +458,12 @@ func (ac *agentConn) sendNotify(msgType string, data map[string]interface{}) {
 		Length: uint32(len(body)),
 		Type:   Notify,
 	}
-	ac.writeMsgHeader(&header)
+	ac.writeMsgHeaderLocked(&header)
 	ac.conn.Write(body)
 }
 
-// writeMsgHeader 写入消息头
-func (ac *agentConn) writeMsgHeader(h *MessageHeader) error {
+// writeMsgHeaderLocked writes a message header. Caller must hold ac.mu.
+func (ac *agentConn) writeMsgHeaderLocked(h *MessageHeader) error {
 	buf := make([]byte, messageHeaderSize)
 	listenerEndian.PutUint32(buf[0:4], h.Length)
 	listenerEndian.PutUint32(buf[4:8], h.Sequence)
@@ -422,7 +474,7 @@ func (ac *agentConn) writeMsgHeader(h *MessageHeader) error {
 	return err
 }
 
-// readMsgHeader 读取消息头
+// readMsgHeader reads a message header.
 func (ac *agentConn) readMsgHeader() (*MessageHeader, error) {
 	buf := make([]byte, messageHeaderSize)
 	if _, err := io.ReadFull(ac.conn, buf); err != nil {
