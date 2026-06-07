@@ -3,13 +3,14 @@ package agent
 import (
 	"encoding/binary"
 	"encoding/json"
-	"maps"
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"net"
 	"sync"
 	"sync/atomic"
+	"time"
 	"unsafe"
 )
 
@@ -31,6 +32,7 @@ type AgentRegistrar interface {
 // AgentConnection is the interface for sending commands to a runtime agent.
 type AgentConnection interface {
 	SendCommand(method string, data map[string]any) (map[string]any, error)
+	SendCommandWithTimeout(method string, data map[string]any, timeout time.Duration) (map[string]any, error)
 	Close()
 }
 

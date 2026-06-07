@@ -2,24 +2,26 @@
 #include "wingman/runtime/agent.hpp"
 #include "wingman/version.hpp"
 #include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/stdout_sinks.h>
+#include <atomic>
 #include <chrono>
 #include <csignal>
+#include <condition_variable>
 #include <exception>
+#include <mutex>
 #include <memory>
-#include <thread>
 
 namespace wingman::runtime::commands {
 
 namespace {
 
-Agent* g_agent = nullptr;
+// Async-signal-safe: only sets an atomic flag. The main loop polls
+// this flag and performs the actual shutdown (spdlog, agent.stop)
+// outside the signal handler.
+std::atomic<bool> g_shutdownRequested{false};
 
-void signalHandler(int signal) {
-    spdlog::info("Received signal {}, shutting down...", signal);
-    if (g_agent) {
-        g_agent->stop();
-    }
+void signalHandler(int /*signal*/) {
+    g_shutdownRequested.store(true);
 }
 
 } // anonymous namespace
@@ -31,20 +33,31 @@ int startCommand(const std::string& configPath) {
 }
 
 int startCommand(const StartOptions& options) {
-    // 初始化日志
-    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_st>();
-    spdlog::default_logger()->sinks().push_back(consoleSink);
+    // Initialize logging using spdlog's default logger
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
+
+    // Create and set a console logger using spdlog factory
+    try {
+        auto logger = spdlog::stdout_logger_st("wingman");
+        spdlog::register_logger(logger);
+        spdlog::set_default_logger(logger);
+    } catch (const spdlog::spdlog_ex& ex) {
+        // Logger already registered, use existing
+        auto existing = spdlog::get("wingman");
+        if (existing) {
+            spdlog::set_default_logger(existing);
+        }
+    }
 
     spdlog::info("Wingman Agent {}", WINGMAN_VERSION);
     spdlog::info("====================");
 
-    // 创建 Agent
+    // Create Agent
     wingman::runtime::Agent agent;
 
-    // 设置信号处理
-    g_agent = &agent;
+    // Set signal handlers — only writes to an atomic flag
+    g_shutdownRequested.store(false);
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
 
@@ -52,7 +65,7 @@ int startCommand(const StartOptions& options) {
     std::signal(SIGBREAK, signalHandler);
 #endif
 
-    // 初始化
+    // Initialize
     if (options.forceStandalone) {
         AgentConfig config;
         try {
@@ -72,21 +85,32 @@ int startCommand(const StartOptions& options) {
         }
     }
 
-    // 启动
+    // Start
     if (!agent.start()) {
         spdlog::warn("Some modes failed to start, but agent will continue running");
     }
 
     spdlog::info("Agent is running. Press Ctrl+C to stop.");
 
-    // 主循环
-    while (agent.isRunning()) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+    // Main loop — wait on condition variable with 250ms timeout.
+    // Responds to shutdown within 250ms instead of 1s, and doesn't
+    // need busy-polling.
+    std::mutex mtx;
+    std::condition_variable cv;
+
+    while (agent.isRunning() && !g_shutdownRequested.load()) {
+        std::unique_lock lock(mtx);
+        cv.wait_for(lock, std::chrono::milliseconds(250), [] {
+            return g_shutdownRequested.load();
+        });
     }
 
-    // 清理
+    // Cleanup
+    if (g_shutdownRequested.load()) {
+        spdlog::info("Shutdown signal received, stopping agent...");
+    }
+
     agent.shutdown();
-    g_agent = nullptr;
 
     spdlog::info("Agent stopped. Goodbye!");
     return 0;

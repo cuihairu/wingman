@@ -65,8 +65,8 @@ struct PACK_HEADER {
     uint32_t flags;             // 标志位
     uint64_t originalSize;      // 原始大小
     uint64_t compressedSize;    // 压缩后大小
-    uint8_t keyHash[32];        // 密钥哈希
-    uint8_t dataHash[32];       // 数据哈希
+    uint8_t keyHash[32];        // 加密密钥（字段名保留为 keyHash，实际存储加密 key）
+    uint8_t dataHash[32];       // 数据哈希（SHA-256）
     uint8_t reserved[64];       // 保留
 };
 

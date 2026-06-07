@@ -84,14 +84,16 @@ fn validate_platform_endpoint(endpoint: &str) -> Result<(), String> {
         return Ok(());
     }
 
-    // Absolute path — only allowed under /tmp/ with safe path segments
+    // Absolute path — allowed under /tmp/ or XDG_RUNTIME_DIR with safe segments
     if !endpoint.starts_with('/') {
         return Err("Unix socket endpoint must be a bare name or absolute path".to_string());
     }
 
-    // Require /tmp/ prefix to limit scope
-    if !endpoint.starts_with("/tmp/") {
-        return Err("Unix socket path must be under /tmp/".to_string());
+    // Allowed prefixes for absolute paths
+    let allowed_prefixes = ["/tmp/", "/run/user/"];
+    let has_allowed_prefix = allowed_prefixes.iter().any(|p| endpoint.starts_with(p));
+    if !has_allowed_prefix {
+        return Err("Unix socket path must be under /tmp/ or /run/user/".to_string());
     }
 
     // Validate every path segment

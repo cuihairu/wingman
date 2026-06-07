@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -17,7 +18,23 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return r.Header.Get("Origin") == "" || r.Host != ""
+		origin := r.Header.Get("Origin")
+		// Non-browser clients (no Origin header) are allowed.
+		if origin == "" {
+			return true
+		}
+		// Browser connections: only allow same-host origin.
+		// This prevents cross-site WebSocket hijacking.
+		host := r.Host
+		if host == "" {
+			return false
+		}
+		// Origin must match the Host (with or without scheme).
+		u, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		return u.Host == host
 	},
 }
 

@@ -12,7 +12,9 @@ public:
 
     // 工厂方法
     static SessionPtr create(SessionId id, asio::ip::tcp::socket socket) {
-        return std::make_shared<TcpSession>(id, std::move(socket));
+        // Use shared_ptr directly with new instead of make_shared, because
+        // the Session constructor is protected and make_shared cannot access it.
+        return std::shared_ptr<TcpSession>(new TcpSession(id, std::move(socket)));
     }
 
     // 设置 TCP 选项

@@ -6,6 +6,40 @@
 #include <windows.h>
 #include <winuser.h>
 #include <wincrypt.h>
+
+// Crypto handle wrappers for RAII (matching packer.cpp)
+struct CryptoProviderHandle {
+    HCRYPTPROV value = 0;
+    ~CryptoProviderHandle() {
+        if (value) {
+            CryptReleaseContext(value, 0);
+        }
+    }
+    HCRYPTPROV* out() { return &value; }
+    operator HCRYPTPROV() const { return value; }
+};
+
+struct CryptoHashHandle {
+    HCRYPTHASH value = 0;
+    ~CryptoHashHandle() {
+        if (value) {
+            CryptDestroyHash(value);
+        }
+    }
+    HCRYPTHASH* out() { return &value; }
+    operator HCRYPTHASH() const { return value; }
+};
+
+struct CryptoKeyHandle {
+    HCRYPTKEY value = 0;
+    ~CryptoKeyHandle() {
+        if (value) {
+            CryptDestroyKey(value);
+        }
+    }
+    HCRYPTKEY* out() { return &value; }
+    operator HCRYPTKEY() const { return value; }
+};
 #else
 #include <unistd.h>
 #include <limits.h>
@@ -128,24 +162,64 @@ public:
         return decompressed;
     }
 
-    // AES 解密
+    // AES 解密（与 packer.cpp 的 aesEncrypt 匹配）
     std::vector<uint8_t> decryptData(const std::vector<uint8_t>& encrypted, const std::vector<uint8_t>& key) {
 #ifdef _WIN32
-        // 简化版解密（需要与加密端匹配）
-        // 这里使用简单的 XOR 作为演示
-        // 实际应该使用完整的 AES 解密
+        CryptoProviderHandle hProv;
+        CryptoKeyHandle hKey;
+        CryptoHashHandle hHash;
 
-        std::vector<uint8_t> decrypted = encrypted;
-        for (size_t i = 0; i < decrypted.size(); i++) {
-            decrypted[i] ^= key[i % key.size()];
+        // 获取加密服务提供者
+        if (!CryptAcquireContextW(hProv.out(), NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
+            throw std::runtime_error("Failed to acquire crypto context for decryption");
         }
+
+        // 创建哈希对象
+        if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, hHash.out())) {
+            throw std::runtime_error("Failed to create hash for decryption");
+        }
+
+        // 导入密钥
+        if (!CryptHashData(hHash, key.data(), static_cast<DWORD>(key.size()), 0)) {
+            throw std::runtime_error("Failed to hash key for decryption");
+        }
+
+        // 从哈希创建密钥
+        struct AES_KEY_BLOB {
+            BLOBHEADER header;
+            DWORD keySize;
+            BYTE keyBytes[32];
+        } keyBlob;
+
+        keyBlob.header.bType = PLAINTEXTKEYBLOB;
+        keyBlob.header.bVersion = 2;
+        keyBlob.header.reserved = 0;
+        keyBlob.header.aiKeyAlg = CALG_AES_256;
+        keyBlob.keySize = 32;
+        std::memcpy(keyBlob.keyBytes, key.data(), std::min(key.size(), size_t(32)));
+
+        if (!CryptImportKey(hProv, reinterpret_cast<BYTE*>(&keyBlob),
+                           sizeof(AES_KEY_BLOB), 0, 0, hKey.out())) {
+            throw std::runtime_error("Failed to import key for decryption");
+        }
+
+        // 准备解密缓冲区
+        std::vector<uint8_t> decrypted = encrypted;
+        DWORD dataLen = static_cast<DWORD>(encrypted.size());
+
+        // 解密（必须与加密使用相同的模式）
+        if (!CryptDecrypt(hKey, 0, TRUE, 0, decrypted.data(), &dataLen)) {
+            throw std::runtime_error("Failed to decrypt data");
+        }
+
+        // 调整到实际解密后的大小（移除 PKCS7 填充）
+        decrypted.resize(dataLen);
         return decrypted;
 #else
-        std::vector<uint8_t> decrypted = encrypted;
-        for (size_t i = 0; i < decrypted.size(); i++) {
-            decrypted[i] ^= key[i % key.size()];
-        }
-        return decrypted;
+        // 非 Windows 平台抛出错误而不是使用不安全的 XOR
+        (void)encrypted;
+        (void)key;
+        throw std::runtime_error("AES decryption is not supported on this platform");
 #endif
     }
 
@@ -260,15 +334,21 @@ std::optional<LoadedScript> ResourceLoader::loadScript(const std::string& passwo
         );
 
         // 解密
-        std::vector<uint8_t> keyHash(header.keyHash, header.keyHash + 32);
-        if (std::any_of(keyHash.begin(), keyHash.end(), [](uint8_t b) { return b != 0; })) {
-            // 有加密，使用密钥哈希解密
-            // 这里简化处理：使用 password 作为密钥
-            std::vector<uint8_t> key(32);
-            std::memcpy(key.data(), password.c_str(), std::min(password.size(), size_t(32)));
-
-            payload = impl_->decryptData(payload, key);
-            impl_->resourceInfo.encrypted = true;
+        // keyHash 字段存储的是加密密钥（不是哈希），从头部读取用于解密
+        std::vector<uint8_t> encryptionKey(header.keyHash, header.keyHash + 32);
+        if (std::any_of(encryptionKey.begin(), encryptionKey.end(), [](uint8_t b) { return b != 0; })) {
+            // 有加密，使用存储的加密密钥进行 AES 解密
+            // 注意：这与 packer.cpp 中 aesEncrypt 的实现相匹配
+            try {
+                payload = impl_->decryptData(payload, encryptionKey);
+                impl_->resourceInfo.encrypted = true;
+                spdlog::info("Decrypted {} bytes", payload.size());
+            } catch (const std::exception& e) {
+                if (errorCallback_) {
+                    errorCallback_(std::string("Decryption failed: ") + e.what());
+                }
+                return std::nullopt;
+            }
         }
 
         // 验证哈希
