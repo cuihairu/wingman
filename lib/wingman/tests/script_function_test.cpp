@@ -293,55 +293,62 @@ TEST(OrchestrationModuleFunctionsTest, GetAllWorkflowsReturnsEmptyArray) {
     EXPECT_EQ(result.size(), 0u);
 }
 
-// ========== Team module (stubs) ==========
+// ========== Team module ==========
 
-TEST(TeamModuleFunctionsTest, RegisterReturnsNull) {
-    auto fn = findFunction("team", "register");
-    ASSERT_FALSE(fn.name.empty());
-    auto result = fn({ScriptValue::fromString("user1")});
-    EXPECT_TRUE(result.isNull());
-}
-
-TEST(TeamModuleFunctionsTest, JoinReturnsFalse) {
-    auto fn = findFunction("team", "join");
+TEST(TeamModuleFunctionsTest, JoinTeamReturnsFalseWhenNotConnected) {
+    auto fn = findFunction("team", "joinTeam");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({ScriptValue::fromString("team1")});
+    // Should return false when not connected to server
     EXPECT_FALSE(result.asBool());
 }
 
-TEST(TeamModuleFunctionsTest, LeaveReturnsFalse) {
-    auto fn = findFunction("team", "leave");
+TEST(TeamModuleFunctionsTest, LeaveTeamReturnsFalseWhenNotJoined) {
+    auto fn = findFunction("team", "leaveTeam");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({});
+    // Should return false when not in a team
     EXPECT_FALSE(result.asBool());
 }
 
-TEST(TeamModuleFunctionsTest, SendReturnsFalse) {
-    auto fn = findFunction("team", "send");
+TEST(TeamModuleFunctionsTest, CreateVoteReturnsFalseWhenNotJoined) {
+    auto fn = findFunction("team", "createVote");
     ASSERT_FALSE(fn.name.empty());
-    auto result = fn({ScriptValue::fromString("action")});
+    auto result = fn({ScriptValue::fromString("test vote")});
+    // Should return false when not in a team
     EXPECT_FALSE(result.asBool());
 }
 
-TEST(TeamModuleFunctionsTest, PollReturnsEmptyArray) {
-    auto fn = findFunction("team", "poll");
+TEST(TeamModuleFunctionsTest, GetTeamStatusReturnsJsonString) {
+    auto fn = findFunction("team", "getTeamStatus");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({});
-    EXPECT_TRUE(result.isArray());
+    // Should return JSON string
+    EXPECT_TRUE(result.isString());
 }
 
-TEST(TeamModuleFunctionsTest, MembersReturnsEmptyArray) {
-    auto fn = findFunction("team", "members");
+TEST(TeamModuleFunctionsTest, IsJoinedReturnsFalseInitially) {
+    auto fn = findFunction("team", "isJoined");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({});
-    EXPECT_TRUE(result.isArray());
+    // Should return false when not in a team
+    EXPECT_FALSE(result.asBool());
 }
 
-TEST(TeamModuleFunctionsTest, InfoReturnsObject) {
-    auto fn = findFunction("team", "info");
+TEST(TeamModuleFunctionsTest, GetMemberIdReturnsEmptyStringInitially) {
+    auto fn = findFunction("team", "getMemberId");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({});
-    EXPECT_TRUE(result.isObject());
+    // Should return empty string when not in a team
+    EXPECT_TRUE(result.asString().empty());
+}
+
+TEST(TeamModuleFunctionsTest, BroadcastReturnsFalseWhenNotJoined) {
+    auto fn = findFunction("team", "broadcast");
+    ASSERT_FALSE(fn.name.empty());
+    auto result = fn({ScriptValue::fromString("test message")});
+    // Should return false when not in a team
+    EXPECT_FALSE(result.asBool());
 }
 
 // ========== SmartTrigger module functions ==========
