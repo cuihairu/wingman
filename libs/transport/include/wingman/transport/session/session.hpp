@@ -230,6 +230,14 @@ protected:
     }
 
     void receiveBody() {
+        // Prevent large memory allocation attacks (matching Go listener's maxResponseSize)
+        static constexpr size_t kMaxMessageSize = 16 * 1024 * 1024; // 16 MiB
+        if (receiveBuffer_.header.length > kMaxMessageSize) {
+            asio::error_code ec = asio::error::make_error_code(asio::error::message_size);
+            handleError(ec);
+            return;
+        }
+
         receiveBuffer_.body.resize(receiveBuffer_.header.length);
 
         auto self = shared_from_this();

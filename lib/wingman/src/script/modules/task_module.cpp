@@ -253,7 +253,26 @@ private:
 // Task manager
 class TaskManager {
 public:
-	TaskManager() : nextTaskId_(1) {}
+	TaskManager() : nextTaskId_(1), shutdown_(false) {}
+
+	~TaskManager() {
+		shutdown();
+	}
+
+	void shutdown() {
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			shutdown_ = true;
+		}
+
+		// Wait for all worker threads to finish
+		for (auto& worker : workers_) {
+			if (worker.joinable()) {
+				worker.join();
+			}
+		}
+		workers_.clear();
+	}
 
 	std::string submit(ScriptValue::CallableFunc work, Task::Options opts) {
 		std::shared_ptr<Task> task;
@@ -275,9 +294,15 @@ public:
 		// Execute in background thread only if async is true
 		// Note: Lua is NOT thread-safe, so async must be false for Lua callbacks
 		if (opts.async) {
-			std::thread([task]() {
+			// Use managed thread instead of detached
+			std::lock_guard<std::mutex> lock(mutex_);
+			if (shutdown_) {
+				return ""; // Reject if shutdown started
+			}
+			workers_.emplace_back([this, task]() {
 				task->execute();
-			}).detach();
+				cleanupFinishedTasks();
+			});
 		} else {
 			// Synchronous execution (safe for Lua)
 			task->execute();
@@ -351,7 +376,26 @@ public:
 private:
 	std::unordered_map<std::string, std::shared_ptr<Task>> tasks_;
 	std::mutex mutex_;
+	std::vector<std::thread> workers_;
+	std::atomic<bool> shutdown_;
 	uint64_t nextTaskId_;
+
+	void cleanupFinishedTasks() {
+		std::lock_guard<std::mutex> lock(mutex_);
+		// Remove completed/failed/canceled tasks to prevent memory leak
+		auto it = tasks_.begin();
+		while (it != tasks_.end()) {
+			auto status = it->second->status();
+			if (status == TaskStatus::succeeded ||
+				status == TaskStatus::failed ||
+				status == TaskStatus::canceled ||
+				status == TaskStatus::timeout) {
+				it = tasks_.erase(it);
+			} else {
+				++it;
+			}
+		}
+	}
 };
 
 // Global task manager

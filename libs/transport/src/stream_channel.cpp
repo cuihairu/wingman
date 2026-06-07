@@ -225,10 +225,8 @@ std::unique_ptr<StreamChannel> StreamChannel::accept() {
 void StreamChannel::disconnect() {
     setState(StreamState::Disconnecting);
 
-    // 停止接收线程
-    stopReceiving();
-
-    // 关闭 Socket
+    // 先关闭 Socket 以唤醒阻塞的 recv()
+    // 必须在 stopReceiving() 之前关闭，否则 recv() 会永远阻塞
     if (socket_ != INVALID_SOCKET_VALUE) {
 #ifdef _WIN32
         closesocket(socket_);
@@ -237,6 +235,9 @@ void StreamChannel::disconnect() {
 #endif
         socket_ = INVALID_SOCKET_VALUE;
     }
+
+    // 停止接收线程（现在 recv() 会因为 socket 关闭而返回）
+    stopReceiving();
 
     remoteEndpoint_.clear();
     localPort_ = 0;

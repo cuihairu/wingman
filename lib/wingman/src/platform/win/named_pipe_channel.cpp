@@ -155,6 +155,9 @@ bool NamedPipeChannel::send(const IpcMessage& message) {
         return false;
     }
 
+    // Protect send operations to prevent frame interleaving
+    std::lock_guard<std::mutex> lock(sendMutex_);
+
     std::string json = serializeMessage(message);
     std::vector<uint8_t> data(json.begin(), json.end());
 

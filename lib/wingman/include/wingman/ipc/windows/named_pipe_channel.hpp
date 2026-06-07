@@ -68,6 +68,7 @@ private:
     std::thread receiveThread_;
     std::queue<std::vector<uint8_t>> receiveQueue_;
     std::mutex receiveMutex_;
+    std::mutex sendMutex_;
     std::condition_variable eventCondition_;
 
     void setState(IpcState state);

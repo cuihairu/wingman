@@ -21,30 +21,119 @@ namespace {
 // HTTP webhook sender
 class WebhookSender {
 public:
-	static void send(const std::string& url, const nlohmann::json& payload, const std::function<void(bool, std::string)>& callback) {
+	WebhookSender() : shutdown_(false), webhooksEnabled_(true) {}
+
+	~WebhookSender() {
+		shutdown();
+	}
+
+	void shutdown() {
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			shutdown_ = true;
+		}
+
+		// Wait for all worker threads to finish
+		for (auto& worker : workers_) {
+			if (worker.joinable()) {
+				worker.join();
+			}
+		}
+		workers_.clear();
+	}
+
+	void setWebhooksEnabled(bool enabled) {
+		std::lock_guard<std::mutex> lock(mutex_);
+		webhooksEnabled_ = enabled;
+	}
+
+	void setAllowedHosts(const std::vector<std::string>& hosts) {
+		std::lock_guard<std::mutex> lock(mutex_);
+		allowedHosts_ = hosts;
+	}
+
+	bool isUrlAllowed(const std::string& url) const {
+		// If webhooks are disabled, reject all
+		if (!webhooksEnabled_) {
+			return false;
+		}
+
+		// If no whitelist configured, allow all (backward compatibility)
+		// TODO: Consider making the default more restrictive
+		if (allowedHosts_.empty()) {
+			return true;
+		}
+
+		// Parse URL to extract hostname
+		std::string host;
+		size_t schemeEnd = url.find("://");
+		if (schemeEnd != std::string::npos) {
+			size_t hostStart = schemeEnd + 3;
+			size_t pathStart = url.find('/', hostStart);
+			size_t portStart = url.find(':', hostStart);
+
+			if (portStart != std::string::npos && portStart < pathStart) {
+				host = url.substr(hostStart, portStart - hostStart);
+			} else if (pathStart != std::string::npos) {
+				host = url.substr(hostStart, pathStart - hostStart);
+			} else {
+				host = url.substr(hostStart);
+			}
+		}
+
+		// Check if host is in whitelist
+		for (const auto& allowed : allowedHosts_) {
+			if (host == allowed) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	void send(const std::string& url, const nlohmann::json& payload, const std::function<void(bool, std::string)>& callback) {
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			if (shutdown_) {
+				return; // Reject if shutdown started
+			}
+
+			// Validate URL against whitelist (SSRF protection)
+			if (!isUrlAllowed(url)) {
+				// Emit blocked event
+				EventHub::instance().emit("notify.webhook.blocked", {
+					{"url", url},
+					{"reason", "URL not in whitelist or webhooks disabled"}
+				}, "notify");
+				callback(false, "Webhook URL is not allowed");
+				return;
+			}
+		}
+
 		// Emit pending event
 		EventHub::instance().emit("notify.webhook.pending", {
 			{"url", url},
 			{"payload", payload}
 		}, "notify");
 
-		// Send HTTP request asynchronously
-		std::thread([url, payload, callback]() {
+		// Send HTTP request asynchronously using managed thread
+		std::lock_guard<std::mutex> lock(mutex_);
+		workers_.emplace_back([this, url, payload, callback]() {
 			try {
 				HttpClient client;
 				std::string jsonBody = payload.dump();
 				HttpResponse response = client.post(url, jsonBody, {});
-				
+
 				bool success = response.isSuccess();
 				std::string error = success ? "" : response.error;
-				
+
 				// Emit result event
 				EventHub::instance().emit(success ? "notify.webhook.success" : "notify.webhook.failed", {
 					{"url", url},
 					{"statusCode", response.statusCode},
 					{"error", error}
 				}, "notify");
-				
+
 				callback(success, error);
 			} catch (const std::exception& e) {
 				EventHub::instance().emit("notify.webhook.failed", {
@@ -53,9 +142,19 @@ public:
 				}, "notify");
 				callback(false, e.what());
 			}
-		}).detach();
+		});
 	}
+
+private:
+	std::vector<std::thread> workers_;
+	std::mutex mutex_;
+	std::atomic<bool> shutdown_;
+	std::atomic<bool> webhooksEnabled_;
+	std::vector<std::string> allowedHosts_;
 };
+
+// Global webhook sender instance
+WebhookSender g_webhookSender;
 
 // Notification manager
 class NotifyManager {
@@ -88,7 +187,7 @@ public:
 
 	void webhook(const std::string& url, const nlohmann::json& payload, const nlohmann::json& /*options*/) {
 		// Send webhook asynchronously
-		WebhookSender::send(url, payload, [url](bool success, std::string error) {
+		g_webhookSender.send(url, payload, [url](bool success, std::string error) {
 			if (!success) {
 				EventHub::instance().emit("notify.failed", {
 					{"type", "webhook"},
@@ -110,7 +209,7 @@ public:
 
 			if (target.rfind("http://", 0) == 0 || target.rfind("https://", 0) == 0) {
 				// Target is a webhook URL
-				WebhookSender::send(target, payload, [](bool, std::string) {});
+				g_webhookSender.send(target, payload, [](bool, std::string) {});
 			} else if (target.rfind("event://", 0) == 0) {
 				// Target is another event
 				std::string targetEvent = target.substr(8);

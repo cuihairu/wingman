@@ -3,6 +3,9 @@ use std::io::{Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::{timeout, Duration};
 
+/// Maximum allowed IPC request payload size (10 MiB).
+const MAX_REQUEST_SIZE: usize = 10 * 1024 * 1024;
+
 /// Maximum allowed IPC response payload size (10 MiB).
 const MAX_RESPONSE_SIZE: usize = 10 * 1024 * 1024;
 
@@ -94,6 +97,13 @@ impl IpcClient {
         });
 
         let body = serde_json::to_vec(&request).map_err(|e| e.to_string())?;
+
+        // Validate request size to prevent runtime IPC pressure
+        if body.len() > MAX_REQUEST_SIZE {
+            return Err(format!("IPC request too large: {} bytes (max {})",
+                               body.len(), MAX_REQUEST_SIZE));
+        }
+
         let length = (body.len() as u32).to_le_bytes();
 
         // Take ownership of stream for blocking operations
