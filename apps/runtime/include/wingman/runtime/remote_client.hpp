@@ -10,12 +10,7 @@
 
 namespace wingman::runtime {
 
-// 前向声明
-namespace wingman::transport {
-    class TcpClient;
-}
-
-// ========== 连接状态 ==========
+// ========== Connection State ==========
 
 enum class ConnectionState {
     Disconnected,
@@ -39,7 +34,6 @@ using ConnectionCallback = std::function<void(const ConnectionEvent&)>;
 class RemoteClient {
     class Impl;
 
-public:
 public:
     RemoteClient(const RemoteClientConfig& config);
     ~RemoteClient();

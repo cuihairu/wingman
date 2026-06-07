@@ -23,7 +23,7 @@ target_include_directories(wingman_debug PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(wingman_debug PUBLIC
+target_link_libraries(wingman_debug PRIVATE
     unofficial::lua::lua
 )
 
@@ -36,6 +36,8 @@ target_link_libraries(wingman_debug PUBLIC
 target_compile_definitions(wingman_debug PUBLIC
     WINGMAN_EMMY_VERSION="0.5.3"
 )
+
+target_compile_features(wingman_debug PUBLIC cxx_std_23)
 
 # 导出库
 add_library(wingman::debug ALIAS wingman_debug)

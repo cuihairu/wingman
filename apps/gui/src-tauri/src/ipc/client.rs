@@ -2,6 +2,9 @@ use serde_json::Value;
 use std::io::{Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// Maximum allowed IPC response payload size (10 MiB).
+const MAX_RESPONSE_SIZE: usize = 10 * 1024 * 1024;
+
 #[cfg(windows)]
 use std::fs::{File, OpenOptions};
 
@@ -99,7 +102,7 @@ impl IpcClient {
         let mut length_buf = [0u8; 4];
         stream.read_exact(&mut length_buf)?;
         let response_len = u32::from_le_bytes(length_buf) as usize;
-        if response_len == 0 || response_len > 10 * 1024 * 1024 {
+        if response_len == 0 || response_len > MAX_RESPONSE_SIZE {
             return Err(format!("Invalid IPC response length: {}", response_len));
         }
 

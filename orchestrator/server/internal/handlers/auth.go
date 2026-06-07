@@ -30,7 +30,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Username and password required"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Username and password required"})
 		return
 	}
 
@@ -38,7 +38,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 	if err := h.db.Where("username = ?", req.Username).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Invalid credentials",
+			"error": "Invalid credentials",
 		})
 		return
 	}
@@ -46,7 +46,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 	if !security.VerifyPassword(user.Password, req.Password) {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Invalid credentials",
+			"error": "Invalid credentials",
 		})
 		return
 	}
@@ -55,7 +55,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to generate token",
+			"error": "Failed to generate token",
 		})
 		return
 	}
@@ -75,7 +75,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 func (h *AuthHandler) HandleLogout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Logged out",
+		"error": "Logged out",
 	})
 }
 

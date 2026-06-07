@@ -60,6 +60,8 @@ target_link_libraries(wingman_proto PUBLIC
 
 target_compile_definitions(wingman_proto PUBLIC WINGMAN_HAS_PROTOBUF)
 
+target_compile_features(wingman_proto PUBLIC cxx_std_23)
+
 add_library(wingman::proto ALIAS wingman_proto)
 
 # ========== 测试 ==========
