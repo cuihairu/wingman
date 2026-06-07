@@ -81,7 +81,29 @@ func (h *ScriptHandler) HandleCreate(c *gin.Context) {
 		return
 	}
 
-	name := filepath.Base(strings.TrimSpace(req.Name))
+	trimmedName := strings.TrimSpace(req.Name)
+	// Validate script name to prevent path traversal attacks
+	if trimmedName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid script name"})
+		return
+	}
+	// Reject names with path traversal characters
+	if strings.Contains(trimmedName, "..") || strings.Contains(trimmedName, "/") || strings.Contains(trimmedName, "\\") {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid script name: path traversal characters not allowed"})
+		return
+	}
+	// Reject names with null bytes
+	if strings.Contains(trimmedName, "\x00") {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid script name: null bytes not allowed"})
+		return
+	}
+	// Reject names that are too long
+	if len(trimmedName) > 255 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid script name: name too long (max 255 characters)"})
+		return
+	}
+
+	name := filepath.Base(trimmedName)
 	if name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid script name"})
 		return

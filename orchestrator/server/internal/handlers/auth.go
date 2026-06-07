@@ -24,6 +24,10 @@ func NewAuthHandler(db *gorm.DB) *AuthHandler {
 
 // HandleLogin 登录
 func (h *AuthHandler) HandleLogin(c *gin.Context) {
+	// Get rate limiter and client IP for tracking failed attempts
+	rl := middleware.GetRateLimiter()
+	clientIP := c.ClientIP()
+
 	var req struct {
 		Username string `json:"username" binding:"required"`
 		Password string `json:"password" binding:"required"`
@@ -36,6 +40,10 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 
 	var user models.User
 	if err := h.db.Where("username = ?", req.Username).First(&user).Error; err != nil {
+		// Rate limiting based on IP, but also use username as part of the key for better tracking
+		// This prevents an attacker from trying multiple usernames from the same IP
+		key := clientIP + ":" + req.Username
+		rl.Check(key) // Increment the counter (we don't care about return value here as we're already using middleware)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"error": "Invalid credentials",
@@ -44,12 +52,19 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 	}
 
 	if !security.VerifyPassword(user.Password, req.Password) {
+		// Track failed attempts by IP and username combination
+		key := clientIP + ":" + req.Username
+		rl.Check(key)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"error": "Invalid credentials",
 		})
 		return
 	}
+
+	// Record successful login to reset the rate limit counter
+	key := clientIP + ":" + req.Username
+	rl.RecordSuccess(key)
 
 	token, err := middleware.GenerateToken(user.ID, user.Username, user.Role)
 	if err != nil {

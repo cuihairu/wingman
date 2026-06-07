@@ -90,7 +90,8 @@ func main() {
 	// ====== API v1 路由（保留兼容） ======
 	v1 := r.Group("/api/v1")
 	{
-		v1.POST("/auth/login", authHandler.HandleLogin)
+		// Login endpoint with rate limiting to prevent brute force attacks
+		v1.POST("/auth/login", middleware.RateLimitMiddleware(middleware.GetRateLimiter()), authHandler.HandleLogin)
 		v1.POST("/auth/logout", authHandler.HandleLogout)
 
 		auth := v1.Group("")

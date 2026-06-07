@@ -616,8 +616,38 @@ bool SecurityManager::selfSign(const std::string& certPath, const std::string& k
 }
 
 // ========== Obfuscation ==========
+//
+// WARNING: The following functions implement XOR-based obfuscation ONLY.
+// This is NOT real encryption and provides NO security guarantees.
+//
+// Vulnerabilities:
+// - XOR is symmetric and reversible with known plaintext
+// - Vulnerable to known-plaintext attacks
+// - No integrity protection (tampering undetectable)
+// - No authentication
+// - Key reuse exposes patterns
+//
+// These functions should ONLY be used for:
+// - Hiding data from casual inspection
+// - Obfuscating non-sensitive configuration
+// - Educational/demonstration purposes
+//
+// DO NOT use for:
+// - Protecting passwords, API keys, or secrets
+// - Encrypting user data
+// - Secure communications
+// - Compliance with security requirements
+//
+// For proper encryption, use:
+// - AES-256-GCM (OpenSSL EVP API, libsodium)
+// - ChaCha20-Poly1305 (libsodium)
+// - With proper key derivation (PBKDF2, scrypt, argon2)
 
 std::string SecurityManager::encryptString(const std::string& input, const std::string& key) {
+    // DEPRECATED: XOR obfuscation is NOT secure
+    // This function is kept for backward compatibility only.
+    // Use proper encryption libraries for real security.
+
     if (key.empty()) {
         return input;
     }
@@ -634,6 +664,10 @@ std::string SecurityManager::encryptString(const std::string& input, const std::
 }
 
 std::string SecurityManager::decryptString(const std::string& input, const std::string& key) {
+    // DEPRECATED: XOR obfuscation is NOT secure
+    // This function is kept for backward compatibility only.
+    // Use proper encryption libraries for real security.
+
     return encryptString(input, key); // XOR is symmetric
 }
 
