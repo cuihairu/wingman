@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"strings"
@@ -10,6 +11,10 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const jwtSecretMinLength = 32
+
+var errJWTSecretNotConfigured = errors.New("WINGMAN_JWT_SECRET must be at least 32 characters")
+
 // Claims JWT 声明
 type Claims struct {
 	UserID   uint   `json:"user_id"`
@@ -18,8 +23,12 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func jwtSecret() []byte {
-	return []byte(os.Getenv("WINGMAN_JWT_SECRET"))
+func jwtSecret() ([]byte, error) {
+	secret := os.Getenv("WINGMAN_JWT_SECRET")
+	if len(secret) < jwtSecretMinLength {
+		return nil, errJWTSecretNotConfigured
+	}
+	return []byte(secret), nil
 }
 
 func ParseBearerToken(authHeader string) string {
@@ -36,7 +45,7 @@ func ValidateTokenString(tokenString string) (*Claims, error) {
 		if token.Method != jwt.SigningMethodHS256 {
 			return nil, jwt.ErrTokenSignatureInvalid
 		}
-		return jwtSecret(), nil
+		return jwtSecret()
 	})
 	if err != nil || !token.Valid {
 		return nil, jwt.ErrTokenInvalidClaims
@@ -90,8 +99,12 @@ func GenerateToken(userID uint, username, role string) (string, error) {
 		},
 	}
 
+	secret, err := jwtSecret()
+	if err != nil {
+		return "", err
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret())
+	return token.SignedString(secret)
 }
 
 // GetCurrentUser 获取当前用户

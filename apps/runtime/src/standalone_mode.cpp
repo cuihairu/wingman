@@ -101,9 +101,14 @@ void StandaloneMode::stop() {
 
     auto& manager = getScriptManager();
     for (const auto& id : ids) {
-        manager.stopScript(id);
-        manager.unloadScript(id);
-        spdlog::info("Stopped script: {}", id);
+        if (!manager.stopScript(id)) {
+            spdlog::debug("Script was not running or could not be stopped: {}", id);
+        }
+        if (manager.unloadScript(id)) {
+            spdlog::info("Stopped script: {}", id);
+        } else {
+            spdlog::warn("Failed to unload script while stopping standalone mode: {}", id);
+        }
     }
 
     {
@@ -154,8 +159,14 @@ bool StandaloneMode::unloadScript(const std::string& id) {
         }
     }
 
-    getScriptManager().stopScript(id);
-    getScriptManager().unloadScript(id);
+    auto& manager = getScriptManager();
+    if (!manager.stopScript(id)) {
+        spdlog::debug("Script was not running or could not be stopped: {}", id);
+    }
+    if (!manager.unloadScript(id)) {
+        spdlog::warn("Failed to unload script: {}", id);
+        return false;
+    }
 
     {
         std::lock_guard lock(impl_->scriptsMutex);

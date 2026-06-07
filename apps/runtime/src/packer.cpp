@@ -23,6 +23,41 @@ namespace wingman::runtime {
 constexpr const char* WM_SCRIPT_RESOURCE = "WM_SCRIPT";
 constexpr const char* WM_MANIFEST_RESOURCE = "WM_MANIFEST";
 
+#ifdef _WIN32
+struct CryptoProviderHandle {
+    HCRYPTPROV value = 0;
+    ~CryptoProviderHandle() {
+        if (value) {
+            CryptReleaseContext(value, 0);
+        }
+    }
+    HCRYPTPROV* out() { return &value; }
+    operator HCRYPTPROV() const { return value; }
+};
+
+struct CryptoHashHandle {
+    HCRYPTHASH value = 0;
+    ~CryptoHashHandle() {
+        if (value) {
+            CryptDestroyHash(value);
+        }
+    }
+    HCRYPTHASH* out() { return &value; }
+    operator HCRYPTHASH() const { return value; }
+};
+
+struct CryptoKeyHandle {
+    HCRYPTKEY value = 0;
+    ~CryptoKeyHandle() {
+        if (value) {
+            CryptDestroyKey(value);
+        }
+    }
+    HCRYPTKEY* out() { return &value; }
+    operator HCRYPTKEY() const { return value; }
+};
+#endif
+
 // ========== 加密头部 (32 字节) ==========
 struct PACK_HEADER {
     uint8_t magic[4];           // "WMSP" (WingMan Script Pack)
@@ -44,25 +79,22 @@ public:
 #ifdef _WIN32
         std::vector<uint8_t> ciphertext;
 
-        HCRYPTPROV hProv = 0;
-        HCRYPTKEY hKey = 0;
-        HCRYPTHASH hHash = 0;
+        CryptoProviderHandle hProv;
+        CryptoKeyHandle hKey;
+        CryptoHashHandle hHash;
 
         // 获取加密服务提供者
-        if (!CryptAcquireContextW(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
+        if (!CryptAcquireContextW(hProv.out(), NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
             throw std::runtime_error("Failed to acquire crypto context");
         }
 
         // 创建哈希对象
-        if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, &hHash)) {
-            CryptReleaseContext(hProv, 0);
+        if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, hHash.out())) {
             throw std::runtime_error("Failed to create hash");
         }
 
         // 导入密钥
         if (!CryptHashData(hHash, key.data(), static_cast<DWORD>(key.size()), 0)) {
-            CryptDestroyHash(hHash);
-            CryptReleaseContext(hProv, 0);
             throw std::runtime_error("Failed to hash key");
         }
 
@@ -81,9 +113,7 @@ public:
         std::memcpy(keyBlob.keyBytes, key.data(), 32);
 
         if (!CryptImportKey(hProv, reinterpret_cast<BYTE*>(&keyBlob),
-                           sizeof(AES_KEY_BLOB), 0, 0, &hKey)) {
-            CryptDestroyHash(hHash);
-            CryptReleaseContext(hProv, 0);
+                           sizeof(AES_KEY_BLOB), 0, 0, hKey.out())) {
             throw std::runtime_error("Failed to import key");
         }
 
@@ -104,58 +134,40 @@ public:
         // 加密（使用 CBC 模式，这里简化为 ECB）
         DWORD dataLen = static_cast<DWORD>(paddedSize);
         if (!CryptEncrypt(hKey, 0, TRUE, 0, ciphertext.data(), &dataLen, static_cast<DWORD>(paddedSize))) {
-            CryptDestroyKey(hKey);
-            CryptDestroyHash(hHash);
-            CryptReleaseContext(hProv, 0);
             throw std::runtime_error("Failed to encrypt data");
         }
 
-        CryptDestroyKey(hKey);
-        CryptDestroyHash(hHash);
-        CryptReleaseContext(hProv, 0);
-
         return ciphertext;
 #else
-        // 非 Windows 平台：简单 XOR（临时方案）
-        std::vector<uint8_t> ciphertext = plaintext;
-        for (size_t i = 0; i < ciphertext.size(); i++) {
-            ciphertext[i] ^= key[i % key.size()];
-        }
-        return ciphertext;
+        (void)plaintext;
+        (void)key;
+        throw std::runtime_error("Script encryption is not supported on this platform");
 #endif
     }
 
     // SHA256 哈希
     std::vector<uint8_t> sha256(const std::vector<uint8_t>& data) {
 #ifdef _WIN32
-        HCRYPTPROV hProv = 0;
-        HCRYPTHASH hHash = 0;
+        CryptoProviderHandle hProv;
+        CryptoHashHandle hHash;
         std::vector<uint8_t> hash(32);
 
-        if (!CryptAcquireContextW(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
+        if (!CryptAcquireContextW(hProv.out(), NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
             throw std::runtime_error("Failed to acquire crypto context");
         }
 
-        if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, &hHash)) {
-            CryptReleaseContext(hProv, 0);
+        if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, hHash.out())) {
             throw std::runtime_error("Failed to create hash");
         }
 
         if (!CryptHashData(hHash, data.data(), static_cast<DWORD>(data.size()), 0)) {
-            CryptDestroyHash(hHash);
-            CryptReleaseContext(hProv, 0);
             throw std::runtime_error("Failed to hash data");
         }
 
         DWORD hashLen = 32;
         if (!CryptGetHashParam(hHash, HP_HASHVAL, hash.data(), &hashLen, 0)) {
-            CryptDestroyHash(hHash);
-            CryptReleaseContext(hProv, 0);
             throw std::runtime_error("Failed to get hash value");
         }
-
-        CryptDestroyHash(hHash);
-        CryptReleaseContext(hProv, 0);
 
         return hash;
 #else
@@ -339,10 +351,12 @@ public:
     std::vector<uint8_t> generateKeyImpl() {
         std::vector<uint8_t> key(32);
 #ifdef _WIN32
-        HCRYPTPROV hProv = 0;
-        if (CryptAcquireContextW(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
-            CryptGenRandom(hProv, 32, key.data());
-            CryptReleaseContext(hProv, 0);
+        CryptoProviderHandle hProv;
+        if (!CryptAcquireContextW(hProv.out(), NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+            throw std::runtime_error("Failed to acquire crypto context");
+        }
+        if (!CryptGenRandom(hProv, 32, key.data())) {
+            throw std::runtime_error("Failed to generate encryption key");
         }
 #else
         for (size_t i = 0; i < 32; i++) {

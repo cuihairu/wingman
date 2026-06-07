@@ -4,6 +4,7 @@
 #include "wingman/runtime/commands/build_command.hpp"
 #include "wingman/runtime/commands/script_command.hpp"
 #include "wingman/runtime/commands/stop_command.hpp"
+#include "wingman/runtime/config.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -12,6 +13,7 @@
 
 namespace wingman::runtime::commands {
 extern std::string g_lastStartConfigPath;
+extern bool g_lastStartForceStandalone;
 }
 
 namespace {
@@ -62,6 +64,12 @@ TEST(RuntimeCliTest, StartDispatchUsesExplicitConfig) {
     wingman::runtime::commands::g_lastStartConfigPath.clear();
     EXPECT_EQ(wingman::runtime::dispatchCommand({"start", "--config", "custom.toml"}), 42);
     EXPECT_EQ(wingman::runtime::commands::g_lastStartConfigPath, "custom.toml");
+}
+
+TEST(RuntimeCliTest, StartDispatchUsesStandaloneFlag) {
+    wingman::runtime::commands::g_lastStartForceStandalone = false;
+    EXPECT_EQ(wingman::runtime::dispatchCommand({"start", "--standalone"}), 42);
+    EXPECT_TRUE(wingman::runtime::commands::g_lastStartForceStandalone);
 }
 
 TEST(RuntimeCliTest, StartDispatchRejectsUnknownOption) {
@@ -122,4 +130,20 @@ TEST(RuntimeCommandTest, StopCommandReturnsSuccessEvenWhenNoProcessFound) {
 TEST(RuntimeCommandTest, StatusCommandReturnsKnownExitCode) {
     const int code = wingman::runtime::commands::statusCommand();
     EXPECT_TRUE(code == 0 || code == 1);
+}
+
+TEST(RuntimeConfigTest, ParsesQuotedStringsAndInlineComments) {
+    const auto config = wingman::runtime::AgentConfig::loadFromString(R"(
+        enable_remote = true # connect to orchestrator
+        [remote]
+        server_ip = "10.0.0.5"
+        server_port = 9527
+        [standalone]
+        script_dir = "scripts/local # not a comment"
+    )");
+
+    EXPECT_TRUE(config.enableRemote);
+    EXPECT_EQ(config.remoteClient.serverIp, "10.0.0.5");
+    EXPECT_EQ(config.remoteClient.serverPort, 9527);
+    EXPECT_EQ(config.standalone.scriptDir, "scripts/local # not a comment");
 }

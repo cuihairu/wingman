@@ -16,6 +16,8 @@
 #include <string>
 #include <memory>
 #include <functional>
+#include <deque>
+#include <mutex>
 #include <asio.hpp>
 
 namespace wingman::transport {
@@ -155,15 +157,14 @@ public:
         message->header.length = static_cast<uint32_t>(message->body.size());
 
         // 序列化
-        auto data = message->serialize();
+        auto data = std::make_shared<std::vector<uint8_t>>(message->serialize());
 
-        // 异步发送
-        asio::async_write(socket_, asio::buffer(data),
-            [this, message](asio::error_code ec, size_t /*bytes_sent*/) {
-                if (ec) {
-                    handleError(ec);
-                }
-            });
+        std::lock_guard lock(sendMutex_);
+        const bool writeInProgress = !sendQueue_.empty();
+        sendQueue_.push_back(std::move(data));
+        if (!writeInProgress) {
+            writeNextLocked();
+        }
 
         return true;
     }
@@ -183,6 +184,30 @@ public:
     }
 
 protected:
+    void writeNextLocked() {
+        auto data = sendQueue_.front();
+        asio::async_write(socket_, asio::buffer(*data),
+            [this, data](asio::error_code ec, size_t /*bytes_sent*/) {
+                bool writeMore = false;
+                {
+                    std::lock_guard lock(sendMutex_);
+                    if (!sendQueue_.empty() && sendQueue_.front() == data) {
+                        sendQueue_.pop_front();
+                    }
+                    if (ec) {
+                        sendQueue_.clear();
+                    }
+                    writeMore = !ec && !sendQueue_.empty();
+                    if (writeMore) {
+                        writeNextLocked();
+                    }
+                }
+                if (ec) {
+                    handleError(ec);
+                }
+            });
+    }
+
     void receiveHeader() {
         asio::async_read(socket_, asio::buffer(&receiveBuffer_.header, sizeof(MessageHeader)),
             [this](asio::error_code ec, size_t /*bytes_read*/) {
@@ -232,6 +257,8 @@ protected:
     Message receiveBuffer_;
     MessageCallback messageCallback_;
     EventCallback eventCallback_;
+    std::mutex sendMutex_;
+    std::deque<std::shared_ptr<std::vector<uint8_t>>> sendQueue_;
 };
 
 using SessionPtr = std::shared_ptr<Session>;

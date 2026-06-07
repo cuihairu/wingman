@@ -315,13 +315,13 @@ OsInfo System::getOsInfo() {
 std::vector<NetworkAdapter> System::getNetworkAdapters() {
     std::vector<NetworkAdapter> result;
 
-    PIP_ADAPTER_INFO adapterInfo;
     ULONG bufferSize = sizeof(IP_ADAPTER_INFO);
+    std::vector<BYTE> adapterBuffer(bufferSize);
+    auto adapterInfo = reinterpret_cast<PIP_ADAPTER_INFO>(adapterBuffer.data());
 
-    adapterInfo = reinterpret_cast<PIP_ADAPTER_INFO>(malloc(bufferSize));
     if (GetAdaptersInfo(adapterInfo, &bufferSize) == ERROR_BUFFER_OVERFLOW) {
-        free(adapterInfo);
-        adapterInfo = reinterpret_cast<PIP_ADAPTER_INFO>(malloc(bufferSize));
+        adapterBuffer.resize(bufferSize);
+        adapterInfo = reinterpret_cast<PIP_ADAPTER_INFO>(adapterBuffer.data());
     }
 
     if (GetAdaptersInfo(adapterInfo, &bufferSize) == ERROR_SUCCESS) {
@@ -353,7 +353,6 @@ std::vector<NetworkAdapter> System::getNetworkAdapters() {
         }
     }
 
-    free(adapterInfo);
     return result;
 }
 

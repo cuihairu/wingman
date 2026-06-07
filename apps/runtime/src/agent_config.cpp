@@ -7,6 +7,39 @@ namespace wingman::runtime {
 
 // ========== AgentConfig 实现 ==========
 
+namespace {
+
+std::string trim(std::string value) {
+    const auto first = value.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) {
+        return "";
+    }
+    const auto last = value.find_last_not_of(" \t\r\n");
+    return value.substr(first, last - first + 1);
+}
+
+std::string stripInlineComment(const std::string& line) {
+    bool inQuote = false;
+    for (size_t i = 0; i < line.size(); ++i) {
+        if (line[i] == '"' && (i == 0 || line[i - 1] != '\\')) {
+            inQuote = !inQuote;
+        } else if (line[i] == '#' && !inQuote) {
+            return line.substr(0, i);
+        }
+    }
+    return line;
+}
+
+std::string unquote(std::string value) {
+    value = trim(std::move(value));
+    if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
+        value = value.substr(1, value.size() - 2);
+    }
+    return value;
+}
+
+} // namespace
+
 RunMode AgentConfig::getRunMode() const {
     return enableRemote ? RunMode::Remote : RunMode::Standalone;
 }
@@ -30,20 +63,14 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
     std::string line;
 
     while (std::getline(stream, line)) {
-        // 跳过空行和注释
-        if (line.empty() || line[0] == '#') continue;
+        line = trim(stripInlineComment(line));
+        if (line.empty() || line[0] == '[') continue;
 
         // 解析 key = value
         size_t pos = line.find('=');
         if (pos != std::string::npos) {
-            std::string key = line.substr(0, pos);
-            std::string value = line.substr(pos + 1);
-
-            // 去除空格
-            key.erase(0, key.find_first_not_of(" \t"));
-            key.erase(key.find_last_not_of(" \t") + 1);
-            value.erase(0, value.find_first_not_of(" \t"));
-            value.erase(value.find_last_not_of(" \t") + 1);
+            std::string key = trim(line.substr(0, pos));
+            std::string value = trim(line.substr(pos + 1));
 
             // 解析布尔值
             if (value == "true") {
@@ -71,6 +98,7 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
             }
             // 解析字符串
             else {
+                value = unquote(std::move(value));
                 if (key == "server_ip") config.remoteClient.serverIp = value;
                 if (key == "script_dir") config.standalone.scriptDir = value;
                 if (key == "level") config.logging.level = value;
