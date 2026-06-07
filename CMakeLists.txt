@@ -59,8 +59,8 @@ if(WINGMAN_BUILD_RUNTIME)
     endif()
 endif()
 
-if(WINGMAN_BUILD_DEBUG AND NOT WINGMAN_BUILD_LUA)
-    message(STATUS "WINGMAN_BUILD_DEBUG requested without Lua support; disabling debug module")
+if(WINGMAN_BUILD_DEBUG AND NOT WINGMAN_BUILD_LUA AND NOT WINGMAN_ENABLE_PYTHON)
+    message(STATUS "WINGMAN_BUILD_DEBUG requested without Lua or Python support; disabling debug module")
     set(WINGMAN_BUILD_DEBUG OFF CACHE BOOL "Build debug module" FORCE)
 endif()
 
@@ -118,7 +118,7 @@ if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_LUA)
     add_subdirectory(libs/lua)
 endif()
 
-if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DEBUG AND WINGMAN_BUILD_LUA)
+if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DEBUG AND (WINGMAN_BUILD_LUA OR WINGMAN_ENABLE_PYTHON))
     add_subdirectory(libs/debug)
 endif()
 

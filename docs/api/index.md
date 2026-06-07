@@ -211,15 +211,29 @@ end
 - [smart-trigger](./smart-trigger) - 智能触发器
 - [behavior-tree](./behavior-tree) - 行为树引擎
 
-### 网络与数据
+### 网络
 
-网络请求与数据处理。
+网络请求与通信。
 
 - [http](./http) - HTTP 客户端（GET、POST、下载）
 - [transport](./transport) - TCP 客户端、服务器与 UDP Socket
 - [inbox](./inbox) - 消息收件箱（基于 TCP）
+
+### 序列化
+
+数据序列化与格式转换。
+
+- [serialize](./serialize) - 序列化格式总览（json、yaml、ini 选择指南）
 - [json](./json) - JSON 解析与序列化
-- [kv](./kv) - 持久化键值存储
+- [ini](./ini) - INI 配置文件解析与编码
+
+### 数据存储
+
+本地数据持久化与缓存。
+
+- [data](./data) - 数据存储总览（kv 与 db 选择指南）
+- [kv](./kv) - 持久化键值存储（Redis-like API）
+- [db](./db) - 本地 SQLite 数据库（支持 SQL 和 ORM）
 
 ### 辅助功能
 
