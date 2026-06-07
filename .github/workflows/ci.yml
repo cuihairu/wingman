@@ -96,6 +96,13 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Import codecov GPG key (for integrity verification)
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest -Uri https://keybase.io/codecovsecurity/pgp_keys.asc -OutFile codecov.asc
+          gpg.exe --import codecov.asc
+
       - name: Upload coverage to Codecov
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: codecov/codecov-action@v6.0.1
@@ -105,7 +112,6 @@ jobs:
           name: windows-cpp
           fail_ci_if_error: false
           use_oidc: true
-          skip_validation: true
 
   cpp-compat:
     name: C++ ${{ matrix.os }}
