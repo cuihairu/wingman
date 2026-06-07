@@ -1,5 +1,6 @@
 #include "wingman/event.hpp"
 #include <chrono>
+#include <spdlog/spdlog.h>
 
 namespace wingman {
 
@@ -12,9 +13,36 @@ uint64_t EventHub::subscribe(const std::string& type,
                              EventHandler handler,
                              const std::string& name,
                              bool once) {
+    // Validate event type
+    if (type.empty()) {
+        spdlog::warn("[EventHub] Cannot subscribe to empty event type");
+        return 0;
+    }
+
+    if (type.length() > MAX_EVENT_TYPE_LENGTH) {
+        spdlog::warn("[EventHub] Event type too long: {} chars (max: {})",
+                     type.length(), MAX_EVENT_TYPE_LENGTH);
+        return 0;
+    }
+
+    if (!name.empty() && name.length() > MAX_EVENT_NAME_LENGTH) {
+        spdlog::warn("[EventHub] Subscription name too long: {} chars (max: {})",
+                     name.length(), MAX_EVENT_NAME_LENGTH);
+        return 0;
+    }
+
     std::lock_guard<std::mutex> lock(mutex_);
+
+    // Check subscription limit
+    auto& typeSubs = subscriptions_[type];
+    if (typeSubs.size() >= MAX_SUBSCRIPTIONS_PER_EVENT) {
+        spdlog::warn("[EventHub] Too many subscriptions for event '{}': {} (max: {})",
+                     type, typeSubs.size(), MAX_SUBSCRIPTIONS_PER_EVENT);
+        return 0;
+    }
+
     uint64_t id = nextSubscriptionId_++;
-    subscriptions_[type][id] = Subscription{std::move(handler), name, once};
+    typeSubs[id] = Subscription{std::move(handler), name, once};
     subscriptionTypes_[id] = type;
     return id;
 }
@@ -64,6 +92,18 @@ void EventHub::emit(const std::string& type,
                     const std::string& source,
                     const std::string& correlationId,
                     int priority) {
+    // Validate event type
+    if (type.empty()) {
+        spdlog::warn("[EventHub] Cannot emit event with empty type");
+        return;
+    }
+
+    if (type.length() > MAX_EVENT_TYPE_LENGTH) {
+        spdlog::warn("[EventHub] Event type too long: {} chars (max: {})",
+                     type.length(), MAX_EVENT_TYPE_LENGTH);
+        return;
+    }
+
     std::vector<Subscription> subscribers;
     std::vector<uint64_t> onceIds;
     {
@@ -78,13 +118,8 @@ void EventHub::emit(const std::string& type,
                 onceIds.push_back(id);
             }
         }
-        for (uint64_t id : onceIds) {
-            subscriptionTypes_.erase(id);
-            it->second.erase(id);
-        }
-        if (it->second.empty()) {
-            subscriptions_.erase(it);
-        }
+        // Note: once subscriptions will be removed after successful callbacks
+        // This ensures "successfully handled once" semantics
     }
 
     EventMessage msg;
@@ -97,9 +132,35 @@ void EventHub::emit(const std::string& type,
         std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count());
 
+    std::vector<uint64_t> successfulOnceIds;
     for (const auto& sub : subscribers) {
         if (sub.handler) {
-            sub.handler(msg);
+            try {
+                sub.handler(msg);
+                // Only remove once subscription if callback succeeded
+                if (sub.once) {
+                    successfulOnceIds.push_back(onceIds[&sub - &subscribers[0]]);
+                }
+            } catch (const std::exception& e) {
+                spdlog::error("[EventHub] Handler exception for event '{}': {}", type, e.what());
+            } catch (...) {
+                spdlog::error("[EventHub] Unknown handler exception for event '{}'", type);
+            }
+        }
+    }
+
+    // Remove only successful once subscriptions
+    if (!successfulOnceIds.empty()) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto it = subscriptions_.find(type);
+        if (it != subscriptions_.end()) {
+            for (uint64_t id : successfulOnceIds) {
+                it->second.erase(id);
+                subscriptionTypes_.erase(id);
+            }
+            if (it->second.empty()) {
+                subscriptions_.erase(it);
+            }
         }
     }
 }

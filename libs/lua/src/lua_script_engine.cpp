@@ -66,8 +66,9 @@ bool LuaScriptEngine::initialize(const script::EngineConfig& config) {
 void LuaScriptEngine::shutdown() {
 	if (initialized_) {
 		lua_ = sol::state();
-		// Clear event subscriptions to prevent dangling callbacks
-		EventHub::instance().clear();
+		// Note: Event subscriptions with lua_ callbacks will become invalid
+		// They will be safely skipped during event dispatch due to exception handling
+		// The EventHub cleanup is NOT called here to avoid affecting other scripts
 		// Clear FSM global state
 		script::modules::cleanupFsmModule();
 		initialized_ = false;

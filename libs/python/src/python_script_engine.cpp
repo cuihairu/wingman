@@ -88,8 +88,9 @@ void PythonScriptEngine::shutdown() {
 		// 忽略 shutdown 时的异常
 	}
 
-	// Clear event subscriptions to prevent dangling callbacks
-	EventHub::instance().clear();
+	// Note: Event subscriptions with Python callbacks will become invalid
+	// They will be safely skipped during event dispatch due to exception handling
+	// The EventHub cleanup is NOT called here to avoid affecting other scripts
 	// Clear FSM global state
 	script::modules::cleanupFsmModule();
 

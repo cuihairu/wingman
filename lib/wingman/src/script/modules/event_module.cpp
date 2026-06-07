@@ -11,6 +11,7 @@
 #include <condition_variable>
 #include <queue>
 #include <mutex>
+#include <functional>
 #endif
 
 namespace wingman {
@@ -91,6 +92,13 @@ ScriptValue fromEventMessage(const EventMessage& msg) {
 
 // ========== Remote Channel (Redis Stream) ==========
 
+// Pending callback structure for thread-safe callback execution
+struct PendingCallback {
+	std::string eventType;
+	ScriptValue data;
+	ScriptValue::CallableFunc callback;
+};
+
 class RemoteChannel {
 public:
 	struct Config {
@@ -115,19 +123,29 @@ public:
 	}
 
 	bool connect() {
+		std::lock_guard<std::mutex> lock(redisMutex_);
+
+		// Release existing connection before creating new one
+		if (redis_) {
+			redisFree(redis_);
+			redis_ = nullptr;
+		}
+
 		redis_ = redisConnect(config_.host.c_str(), config_.port);
 		if (!redis_ || redis_->err) {
 			spdlog::error("[RemoteChannel] Failed to connect to Redis: {}",
 				redis_ ? redis_->errstr : "Connection failed");
-			if (redis_) redisFree(redis_);
-			redis_ = nullptr;
+			if (redis_) {
+				redisFree(redis_);
+				redis_ = nullptr;
+			}
 			return false;
 		}
 		return true;
 	}
 
 	bool start() {
-		if (running_) return true;
+		if (running_.load()) return true;
 
 		if (!connect()) {
 			return false;
@@ -136,19 +154,29 @@ public:
 		// 创建消费者组（如果不存在）
 		createConsumerGroup();
 
-		running_ = true;
+		running_.store(true);
 		listenerThread_ = std::thread(&RemoteChannel::listen, this);
+		callbackThread_ = std::thread(&RemoteChannel::processCallbacks, this);
 		return true;
 	}
 
 	void stop() {
-		if (!running_) return;
-		running_ = false;
+		if (!running_.load()) return;
+
+		running_.store(false);
+
+		// Notify callback thread to stop
+		callbackCond_.notify_all();
 
 		if (listenerThread_.joinable()) {
 			listenerThread_.join();
 		}
 
+		if (callbackThread_.joinable()) {
+			callbackThread_.join();
+		}
+
+		std::lock_guard<std::mutex> lock(redisMutex_);
 		if (redis_) {
 			redisFree(redis_);
 			redis_ = nullptr;
@@ -166,7 +194,15 @@ public:
 	}
 
 	bool emit(const std::string& eventType, const ScriptValue& payload) {
+		std::lock_guard<std::mutex> lock(redisMutex_);
+
 		if (!redis_) return false;
+
+		// Validate event type
+		if (eventType.empty()) {
+			spdlog::warn("[RemoteChannel] Cannot emit event with empty type");
+			return false;
+		}
 
 		try {
 			nlohmann::json data;
@@ -177,9 +213,22 @@ public:
 
 			std::string jsonStr = data.dump();
 
-			// XADD stream * field value
-			std::string cmd = "XADD " + config_.stream + " * data " + jsonStr;
-			redisReply* reply = reinterpret_cast<redisReply*>(redisCommand(redis_, cmd.c_str()));
+			// Use hiredis argument formatting instead of string concatenation
+			// XADD stream * data value
+			const char* argv[5];
+			size_t argvlen[5];
+			argv[0] = "XADD";
+			argvlen[0] = 4;
+			argv[1] = config_.stream.c_str();
+			argvlen[1] = config_.stream.length();
+			argv[2] = "*";
+			argvlen[2] = 1;
+			argv[3] = "data";
+			argvlen[3] = 4;
+			argv[4] = jsonStr.c_str();
+			argvlen[4] = jsonStr.length();
+
+			redisReply* reply = reinterpret_cast<redisReply*>(redisCommandArgv(redis_, 5, argv, argvlen));
 
 			if (!reply) {
 				spdlog::error("[RemoteChannel] emit failed: null reply");
@@ -187,7 +236,7 @@ public:
 			}
 
 			bool success = (reply->type == REDIS_REPLY_STRING || reply->type == REDIS_REPLY_STATUS);
-			freeReplyObject(reply);
+			freeReplyObjectWrapper(reply);
 			return success;
 
 		} catch (const std::exception& e) {
@@ -198,35 +247,86 @@ public:
 
 private:
 	void createConsumerGroup() {
+		std::lock_guard<std::mutex> lock(redisMutex_);
 		if (!redis_) return;
 
+		// Use argument formatting for consumer group creation
 		// XGROUP CREATE stream groupName $ MKSTREAM
-		std::string cmd = "XGROUP CREATE " + config_.stream + " " +
-			config_.consumerGroup + " $ MKSTREAM";
+		const char* argv[6];
+		size_t argvlen[6];
+		argv[0] = "XGROUP";
+		argvlen[0] = 6;
+		argv[1] = "CREATE";
+		argvlen[1] = 6;
+		argv[2] = config_.stream.c_str();
+		argvlen[2] = config_.stream.length();
+		argv[3] = config_.consumerGroup.c_str();
+		argvlen[3] = config_.consumerGroup.length();
+		argv[4] = "$";
+		argvlen[4] = 1;
+		argv[5] = "MKSTREAM";
+		argvlen[5] = 8;
 
-		redisReply* reply = reinterpret_cast<redisReply*>(redisCommand(redis_, cmd.c_str()));
+		redisReply* reply = reinterpret_cast<redisReply*>(redisCommandArgv(redis_, 6, argv, argvlen));
 		if (reply) {
-			freeReplyObject(reply);
+			freeReplyObjectWrapper(reply);
 		}
 	}
 
 	void listen() {
 		std::string lastId = ">";  // ">" 表示只接收新消息
 
-		while (running_) {
-			if (!redis_ || redis_->err) {
-				// 尝试重连
-				if (redis_) redisFree(redis_);
+		while (running_.load()) {
+			{
+				std::lock_guard<std::mutex> lock(redisMutex_);
+				if (!redis_ || redis_->err) {
+					// 尝试重连
+					if (redis_) {
+						redisFree(redis_);
+						redis_ = nullptr;
+					}
+				}
+			}
+
+			if (!redis_) {
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 				if (!connect()) continue;
 			}
 
 			// XREADGROUP GROUP consumer consumerName STREAMS stream ID COUNT 1 BLOCK timeout
-			std::string cmd = "XREADGROUP GROUP " + config_.consumerGroup + " " +
-				config_.consumerName + " STREAMS " + config_.stream + " " +
-				lastId + " COUNT 1 BLOCK " + std::to_string(config_.blockingTimeoutMs);
+			const char* argv[10];
+			size_t argvlen[10];
+			std::string timeoutStr = std::to_string(config_.blockingTimeoutMs);
 
-			redisReply* reply = reinterpret_cast<redisReply*>(redisCommand(redis_, cmd.c_str()));
+			argv[0] = "XREADGROUP";
+			argvlen[0] = 10;
+			argv[1] = "GROUP";
+			argvlen[1] = 5;
+			argv[2] = config_.consumerGroup.c_str();
+			argvlen[2] = config_.consumerGroup.length();
+			argv[3] = config_.consumerName.c_str();
+			argvlen[3] = config_.consumerName.length();
+			argv[4] = "STREAMS";
+			argvlen[4] = 7;
+			argv[5] = config_.stream.c_str();
+			argvlen[5] = config_.stream.length();
+			argv[6] = lastId.c_str();
+			argvlen[6] = lastId.length();
+			argv[7] = "COUNT";
+			argvlen[7] = 5;
+			argv[8] = "1";
+			argvlen[8] = 1;
+			argv[9] = "BLOCK";
+			argvlen[9] = 5;
+
+			redisReply* reply = nullptr;
+			{
+				std::lock_guard<std::mutex> lock(redisMutex_);
+				if (redis_) {
+					reply = reinterpret_cast<redisReply*>(redisCommandArgv(redis_, 10, argv, argvlen));
+				}
+			}
+
 			if (!reply) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(config_.pollIntervalMs));
 				continue;
@@ -244,7 +344,7 @@ private:
 								for (size_t j = 0; j < streamReply->element[1]->elements; j += 2) {
 									if (strcmp(streamReply->element[1]->element[j]->str, "data") == 0) {
 										std::string jsonStr = streamReply->element[1]->element[j + 1]->str;
-										handleMessage(jsonStr);
+										enqueueCallback(jsonStr);
 										break;
 									}
 								}
@@ -254,34 +354,96 @@ private:
 				}
 			}
 
-			freeReplyObject(reply);
+			freeReplyObjectWrapper(reply);
 		}
 	}
 
-	void handleMessage(const std::string& jsonStr) {
+	void enqueueCallback(const std::string& jsonStr) {
 		try {
 			nlohmann::json data = nlohmann::json::parse(jsonStr);
 			std::string eventType = data.value("type", "");
 
-			if (!eventType.empty()) {
+			if (eventType.empty()) {
+				spdlog::warn("[RemoteChannel] Received event with empty type");
+				return;
+			}
+
+			// Get callback for this event type
+			ScriptValue::CallableFunc callback;
+			{
 				std::lock_guard<std::mutex> lock(callbacksMutex_);
 				auto it = callbacks_.find(eventType);
-				if (it != callbacks_.end()) {
-					// 构造 ScriptValue 消息
-					std::vector<ScriptValue> args;
-					args.push_back(fromJson(data));
-					it->second(args);
+				if (it == callbacks_.end()) {
+					return; // No subscriber for this event type
 				}
+				callback = it->second;
 			}
+
+			// Enqueue for processing in callback thread
+			{
+				std::lock_guard<std::mutex> lock(callbackQueueMutex_);
+				callbackQueue_.push(PendingCallback{eventType, fromJson(data), callback});
+			}
+			callbackCond_.notify_one();
+
 		} catch (const std::exception& e) {
-			spdlog::error("[RemoteChannel] handleMessage exception: {}", e.what());
+			spdlog::error("[RemoteChannel] enqueueCallback exception: {}", e.what());
 		}
 	}
 
-	static void freeReplyObject(redisReply* reply) {
+	void processCallbacks() {
+		while (running_.load()) {
+			PendingCallback pending;
+			{
+				std::unique_lock<std::mutex> lock(callbackQueueMutex_);
+				callbackCond_.wait(lock, [this] {
+					return !callbackQueue_.empty() || !running_.load();
+				});
+
+				if (!running_.load()) {
+					break;
+				}
+
+				if (callbackQueue_.empty()) {
+					continue;
+				}
+
+				pending = callbackQueue_.front();
+				callbackQueue_.pop();
+			}
+
+			// Execute callback outside of lock
+			try {
+				std::vector<ScriptValue> args;
+				args.push_back(pending.data);
+				pending.callback(args);
+			} catch (const std::exception& e) {
+				spdlog::error("[RemoteChannel] Callback exception for '{}': {}",
+					pending.eventType, e.what());
+			} catch (...) {
+				spdlog::error("[RemoteChannel] Unknown callback exception for '{}'",
+					pending.eventType);
+			}
+		}
+
+		// Process remaining callbacks
+		std::lock_guard<std::mutex> lock(callbackQueueMutex_);
+		while (!callbackQueue_.empty()) {
+			PendingCallback pending = callbackQueue_.front();
+			callbackQueue_.pop();
+			try {
+				std::vector<ScriptValue> args;
+				args.push_back(pending.data);
+				pending.callback(args);
+			} catch (...) {
+				// Ignore errors during shutdown
+			}
+		}
+	}
+
+	// Wrapper function to avoid name conflict with hiredis function
+	static void freeReplyObjectWrapper(redisReply* reply) {
 		if (!reply) return;
-		// hiredis < 1.0: 使用 freeReplyObject
-		// hiredis >= 1.0: 使用 freeReply
 		#if HIREDIS_MAJOR_VERSION >= 1
 			freeReply(reply);
 		#else
@@ -291,12 +453,21 @@ private:
 
 	std::string name_;
 	Config config_;
-	bool running_;
+	std::atomic<bool> running_;
 	redisContext* redis_;
 	std::thread listenerThread_;
+	std::thread callbackThread_;
+
+	// Separate mutex for Redis connection
+	mutable std::mutex redisMutex_;
 
 	std::unordered_map<std::string, ScriptValue::CallableFunc> callbacks_;
 	mutable std::mutex callbacksMutex_;
+
+	// Thread-safe callback queue
+	std::queue<PendingCallback> callbackQueue_;
+	mutable std::mutex callbackQueueMutex_;
+	std::condition_variable callbackCond_;
 };
 
 // ========== Remote Channel Manager ==========
@@ -420,6 +591,11 @@ ModuleDescriptor createEventModule() {
 		if (args.empty()) return ScriptValue::fromBool(false);
 
 		std::string type = args[0].asString();
+		if (type.empty()) {
+			spdlog::warn("[event] emit: event type cannot be empty");
+			return ScriptValue::fromBool(false);
+		}
+
 		nlohmann::json payload = args.size() > 1 ? toJson(args[1]) : nlohmann::json::object();
 		std::string source;
 		std::string correlationId;
@@ -535,7 +711,6 @@ ModuleDescriptor createEventModule() {
 
 		std::string channelName = args[0].asString();
 		std::string eventType = args[1].asString();
-		nlohmann::json payload = args.size() > 2 ? toJson(args[2]) : nlohmann::json::object();
 
 		auto& manager = RemoteChannelManager::instance();
 		RemoteChannel* channel = manager.getChannel(channelName);

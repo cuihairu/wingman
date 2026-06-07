@@ -10,6 +10,11 @@
 
 namespace wingman {
 
+// Event system limits to prevent resource exhaustion
+constexpr size_t MAX_EVENT_TYPE_LENGTH = 256;
+constexpr size_t MAX_EVENT_NAME_LENGTH = 128;
+constexpr size_t MAX_SUBSCRIPTIONS_PER_EVENT = 1000;
+
 struct EventMessage {
     std::string type;
     std::string source;
