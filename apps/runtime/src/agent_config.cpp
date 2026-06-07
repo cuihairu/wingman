@@ -40,8 +40,44 @@ std::string unquote(std::string value) {
 
 } // namespace
 
+// ========== 能力和模式派生 ==========
+
+RunCapability AgentConfig::getCapabilities() const {
+    RunCapability caps = RunCapability::None;
+    if (enableRemote) {
+        caps = caps | RunCapability::RemoteOutbound;
+    }
+    if (enableLocalIpc) {
+        caps = caps | RunCapability::LocalIpc;
+    }
+    if (enableStandaloneScript) {
+        caps = caps | RunCapability::StandaloneScript;
+    }
+    return caps;
+}
+
 RunMode AgentConfig::getRunMode() const {
-    return enableRemote ? RunMode::Remote : RunMode::Standalone;
+    // 向后兼容：从能力派生模式
+    auto caps = getCapabilities();
+
+    // Hybrid: 远端 + 本地 IPC 同时启用
+    if (hasCapability(caps, RunCapability::RemoteOutbound) &&
+        hasCapability(caps, RunCapability::LocalIpc)) {
+        return RunMode::Hybrid;
+    }
+
+    // Remote: 仅远端
+    if (hasCapability(caps, RunCapability::RemoteOutbound)) {
+        return RunMode::Remote;
+    }
+
+    // Standalone: 单机脚本
+    if (hasCapability(caps, RunCapability::StandaloneScript)) {
+        return RunMode::Standalone;
+    }
+
+    // 默认：未知模式（可能仅 LocalIpc）
+    return RunMode::Unknown;
 }
 
 AgentConfig AgentConfig::loadFromFile(const std::string& path) {
@@ -75,11 +111,15 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
             // 解析布尔值
             if (value == "true") {
                 if (key == "enable_remote") config.enableRemote = true;
+                if (key == "enable_local_ipc") config.enableLocalIpc = true;
+                if (key == "enable_standalone_script") config.enableStandaloneScript = true;
                 if (key == "wait_for_ide") config.debugger.waitForIde = true;
                 if (key == "enable") config.debugger.enable = true;
                 if (key == "console") config.logging.console = true;
             } else if (value == "false") {
                 if (key == "enable_remote") config.enableRemote = false;
+                if (key == "enable_local_ipc") config.enableLocalIpc = false;
+                if (key == "enable_standalone_script") config.enableStandaloneScript = false;
                 if (key == "wait_for_ide") config.debugger.waitForIde = false;
                 if (key == "enable") config.debugger.enable = false;
                 if (key == "console") config.logging.console = false;
@@ -118,8 +158,10 @@ bool AgentConfig::saveToFile(const std::string& path) const {
 
     file << "# Wingman Agent 配置文件\n\n";
 
-    file << "# ========== 运行模式配置 ==========\n";
-    file << "enable_remote = " << (enableRemote ? "true" : "false") << "\n\n";
+    file << "# ========== 能力配置（可组合） ==========\n";
+    file << "enable_remote = " << (enableRemote ? "true" : "false") << "\n";
+    file << "enable_local_ipc = " << (enableLocalIpc ? "true" : "false") << "\n";
+    file << "enable_standalone_script = " << (enableStandaloneScript ? "true" : "false") << "\n\n";
 
     file << "# ========== 远程模式配置 ==========\n";
     file << "[remote]\n";

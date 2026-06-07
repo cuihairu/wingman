@@ -46,18 +46,27 @@ bool Agent::initialize(const AgentConfig& config) {
     impl_->config = config;
     impl_->mode = config.getRunMode();
 
-    spdlog::info("Initializing Agent, mode: {}",
-        impl_->mode == RunMode::Remote ? "remote" : "standalone");
+    auto caps = config.getCapabilities();
 
-    // 初始化对应模式
-    if (impl_->mode == RunMode::Remote) {
+    spdlog::info("Initializing Agent with capabilities:");
+    spdlog::info("  - Remote outbound: {}",
+        hasCapability(caps, RunCapability::RemoteOutbound) ? "enabled" : "disabled");
+    spdlog::info("  - Local IPC: {}",
+        hasCapability(caps, RunCapability::LocalIpc) ? "enabled" : "disabled");
+    spdlog::info("  - Standalone script: {}",
+        hasCapability(caps, RunCapability::StandaloneScript) ? "enabled" : "disabled");
+
+    // 初始化远端客户端（基于能力）
+    if (hasCapability(caps, RunCapability::RemoteOutbound)) {
         if (!initRemoteClient()) {
-            spdlog::error("Failed to initialize remote mode");
+            spdlog::error("Failed to initialize remote client");
             return false;
         }
     }
 
-    if (impl_->mode == RunMode::Standalone) {
+    // 初始化单机模式（即使仅用于本地 IPC 也需要 StandaloneMode 实例）
+    if (hasCapability(caps, RunCapability::LocalIpc) ||
+        hasCapability(caps, RunCapability::StandaloneScript)) {
         if (!initStandaloneMode()) {
             spdlog::error("Failed to initialize standalone mode");
             return false;
@@ -91,25 +100,31 @@ void Agent::shutdown() {
 bool Agent::start() {
     running_.store(true);
 
+    auto caps = impl_->config.getCapabilities();
     bool success = true;
 
-    if (impl_->remoteClient && impl_->mode == RunMode::Remote) {
+    // 启动远端客户端（基于能力）
+    if (impl_->remoteClient && hasCapability(caps, RunCapability::RemoteOutbound)) {
         if (!impl_->remoteClient->start()) {
-            spdlog::error("Failed to start remote mode");
+            spdlog::error("Failed to start remote client");
             success = false;
         }
     }
 
-    if (impl_->standaloneMode && impl_->mode == RunMode::Standalone) {
+    // 启动单机模式（如果需要脚本执行）
+    if (impl_->standaloneMode && hasCapability(caps, RunCapability::StandaloneScript)) {
         if (!impl_->standaloneMode->start()) {
             spdlog::error("Failed to start standalone mode");
             success = false;
-        } else {
-            impl_->localIpcServer = std::make_unique<LocalIpcServer>(*impl_->standaloneMode);
-            if (!impl_->localIpcServer->start()) {
-                spdlog::error("Failed to start local IPC server");
-                success = false;
-            }
+        }
+    }
+
+    // 启动本地 IPC 服务器（基于能力）
+    if (impl_->standaloneMode && hasCapability(caps, RunCapability::LocalIpc)) {
+        impl_->localIpcServer = std::make_unique<LocalIpcServer>(*impl_->standaloneMode);
+        if (!impl_->localIpcServer->start()) {
+            spdlog::error("Failed to start local IPC server");
+            success = false;
         }
     }
 

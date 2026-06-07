@@ -6,12 +6,35 @@
 
 namespace wingman::runtime {
 
-// ========== 运行模式 ==========
+// ========== 运行能力位标志 ==========
+// 支持能力组合而非互斥模式
+enum class RunCapability : uint32_t {
+    None = 0,
+    RemoteOutbound = 0x01,   // 主动连接 Go Orchestrator
+    LocalIpc = 0x02,         // 本地 IPC 服务（供 UI 连接）
+    StandaloneScript = 0x04, // 单机脚本执行
+};
 
+// 能力位运算（inline 避免 ODR 违规）
+inline RunCapability operator|(RunCapability a, RunCapability b) {
+    return static_cast<RunCapability>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+}
+
+inline RunCapability operator&(RunCapability a, RunCapability b) {
+    return static_cast<RunCapability>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+}
+
+inline bool hasCapability(RunCapability capabilities, RunCapability flag) {
+    return (static_cast<uint32_t>(capabilities) & static_cast<uint32_t>(flag)) != 0;
+}
+
+// ========== 运行模式（向后兼容） ==========
+// 遗留用途，内部从能力派生
 enum class RunMode {
     Unknown = 0,
-    Remote,      // 主动连接 Go Orchestrator
-    Standalone,  // 单机模式（仅脚本）
+    Remote,      // 主动连接 Go Orchestrator（遗留）
+    Standalone,  // 单机模式（仅脚本，遗留）
+    Hybrid,      // 混合模式：远端 + 本地 IPC
 };
 
 // ========== 配置结构 ==========
@@ -48,8 +71,10 @@ struct PerformanceConfig {
 };
 
 struct AgentConfig {
-    // 模式配置
-    bool enableRemote = true;
+    // 能力配置（可组合）
+    bool enableRemote = true;      // 启用远端 outbound 连接
+    bool enableLocalIpc = true;    // 启用本地 IPC 服务器（供 UI 连接）
+    bool enableStandaloneScript = false;  // 启用单机脚本执行
 
     RemoteClientConfig remoteClient;
     StandaloneModeConfig standalone;
@@ -66,7 +91,10 @@ struct AgentConfig {
     // 保存到文件
     bool saveToFile(const std::string& path) const;
 
-    // 获取实际运行模式
+    // 获取能力位标志
+    RunCapability getCapabilities() const;
+
+    // 获取实际运行模式（向后兼容，从能力派生）
     RunMode getRunMode() const;
 };
 
