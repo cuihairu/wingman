@@ -11,9 +11,9 @@ namespace script {
 
 // Language-independent value type (tagged union)
 struct ScriptValue {
-	enum Type { Null, Bool, Int, Float, String, Array, Object, Callable };
+	enum class Type { Null, Bool, Int, Float, String, Array, Object, Callable };
 
-	Type type = Null;
+	Type type = Type::Null;
 
 	bool boolVal = false;
 	int64_t intVal = 0;
@@ -31,45 +31,45 @@ struct ScriptValue {
 
 	// Factory methods
 	static ScriptValue null() { return {}; }
-	static ScriptValue fromBool(bool v) { ScriptValue sv; sv.type = Bool; sv.boolVal = v; return sv; }
-	static ScriptValue fromInt(int64_t v) { ScriptValue sv; sv.type = Int; sv.intVal = v; return sv; }
-	static ScriptValue fromFloat(double v) { ScriptValue sv; sv.type = Float; sv.floatVal = v; return sv; }
-	static ScriptValue fromString(const std::string& v) { ScriptValue sv; sv.type = String; sv.strVal = v; return sv; }
-	static ScriptValue fromString(std::string&& v) { ScriptValue sv; sv.type = String; sv.strVal = std::move(v); return sv; }
-	static ScriptValue fromArray(std::vector<ScriptValue>&& v) { ScriptValue sv; sv.type = Array; sv.arrayVal = std::move(v); return sv; }
-	static ScriptValue fromObject(std::unordered_map<std::string, ScriptValue>&& v) { ScriptValue sv; sv.type = Object; sv.objectVal = std::move(v); return sv; }
+	static ScriptValue fromBool(bool v) { ScriptValue sv; sv.type = Type::Bool; sv.boolVal = v; return sv; }
+	static ScriptValue fromInt(int64_t v) { ScriptValue sv; sv.type = Type::Int; sv.intVal = v; return sv; }
+	static ScriptValue fromFloat(double v) { ScriptValue sv; sv.type = Type::Float; sv.floatVal = v; return sv; }
+	static ScriptValue fromString(const std::string& v) { ScriptValue sv; sv.type = Type::String; sv.strVal = v; return sv; }
+	static ScriptValue fromString(std::string&& v) { ScriptValue sv; sv.type = Type::String; sv.strVal = std::move(v); return sv; }
+	static ScriptValue fromArray(std::vector<ScriptValue>&& v) { ScriptValue sv; sv.type = Type::Array; sv.arrayVal = std::move(v); return sv; }
+	static ScriptValue fromObject(std::unordered_map<std::string, ScriptValue>&& v) { ScriptValue sv; sv.type = Type::Object; sv.objectVal = std::move(v); return sv; }
 	static ScriptValue fromCallable(CallableFunc v, bool threadSafe = false) {
 		ScriptValue sv;
-		sv.type = Callable;
+		sv.type = Type::Callable;
 		sv.callableVal = std::move(v);
 		sv.callableThreadSafe = threadSafe;
 		return sv;
 	}
 
 	// Convenience access
-	bool isNull() const { return type == Null; }
-	bool isBool() const { return type == Bool; }
-	bool isInt() const { return type == Int; }
-	bool isFloat() const { return type == Float; }
-	bool isString() const { return type == String; }
-	bool isArray() const { return type == Array; }
-	bool isObject() const { return type == Object; }
-	bool isCallable() const { return type == Callable; }
+	bool isNull() const { return type == Type::Null; }
+	bool isBool() const { return type == Type::Bool; }
+	bool isInt() const { return type == Type::Int; }
+	bool isFloat() const { return type == Type::Float; }
+	bool isString() const { return type == Type::String; }
+	bool isArray() const { return type == Type::Array; }
+	bool isObject() const { return type == Type::Object; }
+	bool isCallable() const { return type == Type::Callable; }
 
-	bool asBool(bool def = false) const { return type == Bool ? boolVal : def; }
-	int64_t asInt(int64_t def = 0) const { return type == Int ? intVal : def; }
-	double asFloat(double def = 0.0) const { return type == Float ? floatVal : (type == Int ? static_cast<double>(intVal) : def); }
-	std::string asString(const std::string& def = "") const { return type == String ? strVal : def; }
+	bool asBool(bool def = false) const { return type == Type::Bool ? boolVal : def; }
+	int64_t asInt(int64_t def = 0) const { return type == Type::Int ? intVal : def; }
+	double asFloat(double def = 0.0) const { return type == Type::Float ? floatVal : (type == Type::Int ? static_cast<double>(intVal) : def); }
+	std::string asString(const std::string& def = "") const { return type == Type::String ? strVal : def; }
 
 	// Object access
 	const ScriptValue* get(const std::string& key) const {
-		if (type != Object) return nullptr;
+		if (type != Type::Object) return nullptr;
 		auto it = objectVal.find(key);
 		return it != objectVal.end() ? &it->second : nullptr;
 	}
 
 	ScriptValue get(const std::string& key, const ScriptValue& def) const {
-		if (type != Object) return def;
+		if (type != Type::Object) return def;
 		auto it = objectVal.find(key);
 		return it != objectVal.end() ? it->second : def;
 	}
@@ -79,11 +79,11 @@ struct ScriptValue {
 		static const ScriptValue s_null;
 		return idx < arrayVal.size() ? arrayVal[idx] : s_null;
 	}
-	size_t size() const { return type == Array ? arrayVal.size() : 0; }
+	size_t size() const { return type == Type::Array ? arrayVal.size() : 0; }
 
 	// Callable invocation
 	ScriptValue call(const std::vector<ScriptValue>& args = {}) const {
-		if (type == Callable && callableVal) {
+		if (type == Type::Callable && callableVal) {
 			return callableVal(args);
 		}
 		return ScriptValue::null();

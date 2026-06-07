@@ -3,6 +3,19 @@
 
 namespace wingman::rpc {
 
+namespace {
+
+runtime::ScriptInfo* findScriptByPath(std::vector<runtime::ScriptInfo>& scripts, const std::string& path) {
+    for (auto& script : scripts) {
+        if (script.path == path) {
+            return &script;
+        }
+    }
+    return nullptr;
+}
+
+} // namespace
+
 void registerScriptHandlers(RpcDispatcher& dispatcher, runtime::StandaloneMode& standalone) {
     using json = nlohmann::json;
 
@@ -26,6 +39,15 @@ void registerScriptHandlers(RpcDispatcher& dispatcher, runtime::StandaloneMode& 
         if (path.empty()) {
             return {{"success", false}, {"error", "Missing path"}};
         }
+
+        auto scripts = standalone.listScripts();
+        if (auto* existing = findScriptByPath(scripts, path)) {
+            if (!standalone.startScript(existing->id)) {
+                return {{"success", false}, {"error", "Failed to start loaded script"}};
+            }
+            return {{"scriptId", existing->id}, {"status", "running"}, {"reused", true}};
+        }
+
         std::string id = standalone.loadScript(path);
         if (id.empty()) {
             return {{"success", false}, {"error", "Failed to load script"}};
@@ -33,7 +55,7 @@ void registerScriptHandlers(RpcDispatcher& dispatcher, runtime::StandaloneMode& 
         if (!standalone.startScript(id)) {
             return {{"success", false}, {"error", "Failed to start script"}};
         }
-        return {{"scriptId", id}, {"status", "running"}};
+        return {{"scriptId", id}, {"status", "running"}, {"reused", false}};
     });
 
     dispatcher.registerHandler("script.stop", [&standalone](const json& params) -> json {

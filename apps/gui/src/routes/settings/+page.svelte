@@ -79,6 +79,20 @@
 			window: { ...editingProfile.window, [field]: value },
 		};
 	}
+
+	function updateHotkeyField(field: 'start' | 'stop' | 'pause' | 'emergencyStop', value: string) {
+		if (!editingProfile) return;
+		editingProfile = {
+			...editingProfile,
+			hotkeys: {
+				...editingProfile.hotkeys,
+				[field]: value
+					.split(',')
+					.map(v => v.trim().toUpperCase())
+					.filter(Boolean),
+			},
+		};
+	}
 </script>
 
 <div class="page-header">
@@ -324,6 +338,52 @@
 								</div>
 							{/each}
 						{/if}
+					</div>
+
+					<div class="form-section">
+						<h4>热键</h4>
+						<div class="form-group">
+							<span class="form-label">启动</span>
+							<input
+								type="text"
+								class="form-input"
+								value={editingProfile.hotkeys.start.join(', ')}
+								oninput={(e) => updateHotkeyField('start', (e.target as HTMLInputElement).value)}
+								placeholder="F5"
+							/>
+						</div>
+						<div class="form-group">
+							<span class="form-label">停止</span>
+							<input
+								type="text"
+								class="form-input"
+								value={editingProfile.hotkeys.stop.join(', ')}
+								oninput={(e) => updateHotkeyField('stop', (e.target as HTMLInputElement).value)}
+								placeholder="F6"
+							/>
+						</div>
+						<div class="form-group">
+							<span class="form-label">暂停/恢复</span>
+							<input
+								type="text"
+								class="form-input"
+								value={editingProfile.hotkeys.pause.join(', ')}
+								oninput={(e) => updateHotkeyField('pause', (e.target as HTMLInputElement).value)}
+								placeholder="F7"
+							/>
+						</div>
+						<div class="form-group">
+							<span class="form-label">急停</span>
+							<input
+								type="text"
+								class="form-input"
+								value={editingProfile.hotkeys.emergencyStop.join(', ')}
+								oninput={(e) => updateHotkeyField('emergencyStop', (e.target as HTMLInputElement).value)}
+								placeholder="F12"
+							/>
+						</div>
+						<div class="empty-hint">使用逗号分隔多个快捷键，例如 `CTRL+SHIFT+P, F7`。</div>
+						<div class="empty-hint">当前语义：启动=启动当前配置脚本，停止=停止当前配置脚本，暂停=暂停/恢复全部已加载脚本，急停=立即停止全部已加载脚本。</div>
 					</div>
 
 					<div class="form-actions">

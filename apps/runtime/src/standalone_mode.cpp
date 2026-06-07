@@ -250,6 +250,63 @@ bool StandaloneMode::stopScript(const std::string& id) {
     return stopped;
 }
 
+size_t StandaloneMode::pauseAllScripts() {
+    std::vector<std::string> ids;
+    {
+        std::lock_guard lock(impl_->scriptsMutex);
+        ids.reserve(impl_->scripts.size());
+        for (const auto& [id, _] : impl_->scripts) {
+            ids.push_back(id);
+        }
+    }
+
+    size_t pausedCount = 0;
+    for (const auto& id : ids) {
+        if (pauseScript(id)) {
+            ++pausedCount;
+        }
+    }
+    return pausedCount;
+}
+
+size_t StandaloneMode::resumeAllScripts() {
+    std::vector<std::string> ids;
+    {
+        std::lock_guard lock(impl_->scriptsMutex);
+        ids.reserve(impl_->scripts.size());
+        for (const auto& [id, _] : impl_->scripts) {
+            ids.push_back(id);
+        }
+    }
+
+    size_t resumedCount = 0;
+    for (const auto& id : ids) {
+        if (resumeScript(id)) {
+            ++resumedCount;
+        }
+    }
+    return resumedCount;
+}
+
+size_t StandaloneMode::stopAllScripts() {
+    std::vector<std::string> ids;
+    {
+        std::lock_guard lock(impl_->scriptsMutex);
+        ids.reserve(impl_->scripts.size());
+        for (const auto& [id, _] : impl_->scripts) {
+            ids.push_back(id);
+        }
+    }
+
+    size_t stoppedCount = 0;
+    for (const auto& id : ids) {
+        if (stopScript(id)) {
+            ++stoppedCount;
+        }
+    }
+    return stoppedCount;
+}
+
 std::vector<ScriptInfo> StandaloneMode::listScripts() const {
     std::vector<std::string> ids;
     {

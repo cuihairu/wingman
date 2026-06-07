@@ -5,17 +5,17 @@ namespace lua {
 
 sol::object toLuaObject(sol::state_view& lua, const script::ScriptValue& value) {
 	switch (value.type) {
-	case script::ScriptValue::Null:
+	case script::ScriptValue::Type::Null:
 		return sol::make_object(lua, sol::nil);
-	case script::ScriptValue::Bool:
+	case script::ScriptValue::Type::Bool:
 		return sol::make_object(lua, value.boolVal);
-	case script::ScriptValue::Int:
+	case script::ScriptValue::Type::Int:
 		return sol::make_object(lua, value.intVal);
-	case script::ScriptValue::Float:
+	case script::ScriptValue::Type::Float:
 		return sol::make_object(lua, value.floatVal);
-	case script::ScriptValue::String:
+	case script::ScriptValue::Type::String:
 		return sol::make_object(lua, value.strVal);
-	case script::ScriptValue::Array: {
+	case script::ScriptValue::Type::Array: {
 		sol::table tbl = lua.create_table(static_cast<int>(value.arrayVal.size()), 0);
 		int i = 1;
 		for (const auto& elem : value.arrayVal) {
@@ -23,14 +23,14 @@ sol::object toLuaObject(sol::state_view& lua, const script::ScriptValue& value) 
 		}
 		return tbl;
 	}
-	case script::ScriptValue::Object: {
+	case script::ScriptValue::Type::Object: {
 		sol::table tbl = lua.create_table(0, static_cast<int>(value.objectVal.size()));
 		for (const auto& [k, v] : value.objectVal) {
 			tbl[k] = toLuaObject(lua, v);
 		}
 		return tbl;
 	}
-	case script::ScriptValue::Callable: {
+	case script::ScriptValue::Type::Callable: {
 		// Wrap C++ callable as Lua function
 		return sol::make_object(lua, [callable = value.callableVal](sol::variadic_args va) -> sol::object {
 			std::vector<script::ScriptValue> args;

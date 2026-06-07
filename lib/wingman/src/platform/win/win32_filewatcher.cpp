@@ -4,9 +4,11 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -236,91 +238,106 @@ void Win32FileWatcher::eventLoop() {
 }
 
 void Win32FileWatcher::checkIOCompletion() {
-    std::lock_guard<std::mutex> lock(watchesMutex_);
+    // Collect pending events while holding the lock
+    std::vector<std::function<void()>> pendingCallbacks;
 
-    for (auto& pair : watches_) {
-        WatchItem* item = pair.second.get();
-        if (!item->active) {
-            continue;
-        }
+    {
+        std::lock_guard<std::mutex> lock(watchesMutex_);
 
-        DWORD bytesTransferred = 0;
-        if (!GetOverlappedResult(item->directoryHandle, &item->overlapped, &bytesTransferred, FALSE)) {
-            const DWORD error = GetLastError();
-            if (error == ERROR_IO_INCOMPLETE) {
+        for (auto& pair : watches_) {
+            WatchItem* item = pair.second.get();
+            if (!item->active) {
                 continue;
             }
 
-            spdlog::warn("[Win32FileWatcher] IO error: {}, restarting", error);
-            beginRead(item);
-            continue;
-        }
+            DWORD bytesTransferred = 0;
+            if (!GetOverlappedResult(item->directoryHandle, &item->overlapped, &bytesTransferred, FALSE)) {
+                const DWORD error = GetLastError();
+                if (error == ERROR_IO_INCOMPLETE) {
+                    continue;
+                }
 
-        if (bytesTransferred == 0) {
-            beginRead(item);
-            continue;
-        }
-
-        auto* fni = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(item->buffer.data());
-        while (true) {
-            processNotification(item, fni);
-
-            if (fni->NextEntryOffset == 0) {
-                break;
+                spdlog::warn("[Win32FileWatcher] IO error: {}, restarting", error);
+                beginRead(item);
+                continue;
             }
-            fni = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(
-                reinterpret_cast<uint8_t*>(fni) + fni->NextEntryOffset
-            );
+
+            if (bytesTransferred == 0) {
+                beginRead(item);
+                continue;
+            }
+
+            // Process all notifications in this buffer
+            auto* fni = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(item->buffer.data());
+            while (true) {
+                // Extract data needed for callback
+                const int length = static_cast<int>(fni->FileNameLength / sizeof(wchar_t));
+                const std::wstring wfileName(fni->FileName, length);
+
+                const int size = WideCharToMultiByte(CP_UTF8, 0, wfileName.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                std::string fileName(size - 1, '\0');
+                WideCharToMultiByte(CP_UTF8, 0, wfileName.c_str(), -1, fileName.data(), size, nullptr, nullptr);
+
+                std::string fullPath = item->path;
+                if (!fullPath.empty() && fullPath.back() != '\\' && fullPath.back() != '/') {
+                    fullPath += '\\';
+                }
+                fullPath += fileName;
+
+                FileChangeType type = FileChangeType::Modified;
+                switch (fni->Action) {
+                    case FILE_ACTION_ADDED:
+                        type = FileChangeType::Added;
+                        break;
+                    case FILE_ACTION_REMOVED:
+                        type = FileChangeType::Removed;
+                        break;
+                    case FILE_ACTION_MODIFIED:
+                        type = FileChangeType::Modified;
+                        break;
+                    case FILE_ACTION_RENAMED_OLD_NAME:
+                        type = FileChangeType::RenamedOld;
+                        break;
+                    case FILE_ACTION_RENAMED_NEW_NAME:
+                        type = FileChangeType::RenamedNew;
+                        break;
+                }
+
+                // Capture callback and event data for later invocation (without lock)
+                if (item->callback) {
+                    FileChange event;
+                    event.type = type;
+                    event.path = fullPath;
+                    event.timestamp = GetTickCount64();
+
+                    // Copy the callback to invoke it later without holding the lock
+                    FileChangeCallback callbackCopy = item->callback;
+                    pendingCallbacks.push_back([callbackCopy, event]() {
+                        try {
+                            callbackCopy(event);
+                        } catch (const std::exception& e) {
+                            spdlog::error("[Win32FileWatcher] Callback exception: {}", e.what());
+                        }
+                    });
+                }
+
+                if (fni->NextEntryOffset == 0) {
+                    break;
+                }
+                fni = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(
+                    reinterpret_cast<uint8_t*>(fni) + fni->NextEntryOffset
+                );
+            }
+
+            // Restart the async read for this watch
+            beginRead(item);
         }
-
-        beginRead(item);
-    }
-}
-
-void Win32FileWatcher::processNotification(WatchItem* item, FILE_NOTIFY_INFORMATION* fni) {
-    const int length = static_cast<int>(fni->FileNameLength / sizeof(wchar_t));
-    const std::wstring wfileName(fni->FileName, length);
-
-    const int size = WideCharToMultiByte(CP_UTF8, 0, wfileName.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    std::string fileName(size - 1, '\0');
-    WideCharToMultiByte(CP_UTF8, 0, wfileName.c_str(), -1, fileName.data(), size, nullptr, nullptr);
-
-    std::string fullPath = item->path;
-    if (!fullPath.empty() && fullPath.back() != '\\' && fullPath.back() != '/') {
-        fullPath += '\\';
-    }
-    fullPath += fileName;
-
-    FileChangeType type = FileChangeType::Modified;
-    switch (fni->Action) {
-        case FILE_ACTION_ADDED:
-            type = FileChangeType::Added;
-            break;
-        case FILE_ACTION_REMOVED:
-            type = FileChangeType::Removed;
-            break;
-        case FILE_ACTION_MODIFIED:
-            type = FileChangeType::Modified;
-            break;
-        case FILE_ACTION_RENAMED_OLD_NAME:
-            type = FileChangeType::RenamedOld;
-            break;
-        case FILE_ACTION_RENAMED_NEW_NAME:
-            type = FileChangeType::RenamedNew;
-            break;
     }
 
-    FileChange event;
-    event.type = type;
-    event.path = fullPath;
-    event.timestamp = GetTickCount64();
-
-    if (item->callback) {
-        try {
-            item->callback(event);
-        } catch (const std::exception& e) {
-            spdlog::error("[Win32FileWatcher] Callback exception: {}", e.what());
-        }
+    // Invoke all callbacks WITHOUT holding the lock to prevent deadlock
+    // and allow callbacks to safely call unwatch() without race conditions
+    for (auto& callback : pendingCallbacks) {
+        callback();
     }
 }
 

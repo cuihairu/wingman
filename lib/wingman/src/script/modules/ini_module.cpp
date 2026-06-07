@@ -176,7 +176,7 @@ static ScriptValue iniDecode(const std::vector<ScriptValue>& args) {
 
 			// 获取 section 对象的指针以便后续修改
 			auto it = result.find(currentSection);
-			if (it != result.end() && it->second.type == ScriptValue::Object) {
+			if (it != result.end() && it->second.type == ScriptValue::Type::Object) {
 				currentSectionData = &it->second.objectVal;
 			} else {
 				currentSectionData = nullptr;
@@ -196,7 +196,7 @@ static ScriptValue iniDecode(const std::vector<ScriptValue>& args) {
 					result[""] = ScriptValue::fromObject({});
 				}
 				auto it = result.find("");
-				if (it != result.end() && it->second.type == ScriptValue::Object) {
+				if (it != result.end() && it->second.type == ScriptValue::Type::Object) {
 					it->second.objectVal[key] = ScriptValue::fromString(value);
 				}
 			} else if (currentSectionData) {
@@ -211,7 +211,7 @@ static ScriptValue iniDecode(const std::vector<ScriptValue>& args) {
 }
 
 static ScriptValue iniEncode(const std::vector<ScriptValue>& args) {
-	if (args.empty() || args[0].type != ScriptValue::Object) {
+	if (args.empty() || args[0].type != ScriptValue::Type::Object) {
 		return ScriptValue::fromString("");
 	}
 
@@ -220,7 +220,7 @@ static ScriptValue iniEncode(const std::vector<ScriptValue>& args) {
 	// 遍历所有 section
 	for (const auto& [sectionName, sectionData] : args[0].objectVal) {
 		// 跳过空 section
-		if (sectionData.type != ScriptValue::Object) {
+		if (sectionData.type != ScriptValue::Type::Object) {
 			continue;
 		}
 
@@ -253,14 +253,14 @@ static ScriptValue iniGet(const std::vector<ScriptValue>& args) {
 	// args[1]: section 名称
 	// args[2] (可选): key 名称
 
-	if (args[0].type != ScriptValue::Object) {
+	if (args[0].type != ScriptValue::Type::Object) {
 		return ScriptValue::null();
 	}
 
 	std::string section = args[1].asString();
 	const ScriptValue* sectionVal = args[0].get(section);
 
-	if (!sectionVal || sectionVal->type != ScriptValue::Object) {
+	if (!sectionVal || sectionVal->type != ScriptValue::Type::Object) {
 		return ScriptValue::null();
 	}
 
@@ -290,7 +290,7 @@ static ScriptValue iniSet(const std::vector<ScriptValue>& args) {
 	// args[2]: key 名称
 	// args[3]: value
 
-	if (args[0].type != ScriptValue::Object) {
+	if (args[0].type != ScriptValue::Type::Object) {
 		return ScriptValue::null();
 	}
 
@@ -309,7 +309,7 @@ static ScriptValue iniSet(const std::vector<ScriptValue>& args) {
 		sectionVal = result.get(section);
 	}
 
-	if (sectionVal && sectionVal->type == ScriptValue::Object) {
+	if (sectionVal && sectionVal->type == ScriptValue::Type::Object) {
 		// 需要深拷贝 section 对象
 		ScriptValue newSection = *sectionVal;
 		newSection.objectVal[key] = ScriptValue::fromString(value);
@@ -329,7 +329,7 @@ static ScriptValue iniDelete(const std::vector<ScriptValue>& args) {
 	// args[1]: section 名称
 	// args[2] (可选): key 名称
 
-	if (args[0].type != ScriptValue::Object) {
+	if (args[0].type != ScriptValue::Type::Object) {
 		return ScriptValue::fromBool(false);
 	}
 
@@ -346,7 +346,7 @@ static ScriptValue iniDelete(const std::vector<ScriptValue>& args) {
 
 	// 如果提供了 key，删除 section 中的 key
 	const ScriptValue* sectionVal = result.get(section);
-	if (sectionVal && sectionVal->type == ScriptValue::Object) {
+	if (sectionVal && sectionVal->type == ScriptValue::Type::Object) {
 		std::string key = args[2].asString();
 		// 需要深拷贝 section 对象
 		ScriptValue newSection = *sectionVal;
@@ -365,7 +365,7 @@ static ScriptValue iniHasSection(const std::vector<ScriptValue>& args) {
 		return ScriptValue::fromBool(false);
 	}
 
-	if (args[0].type != ScriptValue::Object) {
+	if (args[0].type != ScriptValue::Type::Object) {
 		return ScriptValue::fromBool(false);
 	}
 
@@ -378,7 +378,7 @@ static ScriptValue iniHasKey(const std::vector<ScriptValue>& args) {
 		return ScriptValue::fromBool(false);
 	}
 
-	if (args[0].type != ScriptValue::Object) {
+	if (args[0].type != ScriptValue::Type::Object) {
 		return ScriptValue::fromBool(false);
 	}
 
@@ -386,7 +386,7 @@ static ScriptValue iniHasKey(const std::vector<ScriptValue>& args) {
 	std::string key = args[2].asString();
 
 	const ScriptValue* sectionVal = args[0].get(section);
-	if (sectionVal && sectionVal->type == ScriptValue::Object) {
+	if (sectionVal && sectionVal->type == ScriptValue::Type::Object) {
 		return ScriptValue::fromBool(sectionVal->get(key) != nullptr);
 	}
 
@@ -394,7 +394,7 @@ static ScriptValue iniHasKey(const std::vector<ScriptValue>& args) {
 }
 
 static ScriptValue iniSections(const std::vector<ScriptValue>& args) {
-	if (args.empty() || args[0].type != ScriptValue::Object) {
+	if (args.empty() || args[0].type != ScriptValue::Type::Object) {
 		return ScriptValue::fromArray({});
 	}
 
@@ -407,14 +407,14 @@ static ScriptValue iniSections(const std::vector<ScriptValue>& args) {
 }
 
 static ScriptValue iniKeys(const std::vector<ScriptValue>& args) {
-	if (args.size() < 2 || args[0].type != ScriptValue::Object) {
+	if (args.size() < 2 || args[0].type != ScriptValue::Type::Object) {
 		return ScriptValue::fromArray({});
 	}
 
 	std::string section = args[1].asString();
 	const ScriptValue* sectionVal = args[0].get(section);
 
-	if (!sectionVal || sectionVal->type != ScriptValue::Object) {
+	if (!sectionVal || sectionVal->type != ScriptValue::Type::Object) {
 		return ScriptValue::fromArray({});
 	}
 
@@ -434,7 +434,7 @@ static ScriptValue iniMerge(const std::vector<ScriptValue>& args) {
 	// args[0]: 基础 INI 对象
 	// args[1]: 要合并的 INI 对象
 
-	if (args[0].type != ScriptValue::Object || args[1].type != ScriptValue::Object) {
+	if (args[0].type != ScriptValue::Type::Object || args[1].type != ScriptValue::Type::Object) {
 		return ScriptValue::null();
 	}
 
@@ -448,7 +448,7 @@ static ScriptValue iniMerge(const std::vector<ScriptValue>& args) {
 		if (it == result.end()) {
 			// section 不存在，直接复制
 			result[sectionName] = sectionData;
-		} else if (it->second.type == ScriptValue::Object && sectionData.type == ScriptValue::Object) {
+		} else if (it->second.type == ScriptValue::Type::Object && sectionData.type == ScriptValue::Type::Object) {
 			// section 存在，合并 key-value
 			for (const auto& [key, value] : sectionData.objectVal) {
 				it->second.objectVal[key] = value;

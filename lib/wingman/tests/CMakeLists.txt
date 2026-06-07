@@ -50,6 +50,8 @@ if(BUILD_CORE_TESTS)
         trigger_engine_test.cpp
         performance_test.cpp
         image_analyzer_test.cpp
+        db_module_test.cpp
+        ini_module_test.cpp
     )
 
     if(WIN32)

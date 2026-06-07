@@ -61,6 +61,24 @@ function createConnectionStore() {
 			const paused = await invoke('toggle_pause');
 			store.update(s => ({ ...s, paused }));
 		},
+		async stopAll() {
+			if (!invoke) return 0;
+			const stopped = await invoke('stop_all');
+			store.update(s => ({ ...s, paused: false }));
+			return Number(stopped || 0);
+		},
+		async startActiveProfile() {
+			if (!invoke) return 0;
+			const started = await invoke('start_active_profile_scripts');
+			store.update(s => ({ ...s, paused: false }));
+			return Array.isArray(started) ? started.length : 0;
+		},
+		async stopActiveProfile() {
+			if (!invoke) return 0;
+			const stopped = await invoke('stop_active_profile_scripts');
+			store.update(s => ({ ...s, paused: false }));
+			return Number(stopped || 0);
+		},
 		async refresh() {
 			if (!invoke) return;
 			try {

@@ -204,24 +204,24 @@ std::mutex g_stateMachinesMutex;  // Protects g_stateMachines and g_nextMachineI
 // Helper to convert ScriptValue to JSON
 nlohmann::json toJson(const ScriptValue& value) {
 	switch (value.type) {
-	case ScriptValue::Null:
+	case ScriptValue::Type::Null:
 		return nullptr;
-	case ScriptValue::Bool:
+	case ScriptValue::Type::Bool:
 		return value.boolVal;
-	case ScriptValue::Int:
+	case ScriptValue::Type::Int:
 		return value.intVal;
-	case ScriptValue::Float:
+	case ScriptValue::Type::Float:
 		return value.floatVal;
-	case ScriptValue::String:
+	case ScriptValue::Type::String:
 		return value.strVal;
-	case ScriptValue::Array: {
+	case ScriptValue::Type::Array: {
 		nlohmann::json arr = nlohmann::json::array();
 		for (const auto& item : value.arrayVal) {
 			arr.push_back(toJson(item));
 		}
 		return arr;
 	}
-	case ScriptValue::Object: {
+	case ScriptValue::Type::Object: {
 		nlohmann::json obj = nlohmann::json::object();
 		for (const auto& [key, item] : value.objectVal) {
 			obj[key] = toJson(item);

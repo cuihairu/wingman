@@ -4,6 +4,9 @@
 #include <regex>
 #include <sstream>
 #include <unordered_set>
+#include <mutex>
+#include <atomic>
+#include <chrono>
 
 #ifdef _WIN32
 #include <shlobj.h>
@@ -17,8 +20,10 @@ namespace modules {
 // ========== Path Utilities ==========
 
 namespace {
-	// 缓存数据目录路径
+	// 缓存数据目录路径 - 使用 call_once 保证线程安全
 	std::string g_scriptDataDir;
+	std::mutex g_scriptDataDirMutex;
+	std::once_flag g_scriptDataDirOnceFlag;
 
 	std::string getDataDirImpl() {
 		if (!g_scriptDataDir.empty()) {
@@ -58,7 +63,10 @@ namespace {
 } // anonymous namespace
 
 std::string getScriptDataDir() {
-	return getDataDirImpl();
+	std::call_once(g_scriptDataDirOnceFlag, []() {
+		g_scriptDataDir = getDataDirImpl();
+	});
+	return g_scriptDataDir;
 }
 
 std::string getDatabasePath(const std::string& name) {
@@ -90,6 +98,23 @@ namespace {
 	const std::unordered_set<std::string> g_validOperators = {
 		"=", "!=", ">", ">=", "<", "<=", "like", "in"
 	};
+
+	// SQL 类型白名单验证（用于防止注入）
+	bool isValidTypeDef(const std::string& typeDef) {
+		for (char c : typeDef) {
+			if (c == '(' || c == ')' || c == ';' || c == '\'' || c == '"' || c == '-' || c == '/') {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// 生成唯一内存数据库名称
+	std::atomic<uint64_t> g_memoryDbCounter{0};
+	std::string generateUniqueMemoryDbName() {
+		uint64_t id = g_memoryDbCounter.fetch_add(1, std::memory_order_relaxed);
+		return ":memory:_v2_" + std::to_string(id);
+	}
 } // anonymous namespace
 
 std::string DbConnection::resolvePath(const std::string& name, const std::string& dataDir) {
@@ -116,7 +141,8 @@ std::string DbConnection::resolvePath(const std::string& name, const std::string
 }
 
 bool DbConnection::isPathAllowed(const std::string& path, const std::string& dataDir) {
-	if (path == ":memory:") {
+	// 允许 :memory: 开头的特殊名称（用于隔离）
+	if (path.find(":memory:") == 0) {
 		return true;
 	}
 
@@ -139,18 +165,31 @@ bool DbConnection::isPathAllowed(const std::string& path, const std::string& dat
 DbConnection::DbConnection(const std::string& name, const std::string& dataDir)
 	: m_name(name), m_dataDir(dataDir) {
 
-	m_path = resolvePath(name, dataDir);
+	// 处理 :memory: 数据库名称 - 使用唯一名称实现隔离
+	std::string resolvedName = name;
+	if (name == ":memory:") {
+		resolvedName = generateUniqueMemoryDbName();
+	}
+
+	m_path = resolvePath(resolvedName, dataDir);
 	if (m_path.empty() || !isPathAllowed(m_path, dataDir)) {
 		spdlog::error("Database path not allowed: '{}'", m_path);
 		return;
 	}
 
-	int rc = sqlite3_open(m_path.c_str(), &m_db);
+	sqlite3* db = nullptr;
+	int rc = sqlite3_open(m_path.c_str(), &db);
 	if (rc != SQLITE_OK) {
-		spdlog::error("Failed to open database '{}': {}", m_path, sqlite3_errmsg(m_db));
+		spdlog::error("Failed to open database '{}': {}", m_path, db ? sqlite3_errmsg(db) : sqlite3_errstr(rc));
+		// 修复内存泄漏：打开失败时必须关闭 sqlite3 返回的句柄
+		if (db) {
+			sqlite3_close(db);
+		}
 		m_db = nullptr;
 		return;
 	}
+
+	m_db = db;
 
 	// 启用外键约束
 	sqlite3_exec(m_db, "PRAGMA foreign_keys = ON;", nullptr, nullptr, nullptr);
@@ -382,6 +421,74 @@ int DbConnection::changes() const {
 	return 0;
 }
 
+// 内部解锁版本的 execute（用于事务回调内）
+bool DbConnection::executeUnlocked(const std::string& sql, const Params& params) {
+	// 不加锁 - 调用者必须已持有锁
+	if (!m_db) {
+		return false;
+	}
+
+	auto stmt = prepare(sql);
+	if (!stmt) {
+		return false;
+	}
+
+	if (!bindParams(stmt, params)) {
+		return false;
+	}
+
+	int rc = sqlite3_step(stmt.get());
+	if (rc != SQLITE_DONE) {
+		spdlog::error("Failed to execute SQL: {}", sqlite3_errmsg(m_db));
+		return false;
+	}
+
+	return true;
+}
+
+// 内部解锁版本的 query（用于事务回调内）
+Rows DbConnection::queryUnlocked(const std::string& sql, const Params& params, size_t maxRows) {
+	// 不加锁 - 调用者必须已持有锁
+	if (!m_db) {
+		return {};
+	}
+
+	auto stmt = prepare(sql);
+	if (!stmt) {
+		return {};
+	}
+
+	if (!bindParams(stmt, params)) {
+		return {};
+	}
+
+	return fetchResults(stmt, maxRows);
+}
+
+// 内部解锁版本的 scalar（用于事务回调内）
+std::string DbConnection::scalarUnlocked(const std::string& sql, const Params& params) {
+	// 不加锁 - 调用者必须已持有锁
+	if (!m_db) {
+		return "";
+	}
+
+	auto stmt = prepare(sql);
+	if (!stmt) {
+		return "";
+	}
+
+	if (!bindParams(stmt, params)) {
+		return "";
+	}
+
+	if (sqlite3_step(stmt.get()) == SQLITE_ROW) {
+		const char* value = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 0));
+		return value ? value : "";
+	}
+
+	return "";
+}
+
 #else // !WINGMAN_HAS_SQLITE
 
 DbConnection::DbConnection(const std::string& name, const std::string& dataDir)
@@ -443,6 +550,12 @@ bool DbTable::create(const Schema& schema) {
 	for (const auto& [field, typeDef] : schema) {
 		if (!isValidIdentifier(field)) {
 			spdlog::error("Invalid field name: '{}'", field);
+			return false;
+		}
+
+		// 验证类型定义（防止 SQL 注入）
+		if (!isValidTypeDef(typeDef)) {
+			spdlog::error("Invalid type definition for field '{}': '{}'. Only basic types and simple constraints allowed.", field, typeDef);
 			return false;
 		}
 
@@ -813,9 +926,54 @@ namespace {
 		std::lock_guard<std::mutex> lock(g_connectionPtrToNameMutex);
 		g_connectionPtrToName.erase(reinterpret_cast<uintptr_t>(ptr));
 	}
+
+	// QueryBuilder 注册表（用于防止悬空指针）
+	std::unordered_map<uintptr_t, std::shared_ptr<QueryBuilder>> g_queries;
+	std::mutex g_queriesMutex;
+
+	void storeQuery(uintptr_t ptr, std::shared_ptr<QueryBuilder> query) {
+		std::lock_guard<std::mutex> lock(g_queriesMutex);
+		g_queries[ptr] = query;
+	}
+
+	std::shared_ptr<QueryBuilder> getQuery(uintptr_t ptr) {
+		std::lock_guard<std::mutex> lock(g_queriesMutex);
+		auto it = g_queries.find(ptr);
+		if (it != g_queries.end()) {
+			return it->second;
+		}
+		return nullptr;
+	}
+
+	void removeQuery(uintptr_t ptr) {
+		std::lock_guard<std::mutex> lock(g_queriesMutex);
+		g_queries.erase(ptr);
+	}
 } // anonymous namespace
 
 // ========== Module Functions ==========
+/// ========== Helper Functions ==========
+
+/**
+ * 将 ScriptValue 转换为字符串（支持 Int/Float/Bool 类型）
+ */
+static std::string scriptValueToString(const ScriptValue& value) {
+	switch (value.type) {
+		case ScriptValue::Type::String:
+			return value.asString();
+		case ScriptValue::Type::Int:
+			return std::to_string(value.asInt());
+		case ScriptValue::Type::Float:
+			return std::to_string(value.asFloat());
+		case ScriptValue::Type::Bool:
+			return value.asBool() ? "1" : "0";
+		case ScriptValue::Type::Null:
+			return "";
+		default:
+			return value.asString();
+	}
+}
+
 
 static ScriptValue dbOpen(const std::vector<ScriptValue>& args) {
 	if (args.empty()) {
@@ -846,16 +1004,24 @@ static ScriptValue dbOpen(const std::vector<ScriptValue>& args) {
 }
 
 static DbConnection* extractConnection(const ScriptValue& value) {
-	if (value.type != ScriptValue::Object) {
+	if (value.type != ScriptValue::Type::Object) {
 		return nullptr;
 	}
 
 	const ScriptValue* ptrVal = value.get("__conn_ptr__");
-	if (!ptrVal || ptrVal->type != ScriptValue::Int) {
+	if (!ptrVal || ptrVal->type != ScriptValue::Type::Int) {
 		return nullptr;
 	}
 
-	return reinterpret_cast<DbConnection*>(ptrVal->asInt());
+	DbConnection* conn = reinterpret_cast<DbConnection*>(ptrVal->asInt());
+
+	// 验证连接是否仍在注册表中（防止 use-after-free）
+	if (!conn || getConnectionName(conn).empty()) {
+		spdlog::warn("extractConnection: invalid or closed connection");
+		return nullptr;
+	}
+
+	return conn;
 }
 
 static ScriptValue dbExecute(const std::vector<ScriptValue>& args) {
@@ -872,9 +1038,9 @@ static ScriptValue dbExecute(const std::vector<ScriptValue>& args) {
 	Params params;
 
 	// 解析参数数组
-	if (args.size() > 2 && args[2].type == ScriptValue::Array) {
+	if (args.size() > 2 && args[2].type == ScriptValue::Type::Array) {
 		for (const auto& param : args[2].arrayVal) {
-			params.push_back(param.asString());
+			params.push_back(scriptValueToString(param));
 		}
 	}
 
@@ -894,14 +1060,14 @@ static ScriptValue dbQuery(const std::vector<ScriptValue>& args) {
 	std::string sql = args[1].asString();
 	Params params;
 
-	if (args.size() > 2 && args[2].type == ScriptValue::Array) {
+	if (args.size() > 2 && args[2].type == ScriptValue::Type::Array) {
 		for (const auto& param : args[2].arrayVal) {
-			params.push_back(param.asString());
+			params.push_back(scriptValueToString(param));
 		}
 	}
 
 	size_t maxRows = kDefaultMaxRows;
-	if (args.size() > 3 && args[3].type == ScriptValue::Int) {
+	if (args.size() > 3 && args[3].type == ScriptValue::Type::Int) {
 		maxRows = static_cast<size_t>(args[3].asInt());
 	}
 
@@ -933,9 +1099,9 @@ static ScriptValue dbScalar(const std::vector<ScriptValue>& args) {
 	std::string sql = args[1].asString();
 	Params params;
 
-	if (args.size() > 2 && args[2].type == ScriptValue::Array) {
+	if (args.size() > 2 && args[2].type == ScriptValue::Type::Array) {
 		for (const auto& param : args[2].arrayVal) {
-			params.push_back(param.asString());
+			params.push_back(scriptValueToString(param));
 		}
 	}
 
@@ -954,7 +1120,7 @@ static ScriptValue dbTransaction(const std::vector<ScriptValue>& args) {
 	}
 
 	// args[1] 应该是一个 callable
-	if (args[1].type != ScriptValue::Callable) {
+	if (args[1].type != ScriptValue::Type::Callable) {
 		return ScriptValue::fromBool(false);
 	}
 
@@ -1053,12 +1219,12 @@ static ScriptValue dbTable(const std::vector<ScriptValue>& args) {
 }
 
 static DbTable* extractTable(const ScriptValue& value) {
-	if (value.type != ScriptValue::Object) {
+	if (value.type != ScriptValue::Type::Object) {
 		return nullptr;
 	}
 
 	const ScriptValue* ptrVal = value.get("__table_ptr__");
-	if (!ptrVal || ptrVal->type != ScriptValue::Int) {
+	if (!ptrVal || ptrVal->type != ScriptValue::Type::Int) {
 		return nullptr;
 	}
 
@@ -1075,7 +1241,7 @@ static ScriptValue tableCreate(const std::vector<ScriptValue>& args) {
 		return ScriptValue::fromBool(false);
 	}
 
-	if (args[1].type != ScriptValue::Object) {
+	if (args[1].type != ScriptValue::Type::Object) {
 		return ScriptValue::fromBool(false);
 	}
 
@@ -1097,13 +1263,13 @@ static ScriptValue tableInsert(const std::vector<ScriptValue>& args) {
 		return ScriptValue::fromBool(false);
 	}
 
-	if (args[1].type != ScriptValue::Object) {
+	if (args[1].type != ScriptValue::Type::Object) {
 		return ScriptValue::fromBool(false);
 	}
 
 	Row row;
 	for (const auto& [field, value] : args[1].objectVal) {
-		row[field] = value.asString();
+		row[field] = scriptValueToString(value);
 	}
 
 	return ScriptValue::fromBool(table->insert(row));
@@ -1150,6 +1316,10 @@ static ScriptValue tableWhere(const std::vector<ScriptValue>& args) {
 
 	auto builder = std::make_shared<QueryBuilder>(table->where(field, op, value));
 
+	// 存储到注册表（防止悬空指针）
+	uintptr_t ptr = reinterpret_cast<uintptr_t>(builder.get());
+	storeQuery(ptr, builder);
+
 	// 返回 QueryBuilder 对象
 	std::unordered_map<std::string, ScriptValue> obj;
 	obj["__query_ptr__"] = ScriptValue::fromInt(reinterpret_cast<int64_t>(builder.get()));
@@ -1158,16 +1328,22 @@ static ScriptValue tableWhere(const std::vector<ScriptValue>& args) {
 }
 
 static QueryBuilder* extractQuery(const ScriptValue& value) {
-	if (value.type != ScriptValue::Object) {
+	if (value.type != ScriptValue::Type::Object) {
 		return nullptr;
 	}
 
 	const ScriptValue* ptrVal = value.get("__query_ptr__");
-	if (!ptrVal || ptrVal->type != ScriptValue::Int) {
+	if (!ptrVal || ptrVal->type != ScriptValue::Type::Int) {
 		return nullptr;
 	}
 
-	return reinterpret_cast<QueryBuilder*>(ptrVal->asInt());
+	// 从注册表中获取（防止 use-after-free）
+	auto query = getQuery(static_cast<uintptr_t>(ptrVal->asInt()));
+	if (!query) {
+		return nullptr;
+	}
+
+	return query.get();
 }
 
 static ScriptValue queryAll(const std::vector<ScriptValue>& args) {
@@ -1241,13 +1417,13 @@ static ScriptValue queryUpdate(const std::vector<ScriptValue>& args) {
 		return ScriptValue::fromBool(false);
 	}
 
-	if (args[1].type != ScriptValue::Object) {
+	if (args[1].type != ScriptValue::Type::Object) {
 		return ScriptValue::fromBool(false);
 	}
 
 	Row row;
 	for (const auto& [field, value] : args[1].objectVal) {
-		row[field] = value.asString();
+		row[field] = scriptValueToString(value);
 	}
 
 	return ScriptValue::fromBool(query->update(row));
@@ -1276,17 +1452,23 @@ static ScriptValue queryLimit(const std::vector<ScriptValue>& args) {
 		return args[0];
 	}
 
-	size_t limit = kDefaultMaxRows;
-	if (args[1].type == ScriptValue::Int) {
-		limit = static_cast<size_t>(args[1].asInt());
+	// 拒绝负数
+	if (args[1].type == ScriptValue::Type::Int) {
+		int64_t val = args[1].asInt();
+		if (val < 0) {
+			spdlog::warn("queryLimit: negative value {} rejected", val);
+			return args[0];
+		}
+		query->limit(static_cast<size_t>(val));
+	} else {
+		query->limit(kDefaultMaxRows);
 	}
 
-	query->limit(limit);
 	return args[0];  // 返回原对象（支持链式调用）
 }
 
 static ScriptValue queryOrderBy(const std::vector<ScriptValue>& args) {
-	if (args.size() < 3) {
+	if (args.size() < 2) {
 		return args[0];
 	}
 
@@ -1296,7 +1478,10 @@ static ScriptValue queryOrderBy(const std::vector<ScriptValue>& args) {
 	}
 
 	std::string field = args[1].asString();
-	std::string direction = args[2].asString();
+	std::string direction = "asc";  // 默认方向
+	if (args.size() >= 3 && !args[2].asString().empty()) {
+		direction = args[2].asString();
+	}
 
 	query->orderBy(field, direction);
 	return args[0];  // 返回原对象（支持链式调用）

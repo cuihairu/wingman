@@ -51,6 +51,9 @@ public:
     bool pauseScript(const std::string& id);
     bool resumeScript(const std::string& id);
     bool stopScript(const std::string& id);
+    size_t pauseAllScripts();
+    size_t resumeAllScripts();
+    size_t stopAllScripts();
 
     // 查询
     std::vector<ScriptInfo> listScripts() const;

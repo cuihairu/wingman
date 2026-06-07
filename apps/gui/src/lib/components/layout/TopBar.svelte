@@ -2,6 +2,7 @@
 	import { connection } from '$lib/stores/connection';
 	import { profiles, activeProfile } from '$lib/stores/profiles';
 	import { router } from '$lib/router.svelte';
+	import { logs } from '$lib/stores/logs';
 
 	let profileOpen = $state(false);
 
@@ -19,6 +20,33 @@
 	function goToSettings() {
 		router.navigate('settings');
 		profileOpen = false;
+	}
+
+	async function handleEmergencyStop() {
+		try {
+			const stopped = await connection.stopAll();
+			logs.add(`已急停脚本: ${stopped}`, 'warning');
+		} catch (error: any) {
+			logs.add(`急停失败: ${error}`, 'error');
+		}
+	}
+
+	async function handleStartProfile() {
+		try {
+			const started = await connection.startActiveProfile();
+			logs.add(`已启动当前配置脚本: ${started}`, 'success');
+		} catch (error: any) {
+			logs.add(`启动当前配置失败: ${error}`, 'error');
+		}
+	}
+
+	async function handleStopProfile() {
+		try {
+			const stopped = await connection.stopActiveProfile();
+			logs.add(`已停止当前配置脚本: ${stopped}`, 'info');
+		} catch (error: any) {
+			logs.add(`停止当前配置失败: ${error}`, 'error');
+		}
 	}
 </script>
 
@@ -66,6 +94,24 @@
 	</div>
 	<div class="top-bar-right">
 		{#if $connection.connected}
+			<button class="btn btn-success" onclick={handleStartProfile}>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<polygon points="5 3 19 12 5 21 5 3"></polygon>
+				</svg>
+				启动当前配置
+			</button>
+			<button class="btn btn-secondary" onclick={handleStopProfile}>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<rect x="6" y="6" width="12" height="12"></rect>
+				</svg>
+				停止当前配置
+			</button>
+			<button class="btn btn-danger" onclick={handleEmergencyStop}>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<rect x="6" y="6" width="12" height="12"></rect>
+				</svg>
+				急停
+			</button>
 			<button class="btn btn-warning" onclick={() => connection.togglePause()}>
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					{#if $connection.paused}
@@ -156,6 +202,36 @@
 		background: var(--accent-yellow);
 		color: var(--bg-primary);
 		border-color: var(--accent-yellow);
+	}
+
+	.btn-success {
+		background: var(--accent-green);
+		color: white;
+		border-color: var(--accent-green);
+	}
+
+	.btn-success:hover {
+		background: #2ea043;
+	}
+
+	.btn-secondary {
+		background: var(--accent-blue);
+		color: white;
+		border-color: var(--accent-blue);
+	}
+
+	.btn-secondary:hover {
+		background: #1f6feb;
+	}
+
+	.btn-danger {
+		background: var(--accent-red);
+		color: white;
+		border-color: var(--accent-red);
+	}
+
+	.btn-danger:hover {
+		background: #da3633;
 	}
 
 	.btn-icon {

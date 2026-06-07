@@ -43,17 +43,17 @@ static ScriptValue jsonToScriptValue(const JsonValue& jv) {
 
 static JsonValue scriptToJson(const ScriptValue& sv) {
 	switch (sv.type) {
-	case ScriptValue::Null: return JsonValue();
-	case ScriptValue::Bool: return JsonValue(sv.boolVal);
-	case ScriptValue::Int: return JsonValue(sv.intVal);
-	case ScriptValue::Float: return JsonValue(sv.floatVal);
-	case ScriptValue::String: return JsonValue(sv.strVal);
-	case ScriptValue::Array: {
+	case ScriptValue::Type::Null: return JsonValue();
+	case ScriptValue::Type::Bool: return JsonValue(sv.boolVal);
+	case ScriptValue::Type::Int: return JsonValue(sv.intVal);
+	case ScriptValue::Type::Float: return JsonValue(sv.floatVal);
+	case ScriptValue::Type::String: return JsonValue(sv.strVal);
+	case ScriptValue::Type::Array: {
 		JsonValue arr = JsonValue::array();
 		for (const auto& v : sv.arrayVal) arr.push(scriptToJson(v));
 		return arr;
 	}
-	case ScriptValue::Object: {
+	case ScriptValue::Type::Object: {
 		JsonValue obj = JsonValue::object();
 		for (const auto& [k, v] : sv.objectVal) obj.set(k, scriptToJson(v));
 		return obj;

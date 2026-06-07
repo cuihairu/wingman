@@ -40,6 +40,13 @@ export interface GameScriptConfig {
 	priority: number;
 }
 
+export interface HotkeyConfig {
+	start: string[];
+	stop: string[];
+	pause: string[];
+	emergencyStop: string[];
+}
+
 export interface GameProfile {
 	id: string;
 	name: string;
@@ -50,6 +57,7 @@ export interface GameProfile {
 	images: ImageConfig[];
 	triggers: GameTriggerConfig[];
 	scripts: GameScriptConfig[];
+	hotkeys: HotkeyConfig;
 	settings: Record<string, string>;
 }
 
@@ -58,6 +66,16 @@ function createProfilesStore() {
 	const activeId = writable<string>('');
 	const invoke = (window as any).__TAURI_INVOKE__;
 
+	const withDefaultHotkeys = (profile: any): GameProfile => ({
+		...profile,
+		hotkeys: {
+			start: profile?.hotkeys?.start ?? ['F5'],
+			stop: profile?.hotkeys?.stop ?? ['F6'],
+			pause: profile?.hotkeys?.pause ?? ['F7'],
+			emergencyStop: profile?.hotkeys?.emergencyStop ?? ['F12'],
+		},
+	});
+
 	return {
 		subscribe: store.subscribe,
 		activeId,
@@ -65,7 +83,7 @@ function createProfilesStore() {
 			if (!invoke) return;
 			try {
 				const result = await invoke('get_profiles');
-				store.set(result || []);
+				store.set(((result || []) as any[]).map(withDefaultHotkeys));
 			} catch { /* ignore */ }
 		},
 		async loadActive() {
@@ -130,6 +148,12 @@ function createProfilesStore() {
 					images: [],
 					triggers: [],
 					scripts: [],
+					hotkeys: {
+						start: ['F5'],
+						stop: ['F6'],
+						pause: ['F7'],
+						emergencyStop: ['F12'],
+					},
 					settings: {},
 				},
 				{
@@ -142,6 +166,12 @@ function createProfilesStore() {
 					images: [],
 					triggers: [],
 					scripts: [],
+					hotkeys: {
+						start: ['F5'],
+						stop: ['F6'],
+						pause: ['F7'],
+						emergencyStop: ['F12'],
+					},
 					settings: {},
 				},
 			]);

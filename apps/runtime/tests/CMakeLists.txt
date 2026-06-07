@@ -15,6 +15,7 @@ add_executable(runtime_tests
     ../src/standalone_mode.cpp
     ../src/local_ipc_server.cpp
     ../src/rpc/handlers/script_handler.cpp
+    ../src/rpc/handlers/system_handler.cpp
     ../src/commands/build_command.cpp
     ../src/commands/script_command.cpp
     ../src/commands/stop_command.cpp

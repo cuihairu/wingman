@@ -4,6 +4,7 @@
 #include "wingman/rpc/rpc_dispatcher.hpp"
 #include "wingman/rpc/script_handler.hpp"
 #include "wingman/rpc/system_handler.hpp"
+#include "wingman/runtime/rpc/system_handler.hpp"
 #include "wingman/rpc/trigger_handler.hpp"
 #include "wingman/runtime/standalone_mode.hpp"
 #include "wingman/trigger.hpp"
@@ -50,6 +51,7 @@ bool LocalIpcServer::start() {
     impl_->dispatcher = std::make_unique<rpc::RpcDispatcher>();
     impl_->triggerManager = std::make_unique<TriggerManager>();
     rpc::registerSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION);
+    rpc::registerRuntimeSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION, impl_->standalone);
     rpc::registerTriggerHandlers(*impl_->dispatcher, *impl_->triggerManager);
     rpc::registerScriptHandlers(*impl_->dispatcher, impl_->standalone);
 

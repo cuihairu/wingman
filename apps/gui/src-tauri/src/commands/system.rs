@@ -12,6 +12,8 @@ pub async fn get_system_status(
     if let Some(success) = response["data"]["success"].as_bool() {
         if success {
             let uptime = response["data"]["result"]["uptime"].as_u64().unwrap_or(0);
+            let paused = response["data"]["result"]["paused"].as_bool().unwrap_or(false);
+            *state.paused.lock().await = paused;
             return Ok(SystemStatus {
                 server: response["data"]["result"]["server"]
                     .as_str()
@@ -25,7 +27,7 @@ pub async fn get_system_status(
                 running_scripts: response["data"]["result"]["runningScripts"]
                     .as_u64()
                     .unwrap_or(0),
-                paused: *state.paused.lock().await,
+                paused,
             });
         }
     }
@@ -62,7 +64,15 @@ pub async fn get_version(
 
 #[tauri::command]
 pub async fn get_runtime_info(state: tauri::State<'_, AppState>) -> Result<RuntimeInfo, String> {
-    let paused = *state.paused.lock().await;
+    let paused = {
+        let mut client = state.ipc_client.lock().await;
+        if client.connected {
+            let response = client.send("system.isPaused", json!({})).await?;
+            response["data"]["result"]["paused"].as_bool().unwrap_or(false)
+        } else {
+            *state.paused.lock().await
+        }
+    };
     let start_time = *state.start_time.lock().await;
     let uptime = if let Some(st) = start_time {
         st.elapsed()
@@ -82,26 +92,47 @@ pub async fn get_runtime_info(state: tauri::State<'_, AppState>) -> Result<Runti
 
 #[tauri::command]
 pub async fn toggle_pause(state: tauri::State<'_, AppState>) -> Result<bool, String> {
-    let mut paused = state.paused.lock().await;
-    *paused = !*paused;
-    Ok(*paused)
+    let mut client = state.ipc_client.lock().await;
+    let response = client.send("system.togglePause", json!({})).await?;
+
+    let paused = response["data"]["result"]["paused"].as_bool().unwrap_or(false);
+    *state.paused.lock().await = paused;
+    Ok(paused)
 }
 
 #[tauri::command]
 pub async fn pause_all(state: tauri::State<'_, AppState>) -> Result<(), String> {
-    let mut paused = state.paused.lock().await;
-    *paused = true;
+    let mut client = state.ipc_client.lock().await;
+    client.send("system.pauseAll", json!({})).await?;
+    *state.paused.lock().await = true;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn resume_all(state: tauri::State<'_, AppState>) -> Result<(), String> {
-    let mut paused = state.paused.lock().await;
-    *paused = false;
+    let mut client = state.ipc_client.lock().await;
+    client.send("system.resumeAll", json!({})).await?;
+    *state.paused.lock().await = false;
     Ok(())
 }
 
 #[tauri::command]
+pub async fn stop_all(state: tauri::State<'_, AppState>) -> Result<u64, String> {
+    let mut client = state.ipc_client.lock().await;
+    let response = client.send("system.stopAll", json!({})).await?;
+    *state.paused.lock().await = false;
+    Ok(response["data"]["result"]["stoppedScripts"].as_u64().unwrap_or(0))
+}
+
+#[tauri::command]
 pub async fn is_paused(state: tauri::State<'_, AppState>) -> Result<bool, String> {
-    Ok(*state.paused.lock().await)
+    let mut client = state.ipc_client.lock().await;
+    if !client.connected {
+        return Ok(*state.paused.lock().await);
+    }
+
+    let response = client.send("system.isPaused", json!({})).await?;
+    let paused = response["data"]["result"]["paused"].as_bool().unwrap_or(false);
+    *state.paused.lock().await = paused;
+    Ok(paused)
 }

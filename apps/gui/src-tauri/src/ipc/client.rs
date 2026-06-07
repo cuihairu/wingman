@@ -45,6 +45,8 @@ impl IpcStream {
     }
 }
 
+type StreamResult<T> = Result<(IpcStream, T), (IpcStream, String)>;
+
 pub struct IpcClient {
     pub endpoint: String,
     pub connected: bool,
@@ -110,18 +112,18 @@ impl IpcClient {
         let mut stream = self.stream.take().ok_or_else(|| "IPC stream is not connected".to_string())?;
 
         // Write with timeout
-        let write_result = timeout(IPC_TIMEOUT, tokio::task::spawn_blocking(move || {
+        let write_result = timeout(IPC_TIMEOUT, tokio::task::spawn_blocking(move || -> StreamResult<()> {
             // Helper to write and always return the stream
             let write_result = stream.write_all(&length);
-            let s = stream; // Preserve stream for return
+            let mut s = stream; // Preserve stream for return
             if let Err(e) = write_result {
-                return Err::<(IpcStream, ()), String>((s, ()), format!("write error: {}", e));
+                return Err((s, format!("write error: {}", e)));
             }
             let write_result = s.write_all(&body);
             if let Err(e) = write_result {
-                return Err::<(IpcStream, ()), String>((s, ()), format!("write error: {}", e));
+                return Err((s, format!("write error: {}", e)));
             }
-            Ok::<(IpcStream, ()), String>((s, ()))
+            Ok((s, ()))
         })).await;
 
         // Unwrap the timeout Result
@@ -132,13 +134,13 @@ impl IpcClient {
         })?;
 
         // Unwrap the JoinHandle Result and inner Result
-        let mut stream = match write_task_result {
+        let stream = match write_task_result {
             Ok(inner_result) => match inner_result {
                 Ok((s, _)) => s,
-                Err((s, _)) => {
+                Err((_, e)) => {
                     self.connected = false;
                     self.stream = None;
-                    return Err("IPC write error".to_string());
+                    return Err(e);
                 }
             },
             Err(e) => {
@@ -149,30 +151,27 @@ impl IpcClient {
         };
 
         // Read with timeout
-        let read_result = timeout(IPC_TIMEOUT, tokio::task::spawn_blocking(move || {
+        let read_result = timeout(IPC_TIMEOUT, tokio::task::spawn_blocking(move || -> StreamResult<Value> {
             let mut length_buf = [0u8; 4];
-            let s = stream; // Preserve stream for return
+            let mut s = stream; // Preserve stream for return
             if let Err(e) = s.read_exact(&mut length_buf) {
-                return Err::<(IpcStream, Value), String>((s, Value::null()), format!("read error: {}", e));
+                return Err((s, format!("read error: {}", e)));
             }
             let response_len = u32::from_le_bytes(length_buf) as usize;
             if response_len == 0 || response_len > MAX_RESPONSE_SIZE {
-                return Err::<(IpcStream, Value), String>(
-                    (s, Value::null()),
-                    format!("Invalid IPC response length: {}", response_len)
-                );
+                return Err((s, format!("Invalid IPC response length: {}", response_len)));
             }
 
             let mut response_buf = vec![0u8; response_len];
             if let Err(e) = s.read_exact(&mut response_buf) {
-                return Err::<(IpcStream, Value), String>((s, Value::null()), format!("read error: {}", e));
+                return Err((s, format!("read error: {}", e)));
             }
 
             let envelope: Value = match serde_json::from_slice(&response_buf) {
                 Ok(v) => v,
-                Err(e) => return Err::<(IpcStream, Value), String>((s, Value::null()), format!("json error: {}", e)),
+                Err(e) => return Err((s, format!("json error: {}", e))),
             };
-            Ok::<(IpcStream, Value), String>((s, envelope))
+            Ok((s, envelope))
         })).await;
 
         // Unwrap the timeout Result

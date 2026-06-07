@@ -1,8 +1,10 @@
+use crate::hotkeys;
 use serde_json::{json, Value};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::AppHandle;
 
 fn profiles_dir() -> PathBuf {
     let mut path = local_data_dir();
@@ -126,7 +128,7 @@ pub async fn get_active_profile() -> Result<Value, String> {
 }
 
 #[tauri::command]
-pub async fn set_active_profile(id: String) -> Result<(), String> {
+pub async fn set_active_profile(app: AppHandle, id: String) -> Result<(), String> {
     // Validate id to prevent injection attacks
     if !is_safe_filename(&id) {
         return Err("Invalid profile id: contains unsafe characters".to_string());
@@ -134,6 +136,7 @@ pub async fn set_active_profile(id: String) -> Result<(), String> {
 
     let path = active_profile_path();
     fs::write(&path, &id).map_err(|e| e.to_string())?;
+    hotkeys::reload_hotkeys(&app)?;
     Ok(())
 }
 
@@ -150,6 +153,12 @@ pub async fn create_profile(name: String) -> Result<String, String> {
         "images": [],
         "triggers": [],
         "scripts": [],
+        "hotkeys": {
+            "start": ["F5"],
+            "stop": ["F6"],
+            "pause": ["F7"],
+            "emergencyStop": ["F12"]
+        },
         "settings": {}
     });
     let path = profile_path(&id);
@@ -159,7 +168,7 @@ pub async fn create_profile(name: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn delete_profile(id: String) -> Result<(), String> {
+pub async fn delete_profile(app: AppHandle, id: String) -> Result<(), String> {
     let path = profile_path(&id);
     if path.exists() {
         fs::remove_file(&path).map_err(|e| e.to_string())?;
@@ -169,13 +178,14 @@ pub async fn delete_profile(id: String) -> Result<(), String> {
     if let Ok(active_id) = fs::read_to_string(&active_path) {
         if active_id.trim() == id {
             fs::write(&active_path, "").ok();
+            hotkeys::reload_hotkeys(&app)?;
         }
     }
     Ok(())
 }
 
 #[tauri::command]
-pub async fn update_profile(profile: Value) -> Result<(), String> {
+pub async fn update_profile(app: AppHandle, profile: Value) -> Result<(), String> {
     let id = profile["id"]
         .as_str()
         .ok_or("Profile missing id field")?
@@ -183,6 +193,13 @@ pub async fn update_profile(profile: Value) -> Result<(), String> {
     let path = profile_path(&id);
     let content = serde_json::to_string_pretty(&profile).map_err(|e| e.to_string())?;
     fs::write(&path, content).map_err(|e| e.to_string())?;
+
+    if let Ok(active_id) = fs::read_to_string(active_profile_path()) {
+        if active_id.trim() == id {
+            hotkeys::reload_hotkeys(&app)?;
+        }
+    }
+
     Ok(())
 }
 

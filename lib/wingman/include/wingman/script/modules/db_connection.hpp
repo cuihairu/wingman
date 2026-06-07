@@ -178,6 +178,24 @@ private:
 	 */
 	Rows fetchResults(Stmt& stmt, size_t maxRows);
 
+	/**
+	 * 内部解锁版本的 execute（用于事务回调内）
+	 * 调用者必须已持有 m_mutex
+	 */
+	bool executeUnlocked(const std::string& sql, const Params& params = {});
+
+	/**
+	 * 内部解锁版本的 query（用于事务回调内）
+	 * 调用者必须已持有 m_mutex
+	 */
+	Rows queryUnlocked(const std::string& sql, const Params& params = {}, size_t maxRows = kDefaultMaxRows);
+
+	/**
+	 * 内部解锁版本的 scalar（用于事务回调内）
+	 * 调用者必须已持有 m_mutex
+	 */
+	std::string scalarUnlocked(const std::string& sql, const Params& params = {});
+
 	sqlite3* m_db = nullptr;
 	std::string m_name;
 	std::string m_path;

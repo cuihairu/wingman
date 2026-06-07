@@ -74,7 +74,6 @@ private:
     bool beginRead(WatchItem* item);
     void eventLoop();
     void checkIOCompletion();
-    void processNotification(WatchItem* item, FILE_NOTIFY_INFORMATION* fni);
 };
 
 } // namespace wingman::platform::windows

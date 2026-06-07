@@ -5,6 +5,11 @@
 using namespace wingman::script;
 using namespace wingman::script::modules;
 
+// Forward declaration - defined in ini_module.cpp (in wingman::script::modules namespace)
+namespace wingman::script::modules {
+	ModuleDescriptor createIniModule();
+}
+
 namespace {
 	// 测试辅助函数：调用模块函数
 	ScriptValue callModule(const ModuleDescriptor& mod, const std::string& funcName, const std::vector<ScriptValue>& args) {
@@ -57,7 +62,7 @@ key3 = value3
 
 	auto result = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	ASSERT_EQ(result.type, ScriptValue::Object);
+	ASSERT_EQ(result.type, ScriptValue::Type::Object);
 	EXPECT_EQ(result.objectVal.size(), 2);  // 两个 section
 
 	ASSERT_NE(result.get("Section1"), nullptr);
@@ -81,7 +86,7 @@ key2 = value2
 
 	auto result = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	ASSERT_EQ(result.type, ScriptValue::Object);
+	ASSERT_EQ(result.type, ScriptValue::Type::Object);
 	ASSERT_NE(result.get("Section"), nullptr);
 	EXPECT_EQ(result.get("Section")->objectVal.size(), 2);
 }
@@ -103,7 +108,7 @@ key2 = value2
 
 	auto result = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	ASSERT_EQ(result.type, ScriptValue::Object);
+	ASSERT_EQ(result.type, ScriptValue::Type::Object);
 	ASSERT_NE(result.get("Section1"), nullptr);
 	EXPECT_EQ(result.get("Section1")->objectVal.size(), 2);
 }
@@ -122,7 +127,7 @@ global_key2 = global_value2
 
 	auto result = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	ASSERT_EQ(result.type, ScriptValue::Object);
+	ASSERT_EQ(result.type, ScriptValue::Type::Object);
 
 	// 全局键应该存储在空字符串 section 中
 	ASSERT_NE(result.get(""), nullptr);
@@ -141,7 +146,7 @@ key2=value2
 
 	auto result = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	ASSERT_EQ(result.type, ScriptValue::Object);
+	ASSERT_EQ(result.type, ScriptValue::Type::Object);
 	ASSERT_NE(result.get("Section"), nullptr);
 
 	auto section = result.get("Section")->objectVal;
@@ -162,7 +167,7 @@ key3 = value\\with\\backslash
 
 	auto result = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	ASSERT_EQ(result.type, ScriptValue::Object);
+	ASSERT_EQ(result.type, ScriptValue::Type::Object);
 	ASSERT_NE(result.get("Section"), nullptr);
 
 	auto section = result.get("Section")->objectVal;
@@ -184,7 +189,7 @@ TEST(IniModuleTest, Encode_Simple) {
 
 	auto result = callModule(mod, "encode", {ScriptValue::fromObject(std::move(data))});
 
-	ASSERT_EQ(result.type, ScriptValue::String);
+	ASSERT_EQ(result.type, ScriptValue::Type::String);
 	std::string encoded = result.asString();
 
 	EXPECT_NE(encoded.find("[Section1]"), std::string::npos);
@@ -204,7 +209,7 @@ TEST(IniModuleTest, Encode_EscapeSequences) {
 
 	auto result = callModule(mod, "encode", {ScriptValue::fromObject(std::move(data))});
 
-	ASSERT_EQ(result.type, ScriptValue::String);
+	ASSERT_EQ(result.type, ScriptValue::Type::String);
 	std::string encoded = result.asString();
 
 	EXPECT_NE(encoded.find("value\\nwith\\nnewlines"), std::string::npos);
@@ -227,7 +232,7 @@ TEST(IniModuleTest, Encode_MultipleSections) {
 
 	auto result = callModule(mod, "encode", {ScriptValue::fromObject(std::move(data))});
 
-	ASSERT_EQ(result.type, ScriptValue::String);
+	ASSERT_EQ(result.type, ScriptValue::Type::String);
 	std::string encoded = result.asString();
 
 	EXPECT_NE(encoded.find("[Section1]"), std::string::npos);
@@ -250,7 +255,7 @@ key2 = value2
 	// 获取整个 section
 	auto section = callModule(mod, "get", {data, ScriptValue::fromString("Section1")});
 
-	ASSERT_EQ(section.type, ScriptValue::Object);
+	ASSERT_EQ(section.type, ScriptValue::Type::Object);
 	EXPECT_EQ(section.objectVal.size(), 2);
 	EXPECT_EQ(section.objectVal["key1"].asString(), "value1");
 	EXPECT_EQ(section.objectVal["key2"].asString(), "value2");
@@ -289,7 +294,7 @@ key1 = value1
 
 	// 获取不存在的 section
 	auto section1 = callModule(mod, "get", {data, ScriptValue::fromString("NonExistent")});
-	EXPECT_EQ(section1.type, ScriptValue::Null);
+	EXPECT_EQ(section1.type, ScriptValue::Type::Null);
 
 	// 获取不存在的 key
 	auto key1 = callModule(mod, "get", {
@@ -297,7 +302,7 @@ key1 = value1
 		ScriptValue::fromString("Section1"),
 		ScriptValue::fromString("NonExistent")
 	});
-	EXPECT_EQ(key1.type, ScriptValue::Null);
+	EXPECT_EQ(key1.type, ScriptValue::Type::Null);
 }
 
 TEST(IniModuleTest, Set_NewKey) {
@@ -569,7 +574,7 @@ key3 = value3
 
 	auto result = callModule(mod, "sections", {data});
 
-	ASSERT_EQ(result.type, ScriptValue::Array);
+	ASSERT_EQ(result.type, ScriptValue::Type::Array);
 	EXPECT_EQ(result.arrayVal.size(), 3);
 }
 
@@ -590,7 +595,7 @@ key3 = value3
 		ScriptValue::fromString("Section1")
 	});
 
-	ASSERT_EQ(result.type, ScriptValue::Array);
+	ASSERT_EQ(result.type, ScriptValue::Type::Array);
 	EXPECT_EQ(result.arrayVal.size(), 3);
 }
 
@@ -609,7 +614,7 @@ key1 = value1
 		ScriptValue::fromString("NonExistent")
 	});
 
-	ASSERT_EQ(result.type, ScriptValue::Array);
+	ASSERT_EQ(result.type, ScriptValue::Type::Array);
 	EXPECT_EQ(result.arrayVal.size(), 0);
 }
 
@@ -634,7 +639,7 @@ TEST(IniModuleTest, Merge_Simple) {
 		ScriptValue::fromObject(std::move(override))
 	});
 
-	ASSERT_EQ(result.type, ScriptValue::Object);
+	ASSERT_EQ(result.type, ScriptValue::Type::Object);
 	EXPECT_EQ(result.objectVal.size(), 2);  // Section1 和 Section2
 	EXPECT_NE(result.get("Section1"), nullptr);
 	EXPECT_NE(result.get("Section2"), nullptr);
@@ -660,7 +665,7 @@ TEST(IniModuleTest, Merge_Override) {
 		ScriptValue::fromObject(std::move(override))
 	});
 
-	ASSERT_EQ(result.type, ScriptValue::Object);
+	ASSERT_EQ(result.type, ScriptValue::Type::Object);
 
 	auto section = result.get("Section1")->objectVal;
 	EXPECT_EQ(section["key1"].asString(), "value1");  // 保留
