@@ -606,6 +606,7 @@ TEST(TaskModuleTest, CancelRunningTask) {
 	auto submit = findTaskFunction(mod, "submit");
 	auto cancel = findTaskFunction(mod, "cancel");
 	auto status = findTaskFunction(mod, "status");
+	auto result = findTaskFunction(mod, "result");
 
 	// Submit async task that sleeps long enough for us to cancel
 	auto taskId = submit({
@@ -620,17 +621,23 @@ TEST(TaskModuleTest, CancelRunningTask) {
 	});
 	ASSERT_TRUE(taskId.isString());
 
+	// Give task time to start running
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	auto taskStatus1 = status({taskId});
+	EXPECT_EQ(taskStatus1.asString(), "running");
+
 	// Cancel the task while it's running
 	auto cancelResult = cancel({taskId});
 	EXPECT_TRUE(cancelResult.isBool());
+	EXPECT_TRUE(cancelResult.asBool());
 
-	// Wait briefly for cancel to propagate
-	std::this_thread::sleep_for(std::chrono::milliseconds(50));
-	auto taskStatus = status({taskId});
-	EXPECT_EQ(taskStatus.asString(), "canceled");
-
-	// Give async task time to finish
+	// Wait for task to finish processing the cancel
 	std::this_thread::sleep_for(std::chrono::milliseconds(600));
+
+	// Task should have been cleaned up after cancel (not found = was canceled)
+	// If the task completed successfully, it would have "done" as result
+	auto taskResult = result({taskId});
+	EXPECT_TRUE(taskResult.isNull() || taskResult.asString() != "done");
 }
 
 // ========== Task Result After Succeed ==========

@@ -42,9 +42,12 @@ TEST(ScriptConfigTest, LuaCompatibilityHeaderUsesCoreType) {
 TEST(ScriptStateTest, EnumValues) {
     EXPECT_EQ(static_cast<int>(ScriptState::unloaded), 0);
     EXPECT_EQ(static_cast<int>(ScriptState::loaded), 1);
-    EXPECT_EQ(static_cast<int>(ScriptState::running), 2);
-    EXPECT_EQ(static_cast<int>(ScriptState::paused), 3);
-    EXPECT_EQ(static_cast<int>(ScriptState::error), 4);
+    EXPECT_EQ(static_cast<int>(ScriptState::starting), 2);
+    EXPECT_EQ(static_cast<int>(ScriptState::running), 3);
+    EXPECT_EQ(static_cast<int>(ScriptState::paused), 4);
+    EXPECT_EQ(static_cast<int>(ScriptState::stopping), 5);
+    EXPECT_EQ(static_cast<int>(ScriptState::completed), 6);
+    EXPECT_EQ(static_cast<int>(ScriptState::error), 7);
 }
 
 // ========== ScriptInfo ==========
