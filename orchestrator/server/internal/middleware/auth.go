@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -41,7 +42,7 @@ func ParseBearerToken(authHeader string) string {
 
 func ValidateTokenString(tokenString string) (*Claims, error) {
 	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
 		if token.Method != jwt.SigningMethodHS256 {
 			return nil, jwt.ErrTokenSignatureInvalid
 		}
@@ -137,13 +138,11 @@ func RoleRequired(roles ...string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		for _, r := range roles {
-			if userRole == r {
-				c.Next()
-				return
-			}
+		if !slices.Contains(roles, userRole) {
+			c.JSON(http.StatusForbidden, gin.H{"success": false, "error": "insufficient permissions"})
+			c.Abort()
+			return
 		}
-		c.JSON(http.StatusForbidden, gin.H{"success": false, "error": "insufficient permissions"})
-		c.Abort()
+		c.Next()
 	}
 }

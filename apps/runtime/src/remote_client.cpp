@@ -89,7 +89,7 @@ bool RemoteClient::start() {
         });
 
         running_.store(true);
-        return true;  // 返回 true，重连会在后台进行
+        return false;  // 连接未建立，后台重连中
     }
 
     // 启动心跳

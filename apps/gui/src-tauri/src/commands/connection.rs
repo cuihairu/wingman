@@ -30,8 +30,20 @@ pub async fn is_connected(state: tauri::State<'_, AppState>) -> bool {
     state.ipc_client.lock().await.connected
 }
 
+/// Validates that the endpoint name contains only safe characters.
+/// Only alphanumeric, underscore, hyphen, and dot are allowed.
+fn is_safe_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 128
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.'))
+}
+
 fn validate_ipc_endpoint(endpoint: &str) -> Result<(), String> {
     let value = endpoint.trim();
+
+    // Empty resolves to default "wingman" — ok
     if value.is_empty() {
         return Ok(());
     }
@@ -46,16 +58,16 @@ fn validate_ipc_endpoint(endpoint: &str) -> Result<(), String> {
 #[cfg(windows)]
 fn validate_platform_endpoint(endpoint: &str) -> Result<(), String> {
     const PREFIX: &str = r"\\.\pipe\";
+
+    // Strip the pipe prefix if present; otherwise validate as a bare pipe name
     let pipe_name = endpoint.strip_prefix(PREFIX).unwrap_or(endpoint);
 
-    if pipe_name.is_empty()
-        || pipe_name.contains('\\')
-        || pipe_name.contains('/')
-        || pipe_name.contains("..")
-        || !pipe_name
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.'))
-    {
+    // Reject if it looks like an absolute path that bypassed strip_prefix
+    if pipe_name.contains(&[':', '\\', '/'][..]) {
+        return Err("Invalid Windows named pipe endpoint".to_string());
+    }
+
+    if !is_safe_name(pipe_name) {
         return Err("Invalid Windows named pipe endpoint".to_string());
     }
 
@@ -64,11 +76,33 @@ fn validate_platform_endpoint(endpoint: &str) -> Result<(), String> {
 
 #[cfg(unix)]
 fn validate_platform_endpoint(endpoint: &str) -> Result<(), String> {
-    if endpoint == "wingman" {
+    // Bare name (e.g. "wingman") — must be a safe identifier
+    if !endpoint.contains('/') {
+        if !is_safe_name(endpoint) {
+            return Err("Invalid Unix socket endpoint name".to_string());
+        }
         return Ok(());
     }
-    if !endpoint.starts_with('/') || endpoint.contains("..") {
-        return Err("Invalid Unix socket endpoint".to_string());
+
+    // Absolute path — only allowed under /tmp/ with safe path segments
+    if !endpoint.starts_with('/') {
+        return Err("Unix socket endpoint must be a bare name or absolute path".to_string());
     }
+
+    // Require /tmp/ prefix to limit scope
+    if !endpoint.starts_with("/tmp/") {
+        return Err("Unix socket path must be under /tmp/".to_string());
+    }
+
+    // Validate every path segment
+    for segment in endpoint.split('/').filter(|s| !s.is_empty()) {
+        if segment == "." || segment == ".." {
+            return Err("Path traversal not allowed in Unix socket endpoint".to_string());
+        }
+        if !is_safe_name(segment) {
+            return Err(format!("Invalid segment '{}' in Unix socket endpoint", segment));
+        }
+    }
+
     Ok(())
 }

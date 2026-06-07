@@ -27,7 +27,7 @@ func NewAgentHandler(registry *agent.Registry, db *gorm.DB) *AgentHandler {
 func (h *AgentHandler) HandleList(c *gin.Context) {
 	agents := h.registry.List()
 
-	data := make([]map[string]interface{}, 0, len(agents))
+	data := make([]map[string]any, 0, len(agents))
 	for _, a := range agents {
 		data = append(data, a.ToJSON())
 	}

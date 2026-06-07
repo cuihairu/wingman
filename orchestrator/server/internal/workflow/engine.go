@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"maps"
 	"sync"
 	"time"
 
@@ -341,9 +342,7 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 		data := map[string]any{
 			"path": step.Script,
 		}
-		for k, v := range step.Parameters {
-			data[k] = v
-		}
+		maps.Copy(data, step.Parameters)
 
 		resp, err := conn.SendCommand("run_script", data)
 		if err != nil {

@@ -192,7 +192,7 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 	}
 
 	scriptName := strings.TrimSuffix(filepath.Base(scriptPath), filepath.Ext(scriptPath))
-	h.db.Model(&models.Script{}).Where("path = ?", scripts.DisplayPath(h.store.Root(), scriptPath)).Updates(map[string]interface{}{
+	h.db.Model(&models.Script{}).Where("path = ?", scripts.DisplayPath(h.store.Root(), scriptPath)).Updates(map[string]any{
 		"is_running": true,
 		"status":     "running",
 	})
@@ -226,7 +226,7 @@ func (h *ScriptHandler) HandleStop(c *gin.Context) {
 		return
 	}
 
-	h.db.Model(&models.Script{}).Where("name = ?", req.ExecutionID).Updates(map[string]interface{}{
+	h.db.Model(&models.Script{}).Where("name = ?", req.ExecutionID).Updates(map[string]any{
 		"is_running": false,
 		"status":     "stopped",
 	})

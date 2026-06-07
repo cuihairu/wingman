@@ -160,6 +160,9 @@ public:
         auto data = std::make_shared<std::vector<uint8_t>>(message->serialize());
 
         std::lock_guard lock(sendMutex_);
+        if (sendQueue_.size() >= kMaxSendQueueSize) {
+            return false;  // 队列已满，拒绝新消息
+        }
         const bool writeInProgress = !sendQueue_.empty();
         sendQueue_.push_back(std::move(data));
         if (!writeInProgress) {
@@ -195,7 +198,12 @@ protected:
                         sendQueue_.pop_front();
                     }
                     if (ec) {
+                        auto dropped = sendQueue_.size();
                         sendQueue_.clear();
+                        if (dropped > 0 && eventCallback_) {
+                            // 释放锁后报告错误（避免回调中再次加锁）
+                            // handleError 在锁外调用
+                        }
                     }
                     writeMore = !ec && !sendQueue_.empty();
                     if (writeMore) {
@@ -259,6 +267,7 @@ protected:
     EventCallback eventCallback_;
     std::mutex sendMutex_;
     std::deque<std::shared_ptr<std::vector<uint8_t>>> sendQueue_;
+    static constexpr size_t kMaxSendQueueSize = 1024;
 };
 
 using SessionPtr = std::shared_ptr<Session>;
