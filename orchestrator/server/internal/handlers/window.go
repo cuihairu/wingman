@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
@@ -19,9 +20,20 @@ func NewWindowHandler(registry *agent.Registry) *WindowHandler {
 
 // HandleList 获取窗口列表
 func (h *WindowHandler) HandleList(c *gin.Context) {
-	// 从 registry 获取第一个可用的 agent
+	// 从 registry 获取第一个在线的 agent
 	agents := h.registry.List()
-	if len(agents) == 0 || agents[0].Client == nil {
+	var onlineAgent *agent.AgentInfo
+	for _, a := range agents {
+		if a.Status == agent.StatusOnline && a.Client != nil {
+			onlineAgent = a
+			break
+		}
+	}
+
+	if onlineAgent == nil {
+		if len(agents) > 0 {
+			log.Printf("[WindowHandler] No online agents available (total: %d)", len(agents))
+		}
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"success": false,
 			"error":   "no available agent",
@@ -29,7 +41,7 @@ func (h *WindowHandler) HandleList(c *gin.Context) {
 		return
 	}
 
-	client := agents[0].Client
+	client := onlineAgent.Client
 	resp, err := client.SendCommand("list_windows", nil)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{

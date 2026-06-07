@@ -162,12 +162,71 @@ const AgentConfig& Agent::getConfig() const {
 
 bool Agent::initRemoteClient() {
     impl_->remoteClient = std::make_unique<RemoteClient>(impl_->config.remoteClient);
+
+    // 绑定命令回调，处理 server 下发的命令
+    impl_->remoteClient->setCommandCallback([this](const std::string& command, const CommandData& data) {
+        handleRemoteCommand(command, data);
+    });
+
     return true;
 }
 
 bool Agent::initStandaloneMode() {
     impl_->standaloneMode = std::make_unique<StandaloneMode>(impl_->config.standalone);
     return true;
+}
+
+// ========== 远程命令处理 ==========
+
+void Agent::handleRemoteCommand(const std::string& command, const CommandData& data) {
+    spdlog::info("Received remote command: {}", command);
+
+    if (command == "run_script") {
+        // 获取脚本路径
+        auto pathIt = data.find("path");
+        if (pathIt == data.end() || pathIt->second.empty()) {
+            spdlog::warn("run_script missing path parameter");
+            return;
+        }
+
+        if (!impl_->standaloneMode || !impl_->standaloneMode->isRunning()) {
+            spdlog::warn("StandaloneMode not available, cannot run script");
+            return;
+        }
+
+        // 加载并启动脚本
+        std::string scriptId = impl_->standaloneMode->loadScript(pathIt->second);
+        if (!scriptId.empty()) {
+            impl_->standaloneMode->startScript(scriptId);
+            spdlog::info("Script started: {} (path: {})", scriptId, pathIt->second);
+        } else {
+            spdlog::error("Failed to load script: {}", pathIt->second);
+        }
+
+    } else if (command == "system.shutdown") {
+        // 关闭 agent
+        spdlog::info("Shutting down agent due to remote command");
+        stop();
+
+    } else if (command == "list_windows") {
+        // TODO: 实现窗口列表功能
+        spdlog::debug("list_windows command not yet implemented");
+
+    } else if (command == "get_status") {
+        // TODO: 实现状态查询功能
+        spdlog::debug("get_status command not yet implemented");
+
+    } else if (command == "stop_script") {
+        auto scriptIdIt = data.find("script_id");
+        if (scriptIdIt != data.end() && !scriptIdIt->second.empty()) {
+            if (impl_->standaloneMode) {
+                impl_->standaloneMode->stopScript(scriptIdIt->second);
+                spdlog::info("Script stopped: {}", scriptIdIt->second);
+            }
+        }
+    } else {
+        spdlog::warn("Unknown remote command: {}", command);
+    }
 }
 
 } // namespace wingman::runtime

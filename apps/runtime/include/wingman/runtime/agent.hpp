@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wingman/runtime/config.hpp"
+#include "wingman/runtime/remote_client.hpp"
 #include <memory>
 #include <atomic>
 #include <string>
@@ -48,6 +49,9 @@ private:
     // 初始化各模式
     bool initRemoteClient();
     bool initStandaloneMode();
+
+    // 远程命令处理
+    void handleRemoteCommand(const std::string& command, const CommandData& data);
 
     // P-Impl
     std::unique_ptr<Impl> impl_;

@@ -247,6 +247,11 @@ public:
         header.flags = 0;
         header.originalSize = data.size();  // 始终记录原始大小
 
+        // 计算原始数据的哈希（用于完整性验证）
+        // 注意：hash 必须基于原始数据，而不是加密/压缩后的数据
+        std::vector<uint8_t> hash = sha256(data);
+        std::memcpy(header.dataHash, hash.data(), std::min(hash.size(), size_t(32)));
+
         std::vector<uint8_t> payload = data;
         if (options.encrypt) {
             // 生成密钥
@@ -265,8 +270,6 @@ public:
         }
 
         header.compressedSize = payload.size();
-        std::vector<uint8_t> hash = sha256(payload);
-        std::memcpy(header.dataHash, hash.data(), std::min(hash.size(), size_t(32)));
 
         // 将头部和数据合并
         resourceData.resize(sizeof(PACK_HEADER) + payload.size());

@@ -14,7 +14,7 @@ const (
 	defaultHost       = "127.0.0.1"
 	defaultDBPath     = "./data/wingman.db"
 	defaultStaticDir  = "../build/dist"
-	defaultAgentAddr  = "localhost:8888"
+	defaultAgentAddr  = "localhost:8888" // DEPRECATED: Legacy config for old agent.Pool approach. Use Registry instead.
 	defaultScriptsDir = "./scripts"
 )
 
@@ -23,7 +23,7 @@ type Config struct {
 	Port        int
 	DBPath      string
 	StaticDir   string
-	AgentAddr   string
+	AgentAddr   string // DEPRECATED: Legacy config for old agent.Pool approach. Use Registry instead.
 	ScriptsDir  string
 	JWTSecret   string
 	CORSOrigins []string

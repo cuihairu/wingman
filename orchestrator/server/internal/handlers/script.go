@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -174,14 +175,25 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		return
 	}
 
-	// 从 registry 获取第一个可用的 agent
+	// 从 registry 获取第一个在线的 agent
 	agents := h.registry.List()
-	if len(agents) == 0 || agents[0].Client == nil {
+	var onlineAgent *agent.AgentInfo
+	for _, a := range agents {
+		if a.Status == agent.StatusOnline && a.Client != nil {
+			onlineAgent = a
+			break
+		}
+	}
+
+	if onlineAgent == nil {
+		if len(agents) > 0 {
+			log.Printf("[ScriptHandler] No online agents available (total: %d)", len(agents))
+		}
 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "no available agent"})
 		return
 	}
 
-	client := agents[0].Client
+	client := onlineAgent.Client
 	resp, err := client.SendCommand("run_script", map[string]any{
 		"path": scriptPath,
 	})
@@ -219,14 +231,25 @@ func (h *ScriptHandler) HandleStop(c *gin.Context) {
 		return
 	}
 
-	// 从 registry 获取第一个可用的 agent
+	// 从 registry 获取第一个在线的 agent
 	agents := h.registry.List()
-	if len(agents) == 0 || agents[0].Client == nil {
+	var onlineAgent *agent.AgentInfo
+	for _, a := range agents {
+		if a.Status == agent.StatusOnline && a.Client != nil {
+			onlineAgent = a
+			break
+		}
+	}
+
+	if onlineAgent == nil {
+		if len(agents) > 0 {
+			log.Printf("[ScriptHandler] No online agents available (total: %d)", len(agents))
+		}
 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "no available agent"})
 		return
 	}
 
-	client := agents[0].Client
+	client := onlineAgent.Client
 	if _, err := client.SendCommand("stop_script", map[string]any{
 		"script_id": req.ExecutionID,
 	}); err != nil {

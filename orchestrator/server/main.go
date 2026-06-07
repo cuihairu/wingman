@@ -47,6 +47,8 @@ func main() {
 	go registry.StartHeartbeatCheck()
 
 	// TCP Frame Listener（接受 runtime outbound 连接）
+	// Note: cfg.AgentAddr is the listening address for runtime connections,
+	// not a target address for dialing (deprecated old approach).
 	frameListener := agentPkg.NewFrameListener(registry, wsHub)
 	agentListenAddr := cfg.AgentAddr
 	go func() {

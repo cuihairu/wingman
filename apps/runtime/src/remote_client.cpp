@@ -355,30 +355,47 @@ void RemoteClient::handleRequestMessage(const transport::MessagePtr& msg) {
 
         spdlog::info("Received Request: method={}, seq={}", method, msg->header.sequence);
 
-        // 构造响应
+        // 检查命令回调是否绑定
+        if (!commandCallback_) {
+            spdlog::warn("No command callback bound, cannot execute method={}", method);
+
+            // 发送失败响应
+            auto responseMsg = std::make_shared<transport::Message>();
+            responseMsg->header.type = transport::MessageType::Response;
+            responseMsg->header.sequence = msg->header.sequence;
+            responseMsg->header.reserved = 0;
+            responseMsg->body = nlohmann::json{
+                {"success", false},
+                {"method", method},
+                {"error", "command callback not bound"}
+            }.dump();
+            impl_->client->send(responseMsg);
+            return;
+        }
+
+        // 解析命令数据
+        CommandData cmdData;
+        for (auto& [key, value] : json.items()) {
+            if (key != "type" && key != "method" && key != "sequence") {
+                if (value.is_string()) {
+                    cmdData[key] = value.get<std::string>();
+                } else if (value.is_number()) {
+                    cmdData[key] = value.dump();
+                } else {
+                    cmdData[key] = value.dump();
+                }
+            }
+        }
+
+        // 执行命令回调
+        commandCallback_(method, cmdData);
+
+        // 构造成功响应（注意：当前无法知道命令是否真正执行成功，
+        // 因为 callback 是异步的且不返回状态）
         nlohmann::json response = {
             {"success", true},
             {"method", method}
         };
-
-        // 执行命令回调（如果有）
-        if (commandCallback_) {
-            CommandData cmdData;
-            for (auto& [key, value] : json.items()) {
-                if (key != "type" && key != "method" && key != "sequence") {
-                    if (value.is_string()) {
-                        cmdData[key] = value.get<std::string>();
-                    } else if (value.is_number()) {
-                        cmdData[key] = value.dump();  // 数字转为字符串存储
-                    } else {
-                        cmdData[key] = value.dump();  // 其他 JSON 值序列化
-                    }
-                }
-            }
-
-            // 执行命令（异步执行，但这里简化为同步）
-            commandCallback_(method, cmdData);
-        }
 
         // 发送 Response（使用相同的 sequence）
         auto responseMsg = std::make_shared<transport::Message>();

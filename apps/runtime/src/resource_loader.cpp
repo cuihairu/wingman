@@ -338,7 +338,7 @@ std::optional<LoadedScript> ResourceLoader::loadScript(const std::string& passwo
             resourceData.end()
         );
 
-        // 解压（必须先解压，逆转 packer 的 compress → encrypt 顺序）
+        // 解压（必须先解压，逆转 packer 的 encrypt → compress 顺序）
         if (header.flags & PACK_FLAG_COMPRESSED) {
             try {
                 payload = impl_->decompressData(payload);
