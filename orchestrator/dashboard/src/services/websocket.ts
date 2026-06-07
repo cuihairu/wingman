@@ -1,34 +1,34 @@
 /**
- * @name WebSocket 服务
- * @description 实时推送服务
+ * @name WebSocket Service
+ * @description Real-time push notification service
  */
 
-// 消息类型
+// Message types
 export enum WSMessageType {
-  // 系统消息
+  // System messages
   Connected = 'connected',
   Ping = 'ping',
   Pong = 'pong',
-  // Agent 事件
+  // Agent events
   AgentConnected = 'agent_connected',
   AgentDisconnected = 'agent_disconnected',
   AgentStatusChanged = 'agent_status_changed',
-  // 工作流事件
+  // Workflow events
   WorkflowSubmitted = 'workflow_submitted',
   WorkflowStatusChanged = 'workflow_status_changed',
   WorkflowProgress = 'workflow_progress',
 }
 
-// WebSocket 消息
+// WebSocket message
 export interface WSMessage {
   type: string;
   event?: string;
-  data?: any;
+  data?: Record<string, unknown>;
   timestamp?: number;
   connectionId?: string;
 }
 
-// 消息监听器类型
+// Message listener types
 type MessageListener = (message: WSMessage) => void;
 type ConnectionStateListener = (connected: boolean) => void;
 
@@ -38,24 +38,40 @@ class WebSocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 3000;
-  private reconnectTimer: NodeJS.Timeout | null = null;
-  private heartbeatTimer: NodeJS.Timeout | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private listeners: Map<string, Set<MessageListener>> = new Map();
   private connectionStateListeners: Set<ConnectionStateListener> = new Set();
   private isManualClose = false;
 
   constructor() {
-    // 构建 WebSocket URL
+    // Build WebSocket URL with JWT token for authentication.
+    // Browser WebSocket API cannot set Authorization header, so we pass
+    // the token as a query parameter. The server reads c.Query("token").
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    this.url = `${protocol}//${host}/ws`;
+    let url = `${protocol}//${host}/ws`;
+    const token = localStorage.getItem('token');
+    if (token) {
+      url += `?token=${encodeURIComponent(token)}`;
+    }
+    this.url = url;
   }
 
-  // 连接
   connect(): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       return;
     }
+
+    // Re-build URL with fresh token on each reconnect
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    let url = `${protocol}//${host}/ws`;
+    const token = localStorage.getItem('token');
+    if (token) {
+      url += `?token=${encodeURIComponent(token)}`;
+    }
+    this.url = url;
 
     try {
       this.ws = new WebSocket(this.url);
@@ -66,7 +82,6 @@ class WebSocketService {
     }
   }
 
-  // 断开连接
   disconnect(): void {
     this.isManualClose = true;
     if (this.reconnectTimer) {
@@ -83,8 +98,7 @@ class WebSocketService {
     }
   }
 
-  // 发送消息
-  send(type: string, data?: any): void {
+  send(type: string, data?: Record<string, unknown>): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       const message: WSMessage = { type, data, timestamp: Date.now() };
       this.ws.send(JSON.stringify(message));
@@ -93,14 +107,12 @@ class WebSocketService {
     }
   }
 
-  // 订阅消息
   on(type: string, listener: MessageListener): () => void {
     if (!this.listeners.has(type)) {
       this.listeners.set(type, new Set());
     }
     this.listeners.get(type)!.add(listener);
 
-    // 返回取消订阅函数
     return () => {
       const listeners = this.listeners.get(type);
       if (listeners) {
@@ -109,7 +121,6 @@ class WebSocketService {
     };
   }
 
-  // 订阅连接状态变化
   onConnectionState(listener: ConnectionStateListener): () => void {
     this.connectionStateListeners.add(listener);
     return () => {
@@ -117,50 +128,48 @@ class WebSocketService {
     };
   }
 
-  // Agent 事件订阅
-  onAgentConnected(listener: (data: any) => void): () => void {
+  // Agent event subscriptions
+  onAgentConnected(listener: (data: Record<string, unknown>) => void): () => void {
     return this.on('agent', (msg) => {
-      if (msg.event === 'connected') listener(msg.data);
+      if (msg.event === 'connected') listener(msg.data ?? {});
     });
   }
 
-  onAgentDisconnected(listener: (data: any) => void): () => void {
+  onAgentDisconnected(listener: (data: Record<string, unknown>) => void): () => void {
     return this.on('agent', (msg) => {
-      if (msg.event === 'disconnected') listener(msg.data);
+      if (msg.event === 'disconnected') listener(msg.data ?? {});
     });
   }
 
-  onAgentStatusChanged(listener: (data: any) => void): () => void {
+  onAgentStatusChanged(listener: (data: Record<string, unknown>) => void): () => void {
     return this.on('agent', (msg) => {
-      if (msg.event === 'status_changed') listener(msg.data);
+      if (msg.event === 'status_changed') listener(msg.data ?? {});
     });
   }
 
-  // 工作流事件订阅
-  onWorkflowSubmitted(listener: (data: any) => void): () => void {
+  // Workflow event subscriptions
+  onWorkflowSubmitted(listener: (data: Record<string, unknown>) => void): () => void {
     return this.on('workflow', (msg) => {
-      if (msg.event === 'submitted') listener(msg.data);
+      if (msg.event === 'submitted') listener(msg.data ?? {});
     });
   }
 
-  onWorkflowStatusChanged(listener: (data: any) => void): () => void {
+  onWorkflowStatusChanged(listener: (data: Record<string, unknown>) => void): () => void {
     return this.on('workflow', (msg) => {
-      if (msg.event === 'status_changed') listener(msg.data);
+      if (msg.event === 'status_changed') listener(msg.data ?? {});
     });
   }
 
-  onWorkflowProgress(listener: (data: any) => void): () => void {
+  onWorkflowProgress(listener: (data: Record<string, unknown>) => void): () => void {
     return this.on('workflow', (msg) => {
-      if (msg.event === 'progress') listener(msg.data);
+      if (msg.event === 'progress') listener(msg.data ?? {});
     });
   }
 
-  // 获取连接状态
   isConnected(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
 
-  // 设置事件处理器
   private setupEventHandlers(): void {
     if (!this.ws) return;
 
@@ -195,15 +204,12 @@ class WebSocketService {
     };
   }
 
-  // 处理消息
   private handleMessage(message: WSMessage): void {
-    // 处理 ping
     if (message.type === 'ping') {
       this.send('pong');
       return;
     }
 
-    // 通知类型订阅者
     const typeListeners = this.listeners.get(message.type);
     if (typeListeners) {
       typeListeners.forEach((listener) => {
@@ -215,7 +221,6 @@ class WebSocketService {
       });
     }
 
-    // 通知所有消息订阅者
     const allListeners = this.listeners.get('*');
     if (allListeners) {
       allListeners.forEach((listener) => {
@@ -228,7 +233,6 @@ class WebSocketService {
     }
   }
 
-  // 通知连接状态变化
   private notifyConnectionState(connected: boolean): void {
     this.connectionStateListeners.forEach((listener) => {
       try {
@@ -239,7 +243,6 @@ class WebSocketService {
     });
   }
 
-  // 安排重连
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('[WS] Max reconnect attempts reached');
@@ -259,18 +262,13 @@ class WebSocketService {
     }, delay);
   }
 
-  // 开始心跳
   private startHeartbeat(): void {
     this.stopHeartbeat();
     this.heartbeatTimer = setInterval(() => {
-      if (this.isConnected()) {
-        // 心跳由服务器发起 ping，客户端回复 pong
-        // 这里不需要主动发送
-      }
+      // Server-initiated ping, client responds with pong in handleMessage
     }, 30000);
   }
 
-  // 停止心跳
   private stopHeartbeat(): void {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
@@ -279,7 +277,6 @@ class WebSocketService {
   }
 }
 
-// 导出单例
 const wsService = new WebSocketService();
 
 export default wsService;

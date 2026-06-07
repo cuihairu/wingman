@@ -25,7 +25,7 @@ var upgrader = websocket.Upgrader{
 type Message struct {
 	Type      string      `json:"type"`
 	Event     string      `json:"event,omitempty"`
-	Data      interface{} `json:"data,omitempty"`
+	Data      any `json:"data,omitempty"`
 	RoomID    string      `json:"roomId,omitempty"`
 	Timestamp int64       `json:"timestamp,omitempty"`
 }
@@ -92,15 +92,26 @@ func (h *Hub) Run() {
 
 		case message := <-h.broadcast:
 			h.mu.RLock()
+			var stale []string
 			for _, conn := range h.connections {
 				select {
 				case conn.Send <- message:
 				default:
-					close(conn.Send)
-					delete(h.connections, conn.ID)
+					stale = append(stale, conn.ID)
 				}
 			}
 			h.mu.RUnlock()
+
+			if len(stale) > 0 {
+				h.mu.Lock()
+				for _, id := range stale {
+					if conn, ok := h.connections[id]; ok {
+						close(conn.Send)
+						delete(h.connections, id)
+					}
+				}
+				h.mu.Unlock()
+			}
 		}
 	}
 }
@@ -167,7 +178,7 @@ func (h *Hub) BroadcastToRoom(roomID string, message *Message) {
 }
 
 // BroadcastEvent 广播事件
-func (h *Hub) BroadcastEvent(eventType string, data interface{}) {
+func (h *Hub) BroadcastEvent(eventType string, data any) {
 	message := &Message{
 		Type:      eventType,
 		Data:      data,
@@ -177,7 +188,7 @@ func (h *Hub) BroadcastEvent(eventType string, data interface{}) {
 }
 
 // BroadcastDebugEvent 广播调试事件
-func (h *Hub) BroadcastDebugEvent(eventType string, data interface{}) {
+func (h *Hub) BroadcastDebugEvent(eventType string, data any) {
 	message := &Message{
 		Type:      "debugger",
 		Event:     eventType,
@@ -188,7 +199,7 @@ func (h *Hub) BroadcastDebugEvent(eventType string, data interface{}) {
 }
 
 // BroadcastAgentEvent 广播 Agent 事件
-func (h *Hub) BroadcastAgentEvent(eventType string, data interface{}) {
+func (h *Hub) BroadcastAgentEvent(eventType string, data any) {
 	message := &Message{
 		Type:      "agent",
 		Event:     eventType,
