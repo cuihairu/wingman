@@ -1,9 +1,13 @@
 use serde_json::Value;
 use std::io::{Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::time::{timeout, Duration};
 
 /// Maximum allowed IPC response payload size (10 MiB).
 const MAX_RESPONSE_SIZE: usize = 10 * 1024 * 1024;
+
+/// IPC read/write timeout (30 seconds).
+const IPC_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[cfg(windows)]
 use std::fs::{File, OpenOptions};
@@ -92,24 +96,69 @@ impl IpcClient {
         let body = serde_json::to_vec(&request).map_err(|e| e.to_string())?;
         let length = (body.len() as u32).to_le_bytes();
 
-        let stream = self
-            .stream
-            .as_mut()
-            .ok_or_else(|| "IPC stream is not connected".to_string())?;
-        stream.write_all(&length)?;
-        stream.write_all(&body)?;
+        // Take ownership of stream for blocking operations
+        let mut stream = self.stream.take().ok_or_else(|| "IPC stream is not connected".to_string())?;
 
-        let mut length_buf = [0u8; 4];
-        stream.read_exact(&mut length_buf)?;
-        let response_len = u32::from_le_bytes(length_buf) as usize;
-        if response_len == 0 || response_len > MAX_RESPONSE_SIZE {
-            return Err(format!("Invalid IPC response length: {}", response_len));
-        }
+        // Write with timeout
+        let write_result = timeout(IPC_TIMEOUT, tokio::task::spawn_blocking(move || {
+            if let Err(e) = stream.write_all(&length) {
+                return Err::<(IpcStream, ()), String>(format!("write error: {}", e));
+            }
+            if let Err(e) = stream.write_all(&body) {
+                return Err::<(IpcStream, ()), String>(format!("write error: {}", e));
+            }
+            Ok::<(IpcStream, ()), String>((stream, ()))
+        })).await;
 
-        let mut response_buf = vec![0u8; response_len];
-        stream.read_exact(&mut response_buf)?;
+        // Unwrap the timeout Result
+        let write_task_result = write_result.map_err(|_| "IPC write timeout".to_string())?;
 
-        let envelope: Value = serde_json::from_slice(&response_buf).map_err(|e| e.to_string())?;
+        // Unwrap the JoinHandle Result and inner Result
+        let mut stream = match write_task_result {
+            Ok(inner_result) => match inner_result {
+                Ok((s, _)) => s,
+                Err(e) => return Err(e),
+            },
+            Err(e) => return Err(format!("IPC write join failed: {}", e)),
+        };
+
+        // Read with timeout
+        let read_result = timeout(IPC_TIMEOUT, tokio::task::spawn_blocking(move || {
+            let mut length_buf = [0u8; 4];
+            if let Err(e) = stream.read_exact(&mut length_buf) {
+                return Err::<(IpcStream, Value), String>(format!("read error: {}", e));
+            }
+            let response_len = u32::from_le_bytes(length_buf) as usize;
+            if response_len == 0 || response_len > MAX_RESPONSE_SIZE {
+                return Err::<(IpcStream, Value), String>(
+                    format!("Invalid IPC response length: {}", response_len)
+                );
+            }
+
+            let mut response_buf = vec![0u8; response_len];
+            if let Err(e) = stream.read_exact(&mut response_buf) {
+                return Err::<(IpcStream, Value), String>(format!("read error: {}", e));
+            }
+
+            let envelope: Value = match serde_json::from_slice(&response_buf) {
+                Ok(v) => v,
+                Err(e) => return Err::<(IpcStream, Value), String>(format!("json error: {}", e)),
+            };
+            Ok::<(IpcStream, Value), String>((stream, envelope))
+        })).await;
+
+        // Unwrap the timeout Result
+        let task_result = read_result.map_err(|_| "IPC read timeout".to_string())?;
+
+        // Unwrap the JoinHandle Result
+        let inner_result = task_result.map_err(|e| format!("IPC task join failed: {}", e))?;
+
+        // Unwrap the actual IPC Result
+        let (returned_stream, envelope) = inner_result.map_err(|e| e)?;
+
+        // Restore the stream
+        self.stream = Some(returned_stream);
+
         let payload = envelope
             .get("payload")
             .cloned()

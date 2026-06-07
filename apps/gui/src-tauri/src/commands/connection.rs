@@ -26,8 +26,8 @@ pub async fn disconnect_ipc(state: tauri::State<'_, AppState>) -> Result<(), Str
 }
 
 #[tauri::command]
-pub async fn is_connected(state: tauri::State<'_, AppState>) -> bool {
-    state.ipc_client.lock().await.connected
+pub async fn is_connected(state: tauri::State<'_, AppState>) -> Result<bool, String> {
+    Ok(state.ipc_client.lock().await.connected)
 }
 
 /// Validates that the endpoint name contains only safe characters.

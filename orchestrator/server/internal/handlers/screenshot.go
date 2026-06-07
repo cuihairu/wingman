@@ -28,6 +28,9 @@ type ScreenshotRequest struct {
 	Timestamp int64  `json:"timestamp"`
 }
 
+// 最大截图 base64 大小 (10MiB)
+const maxScreenshotSize = 10 * 1024 * 1024
+
 // HandleScreenshot 处理截图上报
 func (h *ScreenshotHandler) HandleScreenshot(c *gin.Context) {
 	var req ScreenshotRequest
@@ -44,6 +47,15 @@ func (h *ScreenshotHandler) HandleScreenshot(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "Missing image data",
+		})
+		return
+	}
+
+	// 验证图片大小，防止内存压力和 WebSocket 广播风暴
+	if len(req.Image) > maxScreenshotSize {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Screenshot image too large (max 10MB)",
 		})
 		return
 	}

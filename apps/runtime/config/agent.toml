@@ -1,7 +1,9 @@
 # Wingman Runtime Configuration
 
-# ========== 运行模式配置 ==========
-enable_remote = true
+# ========== 能力配置（可组合） ==========
+enable_remote = true              # 主动连接 Go Orchestrator
+enable_local_ipc = true          # 本地 IPC 服务（供 UI 连接）
+enable_standalone_script = false # 单机脚本执行
 
 # ========== 远程模式配置 ==========
 [remote]

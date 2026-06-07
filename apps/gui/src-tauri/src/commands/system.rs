@@ -102,6 +102,6 @@ pub async fn resume_all(state: tauri::State<'_, AppState>) -> Result<(), String>
 }
 
 #[tauri::command]
-pub async fn is_paused(state: tauri::State<'_, AppState>) -> bool {
-    *state.paused.lock().await
+pub async fn is_paused(state: tauri::State<'_, AppState>) -> Result<bool, String> {
+    Ok(*state.paused.lock().await)
 }

@@ -97,24 +97,30 @@ func main() {
 			auth.GET("/status", statusHandler.HandleStatus)
 			auth.GET("/health", statusHandler.HandleHealth)
 
-			scriptHandler := handlers.NewScriptHandler(db, cfg.ScriptsDir, registry)
-			auth.GET("/scripts", scriptHandler.HandleList)
-			auth.POST("/scripts", scriptHandler.HandleCreate)
-			auth.DELETE("/scripts", scriptHandler.HandleDelete)
-			auth.POST("/scripts/content", scriptHandler.HandleGetContent)
-			auth.POST("/scripts/save", scriptHandler.HandleSave)
-			auth.POST("/scripts/run", scriptHandler.HandleRun)
-			auth.POST("/scripts/stop", scriptHandler.HandleStop)
-			auth.POST("/scripts/logs", scriptHandler.HandleLogs)
-
+			// 只读接口 - 所有登录用户可访问
 			windowHandler := handlers.NewWindowHandler(registry)
 			auth.GET("/windows", windowHandler.HandleList)
-
 			auth.GET("/settings", handlers.HandleGetSettings)
-			auth.PUT("/settings", handlers.HandleUpdateSettings)
 
 			screenshotHandler := handlers.NewScreenshotHandler(wsHub)
 			auth.POST("/screenshot", screenshotHandler.HandleScreenshot)
+		}
+
+		// 写入接口 - 需要 admin 权限
+		admin := v1.Group("")
+		admin.Use(middleware.AuthRequired(), middleware.RoleRequired("admin"))
+		{
+			scriptHandler := handlers.NewScriptHandler(db, cfg.ScriptsDir, registry)
+			admin.GET("/scripts", scriptHandler.HandleList)      // 列表保留为只读
+			admin.POST("/scripts", scriptHandler.HandleCreate)   // 创建脚本
+			admin.DELETE("/scripts", scriptHandler.HandleDelete) // 删除脚本
+			admin.POST("/scripts/content", scriptHandler.HandleGetContent)
+			admin.POST("/scripts/save", scriptHandler.HandleSave) // 保存脚本
+			admin.POST("/scripts/run", scriptHandler.HandleRun)   // 运行脚本
+			admin.POST("/scripts/stop", scriptHandler.HandleStop) // 停止脚本
+			admin.POST("/scripts/logs", scriptHandler.HandleLogs)
+
+			admin.PUT("/settings", handlers.HandleUpdateSettings)
 		}
 	}
 
@@ -122,31 +128,39 @@ func main() {
 	api := r.Group("/api")
 	api.Use(middleware.AuthRequired())
 	{
-		// Agent 管理
+		// Agent 管理 - 只读接口
 		agentHandler := handlers.NewAgentHandler(registry, db)
 		api.GET("/agents", agentHandler.HandleList)
 		api.GET("/agents/:agentId", agentHandler.HandleGet)
-		api.POST("/agents/:agentId/shutdown", agentHandler.HandleShutdown)
 
-		// 工作流管理
+		// 工作流管理 - 只读接口
 		wfHandler := handlers.NewWorkflowHandler(wfEngine, db)
 		api.GET("/workflows", wfHandler.HandleList)
 		api.GET("/workflows/:id", wfHandler.HandleGet)
-		api.POST("/workflows", wfHandler.HandleCreate)
-		api.POST("/workflows/:id/cancel", wfHandler.HandleCancel)
 		api.GET("/workflows/:id/workers", wfHandler.HandleGetWorkers)
 		api.GET("/workflows/:id/steps/:stepId/status", wfHandler.HandleGetStepStatus)
 
-		// 脚本管理（复用 ScriptHandler）
+		// 脚本管理 - 只读接口
 		scriptHandlerAPI := handlers.NewScriptHandler(db, cfg.ScriptsDir, registry)
 		api.GET("/scripts", scriptHandlerAPI.HandleList)
-		api.POST("/scripts", scriptHandlerAPI.HandleCreate)
-		api.DELETE("/scripts", scriptHandlerAPI.HandleDelete)
-		api.POST("/scripts/content", scriptHandlerAPI.HandleGetContent)
-		api.POST("/scripts/save", scriptHandlerAPI.HandleSave)
-		api.POST("/scripts/run", scriptHandlerAPI.HandleRun)
-		api.POST("/scripts/stop", scriptHandlerAPI.HandleStop)
-		api.POST("/scripts/logs", scriptHandlerAPI.HandleLogs)
+		api.POST("/scripts/content", scriptHandlerAPI.HandleGetContent) // 获取内容
+
+		// 写入接口 - 需要 admin 权限
+		apiAdmin := api.Group("")
+		apiAdmin.Use(middleware.RoleRequired("admin"))
+		{
+			apiAdmin.POST("/agents/:agentId/shutdown", agentHandler.HandleShutdown)
+
+			apiAdmin.POST("/workflows", wfHandler.HandleCreate)
+			apiAdmin.POST("/workflows/:id/cancel", wfHandler.HandleCancel)
+
+			apiAdmin.POST("/scripts", scriptHandlerAPI.HandleCreate)
+			apiAdmin.DELETE("/scripts", scriptHandlerAPI.HandleDelete)
+			apiAdmin.POST("/scripts/save", scriptHandlerAPI.HandleSave)
+			apiAdmin.POST("/scripts/run", scriptHandlerAPI.HandleRun)
+			apiAdmin.POST("/scripts/stop", scriptHandlerAPI.HandleStop)
+			apiAdmin.POST("/scripts/logs", scriptHandlerAPI.HandleLogs)
+		}
 	}
 
 	// ====== Debugger 路由（仅 admin） ======

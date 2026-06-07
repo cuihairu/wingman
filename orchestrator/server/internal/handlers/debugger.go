@@ -8,10 +8,9 @@ import (
 
 // HandleDebuggerConnect 调试器连接
 func HandleDebuggerConnect(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Debugger connected",
-		"version": "0.1.0",
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"success": false,
+		"error":   "Debugger functionality is not yet implemented",
 	})
 }
 
@@ -23,16 +22,17 @@ func HandleDebuggerCommand(c *gin.Context) {
 
 	c.ShouldBindJSON(&req)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"state":   "stopped",
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"success": false,
+		"error":   "Debugger functionality is not yet implemented",
 	})
 }
 
 // HandleDebuggerGetBreakpoints 获取断点
 func HandleDebuggerGetBreakpoints(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"success":     true,
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"success":     false,
+		"error":       "Debugger functionality is not yet implemented",
 		"breakpoints": []interface{}{},
 	})
 }
@@ -48,8 +48,9 @@ func HandleDebuggerSetBreakpoints(c *gin.Context) {
 
 	c.ShouldBindJSON(&req)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":     true,
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"success":     false,
+		"error":       "Debugger functionality is not yet implemented",
 		"breakpoints": []interface{}{},
 	})
 }
