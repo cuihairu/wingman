@@ -103,6 +103,8 @@ set(WINGMAN_SOURCES
     src/script/modules/json_module.cpp
     src/script/modules/kv_module.cpp
     src/script/modules/event_module.cpp
+    src/script/modules/inbox_module.cpp
+    src/script/modules/team_module.cpp
     src/script/modules/fsm_module.cpp
     src/script/modules/task_module.cpp
     src/script/modules/notify_module.cpp
