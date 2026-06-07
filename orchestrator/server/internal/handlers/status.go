@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
@@ -33,15 +32,11 @@ func (h *StatusHandler) HandleStatus(c *gin.Context) {
 	cpuUsage := 0.0
 	memoryUsage := 0.0
 
-	// 从 registry 获取第一个在线的 agent
-	agents := h.registry.List()
-	var onlineAgent *agent.AgentInfo
-	for _, a := range agents {
-		if a.Status == agent.StatusOnline && a.Client != nil {
-			onlineAgent = a
-			break
-		}
-	}
+	// Get agentId from query parameter (optional for status)
+	agentId := c.Query("agentId")
+
+	// Select agent based on agentId (or first online if not specified)
+	onlineAgent := selectAgent(h.registry, agentId)
 
 	if onlineAgent != nil {
 		client := onlineAgent.Client
@@ -70,9 +65,6 @@ func (h *StatusHandler) HandleStatus(c *gin.Context) {
 				}
 			}
 		}
-	} else if len(agents) > 0 {
-		// 有 agents 但都在离线状态
-		log.Printf("[StatusHandler] No online agents available (total: %d)", len(agents))
 	}
 
 	c.JSON(http.StatusOK, gin.H{

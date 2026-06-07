@@ -16,7 +16,25 @@ namespace wingman::runtime {
 // 用于处理 server 下发的命令（如 system.shutdown, run_script）
 
 using CommandData = std::map<std::string, std::string>;
-using CommandCallback = std::function<void(const std::string& command, const CommandData& data)>;
+
+/**
+ * @brief Command execution result
+ * Returns actual success/failure status to the server
+ */
+struct CommandResult {
+    bool success = false;
+    std::string message;  // Error message if success=false, or additional info
+
+    static CommandResult ok(const std::string& msg = "") {
+        return {true, msg};
+    }
+
+    static CommandResult error(const std::string& msg) {
+        return {false, msg};
+    }
+};
+
+using CommandCallback = std::function<CommandResult(const std::string& command, const CommandData& data)>;
 
 // ========== Connection State ==========
 

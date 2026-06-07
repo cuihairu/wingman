@@ -178,7 +178,7 @@ bool Agent::initStandaloneMode() {
 
 // ========== 远程命令处理 ==========
 
-void Agent::handleRemoteCommand(const std::string& command, const CommandData& data) {
+CommandResult Agent::handleRemoteCommand(const std::string& command, const CommandData& data) {
     spdlog::info("Received remote command: {}", command);
 
     if (command == "run_script") {
@@ -186,12 +186,12 @@ void Agent::handleRemoteCommand(const std::string& command, const CommandData& d
         auto pathIt = data.find("path");
         if (pathIt == data.end() || pathIt->second.empty()) {
             spdlog::warn("run_script missing path parameter");
-            return;
+            return CommandResult::error("missing path parameter");
         }
 
         if (!impl_->standaloneMode || !impl_->standaloneMode->isRunning()) {
             spdlog::warn("StandaloneMode not available, cannot run script");
-            return;
+            return CommandResult::error("StandaloneMode not available");
         }
 
         // 加载并启动脚本
@@ -199,22 +199,27 @@ void Agent::handleRemoteCommand(const std::string& command, const CommandData& d
         if (!scriptId.empty()) {
             impl_->standaloneMode->startScript(scriptId);
             spdlog::info("Script started: {} (path: {})", scriptId, pathIt->second);
+            return CommandResult::ok("script started: " + scriptId);
         } else {
             spdlog::error("Failed to load script: {}", pathIt->second);
+            return CommandResult::error("failed to load script: " + pathIt->second);
         }
 
     } else if (command == "system.shutdown") {
         // 关闭 agent
         spdlog::info("Shutting down agent due to remote command");
         stop();
+        return CommandResult::ok("agent shutting down");
 
     } else if (command == "list_windows") {
         // TODO: 实现窗口列表功能
         spdlog::debug("list_windows command not yet implemented");
+        return CommandResult::error("list_windows not implemented");
 
     } else if (command == "get_status") {
         // TODO: 实现状态查询功能
         spdlog::debug("get_status command not yet implemented");
+        return CommandResult::error("get_status not implemented");
 
     } else if (command == "stop_script") {
         auto scriptIdIt = data.find("script_id");
@@ -222,10 +227,15 @@ void Agent::handleRemoteCommand(const std::string& command, const CommandData& d
             if (impl_->standaloneMode) {
                 impl_->standaloneMode->stopScript(scriptIdIt->second);
                 spdlog::info("Script stopped: {}", scriptIdIt->second);
+                return CommandResult::ok("script stopped: " + scriptIdIt->second);
+            } else {
+                return CommandResult::error("StandaloneMode not available");
             }
         }
+        return CommandResult::error("missing script_id parameter");
     } else {
         spdlog::warn("Unknown remote command: {}", command);
+        return CommandResult::error("unknown command: " + command);
     }
 }
 

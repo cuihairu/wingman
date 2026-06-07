@@ -20,9 +20,44 @@ fn active_profile_path() -> PathBuf {
 }
 
 fn profile_path(id: &str) -> PathBuf {
+    // Validate that id is a safe filename to prevent path traversal attacks
+    // Only allow alphanumeric, underscore, hyphen, and dot (but not as path separator)
+    if !is_safe_filename(id) {
+        // If unsafe, use a sanitized version or reject
+        // For security, we'll sanitize by removing unsafe characters
+        let sanitized = sanitize_filename(id);
+        let mut path = profiles_dir();
+        path.push(format!("{}.json", sanitized));
+        return path;
+    }
+
     let mut path = profiles_dir();
     path.push(format!("{}.json", id));
     path
+}
+
+/// Check if a string is a safe filename (no path traversal)
+fn is_safe_filename(id: &str) -> bool {
+    if id.is_empty() {
+        return false;
+    }
+
+    // Reject path separators and parent directory references
+    if id.contains('/') || id.contains('\\') || id.contains("..") {
+        return false;
+    }
+
+    // Only allow alphanumeric, underscore, hyphen, and dot
+    id.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.')
+}
+
+/// Sanitize a filename by removing unsafe characters
+fn sanitize_filename(id: &str) -> String {
+    id.chars()
+        .filter(|&c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.')
+        .collect::<String>()
+        .trim_start_matches('.')
+        .to_string()
 }
 
 fn local_data_dir() -> PathBuf {
@@ -105,6 +140,11 @@ pub async fn get_active_profile() -> Result<Value, String> {
 
 #[tauri::command]
 pub async fn set_active_profile(id: String) -> Result<(), String> {
+    // Validate id to prevent injection attacks
+    if !is_safe_filename(&id) {
+        return Err("Invalid profile id: contains unsafe characters".to_string());
+    }
+
     let path = active_profile_path();
     fs::write(&path, &id).map_err(|e| e.to_string())?;
     Ok(())

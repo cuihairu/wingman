@@ -25,6 +25,8 @@ namespace wingman::ipc::windows {
  * Supports async IO and message passing.
  */
 class NamedPipeChannel : public IIpcChannel {
+    // Maximum message size (10 MiB) - prevents memory allocation attacks
+    static constexpr size_t kMaxMessageSize = 10 * 1024 * 1024;
 public:
     NamedPipeChannel(bool serverMode, const std::string& pipeName);
     ~NamedPipeChannel() override;

@@ -173,7 +173,9 @@ bool LocalIpcServer::start() {
         }
     });
 
-    running_.store(true);
+    // Don't set running_ = true here; the worker thread sets it after
+    // channel->connect() succeeds. Callers should check isConnected()
+    // or add a synchronization mechanism if they need to wait for readiness.
     return true;
 }
 

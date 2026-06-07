@@ -161,6 +161,13 @@ bool NamedPipeChannel::send(const IpcMessage& message) {
     std::string json = serializeMessage(message);
     std::vector<uint8_t> data(json.begin(), json.end());
 
+    // Validate message size to prevent memory allocation attacks
+    if (data.size() > kMaxMessageSize) {
+        spdlog::error("[NamedPipe] Message too large: {} bytes (max: {})", data.size(), kMaxMessageSize);
+        setState(IpcState::Error);
+        return false;
+    }
+
     // Write message length (4 bytes)
     uint32_t length = static_cast<uint32_t>(data.size());
 
@@ -412,6 +419,13 @@ void NamedPipeChannel::receiveLoop() {
             } else if (error != ERROR_IO_PENDING) {
                 spdlog::error("[NamedPipe] ReadFile length failed: {}", error);
             }
+            break;
+        }
+
+        // Validate message size to prevent memory allocation attacks
+        if (messageLength > kMaxMessageSize) {
+            spdlog::error("[NamedPipe] Message too large: {} bytes (max: {})", messageLength, kMaxMessageSize);
+            setState(IpcState::Error);
             break;
         }
 

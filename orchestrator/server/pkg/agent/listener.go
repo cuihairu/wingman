@@ -179,6 +179,11 @@ func (ac *agentConn) SendCommandWithTimeout(method string, data map[string]any, 
 	seq := ac.nextSeq
 	ac.nextSeq++
 
+	// Register pending response BEFORE writing to prevent race: if runtime responds
+	// immediately after write, readLoop must find the pending entry.
+	p := &pendingResponse{ch: make(chan *messageOrError, 1)}
+	ac.pending[seq] = p
+
 	req := map[string]any{
 		"type":     method,
 		"method":   method,
@@ -188,6 +193,7 @@ func (ac *agentConn) SendCommandWithTimeout(method string, data map[string]any, 
 
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
+		delete(ac.pending, seq) // Clean up on early return
 		ac.mu.Unlock()
 		return nil, err
 	}
@@ -198,17 +204,16 @@ func (ac *agentConn) SendCommandWithTimeout(method string, data map[string]any, 
 		Sequence: seq,
 	}
 	if err := ac.writeMsgHeaderLocked(&header); err != nil {
+		delete(ac.pending, seq) // Clean up on write failure
 		ac.mu.Unlock()
 		return nil, err
 	}
 	if _, err := ac.conn.Write(reqBytes); err != nil {
+		delete(ac.pending, seq) // Clean up on write failure
 		ac.mu.Unlock()
 		return nil, err
 	}
 
-	// Register pending response before unlocking so readLoop can't miss it.
-	p := &pendingResponse{ch: make(chan *messageOrError, 1)}
-	ac.pending[seq] = p
 	ac.mu.Unlock()
 
 	// Wait for readLoop to deliver the response, with optional timeout.

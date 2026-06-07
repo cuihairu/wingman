@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -28,6 +27,35 @@ func NewScriptHandler(db *gorm.DB, scriptsDir string, registry *agent.Registry) 
 		registry: registry,
 		store:    scripts.NewStore(scriptsDir),
 	}
+}
+
+// selectAgent selects an agent based on the provided agentId.
+// If agentId is empty, returns the first online agent (for backward compatibility).
+// If agentId is provided, returns that specific agent if online.
+// Returns nil if no suitable agent is found.
+func selectAgent(registry *agent.Registry, agentId string) *agent.AgentInfo {
+	agents := registry.List()
+
+	// If agentId is specified, find that specific agent
+	if agentId != "" {
+		for _, a := range agents {
+			if a.AgentID == agentId && a.Status == agent.StatusOnline && a.Client != nil {
+				return a
+			}
+		}
+		// Specific agent requested but not found or not online
+		return nil
+	}
+
+	// No agentId specified: return first online agent
+	// TODO: Implement smarter selection (round-robin, least loaded, affinity)
+	for _, a := range agents {
+		if a.Status == agent.StatusOnline && a.Client != nil {
+			return a
+		}
+	}
+
+	return nil
 }
 
 // HandleList 获取脚本列表
@@ -162,7 +190,8 @@ func (h *ScriptHandler) HandleSave(c *gin.Context) {
 // HandleRun 运行脚本
 func (h *ScriptHandler) HandleRun(c *gin.Context) {
 	var req struct {
-		Path string `json:"path" binding:"required"`
+		Path    string `json:"path" binding:"required"`
+		AgentID string `json:"agentId"` // Optional: specific agent to run script on
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
@@ -175,21 +204,14 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		return
 	}
 
-	// 从 registry 获取第一个在线的 agent
-	agents := h.registry.List()
-	var onlineAgent *agent.AgentInfo
-	for _, a := range agents {
-		if a.Status == agent.StatusOnline && a.Client != nil {
-			onlineAgent = a
-			break
-		}
-	}
-
+	// Select agent based on agentId (or first online if not specified)
+	onlineAgent := selectAgent(h.registry, req.AgentID)
 	if onlineAgent == nil {
-		if len(agents) > 0 {
-			log.Printf("[ScriptHandler] No online agents available (total: %d)", len(agents))
+		if req.AgentID != "" {
+			c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "specified agent not found or not online"})
+		} else {
+			c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "no available agent"})
 		}
-		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "no available agent"})
 		return
 	}
 
@@ -225,27 +247,21 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 func (h *ScriptHandler) HandleStop(c *gin.Context) {
 	var req struct {
 		ExecutionID string `json:"executionId" binding:"required"`
+		AgentID     string `json:"agentId"` // Optional: specific agent to stop script on
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
 
-	// 从 registry 获取第一个在线的 agent
-	agents := h.registry.List()
-	var onlineAgent *agent.AgentInfo
-	for _, a := range agents {
-		if a.Status == agent.StatusOnline && a.Client != nil {
-			onlineAgent = a
-			break
-		}
-	}
-
+	// Select agent based on agentId (or first online if not specified)
+	onlineAgent := selectAgent(h.registry, req.AgentID)
 	if onlineAgent == nil {
-		if len(agents) > 0 {
-			log.Printf("[ScriptHandler] No online agents available (total: %d)", len(agents))
+		if req.AgentID != "" {
+			c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "specified agent not found or not online"})
+		} else {
+			c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "no available agent"})
 		}
-		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "no available agent"})
 		return
 	}
 

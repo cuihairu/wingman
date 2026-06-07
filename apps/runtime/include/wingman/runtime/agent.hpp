@@ -51,7 +51,7 @@ private:
     bool initStandaloneMode();
 
     // 远程命令处理
-    void handleRemoteCommand(const std::string& command, const CommandData& data);
+    CommandResult handleRemoteCommand(const std::string& command, const CommandData& data);
 
     // P-Impl
     std::unique_ptr<Impl> impl_;

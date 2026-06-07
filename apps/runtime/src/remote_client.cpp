@@ -387,15 +387,21 @@ void RemoteClient::handleRequestMessage(const transport::MessagePtr& msg) {
             }
         }
 
-        // 执行命令回调
-        commandCallback_(method, cmdData);
+        // 执行命令回调并获取实际执行结果
+        CommandResult result = commandCallback_(method, cmdData);
 
-        // 构造成功响应（注意：当前无法知道命令是否真正执行成功，
-        // 因为 callback 是异步的且不返回状态）
+        // 构造响应（使用 callback 返回的实际成功/失败状态）
         nlohmann::json response = {
-            {"success", true},
+            {"success", result.success},
             {"method", method}
         };
+
+        // 如果有错误信息，添加到响应中
+        if (!result.success && !result.message.empty()) {
+            response["error"] = result.message;
+        } else if (result.success && !result.message.empty()) {
+            response["message"] = result.message;
+        }
 
         // 发送 Response（使用相同的 sequence）
         auto responseMsg = std::make_shared<transport::Message>();
