@@ -165,7 +165,7 @@ bool Agent::initRemoteClient() {
 
     // 绑定命令回调，处理 server 下发的命令
     impl_->remoteClient->setCommandCallback([this](const std::string& command, const CommandData& data) {
-        handleRemoteCommand(command, data);
+        return handleRemoteCommand(command, data);
     });
 
     return true;

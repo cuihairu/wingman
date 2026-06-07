@@ -73,7 +73,10 @@ func main() {
 	})
 
 	// 工作流引擎
-	wfEngine := workflow.NewEngine(db, registry, wsHub)
+	wfEngine := workflow.NewEngine(db, registry, wsHub, cfg.ScriptsDir)
+
+	// Settings handler (DB version for persistence)
+	settingsHandler := handlers.NewSettingsHandler(db)
 
 	r := gin.Default()
 	r.Use(middleware.CORS())
@@ -100,16 +103,16 @@ func main() {
 			// 只读接口 - 所有登录用户可访问
 			windowHandler := handlers.NewWindowHandler(registry)
 			auth.GET("/windows", windowHandler.HandleList)
-			auth.GET("/settings", handlers.HandleGetSettings)
-
-			screenshotHandler := handlers.NewScreenshotHandler(wsHub)
-			auth.POST("/screenshot", screenshotHandler.HandleScreenshot)
+			auth.GET("/settings", settingsHandler.HandleGetSettings)
 		}
 
 		// 写入接口 - 需要 admin 权限
 		admin := v1.Group("")
 		admin.Use(middleware.AuthRequired(), middleware.RoleRequired("admin"))
 		{
+			screenshotHandler := handlers.NewScreenshotHandler(wsHub)
+			admin.POST("/screenshot", screenshotHandler.HandleScreenshot)
+
 			scriptHandler := handlers.NewScriptHandler(db, cfg.ScriptsDir, registry)
 			admin.GET("/scripts", scriptHandler.HandleList)      // 列表保留为只读
 			admin.POST("/scripts", scriptHandler.HandleCreate)   // 创建脚本
@@ -120,7 +123,7 @@ func main() {
 			admin.POST("/scripts/stop", scriptHandler.HandleStop) // 停止脚本
 			admin.POST("/scripts/logs", scriptHandler.HandleLogs)
 
-			admin.PUT("/settings", handlers.HandleUpdateSettings)
+			admin.PUT("/settings", settingsHandler.HandleUpdateSettings)
 		}
 	}
 

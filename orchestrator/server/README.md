@@ -79,6 +79,6 @@ go build -o ../build/go-server.exe .
 - `settings` - 配置
 - `execution_logs` - 执行日志
 
-默认管理员账户：
-- 用户名: `admin`
-- 密码: `admin123`
+管理员账户：
+首次启动时需要通过环境变量 `WINGMAN_ADMIN_PASSWORD` 设置管理员密码。
+如果没有设置该环境变量，服务将无法启动并提示配置错误。

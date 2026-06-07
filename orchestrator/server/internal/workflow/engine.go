@@ -11,6 +11,7 @@ import (
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/scripts"
 	ws "github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
 	"gorm.io/gorm"
 )
@@ -20,6 +21,7 @@ type Engine struct {
 	db       *gorm.DB
 	registry *agent.Registry
 	hub      *ws.Hub
+	store    scripts.Store
 	running  map[uint]*Execution
 	mu       sync.RWMutex
 }
@@ -33,11 +35,12 @@ type Execution struct {
 }
 
 // NewEngine 创建工作流引擎
-func NewEngine(db *gorm.DB, registry *agent.Registry, hub *ws.Hub) *Engine {
+func NewEngine(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, scriptsDir string) *Engine {
 	return &Engine{
 		db:       db,
 		registry: registry,
 		hub:      hub,
+		store:    scripts.NewStore(scriptsDir),
 		running:  make(map[uint]*Execution),
 	}
 }
@@ -47,6 +50,16 @@ func (e *Engine) Submit(workflow *models.Workflow) error {
 	steps := workflow.GetSteps()
 	if len(steps) == 0 {
 		return fmt.Errorf("workflow has no steps")
+	}
+
+	// 验证步骤
+	if err := e.validateSteps(steps); err != nil {
+		return fmt.Errorf("invalid workflow steps: %w", err)
+	}
+
+	// 检测 DAG 环
+	if err := e.detectCycle(steps); err != nil {
+		return err
 	}
 
 	// 更新状态为 running
@@ -287,6 +300,112 @@ func (e *Engine) findReadySteps(exec *Execution, completed map[string]bool) []mo
 	return ready
 }
 
+// detectCycle 检测 DAG 是否存在环。返回错误（含环路径）或 nil。
+func (e *Engine) detectCycle(steps []models.WorkflowStep) error {
+	// 构建邻接表: stepID -> []dependentStepIDs
+	graph := make(map[string][]string)
+	stepIDs := make(map[string]bool)
+	for _, step := range steps {
+		stepIDs[step.ID] = true
+		for _, dep := range step.DependsOn {
+			graph[dep] = append(graph[dep], step.ID)
+		}
+	}
+
+	// 每个节点访问状态: 0=未访问, 1=访问中(当前递归栈), 2=已完成
+	visited := make(map[string]int)
+	path := make([]string, 0)
+
+	var dfs func(string) error
+	dfs = func(node string) error {
+		visited[node] = 1 // 标记为访问中
+		path = append(path, node)
+
+		for _, neighbor := range graph[node] {
+			switch visited[neighbor] {
+			case 0:
+				if err := dfs(neighbor); err != nil {
+					return err
+				}
+			case 1:
+				// 发现环
+				cycleStart := -1
+				for i, p := range path {
+					if p == neighbor {
+						cycleStart = i
+						break
+					}
+				}
+				cyclePath := append(path[cycleStart:], neighbor)
+				return fmt.Errorf("dependency cycle detected: %v", cyclePath)
+			case 2:
+				// 已完成其他路径，无需处理
+			}
+		}
+
+		visited[node] = 2 // 标记为已完成
+		path = path[:len(path)-1]
+		return nil
+	}
+
+	// 从所有节点开始 DFS（处理孤立节点）
+	for id := range stepIDs {
+		if visited[id] == 0 {
+			if err := dfs(id); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// validateSteps 验证步骤配置
+func (e *Engine) validateSteps(steps []models.WorkflowStep) error {
+	seenIDs := make(map[string]bool)
+	stepIDs := make(map[string]bool)
+
+	for _, step := range steps {
+		// 检查 ID 非空
+		if step.ID == "" {
+			return fmt.Errorf("step has empty ID")
+		}
+
+		// 检查 ID 唯一
+		if seenIDs[step.ID] {
+			return fmt.Errorf("duplicate step ID: %s", step.ID)
+		}
+		seenIDs[step.ID] = true
+		stepIDs[step.ID] = true
+
+		// 验证脚本路径有效且在 scripts 目录内
+		scriptPath, err := e.store.Resolve(step.Script)
+		if err != nil {
+			return fmt.Errorf("step %s: invalid script path %q: %w", step.ID, step.Script, err)
+		}
+		// 将解析后的绝对路径存回 step.Script（供 executeStep 使用）
+		step.Script = scriptPath
+
+		// 检查依赖存在
+		for _, dep := range step.DependsOn {
+			if !seenIDs[dep] {
+				// 依赖可能在此步骤之后定义，暂时允许
+				// 会在 detectCycle 中捕获环
+			}
+		}
+	}
+
+	// 再次检查依赖是否都指向有效步骤
+	for _, step := range steps {
+		for _, dep := range step.DependsOn {
+			if !stepIDs[dep] {
+				return fmt.Errorf("step %s: dependency %q does not exist", step.ID, dep)
+			}
+		}
+	}
+
+	return nil
+}
+
 // executeStep 执行单个步骤
 func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.WorkflowStep) error {
 	ss := exec.StepState[step.ID]
@@ -365,6 +484,11 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 		e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
 		ss.Status = "cancelled"
 		return ctx.Err()
+	case <-time.After(timeout):
+		e.db.Model(ss).Updates(map[string]any{"status": "failed", "end_time": time.Now(), "message": "timeout"})
+		ss.Status = "failed"
+		ss.Message = "timeout"
+		return fmt.Errorf("step %s timed out after %v", step.ID, timeout)
 	case err := <-done:
 		if err != nil {
 			return e.failStep(ss, exec, step, err.Error())
