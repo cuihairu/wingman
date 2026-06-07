@@ -161,55 +161,7 @@ public:
 			});
 		}
 
-		// Note: pending event moved inside worker lambda
-			{"url", url},
-			{"payload", payload}
-		}, "notify");
-
-		// Send HTTP request asynchronously using managed thread
-		workers_.emplace_back([this, url, payload, callback]() {
-			try {
-				HttpClient client;
-				std::string jsonBody = payload.dump();
-				HttpResponse response = client.post(url, jsonBody, {});
-
-				bool success = response.isSuccess();
-				std::string error = success ? "" : response.error;
-
-				// Emit result event
-				EventHub::instance().emit(success ? "notify.webhook.success" : "notify.webhook.failed", {
-					{"url", url},
-					{"statusCode", response.statusCode},
-					{"error", error}
-				}, "notify");
-
-				callback(success, error);
-			} catch (const std::exception& e) {
-				EventHub::instance().emit("notify.webhook.failed", {
-					{"url", url},
-					{"error", e.what()}
-				}, "notify");
-				callback(false, e.what());
-			}
-
-			// Decrement active thread counter when done
-			activeThreadCount_--;
-		});
-	}
-
-private:
-	void cleanupFinishedThreads() {
-		// Join finished threads and remove them from the workers vector
-		// Note: join() blocks if thread is still running, so we only join threads that have finished
-		// This is a best-effort cleanup - the vector might still contain running threads
-		workers_.erase(
-			std::remove_if(workers_.begin(), workers_.end(),
-				[](std::thread& t) {
-					// If thread is joinable and has finished, join() returns quickly
-					// We don't have a portable try_join, so we use a heuristic
-					return !t.joinable();  // Remove non-joinable threads
-				}),
-			workers_.end());
+		// Note: pending event moved inside worker lambda to avoid emitting under lock
 	}
 
 private:
