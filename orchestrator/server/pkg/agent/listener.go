@@ -166,6 +166,11 @@ func (l *FrameListener) acceptLoop() {
 
 // SendCommand sends a command and waits for the response via readLoop dispatch.
 func (ac *agentConn) SendCommand(method string, data map[string]any) (map[string]any, error) {
+	return ac.SendCommandWithTimeout(method, data, 0)
+}
+
+// SendCommandWithTimeout sends a command with a timeout. A timeout of 0 means wait indefinitely.
+func (ac *agentConn) SendCommandWithTimeout(method string, data map[string]any, timeout time.Duration) (map[string]any, error) {
 	ac.mu.Lock()
 
 	seq := ac.nextSeq
@@ -203,8 +208,18 @@ func (ac *agentConn) SendCommand(method string, data map[string]any) (map[string
 	ac.pending[seq] = p
 	ac.mu.Unlock()
 
-	// Wait for readLoop to deliver the response.
-	result := <-p.ch
+	// Wait for readLoop to deliver the response, with optional timeout.
+	var result *messageOrError
+	if timeout > 0 {
+		select {
+		case result = <-p.ch:
+			// Received response
+		case <-time.After(timeout):
+			result = &messageOrError{err: fmt.Errorf("command timeout after %v", timeout)}
+		}
+	} else {
+		result = <-p.ch
+	}
 
 	// Clean up the pending entry.
 	ac.mu.Lock()
@@ -273,7 +288,8 @@ func (ac *agentConn) readLoop() {
 		}
 
 		// If this is a Response with a sequence number, dispatch to the caller.
-		if header.Type == Response && header.Sequence > 0 {
+		// Note: Sequence can be 0 for the first command, so check for Response type only.
+		if header.Type == Response {
 			ac.dispatchResponse(header.Sequence, body)
 			continue
 		}

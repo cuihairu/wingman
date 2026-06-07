@@ -125,6 +125,16 @@ func (h *Hub) Run() {
 					if conn, ok := h.connections[id]; ok {
 						close(conn.Send)
 						delete(h.connections, id)
+
+						// Also remove from rooms if present
+						if conn.currentRoom != "" {
+							if room, ok := h.rooms[conn.currentRoom]; ok {
+								delete(room, id)
+								if len(room) == 0 {
+									delete(h.rooms, conn.currentRoom)
+								}
+							}
+						}
 					}
 				}
 				h.mu.Unlock()

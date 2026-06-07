@@ -57,10 +57,15 @@ struct PACK_HEADER {
     uint32_t flags;             // 标志位
     uint64_t originalSize;      // 原始大小
     uint64_t compressedSize;    // 压缩后大小
-    uint8_t keyHash[32];        // 密钥哈希
+    uint8_t keyHash[32];        // 加密密钥
     uint8_t dataHash[32];       // 数据哈希
     uint8_t reserved[64];       // 保留
 };
+
+// ========== 标志位定义（与 packer.cpp 一致） ==========
+constexpr uint32_t PACK_FLAG_ENCRYPTED = 0x01;  // 数据已加密
+constexpr uint32_t PACK_FLAG_COMPRESSED = 0x02;  // 数据已压缩
+
 
 // ========== ResourceLoader 实现 ==========
 
@@ -362,10 +367,18 @@ std::optional<LoadedScript> ResourceLoader::loadScript(const std::string& passwo
             }
         }
 
-        // 解压
-        if (header.compressedSize > 0 && header.compressedSize < header.originalSize) {
-            payload = impl_->decompressData(payload);
-            impl_->resourceInfo.compressed = true;
+        // 解压（使用 flags 判断而不是猜测）
+        if (header.flags & PACK_FLAG_COMPRESSED) {
+            try {
+                payload = impl_->decompressData(payload);
+                impl_->resourceInfo.compressed = true;
+                spdlog::info("Decompressed to {} bytes", payload.size());
+            } catch (const std::exception& e) {
+                if (errorCallback_) {
+                    errorCallback_(std::string("Decompression failed: ") + e.what());
+                }
+                return std::nullopt;
+            }
         }
 
         impl_->resourceInfo.version = header.version;

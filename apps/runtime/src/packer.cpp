@@ -70,6 +70,11 @@ struct PACK_HEADER {
     uint8_t reserved[64];       // 保留
 };
 
+// ========== 标志位定义 ==========
+constexpr uint32_t PACK_FLAG_ENCRYPTED = 0x01;  // 数据已加密
+constexpr uint32_t PACK_FLAG_COMPRESSED = 0x02;  // 数据已压缩
+
+
 class Packer::Impl {
 public:
     PackerOptions options;
@@ -240,7 +245,7 @@ public:
         std::memcpy(header.magic, "WMSP", 4);
         header.version = 1;
         header.flags = 0;
-        header.originalSize = options.encrypt ? data.size() : 0;  // 原始大小（加密前）
+        header.originalSize = data.size();  // 始终记录原始大小
 
         std::vector<uint8_t> payload = data;
         if (options.encrypt) {
@@ -248,10 +253,15 @@ public:
             std::vector<uint8_t> key = generateKeyImpl();
             payload = aesEncrypt(data, key);
             std::memcpy(header.keyHash, key.data(), std::min(key.size(), size_t(32)));
+            header.flags |= PACK_FLAG_ENCRYPTED;
         }
 
         if (options.compress) {
             payload = compress(payload);
+            // 只有当压缩确实减小了体积时才标记为已压缩
+            if (payload.size() < data.size()) {
+                header.flags |= PACK_FLAG_COMPRESSED;
+            }
         }
 
         header.compressedSize = payload.size();
