@@ -38,7 +38,8 @@ namespace wingman::transport {
  */
 class SimpleMessage {
 public:
-    static constexpr size_t MAX_MESSAGE_SIZE = 256 * 1024 * 1024;  // 256MB
+    // Maximum message size (16 MiB) - consistent with Session limit for security
+    static constexpr size_t MAX_MESSAGE_SIZE = 16 * 1024 * 1024;
     static constexpr size_t LENGTH_SIZE = 4;
 
     /**
