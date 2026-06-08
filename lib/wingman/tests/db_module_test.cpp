@@ -8,24 +8,37 @@ using namespace wingman::script::modules;
 namespace {
 	constexpr const char* kTestDbName = "__test_db_module__";
 
-	// 测试辅助函数
 	void cleanTestDb() {
 		std::string dbPath = getDatabasePath(kTestDbName);
 		if (dbPath != ":memory:" && std::filesystem::exists(dbPath)) {
 			std::filesystem::remove(dbPath);
 		}
 	}
+} // anonymous namespace
 
-	std::shared_ptr<DbConnection> createTestConnection() {
+// 测试夹具：确保连接在清理前正确关闭
+class DbModuleTestFixture : public ::testing::Test {
+protected:
+	void SetUp() override {
 		cleanTestDb();
 		std::string dataDir = getScriptDataDir();
-		return std::make_shared<DbConnection>(kTestDbName, dataDir);
+		conn = std::make_shared<DbConnection>(kTestDbName, dataDir);
 	}
-} // anonymous namespace
+
+	void TearDown() override {
+		if (conn) {
+			conn->close();
+			conn.reset();
+		}
+		cleanTestDb();
+	}
+
+	std::shared_ptr<DbConnection> conn;
+};
 
 // ========== Path Utilities Tests ==========
 
-TEST(DbModuleTest, GetScriptDataDir) {
+TEST(DbPathUtilsTest, GetScriptDataDir) {
 	std::string dataDir = getScriptDataDir();
 
 	EXPECT_FALSE(dataDir.empty());
@@ -35,7 +48,7 @@ TEST(DbModuleTest, GetScriptDataDir) {
 				std::filesystem::create_directories(dataDir));
 }
 
-TEST(DbModuleTest, GetDatabasePath) {
+TEST(DbPathUtilsTest, GetDatabasePath) {
 	// 测试内存数据库
 	EXPECT_EQ(getDatabasePath(":memory:"), ":memory:");
 
@@ -50,36 +63,27 @@ TEST(DbModuleTest, GetDatabasePath) {
 
 // ========== DbConnection Tests ==========
 
-TEST(DbModuleTest, Connection_OpenMemory) {
+TEST(DbConnectionTest, Connection_OpenMemory) {
 	auto conn = std::make_shared<DbConnection>(":memory:", getScriptDataDir());
 
 	EXPECT_TRUE(conn->isValid());
 	EXPECT_EQ(conn->getName(), ":memory:");
 }
 
-TEST(DbModuleTest, Connection_OpenNamed) {
-	auto conn = createTestConnection();
-
+TEST_F(DbModuleTestFixture, Connection_OpenNamed) {
 	EXPECT_TRUE(conn->isValid());
 	EXPECT_EQ(conn->getName(), kTestDbName);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Connection_Close) {
-	auto conn = createTestConnection();
-
+TEST_F(DbModuleTestFixture, Connection_Close) {
 	ASSERT_TRUE(conn->isValid());
 
 	conn->close();
 
 	EXPECT_FALSE(conn->isValid());
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Execute_CreateTable) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Execute_CreateTable) {
 	ASSERT_TRUE(conn->isValid());
 
 	bool success = conn->execute(
@@ -87,12 +91,9 @@ TEST(DbModuleTest, Execute_CreateTable) {
 	);
 
 	EXPECT_TRUE(success);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Execute_Insert) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Execute_Insert) {
 	ASSERT_TRUE(conn->isValid());
 
 	ASSERT_TRUE(conn->execute(
@@ -107,12 +108,9 @@ TEST(DbModuleTest, Execute_Insert) {
 	EXPECT_TRUE(success);
 	EXPECT_EQ(conn->lastInsertId(), 1);
 	EXPECT_EQ(conn->changes(), 1);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Query_Select) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Query_Select) {
 	ASSERT_TRUE(conn->isValid());
 
 	ASSERT_TRUE(conn->execute(
@@ -139,12 +137,9 @@ TEST(DbModuleTest, Query_Select) {
 		EXPECT_EQ(rows[1]["name"], "Bob");
 		EXPECT_EQ(rows[1]["age"], "30");
 	}
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Query_WithParams) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Query_WithParams) {
 	ASSERT_TRUE(conn->isValid());
 
 	ASSERT_TRUE(conn->execute(
@@ -171,12 +166,9 @@ TEST(DbModuleTest, Query_WithParams) {
 	if (filtered.size() >= 1) {
 		EXPECT_EQ(filtered[0]["name"], "Bob");
 	}
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Query_MaxRows) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Query_MaxRows) {
 	ASSERT_TRUE(conn->isValid());
 
 	ASSERT_TRUE(conn->execute(
@@ -194,12 +186,9 @@ TEST(DbModuleTest, Query_MaxRows) {
 	auto rows = conn->query("SELECT * FROM users", {}, 10);
 
 	EXPECT_EQ(rows.size(), 10);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Scalar) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Scalar) {
 	ASSERT_TRUE(conn->isValid());
 
 	ASSERT_TRUE(conn->execute(
@@ -223,19 +212,16 @@ TEST(DbModuleTest, Scalar) {
 	std::string maxAge = conn->scalar("SELECT MAX(age) FROM users");
 
 	EXPECT_EQ(maxAge, "30");
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Transaction_Commit) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Transaction_Commit) {
 	ASSERT_TRUE(conn->isValid());
 
 	ASSERT_TRUE(conn->execute(
 		"CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)"
 	));
 
-	bool success = conn->transaction([&conn](DbConnection& tx) {
+	bool success = conn->transaction([](DbConnection& tx) {
 		tx.execute("INSERT INTO users (name, age) VALUES (?, ?)", {"Alice", "25"});
 		tx.execute("INSERT INTO users (name, age) VALUES (?, ?)", {"Bob", "30"});
 	});
@@ -244,12 +230,9 @@ TEST(DbModuleTest, Transaction_Commit) {
 
 	auto rows = conn->query("SELECT * FROM users");
 	EXPECT_EQ(rows.size(), 2);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Transaction_Rollback) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Transaction_Rollback) {
 	ASSERT_TRUE(conn->isValid());
 
 	ASSERT_TRUE(conn->execute(
@@ -257,7 +240,7 @@ TEST(DbModuleTest, Transaction_Rollback) {
 	));
 
 	// 故意违反约束以触发回滚
-	bool success = conn->transaction([&conn](DbConnection& tx) {
+	bool success = conn->transaction([](DbConnection& tx) {
 		tx.execute("INSERT INTO users (name, age) VALUES (?, ?)", {"Alice", "25"});
 		// 这会违反主键约束（假设 id 是 INTEGER PRIMARY KEY）
 		tx.execute("INSERT INTO users (id, name, age) VALUES (?, ?, ?)", {"1", "Bob", "30"});
@@ -265,19 +248,16 @@ TEST(DbModuleTest, Transaction_Rollback) {
 
 	// 根据实现，这可能返回 true（SQLite 默认不强制主键约束直到查询）
 	// 但如果回滚，应该没有数据被插入
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Transaction_CallbackException) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Transaction_CallbackException) {
 	ASSERT_TRUE(conn->isValid());
 
 	ASSERT_TRUE(conn->execute(
 		"CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)"
 	));
 
-	bool success = conn->transaction([&conn](DbConnection& tx) {
+	bool success = conn->transaction([](DbConnection& tx) {
 		tx.execute("INSERT INTO users (name, age) VALUES (?, ?)", {"Alice", "25"});
 		throw std::runtime_error("Test exception");
 	});
@@ -286,14 +266,11 @@ TEST(DbModuleTest, Transaction_CallbackException) {
 
 	auto rows = conn->query("SELECT * FROM users");
 	EXPECT_EQ(rows.size(), 0);
-
-	cleanTestDb();
 }
 
 // ========== DbTable Tests ==========
 
-TEST(DbModuleTest, Table_Create) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Table_Create) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -311,12 +288,9 @@ TEST(DbModuleTest, Table_Create) {
 	// 验证表已创建
 	auto rows = conn->query("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
 	EXPECT_EQ(rows.size(), 1);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Table_InvalidIdentifier) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Table_InvalidIdentifier) {
 	ASSERT_TRUE(conn->isValid());
 
 	// 测试无效表名
@@ -325,12 +299,9 @@ TEST(DbModuleTest, Table_InvalidIdentifier) {
 
 	bool success = invalidTable.create(schema);
 	EXPECT_FALSE(success);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Table_Insert) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Table_Insert) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -348,12 +319,9 @@ TEST(DbModuleTest, Table_Insert) {
 
 	EXPECT_TRUE(success);
 	EXPECT_EQ(conn->lastInsertId(), 1);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Table_InsertMultiple) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Table_InsertMultiple) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -370,12 +338,9 @@ TEST(DbModuleTest, Table_InsertMultiple) {
 
 	auto count = table.count();
 	EXPECT_EQ(count, 3);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Table_Get) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Table_Get) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -393,12 +358,9 @@ TEST(DbModuleTest, Table_Get) {
 	EXPECT_FALSE(row.empty());
 	EXPECT_EQ(row["name"], "Alice");
 	EXPECT_EQ(row["age"], "25");
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Table_All) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Table_All) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -415,12 +377,9 @@ TEST(DbModuleTest, Table_All) {
 	auto rows = table.all();
 
 	EXPECT_EQ(rows.size(), 2);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Table_Count) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Table_Count) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -437,14 +396,11 @@ TEST(DbModuleTest, Table_Count) {
 	ASSERT_TRUE(table.insert({{"name", "Bob"}, {"age", "30"}}));
 
 	EXPECT_EQ(table.count(), 2);
-
-	cleanTestDb();
 }
 
 // ========== QueryBuilder Tests ==========
 
-TEST(DbModuleTest, QueryBuilder_Where) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, QueryBuilder_Where) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -463,12 +419,9 @@ TEST(DbModuleTest, QueryBuilder_Where) {
 	auto rows = query.all();
 
 	EXPECT_EQ(rows.size(), 2);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, QueryBuilder_First) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, QueryBuilder_First) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -486,12 +439,9 @@ TEST(DbModuleTest, QueryBuilder_First) {
 
 	EXPECT_FALSE(row.empty());
 	EXPECT_EQ(row["name"], "Bob");
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, QueryBuilder_Count) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, QueryBuilder_Count) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -509,12 +459,9 @@ TEST(DbModuleTest, QueryBuilder_Count) {
 	auto count = table.where("age", ">", "28").count();
 
 	EXPECT_EQ(count, 2);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, QueryBuilder_Update) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, QueryBuilder_Update) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -534,12 +481,9 @@ TEST(DbModuleTest, QueryBuilder_Update) {
 
 	auto row = table.get("1");
 	EXPECT_EQ(row["age"], "26");
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, QueryBuilder_Delete) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, QueryBuilder_Delete) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -557,12 +501,9 @@ TEST(DbModuleTest, QueryBuilder_Delete) {
 
 	EXPECT_EQ(deleted, 1);
 	EXPECT_EQ(table.count(), 1);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, QueryBuilder_OrderBy) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, QueryBuilder_OrderBy) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -582,12 +523,9 @@ TEST(DbModuleTest, QueryBuilder_OrderBy) {
 	ASSERT_EQ(rows.size(), 3);
 	EXPECT_EQ(rows[0]["age"], "30");
 	EXPECT_EQ(rows[2]["age"], "20");
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, QueryBuilder_Limit) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, QueryBuilder_Limit) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -605,12 +543,9 @@ TEST(DbModuleTest, QueryBuilder_Limit) {
 	auto rows = table.where("age", ">", "0").orderBy("age", "asc").limit(2).all();
 
 	EXPECT_EQ(rows.size(), 2);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, QueryBuilder_Chained) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, QueryBuilder_Chained) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "users");
@@ -636,13 +571,11 @@ TEST(DbModuleTest, QueryBuilder_Chained) {
 
 	EXPECT_EQ(rows.size(), 5);
 	EXPECT_EQ(rows[0]["age"], "99");
-
-	cleanTestDb();
 }
 
 // ========== Security Tests ==========
 
-TEST(DbModuleTest, Security_PathRestriction) {
+TEST(DbSecurityTest, Security_PathRestriction) {
 	std::string dataDir = getScriptDataDir();
 
 	// 测试合法路径
@@ -658,14 +591,14 @@ TEST(DbModuleTest, Security_PathRestriction) {
 	EXPECT_FALSE(invalidConn->isValid());
 
 	// 清理
+	validConn->close();
 	std::string dbPath = getDatabasePath("local");
 	if (std::filesystem::exists(dbPath)) {
 		std::filesystem::remove(dbPath);
 	}
 }
 
-TEST(DbModuleTest, SQL_IdentifierValidation) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, SQL_IdentifierValidation) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable validTable(conn, "valid_table_name");
@@ -679,14 +612,11 @@ TEST(DbModuleTest, SQL_IdentifierValidation) {
 	EXPECT_FALSE(invalidTable.create({
 		{"id", "INTEGER PRIMARY KEY"}
 	}));
-
-	cleanTestDb();
 }
 
 // ========== Integration Tests ==========
 
-TEST(DbModuleTest, Integration_CRUD) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Integration_CRUD) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "products");
@@ -731,12 +661,9 @@ TEST(DbModuleTest, Integration_CRUD) {
 	// Delete
 	table.where("stock", "<", "20").deleteRows();
 	EXPECT_EQ(table.count(), 1);
-
-	cleanTestDb();
 }
 
-TEST(DbModuleTest, Integration_TransactionWithORM) {
-	auto conn = createTestConnection();
+TEST_F(DbModuleTestFixture, Integration_TransactionWithORM) {
 	ASSERT_TRUE(conn->isValid());
 
 	DbTable table(conn, "accounts");
@@ -748,8 +675,7 @@ TEST(DbModuleTest, Integration_TransactionWithORM) {
 	}));
 
 	// 在事务中执行多个操作
-	bool success = conn->transaction([&conn, &table](DbConnection& txConn) {
-		// 事务中可以使用传入的 txConn 或原始的 conn
+	bool success = conn->transaction([&table](DbConnection& txConn) {
 		table.insert({{"name", "Alice"}, {"balance", "100"}});
 		table.insert({{"name", "Bob"}, {"balance", "200"}});
 		table.insert({{"name", "Charlie"}, {"balance", "300"}});
@@ -757,17 +683,4 @@ TEST(DbModuleTest, Integration_TransactionWithORM) {
 
 	EXPECT_TRUE(success);
 	EXPECT_EQ(table.count(), 3);
-
-	cleanTestDb();
-}
-
-// ========== Cleanup ==========
-
-TEST(DbModuleTest, Cleanup) {
-	cleanTestDb();
-
-	std::string dbPath = getDatabasePath(kTestDbName);
-	if (dbPath != ":memory:" && std::filesystem::exists(dbPath)) {
-		EXPECT_FALSE(std::filesystem::exists(dbPath));
-	}
 }

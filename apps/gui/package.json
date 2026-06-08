@@ -21,20 +21,5 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "vite": "^8.0.16",
-      "rollup": "^4.61.1",
-      "axios": "^1.17.0",
-      "tar": "^7.5.15",
-      "tar-fs": "^2.0.1",
-      "@tootallnate/once": "^3.0.0",
-      "postcss": "^8.5.15",
-      "request": "^2.88.2",
-      "mockjs": "^1.1.0",
-      "path-to-regexp": "^8.4.2",
-      "elliptic": "^6.6.1"
-    }
   }
 }

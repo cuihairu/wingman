@@ -129,9 +129,13 @@ global_key2 = global_value2
 
 	ASSERT_EQ(result.type, ScriptValue::Type::Object);
 
-	// 全局键应该存储在空字符串 section 中
+	// global_key1 在 section 之前，属于全局 section
 	ASSERT_NE(result.get(""), nullptr);
-	EXPECT_EQ(result.get("")->objectVal.size(), 2);
+	EXPECT_EQ(result.get("")->objectVal.size(), 1);
+
+	// global_key2 在 [Section] 之后，属于 Section
+	ASSERT_NE(result.get("Section"), nullptr);
+ EXPECT_EQ(result.get("Section")->objectVal.size(), 2);
 }
 
 TEST(IniModuleTest, Decode_WithSpaces) {
@@ -315,8 +319,8 @@ key1 = value1
 
 	auto data = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	// 设置新 key
-	callModule(mod, "set", {
+	// 设置新 key（set 返回新对象，需要捕获返回值）
+	data = callModule(mod, "set", {
 		data,
 		ScriptValue::fromString("Section1"),
 		ScriptValue::fromString("key2"),
@@ -343,8 +347,8 @@ key1 = value1
 
 	auto data = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	// 修改现有 key
-	callModule(mod, "set", {
+	// 修改现有 key（set 返回新对象，需要捕获返回值）
+	data = callModule(mod, "set", {
 		data,
 		ScriptValue::fromString("Section1"),
 		ScriptValue::fromString("key1"),
@@ -371,8 +375,8 @@ key1 = value1
 
 	auto data = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	// 创建新 section
-	callModule(mod, "set", {
+	// 创建新 section（set 返回新对象，需要捕获返回值）
+	data = callModule(mod, "set", {
 		data,
 		ScriptValue::fromString("Section2"),
 		ScriptValue::fromString("key2"),
@@ -403,13 +407,11 @@ key2 = value2
 
 	auto data = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	// 删除 section
-	auto result = callModule(mod, "delete", {
+	// 删除 section（delete 返回修改后的对象）
+	data = callModule(mod, "delete", {
 		data,
 		ScriptValue::fromString("Section1")
 	});
-
-	EXPECT_TRUE(result.asBool());
 
 	// 验证 section 已删除
 	auto hasSection = callModule(mod, "has_section", {
@@ -418,6 +420,14 @@ key2 = value2
 	});
 
 	EXPECT_FALSE(hasSection.asBool());
+
+	// 验证其他 section 仍然存在
+	auto hasSection2 = callModule(mod, "has_section", {
+		data,
+		ScriptValue::fromString("Section2")
+	});
+
+	EXPECT_TRUE(hasSection2.asBool());
 }
 
 TEST(IniModuleTest, Delete_Key) {
@@ -431,14 +441,12 @@ key2 = value2
 
 	auto data = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	// 删除 key
-	auto result = callModule(mod, "delete", {
+	// 删除 key（delete 返回修改后的对象）
+	data = callModule(mod, "delete", {
 		data,
 		ScriptValue::fromString("Section1"),
 		ScriptValue::fromString("key1")
 	});
-
-	EXPECT_TRUE(result.asBool());
 
 	// 验证 key 已删除
 	auto hasKey = callModule(mod, "has_key", {
@@ -469,22 +477,33 @@ key1 = value1
 
 	auto data = callModule(mod, "decode", {ScriptValue::fromString(content)});
 
-	// 删除不存在的 section
+	// 删除不存在的 section（返回原对象，数据不变）
 	auto result1 = callModule(mod, "delete", {
 		data,
 		ScriptValue::fromString("NonExistent")
 	});
 
-	EXPECT_FALSE(result1.asBool());
+	// 原数据应该保持不变
+	auto hasSection = callModule(mod, "has_section", {
+		result1,
+		ScriptValue::fromString("Section1")
+	});
+	EXPECT_TRUE(hasSection.asBool());
 
-	// 删除不存在的 key
+	// 删除不存在的 key（返回原对象，数据不变）
 	auto result2 = callModule(mod, "delete", {
 		data,
 		ScriptValue::fromString("Section1"),
 		ScriptValue::fromString("NonExistent")
 	});
 
-	EXPECT_FALSE(result2.asBool());
+	// 原 key 应该仍然存在
+	auto hasKey = callModule(mod, "has_key", {
+		result2,
+		ScriptValue::fromString("Section1"),
+		ScriptValue::fromString("key1")
+	});
+	EXPECT_TRUE(hasKey.asBool());
 }
 
 // ========== INI 检查操作测试 ==========
@@ -752,7 +771,7 @@ TEST(IniModuleTest, ComplexConfiguration) {
 	});
 	EXPECT_EQ(dbHost.asString(), "db.example.com");
 
-	// 验证全局键
+	// 验证全局键（global_key 在 [Server] 之前，属于全局 section）
 	auto globalKey = callModule(mod, "get", {
 		data,
 		ScriptValue::fromString(""),

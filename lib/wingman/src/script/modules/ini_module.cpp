@@ -322,7 +322,7 @@ static ScriptValue iniSet(const std::vector<ScriptValue>& args) {
 
 static ScriptValue iniDelete(const std::vector<ScriptValue>& args) {
 	if (args.size() < 2) {
-		return ScriptValue::fromBool(false);
+		return ScriptValue::null();
 	}
 
 	// args[0]: INI 数据对象
@@ -330,7 +330,7 @@ static ScriptValue iniDelete(const std::vector<ScriptValue>& args) {
 	// args[2] (可选): key 名称
 
 	if (args[0].type != ScriptValue::Type::Object) {
-		return ScriptValue::fromBool(false);
+		return ScriptValue::null();
 	}
 
 	std::string section = args[1].asString();
@@ -340,8 +340,8 @@ static ScriptValue iniDelete(const std::vector<ScriptValue>& args) {
 
 	// 如果只提供 section，删除整个 section
 	if (args.size() < 3) {
-		size_t erased = result.objectVal.erase(section);
-		return ScriptValue::fromBool(erased > 0);
+		result.objectVal.erase(section);
+		return result;
 	}
 
 	// 如果提供了 key，删除 section 中的 key
@@ -350,14 +350,12 @@ static ScriptValue iniDelete(const std::vector<ScriptValue>& args) {
 		std::string key = args[2].asString();
 		// 需要深拷贝 section 对象
 		ScriptValue newSection = *sectionVal;
-		size_t erased = newSection.objectVal.erase(key);
-		if (erased > 0) {
-			result.objectVal[section] = newSection;
-			return result;
-		}
+		newSection.objectVal.erase(key);
+		result.objectVal[section] = newSection;
+		return result;
 	}
 
-	return ScriptValue::fromBool(false);
+	return result;
 }
 
 static ScriptValue iniHasSection(const std::vector<ScriptValue>& args) {
