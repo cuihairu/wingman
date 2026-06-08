@@ -200,7 +200,7 @@ private:
 	std::string m_name;
 	std::string m_path;
 	std::string m_dataDir;
-	mutable std::mutex m_mutex;
+	mutable std::recursive_mutex m_mutex;
 	bool m_inTransaction = false;
 #else
 	std::string m_name;

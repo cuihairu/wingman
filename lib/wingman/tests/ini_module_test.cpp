@@ -24,6 +24,9 @@ namespace {
 	// 创建测试 INI 内容
 	std::string createTestIni() {
 		return R"(
+; Global keys (must be before any section)
+global_key = global_value
+
 ; Server configuration
 [Server]
 host = localhost
@@ -39,9 +42,6 @@ password = secret
 
 ; Empty section
 [Empty]
-
-; Global keys (no section)
-global_key = global_value
 )";
 	}
 } // anonymous namespace

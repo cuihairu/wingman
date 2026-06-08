@@ -5,7 +5,6 @@
 #include <sstream>
 #include <unordered_set>
 #include <mutex>
-#include <atomic>
 #include <chrono>
 
 #ifdef _WIN32
@@ -108,13 +107,6 @@ namespace {
 		}
 		return true;
 	}
-
-	// 生成唯一内存数据库名称
-	std::atomic<uint64_t> g_memoryDbCounter{0};
-	std::string generateUniqueMemoryDbName() {
-		uint64_t id = g_memoryDbCounter.fetch_add(1, std::memory_order_relaxed);
-		return ":memory:_v2_" + std::to_string(id);
-	}
 } // anonymous namespace
 
 std::string DbConnection::resolvePath(const std::string& name, const std::string& dataDir) {
@@ -165,13 +157,7 @@ bool DbConnection::isPathAllowed(const std::string& path, const std::string& dat
 DbConnection::DbConnection(const std::string& name, const std::string& dataDir)
 	: m_name(name), m_dataDir(dataDir) {
 
-	// 处理 :memory: 数据库名称 - 使用唯一名称实现隔离
-	std::string resolvedName = name;
-	if (name == ":memory:") {
-		resolvedName = generateUniqueMemoryDbName();
-	}
-
-	m_path = resolvePath(resolvedName, dataDir);
+	m_path = resolvePath(name, dataDir);
 	if (m_path.empty() || !isPathAllowed(m_path, dataDir)) {
 		spdlog::error("Database path not allowed: '{}'", m_path);
 		return;
@@ -202,7 +188,7 @@ DbConnection::~DbConnection() {
 }
 
 void DbConnection::close() {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::recursive_mutex> lock(m_mutex);
 	if (m_db) {
 		sqlite3_close(m_db);
 		m_db = nullptr;
@@ -300,7 +286,7 @@ Rows DbConnection::fetchResults(Stmt& stmt, size_t maxRows) {
 }
 
 bool DbConnection::execute(const std::string& sql, const Params& params) {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::recursive_mutex> lock(m_mutex);
 
 	if (!m_db) {
 		return false;
@@ -325,7 +311,7 @@ bool DbConnection::execute(const std::string& sql, const Params& params) {
 }
 
 Rows DbConnection::query(const std::string& sql, const Params& params, size_t maxRows) {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::recursive_mutex> lock(m_mutex);
 
 	if (!m_db) {
 		return {};
@@ -344,7 +330,7 @@ Rows DbConnection::query(const std::string& sql, const Params& params, size_t ma
 }
 
 std::string DbConnection::scalar(const std::string& sql, const Params& params) {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::recursive_mutex> lock(m_mutex);
 
 	if (!m_db) {
 		return "";
@@ -368,7 +354,7 @@ std::string DbConnection::scalar(const std::string& sql, const Params& params) {
 }
 
 bool DbConnection::transaction(TransactionCallback callback) {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::recursive_mutex> lock(m_mutex);
 
 	if (!m_db || m_inTransaction) {
 		spdlog::error("Cannot start transaction: database invalid or already in transaction");
@@ -406,7 +392,7 @@ bool DbConnection::transaction(TransactionCallback callback) {
 }
 
 int64_t DbConnection::lastInsertId() const {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::recursive_mutex> lock(m_mutex);
 	if (m_db) {
 		return sqlite3_last_insert_rowid(m_db);
 	}
@@ -414,7 +400,7 @@ int64_t DbConnection::lastInsertId() const {
 }
 
 int DbConnection::changes() const {
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::recursive_mutex> lock(m_mutex);
 	if (m_db) {
 		return sqlite3_changes(m_db);
 	}
