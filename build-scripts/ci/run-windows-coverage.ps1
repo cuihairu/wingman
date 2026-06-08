@@ -34,7 +34,9 @@ Write-Host "Running with OpenCppCoverage..."
 # Exclude IPC and FileWatcher tests that crash under OpenCppCoverage instrumentation.
 # Write the full command to a batch file to avoid PowerShell/cmd semicolon escaping issues.
 # The semicolons in gtest_filter get misinterpreted when passed through cmd /c.
-$gtestFilter = "*:-IpcTest.*:-IpcFactoryTest.CreateServerWithDefaultConfig:-IpcFactoryTest.CreateClientWithDefaultConfig:-IpcFactoryTest.CreateServerWithExplicitTransport:-IpcFactoryTest.CreateClientWithExplicitTransport:-IpcFactoryTest.CreateServerWithEmptyName:-IpcFactoryTest.CreateClientWithEmptyName:-IpcFactoryTest.CreateServerWithTcpFallback:-IpcFactoryTest.CreateClientWithTcpFallback:-FileWatcherTest.*"
+# NOTE: FileWatcherTest.* must be FIRST - gtest 1.17.0 ignores the last negative
+# pattern in a long filter string when --gtest_filter is passed through OpenCppCoverage.
+$gtestFilter = "*:-FileWatcherTest.*:-IpcTest.*:-IpcFactoryTest.CreateServerWithDefaultConfig:-IpcFactoryTest.CreateClientWithDefaultConfig:-IpcFactoryTest.CreateServerWithExplicitTransport:-IpcFactoryTest.CreateClientWithExplicitTransport:-IpcFactoryTest.CreateServerWithEmptyName:-IpcFactoryTest.CreateClientWithEmptyName:-IpcFactoryTest.CreateServerWithTcpFallback:-IpcFactoryTest.CreateClientWithTcpFallback"
 
 # Create a batch file with the full OpenCppCoverage command
 $runBat = Join-Path $coverageDir "run_coverage.bat"
