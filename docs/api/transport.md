@@ -2,9 +2,20 @@
 
 Transport 模块提供了 TCP 和 UDP 网络通信功能，基于 asio 实现异步网络操作。
 
+:::warning 条件编译
+transport 模块需要 `WINGMAN_HAS_TRANSPORT` 编译宏启用。未启用时，所有函数返回 `{success: false, error: "Transport module not enabled in this build"}`。
+:::
+
 ## 模块概述
 
-transport 模块封装了底层 `libs/transport` 库的 TCP 功能，并直接基于 asio 实现 UDP 功能。主要功能包括：
+transport 模块在脚本层提供 TCP/UDP 网络能力。它与 runtime 内部用于连接 Go orchestrator 的编排通信层是**两个独立的通道**：
+
+| 用途 | 层级 | 说明 |
+|------|------|------|
+| 脚本层网络 (本文档) | `wingman.transport` 模块 | 脚本中使用的 TCP 客户端/服务器、UDP socket |
+| 编排通信 | `libs/transport` + `remote_client` | runtime 主动 outbound 连接 Go orchestrator，用于 agent 注册、心跳、命令下发 |
+
+脚本层 transport 封装了底层 `libs/transport` 库的 TCP 功能，并直接基于 asio 实现 UDP 功能。主要功能包括：
 
 - **TCP 客户端**：连接到远程 TCP 服务器，发送和接收消息
 - **TCP 服务器**：监听端口，接受多个客户端连接

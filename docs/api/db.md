@@ -11,10 +11,13 @@ db 模块提供本地 SQLite 数据库访问能力，用于脚本本地状态、
 2. **路径限制**
    - db 默认只能打开 runtime 管理目录内的数据库
    - `:memory:` 允许（内存数据库）
-   - 不允许脚本打开任意绝对路径，除非显式配置白名单
+   - 禁止绝对路径（包含 `/`、`\` 或 `..` 的名称会被拒绝）
+   - 所有数据库文件自动存储在 `{dataDir}/{name}.db`
 
-3. **线程安全**
-   - 每个 connection 内部使用 mutex 串行化 sqlite3 调用
+3. **连接复用**
+   - 相同名称的 `db.open()` 调用会复用已有连接（连接池机制）
+   - 每个连接内部使用 `recursive_mutex` 串行化 sqlite3 调用
+   - 使用 `recursive_mutex` 而非普通 `mutex`，确保事务回调中可以安全调用 `execute()`/`query()`
    - 不同 connection 可以并发使用
 
 4. **资源管理**
@@ -23,8 +26,9 @@ db 模块提供本地 SQLite 数据库访问能力，用于脚本本地状态、
    - 建议使用完后显式调用 `db.close(conn)`
 
 5. **事务**
-   - transaction 禁止嵌套
+   - transaction 禁止嵌套（内部有 `m_inTransaction` 标志位检测）
    - 失败自动回滚
+   - 事务回调中可安全调用 `execute()`、`query()`、`scalar()`（recursive_mutex 保证）
 
 6. **查询限制**
    - query 返回最大行数默认 1000（可配置，最大 10000）

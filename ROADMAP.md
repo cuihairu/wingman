@@ -595,7 +595,10 @@ local wingman = require('wingman')
 | behavior_tree | 行为树节点、策略、重试/重复 | ✅ |
 | config / storage | 配置管理、本地/会话存储 | ✅ |
 | ipc / tcp_channel | IPC 工厂、TCP 通道 | ✅ |
-| script modules | screen/input/window/event/kv/config/json/verification | ✅ |
+| script modules | screen/input/window/event/kv/config/json/verification/db/ini/transport | ✅ |
+| db (SQLite) | 连接管理、CRUD、事务、ORM、QueryBuilder | ✅ |
+| ini | 解析、编码、读写、合并、转义序列 | ✅ |
+| transport | TCP 客户端/服务器、UDP socket | ✅ |
 | kvstore | KV + Hash + List 操作 | ✅ |
 | security / window / json / ... | 其他核心模块 | ✅ |
 | **总计** | **1584 tests / 143 suites** | ✅ **90.04% 行覆盖率** |

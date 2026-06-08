@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "wingman/script/module_registry.hpp"
 #include "wingman/script/iscript_engine.hpp"
+#include "wingman/game_profile.hpp"
 
 using namespace wingman;
 using namespace wingman::script;
@@ -158,4 +159,161 @@ TEST(ModuleRegistryTest, RegisterAllModules) {
 
     auto allModules = getAllModules();
     EXPECT_EQ(engine.registeredModules.size(), allModules.size());
+}
+
+// ========== Config Module Coverage ==========
+
+namespace {
+
+// Helper: find a function entry in a module by name
+const ModuleDescriptor::FunctionEntry* findFunction(const ModuleDescriptor& mod, const std::string& name) {
+    for (const auto& f : mod.functions) {
+        if (f.name == name) return &f;
+    }
+    return nullptr;
+}
+
+// Helper: get config module (must keep vector alive)
+ModuleDescriptor getConfigModule() {
+    auto modules = getAllModules();
+    for (auto& mod : modules) {
+        if (mod.name == "config") return mod;
+    }
+    return {};
+}
+
+// Helper: get gameprofile module
+ModuleDescriptor getGameProfileModule() {
+    auto modules = getAllModules();
+    for (auto& mod : modules) {
+        if (mod.name == "gameprofile") return mod;
+    }
+    return {};
+}
+
+} // anonymous namespace
+
+TEST(ConfigModuleTest, SetAndGetPlainStringTriggersCatchBlock) {
+    auto mod = getConfigModule();
+    ASSERT_FALSE(mod.name.empty()) << "config module not found in registry";
+
+    const auto* setFn = findFunction(mod, "set");
+    const auto* getFn = findFunction(mod, "get");
+    ASSERT_NE(setFn, nullptr);
+    ASSERT_NE(getFn, nullptr);
+
+    // Store a plain string (not valid JSON) — triggers unwrapConfigString catch block
+    (*setFn)({ScriptValue::fromString("coverage_plain_key"), ScriptValue::fromString("just a plain string")});
+
+    auto result = (*getFn)({ScriptValue::fromString("coverage_plain_key")});
+    EXPECT_TRUE(result.isString());
+    // The plain string should pass through unchanged
+    EXPECT_EQ(result.asString(), "just a plain string");
+}
+
+TEST(ConfigModuleTest, SetAndGetJsonValueUnwrapped) {
+    auto mod = getConfigModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* setFn = findFunction(mod, "set");
+    const auto* getFn = findFunction(mod, "get");
+    ASSERT_NE(setFn, nullptr);
+    ASSERT_NE(getFn, nullptr);
+
+    // Store a JSON string — unwrapConfigString should parse and return the inner string
+    (*setFn)({ScriptValue::fromString("coverage_json_key"), ScriptValue::fromString(R"("hello world")")});
+
+    auto result = (*getFn)({ScriptValue::fromString("coverage_json_key")});
+    EXPECT_TRUE(result.isString());
+    EXPECT_EQ(result.asString(), "hello world");
+}
+
+TEST(ConfigModuleTest, GetMissingKeyReturnsNull) {
+    auto mod = getConfigModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* getFn = findFunction(mod, "get");
+    ASSERT_NE(getFn, nullptr);
+
+    auto result = (*getFn)({ScriptValue::fromString("nonexistent_coverage_key_999")});
+    EXPECT_TRUE(result.isNull());
+}
+
+// ========== GameProfile Module Coverage ==========
+
+TEST(GameProfileModuleTest, GetProfileSuccessPath) {
+    auto mod = getGameProfileModule();
+    ASSERT_FALSE(mod.name.empty()) << "gameprofile module not found in registry";
+
+    const auto* getFn = findFunction(mod, "get");
+    ASSERT_NE(getFn, nullptr);
+
+    // Create and save a profile
+    auto& mgr = GameProfileManager::instance();
+    GameProfile profile;
+    profile.id = "coverage_get_test";
+    profile.name = "Coverage Get";
+    profile.window.title = "CoverageGetWnd";
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    // Call get — should hit the success path (line 25)
+    auto result = (*getFn)({ScriptValue::fromString("coverage_get_test")});
+    EXPECT_TRUE(result.isArray());
+    EXPECT_EQ(result.size(), 2u);
+    EXPECT_EQ(result.at(0).asString(), "Coverage Get");
+    EXPECT_EQ(result.at(1).asString(), "CoverageGetWnd");
+
+    mgr.deleteProfile("coverage_get_test");
+}
+
+TEST(GameProfileModuleTest, GetActiveProfileSuccessPath) {
+    auto mod = getGameProfileModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* getActiveFn = findFunction(mod, "getActive");
+    ASSERT_NE(getActiveFn, nullptr);
+
+    // Create and save a profile, then set it as active
+    auto& mgr = GameProfileManager::instance();
+    GameProfile profile;
+    profile.id = "coverage_active_test";
+    profile.name = "Coverage Active";
+    profile.window.title = "CoverageActiveWnd";
+    ASSERT_TRUE(mgr.saveProfile(profile));
+    ASSERT_TRUE(mgr.setActiveProfile("coverage_active_test"));
+
+    // Call getActive — should hit the success path (line 36)
+    auto result = (*getActiveFn)({});
+    EXPECT_TRUE(result.isArray());
+    EXPECT_EQ(result.size(), 2u);
+    EXPECT_EQ(result.at(0).asString(), "coverage_active_test");
+    EXPECT_EQ(result.at(1).asString(), "Coverage Active");
+
+    mgr.deleteProfile("coverage_active_test");
+}
+
+TEST(GameProfileModuleTest, FindByWindowSuccessPath) {
+    auto mod = getGameProfileModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* findByWindowFn = findFunction(mod, "findByWindow");
+    ASSERT_NE(findByWindowFn, nullptr);
+
+    // Create and save a profile with a known window title
+    auto& mgr = GameProfileManager::instance();
+    GameProfile profile;
+    profile.id = "coverage_findbywin_test";
+    profile.name = "Coverage FindByWindow";
+    profile.window.title = "UniqueCoverageWindow_12345";
+    profile.window.exactMatch = false;
+    ASSERT_TRUE(mgr.saveProfile(profile));
+
+    // Call findByWindow — should hit the success path (line 58)
+    auto result = (*findByWindowFn)({ScriptValue::fromString("Prefix_UniqueCoverageWindow_12345_Suffix")});
+    EXPECT_TRUE(result.isArray());
+    EXPECT_EQ(result.size(), 2u);
+    EXPECT_EQ(result.at(0).asString(), "coverage_findbywin_test");
+    EXPECT_EQ(result.at(1).asString(), "Coverage FindByWindow");
+
+    mgr.deleteProfile("coverage_findbywin_test");
 }

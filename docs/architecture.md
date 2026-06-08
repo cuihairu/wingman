@@ -42,14 +42,22 @@ wingman/
 │   └── CMakeLists.txt
 │
 ├── libs/                         ← 内部辅助库
-│   ├── transport/                ← 网络传输（TCP/WebSocket）
+│   ├── transport/                ← 网络传输库（TCP + 自定义协议）
 │   │   ├── include/wingman/transport/
 │   │   │   ├── transport.hpp     ← 传输抽象
-│   │   │   ├── transport_client.hpp
-│   │   │   ├── transport_server.hpp
-│   │   │   ├── session/          ← 会话层
-│   │   │   └── channel/          ← 消息通道
+│   │   │   ├── transport_client.hpp ← TCP 客户端
+│   │   │   ├── transport_server.hpp ← TCP 服务器
+│   │   │   ├── simple_protocol.hpp  ← 消息协议（Header + Body）
+│   │   │   ├── session/          ← 会话层（含 tcp_session）
+│   │   │   ├── channel/          ← 消息通道
+│   │   │   ├── stream_channel.hpp ← 流通道
+│   │   │   └── stream_manager.hpp ← 流管理器
 │   │   └── src/
+│   │       ├── transport_client.cpp
+│   │       ├── transport_server.cpp
+│   │       ├── simple_protocol.cpp
+│   │       ├── session/
+│   │       └── channel/
 │   │
 │   ├── lua/                      ← Lua 绑定（桥接 Lua → 核心库）
 │   │   ├── include/wingman/lua/
@@ -106,6 +114,19 @@ Runtime 远程模式和本地单机 UI 是两条不同控制路径。
 | 本地单机 UI | Tauri UI -> Rust backend -> local IPC -> runtime | 不使用 runtime HTTP/WebSocket server |
 
 > **禁止**: Runtime 不得引入 HTTP/WebSocket server 作为本地 UI 或远程控制面。WebSocket 只允许用于 dashboard/browser 与 Go server 通信。
+
+## Transport 层
+
+`libs/transport` 提供两种不同用途的网络能力：
+
+| 用途 | 使用者 | 协议 | 说明 |
+|------|--------|------|------|
+| 编排通信 | `remote_client` (runtime → Go server) | 自定义 Message 协议 | runtime 主动 outbound 连接 Go orchestrator |
+| 脚本网络 | `wingman.transport` 模块 | TCP + UDP (asio) | 脚本中使用的 TCP 客户端/服务器、UDP socket |
+
+两者共用 `libs/transport` 的 TCP 基础设施（`TransportClient`、`TransportServer`、`Session`、`Channel`），但生命周期和管理方式独立。脚本层 UDP 直接基于 asio 实现，不经过 `libs/transport`。
+
+脚本层 transport API 详见 `docs/api/transport.md`。编排通信协议详见 `docs/architecture-decisions.md`。
 
 ## 本地 IPC 策略
 
