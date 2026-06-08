@@ -96,7 +96,7 @@ wingman/
 ┌─────────▼───────────────────────────────────────────────┐
 │           lib/wingman/ (核心库 + 脚本抽象)               │
 │  ScriptManager (语言无关) + IScriptEngine 接口           │
-│  25+ ModuleDescriptor (screen/input/window/...)          │
+│  33 ModuleDescriptor (screen/input/window/...)           │
 │  屏幕捕获、输入模拟、触发器、视觉识别、行为树、OCR...     │
 └─────────┬───────────────────────────────────────────────┘
           │
@@ -117,7 +117,7 @@ ScriptManager (自动检测语言)
     ↓
 ScriptEngineFactory → LuaScriptEngine / PythonScriptEngine
     ↓
-ModuleDescriptor (25+ 语言无关模块) → C++ 核心 API
+ModuleDescriptor (33 语言无关模块) → C++ 核心 API
     ↓
 lib/wingman/ (核心功能：screen, input, trigger...)
     ↓
@@ -146,7 +146,7 @@ apps/runtime/ (应用：CLI + outbound agent + local IPC)
                     └───┬────┘
                 ┌────────▼────────┐
                 │ ModuleDescriptor │ (语言无关的模块定义)
-                │ screen/input/... │ (25+ 模块)
+                │ screen/input/... │ (33 模块)
                 └─────────────────┘
 ```
 

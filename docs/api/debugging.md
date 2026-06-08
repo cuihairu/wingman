@@ -493,8 +493,8 @@ debug.breakpoint()
 
 - [核心 API](core.md)
 - [脚本 API](script.md)
+- [调试器](debugger.md)
 - [快速开始](../getting-started.md)
-- [VSCode 开发环境](../README.md#vscode-开发环境)
 
 ---
 

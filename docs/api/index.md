@@ -191,6 +191,7 @@ end
 - [input](./input) - 鼠标点击、移动、键盘输入
 - [window](./window) - 窗口查找、激活、获取信息
 - [process](./process) - 进程启动、查找、终止
+- [system](./system) - 系统信息获取
 - [uia](./uia/) - UI Automation 控件交互
 
 ### 视觉与 AI
@@ -217,7 +218,6 @@ end
 
 - [http](./http) - HTTP 客户端（GET、POST、下载）
 - [transport](./transport) - TCP 客户端、服务器与 UDP Socket
-- [inbox](./inbox) - 消息收件箱（基于 TCP）
 
 ### 序列化
 
@@ -240,14 +240,25 @@ end
 辅助自动化脚本的工具模块。
 
 - [human](./human) - 人性化模拟（随机延迟、不规律输入）
+- [perf](./perf) - 性能监控
 - [config](./config) - 配置管理
 - [verification](./verification) - 验证码识别、TOTP
 - [gameprofile](./gameprofile) - 游戏配置档案
 - [debugger](./debugger) - 调试器
 - [util](./util) - 工具函数（sleep、随机数等）
 
-### 高级功能
+### 安全与加密
 
-高级功能模块。
+安全和加密相关功能。
 
+- [security](./security) - 安全模块
+- [crypto](./security) - 加密函数（与 security 共用文档）
+
+### 编排与协作
+
+多实例协作和编排功能。
+
+- [orchestration](./orchestration) - 编排控制
+- [inbox](./inbox) - 消息收件箱
 - [team](./team) - 组队编排
+- [node](./orchestration) - 节点管理（与 orchestration 共用文档）

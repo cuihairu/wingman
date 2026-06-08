@@ -58,10 +58,10 @@ task = kv.lpop("task_queue")
 from wingman import db
 
 conn = db.open("local")
-users = db.table(conn, "users")
+players = db.table(conn, "players")
 
 # 创建表
-db.table_create(users, {
+db.table_create(players, {
     "id": "INTEGER PRIMARY KEY",
     "name": "TEXT NOT NULL",
     "age": "INTEGER",
@@ -69,17 +69,17 @@ db.table_create(users, {
 })
 
 # 插入数据
-db.table_insert(users, {"name": "Alice", "age": 25, "score": 1000})
+db.table_insert(players, {"name": "Alice", "age": 25, "score": 1000})
 
 # 复杂查询
-top_players = (db.table_where(users, "score", ">", "500")
+top_players = (db.table_where(players, "score", ">", "500")
                .query_order_by("score", "desc")
                .query_limit(10)
                .query_all())
 
 # 聚合查询
-count = db.scalar(conn, "SELECT COUNT(*) FROM users WHERE age > ?", [18])
-avg_score = db.scalar(conn, "SELECT AVG(score) FROM users")
+count = db.scalar(conn, "SELECT COUNT(*) FROM players WHERE age > ?", [18])
+avg_score = db.scalar(conn, "SELECT AVG(score) FROM players")
 ```
 
 ## 混合使用

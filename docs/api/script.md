@@ -6,120 +6,13 @@
 
 | 模块 | 功能 | 文档 |
 |------|------|------|
-| `script` | 脚本执行管理 | [#script-脚本管理](#script-脚本管理) |
-| `event` | 事件系统 | [#event-事件系统](#event-事件系统) |
-| `task` | 任务管理 | [#task-任务管理](#task-任务管理) |
-| `notify` | 通知系统 | [#notify-通知系统](#notify-通知系统) |
-| `fsm` | 有限状态机 | [#fsm-状态机](#fsm-状态机) |
-| `http` | HTTP 请求 | [#http-网络请求](#http-网络请求) |
-| `config` | 配置管理 | [#config-配置](#config-配置) |
-
----
-
-## Script - 脚本管理
-
-脚本管理模块提供脚本执行、加载、管理等功能。
-
-### Lua API
-
-```lua
-local script = require("wingman.script")
-```
-
-### Python API
-
-```python
-from wingman import script
-```
-
-### 函数列表
-
-#### `load(path)`
-
-加载脚本文件。
-
-**参数:**
-- `path` (string): 脚本文件路径
-
-**返回:** Script 对象
-
-**示例:**
-```lua
--- Lua
-local myScript = script.load("scripts/myscript.lua")
-myScript:start()
-```
-
-```python
-# Python
-my_script = script.load("scripts/myscript.py")
-my_script.start()
-```
-
-#### `run(code)`
-
-直接运行脚本代码。
-
-**参数:**
-- `code` (string): 脚本代码
-
-**返回:** 执行结果
-
-**示例:**
-```lua
--- Lua
-local result = script.run("print('Hello from script')")
-```
-
-```python
-# Python
-result = script.run("print('Hello from script')")
-```
-
-#### `stop(script)`
-
-停止正在运行的脚本。
-
-**参数:**
-- `script` (Script): 脚本对象
-
-**示例:**
-```lua
--- Lua
-script.stop(myScript)
-```
-
-#### `isRunning(script)`
-
-检查脚本是否正在运行。
-
-**参数:**
-- `script` (Script): 脚本对象
-
-**返回:** boolean
-
-**示例:**
-```lua
--- Lua
-if script.isRunning(myScript) then
-    print("Script is running")
-end
-```
-
-#### `list()`
-
-获取所有已加载的脚本列表。
-
-**返回:** Script 数组
-
-**示例:**
-```lua
--- Lua
-local scripts = script.list()
-for i, s in ipairs(scripts) do
-    print(s.path, s.status)
-end
-```
+| `event` | 事件系统 | [event](event.md) |
+| `task` | 任务管理 | [task](task.md) |
+| `notify` | 通知系统 | [notify](notify.md) |
+| `fsm` | 有限状态机 | [fsm](fsm.md) |
+| `http` | HTTP 请求 | [http](http.md) |
+| `config` | 配置管理 | [config](config.md) |
+| `transport` | TCP/UDP 网络通信 | [transport](transport.md) |
 
 ---
 
@@ -1000,9 +893,9 @@ merged = config.merge(default, user)
 ## 🔗 相关文档
 
 - [核心 API](core.md)
-- [数据持久化 API](storage.md)
-- [序列化 API](serialization.md)
-- [调试 API](debugging.md)
+- [数据持久化 API](data.md)
+- [序列化 API](serialize.md)
+- [调试 API](debugger.md)
 - [快速开始](../getting-started.md)
 
 ---

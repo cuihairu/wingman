@@ -101,10 +101,10 @@ kv.clear()
 local db = require("wingman.db")
 
 -- 连接到命名数据库（自动创建）
-local conn = db.connect("game_data")
+local conn = db.open("game_data")
 
 -- 或使用内存数据库
-local mem_conn = db.connect(":memory:")
+local mem_conn = db.open(":memory:")
 ```
 
 #### Python
@@ -113,10 +113,10 @@ local mem_conn = db.connect(":memory:")
 from wingman import db
 
 # 连接到命名数据库（自动创建）
-conn = db.connect("game_data")
+conn = db.open("game_data")
 
 # 或使用内存数据库
-mem_conn = db.connect(":memory:")
+mem_conn = db.open(":memory:")
 ```
 
 ### 原始 SQL 操作
@@ -125,7 +125,7 @@ mem_conn = db.connect(":memory:")
 
 ```lua
 local db = require("wingman.db")
-local conn = db.connect("game_data")
+local conn = db.open("game_data")
 
 -- 执行 SQL（无返回值）
 conn:execute([[
@@ -164,7 +164,7 @@ local changes = conn:changes()
 ```python
 from wingman import db
 
-conn = db.connect("game_data")
+conn = db.open("game_data")
 
 # 执行 SQL（无返回值）
 conn.execute("""
@@ -201,7 +201,7 @@ changes = conn.changes()
 
 ```lua
 local db = require("wingman.db")
-local conn = db.connect("game_data")
+local conn = db.open("game_data")
 
 -- 定义表结构
 local players = conn:table("players")
@@ -253,7 +253,7 @@ local high_level_count = players:where("level", ">", "10"):count()
 ```python
 from wingman import db
 
-conn = db.connect("game_data")
+conn = db.open("game_data")
 
 # 定义表结构
 players = conn.table("players")
@@ -306,7 +306,7 @@ high_level_count = players.where("level", ">", "10").count()
 
 ```lua
 local db = require("wingman.db")
-local conn = db.connect("game_data")
+local conn = db.open("game_data")
 
 -- 执行事务
 local success = conn:transaction(function(tx)
@@ -331,7 +331,7 @@ end
 ```python
 from wingman import db
 
-conn = db.connect("game_data")
+conn = db.open("game_data")
 
 # 执行事务
 def transaction_func(tx):
@@ -367,7 +367,7 @@ kv.set("current_level", "5")
 kv.set("player_name", "hero")
 
 -- 保存复杂结构
-local conn = db.connect("save_data")
+local conn = db.open("save_data")
 local saves = conn:table("saves")
 
 saves:create({
@@ -392,7 +392,7 @@ saves:insert({
 
 ```lua
 local db = require("wingman.db")
-local conn = db.connect("config")
+local conn = db.open("config")
 
 local settings = conn:table("settings")
 
@@ -433,7 +433,7 @@ local graphics_settings = settings:where("section", "=", "graphics"):all()
 ```lua
 -- 好的做法：重用连接
 local db = require("wingman.db")
-local conn = db.connect("my_database")
+local conn = db.open("my_database")
 
 -- 在整个脚本中使用同一个 conn
 function saveData(data)

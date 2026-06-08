@@ -18,16 +18,23 @@ Wingman 提供了丰富的 API 来支持游戏自动化开发。
 
 | 模块 | 功能 | 文档 |
 |------|------|------|
-| `screen` | 屏幕截图、颜色检测、图像识别 | [核心 API](core.md#screen) |
-| `input` | 鼠标点击、键盘输入、文本输入 | [核心 API](core.md#input) |
-| `window` | 窗口查找、激活、位置获取 | [核心 API](core.md#window) |
-| `process` | 进程查找和管理 | [核心 API](core.md#process) |
-| `trigger` | 触发器系统 | [核心 API](core.md#trigger) |
-| `vision` | 图像识别和匹配 | [核心 API](core.md#vision) |
-| `ocr` | OCR 文字识别 | [核心 API](core.md#ocr) |
-| `clipboard` | 剪贴板操作 | [核心 API](core.md#clipboard) |
-| `filewatcher` | 文件监控 | [核心 API](core.md#filewatcher) |
-| `recorder` | 宏录制和回放 | [核心 API](core.md#recorder) |
+| `screen` | 屏幕截图、颜色检测、图像识别 | [screen](screen.md) |
+| `input` | 鼠标点击、键盘输入、文本输入 | [input](input.md) |
+| `window` | 窗口查找、激活、位置获取 | [window](window.md) |
+| `process` | 进程查找和管理 | [process](process.md) |
+| `vision` | 图像识别和匹配 | [vision](vision.md) |
+| `ocr` | OCR 文字识别 | [ocr](ocr.md) |
+| `smarttrigger` | 智能触发器系统 | [smart-trigger](smart-trigger.md) |
+| `human` | 人性化模拟 | [human](human.md) |
+| `perf` | 性能监控 | [perf](perf.md) |
+| `system` | 系统信息获取 | [system](system.md) |
+| `uia` | UI Automation 控件交互 | [uia](uia/index.md) |
+| `bt` | 行为树引擎 | [behavior-tree](behavior-tree.md) |
+| `security` | 安全模块 | [security](security.md) |
+| `crypto` | 加密函数 | [security](security.md) |
+| `verification` | 验证码识别、TOTP | [verification](verification.md) |
+| `gameprofile` | 游戏配置档案 | [gameprofile](gameprofile.md) |
+| `util` | 工具函数 | [util](util.md) |
 
 ### 快速示例
 
@@ -83,8 +90,8 @@ if match:
 
 | 模块 | 功能 | 文档 |
 |------|------|------|
-| `kv` | 键值存储 | [数据持久化](storage.md#kv-键值存储) |
-| `db` | SQLite 数据库 | [数据持久化](storage.md#sqlite-数据库-db) |
+| `kv` | 键值存储 | [kv](kv.md) |
+| `db` | SQLite 数据库 | [db](db.md) |
 
 ### 快速示例
 
@@ -99,7 +106,7 @@ kv.set("username", "player1")
 local name = kv.get("username")
 
 -- 数据库操作
-local conn = db.connect("game_data")
+local conn = db.open("game_data")
 conn:execute("CREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT)")
 conn:execute("INSERT INTO players (name) VALUES (?)", {"player1"})
 local rows = conn:query("SELECT * FROM players")
@@ -115,7 +122,7 @@ kv.set("username", "player1")
 name = kv.get("username")
 
 # 数据库操作
-conn = db.connect("game_data")
+conn = db.open("game_data")
 conn.execute("CREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT)")
 conn.execute("INSERT INTO players (name) VALUES (?)", ["player1"])
 rows = conn.query("SELECT * FROM players")
@@ -129,8 +136,8 @@ rows = conn.query("SELECT * FROM players")
 
 | 模块 | 功能 | 文档 |
 |------|------|------|
-| `json` | JSON 编码/解码 | [序列化](serialization.md#json-模块) |
-| `ini` | INI 配置文件解析 | [序列化](serialization.md#ini-模块) |
+| `json` | JSON 编码/解码 | [json](json.md) |
+| `ini` | INI 配置文件解析 | [ini](ini.md) |
 
 ### 快速示例
 
@@ -173,13 +180,17 @@ config_string = ini.encode(config)
 
 | 模块 | 功能 | 文档 |
 |------|------|------|
-| `script` | 脚本执行和管理 | [脚本 API](script.md) |
-| `event` | 事件系统 | [脚本 API](script.md#event) |
-| `task` | 任务管理 | [脚本 API](script.md#task) |
-| `notify` | 通知系统 | [脚本 API](script.md#notify) |
-| `fsm` | 有限状态机 | [脚本 API](script.md#fsm) |
-| `http` | HTTP 请求 | [脚本 API](script.md#http) |
-| `config` | 配置管理 | [脚本 API](script.md#config) |
+| `event` | 事件系统 | [event](event.md) |
+| `task` | 任务管理 | [task](task.md) |
+| `notify` | 通知系统 | [notify](notify.md) |
+| `fsm` | 有限状态机 | [fsm](fsm.md) |
+| `http` | HTTP 请求 | [http](http.md) |
+| `config` | 配置管理 | [config](config.md) |
+| `transport` | TCP/UDP 网络通信 | [transport](transport.md) |
+| `orchestration` | 编排控制 | [orchestration](orchestration.md) |
+| `inbox` | 消息收件箱 | [inbox](inbox.md) |
+| `team` | 组队编排 | [team](team.md) |
+| `node` | 节点管理 | [orchestration](orchestration.md) |
 
 ## 调试 API
 
@@ -189,7 +200,7 @@ config_string = ini.encode(config)
 
 | 模块 | 功能 | 文档 |
 |------|------|------|
-| `debug` | EmmyLua 调试器 | [调试 API](debugging.md) |
+| `debugger` | EmmyLua 调试器 | [debugger](debugger.md) |
 
 ### 快速示例
 
@@ -232,7 +243,7 @@ debug.log("Variable value:", some_var)
 
 ### 数据和配置
 
-- 💾 **存储**: `kv.set()`, `kv.get()`, `db.connect()`
+- 💾 **存储**: `kv.set()`, `kv.get()`, `db.open()`
 - 📄 **配置**: `json.encode()`, `json.decode()`, `ini.encode()`, `ini.decode()`
 
 ### 自动化
