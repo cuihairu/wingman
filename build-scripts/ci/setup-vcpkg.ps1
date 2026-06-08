@@ -23,9 +23,31 @@ $vcpkgCommit = if ($env:VCPKG_COMMIT) { $env:VCPKG_COMMIT } else { "00d899c410b3
 
 Write-Host "Cloning vcpkg and checking out commit $vcpkgCommit"
 
-git clone https://github.com/Microsoft/vcpkg.git $VcpkgRoot
-if ($LASTEXITCODE -ne 0) {
-    throw "Failed to clone vcpkg"
+$maxRetries = 3
+$retryCount = 0
+$success = $false
+
+while (-not $success -and $retryCount -lt $maxRetries) {
+    $retryCount++
+    Write-Host "Clone attempt $retryCount of $maxRetries..."
+
+    git clone https://github.com/Microsoft/vcpkg.git $VcpkgRoot
+    if ($LASTEXITCODE -eq 0) {
+        $success = $true
+    } else {
+        Write-Host "Clone failed with exit code $LASTEXITCODE"
+        if ($retryCount -lt $maxRetries) {
+            Write-Host "Waiting 30 seconds before retry..."
+            Start-Sleep -Seconds 30
+            if (Test-Path $VcpkgRoot) {
+                Remove-Item -Recurse -Force $VcpkgRoot
+            }
+        }
+    }
+}
+
+if (-not $success) {
+    throw "Failed to clone vcpkg after $maxRetries attempts"
 }
 
 git -C $VcpkgRoot checkout $vcpkgCommit

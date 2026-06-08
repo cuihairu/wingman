@@ -76,7 +76,39 @@ jobs:
         run: New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}" | Out-Null
 
       - name: Configure CMake
-        run: ./build-scripts/ci/configure-windows.ps1 -BuildDir build -Config Debug -EnableTests
+        run: |
+          $maxRetries = 3
+          $retryCount = 0
+          $success = $false
+
+          while (-not $success -and $retryCount -lt $maxRetries) {
+            $retryCount++
+            Write-Host "Attempt $retryCount of $maxRetries..."
+
+            try {
+              ./build-scripts/ci/configure-windows.ps1 -BuildDir build -Config Debug -EnableTests
+              if ($LASTEXITCODE -eq 0) {
+                $success = $true
+              } else {
+                Write-Host "CMake configure failed with exit code $LASTEXITCODE"
+                if ($retryCount -lt $maxRetries) {
+                  Write-Host "Waiting 30 seconds before retry..."
+                  Start-Sleep -Seconds 30
+                }
+              }
+            } catch {
+              Write-Host "Exception: $_"
+              if ($retryCount -lt $maxRetries) {
+                Write-Host "Waiting 30 seconds before retry..."
+                Start-Sleep -Seconds 30
+              }
+            }
+          }
+
+          if (-not $success) {
+            Write-Host "Failed after $maxRetries attempts"
+            exit 1
+          }
 
       - name: Build
         run: cmake --build build --config Debug --parallel
@@ -166,7 +198,30 @@ jobs:
         run: mkdir -p "${{ github.workspace }}/vcpkg/archives" "${{ github.workspace }}/vcpkg/downloads"
 
       - name: Configure CMake
-        run: bash ./build-scripts/ci/configure-unix.sh "${{ matrix.triplet }}" "Ninja" "build"
+        run: |
+          max_retries=3
+          retry_count=0
+          success=false
+
+          while [ "$success" = "false" ] && [ $retry_count -lt $max_retries ]; do
+            retry_count=$((retry_count + 1))
+            echo "Attempt $retry_count of $max_retries..."
+
+            if bash ./build-scripts/ci/configure-unix.sh "${{ matrix.triplet }}" "Ninja" "build"; then
+              success=true
+            else
+              echo "CMake configure failed with exit code $?"
+              if [ $retry_count -lt $max_retries ]; then
+                echo "Waiting 30 seconds before retry..."
+                sleep 30
+              fi
+            fi
+          done
+
+          if [ "$success" = "false" ]; then
+            echo "Failed after $max_retries attempts"
+            exit 1
+          fi
 
       - name: Build
         run: cmake --build build --parallel --target wingman_proto wingman_transport

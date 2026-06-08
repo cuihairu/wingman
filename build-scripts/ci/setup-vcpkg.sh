@@ -16,8 +16,28 @@ vcpkg_commit="${VCPKG_COMMIT:-00d899c410b31467733472fc3a83a25729046b13}"
 
 echo "Cloning vcpkg and checking out commit $vcpkg_commit"
 
-if ! git clone https://github.com/Microsoft/vcpkg.git "$vcpkg_root"; then
-    echo "Failed to clone vcpkg"
+max_retries=3
+retry_count=0
+success=false
+
+while [ "$success" = "false" ] && [ $retry_count -lt $max_retries ]; do
+    retry_count=$((retry_count + 1))
+    echo "Clone attempt $retry_count of $max_retries..."
+
+    if git clone https://github.com/Microsoft/vcpkg.git "$vcpkg_root"; then
+        success=true
+    else
+        echo "Clone failed with exit code $?"
+        if [ $retry_count -lt $max_retries ]; then
+            echo "Waiting 30 seconds before retry..."
+            sleep 30
+            rm -rf "$vcpkg_root"
+        fi
+    fi
+done
+
+if [ "$success" = "false" ]; then
+    echo "Failed to clone vcpkg after $max_retries attempts"
     exit 1
 fi
 
