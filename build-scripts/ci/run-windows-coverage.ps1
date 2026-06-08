@@ -32,18 +32,23 @@ Write-Host "Found test executable: $($testExe.FullName)"
 Write-Host "Running with OpenCppCoverage..."
 
 # Exclude IPC and FileWatcher tests that crash under OpenCppCoverage instrumentation.
-# Pass filter as command-line argument to ensure it reaches GTest through OpenCppCoverage.
+# Write the full command to a batch file to avoid PowerShell/cmd semicolon escaping issues.
+# The semicolons in gtest_filter get misinterpreted when passed through cmd /c.
 $gtestFilter = "*:-IpcTest.*:-IpcFactoryTest.CreateServerWithDefaultConfig:-IpcFactoryTest.CreateClientWithDefaultConfig:-IpcFactoryTest.CreateServerWithExplicitTransport:-IpcFactoryTest.CreateClientWithExplicitTransport:-IpcFactoryTest.CreateServerWithEmptyName:-IpcFactoryTest.CreateClientWithEmptyName:-IpcFactoryTest.CreateServerWithTcpFallback:-IpcFactoryTest.CreateClientWithTcpFallback:-FileWatcherTest.*"
 
-# Also set GTEST_FILTER env var as fallback (gtest reads this when --gtest_filter is absent)
-[System.Environment]::SetEnvironmentVariable("GTEST_FILTER", $gtestFilter, "Process")
+# Create a batch file with the full OpenCppCoverage command
+$runBat = Join-Path $coverageDir "run_coverage.bat"
+$batLines = @(
+    '@echo off',
+    "set GTEST_FILTER=$gtestFilter",
+    "`"$coverageExe`" --quiet --sources `"$projectRoot\lib\wingman\src`" --sources `"$projectRoot\lib\wingman\include`" --excluded_sources `"$projectRoot\lib\wingman\src\platform`" --export_type `"cobertura:$absoluteCoverageFile`" -- `"$($testExe.FullName)`""
+)
+Set-Content -Path $runBat -Value ($batLines -join "`r`n") -Encoding ASCII
 
-# Run coverage directly on test executable (much faster than --cover_children with ctest)
-# Only cover project source files, not third-party dependencies or platform-specific code
-# Use cmd /s /c to ensure proper quote handling - /s strips outer quotes literally
-# so that inner quotes (around paths with spaces) and gtest_filter are preserved.
-$cmd = "`"$coverageExe`" --quiet --sources `"$projectRoot\lib\wingman\src`" --sources `"$projectRoot\lib\wingman\include`" --excluded_sources `"$projectRoot\lib\wingman\src\platform`" --export_type `"cobertura:$absoluteCoverageFile`" -- `"$($testExe.FullName)`" --gtest_filter=`"$gtestFilter`""
-cmd /s /c $cmd
+Write-Host "Coverage batch file: $runBat"
+
+# Execute the batch file directly (avoids all PowerShell/cmd quote escaping)
+& cmd /s /c $runBat
 
 # OpenCppCoverage may exit with code 3 (coverage instrumentation issues)
 # but the test results are still valid. Only fail on exit code 1 (test failures).
