@@ -287,7 +287,17 @@ bool NamedPipeChannel::createServerPipe() {
         return false;
     }
 
-    // Wait for client connection
+    serverAccepted_ = false;
+    setState(IpcState::Connected);
+    spdlog::info("[NamedPipe] Server listening on: {}", fullPipeName_);
+    return true;
+}
+
+bool NamedPipeChannel::waitForServerClient() {
+    if (serverAccepted_) {
+        return true;
+    }
+
     spdlog::info("[NamedPipe] Server waiting for connection on: {}", fullPipeName_);
 
     OVERLAPPED overlapped{};
@@ -351,6 +361,7 @@ bool NamedPipeChannel::createServerPipe() {
         return false;
     }
 
+    serverAccepted_ = true;
     setState(IpcState::Connected);
     spdlog::info("[NamedPipe] Server connected");
     return true;
@@ -405,6 +416,10 @@ bool NamedPipeChannel::connectToServer() {
 }
 
 void NamedPipeChannel::receiveLoop() {
+    if (serverMode_ && !waitForServerClient()) {
+        return;
+    }
+
     while (!stopping_ && isConnected()) {
         // Read message length
         uint32_t messageLength = 0;

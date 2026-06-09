@@ -203,7 +203,7 @@ Wingman GUI 启动后显示控制面板：
 
 ## API 参考
 
-> 详细 API 文档请参考 [API 参考](./api/)
+> 详细 API 文档请参考 [API 参考](./api/index.md)
 
 ### 屏幕 (screen)
 

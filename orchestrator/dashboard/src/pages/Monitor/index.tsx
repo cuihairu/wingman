@@ -24,12 +24,12 @@ import {
   PlayCircleOutlined,
   PauseCircleOutlined,
   ReloadOutlined,
-  ScreenshotOutlined,
+  CameraOutlined,
   ThunderboltOutlined,
   CodeOutlined,
   SettingOutlined,
   DesktopOutlined,
-  MemoryOutlined,
+  DatabaseOutlined,
   ClockCircleOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
@@ -159,7 +159,7 @@ const Monitor: React.FC = () => {
                 title="内存使用"
                 value={systemStatus.memory}
                 suffix="%"
-                prefix={<MemoryOutlined />}
+                prefix={<DatabaseOutlined />}
                 valueStyle={{ color: systemStatus.memory > 80 ? '#ff4d4f' : '#1890ff' }}
               />
             </Card>
@@ -179,7 +179,7 @@ const Monitor: React.FC = () => {
                 title="画面帧率"
                 value={systemStatus.fps}
                 suffix="FPS"
-                prefix={<ScreenshotOutlined />}
+                prefix={<CameraOutlined />}
                 valueStyle={{ color: systemStatus.fps >= 50 ? '#3f8600' : '#faad14' }}
               />
             </Card>

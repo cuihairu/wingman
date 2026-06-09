@@ -329,8 +329,8 @@ except Exception as e:
 ## 🔗 相关文档
 
 - [快速开始](../getting-started.md)
-- [Lua 脚本指南](../guides/lua-scripting.md)
-- [Python 脚本指南](../guides/python-scripting.md)
+- [用户指南](../user-guide.md)
+- [快速开始](../getting-started.md)
 
 ---
 

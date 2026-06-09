@@ -55,6 +55,7 @@ private:
 
     int listenFd_ = -1;
     int dataFd_ = -1;
+    bool serverAccepted_ = false;
 
     MessageCallback messageCallback_;
     ErrorCallback errorCallback_;
@@ -66,6 +67,7 @@ private:
     void setState(IpcState state);
     bool createServer();
     bool connectToServer();
+    bool acceptServerClient();
     void receiveLoop();
 
     bool sendRaw(const void* data, size_t len);

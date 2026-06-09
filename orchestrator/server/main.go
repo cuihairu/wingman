@@ -159,6 +159,7 @@ func main() {
 			apiAdmin.POST("/workflows/:id/cancel", wfHandler.HandleCancel)
 
 			apiAdmin.POST("/scripts", scriptHandlerAPI.HandleCreate)
+			apiAdmin.POST("/scripts/delete", scriptHandlerAPI.HandleDelete)
 			apiAdmin.DELETE("/scripts", scriptHandlerAPI.HandleDelete)
 			apiAdmin.POST("/scripts/save", scriptHandlerAPI.HandleSave)
 			apiAdmin.POST("/scripts/run", scriptHandlerAPI.HandleRun)

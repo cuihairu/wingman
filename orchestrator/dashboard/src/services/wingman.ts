@@ -7,6 +7,12 @@ import { request } from '@umijs/max';
 
 // ========== 类型定义 ==========
 
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 // Agent 状态
 export enum AgentStatus {
   Offline = 'offline',
@@ -122,58 +128,58 @@ export interface WorkflowInstance extends Workflow {
 
 // Agent 管理
 export async function getAgents() {
-  return request<API.Response<AgentInfo[]>>('/api/agents', {
+  return request<ApiResponse<AgentInfo[]>>('/api/agents', {
     method: 'GET',
   });
 }
 
 export async function getAgent(agentId: string) {
-  return request<API.Response<AgentInfo>>(`/api/agents/${agentId}`, {
+  return request<ApiResponse<AgentInfo>>(`/api/agents/${agentId}`, {
     method: 'GET',
   });
 }
 
 export async function shutdownAgent(agentId: string) {
-  return request<API.Response<void>>(`/api/agents/${agentId}/shutdown`, {
+  return request<ApiResponse<void>>(`/api/agents/${agentId}/shutdown`, {
     method: 'POST',
   });
 }
 
 // 工作流管理
 export async function getWorkflows() {
-  return request<API.Response<Workflow[]>>('/api/workflows', {
+  return request<ApiResponse<Workflow[]>>('/api/workflows', {
     method: 'GET',
   });
 }
 
 export async function getWorkflow(workflowId: string) {
-  return request<API.Response<WorkflowInstance>>(`/api/workflows/${workflowId}`, {
+  return request<ApiResponse<WorkflowInstance>>(`/api/workflows/${workflowId}`, {
     method: 'GET',
   });
 }
 
 export async function submitWorkflow(workflow: Omit<Workflow, 'id' | 'status' | 'createdTime' | 'startTime' | 'endTime'>) {
-  return request<API.Response<{ workflowId: string }>>('/api/workflows', {
+  return request<ApiResponse<{ workflowId: string }>>('/api/workflows', {
     method: 'POST',
     data: workflow,
   });
 }
 
 export async function cancelWorkflow(workflowId: string) {
-  return request<API.Response<void>>(`/api/workflows/${workflowId}/cancel`, {
+  return request<ApiResponse<void>>(`/api/workflows/${workflowId}/cancel`, {
     method: 'POST',
   });
 }
 
 // 任务管理
 export async function getWorkerStatuses(workflowId: string) {
-  return request<API.Response<WorkerStatus[]>>(`/api/workflows/${workflowId}/workers`, {
+  return request<ApiResponse<WorkerStatus[]>>(`/api/workflows/${workflowId}/workers`, {
     method: 'GET',
   });
 }
 
 export async function getStepStatus(workflowId: string, stepId: string) {
-  return request<API.Response<StepStatus>>(`/api/workflows/${workflowId}/steps/${stepId}/status`, {
+  return request<ApiResponse<StepStatus>>(`/api/workflows/${workflowId}/steps/${stepId}/status`, {
     method: 'GET',
   });
 }
@@ -200,14 +206,14 @@ export interface ScriptLog {
 
 // 获取脚本列表
 export async function getScripts() {
-  return request<API.Response<ScriptInfo[]>>('/api/scripts', {
+  return request<ApiResponse<ScriptInfo[]>>('/api/scripts', {
     method: 'GET',
   });
 }
 
 // 获取脚本内容
 export async function getScriptContent(path: string) {
-  return request<API.Response<string>>(`/api/scripts/content`, {
+  return request<ApiResponse<string>>(`/api/scripts/content`, {
     method: 'POST',
     data: { path },
   });
@@ -215,7 +221,7 @@ export async function getScriptContent(path: string) {
 
 // 保存脚本内容
 export async function saveScriptContent(path: string, content: string) {
-  return request<API.Response<void>>(`/api/scripts/save`, {
+  return request<ApiResponse<void>>(`/api/scripts/save`, {
     method: 'POST',
     data: { path, content },
   });
@@ -223,7 +229,7 @@ export async function saveScriptContent(path: string, content: string) {
 
 // 创建新脚本
 export async function createScript(name: string, description?: string) {
-  return request<API.Response<ScriptInfo>>('/api/scripts', {
+  return request<ApiResponse<ScriptInfo>>('/api/scripts', {
     method: 'POST',
     data: { name, description },
   });
@@ -231,7 +237,7 @@ export async function createScript(name: string, description?: string) {
 
 // 删除脚本
 export async function deleteScript(path: string) {
-  return request<API.Response<void>>(`/api/scripts/delete`, {
+  return request<ApiResponse<void>>(`/api/scripts/delete`, {
     method: 'POST',
     data: { path },
   });
@@ -239,7 +245,7 @@ export async function deleteScript(path: string) {
 
 // 运行脚本
 export async function runScript(path: string, args?: string[]) {
-  return request<API.Response<{ executionId: string }>>('/api/scripts/run', {
+  return request<ApiResponse<{ executionId: string }>>('/api/scripts/run', {
     method: 'POST',
     data: { path, args },
   });
@@ -247,7 +253,7 @@ export async function runScript(path: string, args?: string[]) {
 
 // 停止脚本
 export async function stopScript(executionId: string) {
-  return request<API.Response<void>>(`/api/scripts/stop`, {
+  return request<ApiResponse<void>>(`/api/scripts/stop`, {
     method: 'POST',
     data: { executionId },
   });
@@ -255,7 +261,7 @@ export async function stopScript(executionId: string) {
 
 // 获取脚本执行日志
 export async function getScriptLogs(executionId: string, offset = 0, limit = 100) {
-  return request<API.Response<ScriptLog[]>>(`/api/scripts/logs`, {
+  return request<ApiResponse<ScriptLog[]>>(`/api/scripts/logs`, {
     method: 'POST',
     data: { executionId, offset, limit },
   });

@@ -248,7 +248,14 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		return
 	}
 	if success, ok := resp["success"].(bool); ok && !success {
-		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": resp["message"]})
+		errText, _ := resp["error"].(string)
+		if errText == "" {
+			errText, _ = resp["message"].(string)
+		}
+		if errText == "" {
+			errText = "agent command failed"
+		}
+		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": errText})
 		return
 	}
 

@@ -35,7 +35,7 @@ class ScreenshotService {
   private subscribeToWebSocket() {
     wsService.on('screenshot', (msg) => {
       if (msg.data) {
-        this.currentScreenshot = msg.data as ScreenshotData;
+        this.currentScreenshot = msg.data as unknown as ScreenshotData;
         this.notifyListeners();
       }
     });

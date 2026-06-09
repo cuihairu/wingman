@@ -448,9 +448,9 @@
 
 ### 演示配置
 
-**玩家管理配置**：见 [demo-configs/player.json](./demo-configs/player.json)
+**玩家管理配置**：可参考本文档上方的玩家数据示例和 [用户指南](./WORKSPACE_USER_GUIDE.md)。
 
-**订单管理配置**：见 [demo-configs/order.json](./demo-configs/order.json)
+**订单管理配置**：可参考本文档上方的订单数据示例和 [开发指南](./WORKSPACE_DEV_GUIDE.md)。
 
 ### 演示视频
 
@@ -465,4 +465,4 @@
 - [用户指南](./WORKSPACE_USER_GUIDE.md)
 - [开发指南](./WORKSPACE_DEV_GUIDE.md)
 - [API 文档](./WORKSPACE_API.md)
-- [架构设计](../ARCHITECTURE_DESIGN.md)
+- [治理手册](./workspace-governance-playbook.md)

@@ -199,8 +199,8 @@ file=app.log
 
 ## 模块详情
 
-- [json 模块文档](./json) - JSON 完整 API
-- [ini 模块文档](./ini) - INI 完整 API
+- [json 模块文档](./json.md) - JSON 完整 API
+- [ini 模块文档](./ini.md) - INI 完整 API
 - yaml 模块（规划中）
 
 ## 格式转换

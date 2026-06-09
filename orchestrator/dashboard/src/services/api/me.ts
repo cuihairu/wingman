@@ -19,8 +19,10 @@ export type MeProfile = {
 // Canonical frontend game-scope DTO normalized from croupier/internal/api/profile/dto.go ProfileGame.
 export type ProfileGame = {
   gameId?: string;
+  name?: string;
   gameName?: string;
   envs?: string[];
+  envMeta?: Array<{ env?: string }>;
   permissions?: string[];
 };
 
@@ -36,7 +38,9 @@ export type ProfilePermission = {
 function normalizeProfileGame(game: any): ProfileGame {
   return {
     gameId: game?.gameId ?? game?.game_id ?? game?.name,
+    name: game?.name,
     gameName: game?.gameName ?? game?.game_name ?? game?.display_name ?? game?.alias_name,
+    envMeta: Array.isArray(game?.envMeta) ? game.envMeta : undefined,
     envs: Array.isArray(game?.envs)
       ? game.envs
       : Array.isArray(game?.envMeta)

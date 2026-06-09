@@ -20,9 +20,10 @@ export interface ListAuditParams {
 
 export interface ListAuditResponse {
   events: AuditEvent[];
+  total: number;
 }
 
 export async function listAudit(params: ListAuditParams): Promise<ListAuditResponse> {
   // 存根实现：返回空审计日志
-  return Promise.resolve({ events: [] });
+  return Promise.resolve({ events: [], total: 0 });
 }

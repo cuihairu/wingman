@@ -1,10 +1,42 @@
 #include "wingman/runtime/agent.hpp"
+#include "wingman/window.hpp"
 #include "wingman/runtime/local_ipc_server.hpp"
 #include "wingman/runtime/remote_client.hpp"
 #include "wingman/runtime/standalone_mode.hpp"
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
 namespace wingman::runtime {
+
+namespace {
+
+std::string scriptStateToString(ScriptState state) {
+    switch (state) {
+    case ScriptState::Loaded:
+        return "loaded";
+    case ScriptState::Running:
+        return "running";
+    case ScriptState::Paused:
+        return "paused";
+    case ScriptState::Stopped:
+        return "stopped";
+    case ScriptState::Error:
+        return "error";
+    case ScriptState::Unknown:
+    default:
+        return "unknown";
+    }
+}
+
+int64_t encodeWindowHandle(WindowHandle handle) {
+#ifdef _WIN32
+    return static_cast<int64_t>(reinterpret_cast<uintptr_t>(handle));
+#else
+    return static_cast<int64_t>(handle);
+#endif
+}
+
+} // namespace
 
 // ========== Agent 实现 ==========
 
@@ -216,14 +248,46 @@ CommandResult Agent::handleRemoteCommand(const std::string& command, const Comma
         return CommandResult::ok("agent shutting down");
 
     } else if (command == "list_windows") {
-        // TODO: 实现窗口列表功能
-        spdlog::debug("list_windows command not yet implemented");
-        return CommandResult::error("list_windows not implemented");
+        nlohmann::json windows = nlohmann::json::array();
+        for (const auto& info : Window::enumerate()) {
+            windows.push_back({
+                {"handle", encodeWindowHandle(info.handle)},
+                {"title", info.title},
+                {"isForeground", info.isForeground},
+                {"bounds", {
+                    {"x", info.bounds.x},
+                    {"y", info.bounds.y},
+                    {"width", info.bounds.width},
+                    {"height", info.bounds.height}
+                }}
+            });
+        }
+        return CommandResult::okData(windows.dump());
 
     } else if (command == "get_status") {
-        // TODO: 实现状态查询功能
-        spdlog::debug("get_status command not yet implemented");
-        return CommandResult::error("get_status not implemented");
+        nlohmann::json scripts = nlohmann::json::array();
+        if (impl_->standaloneMode) {
+            for (const auto& script : impl_->standaloneMode->listScripts()) {
+                scripts.push_back({
+                    {"id", script.id},
+                    {"path", script.path},
+                    {"state", scriptStateToString(script.state)},
+                    {"error", script.error},
+                    {"uptime", script.uptime}
+                });
+            }
+        }
+
+        nlohmann::json status = {
+            {"mode", static_cast<int>(impl_->mode)},
+            {"remoteEnabled", impl_->config.enableRemote},
+            {"localIpcEnabled", impl_->config.enableLocalIpc},
+            {"standaloneScriptEnabled", impl_->config.enableStandaloneScript},
+            {"standaloneRunning", impl_->standaloneMode ? impl_->standaloneMode->isRunning() : false},
+            {"remoteConnected", impl_->remoteClient ? impl_->remoteClient->isConnected() : false},
+            {"scripts", scripts}
+        };
+        return CommandResult::okData(status.dump());
 
     } else if (command == "stop_script") {
         auto scriptIdIt = data.find("script_id");

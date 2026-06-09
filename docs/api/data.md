@@ -100,8 +100,8 @@ db.table_insert(users, {"id": "1001", "name": "Alice", "email": "alice@example.c
 
 ## 模块详情
 
-- [kv 模块文档](./kv) - 键值存储完整 API
-- [db 模块文档](./db) - SQLite 数据库完整 API
+- [kv 模块文档](./kv.md) - 键值存储完整 API
+- [db 模块文档](./db.md) - SQLite 数据库完整 API
 
 ## 最佳实践
 

@@ -51,7 +51,7 @@ export function deepMerge<T = any>(target: T, source: Partial<T>): T {
     if (source.hasOwnProperty(key)) {
       const value = source[key];
       if (isPlainObject(value) && isPlainObject(result[key])) {
-        result[key] = deepMerge(result[key], value);
+        result[key] = deepMerge(result[key] as any, value as any) as any;
       } else {
         result[key] = value as any;
       }

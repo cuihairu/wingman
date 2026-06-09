@@ -299,10 +299,10 @@ sudo apt install -y g++ gcc rsync
 
 如果遇到问题：
 
-- 查看 [常见问题](../FAQ.md)
+- 查看 [快速开始](getting-started.md) 和本文档的故障排除部分
 - 提交 [GitHub Issue](https://github.com/cuihairu/wingman/issues)
 - 加入 [GitHub Discussions](https://github.com/cuihairu/wingman/discussions)
 
 ---
 
-**相关文档**: [快速开始](getting-started.md) | [开发指南](development.md) | [构建系统](build-system.md)
+**相关文档**: [快速开始](getting-started.md) | [开发指南](DEVELOPMENT.md) | [项目结构](project-structure.md)

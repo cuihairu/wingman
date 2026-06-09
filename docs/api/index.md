@@ -187,78 +187,78 @@ end
 
 基础操作模块，提供屏幕、输入、窗口、进程等核心功能。
 
-- [screen](./screen) - 屏幕截图、像素查找、图像匹配
-- [input](./input) - 鼠标点击、移动、键盘输入
-- [window](./window) - 窗口查找、激活、获取信息
-- [process](./process) - 进程启动、查找、终止
-- [system](./system) - 系统信息获取
+- [screen](./screen.md) - 屏幕截图、像素查找、图像匹配
+- [input](./input.md) - 鼠标点击、移动、键盘输入
+- [window](./window.md) - 窗口查找、激活、获取信息
+- [process](./process.md) - 进程启动、查找、终止
+- [system](./system.md) - 系统信息获取
 - [uia](./uia/) - UI Automation 控件交互
 
 ### 视觉与 AI
 
 计算机视觉与 AI 相关功能。
 
-- [vision](./vision) - 颜色检测、边缘检测、轮廓识别
-- [ocr](./ocr) - 文字识别（OCR）
+- [vision](./vision.md) - 颜色检测、边缘检测、轮廓识别
+- [ocr](./ocr.md) - 文字识别（OCR，可选依赖）
 
 ### 自动化系统
 
 高级自动化编排功能。
 
-- [event](./event) - 事件订阅与发布系统
-- [fsm](./fsm) - 有限状态机（FSM）
-- [task](./task) - 任务编排与执行
-- [notify](./notify) - 通知系统（日志、Toast、Webhook）
-- [smart-trigger](./smart-trigger) - 智能触发器
-- [behavior-tree](./behavior-tree) - 行为树引擎
+- [event](./event.md) - 事件订阅与发布系统
+- [fsm](./fsm.md) - 有限状态机（FSM）
+- [task](./task.md) - 任务编排与执行
+- [notify](./notify.md) - 通知系统（日志、Toast、Webhook）
+- [smart-trigger](./smart-trigger.md) - 智能触发器
+- [behavior-tree](./behavior-tree.md) - 行为树引擎
 
 ### 网络
 
 网络请求与通信。
 
-- [http](./http) - HTTP 客户端（GET、POST、下载）
-- [transport](./transport) - TCP 客户端、服务器与 UDP Socket
+- [http](./http.md) - HTTP 客户端（GET、POST、下载）
+- [transport](./transport.md) - TCP 客户端、服务器与 UDP Socket
 
 ### 序列化
 
 数据序列化与格式转换。
 
-- [serialize](./serialize) - 序列化格式总览（json、yaml、ini 选择指南）
-- [json](./json) - JSON 解析与序列化
-- [ini](./ini) - INI 配置文件解析与编码
+- [serialize](./serialize.md) - 序列化格式总览（json、yaml、ini 选择指南）
+- [json](./json.md) - JSON 解析与序列化
+- [ini](./ini.md) - INI 配置文件解析与编码
 
 ### 数据存储
 
 本地数据持久化与缓存。
 
-- [data](./data) - 数据存储总览（kv 与 db 选择指南）
-- [kv](./kv) - 持久化键值存储（Redis-like API）
-- [db](./db) - 本地 SQLite 数据库（支持 SQL 和 ORM）
+- [data](./data.md) - 数据存储总览（kv 与 db 选择指南）
+- [kv](./kv.md) - 持久化键值存储（Redis-like API）
+- [db](./db.md) - 本地 SQLite 数据库（支持 SQL 和 ORM）
 
 ### 辅助功能
 
 辅助自动化脚本的工具模块。
 
-- [human](./human) - 人性化模拟（随机延迟、不规律输入）
-- [perf](./perf) - 性能监控
-- [config](./config) - 配置管理
-- [verification](./verification) - 验证码识别、TOTP
-- [gameprofile](./gameprofile) - 游戏配置档案
-- [debugger](./debugger) - 调试器
-- [util](./util) - 工具函数（sleep、随机数等）
+- [human](./human.md) - 人性化模拟（随机延迟、不规律输入）
+- [perf](./perf.md) - 性能监控
+- [config](./config.md) - 配置管理
+- [verification](./verification.md) - 验证码识别、TOTP
+- [gameprofile](./gameprofile.md) - 游戏配置档案
+- [debugger](./debugger.md) - 调试器
+- [util](./util.md) - 工具函数（sleep、随机数等）
 
 ### 安全与加密
 
 安全和加密相关功能。
 
-- [security](./security) - 安全模块
-- [crypto](./security) - 加密函数（与 security 共用文档）
+- [security](./security.md) - 安全模块
+- [crypto](./security.md) - 加密函数（与 security 共用文档）
 
 ### 编排与协作
 
 多实例协作和编排功能。
 
-- [orchestration](./orchestration) - 编排控制
-- [inbox](./inbox) - 消息收件箱
-- [team](./team) - 组队编排
-- [node](./orchestration) - 节点管理（与 orchestration 共用文档）
+- [orchestration](./orchestration.md) - 编排控制
+- [inbox](./inbox.md) - 消息收件箱
+- [team](./team.md) - 组队编排
+- [node](./orchestration.md) - 节点管理（与 orchestration 共用文档）

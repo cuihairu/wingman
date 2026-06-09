@@ -280,4 +280,4 @@ class WebSocketService {
 const wsService = new WebSocketService();
 
 export default wsService;
-export { WSMessage, WebSocketService };
+export { WebSocketService };

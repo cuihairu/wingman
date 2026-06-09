@@ -8,7 +8,7 @@ enable_standalone_script = false # 单机脚本执行
 # ========== 远程模式配置 ==========
 [remote]
 server_ip = "127.0.0.1"
-server_port = 9527
+server_port = 8888
 reconnect_interval = 5
 heartbeat_interval = 30
 connect_timeout = 10

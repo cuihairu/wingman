@@ -209,8 +209,8 @@ code .
 
 ## 下一步
 
-- [API 参考](/api/) - 查看完整 API 文档
-- [示例脚本](/examples/) - 学习更多用法
-- [调试指南](/guide/debugging) - 如何调试脚本
-- [远程控制](/guide/remote) - 使用 TCP 远程控制
-- [YOLO 模型使用](/guides/yolo-guide) - 使用 YOLO 进行目标检测
+- [API 参考](../api/index.md) - 查看完整 API 文档
+- [示例脚本](../examples/index.md) - 学习更多用法
+- [调试指南](debugging.md) - 如何调试脚本
+- [远程协议](../remote_protocol.md) - 了解远程控制协议
+- [YOLO 模型使用](../guides/yolo-guide.md) - 使用 YOLO 进行目标检测

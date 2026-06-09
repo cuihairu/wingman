@@ -24,13 +24,18 @@ using CommandData = std::map<std::string, std::string>;
 struct CommandResult {
     bool success = false;
     std::string message;  // Error message if success=false, or additional info
+    std::string data;     // Optional JSON object/array payload
 
     static CommandResult ok(const std::string& msg = "") {
-        return {true, msg};
+        return {true, msg, ""};
+    }
+
+    static CommandResult okData(const std::string& jsonData, const std::string& msg = "") {
+        return {true, msg, jsonData};
     }
 
     static CommandResult error(const std::string& msg) {
-        return {false, msg};
+        return {false, msg, ""};
     }
 };
 

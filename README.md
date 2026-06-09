@@ -46,10 +46,12 @@ C++ + Lua/Python 的高性能游戏自动化框架
 | ⚡ **触发器系统** | 像素/图像/时间条件触发，自动执行动作 |
 | 📼 **宏录制** | 录制鼠标键盘操作，保存为脚本回放 |
 | 🤖 **UI Automation** | Windows UIA 自动化，操作 UI 控件 |
-| 📖 **OCR 识别** | Tesseract 文字识别 |
+| 📖 **OCR 识别** | Tesseract 文字识别（可选依赖） |
 | 💾 **数据持久化** | kv 键值存储、SQLite 数据库 |
 | 📄 **序列化格式** | JSON、INI 配置文件解析 |
-| 🐛 **调试支持** | VS Code 断点调试 Lua 脚本 |
+| 🐛 **调试支持** | VS Code 断点调试 Lua 脚本（需启用调试组件） |
+
+> 部分高级模块（OCR、ML/YOLO、远程编排、脚本调试器）依赖可选组件或仍处于持续建设中。默认可用能力以当前构建配置、运行时参数和对应 API 文档为准。
 
 ---
 
@@ -130,8 +132,8 @@ if points:
 - [快速开始](docs/getting-started.md) - 5 分钟上手指南
 - [安装指南](docs/installation.md) - 详细的安装和配置说明
 - [API 参考](docs/api/overview.md) - 完整的 API 文档
-- [架构设计](docs/architecture/overview.md) - 系统架构和设计决策
-- [开发指南](docs/development.md) - 贡献和开发指南
+- [架构设计](docs/architecture.md) - 系统架构和设计决策
+- [开发指南](docs/DEVELOPMENT.md) - 贡献和开发指南
 
 ---
 
@@ -144,13 +146,13 @@ Wingman 采用 **C++ 核心引擎 + 多语言脚本** 的架构设计：
 - **脚本引擎**: Lua (sol2) 和 Python (pybind11) 统一接口
 - **模块化**: 25+ 语言无关模块，易于扩展
 
-详细架构说明请查看 [架构文档](docs/architecture/overview.md)
+详细架构说明请查看 [架构文档](docs/architecture.md)
 
 ---
 
 ## 🤝 贡献
 
-欢迎贡献！请查看 [开发指南](docs/development.md) 了解详情。
+欢迎贡献！请查看 [开发指南](docs/DEVELOPMENT.md) 了解详情。
 
 ---
 

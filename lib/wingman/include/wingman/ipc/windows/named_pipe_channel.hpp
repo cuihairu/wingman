@@ -72,10 +72,12 @@ private:
     std::mutex receiveMutex_;
     std::mutex sendMutex_;
     std::condition_variable eventCondition_;
+    bool serverAccepted_ = false;
 
     void setState(IpcState state);
     bool createServerPipe();
     bool connectToServer();
+    bool waitForServerClient();
     void receiveLoop();
 
     static std::string serializeMessage(const IpcMessage& msg);

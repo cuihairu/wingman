@@ -12,6 +12,7 @@ import {
   ModalForm,
   PageContainer,
   ProCard,
+  type ProColumns,
   ProDescriptions,
   ProFormText,
   ProFormTextArea,
@@ -33,6 +34,7 @@ import {
   Drawer,
   Alert,
   Badge,
+  Statistic,
 } from 'antd';
 import React, { useRef, useState, useEffect } from 'react';
 import {
@@ -63,13 +65,13 @@ const Workflows: React.FC = () => {
 
   // 获取工作流列表
   const { data: workflowsData, loading, refresh } = useRequest(
-    async () => {
+    async (): Promise<Workflow[]> => {
       const response = await getWorkflows();
       return response.data || [];
     },
     {
       onSuccess: (data) => {
-        setWorkflows(data || []);
+        setWorkflows(Array.isArray(data) ? (data as Workflow[]) : []);
       },
       pollingInterval: 10000, // 降低轮询频率
     }
@@ -95,7 +97,7 @@ const Workflows: React.FC = () => {
 
     // 工作流提交
     unsubscribes.push(wsService.onWorkflowSubmitted((data) => {
-      setWorkflows((prev) => [{ ...data, status: WorkflowStatus.Pending }, ...prev]);
+      setWorkflows((prev) => [{ ...(data as unknown as Workflow), status: WorkflowStatus.Pending }, ...prev]);
       message.success(`工作流 ${data.name} 已提交`);
     }));
 
@@ -121,8 +123,8 @@ const Workflows: React.FC = () => {
           if (!prev) return null;
           return {
             ...prev,
-            stepStatus: { ...prev.stepStatus, [data.stepId]: data.status },
-            currentStepId: data.stepId,
+            stepStatus: { ...prev.stepStatus, [String(data.stepId)]: data.status as StepStatus },
+            currentStepId: String(data.stepId || ''),
           };
         });
       }
@@ -188,16 +190,16 @@ const Workflows: React.FC = () => {
     }
   };
 
-  const columns = [
+  const columns: ProColumns<Workflow>[] = [
     {
       title: '工作流 ID',
       dataIndex: 'id',
       key: 'id',
       width: 150,
-      render: (text: string) => (
+      render: (_, record) => (
         <Space>
           <UnorderedListOutlined />
-          <Text copyable={{ text }}>{text.slice(0, 8)}...</Text>
+          <Text copyable={{ text: record.id }}>{record.id.slice(0, 8)}...</Text>
         </Space>
       ),
     },
@@ -218,9 +220,9 @@ const Workflows: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status: WorkflowStatus) => (
-        <Tag color={getWorkflowStatusColor(status)}>
-          {status.toUpperCase()}
+      render: (_, record) => (
+        <Tag color={getWorkflowStatusColor(record.status)}>
+          {record.status.toUpperCase()}
         </Tag>
       ),
     },
@@ -229,14 +231,14 @@ const Workflows: React.FC = () => {
       dataIndex: 'steps',
       key: 'steps',
       width: 80,
-      render: (steps: TaskStep[]) => steps?.length || 0,
+      render: (_, record) => record.steps?.length || 0,
     },
     {
       title: '创建时间',
       dataIndex: 'createdTime',
       key: 'createdTime',
       width: 150,
-      render: (time: number) => new Date(time).toLocaleString(),
+      render: (_, record) => new Date(record.createdTime).toLocaleString(),
     },
     {
       title: '运行时长',
@@ -452,12 +454,12 @@ const Workflows: React.FC = () => {
         <ProFormList
           name="steps"
           label="步骤"
-          creatorButtonText="添加步骤"
+          creatorButtonProps={{ creatorButtonText: '添加步骤' }}
           min={1}
           itemRender={({ listDom, action }, { index, record, ...rest }) => (
             <ProCard
               bordered
-              header={`${record.name || '步骤'} (${index + 1})`}
+              title={`${record.name || '步骤'} (${index + 1})`}
               extra={action}
               style={{ marginBottom: 16 }}
             >

@@ -795,4 +795,4 @@ type TabLayout = FormDetailLayout | ListLayout | FormLayout | DetailLayout | Cus
 
 - [用户指南](./WORKSPACE_USER_GUIDE.md)
 - [开发指南](./WORKSPACE_DEV_GUIDE.md)
-- [架构设计](../ARCHITECTURE_DESIGN.md)
+- [治理手册](./workspace-governance-playbook.md)

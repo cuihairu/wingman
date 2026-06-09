@@ -94,9 +94,13 @@ bool RemoteClient::start() {
     impl_->client->setEventHandler([this](transport::Session* session, transport::SessionEvent event) {
         switch (event) {
             case transport::SessionEvent::Connected:
+                connected_.store(true);
+                impl_->lastHeartbeat = std::chrono::steady_clock::now();
                 onEvent(ConnectionState::Connected, "Connected to server");
                 break;
             case transport::SessionEvent::Disconnected:
+                connected_.store(false);
+                impl_->registered = false;
                 onEvent(ConnectionState::Disconnected, "Disconnected from server");
                 // 尝试重连
                 if (!impl_->shouldStop.load()) {
@@ -104,9 +108,13 @@ bool RemoteClient::start() {
                 }
                 break;
             case transport::SessionEvent::Error:
+                connected_.store(false);
+                impl_->registered = false;
                 onEvent(ConnectionState::Error, "Connection error");
                 break;
             case transport::SessionEvent::Timeout:
+                connected_.store(false);
+                impl_->registered = false;
                 onEvent(ConnectionState::Error, "Connection timeout");
                 break;
         }
@@ -135,6 +143,10 @@ bool RemoteClient::start() {
         running_.store(true);
         return false;  // 连接未建立，后台重连中
     }
+
+    connected_.store(true);
+    impl_->lastHeartbeat = std::chrono::steady_clock::now();
+    sendRegister();
 
     // 启动心跳
     startHeartbeat();
@@ -401,6 +413,14 @@ void RemoteClient::handleRequestMessage(const transport::MessagePtr& msg) {
             response["error"] = result.message;
         } else if (result.success && !result.message.empty()) {
             response["message"] = result.message;
+        }
+
+        if (!result.data.empty()) {
+            try {
+                response["data"] = nlohmann::json::parse(result.data);
+            } catch (const std::exception&) {
+                response["data"] = result.data;
+            }
         }
 
         // 发送 Response（使用相同的 sequence）

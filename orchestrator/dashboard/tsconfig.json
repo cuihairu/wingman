@@ -19,5 +19,6 @@
       "@@test/*": ["./src/.umi-test/*"]
     }
   },
-  "include": ["./**/*.d.ts", "./**/*.ts", "./**/*.tsx"]
+  "include": ["./**/*.d.ts", "config/**/*.ts", "src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["mock", "tests", "types/cache", "node_modules", "dist"]
 }

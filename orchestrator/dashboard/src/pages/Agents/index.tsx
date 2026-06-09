@@ -9,6 +9,7 @@ import {
 import {
   PageContainer,
   ProCard,
+  type ProColumns,
   ProDescriptions,
   ProTable,
 } from '@ant-design/pro-components';
@@ -49,13 +50,13 @@ const Agents: React.FC = () => {
 
   // 获取 Agent 列表
   const { data: agentsData, loading, refresh } = useRequest(
-    async () => {
+    async (): Promise<AgentInfo[]> => {
       const response = await getAgents();
       return response.data || [];
     },
     {
       onSuccess: (data) => {
-        setAgents(data || []);
+        setAgents(Array.isArray(data) ? (data as AgentInfo[]) : []);
       },
       pollingInterval: 10000, // 降低轮询频率，主要依靠 WebSocket
     }
@@ -208,16 +209,16 @@ const Agents: React.FC = () => {
     );
   };
 
-  const columns = [
+  const columns: ProColumns<AgentInfo>[] = [
     {
       title: 'Agent ID',
       dataIndex: 'agentId',
       key: 'agentId',
       width: 200,
-      render: (text: string) => (
+      render: (_, record) => (
         <Space>
           <NodeIndexOutlined />
-          <Text copyable={{ text }}>{text.slice(0, 12)}...</Text>
+          <Text copyable={{ text: record.agentId }}>{record.agentId.slice(0, 12)}...</Text>
         </Space>
       ),
     },
@@ -238,9 +239,9 @@ const Agents: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status: AgentStatus) => (
-        <Tag color={getAgentStatusColor(status)}>
-          {status.toUpperCase()}
+      render: (_, record) => (
+        <Tag color={getAgentStatusColor(record.status)}>
+          {record.status.toUpperCase()}
         </Tag>
       ),
     },
@@ -249,8 +250,8 @@ const Agents: React.FC = () => {
       dataIndex: ['resources', 'cpu', 'usage'],
       key: 'cpu',
       width: 100,
-      render: (usage: number) => (
-        <Progress percent={Math.round(usage)} size="small" />
+      render: (_, record) => (
+        <Progress percent={Math.round(record.resources?.cpu?.usage || 0)} size="small" />
       ),
     },
     {
@@ -258,8 +259,8 @@ const Agents: React.FC = () => {
       dataIndex: ['resources', 'memory', 'usage'],
       key: 'memory',
       width: 100,
-      render: (usage: number) => (
-        <Progress percent={Math.round(usage)} size="small" />
+      render: (_, record) => (
+        <Progress percent={Math.round(record.resources?.memory?.usage || 0)} size="small" />
       ),
     },
     {
@@ -267,8 +268,8 @@ const Agents: React.FC = () => {
       dataIndex: 'lastSeen',
       key: 'lastSeen',
       width: 120,
-      render: (time: number) => {
-        const diff = Date.now() - time;
+      render: (_, record) => {
+        const diff = Date.now() - record.lastSeen;
         if (diff < 60000) return '< 1 分钟';
         if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟`;
         return `${Math.floor(diff / 3600000)} 小时`;
@@ -419,7 +420,7 @@ const Agents: React.FC = () => {
                     {
                       title: 'Agent ID',
                       dataIndex: 'agentId',
-                      render: (text) => <Text copyable>{text}</Text>,
+                      render: (_, record) => <Text copyable>{record.agentId}</Text>,
                     },
                     {
                       title: '主机名',
@@ -432,9 +433,9 @@ const Agents: React.FC = () => {
                     {
                       title: '状态',
                       dataIndex: 'status',
-                      render: (status: AgentStatus) => (
-                        <Tag color={getAgentStatusColor(status)}>
-                          {status.toUpperCase()}
+                      render: (_, record) => (
+                        <Tag color={getAgentStatusColor(record.status)}>
+                          {record.status.toUpperCase()}
                         </Tag>
                       ),
                     },

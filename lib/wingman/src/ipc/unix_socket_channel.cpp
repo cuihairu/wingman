@@ -187,7 +187,16 @@ bool UnixSocketChannel::createServer() {
         return false;
     }
 
+    serverAccepted_ = false;
+    setState(IpcState::Connected);
     spdlog::info("[UnixSocket] Server listening on {}", socketPath_);
+    return true;
+}
+
+bool UnixSocketChannel::acceptServerClient() {
+    if (serverAccepted_) {
+        return true;
+    }
 
     // Accept one connection
     dataFd_ = accept(listenFd_, nullptr, nullptr);
@@ -204,6 +213,7 @@ bool UnixSocketChannel::createServer() {
     closesocket(listenFd_);
     listenFd_ = INVALID_SOCKET;
 
+    serverAccepted_ = true;
     setState(IpcState::Connected);
     spdlog::info("[UnixSocket] Server connected");
     return true;
@@ -239,6 +249,10 @@ bool UnixSocketChannel::connectToServer() {
 }
 
 void UnixSocketChannel::receiveLoop() {
+    if (serverMode_ && !acceptServerClient()) {
+        return;
+    }
+
     while (!stopping_ && isConnected()) {
         uint32_t messageLength = 0;
         if (!recvRaw(&messageLength, sizeof(messageLength))) break;

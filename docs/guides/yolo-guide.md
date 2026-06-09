@@ -298,4 +298,4 @@ A: 可以，但需要：
 - [Ultralytics 官方文档](https://docs.ultralytics.com/)
 - [ONNX Runtime 文档](https://onnxruntime.ai/)
 - [COCO 数据集](https://cocodataset.org/)
-- [Wingman Vision API](/api/vision)
+- [Wingman Vision API](../api/vision.md)

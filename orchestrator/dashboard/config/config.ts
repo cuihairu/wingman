@@ -157,7 +157,7 @@ export default defineConfig({
   requestRecord: {},
   // Monaco editor: enable by default when dependency exists; fallback to shim if
   // not installed or explicitly disabled via DISABLE_MONACO=1.
-  alias: (() => {
+  alias: ((): Record<string, string> => {
     const disable = process.env.DISABLE_MONACO === '1' || process.env.DISABLE_MONACO === 'true';
     if (disable) {
       return { '@monaco-editor/react': join(__dirname, '../src/shims/monacoReactShim') };

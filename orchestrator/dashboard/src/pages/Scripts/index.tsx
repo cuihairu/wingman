@@ -14,6 +14,7 @@ import {
   ModalForm,
   PageContainer,
   ProCard,
+  type ProColumns,
   ProFormText,
   ProFormTextArea,
   ProTable,
@@ -35,6 +36,7 @@ import {
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   ScriptInfo,
+  ScriptLog,
   getScripts,
   getScriptContent,
   saveScriptContent,
@@ -138,15 +140,15 @@ const Scripts: React.FC = () => {
   };
 
   // 表格列定义
-  const columns = [
+  const columns: ProColumns<ScriptInfo>[] = [
     {
       title: '脚本名称',
       dataIndex: 'name',
       key: 'name',
-      render: (text: string, record: ScriptInfo) => (
+      render: (_, record) => (
         <Space>
           <FileTextOutlined />
-          <Text strong>{text}</Text>
+          <Text strong>{record.name}</Text>
           {record.isRunning && <Tag color="green">运行中</Tag>}
         </Space>
       ),
@@ -156,22 +158,22 @@ const Scripts: React.FC = () => {
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
-      render: (text: string) => <Text type="secondary">{text || '-'}</Text>,
+      render: (_, record) => <Text type="secondary">{record.description || '-'}</Text>,
     },
     {
       title: '大小',
       dataIndex: 'size',
       key: 'size',
       width: 100,
-      render: (size: number) => <Text type="secondary">{size} B</Text>,
+      render: (_, record) => <Text type="secondary">{record.size} B</Text>,
     },
     {
       title: '修改时间',
       dataIndex: 'modifiedTime',
       key: 'modifiedTime',
       width: 180,
-      render: (time: number) => (
-        <Text type="secondary">{new Date(time).toLocaleString()}</Text>
+      render: (_, record) => (
+        <Text type="secondary">{new Date(record.modifiedTime).toLocaleString()}</Text>
       ),
     },
     {

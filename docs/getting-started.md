@@ -135,10 +135,10 @@ wingman-runtime script hello.py
 
 现在你已经成功运行了第一个脚本！接下来可以：
 
-- **📖 学习更多**：查看 [Lua 脚本指南](guides/lua-scripting.md) 或 [Python 脚本指南](guides/python-scripting.md)
+- **📖 学习更多**：查看 [用户指南](user-guide.md) 和 [API 总览](api/overview.md)
 - **🔍 探索 API**：浏览 [API 参考](api/overview.md) 了解所有可用功能
 - **💾 数据存储**：学习如何使用 [数据库](guides/database.md) 和 [配置文件](guides/configuration.md)
-- **🎯 高级功能**：查看 [触发器系统](guides/triggers.md) 和 [图像识别](guides/image-recognition.md)
+- **🎯 高级功能**：查看 [触发器系统](guides/triggers.md)、[Vision API](api/vision.md) 和 [YOLO 指南](guides/yolo-guide.md)
 
 ## 🎨 更多示例
 
@@ -171,9 +171,9 @@ wingman-runtime script hello.py
 ### 需要帮助？
 
 - 提交 [GitHub Issue](https://github.com/cuihairu/wingman/issues)
-- 查看 [示例代码](../examples/)
+- 查看 [示例代码](examples/index.md)
 - 阅读详细文档
 
 ---
 
-**继续探索**: [API 参考](api/overview.md) | [使用指南](guides/lua-scripting.md) | [示例](../examples/)
+**继续探索**: [API 参考](api/overview.md) | [用户指南](user-guide.md) | [示例](examples/index.md)
