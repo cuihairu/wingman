@@ -1,11 +1,8 @@
 ﻿import { render, fireEvent, act } from '@testing-library/react';
 import React from 'react';
-import { TestBrowser } from '@@/testBrowser';
 import { BRAND } from '@/config/branding';
 import { history } from '@umijs/max';
-
-// @ts-ignore
-import { startMock } from '@@/requestRecordMock';
+import Login from './index';
 
 const waitTime = (time: number = 100) => {
   return new Promise((resolve) => {
@@ -15,38 +12,11 @@ const waitTime = (time: number = 100) => {
   });
 };
 
-let server: {
-  close: () => void;
-};
-
 describe('Login Page', () => {
-  beforeAll(async () => {
-    server = await startMock({
-      port: 8000,
-      scene: 'login',
-    });
-  });
-
-  afterAll(() => {
-    server?.close();
-  });
-
   it('should show login form', async () => {
-    const historyRef = React.createRef<any>();
-    const rootContainer = render(
-      <TestBrowser
-        historyRef={historyRef}
-        location={{
-          pathname: '/user/login',
-        }}
-      />,
-    );
+    const rootContainer = render(<Login />);
 
     await rootContainer.findAllByText(BRAND.title);
-
-    act(() => {
-      historyRef.current?.push('/user/login');
-    });
 
     expect(rootContainer.baseElement?.querySelector('.ant-pro-form-login-desc')?.textContent).toBe(
       BRAND.subTitle,
@@ -56,15 +26,7 @@ describe('Login Page', () => {
   });
 
   it('should login success', async () => {
-    const historyRef = React.createRef<any>();
-    const rootContainer = render(
-      <TestBrowser
-        historyRef={historyRef}
-        location={{
-          pathname: '/user/login',
-        }}
-      />,
-    );
+    const rootContainer = render(<Login />);
 
     await rootContainer.findAllByText(BRAND.title);
 

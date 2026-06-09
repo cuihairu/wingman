@@ -39,30 +39,17 @@
 
 ## Known Vulnerabilities
 
-以下漏洞来自间接依赖（transitive dependencies），暂时无法直接修复：
+当前仍有 1 个低危开发依赖告警来自上游框架链路，暂无官方补丁版本。
 
-### 1. mockjs (高危 - GHSA-mh8j-9jvh-gjf6)
-
-- **影响**: 原型污染漏洞 (CVE-2023-26158)
-- **状态**: 直接依赖，但无官方补丁版本
-- **缓解措施**: 用户输入不应直接传递给 mockjs 的 extend() 方法
-- **修复计划**: 评估替换为维护活跃的 fork（如 `mockjs-plus`）或其他模拟库
-
-### 2. request (中危 - GHSA-p8p7-x288-28g6)
-
-- **影响**: 服务端请求伪造 (SSRF)
-- **路径**: `@ant-design/pro-cli > pngjs-image > request`
-- **状态**: 间接依赖，已过时但无法直接更新
-- **缓解措施**: 仅在开发环境使用 @ant-design/pro-cli，不影响生产环境
-
-### 3. elliptic (低危 - GHSA-848j-6mx2-7j84)
+### elliptic (低危 - GHSA-848j-6mx2-7j84)
 
 - **影响**: 加密原语实现问题
-- **路径**: `@umijs/max > umi > @umijs/bundler-webpack > node-libs-browser > crypto-browserify > browserify-sign > elliptic`
-- **状态**: 深层间接依赖，风险较低
-- **缓解措施**: 不直接影响应用安全性，仅用于开发构建
+- **路径**: `@umijs/max > umi > @umijs/bundler-webpack > node-libs-browser > crypto-browserify > browserify-sign/create-ecdh > elliptic`
+- **状态**: `elliptic` npm 最新版本仍为 `6.6.1`，GitHub advisory 的 patched version 为 `<0.0.0`
+- **缓解措施**: 该链路来自 Umi 构建工具的 Node polyfill，当前应用代码不直接调用 `elliptic`
 
 ### 修复措施
 
-- ✅ 已通过 pnpm overrides 强制所有 eslint 依赖使用 >=9.26.0（修复堆栈溢出漏洞）
-- 🔄 持续监控上游依赖更新，一旦有可用修复将立即更新
+- 已移除仅用于旧脚手架/开发辅助的漏洞依赖链，包括 `mockjs`、`@ant-design/pro-cli` 和 `umi-presets-pro`。
+- 已将安全版本约束迁移到 `package.json` 的 `pnpm.overrides`，确保 pnpm 生成 lockfile 时实际生效。
+- 持续监控上游框架依赖更新；如上游发布补丁版本，应优先升级并重新运行依赖审计。
