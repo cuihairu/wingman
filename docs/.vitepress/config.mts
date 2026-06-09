@@ -53,7 +53,8 @@ export default defineConfig({
             { text: 'wingman.screen', link: '/api/screen' },
             { text: 'wingman.input', link: '/api/input' },
             { text: 'wingman.window', link: '/api/window' },
-            { text: 'wingman.process', link: '/api/process' }
+            { text: 'wingman.process', link: '/api/process' },
+            { text: 'wingman.system', link: '/api/system' }
           ]
         },
         {
@@ -98,11 +99,24 @@ export default defineConfig({
           ]
         },
         {
-          text: '网络与数据',
+          text: '网络',
           items: [
             { text: 'wingman.http', link: '/api/http' },
+            { text: 'wingman.transport', link: '/api/transport' }
+          ]
+        },
+        {
+          text: '序列化',
+          items: [
             { text: 'wingman.json', link: '/api/json' },
-            { text: 'wingman.kv', link: '/api/kv' }
+            { text: 'wingman.ini', link: '/api/ini' }
+          ]
+        },
+        {
+          text: '数据存储',
+          items: [
+            { text: 'wingman.kv', link: '/api/kv' },
+            { text: 'wingman.db', link: '/api/db' }
           ]
         },
         {
@@ -116,14 +130,15 @@ export default defineConfig({
             { text: 'wingman.debugger', link: '/api/debugger' },
             { text: 'wingman.util', link: '/api/util' },
             { text: 'wingman.perf', link: '/api/perf' },
-            { text: 'wingman.system', link: '/api/system' },
             { text: '数据类型', link: '/api/types' }
           ]
         },
         {
-          text: '高级功能',
+          text: '编排与协作',
           items: [
-            { text: 'wingman.team', link: '/api/team' }
+            { text: 'wingman.inbox', link: '/api/inbox' },
+            { text: 'wingman.team', link: '/api/team' },
+            { text: 'wingman.node', link: '/api/orchestration' }
           ]
         }
       ],
