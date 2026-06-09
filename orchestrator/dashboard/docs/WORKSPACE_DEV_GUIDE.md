@@ -546,8 +546,8 @@ npm run build
 
 ```bash
 # .env.production
-CROUPIER_API_URL=https://api.croupier.io
-CROUPIER_WS_URL=wss://api.croupier.io
+WINGMAN_API_URL=http://127.0.0.1:9527
+WINGMAN_WS_URL=ws://127.0.0.1:9527/ws
 ```
 
 ### Docker 部署
@@ -682,3 +682,6 @@ test(workspace): 添加测试
 - [Ant Design 文档](https://ant.design/)
 - [Pro Components 文档](https://procomponents.ant.design/)
 - [TypeScript 文档](https://www.typescriptlang.org/)
+  > 历史文档说明
+  >
+  > 本文档面向早期 `workspace` 编辑体系，保留仅用于迁移取证和后续重构参考。当前 `wingman` 仓库的运行后端并不提供本文档所述完整 `workspace` API。

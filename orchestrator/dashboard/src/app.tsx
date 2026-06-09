@@ -6,7 +6,7 @@ import type { RunTimeLayoutConfig } from '@umijs/max';
 import { history } from '@umijs/max';
 import defaultSettings from '../config/defaultSettings';
 import { errorConfig } from './requestErrorConfig';
-import { getMyPermissions } from '@/services/api';
+import { getMyPermissions, getMyProfile } from '@/services/api';
 import React, { useEffect } from 'react';
 import { App as AntdApp, Grid } from 'antd';
 import { setAppApi } from './utils/antdApp';
@@ -36,7 +36,8 @@ export async function getInitialState(): Promise<{
       const token = localStorage.getItem('token');
       if (!token) return undefined;
       // 简化：直接使用 token 作为用户名
-      const roleNames: string[] = ['user'];
+      const profile = await getMyProfile();
+      const roleNames: string[] = Array.isArray(profile?.roles) ? profile.roles : ['user'];
       let permissionIDs: string[] = [];
       try {
         const perms = await getMyPermissions();
@@ -56,10 +57,11 @@ export async function getInitialState(): Promise<{
         )
         .filter(Boolean);
       return {
-        name: 'admin',
-        userid: 'admin',
+        name: profile?.nickname || profile?.displayName || profile?.username || 'user',
+        userid: profile?.username || 'user',
         access: accessTokens.join(','),
         roles: roleNames,
+        avatar: profile?.avatar,
       } as any;
     } catch (error: any) {
       if (error?.response?.status === 401 || error?.response?.status === 400) {

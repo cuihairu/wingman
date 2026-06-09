@@ -1,13 +1,12 @@
 export default {
-  'pages.layouts.userLayout.title':
-    'Ant Design is the most influential web design specification in Xihu district',
+  'pages.layouts.userLayout.title': 'Wingman control plane for orchestration, automation, and audit',
   'pages.login.accountLogin.tab': 'Account Login',
-  'pages.login.accountLogin.errorMessage': 'Incorrect username/password(admin/ant.design)',
+  'pages.login.accountLogin.errorMessage': 'Incorrect username or password',
   'pages.login.failure': 'Login failed, please try again!',
   'pages.login.success': 'Login successful!',
-  'pages.login.username.placeholder': 'Username: admin or user',
+  'pages.login.username.placeholder': 'Username',
   'pages.login.username.required': 'Please input your username!',
-  'pages.login.password.placeholder': 'Password: ant.design',
+  'pages.login.password.placeholder': 'Password',
   'pages.login.password.required': 'Please input your password!',
   'pages.login.phoneLogin.tab': 'Phone Login',
   'pages.login.phoneLogin.errorMessage': 'Verification Code Error',
@@ -231,7 +230,7 @@ export default {
   'profile.view.sessions': 'View sessions',
   'profile.extras.error': 'Failed to load account insights',
   'profile.hero.edit': 'Update profile',
-  'profile.stats.games': 'Games',
+  'profile.stats.games': 'Scopes',
   'profile.stats.roles': 'Roles',
   'profile.stats.permissions': 'Permissions',
   'profile.stats.activities': 'Activity',
@@ -244,10 +243,10 @@ export default {
   'profile.security.audit.available': 'Available',
   'profile.security.audit.empty': 'No records',
   'profile.security.phone.helper': 'Used for verification and login alerts',
-  'profile.games.title': 'Game Access',
-  'profile.games.empty': 'No authorized games yet',
-  'profile.games.envs': 'Environments',
-  'profile.games.permissions': 'Permissions',
+  'profile.games.title': 'Scope Access',
+  'profile.games.empty': 'No scope metadata available for this account',
+  'profile.games.envs': 'Execution Environments',
+  'profile.games.permissions': 'Allowed Actions',
   'profile.permissions.summary.title': 'Permission Summary',
   'profile.permissions.empty': 'No scoped permissions',
   'profile.activities.title': 'Recent Activity',
@@ -287,24 +286,24 @@ export default {
   'profile.permissions.apply.content.permission.key': 'Permission Key',
   'profile.permissions.apply.content.permission.id': 'Permission ID',
   'profile.permissions.apply.content.reason': 'Reason',
-  'profile.permissions.fallback.workspaces.edit.name': 'Workspace Edit Permission',
-  'profile.permissions.fallback.workspaces.edit.description':
-    'Allows editing and saving workspace drafts.',
-  'profile.permissions.fallback.workspaces.publish.name': 'Workspace Publish Permission',
-  'profile.permissions.fallback.workspaces.publish.description':
-    'Allows publishing and unpublishing workspaces.',
-  'profile.permissions.fallback.workspaces.rollback.name': 'Workspace Rollback Permission',
-  'profile.permissions.fallback.workspaces.rollback.description':
-    'Allows workspace version rollback operations.',
-  'profile.permissions.fallback.functions.manage.name': 'Function Management Permission',
-  'profile.permissions.fallback.functions.manage.description':
-    'Allows function management and configuration changes.',
+  'profile.permissions.fallback.scripts.manage.name': 'Script Edit Permission',
+  'profile.permissions.fallback.scripts.manage.description':
+    'Allows creating, editing, and saving automation scripts.',
+  'profile.permissions.fallback.scripts.run.name': 'Script Run Permission',
+  'profile.permissions.fallback.scripts.run.description':
+    'Allows running and stopping automation scripts.',
+  'profile.permissions.fallback.workflows.manage.name': 'Workflow Management Permission',
+  'profile.permissions.fallback.workflows.manage.description':
+    'Allows creating, updating, and canceling workflow runs.',
+  'profile.permissions.fallback.agents.manage.name': 'Agent Management Permission',
+  'profile.permissions.fallback.agents.manage.description':
+    'Allows viewing agent details and controlling agent lifecycle.',
   'profile.permissions.fallback.audit.read.name': 'Audit Read Permission',
   'profile.permissions.fallback.audit.read.description':
     'Allows viewing audit logs and operation history.',
-  'profile.permissions.fallback.ops.manage.name': 'Ops Management Permission',
-  'profile.permissions.fallback.ops.manage.description':
-    'Allows ops strategy configuration and change operations.',
+  'profile.permissions.fallback.settings.manage.name': 'Settings Management Permission',
+  'profile.permissions.fallback.settings.manage.description':
+    'Allows updating system settings and operational switches.',
   'profile.sessions.col.time': 'Time',
   'profile.sessions.col.result': 'Result',
   'profile.sessions.col.region': 'Region',

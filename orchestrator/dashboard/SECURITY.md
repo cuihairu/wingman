@@ -2,54 +2,24 @@
 
 ## Supported Versions
 
-当前 Croupier Dashboard 以下版本获得安全更新支持：
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 6.x     | :white_check_mark: |
-| < 6.0   | :x:                |
+当前 `orchestrator/dashboard` 以仓库主分支的当前版本为准，不单独维护旧版本安全支持矩阵。
 
 ## Reporting a Vulnerability
 
-如果您发现安全漏洞，请通过以下方式负责任地披露：
+如果你发现安全问题，请不要在公开 Issue 中披露细节。
 
-1. **请勿** 在公开的 GitHub Issues 中报告安全漏洞
-2. 发送邮件至项目维护者，或通过 [GitHub Security Advisories](https://github.com/cuihairu/croupier-dashboard/security/advisories/new) 提交报告
-3. 请在报告中包含：
-   - 漏洞描述
-   - 复现步骤
-   - 潜在影响
-   - 如有可能，提供修复建议
+建议至少提供以下信息：
 
-## Response Timeline
+- 漏洞描述
+- 复现步骤
+- 影响范围
+- 修复建议或缓解方式
 
-- **确认收到**：48 小时内
-- **初步评估**：7 个工作日内
-- **修复发布**：视漏洞严重程度而定，高危漏洞优先处理
+当前仓库未维护独立的历史前端安全披露入口；请按 Wingman 项目当前维护方式处理。
 
-## Security Best Practices
+## Security Notes
 
-使用 Croupier Dashboard 时，建议遵循以下安全实践：
-
-- 始终使用最新稳定版本
-- 定期更新前端依赖项（npm audit）
-- 在生产环境中启用 HTTPS
-- 配置合适的 CSP（Content Security Policy）
-- 妥善保管 API 密钥和认证凭据
-
-## Known Vulnerabilities
-
-当前仍有 1 个低危开发依赖告警来自上游框架链路，暂无官方补丁版本。
-
-### elliptic (低危 - GHSA-848j-6mx2-7j84)
-
-- **影响**: 加密原语实现问题
-- **路径**: `@umijs/max > umi > @umijs/bundler-webpack > node-libs-browser > crypto-browserify > browserify-sign/create-ecdh > elliptic`
-- **状态**: `elliptic` npm 最新版本仍为 `6.6.1`，GitHub advisory 的 patched version 为 `<0.0.0`
-- **缓解措施**: 该链路来自 Umi 构建工具的 Node polyfill，当前应用代码不直接调用 `elliptic`
-
-### 修复措施
-
-- 已移除仅用于旧脚手架/开发辅助的漏洞依赖链，包括 `mockjs`、`@ant-design/pro-cli` 和 `umi-presets-pro`。
-- 已将安全版本约束迁移到 `package.json` 的 `pnpm.overrides`，确保 pnpm 生成 lockfile 时实际生效。
-- 持续监控上游框架依赖更新；如上游发布补丁版本，应优先升级并重新运行依赖审计。
+- 前端依赖安全性以 `pnpm audit` 结果为准
+- 服务端 JWT 密钥必须通过 `WINGMAN_JWT_SECRET` 配置，且长度不少于 32 个字符
+- 生产环境应启用 HTTPS，并限制可信 CORS 来源
+- `debugger` 相关接口当前要求登录且具备 `admin` 角色

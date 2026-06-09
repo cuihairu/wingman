@@ -19,4 +19,8 @@ export default {
   ...settings,
   ...pwa,
   ...component,
+  'pages.layouts.userLayout.title': 'Wingman 編排、自動化與審計控制台',
+  'pages.login.accountLogin.errorMessage': '錯誤的使用者名稱或密碼',
+  'pages.login.username.placeholder': '使用者名稱',
+  'pages.login.password.placeholder': '密碼',
 };

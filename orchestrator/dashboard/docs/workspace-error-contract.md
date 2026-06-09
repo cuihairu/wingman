@@ -1,6 +1,6 @@
 # Workspace 错误码契约（前后端）
 
-适用范围：`croupier` 的 `/api/v1/workspaces/**` 与 `croupier-dashboard` 的 Workspace 页面族。
+适用范围：历史 `workspace` 方案的错误契约记录，仅保留用于迁移排查；不代表当前 `wingman` 后端实现。
 
 ## 1. 统一错误结构
 

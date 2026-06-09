@@ -10,14 +10,14 @@ import {
   type ProfilePermission,
 } from './me';
 
-// Source: croupier/internal/api/auth/dto.go LoginRequest / LoginResponse
+// Frontend session DTO aligned with the current Wingman dashboard auth flow.
 export type SessionUser = {
   username: string;
   nickname?: string;
   roles: string[];
 };
 
-// Source: croupier/internal/api/auth/dto.go LoginResponse
+// Login response returned by the current dashboard auth endpoint.
 export type SessionResponse = {
   token: string;
   user: SessionUser;
@@ -32,7 +32,7 @@ export type CurrentUser = {
   roles: string[];
 };
 
-// Source: croupier/internal/api/profile/dto.go ProfilePermissionsResponse
+// Compatibility projection for the current profile permission response shape.
 export type CurrentUserPermissionsResponse = {
   permissions: ProfilePermission[];
   admin: boolean;
@@ -40,7 +40,7 @@ export type CurrentUserPermissionsResponse = {
   permissionIDs?: string[];
 };
 
-// Source: croupier/internal/api/profile/dto.go ProfileGamesResponse
+// Compatibility projection for the current profile game-scope response shape.
 export type CurrentUserGamesResponse = {
   games: ProfileGame[];
 };

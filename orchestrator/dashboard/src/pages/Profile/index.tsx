@@ -59,7 +59,7 @@ const { Title, Text } = Typography;
 const TAB_KEYS = {
   PROFILE: 'profile',
   SECURITY: 'security',
-  GAMES: 'games',
+  SCOPES: 'scopes',
   PERMISSIONS: 'permissions',
   ACTIVITY: 'activity',
   SESSIONS: 'sessions',
@@ -82,36 +82,36 @@ type PermissionApplyTemplate = Omit<PermissionApplyItem, 'name' | 'description'>
 
 const FALLBACK_APPLY_PERMISSION_TEMPLATES: PermissionApplyTemplate[] = [
   {
-    id: 'workspaces:edit',
-    nameId: 'profile.permissions.fallback.workspaces.edit.name',
-    descriptionId: 'profile.permissions.fallback.workspaces.edit.description',
-    resource: 'workspaces',
+    id: 'scripts:manage',
+    nameId: 'profile.permissions.fallback.scripts.manage.name',
+    descriptionId: 'profile.permissions.fallback.scripts.manage.description',
+    resource: 'scripts',
     action: 'edit',
-    category: 'workspace',
+    category: 'scripts',
   },
   {
-    id: 'workspaces:publish',
-    nameId: 'profile.permissions.fallback.workspaces.publish.name',
-    descriptionId: 'profile.permissions.fallback.workspaces.publish.description',
-    resource: 'workspaces',
-    action: 'publish',
-    category: 'workspace',
+    id: 'scripts:run',
+    nameId: 'profile.permissions.fallback.scripts.run.name',
+    descriptionId: 'profile.permissions.fallback.scripts.run.description',
+    resource: 'scripts',
+    action: 'run',
+    category: 'scripts',
   },
   {
-    id: 'workspaces:rollback',
-    nameId: 'profile.permissions.fallback.workspaces.rollback.name',
-    descriptionId: 'profile.permissions.fallback.workspaces.rollback.description',
-    resource: 'workspaces',
-    action: 'rollback',
-    category: 'workspace',
-  },
-  {
-    id: 'functions:manage',
-    nameId: 'profile.permissions.fallback.functions.manage.name',
-    descriptionId: 'profile.permissions.fallback.functions.manage.description',
-    resource: 'functions',
+    id: 'workflows:manage',
+    nameId: 'profile.permissions.fallback.workflows.manage.name',
+    descriptionId: 'profile.permissions.fallback.workflows.manage.description',
+    resource: 'workflows',
     action: 'manage',
-    category: 'functions',
+    category: 'workflows',
+  },
+  {
+    id: 'agents:manage',
+    nameId: 'profile.permissions.fallback.agents.manage.name',
+    descriptionId: 'profile.permissions.fallback.agents.manage.description',
+    resource: 'agents',
+    action: 'manage',
+    category: 'agents',
   },
   {
     id: 'audit:read',
@@ -122,12 +122,12 @@ const FALLBACK_APPLY_PERMISSION_TEMPLATES: PermissionApplyTemplate[] = [
     category: 'audit',
   },
   {
-    id: 'ops:manage',
-    nameId: 'profile.permissions.fallback.ops.manage.name',
-    descriptionId: 'profile.permissions.fallback.ops.manage.description',
-    resource: 'ops',
+    id: 'settings:manage',
+    nameId: 'profile.permissions.fallback.settings.manage.name',
+    descriptionId: 'profile.permissions.fallback.settings.manage.description',
+    resource: 'settings',
     action: 'manage',
-    category: 'ops',
+    category: 'settings',
   },
 ];
 
@@ -553,7 +553,7 @@ export default function Profile() {
     },
   ];
 
-  const renderGames = () => (
+  const renderScopes = () => (
     <Card loading={extrasLoading}>
       <List
         dataSource={games}
@@ -563,8 +563,8 @@ export default function Profile() {
             <List.Item.Meta
               title={
                 <Space>
-                  <Text strong>{game.gameName || game.gameId}</Text>
-                  <Tag>{game.gameId}</Tag>
+                    <Text strong>{game.gameName || game.gameId || 'N/A'}</Text>
+                    {game.gameId ? <Tag>{game.gameId}</Tag> : null}
                 </Space>
               }
               description={
@@ -1291,14 +1291,14 @@ export default function Profile() {
                 ),
               },
               {
-                key: TAB_KEYS.GAMES,
+                key: TAB_KEYS.SCOPES,
                 label: (
                   <Space>
                     <RocketOutlined />
                     {formatMessage('profile.games.title')}
                   </Space>
                 ),
-                children: renderGames(),
+                children: renderScopes(),
               },
               {
                 key: TAB_KEYS.PERMISSIONS,

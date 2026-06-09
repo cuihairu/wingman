@@ -21,4 +21,8 @@ export default {
   ...pwa,
   ...component,
   ...pages,
+  'pages.layouts.userLayout.title': 'Wingman برای ارکستراسیون، خودکارسازی و ممیزی عملیاتی',
+  'pages.login.accountLogin.errorMessage': 'نام کاربری یا رمز عبور نادرست است',
+  'pages.login.username.placeholder': 'نام کاربری',
+  'pages.login.password.placeholder': 'رمز عبور',
 };

@@ -98,8 +98,14 @@ func main() {
 		auth.Use(middleware.AuthRequired())
 		{
 			statusHandler := handlers.NewStatusHandler(db, registry)
+			profileHandler := handlers.NewProfileHandler(db)
 			auth.GET("/status", statusHandler.HandleStatus)
 			auth.GET("/health", statusHandler.HandleHealth)
+			auth.GET("/profile", profileHandler.HandleGetProfile)
+			auth.GET("/profile/games", profileHandler.HandleGetGames)
+			auth.GET("/profile/permissions", profileHandler.HandleGetPermissions)
+			auth.PUT("/profile", profileHandler.HandleUpdateProfile)
+			auth.PUT("/profile/password", profileHandler.HandleUpdatePassword)
 
 			// 只读接口 - 所有登录用户可访问
 			windowHandler := handlers.NewWindowHandler(registry)

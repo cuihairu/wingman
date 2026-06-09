@@ -22,4 +22,9 @@ export default {
   ...pwa,
   ...component,
   ...pages,
+  'pages.layouts.userLayout.title':
+    'Wingman untuk orkestrasi, otomasi, dan audit operasional',
+  'pages.login.accountLogin.errorMessage': 'Nama pengguna atau kata sandi salah',
+  'pages.login.username.placeholder': 'Nama pengguna',
+  'pages.login.password.placeholder': 'Kata sandi',
 };

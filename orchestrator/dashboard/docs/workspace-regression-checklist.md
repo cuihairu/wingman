@@ -1,6 +1,6 @@
 # Workspace 回归清单
 
-适用范围：`croupier-dashboard` 对象工作台（Workspaces / WorkspaceEditor / Console）。
+适用范围：历史对象工作台回归清单，仅保留用于迁移排查，不代表当前 `wingman` 页面结构。
 
 ## 1. 范围说明
 

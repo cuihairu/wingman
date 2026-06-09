@@ -162,7 +162,7 @@ const Login: React.FC = () => {
             maxWidth: 'calc(100vw - 32px)',
           }}
           logo={<img alt="logo" src={BRAND.logo || '/logo.svg'} />}
-          title={BRAND.title || 'Croupier'}
+          title={BRAND.title || 'Wingman'}
           subTitle={BRAND.subTitle || intl.formatMessage({ id: 'pages.layouts.userLayout.title' })}
           initialValues={{
             autoLogin: true,
@@ -179,7 +179,7 @@ const Login: React.FC = () => {
             <LoginMessage
               content={intl.formatMessage({
                 id: 'pages.login.accountLogin.errorMessage',
-                defaultMessage: '账户或密码错误(admin/ant.design)',
+                defaultMessage: '账户或密码错误',
               })}
             />
           )}
@@ -193,7 +193,7 @@ const Login: React.FC = () => {
                 }}
                 placeholder={intl.formatMessage({
                   id: 'pages.login.username.placeholder',
-                  defaultMessage: '用户名: admin or user',
+                  defaultMessage: '用户名',
                 })}
                 rules={[
                   {
@@ -215,7 +215,7 @@ const Login: React.FC = () => {
                 }}
                 placeholder={intl.formatMessage({
                   id: 'pages.login.password.placeholder',
-                  defaultMessage: '密码: admin',
+                  defaultMessage: '密码',
                 })}
                 rules={[
                   {

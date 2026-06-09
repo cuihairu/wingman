@@ -5,7 +5,7 @@
 ### 1. 编译检查
 
 ```bash
-cd C:/Users/cui/Workspaces/croupier/croupier-dashboard
+cd D:/workspaces/wingman/orchestrator/dashboard
 npm run build
 ```
 

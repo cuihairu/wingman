@@ -1,6 +1,6 @@
 # Workspace 治理运行手册（V1）
 
-适用范围：`croupier-dashboard` + `croupier` 的 Workspace 配置发布与回滚链路。  
+适用范围：历史 `workspace` 配置发布与回滚链路记录，不代表当前 `wingman` 已实现对应后端。  
 目标：固化灰度、回滚、环境隔离规则，降低线上配置变更风险。
 
 ## 1. 灰度发布策略（TASK-043）

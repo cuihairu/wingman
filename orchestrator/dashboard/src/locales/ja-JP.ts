@@ -21,4 +21,8 @@ export default {
   ...pwa,
   ...component,
   ...pages,
+  'pages.layouts.userLayout.title': 'Wingman オーケストレーション、自動化、監査コントロールプレーン',
+  'pages.login.accountLogin.errorMessage': 'ユーザー名またはパスワードが正しくありません',
+  'pages.login.username.placeholder': 'ユーザー名',
+  'pages.login.password.placeholder': 'パスワード',
 };

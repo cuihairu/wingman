@@ -1,6 +1,6 @@
 # API 契约审计报告（2026-03-08）
 
-范围：`croupier-dashboard` 前端服务层 vs `croupier/services/server/modules` 后端 API 定义。
+范围：历史迁移审计记录，原始范围为旧前端服务层与旧后端 API 定义，不代表当前 `wingman` 实现。
 
 ## 已修复
 

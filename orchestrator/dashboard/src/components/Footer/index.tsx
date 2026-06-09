@@ -16,13 +16,13 @@ const Footer: React.FC = () => {
           blankTarget: true,
         },
         {
-          key: 'croupier',
+          key: 'wingman',
           title: (
             <span>
-              <GithubOutlined style={{ marginRight: 6 }} /> Croupier
+              <GithubOutlined style={{ marginRight: 6 }} /> Wingman
             </span>
           ),
-          href: 'https://github.com/cuihairu/croupier',
+          href: 'https://github.com/cuihaitao/wingman',
           blankTarget: true,
         },
         {

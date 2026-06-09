@@ -796,3 +796,6 @@ type TabLayout = FormDetailLayout | ListLayout | FormLayout | DetailLayout | Cus
 - [用户指南](./WORKSPACE_USER_GUIDE.md)
 - [开发指南](./WORKSPACE_DEV_GUIDE.md)
 - [治理手册](./workspace-governance-playbook.md)
+  > 历史文档说明
+  >
+  > 本文档来自早期迁移内容，描述的是一套 `workspace` 配置 API。当前 `wingman` 仓库内的 `orchestrator/server` 并未实现本文档中的 `/api/v1/workspaces/**` 接口。在后端能力补齐之前，本文档不能作为当前仓库的有效联调契约。

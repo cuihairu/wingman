@@ -172,7 +172,7 @@ git push origin :refs/tags/v0.1.6
 ### 1. 访问 GitHub Releases 页面
 
 ```
-https://github.com/[your-org]/croupier-dashboard/releases/new
+https://github.com/[your-org]/wingman/releases/new
 ```
 
 ### 2. 填写 Release 信息

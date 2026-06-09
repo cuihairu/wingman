@@ -19,4 +19,9 @@ export default {
   ...pwa,
   ...component,
   ...pages,
+  'pages.layouts.userLayout.title':
+    'Wingman para orquestração, automação e auditoria operacional',
+  'pages.login.accountLogin.errorMessage': 'Usuário ou senha incorretos',
+  'pages.login.username.placeholder': 'Usuário',
+  'pages.login.password.placeholder': 'Senha',
 };

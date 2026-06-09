@@ -1,6 +1,6 @@
 import { request } from '@umijs/max';
 
-// Canonical frontend profile DTO normalized from croupier/internal/api/profile/dto.go ProfileGetResponse.
+// Canonical frontend profile DTO used by the Wingman dashboard.
 export type MeProfile = {
   id?: number;
   username: string;
@@ -16,7 +16,7 @@ export type MeProfile = {
   lastLoginAt?: string;
 };
 
-// Canonical frontend game-scope DTO normalized from croupier/internal/api/profile/dto.go ProfileGame.
+// Canonical frontend game-scope DTO used by the Wingman dashboard.
 export type ProfileGame = {
   gameId?: string;
   name?: string;
@@ -26,7 +26,7 @@ export type ProfileGame = {
   permissions?: string[];
 };
 
-// Canonical frontend permission DTO normalized from croupier/internal/api/profile/dto.go ProfilePermission.
+// Canonical frontend permission DTO used by the Wingman dashboard.
 export type ProfilePermission = {
   resource: string;
   actions: string[];
@@ -44,8 +44,8 @@ function normalizeProfileGame(game: any): ProfileGame {
     envs: Array.isArray(game?.envs)
       ? game.envs
       : Array.isArray(game?.envMeta)
-      ? game.envMeta.map((env: any) => env?.env).filter(Boolean)
-      : [],
+        ? game.envMeta.map((env: any) => env?.env).filter(Boolean)
+        : [],
     permissions: Array.isArray(game?.permissions) ? game.permissions : [],
   };
 }

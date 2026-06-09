@@ -22,4 +22,8 @@ export default {
   ...pwa,
   ...component,
   ...pages,
+  'pages.layouts.userLayout.title': 'Wingman অর্কেস্ট্রেশন, অটোমেশন এবং অডিট কন্ট্রোল প্লেন',
+  'pages.login.accountLogin.errorMessage': 'ব্যবহারকারীর নাম বা পাসওয়ার্ড সঠিক নয়',
+  'pages.login.username.placeholder': 'ব্যবহারকারীর নাম',
+  'pages.login.password.placeholder': 'পাসওয়ার্ড',
 };

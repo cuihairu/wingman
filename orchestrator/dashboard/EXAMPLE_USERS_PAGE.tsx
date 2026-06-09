@@ -7,7 +7,7 @@
  * 2. src/access.ts - 添加权限检查
  * 3. src/locales/en-US/menu.ts - 添加英文菜单
  * 4. src/locales/zh-CN/menu.ts - 添加中文菜单
- * 5. src/services/croupier/index.ts - 添加 API 调用
+ * 5. src/services/api 或 src/services/wingman.ts - 添加 API 调用
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
