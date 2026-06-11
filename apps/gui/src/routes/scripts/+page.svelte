@@ -14,17 +14,23 @@
 			logs.add('未连接到服务器', 'error');
 			return;
 		}
+		const script = $scripts.find(item => item.id === id);
 		try {
 			if (isRunning) {
-				await scripts.stop('script_' + id);
-				logs.add(`已停止脚本: ${id}`, 'info');
+				await scripts.stop(id);
+				logs.add(`已停止脚本: ${script?.name || id}`, 'info');
 			} else {
-				await scripts.start(id);
-				logs.add(`已启动脚本: ${id}`, 'success');
+				await scripts.start(id, script?.path);
+				logs.add(`已启动脚本: ${script?.name || id}`, 'success');
 			}
 		} catch (error: any) {
 			logs.add(`操作失败: ${error}`, 'error');
 		}
+	}
+
+	async function refreshScripts() {
+		await scripts.load();
+		logs.add('脚本列表已刷新', 'info');
 	}
 </script>
 
@@ -36,6 +42,7 @@
 <div class="card">
 	<div class="card-header">
 		<span class="card-title">脚本列表</span>
+		<button class="btn btn-sm" onclick={refreshScripts}>刷新</button>
 	</div>
 	<div class="card-body">
 		<div class="script-list">
@@ -132,6 +139,7 @@
 	}
 
 	.btn:hover { background: var(--border-color); }
+	.btn-sm { padding: 6px 12px; font-size: 12px; }
 	.btn-primary { background: var(--accent-green); color: white; border-color: var(--accent-green); }
 	.btn-primary:hover { background: #2ea043; }
 	.btn-danger { background: var(--accent-red); color: white; border-color: var(--accent-red); }

@@ -1,6 +1,6 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-06-07
+> 最后更新: 2026-06-12
 > 状态: 开发中 - GUI/Dashboard 功能补全阶段
 
 ---
@@ -13,7 +13,7 @@
 | M2: 触发器系统 | 条件触发、自动化配置 | ✅ 完成 | 100% |
 | M3: 宏系统 | 录制回放 | ✅ 完成 | 100% |
 | M4: 远程编排 | Orchestrator 中控、Agent 通信 | 🚧 进行中 | 80% |
-| M5: GUI 界面 | 本地控制台 + 远程 Dashboard | 🚧 进行中 | 75% |
+| M5: GUI 界面 | 本地控制台 + 远程 Dashboard | 🚧 进行中 | 80% |
 | M6: 人性化模拟 | 防检测、随机化 | ✅ 完成 | 100% |
 | M7: 调试器集成 | EmmyLua 调试支持 | ✅ 完成 | 100% |
 
@@ -42,19 +42,19 @@
   - [ ] CPU/内存使用率图表
   - [ ] 触发器实时触发事件流
 - [ ] **IPC 连接稳定性**
-  - [ ] 断线自动重连 (connection store)
+  - [x] 断线自动重连 (connection store)
   - [ ] 连接状态 UI 指示器增强
   - [ ] IPC 调用超时处理
 - [ ] **Settings 页面增强** (`settings/+page.svelte`)
-  - [ ] IPC 端点配置 (已有基础)
+  - [x] IPC 端点配置 (已有基础)
   - [ ] 远程 Orchestrator 地址配置
   - [ ] 开机自启设置
   - [ ] 日志级别配置
 - [ ] **Logs 页面增强** (`logs/+page.svelte` — 当前仅内存日志)
   - [ ] 接收 IPC 推送的 runtime 日志
-  - [ ] 日志级别过滤 (info/warn/error)
-  - [ ] 日志搜索
-  - [ ] 日志导出
+  - [x] 日志级别过滤 (info/warn/error)
+  - [x] 日志搜索
+  - [x] 日志导出
 
 ### Orchestrator Dashboard (React + Ant Design Pro)
 
@@ -260,13 +260,13 @@
 |------|--------|--------|------|
 | **Runtime (C++)** | 核心引擎 | 95% | screen/input/trigger/vision/btree/macro/human 全部完成 |
 | | IPC Server | 75% | Named Pipe + UDS 已实现，缺少事件推送 |
-| | RPC Handlers | 40% | 仅 system + trigger，缺 script/screenshot/window |
+| | RPC Handlers | 55% | system + trigger + script 已接通，缺 screenshot/window 和事件推送 |
 | | Agent Client | 70% | outbound TCP 已实现，缺心跳重连 |
 | | 脚本引擎 | 100% | Lua (sol2) + Python (pybind11) 双语言 |
 | **GUI (Tauri)** | 框架 | 100% | Tauri 2.0 + Svelte 5 |
-| | 页面实现 | 70% | dashboard/scripts/triggers/settings/logs 框架完成，编辑器改用 VSCode |
+| | 页面实现 | 80% | dashboard/scripts/triggers/settings/logs 已可用，dashboard/logs/trigger 编辑链路已增强 |
 | | 组件库 | 55% | RegionPicker + ColorPicker，不建编辑器组件，缺预览组件 |
-| | IPC 通信 | 80% | 6 个 command 模块，缺事件监听 |
+| | IPC 通信 | 85% | 连接重试、profile 脚本启停、trigger 配置读写已接通，仍缺事件监听 |
 | **Orchestrator (Go)** | HTTP API | 80% | 7 个 handler，缺 workflow API |
 | | WebSocket | 70% | Hub 基础完成，缺事件广播 |
 | | Agent Client | 75% | TCP 二进制协议已实现，缺心跳管理 |

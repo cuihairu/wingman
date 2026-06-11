@@ -15,8 +15,9 @@ function createRouter() {
 	}
 
 	const current = derived(hash, ($hash) => $hash);
+	const state = derived(hash, ($hash) => ({ current: $hash }));
 
-	return { current, navigate, init };
+	return { subscribe: state.subscribe, current, navigate, init };
 }
 
 export const router = createRouter();

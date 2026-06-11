@@ -37,10 +37,14 @@ pub async fn get_scripts(
 pub async fn start_script(
     state: tauri::State<'_, AppState>,
     id: String,
+    path: Option<String>,
 ) -> Result<ScriptStatus, String> {
     let mut client = state.ipc_client.lock().await;
+    let script_path = path
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| script_path_from_id(&id));
     let response = client
-        .send("script.start", json!({ "path": format!("scripts/{}.lua", id) }))
+        .send("script.start", json!({ "path": script_path }))
         .await?;
 
     if let Some(success) = response["data"]["success"].as_bool() {
@@ -206,6 +210,14 @@ fn profile_path(id: &str) -> PathBuf {
     let mut path = profiles_dir();
     path.push(format!("{}.json", id));
     path
+}
+
+fn script_path_from_id(id: &str) -> String {
+    let value = id.trim();
+    if value.contains('/') || value.contains('\\') || value.ends_with(".lua") || value.ends_with(".py") {
+        return value.to_string();
+    }
+    format!("scripts/{}.lua", value)
 }
 
 fn local_data_dir() -> PathBuf {

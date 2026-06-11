@@ -65,6 +65,15 @@ function createProfilesStore() {
 	const store = writable<GameProfile[]>([]);
 	const activeId = writable<string>('');
 	const invoke = (window as any).__TAURI_INVOKE__;
+	let currentProfiles: GameProfile[] = [];
+	let currentActiveId = '';
+
+	store.subscribe(value => {
+		currentProfiles = value;
+	});
+	activeId.subscribe(value => {
+		currentActiveId = value;
+	});
 
 	const withDefaultHotkeys = (profile: any): GameProfile => ({
 		...profile,
@@ -94,14 +103,34 @@ function createProfilesStore() {
 			} catch { /* ignore */ }
 		},
 		async setActive(id: string) {
-			if (!invoke) return;
+			if (!invoke) {
+				activeId.set(id);
+				return;
+			}
 			try {
 				await invoke('set_active_profile', { id });
 				activeId.set(id);
 			} catch { /* ignore */ }
 		},
 		async create(name: string) {
-			if (!invoke) return '';
+			if (!invoke) {
+				const id = `profile_${Date.now()}`;
+				const profile = withDefaultHotkeys({
+					id,
+					name,
+					version: '1.0',
+					description: '',
+					window: { title: '', className: '', processName: '', exactMatch: false, fullscreen: false },
+					colors: [],
+					images: [],
+					triggers: [],
+					scripts: [],
+					settings: {},
+				});
+				store.update(items => [...items, profile]);
+				if (!currentActiveId) activeId.set(id);
+				return id;
+			}
 			try {
 				const id = await invoke('create_profile', { name });
 				await this.load();
@@ -109,27 +138,53 @@ function createProfilesStore() {
 			} catch { return ''; }
 		},
 		async remove(id: string) {
-			if (!invoke) return;
+			if (!invoke) {
+				store.update(items => items.filter(profile => profile.id !== id));
+				if (currentActiveId === id) {
+					activeId.set(currentProfiles.find(profile => profile.id !== id)?.id || '');
+				}
+				return;
+			}
 			try {
 				await invoke('delete_profile', { id });
 				await this.load();
 			} catch { /* ignore */ }
 		},
 		async update(profile: GameProfile) {
-			if (!invoke) return;
+			if (!invoke) {
+				const normalized = withDefaultHotkeys(profile);
+				store.update(items => items.map(item => item.id === normalized.id ? normalized : item));
+				return;
+			}
 			try {
 				await invoke('update_profile', { profile });
 				await this.load();
 			} catch { /* ignore */ }
 		},
 		async exportToJson(id: string) {
-			if (!invoke) return '';
+			if (!invoke) {
+				const profile = currentProfiles.find(item => item.id === id);
+				return profile ? JSON.stringify(profile, null, 2) : '';
+			}
 			try {
 				return await invoke('export_profile_json', { id });
 			} catch { return ''; }
 		},
 		async importFromJson(json: string) {
-			if (!invoke) return false;
+			if (!invoke) {
+				try {
+					const profile = withDefaultHotkeys(JSON.parse(json));
+					store.update(items => {
+						const exists = items.some(item => item.id === profile.id);
+						return exists
+							? items.map(item => item.id === profile.id ? profile : item)
+							: [...items, profile];
+					});
+					return true;
+				} catch {
+					return false;
+				}
+			}
 			try {
 				await invoke('import_profile_json', { json });
 				await this.load();

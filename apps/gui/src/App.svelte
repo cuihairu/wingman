@@ -19,6 +19,7 @@
 	router.init();
 
 	const invoke = (window as any).__TAURI_INVOKE__;
+	let reconnecting = false;
 
 	async function loadAllData() {
 		await Promise.allSettled([
@@ -27,6 +28,20 @@
 			profiles.load(),
 			profiles.loadActive(),
 		]);
+	}
+
+	async function reconnectOnce() {
+		if (reconnecting || !invoke || !$settings.autoReconnect) return;
+		reconnecting = true;
+		try {
+			await connection.connect($settings.ipcEndpoint);
+			await loadAllData();
+			logs.add('已自动重连到本地 runtime IPC', 'success');
+		} catch {
+			// 等待下一轮心跳。
+		} finally {
+			reconnecting = false;
+		}
 	}
 
 	$effect(() => {
@@ -42,7 +57,7 @@
 			// 生产模式：自动连接
 			(async () => {
 				try {
-					await connection.connect('wingman');
+					await connection.connect($settings.ipcEndpoint);
 					logs.add('已自动连接到本地 runtime IPC', 'success');
 					await loadAllData();
 				} catch {
@@ -50,6 +65,21 @@
 				}
 			})();
 		}
+	});
+
+	$effect(() => {
+		if (!invoke) return;
+		const interval = window.setInterval(async () => {
+			if ($connection.connected) {
+				const status = await connection.refresh();
+				if (!status) {
+					logs.add('runtime IPC 连接已断开', 'warning');
+				}
+				return;
+			}
+			await reconnectOnce();
+		}, 5000);
+		return () => window.clearInterval(interval);
 	});
 </script>
 

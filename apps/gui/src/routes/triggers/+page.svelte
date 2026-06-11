@@ -26,35 +26,49 @@
 		{ value: 'log', label: '日志' },
 	];
 
+	function withEditorDefaults(config: TriggerConfig): TriggerConfig {
+		return {
+			...config,
+			condition: {
+				...config.condition,
+				tolerance: config.condition.tolerance ?? 10,
+				interval: config.condition.interval ?? 1000,
+				region: config.condition.region ?? { x: 0, y: 0, width: 0, height: 0 },
+			},
+			oneShot: config.oneShot ?? false,
+			cooldown: config.cooldown ?? 0,
+		};
+	}
+
 	function selectTrigger(id: string) {
 		selectedId = id;
 		const t = $triggers.find(t => t.id === id);
-		editing = t ? structuredClone(t) : null;
+		editing = t ? withEditorDefaults(structuredClone(t)) : null;
 	}
 
-	function newTrigger() {
-		const id = Date.now().toString();
-		const config: TriggerConfig = {
-			id,
+	async function newTrigger() {
+		const fallbackId = Date.now().toString();
+		const config: TriggerConfig = withEditorDefaults({
+			id: fallbackId,
 			name: '新建触发器',
 			enabled: true,
-			condition: { type: 'color_found', value: '#ff0000', tolerance: 10, interval: 1000 },
+			condition: { type: 'color_found', value: '#ff0000', region: { x: 0, y: 0, width: 0, height: 0 }, tolerance: 10, interval: 1000 },
 			actions: [],
-		};
-		triggers.add(config);
+		});
+		const id = await triggers.add(config) || fallbackId;
 		selectTrigger(id);
 		logs.add('已创建触发器', 'info');
 	}
 
-	function saveTrigger() {
+	async function saveTrigger() {
 		if (!editing) return;
-		triggers.update(editing.id, editing);
+		await triggers.update(editing.id, editing);
 		logs.add(`已保存触发器: ${editing.name}`, 'success');
 	}
 
-	function deleteTrigger() {
+	async function deleteTrigger() {
 		if (!editing) return;
-		triggers.remove(editing.id);
+		await triggers.remove(editing.id);
 		selectedId = null;
 		editing = null;
 		logs.add('已删除触发器', 'info');
@@ -83,8 +97,8 @@
 		editing = { ...editing, actions };
 	}
 
-	function toggleTrigger(id: string) {
-		triggers.toggle(id);
+	async function toggleTrigger(id: string) {
+		await triggers.toggle(id);
 	}
 
 	function handleTriggerKeydown(event: KeyboardEvent, id: string) {

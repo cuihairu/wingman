@@ -24,13 +24,23 @@ function createScriptsStore() {
 				store.set(scripts);
 			} catch { /* ignore */ }
 		},
-		async start(id: string) {
-			if (!invoke) return;
-			await invoke('start_script', { id });
+		async start(id: string, path?: string) {
+			if (!invoke) {
+				store.update(items => items.map(script => (
+					script.id === id ? { ...script, is_running: true } : script
+				)));
+				return;
+			}
+			await invoke('start_script', { id, path });
 			await this.load();
 		},
 		async stop(scriptId: string) {
-			if (!invoke) return;
+			if (!invoke) {
+				store.update(items => items.map(script => (
+					script.id === scriptId ? { ...script, is_running: false } : script
+				)));
+				return;
+			}
 			await invoke('stop_script', { scriptId });
 			await this.load();
 		},

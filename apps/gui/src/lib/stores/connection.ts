@@ -7,12 +7,30 @@ interface ConnectionState {
 	ipcEndpoint: string;
 }
 
+export interface SystemStatus {
+	server: string;
+	version: string;
+	uptime: number;
+	running_scripts: number;
+	paused: boolean;
+}
+
 function createConnectionStore() {
 	const store = writable<ConnectionState>({
 		connected: false,
 		version: '-',
 		paused: false,
 		ipcEndpoint: 'wingman',
+	});
+	let currentState: ConnectionState = {
+		connected: false,
+		version: '-',
+		paused: false,
+		ipcEndpoint: 'wingman',
+	};
+
+	store.subscribe(value => {
+		currentState = value;
 	});
 
 	const invoke = (window as any).__TAURI_INVOKE__;
@@ -43,7 +61,14 @@ function createConnectionStore() {
 			}
 			const ipcEndpoint = endpoint || 'wingman';
 			await invoke('connect_ipc', { endpoint: ipcEndpoint });
-			store.update(s => ({ ...s, connected: true, ipcEndpoint }));
+			const status = await invoke('get_system_status') as SystemStatus;
+			store.update(s => ({
+				...s,
+				connected: true,
+				ipcEndpoint,
+				version: status.version || s.version,
+				paused: status.paused,
+			}));
 		},
 		async disconnect() {
 			if (!invoke) {
@@ -79,15 +104,28 @@ function createConnectionStore() {
 			store.update(s => ({ ...s, paused: false }));
 			return Number(stopped || 0);
 		},
-		async refresh() {
-			if (!invoke) return;
+		async refresh(): Promise<SystemStatus | null> {
+			if (!invoke) {
+				return {
+					server: 'wingman',
+					version: 'wingman 0.1.0 (dev)',
+					uptime: 0,
+					running_scripts: 0,
+					paused: currentState.paused,
+				};
+			}
 			try {
-				const status = await invoke('get_system_status');
+				const status = await invoke('get_system_status') as SystemStatus;
 				store.update(s => ({
 					...s,
+					version: status.version || s.version,
 					paused: status.paused,
 				}));
-			} catch { /* ignore */ }
+				return status;
+			} catch {
+				store.update(s => ({ ...s, connected: false }));
+				return null;
+			}
 		},
 	};
 }
