@@ -13,7 +13,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tauri-apps/cli": "^2.0.0",
     "@tsconfig/svelte": "^5.0.8",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.1",
     "svelte": "^5.55.9",
     "svelte-check": "^4.4.8",
     "typescript": "^6.0.3",
