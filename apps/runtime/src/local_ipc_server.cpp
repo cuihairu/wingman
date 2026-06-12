@@ -3,6 +3,7 @@
 #include "wingman/ipc/ipc_factory.hpp"
 #include "wingman/rpc/rpc_dispatcher.hpp"
 #include "wingman/rpc/script_handler.hpp"
+#include "wingman/runtime/rpc/screenshot_handler.hpp"
 #include "wingman/rpc/system_handler.hpp"
 #include "wingman/runtime/rpc/system_handler.hpp"
 #include "wingman/rpc/trigger_handler.hpp"
@@ -54,6 +55,7 @@ bool LocalIpcServer::start() {
     rpc::registerRuntimeSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION, impl_->standalone);
     rpc::registerTriggerHandlers(*impl_->dispatcher, *impl_->triggerManager);
     rpc::registerScriptHandlers(*impl_->dispatcher, impl_->standalone);
+    rpc::registerScreenshotHandlers(*impl_->dispatcher);
 
     {
         std::lock_guard<std::mutex> lock(startMutex_);

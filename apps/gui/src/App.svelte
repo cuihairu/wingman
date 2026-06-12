@@ -6,15 +6,16 @@
 	import { settings } from '$lib/stores/settings';
 	import { scripts } from '$lib/stores/scripts';
 	import { triggers } from '$lib/stores/triggers';
-	import { profiles } from '$lib/stores/profiles';
+	import { profiles, activeProfile } from '$lib/stores/profiles';
 	import { logs } from '$lib/stores/logs';
+	import { screen } from '$lib/stores/screen';
 
 	import DashboardPage from './routes/dashboard/+page.svelte';
 	import ScriptsPage from './routes/scripts/+page.svelte';
+	import ScreenPage from './routes/screen/+page.svelte';
 	import LogsPage from './routes/logs/+page.svelte';
 	import SettingsPage from './routes/settings/+page.svelte';
 	import TriggersPage from './routes/triggers/+page.svelte';
-	import EditorPage from './routes/editor/+page.svelte';
 
 	router.init();
 
@@ -30,12 +31,26 @@
 		]);
 	}
 
+	async function autoStartProfileScripts() {
+		if (!$settings.autoStart || !$activeProfile) return;
+		const startupScripts = $activeProfile.scripts.filter(script => script.autoStart);
+		for (const script of startupScripts) {
+			try {
+				await scripts.start(script.name, script.path);
+				logs.add(`已自动启动脚本: ${script.name}`, 'success');
+			} catch (error: any) {
+				logs.add(`自动启动脚本失败 ${script.name}: ${error}`, 'error');
+			}
+		}
+	}
+
 	async function reconnectOnce() {
 		if (reconnecting || !invoke || !$settings.autoReconnect) return;
 		reconnecting = true;
 		try {
 			await connection.connect($settings.ipcEndpoint);
 			await loadAllData();
+			await autoStartProfileScripts();
 			logs.add('已自动重连到本地 runtime IPC', 'success');
 		} catch {
 			// 等待下一轮心跳。
@@ -52,6 +67,7 @@
 			scripts.loadDevData();
 			triggers.loadDevData();
 			profiles.loadDevData();
+			screen.loadDevData();
 			logs.add('开发模式已启动', 'info');
 		} else {
 			// 生产模式：自动连接
@@ -60,6 +76,7 @@
 					await connection.connect($settings.ipcEndpoint);
 					logs.add('已自动连接到本地 runtime IPC', 'success');
 					await loadAllData();
+					await autoStartProfileScripts();
 				} catch {
 					logs.add('自动连接失败，请在设置中手动连接', 'warning');
 				}
@@ -101,14 +118,14 @@
 				<DashboardPage />
 			{:else if $router.current === 'scripts'}
 				<ScriptsPage />
+			{:else if $router.current === 'screen'}
+				<ScreenPage />
 			{:else if $router.current === 'logs'}
 				<LogsPage />
 			{:else if $router.current === 'settings'}
 				<SettingsPage />
 			{:else if $router.current === 'triggers'}
 				<TriggersPage />
-			{:else if $router.current === 'editor'}
-				<EditorPage />
 			{/if}
 		</div>
 	</main>

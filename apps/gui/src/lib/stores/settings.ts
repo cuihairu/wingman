@@ -2,22 +2,30 @@ import { writable } from 'svelte/store';
 
 interface Settings {
 	ipcEndpoint: string;
+	orchestratorUrl: string;
 	autoReconnect: boolean;
+	autoStart: boolean;
 	minimizeOnStart: boolean;
+	logLevel: 'debug' | 'info' | 'warn' | 'error';
 	theme: 'dark';
 }
+
+const defaultSettings: Settings = {
+	ipcEndpoint: 'wingman',
+	orchestratorUrl: 'http://localhost:9527',
+	autoReconnect: true,
+	autoStart: false,
+	minimizeOnStart: false,
+	logLevel: 'info',
+	theme: 'dark',
+};
 
 function loadSettings(): Settings {
 	try {
 		const saved = localStorage.getItem('wingman-settings');
-		if (saved) return JSON.parse(saved);
+		if (saved) return { ...defaultSettings, ...JSON.parse(saved) };
 	} catch { /* ignore */ }
-	return {
-		ipcEndpoint: 'wingman',
-		autoReconnect: true,
-		minimizeOnStart: false,
-		theme: 'dark',
-	};
+	return defaultSettings;
 }
 
 function createSettingsStore() {

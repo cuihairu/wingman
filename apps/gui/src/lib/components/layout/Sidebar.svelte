@@ -4,6 +4,7 @@
 	const navItems = [
 		{ id: 'dashboard', label: '仪表板', icon: 'dashboard' },
 		{ id: 'scripts', label: '脚本管理', icon: 'scripts' },
+		{ id: 'screen', label: '屏幕预览', icon: 'screen' },
 		{ id: 'logs', label: '日志', icon: 'logs' },
 		{ id: 'triggers', label: '触发器', icon: 'triggers' },
 		{ id: 'settings', label: '设置', icon: 'settings' },
@@ -35,6 +36,14 @@
 						<polyline points="14 2 14 8 20 8"></polyline>
 						<line x1="16" y1="13" x2="8" y2="13"></line>
 						<line x1="16" y1="17" x2="8" y2="17"></line>
+					</svg>
+				{:else if item.icon === 'screen'}
+					<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<rect x="3" y="4" width="18" height="12" rx="2"></rect>
+						<line x1="8" y1="20" x2="16" y2="20"></line>
+						<line x1="12" y1="16" x2="12" y2="20"></line>
+						<path d="M8 9h8"></path>
+						<path d="M8 12h5"></path>
 					</svg>
 				{:else if item.icon === 'logs'}
 					<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

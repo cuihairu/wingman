@@ -40,6 +40,23 @@ pub struct RuntimeInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScreenRegion {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScreenshotInfo {
+    pub image: String,
+    pub width: u32,
+    pub height: u32,
+    pub timestamp: u64,
+    pub region: ScreenRegion,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TriggerInfo {
     pub id: String,
     pub name: String,

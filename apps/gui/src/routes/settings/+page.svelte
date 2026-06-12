@@ -67,6 +67,18 @@
 		logs.add(ok ? '导入成功' : '导入失败', ok ? 'success' : 'error');
 	}
 
+	function resetSettings() {
+		settings.update({
+			ipcEndpoint: 'wingman',
+			orchestratorUrl: 'http://localhost:9527',
+			autoReconnect: true,
+			autoStart: false,
+			minimizeOnStart: false,
+			logLevel: 'info',
+		});
+		logs.add('已恢复默认应用设置', 'info');
+	}
+
 	function updateProfileField(field: keyof GameProfile, value: any) {
 		if (!editingProfile) return;
 		editingProfile = { ...editingProfile, [field]: value };
@@ -125,7 +137,27 @@
 
 <div class="card">
 	<div class="card-header">
+		<span class="card-title">Dashboard / Orchestrator</span>
+	</div>
+	<div class="card-body">
+		<div class="form-group">
+			<span class="form-label">Orchestrator API 地址</span>
+			<input
+				type="text"
+				class="form-input"
+				value={$settings.orchestratorUrl}
+				onchange={(e) => settings.update({ orchestratorUrl: (e.target as HTMLInputElement).value.trim() || 'http://localhost:9527' })}
+				placeholder="http://localhost:9527"
+			>
+			<div class="empty-hint">Dashboard 默认通过 `/api` 访问服务端；GUI 这里记录本机编排服务地址，供后续一键打开和联调使用。</div>
+		</div>
+	</div>
+</div>
+
+<div class="card">
+	<div class="card-header">
 		<span class="card-title">应用程序</span>
+		<button class="btn btn-sm" onclick={resetSettings}>恢复默认</button>
 	</div>
 	<div class="card-body">
 		<div class="form-group">
@@ -149,6 +181,30 @@
 				>
 				<span>启用</span>
 			</label>
+		</div>
+		<div class="form-group">
+			<span class="form-label">启动后自动加载当前配置脚本</span>
+			<label class="checkbox-label">
+				<input
+					type="checkbox"
+					checked={$settings.autoStart}
+					onchange={() => settings.update({ autoStart: !$settings.autoStart })}
+				>
+				<span>启用</span>
+			</label>
+		</div>
+		<div class="form-group">
+			<span class="form-label">日志级别</span>
+			<select
+				class="form-input"
+				value={$settings.logLevel}
+				onchange={(e) => settings.update({ logLevel: (e.target as HTMLSelectElement).value as any })}
+			>
+				<option value="debug">debug</option>
+				<option value="info">info</option>
+				<option value="warn">warn</option>
+				<option value="error">error</option>
+			</select>
 		</div>
 	</div>
 </div>

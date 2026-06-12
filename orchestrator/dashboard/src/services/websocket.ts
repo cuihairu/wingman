@@ -150,19 +150,22 @@ class WebSocketService {
   // Workflow event subscriptions
   onWorkflowSubmitted(listener: (data: Record<string, unknown>) => void): () => void {
     return this.on('workflow', (msg) => {
-      if (msg.event === 'submitted') listener(msg.data ?? {});
+      const event = this.getNestedEvent(msg);
+      if (event.name === 'submitted') listener(event.data);
     });
   }
 
   onWorkflowStatusChanged(listener: (data: Record<string, unknown>) => void): () => void {
     return this.on('workflow', (msg) => {
-      if (msg.event === 'status_changed') listener(msg.data ?? {});
+      const event = this.getNestedEvent(msg);
+      if (event.name === 'status_changed') listener(event.data);
     });
   }
 
   onWorkflowProgress(listener: (data: Record<string, unknown>) => void): () => void {
     return this.on('workflow', (msg) => {
-      if (msg.event === 'progress') listener(msg.data ?? {});
+      const event = this.getNestedEvent(msg);
+      if (event.name === 'progress') listener(event.data);
     });
   }
 
@@ -231,6 +234,19 @@ class WebSocketService {
         }
       });
     }
+  }
+
+  private getNestedEvent(message: WSMessage): { name?: string; data: Record<string, unknown> } {
+    const outerData = message.data ?? {};
+    const nestedEvent = typeof outerData.event === 'string' ? outerData.event : undefined;
+    const nestedData = outerData.data && typeof outerData.data === 'object'
+      ? (outerData.data as Record<string, unknown>)
+      : outerData;
+
+    return {
+      name: message.event || nestedEvent,
+      data: nestedData,
+    };
   }
 
   private notifyConnectionState(connected: boolean): void {

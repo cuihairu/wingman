@@ -36,6 +36,8 @@ fn main() {
             commands::system::resume_all,
             commands::system::stop_all,
             commands::system::is_paused,
+            // 屏幕预览
+            commands::screen::capture_screenshot,
             // 触发器管理
             commands::triggers::get_triggers,
             commands::triggers::add_trigger,

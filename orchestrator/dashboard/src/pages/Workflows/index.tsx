@@ -50,10 +50,17 @@ import {
   formatDuration,
   getWorkflowStatusColor,
   getStepStatusColor,
+  normalizeWorkflow,
 } from '@/services/wingman';
 import wsService from '@/services/websocket';
 
 const { Text, Title } = Typography;
+
+function splitList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
+  if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+  return [];
+}
 
 const Workflows: React.FC = () => {
   const actionRef = useRef();
@@ -97,28 +104,34 @@ const Workflows: React.FC = () => {
 
     // 工作流提交
     unsubscribes.push(wsService.onWorkflowSubmitted((data) => {
-      setWorkflows((prev) => [{ ...(data as unknown as Workflow), status: WorkflowStatus.Pending }, ...prev]);
+      const nextWorkflow = normalizeWorkflow(data);
+      setWorkflows((prev) => {
+        const exists = prev.some((workflow) => workflow.id === nextWorkflow.id);
+        return exists ? prev.map((workflow) => workflow.id === nextWorkflow.id ? nextWorkflow : workflow) : [nextWorkflow, ...prev];
+      });
       message.success(`工作流 ${data.name} 已提交`);
     }));
 
     // 工作流状态变化
     unsubscribes.push(wsService.onWorkflowStatusChanged((data) => {
+      const workflowId = String(data.id ?? data.workflowId ?? '');
       setWorkflows((prev) =>
         prev.map((w) =>
-          w.id === data.id ? { ...w, ...data } : w
+          w.id === workflowId ? { ...w, status: String(data.status || w.status) as WorkflowStatus, endTime: Date.now() } : w
         )
       );
 
       // 更新详情面板中当前选中的工作流
-      if (selectedWorkflow && selectedWorkflow.id === data.id) {
-        setSelectedWorkflow((prev) => prev ? { ...prev, ...data } : null);
+      if (selectedWorkflow && selectedWorkflow.id === workflowId) {
+        setSelectedWorkflow((prev) => prev ? { ...prev, status: String(data.status || prev.status) as WorkflowStatus, endTime: Date.now() } : null);
       }
     }));
 
     // 工作流进度更新
     unsubscribes.push(wsService.onWorkflowProgress((data) => {
+      const workflowId = String(data.workflowId ?? data.id ?? '');
       // 更新详情面板
-      if (selectedWorkflow && selectedWorkflow.id === data.workflowId) {
+      if (selectedWorkflow && selectedWorkflow.id === workflowId) {
         setSelectedWorkflow((prev) => {
           if (!prev) return null;
           return {
@@ -160,9 +173,9 @@ const Workflows: React.FC = () => {
           id: step.id,
           name: step.name,
           script: step.script,
-          workers: step.workers || [],
-          dependsOn: step.dependsOn || [],
-          timeoutSeconds: step.timeoutSeconds || 300,
+          workers: splitList(step.workers),
+          dependsOn: splitList(step.dependsOn),
+          timeoutSeconds: Number(step.timeoutSeconds) || 300,
           parameters: step.parameters || {},
         })),
         sharedContext: values.sharedContext || {},

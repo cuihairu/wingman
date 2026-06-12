@@ -26,14 +26,12 @@ import {
   Typography,
   message,
   Modal,
-  Tabs,
   Row,
   Col,
   Tag,
-  Drawer,
-  Divider,
 } from 'antd';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { CodeEditor } from '@/components/MonacoDynamic';
 import {
   ScriptInfo,
   ScriptLog,
@@ -48,8 +46,11 @@ import {
 } from '@/services/wingman';
 import styles from './index.less';
 
-const { Text, Paragraph } = Typography;
-const { TabPane } = Tabs;
+const { Text } = Typography;
+
+function executionIdFor(script: ScriptInfo): string {
+  return script.executionId || script.name.replace(/\.lua$/i, '');
+}
 
 const Scripts: React.FC = () => {
   const actionRef = useRef();
@@ -57,15 +58,38 @@ const Scripts: React.FC = () => {
   const [editorVisible, setEditorVisible] = useState(false);
   const [scriptContent, setScriptContent] = useState('');
   const [logs, setLogs] = useState<ScriptLog[]>([]);
-  const [activeTab, setActiveTab] = useState<'list' | 'editor' | 'logs'>('list');
+  const [runningExecutions, setRunningExecutions] = useState<Record<string, string>>({});
   const [createModalVisible, setCreateModalVisible] = useState(false);
 
   // 获取脚本列表
-  const { data: scriptsData, loading, refresh } = useRequest(getScripts, {
-    pollingInterval: 5000,
-  });
+  const { data: scriptsData, loading, refresh } = useRequest(
+    async () => {
+      const response = await getScripts();
+      return response.data || [];
+    },
+    {
+      pollingInterval: 5000,
+    },
+  );
 
-  const scripts = scriptsData || [];
+  const scripts: ScriptInfo[] = Array.isArray(scriptsData) ? (scriptsData as ScriptInfo[]) : [];
+
+  const activeExecutionId = selectedScript ? runningExecutions[selectedScript.path] || executionIdFor(selectedScript) : '';
+
+  const refreshLogs = useCallback(async (script?: ScriptInfo | null) => {
+    const target = script || selectedScript;
+    if (!target) {
+      setLogs([]);
+      return;
+    }
+
+    try {
+      const response = await getScriptLogs(runningExecutions[target.path] || executionIdFor(target), 0, 200);
+      setLogs(response.data || []);
+    } catch (error) {
+      setLogs([]);
+    }
+  }, [runningExecutions, selectedScript]);
 
   // 加载脚本内容
   const loadScriptContent = useCallback(async (script: ScriptInfo) => {
@@ -95,9 +119,14 @@ const Scripts: React.FC = () => {
   // 运行脚本
   const handleRunScript = async (script: ScriptInfo) => {
     try {
-      await runScript(script.path);
+      const response = await runScript(script.path);
+      const executionId = response.data?.executionId || executionIdFor(script);
+      setRunningExecutions((previous) => ({ ...previous, [script.path]: executionId }));
       message.success(`脚本 ${script.name} 已启动`);
       refresh();
+      if (selectedScript?.path === script.path) {
+        await refreshLogs({ ...script, executionId });
+      }
     } catch (error) {
       message.error('启动失败');
     }
@@ -106,10 +135,18 @@ const Scripts: React.FC = () => {
   // 停止脚本
   const handleStopScript = async (script: ScriptInfo) => {
     try {
-      // 假设 script.id 就是 executionId
-      await stopScript(script.id);
+      const executionId = runningExecutions[script.path] || executionIdFor(script);
+      await stopScript(executionId);
+      setRunningExecutions((previous) => {
+        const next = { ...previous };
+        delete next[script.path];
+        return next;
+      });
       message.success(`脚本 ${script.name} 已停止`);
       refresh();
+      if (selectedScript?.path === script.path) {
+        await refreshLogs(script);
+      }
     } catch (error) {
       message.error('停止失败');
     }
@@ -136,8 +173,17 @@ const Scripts: React.FC = () => {
   const handleEditScript = async (script: ScriptInfo) => {
     setSelectedScript(script);
     await loadScriptContent(script);
+    await refreshLogs(script);
     setEditorVisible(true);
   };
+
+  useEffect(() => {
+    if (!editorVisible || !selectedScript) return;
+    const timer = window.setInterval(() => {
+      refreshLogs(selectedScript);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [editorVisible, refreshLogs, selectedScript]);
 
   // 表格列定义
   const columns: ProColumns<ScriptInfo>[] = [
@@ -165,7 +211,7 @@ const Scripts: React.FC = () => {
       dataIndex: 'size',
       key: 'size',
       width: 100,
-      render: (_, record) => <Text type="secondary">{record.size} B</Text>,
+      render: (_, record) => <Text type="secondary">{record.size ? `${record.size} B` : '-'}</Text>,
     },
     {
       title: '修改时间',
@@ -173,7 +219,7 @@ const Scripts: React.FC = () => {
       key: 'modifiedTime',
       width: 180,
       render: (_, record) => (
-        <Text type="secondary">{new Date(record.modifiedTime).toLocaleString()}</Text>
+        <Text type="secondary">{record.modifiedTime ? new Date(record.modifiedTime).toLocaleString() : '-'}</Text>
       ),
     },
     {
@@ -246,7 +292,7 @@ const Scripts: React.FC = () => {
     >
       <Row gutter={[16, 16]}>
         {/* 脚本列表 */}
-        <Col xs={24} lg={activeTab === 'list' ? 24 : editorVisible ? 0 : 24}>
+        <Col xs={24} lg={editorVisible ? 8 : 24}>
           <ProCard
             title="脚本列表"
             headerBordered
@@ -273,82 +319,95 @@ const Scripts: React.FC = () => {
           </ProCard>
         </Col>
 
-        {/* 脚本编辑器 */}
         {editorVisible && (
-          <Col xs={24} lg={14}>
-            <ProCard
-              title={
-                <Space>
-                  <CodeOutlined />
-                  <span>编辑: {selectedScript?.name}</span>
-                </Space>
-              }
-              headerBordered
-              extra={
-                <Space>
-                  <Button onClick={() => setEditorVisible(false)}>
-                    关闭
-                  </Button>
-                  <Button
-                    type="primary"
-                    icon={<SaveOutlined />}
-                    onClick={handleSaveScript}
-                  >
-                    保存
-                  </Button>
-                </Space>
-              }
-              className={styles.editorCard}
-            >
-              <textarea
-                className={styles.codeEditor}
-                value={scriptContent}
-                onChange={(e) => setScriptContent(e.target.value)}
-                spellCheck={false}
-              />
-            </ProCard>
-          </Col>
-        )}
+          <Col xs={24} lg={16}>
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              {/* 脚本编辑器 */}
+              <ProCard
+                title={
+                  <Space>
+                    <CodeOutlined />
+                    <span>编辑: {selectedScript?.name}</span>
+                  </Space>
+                }
+                headerBordered
+                extra={
+                  <Space>
+                    <Button onClick={() => setEditorVisible(false)}>
+                      关闭
+                    </Button>
+                    <Button
+                      type="primary"
+                      icon={<SaveOutlined />}
+                      onClick={handleSaveScript}
+                    >
+                      保存
+                    </Button>
+                  </Space>
+                }
+                className={styles.editorCard}
+              >
+                <CodeEditor
+                  value={scriptContent}
+                  language="lua"
+                  height={520}
+                  theme="vs-dark"
+                  onChange={setScriptContent}
+                  options={{
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    scrollBeyondLastLine: false,
+                    tabSize: 2,
+                  }}
+                />
+              </ProCard>
 
-        {/* 执行日志 */}
-        {editorVisible && (
-          <Col xs={24} lg={10}>
-            <ProCard
-              title={
-                <Space>
-                  <ConsoleSqlOutlined />
-                  <span>执行日志</span>
-                </Space>
-              }
-              headerBordered
-              className={styles.logCard}
-            >
-              <div className={styles.logContainer}>
-                {logs.length === 0 ? (
-                  <Text type="secondary">暂无日志</Text>
-                ) : (
-                  logs.map((log, index) => (
-                    <div key={index} className={styles.logLine}>
-                      <Text type="secondary">
-                        {new Date(log.timestamp).toLocaleTimeString()}
-                      </Text>
-                      <Tag
-                        color={
-                          log.level === 'error'
-                            ? 'red'
-                            : log.level === 'warn'
-                            ? 'orange'
-                            : 'blue'
-                        }
-                      >
-                        {log.level}
-                      </Tag>
-                      <Text>{log.message}</Text>
-                    </div>
-                  ))
-                )}
-              </div>
-            </ProCard>
+              {/* 执行日志 */}
+              <ProCard
+                title={
+                  <Space>
+                    <ConsoleSqlOutlined />
+                    <span>执行日志</span>
+                  </Space>
+                }
+                headerBordered
+                className={styles.logCard}
+                extra={
+                  <Space>
+                    {activeExecutionId && <Tag>{activeExecutionId}</Tag>}
+                    <Button size="small" onClick={() => refreshLogs(selectedScript)}>
+                      刷新
+                    </Button>
+                  </Space>
+                }
+              >
+                <div className={styles.logContainer}>
+                  {logs.length === 0 ? (
+                    <Text type="secondary">暂无日志</Text>
+                  ) : (
+                    logs.map((log, index) => (
+                      <div key={index} className={styles.logLine}>
+                        <Text type="secondary">
+                          {new Date(log.timestamp).toLocaleTimeString()}
+                        </Text>
+                        <Tag
+                          color={
+                            log.level === 'error'
+                              ? 'red'
+                              : log.level === 'warn'
+                                ? 'orange'
+                                : 'blue'
+                          }
+                        >
+                          {log.level}
+                        </Tag>
+                        <Text>{log.message}</Text>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ProCard>
+            </Space>
           </Col>
         )}
       </Row>

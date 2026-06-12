@@ -32,6 +32,7 @@ set(RUNTIME_SOURCES
     # RPC handlers
     src/rpc/handlers/script_handler.cpp
     src/rpc/handlers/system_handler.cpp
+    src/rpc/handlers/screenshot_handler.cpp
 )
 
 # 创建可执行文件
@@ -60,6 +61,10 @@ endif()
 if(TARGET wingman::debug)
     target_link_libraries(wingman-runtime PRIVATE wingman::debug)
     target_compile_definitions(wingman-runtime PRIVATE WINGMAN_HAS_DEBUG)
+endif()
+
+if(WINGMAN_HAS_OPENCV)
+    target_compile_definitions(wingman-runtime PRIVATE WINGMAN_ENABLE_VISION)
 endif()
 
 # Python 引擎（可选）
