@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Table, Space, Input, Button, DatePicker, Tag } from 'antd';
 import { PageContainer } from '@ant-design/pro-components';
-import { listAudit, type AuditEvent } from '@/services/api';
+import { listAudit, type AuditEvent, type ListAuditParams } from '@/services/api';
 
 export default function LoginLogsPage() {
   const [rows, setRows] = useState<AuditEvent[]>([]);
@@ -20,7 +20,7 @@ export default function LoginLogsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const params: any = { page, size };
+      const params: ListAuditParams = { page, size };
       if (actor) params.actor = actor;
       params.kinds = (kinds.length > 0 ? kinds : ['login']).join(',');
       if (timeRange?.[0]) params.start = timeRange[0].toISOString();

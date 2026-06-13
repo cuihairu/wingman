@@ -12,6 +12,8 @@ export interface AuditEvent {
 export interface ListAuditParams {
   actor?: string;
   kinds?: string;
+  start?: string;
+  end?: string;
   size?: number;
   page?: number;
 }
@@ -25,6 +27,8 @@ export async function listAudit(params: ListAuditParams): Promise<ListAuditRespo
   const search = new URLSearchParams();
   if (params.actor) search.set('actor', params.actor);
   if (params.kinds) search.set('kinds', params.kinds);
+  if (params.start) search.set('start', params.start);
+  if (params.end) search.set('end', params.end);
   if (params.size) search.set('size', String(params.size));
   if (params.page) search.set('page', String(params.page));
   const suffix = search.toString();
