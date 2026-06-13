@@ -157,7 +157,12 @@
 			</div>
 
 			{#if $screen.error}
-				<div class="error-panel">{$screen.error}</div>
+				<div class="error-panel">
+					<span>{$screen.error}</span>
+					<button class="btn btn-sm" onclick={() => capture(true)} disabled={$screen.loading}>
+						{$screen.loading ? '重试中' : '重试'}
+					</button>
+				</div>
 			{/if}
 		</section>
 
@@ -401,6 +406,19 @@
 		background: rgba(248, 81, 73, 0.08);
 		border: 1px solid rgba(248, 81, 73, 0.3);
 		font-size: 13px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+	}
+
+	.error-panel .btn-sm {
+		min-height: 28px;
+		padding: 4px 10px;
+		font-size: 12px;
+		border-color: rgba(248, 81, 73, 0.4);
+		color: var(--accent-red);
+		background: transparent;
 	}
 
 	.tools-card {
