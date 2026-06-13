@@ -47,6 +47,8 @@
 	async function deleteProfile(id: string) {
 		const p = $profiles.find(p => p.id === id);
 		if (!p) return;
+		const confirmed = confirm(`确定删除配置 "${p.name}" 吗？此操作不可撤销。`);
+		if (!confirmed) return;
 		await profiles.remove(id);
 		if (editingProfile?.id === id) editingProfile = null;
 		logs.add(`已删除配置: ${p.name}`, 'info');

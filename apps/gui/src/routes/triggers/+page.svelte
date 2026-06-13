@@ -68,6 +68,8 @@
 
 	async function deleteTrigger() {
 		if (!editing) return;
+		const confirmed = confirm(`确定删除触发器 "${editing.name}" 吗？此操作不可撤销。`);
+		if (!confirmed) return;
 		await triggers.remove(editing.id);
 		selectedId = null;
 		editing = null;
