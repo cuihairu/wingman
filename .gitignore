@@ -154,3 +154,11 @@ conan-build/
 conanfile.txt
 clients/
 /*.cmake
+
+# Test/coverage artifacts
+coverage.zip
+coverage_ci/
+coverage_ci2/
+coverage_ci_latest/
+coverage_data/
+coverage_report/
