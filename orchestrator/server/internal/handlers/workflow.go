@@ -4,19 +4,18 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/workflow"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-// WorkflowHandler 工作流管理 handler
 type WorkflowHandler struct {
 	engine *workflow.Engine
 	db     *gorm.DB
 }
 
-// NewWorkflowHandler 创建工作流 handler
 func NewWorkflowHandler(engine *workflow.Engine, db *gorm.DB) *WorkflowHandler {
 	return &WorkflowHandler{
 		engine: engine,
@@ -24,8 +23,6 @@ func NewWorkflowHandler(engine *workflow.Engine, db *gorm.DB) *WorkflowHandler {
 	}
 }
 
-// HandleList 获取工作流列表
-// GET /api/workflows
 func (h *WorkflowHandler) HandleList(c *gin.Context) {
 	workflows, err := h.engine.ListWorkflows()
 	if err != nil {
@@ -39,8 +36,6 @@ func (h *WorkflowHandler) HandleList(c *gin.Context) {
 	})
 }
 
-// HandleGet 获取工作流详情（含步骤状态）
-// GET /api/workflows/:id
 func (h *WorkflowHandler) HandleGet(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -57,28 +52,26 @@ func (h *WorkflowHandler) HandleGet(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"id":          wf.ID,
-			"name":        wf.Name,
-			"description": wf.Description,
-			"status":      wf.Status,
-			"steps":       wf.GetSteps(),
+			"id":            wf.ID,
+			"name":          wf.Name,
+			"description":   wf.Description,
+			"status":        wf.Status,
+			"steps":         wf.GetSteps(),
 			"sharedContext": wf.GetContext(),
-			"stepStatus":  stepStatuses,
-			"createdTime": wf.CreatedAt.UnixMilli(),
-			"startTime":   wf.StartTime,
-			"endTime":     wf.EndTime,
+			"stepStatus":    stepStatuses,
+			"createdTime":   wf.CreatedAt.UnixMilli(),
+			"startTime":     wf.StartTime,
+			"endTime":       wf.EndTime,
 		},
 	})
 }
 
-// HandleCreate 创建并提交工作流
-// POST /api/workflows
 func (h *WorkflowHandler) HandleCreate(c *gin.Context) {
 	var req struct {
-		Name         string                   `json:"name" binding:"required"`
-		Description  string                   `json:"description"`
-		Steps        []models.WorkflowStep    `json:"steps" binding:"required"`
-		SharedContext map[string]any           `json:"sharedContext"`
+		Name          string                `json:"name" binding:"required"`
+		Description   string                `json:"description"`
+		Steps         []models.WorkflowStep `json:"steps" binding:"required"`
+		SharedContext map[string]any        `json:"sharedContext"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
@@ -106,12 +99,18 @@ func (h *WorkflowHandler) HandleCreate(c *gin.Context) {
 		return
 	}
 
-	// 异步提交执行
 	go func() {
 		if err := h.engine.Submit(wf); err != nil {
-			_ = err // Submit 内部会更新状态
+			_ = err
 		}
 	}()
+
+	_, actor, _ := middleware.GetCurrentUser(c)
+	WriteAuditLog(h.db, actor, "workflow.create", wf.Name, map[string]any{
+		"workflow_id": wf.ID,
+		"workflow":    wf.Name,
+		"ip":          c.ClientIP(),
+	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -121,8 +120,6 @@ func (h *WorkflowHandler) HandleCreate(c *gin.Context) {
 	})
 }
 
-// HandleCancel 取消工作流
-// POST /api/workflows/:id/cancel
 func (h *WorkflowHandler) HandleCancel(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -135,11 +132,15 @@ func (h *WorkflowHandler) HandleCancel(c *gin.Context) {
 		return
 	}
 
+	_, actor, _ := middleware.GetCurrentUser(c)
+	WriteAuditLog(h.db, actor, "workflow.cancel", c.Param("id"), map[string]any{
+		"workflow_id": id,
+		"ip":          c.ClientIP(),
+	})
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-// HandleGetWorkers 获取工作流的 worker 状态
-// GET /api/workflows/:id/workers
 func (h *WorkflowHandler) HandleGetWorkers(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -152,25 +153,23 @@ func (h *WorkflowHandler) HandleGetWorkers(c *gin.Context) {
 
 	workers := make([]gin.H, 0)
 	seen := make(map[string]bool)
-	for _, ss := range stepStatuses {
-		if ss.WorkerID == "" || seen[ss.WorkerID] {
+	for _, status := range stepStatuses {
+		if status.WorkerID == "" || seen[status.WorkerID] {
 			continue
 		}
-		seen[ss.WorkerID] = true
+		seen[status.WorkerID] = true
 		workers = append(workers, gin.H{
-			"workerId":  ss.WorkerID,
-			"stepId":    ss.StepID,
-			"status":    ss.Status,
-			"startTime": ss.StartTime,
-			"endTime":   ss.EndTime,
+			"workerId":  status.WorkerID,
+			"stepId":    status.StepID,
+			"status":    status.Status,
+			"startTime": status.StartTime,
+			"endTime":   status.EndTime,
 		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": workers})
 }
 
-// HandleGetStepStatus 获取步骤状态
-// GET /api/workflows/:id/steps/:stepId/status
 func (h *WorkflowHandler) HandleGetStepStatus(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -179,27 +178,25 @@ func (h *WorkflowHandler) HandleGetStepStatus(c *gin.Context) {
 	}
 	stepID := c.Param("stepId")
 
-	var ss models.StepStatus
-	if err := h.db.Where("workflow_id = ? AND step_id = ?", uint(id), stepID).First(&ss).Error; err != nil {
+	var status models.StepStatus
+	if err := h.db.Where("workflow_id = ? AND step_id = ?", uint(id), stepID).First(&status).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "step not found"})
 		return
 	}
 
-	// 检查运行中的执行状态
-	if exec, ok := h.engine.GetExecution(uint(id)); ok {
-		if execSS, ok := exec.StepState[stepID]; ok {
-			ss.Status = execSS.Status
-			ss.Message = execSS.Message
-			ss.WorkerID = execSS.WorkerID
-			if execSS.StartTime != nil {
-				ss.StartTime = execSS.StartTime
+	if execution, ok := h.engine.GetExecution(uint(id)); ok {
+		if state, ok := execution.StepState[stepID]; ok {
+			status.Status = state.Status
+			status.Message = state.Message
+			status.WorkerID = state.WorkerID
+			if state.StartTime != nil {
+				status.StartTime = state.StartTime
 			}
-			if execSS.EndTime != nil {
-				ss.EndTime = execSS.EndTime
+			if state.EndTime != nil {
+				status.EndTime = state.EndTime
 			}
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": ss})
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": status})
 }
-

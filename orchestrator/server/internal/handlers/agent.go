@@ -5,17 +5,16 @@ import (
 	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-// AgentHandler Agent 管理 handler
 type AgentHandler struct {
 	registry *agent.Registry
 	db       *gorm.DB
 }
 
-// NewAgentHandler 创建 Agent handler
 func NewAgentHandler(registry *agent.Registry, db *gorm.DB) *AgentHandler {
 	return &AgentHandler{
 		registry: registry,
@@ -23,14 +22,12 @@ func NewAgentHandler(registry *agent.Registry, db *gorm.DB) *AgentHandler {
 	}
 }
 
-// HandleList 获取 Agent 列表
-// GET /api/agents
 func (h *AgentHandler) HandleList(c *gin.Context) {
 	agents := h.registry.List()
 
 	data := make([]map[string]any, 0, len(agents))
-	for _, a := range agents {
-		data = append(data, a.ToJSON())
+	for _, current := range agents {
+		data = append(data, current.ToJSON())
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -39,8 +36,6 @@ func (h *AgentHandler) HandleList(c *gin.Context) {
 	})
 }
 
-// HandleGet 获取指定 Agent 详情
-// GET /api/agents/:agentId
 func (h *AgentHandler) HandleGet(c *gin.Context) {
 	agentID := c.Param("agentId")
 
@@ -59,8 +54,6 @@ func (h *AgentHandler) HandleGet(c *gin.Context) {
 	})
 }
 
-// HandleShutdown 关闭 Agent
-// POST /api/agents/:agentId/shutdown
 func (h *AgentHandler) HandleShutdown(c *gin.Context) {
 	agentID := c.Param("agentId")
 
@@ -73,9 +66,7 @@ func (h *AgentHandler) HandleShutdown(c *gin.Context) {
 		return
 	}
 
-	// 向 agent 发送关闭命令
-	_, err := conn.SendCommandWithTimeout("system.shutdown", nil, 10*time.Second)
-	if err != nil {
+	if _, err := conn.SendCommandWithTimeout("system.shutdown", nil, 10*time.Second); err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
 			"error":   "failed to send shutdown command: " + err.Error(),
@@ -83,8 +74,13 @@ func (h *AgentHandler) HandleShutdown(c *gin.Context) {
 		return
 	}
 
-	// 标记为 offline
 	h.registry.UpdateStatus(agentID, string(agent.StatusOffline), nil)
+
+	_, actor, _ := middleware.GetCurrentUser(c)
+	WriteAuditLog(h.db, actor, "agent.shutdown", agentID, map[string]any{
+		"agent_id": agentID,
+		"ip":       c.ClientIP(),
+	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

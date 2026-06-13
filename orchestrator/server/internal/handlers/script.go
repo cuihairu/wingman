@@ -8,20 +8,19 @@ import (
 	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/scripts"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-// ScriptHandler 脚本处理器
 type ScriptHandler struct {
 	db       *gorm.DB
 	registry *agent.Registry
 	store    scripts.Store
 }
 
-// NewScriptHandler 创建脚本处理器
 func NewScriptHandler(db *gorm.DB, scriptsDir string, registry *agent.Registry) *ScriptHandler {
 	return &ScriptHandler{
 		db:       db,
@@ -30,36 +29,27 @@ func NewScriptHandler(db *gorm.DB, scriptsDir string, registry *agent.Registry) 
 	}
 }
 
-// selectAgent selects an agent based on the provided agentId.
-// If agentId is empty, returns the first online agent (for backward compatibility).
-// If agentId is provided, returns that specific agent if online.
-// Returns nil if no suitable agent is found.
-func selectAgent(registry *agent.Registry, agentId string) *agent.AgentInfo {
+func selectAgent(registry *agent.Registry, agentID string) *agent.AgentInfo {
 	agents := registry.List()
 
-	// If agentId is specified, find that specific agent
-	if agentId != "" {
-		for _, a := range agents {
-			if a.AgentID == agentId && a.Status == agent.StatusOnline && a.Client != nil {
-				return a
+	if agentID != "" {
+		for _, current := range agents {
+			if current.AgentID == agentID && current.Status == agent.StatusOnline && current.Client != nil {
+				return current
 			}
 		}
-		// Specific agent requested but not found or not online
 		return nil
 	}
 
-	// No agentId specified: return first online agent
-	// TODO: Implement smarter selection (round-robin, least loaded, affinity)
-	for _, a := range agents {
-		if a.Status == agent.StatusOnline && a.Client != nil {
-			return a
+	for _, current := range agents {
+		if current.Status == agent.StatusOnline && current.Client != nil {
+			return current
 		}
 	}
 
 	return nil
 }
 
-// HandleList 获取脚本列表
 func (h *ScriptHandler) HandleList(c *gin.Context) {
 	var list []models.Script
 	h.db.Find(&list)
@@ -70,7 +60,6 @@ func (h *ScriptHandler) HandleList(c *gin.Context) {
 	})
 }
 
-// HandleCreate 创建脚本
 func (h *ScriptHandler) HandleCreate(c *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required"`
@@ -82,22 +71,18 @@ func (h *ScriptHandler) HandleCreate(c *gin.Context) {
 	}
 
 	trimmedName := strings.TrimSpace(req.Name)
-	// Validate script name to prevent path traversal attacks
 	if trimmedName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid script name"})
 		return
 	}
-	// Reject names with path traversal characters
 	if strings.Contains(trimmedName, "..") || strings.Contains(trimmedName, "/") || strings.Contains(trimmedName, "\\") {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid script name: path traversal characters not allowed"})
 		return
 	}
-	// Reject names with null bytes
 	if strings.Contains(trimmedName, "\x00") {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid script name: null bytes not allowed"})
 		return
 	}
-	// Reject names that are too long
 	if len(trimmedName) > 255 {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid script name: name too long (max 255 characters)"})
 		return
@@ -135,10 +120,16 @@ func (h *ScriptHandler) HandleCreate(c *gin.Context) {
 	}
 	h.db.Create(&script)
 
+	_, actor, _ := middleware.GetCurrentUser(c)
+	WriteAuditLog(h.db, actor, "script.create", script.Path, map[string]any{
+		"script_name": script.Name,
+		"script_path": script.Path,
+		"ip":          c.ClientIP(),
+	})
+
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": script})
 }
 
-// HandleDelete 删除脚本
 func (h *ScriptHandler) HandleDelete(c *gin.Context) {
 	var req struct {
 		Path string `json:"path" binding:"required"`
@@ -158,11 +149,18 @@ func (h *ScriptHandler) HandleDelete(c *gin.Context) {
 		return
 	}
 
-	h.db.Where("path = ?", scripts.DisplayPath(h.store.Root(), scriptPath)).Delete(&models.Script{})
+	targetPath := scripts.DisplayPath(h.store.Root(), scriptPath)
+	h.db.Where("path = ?", targetPath).Delete(&models.Script{})
+
+	_, actor, _ := middleware.GetCurrentUser(c)
+	WriteAuditLog(h.db, actor, "script.delete", targetPath, map[string]any{
+		"script_path": targetPath,
+		"ip":          c.ClientIP(),
+	})
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-// HandleGetContent 获取脚本内容
 func (h *ScriptHandler) HandleGetContent(c *gin.Context) {
 	var req struct {
 		Path string `json:"path" binding:"required"`
@@ -186,7 +184,6 @@ func (h *ScriptHandler) HandleGetContent(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": string(content)})
 }
 
-// HandleSave 保存脚本
 func (h *ScriptHandler) HandleSave(c *gin.Context) {
 	var req struct {
 		Path    string `json:"path" binding:"required"`
@@ -207,14 +204,19 @@ func (h *ScriptHandler) HandleSave(c *gin.Context) {
 		return
 	}
 
+	_, actor, _ := middleware.GetCurrentUser(c)
+	WriteAuditLog(h.db, actor, "script.save", req.Path, map[string]any{
+		"script_path": req.Path,
+		"ip":          c.ClientIP(),
+	})
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-// HandleRun 运行脚本
 func (h *ScriptHandler) HandleRun(c *gin.Context) {
 	var req struct {
 		Path    string `json:"path" binding:"required"`
-		AgentID string `json:"agentId"` // Optional: specific agent to run script on
+		AgentID string `json:"agentId"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
@@ -227,7 +229,6 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		return
 	}
 
-	// Select agent based on agentId (or first online if not specified)
 	onlineAgent := selectAgent(h.registry, req.AgentID)
 	if onlineAgent == nil {
 		if req.AgentID != "" {
@@ -238,9 +239,7 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		return
 	}
 
-	client := onlineAgent.Client
-	// Use 30 second timeout for script execution
-	resp, err := client.SendCommandWithTimeout("run_script", map[string]any{
+	resp, err := onlineAgent.Client.SendCommandWithTimeout("run_script", map[string]any{
 		"path": scriptPath,
 	}, 30*time.Second)
 	if err != nil {
@@ -265,6 +264,14 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		"status":     "running",
 	})
 
+	_, actor, _ := middleware.GetCurrentUser(c)
+	WriteAuditLog(h.db, actor, "script.run", req.Path, map[string]any{
+		"script_path":  req.Path,
+		"agent_id":     onlineAgent.AgentID,
+		"execution_id": scriptName,
+		"ip":           c.ClientIP(),
+	})
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
@@ -274,18 +281,16 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 	})
 }
 
-// HandleStop 停止脚本
 func (h *ScriptHandler) HandleStop(c *gin.Context) {
 	var req struct {
 		ExecutionID string `json:"executionId" binding:"required"`
-		AgentID     string `json:"agentId"` // Optional: specific agent to stop script on
+		AgentID     string `json:"agentId"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
 
-	// Select agent based on agentId (or first online if not specified)
 	onlineAgent := selectAgent(h.registry, req.AgentID)
 	if onlineAgent == nil {
 		if req.AgentID != "" {
@@ -296,8 +301,7 @@ func (h *ScriptHandler) HandleStop(c *gin.Context) {
 		return
 	}
 
-	client := onlineAgent.Client
-	if _, err := client.SendCommandWithTimeout("stop_script", map[string]any{
+	if _, err := onlineAgent.Client.SendCommandWithTimeout("stop_script", map[string]any{
 		"script_id": req.ExecutionID,
 	}, 10*time.Second); err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": err.Error()})
@@ -309,10 +313,16 @@ func (h *ScriptHandler) HandleStop(c *gin.Context) {
 		"status":     "stopped",
 	})
 
+	_, actor, _ := middleware.GetCurrentUser(c)
+	WriteAuditLog(h.db, actor, "script.stop", req.ExecutionID, map[string]any{
+		"execution_id": req.ExecutionID,
+		"agent_id":     onlineAgent.AgentID,
+		"ip":           c.ClientIP(),
+	})
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-// HandleLogs 获取脚本日志
 func (h *ScriptHandler) HandleLogs(c *gin.Context) {
 	var req struct {
 		ExecutionID string `json:"executionId" binding:"required"`
@@ -336,11 +346,11 @@ func (h *ScriptHandler) HandleLogs(c *gin.Context) {
 	query.Limit(req.Limit).Find(&logs)
 
 	data := make([]gin.H, 0, len(logs))
-	for _, l := range logs {
+	for _, item := range logs {
 		data = append(data, gin.H{
-			"timestamp": l.CreatedAt.UnixMilli(),
-			"level":     l.Level,
-			"message":   l.Output,
+			"timestamp": item.CreatedAt.UnixMilli(),
+			"level":     item.Level,
+			"message":   item.Output,
 		})
 	}
 

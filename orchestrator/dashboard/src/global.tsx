@@ -2,28 +2,27 @@ import { useIntl } from '@umijs/max';
 import { Button } from 'antd';
 import { getMessage, getNotification } from '@/utils/antdApp';
 import defaultSettings from '../config/defaultSettings';
-// Set default server origin for asset URLs if not provided
-if (typeof window !== 'undefined' && !(window as any).CROUPIER_SERVER_ORIGIN) {
-  const envOrigin = (process as any)?.env?.CROUPIER_SERVER_ORIGIN as string | undefined;
-  if (envOrigin) (window as any).CROUPIER_SERVER_ORIGIN = envOrigin;
-  else if (process.env.NODE_ENV === 'development')
-    (window as any).CROUPIER_SERVER_ORIGIN = 'http://localhost:18780';
-  else (window as any).CROUPIER_SERVER_ORIGIN = window.location.origin;
+
+if (typeof window !== 'undefined' && !(window as any).WINGMAN_SERVER_ORIGIN) {
+  const envOrigin = (process as any)?.env?.WINGMAN_SERVER_ORIGIN as string | undefined;
+  if (envOrigin) {
+    (window as any).WINGMAN_SERVER_ORIGIN = envOrigin;
+  } else if (process.env.NODE_ENV === 'development') {
+    (window as any).WINGMAN_SERVER_ORIGIN = 'http://127.0.0.1:9527';
+  } else {
+    (window as any).WINGMAN_SERVER_ORIGIN = window.location.origin;
+  }
 }
 
-// Dev-only: suppress noisy React StrictMode findDOMNode warnings from rc-* deps
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-  // eslint-disable-next-line no-console
   const origError = console.error?.bind(console);
-  // eslint-disable-next-line no-console
   console.error = (...args: any[]) => {
     try {
-      const msg = args?.[0];
-      if (typeof msg === 'string' && msg.includes('findDOMNode is deprecated')) {
-        return; // drop
+      const message = args?.[0];
+      if (typeof message === 'string' && message.includes('findDOMNode is deprecated')) {
+        return;
       }
     } catch {}
-    // eslint-disable-next-line no-console
     return origError?.(...args);
   };
 }
@@ -32,7 +31,6 @@ const { pwa } = defaultSettings;
 const isHttps = document.location.protocol === 'https:';
 
 const clearCache = () => {
-  // remove all caches
   if (window.caches) {
     caches
       .keys()
@@ -41,35 +39,30 @@ const clearCache = () => {
           caches.delete(key);
         });
       })
-      .catch((e) => console.log(e));
+      .catch((error) => console.log(error));
   }
 };
 
-// if pwa is true
 if (pwa) {
-  // Notify user if offline now
   window.addEventListener('sw.offline', () => {
     getMessage()?.warning(useIntl().formatMessage({ id: 'app.pwa.offline' }));
   });
 
-  // Pop up a prompt on the page asking the user if they want to use the latest version
   window.addEventListener('sw.updated', (event: Event) => {
-    const e = event as CustomEvent;
+    const currentEvent = event as CustomEvent;
     const reloadSW = async () => {
-      // Check if there is sw whose state is waiting in ServiceWorkerRegistration
-      // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration
-      const worker = e.detail && e.detail.waiting;
+      const worker = currentEvent.detail && currentEvent.detail.waiting;
       if (!worker) {
         return true;
       }
-      // Send skip-waiting event to waiting SW with MessageChannel
+
       await new Promise((resolve, reject) => {
         const channel = new MessageChannel();
-        channel.port1.onmessage = (msgEvent) => {
-          if (msgEvent.data.error) {
-            reject(msgEvent.data.error);
+        channel.port1.onmessage = (messageEvent) => {
+          if (messageEvent.data.error) {
+            reject(messageEvent.data.error);
           } else {
-            resolve(msgEvent.data);
+            resolve(messageEvent.data);
           }
         };
         worker.postMessage({ type: 'skip-waiting' }, [channel.port2]);
@@ -79,8 +72,9 @@ if (pwa) {
       window.location.reload();
       return true;
     };
+
     const key = `open${Date.now()}`;
-    const btn = (
+    const button = (
       <Button
         type="primary"
         onClick={() => {
@@ -91,26 +85,27 @@ if (pwa) {
         {useIntl().formatMessage({ id: 'app.pwa.serviceworker.updated.ok' })}
       </Button>
     );
+
     getNotification()?.open({
       message: useIntl().formatMessage({ id: 'app.pwa.serviceworker.updated' }),
       description: useIntl().formatMessage({ id: 'app.pwa.serviceworker.updated.hint' }),
-      btn,
+      btn: button,
       key,
       onClose: async () => null,
     });
   });
 } else if ('serviceWorker' in navigator && isHttps) {
-  // unregister service worker
   const { serviceWorker } = navigator;
   if (serviceWorker.getRegistrations) {
-    serviceWorker.getRegistrations().then((sws) => {
-      sws.forEach((sw) => {
-        sw.unregister();
+    serviceWorker.getRegistrations().then((workers) => {
+      workers.forEach((worker) => {
+        worker.unregister();
       });
     });
   }
-  serviceWorker.getRegistration().then((sw) => {
-    if (sw) sw.unregister();
+
+  serviceWorker.getRegistration().then((worker) => {
+    if (worker) worker.unregister();
   });
 
   clearCache();

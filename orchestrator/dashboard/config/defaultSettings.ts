@@ -16,7 +16,7 @@ const Settings: ProLayoutProps & {
   fixSiderbar: true,
   siderWidth: 232,
   colorWeak: false,
-  title: 'Croupier',
+  title: 'Wingman',
   pwa: true,
   logo: '/logo.svg',
   iconfontUrl: '',

@@ -184,6 +184,13 @@ func main() {
 		debugger.POST("/breakpoints", handlers.HandleDebuggerSetBreakpoints)
 	}
 
+	apiAudit := r.Group("/api")
+	apiAudit.Use(middleware.AuthRequired())
+	{
+		auditHandler := handlers.NewAuditHandler(db)
+		apiAudit.GET("/audit", auditHandler.HandleList)
+	}
+
 	r.GET("/ws", func(c *gin.Context) {
 		websocket.HandleWebSocket(c, wsHub)
 	})

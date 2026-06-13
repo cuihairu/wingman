@@ -35,9 +35,12 @@ export default {
   'profile.permissions.fallback.scripts.run.name': '脚本运行权限',
   'profile.permissions.fallback.scripts.run.description': '允许运行和停止自动化脚本',
   'profile.permissions.fallback.workflows.manage.name': '工作流管理权限',
-  'profile.permissions.fallback.workflows.manage.description': '允许创建、更新和取消工作流执行',
-  'profile.permissions.fallback.agents.manage.name': '代理管理权限',
-  'profile.permissions.fallback.agents.manage.description': '允许查看代理详情并控制代理生命周期',
+  'profile.permissions.fallback.workflows.manage.description':
+    '允许创建、更新和取消工作流执行',
+  'profile.permissions.fallback.agents.manage.name': 'Agent 管理权限',
+  'profile.permissions.fallback.agents.manage.description':
+    '允许查看 Agent 详情并控制 Agent 生命周期',
   'profile.permissions.fallback.settings.manage.name': '系统设置权限',
-  'profile.permissions.fallback.settings.manage.description': '允许更新系统设置和运行开关',
+  'profile.permissions.fallback.settings.manage.description':
+    '允许更新系统设置和运行开关',
 };

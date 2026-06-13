@@ -44,6 +44,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 		// This prevents an attacker from trying multiple usernames from the same IP
 		key := clientIP + ":" + req.Username
 		rl.Check(key) // Increment the counter (we don't care about return value here as we're already using middleware)
+		WriteAuditLog(h.db, req.Username, "login_fail", "auth.login", loginAuditMeta(clientIP, c.GetHeader("User-Agent"), "user_not_found"))
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"error": "Invalid credentials",
@@ -55,6 +56,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 		// Track failed attempts by IP and username combination
 		key := clientIP + ":" + req.Username
 		rl.Check(key)
+		WriteAuditLog(h.db, req.Username, "login_fail", "auth.login", loginAuditMeta(clientIP, c.GetHeader("User-Agent"), "invalid_password"))
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"error": "Invalid credentials",
@@ -65,6 +67,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 	// Record successful login to reset the rate limit counter
 	key := clientIP + ":" + req.Username
 	rl.RecordSuccess(key)
+	WriteAuditLog(h.db, user.Username, "login", "auth.login", loginAuditMeta(clientIP, c.GetHeader("User-Agent"), "success"))
 
 	token, err := middleware.GenerateToken(user.ID, user.Username, user.Role)
 	if err != nil {
@@ -84,6 +87,15 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 			"role":     user.Role,
 		},
 	})
+}
+
+func loginAuditMeta(clientIP, userAgent, result string) map[string]any {
+	return map[string]any{
+		"ip":         clientIP,
+		"ua":         userAgent,
+		"user_agent": userAgent,
+		"result":     result,
+	}
 }
 
 // HandleLogout 登出

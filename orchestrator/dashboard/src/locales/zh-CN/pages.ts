@@ -1,7 +1,7 @@
 export default {
-  'pages.layouts.userLayout.title': 'Croupier 是面向游戏运营的函数调度与审计平台',
+  'pages.layouts.userLayout.title': 'Wingman 是面向编排、自动化与审计的控制台',
   'pages.login.accountLogin.tab': '账户密码登录',
-  'pages.login.accountLogin.errorMessage': '错误的用户名和密码(admin/ant.design)',
+  'pages.login.accountLogin.errorMessage': '错误的用户名或密码',
   'pages.login.failure': '登录失败，请重试！',
   'pages.login.success': '登录成功！',
   'pages.login.username.placeholder': '用户名: admin or user',

@@ -37,6 +37,15 @@ type ExecutionLog struct {
 	Level    string `json:"level"`
 }
 
+// AuditLog stores operational audit events for dashboard views.
+type AuditLog struct {
+	gorm.Model
+	Actor  string `gorm:"index" json:"actor"`
+	Kind   string `gorm:"index;not null" json:"kind"`
+	Target string `gorm:"index" json:"target"`
+	Meta   string `gorm:"type:text" json:"meta"`
+}
+
 // AutoMigrate 自动迁移
 func AutoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
@@ -44,6 +53,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&Script{},
 		&Settings{},
 		&ExecutionLog{},
+		&AuditLog{},
 		&Agent{},
 		&Workflow{},
 		&StepStatus{},

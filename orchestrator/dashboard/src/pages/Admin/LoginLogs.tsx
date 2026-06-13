@@ -10,7 +10,6 @@ export default function LoginLogsPage() {
   const [actor, setActor] = useState<string>(
     () => new URLSearchParams(location.search).get('actor') || '',
   );
-  const [ip, setIP] = useState<string>('');
   const [kinds, setKinds] = useState<string[]>(['login', 'login_fail', 'login_rate_limited']);
   const [timeRange, setTimeRange] = useState<any>(null);
   const [page, setPage] = useState<number>(1);
@@ -23,14 +22,12 @@ export default function LoginLogsPage() {
     try {
       const params: any = { page, size };
       if (actor) params.actor = actor;
-      if (ip) params.ip = ip;
-      const want = kinds && kinds.length > 0 ? kinds : ['login'];
-      params.kinds = want.join(',');
-      if (timeRange && timeRange[0]) params.start = timeRange[0].toISOString();
-      if (timeRange && timeRange[1]) params.end = timeRange[1].toISOString();
-      const r = await listAudit(params);
-      setRows(r.events || []);
-      setTotal(r.total || (r.events || []).length);
+      params.kinds = (kinds.length > 0 ? kinds : ['login']).join(',');
+      if (timeRange?.[0]) params.start = timeRange[0].toISOString();
+      if (timeRange?.[1]) params.end = timeRange[1].toISOString();
+      const response = await listAudit(params);
+      setRows(response.events || []);
+      setTotal(response.total || (response.events || []).length);
     } finally {
       setLoading(false);
     }
@@ -41,105 +38,98 @@ export default function LoginLogsPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    const osMatch = (ua: string) => {
-      if (!osSel || osSel.length === 0) return true;
+    return rows.filter((event) => {
+      const ua = String(event.meta?.ua || event.meta?.user_agent || '');
       const os = detectOS(ua);
-      return osSel.includes(os);
-    };
-    const brMatch = (ua: string) => {
-      if (!brSel || brSel.length === 0) return true;
-      const br = detectBrowser(ua);
-      return brSel.includes(br);
-    };
-    return (rows || []).filter((e: any) => {
-      const ua = String(e.meta?.ua || '');
-      return osMatch(ua) && brMatch(ua);
+      const browser = detectBrowser(ua);
+      const osMatched = osSel.length === 0 || osSel.includes(os);
+      const browserMatched = brSel.length === 0 || brSel.includes(browser);
+      return osMatched && browserMatched;
     });
-  }, [rows, osSel, brSel]);
+  }, [brSel, osSel, rows]);
 
   const paged = useMemo(() => {
-    const start = (page - 1) * size;
-    return filtered.slice(start, start + size);
+    const startIndex = (page - 1) * size;
+    return filtered.slice(startIndex, startIndex + size);
   }, [filtered, page, size]);
 
   const exportCSV = () => {
-    const arr = (filtered || []).map((e: any) => {
-      const ua = String(e.meta?.ua || '');
+    const data = filtered.map((event) => {
+      const ua = String(event.meta?.ua || event.meta?.user_agent || '');
       return [
-        new Date(e.time).toISOString(),
-        e.kind,
-        e.actor,
-        e.meta?.ip || '',
-        e.meta?.ip_region || '',
+        new Date(event.time || '').toISOString(),
+        event.kind || '',
+        event.actor || '',
+        event.meta?.ip || '',
+        event.meta?.ip_region || '',
         ua,
         detectOS(ua),
         detectBrowser(ua),
       ];
     });
-    arr.unshift(['time', 'kind', 'actor', 'ip', 'region', 'ua', 'os', 'browser']);
-    const csv = arr
-      .map((r) =>
-        r
-          .map((x) => (/[",\n]/.test(String(x)) ? `"${String(x).replace(/"/g, '""')}"` : String(x)))
+    data.unshift(['time', 'kind', 'actor', 'ip', 'region', 'ua', 'os', 'browser']);
+    const csv = data
+      .map((row) =>
+        row
+          .map((cell) =>
+            /[",\n]/.test(String(cell)) ? `"${String(cell).replace(/"/g, '""')}"` : String(cell),
+          )
           .join(','),
       )
       .join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'login_logs.csv';
-    a.click();
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'login_logs.csv';
+    anchor.click();
     URL.revokeObjectURL(url);
   };
 
   function detectOS(ua: string): string {
-    const s = String(ua || '');
-    if (/android/i.test(s)) return 'Android';
-    if (/iphone|ipad|ipod/i.test(s)) return 'iOS';
-    if (/windows nt/i.test(s)) return 'Windows';
-    if (/mac os x/i.test(s)) return 'macOS';
-    if (/linux/i.test(s)) return 'Linux';
-    return s ? 'Other' : '';
+    const text = String(ua || '');
+    if (/android/i.test(text)) return 'Android';
+    if (/iphone|ipad|ipod/i.test(text)) return 'iOS';
+    if (/windows nt/i.test(text)) return 'Windows';
+    if (/mac os x/i.test(text)) return 'macOS';
+    if (/linux/i.test(text)) return 'Linux';
+    return text ? 'Other' : '';
   }
+
   function detectBrowser(ua: string): string {
-    const s = String(ua || '');
-    if (/edg\//i.test(s)) return 'Edge';
-    if (/chrome\//i.test(s)) return 'Chrome';
-    if (/safari\//i.test(s) && !/chrome\//i.test(s)) return 'Safari';
-    if (/firefox\//i.test(s)) return 'Firefox';
-    return s ? 'Other' : '';
+    const text = String(ua || '');
+    if (/edg\//i.test(text)) return 'Edge';
+    if (/chrome\//i.test(text)) return 'Chrome';
+    if (/safari\//i.test(text) && !/chrome\//i.test(text)) return 'Safari';
+    if (/firefox\//i.test(text)) return 'Firefox';
+    return text ? 'Other' : '';
   }
 
   return (
     <PageContainer>
-      <Card title="登录日志">
+      <Card title="Login Logs">
         <Space style={{ marginBottom: 12 }} wrap>
           <Input
-            placeholder="操作者"
+            placeholder="Actor"
             value={actor}
-            onChange={(e) => setActor(e.target.value)}
-            style={{ width: 160 }}
-          />
-          <Input
-            placeholder="IP"
-            value={ip}
-            onChange={(e) => setIP(e.target.value)}
+            onChange={(event) => setActor(event.target.value)}
             style={{ width: 160 }}
           />
           <Space size={4}>
-            {['login', 'login_fail', 'login_rate_limited'].map((k) => (
+            {['login', 'login_fail', 'login_rate_limited'].map((kind) => (
               <Tag
-                key={k}
-                color={kinds.includes(k) ? 'blue' : 'default'}
+                key={kind}
+                color={kinds.includes(kind) ? 'blue' : 'default'}
                 onClick={() => {
-                  setKinds((prev) =>
-                    prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k],
+                  setKinds((previous) =>
+                    previous.includes(kind)
+                      ? previous.filter((value) => value !== kind)
+                      : [...previous, kind],
                   );
                 }}
                 style={{ cursor: 'pointer' }}
               >
-                {k}
+                {kind}
               </Tag>
             ))}
           </Space>
@@ -149,20 +139,22 @@ export default function LoginLogsPage() {
             onChange={setTimeRange as any}
           />
           <Button type="primary" onClick={load}>
-            查询
+            Search
           </Button>
-          <Button onClick={exportCSV}>导出 CSV</Button>
+          <Button onClick={exportCSV}>Export CSV</Button>
         </Space>
         <Space style={{ marginBottom: 12 }} wrap>
-          <span>设备:</span>
+          <span>Device:</span>
           <Space size={4}>
             {['Windows', 'macOS', 'Linux', 'Android', 'iOS', 'Other'].map((os) => (
               <Tag
                 key={os}
                 color={osSel.includes(os) ? 'blue' : 'default'}
                 onClick={() =>
-                  setOsSel((prev) =>
-                    prev.includes(os) ? prev.filter((x) => x !== os) : [...prev, os],
+                  setOsSel((previous) =>
+                    previous.includes(os)
+                      ? previous.filter((value) => value !== os)
+                      : [...previous, os],
                   )
                 }
                 style={{ cursor: 'pointer' }}
@@ -171,20 +163,22 @@ export default function LoginLogsPage() {
               </Tag>
             ))}
           </Space>
-          <span>浏览器:</span>
+          <span>Browser:</span>
           <Space size={4}>
-            {['Edge', 'Chrome', 'Safari', 'Firefox', 'Other'].map((br) => (
+            {['Edge', 'Chrome', 'Safari', 'Firefox', 'Other'].map((browser) => (
               <Tag
-                key={br}
-                color={brSel.includes(br) ? 'blue' : 'default'}
+                key={browser}
+                color={brSel.includes(browser) ? 'blue' : 'default'}
                 onClick={() =>
-                  setBrSel((prev) =>
-                    prev.includes(br) ? prev.filter((x) => x !== br) : [...prev, br],
+                  setBrSel((previous) =>
+                    previous.includes(browser)
+                      ? previous.filter((value) => value !== browser)
+                      : [...previous, browser],
                   )
                 }
                 style={{ cursor: 'pointer' }}
               >
-                {br}
+                {browser}
               </Tag>
             ))}
           </Space>
@@ -194,46 +188,46 @@ export default function LoginLogsPage() {
               setBrSel([]);
             }}
           >
-            清空设备/浏览器筛选
+            Clear Device Filters
           </Button>
         </Space>
         <Table
-          rowKey={(r) => r.hash}
+          rowKey={(record) => record.hash || `${record.time}-${record.kind}-${record.actor}`}
           loading={loading}
+          dataSource={paged}
           columns={[
-            { title: '时间', dataIndex: 'time', render: (t) => new Date(t).toLocaleString() },
+            { title: 'Time', dataIndex: 'time', render: (value) => new Date(value).toLocaleString() },
             {
-              title: '类型',
+              title: 'Kind',
               dataIndex: 'kind',
-              render: (v) => (
-                <Tag color={v === 'login' ? 'green' : v === 'login_fail' ? 'red' : 'gold'}>{v}</Tag>
+              render: (value) => (
+                <Tag color={value === 'login' ? 'green' : value === 'login_fail' ? 'red' : 'gold'}>
+                  {value}
+                </Tag>
               ),
             },
-            { title: '操作者', dataIndex: 'actor' },
+            { title: 'Actor', dataIndex: 'actor' },
             { title: 'IP', dataIndex: ['meta', 'ip'] },
+            { title: 'Region', render: (_value, record: any) => String(record?.meta?.ip_region || '-') },
             {
-              title: '属地',
-              render: (_: any, r: any) => {
-                const v = String(r?.meta?.ip_region || '');
-                if (!v) return '-';
-                if (v === '本地') return <Tag color="blue">本地</Tag>;
-                if (v === '局域网') return <Tag color="geekblue">局域网</Tag>;
-                return v;
-              },
+              title: 'Device',
+              render: (_value, record: any) =>
+                detectOS(String(record.meta?.ua || record.meta?.user_agent || '')),
             },
-            { title: '设备', render: (_: any, r: any) => detectOS(String(r.meta?.ua || '')) },
             {
-              title: '浏览器',
-              render: (_: any, r: any) => detectBrowser(String(r.meta?.ua || '')),
+              title: 'Browser',
+              render: (_value, record: any) =>
+                detectBrowser(String(record.meta?.ua || record.meta?.user_agent || '')),
             },
           ]}
-          dataSource={paged}
           expandable={{
-            expandedRowRender: (r: any) => {
-              const ua = String(r?.meta?.ua || '');
+            expandedRowRender: (record: any) => {
+              const ua = String(record?.meta?.ua || record?.meta?.user_agent || '');
               return (
                 <div style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
-                  浏览器: {detectBrowser(ua) || '-'}\nUA: {ua || '-'}
+                  Browser: {detectBrowser(ua) || '-'}
+                  {'\n'}
+                  UA: {ua || '-'}
                 </div>
               );
             },
@@ -241,11 +235,11 @@ export default function LoginLogsPage() {
           pagination={{
             current: page,
             pageSize: size,
-            total: filtered.length,
+            total,
             showSizeChanger: true,
-            onChange: (p, ps) => {
-              setPage(p);
-              setSize(ps || 20);
+            onChange: (nextPage, nextSize) => {
+              setPage(nextPage);
+              setSize(nextSize || 20);
             },
           }}
         />

@@ -7,13 +7,13 @@ import settingDrawer from './fa-IR/settingDrawer';
 import settings from './fa-IR/settings';
 
 export default {
-  'navBar.lang': 'زبان ها  ',
-  'layout.user.link.help': 'کمک',
+  'navBar.lang': 'زبان‌ها',
+  'layout.user.link.help': 'راهنما',
   'layout.user.link.privacy': 'حریم خصوصی',
-  'layout.user.link.terms': 'مقررات',
-  'app.preview.down.block': 'این صفحه را در پروژه محلی خود بارگیری کنید',
-  'app.welcome.link.fetch-blocks': 'دریافت تمام بلوک',
-  'app.welcome.link.block-list': 'به سرعت صفحات استاندارد مبتنی بر توسعه "بلوک" را بسازید',
+  'layout.user.link.terms': 'شرایط استفاده',
+  'app.preview.down.block': 'این صفحه را در پروژه محلی خود دانلود کنید',
+  'app.welcome.link.fetch-blocks': 'دریافت همه بلوک‌ها',
+  'app.welcome.link.block-list': 'با توسعه مبتنی بر block به‌سرعت صفحه‌های استاندارد بسازید',
   ...globalHeader,
   ...menu,
   ...settingDrawer,

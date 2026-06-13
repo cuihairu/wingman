@@ -1,19 +1,19 @@
-// Utility helpers for building absolute URLs for assets (icons etc.)
-// Priority: window.CROUPIER_SERVER_ORIGIN > process.env.CROUPIER_SERVER_ORIGIN > http://localhost:18780
+// Utility helpers for building absolute URLs for assets.
+// Priority: window.WINGMAN_SERVER_ORIGIN > process.env.WINGMAN_SERVER_ORIGIN > current origin.
 
 export function getServerOrigin(): string {
-  if (typeof window !== 'undefined' && (window as any).CROUPIER_SERVER_ORIGIN) {
-    return (window as any).CROUPIER_SERVER_ORIGIN as string;
+  if (typeof window !== 'undefined' && (window as any).WINGMAN_SERVER_ORIGIN) {
+    return (window as any).WINGMAN_SERVER_ORIGIN as string;
   }
-  // In Umi, process.env.* can be injected at build/dev time
-  const fromEnv = (process as any)?.env?.CROUPIER_SERVER_ORIGIN as string | undefined;
+
+  const fromEnv = (process as any)?.env?.WINGMAN_SERVER_ORIGIN as string | undefined;
   if (fromEnv) return fromEnv;
-  // Fallback to current origin when available (prod build served by server)
+
   if (typeof window !== 'undefined' && window.location?.origin) {
     return window.location.origin;
   }
-  // Dev fallback
-  return 'http://localhost:18780';
+
+  return 'http://127.0.0.1:9527';
 }
 
 export function isAbsoluteUrl(u?: string): boolean {
@@ -21,8 +21,6 @@ export function isAbsoluteUrl(u?: string): boolean {
   return /^(https?:|data:|blob:)/i.test(u);
 }
 
-// Build full URL for assets. If `u` is already absolute, return as-is.
-// If `u` starts with '/', prefix with server origin. Else, join with '/'.
 export function assetURL(u?: string): string {
   if (!u) return '';
   if (isAbsoluteUrl(u)) return u;

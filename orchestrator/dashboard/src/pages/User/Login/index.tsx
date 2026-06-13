@@ -1,54 +1,50 @@
 import { Footer } from '@/components';
+import { BRAND } from '@/config/branding';
 import { createSession, fetchCurrentUserGames } from '@/services/api';
 import { setScope } from '@/stores/scope';
+import { getMessage } from '@/utils/antdApp';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
-import { FormattedMessage, history, SelectLang, useIntl, useModel, Helmet } from '@umijs/max';
+import { FormattedMessage, Helmet, history, SelectLang, useIntl, useModel } from '@umijs/max';
 import { Alert, Modal } from 'antd';
-import { getMessage } from '@/utils/antdApp';
-import Settings from '../../../../config/defaultSettings';
-import { BRAND } from '@/config/branding';
+import { createStyles } from 'antd-style';
 import React, { useState } from 'react';
 import { flushSync } from 'react-dom';
-import { createStyles } from 'antd-style';
+import Settings from '../../../../config/defaultSettings';
 
-const useStyles = createStyles(({ token }) => {
-  return {
-    action: {
-      marginLeft: '8px',
-      color: 'rgba(0, 0, 0, 0.2)',
-      fontSize: '24px',
-      verticalAlign: 'middle',
-      cursor: 'pointer',
-      transition: 'color 0.3s',
-      '&:hover': {
-        color: token.colorPrimaryActive,
-      },
+const useStyles = createStyles(({ token }) => ({
+  action: {
+    marginLeft: '8px',
+    color: 'rgba(0, 0, 0, 0.2)',
+    fontSize: '24px',
+    verticalAlign: 'middle',
+    cursor: 'pointer',
+    transition: 'color 0.3s',
+    '&:hover': {
+      color: token.colorPrimaryActive,
     },
-    lang: {
-      width: 42,
-      height: 42,
-      lineHeight: '42px',
-      position: 'fixed',
-      right: 16,
-      borderRadius: token.borderRadius,
-      ':hover': {
-        backgroundColor: token.colorBgTextHover,
-      },
+  },
+  lang: {
+    width: 42,
+    height: 42,
+    lineHeight: '42px',
+    position: 'fixed',
+    right: 16,
+    borderRadius: token.borderRadius,
+    ':hover': {
+      backgroundColor: token.colorBgTextHover,
     },
-    container: {
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      overflow: 'auto',
-      backgroundImage:
-        "url('https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/V-_oS6r-i7wAAAAAAAAAAAAAFl94AQBr')",
-      backgroundSize: '100% 100%',
-    },
-  };
-});
-
-// No 3rd-party login methods
+  },
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    overflow: 'auto',
+    backgroundImage:
+      "url('https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/V-_oS6r-i7wAAAAAAAAAAAAAFl94AQBr')",
+    backgroundSize: '100% 100%',
+  },
+}));
 
 const Lang = () => {
   const { styles } = useStyles();
@@ -60,24 +56,19 @@ const Lang = () => {
   );
 };
 
-const LoginMessage: React.FC<{
-  content: string;
-}> = ({ content }) => {
-  return (
-    <Alert
-      style={{
-        marginBottom: 24,
-      }}
-      message={content}
-      type="error"
-      showIcon
-    />
-  );
-};
+const LoginMessage: React.FC<{ content: string }> = ({ content }) => (
+  <Alert
+    style={{
+      marginBottom: 24,
+    }}
+    message={content}
+    type="error"
+    showIcon
+  />
+);
 
 const Login: React.FC = () => {
   const [userLoginState] = useState<{ status?: string; type?: string }>({});
-  // Only account/password login is supported
   const { initialState, setInitialState } = useModel('@@initialState');
   const [forgotOpen, setForgotOpen] = useState(false);
   const { styles } = useStyles();
@@ -87,19 +78,22 @@ const Login: React.FC = () => {
     const userInfo = await initialState?.fetchUserInfo?.();
     if (userInfo) {
       flushSync(() => {
-        setInitialState((s) => ({
-          ...s,
+        setInitialState((state) => ({
+          ...state,
           currentUser: userInfo,
         }));
       });
     }
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: { username: string; password: string }) => {
     try {
-      // RESTful: 创建会话
-      const res = await createSession({ username: values.username, password: values.password });
-      localStorage.setItem('token', res.token);
+      const response = await createSession({
+        username: values.username,
+        password: values.password,
+      });
+      localStorage.setItem('token', response.token);
+
       try {
         const gamesResp = await fetchCurrentUserGames();
         const games = Array.isArray(gamesResp?.games) ? gamesResp.games : [];
@@ -109,6 +103,7 @@ const Login: React.FC = () => {
           (Array.isArray(firstGame?.envs) && firstGame.envs[0]) ||
           (Array.isArray(firstGame?.envMeta) && firstGame.envMeta[0]?.env) ||
           undefined;
+
         if (gameId || env) {
           setScope(
             {
@@ -119,23 +114,28 @@ const Login: React.FC = () => {
           );
         }
       } catch {}
+
       getMessage()?.success(
-        intl.formatMessage({ id: 'pages.login.success', defaultMessage: '登录成功！' }),
+        intl.formatMessage({
+          id: 'pages.login.success',
+          defaultMessage: '登录成功',
+        }),
       );
+
       await fetchUserInfo();
       const urlParams = new URL(window.location.href).searchParams;
       history.push(urlParams.get('redirect') || '/');
-      return;
     } catch (error) {
       const defaultLoginFailureMessage = intl.formatMessage({
         id: 'pages.login.failure',
-        defaultMessage: '登录失败，请重试！',
+        defaultMessage: '登录失败，请重试',
       });
       console.log(error);
       getMessage()?.error(defaultLoginFailureMessage);
     }
   };
-  const { status, type: loginType } = userLoginState;
+
+  const { status } = userLoginState;
 
   return (
     <div className={styles.container}>
@@ -143,9 +143,10 @@ const Login: React.FC = () => {
         <title>
           {intl.formatMessage({
             id: 'menu.login',
-            defaultMessage: '登录页',
+            defaultMessage: '登录',
           })}
-          - {Settings.title}
+          {' - '}
+          {Settings.title}
         </title>
       </Helmet>
       <Lang />
@@ -167,70 +168,65 @@ const Login: React.FC = () => {
           initialValues={{
             autoLogin: true,
           }}
-          // remove other login methods/actions
           actions={[]}
           onFinish={async (values) => {
             await handleSubmit(values as { username: string; password: string });
           }}
         >
-          {/* Only account/password login */}
-
           {status === 'error' && (
             <LoginMessage
               content={intl.formatMessage({
                 id: 'pages.login.accountLogin.errorMessage',
-                defaultMessage: '账户或密码错误',
+                defaultMessage: '用户名或密码错误',
               })}
             />
           )}
-          {
-            <>
-              <ProFormText
-                name="username"
-                fieldProps={{
-                  size: 'large',
-                  prefix: <UserOutlined />,
-                }}
-                placeholder={intl.formatMessage({
-                  id: 'pages.login.username.placeholder',
-                  defaultMessage: '用户名',
-                })}
-                rules={[
-                  {
-                    required: true,
-                    message: (
-                      <FormattedMessage
-                        id="pages.login.username.required"
-                        defaultMessage="请输入用户名!"
-                      />
-                    ),
-                  },
-                ]}
-              />
-              <ProFormText.Password
-                name="password"
-                fieldProps={{
-                  size: 'large',
-                  prefix: <LockOutlined />,
-                }}
-                placeholder={intl.formatMessage({
-                  id: 'pages.login.password.placeholder',
-                  defaultMessage: '密码',
-                })}
-                rules={[
-                  {
-                    required: true,
-                    message: (
-                      <FormattedMessage
-                        id="pages.login.password.required"
-                        defaultMessage="请输入密码！"
-                      />
-                    ),
-                  },
-                ]}
-              />
-            </>
-          }
+
+          <ProFormText
+            name="username"
+            fieldProps={{
+              size: 'large',
+              prefix: <UserOutlined />,
+            }}
+            placeholder={intl.formatMessage({
+              id: 'pages.login.username.placeholder',
+              defaultMessage: '用户名',
+            })}
+            rules={[
+              {
+                required: true,
+                message: (
+                  <FormattedMessage
+                    id="pages.login.username.required"
+                    defaultMessage="请输入用户名"
+                  />
+                ),
+              },
+            ]}
+          />
+          <ProFormText.Password
+            name="password"
+            fieldProps={{
+              size: 'large',
+              prefix: <LockOutlined />,
+            }}
+            placeholder={intl.formatMessage({
+              id: 'pages.login.password.placeholder',
+              defaultMessage: '密码',
+            })}
+            rules={[
+              {
+                required: true,
+                message: (
+                  <FormattedMessage
+                    id="pages.login.password.required"
+                    defaultMessage="请输入密码"
+                  />
+                ),
+              },
+            ]}
+          />
+
           <div
             style={{
               marginBottom: 24,
@@ -254,8 +250,8 @@ const Login: React.FC = () => {
           onOk={() => setForgotOpen(false)}
         >
           <div>
-            <p>请联系管理员为你的账号重置密码。</p>
-            <p>如果你是管理员：在「权限 → 用户」中选择用户，点击「设置密码」即可重置。</p>
+            <p>请联系管理员为你的账户重置密码。</p>
+            <p>如果你是管理员，请在用户管理中为目标账户设置新密码。</p>
           </div>
         </Modal>
       </div>

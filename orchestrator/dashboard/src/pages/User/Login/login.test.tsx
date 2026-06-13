@@ -39,7 +39,7 @@ describe('Login Page', () => {
     const passwordInput = await rootContainer.findByPlaceholderText('密码');
 
     act(() => {
-      fireEvent.change(passwordInput, { target: { value: 'ant.design' } });
+      fireEvent.change(passwordInput, { target: { value: 'admin123456' } });
     });
 
     const submitButton = await rootContainer.findByRole('button', { name: /登\s*录/ });
