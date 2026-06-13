@@ -75,6 +75,15 @@ go build -o ../../build/go-server.exe .
 - `PUT /api/v1/profile/password`
 - `GET /api/v1/windows`
 - `GET /api/v1/settings`
+- `GET /api/agents`
+- `GET /api/agents/:agentId`
+- `GET /api/workflows`
+- `GET /api/workflows/:id`
+- `GET /api/workflows/:id/workers`
+- `GET /api/workflows/:id/steps/:stepId/status`
+- `GET /api/scripts`
+- `POST /api/scripts/content`
+- `GET /api/audit`
 
 ### 仅 `admin`
 
@@ -88,20 +97,9 @@ go build -o ../../build/go-server.exe .
 - `POST /api/v1/scripts/stop`
 - `POST /api/v1/scripts/logs`
 - `PUT /api/v1/settings`
-
-### Dashboard 兼容路由
-
-- `GET /api/agents`
-- `GET /api/agents/:agentId`
 - `POST /api/agents/:agentId/shutdown`
-- `GET /api/workflows`
-- `GET /api/workflows/:id`
-- `GET /api/workflows/:id/workers`
-- `GET /api/workflows/:id/steps/:stepId/status`
 - `POST /api/workflows`
 - `POST /api/workflows/:id/cancel`
-- `GET /api/scripts`
-- `POST /api/scripts/content`
 - `POST /api/scripts`
 - `POST /api/scripts/delete`
 - `DELETE /api/scripts`
@@ -143,6 +141,7 @@ go build -o ../../build/go-server.exe .
 - `scripts`
 - `settings`
 - `execution_logs`
+- `audit_logs`
 - `agents`
 - `workflows`
 - `step_statuses`

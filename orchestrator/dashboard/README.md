@@ -1,12 +1,12 @@
 # Wingman Dashboard
 
-`orchestrator/dashboard` 是 Wingman 的前端管理台，面向当前仓库内的 `orchestrator/server`。
+`orchestrator/dashboard` 是 Wingman 的前端管理台，对接当前仓库内的 `orchestrator/server`。
 
-当前文档仅描述本仓库已经存在并可联调的能力，不再沿用历史迁移内容中的产品和接口说明。
+当前文档只描述本仓库已经存在且可联调的能力，不再沿用历史迁移内容中的旧产品和旧接口说明。
 
 ## 概览
 
-- 前端开发端口：`http://localhost:8000`
+- 前端开发地址：`http://localhost:8000`
 - 后端默认地址：`http://127.0.0.1:9527`
 - WebSocket：`GET /ws`
 - Agent TCP Listener：`127.0.0.1:8888`
@@ -20,9 +20,9 @@
 - HTTP 框架：Gin
 - 数据访问：GORM + SQLite
 - 认证：JWT Bearer Token
-- 默认 JWT 要求：`WINGMAN_JWT_SECRET` 至少 32 个字符
+- JWT 密钥：`WINGMAN_JWT_SECRET`，长度至少 32 个字符
 
-实际实现可参考：
+实现参考：
 
 - `../server/main.go`
 - `../server/internal/config/config.go`
@@ -49,6 +49,11 @@
 
 - `GET /api/v1/status`
 - `GET /api/v1/health`
+- `GET /api/v1/profile`
+- `GET /api/v1/profile/games`
+- `GET /api/v1/profile/permissions`
+- `PUT /api/v1/profile`
+- `PUT /api/v1/profile/password`
 - `GET /api/v1/windows`
 - `GET /api/v1/settings`
 - `GET /api/agents`
@@ -59,6 +64,7 @@
 - `GET /api/workflows/:id/steps/:stepId/status`
 - `GET /api/scripts`
 - `POST /api/scripts/content`
+- `GET /api/audit`
 
 ### 仅 `admin`
 
