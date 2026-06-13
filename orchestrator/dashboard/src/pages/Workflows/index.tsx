@@ -350,7 +350,12 @@ const Workflows: React.FC = () => {
         extra: wsConnected ? (
           <Badge status="processing" text="实时连接" />
         ) : (
-          <Badge status="default" text="轮询模式" />
+          <Space>
+            <Badge status="default" text="轮询模式" />
+            <Button size="small" onClick={() => wsService.reconnect()}>
+              重连
+            </Button>
+          </Space>
         ),
       }}
     >

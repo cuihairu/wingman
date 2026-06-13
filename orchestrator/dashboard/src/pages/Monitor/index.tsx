@@ -336,8 +336,13 @@ const Monitor: React.FC = () => {
         breadcrumb: {},
       }}
       extra={[
-        <Tag key="ws" color={wsConnected ? 'green' : 'orange'}>
-          {wsConnected ? 'WebSocket 已连接' : '等待实时连接'}
+        <Tag
+          key="ws"
+          color={wsConnected ? 'green' : 'orange'}
+          style={wsConnected ? undefined : { cursor: 'pointer' }}
+          onClick={wsConnected ? undefined : () => wsService.reconnect()}
+        >
+          {wsConnected ? 'WebSocket 已连接' : '实时连接已断开，点击重连'}
         </Tag>,
         <Button
           key="status"

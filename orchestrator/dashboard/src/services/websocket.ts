@@ -98,6 +98,27 @@ class WebSocketService {
     }
   }
 
+  // reconnect() resets the backoff state and re-establishes the connection.
+  // Use this when the auto-reconnect budget has been exhausted and the user
+  // wants to retry manually instead of refreshing the page.
+  reconnect(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectAttempts = 0;
+    this.isManualClose = false;
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch {
+        // ignore close errors
+      }
+      this.ws = null;
+    }
+    this.connect();
+  }
+
   send(type: string, data?: Record<string, unknown>): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       const message: WSMessage = { type, data, timestamp: Date.now() };
