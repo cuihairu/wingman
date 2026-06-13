@@ -224,7 +224,7 @@ export default function Profile() {
           username
             ? listAudit({
                 actor: username,
-                kinds: 'login,auth_login,login_fail,login_rate_limited',
+                kinds: 'login,login_fail,login_rate_limited',
                 size: 20,
               })
             : Promise.resolve({ events: [] }),

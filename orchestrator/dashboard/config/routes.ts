@@ -73,6 +73,31 @@ export default [
     icon: 'setting',
     component: './Admin',
   },
+  // 管理员审计
+  {
+    path: '/admin',
+    name: 'Admin',
+    icon: 'shield',
+    access: 'canAdmin',
+    routes: [
+      {
+        path: '/admin',
+        redirect: '/admin/login-logs',
+      },
+      {
+        path: '/admin/login-logs',
+        name: 'Login Logs',
+        icon: 'security',
+        component: './Admin/LoginLogs',
+      },
+      {
+        path: '/admin/operation-logs',
+        name: 'Operation Logs',
+        icon: 'audit',
+        component: './Admin/OperationLogs',
+      },
+    ],
+  },
   // 错误页面
   {
     path: '/403',

@@ -1,6 +1,6 @@
 /**
  * Messages API 服务存根
- * TODO: 根据实际后端 API 实现消息通知功能
+ * 后端尚未提供消息通知接口；返回 rejected 以触发 UI 的"功能未实现"降级分支。
  */
 
 export interface MessageItem {
@@ -22,7 +22,6 @@ export interface ListMessagesResponse {
   total?: number;
 }
 
-export async function listMessages(params: ListMessagesParams): Promise<ListMessagesResponse> {
-  // 存根实现：返回空消息列表
-  return Promise.resolve({ items: [] });
+export async function listMessages(_params: ListMessagesParams): Promise<ListMessagesResponse> {
+  return Promise.reject(new Error('messages API not implemented'));
 }

@@ -1,6 +1,7 @@
 /**
- * Permissions API 服务存根
- * TODO: 根据实际后端 API 实现权限目录功能
+ * Permissions 目录 API 存根
+ * 后端仅提供 /profile/permissions（当前用户授权），未提供权限目录列表接口；
+ * 返回 rejected 以触发 UI 的"功能未实现"降级分支。
  */
 
 export interface PermissionRecord {
@@ -24,7 +25,8 @@ export interface ListPermissionsResponse {
   total?: number;
 }
 
-export async function listPermissions(params: ListPermissionsParams): Promise<ListPermissionsResponse> {
-  // 存根实现：返回空权限目录
-  return Promise.resolve({ items: [] });
+export async function listPermissions(
+  _params: ListPermissionsParams,
+): Promise<ListPermissionsResponse> {
+  return Promise.reject(new Error('permissions catalog API not implemented'));
 }
