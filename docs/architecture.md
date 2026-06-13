@@ -158,6 +158,16 @@ Runtime 远程模式和本地单机 UI 是两条不同控制路径。
 4. **命名空间对应** - `include/wingman/xxx.hpp` → `namespace wingman::xxx`
 5. **控制面分离** - 远程编排走 Go server，本地 UI 走 IPC，runtime 不暴露 WebSocket/HTTP 控制面
 
+## 多显示器截图
+
+截图支持按 `displayId` 选择目标显示器。该能力基于 `IScreen` 平台抽象（`lib/wingman/include/wingman/platform/iscreen.hpp`），三平台实现已就绪（Windows `EnumDisplayMonitors`、macOS `CGGetActiveDisplayList`、Linux X11/XRandR）。
+
+- 显示器枚举：通过 RPC method `screen.listMonitors` 查询，返回 `{ id, name, isPrimary, bounds }` 列表
+- 按显示器截图：`screenshot.capture` payload 增加可选 `displayId` 字段，省略时默认主屏（向后兼容）
+- 抽象约束：`IScreen` 是屏幕抽象的唯一规范，旧的静态 `wingman::Screen` 类已冻结（仅历史调用方使用，不再扩展），新代码必须走 `IScreen`
+
+详见 `docs/architecture-decisions.md` 的 *Display Selection* 小节与 `docs/platform-abstraction-design.md`。
+
 ## 参考项目
 
 - [moderncpp-project-template](https://github.com/madduci/moderncpp-project-template) - 应用与库分离结构

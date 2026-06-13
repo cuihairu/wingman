@@ -158,6 +158,26 @@ agent command -> CommandDispatcher -> runtime services
 
 The dispatcher must not depend on WebSocket, HTTP, or browser concepts.
 
+## Display Selection
+
+Multi-monitor capture is an extension of the existing screenshot path, not a new
+control channel.
+
+- Display enumeration flows through a dedicated RPC method `screen.listMonitors`
+  on the same dispatcher that already serves `screenshot.capture`. No new
+  listener, port, or transport is introduced.
+- Display selection flows through the existing `screenshot.capture` payload as
+  an optional `displayId` field. Omitting it preserves the current
+  primary-monitor behavior, so existing callers do not break.
+- The platform abstraction `IScreen` (see `docs/platform-abstraction-design.md`)
+  is the single source of truth for monitor enumeration and per-monitor bounds.
+  The legacy static `wingman::Screen` class is frozen for the screenshot path
+  and will be removed separately; new screenshot code must route through
+  `IScreen` rather than extending `Screen` with a parallel multi-monitor API.
+
+This keeps display selection inside the IPC/agent transport contract and avoids
+a second screen abstraction.
+
 ## Documentation Requirement
 
 When changing runtime control, local UI, or remote orchestration code, update this document and `docs/architecture.md` in the same change. If implementation is experimental, mark it explicitly as experimental instead of presenting it as the stable architecture.

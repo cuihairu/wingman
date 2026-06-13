@@ -251,6 +251,23 @@ public:
 } // namespace wingman::platform
 ```
 
+#### 唯一规范约束
+
+`IScreen` 是屏幕抽象的**唯一规范**。完整的多显示器 API 定义在
+`lib/wingman/include/wingman/platform/iscreen.hpp`，包括 `getMonitorCount`、
+`getPrimaryMonitorIndex`、`getMonitorBounds(int)`、`getMonitorName(int)`、
+`getDpiScale(int)` 等。
+
+旧的静态 `wingman::Screen` 类（`lib/wingman/include/wingman/screen.hpp` 与
+`lib/wingman/src/screen.cpp`）只支持主屏，**已冻结**：
+
+- 不得在旧 `Screen` 类上新增多显示器 API，避免出现两套并行的多显示器抽象
+- 新功能（如虚拟桌面、按 displayId 截图、显示器枚举）必须通过 `IScreen` 实现
+- 历史 `Screen` 调用方暂保持不变，迁移/删除作为独立工作推进
+
+多显示器截图的 RPC 通道与传输约束见 `docs/architecture-decisions.md` 的
+*Display Selection* 小节。
+
 ---
 
 ## 3. 平台工厂
