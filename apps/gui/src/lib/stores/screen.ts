@@ -15,11 +15,20 @@ export interface Screenshot {
 	region: ScreenRegion;
 }
 
+export interface MonitorInfo {
+	id: number;
+	name: string;
+	isPrimary: boolean;
+	bounds: ScreenRegion;
+}
+
 interface ScreenState {
 	current: Screenshot | null;
 	loading: boolean;
 	error: string;
 	lastUpdated: string;
+	monitors: MonitorInfo[];
+	monitorsError: string;
 }
 
 const DEFAULT_REGION: ScreenRegion = { x: 0, y: 0, width: 1280, height: 720 };
@@ -64,22 +73,29 @@ function createScreenStore() {
 		loading: false,
 		error: '',
 		lastUpdated: '-',
+		monitors: [],
+		monitorsError: '',
 	});
 	const invoke = (window as any).__TAURI_INVOKE__;
 
 	return {
 		subscribe: store.subscribe,
-		async capture(region: ScreenRegion = DEFAULT_REGION) {
+		async capture(region: ScreenRegion = DEFAULT_REGION, displayId: number | null = null) {
 			store.update(state => ({ ...state, loading: true, error: '' }));
 			try {
 				const screenshot = invoke
-					? await invoke('capture_screenshot', { region })
+					? await invoke('capture_screenshot', {
+						region,
+						displayId: displayId ?? null
+					})
 					: createDevScreenshot(region);
 				store.set({
 					current: screenshot,
 					loading: false,
 					error: '',
 					lastUpdated: new Date(screenshot.timestamp || Date.now()).toLocaleTimeString(),
+					monitors: getSnapshot().monitors,
+					monitorsError: getSnapshot().monitorsError,
 				});
 				return screenshot as Screenshot;
 			} catch (error: any) {
@@ -88,8 +104,34 @@ function createScreenStore() {
 				return null;
 			}
 		},
+		async listMonitors(): Promise<MonitorInfo[]> {
+			if (!invoke) {
+				store.update(state => ({
+					...state,
+					monitors: [],
+					monitorsError: 'runtime 未连接，仅显示开发预览',
+				}));
+				return [];
+			}
+			try {
+				const monitors = (await invoke('list_monitors')) as MonitorInfo[];
+				store.update(state => ({ ...state, monitors, monitorsError: '' }));
+				return monitors;
+			} catch (error: any) {
+				const message = String(error?.message || error || '无法枚举显示器');
+				store.update(state => ({ ...state, monitors: [], monitorsError: message }));
+				return [];
+			}
+		},
 		clear() {
-			store.set({ current: null, loading: false, error: '', lastUpdated: '-' });
+			store.set({
+				current: null,
+				loading: false,
+				error: '',
+				lastUpdated: '-',
+				monitors: [],
+				monitorsError: '',
+			});
 		},
 		loadDevData() {
 			const screenshot = createDevScreenshot(DEFAULT_REGION);
@@ -98,9 +140,25 @@ function createScreenStore() {
 				loading: false,
 				error: '',
 				lastUpdated: new Date(screenshot.timestamp).toLocaleTimeString(),
+				monitors: [],
+				monitorsError: '',
 			});
 		},
 	};
+
+	function getSnapshot(): ScreenState {
+		let snapshot: ScreenState = {
+			current: null,
+			loading: false,
+			error: '',
+			lastUpdated: '-',
+			monitors: [],
+			monitorsError: '',
+		};
+		const unsub = store.subscribe(s => { snapshot = s; });
+		unsub();
+		return snapshot;
+	}
 }
 
 export const screen = createScreenStore();

@@ -64,3 +64,11 @@ pub struct TriggerInfo {
     pub trigger_type: String,
     pub last_triggered: bool,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonitorInfo {
+    pub id: i32,
+    pub name: String,
+    pub is_primary: bool,
+    pub bounds: ScreenRegion,
+}

@@ -38,6 +38,7 @@ fn main() {
             commands::system::is_paused,
             // 屏幕预览
             commands::screen::capture_screenshot,
+            commands::screen::list_monitors,
             // 触发器管理
             commands::triggers::get_triggers,
             commands::triggers::add_trigger,

@@ -10,7 +10,8 @@
 	let region = $state<ScreenRegion>({ ...DEFAULT_REGION });
 	let targetColor = $state('#3fb950');
 	let tolerance = $state(12);
-	let selectedMonitor = $state('primary');
+	// null = primary (backwards compatible); number = monitor index from listMonitors
+	let selectedDisplayId = $state<number | null>(null);
 	let autoRefresh = $state(false);
 	let pointer = $state<{ x: number; y: number; color: string } | null>(null);
 
@@ -33,7 +34,7 @@
 	});
 
 	async function capture(showLog = false) {
-		const result = await screen.capture(PREVIEW_REGION);
+		const result = await screen.capture(PREVIEW_REGION, selectedDisplayId);
 		if (result && showLog) {
 			logs.add(`已刷新屏幕预览: ${result.width}x${result.height}`, 'success');
 		} else if (!result && $screen.error) {
@@ -84,6 +85,16 @@
 			height,
 		};
 	}
+
+	$effect(() => {
+		// Load monitor list on mount / when connection state changes.
+		screen.listMonitors().then(monitors => {
+			// If the previously selected id is no longer valid, reset to primary.
+			if (selectedDisplayId !== null && !monitors.some(m => m.id === selectedDisplayId)) {
+				selectedDisplayId = null;
+			}
+		});
+	});
 
 	$effect(() => {
 		if (!$screen.current) {
@@ -170,12 +181,21 @@
 			<div class="tool-section">
 				<div class="section-heading">
 					<span>显示器</span>
-					<span class="muted">基础选择</span>
+					<span class="muted">{$screen.monitors.length > 0 ? `${$screen.monitors.length} 个` : '加载中'}</span>
 				</div>
-				<select class="form-input" bind:value={selectedMonitor}>
-					<option value="primary">主显示器</option>
-					<option value="virtual" disabled>虚拟桌面（待 runtime 支持）</option>
+				<select class="form-input" bind:value={selectedDisplayId}>
+					<option value={null}>主显示器</option>
+					{#each $screen.monitors as monitor (monitor.id)}
+						<option value={monitor.id}>
+							{monitor.name || `显示器 ${monitor.id}`}
+							{monitor.isPrimary ? '（主）' : ''}
+							· {monitor.bounds.width}x{monitor.bounds.height}
+						</option>
+					{/each}
 				</select>
+				{#if $screen.monitorsError}
+					<div class="monitor-hint">{$screen.monitorsError}</div>
+				{/if}
 			</div>
 
 			<div class="tool-section">
@@ -456,6 +476,13 @@
 		border-radius: 6px;
 		color: var(--text-primary);
 		font-size: 14px;
+	}
+
+	.monitor-hint {
+		margin-top: 8px;
+		font-size: 12px;
+		color: var(--accent-yellow);
+		line-height: 1.5;
 	}
 
 	.toggle {
