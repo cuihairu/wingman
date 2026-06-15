@@ -251,4 +251,14 @@ private:
 
 } // namespace wingman::platform::linux
 
+namespace wingman::platform {
+
+std::unique_ptr<IScreen> createPlatformScreen() {
+    auto screen = std::unique_ptr<IScreen>(new linux::X11Screen());
+    screen->initialize();
+    return screen;
+}
+
+} // namespace wingman::platform
+
 #endif // __linux__

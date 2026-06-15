@@ -393,4 +393,14 @@ private:
 };
 
 } // namespace wingman::platform::mac
+
+namespace wingman::platform {
+
+std::unique_ptr<IScreen> createPlatformScreen() {
+    auto screen = std::unique_ptr<IScreen>(new mac::CocoaScreen());
+    screen->initialize();
+    return screen;
+}
+
+} // namespace wingman::platform
 #endif // __APPLE__

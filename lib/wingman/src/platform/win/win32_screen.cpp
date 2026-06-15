@@ -364,4 +364,14 @@ private:
 };
 
 } // namespace wingman::platform::win
+
+namespace wingman::platform {
+
+std::unique_ptr<IScreen> createPlatformScreen() {
+    auto screen = std::unique_ptr<IScreen>(new win::Win32Screen());
+    screen->initialize();
+    return screen;
+}
+
+} // namespace wingman::platform
 #endif // _WIN32

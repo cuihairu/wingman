@@ -1,6 +1,8 @@
 #include "wingman/runtime/local_ipc_server.hpp"
 
 #include "wingman/ipc/ipc_factory.hpp"
+#include "wingman/platform/iscreen.hpp"
+#include "wingman/platform/screen_factory.hpp"
 #include "wingman/rpc/rpc_dispatcher.hpp"
 #include "wingman/rpc/script_handler.hpp"
 #include "wingman/runtime/rpc/screenshot_handler.hpp"
@@ -25,6 +27,7 @@ public:
     std::string endpoint;
     std::unique_ptr<rpc::RpcDispatcher> dispatcher;
     std::unique_ptr<TriggerManager> triggerManager;
+    std::unique_ptr<platform::IScreen> screen;
     std::thread serverThread;
     std::atomic<bool> stopping{false};
     std::mutex channelMutex;
@@ -51,11 +54,16 @@ bool LocalIpcServer::start() {
 
     impl_->dispatcher = std::make_unique<rpc::RpcDispatcher>();
     impl_->triggerManager = std::make_unique<TriggerManager>();
+    impl_->screen = platform::createPlatformScreen();
     rpc::registerSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION);
     rpc::registerRuntimeSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION, impl_->standalone);
     rpc::registerTriggerHandlers(*impl_->dispatcher, *impl_->triggerManager);
     rpc::registerScriptHandlers(*impl_->dispatcher, impl_->standalone);
-    rpc::registerScreenshotHandlers(*impl_->dispatcher);
+    if (impl_->screen) {
+        rpc::registerScreenshotHandlers(*impl_->dispatcher, *impl_->screen);
+    } else {
+        rpc::registerScreenshotHandlers(*impl_->dispatcher);
+    }
 
     {
         std::lock_guard<std::mutex> lock(startMutex_);
@@ -226,6 +234,7 @@ void LocalIpcServer::stop() {
 
     impl_->dispatcher.reset();
     impl_->triggerManager.reset();
+    impl_->screen.reset();
     running_.store(false);
 
     // Notify any waiting threads
