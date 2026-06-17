@@ -66,7 +66,7 @@
     "react-helmet-async": "^3.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.29.0",
+    "@babel/core": "^7.29.6",
     "@babel/plugin-transform-modules-commonjs": "^7.28.6",
     "@eslint/eslintrc": "^3.3.5",
     "@testing-library/jest-dom": "^6.9.1",
