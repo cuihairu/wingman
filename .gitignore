@@ -162,3 +162,8 @@ coverage_ci2/
 coverage_ci_latest/
 coverage_data/
 coverage_report/
+coverage_ci_v2/
+coverage_ci_v3/
+coverage_ci_v4/
+coverage.cobertura.xml
+**/coverage.cobertura.xml
