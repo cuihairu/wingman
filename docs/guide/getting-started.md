@@ -171,18 +171,17 @@ print("Script completed!")
 创建文件 `hello.lua`：
 
 ```lua
-local screen = require("wingman.screen")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 打印问候
 print("Hello from Wingman!")
 
 -- 获取屏幕尺寸
-local width, height = screen.getSize()
+local width, height = wingman.screen.getSize()
 print(string.format("Screen size: %dx%d", width, height))
 
 -- 延迟 1 秒
-util.sleep(1000)
+wingman.util.sleep(1000)
 
 print("Script completed!")
 ```

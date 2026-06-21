@@ -23,7 +23,8 @@
 ### Lua API
 
 ```lua
-local event = require("wingman.event")
+local wingman = require("wingman")
+
 ```
 
 ### Python API
@@ -155,7 +156,8 @@ event.once("startup", lambda: print("This will only run once"))
 ### Lua API
 
 ```lua
-local task = require("wingman.task")
+local wingman = require("wingman")
+
 ```
 
 ### Python API
@@ -282,7 +284,8 @@ result = async_task.get()
 ### Lua API
 
 ```lua
-local notify = require("wingman.notify")
+local wingman = require("wingman")
+
 ```
 
 ### Python API
@@ -378,7 +381,8 @@ notify.clear(notificationId)  -- 清除特定通知
 ### Lua API
 
 ```lua
-local fsm = require("wingman.fsm")
+local wingman = require("wingman")
+
 ```
 
 ### Python API
@@ -575,7 +579,8 @@ HTTP 模块提供网络请求功能。
 ### Lua API
 
 ```lua
-local http = require("wingman.http")
+local wingman = require("wingman")
+
 ```
 
 ### Python API
@@ -749,7 +754,8 @@ local response = http.request("PATCH", "https://api.example.com/items/1", {
 ### Lua API
 
 ```lua
-local config = require("wingman.config")
+local wingman = require("wingman")
+
 ```
 
 ### Python API

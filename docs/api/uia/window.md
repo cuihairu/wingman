@@ -36,10 +36,10 @@ if root:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 获取前台窗口
-local root = uia.fromForeground()
+local root = wingman.uia.fromForeground()
 if root then
     local info = root:getInfo()
     print("窗口名称: " .. (info.name or ""))
@@ -85,14 +85,13 @@ if found:
 == Lua
 
 ```lua:line-numbers
-local window = require("wingman.window")
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 先查找窗口句柄
-local hwnd, found = window.find("记事本")
+local hwnd, found = wingman.window.find("记事本")
 if found then
     -- 从句柄获取 UI 根元素
-    local root = uia.fromWindow(hwnd)
+    local root = wingman.uia.fromWindow(hwnd)
     if root then
         print("记事本 UI 根元素获取成功")
     end
@@ -126,10 +125,10 @@ for win in windows:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找所有 Window 类型的控件
-local windows = uia.findAllByControlType("Window")
+local windows = wingman.uia.findAllByControlType("Window")
 
 print("找到 " .. #windows .. " 个窗口：")
 for i, win in ipairs(windows) do
@@ -164,10 +163,10 @@ if dialog:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 等待对话框出现（最多 3 秒）
-local dialog = uia.waitForName("设置", 3000)
+local dialog = wingman.uia.waitForName("设置", 3000)
 if dialog then
     local info = dialog:getInfo()
     if info.controlType == "Window" then
@@ -210,9 +209,9 @@ if root:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local root = uia.fromForeground()
+local root = wingman.uia.fromForeground()
 if root then
     local info = root:getInfo()
 

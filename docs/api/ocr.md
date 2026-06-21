@@ -58,10 +58,10 @@ if result['success']:
 == Lua
 
 ```lua:line-numbers
-local ocr = require("wingman.ocr")
+local wingman = require("wingman")
 
 -- 识别指定区域
-local result = ocr.recognize({x=100, y=100, width=200, height=50})
+local result = wingman.ocr.recognize({x=100, y=100, width=200, height=50})
 if result.success then
     print("识别成功:", result.text)
     print("置信度:", result.confidence)
@@ -109,9 +109,9 @@ if text:
 == Lua
 
 ```lua:line-numbers
-local ocr = require("wingman.ocr")
+local wingman = require("wingman")
 
-local text = ocr.recognizeText({x=0, y=0, width=300, height=100})
+local text = wingman.ocr.recognizeText({x=0, y=0, width=300, height=100})
 if text then
     print("识别到:", text)
 end
@@ -161,14 +161,14 @@ ocr.set_language("chi_sim+eng")  # 中英文混合
 == Lua
 
 ```lua:line-numbers
-local ocr = require("wingman.ocr")
+local wingman = require("wingman")
 
 -- 单语言
-ocr.setLanguage("eng")      -- 仅英文
-ocr.setLanguage("chi_sim")  -- 仅简体中文
+wingman.ocr.setLanguage("eng")      -- 仅英文
+wingman.ocr.setLanguage("chi_sim")  -- 仅简体中文
 
 -- 多语言（用 + 连接）
-ocr.setLanguage("chi_sim+eng")  -- 中英文混合
+wingman.ocr.setLanguage("chi_sim+eng")  -- 中英文混合
 ```
 
 :::
@@ -210,9 +210,9 @@ ocr.set_data_path("C:/path/to/tessdata")
 == Lua
 
 ```lua:line-numbers
-local ocr = require("wingman.ocr")
+local wingman = require("wingman")
 
-ocr.setDataPath("C:/path/to/tessdata")
+wingman.ocr.setDataPath("C:/path/to/tessdata")
 ```
 
 :::

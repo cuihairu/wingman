@@ -42,7 +42,7 @@ Wingman 提供了灵活的配置管理方案，支持多种格式：
 #### Lua
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 创建配置
 local config = {
@@ -56,7 +56,7 @@ local config = {
 
 -- 保存配置
 local config_file = io.open("config.json", "w")
-config_file:write(json.encode(config, true))
+config_file:write(wingman.json.encode(config, true))
 config_file:close()
 
 -- 加载配置
@@ -64,7 +64,7 @@ local config_file = io.open("config.json", "r")
 local config_content = config_file:read("*all")
 config_file:close()
 
-local config = json.decode(config_content)
+local config = wingman.json.decode(config_content)
 print(config.server.host)  -- "localhost"
 ```
 
@@ -100,7 +100,7 @@ print(config["server"]["host"])  # "localhost"
 #### Lua
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- 创建配置
 local config = {
@@ -115,7 +115,7 @@ local config = {
 }
 
 -- 保存配置
-local ini_content = ini.encode(config)
+local ini_content = wingman.ini.encode(config)
 local config_file = io.open("config.ini", "w")
 config_file:write(ini_content)
 config_file:close()
@@ -125,7 +125,7 @@ local config_file = io.open("config.ini", "r")
 local config_content = config_file:read("*all")
 config_file:close()
 
-local config = ini.decode(config_content)
+local config = wingman.ini.decode(config_content)
 print(config.Server.host)  -- "localhost"
 ```
 
@@ -170,7 +170,7 @@ print(config["Server"]["host"])  # "localhost"
 #### Lua
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 简单配置
 local config = {
@@ -180,11 +180,11 @@ local config = {
 }
 
 -- 编码为 JSON 字符串
-local json_string = json.encode(config)
+local json_string = wingman.json.encode(config)
 -- {"name":"MyApp","version":"1.0.0","debug":true}
 
 -- 美化输出（带缩进）
-local pretty_json = json.encode(config, true)
+local pretty_json = wingman.json.encode(config, true)
 print(pretty_json)
 -- {
 --   "name": "MyApp",
@@ -218,7 +218,7 @@ print(pretty_json)
 #### Lua
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 复杂配置结构
 local config = {
@@ -249,7 +249,7 @@ local config = {
 }
 
 -- 保存配置
-local json_string = json.encode(config, true)
+local json_string = wingman.json.encode(config, true)
 local file = io.open("config.json", "w")
 file:write(json_string)
 file:close()
@@ -299,14 +299,14 @@ with open("config.json", "w") as f:
 #### Lua
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 读取配置
 local file = io.open("config.json", "r")
 local config_content = file:read("*all")
 file:close()
 
-local config = json.decode(config_content)
+local config = wingman.json.decode(config_content)
 
 -- 读取嵌套值
 print(config.app.settings.resolution)
@@ -319,7 +319,7 @@ config.modules.input.delay = 30
 config.app.newField = "newValue"
 
 -- 保存修改后的配置
-local updated_json = json.encode(config, true)
+local updated_json = wingman.json.encode(config, true)
 local file = io.open("config.json", "w")
 file:write(updated_json)
 file:close()
@@ -363,7 +363,7 @@ with open("config.json", "w") as f:
 #### Lua
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 local content = [[
 ; 服务器配置
@@ -385,7 +385,7 @@ theme = dark
 language = zh
 ]]
 
-local config = ini.decode(content)
+local config = wingman.ini.decode(content)
 
 -- 读取整个 section
 local server = config["Server"]
@@ -393,7 +393,7 @@ print(server.host)    -- "localhost"
 print(server.port)    -- "8080"
 
 -- 读取单个值
-local db_host = ini.get(config, "Database", "host")
+local db_host = wingman.ini.get(config, "Database", "host")
 print(db_host)  -- "db.example.com"
 ```
 
@@ -430,7 +430,7 @@ print(db_host)  # "db.example.com"
 #### Lua
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 local config = {
     Server = {
@@ -444,7 +444,7 @@ local config = {
     }
 }
 
-local ini_content = ini.encode(config)
+local ini_content = wingman.ini.encode(config)
 print(ini_content)
 -- [Server]
 -- host=localhost
@@ -482,7 +482,7 @@ print(ini_content)
 #### Lua
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- 读取配置
 local content = [[
@@ -491,25 +491,25 @@ host = localhost
 port = 8080
 ]]
 
-local config = ini.decode(content)
+local config = wingman.ini.decode(content)
 
 -- 修改值
-config = ini.set(config, "Server", "port", "9090")
+config = wingman.ini.set(config, "Server", "port", "9090")
 
 -- 添加新 key
-config = ini.set(config, "Server", "timeout", "30")
+config = wingman.ini.set(config, "Server", "timeout", "30")
 
 -- 添加新 section
-config = ini.set(config, "Database", "host", "localhost")
+config = wingman.ini.set(config, "Database", "host", "localhost")
 
 -- 删除 key
-config = ini.delete(config, "Server", "debug")
+config = wingman.ini.delete(config, "Server", "debug")
 
 -- 删除 section
-config = ini.delete(config, "OldSection")
+config = wingman.ini.delete(config, "OldSection")
 
 -- 保存修改后的配置
-local updated_content = ini.encode(config)
+local updated_content = wingman.ini.encode(config)
 ```
 
 #### Python
@@ -550,24 +550,24 @@ updated_content = ini.encode(config)
 #### Lua
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- 检查 section 是否存在
-local has_section = ini.has_section(config, "Server")
+local has_section = wingman.ini.has_section(config, "Server")
 print(has_section)  -- true
 
 -- 检查 key 是否存在
-local has_key = ini.has_key(config, "Server", "port")
+local has_key = wingman.ini.has_key(config, "Server", "port")
 print(has_key)  -- true
 
 -- 获取所有 section
-local sections = ini.sections(config)
+local sections = wingman.ini.sections(config)
 for _, section in ipairs(sections) do
     print(section)
 end
 
 -- 获取 section 中的所有 key
-local keys = ini.keys(config, "Server")
+local keys = wingman.ini.keys(config, "Server")
 for _, key in ipairs(keys) do
     print(key)
 end
@@ -606,10 +606,10 @@ for key in keys:
 #### Lua
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- 系统默认配置
-local default_config = ini.decode([[
+local default_config = wingman.ini.decode([[
 [Graphics]
 resolution = 1920x1080
 quality = medium
@@ -623,7 +623,7 @@ sfx = 100
 ]])
 
 -- 用户配置
-local user_config = ini.decode([[
+local user_config = wingman.ini.decode([[
 [Graphics]
 resolution = 2560x1440
 quality = ultra
@@ -635,7 +635,7 @@ music = 40
 ]])
 
 -- 合并配置（用户配置覆盖默认配置）
-local final_config = ini.merge(default_config, user_config)
+local final_config = wingman.ini.merge(default_config, user_config)
 
 -- 结果：
 -- Graphics.resolution = "2560x1440" (用户配置)
@@ -678,30 +678,30 @@ final_config = ini.merge(default_config, user_config)
 #### Lua
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- 系统默认配置
-local system_config = ini.decode([[
+local system_config = wingman.ini.decode([[
 [App]
 name = GameAutomation
 version = 1.0.0
 ]])
 
 -- 用户配置
-local user_config = ini.decode([[
+local user_config = wingman.ini.decode([[
 [Graphics]
 resolution = 1920x1080
 ]])
 
 -- 运行时配置（最高优先级）
-local runtime_config = ini.decode([[
+local runtime_config = wingman.ini.decode([[
 [Graphics]
 fullscreen = true
 ]])
 
 -- 按优先级合并
-local final_config = ini.merge(system_config, user_config)
-final_config = ini.merge(final_config, runtime_config)
+local final_config = wingman.ini.merge(system_config, user_config)
+final_config = wingman.ini.merge(final_config, runtime_config)
 
 -- 结果：
 -- App.name = "GameAutomation" (系统配置)
@@ -748,7 +748,7 @@ final_config = ini.merge(final_config, runtime_config)
 #### Lua
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 检测环境
 local env = os.getenv("APP_ENV") or "development"
@@ -823,7 +823,7 @@ print(f"Server: {config['server']['host']}:{config['server']['port']}")
 #### Lua
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 默认配置
 local default_config = {
@@ -846,7 +846,7 @@ for _, path in ipairs(config_paths) do
         local content = file:read("*all")
         file:close()
 
-        local file_config = json.decode(content)
+        local file_config = wingman.json.decode(content)
         -- 合并配置
         for k, v in pairs(file_config) do
             config[k] = v
@@ -909,6 +909,8 @@ config/
 ### 2. 敏感信息处理
 
 ```lua
+local wingman = require("wingman")
+
 -- ❌ 不要在配置文件中存储敏感信息
 local config = {
     database = {
@@ -924,10 +926,9 @@ local config = {
 }
 
 -- ✅ 或使用加密配置
-local encrypted = require("wingman.crypto")
 local config = {
     database = {
-        password = encrypted.decrypt(os.getenv("ENCRYPTED_PASSWORD"))
+        password = wingman.crypto.decrypt(os.getenv("ENCRYPTED_PASSWORD"))
     }
 }
 ```
@@ -1017,8 +1018,7 @@ end
 #### Lua
 
 ```lua
-local json = require("wingman.json")
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- 游戏配置类
 local GameConfig = {}
@@ -1032,14 +1032,14 @@ function GameConfig.load(config_path)
     local content = file:read("*all")
     file:close()
 
-    self.config = json.decode(content)
+    self.config = wingman.json.decode(content)
 
     -- 加载键位绑定
     local binds_file = io.open("keybinds.ini", "r")
     if binds_file then
         local binds_content = binds_file:read("*all")
         binds_file:close()
-        self.keybinds = ini.decode(binds_content)
+        self.keybinds = wingman.ini.decode(binds_content)
     else
         self.keybinds = {}
     end
@@ -1050,7 +1050,7 @@ function GameConfig.load(config_path)
         local settings_content = settings_file:read("*all")
         settings_file:close()
 
-        local user_settings = json.decode(settings_content)
+        local user_settings = wingman.json.decode(settings_content)
         -- 合并用户设置
         for section, settings in pairs(user_settings) do
             if not self.config[section] then
@@ -1081,7 +1081,7 @@ end
 
 function GameConfig:save()
     -- 保存配置
-    local content = json.encode(self.config, true)
+    local content = wingman.json.encode(self.config, true)
     local file = io.open("user_settings.json", "w")
     file:write(content)
     file:close()
@@ -1115,7 +1115,7 @@ local jump_key = config:getKeybind("jump")
 #### Lua
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 local ConfigManager = {}
 ConfigManager.__index = ConfigManager
@@ -1158,7 +1158,7 @@ function ConfigManager:loadEnvironment()
         local content = file:read("*all")
         file:close()
 
-        local env_config = json.decode(content)
+        local env_config = wingman.json.decode(content)
 
         -- 深度合并配置
         self:mergeConfig(self.config, env_config)

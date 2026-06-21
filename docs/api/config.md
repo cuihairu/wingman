@@ -59,9 +59,9 @@ print(f"自动连接: {server['autoConnect']}")
 == Lua
 
 ```lua:line-numbers
-local config = require("wingman.config")
+local wingman = require("wingman")
 
-local server = config.getServer()
+local server = wingman.config.getServer()
 print("服务器: " .. server.host .. ":" .. server.port)
 print("自动连接: " .. tostring(server.autoConnect))
 ```
@@ -109,9 +109,9 @@ config.set_server({
 == Lua
 
 ```lua:line-numbers
-local config = require("wingman.config")
+local wingman = require("wingman")
 
-config.setServer({
+wingman.config.setServer({
     host = "192.168.1.100",
     port = 9000,
     username = "admin",
@@ -169,9 +169,9 @@ print(f"显示通知: {tray['showNotifications']}")
 == Lua
 
 ```lua:line-numbers
-local config = require("wingman.config")
+local wingman = require("wingman")
 
-local tray = config.getTray()
+local tray = wingman.config.getTray()
 print("最小化到托盘: " .. tostring(tray.minimizeToTray))
 print("显示通知: " .. tostring(tray.showNotifications))
 ```
@@ -216,9 +216,9 @@ config.set_tray({
 == Lua
 
 ```lua:line-numbers
-local config = require("wingman.config")
+local wingman = require("wingman")
 
-config.setTray({
+wingman.config.setTray({
     minimizeToTray = true,
     startMinimized = true,
     showNotifications = false
@@ -277,9 +277,9 @@ else:
 == Lua
 
 ```lua:line-numbers
-local config = require("wingman.config")
+local wingman = require("wingman")
 
-local autoRun = config.getAutoRun()
+local autoRun = wingman.config.getAutoRun()
 if autoRun.enabled then
     print("自动运行脚本: " .. autoRun.scriptPath)
 else
@@ -329,9 +329,9 @@ config.set_auto_run({
 == Lua
 
 ```lua:line-numbers
-local config = require("wingman.config")
+local wingman = require("wingman")
 
-config.setAutoRun({
+wingman.config.setAutoRun({
     enabled = true,
     scriptPath = "scripts/auto_task.lua",
     delaySeconds = 5,
@@ -384,15 +384,15 @@ character = config.get("game.character")
 == Lua
 
 ```lua:line-numbers
-local config = require("wingman.config")
+local wingman = require("wingman")
 
-local value = config.get("myKey")
+local value = wingman.config.get("myKey")
 if value then
     print(value)
 end
 
 -- 支持嵌套键
-local character = config.get("game.character")
+local character = wingman.config.get("game.character")
 ```
 
 :::
@@ -439,16 +439,16 @@ config.set("game.server", "电信一区")
 == Lua
 
 ```lua:line-numbers
-local config = require("wingman.config")
+local wingman = require("wingman")
 
 -- 简单键值
-config.set("myKey", "myValue")
-config.set("count", 42)
-config.set("enabled", true)
+wingman.config.set("myKey", "myValue")
+wingman.config.set("count", 42)
+wingman.config.set("enabled", true)
 
 -- 嵌套键
-config.set("game.character", "战士")
-config.set("game.server", "电信一区")
+wingman.config.set("game.character", "战士")
+wingman.config.set("game.server", "电信一区")
 ```
 
 :::
@@ -494,9 +494,9 @@ else:
 == Lua
 
 ```lua:line-numbers
-local config = require("wingman.config")
+local wingman = require("wingman")
 
-local removed = config.remove("myKey")
+local removed = wingman.config.remove("myKey")
 if removed then
     print("配置已删除")
 else

@@ -40,12 +40,10 @@ if btn:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
-local input = require("wingman.input")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 先移动鼠标到按钮上触发工具提示
-local btn = uia.findButton("帮助")
+local btn = wingman.uia.findButton("帮助")
 if btn then
     local info = btn:getInfo()
     if info.boundingRect then
@@ -54,14 +52,14 @@ if btn then
         local centerY = rect.top + rect.height / 2
 
         -- 移动鼠标到按钮中心
-        input.moveMouse(centerX, centerY)
+        wingman.input.moveMouse(centerX, centerY)
         print("已移动鼠标到帮助按钮")
 
         -- 等待工具提示出现
-        util.sleep(1000)
+        wingman.util.sleep(1000)
 
         -- 查找工具提示
-        local tooltip = uia.findByControlType("ToolTip")
+        local tooltip = wingman.uia.findByControlType("ToolTip")
         if tooltip then
             print("工具提示已出现")
         end
@@ -94,9 +92,9 @@ if tooltip:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local tooltip = uia.findByControlType("ToolTip")
+local tooltip = wingman.uia.findByControlType("ToolTip")
 if tooltip then
     local info = tooltip:getInfo()
     local text = info.name or ""
@@ -145,30 +143,28 @@ if btn:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
-local input = require("wingman.input")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 移动鼠标触发工具提示
-local btn = uia.findButton("帮助")
+local btn = wingman.uia.findButton("帮助")
 if btn then
     local info = btn:getInfo()
     if info.boundingRect then
         local rect = info.boundingRect
         local centerX = rect.left + rect.width / 2
         local centerY = rect.top + rect.height / 2
-        input.moveMouse(centerX, centerY)
+        wingman.input.moveMouse(centerX, centerY)
 
         -- 轮询等待工具提示出现（最多 1 秒）
         for i = 1, 10 do
-            local tooltip = uia.findByControlType("ToolTip")
+            local tooltip = wingman.uia.findByControlType("ToolTip")
             if tooltip then
                 local tipInfo = tooltip:getInfo()
                 local text = tipInfo.name or ""
                 print("工具提示: " .. text)
                 break
             end
-            util.sleep(100)
+            wingman.util.sleep(100)
         else
             print("工具提示未出现")
         end

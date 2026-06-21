@@ -94,10 +94,10 @@ wingman-runtime.exe script test.lua
 ### 截图并保存
 
 ```lua
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 截取全屏
-local img = screen.capture(0, 0, 1920, 1080)
+local img = wingman.screen.capture(0, 0, 1920, 1080)
 
 -- 保存到文件
 img:save("screenshot.png")
@@ -106,15 +106,14 @@ img:save("screenshot.png")
 ### 查找颜色并点击
 
 ```lua
-local screen = require("wingman.screen")
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 查找红色 (0xFF0000)
-local points = screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
+local points = wingman.screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
 
 if points and #points > 0 then
     -- 点击第一个匹配点
-    input.click(points[1].x, points[1].y)
+    wingman.input.click(points[1].x, points[1].y)
     print("Clicked at:", points[1].x, points[1].y)
 else
     print("Color not found")
@@ -208,66 +207,66 @@ Wingman GUI 启动后显示控制面板：
 ### 屏幕 (screen)
 
 ```lua
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 获取屏幕尺寸
-local width, height = screen.getDimensions()
+local width, height = wingman.screen.getDimensions()
 
 -- 截图
-local img = screen.capture()
-local img = screen.capture(x, y, width, height)
+local img = wingman.screen.capture()
+local img = wingman.screen.capture(x, y, width, height)
 
 -- 获取像素
-local color = screen.getPixel(x, y)
+local color = wingman.screen.getPixel(x, y)
 
 -- 查找颜色（Lua 使用 camelCase）
-local points = screen.findColor(color, x, y, w, h, tolerance)
+local points = wingman.screen.findColor(color, x, y, w, h, tolerance)
 ```
 
 ### 输入 (input)
 
 ```lua
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 鼠标点击
-input.click(x, y)
-input.rightClick(x, y)
+wingman.input.click(x, y)
+wingman.input.rightClick(x, y)
 
 -- 鼠标移动
-input.move(x, y)
-input.move(x, y, duration)  -- 带动画
+wingman.input.move(x, y)
+wingman.input.move(x, y, duration)  -- 带动画
 
 -- 键盘
-input.sendKeys("A")  -- 按键
-input.typeText("Hello")  -- 输入文本
+wingman.input.sendKeys("A")  -- 按键
+wingman.input.typeText("Hello")  -- 输入文本
 ```
 
 ### 人性化 (human)
 
 ```lua
-local human = require("wingman.human")
+local wingman = require("wingman")
 
 -- 贝塞尔曲线鼠标移动
-human.mouse.move(x, y)
-human.mouse.click(x, y)
+wingman.human.mouse.move(x, y)
+wingman.human.mouse.click(x, y)
 
 -- 随机延迟键盘
-human.keyboard.type("Hello, World!")
+wingman.human.keyboard.type("Hello, World!")
 ```
 
 ### 窗口 (window)
 
 ```lua
-local window = require("wingman.window")
+local wingman = require("wingman")
 
 -- 查找窗口
-local win = window.find("Notepad")
+local win = wingman.window.find("Notepad")
 
 -- 激活窗口
-window.activate(win)
+wingman.window.activate(win)
 
 -- 获取窗口标题
-local title = window.getTitle(win)
+local title = wingman.window.getTitle(win)
 ```
 
 ## 调试器
@@ -356,13 +355,13 @@ wingman-runtime connect 192.168.1.100:9999 script.lua
 ### 多脚本协作
 
 ```lua
-local team = require("wingman.team")
+local wingman = require("wingman")
 
 -- 加入房间
-team.join("farming_room")
+wingman.team.join("farming_room")
 
 -- 发送消息
-team.send({
+wingman.team.send({
     action = "found_target",
     data = {x = 100, y = 200}
 })

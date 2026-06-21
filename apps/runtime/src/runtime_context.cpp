@@ -1,4 +1,5 @@
 #include "wingman/runtime/runtime_context.hpp"
+#include "wingman/script/runtime_injections.hpp"
 
 #include <filesystem>
 
@@ -34,6 +35,7 @@ ScriptManager& getScriptManager() {
     ScriptManager& manager = scriptManagerInstance();
     static const bool initialized = [&manager] {
         preloadScripts(manager);
+        wingman::script::setScriptManager(&manager);
         return true;
     }();
     (void)initialized;

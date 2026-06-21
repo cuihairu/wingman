@@ -119,7 +119,7 @@ with open("config.ini", "w") as f:
 ```
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- 解析 INI
 local config_str = [[
@@ -128,14 +128,14 @@ host=localhost
 port=8080
 ]]
 
-local config = ini.decode(config_str)
+local config = wingman.ini.decode(config_str)
 
 -- 读取配置
-local host = ini.get(config, "Server", "host")
-local port = ini.get(config, "Server", "port")
+local host = wingman.ini.get(config, "Server", "host")
+local port = wingman.ini.get(config, "Server", "port")
 
 -- 修改配置
-ini.set(config, "Server", "host", "192.168.1.1")
+wingman.ini.set(config, "Server", "host", "192.168.1.1")
 ```
 
 ## 选择指南

@@ -66,10 +66,10 @@ mem_conn = db.open(":memory:")  # 内存数据库
 ```
 
 ```lua
-local db = require("wingman.db")
+local wingman = require("wingman")
 
-local conn = db.open("local")
-local mem_conn = db.open(":memory:")
+local conn = wingman.db.open("local")
+local mem_conn = wingman.db.open(":memory:")
 ```
 
 ### db.execute(conn, sql, params?)
@@ -604,14 +604,14 @@ db.close(conn)
 ### Lua
 
 ```lua
-local db = require("wingman.db")
+local wingman = require("wingman")
 
 -- 打开数据库
-local conn = db.open("local")
+local conn = wingman.db.open("local")
 
 -- 创建表
-local users = db.table(conn, "users")
-db.table_create(users, {
+local users = wingman.db.table(conn, "users")
+wingman.db.table_create(users, {
     id = "INTEGER PRIMARY KEY",
     name = "TEXT NOT NULL",
     age = "INTEGER",
@@ -619,42 +619,42 @@ db.table_create(users, {
 })
 
 -- 插入数据
-db.table_insert(users, {name = "Alice", age = "25", email = "alice@example.com"})
-db.table_insert(users, {name = "Bob", age = "30", email = "bob@example.com"})
-db.table_insert(users, {name = "Charlie", age = "35", email = "charlie@example.com"})
+wingman.db.table_insert(users, {name = "Alice", age = "25", email = "alice@example.com"})
+wingman.db.table_insert(users, {name = "Bob", age = "30", email = "bob@example.com"})
+wingman.db.table_insert(users, {name = "Charlie", age = "35", email = "charlie@example.com"})
 
 -- 查询数据
-local adults = db.table_where(users, "age", ">=", "18")
-local results = db.query_all(adults)
+local adults = wingman.db.table_where(users, "age", ">=", "18")
+local results = wingman.db.query_all(adults)
 for i, user in ipairs(results) do
     print(user.name .. ": " .. user.email)
 end
 
 -- 更新数据
-local bob = db.table_where(users, "name", "=", "Bob")
-db.query_update(bob, {age = "31"})
+local bob = wingman.db.table_where(users, "name", "=", "Bob")
+wingman.db.query_update(bob, {age = "31"})
 
 -- 删除数据
-local young = db.table_where(users, "age", "<", "20")
-local deleted = db.query_delete(young)
+local young = wingman.db.table_where(users, "age", "<", "20")
+local deleted = wingman.db.query_delete(young)
 print("Deleted " .. deleted .. " young users")
 
 -- 计数
-local count = db.table_count(users)
+local count = wingman.db.table_count(users)
 print("Total users: " .. count)
 
 -- 使用底层 SQL
-local rows = db.query(conn, "SELECT * FROM users WHERE age > ?", {25})
-local scalarCount = db.scalar(conn, "SELECT COUNT(*) FROM users")
+local rows = wingman.db.query(conn, "SELECT * FROM users WHERE age > ?", {25})
+local scalarCount = wingman.db.scalar(conn, "SELECT COUNT(*) FROM users")
 
 -- 事务
-db.transaction(conn, function(tx)
-    db.execute(tx, "INSERT INTO users (name, age) VALUES (?, ?)", {"David", 28})
-    db.execute(tx, "UPDATE users SET age = ? WHERE name = ?", {29, "David"})
+wingman.db.transaction(conn, function(tx)
+    wingman.db.execute(tx, "INSERT INTO users (name, age) VALUES (?, ?)", {"David", 28})
+    wingman.db.execute(tx, "UPDATE users SET age = ? WHERE name = ?", {29, "David"})
 end)
 
 -- 关闭连接
-db.close(conn)
+wingman.db.close(conn)
 ```
 
 ## 安全注意事项

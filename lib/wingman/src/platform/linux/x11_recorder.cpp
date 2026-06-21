@@ -399,8 +399,9 @@ void MacroRecorder::recordEvent(const RecordedEvent& event) {
     m_events.push_back(event);
 }
 
-uint64_t MacroRecorder::getStartTime() const {
-    return m_startTime;
+size_t MacroRecorder::getEventCount() const {
+    std::lock_guard<std::mutex> lock(m_eventMutex);
+    return m_events.size();
 }
 
 } // namespace wingman

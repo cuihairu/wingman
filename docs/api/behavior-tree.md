@@ -51,19 +51,19 @@ create(name: string) -> nil
 == Python
 
 ```python:line-numbers
-from wingman import behavior_tree
+from wingman import bt
 
 # 创建一个名为 "combat_tree" 的行为树
-behavior_tree.create("combat_tree")
+bt.create("combat_tree")
 ```
 
 == Lua
 
 ```lua:line-numbers
-local bt = require("wingman.behavior_tree")
+local wingman = require("wingman")
 
 -- 创建一个名为 "combat_tree" 的行为树
-bt.create("combat_tree")
+wingman.bt.create("combat_tree")
 ```
 
 :::
@@ -114,19 +114,19 @@ Sequence: 按顺序执行子节点
 == Python
 
 ```python:line-numbers
-from wingman import behavior_tree
+from wingman import bt
 
 # 创建序列节点
-seq = behavior_tree.sequence("attack_sequence")
+seq = bt.sequence("attack_sequence")
 ```
 
 == Lua
 
 ```lua:line-numbers
-local bt = require("wingman.behavior_tree")
+local wingman = require("wingman")
 
 -- 创建序列节点
-local seq = bt.sequence("attack_sequence")
+local seq = wingman.bt.sequence("attack_sequence")
 ```
 
 :::
@@ -174,19 +174,19 @@ Selector: 按顺序执行子节点
 == Python
 
 ```python:line-numbers
-from wingman import behavior_tree
+from wingman import bt
 
 # 创建选择节点
-sel = behavior_tree.selector("task_selector")
+sel = bt.selector("task_selector")
 ```
 
 == Lua
 
 ```lua:line-numbers
-local bt = require("wingman.behavior_tree")
+local wingman = require("wingman")
 
 -- 创建选择节点
-local sel = bt.selector("task_selector")
+local sel = wingman.bt.selector("task_selector")
 ```
 
 :::
@@ -221,9 +221,9 @@ condition(name: string, fn: fun(): string) -> Node
 == Python
 
 ```python:line-numbers
-from wingman import behavior_tree, vision
+from wingman import bt, vision
 
-cond = behavior_tree.condition("has_enemy", lambda: (
+cond = bt.condition("has_enemy", lambda: (
     "SUCCESS" if vision.find_image("enemy.png") else "FAILURE"
 ))
 ```
@@ -231,11 +231,10 @@ cond = behavior_tree.condition("has_enemy", lambda: (
 == Lua
 
 ```lua:line-numbers
-local bt = require("wingman.behavior_tree")
-local vision = require("wingman.vision")
+local wingman = require("wingman")
 
-local cond = bt.condition("has_enemy", function()
-    local enemy = vision.findImage("enemy.png")
+local cond = wingman.bt.condition("has_enemy", function()
+    local enemy = wingman.vision.findImage("enemy.png")
     return enemy and "SUCCESS" or "FAILURE"
 end)
 ```
@@ -272,9 +271,9 @@ action(name: string, fn: fun(): string) -> Node
 == Python
 
 ```python:line-numbers
-from wingman import behavior_tree, input
+from wingman import bt, input
 
-act = behavior_tree.action("attack", lambda: (
+act = bt.action("attack", lambda: (
     input.click(100, 200),
     "SUCCESS"
 )[-1])
@@ -283,11 +282,10 @@ act = behavior_tree.action("attack", lambda: (
 == Lua
 
 ```lua:line-numbers
-local bt = require("wingman.behavior_tree")
-local input = require("wingman.input")
+local wingman = require("wingman")
 
-local act = bt.action("attack", function()
-    input.click(100, 200)
+local act = wingman.bt.action("attack", function()
+    wingman.input.click(100, 200)
     return "SUCCESS"
 end)
 ```
@@ -323,18 +321,18 @@ tick(treeName: string) -> string
 == Python
 
 ```python:line-numbers
-from wingman import behavior_tree
+from wingman import bt
 
-status = behavior_tree.tick("combat_tree")
+status = bt.tick("combat_tree")
 print(f"状态: {status}")  # SUCCESS/FAILURE/RUNNING
 ```
 
 == Lua
 
 ```lua:line-numbers
-local bt = require("wingman.behavior_tree")
+local wingman = require("wingman")
 
-local status = bt.tick("combat_tree")
+local status = wingman.bt.tick("combat_tree")
 print("状态:", status)  -- SUCCESS/FAILURE/RUNNING
 ```
 
@@ -369,19 +367,19 @@ remove(treeName: string) -> nil
 == Python
 
 ```python:line-numbers
-from wingman import behavior_tree
+from wingman import bt
 
 # 移除行为树
-behavior_tree.remove("combat_tree")
+bt.remove("combat_tree")
 ```
 
 == Lua
 
 ```lua:line-numbers
-local bt = require("wingman.behavior_tree")
+local wingman = require("wingman")
 
 -- 移除行为树
-bt.remove("combat_tree")
+wingman.bt.remove("combat_tree")
 ```
 
 :::

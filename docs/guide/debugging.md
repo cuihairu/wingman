@@ -47,11 +47,11 @@ Python 脚本需要使用 `WINGMAN_ENABLE_PYTHON=ON` 重新配置构建。
 使用通知/日志类模块输出调试信息：
 
 ```lua
-local notify = require("wingman.notify")
+local wingman = require("wingman")
 
-notify.info("Info message")
-notify.warn("Warning message")
-notify.error("Error message")
+wingman.notify.info("Info message")
+wingman.notify.warn("Warning message")
+wingman.notify.error("Error message")
 ```
 
 ## 常见问题

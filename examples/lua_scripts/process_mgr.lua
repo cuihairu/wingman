@@ -1,16 +1,18 @@
 -- Wingman 进程管理示例
 -- 演示进程查找、启动、等待、终止等操作
 
+local wingman = require("wingman")
+
 print("=== 进程管理示例 ===")
 
 -- 查找进程
 local function findProcess(name)
     print(string.format("查找进程: %s", name))
-    local pid = process.find(name)
+    local pid = wingman.process.find(name)
     if pid ~= 0 then
         print(string.format("找到进程! PID: %d", pid))
         -- 获取进程路径
-        local path = process.getPath(pid)
+        local path = wingman.process.getPath(pid)
         if path and path ~= "" then
             print(string.format("路径: %s", path))
         end
@@ -25,7 +27,7 @@ end
 local function startProcess(path, args)
     args = args or ""
     print(string.format("启动进程: %s %s", path, args))
-    local pid = process.start(path, args)
+    local pid = wingman.process.start(path, args)
     if pid ~= 0 then
         print(string.format("进程已启动! PID: %d", pid))
         return pid
@@ -39,7 +41,7 @@ end
 local function waitForProcess(name, timeout)
     timeout = timeout or 10000
     print(string.format("等待进程启动: %s (超时: %dms)", name, timeout))
-    local pid = process.waitFor(name, timeout)
+    local pid = wingman.process.waitFor(name, timeout)
     if pid ~= 0 then
         print(string.format("进程已启动! PID: %d", pid))
         return pid
@@ -53,7 +55,7 @@ end
 local function waitForExit(pid, timeout)
     timeout = timeout or 30000
     print(string.format("等待进程退出: PID=%d (超时: %dms)", pid, timeout))
-    local result = process.wait(pid, timeout)
+    local result = wingman.process.wait(pid, timeout)
     if result then
         print("进程已退出")
         return true
@@ -66,7 +68,7 @@ end
 -- 终止进程
 local function terminateProcess(pid)
     print(string.format("终止进程: PID=%d", pid))
-    if process.terminate(pid) then
+    if wingman.process.terminate(pid) then
         print("进程已终止")
         return true
     else
@@ -77,7 +79,7 @@ end
 
 -- 检查进程是否存在
 local function processExists(pid)
-    local exists = process.exists(pid)
+    local exists = wingman.process.exists(pid)
     print(string.format("进程 PID=%d %s", pid, exists and "存在" or "不存在"))
     return exists
     end
@@ -97,7 +99,7 @@ local function notepadExample()
             print("启动记事本失败")
             return
         end
-        util.sleep(1000)
+        wingman.util.sleep(1000)
     end
 
     -- 确认进程存在
@@ -106,7 +108,7 @@ local function notepadExample()
 
         -- 等待 3 秒后关闭
         print("3 秒后将关闭记事本...")
-        util.sleep(3000)
+        wingman.util.sleep(3000)
 
         terminateProcess(pid)
     end
@@ -122,9 +124,9 @@ local function gameMonitorExample()
     print("按 Ctrl+C 停止监控")
 
     while true do
-        local pid = process.find(gameProcess)
+        local pid = wingman.process.find(gameProcess)
         if pid ~= 0 then
-            local path = process.getPath(pid)
+            local path = wingman.process.getPath(pid)
             print(string.format("[%s] %s (PID: %d)",
                 os.date("%H:%M:%S"), gameProcess, pid))
         else
@@ -132,7 +134,7 @@ local function gameMonitorExample()
                 os.date("%H:%M:%S"), gameProcess))
         end
 
-        util.sleep(5000)  -- 每 5 秒检查一次
+        wingman.util.sleep(5000)  -- 每 5 秒检查一次
     end
 end
 

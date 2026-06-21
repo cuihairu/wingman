@@ -34,10 +34,10 @@ if label:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找显示"用户名："的文本标签
-local label = uia.findText("用户名：")
+local label = wingman.uia.findText("用户名：")
 if label then
     print("找到文本标签")
 end
@@ -69,10 +69,10 @@ if welcome:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找欢迎文本
-local welcome = uia.findText("欢迎使用")
+local welcome = wingman.uia.findText("欢迎使用")
 if welcome then
     local info = welcome:getInfo()
     local text = info.name or ""
@@ -116,10 +116,10 @@ if label:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 找到标签
-local label = uia.findText("用户名：")
+local label = wingman.uia.findText("用户名：")
 if label then
     local info = label:getInfo()
     print("找到标签: " .. (info.name or ""))

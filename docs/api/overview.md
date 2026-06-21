@@ -98,15 +98,14 @@ if match:
 #### Lua
 
 ```lua
-local kv = require("wingman.kv")
-local db = require("wingman.db")
+local wingman = require("wingman")
 
 -- 键值存储
-kv.set("username", "player1")
-local name = kv.get("username")
+wingman.kv.set("username", "player1")
+local name = wingman.kv.get("username")
 
 -- 数据库操作
-local conn = db.open("game_data")
+local conn = wingman.db.open("game_data")
 conn:execute("CREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT)")
 conn:execute("INSERT INTO players (name) VALUES (?)", {"player1"})
 local rows = conn:query("SELECT * FROM players")
@@ -144,17 +143,16 @@ rows = conn.query("SELECT * FROM players")
 #### Lua
 
 ```lua
-local json = require("wingman.json")
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- JSON
 local data = {name = "player1", level = 10}
-local json_string = json.encode(data)
-local decoded = json.decode(json_string)
+local json_string = wingman.json.encode(data)
+local decoded = wingman.json.decode(json_string)
 
 -- INI
-local config = ini.decode(ini_content)
-local config_string = ini.encode(config)
+local config = wingman.ini.decode(ini_content)
+local config_string = wingman.ini.encode(config)
 ```
 
 #### Python
@@ -207,16 +205,16 @@ config_string = ini.encode(config)
 #### Lua
 
 ```lua
-local debug = require("wingman.debug")
+local wingman = require("wingman")
 
 -- 启动调试器
-debug.start()
+wingman.debugger.start()
 
 -- 设置断点
-debug.breakpoint()
+wingman.debugger.breakpoint()
 
 -- 输出调试信息
-debug.log("Variable value:", some_var)
+wingman.debugger.log("Variable value:", some_var)
 ```
 
 ## 按功能查找 API
@@ -265,8 +263,8 @@ debug.log("Variable value:", some_var)
 
 ### Lua
 
-- 模块使用小写: `require("wingman.screen")`
-- 方法使用驼峰命名: `screen.capture()`
+- 统一引入: `local wingman = require("wingman")`，模块作为子表访问: `wingman.screen`
+- 方法使用驼峰命名: `wingman.screen.capture()`
 - 常量使用全大写: `KEY_CTRL`
 
 ### Python

@@ -45,23 +45,23 @@
 Lua:
 
 ```lua
-local event = require("wingman.event")
+local wingman = require("wingman")
 
-local id = event.on("combat.enemy_found", function(e)
+local id = wingman.event.on("combat.enemy_found", function(e)
     print(e.type, e.payload.x, e.payload.y)
 end)
 
-event.once("task.done", function(e)
+wingman.event.once("task.done", function(e)
     print("done", e.payload.taskId)
 end)
 
-event.emit("combat.enemy_found", { x = 100, y = 200 }, {
+wingman.event.emit("combat.enemy_found", { x = 100, y = 200 }, {
     source = "vision",
     correlationId = "scan-1",
     priority = 1,
 })
 
-event.off(id)
+wingman.event.off(id)
 ```
 
 Python:

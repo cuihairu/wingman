@@ -97,11 +97,11 @@ result = screen.find_image("button.png", 0, 0, 1920, 1080)
 ```
 
 ```lua
--- Lua
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
-local img = screen.capture(0, 0, 400, 300)
-local result = screen.findImage("button.png", 0, 0, 1920, 1080)
+-- Lua
+local img = wingman.screen.capture(0, 0, 400, 300)
+local result = wingman.screen.findImage("button.png", 0, 0, 1920, 1080)
 ```
 
 ---
@@ -161,15 +161,14 @@ if result:
 ### Lua
 
 ```lua
-local screen = require("wingman.screen")
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 截图并找图
-local img = screen.capture(0, 0, 400, 300)
-local result = screen.findImage("button.png", 0, 0, 1920, 1080)
+local img = wingman.screen.capture(0, 0, 400, 300)
+local result = wingman.screen.findImage("button.png", 0, 0, 1920, 1080)
 
 if result then
-    input.click(result.x, result.y)
+    wingman.input.click(result.x, result.y)
 end
 ```
 

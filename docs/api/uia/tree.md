@@ -26,10 +26,10 @@ if tree:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找名为"文件夹树"的树控件
-local tree = uia.findByName("文件夹树")
+local tree = wingman.uia.findByName("文件夹树")
 if tree then
     print("找到树控件")
 end
@@ -65,17 +65,16 @@ if tree:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
-local tree = uia.findByName("文件夹树")
+local tree = wingman.uia.findByName("文件夹树")
 if tree then
     -- 查找并展开"文档"节点
-    local folder = uia.findByName("文档")
+    local folder = wingman.uia.findByName("文档")
     if folder then
         folder:expand()
         print("已展开文档节点")
-        util.sleep(200)  -- 等待子节点加载
+        wingman.util.sleep(200)  -- 等待子节点加载
     end
 end
 ```
@@ -102,9 +101,9 @@ if folder:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local folder = uia.findByName("文档")
+local folder = wingman.uia.findByName("文档")
 if folder then
     folder:collapse()
     print("已折叠文档节点")
@@ -134,9 +133,9 @@ if folder:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local folder = uia.findByName("文档")
+local folder = wingman.uia.findByName("文档")
 if folder then
     -- 双击切换展开/折叠
     folder:doubleClick()
@@ -184,7 +183,7 @@ if tree:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 local function traverseTree(element, depth)
     depth = depth or 0
@@ -203,7 +202,7 @@ local function traverseTree(element, depth)
 end
 
 -- 使用
-local tree = uia.findByName("文件夹树")
+local tree = wingman.uia.findByName("文件夹树")
 if tree then
     traverseTree(tree)
 end
@@ -236,9 +235,9 @@ if tree:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local tree = uia.findByName("文件夹树")
+local tree = wingman.uia.findByName("文件夹树")
 if tree then
     -- 获取直接子节点
     local children = tree:getChildren()
@@ -277,10 +276,10 @@ if node:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 直接按名称查找树节点
-local node = uia.findByName("目标文件.txt")
+local node = wingman.uia.findByName("目标文件.txt")
 if node then
     -- 可能需要先展开父节点才能找到
     node:click()

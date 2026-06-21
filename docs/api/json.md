@@ -59,15 +59,15 @@ for item in items:
 == Lua
 
 ```lua:line-numbers
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 解析 JSON 字符串
-local data = json.decode('{"name": "Player1", "score": 100}')
+local data = wingman.json.decode('{"name": "Player1", "score": 100}')
 print(data.name)      -- "Player1"
 print(data.score)     -- 100
 
 -- 解析数组
-local items = json.decode('["sword", "shield", "potion"]')
+local items = wingman.json.decode('["sword", "shield", "potion"]')
 for i, item in ipairs(items) do
     print(item)
 end
@@ -127,7 +127,7 @@ print(formatted)
 == Lua
 
 ```lua:line-numbers
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 local obj = {
     name = "Player1",
@@ -136,11 +136,11 @@ local obj = {
 }
 
 -- 压缩格式
-local compressed = json.encode(obj)
+local compressed = wingman.json.encode(obj)
 -- {"name":"Player1","score":100,"items":["sword","shield"]}
 
 -- 格式化，2 空格缩进
-local formatted = json.encode(obj, 2)
+local formatted = wingman.json.encode(obj, 2)
 print(formatted)
 ```
 
@@ -192,15 +192,15 @@ json_str = json.encode(obj)
 == Lua
 
 ```lua:line-numbers
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 local obj = {
     name = "Player1",
-    nickname = json.null(),  -- 显式设置为 null
+    nickname = wingman.json.null(),  -- 显式设置为 null
     score = 100
 }
 
-local jsonStr = json.encode(obj)
+local jsonStr = wingman.json.encode(obj)
 -- {"name":"Player1","nickname":null,"score":100}
 ```
 

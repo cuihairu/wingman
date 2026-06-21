@@ -83,22 +83,22 @@ else:
 == Lua
 
 ```lua:line-numbers
-local http = require("wingman.http")
+local wingman = require("wingman")
 
 -- 基本请求
-local resp = http.get("https://api.example.com/data")
+local resp = wingman.http.get("https://api.example.com/data")
 if resp.success then
     print(resp.body)
 end
 
 -- 带选项的请求
-local resp = http.get("https://api.example.com/data", {
+local resp = wingman.http.get("https://api.example.com/data", {
     timeout = 10,
     headers = {["Authorization"] = "Bearer token"}
 })
 
 -- 带查询参数
-local resp = http.get("https://api.example.com/search", {
+local resp = wingman.http.get("https://api.example.com/search", {
     params = {q = "wingman", page = 1}
 })
 
@@ -172,11 +172,10 @@ resp = http.post("https://api.example.com/submit", {
 == Lua
 
 ```lua:line-numbers
-local http = require("wingman.http")
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 发送 JSON 数据（需要手动序列化）
-local resp = http.post("https://api.example.com/submit", json.encode({
+local resp = wingman.http.post("https://api.example.com/submit", wingman.json.encode({
     name = "Player1",
     score = 100,
     level = 5
@@ -244,10 +243,10 @@ else:
 == Lua
 
 ```lua:line-numbers
-local http = require("wingman.http")
+local wingman = require("wingman")
 
 -- 提交登录表单
-local resp = http.postForm("https://example.com/login", {
+local resp = wingman.http.postForm("https://example.com/login", {
     username = "user",
     password = "pass",
     remember = "1"
@@ -297,10 +296,9 @@ resp = http.put("https://api.example.com/user/123", {
 == Lua
 
 ```lua:line-numbers
-local http = require("wingman.http")
-local json = require("wingman.json")
+local wingman = require("wingman")
 
-local resp = http.put("https://api.example.com/user/123", json.encode({
+local resp = wingman.http.put("https://api.example.com/user/123", wingman.json.encode({
     name = "NewName",
     email = "new@example.com"
 }), {
@@ -344,10 +342,10 @@ if resp["success"]:
 == Lua
 
 ```lua:line-numbers
-local http = require("wingman.http")
+local wingman = require("wingman")
 
 -- 删除资源
-local resp = http.delete("https://api.example.com/user/123")
+local resp = wingman.http.delete("https://api.example.com/user/123")
 if resp.success then
     print("删除成功")
 end
@@ -406,10 +404,10 @@ success = http.download(
 == Lua
 
 ```lua:line-numbers
-local http = require("wingman.http")
+local wingman = require("wingman")
 
 -- 下载图片
-local success = http.download(
+local success = wingman.http.download(
     "https://example.com/image.png",
     "C:/images/image.png"
 )
@@ -418,7 +416,7 @@ if success then
 end
 
 -- 下载文件（带超时设置）
-local success = http.download(
+local success = wingman.http.download(
     "https://example.com/large-file.zip",
     "C:/downloads/file.zip",
     {timeout = 300}
@@ -484,8 +482,7 @@ if new_user["success"]:
 == Lua
 
 ```lua:line-numbers
-local http = require("wingman.http")
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 local APIClient = {}
 APIClient.__index = APIClient
@@ -502,12 +499,12 @@ end
 
 function APIClient:get(endpoint)
     local url = self.baseUrl .. "/" .. endpoint
-    return http.get(url, {headers = self.headers})
+    return wingman.http.get(url, {headers = self.headers})
 end
 
 function APIClient:post(endpoint, data)
     local url = self.baseUrl .. "/" .. endpoint
-    return http.post(url, json.encode(data), {headers = self.headers})
+    return wingman.http.post(url, wingman.json.encode(data), {headers = self.headers})
 end
 
 -- 使用示例

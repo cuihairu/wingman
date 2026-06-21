@@ -4,6 +4,7 @@
 #include "wingman/platform/iscreen.hpp"
 #include "wingman/platform/screen_factory.hpp"
 #include "wingman/recorder.hpp"
+#include "wingman/script/runtime_injections.hpp"
 #include "wingman/rpc/rpc_dispatcher.hpp"
 #include "wingman/rpc/script_handler.hpp"
 #include "wingman/runtime/event_buffer.hpp"
@@ -70,6 +71,8 @@ bool LocalIpcServer::start() {
     });
     impl_->screen = platform::createPlatformScreen();
     impl_->recorder = std::make_unique<MacroRecorder>();
+    // 与 RPC macro.* 共享同一录制器实例
+    wingman::script::modules::setGlobalRecorder(impl_->recorder.get());
     rpc::registerSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION);
     rpc::registerRuntimeSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION, impl_->standalone);
     rpc::registerTriggerHandlers(*impl_->dispatcher, *impl_->triggerManager);

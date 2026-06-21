@@ -113,14 +113,14 @@ if team.join_team("team_001", "player_alice"):
 == Lua
 
 ```lua:line-numbers
-local team = require("wingman.team")
+local wingman = require("wingman")
 
 -- 加入队伍
-if team.joinTeam("team_001", "player_alice") then
+if wingman.team.joinTeam("team_001", "player_alice") then
     print("已加入队伍")
     
     -- 获取队伍信息
-    local status = team.getTeamStatus()
+    local status = wingman.team.getTeamStatus()
     print("队长:", status.leaderId)
     print("队友:", unpack(status.members))
 end
@@ -163,10 +163,10 @@ if team.leave_team():
 == Lua
 
 ```lua:line-numbers
-local team = require("wingman.team")
+local wingman = require("wingman")
 
 -- 离开队伍
-if team.leaveTeam() then
+if wingman.team.leaveTeam() then
     print("已离开队伍")
 end
 ```
@@ -262,20 +262,19 @@ print(f"投票响应: {result['responses']}")
 == Lua
 
 ```lua:line-numbers
-local team = require("wingman.team")
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 发起投票
-if team.createVote("是否开始副本", 30000) then
+if wingman.team.createVote("是否开始副本", 30000) then
     print("投票已发起")
 end
 
 -- 获取投票结果
-local resultStr = team.getVoteResult("vote_123")
-local result = json.decode(resultStr)
+local resultStr = wingman.team.getVoteResult("vote_123")
+local result = wingman.json.decode(resultStr)
 print("投票主题:", result.subject)
 print("是否活跃:", tostring(result.active))
-print("投票响应:", json.encode(result.responses))
+print("投票响应:", wingman.json.encode(result.responses))
 ```
 
 :::
@@ -322,10 +321,10 @@ team.report_status({
 == Lua
 
 ```lua:line-numbers
-local team = require("wingman.team")
+local wingman = require("wingman")
 
 -- 汇报状态
-team.reportStatus({
+wingman.team.reportStatus({
     hp = 100,
     mp = 50,
     location = "town",
@@ -377,11 +376,10 @@ print(f"状态: {status['state']}")
 == Lua
 
 ```lua:line-numbers
-local team = require("wingman.team")
-local json = require("wingman.json")
+local wingman = require("wingman")
 
-local statusStr = team.getTeamStatus()
-local status = json.decode(statusStr)
+local statusStr = wingman.team.getTeamStatus()
+local status = wingman.json.decode(statusStr)
 
 print("队伍 ID:", status.teamId)
 print("队长:", status.leaderId)
@@ -433,10 +431,10 @@ team.broadcast({
 == Lua
 
 ```lua:line-numbers
-local team = require("wingman.team")
+local wingman = require("wingman")
 
 -- 广播消息
-team.broadcast({
+wingman.team.broadcast({
     type = "coordination",
     action = "move_to",
     target = "boss_location",
@@ -495,25 +493,24 @@ team.on("broadcast_received", lambda data: print(f"收到广播: {json.decode(da
 == Lua
 
 ```lua:line-numbers
-local team = require("wingman.team")
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 监听投票开始
-team.on("vote_started", function(data)
-    local msg = json.decode(data)
+wingman.team.on("vote_started", function(data)
+    local msg = wingman.json.decode(data)
     print("新投票:", msg.subject)
 end)
 
 -- 监听投票结束
-team.on("vote_ended", function(data)
-    local msg = json.decode(data)
-    print("投票结束:", json.encode(msg.result))
+wingman.team.on("vote_ended", function(data)
+    local msg = wingman.json.decode(data)
+    print("投票结束:", wingman.json.encode(msg.result))
 end)
 
 -- 监听广播消息
-team.on("broadcast_received", function(data)
-    local msg = json.decode(data)
-    print("收到广播:", json.encode(msg.message))
+wingman.team.on("broadcast_received", function(data)
+    local msg = wingman.json.decode(data)
+    print("收到广播:", wingman.json.encode(msg.message))
 end)
 ```
 
@@ -609,12 +606,10 @@ while team.is_joined():
 == Lua
 
 ```lua:line-numbers
-local team = require("wingman.team")
-local json = require("wingman.json")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 1. 加入队伍
-if not team.joinTeam("dungeon_party", "warrior_01") then
+if not wingman.team.joinTeam("dungeon_party", "warrior_01") then
     print("加入队伍失败")
     return
 end
@@ -622,13 +617,13 @@ end
 print("已加入队伍")
 
 -- 2. 监听队伍事件
-team.on("vote_started", function(data)
-    local msg = json.decode(data)
+wingman.team.on("vote_started", function(data)
+    local msg = wingman.json.decode(data)
     print("投票开始:", msg.subject)
 end)
 
-team.on("broadcast_received", function(data)
-    local msg = json.decode(data)
+wingman.team.on("broadcast_received", function(data)
+    local msg = wingman.json.decode(data)
     print("收到", msg.senderId, "的广播")
     if msg.message.type == "attack" then
         coordinateAttack(msg.message)
@@ -636,24 +631,24 @@ team.on("broadcast_received", function(data)
 end)
 
 -- 3. 汇报状态
-team.reportStatus({
+wingman.team.reportStatus({
     role = "warrior",
     level = 50,
     ready = true
 })
 
 -- 4. 等待并处理消息
-while team.isJoined() do
-    util.sleep(1000)
+while wingman.team.isJoined() do
+    wingman.util.sleep(1000)
     
     -- 检查投票
-    local status = json.decode(team.getTeamStatus())
+    local status = wingman.json.decode(wingman.team.getTeamStatus())
     if status.state == "voting" then
         print("队伍正在投票...")
     end
     
     -- 定期汇报状态
-    team.reportStatus({hp = getCurrentHp()})
+    wingman.team.reportStatus({hp = getCurrentHp()})
 end
 ```
 
@@ -697,37 +692,35 @@ print(f"最终结果: {result['responses']}")
 == Lua
 
 ```lua:line-numbers
-local team = require("wingman.team")
-local json = require("wingman.json")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 监听投票事件
-team.on("vote_started", function(data)
-    local vote = json.decode(data)
+wingman.team.on("vote_started", function(data)
+    local vote = wingman.json.decode(data)
     print("投票:", vote.subject)
     print("截止时间:", vote.deadline)
     
     -- 自动决策（示例）
     if vote.subject == "是否休息" then
-        team.castVote(vote.voteId, "agree")
+        wingman.team.castVote(vote.voteId, "agree")
     else
-        team.castVote(vote.voteId, "disagree")
+        wingman.team.castVote(vote.voteId, "disagree")
     end
 end)
 
-team.on("vote_ended", function(data)
-    local msg = json.decode(data)
-    print("投票结果:", json.encode(msg.result))
+wingman.team.on("vote_ended", function(data)
+    local msg = wingman.json.decode(data)
+    print("投票结果:", wingman.json.encode(msg.result))
 end)
 
 -- 发起投票
-team.createVote("是否前往BOSS区域", 30000)
+wingman.team.createVote("是否前往BOSS区域", 30000)
 
 -- 等待投票结果
-util.sleep(35000)
+wingman.util.sleep(35000)
 
-local result = json.decode(team.getVoteResult("vote_xxx"))
-print("最终结果:", json.encode(result.responses))
+local result = wingman.json.decode(wingman.team.getVoteResult("vote_xxx"))
+print("最终结果:", wingman.json.encode(result.responses))
 ```
 
 :::

@@ -76,10 +76,10 @@ if found:
 == Lua
 
 ```lua:line-numbers
-local window = require("wingman.window")
+local wingman = require("wingman")
 
 -- 查找记事本窗口
-local hwnd, found = window.find("记事本")
+local hwnd, found = wingman.window.find("记事本")
 if found then
     print("找到记事本窗口，句柄:", hwnd)
 else
@@ -87,7 +87,7 @@ else
 end
 
 -- 查找 Chrome 窗口
-local hwnd, found = window.find("Chrome")
+local hwnd, found = wingman.window.find("Chrome")
 if found then
     print("找到 Chrome 窗口，句柄:", hwnd)
 end
@@ -136,12 +136,12 @@ if found:
 == Lua
 
 ```lua:line-numbers
-local window = require("wingman.window")
+local wingman = require("wingman")
 
 -- 查找并激活记事本
-local hwnd, found = window.find("记事本")
+local hwnd, found = wingman.window.find("记事本")
 if found then
-    local success = window.activate(hwnd)
+    local success = wingman.window.activate(hwnd)
     if success then
         print("记事本已激活")
     end
@@ -186,11 +186,11 @@ print(f"前台窗口: {title}")
 == Lua
 
 ```lua:line-numbers
-local window = require("wingman.window")
+local wingman = require("wingman")
 
 -- 获取前台窗口
-local hwnd = window.getForeground()
-local title = window.getTitle(hwnd)
+local hwnd = wingman.window.getForeground()
+local title = wingman.window.getTitle(hwnd)
 print("前台窗口:", title)
 ```
 
@@ -235,11 +235,11 @@ print(f"标题: {title}")
 == Lua
 
 ```lua:line-numbers
-local window = require("wingman.window")
+local wingman = require("wingman")
 
 -- 获取前台窗口标题
-local hwnd = window.getForeground()
-local title = window.getTitle(hwnd)
+local hwnd = wingman.window.getForeground()
+local title = wingman.window.getTitle(hwnd)
 print("标题:", title)
 ```
 
@@ -292,11 +292,11 @@ if found:
 == Lua
 
 ```lua:line-numbers
-local window = require("wingman.window")
+local wingman = require("wingman")
 
-local hwnd, found = window.find("记事本")
+local hwnd, found = wingman.window.find("记事本")
 if found then
-    local bounds = window.getBounds(hwnd)
+    local bounds = wingman.window.getBounds(hwnd)
     print(string.format("位置: (%d, %d)", bounds.x, bounds.y))
     print(string.format("大小: %dx%d", bounds.width, bounds.height))
 
@@ -367,27 +367,26 @@ if window.wait_for("记事本"):
 == Lua
 
 ```lua:line-numbers
-local window = require("wingman.window")
-local process = require("wingman.process")
+local wingman = require("wingman")
 
 -- 启动记事本
-process.start("notepad.exe")
+wingman.process.start("notepad.exe")
 
 -- 等待记事本窗口出现（最多等待 5 秒）
-if window.waitFor("记事本", 5000) then
+if wingman.window.waitFor("记事本", 5000) then
     print("记事本已启动")
 
     -- 查找并激活窗口
-    local hwnd, found = window.find("记事本")
+    local hwnd, found = wingman.window.find("记事本")
     if found then
-        window.activate(hwnd)
+        wingman.window.activate(hwnd)
     end
 else
     print("超时：记事本未启动")
 end
 
 -- 使用默认超时时间
-if window.waitFor("记事本") then
+if wingman.window.waitFor("记事本") then
     print("记事本已出现")
 end
 ```
@@ -447,37 +446,34 @@ if found:
 == Lua
 
 ```lua:line-numbers
-local window = require("wingman.window")
-local process = require("wingman.process")
-local util = require("wingman.util")
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 查找记事本
-local hwnd, found = window.find("记事本")
+local hwnd, found = wingman.window.find("记事本")
 
 if not found then
     print("未找到记事本，尝试启动...")
-    process.start("notepad.exe")
+    wingman.process.start("notepad.exe")
 
     -- 等待窗口出现
-    if not window.waitFor("记事本", 3000) then
+    if not wingman.window.waitFor("记事本", 3000) then
         print("启动失败")
         return
     end
 
-    hwnd, found = window.find("记事本")
+    hwnd, found = wingman.window.find("记事本")
 end
 
 if found then
     -- 激活窗口
-    window.activate(hwnd)
-    util.sleep(200)
+    wingman.window.activate(hwnd)
+    wingman.util.sleep(200)
 
     -- 获取窗口信息
-    local title = window.getTitle(hwnd)
+    local title = wingman.window.getTitle(hwnd)
     print("标题:", title)
 
-    local bounds = window.getBounds(hwnd)
+    local bounds = wingman.window.getBounds(hwnd)
     print(string.format("位置: (%d, %d)", bounds.x, bounds.y))
     print(string.format("大小: %dx%d", bounds.width, bounds.height))
 
@@ -486,7 +482,7 @@ if found then
     local centerY = bounds.y + bounds.height / 2
 
     -- 点击窗口中心
-    input.click(centerX, centerY)
+    wingman.input.click(centerX, centerY)
 end
 ```
 

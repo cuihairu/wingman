@@ -40,7 +40,7 @@ JSON (JavaScript Object Notation) 是一种轻量级的数据交换格式。
 #### 编码（序列化）
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 编码表
 local data = {
@@ -54,12 +54,12 @@ local data = {
     }
 }
 
-local json_string = json.encode(data)
+local json_string = wingman.json.encode(data)
 print(json_string)
 -- {"name":"player1","level":10,"inventory":["sword","shield","potion"],"stats":{"hp":100,"mp":50,"strength":15}}
 
 -- 美化输出
-local pretty_json = json.encode(data, true)
+local pretty_json = wingman.json.encode(data, true)
 print(pretty_json)
 -- {
 --   "name": "player1",
@@ -76,12 +76,12 @@ print(pretty_json)
 #### 解码（反序列化）
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 local json_string = '{"name":"player1","level":10,"inventory":["sword","shield"]}'
 
 -- 解码 JSON 字符串
-local data = json.decode(json_string)
+local data = wingman.json.decode(json_string)
 
 print(data.name)           -- "player1"
 print(data.level)           -- 10
@@ -96,11 +96,11 @@ end
 #### 文件操作
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 保存到文件
 local data = {score = 1000, level = 5}
-local json_string = json.encode(data, true)
+local json_string = wingman.json.encode(data, true)
 
 local file = io.open("save_data.json", "w")
 file:write(json_string)
@@ -111,7 +111,7 @@ local file = io.open("save_data.json", "r")
 local json_string = file:read("*all")
 file:close()
 
-local data = json.decode(json_string)
+local data = wingman.json.decode(json_string)
 print(data.score)  -- 1000
 ```
 
@@ -171,7 +171,7 @@ INI 格式是一种简单的配置文件格式，常用于应用程序配置。
 #### 解析 INI
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 local content = [[
 ; 服务器配置
@@ -188,7 +188,7 @@ username = admin
 password = secret
 ]]
 
-local data = ini.decode(content)
+local data = wingman.ini.decode(content)
 
 -- 获取整个 section
 local server = data["Server"]
@@ -197,22 +197,22 @@ print(server.port)    -- "8080"
 print(server.debug)  -- "true"
 
 -- 或使用 get 方法
-local host = ini.get(data, "Server", "host")
+local host = wingman.ini.get(data, "Server", "host")
 print(host)  -- "localhost"
 
 -- 检查 section 是否存在
-local has_server = ini.has_section(data, "Server")
+local has_server = wingman.ini.has_section(data, "Server")
 print(has_server)  -- true
 
 -- 检查 key 是否存在
-local has_debug = ini.has_key(data, "Server", "debug")
+local has_debug = wingman.ini.has_key(data, "Server", "debug")
 print(has_debug)  -- true
 ```
 
 #### 生成 INI
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 local data = {
     Server = {
@@ -227,7 +227,7 @@ local data = {
     }
 }
 
-local content = ini.encode(data)
+local content = wingman.ini.encode(data)
 print(content)
 -- [Server]
 -- host=localhost
@@ -243,7 +243,7 @@ print(content)
 #### 修改 INI
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 local content = [[
 [Server]
@@ -251,28 +251,28 @@ host = localhost
 port = 8080
 ]]
 
-local data = ini.decode(content)
+local data = wingman.ini.decode(content)
 
 -- 设置值
-data = ini.set(data, "Server", "port", "9090")
+data = wingman.ini.set(data, "Server", "port", "9090")
 
 -- 添加新的 section
-data = ini.set(data, "Database", "host", "localhost")
+data = wingman.ini.set(data, "Database", "host", "localhost")
 
 -- 删除值
-data = ini.delete(data, "Server", "debug")
+data = wingman.ini.delete(data, "Server", "debug")
 
 -- 删除 section
-data = ini.delete(data, "OldSection")
+data = wingman.ini.delete(data, "OldSection")
 
 -- 获取所有 section
-local sections = ini.sections(data)
+local sections = wingman.ini.sections(data)
 for _, section in ipairs(sections) do
     print(section)
 end
 
 -- 获取 section 中的所有 key
-local keys = ini.keys(data, "Server")
+local keys = wingman.ini.keys(data, "Server")
 for _, key in ipairs(keys) do
     print(key)
 end
@@ -281,7 +281,7 @@ end
 #### 合并 INI
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 local default_config = [[
 [Graphics]
@@ -302,11 +302,11 @@ fullscreen = true
 volume = 50
 ]]
 
-local default = ini.decode(default_config)
-local user = ini.decode(user_config)
+local default = wingman.ini.decode(default_config)
+local user = wingman.ini.decode(user_config)
 
 -- 合并配置（用户配置覆盖默认配置）
-local merged = ini.merge(default, user)
+local merged = wingman.ini.merge(default, user)
 
 print(merged.Graphics.resolution)  -- "2560x1440" (用户配置)
 print(merged.Graphics.vsync)      -- "true" (默认配置)
@@ -379,7 +379,7 @@ print(content)
 #### Lua
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- 创建默认配置
 local default_config = {
@@ -402,7 +402,7 @@ local default_config = {
 }
 
 -- 保存配置
-local config_content = ini.encode(default_config)
+local config_content = wingman.ini.encode(default_config)
 
 local file = io.open("config.ini", "w")
 file:write(config_content)
@@ -413,7 +413,7 @@ local file = io.open("config.ini", "r")
 local config_content = file:read("*all")
 file:close()
 
-local config = ini.decode(config_content)
+local config = wingman.ini.decode(config_content)
 
 -- 使用配置
 print(config.Graphics.resolution)
@@ -425,7 +425,7 @@ print(config.Audio.master)
 #### Lua
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 游戏状态
 local game_state = {
@@ -455,7 +455,7 @@ local game_state = {
 }
 
 -- 保存存档
-local save_data = json.encode(game_state, true)
+local save_data = wingman.json.encode(game_state, true)
 
 local file = io.open("save_001.json", "w")
 file:write(save_data)
@@ -466,7 +466,7 @@ local file = io.open("save_001.json", "r")
 local save_data = file:read("*all")
 file:close()
 
-local loaded_state = json.decode(save_data)
+local loaded_state = wingman.json.decode(save_data)
 
 -- 继续游戏
 print("欢迎回来, " .. loaded_state.player.name)
@@ -479,10 +479,10 @@ print("位置: " .. loaded_state.player.position.x .. ", " .. loaded_state.playe
 #### Lua
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- 系统默认配置
-local system_config = ini.decode([[
+local system_config = wingman.ini.decode([[
 [Graphics]
 resolution = 1920x1080
 quality = medium
@@ -498,7 +498,7 @@ voice = 100
 ]])
 
 -- 用户配置
-local user_config = ini.decode([[
+local user_config = wingman.ini.decode([[
 [Graphics]
 resolution = 2560x1440
 quality = ultra
@@ -510,14 +510,14 @@ music = 40
 ]])
 
 -- 运行时配置（最高优先级）
-local runtime_config = ini.decode([[
+local runtime_config = wingman.ini.decode([[
 [Graphics]
 vsync = false
 ]])
 
 -- 按优先级合并
-local final_config = ini.merge(system_config, user_config)
-final_config = ini.merge(final_config, runtime_config)
+local final_config = wingman.ini.merge(system_config, user_config)
+final_config = wingman.ini.merge(final_config, runtime_config)
 
 -- 结果：
 -- Graphics.resolution = "2560x1440" (用户配置)
@@ -548,14 +548,14 @@ local config_path = "config/settings.ini"
 ### 2. 错误处理
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
 -- 读取 JSON 时处理错误
 local ok, data = pcall(function()
     local file = io.open("data.json", "r")
     local content = file:read("*all")
     file:close()
-    return json.decode(content)
+    return wingman.json.decode(content)
 end)
 
 if not ok then
@@ -568,10 +568,10 @@ end
 ### 3. 配置验证
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- 加载配置
-local config = ini.decode(config_content)
+local config = wingman.ini.decode(config_content)
 
 -- 验证必需的配置项
 local required_keys = {
@@ -581,7 +581,7 @@ local required_keys = {
 }
 
 for _, req in ipairs(required_keys) do
-    if not ini.has_key(config, req.section, req.key) then
+    if not wingman.ini.has_key(config, req.section, req.key) then
         error(string.format("缺少必需的配置: [%s] %s", req.section, req.key))
     end
 end
@@ -590,9 +590,9 @@ end
 ### 4. 数据验证
 
 ```lua
-local json = require("wingman.json")
+local wingman = require("wingman")
 
-local data = json.decode(json_string)
+local data = wingman.json.decode(json_string)
 
 -- 验证数据结构
 if type(data) ~= "table" then

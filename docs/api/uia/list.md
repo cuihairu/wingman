@@ -36,10 +36,10 @@ if list_box:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找名为"文件列表"的列表控件
-local listBox = uia.findByName("文件列表")
+local listBox = wingman.uia.findByName("文件列表")
 if listBox then
     print("找到列表控件")
 end
@@ -80,9 +80,9 @@ if list_box:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local listBox = uia.findByName("文件列表")
+local listBox = wingman.uia.findByName("文件列表")
 if listBox then
     -- 获取所有列表项
     local items = listBox:getChildren()
@@ -127,9 +127,9 @@ if list_box:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local listBox = uia.findByName("用户列表")
+local listBox = wingman.uia.findByName("用户列表")
 if listBox then
     local items = listBox:getChildren()
 
@@ -176,9 +176,9 @@ if list_box:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local listBox = uia.findByName("文件列表")
+local listBox = wingman.uia.findByName("文件列表")
 if listBox then
     local items = listBox:getChildren()
 
@@ -215,10 +215,10 @@ else:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 直接按名称查找列表项
-local item = uia.findByName("目标文件.txt")
+local item = wingman.uia.findByName("目标文件.txt")
 if item then
     item:click()
     print("已选中：目标文件.txt")
@@ -260,9 +260,9 @@ if list_box:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local listBox = uia.findByName("文件列表")
+local listBox = wingman.uia.findByName("文件列表")
 if listBox then
     local items = listBox:getChildren()
 

@@ -24,10 +24,10 @@ if progress:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找名为"下载进度"的进度条
-local progress = uia.findByName("下载进度")
+local progress = wingman.uia.findByName("下载进度")
 if progress then
     print("找到进度条")
 end
@@ -66,9 +66,9 @@ if progress:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local progress = uia.findByName("安装进度")
+local progress = wingman.uia.findByName("安装进度")
 if progress then
     local info = progress:getInfo()
     local value = info.value or 0
@@ -144,8 +144,7 @@ else:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 local function waitForProgressComplete(progressName, timeout)
     """
@@ -159,10 +158,10 @@ local function waitForProgressComplete(progressName, timeout)
         true 表示完成，false 表示超时
     """
     timeout = timeout or 30000
-    local startTime = util.time()
+    local startTime = wingman.util.time()
 
-    while util.time() - startTime < timeout do
-        local progress = uia.findByName(progressName)
+    while wingman.util.time() - startTime < timeout do
+        local progress = wingman.uia.findByName(progressName)
         if progress then
             local info = progress:getInfo()
             local value = info.value or 0
@@ -174,7 +173,7 @@ local function waitForProgressComplete(progressName, timeout)
             end
         end
 
-        util.sleep(500)  -- 每 0.5 秒检查一次
+        wingman.util.sleep(500)  -- 每 0.5 秒检查一次
     end
 
     print("等待超时")

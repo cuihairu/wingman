@@ -84,6 +84,9 @@ public:
     uint64_t getStartTime() const { return m_startTime; }
 
 private:
+    // 拷贝一份事件快照（带锁），供 const 方法在锁外做 I/O / 回放
+    std::vector<RecordedEvent> getEventsSnapshot() const;
+
     std::vector<RecordedEvent> m_events;
     std::atomic<bool> m_recording;
     std::atomic<bool> m_paused;

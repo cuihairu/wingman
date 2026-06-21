@@ -1,7 +1,7 @@
 -- Wingman MMORPG 游戏自动化示例
 -- 演示游戏中的常见自动化场景
 
-local json = require("json")
+local wingman = require("wingman")
 
 print("=== MMORPG 游戏自动化示例 ===")
 print("警告: 请确保遵守游戏服务条款，自动化可能导致封号")
@@ -51,14 +51,14 @@ local Config = {
 local function humanDelay(baseMs)
     local variation = Config.delays.human
     local delay = baseMs + math.random(-variation, variation)
-    util.sleep(delay)
+    wingman.util.sleep(delay)
 end
 
 -- 发送按键
 local function pressKey(key)
-    input.keyDown(key)
-    util.sleep(50)
-    input.keyUp(key)
+    wingman.input.keyDown(key)
+    wingman.util.sleep(50)
+    wingman.input.keyUp(key)
 end
 
 -- 检测血量百分比
@@ -66,7 +66,7 @@ local function detectHP()
     -- 在血条区域检测颜色
     local x = Config.hpBar.x + Config.hpBar.width / 2
     local y = Config.hpBar.y + Config.hpBar.height / 2
-    local color = screen.getPixel(x, y)
+    local color = wingman.screen.getPixel(x, y)
 
     -- 根据颜色判断血量等级
     if color.r == 255 and color.g == 0 and color.b == 0 then
@@ -91,7 +91,7 @@ function AutoPotion.check()
         return
     end
 
-    local now = util.getTime()
+    local now = wingman.util.getTime()
     local hpStatus = detectHP()
 
     -- HP 低且冷却完成
@@ -105,7 +105,7 @@ function AutoPotion.check()
     -- MP 检测 (简化)
     local x = Config.mpBar.x + 10
     local y = Config.mpBar.y + Config.mpBar.height / 2
-    local mpColor = screen.getPixel(x, y)
+    local mpColor = wingman.screen.getPixel(x, y)
 
     if mpColor.b > 200 and (now - AutoPotion.lastMPTime) > Config.delays.potion then
         print(string.format("[%s] MP低! 使用蓝药", os.date("%H:%M:%S")))
@@ -125,11 +125,11 @@ local AutoCombat = {
 
 function AutoCombat.findTarget()
     -- 在屏幕中心区域查找敌人颜色
-    local centerX = screen.getScreenWidth() / 2
-    local centerY = screen.getScreenHeight() / 2
+    local centerX = wingman.screen.getScreenWidth() / 2
+    local centerY = wingman.screen.getScreenHeight() / 2
     local searchRadius = 200
 
-    local found, x, y = screen.findColor(
+    local found, x, y = wingman.screen.findColor(
         Config.colors.enemy,
         centerX - searchRadius,
         centerY - searchRadius,
@@ -140,9 +140,9 @@ function AutoCombat.findTarget()
 
     if found then
         -- 使用人性化移动点击敌人
-        input.move(x, y, 200)
+        wingman.input.move(x, y, 200)
         humanDelay(100)
-        input.click(x, y)
+        wingman.input.click(x, y)
         AutoCombat.currentTarget = true
         print(string.format("[%s] 选中目标", os.date("%H:%M:%S")))
     end
@@ -151,7 +151,7 @@ function AutoCombat.findTarget()
 end
 
 function AutoCombat.castSkills()
-    local now = util.getTime()
+    local now = wingman.util.getTime()
 
     -- 技能 1
     if (now - (AutoCombat.lastSkillTime[1] or 0)) > Config.delays.skill then
@@ -205,28 +205,28 @@ function AutoLoot.check()
         return
     end
 
-    local now = util.getTime()
+    local now = wingman.util.getTime()
     if (now - AutoLoot.lastLootTime) < Config.delays.pickup then
         return
     end
 
     -- 查找地面物品
-    local screenWidth = screen.getScreenWidth()
-    local screenHeight = screen.getScreenHeight()
+    local screenWidth = wingman.screen.getScreenWidth()
+    local screenHeight = wingman.screen.getScreenHeight()
 
     -- 从底部向上扫描
     for y = screenHeight - 100, screenHeight - 300, -30 do
         for x = 100, screenWidth - 100, 50 do
-            local color = screen.getPixel(x, y)
+            local color = wingman.screen.getPixel(x, y)
 
             -- 检测物品颜色 (黄色)
             if color.r == 255 and color.g == 255 and color.b == 0 then
                 print(string.format("[%s] 发现物品在 (%d, %d)", os.date("%H:%M:%S"), x, y))
 
                 -- 人性化移动并点击
-                input.move(x, y, 150)
+                wingman.input.move(x, y, 150)
                 humanDelay(50)
-                input.click(x, y)
+                wingman.input.click(x, y)
 
                 AutoLoot.lastLootTime = now
                 return
@@ -247,7 +247,7 @@ function Automation.start()
 
     while Automation.running do
         -- 检测停止键 (F10 = 121)
-        if input.isKeyDown(121) then
+        if wingman.input.isKeyDown(121) then
             print("检测到停止信号...")
             Automation.running = false
             break
@@ -259,7 +259,7 @@ function Automation.start()
         AutoLoot.check()
 
         -- 检查间隔
-        util.sleep(Config.delays.check)
+        wingman.util.sleep(Config.delays.check)
     end
 
     print("自动化已停止")
@@ -301,7 +301,7 @@ function Automation.test()
     print(string.format("HP 状态: %s", hp))
 
     print("\n测试鼠标移动...")
-    local pos = input.getMousePosition()
+    local pos = wingman.input.getMousePosition()
     print(string.format("当前位置: (%d, %d)", pos.x, pos.y))
 
     print("\n测试按键...")

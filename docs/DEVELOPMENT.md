@@ -103,22 +103,21 @@ busted tests -o utfTerminal
 ### Basic Example
 
 ```lua
+local wingman = require("wingman")
+
 -- script.lua
 
 -- Use built-in modules
-local screen = require("wingman.screen")
-local input = require("wingman.input")
-
 -- Get screen size
-local width, height = screen.getDimensions()
+local width, height = wingman.screen.getDimensions()
 print("Screen: " .. width .. "x" .. height)
 
 -- Get pixel color
-local color = screen.getPixel(100, 100)
+local color = wingman.screen.getPixel(100, 100)
 print("Color at (100, 100): " .. string.format("0x%06X", color))
 
 -- Move mouse
-input.click(500, 300)
+wingman.input.click(500, 300)
 ```
 
 ### Installing External Lua Packages

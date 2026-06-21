@@ -46,13 +46,13 @@ Wingman 提供了完整的 SQLite 数据库支持，包括：
 #### Lua
 
 ```lua
-local db = require("wingman.db")
+local wingman = require("wingman")
 
 -- 连接到命名数据库（会自动创建）
-local conn = db.connect("game_data")
+local conn = wingman.db.connect("game_data")
 
 -- 或使用内存数据库（重启后数据丢失）
-local mem_conn = db.connect(":memory:")
+local mem_conn = wingman.db.connect(":memory:")
 ```
 
 #### Python
@@ -72,8 +72,9 @@ mem_conn = db.connect(":memory:")
 #### Lua
 
 ```lua
-local db = require("wingman.db")
-local conn = db.connect("game_data")
+local wingman = require("wingman")
+
+local conn = wingman.db.connect("game_data")
 
 conn:execute([[
     CREATE TABLE IF NOT EXISTS players (
@@ -171,8 +172,9 @@ print(f"Total players: {count}")
 #### Lua
 
 ```lua
-local db = require("wingman.db")
-local conn = db.connect("game_data")
+local wingman = require("wingman")
+
+local conn = wingman.db.connect("game_data")
 
 -- CREATE: 创建表
 conn:execute([[
@@ -444,8 +446,9 @@ ORM（对象关系映射）提供了更直观的数据库操作方式。
 #### Lua
 
 ```lua
-local db = require("wingman.db")
-local conn = db.connect("game_data")
+local wingman = require("wingman")
+
+local conn = wingman.db.connect("game_data")
 
 local players = conn:table("players")
 
@@ -643,8 +646,9 @@ print(f"Deleted {deleted} rows")
 #### Lua
 
 ```lua
-local db = require("wingman.db")
-local conn = db.connect("game_data")
+local wingman = require("wingman")
+
+local conn = wingman.db.connect("game_data")
 
 -- 执行事务
 local success = conn:transaction(function(tx)
@@ -766,9 +770,10 @@ if success:
 ### 1. 连接管理
 
 ```lua
+local wingman = require("wingman")
+
 -- ✅ 好的做法：重用连接
-local db = require("wingman.db")
-local conn = db.connect("my_database")
+local conn = wingman.db.connect("my_database")
 
 -- 在整个脚本中使用同一个 conn
 function savePlayer(name, level)
@@ -777,7 +782,7 @@ end
 
 -- ❌ 避免：频繁创建新连接
 function badSavePlayer(name, level)
-    local temp_conn = db.connect("my_database")
+    local temp_conn = wingman.db.connect("my_database")
     temp_conn:execute("INSERT INTO players (name, level) VALUES (?, ?)", {name, level})
 end
 ```
@@ -874,8 +879,9 @@ end
 #### Lua
 
 ```lua
-local db = require("wingman.db")
-local conn = db.connect("game_saves")
+local wingman = require("wingman")
+
+local conn = wingman.db.connect("game_saves")
 
 -- 创建表结构
 conn:execute([[
@@ -945,8 +951,9 @@ end
 #### Lua
 
 ```lua
-local db = require("wingman.db")
-local conn = db.connect("leaderboard")
+local wingman = require("wingman")
+
+local conn = wingman.db.connect("leaderboard")
 
 -- 创建表
 conn:execute([[
@@ -1008,8 +1015,9 @@ end
 #### Lua
 
 ```lua
-local db = require("wingman.db")
-local conn = db.connect("inventory")
+local wingman = require("wingman")
+
+local conn = wingman.db.connect("inventory")
 
 -- 创建表
 conn:execute([[

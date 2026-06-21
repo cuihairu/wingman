@@ -56,16 +56,16 @@ pos = vision.find_color(0xFF0000, 10)
 == Lua
 
 ```lua:line-numbers
-local vision = require("wingman.vision")
+local wingman = require("wingman")
 
 -- 查找红色
-local pos = vision.findColor({r=255, g=0, b=0}, 10)
+local pos = wingman.vision.findColor({r=255, g=0, b=0}, 10)
 if pos then
     print("找到颜色:", pos.x, pos.y)
 end
 
 -- 使用十六进制颜色
-local pos = vision.findColor(0xFF0000, 10)
+local pos = wingman.vision.findColor(0xFF0000, 10)
 ```
 
 :::
@@ -112,9 +112,9 @@ for i, pos in enumerate(positions):
 == Lua
 
 ```lua:line-numbers
-local vision = require("wingman.vision")
+local wingman = require("wingman")
 
-local positions = vision.findAllColors({r=255, g=0, b=0}, 5)
+local positions = wingman.vision.findAllColors({r=255, g=0, b=0}, 5)
 for i, pos in ipairs(positions) do
     print("位置", i, ":", pos.x, pos.y)
 end
@@ -162,9 +162,9 @@ if vision.has_color({"r": 0, "g": 255, "b": 0}, 10):
 == Lua
 
 ```lua:line-numbers
-local vision = require("wingman.vision")
+local wingman = require("wingman")
 
-if vision.hasColor({r=0, g=255, b=0}, 10) then
+if wingman.vision.hasColor({r=0, g=255, b=0}, 10) then
     print("找到了绿色")
 end
 ```
@@ -209,9 +209,9 @@ print(f"主要颜色: {color['r']}, {color['g']}, {color['b']}")
 == Lua
 
 ```lua:line-numbers
-local vision = require("wingman.vision")
+local wingman = require("wingman")
 
-local color = vision.getDominantColor({x=0, y=0, width=200, height=200})
+local color = wingman.vision.getDominantColor({x=0, y=0, width=200, height=200})
 print("主要颜色:", color.r, color.g, color.b)
 ```
 
@@ -262,9 +262,9 @@ if result['found']:
 == Lua
 
 ```lua:line-numbers
-local vision = require("wingman.vision")
+local wingman = require("wingman")
 
-local result = vision.findImage("target.png", 0.8)
+local result = wingman.vision.findImage("target.png", 0.8)
 if result.found then
     print("找到图像:", result.position.x, result.position.y)
     print("置信度:", result.confidence)
@@ -313,9 +313,9 @@ print(f"检测到 {len(edges)} 个边缘点")
 == Lua
 
 ```lua:line-numbers
-local vision = require("wingman.vision")
+local wingman = require("wingman")
 
-local edges = vision.detectEdges({x=0, y=0, width=800, height=600}, 50, 150)
+local edges = wingman.vision.detectEdges({x=0, y=0, width=800, height=600}, 50, 150)
 print("检测到", #edges, "个边缘点")
 ```
 
@@ -360,9 +360,9 @@ for i, contour in enumerate(contours):
 == Lua
 
 ```lua:line-numbers
-local vision = require("wingman.vision")
+local wingman = require("wingman")
 
-local contours = vision.detectContours({x=0, y=0, width=800, height=600})
+local contours = wingman.vision.detectContours({x=0, y=0, width=800, height=600})
 for i, contour in ipairs(contours) do
     print("轮廓", i, "有", #contour, "个点")
 end
@@ -414,9 +414,9 @@ for i, circle in enumerate(circles):
 == Lua
 
 ```lua:line-numbers
-local vision = require("wingman.vision")
+local wingman = require("wingman")
 
-local circles = vision.detectCircles({x=0, y=0, width=800, height=600}, 10, 100)
+local circles = wingman.vision.detectCircles({x=0, y=0, width=800, height=600}, 10, 100)
 for i, circle in ipairs(circles) do
     print("圆", i, ": center(", circle.x, circle.y, ") radius=", circle.radius)
 end
@@ -462,9 +462,9 @@ vision.capture_region({"x": 0, "y": 0, "width": 1920, "height": 1080}, "screensh
 == Lua
 
 ```lua:line-numbers
-local vision = require("wingman.vision")
+local wingman = require("wingman")
 
-vision.captureRegion({x=0, y=0, width=1920, height=1080}, "screenshot.png")
+wingman.vision.captureRegion({x=0, y=0, width=1920, height=1080}, "screenshot.png")
 ```
 
 :::

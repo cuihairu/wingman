@@ -104,16 +104,16 @@ region = screen.capture(500, 200, 200, 50)
 == Lua
 
 ```lua:line-numbers
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 截取全屏（假设屏幕分辨率为 1920x1080）
-local img = screen.capture(0, 0, 1920, 1080)
+local img = wingman.screen.capture(0, 0, 1920, 1080)
 
 -- 截取指定区域（从 100,100 开始，宽 400，高 300）
-local img = screen.capture(100, 100, 400, 300)
+local img = wingman.screen.capture(100, 100, 400, 300)
 
 -- 截取窗口的一个小区域用于后续处理
-local region = screen.capture(500, 200, 200, 50)
+local region = wingman.screen.capture(500, 200, 200, 50)
 ```
 
 :::
@@ -171,10 +171,10 @@ print(f"R={r}, G={g}, B={b}")
 == Lua
 
 ```lua:line-numbers
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 获取 (100, 100) 位置的像素颜色
-local color = screen.getPixel(100, 100)
+local color = wingman.screen.getPixel(100, 100)
 print(string.format("颜色值: 0x%06X", color))
 
 -- 检查是否为红色
@@ -242,10 +242,10 @@ result = screen.find_pixel(0x00FF00, 100, 100, 500, 500, 0)
 == Lua
 
 ```lua:line-numbers
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 在全屏范围内查找红色像素（默认容差 10）
-local x, y = screen.findPixel(0xFF0000, 0, 0, 1920, 1080)
+local x, y = wingman.screen.findPixel(0xFF0000, 0, 0, 1920, 1080)
 if x then
     print(string.format("找到红色像素，位置: %d, %d", x, y))
 else
@@ -253,7 +253,7 @@ else
 end
 
 -- 在指定区域查找，使用精确匹配（容差为 0）
-local x, y = screen.findPixel(0x00FF00, 100, 100, 500, 500, 0)
+local x, y = wingman.screen.findPixel(0x00FF00, 100, 100, 500, 500, 0)
 ```
 
 :::
@@ -304,10 +304,10 @@ for x, y in results:
 == Lua
 
 ```lua:line-numbers
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 查找所有红色像素
-local results = screen.findColor(0xFF0000, 0, 0, 1920, 1080)
+local results = wingman.screen.findColor(0xFF0000, 0, 0, 1920, 1080)
 print("找到 " .. #results .. " 个红色像素")
 
 -- 遍历所有匹配的像素
@@ -374,10 +374,10 @@ result = screen.find_image("button.png", 100, 100, 500, 500, 0.8)
 == Lua
 
 ```lua:line-numbers
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 在全屏范围内查找图像
-local result = screen.findImage("target.png", 0, 0, 1920, 1080)
+local result = wingman.screen.findImage("target.png", 0, 0, 1920, 1080)
 if result then
     print(string.format("找到图像，位置: %d, %d，相似度: %f",
         result.x, result.y, result.confidence))
@@ -386,7 +386,7 @@ else
 end
 
 -- 在指定区域查找，使用较低的匹配阈值
-local result = screen.findImage("button.png", 100, 100, 500, 500, 0.8)
+local result = wingman.screen.findImage("button.png", 100, 100, 500, 500, 0.8)
 ```
 
 :::
@@ -448,10 +448,10 @@ if button:
 == Lua
 
 ```lua:line-numbers
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 等待"加载完成"图像出现（最多等待 5 秒）
-local result = screen.waitForImage("loaded.png", 5000)
+local result = wingman.screen.waitForImage("loaded.png", 5000)
 if result then
     print("加载完成")
 else
@@ -459,7 +459,7 @@ else
 end
 
 -- 等待按钮出现后再点击
-local button = screen.waitForImage("submit_button.png", 3000)
+local button = wingman.screen.waitForImage("submit_button.png", 3000)
 if button then
     local x, y = button.x, button.y
     -- 点击找到的位置（需要 input 模块）
@@ -529,9 +529,7 @@ def game_bot():
 == Lua
 
 ```lua:line-numbers
-local screen = require("wingman.screen")
-local input = require("wingman.input")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 local function gameBot()
     -- 定义血量区域（假设在屏幕左上角）
@@ -543,31 +541,31 @@ local function gameBot()
 
     while true do
         -- 1. 检查血量
-        local hpColor = screen.getPixel(hpX + 10, hpY + 10)
+        local hpColor = wingman.screen.getPixel(hpX + 10, hpY + 10)
 
         -- 如果血量颜色变暗（表示血量低），使用补血
         if hpColor < 0xFF0000 then
             print("血量低，使用补血...")
             -- 点击补血按钮（假设位置在 200, 300）
-            input.click(200, 300)
-            util.sleep(1000)  -- 等待补血动画
+            wingman.input.click(200, 300)
+            wingman.util.sleep(1000)  -- 等待补血动画
         end
 
         -- 2. 查找怪物
-        local monster = screen.findImage(monsterImage, 0, 0, 1920, 1080)
+        local monster = wingman.screen.findImage(monsterImage, 0, 0, 1920, 1080)
         if monster then
             print(string.format("发现怪物，位置: %d, %d，相似度: %f",
                 monster.x, monster.y, monster.confidence))
             -- 点击怪物进行攻击
-            input.click(monster.x, monster.y)
-            util.sleep(500)  -- 攻击后冷却
+            wingman.input.click(monster.x, monster.y)
+            wingman.util.sleep(500)  -- 攻击后冷却
         else
             print("未发现怪物，等待...")
-            util.sleep(1000)  -- 没有怪物时等待
+            wingman.util.sleep(1000)  -- 没有怪物时等待
         end
 
         -- 防止脚本过快运行
-        util.sleep(100)
+        wingman.util.sleep(100)
     end
 end
 

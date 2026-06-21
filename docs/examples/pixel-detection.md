@@ -5,10 +5,9 @@
 ## 代码
 
 ```lua
--- scripts/examples/pixel-detection.lua
+local wingman = require("wingman")
 
-local screen = require("wingman.screen")
-local util = require("wingman.util")
+-- scripts/examples/pixel-detection.lua
 
 -- 目标颜色：红色
 local targetColor = 0xFF0000
@@ -22,7 +21,7 @@ local tolerance = 10
 
 -- 查找颜色
 while true do
-  local points = screen.findColor(targetColor, x1, y1, x2, y2, tolerance)
+  local points = wingman.screen.findColor(targetColor, x1, y1, x2, y2, tolerance)
   
   if points then
     print(string.format("Found %d points", #points))
@@ -34,7 +33,7 @@ while true do
   end
   
   -- 等待 100ms
-  util.sleep(100)
+  wingman.util.sleep(100)
 end
 ```
 

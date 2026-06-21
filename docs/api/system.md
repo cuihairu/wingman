@@ -58,10 +58,10 @@ print(f"使用率: {cpu['usage']}%")
 == Lua
 
 ```lua:line-numbers
-local system = require("wingman.system")
+local wingman = require("wingman")
 
 -- 获取 CPU 信息
-local cpu = system.getCpuInfo()
+local cpu = wingman.system.getCpuInfo()
 print("处理器: " .. cpu.brand)
 print("核心数: " .. cpu.cores)
 print("线程数: " .. cpu.threads)
@@ -133,10 +133,10 @@ print(f"使用率: {mem['usage']:.1f}%")
 == Lua
 
 ```lua:line-numbers
-local system = require("wingman.system")
+local wingman = require("wingman")
 
 -- 获取内存信息
-local mem = system.getMemoryInfo()
+local mem = wingman.system.getMemoryInfo()
 print("总内存: " .. string.format("%.2f", mem.total / 1024 / 1024 / 1024) .. " GB")
 print("可用内存: " .. string.format("%.2f", mem.available / 1024 / 1024 / 1024) .. " GB")
 print("使用率: " .. string.format("%.1f", mem.usage) .. "%")
@@ -197,17 +197,17 @@ print(f"C 盘使用率: {c_drive['usage']:.1f}%")
 == Lua
 
 ```lua:line-numbers
-local system = require("wingman.system")
+local wingman = require("wingman")
 
 -- 获取所有磁盘信息
-local disks = system.getDiskInfo()
+local disks = wingman.system.getDiskInfo()
 for i, disk in ipairs(disks) do
     print(disk.drive .. ": " .. string.format("%.1f", disk.used / 1024 / 1024 / 1024) ..
           "GB / " .. string.format("%.1f", disk.total / 1024 / 1024 / 1024) .. "GB")
 end
 
 -- 获取指定磁盘信息
-local cDrive = system.getDiskInfo("C:")
+local cDrive = wingman.system.getDiskInfo("C:")
 print("C 盘使用率: " .. string.format("%.1f", cDrive.usage) .. "%")
 ```
 
@@ -250,10 +250,10 @@ print(f"显卡: {gpu['name']}")
 == Lua
 
 ```lua:line-numbers
-local system = require("wingman.system")
+local wingman = require("wingman")
 
 -- 获取 GPU 信息
-local gpu = system.getGpuInfo()
+local gpu = wingman.system.getGpuInfo()
 print("显卡: " .. gpu.name)
 ```
 
@@ -304,10 +304,10 @@ print(f"用户名: {os_info['userName']}")
 == Lua
 
 ```lua:line-numbers
-local system = require("wingman.system")
+local wingman = require("wingman")
 
 -- 获取系统信息
-local osInfo = system.getOsInfo()
+local osInfo = wingman.system.getOsInfo()
 print("系统: " .. osInfo.platform .. " " .. osInfo.version)
 print("架构: " .. osInfo.architecture)
 print("计算机名: " .. osInfo.computerName)

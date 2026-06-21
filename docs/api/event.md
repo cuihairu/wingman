@@ -55,7 +55,7 @@ sub_id = event.on("combat.enemy_found", on_enemy, name="my-handler")
 == Lua
 
 ```lua:line-numbers
-local event = require("wingman.event")
+local wingman = require("wingman")
 
 -- 定义事件处理函数
 local function onEnemy(e)
@@ -63,7 +63,7 @@ local function onEnemy(e)
 end
 
 -- 订阅事件
-local id = event.on("combat.enemy_found", onEnemy, "my-handler")
+local id = wingman.event.on("combat.enemy_found", onEnemy, "my-handler")
 ```
 
 :::
@@ -107,10 +107,10 @@ event.once("task.done", lambda e: print("Task done!"))
 == Lua
 
 ```lua:line-numbers
-local event = require("wingman.event")
+local wingman = require("wingman")
 
 -- 一次性订阅
-event.once("task.done", function(e)
+wingman.event.once("task.done", function(e)
     print("Task done!")
 end)
 ```
@@ -163,13 +163,13 @@ event.emit("combat.enemy_found", enemy, {"correlationId": "session-123"})
 == Lua
 
 ```lua:line-numbers
-local event = require("wingman.event")
+local wingman = require("wingman")
 
 -- 触发事件
-event.emit("combat.enemy_found", { x = 100, y = 200 }, { source = "vision" })
+wingman.event.emit("combat.enemy_found", { x = 100, y = 200 }, { source = "vision" })
 
 -- 带关联 ID
-event.emit("combat.enemy_found", enemy, { correlationId = "session-123" })
+wingman.event.emit("combat.enemy_found", enemy, { correlationId = "session-123" })
 ```
 
 :::
@@ -234,13 +234,13 @@ event.clear()
 == Lua
 
 ```lua:line-numbers
-local event = require("wingman.event")
+local wingman = require("wingman")
 
 -- 取消指定订阅
-event.off(id)
+wingman.event.off(id)
 
 -- 清空所有监听
-event.clear()
+wingman.event.clear()
 ```
 
 :::

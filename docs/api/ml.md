@@ -3,8 +3,26 @@
 机器学习模型推理模块，支持 ONNX 格式模型（如 YOLO 目标检测）。
 
 ::: warning 注意
-此模块需要编译时启用 `WINGMAN_ENABLE_ML` 选项。未启用时返回存根实现。
+此模块需要编译时启用 `WINGMAN_ENABLE_ML` 选项（macOS 通常不启用，`wingman.ml.loadModel()` 会返回 `nil`）。未启用时走存根实现。
 :::
+
+> ℹ️ **当前实现（ID 句柄式，已注册到 `wingman.ml`）**：
+>
+> ```lua
+> local wingman = require("wingman")
+> print(wingman.ml.providers())                    -- 可用执行提供器 ["cpu","cuda","dml"]
+> local id = wingman.ml.loadModel("yolov8n.onnx", "cpu")
+> if id then
+>     print(wingman.ml.isLoaded(id))               -- true
+>     print(wingman.ml.inputs(id))                 -- 模型输入 [{name, shape}]
+>     print(wingman.ml.outputs(id))                -- 模型输出 [{name, shape}]
+>     wingman.ml.unload(id)
+> end
+> ```
+>
+> 可用函数：`providers()` / `loadModel(path, ep?)` / `unload(id)` / `isLoaded(id)` / `inputs(id)` / `outputs(id)`。
+>
+> `detect` / `classify` 的高层封装待 `ModelHelpers::detectObjects` 实现完善 + 图像加载支持后补充；下文相关章节保留作 API 设计参考，形态可能调整。
 
 ## 模块概述
 
@@ -65,7 +83,7 @@ model = ml.load_model("models/yolov8n.onnx", "dml")
 == Lua
 
 ```lua:line-numbers
-local ml = require("wingman.ml")
+local wingman = require("wingman")
 
 -- 加载 ONNX 模型（CPU）
 local model, err = ml.loadModel("models/yolov8n.onnx")
@@ -126,7 +144,7 @@ print(f"可用的执行提供器: {providers}")
 == Lua
 
 ```lua:line-numbers
-local ml = require("wingman.ml")
+local wingman = require("wingman")
 
 local providers = ml.getAvailableExecutionProviders()
 print("可用的执行提供器: " .. table.concat(providers, ", "))
@@ -192,14 +210,13 @@ for obj in results:
 == Lua
 
 ```lua:line-numbers
-local ml = require("wingman.ml")
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 加载 YOLO 模型
 local model = ml.loadModel("models/yolov8n.onnx")
 
 -- 截图
-local img = screen.capture(0, 0, 1920, 1080)
+local img = wingman.screen.capture(0, 0, 1920, 1080)
 
 -- 运行目标检测
 local results = model.detect(img, 0.5)
@@ -260,14 +277,13 @@ print(f"类别: {label}, 置信度: {confidence:.2f}")
 == Lua
 
 ```lua:line-numbers
-local ml = require("wingman.ml")
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 加载分类模型
 local model = ml.loadModel("models/resnet.onnx")
 
 -- 截图
-local img = screen.capture(0, 0, 1920, 1080)
+local img = wingman.screen.capture(0, 0, 1920, 1080)
 
 -- 运行分类
 local label, confidence = model.classify(img)
@@ -316,7 +332,7 @@ for name, (shape, dtype) in inputs.items():
 == Lua
 
 ```lua:line-numbers
-local ml = require("wingman.ml")
+local wingman = require("wingman")
 
 local model = ml.loadModel("models/yolov8n.onnx")
 
@@ -371,7 +387,7 @@ for name, (shape, dtype) in outputs.items():
 == Lua
 
 ```lua:line-numbers
-local ml = require("wingman.ml")
+local wingman = require("wingman")
 
 local model = ml.loadModel("models/yolov8n.onnx")
 
@@ -423,7 +439,7 @@ model.unload()
 == Lua
 
 ```lua:line-numbers
-local ml = require("wingman.ml")
+local wingman = require("wingman")
 
 local model = ml.loadModel("models/yolov8n.onnx")
 

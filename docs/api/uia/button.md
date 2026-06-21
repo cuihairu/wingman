@@ -39,10 +39,10 @@ if btn:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找名为"确定"的按钮
-local btn = uia.findButton("确定")
+local btn = wingman.uia.findButton("确定")
 if btn then
     btn:click()
 end
@@ -85,10 +85,10 @@ if btn:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 使用 AutomationId 查找（推荐）
-local btn = uia.findById("btnSubmit")
+local btn = wingman.uia.findById("btnSubmit")
 if btn then
     btn:click()
 end
@@ -130,9 +130,9 @@ if btn:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local btn = uia.findButton("提交")
+local btn = wingman.uia.findButton("提交")
 if btn then
     btn:click()
     print("已点击提交按钮")
@@ -171,9 +171,9 @@ if btn:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local btn = uia.findButton("运行")
+local btn = wingman.uia.findButton("运行")
 if btn then
     btn:doubleClick()
     print("已双击运行按钮")
@@ -215,9 +215,9 @@ if btn:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local btn = uia.findButton("提交")
+local btn = wingman.uia.findButton("提交")
 if btn then
     -- 获取按钮信息
     local info = btn:getInfo()
@@ -283,8 +283,7 @@ else:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 local function waitForButtonEnabled(name, timeout)
     """
@@ -298,17 +297,17 @@ local function waitForButtonEnabled(name, timeout)
         启用的按钮元素，超时返回 nil
     """
     timeout = timeout or 5000
-    local start = util.time()
+    local start = wingman.util.time()
 
-    while util.time() - start < timeout do
-        local btn = uia.findButton(name)
+    while wingman.util.time() - start < timeout do
+        local btn = wingman.uia.findButton(name)
         if btn then
             local info = btn:getInfo()
             if info.isEnabled then
                 return btn
             end
         end
-        util.sleep(200)  -- 每 200ms 检查一次
+        wingman.util.sleep(200)  -- 每 200ms 检查一次
     end
     return nil
 end
@@ -369,9 +368,9 @@ if btn:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local btn = uia.findButton("确定")
+local btn = wingman.uia.findButton("确定")
 if btn then
     local info = btn:getInfo()
 
@@ -443,41 +442,40 @@ else:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 local function waitForButtonEnabled(name, timeout)
     timeout = timeout or 5000
-    local start = util.time()
-    while util.time() - start < timeout do
-        local btn = uia.findButton(name)
+    local start = wingman.util.time()
+    while wingman.util.time() - start < timeout do
+        local btn = wingman.uia.findButton(name)
         if btn then
             local info = btn:getInfo()
             if info.isEnabled then
                 return btn
             end
         end
-        util.sleep(200)
+        wingman.util.sleep(200)
     end
     return nil
 end
 
 local function submitForm()
     -- 1. 填写用户名
-    local username = uia.findEdit("用户名")
+    local username = wingman.uia.findEdit("用户名")
     if username then
         username:setValue("player123")
         print("已填写用户名")
     end
 
     -- 2. 填写密码
-    local password = uia.findEdit("密码")
+    local password = wingman.uia.findEdit("密码")
     if password then
         password:setValue("mypassword")
         print("已填写密码")
     end
 
-    util.sleep(500)
+    wingman.util.sleep(500)
 
     -- 3. 等待提交按钮启用
     local submitBtn = waitForButtonEnabled("提交", 5000)

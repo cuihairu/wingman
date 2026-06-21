@@ -45,10 +45,10 @@ debugger.breakpoint()
 == Lua
 
 ```lua:line-numbers
-local debugger = require("wingman.debugger")
+local wingman = require("wingman")
 
 -- 在当前行设置断点
-debugger.breakpoint()
+wingman.debugger.breakpoint()
 ```
 
 :::
@@ -91,10 +91,10 @@ debugger.breakpoint_if(lambda: x > 10)
 == Lua
 
 ```lua:line-numbers
-local debugger = require("wingman.debugger")
+local wingman = require("wingman")
 
 -- 设置条件断点
-debugger.breakpointIf(function() return x > 10 end)
+wingman.debugger.breakpointIf(function() return x > 10 end)
 ```
 
 :::
@@ -138,10 +138,10 @@ debugger.log_point("变量 x 的值: {}", x)
 == Lua
 
 ```lua:line-numbers
-local debugger = require("wingman.debugger")
+local wingman = require("wingman")
 
 -- 设置日志断点
-debugger.logPoint("变量 x 的值: " .. tostring(x), x)
+wingman.debugger.logPoint("变量 x 的值: " .. tostring(x), x)
 ```
 
 :::
@@ -184,10 +184,10 @@ debugger.start_server(9999)
 == Lua
 
 ```lua:line-numbers
-local debugger = require("wingman.debugger")
+local wingman = require("wingman")
 
 -- 启动调试服务器
-debugger.startServer(9999)
+wingman.debugger.startServer(9999)
 ```
 
 :::
@@ -231,10 +231,10 @@ debugger.connect("localhost", 9999)
 == Lua
 
 ```lua:line-numbers
-local debugger = require("wingman.debugger")
+local wingman = require("wingman")
 
 -- 连接到远程调试器
-debugger.connect("localhost", 9999)
+wingman.debugger.connect("localhost", 9999)
 ```
 
 :::
@@ -303,14 +303,14 @@ debugger.inspect({"x": x, "y": y, "status": status})
 == Lua
 
 ```lua:line-numbers
-local debugger = require("wingman.debugger")
+local wingman = require("wingman")
 
 -- 输出调试信息
-debugger.log("变量 x 的值:", x)
-debugger.log("当前状态: " .. tostring(status))
+wingman.debugger.log("变量 x 的值:", x)
+wingman.debugger.log("当前状态: " .. tostring(status))
 
 -- 输出变量信息
-debugger.inspect({x = x, y = y, status = status})
+wingman.debugger.inspect({x = x, y = y, status = status})
 ```
 
 :::
@@ -353,10 +353,10 @@ for frame in stack:
 == Lua
 
 ```lua:line-numbers
-local debugger = require("wingman.debugger")
+local wingman = require("wingman")
 
 -- 获取当前调用栈
-local stack = debugger.getStacktrace()
+local stack = wingman.debugger.getStacktrace()
 for i, frame in ipairs(stack) do
     print("  " .. frame.file .. ":" .. frame.line .. " in " .. frame.function)
 end
@@ -453,19 +453,19 @@ debugger.resume()
 == Lua
 
 ```lua:line-numbers
-local debugger = require("wingman.debugger")
+local wingman = require("wingman")
 
 -- 单步进入
-debugger.stepInto()
+wingman.debugger.stepInto()
 
 -- 单步跳过
-debugger.stepOver()
+wingman.debugger.stepOver()
 
 -- 跳出当前函数
-debugger.stepOut()
+wingman.debugger.stepOut()
 
 -- 继续执行
-debugger.resume()
+wingman.debugger.resume()
 ```
 
 :::
@@ -557,18 +557,18 @@ print(f"x + y = {result}")
 == Lua
 
 ```lua:line-numbers
-local debugger = require("wingman.debugger")
+local wingman = require("wingman")
 
 -- 检查局部变量
-local locals = debugger.getLocals()
+local locals = wingman.debugger.getLocals()
 print("局部变量:", locals)
 
 -- 检查全局变量
-local globals = debugger.getGlobals()
+local globals = wingman.debugger.getGlobals()
 print("全局变量:", globals)
 
 -- 检查表达式
-local result = debugger.eval("x + y")
+local result = wingman.debugger.eval("x + y")
 print("x + y = " .. tostring(result))
 ```
 

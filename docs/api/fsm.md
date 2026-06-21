@@ -50,10 +50,10 @@ machine_id = fsm.create("combat", "idle")
 == Lua
 
 ```lua:line-numbers
-local fsm = require("wingman.fsm")
+local wingman = require("wingman")
 
 -- 创建状态机
-local machineId = fsm.create("combat", "idle")
+local machineId = wingman.fsm.create("combat", "idle")
 ```
 
 :::
@@ -102,18 +102,18 @@ fsm.state(machine_id, "fight", on_enter=lambda ctx: print("进入战斗状态"))
 == Lua
 
 ```lua:line-numbers
-local fsm = require("wingman.fsm")
+local wingman = require("wingman")
 
-local machineId = fsm.create("combat", "idle")
+local machineId = wingman.fsm.create("combat", "idle")
 
 -- 定义状态
-fsm.state(machineId, "idle", function(ctx)
+wingman.fsm.state(machineId, "idle", function(ctx)
     print("进入空闲状态")
 end, function(ctx)
     print("离开空闲状态")
 end)
 
-fsm.state(machineId, "fight")
+wingman.fsm.state(machineId, "fight")
 ```
 
 :::
@@ -166,14 +166,14 @@ fsm.transition(machine_id, "pending", "running",
 == Lua
 
 ```lua:line-numbers
-local fsm = require("wingman.fsm")
+local wingman = require("wingman")
 
 -- 定义状态转移
-fsm.transition(machineId, "idle", "fight", "enemy_found")
-fsm.transition(machineId, "fight", "idle", "enemy_lost")
+wingman.fsm.transition(machineId, "idle", "fight", "enemy_found")
+wingman.fsm.transition(machineId, "fight", "idle", "enemy_lost")
 
 -- 带守卫函数
-fsm.transition(machineId, "pending", "running", "start", function(ctx)
+wingman.fsm.transition(machineId, "pending", "running", "start", function(ctx)
     return ctx.payload.ready == true
 end)
 ```
@@ -220,10 +220,10 @@ fsm.dispatch(machine_id, "enemy_found", {"target": "boss"})
 == Lua
 
 ```lua:line-numbers
-local fsm = require("wingman.fsm")
+local wingman = require("wingman")
 
 -- 派发事件
-fsm.dispatch(machineId, "enemy_found", { target = "boss" })
+wingman.fsm.dispatch(machineId, "enemy_found", { target = "boss" })
 ```
 
 :::
@@ -340,10 +340,10 @@ fsm.reset(machine_id)
 == Lua
 
 ```lua:line-numbers
-local fsm = require("wingman.fsm")
+local wingman = require("wingman")
 
 -- 重置状态机
-fsm.reset(machineId)
+wingman.fsm.reset(machineId)
 ```
 
 :::
