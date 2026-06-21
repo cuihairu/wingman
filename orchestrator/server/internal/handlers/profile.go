@@ -6,6 +6,7 @@ import (
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/rbac"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/security"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -26,16 +27,7 @@ func (h *ProfileHandler) HandleGetProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"id":          user.ID,
-		"username":    user.Username,
-		"nickname":    user.Username,
-		"displayName": user.Username,
-		"roles":       []string{user.Role},
-		"active":      true,
-		"createdAt":   user.CreatedAt,
-		"updatedAt":   user.UpdatedAt,
-	})
+	c.JSON(http.StatusOK, profilePayload(user))
 }
 
 func (h *ProfileHandler) HandleGetGames(c *gin.Context) {
@@ -45,22 +37,50 @@ func (h *ProfileHandler) HandleGetGames(c *gin.Context) {
 }
 
 func (h *ProfileHandler) HandleGetPermissions(c *gin.Context) {
-	_, _, role := middleware.GetCurrentUser(c)
-	isAdmin := strings.EqualFold(role, "admin")
-	permissionIDs := []string{}
-	if strings.TrimSpace(role) != "" {
-		permissionIDs = append(permissionIDs, role)
+	user, ok := h.currentUser(c)
+	if !ok {
+		return
 	}
-	if isAdmin && !contains(permissionIDs, "admin") {
-		permissionIDs = append(permissionIDs, "admin")
+	role := user.Role
+	isAdmin := rbac.IsAdmin(role)
+
+	codes, err := rbac.UserPermissionCodes(h.db, user.ID)
+	if err != nil || codes == nil {
+		codes = []string{}
+	}
+
+	// 权限码作为前端 access token（resource:action 形式，与 access.ts 对齐）
+	permissionIDs := codes
+	if isAdmin && !contains(permissionIDs, rbac.Wildcard) {
+		permissionIDs = append([]string{rbac.Wildcard}, permissionIDs...)
+	}
+
+	permissions := make([]gin.H, 0, len(codes))
+	for _, code := range codes {
+		perm := codeToPermission(code)
+		permissions = append(permissions, perm)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"permissions":   []any{},
+		"permissions":   permissions,
 		"admin":         isAdmin,
 		"roles":         []string{role},
 		"permissionIDs": permissionIDs,
 	})
+}
+
+// codeToPermission 将权限码展开为前端期望的 {resource, actions[]} 结构
+func codeToPermission(code string) gin.H {
+	resource, action := code, "*"
+	if idx := strings.Index(code, ":"); idx > 0 {
+		resource = code[:idx]
+		action = code[idx+1:]
+	}
+	return gin.H{
+		"code":     code,
+		"resource": resource,
+		"actions":  []string{action},
+	}
 }
 
 func (h *ProfileHandler) HandleUpdateProfile(c *gin.Context) {
@@ -70,31 +90,40 @@ func (h *ProfileHandler) HandleUpdateProfile(c *gin.Context) {
 	}
 
 	var req struct {
-		Nickname string `json:"nickname"`
-		Email    string `json:"email"`
-		Phone    string `json:"phone"`
-		Avatar   string `json:"avatar"`
+		Nickname *string `json:"nickname"`
+		Email    *string `json:"email"`
+		Phone    *string `json:"phone"`
+		Avatar   *string `json:"avatar"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
 		return
 	}
 
+	updates := map[string]any{}
+	if req.Nickname != nil {
+		updates["nickname"] = strings.TrimSpace(*req.Nickname)
+	}
+	if req.Email != nil {
+		updates["email"] = strings.TrimSpace(*req.Email)
+	}
+	if req.Phone != nil {
+		updates["phone"] = strings.TrimSpace(*req.Phone)
+	}
+	if req.Avatar != nil {
+		updates["avatar"] = strings.TrimSpace(*req.Avatar)
+	}
+	if len(updates) > 0 {
+		if err := h.db.Model(&user).Updates(updates).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to update profile"})
+			return
+		}
+		h.db.First(&user, user.ID)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"profile": gin.H{
-			"id":          user.ID,
-			"username":    user.Username,
-			"nickname":    fallbackProfileValue(req.Nickname, user.Username),
-			"displayName": fallbackProfileValue(req.Nickname, user.Username),
-			"email":       req.Email,
-			"phone":       req.Phone,
-			"avatar":      req.Avatar,
-			"roles":       []string{user.Role},
-			"active":      true,
-			"createdAt":   user.CreatedAt,
-			"updatedAt":   user.UpdatedAt,
-		},
+		"profile": profilePayload(user),
 	})
 }
 
@@ -149,6 +178,24 @@ func fallbackProfileValue(value, defaultValue string) string {
 		return defaultValue
 	}
 	return value
+}
+
+func profilePayload(user models.User) gin.H {
+	displayName := fallbackProfileValue(user.Nickname, user.Username)
+	return gin.H{
+		"id":          user.ID,
+		"username":    user.Username,
+		"nickname":    displayName,
+		"displayName": displayName,
+		"email":       user.Email,
+		"phone":       user.Phone,
+		"avatar":      user.Avatar,
+		"roles":       []string{user.Role},
+		"active":      user.Active,
+		"createdAt":   user.CreatedAt,
+		"updatedAt":   user.UpdatedAt,
+		"lastLoginAt": user.LastLoginAt,
+	}
 }
 
 func contains(values []string, target string) bool {

@@ -135,6 +135,12 @@ public:
     // Set input backend
     void setInput(std::shared_ptr<platform::IInput> input);
 
+    // Set callback invoked when a trigger fires (e.g. for event emission).
+    // Called from the check thread after cooldown/one-shot bookkeeping, before action execution.
+    void setOnFired(std::function<void(const TriggerInstance&)> cb) {
+        m_onFired = std::move(cb);
+    }
+
 private:
     std::vector<TriggerInstance> m_triggers;
     std::atomic<bool> m_running{false};
@@ -143,6 +149,7 @@ private:
     class ScriptManager* m_scriptManager;
     std::shared_ptr<spdlog::logger> m_logger;
     std::shared_ptr<platform::IInput> m_input;
+    std::function<void(const TriggerInstance&)> m_onFired;
 
     // Trigger check thread
     void checkThread();

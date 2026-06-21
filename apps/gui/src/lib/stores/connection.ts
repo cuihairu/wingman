@@ -1,10 +1,17 @@
 import { writable, derived } from 'svelte/store';
 
+interface RemoteLinkState {
+	state: 'connected' | 'connecting' | 'disconnected' | 'reconnecting' | 'error';
+	message: string;
+}
+
 interface ConnectionState {
 	connected: boolean;
 	version: string;
 	paused: boolean;
 	ipcEndpoint: string;
+	/** runtime → Go server 远程链路状态（由 connection.state_changed 事件驱动） */
+	remote: RemoteLinkState | null;
 }
 
 export interface SystemStatus {
@@ -21,12 +28,14 @@ function createConnectionStore() {
 		version: '-',
 		paused: false,
 		ipcEndpoint: 'wingman',
+		remote: null,
 	});
 	let currentState: ConnectionState = {
 		connected: false,
 		version: '-',
 		paused: false,
 		ipcEndpoint: 'wingman',
+		remote: null,
 	};
 
 	store.subscribe(value => {
@@ -53,6 +62,9 @@ function createConnectionStore() {
 		},
 		setIpcEndpoint(endpoint: string) {
 			store.update(s => ({ ...s, ipcEndpoint: endpoint }));
+		},
+		setRemoteState(state: RemoteLinkState['state'], message: string) {
+			store.update(s => ({ ...s, remote: { state, message } }));
 		},
 		async connect(endpoint?: string) {
 			if (!invoke) {

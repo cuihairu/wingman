@@ -21,7 +21,8 @@ export default defineConfig({
           items: [
             { text: '项目简介', link: '/guide/introduction' },
             { text: '快速开始', link: '/guide/getting-started' },
-            { text: '架构设计', link: '/guide/architecture' }
+            { text: '架构设计', link: '/guide/architecture' },
+            { text: 'VS Code 开发环境', link: '/development-environment' }
           ]
         },
         {
@@ -35,7 +36,8 @@ export default defineConfig({
           text: '高级',
           items: [
             { text: '配置系统', link: '/guide/config' },
-            { text: '调试指南', link: '/guide/debugging' }
+            { text: '调试指南', link: '/guide/debugging' },
+            { text: '通信协议', link: '/protocols' }
           ]
         }
       ],

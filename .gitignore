@@ -97,7 +97,12 @@ vcpkg-cache/
 *.luac
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
 .idea/
 
 # OS

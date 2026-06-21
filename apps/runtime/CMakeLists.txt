@@ -24,6 +24,7 @@ set(RUNTIME_SOURCES
     src/packer.cpp
     src/resource_loader.cpp
     src/runtime_context.cpp
+    src/event_buffer.cpp
     # 命令实现
     src/commands/start_command.cpp
     src/commands/stop_command.cpp
@@ -33,6 +34,7 @@ set(RUNTIME_SOURCES
     src/rpc/handlers/script_handler.cpp
     src/rpc/handlers/system_handler.cpp
     src/rpc/handlers/screenshot_handler.cpp
+    src/rpc/handlers/event_handler.cpp
 )
 
 # 创建可执行文件

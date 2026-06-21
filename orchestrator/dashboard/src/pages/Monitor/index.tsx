@@ -14,7 +14,6 @@ import {
   Row,
   Space,
   Statistic,
-  Switch,
   Tag,
   Timeline,
   Typography,
@@ -27,7 +26,6 @@ import {
   DesktopOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
-  PlusOutlined,
   ReloadOutlined,
   SettingOutlined,
   ThunderboltOutlined,
@@ -49,13 +47,6 @@ interface TriggerInfo {
   cooldown: number;
   lastTriggered?: string;
   hitCount?: number;
-}
-
-interface MacroInfo {
-  id: string;
-  name: string;
-  actions: number;
-  lastRun: string;
 }
 
 interface SystemStatus {
@@ -148,20 +139,11 @@ const Monitor: React.FC = () => {
     networkUp: 0,
     networkDown: 0,
     onlineAgents: 0,
-    source: 'mock',
+    source: 'no-agent',
   });
   const [events, setEvents] = useState<RuntimeEvent[]>([]);
   const lastScreenshotRef = useRef<number>(0);
-
-  const [triggers, setTriggers] = useState<TriggerInfo[]>([
-    { id: '1', name: '技能冷却检测', enabled: true, type: 'color', condition: '绿色出现', actions: 1, cooldown: 500 },
-    { id: '2', name: '血量监控', enabled: true, type: 'color', condition: '红色低于30%', actions: 2, cooldown: 1000 },
-    { id: '3', name: '自动拾取', enabled: false, type: 'image', condition: '掉落物品', actions: 1, cooldown: 200 },
-  ]);
-  const [macros] = useState<MacroInfo[]>([
-    { id: '1', name: '日常采集', actions: 15, lastRun: '2小时前' },
-    { id: '2', name: '自动战斗', actions: 8, lastRun: '5小时前' },
-  ]);
+  const [triggers, setTriggers] = useState<TriggerInfo[]>([]);
 
   const selectedAgent = primaryAgent(agents);
   const displayStatus: SystemStatus = selectedAgent?.resources
@@ -251,18 +233,38 @@ const Monitor: React.FC = () => {
     unsubscribes.push(
       wsService.on('trigger', (message) => {
         const data = message.data || {};
-        const triggerId = String(data.triggerId || data.id || '');
-        const triggerName = String(data.name || data.triggerName || triggerId || '未知触发器');
+        const nested = data.data && typeof data.data === 'object' ? (data.data as Record<string, unknown>) : data;
+        const triggerId = String(nested.triggerId || nested.id || data.triggerId || data.id || '');
+        const triggerName = String(nested.name || nested.triggerName || data.name || data.triggerName || triggerId || '未知触发器');
         setTriggers((previous) =>
-          previous.map((trigger) =>
-            trigger.id === triggerId || trigger.name === triggerName
-              ? {
-                  ...trigger,
-                  lastTriggered: new Date().toLocaleTimeString(),
-                  hitCount: (trigger.hitCount || 0) + 1,
-                }
-              : trigger,
-          ),
+          {
+            const index = previous.findIndex(
+              (trigger) => trigger.id === triggerId || trigger.name === triggerName,
+            );
+            const nextHit = {
+              id: triggerId || triggerName,
+              name: triggerName,
+              enabled: true,
+              type: String(nested.type || 'event'),
+              condition: String(nested.condition || 'runtime event'),
+              actions: safeNumber(nested.actions, 0),
+              cooldown: safeNumber(nested.cooldown, 0),
+              lastTriggered: new Date().toLocaleTimeString(),
+              hitCount: 1,
+            };
+            if (index < 0) {
+              return [nextHit, ...previous].slice(0, 20);
+            }
+            return previous.map((trigger, itemIndex) =>
+              itemIndex === index
+                ? {
+                    ...trigger,
+                    ...nextHit,
+                    hitCount: (trigger.hitCount || 0) + 1,
+                  }
+                : trigger,
+            );
+          },
         );
         addEvent({
           type: 'trigger',
@@ -293,40 +295,23 @@ const Monitor: React.FC = () => {
 
   useEffect(() => {
     if (agents.length > 0) return;
-    const timer = setInterval(() => {
-      setSystemStatus((previous) => ({
-        ...previous,
-        cpu: Math.random() * 20 + 5,
-        memory: Math.random() * 10 + 40,
-        uptime: Date.now() - new Date().setHours(8, 0, 0, 0),
-        fps: isRunning ? Math.floor(Math.random() * 5 + 55) : previous.fps,
-        networkUp: Math.random() * 1024 * 48,
-        networkDown: Math.random() * 1024 * 96,
-        onlineAgents: 0,
-        source: 'mock',
-      }));
-    }, 2000);
-
-    return () => clearInterval(timer);
+    // 无 agent 在线时显示明确空态，不再用 Math.random() 伪造指标
+    setSystemStatus((previous) => ({
+      ...previous,
+      cpu: 0,
+      memory: 0,
+      uptime: 0,
+      fps: 0,
+      networkUp: 0,
+      networkDown: 0,
+      onlineAgents: 0,
+      source: 'no-agent',
+    }));
+    return () => {};
   }, [agents.length, isRunning]);
 
   const handleToggleRun = () => {
     setIsRunning(!isRunning);
-  };
-
-  const handleToggleTrigger = (id: string) => {
-    setTriggers(triggers.map((trigger) =>
-      trigger.id === id ? { ...trigger, enabled: !trigger.enabled } : trigger,
-    ));
-  };
-
-  const handleRunMacro = (id: string) => {
-    const macro = macros.find((item) => item.id === id);
-    addEvent({
-      type: 'script',
-      level: 'processing',
-      message: `宏命令 ${macro?.name || id} 已下发`,
-    });
   };
 
   return (
@@ -363,7 +348,7 @@ const Monitor: React.FC = () => {
             type="info"
             showIcon
             message="暂无在线 Agent 数据"
-            description="页面会继续监听 WebSocket；当前 CPU、内存和网络指标使用开发兜底数据。"
+            description="页面会继续监听 WebSocket，Agent 上线后自动显示真实指标。"
           />
         )}
 
@@ -450,33 +435,25 @@ const Monitor: React.FC = () => {
                 <Space>
                   <ThunderboltOutlined />
                   <span>触发器</span>
-                  <Tag color="blue">{triggers.filter((trigger) => trigger.enabled).length}/{triggers.length}</Tag>
+                  <Tag color="blue">{triggers.length}</Tag>
                 </Space>
               }
-              extra={<Button size="small" icon={<PlusOutlined />}>添加</Button>}
+              extra={<Tag>事件驱动</Tag>}
             >
               <List
                 size="small"
                 dataSource={triggers}
+                locale={{ emptyText: '等待 runtime trigger_fired 事件。远程 trigger.list API 尚未暴露。' }}
                 renderItem={(trigger) => (
-                  <List.Item
-                    actions={[
-                      <Switch
-                        key="toggle"
-                        size="small"
-                        checked={trigger.enabled}
-                        onChange={() => handleToggleTrigger(trigger.id)}
-                      />,
-                    ]}
-                  >
+                  <List.Item>
                     <List.Item.Meta
                       avatar={
                         <Tag color={trigger.type === 'color' ? 'blue' : 'green'}>
-                          {trigger.type === 'color' ? '颜色' : '图像'}
+                          {trigger.type === 'event' ? '事件' : trigger.type}
                         </Tag>
                       }
                       title={trigger.name}
-                      description={`${trigger.condition} · ${trigger.actions}个动作 · 命中 ${trigger.hitCount || 0} · ${trigger.lastTriggered || '未触发'}`}
+                      description={`${trigger.condition} · 命中 ${trigger.hitCount || 0} · ${trigger.lastTriggered || '未触发'}`}
                     />
                   </List.Item>
                 )}
@@ -491,31 +468,12 @@ const Monitor: React.FC = () => {
                 </Space>
               }
               style={{ marginTop: 16 }}
-              extra={<Button size="small" icon={<PlusOutlined />}>录制</Button>}
             >
-              <List
-                size="small"
-                dataSource={macros}
-                renderItem={(macro) => (
-                  <List.Item
-                    actions={[
-                      <Button
-                        key="run"
-                        size="small"
-                        type="primary"
-                        icon={<PlayCircleOutlined />}
-                        onClick={() => handleRunMacro(macro.id)}
-                      >
-                        运行
-                      </Button>,
-                    ]}
-                  >
-                    <List.Item.Meta
-                      title={macro.name}
-                      description={`${macro.actions}个动作 · 上次: ${macro.lastRun}`}
-                    />
-                  </List.Item>
-                )}
+              <Alert
+                type="info"
+                showIcon
+                message="宏命令 API 尚未接入"
+                description="当前远程 Agent 协议还没有暴露 macro.list / macro.run。这里不再展示硬编码示例，避免误下发假命令。"
               />
             </Card>
           </Col>

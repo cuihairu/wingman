@@ -26,6 +26,7 @@ export interface TriggerConfig {
 	cooldown?: number;
 	trigger_type?: string;
 	last_triggered?: boolean;
+	last_triggered_at?: number;
 }
 
 function normalizeConditionType(type: unknown): TriggerCondition['type'] {
@@ -85,6 +86,7 @@ function normalizeTrigger(input: any): TriggerConfig {
 		cooldown: input?.cooldown ?? 0,
 		trigger_type: input?.trigger_type || input?.type,
 		last_triggered: input?.last_triggered ?? input?.lastTriggered ?? false,
+		last_triggered_at: input?.last_triggered_at ?? input?.lastTriggerTime ?? undefined,
 	};
 }
 
@@ -153,6 +155,24 @@ function createTriggersStore() {
 				await this.load();
 				return enabled;
 			} catch { return false; }
+		},
+		/// 标记触发器最近命中（由 runtime trigger.fired 事件驱动）。
+		/// 按 id 或 name 匹配；命中时置 last_triggered=true，并记录命中时间戳（毫秒）。
+		markFired(id: string | number, name?: string, timestamp?: number) {
+			const idStr = String(id ?? '');
+			const nameStr = name ?? '';
+			const ts = timestamp ?? Date.now();
+			let matched = false;
+			store.update(items => items.map(trigger => {
+				const idMatch = idStr && String(trigger.id) === idStr;
+				const nameMatch = !!nameStr && trigger.name === nameStr;
+				if (idMatch || nameMatch) {
+					matched = true;
+					return { ...trigger, last_triggered: true, last_triggered_at: ts };
+				}
+				return trigger;
+			}));
+			return matched;
 		},
 		loadDevData() {
 			store.set([

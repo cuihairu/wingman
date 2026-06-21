@@ -36,6 +36,15 @@ func (h *WorkflowHandler) HandleList(c *gin.Context) {
 	})
 }
 
+// HandleListTemplates 返回内置工作流模板目录（只读，所有登录用户可访问）
+func (h *WorkflowHandler) HandleListTemplates(c *gin.Context) {
+	templates := workflow.BuiltinTemplates()
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    templates,
+	})
+}
+
 func (h *WorkflowHandler) HandleGet(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {

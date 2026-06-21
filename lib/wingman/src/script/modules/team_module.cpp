@@ -481,7 +481,15 @@ ModuleDescriptor createTeamModule() {
 	mod.functions.push_back({"getTeamStatus", [](const std::vector<ScriptValue>&) -> ScriptValue {
 		auto& manager = TeamManager::instance();
 		auto* client = manager.getClient(1); // 默认 handle
-		if (!client) return ScriptValue::null();
+		if (!client) {
+			nlohmann::json empty;
+			empty["teamId"] = "";
+			empty["leaderId"] = "";
+			empty["members"] = nlohmann::json::array();
+			empty["state"] = "idle";
+			empty["lastUpdate"] = 0;
+			return ScriptValue::fromString(empty.dump());
+		}
 
 		auto status = client->getTeamStatus();
 

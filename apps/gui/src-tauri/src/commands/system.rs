@@ -136,3 +136,9 @@ pub async fn is_paused(state: tauri::State<'_, AppState>) -> Result<bool, String
     *state.paused.lock().await = paused;
     Ok(paused)
 }
+
+/// 重新加载全局快捷键（profile 热键变更后由前端调用）。
+#[tauri::command]
+pub async fn reload_hotkeys(app: tauri::AppHandle) -> Result<(), String> {
+    crate::hotkeys::reload_hotkeys(&app)
+}

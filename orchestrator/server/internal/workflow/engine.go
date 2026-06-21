@@ -24,6 +24,8 @@ type Engine struct {
 	store    scripts.Store
 	running  map[uint]*Execution
 	mu       sync.RWMutex
+	// inflight 跟踪每个 agent 当前在执行的步骤数，用于负载均衡选择。
+	inflight map[string]int
 }
 
 // Execution 正在执行的工作流
@@ -42,7 +44,74 @@ func NewEngine(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, scriptsDir st
 		hub:      hub,
 		store:    scripts.NewStore(scriptsDir),
 		running:  make(map[uint]*Execution),
+		inflight: make(map[string]int),
 	}
+}
+
+// reserveAgent 增加 agent 在执行步骤计数
+func (e *Engine) reserveAgent(id string) {
+	e.mu.Lock()
+	e.inflight[id]++
+	e.mu.Unlock()
+}
+
+// releaseAgent 减少 agent 在执行步骤计数
+func (e *Engine) releaseAgent(id string) {
+	e.mu.Lock()
+	if e.inflight[id] > 0 {
+		e.inflight[id]--
+	}
+	e.mu.Unlock()
+}
+
+func (e *Engine) inflightFor(id string) int {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.inflight[id]
+}
+
+// selectAgent 选择执行步骤的 agent。
+// 显式指定 workers 时，在可用 worker 中选负载最低的；否则在所有在线 agent 中选负载最低的。
+// 返回 (conn, agentID)。无可用 agent 时返回错误。
+func (e *Engine) selectAgent(preferred []string) (agent.AgentConn, string, error) {
+	agents := e.registry.List()
+
+	var candidates []*agent.AgentInfo
+	if len(preferred) > 0 {
+		want := make(map[string]bool, len(preferred))
+		for _, w := range preferred {
+			want[w] = true
+		}
+		for _, a := range agents {
+			if want[a.AgentID] && a.Client != nil && a.Status != agent.StatusOffline {
+				candidates = append(candidates, a)
+			}
+		}
+	} else {
+		for _, a := range agents {
+			if a.Client != nil && a.Status != agent.StatusOffline {
+				candidates = append(candidates, a)
+			}
+		}
+	}
+	if len(candidates) == 0 {
+		if len(preferred) > 0 {
+			return nil, "", fmt.Errorf("agent not connected: %v", preferred)
+		}
+		return nil, "", fmt.Errorf("no available agent")
+	}
+
+	// 选负载最低的；并列时取列表顺序靠前的（稳定）
+	best := candidates[0]
+	bestLoad := e.inflightFor(best.AgentID)
+	for _, a := range candidates[1:] {
+		load := e.inflightFor(a.AgentID)
+		if load < bestLoad {
+			best = a
+			bestLoad = load
+		}
+	}
+	return best.Client, best.AgentID, nil
 }
 
 // Submit 提交工作流执行
@@ -377,13 +446,26 @@ func (e *Engine) validateSteps(steps []models.WorkflowStep) error {
 		seenIDs[steps[i].ID] = true
 		stepIDs[steps[i].ID] = true
 
-		// 验证脚本路径有效且在 scripts 目录内
-		scriptPath, err := e.store.Resolve(steps[i].Script)
-		if err != nil {
-			return fmt.Errorf("step %s: invalid script path %q: %w", steps[i].ID, steps[i].Script, err)
+		// 规范化步骤类型（默认 script）
+		stepType := steps[i].Type
+		if stepType == "" {
+			stepType = "script"
+			steps[i].Type = stepType
 		}
-		// 将解析后的绝对路径存回 slice 元素（供 executeStep 使用）
-		steps[i].Script = scriptPath
+		switch stepType {
+		case "script":
+			// 验证脚本路径有效且在 scripts 目录内
+			scriptPath, err := e.store.Resolve(steps[i].Script)
+			if err != nil {
+				return fmt.Errorf("step %s: invalid script path %q: %w", steps[i].ID, steps[i].Script, err)
+			}
+			// 将解析后的绝对路径存回 slice 元素（供 executeStep 使用）
+			steps[i].Script = scriptPath
+		case "wait":
+			// wait 步骤无需脚本；时长取自 TimeoutSeconds 或 parameters.seconds
+		default:
+			return fmt.Errorf("step %s: unknown step type %q (supported: script, wait)", steps[i].ID, stepType)
+		}
 
 		// 检查依赖存在
 		for _, dep := range steps[i].DependsOn {
@@ -420,47 +502,102 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "running", "")
 
-	// 选择 worker
-	workerID := ""
-	if len(step.Workers) > 0 {
-		workerID = step.Workers[0]
+	// 按步骤类型分发
+	stepType := step.Type
+	if stepType == "" {
+		stepType = "script"
+	}
+	if stepType == "wait" {
+		return e.executeWaitStep(ctx, exec, step, ss)
 	}
 
-	// 获取 agent 连接
-	var conn agent.AgentConn
-	if workerID != "" {
-		var ok bool
-		conn, ok = e.registry.GetClient(workerID)
-		if !ok {
-			return e.failStep(ss, exec, step, "agent not connected: "+workerID)
-		}
-	} else {
-		// 选择第一个可用的 agent
-		agents := e.registry.List()
-		for _, a := range agents {
-			if a.Client != nil && a.Status != agent.StatusOffline {
-				conn = a.Client
-				workerID = a.AgentID
-				break
-			}
-		}
-		if conn == nil {
-			return e.failStep(ss, exec, step, "no available agent")
-		}
+	// script 步骤：选择 worker（负载均衡）
+	conn, workerID, err := e.selectAgent(step.Workers)
+	if err != nil {
+		return e.failStep(ss, exec, step, err.Error())
 	}
+	e.reserveAgent(workerID)
+	defer e.releaseAgent(workerID)
 
-	// 设置超时
+	// 超时
 	timeout := time.Duration(step.TimeoutSeconds) * time.Second
 	if timeout == 0 {
 		timeout = 5 * time.Minute
 	}
 
+	// 重试策略
+	maxAttempts := step.MaxRetries + 1
+	if maxAttempts < 1 {
+		maxAttempts = 1
+	}
+	backoff := time.Duration(step.RetryBackoffSeconds) * time.Second
+	if backoff <= 0 {
+		backoff = 2 * time.Second
+	}
+
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		// 进入新一轮前若已取消，标记 cancelled 并返回（区别于失败）
+		if err := ctx.Err(); err != nil {
+			e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
+			ss.Status = "cancelled"
+			return err
+		}
+
+		runErr := e.runScriptOnce(ctx, conn, step, timeout)
+		if runErr == nil {
+			lastErr = nil
+			break
+		}
+		lastErr = runErr
+
+		// 执行期间被取消：不重试，标记 cancelled
+		if ctx.Err() != nil {
+			e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
+			ss.Status = "cancelled"
+			return ctx.Err()
+		}
+
+		// 超时或脚本失败时尝试重试
+		if attempt < maxAttempts {
+			msg := fmt.Sprintf("attempt %d/%d failed: %s; retrying", attempt, maxAttempts, runErr.Error())
+			e.db.Model(ss).Updates(map[string]any{"message": msg})
+			ss.Message = msg
+			e.broadcastStepProgress(exec.Workflow.ID, step.ID, "retry", msg)
+			log.Printf("[WorkflowEngine] Step %s %s", step.ID, msg)
+
+			select {
+			case <-ctx.Done():
+				e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
+				ss.Status = "cancelled"
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+			backoff *= 2 // 指数退避
+		}
+	}
+
+	if lastErr != nil {
+		return e.failStep(ss, exec, step, lastErr.Error())
+	}
+
+	// 标记完成
+	endTime := time.Now()
+	e.db.Model(ss).Updates(map[string]any{"status": "completed", "end_time": endTime, "worker_id": workerID})
+	ss.Status = "completed"
+	ss.WorkerID = workerID
+
+	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", "")
+	return nil
+}
+
+// runScriptOnce 向 agent 发起一次脚本执行，遵循步骤超时与工作流取消。
+func (e *Engine) runScriptOnce(ctx context.Context, conn agent.AgentConn, step models.WorkflowStep, timeout time.Duration) error {
 	done := make(chan error, 1)
 	go func() {
-		// 合并参数到脚本路径
 		data := map[string]any{
 			"path":    step.Script,
-			"timeout": int(timeout.Milliseconds()), // Pass timeout to runtime for enforcement
+			"timeout": int(timeout.Milliseconds()),
 		}
 		maps.Copy(data, step.Parameters)
 
@@ -472,9 +609,9 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 		if success, ok := resp["success"].(bool); ok && !success {
 			if msg, ok := resp["message"].(string); ok {
 				done <- fmt.Errorf("script failed: %s", msg)
-			} else {
-				done <- fmt.Errorf("script failed")
+				return
 			}
+			done <- fmt.Errorf("script failed")
 			return
 		}
 		done <- nil
@@ -482,28 +619,62 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 
 	select {
 	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(timeout):
+		return fmt.Errorf("step %s timed out after %v", step.ID, timeout)
+	case err := <-done:
+		return err
+	}
+}
+
+// executeWaitStep 执行 wait 步骤：休眠指定时长，不需要 agent。
+// 时长取自 TimeoutSeconds；为 0 时取 parameters.seconds；均无则默认 1 秒。
+func (e *Engine) executeWaitStep(ctx context.Context, exec *Execution, step models.WorkflowStep, ss *models.StepStatus) error {
+	seconds := step.TimeoutSeconds
+	if seconds <= 0 {
+		if v, ok := step.Parameters["seconds"]; ok {
+			if fv, ok := toFloat(v); ok && fv > 0 {
+				seconds = int(fv)
+			}
+		}
+	}
+	if seconds <= 0 {
+		seconds = 1
+	}
+
+	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "running", fmt.Sprintf("waiting %ds", seconds))
+
+	select {
+	case <-ctx.Done():
 		e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
 		ss.Status = "cancelled"
 		return ctx.Err()
-	case <-time.After(timeout):
-		e.db.Model(ss).Updates(map[string]any{"status": "failed", "end_time": time.Now(), "message": "timeout"})
-		ss.Status = "failed"
-		ss.Message = "timeout"
-		return fmt.Errorf("step %s timed out after %v", step.ID, timeout)
-	case err := <-done:
-		if err != nil {
-			return e.failStep(ss, exec, step, err.Error())
-		}
+	case <-time.After(time.Duration(seconds) * time.Second):
 	}
 
-	// 标记完成
 	endTime := time.Now()
-	e.db.Model(ss).Updates(map[string]any{"status": "completed", "end_time": endTime, "worker_id": workerID})
+	e.db.Model(ss).Updates(map[string]any{"status": "completed", "end_time": endTime})
 	ss.Status = "completed"
-	ss.WorkerID = workerID
-
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", "")
 	return nil
+}
+
+// toFloat 容错地把任意 JSON 数值转为 float64
+func toFloat(v any) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case float32:
+		return float64(n), true
+	case int:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	case json.Number:
+		f, err := n.Float64()
+		return f, err == nil
+	}
+	return 0, false
 }
 
 // failStep 标记步骤失败

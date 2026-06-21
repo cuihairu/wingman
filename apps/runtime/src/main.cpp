@@ -1,4 +1,5 @@
 #include "wingman/runtime/cli.hpp"
+#include "wingman/runtime/event_log_sink.hpp"
 #include "wingman/runtime/resource_loader.hpp"
 #include "wingman/runtime/commands/start_command.hpp"
 #include "wingman/script/module_registry.hpp"
@@ -84,6 +85,8 @@ int runGuiMode() {
 int main(int argc, char** argv) {
     auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_st>();
     spdlog::default_logger()->sinks().push_back(consoleSink);
+    // 将运行时日志转发到本地 IPC 事件缓冲，供 GUI 实时日志面板轮询拉取
+    spdlog::default_logger()->sinks().push_back(wingman::runtime::createEventLogSink());
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
 

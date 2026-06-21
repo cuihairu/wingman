@@ -32,7 +32,7 @@ export default function MessagesBell() {
   }, []);
   return (
     <span
-      onClick={() => history.push('/admin/account/messages')}
+      onClick={() => history.push('/account/messages')}
       style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
     >
       <Badge count={count} size="small">

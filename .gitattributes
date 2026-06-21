@@ -1,0 +1,58 @@
+# 默认：仓库内统一以 LF 存储，签出也用 LF（跨平台一致，消除 autocrlf 警告）。
+* text=auto eol=lf
+
+# Windows 脚本保留 CRLF（部分工具/解释器要求）
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+*.sln   text eol=crlf
+*.vcxproj      text eol=crlf
+*.vcxproj.filters text eol=crlf
+
+# 源码 / 文本 — 显式 LF
+*.cpp   text eol=lf
+*.hpp   text eol=lf
+*.h     text eol=lf
+*.c     text eol=lf
+*.cc    text eol=lf
+*.rs    text eol=lf
+*.go    text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.svelte text eol=lf
+*.lua   text eol=lf
+*.py    text eol=lf
+*.json  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.toml  text eol=lf
+*.md    text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.sh    text eol=lf
+
+# 二进制 — 不做任何换行转换
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.icns  binary
+*.bmp   binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.7z    binary
+*.tar   binary
+*.exe   binary
+*.dll   binary
+*.lib   binary
+*.so    binary
+*.dylib binary
+*.a     binary
+*.o     binary
+*.obj   binary
+*.pdb   binary
+*.wasm  binary
+*.onnx  binary

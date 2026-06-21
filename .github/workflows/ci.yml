@@ -236,11 +236,18 @@ jobs:
           key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
 
   go-build:
-    name: Go Server
-    runs-on: windows-2022
+    name: Go Server (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: windows-latest
+          - os: macos-latest
     defaults:
       run:
-        shell: pwsh
+        shell: bash
 
     steps:
       - name: Checkout
@@ -252,6 +259,14 @@ jobs:
           go-version: stable
           cache-dependency-path: orchestrator/server/go.sum
 
-      - name: Test
+      - name: Vet
         working-directory: orchestrator/server
-        run: go test ./...
+        run: go vet ./...
+
+      - name: Build
+        working-directory: orchestrator/server
+        run: go build ./...
+
+      - name: Test (with race detector)
+        working-directory: orchestrator/server
+        run: go test -race -count=1 ./...

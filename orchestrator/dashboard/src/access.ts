@@ -22,5 +22,7 @@ export default function access(initialState: { currentUser?: AccessCurrentUser }
     canAdmin: has('admin'),
     canUserManage: has('users:manage') || has('admin'),
     canRoleManage: has('roles:manage') || has('admin'),
+    // 任一管理区权限即可看到 Admin 菜单；具体子页由各自 access 守卫细控
+    canAccessAdmin: has('admin') || has('users:manage') || has('roles:manage'),
   };
 }

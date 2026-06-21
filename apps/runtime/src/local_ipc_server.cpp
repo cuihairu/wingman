@@ -5,6 +5,8 @@
 #include "wingman/platform/screen_factory.hpp"
 #include "wingman/rpc/rpc_dispatcher.hpp"
 #include "wingman/rpc/script_handler.hpp"
+#include "wingman/runtime/event_buffer.hpp"
+#include "wingman/runtime/rpc/event_handler.hpp"
 #include "wingman/runtime/rpc/screenshot_handler.hpp"
 #include "wingman/rpc/system_handler.hpp"
 #include "wingman/runtime/rpc/system_handler.hpp"
@@ -54,6 +56,15 @@ bool LocalIpcServer::start() {
 
     impl_->dispatcher = std::make_unique<rpc::RpcDispatcher>();
     impl_->triggerManager = std::make_unique<TriggerManager>();
+    // 触发器命中时推送 trigger.fired 事件到本地 IPC 缓冲，供 GUI 实时展示
+    impl_->triggerManager->setOnFired([](const wingman::TriggerInstance& t) {
+        wingman::runtime::EventBuffer::instance().push("trigger.fired", {
+            {"id", t.id},
+            {"name", t.config.name},
+            {"triggered", t.triggered},
+            {"lastTriggerTime", t.lastTriggerTime},
+        });
+    });
     impl_->screen = platform::createPlatformScreen();
     rpc::registerSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION);
     rpc::registerRuntimeSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION, impl_->standalone);
@@ -64,6 +75,7 @@ bool LocalIpcServer::start() {
     } else {
         rpc::registerScreenshotHandlers(*impl_->dispatcher);
     }
+    rpc::registerEventHandlers(*impl_->dispatcher);
 
     {
         std::lock_guard<std::mutex> lock(startMutex_);

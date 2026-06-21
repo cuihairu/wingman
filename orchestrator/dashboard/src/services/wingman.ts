@@ -121,6 +121,7 @@ export interface AgentInfo {
   currentTask: string;
   resources: ResourceStats;
   lastSeen: number;
+  tags?: string[];
 }
 
 // 工作流状态
@@ -319,6 +320,14 @@ export async function shutdownAgent(agentId: string) {
   });
 }
 
+// setAgentTags 设置 agent 标签（分组），需 admin
+export async function setAgentTags(agentId: string, tags: string[]) {
+  return request<ApiResponse<void>>(`/api/agents/${agentId}/tags`, {
+    method: 'PUT',
+    data: { tags },
+  });
+}
+
 // 工作流管理
 export async function getWorkflows() {
   const response = await request<ApiResponse<unknown[]>>('/api/workflows', {
@@ -332,6 +341,35 @@ export async function getWorkflow(workflowId: string) {
     method: 'GET',
   });
   return normalizeApiResponse(response, (data) => normalizeWorkflowInstance(data));
+}
+
+export interface WorkflowTemplateStep {
+  id: string;
+  name?: string;
+  script?: string;
+  workers?: string[];
+  dependsOn?: string[];
+  timeoutSeconds?: number;
+  maxRetries?: number;
+  retryBackoffSeconds?: number;
+  parameters?: Record<string, any>;
+}
+
+export interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  steps: WorkflowTemplateStep[];
+}
+
+// getWorkflowTemplates 内置工作流模板目录（只读）
+export async function getWorkflowTemplates(): Promise<WorkflowTemplate[]> {
+  const response = await request<ApiResponse<unknown>>('/api/workflow-templates', {
+    method: 'GET',
+  });
+  const result = normalizeApiResponse(response, (data) => asArray(data) as WorkflowTemplate[]);
+  return result.data ?? [];
 }
 
 export async function submitWorkflow(workflow: Omit<Workflow, 'id' | 'status' | 'createdTime' | 'startTime' | 'endTime'>) {

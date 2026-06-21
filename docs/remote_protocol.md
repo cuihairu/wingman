@@ -1,5 +1,9 @@
 # Wingman 远程控制协议文档
 
+> ⚠️ **历史文档**：本文记录旧 JSON-RPC 协议的迁移说明。当前权威协议规范见 [protocols.md](./protocols.md)。
+>
+> 注意：本文早前描述的「Protobuf 序列化」与实际实现不符——Agent TCP 实际使用 **16 字节头 + JSON 体**（见 protocols.md ②）。`protobuf/` 目录为预留，未用于当前 agent 链路。
+
 ## 协议演进说明
 
 > **已废弃**: 旧的 JSON-RPC 风格远程控制协议（基于 `wingman::RemoteControlServer` / `wingman::RemoteControlClient`，默认端口 9999）已被移除。

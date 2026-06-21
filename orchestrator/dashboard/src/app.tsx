@@ -1,4 +1,5 @@
 import { Footer, Question, SelectLang, AvatarDropdown, AvatarName } from '@/components';
+import MessagesBell from '@/components/MessagesBell';
 import { UserOutlined } from '@ant-design/icons';
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 import { SettingDrawer } from '@ant-design/pro-components';
@@ -112,6 +113,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     return (
       <>
         <Question key="doc" />
+        <MessagesBell key="messages" />
         <SelectLang key="SelectLang" />
       </>
     );

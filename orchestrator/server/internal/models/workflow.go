@@ -64,13 +64,16 @@ func (w *Workflow) SetContext(ctx map[string]interface{}) error {
 
 // WorkflowStep 工作流步骤
 type WorkflowStep struct {
-	ID             string                 `json:"id"`
-	Name           string                 `json:"name"`
-	Script         string                 `json:"script"`
-	Workers        []string               `json:"workers"`
-	DependsOn      []string               `json:"dependsOn"`
-	TimeoutSeconds int                    `json:"timeoutSeconds"`
-	Parameters     map[string]interface{} `json:"parameters"`
+	ID                  string                 `json:"id"`
+	Name                string                 `json:"name"`
+	Type                string                 `json:"type"` // 步骤类型：script(默认)/wait
+	Script              string                 `json:"script"`
+	Workers             []string               `json:"workers"`
+	DependsOn           []string               `json:"dependsOn"`
+	TimeoutSeconds      int                    `json:"timeoutSeconds"`
+	Parameters          map[string]interface{} `json:"parameters"`
+	MaxRetries          int                    `json:"maxRetries"`          // 失败重试次数（0=不重试）
+	RetryBackoffSeconds int                    `json:"retryBackoffSeconds"` // 重试退避基数（秒，默认 2，指数翻倍）
 }
 
 // StepStatus 步骤执行状态

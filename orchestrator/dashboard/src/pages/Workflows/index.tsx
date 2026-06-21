@@ -13,6 +13,7 @@ import {
   PageContainer,
   ProCard,
   type ProColumns,
+  type ProFormInstance,
   ProDescriptions,
   ProFormText,
   ProFormTextArea,
@@ -26,6 +27,7 @@ import {
   Col,
   Descriptions,
   Row,
+  Select,
   Space,
   Steps,
   Tag,
@@ -45,6 +47,8 @@ import {
   StepStatus,
   getWorkflows,
   getWorkflow,
+  getWorkflowTemplates,
+  type WorkflowTemplate,
   submitWorkflow,
   cancelWorkflow,
   formatDuration,
@@ -64,11 +68,13 @@ function splitList(value: unknown): string[] {
 
 const Workflows: React.FC = () => {
   const actionRef = useRef();
+  const createFormRef = useRef<ProFormInstance>();
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowInstance | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const [workflows, setWorkflows] = useState<Workflow[]>([]); // 本地状态用于实时更新
+  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
 
   // 获取工作流列表
   const { data: workflowsData, loading, refresh } = useRequest(
@@ -162,6 +168,32 @@ const Workflows: React.FC = () => {
       },
     }
   );
+
+  // 加载内置模板目录
+  useEffect(() => {
+    getWorkflowTemplates()
+      .then((items) => setTemplates(Array.isArray(items) ? items : []))
+      .catch(() => {});
+  }, []);
+
+  // 从模板填充创建表单（workers/dependsOn 数组转逗号串以匹配表单字段）
+  const applyTemplate = (templateId: string) => {
+    const tpl = templates.find((t) => t.id === templateId);
+    if (!tpl) return;
+    createFormRef.current?.setFieldsValue({
+      name: tpl.name,
+      description: tpl.description || '',
+      steps: (tpl.steps || []).map((s) => ({
+        id: s.id,
+        name: s.name || s.id,
+        script: s.script || '',
+        workers: (s.workers || []).join(','),
+        dependsOn: (s.dependsOn || []).join(','),
+        timeoutSeconds: s.timeoutSeconds ?? 300,
+      })),
+    });
+    message.success(`已加载模板：${tpl.name}`);
+  };
 
   // 提交工作流
   const handleSubmit = async (values: any) => {
@@ -451,6 +483,7 @@ const Workflows: React.FC = () => {
       {/* 创建工作流弹窗 */}
       <ModalForm
         title="创建工作流"
+        formRef={createFormRef as any}
         open={createModalVisible}
         onOpenChange={setCreateModalVisible}
         onFinish={handleSubmit}
@@ -459,6 +492,20 @@ const Workflows: React.FC = () => {
           destroyOnClose: true,
         }}
       >
+        {templates.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <Select
+              style={{ width: '100%' }}
+              placeholder="从模板加载（可选）"
+              allowClear
+              onChange={(val) => val && applyTemplate(val)}
+              options={templates.map((t) => ({
+                label: `${t.name}${t.category ? ` [${t.category}]` : ''}`,
+                value: t.id,
+              }))}
+            />
+          </div>
+        )}
         <ProFormText
           name="name"
           label="工作流名称"

@@ -120,7 +120,7 @@ build-scripts\build-runtime-msvc-ninja.bat
 wingman-runtime.exe script script.lua
 wingman-runtime.exe script script.py
 
-# 启动 Agent（读取 agent.toml）
+# 启动 Agent（读取 agent.toml，主动 outbound 连接 Go orchestrator）
 wingman-runtime.exe start
 
 # 打包单文件脚本运行时
@@ -129,6 +129,20 @@ wingman-runtime.exe build --script script.lua --output script-runtime.exe
 # 帮助信息
 wingman-runtime.exe --help
 ```
+
+## 运行模式
+
+Wingman 有三种运行模式，按控制路径区分（详见 [架构决策](../../architecture-decisions.md)）：
+
+| 模式 | 命令 | 控制路径 | 适用场景 |
+|------|------|----------|----------|
+| **单脚本** | `wingman-runtime script foo.lua` | 直接执行后退出 | 一次性任务、CI、快速验证 |
+| **本地 GUI** | `wingman-runtime start`（local 能力）+ Tauri GUI | `Tauri UI → local IPC（Named Pipe/UDS）→ runtime` | 单机有界面的日常使用 |
+| **远程编排** | `wingman-runtime start`（agent 能力）→ Go orchestrator | `runtime agent → outbound → Go server → Dashboard` | 多机集中管控、团队协作 |
+
+- 本地 GUI 与远程编排可并存：runtime 同时承载 local IPC 服务和 agent outbound 连接。
+- **架构硬约束**：runtime 不开 HTTP/WebSocket server 作为控制面；Dashboard 只连 Go server，不直连 runtime。
+- Go orchestrator 与 Dashboard 的部署见 [`orchestrator/server/README.md`](../../orchestrator/server/README.md)。
 
 ## 第一个脚本
 

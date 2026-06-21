@@ -114,10 +114,13 @@ Color Vision::getDominantColor(const Rect& region) {
     cv::Rect roi(searchRegion.x, searchRegion.y, searchRegion.width, searchRegion.height);
     if (roi.x + roi.width > mat.cols) roi.width = mat.cols - roi.x;
     if (roi.y + roi.height > mat.rows) roi.height = mat.rows - roi.y;
+    if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0) return Color();
     cv::Mat searchMat = mat(roi);
+    if (searchMat.empty()) return Color();
+    cv::Mat continuous = searchMat.isContinuous() ? searchMat : searchMat.clone();
 
     // Use KMeans clustering to find dominant color
-    cv::Mat pixels = searchMat.reshape(1, searchMat.rows * searchMat.cols);
+    cv::Mat pixels = continuous.reshape(1, continuous.rows * continuous.cols);
     pixels.convertTo(pixels, CV_32F);
 
     cv::Mat labels, centers;

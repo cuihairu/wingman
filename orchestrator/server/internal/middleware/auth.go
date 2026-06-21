@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"gorm.io/gorm"
 )
 
 const jwtSecretMinLength = 32
@@ -169,4 +170,104 @@ func RoleRequired(roles ...string) gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+// PermissionRequired 细粒度权限检查中间件。
+// admin 角色直接放行；否则从 DB 解析用户角色权限，要求命中任一指定权限或通配符。
+// required 为空时退化为仅认证（已登录即可），便于渐进式接入。
+func PermissionRequired(db *gorm.DB, required ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if len(required) == 0 {
+			c.Next()
+			return
+		}
+		role, _ := c.Get("role")
+		roleStr, _ := role.(string)
+
+		// admin 超级用户放行
+		if strings.EqualFold(strings.TrimSpace(roleStr), "admin") {
+			c.Set("permissions", []string{"*"})
+			c.Next()
+			return
+		}
+
+		userIDVal, _ := c.Get("user_id")
+		userID, _ := userIDVal.(uint)
+		if userID == 0 {
+			c.JSON(http.StatusForbidden, gin.H{"success": false, "error": "forbidden"})
+			c.Abort()
+			return
+		}
+
+		codes, err := resolvePermissionCodes(c, db, userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to resolve permissions"})
+			c.Abort()
+			return
+		}
+		c.Set("permissions", codes)
+
+		matched := false
+		for _, req := range required {
+			req = strings.TrimSpace(req)
+			if req == "" {
+				continue
+			}
+			for _, code := range codes {
+				if code == "*" || strings.EqualFold(code, req) {
+					matched = true
+					break
+				}
+			}
+			if matched {
+				break
+			}
+		}
+		if !matched {
+			c.JSON(http.StatusForbidden, gin.H{"success": false, "error": "insufficient permissions"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// resolvePermissionCodes 从 DB 解析用户权限码（带请求级缓存，避免多个中间件重复查询）。
+func resolvePermissionCodes(c *gin.Context, db *gorm.DB, userID uint) ([]string, error) {
+	if cached, ok := c.Get("permissions"); ok {
+		if codes, ok := cached.([]string); ok {
+			return codes, nil
+		}
+	}
+	// 此处避免与 rbac 包形成循环依赖，内联最小查询逻辑（使用 Find 避免 not-found 日志噪音）。
+	var user struct {
+		Role   string
+		Active bool
+	}
+	if err := db.Table("users").Select("role, active").Where("id = ?", userID).Limit(1).Find(&user).Error; err != nil {
+		return nil, err
+	}
+	if !user.Active {
+		return nil, nil
+	}
+	if strings.EqualFold(strings.TrimSpace(user.Role), "admin") {
+		return []string{"*"}, nil
+	}
+	var role struct{ ID uint }
+	result := db.Table("roles").Select("id").Where("code = ?", user.Role).Limit(1).Find(&role)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if role.ID == 0 {
+		return nil, nil
+	}
+	var codes []string
+	if err := db.Table("permissions").
+		Select("permissions.code").
+		Joins("JOIN role_permissions ON role_permissions.permission_id = permissions.id").
+		Where("role_permissions.role_id = ?", role.ID).
+		Pluck("permissions.code", &codes).Error; err != nil {
+		return nil, err
+	}
+	return codes, nil
 }

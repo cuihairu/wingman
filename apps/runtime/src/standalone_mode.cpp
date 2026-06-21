@@ -1,4 +1,5 @@
 #include "wingman/runtime/standalone_mode.hpp"
+#include "wingman/runtime/event_buffer.hpp"
 #include "wingman/runtime/runtime_context.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>
@@ -72,6 +73,20 @@ bool StandaloneMode::start() {
     }
 
     running_.store(true);
+
+    // 订阅 ScriptManager 的 error 事件，将异步/启动失败的错误状态推送给 GUI。
+    // 注：start/pause/resume/stop 的状态转换已在各方法中显式推送，
+    // 此处仅补 error（之前缺失，导致脚本异常退出时 GUI 无法感知失败态）。
+    getScriptManager().setEventCallback([](const std::string& scriptId, wingman::ScriptEvent evt, const std::string& message) {
+        if (evt != wingman::ScriptEvent::error) {
+            return;
+        }
+        nlohmann::json payload = {{"id", scriptId}, {"state", "error"}};
+        if (!message.empty()) {
+            payload["error"] = message;
+        }
+        EventBuffer::instance().push("script.state_changed", std::move(payload));
+    });
 
     for (const auto& scriptPath : impl_->config.autoStart) {
         const auto id = loadScript(scriptPath);
@@ -192,6 +207,7 @@ bool StandaloneMode::startScript(const std::string& id) {
     bool started = getScriptManager().runScript(id);
     if (started) {
         spdlog::info("Script started: {}", id);
+        EventBuffer::instance().push("script.state_changed", {{"id", id}, {"state", "running"}});
     }
     return started;
 }
@@ -210,6 +226,7 @@ bool StandaloneMode::pauseScript(const std::string& id) {
     bool paused = getScriptManager().pauseScript(id);
     if (paused) {
         spdlog::info("Script paused: {}", id);
+        EventBuffer::instance().push("script.state_changed", {{"id", id}, {"state", "paused"}});
     }
     return paused;
 }
@@ -228,6 +245,7 @@ bool StandaloneMode::resumeScript(const std::string& id) {
     bool resumed = getScriptManager().resumeScript(id);
     if (resumed) {
         spdlog::info("Script resumed: {}", id);
+        EventBuffer::instance().push("script.state_changed", {{"id", id}, {"state", "running"}});
     }
     return resumed;
 }
@@ -246,6 +264,7 @@ bool StandaloneMode::stopScript(const std::string& id) {
     bool stopped = getScriptManager().stopScript(id);
     if (stopped) {
         spdlog::info("Script stopped: {}", id);
+        EventBuffer::instance().push("script.state_changed", {{"id", id}, {"state", "stopped"}});
     }
     return stopped;
 }

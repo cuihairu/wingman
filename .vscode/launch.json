@@ -1,0 +1,45 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to Wingman Lua (EmmyLua :9966)",
+      "type": "emmylua_new",
+      "request": "launch",
+      "host": "localhost",
+      "port": 9966,
+      "ideConnectDebugger": true,
+      "cwd": "${workspaceFolder}",
+      "ext": [
+        ".lua",
+        ".lua.txt",
+        ".lua.bytes"
+      ]
+    },
+    {
+      "name": "Run current Lua script (runtime)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build-msvc-ninja-vcpkg/apps/runtime/wingman-runtime.exe",
+      "args": [
+        "script",
+        "${file}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "preLaunchTask": "build runtime"
+    },
+    {
+      "name": "Run current Python script (runtime)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build-msvc-ninja-vcpkg/apps/runtime/wingman-runtime.exe",
+      "args": [
+        "script",
+        "${file}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "preLaunchTask": "build runtime"
+    }
+  ]
+}

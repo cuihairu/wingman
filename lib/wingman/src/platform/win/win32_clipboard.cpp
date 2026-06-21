@@ -506,10 +506,15 @@ bool Win32Clipboard::hasFiles() {
 // ========== General Operations ==========
 
 void Win32Clipboard::clear() {
-    if (OpenClipboard(nullptr)) {
-        EmptyClipboard();
-        CloseClipboard();
+    // 复用 openClipboard() 的重试逻辑（5 次 × 10ms）。
+    // 之前直接调用 OpenClipboard 无重试，当其他进程持有剪贴板锁时会静默失败，
+    // 导致后续 isEmpty() 误判（ClipboardTest.Clear 偶发失败的根因）。
+    if (!openClipboard()) {
+        spdlog::error("[Win32Clipboard] Failed to open clipboard for clear");
+        return;
     }
+    EmptyClipboard();
+    closeClipboard();
 }
 
 bool Win32Clipboard::isEmpty() {
@@ -566,15 +571,18 @@ bool Win32Clipboard::openClipboard() {
         return true;
     }
 
-    for (int i = 0; i < 5; ++i) {
+    // 重试预算 ~500ms：Windows 剪贴板是全局资源，可能被剪贴板历史、云同步、
+    // 安全软件等其他进程短时占用。原 5×10ms=50ms 在并发测试/真实环境下偶发失败
+    // （ClipboardTest.Clear 等），提升到 20×25ms 显著降低竞态。
+    for (int i = 0; i < 20; ++i) {
         if (OpenClipboard(nullptr)) {
             opened_ = true;
             return true;
         }
-        Sleep(10);
+        Sleep(25);
     }
 
-    spdlog::error("[Win32Clipboard] Failed to open clipboard");
+    spdlog::error("[Win32Clipboard] Failed to open clipboard after retries");
     return false;
 }
 

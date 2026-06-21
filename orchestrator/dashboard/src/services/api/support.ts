@@ -1,6 +1,7 @@
+import { fetchJSON } from '@/services/core/http';
+
 /**
- * Support API 服务存根
- * TODO: 根据实际后端 API 实现支持反馈功能
+ * Support API
  */
 
 export interface CreateFeedbackParams {
@@ -11,7 +12,8 @@ export interface CreateFeedbackParams {
 }
 
 export async function createFeedback(params: CreateFeedbackParams): Promise<void> {
-  // 存根实现：模拟提交成功
-  console.log('[Support Stub] Feedback submitted:', params);
-  return Promise.resolve();
+  await fetchJSON('/api/feedback', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
 }

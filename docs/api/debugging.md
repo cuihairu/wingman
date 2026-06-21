@@ -26,7 +26,7 @@ Wingman 提供了强大的脚本调试功能，支持在 VS Code 中进行断点
 ### 系统要求
 
 - **IDE**: Visual Studio Code
-- **VS Code 插件**: [EmmyLua](https://marketplace.visualstudio.com/items?itemName=EmmyLuaVSCode.emmylua)
+- **VS Code 插件**: [EmmyLua](https://marketplace.visualstudio.com/items?itemName=tangzx.emmylua)
 - **Wingman**: 已编译并启用调试支持
 
 ---
@@ -252,7 +252,7 @@ end
 
 ### 1. 安装 EmmyLua 插件
 
-在 VS Code 中安装 [EmmyLua](https://marketplace.visualstudio.com/items?itemName=EmmyLuaVSCode.emmylua) 插件。
+在 VS Code 中安装 [EmmyLua](https://marketplace.visualstudio.com/items?itemName=tangzx.emmylua) 插件。
 
 ### 2. 配置 launch.json
 
@@ -263,13 +263,17 @@ end
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "emmylua",
+            "type": "emmylua_new",
             "request": "launch",
-            "name": "Debug Lua Script",
-            "program": "${workspaceFolder}/scripts/main.lua",
+            "name": "Attach to Wingman Lua",
+            "host": "localhost",
+            "port": 9966,
+            "ideConnectDebugger": true,
             "cwd": "${workspaceFolder}",
-            "arg": [
-                "--debug"
+            "ext": [
+                ".lua",
+                ".lua.txt",
+                ".lua.bytes"
             ]
         }
     ]
@@ -285,7 +289,7 @@ end
 1. 在 VS Code 中打开 Lua 脚本
 2. 在代码行号左侧点击设置断点（红点）
 3. 按 F5 或点击"运行和调试"面板
-4. 选择 "Debug Lua Script" 配置
+4. 选择 "Attach to Wingman Lua" 配置
 5. 脚本会在断点处暂停
 
 #### 方式二：从脚本启动

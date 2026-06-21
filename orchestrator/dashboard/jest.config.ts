@@ -3,6 +3,9 @@ export default async () => {
     rootDir: '.',
     testEnvironment: 'jsdom',
     testMatch: ['**/?(*.)+(spec|test).[jt]s?(x)'],
+    testPathIgnorePatterns: [
+      '<rootDir>/tests/workspace/',
+    ],
     transform: {
       '^.+\\.(t|j)sx?$': [
         'ts-jest',

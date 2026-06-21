@@ -6,6 +6,8 @@
 #include <chrono>
 #include <memory>
 #include <functional>
+#include <mutex>
+#include <queue>
 #include <string>
 #include <vector>
 #include <map>
@@ -92,7 +94,14 @@ private:
     // 连接管理
     void connect();
     void disconnect();
-    void reconnect();
+    void reconnectLoop();           // 持久重连循环（指数退避）
+    int computeBackoff(int attempt) const;          // 计算退避毫秒数（含 0~999ms 抖动，已封顶）
+    bool sleepInterruptible(int milliseconds);      // 可被停止信号打断的睡眠（100ms 轮询粒度）
+    void startReconnectLoop();              // 启动持久重连循环
+
+    // 出站消息投递（带断线缓冲）
+    bool deliverMessage(const transport::MessagePtr& msg, bool queueable);
+    void flushOutbox();                     // 重连成功后冲刷缓冲队列
 
     // 心跳
     void startHeartbeat();

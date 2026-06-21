@@ -64,25 +64,51 @@ export default [
         name: 'Profile',
         component: './Profile',
       },
+      {
+        path: '/account/messages',
+        name: 'Messages',
+        component: './Account/Messages',
+      },
     ],
   },
-  // 设置（可选）
+  // 支持反馈
+  {
+    path: '/support/feedback',
+    name: 'Feedback',
+    icon: 'message',
+    component: './Support/Feedback',
+  },
+  // 设置
   {
     path: '/settings',
     name: 'Settings',
     icon: 'setting',
-    component: './Admin',
+    component: './Settings',
   },
   // 管理员审计
   {
     path: '/admin',
     name: 'Admin',
     icon: 'shield',
-    access: 'canAdmin',
+    access: 'canAccessAdmin',
     routes: [
       {
         path: '/admin',
-        redirect: '/admin/login-logs',
+        redirect: '/admin/users',
+      },
+      {
+        path: '/admin/users',
+        name: 'Users',
+        icon: 'user',
+        component: './Admin/Users',
+        access: 'canUserManage',
+      },
+      {
+        path: '/admin/roles',
+        name: 'Roles',
+        icon: 'team',
+        component: './Admin/Roles',
+        access: 'canRoleManage',
       },
       {
         path: '/admin/login-logs',

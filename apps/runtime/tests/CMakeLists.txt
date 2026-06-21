@@ -9,6 +9,7 @@ add_executable(runtime_tests
     ../src/cli.cpp
     ../src/packer.cpp
     ../src/runtime_context.cpp
+    ../src/event_buffer.cpp
     ../src/agent.cpp
     ../src/agent_config.cpp
     ../src/remote_client.cpp
@@ -17,6 +18,7 @@ add_executable(runtime_tests
     ../src/rpc/handlers/script_handler.cpp
     ../src/rpc/handlers/system_handler.cpp
     ../src/rpc/handlers/screenshot_handler.cpp
+    ../src/rpc/handlers/event_handler.cpp
     ../src/commands/build_command.cpp
     ../src/commands/script_command.cpp
     ../src/commands/stop_command.cpp

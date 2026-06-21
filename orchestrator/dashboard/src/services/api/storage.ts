@@ -1,6 +1,6 @@
 /**
- * Storage API 服务存根
- * TODO: 根据实际后端 API 实现文件存储上传功能
+ * Storage API
+ * 当前没有独立对象存储服务。头像上传转换为 Data URL 后由 Profile API 持久化。
  */
 
 export interface UploadOptions {
@@ -25,10 +25,10 @@ export function buildAvatarObjectKey(file: File): string {
 
 /**
  * 上传资源文件
- * 注意：当前为存根实现，实际使用时需要对接真实存储服务
+ * 返回可直接保存到 profile.avatar 的 Data URL。
  */
 export async function uploadAsset(file: File, options?: UploadOptions): Promise<UploadResult | undefined> {
-  // 存根实现：转换为本地预览 URL
+  void options;
   if (typeof URL !== 'undefined' && typeof FileReader !== 'undefined') {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();

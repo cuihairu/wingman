@@ -42,7 +42,8 @@ enum class RunMode {
 struct RemoteClientConfig {
     std::string serverIp = "127.0.0.1";
     int serverPort = 8888;
-    int reconnectInterval = 5;      // 秒
+    int reconnectInterval = 5;      // 秒（退避基数）
+    int maxReconnectInterval = 60;  // 秒（退避上限）
     int heartbeatInterval = 30;     // 秒
     int connectTimeout = 10;        // 秒
 };

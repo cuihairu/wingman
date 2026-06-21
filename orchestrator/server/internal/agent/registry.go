@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/json"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +26,7 @@ type AgentInfo struct {
 	Resources ResourceStats
 	LastSeen  time.Time
 	Client    AgentConn
+	Tags      []string
 }
 
 // Registry Agent 内存注册表
@@ -145,6 +147,39 @@ func (r *Registry) UpdateHeartbeat(agentID string) {
 	}
 }
 
+// SetTags 设置 Agent 的标签（分组），返回是否找到该 agent。
+func (r *Registry) SetTags(agentID string, tags []string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	info, ok := r.agents[agentID]
+	if !ok {
+		return false
+	}
+	// 去重 + 去空白
+	seen := map[string]bool{}
+	cleaned := make([]string, 0, len(tags))
+	for _, t := range tags {
+		t = strings.TrimSpace(t)
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		cleaned = append(cleaned, t)
+	}
+	info.Tags = cleaned
+
+	r.hub.BroadcastAgentEvent("status_changed", map[string]any{
+		"agentId":  agentID,
+		"hostname": info.Hostname,
+		"ip":       info.IP,
+		"status":   string(info.Status),
+		"tags":     info.Tags,
+		"lastSeen": info.LastSeen.UnixMilli(),
+	})
+	return true
+}
+
 // Get 获取指定 Agent
 func (r *Registry) Get(agentID string) (*AgentInfo, bool) {
 	r.mu.RLock()
@@ -240,6 +275,10 @@ func (r *Registry) checkHeartbeats() {
 
 // ToJSON 将 AgentInfo 序列化为前端需要的格式
 func (info *AgentInfo) ToJSON() map[string]any {
+	tags := info.Tags
+	if tags == nil {
+		tags = []string{}
+	}
 	return map[string]any{
 		"agentId":     info.AgentID,
 		"hostname":    info.Hostname,
@@ -248,5 +287,6 @@ func (info *AgentInfo) ToJSON() map[string]any {
 		"resources":   info.Resources,
 		"lastSeen":    info.LastSeen.UnixMilli(),
 		"currentTask": "",
+		"tags":        tags,
 	}
 }

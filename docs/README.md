@@ -11,6 +11,7 @@
 | [快速开始](getting-started.md) | 本地编译、运行第一个脚本 |
 | [安装指南](installation.md) | 平台依赖、vcpkg 和故障排查 |
 | [用户指南](user-guide.md) | 常见使用流程和脚本示例 |
+| [VS Code 开发环境](development-environment.md) | Lua/Python 补全、调试和任务配置 |
 | [配置指南](guides/configuration.md) | INI/JSON 配置管理实践 |
 
 ### API 参考
@@ -44,6 +45,7 @@
 | [UIA 抽象设计](uia-abstraction-design.md) | UI Automation 抽象层设计 |
 | [项目结构](project-structure.md) | 目录职责和模块划分 |
 | [开发指南](DEVELOPMENT.md) | 构建、测试和贡献流程 |
+| [VS Code 开发环境](development-environment.md) | 仓库级编辑器配置和脚本调试工作流 |
 | [开发工具](DEVELOPER_TOOLS.md) | 本地开发辅助工具 |
 | [依赖说明](dependencies.md) | 依赖来源和用途 |
 

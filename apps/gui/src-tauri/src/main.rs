@@ -36,6 +36,7 @@ fn main() {
             commands::system::resume_all,
             commands::system::stop_all,
             commands::system::is_paused,
+            commands::system::reload_hotkeys,
             // 屏幕预览
             commands::screen::capture_screenshot,
             commands::screen::list_monitors,
@@ -45,6 +46,8 @@ fn main() {
             commands::triggers::remove_trigger,
             commands::triggers::update_trigger,
             commands::triggers::toggle_trigger,
+            // 事件拉取（runtime → GUI 日志/触发器/截图事件）
+            commands::events::drain_events,
             // 配置管理
             commands::profiles::get_profiles,
             commands::profiles::get_active_profile,

@@ -163,6 +163,7 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
                 if (currentSection == "remote") {
                     if (key == "server_port") config.remoteClient.serverPort = intValue;
                     if (key == "reconnect_interval") config.remoteClient.reconnectInterval = intValue;
+                    if (key == "max_reconnect_interval") config.remoteClient.maxReconnectInterval = intValue;
                     if (key == "heartbeat_interval") config.remoteClient.heartbeatInterval = intValue;
                     if (key == "connect_timeout") config.remoteClient.connectTimeout = intValue;
                 }
@@ -218,6 +219,7 @@ bool AgentConfig::saveToFile(const std::string& path) const {
     file << "server_ip = \"" << remoteClient.serverIp << "\"\n";
     file << "server_port = " << remoteClient.serverPort << "\n";
     file << "reconnect_interval = " << remoteClient.reconnectInterval << "\n";
+    file << "max_reconnect_interval = " << remoteClient.maxReconnectInterval << "\n";
     file << "heartbeat_interval = " << remoteClient.heartbeatInterval << "\n";
     file << "connect_timeout = " << remoteClient.connectTimeout << "\n\n";
 

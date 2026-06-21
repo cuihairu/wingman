@@ -1,7 +1,8 @@
+import { fetchJSON } from '@/services/core/http';
+
 /**
- * Permissions 目录 API 存根
- * 后端仅提供 /profile/permissions（当前用户授权），未提供权限目录列表接口；
- * 返回 rejected 以触发 UI 的"功能未实现"降级分支。
+ * Permissions 目录 API
+ * 后端权限目录使用 code 字段（resource:action），这里规范化为 Profile 页申请列表需要的结构。
  */
 
 export interface PermissionRecord {
@@ -25,8 +26,63 @@ export interface ListPermissionsResponse {
   total?: number;
 }
 
+interface BackendPermission {
+  id?: number;
+  ID?: number;
+  code: string;
+  name?: string;
+  description?: string;
+  category?: string;
+}
+
+interface BackendListPermissionsResponse {
+  items?: BackendPermission[];
+  total?: number;
+}
+
+function splitPermissionCode(code: string) {
+  const [resource, ...rest] = code.split(':');
+  return {
+    resource: resource || code,
+    action: rest.join(':') || '*',
+  };
+}
+
+function normalizePermission(item: BackendPermission): PermissionRecord {
+  const code = String(item.code || item.id || item.ID || '');
+  const parsed = splitPermissionCode(code);
+  return {
+    id: code,
+    name: item.name || code,
+    description: item.description,
+    resource: parsed.resource,
+    action: parsed.action,
+    category: item.category,
+  };
+}
+
 export async function listPermissions(
-  _params: ListPermissionsParams,
+  params: ListPermissionsParams = {},
 ): Promise<ListPermissionsResponse> {
-  return Promise.reject(new Error('permissions catalog API not implemented'));
+  const search = new URLSearchParams();
+  if (params.category) search.set('category', params.category);
+
+  const suffix = search.toString();
+  const response = await fetchJSON<BackendListPermissionsResponse>(
+    `/api/admin/permissions${suffix ? `?${suffix}` : ''}`,
+  );
+
+  let items = (response.items || []).map(normalizePermission);
+  if (params.resource) {
+    items = items.filter((item) => item.resource === params.resource);
+  }
+
+  const total = items.length;
+  if (params.pageSize && params.pageSize > 0) {
+    const page = Math.max(params.page || 1, 1);
+    const start = (page - 1) * params.pageSize;
+    items = items.slice(start, start + params.pageSize);
+  }
+
+  return { items, total };
 }

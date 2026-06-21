@@ -211,6 +211,7 @@ void TriggerManager::checkThread() {
             }
 
             std::vector<TriggerActionData> actions;
+            std::optional<TriggerInstance> firedInstance;
             const uint64_t now = getTickCount();
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -234,6 +235,11 @@ void TriggerManager::checkThread() {
                     it->config.enabled = false;
                     it->triggered = true;
                 }
+                firedInstance = *it;
+            }
+
+            if (firedInstance && m_onFired) {
+                m_onFired(*firedInstance);
             }
 
             executeActions(actions);

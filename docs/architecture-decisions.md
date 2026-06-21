@@ -178,6 +178,42 @@ control channel.
 This keeps display selection inside the IPC/agent transport contract and avoids
 a second screen abstraction.
 
+## Runtime-to-UI Event Delivery (Pull, not Push)
+
+The runtime surfaces events (log lines, trigger fires, screenshot frames,
+script state changes) to the local Tauri UI over the existing local IPC, but
+uses a **pull/drain model**, not unsolicited push frames:
+
+```text
+runtime subsystem -> EventBuffer (in-process, bounded queue)
+GUI poller -> RPC `events.drain` -> drains + clears the buffer -> dispatch to stores
+```
+
+Rationale: the Rust IPC client (`apps/gui/src-tauri/src/ipc/client.rs`) is a
+synchronous request/response client over Windows named pipes (blocking IO). If
+the runtime pushed unsolicited `type=2` event frames, they would interleave
+with response frames and desynchronize the single reader. A pull model keeps
+the client single-request/single-response and avoids an async reader loop.
+
+This is an allowed variation of the wire contract above: events still travel
+over the local IPC only (never HTTP/WebSocket). The `type=2` event frame
+remains defined for transports that can multiplex; the local-UI path simply
+chooses drain-over-RPC. Do not introduce a background reader/`type=2` push
+path in the Rust client without first resolving the blocking-IO multiplexing.
+
+Hook points: `EventBuffer::instance().push(method, payload)` is fed by a
+spdlog sink (`log.line`), a `TriggerManager::setOnFired` callback
+(`trigger.fired`), and script lifecycle transitions in `StandaloneMode`
+(`script.state_changed`).
+
+**Screenshots are NOT pushed via the event drain.** Full screenshots are
+large base64 payloads; periodic capture would flood the bounded buffer and
+the pull model. Screenshots stay on-demand via the existing `screenshot.capture`
+RPC (the GUI requests a frame when it needs one). `ScreenshotReporter` is
+Windows-only and HTTP-oriented (`serverUrl`); it is not wired into the local
+event path. A future "screenshot available" lightweight signal, if needed,
+should carry only a notification and let the GUI pull the heavy payload.
+
 ## Documentation Requirement
 
 When changing runtime control, local UI, or remote orchestration code, update this document and `docs/architecture.md` in the same change. If implementation is experimental, mark it explicitly as experimental instead of presenting it as the stable architecture.

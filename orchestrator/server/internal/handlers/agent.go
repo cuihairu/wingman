@@ -86,3 +86,29 @@ func (h *AgentHandler) HandleShutdown(c *gin.Context) {
 		"success": true,
 	})
 }
+
+// HandleSetTags 设置 Agent 标签（分组）
+func (h *AgentHandler) HandleSetTags(c *gin.Context) {
+	agentID := c.Param("agentId")
+
+	var req struct {
+		Tags []string `json:"tags"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		return
+	}
+
+	if !h.registry.SetTags(agentID, req.Tags) {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "agent not found"})
+		return
+	}
+
+	_, actor, _ := middleware.GetCurrentUser(c)
+	WriteAuditLog(h.db, actor, "agent.set_tags", agentID, map[string]any{
+		"agent_id": agentID,
+		"tags":     req.Tags,
+	})
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}

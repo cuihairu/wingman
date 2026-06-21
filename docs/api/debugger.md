@@ -607,22 +607,14 @@ print("x + y = " .. tostring(result))
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "wingman-lua",
+      "type": "emmylua_new",
       "request": "launch",
-      "name": "Wingman Lua 调试",
-      "script": "${workspaceFolder}/scripts/main.lua",
+      "name": "Attach to Wingman Lua",
       "host": "localhost",
-      "port": 9999,
-      "stopOnEntry": false
-    },
-    {
-      "type": "wingman-python",
-      "request": "launch",
-      "name": "Wingman Python 调试",
-      "script": "${workspaceFolder}/scripts/main.py",
-      "host": "localhost",
-      "port": 9999,
-      "stopOnEntry": false
+      "port": 9966,
+      "ideConnectDebugger": true,
+      "cwd": "${workspaceFolder}",
+      "ext": [".lua", ".lua.txt", ".lua.bytes"]
     }
   ]
 }

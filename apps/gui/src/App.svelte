@@ -9,6 +9,7 @@
 	import { profiles, activeProfile } from '$lib/stores/profiles';
 	import { logs } from '$lib/stores/logs';
 	import { screen } from '$lib/stores/screen';
+	import { createEventPoller } from '$lib/stores/events';
 
 	import DashboardPage from './routes/dashboard/+page.svelte';
 	import ScriptsPage from './routes/scripts/+page.svelte';
@@ -21,6 +22,9 @@
 
 	const invoke = (window as any).__TAURI_INVOKE__;
 	let reconnecting = false;
+
+	// runtime → GUI 事件轮询（日志/触发器/截图）
+	const eventPoller = createEventPoller();
 
 	async function loadAllData() {
 		await Promise.allSettled([
@@ -97,6 +101,15 @@
 			await reconnectOnce();
 		}, 5000);
 		return () => window.clearInterval(interval);
+	});
+
+	// 仅在已连接时轮询 runtime 事件；断开时停止以避免无效请求
+	$effect(() => {
+		if (!invoke) return;
+		if ($connection.connected) {
+			eventPoller.start();
+			return () => eventPoller.stop();
+		}
 	});
 </script>
 

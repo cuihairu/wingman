@@ -1,0 +1,49 @@
+{
+  "cmake.configureOnOpen": false,
+  "cmake.buildDirectory": "${workspaceFolder}/build-msvc-ninja-vcpkg",
+  "cmake.generator": "Ninja",
+  "C_Cpp.default.cppStandard": "c++23",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build-msvc-ninja-vcpkg/compile_commands.json",
+  "Lua.runtime.version": "Lua 5.4",
+  "Lua.workspace.checkThirdParty": false,
+  "Lua.workspace.library": [
+    "${workspaceFolder}/assets/vscode-wingman-lua",
+    "${workspaceFolder}/examples/lua_scripts"
+  ],
+  "Lua.workspace.ignoreDir": [
+    ".git",
+    "build",
+    "build-*",
+    "vcpkg_installed",
+    "docs/node_modules",
+    "apps/gui/node_modules",
+    "apps/gui/src-tauri/target",
+    "orchestrator/dashboard/node_modules"
+  ],
+  "Lua.diagnostics.globals": [
+    "wingman"
+  ],
+  "Lua.completion.callSnippet": "Replace",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.stubPath": "${workspaceFolder}/libs/python/typing",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/libs/python/typing"
+  ],
+  "python.testing.pytestEnabled": false,
+  "files.associations": {
+    "*.ipp": "cpp",
+    "*.inl": "cpp",
+    "*.toml": "toml"
+  },
+  "files.exclude": {
+    "**/.cache": true,
+    "**/CMakeFiles": true,
+    "**/vcpkg_installed": true
+  },
+  "search.exclude": {
+    "**/build": true,
+    "**/build-*": true,
+    "**/node_modules": true,
+    "**/vcpkg_installed": true
+  }
+}

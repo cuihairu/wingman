@@ -1,0 +1,32 @@
+{
+  "folders": [
+    {
+      "name": "Wingman Lua Scripts",
+      "path": "lua_scripts"
+    },
+    {
+      "name": "Wingman Profiles",
+      "path": "profiles"
+    },
+    {
+      "name": "Wingman Lua Types",
+      "path": "../assets/vscode-wingman-lua"
+    }
+  ],
+  "settings": {
+    "Lua.runtime.version": "Lua 5.4",
+    "Lua.workspace.checkThirdParty": false,
+    "Lua.workspace.library": [
+      "../assets/vscode-wingman-lua"
+    ],
+    "Lua.diagnostics.globals": [
+      "wingman"
+    ]
+  },
+  "extensions": {
+    "recommendations": [
+      "tangzx.emmylua",
+      "sumneko.lua"
+    ]
+  }
+}

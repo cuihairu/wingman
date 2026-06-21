@@ -1,0 +1,48 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "configure runtime",
+      "type": "shell",
+      "command": "${workspaceFolder}/build-scripts/configure-msvc-ninja.bat",
+      "problemMatcher": []
+    },
+    {
+      "label": "build runtime",
+      "type": "shell",
+      "command": "${workspaceFolder}/build-scripts/build-runtime-msvc-ninja.bat",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build gui",
+      "type": "shell",
+      "command": "npm run build",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/gui"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "build docs",
+      "type": "shell",
+      "command": "npm run docs:build",
+      "options": {
+        "cwd": "${workspaceFolder}/docs"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "test orchestrator server",
+      "type": "shell",
+      "command": "go test ./...",
+      "options": {
+        "cwd": "${workspaceFolder}/orchestrator/server"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

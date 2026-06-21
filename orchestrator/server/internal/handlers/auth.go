@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
@@ -47,7 +48,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 		WriteAuditLog(h.db, req.Username, "login_fail", "auth.login", loginAuditMeta(clientIP, c.GetHeader("User-Agent"), "user_not_found"))
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"error": "Invalid credentials",
+			"error":   "Invalid credentials",
 		})
 		return
 	}
@@ -59,7 +60,15 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 		WriteAuditLog(h.db, req.Username, "login_fail", "auth.login", loginAuditMeta(clientIP, c.GetHeader("User-Agent"), "invalid_password"))
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"error": "Invalid credentials",
+			"error":   "Invalid credentials",
+		})
+		return
+	}
+	if !user.Active {
+		WriteAuditLog(h.db, user.Username, "login_fail", "auth.login", loginAuditMeta(clientIP, c.GetHeader("User-Agent"), "inactive_user"))
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"error":   "User is disabled",
 		})
 		return
 	}
@@ -73,9 +82,13 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error": "Failed to generate token",
+			"error":   "Failed to generate token",
 		})
 		return
+	}
+	now := time.Now()
+	if err := h.db.Model(&user).Update("last_login_at", now).Error; err != nil {
+		log.Printf("Failed to update last login time for user %s: %v", user.Username, err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -85,6 +98,7 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 			"id":       user.ID,
 			"username": user.Username,
 			"role":     user.Role,
+			"active":   user.Active,
 		},
 	})
 }
@@ -102,7 +116,7 @@ func loginAuditMeta(clientIP, userAgent, result string) map[string]any {
 func (h *AuthHandler) HandleLogout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"error": "Logged out",
+		"error":   "Logged out",
 	})
 }
 
@@ -125,6 +139,7 @@ func (h *AuthHandler) InitAdmin() {
 			Username: "admin",
 			Password: hash,
 			Role:     "admin",
+			Active:   true,
 		}
 		h.db.Create(&admin)
 	}

@@ -134,6 +134,7 @@ if points:
 - [API 参考](docs/api/overview.md) - 完整的 API 文档
 - [架构设计](docs/architecture.md) - 系统架构和设计决策
 - [开发指南](docs/DEVELOPMENT.md) - 贡献和开发指南
+- [VS Code 开发环境](docs/development-environment.md) - Lua/Python 补全、任务和调试配置
 
 ---
 

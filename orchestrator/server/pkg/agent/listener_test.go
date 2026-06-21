@@ -29,15 +29,19 @@ func TestAgentRegisterFlow(t *testing.T) {
 	listener := NewFrameListener(registry, broadcast)
 
 	// Start listener
-	go func() {
-		if err := listener.Start(testAddr); err != nil {
-			t.Fatalf("Failed to start listener: %v", err)
-		}
-	}()
+	startErr := make(chan error, 1)
+	go func() { startErr <- listener.Start(testAddr) }()
 
 	// Get the actual listening address
 	var actualAddr string
 	for i := 0; i < 50; i++ {
+		select {
+		case err := <-startErr:
+			if err != nil {
+				t.Fatalf("Failed to start listener: %v", err)
+			}
+		default:
+		}
 		if listener.listener != nil {
 			actualAddr = listener.listener.Addr().String()
 			break
@@ -75,14 +79,18 @@ func TestSendCommandResponseFlow(t *testing.T) {
 	broadcast := &mockBroadcaster{}
 	listener := NewFrameListener(registry, broadcast)
 
-	go func() {
-		if err := listener.Start(testAddr); err != nil {
-			t.Fatalf("Failed to start listener: %v", err)
-		}
-	}()
+	startErr := make(chan error, 1)
+	go func() { startErr <- listener.Start(testAddr) }()
 
 	var actualAddr string
 	for i := 0; i < 50; i++ {
+		select {
+		case err := <-startErr:
+			if err != nil {
+				t.Fatalf("Failed to start listener: %v", err)
+			}
+		default:
+		}
 		if listener.listener != nil {
 			actualAddr = listener.listener.Addr().String()
 			break
@@ -154,14 +162,18 @@ func TestMessageSizeLimit(t *testing.T) {
 	broadcast := &mockBroadcaster{}
 	listener := NewFrameListener(registry, broadcast)
 
-	go func() {
-		if err := listener.Start(testAddr); err != nil {
-			t.Fatalf("Failed to start listener: %v", err)
-		}
-	}()
+	startErr := make(chan error, 1)
+	go func() { startErr <- listener.Start(testAddr) }()
 
 	var actualAddr string
 	for i := 0; i < 50; i++ {
+		select {
+		case err := <-startErr:
+			if err != nil {
+				t.Fatalf("Failed to start listener: %v", err)
+			}
+		default:
+		}
 		if listener.listener != nil {
 			actualAddr = listener.listener.Addr().String()
 			break

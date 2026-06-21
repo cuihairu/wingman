@@ -18,8 +18,10 @@ import {
   Button,
   Card,
   Col,
+  Popover,
   Progress,
   Row,
+  Select,
   Space,
   Statistic,
   Tag,
@@ -35,6 +37,7 @@ import {
   AgentInfo,
   getAgents,
   shutdownAgent,
+  setAgentTags,
   formatBytes,
   getAgentStatusColor,
 } from '@/services/wingman';
@@ -47,6 +50,7 @@ const Agents: React.FC = () => {
   const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]); // 本地状态用于实时更新
+  const [tagDraft, setTagDraft] = useState<{ agentId: string; tags: string[] } | null>(null);
 
   // 获取 Agent 列表
   const { data: agentsData, loading, refresh } = useRequest(
@@ -136,6 +140,19 @@ const Agents: React.FC = () => {
         }
       },
     });
+  };
+
+  // 保存标签
+  const handleSaveTags = async (agentId: string) => {
+    if (!tagDraft) return;
+    try {
+      await setAgentTags(agentId, tagDraft.tags);
+      message.success('标签已更新');
+      setTagDraft(null);
+      refresh();
+    } catch {
+      message.error('标签更新失败（可能需要管理员权限）');
+    }
   };
 
   // 资源卡片组件
@@ -244,6 +261,45 @@ const Agents: React.FC = () => {
           {record.status.toUpperCase()}
         </Tag>
       ),
+    },
+    {
+      title: '标签',
+      dataIndex: 'tags',
+      key: 'tags',
+      width: 180,
+      render: (_, record) => {
+        const tags = record.tags || [];
+        const content = (
+          <div style={{ width: 220 }}>
+            <Select
+              mode="tags"
+              style={{ width: '100%' }}
+              placeholder="输入标签后回车"
+              value={tagDraft?.agentId === record.agentId ? tagDraft.tags : tags}
+              onChange={(vals) => setTagDraft({ agentId: record.agentId, tags: vals as string[] })}
+            />
+            <div style={{ marginTop: 8, textAlign: 'right' }}>
+              <Space>
+                <Button size="small" onClick={() => setTagDraft(null)}>取消</Button>
+                <Button size="small" type="primary" onClick={() => handleSaveTags(record.agentId)}>
+                  保存
+                </Button>
+              </Space>
+            </div>
+          </div>
+        );
+        return (
+          <Popover content={content} title="编辑标签" trigger="click" placement="bottom">
+            <Space size={[0, 4]} wrap style={{ cursor: 'pointer' }}>
+              {tags.length === 0 ? (
+                <Tag style={{ borderStyle: 'dashed' }}>+ 添加</Tag>
+              ) : (
+                tags.map((t) => <Tag key={t} color="blue">{t}</Tag>)
+              )}
+            </Space>
+          </Popover>
+        );
+      },
     },
     {
       title: 'CPU',
