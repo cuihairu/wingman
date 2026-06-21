@@ -41,6 +41,63 @@ ModuleDescriptor createOcrModule() {
 // ============================================================================
 // SmartTrigger Module
 // ============================================================================
+namespace {
+// ScriptValue 表 -> TriggerCondition（type 兼容 snake_case 与原大写枚举名）
+TriggerCondition parseCondition(const ScriptValue& v) {
+	TriggerCondition c;
+	const ScriptValue* typeVal = v.get("type");
+	const std::string type = typeVal ? typeVal->asString() : "";
+	if (type == "color_found" || type == "COLOR_FOUND") c.type = TriggerConditionType::COLOR_FOUND;
+	else if (type == "color_not_found" || type == "COLOR_NOT_FOUND") c.type = TriggerConditionType::COLOR_NOT_FOUND;
+	else if (type == "image_found" || type == "IMAGE_FOUND") c.type = TriggerConditionType::IMAGE_FOUND;
+	else if (type == "image_not_found" || type == "IMAGE_NOT_FOUND") c.type = TriggerConditionType::IMAGE_NOT_FOUND;
+	else if (type == "text_found" || type == "TEXT_FOUND") c.type = TriggerConditionType::TEXT_FOUND;
+	else if (type == "text_not_found" || type == "TEXT_NOT_FOUND") c.type = TriggerConditionType::TEXT_NOT_FOUND;
+	else if (type == "edge_detected" || type == "EDGE_DETECTED") c.type = TriggerConditionType::EDGE_DETECTED;
+	else if (type == "color_changed" || type == "COLOR_CHANGED") c.type = TriggerConditionType::COLOR_CHANGED;
+	else if (type == "ocr_contains" || type == "OCR_CONTAINS") c.type = TriggerConditionType::OCR_CONTAINS;
+	else if (type == "ocr_equals" || type == "OCR_EQUALS") c.type = TriggerConditionType::OCR_EQUALS;
+
+	if (const ScriptValue* color = v.get("color")) c.targetColor = toColor(*color);
+	if (const ScriptValue* tol = v.get("tolerance")) c.tolerance = static_cast<int>(tol->asInt());
+	if (const ScriptValue* thr = v.get("threshold")) c.threshold = thr->asFloat(0.8);
+	if (const ScriptValue* region = v.get("region")) c.searchRegion = toRect(*region);
+	if (const ScriptValue* text = v.get("text")) c.targetText = text->asString();
+	if (const ScriptValue* tpl = v.get("template")) c.templatePath = tpl->asString();
+	if (const ScriptValue* tplPath = v.get("templatePath")) c.templatePath = tplPath->asString();
+	return c;
+}
+
+// ScriptValue 表 -> TriggerAction
+TriggerAction parseAction(const ScriptValue& v) {
+	TriggerAction a;
+	const ScriptValue* typeVal = v.get("type");
+	const std::string type = typeVal ? typeVal->asString() : "";
+	if (type == "click" || type == "CLICK") a.type = TriggerActionType::CLICK;
+	else if (type == "key_press" || type == "KEY_PRESS" || type == "keypress") a.type = TriggerActionType::KEY_PRESS;
+	else if (type == "wait" || type == "WAIT" || type == "delay") a.type = TriggerActionType::WAIT;
+	else if (type == "lua_script" || type == "LUA_SCRIPT") a.type = TriggerActionType::LUA_SCRIPT;
+	else if (type == "log" || type == "LOG") a.type = TriggerActionType::LOG;
+	else if (type == "stop" || type == "STOP") a.type = TriggerActionType::STOP;
+
+	if (const ScriptValue* pos = v.get("position")) {
+		if (pos->isObject()) {
+			if (const ScriptValue* px = pos->get("x")) a.clickPosition.x = static_cast<int>(px->asInt());
+			if (const ScriptValue* py = pos->get("y")) a.clickPosition.y = static_cast<int>(py->asInt());
+		}
+	}
+	if (const ScriptValue* x = v.get("x")) a.clickPosition.x = static_cast<int>(x->asInt());
+	if (const ScriptValue* y = v.get("y")) a.clickPosition.y = static_cast<int>(y->asInt());
+	if (const ScriptValue* key = v.get("key")) a.keyCode = static_cast<int>(key->asInt());
+	if (const ScriptValue* keyCode = v.get("keyCode")) a.keyCode = static_cast<int>(keyCode->asInt());
+	if (const ScriptValue* waitMs = v.get("waitMs")) a.waitMs = static_cast<int>(waitMs->asInt());
+	if (const ScriptValue* delay = v.get("delay")) a.waitMs = static_cast<int>(delay->asInt());
+	if (const ScriptValue* script = v.get("script")) a.luaScript = script->asString();
+	if (const ScriptValue* msg = v.get("message")) a.logMessage = msg->asString();
+	return a;
+}
+} // namespace
+
 ModuleDescriptor createSmartTriggerModule() {
 	ModuleDescriptor mod;
 	mod.name = "smarttrigger";
@@ -66,6 +123,42 @@ ModuleDescriptor createSmartTriggerModule() {
 		SmartTriggerManager::instance().removeTrigger(args[0].asString());
 		return ScriptValue::null();
 	}, "name:string -> nil"});
+
+	mod.functions.push_back({"addCondition", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.size() < 2) return ScriptValue::fromBool(false);
+		auto t = SmartTriggerManager::instance().getTrigger(args[0].asString());
+		if (!t) return ScriptValue::fromBool(false);
+		t->addCondition(parseCondition(args[1]));
+		return ScriptValue::fromBool(true);
+	}, "name:string, condition:{type:string, color?, tolerance?, threshold?, region?, text?, template?} -> bool"});
+
+	mod.functions.push_back({"addAction", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.size() < 2) return ScriptValue::fromBool(false);
+		auto t = SmartTriggerManager::instance().getTrigger(args[0].asString());
+		if (!t) return ScriptValue::fromBool(false);
+		t->addAction(parseAction(args[1]));
+		return ScriptValue::fromBool(true);
+	}, "name:string, action:{type:string, x?, y?, key?, waitMs?, script?, message?} -> bool"});
+
+	mod.functions.push_back({"setCheckInterval", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.size() < 2) return ScriptValue::fromBool(false);
+		auto t = SmartTriggerManager::instance().getTrigger(args[0].asString());
+		if (!t) return ScriptValue::fromBool(false);
+		t->setCheckInterval(static_cast<int>(args[1].asInt()));
+		return ScriptValue::fromBool(true);
+	}, "name:string, ms:int -> bool"});
+
+	mod.functions.push_back({"isRunning", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.empty()) return ScriptValue::fromBool(false);
+		auto t = SmartTriggerManager::instance().getTrigger(args[0].asString());
+		return ScriptValue::fromBool(t && t->isRunning());
+	}, "name:string -> bool"});
+
+	mod.functions.push_back({"getTriggerCount", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.empty()) return ScriptValue::fromInt(0);
+		auto t = SmartTriggerManager::instance().getTrigger(args[0].asString());
+		return ScriptValue::fromInt(t ? t->getTriggerCount() : 0);
+	}, "name:string -> int"});
 
 	return mod;
 }

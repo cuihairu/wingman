@@ -154,14 +154,13 @@ for result in results:
 ### Lua 示例
 
 ```lua
-local vision = require("wingman.vision")
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 加载 YOLO 模型
-local model = vision.loadYolo("yolov8n.onnx")
+local model = wingman.vision.loadYolo("yolov8n.onnx")
 
 -- 截取屏幕
-local img = screen.capture(0, 0, 1920, 1080)
+local img = wingman.screen.capture(0, 0, 1920, 1080)
 
 -- 检测目标
 local results = model:detect(img)

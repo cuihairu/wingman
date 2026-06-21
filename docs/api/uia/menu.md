@@ -25,10 +25,10 @@ if menu:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找名为"文件"的菜单
-local menu = uia.findByName("文件")
+local menu = wingman.uia.findByName("文件")
 if menu then
     print("找到菜单")
 end
@@ -77,21 +77,20 @@ if menu:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 查找并展开"文件"菜单
-local menu = uia.findByName("文件")
+local menu = wingman.uia.findByName("文件")
 if menu then
     -- 展开菜单
     menu:expand()
     print("已展开文件菜单")
 
     -- 等待菜单项出现
-    util.sleep(300)
+    wingman.util.sleep(300)
 
     -- 查找并点击"新建"菜单项
-    local newItem = uia.findByName("新建")
+    local newItem = wingman.uia.findByName("新建")
     if newItem then
         newItem:click()
         print("已点击新建")
@@ -122,10 +121,10 @@ if save_item:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 某些应用支持直接点击菜单项
-local saveItem = uia.findByName("保存")
+local saveItem = wingman.uia.findByName("保存")
 if saveItem then
     saveItem:click()
     print("已点击保存")
@@ -169,19 +168,17 @@ if copy_item:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
-local input = require("wingman.input")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 在指定位置右键
-input.rightClick(100, 100)
+wingman.input.rightClick(100, 100)
 print("已右键")
 
 -- 等待上下文菜单出现
-util.sleep(300)
+wingman.util.sleep(300)
 
 -- 操作菜单项
-local copyItem = uia.findByName("复制")
+local copyItem = wingman.uia.findByName("复制")
 if copyItem then
     copyItem:click()
     print("已点击复制")
@@ -222,14 +219,13 @@ if menu:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
-local menu = uia.findByName("文件")
+local menu = wingman.uia.findByName("文件")
 if menu then
     -- 展开菜单
     menu:expand()
-    util.sleep(300)
+    wingman.util.sleep(300)
 
     -- 获取所有菜单项
     local items = menu:getChildren()

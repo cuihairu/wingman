@@ -89,10 +89,10 @@ else:
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
 -- 连接到服务器
-local result = transport.tcpConnect("myclient", "192.168.1.100", 9000)
+local result = wingman.transport.tcpConnect("myclient", "192.168.1.100", 9000)
 
 if result.success then
     print("连接成功，句柄:", result.handle)
@@ -145,14 +145,14 @@ if transport.tcp_send(handle, "Hello, Server!"):
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
 -- 连接
-local result = transport.tcpConnect("client1", "127.0.0.1", 8080)
+local result = wingman.transport.tcpConnect("client1", "127.0.0.1", 8080)
 local handle = result.handle
 
 -- 发送消息
-if transport.tcpSend(handle, "Hello, Server!") then
+if wingman.transport.tcpSend(handle, "Hello, Server!") then
     print("发送成功")
 end
 ```
@@ -209,12 +209,12 @@ transport.tcp_disconnect(handle)
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
-local handle = transport.tcpConnect("client1").handle
+local handle = wingman.transport.tcpConnect("client1").handle
 
 -- 使用完毕后断开
-transport.tcpDisconnect(handle)
+wingman.transport.tcpDisconnect(handle)
 ```
 
 :::
@@ -268,10 +268,10 @@ else:
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
 -- 启动 TCP 服务器
-local server = transport.tcpListen("myserver", "0.0.0.0", 9000)
+local server = wingman.transport.tcpListen("myserver", "0.0.0.0", 9000)
 
 if server.success then
     print("服务器启动成功，句柄:", server.handle)
@@ -321,12 +321,12 @@ for session_id in sessions:
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
-local server_handle = transport.tcpListen("server1", "0.0.0.0", 9000).handle
+local server_handle = wingman.transport.tcpListen("server1", "0.0.0.0", 9000).handle
 
 -- 获取所有会话
-local sessions = transport.tcpGetSessions(server_handle)
+local sessions = wingman.transport.tcpGetSessions(server_handle)
 print("当前连接数:", #sessions)
 
 for i, session_id in ipairs(sessions) do
@@ -377,14 +377,14 @@ if sessions:
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
-local server_handle = transport.tcpListen("server1").handle
-local sessions = transport.tcpGetSessions(server_handle)
+local server_handle = wingman.transport.tcpListen("server1").handle
+local sessions = wingman.transport.tcpGetSessions(server_handle)
 
 if #sessions > 0 then
     -- 向第一个客户端发送消息
-    transport.tcpSendTo(server_handle, sessions[1], "Welcome!")
+    wingman.transport.tcpSendTo(server_handle, sessions[1], "Welcome!")
 end
 ```
 
@@ -428,12 +428,12 @@ transport.tcp_broadcast(server_handle, "Server announcement!")
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
-local server_handle = transport.tcpListen("server1").handle
+local server_handle = wingman.transport.tcpListen("server1").handle
 
 -- 广播消息给所有客户端
-transport.tcpBroadcast(server_handle, "Server announcement!")
+wingman.transport.tcpBroadcast(server_handle, "Server announcement!")
 ```
 
 :::
@@ -476,14 +476,14 @@ if sessions:
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
-local server_handle = transport.tcpListen("server1").handle
-local sessions = transport.tcpGetSessions(server_handle)
+local server_handle = wingman.transport.tcpListen("server1").handle
+local sessions = wingman.transport.tcpGetSessions(server_handle)
 
 if #sessions > 0 then
     -- 关闭第一个客户端连接
-    transport.tcpCloseSession(server_handle, sessions[1])
+    wingman.transport.tcpCloseSession(server_handle, sessions[1])
 end
 ```
 
@@ -521,12 +521,12 @@ transport.tcp_stop(server_handle)
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
-local server_handle = transport.tcpListen("server1").handle
+local server_handle = wingman.transport.tcpListen("server1").handle
 
 -- 停止服务器
-transport.tcpStop(server_handle)
+wingman.transport.tcpStop(server_handle)
 ```
 
 :::
@@ -621,14 +621,14 @@ transport.udp_send_to(handle, "192.168.1.100", 53, "Hello UDP!")
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
 -- 创建 socket
-local sock = transport.udpSocket("myudp")
+local sock = wingman.transport.udpSocket("myudp")
 local handle = sock.handle
 
 -- 发送数据到远程服务器
-transport.udpSendTo(handle, "192.168.1.100", 53, "Hello UDP!")
+wingman.transport.udpSendTo(handle, "192.168.1.100", 53, "Hello UDP!")
 ```
 
 :::
@@ -690,12 +690,12 @@ transport.udp_close(handle)
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
-local handle = transport.udpSocket("myudp").handle
+local handle = wingman.transport.udpSocket("myudp").handle
 
 -- 使用完毕
-transport.udpClose(handle)
+wingman.transport.udpClose(handle)
 ```
 
 :::
@@ -740,10 +740,10 @@ print("服务器已停止")
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
 -- 启动服务器
-local server = transport.tcpListen("echo_server", "0.0.0.0", 9000)
+local server = wingman.transport.tcpListen("echo_server", "0.0.0.0", 9000)
 if not server.success then
     print("启动服务器失败")
     return
@@ -755,14 +755,14 @@ print("Echo 服务器启动在端口 9000")
 -- 运行 10 秒
 for i = 1, 10 do
     os.execute("sleep 1")
-    local sessions = transport.tcpGetSessions(server_handle)
+    local sessions = wingman.transport.tcpGetSessions(server_handle)
     if #sessions > 0 then
         print("当前有", #sessions, "个连接")
     end
 end
 
 -- 清理
-transport.tcpStop(server_handle)
+wingman.transport.tcpStop(server_handle)
 print("服务器已停止")
 ```
 
@@ -803,27 +803,27 @@ else:
 == Lua
 
 ```lua:line-numbers
-local transport = require("wingman.transport")
+local wingman = require("wingman")
 
 -- 连接到服务器
-local client = transport.tcpConnect("myclient", "127.0.0.1", 9000)
+local client = wingman.transport.tcpConnect("myclient", "127.0.0.1", 9000)
 
 if client.success then
     local handle = client.handle
     print("连接成功")
 
     -- 发送消息
-    if transport.tcpSend(handle, "Hello from client") then
+    if wingman.transport.tcpSend(handle, "Hello from client") then
         print("消息已发送")
     end
 
     -- 检查连接状态
-    if transport.tcpIsConnected(handle) then
+    if wingman.transport.tcpIsConnected(handle) then
         print("仍然连接")
     end
 
     -- 断开连接
-    transport.tcpDisconnect(handle)
+    wingman.transport.tcpDisconnect(handle)
 else
     print("连接失败:", client.error)
 end

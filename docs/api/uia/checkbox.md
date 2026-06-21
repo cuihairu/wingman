@@ -36,10 +36,10 @@ if checkbox:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找名为"记住密码"的复选框
-local checkbox = uia.findByName("记住密码")
+local checkbox = wingman.uia.findByName("记住密码")
 if checkbox then
     print("找到复选框")
 end
@@ -89,9 +89,9 @@ if checkbox:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local checkbox = uia.findByName("记住密码")
+local checkbox = wingman.uia.findByName("记住密码")
 if checkbox then
     -- 勾选复选框
     checkbox:setValue(true)
@@ -132,9 +132,9 @@ if checkbox:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local checkbox = uia.findByName("记住密码")
+local checkbox = wingman.uia.findByName("记住密码")
 if checkbox then
     -- 获取当前状态
     local current = checkbox:getValue()
@@ -169,9 +169,9 @@ if checkbox:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local checkbox = uia.findByName("记住密码")
+local checkbox = wingman.uia.findByName("记住密码")
 if checkbox then
     -- 点击复选框切换状态
     checkbox:click()
@@ -223,9 +223,9 @@ if checkbox:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local checkbox = uia.findByName("记住密码")
+local checkbox = wingman.uia.findByName("记住密码")
 if checkbox then
     -- 方法 1: 通过 getValue（推荐）
     local isChecked = checkbox:getValue()
@@ -293,9 +293,9 @@ if checkbox:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local checkbox = uia.findByName("全选")
+local checkbox = wingman.uia.findByName("全选")
 if checkbox then
     -- 设置为选中
     checkbox:setToggleState("On")
@@ -366,14 +366,14 @@ if register_with_agreement():
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 local function registerWithAgreement()
     -- 1. 填写表单（略）
     -- ...
 
     -- 2. 勾选"同意用户协议"
-    local agreement = uia.findByName("我已阅读并同意用户协议")
+    local agreement = wingman.uia.findByName("我已阅读并同意用户协议")
     if agreement then
         -- 检查当前状态
         if not agreement:getValue() then
@@ -386,14 +386,14 @@ local function registerWithAgreement()
     end
 
     -- 3. 可选：勾选"记住密码"
-    local remember = uia.findByName("记住密码")
+    local remember = wingman.uia.findByName("记住密码")
     if remember then
         remember:setValue(true)
         print("已设置记住密码")
     end
 
     -- 4. 点击注册按钮
-    local registerBtn = uia.findButton("注册")
+    local registerBtn = wingman.uia.findButton("注册")
     if registerBtn then
         registerBtn:click()
         print("已点击注册按钮")

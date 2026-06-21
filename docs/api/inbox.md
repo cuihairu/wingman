@@ -119,10 +119,10 @@ else:
 == Lua
 
 ```lua:line-numbers
-local inbox = require("wingman.inbox")
+local wingman = require("wingman")
 
 -- 连接到服务器
-local result = inbox.connect("tcp://192.168.1.100:9000", {
+local result = wingman.inbox.connect("tcp://192.168.1.100:9000", {
     agentId = "runtime_001",
     heartbeatInterval = 30000,
     consumeTimeout = 5000
@@ -195,11 +195,11 @@ while True:
 == Lua
 
 ```lua:line-numbers
-local inbox = require("wingman.inbox")
+local wingman = require("wingman")
 
 -- 持续消费消息
 while true do
-    local msg = inbox.consume(handle, 5000)
+    local msg = wingman.inbox.consume(handle, 5000)
     
     if msg == nil then
         print("超时，没有消息")
@@ -212,8 +212,8 @@ while true do
         -- 处理消息...
         
         -- 确认并报告完成
-        inbox.ack(handle, msg.msgId)
-        inbox.report(handle, msg.msgId, {status = "done"})
+        wingman.inbox.ack(handle, msg.msgId)
+        wingman.inbox.report(handle, msg.msgId, {status = "done"})
     end
 end
 ```
@@ -295,19 +295,19 @@ if msg:
 == Lua
 
 ```lua:line-numbers
-local inbox = require("wingman.inbox")
+local wingman = require("wingman")
 
-local msg = inbox.consume()
+local msg = wingman.inbox.consume()
 
 if msg ~= nil then
     -- 处理消息
     local result = processMessage(msg)
     
     -- 先确认
-    inbox.ack(handle, msg.msgId)
+    wingman.inbox.ack(handle, msg.msgId)
     
     -- 再报告完成
-    inbox.report(handle, msg.msgId, {
+    wingman.inbox.report(handle, msg.msgId, {
         status = "success",
         output = result
     })
@@ -391,13 +391,13 @@ inbox.disconnect(handle)
 == Lua
 
 ```lua:line-numbers
-local inbox = require("wingman.inbox")
+local wingman = require("wingman")
 
 -- 连接
-local handle = inbox.connect("tcp://server:9000").handle
+local handle = wingman.inbox.connect("tcp://server:9000").handle
 
 -- 使用完毕
-inbox.disconnect(handle)
+wingman.inbox.disconnect(handle)
 ```
 
 :::
@@ -462,10 +462,10 @@ while True:
 == Lua
 
 ```lua:line-numbers
-local inbox = require("wingman.inbox")
+local wingman = require("wingman")
 
 -- 连接
-local result = inbox.connect("tcp://192.168.1.100:9000", {
+local result = wingman.inbox.connect("tcp://192.168.1.100:9000", {
     agentId = "worker_001"
 })
 
@@ -479,7 +479,7 @@ print("已连接到服务器")
 
 -- 消费消息循环
 while true do
-    local msg = inbox.consume(handle, 5000)
+    local msg = wingman.inbox.consume(handle, 5000)
     
     if msg == nil then
         -- 超时，继续等待
@@ -501,8 +501,8 @@ while true do
         end
         
         -- 确认并报告
-        inbox.ack(handle, msg.msgId)
-        inbox.report(handle, msg.msgId, result)
+        wingman.inbox.ack(handle, msg.msgId)
+        wingman.inbox.report(handle, msg.msgId, result)
     end
 end
 ```

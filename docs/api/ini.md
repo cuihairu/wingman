@@ -65,7 +65,7 @@ data = ini.decode(content)
 ```
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 local content = [[
 [Server]
@@ -74,7 +74,7 @@ port = 8080
 debug = true
 ]]
 
-local data = ini.decode(content)
+local data = wingman.ini.decode(content)
 ```
 
 ### ini.encode(data)
@@ -108,7 +108,7 @@ print(content)
 ```
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 local data = {
     Server = {
@@ -117,7 +117,7 @@ local data = {
     }
 }
 
-local content = ini.encode(data)
+local content = wingman.ini.encode(data)
 print(content)
 ```
 
@@ -396,7 +396,7 @@ for section in ini.sections(config):
 ### Lua
 
 ```lua
-local ini = require("wingman.ini")
+local wingman = require("wingman")
 
 -- 读取配置文件
 local file = io.open("config.ini", "r")
@@ -404,29 +404,29 @@ local content = file:read("*a")
 file:close()
 
 -- 解析配置
-local config = ini.decode(content)
+local config = wingman.ini.decode(content)
 
 -- 读取配置
-local server_host = ini.get(config, "Server", "host")
-local server_port = ini.get(config, "Server", "port")
+local server_host = wingman.ini.get(config, "Server", "host")
+local server_port = wingman.ini.get(config, "Server", "port")
 
 -- 修改配置
-ini.set(config, "Server", "host", "192.168.1.100")
-ini.set(config, "Server", "port", "9000")
+wingman.ini.set(config, "Server", "host", "192.168.1.100")
+wingman.ini.set(config, "Server", "port", "9000")
 
 -- 删除配置
-ini.delete(config, "Server", "debug")
+wingman.ini.delete(config, "Server", "debug")
 
 -- 保存配置
 local file = io.open("config.ini", "w")
-file:write(ini.encode(config))
+file:write(wingman.ini.encode(config))
 file:close()
 
 -- 遍历所有配置
-for _, section in ipairs(ini.sections(config)) do
+for _, section in ipairs(wingman.ini.sections(config)) do
     print("[" .. section .. "]")
-    for _, key in ipairs(ini.keys(config, section)) do
-        local value = ini.get(config, section, key)
+    for _, key in ipairs(wingman.ini.keys(config, section)) do
+        local value = wingman.ini.get(config, section, key)
         print(key .. " = " .. value)
     end
 end

@@ -22,10 +22,10 @@ if slider:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找名为"音量"的滑块
-local slider = uia.findByName("音量")
+local slider = wingman.uia.findByName("音量")
 if slider then
     print("找到滑块")
 end
@@ -56,9 +56,9 @@ if slider:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local slider = uia.findByName("音量")
+local slider = wingman.uia.findByName("音量")
 if slider then
     local info = slider:getInfo()
     local value = info.value or 0
@@ -114,9 +114,9 @@ if slider:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local slider = uia.findByName("音量")
+local slider = wingman.uia.findByName("音量")
 if slider then
     local info = slider:getInfo()
 
@@ -163,9 +163,9 @@ if slider:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local slider = uia.findByName("音量")
+local slider = wingman.uia.findByName("音量")
 if slider then
     local info = slider:getInfo()
     local minimum = info.minimum or 0

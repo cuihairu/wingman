@@ -58,10 +58,10 @@ gameprofile.create("my_game", {
 == Lua
 
 ```lua:line-numbers
-local gameprofile = require("wingman.gameprofile")
+local wingman = require("wingman")
 
 -- 创建新的游戏档案
-gameprofile.create("my_game", {
+wingman.gameprofile.create("my_game", {
     name = "我的游戏",
     executable = "game.exe",
     window_title = "游戏窗口"
@@ -112,10 +112,10 @@ if profile:
 == Lua
 
 ```lua:line-numbers
-local gameprofile = require("wingman.gameprofile")
+local wingman = require("wingman")
 
 -- 加载游戏档案
-local profile = gameprofile.load("my_game")
+local profile = wingman.gameprofile.load("my_game")
 if profile then
     print("游戏名称: " .. profile.name)
     print("可执行文件: " .. profile.executable)
@@ -167,14 +167,14 @@ gameprofile.save("my_game", profile)
 == Lua
 
 ```lua:line-numbers
-local gameprofile = require("wingman.gameprofile")
+local wingman = require("wingman")
 
 -- 获取并修改档案
-local profile = gameprofile.load("my_game")
+local profile = wingman.gameprofile.load("my_game")
 profile.resolution = {width = 1920, height = 1080}
 
 -- 保存修改
-gameprofile.save("my_game", profile)
+wingman.gameprofile.save("my_game", profile)
 ```
 
 :::
@@ -218,12 +218,12 @@ for profile_id in profiles:
 == Lua
 
 ```lua:line-numbers
-local gameprofile = require("wingman.gameprofile")
+local wingman = require("wingman")
 
 -- 列出所有游戏档案
-local profiles = gameprofile.listAll()
+local profiles = wingman.gameprofile.listAll()
 for i, profile_id in ipairs(profiles) do
-    local profile = gameprofile.load(profile_id)
+    local profile = wingman.gameprofile.load(profile_id)
     print("- " .. profile.name .. " (" .. profile_id .. ")")
 end
 ```
@@ -268,10 +268,10 @@ gameprofile.delete("my_game")
 == Lua
 
 ```lua:line-numbers
-local gameprofile = require("wingman.gameprofile")
+local wingman = require("wingman")
 
 -- 删除游戏档案
-gameprofile.delete("my_game")
+wingman.gameprofile.delete("my_game")
 ```
 
 :::
@@ -339,13 +339,13 @@ print(f"当前游戏: {current}")
 == Lua
 
 ```lua:line-numbers
-local gameprofile = require("wingman.gameprofile")
+local wingman = require("wingman")
 
 -- 设置当前游戏
-gameprofile.setCurrent("my_game")
+wingman.gameprofile.setCurrent("my_game")
 
 -- 获取当前游戏
-local current = gameprofile.getCurrent()
+local current = wingman.gameprofile.getCurrent()
 print("当前游戏: " .. current)
 ```
 

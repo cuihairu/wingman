@@ -64,10 +64,10 @@ workflow_id = orchestration.submit_workflow({
 == Lua
 
 ```lua:line-numbers
-local orchestration = require("wingman.orchestration")
+local wingman = require("wingman")
 
 -- 提交工作流
-local workflowId = orchestration.submitWorkflow({
+local workflowId = wingman.orchestration.submitWorkflow({
     name = "combat_loop",
     steps = {
         { type = "vision", action = "find_enemy" },
@@ -117,10 +117,10 @@ orchestration.cancel_workflow(workflow_id)
 == Lua
 
 ```lua:line-numbers
-local orchestration = require("wingman.orchestration")
+local wingman = require("wingman")
 
 -- 取消工作流
-orchestration.cancelWorkflow(workflowId)
+wingman.orchestration.cancelWorkflow(workflowId)
 ```
 
 :::
@@ -166,10 +166,10 @@ if workflow:
 == Lua
 
 ```lua:line-numbers
-local orchestration = require("wingman.orchestration")
+local wingman = require("wingman")
 
 -- 获取工作流信息
-local workflow = orchestration.getWorkflow(workflowId)
+local workflow = wingman.orchestration.getWorkflow(workflowId)
 if workflow then
     print("状态: " .. workflow.status)
 end
@@ -215,10 +215,10 @@ for wf in workflows:
 == Lua
 
 ```lua:line-numbers
-local orchestration = require("wingman.orchestration")
+local wingman = require("wingman")
 
 -- 获取所有工作流
-local workflows = orchestration.getAllWorkflows()
+local workflows = wingman.orchestration.getAllWorkflows()
 for i, wf in ipairs(workflows) do
     print(wf.id .. ": " .. wf.name)
 end

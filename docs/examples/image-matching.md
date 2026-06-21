@@ -5,10 +5,9 @@
 ## 代码
 
 ```lua
--- scripts/examples/image-matching.lua
+local wingman = require("wingman")
 
-local screen = require("wingman.screen")
-local util = require("wingman.util")
+-- scripts/examples/image-matching.lua
 
 -- 要查找的图像路径
 local imagePath = "images/target.png"
@@ -21,7 +20,7 @@ local x2, y2 = 1920, 1080
 local threshold = 0.9
 
 while true do
-  local result = screen.findImage(imagePath, x1, y1, x2, y2, threshold)
+  local result = wingman.screen.findImage(imagePath, x1, y1, x2, y2, threshold)
   
   if result then
     print(string.format("Found image at: %d, %d (confidence: %.2f)", 
@@ -33,7 +32,7 @@ while true do
     print("Image not found")
   end
   
-  util.sleep(500)
+  wingman.util.sleep(500)
 end
 ```
 

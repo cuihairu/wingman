@@ -60,16 +60,16 @@ input.click(100, 100, "middle")
 == Lua
 
 ```lua:line-numbers
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 左键点击（默认）
-input.click(100, 100)
+wingman.input.click(100, 100)
 
 -- 右键点击
-input.click(100, 100, "right")
+wingman.input.click(100, 100, "right")
 
 -- 中键点击
-input.click(100, 100, "middle")
+wingman.input.click(100, 100, "middle")
 ```
 
 :::
@@ -117,13 +117,13 @@ input.move(500, 300, smooth=True)
 == Lua
 
 ```lua:line-numbers
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 瞬间移动到 (500, 300)
-input.move(500, 300)
+wingman.input.move(500, 300)
 
 -- 平滑移动到 (500, 300)（更像真人）
-input.move(500, 300, true)
+wingman.input.move(500, 300, true)
 ```
 
 :::
@@ -168,13 +168,13 @@ input.drag(100, 100, 500, 300, 200)
 == Lua
 
 ```lua:line-numbers
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 从 (100, 100) 拖拽到 (500, 300)，持续 500ms
-input.drag(100, 100, 500, 300, 500)
+wingman.input.drag(100, 100, 500, 300, 500)
 
 -- 快速拖拽（200ms）
-input.drag(100, 100, 500, 300, 200)
+wingman.input.drag(100, 100, 500, 300, 200)
 ```
 
 :::
@@ -223,13 +223,13 @@ input.scroll(500, 300, -360)
 == Lua
 
 ```lua:line-numbers
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 向上滚动一行
-input.scroll(500, 300, 120)
+wingman.input.scroll(500, 300, 120)
 
 -- 向下滚动一页
-input.scroll(500, 300, -360)
+wingman.input.scroll(500, 300, -360)
 ```
 
 :::
@@ -295,25 +295,25 @@ input.send_keys("{DELETE}")
 == Lua
 
 ```lua:line-numbers
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 输入文本
-input.sendKeys("hello world")
+wingman.input.sendKeys("hello world")
 
 -- 输入回车
-input.sendKeys("{ENTER}")
+wingman.input.sendKeys("{ENTER}")
 
 -- 复制（Ctrl+C）
-input.sendKeys("^c")
+wingman.input.sendKeys("^c")
 
 -- 粘贴（Ctrl+V）
-input.sendKeys("^v")
+wingman.input.sendKeys("^v")
 
 -- 全选（Ctrl+A）
-input.sendKeys("^a")
+wingman.input.sendKeys("^a")
 
 -- 删除选中内容
-input.sendKeys("{DELETE}")
+wingman.input.sendKeys("{DELETE}")
 ```
 
 :::
@@ -354,9 +354,9 @@ print(f"鼠标位置: {x}, {y}")
 == Lua
 
 ```lua:line-numbers
-local input = require("wingman.input")
+local wingman = require("wingman")
 
-local x, y = input.getMousePos()
+local x, y = wingman.input.getMousePos()
 print(string.format("鼠标位置: %d, %d", x, y))
 ```
 

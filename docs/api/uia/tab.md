@@ -21,9 +21,9 @@ if tab:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local tab = uia.findByName("设置")
+local tab = wingman.uia.findByName("设置")
 if tab then
     print("找到标签控件")
 end
@@ -56,10 +56,10 @@ if tab_page:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 直接查找并点击"高级"标签页
-local tabPage = uia.findByName("高级")
+local tabPage = wingman.uia.findByName("高级")
 if tabPage then
     tabPage:click()
     print("已切换到高级标签页")
@@ -94,9 +94,9 @@ if tab:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local tab = uia.findByName("设置")
+local tab = wingman.uia.findByName("设置")
 if tab then
     -- 获取所有标签页
     local tabs = tab:getChildren()
@@ -139,9 +139,9 @@ if tab:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local tab = uia.findByName("设置")
+local tab = wingman.uia.findByName("设置")
 if tab then
     local tabs = tab:getChildren()
 
@@ -184,9 +184,9 @@ if tab:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local tab = uia.findByName("设置")
+local tab = wingman.uia.findByName("设置")
 if tab then
     local tabs = tab:getChildren()
 

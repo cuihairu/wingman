@@ -25,7 +25,8 @@
 ### Lua API
 
 ```lua
-local screen = require("wingman.screen")
+local wingman = require("wingman")
+
 ```
 
 ### Python API
@@ -187,7 +188,8 @@ print(f"Color: 0x{color:X}")
 ### Lua API
 
 ```lua
-local input = require("wingman.input")
+local wingman = require("wingman")
+
 ```
 
 ### Python API
@@ -391,7 +393,8 @@ input.text("Hello, World!")
 ### Lua API
 
 ```lua
-local window = require("wingman.window")
+local wingman = require("wingman")
+
 ```
 
 ### Python API
@@ -596,7 +599,8 @@ window.close("Notepad")
 ### Lua API
 
 ```lua
-local process = require("wingman.process")
+local wingman = require("wingman")
+
 ```
 
 ### Python API
@@ -750,7 +754,8 @@ proc = process.start("C:\\Program Files\\MyApp\\app.exe", [
 ### Lua API
 
 ```lua
-local vision = require("wingman.vision")
+local wingman = require("wingman")
+
 ```
 
 ### Python API
@@ -823,7 +828,8 @@ OCR 模块提供文字识别功能（需要启用 Tesseract）。
 ### Lua API
 
 ```lua
-local ocr = require("wingman.ocr")
+local wingman = require("wingman")
+
 ```
 
 ### Python API

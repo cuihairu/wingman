@@ -56,10 +56,10 @@ perf.set_config({
 == Lua
 
 ```lua:line-numbers
-local perf = require("wingman.perf")
+local wingman = require("wingman")
 
 -- 配置性能选项
-perf.setConfig({
+wingman.perf.setConfig({
     enableImageCache = true,
     maxCacheSize = 100,
     enableParallelProcessing = true,
@@ -107,10 +107,10 @@ print(f"最大缓存: {config['maxCacheSize']} MB")
 == Lua
 
 ```lua:line-numbers
-local perf = require("wingman.perf")
+local wingman = require("wingman")
 
 -- 获取配置
-local config = perf.getConfig()
+local config = wingman.perf.getConfig()
 print("图像缓存: " .. tostring(config.enableImageCache))
 print("最大缓存: " .. config.maxCacheSize .. " MB")
 ```
@@ -156,11 +156,11 @@ perf.preload_image("assets/button.png")
 == Lua
 
 ```lua:line-numbers
-local perf = require("wingman.perf")
+local wingman = require("wingman")
 
 -- 预加载图像到缓存
-perf.preloadImage("assets/target.png")
-perf.preloadImage("assets/button.png")
+wingman.perf.preloadImage("assets/target.png")
+wingman.perf.preloadImage("assets/button.png")
 ```
 
 :::
@@ -200,10 +200,10 @@ perf.clear_cache()
 == Lua
 
 ```lua:line-numbers
-local perf = require("wingman.perf")
+local wingman = require("wingman")
 
 -- 清理图像缓存
-perf.clearCache()
+wingman.perf.clearCache()
 ```
 
 :::
@@ -251,10 +251,10 @@ print(f"未命中次数: {stats['misses']}")
 == Lua
 
 ```lua:line-numbers
-local perf = require("wingman.perf")
+local wingman = require("wingman")
 
 -- 获取缓存统计
-local stats = perf.getCacheStats()
+local stats = wingman.perf.getCacheStats()
 print("已缓存: " .. stats.cached_count .. " 张")
 print("命中次数: " .. stats.hits)
 print("未命中次数: " .. stats.misses)

@@ -127,13 +127,13 @@ notify.error("任务失败", {"error": "timeout"})
 == Lua
 
 ```lua:line-numbers
-local notify = require("wingman.notify")
+local wingman = require("wingman")
 
 -- 各级别日志
-notify.debug("调试信息", { module = "combat" })
-notify.info("脚本启动", { script = "farm.lua" })
-notify.warn("资源不足", { hp = 10 })
-notify.error("任务失败", { error = "timeout" })
+wingman.notify.debug("调试信息", { module = "combat" })
+wingman.notify.info("脚本启动", { script = "farm.lua" })
+wingman.notify.warn("资源不足", { hp = 10 })
+wingman.notify.error("任务失败", { error = "timeout" })
 ```
 
 :::
@@ -179,11 +179,11 @@ notify.toast("警告", "血量过低", level="warning")
 == Lua
 
 ```lua:line-numbers
-local notify = require("wingman.notify")
+local wingman = require("wingman")
 
 -- Toast 通知
-notify.toast("Wingman", "任务完成", "success")
-notify.toast("警告", "血量过低", "warning")
+wingman.notify.toast("Wingman", "任务完成", "success")
+wingman.notify.toast("警告", "血量过低", "warning")
 ```
 
 :::
@@ -231,10 +231,10 @@ notify.webhook("http://127.0.0.1:9000/hook", {
 == Lua
 
 ```lua:line-numbers
-local notify = require("wingman.notify")
+local wingman = require("wingman")
 
 -- Webhook
-notify.webhook("http://127.0.0.1:9000/hook", {
+wingman.notify.webhook("http://127.0.0.1:9000/hook", {
     event = "task.done",
     result = 42
 })
@@ -285,11 +285,11 @@ notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
 == Lua
 
 ```lua:line-numbers
-local notify = require("wingman.notify")
+local wingman = require("wingman")
 
 -- 事件桥接
-notify.bridge("combat.enemy_found", "event://logging.combat_events")
-notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
+wingman.notify.bridge("combat.enemy_found", "event://logging.combat_events")
+wingman.notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
 ```
 
 :::

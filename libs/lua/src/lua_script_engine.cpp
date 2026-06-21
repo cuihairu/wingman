@@ -9,6 +9,8 @@ namespace wingman {
 namespace script {
 namespace modules {
 	void cleanupFsmModule();
+	void cleanupMacroModule();
+	void cleanupMlModule();
 }
 }
 }
@@ -55,6 +57,17 @@ bool LuaScriptEngine::initialize(const script::EngineConfig& config) {
 			lua_[std::string("_ENV_") + k] = v;
 		}
 
+		// 创建 wingman 表用于存放所有模块
+		lua_["wingman"] = lua_.create_table();
+
+		// 设置 require("wingman") 支持
+		lua_.script(R"(
+			local wingmanTable = wingman
+			package.preload["wingman"] = function()
+				return wingmanTable
+			end
+		)");
+
 		initialized_ = true;
 		return true;
 	} catch (const std::exception& e) {
@@ -71,6 +84,8 @@ void LuaScriptEngine::shutdown() {
 		// The EventHub cleanup is NOT called here to avoid affecting other scripts
 		// Clear FSM global state
 		script::modules::cleanupFsmModule();
+		script::modules::cleanupMacroModule();
+		script::modules::cleanupMlModule();
 		initialized_ = false;
 	}
 }
@@ -169,7 +184,8 @@ void LuaScriptEngine::registerModule(const script::ModuleDescriptor& module) {
 		};
 	}
 
-	lua_[module.name] = tbl;
+	// 将模块注册到 wingman 命名空间下
+	lua_["wingman"][module.name] = tbl;
 }
 
 void LuaScriptEngine::setGlobal(const std::string& name, const script::ScriptValue& value) {

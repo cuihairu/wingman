@@ -65,10 +65,10 @@ if found:
 == Lua
 
 ```lua:line-numbers
-local process = require("wingman.process")
+local wingman = require("wingman")
 
 -- 查找记事本进程
-local pid, found = process.find("notepad")
+local pid, found = wingman.process.find("notepad")
 if found then
     print("找到记事本进程，PID:", pid)
 else
@@ -76,7 +76,7 @@ else
 end
 
 -- 查找 Chrome 进程
-local pid, found = process.find("chrome")
+local pid, found = wingman.process.find("chrome")
 if found then
     print("找到 Chrome 进程，PID:", pid)
 end
@@ -138,21 +138,21 @@ pid = process.start(
 == Lua
 
 ```lua:line-numbers
-local process = require("wingman.process")
+local wingman = require("wingman")
 
 -- 启动记事本
-local pid = process.start("notepad.exe")
+local pid = wingman.process.start("notepad.exe")
 print("记事本已启动，PID:", pid)
 
 -- 启动带参数的程序
-local pid = process.start("cmd.exe", "/c dir C:\\")
+local pid = wingman.process.start("cmd.exe", "/c dir C:\\")
 print("命令已执行，PID:", pid)
 
 -- 指定工作目录
-local pid = process.start("cmd.exe", nil, "C:\\Temp")
+local pid = wingman.process.start("cmd.exe", nil, "C:\\Temp")
 
 -- 同时指定参数和工作目录
-local pid = process.start(
+local pid = wingman.process.start(
     "python.exe",
     "script.py --verbose",
     "C:\\Scripts"
@@ -208,17 +208,17 @@ else:
 == Lua
 
 ```lua:line-numbers
-local process = require("wingman.process")
+local wingman = require("wingman")
 
-local pid = process.start("notepad.exe")
+local pid = wingman.process.start("notepad.exe")
 
 -- 无限等待进程结束
-if process.wait(pid) then
+if wingman.process.wait(pid) then
     print("进程已结束")
 end
 
 -- 等待最多 5 秒
-if process.wait(pid, 5000) then
+if wingman.process.wait(pid, 5000) then
     print("进程在 5 秒内结束")
 else
     print("等待超时，进程仍在运行")
@@ -279,21 +279,21 @@ if found:
 == Lua
 
 ```lua:line-numbers
-local process = require("wingman.process")
+local wingman = require("wingman")
 
 -- 查找记事本进程
-local pid, found = process.find("notepad")
+local pid, found = wingman.process.find("notepad")
 if found then
     -- 尝试正常关闭
-    if process.terminate(pid, false) then
+    if wingman.process.terminate(pid, false) then
         print("进程已正常终止")
     end
 end
 
 -- 强制终止进程
-local pid, found = process.find("notepad")
+local pid, found = wingman.process.find("notepad")
 if found then
-    if process.terminate(pid, true) then
+    if wingman.process.terminate(pid, true) then
         print("进程已被强制终止")
     end
 end
@@ -346,18 +346,18 @@ if process.exists(pid):
 == Lua
 
 ```lua:line-numbers
-local process = require("wingman.process")
+local wingman = require("wingman")
 
 local pid = 1234
-if process.exists(pid) then
+if wingman.process.exists(pid) then
     print("进程 " .. pid .. " 正在运行")
 else
     print("进程 " .. pid .. " 不存在")
 end
 
 -- 检查刚启动的进程
-local pid = process.start("notepad.exe")
-if process.exists(pid) then
+local pid = wingman.process.start("notepad.exe")
+if wingman.process.exists(pid) then
     print("记事本正在运行")
 end
 ```
@@ -411,15 +411,15 @@ else:
 == Lua
 
 ```lua:line-numbers
-local process = require("wingman.process")
+local wingman = require("wingman")
 
 -- 启动应用程序
-process.start("notepad.exe")
+wingman.process.start("notepad.exe")
 
 -- 等待进程出现
-if process.waitFor("notepad", 5000) then
+if wingman.process.waitFor("notepad", 5000) then
     print("记事本进程已启动")
-    local pid, found = process.find("notepad")
+    local pid, found = wingman.process.find("notepad")
     if found then
         print("PID:", pid)
     end
@@ -478,39 +478,38 @@ if found:
 == Lua
 
 ```lua:line-numbers
-local process = require("wingman.process")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 检查记事本是否运行
-local pid, found = process.find("notepad")
+local pid, found = wingman.process.find("notepad")
 if not found then
     print("记事本未运行，正在启动...")
-    pid = process.start("notepad.exe")
-    util.sleep(500)
+    pid = wingman.process.start("notepad.exe")
+    wingman.util.sleep(500)
 end
 
 -- 获取进程信息
-pid, found = process.find("notepad")
+pid, found = wingman.process.find("notepad")
 if found then
     print("记事本 PID:", pid)
 
     -- 检查进程是否存在
-    if process.exists(pid) then
+    if wingman.process.exists(pid) then
         print("进程正在运行")
     end
 
     -- 等待 5 秒后终止
     print("等待 5 秒...")
-    util.sleep(5000)
+    wingman.util.sleep(5000)
 
     -- 尝试正常关闭
-    if process.terminate(pid, false) then
+    if wingman.process.terminate(pid, false) then
         print("进程已终止")
     end
 
     -- 检查是否已结束
-    util.sleep(500)
-    if not process.exists(pid) then
+    wingman.util.sleep(500)
+    if not wingman.process.exists(pid) then
         print("进程已成功结束")
     end
 end

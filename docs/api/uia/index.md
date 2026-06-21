@@ -140,10 +140,10 @@ if root:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 获取前台窗口
-local root = uia.fromForeground()
+local root = wingman.uia.fromForeground()
 if root then
     -- 递归打印所有控件的 AutomationId
     local function printAutomationIds(element, depth)
@@ -203,10 +203,10 @@ if btn:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 使用 AutomationId 查找（最稳定）
-local btn = uia.findById("btnSubmit")
+local btn = wingman.uia.findById("btnSubmit")
 if btn then
     btn:click()
 end
@@ -249,16 +249,16 @@ if element and element.get_info().get('control_type') == 'Button':
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 使用专用的查找函数（推荐）
-local btn = uia.findButton("确定")
+local btn = wingman.uia.findButton("确定")
 if btn then
     btn:click()
 end
 
 -- 或使用通用查找（不太推荐，可能找到其他控件）
-local element = uia.findByName("确定")
+local element = wingman.uia.findByName("确定")
 if element then
     local info = element:getInfo()
     if info.controlType == "Button" then
@@ -290,13 +290,13 @@ for element in elements:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 可能找到多个"确定"按钮
 -- 注意：需要先获取所有元素再筛选
-local root = uia.fromForeground()
+local root = wingman.uia.fromForeground()
 if root then
-    local elements = uia.findAllByControlType("Button")
+    local elements = wingman.uia.findAllByControlType("Button")
     for i, element in ipairs(elements) do
         local info = element:getInfo()
         if info.name == "确定" then
@@ -361,23 +361,23 @@ else:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 local function findSubmitButton()
     -- 方法 1: 优先使用 AutomationId
-    local btn = uia.findById("btnSubmit")
+    local btn = wingman.uia.findById("btnSubmit")
     if btn then
         return btn
     end
 
     -- 方法 2: 回退到按名称+类型查找
-    btn = uia.findButton("提交")
+    btn = wingman.uia.findButton("提交")
     if btn then
         return btn
     end
 
     -- 方法 3: 最后尝试纯名称查找并验证类型
-    local btn = uia.findByName("提交")
+    local btn = wingman.uia.findByName("提交")
     if btn then
         local info = btn:getInfo()
         if info.controlType == "Button" and info.isEnabled then
@@ -426,9 +426,9 @@ if root:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local root = uia.fromForeground()
+local root = wingman.uia.fromForeground()
 if root then
     local info = root:getInfo()
     print("窗口名称: " .. info.name)
@@ -459,12 +459,11 @@ if found:
 == Lua
 
 ```lua:line-numbers
-local window = require("wingman.window")
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local hwnd, found = window.find("记事本")
+local hwnd, found = wingman.window.find("记事本")
 if found then
-    local root = uia.fromWindow(hwnd)
+    local root = wingman.uia.fromWindow(hwnd)
     if root then
         print("记事本 UI 根元素获取成功")
     end
@@ -495,11 +494,10 @@ if element:
 == Lua
 
 ```lua:line-numbers
-local input = require("wingman.input")
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local x, y = input.getMousePos()
-local element = uia.fromPoint(x, y)
+local x, y = wingman.input.getMousePos()
+local element = wingman.uia.fromPoint(x, y)
 if element then
     local info = element:getInfo()
     print("元素名称: " .. info.name)
@@ -533,10 +531,10 @@ if file_menu:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找名为"文件"的菜单
-local fileMenu = uia.findByName("文件")
+local fileMenu = wingman.uia.findByName("文件")
 if fileMenu then
     fileMenu:click()
 end
@@ -564,10 +562,10 @@ if btn:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 通过 AutomationId 查找（推荐用于生产环境）
-local btn = uia.findById("btnSubmit")
+local btn = wingman.uia.findById("btnSubmit")
 if btn then
     btn:click()
 end
@@ -597,10 +595,10 @@ else:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 等待对话框出现（最多等待 3 秒）
-local dialog = uia.waitForName("对话框", 3000)
+local dialog = wingman.uia.waitForName("对话框", 3000)
 if dialog then
     print("对话框已出现")
 else
@@ -640,9 +638,9 @@ if element:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local element = uia.findButton("确定")
+local element = wingman.uia.findButton("确定")
 if element then
     local info = element:getInfo()
     print("名称: " .. (info.name or ""))
@@ -672,9 +670,9 @@ if btn:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local btn = uia.findButton("确定")
+local btn = wingman.uia.findButton("确定")
 if btn then
     btn:click()
 end
@@ -699,9 +697,9 @@ if item:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local item = uia.findByName("文件.txt")
+local item = wingman.uia.findByName("文件.txt")
 if item then
     item:doubleClick()
 end
@@ -726,9 +724,9 @@ if edit:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local edit = uia.findEdit("用户名")
+local edit = wingman.uia.findEdit("用户名")
 if edit then
     edit:focus()
 end
@@ -760,9 +758,9 @@ if edit:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local edit = uia.findEdit("搜索")
+local edit = wingman.uia.findEdit("搜索")
 if edit then
     -- 获取值
     local value = edit:getValue()
@@ -797,9 +795,9 @@ if root:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local root = uia.fromForeground()
+local root = wingman.uia.fromForeground()
 if root then
     local children = root:getChildren()
     for i, child in ipairs(children) do
@@ -838,9 +836,9 @@ if menu:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local menu = uia.findByName("文件")
+local menu = wingman.uia.findByName("文件")
 if menu then
     -- 展开
     menu:expand()
@@ -885,9 +883,9 @@ if listener_id:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local listenerId = uia.onPropertyChanged("编辑框", function(propertyName, value)
+local listenerId = wingman.uia.onPropertyChanged("编辑框", function(propertyName, value)
     print(string.format("属性 %s 变更为: %s", propertyName, value))
 end)
 
@@ -918,9 +916,9 @@ listener_id = uia.on_structure_changed("列表", on_structure_change)
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local listenerId = uia.onStructureChanged("列表", function()
+local listenerId = wingman.uia.onStructureChanged("列表", function()
     print("UI 结构发生变化")
 end)
 ```
@@ -946,14 +944,14 @@ if listener_id:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local listenerId = uia.onPropertyChanged("按钮", function(prop, val)
+local listenerId = wingman.uia.onPropertyChanged("按钮", function(prop, val)
     print("属性变化: " .. prop)
 end)
 
 if listenerId then
-    uia.removeEventListener(listenerId)
+    wingman.uia.removeEventListener(listenerId)
     print("监听器已移除")
 end
 ```

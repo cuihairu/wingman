@@ -52,13 +52,13 @@ util.sleep(2000)
 == Lua
 
 ```lua:line-numbers
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 延迟 1000 毫秒
-util.sleep(1000)
+wingman.util.sleep(1000)
 
 -- 延迟 2 秒
-util.sleep(2000)
+wingman.util.sleep(2000)
 ```
 
 :::
@@ -99,10 +99,10 @@ print(f"当前时间戳: {timestamp}")
 == Lua
 
 ```lua:line-numbers
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 获取当前时间戳（毫秒）
-local timestamp = util.time()
+local timestamp = wingman.util.time()
 print("当前时间戳: " .. timestamp)
 ```
 
@@ -147,10 +147,10 @@ print(f"当前时间: {formatted}")
 == Lua
 
 ```lua:line-numbers
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 格式化时间为字符串
-local formatted = util.formatTime("%Y-%m-%d %H:%M:%S")
+local formatted = wingman.util.formatTime("%Y-%m-%d %H:%M:%S")
 print("当前时间: " .. formatted)
 ```
 
@@ -192,10 +192,10 @@ print(f"随机数: {rand}")
 == Lua
 
 ```lua:line-numbers
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 生成 0-1 之间的随机浮点数
-local rand = util.random()
+local rand = wingman.util.random()
 print("随机数: " .. rand)
 ```
 
@@ -241,10 +241,10 @@ print(f"随机整数: {rand_int}")
 == Lua
 
 ```lua:line-numbers
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 生成指定范围内的随机整数
-local randInt = util.randomInt(1, 100)
+local randInt = wingman.util.randomInt(1, 100)
 print("随机整数: " .. randInt)
 ```
 
@@ -289,10 +289,10 @@ print(output)
 == Lua
 
 ```lua:line-numbers
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 执行命令并获取输出
-local output = util.shellExec("ls -la")
+local output = wingman.util.shellExec("ls -la")
 print(output)
 ```
 
@@ -337,10 +337,10 @@ print(f"Wingman 版本: {info['version']}")
 == Lua
 
 ```lua:line-numbers
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 获取系统信息
-local info = util.getSystemInfo()
+local info = wingman.util.getSystemInfo()
 print("操作系统: " .. info.os)
 print("架构: " .. info.arch)
 print("Wingman 版本: " .. info.version)
@@ -407,14 +407,14 @@ print(f"脚本目录: {script_dir}")
 == Lua
 
 ```lua:line-numbers
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 获取当前脚本路径
-local scriptPath = util.getScriptPath()
+local scriptPath = wingman.util.getScriptPath()
 print("脚本路径: " .. scriptPath)
 
 -- 获取脚本目录
-local scriptDir = util.getScriptDir()
+local scriptDir = wingman.util.getScriptDir()
 print("脚本目录: " .. scriptDir)
 ```
 
@@ -461,12 +461,12 @@ util.log("error", "这是一条错误")
 == Lua
 
 ```lua:line-numbers
-local util = require("wingman.util")
+local wingman = require("wingman")
 
 -- 输出日志
-util.log("info", "这是一条信息")
-util.log("warn", "这是一条警告")
-util.log("error", "这是一条错误")
+wingman.util.log("info", "这是一条信息")
+wingman.util.log("warn", "这是一条警告")
+wingman.util.log("error", "这是一条错误")
 ```
 
 :::

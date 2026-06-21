@@ -97,20 +97,20 @@ if not security.verify_integrity():
 == Lua
 
 ```lua:line-numbers
-local security = require("wingman.security")
+local wingman = require("wingman")
 
 -- 检测是否在调试器中运行
-if security.isDebuggerPresent() then
+if wingman.security.isDebuggerPresent() then
     print("警告: 检测到调试器")
 end
 
 -- 检测是否在虚拟机中运行
-if security.isRunningInVM() then
+if wingman.security.isRunningInVM() then
     print("警告: 检测到虚拟机环境")
 end
 
 -- 验证程序完整性
-if not security.verifyIntegrity() then
+if not wingman.security.verifyIntegrity() then
     print("警告: 程序完整性验证失败")
 end
 ```
@@ -179,16 +179,15 @@ input.click(100 + offset_x, 200 + offset_y)
 == Lua
 
 ```lua:line-numbers
-local security = require("wingman.security")
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 获取随机延迟（毫秒）
-local delay = security.getRandomDelay()
+local delay = wingman.security.getRandomDelay()
 
 -- 获取随机坐标偏移
-local offsetX, offsetY = security.getRandomOffset()
+local offsetX, offsetY = wingman.security.getRandomOffset()
 -- 在目标坐标基础上添加随机偏移
-input.click(100 + offsetX, 200 + offsetY)
+wingman.input.click(100 + offsetX, 200 + offsetY)
 ```
 
 :::
@@ -263,15 +262,15 @@ print(f"解密后: {decrypted}")
 == Lua
 
 ```lua:line-numbers
-local security = require("wingman.security")
+local wingman = require("wingman")
 
 -- 加密字符串
 local key = "my_secret_key"
-local encrypted = security.encryptString("sensitive_data", key)
+local encrypted = wingman.security.encryptString("sensitive_data", key)
 print("加密后: " .. encrypted)
 
 -- 解密字符串
-local decrypted = security.decryptString(encrypted, key)
+local decrypted = wingman.security.decryptString(encrypted, key)
 print("解密后: " .. decrypted)
 ```
 
@@ -344,14 +343,14 @@ print(f"随机字符串: {random_str}")
 == Lua
 
 ```lua:line-numbers
-local security = require("wingman.security")
+local wingman = require("wingman")
 
 -- 计算字符串哈希
-local hashValue = security.hashString("my_data")
+local hashValue = wingman.security.hashString("my_data")
 print("哈希值: " .. hashValue)
 
 -- 生成随机字符串
-local randomStr = security.generateRandomString(16)
+local randomStr = wingman.security.generateRandomString(16)
 print("随机字符串: " .. randomStr)
 ```
 
@@ -396,10 +395,10 @@ print(safe_string)  # "password=***&token=***"
 == Lua
 
 ```lua:line-numbers
-local security = require("wingman.security")
+local wingman = require("wingman")
 
 -- 过滤敏感信息（如密码、token等）
-local safeString = security.filterSensitive("password=123456&token=abc")
+local safeString = wingman.security.filterSensitive("password=123456&token=abc")
 print(safeString)  -- "password=***&token=***"
 ```
 

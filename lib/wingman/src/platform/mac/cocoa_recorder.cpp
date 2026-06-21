@@ -9,6 +9,7 @@
 #include <thread>
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <sys/time.h>
 
 #include <CoreFoundation/CoreFoundation.h>
@@ -179,7 +180,10 @@ MacroRecorder::~MacroRecorder() {
 void MacroRecorder::start() {
     if (m_recording) return;
 
-    m_events.clear();
+    {
+        std::lock_guard<std::mutex> lock(m_eventMutex);
+        m_events.clear();
+    }
     m_recording = true;
     m_paused = false;
     m_startTime = getTickCount();
@@ -271,20 +275,29 @@ void MacroRecorder::resume() {
 }
 
 void MacroRecorder::clear() {
+    std::lock_guard<std::mutex> lock(m_eventMutex);
     m_events.clear();
 }
 
+// 在锁内拷贝一份事件快照，供后续无锁处理（文件 I/O、回放 sleep 等）
+std::vector<RecordedEvent> MacroRecorder::getEventsSnapshot() const {
+    std::lock_guard<std::mutex> lock(m_eventMutex);
+    return m_events;
+}
+
 bool MacroRecorder::saveToLua(const std::string& filepath) const {
+    const auto events = getEventsSnapshot();
+
     std::ofstream file(filepath);
     if (!file.is_open()) return false;
 
     file << "-- Wingman Macro Recording Script\n";
-    file << "-- Recorded " << m_events.size() << " events\n\n";
+    file << "-- Recorded " << events.size() << " events\n\n";
 
     file << "util.log(\"Starting macro playback...\")\n";
     file << "local startTime = util.getTime()\n\n";
 
-    for (const auto& event : m_events) {
+    for (const auto& event : events) {
         switch (event.type) {
             case RecordedEventType::MouseMove:
                 file << "input.move(" << event.x << ", " << event.y << ")\n";
@@ -321,14 +334,16 @@ bool MacroRecorder::saveToLua(const std::string& filepath) const {
 }
 
 bool MacroRecorder::saveToJSON(const std::string& filepath) const {
+    const auto events = getEventsSnapshot();
+
     std::ofstream file(filepath);
     if (!file.is_open()) return false;
 
     file << "{\n";
     file << "  \"events\": [\n";
 
-    for (size_t i = 0; i < m_events.size(); ++i) {
-        const auto& event = m_events[i];
+    for (size_t i = 0; i < events.size(); ++i) {
+        const auto& event = events[i];
         file << "    {\n";
         file << "      \"type\": " << static_cast<int>(event.type) << ",\n";
         file << "      \"timestamp\": " << event.timestamp << ",\n";
@@ -337,7 +352,7 @@ bool MacroRecorder::saveToJSON(const std::string& filepath) const {
         file << "      \"button\": " << event.button << ",\n";
         file << "      \"keyCode\": " << event.keyCode << ",\n";
         file << "      \"delay\": " << event.delay << "\n";
-        file << "    }" << (i < m_events.size() - 1 ? "," : "") << "\n";
+        file << "    }" << (i < events.size() - 1 ? "," : "") << "\n";
     }
 
     file << "  ]\n";
@@ -366,7 +381,8 @@ bool MacroRecorder::loadFromJSON(const std::string& filepath) {
             return false;
         }
 
-        m_events.clear();
+        // 先解析到局部 vector，再一次性加锁赋值，缩短临界区。
+        std::vector<RecordedEvent> loaded;
         for (const auto& eventJson : j["events"]) {
             RecordedEvent event;
             event.type = static_cast<RecordedEventType>(eventJson.value("type", 0));
@@ -378,7 +394,12 @@ bool MacroRecorder::loadFromJSON(const std::string& filepath) {
             event.delay = eventJson.value("delay", 0);
             event.text = eventJson.value("text", "");
 
-            m_events.push_back(event);
+            loaded.push_back(event);
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(m_eventMutex);
+            m_events = std::move(loaded);
         }
 
         return true;
@@ -388,12 +409,13 @@ bool MacroRecorder::loadFromJSON(const std::string& filepath) {
 }
 
 void MacroRecorder::playback(int speed, int repeat) const {
-    if (m_events.empty()) return;
+    const auto events = getEventsSnapshot();
+    if (events.empty()) return;
 
     for (int r = 0; r < repeat; ++r) {
-        unsigned long lastTimestamp = m_events[0].timestamp;
+        unsigned long lastTimestamp = events[0].timestamp;
 
-        for (const auto& event : m_events) {
+        for (const auto& event : events) {
             unsigned long delay = (event.timestamp - lastTimestamp) * 100 / speed;
             if (delay > 0) {
                 sleepMs(delay);
@@ -439,6 +461,7 @@ MacroRecorder* MacroRecorder::getInstance() {
 }
 
 void MacroRecorder::recordEvent(const RecordedEvent& event) {
+    std::lock_guard<std::mutex> lock(m_eventMutex);
     if (!m_events.empty() && event.type == RecordedEventType::MouseMove) {
         if (m_events.back().type == RecordedEventType::MouseMove) {
             m_events.back() = event;
@@ -449,8 +472,9 @@ void MacroRecorder::recordEvent(const RecordedEvent& event) {
     m_events.push_back(event);
 }
 
-uint64_t MacroRecorder::getStartTime() const {
-    return m_startTime;
+size_t MacroRecorder::getEventCount() const {
+    std::lock_guard<std::mutex> lock(m_eventMutex);
+    return m_events.size();
 }
 
 } // namespace wingman

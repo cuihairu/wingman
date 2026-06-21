@@ -111,6 +111,11 @@ set(WINGMAN_SOURCES
     src/script/modules/task_module.cpp
     src/script/modules/notify_module.cpp
     src/script/modules/orchestration_module.cpp
+    src/script/modules/clipboard_module.cpp
+    src/script/modules/filewatcher_module.cpp
+    src/script/modules/macro_module.cpp
+    src/script/modules/script_module.cpp
+    src/script/modules/ml_module.cpp
     src/script/modules/module_registry.cpp
     src/platform/input_factory.cpp
     src/platform/mock/mock_input.cpp

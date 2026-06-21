@@ -3,6 +3,8 @@
 #include "screen_module.hpp"
 #include "input_module.hpp"
 #include "window_module.hpp"
+#include "clipboard_module.hpp"
+#include "filewatcher_module.hpp"
 
 namespace wingman {
 namespace script {
@@ -39,6 +41,11 @@ ModuleDescriptor createInboxModule();
 ModuleDescriptor createTeamModule();
 ModuleDescriptor createDbModule();
 ModuleDescriptor createIniModule();
+ModuleDescriptor createClipboardModule();
+ModuleDescriptor createFileWatcherModule();
+ModuleDescriptor createMacroModule();
+ModuleDescriptor createScriptModule();
+ModuleDescriptor createMlModule();
 
 std::vector<ModuleDescriptor> getAllModules() {
 	std::vector<ModuleDescriptor> modules;
@@ -75,6 +82,11 @@ std::vector<ModuleDescriptor> getAllModules() {
 	modules.push_back(createTeamModule());
 	modules.push_back(createDbModule());
 	modules.push_back(createIniModule());
+	modules.push_back(createClipboardModule());
+	modules.push_back(createFileWatcherModule());
+	modules.push_back(createMacroModule());
+	modules.push_back(createScriptModule());
+	modules.push_back(createMlModule());
 	return modules;
 }
 

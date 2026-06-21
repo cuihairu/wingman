@@ -1,8 +1,7 @@
 -- Wingman HTTP API 示例
 -- 演示 HTTP 请求和 JSON 处理
 
-local http = require("http")
-local json = require("json")
+local wingman = require("wingman")
 
 print("=== HTTP API 示例 ===")
 
@@ -11,7 +10,7 @@ local function getRequest(url, headers)
     headers = headers or {}
     print(string.format("GET: %s", url))
 
-    local resp = http.get(url, headers)
+    local resp = wingman.http.get(url, headers)
     print(string.format("状态码: %d", resp.status))
     print(string.format("成功: %s", resp.success and "是" or "否"))
 
@@ -29,15 +28,15 @@ local function postRequest(url, data, headers)
     headers = headers or {}
     print(string.format("POST: %s", url))
 
-    local body = json.encode(data)
+    local body = wingman.json.encode(data)
     print(string.format("请求体: %s", body))
 
-    local resp = http.post(url, body, headers)
+    local resp = wingman.http.post(url, body, headers)
     print(string.format("状态码: %d", resp.status))
     print(string.format("成功: %s", resp.success and "是" or "否"))
 
     if resp.success then
-        local result = json.decode(resp.body)
+        local result = wingman.json.decode(resp.body)
         return result
     else
         print(string.format("错误: %s", resp.body))
@@ -52,12 +51,12 @@ local function httpbinExample()
     -- GET 请求
     local resp = getRequest("https://httpbin.org/get")
     if resp then
-        local data = json.decode(resp)
+        local data = wingman.json.decode(resp)
         print("响应数据:")
-        print(json.encode(data, {indent = true}))
+        print(wingman.json.encode(data, {indent = true}))
     end
 
-    util.sleep(1000)
+    wingman.util.sleep(1000)
 
     -- POST 请求
     print("\nPOST 请求:")
@@ -67,7 +66,7 @@ local function httpbinExample()
     })
     if result then
         print("响应数据:")
-        print(json.encode(result.json, {indent = true}))
+        print(wingman.json.encode(result.json, {indent = true}))
     end
 end
 
@@ -79,9 +78,9 @@ local function wingmanServerExample()
 
     -- 获取服务器状态
     print("获取服务器状态...")
-    local resp = http.get(baseUrl .. "/status")
+    local resp = wingman.http.get(baseUrl .. "/status")
     if resp.success then
-        local data = json.decode(resp)
+        local data = wingman.json.decode(resp)
         print(string.format("服务器状态: %s", data.status or "unknown"))
     else
         print("服务器未响应，请先启动 wingman server")
@@ -90,23 +89,24 @@ local function wingmanServerExample()
     -- 执行 Lua 脚本
     print("\n执行远程脚本...")
     local script = [[
+        local wingman = require("wingman")
         return {
             screen = {
-                width = screen.getScreenWidth(),
-                height = screen.getScreenHeight()
+                width = wingman.screen.getScreenWidth(),
+                height = wingman.screen.getScreenHeight()
             },
-            mouse = input.getMousePosition()
+            mouse = wingman.input.getMousePosition()
         }
     ]]
 
-    resp = http.post(baseUrl .. "/execute", json.encode({
+    resp = wingman.http.post(baseUrl .. "/execute", wingman.json.encode({
         script = script
     }))
 
     if resp.success then
-        local data = json.decode(resp)
+        local data = wingman.json.decode(resp)
         print("执行结果:")
-        print(json.encode(data, {indent = true}))
+        print(wingman.json.encode(data, {indent = true}))
     end
 end
 
@@ -120,11 +120,11 @@ local function customHeadersExample()
         ["X-Custom-Header"] = "test-value"
     }
 
-    local resp = http.get("https://httpbin.org/headers", headers)
+    local resp = wingman.http.get("https://httpbin.org/headers", headers)
     if resp then
-        local data = json.decode(resp)
+        local data = wingman.json.decode(resp)
         print("请求的 Headers:")
-        print(json.encode(data.headers, {indent = true}))
+        print(wingman.json.encode(data.headers, {indent = true}))
     end
 end
 
@@ -134,7 +134,7 @@ local function errorHandlingExample()
 
     -- 无效的 URL
     print("测试无效 URL:")
-    local resp = http.get("http://this-domain-does-not-exist-12345.com")
+    local resp = wingman.http.get("http://this-domain-does-not-exist-12345.com")
     print(string.format("成功: %s", resp.success and "是" or "否"))
     if not resp.success then
         print("错误处理成功!")
@@ -142,7 +142,7 @@ local function errorHandlingExample()
 
     -- 超时处理
     print("\n测试超时:")
-    resp = http.get("https://httpbin.org/delay/10", {}, {timeout = 2000})
+    resp = wingman.http.get("https://httpbin.org/delay/10", {}, {timeout = 2000})
     print(string.format("成功: %s", resp.success and "是" or "否"))
 end
 

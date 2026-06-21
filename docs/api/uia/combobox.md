@@ -36,10 +36,10 @@ if combo:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找名为"国家/地区"的下拉框
-local combo = uia.findByName("国家/地区")
+local combo = wingman.uia.findByName("国家/地区")
 if combo then
     print("找到下拉框")
 end
@@ -72,9 +72,9 @@ if combo:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local combo = uia.findByName("国家/地区")
+local combo = wingman.uia.findByName("国家/地区")
 if combo then
     local info = combo:getInfo()
     local currentValue = info.value or ""
@@ -121,20 +121,19 @@ if combo:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
-local combo = uia.findByName("国家/地区")
+local combo = wingman.uia.findByName("国家/地区")
 if combo then
     -- 1. 展开下拉框
     combo:expand()
     print("已展开下拉框")
 
     -- 2. 等待选项列表出现
-    util.sleep(300)
+    wingman.util.sleep(300)
 
     -- 3. 查找并点击目标选项
-    local option = uia.findByName("中国")
+    local option = wingman.uia.findByName("中国")
     if option then
         option:click()
         print("已选择：中国")
@@ -167,9 +166,9 @@ if combo:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local combo = uia.findByName("国家/地区")
+local combo = wingman.uia.findByName("国家/地区")
 if combo then
     -- 尝试直接设置值
     combo:setValue("中国")
@@ -210,10 +209,10 @@ if editable_combo:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 可编辑下拉框通常也是 Edit 类型
-local editableCombo = uia.findEdit("搜索")
+local editableCombo = wingman.uia.findEdit("搜索")
 if editableCombo then
     -- 方法 1: 直接输入文本
     editableCombo:setValue("搜索关键词")
@@ -261,17 +260,16 @@ if combo:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
-local util = require("wingman.util")
+local wingman = require("wingman")
 
-local combo = uia.findByName("国家/地区")
+local combo = wingman.uia.findByName("国家/地区")
 if combo then
     -- 展开下拉框
     combo:expand()
-    util.sleep(300)
+    wingman.util.sleep(300)
 
     -- 获取所有 ListItem 类型的选项
-    local options = uia.findAllByControlType("ListItem")
+    local options = wingman.uia.findAllByControlType("ListItem")
 
     print("共有 " .. #options .. " 个选项：")
     for i, opt in ipairs(options) do

@@ -40,9 +40,9 @@ create(name: string) -> boolean
 == Python
 
 ```python:line-numbers
-from wingman import smart_trigger
+from wingman import smarttrigger
 
-ok = smart_trigger.create("my_trigger")
+ok = smarttrigger.create("my_trigger")
 if not ok:
     print("创建失败")
 ```
@@ -50,9 +50,9 @@ if not ok:
 == Lua
 
 ```lua:line-numbers
-local smarttrigger = require("wingman.smarttrigger")
+local wingman = require("wingman")
 
-local ok = smarttrigger.create("my_trigger")
+local ok = wingman.smarttrigger.create("my_trigger")
 if not ok then
     print("创建失败")
 end
@@ -106,36 +106,36 @@ addCondition(triggerName: string, conditionType: string, ...) -> nil
 == Python
 
 ```python:line-numbers
-from wingman import smart_trigger
+from wingman import smarttrigger
 
 # 颜色检测条件
-smart_trigger.add_condition("my_trigger", "COLOR_FOUND",
+smarttrigger.add_condition("my_trigger", "COLOR_FOUND",
     {"r": 255, "g": 0, "b": 0}, 10, {"x": 100, "y": 100, "width": 50, "height": 50})
 
 # 图像检测条件
-smart_trigger.add_condition("my_trigger", "IMAGE_FOUND",
+smarttrigger.add_condition("my_trigger", "IMAGE_FOUND",
     "target.png", 0.8, {"x": 0, "y": 0, "width": 800, "height": 600})
 
 # OCR 条件
-smart_trigger.add_condition("my_trigger", "OCR_CONTAINS",
+smarttrigger.add_condition("my_trigger", "OCR_CONTAINS",
     "敌人", {"x": 0, "y": 0, "width": 200, "height": 50})
 ```
 
 == Lua
 
 ```lua:line-numbers
-local smarttrigger = require("wingman.smarttrigger")
+local wingman = require("wingman")
 
 -- 颜色检测条件
-smarttrigger.addCondition("my_trigger", "COLOR_FOUND",
+wingman.smarttrigger.addCondition("my_trigger", "COLOR_FOUND",
     {r=255, g=0, b=0}, 10, {x=100, y=100, width=50, height=50})
 
 -- 图像检测条件
-smarttrigger.addCondition("my_trigger", "IMAGE_FOUND",
+wingman.smarttrigger.addCondition("my_trigger", "IMAGE_FOUND",
     "target.png", 0.8, {x=0, y=0, width=800, height=600})
 
 -- OCR 条件
-smarttrigger.addCondition("my_trigger", "OCR_CONTAINS",
+wingman.smarttrigger.addCondition("my_trigger", "OCR_CONTAINS",
     "敌人", {x=0, y=0, width=200, height=50})
 ```
 
@@ -183,37 +183,37 @@ addAction(triggerName: string, actionType: string, ...) -> nil
 == Python
 
 ```python:line-numbers
-from wingman import smart_trigger
+from wingman import smarttrigger
 
 # 点击动作
-smart_trigger.add_action("my_trigger", "CLICK", 100, 200)
+smarttrigger.add_action("my_trigger", "CLICK", 100, 200)
 
 # 按键动作
-smart_trigger.add_action("my_trigger", "KEY_PRESS", 49)
+smarttrigger.add_action("my_trigger", "KEY_PRESS", 49)
 
 # 等待动作
-smart_trigger.add_action("my_trigger", "WAIT", 500)
+smarttrigger.add_action("my_trigger", "WAIT", 500)
 
 # 日志动作
-smart_trigger.add_action("my_trigger", "LOG", "触发器被激活！")
+smarttrigger.add_action("my_trigger", "LOG", "触发器被激活！")
 ```
 
 == Lua
 
 ```lua:line-numbers
-local smarttrigger = require("wingman.smarttrigger")
+local wingman = require("wingman")
 
 -- 点击动作
-smarttrigger.addAction("my_trigger", "CLICK", 100, 200)
+wingman.smarttrigger.addAction("my_trigger", "CLICK", 100, 200)
 
 -- 按键动作
-smarttrigger.addAction("my_trigger", "KEY_PRESS", 49)
+wingman.smarttrigger.addAction("my_trigger", "KEY_PRESS", 49)
 
 -- 等待动作
-smarttrigger.addAction("my_trigger", "WAIT", 500)
+wingman.smarttrigger.addAction("my_trigger", "WAIT", 500)
 
 -- 日志动作
-smarttrigger.addAction("my_trigger", "LOG", "触发器被激活！")
+wingman.smarttrigger.addAction("my_trigger", "LOG", "触发器被激活！")
 ```
 
 :::
@@ -271,25 +271,25 @@ stop(triggerName: string) -> nil
 == Python
 
 ```python:line-numbers
-from wingman import smart_trigger
+from wingman import smarttrigger
 
 # 启动
-ok = smart_trigger.start("my_trigger")
+ok = smarttrigger.start("my_trigger")
 
 # 停止
-smart_trigger.stop("my_trigger")
+smarttrigger.stop("my_trigger")
 ```
 
 == Lua
 
 ```lua:line-numbers
-local smarttrigger = require("wingman.smarttrigger")
+local wingman = require("wingman")
 
 -- 启动
-local ok = smarttrigger.start("my_trigger")
+local ok = wingman.smarttrigger.start("my_trigger")
 
 -- 停止
-smarttrigger.stop("my_trigger")
+wingman.smarttrigger.stop("my_trigger")
 ```
 
 :::
@@ -323,17 +323,17 @@ remove(triggerName: string) -> nil
 == Python
 
 ```python:line-numbers
-from wingman import smart_trigger
+from wingman import smarttrigger
 
-smart_trigger.remove("my_trigger")
+smarttrigger.remove("my_trigger")
 ```
 
 == Lua
 
 ```lua:line-numbers
-local smarttrigger = require("wingman.smarttrigger")
+local wingman = require("wingman")
 
-smarttrigger.remove("my_trigger")
+wingman.smarttrigger.remove("my_trigger")
 ```
 
 :::
@@ -393,25 +393,25 @@ setMaxTriggers(triggerName: string, maxCount: number) -> nil
 == Python
 
 ```python:line-numbers
-from wingman import smart_trigger
+from wingman import smarttrigger
 
 # 设置检查间隔（毫秒）
-smart_trigger.set_check_interval("my_trigger", 50)
+smarttrigger.set_check_interval("my_trigger", 50)
 
 # 设置最大触发次数（0 = 无限）
-smart_trigger.set_max_triggers("my_trigger", 10)
+smarttrigger.set_max_triggers("my_trigger", 10)
 ```
 
 == Lua
 
 ```lua:line-numbers
-local smarttrigger = require("wingman.smarttrigger")
+local wingman = require("wingman")
 
 -- 设置检查间隔（毫秒）
-smarttrigger.setCheckInterval("my_trigger", 50)
+wingman.smarttrigger.setCheckInterval("my_trigger", 50)
 
 -- 设置最大触发次数（0 = 无限）
-smarttrigger.setMaxTriggers("my_trigger", 10)
+wingman.smarttrigger.setMaxTriggers("my_trigger", 10)
 ```
 
 :::
@@ -445,18 +445,18 @@ getTriggerCount(triggerName: string) -> number
 == Python
 
 ```python:line-numbers
-from wingman import smart_trigger
+from wingman import smarttrigger
 
-count = smart_trigger.get_trigger_count("my_trigger")
+count = smarttrigger.get_trigger_count("my_trigger")
 print(f"已触发 {count} 次")
 ```
 
 == Lua
 
 ```lua:line-numbers
-local smarttrigger = require("wingman.smarttrigger")
+local wingman = require("wingman")
 
-local count = smarttrigger.getTriggerCount("my_trigger")
+local count = wingman.smarttrigger.getTriggerCount("my_trigger")
 print("已触发", count, "次")
 ```
 

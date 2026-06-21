@@ -1,25 +1,23 @@
 -- Wingman 组队协调示例
 -- 演示如何使用 HTTP/JSON/KV 模块进行多 Client 协同
 
-local http = require("http")
-local json = require("json")
-local kv = require("kv")
+local wingman = require("wingman")
 
 print("=== 组队协调示例 ===")
 
 -- 配置
 local serverUrl = "http://localhost:8080"
-local clientId = kv.get("client_id")
+local clientId = wingman.kv.get("client_id")
 local username = "Player" .. math.random(1000, 9999)
 
 -- 注册 Client
 if clientId == "" then
     print("注册新 Client...")
-    local resp = http.post(serverUrl .. "/api/client/register", "")
+    local resp = wingman.http.post(serverUrl .. "/api/client/register", "")
     if resp.success then
-        local result = json.decode(resp.body)
+        local result = wingman.json.decode(resp.body)
         clientId = result.clientId
-        kv.set("client_id", clientId)
+        wingman.kv.set("client_id", clientId)
         print(string.format("已注册: %s", clientId))
     else
         print("注册失败")
@@ -34,7 +32,7 @@ print(string.format("以用户名 %s 登录游戏...", username))
 
 -- 汇报状态
 local function reportStatus(status, gameId)
-    local resp = http.post(serverUrl .. "/api/client/heartbeat", json.encode({
+    local resp = wingman.http.post(serverUrl .. "/api/client/heartbeat", wingman.json.encode({
         clientId = clientId,
         status = status,
         gameId = gameId or "",
@@ -49,20 +47,20 @@ print("已汇报登录状态")
 
 -- 请求组队分配
 print("请求组队分配...")
-local resp = http.post(serverUrl .. "/api/team/allocate", json.encode({
+local resp = wingman.http.post(serverUrl .. "/api/team/allocate", wingman.json.encode({
     clientId = clientId,
     username = username,
     preferredSize = 3
 }))
 
 if resp.success then
-    local result = json.decode(resp.body)
+    local result = wingman.json.decode(resp.body)
     print(string.format("队伍分配成功!"))
     print(string.format("  队伍ID: %s", result.teamId))
     print(string.format("  是否队长: %s", result.isLeader and "是" or "否"))
 
     -- 保存队伍信息
-    kv.set("team_id", result.teamId)
+    wingman.kv.set("team_id", result.teamId)
 
     if #result.teammates > 0 then
         print("  队友:")
@@ -88,9 +86,9 @@ end
 
 -- 投票协调
 local function checkVotes()
-    local resp = http.get(serverUrl .. "/api/vote/pending?clientId=" .. clientId)
+    local resp = wingman.http.get(serverUrl .. "/api/vote/pending?clientId=" .. clientId)
     if resp.success then
-        local actions = json.decode(resp.body)
+        local actions = wingman.json.decode(resp.body)
         if #actions > 0 then
             print(string.format("收到 %d 个待处理投票", #actions))
             for _, action in ipairs(actions) do
@@ -108,14 +106,14 @@ end
 
 -- 汇报投票事件
 local function reportVote(voteType, target, initiator)
-    local resp = http.post(serverUrl .. "/api/vote/report", json.encode({
-        teamId = kv.get("team_id"),
+    local resp = wingman.http.post(serverUrl .. "/api/vote/report", wingman.json.encode({
+        teamId = wingman.kv.get("team_id"),
         type = voteType,
         target = target,
         initiator = initiator
     }))
     if resp.success then
-        local result = json.decode(resp.body)
+        local result = wingman.json.decode(resp.body)
         print(string.format("投票已汇报: %s, 建议: %s",
                            result.voteId,
                            result.recommendAction))
@@ -125,7 +123,7 @@ end
 print("\n运行中... (模拟投票检查)")
 for i = 1, 3 do
     checkVotes()
-    util.sleep(1000)
+    wingman.util.sleep(1000)
 end
 
 print("=== 完成 ===")

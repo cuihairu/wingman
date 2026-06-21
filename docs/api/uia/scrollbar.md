@@ -27,16 +27,16 @@ if h_scroll:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找垂直滚动条
-local vScroll = uia.findByName("垂直滚动条")
+local vScroll = wingman.uia.findByName("垂直滚动条")
 if vScroll then
     print("找到垂直滚动条")
 end
 
 -- 查找水平滚动条
-local hScroll = uia.findByName("水平滚动条")
+local hScroll = wingman.uia.findByName("水平滚动条")
 if hScroll then
     print("找到水平滚动条")
 end
@@ -67,9 +67,9 @@ if v_scroll:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local vScroll = uia.findByName("垂直滚动条")
+local vScroll = wingman.uia.findByName("垂直滚动条")
 if vScroll then
     local info = vScroll:getInfo()
     local value = info.value or 0
@@ -120,9 +120,9 @@ if v_scroll:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local vScroll = uia.findByName("垂直滚动条")
+local vScroll = wingman.uia.findByName("垂直滚动条")
 if vScroll then
     -- 滚动到顶部（0%）
     vScroll:setValue(0)
@@ -164,9 +164,9 @@ if v_scroll:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local vScroll = uia.findByName("垂直滚动条")
+local vScroll = wingman.uia.findByName("垂直滚动条")
 if vScroll then
     local info = vScroll:getInfo()
     local minimum = info.minimum or 0

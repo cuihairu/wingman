@@ -264,9 +264,9 @@ if result:
 ```
 
 ```lua
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
-local result = screen.findImage("button.png", 0, 0, 1920, 1080)
+local result = wingman.screen.findImage("button.png", 0, 0, 1920, 1080)
 if result then
     print(string.format("找到图像，位置: (%d, %d)", result.x, result.y))
     print(string.format("相似度: %d%%", result.confidence * 100))

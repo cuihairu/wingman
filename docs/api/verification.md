@@ -56,14 +56,14 @@ code = verification.totp("JBSWY3DPEHPK3PXP", digits=8, period=60)
 == Lua
 
 ```lua:line-numbers
-local verification = require("wingman.verification")
+local wingman = require("wingman")
 
 -- 默认 6 位，30 秒步长
-local code = verification.totp("JBSWY3DPEHPK3PXP")
+local code = wingman.verification.totp("JBSWY3DPEHPK3PXP")
 print("TOTP: " .. code)
 
 -- 自定义 8 位，60 秒步长
-local code = verification.totp("JBSWY3DPEHPK3PXP", 8, 60)
+local code = wingman.verification.totp("JBSWY3DPEHPK3PXP", 8, 60)
 ```
 
 :::
@@ -106,9 +106,9 @@ print(f"Steam Guard: {code}")
 == Lua
 
 ```lua:line-numbers
-local verification = require("wingman.verification")
+local wingman = require("wingman")
 
-local code = verification.steamGuard("STEAM_GUARD_SECRET")
+local code = wingman.verification.steamGuard("STEAM_GUARD_SECRET")
 print("Steam Guard: " .. code)
 ```
 
@@ -164,18 +164,18 @@ if verification.verify(secret, code, window=2):
 == Lua
 
 ```lua:line-numbers
-local verification = require("wingman.verification")
+local wingman = require("wingman")
 
 local secret = "JBSWY3DPEHPK3PXP"
-local code = verification.totp(secret)
+local code = wingman.verification.totp(secret)
 
 -- 验证当前验证码
-if verification.verify(secret, code) then
+if wingman.verification.verify(secret, code) then
     print("验证通过")
 end
 
 -- 带容错窗口（允许前后各 2 个周期）
-if verification.verify(secret, code, 6, 30, 2) then
+if wingman.verification.verify(secret, code, 6, 30, 2) then
     print("验证通过（宽松模式）")
 end
 ```
@@ -224,14 +224,14 @@ secs = verification.remaining(60)
 == Lua
 
 ```lua:line-numbers
-local verification = require("wingman.verification")
+local wingman = require("wingman")
 
 -- 默认 30 秒步长
-local secs = verification.remaining()
+local secs = wingman.verification.remaining()
 print("验证码还有 " .. secs .. " 秒有效")
 
 -- 自定义步长
-local secs = verification.remaining(60)
+local secs = wingman.verification.remaining(60)
 ```
 
 :::

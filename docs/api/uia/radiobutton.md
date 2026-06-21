@@ -38,10 +38,10 @@ if radio:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找名为"男"的单选按钮
-local radio = uia.findByName("男")
+local radio = wingman.uia.findByName("男")
 if radio then
     print("找到单选按钮")
 end
@@ -74,9 +74,9 @@ if radio:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local radio = uia.findByName("男")
+local radio = wingman.uia.findByName("男")
 if radio then
     -- 点击选中
     radio:click()
@@ -120,9 +120,9 @@ if radio:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local radio = uia.findByName("男")
+local radio = wingman.uia.findByName("男")
 if radio then
     -- 设置为选中
     radio:setValue(true)
@@ -161,9 +161,9 @@ if radio:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
-local radio = uia.findByName("男")
+local radio = wingman.uia.findByName("男")
 if radio then
     local info = radio:getInfo()
     local state = info.toggleState or "Off"
@@ -205,12 +205,12 @@ for radio, label in [(male, "男"), (female, "女"), (other, "其他")]:
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 -- 查找所有性别相关的单选按钮
-local male = uia.findByName("男")
-local female = uia.findByName("女")
-local other = uia.findByName("其他")
+local male = wingman.uia.findByName("男")
+local female = wingman.uia.findByName("女")
+local other = wingman.uia.findByName("其他")
 
 -- 检查哪个被选中
 local options = {
@@ -285,7 +285,7 @@ if select_gender("女"):
 == Lua
 
 ```lua:line-numbers
-local uia = require("wingman.uia")
+local wingman = require("wingman")
 
 local function selectGender(gender)
     -- 可用的性别选项
@@ -301,7 +301,7 @@ local function selectGender(gender)
     end
 
     -- 查找并点击对应的单选按钮
-    local radio = uia.findByName(gender)
+    local radio = wingman.uia.findByName(gender)
     if radio then
         radio:click()
         print("已选择性别: " .. gender)

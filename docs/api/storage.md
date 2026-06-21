@@ -34,30 +34,30 @@ Wingman 提供了完整的数据持久化解决方案，包括键值存储和关
 ### Lua API
 
 ```lua
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 设置键值
-kv.set("username", "player1")
-kv.set("level", "10")
-kv.set("coins", "9999")
+wingman.kv.set("username", "player1")
+wingman.kv.set("level", "10")
+wingman.kv.set("coins", "9999")
 
 -- 获取值
-local username = kv.get("username")      -- "player1"
-local level = kv.get("level")            -- "10"
-local coins = kv.get("coins")            -- "9999"
+local username = wingman.kv.get("username")      -- "player1"
+local level = wingman.kv.get("level")            -- "10"
+local coins = wingman.kv.get("coins")            -- "9999"
 
 -- 检查键是否存在
-local hasCoins = kv.has("coins")          -- true
-local hasGems = kv.has("gems")            -- false
+local hasCoins = wingman.kv.has("coins")          -- true
+local hasGems = wingman.kv.has("gems")            -- false
 
 -- 删除键
-kv.delete("coins")
+wingman.kv.delete("coins")
 
 -- 获取所有键
-local keys = kv.keys()                    -- {"username", "level"}
+local keys = wingman.kv.keys()                    -- {"username", "level"}
 
 -- 清空所有数据
-kv.clear()
+wingman.kv.clear()
 ```
 
 ### Python API
@@ -98,13 +98,13 @@ kv.clear()
 #### Lua
 
 ```lua
-local db = require("wingman.db")
+local wingman = require("wingman")
 
 -- 连接到命名数据库（自动创建）
-local conn = db.open("game_data")
+local conn = wingman.db.open("game_data")
 
 -- 或使用内存数据库
-local mem_conn = db.open(":memory:")
+local mem_conn = wingman.db.open(":memory:")
 ```
 
 #### Python
@@ -124,8 +124,9 @@ mem_conn = db.open(":memory:")
 #### Lua
 
 ```lua
-local db = require("wingman.db")
-local conn = db.open("game_data")
+local wingman = require("wingman")
+
+local conn = wingman.db.open("game_data")
 
 -- 执行 SQL（无返回值）
 conn:execute([[
@@ -200,8 +201,9 @@ changes = conn.changes()
 #### Lua
 
 ```lua
-local db = require("wingman.db")
-local conn = db.open("game_data")
+local wingman = require("wingman")
+
+local conn = wingman.db.open("game_data")
 
 -- 定义表结构
 local players = conn:table("players")
@@ -305,8 +307,9 @@ high_level_count = players.where("level", ">", "10").count()
 #### Lua
 
 ```lua
-local db = require("wingman.db")
-local conn = db.open("game_data")
+local wingman = require("wingman")
+
+local conn = wingman.db.open("game_data")
 
 -- 执行事务
 local success = conn:transaction(function(tx)
@@ -359,15 +362,14 @@ else:
 #### Lua
 
 ```lua
-local kv = require("wingman.kv")
-local db = require("wingman.db")
+local wingman = require("wingman")
 
 -- 保存简单状态
-kv.set("current_level", "5")
-kv.set("player_name", "hero")
+wingman.kv.set("current_level", "5")
+wingman.kv.set("player_name", "hero")
 
 -- 保存复杂结构
-local conn = db.open("save_data")
+local conn = wingman.db.open("save_data")
 local saves = conn:table("saves")
 
 saves:create({
@@ -391,8 +393,9 @@ saves:insert({
 #### Lua
 
 ```lua
-local db = require("wingman.db")
-local conn = db.open("config")
+local wingman = require("wingman")
+
+local conn = wingman.db.open("config")
 
 local settings = conn:table("settings")
 
@@ -431,9 +434,10 @@ local graphics_settings = settings:where("section", "=", "graphics"):all()
 ### 2. 数据库连接管理
 
 ```lua
+local wingman = require("wingman")
+
 -- 好的做法：重用连接
-local db = require("wingman.db")
-local conn = db.open("my_database")
+local conn = wingman.db.open("my_database")
 
 -- 在整个脚本中使用同一个 conn
 function saveData(data)

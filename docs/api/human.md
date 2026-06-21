@@ -53,13 +53,13 @@ human.random_delay()
 == Lua
 
 ```lua:line-numbers
-local human = require("wingman.human")
+local wingman = require("wingman")
 
 -- 随机延迟 50-150 毫秒
-human.randomDelay(50, 150)
+wingman.human.randomDelay(50, 150)
 
 -- 使用默认延迟范围（100-300ms）
-human.randomDelay()
+wingman.human.randomDelay()
 ```
 
 :::
@@ -104,10 +104,10 @@ human.move_mouse(100, 100, 500, 300, duration=500)
 == Lua
 
 ```lua:line-numbers
-local human = require("wingman.human")
+local wingman = require("wingman")
 
 -- 使用贝塞尔曲线平滑移动鼠标
-human.moveMouse(100, 100, 500, 300, 500)
+wingman.human.moveMouse(100, 100, 500, 300, 500)
 ```
 
 :::
@@ -151,10 +151,10 @@ human.natural_click(100, 200)
 == Lua
 
 ```lua:line-numbers
-local human = require("wingman.human")
+local wingman = require("wingman")
 
 -- 模拟人类点击节奏（带随机延迟）
-human.naturalClick(100, 200)
+wingman.human.naturalClick(100, 200)
 ```
 
 :::
@@ -197,10 +197,10 @@ human.natural_type("Hello World")
 == Lua
 
 ```lua:line-numbers
-local human = require("wingman.human")
+local wingman = require("wingman")
 
 -- 模拟人类输入节奏（带随机按键延迟）
-human.naturalType("Hello World")
+wingman.human.naturalType("Hello World")
 ```
 
 :::
@@ -323,16 +323,16 @@ human.set_typing_variance(0.3)
 == Lua
 
 ```lua:line-numbers
-local human = require("wingman.human")
+local wingman = require("wingman")
 
 -- 设置全局随机延迟范围
-human.setDelayRange(50, 200)
+wingman.human.setDelayRange(50, 200)
 
 -- 设置鼠标移动速度
-human.setMoveSpeed(0.8)
+wingman.human.setMoveSpeed(0.8)
 
 -- 设置输入节奏变异度
-human.setTypingVariance(0.3)
+wingman.human.setTypingVariance(0.3)
 ```
 
 :::
@@ -375,9 +375,9 @@ print(f"输入变异度: {config['typing_variance']}")
 == Lua
 
 ```lua:line-numbers
-local human = require("wingman.human")
+local wingman = require("wingman")
 
-local config = human.getConfig()
+local config = wingman.human.getConfig()
 print("延迟范围: " .. config.delay_min .. "-" .. config.delay_max .. "ms")
 print("移动速度: " .. config.move_speed)
 print("输入变异度: " .. config.typing_variance)

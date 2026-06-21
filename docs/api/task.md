@@ -63,7 +63,7 @@ task_id = task.submit(my_work, {
 == Lua
 
 ```lua:line-numbers
-local task = require("wingman.task")
+local wingman = require("wingman")
 
 -- 提交任务
 local function myWork(ctx)
@@ -71,7 +71,7 @@ local function myWork(ctx)
     return { result = 42 }
 end
 
-local taskId = task.submit(myWork, {
+local taskId = wingman.task.submit(myWork, {
     timeoutMs = 5000,
     maxRetries = 3,
     backoffMs = 500
@@ -119,10 +119,10 @@ print(f"任务状态: {status}")
 == Lua
 
 ```lua:line-numbers
-local task = require("wingman.task")
+local wingman = require("wingman")
 
 -- 检查状态
-local status = task.status(taskId)
+local status = wingman.task.status(taskId)
 print("任务状态: " .. status)
 ```
 
@@ -172,14 +172,14 @@ else:
 == Lua
 
 ```lua:line-numbers
-local task = require("wingman.task")
+local wingman = require("wingman")
 
 -- 等待完成
-if task.wait(taskId, 10000) then
-    local result = task.result(taskId)
+if wingman.task.wait(taskId, 10000) then
+    local result = wingman.task.result(taskId)
     print("任务完成: " .. result.result)
 else
-    local err = task.error(taskId)
+    local err = wingman.task.error(taskId)
     print("任务失败: " .. err)
 end
 ```
@@ -273,10 +273,10 @@ task.cancel(task_id)
 == Lua
 
 ```lua:line-numbers
-local task = require("wingman.task")
+local wingman = require("wingman")
 
 -- 取消任务
-task.cancel(taskId)
+wingman.task.cancel(taskId)
 ```
 
 :::
@@ -322,10 +322,10 @@ task.retry(task_id, {"max": 5, "backoffMs": 1000})
 == Lua
 
 ```lua:line-numbers
-local task = require("wingman.task")
+local wingman = require("wingman")
 
 -- 重试失败的任务
-task.retry(taskId, { maxRetries = 5, backoffMs = 1000 })
+wingman.task.retry(taskId, { maxRetries = 5, backoffMs = 1000 })
 ```
 
 :::
@@ -377,24 +377,24 @@ event.on("task.timeout", lambda e: print("任务超时"))
 == Lua
 
 ```lua:line-numbers
-local event = require("wingman.event")
+local wingman = require("wingman")
 
-event.on("task.submitted", function(e)
+wingman.event.on("task.submitted", function(e)
     print("任务提交: " .. e.payload.taskId)
 end)
-event.on("task.started", function(e)
+wingman.event.on("task.started", function(e)
     print("任务开始")
 end)
-event.on("task.succeeded", function(e)
+wingman.event.on("task.succeeded", function(e)
     print("任务成功")
 end)
-event.on("task.failed", function(e)
+wingman.event.on("task.failed", function(e)
     print("任务失败: " .. e.payload.error)
 end)
-event.on("task.canceled", function(e)
+wingman.event.on("task.canceled", function(e)
     print("任务取消")
 end)
-event.on("task.timeout", function(e)
+wingman.event.on("task.timeout", function(e)
     print("任务超时")
 end)
 ```

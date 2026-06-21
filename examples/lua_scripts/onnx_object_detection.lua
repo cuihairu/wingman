@@ -6,10 +6,7 @@
 -- 2. 将模型文件放在 scripts/models/ 目录下
 -- 3. 运行此脚本
 
-local ml = require("wingman.ml")
-local screen = require("wingman.screen")
-local input = require("wingman.input")
-local vision = require("wingman.vision")
+local wingman = require("wingman")
 
 print("=== Wingman ONNX 目标检测示例 ===")
 
@@ -40,7 +37,7 @@ local function main()
 
     -- 加载模型
     print("正在加载模型: " .. MODEL_PATH)
-    local model, err = ml.loadModel(MODEL_PATH)
+    local model, err = wingman.ml.loadModel(MODEL_PATH)
     if not model then
         print("错误: 加载模型失败 - " .. tostring(err))
         return
@@ -48,12 +45,12 @@ local function main()
     print("模型加载成功")
 
     -- 获取前台窗口
-    local hwnd = window.getForeground()
+    local hwnd = wingman.window.getForeground()
     if not hwnd then
         print("错误: 无法获取前台窗口")
         return
     end
-    print("前台窗口: " .. window.getTitle(hwnd))
+    print("前台窗口: " .. wingman.window.getTitle(hwnd))
 
     print("\n开始检测循环 (按 Ctrl+C 退出)...")
     print("置信度阈值: " .. CONFIDENCE_THRESHOLD)
@@ -62,7 +59,7 @@ local function main()
     local count = 0
     while count < 10 do  -- 限制循环次数用于测试
         -- 截图
-        local screenshot = screen.captureWindow(hwnd)
+        local screenshot = wingman.screen.captureWindow(hwnd)
 
         -- 运行推理
         local results = model.detect(screenshot, CONFIDENCE_THRESHOLD)
@@ -74,12 +71,12 @@ local function main()
                     obj.class or obj.label, obj.confidence, obj.center.x, obj.center.y))
 
                 -- 点击目标中心
-                input.click(obj.center.x, obj.center.y, "left")
+                wingman.input.click(obj.center.x, obj.center.y, "left")
             end
         end
 
         count = count + 1
-        util.sleep(500)  -- 休眠 500ms
+        wingman.util.sleep(500)  -- 休眠 500ms
     end
 
     print("\n检测完成")

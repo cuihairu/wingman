@@ -1,8 +1,7 @@
 -- Wingman 自动循环示例
 -- 演示如何使用触发器实现自动化循环
 
-local http = require("http")
-local json = require("json")
+local wingman = require("wingman")
 
 print("=== 自动循环示例 ===")
 
@@ -26,10 +25,10 @@ local trigger = {
 
 -- 向服务器注册触发器
 local function registerTrigger(triggerConfig)
-    local resp = http.post("http://localhost:8080/api/trigger/register",
-                           json.encode(triggerConfig))
+    local resp = wingman.http.post("http://localhost:8080/api/trigger/register",
+                           wingman.json.encode(triggerConfig))
     if resp.success then
-        local result = json.decode(resp.body)
+        local result = wingman.json.decode(resp.body)
         print(string.format("触发器已注册: ID=%s", result.triggerId))
         return result.triggerId
     else
@@ -44,15 +43,15 @@ local function mainLoop()
 
     while true do
         -- 检查血量颜色
-        local found = screen.findColor(0xFF0000, 100, 100, 50, 50, 10)
+        local found = wingman.screen.findColor(0xFF0000, 100, 100, 50, 50, 10)
 
         if found then
             print("血量低! 使用药品...")
-            input.key(49)  -- 按 1 键
-            util.sleep(2000)  -- 等待 2 秒
+            wingman.input.key(49)  -- 按 1 键
+            wingman.util.sleep(2000)  -- 等待 2 秒
         end
 
-        util.sleep(100)  -- 每 100ms 检查一次
+        wingman.util.sleep(100)  -- 每 100ms 检查一次
     end
 end
 

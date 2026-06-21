@@ -2,6 +2,30 @@
 
 本指南详细介绍如何使用 Wingman 的触发器系统实现自动化操作。
 
+> ℹ️ **当前实现（`wingman.smarttrigger`）**：触发器通过命令式 API 配置（条件 + 动作），等价于下文声明式 `trigger.create(config)`：
+>
+> ```lua
+> local wingman = require("wingman")
+> wingman.smarttrigger.create("hp_low")
+> wingman.smarttrigger.addCondition("hp_low", {
+>     type = "color_found", color = 0xFF0000,
+>     region = {x = 100, y = 100, width = 50, height = 200}, tolerance = 10
+> })
+> wingman.smarttrigger.addAction("hp_low", {type = "log", message = "Low health!"})
+> wingman.smarttrigger.addAction("hp_low", {type = "key_press", key = "1"})
+> wingman.smarttrigger.setCheckInterval("hp_low", 100)
+> wingman.smarttrigger.start("hp_low")
+> -- 其它: stop(name) / remove(name) / isRunning(name) / getTriggerCount(name)
+> ```
+>
+> **可用函数**：`create(name)` / `addCondition(name, cond)` / `addAction(name, act)` / `setCheckInterval(name, ms)` / `start(name)` / `stop(name)` / `remove(name)` / `isRunning(name)` / `getTriggerCount(name)`。
+>
+> **条件 `type`**：`color_found` / `color_not_found` / `image_found` / `image_not_found` / `text_found` / `text_not_found` / `edge_detected` / `color_changed` / `ocr_contains` / `ocr_equals`（字段：`color` / `tolerance` / `threshold` / `region` / `text` / `template`）。
+>
+> **动作 `type`**：`click` / `key_press` / `wait` / `lua_script` / `log` / `stop`（字段：`x` / `y` / `key` / `waitMs` / `script` / `message`）。
+>
+> **转换指南**：下文部分示例沿用旧的 `trigger.create({condition..., action=function...})` 声明式写法展示配置结构。将其等价改写为 `smarttrigger.create(name)` + `addCondition(name, cond)` + `addAction(name, act)` 序列即可运行；其中 `action = function() ... end` 的回调按内部操作拆解为对应的 `key_press` / `click` / `log` 等动作。
+
 ## 📋 目录
 
 - [概述](#概述)
@@ -41,8 +65,7 @@
 #### Lua
 
 ```lua
-local trigger = require("wingman.trigger")
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 创建颜色触发器
 local health_trigger = trigger.create({
@@ -55,7 +78,7 @@ local health_trigger = trigger.create({
     action = function(match)
         print("Low health detected!")
         -- 自动使用药品
-        input.keyPress("1")
+        wingman.input.keyPress("1")
     end
 })
 
@@ -96,8 +119,7 @@ print("Press Ctrl+C to stop")
 #### Lua
 
 ```lua
-local trigger = require("wingman.trigger")
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 创建图像触发器
 local enemy_trigger = trigger.create({
@@ -110,7 +132,7 @@ local enemy_trigger = trigger.create({
     action = function(match)
         print(string.format("Enemy found at: %d, %d", match.x, match.y))
         -- 自动攻击
-        input.click(match.x, match.y, "left")
+        wingman.input.click(match.x, match.y, "left")
     end
 })
 
@@ -458,7 +480,7 @@ for hotkey in hotkeys:
 #### Lua
 
 ```lua
-local trigger = require("wingman.trigger")
+local wingman = require("wingman")
 
 local t = trigger.create({...})
 
@@ -499,8 +521,7 @@ trigger.enable(t)
 #### Lua
 
 ```lua
-local trigger = require("wingman.trigger")
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 带条件过滤的触发器
 local smart_trigger = trigger.create({
@@ -518,7 +539,7 @@ local smart_trigger = trigger.create({
         -- 只在血量低于 50% 且在战斗中时使用药品
         if current_hp < 50 and is_in_combat then
             print("Using potion in combat")
-            input.keyPress("1")
+            wingman.input.keyPress("1")
         else
             print("Skipping potion use")
         end
@@ -552,7 +573,7 @@ smart_trigger = trigger.create({
 #### Lua
 
 ```lua
-local trigger = require("wingman.trigger")
+local wingman = require("wingman")
 
 local last_trigger_time = 0
 local debounce_interval = 1000  -- 1 秒防抖
@@ -620,7 +641,7 @@ debounced_trigger = trigger.create({
 #### Lua
 
 ```lua
-local trigger = require("wingman.trigger")
+local wingman = require("wingman")
 
 local max_triggers = 10
 local trigger_count = 0
@@ -687,9 +708,7 @@ limited_trigger = trigger.create({
 #### Lua
 
 ```lua
-local trigger = require("wingman.trigger")
-local input = require("wingman.input")
-local screen = require("wingman.screen")
+local wingman = require("wingman")
 
 -- 查找怪物
 local monster_trigger = trigger.create({
@@ -704,12 +723,12 @@ local monster_trigger = trigger.create({
         print(string.format("Monster found at: %d, %d", match.x, match.y))
 
         -- 点击攻击
-        input.click(match.x, match.y, "left")
+        wingman.input.click(match.x, match.y, "left")
 
         -- 等待攻击完成
         task.delay(2000, function()
             -- 检查是否还有怪物
-            local screenshot = screen.capture(0, 0, 1920, 1080)
+            local screenshot = wingman.screen.capture(0, 0, 1920, 1080)
             -- 继续查找...
         end)
     end
@@ -726,7 +745,7 @@ local health_trigger = trigger.create({
 
     action = function(match)
         print("Low health! Using potion...")
-        input.keyPress("1")  -- 使用药品快捷键
+        wingman.input.keyPress("1")  -- 使用药品快捷键
     end
 })
 
@@ -741,7 +760,7 @@ local mana_trigger = trigger.create({
 
     action = function(match)
         print("Low mana! Using mana potion...")
-        input.keyPress("2")  -- 使用蓝药快捷键
+        wingman.input.keyPress("2")  -- 使用蓝药快捷键
     end
 })
 
@@ -758,8 +777,7 @@ print("Auto-grind started! Press F10 to stop")
 #### Lua
 
 ```lua
-local trigger = require("wingman.trigger")
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 -- 要收集的物品
 local items = {"gold.png", "gem.png", "potion.png", "equipment.png"}
@@ -795,10 +813,10 @@ for _, item_image in ipairs(items) do
                 item_image, match.x, match.y))
 
             -- 移动到物品位置
-            input.move(match.x, match.y, 300)
+            wingman.input.move(match.x, match.y, 300)
             task.delay(300, function()
                 -- 点击收集
-                input.click(match.x, match.y, "left")
+                wingman.input.click(match.x, match.y, "left")
             end)
         end
     })
@@ -812,8 +830,7 @@ end
 #### Lua
 
 ```lua
-local trigger = require("wingman.trigger")
-local notify = require("wingman.notify")
+local wingman = require("wingman")
 
 -- 定期检查系统状态
 local system_monitor = trigger.create({
@@ -826,7 +843,7 @@ local system_monitor = trigger.create({
         print(string.format("CPU: %.1f%%", cpu_usage))
 
         if cpu_usage > 80 then
-            notify.send("高 CPU 使用率", string.format("当前 CPU 使用率: %.1f%%", cpu_usage))
+            wingman.notify.send("高 CPU 使用率", string.format("当前 CPU 使用率: %.1f%%", cpu_usage))
         end
 
         -- 检查内存使用
@@ -834,12 +851,12 @@ local system_monitor = trigger.create({
         print(string.format("Memory: %.1f%%", mem_usage))
 
         if mem_usage > 80 then
-            notify.send("高内存使用", string.format("当前内存使用率: %.1f%%", mem_usage))
+            wingman.notify.send("高内存使用", string.format("当前内存使用率: %.1f%%", mem_usage))
         end
 
         -- 检查网络连接
         if not isNetworkConnected() then
-            notify.send("网络断开", "网络连接已断开")
+            wingman.notify.send("网络断开", "网络连接已断开")
         end
     end
 })
@@ -851,7 +868,7 @@ local process_monitor = trigger.create({
 
     action = function()
         if not process.exists("target_process.exe") then
-            notify.send("进程异常", "目标进程已关闭")
+            wingman.notify.send("进程异常", "目标进程已关闭")
             -- 可以在这里添加恢复操作
         end
     end
@@ -863,8 +880,7 @@ local process_monitor = trigger.create({
 #### Lua
 
 ```lua
-local trigger = require("wingman.trigger")
-local input = require("wingman.input")
+local wingman = require("wingman")
 
 local state = {
     fighting = false,
@@ -889,7 +905,7 @@ local main_loop = trigger.create({
             print("Searching for monsters...")
             local monster = findNearestMonster()
             if monster then
-                input.click(monster.x, monster.y, "left")
+                wingman.input.click(monster.x, monster.y, "left")
             end
         elseif state.fighting then
             -- 战斗中
@@ -921,9 +937,9 @@ local emergency_trigger = trigger.create({
     action = function(match)
         print("Emergency! Using survival items...")
         -- 使用紧急逃生技能
-        input.keyPress("F12")
+        wingman.input.keyPress("F12")
         task.delay(500, function()
-            input.keyPress("F1")  -- 使用回城卷轴
+            wingman.input.keyPress("F1")  -- 使用回城卷轴
         end)
     end
 })
@@ -1016,7 +1032,7 @@ local focused_trigger = trigger.create({
 ### 4. 调试支持
 
 ```lua
-local debug = require("wingman.debug")
+local wingman = require("wingman")
 
 local debug_trigger = trigger.create({
     type = "image",
@@ -1027,12 +1043,12 @@ local debug_trigger = trigger.create({
 
     action = function(match)
         -- 输出调试信息
-        debug.log(string.format("Match found: x=%d, y=%d, confidence=%.2f",
+        wingman.debugger.log(string.format("Match found: x=%d, y=%d, confidence=%.2f",
             match.x, match.y, match.confidence))
 
         -- 在调试模式下可以设置断点
         if isDebugEnabled() then
-            debug.breakpoint()
+            wingman.debugger.breakpoint()
         end
 
         -- 执行实际操作

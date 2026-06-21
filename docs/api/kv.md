@@ -71,16 +71,16 @@ else:
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 基本设置
-kv.set("token", "abc123")
+wingman.kv.set("token", "abc123")
 
 -- 设置过期时间（1小时后过期）
-kv.set("token", "abc123", {ttl = 3600})
+wingman.kv.set("token", "abc123", {ttl = 3600})
 
 -- 仅当键不存在时设置
-local success = kv.set("counter", "1", {nx = true})
+local success = wingman.kv.set("counter", "1", {nx = true})
 if success then
     print("counter 键已创建")
 else
@@ -129,10 +129,10 @@ else:
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 获取值
-local value = kv.get("token")
+local value = wingman.kv.get("token")
 if value then
     print("Token:", value)
 else
@@ -181,13 +181,13 @@ print(f"删除了 {count} 个键")
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 删除单个键
-kv.delete("token")
+wingman.kv.delete("token")
 
 -- 批量删除
-local count = kv.delete({"key1", "key2", "key3"})
+local count = wingman.kv.delete({"key1", "key2", "key3"})
 print("删除了 " .. count .. " 个键")
 ```
 
@@ -227,9 +227,9 @@ else:
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
-if kv.exists("token") then
+if wingman.kv.exists("token") then
     print("Token 已存在")
 else
     print("Token 不存在，需要重新获取")
@@ -278,9 +278,9 @@ else:
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
-local remaining = kv.ttl("token")
+local remaining = wingman.kv.ttl("token")
 if remaining > 0 then
     print("Token 将在 " .. remaining .. " 秒后过期")
 elseif remaining == -1 then
@@ -335,17 +335,17 @@ new_value = kv.incr("counter", -3)  # 返回 13
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 初始化计数器
-kv.set("counter", "10")
+wingman.kv.set("counter", "10")
 
 -- 增加计数
-local new = kv.incr("counter")      -- 返回 11
-local new = kv.incr("counter", 5)   -- 返回 16
+local new = wingman.kv.incr("counter")      -- 返回 11
+local new = wingman.kv.incr("counter", 5)   -- 返回 16
 
 -- 减少计数（使用负数）
-local new = kv.incr("counter", -3)  -- 返回 13
+local new = wingman.kv.incr("counter", -3)  -- 返回 13
 ```
 
 :::
@@ -389,12 +389,12 @@ kv.hset("team:123", "member_count", "4")
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 存储团队信息
-kv.hset("team:123", "leader", "PlayerA")
-kv.hset("team:123", "state", "ready")
-kv.hset("team:123", "member_count", "4")
+wingman.kv.hset("team:123", "leader", "PlayerA")
+wingman.kv.hset("team:123", "state", "ready")
+wingman.kv.hset("team:123", "member_count", "4")
 ```
 
 :::
@@ -430,9 +430,9 @@ if leader:
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
-local leader = kv.hget("team:123", "leader")
+local leader = wingman.kv.hget("team:123", "leader")
 if leader then
     print("队长:", leader)
 end
@@ -474,9 +474,9 @@ print(f"成员数: {info['member_count']}")
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
-local info = kv.hgetall("team:123")
+local info = wingman.kv.hgetall("team:123")
 print("队长:", info.leader)
 print("状态:", info.state)
 print("成员数:", info.member_count)
@@ -517,10 +517,10 @@ if kv.hdel("team:123", "leader"):
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 删除字段
-if kv.hdel("team:123", "leader") then
+if wingman.kv.hdel("team:123", "leader") then
     print("队长字段已删除")
 end
 ```
@@ -559,9 +559,9 @@ else:
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
-if kv.hexists("team:123", "leader") then
+if wingman.kv.hexists("team:123", "leader") then
     print("团队已有队长")
 else
     print("需要设置队长")
@@ -602,9 +602,9 @@ print(f"团队字段: {', '.join(fields)}")
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
-local fields = kv.hkeys("team:123")
+local fields = wingman.kv.hkeys("team:123")
 print("团队字段:", table.concat(fields, ", "))
 ```
 
@@ -650,12 +650,12 @@ kv.lpush("log", "info: connected")
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 添加日志条目
-kv.lpush("log", "error: connection failed")
-kv.lpush("log", "info: retrying...")
-kv.lpush("log", "info: connected")
+wingman.kv.lpush("log", "error: connection failed")
+wingman.kv.lpush("log", "info: retrying...")
+wingman.kv.lpush("log", "info: connected")
 ```
 
 :::
@@ -696,12 +696,12 @@ kv.rpush("events", "logout")
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 添加事件（按时间顺序）
-kv.rpush("events", "login")
-kv.rpush("events", "action")
-kv.rpush("events", "logout")
+wingman.kv.rpush("events", "login")
+wingman.kv.rpush("events", "action")
+wingman.kv.rpush("events", "logout")
 ```
 
 :::
@@ -740,10 +740,10 @@ if log_entry:
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 处理日志（最新的先处理）
-local logEntry = kv.lpop("log")
+local logEntry = wingman.kv.lpop("log")
 if logEntry then
     print("处理日志:", logEntry)
 end
@@ -785,10 +785,10 @@ if event:
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 处理事件（按时间顺序）
-local event = kv.rpop("events")
+local event = wingman.kv.rpop("events")
 if event then
     print("处理事件:", event)
 end
@@ -826,9 +826,9 @@ print(f"日志条数: {length}")
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
-local length = kv.llen("log")
+local length = wingman.kv.llen("log")
 print("日志条数:", length)
 ```
 
@@ -876,16 +876,16 @@ latest = kv.lrange("log", -5, -1)
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 获取全部日志
-local allLogs = kv.lrange("log", 0, -1)
+local allLogs = wingman.kv.lrange("log", 0, -1)
 
 -- 获取前 10 条
-local recent = kv.lrange("log", 0, 9)
+local recent = wingman.kv.lrange("log", 0, 9)
 
 -- 获取最新 5 条（从末尾往前）
-local latest = kv.lrange("log", -5, -1)
+local latest = wingman.kv.lrange("log", -5, -1)
 ```
 
 :::
@@ -967,16 +967,16 @@ kv.enable_auto_save("data.db", 60)
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 -- 手动保存
-kv.save("data.db")
+wingman.kv.save("data.db")
 
 -- 手动加载
-kv.load("data.db")
+wingman.kv.load("data.db")
 
 -- 启用自动保存（每 60 秒保存一次）
-kv.enableAutoSave("data.db", 60)
+wingman.kv.enableAutoSave("data.db", 60)
 ```
 
 :::
@@ -1039,7 +1039,7 @@ while True:
 == Lua
 
 ```lua:line-numbers
-local kv = require("wingman.kv")
+local wingman = require("wingman")
 
 local TaskQueue = {}
 TaskQueue.__index = TaskQueue
@@ -1051,12 +1051,12 @@ function TaskQueue.new(name)
 end
 
 function TaskQueue:addTask(task)
-    kv.rpush(self.queueName, task)
+    wingman.kv.rpush(self.queueName, task)
     print("已添加任务:", task)
 end
 
 function TaskQueue:getTask()
-    local task = kv.lpop(self.queueName)
+    local task = wingman.kv.lpop(self.queueName)
     if task then
         print("执行任务:", task)
     end
@@ -1064,7 +1064,7 @@ function TaskQueue:getTask()
 end
 
 function TaskQueue:getPendingCount()
-    return kv.llen(self.queueName)
+    return wingman.kv.llen(self.queueName)
 end
 
 -- 使用示例

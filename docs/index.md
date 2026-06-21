@@ -63,17 +63,16 @@ features:
 ### Lua 脚本
 
 ```lua
--- hello.lua
-local screen = require("wingman.screen")
-local input = require("wingman.input")
+local wingman = require("wingman")
 
+-- hello.lua
 -- 截图
-local img = screen.capture(0, 0, 1920, 1080)
+local img = wingman.screen.capture(0, 0, 1920, 1080)
 
 -- 查找颜色（Lua 使用 camelCase 命名）
-local x, y = screen.findPixel(0xFF0000, 0, 0, 1920, 1080, 10)
+local x, y = wingman.screen.findPixel(0xFF0000, 0, 0, 1920, 1080, 10)
 if x then
-    input.click(x, y)
+    wingman.input.click(x, y)
 end
 ```
 
