@@ -486,6 +486,13 @@ func (ac *agentConn) handleEvent(msg map[string]any) {
 			"agentId": ac.agentID,
 			"data":    data,
 		})
+	case "script_state":
+		// runtime 推送的脚本状态变更（running/paused/stopped/error），转发给 Dashboard。
+		ac.listener.broadcast.BroadcastEvent("script", map[string]any{
+			"event":   "state_changed",
+			"agentId": ac.agentID,
+			"data":    data,
+		})
 	default:
 		log.Printf("[FrameListener] Unknown event: %s", event)
 	}

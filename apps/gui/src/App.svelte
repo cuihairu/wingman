@@ -17,6 +17,7 @@
 	import LogsPage from './routes/logs/+page.svelte';
 	import SettingsPage from './routes/settings/+page.svelte';
 	import TriggersPage from './routes/triggers/+page.svelte';
+	import MacrosPage from './routes/macros/+page.svelte';
 
 	router.init();
 
@@ -137,8 +138,10 @@
 				<LogsPage />
 			{:else if $router.current === 'settings'}
 				<SettingsPage />
-			{:else if $router.current === 'triggers'}
-				<TriggersPage />
+		{:else if $router.current === 'triggers'}
+		<TriggersPage />
+		{:else if $router.current === 'macros'}
+		<MacrosPage />
 			{/if}
 		</div>
 	</main>

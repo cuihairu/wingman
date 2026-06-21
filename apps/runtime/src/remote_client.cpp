@@ -377,6 +377,20 @@ void RemoteClient::handleRegisterAck(const std::string& data) {
     }
 }
 
+void RemoteClient::sendAgentEvent(const std::string& event, const nlohmann::json& data) {
+    // 发送 agent.event Notify（与 server 侧 listener.go:384 case "agent.event" 匹配）。
+    // queueable=true：断线时入 outbox，重连后 flush，避免事件丢失。
+    nlohmann::json msg = {
+        {"type", "agent.event"},
+        {"event", event},
+        {"data", data},
+    };
+    auto message = std::make_shared<transport::Message>();
+    message->header.type = transport::MessageType::Notify;
+    message->body = msg.dump();
+    deliverMessage(message, true);
+}
+
 void RemoteClient::onMessage(const transport::MessagePtr& msg) {
     // 处理不同类型的消息
     switch (msg->header.type) {

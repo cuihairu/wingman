@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <deque>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -54,6 +55,11 @@ public:
 	/// 累计因容量上限被丢弃的事件数。
 	std::size_t dropped() const;
 
+	/// 注册远程转发 sink：每次 push 时（在锁外）回调，用于把事件转发到 Go server。
+	/// sink 自行决定转发哪些 method（避免把高频 log.line 全量推到服务端）。
+	using RemoteSink = std::function<void(const std::string& method, const nlohmann::json& payload)>;
+	void setRemoteSink(RemoteSink sink);
+
 private:
 	EventBuffer() = default;
 	EventBuffer(const EventBuffer&) = delete;
@@ -62,6 +68,7 @@ private:
 	mutable std::mutex mutex_;
 	std::deque<IpcEvent> events_;
 	std::size_t dropped_ = 0;
+	RemoteSink remoteSink_;
 };
 
 } // namespace wingman::runtime

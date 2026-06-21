@@ -19,6 +19,12 @@ void EventBuffer::push(std::string method, nlohmann::json payload) {
 	evt.payload = std::move(payload);
 	evt.timestamp = static_cast<uint64_t>(ms);
 
+	// 先捕获 sink 与待转发数据（method 此时已 move 进 evt），在锁外回调，避免
+	// sink 内回调 push 造成重入死锁。
+	RemoteSink sink;
+	std::string forwardMethod;
+	nlohmann::json forwardPayload;
+
 	std::lock_guard<std::mutex> lock(mutex_);
 	events_.emplace_back(std::move(evt));
 	while (events_.size() > kMaxEvents) {
@@ -36,6 +42,16 @@ void EventBuffer::push(std::string method, nlohmann::json payload) {
 			events_.pop_front();
 		}
 		++dropped_;
+	}
+
+	if (remoteSink_) {
+		sink = remoteSink_;
+		forwardMethod = events_.back().method;
+		forwardPayload = events_.back().payload;
+	}
+
+	if (sink) {
+		sink(forwardMethod, std::move(forwardPayload));
 	}
 }
 
@@ -64,6 +80,11 @@ std::size_t EventBuffer::size() const {
 std::size_t EventBuffer::dropped() const {
 	std::lock_guard<std::mutex> lock(mutex_);
 	return dropped_;
+}
+
+void EventBuffer::setRemoteSink(RemoteSink sink) {
+	std::lock_guard<std::mutex> lock(mutex_);
+	remoteSink_ = std::move(sink);
 }
 
 } // namespace wingman::runtime

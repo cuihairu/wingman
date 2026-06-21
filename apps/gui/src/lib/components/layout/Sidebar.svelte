@@ -7,6 +7,7 @@
 		{ id: 'screen', label: '屏幕预览', icon: 'screen' },
 		{ id: 'logs', label: '日志', icon: 'logs' },
 		{ id: 'triggers', label: '触发器', icon: 'triggers' },
+		{ id: 'macros', label: '宏录制', icon: 'macros' },
 		{ id: 'settings', label: '设置', icon: 'settings' },
 	];
 </script>
@@ -52,10 +53,19 @@
 						<line x1="16" y1="13" x2="8" y2="13"></line>
 						<line x1="16" y1="17" x2="8" y2="17"></line>
 					</svg>
-				{:else if item.icon === 'triggers'}
-					<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-					</svg>
+			{:else if item.icon === 'triggers'}
+				<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+				</svg>
+			{:else if item.icon === 'macros'}
+				<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="12" cy="12" r="3"></circle>
+					<circle cx="12" cy="12" r="9"></circle>
+					<circle cx="12" cy="6" r="1"></circle>
+					<circle cx="18" cy="12" r="1"></circle>
+					<circle cx="12" cy="18" r="1"></circle>
+					<circle cx="6" cy="12" r="1"></circle>
+				</svg>
 				{:else if item.icon === 'settings'}
 					<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<circle cx="12" cy="12" r="3"></circle>

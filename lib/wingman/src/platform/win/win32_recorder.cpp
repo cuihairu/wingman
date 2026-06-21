@@ -33,7 +33,7 @@ static MacroRecorder* g_instance = nullptr;
 
 MacroRecorder::MacroRecorder()
     : m_recording(false), m_paused(false), m_startTime(0),
-      m_mouseHook(nullptr), m_keyboardHook(nullptr) {
+      m_mouseHook(nullptr), m_keyboardHook(nullptr), m_hookThreadId(0) {
     g_instance = this;
 }
 
@@ -42,12 +42,38 @@ MacroRecorder::~MacroRecorder() {
 }
 
 void MacroRecorder::start() {
-    if (m_recording) return;
+    if (m_recording.load()) return;
 
-    m_events.clear();
-    m_recording = true;
-    m_paused = false;
+    {
+        std::lock_guard<std::mutex> lock(m_eventMutex);
+        m_events.clear();
+    }
     m_startTime = GetTickCount();
+    m_recording.store(true);
+    m_paused.store(false);
+
+    // 低层钩子必须在装钩子的线程上跑消息循环才会触发回调。
+    // 因此在独立线程里装钩子 + GetMessage 循环；stop 时 PostThreadMessage(WM_QUIT) 唤醒。
+    m_hookThread = std::thread([this]() { hookThreadMain(); });
+}
+
+void MacroRecorder::stop() {
+    if (!m_recording.load()) return;
+
+    m_recording.store(false);
+
+    // 唤醒 hook 线程的消息循环使其退出。
+    if (m_hookThreadId != 0) {
+        PostThreadMessageA(m_hookThreadId, WM_QUIT, 0, 0);
+    }
+    if (m_hookThread.joinable()) {
+        m_hookThread.join();
+    }
+    m_hookThreadId = 0;
+}
+
+void MacroRecorder::hookThreadMain() {
+    m_hookThreadId = GetCurrentThreadId();
 
     m_mouseHook = SetWindowsHookExA(
         WH_MOUSE_LL,
@@ -62,18 +88,19 @@ void MacroRecorder::start() {
         GetModuleHandleA(nullptr),
         0
     );
-}
 
-void MacroRecorder::stop() {
-    if (!m_recording) return;
-
-    m_recording = false;
+    // 消息循环：低层钩子回调由系统通过消息派发到本线程。
+    // WM_QUIT（来自 stop）会令 GetMessage 返回 false 从而退出循环。
+    MSG msg;
+    while (m_recording.load() && GetMessageA(&msg, nullptr, 0, 0) > 0) {
+        TranslateMessage(&msg);
+        DispatchMessageA(&msg);
+    }
 
     if (m_mouseHook) {
         UnhookWindowsHookEx(m_mouseHook);
         m_mouseHook = nullptr;
     }
-
     if (m_keyboardHook) {
         UnhookWindowsHookEx(m_keyboardHook);
         m_keyboardHook = nullptr;
@@ -89,20 +116,32 @@ void MacroRecorder::resume() {
 }
 
 void MacroRecorder::clear() {
+    std::lock_guard<std::mutex> lock(m_eventMutex);
     m_events.clear();
 }
 
+size_t MacroRecorder::getEventCount() const {
+    std::lock_guard<std::mutex> lock(m_eventMutex);
+    return m_events.size();
+}
+
 bool MacroRecorder::saveToLua(const std::string& filepath) const {
+    std::vector<RecordedEvent> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(m_eventMutex);
+        snapshot = m_events;
+    }
+
     std::ofstream file(filepath);
     if (!file.is_open()) return false;
 
     file << "-- Wingman Macro Recording Script\n";
-    file << "-- Recorded " << m_events.size() << " events\n\n";
+    file << "-- Recorded " << snapshot.size() << " events\n\n";
 
     file << "util.log(\"Starting macro playback...\")\n";
     file << "local startTime = util.getTime()\n\n";
 
-    for (const auto& event : m_events) {
+    for (const auto& event : snapshot) {
         switch (event.type) {
             case RecordedEventType::MouseMove:
                 file << "input.move(" << event.x << ", " << event.y << ")\n";
@@ -139,14 +178,20 @@ bool MacroRecorder::saveToLua(const std::string& filepath) const {
 }
 
 bool MacroRecorder::saveToJSON(const std::string& filepath) const {
+    std::vector<RecordedEvent> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(m_eventMutex);
+        snapshot = m_events;
+    }
+
     std::ofstream file(filepath);
     if (!file.is_open()) return false;
 
     file << "{\n";
     file << "  \"events\": [\n";
 
-    for (size_t i = 0; i < m_events.size(); ++i) {
-        const auto& event = m_events[i];
+    for (size_t i = 0; i < snapshot.size(); ++i) {
+        const auto& event = snapshot[i];
         file << "    {\n";
         file << "      \"type\": " << static_cast<int>(event.type) << ",\n";
         file << "      \"timestamp\": " << event.timestamp << ",\n";
@@ -155,7 +200,7 @@ bool MacroRecorder::saveToJSON(const std::string& filepath) const {
         file << "      \"button\": " << event.button << ",\n";
         file << "      \"keyCode\": " << event.keyCode << ",\n";
         file << "      \"delay\": " << event.delay << "\n";
-        file << "    }" << (i < m_events.size() - 1 ? "," : "") << "\n";
+        file << "    }" << (i < snapshot.size() - 1 ? "," : "") << "\n";
     }
 
     file << "  ]\n";
@@ -184,7 +229,7 @@ bool MacroRecorder::loadFromJSON(const std::string& filepath) {
             return false;
         }
 
-        m_events.clear();
+        std::vector<RecordedEvent> loaded;
         for (const auto& eventJson : j["events"]) {
             RecordedEvent event;
             event.type = static_cast<RecordedEventType>(eventJson.value("type", 0));
@@ -196,7 +241,12 @@ bool MacroRecorder::loadFromJSON(const std::string& filepath) {
             event.delay = eventJson.value("delay", 0);
             event.text = eventJson.value("text", "");
 
-            m_events.push_back(event);
+            loaded.push_back(event);
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(m_eventMutex);
+            m_events = std::move(loaded);
         }
 
         return true;
@@ -206,12 +256,17 @@ bool MacroRecorder::loadFromJSON(const std::string& filepath) {
 }
 
 void MacroRecorder::playback(int speed, int repeat) const {
-    if (m_events.empty()) return;
+    std::vector<RecordedEvent> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(m_eventMutex);
+        snapshot = m_events;
+    }
+    if (snapshot.empty()) return;
 
     for (int r = 0; r < repeat; ++r) {
-        DWORD lastTimestamp = static_cast<DWORD>(m_events[0].timestamp);
+        DWORD lastTimestamp = static_cast<DWORD>(snapshot[0].timestamp);
 
-        for (const auto& event : m_events) {
+        for (const auto& event : snapshot) {
             DWORD delay = static_cast<DWORD>((event.timestamp - lastTimestamp) * 100 / speed);
             if (delay > 0) {
                 sleepMs(delay);
@@ -321,6 +376,7 @@ MacroRecorder* MacroRecorder::getInstance() {
 }
 
 void MacroRecorder::recordEvent(const RecordedEvent& event) {
+    std::lock_guard<std::mutex> lock(m_eventMutex);
     if (!m_events.empty() && event.type == RecordedEventType::MouseMove) {
         if (m_events.back().type == RecordedEventType::MouseMove) {
             m_events.back() = event;

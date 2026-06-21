@@ -8,6 +8,7 @@
 #include <functional>
 #include <mutex>
 #include <queue>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 #include <map>
@@ -89,6 +90,10 @@ public:
 
     // 获取配置
     const RemoteClientConfig& getConfig() const;
+
+    // 事件转发：将运行时事件（trigger_fired / script_state 等）以 agent.event Notify 推送到 Go server。
+    // 对应 server 侧 listener.go handleNotify -> case "agent.event" -> handleEvent（广播到 Dashboard WS）。
+    void sendAgentEvent(const std::string& event, const nlohmann::json& data);
 
 private:
     // 连接管理

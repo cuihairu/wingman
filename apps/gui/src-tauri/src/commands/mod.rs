@@ -1,5 +1,6 @@
 pub mod connection;
 pub mod events;
+pub mod macros;
 pub mod profiles;
 pub mod screen;
 pub mod scripts;

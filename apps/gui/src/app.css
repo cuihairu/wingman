@@ -12,6 +12,21 @@
 	--accent-orange: #db6d28;
 }
 
+/* 亮色主题：通过 document.documentElement.dataset.theme = 'light' 切换 */
+:root[data-theme='light'] {
+	--bg-primary: #ffffff;
+	--bg-secondary: #f6f8fa;
+	--bg-tertiary: #eaeef2;
+	--border-color: #d0d7de;
+	--text-primary: #1f2328;
+	--text-secondary: #656d76;
+	--accent-green: #1a7f37;
+	--accent-red: #cf222e;
+	--accent-blue: #0969da;
+	--accent-yellow: #9a6700;
+	--accent-orange: #bc4c00;
+}
+
 * {
 	margin: 0;
 	padding: 0;

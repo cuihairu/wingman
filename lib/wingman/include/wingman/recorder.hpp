@@ -4,6 +4,8 @@
 #include <vector>
 #include <thread>
 #include <cstdint>
+#include <atomic>
+#include <mutex>
 
 #ifdef __APPLE__
 #include <CoreFoundation/CoreFoundation.h>
@@ -73,23 +75,29 @@ public:
     void playback(int speed = 100, int repeat = 1) const;
 
     // Get recording state
-    bool isRecording() const { return m_recording; }
-    bool isPaused() const { return m_paused; }
-    size_t getEventCount() const { return m_events.size(); }
+    bool isRecording() const { return m_recording.load(std::memory_order_relaxed); }
+    bool isPaused() const { return m_paused.load(std::memory_order_relaxed); }
+    size_t getEventCount() const;
 
     // Platform callbacks use these accessors from free functions.
     void recordEvent(const RecordedEvent& event);
-    uint64_t getStartTime() const;
+    uint64_t getStartTime() const { return m_startTime; }
 
 private:
     std::vector<RecordedEvent> m_events;
-    bool m_recording;
-    bool m_paused;
+    std::atomic<bool> m_recording;
+    std::atomic<bool> m_paused;
     uint64_t m_startTime;
+    // 保护 m_events（hook 线程写，其它线程读/写）。
+    mutable std::mutex m_eventMutex;
 
 #ifdef _WIN32
     HHOOK m_mouseHook;
     HHOOK m_keyboardHook;
+    // 低层钩子必须在装钩子的线程上跑消息循环才会触发；录制期间独占此线程。
+    std::thread m_hookThread;
+    DWORD m_hookThreadId{0};
+    void hookThreadMain();
 #elif defined(__linux__)
     void* m_display;
     void* m_recordContext;

@@ -3,6 +3,7 @@ mod hotkeys;
 mod ipc;
 mod models;
 mod state;
+mod tray;
 
 use state::AppState;
 
@@ -13,6 +14,9 @@ fn main() {
         .setup(|app| {
             if let Err(error) = hotkeys::setup_hotkeys(&app.handle()) {
                 eprintln!("failed to set up global hotkeys: {error}");
+            }
+            if let Err(error) = tray::setup_tray(&app.handle()) {
+                eprintln!("failed to set up system tray: {error}");
             }
             Ok(())
         })
@@ -48,6 +52,14 @@ fn main() {
             commands::triggers::toggle_trigger,
             // 事件拉取（runtime → GUI 日志/触发器/截图事件）
             commands::events::drain_events,
+            // 宏录制（录制/停止/回放/保存/载入）
+            commands::macros::macro_record,
+            commands::macros::macro_stop,
+            commands::macros::macro_play,
+            commands::macros::macro_status,
+            commands::macros::macro_save,
+            commands::macros::macro_load,
+            commands::macros::macro_clear,
             // 配置管理
             commands::profiles::get_profiles,
             commands::profiles::get_active_profile,

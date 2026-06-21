@@ -1,5 +1,6 @@
 #include "wingman/runtime/agent.hpp"
 #include "wingman/window.hpp"
+#include "wingman/runtime/event_buffer.hpp"
 #include "wingman/runtime/local_ipc_server.hpp"
 #include "wingman/runtime/remote_client.hpp"
 #include "wingman/runtime/standalone_mode.hpp"
@@ -198,6 +199,19 @@ bool Agent::initRemoteClient() {
     // 绑定命令回调，处理 server 下发的命令
     impl_->remoteClient->setCommandCallback([this](const std::string& command, const CommandData& data) {
         return handleRemoteCommand(command, data);
+    });
+
+    // 注册远程事件转发：EventBuffer 收到事件时，选择性地以 agent.event 推送到 Go server，
+    // 由 server 广播到 Dashboard WS（listener.go handleEvent）。
+    // 仅转发 server 关心的事件，避免高频 log.line 淹没 agent 上行链路。
+    EventBuffer::instance().setRemoteSink([this](const std::string& method, const nlohmann::json& payload) {
+        if (!impl_->remoteClient) return;
+        if (method == "trigger.fired") {
+            impl_->remoteClient->sendAgentEvent("trigger_fired", payload);
+        } else if (method == "script.state_changed") {
+            impl_->remoteClient->sendAgentEvent("script_state", payload);
+        }
+        // log.line / connection.state_changed 为本地相关，不转发
     });
 
     return true;
