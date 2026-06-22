@@ -37,6 +37,8 @@ public:
 	void enableSandbox(const script::EngineConfig& config) override;
 	void disableSandbox() override;
 
+	void setOutputCallback(const std::function<void(const std::string&)>& callback) override;
+
 	// sol2 特有访问
 	sol::state& getState() { return lua_; }
 	const sol::state& getState() const { return lua_; }
@@ -46,6 +48,7 @@ private:
 	std::string lastError_;
 	bool initialized_ = false;
 	bool sandboxed_ = false;
+	std::function<void(const std::string&)> outputCallback_;
 
 	void applySandbox(const script::EngineConfig& config);
 };

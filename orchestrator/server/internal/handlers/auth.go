@@ -24,6 +24,17 @@ func NewAuthHandler(db *gorm.DB) *AuthHandler {
 }
 
 // HandleLogin 登录
+// @Summary      用户登录
+// @Description  验证用户名密码，返回 JWT；登录失败按 IP 限流
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      object  true  "登录凭证"  example({"username":"admin","password":"secret"})
+// @Success      200      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Failure      401      {object}  map[string]interface{}
+// @Failure      429      {object}  map[string]interface{}
+// @Router       /v1/auth/login [post]
 func (h *AuthHandler) HandleLogin(c *gin.Context) {
 	// Get rate limiter and client IP for tracking failed attempts
 	rl := middleware.GetRateLimiter()

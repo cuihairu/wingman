@@ -21,6 +21,12 @@ func NewProfileHandler(db *gorm.DB) *ProfileHandler {
 	return &ProfileHandler{db: db}
 }
 
+// @Summary      获取当前用户资料
+// @Tags         profile
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Router       /v1/profile [get]
 func (h *ProfileHandler) HandleGetProfile(c *gin.Context) {
 	user, ok := h.currentUser(c)
 	if !ok {
@@ -36,6 +42,12 @@ func (h *ProfileHandler) HandleGetGames(c *gin.Context) {
 	})
 }
 
+// @Summary      获取当前用户权限码（resource:action 展开）
+// @Tags         profile
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Router       /v1/profile/permissions [get]
 func (h *ProfileHandler) HandleGetPermissions(c *gin.Context) {
 	user, ok := h.currentUser(c)
 	if !ok {

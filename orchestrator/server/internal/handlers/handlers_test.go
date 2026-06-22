@@ -12,6 +12,7 @@ import (
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/workflow"
 	ws "github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
@@ -581,5 +582,100 @@ func TestBroadcastMessagePerUserReadState(t *testing.T) {
 	// bob 仍然未读为 1（修复前会被污染成 0）
 	if c := countOf(rBob); c != 1 {
 		t.Fatalf("REGRESSION: bob after alice read = %d, want 1 (broadcast read state polluted)", c)
+	}
+}
+
+// ---------- Workflow handler ----------
+
+func setupWorkflowRouter(t *testing.T) (*gin.Engine, *gorm.DB) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	db := newDB(t)
+	reg, hub := newRegistry(t)
+	engine := workflow.NewEngine(db, reg, hub, t.TempDir())
+	wh := NewWorkflowHandler(engine, db)
+
+	r := gin.New()
+	r.GET("/api/workflow-templates", asAdmin(1), wh.HandleListTemplates)
+	r.POST("/api/workflows", asAdmin(1), wh.HandleCreate)
+	r.GET("/api/workflows/:id", asAdmin(1), wh.HandleGet)
+	return r, db
+}
+
+func TestWorkflowCreateRejectsInvalidDefinition(t *testing.T) {
+	r, db := setupWorkflowRouter(t)
+
+	w := doJSON(r, "POST", "/api/workflows", map[string]any{
+		"name": "bad-workflow",
+		"steps": []map[string]any{
+			{"id": "a", "script": "a.lua", "dependsOn": []string{"b"}},
+			{"id": "b", "script": "b.lua", "dependsOn": []string{"a"}},
+		},
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for invalid workflow, got %d %s", w.Code, w.Body.String())
+	}
+
+	var count int64
+	db.Model(&models.Workflow{}).Count(&count)
+	if count != 0 {
+		t.Fatalf("invalid workflow should not persist, got %d row(s)", count)
+	}
+}
+
+func TestWorkflowCreateAcceptsScreenshotAndConditionSteps(t *testing.T) {
+	r, db := setupWorkflowRouter(t)
+
+	w := doJSON(r, "POST", "/api/workflows", map[string]any{
+		"name": "rich-workflow",
+		"steps": []map[string]any{
+			{
+				"id":   "guard",
+				"type": "condition",
+				"parameters": map[string]any{
+					"value":    true,
+					"operator": "truthy",
+				},
+			},
+			{
+				"id":        "capture",
+				"type":      "screenshot",
+				"dependsOn": []string{"guard"},
+				"parameters": map[string]any{
+					"displayId": 0,
+				},
+			},
+		},
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected screenshot/condition workflow to be accepted, got %d %s", w.Code, w.Body.String())
+	}
+
+	var count int64
+	db.Model(&models.Workflow{}).Count(&count)
+	if count != 1 {
+		t.Fatalf("expected 1 persisted workflow, got %d", count)
+	}
+}
+
+func TestWorkflowTemplatesIncludeNewStepTypesInDescription(t *testing.T) {
+	r, _ := setupWorkflowRouter(t)
+
+	w := doJSON(r, "GET", "/api/workflow-templates", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("templates: %d %s", w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		Data []struct {
+			ID          string `json:"id"`
+			Description string `json:"description"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode templates: %v", err)
+	}
+	if len(resp.Data) == 0 {
+		t.Fatal("expected non-empty templates")
 	}
 }

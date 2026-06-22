@@ -1,8 +1,22 @@
+// @title           Wingman Orchestrator API
+// @version         1.0
+// @description     Wingman 远程中控编排器 HTTP API（auth / RBAC / agent / script / workflow / messages / settings）。
+// @description     架构约束：Dashboard 与远程客户端只连接本 server，不直连 runtime。
+// @host            localhost:9527
+// @BasePath        /api
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description "Bearer <JWT>"（由 POST /api/v1/auth/login 获取）
 package main
 
 import (
 	"log"
 	"os"
+
+	_ "github.com/cuihaitao/wingman/orchestrator/server/docs" // swag 生成的 OpenAPI 文档
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/files"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/config"
@@ -86,6 +100,9 @@ func main() {
 
 	r := gin.Default()
 	r.Use(middleware.CORS())
+
+	// Swagger UI（由 swag init 生成的 docs 包驱动）
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	r.Static("/assets", cfg.StaticDir+"/assets")
 	r.StaticFile("/favicon.ico", cfg.StaticDir+"/favicon.ico")

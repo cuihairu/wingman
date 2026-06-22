@@ -21,6 +21,7 @@ export default defineConfig({
           items: [
             { text: '项目简介', link: '/guide/introduction' },
             { text: '快速开始', link: '/guide/getting-started' },
+            { text: '脚本开发指南', link: '/guide/script-development' },
             { text: '架构设计', link: '/guide/architecture' },
             { text: 'VS Code 开发环境', link: '/development-environment' }
           ]

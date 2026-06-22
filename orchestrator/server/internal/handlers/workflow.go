@@ -37,6 +37,13 @@ func (h *WorkflowHandler) HandleList(c *gin.Context) {
 }
 
 // HandleListTemplates 返回内置工作流模板目录（只读，所有登录用户可访问）
+// @Summary      工作流模板库
+// @Description  内置模板（单步监控/并行采集/串行流水线/fan-out/独立步骤类型 wait-condition-screenshot）
+// @Tags         workflows
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Router       /workflow-templates [get]
 func (h *WorkflowHandler) HandleListTemplates(c *gin.Context) {
 	templates := workflow.BuiltinTemplates()
 	c.JSON(http.StatusOK, gin.H{
@@ -108,11 +115,13 @@ func (h *WorkflowHandler) HandleCreate(c *gin.Context) {
 		return
 	}
 
-	go func() {
-		if err := h.engine.Submit(wf); err != nil {
-			_ = err
-		}
-	}()
+	if err := h.engine.Submit(wf); err != nil {
+		// 回滚刚创建的无效工作流，避免数据库残留永远 pending 的坏记录。
+		h.db.Unscoped().Delete(&models.StepStatus{}, "workflow_id = ?", wf.ID)
+		h.db.Unscoped().Delete(wf)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
 
 	_, actor, _ := middleware.GetCurrentUser(c)
 	WriteAuditLog(h.db, actor, "workflow.create", wf.Name, map[string]any{

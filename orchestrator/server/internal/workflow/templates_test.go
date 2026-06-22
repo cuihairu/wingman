@@ -75,3 +75,28 @@ func TestTemplateFanOutReduceDeps(t *testing.T) {
 		t.Errorf("reduce should depend on 3 workers, got %d", len(reduce.DependsOn))
 	}
 }
+
+func TestTemplateGuardedCaptureUsesConditionAndScreenshot(t *testing.T) {
+	var guarded *WorkflowTemplate
+	for _, tpl := range BuiltinTemplates() {
+		if tpl.ID == "guarded-capture" {
+			guarded = &tpl
+			break
+		}
+	}
+	if guarded == nil {
+		t.Fatal("guarded-capture template missing")
+	}
+	if len(guarded.Steps) != 2 {
+		t.Fatalf("expected 2 steps, got %d", len(guarded.Steps))
+	}
+	if guarded.Steps[0].Type != "condition" {
+		t.Fatalf("expected first step condition, got %s", guarded.Steps[0].Type)
+	}
+	if guarded.Steps[1].Type != "screenshot" {
+		t.Fatalf("expected second step screenshot, got %s", guarded.Steps[1].Type)
+	}
+	if len(guarded.Steps[1].DependsOn) != 1 || guarded.Steps[1].DependsOn[0] != "guard" {
+		t.Fatalf("expected screenshot to depend on guard, got %+v", guarded.Steps[1].DependsOn)
+	}
+}

@@ -10,13 +10,13 @@ import (
 // Workflow 工作流模型
 type Workflow struct {
 	gorm.Model
-	Name         string     `gorm:"not null" json:"name"`
-	Description  string     `json:"description"`
-	Status       string     `gorm:"default:pending" json:"status"` // pending/running/completed/failed/cancelled
-	StepsJSON    string     `gorm:"type:text;column:steps_json" json:"-"`
-	ContextJSON  string     `gorm:"type:text;column:context_json" json:"-"`
-	StartTime    *time.Time `json:"startTime"`
-	EndTime      *time.Time `json:"endTime"`
+	Name        string     `gorm:"not null" json:"name"`
+	Description string     `json:"description"`
+	Status      string     `gorm:"default:pending" json:"status"` // pending/running/completed/failed/cancelled
+	StepsJSON   string     `gorm:"type:text;column:steps_json" json:"-"`
+	ContextJSON string     `gorm:"type:text;column:context_json" json:"-"`
+	StartTime   *time.Time `json:"startTime"`
+	EndTime     *time.Time `json:"endTime"`
 }
 
 // TableName 表名
@@ -66,7 +66,7 @@ func (w *Workflow) SetContext(ctx map[string]interface{}) error {
 type WorkflowStep struct {
 	ID                  string                 `json:"id"`
 	Name                string                 `json:"name"`
-	Type                string                 `json:"type"` // 步骤类型：script(默认)/wait
+	Type                string                 `json:"type"` // 步骤类型：script(默认)/wait/condition/screenshot
 	Script              string                 `json:"script"`
 	Workers             []string               `json:"workers"`
 	DependsOn           []string               `json:"dependsOn"`

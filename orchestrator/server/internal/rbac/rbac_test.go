@@ -9,17 +9,18 @@ import (
 )
 
 // newTestDB 构建一个已迁移并完成 RBAC 种子的内存数据库。
-func newTestDB(t *testing.T) *gorm.DB {
-	t.Helper()
+// 接收 testing.TB 以便 Test 与 Benchmark 复用。
+func newTestDB(tb testing.TB) *gorm.DB {
+	tb.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
-		t.Fatalf("open db: %v", err)
+		tb.Fatalf("open db: %v", err)
 	}
 	if err := models.AutoMigrate(db); err != nil {
-		t.Fatalf("migrate: %v", err)
+		tb.Fatalf("migrate: %v", err)
 	}
 	if err := Seed(db); err != nil {
-		t.Fatalf("seed: %v", err)
+		tb.Fatalf("seed: %v", err)
 	}
 	return db
 }

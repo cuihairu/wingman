@@ -19,6 +19,7 @@ add_executable(runtime_tests
     ../src/rpc/handlers/system_handler.cpp
     ../src/rpc/handlers/screenshot_handler.cpp
     ../src/rpc/handlers/event_handler.cpp
+    ../src/rpc/handlers/macro_handler.cpp
     ../src/commands/build_command.cpp
     ../src/commands/script_command.cpp
     ../src/commands/stop_command.cpp
@@ -40,4 +41,4 @@ target_link_libraries(runtime_tests PRIVATE
 )
 
 include(GoogleTest)
-gtest_discover_tests(runtime_tests)
+gtest_discover_tests(runtime_tests DISCOVERY_MODE PRE_TEST)

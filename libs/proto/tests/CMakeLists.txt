@@ -26,7 +26,7 @@ if(BUILD_PROTO_TESTS)
 
     # 注册测试
     include(GoogleTest)
-    gtest_discover_tests(proto_tests)
+    gtest_discover_tests(proto_tests DISCOVERY_MODE PRE_TEST)
 
     message(STATUS "Proto tests enabled")
 endif()

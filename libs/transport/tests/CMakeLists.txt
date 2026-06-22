@@ -24,7 +24,7 @@ if(BUILD_TRANSPORT_TESTS)
 
     # 注册测试
     include(GoogleTest)
-    gtest_discover_tests(transport_tests)
+    gtest_discover_tests(transport_tests DISCOVERY_MODE PRE_TEST)
 
     message(STATUS "Transport tests enabled")
 endif()

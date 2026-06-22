@@ -22,6 +22,12 @@ func NewAgentHandler(registry *agent.Registry, db *gorm.DB) *AgentHandler {
 	}
 }
 
+// @Summary      Agent 列表（状态/标签/负载）
+// @Tags         agents
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Router       /agents [get]
 func (h *AgentHandler) HandleList(c *gin.Context) {
 	agents := h.registry.List()
 

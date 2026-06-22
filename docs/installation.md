@@ -218,9 +218,13 @@ cmake -B build -DWINGMAN_ENABLE_ML=ON ...
 启用单元测试：
 
 ```bash
-cmake -B build -DWINGMAN_BUILD_TESTS=ON \
-    -DBUILD_CORE_TESTS=ON ...
+cmake -B build-tests -DWINGMAN_BUILD_TESTS=ON \
+    -DVCPKG_MANIFEST_FEATURES=tests ...
 ```
+
+这会自动打开标准 C++ 测试目标（core/runtime/transport/proto/debug）。
+如果需要 Lua 绑定层测试，再额外追加 `-DBUILD_LUA_TESTS=ON`。
+建议将测试放到单独的 `build-tests/` 目录，避免和已有构建目录混用。
 
 ## 故障排除
 

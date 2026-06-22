@@ -50,6 +50,16 @@ type listUsersResponse struct {
 }
 
 // HandleList 用户列表（分页）
+// @Summary      用户列表（分页/过滤）
+// @Tags         admin-users
+// @Produce      json
+// @Security     BearerAuth
+// @Param        page      query  int     false  "页码"        default(1)
+// @Param        size      query  int     false  "每页条数"    default(20)
+// @Param        role      query  string  false  "角色过滤"
+// @Param        keyword   query  string  false  "关键字"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /admin/users [get]
 func (h *UserHandler) HandleList(c *gin.Context) {
 	page := parsePositiveInt(c.Query("page"), 1)
 	size := parsePositiveInt(c.Query("size"), 20)
@@ -91,6 +101,14 @@ func (h *UserHandler) HandleGet(c *gin.Context) {
 }
 
 // HandleCreate 创建用户
+// @Summary      创建用户
+// @Tags         admin-users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body      object  true  "用户创建"  example({"username":"bob","password":"...","role":"viewer"})
+// @Success      201  {object}  map[string]interface{}
+// @Router       /admin/users [post]
 func (h *UserHandler) HandleCreate(c *gin.Context) {
 	var req createUserReq
 	if err := c.ShouldBindJSON(&req); err != nil {

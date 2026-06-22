@@ -153,6 +153,10 @@ public:
 	// Sandbox control
 	virtual void enableSandbox(const EngineConfig& config) = 0;
 	virtual void disableSandbox() = 0;
+
+	// Output capture：脚本 print/stdout 重定向到此回调。
+	// 默认空实现（不捕获）；Lua 引擎 override 内置 print，Python 引擎重定向 sys.stdout。
+	virtual void setOutputCallback(const std::function<void(const std::string&)>& /*callback*/) {}
 };
 
 } // namespace script

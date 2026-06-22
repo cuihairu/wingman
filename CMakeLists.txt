@@ -65,12 +65,37 @@ if(WINGMAN_BUILD_DEBUG AND NOT WINGMAN_BUILD_LUA AND NOT WINGMAN_ENABLE_PYTHON)
 endif()
 
 # ========== 测试选项 ==========
-option(BUILD_CLIENT_TESTS "Build client tests" OFF)
+option(BUILD_CLIENT_TESTS "Build runtime app tests" OFF)
 option(BUILD_CORE_TESTS "Build core library tests" OFF)
 option(BUILD_TRANSPORT_TESTS "Build transport library tests" OFF)
 option(BUILD_LUA_TESTS "Build lua library tests" OFF)
 option(BUILD_PROTO_TESTS "Build proto library tests" OFF)
 option(BUILD_DEBUG_TESTS "Build debug library tests" OFF)
+
+# WINGMAN_BUILD_TESTS acts as the top-level switch for the standard C++ test suites.
+# Lua tests remain opt-in because they are usually only needed when validating Lua bindings directly.
+if(WINGMAN_BUILD_TESTS)
+    if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_RUNTIME)
+        set(BUILD_CLIENT_TESTS ON CACHE BOOL "Build runtime app tests" FORCE)
+        set(WINGMAN_BUILD_CLIENT_TESTS ON CACHE BOOL "Build runtime tests" FORCE)
+    endif()
+    if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_CORE)
+        set(BUILD_CORE_TESTS ON CACHE BOOL "Build core library tests" FORCE)
+    endif()
+    if(WINGMAN_BUILD_TRANSPORT)
+        set(BUILD_TRANSPORT_TESTS ON CACHE BOOL "Build transport library tests" FORCE)
+    endif()
+    if(WINGMAN_BUILD_PROTO)
+        set(BUILD_PROTO_TESTS ON CACHE BOOL "Build proto library tests" FORCE)
+    endif()
+    if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DEBUG AND (WINGMAN_BUILD_LUA OR WINGMAN_ENABLE_PYTHON))
+        set(BUILD_DEBUG_TESTS ON CACHE BOOL "Build debug library tests" FORCE)
+    endif()
+endif()
+
+if(BUILD_CLIENT_TESTS)
+    set(WINGMAN_BUILD_CLIENT_TESTS ON CACHE BOOL "Build runtime tests" FORCE)
+endif()
 
 # ========== 顶层依赖（仅顶层自身使用）==========
 
@@ -135,9 +160,6 @@ if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_CORE)
 endif()
 
 if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_RUNTIME)
-    if(WINGMAN_BUILD_TESTS)
-        set(WINGMAN_BUILD_CLIENT_TESTS ON CACHE BOOL "Build runtime tests" FORCE)
-    endif()
     add_subdirectory(apps/runtime)
 elseif(WINGMAN_BUILD_RUNTIME)
     message(STATUS "Compatibility build enabled: skipping runtime app")

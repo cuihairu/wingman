@@ -19,7 +19,7 @@ if(BUILD_DEBUG_TESTS)
 
     # 注册测试
     include(GoogleTest)
-    gtest_discover_tests(debug_tests)
+    gtest_discover_tests(debug_tests DISCOVERY_MODE PRE_TEST)
 
     message(STATUS "Debug tests enabled")
 endif()

@@ -147,8 +147,11 @@ public:
 
     // ========== Template ==========
 
-    // Create default profile template
+    // Create default profile template (pure: does not register)
     GameProfile createTemplate(const std::string& gameName) const;
+
+    // Create a template AND register it（供脚本 API 使用，返回 id；已存在则返回空串）
+    std::string createProfileTemplate(const std::string& gameName);
 
 private:
     GameProfileManager();

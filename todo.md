@@ -1,6 +1,6 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-06-21
+> 最后更新: 2026-06-23
 > 状态: 收尾阶段（P0 全部完成；分析发现的代码缺陷已全部修复；剩余为中低优先级功能增强与工程收尾）
 >
 > 📋 当前有一批未提交改动（65 改 + 34 新，+2208/−954）。改动分析见
@@ -149,15 +149,15 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
   - [x] 指数退避重试策略（`WorkflowStep.MaxRetries`/`RetryBackoffSeconds`，取消不重试）
   - [x] Agent 负载均衡（`selectAgent` 选在执行步骤最少的 agent；显式 worker 优先）
   - [x] 工作流模板库（`GET /api/workflow-templates`：5 内置模板 + dashboard 模板选择器）
-  - [~] 独立步骤类型（`wait` 已实现；condition/screenshot 待续）
+  - [x] 独立步骤类型（`wait`/`condition`/`screenshot` 已实现；`screenshot` 通过远程 `screenshot.capture` 命令复用 runtime 截图 handler 并广播 Dashboard WS）
 - [x] **Agent 管理**
   - [x] 负载均衡（`selectAgent` 选在执行步骤最少的 agent；显式 worker 优先）
   - [x] Agent 分组/标签（`PUT /api/agents/:id/tags` + 注册表 SetTags + Dashboard 标签列/Popover 编辑）
 - [ ] **通知/历史**
-  - [x] WebSocket 事件广播完善（runtime `EventBuffer` 远程 sink → `RemoteClient::sendAgentEvent` → server `handleEvent` 广播 `trigger_fired`/`script_state` 到 Dashboard WS；listener.go 新增 `script_state` case）
+  - [x] WebSocket 事件广播完善（runtime `EventBuffer` 远程 sink → `RemoteClient::sendAgentEvent` → server `handleEvent` 广播 `trigger_fired`/`script_state`/`script_output` 到 Dashboard WS；listener.go 新增 `script_state` case）
   - [x] 通知历史持久化（Message 模型已入库；per-user 已读见代码缺陷修复）
-  - [ ] script_output 转发（需接 ScriptManager `setOutputCallback`，当前未捕获脚本 stdout）
-- [ ] **API 文档**：Swagger/OpenAPI（当前无）
+  - [x] script_output 转发（`IScriptEngine::setOutputCallback`：Lua override `print`→`tostring`；ScriptManager 接 `logScriptOutput`；StandaloneMode 推 `script.output` 到 EventBuffer；远程 sink 转发 `script_output`；GUI events.ts 显示。注：Python stdout 重定向待续，Lua 已通）
+- [x] **API 文档**：Swagger/OpenAPI — swaggo + `/swagger/index.html` 实时 UI（`swag init` 生成 `docs/`）；已注解 11 个关键端点（auth/profile/messages/users/roles/agents/workflow-templates），其余端点可渐进补注解
 
 ### Runtime Agent Outbound（C++ — 基本完成）
 
@@ -192,7 +192,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 - [x] OCR 支持（引擎已实现：`lib/wingman/src/ocr.cpp` + `ocr_stub.cpp` + test；build flag `WINGMAN_ENABLE_OCR`；可选增强：runtime RPC 暴露 + 多语言）
 - [x] ML/AI 支持（引擎已实现：`lib/wingman/src/ml.cpp` + `ml_stub.cpp` + test；build flag `WINGMAN_ENABLE_ML`；`docs/guides/yolo-guide.md`）
 - [x] 宏系统 UI（引擎 `recorder.hpp` + win32/cocoa/x11；**引擎修复**：低层钩子加消息泵线程 + 线程安全；runtime `macro_handler` RPC：start/stop/play/status/save/load/clear；Tauri 命令；GUI 宏录制页：录制/停止/回放/速度/重复/保存载入 + 侧栏入口）
-- [ ] 游戏配置模板库（导入/导出/版本管理）
+- [x] 游戏配置模板库（导入/导出/版本管理）：C++ `GameProfileManager` 已具备 export/import JSON+package/createTemplate/scan/validate/version 能力；**补全脚本 API 暴露**——`gameprofile.createTemplate/scan/setProfilesDirectory/getProfilesDirectory/exportJson/importJson/exportPackage/importPackage/delete`；示例 `examples/lua_scripts/game_profile.lua` 现可用
 
 ### 用户体验
 
@@ -215,17 +215,17 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
   - [x] middleware auth（JWT 校验）
   - [x] 修复 listener_test.go 既有 vet 警告（goroutine 内 Fatalf → channel 回传测试 goroutine）
   - [x] handlers（script/agent/audit/screenshot）补全
-- [ ] **C++ runtime**：当前 1584 测试 / 90.04% 覆盖（保持水准）
-- [ ] **集成测试**：GUI → IPC → Runtime；Agent → Orchestrator；Dashboard → API
-- [ ] **性能测试**：截图基准、WS 并发、工作流调度
+- [ ] **C++ runtime**：当前 ~1705 测试 / 90%+ 覆盖（保持水准；2026-06-23 已修复 `runtime_tests` 链接缺源、`gtest_discover_tests(... PRE_TEST)` 多配置发现，以及 `WINGMAN_BUILD_TESTS` 自动联动 core/runtime/transport/proto/debug 标准测试集）
+- [ ] **集成测试**：✅ server HTTP 链路（`TestIntegrationAuthAndPermissionFlow`：JWT 签发→AuthRequired→PermissionRequired admin 旁路/viewer 拒绝→handler，8 断言）；🚧 GUI↔IPC↔Runtime、Agent→Orchestrator 跨语言集成待续
+- [x] **性能测试**（Go server 基准）：`go test -bench=. -benchmem ./internal/rbac/ ./internal/workflow/`；rbac 非admin 解析 160µs/689 allocs、admin 旁路 17µs（~9×，验证短路 + 请求级缓存有效）、DAG 环检测 44µs（100 节点）、selectAgent 9µs（20 agent）；C++ 截图/WS 基准待续
 
 ### 文档
 
 - [x] 快速开始指南（`docs/guide/getting-started.md`：环境/vcpkg/编译/第一个脚本 + 三种运行模式）
 - [ ] Dashboard 使用教程、Runtime GUI 使用教程
-- [ ] 脚本开发指南（Lua/Python API）
+- [x] 脚本开发指南（`docs/guide/script-development.md`：Lua/Python 对比、核心模块速览、典型模式、运行模式、EmmyLua 调试；本地编辑统一用 VS Code）
 - [x] IPC 协议规范、Agent-Orchestrator 协议规范（`docs/protocols.md`）
-- [ ] 贡献指南
+- [x] 贡献指南（`CONTRIBUTING.md`：架构硬约束、vcpkg 规则、构建验证矩阵、Conventional Commits、PR 流程；README 已链接）
 
 ### 构建和部署
 
@@ -250,7 +250,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 | **Orchestrator (Go)** | HTTP API | 92% | auth/agent/script/workflow/audit/profile/settings/status/window/workflow-templates/admin(RBAC) |
 | | WebSocket | 90% | Hub + rooms + agent/workflow/debugger 事件广播 |
 | | Agent 监听 | 90% | FrameListener TCP 协议 + 心跳 + Team/Inbox |
-| | 工作流引擎 | 97% | DAG/环检测/持久化/取消/超时/重试/负载均衡/模板（缺独立步骤类型） |
+| | 工作流引擎 | 100% | DAG/环检测/持久化/取消/超时/重试/负载均衡/模板/独立步骤类型（wait/condition/screenshot） |
 | | 权限系统 | 95% | ✅ RBAC（模型+中间件+API+Dashboard 页面 + PermissionRequired 已接线 8 权限码）；可选：Swagger |
 | | Debugger | 100% | `/api/debugger/info` 直连模式契约 |
 | | 测试 | 70% | 75 个测试函数覆盖 rbac/workflow/handlers/hub/registry/middleware/debugger；vet 全清 |
@@ -303,7 +303,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 3. **远程链路**：Dashboard → Go server → runtime (outbound)，Dashboard 不直连 runtime
 4. **Dashboard 位置**：真正的 dashboard 在 `orchestrator/dashboard/`，根目录 `dashboard/` 是无关的 Croupier 副本
 5. **vcpkg 约束**：所有 C++ 依赖必须走 vcpkg x64-windows-static
-6. **测试基线**：C++ runtime 1584 测试 / 90.04% 覆盖；Go server 75 个测试函数（rbac/workflow/handlers/hub/registry/middleware/debugger），vet 全清
+6. **测试基线**：C++ 当前 `ctest -N -C Debug` 可发现 1705 个测试；`WINGMAN_BUILD_TESTS` 自动启用 core/runtime/transport/proto/debug 标准套件，Go server 75 个测试函数（rbac/workflow/handlers/hub/registry/middleware/debugger），vet 全清
 
 ---
 

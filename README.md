@@ -16,7 +16,7 @@ C++ + Lua/Python 的高性能游戏自动化框架
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-[文档](docs/README.md) · [快速开始](docs/getting-started.md) · [API 参考](docs/api/overview.md) · [示例](docs/examples/)
+[文档](docs/README.md) · [快速开始](docs/getting-started.md) · [API 参考](docs/api/overview.md) · [示例](docs/examples/) · [贡献指南](CONTRIBUTING.md)
 
 </div>
 

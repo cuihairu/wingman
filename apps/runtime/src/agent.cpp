@@ -1,8 +1,11 @@
 #include "wingman/runtime/agent.hpp"
+#include "wingman/platform/screen_factory.hpp"
+#include "wingman/rpc/rpc_dispatcher.hpp"
 #include "wingman/window.hpp"
 #include "wingman/runtime/event_buffer.hpp"
 #include "wingman/runtime/local_ipc_server.hpp"
 #include "wingman/runtime/remote_client.hpp"
+#include "wingman/runtime/rpc/screenshot_handler.hpp"
 #include "wingman/runtime/standalone_mode.hpp"
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
@@ -49,6 +52,8 @@ public:
     std::unique_ptr<RemoteClient> remoteClient;
     std::unique_ptr<StandaloneMode> standaloneMode;
     std::unique_ptr<LocalIpcServer> localIpcServer;
+    std::unique_ptr<rpc::RpcDispatcher> remoteDispatcher;
+    std::unique_ptr<platform::IScreen> screen;
 };
 
 Agent::Agent() : impl_(std::make_unique<Impl>()) {}
@@ -196,6 +201,14 @@ const AgentConfig& Agent::getConfig() const {
 bool Agent::initRemoteClient() {
     impl_->remoteClient = std::make_unique<RemoteClient>(impl_->config.remoteClient);
 
+    impl_->remoteDispatcher = std::make_unique<rpc::RpcDispatcher>();
+    impl_->screen = platform::createPlatformScreen();
+    if (impl_->screen) {
+        rpc::registerScreenshotHandlers(*impl_->remoteDispatcher, *impl_->screen);
+    } else {
+        rpc::registerScreenshotHandlers(*impl_->remoteDispatcher);
+    }
+
     // 绑定命令回调，处理 server 下发的命令
     impl_->remoteClient->setCommandCallback([this](const std::string& command, const CommandData& data) {
         return handleRemoteCommand(command, data);
@@ -210,6 +223,8 @@ bool Agent::initRemoteClient() {
             impl_->remoteClient->sendAgentEvent("trigger_fired", payload);
         } else if (method == "script.state_changed") {
             impl_->remoteClient->sendAgentEvent("script_state", payload);
+        } else if (method == "script.output") {
+            impl_->remoteClient->sendAgentEvent("script_output", payload);
         }
         // log.line / connection.state_changed 为本地相关，不转发
     });
@@ -302,6 +317,41 @@ CommandResult Agent::handleRemoteCommand(const std::string& command, const Comma
             {"scripts", scripts}
         };
         return CommandResult::okData(status.dump());
+
+    } else if (command == "screenshot.capture") {
+        if (!impl_->remoteDispatcher) {
+            return CommandResult::error("remote dispatcher not available");
+        }
+
+        nlohmann::json params = nlohmann::json::object();
+        for (const auto& [key, value] : data) {
+            try {
+                params[key] = nlohmann::json::parse(value);
+            } catch (const std::exception&) {
+                params[key] = value;
+            }
+        }
+
+        nlohmann::json request = {
+            {"type", "call"},
+            {"id", "remote-screenshot"},
+            {"method", "screenshot.capture"},
+            {"params", params}
+        };
+
+        try {
+            auto response = nlohmann::json::parse(impl_->remoteDispatcher->dispatch(request.dump()));
+            auto payload = response.value("data", nlohmann::json::object());
+            if (payload.value("success", true) == false) {
+                return CommandResult::error(payload.value("error", "screenshot capture failed"));
+            }
+            if (payload.contains("result")) {
+                return CommandResult::okData(payload["result"].dump());
+            }
+            return CommandResult::okData(payload.dump());
+        } catch (const std::exception& e) {
+            return CommandResult::error(std::string("screenshot capture failed: ") + e.what());
+        }
 
     } else if (command == "stop_script") {
         auto scriptIdIt = data.find("script_id");

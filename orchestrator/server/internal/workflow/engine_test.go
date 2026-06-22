@@ -15,17 +15,21 @@ import (
 
 // mockConn 可配置返回结果与调用计数的假 AgentConn。
 type mockConn struct {
-	mu       sync.Mutex
-	responses []map[string]any   // 依次返回；不足时重复最后一个
-	errs     []error
-	calls    int
-	delay    time.Duration
+	mu         sync.Mutex
+	responses  []map[string]any // 依次返回；不足时重复最后一个
+	errs       []error
+	calls      int
+	delay      time.Duration
+	lastMethod string
+	lastData   map[string]any
 }
 
-func (m *mockConn) next() (map[string]any, error) {
+func (m *mockConn) next(method string, data map[string]any) (map[string]any, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.calls++
+	m.lastMethod = method
+	m.lastData = data
 	idx := m.calls - 1
 	var err error
 	if idx < len(m.errs) {
@@ -47,34 +51,39 @@ func (m *mockConn) next() (map[string]any, error) {
 }
 
 func (m *mockConn) SendCommand(method string, data map[string]any) (map[string]any, error) {
-	return m.next()
+	return m.next(method, data)
 }
 func (m *mockConn) SendCommandWithTimeout(method string, data map[string]any, timeout time.Duration) (map[string]any, error) {
-	return m.next()
+	return m.next(method, data)
 }
 func (m *mockConn) callCount() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.calls
 }
+func (m *mockConn) lastCall() (string, map[string]any) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.lastMethod, m.lastData
+}
 
-func newTestEngine(t *testing.T) (*Engine, *agent.Registry, *gorm.DB) {
-	t.Helper()
+func newTestEngine(tb testing.TB) (*Engine, *agent.Registry, *gorm.DB) {
+	tb.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
-		t.Fatalf("open db: %v", err)
+		tb.Fatalf("open db: %v", err)
 	}
 	// 强制单连接：execute() 在后台 goroutine 写 DB，主线程读；
 	// 否则 :memory: 连接池中各连接指向不同数据库，写不可见。
 	sqlDB, _ := db.DB()
 	sqlDB.SetMaxOpenConns(1)
 	if err := models.AutoMigrate(db); err != nil {
-		t.Fatalf("migrate: %v", err)
+		tb.Fatalf("migrate: %v", err)
 	}
 	hub := ws.NewHub()
 	go hub.Run()
 	reg := agent.NewRegistry(hub)
-	e := NewEngine(db, reg, hub, t.TempDir())
+	e := NewEngine(db, reg, hub, tb.TempDir())
 	return e, reg, db
 }
 
@@ -385,6 +394,25 @@ func TestValidateStepsWaitDoesNotRequireScript(t *testing.T) {
 	}
 }
 
+func TestValidateStepsConditionAndScreenshotDoNotRequireScript(t *testing.T) {
+	e, _, _ := newTestEngine(t)
+	err := e.validateSteps([]models.WorkflowStep{
+		{ID: "condition", Type: "condition", Parameters: map[string]any{"value": 3, "operator": "gt", "expected": 1}},
+		{ID: "capture", Type: "screenshot", DependsOn: []string{"condition"}},
+	})
+	if err != nil {
+		t.Errorf("condition/screenshot steps should not require scripts: %v", err)
+	}
+}
+
+func TestValidateStepsConditionRequiresValue(t *testing.T) {
+	e, _, _ := newTestEngine(t)
+	err := e.validateSteps([]models.WorkflowStep{{ID: "s", Type: "condition", Parameters: map[string]any{"operator": "gt", "expected": 1}}})
+	if err == nil {
+		t.Fatal("condition step without value/expression should be rejected")
+	}
+}
+
 // ---------- wait 步骤执行 ----------
 
 func TestExecuteWaitStepCompletes(t *testing.T) {
@@ -429,5 +457,111 @@ func TestExecuteWaitStepCancellable(t *testing.T) {
 	}
 	if ss.Status != "cancelled" {
 		t.Errorf("expected cancelled, got %s", ss.Status)
+	}
+}
+
+// ---------- condition 步骤执行 ----------
+
+func TestExecuteConditionStepCompletes(t *testing.T) {
+	e, _, db := newTestEngine(t)
+
+	wf := &models.Workflow{Name: "w", Status: "running"}
+	wf.SetSteps([]models.WorkflowStep{{
+		ID: "s1", Type: "condition",
+		Parameters: map[string]any{"value": 5, "operator": "gte", "expected": 5},
+	}})
+	db.Create(wf)
+	ss := &models.StepStatus{WorkflowID: wf.ID, StepID: "s1", Status: "pending"}
+	db.Create(ss)
+	exec := &Execution{Workflow: wf, Steps: wf.GetSteps(), StepState: map[string]*models.StepStatus{"s1": ss}}
+
+	if err := e.executeStep(context.Background(), exec, exec.Steps[0]); err != nil {
+		t.Fatalf("condition step should succeed: %v", err)
+	}
+	if ss.Status != "completed" {
+		t.Errorf("expected completed, got %s", ss.Status)
+	}
+}
+
+func TestExecuteConditionStepFailsWhenFalse(t *testing.T) {
+	e, _, db := newTestEngine(t)
+
+	wf := &models.Workflow{Name: "w", Status: "running"}
+	wf.SetSteps([]models.WorkflowStep{{
+		ID: "s1", Type: "condition",
+		Parameters: map[string]any{"value": "ready", "operator": "eq", "expected": "done"},
+	}})
+	db.Create(wf)
+	ss := &models.StepStatus{WorkflowID: wf.ID, StepID: "s1", Status: "pending"}
+	db.Create(ss)
+	exec := &Execution{Workflow: wf, Steps: wf.GetSteps(), StepState: map[string]*models.StepStatus{"s1": ss}}
+
+	if err := e.executeStep(context.Background(), exec, exec.Steps[0]); err == nil {
+		t.Fatal("condition step should fail when condition is false")
+	}
+	if ss.Status != "failed" {
+		t.Errorf("expected failed, got %s", ss.Status)
+	}
+}
+
+// ---------- screenshot 步骤执行 ----------
+
+func TestExecuteScreenshotStepCompletes(t *testing.T) {
+	e, reg, db := newTestEngine(t)
+	conn := &mockConn{responses: []map[string]any{{
+		"success": true,
+		"data": map[string]any{
+			"image":     "data:image/jpeg;base64,abc",
+			"width":     float64(100),
+			"height":    float64(80),
+			"timestamp": float64(123),
+		},
+	}}}
+	registerAgent(reg, "a1", conn)
+
+	wf := &models.Workflow{Name: "w", Status: "running"}
+	wf.SetSteps([]models.WorkflowStep{{
+		ID: "s1", Type: "screenshot", TimeoutSeconds: 5,
+		Parameters: map[string]any{"displayId": 1, "region": map[string]any{"x": 10, "y": 20, "width": 30, "height": 40}},
+	}})
+	db.Create(wf)
+	ss := &models.StepStatus{WorkflowID: wf.ID, StepID: "s1", Status: "pending"}
+	db.Create(ss)
+	exec := &Execution{Workflow: wf, Steps: wf.GetSteps(), StepState: map[string]*models.StepStatus{"s1": ss}}
+
+	if err := e.executeStep(context.Background(), exec, exec.Steps[0]); err != nil {
+		t.Fatalf("screenshot step should succeed: %v", err)
+	}
+	if ss.Status != "completed" {
+		t.Errorf("expected completed, got %s", ss.Status)
+	}
+	if ss.WorkerID != "a1" {
+		t.Errorf("expected worker a1, got %s", ss.WorkerID)
+	}
+	method, data := conn.lastCall()
+	if method != "screenshot.capture" {
+		t.Errorf("expected screenshot.capture command, got %s", method)
+	}
+	if got, ok := toFloat(data["displayId"]); !ok || got != 1 {
+		t.Errorf("expected displayId to be forwarded, got %#v", data["displayId"])
+	}
+}
+
+func TestExecuteScreenshotStepFailsWithoutImage(t *testing.T) {
+	e, reg, db := newTestEngine(t)
+	registerAgent(reg, "a1", &mockConn{responses: []map[string]any{{"success": true, "data": map[string]any{"width": 100}}}})
+
+	wf := &models.Workflow{Name: "w", Status: "running"}
+	wf.SetSteps([]models.WorkflowStep{{ID: "s1", Type: "screenshot", TimeoutSeconds: 5}})
+	db.Create(wf)
+	ss := &models.StepStatus{WorkflowID: wf.ID, StepID: "s1", Status: "pending"}
+	db.Create(ss)
+	exec := &Execution{Workflow: wf, Steps: wf.GetSteps(), StepState: map[string]*models.StepStatus{"s1": ss}}
+
+	if err := e.executeStep(context.Background(), exec, exec.Steps[0]); err == nil {
+		t.Fatal("screenshot step without image should fail")
+	}
+	if ss.Status != "failed" {
+		t.Errorf("expected failed, got %s", ss.Status)
 	}
 }

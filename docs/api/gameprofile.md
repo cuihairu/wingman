@@ -1,366 +1,160 @@
 # API: wingman.gameprofile
 
-游戏配置档案模块，用于管理游戏相关的配置信息。
+游戏配置档案模块，用于管理游戏相关的配置档案（profile）：窗口/颜色/图像/触发器/脚本，支持模板、导入导出与版本管理。
 
-## 模块概述
+底层实现为 `GameProfileManager`（单例），档案含 `version` 字段便于版本管理。
 
-gameprofile 模块提供游戏档案的管理功能：
-- **创建档案** - 创建新的游戏配置档案
-- **加载档案** - 加载已有游戏档案
-- **保存档案** - 保存游戏配置修改
-- **列出档案** - 获取所有游戏档案列表
-- **删除档案** - 删除指定游戏档案
-- **当前游戏** - 设置和获取当前游戏
+## 模块概览
+
+| 分类 | 函数 |
+|------|------|
+| 读取 | `get`、`getActive`、`list`、`findByWindow` |
+| 写入 | `load`、`save`、`setActive`、`delete` |
+| 目录 | `setProfilesDirectory`、`getProfilesDirectory`、`scan` |
+| 模板 | `createTemplate` |
+| 导入导出 | `exportJson`、`importJson`、`exportPackage`、`importPackage` |
+
+```lua
+local gameprofile = require("wingman.gameprofile")
+```
+
+```python
+from wingman import gameprofile
+```
 
 ---
 
-## 创建游戏档案
+## 目录与扫描
 
-### create(id, profile) / create(id, profile)
+### setProfilesDirectory(dir)
 
-**说明**：创建新的游戏档案。
-
-**函数签名**：
-
-```python
-create(id: str, profile: dict) -> None
-```
+设置档案扫描目录。
 
 ```lua
-create(id: string, profile: table) -> nil
+gameprofile.setProfilesDirectory("./profiles")
 ```
 
-**参数**：
-- `id` - 档案唯一标识
-- `profile` - 档案数据，通常包含：
-  - `name` / `name` - 游戏名称
-  - `executable` / `executable` - 可执行文件路径
-  - `window_title` / `window_title` - 游戏窗口标题
+### getProfilesDirectory()
 
-**返回**：
-- 无
+返回当前档案目录。
 
-:::tabs
+### scan()
 
-== Python
+扫描档案目录，加载其中所有 `profile.json`。
 
-```python:line-numbers
-from wingman import gameprofile
-
-# 创建新的游戏档案
-gameprofile.create("my_game", {
-    "name": "我的游戏",
-    "executable": "game.exe",
-    "window_title": "游戏窗口"
-})
+```lua
+gameprofile.scan()
 ```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
--- 创建新的游戏档案
-wingman.gameprofile.create("my_game", {
-    name = "我的游戏",
-    executable = "game.exe",
-    window_title = "游戏窗口"
-})
-```
-
-:::
 
 ---
 
-## 加载游戏档案
+## 模板
 
-### load(id) / load(id)
+### createTemplate(gameName) → id, name
 
-**说明**：加载游戏档案。
-
-**函数签名**：
-
-```python
-load(id: str) -> dict | None
-```
+基于游戏名创建默认模板并注册（id 由游戏名派生：小写 + 空格转下划线）。模板包含初始 `version = "1.0.0"`。已存在同名 id 时返回 `nil`。
 
 ```lua
-load(id: string) -> table | nil
+local id, name = gameprofile.createTemplate("示例游戏")
+-- id => "示例游戏" 派生（如 "example_game" 视实现），name => "示例游戏"
 ```
 
-**参数**：
-- `id` - 档案标识
+---
 
-**返回**：
-- Python: 档案数据字典，不存在返回 `None`
-- Lua: 档案数据表格，不存在返回 `nil`
+## 读取
 
-:::tabs
+### list() → {id}
 
-== Python
+返回所有已加载档案的 id 列表。
 
-```python:line-numbers
-from wingman import gameprofile
-
-# 加载游戏档案
-profile = gameprofile.load("my_game")
-if profile:
-    print(f"游戏名称: {profile['name']}")
-    print(f"可执行文件: {profile['executable']}")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
--- 加载游戏档案
-local profile = wingman.gameprofile.load("my_game")
-if profile then
-    print("游戏名称: " .. profile.name)
-    print("可执行文件: " .. profile.executable)
+```lua
+local ids = gameprofile.list()
+for _, id in ipairs(ids) do
+    print(id)
 end
 ```
 
-:::
+### get(id) → name, title?
+
+返回指定档案的名称与窗口标题；不存在返回 `nil`。
+
+### getActive() → id, name?
+
+返回当前激活档案。
+
+### findByWindow(title) → id, name?
+
+按窗口标题匹配档案。
 
 ---
 
-## 保存游戏档案
+## 写入
 
-### save(id, profile) / save(id, profile)
+### load(id) → bool
 
-**说明**：保存游戏档案。
+从目录载入指定档案。
 
-**函数签名**：
+### save(id) → bool
 
-```python
-save(id: str, profile: dict) -> None
-```
+保存指定档案到文件。
 
-```lua
-save(id: string, profile: table) -> nil
-```
+### setActive(id) → bool
 
-**参数**：
-- `id` - 档案标识
-- `profile` - 档案数据
+设置当前激活档案。
 
-**返回**：
-- 无
+### delete(id) → bool
 
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import gameprofile
-
-# 获取并修改档案
-profile = gameprofile.load("my_game")
-profile['resolution'] = {"width": 1920, "height": 1080}
-
-# 保存修改
-gameprofile.save("my_game", profile)
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
--- 获取并修改档案
-local profile = wingman.gameprofile.load("my_game")
-profile.resolution = {width = 1920, height = 1080}
-
--- 保存修改
-wingman.gameprofile.save("my_game", profile)
-```
-
-:::
+删除指定档案。
 
 ---
 
-## 列出所有档案
+## 导入 / 导出
 
-### list_all() / listAll()
+### exportJson(id) → json
 
-**说明**：列出所有游戏档案。
-
-**函数签名**：
-
-```python
-list_all() -> list[str]
-```
+导出档案为 JSON 字符串（含 `version`、`window`、`colors`、`images`、`triggers`、`scripts`、`settings` 全部字段）。
 
 ```lua
-listAll() -> table
+local json = gameprofile.exportJson(id)
+-- 可写入文件或网络传输
 ```
 
-**返回**：
-- Python: 档案 ID 列表
-- Lua: 档案 ID 数组
+### importJson(json, id?) → bool
 
-:::tabs
+从 JSON 字符串导入档案（自动校验；可选指定 id 覆盖原 id）。
 
-== Python
-
-```python:line-numbers
-from wingman import gameprofile
-
-# 列出所有游戏档案
-profiles = gameprofile.list_all()
-for profile_id in profiles:
-    profile = gameprofile.load(profile_id)
-    print(f"- {profile['name']} ({profile_id})")
+```lua
+gameprofile.importJson(jsonStr)        -- 使用 JSON 内的 id
+gameprofile.importJson(jsonStr, "my")  -- 强制 id 为 "my"
 ```
 
-== Lua
+### exportPackage(id, outputPath) → bool
 
-```lua:line-numbers
-local wingman = require("wingman")
+导出档案为独立文件包（当前实现为 JSON 文件，预留 ZIP 打包扩展）。
 
--- 列出所有游戏档案
-local profiles = wingman.gameprofile.listAll()
-for i, profile_id in ipairs(profiles) do
-    local profile = wingman.gameprofile.load(profile_id)
-    print("- " .. profile.name .. " (" .. profile_id .. ")")
+### importPackage(packagePath) → bool
+
+从文件包导入档案。
+
+---
+
+## 版本管理
+
+`GameProfile.version` 字段随档案持久化（模板默认 `1.0.0`）。导入导出时版本随 JSON 流转，可在档案内随升级递增，由脚本自行约定语义（如 `major.minor.patch`）。
+
+---
+
+## 示例
+
+完整示例见 [`examples/lua_scripts/game_profile.lua`](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts/game_profile.lua)：
+
+```lua
+gameprofile.setProfilesDirectory("./profiles")
+gameprofile.scan()
+local id = gameprofile.createTemplate("示例游戏")
+for _, pid in ipairs(gameprofile.list()) do
+    print(pid)
 end
+local json = gameprofile.exportJson(id)  -- 备份/迁移
+gameprofile.importJson(json, "restored")
 ```
-
-:::
-
----
-
-## 删除档案
-
-### delete(id) / delete(id)
-
-**说明**：删除游戏档案。
-
-**函数签名**：
-
-```python
-delete(id: str) -> None
-```
-
-```lua
-delete(id: string) -> nil
-```
-
-**参数**：
-- `id` - 档案标识
-
-**返回**：
-- 无
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import gameprofile
-
-# 删除游戏档案
-gameprofile.delete("my_game")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
--- 删除游戏档案
-wingman.gameprofile.delete("my_game")
-```
-
-:::
-
----
-
-## 设置当前游戏
-
-### set_current(id) / setCurrent(id)
-
-**说明**：设置当前游戏。
-
-**函数签名**：
-
-```python
-set_current(id: str) -> None
-```
-
-```lua
-setCurrent(id: string) -> nil
-```
-
-**参数**：
-- `id` - 档案标识
-
-**返回**：
-- 无
-
----
-
-## 获取当前游戏
-
-### get_current() / getCurrent()
-
-**说明**：获取当前游戏 ID。
-
-**函数签名**：
-
-```python
-get_current() -> str
-```
-
-```lua
-getCurrent() -> string
-```
-
-**返回**：
-- 当前游戏 ID，未设置返回空字符串
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import gameprofile
-
-# 设置当前游戏
-gameprofile.set_current("my_game")
-
-# 获取当前游戏
-current = gameprofile.get_current()
-print(f"当前游戏: {current}")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
--- 设置当前游戏
-wingman.gameprofile.setCurrent("my_game")
-
--- 获取当前游戏
-local current = wingman.gameprofile.getCurrent()
-print("当前游戏: " .. current)
-```
-
-:::
-
----
-
-## 可用接口
-
-| Python 函数 | Lua 函数 | 说明 | 参数 |
-|------------|---------|------|-----|
-| `create(id, profile)` | `create(id, profile)` | 创建档案 | id: 档案ID<br>profile: 档案数据 |
-| `load(id)` | `load(id)` | 加载档案 | id: 档案ID<br>返回: 档案数据或None/nil |
-| `save(id, profile)` | `save(id, profile)` | 保存档案 | id: 档案ID<br>profile: 档案数据 |
-| `list_all()` | `listAll()` | 列出所有档案 | 返回: 档案ID列表 |
-| `delete(id)` | `delete(id)` | 删除档案 | id: 档案ID |
-| `set_current(id)` | `setCurrent(id)` | 设置当前游戏 | id: 档案ID |
-| `get_current()` | `getCurrent()` | 获取当前游戏 | 返回: 当前游戏ID或空字符串 |

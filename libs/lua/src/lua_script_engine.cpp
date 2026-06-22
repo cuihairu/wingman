@@ -222,6 +222,29 @@ void LuaScriptEngine::disableSandbox() {
 	sandboxed_ = false;
 }
 
+void LuaScriptEngine::setOutputCallback(const std::function<void(const std::string&)>& callback) {
+	outputCallback_ = callback;
+	if (!initialized_) return;
+	// 覆盖内置 print：收集变参（制表符分隔，匹配 Lua 默认行为），转发到回调。
+	// 非 string 值用 Lua 自己的 tostring 转换，保证数字/布尔格式与原生一致。
+	lua_.set_function("print", [this](sol::variadic_args args) {
+		std::string msg;
+		for (auto it = args.cbegin(); it != args.cend(); ++it) {
+			if (!msg.empty()) msg += "\t";
+			sol::object obj(*it);
+			if (obj.get_type() == sol::type::string) {
+				msg += obj.as<std::string>();
+			} else {
+				sol::function tostring = lua_["tostring"];
+				if (tostring.valid()) {
+					msg += tostring(obj);
+				}
+			}
+		}
+		if (outputCallback_) outputCallback_(msg);
+	});
+}
+
 void LuaScriptEngine::applySandbox(const script::EngineConfig& /*config*/) {
 	// 移除危险库和函数
 	lua_["io"] = sol::lua_nil;

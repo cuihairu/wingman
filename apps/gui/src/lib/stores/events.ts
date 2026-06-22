@@ -61,6 +61,15 @@ function dispatch(event: RuntimeEvent) {
 			}
 			break;
 		}
+		case 'script.output': {
+			const id = event.payload?.id;
+			const output = event.payload?.output;
+			if (typeof output === 'string' && output.length > 0) {
+				const prefix = typeof id === 'string' && id ? `[${id}] ` : '';
+				logs.addRuntime(`${prefix}${output}`, 'info', event.timestamp);
+			}
+			break;
+		}
 		case 'connection.state_changed': {
 			const state = event.payload?.state;
 			const message = event.payload?.message;

@@ -457,6 +457,15 @@ GameProfile GameProfileManager::createTemplate(const std::string& gameName) cons
     return profile;
 }
 
+std::string GameProfileManager::createProfileTemplate(const std::string& gameName) {
+    auto profile = createTemplate(gameName);
+    if (profile.id.empty()) return "";
+    if (m_profiles.count(profile.id)) return "";  // 已存在
+    std::string id = profile.id;
+    m_profiles[profile.id] = std::move(profile);
+    return id;
+}
+
 // ========== Private Methods ==========
 
 bool GameProfileManager::parseProfileFile(const std::string& path, GameProfile& profile) {

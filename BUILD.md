@@ -69,24 +69,23 @@ build-scripts\build-runtime-msvc-ninja.bat
 ### 启用测试
 
 ```bash
-cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake -S . -B build-msvc-ninja-vcpkg -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:\Users\admin\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DWINGMAN_BUILD_TESTS=ON -DBUILD_CORE_TESTS=ON -DBUILD_TRANSPORT_TESTS=ON"
+cmake -S . -B build-tests `
+  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+  -DVCPKG_MANIFEST_FEATURES=tests `
+  -DWINGMAN_BUILD_TESTS=ON
 ```
 
 ### 运行测试
 
 ```bash
-# 核心库测试 (25 个测试)
-.\build-msvc-ninja-vcpkg\lib\wingman\tests\core_tests.exe
-
-# 传输库测试 (7 个测试)
-.\build-msvc-ninja-vcpkg\libs\transport\tests\transport_tests.exe
-
-# 协议库测试 (7 个测试)
-.\build-msvc-ninja-vcpkg\libs\proto\tests\proto_tests.exe
-
-# 调试库测试 (4 个测试)
-.\build-msvc-ninja-vcpkg\libs\debug\tests\debug_tests.exe
+cmake --build build-tests --config Debug --target core_tests runtime_tests transport_tests proto_tests debug_tests
+ctest --test-dir build-tests -C Debug --output-on-failure
 ```
+
+`WINGMAN_BUILD_TESTS=ON` 会自动启用标准 C++ 测试目标（core/runtime/transport/proto/debug）。
+如果还需要单独验证 Lua 绑定层，再额外加 `-DBUILD_LUA_TESTS=ON` 并构建 `lua_tests`。
+建议测试使用单独的 `build-tests/` 目录，避免和现有 `build/` 的生成器或配置冲突。
 
 ## 性能基准测试
 
@@ -127,8 +126,10 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxilia
 | `WINGMAN_ENABLE_ML` | OFF | 启用 ML/AI 支持 (需要 ONNX Runtime) |
 | `WINGMAN_BUILD_TESTS` | OFF | 构建测试 |
 | `WINGMAN_BUILD_BENCHMARKS` | OFF | 构建基准测试 |
+| `BUILD_CLIENT_TESTS` | OFF | 构建 runtime 测试（通常由 `WINGMAN_BUILD_TESTS` 自动启用） |
 | `BUILD_CORE_TESTS` | OFF | 构建核心库测试 |
 | `BUILD_TRANSPORT_TESTS` | OFF | 构建传输库测试 |
+| `BUILD_LUA_TESTS` | OFF | 构建 Lua 绑定层测试（默认手动开启） |
 | `BUILD_PROTO_TESTS` | OFF | 构建协议库测试 |
 | `BUILD_DEBUG_TESTS` | OFF | 构建调试库测试 |
 

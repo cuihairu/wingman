@@ -1,0 +1,248 @@
+basePath: /api
+host: localhost:9527
+info:
+  contact: {}
+  description: |-
+    Wingman 远程中控编排器 HTTP API（auth / RBAC / agent / script / workflow / messages / settings）。
+    架构约束：Dashboard 与远程客户端只连接本 server，不直连 runtime。
+  title: Wingman Orchestrator API
+  version: "1.0"
+paths:
+  /admin/permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 权限目录（resource:action）
+      tags:
+      - admin-roles
+  /admin/roles:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 角色列表
+      tags:
+      - admin-roles
+  /admin/users:
+    get:
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页条数
+        in: query
+        name: size
+        type: integer
+      - description: 角色过滤
+        in: query
+        name: role
+        type: string
+      - description: 关键字
+        in: query
+        name: keyword
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 用户列表（分页/过滤）
+      tags:
+      - admin-users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户创建
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 创建用户
+      tags:
+      - admin-users
+  /agents:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Agent 列表（状态/标签/负载）
+      tags:
+      - agents
+  /messages:
+    get:
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页条数（最大 100）
+        in: query
+        name: pageSize
+        type: integer
+      - description: read|unread|all
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 列出站内消息（per-user 已读状态）
+      tags:
+      - messages
+  /messages/unread-count:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 未读消息数（per-user）
+      tags:
+      - messages
+  /v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: 验证用户名密码，返回 JWT；登录失败按 IP 限流
+      parameters:
+      - description: 登录凭证
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 用户登录
+      tags:
+      - auth
+  /v1/profile:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取当前用户资料
+      tags:
+      - profile
+  /v1/profile/permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取当前用户权限码（resource:action 展开）
+      tags:
+      - profile
+  /workflow-templates:
+    get:
+      description: 内置模板（单步监控/并行采集/串行流水线/fan-out/带 wait 节拍）
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 工作流模板库
+      tags:
+      - workflows
+securityDefinitions:
+  BearerAuth:
+    description: '"Bearer <JWT>"（由 POST /api/v1/auth/login 获取）'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

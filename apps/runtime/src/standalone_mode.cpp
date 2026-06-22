@@ -88,6 +88,15 @@ bool StandaloneMode::start() {
         EventBuffer::instance().push("script.state_changed", std::move(payload));
     });
 
+    // 订阅脚本 print/stdout 输出，推送到 EventBuffer（GUI 日志 + 经远程 sink 转发到 Dashboard WS）。
+    getScriptManager().setOutputCallback([](const std::string& scriptId, const std::string& output) {
+        if (output.empty()) return;
+        EventBuffer::instance().push("script.output", {
+            {"id", scriptId},
+            {"output", output},
+        });
+    });
+
     for (const auto& scriptPath : impl_->config.autoStart) {
         const auto id = loadScript(scriptPath);
         if (!id.empty()) {

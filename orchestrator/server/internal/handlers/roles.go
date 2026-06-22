@@ -62,6 +62,12 @@ func toRoleDTO(r models.Role) roleDTO {
 }
 
 // HandleListRoles 角色列表（含权限）
+// @Summary      角色列表
+// @Tags         admin-roles
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Router       /admin/roles [get]
 func (h *RoleHandler) HandleListRoles(c *gin.Context) {
 	var roles []models.Role
 	if err := h.db.Preload("Permissions").Order("builtin desc, id asc").Find(&roles).Error; err != nil {
@@ -85,6 +91,12 @@ func (h *RoleHandler) HandleGetRole(c *gin.Context) {
 }
 
 // HandleListPermissions 权限目录
+// @Summary      权限目录（resource:action）
+// @Tags         admin-roles
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Router       /admin/permissions [get]
 func (h *RoleHandler) HandleListPermissions(c *gin.Context) {
 	query := h.db.Model(&models.Permission{})
 	if cat := strings.TrimSpace(c.Query("category")); cat != "" {

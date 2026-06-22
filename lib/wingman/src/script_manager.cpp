@@ -304,6 +304,11 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 				infoPtr->lastError = "failed to create engine for language: " + infoPtr->language;
 				return false;
 			}
+			// 将脚本引擎的 print/stdout 路由到 logScriptOutput（经 m_outputCallback 下发）。
+			auto scriptName = infoPtr->config.name;
+			infoPtr->engine->setOutputCallback([this, scriptName](const std::string& output) {
+				logScriptOutput(scriptName, output);
+			});
 		}
 
 		// Set environment variables

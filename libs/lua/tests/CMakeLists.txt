@@ -23,7 +23,7 @@ if(BUILD_LUA_TESTS)
 
     # 注册测试
     include(GoogleTest)
-    gtest_discover_tests(lua_tests)
+    gtest_discover_tests(lua_tests DISCOVERY_MODE PRE_TEST)
 
     message(STATUS "Lua tests enabled")
 endif()

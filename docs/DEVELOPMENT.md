@@ -144,12 +144,19 @@ local data = cjson.encode({name = "Wingman", version = "0.1.0"})
 
 ```cmd
 REM Build with tests enabled
-cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake -S . -B build-msvc-ninja-vcpkg -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:\Users\admin\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DWINGMAN_BUILD_TESTS=ON -DBUILD_CORE_TESTS=ON"
-cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake --build build-msvc-ninja-vcpkg --config Debug"
+cmake -S . -B build-tests ^
+  -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake ^
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static ^
+  -DVCPKG_MANIFEST_FEATURES=tests ^
+  -DWINGMAN_BUILD_TESTS=ON
+cmake --build build-tests --config Debug --target core_tests runtime_tests transport_tests proto_tests debug_tests
 
 REM Run tests
-.\build-msvc-ninja-vcpkg\lib\wingman\tests\core_tests.exe
+ctest --test-dir build-tests -C Debug --output-on-failure
 ```
+
+`WINGMAN_BUILD_TESTS=ON` 会自动启用标准 C++ 测试集；Lua 绑定层测试仍然按需通过 `BUILD_LUA_TESTS=ON` 单独打开。
+建议测试使用单独的 `build-tests/` 目录，避免覆盖已有的开发构建目录。
 
 ### Lua Tests
 

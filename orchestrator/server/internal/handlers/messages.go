@@ -65,6 +65,15 @@ func (h *MessageHandler) visibleQuery(userID uint, username, role string) *gorm.
 	return query.Where("recipient = ? OR recipient = ?", username, "*")
 }
 
+// @Summary      列出站内消息（per-user 已读状态）
+// @Tags         messages
+// @Produce      json
+// @Security     BearerAuth
+// @Param        page       query  int     false  "页码"                  default(1)
+// @Param        pageSize   query  int     false  "每页条数（最大 100）"   default(20)
+// @Param        status     query  string  false  "read|unread|all"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /messages [get]
 func (h *MessageHandler) HandleList(c *gin.Context) {
 	userID, username, role := middleware.GetCurrentUser(c)
 	page := parsePositiveInt(c.Query("page"), 1)
@@ -108,6 +117,12 @@ func (h *MessageHandler) HandleList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"items": items, "total": total})
 }
 
+// @Summary      未读消息数（per-user）
+// @Tags         messages
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Router       /messages/unread-count [get]
 func (h *MessageHandler) HandleUnreadCount(c *gin.Context) {
 	userID, username, role := middleware.GetCurrentUser(c)
 	query := h.visibleQuery(userID, username, role).

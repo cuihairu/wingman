@@ -4,11 +4,11 @@ import "github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 
 // WorkflowTemplate 工作流模板（预定义骨架，供 dashboard 一键创建后定制）
 type WorkflowTemplate struct {
-	ID          string                  `json:"id"`
-	Name        string                  `json:"name"`
-	Description string                  `json:"description"`
-	Category    string                  `json:"category"`
-	Steps       []models.WorkflowStep   `json:"steps"`
+	ID          string                `json:"id"`
+	Name        string                `json:"name"`
+	Description string                `json:"description"`
+	Category    string                `json:"category"`
+	Steps       []models.WorkflowStep `json:"steps"`
 }
 
 // BuiltinTemplates 内置模板目录。
@@ -72,6 +72,33 @@ func BuiltinTemplates() []WorkflowTemplate {
 				{ID: "collect", Name: "采集", Script: "collect.lua", TimeoutSeconds: 120},
 				{ID: "cooldown", Name: "冷却等待", Type: "wait", DependsOn: []string{"collect"}, TimeoutSeconds: 30},
 				{ID: "process", Name: "处理", Script: "process.lua", DependsOn: []string{"cooldown"}, TimeoutSeconds: 180},
+			},
+		},
+		{
+			ID:          "guarded-capture",
+			Name:        "条件守卫截图",
+			Description: "演示 condition + screenshot：先做前置判断，再由 agent 主动截图并广播到 Dashboard",
+			Category:    "monitor",
+			Steps: []models.WorkflowStep{
+				{
+					ID:   "guard",
+					Name: "执行条件",
+					Type: "condition",
+					Parameters: map[string]any{
+						"value":    true,
+						"operator": "truthy",
+					},
+				},
+				{
+					ID:             "capture",
+					Name:           "远程截图",
+					Type:           "screenshot",
+					DependsOn:      []string{"guard"},
+					TimeoutSeconds: 30,
+					Parameters: map[string]any{
+						"displayId": 0,
+					},
+				},
 			},
 		},
 	}

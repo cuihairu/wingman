@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"log"
 	"maps"
+	"reflect"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -463,8 +466,14 @@ func (e *Engine) validateSteps(steps []models.WorkflowStep) error {
 			steps[i].Script = scriptPath
 		case "wait":
 			// wait 步骤无需脚本；时长取自 TimeoutSeconds 或 parameters.seconds
+		case "condition":
+			if err := validateConditionStep(steps[i]); err != nil {
+				return err
+			}
+		case "screenshot":
+			// screenshot 步骤无需脚本；通过 runtime 远程命令 screenshot.capture 执行。
 		default:
-			return fmt.Errorf("step %s: unknown step type %q (supported: script, wait)", steps[i].ID, stepType)
+			return fmt.Errorf("step %s: unknown step type %q (supported: script, wait, condition, screenshot)", steps[i].ID, stepType)
 		}
 
 		// 检查依赖存在
@@ -509,6 +518,12 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 	}
 	if stepType == "wait" {
 		return e.executeWaitStep(ctx, exec, step, ss)
+	}
+	if stepType == "condition" {
+		return e.executeConditionStep(ctx, exec, step, ss)
+	}
+	if stepType == "screenshot" {
+		return e.executeScreenshotStep(ctx, exec, step, ss)
 	}
 
 	// script 步骤：选择 worker（负载均衡）
@@ -591,6 +606,22 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 	return nil
 }
 
+func validateConditionStep(step models.WorkflowStep) error {
+	if len(step.Parameters) == 0 {
+		return fmt.Errorf("step %s: condition step requires parameters", step.ID)
+	}
+	if _, ok := step.Parameters["expression"]; ok {
+		return nil
+	}
+	if _, ok := step.Parameters["value"]; ok {
+		return nil
+	}
+	if _, ok := step.Parameters["actual"]; ok {
+		return nil
+	}
+	return fmt.Errorf("step %s: condition step requires parameters.value (or actual/expression)", step.ID)
+}
+
 // runScriptOnce 向 agent 发起一次脚本执行，遵循步骤超时与工作流取消。
 func (e *Engine) runScriptOnce(ctx context.Context, conn agent.AgentConn, step models.WorkflowStep, timeout time.Duration) error {
 	done := make(chan error, 1)
@@ -657,6 +688,341 @@ func (e *Engine) executeWaitStep(ctx context.Context, exec *Execution, step mode
 	ss.Status = "completed"
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", "")
 	return nil
+}
+
+// executeConditionStep evaluates a small declarative condition without using an agent.
+// Parameters:
+//   - value or actual: left-hand value
+//   - operator/op: truthy, falsy, eq, ne, gt, gte, lt, lte, contains, not_contains
+//   - expected: right-hand value for binary operators
+//   - expression: optional bool shortcut
+func (e *Engine) executeConditionStep(ctx context.Context, exec *Execution, step models.WorkflowStep, ss *models.StepStatus) error {
+	if err := ctx.Err(); err != nil {
+		e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
+		ss.Status = "cancelled"
+		return err
+	}
+
+	ok, message, err := evaluateCondition(step.Parameters)
+	if err != nil {
+		return e.failStep(ss, exec, step, err.Error())
+	}
+	if !ok {
+		if message == "" {
+			message = "condition evaluated false"
+		}
+		return e.failStep(ss, exec, step, message)
+	}
+
+	endTime := time.Now()
+	e.db.Model(ss).Updates(map[string]any{"status": "completed", "end_time": endTime, "message": message})
+	ss.Status = "completed"
+	ss.Message = message
+	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", message)
+	return nil
+}
+
+func evaluateCondition(params map[string]any) (bool, string, error) {
+	if v, ok := params["expression"]; ok {
+		result, ok := toBool(v)
+		if !ok {
+			return false, "", fmt.Errorf("condition expression must be boolean-compatible")
+		}
+		if result {
+			return true, "condition matched", nil
+		}
+		return false, "condition expression is false", nil
+	}
+
+	actual, ok := params["value"]
+	if !ok {
+		actual = params["actual"]
+	}
+	operator := "truthy"
+	if op, ok := params["operator"].(string); ok && strings.TrimSpace(op) != "" {
+		operator = op
+	} else if op, ok := params["op"].(string); ok && strings.TrimSpace(op) != "" {
+		operator = op
+	}
+	operator = normalizeConditionOperator(operator)
+	expected, hasExpected := params["expected"]
+
+	var matched bool
+	var err error
+	switch operator {
+	case "truthy":
+		matched, ok = toBool(actual)
+		if !ok {
+			return false, "", fmt.Errorf("condition value is not boolean-compatible")
+		}
+	case "falsy":
+		matched, ok = toBool(actual)
+		if !ok {
+			return false, "", fmt.Errorf("condition value is not boolean-compatible")
+		}
+		matched = !matched
+	case "eq":
+		if !hasExpected {
+			return false, "", fmt.Errorf("condition operator eq requires expected")
+		}
+		matched = valuesEqual(actual, expected)
+	case "ne":
+		if !hasExpected {
+			return false, "", fmt.Errorf("condition operator ne requires expected")
+		}
+		matched = !valuesEqual(actual, expected)
+	case "gt", "gte", "lt", "lte":
+		if !hasExpected {
+			return false, "", fmt.Errorf("condition operator %s requires expected", operator)
+		}
+		matched, err = compareNumbers(actual, expected, operator)
+		if err != nil {
+			return false, "", err
+		}
+	case "contains", "not_contains":
+		if !hasExpected {
+			return false, "", fmt.Errorf("condition operator %s requires expected", operator)
+		}
+		matched = containsValue(actual, expected)
+		if operator == "not_contains" {
+			matched = !matched
+		}
+	default:
+		return false, "", fmt.Errorf("unknown condition operator %q", operator)
+	}
+
+	if matched {
+		return true, fmt.Sprintf("condition matched: %s", operator), nil
+	}
+	return false, fmt.Sprintf("condition failed: %s", operator), nil
+}
+
+func normalizeConditionOperator(op string) string {
+	switch strings.ToLower(strings.TrimSpace(op)) {
+	case "", "true", "truthy", "is_true":
+		return "truthy"
+	case "false", "falsy", "is_false":
+		return "falsy"
+	case "=", "==", "eq", "equals":
+		return "eq"
+	case "!=", "<>", "ne", "not_equals":
+		return "ne"
+	case ">", "gt":
+		return "gt"
+	case ">=", "gte":
+		return "gte"
+	case "<", "lt":
+		return "lt"
+	case "<=", "lte":
+		return "lte"
+	case "contains", "in":
+		return "contains"
+	case "not_contains", "not-contains", "not in", "not_in":
+		return "not_contains"
+	default:
+		return strings.ToLower(strings.TrimSpace(op))
+	}
+}
+
+func valuesEqual(a, b any) bool {
+	if af, ok := toFloat(a); ok {
+		if bf, ok := toFloat(b); ok {
+			return af == bf
+		}
+	}
+	if ab, ok := toBool(a); ok {
+		if bb, ok := toBool(b); ok {
+			return ab == bb
+		}
+	}
+	return fmt.Sprint(a) == fmt.Sprint(b)
+}
+
+func compareNumbers(actual, expected any, operator string) (bool, error) {
+	left, ok := toFloat(actual)
+	if !ok {
+		return false, fmt.Errorf("condition actual value %q is not numeric", fmt.Sprint(actual))
+	}
+	right, ok := toFloat(expected)
+	if !ok {
+		return false, fmt.Errorf("condition expected value %q is not numeric", fmt.Sprint(expected))
+	}
+	switch operator {
+	case "gt":
+		return left > right, nil
+	case "gte":
+		return left >= right, nil
+	case "lt":
+		return left < right, nil
+	case "lte":
+		return left <= right, nil
+	default:
+		return false, fmt.Errorf("unknown numeric operator %q", operator)
+	}
+}
+
+func containsValue(actual, expected any) bool {
+	if actual == nil {
+		return false
+	}
+	if s, ok := actual.(string); ok {
+		return strings.Contains(s, fmt.Sprint(expected))
+	}
+	value := reflect.ValueOf(actual)
+	if value.Kind() == reflect.Slice || value.Kind() == reflect.Array {
+		for i := 0; i < value.Len(); i++ {
+			if valuesEqual(value.Index(i).Interface(), expected) {
+				return true
+			}
+		}
+		return false
+	}
+	return strings.Contains(fmt.Sprint(actual), fmt.Sprint(expected))
+}
+
+func toBool(v any) (bool, bool) {
+	switch b := v.(type) {
+	case bool:
+		return b, true
+	case string:
+		switch strings.ToLower(strings.TrimSpace(b)) {
+		case "true", "1", "yes", "y", "on":
+			return true, true
+		case "false", "0", "no", "n", "off", "":
+			return false, true
+		}
+	case float64:
+		return b != 0, true
+	case float32:
+		return b != 0, true
+	case int:
+		return b != 0, true
+	case int64:
+		return b != 0, true
+	case json.Number:
+		f, err := b.Float64()
+		return f != 0, err == nil
+	}
+	return false, false
+}
+
+// executeScreenshotStep asks a selected agent to capture a screenshot and broadcasts
+// the returned image through the existing Dashboard screenshot event channel.
+func (e *Engine) executeScreenshotStep(ctx context.Context, exec *Execution, step models.WorkflowStep, ss *models.StepStatus) error {
+	conn, workerID, err := e.selectAgent(step.Workers)
+	if err != nil {
+		return e.failStep(ss, exec, step, err.Error())
+	}
+	e.reserveAgent(workerID)
+	defer e.releaseAgent(workerID)
+
+	timeout := time.Duration(step.TimeoutSeconds) * time.Second
+	if timeout == 0 {
+		timeout = 30 * time.Second
+	}
+
+	data := map[string]any{"timeout": int(timeout.Milliseconds())}
+	maps.Copy(data, step.Parameters)
+
+	done := make(chan map[string]any, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		resp, err := conn.SendCommandWithTimeout("screenshot.capture", data, timeout)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		done <- resp
+	}()
+
+	var resp map[string]any
+	select {
+	case <-ctx.Done():
+		e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
+		ss.Status = "cancelled"
+		return ctx.Err()
+	case <-time.After(timeout):
+		return e.failStep(ss, exec, step, fmt.Sprintf("screenshot step timed out after %v", timeout))
+	case err := <-errCh:
+		return e.failStep(ss, exec, step, err.Error())
+	case resp = <-done:
+	}
+
+	payload, err := screenshotPayload(resp)
+	if err != nil {
+		return e.failStep(ss, exec, step, err.Error())
+	}
+	payload["workflowId"] = exec.Workflow.ID
+	payload["stepId"] = step.ID
+	payload["workerId"] = workerID
+	e.hub.BroadcastEvent("screenshot", payload)
+
+	message := screenshotMessage(payload)
+	endTime := time.Now()
+	e.db.Model(ss).Updates(map[string]any{
+		"status":    "completed",
+		"end_time":  endTime,
+		"worker_id": workerID,
+		"message":   message,
+	})
+	ss.Status = "completed"
+	ss.WorkerID = workerID
+	ss.Message = message
+	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", message)
+	return nil
+}
+
+func screenshotPayload(resp map[string]any) (map[string]any, error) {
+	if resp == nil {
+		return nil, fmt.Errorf("empty screenshot response")
+	}
+	if success, ok := resp["success"].(bool); ok && !success {
+		return nil, fmt.Errorf("screenshot failed: %s", responseError(resp))
+	}
+	data, _ := resp["data"].(map[string]any)
+	if data == nil {
+		data = resp
+	}
+	if success, ok := data["success"].(bool); ok && !success {
+		return nil, fmt.Errorf("screenshot failed: %s", responseError(data))
+	}
+	image, ok := data["image"].(string)
+	if !ok || image == "" {
+		return nil, fmt.Errorf("screenshot response missing image")
+	}
+	payload := make(map[string]any, len(data))
+	maps.Copy(payload, data)
+	return payload, nil
+}
+
+func responseError(resp map[string]any) string {
+	if msg, ok := resp["error"].(string); ok && msg != "" {
+		return msg
+	}
+	if msg, ok := resp["message"].(string); ok && msg != "" {
+		return msg
+	}
+	return "unknown error"
+}
+
+func screenshotMessage(payload map[string]any) string {
+	width, _ := numberAsInt(payload["width"])
+	height, _ := numberAsInt(payload["height"])
+	if width > 0 && height > 0 {
+		return fmt.Sprintf("screenshot captured: %dx%d", width, height)
+	}
+	return "screenshot captured"
+}
+
+func numberAsInt(v any) (int, bool) {
+	if f, ok := toFloat(v); ok {
+		return int(f), true
+	}
+	if s, ok := v.(string); ok {
+		n, err := strconv.Atoi(strings.TrimSpace(s))
+		return n, err == nil
+	}
+	return 0, false
 }
 
 // toFloat 容错地把任意 JSON 数值转为 float64

@@ -18,6 +18,7 @@
 ## 默认网络配置
 
 - HTTP 监听：`127.0.0.1:9527`
+- Swagger UI（API 文档）：`http://127.0.0.1:9527/swagger/index.html`
 - WebSocket：`GET /ws`
 - Agent TCP Listener：`127.0.0.1:8888`
 
@@ -79,6 +80,9 @@ pnpm build     # 产物输出到 orchestrator/dashboard/dist
 
 ## 实际接口
 
+> 完整交互式 API 文档见 Swagger UI：`http://127.0.0.1:9527/swagger/index.html`
+> 改动 handler 注解后用 `swag init -g main.go -o docs --parseDependency --parseInternal` 重新生成。
+
 ### 认证
 
 - `POST /api/v1/auth/login`
@@ -101,6 +105,7 @@ pnpm build     # 产物输出到 orchestrator/dashboard/dist
 - `GET /api/workflows/:id`
 - `GET /api/workflows/:id/workers`
 - `GET /api/workflows/:id/steps/:stepId/status`
+- `GET /api/workflow-templates`
 - `GET /api/scripts`
 - `POST /api/scripts/content`
 - `GET /api/audit`
@@ -146,6 +151,17 @@ pnpm build     # 产物输出到 orchestrator/dashboard/dist
 - `GET /api/admin/permissions`（权限目录，支持 `category` 过滤）
 
 前端通过 `GET /api/v1/profile/permissions` 获取当前用户 `permissionIDs`（含角色码），由 dashboard `access.ts` 转为访问控制标记（`canAdmin`/`canUserManage`/`canRoleManage`）。
+
+### 工作流步骤类型
+
+`POST /api/workflows` 的 `steps[]` 当前支持：
+
+- `script`：默认类型，执行指定 `.lua` 脚本
+- `wait`：无需脚本，按 `timeoutSeconds` 或 `parameters.seconds` 等待
+- `condition`：无需脚本，按 `parameters.value/operator/expected` 做声明式判断
+- `screenshot`：无需脚本，向选定 agent 下发 `screenshot.capture` 并广播截图事件
+
+`condition` 失败会让该步骤标记为 `failed`，其下游步骤按依赖失败语义跳过。`screenshot` 需要至少一个在线 agent；若无可用 agent 或截图失败，工作流会按普通失败步骤处理。
 
 ### Debugger（直连模式）
 
