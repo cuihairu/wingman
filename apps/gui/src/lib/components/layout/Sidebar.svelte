@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { router } from '$lib/router.svelte';
+	import { logs } from '$lib/stores/logs';
 
 	const navItems = [
 		{ id: 'dashboard', label: '仪表板', icon: 'dashboard' },
@@ -10,12 +12,27 @@
 		{ id: 'macros', label: '宏录制', icon: 'macros' },
 		{ id: 'settings', label: '设置', icon: 'settings' },
 	];
+
+	async function minimizeToTray() {
+		if (!(window as any).__TAURI_INVOKE__) {
+			logs.add('开发模式下无法最小化到托盘', 'info');
+			return;
+		}
+		try {
+			await getCurrentWindow().hide();
+		} catch (error: any) {
+			logs.add(`最小化到托盘失败: ${error}`, 'error');
+		}
+	}
 </script>
 
 <aside class="sidebar">
 	<div class="sidebar-header">
-		<div class="logo">🎮</div>
-		<h1>Wingman</h1>
+		<div class="logo-mark">W</div>
+		<div class="brand-text">
+			<h1>Wingman</h1>
+			<span>Local Control</span>
+		</div>
 	</div>
 	<nav class="nav-items">
 		{#each navItems as item}
@@ -23,6 +40,8 @@
 				class="nav-item"
 				class:active={$router.current === item.id}
 				onclick={() => router.navigate(item.id)}
+				title={item.label}
+				aria-current={$router.current === item.id ? 'page' : undefined}
 			>
 				{#if item.icon === 'dashboard'}
 					<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -80,9 +99,11 @@
 		{/each}
 	</nav>
 	<div class="sidebar-footer">
-		<button class="nav-item">
+		<button class="nav-item tray-action" onclick={minimizeToTray} title="最小化到托盘">
 			<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<line x1="5" y1="12" x2="19" y2="12"></line>
+				<path d="M5 20h14"></path>
+				<path d="M12 4v10"></path>
+				<path d="m7 9 5 5 5-5"></path>
 			</svg>
 			<span>最小化到托盘</span>
 		</button>
@@ -91,15 +112,18 @@
 
 <style>
 	.sidebar {
-		width: 240px;
+		width: 248px;
+		flex-shrink: 0;
 		background: var(--bg-secondary);
 		border-right: 1px solid var(--border-color);
 		display: flex;
 		flex-direction: column;
+		min-height: 100vh;
 	}
 
 	.sidebar-header {
-		padding: 16px;
+		min-height: 64px;
+		padding: 14px 16px;
 		border-bottom: 1px solid var(--border-color);
 		display: flex;
 		align-items: center;
@@ -112,15 +136,32 @@
 		color: var(--text-primary);
 	}
 
-	.logo {
-		width: 28px;
-		height: 28px;
+	.brand-text {
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.brand-text span {
+		font-size: 11px;
+		color: var(--text-secondary);
+		letter-spacing: 0;
+	}
+
+	.logo-mark {
+		width: 32px;
+		height: 32px;
 		background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
 		border-radius: 6px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 14px;
+		color: white;
+		font-size: 15px;
+		font-weight: 700;
+		box-shadow: 0 8px 20px rgba(31, 111, 235, 0.18);
+		flex-shrink: 0;
 	}
 
 	.nav-items {
@@ -135,15 +176,17 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding: 10px 12px;
+		min-height: 40px;
+		padding: 9px 12px;
 		border-radius: 6px;
 		cursor: pointer;
 		color: var(--text-secondary);
-		font-size: 14px;
+		font-size: 13px;
 		transition: all 0.2s;
 		background: transparent;
 		width: 100%;
 		text-align: left;
+		border: 1px solid transparent;
 	}
 
 	.nav-item:hover {
@@ -154,6 +197,8 @@
 	.nav-item.active {
 		background: var(--bg-tertiary);
 		color: var(--accent-blue);
+		border-color: var(--border-color);
+		box-shadow: inset 3px 0 0 var(--accent-blue);
 	}
 
 	.icon {
@@ -168,9 +213,18 @@
 		border-top: 1px solid var(--border-color);
 	}
 
+	.tray-action {
+		color: var(--text-secondary);
+	}
+
 	@media (max-width: 768px) {
-		.sidebar { width: 60px; }
-		.sidebar-header h1, .nav-item span { display: none; }
+		.sidebar { width: 68px; }
+		.sidebar-header {
+			justify-content: center;
+			padding: 14px 10px;
+		}
+		.brand-text, .nav-item span { display: none; }
 		.nav-item { justify-content: center; }
+		.nav-item.active { box-shadow: inset 0 -3px 0 var(--accent-blue); }
 	}
 </style>

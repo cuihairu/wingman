@@ -157,6 +157,7 @@
 		flex: 1;
 		display: flex;
 		flex-direction: column;
+		min-width: 0;
 		overflow: hidden;
 	}
 
@@ -171,6 +172,7 @@
 
 	.content-area {
 		flex: 1;
+		min-width: 0;
 		overflow-y: auto;
 		padding: 24px;
 	}

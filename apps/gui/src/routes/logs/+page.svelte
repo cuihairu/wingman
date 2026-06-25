@@ -16,11 +16,18 @@
 
 	let filteredLogs = $derived($logs.filter(log => {
 		const matchesLevel = selectedLevel === 'all' || log.type === selectedLevel;
-		const matchesQuery = !query.trim()
-			|| log.message.toLowerCase().includes(query.trim().toLowerCase())
+		const keyword = query.trim().toLowerCase();
+		const matchesQuery = !keyword
+			|| log.message.toLowerCase().includes(keyword)
 			|| log.time.includes(query.trim());
 		return matchesLevel && matchesQuery;
 	}));
+
+	let counts = $derived({
+		total: $logs.length,
+		info: $logs.filter(log => log.type === 'info').length,
+		error: $logs.filter(log => log.type === 'error').length,
+	});
 
 	function exportLogs() {
 		const content = filteredLogs
@@ -35,6 +42,11 @@
 		URL.revokeObjectURL(url);
 	}
 
+	function clearFilters() {
+		query = '';
+		selectedLevel = 'all';
+	}
+
 	$effect(() => {
 		if (!autoScroll || !logContainer) return;
 		filteredLogs.length;
@@ -44,79 +56,122 @@
 	});
 </script>
 
-<div class="page-header">
-	<div>
-		<h2 class="page-title">系统日志</h2>
-		<p class="page-subtitle">查看运行日志和错误信息</p>
-	</div>
-	<div class="header-actions">
-		<button class="btn" onclick={exportLogs} disabled={filteredLogs.length === 0}>导出</button>
-		<button class="btn" onclick={() => logs.clear()}>清空</button>
-	</div>
-</div>
-
-<div class="card">
-	<div class="toolbar">
-		<div class="search-box">
-			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<circle cx="11" cy="11" r="8"></circle>
-				<path d="m21 21-4.35-4.35"></path>
-			</svg>
-			<input type="text" placeholder="搜索日志" bind:value={query} />
+<div class="logs-page">
+	<section class="page-header">
+		<div>
+			<h2 class="page-title">系统日志</h2>
+			<p class="page-subtitle">本地 GUI 与 runtime 事件流。支持按等级筛选、搜索和导出。</p>
 		</div>
-		<div class="level-filter">
-			{#each levels as level}
-				<button
-					class="filter-btn"
-					class:active={selectedLevel === level.value}
-					onclick={() => selectedLevel = level.value}
-				>
-					{level.label}
-				</button>
-			{/each}
+		<div class="header-actions">
+			<button class="btn" onclick={exportLogs} disabled={filteredLogs.length === 0}>导出</button>
+			<button class="btn" onclick={() => logs.clear()} disabled={$logs.length === 0}>清空</button>
 		</div>
-		<label class="checkbox-label">
-			<input type="checkbox" bind:checked={autoScroll} />
-			<span>自动滚动</span>
-		</label>
-	</div>
+	</section>
 
-	<div class="card-body">
-		<div class="log-container" bind:this={logContainer}>
-			{#if filteredLogs.length === 0}
-				<div class="log-entry muted"><span class="log-time">[00:00:00]</span> 暂无匹配日志</div>
-			{:else}
-				{#each filteredLogs as log}
-					<div class="log-entry">
-						<span class="log-time">{log.time}</span>
-						<span class="log-level log-{log.type}">{log.type.toUpperCase()}</span>
-						<span class="log-message">{log.message}</span>
-					</div>
+	<section class="summary-grid">
+		<div class="metric-card">
+			<span>总量</span>
+			<strong>{counts.total}</strong>
+			<small>buffered</small>
+		</div>
+		<div class="metric-card">
+			<span>信息</span>
+			<strong class="blue">{counts.info}</strong>
+			<small>info</small>
+		</div>
+		<div class="metric-card">
+			<span>错误</span>
+			<strong class="red">{counts.error}</strong>
+			<small>error</small>
+		</div>
+		<div class="metric-card">
+			<span>匹配结果</span>
+			<strong>{filteredLogs.length}</strong>
+			<small>filtered</small>
+		</div>
+	</section>
+
+	<section class="card">
+		<div class="toolbar">
+			<div class="search-box">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="11" cy="11" r="8"></circle>
+					<path d="m21 21-4.35-4.35"></path>
+				</svg>
+				<input type="text" placeholder="搜索日志内容或时间" bind:value={query} />
+			</div>
+			<div class="level-filter">
+				{#each levels as level}
+					<button
+						class:active={selectedLevel === level.value}
+						onclick={() => selectedLevel = level.value}
+					>
+						{level.label}
+					</button>
 				{/each}
-			{/if}
+			</div>
+			<label class="toggle-row">
+				<input type="checkbox" bind:checked={autoScroll} />
+				<span>自动滚动</span>
+			</label>
 		</div>
-	</div>
+
+		<div class="terminal-frame">
+			<div class="terminal-head">
+				<div class="terminal-dots">
+					<span></span><span></span><span></span>
+				</div>
+				<div class="terminal-meta">
+					<span>{filteredLogs.length} lines</span>
+					{#if query.trim() || selectedLevel !== 'all'}
+						<button class="link-btn" onclick={clearFilters}>清除筛选</button>
+					{/if}
+				</div>
+			</div>
+			<div class="log-container" bind:this={logContainer}>
+				{#if filteredLogs.length === 0}
+					<div class="empty-state">
+						<strong>{$logs.length === 0 ? '还没有日志' : '没有匹配项'}</strong>
+						<span>{$logs.length === 0 ? '运行操作后，新日志会出现在这里。' : '调整关键字或日志等级后再试。'}</span>
+					</div>
+				{:else}
+					{#each filteredLogs as log}
+						<div class="log-entry">
+							<span class="log-time">{log.time}</span>
+							<span class="log-level log-{log.type}">{log.type.toUpperCase()}</span>
+							<span class="log-message">{log.message}</span>
+						</div>
+					{/each}
+				{/if}
+			</div>
+		</div>
+	</section>
 </div>
 
 <style>
+	.logs-page {
+		display: flex;
+		flex-direction: column;
+		gap: 18px;
+	}
+
 	.page-header {
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
 		gap: 16px;
-		margin-bottom: 24px;
 	}
 
 	.page-title {
+		margin-bottom: 8px;
+		color: var(--text-primary);
 		font-size: 24px;
 		font-weight: 600;
-		color: var(--text-primary);
-		margin-bottom: 8px;
 	}
 
 	.page-subtitle {
-		font-size: 14px;
 		color: var(--text-secondary);
+		font-size: 13px;
 	}
 
 	.header-actions {
@@ -124,17 +179,50 @@
 		gap: 8px;
 	}
 
+	.summary-grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 12px;
+	}
+
+	.metric-card,
 	.card {
 		background: var(--bg-secondary);
 		border: 1px solid var(--border-color);
 		border-radius: 8px;
-		margin-bottom: 16px;
+	}
+
+	.metric-card {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		min-height: 104px;
+		padding: 14px;
+	}
+
+	.metric-card span,
+	.metric-card small {
+		color: var(--text-secondary);
+		font-size: 12px;
+	}
+
+	.metric-card strong {
+		color: var(--text-primary);
+		font-size: 28px;
+		line-height: 1;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.blue { color: var(--accent-blue) !important; }
+	.red { color: var(--accent-red) !important; }
+
+	.card {
 		overflow: hidden;
 	}
 
 	.toolbar {
 		display: grid;
-		grid-template-columns: minmax(220px, 1fr) auto auto;
+		grid-template-columns: minmax(240px, 1fr) auto auto;
 		align-items: center;
 		gap: 12px;
 		padding: 14px 16px;
@@ -164,15 +252,15 @@
 
 	.level-filter {
 		display: flex;
-		gap: 4px;
+		gap: 3px;
 		padding: 3px;
 		background: var(--bg-tertiary);
 		border: 1px solid var(--border-color);
 		border-radius: 6px;
 	}
 
-	.filter-btn {
-		min-width: 48px;
+	.level-filter button {
+		min-width: 52px;
 		min-height: 28px;
 		padding: 4px 8px;
 		border-radius: 4px;
@@ -181,13 +269,13 @@
 		font-size: 12px;
 	}
 
-	.filter-btn:hover,
-	.filter-btn.active {
-		background: var(--border-color);
+	.level-filter button:hover,
+	.level-filter button.active {
+		background: var(--surface-hover);
 		color: var(--text-primary);
 	}
 
-	.checkbox-label {
+	.toggle-row {
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
@@ -196,43 +284,57 @@
 		white-space: nowrap;
 	}
 
-	.card-body {
+	.terminal-frame {
 		padding: 16px;
 	}
 
-	.btn {
-		display: inline-flex;
+	.terminal-head {
+		display: flex;
 		align-items: center;
-		justify-content: center;
-		min-height: 34px;
-		padding: 7px 12px;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 8px 12px;
 		border: 1px solid var(--border-color);
-		border-radius: 6px;
+		border-bottom: none;
+		border-radius: 8px 8px 0 0;
 		background: var(--bg-tertiary);
-		color: var(--text-primary);
-		font-size: 12px;
-		cursor: pointer;
-		transition: all 0.2s;
 	}
 
-	.btn:hover {
+	.terminal-dots {
+		display: flex;
+		gap: 6px;
+	}
+
+	.terminal-dots span {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
 		background: var(--border-color);
 	}
 
-	.btn:disabled {
-		cursor: not-allowed;
-		opacity: 0.45;
+	.terminal-dots span:nth-child(1) { background: #ff5f57; }
+	.terminal-dots span:nth-child(2) { background: #febc2e; }
+	.terminal-dots span:nth-child(3) { background: #28c840; }
+
+	.terminal-meta {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		color: var(--text-secondary);
+		font-size: 12px;
 	}
 
 	.log-container {
-		background: var(--bg-primary);
-		border: 1px solid var(--border-color);
-		border-radius: 6px;
-		height: min(620px, calc(100vh - 250px));
+		height: min(620px, calc(100vh - 290px));
 		min-height: 360px;
 		overflow-y: auto;
 		padding: 12px;
-		font-family: Consolas, Monaco, monospace;
+		border: 1px solid var(--border-color);
+		border-radius: 0 0 8px 8px;
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0)),
+			var(--bg-primary);
+		font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 		font-size: 12px;
 	}
 
@@ -242,12 +344,7 @@
 		gap: 8px;
 		align-items: start;
 		min-height: 22px;
-		padding: 2px 0;
-	}
-
-	.log-entry.muted {
-		grid-template-columns: 90px 1fr;
-		color: var(--text-secondary);
+		padding: 3px 0;
 	}
 
 	.log-time {
@@ -269,6 +366,59 @@
 	.log-warning { color: var(--accent-yellow); }
 	.log-error { color: var(--accent-red); }
 
+	.empty-state {
+		display: grid;
+		place-items: center;
+		gap: 8px;
+		min-height: 220px;
+		padding: 24px;
+		text-align: center;
+		color: var(--text-secondary);
+	}
+
+	.empty-state strong {
+		color: var(--text-primary);
+		font-size: 14px;
+	}
+
+	.btn,
+	.link-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 34px;
+		padding: 7px 12px;
+		border: 1px solid var(--border-color);
+		border-radius: 6px;
+		background: var(--bg-tertiary);
+		color: var(--text-primary);
+		font-size: 12px;
+		transition: all 0.18s;
+	}
+
+	.btn:hover,
+	.link-btn:hover {
+		background: var(--surface-hover);
+	}
+
+	.btn:disabled {
+		cursor: not-allowed;
+		opacity: 0.45;
+	}
+
+	.link-btn {
+		min-height: 26px;
+		padding: 4px 8px;
+		background: transparent;
+		color: var(--accent-blue);
+	}
+
+	@media (max-width: 1080px) {
+		.summary-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
 	@media (max-width: 900px) {
 		.toolbar {
 			grid-template-columns: 1fr;
@@ -279,9 +429,20 @@
 		}
 	}
 
-	@media (max-width: 640px) {
+	@media (max-width: 720px) {
 		.page-header {
 			flex-direction: column;
+		}
+
+		.terminal-head {
+			align-items: flex-start;
+			flex-direction: column;
+		}
+	}
+
+	@media (max-width: 520px) {
+		.summary-grid {
+			grid-template-columns: 1fr;
 		}
 
 		.log-entry {

@@ -57,7 +57,12 @@
 			<div class="status-dot" class:connected={$connection.connected} class:error={!$connection.connected}></div>
 			<span>{$connection.connected ? '已连接' : '未连接'}</span>
 		</div>
-		<span class="version-info">{$connection.version}</span>
+		<span class="version-info" title={$connection.version}>{$connection.version}</span>
+		{#if $connection.remote}
+			<span class="remote-status remote-{$connection.remote.state}" title={$connection.remote.message}>
+				{$connection.remote.state === 'connected' ? '远程在线' : $connection.remote.state === 'reconnecting' ? '远程重连' : $connection.remote.state === 'connecting' ? '远程连接中' : $connection.remote.state === 'error' ? '远程异常' : '远程离线'}
+			</span>
+		{/if}
 		<div class="profile-selector">
 			<button class="profile-btn" onclick={() => profileOpen = !profileOpen}>
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -71,17 +76,21 @@
 			</button>
 			{#if profileOpen}
 				<div class="profile-dropdown">
-					{#each $profiles as profile}
-						<button
-							class="profile-item"
-							class:active={profile.id === $activeProfile?.id}
-							onclick={() => selectProfile(profile.id)}
-						>
-							<span class="profile-name">{profile.name}</span>
-							<span class="profile-desc">{profile.description || profile.id}</span>
-						</button>
-					{/each}
-					<div class="profile-divider"></div>
+					{#if $profiles.length === 0}
+						<div class="profile-empty">暂无配置</div>
+					{:else}
+						{#each $profiles as profile}
+							<button
+								class="profile-item"
+								class:active={profile.id === $activeProfile?.id}
+								onclick={() => selectProfile(profile.id)}
+							>
+								<span class="profile-name">{profile.name}</span>
+								<span class="profile-desc">{profile.description || profile.id}</span>
+							</button>
+						{/each}
+						<div class="profile-divider"></div>
+					{/if}
 					<button class="profile-item profile-manage" onclick={goToSettings}>
 						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 							<circle cx="12" cy="12" r="3"></circle>
@@ -95,25 +104,25 @@
 	</div>
 	<div class="top-bar-right">
 		{#if $connection.connected}
-			<button class="btn btn-success" onclick={handleStartProfile}>
+			<button class="btn btn-success top-action profile-control" onclick={handleStartProfile} title="启动当前配置">
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<polygon points="5 3 19 12 5 21 5 3"></polygon>
 				</svg>
-				启动当前配置
+				<span class="action-text">启动配置</span>
 			</button>
-			<button class="btn btn-secondary" onclick={handleStopProfile}>
+			<button class="btn btn-secondary top-action profile-control" onclick={handleStopProfile} title="停止当前配置">
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<rect x="6" y="6" width="12" height="12"></rect>
 				</svg>
-				停止当前配置
+				<span class="action-text">停止配置</span>
 			</button>
-			<button class="btn btn-danger" onclick={handleEmergencyStop}>
+			<button class="btn btn-danger top-action emergency-control" onclick={handleEmergencyStop} title="急停">
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<rect x="6" y="6" width="12" height="12"></rect>
 				</svg>
-				急停
+				<span class="action-text">急停</span>
 			</button>
-			<button class="btn btn-warning" onclick={() => connection.togglePause()}>
+			<button class="btn btn-warning top-action pause-control" onclick={() => connection.togglePause()} title={$connection.paused ? '恢复运行' : '暂停全部'}>
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					{#if $connection.paused}
 						<polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -122,7 +131,7 @@
 						<rect x="14" y="4" width="4" height="16"></rect>
 					{/if}
 				</svg>
-				{$connection.paused ? '恢复运行' : '暂停全部'}
+				<span class="action-text">{$connection.paused ? '恢复运行' : '暂停全部'}</span>
 			</button>
 		{/if}
 		<button class="btn btn-icon" title={$theme === 'dark' ? '切换到亮色' : '切换到暗色'} onclick={toggleTheme}>
@@ -156,19 +165,30 @@
 
 <style>
 	.top-bar {
-		height: 56px;
+		min-height: 60px;
 		background: var(--bg-secondary);
 		border-bottom: 1px solid var(--border-color);
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		padding: 0 20px;
+		gap: 16px;
+		flex-shrink: 0;
 	}
 
 	.top-bar-left, .top-bar-right {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: 8px;
+		min-width: 0;
+	}
+
+	.top-bar-left {
+		flex: 1 1 auto;
+	}
+
+	.top-bar-right {
+		flex: 0 0 auto;
 	}
 
 	.connection-status {
@@ -176,9 +196,12 @@
 		align-items: center;
 		gap: 8px;
 		font-size: 13px;
-		padding: 6px 12px;
+		min-height: 32px;
+		padding: 6px 10px;
 		background: var(--bg-tertiary);
-		border-radius: 20px;
+		border: 1px solid var(--border-color);
+		border-radius: 999px;
+		white-space: nowrap;
 	}
 
 	.status-dot {
@@ -198,25 +221,65 @@
 	}
 
 	.version-info {
+		min-width: 0;
+		max-width: 220px;
 		font-size: 13px;
 		color: var(--text-secondary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.remote-status {
+		display: inline-flex;
+		align-items: center;
+		min-height: 28px;
+		padding: 4px 8px;
+		border: 1px solid var(--border-color);
+		border-radius: 999px;
+		background: var(--bg-tertiary);
+		color: var(--text-secondary);
+		font-size: 12px;
+		white-space: nowrap;
+	}
+
+	.remote-connected {
+		color: var(--accent-green);
+		border-color: rgba(63, 185, 80, 0.45);
+		background: rgba(63, 185, 80, 0.08);
+	}
+
+	.remote-connecting,
+	.remote-reconnecting {
+		color: var(--accent-yellow);
+		border-color: rgba(210, 153, 34, 0.42);
+		background: rgba(210, 153, 34, 0.08);
+	}
+
+	.remote-error {
+		color: var(--accent-red);
+		border-color: rgba(248, 81, 73, 0.42);
+		background: rgba(248, 81, 73, 0.08);
 	}
 
 	.btn {
 		display: inline-flex;
 		align-items: center;
+		justify-content: center;
 		gap: 6px;
-		padding: 8px 16px;
+		min-height: 34px;
+		padding: 7px 10px;
 		border: 1px solid var(--border-color);
 		border-radius: 6px;
 		background: var(--bg-tertiary);
 		color: var(--text-primary);
-		font-size: 14px;
+		font-size: 13px;
 		cursor: pointer;
 		transition: all 0.2s;
+		white-space: nowrap;
 	}
 
-	.btn:hover { background: var(--border-color); }
+	.btn:hover { background: var(--surface-hover); }
 
 	.btn-warning {
 		background: var(--accent-yellow);
@@ -231,7 +294,7 @@
 	}
 
 	.btn-success:hover {
-		background: #2ea043;
+		background: var(--accent-green-hover);
 	}
 
 	.btn-secondary {
@@ -241,7 +304,7 @@
 	}
 
 	.btn-secondary:hover {
-		background: #1f6feb;
+		background: var(--accent-blue-hover);
 	}
 
 	.btn-danger {
@@ -251,13 +314,13 @@
 	}
 
 	.btn-danger:hover {
-		background: #da3633;
+		background: var(--accent-red-hover);
 	}
 
 	.btn-icon {
 		padding: 8px;
-		width: 36px;
-		height: 36px;
+		width: 34px;
+		height: 34px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -271,7 +334,9 @@
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		padding: 6px 12px;
+		min-height: 32px;
+		max-width: 220px;
+		padding: 6px 10px;
 		background: var(--bg-tertiary);
 		border: 1px solid var(--border-color);
 		border-radius: 6px;
@@ -281,19 +346,27 @@
 		transition: all 0.2s;
 	}
 
+	.profile-btn span {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
 	.profile-btn:hover {
-		background: var(--border-color);
+		background: var(--surface-hover);
 	}
 
 	.profile-dropdown {
 		position: absolute;
 		top: calc(100% + 4px);
 		left: 0;
-		min-width: 200px;
+		width: min(320px, calc(100vw - 32px));
+		min-width: 220px;
 		background: var(--bg-secondary);
 		border: 1px solid var(--border-color);
 		border-radius: 8px;
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+		box-shadow: 0 12px 30px var(--shadow-color);
 		z-index: 100;
 		padding: 4px;
 	}
@@ -348,5 +421,76 @@
 
 	.profile-manage:hover {
 		color: var(--text-primary);
+	}
+
+	.profile-empty {
+		padding: 10px 12px;
+		color: var(--text-secondary);
+		font-size: 12px;
+	}
+
+	@media (max-width: 1240px) {
+		.action-text {
+			display: none;
+		}
+
+		.top-action {
+			width: 34px;
+			padding: 7px;
+		}
+	}
+
+	@media (max-width: 980px) {
+		.version-info,
+		.remote-status {
+			display: none;
+		}
+	}
+
+	@media (max-width: 720px) {
+		.top-bar {
+			padding: 0 12px;
+		}
+
+		.top-bar-left {
+			gap: 6px;
+		}
+
+		.connection-status span {
+			display: none;
+		}
+
+		.connection-status {
+			padding: 6px 8px;
+		}
+
+		.profile-btn {
+			max-width: 140px;
+		}
+	}
+
+	@media (max-width: 620px) {
+		.profile-control,
+		.emergency-control,
+		.pause-control {
+			display: none;
+		}
+	}
+
+	@media (max-width: 420px) {
+		.top-bar {
+			gap: 8px;
+			padding: 0 8px;
+		}
+
+		.profile-btn {
+			max-width: 122px;
+		}
+
+		.btn-icon {
+			width: 32px;
+			height: 32px;
+			padding: 7px;
+		}
 	}
 </style>
