@@ -12,11 +12,10 @@ ModuleDescriptor createFileWatcherModule() {
 
 	// watch(path, callback) -> boolean
 	mod.functions.push_back({"watch", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		if (!args[0].isString() || !args[1].isFunction()) {
+		if (!args[0].isString() || !args[1].isCallable()) {
 			return ScriptValue::fromBool(false);
 		}
 		const std::string path = args[0].asString();
-		const auto& callback = args[1].getFunction();
 
 		// Note: FileWatcher::watch requires a native callback
 		// For Lua, we'd need to store the callback reference and invoke it from native code

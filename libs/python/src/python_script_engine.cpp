@@ -5,6 +5,8 @@
 #include <memory>
 #include <iostream>
 #include <filesystem>
+#include <mutex>
+#include <unordered_map>
 
 namespace wingman {
 namespace script {
@@ -19,6 +21,80 @@ namespace python {
 
 // 跟踪 CPython 解释器是否已初始化（全局共享，进程只初始化一次）
 static bool g_interpreterInitialized = false;
+
+namespace {
+std::mutex g_outputCallbacksMutex;
+std::unordered_map<uintptr_t, std::function<void(const std::string&)>> g_outputCallbacks;
+std::unordered_map<uintptr_t, std::string> g_stdoutBuffers;
+std::unordered_map<uintptr_t, std::string> g_stderrBuffers;
+
+void forwardCapturedOutput(uintptr_t engineId, const std::string& text) {
+	std::function<void(const std::string&)> callback;
+	{
+		std::lock_guard<std::mutex> lock(g_outputCallbacksMutex);
+		auto it = g_outputCallbacks.find(engineId);
+		if (it != g_outputCallbacks.end()) {
+			callback = it->second;
+		}
+	}
+
+	if (callback) {
+		callback(text);
+	}
+}
+
+void captureStreamWrite(uintptr_t engineId, bool stderr, const std::string& text) {
+	if (text.empty()) return;
+
+	std::vector<std::string> completedLines;
+	{
+		std::lock_guard<std::mutex> lock(g_outputCallbacksMutex);
+		auto& buffer = stderr ? g_stderrBuffers[engineId] : g_stdoutBuffers[engineId];
+		buffer += text;
+
+		size_t newlinePos = std::string::npos;
+		while ((newlinePos = buffer.find('\n')) != std::string::npos) {
+			std::string line = buffer.substr(0, newlinePos);
+			if (!line.empty() && line.back() == '\r') {
+				line.pop_back();
+			}
+			completedLines.push_back(std::move(line));
+			buffer.erase(0, newlinePos + 1);
+		}
+	}
+
+	for (const auto& line : completedLines) {
+		forwardCapturedOutput(engineId, line);
+	}
+}
+
+void flushStreamBuffer(uintptr_t engineId, bool stderr) {
+	std::string pending;
+	{
+		std::lock_guard<std::mutex> lock(g_outputCallbacksMutex);
+		auto& buffers = stderr ? g_stderrBuffers : g_stdoutBuffers;
+		auto it = buffers.find(engineId);
+		if (it != buffers.end()) {
+			pending = std::move(it->second);
+			it->second.clear();
+		}
+	}
+
+	if (!pending.empty()) {
+		if (!pending.empty() && pending.back() == '\r') {
+			pending.pop_back();
+		}
+		forwardCapturedOutput(engineId, pending);
+	}
+}
+
+void clearOutputState(uintptr_t engineId) {
+	std::lock_guard<std::mutex> lock(g_outputCallbacksMutex);
+	g_outputCallbacks.erase(engineId);
+	g_stdoutBuffers.erase(engineId);
+	g_stderrBuffers.erase(engineId);
+}
+} // anonymous namespace
 
 PythonScriptEngine::PythonScriptEngine() = default;
 
@@ -70,6 +146,9 @@ bool PythonScriptEngine::initialize(const script::EngineConfig& config) {
 		globals_["wingman"] = wingmanModule;
 
 		initialized_ = true;
+		if (outputCallback_) {
+			installOutputCapture();
+		}
 		return true;
 	} catch (const py::error_already_set& e) {
 		lastError_ = e.what();
@@ -82,11 +161,25 @@ void PythonScriptEngine::shutdown() {
 
 	try {
 		py::gil_scoped_acquire gil;
+		flushOutputCapture();
+		py::module_ sys = py::module_::import("sys");
+		if (previousStdout_ && !previousStdout_.is_none()) {
+			sys.attr("stdout") = previousStdout_;
+		}
+		if (previousStderr_ && !previousStderr_.is_none()) {
+			sys.attr("stderr") = previousStderr_;
+		}
+		stdoutProxy_ = py::object();
+		stderrProxy_ = py::object();
+		previousStdout_ = py::object();
+		previousStderr_ = py::object();
 		globals_ = py::dict();
 		mainModule_ = py::module_();
 	} catch (...) {
 		// 忽略 shutdown 时的异常
 	}
+
+	clearOutputState(reinterpret_cast<uintptr_t>(this));
 
 	// Note: Event subscriptions with Python callbacks will become invalid
 	// They will be safely skipped during event dispatch due to exception handling
@@ -116,8 +209,10 @@ bool PythonScriptEngine::executeFile(const std::string& path) {
 
 		// 在隔离的 globals 中执行
 		py::exec(code, globals_);
+		flushOutputCapture();
 		return true;
 	} catch (const py::error_already_set& e) {
+		flushOutputCapture();
 		lastError_ = e.what();
 		return false;
 	}
@@ -129,8 +224,10 @@ bool PythonScriptEngine::executeString(const std::string& code) {
 	try {
 		py::gil_scoped_acquire gil;
 		py::exec(code, globals_);
+		flushOutputCapture();
 		return true;
 	} catch (const py::error_already_set& e) {
+		flushOutputCapture();
 		lastError_ = e.what();
 		return false;
 	}
@@ -164,9 +261,11 @@ bool PythonScriptEngine::callFunction(const std::string& name,
 
 		// 调用（解包 tuple）
 		py::object pyResult = func(*pyArgs);
+		flushOutputCapture();
 		result = toScriptValue(pyResult);
 		return true;
 	} catch (const py::error_already_set& e) {
+		flushOutputCapture();
 		lastError_ = e.what();
 		return false;
 	}
@@ -267,6 +366,90 @@ void PythonScriptEngine::disableSandbox() {
 	py::gil_scoped_acquire gil;
 	globals_["__builtins__"] = py::module_::import("builtins");
 	sandboxed_ = false;
+}
+
+void PythonScriptEngine::setOutputCallback(const std::function<void(const std::string&)>& callback) {
+	if (initialized_ && !callback && outputCallback_) {
+		py::gil_scoped_acquire gil;
+		flushOutputCapture();
+		py::module_ sys = py::module_::import("sys");
+		if (previousStdout_ && !previousStdout_.is_none()) {
+			sys.attr("stdout") = previousStdout_;
+		}
+		if (previousStderr_ && !previousStderr_.is_none()) {
+			sys.attr("stderr") = previousStderr_;
+		}
+		stdoutProxy_ = py::object();
+		stderrProxy_ = py::object();
+		previousStdout_ = py::object();
+		previousStderr_ = py::object();
+	}
+
+	outputCallback_ = callback;
+	const auto engineId = reinterpret_cast<uintptr_t>(this);
+	{
+		std::lock_guard<std::mutex> lock(g_outputCallbacksMutex);
+		if (outputCallback_) {
+			g_outputCallbacks[engineId] = outputCallback_;
+		} else {
+			g_outputCallbacks.erase(engineId);
+		}
+	}
+
+	if (!initialized_) return;
+	py::gil_scoped_acquire gil;
+	if (outputCallback_) {
+		installOutputCapture();
+	}
+}
+
+void PythonScriptEngine::installOutputCapture() {
+	if (!initialized_) return;
+
+	const auto engineId = reinterpret_cast<uintptr_t>(this);
+	py::module_ types = py::module_::import("types");
+	py::module_ sys = py::module_::import("sys");
+
+	if (!previousStdout_ || previousStdout_.is_none()) {
+		previousStdout_ = sys.attr("stdout");
+	}
+	if (!previousStderr_ || previousStderr_.is_none()) {
+		previousStderr_ = sys.attr("stderr");
+	}
+
+	auto makeProxy = [&](const char* streamName, bool stderr) {
+		py::object proxy = types.attr("SimpleNamespace")();
+		proxy.attr("encoding") = py::str("utf-8");
+		proxy.attr("closed") = py::bool_(false);
+		proxy.attr("isatty") = py::cpp_function([]() { return false; });
+		proxy.attr("flush") = py::cpp_function([engineId, stderr]() {
+			flushStreamBuffer(engineId, stderr);
+		});
+		proxy.attr("write") = py::cpp_function([engineId, stderr](const py::object& data) -> py::int_ {
+			py::str textObject = py::str(data);
+			std::string text = textObject.cast<std::string>();
+			captureStreamWrite(engineId, stderr, text);
+			return py::int_(text.size());
+		});
+		proxy.attr("writelines") = py::cpp_function([engineId, stderr](const py::iterable& lines) {
+			for (const auto& line : lines) {
+				captureStreamWrite(engineId, stderr, py::str(line).cast<std::string>());
+			}
+		});
+		proxy.attr("name") = py::str(streamName);
+		return proxy;
+	};
+
+	stdoutProxy_ = makeProxy("wingman.stdout", false);
+	stderrProxy_ = makeProxy("wingman.stderr", true);
+	sys.attr("stdout") = stdoutProxy_;
+	sys.attr("stderr") = stderrProxy_;
+}
+
+void PythonScriptEngine::flushOutputCapture() {
+	const auto engineId = reinterpret_cast<uintptr_t>(this);
+	flushStreamBuffer(engineId, false);
+	flushStreamBuffer(engineId, true);
 }
 
 void PythonScriptEngine::applySandbox(const script::EngineConfig& config) {

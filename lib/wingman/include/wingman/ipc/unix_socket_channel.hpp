@@ -16,6 +16,8 @@
 
 namespace wingman::ipc {
 
+using UnixSocketHandle = int;
+
 /**
  * @brief Unix Domain Socket IPC channel
  *
@@ -53,8 +55,8 @@ private:
     std::atomic<bool> stopping_;
     std::atomic<uint64_t> nextMessageId_;
 
-    int listenFd_ = -1;
-    int dataFd_ = -1;
+    UnixSocketHandle listenFd_ = -1;
+    UnixSocketHandle dataFd_ = -1;
     bool serverAccepted_ = false;
 
     MessageCallback messageCallback_;

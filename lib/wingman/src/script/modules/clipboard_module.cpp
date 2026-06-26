@@ -82,7 +82,7 @@ ModuleDescriptor createClipboardModule() {
 			if (arg.isString()) {
 				files.push_back(arg.asString());
 			} else if (arg.isArray()) {
-				const auto& arr = arg.getArray();
+				const auto& arr = arg.arrayVal;
 				for (const auto& item : arr) {
 					if (item.isString()) {
 						files.push_back(item.asString());

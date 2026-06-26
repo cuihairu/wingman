@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include "wingman/script_manager.hpp"
 #include "wingman/lua/script_manager.hpp"
+#ifdef WINGMAN_ENABLE_PYTHON
+#include "wingman/python/python_script_engine.hpp"
+#endif
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -686,6 +689,35 @@ TEST_F(ScriptManagerFileTest, OutputCallbackReceivesMultipleOutputs) {
     EXPECT_EQ(captured[1], "s1=out2");
     EXPECT_EQ(captured[2], "s2=out3");
 }
+
+#ifdef WINGMAN_ENABLE_PYTHON
+TEST_F(ScriptManagerFileTest, PythonStdoutAndStderrRouteToOutputCallback) {
+    wingman::python::registerPythonEngine();
+
+    ScriptManager mgr;
+    std::vector<std::string> captured;
+    mgr.setOutputCallback([&](const std::string& name, const std::string& output) {
+        captured.push_back(name + ":" + output);
+    });
+
+    std::string path = createTempScript("py_output.py", R"(
+import sys
+print("hello", 42)
+sys.stdout.write("partial")
+sys.stdout.write(" line\n")
+print("no newline", end="")
+sys.stderr.write("problem\n")
+)");
+
+    ASSERT_TRUE(mgr.loadScript("py_output", path));
+    ASSERT_TRUE(mgr.runScript("py_output"));
+
+    EXPECT_NE(std::find(captured.begin(), captured.end(), "py_output:hello 42"), captured.end());
+    EXPECT_NE(std::find(captured.begin(), captured.end(), "py_output:partial line"), captured.end());
+    EXPECT_NE(std::find(captured.begin(), captured.end(), "py_output:no newline"), captured.end());
+    EXPECT_NE(std::find(captured.begin(), captured.end(), "py_output:problem"), captured.end());
+}
+#endif
 
 // ========== JSON Config Loading ==========
 

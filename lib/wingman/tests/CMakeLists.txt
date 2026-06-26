@@ -69,6 +69,11 @@ if(BUILD_CORE_TESTS)
         wingman
     )
 
+    if(TARGET wingman::python)
+        target_link_libraries(core_tests PRIVATE wingman::python)
+        target_compile_definitions(core_tests PRIVATE WINGMAN_ENABLE_PYTHON)
+    endif()
+
     # Propagate vision/OCR/ML compile definitions from parent library
     if(WINGMAN_HAS_OPENCV)
         target_compile_definitions(core_tests PRIVATE WINGMAN_ENABLE_VISION)

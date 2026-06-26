@@ -1,12 +1,23 @@
 #include "wingman/ipc/unix_socket_channel.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
+#include <cerrno>
 #include <cstring>
 #include <chrono>
+#include <thread>
 
 #if defined(__unix__) || defined(__APPLE__)
 
 namespace wingman::ipc {
+
+namespace {
+constexpr UnixSocketHandle kInvalidSocket = -1;
+constexpr int kSocketError = -1;
+
+void closeSocket(UnixSocketHandle fd) {
+    close(fd);
+}
+} // namespace
 
 UnixSocketChannel::UnixSocketChannel(bool serverMode, const std::string& socketPath)
     : serverMode_(serverMode)
@@ -37,20 +48,20 @@ bool UnixSocketChannel::connect(const std::string& endpoint) {
 }
 
 void UnixSocketChannel::disconnect() {
-    if (state_ == IpcState::Disconnected && dataFd_ == INVALID_SOCKET && listenFd_ == INVALID_SOCKET) return;
+    if (state_ == IpcState::Disconnected && dataFd_ == kInvalidSocket && listenFd_ == kInvalidSocket) return;
 
     setState(IpcState::Disconnecting);
     stopping_ = true;
 
-    if (dataFd_ != INVALID_SOCKET) {
+    if (dataFd_ != kInvalidSocket) {
         shutdown(dataFd_, SHUT_RDWR);
-        closesocket(dataFd_);
-        dataFd_ = INVALID_SOCKET;
+        closeSocket(dataFd_);
+        dataFd_ = kInvalidSocket;
     }
-    if (listenFd_ != INVALID_SOCKET) {
+    if (listenFd_ != kInvalidSocket) {
         shutdown(listenFd_, SHUT_RDWR);
-        closesocket(listenFd_);
-        listenFd_ = INVALID_SOCKET;
+        closeSocket(listenFd_);
+        listenFd_ = kInvalidSocket;
     }
 
     stopReceiving();
@@ -160,7 +171,7 @@ bool UnixSocketChannel::createServer() {
     unlink(socketPath_.c_str());
 
     listenFd_ = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (listenFd_ == INVALID_SOCKET) {
+    if (listenFd_ == kInvalidSocket) {
         spdlog::error("[UnixSocket] socket() failed: {}", strerror(errno));
         setState(IpcState::Error);
         return false;
@@ -170,18 +181,18 @@ bool UnixSocketChannel::createServer() {
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, socketPath_.c_str(), sizeof(addr.sun_path) - 1);
 
-    if (bind(listenFd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR) {
+    if (bind(listenFd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == kSocketError) {
         spdlog::error("[UnixSocket] bind() failed on {}: {}", socketPath_, strerror(errno));
-        closesocket(listenFd_);
-        listenFd_ = INVALID_SOCKET;
+        closeSocket(listenFd_);
+        listenFd_ = kInvalidSocket;
         setState(IpcState::Error);
         return false;
     }
 
-    if (listen(listenFd_, 1) == SOCKET_ERROR) {
+    if (listen(listenFd_, 1) == kSocketError) {
         spdlog::error("[UnixSocket] listen() failed: {}", strerror(errno));
-        closesocket(listenFd_);
-        listenFd_ = INVALID_SOCKET;
+        closeSocket(listenFd_);
+        listenFd_ = kInvalidSocket;
         unlink(socketPath_.c_str());
         setState(IpcState::Error);
         return false;
@@ -200,18 +211,18 @@ bool UnixSocketChannel::acceptServerClient() {
 
     // Accept one connection
     dataFd_ = accept(listenFd_, nullptr, nullptr);
-    if (dataFd_ == INVALID_SOCKET) {
+    if (dataFd_ == kInvalidSocket) {
         spdlog::error("[UnixSocket] accept() failed: {}", strerror(errno));
-        closesocket(listenFd_);
-        listenFd_ = INVALID_SOCKET;
+        closeSocket(listenFd_);
+        listenFd_ = kInvalidSocket;
         unlink(socketPath_.c_str());
         setState(IpcState::Error);
         return false;
     }
 
     // Close listen socket after accepting (single client)
-    closesocket(listenFd_);
-    listenFd_ = INVALID_SOCKET;
+    closeSocket(listenFd_);
+    listenFd_ = kInvalidSocket;
 
     serverAccepted_ = true;
     setState(IpcState::Connected);
@@ -221,7 +232,7 @@ bool UnixSocketChannel::acceptServerClient() {
 
 bool UnixSocketChannel::connectToServer() {
     dataFd_ = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (dataFd_ == INVALID_SOCKET) {
+    if (dataFd_ == kInvalidSocket) {
         spdlog::error("[UnixSocket] socket() failed: {}", strerror(errno));
         setState(IpcState::Error);
         return false;
@@ -233,7 +244,7 @@ bool UnixSocketChannel::connectToServer() {
 
     // Retry connection for up to 5 seconds
     for (int i = 0; i < 50; ++i) {
-        if (::connect(dataFd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != SOCKET_ERROR) {
+        if (::connect(dataFd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != kSocketError) {
             setState(IpcState::Connected);
             spdlog::info("[UnixSocket] Client connected to {}", socketPath_);
             return true;
@@ -242,8 +253,8 @@ bool UnixSocketChannel::connectToServer() {
     }
 
     spdlog::error("[UnixSocket] Failed to connect to {} after retries", socketPath_);
-    closesocket(dataFd_);
-    dataFd_ = INVALID_SOCKET;
+    closeSocket(dataFd_);
+    dataFd_ = kInvalidSocket;
     setState(IpcState::Error);
     return false;
 }

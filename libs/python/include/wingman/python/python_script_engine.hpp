@@ -2,6 +2,7 @@
 
 #include "wingman/script/iscript_engine.hpp"
 #include <pybind11/pybind11.h>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -38,6 +39,7 @@ public:
 
 	void enableSandbox(const script::EngineConfig& config) override;
 	void disableSandbox() override;
+	void setOutputCallback(const std::function<void(const std::string&)>& callback) override;
 
 	// Python 特有访问
 	py::module_& mainModule() { return mainModule_; }
@@ -51,8 +53,15 @@ private:
 
 	// 是否由本实例初始化 CPython（第一个引擎负责初始化和终止）
 	bool ownsInterpreter_ = false;
+	std::function<void(const std::string&)> outputCallback_;
+	py::object stdoutProxy_;
+	py::object stderrProxy_;
+	py::object previousStdout_;
+	py::object previousStderr_;
 
 	void applySandbox(const script::EngineConfig& config);
+	void installOutputCapture();
+	void flushOutputCapture();
 };
 
 // 自注册到 ScriptEngineFactory

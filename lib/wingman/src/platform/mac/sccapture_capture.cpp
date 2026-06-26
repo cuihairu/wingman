@@ -5,35 +5,46 @@
 #ifdef __APPLE__
 #include <CoreGraphics/CoreGraphics.h>
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
-#import <Foundation/Foundation.h>
 
 #include <vector>
 
 namespace wingman::platform::mac {
 
-/**
- * @brief macOS ScreenCaptureKit implementation
- *
- * Uses ScreenCaptureKit framework for screen capture (macOS 12.3+).
- * Pros: High performance, window capture support, cursor support
- * Cons: Only supports macOS 12.3+
- */
+namespace {
+
+bool isValidMonitorIndex(int monitorIndex, CGDisplayCount displayCount) {
+    return monitorIndex >= 0 &&
+           static_cast<CGDisplayCount>(monitorIndex) < displayCount;
+}
+
+std::vector<CGDirectDisplayID> getDisplays() {
+    CGDisplayCount displayCount = 0;
+    CGGetOnlineDisplayList(0, nullptr, &displayCount);
+
+    std::vector<CGDirectDisplayID> displays(displayCount);
+    if (displayCount > 0) {
+        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
+        displays.resize(displayCount);
+    }
+    return displays;
+}
+
+} // namespace
+
 class SCCapture : public ICapture {
 public:
     SCCapture() = default;
-    ~SCCapture() override {
-        shutdown();
-    }
+    ~SCCapture() override { shutdown(); }
 
     bool initialize(const CaptureConfig& config) override {
         if (@available(macOS 12.3, *)) {
             config_ = config;
             initialized_ = true;
             return true;
-        } else {
-            spdlog::warn("[SCCapture] ScreenCaptureKit requires macOS 12.3+");
-            return false;
         }
+
+        spdlog::warn("[SCCapture] ScreenCaptureKit requires macOS 12.3+");
+        return false;
     }
 
     void shutdown() override {
@@ -45,101 +56,44 @@ public:
             return nullptr;
         }
 
-        Rect bounds = getMonitorBounds(monitorIndex);
-        return captureRegion(bounds);
+        return captureRegion(getMonitorBounds(monitorIndex));
     }
 
     std::unique_ptr<Bitmap> captureRegion(const Rect& region) override {
-        if (!initialized_) {
+        if (!initialized_ || region.isEmpty()) {
             return nullptr;
         }
 
-        if (@available(macOS 12.3, *)) {
-            CGDisplayCount displayCount;
-            CGGetOnlineDisplayList(&displayCount, nullptr);
-
-            if (displayCount == 0) {
-                return nullptr;
-            }
-
-            // Get main display
-            CGDirectDisplayID displayID;
-            CGGetActiveDisplayList(1, &displayID, &displayCount);
-
-            // Capture using CGDisplayCreateImage
-            CGImageRef cgImage = CGDisplayCreateImage(displayID);
-            if (!cgImage) {
-                return nullptr;
-            }
-
-            auto bitmap = cgImageToBitmap(cgImage, region);
-            CGImageRelease(cgImage);
-
-            return bitmap;
-        }
-
-        return nullptr;
+        // Reuse the stable macOS screen fallback already wired through Screen::capture.
+        return Screen::capture(wingman::Rect(region.x, region.y, region.width, region.height));
     }
 
-    std::unique_ptr<Bitmap> captureRegion(int monitorIndex, const Rect& region) override {
+    std::unique_ptr<Bitmap> captureRegion(int /*monitorIndex*/, const Rect& region) override {
         return captureRegion(region);
     }
 
-    std::unique_ptr<Bitmap> captureWindow(WindowHandle hwnd) override {
-        if (!initialized_) {
-            return nullptr;
-        }
-
-        if (@available(macOS 12.3, *)) {
-            // WindowHandle is CGWindowID on macOS
-            CGWindowID windowID = reinterpret_cast<CGWindowID>(hwnd);
-
-            CFArrayRef windows = CFArrayCreate(nullptr, (const void**)&windowID, 1, nullptr);
-            CGImageRef cgImage = CGWindowListCreateImageFromArray(
-                CGRectInfinite,
-                windows,
-                kCGWindowImageDefault
-            );
-            CFRelease(windows);
-
-            if (!cgImage) {
-                return nullptr;
-            }
-
-            auto bitmap = cgImageToBitmap(cgImage, {});
-            CGImageRelease(cgImage);
-
-            return bitmap;
-        }
-
+    std::unique_ptr<Bitmap> captureWindow(WindowHandle /*hwnd*/) override {
+        // ScreenCaptureKit window capture is not wired into the current ICapture surface yet.
         return nullptr;
     }
 
-    std::unique_ptr<Bitmap> captureWindowByTitle(const std::string& title) override {
-        // Need to depend on IWindow interface to find window
+    std::unique_ptr<Bitmap> captureWindowRegion(WindowHandle /*hwnd*/, const Rect& /*region*/) override {
         return nullptr;
     }
 
     int getMonitorCount() override {
-        uint32_t count;
+        CGDisplayCount count = 0;
         CGGetOnlineDisplayList(0, nullptr, &count);
         return static_cast<int>(count);
     }
 
     Rect getMonitorBounds(int monitorIndex) override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
+        const auto displays = getDisplays();
+        if (!isValidMonitorIndex(monitorIndex, static_cast<CGDisplayCount>(displays.size()))) {
             return Rect{};
         }
 
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        CGDirectDisplayID displayID = displays[monitorIndex];
-        CGRect rect = CGDisplayBounds(displayID);
-
+        const CGRect rect = CGDisplayBounds(displays[static_cast<size_t>(monitorIndex)]);
         return Rect{
             static_cast<int>(rect.origin.x),
             static_cast<int>(rect.origin.y),
@@ -149,126 +103,7 @@ public:
     }
 
     std::string getMonitorName(int monitorIndex) override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
-            return "";
-        }
-
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        CFStringRef name = CGDisplayLocalizedName(displays[monitorIndex]);
-        if (name) {
-            char buffer[256];
-            CFStringGetCString(name, buffer, sizeof(buffer), kCFStringEncodingUTF8);
-            CFRelease(name);
-            return std::string(buffer);
-        }
-
         return "Display " + std::to_string(monitorIndex);
-    }
-
-    int getPrimaryMonitorIndex() override {
-        CGDirectDisplayID mainDisplay = CGMainDisplayID();
-
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        for (int i = 0; i < displayCount; ++i) {
-            if (displays[i] == mainDisplay) {
-                return i;
-            }
-        }
-
-        return 0;
-    }
-
-    double getDpiScale(int monitorIndex) override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
-            return 1.0;
-        }
-
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        CGDirectDisplayID displayID = displays[monitorIndex];
-        CGSize size = CGDisplayScreenSize(displayID);
-        CGRect rect = CGDisplayBounds(displayID);
-
-        // Calculate DPI (assuming 1 inch = 25.4 mm)
-        double dpiX = (rect.size.width / size.width) * 25.4;
-        return dpiX / 96.0;
-    }
-
-    std::vector<DisplayMode> getSupportedDisplayModes(int monitorIndex) override {
-        std::vector<DisplayMode> modes;
-
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
-            return modes;
-        }
-
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        CGDirectDisplayID displayID = displays[monitorIndex];
-        CFArrayRef modes = CGDisplayCopyAllDisplayModes(displayID, nullptr);
-
-        if (modes) {
-            CFIndex count = CFArrayGetCount(modes);
-            for (CFIndex i = 0; i < count; ++i) {
-                CGDisplayModeRef mode = (CGDisplayModeRef)CFArrayGetValueAtIndex(modes, i);
-
-                DisplayMode dm{
-                    static_cast<int>(CGDisplayModeGetWidth(mode)),
-                    static_cast<int>(CGDisplayModeGetHeight(mode)),
-                    static_cast<int>(CGDisplayModeGetRefreshRate(mode)),
-                    32  // macOS is typically 32-bit
-                };
-                modes.push_back(dm);
-            }
-            CFRelease(modes);
-        }
-
-        return modes;
-    }
-
-    std::optional<DisplayMode> getCurrentDisplayMode(int monitorIndex) override {
-        CGDisplayCount displayCount;
-        CGGetOnlineDisplayList(0, nullptr, &displayCount);
-
-        if (monitorIndex >= displayCount) {
-            return std::nullopt;
-        }
-
-        std::vector<CGDirectDisplayID> displays(displayCount);
-        CGGetOnlineDisplayList(displayCount, displays.data(), &displayCount);
-
-        CGDirectDisplayID displayID = displays[monitorIndex];
-        CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayID);
-
-        if (mode) {
-            DisplayMode dm{
-                static_cast<int>(CGDisplayModeGetWidth(mode)),
-                static_cast<int>(CGDisplayModeGetHeight(mode)),
-                static_cast<int>(CGDisplayModeGetRefreshRate(mode)),
-                32
-            };
-            CGDisplayModeRelease(mode);
-            return dm;
-        }
-
-        return std::nullopt;
     }
 
     bool isAvailable() const override {
@@ -284,81 +119,15 @@ public:
             "ScreenCaptureKit",
             "1.0",
             initialized_,
-            "macOS ScreenCaptureKit Framework (High Performance)"
+            "macOS ScreenCaptureKit placeholder backed by Screen::capture for region grabs"
         };
     }
 
-    bool supportsWindowCapture() const override {
-        return true;
-    }
-
-    bool supportsCursorCapture() const override {
-        return true;
-    }
-
-    CaptureConfig getConfig() const override {
-        return config_;
-    }
-
-    bool updateConfig(const CaptureConfig& config) override {
-        config_ = config;
-        return true;
-    }
-
 private:
-    CaptureConfig config_;
+    CaptureConfig config_{};
     bool initialized_ = false;
-
-    static std::unique_ptr<Bitmap> cgImageToBitmap(CGImageRef cgImage, const Rect& region) {
-        if (!cgImage) {
-            return nullptr;
-        }
-
-        size_t width = CGImageGetWidth(cgImage);
-        size_t height = CGImageGetHeight(cgImage);
-
-        Rect cropRegion = region.isEmpty() ?
-            Rect{0, 0, static_cast<int>(width), static_cast<int>(height)} :
-            region;
-
-        // Limit crop region
-        cropRegion.x = std::max(0, std::min(cropRegion.x, static_cast<int>(width) - 1));
-        cropRegion.y = std::max(0, std::min(cropRegion.y, static_cast<int>(height) - 1));
-        cropRegion.width = std::min(cropRegion.width, static_cast<int>(width) - cropRegion.x);
-        cropRegion.height = std::min(cropRegion.height, static_cast<int>(height) - cropRegion.y);
-
-        auto bitmap = std::make_unique<Bitmap>(cropRegion.width, cropRegion.height);
-
-        // Create bitmap context
-        CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-        CGContextRef context = CGBitmapContextCreate(
-            bitmap->getData(),
-            cropRegion.width,
-            cropRegion.height,
-            8,
-            cropRegion.width * 4,
-            colorSpace,
-            kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host
-        );
-
-        if (context) {
-            // Draw image
-            CGRect drawRect = CGRectMake(
-                -cropRegion.x,
-                -cropRegion.y,
-                width,
-                height
-            );
-
-            CGContextDrawImage(context, drawRect, cgImage);
-            CGContextRelease(context);
-        }
-
-        CGColorSpaceRelease(colorSpace);
-
-        return bitmap;
-    }
 };
 
 } // namespace wingman::platform::mac
+
 #endif // __APPLE__

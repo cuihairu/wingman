@@ -293,6 +293,7 @@ TEST(TriggerActionDataTest, FieldAssignment) {
     EXPECT_EQ(data.delay, 50);
 }
 
+#ifdef _WIN32
 TEST(TriggerConditionTest, AllFields) {
     TriggerCondition cond;
     cond.type = TriggerConditionType::COLOR_FOUND;
@@ -330,6 +331,7 @@ TEST(TriggerActionTypeTest, AllEnumValues) {
     EXPECT_EQ(static_cast<int>(TriggerActionType::STOP), 5);
     EXPECT_EQ(static_cast<int>(TriggerActionType::LOG), 6);
 }
+#endif
 
 // ========== PerformanceConfig Extended ==========
 

@@ -11,6 +11,7 @@
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
+#include <sstream>
 
 namespace wingman {
 
