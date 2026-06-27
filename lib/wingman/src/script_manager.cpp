@@ -800,7 +800,15 @@ uint64_t ScriptManager::getFileModifiedTime(const std::string& path) {
 #else
 	struct stat st;
 	if (stat(path.c_str(), &st) == 0) {
-		return static_cast<uint64_t>(st.st_mtime) * 1000;
+#if defined(__APPLE__)
+		return static_cast<uint64_t>(st.st_mtimespec.tv_sec) * 1000000000ULL +
+		       static_cast<uint64_t>(st.st_mtimespec.tv_nsec);
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+		return static_cast<uint64_t>(st.st_mtim.tv_sec) * 1000000000ULL +
+		       static_cast<uint64_t>(st.st_mtim.tv_nsec);
+#else
+		return static_cast<uint64_t>(st.st_mtime) * 1000000000ULL;
+#endif
 	}
 #endif
 	return 0;

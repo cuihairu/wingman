@@ -104,8 +104,7 @@ void EventHub::emit(const std::string& type,
         return;
     }
 
-    std::vector<Subscription> subscribers;
-    std::vector<uint64_t> onceIds;
+    std::vector<std::pair<uint64_t, Subscription>> subscribers;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = subscriptions_.find(type);
@@ -113,13 +112,8 @@ void EventHub::emit(const std::string& type,
             return;
         }
         for (const auto& [id, sub] : it->second) {
-            subscribers.push_back(sub);
-            if (sub.once) {
-                onceIds.push_back(id);
-            }
+            subscribers.emplace_back(id, sub);
         }
-        // Note: once subscriptions will be removed after successful callbacks
-        // This ensures "successfully handled once" semantics
     }
 
     EventMessage msg;
@@ -133,13 +127,13 @@ void EventHub::emit(const std::string& type,
             std::chrono::system_clock::now().time_since_epoch()).count());
 
     std::vector<uint64_t> successfulOnceIds;
-    for (const auto& sub : subscribers) {
+    for (const auto& [id, sub] : subscribers) {
         if (sub.handler) {
             try {
                 sub.handler(msg);
                 // Only remove once subscription if callback succeeded
                 if (sub.once) {
-                    successfulOnceIds.push_back(onceIds[&sub - &subscribers[0]]);
+                    successfulOnceIds.push_back(id);
                 }
             } catch (const std::exception& e) {
                 spdlog::error("[EventHub] Handler exception for event '{}': {}", type, e.what());

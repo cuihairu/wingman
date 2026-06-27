@@ -302,21 +302,25 @@ ModuleDescriptor createNodeModule() {
 		return ScriptValue::null();
 	}, "heartbeat:{...} -> nil"});
 
-#ifdef _WIN32
 	mod.functions.push_back({"getWindows", [](const std::vector<ScriptValue>&) -> ScriptValue {
 		auto windows = Window::enumerate();
 		std::vector<ScriptValue> arr;
 		for (const auto& w : windows) {
 			arr.push_back(ScriptValue::fromObject({
 				{"title", ScriptValue::fromString(w.title)},
-				{"handle", ScriptValue::fromInt(reinterpret_cast<int64_t>(w.handle))},
+				{"handle", ScriptValue::fromInt(
+#ifdef _WIN32
+					reinterpret_cast<int64_t>(w.handle)
+#else
+					static_cast<int64_t>(w.handle)
+#endif
+				)},
 				{"isForeground", ScriptValue::fromBool(w.isForeground)},
 				{"bounds", fromRect(w.bounds)}
 			}));
 		}
 		return ScriptValue::fromArray(std::move(arr));
 	}, "() -> {{title,handle,isForeground,bounds}}"});
-#endif
 
 	return mod;
 }

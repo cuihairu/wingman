@@ -173,8 +173,64 @@ std::unique_ptr<Bitmap> Bitmap::fromFile(const std::string& filepath) {
     gdiBmp->UnlockBits(&bmpData);
     delete gdiBmp;
     return bitmap;
+#elif defined(__APPLE__)
+    CFURLRef url = CFURLCreateFromFileSystemRepresentation(
+        kCFAllocatorDefault,
+        reinterpret_cast<const UInt8*>(filepath.c_str()),
+        static_cast<CFIndex>(filepath.size()),
+        false
+    );
+    if (!url) {
+        return nullptr;
+    }
+
+    CGImageSourceRef source = CGImageSourceCreateWithURL(url, nullptr);
+    CFRelease(url);
+    if (!source) {
+        return nullptr;
+    }
+
+    CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, nullptr);
+    CFRelease(source);
+    if (!image) {
+        return nullptr;
+    }
+
+    const int width = static_cast<int>(CGImageGetWidth(image));
+    const int height = static_cast<int>(CGImageGetHeight(image));
+    if (width <= 0 || height <= 0) {
+        CGImageRelease(image);
+        return nullptr;
+    }
+
+    auto bitmap = std::make_unique<Bitmap>(width, height);
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    if (!colorSpace) {
+        CGImageRelease(image);
+        return nullptr;
+    }
+
+    CGContextRef context = CGBitmapContextCreate(
+        bitmap->getData(),
+        static_cast<size_t>(width),
+        static_cast<size_t>(height),
+        8,
+        static_cast<size_t>(width * 4),
+        colorSpace,
+        static_cast<CGBitmapInfo>(kCGImageAlphaPremultipliedFirst) | kCGBitmapByteOrder32Little
+    );
+    CGColorSpaceRelease(colorSpace);
+
+    if (!context) {
+        CGImageRelease(image);
+        return nullptr;
+    }
+
+    CGContextDrawImage(context, CGRectMake(0, 0, width, height), image);
+    CGContextRelease(context);
+    CGImageRelease(image);
+    return bitmap;
 #else
-    // Non-Windows: use stb_image if available, otherwise return nullptr
     return nullptr;
 #endif
 }
