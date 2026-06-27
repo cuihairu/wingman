@@ -1,0 +1,8 @@
+packages:
+  - '.'
+
+# pnpm v10+ 默认不运行依赖的构建脚本(postinstall 等)，未被显式批准的包会触发
+# ERR_PNPM_IGNORED_BUILDS，导致 CI 的 `pnpm install --frozen-lockfile` 失败。
+# esbuild 需要运行构建脚本以安装原生二进制。
+onlyBuiltDependencies:
+  - esbuild
