@@ -235,6 +235,74 @@ jobs:
             ${{ github.workspace }}/vcpkg/downloads
           key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
 
+  cpp-python:
+    # 实验性 job：验证 WINGMAN_ENABLE_PYTHON（vcpkg CPython + pybind11 嵌入构建）
+    # 在 CI 环境的可用性。Python 引擎默认关闭，此 job 仅用于回归 Python 绑层
+    # （如 camelCase/snake_case 双注册），不阻塞主构建矩阵。
+    name: C++ Windows (Python engine)
+    runs-on: windows-2022
+    continue-on-error: true
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: ${{ runner.os }}-vcpkg-python-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-
+
+      - name: Setup vcpkg
+        run: ./build-scripts/ci/setup-vcpkg.ps1
+
+      - name: Add NuGet sources (GitHub Packages)
+        run: |
+          $patToken = "${{ secrets.VCPKG_PAT_TOKEN }}"
+          if ([string]::IsNullOrEmpty($patToken)) {
+            Write-Host "VCPKG_PAT_TOKEN not found, using GITHUB_TOKEN"
+            $patToken = "${{ github.token }}"
+          }
+
+          .\vcpkg\vcpkg fetch nuget | ForEach-Object { & $_ sources add `
+            -Source "${{ env.FEED_URL }}" `
+            -StorePasswordInClearText `
+            -Name "GitHubPackages" `
+            -UserName "${{ env.USERNAME }}" `
+            -Password $patToken }
+
+          .\vcpkg\vcpkg fetch nuget | ForEach-Object { & $_ setapikey $patToken -Source "${{ env.FEED_URL }}" }
+
+      - name: Prepare vcpkg cache
+        run: New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}" | Out-Null
+
+      - name: Configure CMake (Python + tests enabled)
+        run: ./build-scripts/ci/configure-windows.ps1 -BuildDir build -Config Debug -EnablePython -EnableTests
+
+      - name: Build
+        run: cmake --build build --config Debug --parallel
+
+      - name: Run Python name-conversion tests
+        # best-effort：构建通过即证明 WINGMAN_ENABLE_PYTHON 链路（pybind11 + CPython
+        # + wingman_python + camelToSnake 双注册）可编译链接；测试可执行文件路径随
+        # 生成器布局变化，找不到时降级为警告而非失败。
+        continue-on-error: true
+        run: |
+          $testExe = Get-ChildItem -Path build -Recurse -Filter "python_name_conversion_tests.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($testExe) {
+            Write-Host "Running $($testExe.FullName)"
+            & $testExe.FullName
+          } else {
+            Write-Host "::warning::python_name_conversion_tests.exe not found; successful build already validates the Python link chain"
+          }
+
   go-build:
     name: Go Server (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

@@ -272,7 +272,7 @@ wingman.debugger.breakHere()
 - 方法使用蛇形命名: `screen.capture()`
 - 常量使用全大写: `KEY_CTRL`
 
-> ⚠️ **注意**：当前 Python 绑层未做 snake_case 转换，Python 调用须使用代码注册名（如 `getForeground` 而非 `get_foreground`），snake_case 支持规划中。
+> ✅ **命名约定**：Python 绑层对每个模块函数同时注册 camelCase（与 Lua 一致）与 snake_case（PEP 8 风格）两种形式，例如 `get_foreground()` 与 `getForeground()` 等价可用。推荐脚本使用 snake_case，camelCase 保留以兼容历史脚本。
 
 ## 类型转换
 

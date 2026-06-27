@@ -1,6 +1,6 @@
 # API 参考
 
-Wingman 提供 Python 和 Lua 两种脚本语言的 SDK，支持完整的游戏自动化功能。
+Wingman 的脚本 SDK 以 **Lua** 为一等公民（默认启用，随主构建与 CI 测试），并提供 **Python** 作为可选后端（嵌入式 CPython + pybind11，默认关闭，需通过 `WINGMAN_ENABLE_PYTHON=ON` 显式启用）。两者共享同一套模块功能与 `IScriptEngine` 抽象。
 
 ## 为什么支持两种语言
 
