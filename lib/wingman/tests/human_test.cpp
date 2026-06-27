@@ -495,3 +495,10 @@ TEST(HumanMouseTest, MoveFromToSamePointDoesNotCrash) {
     // 起点与终点相同：应早退仅定位，不崩溃
     EXPECT_NO_THROW(mouse.moveTo(Point(50, 50), Point(50, 50), 200));
 }
+
+// ========== Plan 5: middleClick ==========
+
+TEST(HumanMouseTest, MiddleClickDoesNotCrash) {
+    HumanMouse mouse;
+    EXPECT_NO_THROW(mouse.middleClick(100, 100));
+}

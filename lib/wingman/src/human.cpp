@@ -320,6 +320,20 @@ void HumanMouse::rightClick(int x, int y) {
     spdlog::debug("HumanMouse: right-clicked at ({}, {})", x, y);
 }
 
+void HumanMouse::middleClick(int x, int y) {
+    // Move to target position
+    moveTo(x, y);
+
+    // Random delay before click
+    randomDelay(config_.clickDelayMin, config_.clickDelayMax);
+
+    // Middle click
+    getInput().mouseMove(x, y);
+    getInput().mouseClick(platform::MouseButton::Middle);
+
+    spdlog::debug("HumanMouse: middle-clicked at ({}, {})", x, y);
+}
+
 void HumanMouse::doubleClick(int x, int y) {
     // Move to target position
     moveTo(x, y);

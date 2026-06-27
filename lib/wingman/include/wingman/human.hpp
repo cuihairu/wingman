@@ -66,6 +66,7 @@ public:
     void click(int x, int y);
     void click(const Point& pos);
     void rightClick(int x, int y);
+    void middleClick(int x, int y);  // Plan 5: 中键点击
     void doubleClick(int x, int y);
 
     // Drag
