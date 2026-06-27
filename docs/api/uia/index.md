@@ -1,6 +1,9 @@
 # API: wingman.uia
 
-UI Automation 模块，用于与 Windows 应用程序的 UI 控件进行自动化交互。
+UI Automation 模块，用于与 UI 控件进行自动化交互。
+
+> ✅ **已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`）+ 专用查找（`find_button`/`find_edit`/`find_text`）+ UIElement 对象 12 方法（`get_info`/`click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`）。支持 **Windows UIAutomation + macOS Accessibility** 双平台（Linux 暂不支持）。
+> 🔲 **规划中**：事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`），见 [事件监听](#事件监听)。
 
 ## 什么是 UI Automation
 
@@ -988,6 +991,8 @@ end
 | `find_text(name)` | `findText(name)` | 查找文本控件 |
 
 ### 事件监听
+
+> 🔲 **规划中（Phase 2，尚未实现）**：以下事件监听函数尚未在脚本层实现，后端事件接口与双平台实现待补。
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
