@@ -5,6 +5,10 @@
 
 using namespace wingman;
 
+namespace {
+constexpr WindowHandle kNullWindowHandle{};
+}
+
 class WindowTest : public ::testing::Test {
 protected:
     void SetUp() override {}
@@ -25,7 +29,7 @@ TEST(WindowTest, FindAllWindows) {
 
 TEST(WindowTest, GetForegroundWindow) {
     auto hwnd = Window::getForeground();
-    EXPECT_NE(hwnd, 0);
+    EXPECT_NE(hwnd, kNullWindowHandle);
     EXPECT_TRUE(Window::isValid(hwnd));
 }
 
@@ -35,7 +39,7 @@ TEST(WindowTest, EnumerateWindows) {
 
     // Check returned data
     for (const auto& win : windows) {
-        EXPECT_NE(win.handle, 0);
+        EXPECT_NE(win.handle, kNullWindowHandle);
         EXPECT_FALSE(win.title.empty());
     }
 }
@@ -52,7 +56,7 @@ TEST(WindowTest, FindNonExistentWindow) {
 
 TEST(WindowTest, GetWindowTitle) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, kNullWindowHandle);
 
     std::string title = Window::getTitle(hwnd);
     EXPECT_FALSE(title.empty());
@@ -60,7 +64,7 @@ TEST(WindowTest, GetWindowTitle) {
 
 TEST(WindowTest, GetWindowBounds) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, kNullWindowHandle);
 
     Rect bounds = Window::getBounds(hwnd);
     EXPECT_GT(bounds.width, 0);
@@ -73,19 +77,19 @@ TEST(WindowTest, IsWindowValid) {
     EXPECT_TRUE(Window::isValid(hwnd));
 
     // Invalid window
-    EXPECT_FALSE(Window::isValid(0));
+    EXPECT_FALSE(Window::isValid(kNullWindowHandle));
 }
 
 TEST(WindowTest, IsWindowForeground) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, kNullWindowHandle);
 
     EXPECT_TRUE(Window::isForeground(hwnd));
 }
 
 TEST(WindowTest, IsWindowVisible) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, kNullWindowHandle);
 
     // Foreground window should be visible
     EXPECT_TRUE(Window::isVisible(hwnd));
@@ -95,7 +99,7 @@ TEST(WindowTest, IsWindowVisible) {
 
 TEST(WindowTest, ActivateWindow) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, kNullWindowHandle);
 
     // Try to activate (may already be the foreground window)
     bool result = Window::activate(hwnd);
@@ -105,7 +109,7 @@ TEST(WindowTest, ActivateWindow) {
 
 TEST(WindowTest, MinimizeWindow) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, kNullWindowHandle);
 
     // Minimize
     bool result = Window::minimize(hwnd);
@@ -120,7 +124,7 @@ TEST(WindowTest, MinimizeWindow) {
 
 TEST(WindowTest, MaximizeWindow) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, kNullWindowHandle);
 
     // Maximize
     bool result = Window::maximize(hwnd);
@@ -135,7 +139,7 @@ TEST(WindowTest, MaximizeWindow) {
 
 TEST(WindowTest, RestoreWindow) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, kNullWindowHandle);
 
     bool result = Window::restore(hwnd);
     SUCCEED();
@@ -155,7 +159,7 @@ TEST(WindowTest, MoveWindow) {
 
 TEST(WindowTest, ResizeWindow) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, kNullWindowHandle);
 
     Rect original = Window::getBounds(hwnd);
 
@@ -192,18 +196,18 @@ TEST(WindowTest, WaitCloseTimeout) {
 
 TEST(WindowTest, InvalidWindowHandle) {
     // Test with nullptr
-    std::string title = Window::getTitle(0);
+    std::string title = Window::getTitle(kNullWindowHandle);
     EXPECT_TRUE(title.empty());
 
-    Rect bounds = Window::getBounds(0);
+    Rect bounds = Window::getBounds(kNullWindowHandle);
     EXPECT_TRUE(bounds.isEmpty());
 
-    EXPECT_FALSE(Window::activate(0));
-    EXPECT_FALSE(Window::minimize(0));
-    EXPECT_FALSE(Window::maximize(0));
-    EXPECT_FALSE(Window::restore(0));
-    EXPECT_FALSE(Window::move(0, 0, 0));
-    EXPECT_FALSE(Window::resize(0, 100, 100));
+    EXPECT_FALSE(Window::activate(kNullWindowHandle));
+    EXPECT_FALSE(Window::minimize(kNullWindowHandle));
+    EXPECT_FALSE(Window::maximize(kNullWindowHandle));
+    EXPECT_FALSE(Window::restore(kNullWindowHandle));
+    EXPECT_FALSE(Window::move(kNullWindowHandle, 0, 0));
+    EXPECT_FALSE(Window::resize(kNullWindowHandle, 100, 100));
 }
 
 TEST(WindowTest, EmptyTitleSearch) {
@@ -213,7 +217,7 @@ TEST(WindowTest, EmptyTitleSearch) {
 
 TEST(WindowTest, SetBoundsZeroSize) {
     auto hwnd = Window::getForeground();
-    ASSERT_NE(hwnd, 0);
+    ASSERT_NE(hwnd, kNullWindowHandle);
 
     Rect original = Window::getBounds(hwnd);
 

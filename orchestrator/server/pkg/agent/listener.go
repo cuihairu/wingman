@@ -51,16 +51,16 @@ type messageOrError struct {
 
 // FrameListener accepts outbound TCP connections from runtimes.
 type FrameListener struct {
-	listener   net.Listener
-	registry   AgentRegistrar
-	broadcast  Broadcaster
-	conns      map[string]*agentConn
-	mu         sync.RWMutex
-	connCount  uint64
-	stopCh     chan struct{}
-	stopOnce   sync.Once
-	onScript   ScriptOutputHandler
-	teamMgr    *TeamManager
+	listener  net.Listener
+	registry  AgentRegistrar
+	broadcast Broadcaster
+	conns     map[string]*agentConn
+	mu        sync.RWMutex
+	connCount uint64
+	stopCh    chan struct{}
+	stopOnce  sync.Once
+	onScript  ScriptOutputHandler
+	teamMgr   *TeamManager
 }
 
 // agentConn represents a single agent TCP connection.
@@ -115,13 +115,21 @@ func (l *FrameListener) SetScriptOutputHandler(handler ScriptOutputHandler) {
 	l.onScript = handler
 }
 
+func (l *FrameListener) getListener() net.Listener {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.listener
+}
+
 // Start begins listening for connections.
 func (l *FrameListener) Start(addr string) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
+	l.mu.Lock()
 	l.listener = ln
+	l.mu.Unlock()
 	log.Printf("[FrameListener] Listening on %s", addr)
 
 	go l.acceptLoop()
@@ -132,14 +140,15 @@ func (l *FrameListener) Start(addr string) error {
 func (l *FrameListener) Stop() {
 	l.stopOnce.Do(func() {
 		close(l.stopCh)
-		if l.listener != nil {
-			l.listener.Close()
+		if ln := l.getListener(); ln != nil {
+			ln.Close()
 		}
 		l.mu.Lock()
 		for id, ac := range l.conns {
 			ac.conn.Close()
 			delete(l.conns, id)
 		}
+		l.listener = nil
 		l.mu.Unlock()
 	})
 }
@@ -153,7 +162,12 @@ func (l *FrameListener) acceptLoop() {
 		default:
 		}
 
-		conn, err := l.listener.Accept()
+		ln := l.getListener()
+		if ln == nil {
+			return
+		}
+
+		conn, err := ln.Accept()
 		if err != nil {
 			select {
 			case <-l.stopCh:
@@ -168,10 +182,10 @@ func (l *FrameListener) acceptLoop() {
 		connID := fmt.Sprintf("agent_conn_%d", n)
 
 		ac := &agentConn{
-			id:      connID,
-			conn:    conn,
+			id:       connID,
+			conn:     conn,
 			listener: l,
-			pending: make(map[uint32]*pendingResponse),
+			pending:  make(map[uint32]*pendingResponse),
 		}
 
 		l.mu.Lock()
@@ -258,6 +272,18 @@ func (ac *agentConn) Close() {
 	ac.conn.Close()
 }
 
+func (ac *agentConn) getAgentID() string {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	return ac.agentID
+}
+
+func (ac *agentConn) setAgentID(agentID string) {
+	ac.mu.Lock()
+	ac.agentID = agentID
+	ac.mu.Unlock()
+}
+
 // readLoop is the sole reader from the TCP connection.
 // It dispatches Response frames to the matching SendCommand caller;
 // all other frames are handled inline.
@@ -277,8 +303,8 @@ func (ac *agentConn) readLoop() {
 		delete(ac.listener.conns, ac.id)
 		ac.listener.mu.Unlock()
 
-		if ac.agentID != "" {
-			ac.listener.registry.Unregister(ac.agentID)
+		if agentID := ac.getAgentID(); agentID != "" {
+			ac.listener.registry.Unregister(agentID)
 		}
 		log.Printf("[FrameListener] Connection closed: %s", ac.id)
 	}()
@@ -362,8 +388,8 @@ func (ac *agentConn) handleMessage(header *MessageHeader, body []byte) {
 func (ac *agentConn) handleNotify(body []byte) {
 	if len(body) == 4 && string(body) == "PING" {
 		ac.sendPong()
-		if ac.agentID != "" {
-			ac.listener.registry.UpdateHeartbeat(ac.agentID)
+		if agentID := ac.getAgentID(); agentID != "" {
+			ac.listener.registry.UpdateHeartbeat(agentID)
 		}
 		return
 	}
@@ -436,7 +462,7 @@ func (ac *agentConn) handleRegister(msg map[string]any) {
 		agentID = fmt.Sprintf("agent_%s", ac.conn.RemoteAddr().String())
 	}
 
-	ac.agentID = agentID
+	ac.setAgentID(agentID)
 	ac.listener.registry.Register(agentID, hostname, ac.conn.RemoteAddr().String(), ac)
 	ac.listener.registry.SetClient(agentID, ac)
 
@@ -450,7 +476,8 @@ func (ac *agentConn) handleRegister(msg map[string]any) {
 
 // handleHeartbeat processes heartbeat reports.
 func (ac *agentConn) handleHeartbeat(msg map[string]any) {
-	if ac.agentID == "" {
+	agentID := ac.getAgentID()
+	if agentID == "" {
 		return
 	}
 
@@ -460,7 +487,7 @@ func (ac *agentConn) handleHeartbeat(msg map[string]any) {
 	}
 
 	resources := msg["resources"]
-	ac.listener.registry.UpdateStatus(ac.agentID, status, resources)
+	ac.listener.registry.UpdateStatus(agentID, status, resources)
 }
 
 // handleEvent processes agent events.
@@ -475,7 +502,7 @@ func (ac *agentConn) handleEvent(msg map[string]any) {
 			if dataMap == nil {
 				dataMap = map[string]any{}
 			}
-			ac.listener.onScript(ac.agentID, dataMap)
+			ac.listener.onScript(ac.getAgentID(), dataMap)
 		}
 		ac.listener.broadcast.BroadcastEvent("script", map[string]any{
 			"event": "output",
@@ -483,14 +510,14 @@ func (ac *agentConn) handleEvent(msg map[string]any) {
 		})
 	case "trigger_fired":
 		ac.listener.broadcast.BroadcastAgentEvent("trigger_fired", map[string]any{
-			"agentId": ac.agentID,
+			"agentId": ac.getAgentID(),
 			"data":    data,
 		})
 	case "script_state":
 		// runtime 推送的脚本状态变更（running/paused/stopped/error），转发给 Dashboard。
 		ac.listener.broadcast.BroadcastEvent("script", map[string]any{
 			"event":   "state_changed",
-			"agentId": ac.agentID,
+			"agentId": ac.getAgentID(),
 			"data":    data,
 		})
 	default:
@@ -565,13 +592,13 @@ func (ac *agentConn) readMsgHeader() (*MessageHeader, error) {
 func (ac *agentConn) handleInboxRegister(msg map[string]any) {
 	agentID, _ := msg["agentId"].(string)
 	if agentID == "" {
-		agentID = ac.agentID
+		agentID = ac.getAgentID()
 	}
 
 	// Send registration acknowledgment
 	ac.sendNotify("inbox.register_ack", map[string]any{
 		"success": true,
-		"agentId":  agentID,
+		"agentId": agentID,
 	})
 
 	log.Printf("[Inbox] Agent %s registered", agentID)
@@ -595,7 +622,7 @@ func (ac *agentConn) handleInboxAck(msg map[string]any) {
 	msgID, _ := msg["msgId"].(string)
 	agentID, _ := msg["agentId"].(string)
 	if agentID == "" {
-		agentID = ac.agentID
+		agentID = ac.getAgentID()
 	}
 
 	if ac.listener.teamMgr != nil {
@@ -612,7 +639,7 @@ func (ac *agentConn) handleInboxReport(msg map[string]any) {
 	result, _ := msg["result"].(map[string]any)
 
 	if agentID == "" {
-		agentID = ac.agentID
+		agentID = ac.getAgentID()
 	}
 
 	if ac.listener.teamMgr != nil {
@@ -629,7 +656,7 @@ func (ac *agentConn) handleTeamJoin(msg map[string]any) {
 	agentID, _ := msg["agentId"].(string)
 
 	if agentID == "" {
-		agentID = ac.agentID
+		agentID = ac.getAgentID()
 	}
 
 	if ac.listener.teamMgr != nil {
@@ -649,7 +676,7 @@ func (ac *agentConn) handleTeamLeave(msg map[string]any) {
 	agentID, _ := msg["agentId"].(string)
 
 	if agentID == "" {
-		agentID = ac.agentID
+		agentID = ac.getAgentID()
 	}
 
 	// If memberId is empty, use agentID as memberId

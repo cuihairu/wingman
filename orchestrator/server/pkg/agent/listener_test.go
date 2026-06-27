@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -20,6 +21,45 @@ var testEndian = func() binary.ByteOrder {
 	return binary.BigEndian
 }()
 
+func waitUntil(t *testing.T, timeout time.Duration, fn func() bool, message string) {
+	t.Helper()
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if fn() {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Fatal(message)
+}
+
+func waitForListenerAddr(t *testing.T, listener *FrameListener, startErr <-chan error) string {
+	t.Helper()
+
+	var actualAddr string
+	waitUntil(t, 500*time.Millisecond, func() bool {
+		select {
+		case err := <-startErr:
+			if err != nil {
+				t.Fatalf("Failed to start listener: %v", err)
+			}
+		default:
+		}
+
+		listener.mu.RLock()
+		defer listener.mu.RUnlock()
+		if listener.listener == nil {
+			return false
+		}
+		actualAddr = listener.listener.Addr().String()
+		return actualAddr != ""
+	}, "Failed to get listener address")
+
+	return actualAddr
+}
+
 // TestAgentRegisterFlow tests the agent registration flow: runtime connects -> sends register -> server acknowledges.
 func TestAgentRegisterFlow(t *testing.T) {
 	// Create a test listener
@@ -31,26 +71,7 @@ func TestAgentRegisterFlow(t *testing.T) {
 	// Start listener
 	startErr := make(chan error, 1)
 	go func() { startErr <- listener.Start(testAddr) }()
-
-	// Get the actual listening address
-	var actualAddr string
-	for i := 0; i < 50; i++ {
-		select {
-		case err := <-startErr:
-			if err != nil {
-				t.Fatalf("Failed to start listener: %v", err)
-			}
-		default:
-		}
-		if listener.listener != nil {
-			actualAddr = listener.listener.Addr().String()
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if actualAddr == "" {
-		t.Fatal("Failed to get listener address")
-	}
+	actualAddr := waitForListenerAddr(t, listener, startErr)
 	defer listener.Stop()
 
 	// Simulate runtime connection
@@ -60,13 +81,15 @@ func TestAgentRegisterFlow(t *testing.T) {
 	}
 	defer conn.Close()
 
-	// Wait for server to accept connection
-	time.Sleep(50 * time.Millisecond)
+	// Wait for server to accept connection.
+	var connCount int
+	waitUntil(t, time.Second, func() bool {
+		listener.mu.RLock()
+		defer listener.mu.RUnlock()
+		connCount = len(listener.conns)
+		return connCount == 1
+	}, "Expected 1 accepted connection")
 
-	// Verify agent was registered (expected 1 connection)
-	listener.mu.RLock()
-	connCount := len(listener.conns)
-	listener.mu.RUnlock()
 	if connCount != 1 {
 		t.Errorf("Expected 1 connection, got %d", connCount)
 	}
@@ -81,25 +104,7 @@ func TestSendCommandResponseFlow(t *testing.T) {
 
 	startErr := make(chan error, 1)
 	go func() { startErr <- listener.Start(testAddr) }()
-
-	var actualAddr string
-	for i := 0; i < 50; i++ {
-		select {
-		case err := <-startErr:
-			if err != nil {
-				t.Fatalf("Failed to start listener: %v", err)
-			}
-		default:
-		}
-		if listener.listener != nil {
-			actualAddr = listener.listener.Addr().String()
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if actualAddr == "" {
-		t.Fatal("Failed to get listener address")
-	}
+	actualAddr := waitForListenerAddr(t, listener, startErr)
 	defer listener.Stop()
 
 	// Simulate runtime connection
@@ -108,9 +113,6 @@ func TestSendCommandResponseFlow(t *testing.T) {
 		t.Fatalf("Failed to connect: %v", err)
 	}
 	defer conn.Close()
-
-	// Wait for connection establishment
-	time.Sleep(50 * time.Millisecond)
 
 	// Send agent.register
 	registerPayload := map[string]any{
@@ -121,25 +123,26 @@ func TestSendCommandResponseFlow(t *testing.T) {
 	}
 	sendMessage(t, conn, Notify, 0, registerPayload)
 
-	// Wait for registration ACK
-	time.Sleep(50 * time.Millisecond)
-
-	// Get the agent connection
 	var agentConn *agentConn
-	listener.mu.RLock()
-	for _, ac := range listener.conns {
-		agentConn = ac
-		break
-	}
-	listener.mu.RUnlock()
+	waitUntil(t, time.Second, func() bool {
+		listener.mu.RLock()
+		defer listener.mu.RUnlock()
+		for _, ac := range listener.conns {
+			if ac.getAgentID() == "test-agent-1" {
+				agentConn = ac
+				return true
+			}
+		}
+		return false
+	}, "No registered agent connection found")
 
 	if agentConn == nil {
 		t.Fatal("No agent connection found")
 	}
 
 	// Verify agent ID
-	if agentConn.agentID != "test-agent-1" {
-		t.Errorf("Expected agent ID test-agent-1, got %s", agentConn.agentID)
+	if agentConn.getAgentID() != "test-agent-1" {
+		t.Errorf("Expected agent ID test-agent-1, got %s", agentConn.getAgentID())
 	}
 
 	// Test SendCommand with timeout
@@ -164,25 +167,7 @@ func TestMessageSizeLimit(t *testing.T) {
 
 	startErr := make(chan error, 1)
 	go func() { startErr <- listener.Start(testAddr) }()
-
-	var actualAddr string
-	for i := 0; i < 50; i++ {
-		select {
-		case err := <-startErr:
-			if err != nil {
-				t.Fatalf("Failed to start listener: %v", err)
-			}
-		default:
-		}
-		if listener.listener != nil {
-			actualAddr = listener.listener.Addr().String()
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if actualAddr == "" {
-		t.Fatal("Failed to get listener address")
-	}
+	actualAddr := waitForListenerAddr(t, listener, startErr)
 	defer listener.Stop()
 
 	// Simulate runtime connection
@@ -194,7 +179,7 @@ func TestMessageSizeLimit(t *testing.T) {
 	// Send oversized message (> maxResponseSize)
 	largePayload := make([]byte, maxResponseSize+1)
 	writeMessageHeader(t, conn, maxResponseSize+1, Notify, 0)
-	if _, err := conn.Write(largePayload); err != nil {
+	if _, err := conn.Write(largePayload); err != nil && !isClosedConnErr(err) {
 		t.Fatalf("Failed to write oversized message: %v", err)
 	}
 
@@ -213,6 +198,19 @@ func TestMessageSizeLimit(t *testing.T) {
 		// Expected - connection should be closed
 	}
 	conn.Close()
+}
+
+func isClosedConnErr(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
+		return true
+	}
+
+	var netErr *net.OpError
+	return errors.As(err, &netErr)
 }
 
 // sendMessage sends a message from the "runtime" side.
