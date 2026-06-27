@@ -1626,3 +1626,24 @@ TEST(HumanModuleFunctionsTest, SetMoveSpeedAffectsBackendMoveDuration) {
     EXPECT_EQ(mc.minMoveDuration, 50); // 100/2
     EXPECT_EQ(mc.maxMoveDuration, 150); // 300/2
 }
+
+
+TEST(HumanModuleFunctionsTest, RandomDelayExplicitRangeDoesNotCrash) {
+    auto fn = findFunction("human", "randomDelay");
+    ASSERT_FALSE(fn.name.empty());
+    // 显式传 0-1ms，避免测试耗时（默认 100-300ms 会真实 sleep）
+    EXPECT_NO_THROW(fn({ScriptValue::fromInt(0), ScriptValue::fromInt(1)}));
+}
+
+TEST(HumanModuleFunctionsTest, RandomDelayNoArgsUsesDefaultRange) {
+    // 无参调用走默认 100-300ms 路径（仅验证可调用，接受单次 ~300ms sleep）
+    auto fn = findFunction("human", "randomDelay");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_NO_THROW(fn({}));
+}
+
+TEST(HumanModuleFunctionsTest, NaturalTypeDoesNotCrash) {
+    auto fn = findFunction("human", "naturalType");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_NO_THROW(fn({ScriptValue::fromString("hi")}));
+}

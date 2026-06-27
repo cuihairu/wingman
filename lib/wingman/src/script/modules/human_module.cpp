@@ -153,6 +153,18 @@ ModuleDescriptor createHumanModule() {
 		return ScriptValue::null();
 	}, "variance:float -> nil"});
 
+	mod.functions.push_back({"randomDelay", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		int minMs = args.size() > 0 ? static_cast<int>(args[0].asInt(100)) : 100;
+		int maxMs = args.size() > 1 ? static_cast<int>(args[1].asInt(300)) : 300;
+		Human::mouse().randomDelay(minMs, maxMs);
+		return ScriptValue::null();
+	}, "min:int?, max:int? -> nil"});
+
+	mod.functions.push_back({"naturalType", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		Human::keyboard().type(args.size() > 0 ? args[0].asString() : std::string());
+		return ScriptValue::null();
+	}, "text:string -> nil"});
+
 	return mod;
 }
 
