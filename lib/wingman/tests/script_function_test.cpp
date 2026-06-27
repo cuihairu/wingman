@@ -40,6 +40,16 @@ static bool result_is_string_or_null(const ScriptValue& v) {
     return v.isString() || v.isNull();
 }
 
+// Plan 5: 配置修改测试的全局状态守卫，测试结束自动恢复 Human mouse/keyboard 配置
+struct HumanConfigGuard {
+    HumanMouseConfig mc = Human::mouse().getConfig();
+    HumanKeyboardConfig kc = Human::keyboard().getConfig();
+    ~HumanConfigGuard() {
+        Human::setMouseConfig(mc);
+        Human::setKeyboardConfig(kc);
+    }
+};
+
 static bool hasModule(const std::string& moduleName) {
     auto modules = getAllModules();
     for (const auto& mod : modules) {
@@ -1398,6 +1408,7 @@ TEST(HumanModuleFunctionsTest, GetConfigReturnsHighLevelFields) {
 }
 
 TEST(HumanModuleFunctionsTest, SetConfigUpdatesDelayRangeRoundTrip) {
+    HumanConfigGuard hcg; // 测试结束恢复全局 Human 配置
     auto setFn = findFunction("human", "setConfig");
     auto getFn = findFunction("human", "getConfig");
     ASSERT_FALSE(setFn.name.empty());
@@ -1413,6 +1424,7 @@ TEST(HumanModuleFunctionsTest, SetConfigUpdatesDelayRangeRoundTrip) {
 }
 
 TEST(HumanModuleFunctionsTest, SetConfigUnknownKeyDoesNotCrash) {
+    HumanConfigGuard hcg; // 测试结束恢复全局 Human 配置
     auto fn = findFunction("human", "setConfig");
     ASSERT_FALSE(fn.name.empty());
     // 未知 key 应静默忽略（脚本层惯例），不抛异常
@@ -1571,6 +1583,7 @@ TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
 }
 
 TEST(HumanModuleFunctionsTest, SetDelayRangeRoundTrip) {
+    HumanConfigGuard hcg; // 测试结束恢复全局 Human 配置
     auto setFn = findFunction("human", "setDelayRange");
     auto getFn = findFunction("human", "getConfig");
     ASSERT_FALSE(setFn.name.empty());
@@ -1582,6 +1595,7 @@ TEST(HumanModuleFunctionsTest, SetDelayRangeRoundTrip) {
 }
 
 TEST(HumanModuleFunctionsTest, SetMoveSpeedRoundTrip) {
+    HumanConfigGuard hcg; // 测试结束恢复全局 Human 配置
     auto setFn = findFunction("human", "setMoveSpeed");
     auto getFn = findFunction("human", "getConfig");
     ASSERT_FALSE(setFn.name.empty());
@@ -1592,6 +1606,7 @@ TEST(HumanModuleFunctionsTest, SetMoveSpeedRoundTrip) {
 }
 
 TEST(HumanModuleFunctionsTest, SetTypingVarianceRoundTrip) {
+    HumanConfigGuard hcg; // 测试结束恢复全局 Human 配置
     auto setFn = findFunction("human", "setTypingVariance");
     auto getFn = findFunction("human", "getConfig");
     ASSERT_FALSE(setFn.name.empty());
@@ -1602,6 +1617,7 @@ TEST(HumanModuleFunctionsTest, SetTypingVarianceRoundTrip) {
 }
 
 TEST(HumanModuleFunctionsTest, SetMoveSpeedAffectsBackendMoveDuration) {
+    HumanConfigGuard hcg; // 测试结束恢复全局 Human 配置
     // 验证映射应用：move_speed=2.0 -> minMoveDuration=50, maxMoveDuration=150
     auto setFn = findFunction("human", "setMoveSpeed");
     ASSERT_FALSE(setFn.name.empty());
