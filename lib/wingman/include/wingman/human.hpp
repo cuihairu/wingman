@@ -59,6 +59,9 @@ public:
     // Move to target position, specifying approximate duration
     void moveTo(int x, int y, int approximateDurationMs);
 
+    // Move from an explicit start point to target along a Bezier path (Plan 5)
+    void moveTo(const Point& from, const Point& to, int approximateDurationMs);
+
     // Click (with random delay)
     void click(int x, int y);
     void click(const Point& pos);

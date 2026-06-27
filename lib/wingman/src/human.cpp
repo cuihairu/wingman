@@ -268,6 +268,26 @@ void HumanMouse::moveTo(int x, int y, int approximateDurationMs) {
     config_ = originalConfig;
 }
 
+void HumanMouse::moveTo(const Point& from, const Point& to, int approximateDurationMs) {
+    // 起点与终点重合：仅定位，避免空路径
+    if (from.x == to.x && from.y == to.y) {
+        getInput().mouseMove(to.x, to.y);
+        return;
+    }
+
+    // 临时将移动时长范围约束到指定 duration（复用现有 duration 机制）
+    HumanMouseConfig originalConfig = config_;
+    config_.minMoveDuration = approximateDurationMs - config_.moveVariance;
+    config_.maxMoveDuration = approximateDurationMs + config_.moveVariance;
+
+    // 从显式起点生成贝塞尔路径并移动（addRandomness/moveAlongPath 为 private 成员，可直接调用）
+    std::vector<Point> path = generateBezierPath(from, to);
+    addRandomness(path);
+    moveAlongPath(path);
+
+    config_ = originalConfig;
+}
+
 void HumanMouse::click(int x, int y) {
     click(Point(x, y));
 }

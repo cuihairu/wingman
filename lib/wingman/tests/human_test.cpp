@@ -481,3 +481,17 @@ TEST(HumanKeyboardTest, TypeWithRandomCaseDoesNotCrash) {
     keyboard.setConfig(config);
     EXPECT_NO_THROW(keyboard.type("abc", true));
 }
+
+// ========== Plan 5: 起点贝塞尔移动重载 ==========
+
+TEST(HumanMouseTest, MoveFromToDoesNotCrash) {
+    HumanMouse mouse;
+    // 短距离 + 小 duration，避免单测中长时间 sleep（moveAlongPath 内含 sleep_for）
+    EXPECT_NO_THROW(mouse.moveTo(Point(0, 0), Point(5, 5), 1));
+}
+
+TEST(HumanMouseTest, MoveFromToSamePointDoesNotCrash) {
+    HumanMouse mouse;
+    // 起点与终点相同：应早退仅定位，不崩溃
+    EXPECT_NO_THROW(mouse.moveTo(Point(50, 50), Point(50, 50), 200));
+}
