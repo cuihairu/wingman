@@ -91,6 +91,8 @@ TEST(PerformanceStatsTest, DefaultValues) {
 }
 
 // ========== PerformanceManager Singleton ==========
+// PerformanceManager 仅在启用 OpenCV (vision) 时有实现；以下测试同样条件化
+#ifdef WINGMAN_ENABLE_VISION
 
 TEST(PerformanceManagerTest, SingletonInstance) {
     auto& mgr1 = PerformanceManager::instance();
@@ -136,6 +138,8 @@ TEST(PerformanceManagerTest, ResetStatsDoesNotCrash) {
     auto stats = mgr.getStats();
     EXPECT_EQ(stats.totalCaptures, 0u);
 }
+
+#endif // WINGMAN_ENABLE_VISION
 
 // ========== CachedImage ==========
 

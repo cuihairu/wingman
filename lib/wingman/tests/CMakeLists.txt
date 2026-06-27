@@ -48,7 +48,6 @@ if(BUILD_CORE_TESTS)
         game_profile_io_test.cpp
         tcp_channel_test.cpp
         trigger_engine_test.cpp
-        performance_test.cpp
         image_analyzer_test.cpp
         db_module_test.cpp
         ini_module_test.cpp
@@ -77,6 +76,8 @@ if(BUILD_CORE_TESTS)
     # Propagate vision/OCR/ML compile definitions from parent library
     if(WINGMAN_HAS_OPENCV)
         target_compile_definitions(core_tests PRIVATE WINGMAN_ENABLE_VISION)
+        # performance.cpp 仅 OpenCV 版本（无 stub），其测试同理只在有 OpenCV 时编译
+        target_sources(core_tests PRIVATE performance_test.cpp)
         message(STATUS "Core tests: WINGMAN_ENABLE_VISION defined")
     endif()
 
