@@ -130,6 +130,39 @@ ModuleDescriptor createKvModule() {
 		return ScriptValue::fromArray(std::move(arr));
 	}, "list:string, start:int, stop:int -> {string}"});
 
+	// Extra hash operations
+	mod.functions.push_back({"hexists", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		auto& store = getKVStore();
+		return ScriptValue::fromBool(store.hexists(args[0].asString(), args[1].asString()));
+	}, "hash:string, field:string -> bool"});
+
+	mod.functions.push_back({"hkeys", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		auto& store = getKVStore();
+		auto keys = store.hkeys(args[0].asString());
+		std::vector<ScriptValue> arr;
+		for (auto& k : keys) arr.push_back(ScriptValue::fromString(std::move(k)));
+		return ScriptValue::fromArray(std::move(arr));
+	}, "hash:string -> {string}"});
+
+	// Persistence operations
+	mod.functions.push_back({"save", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		auto& store = getKVStore();
+		return ScriptValue::fromBool(store.save(args[0].asString()));
+	}, "path:string -> bool"});
+
+	mod.functions.push_back({"load", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		auto& store = getKVStore();
+		return ScriptValue::fromBool(store.load(args[0].asString()));
+	}, "path:string -> bool"});
+
+	mod.functions.push_back({"enableAutoSave", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		auto& store = getKVStore();
+		// interval is in seconds (matches docs/api/kv.md and KeyValueStore::enableAutoSave signature)
+		int64_t intervalSeconds = args.size() > 1 ? args[1].asInt(1) : 1;
+		store.enableAutoSave(args[0].asString(), intervalSeconds);
+		return ScriptValue::null();
+	}, "path:string, intervalSeconds:int -> nil"});
+
 	return mod;
 }
 

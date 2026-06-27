@@ -5,6 +5,7 @@
 #include "wingman/behavior_tree.hpp"
 #include "wingman/smart_trigger.hpp"
 #include <algorithm>
+#include <cstdio>
 #include <set>
 
 using namespace wingman;
@@ -594,6 +595,34 @@ TEST(KvModuleFunctionsTest, HashOperationsWhenNoStore) {
     EXPECT_TRUE(hdelFn({ScriptValue::fromString("h"), ScriptValue::fromString("f")}).isNull());
 }
 
+TEST(KvModuleFunctionsTest, HashExistsAndKeys) {
+	auto hsetFn = findFunction("kv", "hset");
+	auto hexistsFn = findFunction("kv", "hexists");
+	auto hkeysFn = findFunction("kv", "hkeys");
+
+	ASSERT_FALSE(hsetFn.name.empty());
+	ASSERT_FALSE(hexistsFn.name.empty());
+	ASSERT_FALSE(hkeysFn.name.empty());
+
+	const std::string hash = "team:hashops";
+
+	// field absent before set
+	EXPECT_FALSE(hexistsFn({ScriptValue::fromString(hash), ScriptValue::fromString("leader")}).asBool());
+
+	// set two fields
+	EXPECT_TRUE(hsetFn({ScriptValue::fromString(hash), ScriptValue::fromString("leader"), ScriptValue::fromString("alice")}).isNull());
+	EXPECT_TRUE(hsetFn({ScriptValue::fromString(hash), ScriptValue::fromString("count"), ScriptValue::fromString("2")}).isNull());
+
+	// hexists now true for present field, false for missing
+	EXPECT_TRUE(hexistsFn({ScriptValue::fromString(hash), ScriptValue::fromString("leader")}).asBool());
+	EXPECT_FALSE(hexistsFn({ScriptValue::fromString(hash), ScriptValue::fromString("nope")}).asBool());
+
+	// hkeys returns array of field names
+	auto keysResult = hkeysFn({ScriptValue::fromString(hash)});
+	ASSERT_TRUE(keysResult.isArray());
+	EXPECT_EQ(keysResult.size(), 2u);
+}
+
 TEST(KvModuleFunctionsTest, ListOperationsWhenNoStore) {
     auto lpushFn = findFunction("kv", "lpush");
     auto rpushFn = findFunction("kv", "rpush");
@@ -610,6 +639,51 @@ TEST(KvModuleFunctionsTest, ListOperationsWhenNoStore) {
     EXPECT_TRUE(rpopFn({ScriptValue::fromString("list")}).isString());
     EXPECT_EQ(llenFn({ScriptValue::fromString("list")}).asInt(), 0);
     EXPECT_TRUE(lrangeFn({ScriptValue::fromString("list"), ScriptValue::fromInt(0), ScriptValue::fromInt(-1)}).isArray());
+}
+
+TEST(KvModuleFunctionsTest, PersistenceSaveLoadRoundTrip) {
+	auto setFn = findFunction("kv", "set");
+	auto getFn = findFunction("kv", "get");
+	auto saveFn = findFunction("kv", "save");
+	auto loadFn = findFunction("kv", "load");
+
+	ASSERT_FALSE(saveFn.name.empty());
+	ASSERT_FALSE(loadFn.name.empty());
+
+	const std::string path = "wingman_kvtest_roundtrip.db";
+	// clean any leftover
+	std::remove(path.c_str());
+
+	// seed data and persist
+	EXPECT_TRUE(setFn({ScriptValue::fromString("persist:k"), ScriptValue::fromString("v1")}).isNull());
+	auto saveResult = saveFn({ScriptValue::fromString(path)});
+	EXPECT_TRUE(saveResult.isBool());
+	EXPECT_TRUE(saveResult.asBool());
+
+	// load returns bool (file exists)
+	auto loadResult = loadFn({ScriptValue::fromString(path)});
+	EXPECT_TRUE(loadResult.isBool());
+	EXPECT_TRUE(loadResult.asBool());
+
+	// value should still be readable after reload
+	EXPECT_EQ(getFn({ScriptValue::fromString("persist:k")}).asString(), "v1");
+
+	// cleanup
+	std::remove(path.c_str());
+}
+
+TEST(KvModuleFunctionsTest, EnableAutoSaveIsCallable) {
+	auto enableFn = findFunction("kv", "enableAutoSave");
+	ASSERT_FALSE(enableFn.name.empty());
+
+	// backend returns void; script layer returns nil and must not throw
+	const std::string path = "wingman_kvtest_autosave.db";
+	std::remove(path.c_str());
+
+	auto result = enableFn({ScriptValue::fromString(path), ScriptValue::fromInt(60)});
+	EXPECT_TRUE(result.isNull());
+
+	std::remove(path.c_str());
 }
 
 // ========== Security module functions ==========
