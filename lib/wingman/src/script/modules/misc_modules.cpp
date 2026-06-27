@@ -268,6 +268,16 @@ ModuleDescriptor createBehaviorTreeModule() {
 		return ScriptValue::fromBool(false); // 装饰/叶子节点不支持
 	}, "parentHandle:int, childHandle:int -> bool"});
 
+	mod.functions.push_back({"condition", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString("Condition") : "Condition";
+		if (args.size() < 2 || !args[1].isCallable()) return ScriptValue::fromInt(0); // 无效 callable
+		ScriptValue::CallableFunc cb = args[1].callableVal; // 拷贝；闭包持有，节点存活期间有效
+		auto node = BehaviorTree::condition(name, [cb]() -> bool {
+			return cb({}).asBool(false); // 无参回调脚本，返回 bool
+		});
+		return ScriptValue::fromInt(btStoreNode(node));
+	}, "name:string, callback:callable -> handle:int"});
+
 	return mod;
 }
 

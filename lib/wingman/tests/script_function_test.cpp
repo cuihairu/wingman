@@ -1521,6 +1521,25 @@ TEST(ModulePresenceTest, AllExpectedModulesExist) {
 }
 
 TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
+    // This is a conservative smoke test for low-risk functions only. Modules
+    // with real I/O, background state, input events, or singleton mutations have
+    // dedicated tests and are excluded to avoid cross-test pollution.
+    static const std::set<std::string> sideEffectModules = {
+        "bt",
+        "event",
+        "filewatcher",
+        "human",
+        "input",
+        "macro",
+        "notify",
+        "screen",
+        "script",
+        "smarttrigger",
+        "task",
+        "team",
+        "transport"
+    };
+
     // Functions that perform blocking I/O (network requests, process waiting)
     // or require specific runtime state and must be skipped in this smoke test.
     static const std::set<std::pair<std::string, std::string>> blockedFunctions = {
@@ -1562,6 +1581,7 @@ TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
 
     auto modules = getAllModules();
     for (const auto& mod : modules) {
+        if (sideEffectModules.count(mod.name)) continue;
         for (const auto& fn : mod.functions) {
             if (blockedFunctions.count({mod.name, fn.name})) continue;
             std::vector<ScriptValue> args;
@@ -1795,4 +1815,28 @@ TEST(BtModuleFunctionsTest, AddChildToLeafReturnsFalse) {
     int64_t leaf = waitFn({ScriptValue::fromInt(10)}).asInt();
     int64_t another = waitFn({ScriptValue::fromInt(20)}).asInt();
     EXPECT_FALSE(addFn({ScriptValue::fromInt(leaf), ScriptValue::fromInt(another)}).asBool());
+}
+
+TEST(BtModuleFunctionsTest, ConditionWithCallableReturnsHandle) {
+    auto fn = findFunction("bt", "condition");
+    ASSERT_FALSE(fn.name.empty());
+    // callable 返回 bool true（模拟脚本条件函数）
+    ScriptValue cb = ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+        return ScriptValue::fromBool(true);
+    });
+    auto h = fn({ScriptValue::fromString("hp_low"), cb});
+    EXPECT_GT(h.asInt(), 0);
+}
+
+TEST(BtModuleFunctionsTest, ConditionInvalidCallableReturnsZero) {
+    auto fn = findFunction("bt", "condition");
+    ASSERT_FALSE(fn.name.empty());
+    // 第二参非 callable → 返回 0
+    EXPECT_EQ(fn({ScriptValue::fromString("bad"), ScriptValue::fromInt(123)}).asInt(), 0);
+}
+
+TEST(BtModuleFunctionsTest, ConditionMissingCallableReturnsZero) {
+    auto fn = findFunction("bt", "condition");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_EQ(fn({ScriptValue::fromString("nocb")}).asInt(), 0); // 缺 callable
 }
