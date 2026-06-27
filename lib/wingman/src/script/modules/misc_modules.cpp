@@ -349,38 +349,179 @@ ModuleDescriptor createNodeModule() {
 }
 
 // ============================================================================
-// UIAutomation Module (simplified - object-oriented access needs engine support)
+// UIAutomation Module (Plan 6: OO API with registry)
 // ============================================================================
+
+// ========== Plan 6: UIA 元素句柄注册表 ==========
+// 脚本层通过 int handle 引用 IUIAElement（shared_ptr 生命周期管理）。
+// handle 从 1 自增，0 表示无效。UIElement OO 对象的方法 Callable 闭包捕获 handle 查元素。
+static std::map<int, std::shared_ptr<IUIAElement>>& uiaElementRegistry() {
+	static std::map<int, std::shared_ptr<IUIAElement>> registry;
+	return registry;
+}
+static int uiaStoreElement(std::shared_ptr<IUIAElement> e) {
+	static int nextId = 0;
+	int id = ++nextId;
+	uiaElementRegistry()[id] = std::move(e);
+	return id;
+}
+static std::shared_ptr<IUIAElement> uiaGetElement(int handle) {
+	auto& reg = uiaElementRegistry();
+	auto it = reg.find(handle);
+	return it != reg.end() ? it->second : nullptr;
+}
+
+// 构造 UIElement OO 对象（ScriptValue::Object）：_handle + 12 方法 Callable。
+// 每个方法闭包捕获 handle，通过 uiaGetElement(handle) 查元素；无效 handle 返回 null/false。
+static ScriptValue makeUiaElementObject(std::shared_ptr<IUIAElement> e) {
+	if (!e) return ScriptValue::null();
+	int handle = uiaStoreElement(e);
+	std::unordered_map<std::string, ScriptValue> obj;
+	obj["_handle"] = ScriptValue::fromInt(handle);
+
+	obj["get_info"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		if (!el) return ScriptValue::null();
+		UIAElementInfo info = el->getInfo();
+		return ScriptValue::fromObject({
+			{"name", ScriptValue::fromString(info.name)},
+			{"id", ScriptValue::fromString(info.id)},
+			{"className", ScriptValue::fromString(info.className)},
+			{"role", ScriptValue::fromInt(static_cast<int64_t>(info.role))},
+			{"text", ScriptValue::fromString(info.text)},
+			{"is_enabled", ScriptValue::fromBool(info.isEnabled)},
+			{"is_visible", ScriptValue::fromBool(info.isVisible)},
+			{"has_focus", ScriptValue::fromBool(info.hasFocus)},
+			{"bounds", fromRect(info.bounds)}
+		});
+	});
+
+	obj["click"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->click()) : ScriptValue::fromBool(false);
+	});
+
+	obj["double_click"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->doubleClick()) : ScriptValue::fromBool(false);
+	});
+
+	obj["focus"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->setFocus()) : ScriptValue::fromBool(false);
+	});
+
+	obj["get_value"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromString(el->getText()) : ScriptValue::null();
+	});
+
+	obj["set_value"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>& args) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		if (!el) return ScriptValue::fromBool(false);
+		std::string text = args.size() > 0 ? args[0].asString() : std::string();
+		return ScriptValue::fromBool(el->setText(text));
+	});
+
+	obj["get_children"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		if (!el) return ScriptValue::fromArray({});
+		auto children = el->getChildren();
+		std::vector<ScriptValue> arr;
+		for (auto& c : children) arr.push_back(makeUiaElementObject(c));
+		return ScriptValue::fromArray(std::move(arr));
+	});
+
+	obj["expand"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->expand()) : ScriptValue::fromBool(false);
+	});
+
+	obj["collapse"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->collapse()) : ScriptValue::fromBool(false);
+	});
+
+	obj["is_expanded"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->isExpanded()) : ScriptValue::fromBool(false);
+	});
+
+	obj["is_visible"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->isVisible()) : ScriptValue::fromBool(false);
+	});
+
+	obj["is_enabled"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->isEnabled()) : ScriptValue::fromBool(false);
+	});
+
+	return ScriptValue::fromObject(std::move(obj));
+}
+
 ModuleDescriptor createUIAutomationModule() {
 	ModuleDescriptor mod;
 	mod.name = "uia";
 
-	mod.functions.push_back({"findByName", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		auto elem = uia().findByName(args[0].asString());
-		if (elem) return ScriptValue::fromInt(reinterpret_cast<int64_t>(elem.get()));
-		return ScriptValue::null();
-	}, "name:string -> handle?"});
+	// ===== 根元素获取 =====
+	mod.functions.push_back({"from_foreground", [](const std::vector<ScriptValue>&) -> ScriptValue {
+		return makeUiaElementObject(uia().getFocusedElement());
+	}, "() -> UIElement?"});
 
-	mod.functions.push_back({"findById", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		auto elem = uia().findById(args[0].asString());
-		if (elem) return ScriptValue::fromInt(reinterpret_cast<int64_t>(elem.get()));
-		return ScriptValue::null();
-	}, "id:string -> handle?"});
+	mod.functions.push_back({"from_point", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		int x = static_cast<int>(args.size() > 0 ? args[0].asInt(0) : 0);
+		int y = static_cast<int>(args.size() > 1 ? args[1].asInt(0) : 0);
+		return makeUiaElementObject(uia().getElementFromPoint(x, y));
+	}, "x:int, y:int -> UIElement?"});
 
-	mod.functions.push_back({"find", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		UIASelector selector;
-		if (args[0].isObject()) {
-			const auto* name = args[0].get("name");
-			if (name && name->isString()) selector.withName(name->asString());
-			const auto* id = args[0].get("id");
-			if (id && id->isString()) selector.withId(id->asString());
-			const auto* className = args[0].get("className");
-			if (className && className->isString()) selector.withClassName(className->asString());
-		}
-		auto elem = uia().find(selector);
-		if (elem) return ScriptValue::fromInt(reinterpret_cast<int64_t>(elem.get()));
-		return ScriptValue::null();
-	}, "selector:{name?,id?,className?} -> handle?"});
+	mod.functions.push_back({"from_window", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		uint64_t hwnd = static_cast<uint64_t>(args.size() > 0 ? args[0].asInt(0) : 0);
+		return makeUiaElementObject(uia().fromWindow(hwnd));
+	}, "hwnd:int -> UIElement?"});
+
+	// ===== 通用查找 =====
+	mod.functions.push_back({"find_by_name", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().findByName(name));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_by_id", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string id = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().findById(id));
+	}, "id:string -> UIElement?"});
+
+	mod.functions.push_back({"find_all_by_control_type", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		int roleInt = static_cast<int>(args.size() > 0 ? args[0].asInt(0) : 0);
+		UIARole role = static_cast<UIARole>(roleInt);
+		auto elems = uia().findAllByRole(role);
+		std::vector<ScriptValue> arr;
+		for (auto& e : elems) arr.push_back(makeUiaElementObject(e));
+		return ScriptValue::fromArray(std::move(arr));
+	}, "controlType:int -> [UIElement]"});
+
+	mod.functions.push_back({"wait_for_name", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		int timeout = static_cast<int>(args.size() > 1 ? args[1].asInt(3000) : 3000);
+		return makeUiaElementObject(uia().waitForName(name, timeout));
+	}, "name:string, timeout:int -> UIElement?"});
+
+	// ===== 专用查找 =====
+	mod.functions.push_back({"find_button", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::Button).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_edit", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::TextBox).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_text", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		// UIARole 枚举未收录 Text 控件类型，按名称查找
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withName(name)));
+	}, "name:string -> UIElement?"});
 
 	return mod;
 }

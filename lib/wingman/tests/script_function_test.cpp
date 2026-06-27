@@ -5,6 +5,7 @@
 #include "wingman/behavior_tree.hpp"
 #include "wingman/smart_trigger.hpp"
 #include "wingman/human.hpp"
+#include "wingman/ui_automation.hpp"
 #include <algorithm>
 #include <cstdio>
 #include <set>
@@ -1478,31 +1479,6 @@ TEST(NodeModuleFunctionsTest, GetWindowsReturnsArray) {
 
 // ========== UIA module functions ==========
 
-TEST(UiaModuleFunctionsTest, FindByNameReturnsNullForMissing) {
-    auto fn = findFunction("uia", "findByName");
-    ASSERT_FALSE(fn.name.empty());
-    auto result = fn({ScriptValue::fromString("NonexistentElement")});
-    EXPECT_TRUE(result.isNull() || result.isInt());
-}
-
-TEST(UiaModuleFunctionsTest, FindByIdReturnsNullForMissing) {
-    auto fn = findFunction("uia", "findById");
-    ASSERT_FALSE(fn.name.empty());
-    auto result = fn({ScriptValue::fromString("NonexistentId")});
-    EXPECT_TRUE(result.isNull() || result.isInt());
-}
-
-TEST(UiaModuleFunctionsTest, FindWithSelectorDoesNotCrash) {
-    auto fn = findFunction("uia", "find");
-    ASSERT_FALSE(fn.name.empty());
-    auto selector = ScriptValue::fromObject({
-        {"name", ScriptValue::fromString("test")},
-        {"id", ScriptValue::fromString("test_id")},
-        {"className", ScriptValue::fromString("TestClass")}
-    });
-    EXPECT_NO_THROW(fn({selector}));
-}
-
 // ========== Module presence verification ==========
 
 TEST(ModulePresenceTest, AllExpectedModulesExist) {
@@ -1930,4 +1906,88 @@ TEST(BtModuleFunctionsTest, EndToEndFalseConditionTickReturnsFailure) {
 
     EXPECT_EQ(tickFn({ScriptValue::fromString(tree)}).asString(), "FAILURE");
     removeFn({ScriptValue::fromString(tree)});
+}
+
+// ========== Plan 6: UiaModuleFunctionsTest ==========
+
+TEST(UiaModuleFunctionsTest, NonEventFunctionsRegistered) {
+	// 10 个非事件函数全部注册
+	EXPECT_FALSE(findFunction("uia", "from_foreground").name.empty());
+	EXPECT_FALSE(findFunction("uia", "from_point").name.empty());
+	EXPECT_FALSE(findFunction("uia", "from_window").name.empty());
+	EXPECT_FALSE(findFunction("uia", "find_by_name").name.empty());
+	EXPECT_FALSE(findFunction("uia", "find_by_id").name.empty());
+	EXPECT_FALSE(findFunction("uia", "find_all_by_control_type").name.empty());
+	EXPECT_FALSE(findFunction("uia", "wait_for_name").name.empty());
+	EXPECT_FALSE(findFunction("uia", "find_button").name.empty());
+	EXPECT_FALSE(findFunction("uia", "find_edit").name.empty());
+	EXPECT_FALSE(findFunction("uia", "find_text").name.empty());
+}
+
+TEST(UiaModuleFunctionsTest, FindByNameReturnsNullOrObject) {
+	auto fn = findFunction("uia", "find_by_name");
+	auto result = fn.func({ScriptValue::fromString("nonexistent_element")});
+	// 无辅助功能权限：null；有权限：Object 或 null（找不到）
+	EXPECT_TRUE(result.isNull() || result.isObject());
+}
+
+TEST(UiaModuleFunctionsTest, FromForegroundReturnsNullOrObject) {
+	auto fn = findFunction("uia", "from_foreground");
+	auto result = fn.func({});
+	EXPECT_TRUE(result.isNull() || result.isObject());
+}
+
+TEST(UiaModuleFunctionsTest, FindAllByControlTypeReturnsArray) {
+	auto fn = findFunction("uia", "find_all_by_control_type");
+	auto result = fn.func({ScriptValue::fromInt(static_cast<int64_t>(UIARole::Button))});
+	EXPECT_TRUE(result.isArray());
+	// 数组元素（若有）应为 Object 或 null
+	for (size_t i = 0; i < result.size(); ++i) {
+		EXPECT_TRUE(result.at(i).isNull() || result.at(i).isObject());
+	}
+}
+
+TEST(UiaModuleFunctionsTest, WaitForNameShortTimeoutNoCrash) {
+	auto fn = findFunction("uia", "wait_for_name");
+	EXPECT_NO_THROW(fn.func({ScriptValue::fromString("x"), ScriptValue::fromInt(50)}));
+}
+
+TEST(UiaModuleFunctionsTest, FindButtonAndEditReturnNullOrObject) {
+	auto fnBtn = findFunction("uia", "find_button");
+	auto r1 = fnBtn.func({ScriptValue::fromString("OK")});
+	EXPECT_TRUE(r1.isNull() || r1.isObject());
+	auto fnEdit = findFunction("uia", "find_edit");
+	auto r2 = fnEdit.func({ScriptValue::fromString("username")});
+	EXPECT_TRUE(r2.isNull() || r2.isObject());
+}
+
+TEST(UiaModuleFunctionsTest, UIElementObjectStructureWhenAvailable) {
+	// 有辅助功能权限时验证 OO 对象结构；无权限则跳过（不失败）
+	if (!uia().initialize()) {
+		SUCCEED() << "无辅助功能权限，跳过 OO 结构验证";
+		return;
+	}
+	auto fn = findFunction("uia", "from_foreground");
+	auto root = fn.func({});
+	if (root.isNull()) {
+		SUCCEED() << "无前台元素，跳过";
+		return;
+	}
+	ASSERT_TRUE(root.isObject());
+	ASSERT_TRUE(root.get("_handle") != nullptr);
+	EXPECT_TRUE(root.get("_handle")->isInt());
+	EXPECT_GT(root.get("_handle")->asInt(0), 0); // handle >= 1
+	// 12 方法均为 Callable
+	const std::vector<std::string> methods = {
+		"get_info", "click", "double_click", "focus", "get_value", "set_value",
+		"get_children", "expand", "collapse", "is_expanded", "is_visible", "is_enabled"
+	};
+	for (const auto& m : methods) {
+		const ScriptValue* method = root.get(m);
+		ASSERT_TRUE(method != nullptr) << "缺少方法: " << m;
+		EXPECT_TRUE(method->isCallable()) << "方法非 Callable: " << m;
+	}
+	// 调用 get_info 验证返回 Object（或 null，若元素失效）
+	auto info = root.get("get_info")->call({});
+	EXPECT_TRUE(info.isObject() || info.isNull());
 }
