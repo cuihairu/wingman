@@ -31,7 +31,7 @@ Wingman 提供了丰富的 API 来支持游戏自动化开发。
 | `uia` | UI Automation 控件交互 | [uia](uia/index.md) |
 | `bt` | 行为树引擎 | [behavior-tree](behavior-tree.md) |
 | `security` | 安全模块 | [security](security.md) |
-| `crypto` | 加密函数 | [security](security.md) |
+| `crypto` | 加密函数 | [crypto](crypto.md) |
 | `verification` | 验证码识别、TOTP | [verification](verification.md) |
 | `gameprofile` | 游戏配置档案 | [gameprofile](gameprofile.md) |
 | `util` | 工具函数 | [util](util.md) |
@@ -43,21 +43,23 @@ Wingman 提供了丰富的 API 来支持游戏自动化开发。
 ```lua
 local wingman = require("wingman")
 
--- 截图
-local screenshot = wingman.screen.capture(0, 0, 1920, 1080)
-screenshot:save("screen.png")
-
--- 查找颜色
-local points = wingman.screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
-if points then
-    wingman.input.click(points[1].x, points[1].y)
+-- 截图（返回是否成功，图像存于内部缓冲区）
+local ok = wingman.screen.capture()
+if not ok then
+    print("截屏失败")
 end
 
--- 查找图像
-local match = wingman.screen.findImage("target.png", 0, 0, 1920, 1080, 0.8)
-if match then
-    wingman.input.move(match.x, match.y, 500)
-    wingman.input.click(match.x, match.y)
+-- 查找颜色（返回 {point, found}，region 可选）
+local result = wingman.screen.findColor(0xFF0000, {x=0, y=0, width=1920, height=1080}, 10)
+if result.found then
+    wingman.input.click(result.point.x, result.point.y)
+end
+
+-- 查找图像（返回 {point, found}，threshold 可选，默认 0.9）
+local match = wingman.screen.findImage("target.png", {x=0, y=0, width=1920, height=1080}, 0.8)
+if match.found then
+    wingman.input.move(match.point.x, match.point.y, 500)
+    wingman.input.click(match.point.x, match.point.y)
 end
 ```
 
@@ -66,20 +68,21 @@ end
 ```python
 from wingman import screen, input
 
-# 截图
-screenshot = screen.capture(0, 0, 1920, 1080)
-screenshot.save("screen.png")
+# 截图（返回是否成功，图像存于内部缓冲区）
+ok = screen.capture()
+if not ok:
+    print("截屏失败")
 
-# 查找颜色
-points = screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
-if points:
-    input.click(points[0]["x"], points[0]["y"])
+# 查找颜色（返回 {point, found}，region 可选）
+result = screen.findColor(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080}, 10)
+if result["found"]:
+    input.click(result["point"]["x"], result["point"]["y"])
 
-# 查找图像
-match = screen.findImage("target.png", 0, 0, 1920, 1080, 0.8)
-if match:
-    input.move(match["x"], match["y"], 500)
-    input.click(match["x"], match["y"])
+# 查找图像（返回 {point, found}，threshold 可选，默认 0.9）
+match = screen.findImage("target.png", {"x": 0, "y": 0, "width": 1920, "height": 1080}, 0.8)
+if match["found"]:
+    input.move(match["point"]["x"], match["point"]["y"], 500)
+    input.click(match["point"]["x"], match["point"]["y"])
 ```
 
 ## 数据持久化 API
@@ -210,29 +213,25 @@ local wingman = require("wingman")
 -- 启动调试器
 wingman.debugger.start()
 
--- 设置断点
-wingman.debugger.breakpoint()
-
--- 输出调试信息
-wingman.debugger.log("Variable value:", some_var)
+-- 在当前位置设置断点
+wingman.debugger.breakHere()
 ```
 
 ## 按功能查找 API
 
 ### 屏幕和图像
 
-- 📸 **截图**: `screen.capture()`
+- 📸 **截图**: `screen.capture()`, `screen.captureRegion()`
 - 🎨 **颜色检测**: `screen.findColor()`, `screen.findColors()`
-- 🖼️ **图像识别**: `screen.findImage()`, `screen.findImages()`
-- 🔍 **图像匹配**: `screen.matchTemplate()`
+- 🖼️ **图像识别**: `screen.findImage()`
 - 📖 **OCR**: `ocr.recognize()`
 
 ### 输入和控制
 
 - 🖱️ **鼠标**: `input.click()`, `input.move()`, `input.scroll()`
-- ⌨️ **键盘**: `input.keyDown()`, `input.keyUp()`, `input.keyPress()`
-- 📝 **文本**: `input.text()`
-- 🎯 **人性化**: `input.moveHuman()`, `input.clickHuman()`
+- ⌨️ **键盘**: `input.keyDown()`, `input.keyUp()`, `input.key()`
+- 📝 **文本**: `input.type()`
+- 🎯 **人性化**: `human.mouse_move()`, `human.mouse_click()`, `human.keyboard_type()`
 
 ### 窗口和进程
 
@@ -246,18 +245,18 @@ wingman.debugger.log("Variable value:", some_var)
 
 ### 自动化
 
-- ⚡ **触发器**: `trigger.create()`, `trigger.start()`
-- 📼 **录制**: `recorder.start()`, `recorder.stop()`, `recorder.play()`
+- ⚡ **触发器**: `smarttrigger.create()`, `smarttrigger.start()`
+- 📼 **录制**: `macro.start()`, `macro.stop()`, `macro.playback()`
 - 🔔 **事件**: `event.on()`, `event.emit()`
-- 📋 **任务**: `task.create()`, `task.start()`
+- 📋 **任务**: `task.submit()`, `task.status()`
 
 ### 网络
 
-- 🌐 **HTTP**: `http.get()`, `http.post()`, `http.request()`
+- 🌐 **HTTP**: `http.get()`, `http.post()`
 
 ### 调试
 
-- 🐛 **调试器**: `debug.start()`, `debug.breakpoint()`, `debug.log()`
+- 🐛 **调试器**: `debugger.start()`, `debugger.breakpoint()`, `debugger.breakHere()`
 
 ## API 命名约定
 
@@ -272,6 +271,8 @@ wingman.debugger.log("Variable value:", some_var)
 - 模块使用小写: `from wingman import screen`
 - 方法使用蛇形命名: `screen.capture()`
 - 常量使用全大写: `KEY_CTRL`
+
+> ⚠️ **注意**：当前 Python 绑层未做 snake_case 转换，Python 调用须使用代码注册名（如 `getForeground` 而非 `get_foreground`），snake_case 支持规划中。
 
 ## 类型转换
 
@@ -305,13 +306,13 @@ wingman.debugger.log("Variable value:", some_var)
 
 ```lua
 local ok, result = pcall(function()
-    return wingman.screen.capture(0, 0, 1920, 1080)
+    return wingman.screen.capture()
 end)
 
 if not ok then
     print("Error:", result)
 else
-    -- 使用 result
+    -- result 为布尔值，表示是否截屏成功
 end
 ```
 
@@ -319,7 +320,7 @@ end
 
 ```python
 try:
-    screenshot = screen.capture(0, 0, 1920, 1080)
+    ok = screen.capture()
 except Exception as e:
     print(f"Error: {e}")
 ```

@@ -1,909 +1,522 @@
-# 脚本 API
+# API: wingman.script
 
-脚本 API 提供脚本执行、事件系统、任务管理、通知、状态机等功能。
+script 模块是脚本管理控制面，提供对已注册脚本的列举、查询、加载、运行、停止、重载，以及全局环境变量与配置的读写、热重载开关。它面向运行期编排，让一个脚本能够反过来操控其他脚本的生命周期与运行时参数。
 
-## 📋 模块列表
+## 设计约束
 
-| 模块 | 功能 | 文档 |
+1. **运行时依赖**
+   - script 模块依赖 runtime 注入的 `ScriptManager`。若 runtime 未注入（`mgr()` 为空），所有调用将返回安全的空值（空数组、空串、`false`）而非抛异常。
+
+2. **状态模型**
+   - 脚本状态机：`unloaded` / `loaded` / `starting` / `running` / `paused` / `stopping` / `completed` / `error`。
+   - `list()` 返回的每个脚本信息对象包含 `name`、`path`、`state`、`language`，以及可选的 `lastError`（仅当存在错误时）。
+
+3. **环境与配置作用域**
+   - `setEnv` / `getEnv` 当前操作的是 **全局** 脚本环境（非 per-script），`name` 参数仅用于保持调用形态一致，不会按脚本隔离环境变量。
+   - `setConfig` / `getConfig` 操作的是 runtime 全局配置键值。
+
+4. **热重载**
+   - `setHotReload(true)` 会同时启用全局自动重载标志并启动热重载监视；`setHotReload(false)` 会关闭。
+   - 单个脚本的自动重载由 `load` 时传入的 `autoReload` 配置项控制。
+
+5. **参数校验**
+   - 必填参数缺失或类型不符时返回 `false` / `""` / 空数组，不抛异常。调用方应检查返回值。
+
+## 函数列表
+
+script 模块在 C++ 侧以 `mod.name = "script"` 注册，共 13 个函数：
+
+| 函数 | 签名 |
+|------|------|
+| `list` | `() -> array` |
+| `getState` | `(name) -> string` |
+| `isRunning` | `(name) -> bool` |
+| `has` | `(name) -> bool` |
+| `reload` | `(name) -> bool` |
+| `run` | `(name) -> bool` |
+| `stop` | `(name) -> bool` |
+| `setEnv` | `(name, key, value) -> bool` |
+| `getEnv` | `(name, key) -> string` |
+| `setConfig` | `(key, value) -> bool` |
+| `getConfig` | `(key) -> string` |
+| `setHotReload` | `(enabled) -> bool` |
+| `load` | `(name, path, config?) -> bool` |
+
+---
+
+## 查询类函数
+
+### script.list()
+
+列举所有已注册脚本的信息。
+
+**参数：**
+- 无
+
+**返回：**
+- array: 脚本信息对象数组，每项为 `{name, path, state, language, lastError?}`；runtime 未就绪时返回空数组
+
+**返回字段：**
+| 字段 | 类型 | 说明 |
 |------|------|------|
-| `event` | 事件系统 | [event](event.md) |
-| `task` | 任务管理 | [task](task.md) |
-| `notify` | 通知系统 | [notify](notify.md) |
-| `fsm` | 有限状态机 | [fsm](fsm.md) |
-| `http` | HTTP 请求 | [http](http.md) |
-| `config` | 配置管理 | [config](config.md) |
-| `transport` | TCP/UDP 网络通信 | [transport](transport.md) |
+| `name` | string | 脚本名称 |
+| `path` | string | 脚本文件路径 |
+| `state` | string | 当前状态（`unloaded`/`loaded`/`starting`/`running`/`paused`/`stopping`/`completed`/`error`） |
+| `language` | string | 脚本语言（如 `lua`、`python`） |
+| `lastError` | string? | 最近一次错误信息（仅当存在错误时出现） |
 
----
+**示例：**
 
-## Event - 事件系统
+```python
+from wingman import script
 
-事件系统提供发布-订阅模式的事件处理机制。
-
-### Lua API
+for s in script.list():
+    print(s["name"], s["state"], s["language"])
+```
 
 ```lua
 local wingman = require("wingman")
 
-```
-
-### Python API
-
-```python
-from wingman import event
-```
-
-### 函数列表
-
-#### `on(eventName, handler)`
-
-订阅事件。
-
-**参数:**
-- `eventName` (string): 事件名称
-- `handler` (function): 事件处理函数
-
-**返回:** 事件 ID（用于取消订阅）
-
-**示例:**
-```lua
--- Lua
-local id = event.on("keydown", function(key)
-    print("Key pressed:", key)
-end)
-
--- 带过滤器的订阅
-event.on("keydown", function(key)
-    if key == "F1" then
-        print("F1 pressed!")
-    end
-end, {key = "F1"})
-```
-
-```python
-# Python
-def on_keydown(key):
-    print(f"Key pressed: {key}")
-
-id = event.on("keydown", on_keydown)
-
-# 带过滤器的订阅
-def on_f1(key):
-    if key == "F1":
-        print("F1 pressed!")
-
-event.on("keydown", on_f1, {"key": "F1"})
-```
-
-#### `off(eventId)`
-
-取消订阅事件。
-
-**参数:**
-- `eventId` (number): 事件 ID
-
-**示例:**
-```lua
--- Lua
-event.off(id)
-```
-
-```python
-# Python
-event.off(id)
-```
-
-#### `emit(eventName, data)`
-
-触发事件。
-
-**参数:**
-- `eventName` (string): 事件名称
-- `data` (any): 事件数据
-
-**示例:**
-```lua
--- Lua
-event.emit("customEvent", {message = "Hello", value = 42})
-```
-
-```python
-# Python
-event.emit("customEvent", {"message": "Hello", "value": 42})
-```
-
-#### `once(eventName, handler)`
-
-订阅一次性事件（触发后自动取消订阅）。
-
-**参数:**
-- `eventName` (string): 事件名称
-- `handler` (function): 事件处理函数
-
-**返回:** 事件 ID
-
-**示例:**
-```lua
--- Lua
-event.once("startup", function()
-    print("This will only run once")
-end)
-```
-
-```python
-# Python
-event.once("startup", lambda: print("This will only run once"))
-```
-
-### 内置事件
-
-| 事件名 | 触发时机 | 数据 |
-|--------|----------|------|
-| `keydown` | 按键按下 | `{key: 按键名}` |
-| `keyup` | 按键释放 | `{key: 按键名}` |
-| `mousedown` | 鼠标按下 | `{x, y, button}` |
-| `mouseup` | 鼠标释放 | `{x, y, button}` |
-| `mousemove` | 鼠标移动 | `{x, y}` |
-| `startup` | 脚本启动时 | 无 |
-| `shutdown` | 脚本关闭时 | 无 |
-
----
-
-## Task - 任务管理
-
-任务管理模块提供异步任务创建和管理功能。
-
-### Lua API
-
-```lua
-local wingman = require("wingman")
-
-```
-
-### Python API
-
-```python
-from wingman import task
-```
-
-### 函数列表
-
-#### `create(func, interval)`
-
-创建周期性任务。
-
-**参数:**
-- `func` (function): 任务函数
-- `interval` (number): 执行间隔（毫秒）
-
-**返回:** Task 对象
-
-**示例:**
-```lua
--- Lua
-local myTask = task.create(function()
-    print("Task running...")
-    local match = screen.findImage("target.png", 0, 0, 1920, 1080, 0.8)
-    if match then
-        input.click(match.x, match.y, "left")
-    end
-end, 1000)  -- 每秒执行一次
-```
-
-```python
-# Python
-my_task = task.create(lambda: (
-    print("Task running..."),
-    screen.findImage("target.png", 0, 0, 1920, 1080, 0.8)
-), 1000)  # 每秒执行一次
-```
-
-#### `start(task)`
-
-启动任务。
-
-**参数:**
-- `task` (Task): 任务对象
-
-**示例:**
-```lua
--- Lua
-task.start(myTask)
-```
-
-#### `stop(task)`
-
-停止任务。
-
-**参数:**
-- `task` (Task): 任务对象
-
-**示例:**
-```lua
--- Lua
-task.stop(myTask)
-```
-
-#### `delay(ms, callback)`
-
-创建延迟任务。
-
-**参数:**
-- `ms` (number): 延迟时间（毫秒）
-- `callback` (function): 回调函数
-
-**返回:** Task 对象
-
-**示例:**
-```lua
--- Lua
-task.delay(5000, function()
-    print("5 seconds passed")
-end)
-```
-
-```python
-# Python
-task.delay(5000, lambda: print("5 seconds passed"))
-```
-
-#### `async(func)`
-
-创建异步任务。
-
-**参数:**
-- `func` (function): 异步函数
-
-**返回:** Task 对象
-
-**示例:**
-```lua
--- Lua
-local asyncTask = task.async(function()
-    -- 执行耗时操作
-    local result = someLongOperation()
-    return result
-end)
-
--- 获取结果
-local result = asyncTask:get()
-```
-
-```python
-# Python
-async_task = task.async(lambda: some_long_operation())
-result = async_task.get()
-```
-
----
-
-## Notify - 通知系统
-
-通知系统提供桌面通知功能。
-
-### Lua API
-
-```lua
-local wingman = require("wingman")
-
-```
-
-### Python API
-
-```python
-from wingman import notify
-```
-
-### 函数列表
-
-#### `send(title, message, options)`
-
-发送桌面通知。
-
-**参数:**
-- `title` (string): 通知标题
-- `message` (string): 通知内容
-- `options` (table/object): 通知选项（可选）
-
-**选项:**
-```lua
-{
-    icon = "path/to/icon.png",    -- 图标路径
-    timeout = 5000,               -- 显示时长（毫秒）
-    sound = true,                 -- 是否播放提示音
-    onClick = function()          -- 点击回调
-        print("Notification clicked")
-    end
-}
-```
-
-**示例:**
-```lua
--- Lua
-notify.send("任务完成", "自动化任务已成功完成", {
-    icon = "success.png",
-    timeout = 3000,
-    sound = true,
-    onClick = function()
-        print("User clicked notification")
-    end
-})
-```
-
-```python
-# Python
-notify.send("任务完成", "自动化任务已成功完成", {
-    "icon": "success.png",
-    "timeout": 3000,
-    "sound": True,
-    "onClick": lambda: print("User clicked notification")
-})
-```
-
-#### `update(id, title, message)`
-
-更新现有通知。
-
-**参数:**
-- `id` (number): 通知 ID
-- `title` (string): 新标题
-- `message` (string): 新内容
-
-**示例:**
-```lua
--- Lua
-local notification = notify.send("处理中...", "请稍候")
-task.delay(2000, function()
-    notify.update(notification, "处理完成", "任务已完成")
-end)
-```
-
-#### `clear(id)`
-
-清除通知。
-
-**参数:**
-- `id` (number): 通知 ID（可选，不提供则清除所有）
-
-**示例:**
-```lua
--- Lua
-notify.clear()  -- 清除所有通知
-notify.clear(notificationId)  -- 清除特定通知
-```
-
----
-
-## FSM - 状态机
-
-有限状态机模块提供状态管理功能。
-
-### Lua API
-
-```lua
-local wingman = require("wingman")
-
-```
-
-### Python API
-
-```python
-from wingman import fsm
-```
-
-### 函数列表
-
-#### `create(config)`
-
-创建状态机。
-
-**参数:**
-- `config` (table/object): 状态机配置
-
-**配置:**
-```lua
-{
-    initial = "idle",  -- 初始状态
-
-    states = {
-        idle = {
-            enter = function()
-                print("Enter idle state")
-            end,
-            exit = function()
-                print("Exit idle state")
-            end
-        },
-
-        running = {
-            enter = function()
-                print("Enter running state")
-            end
-        },
-
-        paused = {}
-    },
-
-    transitions = {
-        {from = "idle", to = "running", event = "start"},
-        {from = "running", to = "paused", event = "pause"},
-        {from = "paused", to = "running", event = "resume"},
-        {from = "running", to = "idle", event = "stop"},
-        {from = "paused", to = "idle", event = "stop"}
-    }
-}
-```
-
-**返回:** FSM 对象
-
-**示例:**
-```lua
--- Lua
-local gameState = fsm.create({
-    initial = "menu",
-
-    states = {
-        menu = {
-            enter = function()
-                ui.showMenu()
-            end
-        },
-        playing = {
-            enter = function()
-                game.start()
-            end,
-            update = function(dt)
-                game.update(dt)
-            end
-        },
-        paused = {
-            enter = function()
-                ui.showPauseMenu()
-            end
-        },
-        gameover = {
-            enter = function()
-                ui.showGameOver()
-            end
-        }
-    },
-
-    transitions = {
-        {from = "menu", to = "playing", event = "start"},
-        {from = "playing", to = "paused", event = "pause"},
-        {from = "paused", to = "playing", event = "resume"},
-        {from = "paused", to = "menu", event = "quit"},
-        {from = "playing", to = "gameover", event = "die"},
-        {from = "gameover", to = "menu", event = "restart"}
-    }
-})
-```
-
-```python
-# Python
-game_state = fsm.create({
-    "initial": "menu",
-    "states": {
-        "menu": {
-            "enter": lambda: ui.show_menu()
-        },
-        "playing": {
-            "enter": lambda: game.start(),
-            "update": lambda dt: game.update(dt)
-        },
-        "paused": {
-            "enter": lambda: ui.show_pause_menu()
-        }
-    },
-    "transitions": [
-        {"from": "menu", "to": "playing", "event": "start"},
-        {"from": "playing", "to": "paused", "event": "pause"},
-        {"from": "paused", "to": "playing", "event": "resume"}
-    ]
-})
-```
-
-#### `transition(fsm, event)`
-
-触发状态转换。
-
-**参数:**
-- `fsm` (FSM): 状态机对象
-- `event` (string): 事件名称
-
-**返回:** boolean - 转换是否成功
-
-**示例:**
-```lua
--- Lua
-fsm.transition(gameState, "start")  -- menu -> playing
-fsm.transition(gameState, "pause")  -- playing -> paused
-```
-
-```python
-# Python
-fsm.transition(game_state, "start")  # menu -> playing
-fsm.transition(game_state, "pause")  # playing -> paused
-```
-
-#### `getState(fsm)`
-
-获取当前状态。
-
-**参数:**
-- `fsm` (FSM): 状态机对象
-
-**返回:** string - 当前状态名称
-
-**示例:**
-```lua
--- Lua
-print("Current state:", fsm.getState(gameState))
-```
-
-```python
-# Python
-print(f"Current state: {fsm.get_state(game_state)}")
-```
-
-#### `canTransition(fsm, event)`
-
-检查是否可以转换。
-
-**参数:**
-- `fsm` (FSM): 状态机对象
-- `event` (string): 事件名称
-
-**返回:** boolean
-
-**示例:**
-```lua
--- Lua
-if fsm.canTransition(gameState, "pause") then
-    fsm.transition(gameState, "pause")
+for _, s in ipairs(wingman.script.list()) do
+    print(s.name, s.state, s.language)
 end
 ```
 
+### script.getState(name)
+
+获取指定脚本的当前状态字符串。
+
+**参数：**
+- `name` (string): 脚本名称
+
+**返回：**
+- string: 状态字符串；脚本不存在或 runtime 未就绪时返回 `"unknown"`
+
+**示例：**
+
 ```python
-# Python
-if fsm.can_transition(game_state, "pause"):
-    fsm.transition(game_state, "pause")
+from wingman import script
+
+state = script.getState("combat")
+if state == "running":
+    print("combat is running")
 ```
-
----
-
-## HTTP - 网络请求
-
-HTTP 模块提供网络请求功能。
-
-### Lua API
 
 ```lua
 local wingman = require("wingman")
 
-```
-
-### Python API
-
-```python
-from wingman import http
-```
-
-### 函数列表
-
-#### `get(url, options)`
-
-发送 GET 请求。
-
-**参数:**
-- `url` (string): 请求 URL
-- `options` (table/object): 请求选项（可选）
-
-**选项:**
-```lua
-{
-    headers = {              -- 请求头
-        Authorization = "Bearer token"
-    },
-    params = {               -- 查询参数
-        page = 1,
-        limit = 10
-    },
-    timeout = 5000           -- 超时时间（毫秒）
-}
-```
-
-**返回:** Response 对象
-
-**示例:**
-```lua
--- Lua
-local response = http.get("https://api.example.com/data", {
-    headers = {
-        Authorization = "Bearer mytoken"
-    },
-    params = {
-        page = 1
-    }
-})
-
-if response.ok then
-    local data = json.decode(response.text)
-    print("Received data:", data)
-else
-    print("Error:", response.status)
+local state = wingman.script.getState("combat")
+if state == "running" then
+    print("combat is running")
 end
 ```
 
-```python
-# Python
-response = http.get("https://api.example.com/data", {
-    "headers": {
-        "Authorization": "Bearer mytoken"
-    },
-    "params": {
-        "page": 1
-    }
-})
+### script.isRunning(name)
 
-if response.ok:
-    data = json.decode(response.text)
-    print(f"Received data: {data}")
-else:
-    print(f"Error: {response.status}")
-```
+判断指定脚本是否处于 `running` 状态。
 
-#### `post(url, data, options)`
+**参数：**
+- `name` (string): 脚本名称
 
-发送 POST 请求。
+**返回：**
+- bool: 脚本状态为 `running` 时返回 `true`，否则 `false`；runtime 未就绪或参数缺失时返回 `false`
 
-**参数:**
-- `url` (string): 请求 URL
-- `data` (table/object/string): 请求数据
-- `options` (table/object): 请求选项（可选）
-
-**示例:**
-```lua
--- Lua
-local response = http.post("https://api.example.com/submit", {
-    name = "Player",
-    score = 1000
-}, {
-    headers = {
-        ["Content-Type"] = "application/json"
-    }
-})
-```
+**示例：**
 
 ```python
-# Python
-response = http.post("https://api.example.com/submit", {
-    "name": "Player",
-    "score": 1000
-}, {
-    "headers": {
-        "Content-Type": "application/json"
-    }
-})
+from wingman import script
+
+if script.isRunning("loot"):
+    print("loot script is active")
 ```
-
-#### `put(url, data, options)`
-
-发送 PUT 请求。
-
-**参数:**
-- `url` (string): 请求 URL
-- `data` (table/object/string): 请求数据
-- `options` (table/object): 请求选项（可选）
-
-**示例:**
-```lua
--- Lua
-local response = http.put("https://api.example.com/update/1", {
-    status = "completed"
-})
-```
-
-#### `delete(url, options)`
-
-发送 DELETE 请求。
-
-**参数:**
-- `url` (string): 请求 URL
-- `options` (table/object): 请求选项（可选）
-
-**示例:**
-```lua
--- Lua
-local response = http.delete("https://api.example.com/items/1")
-```
-
-#### `request(method, url, options)`
-
-发送自定义请求。
-
-**参数:**
-- `method` (string): HTTP 方法
-- `url` (string): 请求 URL
-- `options` (table/object): 请求选项
-
-**示例:**
-```lua
--- Lua
-local response = http.request("PATCH", "https://api.example.com/items/1", {
-    data = {status = "in_progress"},
-    headers = {["Content-Type"] = "application/json"}
-})
-```
-
-### Response 对象
-
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `ok` | boolean | 请求是否成功 |
-| `status` | number | HTTP 状态码 |
-| `text` | string | 响应文本 |
-| `headers` | table | 响应头 |
-
----
-
-## Config - 配置
-
-配置模块提供配置管理功能。
-
-### Lua API
 
 ```lua
 local wingman = require("wingman")
 
+if wingman.script.isRunning("loot") then
+    print("loot script is active")
+end
 ```
 
-### Python API
+### script.has(name)
+
+判断指定脚本是否已注册。
+
+**参数：**
+- `name` (string): 脚本名称
+
+**返回：**
+- bool: 已注册返回 `true`，否则 `false`；runtime 未就绪或参数缺失时返回 `false`
+
+**示例：**
 
 ```python
-from wingman import config
+from wingman import script
+
+if script.has("auto-heal"):
+    print("auto-heal registered")
 ```
 
-### 函数列表
-
-#### `load(path)`
-
-加载配置文件。
-
-**参数:**
-- `path` (string): 配置文件路径（支持 .json, .ini）
-
-**返回:** 配置对象
-
-**示例:**
 ```lua
--- Lua
-local conf = config.load("config.json")
-print(conf.server.host)
-print(conf.server.port)
+local wingman = require("wingman")
+
+if wingman.script.has("auto-heal") then
+    print("auto-heal registered")
+end
 ```
+
+---
+
+## 生命周期控制
+
+### script.run(name)
+
+启动指定脚本。
+
+**参数：**
+- `name` (string): 脚本名称
+
+**返回：**
+- bool: 启动成功返回 `true`，否则 `false`；runtime 未就绪或参数缺失时返回 `false`
+
+**示例：**
 
 ```python
-# Python
-conf = config.load("config.json")
-print(conf["server"]["host"])
-print(conf["server"]["port"])
+from wingman import script
+
+script.run("combat")   # 启动战斗脚本
 ```
 
-#### `save(config, path)`
-
-保存配置到文件。
-
-**参数:**
-- `config` (table/object): 配置对象
-- `path` (string): 保存路径
-
-**示例:**
 ```lua
--- Lua
-local conf = {
-    server = {
-        host = "localhost",
-        port = 8080
-    },
-    debug = true
-}
-config.save(conf, "config.json")
+local wingman = require("wingman")
+
+wingman.script.run("combat")
 ```
+
+### script.stop(name)
+
+停止指定脚本。
+
+**参数：**
+- `name` (string): 脚本名称
+
+**返回：**
+- bool: 停止成功返回 `true`，否则 `false`；runtime 未就绪或参数缺失时返回 `false`
+
+**示例：**
 
 ```python
-# Python
-conf = {
-    "server": {
-        "host": "localhost",
-        "port": 8080
-    },
-    "debug": True
-}
-config.save(conf, "config.json")
+from wingman import script
+
+script.stop("combat")  # 停止战斗脚本
 ```
 
-#### `get(key, default)`
-
-获取配置值。
-
-**参数:**
-- `key` (string): 配置键（支持点号分隔的路径）
-- `default` (any): 默认值（可选）
-
-**返回:** 配置值
-
-**示例:**
 ```lua
--- Lua
-local port = config.get("server.port", 8080)
-local debug = config.get("debug", false)
+local wingman = require("wingman")
+
+wingman.script.stop("combat")
 ```
+
+### script.reload(name)
+
+重新加载指定脚本。
+
+**参数：**
+- `name` (string): 脚本名称
+
+**返回：**
+- bool: 重载成功返回 `true`，否则 `false`；runtime 未就绪或参数缺失时返回 `false`
+
+**示例：**
 
 ```python
-# Python
-port = config.get("server.port", 8080)
-debug = config.get("debug", False)
+from wingman import script
+
+script.reload("combat")  # 编辑脚本文件后热重载
 ```
 
-#### `set(key, value)`
+```lua
+local wingman = require("wingman")
 
-设置配置值。
+wingman.script.reload("combat")
+```
 
-**参数:**
+### script.load(name, path, config?)
+
+加载一个脚本到脚本管理器。
+
+**参数：**
+- `name` (string): 脚本名称（注册标识）
+- `path` (string): 脚本文件路径
+- `config` (object?, optional): 加载配置对象
+  - `autoReload` (bool?, optional): 是否启用文件变更自动重载
+  - `sandboxed` (bool?, optional): 是否以沙箱模式运行
+  - `timeoutMs` (int?, optional): 单次执行超时（毫秒），默认 `30000`
+
+**返回：**
+- bool: 加载成功返回 `true`，否则 `false`；runtime 未就绪或参数不足时返回 `false`
+
+**示例：**
+
+```python
+from wingman import script
+
+# 基本加载
+script.load("new-script", "scripts/new_script.py")
+
+# 带配置加载
+script.load("new-script", "scripts/new_script.py", {
+    "autoReload": True,
+    "sandboxed": False,
+    "timeoutMs": 60000
+})
+```
+
+```lua
+local wingman = require("wingman")
+
+-- 基本加载
+wingman.script.load("new-script", "scripts/new_script.lua")
+
+-- 带配置加载
+wingman.script.load("new-script", "scripts/new_script.lua", {
+    autoReload = true,
+    sandboxed = false,
+    timeoutMs = 60000
+})
+```
+
+---
+
+## 环境变量
+
+> 注：`setEnv` / `getEnv` 当前操作全局脚本环境，`name` 参数仅用于调用形态兼容，不会按脚本隔离。
+
+### script.setEnv(name, key, value)
+
+设置全局脚本环境变量。
+
+**参数：**
+- `name` (string): 脚本名称（保留参数，当前不参与隔离）
+- `key` (string): 环境变量名
+- `value` (string): 环境变量值
+
+**返回：**
+- bool: 设置成功返回 `true`；runtime 未就绪或参数不足（少于 3 个）时返回 `false`
+
+**示例：**
+
+```python
+from wingman import script
+
+script.setEnv("combat", "TARGET_MODE", "aggressive")
+```
+
+```lua
+local wingman = require("wingman")
+
+wingman.script.setEnv("combat", "TARGET_MODE", "aggressive")
+```
+
+### script.getEnv(name, key)
+
+读取全局脚本环境变量。
+
+**参数：**
+- `name` (string): 脚本名称（保留参数，当前不参与隔离）
+- `key` (string): 环境变量名
+
+**返回：**
+- string: 环境变量值；不存在或 runtime 未就绪时返回 `""`
+
+**示例：**
+
+```python
+from wingman import script
+
+mode = script.getEnv("combat", "TARGET_MODE")
+```
+
+```lua
+local wingman = require("wingman")
+
+local mode = wingman.script.getEnv("combat", "TARGET_MODE")
+```
+
+---
+
+## 配置管理
+
+### script.setConfig(key, value)
+
+设置 runtime 全局配置项。
+
+**参数：**
 - `key` (string): 配置键
-- `value` (any): 配置值
+- `value` (string): 配置值
 
-**示例:**
-```lua
--- Lua
-config.set("server.port", 9090)
-config.set("debug", true)
-```
+**返回：**
+- bool: 设置成功返回 `true`；runtime 未就绪或参数不足时返回 `false`
+
+**示例：**
 
 ```python
-# Python
-config.set("server.port", 9090)
-config.set("debug", True)
+from wingman import script
+
+script.setConfig("max_scripts", "32")
 ```
 
-#### `merge(config1, config2)`
-
-合并两个配置。
-
-**参数:**
-- `config1` (table/object): 基础配置
-- `config2` (table/object): 覆盖配置
-
-**返回:** 合并后的配置
-
-**示例:**
 ```lua
--- Lua
-local default = {theme = "dark", language = "en"}
-local user = {language = "zh"}
-local merged = config.merge(default, user)
--- merged = {theme = "dark", language = "zh"}
+local wingman = require("wingman")
+
+wingman.script.setConfig("max_scripts", "32")
 ```
+
+### script.getConfig(key)
+
+读取 runtime 全局配置项。
+
+**参数：**
+- `key` (string): 配置键
+
+**返回：**
+- string: 配置值；不存在或 runtime 未就绪时返回 `""`
+
+**示例：**
 
 ```python
-# Python
-default = {"theme": "dark", "language": "en"}
-user = {"language": "zh"}
-merged = config.merge(default, user)
-# merged = {"theme": "dark", "language": "zh"}
+from wingman import script
+
+max_scripts = script.getConfig("max_scripts")
+```
+
+```lua
+local wingman = require("wingman")
+
+local max_scripts = wingman.script.getConfig("max_scripts")
 ```
 
 ---
 
-## 🔗 相关文档
+## 热重载
 
-- [核心 API](core.md)
-- [数据持久化 API](data.md)
-- [序列化 API](serialize.md)
-- [调试 API](debugger.md)
-- [快速开始](../getting-started.md)
+### script.setHotReload(enabled)
+
+全局开启或关闭热重载监视。
+
+**参数：**
+- `enabled` (bool): `true` 启用（同时设置全局自动重载标志并启动监视），`false` 关闭并停止监视
+
+**返回：**
+- bool: 操作成功返回 `true`；runtime 未就绪或参数缺失时返回 `false`
+
+**示例：**
+
+```python
+from wingman import script
+
+script.setHotReload(True)   # 开发期开启热重载
+# ...编辑脚本文件后自动重载...
+script.setHotReload(False)  # 发布期关闭
+```
+
+```lua
+local wingman = require("wingman")
+
+wingman.script.setHotReload(true)
+wingman.script.setHotReload(false)
+```
 
 ---
 
-**返回**: [API 概览](overview.md) | [主页](../README.md)
+## 完整示例
+
+### Python
+
+```python
+from wingman import script
+
+# 1. 动态加载并运行一个脚本
+script.load("patrol", "scripts/patrol.py", {
+    "autoReload": True,
+    "sandboxed": False,
+    "timeoutMs": 30000
+})
+
+if script.has("patrol"):
+    script.run("patrol")
+
+# 2. 设置环境并检查状态
+script.setEnv("patrol", "REGION", "north")
+print("state:", script.getState("patrol"))
+print("running:", script.isRunning("patrol"))
+
+# 3. 列举全部脚本
+for s in script.list():
+    print(f"- {s['name']} [{s['state']}] ({s['language']})")
+
+# 4. 热重载与停止
+script.reload("patrol")
+script.stop("patrol")
+
+# 5. 读写全局配置
+script.setConfig("log_level", "debug")
+print("log_level:", script.getConfig("log_level"))
+```
+
+### Lua
+
+```lua
+local wingman = require("wingman")
+local script = wingman.script
+
+-- 1. 动态加载并运行一个脚本
+script.load("patrol", "scripts/patrol.lua", {
+    autoReload = true,
+    sandboxed = false,
+    timeoutMs = 30000
+})
+
+if script.has("patrol") then
+    script.run("patrol")
+end
+
+-- 2. 设置环境并检查状态
+script.setEnv("patrol", "REGION", "north")
+print("state:", script.getState("patrol"))
+print("running:", script.isRunning("patrol"))
+
+-- 3. 列举全部脚本
+for _, s in ipairs(script.list()) do
+    print(string.format("- %s [%s] (%s)", s.name, s.state, s.language))
+end
+
+-- 4. 热重载与停止
+script.reload("patrol")
+script.stop("patrol")
+
+-- 5. 读写全局配置
+script.setConfig("log_level", "debug")
+print("log_level:", script.getConfig("log_level"))
+```
+
+## 注意事项
+
+1. **runtime 未就绪**
+   - 当 runtime 未注入 `ScriptManager` 时，所有函数返回空值（空数组、`""`、`false`），不抛异常。调用方应据此判断可用性。
+
+2. **环境作用域**
+   - `setEnv` / `getEnv` 当前为全局环境，不按 `name` 隔离；未来如改为 per-script 隔离，调用形态可保持不变。
+
+3. **热重载粒度**
+   - `setHotReload` 是全局开关；单脚本是否自动重载还取决于 `load` 时设置的 `autoReload` 配置。
+
+4. **状态查询容错**
+   - `getState` 对未知脚本返回 `"unknown"`；`isRunning` / `has` 对未知脚本返回 `false`，便于条件判断。
+
+5. **配置值类型**
+   - `setConfig` / `getConfig` 的值均为字符串，如需存储数字/布尔需调用方自行转换。
+
+---
+
+**相关文档：** [API 概览](overview.md)

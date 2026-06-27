@@ -251,7 +251,10 @@ end
 安全和加密相关功能。
 
 - [security](./security.md) - 安全模块
-- [crypto](./security.md) - 加密函数（与 security 共用文档）
+- [crypto](./crypto.md) - 加密函数
+- [clipboard](./clipboard.md) - 剪贴板读写
+- [macro](./macro.md) - 宏录制与回放
+- [filewatcher](./filewatcher.md) - 文件系统监听
 
 ### 编排与协作
 

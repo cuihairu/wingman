@@ -10,6 +10,11 @@ system 模块提供系统信息查询功能：
 - **磁盘信息** - 磁盘容量、可用空间、使用率
 - **GPU 信息** - 显卡名称
 - **系统信息** - 操作系统版本、架构、计算机名
+- **网络适配器** - 适配器名称、MAC、IP、状态
+- **显示器** - 分辨率、刷新率、主显示器
+- **运行时间** - 系统开机以来的运行秒数
+- **日期时间** - 当前日期时间、时区
+- **进程/线程统计** - 系统进程数与线程数
 
 ---
 
@@ -318,6 +323,346 @@ print("用户名: " .. osInfo.userName)
 
 ---
 
+## 获取网络适配器信息
+
+### get_network_adapters() / getNetworkAdapters()
+
+**说明**：获取系统网络适配器信息。
+
+**函数签名**：
+
+```python
+get_network_adapters() -> list[dict]
+```
+
+```lua
+getNetworkAdapters() -> table
+```
+
+**返回**：
+- 网络适配器信息数组，每个适配器对象包含：
+  - `name` / `name` - 适配器名称
+  - `description` / `description` - 适配器描述
+  - `macAddress` / `macAddress` - MAC 地址
+  - `ipAddress` / `ipAddress` - IP 地址
+  - `isUp` / `isUp` - 是否启用
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import system
+
+# 获取网络适配器信息
+adapters = system.get_network_adapters()
+for adapter in adapters:
+    print(f"名称: {adapter['name']}")
+    print(f"IP: {adapter['ipAddress']}")
+    print(f"启用: {adapter['isUp']}")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 获取网络适配器信息
+local adapters = wingman.system.getNetworkAdapters()
+for i, adapter in ipairs(adapters) do
+    print("名称: " .. adapter.name)
+    print("IP: " .. adapter.ipAddress)
+    print("启用: " .. tostring(adapter.isUp))
+end
+```
+
+:::
+
+---
+
+## 获取显示器信息
+
+### get_display_info() / getDisplayInfo()
+
+**说明**：获取系统显示器信息。
+
+**函数签名**：
+
+```python
+get_display_info() -> list[dict]
+```
+
+```lua
+getDisplayInfo() -> table
+```
+
+**返回**：
+- 显示器信息数组，每个显示器对象包含：
+  - `index` / `index` - 显示器索引
+  - `name` / `name` - 显示器名称
+  - `width` / `width` - 分辨率宽度（像素）
+  - `height` / `height` - 分辨率高度（像素）
+  - `refreshRate` / `refreshRate` - 刷新率（Hz）
+  - `isPrimary` / `isPrimary` - 是否为主显示器
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import system
+
+# 获取显示器信息
+displays = system.get_display_info()
+for display in displays:
+    print(f"显示器 {display['index']}: {display['width']}x{display['height']}")
+    print(f"主显示器: {display['isPrimary']}")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 获取显示器信息
+local displays = wingman.system.getDisplayInfo()
+for i, display in ipairs(displays) do
+    print("显示器 " .. display.index .. ": " .. display.width .. "x" .. display.height)
+    print("主显示器: " .. tostring(display.isPrimary))
+end
+```
+
+:::
+
+---
+
+## 获取系统运行时间
+
+### get_uptime() / getUptime()
+
+**说明**：获取系统开机以来的运行时间（秒）。
+
+**函数签名**：
+
+```python
+get_uptime() -> int
+```
+
+```lua
+getUptime() -> number
+```
+
+**返回**：
+- 系统运行时间（秒）
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import system
+
+# 获取运行时间
+uptime = system.get_uptime()
+print(f"运行时间: {uptime // 3600} 小时 {(uptime % 3600) // 60} 分钟")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 获取运行时间
+local uptime = wingman.system.getUptime()
+local hours = math.floor(uptime / 3600)
+local minutes = math.floor((uptime % 3600) / 60)
+print("运行时间: " .. hours .. " 小时 " .. minutes .. " 分钟")
+```
+
+:::
+
+---
+
+## 获取当前日期时间
+
+### get_date_time() / getDateTime()
+
+**说明**：获取系统当前日期时间的字符串表示。
+
+**函数签名**：
+
+```python
+get_date_time() -> str
+```
+
+```lua
+getDateTime() -> string
+```
+
+**返回**：
+- 当前日期时间字符串
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import system
+
+# 获取当前日期时间
+dt = system.get_date_time()
+print(f"当前时间: {dt}")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 获取当前日期时间
+local dt = wingman.system.getDateTime()
+print("当前时间: " .. dt)
+```
+
+:::
+
+---
+
+## 获取时区
+
+### get_time_zone() / getTimeZone()
+
+**说明**：获取系统时区字符串。
+
+**函数签名**：
+
+```python
+get_time_zone() -> str
+```
+
+```lua
+getTimeZone() -> string
+```
+
+**返回**：
+- 系统时区字符串
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import system
+
+# 获取时区
+tz = system.get_time_zone()
+print(f"时区: {tz}")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 获取时区
+local tz = wingman.system.getTimeZone()
+print("时区: " .. tz)
+```
+
+:::
+
+---
+
+## 获取进程数
+
+### get_process_count() / getProcessCount()
+
+**说明**：获取系统当前运行的进程总数。
+
+**函数签名**：
+
+```python
+get_process_count() -> int
+```
+
+```lua
+getProcessCount() -> number
+```
+
+**返回**：
+- 进程总数
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import system
+
+# 获取进程数
+count = system.get_process_count()
+print(f"进程数: {count}")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 获取进程数
+local count = wingman.system.getProcessCount()
+print("进程数: " .. count)
+```
+
+:::
+
+---
+
+## 获取线程数
+
+### get_thread_count() / getThreadCount()
+
+**说明**：获取系统当前运行的线程总数。
+
+**函数签名**：
+
+```python
+get_thread_count() -> int
+```
+
+```lua
+getThreadCount() -> number
+```
+
+**返回**：
+- 线程总数
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import system
+
+# 获取线程数
+count = system.get_thread_count()
+print(f"线程数: {count}")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 获取线程数
+local count = wingman.system.getThreadCount()
+print("线程数: " .. count)
+```
+
+:::
+
+---
+
 ## 可用接口
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
@@ -328,6 +673,13 @@ print("用户名: " .. osInfo.userName)
 | `get_disk_info(drive?)` | `getDiskInfo(drive?)` | 获取磁盘信息 | drive: 驱动器号(可选)<br>返回: 磁盘信息对象或数组 |
 | `get_gpu_info()` | `getGpuInfo()` | 获取GPU信息 | 返回: GPU信息对象 |
 | `get_os_info()` | `getOsInfo()` | 获取系统信息 | 返回: 系统信息对象 |
+| `get_network_adapters()` | `getNetworkAdapters()` | 获取网络适配器信息 | 返回: 网络适配器信息数组 |
+| `get_display_info()` | `getDisplayInfo()` | 获取显示器信息 | 返回: 显示器信息数组 |
+| `get_uptime()` | `getUptime()` | 获取系统运行时间 | 返回: 运行秒数 |
+| `get_date_time()` | `getDateTime()` | 获取当前日期时间 | 返回: 日期时间字符串 |
+| `get_time_zone()` | `getTimeZone()` | 获取系统时区 | 返回: 时区字符串 |
+| `get_process_count()` | `getProcessCount()` | 获取进程总数 | 返回: 进程数 |
+| `get_thread_count()` | `getThreadCount()` | 获取线程总数 | 返回: 线程数 |
 
 ---
 
@@ -382,3 +734,24 @@ print("用户名: " .. osInfo.userName)
 | `architecture` | string | 架构（如 "AMD64"） |
 | `computerName` | string | 计算机名 |
 | `userName` | string | 当前用户名 |
+
+### 网络适配器信息对象
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `name` | string | 适配器名称 |
+| `description` | string | 适配器描述 |
+| `macAddress` | string | MAC 地址 |
+| `ipAddress` | string | IP 地址 |
+| `isUp` | boolean | 是否启用 |
+
+### 显示器信息对象
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `index` | number | 显示器索引 |
+| `name` | string | 显示器名称 |
+| `width` | number | 分辨率宽度（像素） |
+| `height` | number | 分辨率高度（像素） |
+| `refreshRate` | number | 刷新率（Hz） |
+| `isPrimary` | boolean | 是否为主显示器 |
