@@ -1731,3 +1731,33 @@ TEST(BtModuleFunctionsTest, ParallelDefaultPolicyReturnsHandle) {
     ASSERT_FALSE(fn.name.empty());
     EXPECT_GT(fn({}).asInt(), 0); // 无参 → 默认 SUCCEED_ON_ALL
 }
+
+TEST(BtModuleFunctionsTest, WaitReturnsPositiveHandle) {
+    auto fn = findFunction("bt", "wait");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_GT(fn({ScriptValue::fromInt(100)}).asInt(), 0);
+}
+
+TEST(BtModuleFunctionsTest, InverterWithChildReturnsHandle) {
+    auto waitFn = findFunction("bt", "wait");
+    auto invFn = findFunction("bt", "inverter");
+    ASSERT_FALSE(invFn.name.empty());
+    int64_t child = waitFn({ScriptValue::fromInt(50)}).asInt();
+    ASSERT_GT(child, 0);
+    EXPECT_GT(invFn({ScriptValue::fromInt(child)}).asInt(), 0);
+}
+
+TEST(BtModuleFunctionsTest, InverterInvalidChildReturnsZero) {
+    auto fn = findFunction("bt", "inverter");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_EQ(fn({ScriptValue::fromInt(999999)}).asInt(), 0); // 无效 child handle → 0
+}
+
+TEST(BtModuleFunctionsTest, RepeatWithCountReturnsHandle) {
+    auto waitFn = findFunction("bt", "wait");
+    auto repFn = findFunction("bt", "repeat");
+    ASSERT_FALSE(repFn.name.empty());
+    int64_t child = waitFn({ScriptValue::fromInt(10)}).asInt();
+    ASSERT_GT(child, 0);
+    EXPECT_GT(repFn({ScriptValue::fromInt(child), ScriptValue::fromInt(3)}).asInt(), 0);
+}

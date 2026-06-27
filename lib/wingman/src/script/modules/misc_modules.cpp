@@ -235,6 +235,26 @@ ModuleDescriptor createBehaviorTreeModule() {
 		return ScriptValue::fromInt(btStoreNode(BehaviorTree::parallel(name, policy)));
 	}, "name:string?, policy:string? -> handle:int"});
 
+	mod.functions.push_back({"wait", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		int ms = static_cast<int>(args.size() > 0 ? args[0].asInt(0) : 0);
+		return ScriptValue::fromInt(btStoreNode(std::make_shared<WaitNode>(ms)));
+	}, "milliseconds:int -> handle:int"});
+
+	mod.functions.push_back({"inverter", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		int childHandle = static_cast<int>(args.size() > 0 ? args[0].asInt(-1) : -1);
+		auto child = btGetNode(childHandle);
+		if (!child) return ScriptValue::fromInt(0); // 无效 child
+		return ScriptValue::fromInt(btStoreNode(std::make_shared<InverterNode>(child)));
+	}, "childHandle:int -> handle:int"});
+
+	mod.functions.push_back({"repeat", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		int childHandle = static_cast<int>(args.size() > 0 ? args[0].asInt(-1) : -1);
+		int count = static_cast<int>(args.size() > 1 ? args[1].asInt(-1) : -1); // -1 = 无限
+		auto child = btGetNode(childHandle);
+		if (!child) return ScriptValue::fromInt(0);
+		return ScriptValue::fromInt(btStoreNode(std::make_shared<RepeatNode>(child, count)));
+	}, "childHandle:int, count:int? -> handle:int"});
+
 	return mod;
 }
 
