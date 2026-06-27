@@ -1833,3 +1833,101 @@ TEST(BtModuleFunctionsTest, ConditionMissingCallableReturnsZero) {
     ASSERT_FALSE(fn.name.empty());
     EXPECT_EQ(fn({ScriptValue::fromString("nocb")}).asInt(), 0); // 缺 callable
 }
+
+TEST(BtModuleFunctionsTest, ActionWithCallableReturnsHandle) {
+    auto fn = findFunction("bt", "action");
+    ASSERT_FALSE(fn.name.empty());
+    ScriptValue cb = ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+        return ScriptValue::fromString("SUCCESS");
+    });
+    EXPECT_GT(fn({ScriptValue::fromString("attack"), cb}).asInt(), 0);
+}
+
+TEST(BtModuleFunctionsTest, ActionInvalidCallableReturnsZero) {
+    auto fn = findFunction("bt", "action");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_EQ(fn({ScriptValue::fromString("bad"), ScriptValue::fromInt(1)}).asInt(), 0);
+}
+
+TEST(BtModuleFunctionsTest, SetRootOnExistingTreeReturnsTrue) {
+    auto createFn = findFunction("bt", "create");
+    auto seqFn = findFunction("bt", "sequence");
+    auto setRootFn = findFunction("bt", "setRoot");
+    ASSERT_FALSE(setRootFn.name.empty());
+    std::string tree = "plan7_setroot_test";
+    createFn({ScriptValue::fromString(tree)});
+    int64_t node = seqFn({}).asInt();
+    ASSERT_TRUE(setRootFn({ScriptValue::fromString(tree), ScriptValue::fromInt(node)}).asBool());
+    findFunction("bt", "remove")({ScriptValue::fromString(tree)});
+}
+
+TEST(BtModuleFunctionsTest, SetRootInvalidTreeReturnsFalse) {
+    auto seqFn = findFunction("bt", "sequence");
+    auto setRootFn = findFunction("bt", "setRoot");
+    int64_t node = seqFn({}).asInt();
+    EXPECT_FALSE(setRootFn({ScriptValue::fromString("no_such_tree_xyz"), ScriptValue::fromInt(node)}).asBool());
+}
+
+// 端到端：condition(true) + action(SUCCESS) 组装成 sequence，setRoot，tick → SUCCESS
+TEST(BtModuleFunctionsTest, EndToEndConditionActionTickReturnsSuccess) {
+    auto createFn = findFunction("bt", "create");
+    auto seqFn = findFunction("bt", "sequence");
+    auto condFn = findFunction("bt", "condition");
+    auto actFn = findFunction("bt", "action");
+    auto addFn = findFunction("bt", "addChild");
+    auto setRootFn = findFunction("bt", "setRoot");
+    auto tickFn = findFunction("bt", "tick");
+    auto removeFn = findFunction("bt", "remove");
+
+    std::string tree = "plan7_e2e_test";
+    ASSERT_TRUE(createFn({ScriptValue::fromString(tree)}).asBool());
+
+    ScriptValue condCb = ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+        return ScriptValue::fromBool(true);
+    });
+    ScriptValue actCb = ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+        return ScriptValue::fromString("SUCCESS");
+    });
+    int64_t cond = condFn({ScriptValue::fromString("ready"), condCb}).asInt();
+    int64_t act = actFn({ScriptValue::fromString("go"), actCb}).asInt();
+    int64_t seq = seqFn({}).asInt();
+    ASSERT_GT(cond, 0); ASSERT_GT(act, 0); ASSERT_GT(seq, 0);
+
+    ASSERT_TRUE(addFn({ScriptValue::fromInt(seq), ScriptValue::fromInt(cond)}).asBool());
+    ASSERT_TRUE(addFn({ScriptValue::fromInt(seq), ScriptValue::fromInt(act)}).asBool());
+    ASSERT_TRUE(setRootFn({ScriptValue::fromString(tree), ScriptValue::fromInt(seq)}).asBool());
+
+    EXPECT_EQ(tickFn({ScriptValue::fromString(tree)}).asString(), "SUCCESS");
+    removeFn({ScriptValue::fromString(tree)});
+}
+
+// 端到端：condition(false) → sequence 失败 → tick → FAILURE
+TEST(BtModuleFunctionsTest, EndToEndFalseConditionTickReturnsFailure) {
+    auto createFn = findFunction("bt", "create");
+    auto seqFn = findFunction("bt", "sequence");
+    auto condFn = findFunction("bt", "condition");
+    auto actFn = findFunction("bt", "action");
+    auto addFn = findFunction("bt", "addChild");
+    auto setRootFn = findFunction("bt", "setRoot");
+    auto tickFn = findFunction("bt", "tick");
+    auto removeFn = findFunction("bt", "remove");
+
+    std::string tree = "plan7_e2e_fail_test";
+    createFn({ScriptValue::fromString(tree)});
+
+    ScriptValue condCb = ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+        return ScriptValue::fromBool(false);
+    });
+    ScriptValue actCb = ScriptValue::fromCallable([](const std::vector<ScriptValue>&) -> ScriptValue {
+        return ScriptValue::fromString("SUCCESS");
+    });
+    int64_t cond = condFn({ScriptValue::fromString("ready"), condCb}).asInt();
+    int64_t act = actFn({ScriptValue::fromString("go"), actCb}).asInt();
+    int64_t seq = seqFn({}).asInt();
+    addFn({ScriptValue::fromInt(seq), ScriptValue::fromInt(cond)});
+    addFn({ScriptValue::fromInt(seq), ScriptValue::fromInt(act)});
+    setRootFn({ScriptValue::fromString(tree), ScriptValue::fromInt(seq)});
+
+    EXPECT_EQ(tickFn({ScriptValue::fromString(tree)}).asString(), "FAILURE");
+    removeFn({ScriptValue::fromString(tree)});
+}

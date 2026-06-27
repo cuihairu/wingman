@@ -278,6 +278,29 @@ ModuleDescriptor createBehaviorTreeModule() {
 		return ScriptValue::fromInt(btStoreNode(node));
 	}, "name:string, callback:callable -> handle:int"});
 
+	mod.functions.push_back({"action", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString("Action") : "Action";
+		if (args.size() < 2 || !args[1].isCallable()) return ScriptValue::fromInt(0);
+		ScriptValue::CallableFunc cb = args[1].callableVal;
+		auto node = BehaviorTree::action(name, [cb]() -> NodeStatus {
+			std::string s = cb({}).asString("FAILURE");
+			if (s == "SUCCESS") return NodeStatus::SUCCESS;
+			if (s == "RUNNING") return NodeStatus::RUNNING;
+			return NodeStatus::FAILURE;
+		});
+		return ScriptValue::fromInt(btStoreNode(node));
+	}, "name:string, callback:callable -> handle:int"});
+
+	mod.functions.push_back({"setRoot", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string treeName = args.size() > 0 ? args[0].asString() : std::string();
+		int nodeHandle = static_cast<int>(args.size() > 1 ? args[1].asInt(-1) : -1);
+		auto tree = BehaviorTreeManager::instance().getTree(treeName);
+		auto node = btGetNode(nodeHandle);
+		if (!tree || !node) return ScriptValue::fromBool(false);
+		tree->setRoot(node);
+		return ScriptValue::fromBool(true);
+	}, "treeName:string, nodeHandle:int -> bool"});
+
 	return mod;
 }
 
