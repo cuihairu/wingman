@@ -96,6 +96,52 @@ void clearOutputState(uintptr_t engineId) {
 }
 } // anonymous namespace
 
+// camelCase -> snake_case 转换，使模块函数名同时以 pythonic 形式暴露。
+//
+// 算法：在大写字母前插入下划线并转小写；首字母前不插；连续大写
+// （如 URL、HTTP）作为一个整体处理，下划线只插在该连续大写段的最后一个
+// 大写字母之前（parseURL -> parse_url, getHTTP -> get_http）。
+//
+// 放在 wingman::python 命名空间（非匿名）以便单元测试直接调用，但只在该
+// 翻译单元内定义，不进公共头文件，避免污染公开 API。
+std::string camelToSnake(const std::string& camel) {
+	if (camel.empty()) return {};
+
+	std::string out;
+	out.reserve(camel.size() + 4); // 预留少量下划线空间
+
+	for (size_t i = 0; i < camel.size(); ++i) {
+		const char c = camel[i];
+		const bool isUpper = c >= 'A' && c <= 'Z';
+
+		if (isUpper && i > 0) {
+			const char prev = camel[i - 1];
+			const bool prevIsLower = prev >= 'a' && prev <= 'z';
+			const bool prevIsUnderscore = prev == '_';
+			// 当前字符后面是否为小写（用于判断连续大写段的尾部，如 URL 的 L）
+			const bool nextIsLower = (i + 1 < camel.size()) &&
+			                        (camel[i + 1] >= 'a' && camel[i + 1] <= 'z');
+
+			// 在以下情况插入下划线：
+			//  - 前一个是字母（小写）：getForeground 的 F 前
+			//  - 前一个是下划线：避免双下划线
+			//  - 连续大写段的最后一个小写前：parseURL 的 L 前
+			if (prevIsLower) {
+				out.push_back('_');
+			} else if (prevIsUnderscore) {
+				// 已有下划线后的大写，不再额外加下划线
+			} else if (nextIsLower) {
+				// 前面也是大写、后面是小写 -> 连续大写段的边界
+				out.push_back('_');
+			}
+		}
+
+		out.push_back(static_cast<char>(tolower(static_cast<unsigned char>(c))));
+	}
+
+	return out;
+}
+
 PythonScriptEngine::PythonScriptEngine() = default;
 
 PythonScriptEngine::~PythonScriptEngine() {
@@ -295,28 +341,40 @@ void PythonScriptEngine::registerModule(const script::ModuleDescriptor& module) 
 		py::object moduleObject = types.attr("ModuleType")(fullName);
 
 		for (const auto& fn : module.functions) {
-			// 将 ScriptFunction 包装为 Python 可调用对象
-			script::ScriptFunction funcCopy = fn.func;
+			// 将 ScriptFunction 包装为 Python 可调用对象的工厂：
+			// 同一份包装逻辑为 camelCase（原始名，兼容）和 snake_case（pythonic）
+			// 两个属性名各生成一个 py::cpp_function。
+			auto makeCallable = [&fn]() -> py::cpp_function {
+				script::ScriptFunction funcCopy = fn.func;
+				return py::cpp_function(
+					[funcCopy = std::move(funcCopy)](py::args args) -> py::object {
+						std::vector<script::ScriptValue> svArgs;
+						svArgs.reserve(args.size());
+						for (py::ssize_t i = 0; i < args.size(); ++i) {
+							svArgs.push_back(toScriptValue(args[i].cast<py::object>()));
+						}
 
-			moduleObject.attr(fn.name.c_str()) = py::cpp_function(
-				[funcCopy = std::move(funcCopy)](py::args args) -> py::object {
-					std::vector<script::ScriptValue> svArgs;
-					svArgs.reserve(args.size());
-					for (py::ssize_t i = 0; i < args.size(); ++i) {
-						svArgs.push_back(toScriptValue(args[i].cast<py::object>()));
+						script::ScriptValue result;
+						try {
+							result = funcCopy(svArgs);
+						} catch (const std::exception& e) {
+							PyErr_SetString(PyExc_RuntimeError, e.what());
+							throw py::error_already_set();
+						}
+
+						return toPythonObject(result);
 					}
+				);
+			};
 
-					script::ScriptValue result;
-					try {
-						result = funcCopy(svArgs);
-					} catch (const std::exception& e) {
-						PyErr_SetString(PyExc_RuntimeError, e.what());
-						throw py::error_already_set();
-					}
+			// 保留原始 camelCase 名（兼容已有脚本与 Lua 一致性）
+			moduleObject.attr(fn.name.c_str()) = makeCallable();
 
-					return toPythonObject(result);
-				}
-			);
+			// 额外注册 snake_case 别名（PEP 8 pythonic 风格）
+			const std::string snakeName = camelToSnake(fn.name);
+			if (!snakeName.empty() && snakeName != fn.name) {
+				moduleObject.attr(snakeName.c_str()) = makeCallable();
+			}
 		}
 
 		wingmanModule.attr(module.name.c_str()) = moduleObject;

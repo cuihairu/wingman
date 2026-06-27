@@ -71,6 +71,7 @@ option(BUILD_TRANSPORT_TESTS "Build transport library tests" OFF)
 option(BUILD_LUA_TESTS "Build lua library tests" OFF)
 option(BUILD_PROTO_TESTS "Build proto library tests" OFF)
 option(BUILD_DEBUG_TESTS "Build debug library tests" OFF)
+option(BUILD_PYTHON_TESTS "Build python library tests" OFF)
 
 # WINGMAN_BUILD_TESTS acts as the top-level switch for the standard C++ test suites.
 # Lua tests remain opt-in because they are usually only needed when validating Lua bindings directly.
@@ -90,6 +91,9 @@ if(WINGMAN_BUILD_TESTS)
     endif()
     if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DEBUG AND (WINGMAN_BUILD_LUA OR WINGMAN_ENABLE_PYTHON))
         set(BUILD_DEBUG_TESTS ON CACHE BOOL "Build debug library tests" FORCE)
+    endif()
+    if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_ENABLE_PYTHON)
+        set(BUILD_PYTHON_TESTS ON CACHE BOOL "Build python library tests" FORCE)
     endif()
 endif()
 
@@ -153,6 +157,10 @@ if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_ENABLE_PYTHON)
     add_subdirectory(libs/python)
     add_compile_definitions(WINGMAN_ENABLE_PYTHON)
     message(STATUS "Python scripting engine enabled")
+
+    if(BUILD_PYTHON_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/python/tests/CMakeLists.txt")
+        add_subdirectory(libs/python/tests)
+    endif()
 endif()
 
 if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_CORE)
