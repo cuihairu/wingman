@@ -131,6 +131,28 @@ ModuleDescriptor createHumanModule() {
 		return ScriptValue::null();
 	}, "key:string, value:any -> nil"});
 
+	mod.functions.push_back({"setDelayRange", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		auto& c = humanScriptConfig();
+		c.delayMin = static_cast<int>(args.size() > 0 ? args[0].asInt(c.delayMin) : c.delayMin);
+		c.delayMax = static_cast<int>(args.size() > 1 ? args[1].asInt(c.delayMax) : c.delayMax);
+		applyHumanConfigToBackend(c);
+		return ScriptValue::null();
+	}, "min:int, max:int -> nil"});
+
+	mod.functions.push_back({"setMoveSpeed", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		auto& c = humanScriptConfig();
+		c.moveSpeed = args.size() > 0 ? args[0].asFloat(c.moveSpeed) : c.moveSpeed;
+		applyHumanConfigToBackend(c);
+		return ScriptValue::null();
+	}, "speed:float -> nil"});
+
+	mod.functions.push_back({"setTypingVariance", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		auto& c = humanScriptConfig();
+		c.typingVariance = args.size() > 0 ? args[0].asFloat(c.typingVariance) : c.typingVariance;
+		applyHumanConfigToBackend(c);
+		return ScriptValue::null();
+	}, "variance:float -> nil"});
+
 	return mod;
 }
 

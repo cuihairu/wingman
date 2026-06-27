@@ -4,6 +4,7 @@
 #include "wingman/json.hpp"
 #include "wingman/behavior_tree.hpp"
 #include "wingman/smart_trigger.hpp"
+#include "wingman/human.hpp"
 #include <algorithm>
 #include <cstdio>
 #include <set>
@@ -1567,4 +1568,45 @@ TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
                 << "Module '" << mod.name << "' function '" << fn.name << "' threw";
         }
     }
+}
+
+TEST(HumanModuleFunctionsTest, SetDelayRangeRoundTrip) {
+    auto setFn = findFunction("human", "setDelayRange");
+    auto getFn = findFunction("human", "getConfig");
+    ASSERT_FALSE(setFn.name.empty());
+    EXPECT_TRUE(setFn({ScriptValue::fromInt(50), ScriptValue::fromInt(200)}).isNull());
+    auto cfg = getFn({});
+    ASSERT_TRUE(cfg.isObject());
+    EXPECT_EQ(cfg.get("delay_min")->asInt(), 50);
+    EXPECT_EQ(cfg.get("delay_max")->asInt(), 200);
+}
+
+TEST(HumanModuleFunctionsTest, SetMoveSpeedRoundTrip) {
+    auto setFn = findFunction("human", "setMoveSpeed");
+    auto getFn = findFunction("human", "getConfig");
+    ASSERT_FALSE(setFn.name.empty());
+    EXPECT_TRUE(setFn({ScriptValue::fromFloat(1.5)}).isNull());
+    auto cfg = getFn({});
+    ASSERT_TRUE(cfg.isObject());
+    EXPECT_NEAR(cfg.get("move_speed")->asFloat(), 1.5, 1e-9);
+}
+
+TEST(HumanModuleFunctionsTest, SetTypingVarianceRoundTrip) {
+    auto setFn = findFunction("human", "setTypingVariance");
+    auto getFn = findFunction("human", "getConfig");
+    ASSERT_FALSE(setFn.name.empty());
+    EXPECT_TRUE(setFn({ScriptValue::fromFloat(0.3)}).isNull());
+    auto cfg = getFn({});
+    ASSERT_TRUE(cfg.isObject());
+    EXPECT_NEAR(cfg.get("typing_variance")->asFloat(), 0.3, 1e-9);
+}
+
+TEST(HumanModuleFunctionsTest, SetMoveSpeedAffectsBackendMoveDuration) {
+    // 验证映射应用：move_speed=2.0 -> minMoveDuration=50, maxMoveDuration=150
+    auto setFn = findFunction("human", "setMoveSpeed");
+    ASSERT_FALSE(setFn.name.empty());
+    setFn({ScriptValue::fromFloat(2.0)});
+    auto mc = Human::mouse().getConfig();
+    EXPECT_EQ(mc.minMoveDuration, 50); // 100/2
+    EXPECT_EQ(mc.maxMoveDuration, 150); // 300/2
 }
