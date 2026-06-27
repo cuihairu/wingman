@@ -255,6 +255,19 @@ ModuleDescriptor createBehaviorTreeModule() {
 		return ScriptValue::fromInt(btStoreNode(std::make_shared<RepeatNode>(child, count)));
 	}, "childHandle:int, count:int? -> handle:int"});
 
+	mod.functions.push_back({"addChild", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		int parentHandle = static_cast<int>(args.size() > 0 ? args[0].asInt(-1) : -1);
+		int childHandle = static_cast<int>(args.size() > 1 ? args[1].asInt(-1) : -1);
+		auto parent = btGetNode(parentHandle);
+		auto child = btGetNode(childHandle);
+		if (!parent || !child) return ScriptValue::fromBool(false);
+		// 仅复合节点支持 addChild
+		if (auto seq = std::dynamic_pointer_cast<SequenceNode>(parent)) { seq->addChild(child); return ScriptValue::fromBool(true); }
+		if (auto sel = std::dynamic_pointer_cast<SelectorNode>(parent)) { sel->addChild(child); return ScriptValue::fromBool(true); }
+		if (auto par = std::dynamic_pointer_cast<ParallelNode>(parent)) { par->addChild(child); return ScriptValue::fromBool(true); }
+		return ScriptValue::fromBool(false); // 装饰/叶子节点不支持
+	}, "parentHandle:int, childHandle:int -> bool"});
+
 	return mod;
 }
 

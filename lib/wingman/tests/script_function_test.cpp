@@ -1761,3 +1761,38 @@ TEST(BtModuleFunctionsTest, RepeatWithCountReturnsHandle) {
     ASSERT_GT(child, 0);
     EXPECT_GT(repFn({ScriptValue::fromInt(child), ScriptValue::fromInt(3)}).asInt(), 0);
 }
+
+TEST(BtModuleFunctionsTest, AddChildToSequenceReturnsTrue) {
+    auto seqFn = findFunction("bt", "sequence");
+    auto waitFn = findFunction("bt", "wait");
+    auto addFn = findFunction("bt", "addChild");
+    ASSERT_FALSE(addFn.name.empty());
+    int64_t parent = seqFn({}).asInt();
+    int64_t child = waitFn({ScriptValue::fromInt(10)}).asInt();
+    ASSERT_TRUE(addFn({ScriptValue::fromInt(parent), ScriptValue::fromInt(child)}).asBool());
+}
+
+TEST(BtModuleFunctionsTest, AddChildToParallelReturnsTrue) {
+    auto parFn = findFunction("bt", "parallel");
+    auto seqFn = findFunction("bt", "sequence");
+    auto addFn = findFunction("bt", "addChild");
+    int64_t parent = parFn({}).asInt();
+    int64_t child = seqFn({}).asInt(); // 复合节点也可作 child
+    EXPECT_TRUE(addFn({ScriptValue::fromInt(parent), ScriptValue::fromInt(child)}).asBool());
+}
+
+TEST(BtModuleFunctionsTest, AddChildInvalidParentReturnsFalse) {
+    auto waitFn = findFunction("bt", "wait");
+    auto addFn = findFunction("bt", "addChild");
+    int64_t child = waitFn({ScriptValue::fromInt(10)}).asInt();
+    EXPECT_FALSE(addFn({ScriptValue::fromInt(999999), ScriptValue::fromInt(child)}).asBool());
+}
+
+TEST(BtModuleFunctionsTest, AddChildToLeafReturnsFalse) {
+    // 叶子/装饰节点不支持 addChild（仅复合节点 Sequence/Selector/Parallel 支持）
+    auto waitFn = findFunction("bt", "wait");
+    auto addFn = findFunction("bt", "addChild");
+    int64_t leaf = waitFn({ScriptValue::fromInt(10)}).asInt();
+    int64_t another = waitFn({ScriptValue::fromInt(20)}).asInt();
+    EXPECT_FALSE(addFn({ScriptValue::fromInt(leaf), ScriptValue::fromInt(another)}).asBool());
+}
