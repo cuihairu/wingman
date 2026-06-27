@@ -1,9 +1,29 @@
 #include <gtest/gtest.h>
 #include <cstring>
+#include <cstdlib>
 #include <vector>
 #include "wingman/security.hpp"
 
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
 using namespace wingman;
+
+#ifndef _WIN32
+static void* allocatePageAlignedTestBuffer(size_t& size) {
+    const long pageSize = sysconf(_SC_PAGESIZE);
+    if (pageSize <= 0) {
+        return nullptr;
+    }
+    void* ptr = nullptr;
+    if (posix_memalign(&ptr, static_cast<size_t>(pageSize), static_cast<size_t>(pageSize)) != 0) {
+        return nullptr;
+    }
+    size = static_cast<size_t>(pageSize);
+    return ptr;
+}
+#endif
 
 // ========== AntiDetectionConfig ==========
 
@@ -436,14 +456,26 @@ TEST(SecurityManagerTest, ProtectMemoryReadOnlyMode) {
     GTEST_SKIP() << "Skipping on Windows - VirtualProtect on stack memory causes SEGFAULT";
 #endif
     auto& mgr = SecurityManager::instance();
+
+#ifdef _WIN32
     char buffer[64] = {};
-    std::memcpy(buffer, "testdata", 8);
-    // Set memory to read-only
+    void* protectedPtr = buffer;
+    size_t protectedSize = sizeof(buffer);
+#else
+    size_t protectedSize = 0;
+    void* protectedPtr = allocatePageAlignedTestBuffer(protectedSize);
+    ASSERT_NE(protectedPtr, nullptr);
+#endif
+
+    std::memcpy(protectedPtr, "testdata", 8);
     bool result = false;
-    EXPECT_NO_THROW(result = mgr.protectMemory(buffer, sizeof(buffer), true));
-    // Restore to read-write so the buffer can be safely released on the stack
-    EXPECT_NO_THROW(mgr.protectMemory(buffer, sizeof(buffer), false));
+    EXPECT_NO_THROW(result = mgr.protectMemory(protectedPtr, protectedSize, true));
+    EXPECT_NO_THROW(mgr.protectMemory(protectedPtr, protectedSize, false));
     (void)result;
+
+#ifndef _WIN32
+    std::free(protectedPtr);
+#endif
 }
 
 TEST(SecurityManagerTest, SecureZeroZeroSize) {
@@ -650,11 +682,23 @@ TEST(SecurityManagerTest, ProtectMemoryNullLikeSmallBuffer) {
     GTEST_SKIP() << "Skipping on Windows - VirtualProtect on stack memory causes SEGFAULT";
 #endif
     auto& mgr = SecurityManager::instance();
-    // Protect a very small buffer
+#ifdef _WIN32
     char buffer[1] = {0x42};
-    EXPECT_NO_THROW(mgr.protectMemory(buffer, sizeof(buffer), false));
-    EXPECT_NO_THROW(mgr.protectMemory(buffer, sizeof(buffer), true));
-    EXPECT_NO_THROW(mgr.protectMemory(buffer, sizeof(buffer), false));
+    void* protectedPtr = buffer;
+#else
+    size_t protectedSize = 0;
+    void* protectedPtr = allocatePageAlignedTestBuffer(protectedSize);
+    ASSERT_NE(protectedPtr, nullptr);
+    static_cast<char*>(protectedPtr)[0] = 0x42;
+#endif
+
+    EXPECT_NO_THROW(mgr.protectMemory(protectedPtr, 1, false));
+    EXPECT_NO_THROW(mgr.protectMemory(protectedPtr, 1, true));
+    EXPECT_NO_THROW(mgr.protectMemory(protectedPtr, 1, false));
+
+#ifndef _WIN32
+    std::free(protectedPtr);
+#endif
 }
 
 TEST(SecurityManagerTest, GetRandomDelaySameMinMax) {

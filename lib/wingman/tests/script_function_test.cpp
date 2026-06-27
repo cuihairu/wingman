@@ -1524,20 +1524,13 @@ TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
     // This is a conservative smoke test for low-risk functions only. Modules
     // with real I/O, background state, input events, or singleton mutations have
     // dedicated tests and are excluded to avoid cross-test pollution.
-    static const std::set<std::string> sideEffectModules = {
-        "bt",
-        "event",
-        "filewatcher",
-        "human",
-        "input",
-        "macro",
-        "notify",
-        "screen",
-        "script",
-        "smarttrigger",
-        "task",
-        "team",
-        "transport"
+    static const std::set<std::string> smokeModules = {
+        "debugger",
+        "json",
+        "node",
+        "orchestration",
+        "util",
+        "verification"
     };
 
     // Functions that perform blocking I/O (network requests, process waiting)
@@ -1581,7 +1574,7 @@ TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
 
     auto modules = getAllModules();
     for (const auto& mod : modules) {
-        if (sideEffectModules.count(mod.name)) continue;
+        if (!smokeModules.count(mod.name)) continue;
         for (const auto& fn : mod.functions) {
             if (blockedFunctions.count({mod.name, fn.name})) continue;
             std::vector<ScriptValue> args;

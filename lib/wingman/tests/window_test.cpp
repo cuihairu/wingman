@@ -7,6 +7,12 @@ using namespace wingman;
 
 namespace {
 constexpr WindowHandle kNullWindowHandle{};
+#ifndef _WIN32
+#define SKIP_IF_WINDOW_BACKEND_UNAVAILABLE() \
+    GTEST_SKIP() << "Window backend is a non-Windows stub in this build"
+#else
+#define SKIP_IF_WINDOW_BACKEND_UNAVAILABLE() do {} while (false)
+#endif
 }
 
 class WindowTest : public ::testing::Test {
@@ -28,12 +34,14 @@ TEST(WindowTest, FindAllWindows) {
 }
 
 TEST(WindowTest, GetForegroundWindow) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto hwnd = Window::getForeground();
     EXPECT_NE(hwnd, kNullWindowHandle);
     EXPECT_TRUE(Window::isValid(hwnd));
 }
 
 TEST(WindowTest, EnumerateWindows) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto windows = Window::enumerate();
     EXPECT_GT(windows.size(), 0);
 
@@ -55,6 +63,7 @@ TEST(WindowTest, FindNonExistentWindow) {
 // ========== Window Info Tests ==========
 
 TEST(WindowTest, GetWindowTitle) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, kNullWindowHandle);
 
@@ -63,6 +72,7 @@ TEST(WindowTest, GetWindowTitle) {
 }
 
 TEST(WindowTest, GetWindowBounds) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, kNullWindowHandle);
 
@@ -72,6 +82,7 @@ TEST(WindowTest, GetWindowBounds) {
 }
 
 TEST(WindowTest, IsWindowValid) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     // Valid window
     auto hwnd = Window::getForeground();
     EXPECT_TRUE(Window::isValid(hwnd));
@@ -81,6 +92,7 @@ TEST(WindowTest, IsWindowValid) {
 }
 
 TEST(WindowTest, IsWindowForeground) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, kNullWindowHandle);
 
@@ -88,6 +100,7 @@ TEST(WindowTest, IsWindowForeground) {
 }
 
 TEST(WindowTest, IsWindowVisible) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, kNullWindowHandle);
 
@@ -98,6 +111,7 @@ TEST(WindowTest, IsWindowVisible) {
 // ========== Window Operation Tests ==========
 
 TEST(WindowTest, ActivateWindow) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, kNullWindowHandle);
 
@@ -108,6 +122,7 @@ TEST(WindowTest, ActivateWindow) {
 }
 
 TEST(WindowTest, MinimizeWindow) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, kNullWindowHandle);
 
@@ -123,6 +138,7 @@ TEST(WindowTest, MinimizeWindow) {
 }
 
 TEST(WindowTest, MaximizeWindow) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, kNullWindowHandle);
 
@@ -138,6 +154,7 @@ TEST(WindowTest, MaximizeWindow) {
 }
 
 TEST(WindowTest, RestoreWindow) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, kNullWindowHandle);
 
@@ -158,6 +175,7 @@ TEST(WindowTest, MoveWindow) {
 }
 
 TEST(WindowTest, ResizeWindow) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, kNullWindowHandle);
 
@@ -216,6 +234,7 @@ TEST(WindowTest, EmptyTitleSearch) {
 }
 
 TEST(WindowTest, SetBoundsZeroSize) {
+    SKIP_IF_WINDOW_BACKEND_UNAVAILABLE();
     auto hwnd = Window::getForeground();
     ASSERT_NE(hwnd, kNullWindowHandle);
 

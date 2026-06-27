@@ -17,6 +17,13 @@ std::string writeTempLua(const std::string& content, const std::string& name) {
     return path.string();
 }
 
+#ifndef WINGMAN_HAS_LUA
+#define SKIP_IF_LUA_UNAVAILABLE() \
+    GTEST_SKIP() << "Lua trigger loading requires WINGMAN_HAS_LUA"
+#else
+#define SKIP_IF_LUA_UNAVAILABLE() do {} while (false)
+#endif
+
 } // namespace
 
 class TriggerEngineLuaTest : public ::testing::Test {
@@ -32,6 +39,7 @@ protected:
 };
 
 TEST_F(TriggerEngineLuaTest, LoadColorTrigger) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -57,6 +65,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, LoadImageTrigger) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -83,6 +92,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, LoadMultipleTriggers) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -121,6 +131,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, LoadWithAllActionTypes) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -148,6 +159,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, LoadWithWindowTriggerTypes) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -205,6 +217,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, LoadWithColorLostAndPixelChanged) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -252,6 +265,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, LoadWithImageLost) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -274,6 +288,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, LoadDisabledTrigger) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -295,6 +310,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, LoadTriggerWithActionTable) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -319,6 +335,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, SkipTriggerWithUnknownConditionType) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -340,6 +357,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, SkipTriggerWithUnknownActionType) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -361,6 +379,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, SkipTriggerWithNoActions) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -379,6 +398,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, LoadWithKeyField) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -400,21 +420,25 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, LoadInvalidLuaReturnsFalse) {
+    SKIP_IF_LUA_UNAVAILABLE();
     auto path = writeTempLua("this is not valid lua!!", "invalid.lua");
     EXPECT_FALSE(engine.loadFromLua(path));
 }
 
 TEST_F(TriggerEngineLuaTest, LoadNoTriggersTableReturnsFalse) {
+    SKIP_IF_LUA_UNAVAILABLE();
     auto path = writeTempLua("other_var = 42", "no_table.lua");
     EXPECT_FALSE(engine.loadFromLua(path));
 }
 
 TEST_F(TriggerEngineLuaTest, LoadNonTableTriggersReturnsFalse) {
+    SKIP_IF_LUA_UNAVAILABLE();
     auto path = writeTempLua("triggers = \"not a table\"", "non_table.lua");
     EXPECT_FALSE(engine.loadFromLua(path));
 }
 
 TEST_F(TriggerEngineLuaTest, EnableDisableByNameAfterLoad) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -441,6 +465,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, GetStatsAfterLoad) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -508,6 +533,7 @@ TEST_F(TriggerEngineLuaTest, LoadFromNonexistentFileReturnsFalse) {
 }
 
 TEST_F(TriggerEngineLuaTest, StartAfterLoadDoesNotCrash) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -531,6 +557,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, StatsAfterStartStop) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
@@ -557,6 +584,7 @@ triggers = {
 }
 
 TEST_F(TriggerEngineLuaTest, EnableDisableMultipleTriggers) {
+    SKIP_IF_LUA_UNAVAILABLE();
     std::string lua = R"(
 triggers = {
     {
