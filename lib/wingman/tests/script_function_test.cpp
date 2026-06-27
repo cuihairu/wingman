@@ -1545,6 +1545,19 @@ TEST(ModulePresenceTest, ModuleFunctionsAreCallable) {
         // Event — registers persistent callbacks
         {"event", "on"},
         {"event", "once"},
+        // Config/game profile — mutate repository files or singleton profile state
+        {"config", "save"},
+        {"config", "set"},
+        {"config", "remove"},
+        {"gameprofile", "save"},
+        {"gameprofile", "setActive"},
+        {"gameprofile", "setProfilesDirectory"},
+        {"gameprofile", "scan"},
+        {"gameprofile", "createTemplate"},
+        {"gameprofile", "importJson"},
+        {"gameprofile", "exportPackage"},
+        {"gameprofile", "importPackage"},
+        {"gameprofile", "delete"},
     };
 
     auto modules = getAllModules();
@@ -1627,7 +1640,6 @@ TEST(HumanModuleFunctionsTest, SetMoveSpeedAffectsBackendMoveDuration) {
     EXPECT_EQ(mc.maxMoveDuration, 150); // 300/2
 }
 
-
 TEST(HumanModuleFunctionsTest, RandomDelayExplicitRangeDoesNotCrash) {
     auto fn = findFunction("human", "randomDelay");
     ASSERT_FALSE(fn.name.empty());
@@ -1683,4 +1695,39 @@ TEST(HumanModuleFunctionsTest, NaturalClickMiddleButtonDoesNotCrash) {
     auto fn = findFunction("human", "naturalClick");
     ASSERT_FALSE(fn.name.empty());
     EXPECT_NO_THROW(fn({ScriptValue::fromInt(100), ScriptValue::fromInt(100), ScriptValue::fromString("middle")}));
+}
+
+// ========== Plan 7: bt 节点构造脚本桥接 ==========
+
+TEST(BtModuleFunctionsTest, SequenceReturnsPositiveHandle) {
+    auto fn = findFunction("bt", "sequence");
+    ASSERT_FALSE(fn.name.empty());
+    auto h = fn({ScriptValue::fromString("seq1")});
+    ASSERT_TRUE(h.isInt());
+    EXPECT_GT(h.asInt(), 0); // 有效句柄 ≥ 1
+}
+
+TEST(BtModuleFunctionsTest, SelectorReturnsPositiveHandle) {
+    auto fn = findFunction("bt", "selector");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_GT(fn({ScriptValue::fromString("sel1")}).asInt(), 0);
+}
+
+TEST(BtModuleFunctionsTest, SequenceDefaultNameDoesNotCrash) {
+    auto fn = findFunction("bt", "sequence");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_GT(fn({}).asInt(), 0); // 无参 → 默认名
+}
+
+TEST(BtModuleFunctionsTest, ParallelWithPolicyStringReturnsHandle) {
+    auto fn = findFunction("bt", "parallel");
+    ASSERT_FALSE(fn.name.empty());
+    auto h = fn({ScriptValue::fromString("par"), ScriptValue::fromString("FAIL_ON_ONE")});
+    EXPECT_GT(h.asInt(), 0);
+}
+
+TEST(BtModuleFunctionsTest, ParallelDefaultPolicyReturnsHandle) {
+    auto fn = findFunction("bt", "parallel");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_GT(fn({}).asInt(), 0); // 无参 → 默认 SUCCEED_ON_ALL
 }

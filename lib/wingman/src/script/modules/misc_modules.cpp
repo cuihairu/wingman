@@ -166,6 +166,26 @@ ModuleDescriptor createSmartTriggerModule() {
 // ============================================================================
 // BehaviorTree Module
 // ============================================================================
+
+// ========== Plan 7: 行为树节点句柄注册表 ==========
+// 脚本层通过 int handle 引用构造的 BehaviorNode（shared_ptr 生命周期管理）。
+// handle 从 1 自增，0 表示无效。用于 addChild / setRoot 组装行为树。
+static std::map<int, std::shared_ptr<BehaviorNode>>& btNodeRegistry() {
+	static std::map<int, std::shared_ptr<BehaviorNode>> registry;
+	return registry;
+}
+static int btStoreNode(std::shared_ptr<BehaviorNode> node) {
+	static int nextId = 0;
+	int id = ++nextId;
+	btNodeRegistry()[id] = std::move(node);
+	return id;
+}
+static std::shared_ptr<BehaviorNode> btGetNode(int handle) {
+	auto& reg = btNodeRegistry();
+	auto it = reg.find(handle);
+	return it != reg.end() ? it->second : nullptr;
+}
+
 ModuleDescriptor createBehaviorTreeModule() {
 	ModuleDescriptor mod;
 	mod.name = "bt";
@@ -192,6 +212,28 @@ ModuleDescriptor createBehaviorTreeModule() {
 		BehaviorTreeManager::instance().removeTree(args[0].asString());
 		return ScriptValue::null();
 	}, "name:string -> nil"});
+
+	// ========== Plan 7: 节点构造（复合 / 装饰 / 叶子）==========
+
+	mod.functions.push_back({"sequence", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString("Sequence") : "Sequence";
+		return ScriptValue::fromInt(btStoreNode(BehaviorTree::sequence(name)));
+	}, "name:string? -> handle:int"});
+
+	mod.functions.push_back({"selector", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString("Selector") : "Selector";
+		return ScriptValue::fromInt(btStoreNode(BehaviorTree::selector(name)));
+	}, "name:string? -> handle:int"});
+
+	mod.functions.push_back({"parallel", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString("Parallel") : "Parallel";
+		std::string policyStr = args.size() > 1 ? args[1].asString("SUCCEED_ON_ALL") : "SUCCEED_ON_ALL";
+		ParallelNode::Policy policy = ParallelNode::Policy::SUCCEED_ON_ALL;
+		if (policyStr == "SUCCEED_ON_ONE") policy = ParallelNode::Policy::SUCCEED_ON_ONE;
+		else if (policyStr == "FAIL_ON_ALL") policy = ParallelNode::Policy::FAIL_ON_ALL;
+		else if (policyStr == "FAIL_ON_ONE") policy = ParallelNode::Policy::FAIL_ON_ONE;
+		return ScriptValue::fromInt(btStoreNode(BehaviorTree::parallel(name, policy)));
+	}, "name:string?, policy:string? -> handle:int"});
 
 	return mod;
 }
