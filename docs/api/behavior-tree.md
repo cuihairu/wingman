@@ -2,7 +2,7 @@
 
 行为树引擎，提供基础的 AI 决策系统。
 
-> ⚠️ 当前仅实现 `create`/`tick`/`remove` 三个基础函数；sequence/selector/condition/action 等节点构造 API 规划中（见 [节点构造待实现](#节点构造待实现)）。
+> ✅ 已实现 `create`/`tick`/`remove` 三基础函数 + 节点构造（sequence/selector/parallel/inverter/repeat/wait/condition/action）+ 组装（addChild/setRoot），可在脚本端完整构建并 tick 行为树（见 [节点构造](#节点构造)）。
 
 ## 模块概述
 
@@ -176,12 +176,53 @@ wingman.bt.remove("combat_tree")
 
 ---
 
-## 节点构造待实现
+## 节点构造
 
-以下节点构造函数属于规划中的 API，当前**尚未实现**，调用将失败：
+行为树由节点组成。构造函数返回节点句柄（int，≥1 有效，0=无效），用 `addChild` 组装、`setRoot` 挂到树。
 
-- **复合节点** - Sequence（序列）、Selector（选择）、Parallel（并行）
-- **装饰节点** - Inverter（反转）、Repeat（重复）、Wait（等待）
-- **叶子节点** - Condition（条件）、Action（动作）
+### 复合节点
 
-> 当前可用的工作流：通过 `create` 创建空行为树后，使用 `tick` 执行并通过返回状态驱动逻辑；节点组装能力将在后续版本补齐。
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `sequence(name?)` | `sequence(name?)` | 序列：所有子节点成功才成功 | name: 节点名(可选) → handle |
+| `selector(name?)` | `selector(name?)` | 选择：任一子节点成功则成功 | name → handle |
+| `parallel(name?, policy?)` | `parallel(name?, policy?)` | 并行 | policy: SUCCEED_ON_ALL/SUCCEED_ON_ONE/FAIL_ON_ALL/FAIL_ON_ONE(默认 SUCCEED_ON_ALL) → handle |
+
+### 装饰节点
+
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `inverter(child)` | `inverter(child)` | 反转子节点结果 | childHandle → handle |
+| `repeat(child, count?)` | `repeat(child, count?)` | 重复执行子节点 | childHandle, count(默认 -1=无限) → handle |
+
+### 叶子节点
+
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `wait(ms)` | `wait(ms)` | 等待指定毫秒 | milliseconds → handle |
+| `condition(name, callback)` | `condition(name, callback)` | 条件：回调返回 bool | name, callback(): bool → handle |
+| `action(name, callback)` | `action(name, callback)` | 动作：回调返回状态 | name, callback(): "SUCCESS"/"FAILURE"/"RUNNING" → handle |
+
+### 组装
+
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `add_child(parent, child)` | `addChild(parent, child)` | 把子节点加到复合节点 | parentHandle, childHandle → bool |
+| `set_root(tree, node)` | `setRoot(tree, node)` | 设置行为树根节点 | treeName, nodeHandle → bool |
+
+> condition/action 的 callback 在行为树 tick 时被回调（无参）。Lua 回调需在创建脚本的同一线程 tick（Lua state 非线程安全）；Python 回调线程安全（GIL）。
+
+### 示例
+
+```python
+from wingman import bt
+
+bt.create("combat")
+cond = bt.condition("enemy_near", lambda: True)
+act = bt.action("attack", lambda: "SUCCESS")
+seq = bt.sequence()
+bt.add_child(seq, cond)
+bt.add_child(seq, act)
+bt.set_root("combat", seq)
+print(bt.tick("combat"))  # SUCCESS
+```
