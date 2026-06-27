@@ -106,9 +106,9 @@ local name = wingman.kv.get("username")
 
 -- 数据库操作
 local conn = wingman.db.open("game_data")
-conn:execute("CREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT)")
-conn:execute("INSERT INTO players (name) VALUES (?)", {"player1"})
-local rows = conn:query("SELECT * FROM players")
+wingman.db.execute(conn, "CREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT)")
+wingman.db.execute(conn, "INSERT INTO players (name) VALUES (?)", {"player1"})
+local rows = wingman.db.query(conn, "SELECT * FROM players")
 ```
 
 #### Python
@@ -122,9 +122,9 @@ name = kv.get("username")
 
 # 数据库操作
 conn = db.open("game_data")
-conn.execute("CREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT)")
-conn.execute("INSERT INTO players (name) VALUES (?)", ["player1"])
-rows = conn.query("SELECT * FROM players")
+db.execute(conn, "CREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT)")
+db.execute(conn, "INSERT INTO players (name) VALUES (?)", ["player1"])
+rows = db.query(conn, "SELECT * FROM players")
 ```
 
 ## 序列化 API

@@ -23,7 +23,6 @@
 
 **用途**：
 - 作为 `find_image()` 的模板参数进行图像匹配
-- 作为 `wait_for_image()` 的等待目标
 
 **注意**：Image 对象主要用于内部图像匹配操作，不直接暴露像素数据。如需获取像素颜色，请使用 `screen.get_pixel()` 函数。
 
@@ -238,7 +237,7 @@ else:
 
 ## 图像匹配结果
 
-**来源**：`screen.find_image()`, `screen.wait_for_image()`
+**来源**：`screen.find_image()`
 
 **说明**：图像匹配的位置和相似度信息。
 
