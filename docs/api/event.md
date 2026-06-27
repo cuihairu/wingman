@@ -22,11 +22,11 @@ event 模块提供发布-订阅模式的本地事件总线：
 **函数签名**：
 
 ```python
-on(type: str, callback: Callable, name: str = "") -> str
+on(type: str, callback: Callable, name: str = "") -> int
 ```
 
 ```lua
-on(type: string, callback: function, name: string = "") -> string
+on(type: string, callback: function, name: string = "") -> int
 ```
 
 **参数**：
@@ -35,7 +35,7 @@ on(type: string, callback: function, name: string = "") -> string
 - `name` - 可选，订阅名称，可用于按名称取消订阅
 
 **返回**：
-- 订阅 ID
+- 订阅 ID（整数）
 
 :::tabs
 
@@ -79,11 +79,11 @@ local id = wingman.event.on("combat.enemy_found", onEnemy, "my-handler")
 **函数签名**：
 
 ```python
-once(type: str, callback: Callable) -> str
+once(type: str, callback: Callable) -> int
 ```
 
 ```lua
-once(type: string, callback: function) -> string
+once(type: string, callback: function) -> int
 ```
 
 **参数**：
@@ -185,15 +185,15 @@ wingman.event.emit("combat.enemy_found", enemy, { correlationId = "session-123" 
 **函数签名**：
 
 ```python
-off(subscription: str) -> bool
+off(subscription: str | int) -> bool
 ```
 
 ```lua
-off(subscription: string) -> boolean
+off(subscription: string | number) -> boolean
 ```
 
 **参数**：
-- `subscription` - 订阅 ID 或名称
+- `subscription` - 订阅 ID（int）或名称（str）
 
 **返回**：
 - 是否成功

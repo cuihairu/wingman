@@ -7,8 +7,6 @@
 vision 模块提供屏幕视觉检测功能：
 - **颜色检测** - 查找颜色、检查颜色存在、获取主要颜色
 - **图像匹配** - 查找图像模板
-- **形状识别** - 检测边缘、轮廓、圆形
-- **屏幕截图** - 截取指定区域保存为图片
 
 ---
 
@@ -21,16 +19,16 @@ vision 模块提供屏幕视觉检测功能：
 **函数签名**：
 
 ```python
-find_color(color: dict | int, tolerance: int = 0, region: dict = None) -> dict | None
+find_color(color: dict | int, tolerance: int = 10, region: dict = None) -> dict | None
 ```
 
 ```lua
-findColor(color: table | number, tolerance: number = 0, region: table = nil) -> table | nil
+findColor(color: table | number, tolerance: number = 10, region: table = nil) -> table | nil
 ```
 
 **参数**：
 - `color` - 颜色值，支持 `{r: number, g: number, b: number}` 或整数 `0xRRGGBB`
-- `tolerance` - 可选，容差值（0-255），默认 0
+- `tolerance` - 可选，容差值（0-255），默认 10
 - `region` - 可选，搜索区域 `{x: number, y: number, width: number, height: number}`，默认全屏
 
 **返回**：
@@ -228,16 +226,16 @@ print("主要颜色:", color.r, color.g, color.b)
 **函数签名**：
 
 ```python
-find_image(template_path: str, threshold: float = 0.8, region: dict = None) -> dict
+find_image(template_path: str, threshold: float = 0.9, region: dict = None) -> dict
 ```
 
 ```lua
-findImage(templatePath: string, threshold: number = 0.8, region: table = nil) -> table
+findImage(templatePath: string, threshold: number = 0.9, region: table = nil) -> table
 ```
 
 **参数**：
 - `template_path` / `templatePath` - 模板图片路径
-- `threshold` - 可选，匹配阈值（0.0-1.0），默认 0.8
+- `threshold` - 可选，匹配阈值（0.0-1.0），默认 0.9
 - `region` - 可选，搜索区域，默认全屏
 
 **返回**：
@@ -245,6 +243,7 @@ findImage(templatePath: string, threshold: number = 0.8, region: table = nil) ->
   - `found` / `found` - 是否找到
   - `position` / `position` - 位置 `{x: number, y: number}`
   - `confidence` / `confidence` - 置信度（0-1）
+  - `region` / `region` - 匹配区域 `{x: number, y: number, width: number, height: number}`
 
 :::tabs
 
@@ -253,7 +252,7 @@ findImage(templatePath: string, threshold: number = 0.8, region: table = nil) ->
 ```python:line-numbers
 from wingman import vision
 
-result = vision.find_image("target.png", 0.8)
+result = vision.find_image("target.png", 0.9)
 if result['found']:
     print(f"找到图像: {result['position']['x']}, {result['position']['y']}")
     print(f"置信度: {result['confidence']}")
@@ -264,7 +263,7 @@ if result['found']:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local result = wingman.vision.findImage("target.png", 0.8)
+local result = wingman.vision.findImage("target.png", 0.9)
 if result.found then
     print("找到图像:", result.position.x, result.position.y)
     print("置信度:", result.confidence)
@@ -275,212 +274,12 @@ end
 
 ---
 
-## 检测边缘
-
-### detect_edges(region?, threshold1?, threshold2?) / detectEdges(region?, threshold1?, threshold2?)
-
-**说明**：使用 Canny 算子检测边缘。
-
-**函数签名**：
-
-```python
-detect_edges(region: dict = None, threshold1: float = 50, threshold2: float = 150) -> list[dict]
-```
-
-```lua
-detectEdges(region: table = nil, threshold1: number = 50, threshold2: number = 150) -> table
-```
-
-**参数**：
-- `region` - 可选，检测区域，默认全屏
-- `threshold1` - 可选，Canny 第一个阈值，默认 50
-- `threshold2` - 可选，Canny 第二个阈值，默认 150
-
-**返回**：
-- 边缘点数组 `[{x: number, y: number}, ...]`
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import vision
-
-edges = vision.detect_edges({"x": 0, "y": 0, "width": 800, "height": 600}, 50, 150)
-print(f"检测到 {len(edges)} 个边缘点")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
-local edges = wingman.vision.detectEdges({x=0, y=0, width=800, height=600}, 50, 150)
-print("检测到", #edges, "个边缘点")
-```
-
-:::
-
----
-
-## 检测轮廓
-
-### detect_contours(region?) / detectContours(region?)
-
-**说明**：检测区域内的轮廓。
-
-**函数签名**：
-
-```python
-detect_contours(region: dict = None) -> list[list[dict]]
-```
-
-```lua
-detectContours(region: table = nil) -> table
-```
-
-**参数**：
-- `region` - 可选，检测区域，默认全屏
-
-**返回**：
-- 轮廓数组，每个轮廓是点数组 `[[{x, y}, ...], ...]`
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import vision
-
-contours = vision.detect_contours({"x": 0, "y": 0, "width": 800, "height": 600})
-for i, contour in enumerate(contours):
-    print(f"轮廓 {i}: {len(contour)} 个点")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
-local contours = wingman.vision.detectContours({x=0, y=0, width=800, height=600})
-for i, contour in ipairs(contours) do
-    print("轮廓", i, "有", #contour, "个点")
-end
-```
-
-:::
-
----
-
-## 检测圆形
-
-### detect_circles(region?, min_radius?, max_radius?) / detectCircles(region?, minRadius?, maxRadius?)
-
-**说明**：检测区域内的圆形。
-
-**函数签名**：
-
-```python
-detect_circles(region: dict = None, min_radius: int = 10, max_radius: int = 100) -> list[dict]
-```
-
-```lua
-detectCircles(region: table = nil, minRadius: number = 10, maxRadius: number = 100) -> table
-```
-
-**参数**：
-- `region` - 可选，检测区域，默认全屏
-- `min_radius` / `minRadius` - 可选，最小半径，默认 10
-- `max_radius` / `maxRadius` - 可选，最大半径，默认 100
-
-**返回**：
-- 圆形数组，每个圆形包含：
-  - `x` / `x` - 圆心 X 坐标
-  - `y` / `y` - 圆心 Y 坐标
-  - `radius` / `radius` - 半径
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import vision
-
-circles = vision.detect_circles({"x": 0, "y": 0, "width": 800, "height": 600}, 10, 100)
-for i, circle in enumerate(circles):
-    print(f"圆 {i}: center({circle['x']}, {circle['y']}) radius={circle['radius']}")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
-local circles = wingman.vision.detectCircles({x=0, y=0, width=800, height=600}, 10, 100)
-for i, circle in ipairs(circles) do
-    print("圆", i, ": center(", circle.x, circle.y, ") radius=", circle.radius)
-end
-```
-
-:::
-
----
-
-## 截取区域
-
-### capture_region(region, output_path) / captureRegion(region, outputPath)
-
-**说明**：截取屏幕区域并保存为图片。
-
-**函数签名**：
-
-```python
-capture_region(region: dict, output_path: str) -> None
-```
-
-```lua
-captureRegion(region: table, outputPath: string) -> nil
-```
-
-**参数**：
-- `region` - 截取区域 `{x: number, y: number, width: number, height: number}`
-- `output_path` / `outputPath` - 输出文件路径
-
-**返回**：
-- 无
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import vision
-
-vision.capture_region({"x": 0, "y": 0, "width": 1920, "height": 1080}, "screenshot.png")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
-wingman.vision.captureRegion({x=0, y=0, width=1920, height=1080}, "screenshot.png")
-```
-
-:::
-
----
-
 ## 可用接口
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `find_color(color, tolerance?, region?)` | `findColor(color, tolerance?, region?)` | 查找颜色 | color: 颜色值<br>tolerance: 容差(默认0)<br>region: 搜索区域(可选)<br>返回: 位置对象或None/nil |
+| `find_color(color, tolerance?, region?)` | `findColor(color, tolerance?, region?)` | 查找颜色 | color: 颜色值<br>tolerance: 容差(默认10)<br>region: 搜索区域(可选)<br>返回: 位置对象或None/nil |
 | `find_all_colors(color, tolerance?, region?)` | `findAllColors(color, tolerance?, region?)` | 查找所有颜色 | 返回: 位置数组 |
 | `has_color(color, tolerance?, region?)` | `hasColor(color, tolerance?, region?)` | 检查颜色存在 | 返回: 是否存在 |
 | `get_dominant_color(region?)` | `getDominantColor(region?)` | 获取主要颜色 | region: 分析区域(可选)<br>返回: 颜色对象RGBA |
-| `find_image(path, threshold?, region?)` | `findImage(path, threshold?, region?)` | 查找图像 | path: 模板路径<br>threshold: 匹配阈值(默认0.8)<br>region: 搜索区域(可选)<br>返回: 匹配结果对象 |
-| `detect_edges(region?, threshold1?, threshold2?)` | `detectEdges(region?, threshold1?, threshold2?)` | 检测边缘 | region: 检测区域(可选)<br>threshold1: Canny阈值1(默认50)<br>threshold2: Canny阈值2(默认150)<br>返回: 边缘点数组 |
-| `detect_contours(region?)` | `detectContours(region?)` | 检测轮廓 | region: 检测区域(可选)<br>返回: 轮廓数组 |
-| `detect_circles(region?, minRadius?, maxRadius?)` | `detectCircles(region?, minRadius?, maxRadius?)` | 检测圆形 | region: 检测区域(可选)<br>minRadius: 最小半径(默认10)<br>maxRadius: 最大半径(默认100)<br>返回: 圆形数组 |
-| `capture_region(region, path)` | `captureRegion(region, path)` | 截取区域 | region: 截取区域<br>path: 输出路径 |
+| `find_image(path, threshold?, region?)` | `findImage(path, threshold?, region?)` | 查找图像 | path: 模板路径<br>threshold: 匹配阈值(默认0.9)<br>region: 搜索区域(可选)<br>返回: 匹配结果对象 |

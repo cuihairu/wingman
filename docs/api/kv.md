@@ -41,11 +41,14 @@ set(key: string, value: string, options: table | nil) -> nil
 - `value` - 键值（字符串）
 - `options` - 可选，设置选项：
   - `ttl` - 过期时间（秒），0 表示永不过期
-  - `nx` - 仅当键不存在时设置（Python: bool, Lua: boolean）
+  - `nx` - 仅当键**不存在**时才写入（Python: bool, Lua: boolean）
+  - `xx` - 仅当键**已存在**时才写入（Python: bool, Lua: boolean）
+
+**返回**：恒返回 `None`/`nil`。`nx`/`xx` 仅作为写入条件控制是否真正落盘，**不**通过返回值反映写入是否成功。如需确认键的状态，请配合 `exists`/`get` 单独检查。
 
 **使用场景**：
 - 临时数据存储（设置 TTL）
-- 避免覆盖已有数据（使用 nx 选项）
+- 条件写入：`nx` 用于"不存在才创建"，`xx` 用于"已存在才更新"
 
 :::tabs
 
@@ -54,18 +57,21 @@ set(key: string, value: string, options: table | nil) -> nil
 ```python:line-numbers
 from wingman import kv
 
-# 基本设置
+# 基本设置（返回 None，无需接收）
 kv.set("token", "abc123")
 
 # 设置过期时间（1小时后过期）
 kv.set("token", "abc123", {"ttl": 3600})
 
-# 仅当键不存在时设置
-success = kv.set("counter", "1", {"nx": True})
-if success:
-    print("counter 键已创建")
+# 仅当键不存在时才写入；set 返回 None，用 exists 自行判断结果
+kv.set("counter", "1", {"nx": True})
+if kv.exists("counter"):
+    print("counter 键已创建（此前不存在）")
 else:
-    print("counter 键已存在")
+    print("counter 键已存在，本次未写入")
+
+# 仅当键已存在时才更新（xx）
+kv.set("counter", "2", {"xx": True})
 ```
 
 == Lua
@@ -73,19 +79,22 @@ else:
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 基本设置
+-- 基本设置（返回 nil，无需接收）
 wingman.kv.set("token", "abc123")
 
 -- 设置过期时间（1小时后过期）
 wingman.kv.set("token", "abc123", {ttl = 3600})
 
--- 仅当键不存在时设置
-local success = wingman.kv.set("counter", "1", {nx = true})
-if success then
-    print("counter 键已创建")
+-- 仅当键不存在时才写入；set 返回 nil，用 exists 自行判断结果
+wingman.kv.set("counter", "1", {nx = true})
+if wingman.kv.exists("counter") then
+    print("counter 键已创建（此前不存在）")
 else
-    print("counter 键已存在")
+    print("counter 键已存在，本次未写入")
 end
+
+-- 仅当键已存在时才更新（xx）
+wingman.kv.set("counter", "2", {xx = true})
 ```
 
 :::
@@ -151,17 +160,17 @@ end
 **函数签名**：
 
 ```python
-delete(keys: str | list[str]) -> int
+delete(keys: str | list[str]) -> None
 ```
 
 ```lua
-delete(keys: string | table) -> number
+delete(keys: string | table) -> nil
 ```
 
 **参数**：
 - `keys` - 键名或键名列表
 
-**返回**：删除的键数量
+**返回**：无（恒返回 `None`/`nil`，不返回删除数量）。如需统计，可在删除前后用 `exists` 自行判断。
 
 :::tabs
 
@@ -173,9 +182,8 @@ from wingman import kv
 # 删除单个键
 kv.delete("token")
 
-# 批量删除
-count = kv.delete(["key1", "key2", "key3"])
-print(f"删除了 {count} 个键")
+# 批量删除（不返回数量）
+kv.delete(["key1", "key2", "key3"])
 ```
 
 == Lua
@@ -186,9 +194,8 @@ local wingman = require("wingman")
 -- 删除单个键
 wingman.kv.delete("token")
 
--- 批量删除
-local count = wingman.kv.delete({"key1", "key2", "key3"})
-print("删除了 " .. count .. " 个键")
+-- 批量删除（不返回数量）
+wingman.kv.delete({"key1", "key2", "key3"})
 ```
 
 :::
@@ -352,6 +359,58 @@ local new = wingman.kv.incr("counter", -3)  -- 返回 13
 
 ---
 
+### expire(key, seconds)
+
+**说明**：为**已存在**的键设置过期时间。键不存在时为空操作，不会报错也不会创建键。
+
+**函数签名**：
+
+```python
+expire(key: str, seconds: int) -> None
+```
+
+```lua
+expire(key: string, seconds: number) -> nil
+```
+
+**参数**：
+- `key` - 键名（必须已存在，否则为空操作）
+- `seconds` - 过期秒数
+
+**返回**：无（恒返回 `None`/`nil`）。可用 `ttl` 查询是否设置成功。
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import kv
+
+kv.set("token", "abc123")
+kv.expire("token", 3600)  # 1 小时后过期
+
+# 用 ttl 验证
+remaining = kv.ttl("token")
+print(f"剩余 {remaining} 秒")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+wingman.kv.set("token", "abc123")
+wingman.kv.expire("token", 3600)  -- 1 小时后过期
+
+-- 用 ttl 验证
+local remaining = wingman.kv.ttl("token")
+print("剩余 " .. remaining .. " 秒")
+```
+
+:::
+
+---
+
 ## Hash 操作
 
 ### hset(hash, field, value)
@@ -493,14 +552,14 @@ print("成员数:", info.member_count)
 **函数签名**：
 
 ```python
-hdel(hash: str, field: str) -> bool
+hdel(hash: str, field: str) -> None
 ```
 
 ```lua
-hdel(hash: string, field: string) -> boolean
+hdel(hash: string, field: string) -> nil
 ```
 
-**返回**：字段存在并删除返回 true，否则返回 false
+**返回**：无（恒返回 `None`/`nil`，不返回是否删除成功）。如需确认，可用 `hexists` 检查。
 
 :::tabs
 
@@ -509,8 +568,11 @@ hdel(hash: string, field: string) -> boolean
 ```python:line-numbers
 from wingman import kv
 
-# 删除字段
-if kv.hdel("team:123", "leader"):
+# 删除字段（不返回布尔）
+kv.hdel("team:123", "leader")
+
+# 如需确认，用 hexists 检查
+if not kv.hexists("team:123", "leader"):
     print("队长字段已删除")
 ```
 
@@ -519,8 +581,11 @@ if kv.hdel("team:123", "leader"):
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 删除字段
-if wingman.kv.hdel("team:123", "leader") then
+-- 删除字段（不返回布尔）
+wingman.kv.hdel("team:123", "leader")
+
+-- 如需确认，用 hexists 检查
+if not wingman.kv.hexists("team:123", "leader") then
     print("队长字段已删除")
 end
 ```
@@ -621,14 +686,14 @@ print("团队字段:", table.concat(fields, ", "))
 **函数签名**：
 
 ```python
-lpush(list: str, value: str) -> int
+lpush(list: str, value: str) -> None
 ```
 
 ```lua
-lpush(list: string, value: string) -> number
+lpush(list: string, value: string) -> nil
 ```
 
-**返回**：列表长度
+**返回**：无（恒返回 `None`/`nil`，不返回列表长度）。如需长度，可用 `llen` 查询。
 
 **使用场景**：
 - 日志记录（最新的在前面）
@@ -669,12 +734,14 @@ wingman.kv.lpush("log", "info: connected")
 **函数签名**：
 
 ```python
-rpush(list: str, value: str) -> int
+rpush(list: str, value: str) -> None
 ```
 
 ```lua
-rpush(list: string, value: string) -> number
+rpush(list: string, value: string) -> nil
 ```
+
+**返回**：无（恒返回 `None`/`nil`，不返回列表长度）。如需长度，可用 `llen` 查询。
 
 **使用场景**：
 - 消息队列（先进先出）
@@ -1097,10 +1164,11 @@ end
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `set(key, val, opts?)` | `set(key, val, opts?)` | 设置键值 | key: 键名<br>val: 值<br>opts: {ttl, nx} |
+| `set(key, val, opts?)` | `set(key, val, opts?)` | 设置键值 | key: 键名<br>val: 值<br>opts: {ttl, nx, xx} 返回: nil |
 | `get(key)` | `get(key)` | 获取值 | key: 键名 |
-| `delete(keys)` | `delete(keys)` | 删除键 | keys: 键名或列表 |
+| `delete(keys)` | `delete(keys)` | 删除键 | keys: 键名或列表 返回: nil |
 | `exists(key)` | `exists(key)` | 检查键是否存在 | key: 键名 |
+| `expire(key, seconds)` | `expire(key, seconds)` | 为已存在键设过期 | key: 键名<br>seconds: 秒 返回: nil |
 | `ttl(key)` | `ttl(key)` | 获取过期时间 | key: 键名<br>返回: 剩余秒数 |
 | `incr(key, delta?)` | `incr(key, delta?)` | 数字自增 | key: 键名<br>delta: 增量(默认1) |
 
@@ -1111,7 +1179,7 @@ end
 | `hset(hash, field, val)` | `hset(hash, field, val)` | 设置字段 | hash: Hash名<br>field: 字段名<br>val: 值 |
 | `hget(hash, field)` | `hget(hash, field)` | 获取字段 | hash: Hash名<br>field: 字段名 |
 | `hgetall(hash)` | `hgetall(hash)` | 获取全部 | hash: Hash名 |
-| `hdel(hash, field)` | `hdel(hash, field)` | 删除字段 | hash: Hash名<br>field: 字段名 |
+| `hdel(hash, field)` | `hdel(hash, field)` | 删除字段 | hash: Hash名<br>field: 字段名 返回: nil |
 | `hexists(hash, field)` | `hexists(hash, field)` | 检查字段 | hash: Hash名<br>field: 字段名 |
 | `hkeys(hash)` | `hkeys(hash)` | 获取所有字段名 | hash: Hash名 |
 
@@ -1119,8 +1187,8 @@ end
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `lpush(list, val)` | `lpush(list, val)` | 左端推入 | list: 列表名<br>val: 值 |
-| `rpush(list, val)` | `rpush(list, val)` | 右端推入 | list: 列表名<br>val: 值 |
+| `lpush(list, val)` | `lpush(list, val)` | 左端推入 | list: 列表名<br>val: 值 返回: nil |
+| `rpush(list, val)` | `rpush(list, val)` | 右端推入 | list: 列表名<br>val: 值 返回: nil |
 | `lpop(list)` | `lpop(list)` | 左端弹出 | list: 列表名 |
 | `rpop(list)` | `rpop(list)` | 右端弹出 | list: 列表名 |
 | `llen(list)` | `llen(list)` | 列表长度 | list: 列表名 |

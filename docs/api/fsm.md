@@ -254,56 +254,6 @@ current(machineId: string) -> string
 
 ---
 
-## 检查状态
-
-### is(machine_id, state) / is(machineId, state)
-
-**说明**：检查状态机是否处于指定状态。
-
-**函数签名**：
-
-```python
-is(machine_id: str, state: str) -> bool
-```
-
-```lua
-is(machineId: string, state: string) -> boolean
-```
-
-**参数**：
-- `machine_id` / `machineId` - 状态机 ID
-- `state` - 要检查的状态名
-
-**返回**：
-- 是否处于该状态
-
----
-
-## 检查可否转移
-
-### can(machine_id, event) / can(machineId, event)
-
-**说明**：检查是否可以触发指定事件的转移。
-
-**函数签名**：
-
-```python
-can(machine_id: str, event: str) -> bool
-```
-
-```lua
-can(machineId: string, event: string) -> boolean
-```
-
-**参数**：
-- `machine_id` / `machineId` - 状态机 ID
-- `event` - 事件名
-
-**返回**：
-- 是否可以转移
-
----
-
 ## 重置状态机
 
 ### reset(machine_id) / reset(machineId)
@@ -359,6 +309,4 @@ wingman.fsm.reset(machineId)
 | `transition(machineId, from, to, on?, guard?, action?)` | `transition(machineId, from, to, on?, guard?, action?)` | 定义转移 | machineId: 状态机ID<br>from: 源状态<br>to: 目标状态<br>on: 事件名(可选)<br>guard: 守卫函数(可选)<br>action: 动作函数(可选)<br>返回: 是否成功 |
 | `dispatch(machineId, event, payload?)` | `dispatch(machineId, event, payload?)` | 派发事件 | machineId: 状态机ID<br>event: 事件名<br>payload: 事件载荷(可选)<br>返回: 是否成功转移 |
 | `current(machineId)` | `current(machineId)` | 获取当前状态 | machineId: 状态机ID<br>返回: 当前状态名 |
-| `is(machineId, state)` | `is(machineId, state)` | 检查状态 | machineId: 状态机ID<br>state: 状态名<br>返回: 是否处于该状态 |
-| `can(machineId, event)` | `can(machineId, event)` | 检查可否转移 | machineId: 状态机ID<br>event: 事件名<br>返回: 是否可以转移 |
 | `reset(machineId)` | `reset(machineId)` | 重置状态机 | machineId: 状态机ID<br>返回: 是否成功 |
