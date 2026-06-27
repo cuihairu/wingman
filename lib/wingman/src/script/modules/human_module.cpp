@@ -6,6 +6,41 @@ namespace wingman {
 namespace script {
 namespace modules {
 
+// ========== Plan 5: 高层配置模型 + 后端映射 ==========
+// 文档（human.md）暴露扁平高层字段：delay_min/delay_max/move_speed/typing_variance。
+// 后端配置分散在 HumanMouseConfig/HumanKeyboardConfig，这里做语义映射。
+
+struct HumanScriptConfig {
+	int delayMin = 100;          // 随机延迟下限 ms（-> get_config.delay_min）
+	int delayMax = 300;          // 随机延迟上限 ms（-> get_config.delay_max）
+	double moveSpeed = 1.0;      // 移动速度系数 0.1-2.0（-> get_config.move_speed）
+	double typingVariance = 0.5; // 输入变异度 0.0-1.0（-> get_config.typing_variance）
+};
+
+static HumanScriptConfig& humanScriptConfig() {
+	static HumanScriptConfig instance;
+	return instance;
+}
+
+// 把高层配置映射写入后端 mouse/keyboard config（仅改相关字段，保留其余字段）
+static void applyHumanConfigToBackend(const HumanScriptConfig& cfg) {
+	// mouse: move_speed -> moveDuration；delay -> clickDelay
+	HumanMouseConfig mc = Human::mouse().getConfig();
+	double speed = cfg.moveSpeed < 0.1 ? 0.1 : (cfg.moveSpeed > 2.0 ? 2.0 : cfg.moveSpeed);
+	mc.minMoveDuration = static_cast<int>(100.0 / speed);
+	mc.maxMoveDuration = static_cast<int>(300.0 / speed);
+	mc.clickDelayMin = cfg.delayMin;
+	mc.clickDelayMax = cfg.delayMax;
+	Human::setMouseConfig(mc);
+
+	// keyboard: typing_variance -> typeDelay 范围宽度
+	HumanKeyboardConfig kc = Human::keyboard().getConfig();
+	double v = cfg.typingVariance < 0.0 ? 0.0 : (cfg.typingVariance > 1.0 ? 1.0 : cfg.typingVariance);
+	kc.typeDelayMin = 50;                              // 基准下限
+	kc.typeDelayMax = 50 + static_cast<int>(100.0 * v); // v=0 -> 50/50 固定；v=1 -> 50/150
+	Human::setKeyboardConfig(kc);
+}
+
 ModuleDescriptor createHumanModule() {
 	ModuleDescriptor mod;
 	mod.name = "human";
@@ -65,6 +100,36 @@ ModuleDescriptor createHumanModule() {
 		Human::keyboard().type(args[0].asString(), randomCase);
 		return ScriptValue::null();
 	}, "text:string, randomCase:bool? -> nil"});
+
+	// ========== Plan 5: 文档声明的高层拟人化 API（camelCase；Python 自动转 snake_case）==========
+
+	mod.functions.push_back({"getConfig", [](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto& c = humanScriptConfig();
+		return ScriptValue::fromObject({
+			{"delay_min", ScriptValue::fromInt(c.delayMin)},
+			{"delay_max", ScriptValue::fromInt(c.delayMax)},
+			{"move_speed", ScriptValue::fromFloat(c.moveSpeed)},
+			{"typing_variance", ScriptValue::fromFloat(c.typingVariance)}
+		});
+	}, "() -> {delay_min,delay_max,move_speed,typing_variance}"});
+
+	mod.functions.push_back({"setConfig", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		auto& c = humanScriptConfig();
+		std::string key = args.size() > 0 ? args[0].asString() : std::string();
+		const ScriptValue& value = args.size() > 1 ? args[1] : ScriptValue::null();
+		if (key == "delay_min") {
+			c.delayMin = static_cast<int>(value.asInt(c.delayMin));
+		} else if (key == "delay_max") {
+			c.delayMax = static_cast<int>(value.asInt(c.delayMax));
+		} else if (key == "move_speed") {
+			c.moveSpeed = value.asFloat(c.moveSpeed);
+		} else if (key == "typing_variance") {
+			c.typingVariance = value.asFloat(c.typingVariance);
+		}
+		// 未知 key 静默忽略
+		applyHumanConfigToBackend(c);
+		return ScriptValue::null();
+	}, "key:string, value:any -> nil"});
 
 	return mod;
 }

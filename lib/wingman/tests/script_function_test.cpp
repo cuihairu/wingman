@@ -1382,6 +1382,42 @@ TEST(HumanModuleFunctionsTest, KeyboardTypeDoesNotCrash) {
     EXPECT_NO_THROW(fn({ScriptValue::fromString("hello")}));
 }
 
+// ========== Plan 5: human 高层 API（文档声明） ==========
+
+TEST(HumanModuleFunctionsTest, GetConfigReturnsHighLevelFields) {
+    auto fn = findFunction("human", "getConfig");
+    ASSERT_FALSE(fn.name.empty());
+    auto result = fn({});
+    EXPECT_TRUE(result.isObject());
+    // 文档承诺的 4 个扁平字段（human.md:359）
+    EXPECT_NE(result.get("delay_min"), nullptr);
+    EXPECT_NE(result.get("delay_max"), nullptr);
+    EXPECT_NE(result.get("move_speed"), nullptr);
+    EXPECT_NE(result.get("typing_variance"), nullptr);
+}
+
+TEST(HumanModuleFunctionsTest, SetConfigUpdatesDelayRangeRoundTrip) {
+    auto setFn = findFunction("human", "setConfig");
+    auto getFn = findFunction("human", "getConfig");
+    ASSERT_FALSE(setFn.name.empty());
+    ASSERT_FALSE(getFn.name.empty());
+
+    EXPECT_TRUE(setFn({ScriptValue::fromString("delay_min"), ScriptValue::fromInt(40)}).isNull());
+    EXPECT_TRUE(setFn({ScriptValue::fromString("delay_max"), ScriptValue::fromInt(120)}).isNull());
+
+    auto cfg = getFn({});
+    ASSERT_TRUE(cfg.isObject());
+    EXPECT_EQ(cfg.get("delay_min")->asInt(), 40);
+    EXPECT_EQ(cfg.get("delay_max")->asInt(), 120);
+}
+
+TEST(HumanModuleFunctionsTest, SetConfigUnknownKeyDoesNotCrash) {
+    auto fn = findFunction("human", "setConfig");
+    ASSERT_FALSE(fn.name.empty());
+    // 未知 key 应静默忽略（脚本层惯例），不抛异常
+    EXPECT_NO_THROW(fn({ScriptValue::fromString("nonexistent_key"), ScriptValue::fromInt(1)}));
+}
+
 // ========== Util module functions ==========
 
 TEST(UtilModuleFunctionsTest, GetTimeReturnsInt) {
