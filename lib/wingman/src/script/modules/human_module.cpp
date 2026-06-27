@@ -165,6 +165,16 @@ ModuleDescriptor createHumanModule() {
 		return ScriptValue::null();
 	}, "text:string -> nil"});
 
+	mod.functions.push_back({"moveMouse", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		int x1 = static_cast<int>(args.size() > 0 ? args[0].asInt(0) : 0);
+		int y1 = static_cast<int>(args.size() > 1 ? args[1].asInt(0) : 0);
+		int x2 = static_cast<int>(args.size() > 2 ? args[2].asInt(0) : 0);
+		int y2 = static_cast<int>(args.size() > 3 ? args[3].asInt(0) : 0);
+		int duration = args.size() > 4 ? static_cast<int>(args[4].asInt(500)) : 500;
+		Human::mouse().moveTo(Point(x1, y1), Point(x2, y2), duration);
+		return ScriptValue::null();
+	}, "x1:int, y1:int, x2:int, y2:int, duration:int? -> nil"});
+
 	return mod;
 }
 

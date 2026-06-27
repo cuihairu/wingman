@@ -1647,3 +1647,22 @@ TEST(HumanModuleFunctionsTest, NaturalTypeDoesNotCrash) {
     ASSERT_FALSE(fn.name.empty());
     EXPECT_NO_THROW(fn({ScriptValue::fromString("hi")}));
 }
+
+TEST(HumanModuleFunctionsTest, MoveMouseWithDefaultDurationDoesNotCrash) {
+    auto fn = findFunction("human", "moveMouse");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_NO_THROW(fn({
+        ScriptValue::fromInt(0), ScriptValue::fromInt(0),
+        ScriptValue::fromInt(50), ScriptValue::fromInt(50)
+    }));
+}
+
+TEST(HumanModuleFunctionsTest, MoveMouseExplicitDurationDoesNotCrash) {
+    auto fn = findFunction("human", "moveMouse");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_NO_THROW(fn({
+        ScriptValue::fromInt(0), ScriptValue::fromInt(0),
+        ScriptValue::fromInt(100), ScriptValue::fromInt(100),
+        ScriptValue::fromInt(1) // 1ms，避免测试耗时
+    }));
+}
