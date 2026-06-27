@@ -1667,8 +1667,6 @@ TEST(HumanModuleFunctionsTest, MoveMouseExplicitDurationDoesNotCrash) {
     }));
 }
 
-// ========== Plan 5 Task 7: naturalClick 实现 ==========
-
 TEST(HumanModuleFunctionsTest, NaturalClickLeftDefaultDoesNotCrash) {
     auto fn = findFunction("human", "naturalClick");
     ASSERT_FALSE(fn.name.empty());
