@@ -175,6 +175,20 @@ ModuleDescriptor createHumanModule() {
 		return ScriptValue::null();
 	}, "x1:int, y1:int, x2:int, y2:int, duration:int? -> nil"});
 
+		mod.functions.push_back({"naturalClick", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+			int x = static_cast<int>(args.size() > 0 ? args[0].asInt(0) : 0);
+			int y = static_cast<int>(args.size() > 1 ? args[1].asInt(0) : 0);
+			std::string button = args.size() > 2 ? args[2].asString("left") : "left";
+			if (button == "right") {
+				Human::mouse().rightClick(x, y);
+			} else if (button == "middle") {
+				Human::mouse().middleClick(x, y);
+			} else {
+				Human::mouse().click(x, y); // left 及未知值默认左键
+			}
+			return ScriptValue::null();
+		}, "x:int, y:int, button:string? -> nil"});
+
 	return mod;
 }
 

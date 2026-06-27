@@ -1666,3 +1666,23 @@ TEST(HumanModuleFunctionsTest, MoveMouseExplicitDurationDoesNotCrash) {
         ScriptValue::fromInt(1) // 1ms，避免测试耗时
     }));
 }
+
+// ========== Plan 5 Task 7: naturalClick 实现 ==========
+
+TEST(HumanModuleFunctionsTest, NaturalClickLeftDefaultDoesNotCrash) {
+    auto fn = findFunction("human", "naturalClick");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_NO_THROW(fn({ScriptValue::fromInt(100), ScriptValue::fromInt(100)})); // 默认 left
+}
+
+TEST(HumanModuleFunctionsTest, NaturalClickRightButtonDoesNotCrash) {
+    auto fn = findFunction("human", "naturalClick");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_NO_THROW(fn({ScriptValue::fromInt(100), ScriptValue::fromInt(100), ScriptValue::fromString("right")}));
+}
+
+TEST(HumanModuleFunctionsTest, NaturalClickMiddleButtonDoesNotCrash) {
+    auto fn = findFunction("human", "naturalClick");
+    ASSERT_FALSE(fn.name.empty());
+    EXPECT_NO_THROW(fn({ScriptValue::fromInt(100), ScriptValue::fromInt(100), ScriptValue::fromString("middle")}));
+}
