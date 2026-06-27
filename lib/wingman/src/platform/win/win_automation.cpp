@@ -11,6 +11,8 @@
 #include "wingman/ui_automation.hpp"
 #include <spdlog/spdlog.h>
 #include <memory>
+#include <thread>
+#include <chrono>
 
 #ifdef _WIN32
 
@@ -18,7 +20,8 @@ namespace wingman {
 
 class UIAElement : public IUIAElement {
 public:
-    explicit UIAElement(CComPtr<IUIAutomationElement> element) : element_(element) {}
+    explicit UIAElement(CComPtr<IUIAutomationElement> element, CComPtr<IUIAutomation> automation = nullptr)
+        : element_(element), automation_(automation) {}
 
     std::string getName() const override {
         if (!element_) return "";
@@ -171,8 +174,61 @@ public:
         return info;
     }
 
+    // Plan 6: 新增方法实现
+    std::vector<std::shared_ptr<IUIAElement>> getChildren() override {
+        std::vector<std::shared_ptr<IUIAElement>> results;
+        if (!element_ || !automation_) return results;
+
+        CComPtr<IUIAutomationTreeWalker> walker;
+        if (FAILED(automation_->get_RawViewWalker(&walker)) || !walker) return results;
+
+        CComPtr<IUIAutomationElement> child;
+        if (FAILED(walker->GetFirstChildElement(element_, &child))) return results;
+
+        while (child) {
+            results.push_back(std::make_shared<UIAElement>(child, automation_));
+            CComPtr<IUIAutomationElement> next;
+            if (FAILED(walker->GetNextSiblingElement(child, &next))) break;
+            child = next;
+        }
+        return results;
+    }
+
+    bool expand() override {
+        if (!element_) return false;
+        CComPtr<IUIAutomationExpandCollapsePattern> pattern;
+        if (FAILED(element_->GetCurrentPatternAs(__uuidof(IUIAutomationExpandCollapsePattern),
+            reinterpret_cast<void**>(&pattern))) || !pattern) return false;
+        return SUCCEEDED(pattern->Expand());
+    }
+
+    bool collapse() override {
+        if (!element_) return false;
+        CComPtr<IUIAutomationExpandCollapsePattern> pattern;
+        if (FAILED(element_->GetCurrentPatternAs(__uuidof(IUIAutomationExpandCollapsePattern),
+            reinterpret_cast<void**>(&pattern))) || !pattern) return false;
+        return SUCCEEDED(pattern->Collapse());
+    }
+
+    bool isExpanded() const override {
+        if (!element_) return false;
+        CComPtr<IUIAutomationExpandCollapsePattern> pattern;
+        if (FAILED(element_->GetCurrentPatternAs(__uuidof(IUIAutomationExpandCollapsePattern),
+            reinterpret_cast<void**>(&pattern))) || !pattern) return false;
+        ExpandCollapseState state;
+        if (FAILED(pattern->get_CurrentExpandCollapseState(&state))) return false;
+        return state == ExpandCollapseState_Expanded;
+    }
+
+    bool doubleClick() override {
+        // 简单实现：调用两次 click
+        if (!click()) return false;
+        return click();
+    }
+
 private:
     CComPtr<IUIAutomationElement> element_;
+    CComPtr<IUIAutomation> automation_;  // Plan 6: 持有 automation 引用，用于 TreeWalker 等
 
     static UIARole controlTypeToRole(CONTROLTYPEID controlType) {
         switch (controlType) {
@@ -209,7 +265,7 @@ public:
         if (!initialized_) return nullptr;
         CComPtr<IUIAutomationElement> focused;
         if (FAILED(automation_->GetFocusedElement(&focused))) return nullptr;
-        return std::make_shared<UIAElement>(focused);
+        return std::make_shared<UIAElement>(focused, automation_);
     }
 
     std::shared_ptr<IUIAElement> getElementFromPoint(const Point& point) override {
@@ -217,7 +273,7 @@ public:
         CComPtr<IUIAutomationElement> element;
         POINT pt = { point.x, point.y };
         if (FAILED(automation_->ElementFromPoint(pt, &element))) return nullptr;
-        return std::make_shared<UIAElement>(element);
+        return std::make_shared<UIAElement>(element, automation_);
     }
 
     std::shared_ptr<IUIAElement> findElement(const UIASelector& selector) override {
@@ -227,6 +283,63 @@ public:
         if (FAILED(automation_->GetRootElement(&root)) || !root) return nullptr;
 
         return findElementRecursive(root, selector);
+    }
+
+    // Plan 6: 新增方法实现
+    std::shared_ptr<IUIAElement> getElementFromWindow(uint64_t hwnd) override {
+        if (!initialized_) return nullptr;
+        CComPtr<IUIAutomationElement> element;
+        if (FAILED(automation_->ElementFromHandle(reinterpret_cast<UIA_HWND>(hwnd), &element))) return nullptr;
+        return std::make_shared<UIAElement>(element, automation_);
+    }
+
+    std::vector<std::shared_ptr<IUIAElement>> findAllByRole(UIARole role) override {
+        std::vector<std::shared_ptr<IUIAElement>> results;
+        if (!initialized_ || role == UIARole::Unknown) return results;
+
+        CComPtr<IUIAutomationElement> root;
+        if (FAILED(automation_->GetRootElement(&root)) || !root) return results;
+
+        // UIARole -> ControlType 映射
+        CONTROLTYPEID controlType = 0;
+        switch (role) {
+            case UIARole::Button: controlType = UIA_ButtonControlTypeId; break;
+            case UIARole::CheckBox: controlType = UIA_CheckBoxControlTypeId; break;
+            case UIARole::ComboBox: controlType = UIA_ComboBoxControlTypeId; break;
+            case UIARole::TextBox: controlType = UIA_EditControlTypeId; break;
+            case UIARole::Window: controlType = UIA_WindowControlTypeId; break;
+            case UIARole::RadioButton: controlType = UIA_RadioButtonControlTypeId; break;
+            default: return results;
+        }
+
+        CComPtr<IUIAutomationCondition> cond;
+        if (FAILED(automation_->CreatePropertyCondition(UIA_ControlTypeIdPropertyId, controlType, &cond)) || !cond) return results;
+
+        CComPtr<IUIAutomationElementArray> array;
+        if (FAILED(root->FindAll(TreeScope_Descendants, cond, &array)) || !array) return results;
+
+        int count = 0;
+        if (FAILED(array->get_Length(&count))) return results;
+        for (int i = 0; i < count; ++i) {
+            CComPtr<IUIAutomationElement> elem;
+            if (SUCCEEDED(array->GetElement(i, &elem)) && elem) {
+                results.push_back(std::make_shared<UIAElement>(elem, automation_));
+            }
+        }
+        return results;
+    }
+
+    std::shared_ptr<IUIAElement> waitForElement(const UIASelector& selector, int timeoutMs) override {
+        if (!initialized_) return nullptr;
+        const int stepMs = 100;
+        int elapsed = 0;
+        while (elapsed < timeoutMs) {
+            auto result = findElement(selector);
+            if (result) return result;
+            std::this_thread::sleep_for(std::chrono::milliseconds(stepMs));
+            elapsed += stepMs;
+        }
+        return findElement(selector); // 超时前最后查一次
     }
 
     std::string getBackendName() const override { return "Windows UIAutomation"; }
@@ -240,7 +353,7 @@ private:
         if (!parent) return nullptr;
 
         // Check if current element matches
-        auto current = std::make_shared<UIAElement>(parent);
+        auto current = std::make_shared<UIAElement>(parent, automation_);
         if (selector.matches(current->getInfo())) {
             return current;
         }

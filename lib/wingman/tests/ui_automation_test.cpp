@@ -302,3 +302,29 @@ TEST(UIAutomationTest, GetElementFromPointWithoutInit) {
 TEST(UIAutomationTest, GlobalUiaFunction) {
     EXPECT_NO_THROW(uia());
 }
+
+// ========== Plan 6: 新增接口烟雾测试 ==========
+
+TEST(UIAutomationTest, FromWindowWithoutInitReturnsNull) {
+    UIAutomation uia;
+    auto elem = uia.fromWindow(0);
+    EXPECT_EQ(elem, nullptr);
+}
+
+TEST(UIAutomationTest, FindAllByRoleWithoutInitReturnsEmpty) {
+    UIAutomation uia;
+    auto elems = uia.findAllByRole(UIARole::Button);
+    EXPECT_TRUE(elems.empty());
+}
+
+TEST(UIAutomationTest, WaitForNameWithoutInitReturnsNull) {
+    UIAutomation uia;
+    auto elem = uia.waitForName("nonexistent", 100);
+    EXPECT_EQ(elem, nullptr);
+}
+
+TEST(UIAutomationTest, WaitForNameTimeoutDoesNotCrash) {
+    UIAutomation uia;
+    // 短超时，验证轮询循环不崩溃
+    EXPECT_NO_THROW(uia.waitForName("anything", 50));
+}

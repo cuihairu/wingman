@@ -65,6 +65,22 @@ struct UIAutomation::Impl {
         if (!manager) return nullptr;
         return manager->getElementFromPoint(Point{x, y});
     }
+
+    // Plan 6: 新增委托方法
+    std::shared_ptr<IUIAElement> fromWindow(uint64_t hwnd) {
+        if (!manager) return nullptr;
+        return manager->getElementFromWindow(hwnd);
+    }
+
+    std::vector<std::shared_ptr<IUIAElement>> findAllByRole(UIARole role) {
+        if (!manager) return {};
+        return manager->findAllByRole(role);
+    }
+
+    std::shared_ptr<IUIAElement> waitFor(const UIASelector& selector, int timeoutMs) {
+        if (!manager) return nullptr;
+        return manager->waitForElement(selector, timeoutMs);
+    }
 };
 
 // ========== UIAutomation ==========
@@ -101,6 +117,19 @@ std::shared_ptr<IUIAElement> UIAutomation::getFocusedElement() {
 
 std::shared_ptr<IUIAElement> UIAutomation::getElementFromPoint(int x, int y) {
     return impl->fromPoint(x, y);
+}
+
+// Plan 6: 新增门面方法实现
+std::shared_ptr<IUIAElement> UIAutomation::fromWindow(uint64_t hwnd) {
+    return impl->fromWindow(hwnd);
+}
+
+std::vector<std::shared_ptr<IUIAElement>> UIAutomation::findAllByRole(UIARole role) {
+    return impl->findAllByRole(role);
+}
+
+std::shared_ptr<IUIAElement> UIAutomation::waitForName(const std::string& name, int timeoutMs) {
+    return impl->waitFor(UIASelector{}.withName(name), timeoutMs);
 }
 
 // ========== Global Access ==========

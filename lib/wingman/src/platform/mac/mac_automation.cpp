@@ -1,6 +1,8 @@
 #include "wingman/ui_automation.hpp"
 #include <spdlog/spdlog.h>
 #include <memory>
+#include <thread>
+#include <chrono>
 
 #ifdef __APPLE__
 #include <ApplicationServices/ApplicationServices.h>
@@ -203,6 +205,53 @@ public:
         return info;
     }
 
+    // Plan 6: 新增方法实现
+    std::vector<std::shared_ptr<IUIAElement>> getChildren() override {
+        std::vector<std::shared_ptr<IUIAElement>> results;
+        if (!element_) return results;
+        CFArrayRef children = nullptr;
+        if (AXUIElementCopyAttributeValues(element_, kAXChildrenAttribute, 0, 100, &children) != kAXErrorSuccess || !children) {
+            return results;
+        }
+        CFIndex count = CFArrayGetCount(children);
+        for (CFIndex i = 0; i < count; ++i) {
+            AXUIElementRef child = (AXUIElementRef)CFArrayGetValueAtIndex(children, i);
+            if (child) results.push_back(std::make_shared<UIAElement>(child)); // UIAElement 构造会 CFRetain
+        }
+        CFRelease(children);
+        return results;
+    }
+
+    bool expand() override {
+        if (!element_) return false;
+        return AXUIElementSetAttributeValue(element_, kAXExpandedAttribute, kCFBooleanTrue) == kAXErrorSuccess;
+    }
+
+    bool collapse() override {
+        if (!element_) return false;
+        return AXUIElementSetAttributeValue(element_, kAXExpandedAttribute, kCFBooleanFalse) == kAXErrorSuccess;
+    }
+
+    bool isExpanded() const override {
+        return copyBoolAttribute(element_, kAXExpandedAttribute, false);
+    }
+
+    bool doubleClick() override {
+        if (!element_) return false;
+        Rect b = getBounds();
+        if (b.width <= 0 || b.height <= 0) return false;
+        CGPoint center = CGPointMake(b.x + b.width / 2.0, b.y + b.height / 2.0);
+        CGEventRef move = CGEventCreateMouseEvent(nullptr, kCGEventMouseMoved, center, kCGMouseButtonLeft);
+        if (move) { CGEventPost(kCGHIDEventTap, move); CFRelease(move); }
+        for (int i = 1; i <= 2; ++i) {
+            CGEventRef down = CGEventCreateMouseEvent(nullptr, kCGEventLeftMouseDown, center, kCGMouseButtonLeft);
+            CGEventRef up = CGEventCreateMouseEvent(nullptr, kCGEventLeftMouseUp, center, kCGMouseButtonLeft);
+            if (down) { CGEventSetIntegerValueField(down, kCGMouseEventClickState, i); CGEventPost(kCGHIDEventTap, down); CFRelease(down); }
+            if (up) { CGEventSetIntegerValueField(up, kCGMouseEventClickState, i); CGEventPost(kCGHIDEventTap, up); CFRelease(up); }
+        }
+        return true;
+    }
+
 private:
     AXUIElementRef element_;
 
@@ -299,6 +348,46 @@ public:
         return result;
     }
 
+    // Plan 6: 新增方法实现
+    std::shared_ptr<IUIAElement> getElementFromWindow(uint64_t hwnd) override {
+        if (!initialized_) return nullptr;
+        // Mac 无 HWND 概念，hwnd 参数解释为目标进程 PID（文档注明）
+        pid_t pid = static_cast<pid_t>(hwnd);
+        AXUIElementRef app = AXUIElementCreateApplication(pid);
+        if (!app) return nullptr;
+        auto result = std::make_shared<UIAElement>(app);
+        CFRelease(app);
+        return result;
+    }
+
+    std::vector<std::shared_ptr<IUIAElement>> findAllByRole(UIARole role) override {
+        std::vector<std::shared_ptr<IUIAElement>> results;
+        if (!initialized_ || role == UIARole::Unknown) return results;
+        AXUIElementRef systemWide = AXUIElementCreateSystemWide();
+        if (!systemWide) return results;
+        AXUIElementRef focusedApp = nullptr;
+        if (AXUIElementCopyAttributeValue(systemWide, kAXFocusedApplicationAttribute,
+                                          reinterpret_cast<CFTypeRef*>(&focusedApp)) == kAXErrorSuccess && focusedApp) {
+            findAllRecursive(focusedApp, role, results);
+            CFRelease(focusedApp);
+        }
+        CFRelease(systemWide);
+        return results;
+    }
+
+    std::shared_ptr<IUIAElement> waitForElement(const UIASelector& selector, int timeoutMs) override {
+        if (!initialized_) return nullptr;
+        const int stepMs = 100;
+        int elapsed = 0;
+        while (elapsed < timeoutMs) {
+            auto result = findElement(selector);
+            if (result) return result;
+            std::this_thread::sleep_for(std::chrono::milliseconds(stepMs));
+            elapsed += stepMs;
+        }
+        return findElement(selector); // 超时前最后查一次
+    }
+
     std::string getBackendName() const override { return "macOS Accessibility API"; }
     bool isAvailable() const override { return initialized_; }
 
@@ -336,6 +425,25 @@ private:
 
         CFRelease(children);
         return nullptr;
+    }
+
+    void findAllRecursive(AXUIElementRef parent, UIARole role, std::vector<std::shared_ptr<IUIAElement>>& results) {
+        if (!parent) return;
+        auto current = std::make_shared<UIAElement>(parent);
+        if (current->getRole() == role) results.push_back(current);
+        CFArrayRef children = nullptr;
+        if (AXUIElementCopyAttributeValues(parent, kAXChildrenAttribute, 0, 100, &children) != kAXErrorSuccess || !children) {
+            return;
+        }
+        CFIndex count = CFArrayGetCount(children);
+        for (CFIndex i = 0; i < count; ++i) {
+            AXUIElementRef child = (AXUIElementRef)CFArrayGetValueAtIndex(children, i);
+            if (!child) continue;
+            CFRetain(child);
+            findAllRecursive(child, role, results);
+            CFRelease(child);
+        }
+        CFRelease(children);
     }
 };
 

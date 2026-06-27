@@ -124,6 +124,13 @@ public:
 
     virtual bool isValid() const = 0;
     virtual UIAElementInfo getInfo() const = 0;
+
+    // Plan 6: 新增接口
+    virtual std::vector<std::shared_ptr<IUIAElement>> getChildren() = 0;
+    virtual bool expand() = 0;
+    virtual bool collapse() = 0;
+    virtual bool isExpanded() const = 0;
+    virtual bool doubleClick() = 0;
 };
 
 /**
@@ -139,6 +146,11 @@ public:
     virtual std::shared_ptr<IUIAElement> getFocusedElement() = 0;
     virtual std::shared_ptr<IUIAElement> getElementFromPoint(const Point& point) = 0;
     virtual std::shared_ptr<IUIAElement> findElement(const UIASelector& selector) = 0;
+
+    // Plan 6: 新增接口
+    virtual std::shared_ptr<IUIAElement> getElementFromWindow(uint64_t hwnd) = 0;
+    virtual std::vector<std::shared_ptr<IUIAElement>> findAllByRole(UIARole role) = 0;
+    virtual std::shared_ptr<IUIAElement> waitForElement(const UIASelector& selector, int timeoutMs) = 0;
 
     virtual std::string getBackendName() const = 0;
     virtual bool isAvailable() const = 0;
@@ -162,6 +174,11 @@ public:
 
     std::shared_ptr<IUIAElement> getFocusedElement();
     std::shared_ptr<IUIAElement> getElementFromPoint(int x, int y);
+
+    // Plan 6: 新增门面方法
+    std::shared_ptr<IUIAElement> fromWindow(uint64_t hwnd);
+    std::vector<std::shared_ptr<IUIAElement>> findAllByRole(UIARole role);
+    std::shared_ptr<IUIAElement> waitForName(const std::string& name, int timeoutMs);
 
 private:
     struct Impl;
