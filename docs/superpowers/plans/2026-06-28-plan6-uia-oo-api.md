@@ -201,24 +201,25 @@ static std::shared_ptr<IUIAElement> uiaGetElement(int h) {
 
 ---
 
-## Phase 2 概要 Task（事件监听，难度高）
+## Phase 2 概要 Task（事件监听，难度高）✅ 全完成
 
-### Task 7: Windows 事件监听
+### Task 7: Windows 事件监听 ✅（commit 5383584）
 - 实现 IUIAutomationPropertyChangedEventHandler / StructureChangedEventHandler COM 接口
 - 事件处理线程（UIA 事件需消息循环；创建专用线程 + 隐藏窗口消息泵，或利用 STA）
 - listenerId 映射 + removeEventListener（Remove*EventHandler）
 - callable 回调（拷贝 callableVal，跨线程调用需 callableThreadSafe 检查）
 
-### Task 8: Mac 事件监听
+### Task 8: Mac 事件监听 ✅（commit 035ff01）
 - AXObserverCreate(pid, callback) + AXObserverAddNotification(kAX*ChangedNotifications)
 - 后台 run loop 线程调度 observer
 - listenerId 映射 + removeEventListener（AXObserverRemoveNotification + release）
 - callable 回调
 
-### Task 9: 脚本事件函数测试
+### Task 9: 脚本事件函数测试 ✅（commit 808558c + 本 Task 4 收尾）
 - on_property_changed/on_structure_changed 注册返回 listenerId > 0
 - remove_event_listener 返回 bool
 - 真实事件触发依赖真实 UI（CI/手动）
+- 本 Task 4：补真实 add→remove 回归测试（M-2，权限门控）+ I1 测试稳健性修复
 
 ---
 
@@ -237,11 +238,11 @@ static std::shared_ptr<IUIAElement> uiaGetElement(int h) {
 
 ## 完成判据
 
-- [ ] IUIAElement 加 getChildren/expand/collapse/isExpanded/doubleClick，Windows + Mac 实现
-- [ ] IUIAManager 加 fromWindow/findAllByControlType/waitForName + 事件监听，双平台实现
-- [ ] 脚本层 UIElement OO 对象（12 方法）+ 13 模块函数，替换裸指针 handle 为 registry
-- [ ] 文档 index.md/types.md 与实现一致
-- [ ] Mac 烟雾测试全绿（函数注册 + OO 结构 + 句柄 + 防御）
+- [x] IUIAElement 加 getChildren/expand/collapse/isExpanded/doubleClick，Windows + Mac 实现
+- [x] IUIAManager 加 fromWindow/findAllByControlType/waitForName + 事件监听（addPropertyChangedListener/addStructureChangedListener/removeEventListener），双平台实现（Win COM 事件线程 + Mac AXObserver run loop）
+- [x] 脚本层 UIElement OO 对象（12 方法）+ 13 模块函数（10 非事件 + 3 事件），替换裸指针 handle 为 registry，callableThreadSafe 门控
+- [x] 文档 index.md/types.md 与实现一致（index.md 事件监听标注"已实现"，移除"规划中"）
+- [x] Mac 烟雾测试全绿（函数注册 + OO 结构 + 句柄 + 防御 + 真实 add→remove 回归）
 - [ ] Windows 真实 UIA 行为依赖 Windows CI 验证
 
 ---

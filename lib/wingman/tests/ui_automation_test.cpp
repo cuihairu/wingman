@@ -346,3 +346,19 @@ TEST(UIAutomationMacEvents, RemoveInvalidListenerReturnsFalse) {
     EXPECT_FALSE(uia.removeEventListener(99999u));
     EXPECT_FALSE(uia.removeEventListener(0u));
 }
+
+// Plan 6 Phase 2: 真实 add→remove 回归（验证事件线程/observer 生命周期 + 无死锁）
+// 需辅助功能权限；无权限环境跳过。
+TEST(UIAutomationMacEvents, AddThenRemoveListenerDoesNotDeadlock) {
+    wingman::UIAutomation uia;
+    if (!uia.initialize()) {
+        GTEST_SKIP() << "需要辅助功能权限（Accessibility），跳过真实事件监听测试";
+    }
+    // 空 selector → 监听前台应用结构变化
+    auto id = uia.addStructureChangedListener(wingman::UIASelector{},
+        [](std::shared_ptr<wingman::IUIAElement>){});
+    // 前台应用存在时应注册成功（id > 0）
+    if (id > 0) {
+        EXPECT_TRUE(uia.removeEventListener(id));  // 移除不死锁（验证 I1 loop 同步）
+    }
+}

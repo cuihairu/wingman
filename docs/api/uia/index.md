@@ -2,8 +2,7 @@
 
 UI Automation 模块，用于与 UI 控件进行自动化交互。
 
-> ✅ **已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`）+ 专用查找（`find_button`/`find_edit`/`find_text`）+ UIElement 对象 12 方法（`get_info`/`click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`）。支持 **Windows UIAutomation + macOS Accessibility** 双平台（Linux 暂不支持）。
-> 🔲 **规划中**：事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`），见 [事件监听](#事件监听)。
+> ✅ **已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`）+ 专用查找（`find_button`/`find_edit`/`find_text`）+ UIElement 对象 12 方法（`get_info`/`click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`）+ 事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`）。支持 **Windows UIAutomation（COM 事件处理线程）+ macOS Accessibility（AXObserver run loop）** 双平台（Linux 暂不支持）。
 
 ## 什么是 UI Automation
 
@@ -883,6 +882,10 @@ if listener_id:
     print(f"监听器已注册，ID: {listener_id}")
 ```
 
+> **callback 参数语义**：`callback(prop, value)` 中 `prop` 为触发事件的元素名称，`value` 为元素当前文本。受后端事件接口限制，不区分具体变更的属性名（如 Name/Value/IsEnabled）。`on_structure_changed` 的 `callback()` 无参数。
+>
+> **线程安全**：事件回调从后台线程触发（Windows UIA RPC 线程 / macOS AXObserver run loop 线程），`callback` 必须是线程安全的（如 Python 函数）。Lua 函数非线程安全，注册时会被拒绝（触发 `uia.error` 事件）。
+
 == Lua
 
 ```lua:line-numbers
@@ -992,7 +995,7 @@ end
 
 ### 事件监听
 
-> 🔲 **规划中（Phase 2，尚未实现）**：以下事件监听函数尚未在脚本层实现，后端事件接口与双平台实现待补。
+> ✅ **已实现**：以下事件监听函数已在脚本层实现，后端事件接口与双平台实现（Windows COM + macOS AXObserver）均已就绪。
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
