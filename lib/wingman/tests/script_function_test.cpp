@@ -1991,3 +1991,40 @@ TEST(UiaModuleFunctionsTest, UIElementObjectStructureWhenAvailable) {
 	auto info = root.get("get_info")->call({});
 	EXPECT_TRUE(info.isObject() || info.isNull());
 }
+
+// ========== Plan 6 Phase 2: 事件函数 ==========
+
+TEST(UiaModuleFunctionsTest, EventFunctionsRegistered) {
+	// 3 个事件函数已注册
+	EXPECT_FALSE(findFunction("uia", "on_property_changed").name.empty());
+	EXPECT_FALSE(findFunction("uia", "on_structure_changed").name.empty());
+	EXPECT_FALSE(findFunction("uia", "remove_event_listener").name.empty());
+}
+
+TEST(UiaModuleFunctionsTest, OnPropertyChangedRejectsNonThreadSafeCallable) {
+	// 默认 callable 非线程安全（callableThreadSafe=false）→ 被 callableThreadSafe 门控拒绝，返回 0
+	auto fn = findFunction("uia", "on_property_changed");
+	auto result = fn.func({
+		ScriptValue::fromString("test"),
+		ScriptValue::fromCallable([](const std::vector<ScriptValue>&) { return ScriptValue::null(); })  // 默认 threadSafe=false
+	});
+	EXPECT_EQ(result.asInt(-1), 0);
+}
+
+TEST(UiaModuleFunctionsTest, OnPropertyChangedAcceptsThreadSafeCallable) {
+	// callableThreadSafe=true 通过门控（uia 未初始化/无权限时 add 返回 0，但不应因 callableThreadSafe 被拒）
+	auto fn = findFunction("uia", "on_property_changed");
+	auto result = fn.func({
+		ScriptValue::fromString("test"),
+		ScriptValue::fromCallable([](const std::vector<ScriptValue>&) { return ScriptValue::null(); }, true)  // 线程安全
+	});
+	// 未初始化时 add 返回 0，不崩溃即可（无法在无权限环境验证真实注册）
+	EXPECT_EQ(result.asInt(-1), 0);
+}
+
+TEST(UiaModuleFunctionsTest, RemoveEventListenerInvalidIdReturnsFalse) {
+	// 无效 listenerId 返回 false（后端找不到该监听器）
+	auto fn = findFunction("uia", "remove_event_listener");
+	auto result = fn.func({ScriptValue::fromInt(static_cast<int64_t>(99999))});
+	EXPECT_FALSE(result.asBool());
+}

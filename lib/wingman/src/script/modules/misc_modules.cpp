@@ -5,6 +5,7 @@
 #include "wingman/behavior_tree.hpp"
 #include "wingman/node_status.hpp"
 #include "wingman/window.hpp"
+#include "wingman/event.hpp"
 #include "module_helpers.hpp"
 
 namespace wingman {
@@ -522,6 +523,59 @@ ModuleDescriptor createUIAutomationModule() {
 		std::string name = args.size() > 0 ? args[0].asString() : std::string();
 		return makeUiaElementObject(uia().find(UIASelector{}.withName(name)));
 	}, "name:string -> UIElement?"});
+
+	// ===== 事件监听 =====
+	// UIA 事件回调从后台线程触发（Win UIA RPC / Mac AXObserver run loop），
+	// 非线程安全 callable（如 Lua）跨线程调用会崩溃，故用 callableThreadSafe 门控（仿 task_module async 检查）。
+	mod.functions.push_back({"on_property_changed", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		if (args.size() < 2 || !args[1].isCallable()) {
+			return ScriptValue::fromInt(0);
+		}
+		// 事件回调跨线程，拒绝非线程安全 callable（如 Lua）
+		if (!args[1].callableThreadSafe) {
+			EventHub::instance().emit("uia.error", {
+				{"error", "UIA 事件回调跨线程触发，需要线程安全的 callable（如 Python 函数）。Lua callable 非线程安全，请改用 Python 注册 UIA 事件。"}
+			}, "uia");
+			return ScriptValue::fromInt(0);
+		}
+		ScriptValue::CallableFunc userCb = args[1].callableVal;  // 拷贝；闭包持有
+		UIASelector selector = UIASelector{}.withName(name);
+		// 后端传元素 → 转为文档签名 callback(prop=元素name, value=元素当前文本)
+		uint64_t id = uia().addPropertyChangedListener(selector, [userCb](std::shared_ptr<IUIAElement> e) {
+			if (!userCb) return;
+			std::vector<ScriptValue> cbArgs;
+			cbArgs.push_back(ScriptValue::fromString(e ? e->getName() : std::string()));
+			cbArgs.push_back(ScriptValue::fromString(e ? e->getText() : std::string()));
+			userCb(cbArgs);
+		});
+		return ScriptValue::fromInt(static_cast<int64_t>(id));
+	}, "name:string, callback:function -> listenerId:int"});
+
+	mod.functions.push_back({"on_structure_changed", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		if (args.size() < 2 || !args[1].isCallable()) {
+			return ScriptValue::fromInt(0);
+		}
+		if (!args[1].callableThreadSafe) {
+			EventHub::instance().emit("uia.error", {
+				{"error", "UIA 事件回调跨线程触发，需要线程安全的 callable（如 Python 函数）。Lua callable 非线程安全，请改用 Python 注册 UIA 事件。"}
+			}, "uia");
+			return ScriptValue::fromInt(0);
+		}
+		ScriptValue::CallableFunc userCb = args[1].callableVal;
+		UIASelector selector = UIASelector{}.withName(name);
+		uint64_t id = uia().addStructureChangedListener(selector, [userCb](std::shared_ptr<IUIAElement>) {
+			if (!userCb) return;
+			userCb({});
+		});
+		return ScriptValue::fromInt(static_cast<int64_t>(id));
+	}, "name:string, callback:function -> listenerId:int"});
+
+	mod.functions.push_back({"remove_event_listener", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		uint64_t id = static_cast<uint64_t>(args.size() > 0 ? args[0].asInt(0) : 0);
+		return ScriptValue::fromBool(uia().removeEventListener(id));
+	}, "listenerId:int -> bool"});
 
 	return mod;
 }
