@@ -12,6 +12,10 @@ extern std::unique_ptr<wingman::IUIAManager> createUIAManager();
 
 namespace wingman {
 
+// 文件内别名：IUIAManager::UIAEventCallback 在本 .cpp 中简写为 UIAEventCallback，
+// 与 UIAutomation 门面成员类型保持一致。
+using UIAEventCallback = IUIAManager::UIAEventCallback;
+
 // ========== UIAutomation::Impl ==========
 
 struct UIAutomation::Impl {
@@ -81,6 +85,20 @@ struct UIAutomation::Impl {
         if (!manager) return nullptr;
         return manager->waitForElement(selector, timeoutMs);
     }
+
+    // Plan 6 Phase 2: 事件监听委托
+    uint64_t addPropertyChangedListener(const UIASelector& selector, UIAEventCallback cb) {
+        if (!manager) return 0;
+        return manager->addPropertyChangedListener(selector, std::move(cb));
+    }
+    uint64_t addStructureChangedListener(const UIASelector& selector, UIAEventCallback cb) {
+        if (!manager) return 0;
+        return manager->addStructureChangedListener(selector, std::move(cb));
+    }
+    bool removeEventListener(uint64_t listenerId) {
+        if (!manager) return false;
+        return manager->removeEventListener(listenerId);
+    }
 };
 
 // ========== UIAutomation ==========
@@ -130,6 +148,17 @@ std::vector<std::shared_ptr<IUIAElement>> UIAutomation::findAllByRole(UIARole ro
 
 std::shared_ptr<IUIAElement> UIAutomation::waitForName(const std::string& name, int timeoutMs) {
     return impl->waitFor(UIASelector{}.withName(name), timeoutMs);
+}
+
+// Plan 6 Phase 2: 事件监听门面实现
+uint64_t UIAutomation::addPropertyChangedListener(const UIASelector& selector, UIAEventCallback cb) {
+    return impl->addPropertyChangedListener(selector, std::move(cb));
+}
+uint64_t UIAutomation::addStructureChangedListener(const UIASelector& selector, UIAEventCallback cb) {
+    return impl->addStructureChangedListener(selector, std::move(cb));
+}
+bool UIAutomation::removeEventListener(uint64_t listenerId) {
+    return impl->removeEventListener(listenerId);
 }
 
 // ========== Global Access ==========

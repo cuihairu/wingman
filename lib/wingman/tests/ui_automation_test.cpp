@@ -328,3 +328,21 @@ TEST(UIAutomationTest, WaitForNameTimeoutDoesNotCrash) {
     // 短超时，验证轮询循环不崩溃
     EXPECT_NO_THROW(uia.waitForName("anything", 50));
 }
+
+// ========== Plan 6 Phase 2: 事件监听烟雾测试 ==========
+
+TEST(UIAutomationMacEvents, AddListenerWithoutInitReturnsZero) {
+    wingman::UIAutomation uia;  // 独立实例，未 initialize
+    auto id = uia.addPropertyChangedListener(wingman::UIASelector{},
+        [](std::shared_ptr<wingman::IUIAElement>){});
+    EXPECT_EQ(id, 0u);
+    auto id2 = uia.addStructureChangedListener(wingman::UIASelector{},
+        [](std::shared_ptr<wingman::IUIAElement>){});
+    EXPECT_EQ(id2, 0u);
+}
+
+TEST(UIAutomationMacEvents, RemoveInvalidListenerReturnsFalse) {
+    wingman::UIAutomation uia;
+    EXPECT_FALSE(uia.removeEventListener(99999u));
+    EXPECT_FALSE(uia.removeEventListener(0u));
+}

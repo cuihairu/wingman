@@ -3,6 +3,9 @@
 #include <memory>
 #include <thread>
 #include <chrono>
+#include <map>
+#include <mutex>
+#include <condition_variable>
 
 #ifdef __APPLE__
 #include <ApplicationServices/ApplicationServices.h>
@@ -252,6 +255,9 @@ public:
         return true;
     }
 
+    // 平台内部访问器：UIAManager 事件监听用（同文件 static_cast 访问，不暴露到 IUIAElement 接口）
+    AXUIElementRef elementRef() const { return element_; }
+
 private:
     AXUIElementRef element_;
 
@@ -280,6 +286,51 @@ private:
     }
 };
 
+// ========== Plan 6 Phase 2: macOS 事件监听（AXObserver）==========
+// AXObserver 回调从其 run loop 线程触发，在其中调用脚本 callable。
+// callable 的线程安全由脚本层（on_property_changed 等）通过 callableThreadSafe 检查保证。
+struct MacUiaEventListener {
+    AXObserverRef observer = nullptr;
+    AXUIElementRef element = nullptr;   // retained，listener 持有
+    CFRunLoopRef loop = nullptr;
+    std::mutex loopMutex;
+    std::condition_variable loopCv;
+    bool loopReady = false;  // 受 loopMutex 保护；run loop 线程发布 loop 后置 true
+    std::thread runLoopThread;
+    wingman::IUIAManager::UIAEventCallback callback;
+    bool structureChanged = false;      // true=结构变化(kAXCreatedNotification)，false=属性变化(kAXValueChangedNotification)
+
+    ~MacUiaEventListener() {
+        // 防御性兜底：任何未走 cleanupListener() 的路径都回收 run loop 线程，
+        // 避免 joinable 线程析构触发 std::terminate。
+        if (runLoopThread.joinable()) {
+            {
+                std::lock_guard<std::mutex> lk(loopMutex);
+                loopReady = true;  // 唤醒可能的 wait_for
+            }
+            loopCv.notify_all();
+            if (loop) CFRunLoopStop(loop);
+            runLoopThread.join();
+        }
+    }
+};
+
+// AXObserver 回调（C 函数签名），从 run loop 线程调用
+static void macUiaObserverCallback(AXObserverRef observer, AXUIElementRef element,
+                                   CFStringRef notification, void* context) {
+    (void)observer;      // AXObserver C 签名要求，本回调通过 context 取 listener
+    (void)notification;  // 同上，通知类型在注册时已知（kAXValueChanged/kAXCreated）
+    auto* listener = static_cast<MacUiaEventListener*>(context);
+    if (!listener || !listener->callback) return;
+    try {
+        listener->callback(std::make_shared<wingman::UIAElement>(element));
+    } catch (const std::exception& e) {
+        spdlog::error("[UIA] Mac 事件回调异常: {}", e.what());
+    } catch (...) {
+        spdlog::error("[UIA] Mac 事件回调未知异常");
+    }
+}
+
 class UIAManager : public IUIAManager {
 public:
     bool initialize() override {
@@ -293,6 +344,15 @@ public:
     }
 
     void shutdown() override {
+        // 先清理所有事件监听器（停止 run loop 线程）
+        std::map<uint64_t, std::unique_ptr<MacUiaEventListener>> toCleanup;
+        {
+            std::lock_guard<std::mutex> lock(listenersMutex_);
+            toCleanup.swap(listeners_);
+        }
+        for (auto& kv : toCleanup) {
+            if (kv.second) cleanupListener(*kv.second);
+        }
         initialized_ = false;
     }
 
@@ -388,11 +448,129 @@ public:
         return findElement(selector); // 超时前最后查一次
     }
 
+    // Plan 6 Phase 2: 事件监听实现
+    uint64_t addPropertyChangedListener(const UIASelector& selector, UIAEventCallback cb) override {
+        return addListenerCommon(selector, std::move(cb), false);
+    }
+    uint64_t addStructureChangedListener(const UIASelector& selector, UIAEventCallback cb) override {
+        return addListenerCommon(selector, std::move(cb), true);
+    }
+    bool removeEventListener(uint64_t listenerId) override {
+        std::unique_ptr<MacUiaEventListener> listener;
+        {
+            std::lock_guard<std::mutex> lock(listenersMutex_);
+            auto it = listeners_.find(listenerId);
+            if (it == listeners_.end()) return false;
+            listener = std::move(it->second);
+            listeners_.erase(it);
+        }
+        if (listener) cleanupListener(*listener);
+        return true;
+    }
+
     std::string getBackendName() const override { return "macOS Accessibility API"; }
     bool isAvailable() const override { return initialized_; }
 
 private:
     bool initialized_ = false;
+
+    uint64_t nextListenerId_ = 1;
+    std::map<uint64_t, std::unique_ptr<MacUiaEventListener>> listeners_;
+    std::mutex listenersMutex_;
+
+    // 解析 scope 元素：selector 全空→前台应用；非空→findElement 匹配元素。
+    // 返回 retained 的 AXUIElementRef（调用者负责 CFRelease）+ 输出 pid；失败返回 nullptr。
+    AXUIElementRef resolveScopeElement(const UIASelector& selector, pid_t& outPid) {
+        outPid = 0;
+        AXUIElementRef scopeRef = nullptr;
+        bool selectorEmpty = selector.name.empty() && selector.id.empty() &&
+                             selector.className.empty() && selector.role == UIARole::Unknown &&
+                             selector.text.empty();
+        if (selectorEmpty) {
+            AXUIElementRef systemWide = AXUIElementCreateSystemWide();
+            if (systemWide) {
+                AXError err = AXUIElementCopyAttributeValue(systemWide, kAXFocusedApplicationAttribute,
+                                              reinterpret_cast<CFTypeRef*>(&scopeRef));
+                if (err != kAXErrorSuccess) scopeRef = nullptr;
+                CFRelease(systemWide);
+            }
+        } else {
+            auto scope = findElement(selector);
+            if (scope) {
+                scopeRef = static_cast<UIAElement*>(scope.get())->elementRef();
+                if (scopeRef) CFRetain(scopeRef);
+            }
+        }
+        if (scopeRef) AXUIElementGetPid(scopeRef, &outPid);
+        return scopeRef;
+    }
+
+    uint64_t addListenerCommon(const UIASelector& selector, UIAEventCallback cb, bool structureChanged) {
+        if (!initialized_) return 0;
+        pid_t pid = 0;
+        AXUIElementRef elemRef = resolveScopeElement(selector, pid);
+        if (!elemRef || pid == 0) {
+            if (elemRef) CFRelease(elemRef);
+            return 0;
+        }
+        auto listener = std::make_unique<MacUiaEventListener>();
+        listener->callback = std::move(cb);
+        listener->structureChanged = structureChanged;
+        listener->element = elemRef;  // 持有 retained 的 elemRef（listener 析构时 CFRelease）
+
+        AXObserverRef observer = nullptr;
+        if (AXObserverCreate(pid, macUiaObserverCallback, &observer) != kAXErrorSuccess || !observer) {
+            CFRelease(elemRef);
+            return 0;
+        }
+        listener->observer = observer;
+
+        CFStringRef notification = structureChanged ? kAXCreatedNotification : kAXValueChangedNotification;
+        if (AXObserverAddNotification(observer, elemRef, notification, listener.get()) != kAXErrorSuccess) {
+            CFRelease(observer);
+            CFRelease(elemRef);
+            return 0;
+        }
+
+        // 启动专用 run loop 线程派发 observer 回调
+        MacUiaEventListener* raw = listener.get();
+        listener->runLoopThread = std::thread([raw]() {
+            CFRunLoopRef loop = CFRunLoopGetCurrent();
+            CFRunLoopAddSource(loop, AXObserverGetRunLoopSource(raw->observer), kCFRunLoopDefaultMode);
+            {
+                std::lock_guard<std::mutex> lk(raw->loopMutex);
+                raw->loop = loop;
+                raw->loopReady = true;
+            }
+            raw->loopCv.notify_all();
+            CFRunLoopRun();  // 阻塞直到 CFRunLoopStop
+        });
+
+        std::lock_guard<std::mutex> lock(listenersMutex_);
+        uint64_t id = nextListenerId_++;
+        listeners_[id] = std::move(listener);
+        return id;
+    }
+
+    void cleanupListener(MacUiaEventListener& l) {
+        if (l.observer && l.element) {
+            CFStringRef notification = l.structureChanged ? kAXCreatedNotification : kAXValueChangedNotification;
+            AXError rmErr = AXObserverRemoveNotification(l.observer, l.element, notification);
+            if (rmErr != kAXErrorSuccess) {
+                spdlog::warn("[UIA] AXObserverRemoveNotification 失败: {}", static_cast<int>(rmErr));
+            }
+        }
+        // 等待 run loop 线程发布 loop（带 2s 超时防御），消除 raw->loop 跨线程读写可见性窗口
+        {
+            std::unique_lock<std::mutex> lk(l.loopMutex);
+            l.loopCv.wait_for(lk, std::chrono::seconds(2), [&l]{ return l.loopReady; });
+        }
+        // 先 remove notification 再 stop loop，避免 stop 唤醒后仍有残留回调
+        if (l.loop) CFRunLoopStop(l.loop);
+        if (l.runLoopThread.joinable()) l.runLoopThread.join();
+        if (l.observer) CFRelease(l.observer);
+        if (l.element) CFRelease(l.element);
+    }
 
     std::shared_ptr<IUIAElement> findElementRecursive(AXUIElementRef parent, const UIASelector& selector) {
         if (!parent) return nullptr;

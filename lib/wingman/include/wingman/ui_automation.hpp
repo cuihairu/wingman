@@ -152,6 +152,12 @@ public:
     virtual std::vector<std::shared_ptr<IUIAElement>> findAllByRole(UIARole role) = 0;
     virtual std::shared_ptr<IUIAElement> waitForElement(const UIASelector& selector, int timeoutMs) = 0;
 
+    // Plan 6 Phase 2: 事件监听接口（返回 listenerId，0=注册失败）
+    using UIAEventCallback = std::function<void(std::shared_ptr<IUIAElement>)>;
+    virtual uint64_t addPropertyChangedListener(const UIASelector& selector, UIAEventCallback cb) = 0;
+    virtual uint64_t addStructureChangedListener(const UIASelector& selector, UIAEventCallback cb) = 0;
+    virtual bool removeEventListener(uint64_t listenerId) = 0;
+
     virtual std::string getBackendName() const = 0;
     virtual bool isAvailable() const = 0;
 };
@@ -161,6 +167,9 @@ public:
  */
 class UIAutomation {
 public:
+    // 门面层别名，复用 IUIAManager 的回调类型，便于门面方法直接使用 UIAEventCallback 名称
+    using UIAEventCallback = IUIAManager::UIAEventCallback;
+
     UIAutomation();
     ~UIAutomation();
 
@@ -179,6 +188,11 @@ public:
     std::shared_ptr<IUIAElement> fromWindow(uint64_t hwnd);
     std::vector<std::shared_ptr<IUIAElement>> findAllByRole(UIARole role);
     std::shared_ptr<IUIAElement> waitForName(const std::string& name, int timeoutMs);
+
+    // Plan 6 Phase 2: 事件监听门面方法
+    uint64_t addPropertyChangedListener(const UIASelector& selector, UIAEventCallback cb);
+    uint64_t addStructureChangedListener(const UIASelector& selector, UIAEventCallback cb);
+    bool removeEventListener(uint64_t listenerId);
 
 private:
     struct Impl;
