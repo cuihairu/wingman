@@ -33,7 +33,7 @@
 | [数据库使用](guides/database.md) | SQLite 和 kv 的使用方式 |
 | [触发器系统](guides/triggers.md) | 自动化触发条件与动作 |
 | [UIA 指南](guides/uia-guide.md) | Windows UI Automation 使用说明 |
-| [YOLO 指南](guides/yolo-guide.md) | 可选 ML/ONNX 目标检测流程 |
+| [YOLO 指南](guides/yolo-guide.md) | 可选 ML/ONNX 模型准备与加载验证 |
 
 ### 架构与开发
 
@@ -68,7 +68,7 @@
 | 模块 | 当前状态 |
 |------|----------|
 | OCR | 可选能力，依赖 Tesseract/运行时配置 |
-| ML/YOLO | 可选能力，依赖 ONNX Runtime 和模型文件 |
+| ML/YOLO | 可选能力，当前脚本层支持 ONNX 模型加载与 IO 元数据查询；目标检测高层 API 仍在规划中 |
 | Vision | 基础图像能力可用，高级检测按具体构建配置启用 |
 | Debugger | Lua 调试接口存在，需配合调试插件/配置使用 |
 | Orchestration | Go server + Dashboard + runtime agent 远程编排，属于独立部署链路 |

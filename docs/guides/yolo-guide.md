@@ -1,6 +1,10 @@
 # YOLO 模型使用指南
 
-本指南面向初学者，详细介绍如何使用 YOLO 模型进行目标检测，并将模型集成到 Wingman 自动化脚本中。
+本指南面向初学者，说明如何准备 YOLO ONNX 模型，并在 Wingman 中验证模型加载与输入/输出元数据。
+
+::: warning 状态
+Wingman 当前脚本层尚未暴露 YOLO `detect()` 高层 API。本指南不提供可直接检测目标的自动化脚本；目标检测闭环仍在规划中。
+:::
 
 ## 什么是 YOLO？
 
@@ -12,7 +16,7 @@ YOLO (You Only Look Once) 是一种实时目标检测算法，可以：
 
 ## 什么是 ONNX？
 
-ONNX (Open Neural Network Exchange) 是一种开放的格式，用于表示机器学习模型。Wingman 使用 ONNX Runtime 来运行 YOLO 模型，这意味着：
+ONNX (Open Neural Network Exchange) 是一种开放的格式，用于表示机器学习模型。Wingman 的 ML 模块基于 ONNX Runtime 加载模型，这意味着：
 
 1. **跨平台兼容** - Windows、macOS、Linux 都能运行
 2. **无需训练** - 直接使用预训练模型
@@ -127,28 +131,38 @@ model.export(
 
 ---
 
-## 第四步：在 Wingman 中使用
+## 第四步：在 Wingman 中验证模型
 
-将导出的 `.onnx` 文件放入项目目录，然后在脚本中加载使用。
+将导出的 `.onnx` 文件放入项目目录，然后使用 `wingman.ml` 加载模型并检查输入/输出元数据。
+
+::: warning 当前限制
+当前脚本层只暴露模型加载与元数据查询：`providers()` / `loadModel()` / `isLoaded()` / `inputs()` / `outputs()` / `unload()`。
+
+YOLO 的 `detect()` 高层封装尚未接入脚本层，因此本指南当前只能验证 ONNX 模型能被 Wingman 加载，不能直接给出检测结果。
+:::
 
 ### Python 示例
 
 ```python
-from wingman import vision, screen
+from wingman import ml
 
-# 加载 YOLO 模型
-model = vision.load_yolo("yolov8n.onnx")
+print("providers:", ml.providers())
 
-# 截取屏幕
-img = screen.capture(0, 0, 1920, 1080)
+model_id = ml.load_model("yolov8n.onnx", "cpu")
+if model_id is None:
+    raise RuntimeError("模型加载失败，请检查 WINGMAN_ENABLE_ML、模型路径和 ONNX Runtime 依赖")
 
-# 检测目标
-results = model.detect(img)
+print("loaded:", ml.is_loaded(model_id))
 
-# 处理结果
-for result in results:
-    print(f"类别: {result['class']}, 置信度: {result['confidence']:.2f}")
-    print(f"位置: x={result['x']}, y={result['y']}, w={result['width']}, h={result['height']}")
+print("inputs:")
+for item in ml.inputs(model_id):
+    print(f"  {item['name']}: {item['shape']}")
+
+print("outputs:")
+for item in ml.outputs(model_id):
+    print(f"  {item['name']}: {item['shape']}")
+
+ml.unload(model_id)
 ```
 
 ### Lua 示例
@@ -156,78 +170,48 @@ for result in results:
 ```lua
 local wingman = require("wingman")
 
--- 加载 YOLO 模型
-local model = wingman.vision.loadYolo("yolov8n.onnx")
-
--- 截取屏幕
-local img = wingman.screen.capture(0, 0, 1920, 1080)
-
--- 检测目标
-local results = model:detect(img)
-
--- 处理结果
-for i, result in ipairs(results) do
-    print("类别: " .. result.class .. ", 置信度: " .. result.confidence)
-    print(string.format("位置: x=%d, y=%d, w=%d, h=%d",
-        result.x, result.y, result.width, result.height))
+print("providers:")
+for _, provider in ipairs(wingman.ml.providers()) do
+    print("  " .. provider)
 end
+
+local modelId = wingman.ml.loadModel("yolov8n.onnx", "cpu")
+if not modelId then
+    error("模型加载失败，请检查 WINGMAN_ENABLE_ML、模型路径和 ONNX Runtime 依赖")
+end
+
+print("loaded:", wingman.ml.isLoaded(modelId))
+
+print("inputs:")
+for _, item in ipairs(wingman.ml.inputs(modelId)) do
+    print("  " .. item.name .. ": " .. table.concat(item.shape, "x"))
+end
+
+print("outputs:")
+for _, item in ipairs(wingman.ml.outputs(modelId)) do
+    print("  " .. item.name .. ": " .. table.concat(item.shape, "x"))
+end
+
+wingman.ml.unload(modelId)
 ```
 
 ---
 
-## 实战案例
+## 后续能力规划
 
-### 案例 1：检测游戏中的敌人
+目标检测闭环需要额外接入以下能力：
+- 截图/图像对象到 Tensor 的稳定转换
+- YOLO 输出后处理（解码、NMS、类别标签映射）
+- 脚本层 `detect()` API 与结果对象格式
+- 性能配置（输入尺寸、置信度阈值、NMS 阈值、检测区域）
 
-```python
-from wingman import vision, screen, input
-
-model = vision.load_yolo("yolov8n.onnx")
-
-while True:
-    # 截屏
-    img = screen.capture(0, 0, 1920, 1080)
-
-    # 检测人物类别（COCO 数据集中类别 0 是 person）
-    results = model.detect(img, filter_classes=["person"])
-
-    # 如果检测到人，点击目标
-    for result in results:
-        if result['confidence'] > 0.7:  # 置信度阈值
-            # 计算中心点
-            center_x = result['x'] + result['width'] // 2
-            center_y = result['y'] + result['height'] // 2
-            input.click(center_x, center_y)
-            print(f"点击敌人: {result['class']}")
-            break
-```
-
-### 案例 2：计数器
-
-```python
-from wingman import vision, screen
-
-model = vision.load_yolo("yolov8n.onnx")
-
-while True:
-    img = screen.capture(0, 0, 1920, 1080)
-    results = model.detect(img)
-
-    # 统计各类别数量
-    counts = {}
-    for result in results:
-        cls = result['class']
-        counts[cls] = counts.get(cls, 0) + 1
-
-    print(f"检测到: {counts}")
-    # 输出示例: {'person': 3, 'car': 1}
-```
+当前请把 `wingman.ml` 视为 ONNX Runtime 模型加载与元数据检查入口，而不是完整 YOLO 检测 API。
 
 ---
 
-## 检测结果格式
+## 计划中的检测结果格式
 
-`detect()` 方法返回的结果是一个列表，每个元素包含：
+未来 `detect()` 高层 API 预计返回一个列表，每个元素包含：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -270,14 +254,11 @@ while True:
 
 ### Q: 模型检测不到对象？
 
-A: 可能原因：
-- 置信度阈值太高，尝试降低 `filter_confidence` 参数
-- 对象太小，尝试使用更高分辨率训练的模型
-- 类别不在 COCO 数据集中
+A: 当前脚本层还没有 `detect()` 高层 API。请先用本指南的元数据示例确认模型能加载；目标检测封装需要后续接入。
 
 ### Q: 检测速度太慢？
 
-A: 优化方法：
+A: 目标检测 API 接入后可从这些方向优化：
 - 使用 YOLOv8n 模型
 - 减小输入尺寸 `imgsz=320`
 - 使用 FP16 精度 `half=True`

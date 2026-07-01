@@ -226,4 +226,4 @@ code .
 - [示例脚本](../examples/index.md) - 学习更多用法
 - [调试指南](debugging.md) - 如何调试脚本
 - [远程协议](../remote_protocol.md) - 了解远程控制协议
-- [YOLO 模型使用](../guides/yolo-guide.md) - 使用 YOLO 进行目标检测
+- [YOLO 模型使用](../guides/yolo-guide.md) - 准备 ONNX 模型并验证加载

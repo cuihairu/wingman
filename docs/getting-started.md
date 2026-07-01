@@ -138,7 +138,7 @@ wingman-runtime script hello.py
 - **📖 学习更多**：查看 [用户指南](user-guide.md) 和 [API 总览](api/overview.md)
 - **🔍 探索 API**：浏览 [API 参考](api/overview.md) 了解所有可用功能
 - **💾 数据存储**：学习如何使用 [数据库](guides/database.md) 和 [配置文件](guides/configuration.md)
-- **🎯 高级功能**：查看 [触发器系统](guides/triggers.md)、[Vision API](api/vision.md) 和 [YOLO 指南](guides/yolo-guide.md)
+- **🎯 高级功能**：查看 [触发器系统](guides/triggers.md)、[Vision API](api/vision.md) 和 [YOLO/ONNX 模型加载指南](guides/yolo-guide.md)
 
 ## 🎨 更多示例
 

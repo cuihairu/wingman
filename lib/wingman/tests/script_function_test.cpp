@@ -861,6 +861,52 @@ TEST(PerformanceModuleFunctionsTest, ResetStatsReturnsNull) {
     EXPECT_TRUE(result.isNull());
 }
 
+// ========== ML module functions (optional backend) ==========
+
+TEST(MlModuleFunctionsTest, ProvidersReturnsArray) {
+    auto fn = findFunction("ml", "providers");
+    ASSERT_FALSE(fn.name.empty());
+    auto result = fn({});
+    EXPECT_TRUE(result.isArray());
+    EXPECT_GE(result.size(), 1u);
+}
+
+TEST(MlModuleFunctionsTest, InvalidModelQueriesReturnSafeDefaults) {
+    auto isLoaded = findFunction("ml", "isLoaded");
+    auto inputs = findFunction("ml", "inputs");
+    auto outputs = findFunction("ml", "outputs");
+    auto unload = findFunction("ml", "unload");
+    ASSERT_FALSE(isLoaded.name.empty());
+    ASSERT_FALSE(inputs.name.empty());
+    ASSERT_FALSE(outputs.name.empty());
+    ASSERT_FALSE(unload.name.empty());
+
+    const auto missingId = ScriptValue::fromString("missing-model");
+
+    auto loadedResult = isLoaded({missingId});
+    EXPECT_TRUE(loadedResult.isBool());
+    EXPECT_FALSE(loadedResult.asBool());
+
+    auto inputsResult = inputs({missingId});
+    EXPECT_TRUE(inputsResult.isArray());
+    EXPECT_EQ(inputsResult.size(), 0u);
+
+    auto outputsResult = outputs({missingId});
+    EXPECT_TRUE(outputsResult.isArray());
+    EXPECT_EQ(outputsResult.size(), 0u);
+
+    auto unloadResult = unload({missingId});
+    EXPECT_TRUE(unloadResult.isBool());
+    EXPECT_FALSE(unloadResult.asBool());
+}
+
+TEST(MlModuleFunctionsTest, LoadModelWithoutArgsReturnsNull) {
+    auto fn = findFunction("ml", "loadModel");
+    ASSERT_FALSE(fn.name.empty());
+    auto result = fn({});
+    EXPECT_TRUE(result.isNull());
+}
+
 // ========== Debugger module functions (stubs) ==========
 
 TEST(DebuggerModuleFunctionsTest, StartReturnsFalse) {
@@ -1488,7 +1534,7 @@ TEST(ModulePresenceTest, AllExpectedModulesExist) {
         "screen", "input", "window", "vision",
         "http", "human", "verification", "gameprofile",
         "perf", "config", "kv", "debugger",
-        "util", "node", "uia", "process", "security"
+        "util", "node", "uia", "process", "security", "ml"
     };
 
     for (const auto& name : expectedModules) {
