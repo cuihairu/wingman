@@ -13,7 +13,7 @@ import {
   ProDescriptions,
   ProTable,
 } from '@ant-design/pro-components';
-import { useRequest } from '@umijs/max';
+import { useAccess, useRequest } from '@umijs/max';
 import {
   Button,
   Card,
@@ -31,7 +31,7 @@ import {
   Modal,
   Badge,
 } from 'antd';
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AgentStatus,
   AgentInfo,
@@ -46,14 +46,15 @@ import wsService from '@/services/websocket';
 const { Text } = Typography;
 
 const Agents: React.FC = () => {
-  const actionRef = useRef();
+  const access = useAccess();
+  const canAgentManage = Boolean(access.canAgentManage);
   const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]); // 本地状态用于实时更新
   const [tagDraft, setTagDraft] = useState<{ agentId: string; tags: string[] } | null>(null);
 
   // 获取 Agent 列表
-  const { data: agentsData, loading, refresh } = useRequest(
+  const { loading, refresh } = useRequest(
     async (): Promise<AgentInfo[]> => {
       const response = await getAgents();
       return response.data || [];
@@ -145,6 +146,10 @@ const Agents: React.FC = () => {
   // 保存标签
   const handleSaveTags = async (agentId: string) => {
     if (!tagDraft) return;
+    if (!canAgentManage) {
+      message.warning('需要 agents:manage 权限');
+      return;
+    }
     try {
       await setAgentTags(agentId, tagDraft.tags);
       message.success('标签已更新');
@@ -288,15 +293,25 @@ const Agents: React.FC = () => {
             </div>
           </div>
         );
+        const tagList = (
+          <Space size={[0, 4]} wrap style={{ cursor: canAgentManage ? 'pointer' : 'default' }}>
+            {tags.length === 0 ? (
+              <Tag style={{ borderStyle: 'dashed' }}>{canAgentManage ? '+ 添加' : '无标签'}</Tag>
+            ) : (
+              tags.map((t) => <Tag key={t} color="blue">{t}</Tag>)
+            )}
+          </Space>
+        );
+        if (!canAgentManage) {
+          return (
+            <Tooltip title="需要 agents:manage 权限才能编辑标签">
+              {tagList}
+            </Tooltip>
+          );
+        }
         return (
           <Popover content={content} title="编辑标签" trigger="click" placement="bottom">
-            <Space size={[0, 4]} wrap style={{ cursor: 'pointer' }}>
-              {tags.length === 0 ? (
-                <Tag style={{ borderStyle: 'dashed' }}>+ 添加</Tag>
-              ) : (
-                tags.map((t) => <Tag key={t} color="blue">{t}</Tag>)
-              )}
-            </Space>
+            {tagList}
           </Popover>
         );
       },
@@ -353,7 +368,7 @@ const Agents: React.FC = () => {
               danger
               icon={<DeleteOutlined />}
               onClick={() => handleShutdown(record.agentId)}
-              disabled={record.status === AgentStatus.Offline}
+              disabled={!canAgentManage || record.status === AgentStatus.Offline}
             />
           </Tooltip>
         </Space>

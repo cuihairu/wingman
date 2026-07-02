@@ -162,7 +162,7 @@
 
 ## 5. 分析中发现的问题
 
-> ✅ 全部问题已于 2026-06-21 修复。仅剩 #13 Dashboard Agents 标签前端 access 控制为极低优先级（后端 403 兜底，未修）。
+> ✅ 全部问题已修复。#13 Dashboard Agents 标签前端 access 控制已于 2026-07-02 补齐（前端按 `agents:manage` 禁用编辑入口；后端 403 仍兜底）。
 
 ### 🔴 高
 
@@ -209,8 +209,8 @@
 12. ✅ **EventLogSink 无 payload 大小截断**（已修复）
     - 消息超 4096 字节截断并追加 `...[truncated]`
 
-13. ⬜ **Dashboard Agents 标签无前端 access 控制**（未修，极低优先级）
-    - 任意用户可点编辑标签，仅靠后端 403 + catch 兜底；可在 Agents 页按 `canAdmin`/`agents:manage` disabled 编辑入口
+13. ✅ **Dashboard Agents 标签无前端 access 控制**（已修复）
+    - `access.ts` 新增 `canAgentManage`，Agents 页按 `agents:manage` 禁用标签编辑和关闭 Agent 写操作入口；后端 403 继续兜底
 
 ---
 
