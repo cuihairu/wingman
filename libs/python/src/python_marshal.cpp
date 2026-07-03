@@ -5,31 +5,31 @@ namespace python {
 
 py::object toPythonObject(const script::ScriptValue& value) {
 	switch (value.type) {
-	case script::ScriptValue::Null:
+	case script::ScriptValue::Type::Null:
 		return py::none();
-	case script::ScriptValue::Bool:
+	case script::ScriptValue::Type::Bool:
 		return py::bool_(value.boolVal);
-	case script::ScriptValue::Int:
+	case script::ScriptValue::Type::Int:
 		return py::int_(value.intVal);
-	case script::ScriptValue::Float:
+	case script::ScriptValue::Type::Float:
 		return py::float_(value.floatVal);
-	case script::ScriptValue::String:
+	case script::ScriptValue::Type::String:
 		return py::str(value.strVal);
-	case script::ScriptValue::Array: {
+	case script::ScriptValue::Type::Array: {
 		py::list lst(value.arrayVal.size());
 		for (size_t i = 0; i < value.arrayVal.size(); ++i) {
 		 lst[static_cast<py::ssize_t>(i)] = toPythonObject(value.arrayVal[i]);
 		}
 		return lst;
 	}
-	case script::ScriptValue::Object: {
+	case script::ScriptValue::Type::Object: {
 		py::dict dct;
 		for (const auto& [k, v] : value.objectVal) {
 			dct[py::str(k)] = toPythonObject(v);
 		}
 		return dct;
 	}
-	case script::ScriptValue::Callable: {
+	case script::ScriptValue::Type::Callable: {
 		// Wrap C++ callable as Python function
 		return py::cpp_function([callable = value.callableVal](py::args args) -> py::object {
 			std::vector<script::ScriptValue> svArgs;
