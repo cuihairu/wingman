@@ -17,7 +17,7 @@
 | **范围** | **全做**（后端补齐 + 完整 OO + 事件 + 双平台） | 用户 AskUserQuestion |
 | **测试策略** | **Mac 真实 UIA 烟雾测试**（Mac 是完整实现，非 stub） | 调研修正 + 用户选择；Mac 可经 AX API 测真实行为，但本 plan 用烟雾测试（函数注册 + OO 对象结构 + 句柄机制 + stub/空返回防御），真实 UI 交互依赖 CI/手动 |
 | **UIElement OO 表达** | **ScriptValue::Object**（含 `"_handle": int` + 各方法为 Callable 闭包捕获 handle） | ScriptValue 已支持 Object + Callable；无需改脚本引擎架构 |
-| **句柄机制** | **UIAElementRegistry**（`map<int, shared_ptr&lt;IUIAElement&gt;>`，自增 id，0=无效） | 仿 Plan 7 NodeRegistry；替换 misc_modules.cpp 现有裸指针 handle（悬空风险） |
+| **句柄机制** | **UIAElementRegistry**（`map<int, shared_ptr<IUIAElement>>`，自增 id，0=无效） | 仿 Plan 7 NodeRegistry；替换 misc_modules.cpp 现有裸指针 handle（悬空风险） |
 | **事件回调** | **脚本 callable**（拷贝 callableVal 进 C++ 事件处理器闭包） | 仿 Plan 7 condition/action + event_module 模式 |
 | **跨平台** | **Windows + Mac 双平台实现**（Linux 暂不支持，文档标注） | win_automation.cpp + mac_automation.cpp 都已存在 |
 
@@ -216,7 +216,7 @@ static std::shared_ptr<IUIAElement> uiaGetElement(int h) {
 - callable 回调
 
 ### Task 9: 脚本事件函数测试 ✅（commit 808558c + 本 Task 4 收尾）
-- `on_property_changed`/`on_structure_changed` 注册返回 `listenerId &gt; 0`
+- `on_property_changed`/`on_structure_changed` 注册返回 `listenerId > 0`
 - remove_event_listener 返回 bool
 - 真实事件触发依赖真实 UI（CI/手动）
 - 本 Task 4：补真实 add→remove 回归测试（M-2，权限门控）+ I1 测试稳健性修复
