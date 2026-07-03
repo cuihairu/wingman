@@ -1,17 +1,15 @@
 packages:
   - '.'
 
-# pnpm v10+ 默认不运行依赖的构建脚本(postinstall 等)，未被显式批准或忽略的包会触发
-# ERR_PNPM_IGNORED_BUILDS，导致 CI 的 `pnpm install --frozen-lockfile` 失败。
-# esbuild / unrs-resolver 需要运行构建脚本以安装原生二进制；core-js / es5-ext 的
-# 脚本仅为赞助提示，明确忽略即可。
-onlyBuiltDependencies:
-  - esbuild
-  - unrs-resolver
-ignoredBuiltDependencies:
-  - core-js
-  - core-js-pure
-  - es5-ext
+# pnpm 11 使用 allowBuilds 管理依赖构建脚本白名单/黑名单。
+# esbuild / unrs-resolver 需要执行构建脚本安装原生二进制；
+# core-js / es5-ext 的脚本仅用于赞助提示，显式禁用即可，避免 CI 触发 ERR_PNPM_IGNORED_BUILDS。
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+  core-js: false
+  core-js-pure: false
+  es5-ext: false
 
 overrides:
   eslint: '>=9.26.0'

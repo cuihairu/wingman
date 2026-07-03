@@ -1,7 +1,7 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-06-23
-> 状态: 收尾阶段（P0 全部完成；分析发现的代码缺陷已全部修复；剩余为中低优先级功能增强与工程收尾）
+> 最后更新: 2026-07-03
+> 状态: 收尾阶段（P0/P1 全部完成；Dashboard 和 Runtime GUI 使用教程已完成；剩余为中低优先级功能增强与工程收尾）
 >
 > 📋 当前有一批未提交改动（65 改 + 34 新，+2208/−954）。改动分析见
 > [docs/pending-changes.md](./docs/pending-changes.md)；其中发现的问题已全部修复
@@ -222,7 +222,8 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 ### 文档
 
 - [x] 快速开始指南（`docs/guide/getting-started.md`：环境/vcpkg/编译/第一个脚本 + 三种运行模式）
-- [ ] Dashboard 使用教程、Runtime GUI 使用教程
+- [x] Dashboard 使用教程（`docs/guide/dashboard.md`：远程 Dashboard 各页面功能、权限系统、WebSocket 事件）
+- [x] Runtime GUI 使用教程（`docs/guide/runtime-gui.md`：本地 Tauri GUI 各页面功能、配置管理、系统托盘）
 - [x] 脚本开发指南（`docs/guide/script-development.md`：Lua/Python 对比、核心模块速览、典型模式、运行模式、EmmyLua 调试；本地编辑统一用 VS Code）
 - [x] IPC 协议规范、Agent-Orchestrator 协议规范（`docs/protocols.md`）
 - [x] 贡献指南（`CONTRIBUTING.md`：架构硬约束、vcpkg 规则、构建验证矩阵、Conventional Commits、PR 流程；README 已链接）

@@ -27,6 +27,13 @@ export default defineConfig({
           ]
         },
         {
+          text: '界面使用',
+          items: [
+            { text: 'Dashboard 远程管理', link: '/guide/dashboard' },
+            { text: 'Runtime 本地 GUI', link: '/guide/runtime-gui' }
+          ]
+        },
+        {
           text: '进阶指南',
           items: [
             { text: 'UI Automation', link: '/guides/uia-guide' },

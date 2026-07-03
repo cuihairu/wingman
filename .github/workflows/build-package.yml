@@ -377,7 +377,7 @@ jobs:
 
   build-macos:
     name: macOS x64
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     env:
       VCPKG_BINARY_SOURCES: "clear"
     defaults:

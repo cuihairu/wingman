@@ -206,24 +206,24 @@ public:
     bool expand() override {
         if (!element_) return false;
         CComPtr<IUIAutomationExpandCollapsePattern> pattern;
-        if (FAILED(element_->GetCurrentPatternAs(__uuidof(IUIAutomationExpandCollapsePattern),
-            reinterpret_cast<void**>(&pattern))) || !pattern) return false;
+        if (FAILED(element_->GetCurrentPatternAs(UIA_ExpandCollapsePatternId,
+            __uuidof(IUIAutomationExpandCollapsePattern), reinterpret_cast<void**>(&pattern))) || !pattern) return false;
         return SUCCEEDED(pattern->Expand());
     }
 
     bool collapse() override {
         if (!element_) return false;
         CComPtr<IUIAutomationExpandCollapsePattern> pattern;
-        if (FAILED(element_->GetCurrentPatternAs(__uuidof(IUIAutomationExpandCollapsePattern),
-            reinterpret_cast<void**>(&pattern))) || !pattern) return false;
+        if (FAILED(element_->GetCurrentPatternAs(UIA_ExpandCollapsePatternId,
+            __uuidof(IUIAutomationExpandCollapsePattern), reinterpret_cast<void**>(&pattern))) || !pattern) return false;
         return SUCCEEDED(pattern->Collapse());
     }
 
     bool isExpanded() const override {
         if (!element_) return false;
         CComPtr<IUIAutomationExpandCollapsePattern> pattern;
-        if (FAILED(element_->GetCurrentPatternAs(__uuidof(IUIAutomationExpandCollapsePattern),
-            reinterpret_cast<void**>(&pattern))) || !pattern) return false;
+        if (FAILED(element_->GetCurrentPatternAs(UIA_ExpandCollapsePatternId,
+            __uuidof(IUIAutomationExpandCollapsePattern), reinterpret_cast<void**>(&pattern))) || !pattern) return false;
         ExpandCollapseState state;
         if (FAILED(pattern->get_CurrentExpandCollapseState(&state))) return false;
         return state == ExpandCollapseState_Expanded;
@@ -276,7 +276,7 @@ public:
         *ppv = nullptr;
         return E_NOINTERFACE;
     }
-    HRESULT STDMETHODCALLTYPE HandlePropertyChangedEvent(IUIAutomationElement* sender, PROPERTYID /*propertyId*/) override {
+    HRESULT STDMETHODCALLTYPE HandlePropertyChangedEvent(IUIAutomationElement* sender, PROPERTYID /*propertyId*/, VARIANT /*newValue*/) override {
         if (callback_ && sender) {
             try {
                 callback_(std::make_shared<UIAElement>(sender, automation_));
@@ -427,7 +427,8 @@ public:
         }
 
         CComPtr<IUIAutomationCondition> cond;
-        if (FAILED(automation_->CreatePropertyCondition(UIA_ControlTypeIdPropertyId, controlType, &cond)) || !cond) return results;
+        CComVariant controlTypeValue(controlType);
+        if (FAILED(automation_->CreatePropertyCondition(UIA_ControlTypePropertyId, controlTypeValue, &cond)) || !cond) return results;
 
         CComPtr<IUIAutomationElementArray> array;
         if (FAILED(root->FindAll(TreeScope_Descendants, cond, &array)) || !array) return results;
@@ -466,14 +467,14 @@ public:
         listener->scopeElement = scope;
         listener->structureChanged = false;
         // 监听常用属性：名称/值/启用/可见
-        PROPERTYID propIds[] = { UIA_NamePropertyId, UIA_ValuePropertyId,
+        PROPERTYID propIds[] = { UIA_NamePropertyId, UIA_ValueValuePropertyId,
                                  UIA_IsEnabledPropertyId, UIA_IsOffscreenPropertyId };
         auto* handler = new WinUiaPropertyChangedHandler(automation_, std::move(cb));
         listener->propHandler = handler;
 
         HRESULT hrAdd = E_FAIL;
         runOnEventThread([this, &scope, handler, &hrAdd, &propIds]() {
-            hrAdd = automation_->AddPropertyChangedEventHandler(scope, TreeScope_Subtree, nullptr, handler, propIds, 4);
+            hrAdd = automation_->AddPropertyChangedEventHandlerNativeArray(scope, TreeScope_Subtree, nullptr, handler, propIds, 4);
         });
         if (FAILED(hrAdd)) {
             handler->Release();  // 清理新建引用

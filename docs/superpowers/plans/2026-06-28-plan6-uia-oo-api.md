@@ -17,7 +17,7 @@
 | **范围** | **全做**（后端补齐 + 完整 OO + 事件 + 双平台） | 用户 AskUserQuestion |
 | **测试策略** | **Mac 真实 UIA 烟雾测试**（Mac 是完整实现，非 stub） | 调研修正 + 用户选择；Mac 可经 AX API 测真实行为，但本 plan 用烟雾测试（函数注册 + OO 对象结构 + 句柄机制 + stub/空返回防御），真实 UI 交互依赖 CI/手动 |
 | **UIElement OO 表达** | **ScriptValue::Object**（含 `"_handle": int` + 各方法为 Callable 闭包捕获 handle） | ScriptValue 已支持 Object + Callable；无需改脚本引擎架构 |
-| **句柄机制** | **UIAElementRegistry**（`map<int, shared_ptr<IUIAElement>>`，自增 id，0=无效） | 仿 Plan 7 NodeRegistry；替换 misc_modules.cpp 现有裸指针 handle（悬空风险） |
+| **句柄机制** | **UIAElementRegistry**（`map<int, shared_ptr&lt;IUIAElement&gt;>`，自增 id，0=无效） | 仿 Plan 7 NodeRegistry；替换 misc_modules.cpp 现有裸指针 handle（悬空风险） |
 | **事件回调** | **脚本 callable**（拷贝 callableVal 进 C++ 事件处理器闭包） | 仿 Plan 7 condition/action + event_module 模式 |
 | **跨平台** | **Windows + Mac 双平台实现**（Linux 暂不支持，文档标注） | win_automation.cpp + mac_automation.cpp 都已存在 |
 
@@ -138,7 +138,7 @@ bool removeEventListener(uint64_t id);
 
 **Files:** Modify `lib/wingman/src/platform/mac/mac_automation.cpp`
 
-- [ ] **getChildren**：`AXUIElementCopyAttributeValue(kAXChildrenAttribute)` → 数组 → 转 vector<IUIAElement>
+- [ ] **getChildren**：`AXUIElementCopyAttributeValue(kAXChildrenAttribute)` → 数组 → 转 `vector<IUIAElement>`
 - [ ] **expand/collapse/isExpanded**：AX 无统一 expand action，用 `kAXExpandedAttribute` 读；expand/collapse 可能需 `kAXPressAction` 或属性设置（按控件类型）
 - [ ] **doubleClick**：`click()` 两次
 - [ ] **getElementFromWindow**：Mac 无 hwnd 概念；用 PID + AXUIElementCreateApplication(pid)（hwnd 参数作 pid 解释，文档注明）
@@ -180,7 +180,7 @@ static std::shared_ptr<IUIAElement> uiaGetElement(int h) {
 }
 ```
 
-- [ ] **Step 2: makeUiaElementObject(shared_ptr<IUIAElement>) -> ScriptValue**
+- [ ] **Step 2: `makeUiaElementObject(shared_ptr<IUIAElement>) -> ScriptValue`**
 构造 `ScriptValue::Object`：`{"_handle": int, "get_info": Callable, "click": Callable, "double_click": Callable, "focus": Callable, "get_value": Callable, "set_value": Callable, "get_children": Callable, "expand": Callable, "collapse": Callable, "is_expanded": Callable, "is_visible": Callable, "is_enabled": Callable}`。每个方法 Callable 捕获 handle，调用 `uiaGetElement(handle)->对应方法()`，转 ScriptValue。无效 handle 返回 null/false。
 
 - [ ] **Step 3: 测试**（UiaModuleFunctionsTest）：构造 UIElement 对象，验证 isObject + _handle + 各方法 isCallable
@@ -189,12 +189,12 @@ static std::shared_ptr<IUIAElement> uiaGetElement(int h) {
 
 **Files:** Modify `lib/wingman/src/script/modules/misc_modules.cpp`
 
-- [ ] from_foreground/from_point/from_window → uia().xxx → makeUiaElementObject 或 null
-- [ ] find_by_name/find_by_id/find_button/find_edit/find_text → UIASelector → find → makeUiaElementObject
-- [ ] find_all_by_control_type → findAllByRole → Array of UIElement Object
-- [ ] wait_for_name → waitForName → makeUiaElementObject 或 null
-- [ ] on_property_changed/on_structure_changed → 拷贝 callableVal → add*Listener → listenerId
-- [ ] remove_event_listener → removeEventListener
+- [ ] `from_foreground`/`from_point`/`from_window` -> `uia().xxx` -> `makeUiaElementObject` 或 `null`
+- [ ] `find_by_name`/`find_by_id`/`find_button`/`find_edit`/`find_text` -> `UIASelector` -> `find` -> `makeUiaElementObject`
+- [ ] `find_all_by_control_type` -> `findAllByRole` -> `Array of UIElement Object`
+- [ ] `wait_for_name` -> `waitForName` -> `makeUiaElementObject` 或 `null`
+- [ ] `on_property_changed`/`on_structure_changed` -> 拷贝 `callableVal` -> `add*Listener` -> `listenerId`
+- [ ] `remove_event_listener` -> `removeEventListener`
 - [ ] 替换现有 findByName/findById/find（裸指针）为 OO 版（返回 UIElement Object）
 
 - [ ] **测试**：每个函数烟雾（注册 + 返回 Object/null + 句柄）
@@ -216,7 +216,7 @@ static std::shared_ptr<IUIAElement> uiaGetElement(int h) {
 - callable 回调
 
 ### Task 9: 脚本事件函数测试 ✅（commit 808558c + 本 Task 4 收尾）
-- on_property_changed/on_structure_changed 注册返回 listenerId > 0
+- `on_property_changed`/`on_structure_changed` 注册返回 `listenerId &gt; 0`
 - remove_event_listener 返回 bool
 - 真实事件触发依赖真实 UI（CI/手动）
 - 本 Task 4：补真实 add→remove 回归测试（M-2，权限门控）+ I1 测试稳健性修复
