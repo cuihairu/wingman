@@ -24,7 +24,7 @@ permissions:
 jobs:
   deploy-server:
     name: Deploy Server
-    runs-on: pve-wingman
+    runs-on: [self-hosted, wingman]
     timeout-minutes: 30
 
     steps:
@@ -109,7 +109,7 @@ jobs:
 
   deploy-dashboard:
     name: Deploy Dashboard
-    runs-on: pve-wingman
+    runs-on: [self-hosted, wingman]
     timeout-minutes: 30
 
     steps:
