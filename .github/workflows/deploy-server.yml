@@ -1,0 +1,106 @@
+name: Deploy Server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'orchestrator/server/**'
+      - '.github/workflows/deploy-server.yml'
+  workflow_dispatch:
+
+env:
+  ACTIONS_NODE_VERSION: '24'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/wingman-server
+
+permissions:
+  contents: read
+  packages: write
+  deployments: write
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: runner-docker
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up Docker Buildx
+        timeout-minutes: 5
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        timeout-minutes: 3
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        timeout-minutes: 3
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        timeout-minutes: 15
+        uses: docker/build-push-action@v5
+        with:
+          context: ./orchestrator/server
+          file: ./orchestrator/server/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to runner-docker
+        if: success()
+        env:
+          WINGMAN_JWT_SECRET: ${{ secrets.WINGMAN_JWT_SECRET }}
+        run: |
+          echo "Deploying server to runner-docker..."
+
+          # Stop and remove existing container if running
+          docker stop wingman-server 2>/dev/null || true
+          docker rm wingman-server 2>/dev/null || true
+
+          # Pull the latest image
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+          # Run the container
+          docker run -d \
+            --name wingman-server \
+            --restart unless-stopped \
+            -p 9527:9527 \
+            -p 8888:8888 \
+            -v wingman-data:/app/data \
+            -v wingman-scripts:/app/scripts \
+            -e WINGMAN_JWT_SECRET="$WINGMAN_JWT_SECRET" \
+            -e WINGMAN_HOST=0.0.0.0 \
+            -e WINGMAN_PORT=9527 \
+            -e WINGMAN_DB_PATH=/app/data/wingman.db \
+            -e WINGMAN_AGENT_ADDR=0.0.0.0:8888 \
+            -e WINGMAN_SCRIPTS_DIR=/app/scripts \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+          # Wait for container to be healthy
+          echo "Waiting for server to be healthy..."
+          timeout 30 sh -c 'until docker ps | grep wingman-server | grep -q healthy; do sleep 1; done'
+
+          # Show container status
+          docker ps | grep wingman-server
+
+          echo "Deployment completed successfully"
