@@ -101,6 +101,11 @@ if(BUILD_CLIENT_TESTS)
     set(WINGMAN_BUILD_CLIENT_TESTS ON CACHE BOOL "Build runtime tests" FORCE)
 endif()
 
+if(WINGMAN_BUILD_TESTS OR BUILD_CLIENT_TESTS OR BUILD_CORE_TESTS OR BUILD_TRANSPORT_TESTS OR
+   BUILD_LUA_TESTS OR BUILD_PROTO_TESTS OR BUILD_DEBUG_TESTS OR BUILD_PYTHON_TESTS)
+    enable_testing()
+endif()
+
 # ========== 顶层依赖（仅顶层自身使用）==========
 
 # 测试依赖 - GTest 在各测试子目录中单独查找
@@ -179,8 +184,6 @@ endif()
 
 # ========== 测试（新架构）==========
 if(WINGMAN_BUILD_TESTS)
-    enable_testing()
-
     # 各模块测试（transport、lua、proto、debug 在各自模块内处理）
     if(WINGMAN_BUILD_CORE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/wingman/tests/CMakeLists.txt")
         add_subdirectory(lib/wingman/tests)

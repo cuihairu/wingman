@@ -5,6 +5,7 @@
 #include "wingman/runtime/commands/script_command.hpp"
 #include "wingman/runtime/commands/stop_command.hpp"
 #include "wingman/runtime/config.hpp"
+#include "wingman/runtime/packer.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -121,6 +122,77 @@ TEST(RuntimeCommandTest, BuildCommandFailsWhenRuntimeStubIsMissing) {
     options.outputPath = (tempDir / "out.bin").string();
 
     EXPECT_EQ(wingman::runtime::commands::buildCommand(options), 1);
+}
+
+TEST(RuntimeCommandTest, BuildOptionsDefaultToUnencryptedResources) {
+    wingman::runtime::commands::BuildOptions commandOptions;
+    wingman::runtime::PackerOptions packerOptions;
+
+    EXPECT_FALSE(commandOptions.encrypt);
+    EXPECT_FALSE(packerOptions.encrypt);
+}
+
+TEST(RuntimeCommandTest, PackerRejectsEncryptedResourcesUntilLoaderSupportsThem) {
+    const auto tempDir = makeTempDir();
+    const auto scriptPath = tempDir / "test.lua";
+    const auto stubPath = tempDir / "stub.bin";
+    const auto outputPath = tempDir / "out.bin";
+
+    {
+        std::ofstream script(scriptPath);
+        script << "print('ok')";
+    }
+    {
+        std::ofstream stub(stubPath, std::ios::binary);
+        stub << "stub";
+    }
+
+    wingman::runtime::PackerOptions options;
+    options.scriptPath = scriptPath.string();
+    options.stubPath = stubPath.string();
+    options.outputPath = outputPath.string();
+    options.encrypt = true;
+
+    wingman::runtime::Packer packer(options);
+    const auto result = packer.build();
+
+    EXPECT_FALSE(result.success);
+    EXPECT_NE(result.message.find("not supported"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(outputPath));
+}
+
+TEST(RuntimeCommandTest, PackerRemovesPartialOutputWhenResourceEmbeddingFails) {
+    const auto tempDir = makeTempDir();
+    const auto scriptPath = tempDir / "test.lua";
+    const auto stubPath = tempDir / "stub.bin";
+    const auto outputPath = tempDir / "out.bin";
+
+    {
+        std::ofstream script(scriptPath);
+        script << "print('ok')";
+    }
+    {
+        std::ofstream stub(stubPath, std::ios::binary);
+        stub << "stub";
+    }
+
+    wingman::runtime::PackerOptions options;
+    options.scriptPath = scriptPath.string();
+    options.stubPath = stubPath.string();
+    options.outputPath = outputPath.string();
+    options.encrypt = false;
+
+    wingman::runtime::Packer packer(options);
+    const auto result = packer.build();
+
+#ifdef _WIN32
+    EXPECT_TRUE(result.success);
+    EXPECT_TRUE(std::filesystem::exists(outputPath));
+#else
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(result.message, "Failed to embed script resource");
+    EXPECT_FALSE(std::filesystem::exists(outputPath));
+#endif
 }
 
 TEST(RuntimeCommandTest, StopCommandReturnsSuccessEvenWhenNoProcessFound) {

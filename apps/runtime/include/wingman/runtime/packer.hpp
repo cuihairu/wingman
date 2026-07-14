@@ -12,7 +12,8 @@ struct PackerOptions {
     std::string outputPath;      // 输出 EXE 路径
     std::string iconPath;        // 图标路径（可选）
     std::string stubPath;        // Stub 程序路径（wingman-client.exe）
-    bool encrypt = true;         // 是否加密
+    // 资源加密加载链路尚未实现，默认必须生成可直接加载的未加密资源。
+    bool encrypt = false;        // 是否加密
     bool compress = true;        // 是否压缩
     std::string appName = "Wingman App";  // 应用名称
     std::string appVersion = "1.0.0";     // 应用版本

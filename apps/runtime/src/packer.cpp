@@ -400,12 +400,26 @@ PackerResult Packer::build() {
     PackerResult result;
     result.outputPath = impl_->options.outputPath;
 
+    auto cleanupPartialOutput = [&]() {
+        std::error_code ec;
+        std::filesystem::remove(impl_->options.outputPath, ec);
+        if (ec) {
+            spdlog::warn("Failed to remove partial output '{}': {}", impl_->options.outputPath, ec.message());
+        }
+    };
+
     try {
         spdlog::info("=== Wingman Packer ===");
         spdlog::info("Script: {}", impl_->options.scriptPath);
         spdlog::info("Output: {}", impl_->options.outputPath);
         spdlog::info("Encrypt: {}", impl_->options.encrypt);
         spdlog::info("Compress: {}", impl_->options.compress);
+
+        if (impl_->options.encrypt) {
+            result.message = "Encrypted standalone resources are not supported yet; build without encryption";
+            spdlog::error("{}", result.message);
+            return result;
+        }
 
         // 1. 读取并处理脚本
         std::vector<uint8_t> scriptData = processScript();
@@ -423,6 +437,7 @@ PackerResult Packer::build() {
         // 3. 嵌入资源
         if (!embedResource(scriptData)) {
             result.message = "Failed to embed script resource";
+            cleanupPartialOutput();
             return result;
         }
 
@@ -441,6 +456,7 @@ PackerResult Packer::build() {
     } catch (const std::exception& e) {
         result.message = std::string("Build failed: ") + e.what();
         spdlog::error("{}", result.message);
+        cleanupPartialOutput();
     }
 
     return result;

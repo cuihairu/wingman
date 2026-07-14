@@ -21,7 +21,8 @@ void printUsage() {
         << "  stop\n"
         << "  status\n"
         << "  script  <script-path> [args...]\n"
-        << "  build   --script|-s <path> --output|-o <path> [--icon|-i <path>] [--no-encrypt] [--no-compress]\n";
+        << "  build   --script|-s <path> --output|-o <path> [--icon|-i <path>] [--no-encrypt] [--no-compress]\n"
+        << "          encryption is currently disabled; --no-encrypt is accepted for compatibility\n";
 }
 
 bool requireValue(const Args& args, size_t& index, const char* flag, std::string& out) {
@@ -84,6 +85,7 @@ int runBuild(const Args& args) {
                 return 1;
             }
         } else if (arg == "--no-encrypt") {
+            // 兼容旧命令行；当前默认已是不加密。
             options.encrypt = false;
         } else if (arg == "--no-compress") {
             options.compress = false;

@@ -8,7 +8,8 @@ struct BuildOptions {
     std::string scriptPath;
     std::string outputPath;
     std::string iconPath;
-    bool encrypt = true;
+    // 保持与 PackerOptions 一致：默认生成可被当前 ResourceLoader 加载的资源。
+    bool encrypt = false;
     bool compress = true;
 };
 
