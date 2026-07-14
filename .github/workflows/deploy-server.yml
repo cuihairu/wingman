@@ -75,6 +75,11 @@ jobs:
         run: |
           echo "Deploying server to runner-docker..."
 
+          if [ -z "$WINGMAN_JWT_SECRET" ]; then
+            echo "::error::WINGMAN_JWT_SECRET is not set. Configure it in Settings > Secrets > Actions."
+            exit 1
+          fi
+
           # Stop and remove existing container if running
           docker stop wingman-server 2>/dev/null || true
           docker rm wingman-server 2>/dev/null || true
@@ -98,14 +103,26 @@ jobs:
             -e WINGMAN_SCRIPTS_DIR=/app/scripts \
             ${{ env.REGISTRY }}/${{ env.SERVER_IMAGE }}:latest
 
-          # Wait for container to be healthy
-          echo "Waiting for server to be healthy..."
-          timeout 30 sh -c 'until docker ps | grep wingman-server | grep -q healthy; do sleep 1; done'
+          # Wait for container to start and check health
+          echo "Waiting for server to start..."
+          for i in $(seq 1 30); do
+            if docker ps --filter name=wingman-server --filter health=healthy -q | grep -q .; then
+              echo "Server is healthy!"
+              docker ps | grep wingman-server
+              echo "Deployment completed successfully"
+              exit 0
+            fi
+            if ! docker ps --filter name=wingman-server -q | grep -q .; then
+              echo "::error::Container exited unexpectedly"
+              docker logs wingman-server 2>&1 | tail -20
+              exit 1
+            fi
+            sleep 1
+          done
 
-          # Show container status
+          echo "::warning::Server not healthy within 30s, showing logs"
+          docker logs wingman-server 2>&1 | tail -20
           docker ps | grep wingman-server
-
-          echo "Deployment completed successfully"
 
   deploy-dashboard:
     name: Deploy Dashboard
