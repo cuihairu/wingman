@@ -24,7 +24,7 @@ permissions:
 jobs:
   deploy-server:
     name: Deploy Server
-    runs-on: runner-docker
+    runs-on: pve-wingman
     timeout-minutes: 30
 
     steps:
@@ -109,7 +109,7 @@ jobs:
 
   deploy-dashboard:
     name: Deploy Dashboard
-    runs-on: runner-docker
+    runs-on: pve-wingman
     timeout-minutes: 30
 
     steps:
