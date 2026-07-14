@@ -50,6 +50,8 @@ public:
     std::vector<Subscription> subscriptions;
 
     std::mutex mutex;
+    std::mutex threadMutex;
+    std::condition_variable stopCv;
     std::thread cleanupThread;
     std::thread saveThread;
     std::atomic<bool> running{false};
@@ -147,6 +149,7 @@ KeyValueStore::KeyValueStore() : m_impl(std::make_unique<Impl>()) {}
 KeyValueStore::~KeyValueStore() {
     // Signal threads to stop
     m_impl->running.store(false);
+    m_impl->stopCv.notify_all();
 
     // Wait for cleanup thread to finish
     if (m_impl->cleanupThread.joinable()) {
@@ -577,7 +580,12 @@ void KeyValueStore::enableAutoSave(const std::string& filepath, int64_t interval
     // Start cleanup thread
     m_impl->cleanupThread = std::thread([this]() {
         while (m_impl->running.load()) {
-            std::this_thread::sleep_for(std::chrono::seconds(10));
+            std::unique_lock lock(m_impl->threadMutex);
+            if (m_impl->stopCv.wait_for(lock, std::chrono::seconds(10),
+                    [this] { return !m_impl->running.load(); })) {
+                break;
+            }
+            lock.unlock();
             if (m_impl->running.load()) {
                 m_impl->cleanupExpired();
             }
@@ -587,7 +595,12 @@ void KeyValueStore::enableAutoSave(const std::string& filepath, int64_t interval
     // Start auto-save thread
     m_impl->saveThread = std::thread([this]() {
         while (m_impl->running.load()) {
-            std::this_thread::sleep_for(std::chrono::seconds(m_impl->autoSaveInterval));
+            std::unique_lock lock(m_impl->threadMutex);
+            if (m_impl->stopCv.wait_for(lock, std::chrono::seconds(m_impl->autoSaveInterval),
+                    [this] { return !m_impl->running.load(); })) {
+                break;
+            }
+            lock.unlock();
             if (m_impl->running.load() && !m_impl->autoSavePath.empty()) {
                 save(m_impl->autoSavePath);
             }

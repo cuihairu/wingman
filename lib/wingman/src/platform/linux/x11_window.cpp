@@ -272,7 +272,7 @@ public:
         XWindowAttributes attrs;
         if (XGetWindowAttributes(display_, static_cast<Window>(hwnd), &attrs) == 0)
             return false;
-        Screen* s = DefaultScreenOfDisplay(display_);
+        ::Screen* s = DefaultScreenOfDisplay(display_);
         int x = (s->width - attrs.width) / 2;
         int y = (s->height - attrs.height) / 2;
         XMoveWindow(display_, static_cast<Window>(hwnd), x, y);

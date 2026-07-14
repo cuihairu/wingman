@@ -154,7 +154,7 @@ public:
         auto* monitors = XRRGetMonitors(display_, root_, True, &n);
         if (!monitors || monitorIndex >= n) {
             if (monitors) XRRFreeMonitors(monitors);
-            Screen* s = DefaultScreenOfDisplay(display_);
+            ::Screen* s = DefaultScreenOfDisplay(display_);
             return {0, 0, s->width, s->height};
         }
         auto& m = monitors[monitorIndex];

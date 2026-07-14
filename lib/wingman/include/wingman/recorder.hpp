@@ -18,6 +18,10 @@
 #include <windows.h>
 #endif
 
+#ifdef __linux__
+struct _XDisplay;
+#endif
+
 namespace wingman {
 
 // Recorded event type
@@ -102,8 +106,8 @@ private:
     DWORD m_hookThreadId{0};
     void hookThreadMain();
 #elif defined(__linux__)
-    void* m_display;
-    void* m_recordContext;
+    _XDisplay* m_display;
+    unsigned long m_recordContext;
     std::thread m_processThread;
 #elif defined(__APPLE__)
     CFMachPortRef m_eventTap;

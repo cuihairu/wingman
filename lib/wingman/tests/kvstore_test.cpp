@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <wingman/kvstore.hpp>
+#include <chrono>
 #include <filesystem>
 #include <thread>
 
@@ -9,7 +10,10 @@ class KeyValueStoreTest : public ::testing::Test {
 protected:
     void SetUp() override {
         store = std::make_unique<wingman::KeyValueStore>();
-        testDbPath = "test_kvstore.db";
+        const auto* testInfo = ::testing::UnitTest::GetInstance()->current_test_info();
+        const auto suffix = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+        testDbPath = (fs::temp_directory_path() /
+            ("test_kvstore_" + std::string(testInfo->test_suite_name()) + "_" + testInfo->name() + "_" + suffix + ".db")).string();
         if (fs::exists(testDbPath)) {
             fs::remove(testDbPath);
         }
@@ -668,7 +672,7 @@ TEST_F(KeyValueStoreTest, SaveAndLoadRoundtripWithTTL) {
     store->set("ttl_key", "ttl_value", options);
     store->set("perm_key", "perm_value");
 
-    std::string path = "test_kvstore_roundtrip_ttl.json";
+    std::string path = (fs::path(testDbPath).replace_extension(".json")).string();
     EXPECT_TRUE(store->save(path));
 
     auto store2 = std::make_unique<wingman::KeyValueStore>();

@@ -1,15 +1,14 @@
 #include <gtest/gtest.h>
 #include "wingman/script/modules/db_connection.hpp"
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 
 using namespace wingman::script::modules;
 
 namespace {
-	constexpr const char* kTestDbName = "__test_db_module__";
-
-	void cleanTestDb() {
-		std::string dbPath = getDatabasePath(kTestDbName);
+	void cleanTestDb(const std::string& dbName) {
+		std::string dbPath = getDatabasePath(dbName);
 		if (dbPath != ":memory:" && std::filesystem::exists(dbPath)) {
 			std::filesystem::remove(dbPath);
 		}
@@ -20,9 +19,12 @@ namespace {
 class DbModuleTestFixture : public ::testing::Test {
 protected:
 	void SetUp() override {
-		cleanTestDb();
+		const auto* testInfo = ::testing::UnitTest::GetInstance()->current_test_info();
+		const auto suffix = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+		testDbName = "__test_db_module__" + std::string(testInfo->test_suite_name()) + "_" + testInfo->name() + "_" + suffix;
+		cleanTestDb(testDbName);
 		std::string dataDir = getScriptDataDir();
-		conn = std::make_shared<DbConnection>(kTestDbName, dataDir);
+		conn = std::make_shared<DbConnection>(testDbName, dataDir);
 	}
 
 	void TearDown() override {
@@ -30,10 +32,11 @@ protected:
 			conn->close();
 			conn.reset();
 		}
-		cleanTestDb();
+		cleanTestDb(testDbName);
 	}
 
 	std::shared_ptr<DbConnection> conn;
+	std::string testDbName;
 };
 
 // ========== Path Utilities Tests ==========
@@ -72,7 +75,7 @@ TEST(DbConnectionTest, Connection_OpenMemory) {
 
 TEST_F(DbModuleTestFixture, Connection_OpenNamed) {
 	EXPECT_TRUE(conn->isValid());
-	EXPECT_EQ(conn->getName(), kTestDbName);
+	EXPECT_EQ(conn->getName(), testDbName);
 }
 
 TEST_F(DbModuleTestFixture, Connection_Close) {

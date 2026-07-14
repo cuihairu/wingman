@@ -4,10 +4,14 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <spdlog/spdlog.h>
+#include <algorithm>
+#include <chrono>
+#include <filesystem>
 #include <thread>
 #include <atomic>
 #include <unordered_map>
 #include <mutex>
+#include <vector>
 
 namespace wingman::platform::linux {
 
@@ -32,61 +36,55 @@ public:
         running_ = false;
         if (pollThread_.joinable()) pollThread_.join();
         if (inotifyFd_ >= 0) {
+            std::lock_guard lock(mutex_);
+            for (const auto& [wd, _] : wdToIds_) {
+                inotify_rm_watch(inotifyFd_, wd);
+            }
+            watches_.clear();
+            wdToIds_.clear();
+            wdToPath_.clear();
             close(inotifyFd_);
             inotifyFd_ = -1;
         }
-        std::lock_guard lock(mutex_);
-        watches_.clear();
-        wdToId_.clear();
         initialized_ = false;
     }
 
     uint64_t watch(const std::string& path, bool recursive, FileChangeCallback callback) override {
         if (!initialized_) return 0;
 
-        uint32_t mask = IN_CREATE | IN_DELETE | IN_MODIFY | IN_MOVED_FROM | IN_MOVED_TO;
-        int wd = inotify_add_watch(inotifyFd_, path.c_str(), mask);
-        if (wd < 0) {
-            spdlog::error("InotifyFileWatcher: failed to watch {}", path);
+        uint64_t id = nextId_++;
+        std::lock_guard lock(mutex_);
+        watches_[id] = {path, recursive, std::move(callback), {}};
+
+        if (!addPathWatchLocked(id, path)) {
+            watches_.erase(id);
             return 0;
         }
 
-        uint64_t id = nextId_++;
-        std::lock_guard lock(mutex_);
-        watches_[id] = {path, recursive, callback, wd};
-        wdToId_[wd] = id;
-
         if (recursive) {
-            // TODO: walk subdirectories and add watches
+            addRecursiveWatchesLocked(id, path);
         }
-
         return id;
     }
 
     bool unwatch(uint64_t watchId) override {
         std::lock_guard lock(mutex_);
-        auto it = watches_.find(watchId);
-        if (it == watches_.end()) return false;
-        inotify_rm_watch(inotifyFd_, it->second.wd);
-        wdToId_.erase(it->second.wd);
-        watches_.erase(it);
-        return true;
+        return removeWatchLocked(watchId);
     }
 
     size_t unwatchPath(const std::string& path) override {
         std::lock_guard lock(mutex_);
-        size_t count = 0;
-        for (auto it = watches_.begin(); it != watches_.end();) {
-            if (it->second.path == path) {
-                inotify_rm_watch(inotifyFd_, it->second.wd);
-                wdToId_.erase(it->second.wd);
-                it = watches_.erase(it);
-                count++;
-            } else {
-                ++it;
+        std::vector<uint64_t> ids;
+        for (const auto& [id, watch] : watches_) {
+            if (watch.path == path) {
+                ids.push_back(id);
             }
         }
-        return count;
+
+        for (uint64_t id : ids) {
+            removeWatchLocked(id);
+        }
+        return ids.size();
     }
 
     size_t getWatchCount() const override {
@@ -105,6 +103,7 @@ public:
     }
 
 private:
+    bool initialized_ = false;
     int inotifyFd_ = -1;
     std::atomic<bool> running_{false};
     std::thread pollThread_;
@@ -114,12 +113,116 @@ private:
         std::string path;
         bool recursive;
         FileChangeCallback callback;
-        int wd;
+        std::vector<int> wds;
     };
 
     mutable std::mutex mutex_;
     std::unordered_map<uint64_t, WatchInfo> watches_;
-    std::unordered_map<int, uint64_t> wdToId_;
+    std::unordered_map<int, std::vector<uint64_t>> wdToIds_;
+    std::unordered_map<int, std::string> wdToPath_;
+
+    static uint64_t nowMilliseconds() {
+        const auto now = std::chrono::system_clock::now().time_since_epoch();
+        return static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(now).count()
+        );
+    }
+
+    bool addPathWatchLocked(uint64_t watchId, const std::string& path) {
+        uint32_t mask = IN_CREATE | IN_DELETE | IN_MODIFY | IN_ATTRIB |
+            IN_CLOSE_WRITE | IN_MOVED_FROM | IN_MOVED_TO | IN_DELETE_SELF | IN_MOVE_SELF;
+
+        int wd = inotify_add_watch(inotifyFd_, path.c_str(), mask);
+        if (wd < 0) {
+            spdlog::error("InotifyFileWatcher: failed to watch {}", path);
+            return false;
+        }
+
+        auto watchIt = watches_.find(watchId);
+        if (watchIt == watches_.end()) {
+            inotify_rm_watch(inotifyFd_, wd);
+            return false;
+        }
+
+        auto& watchWds = watchIt->second.wds;
+        if (std::find(watchWds.begin(), watchWds.end(), wd) == watchWds.end()) {
+            watchWds.push_back(wd);
+        }
+
+        auto& ids = wdToIds_[wd];
+        if (std::find(ids.begin(), ids.end(), watchId) == ids.end()) {
+            ids.push_back(watchId);
+        }
+        wdToPath_[wd] = path;
+        return true;
+    }
+
+    void addRecursiveWatchesLocked(uint64_t watchId, const std::string& rootPath) {
+        std::error_code ec;
+        if (!std::filesystem::is_directory(rootPath, ec)) {
+            return;
+        }
+
+        const auto options = std::filesystem::directory_options::skip_permission_denied;
+        for (std::filesystem::recursive_directory_iterator it(rootPath, options, ec), end;
+             it != end;
+             it.increment(ec)) {
+            if (ec) {
+                spdlog::warn("InotifyFileWatcher: recursive walk skipped entry under {}: {}", rootPath, ec.message());
+                ec.clear();
+                continue;
+            }
+
+            std::error_code typeEc;
+            if (it->is_directory(typeEc)) {
+                addPathWatchLocked(watchId, it->path().string());
+            }
+        }
+    }
+
+    bool removeWatchLocked(uint64_t watchId) {
+        auto it = watches_.find(watchId);
+        if (it == watches_.end()) return false;
+
+        const auto wds = it->second.wds;
+        for (int wd : wds) {
+            auto idsIt = wdToIds_.find(wd);
+            if (idsIt == wdToIds_.end()) continue;
+
+            auto& ids = idsIt->second;
+            ids.erase(std::remove(ids.begin(), ids.end(), watchId), ids.end());
+            if (ids.empty()) {
+                inotify_rm_watch(inotifyFd_, wd);
+                wdToIds_.erase(idsIt);
+                wdToPath_.erase(wd);
+            }
+        }
+
+        watches_.erase(it);
+        return true;
+    }
+
+    void removeDescriptorLocked(int wd) {
+        auto idsIt = wdToIds_.find(wd);
+        if (idsIt != wdToIds_.end()) {
+            for (uint64_t id : idsIt->second) {
+                auto watchIt = watches_.find(id);
+                if (watchIt == watches_.end()) continue;
+                auto& wds = watchIt->second.wds;
+                wds.erase(std::remove(wds.begin(), wds.end(), wd), wds.end());
+            }
+            wdToIds_.erase(idsIt);
+        }
+        wdToPath_.erase(wd);
+    }
+
+    static FileChangeType changeTypeFromMask(uint32_t mask) {
+        if (mask & IN_MOVED_FROM) return FileChangeType::RenamedOld;
+        if (mask & IN_MOVED_TO) return FileChangeType::RenamedNew;
+        if (mask & IN_CREATE) return FileChangeType::Added;
+        if (mask & IN_DELETE) return FileChangeType::Removed;
+        return FileChangeType::Modified;
+    }
 
     void pollLoop() {
         constexpr size_t EVENT_BUF_LEN = 4096;
@@ -135,28 +238,61 @@ private:
             int i = 0;
             while (i < length) {
                 auto* event = reinterpret_cast<struct inotify_event*>(&buffer[i]);
-                std::lock_guard lock(mutex_);
-                auto it = wdToId_.find(event->wd);
-                if (it != wdToId_.end()) {
-                    auto wIt = watches_.find(it->second);
-                    if (wIt != watches_.end()) {
+
+                std::vector<std::pair<FileChangeCallback, FileChange>> pendingCallbacks;
+                {
+                    std::lock_guard lock(mutex_);
+
+                    if (event->mask & IN_IGNORED) {
+                        removeDescriptorLocked(event->wd);
+                        i += sizeof(struct inotify_event) + event->len;
+                        continue;
+                    }
+
+                    auto idsIt = wdToIds_.find(event->wd);
+                    auto pathIt = wdToPath_.find(event->wd);
+                    if (idsIt != wdToIds_.end() && pathIt != wdToPath_.end()) {
+                        const auto ids = idsIt->second;
+
                         FileChange change;
-                        change.path = wIt->second.path;
+                        change.type = changeTypeFromMask(event->mask);
+                        change.path = pathIt->second;
                         if (event->len > 0) {
-                            change.path += "/";
-                            change.path += event->name;
+                            change.path = (std::filesystem::path(change.path) / event->name).string();
                         }
-                        change.timestamp = 0;
+                        change.timestamp = nowMilliseconds();
 
-                        if (event->mask & IN_CREATE) change.type = FileChangeType::Added;
-                        else if (event->mask & IN_DELETE) change.type = FileChangeType::Removed;
-                        else if (event->mask & IN_MODIFY) change.type = FileChangeType::Modified;
-                        else if (event->mask & IN_MOVED_FROM) change.type = FileChangeType::RenamedOld;
-                        else if (event->mask & IN_MOVED_TO) change.type = FileChangeType::RenamedNew;
+                        const bool isDirectory = (event->mask & IN_ISDIR) != 0;
+                        const bool directoryEnteredTree = isDirectory &&
+                            ((event->mask & IN_CREATE) || (event->mask & IN_MOVED_TO));
 
-                        wIt->second.callback(change);
+                        if (directoryEnteredTree) {
+                            for (uint64_t id : ids) {
+                                auto watchIt = watches_.find(id);
+                                if (watchIt != watches_.end() && watchIt->second.recursive) {
+                                    addPathWatchLocked(id, change.path);
+                                    addRecursiveWatchesLocked(id, change.path);
+                                }
+                            }
+                        }
+
+                        for (uint64_t id : ids) {
+                            auto watchIt = watches_.find(id);
+                            if (watchIt != watches_.end() && watchIt->second.callback) {
+                                pendingCallbacks.emplace_back(watchIt->second.callback, change);
+                            }
+                        }
                     }
                 }
+
+                for (const auto& [callback, change] : pendingCallbacks) {
+                    try {
+                        callback(change);
+                    } catch (const std::exception& e) {
+                        spdlog::error("InotifyFileWatcher: callback exception: {}", e.what());
+                    }
+                }
+
                 i += sizeof(struct inotify_event) + event->len;
             }
         }

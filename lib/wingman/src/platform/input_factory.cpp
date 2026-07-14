@@ -3,6 +3,16 @@
 
 #include <mutex>
 
+#ifdef linux
+#undef linux
+#endif
+
+#if defined(__linux__)
+namespace wingman::platform::linux {
+std::unique_ptr<IInput> createXTestInput(const InputConfig& config);
+}
+#endif
+
 namespace wingman::platform {
 
 #if defined(_WIN32)
@@ -13,10 +23,6 @@ std::unique_ptr<IInput> createSendInputInput(const InputConfig& config);
 namespace mac {
 std::unique_ptr<IInput> createCGEventInput(const InputConfig& config);
 }
-#elif defined(__linux__)
-namespace linux {
-std::unique_ptr<IInput> createXTestInput(const InputConfig& config);
-}
 #endif
 
 std::unique_ptr<IInput> createDefaultInput(const InputConfig& config) {
@@ -25,7 +31,7 @@ std::unique_ptr<IInput> createDefaultInput(const InputConfig& config) {
 #elif defined(__APPLE__)
     return mac::createCGEventInput(config);
 #elif defined(__linux__)
-    return linux::createXTestInput(config);
+    return platform::linux::createXTestInput(config);
 #else
     auto input = std::make_unique<mock::MockInput>();
     input->initialize(config);

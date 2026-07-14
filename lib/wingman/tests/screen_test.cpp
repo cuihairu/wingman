@@ -1,10 +1,27 @@
 #include <gtest/gtest.h>
 #include "wingman/screen.hpp"
+#include <chrono>
 #include <fstream>
 #include <algorithm>
 #include <filesystem>
 
 using namespace wingman;
+
+namespace {
+
+std::filesystem::path uniqueTempPngPath(const std::string& baseName) {
+    const auto* testInfo = ::testing::UnitTest::GetInstance()->current_test_info();
+    const auto suffix = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+#if defined(_WIN32) || defined(__APPLE__) || defined(WINGMAN_ENABLE_VISION)
+    constexpr const char* extension = ".png";
+#else
+    constexpr const char* extension = ".bmp";
+#endif
+    return std::filesystem::temp_directory_path() /
+        (baseName + "_" + testInfo->test_suite_name() + "_" + testInfo->name() + "_" + suffix + extension);
+}
+
+} // namespace
 
 class ScreenTest : public ::testing::Test {
 protected:
@@ -215,7 +232,7 @@ TEST(ScreenTest, BitmapSaveWritesFile) {
     bmp.setPixel(0, 1, Color(0, 0, 255));
     bmp.setPixel(1, 1, Color(255, 255, 255));
 
-    const auto outputPath = std::filesystem::temp_directory_path() / "wingman-screen-test.png";
+    const auto outputPath = uniqueTempPngPath("wingman-screen-test");
     std::error_code ec;
     std::filesystem::remove(outputPath, ec);
 
@@ -463,7 +480,7 @@ TEST(ScreenTest, BitmapFromValidPngRoundtrip) {
     original.setPixel(2, 1, Color(100, 150, 200));
     original.setPixel(3, 1, Color(50, 50, 50));
 
-    const auto tempPath = std::filesystem::temp_directory_path() / "wingman_bmp_roundtrip.png";
+    const auto tempPath = uniqueTempPngPath("wingman_bmp_roundtrip");
     std::error_code ec;
     std::filesystem::remove(tempPath, ec);
 
@@ -513,7 +530,7 @@ TEST(ScreenTest, BitmapFromValidPngSinglePixel) {
     Bitmap original(1, 1);
     original.setPixel(0, 0, Color(42, 87, 213));
 
-    const auto tempPath = std::filesystem::temp_directory_path() / "wingman_bmp_1x1.png";
+    const auto tempPath = uniqueTempPngPath("wingman_bmp_1x1");
     std::error_code ec;
     std::filesystem::remove(tempPath, ec);
 
@@ -534,7 +551,7 @@ TEST(ScreenTest, BitmapFromValidPngSinglePixel) {
 
 TEST(ScreenTest, BitmapFromInvalidFileReturnsNull) {
     // Create a non-image file
-    const auto tempPath = std::filesystem::temp_directory_path() / "wingman_bmp_invalid.png";
+    const auto tempPath = uniqueTempPngPath("wingman_bmp_invalid");
     {
         std::ofstream f(tempPath.string());
         f << "this is not a valid PNG file";

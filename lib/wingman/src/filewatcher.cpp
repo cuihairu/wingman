@@ -1,9 +1,16 @@
 #include "wingman/filewatcher.hpp"
 #include <spdlog/spdlog.h>
+#include <memory>
 
 #ifdef _WIN32
 #include "wingman/platform/win/win32_filewatcher.hpp"
-using PlatformFileWatcher = wingman::platform::windows::Win32FileWatcher;
+#elif defined(__linux__)
+#ifdef linux
+#undef linux
+#endif
+namespace wingman::platform::linux {
+std::unique_ptr<IFileWatcher> createInotifyFileWatcher();
+}
 #else
 
 namespace wingman::platform {
@@ -27,8 +34,6 @@ public:
 };
 
 } // namespace wingman::platform
-
-using PlatformFileWatcher = wingman::platform::NullFileWatcher;
 #endif
 
 namespace wingman {
@@ -36,12 +41,26 @@ namespace wingman {
 // ========== FileWatcher Implementation ==========
 
 platform::IFileWatcher& FileWatcher::instance() {
-    static std::unique_ptr<PlatformFileWatcher> instance = [] {
-        auto watcher = std::make_unique<PlatformFileWatcher>();
+    static std::unique_ptr<platform::IFileWatcher> instance = [] {
+#ifdef _WIN32
+        auto watcher = std::make_unique<platform::windows::Win32FileWatcher>();
         if (!watcher->initialize()) {
             spdlog::error("[FileWatcher] Failed to initialize platform file watcher");
         }
         return watcher;
+#elif defined(__linux__)
+        auto watcher = platform::linux::createInotifyFileWatcher();
+        if (!watcher || !watcher->getBackendInfo().isInitialized) {
+            spdlog::error("[FileWatcher] Failed to initialize Linux inotify file watcher");
+        }
+        return watcher;
+#else
+        auto watcher = std::make_unique<platform::NullFileWatcher>();
+        if (!watcher->initialize()) {
+            spdlog::error("[FileWatcher] Failed to initialize platform file watcher");
+        }
+        return watcher;
+#endif
     }();
     return *instance;
 }

@@ -14,6 +14,11 @@
 #include <opencv2/opencv.hpp>
 #endif
 
+#ifdef WINGMAN_ENABLE_VISION
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+#endif
+
 #ifdef __APPLE__
 #include <ApplicationServices/ApplicationServices.h>
 #include <ImageIO/ImageIO.h>
@@ -23,6 +28,8 @@
 #include <cstring>
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
+#include <vector>
 
 namespace wingman {
 
@@ -90,6 +97,39 @@ void Bitmap::setPixel(int x, int y, const Color& color) {
     p[2] = color.r;
     p[3] = color.a;
 }
+
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(WINGMAN_ENABLE_VISION)
+namespace {
+
+#pragma pack(push, 1)
+struct BmpFileHeader {
+    uint16_t signature;
+    uint32_t fileSize;
+    uint16_t reserved1;
+    uint16_t reserved2;
+    uint32_t pixelDataOffset;
+};
+
+struct BmpInfoHeader {
+    uint32_t headerSize;
+    int32_t width;
+    int32_t height;
+    uint16_t planes;
+    uint16_t bitCount;
+    uint32_t compression;
+    uint32_t imageSize;
+    int32_t xPixelsPerMeter;
+    int32_t yPixelsPerMeter;
+    uint32_t colorsUsed;
+    uint32_t importantColors;
+};
+#pragma pack(pop)
+
+constexpr uint16_t kBmpSignature = 0x4D42;
+constexpr uint32_t kBmpCompressionRgb = 0;
+
+} // namespace
+#endif
 
 #ifdef _WIN32
 std::unique_ptr<Bitmap> Bitmap::fromHBITMAP(HBITMAP hbitmap) {
@@ -230,8 +270,91 @@ std::unique_ptr<Bitmap> Bitmap::fromFile(const std::string& filepath) {
     CGContextRelease(context);
     CGImageRelease(image);
     return bitmap;
+#elif defined(WINGMAN_ENABLE_VISION)
+    cv::Mat image = cv::imread(filepath, cv::IMREAD_UNCHANGED);
+    if (image.empty()) {
+        return nullptr;
+    }
+
+    cv::Mat bgra;
+    switch (image.channels()) {
+        case 1:
+            cv::cvtColor(image, bgra, cv::COLOR_GRAY2BGRA);
+            break;
+        case 3:
+            cv::cvtColor(image, bgra, cv::COLOR_BGR2BGRA);
+            break;
+        case 4:
+            bgra = image;
+            break;
+        default:
+            return nullptr;
+    }
+
+    if (!bgra.isContinuous()) {
+        bgra = bgra.clone();
+    }
+
+    auto bitmap = std::make_unique<Bitmap>(bgra.cols, bgra.rows);
+    std::memcpy(bitmap->getData(), bgra.data, static_cast<size_t>(bgra.total() * bgra.elemSize()));
+    return bitmap;
 #else
-    return nullptr;
+    std::ifstream file(filepath, std::ios::binary);
+    if (!file) {
+        return nullptr;
+    }
+
+    BmpFileHeader fileHeader{};
+    BmpInfoHeader infoHeader{};
+    file.read(reinterpret_cast<char*>(&fileHeader), sizeof(fileHeader));
+    file.read(reinterpret_cast<char*>(&infoHeader), sizeof(infoHeader));
+    if (!file) {
+        return nullptr;
+    }
+
+    if (fileHeader.signature != kBmpSignature ||
+        infoHeader.headerSize < sizeof(BmpInfoHeader) ||
+        infoHeader.width <= 0 ||
+        infoHeader.height == 0 ||
+        infoHeader.planes != 1 ||
+        infoHeader.compression != kBmpCompressionRgb ||
+        (infoHeader.bitCount != 24 && infoHeader.bitCount != 32)) {
+        return nullptr;
+    }
+
+    const int width = infoHeader.width;
+    const int height = std::abs(infoHeader.height);
+    const bool isTopDown = infoHeader.height < 0;
+    const size_t bytesPerPixel = infoHeader.bitCount / 8;
+    const size_t rowStride = ((static_cast<size_t>(width) * bytesPerPixel) + 3U) & ~size_t{3};
+
+    auto bitmap = std::make_unique<Bitmap>(width, height);
+    std::vector<uint8_t> row(rowStride);
+
+    file.seekg(static_cast<std::streamoff>(fileHeader.pixelDataOffset), std::ios::beg);
+    if (!file) {
+        return nullptr;
+    }
+
+    for (int fileRow = 0; fileRow < height; ++fileRow) {
+        file.read(reinterpret_cast<char*>(row.data()), static_cast<std::streamsize>(row.size()));
+        if (!file) {
+            return nullptr;
+        }
+
+        const int targetRow = isTopDown ? fileRow : (height - 1 - fileRow);
+        uint8_t* dst = bitmap->getData() + static_cast<size_t>(targetRow) * static_cast<size_t>(width) * 4U;
+        for (int x = 0; x < width; ++x) {
+            const size_t srcOffset = static_cast<size_t>(x) * bytesPerPixel;
+            const size_t dstOffset = static_cast<size_t>(x) * 4U;
+            dst[dstOffset + 0] = row[srcOffset + 0];
+            dst[dstOffset + 1] = row[srcOffset + 1];
+            dst[dstOffset + 2] = row[srcOffset + 2];
+            dst[dstOffset + 3] = bytesPerPixel == 4 ? row[srcOffset + 3] : 255;
+        }
+    }
+
+    return bitmap;
 #endif
 }
 
@@ -677,9 +800,116 @@ Rect Screen::getScreenBounds() {
         static_cast<int>(bounds.size.height)
     );
 }
-#else
-bool Bitmap::save(const std::string& /*filepath*/) const {
+#elif defined(WINGMAN_ENABLE_VISION)
+bool Bitmap::save(const std::string& filepath) const {
+    if (m_width <= 0 || m_height <= 0 || !m_data) {
+        return false;
+    }
+
+    cv::Mat bgra(m_height, m_width, CV_8UC4, const_cast<uint8_t*>(m_data.get()));
+    return cv::imwrite(filepath, bgra);
+}
+
+// ============================================================================
+// Screen Implementation
+// ============================================================================
+
+std::unique_ptr<Bitmap> Screen::capture() {
+    return nullptr;
+}
+
+std::unique_ptr<Bitmap> Screen::capture(const Rect& /*region*/) {
+    return nullptr;
+}
+
+Color Screen::getPixel(int /*x*/, int /*y*/) {
+    return Color();
+}
+
+bool Screen::findColor(const Color& /*color*/, const Rect& /*region*/,
+                      int /*tolerance*/, Point& /*result*/) {
     return false;
+}
+
+std::vector<Point> Screen::findColors(const Color& /*color*/, const Rect& /*region*/,
+                                      int /*tolerance*/, int /*maxCount*/) {
+    return {};
+}
+
+bool Screen::findImage(const std::string& /*imagePath*/, const Rect& /*region*/,
+                       double /*threshold*/, Point& /*result*/) {
+    return false;
+}
+
+int Screen::getScreenWidth() {
+    return 0;
+}
+
+int Screen::getScreenHeight() {
+    return 0;
+}
+
+Rect Screen::getScreenBounds() {
+    return Rect();
+}
+#else
+bool Bitmap::save(const std::string& filepath) const {
+    if (m_width <= 0 || m_height <= 0 || !m_data) {
+        return false;
+    }
+
+    const size_t rowStride = ((static_cast<size_t>(m_width) * 3U) + 3U) & ~size_t{3};
+    const uint32_t imageSize = static_cast<uint32_t>(rowStride * static_cast<size_t>(m_height));
+
+    BmpFileHeader fileHeader{
+        kBmpSignature,
+        static_cast<uint32_t>(sizeof(BmpFileHeader) + sizeof(BmpInfoHeader)) + imageSize,
+        0,
+        0,
+        static_cast<uint32_t>(sizeof(BmpFileHeader) + sizeof(BmpInfoHeader))
+    };
+    BmpInfoHeader infoHeader{
+        sizeof(BmpInfoHeader),
+        m_width,
+        m_height,
+        1,
+        24,
+        kBmpCompressionRgb,
+        imageSize,
+        0,
+        0,
+        0,
+        0
+    };
+
+    std::ofstream file(filepath, std::ios::binary);
+    if (!file) {
+        return false;
+    }
+
+    file.write(reinterpret_cast<const char*>(&fileHeader), sizeof(fileHeader));
+    file.write(reinterpret_cast<const char*>(&infoHeader), sizeof(infoHeader));
+    if (!file) {
+        return false;
+    }
+
+    std::vector<uint8_t> row(rowStride, 0);
+    for (int y = m_height - 1; y >= 0; --y) {
+        const uint8_t* src = m_data.get() + static_cast<size_t>(y) * static_cast<size_t>(m_width) * 4U;
+        for (int x = 0; x < m_width; ++x) {
+            const size_t srcOffset = static_cast<size_t>(x) * 4U;
+            const size_t dstOffset = static_cast<size_t>(x) * 3U;
+            row[dstOffset + 0] = src[srcOffset + 0];
+            row[dstOffset + 1] = src[srcOffset + 1];
+            row[dstOffset + 2] = src[srcOffset + 2];
+        }
+        file.write(reinterpret_cast<const char*>(row.data()), static_cast<std::streamsize>(row.size()));
+        if (!file) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 // ============================================================================
@@ -725,6 +955,6 @@ Rect Screen::getScreenBounds() {
     return Rect();
 }
 
-#endif // _WIN32
+#endif // platform-specific screen implementation
 
 } // namespace wingman

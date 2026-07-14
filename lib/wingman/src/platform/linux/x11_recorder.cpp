@@ -15,6 +15,7 @@
 
 // X11 Record Extension
 #include <X11/Xlib.h>
+#include <X11/Xproto.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/record.h>
 
@@ -39,7 +40,6 @@ platform::MouseButton toPlatformMouseButton(int button) {
 
 static MacroRecorder* g_instance = nullptr;
 static Display* g_display = nullptr;
-static XRecordContext g_recordContext = nullptr;
 
 static unsigned long getTickCount() {
     struct timeval tv;
@@ -109,7 +109,7 @@ static void eventCallback(XPointer priv, XRecordInterceptData* data) {
 
 MacroRecorder::MacroRecorder()
     : m_recording(false), m_paused(false), m_startTime(0),
-      m_display(nullptr), m_recordContext(nullptr) {
+      m_display(nullptr), m_recordContext(0) {
     g_instance = this;
 }
 
@@ -206,7 +206,7 @@ void MacroRecorder::stop() {
         XRecordFreeContext(m_display, m_recordContext);
         XCloseDisplay(m_display);
         XCloseDisplay(dataDisplay);
-        m_recordContext = nullptr;
+        m_recordContext = 0;
         m_display = nullptr;
         g_display = nullptr;
     }

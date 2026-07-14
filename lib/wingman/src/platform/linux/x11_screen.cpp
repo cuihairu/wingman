@@ -2,6 +2,7 @@
 
 #include "wingman/platform/iscreen.hpp"
 #include <X11/Xlib.h>
+#include <X11/Xresource.h>
 #include <X11/extensions/Xrandr.h>
 #include <spdlog/spdlog.h>
 #include <vector>
@@ -65,7 +66,7 @@ public:
         auto* monitors = XRRGetMonitors(display_, root_, True, &n);
         if (!monitors || monitorIndex >= n) {
             if (monitors) XRRFreeMonitors(monitors);
-            Screen* screen = DefaultScreenOfDisplay(display_);
+            ::Screen* screen = DefaultScreenOfDisplay(display_);
             return {0, 0, screen->width, screen->height};
         }
         auto& m = monitors[monitorIndex];
@@ -123,7 +124,7 @@ public:
             }
         }
         // Fallback: calculate from screen size
-        Screen* s = DefaultScreenOfDisplay(display_);
+        ::Screen* s = DefaultScreenOfDisplay(display_);
         double mmWidth = DisplayWidthMM(display_, DefaultScreen(display_));
         if (mmWidth > 0) {
             return static_cast<int>(s->width * 25.4 / mmWidth);
@@ -153,19 +154,28 @@ public:
             return modes;
         }
 
+        if (monitors[monitorIndex].noutput <= 0) {
+            XRRFreeMonitors(monitors);
+            return modes;
+        }
+
         RROutput primaryOutput = monitors[monitorIndex].outputs[0];
         XRRFreeMonitors(monitors);
 
-        XRROutputInfo* outputInfo = XRRGetOutputInfo(display_, primaryOutput);
-        if (!outputInfo) return modes;
+        XRRScreenResources* screenResources = XRRGetScreenResources(display_, root_);
+        if (!screenResources) return modes;
+
+        XRROutputInfo* outputInfo = XRRGetOutputInfo(display_, screenResources, primaryOutput);
+        if (!outputInfo) {
+            XRRFreeScreenResources(screenResources);
+            return modes;
+        }
 
         for (int i = 0; i < outputInfo->nmode; i++) {
             RRMode modeId = outputInfo->modes[i];
-            XRRScreenResources* sr = XRRGetScreenResources(display_, root_);
-            if (!sr) continue;
-            for (int j = 0; j < sr->nmode; j++) {
-                if (sr->modes[j].id == modeId) {
-                    auto& m = sr->modes[j];
+            for (int j = 0; j < screenResources->nmode; j++) {
+                if (screenResources->modes[j].id == modeId) {
+                    auto& m = screenResources->modes[j];
                     double rate = m.dotClock /
                         static_cast<double>(m.hTotal * m.vTotal);
                     modes.push_back(DisplayMode{
@@ -177,9 +187,9 @@ public:
                     break;
                 }
             }
-            XRRFreeScreenResources(sr);
         }
         XRRFreeOutputInfo(outputInfo);
+        XRRFreeScreenResources(screenResources);
         return modes;
     }
 
@@ -204,7 +214,7 @@ public:
 
     Rect getVirtualScreenBounds() override {
         if (!initialized_) return {0, 0, 1920, 1080};
-        Screen* s = DefaultScreenOfDisplay(display_);
+        ::Screen* s = DefaultScreenOfDisplay(display_);
         return {0, 0, s->width, s->height};
     }
 

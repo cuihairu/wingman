@@ -104,7 +104,7 @@ public:
     void keyDown(KeyCode key) override {
         if (!initialized_) return;
         KeySym sym = toKeySym(key);
-        KeyCode code = XKeysymToKeycode(display_, sym);
+        const ::KeyCode code = XKeysymToKeycode(display_, sym);
         XTestFakeKeyEvent(display_, code, True, CurrentTime);
         XFlush(display_);
         sleep();
@@ -113,7 +113,7 @@ public:
     void keyUp(KeyCode key) override {
         if (!initialized_) return;
         KeySym sym = toKeySym(key);
-        KeyCode code = XKeysymToKeycode(display_, sym);
+        const ::KeyCode code = XKeysymToKeycode(display_, sym);
         XTestFakeKeyEvent(display_, code, False, CurrentTime);
         XFlush(display_);
         sleep();
@@ -135,8 +135,8 @@ public:
         // Use XTest to simulate typing via keysym lookup
         for (char c : text) {
             KeySym sym = XStringToKeysym(std::string(1, c).c_str());
-            if (sym == NoSym) continue;
-            KeyCode code = XKeysymToKeycode(display_, sym);
+            if (sym == NoSymbol) continue;
+            const ::KeyCode code = XKeysymToKeycode(display_, sym);
             if (code == 0) continue;
             XTestFakeKeyEvent(display_, code, True, CurrentTime);
             XTestFakeKeyEvent(display_, code, False, CurrentTime);
@@ -161,7 +161,7 @@ public:
         char keys_return[32];
         XQueryKeymap(display_, keys_return);
         KeySym sym = toKeySym(key);
-        KeyCode code = XKeysymToKeycode(display_, sym);
+        const ::KeyCode code = XKeysymToKeycode(display_, sym);
         return (keys_return[code / 8] & (1 << (code % 8))) != 0;
     }
 
@@ -266,7 +266,7 @@ private:
             case KeyCode::CapsLock: return XK_Caps_Lock;
             case KeyCode::PrintScreen: return XK_Print;
             case KeyCode::Pause: return XK_Pause;
-            default: return NoSym;
+            default: return NoSymbol;
         }
     }
 };
