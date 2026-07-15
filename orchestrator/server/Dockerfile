@@ -41,9 +41,11 @@ ENV WINGMAN_STATIC_DIR=/app/static
 ENV WINGMAN_AGENT_ADDR=0.0.0.0:8888
 ENV WINGMAN_SCRIPTS_DIR=/app/scripts
 
-# Health check (probe the TCP listener; /api/v1/health requires auth)
-HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:9527/ || exit 1
+# Health check (probe the TCP listener; '/' returns 404 which is fine —
+# wget --spider treats any HTTP response as success with --server-response,
+# but 4xx/5xx exit non-zero by default, so check the login endpoint instead).
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget -q -O /dev/null --spider http://localhost:9527/swagger/index.html || exit 1
 
 # Run the server
 CMD ["./wingman-server"]
