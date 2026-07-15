@@ -13,7 +13,7 @@ RUN go mod download
 COPY . .
 
 # Build the server (CGO_ENABLED=1 required: go-sqlite3 needs cgo)
-RUN CGO_ENABLED=1 GOOS=linux go build -a -o wingman-server .
+RUN CGO_ENABLED=1 GOOS=linux go build -o wingman-server .
 
 # Runtime stage
 FROM alpine:latest
