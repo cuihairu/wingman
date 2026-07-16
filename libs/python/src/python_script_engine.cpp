@@ -2,8 +2,10 @@
 #include "wingman/python/python_marshal.hpp"
 #include "wingman/script/script_engine_factory.hpp"
 #include "wingman/event.hpp"
+#include <pybind11/eval.h>
 #include <memory>
 #include <iostream>
+#include <fstream>
 #include <filesystem>
 #include <mutex>
 #include <unordered_map>
@@ -43,13 +45,13 @@ void forwardCapturedOutput(uintptr_t engineId, const std::string& text) {
 	}
 }
 
-void captureStreamWrite(uintptr_t engineId, bool stderr, const std::string& text) {
+void captureStreamWrite(uintptr_t engineId, bool isStderr, const std::string& text) {
 	if (text.empty()) return;
 
 	std::vector<std::string> completedLines;
 	{
 		std::lock_guard<std::mutex> lock(g_outputCallbacksMutex);
-		auto& buffer = stderr ? g_stderrBuffers[engineId] : g_stdoutBuffers[engineId];
+		auto& buffer = isStderr ? g_stderrBuffers[engineId] : g_stdoutBuffers[engineId];
 		buffer += text;
 
 		size_t newlinePos = std::string::npos;
@@ -68,11 +70,11 @@ void captureStreamWrite(uintptr_t engineId, bool stderr, const std::string& text
 	}
 }
 
-void flushStreamBuffer(uintptr_t engineId, bool stderr) {
+void flushStreamBuffer(uintptr_t engineId, bool isStderr) {
 	std::string pending;
 	{
 		std::lock_guard<std::mutex> lock(g_outputCallbacksMutex);
-		auto& buffers = stderr ? g_stderrBuffers : g_stdoutBuffers;
+		auto& buffers = isStderr ? g_stderrBuffers : g_stdoutBuffers;
 		auto it = buffers.find(engineId);
 		if (it != buffers.end()) {
 			pending = std::move(it->second);
@@ -173,7 +175,7 @@ bool PythonScriptEngine::initialize(const script::EngineConfig& config) {
 		// 设置环境变量 (在沙箱之前，因为需要 os 模块)
 		if (!config.sandboxed) {
 			for (const auto& [k, v] : config.env) {
-				py::module_::import("os").attr("environ")[k] = v;
+				py::module_::import("os").attr("environ")[py::str(k)] = py::str(v);
 			}
 		}
 
@@ -254,7 +256,7 @@ bool PythonScriptEngine::executeFile(const std::string& path) {
 		                  std::istreambuf_iterator<char>());
 
 		// 在隔离的 globals 中执行
-		py::exec(code, globals_);
+		py::eval<py::eval_statements>(code, globals_);
 		flushOutputCapture();
 		return true;
 	} catch (const py::error_already_set& e) {
@@ -269,7 +271,7 @@ bool PythonScriptEngine::executeString(const std::string& code) {
 
 	try {
 		py::gil_scoped_acquire gil;
-		py::exec(code, globals_);
+		py::eval<py::eval_statements>(code, globals_);
 		flushOutputCapture();
 		return true;
 	} catch (const py::error_already_set& e) {
@@ -475,23 +477,23 @@ void PythonScriptEngine::installOutputCapture() {
 		previousStderr_ = sys.attr("stderr");
 	}
 
-	auto makeProxy = [&](const char* streamName, bool stderr) {
+	auto makeProxy = [&](const char* streamName, bool isStderr) {
 		py::object proxy = types.attr("SimpleNamespace")();
 		proxy.attr("encoding") = py::str("utf-8");
 		proxy.attr("closed") = py::bool_(false);
 		proxy.attr("isatty") = py::cpp_function([]() { return false; });
-		proxy.attr("flush") = py::cpp_function([engineId, stderr]() {
-			flushStreamBuffer(engineId, stderr);
+		proxy.attr("flush") = py::cpp_function([engineId, isStderr]() {
+			flushStreamBuffer(engineId, isStderr);
 		});
-		proxy.attr("write") = py::cpp_function([engineId, stderr](const py::object& data) -> py::int_ {
+		proxy.attr("write") = py::cpp_function([engineId, isStderr](const py::object& data) -> py::int_ {
 			py::str textObject = py::str(data);
 			std::string text = textObject.cast<std::string>();
-			captureStreamWrite(engineId, stderr, text);
+			captureStreamWrite(engineId, isStderr, text);
 			return py::int_(text.size());
 		});
-		proxy.attr("writelines") = py::cpp_function([engineId, stderr](const py::iterable& lines) {
+		proxy.attr("writelines") = py::cpp_function([engineId, isStderr](const py::iterable& lines) {
 			for (const auto& line : lines) {
-				captureStreamWrite(engineId, stderr, py::str(line).cast<std::string>());
+				captureStreamWrite(engineId, isStderr, py::str(line).cast<std::string>());
 			}
 		});
 		proxy.attr("name") = py::str(streamName);
