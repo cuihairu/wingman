@@ -1,6 +1,8 @@
 package rbac
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
@@ -12,7 +14,7 @@ import (
 // 接收 testing.TB 以便 Test 与 Benchmark 复用。
 func newTestDB(tb testing.TB) *gorm.DB {
 	tb.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s_%d?mode=memory&cache=shared", tb.Name(), rand.Int())), &gorm.Config{})
 	if err != nil {
 		tb.Fatalf("open db: %v", err)
 	}

@@ -2,6 +2,8 @@ package workflow
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"sync"
 	"testing"
 	"time"
@@ -69,14 +71,10 @@ func (m *mockConn) lastCall() (string, map[string]any) {
 
 func newTestEngine(tb testing.TB) (*Engine, *agent.Registry, *gorm.DB) {
 	tb.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s_%d?mode=memory&cache=shared", tb.Name(), rand.Int())), &gorm.Config{})
 	if err != nil {
 		tb.Fatalf("open db: %v", err)
 	}
-	// 强制单连接：execute() 在后台 goroutine 写 DB，主线程读；
-	// 否则 :memory: 连接池中各连接指向不同数据库，写不可见。
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
 	if err := models.AutoMigrate(db); err != nil {
 		tb.Fatalf("migrate: %v", err)
 	}

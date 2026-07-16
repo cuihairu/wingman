@@ -3,6 +3,8 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -28,7 +30,7 @@ func asAdmin(userID uint) gin.HandlerFunc {
 func setupHandlerRouter(t *testing.T) (*gin.Engine, *gorm.DB, uint) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s_%d?mode=memory&cache=shared", t.Name(), rand.Int())), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
