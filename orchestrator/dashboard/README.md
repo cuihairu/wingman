@@ -112,17 +112,6 @@ pnpm lint
 pnpm tsc
 ```
 
-## 历史文档说明
-
-仓库中仍保留部分 `workspace` 相关文档和类型文件，它们来自历史迁移内容，不代表当前 `wingman` 后端已经实现对应能力。
-
-在没有补齐后端实现前，以下内容都不应视为当前有效契约：
-
-- `docs/WORKSPACE_API.md`
-- `docs/WORKSPACE_DEV_GUIDE.md`
-- `docs/WORKSPACE_USER_GUIDE.md`
-- `docs/workspace-*.md`
-
 ## License
 
 Apache-2.0
