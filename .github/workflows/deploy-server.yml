@@ -72,6 +72,7 @@ jobs:
         if: success()
         env:
           WINGMAN_JWT_SECRET: ${{ secrets.WINGMAN_JWT_SECRET }}
+          WINGMAN_ADMIN_PASSWORD: ${{ secrets.WINGMAN_ADMIN_PASSWORD }}
         run: |
           echo "Deploying server to runner-docker..."
 
@@ -100,6 +101,7 @@ jobs:
             -v wingman-data:/app/data \
             -v wingman-scripts:/app/scripts \
             -e WINGMAN_JWT_SECRET="$WINGMAN_JWT_SECRET" \
+            -e WINGMAN_ADMIN_PASSWORD="$WINGMAN_ADMIN_PASSWORD" \
             -e WINGMAN_HOST=0.0.0.0 \
             -e WINGMAN_PORT=9527 \
             -e WINGMAN_DB_PATH=/app/data/wingman.db \
