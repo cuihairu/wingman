@@ -80,6 +80,9 @@ jobs:
             exit 1
           fi
 
+          # Ensure the shared network exists (so dashboard can reach server by name)
+          docker network create wingman-net 2>/dev/null || true
+
           # Stop and remove existing container if running
           docker stop wingman-server 2>/dev/null || true
           docker rm wingman-server 2>/dev/null || true
@@ -90,6 +93,7 @@ jobs:
           # Run the container
           docker run -d \
             --name wingman-server \
+            --network wingman-net \
             --restart unless-stopped \
             -p 9527:9527 \
             -p 8888:8888 \
@@ -126,6 +130,7 @@ jobs:
 
   deploy-dashboard:
     name: Deploy Dashboard
+    needs: deploy-server
     runs-on: [self-hosted, wingman]
     timeout-minutes: 30
 
@@ -175,6 +180,9 @@ jobs:
         run: |
           echo "Deploying dashboard to runner-docker..."
 
+          # Ensure the shared network exists (so dashboard can reach server by name)
+          docker network create wingman-net 2>/dev/null || true
+
           # Stop and remove existing container if running
           docker stop wingman-dashboard 2>/dev/null || true
           docker rm wingman-dashboard 2>/dev/null || true
@@ -185,6 +193,7 @@ jobs:
           # Run the container
           docker run -d \
             --name wingman-dashboard \
+            --network wingman-net \
             --restart unless-stopped \
             -p 8080:80 \
             ${{ env.REGISTRY }}/${{ env.DASHBOARD_IMAGE }}:latest
@@ -192,6 +201,24 @@ jobs:
           # Wait for container to start
           echo "Waiting for dashboard to start..."
           timeout 30 sh -c 'until docker ps | grep wingman-dashboard; do sleep 1; done'
+
+          # Verify the API proxy reaches wingman-server (401/404/405 = gin responded;
+          # 502/503/000 = proxy broken). Retry since nginx may take a moment to start.
+          echo "Verifying API proxy -> wingman-server..."
+          code=000
+          for i in $(seq 1 15); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 \
+              http://localhost:8080/api/v1/auth/login || echo 000)
+            case "$code" in
+              502|503|000) sleep 2 ;;
+              *) echo "Dashboard API proxy OK (HTTP $code)"; break ;;
+            esac
+          done
+          if [ "$code" = "502" ] || [ "$code" = "503" ] || [ "$code" = "000" ]; then
+            echo "::error::Dashboard API proxy not reaching wingman-server (HTTP $code)"
+            docker logs wingman-dashboard 2>&1 | tail -20
+            exit 1
+          fi
 
           # Show container status
           docker ps | grep wingman-dashboard
