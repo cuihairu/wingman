@@ -18,7 +18,7 @@ const Settings: ProLayoutProps & {
   colorWeak: false,
   title: 'Wingman',
   pwa: true,
-  logo: '/logo.svg',
+  logo: '/logo.png',
   iconfontUrl: '',
   token: {
     bgLayout: '#f3f5f7',

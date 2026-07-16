@@ -131,7 +131,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     splitMenus: false,
     suppressSiderWhenMenuEmpty: true,
     avatarProps: {
-      src: initialState?.currentUser?.avatar,
+      src: initialState?.currentUser?.avatar || undefined,
       icon: initialState?.currentUser?.avatar ? undefined : <UserOutlined />,
       title: <AvatarName />,
       render: (_, avatarChildren) => {
