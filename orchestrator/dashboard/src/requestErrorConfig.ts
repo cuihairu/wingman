@@ -100,8 +100,7 @@ export const errorConfig: RequestConfig = {
       if (status === 401 && url) {
         if (
           url.includes(`${API_V1_PREFIX}/profile`) ||
-          url.includes(`${API_V1_PREFIX}/users/current`) ||
-          url.includes(`${API_V1_PREFIX}/messages`)
+          url.includes('/api/messages')
         ) {
           // 清除无效 token，静默跳转（不显示警告消息）
           try {
