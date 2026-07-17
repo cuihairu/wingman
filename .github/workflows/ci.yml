@@ -252,6 +252,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup Python (for CPython development headers/libs)
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
       - name: Cache vcpkg binaries
         uses: actions/cache@v5
         with:
