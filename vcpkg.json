@@ -80,6 +80,9 @@
       "description": "Enable Python scripting engine (embedded CPython + pybind11)",
       "dependencies": [
         {
+          "name": "python3"
+        },
+        {
           "name": "pybind11"
         }
       ]
