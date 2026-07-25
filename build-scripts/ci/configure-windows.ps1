@@ -45,10 +45,17 @@ if ($EnableTests) {
 if ($EnablePython) {
     $manifestFeatures += "python"
     $args += "-DWINGMAN_ENABLE_PYTHON=ON"
-    # 当设置了 Python_ROOT_DIR 时，提示 CMake FindPython3 使用系统 Python，
-    # 而非 vcpkg 安装的版本（vcpkg 的 python3 不支持 x64-windows-static）。
-    if (-not [string]::IsNullOrWhiteSpace($env:Python_ROOT_DIR)) {
-        $args += "-DPython_ROOT_DIR=$($env:Python_ROOT_DIR)"
+    # 显式指定系统 Python 路径，绕过 vcpkg toolchain 对 FindPython3 的覆盖
+    # （vcpkg 的 python3 不支持 x64-windows-static，只构建动态版）。
+    $pythonRoot = $env:Python_ROOT_DIR
+    if (-not [string]::IsNullOrWhiteSpace($pythonRoot)) {
+        $pyVersion = & "$pythonRoot\python.exe" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+        $args += @(
+            "-DPython3_EXECUTABLE=$pythonRoot\python.exe",
+            "-DPython3_INCLUDE_DIR=$pythonRoot\include",
+            "-DPython3_LIBRARY=$pythonRoot\libs\python$($pyVersion -replace '\.','').lib"
+        )
+        Write-Host "Using system Python at $pythonRoot (version $pyVersion)"
     }
 }
 
