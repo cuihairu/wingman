@@ -253,7 +253,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Python (for CPython development headers/libs)
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
