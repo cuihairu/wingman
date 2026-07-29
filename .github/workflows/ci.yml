@@ -241,7 +241,6 @@ jobs:
     # （如 camelCase/snake_case 双注册），不阻塞主构建矩阵。
     name: C++ Windows (Python engine)
     runs-on: windows-2022
-    continue-on-error: true
     defaults:
       run:
         shell: pwsh
@@ -251,17 +250,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: recursive
-
-      - name: Setup Python (for CPython development headers/libs)
-        uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-
-      - name: Set Python root for CMake
-        run: |
-          $pythonPath = (Get-Command python).Source | Split-Path -Parent
-          Write-Host "Python root: $pythonPath"
-          echo "Python_ROOT_DIR=$pythonPath" >> $env:GITHUB_ENV
 
       - name: Cache vcpkg binaries
         uses: actions/cache@v5
@@ -304,7 +292,6 @@ jobs:
         # best-effort：构建通过即证明 WINGMAN_ENABLE_PYTHON 链路（pybind11 + CPython
         # + wingman_python + camelToSnake 双注册）可编译链接；测试可执行文件路径随
         # 生成器布局变化，找不到时降级为警告而非失败。
-        continue-on-error: true
         run: |
           $testExe = Get-ChildItem -Path build -Recurse -Filter "python_name_conversion_tests.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($testExe) {
