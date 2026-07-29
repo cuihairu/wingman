@@ -46,13 +46,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: recursive
 
       - name: Cache vcpkg binaries
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
           key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
@@ -94,7 +94,7 @@ jobs:
 
       # ====== Go Orchestrator Server ======
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: stable
           cache-dependency-path: orchestrator/server/go.sum
@@ -105,12 +105,12 @@ jobs:
 
       # ====== Dashboard Frontend ======
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.ACTIONS_NODE_VERSION }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.8
+        uses: pnpm/action-setup@v7.0.8
         with:
           version: 11
 
@@ -125,7 +125,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -201,7 +201,7 @@ jobs:
           Compress-Archive -Path "$distDir\*" -DestinationPath "wingman-${version}-windows-x64.zip"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v8
         with:
           name: wingman-${{ inputs.version }}-windows-x64
           path: wingman-${{ inputs.version }}-windows-x64.zip
@@ -243,7 +243,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: recursive
@@ -271,7 +271,7 @@ jobs:
 
       # ====== Go Orchestrator Server ======
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: stable
           cache-dependency-path: orchestrator/server/go.sum
@@ -282,12 +282,12 @@ jobs:
 
       # ====== Dashboard Frontend ======
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.ACTIONS_NODE_VERSION }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.8
+        uses: pnpm/action-setup@v7.0.8
         with:
           version: 11
 
@@ -302,7 +302,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -354,7 +354,7 @@ jobs:
           tar czf "wingman-${version}-linux-x64.tar.gz" -C "$distDir" .
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v8
         with:
           name: wingman-${{ inputs.version }}-linux-x64
           path: wingman-${{ inputs.version }}-linux-x64.tar.gz
@@ -386,7 +386,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: recursive
@@ -410,7 +410,7 @@ jobs:
 
       # ====== Go Orchestrator Server ======
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: stable
           cache-dependency-path: orchestrator/server/go.sum
@@ -421,12 +421,12 @@ jobs:
 
       # ====== Dashboard Frontend ======
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.ACTIONS_NODE_VERSION }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.8
+        uses: pnpm/action-setup@v7.0.8
         with:
           version: 11
 
@@ -441,7 +441,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -493,7 +493,7 @@ jobs:
           tar czf "wingman-${version}-macos-x64.tar.gz" -C "$distDir" .
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v8
         with:
           name: wingman-${{ inputs.version }}-macos-x64
           path: wingman-${{ inputs.version }}-macos-x64.tar.gz

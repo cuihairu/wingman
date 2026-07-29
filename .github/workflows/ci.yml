@@ -40,12 +40,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
       - name: Cache vcpkg binaries
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
           key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
@@ -121,7 +121,7 @@ jobs:
         timeout-minutes: 60
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v8
         with:
           name: windows-cpp-coverage
           path: build/coverage/coverage.cobertura.xml
@@ -130,7 +130,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: codecov/codecov-action@v6.0.1
+        uses: codecov/codecov-action@v7.0.1
         with:
           files: build/coverage/coverage.cobertura.xml
           flags: windows-cpp
@@ -159,7 +159,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -248,7 +248,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -264,7 +264,7 @@ jobs:
           echo "Python_ROOT_DIR=$pythonPath" >> $env:GITHUB_ENV
 
       - name: Cache vcpkg binaries
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
           key: ${{ runner.os }}-vcpkg-python-${{ hashFiles('vcpkg.json') }}
@@ -330,10 +330,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: stable
           cache-dependency-path: orchestrator/server/go.sum
