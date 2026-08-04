@@ -19,7 +19,7 @@ if (Test-Path $VcpkgRoot) {
 
 # Pin vcpkg to a specific commit for reproducibility and supply chain security
 # Use the builtin-baseline from vcpkg.json (can be overridden via VCPKG_COMMIT env var)
-$vcpkgCommit = if ($env:VCPKG_COMMIT) { $env:VCPKG_COMMIT } else { "00d899c410b31467733472fc3a83a25729046b13" }
+$vcpkgCommit = if ($env:VCPKG_COMMIT) { $env:VCPKG_COMMIT } else { "9e593bb18ea69cc5095e012465dcd675a822ed0d" }
 
 Write-Host "Cloning vcpkg and checking out commit $vcpkgCommit"
 

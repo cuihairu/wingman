@@ -12,7 +12,7 @@ rm -rf "$vcpkg_root"
 
 # Pin vcpkg to a specific commit for reproducibility and supply chain security
 # Use the builtin-baseline from vcpkg.json (can be overridden via VCPKG_COMMIT env var)
-vcpkg_commit="${VCPKG_COMMIT:-00d899c410b31467733472fc3a83a25729046b13}"
+vcpkg_commit="${VCPKG_COMMIT:-9e593bb18ea69cc5095e012465dcd675a822ed0d}"
 
 echo "Cloning vcpkg and checking out commit $vcpkg_commit"
 
