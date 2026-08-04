@@ -251,6 +251,17 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup Python (for CPython development headers/libs)
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Set Python root for CMake
+        run: |
+          $pythonPath = (Get-Command python).Source | Split-Path -Parent
+          Write-Host "Python root: $pythonPath"
+          echo "Python_ROOT_DIR=$pythonPath" >> $env:GITHUB_ENV
+
       - name: Cache vcpkg binaries
         uses: actions/cache@v5
         with:
