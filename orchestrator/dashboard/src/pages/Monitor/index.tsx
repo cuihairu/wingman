@@ -26,11 +26,11 @@ import {
   DesktopOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
-  ReloadOutlined,
   SettingOutlined,
   ThunderboltOutlined,
   WifiOutlined,
 } from '@ant-design/icons';
+import { history } from '@umijs/max';
 import ScreenshotView from '@/components/ScreenshotView';
 import wsService from '@/services/websocket';
 import { AgentInfo, AgentStatus, getAgents } from '@/services/wingman';
@@ -90,7 +90,9 @@ function formatUptime(ms: number): string {
 function primaryAgent(agents: AgentInfo[]): AgentInfo | undefined {
   return (
     agents.find((agent) => agent.status === AgentStatus.Busy) ||
-    agents.find((agent) => agent.status === AgentStatus.Online || agent.status === AgentStatus.Idle) ||
+    agents.find(
+      (agent) => agent.status === AgentStatus.Online || agent.status === AgentStatus.Idle,
+    ) ||
     agents[0]
   );
 }
@@ -128,7 +130,10 @@ function upsertAgent(agents: AgentInfo[], data: Record<string, unknown>): AgentI
 }
 
 const Monitor: React.FC = () => {
-  const [isRunning, setIsRunning] = useState(false);
+  // 「运行中/已暂停」控制本页事件记录（时间线 + 触发器列表）是否写入，
+  // WebSocket 连接本身保持（与 Agents 页共享单例，不受影响）。
+  const [isRunning, setIsRunning] = useState(true);
+  const isRunningRef = useRef(true);
   const [wsConnected, setWsConnected] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
@@ -155,21 +160,27 @@ const Monitor: React.FC = () => {
         networkUp: safeNumber(selectedAgent.resources.network?.up),
         networkDown: safeNumber(selectedAgent.resources.network?.down),
         onlineAgents: agents.filter(
-          (agent) => agent.status === AgentStatus.Online || agent.status === AgentStatus.Idle || agent.status === AgentStatus.Busy,
+          (agent) =>
+            agent.status === AgentStatus.Online ||
+            agent.status === AgentStatus.Idle ||
+            agent.status === AgentStatus.Busy,
         ).length,
         source: selectedAgent.hostname || selectedAgent.agentId,
       }
     : systemStatus;
 
   const addEvent = (event: Omit<RuntimeEvent, 'id' | 'time'>) => {
-    setEvents((previous) => [
-      {
-        ...event,
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        time: new Date().toLocaleTimeString(),
-      },
-      ...previous,
-    ].slice(0, 12));
+    if (!isRunningRef.current) return;
+    setEvents((previous) =>
+      [
+        {
+          ...event,
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          time: new Date().toLocaleTimeString(),
+        },
+        ...previous,
+      ].slice(0, 12),
+    );
   };
 
   useEffect(() => {
@@ -231,41 +242,38 @@ const Monitor: React.FC = () => {
     );
 
     unsubscribes.push(
-      wsService.on('trigger', (message) => {
-        const data = message.data || {};
-        const nested = data.data && typeof data.data === 'object' ? (data.data as Record<string, unknown>) : data;
-        const triggerId = String(nested.triggerId || nested.id || data.triggerId || data.id || '');
-        const triggerName = String(nested.name || nested.triggerName || data.name || data.triggerName || triggerId || '未知触发器');
-        setTriggers((previous) =>
-          {
-            const index = previous.findIndex(
-              (trigger) => trigger.id === triggerId || trigger.name === triggerName,
-            );
-            const nextHit = {
-              id: triggerId || triggerName,
-              name: triggerName,
-              enabled: true,
-              type: String(nested.type || 'event'),
-              condition: String(nested.condition || 'runtime event'),
-              actions: safeNumber(nested.actions, 0),
-              cooldown: safeNumber(nested.cooldown, 0),
-              lastTriggered: new Date().toLocaleTimeString(),
-              hitCount: 1,
-            };
-            if (index < 0) {
-              return [nextHit, ...previous].slice(0, 20);
-            }
-            return previous.map((trigger, itemIndex) =>
-              itemIndex === index
-                ? {
-                    ...trigger,
-                    ...nextHit,
-                    hitCount: (trigger.hitCount || 0) + 1,
-                  }
-                : trigger,
-            );
-          },
-        );
+      wsService.onTriggerFired((data) => {
+        if (!isRunningRef.current) return;
+        const triggerId = String(data.triggerId || data.id || '');
+        const triggerName = String(data.name || data.triggerName || triggerId || '未知触发器');
+        setTriggers((previous) => {
+          const index = previous.findIndex(
+            (trigger) => trigger.id === triggerId || trigger.name === triggerName,
+          );
+          const nextHit = {
+            id: triggerId || triggerName,
+            name: triggerName,
+            enabled: true,
+            type: String(data.type || 'event'),
+            condition: String(data.condition || 'runtime event'),
+            actions: safeNumber(data.actions, 0),
+            cooldown: safeNumber(data.cooldown, 0),
+            lastTriggered: new Date().toLocaleTimeString(),
+            hitCount: 1,
+          };
+          if (index < 0) {
+            return [nextHit, ...previous].slice(0, 20);
+          }
+          return previous.map((trigger, itemIndex) =>
+            itemIndex === index
+              ? {
+                  ...trigger,
+                  ...nextHit,
+                  hitCount: (trigger.hitCount || 0) + 1,
+                }
+              : trigger,
+          );
+        });
         addEvent({
           type: 'trigger',
           level: 'processing',
@@ -277,9 +285,12 @@ const Monitor: React.FC = () => {
     unsubscribes.push(
       wsService.on('script', (message) => {
         const data = message.data || {};
+        const runtimeState = String(
+          (data.data as Record<string, unknown>)?.state || data.state || '',
+        );
         addEvent({
           type: 'script',
-          level: message.event === 'error' ? 'error' : 'default',
+          level: runtimeState === 'error' ? 'error' : 'default',
           message: String(data.message || data.scriptId || '脚本状态更新'),
         });
       }),
@@ -311,7 +322,9 @@ const Monitor: React.FC = () => {
   }, [agents.length, isRunning]);
 
   const handleToggleRun = () => {
-    setIsRunning(!isRunning);
+    const next = !isRunning;
+    isRunningRef.current = next;
+    setIsRunning(next);
   };
 
   return (
@@ -337,7 +350,7 @@ const Monitor: React.FC = () => {
         >
           {isRunning ? '运行中' : '已暂停'}
         </Button>,
-        <Button key="settings" icon={<SettingOutlined />}>
+        <Button key="settings" icon={<SettingOutlined />} onClick={() => history.push('/settings')}>
           设置
         </Button>,
       ]}
@@ -443,7 +456,9 @@ const Monitor: React.FC = () => {
               <List
                 size="small"
                 dataSource={triggers}
-                locale={{ emptyText: '等待 runtime trigger_fired 事件。远程 trigger.list API 尚未暴露。' }}
+                locale={{
+                  emptyText: '等待 runtime trigger_fired 事件。远程 trigger.list API 尚未暴露。',
+                }}
                 renderItem={(trigger) => (
                   <List.Item>
                     <List.Item.Meta
@@ -479,17 +494,26 @@ const Monitor: React.FC = () => {
           </Col>
         </Row>
 
-        <Card title="实时事件流" extra={<Button icon={<ReloadOutlined />}>刷新</Button>}>
+        <Card title="实时事件流" extra={<Tag>事件驱动</Tag>}>
           {events.length === 0 ? (
             <Text type="secondary">等待 Agent、触发器或脚本事件...</Text>
           ) : (
             <Timeline
               items={events.map((event) => ({
-                color: event.level === 'error' ? 'red' : event.level === 'warning' ? 'orange' : event.level === 'success' ? 'green' : 'blue',
+                color:
+                  event.level === 'error'
+                    ? 'red'
+                    : event.level === 'warning'
+                      ? 'orange'
+                      : event.level === 'success'
+                        ? 'green'
+                        : 'blue',
                 children: (
                   <Space direction="vertical" size={0}>
                     <Text strong>{event.message}</Text>
-                    <Text type="secondary">{event.time} · {event.type}</Text>
+                    <Text type="secondary">
+                      {event.time} · {event.type}
+                    </Text>
                   </Space>
                 ),
               }))}

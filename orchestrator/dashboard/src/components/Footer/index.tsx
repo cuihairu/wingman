@@ -1,6 +1,7 @@
 import { GithubOutlined } from '@ant-design/icons';
 import { DefaultFooter } from '@ant-design/pro-components';
 import React from 'react';
+import { BRAND } from '@/config/branding';
 
 const Footer: React.FC = () => {
   return (
@@ -8,13 +9,8 @@ const Footer: React.FC = () => {
       style={{
         background: 'none',
       }}
+      copyright={`${new Date().getFullYear()} ${BRAND.title}`}
       links={[
-        {
-          key: 'Ant Design Pro',
-          title: 'Ant Design Pro',
-          href: 'https://pro.ant.design',
-          blankTarget: true,
-        },
         {
           key: 'wingman',
           title: (
@@ -22,19 +18,13 @@ const Footer: React.FC = () => {
               <GithubOutlined style={{ marginRight: 6 }} /> Wingman
             </span>
           ),
-          href: 'https://github.com/cuihaitao/wingman',
+          href: 'https://github.com/cuihairu/wingman',
           blankTarget: true,
         },
         {
-          key: 'github',
-          title: <GithubOutlined />,
-          href: 'https://github.com/ant-design/ant-design-pro',
-          blankTarget: true,
-        },
-        {
-          key: 'Ant Design',
-          title: 'Ant Design',
-          href: 'https://ant.design',
+          key: 'docs',
+          title: '文档',
+          href: 'https://github.com/cuihairu/wingman/tree/main/docs',
           blankTarget: true,
         },
       ]}

@@ -1,7 +1,18 @@
 export default {
   'menu.welcome': '欢迎',
   'menu.login': '登录',
+  'menu.Agents': 'Agent 管理',
+  'menu.Workflows': '工作流',
+  'menu.Scripts': '脚本管理',
+  'menu.Monitor': '游戏监控',
   'menu.Account': '账号中心',
   'menu.Account.Profile': '个人中心',
+  'menu.Account.Messages': '站内消息',
+  'menu.Feedback': '支持反馈',
   'menu.Settings': '系统设置',
+  'menu.Admin': '系统管理',
+  'menu.Admin.Users': '用户管理',
+  'menu.Admin.Roles': '角色管理',
+  'menu.Admin.Login Logs': '登录日志',
+  'menu.Admin.Operation Logs': '操作日志',
 };

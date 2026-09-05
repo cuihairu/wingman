@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Table, Space, Input, Button, DatePicker, Tag } from 'antd';
 import { PageContainer } from '@ant-design/pro-components';
 import { listAudit, type AuditEvent, type ListAuditParams } from '@/services/api';
@@ -17,7 +17,7 @@ export default function LoginLogsPage() {
   const [osSel, setOsSel] = useState<string[]>([]);
   const [brSel, setBrSel] = useState<string[]>([]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const params: ListAuditParams = { page, size };
@@ -31,12 +31,14 @@ export default function LoginLogsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [actor, kinds, page, size, timeRange]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
+  // OS/Browser 过滤基于 UA 在客户端进行（后端不支持），仅作用于当前页与导出。
+  // 分页由后端完成：rows 已是当前页数据，这里不再做本地二次分页。
   const filtered = useMemo(() => {
     return rows.filter((event) => {
       const ua = String(event.meta?.ua || event.meta?.user_agent || '');
@@ -47,11 +49,6 @@ export default function LoginLogsPage() {
       return osMatched && browserMatched;
     });
   }, [brSel, osSel, rows]);
-
-  const paged = useMemo(() => {
-    const startIndex = (page - 1) * size;
-    return filtered.slice(startIndex, startIndex + size);
-  }, [filtered, page, size]);
 
   const exportCSV = () => {
     const data = filtered.map((event) => {
@@ -194,9 +191,13 @@ export default function LoginLogsPage() {
         <Table
           rowKey={(record) => record.hash || `${record.time}-${record.kind}-${record.actor}`}
           loading={loading}
-          dataSource={paged}
+          dataSource={filtered}
           columns={[
-            { title: 'Time', dataIndex: 'time', render: (value) => new Date(value).toLocaleString() },
+            {
+              title: 'Time',
+              dataIndex: 'time',
+              render: (value) => new Date(value).toLocaleString(),
+            },
             {
               title: 'Kind',
               dataIndex: 'kind',
@@ -208,7 +209,10 @@ export default function LoginLogsPage() {
             },
             { title: 'Actor', dataIndex: 'actor' },
             { title: 'IP', dataIndex: ['meta', 'ip'] },
-            { title: 'Region', render: (_value, record: any) => String(record?.meta?.ip_region || '-') },
+            {
+              title: 'Region',
+              render: (_value, record: any) => String(record?.meta?.ip_region || '-'),
+            },
             {
               title: 'Device',
               render: (_value, record: any) =>

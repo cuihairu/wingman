@@ -4,7 +4,7 @@ import { createSession, fetchCurrentUserGames } from '@/services/api';
 import { setScope } from '@/stores/scope';
 import { getMessage } from '@/utils/antdApp';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { LoginForm, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
+import { LoginForm, ProFormText } from '@ant-design/pro-components';
 import { FormattedMessage, Helmet, history, SelectLang, useIntl, useModel } from '@umijs/max';
 import { Alert, Modal } from 'antd';
 import { createStyles } from 'antd-style';
@@ -40,8 +40,7 @@ const useStyles = createStyles(({ token }) => ({
     flexDirection: 'column',
     height: '100vh',
     overflow: 'auto',
-    backgroundImage:
-      "url('https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/V-_oS6r-i7wAAAAAAAAAAAAAFl94AQBr')",
+    backgroundImage: 'linear-gradient(135deg, #1677ff14 0%, #722ed114 100%)',
     backgroundSize: '100% 100%',
   },
 }));
@@ -165,9 +164,6 @@ const Login: React.FC = () => {
           logo={<img alt="logo" src={BRAND.logo || '/logo.svg'} />}
           title={BRAND.title || 'Wingman'}
           subTitle={BRAND.subTitle || intl.formatMessage({ id: 'pages.layouts.userLayout.title' })}
-          initialValues={{
-            autoLogin: true,
-          }}
           actions={[]}
           onFinish={async (values) => {
             await handleSubmit(values as { username: string; password: string });
@@ -230,12 +226,10 @@ const Login: React.FC = () => {
           <div
             style={{
               marginBottom: 24,
+              textAlign: 'right',
             }}
           >
-            <ProFormCheckbox noStyle name="autoLogin">
-              <FormattedMessage id="pages.login.rememberMe" defaultMessage="自动登录" />
-            </ProFormCheckbox>
-            <a style={{ float: 'right' }} onClick={() => setForgotOpen(true)}>
+            <a onClick={() => setForgotOpen(true)}>
               <FormattedMessage id="pages.login.forgotPassword" defaultMessage="忘记密码" />
             </a>
           </div>

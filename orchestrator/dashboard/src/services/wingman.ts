@@ -200,10 +200,16 @@ function normalizeStepStatusValue(value: unknown): StepStatus {
 
 function stringList(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value.map(String).map((item) => item.trim()).filter(Boolean);
+    return value
+      .map(String)
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
   if (typeof value === 'string') {
-    return value.split(',').map((item) => item.trim()).filter(Boolean);
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
   return [];
 }
@@ -216,7 +222,10 @@ function normalizeTaskStep(value: unknown): TaskStep {
     script: String(item.script ?? item.Script ?? ''),
     workers: stringList(item.workers ?? item.Workers),
     dependsOn: stringList(item.dependsOn ?? item.DependsOn ?? item.depends_on),
-    timeoutSeconds: toNumber(item.timeoutSeconds ?? item.TimeoutSeconds ?? item.timeout_seconds, 300),
+    timeoutSeconds: toNumber(
+      item.timeoutSeconds ?? item.TimeoutSeconds ?? item.timeout_seconds,
+      300,
+    ),
     parameters: asRecord(item.parameters ?? item.Parameters),
   };
 }
@@ -308,12 +317,6 @@ export async function getAgents() {
   });
 }
 
-export async function getAgent(agentId: string) {
-  return request<ApiResponse<AgentInfo>>(`/api/agents/${agentId}`, {
-    method: 'GET',
-  });
-}
-
 export async function shutdownAgent(agentId: string) {
   return request<ApiResponse<void>>(`/api/agents/${agentId}/shutdown`, {
     method: 'POST',
@@ -372,7 +375,9 @@ export async function getWorkflowTemplates(): Promise<WorkflowTemplate[]> {
   return result.data ?? [];
 }
 
-export async function submitWorkflow(workflow: Omit<Workflow, 'id' | 'status' | 'createdTime' | 'startTime' | 'endTime'>) {
+export async function submitWorkflow(
+  workflow: Omit<Workflow, 'id' | 'status' | 'createdTime' | 'startTime' | 'endTime'>,
+) {
   const response = await request<ApiResponse<RawRecord>>('/api/workflows', {
     method: 'POST',
     data: workflow,
@@ -386,21 +391,6 @@ export async function cancelWorkflow(workflowId: string) {
   return request<ApiResponse<void>>(`/api/workflows/${workflowId}/cancel`, {
     method: 'POST',
   });
-}
-
-// 任务管理
-export async function getWorkerStatuses(workflowId: string) {
-  const response = await request<ApiResponse<unknown[]>>(`/api/workflows/${workflowId}/workers`, {
-    method: 'GET',
-  });
-  return normalizeApiResponse(response, (data) => asArray(data).map(normalizeWorkerStatus));
-}
-
-export async function getStepStatus(workflowId: string, stepId: string) {
-  const response = await request<ApiResponse<unknown>>(`/api/workflows/${workflowId}/steps/${stepId}/status`, {
-    method: 'GET',
-  });
-  return normalizeApiResponse(response, (data) => normalizeStepStatusValue(asRecord(data).status ?? data));
 }
 
 // ========== 脚本管理 ==========
@@ -429,7 +419,9 @@ export function normalizeScript(value: unknown): ScriptInfo {
   const name = String(item.name ?? item.Name ?? '');
   const path = String(item.path ?? item.Path ?? name);
   const status = String(item.status ?? item.Status ?? '').toLowerCase();
-  const isRunning = Boolean(item.isRunning ?? item.is_running ?? item.IsRunning ?? status === 'running');
+  const isRunning = Boolean(
+    item.isRunning ?? item.is_running ?? item.IsRunning ?? status === 'running',
+  );
 
   return {
     id: String(item.id ?? item.ID ?? path ?? name),
@@ -592,16 +584,12 @@ export function getStepStatusColor(status: StepStatus): string {
 export default {
   // Agent
   getAgents,
-  getAgent,
   shutdownAgent,
   // Workflow
   getWorkflows,
   getWorkflow,
   submitWorkflow,
   cancelWorkflow,
-  // Task
-  getWorkerStatuses,
-  getStepStatus,
   // Script
   getScripts,
   getScriptContent,

@@ -3,7 +3,6 @@ import type { RequestConfig } from '@umijs/max';
 import { history } from '@umijs/max';
 // Use App.useApp() instances (see app.tsx) to avoid AntD static message warnings
 import { getMessage, getNotification } from './utils/antdApp';
-import { normalizeApiUrl, API_V1_PREFIX } from './utils/api';
 
 // Defer message/notification to avoid calling during render (React 18 concurrent mode)
 function defer(fn: () => void) {
@@ -83,7 +82,7 @@ export const errorConfig: RequestConfig = {
     errorHandler: (error: any, opts: any) => {
       if (opts?.skipErrorHandler) throw error;
       const rawUrl: string | undefined = error?.response?.config?.url || error?.request?.url;
-      const url = normalizeApiUrl(rawUrl);
+      const url = rawUrl;
       const status: number | undefined = error?.response?.status;
       const payload = error?.response?.data as RestErrorPayload | undefined;
       const errorCode = String(payload?.error || '')
@@ -98,10 +97,7 @@ export const errorConfig: RequestConfig = {
       }
       // Silence expected 401s during boot/login for profile + messages endpoints
       if (status === 401 && url) {
-        if (
-          url.includes(`${API_V1_PREFIX}/profile`) ||
-          url.includes('/api/messages')
-        ) {
+        if (url.includes('/api/v1/profile') || url.includes('/api/messages')) {
           // 清除无效 token，静默跳转（不显示警告消息）
           try {
             localStorage.removeItem('token');
@@ -174,8 +170,9 @@ export const errorConfig: RequestConfig = {
       // HTTP header values must be ASCII per XHR spec; skip if contains non-ASCII to avoid runtime error
       if (isASCII(gid)) headers['X-Game-ID'] = gid as string;
       if (isASCII(env)) headers['X-Env'] = env as string;
-      const nextUrl = typeof config.url === 'string' ? normalizeApiUrl(config.url) : config.url;
-      return { ...config, headers, url: nextUrl ?? config.url };
+      // URL 不做改写：各 service 显式声明与 server 路由一致的前缀
+      // （/api/* 走 wingman 兼容组，/api/v1/* 走版本化组，见 server/main.go）。
+      return { ...config, headers };
     },
   ],
 };

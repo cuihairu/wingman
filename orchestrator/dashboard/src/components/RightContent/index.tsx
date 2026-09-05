@@ -22,7 +22,7 @@ export const Question = () => {
         height: 26,
       }}
       onClick={() => {
-        window.open('https://pro.ant.design/docs/getting-started');
+        window.open('https://github.com/cuihairu/wingman/tree/main/docs/guide/dashboard.md');
       }}
     >
       <QuestionCircleOutlined />

@@ -1,23 +1,10 @@
 /**
  * @name WebSocket Service
  * @description Real-time push notification service
+ *
+ * Server 消息协议为二级结构：type（agent/workflow/script/screenshot/...）+ event
+ * （connected/disconnected/trigger_fired/...）。见 server/pkg/websocket/hub.go。
  */
-
-// Message types
-export enum WSMessageType {
-  // System messages
-  Connected = 'connected',
-  Ping = 'ping',
-  Pong = 'pong',
-  // Agent events
-  AgentConnected = 'agent_connected',
-  AgentDisconnected = 'agent_disconnected',
-  AgentStatusChanged = 'agent_status_changed',
-  // Workflow events
-  WorkflowSubmitted = 'workflow_submitted',
-  WorkflowStatusChanged = 'workflow_status_changed',
-  WorkflowProgress = 'workflow_progress',
-}
 
 // WebSocket message
 export interface WSMessage {
@@ -43,6 +30,8 @@ class WebSocketService {
   private listeners: Map<string, Set<MessageListener>> = new Map();
   private connectionStateListeners: Set<ConnectionStateListener> = new Set();
   private isManualClose = false;
+  private lastActivityAt = 0;
+  private deadLinkThresholdMs = 75000;
 
   constructor() {
     // Build WebSocket URL with JWT token for authentication.
@@ -190,6 +179,18 @@ class WebSocketService {
     });
   }
 
+  // Trigger events: server 广播 type="agent" + event="trigger_fired"（listener.go），
+  // data 形如 { agentId, data: { ...runtime 事件载荷 } }。
+  onTriggerFired(listener: (data: Record<string, unknown>) => void): () => void {
+    return this.on('agent', (msg) => {
+      if (msg.event !== 'trigger_fired') return;
+      const outer = msg.data ?? {};
+      const nested =
+        outer.data && typeof outer.data === 'object' ? (outer.data as Record<string, unknown>) : {};
+      listener({ ...nested, agentId: outer.agentId });
+    });
+  }
+
   isConnected(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
@@ -206,6 +207,7 @@ class WebSocketService {
 
     this.ws.onmessage = (event) => {
       try {
+        this.lastActivityAt = Date.now();
         const message: WSMessage = JSON.parse(event.data);
         this.handleMessage(message);
       } catch (error) {
@@ -260,9 +262,10 @@ class WebSocketService {
   private getNestedEvent(message: WSMessage): { name?: string; data: Record<string, unknown> } {
     const outerData = message.data ?? {};
     const nestedEvent = typeof outerData.event === 'string' ? outerData.event : undefined;
-    const nestedData = outerData.data && typeof outerData.data === 'object'
-      ? (outerData.data as Record<string, unknown>)
-      : outerData;
+    const nestedData =
+      outerData.data && typeof outerData.data === 'object'
+        ? (outerData.data as Record<string, unknown>)
+        : outerData;
 
     return {
       name: message.event || nestedEvent,
@@ -291,7 +294,9 @@ class WebSocketService {
     }
 
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
-    console.log(`[WS] Reconnecting in ${delay}ms... (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+    console.log(
+      `[WS] Reconnecting in ${delay}ms... (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`,
+    );
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectAttempts++;
@@ -301,8 +306,21 @@ class WebSocketService {
 
   private startHeartbeat(): void {
     this.stopHeartbeat();
+    this.lastActivityAt = Date.now();
+    // Server 每 30s 主动 ping（hub.go ticker），客户端在 handleMessage 回 pong。
+    // 这里做死链检测：超过 2 个 ping 周期没有任何下行消息，视为半开连接，
+    // 主动 close 触发 onclose → scheduleReconnect。
     this.heartbeatTimer = setInterval(() => {
-      // Server-initiated ping, client responds with pong in handleMessage
+      const silentMs = Date.now() - this.lastActivityAt;
+      if (silentMs > this.deadLinkThresholdMs) {
+        console.warn(`[WS] No message for ${silentMs}ms, closing dead link to reconnect`);
+        this.stopHeartbeat();
+        try {
+          this.ws?.close();
+        } catch {
+          // ignore close errors
+        }
+      }
     }, 30000);
   }
 

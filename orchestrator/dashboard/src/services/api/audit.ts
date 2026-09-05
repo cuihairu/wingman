@@ -23,7 +23,7 @@ export interface ListAuditResponse {
   total: number;
 }
 
-export async function listAudit(params: ListAuditParams): Promise<ListAuditResponse> {
+export async function listAudit(params: ListAuditParams = {}): Promise<ListAuditResponse> {
   const search = new URLSearchParams();
   if (params.actor) search.set('actor', params.actor);
   if (params.kinds) search.set('kinds', params.kinds);

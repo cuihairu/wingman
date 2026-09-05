@@ -4,7 +4,6 @@ import {
   ApiOutlined,
   ArrowRightOutlined,
   BlockOutlined,
-  CheckCircleOutlined,
   DesktopOutlined,
   RocketOutlined,
   NodeIndexOutlined,
@@ -94,8 +93,8 @@ const Welcome: React.FC = () => {
                   type="secondary"
                   style={{ margin: 0, fontSize: 16, lineHeight: 1.8 }}
                 >
-                  分布式自动化控制平台，支持多 Agent 协同工作、可视化工作流编排、实时任务监控。
-                  通过 Lua 脚本实现灵活的游戏自动化操作。
+                  分布式自动化控制平台，支持多 Agent 协同工作、可视化工作流编排、实时任务监控。 通过
+                  Lua 脚本实现灵活的游戏自动化操作。
                 </Typography.Paragraph>
                 <Space wrap size={[12, 12]}>
                   <Button
@@ -124,15 +123,12 @@ const Welcome: React.FC = () => {
                 <Space direction="vertical" size={10} style={{ width: '100%' }}>
                   <Typography.Text strong>快速开始</Typography.Text>
                   <Space wrap size={[8, 8]}>
-                    <Tag icon={<CheckCircleOutlined />} color="success">
-                      Agent 已就绪
-                    </Tag>
-                    <Tag icon={<CheckCircleOutlined />} color="success">
-                      工作流引擎运行中
-                    </Tag>
+                    <Tag color="blue">Agent 接入</Tag>
+                    <Tag color="geekblue">脚本下发</Tag>
+                    <Tag color="purple">工作流编排</Tag>
                   </Space>
                   <Typography.Text type="secondary">
-                    系统正常运行，您可以开始创建工作流或管理 Agent 节点。
+                    前往「Agent 管理」确认节点在线状态，随后即可创建工作流或运行脚本。
                   </Typography.Text>
                 </Space>
               </Card>

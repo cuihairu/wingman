@@ -45,10 +45,6 @@ export async function listUsers(params: ListUsersParams = {}): Promise<ListUsers
   return fetchJSON<ListUsersResponse>(`/api/admin/users${suffix ? `?${suffix}` : ''}`);
 }
 
-export async function getUser(id: number): Promise<AdminUser> {
-  return fetchJSON<AdminUser>(`/api/admin/users/${id}`);
-}
-
 export async function createUser(payload: CreateUserPayload): Promise<{ user: AdminUser }> {
   return fetchJSON(`/api/admin/users`, {
     method: 'POST',
@@ -120,10 +116,6 @@ export async function listRoles(): Promise<ListRolesResponse> {
   return fetchJSON<ListRolesResponse>(`/api/admin/roles`);
 }
 
-export async function getRole(code: string): Promise<AdminRole> {
-  return fetchJSON<AdminRole>(`/api/admin/roles/${encodeURIComponent(code)}`);
-}
-
 export async function createRole(payload: CreateRolePayload): Promise<{ role: AdminRole }> {
   return fetchJSON(`/api/admin/roles`, {
     method: 'POST',
@@ -157,7 +149,9 @@ export interface ListPermissionCatalogResponse {
   total: number;
 }
 
-export async function listPermissionCatalog(category?: string): Promise<ListPermissionCatalogResponse> {
+export async function listPermissionCatalog(
+  category?: string,
+): Promise<ListPermissionCatalogResponse> {
   const suffix = category ? `?category=${encodeURIComponent(category)}` : '';
   return fetchJSON<ListPermissionCatalogResponse>(`/api/admin/permissions${suffix}`);
 }

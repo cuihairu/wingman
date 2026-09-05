@@ -1,11 +1,7 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-07-03
-> 状态: 收尾阶段（P0/P1 全部完成；Dashboard 和 Runtime GUI 使用教程已完成；剩余为中低优先级功能增强与工程收尾）
->
-> 📋 当前有一批未提交改动（65 改 + 34 新，+2208/−954）。改动分析见
-> [docs/pending-changes.md](./docs/pending-changes.md)；其中发现的问题已全部修复
-> （见下方「✅ 代码缺陷（已修复）」）。建议按 pending-changes.md 第 7 节的拆分策略提交。
+> 最后更新: 2026-09-04
+> 状态: 收尾阶段（P0/P1 全部完成；2026-09-04 Dashboard 审核发现前后端 API 前缀契约断裂等 8 类问题，已全部修复，见「Dashboard 审核与修复记录」）
 
 > ⚠️ 本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
@@ -131,9 +127,36 @@ dashboard → server → agent 请求/响应模型）。原裸 501 stub 已替�
 - [x] **Settings 页面**（独立 `pages/Settings/index.tsx`，读写 server 键值，admin 可编辑）
 - [x] Dashboard 截图实时推送（Monitor 监听 `screenshot` 事件，runtime 按需 capture——架构决策：不进 drain）
 
-### Tauri GUI（`apps/gui/`）收尾
+### Dashboard 审核与修复记录（2026-09-04）
 
-**已完成**：dashboard/scripts/screen/triggers/settings/logs 六页面 + IPC 连接重试 + 全部 Tauri 命令 + events 轮询（logs/trigger/script 事件已接）。
+对照声明逐文件审核 `orchestrator/dashboard/`（React/Umi）+ Go server 路由，发现并修复：
+
+**P0 — 前后端 API 前缀契约断裂（已修复）**
+
+- 前端 `src/utils/api.ts` 曾把所有 `/api/*` 全局改写为 `/api/v1/*`（requestErrorConfig 拦截器 + core/http 双生效点），而 server 把 agents/workflows/messages/feedback/audit/admin 路由注册在无 v1 前缀的 `/api` 组 → Agents、Workflows、站内消息、反馈、审计、Admin/Users、Admin/Roles 页面运行时全部 404
+- 修复：删除 `utils/api.ts` 重写层与全部调用点（service 路径字符串本就与 server 注册一致，server 零改动）；`POST /api/scripts/delete` 404 与 scripts/settings 写操作绕过细粒度权限码（落到 v1 admin-only）两个次生问题随重写层移除一并消除
+- 回归防线：新增 `tests/apiContracts.test.ts`（26 用例逐函数锁定 service → URL 映射，禁止前缀漂移）
+
+**P1/P2 — 事件与页面缺陷（已修复）**
+
+- [x] Monitor 触发器事件监听 `type='trigger'` 与 server 广播 `type='agent'+event='trigger_fired'` 不匹配 → 永远收不到；新增 `wsService.onTriggerFired` 接线 + `tests/websocket.test.ts` 单测
+- [x] `WSMessageType` 死枚举（与实际二级协议不符）删除；WS 心跳空转 → 实现死链检测（75s 无下行消息主动断开重连）
+- [x] LoginLogs 双重分页（后端分页结果再本地 slice → 第 2 页起空白；翻页不触发请求）→ 移除本地分页、useEffect 随 page/size 重新拉取；login-logs/operation-logs 路由补 `canAccessAdmin` 守卫
+- [x] Welcome 假状态 Tag（硬编码「系统正常运行」）→ 改中性功能导览；Monitor 设置按钮（无 onClick）→ 跳转 /settings；事件流「刷新」假按钮删除；「运行中/已暂停」假开关 → 真实控制本页事件记录；script 事件 error 级别判断修正
+- [x] Login「自动登录」无消费者 checkbox 删除；登录背景图脚手架外链 → 本地渐变
+
+**P3 — 工程卫生（已修复）**
+
+- [x] 脚手架残留清理：`mock/` 目录（823 行假数据）、`EXAMPLE_USERS_PAGE.tsx`、Footer/Question 的 ant design pro 外链（Footer 同时修正 GitHub 仓库地址 cuihaitao → cuihairu）
+- [x] 死代码清理：wingman.ts `getAgent`/`getWorkerStatuses`/`getStepStatus`、admin.ts `getUser`/`getRole`、auth.ts 兼容层 6 函数 + 2 死类型（保留 `createSession`/`fetchCurrentUserGames`）
+- [x] 死测试清理：`tests/workspace/` 6 个引用已删模块的测试；jest.config 移除 testPathIgnorePatterns 与指向不存在 `tests/umi/` 的 moduleNameMapper（css mock 改指 `tests/mocks/styleMock.js`）
+- [x] i18n 修复：zh-CN menu 补齐 11 个缺失菜单 key；zh-CN 权限模板 fallback 替换 workspaces/functions/ops 残留 key 为代码实际引用的 6 组（消除中英错位）。注：业务页面硬编码中文的全面 i18n 接线不在本次范围（8 套语言文件仅 4 个文件使用 intl，属独立任务）
+
+**验证基线**：`tsc --noEmit` 0 错误；jest 47/47（新增 apiContracts 26 例 + websocket 5 例）；eslint 仅剩脚手架 `service-worker.js` 历史 warning。
+
+**遗留边界（已知，不阻塞）**：server 端 `/api/v1/status`、`/api/v1/health`、`/api/v1/windows`、`POST /api/v1/screenshot`、`/api/debugger/*` 前端未消费（debugger 为有意直连模式）；Welcome 仍为静态页（不接后端状态）。
+
+### Tauri GUI（`apps/gui/`）收尾**已完成**：dashboard/scripts/screen/triggers/settings/logs 六页面 + IPC 连接重试 + 全部 Tauri 命令 + events 轮询（logs/trigger/script 事件已接）。
 （注：`editor/` 空占位目录已删除）
 
 - [x] `scripts/+page.svelte`：**启动器**定位（按路径加载/运行/停止 + 状态可视化），**不做内置编辑器**——脚本编辑统一用 VS Code（EmmyLua 补全 + wingman.d.lua + launch.json 调试，见 `docs/development-environment.md`）；`editor/` 空占位目录已删除
@@ -236,7 +259,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ---
 
-## 📊 各模块实际完成度（已校准 2026-06-20）
+## 📊 各模块实际完成度（已校准 2026-09-04，含 Dashboard 审核修复）
 
 | 模块 | 子功能 | 完成度 | 说明 |
 |------|--------|--------|------|
@@ -255,10 +278,10 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 | | 权限系统 | 95% | ✅ RBAC（模型+中间件+API+Dashboard 页面 + PermissionRequired 已接线 8 权限码）；可选：Swagger |
 | | Debugger | 100% | `/api/debugger/info` 直连模式契约 |
 | | 测试 | 70% | 75 个测试函数覆盖 rbac/workflow/handlers/hub/registry/middleware/debugger；vet 全清 |
-| **Dashboard (React)** | 页面框架 | 97% | 9 页面（+Settings）+ 路由 + dist 已构建 |
-| | 组件实现 | 90% | Agents/Scripts/Workflows/Admin/Login/Profile/Settings/Support 完成；Monitor 去 mock（WS 事件驱动 + 空态） |
-| | WebSocket | 90% | wsService + 自动重连 + agent/workflow 事件 |
-| | API 对接 | 92% | wingman.ts + admin.ts（用户/角色/权限/模板）全对接 |
+| **Dashboard (React)** | 页面框架 | 95% | 9 页面（+Settings）+ 路由 + admin 子页 access 守卫全覆盖 |
+| | 组件实现 | 92% | Agents/Scripts/Workflows/Admin/Login/Profile/Settings/Support 完成；Monitor WS 事件驱动 + 假 UI 全部清理 |
+| | WebSocket | 95% | wsService + 自动重连 + 死链检测 + agent/workflow/trigger/script/screenshot 事件全对接 |
+| | API 对接 | 95% | 前缀契约断裂已修复并加 26 例回归测试锁定；前后端路由一一对应（见「Dashboard 审核与修复记录」） |
 
 ---
 

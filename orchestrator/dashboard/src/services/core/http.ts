@@ -1,4 +1,3 @@
-import { apiUrl } from '@/utils/api';
 import { getScope } from '@/stores/scope';
 
 type JsonInit = RequestInit & {
@@ -45,7 +44,7 @@ function buildHeaders(
 }
 
 export async function fetchJSON<T = any>(path: string, init: JsonInit = {}): Promise<T> {
-  const url = apiUrl(path);
+  const url = path;
   const headers = buildHeaders(init.headers, {
     skipAuth: init.skipAuth,
     skipScopeHeaders: init.skipScopeHeaders,
@@ -73,7 +72,7 @@ export function createEventSource(
 ) {
   const origin =
     typeof window !== 'undefined' && window.location ? window.location.origin : 'http://localhost';
-  const urlObj = new URL(apiUrl(path), origin);
+  const urlObj = new URL(path, origin);
   const params = new URLSearchParams(urlObj.search || '');
   if (opts?.params) {
     Object.entries(opts.params).forEach(([k, v]) => {
@@ -95,7 +94,7 @@ export function buildDownloadUrl(
 ) {
   const origin =
     typeof window !== 'undefined' && window.location ? window.location.origin : 'http://localhost';
-  const urlObj = new URL(apiUrl(path), origin);
+  const urlObj = new URL(path, origin);
   if (params) {
     const search = new URLSearchParams(urlObj.search || '');
     Object.entries(params).forEach(([k, v]) => {
