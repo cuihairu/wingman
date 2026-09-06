@@ -166,7 +166,9 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
-        timeout-minutes: 15
+        # dashboard 镜像内执行 pnpm install + pnpm build，lockfile 变化时
+        # Docker 层缓存全部失效，自托管 runner 网络慢时可能超过 15 分钟
+        timeout-minutes: 45
         uses: docker/build-push-action@v5
         with:
           context: ./orchestrator/dashboard
