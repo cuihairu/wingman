@@ -45,19 +45,10 @@ if ($EnableTests) {
 if ($EnablePython) {
     $manifestFeatures += "python"
     $args += "-DWINGMAN_ENABLE_PYTHON=ON"
-    # 显式指定系统 Python 路径，绕过 vcpkg toolchain 对 FindPython3 的覆盖。
-    # vcpkg 的 python3 端口解析出的 python312.lib 不在链接器搜索路径中，
-    # 会导致 LNK1104；setup-python 提供的 Python 自带 libs\python312.lib。
-    $pythonRoot = $env:Python_ROOT_DIR
-    if (-not [string]::IsNullOrWhiteSpace($pythonRoot)) {
-        $pyVersion = & "$pythonRoot\python.exe" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
-        $args += @(
-            "-DPython3_EXECUTABLE=$pythonRoot\python.exe",
-            "-DPython3_INCLUDE_DIR=$pythonRoot\include",
-            "-DPython3_LIBRARY=$pythonRoot\libs\python$($pyVersion -replace '\.','').lib"
-        )
-        Write-Host "Using system Python at $pythonRoot (version $pyVersion)"
-    }
+    # 全部使用 vcpkg python3 端口：vcpkg toolchain 的 FindPython3 wrapper 会把
+    # include/lib/executable 定位到 vcpkg 安装树（static triplet，debug 库齐全，
+    # 且头文件无 #pragma comment(lib) 裸名自动链接）。不要传入系统/托管
+    # CPython 的路径，否则 release/debug 库跨源混用会触发 LNK1104 或 ABI 不一致。
 }
 
 if ($manifestFeatures.Count -gt 0) {

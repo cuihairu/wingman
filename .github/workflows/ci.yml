@@ -251,16 +251,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup Python (for CPython development headers/libs)
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-
-      - name: Set Python root for CMake
-        run: |
-          $pythonPath = (Get-Command python).Source | Split-Path -Parent
-          Write-Host "Python root: $pythonPath"
-          echo "Python_ROOT_DIR=$pythonPath" >> $env:GITHUB_ENV
+      # Python 引擎完全使用 vcpkg python3 端口（headers/libs 与 triplet 一致，
+      # debug 库齐全）。不要混入 setup-python 的 CPython：其 pyconfig.h 带
+      # #pragma comment(lib, "python312.lib") 裸名自动链接，且 debug 库缺失，
+      # 混用会导致 LNK1104 / ABI 不一致。
 
       - name: Cache vcpkg binaries
         uses: actions/cache@v5
