@@ -8,12 +8,12 @@ project(wingman_python LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 查找依赖
+# 查找依赖（Python3 必须先于 pybind11，让 pybind11 走 FindPython 新模式
+# 复用 Python3::Python，避免 FindPythonLibsNew 经 PATH 解析到 runner 预装
+# CPython 的 pyconfig.h 触发 #pragma comment(lib) 裸名自动链接 → LNK1104）
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 find_package(pybind11 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-
-# 查找 Python3
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
 message(STATUS "Found pybind11 for Python bindings")
 message(STATUS "Python3 include: ${Python3_INCLUDE_DIRS}")

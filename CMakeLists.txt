@@ -157,8 +157,12 @@ if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DEBUG AND (WINGMAN_BUILD_LUA OR WI
 endif()
 
 if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_ENABLE_PYTHON)
-    find_package(pybind11 CONFIG REQUIRED)
+    # 必须先找 Python3 再找 pybind11：pybind11 在 Python3_FOUND 时启用
+    # FindPython 新模式（复用 Python3::Python），否则回退 FindPythonLibsNew
+    # 经 PATH 找到 runner 预装 CPython，其官方 pyconfig.h 携带
+    # #pragma comment(lib, "python312.lib") 裸名自动链接，导致 LNK1104。
     find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+    find_package(pybind11 CONFIG REQUIRED)
     add_subdirectory(libs/python)
     add_compile_definitions(WINGMAN_ENABLE_PYTHON)
     message(STATUS "Python scripting engine enabled")
