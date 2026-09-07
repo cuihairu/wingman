@@ -25,6 +25,7 @@ fn main() {
             commands::connection::connect_ipc,
             commands::connection::disconnect_ipc,
             commands::connection::is_connected,
+            commands::connection::get_ipc_state,
             // 脚本管理
             commands::scripts::get_scripts,
             commands::scripts::start_script,

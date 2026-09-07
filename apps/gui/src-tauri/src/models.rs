@@ -57,15 +57,6 @@ pub struct ScreenshotInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TriggerInfo {
-    pub id: String,
-    pub name: String,
-    pub enabled: bool,
-    pub trigger_type: String,
-    pub last_triggered: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonitorInfo {
     pub id: i32,
     pub name: String,

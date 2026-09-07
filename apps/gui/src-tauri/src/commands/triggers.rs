@@ -1,27 +1,17 @@
-use crate::models::TriggerInfo;
 use crate::state::AppState;
 use serde_json::{json, Value};
 
+/// trigger.list 返回完整的触发器配置（condition/actions 等），
+/// 透传 runtime JSON 以便 GUI 编辑器还原全部字段。
 #[tauri::command]
-pub async fn get_triggers(
-    state: tauri::State<'_, AppState>,
-) -> Result<Vec<TriggerInfo>, String> {
+pub async fn get_triggers(state: tauri::State<'_, AppState>) -> Result<Vec<Value>, String> {
     let mut client = state.ipc_client.lock().await;
     let response = client.send("trigger.list", json!({})).await?;
 
     if let Some(success) = response["data"]["success"].as_bool() {
         if success {
             if let Some(triggers) = response["data"]["result"]["triggers"].as_array() {
-                return Ok(triggers
-                    .iter()
-                    .map(|t| TriggerInfo {
-                        id: t["id"].as_str().unwrap_or("").to_string(),
-                        name: t["name"].as_str().unwrap_or("").to_string(),
-                        enabled: t["enabled"].as_bool().unwrap_or(false),
-                        trigger_type: t["type"].as_str().unwrap_or("").to_string(),
-                        last_triggered: t["lastTriggered"].as_bool().unwrap_or(false),
-                    })
-                    .collect());
+                return Ok(triggers.clone());
             }
         }
     }

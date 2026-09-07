@@ -19,6 +19,9 @@ type RuntimeEvent = {
 
 function mapLevel(level: string | undefined): LogEntry['type'] {
 	switch ((level || '').toLowerCase()) {
+		case 'trace':
+		case 'debug':
+			return 'debug';
 		case 'err':
 		case 'error':
 		case 'critical':
@@ -95,7 +98,14 @@ export function createEventPoller() {
 		const invoke = (window as any).__TAURI_INVOKE__;
 		if (!invoke) return;
 		try {
-			const events = (await invoke('drain_events')) as RuntimeEvent[] | undefined;
+			const result = (await invoke('drain_events')) as {
+				events?: RuntimeEvent[];
+				dropped?: number;
+			} | undefined;
+			if (result && typeof result.dropped === 'number') {
+				logs.notifyDropped(result.dropped);
+			}
+			const events = result?.events;
 			if (Array.isArray(events)) {
 				for (const event of events) {
 					try {

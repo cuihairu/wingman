@@ -358,19 +358,23 @@ Runtime 不作为远程控制 server 被 Go server 反向拨入。
 
 **目标**: 类似 Chimpeeon 的可视化配置界面
 
-**状态**: 进行中 (2026-05)
+**状态**: 🟡 收尾中 (2026-09) — 核心交互全部落地
 
 **已完成**:
 - ✅ Tauri 2.0 框架集成
 - ✅ Rust backend 通过 local IPC 连接 runtime
 - ✅ IPC 方法路由 (script.start, script.stop, script.list, system.*)
 - ✅ 前端界面原型
+- ✅ IPC 连接状态管理（状态机 + 指数退避重连 + 连接诊断，2026-09）
+- ✅ 触发器可视化配置（截图拾取 + 全类型 + 值转换层，2026-09）
+- ✅ 屏幕预览面板（拖拽选区 + 真实取色 + 匹配高亮，2026-09）
+- ✅ 日志实时显示（来源标记 + 丢弃提示 + 智能滚动，2026-09）
 
-**待完成**:
-- ⏳ IPC 连接状态、断线重连、错误提示完善
-- ⏳ 触发器可视化配置
-- ⏳ 屏幕预览面板
-- ⏳ 日志实时显示
+**已完成**:
+- ✅ 日志实时显示（2026-09）：日志来源标记（GUI/Runtime 徽标 + 按来源筛选）；runtime EventBuffer 溢出丢弃提示（Rust 端透传 events.drain 的 dropped/remaining，累计丢弃时显示横幅）；settings.logLevel 联动入口过滤（debug 级别映射）；智能自动滚动（上滚暂停跟随 + 「N 条新日志」跳转按钮）；单条点击复制；导出含来源列
+- ✅ 屏幕预览面板（2026-09）：预览图直接交互——拖拽框选区域（同步 RegionPicker）+ 单击拾取真实像素颜色（离屏 canvas 读色，替代原假取色）+ 悬停跟随读数（屏幕绝对坐标 + hex + 放大镜）+ 坐标/颜色/区域一键复制 + 颜色匹配高亮（与 runtime Color::matches 同公式：欧氏距离 ≤ tolerance，品红叠加层 + 匹配计数）+「设为查找颜色」联动；修复副显示器时 overlay 错位（region 与捕获起点换算）
+- ✅ 触发器可视化配置（2026-09）：ScreenPickerModal 截图拾取组件（拖拽选区 + 放大镜取色，坐标换算到屏幕绝对坐标）；ColorPicker/RegionPicker 接通屏幕取色/框选；条件类型补全至 runtime 全部 11 种（窗口/进程/像素变化，分组展示）；动作类型补全至 10 种并按类型结构化编辑（坐标拾取/delay/路径等）+ 动作排序；GUI⇄runtime 值格式转换层（#rrggbb⇄0xRRGGBB、键名⇄VK 码、像素坐标⇄region）；修复 get_triggers 丢条件/动作、颜色值 runtime 无法解析两个缺陷
+- ✅ IPC 连接状态、断线重连、错误提示完善（2026-09）：GUI 端 IPC 链路状态机（disconnected/connecting/connected/reconnecting/error）+ 指数退避自动重连（1s→30s，可设置开关）+ 手动断开抑制自动重连 + TopBar 五态连接指示（tooltip 显示端点/错误/重试次数，可点击立即重试）+ Settings 连接诊断（实际端点/错误信息/重试按钮）+ Rust `get_ipc_state` 诊断命令
 
 ### 5.1 主界面布局
 ```

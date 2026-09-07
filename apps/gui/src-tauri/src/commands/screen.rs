@@ -11,14 +11,17 @@ pub async fn capture_screenshot(
     region: ScreenRegion,
     display_id: Option<i32>,
 ) -> Result<ScreenshotInfo, String> {
-    let mut payload = json!({
-        "region": {
+    let mut payload = json!({});
+    // A zero-sized region means "capture the whole monitor": omit the region
+    // field so the runtime falls back to the monitor bounds.
+    if region.width > 0 && region.height > 0 {
+        payload["region"] = json!({
             "x": region.x,
             "y": region.y,
             "width": region.width,
             "height": region.height,
-        }
-    });
+        });
+    }
     if let Some(id) = display_id {
         payload["displayId"] = json!(id);
     }

@@ -1,5 +1,13 @@
 use crate::state::AppState;
+use serde::Serialize;
 use std::time::SystemTime;
+
+/// 本地 IPC 链路诊断信息（供前端展示实际解析后的端点）。
+#[derive(Debug, Serialize)]
+pub struct IpcState {
+    pub connected: bool,
+    pub endpoint: String,
+}
 
 #[tauri::command]
 pub async fn connect_ipc(
@@ -28,6 +36,15 @@ pub async fn disconnect_ipc(state: tauri::State<'_, AppState>) -> Result<(), Str
 #[tauri::command]
 pub async fn is_connected(state: tauri::State<'_, AppState>) -> Result<bool, String> {
     Ok(state.ipc_client.lock().await.connected)
+}
+
+#[tauri::command]
+pub async fn get_ipc_state(state: tauri::State<'_, AppState>) -> Result<IpcState, String> {
+    let client = state.ipc_client.lock().await;
+    Ok(IpcState {
+        connected: client.connected,
+        endpoint: client.endpoint.clone(),
+    })
 }
 
 /// Validates that the endpoint name contains only safe characters.

@@ -7,6 +7,38 @@
 
 	let profileOpen = $state(false);
 
+	const ipcState = $derived($connection.ipc.state);
+
+	const statusText = $derived.by(() => {
+		switch ($connection.ipc.state) {
+			case 'connected': return '已连接';
+			case 'connecting': return '连接中...';
+			case 'reconnecting': return `重连中 (${$connection.ipc.attempts})`;
+			case 'error': return '连接错误';
+			default: return '未连接';
+		}
+	});
+
+	const statusTooltip = $derived.by(() => {
+		const ipc = $connection.ipc;
+		const parts = [`端点: ${$connection.ipcEndpoint}`];
+		if (ipc.state === 'reconnecting') parts.push(`第 ${ipc.attempts} 次重连（指数退避）`);
+		if (ipc.message) parts.push(ipc.message);
+		return parts.join('\n');
+	});
+
+	const canRetry = $derived(ipcState !== 'connected' && ipcState !== 'connecting');
+
+	async function handleRetry() {
+		if (!canRetry) return;
+		try {
+			await connection.retryNow();
+			logs.add('已重新连接到本地 runtime IPC', 'success');
+		} catch (error: any) {
+			logs.add(`重连失败: ${error}`, 'error');
+		}
+	}
+
 	async function handleRefresh() {
 		if ($connection.connected) {
 			await connection.refresh();
@@ -53,10 +85,21 @@
 
 <header class="top-bar">
 	<div class="top-bar-left">
-		<div class="connection-status">
-			<div class="status-dot" class:connected={$connection.connected} class:error={!$connection.connected}></div>
-			<span>{$connection.connected ? '已连接' : '未连接'}</span>
-		</div>
+		<button
+			type="button"
+			class="connection-status"
+			class:clickable={canRetry}
+			onclick={handleRetry}
+			title={statusTooltip}
+		>
+			<div
+				class="status-dot"
+				class:connected={ipcState === 'connected'}
+				class:pending={ipcState === 'connecting' || ipcState === 'reconnecting'}
+				class:error={ipcState === 'error'}
+			></div>
+			<span>{statusText}</span>
+		</button>
 		<span class="version-info" title={$connection.version}>{$connection.version}</span>
 		{#if $connection.remote}
 			<span class="remote-status remote-{$connection.remote.state}" title={$connection.remote.message}>
@@ -196,12 +239,24 @@
 		align-items: center;
 		gap: 8px;
 		font-size: 13px;
+		font-family: inherit;
 		min-height: 32px;
 		padding: 6px 10px;
 		background: var(--bg-tertiary);
 		border: 1px solid var(--border-color);
 		border-radius: 999px;
 		white-space: nowrap;
+		color: var(--text-primary);
+		cursor: default;
+		transition: border-color 0.2s;
+	}
+
+	.connection-status.clickable {
+		cursor: pointer;
+	}
+
+	.connection-status.clickable:hover {
+		border-color: var(--accent-blue);
 	}
 
 	.status-dot {
@@ -209,6 +264,7 @@
 		height: 8px;
 		border-radius: 50%;
 		background: var(--text-secondary);
+		flex-shrink: 0;
 	}
 
 	.status-dot.connected {
@@ -216,8 +272,19 @@
 		box-shadow: 0 0 8px rgba(63, 185, 80, 0.5);
 	}
 
+	.status-dot.pending {
+		background: var(--accent-yellow);
+		animation: status-pulse 1.2s ease-in-out infinite;
+	}
+
 	.status-dot.error {
 		background: var(--accent-red);
+		box-shadow: 0 0 8px rgba(248, 81, 73, 0.5);
+	}
+
+	@keyframes status-pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.35; }
 	}
 
 	.version-info {

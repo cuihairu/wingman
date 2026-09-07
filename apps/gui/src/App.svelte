@@ -22,7 +22,6 @@
 	router.init();
 
 	const invoke = (window as any).__TAURI_INVOKE__;
-	let reconnecting = false;
 
 	// runtime → GUI 事件轮询（日志/触发器/截图）
 	const eventPoller = createEventPoller();
@@ -49,57 +48,44 @@
 		}
 	}
 
-	async function reconnectOnce() {
-		if (reconnecting || !invoke || !$settings.autoReconnect) return;
-		reconnecting = true;
-		try {
-			await connection.connect($settings.ipcEndpoint);
-			await loadAllData();
-			await autoStartProfileScripts();
-			logs.add('已自动重连到本地 runtime IPC', 'success');
-		} catch {
-			// 等待下一轮心跳。
-		} finally {
-			reconnecting = false;
-		}
-	}
+	// 重连成功后自动重载数据并恢复自启脚本（初始连接与自动/手动重连共用）
+	connection.onReconnected(async () => {
+		await loadAllData();
+		await autoStartProfileScripts();
+	});
 
 	$effect(() => {
 		if (!invoke) {
 			// 开发模式：加载模拟数据
-			connection.setConnected(true);
-			connection.setVersion('wingman 0.1.0 (dev)');
+			void connection.connect();
 			scripts.loadDevData();
 			triggers.loadDevData();
 			profiles.loadDevData();
 			screen.loadDevData();
 			logs.add('开发模式已启动', 'info');
 		} else {
-			// 生产模式：自动连接
+			// 生产模式：自动连接；失败则进入指数退避自动重连
 			(async () => {
 				try {
 					await connection.connect($settings.ipcEndpoint);
 					logs.add('已自动连接到本地 runtime IPC', 'success');
-					await loadAllData();
-					await autoStartProfileScripts();
-				} catch {
-					logs.add('自动连接失败，请在设置中手动连接', 'warning');
+				} catch (error: any) {
+					logs.add(`自动连接失败: ${error}`, 'warning');
+					connection.scheduleReconnect();
 				}
 			})();
 		}
 	});
 
+	// 已连接时定时心跳：失败即标记断线并触发自动重连（store 内调度）
 	$effect(() => {
 		if (!invoke) return;
 		const interval = window.setInterval(async () => {
-			if ($connection.connected) {
-				const status = await connection.refresh();
-				if (!status) {
-					logs.add('runtime IPC 连接已断开', 'warning');
-				}
-				return;
+			if (!$connection.connected) return;
+			const status = await connection.refresh();
+			if (!status) {
+				logs.add(`与本地 runtime 的连接中断: ${$connection.ipc.message}`, 'warning');
 			}
-			await reconnectOnce();
 		}, 5000);
 		return () => window.clearInterval(interval);
 	});

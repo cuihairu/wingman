@@ -8,6 +8,19 @@
 	let showCreateDialog = $state(false);
 	let newProfileName = $state('');
 
+	const connectBusy = $derived(
+		$connection.ipc.state === 'connecting' || $connection.ipc.state === 'reconnecting'
+	);
+
+	const connectButtonText = $derived.by(() => {
+		switch ($connection.ipc.state) {
+			case 'connected': return '断开';
+			case 'connecting': return '连接中...';
+			case 'reconnecting': return `重连中 (${$connection.ipc.attempts})`;
+			default: return '连接';
+		}
+	});
+
 	async function handleConnect() {
 		try {
 			if ($connection.connected) {
@@ -19,6 +32,25 @@
 			}
 		} catch (error: any) {
 			logs.add('连接失败: ' + error, 'error');
+		}
+	}
+
+	async function handleRetryNow() {
+		try {
+			await connection.retryNow();
+			logs.add('已重新连接到本地 runtime IPC', 'success');
+		} catch (error: any) {
+			logs.add('重连失败: ' + error, 'error');
+		}
+	}
+
+	function connectStatusText(state: string): string {
+		switch (state) {
+			case 'connected': return '已连接';
+			case 'connecting': return '连接中';
+			case 'reconnecting': return '自动重连中';
+			case 'error': return '连接错误';
+			default: return '未连接';
 		}
 	}
 
@@ -129,10 +161,24 @@
 					value={$settings.ipcEndpoint}
 					onchange={(e) => settings.update({ ipcEndpoint: (e.target as HTMLInputElement).value })}
 				>
-				<button class="btn btn-primary" onclick={handleConnect}>
-					{$connection.connected ? '断开' : '连接'}
+				<button class="btn btn-primary" onclick={handleConnect} disabled={connectBusy}>
+					{connectButtonText}
 				</button>
+				{#if $connection.ipc.state === 'error' || $connection.ipc.state === 'reconnecting'}
+					<button class="btn" onclick={handleRetryNow}>立即重试</button>
+				{/if}
 			</div>
+			<div class="ipc-meta">
+				<span>当前状态: <strong class:ipc-ok={$connection.connected} class:ipc-bad={!$connection.connected}>{connectStatusText($connection.ipc.state)}</strong></span>
+				<span>实际端点: {$connection.ipcEndpoint}</span>
+				{#if $connection.ipc.state === 'reconnecting'}
+					<span>自动重连第 {$connection.ipc.attempts} 次（指数退避，最长 30s）</span>
+				{/if}
+			</div>
+			{#if $connection.ipc.message}
+				<div class="ipc-error" title={$connection.ipc.message}>{$connection.ipc.message}</div>
+			{/if}
+			<div class="empty-hint">断线后将按 1s → 2s → 4s ... 指数退避自动重连（可在下方开关），连接状态指示器可点击立即重试。</div>
 		</div>
 	</div>
 </div>
@@ -493,7 +539,32 @@
 
 	.form-input:focus { outline: none; border-color: var(--accent-blue); }
 
-	.connect-config { display: flex; gap: 12px; align-items: flex-end; }
+	.connect-config { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+
+	.ipc-meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 16px;
+		margin-top: 10px;
+		font-size: 12px;
+		color: var(--text-secondary);
+	}
+
+	.ipc-ok { color: var(--accent-green); font-weight: 500; }
+	.ipc-bad { color: var(--accent-red); font-weight: 500; }
+
+	.ipc-error {
+		margin-top: 8px;
+		padding: 8px 12px;
+		border: 1px solid rgba(248, 81, 73, 0.42);
+		border-radius: 6px;
+		background: rgba(248, 81, 73, 0.08);
+		color: var(--accent-red);
+		font-size: 12px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 
 	.checkbox-label {
 		display: flex;
