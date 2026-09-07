@@ -37,6 +37,59 @@ type Execution struct {
 	Steps     []models.WorkflowStep
 	StepState map[string]*models.StepStatus
 	cancel    context.CancelFunc
+
+	// mu 保护 StepState 中各步骤状态的并发读写：
+	// 调度 goroutine（execute/findReadySteps）与 HTTP 查询（GetStepStateSnapshot）
+	// 会与步骤执行 goroutine 的状态更新并发访问。
+	mu sync.RWMutex
+}
+
+// setStepState 在写锁下更新指定步骤的状态字段。
+func (exec *Execution) setStepState(stepID string, fn func(*models.StepStatus)) {
+	exec.mu.Lock()
+	defer exec.mu.Unlock()
+	if ss, ok := exec.StepState[stepID]; ok {
+		fn(ss)
+	}
+}
+
+// stepSnapshot 在读锁下返回指定步骤状态的值拷贝。
+func (exec *Execution) StepSnapshot(stepID string) (models.StepStatus, bool) {
+	exec.mu.RLock()
+	defer exec.mu.RUnlock()
+	ss, ok := exec.StepState[stepID]
+	if !ok {
+		return models.StepStatus{}, false
+	}
+	return *ss, true
+}
+
+// stepStatusIn 判断指定步骤状态是否命中给定集合（读锁）。
+func (exec *Execution) stepStatusIn(stepID string, statuses ...string) bool {
+	exec.mu.RLock()
+	defer exec.mu.RUnlock()
+	ss, ok := exec.StepState[stepID]
+	if !ok {
+		return false
+	}
+	for _, s := range statuses {
+		if ss.Status == s {
+			return true
+		}
+	}
+	return false
+}
+
+// anyStepStatus 判断是否存在处于指定状态的步骤（读锁）。
+func (exec *Execution) anyStepStatus(status string) bool {
+	exec.mu.RLock()
+	defer exec.mu.RUnlock()
+	for _, ss := range exec.StepState {
+		if ss.Status == status {
+			return true
+		}
+	}
+	return false
 }
 
 // NewEngine 创建工作流引擎
@@ -275,8 +328,7 @@ func (e *Engine) execute(ctx context.Context, exec *Execution) {
 				if !completed[step.ID] {
 					allDone = false
 					// 检查是否为失败步骤的下游
-					ss := exec.StepState[step.ID]
-					if ss != nil && ss.Status == "failed" {
+					if exec.stepStatusIn(step.ID, "failed") {
 						// 已标记失败，跳过
 						continue
 					}
@@ -311,11 +363,8 @@ func (e *Engine) execute(ctx context.Context, exec *Execution) {
 
 	// 确定最终状态
 	finalStatus := "completed"
-	for _, ss := range exec.StepState {
-		if ss.Status == "failed" {
-			finalStatus = "failed"
-			break
-		}
+	if exec.anyStepStatus("failed") {
+		finalStatus = "failed"
 	}
 
 	now := time.Now()
@@ -342,8 +391,7 @@ func (e *Engine) findReadySteps(exec *Execution, completed map[string]bool) []mo
 		if completed[step.ID] {
 			continue
 		}
-		ss := exec.StepState[step.ID]
-		if ss != nil && (ss.Status == "running" || ss.Status == "completed" || ss.Status == "failed") {
+		if exec.stepStatusIn(step.ID, "running", "completed", "failed") {
 			continue
 		}
 
@@ -354,12 +402,13 @@ func (e *Engine) findReadySteps(exec *Execution, completed map[string]bool) []mo
 				break
 			}
 			// 检查依赖步骤是否失败
-			if depSS, ok := exec.StepState[dep]; ok && depSS.Status == "failed" {
+			if exec.stepStatusIn(dep, "failed") {
 				// 依赖失败 → 跳过此步骤
-				e.db.Model(ss).Updates(map[string]any{"status": "skipped", "message": "dependency failed"})
-				if ss != nil {
+				e.db.Model(&models.StepStatus{}).Where("workflow_id = ? AND step_id = ?", exec.Workflow.ID, step.ID).
+					Updates(map[string]any{"status": "skipped", "message": "dependency failed"})
+				exec.setStepState(step.ID, func(ss *models.StepStatus) {
 					ss.Status = "skipped"
-				}
+				})
 				completed[step.ID] = true
 				allDepsDone = false
 				break
@@ -499,15 +548,17 @@ func (e *Engine) validateSteps(steps []models.WorkflowStep) error {
 
 // executeStep 执行单个步骤
 func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.WorkflowStep) error {
-	ss := exec.StepState[step.ID]
+	ss := exec.stepStateRef(step.ID)
 	if ss == nil {
 		return fmt.Errorf("step state not found: %s", step.ID)
 	}
 
 	// 标记为运行中
 	now := time.Now()
-	e.db.Model(ss).Updates(map[string]any{"status": "running", "start_time": now})
-	ss.Status = "running"
+	e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "running", "start_time": now})
+	exec.setStepState(step.ID, func(s *models.StepStatus) {
+		s.Status = "running"
+	})
 
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "running", "")
 
@@ -554,8 +605,10 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		// 进入新一轮前若已取消，标记 cancelled 并返回（区别于失败）
 		if err := ctx.Err(); err != nil {
-			e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
-			ss.Status = "cancelled"
+			e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "cancelled"})
+			exec.setStepState(step.ID, func(s *models.StepStatus) {
+				s.Status = "cancelled"
+			})
 			return err
 		}
 
@@ -568,23 +621,29 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 
 		// 执行期间被取消：不重试，标记 cancelled
 		if ctx.Err() != nil {
-			e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
-			ss.Status = "cancelled"
+			e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "cancelled"})
+			exec.setStepState(step.ID, func(s *models.StepStatus) {
+				s.Status = "cancelled"
+			})
 			return ctx.Err()
 		}
 
 		// 超时或脚本失败时尝试重试
 		if attempt < maxAttempts {
 			msg := fmt.Sprintf("attempt %d/%d failed: %s; retrying", attempt, maxAttempts, runErr.Error())
-			e.db.Model(ss).Updates(map[string]any{"message": msg})
-			ss.Message = msg
+			e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"message": msg})
+			exec.setStepState(step.ID, func(s *models.StepStatus) {
+				s.Message = msg
+			})
 			e.broadcastStepProgress(exec.Workflow.ID, step.ID, "retry", msg)
 			log.Printf("[WorkflowEngine] Step %s %s", step.ID, msg)
 
 			select {
 			case <-ctx.Done():
-				e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
-				ss.Status = "cancelled"
+				e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "cancelled"})
+				exec.setStepState(step.ID, func(s *models.StepStatus) {
+					s.Status = "cancelled"
+				})
 				return ctx.Err()
 			case <-time.After(backoff):
 			}
@@ -598,12 +657,29 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 
 	// 标记完成
 	endTime := time.Now()
-	e.db.Model(ss).Updates(map[string]any{"status": "completed", "end_time": endTime, "worker_id": workerID})
-	ss.Status = "completed"
-	ss.WorkerID = workerID
+	e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "completed", "end_time": endTime, "worker_id": workerID})
+	exec.setStepState(step.ID, func(s *models.StepStatus) {
+		s.Status = "completed"
+		s.WorkerID = workerID
+	})
 
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", "")
 	return nil
+}
+
+// stepStateRef 返回步骤状态的指针引用（仅用于该步骤执行 goroutine 内部的存在性检查；
+// 并发读写状态字段必须使用 setStepState / stepSnapshot）。
+func (exec *Execution) stepStateRef(stepID string) *models.StepStatus {
+	exec.mu.RLock()
+	defer exec.mu.RUnlock()
+	return exec.StepState[stepID]
+}
+
+// updateStepStatusRow 按 workflow/step 条件更新步骤状态行，避免 GORM 反射读取并发中的结构体。
+func (e *Engine) updateStepStatusRow(workflowID uint, stepID string, updates map[string]any) {
+	e.db.Model(&models.StepStatus{}).
+		Where("workflow_id = ? AND step_id = ?", workflowID, stepID).
+		Updates(updates)
 }
 
 func validateConditionStep(step models.WorkflowStep) error {
@@ -677,15 +753,19 @@ func (e *Engine) executeWaitStep(ctx context.Context, exec *Execution, step mode
 
 	select {
 	case <-ctx.Done():
-		e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
-		ss.Status = "cancelled"
+		e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "cancelled"})
+		exec.setStepState(step.ID, func(s *models.StepStatus) {
+			s.Status = "cancelled"
+		})
 		return ctx.Err()
 	case <-time.After(time.Duration(seconds) * time.Second):
 	}
 
 	endTime := time.Now()
-	e.db.Model(ss).Updates(map[string]any{"status": "completed", "end_time": endTime})
-	ss.Status = "completed"
+	e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "completed", "end_time": endTime})
+	exec.setStepState(step.ID, func(s *models.StepStatus) {
+		s.Status = "completed"
+	})
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", "")
 	return nil
 }
@@ -698,8 +778,10 @@ func (e *Engine) executeWaitStep(ctx context.Context, exec *Execution, step mode
 //   - expression: optional bool shortcut
 func (e *Engine) executeConditionStep(ctx context.Context, exec *Execution, step models.WorkflowStep, ss *models.StepStatus) error {
 	if err := ctx.Err(); err != nil {
-		e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
-		ss.Status = "cancelled"
+		e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "cancelled"})
+		exec.setStepState(step.ID, func(s *models.StepStatus) {
+			s.Status = "cancelled"
+		})
 		return err
 	}
 
@@ -715,9 +797,11 @@ func (e *Engine) executeConditionStep(ctx context.Context, exec *Execution, step
 	}
 
 	endTime := time.Now()
-	e.db.Model(ss).Updates(map[string]any{"status": "completed", "end_time": endTime, "message": message})
-	ss.Status = "completed"
-	ss.Message = message
+	e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "completed", "end_time": endTime, "message": message})
+	exec.setStepState(step.ID, func(s *models.StepStatus) {
+		s.Status = "completed"
+		s.Message = message
+	})
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", message)
 	return nil
 }
@@ -938,8 +1022,10 @@ func (e *Engine) executeScreenshotStep(ctx context.Context, exec *Execution, ste
 	var resp map[string]any
 	select {
 	case <-ctx.Done():
-		e.db.Model(ss).Updates(map[string]any{"status": "cancelled"})
-		ss.Status = "cancelled"
+		e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "cancelled"})
+		exec.setStepState(step.ID, func(s *models.StepStatus) {
+			s.Status = "cancelled"
+		})
 		return ctx.Err()
 	case <-time.After(timeout):
 		return e.failStep(ss, exec, step, fmt.Sprintf("screenshot step timed out after %v", timeout))
@@ -959,15 +1045,17 @@ func (e *Engine) executeScreenshotStep(ctx context.Context, exec *Execution, ste
 
 	message := screenshotMessage(payload)
 	endTime := time.Now()
-	e.db.Model(ss).Updates(map[string]any{
+	e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{
 		"status":    "completed",
 		"end_time":  endTime,
 		"worker_id": workerID,
 		"message":   message,
 	})
-	ss.Status = "completed"
-	ss.WorkerID = workerID
-	ss.Message = message
+	exec.setStepState(step.ID, func(s *models.StepStatus) {
+		s.Status = "completed"
+		s.WorkerID = workerID
+		s.Message = message
+	})
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", message)
 	return nil
 }
@@ -1046,9 +1134,11 @@ func toFloat(v any) (float64, bool) {
 // failStep 标记步骤失败
 func (e *Engine) failStep(ss *models.StepStatus, exec *Execution, step models.WorkflowStep, msg string) error {
 	endTime := time.Now()
-	e.db.Model(ss).Updates(map[string]any{"status": "failed", "end_time": endTime, "message": msg})
-	ss.Status = "failed"
-	ss.Message = msg
+	e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "failed", "end_time": endTime, "message": msg})
+	exec.setStepState(step.ID, func(s *models.StepStatus) {
+		s.Status = "failed"
+		s.Message = msg
+	})
 
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "failed", msg)
 

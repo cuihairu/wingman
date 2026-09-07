@@ -203,7 +203,7 @@ func (h *WorkflowHandler) HandleGetStepStatus(c *gin.Context) {
 	}
 
 	if execution, ok := h.engine.GetExecution(uint(id)); ok {
-		if state, ok := execution.StepState[stepID]; ok {
+		if state, ok := execution.StepSnapshot(stepID); ok {
 			status.Status = state.Status
 			status.Message = state.Message
 			status.WorkerID = state.WorkerID

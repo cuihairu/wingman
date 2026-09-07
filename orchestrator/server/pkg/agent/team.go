@@ -121,7 +121,7 @@ func (tm *TeamManager) JoinTeam(teamID, memberID, agentID string) error {
 				"teamId":    teamID,
 				"leaderId":  team.LeaderID,
 				"memberId":  memberID,
-				"members":   tm.getMemberList(team),
+				"members":   tm.getMemberListLocked(team),
 			})
 		} else {
 			// 通知其他成员有新成员加入
@@ -261,18 +261,21 @@ func (tm *TeamManager) CastVote(voteID, memberID, response string) error {
 	}
 
 	vote.mu.Lock()
-	defer vote.mu.Unlock()
 
 	if !vote.Active {
+		vote.mu.Unlock()
 		return fmt.Errorf("vote is not active")
 	}
 
 	if time.Now().After(vote.Deadline) {
 		vote.Active = false
+		vote.mu.Unlock()
 		return fmt.Errorf("vote has expired")
 	}
 
 	vote.Responses[memberID] = response
+	responseCount := len(vote.Responses)
+	vote.mu.Unlock()
 
 	log.Printf("[Team] Member %s cast vote for %s: %s", memberID, voteID, response)
 
@@ -286,8 +289,8 @@ func (tm *TeamManager) CastVote(voteID, memberID, response string) error {
 	memberCount := len(team.Members)
 	team.mu.RUnlock()
 
-	if len(vote.Responses) >= memberCount {
-		return tm.endVote(voteID)
+	if responseCount >= memberCount {
+		return tm.endVoteLocked(voteID)
 	}
 
 	return nil
@@ -297,7 +300,12 @@ func (tm *TeamManager) CastVote(voteID, memberID, response string) error {
 func (tm *TeamManager) endVote(voteID string) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
+	return tm.endVoteLocked(voteID)
+}
 
+// endVoteLocked 结束投票（调用方必须已持有 tm.mu）。
+// CastVote 等持锁路径必须使用此变体，避免重复加锁导致死锁。
+func (tm *TeamManager) endVoteLocked(voteID string) error {
 	vote, ok := tm.votes[voteID]
 	if !ok {
 		return fmt.Errorf("vote not found")
@@ -312,21 +320,21 @@ func (tm *TeamManager) endVote(voteID string) error {
 	vote.mu.Unlock()
 
 	// 更新团队状态
-	team, ok := tm.teams[vote.TeamID]
-	if ok {
+	var members map[string]string
+	if team, ok := tm.teams[vote.TeamID]; ok {
 		team.mu.Lock()
 		team.State = "idle"
 		team.UpdatedAt = time.Now()
 		team.mu.Unlock()
-	}
 
-	// 通知所有成员投票结果
-	team.mu.RLock()
-	members := make(map[string]string)
-	for k, v := range team.Members {
-		members[k] = v
+		// 通知所有成员投票结果
+		team.mu.RLock()
+		members = make(map[string]string)
+		for k, v := range team.Members {
+			members[k] = v
+		}
+		team.mu.RUnlock()
 	}
-	team.mu.RUnlock()
 
 	result := map[string]any{
 		"voteId":    voteID,
@@ -379,6 +387,12 @@ func (tm *TeamManager) getMemberList(team *TeamInfo) []string {
 	team.mu.RLock()
 	defer team.mu.RUnlock()
 
+	return tm.getMemberListLocked(team)
+}
+
+// getMemberListLocked 获取成员列表（调用方必须已持有 team.mu）。
+// JoinTeam 等持锁路径必须使用此变体，避免重复加锁导致死锁。
+func (tm *TeamManager) getMemberListLocked(team *TeamInfo) []string {
 	members := make([]string, 0, len(team.Members))
 	for memberID := range team.Members {
 		members = append(members, memberID)
@@ -392,7 +406,13 @@ func (tm *TeamManager) getMemberList(team *TeamInfo) []string {
 func (tm *TeamManager) SendMessageToAgent(agentID, msgType string, payload map[string]any) string {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
+	return tm.sendMessageToAgentLocked(agentID, msgType, payload)
+}
 
+// sendMessageToAgentLocked 在调用方已持有 tm.mu 时写入收件箱。
+// JoinTeam/LeaveTeam/CreateVote/endVote 等持锁路径必须使用此变体，
+// 避免经 sendToInbox → SendMessageToAgent 重复加锁导致死锁。
+func (tm *TeamManager) sendMessageToAgentLocked(agentID, msgType string, payload map[string]any) string {
 	msgID := fmt.Sprintf("msg_%d", tm.nextMsgID)
 	tm.nextMsgID++
 
@@ -416,9 +436,9 @@ func (tm *TeamManager) SendMessageToAgent(agentID, msgType string, payload map[s
 	return msgID
 }
 
-// sendToInbox 内部辅助函数
+// sendToInbox 内部辅助函数（调用方必须已持有 tm.mu）
 func (tm *TeamManager) sendToInbox(agentID string, data map[string]any) {
-	msgID := tm.SendMessageToAgent(agentID, data["type"].(string), data)
+	msgID := tm.sendMessageToAgentLocked(agentID, data["type"].(string), data)
 
 	// 添加 msgId 到数据中
 	data["msgId"] = msgID
@@ -511,6 +531,47 @@ func (tm *TeamManager) GetTeamInfo(teamID string) (map[string]any, error) {
 		"createdAt":  team.CreatedAt.UnixMilli(),
 		"updatedAt":  team.UpdatedAt.UnixMilli(),
 	}, nil
+}
+
+// GetMemberAgents 获取团队成员的 memberID -> agentID 映射
+func (tm *TeamManager) GetMemberAgents(teamID string) (map[string]string, error) {
+	tm.mu.RLock()
+	defer tm.mu.RUnlock()
+
+	team, ok := tm.teams[teamID]
+	if !ok {
+		return nil, fmt.Errorf("team not found")
+	}
+
+	team.mu.RLock()
+	defer team.mu.RUnlock()
+
+	agents := make(map[string]string, len(team.Members))
+	for memberID, agentID := range team.Members {
+		agents[memberID] = agentID
+	}
+	return agents, nil
+}
+
+// FindMemberByAgent 通过 agentID 反查团队中的 memberID
+func (tm *TeamManager) FindMemberByAgent(teamID, agentID string) (string, bool) {
+	tm.mu.RLock()
+	defer tm.mu.RUnlock()
+
+	team, ok := tm.teams[teamID]
+	if !ok {
+		return "", false
+	}
+
+	team.mu.RLock()
+	defer team.mu.RUnlock()
+
+	for memberID, aid := range team.Members {
+		if aid == agentID {
+			return memberID, true
+		}
+	}
+	return "", false
 }
 
 // GetVoteInfo 获取投票信息

@@ -10,6 +10,9 @@ type Store struct {
 	root string
 }
 
+// filepathRel 以变量形式间接引用 filepath.Rel，便于测试注入失败场景。
+var filepathRel = filepath.Rel
+
 func NewStore(root string) Store {
 	return Store{root: filepath.Clean(root)}
 }
@@ -31,7 +34,7 @@ func (s Store) Resolve(nameOrPath string) (string, error) {
 	fullPath := filepath.Join(s.root, cleaned)
 	fullPath = filepath.Clean(fullPath)
 
-	rel, err := filepath.Rel(s.root, fullPath)
+	rel, err := filepathRel(s.root, fullPath)
 	if err != nil {
 		return "", err
 	}

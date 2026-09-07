@@ -87,8 +87,9 @@ func (h *Hub) Run() {
 		case conn := <-h.register:
 			h.mu.Lock()
 			h.connections[conn.ID] = conn
+			total := len(h.connections)
 			h.mu.Unlock()
-			log.Printf("[WS] Connected: %s (total: %d)", conn.ID, len(h.connections))
+			log.Printf("[WS] Connected: %s (total: %d)", conn.ID, total)
 
 		case conn := <-h.unregister:
 			h.mu.Lock()
@@ -104,8 +105,9 @@ func (h *Hub) Run() {
 					}
 				}
 			}
+			total := len(h.connections)
 			h.mu.Unlock()
-			log.Printf("[WS] Disconnected: %s (total: %d)", conn.ID, len(h.connections))
+			log.Printf("[WS] Disconnected: %s (total: %d)", conn.ID, total)
 
 		case message := <-h.broadcast:
 			// Collect connections under read lock to avoid holding lock during sends
@@ -342,9 +344,13 @@ func (c *Connection) readPump() {
 	}
 }
 
+// pingInterval controls how often writePump sends WebSocket pings.
+// Kept as a variable so tests can shorten it.
+var pingInterval = 30 * time.Second
+
 // writePump 写入协程
 func (c *Connection) writePump() {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(pingInterval)
 	defer func() {
 		ticker.Stop()
 		c.Conn.Close()

@@ -88,9 +88,13 @@ func (rl *RateLimiter) RecordSuccess(clientID string) {
 	}
 }
 
+// cleanupInterval controls how often the background cleanup goroutine runs.
+// Kept as a variable so tests can shorten it.
+var cleanupInterval = 5 * time.Minute
+
 // cleanup removes old entries to prevent memory leaks
 func (rl *RateLimiter) cleanup() {
-	ticker := time.NewTicker(5 * time.Minute)
+	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 
 	for range ticker.C {

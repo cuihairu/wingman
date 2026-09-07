@@ -679,9 +679,14 @@ func (ac *agentConn) handleTeamLeave(msg map[string]any) {
 		agentID = ac.getAgentID()
 	}
 
-	// If memberId is empty, use agentID as memberId
+	// If memberId is empty, resolve it from the member -> agent mapping,
+	// falling back to using agentID directly (same-value mapping).
 	if memberID == "" {
-		memberID = agentID
+		if mid, found := ac.listener.teamMgr.FindMemberByAgent(teamID, agentID); found {
+			memberID = mid
+		} else {
+			memberID = agentID
+		}
 	}
 
 	if ac.listener.teamMgr != nil {
@@ -762,29 +767,24 @@ func (ac *agentConn) handleTeamBroadcast(msg map[string]any) {
 	log.Printf("[Team] Broadcast from %s in team %s: %v", senderMemberID, teamID, message)
 
 	if ac.listener.teamMgr != nil {
-		// Get team info to find all members
-		if teamInfo, err := ac.listener.teamMgr.GetTeamInfo(teamID); err == nil {
-			if members, ok := teamInfo["members"].([]string); ok {
-				// Send message to all members via inbox
-				for _, memberID := range members {
-					// Skip the sender
-					if memberID == senderMemberID {
-						continue
-					}
-
-					// Create broadcast message
-					broadcastMsg := map[string]any{
-						"type":     "team.broadcast_received",
-						"teamId":   teamID,
-						"senderId": senderMemberID,
-						"message":  message,
-					}
-
-					// Send via inbox (requires mapping memberId to agentId)
-					// For now, we use a simple mapping: memberId -> agentId (same value)
-					// In production, you'd maintain a proper memberId -> agentId mapping
-					ac.listener.teamMgr.SendMessageToAgent(memberID, "team.broadcast_received", broadcastMsg)
+		// Get member -> agent mapping to resolve inbox targets
+		if memberAgents, err := ac.listener.teamMgr.GetMemberAgents(teamID); err == nil {
+			// Send message to all members via inbox
+			for memberID, agentID := range memberAgents {
+				// Skip the sender
+				if memberID == senderMemberID {
+					continue
 				}
+
+				// Create broadcast message
+				broadcastMsg := map[string]any{
+					"type":     "team.broadcast_received",
+					"teamId":   teamID,
+					"senderId": senderMemberID,
+					"message":  message,
+				}
+
+				ac.listener.teamMgr.SendMessageToAgent(agentID, "team.broadcast_received", broadcastMsg)
 			}
 		}
 	}
