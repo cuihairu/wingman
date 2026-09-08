@@ -20,6 +20,9 @@ func setupTriggerRouter(t *testing.T, conn *handlerMockConn) *gin.Engine {
 	r := gin.New()
 	r.GET("/agents/:agentId/triggers", th.HandleList)
 	r.POST("/agents/:agentId/triggers/toggle", th.HandleToggle)
+	r.POST("/agents/:agentId/triggers", th.HandleCreate)
+	r.PUT("/agents/:agentId/triggers/:triggerId", th.HandleUpdate)
+	r.DELETE("/agents/:agentId/triggers/:triggerId", th.HandleRemove)
 	return r
 }
 
@@ -129,9 +132,10 @@ func TestTriggerToggleMissingTrigger(t *testing.T) {
 	}}}
 	r := setupTriggerRouter(t, conn)
 
+	// runtime 明确报告 not found → 404（而非笼统 502）
 	w := doJSON(r, "POST", "/agents/a1/triggers/toggle", map[string]any{"id": "99"})
-	if w.Code != http.StatusBadGateway {
-		t.Errorf("expected 502 for missing trigger, got %d", w.Code)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404 for missing trigger, got %d", w.Code)
 	}
 	if !strings.Contains(w.Body.String(), "Trigger not found") {
 		t.Errorf("unexpected error: %s", w.Body.String())
@@ -145,5 +149,130 @@ func TestTriggerToggleValidation(t *testing.T) {
 	w := doJSON(r, "POST", "/agents/a1/triggers/toggle", nil)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("missing id: expected 400, got %d", w.Code)
+	}
+}
+
+func TestTriggerCreateSuccess(t *testing.T) {
+	conn := &handlerMockConn{responses: []map[string]any{{
+		"success": true,
+		"data":    map[string]any{"id": "7"},
+	}}}
+	r := setupTriggerRouter(t, conn)
+
+	config := map[string]any{
+		"name":      "hp-watch",
+		"condition": map[string]any{"type": "ColorFound", "value": "#ff0000"},
+		"actions":   []any{map[string]any{"type": "RunScript", "value": "heal.lua"}},
+	}
+	w := doJSON(r, "POST", "/agents/a1/triggers", config)
+	if w.Code != http.StatusOK {
+		t.Fatalf("create: %d %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Data struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"data"`
+	}
+	readJSON(t, w.Body.Bytes(), &resp)
+	if resp.Data.ID != "7" || resp.Data.Name != "hp-watch" {
+		t.Errorf("unexpected create response: %+v", resp.Data)
+	}
+
+	// 命令应为 trigger.add 且 config 原样透传
+	cmds := conn.dispatchedCommands()
+	if len(cmds) != 1 || cmds[0].Method != "trigger.add" {
+		t.Fatalf("expected trigger.add command, got %+v", cmds)
+	}
+	cfg, _ := cmds[0].Data["config"].(map[string]any)
+	if cfg["name"] != "hp-watch" {
+		t.Errorf("config should pass through, got %+v", cmds[0].Data)
+	}
+}
+
+func TestTriggerCreateValidation(t *testing.T) {
+	r := setupTriggerRouter(t, &handlerMockConn{})
+
+	// 空 body → 400
+	w := doJSON(r, "POST", "/agents/a1/triggers", nil)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("empty body: expected 400, got %d", w.Code)
+	}
+	// 缺 name → 400
+	w = doJSON(r, "POST", "/agents/a1/triggers", map[string]any{"cooldown": 100})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("missing name: expected 400, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "trigger name is required") {
+		t.Errorf("unexpected error: %s", w.Body.String())
+	}
+}
+
+func TestTriggerUpdateSuccess(t *testing.T) {
+	conn := &handlerMockConn{responses: []map[string]any{{
+		"success": true,
+	}}}
+	r := setupTriggerRouter(t, conn)
+
+	w := doJSON(r, "PUT", "/agents/a1/triggers/3", map[string]any{"cooldown": 5000})
+	if w.Code != http.StatusOK {
+		t.Fatalf("update: %d %s", w.Code, w.Body.String())
+	}
+
+	cmds := conn.dispatchedCommands()
+	if len(cmds) != 1 || cmds[0].Method != "trigger.update" {
+		t.Fatalf("expected trigger.update command, got %+v", cmds)
+	}
+	if cmds[0].Data["id"] != "3" {
+		t.Errorf("update should carry id=3, got %+v", cmds[0].Data)
+	}
+	cfg, _ := cmds[0].Data["config"].(map[string]any)
+	if cooldown, _ := cfg["cooldown"].(float64); cooldown != 5000 {
+		t.Errorf("config should pass through, got %+v", cmds[0].Data)
+	}
+}
+
+func TestTriggerUpdateValidationAndNotFound(t *testing.T) {
+	// 非数字 id → 400（避免 runtime std::stoull 抛异常）
+	r := setupTriggerRouter(t, &handlerMockConn{})
+	if w := doJSON(r, "PUT", "/agents/a1/triggers/abc", map[string]any{"name": "x"}); w.Code != http.StatusBadRequest {
+		t.Errorf("invalid id: expected 400, got %d", w.Code)
+	}
+
+	// runtime 报 not found → 404
+	conn := &handlerMockConn{responses: []map[string]any{{
+		"success": false,
+		"error":   "Trigger not found",
+	}}}
+	r = setupTriggerRouter(t, conn)
+	if w := doJSON(r, "PUT", "/agents/a1/triggers/99", map[string]any{"name": "x"}); w.Code != http.StatusNotFound {
+		t.Errorf("missing trigger: expected 404, got %d", w.Code)
+	}
+}
+
+func TestTriggerRemoveSuccess(t *testing.T) {
+	conn := &handlerMockConn{responses: []map[string]any{{
+		"success": true,
+	}}}
+	r := setupTriggerRouter(t, conn)
+
+	w := doJSON(r, "DELETE", "/agents/a1/triggers/3", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("remove: %d %s", w.Code, w.Body.String())
+	}
+
+	cmds := conn.dispatchedCommands()
+	if len(cmds) != 1 || cmds[0].Method != "trigger.remove" {
+		t.Fatalf("expected trigger.remove command, got %+v", cmds)
+	}
+	if cmds[0].Data["id"] != "3" {
+		t.Errorf("remove should carry id=3, got %+v", cmds[0].Data)
+	}
+}
+
+func TestTriggerRemoveInvalidID(t *testing.T) {
+	r := setupTriggerRouter(t, &handlerMockConn{})
+	if w := doJSON(r, "DELETE", "/agents/a1/triggers/not-a-number", nil); w.Code != http.StatusBadRequest {
+		t.Errorf("invalid id: expected 400, got %d", w.Code)
 	}
 }

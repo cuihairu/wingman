@@ -213,6 +213,9 @@ func run() error {
 			agentsMgmt.POST("/agents/:agentId/shutdown", agentHandler.HandleShutdown)
 			agentsMgmt.PUT("/agents/:agentId/tags", agentHandler.HandleSetTags)
 			agentsMgmt.POST("/agents/:agentId/triggers/toggle", triggerHandler.HandleToggle)
+			agentsMgmt.POST("/agents/:agentId/triggers", triggerHandler.HandleCreate)
+			agentsMgmt.PUT("/agents/:agentId/triggers/:triggerId", triggerHandler.HandleUpdate)
+			agentsMgmt.DELETE("/agents/:agentId/triggers/:triggerId", triggerHandler.HandleRemove)
 		}
 
 		// workflows:run

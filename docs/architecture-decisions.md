@@ -164,9 +164,16 @@ The dispatcher must not depend on WebSocket, HTTP, or browser concepts.
 both the local IPC dispatcher and the runtime's remote dispatcher. The `Agent` owns a
 single shared `TriggerManager` (passed to `LocalIpcServer`), so the Tauri UI and the
 Go orchestrator see the same trigger set. `Agent::handleRemoteCommand` forwards any
-`trigger.*` command through the shared RPC dispatcher; the Go server exposes
-`GET /api/agents/:agentId/triggers` and `POST /api/agents/:agentId/triggers/toggle`
-(agents:manage) to the dashboard. No new transport or listener is introduced.
+`trigger.*` command through the shared RPC dispatcher; the Go server exposes the
+full trigger management surface to the dashboard, all under `agents:manage`:
+
+- `GET /api/agents/:agentId/triggers` (read-only, any authenticated user)
+- `POST /api/agents/:agentId/triggers/toggle`
+- `POST /api/agents/:agentId/triggers` → `trigger.add`
+- `PUT /api/agents/:agentId/triggers/:triggerId` → `trigger.update`
+- `DELETE /api/agents/:agentId/triggers/:triggerId` → `trigger.remove`
+
+No new transport or listener is introduced.
 
 ## Display Selection
 

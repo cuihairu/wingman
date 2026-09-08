@@ -432,6 +432,65 @@ export async function toggleAgentTrigger(agentId: string, triggerId: string) {
   );
 }
 
+// AgentTriggerConfigInput 触发器配置输入（runtime TriggerConfig 的可编辑子集）
+export interface AgentTriggerConfigInput {
+  name: string;
+  enabled?: boolean;
+  oneShot?: boolean;
+  cooldown?: number;
+  condition?: {
+    type?: string;
+    value?: string;
+    tolerance?: number;
+    interval?: number;
+    enabled?: boolean;
+    region?: { x: number; y: number; width: number; height: number };
+  };
+  actions?: Array<{
+    type?: string;
+    value?: string;
+    x?: number;
+    y?: number;
+    delay?: number;
+  }>;
+}
+
+// createAgentTrigger 在指定 agent 上新增触发器（需 agents:manage）
+export async function createAgentTrigger(agentId: string, config: AgentTriggerConfigInput) {
+  return request<ApiResponse<{ id: string; name: string }>>(
+    `/api/agents/${agentId}/triggers`,
+    {
+      method: 'POST',
+      data: config,
+    },
+  );
+}
+
+// updateAgentTrigger 更新触发器配置（部分字段，需 agents:manage）
+export async function updateAgentTrigger(
+  agentId: string,
+  triggerId: string,
+  config: AgentTriggerConfigInput,
+) {
+  return request<ApiResponse<{ id: string }>>(
+    `/api/agents/${agentId}/triggers/${triggerId}`,
+    {
+      method: 'PUT',
+      data: config,
+    },
+  );
+}
+
+// removeAgentTrigger 删除触发器（需 agents:manage）
+export async function removeAgentTrigger(agentId: string, triggerId: string) {
+  return request<ApiResponse<{ id: string }>>(
+    `/api/agents/${agentId}/triggers/${triggerId}`,
+    {
+      method: 'DELETE',
+    },
+  );
+}
+
 // 工作流管理
 export async function getWorkflows() {
   const response = await request<ApiResponse<unknown[]>>('/api/workflows', {

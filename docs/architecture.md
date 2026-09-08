@@ -117,8 +117,10 @@ Runtime 远程模式和本地单机 UI 是两条不同控制路径。
 
 触发器命令（`trigger.*`）复用同一套 RPC handler：runtime 的 `Agent` 持有共享
 `TriggerManager`，本地 IPC dispatcher 与远程 dispatcher 都注册 `trigger.*`；
-Go server 经 `/api/agents/:agentId/triggers`（读）与 `/triggers/toggle`
-（agents:manage）透传给 Dashboard（见 architecture-decisions.md 的 Dispatcher Reuse）。
+Go server 经 `/api/agents/:agentId/triggers`（读，登录即可）与 `/triggers/toggle`、
+`POST /triggers`（新增）、`PUT /triggers/:triggerId`（更新）、
+`DELETE /triggers/:triggerId`（删除）（均需 agents:manage）透传给 Dashboard
+（见 architecture-decisions.md 的 Dispatcher Reuse）。
 
 ## Transport 层
 

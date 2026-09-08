@@ -584,7 +584,7 @@ local wingman = require('wingman')
 
 | 优先级 | 任务 | 预计时间 | 状态 |
 |--------|------|----------|------|
-| P1 | Dashboard Monitor triggers 接真实 API（需扩 agent 协议） | 1周 | 🚧 进行中 |
+| P1 | Dashboard Monitor triggers 接真实 API（需扩 agent 协议） | 1周 | ✅ list/toggle + add/update/remove CRUD 全链路（runtime Dispatcher Reuse，agents:manage） |
 | P2 | 跨平台运行时验证（macOS/Linux，需真机） | — | ⬜ 待验证 |
 | P2 | Swagger/OpenAPI 文档 | — | ⬜ 未开始 |
 | P2 | 自动发布（tag→release）+ 打包分发 | — | ✅ `v*` tag 推送自动发布：CHANGELOG 提取 notes → draft → 三平台构建上传 → SHA256SUMS → publish（release.yml） |

@@ -28,6 +28,13 @@ type handlerMockConn struct {
 	errs      []error
 	calls     int
 	delay     time.Duration
+	commands  []handlerMockCommand
+}
+
+// handlerMockCommand 记录一次下发的命令（method + payload），供测试断言透传内容
+type handlerMockCommand struct {
+	Method string
+	Data   map[string]any
 }
 
 func (m *handlerMockConn) next() (map[string]any, error) {
@@ -49,16 +56,33 @@ func (m *handlerMockConn) next() (map[string]any, error) {
 	return resp, err
 }
 
+func (m *handlerMockConn) record(method string, data map[string]any) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.commands = append(m.commands, handlerMockCommand{Method: method, Data: data})
+}
+
 func (m *handlerMockConn) SendCommand(method string, data map[string]any) (map[string]any, error) {
+	m.record(method, data)
 	return m.next()
 }
 func (m *handlerMockConn) SendCommandWithTimeout(method string, data map[string]any, timeout time.Duration) (map[string]any, error) {
+	m.record(method, data)
 	return m.next()
 }
 func (m *handlerMockConn) callCount() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.calls
+}
+
+// dispatchedCommands 返回已记录的命令快照
+func (m *handlerMockConn) dispatchedCommands() []handlerMockCommand {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]handlerMockCommand, len(m.commands))
+	copy(out, m.commands)
+	return out
 }
 
 func newDB(t *testing.T) *gorm.DB {

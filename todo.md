@@ -123,7 +123,7 @@ dashboard → server → agent 请求/响应模型）。原裸 501 stub 已替�
 - ✅ User/Login、Profile（7 tab，最完整）
 
 **待完善**：
-- [x] **Monitor 页面**（`Monitor/index.tsx`）：mock 已移除（trigger 列表改为 WS 事件驱动上限 20，无 agent 时空态 + Alert）；远程 `trigger.list` API 未暴露（设计性增强，非阻塞）
+- [x] **Monitor 页面**（`Monitor/index.tsx`）：mock 已移除（trigger 列表改为 WS 事件驱动上限 20，无 agent 时空态 + Alert）；远程 `trigger.list` API 已暴露并接入；触发器 CRUD（新增/编辑/删除表单，经 `POST/PUT/DELETE /api/agents/:id/triggers`，agents:manage）
 - [x] **Settings 页面**（独立 `pages/Settings/index.tsx`，读写 server 键值，admin 可编辑）
 - [x] Dashboard 截图实时推送（Monitor 监听 `screenshot` 事件，runtime 按需 capture——架构决策：不进 drain）
 

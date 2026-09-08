@@ -551,6 +551,137 @@ paths:
       summary: Agent 触发器列表
       tags:
       - agents
+    post:
+      consumes:
+      - application/json
+      description: 经 agent 通道下发 trigger.add（Dispatcher Reuse，配置透传 runtime TriggerManager）；需要
+        agents:manage 权限
+      parameters:
+      - description: Agent ID
+        in: path
+        name: agentId
+        required: true
+        type: string
+      - description: 触发器配置
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 新增 Agent 触发器
+      tags:
+      - agents
+  /agents/{agentId}/triggers/{triggerId}:
+    delete:
+      description: 经 agent 通道下发 trigger.remove；需要 agents:manage 权限
+      parameters:
+      - description: Agent ID
+        in: path
+        name: agentId
+        required: true
+        type: string
+      - description: 触发器 ID（数字）
+        in: path
+        name: triggerId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 删除 Agent 触发器
+      tags:
+      - agents
+    put:
+      consumes:
+      - application/json
+      description: 经 agent 通道下发 trigger.update（部分字段更新，缺省保持原值）；需要 agents:manage 权限
+      parameters:
+      - description: Agent ID
+        in: path
+        name: agentId
+        required: true
+        type: string
+      - description: 触发器 ID（数字）
+        in: path
+        name: triggerId
+        required: true
+        type: string
+      - description: 触发器配置（部分字段）
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 更新 Agent 触发器
+      tags:
+      - agents
   /agents/{agentId}/triggers/toggle:
     post:
       consumes:

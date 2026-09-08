@@ -47,7 +47,6 @@ func TestTriggerListAndToggleE2E(t *testing.T) {
 		return map[string]any{"success": true}
 	})
 	env.waitForAgentStatus(t, admin, "it-trig-agent", "online")
-
 	// 1) 列表：命令到达 runtime，响应透传给 Dashboard
 	res := env.do(t, "GET", "/api/agents/it-trig-agent/triggers", admin, nil)
 	if res.Status != http.StatusOK {
@@ -130,4 +129,126 @@ func TestTriggerListAndToggleE2E(t *testing.T) {
 		nested, _ := d["data"].(map[string]any)
 		return nested != nil && nested["name"] == "hp-watch"
 	})
+}
+
+// TestTriggerCrudE2E 覆盖触发器管理链路：
+// POST /agents/:id/triggers → trigger.add（config 原样到达 runtime，返回新 id）；
+// PUT /agents/:id/triggers/:triggerId → trigger.update（带 id+config）；
+// DELETE → trigger.remove（带 id）；runtime 报 not found → 404；
+// RBAC：viewer 无 agents:manage 不能写；非法 id → 400。
+func TestTriggerCrudE2E(t *testing.T) {
+	env := newTestEnv(t)
+	admin := env.login(t, "admin")
+	viewer := env.login(t, "viewer")
+
+	var updateConfig, addConfig map[string]any
+	var updateID, removeID string
+	a := newSimAgent(t, env.agentAddr, "it-trig-crud", "crud-host", func(method string, data map[string]any) map[string]any {
+		switch method {
+		case "trigger.add":
+			addConfig, _ = data["config"].(map[string]any)
+			return map[string]any{"success": true, "data": map[string]any{"id": "42"}}
+		case "trigger.update":
+			updateID, _ = data["id"].(string)
+			updateConfig, _ = data["config"].(map[string]any)
+			return map[string]any{"success": true}
+		case "trigger.remove":
+			removeID, _ = data["id"].(string)
+			return map[string]any{"success": true}
+		case "trigger.update.missing":
+			return map[string]any{"success": false, "error": "Trigger not found"}
+		}
+		return map[string]any{"success": true}
+	})
+	env.waitForAgentStatus(t, admin, "it-trig-crud", "online")
+
+	// 1) 新增：config 原样到达 runtime，返回 runtime 分配的 id
+	config := map[string]any{
+		"name":      "boss-alert",
+		"cooldown":  5000,
+		"condition": map[string]any{"type": "ImageFound", "value": "boss.png"},
+		"actions":   []any{map[string]any{"type": "Click", "x": 100, "y": 200}},
+	}
+	res := env.do(t, "POST", "/api/agents/it-trig-crud/triggers", admin, config)
+	if res.Status != http.StatusOK {
+		t.Fatalf("create: %d %s", res.Status, res.Body)
+	}
+	var createResp struct {
+		Data struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(res.Body, &createResp); err != nil {
+		t.Fatalf("decode create: %v", err)
+	}
+	if createResp.Data.ID != "42" {
+		t.Errorf("create should return runtime id 42, got %s", createResp.Data.ID)
+	}
+	addCmds := a.waitForCommands(t, "trigger.add", 1, 3*time.Second)
+	if addCmds[0].Data["config"] == nil {
+		t.Errorf("trigger.add should carry config, got %+v", addCmds[0].Data)
+	}
+	if addConfig["name"] != "boss-alert" {
+		t.Errorf("config should reach runtime intact, got %+v", addConfig)
+	}
+
+	// 2) 更新：命令带 id + config
+	res = env.do(t, "PUT", "/api/agents/it-trig-crud/triggers/42", admin, map[string]any{"cooldown": 9000})
+	if res.Status != http.StatusOK {
+		t.Fatalf("update: %d %s", res.Status, res.Body)
+	}
+	updCmds := a.waitForCommands(t, "trigger.update", 1, 3*time.Second)
+	if updCmds[0].Data["id"] != "42" {
+		t.Errorf("trigger.update should carry id=42, got %+v", updCmds[0].Data)
+	}
+	if cooldown, _ := updateConfig["cooldown"].(float64); cooldown != 9000 {
+		t.Errorf("update config should reach runtime, got %+v", updateConfig)
+	}
+	_ = updateID
+
+	// 3) 删除：命令带 id
+	res = env.do(t, "DELETE", "/api/agents/it-trig-crud/triggers/42", admin, nil)
+	if res.Status != http.StatusOK {
+		t.Fatalf("remove: %d %s", res.Status, res.Body)
+	}
+	rmCmds := a.waitForCommands(t, "trigger.remove", 1, 3*time.Second)
+	if rmCmds[0].Data["id"] != "42" {
+		t.Errorf("trigger.remove should carry id=42, got %+v", rmCmds[0].Data)
+	}
+	_ = removeID
+
+	// 4) 非法 id → 400（server 侧拦截，避免 runtime stoull 异常）
+	if res := env.do(t, "PUT", "/api/agents/it-trig-crud/triggers/abc", admin, map[string]any{"name": "x"}); res.Status != http.StatusBadRequest {
+		t.Errorf("invalid update id: got %d want 400", res.Status)
+	}
+	if res := env.do(t, "DELETE", "/api/agents/it-trig-crud/triggers/abc", admin, nil); res.Status != http.StatusBadRequest {
+		t.Errorf("invalid remove id: got %d want 400", res.Status)
+	}
+
+	// 5) RBAC：viewer 无 agents:manage，写操作一律 403
+	if res := env.do(t, "POST", "/api/agents/it-trig-crud/triggers", viewer, config); res.Status != http.StatusForbidden {
+		t.Errorf("viewer create: got %d want 403", res.Status)
+	}
+	if res := env.do(t, "PUT", "/api/agents/it-trig-crud/triggers/42", viewer, map[string]any{"name": "x"}); res.Status != http.StatusForbidden {
+		t.Errorf("viewer update: got %d want 403", res.Status)
+	}
+	if res := env.do(t, "DELETE", "/api/agents/it-trig-crud/triggers/42", viewer, nil); res.Status != http.StatusForbidden {
+		t.Errorf("viewer delete: got %d want 403", res.Status)
+	}
+
+	// 6) not found 语义：runtime 明确报告 not found → 404
+	missingAgent := newSimAgent(t, env.agentAddr, "it-trig-missing", "missing-host", func(method string, data map[string]any) map[string]any {
+		if method == "trigger.update" || method == "trigger.remove" {
+			return map[string]any{"success": false, "error": "Trigger not found"}
+		}
+		return map[string]any{"success": true}
+	})
+	_ = missingAgent
+	env.waitForAgentStatus(t, admin, "it-trig-missing", "online")
+	if res := env.do(t, "PUT", "/api/agents/it-trig-missing/triggers/99", admin, map[string]any{"name": "x"}); res.Status != http.StatusNotFound {
+		t.Errorf("update missing trigger: got %d want 404", res.Status)
+	}
+	if res := env.do(t, "DELETE", "/api/agents/it-trig-missing/triggers/99", admin, nil); res.Status != http.StatusNotFound {
+		t.Errorf("remove missing trigger: got %d want 404", res.Status)
+	}
 }

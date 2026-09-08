@@ -2,7 +2,8 @@
  * 游戏监控页面
  * 集成实时截图、Agent 资源状态、触发器事件流和宏命令入口。
  * 触发器列表经 /api/agents/:id/triggers 读取真实 runtime 数据，
- * trigger_fired 事件实时叠加命中计数。
+ * trigger_fired 事件实时叠加命中计数；
+ * 支持新增/编辑/删除（trigger.add/update/remove 透传，需 agents:manage）。
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
@@ -11,9 +12,16 @@ import {
   Button,
   Card,
   Col,
+  Divider,
+  Form,
+  Input,
+  InputNumber,
   List,
+  Modal,
+  Popconfirm,
   Progress,
   Row,
+  Select,
   Space,
   Statistic,
   Switch,
@@ -26,9 +34,12 @@ import {
   ClockCircleOutlined,
   CodeOutlined,
   DatabaseOutlined,
+  DeleteOutlined,
   DesktopOutlined,
+  EditOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
+  PlusOutlined,
   ReloadOutlined,
   SettingOutlined,
   ThunderboltOutlined,
@@ -41,12 +52,279 @@ import {
   AgentInfo,
   AgentStatus,
   AgentTrigger,
+  AgentTriggerConfigInput,
+  createAgentTrigger,
   getAgentTriggers,
   getAgents,
+  removeAgentTrigger,
   toggleAgentTrigger,
+  updateAgentTrigger,
 } from '@/services/wingman';
 
 const { Text } = Typography;
+
+// runtime TriggerType 全量 11 种（与 trigger_handler.cpp 对齐）
+const TRIGGER_CONDITION_TYPES = [
+  'ColorFound',
+  'ColorLost',
+  'ImageFound',
+  'ImageLost',
+  'WindowOpened',
+  'WindowClosed',
+  'ProcessStarted',
+  'ProcessStopped',
+  'TimeElapsed',
+  'HotkeyPressed',
+  'PixelChanged',
+];
+
+// runtime BasicTriggerAction 全量 10 种
+const TRIGGER_ACTION_TYPES = [
+  'RunScript',
+  'Click',
+  'KeyPress',
+  'Type',
+  'StopScript',
+  'PauseScript',
+  'ShowMessage',
+  'PlayAudio',
+  'Log',
+  'Delay',
+];
+
+interface TriggerFormValues {
+  name: string;
+  enabled: boolean;
+  oneShot: boolean;
+  cooldown: number;
+  condition: {
+    type: string;
+    value: string;
+    tolerance: number;
+    interval: number;
+    region: { x: number; y: number; width: number; height: number };
+  };
+  actions: Array<{ type: string; value: string; x: number; y: number; delay: number }>;
+}
+
+// trigger → 表单值（编辑模式回填）
+function triggerToFormValues(trigger: AgentTrigger): TriggerFormValues {
+  const condition = trigger.condition || ({} as AgentTrigger['condition']);
+  return {
+    name: trigger.name || '',
+    enabled: trigger.enabled !== false,
+    oneShot: trigger.oneShot === true,
+    cooldown: trigger.cooldown || 0,
+    condition: {
+      type: condition.type || trigger.type || 'ColorFound',
+      value: condition.value || '',
+      tolerance: condition.tolerance ?? 10,
+      interval: condition.interval ?? 1000,
+      region: condition.region || { x: 0, y: 0, width: 0, height: 0 },
+    },
+    actions: (trigger.actions || []).map((action) => ({
+      type: action.type || 'Log',
+      value: action.value || '',
+      x: action.x || 0,
+      y: action.y || 0,
+      delay: action.delay || 0,
+    })),
+  };
+}
+
+// 表单值 → runtime TriggerConfig 载荷
+function formValuesToConfig(values: TriggerFormValues): AgentTriggerConfigInput {
+  return {
+    name: values.name,
+    enabled: values.enabled,
+    oneShot: values.oneShot,
+    cooldown: values.cooldown,
+    condition: {
+      type: values.condition.type,
+      value: values.condition.value,
+      tolerance: values.condition.tolerance,
+      interval: values.condition.interval,
+      region: values.condition.region,
+    },
+    actions: values.actions.map((action) => ({
+      type: action.type,
+      value: action.value,
+      x: action.x,
+      y: action.y,
+      delay: action.delay,
+    })),
+  };
+}
+
+// TriggerFormModal 触发器新增/编辑表单（经 Go server 透传 runtime trigger.add/update）
+function TriggerFormModal({
+  open,
+  agentId,
+  trigger,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  agentId: string;
+  trigger: AgentTrigger | null; // null = 新增
+  onClose: () => void;
+  onSaved: (message: string) => void;
+}) {
+  const [form] = Form.useForm<TriggerFormValues>();
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      form.resetFields();
+      form.setFieldsValue(
+        trigger
+          ? triggerToFormValues(trigger)
+          : {
+              name: '',
+              enabled: true,
+              oneShot: false,
+              cooldown: 0,
+              condition: {
+                type: 'ColorFound',
+                value: '',
+                tolerance: 10,
+                interval: 1000,
+                region: { x: 0, y: 0, width: 0, height: 0 },
+              },
+              actions: [],
+            },
+      );
+    }
+  }, [open, trigger, form]);
+
+  const handleOk = async () => {
+    let values: TriggerFormValues;
+    try {
+      values = await form.validateFields();
+    } catch {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const config = formValuesToConfig(values);
+      if (trigger) {
+        await updateAgentTrigger(agentId, trigger.id, config);
+        onSaved(`触发器 ${values.name} 已更新`);
+      } else {
+        await createAgentTrigger(agentId, config);
+        onSaved(`触发器 ${values.name} 已创建`);
+      }
+      onClose();
+    } catch (error) {
+      // 交给外层事件流提示（onError 简化为 Modal 内提示）
+      const message = (error as { message?: string })?.message || '保存失败';
+      Modal.error({ title: '触发器保存失败', content: message });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      title={trigger ? `编辑触发器：${trigger.name}` : '新增触发器'}
+      width={680}
+      confirmLoading={submitting}
+      onOk={handleOk}
+      onCancel={onClose}
+      destroyOnClose
+    >
+      <Form form={form} layout="vertical" initialValues={{ enabled: true }}>
+        <Space size={16} style={{ display: 'flex' }} align="start">
+          <Form.Item
+            name="name"
+            label="名称"
+            rules={[{ required: true, message: '请输入触发器名称' }]}
+            style={{ flex: 1, minWidth: 240 }}
+          >
+            <Input placeholder="如 hp-watch" />
+          </Form.Item>
+          <Form.Item name="cooldown" label="冷却 (ms)">
+            <InputNumber min={0} step={500} />
+          </Form.Item>
+          <Form.Item name="enabled" label="启用" valuePropName="checked">
+            <Switch size="small" />
+          </Form.Item>
+          <Form.Item name="oneShot" label="一次性" valuePropName="checked">
+            <Switch size="small" />
+          </Form.Item>
+        </Space>
+
+        <Divider orientation="left" plain>
+          触发条件
+        </Divider>
+        <Space size={16} style={{ display: 'flex' }} align="start" wrap>
+          <Form.Item name={['condition', 'type']} label="类型" style={{ minWidth: 160 }}>
+            <Select options={TRIGGER_CONDITION_TYPES.map((type) => ({ value: type, label: type }))} />
+          </Form.Item>
+          <Form.Item
+            name={['condition', 'value']}
+            label="条件值（颜色 #rrggbb / 图片路径 / 窗口标题 / 进程名 / 毫秒 / 键名）"
+            style={{ flex: 1, minWidth: 260 }}
+          >
+            <Input placeholder="#ff0000" />
+          </Form.Item>
+          <Form.Item name={['condition', 'tolerance']} label="容差">
+            <InputNumber min={0} max={255} />
+          </Form.Item>
+          <Form.Item name={['condition', 'interval']} label="检测间隔 (ms)">
+            <InputNumber min={0} step={100} />
+          </Form.Item>
+        </Space>
+        <Space size={16} style={{ display: 'flex' }} wrap>
+          {(['x', 'y', 'width', 'height'] as const).map((key) => (
+            <Form.Item key={key} name={['condition', 'region', key]} label={`区域 ${key}`} initialValue={0}>
+              <InputNumber min={0} />
+            </Form.Item>
+          ))}
+        </Space>
+
+        <Divider orientation="left" plain>
+          触发动作
+        </Divider>
+        <Form.List name="actions">
+          {(fields, { add, remove }) => (
+            <>
+              {fields.map((field) => (
+                <Space key={field.key} size={8} style={{ display: 'flex' }} align="baseline" wrap>
+                  <Form.Item name={[field.name, 'type']} initialValue="Log" noStyle>
+                    <Select
+                      style={{ width: 140 }}
+                      options={TRIGGER_ACTION_TYPES.map((type) => ({ value: type, label: type }))}
+                    />
+                  </Form.Item>
+                  <Form.Item name={[field.name, 'value']} noStyle>
+                    <Input placeholder="脚本路径 / 按键 / 文本 / 消息" style={{ width: 220 }} />
+                  </Form.Item>
+                  <Form.Item name={[field.name, 'x']} noStyle>
+                    <InputNumber placeholder="x" style={{ width: 80 }} />
+                  </Form.Item>
+                  <Form.Item name={[field.name, 'y']} noStyle>
+                    <InputNumber placeholder="y" style={{ width: 80 }} />
+                  </Form.Item>
+                  <Form.Item name={[field.name, 'delay']} noStyle>
+                    <InputNumber placeholder="延迟" style={{ width: 90 }} />
+                  </Form.Item>
+                  <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
+                </Space>
+              ))}
+              <Form.Item>
+                <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add({ type: 'Log' })}>
+                  添加动作
+                </Button>
+              </Form.Item>
+            </>
+          )}
+        </Form.List>
+      </Form>
+    </Modal>
+  );
+}
 
 interface MonitorTrigger extends AgentTrigger {
   hitCount: number;
@@ -473,6 +751,67 @@ const Monitor: React.FC = () => {
     setIsRunning(next);
   };
 
+  // ===== 触发器 CRUD：经 Go server 透传 runtime trigger.add/update/remove =====
+  const [triggerModalOpen, setTriggerModalOpen] = useState(false);
+  const [editingTrigger, setEditingTrigger] = useState<MonitorTrigger | null>(null);
+
+  const handleCreateTrigger = () => {
+    const agent = selectedAgentRef.current;
+    if (!agent || !agentConnected(agent)) {
+      addEvent({
+        type: 'trigger',
+        level: 'error',
+        message: 'Agent 未连接，无法新增触发器',
+      });
+      return;
+    }
+    setEditingTrigger(null);
+    setTriggerModalOpen(true);
+  };
+
+  const handleEditTrigger = (trigger: MonitorTrigger) => {
+    setEditingTrigger(trigger);
+    setTriggerModalOpen(true);
+  };
+
+  const handleRemoveTrigger = async (trigger: MonitorTrigger) => {
+    const agent = selectedAgentRef.current;
+    if (!agent || !agentConnected(agent)) {
+      addEvent({
+        type: 'trigger',
+        level: 'error',
+        message: 'Agent 未连接，无法删除触发器',
+      });
+      return;
+    }
+    try {
+      await removeAgentTrigger(agent.agentId, trigger.id);
+      setTriggers((previous) => previous.filter((item) => item.id !== trigger.id));
+      addEvent({
+        type: 'trigger',
+        level: 'processing',
+        message: `触发器 ${trigger.name} 已删除`,
+      });
+    } catch (error) {
+      addEvent({
+        type: 'trigger',
+        level: 'error',
+        message: `触发器 ${trigger.name} 删除失败: ${extractErrorMessage(error)}`,
+      });
+    }
+  };
+
+  const handleTriggerSaved = useCallback(
+    (message: string) => {
+      addEvent({ type: 'trigger', level: 'processing', message });
+      const agent = selectedAgentRef.current;
+      if (agent) {
+        loadTriggers(agent, { silent: true });
+      }
+    },
+    [loadTriggers],
+  );
+
   return (
     <PageContainer
       header={{
@@ -601,6 +940,16 @@ const Monitor: React.FC = () => {
                 <Space>
                   <Button
                     size="small"
+                    type="primary"
+                    ghost
+                    icon={<PlusOutlined />}
+                    disabled={!agentConnected(selectedAgent)}
+                    onClick={handleCreateTrigger}
+                  >
+                    新增
+                  </Button>
+                  <Button
+                    size="small"
                     type="text"
                     icon={<ReloadOutlined spin={triggersLoading} />}
                     disabled={!agentConnected(selectedAgent) || triggersLoading}
@@ -670,6 +1019,30 @@ const Monitor: React.FC = () => {
                 renderItem={(trigger) => (
                   <List.Item
                     actions={[
+                      <Button
+                        key="edit"
+                        size="small"
+                        type="text"
+                        icon={<EditOutlined />}
+                        disabled={!agentConnected(selectedAgent)}
+                        onClick={() => handleEditTrigger(trigger)}
+                      />,
+                      <Popconfirm
+                        key="delete"
+                        title="删除触发器"
+                        description={`确定删除「${trigger.name}」？该操作会即时下发到 runtime。`}
+                        okText="删除"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={() => handleRemoveTrigger(trigger)}
+                      >
+                        <Button
+                          size="small"
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined />}
+                          disabled={!agentConnected(selectedAgent)}
+                        />
+                      </Popconfirm>,
                       <Switch
                         key="toggle"
                         size="small"
@@ -746,6 +1119,16 @@ const Monitor: React.FC = () => {
           )}
         </Card>
       </Space>
+
+      {selectedAgent && (
+        <TriggerFormModal
+          open={triggerModalOpen}
+          agentId={selectedAgent.agentId}
+          trigger={editingTrigger}
+          onClose={() => setTriggerModalOpen(false)}
+          onSaved={handleTriggerSaved}
+        />
+      )}
     </PageContainer>
   );
 };

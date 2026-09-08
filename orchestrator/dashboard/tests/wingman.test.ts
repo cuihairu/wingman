@@ -317,3 +317,52 @@ describe('Agent 触发器 API（getAgentTriggers / toggleAgentTrigger）', () =>
     expect(resp.data).toEqual({ id: '1', enabled: false });
   });
 });
+
+describe('Agent 触发器 CRUD API（create / update / remove）', () => {
+  const config: wingman.AgentTriggerConfigInput = {
+    name: 'boss-alert',
+    enabled: true,
+    oneShot: false,
+    cooldown: 5000,
+    condition: {
+      type: 'ImageFound',
+      value: 'boss.png',
+      tolerance: 10,
+      interval: 1000,
+      region: { x: 0, y: 0, width: 100, height: 100 },
+    },
+    actions: [{ type: 'Click', value: '', x: 100, y: 200, delay: 0 }],
+  };
+
+  it('createAgentTrigger POST 配置原样上送，返回 runtime 分配 id', async () => {
+    mockResponse({ id: '42', name: 'boss-alert' });
+
+    const resp = await wingman.createAgentTrigger('agent-1', config);
+    expect(mockedRequest).toHaveBeenCalledWith('/api/agents/agent-1/triggers', {
+      method: 'POST',
+      data: config,
+    });
+    expect(resp.data).toEqual({ id: '42', name: 'boss-alert' });
+  });
+
+  it('updateAgentTrigger PUT 到 /:triggerId 并携带配置', async () => {
+    mockResponse({ id: '42' });
+
+    const resp = await wingman.updateAgentTrigger('agent-1', '42', { cooldown: 9000 });
+    expect(mockedRequest).toHaveBeenCalledWith('/api/agents/agent-1/triggers/42', {
+      method: 'PUT',
+      data: { cooldown: 9000 },
+    });
+    expect(resp.data).toEqual({ id: '42' });
+  });
+
+  it('removeAgentTrigger DELETE 到 /:triggerId', async () => {
+    mockResponse({ id: '42' });
+
+    await wingman.removeAgentTrigger('agent-1', '42');
+    expect(mockedRequest).toHaveBeenCalledWith(
+      '/api/agents/agent-1/triggers/42',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+});
