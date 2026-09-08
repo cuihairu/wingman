@@ -1,6 +1,7 @@
 import { logs, type LogEntry } from './logs';
 import { triggers } from './triggers';
 import { connection } from './connection';
+import { scripts } from './scripts';
 
 /// runtime 事件轮询器。
 ///
@@ -60,6 +61,9 @@ function dispatch(event: RuntimeEvent) {
 			const id = event.payload?.id;
 			const state = event.payload?.state;
 			if (typeof id === 'string' && typeof state === 'string') {
+				// 实时联动脚本状态（低延迟，无需等下一次 load）
+				const error = typeof event.payload?.error === 'string' ? event.payload.error : undefined;
+				scripts.applyState(id, state, error);
 				logs.addRuntime(`脚本状态变更: ${id} → ${state}`, 'info', event.timestamp);
 			}
 			break;

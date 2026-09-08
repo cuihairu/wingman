@@ -2,9 +2,9 @@
 	import { router } from '$lib/router.svelte';
 	import { connection } from '$lib/stores/connection';
 	import { logs } from '$lib/stores/logs';
-	import { scripts } from '$lib/stores/scripts';
+	import { scripts, type ScriptInfo, type ScriptState } from '$lib/stores/scripts';
 
-	type StatusFilter = 'all' | 'running' | 'stopped';
+	type StatusFilter = 'all' | ScriptState;
 
 	let customPath = $state('scripts/example.lua');
 	let busyId = $state<string | null>(null);
@@ -12,6 +12,8 @@
 	let scriptQuery = $state('');
 	let statusFilter = $state<StatusFilter>('all');
 	let lastRefreshed = $state('-');
+	/// 运行时长显示的秒级 tick
+	let nowTick = $state(Date.now());
 
 	const quickScripts = [
 		{ name: 'Lua 示例', path: 'scripts/example.lua', hint: 'Lua', tag: 'default' },
@@ -22,26 +24,60 @@
 	const statusFilters: Array<{ value: StatusFilter; label: string }> = [
 		{ value: 'all', label: '全部' },
 		{ value: 'running', label: '运行中' },
+		{ value: 'paused', label: '已暂停' },
 		{ value: 'stopped', label: '已停止' },
+		{ value: 'error', label: '错误' },
 	];
 
-	let runningCount = $derived($scripts.filter(script => script.is_running).length);
-	let stoppedCount = $derived(Math.max($scripts.length - runningCount, 0));
+	const stateLabels: Record<ScriptState, string> = {
+		running: '运行中',
+		paused: '已暂停',
+		stopped: '已停止',
+		loaded: '已加载',
+		error: '错误',
+		unknown: '未知',
+	};
+
+	let runningCount = $derived($scripts.filter(script => script.state === 'running').length);
+	let pausedCount = $derived($scripts.filter(script => script.state === 'paused').length);
+	let errorCount = $derived($scripts.filter(script => script.state === 'error').length);
 	let filteredScripts = $derived($scripts.filter(script => {
 		const query = scriptQuery.trim().toLowerCase();
 		const matchesQuery = !query
 			|| script.name.toLowerCase().includes(query)
 			|| script.path.toLowerCase().includes(query);
-		const matchesStatus = statusFilter === 'all'
-			|| (statusFilter === 'running' && script.is_running)
-			|| (statusFilter === 'stopped' && !script.is_running);
+		const matchesStatus = statusFilter === 'all' || script.state === statusFilter;
 		return matchesQuery && matchesStatus;
 	}));
+
+	$effect(() => {
+		const timer = window.setInterval(() => { nowTick = Date.now(); }, 1000);
+		return () => window.clearInterval(timer);
+	});
 
 	function formatSize(bytes: number): string {
 		if (bytes < 1024) return bytes + ' B';
 		if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
 		return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+	}
+
+	function formatDuration(ms: number): string {
+		if (ms < 0 || !Number.isFinite(ms)) return '-';
+		const totalSeconds = Math.floor(ms / 1000);
+		const days = Math.floor(totalSeconds / 86400);
+		const hours = Math.floor((totalSeconds % 86400) / 3600);
+		const minutes = Math.floor((totalSeconds % 3600) / 60);
+		const seconds = totalSeconds % 60;
+		if (days > 0) return `${days}d ${hours}h`;
+		if (hours > 0) return `${hours}h ${minutes}m`;
+		if (minutes > 0) return `${minutes}m ${seconds}s`;
+		return `${seconds}s`;
+	}
+
+	/// 脚本已加载时长（自最近一次加载起）
+	function scriptUptime(script: ScriptInfo): string {
+		if (!script.loaded_at) return '-';
+		return formatDuration(nowTick - script.loaded_at);
 	}
 
 	function fileName(path: string): string {
@@ -54,27 +90,94 @@
 		return index > 0 ? normalized.slice(0, index) : '.';
 	}
 
-	async function toggleScript(id: string, isRunning: boolean) {
+	type ScriptOp = 'start' | 'stop' | 'pause' | 'resume' | 'restart' | 'unload';
+
+	/// 各状态下可用的操作（顺序即展示顺序）
+	function opsFor(script: ScriptInfo): Array<{ op: ScriptOp; label: string; kind: 'primary' | 'plain' | 'danger' }> {
+		switch (script.state) {
+			case 'running':
+				return [
+					{ op: 'pause', label: '暂停', kind: 'plain' },
+					{ op: 'stop', label: '停止', kind: 'danger' },
+					{ op: 'restart', label: '重启', kind: 'plain' },
+				];
+			case 'paused':
+				return [
+					{ op: 'resume', label: '恢复', kind: 'primary' },
+					{ op: 'stop', label: '停止', kind: 'danger' },
+					{ op: 'restart', label: '重启', kind: 'plain' },
+				];
+			case 'loaded':
+				return [
+					{ op: 'start', label: '启动', kind: 'primary' },
+					{ op: 'unload', label: '卸载', kind: 'plain' },
+				];
+			case 'error':
+				return [
+					{ op: 'restart', label: '重试', kind: 'primary' },
+					{ op: 'unload', label: '卸载', kind: 'plain' },
+				];
+			default: // stopped / unknown
+				return [
+					{ op: 'start', label: '启动', kind: 'primary' },
+					{ op: 'restart', label: '重启', kind: 'plain' },
+					{ op: 'unload', label: '卸载', kind: 'plain' },
+				];
+		}
+	}
+
+	async function runOp(script: ScriptInfo, op: ScriptOp) {
 		if (!$connection.connected) {
 			logs.add('未连接到 runtime IPC', 'error');
 			return;
 		}
-		const script = $scripts.find(item => item.id === id);
-		busyId = id;
+		busyId = script.id;
 		try {
-			if (isRunning) {
-				await scripts.stop(id);
-				logs.add(`已停止脚本: ${script?.name || id}`, 'info');
-			} else {
-				await scripts.start(id, script?.path);
-				logs.add(`已启动脚本: ${script?.name || id}`, 'success');
+			switch (op) {
+				case 'start': await scripts.start(script.id, script.path); break;
+				case 'stop': await scripts.stop(script.id); break;
+				case 'pause': await scripts.pause(script.id); break;
+				case 'resume': await scripts.resume(script.id); break;
+				case 'restart': await scripts.restart(script.id); break;
+				case 'unload': await scripts.unload(script.id); break;
 			}
+			const label = opsFor(script).find(o => o.op === op)?.label || op;
+			logs.add(`已${label}脚本: ${script.name || script.id}`, op === 'stop' || op === 'unload' ? 'info' : 'success');
 			lastRefreshed = new Date().toLocaleTimeString();
 		} catch (error: any) {
-			logs.add(`操作失败: ${error}`, 'error');
+			const label = opsFor(script).find(o => o.op === op)?.label || op;
+			logs.add(`${label}失败: ${error}`, 'error');
 		} finally {
 			busyId = null;
 		}
+	}
+
+	async function bulkOp(op: 'pause' | 'resume' | 'stop') {
+		if (!$connection.connected) {
+			logs.add('未连接到 runtime IPC', 'error');
+			return;
+		}
+		const targets = $scripts.filter(script =>
+			op === 'pause' ? script.state === 'running'
+			: op === 'resume' ? script.state === 'paused'
+			: script.state === 'running' || script.state === 'paused'
+		);
+		if (targets.length === 0) {
+			logs.add('没有符合条件的脚本', 'warning');
+			return;
+		}
+		let done = 0;
+		for (const script of targets) {
+			try {
+				if (op === 'pause') await scripts.pause(script.id);
+				else if (op === 'resume') await scripts.resume(script.id);
+				else await scripts.stop(script.id);
+				done++;
+			} catch { /* 单个失败继续 */ }
+		}
+		const label = op === 'pause' ? '暂停' : op === 'resume' ? '恢复' : '停止';
+		logs.add(`批量${label}完成: ${done}/${targets.length}`, done === targets.length ? 'success' : 'warning');
+		lastRefreshed = new Date().toLocaleTimeString();
 	}
 
 	async function refreshScripts() {
@@ -120,7 +223,7 @@
 	<section class="page-header">
 		<div>
 			<h2 class="page-title">脚本管理</h2>
-			<p class="page-subtitle">本地脚本启动器 · 最近刷新 {lastRefreshed}</p>
+			<p class="page-subtitle">脚本生命周期管理 · 最近刷新 {lastRefreshed}</p>
 		</div>
 		<div class="header-actions">
 			<div class="connection-pill" class:connected={$connection.connected}>
@@ -151,14 +254,14 @@
 			<small>active</small>
 		</div>
 		<div class="metric-card">
-			<span>已停止</span>
-			<strong>{stoppedCount}</strong>
-			<small>idle</small>
+			<span>已暂停</span>
+			<strong class="yellow">{pausedCount}</strong>
+			<small>paused</small>
 		</div>
 		<div class="metric-card">
-			<span>筛选结果</span>
-			<strong class="blue">{filteredScripts.length}</strong>
-			<small>当前列表</small>
+			<span>错误</span>
+			<strong class:red={errorCount > 0}>{$scripts.length > 0 ? errorCount : 0}</strong>
+			<small>error</small>
 		</div>
 	</section>
 
@@ -205,22 +308,25 @@
 
 		<div class="runtime-panel card">
 			<div class="panel-heading compact">
-				<h3>运行态</h3>
-				<button class="link-btn" onclick={refreshScripts}>刷新</button>
+				<h3>批量操作</h3>
+				<span class="status-note">{$connection.connected ? 'ready' : 'offline'}</span>
 			</div>
-			<div class="runtime-rows">
-				<div>
-					<span>连接</span>
-					<strong class:green={$connection.connected}>{$connection.connected ? '已连接' : '未连接'}</strong>
-				</div>
-				<div>
-					<span>版本</span>
-					<strong title={$connection.version}>{$connection.version}</strong>
-				</div>
-				<div>
-					<span>暂停</span>
-					<strong class:yellow={$connection.paused}>{$connection.paused ? '是' : '否'}</strong>
-				</div>
+			<div class="bulk-rows">
+				<button class="bulk-btn" disabled={!$connection.connected || runningCount === 0} onclick={() => bulkOp('pause')}>
+					<span class="bulk-icon pause">⏸</span>
+					<span>全部暂停</span>
+					<small>{runningCount} 个运行中</small>
+				</button>
+				<button class="bulk-btn" disabled={!$connection.connected || pausedCount === 0} onclick={() => bulkOp('resume')}>
+					<span class="bulk-icon resume">▶</span>
+					<span>全部恢复</span>
+					<small>{pausedCount} 个已暂停</small>
+				</button>
+				<button class="bulk-btn danger" disabled={!$connection.connected || (runningCount === 0 && pausedCount === 0)} onclick={() => bulkOp('stop')}>
+					<span class="bulk-icon stop">■</span>
+					<span>全部停止</span>
+					<small>{runningCount + pausedCount} 个活跃</small>
+				</button>
 			</div>
 		</div>
 	</section>
@@ -275,41 +381,45 @@
 				</div>
 			{:else}
 				{#each filteredScripts as script (script.id)}
-					<div class="script-item">
-						<div class="file-badge" class:running={script.is_running}>
+					<div class="script-item" class:error={script.state === 'error'}>
+						<div class="file-badge" class:running={script.state === 'running'} class:paused={script.state === 'paused'} class:errored={script.state === 'error'}>
 							{fileName(script.name || script.path).slice(0, 2).toUpperCase()}
 						</div>
 						<div class="script-info">
 							<div class="script-title-row">
 								<strong>{script.name || fileName(script.path)}</strong>
-								<span class="status-chip" class:running={script.is_running}>
+								<span class="status-chip st-{script.state}">
 									<span class="status-dot"></span>
-									{script.is_running ? '运行中' : '已停止'}
+									{stateLabels[script.state]}
 								</span>
+								{#if script.loaded_at}
+									<span class="uptime" title="自最近一次加载起的时长">⏱ {scriptUptime(script)}</span>
+								{/if}
 							</div>
 							<div class="script-meta">
 								<span title={script.path}>{parentPath(script.path)}/{fileName(script.path)}</span>
-								<span>{formatSize(script.size)}</span>
+								{#if script.size > 0}
+									<span>{formatSize(script.size)}</span>
+								{/if}
 								<span>ID {script.id}</span>
 							</div>
+							{#if script.error}
+								<div class="script-error" title={script.error}>
+									<span class="error-icon">!</span>
+									<span class="error-text">{script.error}</span>
+								</div>
+							{/if}
 						</div>
 						<div class="script-actions">
-							<button
-								class="btn {script.is_running ? 'btn-danger' : 'btn-primary'}"
-								disabled={!$connection.connected || busyId === script.id}
-								onclick={() => toggleScript(script.id, script.is_running)}
-							>
-								{#if script.is_running}
-									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-										<rect x="6" y="6" width="12" height="12"></rect>
-									</svg>
-								{:else}
-									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-										<polygon points="5 3 19 12 5 21 5 3"></polygon>
-									</svg>
-								{/if}
-								{busyId === script.id ? '处理中' : script.is_running ? '停止' : '启动'}
-							</button>
+							{#each opsFor(script) as entry}
+								<button
+									class="btn btn-sm {entry.kind === 'primary' ? 'btn-primary' : entry.kind === 'danger' ? 'btn-danger' : ''}"
+									disabled={!$connection.connected || busyId === script.id}
+									onclick={() => runOp(script, entry.op)}
+								>
+									{busyId === script.id ? '…' : entry.label}
+								</button>
+							{/each}
 						</div>
 					</div>
 				{/each}
@@ -367,8 +477,7 @@
 		white-space: nowrap;
 	}
 
-	.connection-pill.connected,
-	.status-chip.running {
+	.connection-pill.connected {
 		color: var(--accent-green);
 		border-color: rgba(63, 185, 80, 0.45);
 		background: rgba(63, 185, 80, 0.08);
@@ -383,10 +492,26 @@
 		flex-shrink: 0;
 	}
 
-	.connection-pill.connected .dot,
-	.status-chip.running .status-dot {
+	.connection-pill.connected .dot {
 		background: var(--accent-green);
 	}
+
+	.status-chip {
+		min-height: 24px;
+		padding: 3px 8px;
+		border-radius: 6px;
+		background: var(--bg-secondary);
+	}
+
+	.st-running { color: var(--accent-green); border-color: rgba(63, 185, 80, 0.45); background: rgba(63, 185, 80, 0.08); }
+	.st-running .status-dot { background: var(--accent-green); }
+	.st-paused { color: var(--accent-yellow); border-color: rgba(210, 153, 34, 0.45); background: rgba(210, 153, 34, 0.08); }
+	.st-paused .status-dot { background: var(--accent-yellow); }
+	.st-error { color: var(--accent-red); border-color: rgba(248, 81, 73, 0.45); background: rgba(248, 81, 73, 0.08); }
+	.st-error .status-dot { background: var(--accent-red); }
+	.st-loaded { color: var(--accent-blue); border-color: rgba(88, 166, 255, 0.45); background: rgba(88, 166, 255, 0.08); }
+	.st-loaded .status-dot { background: var(--accent-blue); }
+	.st-stopped .status-dot, .st-unknown .status-dot { background: var(--text-secondary); }
 
 	.summary-grid {
 		display: grid;
@@ -425,6 +550,7 @@
 	.green { color: var(--accent-green) !important; }
 	.blue { color: var(--accent-blue) !important; }
 	.yellow { color: var(--accent-yellow) !important; }
+	.red { color: var(--accent-red) !important; }
 
 	.launcher-panel {
 		display: grid;
@@ -562,33 +688,59 @@
 		font-size: 10px;
 	}
 
-	.runtime-rows {
+	.bulk-rows {
 		display: grid;
 		gap: 8px;
 	}
 
-	.runtime-rows div {
+	.bulk-btn {
 		display: grid;
-		grid-template-columns: 64px minmax(0, 1fr);
-		gap: 10px;
+		grid-template-columns: 30px minmax(0, 1fr) auto;
+		gap: 8px;
 		align-items: center;
-		min-height: 36px;
-		padding: 8px 10px;
-		background: var(--bg-tertiary);
+		min-height: 46px;
+		padding: 8px 12px;
 		border: 1px solid var(--border-color);
 		border-radius: 6px;
+		background: var(--bg-tertiary);
+		color: var(--text-primary);
+		font-size: 13px;
+		text-align: left;
+		cursor: pointer;
+		transition: all 0.18s;
 	}
 
-	.runtime-rows span {
-		color: var(--text-secondary);
+	.bulk-btn:hover:not(:disabled) {
+		background: var(--surface-hover);
+		border-color: var(--accent-blue);
+	}
+
+	.bulk-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.bulk-btn.danger:hover:not(:disabled) {
+		border-color: var(--accent-red);
+	}
+
+	.bulk-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		border-radius: 6px;
 		font-size: 12px;
 	}
 
-	.runtime-rows strong {
-		overflow: hidden;
-		color: var(--text-primary);
-		font-size: 13px;
-		text-overflow: ellipsis;
+	.bulk-icon.pause { color: var(--accent-yellow); background: rgba(210, 153, 34, 0.12); }
+	.bulk-icon.resume { color: var(--accent-green); background: rgba(63, 185, 80, 0.12); }
+	.bulk-icon.stop { color: var(--accent-red); background: rgba(248, 81, 73, 0.12); }
+
+	.bulk-btn small {
+		color: var(--text-secondary);
+		font-size: 11px;
 		white-space: nowrap;
 	}
 
@@ -667,6 +819,10 @@
 		border-color: var(--text-secondary);
 	}
 
+	.script-item.error {
+		border-color: rgba(248, 81, 73, 0.45);
+	}
+
 	.file-badge {
 		display: flex;
 		align-items: center;
@@ -687,6 +843,18 @@
 		background: rgba(63, 185, 80, 0.08);
 	}
 
+	.file-badge.paused {
+		color: var(--accent-yellow);
+		border-color: rgba(210, 153, 34, 0.45);
+		background: rgba(210, 153, 34, 0.08);
+	}
+
+	.file-badge.errored {
+		color: var(--accent-red);
+		border-color: rgba(248, 81, 73, 0.45);
+		background: rgba(248, 81, 73, 0.08);
+	}
+
 	.script-info {
 		min-width: 0;
 	}
@@ -697,6 +865,7 @@
 		gap: 10px;
 		margin-bottom: 6px;
 		min-width: 0;
+		flex-wrap: wrap;
 	}
 
 	.script-title-row strong {
@@ -709,11 +878,11 @@
 		white-space: nowrap;
 	}
 
-	.status-chip {
-		min-height: 24px;
-		padding: 3px 8px;
-		border-radius: 6px;
-		background: var(--bg-secondary);
+	.uptime {
+		color: var(--text-secondary);
+		font-size: 11px;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
 	}
 
 	.script-meta {
@@ -731,9 +900,41 @@
 		white-space: nowrap;
 	}
 
+	.script-error {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 6px;
+		max-width: 560px;
+	}
+
+	.error-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 14px;
+		height: 14px;
+		flex-shrink: 0;
+		border-radius: 50%;
+		background: var(--accent-red);
+		color: #fff;
+		font-size: 10px;
+		font-weight: 700;
+	}
+
+	.error-text {
+		overflow: hidden;
+		color: var(--accent-red);
+		font-size: 12px;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
 	.script-actions {
 		display: flex;
 		justify-content: flex-end;
+		gap: 6px;
+		flex-wrap: wrap;
 	}
 
 	.btn,
@@ -872,7 +1073,7 @@
 		}
 
 		.script-actions .btn {
-			width: 100%;
+			flex: 1;
 		}
 	}
 
@@ -884,6 +1085,7 @@
 		.script-title-row {
 			align-items: flex-start;
 			flex-direction: column;
+			gap: 4px;
 		}
 
 		.script-meta {

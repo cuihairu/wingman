@@ -7,6 +7,11 @@ pub struct ScriptInfo {
     pub path: String,
     pub size: u64,
     pub is_running: bool,
+    /// loaded / running / paused / stopped / error / unknown
+    pub state: String,
+    pub error: String,
+    /// 最近一次加载时间（epoch 毫秒）
+    pub loaded_at: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

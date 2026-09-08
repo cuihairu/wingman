@@ -25,6 +25,9 @@ pub async fn get_scripts(
                         path: s["path"].as_str().unwrap_or("").to_string(),
                         size: s["size"].as_u64().unwrap_or(0),
                         is_running: s["isRunning"].as_bool().unwrap_or(false),
+                        state: s["state"].as_str().unwrap_or("unknown").to_string(),
+                        error: s["error"].as_str().unwrap_or("").to_string(),
+                        loaded_at: s["loadedAt"].as_u64().unwrap_or(0),
                     })
                     .collect());
             }
@@ -80,6 +83,58 @@ pub async fn stop_script(
         }
     }
     Err("Failed to stop script".to_string())
+}
+
+/// 单脚本生命周期控制（pause/resume/unload/restart 共用的薄封装）。
+async fn script_lifecycle_command(
+    state: &tauri::State<'_, AppState>,
+    script_id: &str,
+    method: &str,
+) -> Result<(), String> {
+    let mut client = state.ipc_client.lock().await;
+    let response = client
+        .send(method, json!({ "scriptId": script_id }))
+        .await?;
+
+    if response["data"]["success"].as_bool().unwrap_or(false) {
+        return Ok(());
+    }
+    Err(response["data"]["error"]
+        .as_str()
+        .unwrap_or("script command failed")
+        .to_string())
+}
+
+#[tauri::command]
+pub async fn pause_script(
+    state: tauri::State<'_, AppState>,
+    script_id: String,
+) -> Result<(), String> {
+    script_lifecycle_command(&state, &script_id, "script.pause").await
+}
+
+#[tauri::command]
+pub async fn resume_script(
+    state: tauri::State<'_, AppState>,
+    script_id: String,
+) -> Result<(), String> {
+    script_lifecycle_command(&state, &script_id, "script.resume").await
+}
+
+#[tauri::command]
+pub async fn restart_script(
+    state: tauri::State<'_, AppState>,
+    script_id: String,
+) -> Result<(), String> {
+    script_lifecycle_command(&state, &script_id, "script.restart").await
+}
+
+#[tauri::command]
+pub async fn unload_script(
+    state: tauri::State<'_, AppState>,
+    script_id: String,
+) -> Result<(), String> {
+    script_lifecycle_command(&state, &script_id, "script.unload").await
 }
 
 #[tauri::command]

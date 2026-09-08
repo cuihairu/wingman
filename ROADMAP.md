@@ -369,6 +369,7 @@ Runtime 不作为远程控制 server 被 Go server 反向拨入。
 - ✅ 触发器可视化配置（截图拾取 + 全类型 + 值转换层，2026-09）
 - ✅ 屏幕预览面板（拖拽选区 + 真实取色 + 匹配高亮，2026-09）
 - ✅ 日志实时显示（来源标记 + 丢弃提示 + 智能滚动，2026-09）
+- ✅ 脚本管理增强（2026-09）：runtime RPC 新增 script.pause/resume/restart/unload；script.list 返回 state/error/loadedAt；GUI 脚本页五态生命周期管理（按状态操作矩阵、批量暂停/恢复/停止、运行时长、错误展示）；script.state_changed 事件实时联动列表状态
 
 **已完成**:
 - ✅ 日志实时显示（2026-09）：日志来源标记（GUI/Runtime 徽标 + 按来源筛选）；runtime EventBuffer 溢出丢弃提示（Rust 端透传 events.drain 的 dropped/remaining，累计丢弃时显示横幅）；settings.logLevel 联动入口过滤（debug 级别映射）；智能自动滚动（上滚暂停跟随 + 「N 条新日志」跳转按钮）；单条点击复制；导出含来源列

@@ -30,6 +30,10 @@ fn main() {
             commands::scripts::get_scripts,
             commands::scripts::start_script,
             commands::scripts::stop_script,
+            commands::scripts::pause_script,
+            commands::scripts::resume_script,
+            commands::scripts::restart_script,
+            commands::scripts::unload_script,
             commands::scripts::start_active_profile_scripts,
             commands::scripts::stop_active_profile_scripts,
             // 系统状态
