@@ -791,7 +791,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "经 agent 通道读取 runtime TriggerManager 的 trigger.list",
+                "description": "经 agent 通道读取 runtime TriggerManager 的 trigger.list；任何登录用户可读",
                 "produces": [
                     "application/json"
                 ],
@@ -802,6 +802,7 @@
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "agent-001",
                         "description": "Agent ID",
                         "name": "agentId",
                         "in": "path",
@@ -845,18 +846,19 @@
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "agent-001",
                         "description": "Agent ID",
                         "name": "agentId",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "触发器配置",
+                        "description": "触发器配置（name 必填）",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.TriggerConfigRequest"
                         }
                     }
                 ],
@@ -892,6 +894,7 @@
                         "BearerAuth": []
                     }
                 ],
+                "description": "经 agent 通道下发 trigger.toggle（启用↔停用翻转）；需要 agents:manage 权限",
                 "consumes": [
                     "application/json"
                 ],
@@ -905,6 +908,7 @@
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "agent-001",
                         "description": "Agent ID",
                         "name": "agentId",
                         "in": "path",
@@ -916,13 +920,27 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.TriggerToggleRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -945,7 +963,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "经 agent 通道下发 trigger.update（部分字段更新，缺省保持原值）；需要 agents:manage 权限",
+                "description": "经 agent 通道下发 trigger.update（部分字段更新，未提供的字段保持原值）；需要 agents:manage 权限",
                 "consumes": [
                     "application/json"
                 ],
@@ -959,14 +977,16 @@
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "agent-001",
                         "description": "Agent ID",
                         "name": "agentId",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "触发器 ID（数字）",
+                        "type": "integer",
+                        "example": 42,
+                        "description": "触发器 ID",
                         "name": "triggerId",
                         "in": "path",
                         "required": true
@@ -977,7 +997,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.TriggerConfigRequest"
                         }
                     }
                 ],
@@ -1029,14 +1049,16 @@
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "agent-001",
                         "description": "Agent ID",
                         "name": "agentId",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "触发器 ID（数字）",
+                        "type": "integer",
+                        "example": 42,
+                        "description": "触发器 ID",
                         "name": "triggerId",
                         "in": "path",
                         "required": true
@@ -2691,6 +2713,130 @@
                 },
                 "width": {
                     "type": "integer"
+                }
+            }
+        },
+        "handlers.TriggerActionRequest": {
+            "type": "object",
+            "properties": {
+                "delay": {
+                    "type": "integer",
+                    "example": 500
+                },
+                "type": {
+                    "type": "string",
+                    "example": "RunScript"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "heal.lua"
+                },
+                "x": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "y": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
+        "handlers.TriggerConditionRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "interval": {
+                    "type": "integer",
+                    "example": 1000
+                },
+                "region": {
+                    "$ref": "#/definitions/handlers.TriggerRegionRequest"
+                },
+                "tolerance": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "type": {
+                    "type": "string",
+                    "example": "ColorFound"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "#ff0000"
+                }
+            }
+        },
+        "handlers.TriggerConfigRequest": {
+            "type": "object",
+            "properties": {
+                "actions": {
+                    "description": "actions 触发动作序列（RunScript/Click/KeyPress/Type/StopScript/\nPauseScript/ShowMessage/PlayAudio/Log/Delay）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.TriggerActionRequest"
+                    }
+                },
+                "condition": {
+                    "description": "condition 触发条件（11 种类型：ColorFound/ColorLost/ImageFound/ImageLost/\nWindowOpened/WindowClosed/ProcessStarted/ProcessStopped/TimeElapsed/\nHotkeyPressed/PixelChanged）",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/handlers.TriggerConditionRequest"
+                        }
+                    ]
+                },
+                "cooldown": {
+                    "type": "integer",
+                    "example": 3000
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "description": "触发器名称（新增时必填，runtime 缺省 Unnamed Trigger）",
+                    "type": "string",
+                    "example": "hp-watch"
+                },
+                "oneShot": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "handlers.TriggerRegionRequest": {
+            "type": "object",
+            "properties": {
+                "height": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "width": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "x": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "y": {
+                    "type": "integer",
+                    "example": 200
+                }
+            }
+        },
+        "handlers.TriggerToggleRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "description": "runtime 分配的触发器 ID（trigger.list 返回的字符串数字）",
+                    "type": "string",
+                    "example": "42"
                 }
             }
         }

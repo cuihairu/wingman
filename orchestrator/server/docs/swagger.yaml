@@ -11,6 +11,98 @@ definitions:
       width:
         type: integer
     type: object
+  handlers.TriggerActionRequest:
+    properties:
+      delay:
+        example: 500
+        type: integer
+      type:
+        example: RunScript
+        type: string
+      value:
+        example: heal.lua
+        type: string
+      x:
+        example: 0
+        type: integer
+      "y":
+        example: 0
+        type: integer
+    type: object
+  handlers.TriggerConditionRequest:
+    properties:
+      enabled:
+        example: true
+        type: boolean
+      interval:
+        example: 1000
+        type: integer
+      region:
+        $ref: '#/definitions/handlers.TriggerRegionRequest'
+      tolerance:
+        example: 10
+        type: integer
+      type:
+        example: ColorFound
+        type: string
+      value:
+        example: '#ff0000'
+        type: string
+    type: object
+  handlers.TriggerConfigRequest:
+    properties:
+      actions:
+        description: |-
+          actions 触发动作序列（RunScript/Click/KeyPress/Type/StopScript/
+          PauseScript/ShowMessage/PlayAudio/Log/Delay）
+        items:
+          $ref: '#/definitions/handlers.TriggerActionRequest'
+        type: array
+      condition:
+        allOf:
+        - $ref: '#/definitions/handlers.TriggerConditionRequest'
+        description: |-
+          condition 触发条件（11 种类型：ColorFound/ColorLost/ImageFound/ImageLost/
+          WindowOpened/WindowClosed/ProcessStarted/ProcessStopped/TimeElapsed/
+          HotkeyPressed/PixelChanged）
+      cooldown:
+        example: 3000
+        type: integer
+      enabled:
+        example: true
+        type: boolean
+      name:
+        description: 触发器名称（新增时必填，runtime 缺省 Unnamed Trigger）
+        example: hp-watch
+        type: string
+      oneShot:
+        example: false
+        type: boolean
+    type: object
+  handlers.TriggerRegionRequest:
+    properties:
+      height:
+        example: 50
+        type: integer
+      width:
+        example: 50
+        type: integer
+      x:
+        example: 100
+        type: integer
+      "y":
+        example: 200
+        type: integer
+    type: object
+  handlers.TriggerToggleRequest:
+    properties:
+      id:
+        description: runtime 分配的触发器 ID（trigger.list 返回的字符串数字）
+        example: "42"
+        type: string
+    required:
+    - id
+    type: object
 host: localhost:9527
 info:
   contact: {}
@@ -526,9 +618,10 @@ paths:
       - agents
   /agents/{agentId}/triggers:
     get:
-      description: 经 agent 通道读取 runtime TriggerManager 的 trigger.list
+      description: 经 agent 通道读取 runtime TriggerManager 的 trigger.list；任何登录用户可读
       parameters:
       - description: Agent ID
+        example: agent-001
         in: path
         name: agentId
         required: true
@@ -558,16 +651,17 @@ paths:
         agents:manage 权限
       parameters:
       - description: Agent ID
+        example: agent-001
         in: path
         name: agentId
         required: true
         type: string
-      - description: 触发器配置
+      - description: 触发器配置（name 必填）
         in: body
         name: request
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/handlers.TriggerConfigRequest'
       produces:
       - application/json
       responses:
@@ -596,15 +690,17 @@ paths:
       description: 经 agent 通道下发 trigger.remove；需要 agents:manage 权限
       parameters:
       - description: Agent ID
+        example: agent-001
         in: path
         name: agentId
         required: true
         type: string
-      - description: 触发器 ID（数字）
+      - description: 触发器 ID
+        example: 42
         in: path
         name: triggerId
         required: true
-        type: string
+        type: integer
       produces:
       - application/json
       responses:
@@ -636,24 +732,27 @@ paths:
     put:
       consumes:
       - application/json
-      description: 经 agent 通道下发 trigger.update（部分字段更新，缺省保持原值）；需要 agents:manage 权限
+      description: 经 agent 通道下发 trigger.update（部分字段更新，未提供的字段保持原值）；需要 agents:manage
+        权限
       parameters:
       - description: Agent ID
+        example: agent-001
         in: path
         name: agentId
         required: true
         type: string
-      - description: 触发器 ID（数字）
+      - description: 触发器 ID
+        example: 42
         in: path
         name: triggerId
         required: true
-        type: string
+        type: integer
       - description: 触发器配置（部分字段）
         in: body
         name: request
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/handlers.TriggerConfigRequest'
       produces:
       - application/json
       responses:
@@ -686,8 +785,10 @@ paths:
     post:
       consumes:
       - application/json
+      description: 经 agent 通道下发 trigger.toggle（启用↔停用翻转）；需要 agents:manage 权限
       parameters:
       - description: Agent ID
+        example: agent-001
         in: path
         name: agentId
         required: true
@@ -697,12 +798,22 @@ paths:
         name: request
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/handlers.TriggerToggleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
           schema:
             additionalProperties: true
             type: object

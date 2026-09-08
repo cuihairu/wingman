@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +12,73 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// TriggerConfigRequest 触发器配置请求体。
+// 字段与 runtime TriggerConfig 契约对齐
+// （lib/wingman/src/rpc/handlers/trigger_handler.cpp applyTriggerConfigJson），
+// 指针字段用于区分「未提供」与「显式 false/0」（更新为部分字段语义）。
+type TriggerConfigRequest struct {
+	// 触发器名称（新增时必填，runtime 缺省 Unnamed Trigger）
+	Name     string                   `json:"name" example:"hp-watch"`
+	Enabled  *bool                    `json:"enabled,omitempty" example:"true"`
+	OneShot  *bool                    `json:"oneShot,omitempty" example:"false"`
+	Cooldown *int                     `json:"cooldown,omitempty" example:"3000"`
+	// condition 触发条件（11 种类型：ColorFound/ColorLost/ImageFound/ImageLost/
+	// WindowOpened/WindowClosed/ProcessStarted/ProcessStopped/TimeElapsed/
+	// HotkeyPressed/PixelChanged）
+	Condition *TriggerConditionRequest `json:"condition,omitempty"`
+	// actions 触发动作序列（RunScript/Click/KeyPress/Type/StopScript/
+	// PauseScript/ShowMessage/PlayAudio/Log/Delay）
+	Actions []TriggerActionRequest `json:"actions,omitempty"`
+}
+
+// TriggerConditionRequest 触发条件（value 语义随 type 变化：
+// 颜色 #rrggbb / 图片路径 / 窗口标题 / 进程名 / 毫秒数 / 键名）
+type TriggerConditionRequest struct {
+	Type      string                `json:"type" example:"ColorFound"`
+	Value     string                `json:"value,omitempty" example:"#ff0000"`
+	Tolerance *int                  `json:"tolerance,omitempty" example:"10"`
+	Interval  *int                  `json:"interval,omitempty" example:"1000"`
+	Enabled   *bool                 `json:"enabled,omitempty" example:"true"`
+	Region    *TriggerRegionRequest `json:"region,omitempty"`
+}
+
+// TriggerRegionRequest 像素检测区域（屏幕绝对坐标）
+type TriggerRegionRequest struct {
+	X      int `json:"x,omitempty" example:"100"`
+	Y      int `json:"y,omitempty" example:"200"`
+	Width  int `json:"width,omitempty" example:"50"`
+	Height int `json:"height,omitempty" example:"50"`
+}
+
+// TriggerActionRequest 触发动作（value 语义随 type 变化：脚本路径/按键/文本/消息/音频路径）
+type TriggerActionRequest struct {
+	Type  string `json:"type" example:"RunScript"`
+	Value string `json:"value,omitempty" example:"heal.lua"`
+	X     int    `json:"x,omitempty" example:"0"`
+	Y     int    `json:"y,omitempty" example:"0"`
+	Delay int    `json:"delay,omitempty" example:"500"`
+}
+
+// TriggerToggleRequest 切换触发器启用状态请求体
+type TriggerToggleRequest struct {
+	// runtime 分配的触发器 ID（trigger.list 返回的字符串数字）
+	ID string `json:"id" binding:"required" example:"42"`
+}
+
+// toMap 将请求体转为通用 map（经 JSON 往返，保留 omitempty 语义，
+// 未提供的指针字段不出现在透传给 runtime 的 config 中）。
+func (r *TriggerConfigRequest) toMap() map[string]any {
+	raw, err := json.Marshal(r)
+	if err != nil {
+		return map[string]any{}
+	}
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return map[string]any{}
+	}
+	return out
+}
 
 // TriggerHandler 触发器处理器：把 runtime 本地 IPC 已有的 trigger.* 能力
 // 经 agent 通道透传给 Dashboard（Dispatcher Reuse）。
@@ -75,11 +143,11 @@ func (h *TriggerHandler) dispatch(c *gin.Context, method string, payload map[str
 
 // HandleList 获取指定 agent 的触发器列表
 // @Summary      Agent 触发器列表
-// @Description  经 agent 通道读取 runtime TriggerManager 的 trigger.list
+// @Description  经 agent 通道读取 runtime TriggerManager 的 trigger.list；任何登录用户可读
 // @Tags         agents
 // @Produce      json
 // @Security     BearerAuth
-// @Param        agentId  path  string  true  "Agent ID"
+// @Param        agentId  path  string  true  "Agent ID"  example(agent-001)
 // @Success      200  {object}  map[string]interface{}
 // @Failure      502  {object}  map[string]interface{}
 // @Router       /agents/{agentId}/triggers [get]
@@ -106,21 +174,22 @@ func (h *TriggerHandler) HandleList(c *gin.Context) {
 
 // HandleToggle 切换触发器启用状态
 // @Summary      切换 Agent 触发器启用状态
+// @Description  经 agent 通道下发 trigger.toggle（启用↔停用翻转）；需要 agents:manage 权限
 // @Tags         agents
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        agentId  path  string  true  "Agent ID"
-// @Param        request body object true "触发器 ID" example({"id":"1"})
+// @Param        agentId  path  string  true  "Agent ID"  example(agent-001)
+// @Param        request  body  TriggerToggleRequest  true  "触发器 ID"
 // @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
 // @Failure      502  {object}  map[string]interface{}
 // @Router       /agents/{agentId}/triggers/toggle [post]
 func (h *TriggerHandler) HandleToggle(c *gin.Context) {
 	agentID := c.Param("agentId")
 
-	var req struct {
-		ID string `json:"id" binding:"required"`
-	}
+	var req TriggerToggleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "trigger id required"})
 		return
@@ -160,8 +229,8 @@ func (h *TriggerHandler) HandleToggle(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        agentId  path  string  true  "Agent ID"
-// @Param        request  body  object  true  "触发器配置"  example({"name":"hp-watch","enabled":true,"oneShot":false,"cooldown":3000,"condition":{"type":"ColorFound","value":"#ff0000","tolerance":10,"interval":1000,"region":{"x":0,"y":0,"width":100,"height":100}},"actions":[{"type":"RunScript","value":"heal.lua"}]})
+// @Param        agentId  path  string  true  "Agent ID"  example(agent-001)
+// @Param        request  body  TriggerConfigRequest  true  "触发器配置（name 必填）"
 // @Success      200  {object}  map[string]interface{}
 // @Failure      400  {object}  map[string]interface{}
 // @Failure      502  {object}  map[string]interface{}
@@ -169,18 +238,17 @@ func (h *TriggerHandler) HandleToggle(c *gin.Context) {
 func (h *TriggerHandler) HandleCreate(c *gin.Context) {
 	agentID := c.Param("agentId")
 
-	var req map[string]any
-	if err := c.ShouldBindJSON(&req); err != nil || req == nil {
+	var req TriggerConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "trigger config required"})
 		return
 	}
-	name, _ := req["name"].(string)
-	if strings.TrimSpace(name) == "" {
+	if strings.TrimSpace(req.Name) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "trigger name is required"})
 		return
 	}
 
-	resp, ok := h.dispatch(c, "trigger.add", map[string]any{"config": req}, 10*time.Second)
+	resp, ok := h.dispatch(c, "trigger.add", map[string]any{"config": req.toMap()}, 10*time.Second)
 	if !ok {
 		return
 	}
@@ -192,26 +260,26 @@ func (h *TriggerHandler) HandleCreate(c *gin.Context) {
 	WriteAuditLog(h.db, actor, "agent.trigger_create", agentID, map[string]any{
 		"agent_id":   agentID,
 		"trigger_id": triggerID,
-		"name":       name,
+		"name":       req.Name,
 		"ip":         c.ClientIP(),
 	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    gin.H{"id": triggerID, "name": name},
+		"data":    gin.H{"id": triggerID, "name": req.Name},
 	})
 }
 
 // HandleUpdate 更新指定 agent 上的触发器配置
 // @Summary      更新 Agent 触发器
-// @Description  经 agent 通道下发 trigger.update（部分字段更新，缺省保持原值）；需要 agents:manage 权限
+// @Description  经 agent 通道下发 trigger.update（部分字段更新，未提供的字段保持原值）；需要 agents:manage 权限
 // @Tags         agents
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        agentId    path  string  true  "Agent ID"
-// @Param        triggerId  path  string  true  "触发器 ID（数字）"
-// @Param        request    body  object  true  "触发器配置（部分字段）"  example({"name":"hp-watch-v2","cooldown":5000})
+// @Param        agentId    path  string  true  "Agent ID"  example(agent-001)
+// @Param        triggerId  path  int     true  "触发器 ID"  example(42)
+// @Param        request    body  TriggerConfigRequest  true  "触发器配置（部分字段）"
 // @Success      200  {object}  map[string]interface{}
 // @Failure      400  {object}  map[string]interface{}
 // @Failure      404  {object}  map[string]interface{}
@@ -226,15 +294,15 @@ func (h *TriggerHandler) HandleUpdate(c *gin.Context) {
 		return
 	}
 
-	var req map[string]any
-	if err := c.ShouldBindJSON(&req); err != nil || req == nil {
+	var req TriggerConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "trigger config required"})
 		return
 	}
 
 	_, ok := h.dispatch(c, "trigger.update", map[string]any{
 		"id":     triggerID,
-		"config": req,
+		"config": req.toMap(),
 	}, 10*time.Second)
 	if !ok {
 		return
@@ -244,7 +312,7 @@ func (h *TriggerHandler) HandleUpdate(c *gin.Context) {
 	WriteAuditLog(h.db, actor, "agent.trigger_update", agentID, map[string]any{
 		"agent_id":   agentID,
 		"trigger_id": triggerID,
-		"changes":    req,
+		"changes":    req.toMap(),
 		"ip":         c.ClientIP(),
 	})
 
@@ -260,8 +328,8 @@ func (h *TriggerHandler) HandleUpdate(c *gin.Context) {
 // @Tags         agents
 // @Produce      json
 // @Security     BearerAuth
-// @Param        agentId    path  string  true  "Agent ID"
-// @Param        triggerId  path  string  true  "触发器 ID（数字）"
+// @Param        agentId    path  string  true  "Agent ID"  example(agent-001)
+// @Param        triggerId  path  int     true  "触发器 ID"  example(42)
 // @Success      200  {object}  map[string]interface{}
 // @Failure      400  {object}  map[string]interface{}
 // @Failure      404  {object}  map[string]interface{}
