@@ -2,6 +2,7 @@ package scripts
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -9,9 +10,15 @@ import (
 )
 
 func TestNewStoreCleansRoot(t *testing.T) {
-	s := NewStore("/tmp/scripts/")
-	if s.Root() != "/tmp/scripts" {
-		t.Errorf("expected cleaned root, got %q", s.Root())
+	// 用平台相关分隔符构造输入，避免硬编码 Unix 路径（Windows 上 Clean 会得到 \tmp\scripts）
+	rel := NewStore(filepath.Join("scripts", "root") + string(filepath.Separator))
+	if rel.Root() != filepath.Clean(filepath.Join("scripts", "root")) {
+		t.Errorf("relative root not cleaned: got %q", rel.Root())
+	}
+
+	tmp := t.TempDir()
+	if got := NewStore(tmp + string(filepath.Separator)).Root(); got != filepath.Clean(tmp) {
+		t.Errorf("absolute root not cleaned: got %q want %q", got, filepath.Clean(tmp))
 	}
 }
 
@@ -47,7 +54,9 @@ func TestResolveRejectsInvalid(t *testing.T) {
 	}{
 		{"empty", ""},
 		{"whitespace", "   "},
-		{"absolute", "/etc/passwd.lua"},
+		// 绝对路径必须用平台相关构造：/etc/passwd.lua 在 Windows 上不是绝对路径，
+		// IsAbs 不命中，Resolve 反而合法返回。
+		{"absolute", filepath.Join(os.TempDir(), "wingman-abs.lua")},
 		{"escape parent", "../outside.lua"},
 		{"nested escape", "sub/../../outside.lua"},
 		{"non-lua ext", "readme.txt"},

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -371,8 +373,15 @@ func TestScriptCreateWriteFailure(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := newDB(t)
 	reg, _ := newRegistry(t)
-	// /proc 下无法创建目录 → MkdirAll 失败 → 500
-	sh := NewScriptHandler(db, "/proc/wingman-test", reg)
+	// 在脚本目录的路径组件上放置一个同名普通文件：MkdirAll 因父组件不是目录
+	// 而失败 → 500。（原用 /proc/wingman-test 假设不可写，Windows 上该路径是
+	// 当前盘相对路径，MkdirAll 实际会成功。）
+	base := t.TempDir()
+	blocker := filepath.Join(base, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0644); err != nil {
+		t.Fatalf("create blocker file: %v", err)
+	}
+	sh := NewScriptHandler(db, filepath.Join(blocker, "scripts"), reg)
 	r := gin.New()
 	r.POST("/scripts", asAdmin(1), sh.HandleCreate)
 	w := doJSON(r, "POST", "/scripts", map[string]any{"name": "unwritable"})
