@@ -20,16 +20,15 @@ namespace {
 
     // Base64 decode table
     static const int8_t base64DecodeTable[256] = {
-        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,
-        14,15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,
-        -1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,
-        42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        /* 0-15   */ -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        /* 16-31  */ -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        /* 32-47  */ -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63,
+        /* 48-57  */ 52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-1,-1,-1,
+        /* 64-79  */ -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,
+        /* 80-95  */ 15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,
+        /* 96-111 */ -1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,
+        /* 112-127*/ 41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1,
+        /* 128+   */ -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
         -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
         -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
         -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
@@ -46,14 +45,22 @@ std::string base64Encode(const std::vector<uint8_t>& data) {
     result.reserve(((data.size() + 2) / 3) * 4);
 
     for (size_t i = 0; i < data.size(); i += 3) {
+        // 剩余字节数（1、2 或 3）
+        const size_t remaining = data.size() - i;
+        const size_t chunk = remaining < 3 ? remaining : 3;
+
+        // 将字节打包到高位，不足 3 字节时低位补零
         uint32_t value = 0;
-        for (size_t j = 0; j < 3 && i + j < data.size(); ++j) {
+        for (size_t j = 0; j < chunk; ++j) {
             value = (value << 8) | static_cast<uint8_t>(data[i + j]);
         }
+        value <<= (3 - chunk) * 8;
 
         for (size_t j = 0; j < 4; ++j) {
             size_t index = (value >> (6 * (3 - j))) & 0x3F;
-            if (i + j < data.size() + 1) {
+            // 每个有效字节贡献 4 个 base64 字符中的 8/6 个：
+            // 1 字节 -> 2 个实字符 + 2 个 '='；2 字节 -> 3 个实字符 + 1 个 '='
+            if (j < (chunk * 8 + 5) / 6) {
                 result += base64Chars[index];
             } else {
                 result += '=';
@@ -74,7 +81,8 @@ std::vector<uint8_t> base64Decode(const std::string& encoded) {
         int8_t index = base64DecodeTable[c];
         if (index < 0) continue;
 
-        value = (value << 6) | index;
+        // 掩码限制在 24 位窗口内，避免长输入累积溢出
+        value = ((value << 6) | index) & 0xFFFFFF;
         bits += 6;
 
         if (bits >= 8) {
@@ -195,9 +203,10 @@ std::string deriveKey(const std::string& password, const std::string& salt, int 
     EVP_KDF_CTX* kctx = EVP_KDF_CTX_new(kdf);
 
     OSSL_PARAM params[5];
-    params[0] = OSSL_PARAM_construct_utf8_string("pass", const_cast<char*>(password.c_str()), password.size());
+    params[0] = OSSL_PARAM_construct_octet_string("pass", const_cast<char*>(password.c_str()), password.size());
     params[1] = OSSL_PARAM_construct_octet_string("salt", saltBytes.data(), saltBytes.size());
-    params[2] = OSSL_PARAM_construct_int32("iter", &iterations);
+    uint32_t iterationsValue = static_cast<uint32_t>(iterations);
+    params[2] = OSSL_PARAM_construct_uint32("iter", &iterationsValue);
     params[3] = OSSL_PARAM_construct_utf8_string("digest", const_cast<char*>("SHA256"), 0);
     params[4] = OSSL_PARAM_construct_end();
 
@@ -245,9 +254,10 @@ std::string encryptAES(const std::string& plaintext, const std::string& password
         EVP_KDF_CTX* kctx = EVP_KDF_CTX_new(kdf);
 
         OSSL_PARAM params[5];
-        params[0] = OSSL_PARAM_construct_utf8_string("pass", const_cast<char*>(password.c_str()), password.size());
+        params[0] = OSSL_PARAM_construct_octet_string("pass", const_cast<char*>(password.c_str()), password.size());
         params[1] = OSSL_PARAM_construct_octet_string("salt", saltBytes.data(), saltBytes.size());
-        params[2] = OSSL_PARAM_construct_int32("iter", const_cast<int*>(&pbkdf2Iterations));
+        uint32_t iterationsValue = static_cast<uint32_t>(pbkdf2Iterations);
+        params[2] = OSSL_PARAM_construct_uint32("iter", &iterationsValue);
         params[3] = OSSL_PARAM_construct_utf8_string("digest", const_cast<char*>("SHA256"), 0);
         params[4] = OSSL_PARAM_construct_end();
 
@@ -369,9 +379,10 @@ std::string decryptAES(const std::string& ciphertext, const std::string& passwor
         EVP_KDF_CTX* kctx = EVP_KDF_CTX_new(kdf);
 
         OSSL_PARAM params[5];
-        params[0] = OSSL_PARAM_construct_utf8_string("pass", const_cast<char*>(password.c_str()), password.size());
+        params[0] = OSSL_PARAM_construct_octet_string("pass", const_cast<char*>(password.c_str()), password.size());
         params[1] = OSSL_PARAM_construct_octet_string("salt", salt.data(), salt.size());
-        params[2] = OSSL_PARAM_construct_int32("iter", const_cast<int*>(&pbkdf2Iterations));
+        uint32_t iterationsValue = static_cast<uint32_t>(pbkdf2Iterations);
+        params[2] = OSSL_PARAM_construct_uint32("iter", &iterationsValue);
         params[3] = OSSL_PARAM_construct_utf8_string("digest", const_cast<char*>("SHA256"), 0);
         params[4] = OSSL_PARAM_construct_end();
 
