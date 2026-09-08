@@ -153,7 +153,9 @@ private:
 
                 session->setEventCallback([this, session](SessionEvent event, const std::string& /*info*/) {
                     handleEvent(session.get(), event);
-                    if (event == SessionEvent::Disconnected) {
+                    // 对端断开表现为 async_read EOF -> Session 发出 Error 事件，
+                    // 因此 Error 与 Disconnected 都需要清理会话，否则会话泄漏在映射表中
+                    if (event == SessionEvent::Disconnected || event == SessionEvent::Error) {
                         closeSession(session->getId());
                     }
                 });

@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 #include "wingman/transport/simple_protocol.hpp"
+#include <cstring>
 #include <thread>
 #include <chrono>
 
@@ -135,8 +136,9 @@ TEST(MessageReceiverTest, ReceivePartialMessage) {
 
 TEST(MessageReceiverTest, ReceiveWithExtraData) {
     // 构造: [完整消息] [额外数据]
+    // 额外数据必须少于 LENGTH_SIZE，否则会被当作长度前缀解析
     const std::string msgData = "Message";
-    const std::string extraData = "Extra";
+    const std::string extraData = "Ex";
 
     std::vector<uint8_t> buffer;
 
@@ -159,7 +161,8 @@ TEST(MessageReceiverTest, ReceiveWithExtraData) {
 }
 
 TEST(MessageReceiverTest, ClearBuffer) {
-    std::vector<uint8_t> partialData = {1, 2, 3, 4};  // 不完整的数据
+    // 不完整的数据（不足 LENGTH_SIZE，避免被当作长度前缀解析）
+    std::vector<uint8_t> partialData = {1, 2, 3};
 
     MessageReceiver receiver;
     receiver.receive(partialData.data(), partialData.size());
@@ -205,10 +208,14 @@ TEST(ProtocolTest, HostToNetwork32Conversion) {
 }
 
 TEST(ProtocolTest, NetworkToHost32Conversion) {
-    uint32_t network = 0x12345678;  // 大端序
+    const uint32_t host_original = 0x12345678;
+    // 先转为网络字节序再转回主机字节序，应得到原始值
+    uint32_t network = Protocol::hostToNetwork32(host_original);
     uint32_t host = Protocol::networkToHost32(network);
 
-    // 转换回来应该得到原始值
+    EXPECT_EQ(host, host_original);
+
+    // 主机字节序在内存中的布局
     uint8_t* bytes = reinterpret_cast<uint8_t*>(&host);
 #ifdef __BYTE_ORDER__
     #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__

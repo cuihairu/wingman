@@ -227,10 +227,13 @@ void StreamChannel::disconnect() {
 
     // 先关闭 Socket 以唤醒阻塞的 recv()
     // 必须在 stopReceiving() 之前关闭，否则 recv() 会永远阻塞
+    // 注意：Linux 上 close() 不会可靠地唤醒阻塞中的 recv()，
+    // 必须先 shutdown 触发 EOF，再 close 释放描述符。
     if (socket_ != INVALID_SOCKET_VALUE) {
 #ifdef _WIN32
         closesocket(socket_);
 #else
+        shutdown(socket_, SHUT_RDWR);
         close(socket_);
 #endif
         socket_ = INVALID_SOCKET_VALUE;
@@ -350,6 +353,7 @@ bool StreamChannel::applySocketOptions() {
 
 void StreamChannel::receiveLoop() {
     MessageReceiver receiver;
+    bool peerError = false;
 
     while (receiving_.load() && isConnected()) {
         uint8_t buffer[4096];
@@ -358,6 +362,7 @@ void StreamChannel::receiveLoop() {
         if (n == SOCKET_ERROR_VALUE) {
             int error = WSAGetLastError();
             if (error != WSAEWOULDBLOCK) {
+                peerError = true;
                 if (errorCallback_) {
                     errorCallback_(std::error_code(error, std::system_category()));
                 }
@@ -371,8 +376,11 @@ void StreamChannel::receiveLoop() {
 #else
         ssize_t n = ::recv(socket_, buffer, sizeof(buffer), 0);
         if (n <= 0) {
-            if (n < 0 && errorCallback_) {
-                errorCallback_(std::error_code(errno, std::system_category()));
+            if (n < 0) {
+                peerError = true;
+                if (errorCallback_) {
+                    errorCallback_(std::error_code(errno, std::system_category()));
+                }
             }
             break;
         }
@@ -385,6 +393,14 @@ void StreamChannel::receiveLoop() {
                 dataCallback_(msg->getPayload().data(), msg->getPayload().size());
             }
         }
+    }
+
+    // 接收循环因对端关闭/错误而退出（非本地主动停止）时更新状态，
+    // 否则 isConnected() 在对端断开后仍返回 true。
+    // 本地 disconnect() 场景下 stopReceiving() 会先 join 本线程，
+    // 随后 disconnect() 末尾统一写入 Disconnected，不会产生覆盖。
+    if (receiving_.load() && state_.load() == StreamState::Connected) {
+        setState(peerError ? StreamState::Error : StreamState::Disconnected);
     }
 
     receiving_.store(false);

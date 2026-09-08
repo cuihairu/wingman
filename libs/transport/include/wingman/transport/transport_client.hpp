@@ -47,7 +47,9 @@ public:
             });
 
             session_->setEventCallback([this](SessionEvent event, const std::string& /*info*/) {
-                if (event == SessionEvent::Disconnected) {
+                // 服务端断开表现为 async_read EOF -> Session 发出 Error 事件，
+                // 同样需要清除连接标志，否则 isConnected()/getSessionCount() 状态陈旧
+                if (event == SessionEvent::Disconnected || event == SessionEvent::Error) {
                     connected_ = false;
                 }
                 if (eventHandler_) {

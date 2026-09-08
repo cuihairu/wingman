@@ -71,6 +71,10 @@ public:
         if (auto session = session_.lock()) {
             session->send(request);
         } else {
+            // 会话已失效：立即完成 promise 并从挂起表中移除，
+            // 避免 close()/析构时再次 set_value 导致 future_error
+            std::lock_guard<std::mutex> lock(mutex_);
+            pendingRequests_.erase(request->header.sequence);
             promise->set_value(nullptr);
         }
 

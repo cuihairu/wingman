@@ -10,6 +10,7 @@ if(BUILD_TRANSPORT_TESTS)
     add_executable(transport_tests
         transport_test.cpp
         simple_protocol_test.cpp
+        stream_transport_test.cpp
     )
 
     target_include_directories(transport_tests PRIVATE
