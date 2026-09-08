@@ -19,6 +19,16 @@ func NewWindowHandler(registry *agent.Registry) *WindowHandler {
 }
 
 // HandleList 获取窗口列表
+// @Summary      窗口列表
+// @Description  经 agent 通道转发 list_windows；未指定 agentId 时自动选择首个在线 agent
+// @Tags         windows
+// @Produce      json
+// @Security     BearerAuth
+// @Param        agentId  query  string  false  "Agent ID（缺省自动选择在线 agent）"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      502  {object}  map[string]interface{}
+// @Failure      503  {object}  map[string]interface{}
+// @Router       /v1/windows [get]
 func (h *WindowHandler) HandleList(c *gin.Context) {
 	// Get agentId from query parameter (optional for window list)
 	agentId := c.Query("agentId")

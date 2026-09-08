@@ -82,6 +82,16 @@ func (h *RoleHandler) HandleListRoles(c *gin.Context) {
 }
 
 // HandleGetRole 单个角色
+// @Summary      角色详情
+// @Description  按 code（或兼容 :id 形式）返回单个角色及其权限
+// @Tags         admin-roles
+// @Produce      json
+// @Security     BearerAuth
+// @Param        code  path  string  true  "角色 code"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Router       /admin/roles/{code} [get]
 func (h *RoleHandler) HandleGetRole(c *gin.Context) {
 	role, ok := h.findByCodeParam(c)
 	if !ok {
@@ -111,6 +121,18 @@ func (h *RoleHandler) HandleListPermissions(c *gin.Context) {
 }
 
 // HandleCreateRole 创建自定义角色
+// @Summary      创建角色
+// @Description  新建自定义角色并绑定权限（内置 admin code 保留）；需要 roles:manage 权限
+// @Tags         admin-roles
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body  object  true  "角色定义"  example({"code":"operator","name":"操作员","permissions":["agents:manage"]})
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      409  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /admin/roles [post]
 func (h *RoleHandler) HandleCreateRole(c *gin.Context) {
 	var req createRoleReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -150,6 +172,18 @@ func (h *RoleHandler) HandleCreateRole(c *gin.Context) {
 }
 
 // HandleUpdateRole 更新角色（内置角色仅允许改权限，不改 code/name）
+// @Summary      更新角色
+// @Description  自定义角色可改名称/描述，权限可更新（admin 角色保持通配不变）；需要 roles:manage 权限
+// @Tags         admin-roles
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        code     path  string  true  "角色 code"
+// @Param        request  body  object  true  "角色更新"  example({"name":"操作员","permissions":["agents:manage"]})
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Router       /admin/roles/{code} [put]
 func (h *RoleHandler) HandleUpdateRole(c *gin.Context) {
 	role, ok := h.findByCodeParam(c)
 	if !ok {
@@ -187,6 +221,17 @@ func (h *RoleHandler) HandleUpdateRole(c *gin.Context) {
 }
 
 // HandleDeleteRole 删除自定义角色（内置角色禁止删除）
+// @Summary      删除角色
+// @Description  删除自定义角色并清理权限关联；内置角色或仍被用户引用时拒绝；需要 roles:manage 权限
+// @Tags         admin-roles
+// @Produce      json
+// @Security     BearerAuth
+// @Param        code  path  string  true  "角色 code"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      409  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /admin/roles/{code} [delete]
 func (h *RoleHandler) HandleDeleteRole(c *gin.Context) {
 	role, ok := h.findByCodeParam(c)
 	if !ok {

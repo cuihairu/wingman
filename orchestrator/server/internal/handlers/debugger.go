@@ -53,6 +53,13 @@ func directAttachError(operation string) (int, gin.H) {
 
 // HandleDebuggerInfo 返回调试模式说明与各 agent 的调试端点 + VSCode 配置。
 // GET /api/debugger/info
+// @Summary      调试器信息（直连模式）
+// @Description  EmmyLua 调试由 VSCode 直连 runtime 调试端口（默认 9966），server 不中转；返回各 agent 调试端点与 launch.json 片段
+// @Tags         debugger
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Router       /debugger/info [get]
 func (h *DebugHandler) HandleDebuggerInfo(c *gin.Context) {
 	endpoints := make([]agentDebugEndpoint, 0)
 	if h.registry != nil {
@@ -90,24 +97,52 @@ func (h *DebugHandler) HandleDebuggerInfo(c *gin.Context) {
 }
 
 // HandleDebuggerConnect 调试器连接（直连模式，不由 server 中转）
+// @Summary      调试器连接（直连模式）
+// @Description  调试协议不经 server 中转，固定返回 501 与直连指引
+// @Tags         debugger
+// @Produce      json
+// @Security     BearerAuth
+// @Failure      501  {object}  map[string]interface{}
+// @Router       /debugger/connect [post]
 func (h *DebugHandler) HandleDebuggerConnect(c *gin.Context) {
 	code, body := directAttachError("connect")
 	c.JSON(code, body)
 }
 
 // HandleDebuggerCommand 调试命令（直连模式）
+// @Summary      调试命令（直连模式）
+// @Description  调试协议不经 server 中转，固定返回 501 与直连指引
+// @Tags         debugger
+// @Produce      json
+// @Security     BearerAuth
+// @Failure      501  {object}  map[string]interface{}
+// @Router       /debugger/command [post]
 func (h *DebugHandler) HandleDebuggerCommand(c *gin.Context) {
 	code, body := directAttachError("command")
 	c.JSON(code, body)
 }
 
 // HandleDebuggerGetBreakpoints 获取断点（直连模式）
+// @Summary      获取断点（直连模式）
+// @Description  断点由 VSCode 直连 runtime 管理，固定返回 501 与直连指引
+// @Tags         debugger
+// @Produce      json
+// @Security     BearerAuth
+// @Failure      501  {object}  map[string]interface{}
+// @Router       /debugger/breakpoints [get]
 func (h *DebugHandler) HandleDebuggerGetBreakpoints(c *gin.Context) {
 	code, body := directAttachError("get_breakpoints")
 	c.JSON(code, body)
 }
 
 // HandleDebuggerSetBreakpoints 设置断点（直连模式）
+// @Summary      设置断点（直连模式）
+// @Description  断点由 VSCode 直连 runtime 管理，固定返回 501 与直连指引
+// @Tags         debugger
+// @Produce      json
+// @Security     BearerAuth
+// @Failure      501  {object}  map[string]interface{}
+// @Router       /debugger/breakpoints [post]
 func (h *DebugHandler) HandleDebuggerSetBreakpoints(c *gin.Context) {
 	code, body := directAttachError("set_breakpoints")
 	c.JSON(code, body)

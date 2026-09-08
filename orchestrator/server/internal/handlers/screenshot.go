@@ -32,6 +32,16 @@ type ScreenshotRequest struct {
 const maxScreenshotSize = 10 * 1024 * 1024
 
 // HandleScreenshot 处理截图上报
+// @Summary      截图上报并广播
+// @Description  校验 base64 大小（≤ 10MiB）后经 WebSocket 广播给所有 dashboard 客户端
+// @Tags         screenshot
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body  ScreenshotRequest  true  "截图数据"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Router       /v1/screenshot [post]
 func (h *ScreenshotHandler) HandleScreenshot(c *gin.Context) {
 	var req ScreenshotRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -25,6 +25,18 @@ type createFeedbackReq struct {
 	Source   string `json:"source"`
 }
 
+// HandleCreate 提交反馈
+// @Summary      提交反馈/权限申请
+// @Description  写入反馈记录，并向提交者与管理员（广播）生成站内消息
+// @Tags         feedback
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body  object  true  "反馈内容"  example({"category":"general","content":"...","priority":"normal","source":"dashboard"})
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /feedback [post]
 func (h *FeedbackHandler) HandleCreate(c *gin.Context) {
 	_, username, _ := middleware.GetCurrentUser(c)
 	var req createFeedbackReq

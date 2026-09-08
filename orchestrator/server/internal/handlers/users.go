@@ -92,6 +92,16 @@ func (h *UserHandler) HandleList(c *gin.Context) {
 }
 
 // HandleGet 单个用户
+// @Summary      用户详情
+// @Description  返回不含密码字段的安全用户信息；需要 users:manage 权限
+// @Tags         admin-users
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "用户 ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Router       /admin/users/{id} [get]
 func (h *UserHandler) HandleGet(c *gin.Context) {
 	user, ok := h.findByIDParam(c)
 	if !ok {
@@ -163,6 +173,19 @@ func (h *UserHandler) HandleCreate(c *gin.Context) {
 }
 
 // HandleUpdate 更新用户（角色/启用状态；不改密码）
+// @Summary      更新用户
+// @Description  更新角色/启用状态，不改密码；需要 users:manage 权限
+// @Tags         admin-users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id       path  int     true  "用户 ID"
+// @Param        request  body  object  true  "更新字段"  example({"role":"operator","active":true})
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /admin/users/{id} [put]
 func (h *UserHandler) HandleUpdate(c *gin.Context) {
 	user, ok := h.findByIDParam(c)
 	if !ok {
@@ -211,6 +234,19 @@ func (h *UserHandler) HandleUpdate(c *gin.Context) {
 }
 
 // HandleResetPassword 重置用户密码
+// @Summary      重置用户密码
+// @Description  管理员重置任意用户密码（校验强度）；需要 users:manage 权限
+// @Tags         admin-users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id       path  int     true  "用户 ID"
+// @Param        request  body  object  true  "新密码"  example({"newPassword":"..."})
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /admin/users/{id}/reset-password [post]
 func (h *UserHandler) HandleResetPassword(c *gin.Context) {
 	user, ok := h.findByIDParam(c)
 	if !ok {
@@ -240,6 +276,17 @@ func (h *UserHandler) HandleResetPassword(c *gin.Context) {
 }
 
 // HandleDelete 删除用户（禁止删除自身与内置 admin）
+// @Summary      删除用户
+// @Description  禁止删除自身与内置 admin 账户；需要 users:manage 权限
+// @Tags         admin-users
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "用户 ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /admin/users/{id} [delete]
 func (h *UserHandler) HandleDelete(c *gin.Context) {
 	user, ok := h.findByIDParam(c)
 	if !ok {

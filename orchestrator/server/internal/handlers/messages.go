@@ -132,6 +132,17 @@ func (h *MessageHandler) HandleUnreadCount(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"count": count})
 }
 
+// HandleMarkRead 标记单条消息已读
+// @Summary      标记消息已读
+// @Description  为当前用户幂等写入 message_reads 记录（广播消息按用户隔离）
+// @Tags         messages
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "消息 ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /messages/{id}/read [post]
 func (h *MessageHandler) HandleMarkRead(c *gin.Context) {
 	userID, _, _ := middleware.GetCurrentUser(c)
 	id := parsePositiveInt(c.Param("id"), 0)
@@ -147,6 +158,15 @@ func (h *MessageHandler) HandleMarkRead(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+// HandleMarkAllRead 标记全部可见消息已读
+// @Summary      全部标记已读
+// @Description  将当前用户所有可见的未读消息写入已读记录
+// @Tags         messages
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /messages/read-all [post]
 func (h *MessageHandler) HandleMarkAllRead(c *gin.Context) {
 	userID, username, role := middleware.GetCurrentUser(c)
 

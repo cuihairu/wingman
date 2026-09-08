@@ -124,6 +124,12 @@ func loginAuditMeta(clientIP, userAgent, result string) map[string]any {
 }
 
 // HandleLogout 登出
+// @Summary      用户登出
+// @Description  无状态 JWT，客户端丢弃令牌即可
+// @Tags         auth
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Router       /v1/auth/logout [post]
 func (h *AuthHandler) HandleLogout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

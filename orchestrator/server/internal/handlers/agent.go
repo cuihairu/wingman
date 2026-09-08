@@ -42,6 +42,16 @@ func (h *AgentHandler) HandleList(c *gin.Context) {
 	})
 }
 
+// HandleGet Agent 详情
+// @Summary      Agent 详情
+// @Description  返回单个 agent 的状态/标签/负载信息
+// @Tags         agents
+// @Produce      json
+// @Security     BearerAuth
+// @Param        agentId  path  string  true  "Agent ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Router       /agents/{agentId} [get]
 func (h *AgentHandler) HandleGet(c *gin.Context) {
 	agentID := c.Param("agentId")
 
@@ -60,6 +70,17 @@ func (h *AgentHandler) HandleGet(c *gin.Context) {
 	})
 }
 
+// HandleShutdown 远程关闭 Agent
+// @Summary      关闭 Agent
+// @Description  下发 system.shutdown 并将 agent 标记为 offline；需要 agents:manage 权限
+// @Tags         agents
+// @Produce      json
+// @Security     BearerAuth
+// @Param        agentId  path  string  true  "Agent ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Failure      502  {object}  map[string]interface{}
+// @Router       /agents/{agentId}/shutdown [post]
 func (h *AgentHandler) HandleShutdown(c *gin.Context) {
 	agentID := c.Param("agentId")
 
@@ -94,6 +115,18 @@ func (h *AgentHandler) HandleShutdown(c *gin.Context) {
 }
 
 // HandleSetTags 设置 Agent 标签（分组）
+// @Summary      设置 Agent 标签
+// @Description  覆盖式更新 agent 标签；需要 agents:manage 权限
+// @Tags         agents
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        agentId  path  string  true  "Agent ID"
+// @Param        request  body  object  true  "标签列表"  example({"tags":["prod"]})
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Router       /agents/{agentId}/tags [put]
 func (h *AgentHandler) HandleSetTags(c *gin.Context) {
 	agentID := c.Param("agentId")
 

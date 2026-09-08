@@ -19,6 +19,13 @@ func NewSettingsHandler(db *gorm.DB) *SettingsHandler {
 }
 
 // HandleGetSettings 获取配置
+// @Summary      获取系统配置
+// @Description  返回 DB 配置并填充默认值；需要 settings:view 权限（dashboard 兼容路径 /settings 等价）
+// @Tags         settings
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Router       /v1/settings [get]
 func (h *SettingsHandler) HandleGetSettings(c *gin.Context) {
 	var settings []models.Settings
 	h.db.Find(&settings)
@@ -47,6 +54,16 @@ func (h *SettingsHandler) HandleGetSettings(c *gin.Context) {
 }
 
 // HandleUpdateSettings 更新配置
+// @Summary      更新系统配置
+// @Description  按 key-value 逐项 upsert；需要 settings:edit 权限（dashboard 兼容路径 /settings 等价）
+// @Tags         settings
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body  object  true  "配置键值对"  example({"logLevel":"debug"})
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Router       /v1/settings [put]
 func (h *SettingsHandler) HandleUpdateSettings(c *gin.Context) {
 	var req map[string]string
 	if err := c.ShouldBindJSON(&req); err != nil {

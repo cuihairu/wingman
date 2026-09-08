@@ -30,6 +30,21 @@ func NewAuditHandler(db *gorm.DB) *AuditHandler {
 	return &AuditHandler{db: db}
 }
 
+// HandleList 审计事件列表
+// @Summary      审计事件列表
+// @Description  分页查询审计日志，支持按操作者/事件类型/时间范围过滤
+// @Tags         audit
+// @Produce      json
+// @Security     BearerAuth
+// @Param        page   query  int     false  "页码"                 default(1)
+// @Param        size   query  int     false  "每页条数（最大 200）"  default(20)
+// @Param        actor  query  string  false  "操作者过滤"
+// @Param        kinds  query  string  false  "事件类型（CSV，如 user.create,login）"
+// @Param        start  query  string  false  "起始时间（RFC3339）"
+// @Param        end    query  string  false  "结束时间（RFC3339）"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /audit [get]
 func (h *AuditHandler) HandleList(c *gin.Context) {
 	page := parsePositiveInt(c.Query("page"), 1)
 	size := parsePositiveInt(c.Query("size"), 20)

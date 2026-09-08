@@ -36,6 +36,14 @@ func (h *ProfileHandler) HandleGetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, profilePayload(user))
 }
 
+// HandleGetGames 获取用户游戏列表
+// @Summary      用户游戏列表
+// @Description  预留接口，当前返回空列表
+// @Tags         profile
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Router       /v1/profile/games [get]
 func (h *ProfileHandler) HandleGetGames(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"games": []any{},
@@ -95,6 +103,19 @@ func codeToPermission(code string) gin.H {
 	}
 }
 
+// HandleUpdateProfile 更新当前用户资料
+// @Summary      更新当前用户资料
+// @Description  支持更新 nickname/email/phone/avatar（可选字段）
+// @Tags         profile
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body  object  true  "资料字段"  example({"nickname":"Alice","email":"a@example.com"})
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /v1/profile [put]
 func (h *ProfileHandler) HandleUpdateProfile(c *gin.Context) {
 	user, ok := h.currentUser(c)
 	if !ok {
@@ -139,6 +160,19 @@ func (h *ProfileHandler) HandleUpdateProfile(c *gin.Context) {
 	})
 }
 
+// HandleUpdatePassword 修改当前用户密码
+// @Summary      修改当前用户密码
+// @Description  校验旧密码与新密码强度后更新
+// @Tags         profile
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body  object  true  "新旧密码"  example({"oldPassword":"...","newPassword":"..."})
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /v1/profile/password [put]
 func (h *ProfileHandler) HandleUpdatePassword(c *gin.Context) {
 	user, ok := h.currentUser(c)
 	if !ok {

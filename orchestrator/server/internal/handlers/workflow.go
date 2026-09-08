@@ -23,6 +23,15 @@ func NewWorkflowHandler(engine *workflow.Engine, db *gorm.DB) *WorkflowHandler {
 	}
 }
 
+// HandleList 工作流列表
+// @Summary      工作流列表
+// @Description  返回所有工作流记录（含运行状态）
+// @Tags         workflows
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /workflows [get]
 func (h *WorkflowHandler) HandleList(c *gin.Context) {
 	workflows, err := h.engine.ListWorkflows()
 	if err != nil {
@@ -52,6 +61,17 @@ func (h *WorkflowHandler) HandleListTemplates(c *gin.Context) {
 	})
 }
 
+// HandleGet 工作流详情
+// @Summary      工作流详情
+// @Description  返回工作流定义、步骤状态与共享上下文
+// @Tags         workflows
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "工作流 ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Router       /workflows/{id} [get]
 func (h *WorkflowHandler) HandleGet(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -82,6 +102,18 @@ func (h *WorkflowHandler) HandleGet(c *gin.Context) {
 	})
 }
 
+// HandleCreate 创建并提交工作流
+// @Summary      创建工作流
+// @Description  校验步骤后提交引擎调度，失败时回滚记录；需要 workflows:run 权限
+// @Tags         workflows
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body  object  true  "工作流定义"  example({"name":"monitor","description":"单步监控","steps":[],"sharedContext":{}})
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /workflows [post]
 func (h *WorkflowHandler) HandleCreate(c *gin.Context) {
 	var req struct {
 		Name          string                `json:"name" binding:"required"`
@@ -138,6 +170,16 @@ func (h *WorkflowHandler) HandleCreate(c *gin.Context) {
 	})
 }
 
+// HandleCancel 取消工作流
+// @Summary      取消工作流
+// @Description  取消运行中的工作流并写审计日志；需要 workflows:run 权限
+// @Tags         workflows
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "工作流 ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Router       /workflows/{id}/cancel [post]
 func (h *WorkflowHandler) HandleCancel(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -159,6 +201,16 @@ func (h *WorkflowHandler) HandleCancel(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+// HandleGetWorkers 工作流 worker 列表
+// @Summary      工作流 worker 列表
+// @Description  汇总步骤状态中按 workerId 去重的 worker（agent）信息
+// @Tags         workflows
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "工作流 ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Router       /workflows/{id}/workers [get]
 func (h *WorkflowHandler) HandleGetWorkers(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -188,6 +240,18 @@ func (h *WorkflowHandler) HandleGetWorkers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": workers})
 }
 
+// HandleGetStepStatus 单步实时状态
+// @Summary      工作流步骤状态
+// @Description  合并 DB 记录与引擎内存快照，返回单步的实时执行状态
+// @Tags         workflows
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id      path  int     true  "工作流 ID"
+// @Param        stepId  path  string  true  "步骤 ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]interface{}
+// @Router       /workflows/{id}/steps/{stepId}/status [get]
 func (h *WorkflowHandler) HandleGetStepStatus(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {

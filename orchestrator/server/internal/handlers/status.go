@@ -22,6 +22,14 @@ func NewStatusHandler(db *gorm.DB, registry *agent.Registry) *StatusHandler {
 }
 
 // HandleStatus 获取系统状态
+// @Summary      系统状态
+// @Description  汇总脚本/窗口数量与资源占用（可指定 agentId，缺省取首个在线 agent）
+// @Tags         status
+// @Produce      json
+// @Security     BearerAuth
+// @Param        agentId  query  string  false  "Agent ID（缺省自动选择在线 agent）"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /v1/status [get]
 func (h *StatusHandler) HandleStatus(c *gin.Context) {
 	var totalScripts int64
 	var runningScripts int64
@@ -81,6 +89,13 @@ func (h *StatusHandler) HandleStatus(c *gin.Context) {
 }
 
 // HandleHealth 健康检查
+// @Summary      健康检查
+// @Description  存活探针，返回 {"status":"ok"}
+// @Tags         status
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{}
+// @Router       /v1/health [get]
 func (h *StatusHandler) HandleHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": "ok",
