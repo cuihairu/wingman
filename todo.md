@@ -227,7 +227,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ## 🔵 P3 - 低优先级（工程优化）
 
-### 测试（Go server 覆盖率大幅提升 — 75 个测试函数）
+### 测试（Go server 覆盖率大幅提升 — 355 个测试函数）
 
 - [x] **Go orchestrator 单元测试**
   - [x] rbac（种子/解析/admin 旁路/inactive）+ handlers 用户/角色 CRUD
@@ -239,8 +239,9 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
   - [x] 修复 listener_test.go 既有 vet 警告（goroutine 内 Fatalf → channel 回传测试 goroutine）
   - [x] handlers（script/agent/audit/screenshot）补全
 - [ ] **C++ runtime**：当前 ~1705 测试 / 90%+ 覆盖（保持水准；2026-06-23 已修复 `runtime_tests` 链接缺源、`gtest_discover_tests(... PRE_TEST)` 多配置发现，以及 `WINGMAN_BUILD_TESTS` 自动联动 core/runtime/transport/proto/debug 标准测试集）
-- [ ] **集成测试**：✅ server HTTP 链路（`TestIntegrationAuthAndPermissionFlow`：JWT 签发→AuthRequired→PermissionRequired admin 旁路/viewer 拒绝→handler，8 断言）；🚧 GUI↔IPC↔Runtime、Agent→Orchestrator 跨语言集成待续
+- [ ] **集成测试**：✅ server HTTP 链路（`TestIntegrationAuthAndPermissionFlow`：JWT 签发→AuthRequired→PermissionRequired admin 旁路/viewer 拒绝→handler，8 断言）；✅ Agent→Orchestrator 跨语言集成（6 文件 3 测试全通过）；🚧 GUI↔IPC↔Runtime 跨语言集成待续
 - [x] **性能测试**（Go server 基准）：`go test -bench=. -benchmem ./internal/rbac/ ./internal/workflow/`；rbac 非admin 解析 160µs/689 allocs、admin 旁路 17µs（~9×，验证短路 + 请求级缓存有效）、DAG 环检测 44µs（100 节点）、selectAgent 9µs（20 agent）；C++ 截图/WS 基准待续
+- [x] **Swagger API 文档**：✅ 全部 47 个端点已添加 swaggo 注解（2026-09-09，16 个 handler 文件 41 个端点）；swag init 生成成功
 
 ### 文档
 
@@ -254,8 +255,8 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 ### 构建和部署
 
 - [x] CI/CD：GitHub Actions — C++（Windows 全量+覆盖率 / Ubuntu+macOS proto/transport）、Go（Ubuntu/Windows/macOS vet+build+test-race）、Dashboard（3 OS 打包）
-- [ ] 自动发布（tag→release）
-- [ ] 打包分发：Windows MSIX/InnoSetup（InnoSetup 已有）、macOS dmg、Linux AppImage、Docker（Orchestrator）
+- [x] 自动发布（tag→release）— ✅ release.yml 触发 `v*` tag，调用 build-package.yml 三平台构建 + softprops/action-gh-release@v3 上传
+- [x] 打包分发：Windows zip+InnoSetup+Tauri NSIS / Linux tar.gz+Tauri AppImage/deb / macOS tar.gz+Tauri dmg+app / Docker（orchestrator/server/Dockerfile + orchestrator/dashboard/Dockerfile）
 
 ---
 
@@ -277,7 +278,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 | | 工作流引擎 | 100% | DAG/环检测/持久化/取消/超时/重试/负载均衡/模板/独立步骤类型（wait/condition/screenshot） |
 | | 权限系统 | 95% | ✅ RBAC（模型+中间件+API+Dashboard 页面 + PermissionRequired 已接线 8 权限码）；可选：Swagger |
 | | Debugger | 100% | `/api/debugger/info` 直连模式契约 |
-| | 测试 | 70% | 75 个测试函数覆盖 rbac/workflow/handlers/hub/registry/middleware/debugger；vet 全清 |
+| | 测试 | 85% | 355 个测试函数覆盖 rbac/workflow/handlers/hub/registry/middleware/debugger/integration/security/scripts；vet 全清 |
 | **Dashboard (React)** | 页面框架 | 95% | 9 页面（+Settings）+ 路由 + admin 子页 access 守卫全覆盖 |
 | | 组件实现 | 92% | Agents/Scripts/Workflows/Admin/Login/Profile/Settings/Support 完成；Monitor WS 事件驱动 + 假 UI 全部清理 |
 | | WebSocket | 95% | wsService + 自动重连 + 死链检测 + agent/workflow/trigger/script/screenshot 事件全对接 |
@@ -314,9 +315,9 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 - [x] Agent 分组/标签（PUT tags API + Dashboard 标签编辑）
 
 ### Sprint E (2周) — 测试 + 跨平台 + 收尾
-- [x] Go orchestrator 测试覆盖（handlers/engine/hub/registry/rbac — 75 个测试函数，vet 全清）
+- [x] Go orchestrator 测试覆盖（handlers/engine/hub/registry/rbac — 355 个测试函数，vet 全清）
 - [x] 跨平台 CI 矩阵：C++（Windows 全量 + Ubuntu/macOS proto/transport）、Go（Ubuntu/Windows/macOS vet+build+test-race）、Dashboard（3 OS 打包）
-- [ ] 文档（使用教程）+ 自动发布（tag→release）— 见 P3 文档/构建章节
+- [x] 文档（使用教程）+ 自动发布（tag→release）— ✅ 已完成，见上方构建和部署章节
 
 ---
 
@@ -327,7 +328,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 3. **远程链路**：Dashboard → Go server → runtime (outbound)，Dashboard 不直连 runtime
 4. **Dashboard 位置**：真正的 dashboard 在 `orchestrator/dashboard/`，根目录 `dashboard/` 是无关的 Croupier 副本
 5. **vcpkg 约束**：所有 C++ 依赖必须走 vcpkg x64-windows-static
-6. **测试基线**：C++ 当前 `ctest -N -C Debug` 可发现 1705 个测试；`WINGMAN_BUILD_TESTS` 自动启用 core/runtime/transport/proto/debug 标准套件，Go server 75 个测试函数（rbac/workflow/handlers/hub/registry/middleware/debugger），vet 全清
+6. **测试基线**：C++ 当前 `ctest -N -C Debug` 可发现 1705 个测试；`WINGMAN_BUILD_TESTS` 自动启用 core/runtime/transport/proto/debug 标准套件，Go server 355 个测试函数（rbac/workflow/handlers/hub/registry/middleware/debugger/integration/security/scripts），vet 全清
 
 ---
 
