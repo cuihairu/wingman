@@ -556,8 +556,10 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 	// 标记为运行中
 	now := time.Now()
 	e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "running", "start_time": now})
+	startTime := now
 	exec.setStepState(step.ID, func(s *models.StepStatus) {
 		s.Status = "running"
+		s.StartTime = &startTime
 	})
 
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "running", "")
@@ -658,9 +660,11 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 	// 标记完成
 	endTime := time.Now()
 	e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "completed", "end_time": endTime, "worker_id": workerID})
+	completedAt := endTime
 	exec.setStepState(step.ID, func(s *models.StepStatus) {
 		s.Status = "completed"
 		s.WorkerID = workerID
+		s.EndTime = &completedAt
 	})
 
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", "")
@@ -763,8 +767,10 @@ func (e *Engine) executeWaitStep(ctx context.Context, exec *Execution, step mode
 
 	endTime := time.Now()
 	e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "completed", "end_time": endTime})
+	waitEndedAt := endTime
 	exec.setStepState(step.ID, func(s *models.StepStatus) {
 		s.Status = "completed"
+		s.EndTime = &waitEndedAt
 	})
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", "")
 	return nil
@@ -798,9 +804,11 @@ func (e *Engine) executeConditionStep(ctx context.Context, exec *Execution, step
 
 	endTime := time.Now()
 	e.updateStepStatusRow(exec.Workflow.ID, step.ID, map[string]any{"status": "completed", "end_time": endTime, "message": message})
+	condEndedAt := endTime
 	exec.setStepState(step.ID, func(s *models.StepStatus) {
 		s.Status = "completed"
 		s.Message = message
+		s.EndTime = &condEndedAt
 	})
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", message)
 	return nil
@@ -1055,6 +1063,7 @@ func (e *Engine) executeScreenshotStep(ctx context.Context, exec *Execution, ste
 		s.Status = "completed"
 		s.WorkerID = workerID
 		s.Message = message
+		s.EndTime = &endTime
 	})
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "completed", message)
 	return nil
@@ -1138,6 +1147,7 @@ func (e *Engine) failStep(ss *models.StepStatus, exec *Execution, step models.Wo
 	exec.setStepState(step.ID, func(s *models.StepStatus) {
 		s.Status = "failed"
 		s.Message = msg
+		s.EndTime = &endTime
 	})
 
 	e.broadcastStepProgress(exec.Workflow.ID, step.ID, "failed", msg)

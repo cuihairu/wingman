@@ -11,6 +11,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -33,22 +34,30 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatalf("server exited with error: %v", err)
+	}
+}
+
+// run 装配并启动整个编排器。从 main 中提取以便测试覆盖：
+// 配置/数据库/迁移失败与端口占用均以 error 返回而非直接退出进程。
+func run() error {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Invalid configuration: %v", err)
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	if err := os.MkdirAll("./data", 0755); err != nil {
-		log.Fatalf("Failed to create data directory: %v", err)
+		return fmt.Errorf("failed to create data directory: %w", err)
 	}
 
 	db, err := gorm.Open(sqlite.Open(cfg.DBPath), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("Failed to connect database: %v", err)
+		return fmt.Errorf("failed to connect database: %w", err)
 	}
 
 	if err := models.AutoMigrate(db); err != nil {
-		log.Fatalf("Failed to migrate database: %v", err)
+		return fmt.Errorf("failed to migrate database: %w", err)
 	}
 
 	authHandler := handlers.NewAuthHandler(db)
@@ -303,6 +312,7 @@ func main() {
 	addr := config.Addr(cfg)
 	log.Printf("Server starting on http://%s", addr)
 	if err := r.Run(addr); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		return fmt.Errorf("failed to start server: %w", err)
 	}
+	return nil
 }
