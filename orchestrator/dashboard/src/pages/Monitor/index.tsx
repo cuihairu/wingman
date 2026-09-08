@@ -1,8 +1,10 @@
 /**
  * 游戏监控页面
  * 集成实时截图、Agent 资源状态、触发器事件流和宏命令入口。
+ * 触发器列表经 /api/agents/:id/triggers 读取真实 runtime 数据，
+ * trigger_fired 事件实时叠加命中计数。
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
 import {
   Alert,
@@ -14,6 +16,7 @@ import {
   Row,
   Space,
   Statistic,
+  Switch,
   Tag,
   Timeline,
   Typography,
@@ -26,6 +29,7 @@ import {
   DesktopOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
+  ReloadOutlined,
   SettingOutlined,
   ThunderboltOutlined,
   WifiOutlined,
@@ -33,20 +37,20 @@ import {
 import { history } from '@umijs/max';
 import ScreenshotView from '@/components/ScreenshotView';
 import wsService from '@/services/websocket';
-import { AgentInfo, AgentStatus, getAgents } from '@/services/wingman';
+import {
+  AgentInfo,
+  AgentStatus,
+  AgentTrigger,
+  getAgentTriggers,
+  getAgents,
+  toggleAgentTrigger,
+} from '@/services/wingman';
 
 const { Text } = Typography;
 
-interface TriggerInfo {
-  id: string;
-  name: string;
-  enabled: boolean;
-  type: string;
-  condition: string;
-  actions: number;
-  cooldown: number;
-  lastTriggered?: string;
-  hitCount?: number;
+interface MonitorTrigger extends AgentTrigger {
+  hitCount: number;
+  lastFiredAt?: string;
 }
 
 interface SystemStatus {
@@ -85,6 +89,34 @@ function formatUptime(ms: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   return `${hours}h ${minutes}m`;
+}
+
+function formatLastSeen(lastSeen: number): string {
+  if (!lastSeen) return '未知';
+  const delta = Date.now() - lastSeen;
+  if (delta < 0) return '刚刚';
+  if (delta < 60_000) return `${Math.floor(delta / 1000)} 秒前`;
+  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)} 分钟前`;
+  return `${Math.floor(delta / 3_600_000)} 小时前`;
+}
+
+// extractErrorMessage 从 umi request 抛出的错误中提取可读文本
+function extractErrorMessage(error: unknown): string {
+  const candidate = error as
+    | { data?: { error?: string; message?: string }; message?: string }
+    | undefined;
+  return (
+    candidate?.data?.error ||
+    candidate?.data?.message ||
+    candidate?.message ||
+    '请求失败'
+  );
+}
+
+const connectedStatuses = [AgentStatus.Online, AgentStatus.Idle, AgentStatus.Busy];
+
+function agentConnected(agent: AgentInfo | undefined): boolean {
+  return !!agent && connectedStatuses.includes(agent.status);
 }
 
 function primaryAgent(agents: AgentInfo[]): AgentInfo | undefined {
@@ -148,9 +180,17 @@ const Monitor: React.FC = () => {
   });
   const [events, setEvents] = useState<RuntimeEvent[]>([]);
   const lastScreenshotRef = useRef<number>(0);
-  const [triggers, setTriggers] = useState<TriggerInfo[]>([]);
+  const [triggers, setTriggers] = useState<MonitorTrigger[]>([]);
+  const [triggersLoading, setTriggersLoading] = useState(false);
+  const [triggersError, setTriggersError] = useState<string | null>(null);
+  const [toggling, setToggling] = useState<Record<string, boolean>>({});
+  const selectedAgentRef = useRef<AgentInfo | undefined>(undefined);
 
   const selectedAgent = primaryAgent(agents);
+
+  useEffect(() => {
+    selectedAgentRef.current = selectedAgent;
+  }, [selectedAgent]);
   const displayStatus: SystemStatus = selectedAgent?.resources
     ? {
         cpu: safeNumber(selectedAgent.resources.cpu?.usage),
@@ -244,32 +284,51 @@ const Monitor: React.FC = () => {
     unsubscribes.push(
       wsService.onTriggerFired((data) => {
         if (!isRunningRef.current) return;
-        const triggerId = String(data.triggerId || data.id || '');
+        // 事件载荷（runtime TriggerInstance）：{id, name, triggered, lastTriggerTime, agentId}
+        const triggerId = String(data.id ?? data.triggerId ?? '');
         const triggerName = String(data.name || data.triggerName || triggerId || '未知触发器');
+        const eventAgentId = String(data.agentId || '');
+        const selected = selectedAgentRef.current;
+        // 只统计当前展示 agent 的命中，避免多 agent 命中污染列表
+        if (selected && eventAgentId && eventAgentId !== selected.agentId) return;
+        const firedAt = new Date().toLocaleTimeString();
         setTriggers((previous) => {
           const index = previous.findIndex(
             (trigger) => trigger.id === triggerId || trigger.name === triggerName,
           );
-          const nextHit = {
-            id: triggerId || triggerName,
-            name: triggerName,
-            enabled: true,
-            type: String(data.type || 'event'),
-            condition: String(data.condition || 'runtime event'),
-            actions: safeNumber(data.actions, 0),
-            cooldown: safeNumber(data.cooldown, 0),
-            lastTriggered: new Date().toLocaleTimeString(),
-            hitCount: 1,
-          };
           if (index < 0) {
-            return [nextHit, ...previous].slice(0, 20);
+            // 列表尚未同步到的新触发器：以事件信息占位，待下次刷新补全配置
+            return [
+              {
+                id: triggerId || triggerName,
+                name: triggerName,
+                enabled: true,
+                type: 'event',
+                condition: {
+                  type: '',
+                  value: '',
+                  region: { x: 0, y: 0, width: 0, height: 0 },
+                  tolerance: 0,
+                  interval: 0,
+                  enabled: true,
+                },
+                actions: [],
+                oneShot: false,
+                cooldown: 0,
+                lastTriggered: true,
+                hitCount: 1,
+                lastFiredAt: firedAt,
+              },
+              ...previous,
+            ].slice(0, 20);
           }
           return previous.map((trigger, itemIndex) =>
             itemIndex === index
               ? {
                   ...trigger,
-                  ...nextHit,
+                  lastTriggered: true,
                   hitCount: (trigger.hitCount || 0) + 1,
+                  lastFiredAt: firedAt,
                 }
               : trigger,
           );
@@ -320,6 +379,93 @@ const Monitor: React.FC = () => {
     }));
     return () => {};
   }, [agents.length, isRunning]);
+
+  // ===== 触发器真实列表：随选中 agent 变化拉取 /api/agents/:id/triggers =====
+  const loadTriggers = useCallback(
+    async (agent: AgentInfo | undefined, opts?: { silent?: boolean }) => {
+      if (!agent) {
+        setTriggers([]);
+        setTriggersError(null);
+        return;
+      }
+      if (!agentConnected(agent)) {
+        setTriggers([]);
+        setTriggersError(`Agent ${agent.hostname || agent.agentId} 已离线，无法读取触发器`);
+        return;
+      }
+      if (!opts?.silent) setTriggersLoading(true);
+      try {
+        const response = await getAgentTriggers(agent.agentId);
+        setTriggersError(null);
+        setTriggers((previous) =>
+          (response.data || []).map((trigger) => {
+            const existing = previous.find(
+              (item) => item.id === trigger.id || item.name === trigger.name,
+            );
+            return {
+              ...trigger,
+              hitCount: existing?.hitCount || 0,
+              lastFiredAt: existing?.lastFiredAt,
+            };
+          }),
+        );
+      } catch (error) {
+        setTriggersError(extractErrorMessage(error));
+        addEvent({
+          type: 'trigger',
+          level: 'warning',
+          message: `触发器列表加载失败: ${extractErrorMessage(error)}`,
+        });
+      } finally {
+        if (!opts?.silent) setTriggersLoading(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    loadTriggers(selectedAgent);
+  }, [selectedAgent?.agentId, selectedAgent?.status]);
+
+  // agent 断开时主动清理触发器状态（错误提示由 loadTriggers 写入）
+  useEffect(() => {
+    if (selectedAgent && !agentConnected(selectedAgent)) {
+      setTriggers((previous) => (previous.length > 0 ? [] : previous));
+    }
+  }, [selectedAgent]);
+
+  const handleToggleTrigger = async (trigger: MonitorTrigger) => {
+    const agent = selectedAgentRef.current;
+    if (!agent || !agentConnected(agent)) {
+      addEvent({
+        type: 'trigger',
+        level: 'error',
+        message: 'Agent 未连接，无法切换触发器状态',
+      });
+      return;
+    }
+    setToggling((previous) => ({ ...previous, [trigger.id]: true }));
+    try {
+      const response = await toggleAgentTrigger(agent.agentId, trigger.id);
+      const enabled = response.data?.enabled ?? !trigger.enabled;
+      setTriggers((previous) =>
+        previous.map((item) => (item.id === trigger.id ? { ...item, enabled } : item)),
+      );
+      addEvent({
+        type: 'trigger',
+        level: 'processing',
+        message: `触发器 ${trigger.name} 已${enabled ? '启用' : '停用'}`,
+      });
+    } catch (error) {
+      addEvent({
+        type: 'trigger',
+        level: 'error',
+        message: `触发器 ${trigger.name} 切换失败: ${extractErrorMessage(error)}`,
+      });
+    } finally {
+      setToggling((previous) => ({ ...previous, [trigger.id]: false }));
+    }
+  };
 
   const handleToggleRun = () => {
     const next = !isRunning;
@@ -451,24 +597,103 @@ const Monitor: React.FC = () => {
                   <Tag color="blue">{triggers.length}</Tag>
                 </Space>
               }
-              extra={<Tag>事件驱动</Tag>}
+              extra={
+                <Space>
+                  <Button
+                    size="small"
+                    type="text"
+                    icon={<ReloadOutlined spin={triggersLoading} />}
+                    disabled={!agentConnected(selectedAgent) || triggersLoading}
+                    onClick={() => loadTriggers(selectedAgent)}
+                  >
+                    刷新
+                  </Button>
+                </Space>
+              }
             >
+              {/* Runtime 连接状态：agent↔orchestrator 链路可用性决定触发器数据源 */}
+              <Space direction="vertical" size={2} style={{ width: '100%', marginBottom: 12 }}>
+                <Space size={8} wrap>
+                  <Text type="secondary">数据源:</Text>
+                  {selectedAgent ? (
+                    <>
+                      <Tag
+                        color={
+                          selectedAgent.status === AgentStatus.Offline
+                            ? 'red'
+                            : selectedAgent.status === AgentStatus.Error
+                              ? 'volcano'
+                              : 'green'
+                        }
+                      >
+                        {selectedAgent.hostname || selectedAgent.agentId}
+                      </Tag>
+                      <Tag
+                        color={
+                          selectedAgent.status === AgentStatus.Busy
+                            ? 'processing'
+                            : agentConnected(selectedAgent)
+                              ? 'success'
+                              : 'default'
+                        }
+                      >
+                        {selectedAgent.status}
+                      </Tag>
+                    </>
+                  ) : (
+                    <Tag>无 Agent</Tag>
+                  )}
+                  <Tag color={wsConnected ? 'green' : 'orange'}>{wsConnected ? 'WS 已连' : 'WS 断开'}</Tag>
+                </Space>
+                {selectedAgent && (
+                  <Text type="secondary">
+                    Agent: {selectedAgent.agentId} · 最近心跳: {formatLastSeen(selectedAgent.lastSeen)}
+                  </Text>
+                )}
+              </Space>
+
+              {triggersError && (
+                <Alert
+                  type={agentConnected(selectedAgent) ? 'error' : 'warning'}
+                  showIcon
+                  style={{ marginBottom: 12 }}
+                  message="触发器数据不可用"
+                  description={triggersError}
+                />
+              )}
+
               <List
                 size="small"
+                loading={triggersLoading}
                 dataSource={triggers}
-                locale={{
-                  emptyText: '等待 runtime trigger_fired 事件。远程 trigger.list API 尚未暴露。',
-                }}
+                locale={{ emptyText: '该 Agent 暂无触发器（runtime trigger.list 为空）' }}
                 renderItem={(trigger) => (
-                  <List.Item>
+                  <List.Item
+                    actions={[
+                      <Switch
+                        key="toggle"
+                        size="small"
+                        checked={trigger.enabled}
+                        loading={toggling[trigger.id]}
+                        disabled={!agentConnected(selectedAgent)}
+                        onChange={() => handleToggleTrigger(trigger)}
+                      />,
+                    ]}
+                  >
                     <List.Item.Meta
                       avatar={
-                        <Tag color={trigger.type === 'color' ? 'blue' : 'green'}>
-                          {trigger.type === 'event' ? '事件' : trigger.type}
+                        <Tag color={trigger.type === 'ColorFound' ? 'blue' : 'green'}>
+                          {trigger.type || 'event'}
                         </Tag>
                       }
-                      title={trigger.name}
-                      description={`${trigger.condition} · 命中 ${trigger.hitCount || 0} · ${trigger.lastTriggered || '未触发'}`}
+                      title={
+                        <Space size={8}>
+                          <span>{trigger.name}</span>
+                          {trigger.oneShot && <Tag>一次性</Tag>}
+                          {trigger.cooldown > 0 && <Tag>冷却 {trigger.cooldown}ms</Tag>}
+                        </Space>
+                      }
+                      description={`${trigger.condition?.value || trigger.condition?.type || '无条件配置'} · 动作 ${trigger.actions.length} · 命中 ${trigger.hitCount || 0} · ${trigger.lastFiredAt || '未触发'}`}
                     />
                   </List.Item>
                 )}

@@ -34,6 +34,16 @@ function toNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(numberValue) ? numberValue : fallback;
 }
 
+// toStrictNumber 严格数值转换：不做日期字符串猜测，用于触发器坐标/阈值等纯数值字段
+function toStrictNumber(value: unknown, fallback = 0): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : fallback;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return fallback;
+}
+
 function parseMaybeJson<T>(value: unknown, fallback: T): T {
   if (Array.isArray(value) || (value && typeof value === 'object')) {
     return value as T;
@@ -122,6 +132,38 @@ export interface AgentInfo {
   resources: ResourceStats;
   lastSeen: number;
   tags?: string[];
+}
+
+// 触发器条件（runtime BasicTriggerCondition）
+export interface TriggerCondition {
+  type: string;
+  value: string;
+  region: { x: number; y: number; width: number; height: number };
+  tolerance: number;
+  interval: number;
+  enabled: boolean;
+}
+
+// 触发器动作（runtime TriggerActionData）
+export interface TriggerAction {
+  type: string;
+  value: string;
+  x: number;
+  y: number;
+  delay: number;
+}
+
+// Agent 触发器（runtime TriggerInstance 经 trigger.list 透传）
+export interface AgentTrigger {
+  id: string;
+  name: string;
+  enabled: boolean;
+  type: string;
+  condition: TriggerCondition;
+  actions: TriggerAction[];
+  oneShot: boolean;
+  cooldown: number;
+  lastTriggered: boolean;
 }
 
 // 工作流状态
@@ -329,6 +371,65 @@ export async function setAgentTags(agentId: string, tags: string[]) {
     method: 'PUT',
     data: { tags },
   });
+}
+
+// normalizeAgentTrigger 归一化 runtime trigger.list 条目：
+// 字段缺失/类型不符时回退安全默认值，避免渲染层抛错。
+export function normalizeAgentTrigger(value: unknown): AgentTrigger {
+  const item = asRecord(value);
+  const condition = asRecord(item.condition);
+  const region = asRecord(condition.region);
+  return {
+    id: String(item.id ?? ''),
+    name: String(item.name ?? item.id ?? '未命名触发器'),
+    enabled: item.enabled === true,
+    type: String(item.type ?? condition.type ?? ''),
+    condition: {
+      type: String(condition.type ?? item.type ?? ''),
+      value: String(condition.value ?? ''),
+      region: {
+        x: toStrictNumber(region.x),
+        y: toStrictNumber(region.y),
+        width: toStrictNumber(region.width),
+        height: toStrictNumber(region.height),
+      },
+      tolerance: toStrictNumber(condition.tolerance),
+      interval: toStrictNumber(condition.interval),
+      enabled: condition.enabled !== false,
+    },
+    actions: asArray<Record<string, unknown>>(item.actions).map((action) => {
+      const record = asRecord(action);
+      return {
+        type: String(record.type ?? ''),
+        value: String(record.value ?? ''),
+        x: toStrictNumber(record.x),
+        y: toStrictNumber(record.y),
+        delay: toStrictNumber(record.delay),
+      };
+    }),
+    oneShot: item.oneShot === true,
+    cooldown: toStrictNumber(item.cooldown),
+    lastTriggered: item.lastTriggered === true,
+  };
+}
+
+// getAgentTriggers 获取指定 agent 的触发器列表（经 Go server 透传 runtime trigger.list）
+export async function getAgentTriggers(agentId: string) {
+  const response = await request<ApiResponse<unknown[]>>(`/api/agents/${agentId}/triggers`, {
+    method: 'GET',
+  });
+  return normalizeApiResponse(response, (data) => asArray(data).map(normalizeAgentTrigger));
+}
+
+// toggleAgentTrigger 切换触发器启用状态（需 agents:manage）
+export async function toggleAgentTrigger(agentId: string, triggerId: string) {
+  return request<ApiResponse<{ id: string; enabled: boolean }>>(
+    `/api/agents/${agentId}/triggers/toggle`,
+    {
+      method: 'POST',
+      data: { id: triggerId },
+    },
+  );
 }
 
 // 工作流管理

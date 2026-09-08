@@ -1,6 +1,8 @@
 #include "wingman/runtime/agent.hpp"
 #include "wingman/platform/screen_factory.hpp"
 #include "wingman/rpc/rpc_dispatcher.hpp"
+#include "wingman/rpc/trigger_handler.hpp"
+#include "wingman/trigger.hpp"
 #include "wingman/window.hpp"
 #include "wingman/runtime/event_buffer.hpp"
 #include "wingman/runtime/local_ipc_server.hpp"
@@ -40,6 +42,43 @@ int64_t encodeWindowHandle(WindowHandle handle) {
 #endif
 }
 
+// dispatchViaRpcDispatcher 把远程命令转成 RPC 请求经共享 dispatcher 执行。
+// 遵循架构约束的 Dispatcher Reuse：本地 IPC 与远程 agent 命令共用同一套 handler
+//（如 trigger.* / screenshot.*），CommandData 的字符串值尽量按 JSON 解析。
+CommandResult dispatchViaRpcDispatcher(rpc::RpcDispatcher& dispatcher, const std::string& command,
+    const CommandData& data, const std::string& errorPrefix)
+{
+    nlohmann::json params = nlohmann::json::object();
+    for (const auto& [key, value] : data) {
+        try {
+            params[key] = nlohmann::json::parse(value);
+        } catch (const std::exception&) {
+            params[key] = value;
+        }
+    }
+
+    nlohmann::json request = {
+        {"type", "call"},
+        {"id", "remote-" + command},
+        {"method", command},
+        {"params", params}
+    };
+
+    try {
+        auto response = nlohmann::json::parse(dispatcher.dispatch(request.dump()));
+        auto payload = response.value("data", nlohmann::json::object());
+        if (payload.value("success", true) == false) {
+            return CommandResult::error(payload.value("error", errorPrefix + " failed"));
+        }
+        if (payload.contains("result")) {
+            return CommandResult::okData(payload["result"].dump());
+        }
+        return CommandResult::okData(payload.dump());
+    } catch (const std::exception& e) {
+        return CommandResult::error(errorPrefix + " failed: " + e.what());
+    }
+}
+
 } // namespace
 
 // ========== Agent 实现 ==========
@@ -54,6 +93,8 @@ public:
     std::unique_ptr<LocalIpcServer> localIpcServer;
     std::unique_ptr<rpc::RpcDispatcher> remoteDispatcher;
     std::unique_ptr<platform::IScreen> screen;
+    // 共享触发器管理器：本地 IPC 与远程 agent 通道看到同一份触发器
+    std::unique_ptr<TriggerManager> triggerManager;
 };
 
 Agent::Agent() : impl_(std::make_unique<Impl>()) {}
@@ -83,6 +124,18 @@ bool Agent::initialize(const std::string& configPath) {
 bool Agent::initialize(const AgentConfig& config) {
     impl_->config = config;
     impl_->mode = config.getRunMode();
+
+    // 共享触发器管理器：命中时推送到 EventBuffer，由本地 IPC 缓冲与远程 sink
+    //（initRemoteClient 中注册）分别转发给 GUI 与 Go server。
+    impl_->triggerManager = std::make_unique<TriggerManager>();
+    impl_->triggerManager->setOnFired([](const TriggerInstance& t) {
+        EventBuffer::instance().push("trigger.fired", {
+            {"id", t.id},
+            {"name", t.config.name},
+            {"triggered", t.triggered},
+            {"lastTriggerTime", t.lastTriggerTime},
+        });
+    });
 
     auto caps = config.getCapabilities();
 
@@ -157,9 +210,10 @@ bool Agent::start() {
         }
     }
 
-    // 启动本地 IPC 服务器（基于能力）
+    // 启动本地 IPC 服务器（基于能力；共享触发器管理器，远程/本地同一份触发器）
     if (impl_->standaloneMode && hasCapability(caps, RunCapability::LocalIpc)) {
-        impl_->localIpcServer = std::make_unique<LocalIpcServer>(*impl_->standaloneMode);
+        impl_->localIpcServer = std::make_unique<LocalIpcServer>(
+            *impl_->standaloneMode, std::string(), impl_->triggerManager.get());
         if (!impl_->localIpcServer->start()) {
             spdlog::error("Failed to start local IPC server");
             success = false;
@@ -207,6 +261,10 @@ bool Agent::initRemoteClient() {
         rpc::registerScreenshotHandlers(*impl_->remoteDispatcher, *impl_->screen);
     } else {
         rpc::registerScreenshotHandlers(*impl_->remoteDispatcher);
+    }
+    // trigger.* 复用本地 IPC 的 RPC handler（Dispatcher Reuse）
+    if (impl_->triggerManager) {
+        rpc::registerTriggerHandlers(*impl_->remoteDispatcher, *impl_->triggerManager);
     }
 
     // 绑定命令回调，处理 server 下发的命令
@@ -322,36 +380,15 @@ CommandResult Agent::handleRemoteCommand(const std::string& command, const Comma
         if (!impl_->remoteDispatcher) {
             return CommandResult::error("remote dispatcher not available");
         }
+        return dispatchViaRpcDispatcher(*impl_->remoteDispatcher, command, data, "screenshot capture");
 
-        nlohmann::json params = nlohmann::json::object();
-        for (const auto& [key, value] : data) {
-            try {
-                params[key] = nlohmann::json::parse(value);
-            } catch (const std::exception&) {
-                params[key] = value;
-            }
+    } else if (command.rfind("trigger.", 0) == 0) {
+        // trigger.list / toggle / add / remove / update：远程通道复用本地 IPC 的
+        // RPC handler（Dispatcher Reuse），Dashboard 经 Go server 透传访问。
+        if (!impl_->remoteDispatcher || !impl_->triggerManager) {
+            return CommandResult::error("trigger handlers not available");
         }
-
-        nlohmann::json request = {
-            {"type", "call"},
-            {"id", "remote-screenshot"},
-            {"method", "screenshot.capture"},
-            {"params", params}
-        };
-
-        try {
-            auto response = nlohmann::json::parse(impl_->remoteDispatcher->dispatch(request.dump()));
-            auto payload = response.value("data", nlohmann::json::object());
-            if (payload.value("success", true) == false) {
-                return CommandResult::error(payload.value("error", "screenshot capture failed"));
-            }
-            if (payload.contains("result")) {
-                return CommandResult::okData(payload["result"].dump());
-            }
-            return CommandResult::okData(payload.dump());
-        } catch (const std::exception& e) {
-            return CommandResult::error(std::string("screenshot capture failed: ") + e.what());
-        }
+        return dispatchViaRpcDispatcher(*impl_->remoteDispatcher, command, data, "trigger command");
 
     } else if (command == "stop_script") {
         auto scriptIdIt = data.find("script_id");

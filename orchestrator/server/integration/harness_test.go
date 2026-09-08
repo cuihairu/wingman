@@ -128,6 +128,7 @@ func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *w
 	agentHandler := handlers.NewAgentHandler(registry, db)
 	screenshotHandler := handlers.NewScreenshotHandler(hub)
 	scriptHandler := handlers.NewScriptHandler(db, scriptsDir, registry)
+	triggerHandler := handlers.NewTriggerHandler(registry, db)
 	wfHandler := handlers.NewWorkflowHandler(wfEngine, db)
 
 	r := gin.New()
@@ -148,6 +149,7 @@ func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *w
 		// 只读接口 - 所有登录用户可访问
 		api.GET("/agents", agentHandler.HandleList)
 		api.GET("/agents/:agentId", agentHandler.HandleGet)
+		api.GET("/agents/:agentId/triggers", triggerHandler.HandleList)
 		api.GET("/workflows", wfHandler.HandleList)
 		api.GET("/workflows/:id", wfHandler.HandleGet)
 		api.GET("/workflows/:id/steps/:stepId/status", wfHandler.HandleGetStepStatus)
@@ -159,6 +161,7 @@ func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *w
 		{
 			agentsMgmt.POST("/agents/:agentId/shutdown", agentHandler.HandleShutdown)
 			agentsMgmt.PUT("/agents/:agentId/tags", agentHandler.HandleSetTags)
+			agentsMgmt.POST("/agents/:agentId/triggers/toggle", triggerHandler.HandleToggle)
 		}
 
 		// workflows:run

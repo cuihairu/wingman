@@ -6,6 +6,10 @@
 #include <mutex>
 #include <string>
 
+namespace wingman {
+class TriggerManager;
+}
+
 namespace wingman::runtime {
 
 class StandaloneMode;
@@ -14,7 +18,10 @@ class LocalIpcServer {
     class Impl;
 
 public:
-    explicit LocalIpcServer(StandaloneMode& standalone, std::string endpoint = {});
+    // sharedTriggerManager 非空时复用外部触发器管理器（如 Agent 持有的实例，
+    // 使本地 IPC 与远程 agent 通道看到同一份触发器），为空时自建并独占生命周期。
+    explicit LocalIpcServer(StandaloneMode& standalone, std::string endpoint = {},
+        TriggerManager* sharedTriggerManager = nullptr);
     ~LocalIpcServer();
 
     LocalIpcServer(const LocalIpcServer&) = delete;

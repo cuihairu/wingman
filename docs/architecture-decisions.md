@@ -158,6 +158,16 @@ agent command -> CommandDispatcher -> runtime services
 
 The dispatcher must not depend on WebSocket, HTTP, or browser concepts.
 
+### Trigger Commands
+
+`trigger.*` RPC handlers (`trigger.list/add/remove/update/toggle`) are registered on
+both the local IPC dispatcher and the runtime's remote dispatcher. The `Agent` owns a
+single shared `TriggerManager` (passed to `LocalIpcServer`), so the Tauri UI and the
+Go orchestrator see the same trigger set. `Agent::handleRemoteCommand` forwards any
+`trigger.*` command through the shared RPC dispatcher; the Go server exposes
+`GET /api/agents/:agentId/triggers` and `POST /api/agents/:agentId/triggers/toggle`
+(agents:manage) to the dashboard. No new transport or listener is introduced.
+
 ## Display Selection
 
 Multi-monitor capture is an extension of the existing screenshot path, not a new

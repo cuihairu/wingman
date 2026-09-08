@@ -115,6 +115,11 @@ Runtime 远程模式和本地单机 UI 是两条不同控制路径。
 
 > **禁止**: Runtime 不得引入 HTTP/WebSocket server 作为本地 UI 或远程控制面。WebSocket 只允许用于 dashboard/browser 与 Go server 通信。
 
+触发器命令（`trigger.*`）复用同一套 RPC handler：runtime 的 `Agent` 持有共享
+`TriggerManager`，本地 IPC dispatcher 与远程 dispatcher 都注册 `trigger.*`；
+Go server 经 `/api/agents/:agentId/triggers`（读）与 `/triggers/toggle`
+（agents:manage）透传给 Dashboard（见 architecture-decisions.md 的 Dispatcher Reuse）。
+
 ## Transport 层
 
 `libs/transport` 提供两种不同用途的网络能力：

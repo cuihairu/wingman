@@ -250,3 +250,70 @@ describe('状态颜色映射', () => {
     expect(wingman.getStepStatusColor('nope' as wingman.StepStatus)).toBe('default');
   });
 });
+
+describe('Agent 触发器 API（getAgentTriggers / toggleAgentTrigger）', () => {
+  it('getAgentTriggers 归一化 runtime trigger.list 条目', async () => {
+    mockResponse([
+      {
+        id: 1,
+        name: 'hp-watch',
+        enabled: true,
+        type: 'ColorFound',
+        condition: {
+          type: 'ColorFound',
+          value: '#ff0000',
+          region: { x: '10', y: 20, width: 100, height: 50 },
+          tolerance: '15',
+          interval: 1000,
+        },
+        actions: [{ type: 'RunScript', value: 'heal.lua', x: 1, y: 2, delay: 0 }],
+        oneShot: false,
+        cooldown: 3000,
+        lastTriggered: false,
+      },
+      null,
+      'garbage',
+    ]);
+
+    const resp = await wingman.getAgentTriggers('agent-1');
+    expect(mockedRequest).toHaveBeenCalledWith(
+      '/api/agents/agent-1/triggers',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(resp.success).toBe(true);
+    expect(resp.data).toHaveLength(3);
+
+    const trigger = resp.data![0];
+    expect(trigger).toMatchObject({
+      id: '1',
+      name: 'hp-watch',
+      enabled: true,
+      type: 'ColorFound',
+      oneShot: false,
+      cooldown: 3000,
+      lastTriggered: false,
+    });
+    // 字符串数字回退为数值
+    expect(trigger.condition.region).toEqual({ x: 10, y: 20, width: 100, height: 50 });
+    expect(trigger.condition.tolerance).toBe(15);
+    expect(trigger.actions[0]).toMatchObject({ type: 'RunScript', value: 'heal.lua' });
+
+    // 非法条目安全回退
+    const fallback = resp.data![1];
+    expect(fallback.id).toBe('');
+    expect(fallback.name).toBe('未命名触发器');
+    expect(fallback.enabled).toBe(false);
+    expect(fallback.actions).toEqual([]);
+  });
+
+  it('toggleAgentTrigger 携带触发器 id POST', async () => {
+    mockResponse({ id: '1', enabled: false });
+
+    const resp = await wingman.toggleAgentTrigger('agent-1', '1');
+    expect(mockedRequest).toHaveBeenCalledWith(
+      '/api/agents/agent-1/triggers/toggle',
+      expect.objectContaining({ method: 'POST', data: { id: '1' } }),
+    );
+    expect(resp.data).toEqual({ id: '1', enabled: false });
+  });
+});

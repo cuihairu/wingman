@@ -31,6 +31,8 @@ public:
     StandaloneMode& standalone;
     std::string endpoint;
     std::unique_ptr<rpc::RpcDispatcher> dispatcher;
+    // 外部注入时为空，触发器生命周期由所有者（Agent）管理
+    TriggerManager* sharedTriggerManager = nullptr;
     std::unique_ptr<TriggerManager> triggerManager;
     std::unique_ptr<platform::IScreen> screen;
     std::unique_ptr<MacroRecorder> recorder;
@@ -39,12 +41,13 @@ public:
     std::mutex channelMutex;
     ipc::IIpcChannel* currentChannel = nullptr;
 
-    Impl(StandaloneMode& standaloneMode, std::string endpointName)
-        : standalone(standaloneMode), endpoint(std::move(endpointName)) {}
+    Impl(StandaloneMode& standaloneMode, std::string endpointName, TriggerManager* shared)
+        : standalone(standaloneMode), endpoint(std::move(endpointName)), sharedTriggerManager(shared) {}
 };
 
-LocalIpcServer::LocalIpcServer(StandaloneMode& standalone, std::string endpoint)
-    : impl_(std::make_unique<Impl>(standalone, std::move(endpoint))) {}
+LocalIpcServer::LocalIpcServer(StandaloneMode& standalone, std::string endpoint,
+    TriggerManager* sharedTriggerManager)
+    : impl_(std::make_unique<Impl>(standalone, std::move(endpoint), sharedTriggerManager)) {}
 
 LocalIpcServer::~LocalIpcServer() {
     stop();
@@ -59,23 +62,28 @@ bool LocalIpcServer::start() {
     config.serverName = impl_->endpoint.empty() ? ipc::IpcFactory::getDefaultEndpoint() : impl_->endpoint;
 
     impl_->dispatcher = std::make_unique<rpc::RpcDispatcher>();
-    impl_->triggerManager = std::make_unique<TriggerManager>();
-    // 触发器命中时推送 trigger.fired 事件到本地 IPC 缓冲，供 GUI 实时展示
-    impl_->triggerManager->setOnFired([](const wingman::TriggerInstance& t) {
-        wingman::runtime::EventBuffer::instance().push("trigger.fired", {
-            {"id", t.id},
-            {"name", t.config.name},
-            {"triggered", t.triggered},
-            {"lastTriggerTime", t.lastTriggerTime},
+    if (impl_->sharedTriggerManager) {
+        // 复用外部管理器：事件 sink 由所有者（Agent）设置，这里只注册 RPC
+        rpc::registerTriggerHandlers(*impl_->dispatcher, *impl_->sharedTriggerManager);
+    } else {
+        impl_->triggerManager = std::make_unique<TriggerManager>();
+        // 触发器命中时推送 trigger.fired 事件到本地 IPC 缓冲，供 GUI 实时展示
+        impl_->triggerManager->setOnFired([](const wingman::TriggerInstance& t) {
+            wingman::runtime::EventBuffer::instance().push("trigger.fired", {
+                {"id", t.id},
+                {"name", t.config.name},
+                {"triggered", t.triggered},
+                {"lastTriggerTime", t.lastTriggerTime},
+            });
         });
-    });
+        rpc::registerTriggerHandlers(*impl_->dispatcher, *impl_->triggerManager);
+    }
     impl_->screen = platform::createPlatformScreen();
     impl_->recorder = std::make_unique<MacroRecorder>();
     // 与 RPC macro.* 共享同一录制器实例
     wingman::script::modules::setGlobalRecorder(impl_->recorder.get());
     rpc::registerSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION);
     rpc::registerRuntimeSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION, impl_->standalone);
-    rpc::registerTriggerHandlers(*impl_->dispatcher, *impl_->triggerManager);
     rpc::registerScriptHandlers(*impl_->dispatcher, impl_->standalone);
     if (impl_->screen) {
         rpc::registerScreenshotHandlers(*impl_->dispatcher, *impl_->screen);

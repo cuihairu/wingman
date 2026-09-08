@@ -107,6 +107,9 @@ func run() error {
 	// Settings handler (DB version for persistence)
 	settingsHandler := handlers.NewSettingsHandler(db)
 
+	// 触发器处理器（透传 runtime trigger.* 到 Dashboard）
+	triggerHandler := handlers.NewTriggerHandler(registry, db)
+
 	r := gin.Default()
 	r.Use(middleware.CORS())
 
@@ -185,6 +188,7 @@ func run() error {
 		agentHandler := handlers.NewAgentHandler(registry, db)
 		api.GET("/agents", agentHandler.HandleList)
 		api.GET("/agents/:agentId", agentHandler.HandleGet)
+		api.GET("/agents/:agentId/triggers", triggerHandler.HandleList)
 
 		// 工作流管理 - 只读接口
 		wfHandler := handlers.NewWorkflowHandler(wfEngine, db)
@@ -208,6 +212,7 @@ func run() error {
 		{
 			agentsMgmt.POST("/agents/:agentId/shutdown", agentHandler.HandleShutdown)
 			agentsMgmt.PUT("/agents/:agentId/tags", agentHandler.HandleSetTags)
+			agentsMgmt.POST("/agents/:agentId/triggers/toggle", triggerHandler.HandleToggle)
 		}
 
 		// workflows:run
