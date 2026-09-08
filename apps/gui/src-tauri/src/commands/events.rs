@@ -31,7 +31,10 @@ pub async fn drain_events(state: tauri::State<'_, AppState>) -> Result<DrainResu
         return Ok(DrainResult::default());
     }
 
-    let response = client.send("events.drain", json!({})).await?;
+    // 高频轮询命令：短超时避免挂起连接阻塞事件流（亦不长时间占用共享客户端锁）
+    let response = client
+        .send_with_timeout("events.drain", json!({}), crate::ipc::client::IPC_QUICK_TIMEOUT)
+        .await?;
 
     let success = response["data"]["success"].as_bool().unwrap_or(false);
     if !success {

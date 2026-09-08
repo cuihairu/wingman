@@ -9,8 +9,12 @@ const MAX_REQUEST_SIZE: usize = 10 * 1024 * 1024;
 /// Maximum allowed IPC response payload size (10 MiB).
 const MAX_RESPONSE_SIZE: usize = 10 * 1024 * 1024;
 
-/// IPC read/write timeout (30 seconds).
+/// IPC read/write timeout (30 seconds) for regular commands.
 const IPC_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// 轻量命令（system.getStatus / events.drain）超时：显著缩短挂起连接的
+/// 断线检测延迟（心跳最坏等待从 ~30s 降至 ~5s）。
+pub const IPC_QUICK_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[cfg(windows)]
 use std::fs::{File, OpenOptions};
@@ -83,6 +87,16 @@ impl IpcClient {
     }
 
     pub async fn send(&mut self, method: &str, params: Value) -> Result<Value, String> {
+        self.send_with_timeout(method, params, IPC_TIMEOUT).await
+    }
+
+    /// send_with_timeout 以指定超时执行一次请求；轻量命令可用 IPC_QUICK_TIMEOUT。
+    pub async fn send_with_timeout(
+        &mut self,
+        method: &str,
+        params: Value,
+        timeout_dur: Duration,
+    ) -> Result<Value, String> {
         if !self.connected {
             return Err("IPC client is not connected".to_string());
         }
@@ -112,7 +126,7 @@ impl IpcClient {
         let mut stream = self.stream.take().ok_or_else(|| "IPC stream is not connected".to_string())?;
 
         // Write with timeout
-        let write_result = timeout(IPC_TIMEOUT, tokio::task::spawn_blocking(move || -> StreamResult<()> {
+        let write_result = timeout(timeout_dur, tokio::task::spawn_blocking(move || -> StreamResult<()> {
             // Helper to write and always return the stream
             let write_result = stream.write_all(&length);
             let mut s = stream; // Preserve stream for return
@@ -151,7 +165,7 @@ impl IpcClient {
         };
 
         // Read with timeout
-        let read_result = timeout(IPC_TIMEOUT, tokio::task::spawn_blocking(move || -> StreamResult<Value> {
+        let read_result = timeout(timeout_dur, tokio::task::spawn_blocking(move || -> StreamResult<Value> {
             let mut length_buf = [0u8; 4];
             let mut s = stream; // Preserve stream for return
             if let Err(e) = s.read_exact(&mut length_buf) {

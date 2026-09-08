@@ -88,6 +88,15 @@ function dispatch(event: RuntimeEvent) {
 			}
 			break;
 		}
+		// runtime 视角的本地 IPC 客户端连/断（诊断：确认 runtime 检测到 GUI 会话变化）
+		case 'connection.ipc_client': {
+			const state = event.payload?.state;
+			if (typeof state === 'string') {
+				const level = state === 'connected' ? 'success' : 'warning';
+				logs.addRuntime(`runtime IPC 客户端${state === 'connected' ? '上线' : '下线'}`, level as any, event.timestamp);
+			}
+			break;
+		}
 		// screenshot.frame 预留：runtime 侧 ScreenshotReporter 未接入，待后续连线
 		case 'screenshot.frame':
 			break;

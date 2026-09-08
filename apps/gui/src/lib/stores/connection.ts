@@ -30,8 +30,10 @@ interface ConnectionState {
 	ipcEndpoint: string;
 	/** 本地 runtime IPC 链路详情 */
 	ipc: IpcStatus;
-	/** runtime → Go server 远程链路状态（由 connection.state_changed 事件驱动） */
+	/** runtime → Go server 远程链路状态（事件 + 心跳双重来源） */
 	remote: RemoteLinkState | null;
+	/** runtime 视角状态（来自 system.getStatus，旧 runtime 为 null） */
+	runtimeView: { ipcClientConnected: boolean | null };
 }
 
 export interface SystemStatus {
@@ -40,6 +42,12 @@ export interface SystemStatus {
 	uptime: number;
 	running_scripts: number;
 	paused: boolean;
+	/** runtime → Go server 远程链路（新 runtime 提供，旧版缺省） */
+	remote_connected?: boolean;
+	remote_state?: string;
+	/** runtime 视角：本地 IPC 客户端（本 GUI）是否在线 */
+	ipc_client_connected?: boolean;
+	mode?: number;
 }
 
 /// 自动重连退避参数：1s 起步指数退避，30s 封顶
@@ -67,6 +75,7 @@ function createConnectionStore() {
 			lastConnectedAt: null,
 		},
 		remote: null,
+		runtimeView: { ipcClientConnected: null },
 	});
 	let currentState: ConnectionState = {
 		connected: false,
@@ -81,6 +90,7 @@ function createConnectionStore() {
 			lastConnectedAt: null,
 		},
 		remote: null,
+		runtimeView: { ipcClientConnected: null },
 	};
 
 	store.subscribe(value => {
@@ -95,6 +105,27 @@ function createConnectionStore() {
 	let manualDisconnect = false;
 	let connectPromise: Promise<void> | null = null;
 	let reconnectedHook: (() => Promise<void>) | null = null;
+
+	/** 合并 system.getStatus 中的远程链路与 runtime 视角状态（事件驱动的补充，修复徽标陈旧） */
+	function mergeRemoteFromStatus(status: SystemStatus) {
+		store.update(s => ({
+			...s,
+			...(status.remote_state
+				? {
+					remote: {
+						state: status.remote_state as RemoteLinkState['state'],
+						message: s.remote?.message || '',
+					} as RemoteLinkState,
+				}
+				: {}),
+			runtimeView: {
+				ipcClientConnected:
+					typeof status.ipc_client_connected === 'boolean'
+						? status.ipc_client_connected
+						: null,
+			},
+		}));
+	}
 
 	function patchIpc(patch: Partial<IpcStatus>) {
 		store.update(s => {
@@ -154,6 +185,8 @@ function createConnectionStore() {
 			message: errorMessage(error),
 			lastErrorAt: Date.now(),
 		});
+		// IPC 断线后 runtime 远程链路状态未知，清空避免徽标陈旧误导
+		store.update(s => ({ ...s, remote: null }));
 		scheduleReconnect();
 	}
 
@@ -194,6 +227,7 @@ function createConnectionStore() {
 				version: status.version || s.version,
 				paused: status.paused,
 			}));
+			mergeRemoteFromStatus(status);
 			await refreshEndpoint();
 			if (reconnectedHook) {
 				try {
@@ -306,6 +340,7 @@ function createConnectionStore() {
 					version: status.version || s.version,
 					paused: status.paused,
 				}));
+				mergeRemoteFromStatus(status);
 				return status;
 			} catch (error) {
 				handleConnectionLost(error);

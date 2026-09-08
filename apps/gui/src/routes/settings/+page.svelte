@@ -54,6 +54,30 @@
 		}
 	}
 
+	/// runtime 视角：system.getStatus 报告的 IPC 客户端在线状态（握手/心跳时刷新）
+	const runtimeIpcView = $derived.by(() => {
+		if (!$connection.connected) return '未知（IPC 未连接）';
+		const view = $connection.runtimeView.ipcClientConnected;
+		return view === null
+			? '未知（旧版 runtime）'
+			: view
+				? 'IPC 客户端在线'
+				: 'IPC 客户端离线';
+	});
+
+	/// 远程链路：runtime → Go server 连接状态（事件 + 心跳双重来源）
+	const remoteLinkView = $derived.by(() => {
+		const remote = $connection.remote;
+		if (!remote) return '未知（等待状态同步）';
+		switch (remote.state) {
+			case 'connected': return '已连接';
+			case 'connecting': return '连接中';
+			case 'reconnecting': return '重连中';
+			case 'error': return '连接错误';
+			default: return '未连接';
+		}
+	});
+
 	function selectProfile(id: string) {
 		const p = $profiles.find(p => p.id === id);
 		editingProfile = p ? structuredClone(p) : null;
@@ -171,6 +195,8 @@
 			<div class="ipc-meta">
 				<span>当前状态: <strong class:ipc-ok={$connection.connected} class:ipc-bad={!$connection.connected}>{connectStatusText($connection.ipc.state)}</strong></span>
 				<span>实际端点: {$connection.ipcEndpoint}</span>
+				<span>runtime 视角: {runtimeIpcView}</span>
+				<span>远程链路: {remoteLinkView}</span>
 				{#if $connection.ipc.state === 'reconnecting'}
 					<span>自动重连第 {$connection.ipc.attempts} 次（指数退避，最长 30s）</span>
 				{/if}

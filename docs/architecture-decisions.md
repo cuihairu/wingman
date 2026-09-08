@@ -213,8 +213,15 @@ path in the Rust client without first resolving the blocking-IO multiplexing.
 
 Hook points: `EventBuffer::instance().push(method, payload)` is fed by a
 spdlog sink (`log.line`), a `TriggerManager::setOnFired` callback
-(`trigger.fired`), and script lifecycle transitions in `StandaloneMode`
-(`script.state_changed`).
+(`trigger.fired`), script lifecycle transitions in `StandaloneMode`
+(`script.state_changed`), `RemoteClient` connection transitions
+(`connection.state_changed`, runtime→Go link only), and `LocalIpcServer`
+client session changes (`connection.ipc_client`, local UI attach/detach).
+
+The local RPC `system.getStatus` reports `remoteConnected`/`remoteState`
+(the runtime→Go link) and `ipcClientConnected` so the GUI heartbeat can
+refresh link indicators without waiting for events. These status fields and
+events stay on the local IPC path and are never forwarded to the Go server.
 
 **Screenshots are NOT pushed via the event drain.** Full screenshots are
 large base64 payloads; periodic capture would flood the bounded buffer and

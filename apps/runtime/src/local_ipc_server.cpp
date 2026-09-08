@@ -43,11 +43,18 @@ public:
 
     Impl(StandaloneMode& standaloneMode, std::string endpointName, TriggerManager* shared)
         : standalone(standaloneMode), endpoint(std::move(endpointName)), sharedTriggerManager(shared) {}
+
+    rpc::RuntimeStatusProviders statusProviders;
 };
 
 LocalIpcServer::LocalIpcServer(StandaloneMode& standalone, std::string endpoint,
     TriggerManager* sharedTriggerManager)
     : impl_(std::make_unique<Impl>(standalone, std::move(endpoint), sharedTriggerManager)) {}
+
+void LocalIpcServer::setStatusProviders(rpc::RuntimeStatusProviders providers)
+{
+    impl_->statusProviders = std::move(providers);
+}
 
 LocalIpcServer::~LocalIpcServer() {
     stop();
@@ -83,7 +90,8 @@ bool LocalIpcServer::start() {
     // 与 RPC macro.* 共享同一录制器实例
     wingman::script::modules::setGlobalRecorder(impl_->recorder.get());
     rpc::registerSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION);
-    rpc::registerRuntimeSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION, impl_->standalone);
+    rpc::registerRuntimeSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION, impl_->standalone,
+        impl_->statusProviders);
     rpc::registerScriptHandlers(*impl_->dispatcher, impl_->standalone);
     if (impl_->screen) {
         rpc::registerScreenshotHandlers(*impl_->dispatcher, *impl_->screen);
@@ -217,11 +225,27 @@ bool LocalIpcServer::start() {
             }
             spdlog::info("Local IPC server connected on {}", config.serverName);
 
+            // GUI 客户端上线：更新诊断标志并推送本地事件（GUI 经 events.drain 可见）
+            clientConnected_.store(true);
+            EventBuffer::instance().push("connection.ipc_client", {
+                {"state", "connected"},
+                {"endpoint", config.serverName},
+            });
+
             while (!impl_->stopping.load() && channel->isConnected()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
 
             channel->disconnect();
+
+            // GUI 客户端下线（正常断开或链路故障）：仅在实际会话结束时上报
+            if (clientConnected_.exchange(false)) {
+                EventBuffer::instance().push("connection.ipc_client", {
+                    {"state", "disconnected"},
+                    {"endpoint", config.serverName},
+                });
+                spdlog::info("Local IPC client disconnected on {}", config.serverName);
+            }
 
             {
                 std::lock_guard<std::mutex> lock(impl_->channelMutex);
@@ -264,6 +288,7 @@ void LocalIpcServer::stop() {
     impl_->triggerManager.reset();
     impl_->screen.reset();
     running_.store(false);
+    clientConnected_.store(false);
 
     // Notify any waiting threads
     {

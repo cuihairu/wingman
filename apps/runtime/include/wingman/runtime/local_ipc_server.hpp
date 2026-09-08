@@ -1,5 +1,6 @@
 #pragma once
 
+#include "wingman/runtime/rpc/system_handler.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <memory>
@@ -31,9 +32,16 @@ public:
     void stop();
     bool isRunning() const { return running_.load(); }
 
+    // 本地 IPC 客户端（GUI）当前是否在线；仅 start() 后有意义
+    bool isClientConnected() const { return clientConnected_.load(); }
+
+    // 注入 system.getStatus 的运行模式上下文（Agent 在 start() 前调用）
+    void setStatusProviders(rpc::RuntimeStatusProviders providers);
+
 private:
     std::unique_ptr<Impl> impl_;
     std::atomic<bool> running_{false};
+    std::atomic<bool> clientConnected_{false};
     std::mutex startMutex_;
     std::condition_variable startCV_;
     bool startFailed_ = false;

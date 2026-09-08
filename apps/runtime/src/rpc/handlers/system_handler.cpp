@@ -19,12 +19,14 @@ bool isRunningState(wingman::runtime::ScriptState state) {
 
 void registerRuntimeSystemHandlers(RpcDispatcher& dispatcher,
                                    const std::string& version,
-                                   runtime::StandaloneMode& standalone) {
+                                   runtime::StandaloneMode& standalone,
+                                   const RuntimeStatusProviders& providers) {
     using json = nlohmann::json;
 
     const auto startTime = std::chrono::steady_clock::now();
 
-    dispatcher.registerHandler("system.getStatus", [&standalone, version, startTime](const json&) -> json {
+    dispatcher.registerHandler("system.getStatus",
+        [&standalone, version, startTime, providers](const json&) -> json {
         const auto scripts = standalone.listScripts();
 
         uint64_t runningScripts = 0;
@@ -37,12 +39,27 @@ void registerRuntimeSystemHandlers(RpcDispatcher& dispatcher,
         const auto uptime = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - startTime).count();
 
+        // 运行模式与链路状态：GUI 心跳拉取后即可刷新远程徽标（事件驱动的补充），
+        // 并暴露 runtime 视角的本地 IPC 客户端在线状态用于诊断。
+        const bool remoteConnected = providers.remoteConnected ? providers.remoteConnected() : false;
+        const std::string remoteState = providers.remoteStateName
+            ? providers.remoteStateName()
+            : "disabled";
+        const bool ipcClientConnected = providers.ipcClientConnected
+            ? providers.ipcClientConnected()
+            : false;
+        const int mode = providers.runMode ? providers.runMode() : 0;
+
         return {
             {"server", "wingman"},
             {"version", version},
             {"uptime", uptime},
             {"runningScripts", runningScripts},
-            {"paused", paused}
+            {"paused", paused},
+            {"mode", mode},
+            {"remoteConnected", remoteConnected},
+            {"remoteState", remoteState},
+            {"ipcClientConnected", ipcClientConnected}
         };
     });
 

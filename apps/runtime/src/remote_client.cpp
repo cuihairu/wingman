@@ -534,16 +534,12 @@ void RemoteClient::handleRequestMessage(const transport::MessagePtr& msg) {
 }
 
 void RemoteClient::onEvent(ConnectionState state, const std::string& message) {
-    const char* stateName =
-        state == ConnectionState::Connected ? "connected" :
-        state == ConnectionState::Connecting ? "connecting" :
-        state == ConnectionState::Disconnected ? "disconnected" :
-        state == ConnectionState::Reconnecting ? "reconnecting" : "error";
-    spdlog::info("RemoteClient event: {} - {}", stateName, message);
+    state_.store(static_cast<int>(state), std::memory_order_relaxed);
+    spdlog::info("RemoteClient event: {} - {}", stateName(state), message);
 
     // 推送到 EventBuffer，GUI 经 events.drain 拉取后更新远程连接指示器。
     nlohmann::json payload = {
-        {"state", stateName},
+        {"state", stateName(state)},
         {"message", message},
     };
     EventBuffer::instance().push("connection.state_changed", std::move(payload));
@@ -554,6 +550,17 @@ void RemoteClient::onEvent(ConnectionState state, const std::string& message) {
         event.message = message;
         eventCallback_(event);
     }
+}
+
+std::string RemoteClient::stateName(ConnectionState state) {
+    switch (state) {
+        case ConnectionState::Connected: return "connected";
+        case ConnectionState::Connecting: return "connecting";
+        case ConnectionState::Reconnecting: return "reconnecting";
+        case ConnectionState::Disconnected: return "disconnected";
+        case ConnectionState::Error: return "error";
+    }
+    return "disconnected";
 }
 
 const RemoteClientConfig& RemoteClient::getConfig() const {

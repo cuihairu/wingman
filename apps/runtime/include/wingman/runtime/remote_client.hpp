@@ -91,6 +91,15 @@ public:
     // 获取配置
     const RemoteClientConfig& getConfig() const;
 
+    // 当前连接状态名（connected/connecting/reconnecting/disconnected/error）。
+    // 本地 RPC system.getStatus 经此向 GUI 暴露远程链路状态，修复事件驱动陈旧问题。
+    std::string connectionStateName() const {
+        return stateName(static_cast<ConnectionState>(state_.load(std::memory_order_relaxed)));
+    }
+
+    // stateName 将 ConnectionState 映射为远程事件使用的字符串名。
+    static std::string stateName(ConnectionState state);
+
     // 事件转发：将运行时事件（trigger_fired / script_state 等）以 agent.event Notify 推送到 Go server。
     // 对应 server 侧 listener.go handleNotify -> case "agent.event" -> handleEvent（广播到 Dashboard WS）。
     void sendAgentEvent(const std::string& event, const nlohmann::json& data);
@@ -128,6 +137,8 @@ private:
     // 运行状态
     std::atomic<bool> running_{false};
     std::atomic<bool> connected_{false};
+    // 当前 ConnectionState（int 存储，供本地状态查询）
+    std::atomic<int> state_{static_cast<int>(ConnectionState::Disconnected)};
 
     ConnectionCallback eventCallback_;
     CommandCallback commandCallback_;

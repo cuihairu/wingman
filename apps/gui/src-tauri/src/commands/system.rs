@@ -1,3 +1,4 @@
+use crate::ipc::client::IPC_QUICK_TIMEOUT;
 use crate::models::{RuntimeInfo, SystemStatus, VersionInfo};
 use crate::state::AppState;
 use serde_json::json;
@@ -6,8 +7,11 @@ use serde_json::json;
 pub async fn get_system_status(
     state: tauri::State<'_, AppState>,
 ) -> Result<SystemStatus, String> {
+    // 心跳级轻量命令：短超时加快挂起连接的断线检测
     let mut client = state.ipc_client.lock().await;
-    let response = client.send("system.getStatus", json!({})).await?;
+    let response = client
+        .send_with_timeout("system.getStatus", json!({}), IPC_QUICK_TIMEOUT)
+        .await?;
 
     if let Some(success) = response["data"]["success"].as_bool() {
         if success {
@@ -28,6 +32,17 @@ pub async fn get_system_status(
                     .as_u64()
                     .unwrap_or(0),
                 paused,
+                remote_connected: response["data"]["result"]["remoteConnected"]
+                    .as_bool()
+                    .unwrap_or(false),
+                remote_state: response["data"]["result"]["remoteState"]
+                    .as_str()
+                    .unwrap_or("")
+                    .to_string(),
+                ipc_client_connected: response["data"]["result"]["ipcClientConnected"]
+                    .as_bool()
+                    .unwrap_or(false),
+                mode: response["data"]["result"]["mode"].as_u64().unwrap_or(0) as u32,
             });
         }
     }

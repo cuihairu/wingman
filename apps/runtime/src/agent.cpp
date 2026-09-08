@@ -214,6 +214,23 @@ bool Agent::start() {
     if (impl_->standaloneMode && hasCapability(caps, RunCapability::LocalIpc)) {
         impl_->localIpcServer = std::make_unique<LocalIpcServer>(
             *impl_->standaloneMode, std::string(), impl_->triggerManager.get());
+        // 注入 system.getStatus 上下文：GUI 心跳即可刷新远程链路徽标与 IPC 客户端状态
+        auto* ipcServer = impl_->localIpcServer.get();
+        auto* remoteClient = impl_->remoteClient.get();
+        impl_->localIpcServer->setStatusProviders(rpc::RuntimeStatusProviders{
+            [remoteClient]() -> bool {
+                return remoteClient && remoteClient->isConnected();
+            },
+            [remoteClient]() -> std::string {
+                return remoteClient ? remoteClient->connectionStateName() : "disabled";
+            },
+            [ipcServer]() -> bool {
+                return ipcServer && ipcServer->isClientConnected();
+            },
+            [mode = impl_->mode]() -> int {
+                return static_cast<int>(mode);
+            },
+        });
         if (!impl_->localIpcServer->start()) {
             spdlog::error("Failed to start local IPC server");
             success = false;
@@ -372,6 +389,8 @@ CommandResult Agent::handleRemoteCommand(const std::string& command, const Comma
             {"standaloneScriptEnabled", impl_->config.enableStandaloneScript},
             {"standaloneRunning", impl_->standaloneMode ? impl_->standaloneMode->isRunning() : false},
             {"remoteConnected", impl_->remoteClient ? impl_->remoteClient->isConnected() : false},
+            {"remoteState", impl_->remoteClient ? impl_->remoteClient->connectionStateName() : std::string("disabled")},
+            {"ipcClientConnected", impl_->localIpcServer ? impl_->localIpcServer->isClientConnected() : false},
             {"scripts", scripts}
         };
         return CommandResult::okData(status.dump());

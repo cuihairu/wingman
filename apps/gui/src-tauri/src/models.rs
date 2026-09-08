@@ -27,6 +27,18 @@ pub struct SystemStatus {
     pub uptime: u64,
     pub running_scripts: u64,
     pub paused: bool,
+    /// runtime -> Go server 远程链路（旧 runtime 缺省时为 false）
+    #[serde(default)]
+    pub remote_connected: bool,
+    /// 远程链路状态名（connected/connecting/reconnecting/disconnected/error/disabled）
+    #[serde(default)]
+    pub remote_state: String,
+    /// runtime 视角：本地 IPC 客户端（本 GUI）是否在线
+    #[serde(default)]
+    pub ipc_client_connected: bool,
+    /// runtime 运行模式（RunMode 数值）
+    #[serde(default)]
+    pub mode: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
