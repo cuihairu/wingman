@@ -51,6 +51,9 @@ if(BUILD_CORE_TESTS)
         image_analyzer_test.cpp
         db_module_test.cpp
         ini_module_test.cpp
+        crypt_test.cpp
+        rpc_test.cpp
+        unix_socket_channel_test.cpp
     )
 
     if(WIN32)
