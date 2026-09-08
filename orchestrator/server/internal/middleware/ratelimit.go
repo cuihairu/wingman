@@ -26,7 +26,9 @@ func NewRateLimiter() *RateLimiter {
 		clients: make(map[string]*clientInfo),
 	}
 	// Clean up expired entries every 5 minutes
-	go rl.cleanup()
+	// 在 go 语句处同步捕获间隔：读取发生在构造内，与测试对 cleanupInterval
+	// 的写入有清晰的 happens-before，避免后台 goroutine 延迟读取引发数据竞争。
+	go rl.cleanup(cleanupInterval)
 	return rl
 }
 
@@ -92,9 +94,10 @@ func (rl *RateLimiter) RecordSuccess(clientID string) {
 // Kept as a variable so tests can shorten it.
 var cleanupInterval = 5 * time.Minute
 
-// cleanup removes old entries to prevent memory leaks
-func (rl *RateLimiter) cleanup() {
-	ticker := time.NewTicker(cleanupInterval)
+// cleanup removes old entries to prevent memory leaks.
+// interval 在启动时由调用方捕获传入。
+func (rl *RateLimiter) cleanup(interval time.Duration) {
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for range ticker.C {
