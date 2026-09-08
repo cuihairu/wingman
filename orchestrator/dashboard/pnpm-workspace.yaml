@@ -91,3 +91,4 @@ overrides:
   svgo@>=1.0.0 <2.8.3: '2.8.3'
   piscina: ^4.9.3
   'brace-expansion@>=3.0.0 <5.0.7': '>=5.0.7'
+  '@babel/core@<7.29.6': '>=7.29.6 <8'
