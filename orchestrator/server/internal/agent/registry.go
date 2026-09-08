@@ -252,6 +252,21 @@ func (r *Registry) Stop() {
 	})
 }
 
+// SetHeartbeatTimeout 调整心跳超时阈值（d 必须为正）。主要供集成测试缩短等待窗口。
+func (r *Registry) SetHeartbeatTimeout(d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.heartbeat = d
+}
+
+// CheckHeartbeatsNow 立即执行一次心跳检查，不等待定时器。主要供集成测试触发。
+func (r *Registry) CheckHeartbeatsNow() {
+	r.checkHeartbeats()
+}
+
 // checkHeartbeats 检查心跳超时
 func (r *Registry) checkHeartbeats() {
 	r.mu.Lock()
