@@ -16,6 +16,11 @@ on:
         description: 'GitHub release tag to upload artifacts to'
         required: true
         type: string
+      ref:
+        description: 'Git ref (tag/branch/SHA) to checkout; empty falls back to github.ref'
+        required: false
+        type: string
+        default: ''
       prerelease:
         description: 'Mark release as prerelease'
         required: false
@@ -48,6 +53,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
           submodules: recursive
 
@@ -208,23 +214,13 @@ jobs:
           retention-days: 30
           overwrite: true
 
+      # 仅追加产物文件，不携带 body——release notes 由调用方（release.yml create-release）统一写入，
+      # 避免多平台 job 并行上传时互相覆盖 body
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ inputs.release_tag }}
           name: ${{ inputs.release_tag }}
-          body: |
-            ## Wingman ${{ inputs.version }}
-
-            ### Package Contents
-            | File | Description |
-            |------|-------------|
-            | `wingman.exe` | C++ Runtime (screen capture, input simulation, Lua/Python scripting) |
-            | `Wingman_*_x64-setup.exe` | Tauri GUI Installer |
-            | `orchestrator-server.exe` | Go Orchestrator Server (agent management, workflow engine) |
-            | `dashboard/` | Web Dashboard (static HTML/JS/CSS) |
-            | `scripts/` | Example Lua/Python scripts |
-            | `config/` | Configuration examples |
           files: wingman-${{ inputs.version }}-windows-x64.zip
           prerelease: ${{ inputs.prerelease }}
           draft: false
@@ -245,6 +241,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
           submodules: recursive
 
@@ -366,8 +363,6 @@ jobs:
         with:
           tag_name: ${{ inputs.release_tag }}
           name: ${{ inputs.release_tag }}
-          body: |
-            See Windows job for full release notes.
           files: wingman-${{ inputs.version }}-linux-x64.tar.gz
           prerelease: ${{ inputs.prerelease }}
           draft: false
@@ -388,6 +383,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
           submodules: recursive
 
@@ -505,8 +501,6 @@ jobs:
         with:
           tag_name: ${{ inputs.release_tag }}
           name: ${{ inputs.release_tag }}
-          body: |
-            See Windows job for full release notes.
           files: wingman-${{ inputs.version }}-macos-x64.tar.gz
           prerelease: ${{ inputs.prerelease }}
           draft: false

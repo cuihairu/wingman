@@ -20,23 +20,148 @@ jobs:
     outputs:
       version: ${{ steps.resolve.outputs.version }}
       tag: ${{ steps.resolve.outputs.tag }}
+      ref: ${{ steps.resolve.outputs.ref }}
+      prerelease: ${{ steps.resolve.outputs.prerelease }}
     steps:
-      - name: Resolve version from tag
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version / prerelease / release notes
         id: resolve
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "version=${{ inputs.tag }}" >> $GITHUB_OUTPUT
-            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+            TAG="${{ inputs.tag }}"
           else
-            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "ref=$TAG" >> "$GITHUB_OUTPUT"
+
+          # 预发布版本自动判定（v0.2.0-rc1 / -beta / -nightly 等）
+          if [[ "$TAG" =~ -(rc|beta|alpha|nightly|dev|pre) ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
-  build:
-    name: Build & Release
+          # 从 CHANGELOG.md 提取该 tag 的段落作为 release notes
+          awk -v tag="$TAG" '
+            $0 ~ "^## \\[" tag "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release_notes.md
+
+          if [ ! -s release_notes.md ]; then
+            {
+              echo "Wingman ${TAG}"
+              echo ""
+              echo "变更详情见 [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)。"
+            } > release_notes.md
+          fi
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: release_notes.md
+          retention-days: 7
+          overwrite: true
+
+  # 先创建 draft release：
+  # 1. release notes 仅在此处写入一次，避免三平台构建 job 并行上传时互相覆盖 body
+  # 2. workflow_dispatch 指定尚不存在的 tag 时，此处会基于当前 commit 创建 tag，
+  #    保证后续 build job 能按 ref=tag 检出与 release 一致的代码
+  create-release:
+    name: Create Draft Release
     needs: resolve-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download release notes
+        uses: actions/download-artifact@v7
+        with:
+          name: release-notes
+          path: .
+
+      - name: Append package contents
+        run: |
+          cat >> release_notes.md <<'EOF'
+
+          ### Package Contents
+
+          | Package | Platform | Contents |
+          |---------|----------|----------|
+          | `wingman-*-windows-x64.zip` | Windows | C++ runtime / Tauri GUI installer (NSIS) / Go orchestrator server / dashboard / scripts / config |
+          | `wingman-*-linux-x64.tar.gz` | Linux | C++ runtime / Tauri GUI (AppImage, deb) / Go orchestrator server / dashboard / scripts / config |
+          | `wingman-*-macos-x64.tar.gz` | macOS | C++ runtime / Tauri GUI (dmg, app) / Go orchestrator server / dashboard / scripts / config |
+
+          校验和见 `SHA256SUMS.txt`。
+          EOF
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.resolve-version.outputs.tag }}
+          name: ${{ needs.resolve-version.outputs.tag }}
+          body_path: release_notes.md
+          prerelease: ${{ needs.resolve-version.outputs.prerelease }}
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build & Upload Assets
+    needs: [resolve-version, create-release]
     uses: ./.github/workflows/build-package.yml
     with:
       version: ${{ needs.resolve-version.outputs.version }}
       release_tag: ${{ needs.resolve-version.outputs.tag }}
-      prerelease: false
+      ref: ${{ needs.resolve-version.outputs.ref }}
+      prerelease: ${{ needs.resolve-version.outputs.prerelease }}
+    secrets: inherit
+
+  # 全部平台构建成功后才发布：
+  # 1. 汇总三平台产物生成 SHA256SUMS.txt 并追加到 release
+  # 2. 将 draft release 正式发布（draft=false）
+  # 若任一平台构建失败，draft 保留在 Releases 页面便于排查，不会发布半成品
+  publish-release:
+    name: Publish Release
+    needs: [resolve-version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: assets
+          merge-multiple: true
+          pattern: wingman-${{ needs.resolve-version.outputs.version }}-*
+
+      - name: Generate SHA256SUMS
+        run: |
+          ls -la assets/
+          cd assets
+          sha256sum wingman-*.zip wingman-*.tar.gz > "$GITHUB_WORKSPACE/SHA256SUMS.txt"
+          cat "$GITHUB_WORKSPACE/SHA256SUMS.txt"
+
+      - name: Upload checksums
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.resolve-version.outputs.tag }}
+          files: SHA256SUMS.txt
+          prerelease: ${{ needs.resolve-version.outputs.prerelease }}
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish release
+        run: |
+          gh release edit "${{ needs.resolve-version.outputs.tag }}" \
+            --draft=false \
+            --repo "$GITHUB_REPOSITORY"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

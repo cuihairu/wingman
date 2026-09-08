@@ -67,3 +67,32 @@ jobs:
       version_suffix: ${{ needs.resolve-version.outputs.version_suffix }}
       release_tag: nightly
       prerelease: true
+
+  # build-package 不再写入 release body，nightly 说明在此统一维护
+  nightly-notes:
+    name: Nightly Release Notes
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update nightly release body
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: nightly
+          name: Nightly Build
+          body: |
+            ## Wingman Nightly ${{ needs.resolve-version.outputs.version }}
+
+            每日自动构建（UTC 20:00 / 北京时间次日 04:00），基于 main 分支最新提交。
+
+            ### Package Contents
+            | File | Description |
+            |------|-------------|
+            | `wingman-*-windows-x64.zip` | C++ Runtime / Tauri GUI Installer / Go Server / Dashboard / scripts / config |
+            | `wingman-*-linux-x64.tar.gz` | C++ Runtime / Tauri AppImage+deb / Go Server / Dashboard / scripts / config |
+            | `wingman-*-macos-x64.tar.gz` | C++ Runtime / Tauri dmg+app / Go Server / Dashboard / scripts / config |
+
+            ⚠️ nightly 为预发布构建，仅供测试，不建议生产使用。
+          prerelease: true
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

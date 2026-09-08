@@ -587,7 +587,7 @@ local wingman = require('wingman')
 | P1 | Dashboard Monitor triggers 接真实 API（需扩 agent 协议） | 1周 | 🚧 进行中 |
 | P2 | 跨平台运行时验证（macOS/Linux，需真机） | — | ⬜ 待验证 |
 | P2 | Swagger/OpenAPI 文档 | — | ⬜ 未开始 |
-| P2 | 自动发布（tag→release）+ 打包分发 | — | ⬜ 未开始 |
+| P2 | 自动发布（tag→release）+ 打包分发 | — | ✅ `v*` tag 推送自动发布：CHANGELOG 提取 notes → draft → 三平台构建上传 → SHA256SUMS → publish（release.yml） |
 | ✅ | 代码缺陷修复（10 项，见 todo.md「✅ 代码缺陷」） | - | ✅ 已完成 |
 | ✅ | 远程连接状态回调通知 GUI + EventBuffer 公平性 + 全局快捷键 | - | ✅ 已完成 |
 | ✅ | RBAC 权限系统（Go orchestrator，PermissionRequired 已接线 8 权限码） | - | ✅ 已完成 |
