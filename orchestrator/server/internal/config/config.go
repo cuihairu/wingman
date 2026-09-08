@@ -29,6 +29,10 @@ type Config struct {
 	CORSOrigins []string
 }
 
+// filepathAbs 以变量形式间接引用 filepath.Abs，便于测试注入失败场景
+// （cwd 不可用等平台相关行为无法跨平台稳定复现）。
+var filepathAbs = filepath.Abs
+
 func Load() (Config, error) {
 	cfg := Config{
 		Host:        getenv("WINGMAN_HOST", defaultHost),
@@ -54,7 +58,7 @@ func Load() (Config, error) {
 		return cfg, fmt.Errorf("invalid WINGMAN_PORT: %d", cfg.Port)
 	}
 
-	absScriptsDir, err := filepath.Abs(cfg.ScriptsDir)
+	absScriptsDir, err := filepathAbs(cfg.ScriptsDir)
 	if err != nil {
 		return cfg, err
 	}

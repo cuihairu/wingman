@@ -105,25 +105,20 @@ func TestLoadInvalidPortFallsBack(t *testing.T) {
 	}
 }
 
-func TestLoadScriptsDirAbsFailsWithoutCwd(t *testing.T) {
+// TestLoadScriptsDirAbsFails 验证 ScriptsDir 绝对化失败时 Load 透传错误。
+//
+// 不再用"删除 cwd"的真实文件系统手法：该行为平台差异大——Linux 的 getcwd
+// 在目录删除后返回 ENOENT，macOS 仍能重建已删除目录路径，Windows 则因
+// 进程持有 cwd 句柄而无法删除目录。改为注入 filepathAbs 失败，跨平台确定。
+func TestLoadScriptsDirAbsFails(t *testing.T) {
 	t.Setenv("WINGMAN_JWT_SECRET", testSecret)
 
-	// 删除当前工作目录后 filepath.Abs（依赖 os.Getwd）失败
-	orig, err := os.Getwd()
-	if err != nil {
-		t.Skipf("cannot get cwd: %v", err)
-	}
-	deleted := t.TempDir()
-	if err := os.Chdir(deleted); err != nil {
-		t.Skipf("cannot chdir: %v", err)
-	}
-	if err := os.Remove(deleted); err != nil {
-		t.Fatalf("remove dir: %v", err)
-	}
-	defer func() { _ = os.Chdir(orig) }()
+	orig := filepathAbs
+	filepathAbs = func(string) (string, error) { return "", os.ErrNotExist }
+	defer func() { filepathAbs = orig }()
 
 	if _, err := Load(); err == nil {
-		t.Error("expected error when cwd is unavailable")
+		t.Error("expected error when scripts dir abs resolution fails")
 	}
 }
 
