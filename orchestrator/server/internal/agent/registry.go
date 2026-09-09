@@ -53,17 +53,20 @@ type Registry struct {
 	mu        sync.RWMutex
 	hub       *ws.Hub
 	heartbeat time.Duration
-	stopCh    chan struct{}
-	stopOnce  sync.Once
+	// checkInterval 心跳巡检周期（默认 30s），测试中可缩短以触发 ticker 分支。
+	checkInterval time.Duration
+	stopCh        chan struct{}
+	stopOnce      sync.Once
 }
 
 // NewRegistry 创建 Agent 注册表
 func NewRegistry(hub *ws.Hub) *Registry {
 	return &Registry{
-		agents:    make(map[string]*AgentInfo),
-		hub:       hub,
-		heartbeat: 90 * time.Second,
-		stopCh:    make(chan struct{}),
+		agents:        make(map[string]*AgentInfo),
+		hub:           hub,
+		heartbeat:     90 * time.Second,
+		checkInterval: 30 * time.Second,
+		stopCh:        make(chan struct{}),
 	}
 }
 
@@ -318,7 +321,13 @@ func (r *Registry) SetClient(agentID string, conn any) {
 
 // StartHeartbeatCheck 启动心跳检测
 func (r *Registry) StartHeartbeatCheck() {
-	ticker := time.NewTicker(30 * time.Second)
+	r.mu.RLock()
+	interval := r.checkInterval
+	r.mu.RUnlock()
+	if interval <= 0 {
+		interval = 30 * time.Second
+	}
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
