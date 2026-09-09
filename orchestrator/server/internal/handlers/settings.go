@@ -25,7 +25,10 @@ func NewSettingsHandler(db *gorm.DB) *SettingsHandler {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
 // @Router       /v1/settings [get]
+// @Router       /settings [get]
 func (h *SettingsHandler) HandleGetSettings(c *gin.Context) {
 	var settings []models.Settings
 	h.db.Find(&settings)
@@ -62,8 +65,11 @@ func (h *SettingsHandler) HandleGetSettings(c *gin.Context) {
 // @Security     BearerAuth
 // @Param        request  body  object  true  "配置键值对"  example({"logLevel":"debug"})
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
 // @Router       /v1/settings [put]
+// @Router       /settings [put]
 func (h *SettingsHandler) HandleUpdateSettings(c *gin.Context) {
 	var req map[string]string
 	if err := c.ShouldBindJSON(&req); err != nil {

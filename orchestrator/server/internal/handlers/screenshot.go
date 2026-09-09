@@ -40,7 +40,8 @@ const maxScreenshotSize = 10 * 1024 * 1024
 // @Security     BearerAuth
 // @Param        request  body  ScreenshotRequest  true  "截图数据"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
 // @Router       /v1/screenshot [post]
 func (h *ScreenshotHandler) HandleScreenshot(c *gin.Context) {
 	var req ScreenshotRequest

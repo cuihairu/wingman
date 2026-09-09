@@ -228,8 +228,7 @@ func TestStatusHandlerBranches(t *testing.T) {
 		errs: []error{errBoom},
 		responses: []map[string]any{
 			nil, // get_status 失败
-			{"data": map[string]any{"windows": []any{map[string]any{"h": 1}, map[string]any{"h": 2}}},
-			},
+			{"data": map[string]any{"windows": []any{map[string]any{"h": 1}, map[string]any{"h": 2}}}},
 		},
 	})
 	w := httptest.NewRecorder()
@@ -335,8 +334,8 @@ func TestDebuggerDirectAttachEndpoints(t *testing.T) {
 	r.POST("/debugger/breakpoints", dh.HandleDebuggerSetBreakpoints)
 
 	for path, method := range map[string]string{
-		"/debugger/command":       "POST",
-		"/debugger/breakpoints":   "GET",
+		"/debugger/command":     "POST",
+		"/debugger/breakpoints": "GET",
 	} {
 		w := httptest.NewRecorder()
 		var req = httptest.NewRequest(method, path, nil)

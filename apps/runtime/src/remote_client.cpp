@@ -67,6 +67,18 @@ public:
     // 重连退避状态
     std::atomic<int> reconnectAttempt{0};
 
+    // ===== 链路质量统计（随 agent.heartbeat 上报，供 server/Dashboard 监控） =====
+    // reconnectCount 进程启动以来成功重连的累计次数（初始连接不计）
+    std::atomic<int> reconnectCount{0};
+    // droppedCount 断线期间 outbox 满导致的丢弃累计
+    std::atomic<int> droppedCount{0};
+    // 本次连接建立时间（steady_clock，用于 sessionUptimeMs）
+    std::chrono::steady_clock::time_point connectedAt;
+    // 最近一次断线原因（连接成功后保留，便于追溯）
+    std::mutex reasonMutex;
+    std::string lastDisconnectReason;
+    bool everConnected = false;
+
     // 断线期间的出站消息缓冲（仅 Notify/事件类，Response 类不缓冲以免陈旧）
     static constexpr size_t kMaxOutbox = 100;
     std::mutex outboxMutex;
@@ -105,22 +117,26 @@ bool RemoteClient::start() {
             case transport::SessionEvent::Connected:
                 connected_.store(true);
                 impl_->lastHeartbeat = std::chrono::steady_clock::now();
+                markConnected();
                 onEvent(ConnectionState::Connected, "Connected to server");
                 break;
             case transport::SessionEvent::Disconnected:
                 connected_.store(false);
                 impl_->registered = false;
+                recordDisconnect("disconnected");
                 onEvent(ConnectionState::Disconnected, "Disconnected from server");
                 // 重连由 reconnectLoop 探测 isConnected() 自行处理，无需在此直接调用
                 break;
             case transport::SessionEvent::Error:
                 connected_.store(false);
                 impl_->registered = false;
+                recordDisconnect("connection_error");
                 onEvent(ConnectionState::Error, "Connection error");
                 break;
             case transport::SessionEvent::Timeout:
                 connected_.store(false);
                 impl_->registered = false;
+                recordDisconnect("connection_timeout");
                 onEvent(ConnectionState::Error, "Connection timeout");
                 break;
         }
@@ -141,6 +157,7 @@ bool RemoteClient::start() {
     connected_.store(true);
     impl_->lastHeartbeat = std::chrono::steady_clock::now();
     impl_->reconnectAttempt.store(0);  // 连接成功，重置退避计数
+    markConnected();
     sendRegister();
 
     // 启动心跳
@@ -192,6 +209,7 @@ void RemoteClient::connect() {
     if (impl_->client->connect(impl_->config.serverIp, impl_->config.serverPort)) {
         connected_.store(true);
         impl_->lastHeartbeat = std::chrono::steady_clock::now();
+        markConnected();
 
         // 连接成功后发送 agent.register 消息
         sendRegister();
@@ -310,11 +328,13 @@ void RemoteClient::startHeartbeat() {
 }
 
 void RemoteClient::sendHeartbeat() {
-    // 发送 agent.heartbeat JSON 消息（与 server 侧 listener.go:342 匹配）
+    // 发送 agent.heartbeat JSON 消息（与 server 侧 listener.go:342 匹配）。
+    // link 携带链路质量统计，server 侧存入注册表供 Dashboard 监控连接稳定性。
     nlohmann::json heartbeatMsg = {
         {"type", "agent.heartbeat"},
         {"status", "online"},
-        {"resources", nlohmann::json::object()}
+        {"resources", nlohmann::json::object()},
+        {"link", linkStats()}
     };
 
     auto message = std::make_shared<transport::Message>();
@@ -328,6 +348,46 @@ void RemoteClient::sendHeartbeat() {
         spdlog::warn("Failed to send agent heartbeat (queued for reconnect)");
         connected_.store(false);
     }
+}
+
+void RemoteClient::markConnected() {
+    impl_->connectedAt = std::chrono::steady_clock::now();
+    // 初始连接不计入重连次数；此后每次「断线→再次连上」累计一次
+    if (impl_->everConnected) {
+        impl_->reconnectCount.fetch_add(1);
+        spdlog::info("Reconnected (#{})", impl_->reconnectCount.load());
+    }
+    impl_->everConnected = true;
+}
+
+void RemoteClient::recordDisconnect(const std::string& reason) {
+    std::lock_guard<std::mutex> lock(impl_->reasonMutex);
+    impl_->lastDisconnectReason = reason;
+}
+
+nlohmann::json RemoteClient::linkStats() const {
+    int64_t uptimeMs = 0;
+    if (impl_->connectedAt.time_since_epoch().count() > 0) {
+        uptimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - impl_->connectedAt).count();
+    }
+    std::string reason;
+    {
+        std::lock_guard<std::mutex> lock(impl_->reasonMutex);
+        reason = impl_->lastDisconnectReason;
+    }
+    size_t pending = 0;
+    {
+        std::lock_guard<std::mutex> lock(impl_->outboxMutex);
+        pending = impl_->outbox.size();
+    }
+    return {
+        {"reconnects", impl_->reconnectCount.load()},
+        {"dropped", impl_->droppedCount.load()},
+        {"outboxPending", static_cast<uint64_t>(pending)},
+        {"lastDisconnectReason", reason},
+        {"sessionUptimeMs", uptimeMs}
+    };
 }
 
 void RemoteClient::sendRegister() {
@@ -578,7 +638,9 @@ bool RemoteClient::deliverMessage(const transport::MessagePtr& msg, bool queueab
         if (impl_->outbox.size() < impl_->kMaxOutbox) {
             impl_->outbox.push(msg);
         } else {
-            spdlog::warn("Outbox full ({}), dropping outbound message", impl_->kMaxOutbox);
+            impl_->droppedCount.fetch_add(1);
+            spdlog::warn("Outbox full ({}), dropping outbound message (total dropped: {})",
+                impl_->kMaxOutbox, impl_->droppedCount.load());
         }
     }
     return false;

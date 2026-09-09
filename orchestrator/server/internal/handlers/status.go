@@ -29,6 +29,7 @@ func NewStatusHandler(db *gorm.DB, registry *agent.Registry) *StatusHandler {
 // @Security     BearerAuth
 // @Param        agentId  query  string  false  "Agent ID（缺省自动选择在线 agent）"
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
 // @Router       /v1/status [get]
 func (h *StatusHandler) HandleStatus(c *gin.Context) {
 	var totalScripts int64
@@ -95,6 +96,7 @@ func (h *StatusHandler) HandleStatus(c *gin.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
 // @Router       /v1/health [get]
 func (h *StatusHandler) HandleHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{

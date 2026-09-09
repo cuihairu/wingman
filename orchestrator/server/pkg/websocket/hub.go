@@ -40,11 +40,11 @@ var upgrader = websocket.Upgrader{
 
 // Message WebSocket 消息
 type Message struct {
-	Type      string      `json:"type"`
-	Event     string      `json:"event,omitempty"`
-	Data      any `json:"data,omitempty"`
-	RoomID    string      `json:"roomId,omitempty"`
-	Timestamp int64       `json:"timestamp,omitempty"`
+	Type      string `json:"type"`
+	Event     string `json:"event,omitempty"`
+	Data      any    `json:"data,omitempty"`
+	RoomID    string `json:"roomId,omitempty"`
+	Timestamp int64  `json:"timestamp,omitempty"`
 }
 
 // Connection WebSocket 连接
@@ -242,6 +242,13 @@ func (h *Hub) BroadcastAgentEvent(eventType string, data any) {
 		Timestamp: time.Now().Unix(),
 	}
 	h.broadcast <- message
+}
+
+// ConnectionCount 返回当前活跃的 WebSocket 连接数（供指标端点采样）。
+func (h *Hub) ConnectionCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.connections)
 }
 
 // HandleWebSocket 处理 WebSocket 连接

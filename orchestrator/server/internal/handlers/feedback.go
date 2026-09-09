@@ -34,8 +34,10 @@ type createFeedbackReq struct {
 // @Security     BearerAuth
 // @Param        request  body  object  true  "反馈内容"  example({"category":"general","content":"...","priority":"normal","source":"dashboard"})
 // @Success      201  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /feedback [post]
 func (h *FeedbackHandler) HandleCreate(c *gin.Context) {
 	_, username, _ := middleware.GetCurrentUser(c)

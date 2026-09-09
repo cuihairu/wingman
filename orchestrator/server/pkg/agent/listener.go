@@ -26,6 +26,7 @@ type AgentRegistrar interface {
 	Unregister(agentID string)
 	UpdateStatus(agentID string, status string, resources any)
 	UpdateHeartbeat(agentID string)
+	UpdateLinkHealth(agentID string, raw map[string]any)
 	SetClient(agentID string, conn any)
 }
 
@@ -487,6 +488,11 @@ func (ac *agentConn) handleHeartbeat(msg map[string]any) {
 	}
 
 	resources := msg["resources"]
+	// 链路质量统计（reconnects/dropped/outboxPending/lastDisconnectReason/sessionUptimeMs）：
+	// 先于 UpdateStatus 写入，随 status_changed 广播携带给 Dashboard。
+	if link, ok := msg["link"].(map[string]any); ok {
+		ac.listener.registry.UpdateLinkHealth(agentID, link)
+	}
 	ac.listener.registry.UpdateStatus(agentID, status, resources)
 }
 

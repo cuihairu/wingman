@@ -22,6 +22,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "返回全部权限码目录，支持按分类过滤；需要 users:manage 或 roles:manage 权限",
                 "produces": [
                     "application/json"
                 ],
@@ -29,12 +30,38 @@ const docTemplate = `{
                     "admin-roles"
                 ],
                 "summary": "权限目录（resource:action）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "按分类过滤",
+                        "name": "category",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -47,6 +74,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "返回全部角色（内置优先）；需要 roles:manage 权限（admin 自动放行）",
                 "produces": [
                     "application/json"
                 ],
@@ -60,6 +88,24 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -103,22 +149,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -159,15 +214,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -218,15 +283,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -265,22 +340,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -293,6 +377,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "返回不含密码字段的安全用户信息；需要 users:manage 权限",
                 "produces": [
                     "application/json"
                 ],
@@ -335,6 +420,24 @@ const docTemplate = `{
                             "type": "object",
                             "additionalProperties": true
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
                     }
                 }
             },
@@ -344,6 +447,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "校验用户名格式/密码强度/角色存在性后创建；需要 users:manage 权限",
                 "consumes": [
                     "application/json"
                 ],
@@ -371,6 +475,36 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -411,15 +545,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -470,22 +614,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -524,22 +677,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -592,22 +754,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -620,6 +791,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "返回所有已注册 agent 的状态、标签与负载数据（不含已断开条目按 registry 当前视图）",
                 "produces": [
                     "application/json"
                 ],
@@ -633,6 +805,12 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -670,11 +848,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -712,18 +895,28 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Bad Gateway",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -776,15 +969,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -823,11 +1026,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "502": {
                         "description": "Bad Gateway",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -879,15 +1087,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Bad Gateway",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -941,22 +1159,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Bad Gateway",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1018,22 +1245,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Bad Gateway",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1081,22 +1317,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "502": {
                         "description": "Bad Gateway",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1165,11 +1410,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1182,7 +1432,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "断点由 VSCode 直连 runtime 管理，固定返回 501 与直连指引",
+                "description": "断点由 VSCode 直连 runtime 管理，server 不中转；固定返回 501 与直连指引；仅 admin 角色可访问",
                 "produces": [
                     "application/json"
                 ],
@@ -1191,11 +1441,22 @@ const docTemplate = `{
                 ],
                 "summary": "获取断点（直连模式）",
                 "responses": {
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "非 admin 角色",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "501": {
                         "description": "Not Implemented",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.DirectAttachResponse"
                         }
                     }
                 }
@@ -1206,7 +1467,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "断点由 VSCode 直连 runtime 管理，固定返回 501 与直连指引",
+                "description": "断点由 VSCode 直连 runtime 管理，server 不中转；固定返回 501 与直连指引；仅 admin 角色可访问",
                 "produces": [
                     "application/json"
                 ],
@@ -1215,11 +1476,22 @@ const docTemplate = `{
                 ],
                 "summary": "设置断点（直连模式）",
                 "responses": {
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "非 admin 角色",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "501": {
                         "description": "Not Implemented",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.DirectAttachResponse"
                         }
                     }
                 }
@@ -1232,7 +1504,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "调试协议不经 server 中转，固定返回 501 与直连指引",
+                "description": "调试命令由 VSCode 直连 runtime 执行，server 不中转；固定返回 501 与直连指引；仅 admin 角色可访问",
                 "produces": [
                     "application/json"
                 ],
@@ -1241,11 +1513,22 @@ const docTemplate = `{
                 ],
                 "summary": "调试命令（直连模式）",
                 "responses": {
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "非 admin 角色",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "501": {
                         "description": "Not Implemented",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.DirectAttachResponse"
                         }
                     }
                 }
@@ -1258,7 +1541,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "调试协议不经 server 中转，固定返回 501 与直连指引",
+                "description": "调试协议是双向流（断点/单步/变量），不适合请求/响应模型；固定返回 501 与 VSCode 直连指引；仅 admin 角色可访问",
                 "produces": [
                     "application/json"
                 ],
@@ -1267,11 +1550,22 @@ const docTemplate = `{
                 ],
                 "summary": "调试器连接（直连模式）",
                 "responses": {
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "非 admin 角色",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "501": {
                         "description": "Not Implemented",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.DirectAttachResponse"
                         }
                     }
                 }
@@ -1284,7 +1578,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "EmmyLua 调试由 VSCode 直连 runtime 调试端口（默认 9966），server 不中转；返回各 agent 调试端点与 launch.json 片段",
+                "description": "EmmyLua 调试由 VSCode 直连 runtime 调试端口（默认 9966），server 不中转；返回各 agent 的 host:port、可达性与 launch.json 片段；仅 admin 角色可访问",
                 "produces": [
                     "application/json"
                 ],
@@ -1296,8 +1590,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.DebuggerInfoResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "非 admin 角色",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1343,15 +1648,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1364,6 +1679,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "分页返回当前用户可见的消息（直发本人 + 广播；admin 看全部）",
                 "produces": [
                     "application/json"
                 ],
@@ -1400,6 +1716,18 @@ const docTemplate = `{
                             "type": "object",
                             "additionalProperties": true
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -1427,11 +1755,16 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1444,6 +1777,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "返回当前用户可见且未读的消息条数",
                 "produces": [
                     "application/json"
                 ],
@@ -1457,6 +1791,12 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1497,15 +1837,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1518,7 +1862,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "返回已登记的脚本（同时在 /api/v1/scripts 注册）",
+                "description": "返回 DB 中登记的全部脚本（名称/路径/描述/运行状态）；同时在 /api/v1/scripts 注册。任何登录用户可读（/api 路径），/api/v1 路径需 admin 角色",
                 "produces": [
                     "application/json"
                 ],
@@ -1530,8 +1874,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ListScriptsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1542,7 +1897,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "生成 Lua 模板文件并写入 DB 记录（路径穿越防护）；需要 scripts:edit 权限",
+                "description": "按 name 生成 Lua 模板文件并写入 DB 记录；名称做路径穿越/空字节/长度校验；需要 scripts:edit 权限（/api/v1 路径需 admin 角色）",
                 "consumes": [
                     "application/json"
                 ],
@@ -1560,7 +1915,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.CreateScriptRequest"
                         }
                     }
                 ],
@@ -1568,22 +1923,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.CreateScriptResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "非法名称（路径穿越/空字节/超长）或请求体格式错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "模板文件写入失败",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1594,7 +1958,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "删除脚本文件与 DB 记录（DELETE /scripts 与 POST /scripts/delete 两个入口）；需要 scripts:edit 权限",
+                "description": "按路径删除脚本文件与 DB 记录；入口有 DELETE /scripts、POST /scripts/delete（/api/v1 路径为 DELETE /api/v1/scripts）；需要 scripts:edit 权限",
                 "consumes": [
                     "application/json"
                 ],
@@ -1612,7 +1976,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.ScriptPathRequest"
                         }
                     }
                 ],
@@ -1620,22 +1984,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "路径非法或穿越 scripts 目录",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "文件删除失败",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1648,7 +2021,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "按路径返回脚本全文（路径经 store 安全校验）",
+                "description": "按路径返回脚本全文（路径经 store 安全校验，禁止穿越 scripts 目录）；任何登录用户可读",
                 "consumes": [
                     "application/json"
                 ],
@@ -1666,7 +2039,71 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.ScriptPathRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "data 为脚本全文字符串",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "路径非法或穿越 scripts 目录",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "文件读取失败",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/scripts/delete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按路径删除脚本文件与 DB 记录；入口有 DELETE /scripts、POST /scripts/delete（/api/v1 路径为 DELETE /api/v1/scripts）；需要 scripts:edit 权限",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scripts"
+                ],
+                "summary": "删除脚本",
+                "parameters": [
+                    {
+                        "description": "脚本路径",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ScriptPathRequest"
                         }
                     }
                 ],
@@ -1674,22 +2111,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "路径非法或穿越 scripts 目录",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "文件删除失败",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1702,7 +2148,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "分页读取某次执行的持久化日志；需要 scripts:run 权限",
+                "description": "分页读取某次执行的持久化日志（offset/limit，limit 1-500 缺省 100，按 id 升序）；需要 scripts:run 权限",
                 "consumes": [
                     "application/json"
                 ],
@@ -1720,7 +2166,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.QueryLogsRequest"
                         }
                     }
                 ],
@@ -1728,15 +2174,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.LogListResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "请求体格式错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1749,7 +2205,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "经 agent 通道下发 run_script，并更新脚本运行状态；需要 scripts:run 权限",
+                "description": "经 agent 通道下发 run_script（30s 超时）并将脚本标记为 running，写审计日志；需要 scripts:run 权限",
                 "consumes": [
                     "application/json"
                 ],
@@ -1767,7 +2223,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.RunScriptRequest"
                         }
                     }
                 ],
@@ -1775,22 +2231,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.RunScriptResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "路径非法或请求体格式错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "502": {
-                        "description": "Bad Gateway",
+                        "description": "agent 不在线或命令执行失败",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1803,7 +2268,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "覆盖写入脚本文件；需要 scripts:edit 权限",
+                "description": "覆盖写入脚本文件（路径经 store 安全校验）；需要 scripts:edit 权限",
                 "consumes": [
                     "application/json"
                 ],
@@ -1821,7 +2286,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.SaveScriptRequest"
                         }
                     }
                 ],
@@ -1829,22 +2294,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "路径非法或请求体格式错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "文件写入失败",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1857,7 +2331,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "经 agent 通道下发 stop_script，并更新脚本状态；需要 scripts:run 权限",
+                "description": "经 agent 通道下发 stop_script（10s 超时）并将脚本标记为 stopped，写审计日志；需要 scripts:run 权限",
                 "consumes": [
                     "application/json"
                 ],
@@ -1871,6 +2345,105 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": "执行 ID 与目标 agent",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.StopScriptRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体格式错误",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "agent 不在线或命令执行失败",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/settings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "返回 DB 配置并填充默认值；需要 settings:view 权限（dashboard 兼容路径 /settings 等价）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "获取系统配置",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按 key-value 逐项 upsert；需要 settings:edit 权限（dashboard 兼容路径 /settings 等价）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "更新系统配置",
+                "parameters": [
+                    {
+                        "description": "配置键值对",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1890,15 +2463,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
-                    "502": {
-                        "description": "Bad Gateway",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1939,22 +2516,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -1962,7 +2536,12 @@ const docTemplate = `{
         },
         "/v1/auth/logout": {
             "post": {
-                "description": "无状态 JWT，客户端丢弃令牌即可",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "无状态 JWT，客户端丢弃令牌即可；需携带有效 Bearer token",
                 "produces": [
                     "application/json"
                 ],
@@ -1976,6 +2555,12 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2003,6 +2588,43 @@ const docTemplate = `{
                             "type": "object",
                             "additionalProperties": true
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/metrics": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "输出 Prometheus 文本格式：wingman_http_requests_total（总请求数，按 method/route/status 维度）、wingman_active_websocket_connections（活跃 dashboard WebSocket 连接数）、wingman_registered_agents（已注册 runtime agent 数）、wingman_uptime_seconds（服务运行时长），附带 Go runtime/process 默认指标",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Prometheus 运行指标",
+                "responses": {
+                    "200": {
+                        "description": "Prometheus 文本格式指标",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -2014,6 +2636,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "返回当前登录用户的基本资料与角色",
                 "produces": [
                     "application/json"
                 ],
@@ -2027,6 +2650,12 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2070,22 +2699,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2112,6 +2738,12 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2157,22 +2789,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2185,6 +2814,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "返回当前用户的权限码列表（admin 附加通配符 *）",
                 "produces": [
                     "application/json"
                 ],
@@ -2198,6 +2828,18 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2243,8 +2885,482 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/scripts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "返回 DB 中登记的全部脚本（名称/路径/描述/运行状态）；同时在 /api/v1/scripts 注册。任何登录用户可读（/api 路径），/api/v1 路径需 admin 角色",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scripts"
+                ],
+                "summary": "脚本列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ListScriptsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按 name 生成 Lua 模板文件并写入 DB 记录；名称做路径穿越/空字节/长度校验；需要 scripts:edit 权限（/api/v1 路径需 admin 角色）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scripts"
+                ],
+                "summary": "创建脚本",
+                "parameters": [
+                    {
+                        "description": "脚本元信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateScriptRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateScriptResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "非法名称（路径穿越/空字节/超长）或请求体格式错误",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "模板文件写入失败",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按路径删除脚本文件与 DB 记录；入口有 DELETE /scripts、POST /scripts/delete（/api/v1 路径为 DELETE /api/v1/scripts）；需要 scripts:edit 权限",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scripts"
+                ],
+                "summary": "删除脚本",
+                "parameters": [
+                    {
+                        "description": "脚本路径",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ScriptPathRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "路径非法或穿越 scripts 目录",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "文件删除失败",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/scripts/content": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按路径返回脚本全文（路径经 store 安全校验，禁止穿越 scripts 目录）；任何登录用户可读",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scripts"
+                ],
+                "summary": "读取脚本内容",
+                "parameters": [
+                    {
+                        "description": "脚本路径",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ScriptPathRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "data 为脚本全文字符串",
+                        "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "路径非法或穿越 scripts 目录",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "文件读取失败",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/scripts/logs": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "分页读取某次执行的持久化日志（offset/limit，limit 1-500 缺省 100，按 id 升序）；需要 scripts:run 权限",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scripts"
+                ],
+                "summary": "脚本执行日志",
+                "parameters": [
+                    {
+                        "description": "执行 ID 与分页",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.QueryLogsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LogListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体格式错误",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/scripts/run": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "经 agent 通道下发 run_script（30s 超时）并将脚本标记为 running，写审计日志；需要 scripts:run 权限",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scripts"
+                ],
+                "summary": "运行脚本",
+                "parameters": [
+                    {
+                        "description": "脚本与目标 agent",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RunScriptRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RunScriptResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "路径非法或请求体格式错误",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "agent 不在线或命令执行失败",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/scripts/save": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "覆盖写入脚本文件（路径经 store 安全校验）；需要 scripts:edit 权限",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scripts"
+                ],
+                "summary": "保存脚本内容",
+                "parameters": [
+                    {
+                        "description": "脚本路径与内容",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SaveScriptRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "路径非法或请求体格式错误",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "文件写入失败",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/scripts/stop": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "经 agent 通道下发 stop_script（10s 超时）并将脚本标记为 stopped，写审计日志；需要 scripts:run 权限",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scripts"
+                ],
+                "summary": "停止脚本",
+                "parameters": [
+                    {
+                        "description": "执行 ID 与目标 agent",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.StopScriptRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体格式错误",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "agent 不在线或命令执行失败",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2271,6 +3387,18 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2314,8 +3442,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2350,6 +3489,12 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2386,18 +3531,22 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "502": {
                         "description": "Bad Gateway",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "503": {
                         "description": "Service Unavailable",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2410,7 +3559,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "内置模板（单步监控/并行采集/串行流水线/fan-out/独立步骤类型 wait-condition-screenshot）",
+                "description": "内置模板目录：单步监控/并行采集/串行流水线/fan-out/独立步骤类型 wait-condition-screenshot；可直接作为创建工作流的 steps 骨架",
                 "produces": [
                     "application/json"
                 ],
@@ -2420,10 +3569,16 @@ const docTemplate = `{
                 "summary": "工作流模板库",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "data 为模板数组（name/description/steps）",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2436,7 +3591,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "返回所有工作流记录（含运行状态）",
+                "description": "返回所有工作流记录（含状态：pending/running/completed/failed/cancelled）；任何登录用户可读",
                 "produces": [
                     "application/json"
                 ],
@@ -2448,15 +3603,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ListWorkflowsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "数据库查询失败",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2467,7 +3626,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "校验步骤后提交引擎调度，失败时回滚记录；需要 workflows:run 权限",
+                "description": "校验步骤定义（依赖关系/worker 存在性）后提交引擎调度，调度失败时回滚 DB 记录；需要 workflows:run 权限",
                 "consumes": [
                     "application/json"
                 ],
@@ -2485,30 +3644,40 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.CreateWorkflowRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "data.workflowId 为新建工作流 ID",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "步骤校验失败或请求体格式错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "序列化或 DB 写入失败",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2521,7 +3690,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "返回工作流定义、步骤状态与共享上下文",
+                "description": "返回工作流定义、步骤状态与共享上下文快照（运行中与已结束均可查询）",
                 "produces": [
                     "application/json"
                 ],
@@ -2532,6 +3701,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "工作流 ID",
                         "name": "id",
                         "in": "path",
@@ -2542,22 +3712,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.WorkflowDetailResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "id 非数字",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "工作流不存在",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2570,7 +3743,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "取消运行中的工作流并写审计日志；需要 workflows:run 权限",
+                "description": "取消运行中的工作流（通知引擎中止后续步骤）并写审计日志；需要 workflows:run 权限",
                 "produces": [
                     "application/json"
                 ],
@@ -2581,6 +3754,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "工作流 ID",
                         "name": "id",
                         "in": "path",
@@ -2591,15 +3765,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "id 非数字或工作流不可取消",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2612,7 +3796,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "合并 DB 记录与引擎内存快照，返回单步的实时执行状态",
+                "description": "合并 DB 记录与引擎内存快照，返回单步的实时执行状态（status/message/workerId/起止时间）；任何登录用户可读",
                 "produces": [
                     "application/json"
                 ],
@@ -2623,6 +3807,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "工作流 ID",
                         "name": "id",
                         "in": "path",
@@ -2630,6 +3815,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "example": "s1",
                         "description": "步骤 ID",
                         "name": "stepId",
                         "in": "path",
@@ -2640,22 +3826,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.StepStatusResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "id 非数字",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "步骤状态记录不存在",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2668,7 +3857,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "汇总步骤状态中按 workerId 去重的 worker（agent）信息",
+                "description": "汇总步骤状态中按 workerId 去重的 worker（agent）信息；任何登录用户可读",
                 "produces": [
                     "application/json"
                 ],
@@ -2679,6 +3868,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "工作流 ID",
                         "name": "id",
                         "in": "path",
@@ -2689,15 +3879,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.WorkerListResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "id 非数字",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -2705,6 +3899,320 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "gorm.DeletedAt": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if Time is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
+        "handlers.CreateScriptRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "血量监控示例脚本"
+                },
+                "name": {
+                    "description": "脚本名（不含扩展名时自动补 .lua；禁止路径穿越字符）",
+                    "type": "string",
+                    "example": "demo"
+                }
+            }
+        },
+        "handlers.CreateScriptResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/models.Script"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.CreateWorkflowRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "steps"
+            ],
+            "properties": {
+                "description": {
+                    "description": "工作流描述",
+                    "type": "string",
+                    "example": "单步监控流水线"
+                },
+                "name": {
+                    "description": "工作流名称",
+                    "type": "string",
+                    "example": "monitor"
+                },
+                "sharedContext": {
+                    "description": "跨步骤共享上下文（步骤间传参）",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "steps": {
+                    "description": "步骤列表（type: script/wait/condition/screenshot；通过 dependsOn 声明依赖）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WorkflowStep"
+                    }
+                }
+            }
+        },
+        "handlers.DebuggerInfoResponse": {
+            "type": "object",
+            "properties": {
+                "agents": {
+                    "description": "各 agent 的调试端点",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.agentDebugEndpoint"
+                    }
+                },
+                "defaultPort": {
+                    "description": "runtime 默认调试端口",
+                    "type": "integer",
+                    "example": 9966
+                },
+                "description": {
+                    "description": "模式说明",
+                    "type": "string",
+                    "example": "Lua debugging via EmmyLua: VSCode attaches directly to the runtime debug port."
+                },
+                "launchConfig": {
+                    "description": "VSCode launch.json 片段",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "mode": {
+                    "description": "固定为 direct_attach",
+                    "type": "string",
+                    "example": "direct_attach"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "vscodeExtension": {
+                    "description": "推荐的 VSCode 扩展",
+                    "type": "string",
+                    "example": "tangzx.emmylua"
+                }
+            }
+        },
+        "handlers.DirectAttachResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "说明调试协议不经 server 中转",
+                    "type": "string",
+                    "example": "EmmyLua debugging is not proxied through the server. Use VSCode EmmyLua to attach directly to the runtime debug port."
+                },
+                "hint": {
+                    "description": "获取各 agent 调试端点的入口",
+                    "type": "string",
+                    "example": "GET /api/debugger/info returns each agent's debug endpoint and a VSCode launch.json snippet."
+                },
+                "mode": {
+                    "description": "固定为 direct_attach",
+                    "type": "string",
+                    "example": "direct_attach"
+                },
+                "operation": {
+                    "description": "触发本次拒绝的操作名",
+                    "type": "string",
+                    "example": "connect"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "vscodeExtension": {
+                    "description": "推荐的 VSCode 扩展",
+                    "type": "string",
+                    "example": "tangzx.emmylua"
+                }
+            }
+        },
+        "handlers.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "Error 人类可读的错误说明",
+                    "type": "string",
+                    "example": "insufficient permissions"
+                },
+                "success": {
+                    "description": "Success 固定为 false",
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "handlers.ListScriptsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Script"
+                    }
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.ListWorkflowsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Workflow"
+                    }
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.LogEntry": {
+            "type": "object",
+            "properties": {
+                "level": {
+                    "description": "日志级别（info/warn/error）",
+                    "type": "string",
+                    "example": "info"
+                },
+                "message": {
+                    "description": "日志内容",
+                    "type": "string",
+                    "example": "script started"
+                },
+                "timestamp": {
+                    "description": "毫秒时间戳",
+                    "type": "integer",
+                    "example": 1712937600000
+                }
+            }
+        },
+        "handlers.LogListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.LogEntry"
+                    }
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.QueryLogsRequest": {
+            "type": "object",
+            "required": [
+                "executionId"
+            ],
+            "properties": {
+                "executionId": {
+                    "description": "执行 ID（脚本名）",
+                    "type": "string",
+                    "example": "demo"
+                },
+                "limit": {
+                    "description": "每页条数（1-500，缺省 100）",
+                    "type": "integer",
+                    "example": 100
+                },
+                "offset": {
+                    "description": "分页偏移（0 起）",
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
+        "handlers.RunScriptData": {
+            "type": "object",
+            "properties": {
+                "agent": {
+                    "description": "agent 通道的原始响应（command result data）",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "executionId": {
+                    "description": "本次执行 ID（等于脚本名，停止时使用）",
+                    "type": "string",
+                    "example": "demo"
+                }
+            }
+        },
+        "handlers.RunScriptRequest": {
+            "type": "object",
+            "required": [
+                "path"
+            ],
+            "properties": {
+                "agentId": {
+                    "description": "目标 Agent ID（缺省自动选择首个在线 agent）",
+                    "type": "string",
+                    "example": "agent-001"
+                },
+                "path": {
+                    "description": "相对 scripts 目录的脚本路径",
+                    "type": "string",
+                    "example": "demo.lua"
+                }
+            }
+        },
+        "handlers.RunScriptResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/handlers.RunScriptData"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.SaveScriptRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "path"
+            ],
+            "properties": {
+                "content": {
+                    "description": "脚本全文（Lua 源码）",
+                    "type": "string",
+                    "example": "function main() print(\"hi\") end"
+                },
+                "path": {
+                    "description": "相对 scripts 目录的脚本路径",
+                    "type": "string",
+                    "example": "demo.lua"
+                }
+            }
+        },
         "handlers.ScreenshotRequest": {
             "type": "object",
             "properties": {
@@ -2719,6 +4227,58 @@ const docTemplate = `{
                 },
                 "width": {
                     "type": "integer"
+                }
+            }
+        },
+        "handlers.ScriptPathRequest": {
+            "type": "object",
+            "required": [
+                "path"
+            ],
+            "properties": {
+                "path": {
+                    "description": "相对 scripts 目录的脚本路径",
+                    "type": "string",
+                    "example": "demo.lua"
+                }
+            }
+        },
+        "handlers.StepStatusResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/models.StepStatus"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.StopScriptRequest": {
+            "type": "object",
+            "required": [
+                "executionId"
+            ],
+            "properties": {
+                "agentId": {
+                    "description": "目标 Agent ID（缺省自动选择首个在线 agent）",
+                    "type": "string",
+                    "example": "agent-001"
+                },
+                "executionId": {
+                    "description": "执行 ID（脚本名，run 响应中的 executionId）",
+                    "type": "string",
+                    "example": "demo"
+                }
+            }
+        },
+        "handlers.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "success": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
@@ -2843,6 +4403,309 @@ const docTemplate = `{
                     "description": "runtime 分配的触发器 ID（trigger.list 返回的字符串数字）",
                     "type": "string",
                     "example": "42"
+                }
+            }
+        },
+        "handlers.WorkerEntry": {
+            "type": "object",
+            "properties": {
+                "endTime": {
+                    "description": "结束时间（毫秒）",
+                    "type": "integer",
+                    "example": 1712937620000
+                },
+                "startTime": {
+                    "description": "开始时间（毫秒）",
+                    "type": "integer",
+                    "example": 1712937610000
+                },
+                "status": {
+                    "description": "步骤状态",
+                    "type": "string",
+                    "example": "completed"
+                },
+                "stepId": {
+                    "description": "该 worker 承担的首个步骤 ID",
+                    "type": "string",
+                    "example": "s1"
+                },
+                "workerId": {
+                    "description": "Agent ID",
+                    "type": "string",
+                    "example": "agent-001"
+                }
+            }
+        },
+        "handlers.WorkerListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.WorkerEntry"
+                    }
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.WorkflowDetailData": {
+            "type": "object",
+            "properties": {
+                "createdTime": {
+                    "description": "创建时间（毫秒）",
+                    "type": "integer",
+                    "example": 1712937600000
+                },
+                "description": {
+                    "description": "描述",
+                    "type": "string",
+                    "example": "单步监控流水线"
+                },
+                "endTime": {
+                    "description": "结束时间（毫秒，未结束为 0）",
+                    "type": "integer",
+                    "example": 1712937620000
+                },
+                "id": {
+                    "description": "工作流 ID",
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "description": "名称",
+                    "type": "string",
+                    "example": "monitor"
+                },
+                "sharedContext": {
+                    "description": "共享上下文快照",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "startTime": {
+                    "description": "开始时间（毫秒，未开始为 0）",
+                    "type": "integer",
+                    "example": 1712937610000
+                },
+                "status": {
+                    "description": "状态：pending/running/completed/failed/cancelled",
+                    "type": "string",
+                    "example": "completed"
+                },
+                "stepStatus": {
+                    "description": "各步骤实时状态（stepId → 状态）",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "steps": {
+                    "description": "步骤定义列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WorkflowStep"
+                    }
+                }
+            }
+        },
+        "handlers.WorkflowDetailResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/handlers.WorkflowDetailData"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.agentDebugEndpoint": {
+            "type": "object",
+            "properties": {
+                "agentId": {
+                    "type": "string",
+                    "example": "agent-001"
+                },
+                "endpoint": {
+                    "type": "string",
+                    "example": "10.0.0.5:9966"
+                },
+                "host": {
+                    "type": "string",
+                    "example": "10.0.0.5"
+                },
+                "hostname": {
+                    "type": "string",
+                    "example": "game-pc"
+                },
+                "ip": {
+                    "type": "string",
+                    "example": "10.0.0.5"
+                },
+                "port": {
+                    "type": "integer",
+                    "example": 9966
+                },
+                "reachable": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "status": {
+                    "type": "string",
+                    "example": "online"
+                }
+            }
+        },
+        "models.Script": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_running": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.StepStatus": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "pending/running/completed/failed/skipped",
+                    "type": "string"
+                },
+                "stepId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "workerId": {
+                    "type": "string"
+                },
+                "workflowId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.Workflow": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "pending/running/completed/failed/cancelled",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WorkflowStep": {
+            "type": "object",
+            "properties": {
+                "dependsOn": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "maxRetries": {
+                    "description": "失败重试次数（0=不重试）",
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "retryBackoffSeconds": {
+                    "description": "重试退避基数（秒，默认 2，指数翻倍）",
+                    "type": "integer"
+                },
+                "script": {
+                    "type": "string"
+                },
+                "timeoutSeconds": {
+                    "type": "integer"
+                },
+                "type": {
+                    "description": "步骤类型：script(默认)/wait/condition/screenshot",
+                    "type": "string"
+                },
+                "workers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         }

@@ -1,5 +1,235 @@
 basePath: /api
 definitions:
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+  handlers.CreateScriptRequest:
+    properties:
+      description:
+        example: 血量监控示例脚本
+        type: string
+      name:
+        description: 脚本名（不含扩展名时自动补 .lua；禁止路径穿越字符）
+        example: demo
+        type: string
+    required:
+    - name
+    type: object
+  handlers.CreateScriptResponse:
+    properties:
+      data:
+        $ref: '#/definitions/models.Script'
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.CreateWorkflowRequest:
+    properties:
+      description:
+        description: 工作流描述
+        example: 单步监控流水线
+        type: string
+      name:
+        description: 工作流名称
+        example: monitor
+        type: string
+      sharedContext:
+        additionalProperties: {}
+        description: 跨步骤共享上下文（步骤间传参）
+        type: object
+      steps:
+        description: '步骤列表（type: script/wait/condition/screenshot；通过 dependsOn 声明依赖）'
+        items:
+          $ref: '#/definitions/models.WorkflowStep'
+        type: array
+    required:
+    - name
+    - steps
+    type: object
+  handlers.DebuggerInfoResponse:
+    properties:
+      agents:
+        description: 各 agent 的调试端点
+        items:
+          $ref: '#/definitions/handlers.agentDebugEndpoint'
+        type: array
+      defaultPort:
+        description: runtime 默认调试端口
+        example: 9966
+        type: integer
+      description:
+        description: 模式说明
+        example: 'Lua debugging via EmmyLua: VSCode attaches directly to the runtime
+          debug port.'
+        type: string
+      launchConfig:
+        additionalProperties: {}
+        description: VSCode launch.json 片段
+        type: object
+      mode:
+        description: 固定为 direct_attach
+        example: direct_attach
+        type: string
+      success:
+        example: true
+        type: boolean
+      vscodeExtension:
+        description: 推荐的 VSCode 扩展
+        example: tangzx.emmylua
+        type: string
+    type: object
+  handlers.DirectAttachResponse:
+    properties:
+      error:
+        description: 说明调试协议不经 server 中转
+        example: EmmyLua debugging is not proxied through the server. Use VSCode EmmyLua
+          to attach directly to the runtime debug port.
+        type: string
+      hint:
+        description: 获取各 agent 调试端点的入口
+        example: GET /api/debugger/info returns each agent's debug endpoint and a
+          VSCode launch.json snippet.
+        type: string
+      mode:
+        description: 固定为 direct_attach
+        example: direct_attach
+        type: string
+      operation:
+        description: 触发本次拒绝的操作名
+        example: connect
+        type: string
+      success:
+        example: false
+        type: boolean
+      vscodeExtension:
+        description: 推荐的 VSCode 扩展
+        example: tangzx.emmylua
+        type: string
+    type: object
+  handlers.ErrorResponse:
+    properties:
+      error:
+        description: Error 人类可读的错误说明
+        example: insufficient permissions
+        type: string
+      success:
+        description: Success 固定为 false
+        example: false
+        type: boolean
+    type: object
+  handlers.ListScriptsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Script'
+        type: array
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.ListWorkflowsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Workflow'
+        type: array
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.LogEntry:
+    properties:
+      level:
+        description: 日志级别（info/warn/error）
+        example: info
+        type: string
+      message:
+        description: 日志内容
+        example: script started
+        type: string
+      timestamp:
+        description: 毫秒时间戳
+        example: 1712937600000
+        type: integer
+    type: object
+  handlers.LogListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/handlers.LogEntry'
+        type: array
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.QueryLogsRequest:
+    properties:
+      executionId:
+        description: 执行 ID（脚本名）
+        example: demo
+        type: string
+      limit:
+        description: 每页条数（1-500，缺省 100）
+        example: 100
+        type: integer
+      offset:
+        description: 分页偏移（0 起）
+        example: 0
+        type: integer
+    required:
+    - executionId
+    type: object
+  handlers.RunScriptData:
+    properties:
+      agent:
+        additionalProperties: {}
+        description: agent 通道的原始响应（command result data）
+        type: object
+      executionId:
+        description: 本次执行 ID（等于脚本名，停止时使用）
+        example: demo
+        type: string
+    type: object
+  handlers.RunScriptRequest:
+    properties:
+      agentId:
+        description: 目标 Agent ID（缺省自动选择首个在线 agent）
+        example: agent-001
+        type: string
+      path:
+        description: 相对 scripts 目录的脚本路径
+        example: demo.lua
+        type: string
+    required:
+    - path
+    type: object
+  handlers.RunScriptResponse:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.RunScriptData'
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.SaveScriptRequest:
+    properties:
+      content:
+        description: 脚本全文（Lua 源码）
+        example: function main() print("hi") end
+        type: string
+      path:
+        description: 相对 scripts 目录的脚本路径
+        example: demo.lua
+        type: string
+    required:
+    - content
+    - path
+    type: object
   handlers.ScreenshotRequest:
     properties:
       height:
@@ -10,6 +240,42 @@ definitions:
         type: integer
       width:
         type: integer
+    type: object
+  handlers.ScriptPathRequest:
+    properties:
+      path:
+        description: 相对 scripts 目录的脚本路径
+        example: demo.lua
+        type: string
+    required:
+    - path
+    type: object
+  handlers.StepStatusResponse:
+    properties:
+      data:
+        $ref: '#/definitions/models.StepStatus'
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.StopScriptRequest:
+    properties:
+      agentId:
+        description: 目标 Agent ID（缺省自动选择首个在线 agent）
+        example: agent-001
+        type: string
+      executionId:
+        description: 执行 ID（脚本名，run 响应中的 executionId）
+        example: demo
+        type: string
+    required:
+    - executionId
+    type: object
+  handlers.SuccessResponse:
+    properties:
+      success:
+        example: true
+        type: boolean
     type: object
   handlers.TriggerActionRequest:
     properties:
@@ -103,6 +369,220 @@ definitions:
     required:
     - id
     type: object
+  handlers.WorkerEntry:
+    properties:
+      endTime:
+        description: 结束时间（毫秒）
+        example: 1712937620000
+        type: integer
+      startTime:
+        description: 开始时间（毫秒）
+        example: 1712937610000
+        type: integer
+      status:
+        description: 步骤状态
+        example: completed
+        type: string
+      stepId:
+        description: 该 worker 承担的首个步骤 ID
+        example: s1
+        type: string
+      workerId:
+        description: Agent ID
+        example: agent-001
+        type: string
+    type: object
+  handlers.WorkerListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/handlers.WorkerEntry'
+        type: array
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.WorkflowDetailData:
+    properties:
+      createdTime:
+        description: 创建时间（毫秒）
+        example: 1712937600000
+        type: integer
+      description:
+        description: 描述
+        example: 单步监控流水线
+        type: string
+      endTime:
+        description: 结束时间（毫秒，未结束为 0）
+        example: 1712937620000
+        type: integer
+      id:
+        description: 工作流 ID
+        example: 1
+        type: integer
+      name:
+        description: 名称
+        example: monitor
+        type: string
+      sharedContext:
+        additionalProperties: {}
+        description: 共享上下文快照
+        type: object
+      startTime:
+        description: 开始时间（毫秒，未开始为 0）
+        example: 1712937610000
+        type: integer
+      status:
+        description: 状态：pending/running/completed/failed/cancelled
+        example: completed
+        type: string
+      stepStatus:
+        additionalProperties: {}
+        description: 各步骤实时状态（stepId → 状态）
+        type: object
+      steps:
+        description: 步骤定义列表
+        items:
+          $ref: '#/definitions/models.WorkflowStep'
+        type: array
+    type: object
+  handlers.WorkflowDetailResponse:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.WorkflowDetailData'
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.agentDebugEndpoint:
+    properties:
+      agentId:
+        example: agent-001
+        type: string
+      endpoint:
+        example: 10.0.0.5:9966
+        type: string
+      host:
+        example: 10.0.0.5
+        type: string
+      hostname:
+        example: game-pc
+        type: string
+      ip:
+        example: 10.0.0.5
+        type: string
+      port:
+        example: 9966
+        type: integer
+      reachable:
+        example: true
+        type: boolean
+      status:
+        example: online
+        type: string
+    type: object
+  models.Script:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      description:
+        type: string
+      id:
+        type: integer
+      is_running:
+        type: boolean
+      name:
+        type: string
+      path:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.StepStatus:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      endTime:
+        type: string
+      id:
+        type: integer
+      message:
+        type: string
+      name:
+        type: string
+      startTime:
+        type: string
+      status:
+        description: pending/running/completed/failed/skipped
+        type: string
+      stepId:
+        type: string
+      updatedAt:
+        type: string
+      workerId:
+        type: string
+      workflowId:
+        type: integer
+    type: object
+  models.Workflow:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      description:
+        type: string
+      endTime:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      startTime:
+        type: string
+      status:
+        description: pending/running/completed/failed/cancelled
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.WorkflowStep:
+    properties:
+      dependsOn:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      maxRetries:
+        description: 失败重试次数（0=不重试）
+        type: integer
+      name:
+        type: string
+      parameters:
+        additionalProperties: true
+        type: object
+      retryBackoffSeconds:
+        description: 重试退避基数（秒，默认 2，指数翻倍）
+        type: integer
+      script:
+        type: string
+      timeoutSeconds:
+        type: integer
+      type:
+        description: 步骤类型：script(默认)/wait/condition/screenshot
+        type: string
+      workers:
+        items:
+          type: string
+        type: array
+    type: object
 host: localhost:9527
 info:
   contact: {}
@@ -114,6 +594,12 @@ info:
 paths:
   /admin/permissions:
     get:
+      description: 返回全部权限码目录，支持按分类过滤；需要 users:manage 或 roles:manage 权限
+      parameters:
+      - description: 按分类过滤
+        in: query
+        name: category
+        type: string
       produces:
       - application/json
       responses:
@@ -122,6 +608,18 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 权限目录（resource:action）
@@ -129,6 +627,7 @@ paths:
       - admin-roles
   /admin/roles:
     get:
+      description: 返回全部角色（内置优先）；需要 roles:manage 权限（admin 自动放行）
       produces:
       - application/json
       responses:
@@ -137,6 +636,18 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 角色列表
@@ -164,18 +675,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 创建角色
@@ -201,18 +717,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 删除角色
@@ -237,13 +758,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 角色详情
@@ -276,13 +803,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 更新角色
@@ -290,6 +823,7 @@ paths:
       - admin-roles
   /admin/users:
     get:
+      description: 返回不含密码字段的安全用户信息；需要 users:manage 权限
       parameters:
       - default: 1
         description: 页码
@@ -317,6 +851,18 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 用户列表（分页/过滤）
@@ -325,6 +871,7 @@ paths:
     post:
       consumes:
       - application/json
+      description: 校验用户名格式/密码强度/角色存在性后创建；需要 users:manage 权限
       parameters:
       - description: 用户创建
         in: body
@@ -340,6 +887,26 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 创建用户
@@ -365,18 +932,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 删除用户
@@ -401,13 +973,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 用户详情
@@ -440,18 +1018,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 更新用户
@@ -485,18 +1068,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 重置用户密码
@@ -504,6 +1092,7 @@ paths:
       - admin-users
   /agents:
     get:
+      description: 返回所有已注册 agent 的状态、标签与负载数据（不含已断开条目按 registry 当前视图）
       produces:
       - application/json
       responses:
@@ -512,6 +1101,10 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Agent 列表（状态/标签/负载）
@@ -534,11 +1127,14 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Agent 详情
@@ -561,16 +1157,22 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
         "502":
           description: Bad Gateway
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 关闭 Agent
@@ -604,13 +1206,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 设置 Agent 标签
@@ -634,11 +1242,14 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "502":
           description: Bad Gateway
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Agent 触发器列表
@@ -673,13 +1284,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "502":
           description: Bad Gateway
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 新增 Agent 触发器
@@ -712,18 +1329,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
         "502":
           description: Bad Gateway
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 删除 Agent 触发器
@@ -764,18 +1386,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
         "502":
           description: Bad Gateway
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 更新 Agent 触发器
@@ -810,18 +1437,23 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
         "502":
           description: Bad Gateway
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 切换 Agent 触发器启用状态
@@ -865,11 +1497,14 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 审计事件列表
@@ -877,30 +1512,44 @@ paths:
       - audit
   /debugger/breakpoints:
     get:
-      description: 断点由 VSCode 直连 runtime 管理，固定返回 501 与直连指引
+      description: 断点由 VSCode 直连 runtime 管理，server 不中转；固定返回 501 与直连指引；仅 admin 角色可访问
       produces:
       - application/json
       responses:
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: 非 admin 角色
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "501":
           description: Not Implemented
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.DirectAttachResponse'
       security:
       - BearerAuth: []
       summary: 获取断点（直连模式）
       tags:
       - debugger
     post:
-      description: 断点由 VSCode 直连 runtime 管理，固定返回 501 与直连指引
+      description: 断点由 VSCode 直连 runtime 管理，server 不中转；固定返回 501 与直连指引；仅 admin 角色可访问
       produces:
       - application/json
       responses:
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: 非 admin 角色
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "501":
           description: Not Implemented
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.DirectAttachResponse'
       security:
       - BearerAuth: []
       summary: 设置断点（直连模式）
@@ -908,15 +1557,22 @@ paths:
       - debugger
   /debugger/command:
     post:
-      description: 调试协议不经 server 中转，固定返回 501 与直连指引
+      description: 调试命令由 VSCode 直连 runtime 执行，server 不中转；固定返回 501 与直连指引；仅 admin 角色可访问
       produces:
       - application/json
       responses:
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: 非 admin 角色
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "501":
           description: Not Implemented
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.DirectAttachResponse'
       security:
       - BearerAuth: []
       summary: 调试命令（直连模式）
@@ -924,15 +1580,22 @@ paths:
       - debugger
   /debugger/connect:
     post:
-      description: 调试协议不经 server 中转，固定返回 501 与直连指引
+      description: 调试协议是双向流（断点/单步/变量），不适合请求/响应模型；固定返回 501 与 VSCode 直连指引；仅 admin 角色可访问
       produces:
       - application/json
       responses:
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: 非 admin 角色
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "501":
           description: Not Implemented
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.DirectAttachResponse'
       security:
       - BearerAuth: []
       summary: 调试器连接（直连模式）
@@ -941,15 +1604,22 @@ paths:
   /debugger/info:
     get:
       description: EmmyLua 调试由 VSCode 直连 runtime 调试端口（默认 9966），server 不中转；返回各 agent
-        调试端点与 launch.json 片段
+        的 host:port、可达性与 launch.json 片段；仅 admin 角色可访问
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.DebuggerInfoResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: 非 admin 角色
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 调试器信息（直连模式）
@@ -978,13 +1648,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 提交反馈/权限申请
@@ -992,6 +1668,7 @@ paths:
       - feedback
   /messages:
     get:
+      description: 分页返回当前用户可见的消息（直发本人 + 广播；admin 看全部）
       parameters:
       - default: 1
         description: 页码
@@ -1015,6 +1692,14 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 列出站内消息（per-user 已读状态）
@@ -1040,13 +1725,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 标记消息已读
@@ -1063,11 +1750,14 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 全部标记已读
@@ -1075,6 +1765,7 @@ paths:
       - messages
   /messages/unread-count:
     get:
+      description: 返回当前用户可见且未读的消息条数
       produces:
       - application/json
       responses:
@@ -1083,6 +1774,10 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 未读消息数（per-user）
@@ -1092,48 +1787,61 @@ paths:
     delete:
       consumes:
       - application/json
-      description: 删除脚本文件与 DB 记录（DELETE /scripts 与 POST /scripts/delete 两个入口）；需要 scripts:edit
-        权限
+      description: 按路径删除脚本文件与 DB 记录；入口有 DELETE /scripts、POST /scripts/delete（/api/v1
+        路径为 DELETE /api/v1/scripts）；需要 scripts:edit 权限
       parameters:
       - description: 脚本路径
         in: body
         name: request
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/handlers.ScriptPathRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
-          description: Bad Request
+          description: 路径非法或穿越 scripts 目录
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: 文件删除失败
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 删除脚本
       tags:
       - scripts
     get:
-      description: 返回已登记的脚本（同时在 /api/v1/scripts 注册）
+      description: 返回 DB 中登记的全部脚本（名称/路径/描述/运行状态）；同时在 /api/v1/scripts 注册。任何登录用户可读（/api
+        路径），/api/v1 路径需 admin 角色
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ListScriptsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 脚本列表
@@ -1142,32 +1850,38 @@ paths:
     post:
       consumes:
       - application/json
-      description: 生成 Lua 模板文件并写入 DB 记录（路径穿越防护）；需要 scripts:edit 权限
+      description: 按 name 生成 Lua 模板文件并写入 DB 记录；名称做路径穿越/空字节/长度校验；需要 scripts:edit 权限（/api/v1
+        路径需 admin 角色）
       parameters:
       - description: 脚本元信息
         in: body
         name: request
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/handlers.CreateScriptRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.CreateScriptResponse'
         "400":
-          description: Bad Request
+          description: 非法名称（路径穿越/空字节/超长）或请求体格式错误
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: 模板文件写入失败
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 创建脚本
@@ -1177,62 +1891,116 @@ paths:
     post:
       consumes:
       - application/json
-      description: 按路径返回脚本全文（路径经 store 安全校验）
+      description: 按路径返回脚本全文（路径经 store 安全校验，禁止穿越 scripts 目录）；任何登录用户可读
       parameters:
       - description: 脚本路径
         in: body
         name: request
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/handlers.ScriptPathRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: data 为脚本全文字符串
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 路径非法或穿越 scripts 目录
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: 文件读取失败
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 读取脚本内容
+      tags:
+      - scripts
+  /scripts/delete:
+    post:
+      consumes:
+      - application/json
+      description: 按路径删除脚本文件与 DB 记录；入口有 DELETE /scripts、POST /scripts/delete（/api/v1
+        路径为 DELETE /api/v1/scripts）；需要 scripts:edit 权限
+      parameters:
+      - description: 脚本路径
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ScriptPathRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
-          description: Bad Request
+          description: 路径非法或穿越 scripts 目录
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: 文件删除失败
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: 读取脚本内容
+      summary: 删除脚本
       tags:
       - scripts
   /scripts/logs:
     post:
       consumes:
       - application/json
-      description: 分页读取某次执行的持久化日志；需要 scripts:run 权限
+      description: 分页读取某次执行的持久化日志（offset/limit，limit 1-500 缺省 100，按 id 升序）；需要 scripts:run
+        权限
       parameters:
       - description: 执行 ID 与分页
         in: body
         name: request
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/handlers.QueryLogsRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.LogListResponse'
         "400":
-          description: Bad Request
+          description: 请求体格式错误
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 脚本执行日志
@@ -1242,32 +2010,38 @@ paths:
     post:
       consumes:
       - application/json
-      description: 经 agent 通道下发 run_script，并更新脚本运行状态；需要 scripts:run 权限
+      description: 经 agent 通道下发 run_script（30s 超时）并将脚本标记为 running，写审计日志；需要 scripts:run
+        权限
       parameters:
       - description: 脚本与目标 agent
         in: body
         name: request
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/handlers.RunScriptRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.RunScriptResponse'
         "400":
-          description: Bad Request
+          description: 路径非法或请求体格式错误
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "502":
-          description: Bad Gateway
+          description: agent 不在线或命令执行失败
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 运行脚本
@@ -1277,32 +2051,37 @@ paths:
     post:
       consumes:
       - application/json
-      description: 覆盖写入脚本文件；需要 scripts:edit 权限
+      description: 覆盖写入脚本文件（路径经 store 安全校验）；需要 scripts:edit 权限
       parameters:
       - description: 脚本路径与内容
         in: body
         name: request
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/handlers.SaveScriptRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
-          description: Bad Request
+          description: 路径非法或请求体格式错误
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: 文件写入失败
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 保存脚本内容
@@ -1312,261 +2091,44 @@ paths:
     post:
       consumes:
       - application/json
-      description: 经 agent 通道下发 stop_script，并更新脚本状态；需要 scripts:run 权限
+      description: 经 agent 通道下发 stop_script（10s 超时）并将脚本标记为 stopped，写审计日志；需要 scripts:run
+        权限
       parameters:
       - description: 执行 ID 与目标 agent
         in: body
         name: request
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/handlers.StopScriptRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
-          description: Bad Request
+          description: 请求体格式错误
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "502":
-          description: Bad Gateway
+          description: agent 不在线或命令执行失败
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 停止脚本
       tags:
       - scripts
-  /v1/auth/login:
-    post:
-      consumes:
-      - application/json
-      description: 验证用户名密码，返回 JWT；登录失败按 IP 限流
-      parameters:
-      - description: 登录凭证
-        in: body
-        name: request
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "429":
-          description: Too Many Requests
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 用户登录
-      tags:
-      - auth
-  /v1/auth/logout:
-    post:
-      description: 无状态 JWT，客户端丢弃令牌即可
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 用户登出
-      tags:
-      - auth
-  /v1/health:
-    get:
-      description: 存活探针，返回 {"status":"ok"}
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 健康检查
-      tags:
-      - status
-  /v1/profile:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 获取当前用户资料
-      tags:
-      - profile
-    put:
-      consumes:
-      - application/json
-      description: 支持更新 nickname/email/phone/avatar（可选字段）
-      parameters:
-      - description: 资料字段
-        in: body
-        name: request
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 更新当前用户资料
-      tags:
-      - profile
-  /v1/profile/games:
-    get:
-      description: 预留接口，当前返回空列表
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 用户游戏列表
-      tags:
-      - profile
-  /v1/profile/password:
-    put:
-      consumes:
-      - application/json
-      description: 校验旧密码与新密码强度后更新
-      parameters:
-      - description: 新旧密码
-        in: body
-        name: request
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 修改当前用户密码
-      tags:
-      - profile
-  /v1/profile/permissions:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 获取当前用户权限码（resource:action 展开）
-      tags:
-      - profile
-  /v1/screenshot:
-    post:
-      consumes:
-      - application/json
-      description: 校验 base64 大小（≤ 10MiB）后经 WebSocket 广播给所有 dashboard 客户端
-      parameters:
-      - description: 截图数据
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.ScreenshotRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 截图上报并广播
-      tags:
-      - screenshot
-  /v1/settings:
+  /settings:
     get:
       description: 返回 DB 配置并填充默认值；需要 settings:view 权限（dashboard 兼容路径 /settings 等价）
       produces:
@@ -1577,6 +2139,14 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 获取系统配置
@@ -1605,8 +2175,646 @@ paths:
         "400":
           description: Bad Request
           schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 更新系统配置
+      tags:
+      - settings
+  /v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: 验证用户名密码，返回 JWT；登录失败按 IP 限流
+      parameters:
+      - description: 登录凭证
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
             additionalProperties: true
             type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: 用户登录
+      tags:
+      - auth
+  /v1/auth/logout:
+    post:
+      description: 无状态 JWT，客户端丢弃令牌即可；需携带有效 Bearer token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 用户登出
+      tags:
+      - auth
+  /v1/health:
+    get:
+      description: 存活探针，返回 {"status":"ok"}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 健康检查
+      tags:
+      - status
+  /v1/metrics:
+    get:
+      description: 输出 Prometheus 文本格式：wingman_http_requests_total（总请求数，按 method/route/status
+        维度）、wingman_active_websocket_connections（活跃 dashboard WebSocket 连接数）、wingman_registered_agents（已注册
+        runtime agent 数）、wingman_uptime_seconds（服务运行时长），附带 Go runtime/process 默认指标
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Prometheus 文本格式指标
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Prometheus 运行指标
+      tags:
+      - metrics
+  /v1/profile:
+    get:
+      description: 返回当前登录用户的基本资料与角色
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取当前用户资料
+      tags:
+      - profile
+    put:
+      consumes:
+      - application/json
+      description: 支持更新 nickname/email/phone/avatar（可选字段）
+      parameters:
+      - description: 资料字段
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 更新当前用户资料
+      tags:
+      - profile
+  /v1/profile/games:
+    get:
+      description: 预留接口，当前返回空列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 用户游戏列表
+      tags:
+      - profile
+  /v1/profile/password:
+    put:
+      consumes:
+      - application/json
+      description: 校验旧密码与新密码强度后更新
+      parameters:
+      - description: 新旧密码
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 修改当前用户密码
+      tags:
+      - profile
+  /v1/profile/permissions:
+    get:
+      description: 返回当前用户的权限码列表（admin 附加通配符 *）
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取当前用户权限码（resource:action 展开）
+      tags:
+      - profile
+  /v1/screenshot:
+    post:
+      consumes:
+      - application/json
+      description: 校验 base64 大小（≤ 10MiB）后经 WebSocket 广播给所有 dashboard 客户端
+      parameters:
+      - description: 截图数据
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ScreenshotRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 截图上报并广播
+      tags:
+      - screenshot
+  /v1/scripts:
+    delete:
+      consumes:
+      - application/json
+      description: 按路径删除脚本文件与 DB 记录；入口有 DELETE /scripts、POST /scripts/delete（/api/v1
+        路径为 DELETE /api/v1/scripts）；需要 scripts:edit 权限
+      parameters:
+      - description: 脚本路径
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ScriptPathRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: 路径非法或穿越 scripts 目录
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: 文件删除失败
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 删除脚本
+      tags:
+      - scripts
+    get:
+      description: 返回 DB 中登记的全部脚本（名称/路径/描述/运行状态）；同时在 /api/v1/scripts 注册。任何登录用户可读（/api
+        路径），/api/v1 路径需 admin 角色
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ListScriptsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 脚本列表
+      tags:
+      - scripts
+    post:
+      consumes:
+      - application/json
+      description: 按 name 生成 Lua 模板文件并写入 DB 记录；名称做路径穿越/空字节/长度校验；需要 scripts:edit 权限（/api/v1
+        路径需 admin 角色）
+      parameters:
+      - description: 脚本元信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateScriptRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.CreateScriptResponse'
+        "400":
+          description: 非法名称（路径穿越/空字节/超长）或请求体格式错误
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: 模板文件写入失败
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 创建脚本
+      tags:
+      - scripts
+  /v1/scripts/content:
+    post:
+      consumes:
+      - application/json
+      description: 按路径返回脚本全文（路径经 store 安全校验，禁止穿越 scripts 目录）；任何登录用户可读
+      parameters:
+      - description: 脚本路径
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ScriptPathRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: data 为脚本全文字符串
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 路径非法或穿越 scripts 目录
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: 文件读取失败
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 读取脚本内容
+      tags:
+      - scripts
+  /v1/scripts/logs:
+    post:
+      consumes:
+      - application/json
+      description: 分页读取某次执行的持久化日志（offset/limit，limit 1-500 缺省 100，按 id 升序）；需要 scripts:run
+        权限
+      parameters:
+      - description: 执行 ID 与分页
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.QueryLogsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LogListResponse'
+        "400":
+          description: 请求体格式错误
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 脚本执行日志
+      tags:
+      - scripts
+  /v1/scripts/run:
+    post:
+      consumes:
+      - application/json
+      description: 经 agent 通道下发 run_script（30s 超时）并将脚本标记为 running，写审计日志；需要 scripts:run
+        权限
+      parameters:
+      - description: 脚本与目标 agent
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RunScriptRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.RunScriptResponse'
+        "400":
+          description: 路径非法或请求体格式错误
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "502":
+          description: agent 不在线或命令执行失败
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 运行脚本
+      tags:
+      - scripts
+  /v1/scripts/save:
+    post:
+      consumes:
+      - application/json
+      description: 覆盖写入脚本文件（路径经 store 安全校验）；需要 scripts:edit 权限
+      parameters:
+      - description: 脚本路径与内容
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SaveScriptRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: 路径非法或请求体格式错误
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: 文件写入失败
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 保存脚本内容
+      tags:
+      - scripts
+  /v1/scripts/stop:
+    post:
+      consumes:
+      - application/json
+      description: 经 agent 通道下发 stop_script（10s 超时）并将脚本标记为 stopped，写审计日志；需要 scripts:run
+        权限
+      parameters:
+      - description: 执行 ID 与目标 agent
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.StopScriptRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: 请求体格式错误
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "502":
+          description: agent 不在线或命令执行失败
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 停止脚本
+      tags:
+      - scripts
+  /v1/settings:
+    get:
+      description: 返回 DB 配置并填充默认值；需要 settings:view 权限（dashboard 兼容路径 /settings 等价）
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 获取系统配置
+      tags:
+      - settings
+    put:
+      consumes:
+      - application/json
+      description: 按 key-value 逐项 upsert；需要 settings:edit 权限（dashboard 兼容路径 /settings
+        等价）
+      parameters:
+      - description: 配置键值对
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 更新系统配置
@@ -1628,6 +2836,10 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 系统状态
@@ -1649,16 +2861,18 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "502":
           description: Bad Gateway
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
         "503":
           description: Service Unavailable
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 窗口列表
@@ -1666,15 +2880,20 @@ paths:
       - windows
   /workflow-templates:
     get:
-      description: 内置模板（单步监控/并行采集/串行流水线/fan-out/独立步骤类型 wait-condition-screenshot）
+      description: 内置模板目录：单步监控/并行采集/串行流水线/fan-out/独立步骤类型 wait-condition-screenshot；可直接作为创建工作流的
+        steps 骨架
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: data 为模板数组（name/description/steps）
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 工作流模板库
@@ -1682,20 +2901,22 @@ paths:
       - workflows
   /workflows:
     get:
-      description: 返回所有工作流记录（含运行状态）
+      description: 返回所有工作流记录（含状态：pending/running/completed/failed/cancelled）；任何登录用户可读
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal Server Error
+            $ref: '#/definitions/handlers.ListWorkflowsResponse'
+        "401":
+          description: Unauthorized
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: 数据库查询失败
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 工作流列表
@@ -1704,32 +2925,38 @@ paths:
     post:
       consumes:
       - application/json
-      description: 校验步骤后提交引擎调度，失败时回滚记录；需要 workflows:run 权限
+      description: 校验步骤定义（依赖关系/worker 存在性）后提交引擎调度，调度失败时回滚 DB 记录；需要 workflows:run 权限
       parameters:
       - description: 工作流定义
         in: body
         name: request
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/handlers.CreateWorkflowRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: data.workflowId 为新建工作流 ID
           schema:
             additionalProperties: true
             type: object
         "400":
-          description: Bad Request
+          description: 步骤校验失败或请求体格式错误
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: 序列化或 DB 写入失败
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 创建工作流
@@ -1737,9 +2964,10 @@ paths:
       - workflows
   /workflows/{id}:
     get:
-      description: 返回工作流定义、步骤状态与共享上下文
+      description: 返回工作流定义、步骤状态与共享上下文快照（运行中与已结束均可查询）
       parameters:
       - description: 工作流 ID
+        example: 1
         in: path
         name: id
         required: true
@@ -1750,18 +2978,19 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.WorkflowDetailResponse'
         "400":
-          description: Bad Request
+          description: id 非数字
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
-          description: Not Found
+          description: 工作流不存在
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 工作流详情
@@ -1769,9 +2998,10 @@ paths:
       - workflows
   /workflows/{id}/cancel:
     post:
-      description: 取消运行中的工作流并写审计日志；需要 workflows:run 权限
+      description: 取消运行中的工作流（通知引擎中止后续步骤）并写审计日志；需要 workflows:run 权限
       parameters:
       - description: 工作流 ID
+        example: 1
         in: path
         name: id
         required: true
@@ -1782,13 +3012,19 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
-          description: Bad Request
+          description: id 非数字或工作流不可取消
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 取消工作流
@@ -1796,14 +3032,16 @@ paths:
       - workflows
   /workflows/{id}/steps/{stepId}/status:
     get:
-      description: 合并 DB 记录与引擎内存快照，返回单步的实时执行状态
+      description: 合并 DB 记录与引擎内存快照，返回单步的实时执行状态（status/message/workerId/起止时间）；任何登录用户可读
       parameters:
       - description: 工作流 ID
+        example: 1
         in: path
         name: id
         required: true
         type: integer
       - description: 步骤 ID
+        example: s1
         in: path
         name: stepId
         required: true
@@ -1814,18 +3052,19 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.StepStatusResponse'
         "400":
-          description: Bad Request
+          description: id 非数字
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
-          description: Not Found
+          description: 步骤状态记录不存在
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 工作流步骤状态
@@ -1833,9 +3072,10 @@ paths:
       - workflows
   /workflows/{id}/workers:
     get:
-      description: 汇总步骤状态中按 workerId 去重的 worker（agent）信息
+      description: 汇总步骤状态中按 workerId 去重的 worker（agent）信息；任何登录用户可读
       parameters:
       - description: 工作流 ID
+        example: 1
         in: path
         name: id
         required: true
@@ -1846,13 +3086,15 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.WorkerListResponse'
         "400":
-          description: Bad Request
+          description: id 非数字
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 工作流 worker 列表

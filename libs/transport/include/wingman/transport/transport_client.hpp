@@ -5,6 +5,7 @@
 #include "wingman/transport/session/tcp_session.hpp"
 #include "wingman/transport/channel/channel.hpp"
 #include <asio.hpp>
+#include <atomic>
 #include <future>
 
 namespace wingman::transport {
@@ -80,19 +81,24 @@ public:
 
     // 断开连接
     void disconnect() override {
-        if (session_) {
-            session_->close();
-            session_.reset();
-        }
-
         connected_ = false;
 
-        ioContext_.stop();
+        if (session_) {
+            // 取消挂起的异步操作（close 已做并发串行化）。
+            // 不先 stop()：让 IO 线程把被取消的回调排干后因无工作自然退出，
+            // 否则被中止的处理器会残留在已 restart 的 io_context 中，
+            // 在下一次 connect() 的 run() 里执行并污染新连接的状态。
+            session_->close();
+        }
+
         if (ioThread_.joinable()) {
             ioThread_.join();
         }
 
-        // 重置 IO 上下文
+        // join 之后 IO 线程已退出，此时 reset 无并发读者
+        session_.reset();
+
+        // 重置 IO 上下文，为下一次 connect 做准备
         ioContext_.restart();
         socket_ = asio::ip::tcp::socket(ioContext_);
     }
@@ -189,7 +195,7 @@ private:
     asio::ip::tcp::socket socket_;
     std::thread ioThread_;
     SessionPtr session_;
-    bool connected_;
+    std::atomic<bool> connected_;
 
     uint32_t nextSequence_ = 1;
     std::mutex pendingMutex_;

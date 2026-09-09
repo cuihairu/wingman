@@ -26,8 +26,9 @@ func NewWindowHandler(registry *agent.Registry) *WindowHandler {
 // @Security     BearerAuth
 // @Param        agentId  query  string  false  "Agent ID（缺省自动选择在线 agent）"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      502  {object}  map[string]interface{}
-// @Failure      503  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      502  {object}  ErrorResponse
+// @Failure      503  {object}  ErrorResponse
 // @Router       /v1/windows [get]
 func (h *WindowHandler) HandleList(c *gin.Context) {
 	// Get agentId from query parameter (optional for window list)

@@ -51,6 +51,7 @@ type listUsersResponse struct {
 
 // HandleList 用户列表（分页）
 // @Summary      用户列表（分页/过滤）
+// @Description  返回不含密码字段的安全用户信息；需要 users:manage 权限
 // @Tags         admin-users
 // @Produce      json
 // @Security     BearerAuth
@@ -59,6 +60,9 @@ type listUsersResponse struct {
 // @Param        role      query  string  false  "角色过滤"
 // @Param        keyword   query  string  false  "关键字"
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /admin/users [get]
 func (h *UserHandler) HandleList(c *gin.Context) {
 	page := parsePositiveInt(c.Query("page"), 1)
@@ -99,8 +103,10 @@ func (h *UserHandler) HandleList(c *gin.Context) {
 // @Security     BearerAuth
 // @Param        id  path  int  true  "用户 ID"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
 // @Router       /admin/users/{id} [get]
 func (h *UserHandler) HandleGet(c *gin.Context) {
 	user, ok := h.findByIDParam(c)
@@ -112,12 +118,18 @@ func (h *UserHandler) HandleGet(c *gin.Context) {
 
 // HandleCreate 创建用户
 // @Summary      创建用户
+// @Description  校验用户名格式/密码强度/角色存在性后创建；需要 users:manage 权限
 // @Tags         admin-users
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
 // @Param        request  body      object  true  "用户创建"  example({"username":"bob","password":"...","role":"viewer"})
 // @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      409  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /admin/users [post]
 func (h *UserHandler) HandleCreate(c *gin.Context) {
 	var req createUserReq
@@ -182,9 +194,11 @@ func (h *UserHandler) HandleCreate(c *gin.Context) {
 // @Param        id       path  int     true  "用户 ID"
 // @Param        request  body  object  true  "更新字段"  example({"role":"operator","active":true})
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /admin/users/{id} [put]
 func (h *UserHandler) HandleUpdate(c *gin.Context) {
 	user, ok := h.findByIDParam(c)
@@ -243,9 +257,11 @@ func (h *UserHandler) HandleUpdate(c *gin.Context) {
 // @Param        id       path  int     true  "用户 ID"
 // @Param        request  body  object  true  "新密码"  example({"newPassword":"..."})
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /admin/users/{id}/reset-password [post]
 func (h *UserHandler) HandleResetPassword(c *gin.Context) {
 	user, ok := h.findByIDParam(c)
@@ -283,9 +299,11 @@ func (h *UserHandler) HandleResetPassword(c *gin.Context) {
 // @Security     BearerAuth
 // @Param        id  path  int  true  "用户 ID"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /admin/users/{id} [delete]
 func (h *UserHandler) HandleDelete(c *gin.Context) {
 	user, ok := h.findByIDParam(c)

@@ -21,11 +21,14 @@ func NewProfileHandler(db *gorm.DB) *ProfileHandler {
 	return &ProfileHandler{db: db}
 }
 
+// HandleGetProfile 获取当前用户资料
 // @Summary      获取当前用户资料
+// @Description  返回当前登录用户的基本资料与角色
 // @Tags         profile
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
 // @Router       /v1/profile [get]
 func (h *ProfileHandler) HandleGetProfile(c *gin.Context) {
 	user, ok := h.currentUser(c)
@@ -43,6 +46,7 @@ func (h *ProfileHandler) HandleGetProfile(c *gin.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
 // @Router       /v1/profile/games [get]
 func (h *ProfileHandler) HandleGetGames(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
@@ -50,11 +54,15 @@ func (h *ProfileHandler) HandleGetGames(c *gin.Context) {
 	})
 }
 
+// HandleGetPermissions 获取当前用户权限码
 // @Summary      获取当前用户权限码（resource:action 展开）
+// @Description  返回当前用户的权限码列表（admin 附加通配符 *）
 // @Tags         profile
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
 // @Router       /v1/profile/permissions [get]
 func (h *ProfileHandler) HandleGetPermissions(c *gin.Context) {
 	user, ok := h.currentUser(c)
@@ -112,9 +120,9 @@ func codeToPermission(code string) gin.H {
 // @Security     BearerAuth
 // @Param        request  body  object  true  "资料字段"  example({"nickname":"Alice","email":"a@example.com"})
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      401  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /v1/profile [put]
 func (h *ProfileHandler) HandleUpdateProfile(c *gin.Context) {
 	user, ok := h.currentUser(c)
@@ -169,9 +177,9 @@ func (h *ProfileHandler) HandleUpdateProfile(c *gin.Context) {
 // @Security     BearerAuth
 // @Param        request  body  object  true  "新旧密码"  example({"oldPassword":"...","newPassword":"..."})
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      401  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /v1/profile/password [put]
 func (h *ProfileHandler) HandleUpdatePassword(c *gin.Context) {
 	user, ok := h.currentUser(c)

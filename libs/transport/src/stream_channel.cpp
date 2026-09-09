@@ -61,6 +61,11 @@ bool StreamChannel::connect(const std::string& host, int port) {
         return false;
     }
 
+    if (host.empty()) {
+        setState(StreamState::Error);
+        return false;
+    }
+
     setState(StreamState::Connecting);
 
 #ifdef _WIN32
@@ -81,12 +86,9 @@ bool StreamChannel::connect(const std::string& host, int port) {
         return false;
     }
 
-    // 应用 Socket 选项
-    if (!applySocketOptions()) {
-        disconnect();
-        setState(StreamState::Error);
-        return false;
-    }
+    // 应用 Socket 选项（尽力而为，选项失败不影响连接建立；
+    // 仅在 connect() 中以刚创建的有效 socket 调用）
+    applySocketOptions();
 
     // 连接到服务器
     sockaddr_in addr{};
@@ -101,8 +103,24 @@ bool StreamChannel::connect(const std::string& host, int port) {
 
         addrinfo* result = nullptr;
         if (getaddrinfo(host.c_str(), nullptr, &hints, &result) == 0) {
-            std::memcpy(&addr.sin_addr, &result->ai_addr->sa_data[2], 4);
+            // 在结果列表中查找有效的 IPv4 条目，避免对首个条目
+            // 做无校验的偏移拷贝（ai_addrlen 不足时读到垃圾数据）
+            bool resolved = false;
+            for (addrinfo* ai = result; ai != nullptr; ai = ai->ai_next) {
+                if (ai->ai_family == AF_INET && ai->ai_addrlen >= sizeof(sockaddr_in)) {
+                    std::memcpy(&addr.sin_addr,
+                                &reinterpret_cast<sockaddr_in*>(ai->ai_addr)->sin_addr,
+                                sizeof(addr.sin_addr));
+                    resolved = true;
+                    break;
+                }
+            }
             freeaddrinfo(result);
+            if (!resolved) {
+                disconnect();
+                setState(StreamState::Error);
+                return false;
+            }
         } else {
             disconnect();
             setState(StreamState::Error);
@@ -294,11 +312,7 @@ void StreamChannel::setState(StreamState state) {
     state_.store(state);
 }
 
-bool StreamChannel::applySocketOptions() {
-    if (socket_ == INVALID_SOCKET_VALUE) {
-        return false;
-    }
-
+void StreamChannel::applySocketOptions() {
     // TCP_NODELAY
     if (params_.tcpNoDelay) {
         int flag = 1;
@@ -347,8 +361,6 @@ bool StreamChannel::applySocketOptions() {
         setsockopt(socket_, SOL_SOCKET, SO_RCVBUF,
                    reinterpret_cast<const char*>(&params_.recvBufferSize), sizeof(int));
     }
-
-    return true;
 }
 
 void StreamChannel::receiveLoop() {

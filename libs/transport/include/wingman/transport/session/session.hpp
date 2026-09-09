@@ -140,7 +140,14 @@ public:
     }
 
     // Close the socket, cancelling all pending async operations.
+    // 可能被主线程（disconnect/closeAllSessions）与 IO 线程（读失败回调
+    // handleError）同时调用。asio socket 非线程安全，未串行化的并发
+    // close 会双重注销 reactor 描述符导致崩溃，因此用互斥量保证幂等。
     void close() {
+        // sendMutex_ 同样串行化 close 与 doWrite 的 async_write 发起，
+        // 锁序恒为 sendMutex_ -> closeMutex_，不会死锁。
+        std::lock_guard sendLock(sendMutex_);
+        std::lock_guard closeLock(closeMutex_);
         if (socket_.is_open()) {
             asio::error_code ec;
             socket_.close(ec);
@@ -273,6 +280,7 @@ protected:
     MessageCallback messageCallback_;
     EventCallback eventCallback_;
     std::mutex sendMutex_;
+    std::mutex closeMutex_;
     std::deque<std::shared_ptr<std::vector<uint8_t>>> sendQueue_;
     static constexpr size_t kMaxSendQueueSize = 1024;
 };

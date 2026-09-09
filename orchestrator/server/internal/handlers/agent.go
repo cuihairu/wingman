@@ -22,11 +22,14 @@ func NewAgentHandler(registry *agent.Registry, db *gorm.DB) *AgentHandler {
 	}
 }
 
+// HandleList Agent 列表
 // @Summary      Agent 列表（状态/标签/负载）
+// @Description  返回所有已注册 agent 的状态、标签与负载数据（不含已断开条目按 registry 当前视图）
 // @Tags         agents
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
 // @Router       /agents [get]
 func (h *AgentHandler) HandleList(c *gin.Context) {
 	agents := h.registry.List()
@@ -50,7 +53,8 @@ func (h *AgentHandler) HandleList(c *gin.Context) {
 // @Security     BearerAuth
 // @Param        agentId  path  string  true  "Agent ID"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
 // @Router       /agents/{agentId} [get]
 func (h *AgentHandler) HandleGet(c *gin.Context) {
 	agentID := c.Param("agentId")
@@ -78,8 +82,10 @@ func (h *AgentHandler) HandleGet(c *gin.Context) {
 // @Security     BearerAuth
 // @Param        agentId  path  string  true  "Agent ID"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
-// @Failure      502  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      502  {object}  ErrorResponse
 // @Router       /agents/{agentId}/shutdown [post]
 func (h *AgentHandler) HandleShutdown(c *gin.Context) {
 	agentID := c.Param("agentId")
@@ -124,8 +130,10 @@ func (h *AgentHandler) HandleShutdown(c *gin.Context) {
 // @Param        agentId  path  string  true  "Agent ID"
 // @Param        request  body  object  true  "标签列表"  example({"tags":["prod"]})
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
 // @Router       /agents/{agentId}/tags [put]
 func (h *AgentHandler) HandleSetTags(c *gin.Context) {
 	agentID := c.Param("agentId")

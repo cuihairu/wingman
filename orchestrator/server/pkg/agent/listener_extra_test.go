@@ -50,6 +50,8 @@ func (r *recordingRegistry) UpdateHeartbeat(agentID string) {
 	r.heartbeats = append(r.heartbeats, agentID)
 }
 
+func (r *recordingRegistry) UpdateLinkHealth(agentID string, raw map[string]any) {}
+
 func (r *recordingRegistry) SetClient(agentID string, conn any) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

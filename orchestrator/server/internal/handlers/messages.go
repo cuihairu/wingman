@@ -65,7 +65,9 @@ func (h *MessageHandler) visibleQuery(userID uint, username, role string) *gorm.
 	return query.Where("recipient = ? OR recipient = ?", username, "*")
 }
 
+// HandleList 列出站内消息
 // @Summary      列出站内消息（per-user 已读状态）
+// @Description  分页返回当前用户可见的消息（直发本人 + 广播；admin 看全部）
 // @Tags         messages
 // @Produce      json
 // @Security     BearerAuth
@@ -73,6 +75,8 @@ func (h *MessageHandler) visibleQuery(userID uint, username, role string) *gorm.
 // @Param        pageSize   query  int     false  "每页条数（最大 100）"   default(20)
 // @Param        status     query  string  false  "read|unread|all"
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /messages [get]
 func (h *MessageHandler) HandleList(c *gin.Context) {
 	userID, username, role := middleware.GetCurrentUser(c)
@@ -117,11 +121,14 @@ func (h *MessageHandler) HandleList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"items": items, "total": total})
 }
 
+// HandleUnreadCount 未读消息数
 // @Summary      未读消息数（per-user）
+// @Description  返回当前用户可见且未读的消息条数
 // @Tags         messages
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
 // @Router       /messages/unread-count [get]
 func (h *MessageHandler) HandleUnreadCount(c *gin.Context) {
 	userID, username, role := middleware.GetCurrentUser(c)
@@ -140,8 +147,9 @@ func (h *MessageHandler) HandleUnreadCount(c *gin.Context) {
 // @Security     BearerAuth
 // @Param        id  path  int  true  "消息 ID"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /messages/{id}/read [post]
 func (h *MessageHandler) HandleMarkRead(c *gin.Context) {
 	userID, _, _ := middleware.GetCurrentUser(c)
@@ -165,7 +173,8 @@ func (h *MessageHandler) HandleMarkRead(c *gin.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /messages/read-all [post]
 func (h *MessageHandler) HandleMarkAllRead(c *gin.Context) {
 	userID, username, role := middleware.GetCurrentUser(c)
@@ -180,7 +189,7 @@ func (h *MessageHandler) HandleMarkAllRead(c *gin.Context) {
 	}
 
 	for _, id := range ids {
-	if err := h.markRead(userID, uint(id)); err != nil {
+		if err := h.markRead(userID, uint(id)); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to update messages"})
 			return
 		}

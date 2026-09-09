@@ -268,6 +268,8 @@ func (m *mockRegistry) UpdateStatus(agentID string, status string, resources any
 
 func (m *mockRegistry) UpdateHeartbeat(agentID string) {}
 
+func (m *mockRegistry) UpdateLinkHealth(agentID string, raw map[string]any) {}
+
 func (m *mockRegistry) SetClient(agentID string, conn any) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

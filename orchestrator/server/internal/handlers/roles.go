@@ -21,13 +21,13 @@ func NewRoleHandler(db *gorm.DB) *RoleHandler {
 }
 
 type roleDTO struct {
-	ID          uint                 `json:"id"`
-	Code        string               `json:"code"`
-	Name        string               `json:"name"`
-	Description string               `json:"description"`
-	Builtin     bool                 `json:"builtin"`
-	Permissions []models.Permission  `json:"permissions"`
-	CreatedAt   string               `json:"createdAt"`
+	ID          uint                `json:"id"`
+	Code        string              `json:"code"`
+	Name        string              `json:"name"`
+	Description string              `json:"description"`
+	Builtin     bool                `json:"builtin"`
+	Permissions []models.Permission `json:"permissions"`
+	CreatedAt   string              `json:"createdAt"`
 }
 
 type createRoleReq struct {
@@ -63,10 +63,14 @@ func toRoleDTO(r models.Role) roleDTO {
 
 // HandleListRoles 角色列表（含权限）
 // @Summary      角色列表
+// @Description  返回全部角色（内置优先）；需要 roles:manage 权限（admin 自动放行）
 // @Tags         admin-roles
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /admin/roles [get]
 func (h *RoleHandler) HandleListRoles(c *gin.Context) {
 	var roles []models.Role
@@ -89,8 +93,10 @@ func (h *RoleHandler) HandleListRoles(c *gin.Context) {
 // @Security     BearerAuth
 // @Param        code  path  string  true  "角色 code"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
 // @Router       /admin/roles/{code} [get]
 func (h *RoleHandler) HandleGetRole(c *gin.Context) {
 	role, ok := h.findByCodeParam(c)
@@ -102,10 +108,15 @@ func (h *RoleHandler) HandleGetRole(c *gin.Context) {
 
 // HandleListPermissions 权限目录
 // @Summary      权限目录（resource:action）
+// @Description  返回全部权限码目录，支持按分类过滤；需要 users:manage 或 roles:manage 权限
 // @Tags         admin-roles
 // @Produce      json
 // @Security     BearerAuth
+// @Param        category  query  string  false  "按分类过滤"
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /admin/permissions [get]
 func (h *RoleHandler) HandleListPermissions(c *gin.Context) {
 	query := h.db.Model(&models.Permission{})
@@ -129,9 +140,11 @@ func (h *RoleHandler) HandleListPermissions(c *gin.Context) {
 // @Security     BearerAuth
 // @Param        request  body  object  true  "角色定义"  example({"code":"operator","name":"操作员","permissions":["agents:manage"]})
 // @Success      201  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      409  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      409  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /admin/roles [post]
 func (h *RoleHandler) HandleCreateRole(c *gin.Context) {
 	var req createRoleReq
@@ -181,8 +194,10 @@ func (h *RoleHandler) HandleCreateRole(c *gin.Context) {
 // @Param        code     path  string  true  "角色 code"
 // @Param        request  body  object  true  "角色更新"  example({"name":"操作员","permissions":["agents:manage"]})
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
 // @Router       /admin/roles/{code} [put]
 func (h *RoleHandler) HandleUpdateRole(c *gin.Context) {
 	role, ok := h.findByCodeParam(c)
@@ -228,9 +243,11 @@ func (h *RoleHandler) HandleUpdateRole(c *gin.Context) {
 // @Security     BearerAuth
 // @Param        code  path  string  true  "角色 code"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      409  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      409  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /admin/roles/{code} [delete]
 func (h *RoleHandler) HandleDeleteRole(c *gin.Context) {
 	role, ok := h.findByCodeParam(c)

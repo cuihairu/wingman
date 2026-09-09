@@ -35,11 +35,11 @@ func TestDebuggerInfoReturnsDirectAttachModel(t *testing.T) {
 		t.Fatalf("info: %d %s", w.Code, w.Body.String())
 	}
 	var resp struct {
-		Success     bool              `json:"success"`
-		Mode        string            `json:"mode"`
-		DefaultPort int               `json:"defaultPort"`
+		Success     bool                 `json:"success"`
+		Mode        string               `json:"mode"`
+		DefaultPort int                  `json:"defaultPort"`
 		Agents      []agentDebugEndpoint `json:"agents"`
-		Launch      map[string]any    `json:"launchConfig"`
+		Launch      map[string]any       `json:"launchConfig"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatal(err)

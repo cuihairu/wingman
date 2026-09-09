@@ -43,7 +43,8 @@ func NewAuditHandler(db *gorm.DB) *AuditHandler {
 // @Param        start  query  string  false  "起始时间（RFC3339）"
 // @Param        end    query  string  false  "结束时间（RFC3339）"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      500  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
 // @Router       /audit [get]
 func (h *AuditHandler) HandleList(c *gin.Context) {
 	page := parsePositiveInt(c.Query("page"), 1)

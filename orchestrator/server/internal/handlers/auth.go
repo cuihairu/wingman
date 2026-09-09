@@ -31,9 +31,9 @@ func NewAuthHandler(db *gorm.DB) *AuthHandler {
 // @Produce      json
 // @Param        request  body      object  true  "登录凭证"  example({"username":"admin","password":"secret"})
 // @Success      200      {object}  map[string]interface{}
-// @Failure      400      {object}  map[string]interface{}
-// @Failure      401      {object}  map[string]interface{}
-// @Failure      429      {object}  map[string]interface{}
+// @Failure      400      {object}  ErrorResponse
+// @Failure      401      {object}  ErrorResponse
+// @Failure      429      {object}  ErrorResponse
 // @Router       /v1/auth/login [post]
 func (h *AuthHandler) HandleLogin(c *gin.Context) {
 	// Get rate limiter and client IP for tracking failed attempts
@@ -125,10 +125,12 @@ func loginAuditMeta(clientIP, userAgent, result string) map[string]any {
 
 // HandleLogout 登出
 // @Summary      用户登出
-// @Description  无状态 JWT，客户端丢弃令牌即可
+// @Description  无状态 JWT，客户端丢弃令牌即可；需携带有效 Bearer token
 // @Tags         auth
 // @Produce      json
+// @Security     BearerAuth
 // @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
 // @Router       /v1/auth/logout [post]
 func (h *AuthHandler) HandleLogout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{

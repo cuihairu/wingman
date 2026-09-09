@@ -20,6 +20,11 @@
 #include <random>
 #include <thread>
 
+#ifndef _WIN32
+    #include <fcntl.h>
+    #include <sys/resource.h>
+#endif
+
 using namespace std::chrono_literals;
 using namespace wingman::transport;
 
@@ -36,6 +41,39 @@ int findFreePort() {
     acceptor.close();
     return static_cast<int>(port);
 }
+
+#ifndef _WIN32
+// 将 RLIMIT_NOFILE 软上限压到当前已打开的 fd 数量，使下一个 ::socket()
+// 以 EMFILE 失败；析构时恢复原值。RLIMIT 是进程级设置，gtest 串行执行
+// 下安全（各 fixture 的后台线程均已在 teardown 中 join）。
+class FdExhaustionGuard {
+public:
+    FdExhaustionGuard() {
+        ::getrlimit(RLIMIT_NOFILE, &original_);
+
+        // 用 fcntl 而非 /proc/self/fd 统计：后者自身会打开新的 fd
+        int openCount = 0;
+        for (rlim_t fd = 0; fd < original_.rlim_cur; ++fd) {
+            if (::fcntl(static_cast<int>(fd), F_GETFD) != -1) {
+                ++openCount;
+            }
+        }
+
+        rlimit exhausted{static_cast<rlim_t>(openCount), original_.rlim_max};
+        ::setrlimit(RLIMIT_NOFILE, &exhausted);
+    }
+
+    ~FdExhaustionGuard() {
+        ::setrlimit(RLIMIT_NOFILE, &original_);
+    }
+
+    FdExhaustionGuard(const FdExhaustionGuard&) = delete;
+    FdExhaustionGuard& operator=(const FdExhaustionGuard&) = delete;
+
+private:
+    rlimit original_{};
+};
+#endif
 
 class DataSink {
 public:
@@ -74,6 +112,7 @@ TEST(StreamTypeTest, Names) {
     EXPECT_STREQ(streamTypeName(StreamType::CONTROL), "CONTROL");
     EXPECT_STREQ(streamTypeName(StreamType::SCREEN), "SCREEN");
     EXPECT_STREQ(streamTypeName(StreamType::EVENT), "EVENT");
+    EXPECT_STREQ(streamTypeName(static_cast<StreamType>(99)), "UNKNOWN");
 }
 
 TEST(StreamTypeTest, DefaultParamsControl) {
@@ -107,6 +146,16 @@ TEST(StreamTypeTest, DefaultParamsEvent) {
     EXPECT_EQ(p.timeoutMs, 3000);
 }
 
+TEST(StreamTypeTest, DefaultParamsUnknownTypeReturnsZeroed) {
+    // switch 未覆盖的枚举值落入末尾的 return {}（全部字段零初始化）
+    auto p = StreamParams::getDefault(static_cast<StreamType>(99));
+    EXPECT_EQ(p.type, StreamType::CONTROL);  // 0
+    EXPECT_FALSE(p.tcpNoDelay);
+    EXPECT_FALSE(p.keepAlive);
+    EXPECT_EQ(p.maxMessageSize, 0u);
+    EXPECT_EQ(p.timeoutMs, 0);
+}
+
 // ========== StreamChannel ==========
 
 TEST(StreamChannelTest, InitialState) {
@@ -138,9 +187,57 @@ TEST(StreamChannelTest, ConnectInvalidPortFails) {
 
 TEST(StreamChannelTest, ConnectUnresolvableHostFails) {
     StreamChannel channel(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
-    // RFC 6761 保留的 .invalid TLD 保证不会被 DNS 解析；
-    // 不要使用 .example 等可能被通配符 DNS 劫持的域名
-    EXPECT_FALSE(channel.connect("unresolvable.host.invalid", 12345));
+    // 使用语法非法的主机名（空格字符，RFC 1123 不允许出现在主机名中），
+    // getaddrinfo 在所有平台都会本地直接拒绝，不发起任何 DNS 查询。
+    // 不要使用语法合法但期望解析失败的名字（如 .invalid TLD）：在通配符
+    // DNS 或配置了搜索域的网络中它们可能被解析成功，导致测试偶发失败。
+    EXPECT_FALSE(channel.connect("unresolvable host name", 12345));
+    EXPECT_EQ(channel.getState(), StreamState::Error);
+
+    // 超过 63 字符的标签同样是本地立即拒绝的语法错误
+    StreamChannel channel2(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
+    EXPECT_FALSE(channel2.connect(std::string(64, 'a') + ".invalid", 12345));
+    EXPECT_EQ(channel2.getState(), StreamState::Error);
+}
+
+TEST(StreamChannelTest, ConnectEmptyHostFails) {
+    StreamChannel channel(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
+    EXPECT_FALSE(channel.connect("", 12345));
+    EXPECT_EQ(channel.getState(), StreamState::Error);
+}
+
+TEST(StreamChannelTest, ConnectWhenNotDisconnectedFails) {
+    int port = findFreePort();
+    StreamChannel channel(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
+    ASSERT_TRUE(channel.listen("127.0.0.1", port));
+    // 已处于监听（Connected）状态时再次 connect 应被拒绝
+    EXPECT_FALSE(channel.connect("127.0.0.1", port));
+    channel.disconnect();
+}
+
+TEST(StreamChannelTest, ConnectViaHostnameToRefusedPortFails) {
+    int port = findFreePort();  // 无监听 -> 连接拒绝
+    StreamChannel channel(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
+    // 通过域名解析（getaddrinfo 成功）后再连接失败
+    EXPECT_FALSE(channel.connect("localhost", port));
+    EXPECT_EQ(channel.getState(), StreamState::Error);
+}
+
+TEST(StreamChannelTest, ListenOnInUsePortFails) {
+    int port = findFreePort();
+
+    // 用另一个 acceptor 占住端口
+    asio::io_context io;
+    asio::ip::tcp::acceptor holder(io);
+    asio::ip::tcp::endpoint endpoint(asio::ip::make_address("127.0.0.1"), port);
+    holder.open(endpoint.protocol());
+    asio::error_code bindEc;
+    holder.bind(endpoint, bindEc);
+    ASSERT_FALSE(bindEc);
+    holder.listen();
+
+    StreamChannel channel(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
+    EXPECT_FALSE(channel.listen("127.0.0.1", port));
     EXPECT_EQ(channel.getState(), StreamState::Error);
 }
 
@@ -157,6 +254,29 @@ TEST(StreamChannelTest, ListenInvalidPortFails) {
     EXPECT_EQ(channel.getState(), StreamState::Error);
 }
 
+TEST(StreamChannelTest, ConnectFailsWhenDescriptorsExhausted) {
+#ifndef _WIN32
+    // fd 穷尽时 ::socket() 返回 EMFILE，connect 应报错而非崩溃
+    FdExhaustionGuard guard;
+    StreamChannel channel(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
+    EXPECT_FALSE(channel.connect("127.0.0.1", 12345));
+    EXPECT_EQ(channel.getState(), StreamState::Error);
+#else
+    GTEST_SKIP() << "fd exhaustion test is POSIX-only";
+#endif
+}
+
+TEST(StreamChannelTest, ListenFailsWhenDescriptorsExhausted) {
+#ifndef _WIN32
+    FdExhaustionGuard guard;
+    StreamChannel channel(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
+    EXPECT_FALSE(channel.listen("127.0.0.1", 12345));
+    EXPECT_EQ(channel.getState(), StreamState::Error);
+#else
+    GTEST_SKIP() << "fd exhaustion test is POSIX-only";
+#endif
+}
+
 TEST(StreamChannelTest, ListenWhenNotDisconnectedFails) {
     int port = findFreePort();
     StreamChannel channel(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
@@ -169,6 +289,21 @@ TEST(StreamChannelTest, ListenWhenNotDisconnectedFails) {
 TEST(StreamChannelTest, AcceptWhenNotListeningReturnsNull) {
     StreamChannel channel(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
     EXPECT_EQ(channel.accept(), nullptr);
+}
+
+TEST(StreamChannelTest, AcceptOnNonListeningSocketFails) {
+    int port = findFreePort();
+    StreamChannel server(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
+    StreamChannel client(StreamType::CONTROL, StreamParams::getDefault(StreamType::CONTROL));
+    ASSERT_TRUE(server.listen("127.0.0.1", port));
+    ASSERT_TRUE(client.connect("127.0.0.1", port));
+
+    // client 处于 Connected 状态，但其 socket 并非监听 socket，
+    // ::accept 应失败并返回 nullptr
+    EXPECT_EQ(client.accept(), nullptr);
+
+    client.disconnect();
+    server.disconnect();
 }
 
 TEST(StreamChannelTest, SendWhenDisconnectedFails) {
@@ -336,6 +471,80 @@ TEST_F(StreamChannelEnv, SendAfterDisconnectFails) {
     EXPECT_FALSE(client->send("nope"));
 }
 
+TEST_F(StreamChannelEnv, SendOversizedPayloadFails) {
+    ASSERT_TRUE(connectPair());
+
+    // 超过 SimpleMessage::MAX_MESSAGE_SIZE 的负载在组包阶段即被拒绝
+    const std::vector<uint8_t> tooLarge(SimpleMessage::MAX_MESSAGE_SIZE + 1, 'L');
+    EXPECT_FALSE(client->send(tooLarge.data(), tooLarge.size()));
+    // 通道本身不受影响，仍可正常发送
+    ASSERT_TRUE(client->send("still-alive"));
+    ASSERT_TRUE(serverSink.waitForSize(10));
+}
+
+TEST_F(StreamChannelEnv, ScreenParamsSocketBuffersApplied) {
+    port = findFreePort();
+
+    auto screenServer = std::make_unique<StreamChannel>(StreamType::SCREEN,
+                                                         StreamParams::getDefault(StreamType::SCREEN));
+    auto screenClient = std::make_unique<StreamChannel>(StreamType::SCREEN,
+                                                         StreamParams::getDefault(StreamType::SCREEN));
+    ASSERT_TRUE(screenServer->listen("127.0.0.1", port));
+
+    std::unique_ptr<StreamChannel> accepted;
+    std::thread acceptThread([&] { accepted = screenServer->accept(); });
+    ASSERT_TRUE(screenClient->connect("127.0.0.1", port));
+    acceptThread.join();
+    ASSERT_NE(accepted, nullptr);
+
+    // SCREEN 默认参数带 sendBufferSize/recvBufferSize（256KB），
+    // 连接时应应用 SO_SNDBUF/SO_RCVBUF 选项
+    DataSink sink;
+    accepted->startReceiving([&](const uint8_t* data, size_t size) { sink.append(data, size); });
+    const std::string payload(2048, 'S');
+    ASSERT_TRUE(screenClient->send(payload));
+    ASSERT_TRUE(sink.waitForSize(payload.size()));
+    EXPECT_EQ(sink.data(), std::vector<uint8_t>(payload.begin(), payload.end()));
+
+    screenClient->disconnect();
+    accepted->disconnect();
+    screenServer->disconnect();
+}
+
+TEST_F(StreamChannelEnv, ReceiveErrorCallbackOnConnectionReset) {
+    port = findFreePort();
+
+    // 服务端使用原生 asio socket，便于设置 SO_LINGER 触发 RST
+    asio::io_context io;
+    asio::ip::tcp::endpoint endpoint(asio::ip::make_address("127.0.0.1"), port);
+    asio::ip::tcp::acceptor acceptor(io, endpoint);
+    ASSERT_TRUE(client->connect("127.0.0.1", port));
+    auto peer = acceptor.accept();
+
+    std::atomic<bool> errored{false};
+    client->startReceiving([](const uint8_t*, size_t) {},
+                           [&](const std::error_code&) { errored = true; });
+
+    // 先发送数据再以 RST 方式关闭：接收端先读到数据，随后 recv 报错
+    std::string junk(64, 'J');
+    asio::write(peer, asio::buffer(junk));
+    std::this_thread::sleep_for(100ms);
+    asio::error_code ec;
+    peer.set_option(asio::socket_base::linger(true, 0), ec);
+    peer.close(ec);
+
+    ASSERT_TRUE([&] {
+        for (int i = 0; i < 100; ++i) {
+            if (errored.load()) return true;
+            std::this_thread::sleep_for(20ms);
+        }
+        return errored.load();
+    }());
+    // 接收循环因错误退出后状态应变为 Error
+    std::this_thread::sleep_for(200ms);
+    EXPECT_EQ(client->getState(), StreamState::Error);
+}
+
 // ========== StreamChannelPair ==========
 
 TEST(StreamChannelPairTest, PairConnectAndSend) {
@@ -394,6 +603,17 @@ TEST(StreamChannelPairTest, PairConnectSecondPortFailure) {
     EXPECT_FALSE(pair.isConnected());
 
     requestServer.disconnect();
+}
+
+TEST(StreamChannelPairTest, PairConnectFirstPortFailure) {
+    int refusedPort = findFreePort();  // 无监听 -> 连接拒绝
+    int otherPort = findFreePort();
+
+    StreamChannelPair pair(StreamParams::getDefault(StreamType::CONTROL),
+                           StreamParams::getDefault(StreamType::EVENT));
+    // 第一个端口连接失败：直接返回 false，不尝试第二个端口
+    EXPECT_FALSE(pair.connect("127.0.0.1", refusedPort, otherPort));
+    EXPECT_FALSE(pair.isConnected());
 }
 
 // ========== StreamManager ==========
@@ -637,6 +857,139 @@ TEST_F(SessionEnv, DisconnectedSessionRemoteInfoEmpty) {
     session->close();
     EXPECT_EQ(session->getRemoteAddress(), "");
     EXPECT_EQ(session->getRemotePort(), 0);
+}
+
+// ========== Session 异常路径（原生 socket 对端） ==========
+
+// 会话一端使用 Session + IO 线程，另一端使用原生 asio socket
+// 便于注入畸形帧、截断数据与 RST
+class RawPeerSessionEnv : public ::testing::Test {
+protected:
+    void SetUp() override {
+        asio::ip::tcp::endpoint endpoint(asio::ip::make_address("127.0.0.1"), 0);
+        asio::ip::tcp::acceptor acceptor(io_);
+        acceptor.open(endpoint.protocol());
+        acceptor.set_option(asio::socket_base::reuse_address(true));
+        acceptor.bind(endpoint);
+        acceptor.listen();
+
+        peer_ = std::make_unique<asio::ip::tcp::socket>(peerIo_);
+        std::thread connector([&] {
+            asio::error_code ec;
+            peer_->connect(acceptor.local_endpoint(), ec);
+        });
+        auto sessionSocket = acceptor.accept();
+        connector.join();
+        acceptor.close();
+
+        session_ = Session::create(1, std::move(sessionSocket));
+        work_.emplace(io_.get_executor());
+        thread_ = std::thread([&] { io_.run(); });
+    }
+
+    void TearDown() override {
+        if (session_) session_->close();
+        io_.stop();
+        if (thread_.joinable()) thread_.join();
+        work_.reset();
+        if (peer_) {
+            asio::error_code ec;
+            peer_->close(ec);
+        }
+    }
+
+    void writeRaw(const uint8_t* data, size_t size) {
+        asio::error_code ec;
+        asio::write(*peer_, asio::buffer(data, size), ec);
+    }
+
+    void writeHeader(uint32_t length) {
+        MessageHeader h{};
+        h.length = length;
+        h.type = MessageType::Notify;
+        writeRaw(reinterpret_cast<const uint8_t*>(&h), sizeof(h));
+    }
+
+    static bool waitFor(const std::atomic<bool>& flag, std::chrono::milliseconds timeout) {
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (std::chrono::steady_clock::now() < deadline) {
+            if (flag.load()) return true;
+            std::this_thread::sleep_for(10ms);
+        }
+        return flag.load();
+    }
+
+    asio::io_context io_;
+    asio::io_context peerIo_;
+    std::unique_ptr<asio::ip::tcp::socket> peer_;
+    std::optional<asio::executor_work_guard<asio::io_context::executor_type>> work_;
+    SessionPtr session_;
+    std::thread thread_;
+};
+
+TEST_F(RawPeerSessionEnv, OversizedHeaderFiresErrorEvent) {
+    std::atomic<bool> errored{false};
+    session_->setEventCallback([&](SessionEvent event, const std::string&) {
+        if (event == SessionEvent::Error) errored = true;
+    });
+    session_->startReceive();
+
+    // 声明超过 16 MiB 上限的负载长度，读取端应立即报 message_size 错误
+    writeHeader(17u * 1024 * 1024);
+
+    ASSERT_TRUE(waitFor(errored, 2s));
+    EXPECT_FALSE(session_->isConnected());
+}
+
+TEST_F(RawPeerSessionEnv, TruncatedBodyFiresErrorEvent) {
+    std::atomic<bool> errored{false};
+    session_->setEventCallback([&](SessionEvent event, const std::string&) {
+        if (event == SessionEvent::Error) errored = true;
+    });
+    session_->startReceive();
+
+    // 声明 8 字节负载，仅发送 3 字节后正常关闭（负载体阶段 EOF）
+    writeHeader(8);
+    writeRaw(reinterpret_cast<const uint8_t*>("abc"), 3);
+    asio::error_code ec;
+    peer_->close(ec);
+
+    ASSERT_TRUE(waitFor(errored, 2s));
+    EXPECT_FALSE(session_->isConnected());
+}
+
+TEST_F(RawPeerSessionEnv, WriteFailureFiresErrorEvent) {
+    std::atomic<bool> errored{false};
+    session_->setEventCallback([&](SessionEvent event, const std::string&) {
+        if (event == SessionEvent::Error) errored = true;
+    });
+
+    // 对端以 RST 方式关闭，随后的异步写入失败
+    asio::error_code ec;
+    peer_->set_option(asio::socket_base::linger(true, 0), ec);
+    peer_->close(ec);
+
+    const auto payload = std::string(64, 'W');
+    for (int i = 0; i < 200 && !errored.load(); ++i) {
+        session_->send(Message::create(MessageType::Notify, payload));
+        std::this_thread::sleep_for(10ms);
+    }
+    EXPECT_TRUE(errored.load());
+    EXPECT_FALSE(session_->isConnected());
+}
+
+TEST_F(RawPeerSessionEnv, SendQueueLimitReached) {
+    // 对端保持连接但从不读取：内核缓冲区填满后，发送队列达到
+    // kMaxSendQueueSize 上限，send 应开始返回 false
+    const auto payload = std::string(64 * 1024, 'Q');
+    bool queueFull = false;
+    for (int i = 0; i < 1100; ++i) {
+        if (!session_->send(Message::create(MessageType::Notify, payload))) {
+            queueFull = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(queueFull);
 }
 // ========== Channel / ChannelManager (channel.hpp) ==========
 
@@ -948,6 +1301,38 @@ TEST_F(TransportEnv, CloseAllSessions) {
     auto* tcpServer = static_cast<TcpServer*>(server.get());
     tcpServer->closeAllSessions();
     EXPECT_EQ(server->getSessionCount(), 0u);
+}
+
+TEST_F(TransportEnv, ClientConnectInvalidAddressFails) {
+    // make_address 对非法 IP 抛出异常，connect 应捕获并返回 false
+    EXPECT_FALSE(client->connect("999.999.999.999", 12345));
+    EXPECT_FALSE(client->isConnected());
+}
+
+TEST_F(TransportEnv, ClientSessionAccessorsAndBroadcast) {
+    ASSERT_TRUE(startServerAndWaitClient());
+
+    // 已连接状态下会话访问器
+    auto ids = client->getSessionIds();
+    ASSERT_EQ(ids.size(), 1u);
+    EXPECT_EQ(ids[0], 0u);
+    EXPECT_NE(client->getSession(ids[0]), nullptr);
+
+    // 客户端广播等价于向唯一会话发送
+    auto msg = Message::create(MessageType::Notify, "client-broadcast");
+    client->broadcast(msg);
+    ASSERT_TRUE(waitServerMessages(1));
+    EXPECT_EQ(serverMessages[0]->body, "client-broadcast");
+
+    // closeSession 应断开连接
+    client->closeSession(ids[0]);
+    EXPECT_FALSE(client->isConnected());
+    EXPECT_EQ(client->getSessionCount(), 0u);
+}
+
+TEST(TransportFactoryTest, WebSocketTypeUnsupported) {
+    EXPECT_EQ(TransportClient::create(TransportType::WebSocket), nullptr);
+    EXPECT_EQ(TransportServer::create(TransportType::WebSocket), nullptr);
 }
 
 TEST_F(TransportEnv, BroadcastWithoutSessionsIsSafe) {

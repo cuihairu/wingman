@@ -180,7 +180,7 @@ private:
     std::atomic<bool> receiving_{false};
 
     void setState(StreamState state);
-    bool applySocketOptions();
+    void applySocketOptions();
     void receiveLoop();
 };
 

@@ -11,13 +11,19 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	_ "github.com/cuihaitao/wingman/orchestrator/server/docs" // swag 生成的 OpenAPI 文档
-	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/config"
@@ -38,6 +44,9 @@ func main() {
 		log.Fatalf("server exited with error: %v", err)
 	}
 }
+
+// processStartedAt 进程启动时间（uptime 指标基准）。
+var processStartedAt = time.Now()
 
 // run 装配并启动整个编排器。从 main 中提取以便测试覆盖：
 // 配置/数据库/迁移失败与端口占用均以 error 返回而非直接退出进程。
@@ -110,8 +119,16 @@ func run() error {
 	// 触发器处理器（透传 runtime trigger.* 到 Dashboard）
 	triggerHandler := handlers.NewTriggerHandler(registry, db)
 
-	r := gin.Default()
+	// gin.Default() = New + 默认 Logger + Recovery；此处替换为自定义请求日志格式，
+	// 并保留 Recovery 兜底 panic。
+	r := gin.New()
+	r.Use(gin.LoggerWithFormatter(middleware.RequestLogFormatter))
+	r.Use(gin.Recovery())
 	r.Use(middleware.CORS())
+
+	// 指标采集：总请求数（按 method/route/status 计数），在路由注册前挂载
+	metricsHandler := handlers.NewMetricsHandler(wsHub, registry, processStartedAt)
+	r.Use(metricsHandler.RequestCounter())
 
 	// Swagger UI（由 swag init 生成的 docs 包驱动）
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -127,7 +144,8 @@ func run() error {
 	{
 		// Login endpoint with rate limiting to prevent brute force attacks
 		v1.POST("/auth/login", middleware.RateLimitMiddleware(middleware.GetRateLimiter()), authHandler.HandleLogin)
-		v1.POST("/auth/logout", authHandler.HandleLogout)
+		// Logout 需要有效会话；无状态 JWT 由客户端丢弃令牌
+		v1.POST("/auth/logout", middleware.AuthRequired(), authHandler.HandleLogout)
 
 		auth := v1.Group("")
 		auth.Use(middleware.AuthRequired())
@@ -136,6 +154,8 @@ func run() error {
 			profileHandler := handlers.NewProfileHandler(db)
 			auth.GET("/status", statusHandler.HandleStatus)
 			auth.GET("/health", statusHandler.HandleHealth)
+			// Prometheus 指标端点（需认证；Prometheus 抓取配置带 Bearer token）
+			auth.GET("/metrics", metricsHandler.HandleMetrics)
 			auth.GET("/profile", profileHandler.HandleGetProfile)
 			auth.GET("/profile/games", profileHandler.HandleGetGames)
 			auth.GET("/profile/permissions", profileHandler.HandleGetPermissions)
@@ -148,7 +168,8 @@ func run() error {
 			// 只读接口 - 所有登录用户可访问
 			windowHandler := handlers.NewWindowHandler(registry)
 			auth.GET("/windows", windowHandler.HandleList)
-			auth.GET("/settings", settingsHandler.HandleGetSettings)
+			// 与 /api/settings 的 settingsView 等价（双注册路径权限一致）
+			auth.GET("/settings", middleware.PermissionRequired(db, "settings:view"), settingsHandler.HandleGetSettings)
 		}
 
 		// 写入接口 - 需要 admin 权限
@@ -319,8 +340,53 @@ func run() error {
 
 	addr := config.Addr(cfg)
 	log.Printf("Server starting on http://%s", addr)
-	if err := r.Run(addr); err != nil {
-		return fmt.Errorf("failed to start server: %w", err)
+
+	srv := &http.Server{Addr: addr, Handler: r}
+
+	// 信号驱动优雅关闭：SIGTERM/SIGINT 触发 drain，而非进程立即退出。
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	errCh := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+			return
+		}
+		errCh <- nil
+	}()
+
+	select {
+	case err := <-errCh:
+		// HTTP 启动失败（如端口占用）：清理已启动的后台组件后返回错误。
+		shutdownComponents(frameListener, registry, db)
+		if err != nil {
+			return fmt.Errorf("failed to start server: %w", err)
+		}
+		return nil
+
+	case <-ctx.Done():
+		// SIGTERM/SIGINT：先优雅排空在途 HTTP 请求（带超时），再停组件。
+		log.Printf("Shutdown signal received, draining HTTP connections...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Printf("HTTP server shutdown incomplete: %v", err)
+		}
+		shutdownComponents(frameListener, registry, db)
+		log.Printf("Server exited gracefully")
+		return nil
 	}
-	return nil
+}
+
+// shutdownComponents 按依赖逆序停止后台组件并释放数据库连接。
+// 各组件的 Stop 均由 sync.Once 保护，重复调用安全。
+func shutdownComponents(frameListener *agentPkg.FrameListener, registry *agent.Registry, db *gorm.DB) {
+	frameListener.Stop()
+	registry.Stop()
+	if sqlDB, err := db.DB(); err == nil {
+		if err := sqlDB.Close(); err != nil {
+			log.Printf("Failed to close database: %v", err)
+		}
+	}
 }

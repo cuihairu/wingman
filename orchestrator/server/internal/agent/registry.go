@@ -17,6 +17,22 @@ type AgentConn interface {
 	SendCommandWithTimeout(method string, data map[string]any, timeout time.Duration) (map[string]any, error)
 }
 
+// LinkHealth agent↔orchestrator 链路质量统计。
+// runtime 在 agent.heartbeat 中上报自身视角的连接真话（重连/丢弃/掉线原因/会话时长），
+// server 侧补充实测 heartbeatAgeMs（距上次心跳的毫秒数）供前端判断链路健康度。
+type LinkHealth struct {
+	// Reconnects 进程启动以来成功重连的累计次数（初始连接不计）
+	Reconnects int `json:"reconnects"`
+	// Dropped 断线期间 outbox 满导致的丢弃累计
+	Dropped int `json:"dropped"`
+	// OutboxPending 当前断线缓冲中待冲刷的消息数
+	OutboxPending int `json:"outboxPending"`
+	// LastDisconnectReason 最近一次断线原因（连接成功后保留，便于追溯）
+	LastDisconnectReason string `json:"lastDisconnectReason"`
+	// SessionUptimeMs 当前连接持续时长（毫秒）
+	SessionUptimeMs int64 `json:"sessionUptimeMs"`
+}
+
 // AgentInfo 内存中的 Agent 信息
 type AgentInfo struct {
 	AgentID   string
@@ -24,6 +40,7 @@ type AgentInfo struct {
 	IP        string
 	Status    AgentStatus
 	Resources ResourceStats
+	Link      LinkHealth
 	LastSeen  time.Time
 	Client    AgentConn
 	Tags      []string
@@ -133,6 +150,7 @@ func (r *Registry) UpdateStatus(agentID string, status string, resources any) {
 		"ip":        info.IP,
 		"status":    string(info.Status),
 		"resources": info.Resources,
+		"link":      info.Link,
 		"lastSeen":  info.LastSeen.UnixMilli(),
 	})
 }
@@ -145,6 +163,74 @@ func (r *Registry) UpdateHeartbeat(agentID string) {
 	if info, ok := r.agents[agentID]; ok {
 		info.LastSeen = time.Now()
 	}
+}
+
+// UpdateLinkHealth 解析 agent.heartbeat 携带的 link 统计并写入注册表。
+// 宽容解析：字段缺失/类型不符时保持原值，不因此拒绝心跳。
+func (r *Registry) UpdateLinkHealth(agentID string, raw map[string]any) {
+	if raw == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	info, ok := r.agents[agentID]
+	if !ok {
+		return
+	}
+	if v, ok := toInt(raw["reconnects"]); ok {
+		info.Link.Reconnects = v
+	}
+	if v, ok := toInt(raw["dropped"]); ok {
+		info.Link.Dropped = v
+	}
+	if v, ok := toInt(raw["outboxPending"]); ok {
+		info.Link.OutboxPending = v
+	}
+	if v, ok := raw["lastDisconnectReason"].(string); ok {
+		info.Link.LastDisconnectReason = v
+	}
+	if v, ok := toInt64(raw["sessionUptimeMs"]); ok {
+		info.Link.SessionUptimeMs = v
+	}
+}
+
+// toInt 宽容整数解析（JSON 数字在 Go 侧为 float64）
+func toInt(value any) (int, bool) {
+	switch v := value.(type) {
+	case float64:
+		return int(v), true
+	case int:
+		return v, true
+	case int64:
+		return int(v), true
+	case json.Number:
+		n, err := v.Int64()
+		if err != nil {
+			return 0, false
+		}
+		return int(n), true
+	}
+	return 0, false
+}
+
+// toInt64 宽容 64 位整数解析
+func toInt64(value any) (int64, bool) {
+	switch v := value.(type) {
+	case float64:
+		return int64(v), true
+	case int:
+		return int64(v), true
+	case int64:
+		return v, true
+	case json.Number:
+		n, err := v.Int64()
+		if err != nil {
+			return 0, false
+		}
+		return n, true
+	}
+	return 0, false
 }
 
 // SetTags 设置 Agent 的标签（分组），返回是否找到该 agent。
@@ -288,11 +374,20 @@ func (r *Registry) checkHeartbeats() {
 	}
 }
 
-// ToJSON 将 AgentInfo 序列化为前端需要的格式
+// ToJSON 将 AgentInfo 序列化为前端需要的格式。
+// heartbeatAgeMs 为 server 实测的距上次心跳毫秒数，接近心跳超时阈值即链路异常。
 func (info *AgentInfo) ToJSON() map[string]any {
 	tags := info.Tags
 	if tags == nil {
 		tags = []string{}
+	}
+	link := map[string]any{
+		"reconnects":           info.Link.Reconnects,
+		"dropped":              info.Link.Dropped,
+		"outboxPending":        info.Link.OutboxPending,
+		"lastDisconnectReason": info.Link.LastDisconnectReason,
+		"sessionUptimeMs":      info.Link.SessionUptimeMs,
+		"heartbeatAgeMs":       time.Since(info.LastSeen).Milliseconds(),
 	}
 	return map[string]any{
 		"agentId":     info.AgentID,
@@ -300,6 +395,7 @@ func (info *AgentInfo) ToJSON() map[string]any {
 		"ip":          info.IP,
 		"status":      string(info.Status),
 		"resources":   info.Resources,
+		"link":        link,
 		"lastSeen":    info.LastSeen.UnixMilli(),
 		"currentTask": "",
 		"tags":        tags,

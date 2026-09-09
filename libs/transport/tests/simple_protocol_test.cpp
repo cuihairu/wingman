@@ -5,9 +5,12 @@
 
 #include <gtest/gtest.h>
 #include "wingman/transport/simple_protocol.hpp"
+#include <asio.hpp>
 #include <cstring>
+#include <memory>
 #include <thread>
 #include <chrono>
+#include <vector>
 
 using namespace wingman::transport;
 
@@ -324,7 +327,7 @@ TEST(MessageReceiverTest, FragmentedReceive) {
 
     uint32_t length = Protocol::hostToNetwork32(static_cast<uint32_t>(testData.size()));
     buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&length),
-                 reinterpret_cast<uint8_t*>(&length) + SimpleMessage::LENGTH_SIZE);
+                  reinterpret_cast<uint8_t*>(&length) + SimpleMessage::LENGTH_SIZE);
     buffer.insert(buffer.end(), testData.begin(), testData.end());
 
     MessageReceiver receiver;
@@ -341,4 +344,177 @@ TEST(MessageReceiverTest, FragmentedReceive) {
     }
 
     EXPECT_EQ(receiver.getBufferSize(), 0);
+}
+
+// ========== Protocol Socket I/O 测试 ==========
+
+namespace {
+
+// 回环 TCP 连接对：两端均为阻塞 socket，可跨平台获取 native_handle()
+class LoopbackPair {
+public:
+    LoopbackPair() {
+        asio::ip::tcp::acceptor acceptor(io_,
+            asio::ip::tcp::endpoint(asio::ip::make_address("127.0.0.1"), 0));
+        a_ = std::make_unique<asio::ip::tcp::socket>(io_);
+        std::thread connector([&] {
+            asio::error_code ec;
+            a_->connect(acceptor.local_endpoint(), ec);
+        });
+        b_ = std::make_unique<asio::ip::tcp::socket>(acceptor.accept());
+        connector.join();
+    }
+
+    Protocol::SocketType aHandle() const { return a_->native_handle(); }
+    Protocol::SocketType bHandle() const { return b_->native_handle(); }
+
+    void writeFromB(const uint8_t* data, size_t size) {
+        asio::error_code ec;
+        asio::write(*b_, asio::buffer(data, size), ec);
+    }
+
+    void closeB() {
+        asio::error_code ec;
+        b_->close(ec);
+    }
+
+    void resetBWithLinger() {
+        // SO_LINGER{1,0} 后 close 会直接发送 RST 而不是 FIN
+        asio::error_code ec;
+        b_->set_option(asio::socket_base::linger(true, 0), ec);
+        b_->close(ec);
+    }
+
+private:
+    asio::io_context io_;
+    std::unique_ptr<asio::ip::tcp::socket> a_;
+    std::unique_ptr<asio::ip::tcp::socket> b_;
+};
+
+std::vector<uint8_t> makeFrame(uint32_t payloadLength) {
+    uint32_t n = Protocol::hostToNetwork32(payloadLength);
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(&n);
+    return std::vector<uint8_t>(p, p + SimpleMessage::LENGTH_SIZE);
+}
+
+} // namespace
+
+TEST(ProtocolIOTest, SendMessageReadMessageRoundTrip) {
+    LoopbackPair pair;
+
+    auto original = SimpleMessage::create(std::string("round-trip payload"));
+    std::error_code ec;
+    ASSERT_TRUE(Protocol::sendMessage(pair.bHandle(), *original, ec));
+    EXPECT_FALSE(ec);
+
+    auto received = Protocol::readMessage(pair.aHandle(), ec);
+    ASSERT_NE(received, nullptr);
+    EXPECT_EQ(received->getPayloadAsString(), "round-trip payload");
+    EXPECT_FALSE(ec);
+}
+
+TEST(ProtocolIOTest, SendMessageReadMessageEmptyPayload) {
+    LoopbackPair pair;
+
+    auto original = SimpleMessage::create(std::string{});
+    std::error_code ec;
+    ASSERT_TRUE(Protocol::sendMessage(pair.bHandle(), *original, ec));
+
+    // 长度为 0 的消息：负载体循环不应执行
+    auto received = Protocol::readMessage(pair.aHandle(), ec);
+    ASSERT_NE(received, nullptr);
+    EXPECT_EQ(received->size(), 0u);
+}
+
+TEST(ProtocolIOTest, ReadMessageAssemblesSplitWrites) {
+    LoopbackPair pair;
+    using namespace std::chrono_literals;
+
+    const std::string payload = "assembled-from-split-writes";
+    auto frame = makeFrame(static_cast<uint32_t>(payload.size()));
+
+    // 长度字段拆成 2+2 字节发送，迫使读取端多次进入 recv 循环
+    pair.writeFromB(frame.data(), 2);
+    std::this_thread::sleep_for(20ms);
+    pair.writeFromB(frame.data() + 2, 2);
+    std::this_thread::sleep_for(20ms);
+
+    // 负载拆成两段发送
+    pair.writeFromB(reinterpret_cast<const uint8_t*>(payload.data()), payload.size() / 2);
+    std::this_thread::sleep_for(20ms);
+    pair.writeFromB(reinterpret_cast<const uint8_t*>(payload.data()) + payload.size() / 2,
+                    payload.size() - payload.size() / 2);
+
+    std::error_code ec;
+    auto received = Protocol::readMessage(pair.aHandle(), ec);
+    ASSERT_NE(received, nullptr);
+    EXPECT_EQ(received->getPayloadAsString(), payload);
+}
+
+TEST(ProtocolIOTest, SendMessageOnInvalidSocketFails) {
+    auto msg = SimpleMessage::create(std::string("data"));
+    std::error_code ec;
+    EXPECT_FALSE(Protocol::sendMessage(static_cast<Protocol::SocketType>(-1), *msg, ec));
+    EXPECT_TRUE(ec);
+}
+
+TEST(ProtocolIOTest, ReadMessageOnInvalidSocketFails) {
+    std::error_code ec;
+    auto msg = Protocol::readMessage(static_cast<Protocol::SocketType>(-1), ec);
+    EXPECT_EQ(msg, nullptr);
+    EXPECT_TRUE(ec);
+}
+
+TEST(ProtocolIOTest, ReadMessageOnClosedConnectionReturnsCleanError) {
+    LoopbackPair pair;
+    pair.closeB();  // FIN -> recv 返回 0
+
+    std::error_code ec;
+    auto msg = Protocol::readMessage(pair.aHandle(), ec);
+    EXPECT_EQ(msg, nullptr);
+    EXPECT_FALSE(ec);  // 对端正常关闭：ec 保持为 0
+}
+
+TEST(ProtocolIOTest, ReadMessageOversizedLengthFails) {
+    LoopbackPair pair;
+    auto frame = makeFrame(SimpleMessage::MAX_MESSAGE_SIZE + 1);
+    pair.writeFromB(frame.data(), frame.size());
+
+    std::error_code ec;
+    auto msg = Protocol::readMessage(pair.aHandle(), ec);
+    EXPECT_EQ(msg, nullptr);
+    EXPECT_TRUE(ec);
+}
+
+TEST(ProtocolIOTest, ReadMessageTruncatedPayloadByClose) {
+    LoopbackPair pair;
+
+    // 声明 8 字节负载，但只发送 3 字节后正常关闭
+    auto frame = makeFrame(8);
+    pair.writeFromB(frame.data(), frame.size());
+    pair.writeFromB(reinterpret_cast<const uint8_t*>("abc"), 3);
+    pair.closeB();
+
+    std::error_code ec;
+    auto msg = Protocol::readMessage(pair.aHandle(), ec);
+    EXPECT_EQ(msg, nullptr);
+    EXPECT_FALSE(ec);  // 负载体阶段遇到对端关闭
+}
+
+TEST(ProtocolIOTest, ReadMessagePayloadResetError) {
+    LoopbackPair pair;
+    using namespace std::chrono_literals;
+
+    // 声明 8 字节负载，只发送 4 字节后以 RST 方式关闭
+    auto frame = makeFrame(8);
+    pair.writeFromB(frame.data(), frame.size());
+    pair.writeFromB(reinterpret_cast<const uint8_t*>("abcd"), 4);
+    // 等待数据送达对端后再触发 RST
+    std::this_thread::sleep_for(100ms);
+    pair.resetBWithLinger();
+
+    std::error_code ec;
+    auto msg = Protocol::readMessage(pair.aHandle(), ec);
+    EXPECT_EQ(msg, nullptr);
+    EXPECT_TRUE(ec);  // 负载体阶段遇到连接重置
 }

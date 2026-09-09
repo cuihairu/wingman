@@ -19,10 +19,10 @@ import (
 // 指针字段用于区分「未提供」与「显式 false/0」（更新为部分字段语义）。
 type TriggerConfigRequest struct {
 	// 触发器名称（新增时必填，runtime 缺省 Unnamed Trigger）
-	Name     string                   `json:"name" example:"hp-watch"`
-	Enabled  *bool                    `json:"enabled,omitempty" example:"true"`
-	OneShot  *bool                    `json:"oneShot,omitempty" example:"false"`
-	Cooldown *int                     `json:"cooldown,omitempty" example:"3000"`
+	Name     string `json:"name" example:"hp-watch"`
+	Enabled  *bool  `json:"enabled,omitempty" example:"true"`
+	OneShot  *bool  `json:"oneShot,omitempty" example:"false"`
+	Cooldown *int   `json:"cooldown,omitempty" example:"3000"`
 	// condition 触发条件（11 种类型：ColorFound/ColorLost/ImageFound/ImageLost/
 	// WindowOpened/WindowClosed/ProcessStarted/ProcessStopped/TimeElapsed/
 	// HotkeyPressed/PixelChanged）
@@ -149,7 +149,8 @@ func (h *TriggerHandler) dispatch(c *gin.Context, method string, payload map[str
 // @Security     BearerAuth
 // @Param        agentId  path  string  true  "Agent ID"  example(agent-001)
 // @Success      200  {object}  map[string]interface{}
-// @Failure      502  {object}  map[string]interface{}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      502  {object}  ErrorResponse
 // @Router       /agents/{agentId}/triggers [get]
 func (h *TriggerHandler) HandleList(c *gin.Context) {
 	agentID := c.Param("agentId")
@@ -182,9 +183,11 @@ func (h *TriggerHandler) HandleList(c *gin.Context) {
 // @Param        agentId  path  string  true  "Agent ID"  example(agent-001)
 // @Param        request  body  TriggerToggleRequest  true  "触发器 ID"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
-// @Failure      502  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      502  {object}  ErrorResponse
 // @Router       /agents/{agentId}/triggers/toggle [post]
 func (h *TriggerHandler) HandleToggle(c *gin.Context) {
 	agentID := c.Param("agentId")
@@ -232,8 +235,10 @@ func (h *TriggerHandler) HandleToggle(c *gin.Context) {
 // @Param        agentId  path  string  true  "Agent ID"  example(agent-001)
 // @Param        request  body  TriggerConfigRequest  true  "触发器配置（name 必填）"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      502  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      502  {object}  ErrorResponse
 // @Router       /agents/{agentId}/triggers [post]
 func (h *TriggerHandler) HandleCreate(c *gin.Context) {
 	agentID := c.Param("agentId")
@@ -281,9 +286,11 @@ func (h *TriggerHandler) HandleCreate(c *gin.Context) {
 // @Param        triggerId  path  int     true  "触发器 ID"  example(42)
 // @Param        request    body  TriggerConfigRequest  true  "触发器配置（部分字段）"
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
-// @Failure      502  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      502  {object}  ErrorResponse
 // @Router       /agents/{agentId}/triggers/{triggerId} [put]
 func (h *TriggerHandler) HandleUpdate(c *gin.Context) {
 	agentID := c.Param("agentId")
@@ -331,9 +338,11 @@ func (h *TriggerHandler) HandleUpdate(c *gin.Context) {
 // @Param        agentId    path  string  true  "Agent ID"  example(agent-001)
 // @Param        triggerId  path  int     true  "触发器 ID"  example(42)
 // @Success      200  {object}  map[string]interface{}
-// @Failure      400  {object}  map[string]interface{}
-// @Failure      404  {object}  map[string]interface{}
-// @Failure      502  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      502  {object}  ErrorResponse
 // @Router       /agents/{agentId}/triggers/{triggerId} [delete]
 func (h *TriggerHandler) HandleRemove(c *gin.Context) {
 	agentID := c.Param("agentId")

@@ -121,6 +121,11 @@ private:
     void startHeartbeat();
     void sendHeartbeat();
 
+    // 链路质量统计（供 agent.heartbeat 携带上报）
+    void markConnected();                    // 连接建立：刷新 connectedAt，非首次则累计重连次数
+    void recordDisconnect(const std::string& reason);  // 记录最近一次断线原因
+    nlohmann::json linkStats() const;        // 组装 link 统计 JSON（线程安全快照）
+
     // 注册
     void sendRegister();
     void handleRegisterAck(const std::string& data);

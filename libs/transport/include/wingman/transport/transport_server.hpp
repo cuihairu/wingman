@@ -4,6 +4,7 @@
 #include "wingman/transport/session/session.hpp"
 #include "wingman/transport/channel/channel.hpp"
 #include <asio.hpp>
+#include <atomic>
 #include <map>
 #include <mutex>
 
@@ -43,17 +44,18 @@ public:
         // 关闭所有会话
         closeAllSessions();
 
-        // 停止接受连接
+        // 停止接受连接（取消挂起的 async_accept）
         asio::error_code ec;
         acceptor_.close(ec);
 
-        // 停止 IO 上下文
-        ioContext_.stop();
-
-        // 等待 IO 线程
+        // 不调用 ioContext_.stop()：让 IO 线程排干被取消的回调后
+        // 因无剩余工作自然退出，避免残留处理器在 restart 后执行
         if (ioThread_.joinable()) {
             ioThread_.join();
         }
+
+        // 为后续可能的 start() 重置 IO 上下文
+        ioContext_.restart();
     }
 
     // 监听
@@ -146,17 +148,23 @@ private:
                 auto sessionId = nextSessionId_++;
                 auto session = TcpSession::create(sessionId, std::move(socket));
 
+                // 回调中只捕获裸指针：回调本身存储在 session 内，
+                // 捕获 shared_ptr 会形成引用环导致会话永远泄漏。
+                // 生命周期安全：回调总是在持有 shared_from_this() 的
+                // 异步处理器内被调用，对象不会在回调期间失效。
+                Session* sessionPtr = session.get();
+
                 // 设置回调
-                session->setMessageCallback([this, session](const MessagePtr& msg) {
-                    handleMessage(session.get(), msg);
+                session->setMessageCallback([this, sessionPtr](const MessagePtr& msg) {
+                    handleMessage(sessionPtr, msg);
                 });
 
-                session->setEventCallback([this, session](SessionEvent event, const std::string& /*info*/) {
-                    handleEvent(session.get(), event);
+                session->setEventCallback([this, sessionPtr](SessionEvent event, const std::string& /*info*/) {
+                    handleEvent(sessionPtr, event);
                     // 对端断开表现为 async_read EOF -> Session 发出 Error 事件，
                     // 因此 Error 与 Disconnected 都需要清理会话，否则会话泄漏在映射表中
                     if (event == SessionEvent::Disconnected || event == SessionEvent::Error) {
-                        closeSession(session->getId());
+                        closeSession(sessionPtr->getId());
                     }
                 });
 
@@ -181,7 +189,7 @@ private:
     asio::io_context ioContext_;
     asio::ip::tcp::acceptor acceptor_;
     std::thread ioThread_;
-    bool running_ = false;
+    std::atomic<bool> running_ = false;
     SessionId nextSessionId_;
 
     mutable std::mutex sessionsMutex_;

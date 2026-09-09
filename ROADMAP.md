@@ -339,7 +339,7 @@ class TriggerEngine {
 - ✅ Debugger 端点（`/api/debugger/info` 直连模式契约：返回各 agent host:9966 + launch.json，非中转）
 - ✅ Runtime IPC 事件推送（EventBuffer + `events.drain` pull 模型 + log/trigger/script/connection 事件 + 公平性优先丢 log.line + dropped 计数）
 - ✅ Go orchestrator 测试覆盖（75 个测试函数：rbac/workflow/handlers/agent/ws/middleware/debugger，`go test ./...` 全绿）
-- 🚧 跨语言 frame/protocol 集成测试（当前仅单语言单测）
+- ✅ 跨语言 frame/protocol 集成测试（`integration/protocol_test.go`：按 C++ `MessageHeader` 16 字节小端布局的字节级裸 TCP 读写，覆盖 agent.register/agent.heartbeat/command dispatch+result/event report 四类帧 + 边界（超大 payload>16MiB 断连、非法 JSON/未知类型/截断 header 容错、断线重连恢复），`go test ./...` 全绿）
 
 **目标命令流**:
 
@@ -586,7 +586,7 @@ local wingman = require('wingman')
 |--------|------|----------|------|
 | P1 | Dashboard Monitor triggers 接真实 API（需扩 agent 协议） | 1周 | ✅ list/toggle + add/update/remove CRUD 全链路（runtime Dispatcher Reuse，agents:manage） |
 | P2 | 跨平台运行时验证（macOS/Linux，需真机） | — | ⬜ 待验证 |
-| P2 | Swagger/OpenAPI 文档 | — | ⬜ 未开始 |
+| P2 | Swagger/OpenAPI 文档 | — | ✅ 全端点注解补全 + typed schema（workflows/scripts/debugger/triggers）+ 统一 ErrorResponse（401/403/404/500）+ 双注册路由标注，swag init 生成 docs，`/swagger/` UI 可用 |
 | P2 | 自动发布（tag→release）+ 打包分发 | — | ✅ `v*` tag 推送自动发布：CHANGELOG 提取 notes → draft → 三平台构建上传 → SHA256SUMS → publish（release.yml） |
 | ✅ | 代码缺陷修复（10 项，见 todo.md「✅ 代码缺陷」） | - | ✅ 已完成 |
 | ✅ | 远程连接状态回调通知 GUI + EventBuffer 公平性 + 全局快捷键 | - | ✅ 已完成 |

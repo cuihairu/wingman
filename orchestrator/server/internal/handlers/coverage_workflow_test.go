@@ -185,7 +185,7 @@ func TestWorkflowCreateValidationBranches(t *testing.T) {
 
 	// Submit 失败（无 agent 的 script 步骤立即失败？—— 依赖环在 SetSteps 即失败）→ 400
 	w = doJSON(r, "POST", "/workflows", map[string]any{
-		"name":  "cycle",
+		"name": "cycle",
 		"steps": []map[string]any{
 			{"id": "a", "script": "a.lua", "dependsOn": []string{"b"}},
 			{"id": "b", "script": "b.lua", "dependsOn": []string{"a"}},
