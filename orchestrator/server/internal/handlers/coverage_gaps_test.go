@@ -246,3 +246,109 @@ func TestInitAdminIdempotentAndNoPassword(t *testing.T) {
 		t.Errorf("no admin should be created without password, got %d", count)
 	}
 }
+
+// ---------- bcrypt 哈希失败分支（密码 > 72 字节） ----------
+
+// longStrongPassword 满足强度要求但超过 bcrypt 72 字节上限，
+// 触发 HashPassword 错误路径。
+func longStrongPassword() string {
+	return "Aa1!" + strings.Repeat("x", 100)
+}
+
+// 空库 + 超长 bootstrap 密码 → HashPassword 失败，仅记录日志不创建 admin。
+func TestInitAdminBootstrapHashFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := newDB(t)
+	t.Setenv("WINGMAN_ADMIN_PASSWORD", longStrongPassword())
+	NewAuthHandler(db).InitAdmin()
+
+	var count int64
+	db.Model(&models.User{}).Where("username = ?", "admin").Count(&count)
+	if count != 0 {
+		t.Errorf("admin should not be created on hash failure, got %d", count)
+	}
+}
+
+// inactive 的 admin 用户：codes 解析为空数组，仍应注入通配符 *（permissionIDs）。
+func TestProfilePermissionsInactiveAdminWildcard(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := newDB(t)
+	user := models.User{Username: "sleepadmin", Password: "x", Role: "admin", Active: false}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	handler := NewProfileHandler(db)
+	r := gin.New()
+	r.GET("/profile/permissions", asUser(user), handler.HandleGetPermissions)
+
+	w := doJSON(r, "GET", "/profile/permissions", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("permissions: %d %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `"permissions":[]`) {
+		t.Errorf("expected empty permissions, got %s", w.Body.String())
+	}
+}
+
+// 修改密码时新密码超过 bcrypt 上限 → 500 failed to hash password。
+func TestUpdatePasswordHashFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := newDB(t)
+	hash, err := security.HashPassword("OldPass!1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user := models.User{Username: "bob", Password: hash, Role: "viewer", Active: true}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	handler := NewProfileHandler(db)
+	r := gin.New()
+	r.PUT("/profile/password", asUser(user), handler.HandleUpdatePassword)
+
+	w := doJSON(r, "PUT", "/profile/password", map[string]any{
+		"oldPassword": "OldPass!1",
+		"newPassword": longStrongPassword(),
+	})
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500 on hash failure, got %d %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "failed to hash password") {
+		t.Errorf("unexpected body: %s", w.Body.String())
+	}
+}
+
+// 创建用户时密码超过 bcrypt 上限（角色合法）→ 500。
+func TestUserCreateHashFailure(t *testing.T) {
+	r, _, _ := setupHandlerRouter(t)
+
+	w := doJSON(r, "POST", "/api/admin/users", map[string]any{
+		"username": "longpw",
+		"password": longStrongPassword(),
+		"role":     "viewer",
+	})
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500 on hash failure, got %d %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "failed to hash password") {
+		t.Errorf("unexpected body: %s", w.Body.String())
+	}
+}
+
+// 重置密码时新密码超过 bcrypt 上限 → 500。
+func TestUserResetPasswordHashFailure(t *testing.T) {
+	r, db, adminID := setupHandlerRouter(t)
+
+	w := doJSON(r, "POST", "/api/admin/users/"+itoa(adminID)+"/reset-password", map[string]any{
+		"newPassword": longStrongPassword(),
+	})
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500 on hash failure, got %d %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "failed to hash password") {
+		t.Errorf("unexpected body: %s", w.Body.String())
+	}
+	_ = db
+}

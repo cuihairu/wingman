@@ -127,3 +127,17 @@ func TestStartHeartbeatCheckLoop(t *testing.T) {
 	}
 	t.Fatal("periodic check should mark stale agent offline within 2s")
 }
+
+// TestStartHeartbeatCheckIntervalFallback 覆盖非正巡检周期的兜底分支（回退 30s）。
+func TestStartHeartbeatCheckIntervalFallback(t *testing.T) {
+	reg, _ := newTestRegistry(t)
+
+	reg.mu.Lock()
+	reg.checkInterval = -1 * time.Second // 非正 → 兜底为 30s
+	reg.mu.Unlock()
+
+	go reg.StartHeartbeatCheck()
+	// 兜底分支执行后 goroutine 正常阻塞在 30s ticker / stopCh；Stop 退出
+	time.Sleep(50 * time.Millisecond)
+	reg.Stop()
+}

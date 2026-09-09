@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
+	"database/sql"
+	"database/sql/driver"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -11,7 +15,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	
 	"testing"
 	"time"
 	"unsafe"
@@ -23,6 +26,8 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
+
+func init() { sql.Register("errCloseDriver", errCloseDriver{}) }
 
 // ---------- run() 失败分支 ----------
 
@@ -91,6 +96,37 @@ func TestRunDBOpenFailure(t *testing.T) {
 	}
 }
 
+// 只读模式打开的既有库：连接成功但 AutoMigrate 写入失败。
+func TestRunMigrateFailureOnReadOnlyDB(t *testing.T) {
+	tmp := t.TempDir()
+	dbFile := filepath.Join(tmp, "ro.db")
+	if err := os.WriteFile(dbFile, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chdir(oldWD) })
+
+	t.Setenv("WINGMAN_JWT_SECRET", "0123456789abcdef0123456789abcdef")
+	t.Setenv("WINGMAN_DB_PATH", "file:"+dbFile+"?mode=ro")
+
+	done := make(chan error, 1)
+	go func() { done <- run() }()
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "failed to migrate database") {
+			t.Errorf("expected migrate error, got %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("run did not return on migrate failure")
+	}
+}
+
 // agent listener 端口与 HTTP 端口同时被占：listener Start 失败仅记录日志，
 // run() 因 HTTP 绑定失败返回错误。
 func TestRunFrameListenerPortConflict(t *testing.T) {
@@ -136,6 +172,38 @@ func TestRunFrameListenerPortConflict(t *testing.T) {
 
 // ---------- shutdownComponents ----------
 
+// errCloseDriver 的连接 Close 恒返回错误：使 database/sql 的 DB.Close
+// 汇总连接级错误并返回非 nil，覆盖 shutdownComponents 的错误日志分支。
+type errCloseDriver struct{}
+
+type errCloseConn struct{}
+
+func (errCloseDriver) Open(string) (driver.Conn, error)  { return errCloseConn{}, nil }
+func (errCloseConn) Prepare(string) (driver.Stmt, error) { return errCloseStmt{}, nil }
+func (errCloseConn) Close() error                        { return errors.New("close failed") }
+func (errCloseConn) Begin() (driver.Tx, error)           { return nil, errors.New("begin not supported") }
+func (errCloseConn) Ping(context.Context) error          { return nil }
+
+type errCloseStmt struct{}
+
+func (errCloseStmt) Close() error                               { return nil }
+func (errCloseStmt) NumInput() int                              { return -1 }
+func (errCloseStmt) Exec([]driver.Value) (driver.Result, error) { return nil, errors.New("no exec") }
+func (errCloseStmt) Query([]driver.Value) (driver.Rows, error)  { return &errCloseRows{}, nil }
+
+type errCloseRows struct{ served bool }
+
+func (r *errCloseRows) Columns() []string { return []string{"version"} }
+func (r *errCloseRows) Close() error      { return nil }
+func (r *errCloseRows) Next(dest []driver.Value) error {
+	if r.served {
+		return io.EOF
+	}
+	r.served = true
+	dest[0] = "3.40.0" // 喂给 sqlite dialector 的版本探测
+	return nil
+}
+
 // 二次关闭同一 db：Close 返回错误并记录日志（覆盖错误分支），组件 Stop 幂等安全。
 func TestShutdownComponentsDBError(t *testing.T) {
 	hub := ws.NewHub()
@@ -150,7 +218,41 @@ func TestShutdownComponentsDBError(t *testing.T) {
 	}
 
 	shutdownComponents(listener, registry, db) // 正常路径
-	shutdownComponents(listener, registry, db) // Close 已关闭的连接 → 错误日志分支
+	shutdownComponents(listener, registry, db) // database/sql Close 幂等返回 nil，不应 panic
+}
+
+// 连接池持有 Close 报错的连接时，DB.Close 汇总返回该错误 → 覆盖日志分支。
+func TestShutdownComponentsCloseError(t *testing.T) {
+	hub := ws.NewHub()
+	go hub.Run()
+	registry := agent.NewRegistry(hub)
+	listener := agentPkg.NewFrameListener(registry, hub)
+
+	sqlDB, err := sql.Open("errCloseDriver", "dsn")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 建立一个真实连接并归还空闲池，使 Close 时需要关闭该连接
+	if err := sqlDB.Ping(); err != nil {
+		t.Fatalf("ping errCloseDriver: %v", err)
+	}
+	if err := sqlDB.Close(); err == nil {
+		t.Fatal("expected DB.Close to propagate connection close error")
+	}
+
+	// 用同一 driver 再建一个池（前一个已关闭），注入 gorm 供 shutdownComponents 使用
+	sqlDB2, err := sql.Open("errCloseDriver", "dsn-2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sqlDB2.Ping(); err != nil {
+		t.Fatal(err)
+	}
+	db, err := gorm.Open(sqlite.Dialector{Conn: sqlDB2}, &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open gorm with injected pool: %v", err)
+	}
+	shutdownComponents(listener, registry, db) // Close 返回 err → 覆盖日志分支
 }
 
 // ---------- HTTP 端点与脚本输出回调 ----------
