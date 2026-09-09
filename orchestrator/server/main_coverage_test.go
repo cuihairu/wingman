@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
+	
 	"testing"
 	"time"
 	"unsafe"
@@ -294,7 +294,11 @@ func TestRunHTTPEndpointsAndScriptOutput(t *testing.T) {
 	}
 
 	// SIGINT 优雅关闭
-	if err := syscall.Kill(os.Getpid(), syscall.SIGINT); err != nil {
+	proc, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := proc.Signal(os.Interrupt); err != nil {
 		t.Fatal(err)
 	}
 	select {
