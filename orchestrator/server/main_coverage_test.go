@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -33,6 +34,9 @@ func init() { sql.Register("errCloseDriver", errCloseDriver{}) }
 
 // chdir 到只读目录后 MkdirAll("./data") 应失败并快速返回错误。
 func TestRunCreateDataDirFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX directory permission bits are not enforced on Windows")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores directory permission bits")
 	}
@@ -395,14 +399,8 @@ func TestRunHTTPEndpointsAndScriptOutput(t *testing.T) {
 		t.Error("script_output events were not persisted with expected levels")
 	}
 
-	// SIGINT 优雅关闭
-	proc, err := os.FindProcess(os.Getpid())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := proc.Signal(os.Interrupt); err != nil {
-		t.Fatal(err)
-	}
+	// SIGINT 优雅关闭（Windows 上此处 Skip：前述 HTTP/落库断言已执行完毕）
+	signalSelfForShutdown(t)
 	select {
 	case err := <-done:
 		if err != nil {

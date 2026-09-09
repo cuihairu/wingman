@@ -75,6 +75,10 @@ func newTestEngine(tb testing.TB) (*Engine, *agent.Registry, *gorm.DB) {
 	if err != nil {
 		tb.Fatalf("open db: %v", err)
 	}
+	// 单连接串行化，规避 cache=shared 多连接并发的 SQLITE_LOCKED
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
 	if err := models.AutoMigrate(db); err != nil {
 		tb.Fatalf("migrate: %v", err)
 	}

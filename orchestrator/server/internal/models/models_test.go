@@ -135,6 +135,10 @@ func TestAutoMigrate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
+	// 单连接串行化，规避 cache=shared 多连接并发的 SQLITE_LOCKED
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
 	if err := AutoMigrate(db); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
@@ -151,6 +155,10 @@ func TestLoadRolePermissions(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:models_role_%d?mode=memory&cache=shared", rand.Int())), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open: %v", err)
+	}
+	// 单连接串行化，规避 cache=shared 多连接并发的 SQLITE_LOCKED
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
 	}
 	if err := AutoMigrate(db); err != nil {
 		t.Fatalf("migrate: %v", err)

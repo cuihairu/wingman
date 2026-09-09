@@ -25,6 +25,10 @@ func newTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
+	// 单连接串行化，规避 cache=shared 多连接并发的 SQLITE_LOCKED
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
 	if err := models.AutoMigrate(db); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
@@ -583,14 +587,14 @@ func TestCleanupRemovesStaleClients(t *testing.T) {
 	// stale：超过 1 小时未活动且不在封锁期
 	rl.mu.Lock()
 	rl.clients["stale"] = &clientInfo{
-		attempts:  1,
-		lastReset: time.Now().Add(-2 * time.Hour),
+		attempts:   1,
+		lastReset:  time.Now().Add(-2 * time.Hour),
 		blockUntil: time.Now().Add(-time.Hour),
 	}
 	// blocked：未到封锁截止期，不应清理
 	rl.clients["blocked"] = &clientInfo{
-		attempts:  6,
-		lastReset: time.Now().Add(-2 * time.Hour),
+		attempts:   6,
+		lastReset:  time.Now().Add(-2 * time.Hour),
 		blockUntil: time.Now().Add(time.Hour),
 	}
 	// fresh：最近活动，不应清理

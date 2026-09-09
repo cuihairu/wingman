@@ -151,14 +151,8 @@ func TestRunGracefulShutdownOnSIGINT(t *testing.T) {
 		t.Fatal("HTTP server did not become ready in time")
 	}
 
-	// 发送 SIGINT 触发优雅关闭
-	proc, err := os.FindProcess(os.Getpid())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := proc.Signal(os.Interrupt); err != nil {
-		t.Fatal(err)
-	}
+	// 发送 SIGINT 触发优雅关闭（Windows 无进程信号机制，整测试跳过）
+	signalSelfForShutdown(t)
 
 	select {
 	case err := <-done:

@@ -34,6 +34,10 @@ func setupHandlerRouter(t *testing.T) (*gin.Engine, *gorm.DB, uint) {
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
+	// 单连接串行化，规避 cache=shared 多连接并发的 SQLITE_LOCKED
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
 	if err := models.AutoMigrate(db); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

@@ -53,8 +53,12 @@ if(BUILD_CORE_TESTS)
         ini_module_test.cpp
         crypt_test.cpp
         rpc_test.cpp
-        unix_socket_channel_test.cpp
     )
+
+    # Unix domain socket 通道仅在非 Windows 平台编译（依赖 POSIX socket API）
+    if(NOT WIN32)
+        target_sources(core_tests PRIVATE unix_socket_channel_test.cpp)
+    endif()
 
     if(WIN32)
         target_sources(core_tests PRIVATE smart_trigger_test.cpp)

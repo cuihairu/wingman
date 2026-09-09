@@ -1,3 +1,7 @@
+// Unix domain socket 通道测试：依赖 POSIX socket API（sys/un.h、::getpid 等），
+// 仅在非 Windows 平台编译。CMake 侧同样按 NOT WIN32 排除，此处守卫为双保险。
+#if !defined(_WIN32)
+
 #include <gtest/gtest.h>
 #include "wingman/ipc/unix_socket_channel.hpp"
 
@@ -302,3 +306,5 @@ TEST_F(UnixSocketChannelTestEnv, SocketFileRemovedOnServerDisconnect) {
     server->disconnect();
     EXPECT_FALSE(std::filesystem::exists(path));
 }
+
+#endif // !defined(_WIN32)
