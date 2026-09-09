@@ -213,6 +213,12 @@ func newMemoryDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
+	// cache=shared 下多连接并发写会触发 SQLITE_LOCKED（busy_timeout 不覆盖），
+	// 引擎后台 goroutine 与 HTTP 请求并发落库时 UPDATE 会静默失败；
+	// 限制单连接让所有操作在同一个 SQLite handle 上串行执行。
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
 	if err := models.AutoMigrate(db); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
