@@ -101,6 +101,7 @@ func TestRunInvalidConfig(t *testing.T) {
 // 完整启动后发送 SIGINT：run() 应优雅关闭 HTTP/agent listener/数据库并返回 nil。
 // signal.NotifyContext 拦截 SIGINT，不会终止测试进程本身。
 func TestRunGracefulShutdownOnSIGINT(t *testing.T) {
+	skipOnWindows(t)
 	tmp := t.TempDir()
 	oldWD, err := os.Getwd()
 	if err != nil {

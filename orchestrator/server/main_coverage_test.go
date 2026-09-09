@@ -102,6 +102,9 @@ func TestRunDBOpenFailure(t *testing.T) {
 
 // 只读模式打开的既有库：连接成功但 AutoMigrate 写入失败。
 func TestRunMigrateFailureOnReadOnlyDB(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("SQLite ?mode=ro does not prevent writes on Windows")
+	}
 	tmp := t.TempDir()
 	dbFile := filepath.Join(tmp, "ro.db")
 	if err := os.WriteFile(dbFile, nil, 0o644); err != nil {
@@ -293,6 +296,7 @@ func writeAgentFrame(t *testing.T, conn net.Conn, payload map[string]any) {
 //     验证回调把 ExecutionLog 落库；
 //  3. SIGINT 优雅关闭。
 func TestRunHTTPEndpointsAndScriptOutput(t *testing.T) {
+	skipOnWindows(t)
 	tmp := t.TempDir()
 	oldWD, err := os.Getwd()
 	if err != nil {
