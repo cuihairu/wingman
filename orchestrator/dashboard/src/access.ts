@@ -23,6 +23,8 @@ export default function access(initialState: { currentUser?: AccessCurrentUser }
     canAgentManage: has('agents:manage') || has('admin'),
     canUserManage: has('users:manage') || has('admin'),
     canRoleManage: has('roles:manage') || has('admin'),
+    // 批量运行/停止脚本与单 agent run 同权限码
+    canScriptRun: has('scripts:run') || has('admin'),
     // 任一管理区权限即可看到 Admin 菜单；具体子页由各自 access 守卫细控
     canAccessAdmin: has('admin') || has('users:manage') || has('roles:manage'),
   };

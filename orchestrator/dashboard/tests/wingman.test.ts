@@ -445,3 +445,73 @@ describe('normalize 补全：snake/大写字段回退与缺省兜底', () => {
     expect(script.path).toBe('only-name.lua');
   });
 });
+
+describe('批量操作 API（batch run / stop / trigger）', () => {
+  it('batchRunScript POST 选择器 + path，响应归一化 BatchSummary', async () => {
+    mockResponse({
+      total: 2,
+      succeeded: 1,
+      failed: 1,
+      results: [
+        { agentId: 'a1', success: true },
+        { agentId: 'a2', success: false, error: 'agent offline' },
+      ],
+    });
+
+    const resp = await wingman.batchRunScript({ agentIds: ['a1', 'a2'] }, 'demo.lua');
+    expect(mockedRequest).toHaveBeenCalledWith('/api/agents/batch/run-script', {
+      method: 'POST',
+      data: { agentIds: ['a1', 'a2'], path: 'demo.lua' },
+    });
+    expect(resp.data).toMatchObject({ total: 2, succeeded: 1, failed: 1 });
+    expect(resp.data!.results[0]).toEqual({ agentId: 'a1', success: true, error: undefined });
+    expect(resp.data!.results[1]).toEqual({
+      agentId: 'a2',
+      success: false,
+      error: 'agent offline',
+    });
+  });
+
+  it('batchStopScript POST 选择器 + executionId，空 results 归一化为数组', async () => {
+    mockResponse({ total: 0, succeeded: 0, failed: 0 });
+
+    const resp = await wingman.batchStopScript({ tags: ['prod', 'edge'] }, 'demo');
+    expect(mockedRequest).toHaveBeenCalledWith('/api/agents/batch/stop-script', {
+      method: 'POST',
+      data: { tags: ['prod', 'edge'], executionId: 'demo' },
+    });
+    expect(resp.data!.results).toEqual([]);
+  });
+
+  it('batchCreateTrigger POST 选择器 + 平铺触发器配置', async () => {
+    const config: wingman.AgentTriggerConfigInput = {
+      name: 'batch-trigger',
+      enabled: true,
+      condition: { type: 'TimeElapsed', value: '5000' },
+      actions: [{ type: 'Log', value: 'hi' }],
+    };
+    mockResponse({ total: 3, succeeded: 3, failed: 0, results: [] });
+
+    await wingman.batchCreateTrigger({ tags: ['prod'] }, config);
+    expect(mockedRequest).toHaveBeenCalledWith('/api/agents/batch/trigger', {
+      method: 'POST',
+      data: { tags: ['prod'], ...config },
+    });
+  });
+
+  it('normalizeBatchSummary 宽容回退：非法 total 与缺失/畸形 results', async () => {
+    mockResponse({ total: 'bad', results: [null, { agentId: 'a1' }, 42] });
+
+    const resp = await wingman.batchRunScript({ agentIds: ['a1'] }, 'x.lua');
+    expect(resp.data).toEqual({
+      total: 0,
+      succeeded: 0,
+      failed: 0,
+      results: [
+        { agentId: '', success: false, error: undefined },
+        { agentId: 'a1', success: false, error: undefined },
+        { agentId: '', success: false, error: undefined },
+      ],
+    });
+  });
+});
