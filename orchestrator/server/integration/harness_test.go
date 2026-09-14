@@ -115,7 +115,7 @@ func newTestEnv(t *testing.T) *testEnv {
 		agentAddr:  agentAddr,
 		scriptsDir: scriptsDir,
 	}
-	env.httpSrv = httptest.NewServer(buildRouter(db, registry, hub, wfEngine, scriptsDir))
+	env.httpSrv = httptest.NewServer(buildRouter(db, registry, hub, wfEngine, scriptsDir, listener.GetTeamManager()))
 	t.Cleanup(env.httpSrv.Close)
 	t.Cleanup(listener.Stop)
 	return env
@@ -123,13 +123,14 @@ func newTestEnv(t *testing.T) *testEnv {
 
 // buildRouter 装配与 main.go 同构的路由子集（真实 AuthRequired/RoleRequired/
 // PermissionRequired 中间件链），覆盖四个测试场景所需的端点。
-func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *workflow.Engine, scriptsDir string) *gin.Engine {
+func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *workflow.Engine, scriptsDir string, teamMgr *agentPkg.TeamManager) *gin.Engine {
 	authHandler := handlers.NewAuthHandler(db)
 	agentHandler := handlers.NewAgentHandler(registry, db)
 	screenshotHandler := handlers.NewScreenshotHandler(hub)
 	scriptHandler := handlers.NewScriptHandler(db, scriptsDir, registry)
 	triggerHandler := handlers.NewTriggerHandler(registry, db)
 	wfHandler := handlers.NewWorkflowHandler(wfEngine, db)
+	teamHandler := handlers.NewTeamHandler(teamMgr)
 
 	r := gin.New()
 
@@ -159,6 +160,7 @@ func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *w
 		agentsMgmt := api.Group("")
 		agentsMgmt.Use(middleware.PermissionRequired(db, "agents:manage"))
 		{
+			agentsMgmt.POST("/teams", teamHandler.HandleCreate)
 			agentsMgmt.POST("/agents/:agentId/shutdown", agentHandler.HandleShutdown)
 			agentsMgmt.PUT("/agents/:agentId/tags", agentHandler.HandleSetTags)
 			agentsMgmt.POST("/agents/:agentId/triggers/toggle", triggerHandler.HandleToggle)
