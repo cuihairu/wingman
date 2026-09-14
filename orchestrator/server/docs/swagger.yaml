@@ -8,6 +8,141 @@ definitions:
         description: Valid is true if Time is not NULL
         type: boolean
     type: object
+  handlers.BatchAgentResult:
+    properties:
+      agentId:
+        example: agent-001
+        type: string
+      error:
+        description: Error 失败原因（"agent offline" / 命令错误详情等）
+        example: agent offline
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  handlers.BatchRunScriptRequest:
+    properties:
+      agentIds:
+        description: agentIds 目标 agent ID 列表
+        example:
+        - agent-001
+        items:
+          type: string
+        type: array
+      path:
+        description: Path 相对 scripts 目录的脚本路径（每台 agent 下发同一路径）
+        example: demo.lua
+        type: string
+      tags:
+        description: tags 按标签匹配（命中任一标签即入选）
+        example:
+        - prod
+        items:
+          type: string
+        type: array
+    required:
+    - path
+    type: object
+  handlers.BatchStopScriptRequest:
+    properties:
+      agentIds:
+        description: agentIds 目标 agent ID 列表
+        example:
+        - agent-001
+        items:
+          type: string
+        type: array
+      executionId:
+        description: ExecutionID 执行 ID（等于脚本名，与单 agent stop_script 一致）
+        example: demo
+        type: string
+      tags:
+        description: tags 按标签匹配（命中任一标签即入选）
+        example:
+        - prod
+        items:
+          type: string
+        type: array
+    required:
+    - executionId
+    type: object
+  handlers.BatchSummary:
+    description: 部分失败不算整体失败：HTTP 200，逐台在 results 标注。
+    properties:
+      failed:
+        description: Failed 失败台数（含离线）
+        example: 2
+        type: integer
+      results:
+        description: Results 逐台结果（与目标顺序一致）
+        items:
+          $ref: '#/definitions/handlers.BatchAgentResult'
+        type: array
+      succeeded:
+        description: Succeeded 成功台数
+        example: 3
+        type: integer
+      total:
+        description: Total 匹配的目标 agent 数
+        example: 5
+        type: integer
+    type: object
+  handlers.BatchSummaryResponse:
+    properties:
+      data:
+        allOf:
+        - $ref: '#/definitions/handlers.BatchSummary'
+        description: Data 批量结果汇总
+      success:
+        description: Success 固定为 true（部分失败不算整体失败，逐台结果见 data.results）
+        example: true
+        type: boolean
+    type: object
+  handlers.BatchTriggerRequest:
+    properties:
+      actions:
+        description: |-
+          actions 触发动作序列（RunScript/Click/KeyPress/Type/StopScript/
+          PauseScript/ShowMessage/PlayAudio/Log/Delay）
+        items:
+          $ref: '#/definitions/handlers.TriggerActionRequest'
+        type: array
+      agentIds:
+        description: agentIds 目标 agent ID 列表
+        example:
+        - agent-001
+        items:
+          type: string
+        type: array
+      condition:
+        allOf:
+        - $ref: '#/definitions/handlers.TriggerConditionRequest'
+        description: |-
+          condition 触发条件（11 种类型：ColorFound/ColorLost/ImageFound/ImageLost/
+          WindowOpened/WindowClosed/ProcessStarted/ProcessStopped/TimeElapsed/
+          HotkeyPressed/PixelChanged）
+      cooldown:
+        example: 3000
+        type: integer
+      enabled:
+        example: true
+        type: boolean
+      name:
+        description: 触发器名称（新增时必填，runtime 缺省 Unnamed Trigger）
+        example: hp-watch
+        type: string
+      oneShot:
+        example: false
+        type: boolean
+      tags:
+        description: tags 按标签匹配（命中任一标签即入选）
+        example:
+        - prod
+        items:
+          type: string
+        type: array
+    type: object
   handlers.CreateScriptRequest:
     properties:
       description:
@@ -1470,6 +1605,113 @@ paths:
       security:
       - BearerAuth: []
       summary: 切换 Agent 触发器启用状态
+      tags:
+      - agents
+  /agents/batch/run-script:
+    post:
+      description: |-
+        按选择器（agentIds/tags 并集）对多台 agent 并发下发 run_script。
+        脚本路径先经服务端解析（非法路径 400 且不下发）。部分失败不算整体失败：
+        一律 200，逐台结果在 results 标注（离线 agent 记 "agent offline"）。
+      parameters:
+      - description: 选择器 + 脚本路径
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.BatchRunScriptRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BatchSummaryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 批量运行脚本
+      tags:
+      - scripts
+  /agents/batch/stop-script:
+    post:
+      description: 按选择器对多台 agent 并发下发 stop_script，语义同批量运行脚本
+      parameters:
+      - description: 选择器 + 执行 ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.BatchStopScriptRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BatchSummaryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 批量停止脚本
+      tags:
+      - scripts
+  /agents/batch/trigger:
+    post:
+      description: |-
+        按选择器对多台 agent 并发下发 trigger.add，配置字段与单 agent
+        POST /api/agents/:agentId/triggers 完全一致（name 必填）
+      parameters:
+      - description: 选择器 + 触发器配置
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.BatchTriggerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BatchSummaryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 批量下发触发器
       tags:
       - agents
   /audit:

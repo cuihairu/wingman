@@ -816,6 +816,168 @@ const docTemplate = `{
                 }
             }
         },
+        "/agents/batch/run-script": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按选择器（agentIds/tags 并集）对多台 agent 并发下发 run_script。\n脚本路径先经服务端解析（非法路径 400 且不下发）。部分失败不算整体失败：\n一律 200，逐台结果在 results 标注（离线 agent 记 \"agent offline\"）。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scripts"
+                ],
+                "summary": "批量运行脚本",
+                "parameters": [
+                    {
+                        "description": "选择器 + 脚本路径",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BatchRunScriptRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BatchSummaryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/agents/batch/stop-script": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按选择器对多台 agent 并发下发 stop_script，语义同批量运行脚本",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scripts"
+                ],
+                "summary": "批量停止脚本",
+                "parameters": [
+                    {
+                        "description": "选择器 + 执行 ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BatchStopScriptRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BatchSummaryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/agents/batch/trigger": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按选择器对多台 agent 并发下发 trigger.add，配置字段与单 agent\nPOST /api/agents/:agentId/triggers 完全一致（name 必填）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agents"
+                ],
+                "summary": "批量下发触发器",
+                "parameters": [
+                    {
+                        "description": "选择器 + 触发器配置",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BatchTriggerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BatchSummaryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/agents/{agentId}": {
             "get": {
                 "security": [
@@ -3966,6 +4128,193 @@ const docTemplate = `{
                 "valid": {
                     "description": "Valid is true if Time is not NULL",
                     "type": "boolean"
+                }
+            }
+        },
+        "handlers.BatchAgentResult": {
+            "type": "object",
+            "properties": {
+                "agentId": {
+                    "type": "string",
+                    "example": "agent-001"
+                },
+                "error": {
+                    "description": "Error 失败原因（\"agent offline\" / 命令错误详情等）",
+                    "type": "string",
+                    "example": "agent offline"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.BatchRunScriptRequest": {
+            "type": "object",
+            "required": [
+                "path"
+            ],
+            "properties": {
+                "agentIds": {
+                    "description": "agentIds 目标 agent ID 列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "agent-001"
+                    ]
+                },
+                "path": {
+                    "description": "Path 相对 scripts 目录的脚本路径（每台 agent 下发同一路径）",
+                    "type": "string",
+                    "example": "demo.lua"
+                },
+                "tags": {
+                    "description": "tags 按标签匹配（命中任一标签即入选）",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "prod"
+                    ]
+                }
+            }
+        },
+        "handlers.BatchStopScriptRequest": {
+            "type": "object",
+            "required": [
+                "executionId"
+            ],
+            "properties": {
+                "agentIds": {
+                    "description": "agentIds 目标 agent ID 列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "agent-001"
+                    ]
+                },
+                "executionId": {
+                    "description": "ExecutionID 执行 ID（等于脚本名，与单 agent stop_script 一致）",
+                    "type": "string",
+                    "example": "demo"
+                },
+                "tags": {
+                    "description": "tags 按标签匹配（命中任一标签即入选）",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "prod"
+                    ]
+                }
+            }
+        },
+        "handlers.BatchSummary": {
+            "description": "部分失败不算整体失败：HTTP 200，逐台在 results 标注。",
+            "type": "object",
+            "properties": {
+                "failed": {
+                    "description": "Failed 失败台数（含离线）",
+                    "type": "integer",
+                    "example": 2
+                },
+                "results": {
+                    "description": "Results 逐台结果（与目标顺序一致）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.BatchAgentResult"
+                    }
+                },
+                "succeeded": {
+                    "description": "Succeeded 成功台数",
+                    "type": "integer",
+                    "example": 3
+                },
+                "total": {
+                    "description": "Total 匹配的目标 agent 数",
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "handlers.BatchSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "Data 批量结果汇总",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/handlers.BatchSummary"
+                        }
+                    ]
+                },
+                "success": {
+                    "description": "Success 固定为 true（部分失败不算整体失败，逐台结果见 data.results）",
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "handlers.BatchTriggerRequest": {
+            "type": "object",
+            "properties": {
+                "actions": {
+                    "description": "actions 触发动作序列（RunScript/Click/KeyPress/Type/StopScript/\nPauseScript/ShowMessage/PlayAudio/Log/Delay）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.TriggerActionRequest"
+                    }
+                },
+                "agentIds": {
+                    "description": "agentIds 目标 agent ID 列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "agent-001"
+                    ]
+                },
+                "condition": {
+                    "description": "condition 触发条件（11 种类型：ColorFound/ColorLost/ImageFound/ImageLost/\nWindowOpened/WindowClosed/ProcessStarted/ProcessStopped/TimeElapsed/\nHotkeyPressed/PixelChanged）",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/handlers.TriggerConditionRequest"
+                        }
+                    ]
+                },
+                "cooldown": {
+                    "type": "integer",
+                    "example": 3000
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "description": "触发器名称（新增时必填，runtime 缺省 Unnamed Trigger）",
+                    "type": "string",
+                    "example": "hp-watch"
+                },
+                "oneShot": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "tags": {
+                    "description": "tags 按标签匹配（命中任一标签即入选）",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "prod"
+                    ]
                 }
             }
         },

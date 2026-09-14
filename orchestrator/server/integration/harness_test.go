@@ -86,6 +86,8 @@ func newTestEnv(t *testing.T) *testEnv {
 	go hub.Run()
 
 	registry := agent.NewRegistry(hub)
+	// 与 main.go 一致：标签经 DB 写穿/恢复
+	registry.SetTagStore(handlers.NewAgentTagStore(db))
 
 	listener := agentPkg.NewFrameListener(registry, hub)
 	// 与 main.go 一致：脚本输出事件持久化到 ExecutionLog
@@ -131,6 +133,7 @@ func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *w
 	triggerHandler := handlers.NewTriggerHandler(registry, db)
 	wfHandler := handlers.NewWorkflowHandler(wfEngine, db)
 	teamHandler := handlers.NewTeamHandler(teamMgr)
+	batchHandler := handlers.NewBatchHandler(db, scriptsDir, registry)
 
 	r := gin.New()
 
@@ -161,6 +164,7 @@ func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *w
 		agentsMgmt.Use(middleware.PermissionRequired(db, "agents:manage"))
 		{
 			agentsMgmt.POST("/teams", teamHandler.HandleCreate)
+			agentsMgmt.POST("/agents/batch/trigger", batchHandler.HandleBatchTrigger)
 			agentsMgmt.POST("/agents/:agentId/shutdown", agentHandler.HandleShutdown)
 			agentsMgmt.PUT("/agents/:agentId/tags", agentHandler.HandleSetTags)
 			agentsMgmt.POST("/agents/:agentId/triggers/toggle", triggerHandler.HandleToggle)
@@ -191,6 +195,8 @@ func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *w
 			scriptsRun.POST("/scripts/run", scriptHandler.HandleRun)
 			scriptsRun.POST("/scripts/stop", scriptHandler.HandleStop)
 			scriptsRun.POST("/scripts/logs", scriptHandler.HandleLogs)
+			scriptsRun.POST("/agents/batch/run-script", batchHandler.HandleBatchRunScript)
+			scriptsRun.POST("/agents/batch/stop-script", batchHandler.HandleBatchStopScript)
 		}
 	}
 

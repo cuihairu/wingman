@@ -85,6 +85,7 @@ func run() error {
 
 	// Agent 注册表
 	registry := agent.NewRegistry(wsHub)
+	registry.SetTagStore(handlers.NewAgentTagStore(db))
 	go registry.StartHeartbeatCheck()
 
 	// TCP Frame Listener（接受 runtime outbound 连接）
@@ -230,6 +231,9 @@ func run() error {
 		api.GET("/scripts", scriptHandlerAPI.HandleList)
 		api.POST("/scripts/content", scriptHandlerAPI.HandleGetContent) // 获取内容
 
+		// 批量操作（按 agentIds/tags 选择器 fan-out）
+		batchHandler := handlers.NewBatchHandler(db, cfg.ScriptsDir, registry)
+
 		// 写入接口 - 细粒度权限（PermissionRequired，admin 自动放行）。
 		// 取代原先粗粒度 RoleRequired("admin")，使 operator/viewer 等自定义角色
 		// 可按权限码（agents:manage / workflows:run / scripts:edit / scripts:run）获得受限访问。
@@ -238,6 +242,7 @@ func run() error {
 		agentsMgmt.Use(middleware.PermissionRequired(db, "agents:manage"))
 		{
 			agentsMgmt.POST("/teams", teamHandler.HandleCreate)
+			agentsMgmt.POST("/agents/batch/trigger", batchHandler.HandleBatchTrigger)
 			agentsMgmt.POST("/agents/:agentId/shutdown", agentHandler.HandleShutdown)
 			agentsMgmt.PUT("/agents/:agentId/tags", agentHandler.HandleSetTags)
 			agentsMgmt.POST("/agents/:agentId/triggers/toggle", triggerHandler.HandleToggle)
@@ -264,13 +269,15 @@ func run() error {
 			scriptsEdit.POST("/scripts/save", scriptHandlerAPI.HandleSave)
 		}
 
-		// scripts:run（运行/停止/日志）
+		// scripts:run（运行/停止/日志 + 批量操作）
 		scriptsRun := api.Group("")
 		scriptsRun.Use(middleware.PermissionRequired(db, "scripts:run"))
 		{
 			scriptsRun.POST("/scripts/run", scriptHandlerAPI.HandleRun)
 			scriptsRun.POST("/scripts/stop", scriptHandlerAPI.HandleStop)
 			scriptsRun.POST("/scripts/logs", scriptHandlerAPI.HandleLogs)
+			scriptsRun.POST("/agents/batch/run-script", batchHandler.HandleBatchRunScript)
+			scriptsRun.POST("/agents/batch/stop-script", batchHandler.HandleBatchStopScript)
 		}
 
 		// 设置 - dashboard 兼容路径（与 /api/v1/settings 等价，统一前端前缀为 /api）
