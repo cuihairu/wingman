@@ -7,10 +7,15 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
+#include <filesystem>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
+#if !defined(_WIN32)
+#include <unistd.h>
+#endif
 
 using namespace std::chrono_literals;
 using namespace wingman::ipc;
@@ -24,11 +29,27 @@ protected:
 
     void TearDown() override {
         clearMessages();
+#if !defined(_WIN32)
+        // 清理测试 socket 文件（server 正常 disconnect 会自 unlink，此处兜底）
+        if (!config.serverName.empty()) {
+            std::error_code ec;
+            std::filesystem::remove(config.serverName, ec);
+        }
+#endif
     }
 
     static std::string makeServerName() {
         static std::atomic<uint64_t> counter{0};
+#ifdef _WIN32
         return "wingman_test_" + std::to_string(++counter);
+#else
+        // Unix 后端把 serverName 当文件系统路径使用，须给真实 socket 绝对路径
+        // （裸名会把 socket 建到 cwd）；命名约定同 unix_socket_channel_test.cpp
+        const char* tmpdir = std::getenv("TMPDIR");
+        std::string base = (tmpdir && *tmpdir) ? tmpdir : "/tmp";
+        return base + "/wingman_ipc_test_" + std::to_string(::getpid()) + "_"
+             + std::to_string(++counter) + ".sock";
+#endif
     }
 
     void clearMessages() {
@@ -116,25 +137,26 @@ protected:
 };
 
 TEST_F(IpcTest, CreateServer) {
-#ifdef _WIN32
     auto server = IpcFactory::createServer(config);
 
     ASSERT_NE(server, nullptr);
     EXPECT_EQ(server->getTransport(), IpcFactory::getPreferredTransport());
+#ifdef _WIN32
     EXPECT_EQ(server->getBackendName(), "NamedPipe");
 #else
-    GTEST_SKIP() << "Server creation is only implemented for the Windows backend";
+    EXPECT_EQ(server->getBackendName(), "UnixSocket");
 #endif
 }
 
 TEST_F(IpcTest, CreateClient) {
-#ifdef _WIN32
     auto client = IpcFactory::createClient(config);
 
     ASSERT_NE(client, nullptr);
     EXPECT_EQ(client->getTransport(), IpcFactory::getPreferredTransport());
+#ifdef _WIN32
+    EXPECT_EQ(client->getBackendName(), "NamedPipe");
 #else
-    GTEST_SKIP() << "Client creation is only implemented for the Windows backend";
+    EXPECT_EQ(client->getBackendName(), "UnixSocket");
 #endif
 }
 
@@ -165,9 +187,6 @@ TEST_F(IpcTest, IsTransportAvailable) {
 }
 
 TEST_F(IpcTest, ServerClientConnection) {
-#ifndef _WIN32
-    GTEST_SKIP() << "IPC integration tests require the Windows NamedPipe backend";
-#endif
     auto server = IpcFactory::createServer(config);
     auto client = IpcFactory::createClient(config);
 
@@ -180,11 +199,7 @@ TEST_F(IpcTest, ServerClientConnection) {
 }
 
 TEST_F(IpcTest, SendRequest) {
-#ifndef _WIN32
-    GTEST_SKIP() << "IPC integration tests require the Windows NamedPipe backend";
-#else
     if (std::getenv("CI")) GTEST_SKIP() << "IPC message tests are unreliable in CI";
-#endif
     auto server = IpcFactory::createServer(config);
     auto client = IpcFactory::createClient(config);
 
@@ -198,11 +213,7 @@ TEST_F(IpcTest, SendRequest) {
 }
 
 TEST_F(IpcTest, SendEvent) {
-#ifndef _WIN32
-    GTEST_SKIP() << "IPC integration tests require the Windows NamedPipe backend";
-#else
     if (std::getenv("CI")) GTEST_SKIP() << "IPC message tests are unreliable in CI";
-#endif
     auto server = IpcFactory::createServer(config);
     auto client = IpcFactory::createClient(config);
 
@@ -215,11 +226,7 @@ TEST_F(IpcTest, SendEvent) {
 }
 
 TEST_F(IpcTest, MultipleMessages) {
-#ifndef _WIN32
-    GTEST_SKIP() << "IPC integration tests require the Windows NamedPipe backend";
-#else
     if (std::getenv("CI")) GTEST_SKIP() << "IPC message tests are unreliable in CI";
-#endif
     auto server = IpcFactory::createServer(config);
     auto client = IpcFactory::createClient(config);
 

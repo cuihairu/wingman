@@ -293,7 +293,20 @@ TEST_F(UnixSocketChannelTestEnv, StartReceivingIdempotent) {
 }
 
 TEST_F(UnixSocketChannelTestEnv, StopReceivingWithoutStartIsSafe) {
-    ASSERT_TRUE(connectPair());
+    // 名副其实的「未 startReceiving 直接 stop」：仅建立连接，不启动接收线程。
+    // 接收线程阻塞在无超时的 recv() 上，对端存活时裸调 stopReceiving 会永久
+    // join 挂起——这正是 disconnect() 先 shutdown 再 stopReceiving 的原因，
+    // 因此本用例只验证无接收线程时 stop 是安全 no-op。
+    std::atomic<bool> serverOk{false};
+    std::thread serverThread([&] {
+        serverOk = server->connect("");
+    });
+    // 等服务器监听起来
+    std::this_thread::sleep_for(50ms);
+    ASSERT_TRUE(client->connect(""));
+    serverThread.join();
+    ASSERT_TRUE(serverOk.load());
+
     EXPECT_NO_THROW(client->stopReceiving());
     // 断开后仍能安全析构
     client->disconnect();
