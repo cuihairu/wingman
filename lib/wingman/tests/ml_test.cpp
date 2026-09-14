@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 #include "wingman/ml.hpp"
 #include "wingman/screen.hpp"
+#include "script/modules/module_helpers.hpp"
 #include <cstring>
 
 using namespace wingman;
+using namespace wingman::script;
 
 // ========== TensorDataType Enum ==========
 
@@ -337,4 +339,166 @@ TEST(ModelEngineTest, MultipleExecutionProvidersReturned) {
         if (p == "cpu") hasCpu = true;
     }
     EXPECT_TRUE(hasCpu);
+}
+
+// ========== Tensor ↔ ScriptValue conversion (module_helpers) ==========
+
+namespace {
+
+ScriptValue makeTensorSpec(const std::string& name, std::vector<ScriptValue> data,
+                           ScriptValue shape = ScriptValue::null(),
+                           const std::string& dtype = "") {
+    std::unordered_map<std::string, ScriptValue> obj;
+    obj["name"] = ScriptValue::fromString(name);
+    obj["data"] = ScriptValue::fromArray(std::move(data));
+    if (!shape.isNull()) obj["shape"] = shape;
+    if (!dtype.empty()) obj["dtype"] = ScriptValue::fromString(dtype);
+    return ScriptValue::fromObject(std::move(obj));
+}
+
+} // anonymous namespace
+
+TEST(TensorConversionTest, TypeFromString) {
+    TensorDataType type = TensorDataType::FLOAT32;
+    EXPECT_TRUE(wingman::script::modules::tensorTypeFromString("float32", type));
+    EXPECT_EQ(type, TensorDataType::FLOAT32);
+    EXPECT_TRUE(wingman::script::modules::tensorTypeFromString("int64", type));
+    EXPECT_EQ(type, TensorDataType::INT64);
+    EXPECT_TRUE(wingman::script::modules::tensorTypeFromString("uint8", type));
+    EXPECT_EQ(type, TensorDataType::UINT8);
+    EXPECT_TRUE(wingman::script::modules::tensorTypeFromString("bool", type));
+    EXPECT_EQ(type, TensorDataType::BOOL);
+    EXPECT_FALSE(wingman::script::modules::tensorTypeFromString("bfloat16", type));
+    EXPECT_FALSE(wingman::script::modules::tensorTypeFromString("", type));
+}
+
+TEST(TensorConversionTest, ElementSize) {
+    using namespace wingman::script::modules;
+    EXPECT_EQ(tensorElementSize(TensorDataType::FLOAT32), 4u);
+    EXPECT_EQ(tensorElementSize(TensorDataType::FLOAT64), 8u);
+    EXPECT_EQ(tensorElementSize(TensorDataType::INT8), 1u);
+    EXPECT_EQ(tensorElementSize(TensorDataType::INT64), 8u);
+    EXPECT_EQ(tensorElementSize(TensorDataType::BOOL), 1u);
+    EXPECT_EQ(tensorElementSize(static_cast<TensorDataType>(99)), 0u);
+}
+
+TEST(TensorConversionTest, FromScriptValueDefaultsToFloat32And1DShape) {
+    using namespace wingman::script::modules;
+    TensorData tensor;
+    std::string error;
+    ASSERT_TRUE(tensorFromScriptValue(
+        makeTensorSpec("in", {ScriptValue::fromFloat(1.5), ScriptValue::fromInt(2)}),
+        tensor, error)) << error;
+
+    EXPECT_EQ(tensor.dataType, TensorDataType::FLOAT32);
+    ASSERT_EQ(tensor.shape.size(), 1u);
+    EXPECT_EQ(tensor.shape[0], 2);  // 缺省 shape = [len(data)]
+    ASSERT_EQ(tensor.data.size(), 2u * sizeof(float));
+
+    float value = 0.0f;
+    std::memcpy(&value, tensor.data.data(), sizeof(value));
+    EXPECT_FLOAT_EQ(value, 1.5f);
+    std::memcpy(&value, tensor.data.data() + sizeof(value), sizeof(value));
+    EXPECT_FLOAT_EQ(value, 2.0f);  // Int 输入按 dtype 转换
+}
+
+TEST(TensorConversionTest, FromScriptValueWithShapeAndDtype) {
+    using namespace wingman::script::modules;
+    TensorData tensor;
+    std::string error;
+    ASSERT_TRUE(tensorFromScriptValue(
+        makeTensorSpec("in",
+                       {ScriptValue::fromInt(10), ScriptValue::fromInt(20), ScriptValue::fromInt(30)},
+                       ScriptValue::fromArray({ScriptValue::fromInt(1), ScriptValue::fromInt(3)}),
+                       "int32"),
+        tensor, error)) << error;
+
+    EXPECT_EQ(tensor.dataType, TensorDataType::INT32);
+    ASSERT_EQ(tensor.shape.size(), 2u);
+    EXPECT_EQ(tensor.shape[0], 1);
+    EXPECT_EQ(tensor.shape[1], 3);
+    ASSERT_EQ(tensor.data.size(), 3u * sizeof(int32_t));
+
+    int32_t value = 0;
+    std::memcpy(&value, tensor.data.data() + 2 * sizeof(int32_t), sizeof(value));
+    EXPECT_EQ(value, 30);
+}
+
+TEST(TensorConversionTest, FromScriptValueRejectsInvalidSpecs) {
+    using namespace wingman::script::modules;
+    TensorData tensor;
+    std::string error;
+
+    EXPECT_FALSE(tensorFromScriptValue(ScriptValue::fromInt(1), tensor, error));
+    EXPECT_FALSE(tensorFromScriptValue(ScriptValue::fromObject({}), tensor, error));
+    EXPECT_FALSE(tensorFromScriptValue(
+        makeTensorSpec("in", {}), tensor, error));  // 空 data
+    EXPECT_FALSE(tensorFromScriptValue(
+        makeTensorSpec("in", {ScriptValue::fromFloat(1.0)}, ScriptValue::null(), "bfloat16"),
+        tensor, error));  // 未知 dtype
+    EXPECT_FALSE(tensorFromScriptValue(
+        makeTensorSpec("in", {ScriptValue::fromFloat(1.0)}, ScriptValue::fromInt(4)),
+        tensor, error));  // shape 非数组
+}
+
+TEST(TensorConversionTest, BoolAndInt8Roundtrip) {
+    using namespace wingman::script::modules;
+
+    TensorData tensor;
+    std::string error;
+    ASSERT_TRUE(tensorFromScriptValue(
+        makeTensorSpec("flags",
+                       {ScriptValue::fromInt(1), ScriptValue::fromInt(0)},
+                       ScriptValue::null(), "bool"),
+        tensor, error)) << error;
+    ASSERT_EQ(tensor.data.size(), 2u);
+    EXPECT_EQ(tensor.data[0], 1u);
+    EXPECT_EQ(tensor.data[1], 0u);
+
+    const auto flag = tensorElementToScriptValue(tensor, 0);
+    ASSERT_TRUE(flag.isBool());
+    EXPECT_TRUE(flag.asBool());
+}
+
+TEST(TensorConversionTest, ModelOutputToScriptValue) {
+    using namespace wingman::script::modules;
+    ModelOutput output;
+    output.name = "probabilities";
+    output.tensor = Tensor::createFloat32({1, 3}, {0.1f, 0.7f, 0.2f});
+
+    const auto value = modelOutputToScriptValue(output);
+    ASSERT_TRUE(value.isObject());
+
+    const auto* name = value.get("name");
+    ASSERT_NE(name, nullptr);
+    EXPECT_EQ(name->asString(), "probabilities");
+
+    const auto* shape = value.get("shape");
+    ASSERT_NE(shape, nullptr);
+    ASSERT_TRUE(shape->isArray());
+    ASSERT_EQ(shape->size(), 2u);
+    EXPECT_EQ(shape->at(0).asInt(), 1);
+    EXPECT_EQ(shape->at(1).asInt(), 3);
+
+    const auto* data = value.get("data");
+    ASSERT_NE(data, nullptr);
+    ASSERT_TRUE(data->isArray());
+    ASSERT_EQ(data->size(), 3u);
+    EXPECT_FLOAT_EQ(static_cast<float>(data->at(0).asFloat()), 0.1f);
+    EXPECT_FLOAT_EQ(static_cast<float>(data->at(1).asFloat()), 0.7f);
+    EXPECT_FLOAT_EQ(static_cast<float>(data->at(2).asFloat()), 0.2f);
+}
+
+TEST(TensorConversionTest, ModelOutputInt32DecodesToInts) {
+    using namespace wingman::script::modules;
+    ModelOutput output;
+    output.name = "classes";
+    output.tensor = Tensor::createInt32({4}, {7, 8, 9, -1});
+
+    const auto value = modelOutputToScriptValue(output);
+    const auto* data = value.get("data");
+    ASSERT_NE(data, nullptr);
+    ASSERT_EQ(data->size(), 4u);
+    EXPECT_EQ(data->at(0).asInt(), 7);
+    EXPECT_EQ(data->at(3).asInt(), -1);
 }

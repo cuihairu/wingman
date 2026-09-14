@@ -1,9 +1,9 @@
 # API: wingman.ml
 
-机器学习模型推理模块，当前提供 ONNX 模型的加载、卸载与输入/输出元数据查询。
+机器学习模型推理模块，当前提供 ONNX 模型的加载、推理、卸载与输入/输出元数据查询。
 
 ::: warning 当前状态
-此模块需要编译时启用 `WINGMAN_ENABLE_ML=ON` 才能加载真实模型。未启用时走存根实现：函数仍存在，但 `loadModel()` 返回 `nil`，`providers()` 通常只返回 `["cpu"]`。
+此模块需要编译时启用 `WINGMAN_ENABLE_ML=ON` 才能加载真实模型。未启用时走存根实现：函数仍存在，但 `loadModel()` 返回 `nil`，`run()` 返回 `success=false`，`providers()` 通常只返回 `["cpu"]`。
 
 脚本层当前是 **ID 句柄式 API**，不是 `Model` 对象 API。`detect()` / `classify()` 等 YOLO/分类高层封装尚未暴露到脚本层。
 :::
@@ -15,6 +15,7 @@
 - 加载 ONNX 模型并获得 `modelId`
 - 查询模型是否已加载
 - 查询模型输入/输出名称与 shape
+- 执行推理
 - 卸载模型
 
 当前已注册函数：
@@ -27,6 +28,7 @@
 | `is_loaded(model_id)` | `isLoaded(modelId)` | 判断模型是否仍在注册表中且已加载 |
 | `inputs(model_id)` | `inputs(modelId)` | 查询输入信息 |
 | `outputs(model_id)` | `outputs(modelId)` | 查询输出信息 |
+| `run(model_id, inputs)` | `run(modelId, inputs)` | 执行推理，返回结果对象 |
 
 Python 绑定也保留原始 camelCase 名称，例如 `ml.loadModel()` 和 `ml.isLoaded()` 仍可用；推荐 Python 新代码使用 snake_case。
 
@@ -283,6 +285,93 @@ end
 
 ---
 
+## 运行推理
+
+### run(model_id, inputs) / run(modelId, inputs)
+
+**说明**：对已加载模型执行一次推理。
+
+**函数签名**：
+
+```python
+run(model_id: str, inputs: list[ModelInput]) -> InferenceResult
+```
+
+```lua
+run(modelId: string, inputs: table) -> table
+```
+
+**参数**：
+- `model_id` - `load_model()` 返回的模型 ID
+- `inputs` - 输入张量列表，每项为 `{name, data, shape?, dtype?}`：
+  - `name` - 输入张量名（见 `inputs()` 返回的元数据）
+  - `data` - 数值数组（按行主序展平；整型与浮点均可）
+  - `shape` - 可选维度数组；缺省为一维 `[len(data)]`
+  - `dtype` - 可选元素类型，默认 `"float32"`；支持 `float32` / `float64` / `int8` / `int16` / `int32` / `int64` / `uint8` / `uint16` / `uint32` / `uint64` / `bool`
+
+**返回**（对应 C++ `InferenceResult`）：
+
+```json
+{
+  "success": true,
+  "error": "",
+  "outputs": [{"name": "output0", "shape": [1, 84, 8400], "data": []}],
+  "timeMs": 12.3
+}
+```
+
+- `success` - 推理是否成功
+- `error` - 失败原因；成功时为空字符串。模型 ID 不存在、参数不合法、未启用 `WINGMAN_ENABLE_ML`、ONNX Runtime 报错等都会在这里给出
+- `outputs` - 输出张量列表，每项 `{name, shape, data}`，`data` 按张量实际元素类型解码为数值数组
+- `timeMs` - 推理耗时（毫秒）
+
+失败时 `success` 为 `False` / `false`，`outputs` 为空数组。
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import ml
+
+model_id = ml.load_model("models/yolov8n.onnx", "cpu")
+if model_id:
+    result = ml.run(model_id, [{
+        "name": "images",
+        "shape": [1, 3, 640, 640],
+        "data": [0.0] * (1 * 3 * 640 * 640),
+    }])
+    if result["success"]:
+        for item in result["outputs"]:
+            print(item["name"], item["shape"], len(item["data"]))
+    else:
+        print("推理失败:", result["error"])
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local modelId = wingman.ml.loadModel("models/yolov8n.onnx", "cpu")
+if modelId then
+    local result = wingman.ml.run(modelId, {
+        { name = "images", shape = {1, 3, 640, 640}, data = {} },
+    })
+    if result.success then
+        for _, item in ipairs(result.outputs) do
+            print(item.name, table.concat(item.shape, "x"), #item.data)
+        end
+    else
+        print("推理失败:", result.error)
+    end
+end
+```
+
+:::
+
+---
+
 ## 卸载模型
 
 ### unload(model_id) / unload(modelId)
@@ -349,6 +438,10 @@ print("loaded:", ml.is_loaded(model_id))
 print("inputs:", ml.inputs(model_id))
 print("outputs:", ml.outputs(model_id))
 
+input_name = ml.inputs(model_id)[0]["name"]
+result = ml.run(model_id, [{"name": input_name, "data": [0.0] * 6}])
+print("run success:", result["success"], "error:", result["error"])
+
 ml.unload(model_id)
 ```
 
@@ -378,6 +471,11 @@ for _, item in ipairs(wingman.ml.outputs(modelId)) do
     print(" - " .. item.name .. " " .. table.concat(item.shape, "x"))
 end
 
+local result = wingman.ml.run(modelId, {
+    { name = wingman.ml.inputs(modelId)[1].name, data = {0, 0, 0, 0, 0, 0} },
+})
+print("run success:", result.success, "error:", result.error)
+
 wingman.ml.unload(modelId)
 ```
 
@@ -393,7 +491,7 @@ wingman.ml.unload(modelId)
 - `model.getInputInfo()` / `model.getOutputInfo()`
 - `model.unload()`
 
-底层 C++ 已有 `ModelEngine::run()`、`Tensor::fromImage()` 以及部分 `ModelHelpers`，但脚本层还缺少稳定的图像对象到 Tensor 输入路径、检测结果后处理和模型对象生命周期绑定。因此当前脚本请使用本页列出的 ID 句柄式 API。
+推理入口 `run()` 已暴露到脚本层（见上文），底层 C++ 另有 `Tensor::fromImage()` 与部分 `ModelHelpers`，但脚本层还缺少稳定的图像对象到 Tensor 输入路径、检测结果后处理和模型对象生命周期绑定。因此当前脚本请使用本页列出的 ID 句柄式 API。
 
 ---
 

@@ -1,6 +1,6 @@
--- ONNX 模型加载示例
--- 当前 wingman.ml 暴露的是 ID 句柄式模型加载与 IO 元数据查询 API。
--- YOLO detect/classify 高层封装尚未接入脚本层，因此此示例只验证模型能加载。
+-- ONNX 模型加载与推理示例
+-- 当前 wingman.ml 暴露的是 ID 句柄式 API：模型加载、IO 元数据查询与 run() 推理。
+-- YOLO detect/classify 高层封装尚未接入脚本层，因此此示例演示加载 + 一次零输入推理。
 
 local wingman = require("wingman")
 
@@ -55,6 +55,40 @@ local function main()
 
     printIoInfo("输入", wingman.ml.inputs(modelId))
     printIoInfo("输出", wingman.ml.outputs(modelId))
+
+    -- run() 演示：所有输入维度已知时，构造全零输入跑一次推理
+    local modelInputs = wingman.ml.inputs(modelId)
+    local totalElements = 1
+    local shapeKnown = #modelInputs > 0
+    for _, dim in ipairs(shapeKnown and modelInputs[1].shape or {}) do
+        if dim <= 0 then
+            shapeKnown = false  -- 动态维（-1 等），无法预分配输入
+        else
+            totalElements = totalElements * dim
+        end
+    end
+
+    if shapeKnown then
+        local zeros = {}
+        for _ = 1, totalElements do
+            zeros[#zeros + 1] = 0.0
+        end
+        local result = wingman.ml.run(modelId, {
+            { name = modelInputs[1].name, data = zeros }
+        })
+        if result.success then
+            for _, item in ipairs(result.outputs) do
+                print(string.format("推理输出: %s [%s] %d 元素, 耗时 %.1fms",
+                    item.name,
+                    item.shape and table.concat(item.shape, "x") or "unknown",
+                    #item.data, result.timeMs))
+            end
+        else
+            print("推理失败: " .. tostring(result.error))
+        end
+    else
+        print("输入含动态维度，跳过 run() 演示")
+    end
 
     if wingman.ml.unload(modelId) then
         print("模型已卸载")

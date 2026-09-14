@@ -1,7 +1,9 @@
 #include "ml_module.hpp"
+#include "module_helpers.hpp"
 #include "wingman/ml.hpp"
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -26,12 +28,7 @@ ModelEngine* findModel(const std::string& id) {
 }
 
 ScriptValue tensorShapeToArray(const TensorShape& shape) {
-    std::vector<ScriptValue> arr;
-    arr.reserve(shape.size());
-    for (int64_t d : shape) {
-        arr.push_back(ScriptValue::fromInt(d));
-    }
-    return ScriptValue::fromArray(std::move(arr));
+    return tensorShapeToScriptValue(shape);
 }
 
 ScriptValue ioInfoToArray(const std::vector<std::pair<std::string, TensorShape>>& info) {
@@ -113,6 +110,57 @@ ModuleDescriptor createMlModule() {
         if (!e) return ScriptValue::fromArray({});
         return ioInfoToArray(e->getOutputInfo());
     }, "modelId:string -> array"});
+
+    // run(modelId, inputs) -> {success, error, outputs:[{name, shape, data}], timeMs}
+    // inputs 每项为 {name, data:[number], shape?:[int], dtype?:"float32"}；
+    // 失败（模型不存在、参数不合法、未启用 WINGMAN_ENABLE_ML 走 ml_stub、引擎报错）时
+    // 统一返回 success=false + error，脚本侧只需检查 result.success。
+    mod.functions.push_back({"run", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+        auto fail = [](const std::string& msg) {
+            return ScriptValue::fromObject({
+                {"success", ScriptValue::fromBool(false)},
+                {"error", ScriptValue::fromString(msg)},
+                {"outputs", ScriptValue::fromArray({})},
+                {"timeMs", ScriptValue::fromFloat(0.0)}
+            });
+        };
+        if (args.size() < 2 || !args[0].isString() || !args[1].isArray()) {
+            return fail("usage: run(modelId: string, inputs: [{name, data, shape?, dtype?}])");
+        }
+
+        // 先解析张量参数（纯数据变换），再检查模型是否已加载
+        std::map<std::string, TensorData> inputs;
+        for (const auto& spec : args[1].arrayVal) {
+            TensorData tensor;
+            std::string error;
+            if (!tensorFromScriptValue(spec, tensor, error)) {
+                return fail(error);
+            }
+            const auto* name = spec.get("name");
+            if (!name || !name->isString()) {
+                return fail("tensor input requires string 'name'");
+            }
+            inputs[name->asString()] = std::move(tensor);
+        }
+
+        auto* e = findModel(args[0].asString());
+        if (!e || !e->isModelLoaded()) {
+            return fail("model not found or not loaded: " + args[0].asString());
+        }
+
+        const auto result = e->run(inputs);
+        std::vector<ScriptValue> outputs;
+        outputs.reserve(result.outputs.size());
+        for (const auto& out : result.outputs) {
+            outputs.push_back(modelOutputToScriptValue(out));
+        }
+        return ScriptValue::fromObject({
+            {"success", ScriptValue::fromBool(result.success)},
+            {"error", ScriptValue::fromString(result.error)},
+            {"outputs", ScriptValue::fromArray(std::move(outputs))},
+            {"timeMs", ScriptValue::fromFloat(result.inferenceTimeMs)}
+        });
+    }, "modelId:string, inputs:[{name, data, shape?, dtype?}] -> {success, error, outputs, timeMs}"});
 
     return mod;
 }

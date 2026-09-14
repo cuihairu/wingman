@@ -191,6 +191,27 @@ ModuleDescriptor getGameProfileModule() {
     return {};
 }
 
+// Helper: get ml module
+ModuleDescriptor getMlModule() {
+    auto modules = getAllModules();
+    for (auto& mod : modules) {
+        if (mod.name == "ml") return mod;
+    }
+    return {};
+}
+
+// Helper: build one run() input tensor spec {name, data, shape?, dtype?}
+ScriptValue makeTensorSpec(const std::string& name, std::vector<ScriptValue> data,
+                           ScriptValue shape = ScriptValue::null(),
+                           const std::string& dtype = "") {
+    std::unordered_map<std::string, ScriptValue> obj;
+    obj["name"] = ScriptValue::fromString(name);
+    obj["data"] = ScriptValue::fromArray(std::move(data));
+    if (!shape.isNull()) obj["shape"] = shape;
+    if (!dtype.empty()) obj["dtype"] = ScriptValue::fromString(dtype);
+    return ScriptValue::fromObject(std::move(obj));
+}
+
 } // anonymous namespace
 
 TEST(ConfigModuleTest, SetAndGetPlainStringTriggersCatchBlock) {
@@ -316,4 +337,118 @@ TEST(GameProfileModuleTest, FindByWindowSuccessPath) {
     EXPECT_EQ(result.at(1).asString(), "Coverage FindByWindow");
 
     mgr.deleteProfile("coverage_findbywin_test");
+}
+
+// ========== ML Module: run ==========
+
+TEST(MlModuleTest, RunIsRegistered) {
+    auto mod = getMlModule();
+    ASSERT_FALSE(mod.name.empty()) << "ml module not found in registry";
+    EXPECT_NE(findFunction(mod, "run"), nullptr);
+}
+
+namespace {
+
+// run() 失败时统一返回 {success=false, error, outputs=[], timeMs}；
+// errorFragment 非空时额外断言 error 文本包含该片段
+void expectRunFailure(const ModuleDescriptor::FunctionEntry& runFn,
+                      const std::vector<ScriptValue>& args,
+                      const std::string& errorFragment = "") {
+    auto result = runFn(args);
+    ASSERT_TRUE(result.isObject()) << "run should return a result object";
+    const auto* success = result.get("success");
+    ASSERT_NE(success, nullptr);
+    EXPECT_FALSE(success->asBool()) << "run should not succeed";
+    const auto* outputs = result.get("outputs");
+    ASSERT_NE(outputs, nullptr);
+    EXPECT_TRUE(outputs->isArray());
+    EXPECT_EQ(outputs->size(), 0u);
+    const auto* error = result.get("error");
+    ASSERT_NE(error, nullptr);
+    EXPECT_FALSE(error->asString().empty());
+    if (!errorFragment.empty()) {
+        EXPECT_NE(error->asString().find(errorFragment), std::string::npos)
+            << "error: " << error->asString();
+    }
+}
+
+} // anonymous namespace
+
+// 未加载任何模型时 run 必须失败并给出原因（stub 与真引擎行为一致：
+// stub 下 loadModel 恒为 nil，真引擎下未知 ID 同样不在注册表中）
+TEST(MlModuleTest, RunWithoutLoadedModelFails) {
+    auto mod = getMlModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* runFn = findFunction(mod, "run");
+    ASSERT_NE(runFn, nullptr);
+
+    auto input = makeTensorSpec("images", {ScriptValue::fromFloat(1.0)});
+    expectRunFailure(*runFn, {
+        ScriptValue::fromString("ml-999-missing"), ScriptValue::fromArray({input})
+    }, "model");
+}
+
+TEST(MlModuleTest, RunValidatesArguments) {
+    auto mod = getMlModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* runFn = findFunction(mod, "run");
+    ASSERT_NE(runFn, nullptr);
+
+    // 无参数 / 缺 inputs / modelId 非字符串 / inputs 非数组
+    expectRunFailure(*runFn, {});
+    expectRunFailure(*runFn, {ScriptValue::fromString("ml-1")});
+    expectRunFailure(*runFn, {ScriptValue::fromInt(1), ScriptValue::fromArray({})});
+    expectRunFailure(*runFn, {ScriptValue::fromString("ml-1"), ScriptValue::fromString("nope")});
+}
+
+TEST(MlModuleTest, RunValidatesTensorSpecs) {
+    auto mod = getMlModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* runFn = findFunction(mod, "run");
+    ASSERT_NE(runFn, nullptr);
+
+    const auto modelId = ScriptValue::fromString("ml-1");
+
+    // 张量项缺 data / data 为空 / data 非数组 / 未知 dtype / shape 非数组
+    expectRunFailure(*runFn, {modelId, ScriptValue::fromArray({
+        ScriptValue::fromObject({{"name", ScriptValue::fromString("images")}})
+    })});
+    expectRunFailure(*runFn, {modelId, ScriptValue::fromArray({
+        makeTensorSpec("images", {})
+    })});
+    expectRunFailure(*runFn, {modelId, ScriptValue::fromArray({
+        ScriptValue::fromObject({
+            {"name", ScriptValue::fromString("images")},
+            {"data", ScriptValue::fromString("1,2,3")}
+        })
+    })});
+    expectRunFailure(*runFn, {modelId, ScriptValue::fromArray({
+        makeTensorSpec("images", {ScriptValue::fromFloat(1.0)}, ScriptValue::null(), "bfloat16")
+    })});
+    expectRunFailure(*runFn, {modelId, ScriptValue::fromArray({
+        makeTensorSpec("images", {ScriptValue::fromFloat(1.0)}, ScriptValue::fromInt(4))
+    })});
+}
+
+// loadModel 失败（stub 构建恒失败；真引擎下坏路径也失败）后模型不入注册表，
+// run 同样必须失败——两种编译模式下的行为保持一致
+TEST(MlModuleTest, RunAfterFailedLoadFailsConsistently) {
+    auto mod = getMlModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* loadModelFn = findFunction(mod, "loadModel");
+    const auto* runFn = findFunction(mod, "run");
+    ASSERT_NE(loadModelFn, nullptr);
+    ASSERT_NE(runFn, nullptr);
+
+    const auto loaded = (*loadModelFn)({
+        ScriptValue::fromString("definitely_missing_model_coverage.onnx")
+    });
+    EXPECT_TRUE(loaded.isNull()) << "loadModel must return nil for missing models";
+
+    auto input = makeTensorSpec("images", {ScriptValue::fromFloat(0.5)});
+    expectRunFailure(*runFn, {ScriptValue::fromString("ml-1"), ScriptValue::fromArray({input})});
 }
