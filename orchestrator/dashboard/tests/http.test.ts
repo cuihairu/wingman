@@ -159,6 +159,15 @@ describe('fetchJSON', () => {
     const headers = new Headers(fetchMock.mock.calls[0][1].headers);
     expect(headers.get('Content-Type')).toBe('text/plain');
   });
+
+  it('fetchJSON 已带 Accept 头时不覆盖', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse());
+
+    await fetchJSON('/api/x', { headers: { Accept: 'text/html' } });
+
+    const headers = new Headers(fetchMock.mock.calls[0][1].headers);
+    expect(headers.get('Accept')).toBe('text/html');
+  });
 });
 
 describe('createEventSource', () => {

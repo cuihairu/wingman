@@ -38,7 +38,7 @@ const mockModelState = {
   setInitialState: jest.fn(),
 };
 
-import Login from '@/pages/User/Login';
+import Login, { LoginMessage } from '@/pages/User/Login';
 
 async function submitLoginForm(username = 'admin', password = 'pw') {
   const root = render(<Login />);
@@ -202,5 +202,34 @@ describe('Login 页扩展分支', () => {
     });
 
     root.unmount();
+  });
+
+  it('登录成功后 fetchUserInfo 触发 setInitialState updater 合并 currentUser', async () => {
+    const updaterResults: unknown[] = [];
+    mockModelState.setInitialState = jest.fn((updater: (s: unknown) => unknown) => {
+      updaterResults.push(updater?.({ prev: 'kept' }));
+    });
+    mockCreateSession.mockResolvedValueOnce({ token: 'tok-3', user: { username: 'admin', roles: [] } });
+    mockFetchCurrentUserGames.mockResolvedValueOnce({ games: [] });
+
+    const root = await submitLoginForm();
+
+    await waitFor(() => {
+      expect(historyMock.push).toHaveBeenCalledWith('/');
+    });
+    expect(updaterResults).toHaveLength(1);
+    // updater 基于旧 state 保留其余字段并写入 currentUser
+    expect(updaterResults[0]).toMatchObject({
+      prev: 'kept',
+      currentUser: { username: 'admin', roles: ['admin'] },
+    });
+
+    mockModelState.setInitialState = jest.fn();
+    root.unmount();
+  });
+
+  it('LoginMessage 单独渲染错误提示', () => {
+    render(<LoginMessage content="用户名或密码错误" />);
+    expect(screen.getByText('用户名或密码错误')).toBeInTheDocument();
   });
 });

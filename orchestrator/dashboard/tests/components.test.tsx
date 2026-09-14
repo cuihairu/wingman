@@ -224,6 +224,27 @@ describe('AvatarDropdown', () => {
 
     expect(historyMock.push).toHaveBeenCalledWith('/admin/account/center');
   });
+
+  it('logout 时 setInitialState 的 updater 被执行并清空 currentUser', async () => {
+    let applied: unknown;
+    const setInitialState = jest.fn((updater: (s: unknown) => unknown) => {
+      applied = updater?.({ currentUser: { name: 'op' } });
+    });
+    mockUseModel.mockReturnValue({
+      initialState: { currentUser: { name: 'op' } },
+      setInitialState,
+    });
+    render(<AvatarDropdown>op</AvatarDropdown>);
+
+    await act(async () => {
+      mockCapturedMenuProps.menu.onClick({ key: 'logout' });
+    });
+
+    expect(setInitialState).toHaveBeenCalledTimes(1);
+    // updater 基于旧 state 保留其余字段，仅清空 currentUser
+    expect(applied).toEqual({ currentUser: undefined });
+    expect(historyMock.replace).toHaveBeenCalled();
+  });
 });
 
 describe('ScreenshotView', () => {
@@ -307,6 +328,79 @@ describe('ScreenshotView', () => {
     expect(refreshBtn.className).not.toContain('ant-btn-loading');
 
     (global as any).WebSocket = undefined;
+  });
+
+  it('50ms 节流窗口内连续两帧只保留最后一帧（清除挂起的更新定时器）', async () => {
+    const wsModule = await import('@/services/websocket');
+    class FakeWS {
+      static OPEN = 1;
+      readyState = 0;
+      onopen: (() => void) | null = null;
+      onmessage: ((e: { data: string }) => void) | null = null;
+      onclose: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      close = jest.fn();
+      send = jest.fn();
+      simulateOpen() {
+        this.readyState = FakeWS.OPEN;
+        this.onopen?.();
+      }
+      simulateMessage(payload: unknown) {
+        this.onmessage?.({ data: JSON.stringify(payload) });
+      }
+    }
+    (global as any).WebSocket = FakeWS;
+    wsModule.default.connect();
+    const socket = (wsModule.default as unknown as { ws: FakeWS }).ws;
+    socket!.simulateOpen();
+
+    const { container } = render(<ScreenshotView />);
+
+    // 同一节流窗口内先发 A 再发 B：B 到达时应清除 A 的挂起定时器
+    act(() => {
+      socket!.simulateMessage({
+        type: 'screenshot',
+        data: { image: 'data:image/png;base64,frameA', width: 1, height: 1, timestamp: 1 },
+      });
+      socket!.simulateMessage({
+        type: 'screenshot',
+        data: { image: 'data:image/png;base64,frameB', width: 2, height: 2, timestamp: 2 },
+      });
+    });
+    act(() => {
+      jest.advanceTimersByTime(60);
+    });
+
+    const img = screen.getByAltText('Screenshot') as HTMLImageElement;
+    expect(img.src).toContain('frameB');
+    expect(img.src).not.toContain('frameA');
+
+    // 刷新按钮复位于非 loading
+    const refreshBtn = container.querySelector('button.ant-btn')!;
+    expect(refreshBtn.className).not.toContain('ant-btn-loading');
+
+    (global as any).WebSocket = undefined;
+  });
+
+  it('开关关闭后可重新打开（re-enable 分支）', async () => {
+    render(<ScreenshotView />);
+
+    const switchEl = () => document.querySelector('.ant-switch')!;
+    // 关闭：清空画面并显示关闭文案
+    act(() => {
+      fireEvent.click(switchEl());
+    });
+    expect(screen.getByText('预览已关闭')).toBeInTheDocument();
+
+    // 重新打开：恢复订阅，缓存的当前帧经节流后重新显示
+    act(() => {
+      fireEvent.click(switchEl());
+    });
+    act(() => {
+      jest.advanceTimersByTime(60);
+    });
+    expect(screen.getByAltText('Screenshot')).toBeInTheDocument();
+    expect(screen.queryByText('预览已关闭')).not.toBeInTheDocument();
   });
 });
 

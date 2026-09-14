@@ -5,10 +5,14 @@ const localStorageMock = {
   clear: jest.fn(),
 };
 
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-  writable: true,
-});
+// node 环境下的测试文件（@jest-environment node）没有 window，
+// 这里统一守卫，保证两类环境都能复用同一份 setup。
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'localStorage', {
+    value: localStorageMock,
+    writable: true,
+  });
+}
 global.localStorage = localStorageMock;
 
 Object.defineProperty(URL, 'createObjectURL', {
@@ -26,7 +30,9 @@ class Worker {
     this.onmessage(msg);
   }
 }
-window.Worker = Worker;
+if (typeof window !== 'undefined') {
+  window.Worker = Worker;
+}
 
 if (typeof window !== 'undefined') {
   // ref: https://github.com/ant-design/ant-design/issues/18774
@@ -54,10 +60,23 @@ if (typeof window !== 'undefined') {
   }
 }
 const errorLog = console.error;
-Object.defineProperty(global.window.console, 'error', {
-  writable: true,
-  configurable: true,
-  value: (...rest) => {
+if (typeof window !== 'undefined') {
+  Object.defineProperty(global.window.console, 'error', {
+    writable: true,
+    configurable: true,
+    value: (...rest) => {
+      const logStr = rest.join('');
+      if (logStr.includes('Warning: An update to %s inside a test was not wrapped in act(...)')) {
+        return;
+      }
+      if (logStr.includes('ReactDOMTestUtils.act')) {
+        return;
+      }
+      errorLog(...rest);
+    },
+  });
+} else {
+  console.error = (...rest) => {
     const logStr = rest.join('');
     if (logStr.includes('Warning: An update to %s inside a test was not wrapped in act(...)')) {
       return;
@@ -66,8 +85,8 @@ Object.defineProperty(global.window.console, 'error', {
       return;
     }
     errorLog(...rest);
-  },
-});
+  };
+}
 
 jest.mock(
   '@umijs/max',

@@ -365,4 +365,83 @@ describe('Agent 触发器 CRUD API（create / update / remove）', () => {
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
+
+  it('toStrictNumber：非有限数值与非数字字符串回退 0，action 缺 type/value 回退空串', async () => {
+    mockResponse([
+      {
+        id: 't-nan',
+        name: 'nan-trigger',
+        condition: {
+          type: 'ColorFound',
+          value: '#fff',
+          region: { x: NaN, y: 1, width: 10, height: 10 },
+          tolerance: NaN,
+          interval: 'abc',
+        },
+        actions: [{}],
+      },
+    ]);
+
+    const resp = await wingman.getAgentTriggers('agent-2');
+    const trigger = resp.data![0];
+    expect(trigger.condition.region).toEqual({ x: 0, y: 1, width: 10, height: 10 });
+    expect(trigger.condition.tolerance).toBe(0);
+    expect(trigger.condition.interval).toBe(0);
+    expect(trigger.actions[0]).toEqual({ type: '', value: '', x: 0, y: 0, delay: 0 });
+  });
+});
+
+describe('normalize 补全：snake/大写字段回退与缺省兜底', () => {
+  it('steps 数组直传：workers 数组 trim 过滤、ID/Name/Script 大写字段回退、空对象兜底', async () => {
+    mockResponse([
+      {
+        id: 'w3',
+        steps: [
+          {
+            ID: 'S9',
+            Name: 'N9',
+            Script: 'c9.lua',
+            workers: [' x ', '', 3, 'y'],
+            dependsOn: [],
+          },
+          {},
+        ],
+      },
+    ]);
+
+    const resp = await wingman.getWorkflows();
+    const steps = resp.data![0].steps;
+    expect(steps[0]).toMatchObject({
+      id: 'S9',
+      name: 'N9',
+      script: 'c9.lua',
+      workers: ['x', '3', 'y'],
+      dependsOn: [],
+    });
+    expect(steps[1]).toMatchObject({ id: '', name: '', script: '' });
+  });
+
+  it('stepStatus 为记录且值为裸字符串时按原始值归一化', async () => {
+    mockResponse({
+      id: 'wf3',
+      stepStatus: { s5: 'running', s6: 'bogus-status' },
+    });
+    const inst = (await wingman.getWorkflow('wf3')).data!;
+    expect(inst.stepStatus.s5).toBe(wingman.StepStatus.Running);
+    expect(inst.stepStatus.s6).toBe(wingman.StepStatus.Pending);
+  });
+
+  it('getWorkflowTemplates：响应缺 data 字段时回退空数组', async () => {
+    mockedRequest.mockResolvedValueOnce({ success: true });
+    const templates = await wingman.getWorkflowTemplates();
+    expect(templates).toEqual([]);
+  });
+
+  it('normalizeScript：仅有 name 时 id/path 均回退 name', async () => {
+    mockResponse([{ name: 'only-name.lua' }]);
+    const resp = await wingman.getScripts();
+    const script = resp.data![0];
+    expect(script.id).toBe('only-name.lua');
+    expect(script.path).toBe('only-name.lua');
+  });
 });

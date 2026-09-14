@@ -429,4 +429,44 @@ describe('WebSocketService 分支补全', () => {
     jest.advanceTimersByTime(600000);
     expect(constructed).toBe(6);
   });
+
+  it('未建立连接时 disconnect 直接清理不抛错', () => {
+    const service = new WebSocketService();
+    expect(() => service.disconnect()).not.toThrow();
+    expect(service.isConnected()).toBe(false);
+  });
+
+  it('onAgentConnected：非 connected 事件不分发，connected 缺 data 回退空对象', () => {
+    const service = new WebSocketService();
+    service.connect();
+    const socket = FakeWebSocket.lastInstance!;
+    socket.simulateOpen();
+
+    const connected = jest.fn();
+    service.onAgentConnected(connected);
+
+    // 非 connected 事件不触发
+    socket.simulateMessage({ type: 'agent', event: 'disconnected', data: { agentId: 'a1' } });
+    expect(connected).not.toHaveBeenCalled();
+
+    // connected 事件缺 data 时回退空对象
+    socket.simulateMessage({ type: 'agent', event: 'connected' });
+    expect(connected).toHaveBeenCalledTimes(1);
+    expect(connected).toHaveBeenCalledWith({});
+  });
+
+  it('onTriggerFired：消息缺 data 时回退空对象并保留 agentId=undefined', () => {
+    const service = new WebSocketService();
+    service.connect();
+    const socket = FakeWebSocket.lastInstance!;
+    socket.simulateOpen();
+
+    const trigger = jest.fn();
+    service.onTriggerFired(trigger);
+
+    socket.simulateMessage({ type: 'agent', event: 'trigger_fired' });
+
+    expect(trigger).toHaveBeenCalledTimes(1);
+    expect(trigger).toHaveBeenCalledWith({ agentId: undefined });
+  });
 });

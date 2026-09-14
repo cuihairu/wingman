@@ -117,6 +117,35 @@ describe('谓词算子', () => {
     ).toEqual([1, 1]);
   });
 
+  it('contains 对缺失字段（undefined）回退空串比较', () => {
+    const d = { items: [{}, { s: 'ab' }] };
+    expect(
+      applyTransform(d, {
+        template: {
+          forEach: { path: '$.items', where: { contains: ['$.s', 'ab'] }, template: 1 },
+        },
+      }),
+    ).toEqual([1]);
+  });
+
+  it('contains 缺第二个参数时按空串包含（匹配全部）', () => {
+    const d = { items: [{ s: 'anything' }, { s: 'other' }] };
+    expect(
+      applyTransform(d, {
+        template: { forEach: { path: '$.items', where: { contains: ['$.s'] }, template: 1 } },
+      }),
+    ).toEqual([1, 1]);
+  });
+
+  it('match 缺第二个参数时按空正则匹配全部', () => {
+    const d = { items: [{ s: 'anything' }, { s: 'other' }] };
+    expect(
+      applyTransform(d, {
+        template: { forEach: { path: '$.items', where: { match: ['$.s'] }, template: 1 } },
+      }),
+    ).toEqual([1, 1]);
+  });
+
   it('where 缺失/为空对象/未知算子时不过滤', () => {
     expect(forEach(undefined)).toEqual([{ n: 1 }, { n: 2 }]);
     expect(forEach({})).toEqual([{ n: 1 }, { n: 2 }]);

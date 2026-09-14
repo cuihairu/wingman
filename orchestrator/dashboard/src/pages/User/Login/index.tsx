@@ -55,7 +55,9 @@ const Lang = () => {
   );
 };
 
-const LoginMessage: React.FC<{ content: string }> = ({ content }) => (
+// 导出仅为可测性：LoginMessage 目前是页面内部的死代码路径
+// （userLoginState 从未提供 setter，status 恒为 undefined），导出后可单独渲染验证。
+export const LoginMessage: React.FC<{ content: string }> = ({ content }) => (
   <Alert
     style={{
       marginBottom: 24,
