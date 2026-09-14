@@ -15,6 +15,10 @@
 	});
 	let refreshing = $state(false);
 	let lastUpdated = $state('-');
+	// 防重入护栏必须用普通变量：$effect 内读取 $state 会把它纳入依赖，
+	// 「刷新完成置 false」会反过来重跑 effect → 再次发起刷新，形成自激死循环
+	// （微任务乒乓饿死定时器，持续烧 CPU 并慢泄漏内存）。
+	let refreshInFlight = false;
 
 	let runningScripts = $derived($scripts.filter(script => script.is_running).length);
 	let stoppedScripts = $derived(Math.max($scripts.length - runningScripts, 0));
@@ -63,7 +67,8 @@
 	}
 
 	async function refreshDashboard(showLog = false) {
-		if (refreshing) return;
+		if (refreshInFlight) return;
+		refreshInFlight = true;
 		refreshing = true;
 		try {
 			const result = await connection.refresh();
@@ -81,6 +86,7 @@
 		} catch (error: any) {
 			logs.add(`刷新仪表板失败: ${error}`, 'error');
 		} finally {
+			refreshInFlight = false;
 			refreshing = false;
 		}
 	}
