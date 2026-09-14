@@ -1,7 +1,7 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-09-04
-> 状态: 收尾阶段（P0/P1 全部完成；2026-09-04 Dashboard 审核发现前后端 API 前缀契约断裂等 8 类问题，已全部修复，见「Dashboard 审核与修复记录」）
+> 最后更新: 2026-09-14
+> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」）
 
 > ⚠️ 本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
@@ -179,7 +179,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 - [ ] **通知/历史**
   - [x] WebSocket 事件广播完善（runtime `EventBuffer` 远程 sink → `RemoteClient::sendAgentEvent` → server `handleEvent` 广播 `trigger_fired`/`script_state`/`script_output` 到 Dashboard WS；listener.go 新增 `script_state` case）
   - [x] 通知历史持久化（Message 模型已入库；per-user 已读见代码缺陷修复）
-  - [x] script_output 转发（`IScriptEngine::setOutputCallback`：Lua override `print`→`tostring`；ScriptManager 接 `logScriptOutput`；StandaloneMode 推 `script.output` 到 EventBuffer；远程 sink 转发 `script_output`；GUI events.ts 显示。注：Python stdout 重定向待续，Lua 已通）
+  - [x] script_output 转发（`IScriptEngine::setOutputCallback`：Lua override `print`→`tostring`；ScriptManager 接 `logScriptOutput`；StandaloneMode 推 `script.output` 到 EventBuffer；远程 sink 转发 `script_output`；GUI events.ts 显示。Python stdout/stderr 重定向已完成——`libs/python/src/python_script_engine.cpp` stdout/stderr proxy 注入 `sys.stdout`，经同一回调链路下发）
 - [x] **API 文档**：Swagger/OpenAPI — swaggo + `/swagger/index.html` 实时 UI（`swag init` 生成 `docs/`）；已注解 11 个关键端点（auth/profile/messages/users/roles/agents/workflow-templates），其余端点可渐进补注解
 
 ### Runtime Agent Outbound（C++ — 基本完成）
@@ -213,7 +213,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 ### 高级功能
 
 - [x] OCR 支持（引擎已实现：`lib/wingman/src/ocr.cpp` + `ocr_stub.cpp` + test；build flag `WINGMAN_ENABLE_OCR`；可选增强：runtime RPC 暴露 + 多语言）
-- [x] ML/AI 支持（引擎已实现：`lib/wingman/src/ml.cpp` + `ml_stub.cpp` + test；build flag `WINGMAN_ENABLE_ML`；`docs/guides/yolo-guide.md`）
+- [x] ML/AI 支持（引擎已实现：`lib/wingman/src/ml.cpp` + `ml_stub.cpp` + test；build flag `WINGMAN_ENABLE_ML`；`docs/guides/yolo-guide.md`；2026-09-14 补齐脚本推理入口 `ml.run(modelId, inputs)`——Tensor↔ScriptValue 转换见 `module_helpers.hpp`，示例 `examples/lua_scripts/onnx_object_detection.lua`，类型存根 `libs/python/typing/wingman/ml.pyi`）
 - [x] 宏系统 UI（引擎 `recorder.hpp` + win32/cocoa/x11；**引擎修复**：低层钩子加消息泵线程 + 线程安全；runtime `macro_handler` RPC：start/stop/play/status/save/load/clear；Tauri 命令；GUI 宏录制页：录制/停止/回放/速度/重复/保存载入 + 侧栏入口）
 - [x] 游戏配置模板库（导入/导出/版本管理）：C++ `GameProfileManager` 已具备 export/import JSON+package/createTemplate/scan/validate/version 能力；**补全脚本 API 暴露**——`gameprofile.createTemplate/scan/setProfilesDirectory/getProfilesDirectory/exportJson/importJson/exportPackage/importPackage/delete`；示例 `examples/lua_scripts/game_profile.lua` 现可用
 
@@ -227,7 +227,29 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ## 🔵 P3 - 低优先级（工程优化）
 
-### 测试（Go server 覆盖率大幅提升 — 355 个测试函数）
+## 📅 2026-09-14 功能修复与覆盖率冲刺
+
+**功能修复（「声明完成但实际不可用」类缺陷，经全库完成度分析裁定）**：
+
+| 缺陷 | 修复 | 验证 |
+|------|------|------|
+| Go Team/Inbox 三断链：消息入队无投递、断连无清理、无创建具名团队入口 | `MessageNotifier` 实时下发 + `RemoveAgent` 清理/解散通知 + `CreateTeamNamed`；新增 `POST /api/teams` | 新增 `team_delivery_test.go`(11)、`teams_test.go`、`team_inbox_test.go` 集成；Go server 覆盖率 **100.0%**（stmt/branch/func，14 包） |
+| C++ ML 引擎无脚本推理入口 | `ml.run(modelId, inputs)` 模块方法 + Tensor↔ScriptValue 转换 + ONNX 示例 + pyi 存根 | `script_modules_test.cpp` +5、`ml_test.cpp` +7 全绿 |
+| GUI scripts 页无文件管理（只能启动器式按路径加载） | `script_files.rs` 6 命令（list/read/write/delete/rename/exists + 路径安全校验）+ scripts 页文件树/预览/新建/删除 | Rust 9 单测（本机缺 glib 旁路验证，Windows 为目标平台）+ vitest 18 用例 |
+| runtime 误执行 Lua 字节码无提示 | `resource_loader` `looksLikeLuaBytecode` 检测（Lua 5.x `\x1bLua` / LuaJIT `\x1bLJ`）报可读错误 | `cli_test.cpp` +6 全绿 |
+
+**设计决策（裁定不修，已记录）**：Debugger 501 直连模式为有意契约；GUI 不做内置编辑器（VS Code 统一）；PBKDF2 加密资源两端一致禁用。
+
+**覆盖率**：
+
+| 模块 | stmt | branch | func | 说明 |
+|------|------|--------|------|------|
+| Go server | **100.0%** | 100.0% | 100.0% | 431 测试函数；`-race` 全绿；vet 干净；含 main() subprocess 重执行 |
+| Dashboard (React) | 99.70% | 98.85% | 100% | 220/220 绿；tsc 0 错；jest 95% 门禁通过；余 7 处死防御代码逐条论证 |
+| C++ (Linux) | 57.8% | — | — | 支持矩阵不含 Lua/X11（vcpkg 平台限制）；定向改动子集 201/201 绿；Windows 基线 ~90% 需 MSVC 真机 |
+| GUI (Svelte) | 见提交 | — | — | vitest + @vitest/coverage-v8（2026-09-14 新装）；30 测试文件 |
+
+
 
 - [x] **Go orchestrator 单元测试**
   - [x] rbac（种子/解析/admin 旁路/inactive）+ handlers 用户/角色 CRUD
@@ -241,7 +263,9 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 - [ ] **C++ runtime**：当前 ~1705 测试 / 90%+ 覆盖（保持水准；2026-06-23 已修复 `runtime_tests` 链接缺源、`gtest_discover_tests(... PRE_TEST)` 多配置发现，以及 `WINGMAN_BUILD_TESTS` 自动联动 core/runtime/transport/proto/debug 标准测试集）
 - [ ] **集成测试**：✅ server HTTP 链路（`TestIntegrationAuthAndPermissionFlow`：JWT 签发→AuthRequired→PermissionRequired admin 旁路/viewer 拒绝→handler，8 断言）；✅ Agent→Orchestrator 跨语言集成（6 文件 3 测试全通过）；🚧 GUI↔IPC↔Runtime 跨语言集成待续
 - [x] **性能测试**（Go server 基准）：`go test -bench=. -benchmem ./internal/rbac/ ./internal/workflow/`；rbac 非admin 解析 160µs/689 allocs、admin 旁路 17µs（~9×，验证短路 + 请求级缓存有效）、DAG 环检测 44µs（100 节点）、selectAgent 9µs（20 agent）；C++ 截图/WS 基准待续
-- [x] **Swagger API 文档**：✅ 全部 47 个端点已添加 swaggo 注解（2026-09-09，16 个 handler 文件 41 个端点）；swag init 生成成功
+- [x] **Go Team/Inbox 三断链修复**（2026-09-14，此前「有 API 无投递」不可用）：① 消息入队后经 `MessageNotifier` 回调实时下发在线 agent（`listener.go deliverInboxMessage`，帧契约与 runtime inbox 模块对齐）；② 断连/RemoveAgent 清理收件箱与团队关系（空团队解散 + 锁外发 `team.member_left`，含重连竞态防护 `hasOtherConnForAgent`）；③ 补 `CreateTeamNamed` 供 handler 创建具名团队；收件箱 FIFO 保序（`InboxMessage.Seq` + 显式排序，修复 map 遍历乱序 flaky）
+- [x] **Go 收件箱 FIFO flaky 修复**：`GetMessages` 按 `Seq` 升序输出（原 map 遍历无序导致 3 跑 1 挂）；单测 15 连跑 + 包级 5 连跑 + race 全绿
+- [x] **Swagger API 文档**：✅ 全部 47 个端点已添加 swaggo 注解（2026-09-09，16 个 handler 文件 41 个端点）；swag init 生成成功（2026-09-14 新增 teams 端点后已重新生成）
 
 ### 文档
 
@@ -266,19 +290,19 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 |------|--------|--------|------|
 | **Runtime (C++)** | 核心引擎 | 95% | screen/input/trigger/vision/btree/macro/human 全部完成 |
 | | IPC Server | 92% | Named Pipe + UDS + events.drain（pull 模型，log/trigger/script/connection 事件已接 + dropped 计数） |
-| | RPC Handlers | 85% | system/trigger/script/screen/window/events 已接通 |
+| | RPC Handlers | 85% | trigger/system(×2)/script/screenshot/event/macro 已接通（实为这些 handler；无独立 window handler——window 能力经 system 与脚本模块暴露） |
 | | Agent Outbound | 100% | 心跳 + 重连 + 指数退避（毫秒抖动）+ 离线 outbox + 连接状态回调通知 GUI |
 | | 脚本引擎 | 100% | Lua (sol2) + Python (pybind11) 双语言 |
 | **GUI (Tauri)** | 框架 | 100% | Tauri 2.0 + Svelte 5 |
-| | 页面实现 | 88% | 六页面可用 + events 轮询；scripts 页较薄 |
+| | 页面实现 | 92% | 六页面可用 + events 轮询；scripts 页已补文件树/预览/新建/删除（2026-09-14） |
 | | IPC 通信 | 92% | 连接重试/命令/事件轮询/30s 超时已通 |
 | **Orchestrator (Go)** | HTTP API | 92% | auth/agent/script/workflow/audit/profile/settings/status/window/workflow-templates/admin(RBAC) |
 | | WebSocket | 90% | Hub + rooms + agent/workflow/debugger 事件广播 |
-| | Agent 监听 | 90% | FrameListener TCP 协议 + 心跳 + Team/Inbox |
+| | Agent 监听 | 100% | FrameListener TCP 协议 + 心跳 + Team/Inbox 全链路（2026-09-14 修复投递/清理/建团三断链） |
 | | 工作流引擎 | 100% | DAG/环检测/持久化/取消/超时/重试/负载均衡/模板/独立步骤类型（wait/condition/screenshot） |
 | | 权限系统 | 95% | ✅ RBAC（模型+中间件+API+Dashboard 页面 + PermissionRequired 已接线 8 权限码）；可选：Swagger |
 | | Debugger | 100% | `/api/debugger/info` 直连模式契约 |
-| | 测试 | 85% | 355 个测试函数覆盖 rbac/workflow/handlers/hub/registry/middleware/debugger/integration/security/scripts；vet 全清 |
+| | 测试 | 100% 覆盖 | 431 个测试函数；覆盖率 stmt/branch/func 均 100.0%（2026-09-14）；vet 全清、race 全绿 |
 | **Dashboard (React)** | 页面框架 | 95% | 9 页面（+Settings）+ 路由 + admin 子页 access 守卫全覆盖 |
 | | 组件实现 | 92% | Agents/Scripts/Workflows/Admin/Login/Profile/Settings/Support 完成；Monitor WS 事件驱动 + 假 UI 全部清理 |
 | | WebSocket | 95% | wsService + 自动重连 + 死链检测 + agent/workflow/trigger/script/screenshot 事件全对接 |
