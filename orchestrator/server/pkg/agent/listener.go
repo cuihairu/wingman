@@ -80,17 +80,25 @@ type agentConn struct {
 
 // NewFrameListener creates a TCP listener for runtime connections.
 func NewFrameListener(registry AgentRegistrar, broadcast Broadcaster) *FrameListener {
-	return &FrameListener{
+	l := &FrameListener{
 		registry:  registry,
 		broadcast: broadcast,
 		conns:     make(map[string]*agentConn),
 		stopCh:    make(chan struct{}),
 		teamMgr:   NewTeamManager(),
 	}
+	// 装配收件箱实时下发：TeamManager 消息入队后经此回调推送给在线 agent
+	l.teamMgr.SetMessageNotifier(l.deliverInboxMessage)
+	return l
 }
 
 // SetTeamManager sets the team manager (for testing/customization).
 func (l *FrameListener) SetTeamManager(tm *TeamManager) {
+	// 先在锁外装配通知回调：deliverInboxMessage 在 TeamManager 锁内会获取 l.mu，
+	// 此处若持 l.mu 再取 TeamManager 锁会形成反序加锁（死锁风险）。
+	if tm != nil {
+		tm.SetMessageNotifier(l.deliverInboxMessage)
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.teamMgr = tm
@@ -103,13 +111,21 @@ func (l *FrameListener) GetTeamManager() *TeamManager {
 	return l.teamMgr
 }
 
-var listenerEndian = func() binary.ByteOrder {
-	var x uint16 = 0x0102
-	if *(*byte)(unsafe.Pointer(&x)) == 0x02 {
+// determineByteOrder 依宿主机字节序返回帧编解码使用的 ByteOrder（纯函数，便于测试）。
+func determineByteOrder(hostLittle bool) binary.ByteOrder {
+	if hostLittle {
 		return binary.LittleEndian
 	}
 	return binary.BigEndian
-}()
+}
+
+// hostIsLittleEndian 探测宿主机是否为小端字节序。
+func hostIsLittleEndian() bool {
+	var x uint16 = 0x0102
+	return *(*byte)(unsafe.Pointer(&x)) == 0x02
+}
+
+var listenerEndian = determineByteOrder(hostIsLittleEndian())
 
 // SetScriptOutputHandler sets the callback for script output events.
 func (l *FrameListener) SetScriptOutputHandler(handler ScriptOutputHandler) {
@@ -306,6 +322,14 @@ func (ac *agentConn) readLoop() {
 
 		if agentID := ac.getAgentID(); agentID != "" {
 			ac.listener.registry.Unregister(agentID)
+			// 清理该 agent 的收件箱缓冲与团队成员关系（消息未送达即断连，不应残留）。
+			// 仅当没有其他活跃连接仍以同一 agentID 注册时才清理，
+			// 避免重连竞态下旧连接的 defer 清掉新会话的状态。
+			if !ac.listener.hasOtherConnForAgent(agentID, ac.id) {
+				if tm := ac.listener.teamMgr; tm != nil {
+					tm.RemoveAgent(agentID)
+				}
+			}
 		}
 		log.Printf("[FrameListener] Connection closed: %s", ac.id)
 	}()
@@ -435,7 +459,11 @@ func (ac *agentConn) handleNotify(body []byte) {
 	}
 }
 
-// handleRequest processes Request messages (runtime asking the server).
+// handleRequest 应答 runtime 发来的 Request 帧（runtime 主动向服务器取数）。
+// 当前 runtime 的 agent 链路（inbox/team 等模块）只发送 Notify 帧，并不发起 Request；
+// 此处理为协议防御性兜底：对未知 Request 回空 success:true，保持协议向后兼容
+// （runtime 侧对该响应不解析额外字段）。后续若 runtime 依赖具体 Request 方法取数，
+// 应在此按 method 分发实现，而不是移除该兜底。
 func (ac *agentConn) handleRequest(header *MessageHeader, _ []byte) {
 	resp := map[string]any{
 		"success": true,
@@ -542,6 +570,51 @@ func (ac *agentConn) sendPong() {
 	}
 	ac.writeMsgHeaderLocked(&header)
 	ac.conn.Write([]byte("PONG"))
+}
+
+// getConnByAgent 返回该 agentID 当前活跃的连接；agent 离线时返回 nil。
+// 锁序：l.mu → ac.mu（getAgentID）。仓库中不存在 ac.mu → l.mu 的路径，安全。
+func (l *FrameListener) getConnByAgent(agentID string) *agentConn {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	for _, ac := range l.conns {
+		if ac.getAgentID() == agentID {
+			return ac
+		}
+	}
+	return nil
+}
+
+// hasOtherConnForAgent 判断除 excludeConnID 外是否还有活跃连接以该 agentID 注册。
+func (l *FrameListener) hasOtherConnForAgent(agentID, excludeConnID string) bool {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	for id, ac := range l.conns {
+		if id != excludeConnID && ac.getAgentID() == agentID {
+			return true
+		}
+	}
+	return false
+}
+
+// deliverInboxMessage 把新入队的收件箱消息实时推送给在线 agent（TeamManager 通知回调）。
+// agent 离线时不推送，消息保留在内存缓冲中；断连时由 readLoop 清理缓冲。
+// 契约与 runtime inbox 模块一致（lib/wingman/src/script/modules/inbox_module.cpp
+// handleMessage/handleInboxMessage）：notify type = "inbox.message"，
+// 字段 msgId / messageType / payload / timestamp。
+// 注意：调用方持有 TeamManager 锁，此处只允许获取 l.mu / ac.mu，
+// 不得重入 TeamManager 的加锁方法。
+func (l *FrameListener) deliverInboxMessage(agentID string, msg *InboxMessage) {
+	ac := l.getConnByAgent(agentID)
+	if ac == nil {
+		return // agent 离线：保持内存缓冲
+	}
+	ac.sendNotify("inbox.message", map[string]any{
+		"msgId":       msg.MsgID,
+		"messageType": msg.Type,
+		"payload":     msg.Payload,
+		"timestamp":   msg.Timestamp.UnixMilli(),
+	})
 }
 
 // sendNotify sends a Notify message.
@@ -677,6 +750,12 @@ func (ac *agentConn) handleTeamJoin(msg map[string]any) {
 
 // handleTeamLeave handles team leave request.
 func (ac *agentConn) handleTeamLeave(msg map[string]any) {
+	// nil 检查必须位于最前：SetTeamManager(nil)（测试/降级场景）下
+	// 下方的 FindMemberByAgent 会空指针。
+	if ac.listener.teamMgr == nil {
+		return
+	}
+
 	teamID, _ := msg["teamId"].(string)
 	memberID, _ := msg["memberId"].(string)
 	agentID, _ := msg["agentId"].(string)
@@ -695,10 +774,8 @@ func (ac *agentConn) handleTeamLeave(msg map[string]any) {
 		}
 	}
 
-	if ac.listener.teamMgr != nil {
-		if err := ac.listener.teamMgr.LeaveTeam(teamID, memberID); err != nil {
-			log.Printf("[Team] Leave failed: %v", err)
-		}
+	if err := ac.listener.teamMgr.LeaveTeam(teamID, memberID); err != nil {
+		log.Printf("[Team] Leave failed: %v", err)
 	}
 }
 
@@ -740,7 +817,10 @@ func (ac *agentConn) handleTeamVoteCast(msg map[string]any) {
 	}
 }
 
-// handleTeamStatusReport handles status report from team member.
+// handleTeamStatusReport 处理成员状态上报，并把状态转发给团队其他成员。
+// 转发以收件箱消息承载（type=team.status_report，payload 保留 teamId/memberId/status
+// 原始字段）：runtime team 模块（team_module.cpp handleServerMessage）未定义独立的
+// status 推送类型，收件箱通道按 messageType 分发给脚本。
 func (ac *agentConn) handleTeamStatusReport(msg map[string]any) {
 	teamID, _ := msg["teamId"].(string)
 	memberID, _ := msg["memberId"].(string)
@@ -748,19 +828,25 @@ func (ac *agentConn) handleTeamStatusReport(msg map[string]any) {
 
 	log.Printf("[Team] Status report from %s in team %s: %v", memberID, teamID, status)
 
-	// Broadcast status to other team members via inbox
-	if ac.listener.teamMgr != nil {
-		// Get team info to find other members
-		if teamInfo, err := ac.listener.teamMgr.GetTeamInfo(teamID); err == nil {
-			if members, ok := teamInfo["members"].([]string); ok {
-				for _, mid := range members {
-					if mid != memberID {
-						// Find agent ID for this member
-						// Note: This is simplified - in production you'd maintain a member->agent mapping
-					}
-				}
-			}
+	if ac.listener.teamMgr == nil {
+		return
+	}
+
+	// 经 memberID -> agentID 映射转发给除上报者外的全部在线/离线成员
+	memberAgents, err := ac.listener.teamMgr.GetMemberAgents(teamID)
+	if err != nil {
+		return
+	}
+	for mid, agentID := range memberAgents {
+		if mid == memberID {
+			continue // 跳过上报者自己
 		}
+		ac.listener.teamMgr.SendMessageToAgent(agentID, "team.status_report", map[string]any{
+			"type":     "team.status_report",
+			"teamId":   teamID,
+			"memberId": memberID,
+			"status":   status,
+		})
 	}
 }
 

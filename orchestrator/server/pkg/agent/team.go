@@ -3,6 +3,7 @@ package agent
 import (
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"time"
 )
@@ -11,13 +12,15 @@ import (
 
 // TeamInfo 团队信息
 type TeamInfo struct {
-	TeamID    string
-	LeaderID  string
-	Members   map[string]string // memberID -> agentID
-	State     string           // "idle", "voting", "working"
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	mu        sync.RWMutex
+	TeamID      string
+	Name        string
+	Description string
+	LeaderID    string
+	Members     map[string]string // memberID -> agentID
+	State       string           // "idle", "voting", "working"
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	mu          sync.RWMutex
 }
 
 // VoteInfo 投票信息
@@ -35,7 +38,10 @@ type VoteInfo struct {
 
 // InboxMessage 收件箱消息
 type InboxMessage struct {
-	MsgID     string
+	MsgID string
+	// Seq 全局单调递增序号，GetMessages 按它保序输出（收件箱 FIFO 语义；
+	// 底层 map 遍历顺序随机，必须显式排序）
+	Seq       int64
 	AgentID   string
 	Type      string
 	Payload   map[string]any
@@ -43,11 +49,17 @@ type InboxMessage struct {
 	Acked     bool
 }
 
+// MessageNotifier 收件箱消息通知回调：消息入队后同步调用，用于把消息实时下发给在线 agent。
+// 回调在 TeamManager 内部锁（tm.mu）持有期间被调用，实现不得重入任何会加 tm.mu 的
+// TeamManager 方法（FrameListener 的实现锁序为 tm.mu → FrameListener.mu → agentConn.mu）。
+type MessageNotifier func(agentID string, msg *InboxMessage)
+
 // TeamManager 团队管理器
 type TeamManager struct {
 	teams      map[string]*TeamInfo
 	votes      map[string]*VoteInfo
 	inboxes    map[string]map[string]*InboxMessage // agentID -> msgID -> message
+	notifier   MessageNotifier
 	mu         sync.RWMutex
 	nextTeamID int64
 	nextVoteID int64
@@ -88,6 +100,30 @@ func (tm *TeamManager) CreateTeam(leaderID, leaderAgentID string) *TeamInfo {
 
 	log.Printf("[Team] Created team %s with leader %s", teamID, leaderID)
 	return team
+}
+
+// CreateTeamNamed 创建带名称/描述的团队（Dashboard HTTP 端点使用），创建者即 leader。
+// runtime agent 随后经 team.join（teamId + memberId + agentId）加入该团队。
+func (tm *TeamManager) CreateTeamNamed(name, description, leaderID, leaderAgentID string) *TeamInfo {
+	team := tm.CreateTeam(leaderID, leaderAgentID)
+
+	tm.mu.Lock()
+	team.mu.Lock()
+	team.Name = name
+	team.Description = description
+	team.UpdatedAt = time.Now()
+	team.mu.Unlock()
+	tm.mu.Unlock()
+
+	return team
+}
+
+// SetMessageNotifier 注册收件箱消息通知回调（FrameListener 装配时调用，
+// 用于把新入队的消息实时下发给在线 agent；传 nil 可取消）。
+func (tm *TeamManager) SetMessageNotifier(n MessageNotifier) {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+	tm.notifier = n
 }
 
 // JoinTeam 加入团队
@@ -413,11 +449,13 @@ func (tm *TeamManager) SendMessageToAgent(agentID, msgType string, payload map[s
 // JoinTeam/LeaveTeam/CreateVote/endVote 等持锁路径必须使用此变体，
 // 避免经 sendToInbox → SendMessageToAgent 重复加锁导致死锁。
 func (tm *TeamManager) sendMessageToAgentLocked(agentID, msgType string, payload map[string]any) string {
-	msgID := fmt.Sprintf("msg_%d", tm.nextMsgID)
+	seq := tm.nextMsgID
+	msgID := fmt.Sprintf("msg_%d", seq)
 	tm.nextMsgID++
 
 	msg := &InboxMessage{
 		MsgID:     msgID,
+		Seq:       seq,
 		AgentID:   agentID,
 		Type:      msgType,
 		Payload:   payload,
@@ -432,6 +470,12 @@ func (tm *TeamManager) sendMessageToAgentLocked(agentID, msgType string, payload
 	tm.inboxes[agentID][msgID] = msg
 
 	log.Printf("[Inbox] Sent message %s to agent %s (type: %s)", msgID, agentID, msgType)
+
+	// 通知监听者（FrameListener）实时下发 inbox.message；agent 离线时由其保持内存缓冲。
+	// 回调在 tm.mu 持有期间同步执行，实现不得重入 TeamManager 的加锁方法。
+	if tm.notifier != nil {
+		tm.notifier(agentID, msg)
+	}
 
 	return msgID
 }
@@ -454,21 +498,27 @@ func (tm *TeamManager) GetMessages(agentID string, limit int) []map[string]any {
 		return []map[string]any{}
 	}
 
-	messages := make([]map[string]any, 0)
-	count := 0
-
-	for msgID, msg := range tm.inboxes[agentID] {
-		if msg.Acked || count >= limit {
-			continue
+	// 按 Seq（入队序）升序收集未确认消息：底层 map 遍历无序，
+	// 收件箱必须保持 FIFO 语义供 agent 按序消费。
+	pending := make([]*InboxMessage, 0, len(tm.inboxes[agentID]))
+	for _, msg := range tm.inboxes[agentID] {
+		if !msg.Acked {
+			pending = append(pending, msg)
 		}
+	}
+	sort.Slice(pending, func(i, j int) bool { return pending[i].Seq < pending[j].Seq })
 
+	messages := make([]map[string]any, 0, len(pending))
+	for _, msg := range pending {
+		if len(messages) >= limit {
+			break
+		}
 		messages = append(messages, map[string]any{
-			"msgId":     msgID,
+			"msgId":     msg.MsgID,
 			"type":      msg.Type,
 			"payload":   msg.Payload,
 			"timestamp": msg.Timestamp.UnixMilli(),
 		})
-		count++
 	}
 
 	return messages
@@ -508,13 +558,20 @@ func (tm *TeamManager) ReportMessage(agentID, msgID string, result map[string]an
 // GetTeamInfo 获取团队信息
 func (tm *TeamManager) GetTeamInfo(teamID string) (map[string]any, error) {
 	tm.mu.RLock()
-	defer tm.mu.RUnlock()
-
 	team, ok := tm.teams[teamID]
+	tm.mu.RUnlock()
+
 	if !ok {
 		return nil, fmt.Errorf("team not found")
 	}
 
+	return tm.InfoOf(team), nil
+}
+
+// InfoOf 将团队对象格式化为对外响应视图（字段结构与 GetTeamInfo 一致）。
+// 独立成方法供 HTTP handler 直接格式化刚创建的团队对象——此时按 teamID
+// 回查只会徒增一个不可达的错误分支。
+func (tm *TeamManager) InfoOf(team *TeamInfo) map[string]any {
 	team.mu.RLock()
 	defer team.mu.RUnlock()
 
@@ -524,13 +581,15 @@ func (tm *TeamManager) GetTeamInfo(teamID string) (map[string]any, error) {
 	}
 
 	return map[string]any{
-		"teamId":     team.TeamID,
-		"leaderId":   team.LeaderID,
-		"members":    members,
-		"state":      team.State,
-		"createdAt":  team.CreatedAt.UnixMilli(),
-		"updatedAt":  team.UpdatedAt.UnixMilli(),
-	}, nil
+		"teamId":      team.TeamID,
+		"name":        team.Name,
+		"description": team.Description,
+		"leaderId":    team.LeaderID,
+		"members":     members,
+		"state":       team.State,
+		"createdAt":   team.CreatedAt.UnixMilli(),
+		"updatedAt":   team.UpdatedAt.UnixMilli(),
+	}
 }
 
 // GetMemberAgents 获取团队成员的 memberID -> agentID 映射
@@ -551,6 +610,60 @@ func (tm *TeamManager) GetMemberAgents(teamID string) (map[string]string, error)
 		agents[memberID] = agentID
 	}
 	return agents, nil
+}
+
+// RemoveAgent 清理指定 agent 的全部团队状态：清空其收件箱缓冲消息，并从所有团队
+// 移除其成员关系；清空后无成员的团队随之解散。其余剩余成员会收到 team.member_left
+// 收件箱通知（锁外发送，避免与 tm.mu 死锁）。agent 断连时由 FrameListener 调用。
+func (tm *TeamManager) RemoveAgent(agentID string) {
+	type leaveNotice struct {
+		teamID   string
+		memberID string
+		remains  []string // 剩余成员的 agentID
+	}
+	var notices []leaveNotice
+
+	tm.mu.Lock()
+
+	delete(tm.inboxes, agentID)
+
+	for teamID, team := range tm.teams {
+		team.mu.Lock()
+		leavingMember := ""
+		for memberID, aid := range team.Members {
+			if aid == agentID {
+				delete(team.Members, memberID)
+				leavingMember = memberID
+			}
+		}
+		if leavingMember != "" {
+			team.UpdatedAt = time.Now()
+			notice := leaveNotice{teamID: teamID, memberID: leavingMember}
+			for _, aid := range team.Members {
+				notice.remains = append(notice.remains, aid)
+			}
+			notices = append(notices, notice)
+		}
+		team.mu.Unlock()
+
+		if leavingMember != "" && len(team.Members) == 0 {
+			delete(tm.teams, teamID)
+			log.Printf("[Team] Disbanded empty team %s after agent %s disconnected", teamID, agentID)
+		}
+	}
+
+	tm.mu.Unlock()
+
+	// 锁外发送成员离开通知（SendMessageToAgent 会重新加锁）
+	for _, n := range notices {
+		for _, aid := range n.remains {
+			tm.SendMessageToAgent(aid, "team.member_left", map[string]any{
+				"type":     "team.member_left",
+				"teamId":   n.teamID,
+				"memberId": n.memberID,
+			})
+		}
+	}
 }
 
 // FindMemberByAgent 通过 agentID 反查团队中的 memberID

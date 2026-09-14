@@ -28,6 +28,19 @@ definitions:
         example: true
         type: boolean
     type: object
+  handlers.CreateTeamRequest:
+    properties:
+      description:
+        description: 团队描述
+        example: 夜间挂机协同小队
+        type: string
+      name:
+        description: 团队名称（必填）
+        example: night-farm
+        type: string
+    required:
+    - name
+    type: object
   handlers.CreateWorkflowRequest:
     properties:
       description:
@@ -2189,6 +2202,44 @@ paths:
       summary: 更新系统配置
       tags:
       - settings
+  /teams:
+    post:
+      consumes:
+      - application/json
+      description: 创建多 agent 协作团队，创建者（当前登录用户）即 leader；runtime agent 随后通过 team.join（teamId
+        + memberId + agentId）加入该团队。需要 agents:manage 权限
+      parameters:
+      - description: 团队信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateTeamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: data.teamId 为新建团队 ID
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求体格式错误或名称为空
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 创建团队
+      tags:
+      - teams
   /v1/auth/login:
     post:
       consumes:

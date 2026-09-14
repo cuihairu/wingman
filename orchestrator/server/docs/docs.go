@@ -2481,6 +2481,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/teams": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "创建多 agent 协作团队，创建者（当前登录用户）即 leader；runtime agent 随后通过 team.join（teamId + memberId + agentId）加入该团队。需要 agents:manage 权限",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "teams"
+                ],
+                "summary": "创建团队",
+                "parameters": [
+                    {
+                        "description": "团队信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateTeamRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "data.teamId 为新建团队 ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求体格式错误或名称为空",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/auth/login": {
             "post": {
                 "description": "验证用户名密码，返回 JWT；登录失败按 IP 限流",
@@ -3937,6 +3995,24 @@ const docTemplate = `{
                 "success": {
                     "type": "boolean",
                     "example": true
+                }
+            }
+        },
+        "handlers.CreateTeamRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "description": "团队描述",
+                    "type": "string",
+                    "example": "夜间挂机协同小队"
+                },
+                "name": {
+                    "description": "团队名称（必填）",
+                    "type": "string",
+                    "example": "night-farm"
                 }
             }
         },

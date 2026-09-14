@@ -119,6 +119,9 @@ func run() error {
 	// 触发器处理器（透传 runtime trigger.* 到 Dashboard）
 	triggerHandler := handlers.NewTriggerHandler(registry, db)
 
+	// 团队处理器（Dashboard 创建团队；runtime agent 随后经 team.join 加入）
+	teamHandler := handlers.NewTeamHandler(frameListener.GetTeamManager())
+
 	// gin.Default() = New + 默认 Logger + Recovery；此处替换为自定义请求日志格式，
 	// 并保留 Recovery 兜底 panic。
 	r := gin.New()
@@ -231,6 +234,7 @@ func run() error {
 		agentsMgmt := api.Group("")
 		agentsMgmt.Use(middleware.PermissionRequired(db, "agents:manage"))
 		{
+			agentsMgmt.POST("/teams", teamHandler.HandleCreate)
 			agentsMgmt.POST("/agents/:agentId/shutdown", agentHandler.HandleShutdown)
 			agentsMgmt.PUT("/agents/:agentId/tags", agentHandler.HandleSetTags)
 			agentsMgmt.POST("/agents/:agentId/triggers/toggle", triggerHandler.HandleToggle)

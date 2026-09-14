@@ -341,9 +341,10 @@ func TestTeamHandlersViaListener(t *testing.T) {
 	}, "team.join not processed")
 
 	// team.join 失败（未知团队）→ team.error 回执
+	// 注：m2 加入成功会让在线的 team-agent 先收到一条 member_joined 推送，
+	// 用 readNonPushFrame 跳过消息推送帧再断言回执。
 	sendMessage(t, conn, Notify, 0, map[string]any{"type": "team.join", "teamId": "team_404", "memberId": "x", "agentId": "y"})
-	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-	errReply := readFrame(t, conn)
+	errReply := readNonPushFrame(t, conn, "team.error")
 	if !contains(string(errReply.body), "team.error") {
 		t.Fatalf("expected team.error reply, got %s", string(errReply.body))
 	}
@@ -356,8 +357,7 @@ func TestTeamHandlersViaListener(t *testing.T) {
 	sendMessage(t, conn, Notify, 0, map[string]any{
 		"type": "team.vote_create", "teamId": teamID, "proposerId": "outsider", "subject": "x",
 	})
-	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-	errReply = readFrame(t, conn)
+	errReply = readNonPushFrame(t, conn, "team.error")
 	if !contains(string(errReply.body), "team.error") {
 		t.Fatalf("expected team.error for outsider vote, got %s", string(errReply.body))
 	}
