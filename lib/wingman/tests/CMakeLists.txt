@@ -60,6 +60,11 @@ if(BUILD_CORE_TESTS)
         target_sources(core_tests PRIVATE unix_socket_channel_test.cpp)
     endif()
 
+    # Linux X11 平台集成测试（X11 链接随 wingman PUBLIC 传递；无 X 运行时用例自行 skip）
+    if(UNIX AND NOT APPLE)
+        target_sources(core_tests PRIVATE platform_x11_test.cpp)
+    endif()
+
     if(WIN32)
         target_sources(core_tests PRIVATE smart_trigger_test.cpp)
     endif()
