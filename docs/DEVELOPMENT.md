@@ -165,6 +165,28 @@ REM Requires LuaRocks and Busted (see above)
 scripts\run-lua-tests.cmd
 ```
 
+### GUI↔Runtime 跨语言集成测试（Linux）
+
+GUI 侧 Rust `IpcClient` ↔ C++ runtime `LocalIpcServer` 的本地 IPC 端到端测试
+（`apps/gui/src-tauri/src/ipc/integration_tests.rs`）。每个用例 spawn 真 runtime
+子进程（`start --standalone`，socket 注入临时目录），走 UDS 帧协议断言。
+
+```bash
+# 1. 构建 runtime（一次即可；Linux 无 Lua/X 运行期依赖）
+cmake -S . -B build-runtime -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE=$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake \
+  -DVCPKG_TARGET_TRIPLET=x64-linux -DVCPKG_MANIFEST_FEATURES=tests \
+  -DCMAKE_BUILD_TYPE=Debug -DWINGMAN_BUILD_TESTS=ON \
+  -DWINGMAN_BUILD_RUNTIME=ON -DWINGMAN_BUILD_AGENT=OFF -DWINGMAN_BUILD_LUA=OFF
+cmake --build build-runtime --target wingman-runtime
+
+# 2. 跑集成测试（自动定位 build-runtime 产物，或用 WINGMAN_RUNTIME_BIN 指定）
+cargo test --manifest-path apps/gui/src-tauri/Cargo.toml integration_tests -- --nocapture
+```
+
+runtime 二进制缺失时用例打印 `SKIP:` 跳过（不 fail）。CI Linux job 只构建
+proto+transport，故本测试不进 CI，属开发机验证。
+
 ## CI/CD
 
 The project uses GitHub Actions for continuous integration:

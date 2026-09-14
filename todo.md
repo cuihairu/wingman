@@ -245,7 +245,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 |------|------|------|
 | Go Team/Inbox 三断链：消息入队无投递、断连无清理、无创建具名团队入口 | `MessageNotifier` 实时下发 + `RemoveAgent` 清理/解散通知 + `CreateTeamNamed`；新增 `POST /api/teams` | 新增 `team_delivery_test.go`(11)、`teams_test.go`、`team_inbox_test.go` 集成；Go server 覆盖率 **100.0%**（stmt/branch/func，14 包） |
 | C++ ML 引擎无脚本推理入口 | `ml.run(modelId, inputs)` 模块方法 + Tensor↔ScriptValue 转换 + ONNX 示例 + pyi 存根 | `script_modules_test.cpp` +5、`ml_test.cpp` +7 全绿 |
-| GUI scripts 页无文件管理（只能启动器式按路径加载） | `script_files.rs` 6 命令（list/read/write/delete/rename/exists + 路径安全校验）+ scripts 页文件树/预览/新建/删除 | Rust 9 单测（本机缺 glib 旁路验证，Windows 为目标平台）+ vitest 18 用例 |
+| GUI scripts 页无文件管理（只能启动器式按路径加载） | `script_files.rs` 6 命令（list/read/write/delete/rename/exists + 路径安全校验）+ scripts 页文件树/预览/新建/删除 | Rust 9 单测（本机 glib/gtk/webkit2gtk 齐备，`cargo test` 可跑；Windows 为目标平台）+ vitest 18 用例 |
 | runtime 误执行 Lua 字节码无提示 | `resource_loader` `looksLikeLuaBytecode` 检测（Lua 5.x `\x1bLua` / LuaJIT `\x1bLJ`）报可读错误 | `cli_test.cpp` +6 全绿 |
 
 **设计决策（裁定不修，已记录）**：Debugger 501 直连模式为有意契约；GUI 不做内置编辑器（VS Code 统一）；PBKDF2 加密资源两端一致禁用。
@@ -271,7 +271,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
   - [x] 修复 listener_test.go 既有 vet 警告（goroutine 内 Fatalf → channel 回传测试 goroutine）
   - [x] handlers（script/agent/audit/screenshot）补全
 - [ ] **C++ runtime**：当前 ~1705 测试 / 90%+ 覆盖（保持水准；2026-06-23 已修复 `runtime_tests` 链接缺源、`gtest_discover_tests(... PRE_TEST)` 多配置发现，以及 `WINGMAN_BUILD_TESTS` 自动联动 core/runtime/transport/proto/debug 标准测试集）
-- [ ] **集成测试**：✅ server HTTP 链路（`TestIntegrationAuthAndPermissionFlow`：JWT 签发→AuthRequired→PermissionRequired admin 旁路/viewer 拒绝→handler，8 断言）；✅ Agent→Orchestrator 跨语言集成（6 文件 3 测试全通过）；🚧 GUI↔IPC↔Runtime 跨语言集成待续
+- [ ] **集成测试**：✅ server HTTP 链路（`TestIntegrationAuthAndPermissionFlow`：JWT 签发→AuthRequired→PermissionRequired admin 旁路/viewer 拒绝→handler，8 断言）；✅ Agent→Orchestrator 跨语言集成（6 文件 3 测试全通过）；✅ GUI↔IPC↔Runtime 跨语言集成（2026-09-14：Rust 侧 spawn 真 runtime 子进程，5 用例走 UDS 帧协议 + 二进制缺失优雅 skip；C++ `ipc_test` 移除 Linux 跳过经 UnixSocket 真跑）
 - [x] **性能测试**（Go server 基准）：`go test -bench=. -benchmem ./internal/rbac/ ./internal/workflow/`；rbac 非admin 解析 160µs/689 allocs、admin 旁路 17µs（~9×，验证短路 + 请求级缓存有效）、DAG 环检测 44µs（100 节点）、selectAgent 9µs（20 agent）；C++ 截图/WS 基准待续
 - [x] **Go Team/Inbox 三断链修复**（2026-09-14，此前「有 API 无投递」不可用）：① 消息入队后经 `MessageNotifier` 回调实时下发在线 agent（`listener.go deliverInboxMessage`，帧契约与 runtime inbox 模块对齐）；② 断连/RemoveAgent 清理收件箱与团队关系（空团队解散 + 锁外发 `team.member_left`，含重连竞态防护 `hasOtherConnForAgent`）；③ 补 `CreateTeamNamed` 供 handler 创建具名团队；收件箱 FIFO 保序（`InboxMessage.Seq` + 显式排序，修复 map 遍历乱序 flaky）
 - [x] **Go 收件箱 FIFO flaky 修复**：`GetMessages` 按 `Seq` 升序输出（原 map 遍历无序导致 3 跑 1 挂）；单测 15 连跑 + 包级 5 连跑 + race 全绿
