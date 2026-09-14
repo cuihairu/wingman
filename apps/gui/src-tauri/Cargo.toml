@@ -20,3 +20,7 @@ tokio = { version = "1", features = ["sync", "time"] }
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+[dev-dependencies]
+# #[tokio::test] 需要 rt + macros；features union 只在 cargo test 时生效，不影响 release 构建
+tokio = { version = "1", features = ["rt", "macros"] }
