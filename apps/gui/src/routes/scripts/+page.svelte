@@ -3,6 +3,7 @@
 	import { connection } from '$lib/stores/connection';
 	import { logs } from '$lib/stores/logs';
 	import { scripts, type ScriptInfo, type ScriptState } from '$lib/stores/scripts';
+	import { scriptFiles, type ScriptFileEntry, type ScriptsRootInfo } from '$lib/stores/script-files';
 
 	type StatusFilter = 'all' | ScriptState;
 
@@ -15,11 +16,28 @@
 	/// 运行时长显示的秒级 tick
 	let nowTick = $state(Date.now());
 
-	const quickScripts = [
-		{ name: 'Lua 示例', path: 'scripts/example.lua', hint: 'Lua', tag: 'default' },
-		{ name: '触发器配置', path: 'config/triggers.lua', hint: 'Trigger', tag: 'config' },
-		{ name: 'Python 示例', path: 'scripts/example.py', hint: 'Python', tag: 'optional' },
-	];
+	// ---- 文件管理状态（本地文件系统，不依赖 runtime IPC） ----
+	/// scriptFiles 是复合订阅形态（subscribe 为分片订阅函数集合），
+	/// 无法用 $ 前缀自动订阅，这里手工汇入本地响应式快照
+	let sf = $state<{
+		entries: ScriptFileEntry[];
+		truncated: boolean;
+		root: ScriptsRootInfo;
+		loading: boolean;
+	}>({
+		entries: [],
+		truncated: false,
+		root: { root: '', source: 'default' },
+		loading: false,
+	});
+	let selectedPath = $state<string | null>(null);
+	let preview = $state<{ path: string; content: string; size: number } | null>(null);
+	let previewLoading = $state(false);
+	let previewError = $state('');
+	let newFilePath = $state('');
+	let filesBusy = $state(false);
+	/// 两段式删除确认：第一次点击进入待确认态
+	let deleteArmed = $state<string | null>(null);
 
 	const statusFilters: Array<{ value: StatusFilter; label: string }> = [
 		{ value: 'all', label: '全部' },
@@ -50,9 +68,36 @@
 		return matchesQuery && matchesStatus;
 	}));
 
+	/// 可直接启动的脚本文件（.lua/.py），作为快捷卡数据源（取代旧硬编码三卡）
+	const SCRIPT_EXTENSIONS = ['.lua', '.py', '.json', '.toml'];
+	let runnableFiles = $derived(
+		sf.entries.filter(item =>
+			!item.is_dir
+			&& SCRIPT_EXTENSIONS.some(ext => item.path.toLowerCase().endsWith(ext))
+		)
+	);
+	let quickStartFiles = $derived(runnableFiles.slice(0, 6));
+
 	$effect(() => {
 		const timer = window.setInterval(() => { nowTick = Date.now(); }, 1000);
 		return () => window.clearInterval(timer);
+	});
+
+	/// 订阅 scriptFiles 各分片 → 本地快照 sf
+	$effect(() => {
+		const unsubs = [
+			scriptFiles.subscribe.entries(v => { sf.entries = v; }),
+			scriptFiles.subscribe.truncated(v => { sf.truncated = v; }),
+			scriptFiles.subscribe.root(v => { sf.root = v; }),
+			scriptFiles.subscribe.loading(v => { sf.loading = v; }),
+		];
+		return () => unsubs.forEach(unsub => unsub());
+	});
+
+	/// 进入页面加载脚本根目录与文件列表（dev 模式填演示数据）
+	$effect(() => {
+		scriptFiles.loadRoot();
+		scriptFiles.load();
 	});
 
 	function formatSize(bytes: number): string {
@@ -217,6 +262,126 @@
 		scriptQuery = '';
 		statusFilter = 'all';
 	}
+
+	// ---- 文件管理（Rust 层 list/read/write/delete_script_file，路径约束在脚本根目录内） ----
+
+	/// 文件树缩进深度（按路径段数）
+	function depthOf(path: string): number {
+		return path.replace(/\\/g, '/').split('/').length - 1;
+	}
+
+	function formatModified(ms: number): string {
+		if (!ms) return '-';
+		const diff = nowTick - ms;
+		if (diff >= 0 && diff < 60_000) return '刚刚';
+		return new Date(ms).toLocaleString();
+	}
+
+	async function selectFile(entry: ScriptFileEntry) {
+		if (entry.is_dir) return;
+		selectedPath = entry.path;
+		deleteArmed = null;
+		await previewFile(entry.path);
+	}
+
+	async function previewFile(path: string) {
+		previewLoading = true;
+		previewError = '';
+		try {
+			const content = await scriptFiles.read(path);
+			preview = { path: content.path, content: content.content, size: content.size };
+		} catch (error: any) {
+			preview = null;
+			previewError = String(error);
+		} finally {
+			previewLoading = false;
+		}
+	}
+
+	async function refreshFiles() {
+		filesBusy = true;
+		try {
+			await scriptFiles.load();
+			await scriptFiles.loadRoot();
+			logs.add('脚本文件列表已刷新', 'info');
+		} catch (error: any) {
+			logs.add(`刷新脚本文件失败: ${error}`, 'error');
+		} finally {
+			filesBusy = false;
+		}
+	}
+
+	async function createFile() {
+		const path = newFilePath.trim();
+		if (!path) {
+			logs.add('请输入新建文件的相对路径', 'warning');
+			return;
+		}
+		filesBusy = true;
+		try {
+			await scriptFiles.create(path);
+			newFilePath = '';
+			selectedPath = path;
+			await previewFile(path);
+			logs.add(`已新建脚本文件: ${path}`, 'success');
+		} catch (error: any) {
+			logs.add(`新建文件失败: ${error}`, 'error');
+		} finally {
+			filesBusy = false;
+		}
+	}
+
+	/// 两段式删除确认：第一次点击进入待确认，再次点击执行删除
+	async function removeFile(path: string) {
+		if (deleteArmed !== path) {
+			deleteArmed = path;
+			return;
+		}
+		deleteArmed = null;
+		filesBusy = true;
+		try {
+			await scriptFiles.removeDev(path);
+			if (selectedPath === path) {
+				selectedPath = null;
+				preview = null;
+			}
+			logs.add(`已删除脚本文件: ${path}`, 'info');
+		} catch (error: any) {
+			logs.add(`删除文件失败: ${error}`, 'error');
+		} finally {
+			filesBusy = false;
+		}
+	}
+
+	async function runSelected() {
+		if (!selectedPath) return;
+		await startPath(selectedPath);
+	}
+
+	function changeRoot() {
+		const next = window.prompt('设置脚本根目录（留空恢复默认 ./scripts）', sf.root.root);
+		if (next === null) return;
+		const trimmed = next.trim();
+		if (!trimmed) {
+			applyRoot('');
+			return;
+		}
+		applyRoot(trimmed);
+	}
+
+	async function applyRoot(path: string) {
+		filesBusy = true;
+		try {
+			await scriptFiles.setRoot(path);
+			selectedPath = null;
+			preview = null;
+			logs.add(`脚本根目录已切换: ${sf.root.root}`, 'success');
+		} catch (error: any) {
+			logs.add(`设置脚本根目录失败: ${error}`, 'error');
+		} finally {
+			filesBusy = false;
+		}
+	}
 </script>
 
 <div class="scripts-page">
@@ -295,14 +460,18 @@
 				</button>
 			</div>
 			<div class="quick-list">
-				{#each quickScripts as item}
-					<button class="quick-card" onclick={() => startPath(item.path)} disabled={!$connection.connected || startingCustom}>
-						<span class="quick-tag">{item.tag}</span>
-						<strong>{item.name}</strong>
-						<span title={item.path}>{item.path}</span>
-						<small>{item.hint}</small>
-					</button>
-				{/each}
+				{#if quickStartFiles.length === 0}
+					<div class="quick-empty">脚本目录暂无可启动文件，可在下方文件管理中新建</div>
+				{:else}
+					{#each quickStartFiles as item (item.path)}
+						<button class="quick-card" onclick={() => startPath(item.path)} disabled={!$connection.connected || startingCustom}>
+							<span class="quick-tag">{item.path.toLowerCase().endsWith('.py') ? 'python' : 'lua'}</span>
+							<strong>{item.name}</strong>
+							<span title={item.path}>{item.path}</span>
+							<small>{formatSize(item.size)}</small>
+						</button>
+					{/each}
+				{/if}
 			</div>
 		</div>
 
@@ -327,6 +496,138 @@
 					<span>全部停止</span>
 					<small>{runningCount + pausedCount} 个活跃</small>
 				</button>
+			</div>
+		</div>
+	</section>
+
+	<section class="card files-card">
+		<div class="files-toolbar">
+			<div class="panel-heading compact files-heading">
+				<div>
+					<span class="eyebrow">Files</span>
+					<h3>脚本文件管理</h3>
+				</div>
+				<span class="root-path" title="脚本根目录（{sf.root.source}）">
+					{sf.root.root || '未设置'}
+				</span>
+			</div>
+			<div class="files-actions">
+				<button class="btn btn-sm" onclick={refreshFiles} disabled={filesBusy}>
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M21 12a9 9 0 0 1-15.2 6.52"></path>
+						<path d="M3 12A9 9 0 0 1 18.2 5.48"></path>
+						<path d="M21 5v7h-7"></path>
+						<path d="M3 19v-7h7"></path>
+					</svg>
+					刷新
+				</button>
+				<button class="btn btn-sm" onclick={changeRoot} disabled={filesBusy}>更改目录</button>
+			</div>
+		</div>
+
+		<div class="files-body">
+			<div class="files-tree">
+				<div class="new-file-row">
+					<input
+						type="text"
+						bind:value={newFilePath}
+						placeholder="新建文件相对路径，如 scripts/new.lua"
+						onkeydown={(event) => {
+							if (event.key === 'Enter') createFile();
+						}}
+					/>
+					<button class="btn btn-sm btn-primary" onclick={createFile} disabled={filesBusy || !newFilePath.trim()}>
+						新建
+					</button>
+				</div>
+
+				{#if sf.entries.length === 0}
+					<div class="files-empty">
+						<strong>{sf.loading ? '正在读取脚本目录…' : '脚本目录为空或不可访问'}</strong>
+						<span>检查上方脚本根目录设置（默认 ./scripts）</span>
+					</div>
+				{:else}
+					{#if sf.truncated}
+						<div class="files-truncated">目录条目过多，列表已截断</div>
+					{/if}
+					<ul class="file-list">
+						{#each sf.entries as entry (entry.path)}
+							<li>
+								<button
+									class="file-row"
+									class:dir={entry.is_dir}
+									class:selected={selectedPath === entry.path}
+									style="padding-left: {12 + depthOf(entry.path) * 14}px"
+									onclick={() => selectFile(entry)}
+									disabled={entry.is_dir}
+									title={entry.path}
+								>
+									<span class="file-glyph">{entry.is_dir ? '▸' : '·'}</span>
+									<span class="file-name">{entry.name}</span>
+									<span class="file-meta">
+										{#if !entry.is_dir}{formatSize(entry.size)} · {/if}{formatModified(entry.modified)}
+									</span>
+									{#if !entry.is_dir}
+										<span
+											class="file-delete"
+											class:armed={deleteArmed === entry.path}
+											role="button"
+											tabindex="-1"
+											title={deleteArmed === entry.path ? '再次点击确认删除' : '删除文件'}
+											onclick={(event) => {
+												event.stopPropagation();
+												removeFile(entry.path);
+											}}
+											onkeydown={(event) => {
+												if (event.key === 'Enter' || event.key === ' ') {
+													event.stopPropagation();
+													removeFile(entry.path);
+												}
+											}}
+										>
+											{deleteArmed === entry.path ? '确认' : '删'}
+										</span>
+									{/if}
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+
+			<div class="files-preview">
+				{#if !selectedPath}
+					<div class="files-empty">
+						<strong>未选择文件</strong>
+						<span>点击左侧文件查看只读预览（编辑请用 VS Code）</span>
+					</div>
+				{:else}
+					<div class="preview-toolbar">
+						<span class="preview-path" title={selectedPath}>{selectedPath}</span>
+						<div class="preview-actions">
+							<button class="btn btn-sm btn-primary" onclick={runSelected} disabled={!$connection.connected || startingCustom || previewLoading}>
+								启动
+							</button>
+							<button class="btn btn-sm" onclick={() => { if (selectedPath) previewFile(selectedPath); }} disabled={previewLoading}>
+								重新读取
+							</button>
+							<button
+								class="btn btn-sm {deleteArmed === selectedPath ? 'btn-danger' : ''}"
+								onclick={() => { if (selectedPath) removeFile(selectedPath); }}
+								disabled={filesBusy}
+							>
+								{deleteArmed === selectedPath ? '确认删除' : '删除'}
+							</button>
+						</div>
+					</div>
+					{#if previewLoading}
+						<div class="files-empty"><strong>正在读取文件…</strong></div>
+					{:else if previewError}
+						<div class="preview-error">{previewError}</div>
+					{:else if preview}
+						<pre class="preview-code">{preview.content}</pre>
+					{/if}
+				{/if}
 			</div>
 		</div>
 	</section>
@@ -744,6 +1045,269 @@
 		white-space: nowrap;
 	}
 
+	.files-card {
+		overflow: hidden;
+	}
+
+	.files-toolbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		flex-wrap: wrap;
+		padding: 14px 16px;
+		border-bottom: 1px solid var(--border-color);
+	}
+
+	.files-heading {
+		margin-bottom: 0;
+		min-width: 0;
+	}
+
+	.root-path {
+		max-width: 420px;
+		overflow: hidden;
+		padding: 3px 8px;
+		border: 1px solid var(--border-color);
+		border-radius: 999px;
+		background: var(--bg-tertiary);
+		color: var(--text-secondary);
+		font-size: 11px;
+		font-family: var(--font-mono, monospace);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.files-actions {
+		display: flex;
+		gap: 6px;
+		flex-shrink: 0;
+	}
+
+	.files-body {
+		display: grid;
+		grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+		gap: 0;
+	}
+
+	.files-tree {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 14px 16px 16px;
+		border-right: 1px solid var(--border-color);
+		min-width: 0;
+	}
+
+	.new-file-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 8px;
+	}
+
+	.new-file-row input {
+		min-width: 0;
+		min-height: 34px;
+		padding: 6px 10px;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border-color);
+		border-radius: 6px;
+		color: var(--text-primary);
+		font-size: 12px;
+	}
+
+	.new-file-row input:focus {
+		outline: none;
+		border-color: var(--accent-blue);
+		box-shadow: 0 0 0 3px var(--focus-ring);
+	}
+
+	.file-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		max-height: 380px;
+		overflow-y: auto;
+	}
+
+	.file-row {
+		display: grid;
+		grid-template-columns: 16px minmax(0, 1fr) auto auto;
+		gap: 8px;
+		align-items: center;
+		width: 100%;
+		min-height: 32px;
+		padding: 4px 10px;
+		border: 1px solid transparent;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--text-primary);
+		font-size: 12px;
+		text-align: left;
+		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s;
+	}
+
+	.file-row:hover:not(:disabled) {
+		background: var(--surface-hover);
+	}
+
+	.file-row.selected {
+		background: rgba(88, 166, 255, 0.1);
+		border-color: rgba(88, 166, 255, 0.45);
+	}
+
+	.file-row:disabled {
+		cursor: default;
+	}
+
+	.file-row.dir {
+		color: var(--text-secondary);
+		font-weight: 600;
+	}
+
+	.file-glyph {
+		color: var(--text-secondary);
+		text-align: center;
+	}
+
+	.file-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.file-meta {
+		color: var(--text-secondary);
+		font-size: 11px;
+		white-space: nowrap;
+	}
+
+	.file-delete {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 22px;
+		min-height: 22px;
+		padding: 0 5px;
+		border: 1px solid var(--border-color);
+		border-radius: 5px;
+		background: var(--bg-secondary);
+		color: var(--text-secondary);
+		font-size: 11px;
+		transition: all 0.15s;
+	}
+
+	.file-delete:hover {
+		color: var(--accent-red);
+		border-color: var(--accent-red);
+	}
+
+	.file-delete.armed {
+		background: var(--accent-red);
+		border-color: var(--accent-red);
+		color: #fff;
+	}
+
+	.files-preview {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 14px 16px 16px;
+		min-width: 0;
+	}
+
+	.preview-toolbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+
+	.preview-path {
+		min-width: 0;
+		overflow: hidden;
+		color: var(--text-secondary);
+		font-size: 12px;
+		font-family: var(--font-mono, monospace);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.preview-actions {
+		display: flex;
+		gap: 6px;
+		flex-shrink: 0;
+	}
+
+	.preview-code {
+		margin: 0;
+		padding: 12px;
+		max-height: 340px;
+		overflow: auto;
+		background: var(--bg-primary, var(--bg-tertiary));
+		border: 1px solid var(--border-color);
+		border-radius: 6px;
+		color: var(--text-primary);
+		font-size: 12px;
+		line-height: 1.55;
+		font-family: var(--font-mono, monospace);
+		white-space: pre;
+	}
+
+	.preview-error {
+		padding: 10px 12px;
+		background: rgba(248, 81, 73, 0.08);
+		border: 1px solid rgba(248, 81, 73, 0.45);
+		border-radius: 6px;
+		color: var(--accent-red);
+		font-size: 12px;
+	}
+
+	.files-empty {
+		display: grid;
+		place-items: center;
+		gap: 6px;
+		min-height: 120px;
+		padding: 20px;
+		text-align: center;
+		color: var(--text-secondary);
+		background: var(--bg-tertiary);
+		border: 1px dashed var(--border-color);
+		border-radius: 8px;
+		font-size: 12px;
+	}
+
+	.files-empty strong {
+		color: var(--text-primary);
+		font-size: 13px;
+	}
+
+	.files-truncated {
+		padding: 5px 10px;
+		background: rgba(210, 153, 34, 0.1);
+		border: 1px solid rgba(210, 153, 34, 0.4);
+		border-radius: 6px;
+		color: var(--accent-yellow);
+		font-size: 11px;
+	}
+
+	.quick-empty {
+		grid-column: 1 / -1;
+		display: grid;
+		place-items: center;
+		min-height: 84px;
+		padding: 12px;
+		border: 1px dashed var(--border-color);
+		border-radius: 8px;
+		color: var(--text-secondary);
+		font-size: 12px;
+	}
+
 	.list-card {
 		overflow: hidden;
 	}
@@ -1035,6 +1599,15 @@
 
 		.launcher-panel {
 			grid-template-columns: 1fr;
+		}
+
+		.files-body {
+			grid-template-columns: 1fr;
+		}
+
+		.files-tree {
+			border-right: none;
+			border-bottom: 1px solid var(--border-color);
 		}
 	}
 

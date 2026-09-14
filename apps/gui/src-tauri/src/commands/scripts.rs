@@ -275,7 +275,9 @@ fn script_path_from_id(id: &str) -> String {
     format!("scripts/{}.lua", value)
 }
 
-fn local_data_dir() -> PathBuf {
+/// 本机数据目录（Windows %LOCALAPPDATA% / macOS ~/Library/Application Support / Linux XDG_DATA_HOME）。
+/// 供 profiles 持久化与 script_files 的脚本目录设置共用。
+pub(crate) fn local_data_dir() -> PathBuf {
     #[cfg(windows)]
     {
         if let Some(value) = env::var_os("LOCALAPPDATA") {

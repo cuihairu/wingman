@@ -36,6 +36,13 @@ fn main() {
             commands::scripts::unload_script,
             commands::scripts::start_active_profile_scripts,
             commands::scripts::stop_active_profile_scripts,
+            // 脚本文件管理（本地文件系统，路径约束在脚本根目录内）
+            commands::script_files::get_scripts_root,
+            commands::script_files::set_scripts_root,
+            commands::script_files::list_script_files,
+            commands::script_files::read_script_file,
+            commands::script_files::write_script_file,
+            commands::script_files::delete_script_file,
             // 系统状态
             commands::system::get_system_status,
             commands::system::get_version,

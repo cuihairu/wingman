@@ -2,6 +2,7 @@ pub mod connection;
 pub mod events;
 pub mod macros;
 pub mod profiles;
+pub mod script_files;
 pub mod screen;
 pub mod scripts;
 pub mod system;
