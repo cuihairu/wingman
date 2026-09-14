@@ -1,7 +1,7 @@
 # Wingman 项目待办事项
 
 > 最后更新: 2026-09-14
-> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」）
+> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）
 
 > ⚠️ 本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
@@ -226,6 +226,16 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 ---
 
 ## 🔵 P3 - 低优先级（工程优化）
+
+## 📅 Agent 分组与批量操作（2026-09-14 完成）
+
+集中管理能力强化：agent 标签从内存态升级为持久化，并新增基于标签/ID 的批量操作。纯 Go server + Dashboard，runtime 不改（决策记录见 `docs/architecture-decisions.md`「Agent Groups & Batch Operations」）。
+
+| 能力 | 实现 | 验证 |
+|------|------|------|
+| 标签持久化 | `models.Agent.tags`（JSON 文本列）+ `Registry` 注入 `TagStore` 回调接口（`internal/agent` 保持零 DB 依赖，DB IO 一律锁外）；`SetTags` 写穿落库、`Register` 重启恢复/重连保留内存值 | `registry_tags_test.go`（恢复/重连/清洗/失败不回滚）+ `tagstore_test.go`（roundtrip/不重复建行/非法 JSON）+ 跨注册表连通测试 |
+| 批量 API | `POST /api/agents/batch/run-script`、`/stop-script`（scripts:run）、`/trigger`（agents:manage）；选择器 agentIds/tags 并集去重（皆空 400、上限 500、无匹配 total=0）；信号量并发 8 逐台下发既有命令，离线记 "agent offline"，部分失败一律 200 + 逐台结果；脚本路径先服务端 Resolve；审计 `script.batch_run`/`script.batch_stop`/`agent.batch_trigger_add`（meta 含选择器与逐台摘要） | `handlers/batch_test.go` 10 用例 + `integration/batch_test.go`（打标→按标签批量运行→批量触发器→RBAC viewer 403/operator 200）；swagger 已再生成 |
+| Dashboard 批量 UI | `TriggerFormModal` 从 Monitor 抽取为共享组件（回调式 onSubmit）；Agents 页 rowSelection（权限门控）+ 批量工具栏 3 按钮（选中 0 台禁用）+ 标签筛选 + 结果弹窗（Alert 汇总 + 逐台明细）；`wingman.ts` 新增 batch 服务函数；`access.ts` 新增 `canScriptRun` | jest 235 用例全绿（含 wingman batch 4 例 + 组件 10 例，组件覆盖率 100%）；tsc/eslint/prettier 干净 |
 
 ## 📅 2026-09-14 功能修复与覆盖率冲刺
 

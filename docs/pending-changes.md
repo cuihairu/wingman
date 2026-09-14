@@ -44,7 +44,7 @@
 | **消息/反馈（新）** | `handlers/messages.go`、`handlers/feedback.go` | 站内信（recipient `*` 广播、未读计数、单条/全部已读）；Feedback 提交 → 自动生成两条 Message + 审计 |
 | **Profile 增强** | `handlers/profile.go`、`models/models.go` | User 补 `Active/Nickname/Email/Phone/Avatar/LastLoginAt`；`SafeUser` 脱敏；按需更新；`/permissions` 展开为 `{resource, actions[]}` |
 | **Auth 增强** | `handlers/auth.go` | 登录拒绝 inactive（403）、记录 `last_login_at`、响应带 `active` |
-| **Agent 标签（新）** | `agent/registry.go`、`handlers/agent.go` | `SetTags`（去重）+ 广播 + `PUT /agents/:id/tags`（admin）；内存态 |
+| **Agent 标签（新）** | `agent/registry.go`、`handlers/agent.go` | `SetTags`（去重）+ 广播 + `PUT /agents/:id/tags`（admin）；~~内存态~~ 2026-09-14 起经 `TagStore` 持久化到 `models.Agent.tags`（重启恢复/重连保留，见 architecture-decisions.md「Agent Groups & Batch Operations」） |
 | **架构合规清理** | `pkg/agent/client.go` | **删除 −262 行**：整个 server→runtime 拨号 `Client` + `Pool`（违反约束 #2）。仅保留协议常量供 listener 使用 |
 
 ### 1.2 Dashboard (React)
@@ -149,7 +149,7 @@
 | 工作流模板 | ✅ 完整 | 5 模板 + 只读接口 |
 | Debugger 直连模式 | ✅ 完整 | 设计上故意「不实现」代理，文档/测试齐全 |
 | 消息/反馈 | ⚠️ 功能完整 | 广播消息已读状态污染（见问题 #1） |
-| Agent tags | ✅ 完整 | 内存态，重启丢失（设计如此） |
+| Agent tags | ✅ 完整 | ~~内存态，重启丢失~~ 2026-09-14 起持久化（`TagStore` → `models.Agent.tags`），并新增按标签批量操作端点 |
 | Runtime EventBuffer + drain | ✅ 完整 | 三类事件已接 |
 | Runtime 指数退避重连 | ✅ 功能完整 | jitter 粒度粗（见问题 #5） |
 | Runtime outbox 缓冲 | ✅ 功能完整 | flush 中途断线静默丢（幂等可接受） |

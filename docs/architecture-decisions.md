@@ -238,6 +238,60 @@ Windows-only and HTTP-oriented (`serverUrl`); it is not wired into the local
 event path. A future "screenshot available" lightweight signal, if needed,
 should carry only a notification and let the GUI pull the heavy payload.
 
+## Agent Groups & Batch Operations
+
+Agent grouping (tags) and batch operations live entirely in the Go server
+control plane; the C++ runtime gains no new commands and no new transport.
+
+### Tag persistence
+
+- Tags are attached to in-memory `AgentInfo` (`internal/agent`) and persisted
+  as a JSON text column on `models.Agent` (`tags`).
+- Persistence goes through a `TagStore` callback interface injected into
+  `Registry` (`SetTagStore`), so the `internal/agent` package keeps its
+  zero-DB testability (same decoupling convention as `AgentRegistrar`).
+  The gorm implementation is `handlers.NewAgentTagStore`.
+- Lock discipline: all DB IO happens **outside** `Registry.mu`. `SetTags`
+  mutates memory + broadcasts under the lock, then saves out-of-lock
+  (failure is logged only; memory stays the runtime truth). `Register`
+  loads persisted tags before taking the lock: reconnect keeps in-memory
+  tags, cold start (server restart) restores them from the DB.
+
+### Batch endpoints
+
+Fan-out is implemented in the Go server by looping over the existing
+per-agent commands (`run_script` 30s / `stop_script` 10s / `trigger.add`
+10s) over the existing agent TCP connection. No new command, listener, or
+transport is introduced.
+
+| Endpoint | Permission | Underlying command |
+|----------|------------|--------------------|
+| `POST /api/agents/batch/run-script` | `scripts:run` | `run_script` |
+| `POST /api/agents/batch/stop-script` | `scripts:run` | `stop_script` |
+| `POST /api/agents/batch/trigger` | `agents:manage` | `trigger.add` |
+
+Semantics:
+
+- Selector `{agentIds?, tags?}`: union (OR) of exact IDs and tag matches,
+  deduplicated; empty selector → 400, >500 items → 400, zero matches →
+  `200 {total: 0}`.
+- Dispatch uses a bounded semaphore (8 concurrent per request); each agent
+  gets its own command timeout. Offline / disconnected agents stay in the
+  result as `"agent offline"`.
+- Partial failure is not an overall failure: the response is always
+  `200 {"success": true, "data": {total, succeeded, failed, results[]}}`
+  with a per-agent outcome. Script path resolution happens once before any
+  dispatch (invalid path → 400, zero dispatch).
+- Each request writes one audit log (`script.batch_run` /
+  `script.batch_stop` / `agent.batch_trigger_add`) whose meta carries the
+  selector and per-agent summary. DB writes happen serially after fan-out.
+- The workflow engine is intentionally unchanged; mapping tags to workflow
+  workers is left for a future decision.
+
+The Dashboard consumes these endpoints from the Agents page (row selection
++ batch toolbar + result table); the trigger form is shared with the
+Monitor page as a callback-style component.
+
 ## Documentation Requirement
 
 When changing runtime control, local UI, or remote orchestration code, update this document and `docs/architecture.md` in the same change. If implementation is experimental, mark it explicitly as experimental instead of presenting it as the stable architecture.

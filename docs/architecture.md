@@ -122,6 +122,14 @@ Go server 经 `/api/agents/:agentId/triggers`（读，登录即可）与 `/trigg
 `DELETE /triggers/:triggerId`（删除）（均需 agents:manage）透传给 Dashboard
 （见 architecture-decisions.md 的 Dispatcher Reuse）。
 
+**Agent 分组与批量操作**：agent 标签由 Registry 内存持有，并经 `TagStore`
+回调写穿持久化到 `models.Agent.tags`（server 重启恢复、断线重连保留内存值）。
+批量端点 `POST /api/agents/batch/run-script`、`/stop-script`（scripts:run）与
+`/api/agents/batch/trigger`（agents:manage）在 Go server 侧按选择器
+（agentIds/tags 并集）对既有 agent 命令做 fan-out，不引入新命令与传输通道；
+部分失败不算整体失败，一律 200 + 逐台结果（详见 architecture-decisions.md 的
+Agent Groups & Batch Operations）。
+
 ## Transport 层
 
 `libs/transport` 提供两种不同用途的网络能力：
