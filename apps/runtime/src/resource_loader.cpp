@@ -382,7 +382,7 @@ std::optional<LoadedScript> ResourceLoader::loadScript(const std::string& passwo
         LoadedScript script;
         script.data = payload;
         script.name = "embedded";
-        script.isBytecode = false;  // TODO: 检测字节码
+        script.isBytecode = looksLikeLuaBytecode(script.data);
 
         spdlog::info("Script loaded successfully: {} bytes", script.data.size());
         return script;
@@ -393,6 +393,24 @@ std::optional<LoadedScript> ResourceLoader::loadScript(const std::string& passwo
         }
         return std::nullopt;
     }
+}
+
+bool ResourceLoader::looksLikeLuaBytecode(const std::vector<uint8_t>& data) {
+    // Lua 5.x 官方 chunk 签名：ESC 'L' 'u' 'a'，随后是版本字节（如 0x54 = 5.4）
+    static constexpr uint8_t kLuaSignature[] = {0x1B, 'L', 'u', 'a'};
+    // LuaJIT 字节码签名：ESC 'L' 'J'
+    static constexpr uint8_t kLuaJitSignature[] = {0x1B, 'L', 'J'};
+
+    if (data.size() < sizeof(kLuaSignature)) {
+        return false;
+    }
+    if (std::memcmp(data.data(), kLuaSignature, sizeof(kLuaSignature)) == 0) {
+        return true;
+    }
+    if (data.size() < sizeof(kLuaJitSignature)) {
+        return false;
+    }
+    return std::memcmp(data.data(), kLuaJitSignature, sizeof(kLuaJitSignature)) == 0;
 }
 
 std::string ResourceLoader::getExecutablePath() {

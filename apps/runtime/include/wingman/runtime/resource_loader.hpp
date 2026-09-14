@@ -50,6 +50,11 @@ public:
     using ErrorCallback = std::function<void(const std::string&)>;
     void setErrorCallback(ErrorCallback callback);
 
+    /// 检测 Lua 字节码签名
+    /// Lua 5.x chunk 以 ESC 'L' 'u' 'a' 开头（第 5 字节为版本号，如 0x54 = 5.4），
+    /// LuaJIT 字节码以 ESC 'L' 'J' 开头
+    static bool looksLikeLuaBytecode(const std::vector<uint8_t>& data);
+
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;

@@ -23,6 +23,7 @@ add_executable(runtime_tests
     ../src/commands/build_command.cpp
     ../src/commands/script_command.cpp
     ../src/commands/stop_command.cpp
+    ../src/resource_loader.cpp
 )
 
 target_include_directories(runtime_tests PRIVATE

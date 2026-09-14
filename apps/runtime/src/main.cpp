@@ -39,7 +39,8 @@ bool runEmbeddedScript() {
         return false;
     }
 
-    spdlog::info("Script loaded: {} bytes", loadedScript->data.size());
+    spdlog::info("Script loaded: {} bytes{}", loadedScript->data.size(),
+                 loadedScript->isBytecode ? " (Lua bytecode)" : "");
 
     try {
 #ifdef WINGMAN_HAS_LUA

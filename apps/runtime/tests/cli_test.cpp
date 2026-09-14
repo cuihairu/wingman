@@ -6,10 +6,12 @@
 #include "wingman/runtime/commands/stop_command.hpp"
 #include "wingman/runtime/config.hpp"
 #include "wingman/runtime/packer.hpp"
+#include "wingman/runtime/resource_loader.hpp"
 
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 #include <chrono>
 
 namespace wingman::runtime::commands {
@@ -218,4 +220,45 @@ TEST(RuntimeConfigTest, ParsesQuotedStringsAndInlineComments) {
     EXPECT_EQ(config.remoteClient.serverIp, "10.0.0.5");
     EXPECT_EQ(config.remoteClient.serverPort, 9527);
     EXPECT_EQ(config.standalone.scriptDir, "scripts/local # not a comment");
+}
+
+// ========== ResourceLoader: Lua 字节码检测 ==========
+
+TEST(ResourceLoaderTest, LooksLikeLuaBytecodeDetectsLua54Chunk) {
+    // Lua 5.4 undump 签名：ESC 'L' 'u' 'a' + 版本字节 0x54 + 格式版本 0x00
+    const std::vector<uint8_t> data = {0x1B, 'L', 'u', 'a', 0x54, 0x00, 0x19, 0x93};
+    EXPECT_TRUE(wingman::runtime::ResourceLoader::looksLikeLuaBytecode(data));
+}
+
+TEST(ResourceLoaderTest, LooksLikeLuaBytecodeDetectsLuaJitChunk) {
+    const std::vector<uint8_t> data = {0x1B, 'L', 'J', 0x01, 0x04, 0x08};
+    EXPECT_TRUE(wingman::runtime::ResourceLoader::looksLikeLuaBytecode(data));
+}
+
+TEST(ResourceLoaderTest, LooksLikeLuaBytecodeDetectsOlderLuaVersions) {
+    // Lua 5.1/5.2/5.3 版本字节不同，但前缀签名一致
+    for (const uint8_t version : {0x51, 0x52, 0x53}) {
+        const std::vector<uint8_t> data = {0x1B, 'L', 'u', 'a', version};
+        EXPECT_TRUE(wingman::runtime::ResourceLoader::looksLikeLuaBytecode(data));
+    }
+}
+
+TEST(ResourceLoaderTest, LooksLikeLuaBytecodeRejectsPlainTextSource) {
+    const std::string source = "print('ok')";
+    const std::vector<uint8_t> data(source.begin(), source.end());
+    EXPECT_FALSE(wingman::runtime::ResourceLoader::looksLikeLuaBytecode(data));
+}
+
+TEST(ResourceLoaderTest, LooksLikeLuaBytecodeRejectsShortAndEmptyPayloads) {
+    EXPECT_FALSE(wingman::runtime::ResourceLoader::looksLikeLuaBytecode({}));
+    EXPECT_FALSE(wingman::runtime::ResourceLoader::looksLikeLuaBytecode({0x1B}));
+    EXPECT_FALSE(wingman::runtime::ResourceLoader::looksLikeLuaBytecode({0x1B, 'L'}));
+    EXPECT_FALSE(wingman::runtime::ResourceLoader::looksLikeLuaBytecode({0x1B, 'L', 'u'}));
+    EXPECT_FALSE(wingman::runtime::ResourceLoader::looksLikeLuaBytecode({0x1B, 'L', 'J'}));
+}
+
+TEST(ResourceLoaderTest, LooksLikeLuaBytecodeRejectsLuaWithoutEscape) {
+    // 明文恰好包含 "Lua" 但缺 ESC 前缀
+    const std::vector<uint8_t> data = {'L', 'u', 'a', 0x54};
+    EXPECT_FALSE(wingman::runtime::ResourceLoader::looksLikeLuaBytecode(data));
 }
