@@ -46,6 +46,14 @@ type AgentInfo struct {
 	Tags      []string
 }
 
+// TagStore agent 标签持久化接口（由 DB 层实现，Registry 不直接依赖 gorm）。
+type TagStore interface {
+	// LoadTags 返回持久化的标签；(nil, false) 表示无记录或解析失败。
+	LoadTags(agentID string) ([]string, bool)
+	// SaveTags 持久化标签（无记录则建行，顺带补 hostname/ip 元数据）。
+	SaveTags(agentID, hostname, ip string, tags []string) error
+}
+
 // Registry Agent 内存注册表
 // 实现 pkg/agent.AgentRegistrar 接口
 type Registry struct {
@@ -53,6 +61,8 @@ type Registry struct {
 	mu        sync.RWMutex
 	hub       *ws.Hub
 	heartbeat time.Duration
+	// tagStore 可选的标签持久化后端，SetTagStore 注入；读写均受 mu 保护。
+	tagStore TagStore
 	// checkInterval 心跳巡检周期（默认 30s），测试中可缩短以触发 ticker 分支。
 	checkInterval time.Duration
 	stopCh        chan struct{}
@@ -70,9 +80,33 @@ func NewRegistry(hub *ws.Hub) *Registry {
 	}
 }
 
+// SetTagStore 注入标签持久化后端（启动时调用一次，幂等）。
+func (r *Registry) SetTagStore(store TagStore) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.tagStore = store
+}
+
+// tagStoreRef 在锁外取 tagStore 引用，避免 DB IO 持锁。
+func (r *Registry) tagStoreRef() TagStore {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.tagStore
+}
+
 // Register 注册 Agent（实现 pkg/agent.AgentRegistrar 接口）
-// conn 参数可以是任何实现了 SendCommand 的类型
+// conn 参数可以是任何实现了 SendCommand 的类型。
+// 标签恢复：内存中已有条目（重连）保留内存 Tags；否则从 TagStore（DB）载入，
+// 使 server 重启后标签不丢失。DB IO 一律在锁外。
 func (r *Registry) Register(agentID, hostname, ip string, conn any) {
+	// 锁外载入持久化标签（store 为 nil 时跳过）
+	var restored []string
+	if store := r.tagStoreRef(); store != nil {
+		if tags, ok := store.LoadTags(agentID); ok {
+			restored = tags
+		}
+	}
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -82,9 +116,11 @@ func (r *Registry) Register(agentID, hostname, ip string, conn any) {
 		IP:       ip,
 		Status:   StatusOnline,
 		LastSeen: time.Now(),
+		Tags:     restored,
 	}
 	if existing, ok := r.agents[agentID]; ok {
 		info.Resources = existing.Resources
+		info.Tags = existing.Tags // 重连保留内存标签，不用旧 DB 值覆盖
 	}
 	// 尝试将 conn 转为 AgentConn
 	if ac, ok := conn.(AgentConn); ok {
@@ -100,6 +136,7 @@ func (r *Registry) Register(agentID, hostname, ip string, conn any) {
 		"hostname": hostname,
 		"ip":       ip,
 		"status":   string(StatusOnline),
+		"tags":     info.Tags,
 		"lastSeen": info.LastSeen.UnixMilli(),
 	})
 }
@@ -237,14 +274,8 @@ func toInt64(value any) (int64, bool) {
 }
 
 // SetTags 设置 Agent 的标签（分组），返回是否找到该 agent。
+// 更新内存后经 TagStore 写穿持久化；DB 失败仅记录日志（内存为运行时真值，下次 SetTags 重写）。
 func (r *Registry) SetTags(agentID string, tags []string) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	info, ok := r.agents[agentID]
-	if !ok {
-		return false
-	}
 	// 去重 + 去空白
 	seen := map[string]bool{}
 	cleaned := make([]string, 0, len(tags))
@@ -256,7 +287,15 @@ func (r *Registry) SetTags(agentID string, tags []string) bool {
 		seen[t] = true
 		cleaned = append(cleaned, t)
 	}
+
+	r.mu.Lock()
+	info, ok := r.agents[agentID]
+	if !ok {
+		r.mu.Unlock()
+		return false
+	}
 	info.Tags = cleaned
+	hostname, ip := info.Hostname, info.IP
 
 	r.hub.BroadcastAgentEvent("status_changed", map[string]any{
 		"agentId":  agentID,
@@ -266,6 +305,14 @@ func (r *Registry) SetTags(agentID string, tags []string) bool {
 		"tags":     info.Tags,
 		"lastSeen": info.LastSeen.UnixMilli(),
 	})
+	r.mu.Unlock()
+
+	// 锁外持久化
+	if store := r.tagStoreRef(); store != nil {
+		if err := store.SaveTags(agentID, hostname, ip, cleaned); err != nil {
+			log.Printf("[Registry] Failed to persist tags for %s: %v", agentID, err)
+		}
+	}
 	return true
 }
 
