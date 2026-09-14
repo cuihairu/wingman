@@ -205,11 +205,9 @@ func (h *ScriptHandler) HandleCreate(c *gin.Context) {
 		return
 	}
 
+	// filepath.Base 对非空输入永不返回空串（且 trimmedName 已通过非空/分隔符校验，
+	// 即其本身不含路径分隔符），故无需再做 Base 后的空名检查。
 	name := filepath.Base(trimmedName)
-	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid script name"})
-		return
-	}
 	if filepath.Ext(name) == "" {
 		name += ".lua"
 	}

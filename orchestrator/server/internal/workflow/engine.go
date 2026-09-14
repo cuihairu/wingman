@@ -322,22 +322,9 @@ func (e *Engine) execute(ctx context.Context, exec *Execution) {
 			if len(completed) == len(exec.Steps) {
 				break
 			}
-			// 还有步骤未完成但无可执行步骤 → 死锁或等待
-			allDone := true
-			for _, step := range exec.Steps {
-				if !completed[step.ID] {
-					allDone = false
-					// 检查是否为失败步骤的下游
-					if exec.stepStatusIn(step.ID, "failed") {
-						// 已标记失败，跳过
-						continue
-					}
-				}
-			}
-			if allDone {
-				break
-			}
-			// 等待一会再检查
+			// 还有步骤未完成但无可执行步骤 → 死锁或等待，稍后再查。
+			// 注：状态 failed 的步骤必然已完成（completed[s.ID]=true 由步骤 goroutine
+			// 兜底写入），因此这里无需再按失败状态提前 break。
 			time.Sleep(500 * time.Millisecond)
 			continue
 		}
@@ -795,10 +782,8 @@ func (e *Engine) executeConditionStep(ctx context.Context, exec *Execution, step
 	if err != nil {
 		return e.failStep(ss, exec, step, err.Error())
 	}
+	// evaluateCondition 的 false 返回均携带非空 message，无需兜底默认值。
 	if !ok {
-		if message == "" {
-			message = "condition evaluated false"
-		}
 		return e.failStep(ss, exec, step, message)
 	}
 

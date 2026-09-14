@@ -66,10 +66,12 @@ type TriggerToggleRequest struct {
 	ID string `json:"id" binding:"required" example:"42"`
 }
 
-// toMap 将请求体转为通用 map（经 JSON 往返，保留 omitempty 语义，
-// 未提供的指针字段不出现在透传给 runtime 的 config 中）。
-func (r *TriggerConfigRequest) toMap() map[string]any {
-	raw, err := json.Marshal(r)
+// toJSONMap 将任意值经 JSON 往返转为通用 map（保留 omitempty 语义）。
+// 序列化失败（值含 chan/func 等不可marshal类型）或反序列化失败
+// （值为非 object 的合法 JSON，如字符串/数字）时返回空 map。
+// 包级函数以便直接构造非法值覆盖错误分支。
+func toJSONMap(v any) map[string]any {
+	raw, err := json.Marshal(v)
 	if err != nil {
 		return map[string]any{}
 	}
@@ -78,6 +80,12 @@ func (r *TriggerConfigRequest) toMap() map[string]any {
 		return map[string]any{}
 	}
 	return out
+}
+
+// toMap 将请求体转为通用 map（经 JSON 往返，保留 omitempty 语义，
+// 未提供的指针字段不出现在透传给 runtime 的 config 中）。
+func (r *TriggerConfigRequest) toMap() map[string]any {
+	return toJSONMap(r)
 }
 
 // TriggerHandler 触发器处理器：把 runtime 本地 IPC 已有的 trigger.* 能力

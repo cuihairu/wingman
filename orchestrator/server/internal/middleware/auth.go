@@ -36,20 +36,11 @@ func jwtSecret() ([]byte, error) {
 	if len(trimmed) < jwtSecretMinLength {
 		return nil, errJWTSecretNotConfigured
 	}
-	// Reject secrets with leading/trailing whitespace (security issue)
+	// Reject secrets with leading/trailing whitespace (security issue).
+	// 注：TrimSpace 按 unicode.IsSpace 裁剪（含 " \t\n\r" 及全部其他空白），
+	// 纯空白字符串在此处必然被上面的长度检查拒绝，无需再单独扫描空白字符。
 	if trimmed != secret {
 		return nil, errors.New("WINGMAN_JWT_SECRET must not have leading or trailing whitespace")
-	}
-	// Additional check: ensure secret contains non-whitespace characters
-	hasNonWhitespace := false
-	for _, c := range secret {
-		if !strings.ContainsRune(" \t\n\r", c) {
-			hasNonWhitespace = true
-			break
-		}
-	}
-	if !hasNonWhitespace {
-		return nil, errors.New("WINGMAN_JWT_SECRET must contain non-whitespace characters")
 	}
 	return []byte(secret), nil
 }

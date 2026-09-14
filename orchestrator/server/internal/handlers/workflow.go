@@ -199,7 +199,12 @@ func (h *WorkflowHandler) HandleCreate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
+	h.handleCreateParsed(c, req)
+}
 
+// handleCreateParsed 处理已完成请求体绑定的创建请求（提取为独立方法以便测试
+// 直接构造含不可序列化值的请求，覆盖 SetSteps/SetContext 的序列化失败分支）。
+func (h *WorkflowHandler) handleCreateParsed(c *gin.Context, req CreateWorkflowRequest) {
 	wf := &models.Workflow{
 		Name:        req.Name,
 		Description: req.Description,

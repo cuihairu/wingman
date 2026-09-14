@@ -45,6 +45,9 @@ func main() {
 	}
 }
 
+// seedRBAC 内置 RBAC 角色/权限种子（包级变量以便测试注入失败场景）。
+var seedRBAC = rbac.Seed
+
 // processStartedAt 进程启动时间（uptime 指标基准）。
 var processStartedAt = time.Now()
 
@@ -73,7 +76,7 @@ func run() error {
 	authHandler.InitAdmin()
 
 	// 内置 RBAC 角色/权限种子
-	if err := rbac.Seed(db); err != nil {
+	if err := seedRBAC(db); err != nil {
 		log.Printf("Failed to seed RBAC: %v", err)
 	}
 
@@ -360,6 +363,12 @@ func run() error {
 		errCh <- nil
 	}()
 
+	return waitHTTPServer(ctx, srv, errCh, frameListener, registry, db)
+}
+
+// waitHTTPServer 阻塞等待 HTTP server 结束（启动失败）或收到退出信号，
+// 执行相应关闭流程并返回 run() 的最终错误（提取为独立函数以便测试覆盖各分支）。
+func waitHTTPServer(ctx context.Context, srv *http.Server, errCh <-chan error, frameListener *agentPkg.FrameListener, registry *agent.Registry, db *gorm.DB) error {
 	select {
 	case err := <-errCh:
 		// HTTP 启动失败（如端口占用）：清理已启动的后台组件后返回错误。
