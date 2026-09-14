@@ -114,7 +114,8 @@ function createProfilesStore() {
 		},
 		async create(name: string) {
 			if (!invoke) {
-				const id = `profile_${Date.now()}`;
+				/// 同毫秒连续创建时 Date.now() 会撞 id，追加随机段保证唯一
+				const id = `profile_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 				const profile = withDefaultHotkeys({
 					id,
 					name,
