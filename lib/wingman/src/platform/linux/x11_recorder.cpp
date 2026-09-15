@@ -9,6 +9,7 @@
 #include <thread>
 #include <chrono>
 #include <memory>
+#include <atomic>
 #include <cstring>
 #include <unistd.h>
 #include <sys/time.h>
@@ -41,6 +42,18 @@ platform::MouseButton toPlatformMouseButton(int button) {
 static MacroRecorder* g_instance = nullptr;
 static Display* g_display = nullptr;
 
+// RECORD 请求出错探针：Xlib 默认 error handler 会直接 exit() 杀死整个进程。
+// 部分 X server（如 Xvfb）RECORD 扩展存在但 XRecordEnableContext 必然失败
+// （XRecordBadContext），必须转为「录制不可用」的优雅降级。
+static std::atomic<bool> g_recordXError{false};
+static std::atomic<bool> g_recordDataFlowing{false};
+static XErrorHandler g_previousXHandler = nullptr;
+
+static int recordXErrorHandler(Display*, XErrorEvent*) {
+    g_recordXError = true;
+    return 0;  // 吞掉错误，交由调用方检测 g_recordXError 降级
+}
+
 static unsigned long getTickCount() {
     struct timeval tv;
     gettimeofday(&tv, nullptr);
@@ -49,6 +62,8 @@ static unsigned long getTickCount() {
 
 // X11 Record callback
 static void eventCallback(XPointer priv, XRecordInterceptData* data) {
+    // 任何拦截数据（含 StartOfData）都证明 context 已成功启用并开始推送
+    g_recordDataFlowing = true;
     if (!g_instance || !g_instance->isRecording() || g_instance->isPaused()) {
         XRecordFreeData(data);
         return;
@@ -159,10 +174,21 @@ void MacroRecorder::start() {
     range->device_events.first = KeyPress;
     range->device_events.last = MotionNotify;
 
+    // 装宽容 error handler：CreateContext/EnableContext 的 X error 不再走默认
+    // exit() 路径，改为以 g_recordXError 探针识别并优雅降级为「录制不可用」
+    g_recordXError = false;
+    g_previousXHandler = XSetErrorHandler(recordXErrorHandler);
+
     m_recordContext = XRecordCreateContext(controlDisplay, 0, &clients, 1, &range, 1);
     XFree(range);
+    XSync(controlDisplay, False);  // 强制往返，让异步 X error 到达 handler
 
-    if (!m_recordContext) {
+    if (!m_recordContext || g_recordXError) {
+        XSetErrorHandler(g_previousXHandler);
+        if (m_recordContext) {
+            XRecordFreeContext(controlDisplay, m_recordContext);
+            m_recordContext = 0;
+        }
         m_recording = false;
         XCloseDisplay(controlDisplay);
         XCloseDisplay(dataDisplay);
@@ -170,6 +196,7 @@ void MacroRecorder::start() {
     }
 
     if (!XRecordEnableContextAsync(dataDisplay, m_recordContext, eventCallback, nullptr)) {
+        XSetErrorHandler(g_previousXHandler);
         XRecordFreeContext(controlDisplay, m_recordContext);
         m_recording = false;
         XCloseDisplay(controlDisplay);
@@ -179,6 +206,7 @@ void MacroRecorder::start() {
 
     m_display = controlDisplay;
     g_display = dataDisplay;
+    g_recordDataFlowing = false;
 
     // Start processing thread
     m_processThread = std::thread([this]() {
@@ -189,6 +217,18 @@ void MacroRecorder::start() {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     });
+
+    // EnableContext 是异步请求且此后 data 连接进入流式状态——绝不能对它
+    // XSync（流不终止，XSync 永久挂起）。改为等处理线程消费到首条拦截数据
+    // （健康服务器毫秒级送达 StartOfData）或 X error 落地，超时按不可用降级。
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(300);
+    while (!g_recordDataFlowing && !g_recordXError && std::chrono::steady_clock::now() < deadline) {
+        sleepMs(5);
+    }
+    if (g_recordXError || !g_recordDataFlowing) {
+        stop();  // 复用清理：join 线程 + disable/free context + close display + 还原 handler
+        return;
+    }
 }
 
 void MacroRecorder::stop() {
@@ -209,6 +249,8 @@ void MacroRecorder::stop() {
         m_recordContext = 0;
         m_display = nullptr;
         g_display = nullptr;
+        // 录制期结束，归还进程级 error handler
+        XSetErrorHandler(g_previousXHandler);
     }
 }
 
