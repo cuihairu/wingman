@@ -20,7 +20,7 @@ import {
   ProFormList,
   ProTable,
 } from '@ant-design/pro-components';
-import { useRequest } from '@umijs/max';
+import { useIntl, useRequest } from '@umijs/max';
 import {
   Button,
   Card,
@@ -67,6 +67,8 @@ function splitList(value: unknown): string[] {
 }
 
 const Workflows: React.FC = () => {
+  const intl = useIntl();
+  const formatMessage = (id: string) => intl.formatMessage({ id });
   const actionRef = useRef();
   const createFormRef = useRef<ProFormInstance>();
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowInstance | null>(null);
@@ -115,7 +117,7 @@ const Workflows: React.FC = () => {
         const exists = prev.some((workflow) => workflow.id === nextWorkflow.id);
         return exists ? prev.map((workflow) => workflow.id === nextWorkflow.id ? nextWorkflow : workflow) : [nextWorkflow, ...prev];
       });
-      message.success(`工作流 ${data.name} 已提交`);
+      message.success(intl.formatMessage({ id: 'pages.workflows.submitted' }, { name: String(data.name ?? '') }));
     }));
 
     // 工作流状态变化
@@ -192,7 +194,7 @@ const Workflows: React.FC = () => {
         timeoutSeconds: s.timeoutSeconds ?? 300,
       })),
     });
-    message.success(`已加载模板：${tpl.name}`);
+    message.success(intl.formatMessage({ id: 'pages.workflows.templateLoaded' }, { name: tpl.name }));
   };
 
   // 提交工作流
@@ -213,11 +215,11 @@ const Workflows: React.FC = () => {
         sharedContext: values.sharedContext || {},
       };
       await submitWorkflow(workflow);
-      message.success('工作流已提交');
+      message.success(formatMessage('pages.workflows.submitSuccess'));
       setCreateModalVisible(false);
       refresh();
     } catch (error) {
-      message.error('提交失败');
+      message.error(formatMessage('pages.workflows.submitFailed'));
     }
   };
 
@@ -225,19 +227,19 @@ const Workflows: React.FC = () => {
   const handleCancel = async (workflowId: string) => {
     try {
       await cancelWorkflow(workflowId);
-      message.success('工作流已取消');
+      message.success(formatMessage('pages.workflows.cancelSuccess'));
       refresh();
       if (selectedWorkflow?.id === workflowId) {
         fetchDetail(workflowId);
       }
     } catch (error) {
-      message.error('取消失败');
+      message.error(formatMessage('pages.workflows.cancelFailed'));
     }
   };
 
   const columns: ProColumns<Workflow>[] = [
     {
-      title: '工作流 ID',
+      title: formatMessage('pages.workflows.id'),
       dataIndex: 'id',
       key: 'id',
       width: 150,
@@ -249,19 +251,19 @@ const Workflows: React.FC = () => {
       ),
     },
     {
-      title: '名称',
+      title: formatMessage('pages.workflows.name'),
       dataIndex: 'name',
       key: 'name',
       width: 200,
     },
     {
-      title: '描述',
+      title: formatMessage('pages.workflows.description'),
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
     },
     {
-      title: '状态',
+      title: formatMessage('pages.common.status'),
       dataIndex: 'status',
       key: 'status',
       width: 100,
@@ -272,21 +274,21 @@ const Workflows: React.FC = () => {
       ),
     },
     {
-      title: '步骤数',
+      title: formatMessage('pages.workflows.stepCount'),
       dataIndex: 'steps',
       key: 'steps',
       width: 80,
       render: (_, record) => record.steps?.length || 0,
     },
     {
-      title: '创建时间',
+      title: formatMessage('pages.workflows.createdTime'),
       dataIndex: 'createdTime',
       key: 'createdTime',
       width: 150,
       render: (_, record) => new Date(record.createdTime).toLocaleString(),
     },
     {
-      title: '运行时长',
+      title: formatMessage('pages.workflows.duration'),
       key: 'duration',
       width: 100,
       render: (_: any, record: Workflow) => {
@@ -296,7 +298,7 @@ const Workflows: React.FC = () => {
       },
     },
     {
-      title: '操作',
+      title: formatMessage('pages.common.action'),
       key: 'action',
       width: 150,
       fixed: 'right' as const,
@@ -366,7 +368,7 @@ const Workflows: React.FC = () => {
           )}
           {step.dependsOn.length > 0 && (
             <Text type="secondary" style={{ fontSize: 12 }}>
-              依赖: {step.dependsOn.join(', ')}
+              {intl.formatMessage({ id: 'pages.workflows.dependsOn' }, { names: step.dependsOn.join(', ') })}
             </Text>
           )}
         </Space>
@@ -377,15 +379,15 @@ const Workflows: React.FC = () => {
   return (
     <PageContainer
       header={{
-        title: '工作流管理',
-        subTitle: '创建和管理自动化工作流任务',
+        title: formatMessage('pages.workflows.title'),
+        subTitle: formatMessage('pages.workflows.subtitle'),
         extra: wsConnected ? (
-          <Badge status="processing" text="实时连接" />
+          <Badge status="processing" text={formatMessage('pages.workflows.realtimeConnected')} />
         ) : (
           <Space>
-            <Badge status="default" text="轮询模式" />
+            <Badge status="default" text={formatMessage('pages.workflows.pollingMode')} />
             <Button size="small" onClick={() => wsService.reconnect()}>
-              重连
+              {formatMessage('pages.workflows.reconnect')}
             </Button>
           </Space>
         ),
@@ -396,7 +398,7 @@ const Workflows: React.FC = () => {
         <Col xs={24} sm={6}>
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Statistic title="总数" value={workflows.length} />
+              <Statistic title={formatMessage('pages.common.total')} value={workflows.length} />
               <UnorderedListOutlined style={{ fontSize: 24, color: '#999' }} />
             </div>
           </Card>
@@ -405,7 +407,7 @@ const Workflows: React.FC = () => {
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Statistic
-                title="运行中"
+                title={formatMessage('pages.workflows.running')}
                 value={workflows.filter((w: Workflow) => w.status === WorkflowStatus.Running).length}
                 valueStyle={{ color: '#1890ff' }}
               />
@@ -417,7 +419,7 @@ const Workflows: React.FC = () => {
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Statistic
-                title="已完成"
+                title={formatMessage('pages.workflows.completed')}
                 value={workflows.filter((w: Workflow) => w.status === WorkflowStatus.Completed).length}
                 valueStyle={{ color: '#52c41a' }}
               />
@@ -429,7 +431,7 @@ const Workflows: React.FC = () => {
           <Card>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Statistic
-                title="失败"
+                title={formatMessage('pages.common.failure')}
                 value={workflows.filter((w: Workflow) => w.status === WorkflowStatus.Failed).length}
                 valueStyle={{ color: '#ff4d4f' }}
               />
@@ -441,12 +443,12 @@ const Workflows: React.FC = () => {
 
       <ProCard
         style={{ marginTop: 16 }}
-        title="工作流列表"
+        title={formatMessage('pages.workflows.list')}
         extra={
           <Space>
             {wsConnected && (
               <Tag icon={<WifiOutlined />} color="success">
-                实时更新
+                {formatMessage('pages.workflows.realtimeUpdate')}
               </Tag>
             )}
             <Button
@@ -454,14 +456,14 @@ const Workflows: React.FC = () => {
               onClick={refresh}
               loading={loading}
             >
-              刷新
+              {formatMessage('pages.common.refresh')}
             </Button>
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => setCreateModalVisible(true)}
             >
-              创建工作流
+              {formatMessage('pages.workflows.create')}
             </Button>
           </Space>
         }
@@ -482,7 +484,7 @@ const Workflows: React.FC = () => {
 
       {/* 创建工作流弹窗 */}
       <ModalForm
-        title="创建工作流"
+        title={formatMessage('pages.workflows.create')}
         formRef={createFormRef as any}
         open={createModalVisible}
         onOpenChange={setCreateModalVisible}
@@ -496,7 +498,7 @@ const Workflows: React.FC = () => {
           <div style={{ marginBottom: 16 }}>
             <Select
               style={{ width: '100%' }}
-              placeholder="从模板加载（可选）"
+              placeholder={formatMessage('pages.workflows.loadFromTemplate')}
               allowClear
               onChange={(val) => val && applyTemplate(val)}
               options={templates.map((t) => ({
@@ -508,23 +510,23 @@ const Workflows: React.FC = () => {
         )}
         <ProFormText
           name="name"
-          label="工作流名称"
+          label={formatMessage('pages.workflows.workflowName')}
           rules={[{ required: true }]}
         />
         <ProFormTextArea
           name="description"
-          label="描述"
+          label={formatMessage('pages.workflows.description')}
           fieldProps={{ rows: 2 }}
         />
         <ProFormList
           name="steps"
-          label="步骤"
-          creatorButtonProps={{ creatorButtonText: '添加步骤' }}
+          label={formatMessage('pages.workflows.steps')}
+          creatorButtonProps={{ creatorButtonText: formatMessage('pages.workflows.addStep') }}
           min={1}
           itemRender={({ listDom, action }, { index, record, ...rest }) => (
             <ProCard
               bordered
-              title={`${record.name || '步骤'} (${index + 1})`}
+              title={`${record.name || formatMessage('pages.workflows.stepFallback')} (${index + 1})`}
               extra={action}
               style={{ marginBottom: 16 }}
             >
@@ -532,14 +534,14 @@ const Workflows: React.FC = () => {
             </ProCard>
           )}
         >
-          <ProFormText name="id" label="步骤 ID" rules={[{ required: true }]} placeholder="step_1" />
-          <ProFormText name="name" label="步骤名称" rules={[{ required: true }]} placeholder="数据采集" />
-          <ProFormText name="script" label="脚本路径" rules={[{ required: true }]} placeholder="scripts/collect.lua" />
-          <ProFormText name="workers" label="分配 Agent" fieldProps={{ placeholder: 'agent1,agent2' }} />
-          <ProFormText name="dependsOn" label="依赖步骤" fieldProps={{ placeholder: 'step_1,step_2' }} />
+          <ProFormText name="id" label={formatMessage('pages.workflows.stepId')} rules={[{ required: true }]} placeholder="step_1" />
+          <ProFormText name="name" label={formatMessage('pages.workflows.stepName')} rules={[{ required: true }]} placeholder="数据采集" />
+          <ProFormText name="script" label={formatMessage('pages.workflows.scriptPath')} rules={[{ required: true }]} placeholder="scripts/collect.lua" />
+          <ProFormText name="workers" label={formatMessage('pages.workflows.assignAgents')} fieldProps={{ placeholder: 'agent1,agent2' }} />
+          <ProFormText name="dependsOn" label={formatMessage('pages.workflows.dependsOnSteps')} fieldProps={{ placeholder: 'step_1,step_2' }} />
           <ProFormText
             name="timeoutSeconds"
-            label="超时时间(秒)"
+            label={formatMessage('pages.workflows.timeoutSeconds')}
             initialValue={300}
             fieldProps={{ type: 'number' }}
           />
@@ -548,7 +550,7 @@ const Workflows: React.FC = () => {
 
       {/* 工作流详情抽屉 */}
       <Drawer
-        title="工作流详情"
+        title={formatMessage('pages.workflows.detailTitle')}
         width={720}
         open={drawerVisible}
         onClose={() => setDrawerVisible(false)}
@@ -556,32 +558,32 @@ const Workflows: React.FC = () => {
         {selectedWorkflow && (
           <Space direction="vertical" style={{ width: '100%' }} size="large">
             {/* 基本信息 */}
-            <ProCard title="基本信息" headerBordered>
+            <ProCard title={formatMessage('pages.workflows.basicInfo')} headerBordered>
               <Descriptions column={2} size="small">
-                <Descriptions.Item label="工作流 ID">
+                <Descriptions.Item label={formatMessage('pages.workflows.id')}>
                   <Text copyable>{selectedWorkflow.id}</Text>
                 </Descriptions.Item>
-                <Descriptions.Item label="名称">
+                <Descriptions.Item label={formatMessage('pages.workflows.name')}>
                   {selectedWorkflow.name}
                 </Descriptions.Item>
-                <Descriptions.Item label="描述" span={2}>
+                <Descriptions.Item label={formatMessage('pages.workflows.description')} span={2}>
                   {selectedWorkflow.description || '-'}
                 </Descriptions.Item>
-                <Descriptions.Item label="状态">
+                <Descriptions.Item label={formatMessage('pages.common.status')}>
                   <Tag color={getWorkflowStatusColor(selectedWorkflow.status)}>
                     {selectedWorkflow.status.toUpperCase()}
                   </Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="创建时间">
+                <Descriptions.Item label={formatMessage('pages.workflows.createdTime')}>
                   {new Date(selectedWorkflow.createdTime).toLocaleString()}
                 </Descriptions.Item>
                 {selectedWorkflow.startTime && (
-                  <Descriptions.Item label="开始时间">
+                  <Descriptions.Item label={formatMessage('pages.workflows.startTimeLabel')}>
                     {new Date(selectedWorkflow.startTime).toLocaleString()}
                   </Descriptions.Item>
                 )}
                 {selectedWorkflow.endTime && (
-                  <Descriptions.Item label="结束时间">
+                  <Descriptions.Item label={formatMessage('pages.workflows.endTimeLabel')}>
                     {new Date(selectedWorkflow.endTime).toLocaleString()}
                   </Descriptions.Item>
                 )}
@@ -589,7 +591,7 @@ const Workflows: React.FC = () => {
             </ProCard>
 
             {/* 执行进度 */}
-            <ProCard title="执行进度" headerBordered>
+            <ProCard title={formatMessage('pages.workflows.progress')} headerBordered>
               <Steps
                 current={selectedWorkflow.steps.findIndex(
                   (s) => selectedWorkflow.stepStatus?.[s.id] !== StepStatus.Completed
@@ -625,7 +627,7 @@ const Workflows: React.FC = () => {
             </ProCard>
 
             {/* 步骤详情 */}
-            <ProCard title="步骤详情" headerBordered>
+            <ProCard title={formatMessage('pages.workflows.stepDetails')} headerBordered>
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 {selectedWorkflow.steps.map((step) => renderStepStatus(step, selectedWorkflow))}
               </Space>
@@ -634,8 +636,11 @@ const Workflows: React.FC = () => {
             {/* 当前状态 */}
             {selectedWorkflow.status === WorkflowStatus.Running && (
               <Alert
-                message="工作流正在运行中"
-                description={`当前步骤: ${selectedWorkflow.currentStepId || '无'}`}
+                message={formatMessage('pages.workflows.runningNow')}
+                description={intl.formatMessage(
+                  { id: 'pages.workflows.currentStep' },
+                  { step: selectedWorkflow.currentStepId || formatMessage('pages.common.none') },
+                )}
                 type="info"
                 showIcon
               />

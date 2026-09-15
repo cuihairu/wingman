@@ -19,7 +19,7 @@ import {
   ProFormTextArea,
   ProTable,
 } from '@ant-design/pro-components';
-import { useRequest } from '@umijs/max';
+import { useIntl, useRequest } from '@umijs/max';
 import {
   Button,
   Space,
@@ -53,6 +53,8 @@ function executionIdFor(script: ScriptInfo): string {
 }
 
 const Scripts: React.FC = () => {
+  const intl = useIntl();
+  const formatMessage = (id: string) => intl.formatMessage({ id });
   const actionRef = useRef();
   const [selectedScript, setSelectedScript] = useState<ScriptInfo | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
@@ -97,7 +99,7 @@ const Scripts: React.FC = () => {
       const response = await getScriptContent(script.path);
       setScriptContent(response.data || '');
     } catch (error) {
-      message.error('加载脚本失败');
+      message.error(formatMessage('pages.scripts.loadFailed'));
       // 设置默认内容
       setScriptContent(`-- ${script.name}\n-- ${script.description || ''}\n\nfunction main()\n    print("Hello, Wingman!")\nend\n\nmain()\n`);
     }
@@ -109,10 +111,10 @@ const Scripts: React.FC = () => {
 
     try {
       await saveScriptContent(selectedScript.path, scriptContent);
-      message.success('脚本已保存');
+      message.success(formatMessage('pages.scripts.saved'));
       refresh();
     } catch (error) {
-      message.error('保存失败');
+      message.error(formatMessage('pages.scripts.saveFailed'));
     }
   };
 
@@ -122,13 +124,13 @@ const Scripts: React.FC = () => {
       const response = await runScript(script.path);
       const executionId = response.data?.executionId || executionIdFor(script);
       setRunningExecutions((previous) => ({ ...previous, [script.path]: executionId }));
-      message.success(`脚本 ${script.name} 已启动`);
+      message.success(intl.formatMessage({ id: 'pages.scripts.started' }, { name: script.name }));
       refresh();
       if (selectedScript?.path === script.path) {
         await refreshLogs({ ...script, executionId });
       }
     } catch (error) {
-      message.error('启动失败');
+      message.error(formatMessage('pages.scripts.startFailed'));
     }
   };
 
@@ -142,28 +144,28 @@ const Scripts: React.FC = () => {
         delete next[script.path];
         return next;
       });
-      message.success(`脚本 ${script.name} 已停止`);
+      message.success(intl.formatMessage({ id: 'pages.scripts.stopped' }, { name: script.name }));
       refresh();
       if (selectedScript?.path === script.path) {
         await refreshLogs(script);
       }
     } catch (error) {
-      message.error('停止失败');
+      message.error(formatMessage('pages.scripts.stopFailed'));
     }
   };
 
   // 删除脚本
   const handleDeleteScript = async (script: ScriptInfo) => {
     Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除脚本 "${script.name}" 吗？`,
+      title: formatMessage('pages.scripts.deleteConfirmTitle'),
+      content: intl.formatMessage({ id: 'pages.scripts.deleteConfirmContent' }, { name: script.name }),
       onOk: async () => {
         try {
           await deleteScript(script.path);
-          message.success('删除成功');
+          message.success(formatMessage('pages.scripts.deleted'));
           refresh();
         } catch (error) {
-          message.error('删除失败');
+          message.error(formatMessage('pages.scripts.deleteFailed'));
         }
       },
     });
@@ -188,33 +190,33 @@ const Scripts: React.FC = () => {
   // 表格列定义
   const columns: ProColumns<ScriptInfo>[] = [
     {
-      title: '脚本名称',
+      title: formatMessage('pages.scripts.name'),
       dataIndex: 'name',
       key: 'name',
       render: (_, record) => (
         <Space>
           <FileTextOutlined />
           <Text strong>{record.name}</Text>
-          {record.isRunning && <Tag color="green">运行中</Tag>}
+          {record.isRunning && <Tag color="green">{formatMessage('pages.scripts.running')}</Tag>}
         </Space>
       ),
     },
     {
-      title: '描述',
+      title: formatMessage('pages.scripts.description'),
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
       render: (_, record) => <Text type="secondary">{record.description || '-'}</Text>,
     },
     {
-      title: '大小',
+      title: formatMessage('pages.scripts.size'),
       dataIndex: 'size',
       key: 'size',
       width: 100,
       render: (_, record) => <Text type="secondary">{record.size ? `${record.size} B` : '-'}</Text>,
     },
     {
-      title: '修改时间',
+      title: formatMessage('pages.scripts.modifiedTime'),
       dataIndex: 'modifiedTime',
       key: 'modifiedTime',
       width: 180,
@@ -223,7 +225,7 @@ const Scripts: React.FC = () => {
       ),
     },
     {
-      title: '操作',
+      title: formatMessage('pages.common.action'),
       key: 'action',
       width: 200,
       render: (_: any, record: ScriptInfo) => (
@@ -236,7 +238,7 @@ const Scripts: React.FC = () => {
               icon={<StopOutlined />}
               onClick={() => handleStopScript(record)}
             >
-              停止
+              {formatMessage('pages.scripts.stop')}
             </Button>
           ) : (
             <Button
@@ -245,7 +247,7 @@ const Scripts: React.FC = () => {
               icon={<PlayCircleOutlined />}
               onClick={() => handleRunScript(record)}
             >
-              运行
+              {formatMessage('pages.scripts.run')}
             </Button>
           )}
           <Button
@@ -253,7 +255,7 @@ const Scripts: React.FC = () => {
             icon={<EditOutlined />}
             onClick={() => handleEditScript(record)}
           >
-            编辑
+            {formatMessage('pages.scripts.edit')}
           </Button>
           <Button
             size="small"
@@ -269,7 +271,7 @@ const Scripts: React.FC = () => {
   return (
     <PageContainer
       header={{
-        title: '脚本管理',
+        title: formatMessage('pages.scripts.title'),
         breadcrumb: {},
       }}
       extra={[
@@ -278,7 +280,7 @@ const Scripts: React.FC = () => {
           icon={<ReloadOutlined />}
           onClick={refresh}
         >
-          刷新
+          {formatMessage('pages.common.refresh')}
         </Button>,
         <Button
           key="create"
@@ -286,7 +288,7 @@ const Scripts: React.FC = () => {
           icon={<PlusOutlined />}
           onClick={() => setCreateModalVisible(true)}
         >
-          新建脚本
+          {formatMessage('pages.scripts.create')}
         </Button>,
       ]}
     >
@@ -294,11 +296,13 @@ const Scripts: React.FC = () => {
         {/* 脚本列表 */}
         <Col xs={24} lg={editorVisible ? 8 : 24}>
           <ProCard
-            title="脚本列表"
+            title={formatMessage('pages.scripts.list')}
             headerBordered
             extra={
               <Space>
-                <Text type="secondary">共 {scripts.length} 个脚本</Text>
+                <Text type="secondary">
+                  {intl.formatMessage({ id: 'pages.scripts.totalCount' }, { count: scripts.length })}
+                </Text>
               </Space>
             }
           >
@@ -327,21 +331,23 @@ const Scripts: React.FC = () => {
                 title={
                   <Space>
                     <CodeOutlined />
-                    <span>编辑: {selectedScript?.name}</span>
+                    <span>
+                      {intl.formatMessage({ id: 'pages.scripts.editTitle' }, { name: selectedScript?.name || '' })}
+                    </span>
                   </Space>
                 }
                 headerBordered
                 extra={
                   <Space>
                     <Button onClick={() => setEditorVisible(false)}>
-                      关闭
+                      {formatMessage('pages.common.close')}
                     </Button>
                     <Button
                       type="primary"
                       icon={<SaveOutlined />}
                       onClick={handleSaveScript}
                     >
-                      保存
+                      {formatMessage('pages.common.save')}
                     </Button>
                   </Space>
                 }
@@ -367,7 +373,7 @@ const Scripts: React.FC = () => {
                 title={
                   <Space>
                     <ConsoleSqlOutlined />
-                    <span>执行日志</span>
+                    <span>{formatMessage('pages.scripts.executionLogs')}</span>
                   </Space>
                 }
                 headerBordered
@@ -376,14 +382,14 @@ const Scripts: React.FC = () => {
                   <Space>
                     {activeExecutionId && <Tag>{activeExecutionId}</Tag>}
                     <Button size="small" onClick={() => refreshLogs(selectedScript)}>
-                      刷新
+                      {formatMessage('pages.common.refresh')}
                     </Button>
                   </Space>
                 }
               >
                 <div className={styles.logContainer}>
                   {logs.length === 0 ? (
-                    <Text type="secondary">暂无日志</Text>
+                    <Text type="secondary">{formatMessage('pages.scripts.noLogs')}</Text>
                   ) : (
                     logs.map((log, index) => (
                       <div key={index} className={styles.logLine}>
@@ -414,33 +420,33 @@ const Scripts: React.FC = () => {
 
       {/* 创建脚本对话框 */}
       <ModalForm
-        title="新建脚本"
+        title={formatMessage('pages.scripts.create')}
         open={createModalVisible}
         onOpenChange={setCreateModalVisible}
         onFinish={async (values) => {
           try {
             await createScript(values.name, values.description);
-            message.success('创建成功');
+            message.success(formatMessage('pages.scripts.created'));
             setCreateModalVisible(false);
             refresh();
           } catch (error) {
-            message.error('创建失败');
+            message.error(formatMessage('pages.scripts.createFailed'));
           }
         }}
       >
         <ProFormText
           name="name"
-          label="脚本名称"
-          placeholder="请输入脚本名称"
+          label={formatMessage('pages.scripts.name')}
+          placeholder={formatMessage('pages.scripts.namePlaceholder')}
           rules={[
             { required: true },
-            { pattern: /\.lua$/, message: '脚本名称必须以 .lua 结尾' },
+            { pattern: /\.lua$/, message: formatMessage('pages.scripts.nameRule') },
           ]}
         />
         <ProFormTextArea
           name="description"
-          label="描述"
-          placeholder="请输入脚本描述"
+          label={formatMessage('pages.scripts.description')}
+          placeholder={formatMessage('pages.scripts.descriptionPlaceholder')}
         />
       </ModalForm>
     </PageContainer>
