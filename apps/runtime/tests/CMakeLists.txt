@@ -5,6 +5,7 @@ find_package(spdlog CONFIG REQUIRED)
 add_executable(runtime_tests
     cli_test.cpp
     screen_runtime_test.cpp
+    screenshot_handler_test.cpp
     cli_test_stubs.cpp
     ../src/cli.cpp
     ../src/packer.cpp
