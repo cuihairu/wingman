@@ -63,6 +63,16 @@ public:
             dup2(pipefd[0], STDIN_FILENO);  // Redirect pipe to stdin
             close(pipefd[0]);
 
+            // xclip 读完 stdin 后会 daemon 化持有 selection；必须先把 stdout/stderr
+            // 接到 /dev/null，否则 daemon 继承调用方的输出管道，等 EOF 的一方
+            // （ctest 输出采集、GUI 以管道 spawn runtime 的 drain 线程）永久挂起
+            const int devnull = open("/dev/null", O_WRONLY);
+            if (devnull != -1) {
+                dup2(devnull, STDOUT_FILENO);
+                dup2(devnull, STDERR_FILENO);
+                close(devnull);
+            }
+
             // Execute xclip directly (no shell)
             execlp("xclip", "xclip", "-selection", "clipboard", nullptr);
 
@@ -76,8 +86,8 @@ public:
             ssize_t written = write(pipefd[1], text.c_str(), text.size());
             close(pipefd[1]);
 
-            // Wait for child and check status
-            int status;
+            // Wait for child and check status（进程外 reaper 已收尸时 waitpid 返回 -1，status 保持 0 → 返回 false）
+            int status = 0;
             waitpid(pid, &status, 0);
 
             return WIFEXITED(status) && WEXITSTATUS(status) == 0 &&
@@ -133,8 +143,8 @@ public:
             }
             close(pipefd[0]);
 
-            // Wait for child
-            int status;
+            // Wait for child（同上：status 初始化为 0 防止 waitpid 失败后读未初始化值）
+            int status = 0;
             waitpid(pid, &status, 0);
 
             return result;
