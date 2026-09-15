@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "wingman/clipboard.hpp"
+#include "clipboard_lock_guard.hpp"
 #include <thread>
 #include <chrono>
 
@@ -8,6 +9,7 @@ using namespace wingman;
 // Windows 剪贴板是全局共享资源，可能被剪贴板历史、云同步、安全软件等进程占用。
 // SetUp 探测可用性：当 OS 拒绝访问时跳过测试（环境问题），而非误报代码失败。
 // 这消除了全套件高负载下的偶发 flaky（ClipboardTest.Clear 等）。
+// X11 后端无 OS 级互斥，ClipboardLockGuard 以 flock 在并行测试进程间串行化。
 class ClipboardTest : public ::testing::Test {
 protected:
     void SetUp() override {
@@ -15,6 +17,9 @@ protected:
             GTEST_SKIP() << "Clipboard unavailable (locked by another process) — skipping";
         }
     }
+
+    // fixture 生命周期 = 整个测试体：锁覆盖 SetUp→TearDown 全程
+    ClipboardLockGuard clipboardLock_;
 };
 
 // ========== Text Operation Tests ==========

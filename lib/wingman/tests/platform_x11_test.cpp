@@ -13,6 +13,7 @@
 #include "wingman/platform/iinput.hpp"
 #include "wingman/platform/iclipboard.hpp"
 #include "wingman/clipboard.hpp"
+#include "clipboard_lock_guard.hpp"
 #include "wingman/screen.hpp"  // Bitmap 完整定义（icapture.hpp 仅前向声明）
 
 #include <X11/Xlib.h>
@@ -135,6 +136,8 @@ TEST_F(X11PlatformTest, TopLevelClipboardUsesX11Backend) {
 }
 
 TEST_F(X11PlatformTest, ClipboardTextRoundtrip) {
+    // X11 selection 无跨进程锁：与 ClipboardTest.* 并行（ctest -j）时需 flock 串行化
+    ClipboardLockGuard clipboardLock;
     auto& clipboard = wingman::Clipboard::instance();
     const std::string payload = "wingman-x11-clipboard-e2e";
     if (!clipboard.setText(payload)) {
