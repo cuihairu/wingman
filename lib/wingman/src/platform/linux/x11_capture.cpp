@@ -9,6 +9,18 @@
 
 namespace wingman::platform::linux {
 
+namespace {
+
+// 宽容 error handler：Xlib 默认 handler 会 exit() 杀死整个进程。截图暴露给
+// 任意坐标输入（脚本 getPixel 越界 → XGetImage BadMatch），必须让失败的
+// 请求以 NULL 返回值/降级呈现而不是进程死亡。XGetImage 出错时返回 nullptr，
+// 调用方已有相应失败路径。
+int captureXErrorHandler(Display*, XErrorEvent*) {
+    return 0;
+}
+
+} // namespace
+
 class X11Capture : public ICapture {
 public:
     X11Capture() = default;
@@ -21,6 +33,8 @@ public:
             spdlog::error("X11Capture: failed to open X display");
             return false;
         }
+        // 幂等安装（同进程重复 initialize 指向同一函数，无叠加效应）
+        XSetErrorHandler(captureXErrorHandler);
         root_ = DefaultRootWindow(display_);
         initialized_ = true;
         return true;

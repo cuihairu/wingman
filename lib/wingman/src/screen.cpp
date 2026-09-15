@@ -25,6 +25,22 @@
 #include <unistd.h>
 #endif
 
+#if defined(__linux__)
+// Linux 截图装配：接线 X11Capture（此前 Screen::capture 恒 nullptr 的装配断链，
+// 与 Clipboard 同款，2026-09-14 修复）。截图/取色/找色不依赖 OpenCV。
+#include "wingman/platform/icapture.hpp"
+#include "wingman/platform/screen_factory.hpp"
+
+// gcc 在 Linux 上把 `linux` 定义为 1（遗留宏），命名空间限定需要 undo（同 x11_factory.cpp）
+#if defined(linux)
+#undef linux
+#endif
+
+namespace wingman::platform::linux {
+std::unique_ptr<ICapture> createX11Capture(const CaptureConfig& config);
+}
+#endif
+
 #include <cstring>
 #include <algorithm>
 #include <filesystem>
@@ -809,49 +825,6 @@ bool Bitmap::save(const std::string& filepath) const {
     cv::Mat bgra(m_height, m_width, CV_8UC4, const_cast<uint8_t*>(m_data.get()));
     return cv::imwrite(filepath, bgra);
 }
-
-// ============================================================================
-// Screen Implementation
-// ============================================================================
-
-std::unique_ptr<Bitmap> Screen::capture() {
-    return nullptr;
-}
-
-std::unique_ptr<Bitmap> Screen::capture(const Rect& /*region*/) {
-    return nullptr;
-}
-
-Color Screen::getPixel(int /*x*/, int /*y*/) {
-    return Color();
-}
-
-bool Screen::findColor(const Color& /*color*/, const Rect& /*region*/,
-                      int /*tolerance*/, Point& /*result*/) {
-    return false;
-}
-
-std::vector<Point> Screen::findColors(const Color& /*color*/, const Rect& /*region*/,
-                                      int /*tolerance*/, int /*maxCount*/) {
-    return {};
-}
-
-bool Screen::findImage(const std::string& /*imagePath*/, const Rect& /*region*/,
-                       double /*threshold*/, Point& /*result*/) {
-    return false;
-}
-
-int Screen::getScreenWidth() {
-    return 0;
-}
-
-int Screen::getScreenHeight() {
-    return 0;
-}
-
-Rect Screen::getScreenBounds() {
-    return Rect();
-}
 #else
 bool Bitmap::save(const std::string& filepath) const {
     if (m_width <= 0 || m_height <= 0 || !m_data) {
@@ -911,50 +884,132 @@ bool Bitmap::save(const std::string& filepath) const {
 
     return true;
 }
+#endif // platform-specific screen implementation
 
 // ============================================================================
-// Screen Implementation
+// Screen Implementation (Linux) —— 接线 X11Capture
 // ============================================================================
+//
+// 此前本文件在 Linux 两个分支（有/无 vision）里都是恒 nullptr 的 stub，
+// X11Capture 有完整实现却无产品消费者（装配断链，与 Clipboard 同款，
+// 2026-09-14 接线）。截图/取色/找色不依赖 OpenCV，vision 与否共用本实现；
+// findImage（模板匹配）仍需 OpenCV，保持 stub（见 todo.md）。
+// 每次调用经工厂独立创建 ICapture（自带 X 连接），规避跨线程共享 Display
+// 的线程安全问题；XOpenDisplay 走本地 socket，开销亚毫秒。
+
+#if defined(__linux__)
+namespace {
+
+std::unique_ptr<platform::ICapture> linuxCapture() {
+    auto capture = platform::linux::createX11Capture(platform::CaptureConfig{});
+    if (!capture || !capture->isAvailable()) {
+        return nullptr;
+    }
+    return capture;
+}
+
+std::unique_ptr<platform::IScreen> linuxScreen() {
+    return platform::createPlatformScreen();
+}
+
+} // namespace
 
 std::unique_ptr<Bitmap> Screen::capture() {
-    return nullptr;
+    auto capture = linuxCapture();
+    if (!capture) {
+        return nullptr;
+    }
+    return capture->captureScreen(0);
 }
 
-std::unique_ptr<Bitmap> Screen::capture(const Rect& /*region*/) {
-    return nullptr;
+std::unique_ptr<Bitmap> Screen::capture(const Rect& region) {
+    if (region.isEmpty()) {
+        return nullptr;
+    }
+    auto capture = linuxCapture();
+    if (!capture) {
+        return nullptr;
+    }
+    return capture->captureRegion(
+        platform::Rect{region.x, region.y, region.width, region.height});
 }
 
-Color Screen::getPixel(int /*x*/, int /*y*/) {
-    return Color();
+Color Screen::getPixel(int x, int y) {
+    auto bitmap = capture(Rect(x, y, 1, 1));
+    if (!bitmap) {
+        return Color();
+    }
+    return bitmap->getPixel(0, 0);
 }
 
-bool Screen::findColor(const Color& /*color*/, const Rect& /*region*/,
-                      int /*tolerance*/, Point& /*result*/) {
+bool Screen::findColor(const Color& color, const Rect& region,
+                      int tolerance, Point& result) {
+    auto bitmap = capture(region);
+    if (!bitmap) {
+        return false;
+    }
+
+    for (int y = 0; y < bitmap->getHeight(); ++y) {
+        for (int x = 0; x < bitmap->getWidth(); ++x) {
+            if (bitmap->getPixel(x, y).matches(color, tolerance)) {
+                result.x = region.x + x;
+                result.y = region.y + y;
+                return true;
+            }
+        }
+    }
+
     return false;
 }
 
-std::vector<Point> Screen::findColors(const Color& /*color*/, const Rect& /*region*/,
-                                      int /*tolerance*/, int /*maxCount*/) {
-    return {};
+std::vector<Point> Screen::findColors(const Color& color, const Rect& region,
+                                      int tolerance, int maxCount) {
+    std::vector<Point> results;
+    auto bitmap = capture(region);
+    if (!bitmap) {
+        return results;
+    }
+
+    for (int y = 0; y < bitmap->getHeight(); ++y) {
+        for (int x = 0; x < bitmap->getWidth(); ++x) {
+            if (bitmap->getPixel(x, y).matches(color, tolerance)) {
+                results.emplace_back(region.x + x, region.y + y);
+                if (maxCount > 0 && results.size() >= static_cast<size_t>(maxCount)) {
+                    return results;
+                }
+            }
+        }
+    }
+
+    return results;
 }
 
 bool Screen::findImage(const std::string& /*imagePath*/, const Rect& /*region*/,
                        double /*threshold*/, Point& /*result*/) {
+    // 模板匹配需 OpenCV（vision 构建），Linux 接线暂缓——见 todo.md
     return false;
 }
 
 int Screen::getScreenWidth() {
-    return 0;
+    auto screen = linuxScreen();
+    if (!screen) {
+        return 0;
+    }
+    return screen->getPrimaryMonitorBounds().width;
 }
 
 int Screen::getScreenHeight() {
-    return 0;
+    auto screen = linuxScreen();
+    if (!screen) {
+        return 0;
+    }
+    return screen->getPrimaryMonitorBounds().height;
 }
 
 Rect Screen::getScreenBounds() {
-    return Rect();
+    return Rect(0, 0, getScreenWidth(), getScreenHeight());
 }
 
-#endif // platform-specific screen implementation
+#endif // __linux__
 
 } // namespace wingman
