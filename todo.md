@@ -299,6 +299,35 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ---
 
+## 📅 2026-09-15 X11 WM 测试间歇失败根因排查（X11WmIntegrationTest flaky）
+
+**现象**：自起 Xvfb+openbox 的 WM 集成测试 ~30-50% 间歇启动失败，且呈负载相关的 episodic 簇状（同机 10 个 peer 会话高负载时恶化）。加自愈重试（归属校验+换号整体重建）后压测反而 12/20 失败，遂转入系统性根因排查。
+
+**两种失败形态**（后续被统一解释）：
+- **A（REG-FAIL）**：openbox 死于 "Failed to open the display"，但 strace/连接垫片证实 connect() 本身成功（rc=0），失败在 setup 交换；
+- **B（NOT-MANAGED）**：openbox 存活且 ~80ms 完成 EWMH 注册（`_NET_SUPPORTING_WM_CHECK` 在），gdb 活体解剖主线程 `g_main_loop_run → ppoll` 完全健康，但 canary 窗口永卡 IsUnmapped；`ss` 显示 openbox X socket Recv-Q=0——**服务器从未投递 MapRequest**。
+
+**排查路径（证伪链，方法可复用）**：
+
+| 假设 | 实验 | 结论 |
+|------|------|------|
+| 残留 server 应答 display | lock 文件 pid 归属校验通过后仍失败 | ❌ 证伪 |
+| openbox 自身不稳定 | 常驻 Xvfb 上 20 连发零崩溃 | ❌ 证伪 |
+| 测试二进制问题 | 纯 python ctypes 复刻同样 ~25% 失败 | ❌ 无罪 |
+| server reset 竞态 | poll+`-noreset` 反而 28/45 更糟 | ❌ 证伪 |
+| 重定向被幽灵持有 | 楔死现场新连接试选 SubstructureRedirectMask 无 BadAccess | ❌ 空闲 |
+| **openbox 启动窗口内的外来探测连接** | 三模式**同时段交替**对照（见下） | ✅ 坐实 |
+
+**决定性实验**——三模式交替各 45 轮（消除负载漂移）：poll（spawn 后 50ms 连断轮询注册）18/45 失败；quiet（spawn 后静默 600ms 单查）**0/45**；poll+noreset 28/45。楔死现场探针补齐机制：root 重定向空闲 + canary map_state=0（MapWindow 从未被执行）+ openbox 健康 ⇒ openbox 的连接被 server 摘出了事件分发。
+
+**根因**：`wmRegistered()` 以 50ms 间隔「连接→查属性→断开」轮询，恰好落在 openbox 启动窗口（connect + EWMH 注册 + grab 初始化，亚秒级）内。高负载下外来连接的断开与 openbox 连接建立竞态：踢掉其 setup（形态 A）或将其摘出分发（形态 B——连接活着但永不被投递事件）。`displayAccepts()` 探测在 openbox spawn 之前（无害）；`waitForWmManaging()` 是长连接轮询（无害）——唯一毒源即注册轮询的高频连断。
+
+**修复**（`platform_x11_test.cpp`）：spawn openbox 后静默 600ms 覆盖启动窗口，再以 500ms 低频探测注册；归属校验/换号整体重建自愈保留兜底。验证：真实二进制压测 **40/40 零 flake**（修复前 12/20），DISPLAY=:99 全量 1901/1901，无 DISPLAY 环境优雅 skip。
+
+**方法论沉淀**：① 海森 bug（strace/LD_PRELOAD/gdb 观察均使失败消失）下，单次实验无意义——用**同时段交替 A/B/C 对照**做统计判定；②「进程健康 + Recv-Q=0 + 资源空闲」的组合比逐层猜内部状态更快收敛；③ 第三方组件（Xvfb/openbox）的启动窗口对并发连接敏感是常见 flaky 源，探测一律「先沉降、后低频、长连接轮询」。
+
+---
+
 ## 📊 各模块实际完成度（已校准 2026-09-04，含 Dashboard 审核修复）
 
 | 模块 | 子功能 | 完成度 | 说明 |
