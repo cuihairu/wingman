@@ -1,5 +1,5 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { history } from '@umijs/max';
+import { history, useIntl } from '@umijs/max';
 import {
   ApiOutlined,
   ArrowRightOutlined,
@@ -61,6 +61,8 @@ function EntryCard({ title, description, icon, actionLabel, path, tone }: EntryC
 
 const Welcome: React.FC = () => {
   const { token } = theme.useToken();
+  const intl = useIntl();
+  const formatMessage = (id: string) => intl.formatMessage({ id });
 
   return (
     <PageContainer
@@ -82,19 +84,18 @@ const Welcome: React.FC = () => {
             <Col xs={24} xl={16}>
               <Space direction="vertical" size={18} style={{ width: '100%' }}>
                 <Space wrap>
-                  <Tag color="blue">多节点编排</Tag>
-                  <Tag color="cyan">工作流引擎</Tag>
-                  <Tag color="purple">实时监控</Tag>
+                  <Tag color="blue">{formatMessage('pages.welcome.tagOrchestration')}</Tag>
+                  <Tag color="cyan">{formatMessage('pages.welcome.tagWorkflow')}</Tag>
+                  <Tag color="purple">{formatMessage('pages.welcome.tagMonitor')}</Tag>
                 </Space>
                 <Typography.Title level={2} style={{ margin: 0 }}>
-                  Wingman 游戏自动化控制引擎
+                  {formatMessage('pages.welcome.heroTitle')}
                 </Typography.Title>
                 <Typography.Paragraph
                   type="secondary"
                   style={{ margin: 0, fontSize: 16, lineHeight: 1.8 }}
                 >
-                  分布式自动化控制平台，支持多 Agent 协同工作、可视化工作流编排、实时任务监控。 通过
-                  Lua 脚本实现灵活的游戏自动化操作。
+                  {formatMessage('pages.welcome.heroDescription')}
                 </Typography.Paragraph>
                 <Space wrap size={[12, 12]}>
                   <Button
@@ -103,14 +104,14 @@ const Welcome: React.FC = () => {
                     size="large"
                     onClick={() => history.push('/workflows')}
                   >
-                    创建工作流
+                    {formatMessage('pages.welcome.createWorkflow')}
                   </Button>
                   <Button
                     size="large"
                     icon={<DesktopOutlined />}
                     onClick={() => history.push('/agents')}
                   >
-                    管理 Agent
+                    {formatMessage('pages.welcome.manageAgents')}
                   </Button>
                 </Space>
               </Space>
@@ -121,14 +122,14 @@ const Welcome: React.FC = () => {
                 style={{ background: 'rgba(255,255,255,0.65)', borderColor: token.colorBorder }}
               >
                 <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                  <Typography.Text strong>快速开始</Typography.Text>
+                  <Typography.Text strong>{formatMessage('pages.welcome.quickStart')}</Typography.Text>
                   <Space wrap size={[8, 8]}>
-                    <Tag color="blue">Agent 接入</Tag>
-                    <Tag color="geekblue">脚本下发</Tag>
-                    <Tag color="purple">工作流编排</Tag>
+                    <Tag color="blue">{formatMessage('pages.welcome.tagAgentAccess')}</Tag>
+                    <Tag color="geekblue">{formatMessage('pages.welcome.tagScriptDelivery')}</Tag>
+                    <Tag color="purple">{formatMessage('pages.welcome.tagWorkflowOrchestration')}</Tag>
                   </Space>
                   <Typography.Text type="secondary">
-                    前往「Agent 管理」确认节点在线状态，随后即可创建工作流或运行脚本。
+                    {formatMessage('pages.welcome.quickStartHint')}
                   </Typography.Text>
                 </Space>
               </Card>
@@ -140,30 +141,30 @@ const Welcome: React.FC = () => {
         <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
             <EntryCard
-              title="游戏监控"
-              description="实时查看游戏画面、管理触发器、执行宏命令、监控系统资源。"
+              title={formatMessage('pages.welcome.monitorCardTitle')}
+              description={formatMessage('pages.welcome.monitorCardDescription')}
               icon={<DesktopOutlined />}
-              actionLabel="打开监控"
+              actionLabel={formatMessage('pages.welcome.monitorCardAction')}
               path="/monitor"
               tone="linear-gradient(135deg, #0f9d58 0%, #34d399 100%)"
             />
           </Col>
           <Col xs={24} md={8}>
             <EntryCard
-              title="Agent 管理"
-              description="查看所有已注册的 Agent 节点，监控 CPU、内存、网络等资源使用情况，管理 Agent 状态。"
+              title={formatMessage('pages.welcome.agentsCardTitle')}
+              description={formatMessage('pages.welcome.agentsCardDescription')}
               icon={<NodeIndexOutlined />}
-              actionLabel="管理节点"
+              actionLabel={formatMessage('pages.welcome.agentsCardAction')}
               path="/agents"
               tone="linear-gradient(135deg, #1668dc 0%, #69b1ff 100%)"
             />
           </Col>
           <Col xs={24} md={8}>
             <EntryCard
-              title="工作流编排"
-              description="创建和管理自动化工作流，支持多步骤任务编排、依赖配置、并行执行和失败重试。"
+              title={formatMessage('pages.welcome.workflowsCardTitle')}
+              description={formatMessage('pages.welcome.workflowsCardDescription')}
               icon={<BlockOutlined />}
-              actionLabel="创建工作流"
+              actionLabel={formatMessage('pages.welcome.workflowsCardAction')}
               path="/workflows"
               tone="linear-gradient(135deg, #722ed1 0%, #b37feb 100%)"
             />
@@ -171,18 +172,20 @@ const Welcome: React.FC = () => {
         </Row>
 
         {/* 使用流程 */}
-        <Card title="使用流程" bordered={false}>
+        <Card title={formatMessage('pages.welcome.usageTitle')} bordered={false}>
           <Row gutter={[16, 16]}>
             <Col xs={24} md={8}>
               <Card size="small" type="inner">
                 <Space direction="vertical" size={12}>
-                  <Tag color="blue">步骤 1</Tag>
-                  <Typography.Title level={5}>注册 Agent</Typography.Title>
+                  <Tag color="blue">{formatMessage('pages.welcome.step1Tag')}</Tag>
+                  <Typography.Title level={5}>
+                    {formatMessage('pages.welcome.step1Title')}
+                  </Typography.Title>
                   <Typography.Text type="secondary">
-                    启动 Wingman 客户端，自动注册到服务器。在 Agent 管理页面查看所有在线节点。
+                    {formatMessage('pages.welcome.step1Description')}
                   </Typography.Text>
                   <Button size="small" onClick={() => history.push('/agents')}>
-                    查看 Agent
+                    {formatMessage('pages.welcome.step1Action')}
                   </Button>
                 </Space>
               </Card>
@@ -190,13 +193,15 @@ const Welcome: React.FC = () => {
             <Col xs={24} md={8}>
               <Card size="small" type="inner">
                 <Space direction="vertical" size={12}>
-                  <Tag color="blue">步骤 2</Tag>
-                  <Typography.Title level={5}>创建工作流</Typography.Title>
+                  <Tag color="blue">{formatMessage('pages.welcome.step2Tag')}</Tag>
+                  <Typography.Title level={5}>
+                    {formatMessage('pages.welcome.step2Title')}
+                  </Typography.Title>
                   <Typography.Text type="secondary">
-                    在工作流管理页面创建任务流，配置执行步骤、依赖关系和超时时间。
+                    {formatMessage('pages.welcome.step2Description')}
                   </Typography.Text>
                   <Button type="primary" size="small" onClick={() => history.push('/workflows')}>
-                    创建工作流
+                    {formatMessage('pages.welcome.step2Action')}
                   </Button>
                 </Space>
               </Card>
@@ -204,13 +209,15 @@ const Welcome: React.FC = () => {
             <Col xs={24} md={8}>
               <Card size="small" type="inner">
                 <Space direction="vertical" size={12}>
-                  <Tag color="blue">步骤 3</Tag>
-                  <Typography.Title level={5}>监控执行</Typography.Title>
+                  <Tag color="blue">{formatMessage('pages.welcome.step3Tag')}</Tag>
+                  <Typography.Title level={5}>
+                    {formatMessage('pages.welcome.step3Title')}
+                  </Typography.Title>
                   <Typography.Text type="secondary">
-                    实时监控工作流执行状态，查看步骤进度和 Agent 资源使用情况。
+                    {formatMessage('pages.welcome.step3Description')}
                   </Typography.Text>
                   <Button size="small" onClick={() => history.push('/workflows')}>
-                    查看工作流
+                    {formatMessage('pages.welcome.step3Action')}
                   </Button>
                 </Space>
               </Card>
@@ -219,41 +226,45 @@ const Welcome: React.FC = () => {
         </Card>
 
         {/* 技术特性 */}
-        <Card title="技术特性" bordered={false}>
+        <Card title={formatMessage('pages.welcome.techTitle')} bordered={false}>
           <Row gutter={[16, 16]}>
             <Col xs={12} sm={6}>
               <Space direction="vertical" size={4}>
                 <ApiOutlined style={{ fontSize: 24, color: token.colorPrimary }} />
-                <Typography.Text strong>Protobuf 通信</Typography.Text>
+                <Typography.Text strong>{formatMessage('pages.welcome.techProtobuf')}</Typography.Text>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  高效二进制协议
+                  {formatMessage('pages.welcome.techProtobufDescription')}
                 </Typography.Text>
               </Space>
             </Col>
             <Col xs={12} sm={6}>
               <Space direction="vertical" size={4}>
                 <NodeIndexOutlined style={{ fontSize: 24, color: token.colorSuccess }} />
-                <Typography.Text strong>分布式节点</Typography.Text>
+                <Typography.Text strong>
+                  {formatMessage('pages.welcome.techDistributedNodes')}
+                </Typography.Text>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  多 Agent 协同
+                  {formatMessage('pages.welcome.techDistributedNodesDescription')}
                 </Typography.Text>
               </Space>
             </Col>
             <Col xs={12} sm={6}>
               <Space direction="vertical" size={4}>
                 <BlockOutlined style={{ fontSize: 24, color: token.colorWarning }} />
-                <Typography.Text strong>工作流引擎</Typography.Text>
+                <Typography.Text strong>
+                  {formatMessage('pages.welcome.techWorkflowEngine')}
+                </Typography.Text>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  DAG 任务编排
+                  {formatMessage('pages.welcome.techWorkflowEngineDescription')}
                 </Typography.Text>
               </Space>
             </Col>
             <Col xs={12} sm={6}>
               <Space direction="vertical" size={4}>
                 <DesktopOutlined style={{ fontSize: 24, color: token.colorError }} />
-                <Typography.Text strong>Lua 脚本</Typography.Text>
+                <Typography.Text strong>{formatMessage('pages.welcome.techLuaScript')}</Typography.Text>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  灵活任务定义
+                  {formatMessage('pages.welcome.techLuaScriptDescription')}
                 </Typography.Text>
               </Space>
             </Col>

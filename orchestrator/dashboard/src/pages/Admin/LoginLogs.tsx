@@ -1,9 +1,12 @@
+import { useIntl } from '@umijs/max';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Table, Space, Input, Button, DatePicker, Tag } from 'antd';
 import { PageContainer } from '@ant-design/pro-components';
 import { listAudit, type AuditEvent, type ListAuditParams } from '@/services/api';
 
 export default function LoginLogsPage() {
+  const intl = useIntl();
+  const formatMessage = (id: string) => intl.formatMessage({ id });
   const [rows, setRows] = useState<AuditEvent[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -104,10 +107,10 @@ export default function LoginLogsPage() {
 
   return (
     <PageContainer>
-      <Card title="Login Logs">
+      <Card title={formatMessage('pages.adminLoginLogs.title')}>
         <Space style={{ marginBottom: 12 }} wrap>
           <Input
-            placeholder="Actor"
+            placeholder={formatMessage('pages.adminLoginLogs.actorPlaceholder')}
             value={actor}
             onChange={(event) => setActor(event.target.value)}
             style={{ width: 160 }}
@@ -136,12 +139,12 @@ export default function LoginLogsPage() {
             onChange={setTimeRange as any}
           />
           <Button type="primary" onClick={load}>
-            Search
+            {formatMessage('pages.adminLoginLogs.search')}
           </Button>
-          <Button onClick={exportCSV}>Export CSV</Button>
+          <Button onClick={exportCSV}>{formatMessage('pages.adminLoginLogs.exportCsv')}</Button>
         </Space>
         <Space style={{ marginBottom: 12 }} wrap>
-          <span>Device:</span>
+          <span>{formatMessage('pages.adminLoginLogs.device')}</span>
           <Space size={4}>
             {['Windows', 'macOS', 'Linux', 'Android', 'iOS', 'Other'].map((os) => (
               <Tag
@@ -160,7 +163,7 @@ export default function LoginLogsPage() {
               </Tag>
             ))}
           </Space>
-          <span>Browser:</span>
+          <span>{formatMessage('pages.adminLoginLogs.browser')}</span>
           <Space size={4}>
             {['Edge', 'Chrome', 'Safari', 'Firefox', 'Other'].map((browser) => (
               <Tag
@@ -185,7 +188,7 @@ export default function LoginLogsPage() {
               setBrSel([]);
             }}
           >
-            Clear Device Filters
+            {formatMessage('pages.adminLoginLogs.clearDeviceFilters')}
           </Button>
         </Space>
         <Table
@@ -194,12 +197,12 @@ export default function LoginLogsPage() {
           dataSource={filtered}
           columns={[
             {
-              title: 'Time',
+              title: formatMessage('pages.adminLoginLogs.colTime'),
               dataIndex: 'time',
               render: (value) => new Date(value).toLocaleString(),
             },
             {
-              title: 'Kind',
+              title: formatMessage('pages.adminLoginLogs.colKind'),
               dataIndex: 'kind',
               render: (value) => (
                 <Tag color={value === 'login' ? 'green' : value === 'login_fail' ? 'red' : 'gold'}>
@@ -207,19 +210,19 @@ export default function LoginLogsPage() {
                 </Tag>
               ),
             },
-            { title: 'Actor', dataIndex: 'actor' },
+            { title: formatMessage('pages.adminLoginLogs.colActor'), dataIndex: 'actor' },
             { title: 'IP', dataIndex: ['meta', 'ip'] },
             {
-              title: 'Region',
+              title: formatMessage('pages.adminLoginLogs.colRegion'),
               render: (_value, record: any) => String(record?.meta?.ip_region || '-'),
             },
             {
-              title: 'Device',
+              title: formatMessage('pages.adminLoginLogs.colDevice'),
               render: (_value, record: any) =>
                 detectOS(String(record.meta?.ua || record.meta?.user_agent || '')),
             },
             {
-              title: 'Browser',
+              title: formatMessage('pages.adminLoginLogs.colBrowser'),
               render: (_value, record: any) =>
                 detectBrowser(String(record.meta?.ua || record.meta?.user_agent || '')),
             },
@@ -229,9 +232,9 @@ export default function LoginLogsPage() {
               const ua = String(record?.meta?.ua || record?.meta?.user_agent || '');
               return (
                 <div style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
-                  Browser: {detectBrowser(ua) || '-'}
+                  {formatMessage('pages.adminLoginLogs.expandedBrowser')} {detectBrowser(ua) || '-'}
                   {'\n'}
-                  UA: {ua || '-'}
+                  {formatMessage('pages.adminLoginLogs.expandedUa')} {ua || '-'}
                 </div>
               );
             },

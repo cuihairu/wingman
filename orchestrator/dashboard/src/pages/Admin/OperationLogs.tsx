@@ -1,3 +1,4 @@
+import { useIntl } from '@umijs/max';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Table, Space, Input, Button, DatePicker, Tag } from 'antd';
 import { PageContainer } from '@ant-design/pro-components';
@@ -15,6 +16,8 @@ const defaultKinds = [
 ];
 
 export default function OperationLogsPage() {
+  const intl = useIntl();
+  const formatMessage = (id: string) => intl.formatMessage({ id });
   const [rows, setRows] = useState<AuditEvent[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -113,10 +116,10 @@ export default function OperationLogsPage() {
 
   return (
     <PageContainer>
-      <Card title="Operation Logs">
+      <Card title={formatMessage('pages.adminOperationLogs.title')}>
         <Space style={{ marginBottom: 12 }} wrap>
           <Input
-            placeholder="Actor"
+            placeholder={formatMessage('pages.adminOperationLogs.actorPlaceholder')}
             value={actor}
             onChange={(event) => setActor(event.target.value)}
             style={{ width: 160 }}
@@ -134,24 +137,37 @@ export default function OperationLogsPage() {
               load();
             }}
           >
-            Search
+            {formatMessage('pages.adminOperationLogs.search')}
           </Button>
-          <Button onClick={exportCSV}>Export CSV</Button>
+          <Button onClick={exportCSV}>{formatMessage('pages.adminOperationLogs.exportCsv')}</Button>
         </Space>
         <Table
           rowKey={(record) => record.hash || `${record.time}-${record.kind}-${record.actor}`}
           loading={loading}
           dataSource={rows}
           columns={[
-            { title: 'Time', dataIndex: 'time', render: (value) => new Date(value).toLocaleString() },
-            { title: 'Kind', dataIndex: 'kind' },
-            { title: 'Actor', dataIndex: 'actor' },
-            { title: 'Target', dataIndex: 'target' },
+            {
+              title: formatMessage('pages.adminOperationLogs.colTime'),
+              dataIndex: 'time',
+              render: (value) => new Date(value).toLocaleString(),
+            },
+            { title: formatMessage('pages.adminOperationLogs.colKind'), dataIndex: 'kind' },
+            { title: formatMessage('pages.adminOperationLogs.colActor'), dataIndex: 'actor' },
+            { title: formatMessage('pages.adminOperationLogs.colTarget'), dataIndex: 'target' },
             { title: 'IP', dataIndex: ['meta', 'ip'] },
-            { title: 'Region', render: (_value, record: any) => String(record?.meta?.ip_region || '-') },
-            { title: 'Agent', dataIndex: ['meta', 'agent_id'] },
-            { title: 'Workflow', dataIndex: ['meta', 'workflow_id'] },
-            { title: 'Script Path', dataIndex: ['meta', 'script_path'] },
+            {
+              title: formatMessage('pages.adminOperationLogs.colRegion'),
+              render: (_value, record: any) => String(record?.meta?.ip_region || '-'),
+            },
+            { title: formatMessage('pages.adminOperationLogs.colAgent'), dataIndex: ['meta', 'agent_id'] },
+            {
+              title: formatMessage('pages.adminOperationLogs.colWorkflow'),
+              dataIndex: ['meta', 'workflow_id'],
+            },
+            {
+              title: formatMessage('pages.adminOperationLogs.colScriptPath'),
+              dataIndex: ['meta', 'script_path'],
+            },
           ]}
           pagination={{
             current: page,

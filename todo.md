@@ -151,6 +151,7 @@ dashboard → server → agent 请求/响应模型）。原裸 501 stub 已替�
 - [x] 死代码清理：wingman.ts `getAgent`/`getWorkerStatuses`/`getStepStatus`、admin.ts `getUser`/`getRole`、auth.ts 兼容层 6 函数 + 2 死类型（保留 `createSession`/`fetchCurrentUserGames`）
 - [x] 死测试清理：`tests/workspace/` 6 个引用已删模块的测试；jest.config 移除 testPathIgnorePatterns 与指向不存在 `tests/umi/` 的 moduleNameMapper（css mock 改指 `tests/mocks/styleMock.js`）
 - [x] i18n 修复：zh-CN menu 补齐 11 个缺失菜单 key；zh-CN 权限模板 fallback 替换 workspaces/functions/ops 残留 key 为代码实际引用的 6 组（消除中英错位）。注：业务页面硬编码中文的全面 i18n 接线不在本次范围（8 套语言文件仅 4 个文件使用 intl，属独立任务）
+- [x] Dashboard 业务页面全面 i18n 接线（2026-09-15 完成，上述「独立任务」闭环）：18 个页面/组件约 530 处硬编码中文全部接线 umi intl（Agents、Scripts、Workflows、Monitor、Settings、Admin Users/Roles/登录日志/操作日志、Account、Messages、Support、Feedback、Welcome、403、404、Login、Profile 头像段）；8 语言（zh-CN/zh-TW/en-US/ja-JP/fa-IR/id-ID/pt-BR/bn-BD）pages.* key 全量补齐（新增约 400 key × 8 语言，含为非中英 6 语言补齐既有 profile.avatar.modal.* 段消除裸 key）；ICU 参数化（{count}/{name} 等），模块级纯函数改双参兜底（提取错误消息）；校验：tsc 0 错误、源码引用 493 key 对照 zh-CN 零缺失（校验脚本）、eslint 0、jest 235/235、生产构建通过
 
 **验证基线**：`tsc --noEmit` 0 错误；jest 47/47（新增 apiContracts 26 例 + websocket 5 例）；eslint 仅剩脚手架 `service-worker.js` 历史 warning。
 

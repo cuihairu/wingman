@@ -1,3 +1,4 @@
+import { useIntl } from '@umijs/max';
 import React, { useEffect, useState } from 'react';
 import { Badge, Button, Card, List, Space, Tag, Typography, message } from 'antd';
 import { PageContainer } from '@ant-design/pro-components';
@@ -11,6 +12,8 @@ import {
 const { Text } = Typography;
 
 export default function AccountMessagesPage() {
+  const intl = useIntl();
+  const formatMessage = (id: string) => intl.formatMessage({ id });
   const [items, setItems] = useState<MessageItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'all' | 'unread'>('all');
@@ -21,7 +24,7 @@ export default function AccountMessagesPage() {
       const response = await listMessages({ status: nextStatus, pageSize: 50 });
       setItems(response.items || []);
     } catch (error: any) {
-      message.error(error?.message || '加载消息失败');
+      message.error(error?.message || formatMessage('pages.accountMessages.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -35,20 +38,20 @@ export default function AccountMessagesPage() {
     if (!id) return;
     try {
       await markMessageRead(id);
-      message.success('已标记为已读');
+      message.success(formatMessage('pages.account.messages.marked.read'));
       await load();
     } catch (error: any) {
-      message.error(error?.message || '操作失败');
+      message.error(error?.message || formatMessage('pages.accountMessages.operationFailed'));
     }
   };
 
   const markAllRead = async () => {
     try {
       await markAllMessagesRead();
-      message.success('全部消息已标记为已读');
+      message.success(formatMessage('pages.accountMessages.allMarkedRead'));
       await load();
     } catch (error: any) {
-      message.error(error?.message || '操作失败');
+      message.error(error?.message || formatMessage('pages.accountMessages.operationFailed'));
     }
   };
 
@@ -56,7 +59,7 @@ export default function AccountMessagesPage() {
     <PageContainer>
       <Card
         loading={loading}
-        title="消息中心"
+        title={formatMessage('pages.accountMessages.title')}
         extra={
           <Space>
             <Button
@@ -66,7 +69,7 @@ export default function AccountMessagesPage() {
                 load('all');
               }}
             >
-              全部
+              {formatMessage('pages.account.messages.all.button')}
             </Button>
             <Button
               type={status === 'unread' ? 'primary' : 'default'}
@@ -75,22 +78,27 @@ export default function AccountMessagesPage() {
                 load('unread');
               }}
             >
-              未读
+              {formatMessage('pages.account.messages.unread.button')}
             </Button>
-            <Button onClick={markAllRead}>全部标记已读</Button>
-            <Button onClick={() => load()}>刷新</Button>
+            <Button onClick={markAllRead}>{formatMessage('pages.account.messages.mark.all.read')}</Button>
+            <Button onClick={() => load()}>{formatMessage('pages.common.refresh')}</Button>
           </Space>
         }
       >
         <List
           dataSource={items}
-          locale={{ emptyText: status === 'unread' ? '暂无未读消息' : '暂无消息' }}
+          locale={{
+            emptyText:
+              status === 'unread'
+                ? formatMessage('pages.accountMessages.emptyUnread')
+                : formatMessage('pages.accountMessages.empty'),
+          }}
           renderItem={(item) => (
             <List.Item
               actions={[
                 item.status !== 'read' ? (
                   <Button key="read" type="link" onClick={() => markRead(item.id)}>
-                    标记已读
+                    {formatMessage('pages.account.messages.mark.read')}
                   </Button>
                 ) : null,
               ].filter(Boolean)}
@@ -99,7 +107,7 @@ export default function AccountMessagesPage() {
                 title={
                   <Space wrap>
                     <Badge status={item.status === 'read' ? 'default' : 'processing'} />
-                    <Text strong>{item.title || '系统通知'}</Text>
+                    <Text strong>{item.title || formatMessage('pages.accountMessages.systemNotice')}</Text>
                     {item.category ? <Tag>{item.category}</Tag> : null}
                     {item.source ? <Tag color="blue">{item.source}</Tag> : null}
                   </Space>

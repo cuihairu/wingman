@@ -246,8 +246,18 @@ const Login: React.FC = () => {
           onOk={() => setForgotOpen(false)}
         >
           <div>
-            <p>请联系管理员为你的账户重置密码。</p>
-            <p>如果你是管理员，请在用户管理中为目标账户设置新密码。</p>
+            <p>
+              {intl.formatMessage({
+                id: 'pages.login.forgotPasswordContactAdmin',
+                defaultMessage: '请联系管理员为你的账户重置密码。',
+              })}
+            </p>
+            <p>
+              {intl.formatMessage({
+                id: 'pages.login.forgotPasswordAdminHint',
+                defaultMessage: '如果你是管理员，请在用户管理中为目标账户设置新密码。',
+              })}
+            </p>
           </div>
         </Modal>
       </div>

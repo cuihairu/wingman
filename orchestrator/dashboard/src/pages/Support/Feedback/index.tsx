@@ -1,3 +1,4 @@
+import { useIntl } from '@umijs/max';
 import React, { useState } from 'react';
 import { Alert, Button, Card, Form, Input, Select, Space, Typography, message } from 'antd';
 import { PageContainer } from '@ant-design/pro-components';
@@ -6,6 +7,8 @@ import { createFeedback } from '@/services/api/support';
 const { Paragraph } = Typography;
 
 export default function SupportFeedbackPage() {
+  const intl = useIntl();
+  const formatMessage = (id: string) => intl.formatMessage({ id });
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
@@ -19,10 +22,10 @@ export default function SupportFeedbackPage() {
         content: values.content,
         source: 'support_feedback_page',
       });
-      message.success('反馈已提交');
+      message.success(formatMessage('pages.supportFeedback.submitted'));
       form.resetFields();
     } catch (error: any) {
-      message.error(error?.message || '提交失败');
+      message.error(error?.message || formatMessage('pages.supportFeedback.submitFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -30,53 +33,67 @@ export default function SupportFeedbackPage() {
 
   return (
     <PageContainer>
-      <Card title="反馈中心">
+      <Card title={formatMessage('pages.supportFeedback.title')}>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Alert
             type="info"
             showIcon
-            message="提交后会生成站内消息"
-            description="权限申请、问题反馈和功能建议都会写入后端反馈记录，并在消息中心留下可追踪通知。"
+            message={formatMessage('pages.supportFeedback.alertMessage')}
+            description={formatMessage('pages.supportFeedback.alertDescription')}
           />
           <Form
             form={form}
             layout="vertical"
             initialValues={{ category: 'general', priority: 'normal' }}
           >
-            <Form.Item name="category" label="反馈类型" rules={[{ required: true }]}>
+            <Form.Item
+              name="category"
+              label={formatMessage('pages.supportFeedback.category')}
+              rules={[{ required: true }]}
+            >
               <Select
                 options={[
-                  { label: '一般反馈', value: 'general' },
-                  { label: '权限申请', value: 'permission_request' },
-                  { label: '问题报告', value: 'bug' },
-                  { label: '功能建议', value: 'feature' },
+                  { label: formatMessage('pages.supportFeedback.categoryGeneral'), value: 'general' },
+                  {
+                    label: formatMessage('pages.supportFeedback.categoryPermission'),
+                    value: 'permission_request',
+                  },
+                  { label: formatMessage('pages.supportFeedback.categoryBug'), value: 'bug' },
+                  { label: formatMessage('pages.supportFeedback.categoryFeature'), value: 'feature' },
                 ]}
               />
             </Form.Item>
-            <Form.Item name="priority" label="优先级" rules={[{ required: true }]}>
+            <Form.Item
+              name="priority"
+              label={formatMessage('pages.supportFeedback.priority')}
+              rules={[{ required: true }]}
+            >
               <Select
                 options={[
-                  { label: '普通', value: 'normal' },
-                  { label: '高', value: 'high' },
-                  { label: '紧急', value: 'urgent' },
+                  { label: formatMessage('pages.supportFeedback.priorityNormal'), value: 'normal' },
+                  { label: formatMessage('pages.supportFeedback.priorityHigh'), value: 'high' },
+                  { label: formatMessage('pages.supportFeedback.priorityUrgent'), value: 'urgent' },
                 ]}
               />
             </Form.Item>
             <Form.Item
               name="content"
-              label="内容"
+              label={formatMessage('pages.supportFeedback.content')}
               rules={[
-                { required: true, message: '请输入反馈内容' },
-                { min: 5, message: '内容至少 5 个字符' },
+                { required: true, message: formatMessage('pages.supportFeedback.contentRequired') },
+                { min: 5, message: formatMessage('pages.supportFeedback.contentMinLength') },
               ]}
             >
-              <Input.TextArea rows={8} placeholder="请描述背景、期望结果、复现步骤或权限使用场景。" />
+              <Input.TextArea
+                rows={8}
+                placeholder={formatMessage('pages.supportFeedback.contentPlaceholder')}
+              />
             </Form.Item>
             <Paragraph type="secondary">
-              反馈会进入后端持久化记录；如果是权限申请，建议附上权限标识和业务理由。
+              {formatMessage('pages.supportFeedback.persistHint')}
             </Paragraph>
             <Button type="primary" loading={submitting} onClick={() => submit().catch(() => {})}>
-              提交反馈
+              {formatMessage('pages.supportFeedback.submit')}
             </Button>
           </Form>
         </Space>
