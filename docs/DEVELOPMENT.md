@@ -187,6 +187,25 @@ DISPLAY=:99 ctest --test-dir build-runtime -R X11Platform --output-on-failure
 Xvfb + openbox 子进程（flock 串行化、专用 display 号、崩溃陪葬），只要
 两个二进制在 PATH 上即可；它也不读写既有 DISPLAY，不会影响并行用例。
 
+#### Linux OpenCV vision（可选）
+
+`findImage`（模板匹配）、`Bitmap` PNG 编解码、`screenshot.capture` 的 JPEG
+编码依赖 OpenCV（vcpkg `vision` feature，Linux 开发构建按需启用；Windows
+构建经顶层 manifest 依赖恒启用）：
+
+```bash
+cmake -S . -B build-runtime -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE=$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake \
+  -DVCPKG_TARGET_TRIPLET=x64-linux \
+  -DVCPKG_MANIFEST_FEATURES="tests;vision" \
+  # ...其余参数同现有配置
+```
+
+首次启用会源码编译 opencv4（约 15-30 分钟）。不启用时 Linux 构建走
+`vision_stub.cpp`：`findImage` 恒 false、`screenshot.capture` 返回明确
+错误信封（相关测试 GTEST_SKIP / 断言降级路径）。CI Linux job 不启用该
+feature（compat 构建不编 lib/wingman，不装 OpenCV）。
+
 ### Lua Tests
 
 ```cmd
