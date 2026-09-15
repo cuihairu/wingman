@@ -76,6 +76,24 @@
         }
       ]
     },
+    "vision": {
+      "description": "Enable OpenCV vision (template matching, image encode) on Linux dev builds",
+      "dependencies": [
+        {
+          "name": "opencv4",
+          "platform": "linux",
+          "default-features": false,
+          "features": [
+            "intrinsics",
+            "jpeg",
+            "png",
+            "thread",
+            "tiff",
+            "webp"
+          ]
+        }
+      ]
+    },
     "python": {
       "description": "Enable Python scripting engine (embedded CPython + pybind11)",
       "dependencies": [
