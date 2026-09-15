@@ -1,5 +1,6 @@
 // Linux X11 平台实现集成测试：X11Screen（显示器元数据）/ X11Capture（真捕获）/
-// XTestInput（注入 + 查询回读）/ 顶层 Clipboard 装配（X11/xclip 后端接线）。
+// XTestInput（注入 + 查询回读）/ 顶层 Clipboard 装配（X11/xclip 后端接线）/
+// 顶层 Window 装配（X11 窗口管理接线）。
 // 仅 Linux 编译；运行时无 X display（headless CI 等）时各用例 GTEST_SKIP。
 // 本地验证：Xvfb -screen 0 1280x800x24 :99 & 然后 DISPLAY=:99 ctest -R X11Platform。
 #if defined(__linux__)
@@ -12,13 +13,22 @@
 #include "wingman/platform/icapture.hpp"
 #include "wingman/platform/iinput.hpp"
 #include "wingman/platform/iclipboard.hpp"
+#include "wingman/platform/iwindow.hpp"
 #include "wingman/clipboard.hpp"
+#include "wingman/window.hpp"
 #include "clipboard_lock_guard.hpp"
+#include "x11_test_lock.hpp"
 #include "wingman/screen.hpp"  // Bitmap 完整定义（icapture.hpp 仅前向声明）
 
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/Xutil.h>
 
+#include <unistd.h>
+
+#include <algorithm>
 #include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <string>
 
@@ -28,6 +38,7 @@
 #undef linux
 namespace wingman::platform::linux {
 std::unique_ptr<ICapture> createX11Capture(const CaptureConfig& config);
+std::unique_ptr<IWindow> createX11Window();
 }
 
 namespace {
@@ -50,6 +61,83 @@ bool xclipAvailable() {
     static const bool cached = std::system("command -v xclip >/dev/null 2>&1") == 0;
     return cached;
 }
+
+// 窗口用例的 RAII 测试窗口。Xvfb 无窗口管理器，EWMH 属性（_NET_CLIENT_LIST /
+// _NET_ACTIVE_WINDOW）本应由 WM 维护——测试进程直接写根窗口属性模拟 WM 行为
+// （与 WM 同为属性写者，合法）。析构销毁窗口并删除根属性，避免污染并行/后续
+// 用例（属性随 X server 存活，gtest PRE_TEST 下每用例独立进程）。
+class TestX11Window {
+public:
+    TestX11Window(int x, int y, int width, int height, const char* title) {
+        display_ = XOpenDisplay(nullptr);
+        if (!display_) return;
+        Window root = DefaultRootWindow(display_);
+        window_ = XCreateSimpleWindow(display_, root, x, y, width, height,
+                                      0, 0, 0);  // 无边框：XMoveWindow 定位边框外缘，getBounds 回读内容区原点，带边框会偏 1px
+
+        XChangeProperty(display_, window_,
+                        XInternAtom(display_, "_NET_WM_NAME", False),
+                        XInternAtom(display_, "UTF8_STRING", False), 8,
+                        PropModeReplace,
+                        reinterpret_cast<const unsigned char*>(title),
+                        static_cast<int>(std::strlen(title)));
+
+        XClassHint hint;
+        hint.res_name = const_cast<char*>("wingman-test");
+        hint.res_class = const_cast<char*>("WingmanTest");
+        XSetClassHint(display_, window_, &hint);
+
+        const long pid = static_cast<long>(::getpid());
+        XChangeProperty(display_, window_,
+                        XInternAtom(display_, "_NET_WM_PID", False),
+                        XA_CARDINAL, 32, PropModeReplace,
+                        reinterpret_cast<const unsigned char*>(&pid), 1);
+
+        // 模拟 WM 维护根窗口的 client 列表（enumerate() 的数据源）
+        XChangeProperty(display_, root,
+                        XInternAtom(display_, "_NET_CLIENT_LIST", False),
+                        XA_WINDOW, 32, PropModeReplace,
+                        reinterpret_cast<const unsigned char*>(&window_), 1);
+
+        XMapWindow(display_, window_);
+        XFlush(display_);
+    }
+
+    ~TestX11Window() {
+        if (!display_) return;
+        if (window_ != 0) {
+            Window root = DefaultRootWindow(display_);
+            XDestroyWindow(display_, window_);
+            // 根属性是全局状态（flock 只保证本用例运行期独占），必须清理
+            XDeleteProperty(display_, root,
+                            XInternAtom(display_, "_NET_CLIENT_LIST", False));
+            XDeleteProperty(display_, root,
+                            XInternAtom(display_, "_NET_ACTIVE_WINDOW", False));
+            XFlush(display_);
+        }
+        XCloseDisplay(display_);
+    }
+
+    TestX11Window(const TestX11Window&) = delete;
+    TestX11Window& operator=(const TestX11Window&) = delete;
+
+    bool valid() const { return display_ != nullptr && window_ != 0; }
+    wingman::WindowHandle handle() const { return window_; }
+
+    // 模拟 WM 把本窗口设为前台（写根 _NET_ACTIVE_WINDOW）
+    void setActive() {
+        Window root = DefaultRootWindow(display_);
+        XChangeProperty(display_, root,
+                        XInternAtom(display_, "_NET_ACTIVE_WINDOW", False),
+                        XA_WINDOW, 32, PropModeReplace,
+                        reinterpret_cast<const unsigned char*>(&window_), 1);
+        XFlush(display_);
+    }
+
+private:
+    Display* display_ = nullptr;
+    Window window_ = 0;
+};
 
 } // namespace
 
@@ -214,6 +302,130 @@ TEST_F(X11PlatformTest, ClipboardTextRoundtrip) {
     }
     EXPECT_EQ(clipboard.getText(), payload);
     EXPECT_TRUE(clipboard.hasText());
+}
+
+// ========== 窗口（顶层 Window 装配断链回归守卫 + X11 窗口管理） ==========
+
+TEST_F(X11PlatformTest, WindowEnumerateFindTitle) {
+    // 装配断链回归守卫：顶层 Window 在非 Windows 曾恒空 stub，
+    // X11Window 全库零消费者；有 X 时 enumerate/find 必须真出结果。
+    X11ServerLockGuard x11Lock;
+    TestX11Window win(30, 40, 220, 150, "Wingman Test Window");
+    ASSERT_TRUE(win.valid());
+    win.setActive();
+
+    auto all = wingman::Window::enumerate();
+    ASSERT_FALSE(all.empty());
+    const wingman::WindowInfo* info = nullptr;
+    for (const auto& wi : all) {
+        if (wi.handle == win.handle()) info = &wi;
+    }
+    ASSERT_NE(info, nullptr) << "test window missing from enumerate()";
+    EXPECT_EQ(info->title, "Wingman Test Window");
+    EXPECT_EQ(info->bounds.x, 30);
+    EXPECT_EQ(info->bounds.y, 40);
+    EXPECT_EQ(info->bounds.width, 220);
+    EXPECT_EQ(info->bounds.height, 150);
+    EXPECT_TRUE(info->isForeground);
+
+    EXPECT_EQ(wingman::Window::find("Test Window"), win.handle());
+    EXPECT_EQ(wingman::Window::find("no-such-window-title"), 0u);
+    auto matches = wingman::Window::findAll("Wingman");
+    EXPECT_EQ(matches.size(), 1u);
+    EXPECT_EQ(wingman::Window::getTitle(win.handle()), "Wingman Test Window");
+    EXPECT_EQ(wingman::Window::getForeground(), win.handle());
+    // 已存在 → waitFor 立即真，不耗超时
+    EXPECT_TRUE(wingman::Window::waitFor("Test Window", 500));
+}
+
+TEST_F(X11PlatformTest, WindowBoundsMoveResize) {
+    X11ServerLockGuard x11Lock;
+    TestX11Window win(10, 20, 200, 100, "Wingman Move Window");
+    ASSERT_TRUE(win.valid());
+
+    EXPECT_TRUE(wingman::Window::isValid(win.handle()));
+    EXPECT_TRUE(wingman::Window::isVisible(win.handle()));
+
+    // XMoveWindow/XResizeWindow 直接生效，无需窗口管理器（Xvfb 可验证）
+    EXPECT_TRUE(wingman::Window::move(win.handle(), 77, 88));
+    auto b = wingman::Window::getBounds(win.handle());
+    EXPECT_EQ(b.x, 77);
+    EXPECT_EQ(b.y, 88);
+    EXPECT_EQ(b.width, 200);
+    EXPECT_EQ(b.height, 100);
+
+    EXPECT_TRUE(wingman::Window::resize(win.handle(), 111, 122));
+    b = wingman::Window::getBounds(win.handle());
+    EXPECT_EQ(b.x, 77);
+    EXPECT_EQ(b.y, 88);
+    EXPECT_EQ(b.width, 111);
+    EXPECT_EQ(b.height, 122);
+
+    EXPECT_TRUE(wingman::Window::setBounds(win.handle(), {11, 22, 101, 103}));
+    b = wingman::Window::getBounds(win.handle());
+    EXPECT_EQ(b.x, 11);
+    EXPECT_EQ(b.y, 22);
+    EXPECT_EQ(b.width, 101);
+    EXPECT_EQ(b.height, 103);
+}
+
+TEST_F(X11PlatformTest, WindowInvalidHandleIsSafe) {
+    // 回归守卫：无效句柄曾触发 BadWindow → Xlib 默认 error handler exit()
+    // 杀死整个进程；现在以空值/false 优雅呈现（宽容 handler，同 x11_capture），
+    // 且写操作经顶层 isValid 前置不再假成功。
+    X11ServerLockGuard x11Lock;
+    const wingman::WindowHandle dead = 0xDEADBEEF;
+
+    EXPECT_FALSE(wingman::Window::isValid(dead));
+    EXPECT_EQ(wingman::Window::getTitle(dead), "");
+    const auto emptyBounds = wingman::Window::getBounds(dead);
+    EXPECT_EQ(emptyBounds.x, 0);
+    EXPECT_EQ(emptyBounds.y, 0);
+    EXPECT_EQ(emptyBounds.width, 0);
+    EXPECT_EQ(emptyBounds.height, 0);
+    EXPECT_FALSE(wingman::Window::isVisible(dead));
+    EXPECT_FALSE(wingman::Window::isForeground(dead));
+    EXPECT_FALSE(wingman::Window::activate(dead));
+    EXPECT_FALSE(wingman::Window::close(dead));
+    EXPECT_FALSE(wingman::Window::minimize(dead));
+    EXPECT_FALSE(wingman::Window::maximize(dead));
+    EXPECT_FALSE(wingman::Window::restore(dead));
+    EXPECT_FALSE(wingman::Window::move(dead, 1, 2));
+    EXPECT_FALSE(wingman::Window::resize(dead, 3, 4));
+    EXPECT_FALSE(wingman::Window::setBounds(dead, {0, 0, 10, 10}));
+    EXPECT_FALSE(wingman::Window::waitFor("never-appears-anywhere", 200));
+    EXPECT_TRUE(wingman::Window::waitClose("never-appears-anywhere", 200));
+}
+
+TEST_F(X11PlatformTest, X11WindowPlatformFeatures) {
+    X11ServerLockGuard x11Lock;
+    auto window = wingman::platform::linux::createX11Window();
+    ASSERT_NE(window, nullptr);
+    EXPECT_EQ(window->getBackendName(), "X11");
+
+    TestX11Window win(0, 0, 100, 80, "Wingman Platform Window");
+    ASSERT_TRUE(win.valid());
+
+    // WM_CLASS（res_name / res_class 任一匹配）
+    EXPECT_EQ(window->findByClassName("wingman-test"), win.handle());
+    EXPECT_EQ(window->findByClassName("WingmanTest"), win.handle());
+
+    // _NET_WM_PID
+    auto byPid = window->findByProcessId(static_cast<uint32_t>(::getpid()));
+    EXPECT_NE(std::find(byPid.begin(), byPid.end(), win.handle()), byPid.end());
+    const auto pid = window->getProcessId(win.handle());
+    ASSERT_TRUE(pid.has_value());
+    EXPECT_EQ(*pid, static_cast<uint32_t>(::getpid()));
+
+    // hide/show 翻转：XUnmapWindow/XMapWindow 直接生效，无需窗口管理器
+    EXPECT_TRUE(window->hide(win.handle()));
+    EXPECT_FALSE(window->isVisible(win.handle()));
+    EXPECT_TRUE(window->show(win.handle()));
+    EXPECT_TRUE(window->isVisible(win.handle()));
+
+    // activate：XRaiseWindow + XSetInputFocus 真执行（无 WM 时
+    // _NET_ACTIVE_WINDOW 无人维护，只断言请求本身成功）
+    EXPECT_TRUE(window->activate(win.handle()));
 }
 
 #endif // __linux__
