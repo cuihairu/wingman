@@ -229,6 +229,162 @@ bool Window::waitClose(const std::string& title, int timeoutMs) {
 
 #ifndef _WIN32
 
+// Linux：接入 X11 窗口后端（x11_factory.cpp 聚合导出）。此前此分支恒空 stub，
+// X11Window 有完整实现却全库零消费者（装配断链，与 Clipboard/Screen 同款，
+// 2026-09-15 接线）。macOS 暂无窗口工厂导出，保持 stub（见 todo.md）。
+#if defined(__linux__)
+#include "wingman/platform/iwindow.hpp"
+#include <memory>
+
+// gcc 在 Linux 上把 `linux` 定义为 1（遗留宏），命名空间限定需要 undo（同 x11_factory.cpp）
+#if defined(linux)
+#undef linux
+#endif
+
+namespace wingman::platform::linux {
+std::unique_ptr<IWindow> createX11Window();
+}
+
+namespace wingman {
+
+namespace {
+
+// 每次调用经工厂独立创建 IWindow（自带 X 连接），同 screen.cpp 先例：规避跨
+// 线程共享 Display 的线程安全问题；XOpenDisplay 走本地 socket，开销亚毫秒。
+// 工厂内部已 initialize()，无 DISPLAY 时方法随 !initialized_ 路径优雅返回
+// 空值，与原 stub 语义一致。
+std::unique_ptr<platform::IWindow> windowBackend() {
+    return platform::linux::createX11Window();
+}
+
+} // namespace
+
+WindowHandle Window::find(const std::string& title) {
+    auto backend = windowBackend();
+    return backend ? backend->find(title) : 0;
+}
+
+std::vector<WindowHandle> Window::findAll(const std::string& title) {
+    auto backend = windowBackend();
+    return backend ? backend->findAll(title) : std::vector<WindowHandle>{};
+}
+
+WindowHandle Window::getForeground() {
+    auto backend = windowBackend();
+    return backend ? backend->getForeground() : 0;
+}
+
+std::vector<WindowInfo> Window::enumerate() {
+    auto backend = windowBackend();
+    std::vector<WindowInfo> result;
+    if (!backend) {
+        return result;
+    }
+    // 语义对齐 Windows 分支：只列用户可见的顶层窗口（Windows 走
+    // IsWindowVisible 过滤；X11 侧 _NET_CLIENT_LIST 亦含最小化/隐藏窗口）
+    for (auto& info : backend->enumerate()) {
+        if (!backend->isVisible(info.handle)) {
+            continue;
+        }
+        WindowInfo wi;
+        wi.handle = info.handle;
+        wi.title = info.title;
+        wi.bounds = Rect(info.bounds.x, info.bounds.y,
+                         info.bounds.width, info.bounds.height);
+        wi.isForeground = info.isForeground;
+        result.push_back(wi);
+    }
+    return result;
+}
+
+// 写操作（activate/close/move/...）统一前置 isValid：Windows 分支各 API 对
+// 无效句柄天然返回失败，X11 侧 BadWindow 是异步 error（函数本体恒 true），
+// 归一为 false 避免脚本拿到假成功。
+
+bool Window::activate(WindowHandle hwnd) {
+    auto backend = windowBackend();
+    return backend && backend->isValid(hwnd) && backend->activate(hwnd);
+}
+
+bool Window::minimize(WindowHandle hwnd) {
+    auto backend = windowBackend();
+    return backend && backend->isValid(hwnd) && backend->minimize(hwnd);
+}
+
+bool Window::maximize(WindowHandle hwnd) {
+    auto backend = windowBackend();
+    return backend && backend->isValid(hwnd) && backend->maximize(hwnd);
+}
+
+bool Window::restore(WindowHandle hwnd) {
+    auto backend = windowBackend();
+    return backend && backend->isValid(hwnd) && backend->restore(hwnd);
+}
+
+bool Window::close(WindowHandle hwnd) {
+    auto backend = windowBackend();
+    return backend && backend->isValid(hwnd) && backend->close(hwnd);
+}
+
+std::string Window::getTitle(WindowHandle hwnd) {
+    auto backend = windowBackend();
+    return backend ? backend->getTitle(hwnd) : std::string{};
+}
+
+Rect Window::getBounds(WindowHandle hwnd) {
+    auto backend = windowBackend();
+    if (!backend) {
+        return Rect();
+    }
+    const auto bounds = backend->getBounds(hwnd);
+    return Rect(bounds.x, bounds.y, bounds.width, bounds.height);
+}
+
+bool Window::setBounds(WindowHandle hwnd, const Rect& bounds) {
+    auto backend = windowBackend();
+    return backend && backend->isValid(hwnd) && backend->setBounds(
+        hwnd, platform::Rect{bounds.x, bounds.y, bounds.width, bounds.height});
+}
+
+bool Window::isValid(WindowHandle hwnd) {
+    auto backend = windowBackend();
+    return backend && backend->isValid(hwnd);
+}
+
+bool Window::isForeground(WindowHandle hwnd) {
+    auto backend = windowBackend();
+    return backend && backend->isForeground(hwnd);
+}
+
+bool Window::isVisible(WindowHandle hwnd) {
+    auto backend = windowBackend();
+    return backend && backend->isVisible(hwnd);
+}
+
+bool Window::move(WindowHandle hwnd, int x, int y) {
+    auto backend = windowBackend();
+    return backend && backend->isValid(hwnd) && backend->move(hwnd, x, y);
+}
+
+bool Window::resize(WindowHandle hwnd, int width, int height) {
+    auto backend = windowBackend();
+    return backend && backend->isValid(hwnd) && backend->resize(hwnd, width, height);
+}
+
+bool Window::waitFor(const std::string& title, int timeoutMs) {
+    auto backend = windowBackend();
+    return backend && backend->waitFor(title, timeoutMs);
+}
+
+bool Window::waitClose(const std::string& title, int timeoutMs) {
+    auto backend = windowBackend();
+    return backend && backend->waitClose(title, timeoutMs);
+}
+
+} // namespace wingman
+
+#else // !__linux__ (macOS：暂无窗口工厂导出，维持恒空 stub)
+
 namespace wingman {
 
 WindowHandle Window::find(const std::string& /*title*/) {
@@ -308,5 +464,7 @@ bool Window::waitClose(const std::string& /*title*/, int /*timeoutMs*/) {
 }
 
 } // namespace wingman
+
+#endif // __linux__
 
 #endif

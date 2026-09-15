@@ -11,6 +11,18 @@
 
 namespace wingman::platform::linux {
 
+namespace {
+
+// 宽容 error handler（同 x11_capture.cpp）：Xlib 默认 handler 会 exit() 杀死
+// 整个进程。窗口句柄暴露给脚本/远端调用方，可能拿着已销毁窗口的旧句柄发起
+// 请求（getXxx → BadWindow、XSetInputFocus → BadMatch），必须以空值/false
+// 呈现失败而不是进程死亡。
+int windowXErrorHandler(Display*, XErrorEvent*) {
+    return 0;
+}
+
+} // namespace
+
 class X11Window : public IWindow {
 public:
     X11Window() = default;
@@ -22,6 +34,8 @@ public:
             spdlog::error("X11Window: failed to open X display");
             return false;
         }
+        // 幂等安装（同进程重复 initialize 指向同一函数，无叠加效应）
+        XSetErrorHandler(windowXErrorHandler);
         root_ = DefaultRootWindow(display_);
         netWmName_ = XInternAtom(display_, "_NET_WM_NAME", False);
         utf8String_ = XInternAtom(display_, "UTF8_STRING", False);
@@ -101,6 +115,7 @@ public:
         if (XGetWindowProperty(display_, root_, netClientList_, 0, 1024, False,
                                XA_WINDOW, &actualType, &actualFormat,
                                &nItems, &bytesAfter, &data) == Success && data) {
+            const Window active = getForeground();
             auto* windows = reinterpret_cast<Window*>(data);
             for (unsigned long i = 0; i < nItems; i++) {
                 WindowInfo info;
@@ -108,6 +123,7 @@ public:
                 info.title = getTitle(windows[i]);
                 info.bounds = getBounds(windows[i]);
                 info.processId = getPid(windows[i]);
+                info.isForeground = (windows[i] == active);
                 result.push_back(info);
             }
             XFree(data);
