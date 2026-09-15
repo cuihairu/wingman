@@ -109,6 +109,9 @@ vcpkg-cache/
 .DS_Store
 Thumbs.db
 
+# Node 依赖/缓存兜底（各前端子目录已各自忽略；防止工具在仓库根误生成 node_modules 被误提交）
+node_modules/
+
 # Database
 *.db
 *.sqlite
