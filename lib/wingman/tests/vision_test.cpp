@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 #include "wingman/vision.hpp"
+#include "wingman/screen.hpp"  // Bitmap（合成模板/回读断言）
+#include <atomic>
+#include <cstdio>
 #include <fstream>
 #include <random>
 
@@ -67,57 +70,79 @@ TEST(VisionTest, GetDominantColor) {
 }
 
 // ========== Image Matching Tests ==========
+//
+// 正向命中路径由 platform_x11_test 的 ScreenFindImageLocatesDrawnPattern 覆盖
+// （Xvfb 根窗口画唯一图案后模板匹配找回坐标——那里能保证屏幕内容非均匀：
+// TM_CCOEFF_NORMED 对零方差模板结果未定义，黑屏直抓模板不可用）。本文件
+// 跨平台（无 Xlib 依赖），断言「不命中」的优雅路径：不存在的模板路径与
+// 合成模板（不存在于屏幕）在 vision 构建下走真 imread/matchTemplate，
+// 无 vision 的 stub 构建下返回 not found——两模式断言一致。
+
+static int nextTemplateId() {
+    static std::atomic<int> counter{0};
+    return counter.fetch_add(1);
+}
+
+// 构造非均匀位图存为模板文件（vision 构建 saveImage 真写 PNG；stub 构建
+// 恒 false → 返回空串，调用方 GTEST_SKIP——负向路径用例对 stub 无意义）
+static std::string makeSyntheticTemplate(int width, int height) {
+    Bitmap bmp(width, height);
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            bmp.setPixel(x, y, Color(static_cast<uint8_t>((x * 7) % 256),
+                                     static_cast<uint8_t>((y * 13) % 256), 128));
+        }
+    }
+    const std::string path =
+        "wingman_vision_synth_" + std::to_string(nextTemplateId()) + ".png";
+    std::remove(path.c_str());
+    if (!Vision::saveImage(path, bmp)) {
+        return "";
+    }
+    return path;
+}
 
 TEST(VisionTest, FindImage) {
-    std::string templatePath = getTestImagePath("template.png");
+    // 模板路径不存在：imread 失败 → 优雅 not found（vision/stub 一致）
+    EXPECT_FALSE(Vision::findImage("/nonexistent/wingman-vision-tpl.png", 0.8).found);
 
-    // Check if file exists
-    std::ifstream f(templatePath);
-    if (!f.good()) {
-        // File does not exist, skip this test
-        return;
+    // 合成模板不存在于屏幕：真匹配执行后必须不命中
+    const std::string templatePath = makeSyntheticTemplate(32, 24);
+    if (templatePath.empty()) {
+        GTEST_SKIP() << "vision unavailable (stub build) — findImage not wired";
     }
-
-    auto result = Vision::findImage(templatePath, 0.8);
-    SUCCEED();
+    EXPECT_FALSE(Vision::findImage(templatePath, 0.8).found);
+    std::remove(templatePath.c_str());
 }
 
 TEST(VisionTest, FindImageInRegion) {
-    std::string templatePath = getTestImagePath("template.png");
-    Rect region(0, 0, 500, 500);
+    const Rect region(0, 0, 500, 500);
+    EXPECT_FALSE(Vision::findImage("/nonexistent/wingman-vision-tpl.png", region, 0.8).found);
 
-    std::ifstream f(templatePath);
-    if (!f.good()) {
-        return;
+    const std::string templatePath = makeSyntheticTemplate(32, 24);
+    if (templatePath.empty()) {
+        GTEST_SKIP() << "vision unavailable (stub build) — findImage not wired";
     }
-
-    auto result = Vision::findImage(templatePath, region, 0.8);
-    SUCCEED();
+    const auto result = Vision::findImage(templatePath, region, 0.8);
+    EXPECT_FALSE(result.found);
+    std::remove(templatePath.c_str());
 }
 
 TEST(VisionTest, FindAllImages) {
-    std::string templatePath = getTestImagePath("template.png");
+    const auto none = Vision::findAllImages("/nonexistent/wingman-vision-tpl.png", 0.8);
+    EXPECT_TRUE(none.empty());
 
-    std::ifstream f(templatePath);
-    if (!f.good()) {
-        return;
+    const std::string templatePath = makeSyntheticTemplate(32, 24);
+    if (templatePath.empty()) {
+        GTEST_SKIP() << "vision unavailable (stub build) — findImage not wired";
     }
-
-    auto results = Vision::findAllImages(templatePath, 0.8);
-    EXPECT_GE(results.size(), 0);
+    EXPECT_TRUE(Vision::findAllImages(templatePath, 0.8).empty());
+    std::remove(templatePath.c_str());
 }
 
 TEST(VisionTest, WaitForImage) {
-    std::string templatePath = getTestImagePath("template.png");
-
-    std::ifstream f(templatePath);
-    if (!f.good()) {
-        return;
-    }
-
-    // Short timeout for testing function call
-    bool found = Vision::waitForImage(templatePath, 100, 0.8);
-    SUCCEED();
+    // 短超时 + 不存在模板：必须及时返回 false（等待路径不挂死）
+    EXPECT_FALSE(Vision::waitForImage("/nonexistent/wingman-vision-tpl.png", 100, 0.8));
 }
 
 // ========== Shape Detection Tests ==========
@@ -155,7 +180,24 @@ TEST(VisionTest, CaptureRegion) {
 }
 
 TEST(VisionTest, SaveImage) {
-    GTEST_SKIP() << "Screen capture is only available on Windows";
+    // saveImage 是纯文件操作（不抓屏，原「only available on Windows」skip
+    // 理由不成立）：构造非均匀位图写出后 fromFile 回读逐像素断言
+    Bitmap bmp(8, 6);
+    bmp.setPixel(0, 0, Color(255, 0, 0));
+    bmp.setPixel(7, 5, Color(0, 255, 0));
+    const std::string path = "wingman_vision_save_test.png";
+    std::remove(path.c_str());
+
+    if (!Vision::saveImage(path, bmp)) {
+        GTEST_SKIP() << "vision unavailable (stub build) — saveImage not wired";
+    }
+    auto loaded = Bitmap::fromFile(path);
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_EQ(loaded->getWidth(), 8);
+    EXPECT_EQ(loaded->getHeight(), 6);
+    EXPECT_EQ(loaded->getPixel(0, 0).r, 255);
+    EXPECT_EQ(loaded->getPixel(7, 5).g, 255);
+    std::remove(path.c_str());
 }
 
 TEST(VisionTest, CompareImages) {

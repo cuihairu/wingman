@@ -147,6 +147,47 @@ constexpr uint32_t kBmpCompressionRgb = 0;
 } // namespace
 #endif
 
+#if defined(_WIN32) || defined(WINGMAN_ENABLE_VISION)
+namespace {
+
+// 模板匹配核心（Windows 与 Linux vision 构建共用）：imread 模板 → 截图
+// BGRA 数据转 BGR → TM_CCOEFF_NORMED → minMaxLoc 阈值判定，单尺度。
+// regionOrigin 为截图区域在屏幕上的原点（结果坐标平移回屏幕坐标系用）。
+bool matchTemplateOnBitmap(const std::string& imagePath, uint8_t* bgraData,
+                           int width, int height, const Point& regionOrigin,
+                           double threshold, Point& result) {
+    const cv::Mat templateImg = cv::imread(imagePath, cv::IMREAD_COLOR);
+    if (templateImg.empty()) {
+        return false;
+    }
+
+    const cv::Mat screenMat(height, width, CV_8UC4, bgraData);
+    cv::Mat screenBGR;
+    cv::cvtColor(screenMat, screenBGR, cv::COLOR_BGRA2BGR);
+
+    // 模板大于搜索区域，必然无匹配
+    if (templateImg.rows > screenBGR.rows || templateImg.cols > screenBGR.cols) {
+        return false;
+    }
+
+    cv::Mat matchResult;
+    cv::matchTemplate(screenBGR, templateImg, matchResult, cv::TM_CCOEFF_NORMED);
+
+    double minVal, maxVal;
+    cv::Point minLoc, maxLoc;
+    cv::minMaxLoc(matchResult, &minVal, &maxVal, &minLoc, &maxLoc);
+
+    if (maxVal >= threshold) {
+        result.x = regionOrigin.x + maxLoc.x;
+        result.y = regionOrigin.y + maxLoc.y;
+        return true;
+    }
+    return false;
+}
+
+} // namespace
+#endif
+
 #ifdef _WIN32
 std::unique_ptr<Bitmap> Bitmap::fromHBITMAP(HBITMAP hbitmap) {
     BITMAP bm = {};
@@ -518,49 +559,13 @@ std::vector<Point> Screen::findColors(const Color& color, const Rect& region,
 
 bool Screen::findImage(const std::string& imagePath, const Rect& region,
                        double threshold, Point& result) {
-    // Load template image
-    cv::Mat templateImg = cv::imread(imagePath, cv::IMREAD_COLOR);
-    if (templateImg.empty()) {
-        return false;
-    }
-
-    // Capture screen region
     auto screenBitmap = capture(region);
     if (!screenBitmap) {
         return false;
     }
-
-    // Convert Bitmap to OpenCV Mat
-    int width = screenBitmap->getWidth();
-    int height = screenBitmap->getHeight();
-    cv::Mat screenMat(height, width, CV_8UC4, screenBitmap->getData());
-
-    // Convert BGRA to BGR
-    cv::Mat screenBGR;
-    cv::cvtColor(screenMat, screenBGR, cv::COLOR_BGRA2BGR);
-
-    // Skip if template image is too large
-    if (templateImg.rows > screenBGR.rows || templateImg.cols > screenBGR.cols) {
-        return false;
-    }
-
-    // Execute template matching
-    cv::Mat matchResult;
-    cv::matchTemplate(screenBGR, templateImg, matchResult, cv::TM_CCOEFF_NORMED);
-
-    // Find best match position
-    double minVal, maxVal;
-    cv::Point minLoc, maxLoc;
-    cv::minMaxLoc(matchResult, &minVal, &maxVal, &minLoc, &maxLoc);
-
-    // Check threshold
-    if (maxVal >= threshold) {
-        result.x = region.x + maxLoc.x;
-        result.y = region.y + maxLoc.y;
-        return true;
-    }
-
-    return false;
+    return matchTemplateOnBitmap(imagePath, screenBitmap->getData(),
+                                 screenBitmap->getWidth(), screenBitmap->getHeight(),
+                                 Point(region.x, region.y), threshold, result);
 }
 
 int Screen::getScreenWidth() {
@@ -893,7 +898,8 @@ bool Bitmap::save(const std::string& filepath) const {
 // 此前本文件在 Linux 两个分支（有/无 vision）里都是恒 nullptr 的 stub，
 // X11Capture 有完整实现却无产品消费者（装配断链，与 Clipboard 同款，
 // 2026-09-14 接线）。截图/取色/找色不依赖 OpenCV，vision 与否共用本实现；
-// findImage（模板匹配）仍需 OpenCV，保持 stub（见 todo.md）。
+// findImage（模板匹配）在有 OpenCV 的构建里走共享 matchTemplateOnBitmap
+// （vision feature，2026-09-15 接线），无 vision 构建保持 stub。
 // 每次调用经工厂独立创建 ICapture（自带 X 连接），规避跨线程共享 Display
 // 的线程安全问题；XOpenDisplay 走本地 socket，开销亚毫秒。
 
@@ -984,10 +990,22 @@ std::vector<Point> Screen::findColors(const Color& color, const Rect& region,
     return results;
 }
 
-bool Screen::findImage(const std::string& /*imagePath*/, const Rect& /*region*/,
-                       double /*threshold*/, Point& /*result*/) {
-    // 模板匹配需 OpenCV（vision 构建），Linux 接线暂缓——见 todo.md
+bool Screen::findImage(const std::string& imagePath, const Rect& region,
+                       double threshold, Point& result) {
+#ifdef WINGMAN_ENABLE_VISION
+    // 模板匹配走 OpenCV（与 Windows 共用 matchTemplateOnBitmap）
+    auto screenBitmap = capture(region);
+    if (!screenBitmap) {
+        return false;
+    }
+    return matchTemplateOnBitmap(imagePath, screenBitmap->getData(),
+                                 screenBitmap->getWidth(), screenBitmap->getHeight(),
+                                 Point(region.x, region.y), threshold, result);
+#else
+    (void)imagePath; (void)region; (void)threshold; (void)result;
+    // 模板匹配需 OpenCV：启用 vcpkg vision feature（-DVCPKG_MANIFEST_FEATURES=...;vision）
     return false;
+#endif
 }
 
 int Screen::getScreenWidth() {

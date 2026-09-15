@@ -269,6 +269,61 @@ TEST_F(X11PlatformTest, ScreenFindColorOnRootWindow) {
     EXPECT_LE(many.size(), 5u);
 }
 
+#ifdef WINGMAN_ENABLE_VISION
+TEST_F(X11PlatformTest, ScreenFindImageLocatesDrawnPattern) {
+    // 模板匹配（vision 构建接线，与 Windows 共用实现）：根窗口画不对称图案
+    // → 截取该区域存 PNG 模板 → findImage 全屏找回。图案唯一性保证命中位置
+    // 确定（均匀底色下多个完美匹配会让 minMaxLoc 位置不定）；负向断言：
+    // 不存在的模板路径优雅 false
+    X11ServerLockGuard x11Lock;
+    Display* d = XOpenDisplay(nullptr);
+    ASSERT_NE(d, nullptr);
+    Window root = DefaultRootWindow(d);
+    GC gc = XCreateGC(d, root, 0, nullptr);
+    // 红块 + 相邻绿块（宽度不对称）——黑底根窗口上的唯一图案
+    XSetForeground(d, gc, 0xFF0000);
+    XFillRectangle(d, root, gc, 200, 150, 32, 24);
+    XSetForeground(d, gc, 0x00FF00);
+    XFillRectangle(d, root, gc, 232, 150, 16, 24);
+    XFlush(d);
+    XFreeGC(d, gc);
+    XCloseDisplay(d);
+
+    const wingman::Rect tplRect{200, 150, 48, 24};
+    auto tpl = wingman::Screen::capture(tplRect);
+    ASSERT_NE(tpl, nullptr);
+    // 自洽前置：截图内容与绘制一致（红/绿块内像素命中对应通道）
+    EXPECT_EQ(tpl->getPixel(4, 4).r, 255);
+    EXPECT_EQ(tpl->getPixel(40, 12).g, 255);
+
+    char path[64];
+    std::snprintf(path, sizeof(path), "/tmp/wingman_test_tpl_%d.png",
+                  static_cast<int>(::getpid()));
+    ASSERT_TRUE(tpl->save(path));
+
+    wingman::Point hit{-1, -1};
+    const wingman::Rect full{0, 0, wingman::Screen::getScreenWidth(),
+                             wingman::Screen::getScreenHeight()};
+    EXPECT_TRUE(wingman::Screen::findImage(path, full, 0.99, hit));
+    EXPECT_EQ(hit.x, tplRect.x);
+    EXPECT_EQ(hit.y, tplRect.y);
+
+    // 模板路径不存在（imread 失败）→ 优雅 false
+    EXPECT_FALSE(wingman::Screen::findImage(
+        "/nonexistent/wingman-template.png", wingman::Rect{0, 0, 64, 64}, 0.9, hit));
+    std::remove(path);
+
+    // 清理画在根窗口的图案（跨轮次/其他用例自洽性）
+    d = XOpenDisplay(nullptr);
+    if (d) {
+        XClearArea(d, DefaultRootWindow(d), tplRect.x, tplRect.y,
+                   tplRect.width, tplRect.height, False);
+        XFlush(d);
+        XCloseDisplay(d);
+    }
+}
+#endif // WINGMAN_ENABLE_VISION
+
 // ========== 输入（XTest 注入 → XQueryPointer/XQueryKeymap 回读） ==========
 
 TEST_F(X11PlatformTest, InputMouseMoveRoundtrip) {
