@@ -158,6 +158,35 @@ ctest --test-dir build-tests -C Debug --output-on-failure
 `WINGMAN_BUILD_TESTS=ON` 会自动启用标准 C++ 测试集；Lua 绑定层测试仍然按需通过 `BUILD_LUA_TESTS=ON` 单独打开。
 建议测试使用单独的 `build-tests/` 目录，避免覆盖已有的开发构建目录。
 
+### Linux X11 测试可选依赖
+
+Linux 上 `platform_x11_test.cpp` 的用例依赖三个**运行期可选依赖**（不在
+vcpkg 清单内，由系统包管理器提供）。缺失时对应用例 `GTEST_SKIP` 而非
+fail，其余用例不受影响：
+
+| 依赖 | 覆盖用例 | 缺失时的行为 |
+| --- | --- | --- |
+| Xvfb | `X11PlatformTest.*` 全部 | 无可用 DISPLAY 时 SetUp 统一 skip |
+| openbox | `X11WmIntegrationTest.*`（真实 WM 集成） | 与 Xvfb 一并检测，缺失 skip |
+| xclip | `X11PlatformTest.ClipboardTextRoundtrip` | setText 走优雅失败路径，skip |
+
+安装（Debian/Ubuntu）：
+
+```bash
+sudo apt install xvfb openbox xclip
+```
+
+`X11PlatformTest` 需要一个已运行的 X display（真桌面或手动起 Xvfb）：
+
+```bash
+Xvfb -screen 0 1280x800x24 :99 &
+DISPLAY=:99 ctest --test-dir build-runtime -R X11Platform --output-on-failure
+```
+
+`X11WmIntegrationTest` 无需手动准备 display——测试进程自起自毁专用
+Xvfb + openbox 子进程（flock 串行化、专用 display 号、崩溃陪葬），只要
+两个二进制在 PATH 上即可；它也不读写既有 DISPLAY，不会影响并行用例。
+
 ### Lua Tests
 
 ```cmd
