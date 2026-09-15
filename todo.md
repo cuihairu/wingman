@@ -203,7 +203,8 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 - [ ] **macOS**（基础实现已存在）：UDS / Clipboard / CGWindowList 截图 / FileWatcher / CGEvent 输入 — ⚠️ 需 macOS 真机验证，无法在当前环境完成
 - [ ] **macOS 剪贴板装配断链**：`cocoa_clipboard.cpp` 有实现但无工厂导出函数，顶层 `Clipboard` 在 macOS 恒为 NullClipboard（与 Linux 同款缺陷，2026-09-14 Linux 侧已修，见下）
 - [ ] **Linux 截图/窗口装配断链**：`screen.cpp` 无 `__linux__` 分支，遗留 `wingman::Screen::capture()` 在 Linux 不可用；`X11Capture`/`X11Window` 仅有测试消费者，产品侧无接线（2026-09-14 发现）
-- [x] **Linux 运行时功能自动化验证**（2026-09-14，Xvfb 1280x800x24 真跑，无 X 环境 GTEST_SKIP）：UDS IPC（`ipc_test`/`unix_socket_channel_test` 真 backend 真跑）；inotify FileWatcher（12 用例）；X11 三件套 + 装配（`platform_x11_test.cpp` 7 用例：createPlatformScreen 显示器元数据 / X11Capture XGetImage 真捕获（全屏=显示器 bounds、区域 64x64）/ XTest 鼠标移动 XQueryPointer 回读 + 按键 XQueryKeymap 状态 / 顶层 Clipboard 装配为 X11/xclip / xclip 文本回读（无 xclip 优雅 skip））。已知运行期可选依赖：xclip（剪贴板文本链路，未装时 setText 优雅失败）；桌面人工验证（多显示器/真实键鼠场景）待真机
+- [ ] **Linux 宏录制（XRecord）真桌面验证**：Xvfb 的 RECORD 扩展存在但 EnableContext 必然失败（XRecordBadContext）；产品已改为优雅降级（`isRecording()` 回落 false，不再 exit 进程，2026-09-14）。正向录制路径（事件捕获/回放）需真实桌面 X server 人工验证
+- [x] **Linux 运行时功能自动化验证**（2026-09-14，Xvfb 1280x800x24 真跑，无 X 环境 GTEST_SKIP；j4 并行与串行、带/不带 DISPLAY 四套矩阵全绿 1890/1890）：UDS IPC（`ipc_test`/`unix_socket_channel_test` 真 backend 真跑）；inotify FileWatcher（12 用例）；X11 三件套 + 装配（`platform_x11_test.cpp` 7 用例：createPlatformScreen 显示器元数据 / X11Capture XGetImage 真捕获（全屏=显示器 bounds、区域 64x64）/ XTest 鼠标移动 XQueryPointer 回读 + 按键 XQueryKeymap 状态 / 顶层 Clipboard 装配为 X11/xclip / **xclip 文本回读真跑通过**（xclip 已装；未装环境 setText 优雅失败、测试 skip））。附带修复三个实测暴露的缺陷：xclip daemon 继承输出管道致 EOF 挂起、XRecord 坏环境下 exit 进程、剪贴板并行测试缺跨进程锁（flock 守卫）。桌面人工验证（多显示器/真实键鼠/XRecord 正向路径）待真机
 
 ### 配置和协议统一
 
