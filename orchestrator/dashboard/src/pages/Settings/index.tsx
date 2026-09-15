@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Form, Input, InputNumber, Select, Space, Tag, App, Spin } from 'antd';
 import { PageContainer } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useIntl, useModel } from '@umijs/max';
 import { fetchJSON } from '@/services/core/http';
 
 interface ServerSettings {
@@ -12,6 +12,8 @@ interface ServerSettings {
 }
 
 export default function SettingsPage() {
+  const intl = useIntl();
+  const formatMessage = (id: string) => intl.formatMessage({ id });
   const { message } = App.useApp();
   const initialState = useModel('@@initialState');
   const accessTokens = (initialState?.initialState?.currentUser as any)?.access || '';
@@ -38,7 +40,7 @@ export default function SettingsPage() {
         });
       }
     } catch (err: any) {
-      message.error(err?.message || '加载设置失败');
+      message.error(err?.message || formatMessage('pages.settings.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -59,11 +61,11 @@ export default function SettingsPage() {
           maxScripts: String(values.maxScripts),
         }),
       });
-      message.success('设置已保存');
+      message.success(formatMessage('pages.settings.saved'));
       load();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err?.message || '保存失败（可能需要管理员权限）');
+      message.error(err?.message || formatMessage('pages.settings.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -71,16 +73,19 @@ export default function SettingsPage() {
 
   return (
     <PageContainer>
-      <Card title="服务器设置" extra={!canAdmin && <Tag>只读（需管理员）</Tag>}>
+      <Card
+        title={formatMessage('pages.settings.title')}
+        extra={!canAdmin && <Tag>{formatMessage('pages.settings.readOnlyTag')}</Tag>}
+      >
         <Spin spinning={loading}>
           <Form form={form} layout="vertical" style={{ maxWidth: 480 }} disabled={!canAdmin}>
-            <Form.Item label="HTTP 端口（只读）" name="serverPort">
+            <Form.Item label={formatMessage('pages.settings.serverPort')} name="serverPort">
               <Input disabled placeholder="9527" />
             </Form.Item>
             <Form.Item
-              label="日志级别"
+              label={formatMessage('pages.settings.logLevel')}
               name="logLevel"
-              rules={[{ required: true, message: '请选择日志级别' }]}
+              rules={[{ required: true, message: formatMessage('pages.settings.logLevelRequired') }]}
             >
               <Select
                 options={[
@@ -92,24 +97,31 @@ export default function SettingsPage() {
               />
             </Form.Item>
             <Form.Item
-              label="最大并发脚本数"
+              label={formatMessage('pages.settings.maxScripts')}
               name="maxScripts"
-              rules={[{ required: true, message: '请输入数量' }]}
+              rules={[
+                { required: true, message: formatMessage('pages.settings.maxScriptsRequired') },
+              ]}
             >
               <InputNumber min={1} max={100} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item>
               <Space>
                 <Button type="primary" loading={saving} onClick={onSave} disabled={!canAdmin}>
-                  保存
+                  {formatMessage('pages.common.save')}
                 </Button>
-                <Button onClick={load}>刷新</Button>
+                <Button onClick={load}>{formatMessage('pages.common.refresh')}</Button>
               </Space>
             </Form.Item>
           </Form>
 
           {Object.keys(settings).length > 0 && (
-            <Card type="inner" title="原始键值（只读）" size="small" style={{ marginTop: 16 }}>
+            <Card
+              type="inner"
+              title={formatMessage('pages.settings.rawSettings')}
+              size="small"
+              style={{ marginTop: 16 }}
+            >
               <pre style={{ margin: 0, fontSize: 12, maxHeight: 240, overflow: 'auto' }}>
                 {JSON.stringify(settings, null, 2)}
               </pre>
@@ -118,10 +130,11 @@ export default function SettingsPage() {
         </Spin>
       </Card>
 
-      <Card title="调试（直连模式）" style={{ marginTop: 16 }}>
+      <Card title={formatMessage('pages.settings.debugTitle')} style={{ marginTop: 16 }}>
         <p style={{ color: '#666' }}>
-          Lua 调试由 VSCode EmmyLua 直连 runtime 调试端口（默认 9966），Go server 不中转。
-          各 agent 的调试端点见 <code>GET /api/debugger/info</code>。
+          {formatMessage('pages.settings.debugDescriptionBefore')}{' '}
+          <code>GET /api/debugger/info</code>
+          {formatMessage('pages.settings.debugDescriptionAfter')}
         </p>
       </Card>
     </PageContainer>

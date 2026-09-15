@@ -40,7 +40,7 @@ import {
   ThunderboltOutlined,
   WifiOutlined,
 } from '@ant-design/icons';
-import { history } from '@umijs/max';
+import { history, useIntl } from '@umijs/max';
 import ScreenshotView from '@/components/ScreenshotView';
 import TriggerFormModal from '@/components/TriggerFormModal';
 import wsService from '@/services/websocket';
@@ -101,21 +101,29 @@ function formatUptime(ms: number): string {
   return `${hours}h ${minutes}m`;
 }
 
-function formatLastSeen(lastSeen: number): string {
-  if (!lastSeen) return '未知';
+// 相对时间文案模块级生成不了（拿不到 intl），由调用方传入翻译函数
+// （同 extractErrorMessage 的 fallback 模式）
+function formatLastSeen(
+  lastSeen: number,
+  translate: (id: string, values?: Record<string, string | number>) => string,
+): string {
+  if (!lastSeen) return translate('pages.monitor.lastSeenUnknown');
   const delta = Date.now() - lastSeen;
-  if (delta < 0) return '刚刚';
-  if (delta < 60_000) return `${Math.floor(delta / 1000)} 秒前`;
-  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)} 分钟前`;
-  return `${Math.floor(delta / 3_600_000)} 小时前`;
+  if (delta < 0) return translate('pages.monitor.lastSeenJustNow');
+  if (delta < 60_000)
+    return translate('pages.monitor.lastSeenSecondsAgo', { seconds: Math.floor(delta / 1000) });
+  if (delta < 3_600_000)
+    return translate('pages.monitor.lastSeenMinutesAgo', { minutes: Math.floor(delta / 60_000) });
+  return translate('pages.monitor.lastSeenHoursAgo', { hours: Math.floor(delta / 3_600_000) });
 }
 
-// extractErrorMessage 从 umi request 抛出的错误中提取可读文本
-function extractErrorMessage(error: unknown): string {
+// extractErrorMessage 从 umi request 抛出的错误中提取可读文本；
+// 模块级纯函数拿不到 intl，兜底文案由调用方传入
+function extractErrorMessage(error: unknown, fallback: string): string {
   const candidate = error as
     | { data?: { error?: string; message?: string }; message?: string }
     | undefined;
-  return candidate?.data?.error || candidate?.data?.message || candidate?.message || '请求失败';
+  return candidate?.data?.error || candidate?.data?.message || candidate?.message || fallback;
 }
 
 const connectedStatuses = [AgentStatus.Online, AgentStatus.Idle, AgentStatus.Busy];
@@ -167,6 +175,11 @@ function upsertAgent(agents: AgentInfo[], data: Record<string, unknown>): AgentI
 }
 
 const Monitor: React.FC = () => {
+  const intl = useIntl();
+  const formatMessage = (id: string) => intl.formatMessage({ id });
+  const translate = (id: string, values?: Record<string, string | number>) =>
+    intl.formatMessage({ id }, values);
+  const requestFailed = formatMessage('pages.monitor.requestFailed');
   // 「运行中/已暂停」控制本页事件记录（时间线 + 触发器列表）是否写入，
   // WebSocket 连接本身保持（与 Agents 页共享单例，不受影响）。
   const [isRunning, setIsRunning] = useState(true);
@@ -239,7 +252,7 @@ const Monitor: React.FC = () => {
         addEvent({
           type: 'agent',
           level: 'warning',
-          message: '无法加载 Agent 列表，等待 WebSocket 事件',
+          message: formatMessage('pages.monitor.loadAgentsFailed'),
         });
       });
 
@@ -252,7 +265,9 @@ const Monitor: React.FC = () => {
         addEvent({
           type: 'agent',
           level: 'success',
-          message: `Agent ${String(data.hostname || data.agentId || '')} 已上线`,
+          message: translate('pages.monitor.agentOnline', {
+            name: String(data.hostname || data.agentId || ''),
+          }),
         });
       }),
     );
@@ -263,7 +278,9 @@ const Monitor: React.FC = () => {
         addEvent({
           type: 'agent',
           level: 'warning',
-          message: `Agent ${String(data.hostname || data.agentId || '')} 已离线`,
+          message: translate('pages.monitor.agentOffline', {
+            name: String(data.hostname || data.agentId || ''),
+          }),
         });
       }),
     );
@@ -291,7 +308,9 @@ const Monitor: React.FC = () => {
         if (!isRunningRef.current) return;
         // 事件载荷（runtime TriggerInstance）：{id, name, triggered, lastTriggerTime, agentId}
         const triggerId = String(data.id ?? data.triggerId ?? '');
-        const triggerName = String(data.name || data.triggerName || triggerId || '未知触发器');
+        const triggerName =
+          String(data.name || data.triggerName || triggerId || '') ||
+          formatMessage('pages.monitor.unknownTrigger');
         const eventAgentId = String(data.agentId || '');
         const selected = selectedAgentRef.current;
         // 只统计当前展示 agent 的命中，避免多 agent 命中污染列表
@@ -341,7 +360,7 @@ const Monitor: React.FC = () => {
         addEvent({
           type: 'trigger',
           level: 'processing',
-          message: `触发器 ${triggerName} 被触发`,
+          message: translate('pages.monitor.triggerFired', { name: triggerName }),
         });
       }),
     );
@@ -355,7 +374,9 @@ const Monitor: React.FC = () => {
         addEvent({
           type: 'script',
           level: runtimeState === 'error' ? 'error' : 'default',
-          message: String(data.message || data.scriptId || '脚本状态更新'),
+          message:
+            String(data.message || data.scriptId || '') ||
+            formatMessage('pages.monitor.scriptStatusUpdate'),
         });
       }),
     );
@@ -395,7 +416,11 @@ const Monitor: React.FC = () => {
       }
       if (!agentConnected(agent)) {
         setTriggers([]);
-        setTriggersError(`Agent ${agent.hostname || agent.agentId} 已离线，无法读取触发器`);
+        setTriggersError(
+          translate('pages.monitor.agentOfflineNoTriggers', {
+            name: agent.hostname || agent.agentId,
+          }),
+        );
         return;
       }
       if (!opts?.silent) setTriggersLoading(true);
@@ -415,11 +440,13 @@ const Monitor: React.FC = () => {
           }),
         );
       } catch (error) {
-        setTriggersError(extractErrorMessage(error));
+        setTriggersError(extractErrorMessage(error, requestFailed));
         addEvent({
           type: 'trigger',
           level: 'warning',
-          message: `触发器列表加载失败: ${extractErrorMessage(error)}`,
+          message: translate('pages.monitor.triggersLoadFailed', {
+            detail: extractErrorMessage(error, requestFailed),
+          }),
         });
       } finally {
         if (!opts?.silent) setTriggersLoading(false);
@@ -445,7 +472,7 @@ const Monitor: React.FC = () => {
       addEvent({
         type: 'trigger',
         level: 'error',
-        message: 'Agent 未连接，无法切换触发器状态',
+        message: formatMessage('pages.monitor.agentNotConnectedToggle'),
       });
       return;
     }
@@ -459,13 +486,18 @@ const Monitor: React.FC = () => {
       addEvent({
         type: 'trigger',
         level: 'processing',
-        message: `触发器 ${trigger.name} 已${enabled ? '启用' : '停用'}`,
+        message: translate(enabled ? 'pages.monitor.triggerEnabled' : 'pages.monitor.triggerDisabled', {
+          name: trigger.name,
+        }),
       });
     } catch (error) {
       addEvent({
         type: 'trigger',
         level: 'error',
-        message: `触发器 ${trigger.name} 切换失败: ${extractErrorMessage(error)}`,
+        message: translate('pages.monitor.triggerToggleFailed', {
+          name: trigger.name,
+          detail: extractErrorMessage(error, requestFailed),
+        }),
       });
     } finally {
       setToggling((previous) => ({ ...previous, [trigger.id]: false }));
@@ -488,7 +520,7 @@ const Monitor: React.FC = () => {
       addEvent({
         type: 'trigger',
         level: 'error',
-        message: 'Agent 未连接，无法新增触发器',
+        message: formatMessage('pages.monitor.agentNotConnectedCreate'),
       });
       return;
     }
@@ -507,7 +539,7 @@ const Monitor: React.FC = () => {
       addEvent({
         type: 'trigger',
         level: 'error',
-        message: 'Agent 未连接，无法删除触发器',
+        message: formatMessage('pages.monitor.agentNotConnectedRemove'),
       });
       return;
     }
@@ -517,13 +549,16 @@ const Monitor: React.FC = () => {
       addEvent({
         type: 'trigger',
         level: 'processing',
-        message: `触发器 ${trigger.name} 已删除`,
+        message: translate('pages.monitor.triggerRemoved', { name: trigger.name }),
       });
     } catch (error) {
       addEvent({
         type: 'trigger',
         level: 'error',
-        message: `触发器 ${trigger.name} 删除失败: ${extractErrorMessage(error)}`,
+        message: translate('pages.monitor.triggerRemoveFailed', {
+          name: trigger.name,
+          detail: extractErrorMessage(error, requestFailed),
+        }),
       });
     }
   };
@@ -542,7 +577,7 @@ const Monitor: React.FC = () => {
   return (
     <PageContainer
       header={{
-        title: '游戏监控',
+        title: formatMessage('pages.monitor.title'),
         breadcrumb: {},
       }}
       extra={[
@@ -552,7 +587,9 @@ const Monitor: React.FC = () => {
           style={wsConnected ? undefined : { cursor: 'pointer' }}
           onClick={wsConnected ? undefined : () => wsService.reconnect()}
         >
-          {wsConnected ? 'WebSocket 已连接' : '实时连接已断开，点击重连'}
+          {wsConnected
+            ? formatMessage('pages.monitor.wsConnected')
+            : formatMessage('pages.monitor.wsDisconnected')}
         </Tag>,
         <Button
           key="status"
@@ -560,10 +597,12 @@ const Monitor: React.FC = () => {
           type={isRunning ? 'default' : 'primary'}
           onClick={handleToggleRun}
         >
-          {isRunning ? '运行中' : '已暂停'}
+          {isRunning
+            ? formatMessage('pages.monitor.running')
+            : formatMessage('pages.monitor.paused')}
         </Button>,
         <Button key="settings" icon={<SettingOutlined />} onClick={() => history.push('/settings')}>
-          设置
+          {formatMessage('pages.monitor.settings')}
         </Button>,
       ]}
     >
@@ -572,8 +611,8 @@ const Monitor: React.FC = () => {
           <Alert
             type="info"
             showIcon
-            message="暂无在线 Agent 数据"
-            description="页面会继续监听 WebSocket，Agent 上线后自动显示真实指标。"
+            message={formatMessage('pages.monitor.noAgentsTitle')}
+            description={formatMessage('pages.monitor.noAgentsDescription')}
           />
         )}
 
@@ -581,7 +620,7 @@ const Monitor: React.FC = () => {
           <Col xs={24} sm={12} md={6}>
             <Card>
               <Statistic
-                title="CPU 使用率"
+                title={formatMessage('pages.monitor.cpuUsage')}
                 value={displayStatus.cpu}
                 precision={1}
                 suffix="%"
@@ -594,7 +633,7 @@ const Monitor: React.FC = () => {
           <Col xs={24} sm={12} md={6}>
             <Card>
               <Statistic
-                title="内存使用"
+                title={formatMessage('pages.monitor.memoryUsage')}
                 value={displayStatus.memory}
                 precision={1}
                 suffix="%"
@@ -607,23 +646,27 @@ const Monitor: React.FC = () => {
           <Col xs={24} sm={12} md={6}>
             <Card>
               <Statistic
-                title="运行时长"
+                title={formatMessage('pages.monitor.uptime')}
                 value={formatUptime(displayStatus.uptime)}
                 prefix={<ClockCircleOutlined />}
               />
-              <Text type="secondary">数据源: {displayStatus.source}</Text>
+              <Text type="secondary">
+                {translate('pages.monitor.dataSource', { source: displayStatus.source })}
+              </Text>
             </Card>
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Card>
               <Statistic
-                title="画面帧率"
+                title={formatMessage('pages.monitor.fps')}
                 value={displayStatus.fps}
                 suffix="FPS"
                 prefix={<CameraOutlined />}
                 valueStyle={{ color: displayStatus.fps >= 50 ? '#3f8600' : '#faad14' }}
               />
-              <Text type="secondary">在线 Agent: {displayStatus.onlineAgents}</Text>
+              <Text type="secondary">
+                {translate('pages.monitor.onlineAgents', { count: displayStatus.onlineAgents })}
+              </Text>
             </Card>
           </Col>
         </Row>
@@ -632,7 +675,7 @@ const Monitor: React.FC = () => {
           <Col xs={24} md={12}>
             <Card>
               <Statistic
-                title="网络上行"
+                title={formatMessage('pages.monitor.networkUp')}
                 value={formatBytes(displayStatus.networkUp)}
                 prefix={<WifiOutlined />}
               />
@@ -641,7 +684,7 @@ const Monitor: React.FC = () => {
           <Col xs={24} md={12}>
             <Card>
               <Statistic
-                title="网络下行"
+                title={formatMessage('pages.monitor.networkDown')}
                 value={formatBytes(displayStatus.networkDown)}
                 prefix={<WifiOutlined />}
               />
@@ -659,7 +702,7 @@ const Monitor: React.FC = () => {
               title={
                 <Space>
                   <ThunderboltOutlined />
-                  <span>触发器</span>
+                  <span>{formatMessage('pages.monitor.triggers')}</span>
                   <Tag color="blue">{triggers.length}</Tag>
                 </Space>
               }
@@ -673,7 +716,7 @@ const Monitor: React.FC = () => {
                     disabled={!agentConnected(selectedAgent)}
                     onClick={handleCreateTrigger}
                   >
-                    新增
+                    {formatMessage('pages.monitor.add')}
                   </Button>
                   <Button
                     size="small"
@@ -682,7 +725,7 @@ const Monitor: React.FC = () => {
                     disabled={!agentConnected(selectedAgent) || triggersLoading}
                     onClick={() => loadTriggers(selectedAgent)}
                   >
-                    刷新
+                    {formatMessage('pages.common.refresh')}
                   </Button>
                 </Space>
               }
@@ -690,7 +733,7 @@ const Monitor: React.FC = () => {
               {/* Runtime 连接状态：agent↔orchestrator 链路可用性决定触发器数据源 */}
               <Space direction="vertical" size={2} style={{ width: '100%', marginBottom: 12 }}>
                 <Space size={8} wrap>
-                  <Text type="secondary">数据源:</Text>
+                  <Text type="secondary">{formatMessage('pages.monitor.dataSourceLabel')}:</Text>
                   {selectedAgent ? (
                     <>
                       <Tag
@@ -717,16 +760,20 @@ const Monitor: React.FC = () => {
                       </Tag>
                     </>
                   ) : (
-                    <Tag>无 Agent</Tag>
+                    <Tag>{formatMessage('pages.monitor.noAgent')}</Tag>
                   )}
                   <Tag color={wsConnected ? 'green' : 'orange'}>
-                    {wsConnected ? 'WS 已连' : 'WS 断开'}
+                    {wsConnected
+                      ? formatMessage('pages.monitor.wsShortConnected')
+                      : formatMessage('pages.monitor.wsShortDisconnected')}
                   </Tag>
                 </Space>
                 {selectedAgent && (
                   <Text type="secondary">
-                    Agent: {selectedAgent.agentId} · 最近心跳:{' '}
-                    {formatLastSeen(selectedAgent.lastSeen)}
+                    {translate('pages.monitor.agentHeartbeat', {
+                      id: selectedAgent.agentId,
+                      lastSeen: formatLastSeen(selectedAgent.lastSeen, translate),
+                    })}
                   </Text>
                 )}
               </Space>
@@ -736,7 +783,7 @@ const Monitor: React.FC = () => {
                   type={agentConnected(selectedAgent) ? 'error' : 'warning'}
                   showIcon
                   style={{ marginBottom: 12 }}
-                  message="触发器数据不可用"
+                  message={formatMessage('pages.monitor.triggersUnavailable')}
                   description={triggersError}
                 />
               )}
@@ -745,7 +792,7 @@ const Monitor: React.FC = () => {
                 size="small"
                 loading={triggersLoading}
                 dataSource={triggers}
-                locale={{ emptyText: '该 Agent 暂无触发器（runtime trigger.list 为空）' }}
+                locale={{ emptyText: formatMessage('pages.monitor.triggersEmpty') }}
                 renderItem={(trigger) => (
                   <List.Item
                     actions={[
@@ -759,9 +806,11 @@ const Monitor: React.FC = () => {
                       />,
                       <Popconfirm
                         key="delete"
-                        title="删除触发器"
-                        description={`确定删除「${trigger.name}」？该操作会即时下发到 runtime。`}
-                        okText="删除"
+                        title={formatMessage('pages.monitor.deleteTriggerTitle')}
+                        description={translate('pages.monitor.deleteTriggerConfirm', {
+                          name: trigger.name,
+                        })}
+                        okText={formatMessage('pages.monitor.delete')}
                         okButtonProps={{ danger: true }}
                         onConfirm={() => handleRemoveTrigger(trigger)}
                       >
@@ -792,11 +841,22 @@ const Monitor: React.FC = () => {
                       title={
                         <Space size={8}>
                           <span>{trigger.name}</span>
-                          {trigger.oneShot && <Tag>一次性</Tag>}
-                          {trigger.cooldown > 0 && <Tag>冷却 {trigger.cooldown}ms</Tag>}
+                          {trigger.oneShot && <Tag>{formatMessage('pages.monitor.oneShot')}</Tag>}
+                          {trigger.cooldown > 0 && (
+                            <Tag>{translate('pages.monitor.cooldown', { ms: trigger.cooldown })}</Tag>
+                          )}
                         </Space>
                       }
-                      description={`${trigger.condition?.value || trigger.condition?.type || '无条件配置'} · 动作 ${trigger.actions.length} · 命中 ${trigger.hitCount || 0} · ${trigger.lastFiredAt || '未触发'}`}
+                      description={translate('pages.monitor.triggerDescription', {
+                        condition:
+                          trigger.condition?.value ||
+                          trigger.condition?.type ||
+                          formatMessage('pages.monitor.noCondition'),
+                        actions: trigger.actions.length,
+                        hits: trigger.hitCount || 0,
+                        lastFired:
+                          trigger.lastFiredAt || formatMessage('pages.monitor.neverFired'),
+                      })}
                     />
                   </List.Item>
                 )}
@@ -807,7 +867,7 @@ const Monitor: React.FC = () => {
               title={
                 <Space>
                   <CodeOutlined />
-                  <span>宏命令</span>
+                  <span>{formatMessage('pages.monitor.macros')}</span>
                 </Space>
               }
               style={{ marginTop: 16 }}
@@ -815,16 +875,19 @@ const Monitor: React.FC = () => {
               <Alert
                 type="info"
                 showIcon
-                message="宏命令 API 尚未接入"
-                description="当前远程 Agent 协议还没有暴露 macro.list / macro.run。这里不再展示硬编码示例，避免误下发假命令。"
+                message={formatMessage('pages.monitor.macroApiNotAvailable')}
+                description={formatMessage('pages.monitor.macroApiDescription')}
               />
             </Card>
           </Col>
         </Row>
 
-        <Card title="实时事件流" extra={<Tag>事件驱动</Tag>}>
+        <Card
+          title={formatMessage('pages.monitor.eventStream')}
+          extra={<Tag>{formatMessage('pages.monitor.eventDriven')}</Tag>}
+        >
           {events.length === 0 ? (
-            <Text type="secondary">等待 Agent、触发器或脚本事件...</Text>
+            <Text type="secondary">{formatMessage('pages.monitor.waitingForEvents')}</Text>
           ) : (
             <Timeline
               items={events.map((event) => ({
@@ -857,7 +920,7 @@ const Monitor: React.FC = () => {
           onSubmit={async (config) => {
             const agent = selectedAgentRef.current;
             if (!agent || !agentConnected(agent)) {
-              throw new Error('Agent 未连接');
+              throw new Error(formatMessage('pages.monitor.agentNotConnected'));
             }
             if (editingTrigger) {
               await updateAgentTrigger(agent.agentId, editingTrigger.id, config);
