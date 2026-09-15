@@ -104,6 +104,72 @@ TEST_F(X11PlatformTest, CaptureRegionReturnsRequestedSize) {
     EXPECT_EQ(bitmap->getHeight(), 64);
 }
 
+// ========== 顶层 Screen 装配（此前 Linux 恒 nullptr 的 stub，断链接线回归守卫） ==========
+
+TEST_F(X11PlatformTest, ScreenCaptureRegionReturnsBitmap) {
+    auto bitmap = wingman::Screen::capture(wingman::Rect{0, 0, 64, 32});
+    ASSERT_NE(bitmap, nullptr);
+    EXPECT_EQ(bitmap->getWidth(), 64);
+    EXPECT_EQ(bitmap->getHeight(), 32);
+}
+
+TEST_F(X11PlatformTest, ScreenCaptureFullScreenMatchesDimensions) {
+    auto full = wingman::Screen::capture();
+    ASSERT_NE(full, nullptr);
+    EXPECT_EQ(full->getWidth(), wingman::Screen::getScreenWidth());
+    EXPECT_EQ(full->getHeight(), wingman::Screen::getScreenHeight());
+}
+
+TEST_F(X11PlatformTest, ScreenGetPixelOutOfBoundsIsSafe) {
+    // 越界坐标曾会因 XGetImage BadMatch 触发默认 error handler exit 进程；
+    // 现以宽容 handler 呈现为 Color() 默认值（Xvfb 根窗口黑 → 越界返回黑）
+    const auto pixel = wingman::Screen::getPixel(-5, -5);
+    EXPECT_EQ(pixel.r, 0);
+    EXPECT_EQ(pixel.g, 0);
+    EXPECT_EQ(pixel.b, 0);
+}
+
+TEST_F(X11PlatformTest, ScreenFindColorOnRootWindow) {
+    // 自洽断言：先抓图算出「扫描序首命中位」，再对 findColor 结果精确对照
+    // （不假设根窗口底色是否均匀，Xvfb/桌面均确定）
+    const wingman::Rect region{0, 0, 32, 32};
+    auto bitmap = wingman::Screen::capture(region);
+    ASSERT_NE(bitmap, nullptr);
+
+    const auto base = bitmap->getPixel(2, 3);
+    wingman::Point expected{-1, -1};
+    for (int y = 0; y < bitmap->getHeight() && expected.x < 0; ++y) {
+        for (int x = 0; x < bitmap->getWidth(); ++x) {
+            if (bitmap->getPixel(x, y).matches(base, 0)) {
+                expected.x = x;
+                expected.y = y;
+                break;
+            }
+        }
+    }
+    ASSERT_GE(expected.x, 0) << "base color not found in captured region?!";
+
+    wingman::Point result;
+    EXPECT_TRUE(wingman::Screen::findColor(base, region, 0, result));
+    EXPECT_EQ(result.x, expected.x);
+    EXPECT_EQ(result.y, expected.y);
+
+    // 容差 10 下补色需与区域内所有像素距离均超 10 才断言不命中（均匀底色成立）
+    const auto inverted = wingman::Color(
+        static_cast<uint8_t>(~base.r), static_cast<uint8_t>(~base.g),
+        static_cast<uint8_t>(~base.b));
+    const int dr = static_cast<int>(inverted.r) - static_cast<int>(base.r);
+    const int dg = static_cast<int>(inverted.g) - static_cast<int>(base.g);
+    const int db = static_cast<int>(inverted.b) - static_cast<int>(base.b);
+    if (dr * dr + dg * dg + db * db > 10 * 10) {
+        EXPECT_FALSE(wingman::Screen::findColor(inverted, region, 10, result));
+    }
+
+    auto many = wingman::Screen::findColors(base, wingman::Rect{0, 0, 8, 4}, 0, 5);
+    EXPECT_GE(many.size(), 1u);
+    EXPECT_LE(many.size(), 5u);
+}
+
 // ========== 输入（XTest 注入 → XQueryPointer/XQueryKeymap 回读） ==========
 
 TEST_F(X11PlatformTest, InputMouseMoveRoundtrip) {
