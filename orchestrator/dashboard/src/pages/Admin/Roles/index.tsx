@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, App, Empty } from 'antd';
 import { PageContainer } from '@ant-design/pro-components';
+import { useIntl } from '@umijs/max';
 import {
   createRole,
   deleteRole,
@@ -13,6 +14,8 @@ import {
 
 export default function RolesPage() {
   const { message } = App.useApp();
+  const intl = useIntl();
+  const formatMessage = (id: string) => intl.formatMessage({ id });
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [permissions, setPermissions] = useState<AdminPermission[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,7 +31,7 @@ export default function RolesPage() {
       const resp = await listRoles();
       setRoles(resp.items || []);
     } catch (err: any) {
-      message.error(err?.message || '加载角色失败');
+      message.error(err?.message || formatMessage('pages.adminRoles.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -39,7 +42,7 @@ export default function RolesPage() {
       const resp = await listPermissionCatalog();
       setPermissions(resp.items || []);
     } catch (err: any) {
-      message.error(err?.message || '加载权限目录失败');
+      message.error(err?.message || formatMessage('pages.adminRoles.loadPermsFailed'));
     }
   };
 
@@ -62,13 +65,13 @@ export default function RolesPage() {
     try {
       const values = await createForm.validateFields();
       await createRole(values);
-      message.success('角色已创建');
+      message.success(formatMessage('pages.adminRoles.created'));
       setCreateOpen(false);
       createForm.resetFields();
       load();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err?.message || '创建失败');
+      message.error(err?.message || formatMessage('pages.adminRoles.createFailed'));
     }
   };
 
@@ -81,39 +84,39 @@ export default function RolesPage() {
         description: values.description,
         permissions: values.permissions,
       });
-      message.success('角色已更新');
+      message.success(formatMessage('pages.adminRoles.updated'));
       setEditTarget(null);
       load();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err?.message || '更新失败');
+      message.error(err?.message || formatMessage('pages.adminRoles.updateFailed'));
     }
   };
 
   const onDelete = async (code: string) => {
     try {
       await deleteRole(code);
-      message.success('角色已删除');
+      message.success(formatMessage('pages.adminRoles.deleted'));
       load();
     } catch (err: any) {
-      message.error(err?.message || '删除失败');
+      message.error(err?.message || formatMessage('pages.adminRoles.deleteFailed'));
     }
   };
 
   const columns = [
-    { title: '编码', dataIndex: 'code', render: (code: string, r: AdminRole) => (
-      <Space><span>{code}</span>{r.builtin && <Tag color="gold">内置</Tag>}</Space>
+    { title: formatMessage('pages.adminRoles.code'), dataIndex: 'code', render: (code: string, r: AdminRole) => (
+      <Space><span>{code}</span>{r.builtin && <Tag color="gold">{formatMessage('pages.adminRoles.builtinTag')}</Tag>}</Space>
     ) },
-    { title: '名称', dataIndex: 'name' },
-    { title: '描述', dataIndex: 'description', ellipsis: true },
+    { title: formatMessage('pages.adminRoles.name'), dataIndex: 'name' },
+    { title: formatMessage('pages.adminRoles.description'), dataIndex: 'description', ellipsis: true },
     {
-      title: '权限数',
+      title: formatMessage('pages.adminRoles.permCount'),
       dataIndex: 'permissions',
       width: 90,
       render: (perms: AdminPermission[]) => (perms?.length || 0),
     },
     {
-      title: '操作',
+      title: formatMessage('pages.common.action'),
       width: 200,
       render: (_: any, record: AdminRole) => (
         <Space>
@@ -128,15 +131,17 @@ export default function RolesPage() {
               });
             }}
           >
-            编辑权限
+            {formatMessage('pages.adminRoles.editPerms')}
           </Button>
           {!record.builtin && (
             <Popconfirm
-              title={`删除角色 ${record.code}?`}
+              title={intl.formatMessage({ id: 'pages.adminRoles.deleteConfirm' }, {
+                code: record.code,
+              })}
               onConfirm={() => onDelete(record.code)}
               okButtonProps={{ danger: true }}
             >
-              <Button size="small" danger>删除</Button>
+              <Button size="small" danger>{formatMessage('pages.adminRoles.delete')}</Button>
             </Popconfirm>
           )}
         </Space>
@@ -149,7 +154,7 @@ export default function RolesPage() {
       <Card>
         <Space style={{ marginBottom: 16 }}>
           <Button type="primary" onClick={() => { createForm.resetFields(); setCreateOpen(true); }}>
-            新建角色
+            {formatMessage('pages.adminRoles.create')}
           </Button>
         </Space>
         <Table
@@ -162,54 +167,62 @@ export default function RolesPage() {
       </Card>
 
       <Modal
-        title="新建角色"
+        title={formatMessage('pages.adminRoles.create')}
         open={createOpen}
         onOk={submitCreate}
         onCancel={() => setCreateOpen(false)}
         destroyOnClose
       >
         <Form form={createForm} layout="vertical">
-          <Form.Item name="code" label="角色编码" rules={[{ required: true, message: '请输入角色编码' }]}>
-            <Input placeholder="2-32 位字母/数字/_/-（不可与 admin 冲突）" />
+          <Form.Item
+            name="code"
+            label={formatMessage('pages.adminRoles.codeLabel')}
+            rules={[{ required: true, message: formatMessage('pages.adminRoles.codeRequired') }]}
+          >
+            <Input placeholder={formatMessage('pages.adminRoles.codePlaceholder')} />
           </Form.Item>
-          <Form.Item name="name" label="名称">
+          <Form.Item name="name" label={formatMessage('pages.adminRoles.name')}>
             <Input />
           </Form.Item>
-          <Form.Item name="description" label="描述">
+          <Form.Item name="description" label={formatMessage('pages.adminRoles.description')}>
             <Input.TextArea rows={2} />
           </Form.Item>
-          <Form.Item name="permissions" label="权限">
+          <Form.Item name="permissions" label={formatMessage('pages.adminRoles.permsLabel')}>
             <PermissionSelect grouped={groupedPermissions} />
           </Form.Item>
         </Form>
       </Modal>
 
       <Drawer
-        title={`编辑角色 - ${editTarget?.name || editTarget?.code || ''}`}
+        title={intl.formatMessage({ id: 'pages.adminRoles.drawerTitle' }, {
+          name: editTarget?.name || editTarget?.code || '',
+        })}
         width={520}
         open={!!editTarget}
         onClose={() => setEditTarget(null)}
         extra={
           <Space>
-            <Button onClick={() => setEditTarget(null)}>取消</Button>
-            <Button type="primary" onClick={submitEdit}>保存</Button>
+            <Button onClick={() => setEditTarget(null)}>{formatMessage('pages.common.cancel')}</Button>
+            <Button type="primary" onClick={submitEdit}>{formatMessage('pages.common.save')}</Button>
           </Space>
         }
         destroyOnClose
       >
         {editTarget && (
           <Form form={editForm} layout="vertical">
-            <Form.Item name="name" label="名称">
+            <Form.Item name="name" label={formatMessage('pages.adminRoles.name')}>
               <Input disabled={editTarget.builtin} />
             </Form.Item>
-            <Form.Item name="description" label="描述">
+            <Form.Item name="description" label={formatMessage('pages.adminRoles.description')}>
               <Input.TextArea rows={2} disabled={editTarget.builtin} />
             </Form.Item>
-            <Form.Item label="权限">
+            <Form.Item label={formatMessage('pages.adminRoles.permsLabel')}>
               <span style={{ color: '#888', fontSize: 12 }}>
                 {editTarget.code === 'admin'
-                  ? 'admin 角色拥有通配权限 *，不可在此修改'
-                  : `已分配 ${(editTarget.permissions || []).length} 项权限`}
+                  ? formatMessage('pages.adminRoles.adminWildcardHint')
+                  : intl.formatMessage({ id: 'pages.adminRoles.assignedCount' }, {
+                    count: (editTarget.permissions || []).length,
+                  })}
               </span>
             </Form.Item>
             {editTarget.code !== 'admin' && (
@@ -232,6 +245,7 @@ function PermissionSelect({
   grouped: Record<string, AdminPermission[]>;
   disabled?: boolean;
 }) {
+  const intl = useIntl();
   const options = useMemo(() => {
     return Object.entries(grouped).map(([category, perms]) => ({
       label: <span style={{ fontWeight: 600 }}>{category}</span>,
@@ -244,7 +258,7 @@ function PermissionSelect({
     }));
   }, [grouped, disabled]);
 
-  if (options.length === 0) return <Empty description="无权限目录" />;
+  if (options.length === 0) return <Empty description={intl.formatMessage({ id: 'pages.adminRoles.noCatalog' })} />;
   return (
     <Select
       mode="multiple"
@@ -252,7 +266,7 @@ function PermissionSelect({
       optionFilterProp="label"
       showSearch
       style={{ width: '100%' }}
-      placeholder="选择权限"
+      placeholder={intl.formatMessage({ id: 'pages.adminRoles.selectPlaceholder' })}
     />
   );
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag, App } from 'antd';
 import { PageContainer } from '@ant-design/pro-components';
+import { useIntl } from '@umijs/max';
 import {
   createUser,
   deleteUser,
@@ -14,6 +15,8 @@ import {
 
 export default function UsersPage() {
   const { message } = App.useApp();
+  const intl = useIntl();
+  const formatMessage = (id: string) => intl.formatMessage({ id });
   const [rows, setRows] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -36,7 +39,7 @@ export default function UsersPage() {
       setRows(resp.items || []);
       setTotal(resp.total || 0);
     } catch (err: any) {
-      message.error(err?.message || '加载用户失败');
+      message.error(err?.message || formatMessage('pages.adminUsers.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -65,17 +68,26 @@ export default function UsersPage() {
     return 'default';
   };
 
+  // 角色下拉选项：内置角色在名称后追加分隔标注
+  const roleOptions = (list: AdminRole[]) =>
+    list.map((r) => ({
+      label: r.builtin
+        ? intl.formatMessage({ id: 'pages.adminUsers.builtinRole' }, { name: r.name || r.code })
+        : r.name || r.code,
+      value: r.code,
+    }));
+
   const submitCreate = async () => {
     try {
       const values = await createForm.validateFields();
       await createUser(values);
-      message.success('用户已创建');
+      message.success(formatMessage('pages.adminUsers.created'));
       setCreateOpen(false);
       createForm.resetFields();
       load();
     } catch (err: any) {
       if (err?.errorFields) return; // 校验错误
-      message.error(err?.message || '创建失败');
+      message.error(err?.message || formatMessage('pages.adminUsers.createFailed'));
     }
   };
 
@@ -84,12 +96,12 @@ export default function UsersPage() {
     try {
       const values = await editForm.validateFields();
       await updateUser(editTarget.id, values);
-      message.success('用户已更新');
+      message.success(formatMessage('pages.adminUsers.updated'));
       setEditTarget(null);
       load();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err?.message || '更新失败');
+      message.error(err?.message || formatMessage('pages.adminUsers.updateFailed'));
     }
   };
 
@@ -98,42 +110,46 @@ export default function UsersPage() {
     try {
       const values = await resetForm.validateFields();
       await resetUserPassword(resetTarget.id, values.newPassword);
-      message.success('密码已重置');
+      message.success(formatMessage('pages.adminUsers.passwordReset'));
       setResetTarget(null);
       resetForm.resetFields();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err?.message || '重置失败');
+      message.error(err?.message || formatMessage('pages.adminUsers.resetFailed'));
     }
   };
 
   const onDelete = async (id: number) => {
     try {
       await deleteUser(id);
-      message.success('用户已删除');
+      message.success(formatMessage('pages.adminUsers.deleted'));
       load();
     } catch (err: any) {
-      message.error(err?.message || '删除失败');
+      message.error(err?.message || formatMessage('pages.adminUsers.deleteFailed'));
     }
   };
 
   const columns = [
     { title: 'ID', dataIndex: 'id', width: 70 },
-    { title: '用户名', dataIndex: 'username' },
+    { title: formatMessage('pages.adminUsers.username'), dataIndex: 'username' },
     {
-      title: '角色',
+      title: formatMessage('pages.adminUsers.role'),
       dataIndex: 'role',
       render: (role: string) => <Tag color={roleColor(role)}>{role}</Tag>,
     },
     {
-      title: '状态',
+      title: formatMessage('pages.common.status'),
       dataIndex: 'active',
       render: (active: boolean) =>
-        active ? <Tag color="green">启用</Tag> : <Tag>禁用</Tag>,
+        active ? (
+          <Tag color="green">{formatMessage('pages.adminUsers.enabled')}</Tag>
+        ) : (
+          <Tag>{formatMessage('pages.adminUsers.disabled')}</Tag>
+        ),
     },
-    { title: '创建时间', dataIndex: 'createdAt', width: 180 },
+    { title: formatMessage('pages.adminUsers.createdAt'), dataIndex: 'createdAt', width: 180 },
     {
-      title: '操作',
+      title: formatMessage('pages.common.action'),
       width: 280,
       render: (_: any, record: AdminUser) => (
         <Space>
@@ -144,18 +160,26 @@ export default function UsersPage() {
               editForm.setFieldsValue({ role: record.role, active: record.active });
             }}
           >
-            编辑
+            {formatMessage('pages.adminUsers.edit')}
           </Button>
-          <Button size="small" onClick={() => { setResetTarget(record); resetForm.resetFields(); }}>
-            重置密码
+          <Button
+            size="small"
+            onClick={() => {
+              setResetTarget(record);
+              resetForm.resetFields();
+            }}
+          >
+            {formatMessage('pages.adminUsers.resetPassword')}
           </Button>
           <Popconfirm
-            title={`删除用户 ${record.username}?`}
+            title={intl.formatMessage({ id: 'pages.adminUsers.deleteConfirm' }, {
+              name: record.username,
+            })}
             onConfirm={() => onDelete(record.id)}
             okButtonProps={{ danger: true }}
           >
             <Button size="small" danger>
-              删除
+              {formatMessage('pages.adminUsers.delete')}
             </Button>
           </Popconfirm>
         </Space>
@@ -168,15 +192,24 @@ export default function UsersPage() {
       <Card>
         <Space style={{ marginBottom: 16 }} wrap>
           <Input.Search
-            placeholder="搜索用户名"
+            placeholder={formatMessage('pages.adminUsers.searchPlaceholder')}
             allowClear
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            onSearch={() => { setPage(1); load(); }}
+            onSearch={() => {
+              setPage(1);
+              load();
+            }}
             style={{ width: 240 }}
           />
-          <Button type="primary" onClick={() => { createForm.resetFields(); setCreateOpen(true); }}>
-            新建用户
+          <Button
+            type="primary"
+            onClick={() => {
+              createForm.resetFields();
+              setCreateOpen(true);
+            }}
+          >
+            {formatMessage('pages.adminUsers.create')}
           </Button>
         </Space>
 
@@ -190,57 +223,84 @@ export default function UsersPage() {
             pageSize: size,
             total,
             showSizeChanger: true,
-            onChange: (p, s) => { setPage(p); setSize(s); },
+            onChange: (p, s) => {
+              setPage(p);
+              setSize(s);
+            },
           }}
         />
       </Card>
 
       <Modal
-        title="新建用户"
+        title={formatMessage('pages.adminUsers.create')}
         open={createOpen}
         onOk={submitCreate}
         onCancel={() => setCreateOpen(false)}
         destroyOnClose
       >
         <Form form={createForm} layout="vertical" initialValues={{ role: 'viewer', active: true }}>
-          <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]}>
-            <Input placeholder="3-32 位字母/数字/_/-" />
+          <Form.Item
+            name="username"
+            label={formatMessage('pages.adminUsers.username')}
+            rules={[{ required: true, message: formatMessage('pages.adminUsers.usernameRequired') }]}
+          >
+            <Input placeholder={formatMessage('pages.adminUsers.usernamePlaceholder')} />
           </Form.Item>
-          <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
-            <Input.Password placeholder="至少 8 位，含大小写/数字/特殊字符任意三种" />
+          <Form.Item
+            name="password"
+            label={formatMessage('pages.adminUsers.password')}
+            rules={[{ required: true, message: formatMessage('pages.adminUsers.passwordRequired') }]}
+          >
+            <Input.Password placeholder={formatMessage('pages.adminUsers.passwordPlaceholder')} />
           </Form.Item>
-          <Form.Item name="role" label="角色" rules={[{ required: true }]}>
-            <Select
-              options={roles.map((r) => ({ label: `${r.name || r.code}${r.builtin ? ' (内置)' : ''}`, value: r.code }))}
-            />
+          <Form.Item
+            name="role"
+            label={formatMessage('pages.adminUsers.role')}
+            rules={[{ required: true }]}
+          >
+            <Select options={roleOptions(roles)} />
           </Form.Item>
-          <Form.Item name="active" label="启用" valuePropName="checked">
+          <Form.Item
+            name="active"
+            label={formatMessage('pages.adminUsers.enabled')}
+            valuePropName="checked"
+          >
             <Switch />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={`编辑用户 - ${editTarget?.username || ''}`}
+        title={intl.formatMessage({ id: 'pages.adminUsers.editModalTitle' }, {
+          name: editTarget?.username || '',
+        })}
         open={!!editTarget}
         onOk={submitEdit}
         onCancel={() => setEditTarget(null)}
         destroyOnClose
       >
         <Form form={editForm} layout="vertical">
-          <Form.Item name="role" label="角色" rules={[{ required: true }]}>
-            <Select
-              options={roles.map((r) => ({ label: `${r.name || r.code}${r.builtin ? ' (内置)' : ''}`, value: r.code }))}
-            />
+          <Form.Item
+            name="role"
+            label={formatMessage('pages.adminUsers.role')}
+            rules={[{ required: true }]}
+          >
+            <Select options={roleOptions(roles)} />
           </Form.Item>
-          <Form.Item name="active" label="启用" valuePropName="checked">
+          <Form.Item
+            name="active"
+            label={formatMessage('pages.adminUsers.enabled')}
+            valuePropName="checked"
+          >
             <Switch />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={`重置密码 - ${resetTarget?.username || ''}`}
+        title={intl.formatMessage({ id: 'pages.adminUsers.resetModalTitle' }, {
+          name: resetTarget?.username || '',
+        })}
         open={!!resetTarget}
         onOk={submitReset}
         onCancel={() => setResetTarget(null)}
@@ -249,10 +309,12 @@ export default function UsersPage() {
         <Form form={resetForm} layout="vertical">
           <Form.Item
             name="newPassword"
-            label="新密码"
-            rules={[{ required: true, message: '请输入新密码' }]}
+            label={formatMessage('pages.adminUsers.newPassword')}
+            rules={[
+              { required: true, message: formatMessage('pages.adminUsers.newPasswordRequired') },
+            ]}
           >
-            <Input.Password placeholder="至少 8 位，含大小写/数字/特殊字符任意三种" />
+            <Input.Password placeholder={formatMessage('pages.adminUsers.passwordPlaceholder')} />
           </Form.Item>
         </Form>
       </Modal>
