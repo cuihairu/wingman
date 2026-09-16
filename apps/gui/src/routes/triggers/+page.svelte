@@ -8,13 +8,12 @@
 	import { logs } from '$lib/stores/logs';
 	import RegionPicker from '$lib/components/RegionPicker.svelte';
 	import ColorPicker from '$lib/components/ColorPicker.svelte';
-	import ScreenPickerModal, { type PickerResult } from '$lib/components/ScreenPickerModal.svelte';
+	import ScreenPickerModal from '$lib/components/ScreenPickerModal.svelte';
 
 	let selectedId = $state<string | null>(null);
 	let editing = $state<TriggerConfig | null>(null);
 
-	/// 区域拾取 / 点击坐标拾取 / 像素坐标拾取的模态来源
-	let regionPickOpen = $state(false);
+	/// 点击坐标拾取 / 像素坐标拾取的模态来源（区域拾取由 RegionPicker 内部管理）
 	let clickPickIndex = $state<number | null>(null);
 	let pixelPickOpen = $state(false);
 
@@ -244,16 +243,6 @@
 	}
 
 	// ---- 拾取回调 ----
-
-	function handleRegionPick(result: PickerResult) {
-		if (editing && result.region) {
-			editing = {
-				...editing,
-				condition: { ...editing.condition, region: result.region },
-			};
-		}
-		regionPickOpen = false;
-	}
 
 	function handleClickPick(result: { position?: { x: number; y: number } }) {
 		if (editing && clickPickIndex !== null && result.position) {
@@ -508,10 +497,6 @@
 		</div>
 	</div>
 </div>
-
-{#if regionPickOpen}
-	<ScreenPickerModal mode="region" onconfirm={handleRegionPick} onclose={() => regionPickOpen = false} />
-{/if}
 
 {#if clickPickIndex !== null}
 	<ScreenPickerModal mode="color" onconfirm={handleClickPick} onclose={() => clickPickIndex = null} />

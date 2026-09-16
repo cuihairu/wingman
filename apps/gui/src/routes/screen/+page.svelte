@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import RegionPicker from '$lib/components/RegionPicker.svelte';
 	import ColorPicker from '$lib/components/ColorPicker.svelte';
 	import { connection } from '$lib/stores/connection';
@@ -253,6 +254,8 @@
 	const screenHover = $derived(hover ? toScreen(hover) : null);
 
 	async function capture(showLog = false) {
+		// 手动刷新时同步刷新显示器列表（显示器热插拔后校验选中项是否失效）
+		if (showLog) screen.listMonitors();
 		const result = await screen.capture(PREVIEW_REGION, selectedDisplayId);
 		if (result && showLog) {
 			logs.add(`已刷新屏幕预览: ${result.width}x${result.height}`, 'success');
@@ -302,19 +305,29 @@
 	}
 
 	$effect(() => {
-		// Load monitor list on mount / when connection state changes.
-		screen.listMonitors().then(monitors => {
-			// If the previously selected id is no longer valid, reset to primary.
-			if (selectedDisplayId !== null && !monitors.some(m => m.id === selectedDisplayId)) {
-				selectedDisplayId = null;
-			}
-		});
+		// 挂载时加载显示器列表（listMonitors 写 $screen，保持本 effect 无依赖避免重入）
+		screen.listMonitors();
 	});
 
 	$effect(() => {
-		if (!$screen.current) {
-			capture();
+		// 选中显示器从最新列表消失时重置回主显示器（列表刷新后触发）
+		if (
+			selectedDisplayId !== null &&
+			$screen.monitors.length > 0 &&
+			!$screen.monitors.some(m => m.id === selectedDisplayId)
+		) {
+			selectedDisplayId = null;
 		}
+	});
+
+	$effect(() => {
+		// 仅挂载时检查一次：capture 会写 $screen（loading/error），直接订阅会在
+		// invoke 模式下于首个 IPC 响应前无限重入（effect_update_depth_exceeded）。
+		untrack(() => {
+			if (!$screen.current) {
+				capture();
+			}
+		});
 	});
 
 	$effect(() => {
