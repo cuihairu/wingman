@@ -329,6 +329,20 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ---
 
+## 📅 2026-09-16 Go Server CI race 失败修复（FrameListener.teamMgr 数据竞争）
+
+**现象**：CI Go Server (ubuntu-latest) 连续两轮在 race detector 下失败（run 34976763718 / 35034266626），`TestTeamStatusReportUnknownTeamNoop` 报 `WARNING: DATA RACE`；同 workflow 三平台的 windows/macos job 通过（race 时序依赖调度）。
+
+**根因**（64d642b 引入的既有缺陷）：`FrameListener.teamMgr` 字段写读不对称——`SetTeamManager()` 持 `l.mu` 写，但 readLoop goroutine 的 8 个 team/inbox handler（ack / report / join / leave / vote×2 / status_report / broadcast）及断连清理路径全部**裸读**该字段，无任何同步。触发时序即测试自身：发 `team.status_report` 后立即 `SetTeamManager(nil)`——readLoop 异步处理前一条消息读到半写状态的指针。
+
+**修复**（`orchestrator/server/pkg/agent/listener.go`，4c7ddd9）：handler 入口统一经 `GetTeamManager()`（RLock）取指针快照到局部变量，后续全用快照。顺带消除 TOCTOU——原「nil 检查后再读一次」模式下，检查与使用之间 `SetTeamManager(nil)` 可换入空指针（比 race 本身更接近真实崩溃）。
+
+**验证**：`go vet` 通过；`pkg/agent` `-race -count=1` 全绿；nil 防御两用例 `-race -count=20` 压测稳定；全仓 `-race -count=3` 各包通过（`internal/handlers` 单轮 216s、三轮叠加 ~648s 超包默认 600s 超时属压测参数问题而非缺陷，CI 口径 `-count=1` 通过）；推送后 CI 全绿（run 35054666493，七 job 全过）。
+
+**教训**：给可变字段加 setter 并持锁时，grep 该字段的**全部**读点同步收口——「写字段加了锁」常给人已同步的错觉，而读侧散布在多个 handler 里最易漏；`-race` 本地默认不跑，CI 才是唯一防线，本地验证 Go 改动应至少对涉及包跑一次 `go test -race`。
+
+---
+
 ## 📊 各模块实际完成度（已校准 2026-09-04，含 Dashboard 审核修复）
 
 | 模块 | 子功能 | 完成度 | 说明 |
