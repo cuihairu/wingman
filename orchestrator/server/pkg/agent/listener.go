@@ -326,7 +326,7 @@ func (ac *agentConn) readLoop() {
 			// 仅当没有其他活跃连接仍以同一 agentID 注册时才清理，
 			// 避免重连竞态下旧连接的 defer 清掉新会话的状态。
 			if !ac.listener.hasOtherConnForAgent(agentID, ac.id) {
-				if tm := ac.listener.teamMgr; tm != nil {
+				if tm := ac.listener.GetTeamManager(); tm != nil {
 					tm.RemoveAgent(agentID)
 				}
 			}
@@ -704,8 +704,8 @@ func (ac *agentConn) handleInboxAck(msg map[string]any) {
 		agentID = ac.getAgentID()
 	}
 
-	if ac.listener.teamMgr != nil {
-		if err := ac.listener.teamMgr.AckMessage(agentID, msgID); err != nil {
+	if tm := ac.listener.GetTeamManager(); tm != nil {
+		if err := tm.AckMessage(agentID, msgID); err != nil {
 			log.Printf("[Inbox] Ack failed: %v", err)
 		}
 	}
@@ -721,8 +721,8 @@ func (ac *agentConn) handleInboxReport(msg map[string]any) {
 		agentID = ac.getAgentID()
 	}
 
-	if ac.listener.teamMgr != nil {
-		if err := ac.listener.teamMgr.ReportMessage(agentID, msgID, result); err != nil {
+	if tm := ac.listener.GetTeamManager(); tm != nil {
+		if err := tm.ReportMessage(agentID, msgID, result); err != nil {
 			log.Printf("[Inbox] Report failed: %v", err)
 		}
 	}
@@ -738,8 +738,8 @@ func (ac *agentConn) handleTeamJoin(msg map[string]any) {
 		agentID = ac.getAgentID()
 	}
 
-	if ac.listener.teamMgr != nil {
-		if err := ac.listener.teamMgr.JoinTeam(teamID, memberID, agentID); err != nil {
+	if tm := ac.listener.GetTeamManager(); tm != nil {
+		if err := tm.JoinTeam(teamID, memberID, agentID); err != nil {
 			log.Printf("[Team] Join failed: %v", err)
 			ac.sendNotify("team.error", map[string]any{
 				"error": err.Error(),
@@ -750,9 +750,11 @@ func (ac *agentConn) handleTeamJoin(msg map[string]any) {
 
 // handleTeamLeave handles team leave request.
 func (ac *agentConn) handleTeamLeave(msg map[string]any) {
-	// nil 检查必须位于最前：SetTeamManager(nil)（测试/降级场景）下
-	// 下方的 FindMemberByAgent 会空指针。
-	if ac.listener.teamMgr == nil {
+	// 快照一次并先做 nil 检查：SetTeamManager(nil)（测试/降级场景）下
+	// 下方的 FindMemberByAgent 会空指针；且 readLoop 与 SetTeamManager
+	// 并发，裸读 teamMgr 字段构成数据竞争（race detector 报警）。
+	tm := ac.listener.GetTeamManager()
+	if tm == nil {
 		return
 	}
 
@@ -767,14 +769,14 @@ func (ac *agentConn) handleTeamLeave(msg map[string]any) {
 	// If memberId is empty, resolve it from the member -> agent mapping,
 	// falling back to using agentID directly (same-value mapping).
 	if memberID == "" {
-		if mid, found := ac.listener.teamMgr.FindMemberByAgent(teamID, agentID); found {
+		if mid, found := tm.FindMemberByAgent(teamID, agentID); found {
 			memberID = mid
 		} else {
 			memberID = agentID
 		}
 	}
 
-	if err := ac.listener.teamMgr.LeaveTeam(teamID, memberID); err != nil {
+	if err := tm.LeaveTeam(teamID, memberID); err != nil {
 		log.Printf("[Team] Leave failed: %v", err)
 	}
 }
@@ -786,13 +788,13 @@ func (ac *agentConn) handleTeamVoteCreate(msg map[string]any) {
 	subject, _ := msg["subject"].(string)
 	timeoutVal, _ := msg["timeout"].(float64)
 
-	if ac.listener.teamMgr != nil {
+	if tm := ac.listener.GetTeamManager(); tm != nil {
 		timeout := time.Duration(timeoutVal) * time.Millisecond
 		if timeout == 0 {
 			timeout = 30 * time.Second // Default 30 seconds
 		}
 
-		vote, err := ac.listener.teamMgr.CreateVote(teamID, proposerID, subject, timeout)
+		vote, err := tm.CreateVote(teamID, proposerID, subject, timeout)
 		if err != nil {
 			log.Printf("[Team] Vote create failed: %v", err)
 			ac.sendNotify("team.error", map[string]any{
@@ -810,8 +812,8 @@ func (ac *agentConn) handleTeamVoteCast(msg map[string]any) {
 	memberID, _ := msg["memberId"].(string)
 	response, _ := msg["response"].(string)
 
-	if ac.listener.teamMgr != nil {
-		if err := ac.listener.teamMgr.CastVote(voteID, memberID, response); err != nil {
+	if tm := ac.listener.GetTeamManager(); tm != nil {
+		if err := tm.CastVote(voteID, memberID, response); err != nil {
 			log.Printf("[Team] Vote cast failed: %v", err)
 		}
 	}
@@ -828,12 +830,13 @@ func (ac *agentConn) handleTeamStatusReport(msg map[string]any) {
 
 	log.Printf("[Team] Status report from %s in team %s: %v", memberID, teamID, status)
 
-	if ac.listener.teamMgr == nil {
+	tm := ac.listener.GetTeamManager()
+	if tm == nil {
 		return
 	}
 
 	// 经 memberID -> agentID 映射转发给除上报者外的全部在线/离线成员
-	memberAgents, err := ac.listener.teamMgr.GetMemberAgents(teamID)
+	memberAgents, err := tm.GetMemberAgents(teamID)
 	if err != nil {
 		return
 	}
@@ -841,7 +844,7 @@ func (ac *agentConn) handleTeamStatusReport(msg map[string]any) {
 		if mid == memberID {
 			continue // 跳过上报者自己
 		}
-		ac.listener.teamMgr.SendMessageToAgent(agentID, "team.status_report", map[string]any{
+		tm.SendMessageToAgent(agentID, "team.status_report", map[string]any{
 			"type":     "team.status_report",
 			"teamId":   teamID,
 			"memberId": memberID,
@@ -858,9 +861,9 @@ func (ac *agentConn) handleTeamBroadcast(msg map[string]any) {
 
 	log.Printf("[Team] Broadcast from %s in team %s: %v", senderMemberID, teamID, message)
 
-	if ac.listener.teamMgr != nil {
+	if tm := ac.listener.GetTeamManager(); tm != nil {
 		// Get member -> agent mapping to resolve inbox targets
-		if memberAgents, err := ac.listener.teamMgr.GetMemberAgents(teamID); err == nil {
+		if memberAgents, err := tm.GetMemberAgents(teamID); err == nil {
 			// Send message to all members via inbox
 			for memberID, agentID := range memberAgents {
 				// Skip the sender
@@ -876,7 +879,7 @@ func (ac *agentConn) handleTeamBroadcast(msg map[string]any) {
 					"message":  message,
 				}
 
-				ac.listener.teamMgr.SendMessageToAgent(agentID, "team.broadcast_received", broadcastMsg)
+				tm.SendMessageToAgent(agentID, "team.broadcast_received", broadcastMsg)
 			}
 		}
 	}
