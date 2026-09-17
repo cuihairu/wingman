@@ -177,7 +177,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 - [x] **Agent 管理**
   - [x] 负载均衡（`selectAgent` 选在执行步骤最少的 agent；显式 worker 优先）
   - [x] Agent 分组/标签（`PUT /api/agents/:id/tags` + 注册表 SetTags + Dashboard 标签列/Popover 编辑）
-- [ ] **通知/历史**
+- [x] **通知/历史**（子项全部完成，2026-09-17 补勾）
   - [x] WebSocket 事件广播完善（runtime `EventBuffer` 远程 sink → `RemoteClient::sendAgentEvent` → server `handleEvent` 广播 `trigger_fired`/`script_state`/`script_output` 到 Dashboard WS；listener.go 新增 `script_state` case）
   - [x] 通知历史持久化（Message 模型已入库；per-user 已读见代码缺陷修复）
   - [x] script_output 转发（`IScriptEngine::setOutputCallback`：Lua override `print`→`tostring`；ScriptManager 接 `logScriptOutput`；StandaloneMode 推 `script.output` 到 EventBuffer；远程 sink 转发 `script_output`；GUI events.ts 显示。Python stdout/stderr 重定向已完成——`libs/python/src/python_script_engine.cpp` stdout/stderr proxy 注入 `sys.stdout`，经同一回调链路下发）
