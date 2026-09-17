@@ -229,13 +229,14 @@ bool Window::waitClose(const std::string& title, int timeoutMs) {
 
 #ifndef _WIN32
 
-// Linux：接入 X11 窗口后端（x11_factory.cpp 聚合导出）。此前此分支恒空 stub，
-// X11Window 有完整实现却全库零消费者（装配断链，与 Clipboard/Screen 同款，
-// 2026-09-15 接线）。macOS 暂无窗口工厂导出，保持 stub（见 todo.md）。
-#if defined(__linux__)
 #include "wingman/platform/iwindow.hpp"
 #include <memory>
 
+// 平台窗口后端工厂接线（前向声明消费，无公开头文件，同 clipboard.cpp 模式）。
+// Linux 2026-09-15、macOS 2026-09-16 接线；此前两平台此分支恒空 stub，
+// X11Window/CocoaWindow 有完整实现却全库零消费者（装配断链）。其余平台
+// windowBackend 恒空，转发方法的空守卫自然给出 stub 语义。
+#if defined(__linux__)
 // gcc 在 Linux 上把 `linux` 定义为 1（遗留宏），命名空间限定需要 undo（同 x11_factory.cpp）
 #if defined(linux)
 #undef linux
@@ -244,17 +245,28 @@ bool Window::waitClose(const std::string& title, int timeoutMs) {
 namespace wingman::platform::linux {
 std::unique_ptr<IWindow> createX11Window();
 }
+#elif defined(__APPLE__)
+namespace wingman::platform::mac {
+std::unique_ptr<IWindow> createCocoaWindow();
+}
+#endif
 
 namespace wingman {
 
 namespace {
 
-// 每次调用经工厂独立创建 IWindow（自带 X 连接），同 screen.cpp 先例：规避跨
-// 线程共享 Display 的线程安全问题；XOpenDisplay 走本地 socket，开销亚毫秒。
-// 工厂内部已 initialize()，无 DISPLAY 时方法随 !initialized_ 路径优雅返回
+// 每次调用经工厂独立创建 IWindow（自带平台连接），同 screen.cpp 先例：规避跨
+// 线程共享 Display/连接的线程安全问题；连接建立走本地通道，开销亚毫秒。
+// 工厂内部已 initialize()，环境缺失时方法随 !initialized_ 路径优雅返回
 // 空值，与原 stub 语义一致。
 std::unique_ptr<platform::IWindow> windowBackend() {
+#if defined(__linux__)
     return platform::linux::createX11Window();
+#elif defined(__APPLE__)
+    return platform::mac::createCocoaWindow();
+#else
+    return nullptr;
+#endif
 }
 
 } // namespace
@@ -382,89 +394,5 @@ bool Window::waitClose(const std::string& title, int timeoutMs) {
 }
 
 } // namespace wingman
-
-#else // !__linux__ (macOS：暂无窗口工厂导出，维持恒空 stub)
-
-namespace wingman {
-
-WindowHandle Window::find(const std::string& /*title*/) {
-    return 0;
-}
-
-std::vector<WindowHandle> Window::findAll(const std::string& /*title*/) {
-    return {};
-}
-
-WindowHandle Window::getForeground() {
-    return 0;
-}
-
-std::vector<WindowInfo> Window::enumerate() {
-    return {};
-}
-
-bool Window::activate(WindowHandle /*hwnd*/) {
-    return false;
-}
-
-bool Window::minimize(WindowHandle /*hwnd*/) {
-    return false;
-}
-
-bool Window::maximize(WindowHandle /*hwnd*/) {
-    return false;
-}
-
-bool Window::restore(WindowHandle /*hwnd*/) {
-    return false;
-}
-
-bool Window::close(WindowHandle /*hwnd*/) {
-    return false;
-}
-
-std::string Window::getTitle(WindowHandle /*hwnd*/) {
-    return "";
-}
-
-Rect Window::getBounds(WindowHandle /*hwnd*/) {
-    return Rect();
-}
-
-bool Window::setBounds(WindowHandle /*hwnd*/, const Rect& /*bounds*/) {
-    return false;
-}
-
-bool Window::isValid(WindowHandle /*hwnd*/) {
-    return false;
-}
-
-bool Window::isForeground(WindowHandle /*hwnd*/) {
-    return false;
-}
-
-bool Window::isVisible(WindowHandle /*hwnd*/) {
-    return false;
-}
-
-bool Window::move(WindowHandle /*hwnd*/, int /*x*/, int /*y*/) {
-    return false;
-}
-
-bool Window::resize(WindowHandle /*hwnd*/, int /*width*/, int /*height*/) {
-    return false;
-}
-
-bool Window::waitFor(const std::string& /*title*/, int /*timeoutMs*/) {
-    return false;
-}
-
-bool Window::waitClose(const std::string& /*title*/, int /*timeoutMs*/) {
-    return false;
-}
-
-} // namespace wingman
-
-#endif // __linux__
 
 #endif

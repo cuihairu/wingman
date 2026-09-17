@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <atomic>
+#include <memory>
 #include <mutex>
 #include <unordered_map>
 
@@ -166,6 +167,13 @@ private:
         }
     }
 };
+
+// 工厂导出：facade 经前向声明消费（无公开头文件，同 linux x11_factory 模式）。
+std::unique_ptr<IFileWatcher> createFSEventsFileWatcher() {
+    auto watcher = std::unique_ptr<IFileWatcher>(new FSEventsFileWatcher());
+    watcher->initialize();
+    return watcher;
+}
 
 } // namespace wingman::platform::mac
 

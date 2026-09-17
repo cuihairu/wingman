@@ -4,6 +4,7 @@
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
 #include <spdlog/spdlog.h>
+#include <memory>
 
 namespace wingman::platform::mac {
 
@@ -216,6 +217,13 @@ public:
 private:
     bool initialized_ = false;
 };
+
+// 工厂导出：facade 经前向声明消费（无公开头文件，同 linux x11_factory 模式）。
+std::unique_ptr<IClipboard> createCocoaClipboard() {
+    auto clipboard = std::unique_ptr<IClipboard>(new CocoaClipboard());
+    clipboard->initialize();
+    return clipboard;
+}
 
 } // namespace wingman::platform::mac
 

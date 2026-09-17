@@ -11,6 +11,7 @@
 #include <vector>
 #include <cmath>
 #include <csignal>  // for kill()
+#include <memory>
 
 namespace wingman::platform::mac {
 
@@ -751,6 +752,13 @@ private:
         }
     }
 };
+
+// 工厂导出：facade 经前向声明消费（无公开头文件，同 linux x11_factory 模式）。
+std::unique_ptr<IWindow> createCocoaWindow() {
+    auto window = std::unique_ptr<IWindow>(new CocoaWindow());
+    window->initialize();
+    return window;
+}
 
 } // namespace wingman::platform::mac
 #endif // __APPLE__

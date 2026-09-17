@@ -4,17 +4,11 @@
 
 #ifdef _WIN32
 #include "wingman/platform/win/win32_filewatcher.hpp"
-#elif defined(__linux__)
-#ifdef linux
-#undef linux
-#endif
-namespace wingman::platform::linux {
-std::unique_ptr<IFileWatcher> createInotifyFileWatcher();
-}
 #else
 
 namespace wingman::platform {
 
+// 兜底实现（非 Windows 平台工厂失败时使用）
 class NullFileWatcher final : public IFileWatcher {
 public:
     bool initialize() override { return true; }
@@ -34,6 +28,22 @@ public:
 };
 
 } // namespace wingman::platform
+
+// Linux/macOS：接入平台后端（工厂在各自平台源文件导出）。此前 macOS 此处
+// 落 NullFileWatcher（装配断链：FSEventsFileWatcher 完整实现零消费者，
+// 2026-09-16 接线；Linux 2026-09-14 接线）。
+#if defined(__linux__)
+#ifdef linux
+#undef linux
+#endif
+namespace wingman::platform::linux {
+std::unique_ptr<IFileWatcher> createInotifyFileWatcher();
+}
+#elif defined(__APPLE__)
+namespace wingman::platform::mac {
+std::unique_ptr<IFileWatcher> createFSEventsFileWatcher();
+}
+#endif
 #endif
 
 namespace wingman {
@@ -52,6 +62,13 @@ platform::IFileWatcher& FileWatcher::instance() {
         auto watcher = platform::linux::createInotifyFileWatcher();
         if (!watcher || !watcher->getBackendInfo().isInitialized) {
             spdlog::error("[FileWatcher] Failed to initialize Linux inotify file watcher");
+        }
+        return watcher;
+#elif defined(__APPLE__)
+        auto watcher = platform::mac::createFSEventsFileWatcher();
+        if (!watcher) {
+            spdlog::error("[FileWatcher] Failed to initialize macOS FSEvents file watcher");
+            watcher = std::make_unique<platform::NullFileWatcher>();
         }
         return watcher;
 #else
