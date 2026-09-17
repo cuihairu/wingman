@@ -71,7 +71,12 @@ public:
             NSData* data = [pb dataForType:NSPasteboardTypeHTML];
             if (data) {
                 NSString* nsStr = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-                if (nsStr) return [nsStr UTF8String];
+                if (nsStr) {
+                    // MRC（本文件无 fobjc-arc）：先拷出 UTF8 再释放
+                    std::string result = [nsStr UTF8String];
+                    [nsStr release];
+                    return result;
+                }
             }
             return "";
         }
@@ -86,7 +91,12 @@ public:
     }
 
     bool setImage(const std::vector<uint8_t>& imageData, int width, int height) override {
-        if (!initialized_ || imageData.empty()) return false;
+        // bytesPerRow=width*4 的 BGRA 原始位图契约：buffer 不足时 CGBitmapContext
+        // 读越界，此处显式拒绝（同 Windows 侧尺寸防御语义）
+        if (!initialized_ || imageData.empty() || width <= 0 || height <= 0 ||
+            imageData.size() < static_cast<size_t>(width) * static_cast<size_t>(height) * 4) {
+            return false;
+        }
         @autoreleasepool {
             CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
             CGContextRef ctx = CGBitmapContextCreate(
@@ -106,6 +116,7 @@ public:
             NSPasteboard* pb = [NSPasteboard generalPasteboard];
             [pb clearContents];
             bool ok = [pb writeObjects:@[nsImage]] == YES;
+            [nsImage release];  // MRC（本文件无 fobjc-arc）
             return ok;
         }
     }
@@ -136,6 +147,11 @@ public:
             if (ctx) {
                 CGContextDrawImage(ctx, CGRectMake(0, 0, w, h), cgImage);
                 CGContextRelease(ctx);
+            } else {
+                // 位图上下文创建失败：尺寸与空数据一致，避免调用方拿到
+                // 非零尺寸却无像素数据
+                if (outWidth) *outWidth = 0;
+                if (outHeight) *outHeight = 0;
             }
             CGColorSpaceRelease(colorSpace);
             return data;
