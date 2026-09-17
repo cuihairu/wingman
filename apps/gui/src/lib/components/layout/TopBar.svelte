@@ -102,7 +102,7 @@
 		</button>
 		<span class="version-info" title={$connection.version}>{$connection.version}</span>
 		{#if $connection.remote}
-			<span class="remote-status remote-{$connection.remote.state}" title={$connection.remote.message}>
+			<span class={'remote-status remote-' + $connection.remote.state} title={$connection.remote.message}>
 				{$connection.remote.state === 'connected' ? '远程在线' : $connection.remote.state === 'reconnecting' ? '远程重连' : $connection.remote.state === 'connecting' ? '远程连接中' : $connection.remote.state === 'error' ? '远程异常' : '远程离线'}
 			</span>
 		{/if}

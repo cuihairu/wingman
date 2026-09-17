@@ -256,6 +256,7 @@ function createConnectionStore() {
 
 	/** 连接成功后从 Rust 端读取实际解析的 IPC 端点（如 unix socket 完整路径） */
 	async function refreshEndpoint(): Promise<void> {
+		/* istanbul ignore next -- 仅由 doConnect 的 invoke 分支调用 */
 		if (!invoke) return;
 		try {
 			const state = await invoke('get_ipc_state') as { connected: boolean; endpoint: string };

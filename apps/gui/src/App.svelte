@@ -19,6 +19,18 @@
 	import TriggersPage from './routes/triggers/+page.svelte';
 	import MacrosPage from './routes/macros/+page.svelte';
 
+	// 路由 → 页面组件分发表（router.current 类型恒为合法 key）
+	const pageMap: Record<string, typeof DashboardPage> = {
+		dashboard: DashboardPage,
+		scripts: ScriptsPage,
+		screen: ScreenPage,
+		logs: LogsPage,
+		settings: SettingsPage,
+		triggers: TriggersPage,
+		macros: MacrosPage,
+	};
+	const CurrentPage = $derived(pageMap[$router.current]!);
+
 	router.init();
 
 	const invoke = (window as any).__TAURI_INVOKE__;
@@ -114,21 +126,7 @@
 		<TopBar />
 
 		<div class="content-area">
-			{#if $router.current === 'dashboard'}
-				<DashboardPage />
-			{:else if $router.current === 'scripts'}
-				<ScriptsPage />
-			{:else if $router.current === 'screen'}
-				<ScreenPage />
-			{:else if $router.current === 'logs'}
-				<LogsPage />
-			{:else if $router.current === 'settings'}
-				<SettingsPage />
-		{:else if $router.current === 'triggers'}
-		<TriggersPage />
-		{:else if $router.current === 'macros'}
-		<MacrosPage />
-			{/if}
+			<CurrentPage />
 		</div>
 	</main>
 </div>

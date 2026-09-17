@@ -103,9 +103,11 @@ describe('normalizeTrigger（runtime → GUI 显示格式）', () => {
 				actions: [],
 			},
 			{ id: '6', name: '', enabled: true, condition: { ...baseCondition, type: 'color_found', value: 'zzz' }, actions: [] },
+			// 16777216 = 0x1000000 > 0xffffff：超范围十进制不转 hex，原样返回
+			{ id: '7', name: '', enabled: true, condition: { ...baseCondition, type: 'color_found', value: '16777216' }, actions: [] },
 		] as any);
 		const values = get(triggers).map(t => t.condition.value);
-		expect(values).toEqual(['#ff0000', '#ff0000', '#000abc', 'F9', '30,40', 'zzz']);
+		expect(values).toEqual(['#ff0000', '#ff0000', '#000abc', 'F9', '30,40', 'zzz', '16777216']);
 	});
 
 	it('缺失字段补默认值（id/name/enabled/region/tolerance/interval/oneShot/cooldown）', async () => {

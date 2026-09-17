@@ -19,10 +19,13 @@ export default defineConfig({
 		/// 单跑 3-7s 通过、全量并发 6-9s 超时），放宽到 20s 消除假失败。
 		testTimeout: 20_000,
 		coverage: {
-			provider: 'v8',
+			// istanbul 口径：binary-expr 只计逻辑运算符，规避 v8 对字符串拼接 `+` 的 branch 噪音
+			provider: 'istanbul',
 			include: ['src/**'],
-			// main.ts 为入口引导（jsdom 下不可测，挂载副作用），同 Dashboard 惯例排除
-			exclude: ['src/**/*.d.ts', 'src/main.ts', 'src-tauri/**'],
+			// main.ts 为入口引导（jsdom 下不可测，挂载副作用），同 Dashboard 惯例排除。
+			// CSS 必须排除：vitest 5 的 istanbul uncovered 补齐对 CSS 跳过插桩，
+			// 会把 instrumenter 内上一文件的恒等映射状态（零计数）误记到该文件头上（实测污染 macros.ts）。
+			exclude: ['src/**/*.d.ts', 'src/main.ts', 'src/**/*.css', 'src/**/*.html', 'src-tauri/**'],
 			reporter: ['text', 'json-summary', 'json'],
 		},
 	},

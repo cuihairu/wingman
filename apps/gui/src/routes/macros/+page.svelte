@@ -86,7 +86,7 @@
 						<span class="eyebrow">Capture</span>
 						<h3>录制控制</h3>
 					</div>
-					<span class="inline-count">{$macros.eventCount} events</span>
+					<span class="inline-count">{$macros.eventCount + ' events'}</span>
 				</div>
 				<div class="recording-banner" class:active={$macros.recording}>
 					<div class="banner-dot"></div>

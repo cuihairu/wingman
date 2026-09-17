@@ -109,5 +109,18 @@ describe('App 外壳（dev 模式）', () => {
 		await waitFor(() => {
 			expect(content().getByText('系统状态')).toBeInTheDocument();
 		});
+
+		// 多轮跨页切换：覆盖 else-if 链上 triggers 之后的分支分发路径
+		for (const [route, marker] of [
+			['triggers', '管理和配置自动化触发器'],
+			['macros', '准备就绪'],
+			['triggers', '管理和配置自动化触发器'],
+			['dashboard', '系统状态'],
+		] as const) {
+			router.navigate(route);
+			await waitFor(() => {
+				expect(content().getByText(marker)).toBeInTheDocument();
+			});
+		}
 	});
 });

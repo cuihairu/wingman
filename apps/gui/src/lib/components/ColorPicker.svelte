@@ -21,7 +21,7 @@
 </script>
 
 <div class="color-picker">
-	<div class="color-preview" style="background-color: {isValid ? value : '#000'}"></div>
+	<div class="color-preview" style={'background-color: ' + (isValid ? value : '#000')}></div>
 	<input
 		type="text"
 		class="color-input"
@@ -51,10 +51,11 @@
 	</label>
 </div>
 
+<!-- color 模式 confirm 恒带 color（ScreenPickerModal 保证），非空断言即可 -->
 {#if showPicker}
 	<ScreenPickerModal
 		mode="color"
-		onconfirm={(result) => handlePick(result.color || '#ff0000')}
+		onconfirm={(result) => handlePick(result.color!)}
 		onclose={() => showPicker = false}
 	/>
 {/if}

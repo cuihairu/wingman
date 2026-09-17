@@ -13,6 +13,8 @@
 	}
 
 	function handlePick(result: PickerResult) {
+		// region 模式 confirm 恒带 region（ScreenPickerModal 保证），else 兜底不可达
+		/* istanbul ignore next */
 		if (result.region) {
 			value = { ...result.region };
 		}

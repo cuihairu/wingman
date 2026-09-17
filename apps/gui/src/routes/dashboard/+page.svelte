@@ -163,7 +163,7 @@
 	<section class="page-header">
 		<div>
 			<h2 class="page-title">仪表板</h2>
-			<p class="page-subtitle">本地 runtime 控制台 · 最近刷新 {lastUpdated}</p>
+			<p class="page-subtitle">{'本地 runtime 控制台 · 最近刷新 ' + lastUpdated}</p>
 		</div>
 		<button class="btn" onclick={() => refreshDashboard(true)} disabled={refreshing}>
 			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -184,17 +184,17 @@
 		<div class="metric-panel">
 			<span class="metric-label">运行脚本</span>
 			<strong class="green">{status.running_scripts || runningScripts}</strong>
-			<span class="metric-note">已停止 {stoppedScripts}</span>
+			<span class="metric-note">{'已停止 ' + stoppedScripts}</span>
 		</div>
 		<div class="metric-panel">
 			<span class="metric-label">触发器</span>
-			<strong class="blue">{enabledTriggers}/{ $triggers.length }</strong>
-			<span class="metric-note">最近命中 {triggeredCount}</span>
+			<strong class="blue">{enabledTriggers + '/' + $triggers.length}</strong>
+			<span class="metric-note">{'最近命中 ' + triggeredCount}</span>
 		</div>
 		<div class="metric-panel">
 			<span class="metric-label">运行时间</span>
 			<strong>{formatUptime(status.uptime)}</strong>
-			<span class="metric-note">server {status.server || 'wingman'}</span>
+			<span class="metric-note">{'server ' + (status.server || 'wingman')}</span>
 		</div>
 	</section>
 
@@ -208,8 +208,8 @@
 				<h3>{$activeProfile.name}</h3>
 				<p>{$activeProfile.description || '未填写描述'}</p>
 				<div class="profile-tags">
-					<span>{activeProfileScripts} 个脚本</span>
-					<span>{activeProfileTriggers} 个触发器</span>
+					<span>{activeProfileScripts + ' 个脚本'}</span>
+					<span>{activeProfileTriggers + ' 个触发器'}</span>
 					{#each activeProfileHotkeys as hotkey}
 						<span>{hotkey}</span>
 					{/each}
@@ -274,7 +274,7 @@
 						<div class="compact-row">
 							<div>
 								<strong>{script.name}</strong>
-								<span>{script.path} · {formatSize(script.size)}</span>
+								<span>{script.path + ' · ' + formatSize(script.size)}</span>
 							</div>
 							<span class="pill" class:green-pill={script.is_running}>{script.is_running ? '运行中' : '已停止'}</span>
 						</div>
@@ -296,7 +296,7 @@
 						<div class="compact-row">
 							<div>
 								<strong>{trigger.name}</strong>
-								<span>{conditionLabel(trigger.condition.type)} · {trigger.actions.length} 个动作</span>
+								<span>{conditionLabel(trigger.condition.type) + ' · ' + trigger.actions.length + ' 个动作'}</span>
 							</div>
 							<span class="pill" class:green-pill={trigger.enabled}>{trigger.enabled ? '启用' : '停用'}</span>
 						</div>
@@ -317,7 +317,7 @@
 					{#each recentLogs as log}
 						<div class="log-row">
 							<span>{log.time}</span>
-							<strong class="log-{log.type}">{log.message}</strong>
+							<strong class={'log-' + log.type}>{log.message}</strong>
 						</div>
 					{/each}
 				</div>

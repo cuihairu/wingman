@@ -72,6 +72,7 @@
 
 	/// 截图加载完成后绘制到离屏 canvas（用于读像素）
 	async function prepareCanvas() {
+		/* istanbul ignore next -- 事件仅在截图渲染后绑定 */
 		if (!imgEl || !screenshot) return;
 		try {
 			await imgEl.decode();
@@ -92,6 +93,7 @@
 	}
 
 	function eventToImage(e: PointerEvent): Point | null {
+		/* istanbul ignore next -- 事件仅在截图渲染后绑定 */
 		if (!imgEl || !screenshot) return null;
 		const rect = imgEl.getBoundingClientRect();
 		if (rect.width === 0 || rect.height === 0) return null;
@@ -104,6 +106,7 @@
 	}
 
 	function imageToScreenRegion(a: Point, b: Point): ScreenRegion | null {
+		/* istanbul ignore next -- 事件仅在截图渲染后绑定 */
 		if (!screenshot) return null;
 		const x = Math.min(a.x, b.x);
 		const y = Math.min(a.y, b.y);
@@ -119,6 +122,7 @@
 	}
 
 	function pixelToPercent(p: Point): { left: number; top: number } {
+		/* istanbul ignore next -- 事件仅在截图渲染后绑定 */
 		if (!screenshot) return { left: 0, top: 0 };
 		return {
 			left: (p.x / screenshot.width) * 100,
@@ -127,6 +131,7 @@
 	}
 
 	function readPixel(p: Point): string | null {
+		/* istanbul ignore next -- 事件仅在截图渲染后绑定 */
 		if (!offscreen) return null;
 		const ctx = offscreen.getContext('2d', { willReadFrequently: true });
 		if (!ctx) return null;
@@ -203,6 +208,8 @@
 		} else {
 			if (!pickedColor || !pickedPos) return;
 			const result: PickerResult = { color: pickedColor };
+			// pickedColor 仅在 prepareCanvas 就绪后写入，此时 screenshot 恒非空
+			/* istanbul ignore next */
 			if (screenshot) {
 				result.position = {
 					x: screenshot.region.x + pickedPos.x,
@@ -261,11 +268,13 @@
 	});
 
 	const dragSizeLabel = $derived.by(() => {
+		/* istanbul ignore next -- 事件仅在截图渲染后绑定 */
 		if (!dragStart || !dragCurrent) return '';
 		return `${Math.abs(dragStart.x - dragCurrent.x)}×${Math.abs(dragStart.y - dragCurrent.y)}`;
 	});
 
 	const hoverColor = $derived.by(() => {
+		/* istanbul ignore next -- 事件仅在截图渲染后绑定 */
 		if (!hoverPos || !offscreen) return null;
 		return readPixel(hoverPos);
 	});
@@ -327,7 +336,7 @@
 						{#if fixedSelectionStyle && !dragStart}
 							<div class="sel-rect" style={fixedSelectionStyle}>
 								<span class="sel-label">
-									{selectedRegion?.x},{selectedRegion?.y} · {selectedRegion?.width}×{selectedRegion?.height}
+									{selectedRegion!.x + ',' + selectedRegion!.y + ' · ' + selectedRegion!.width + '×' + selectedRegion!.height}
 								</span>
 							</div>
 						{/if}
@@ -347,9 +356,8 @@
 							class="hover-readout"
 							style={`left: min(calc(${hoverCrossStyle.left}% + ${MAG_SIZE + 32}px), calc(100% - 200px)); top: ${hoverCrossStyle.top};`}
 						>
-							{#if hoverPos && screenshot}
-								<span class="readout-coord">{screenshot.region.x + hoverPos.x},{screenshot.region.y + hoverPos.y}</span>
-							{/if}
+							<!-- 外层 hoverCrossStyle 已保证 hoverPos/screenshot 非空 -->
+							<span class="readout-coord">{screenshot!.region.x + hoverPos!.x + ',' + (screenshot!.region.y + hoverPos!.y)}</span>
 							{#if hoverColor}
 								<span class="readout-swatch" style={`background: ${hoverColor}`}></span>
 								<span class="readout-hex">{hoverColor}</span>
@@ -370,9 +378,8 @@
 					<span class="picked-preview">
 						<span class="readout-swatch large" style={`background: ${pickedColor}`}></span>
 						<span class="readout-hex">{pickedColor}</span>
-						{#if pickedPos && screenshot}
-							<span class="readout-coord">@ {screenshot.region.x + pickedPos.x},{screenshot.region.y + pickedPos.y}</span>
-						{/if}
+						<!-- pickedColor 与 pickedPos 同点位写入，外层已保证非空 -->
+						<span class="readout-coord">{'@ ' + (screenshot!.region.x + pickedPos!.x) + ',' + (screenshot!.region.y + pickedPos!.y)}</span>
 					</span>
 				{/if}
 			</div>

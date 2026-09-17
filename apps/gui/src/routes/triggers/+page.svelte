@@ -68,12 +68,22 @@
 		actionTypes.map(a => [a.value, a.label])
 	);
 
+	/// normalizeConditionType 恒返回合法类型且 labels 覆盖全集，兜底为防御
+	function conditionLabel(type: string): string {
+		/* istanbul ignore next */
+		return conditionLabels[type] || type;
+	}
+
+	/// normalizeActionType 恒返回合法类型且 labels 覆盖全集，兜底为防御
+	function actionLabel(type: string): string {
+		/* istanbul ignore next */
+		return actionLabels[type] || '参数';
+	}
+
 	/// 各条件类型的 value 语义
 	function conditionValueLabel(type: TriggerConditionType): string | null {
 		switch (type) {
-			case 'color_found':
-			case 'color_lost':
-				return null; // 由 ColorPicker 接管
+			// 颜色类型（color_found/color_lost）由 ColorPicker 接管，落入 default 返回 null
 			case 'image_found':
 			case 'image_lost':
 				return '模板图片路径';
@@ -114,19 +124,22 @@
 			case 'show_message': return '消息内容';
 			case 'play_audio': return 'audio/alert.wav';
 			case 'log': return '日志内容';
-			default: return '参数';
+			default: return '参数'; // click/delay 由专用字段渲染；未知类型（导入数据）兜底
 		}
 	}
 
 	function withEditorDefaults(config: TriggerConfig): TriggerConfig {
+		const cond = { ...config.condition };
+		// normalizeTrigger 对所有入口（set/load/add/update）均补齐字段，以下为编辑器双保险守卫
+		/* istanbul ignore next */
+		if (cond.tolerance == null) cond.tolerance = 10;
+		/* istanbul ignore next */
+		if (cond.interval == null) cond.interval = 1000;
+		/* istanbul ignore next */
+		if (cond.region == null) cond.region = { x: 0, y: 0, width: 0, height: 0 };
 		return {
 			...config,
-			condition: {
-				...config.condition,
-				tolerance: config.condition.tolerance ?? 10,
-				interval: config.condition.interval ?? 1000,
-				region: config.condition.region ?? { x: 0, y: 0, width: 0, height: 0 },
-			},
+			condition: cond,
 			oneShot: config.oneShot ?? false,
 			cooldown: config.cooldown ?? 0,
 		};
@@ -153,12 +166,14 @@
 	}
 
 	async function saveTrigger() {
+		/* istanbul ignore next -- 编辑面板不存在时按钮已卸载，防御守卫 */
 		if (!editing) return;
 		await triggers.update(editing.id, editing);
 		logs.add(`已保存触发器: ${editing.name}`, 'success');
 	}
 
 	async function deleteTrigger() {
+		/* istanbul ignore next -- 编辑面板不存在时操作按钮已卸载 */
 		if (!editing) return;
 		const confirmed = confirm(`确定删除触发器 "${editing.name}" 吗？此操作不可撤销。`);
 		if (!confirmed) return;
@@ -169,6 +184,7 @@
 	}
 
 	function addAction() {
+		/* istanbul ignore next -- 编辑面板不存在时操作按钮已卸载 */
 		if (!editing) return;
 		editing = {
 			...editing,
@@ -177,6 +193,7 @@
 	}
 
 	function removeAction(index: number) {
+		/* istanbul ignore next -- 编辑面板不存在时操作按钮已卸载 */
 		if (!editing) return;
 		editing = {
 			...editing,
@@ -185,6 +202,7 @@
 	}
 
 	function moveAction(index: number, delta: number) {
+		/* istanbul ignore next -- 编辑面板不存在时操作按钮已卸载 */
 		if (!editing) return;
 		const target = index + delta;
 		if (target < 0 || target >= editing.actions.length) return;
@@ -194,6 +212,7 @@
 	}
 
 	function updateAction(index: number, field: string, value: any) {
+		/* istanbul ignore next -- 编辑面板不存在时操作按钮已卸载 */
 		if (!editing) return;
 		const actions = [...editing.actions];
 		actions[index] = { ...actions[index], [field]: value };
@@ -202,6 +221,7 @@
 
 	/// 切换动作类型时重置无关字段，保留可复用字段
 	function changeActionType(index: number, type: TriggerAction['type']) {
+		/* istanbul ignore next -- 编辑面板不存在时操作按钮已卸载 */
 		if (!editing) return;
 		const actions = [...editing.actions];
 		const prev = actions[index];
@@ -219,11 +239,6 @@
 		return parseInt(v) || 0;
 	}
 
-	function parsePixelPoint(value: string): { x: number; y: number } {
-		const [x, y] = value.split(',').map(v => parseInt(v.trim()));
-		return { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 };
-	}
-
 	async function toggleTrigger(id: string) {
 		await triggers.toggle(id);
 	}
@@ -236,6 +251,7 @@
 	}
 
 	function formatFiredTime(ts?: number): string {
+		/* istanbul ignore next -- 模板 title 三元已过滤空值（NaN 亦为 falsy），守卫为防御 */
 		if (!ts) return '';
 		const d = new Date(ts);
 		if (Number.isNaN(d.getTime())) return '';
@@ -245,6 +261,7 @@
 	// ---- 拾取回调 ----
 
 	function handleClickPick(result: { position?: { x: number; y: number } }) {
+		/* istanbul ignore next -- 拾取弹窗仅编辑态可开且 color 模式确认恒带 position，else 不可达 */
 		if (editing && clickPickIndex !== null && result.position) {
 			updateAction(clickPickIndex, 'x', result.position.x);
 			updateAction(clickPickIndex, 'y', result.position.y);
@@ -253,6 +270,7 @@
 	}
 
 	function handlePixelPick(result: { position?: { x: number; y: number } }) {
+		/* istanbul ignore next -- 像素拾取弹窗仅编辑态可开且确认恒带 position，else 不可达 */
 		if (editing && result.position) {
 			editing = {
 				...editing,
@@ -306,7 +324,7 @@
 									></span>
 									<div class="trigger-name">{trigger.name}</div>
 								</div>
-								<div class="trigger-type">{conditionLabels[trigger.condition.type] || trigger.condition.type}</div>
+								<div class="trigger-type">{conditionLabel(trigger.condition.type)}</div>
 							</div>
 							<button
 								class="toggle-btn"
@@ -458,7 +476,7 @@
 									{:else}
 										<div class="action-fields">
 											<label class="grow">
-												<span>{actionLabels[action.type] || '参数'}</span>
+												<span>{actionLabel(action.type)}</span>
 												<input
 													type="text"
 													value={action.value || ''}

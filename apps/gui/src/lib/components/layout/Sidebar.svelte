@@ -13,6 +13,17 @@
 		{ id: 'settings', label: '设置', icon: 'settings' },
 	];
 
+	// 导航图标（静态 SVG 字符串，按键分发；navItems 的 icon 恒为合法 key）
+	const NAV_ICONS: Record<string, string> = {
+		dashboard: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`,
+		scripts: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`,
+		screen: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"></rect><line x1="8" y1="20" x2="16" y2="20"></line><line x1="12" y1="16" x2="12" y2="20"></line><path d="M8 9h8"></path><path d="M8 12h5"></path></svg>`,
+		logs: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`,
+		triggers: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`,
+		macros: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="6" r="1"></circle><circle cx="18" cy="12" r="1"></circle><circle cx="12" cy="18" r="1"></circle><circle cx="6" cy="12" r="1"></circle></svg>`,
+		settings: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6"></path><path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"></path><path d="M1 12h6m6 0h6"></path><path d="m4.93 19.07 4.24-4.24m5.66-5.66 4.24-4.24"></path></svg>`,
+	};
+
 	async function minimizeToTray() {
 		if (!(window as any).__TAURI_INVOKE__) {
 			logs.add('开发模式下无法最小化到托盘', 'info');
@@ -43,57 +54,7 @@
 				title={item.label}
 				aria-current={$router.current === item.id ? 'page' : undefined}
 			>
-				{#if item.icon === 'dashboard'}
-					<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<rect x="3" y="3" width="7" height="7"></rect>
-						<rect x="14" y="3" width="7" height="7"></rect>
-						<rect x="14" y="14" width="7" height="7"></rect>
-						<rect x="3" y="14" width="7" height="7"></rect>
-					</svg>
-				{:else if item.icon === 'scripts'}
-					<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-						<polyline points="14 2 14 8 20 8"></polyline>
-						<line x1="16" y1="13" x2="8" y2="13"></line>
-						<line x1="16" y1="17" x2="8" y2="17"></line>
-					</svg>
-				{:else if item.icon === 'screen'}
-					<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<rect x="3" y="4" width="18" height="12" rx="2"></rect>
-						<line x1="8" y1="20" x2="16" y2="20"></line>
-						<line x1="12" y1="16" x2="12" y2="20"></line>
-						<path d="M8 9h8"></path>
-						<path d="M8 12h5"></path>
-					</svg>
-				{:else if item.icon === 'logs'}
-					<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-						<polyline points="14 2 14 8 20 8"></polyline>
-						<line x1="16" y1="13" x2="8" y2="13"></line>
-						<line x1="16" y1="17" x2="8" y2="17"></line>
-					</svg>
-			{:else if item.icon === 'triggers'}
-				<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-				</svg>
-			{:else if item.icon === 'macros'}
-				<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<circle cx="12" cy="12" r="3"></circle>
-					<circle cx="12" cy="12" r="9"></circle>
-					<circle cx="12" cy="6" r="1"></circle>
-					<circle cx="18" cy="12" r="1"></circle>
-					<circle cx="12" cy="18" r="1"></circle>
-					<circle cx="6" cy="12" r="1"></circle>
-				</svg>
-				{:else if item.icon === 'settings'}
-					<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<circle cx="12" cy="12" r="3"></circle>
-						<path d="M12 1v6m0 6v6"></path>
-						<path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"></path>
-						<path d="M1 12h6m6 0h6"></path>
-						<path d="m4.93 19.07 4.24-4.24m5.66-5.66 4.24-4.24"></path>
-					</svg>
-				{/if}
+				{@html NAV_ICONS[item.icon]!}
 				<span>{item.label}</span>
 			</button>
 		{/each}

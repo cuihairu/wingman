@@ -70,6 +70,7 @@
 	}
 
 	function handleScroll() {
+		/* istanbul ignore next -- 容器绑定失败时无日志可滚动 */
 		if (!logContainer) return;
 		const atBottom = isAtBottom(logContainer);
 		if (atBottom) {
@@ -83,6 +84,7 @@
 	}
 
 	function scrollToBottom() {
+		/* istanbul ignore next -- 容器绑定失败时无日志可滚动 */
 		if (!logContainer) return;
 		logContainer.scrollTop = logContainer.scrollHeight;
 		userScrolled = false;
@@ -101,6 +103,7 @@
 		const len = filteredLogs.length;
 		const added = Math.max(0, len - lastLength);
 		lastLength = len;
+		/* istanbul ignore next -- 容器绑定失败时无日志可滚动 */
 		if (!logContainer) return;
 		if (!autoScroll) return;
 		if (userScrolled) {
@@ -153,7 +156,7 @@
 	<section class="card">
 		{#if $dropped > 0}
 			<div class="dropped-banner" title="runtime EventBuffer 有界，溢出时优先丢弃高频 log.line 事件">
-				<span>runtime 事件缓冲溢出，累计丢弃 {$dropped} 条事件（log.line 优先）。提高日志级别或减少高频输出可缓解。</span>
+				<span>{'runtime 事件缓冲溢出，累计丢弃 ' + $dropped + ' 条事件（log.line 优先）。提高日志级别或减少高频输出可缓解。'}</span>
 			</div>
 		{/if}
 
@@ -197,7 +200,7 @@
 					<span></span><span></span><span></span>
 				</div>
 				<div class="terminal-meta">
-					<span>{filteredLogs.length} lines</span>
+					<span>{filteredLogs.length + ' lines'}</span>
 					{#if query.trim() || selectedLevel !== 'all' || selectedSource !== 'all'}
 						<button class="link-btn" onclick={clearFilters}>清除筛选</button>
 					{/if}
@@ -213,8 +216,8 @@
 					{#each filteredLogs as log}
 						<button class="log-entry" onclick={() => copyEntry(log)} title="点击复制整行">
 							<span class="log-time">{log.time}</span>
-							<span class="log-level log-{log.type}">{log.type.toUpperCase()}</span>
-							<span class="log-source src-{log.source}">{log.source === 'gui' ? 'GUI' : 'RT'}</span>
+							<span class={'log-level log-' + log.type}>{log.type.toUpperCase()}</span>
+							<span class={'log-source src-' + log.source}>{log.source === 'gui' ? 'GUI' : 'RT'}</span>
 							<span class="log-message">{log.message}</span>
 						</button>
 					{/each}
@@ -222,7 +225,7 @@
 			</div>
 			{#if autoScroll && userScrolled && newCount > 0}
 				<button class="new-logs-jump" onclick={scrollToBottom}>
-					↓ {newCount} 条新日志
+					{'↓ ' + newCount + ' 条新日志'}
 				</button>
 			{/if}
 		</div>

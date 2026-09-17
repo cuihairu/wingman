@@ -136,6 +136,33 @@ describe('App 外壳（invoke 模式）第二组', () => {
 		}
 	});
 
+	it('心跳：连接中 refresh 成功静默（不写断线日志）', { timeout: 20_000 }, async () => {
+		const { render, waitFor, cleanup, logs, connection, App } = await fresh((cmd) => {
+			switch (cmd) {
+				case 'connect_ipc': return {};
+				case 'get_ipc_state': return { connected: true, endpoint: 'wingman' };
+				case 'get_system_status':
+					return { server: 'wingman', version: '1.0', uptime: 5, running_scripts: 0, paused: false };
+				case 'get_profiles': return [];
+				case 'get_active_profile': return null;
+				case 'get_scripts': return [];
+				default: return {};
+			}
+		});
+
+		try {
+			render(App);
+			await waitFor(() => {
+				expect(get(connection).ipc.state).toBe('connected');
+			});
+			// 心跳 tick 时 refresh 成功返回 status → !status 走 else 侧，不写断线日志
+			await new Promise(r => setTimeout(r, 5400));
+			expect(get(logs).some(e => e.message.includes('与本地 runtime 的连接中断'))).toBe(false);
+		} finally {
+			cleanup();
+		}
+	});
+
 	it('心跳：连接中 refresh 失败写断线日志', { timeout: 20_000 }, async () => {
 		let statusOk = true;
 		const { render, waitFor, cleanup, logs, connection, App } = await fresh((cmd) => {

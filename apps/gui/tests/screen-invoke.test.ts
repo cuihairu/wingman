@@ -179,4 +179,65 @@ describe('屏幕预览页（invoke 模式）', () => {
 			expect(screen.getByText(/xrandr missing/)).toBeInTheDocument();
 		});
 	});
+
+	it('显示器无名称且非主屏时回退「显示器 id」显示', async () => {
+		const { render, screen, waitFor, Page } = await fresh((cmd) => {
+			if (cmd === 'capture_screenshot') return makeShot();
+			if (cmd === 'list_monitors') {
+				return [
+					{ id: 1, name: '主屏', isPrimary: true, bounds: { x: 0, y: 0, width: 1920, height: 1080 } },
+					{ id: 3, name: '', isPrimary: false, bounds: { x: 0, y: 0, width: 1024, height: 768 } },
+				];
+			}
+			return {};
+		});
+		render(Page);
+		await waitFor(() => {
+			const select = screen.getByDisplayValue('主显示器') as HTMLSelectElement;
+			const option = [...select.options].map(o => o.textContent?.trim().replace(/\s+/g, ' '));
+			expect(option).toContain('显示器 3 · 1024x768');
+		});
+	});
+
+	it('截图与显示器枚举抛出非错误对象时错误消息取字符串形式', async () => {
+		const { render, screen, waitFor, Page } = await fresh((cmd) => {
+			if (cmd === 'capture_screenshot') throw 'display raw failure';
+			if (cmd === 'list_monitors') throw 'monitor raw failure';
+			return {};
+		});
+		render(Page);
+		await waitFor(() => {
+			expect(screen.getByText('display raw failure')).toBeInTheDocument();
+			expect(screen.getByText(/monitor raw failure/)).toBeInTheDocument();
+		});
+	});
+
+	it('重试进行中主按钮切换为「刷新中」', async () => {
+		let release!: (v: unknown) => void;
+		const gate = new Promise(r => { release = r; });
+		let fail = true;
+		const { render, screen, fireEvent, waitFor, Page } = await fresh((cmd) => {
+			if (cmd === 'capture_screenshot') {
+				if (fail) throw new Error('first boom');
+				return gate;
+			}
+			if (cmd === 'list_monitors') return [];
+			return {};
+		});
+		render(Page);
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument();
+		});
+
+		// 重试挂起 → loading=true：error 面板清空，主按钮变「刷新中」
+		fail = false;
+		await fireEvent.click(screen.getByRole('button', { name: '重试' }));
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: '刷新中' })).toBeDisabled();
+		});
+		release(makeShot());
+		await waitFor(() => {
+			expect(screen.getByRole('img', { name: '屏幕截图' })).toBeInTheDocument();
+		});
+	});
 });
