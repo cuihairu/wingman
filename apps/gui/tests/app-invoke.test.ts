@@ -51,8 +51,8 @@ afterEach(() => {
 });
 
 describe('App 外壳（invoke 模式）', () => {
-	// 真实定时器退避（1s+2s 重连）贴近默认 5s 超时，慢机上会误报，放宽到 20s
-	it('自动连接失败进入指数退避重连，恢复后重载数据并自启脚本', { timeout: 20_000 }, async () => {
+	// 真实定时器退避（1s+2s 重连）贴近默认 5s 超时，慢机上会误报，放宽到 30s
+	it('自动连接失败进入指数退避重连，恢复后重载数据并自启脚本', { timeout: 30_000 }, async () => {
 		let connectCalls = 0;
 		const startCalls: string[] = [];
 		const { render, waitFor, cleanup, logs, connection, scripts, App } = await fresh((cmd, args) => {

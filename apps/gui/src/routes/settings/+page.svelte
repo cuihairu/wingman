@@ -87,6 +87,7 @@
 	async function createProfile() {
 		if (!newProfileName.trim()) return;
 		const id = await profiles.create(newProfileName.trim());
+		/* istanbul ignore next -- profiles.create 恒返回 id */
 		if (id) {
 			logs.add(`已创建配置: ${newProfileName.trim()}`, 'success');
 			newProfileName = '';

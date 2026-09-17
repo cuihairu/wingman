@@ -61,3 +61,15 @@ describe('scripts 页：无名脚本操作日志', () => {
 		});
 	});
 });
+
+describe('actionValuePlaceholder（module 导出的纯函数）', () => {
+	it('已知动作类型返回对应占位，未收录类型兜底"参数"', async () => {
+		const mod = await import('../src/routes/triggers/+page.svelte');
+		expect(mod.actionValuePlaceholder('run_script')).toBe('scripts/farm.lua');
+		expect(mod.actionValuePlaceholder('stop_script')).toBe('脚本名或路径');
+		expect(mod.actionValuePlaceholder('log')).toBe('日志内容');
+		// click/delay 由专用字段渲染，落入兜底
+		expect(mod.actionValuePlaceholder('click')).toBe('参数');
+		expect(mod.actionValuePlaceholder('delay')).toBe('参数');
+	});
+});

@@ -222,3 +222,24 @@ describe('触发器页：列表边界', () => {
 		expect(screen.getByText('从左侧选择一个触发器进行编辑')).toBeInTheDocument();
 	});
 });
+
+describe('触发器页：编辑切换', () => {
+	it('从 A 切到 B 编辑：面板就地更新（条件/动作下拉走 each 更新路径）', async () => {
+		const a = makeTrigger({ id: 'a', name: '触发器A', actions: [{ type: 'log', value: 'x' }] });
+		const b = makeTrigger({ id: 'b', name: '触发器B', actions: [{ type: 'log', value: 'y' }] });
+		triggers.set([a, b]);
+		render(Page);
+		await fireEvent.click(screen.getByText('触发器A'));
+		await waitFor(() => {
+			expect(screen.getByText('编辑触发器: 触发器A')).toBeInTheDocument();
+		});
+		// 切到 B：editing 换对象，{#if editing} 块就地更新（非卸载重建）
+		await fireEvent.click(screen.getByText('触发器B'));
+		await waitFor(() => {
+			expect(screen.getByText('编辑触发器: 触发器B')).toBeInTheDocument();
+		});
+		// B 的动作卡仍在，条件类型下拉仍可交互
+		expect(document.querySelectorAll('.action-card').length).toBe(1);
+		expect((document.querySelector('.action-card select') as HTMLSelectElement).value).toBe('log');
+	});
+});

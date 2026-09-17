@@ -97,6 +97,34 @@ describe('屏幕预览页：readPixel 上下文获取失败', () => {
 		// readPixel 返回 null：悬停读数不出现色块
 		expect(document.querySelector('.hover-readout .swatch')).toBeNull();
 	});
+
+	it('点击拾取时颜色为 null：坐标卡片显示但拾色结果区隐藏', async () => {
+		// 建画布成功，之后 readPixel 的 getContext 返回 null → pointer.color = null
+		const proto = (window as any).HTMLCanvasElement.prototype;
+		const real = proto.getContext;
+		let calls = 0;
+		proto.getContext = vi.fn((...args: unknown[]) => {
+			calls += 1;
+			return calls <= 1 ? real.apply(proto, args) : null;
+		});
+
+		render(Page);
+		const img = await waitImg();
+		makeImgLoaded(img, 1280, 720);
+		stubRect(img, 0, 0, RECT_W, RECT_H);
+		await fireEvent.load(img);
+		await new Promise(r => setTimeout(r, 50));
+
+		const surface = screen.getByRole('img', { name: SURFACE_LABEL });
+		await fireEvent.pointerDown(surface, { clientX: 12.8, clientY: 7.2, pointerId: 1 });
+		await fireEvent.pointerUp(surface, { pointerId: 1 });
+		await waitFor(() => {
+			expect(screen.getByText('128, 72')).toBeInTheDocument();
+		});
+		// pointer 存在但 color 为 null：不渲染拾色结果（.picked-color 隐藏）
+		expect(document.querySelector('.coordinate-card')).toBeTruthy();
+		expect(document.querySelector('.picked-color')).toBeNull();
+	});
 });
 
 describe('屏幕预览页：坐标输入与以坐标为中心', () => {

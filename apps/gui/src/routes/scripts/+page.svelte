@@ -708,9 +708,7 @@
 									<span class="status-dot"></span>
 									{stateLabels[script.state]}
 								</span>
-								{#if script.loaded_at}
-									<span class="uptime" title="自最近一次加载起的时长">{'⏱ ' + scriptUptime(script)}</span>
-								{/if}
+								<span class="uptime" title="自最近一次加载起的时长">{'⏱ ' + scriptUptime(script)}</span>
 							</div>
 							<div class="script-meta">
 								<span title={script.path}>{parentPath(script.path)}/{fileName(script.path)}</span>

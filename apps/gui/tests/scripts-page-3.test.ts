@@ -48,7 +48,7 @@ afterEach(() => {
 });
 
 describe('scripts 页：运行时长边界', () => {
-	it('秒档显示 Ns，loaded_at 为 0 时不渲染时长徽标', async () => {
+	it('秒档显示 Ns，loaded_at 为 0 时时长占位为 -', async () => {
 		scripts.set([
 			makeScript('secs', 'running', { loaded_at: Date.now() - 5_000 }),
 			makeScript('zero', 'running', { loaded_at: 0 }),
@@ -59,8 +59,8 @@ describe('scripts 页：运行时长边界', () => {
 		const zeroItem = itemOf('zero.lua');
 		// 5s 内（页面 nowTick 每秒推进，边界内取整为 4-5s）
 		expect(within(secsItem).getByText(/^⏱ /).textContent).toMatch(/^⏱ [1-9]s$/);
-		// loaded_at=0 → {#if script.loaded_at} 守卫：徽标不渲染
-		expect(within(zeroItem).queryByText(/^⏱ /)).not.toBeInTheDocument();
+		// loaded_at=0 → scriptUptime 兜底返回 '-'
+		expect(within(zeroItem).getByText(/^⏱ /).textContent).toBe('⏱ -');
 	});
 });
 

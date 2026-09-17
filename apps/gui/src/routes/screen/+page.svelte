@@ -292,17 +292,13 @@
 		};
 	}
 
-	/// 用拾取到的真实颜色更新 ColorPicker
+	/// 用拾取到的真实颜色更新 ColorPicker（调用点已被 {#if pointer.color} 守卫）
 	function usePickedColor() {
-		if (pointer?.color) {
-			targetColor = pointer.color;
-		}
+		targetColor = pointer!.color!;
 	}
 
 	function copyPickedColor() {
-		if (pointer?.color) {
-			void copyText(pointer.color, '颜色');
-		}
+		void copyText(pointer!.color!, '颜色');
 	}
 
 	async function copyText(text: string, label: string) {
@@ -445,8 +441,9 @@
 			{#if $screen.error}
 				<div class="error-panel">
 					<span>{$screen.error}</span>
+					<!-- capture 开始即清空 error（面板随之卸载），loading 期间的"重试中"文案不可达，按钮恒为"重试" -->
 					<button class="btn btn-sm" onclick={() => capture(true)} disabled={$screen.loading}>
-						{$screen.loading ? '重试中' : '重试'}
+						重试
 					</button>
 				</div>
 			{/if}

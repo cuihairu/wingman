@@ -1,3 +1,23 @@
+<script module lang="ts">
+	import type { TriggerConfig } from '$lib/stores/triggers';
+
+	/// 动作 value 字段占位提示（click/delay 由专用字段渲染；未知类型兜底）
+	const ACTION_VALUE_PLACEHOLDERS: Record<string, string> = {
+		run_script: 'scripts/farm.lua',
+		stop_script: '脚本名或路径',
+		pause_script: '脚本名或路径',
+		key_press: 'F1 / 1 / ctrl+s',
+		type: '要输入的文本',
+		show_message: '消息内容',
+		play_audio: 'audio/alert.wav',
+		log: '日志内容',
+	};
+
+	export function actionValuePlaceholder(type: string): string {
+		return ACTION_VALUE_PLACEHOLDERS[type] || '参数';
+	}
+</script>
+
 <script lang="ts">
 	import {
 		triggers,
@@ -111,21 +131,6 @@
 	/// 条件是否需要容差
 	function conditionUsesTolerance(type: TriggerConditionType): boolean {
 		return conditionUsesRegion(type) || type === 'pixel_changed';
-	}
-
-	/// 动作 value 字段占位提示
-	function actionValuePlaceholder(type: string): string {
-		switch (type) {
-			case 'run_script': return 'scripts/farm.lua';
-			case 'stop_script':
-			case 'pause_script': return '脚本名或路径';
-			case 'key_press': return 'F1 / 1 / ctrl+s';
-			case 'type': return '要输入的文本';
-			case 'show_message': return '消息内容';
-			case 'play_audio': return 'audio/alert.wav';
-			case 'log': return '日志内容';
-			default: return '参数'; // click/delay 由专用字段渲染；未知类型（导入数据）兜底
-		}
 	}
 
 	function withEditorDefaults(config: TriggerConfig): TriggerConfig {
