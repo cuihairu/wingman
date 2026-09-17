@@ -214,19 +214,8 @@ jobs:
           retention-days: 30
           overwrite: true
 
-      # 仅追加产物文件，不携带 body——release notes 由调用方（release.yml create-release）统一写入，
-      # 避免多平台 job 并行上传时互相覆盖 body
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ inputs.release_tag }}
-          name: ${{ inputs.release_tag }}
-          files: wingman-${{ inputs.version }}-windows-x64.zip
-          prerelease: ${{ inputs.prerelease }}
-          draft: false
-          overwrite_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Release 上传由末尾 publish-assets job 统一顺序执行（重试 + 大小校验，
+      # 消除三平台并发上传的竞态与单次网络抖动敏感）
 
   build-linux:
     name: Linux x64
@@ -358,18 +347,6 @@ jobs:
           retention-days: 30
           overwrite: true
 
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ inputs.release_tag }}
-          name: ${{ inputs.release_tag }}
-          files: wingman-${{ inputs.version }}-linux-x64.tar.gz
-          prerelease: ${{ inputs.prerelease }}
-          draft: false
-          overwrite_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   build-macos:
     name: macOS x64
     runs-on: macos-15-intel
@@ -496,14 +473,95 @@ jobs:
           retention-days: 30
           overwrite: true
 
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v3
+  # 统一 Release 发布：三平台构建全部成功后，顺序上传产物（gh release upload
+  # --clobber + 指数退避重试 + 远端大小校验）。替代原先各平台 job 里的并发
+  # softprops 上传——2026-09-17 一晚两次上传抖动（Windows Headers Timeout /
+  # macOS 网关 HTML 错误页），且超时会留下 release 上的半截资产。构建产物
+  # 经 artifacts 传递，release notes 仍由调用方统一写入（不携带 body）。
+  publish-assets:
+    name: Publish Release Assets
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v7
         with:
-          tag_name: ${{ inputs.release_tag }}
-          name: ${{ inputs.release_tag }}
-          files: wingman-${{ inputs.version }}-macos-x64.tar.gz
-          prerelease: ${{ inputs.prerelease }}
-          draft: false
-          overwrite_files: true
+          path: assets
+          merge-multiple: true
+          pattern: wingman-${{ inputs.version }}-*
+
+      - name: Upload to GitHub Release with retry
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          cd assets
+          ls -la
+
+          # release 不存在时兜底创建（正常路径：nightly 滚动 tag 已存在 /
+          # release.yml create-release 已建 draft）
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG does not exist, creating"
+            create_args=(--title "$RELEASE_TAG")
+            if [ "$PRERELEASE" = "true" ]; then
+              create_args+=(--prerelease)
+            fi
+            gh release create "$RELEASE_TAG" "${create_args[@]}" --repo "$GITHUB_REPOSITORY"
+          fi
+
+          upload_one() {
+            local f="$1"
+            local attempt
+            for attempt in 1 2 3; do
+              if gh release upload "$RELEASE_TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY"; then
+                return 0
+              fi
+              echo "::warning::Upload attempt $attempt failed for $f"
+              if [ "$attempt" -lt 3 ]; then
+                sleep $((attempt * 30))
+              fi
+            done
+            return 1
+          }
+
+          remote_size_of() {
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+              --jq ".assets[] | select(.name == \"$1\") | .size" || true
+          }
+
+          for f in wingman-*; do
+            if [ ! -f "$f" ]; then
+              continue
+            fi
+            local_size=$(stat -c%s "$f")
+            verified=false
+
+            for attempt in 1 2 3; do
+              if ! upload_one "$f"; then
+                echo "::error::All upload attempts failed for $f"
+                exit 1
+              fi
+
+              # 远端大小校验：上传 API 可能超时中断但留下半截资产（2026-09-17
+              # Windows 实例：31.6 MB 包只落了 3.65 MB），不校验会静默发布坏包
+              remote_size=$(remote_size_of "$f")
+              if [ -n "$remote_size" ] && [ "$remote_size" -eq "$local_size" ]; then
+                echo "$f: $local_size bytes verified"
+                verified=true
+                break
+              fi
+              echo "::warning::Size mismatch for $f (local=$local_size remote=${remote_size:-none}), attempt $attempt — re-uploading"
+              if [ "$attempt" -lt 3 ]; then
+                sleep $((attempt * 30))
+              fi
+            done
+
+            if [ "$verified" != "true" ]; then
+              echo "::error::Size verification failed for $f (local=$local_size remote=${remote_size:-none})"
+              exit 1
+            fi
+          done
+
+          echo "All assets uploaded and verified"

@@ -296,7 +296,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 - [x] CI/CD：GitHub Actions — C++（Windows 全量+覆盖率 / Ubuntu+macOS proto/transport）、Go（Ubuntu/Windows/macOS vet+build+test-race）、Dashboard（3 OS 打包）
 - [x] 自动发布（tag→release）— ✅ release.yml 触发 `v*` tag，调用 build-package.yml 三平台构建 + softprops/action-gh-release@v3 上传
-- [ ] **Release 上传健壮性观察**（2026-09-17）：同一晚两次 nightly 在 "Upload to GitHub Release" 步骤抖动失败（Windows `Headers Timeout Error`、macOS 网关 HTML 错误页），Build/打包/artifact 上传均成功，rerun failed jobs 即恢复。若再现频发，考虑：末尾统一 finalize job 用 `gh release upload --clobber` 顺序上传 + 重试循环（替代三 job 并发 softprops 上传）；期间处置靠 rerun（注意先删 release 上的半截资产再 rerun，避免同名冲突）
+- [x] **Release 上传健壮性**（2026-09-17 修复）：同一晚两次 nightly 在 "Upload to GitHub Release" 步骤抖动失败（Windows `Headers Timeout Error`、macOS 网关 HTML 错误页），rerun 即恢复，且 Windows 超时曾在 release 上留下 3.65 MB 半截资产（完整包 31.6 MB）。build-package.yml 三平台 job 移除并发 softprops 上传（保留 artifact 上传），新增 `publish-assets` 统一 job：`gh release upload --clobber` + 3 次指数退避重试 + **远端资产大小校验**（mismatch 自动重传，防半截资产静默发布）+ release 缺失兜底创建；三平台不再并发写 release，nightly/release.yml 两条调用路径同时受益，release notes 仍由调用方写入。控制流经本地 mock 验证（上传失败重试、size mismatch 重传两条路径）
 - [x] 打包分发：Windows zip+InnoSetup+Tauri NSIS / Linux tar.gz+Tauri AppImage/deb / macOS tar.gz+Tauri dmg+app / Docker（orchestrator/server/Dockerfile + orchestrator/dashboard/Dockerfile）
 
 ---
