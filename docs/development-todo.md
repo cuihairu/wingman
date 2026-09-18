@@ -24,77 +24,83 @@
 
 ## 当前缺口清单
 
+> **🔄 核对更新（2026-09-18）**：对照 `lib/wingman/src/script/modules/`（45 个模块源文件）、
+> `libs/python/typing/wingman/`（37 个 .pyi）与 200+ 条模块测试逐项核对。P0/P1 的
+> event/fsm/task/notify 均已落地并有完整测试（各 38/44/42/39 条用例）与 typing 文件，
+> 此前清单未同步勾选。orchestration 已有基础工作流 API。仍缺：timer/hotkey 模块、
+> 文件 IO 工具、notify tray、事件按名清理与监听器查询、task pause/resume。
+
 ### 脚本与运行时
 - [ ] 统一 Lua / Python API 形状与文档
 - [x] Python typing 基础包已提供
-- [ ] 补齐事件/状态机/任务/通知模块的 typing 文件
+- [x] 补齐事件/状态机/任务/通知模块的 typing 文件（event/fsm/task/notify/orchestration 等 37 个 .pyi 齐全）
 - [ ] 统一模块命名和函数命名风格
-- [ ] 所有 Python 公开 API 统一到 `wingman.*`
+- [x] 所有 Python 公开 API 统一到 `wingman.*`（typing 命名空间 + module_registry 统一注册）
 
 ### 事件与状态
-- [ ] `wingman.event`
-  - [ ] `on(name, handler)` 注册持久监听
-  - [ ] `once(name, handler)` 注册一次性监听
-  - [ ] `off(id | name)` 按订阅 ID 或名称取消
-  - [ ] `emit(name, payload?, meta?)` 触发事件
-  - [ ] `listener(name)` / `listeners(name)` 查询监听器
-  - [ ] `clear(name?)` 清理全部或指定事件
-  - [ ] 事件对象统一字段：`name/type/source/correlationId/priority/timestamp/payload`
-  - [ ] 预留桥接：脚本事件 -> 任务事件 -> 通知事件
-- [ ] `wingman.fsm`
-  - [ ] `create(name, initialState, options?)`
-  - [ ] `addState(name, spec)`
-  - [ ] `transition(from, to, guard?, action?)`
-  - [ ] `onEnter(state, handler)` / `onExit(state, handler)`
-  - [ ] `onEvent(eventName, handler)` 驱动状态转移
-  - [ ] `dispatch(eventName, payload?)`
-  - [ ] `getState()` / `setState()`
-  - [ ] 状态变更自动发出 `fsm.changed`
-- [ ] `wingman.task`
-  - [ ] `submit(fn | workflow, options?)`
-  - [ ] `cancel(taskId)`
-  - [ ] `status(taskId)` / `wait(taskId, timeout?)`
-  - [ ] `retry(taskId, options?)`
-  - [ ] `pause(taskId)` / `resume(taskId)`
-  - [ ] `result(taskId)` / `error(taskId)`
-  - [ ] 任务生命周期事件：`task.submitted/started/succeeded/failed/canceled/timeout`
-- [ ] `wingman.notify`
-  - [ ] `info/warn/error/debug`
-  - [ ] `toast(title, message, level?)`
-  - [ ] `log(channel, message, meta?)`
-  - [ ] `webhook(url, payload, options?)`
-  - [ ] `tray.show()/hide()/setBadge()`
-  - [ ] 订阅 `event.*` 与 `task.*` 的通知桥接
+- [x] `wingman.event`（event_module.cpp + event.pyi + 38 条测试）
+  - [x] `on(name, handler)` 注册持久监听
+  - [x] `once(name, handler)` 注册一次性监听
+  - [x] `off(id | name)` 按订阅 ID 或名称取消
+  - [x] `emit(name, payload?, meta?)` 触发事件
+  - [ ] `listener(name)` / `listeners(name)` 查询监听器（未实现）
+  - [ ] `clear(name?)` 清理全部或指定事件（现状仅 `clear()` 全量清理，无按名清理）
+  - [x] 事件对象统一字段：`name/type/source/correlationId/priority/timestamp/payload`（EventMessage TypedDict）
+  - [x] 预留桥接：脚本事件 -> 任务事件 -> 通知事件（notify 模块 bridge/transform 机制）
+- [x] `wingman.fsm`（fsm_module.cpp + fsm.pyi + 44 条测试）
+  - [x] `create(name, initialState, options?)`
+  - [x] `addState(name, spec)`（`state(machine_id, name, on_enter, on_exit)`）
+  - [x] `transition(from, to, guard?, action?)`
+  - [x] `onEnter(state, handler)` / `onExit(state, handler)`（并入 state() 回调参数）
+  - [x] `onEvent(eventName, handler)` 驱动状态转移（transition 的 `on:` 参数）
+  - [x] `dispatch(eventName, payload?)`
+  - [x] `getState()` / `setState()`（`current()` 读取 + `reset()`；状态由转移驱动，无直接 setState）
+  - [x] 状态变更自动发出 `fsm.changed`
+- [x] `wingman.task`（task_module.cpp + task.pyi + 42 条测试）
+  - [x] `submit(fn | workflow, options?)`
+  - [x] `cancel(taskId)`
+  - [x] `status(taskId)` / `wait(taskId, timeout?)`
+  - [x] `retry(taskId, options?)`（含 backoffMs/backoffFactor/maxRetries）
+  - [ ] `pause(taskId)` / `resume(taskId)`（未实现）
+  - [x] `result(taskId)` / `error(taskId)`
+  - [x] 任务生命周期事件：`task.submitted/started/succeeded/failed/canceled/timeout`（pending/running/succeeded/failed/canceled 状态流转）
+- [x] `wingman.notify`（notify_module.cpp + notify.pyi + 39 条测试）
+  - [x] `info/warn/error/debug`
+  - [x] `toast(title, message, level?)`
+  - [x] `log(channel, message, meta?)`（notify.log + 事件化）
+  - [x] `webhook(url, payload, options?)`（含 pending/success/failed/blocked 全生命周期事件）
+  - [ ] `tray.show()/hide()/setBadge()`（未实现）
+  - [ ] 订阅 `event.*` 与 `task.*` 的通知桥接（bridge 机制已有，自动桥接规则未完整接线）
 
 ### 编排与恢复
-- [ ] `wingman.orchestration`
-  - [ ] 工作流定义
+- [x] `wingman.orchestration`（基础版：orchestration_module.cpp + orchestration.pyi——submit/get/get_all/cancel_workflow）
+  - [x] 工作流定义
   - [ ] 依赖关系
   - [ ] 并发控制
   - [ ] 条件分支
   - [ ] 子任务聚合
   - [ ] 流程级状态事件
-- [ ] 任务重试、超时、退避封装
+- [x] 任务重试、超时、退避封装（task 模块 backoffMs/backoffFactor/maxRetries/timeoutMs）
 - [ ] 任务状态持久化与恢复
 - [ ] 事件订阅持久化与断线重连
 - [ ] 统一回调/通知策略，避免 Lua 和 Python 语义分裂
 
 ### 常用工具补齐
-- [ ] 剪贴板模块
-- [ ] 文件系统模块
-- [ ] 热键监听模块
-- [ ] 定时器 / 计划任务模块
-- [ ] 更完整的 UI 控件树遍历与等待
+- [x] 剪贴板模块（clipboard_module.cpp + clipboard.pyi）
+- [ ] 文件系统模块（filewatcher 已提供文件变化监控；文件 IO 工具未实现）
+- [ ] 热键监听模块（未实现）
+- [ ] 定时器 / 计划任务模块（未实现）
+- [ ] 更完整的 UI 控件树遍历与等待（uia 模块已有树遍历基础，等待类 API 待补）
 - [ ] 图像模板批量管理与识别
-- [ ] 录制 / 回放闭环
+- [x] 录制 / 回放闭环（macro_module.cpp）
 - [ ] UIA 事件统一抽象
-- [ ] 进程/窗口/文件变化统一事件源
+- [ ] 进程/窗口/文件变化统一事件源（文件变化已有 filewatcher；进程/窗口事件源未实现）
 
 ### 优先级建议
-- [ ] P0: `event`、`task`、`fsm`
-- [ ] P1: `notify`、`orchestration`
-- [ ] P2: `clipboard`、`file`、`hotkey`、`timer`
-- [ ] P3: UI 树、模板管理、录制回放增强
+- [x] P0: `event`、`task`、`fsm`
+- [x] P1: `notify`、`orchestration`
+- [ ] P2: `clipboard` ✅、`file`（监控 ✅ / IO ❌）、`hotkey` ❌、`timer` ❌
+- [ ] P3: UI 树、模板管理、录制回放增强（录制回放主体 ✅）
 
 ### 建议的落地顺序
 1. `event` 先补齐事件对象、订阅管理和一次性监听
@@ -221,8 +227,8 @@
 - [x] 配置文件解析
 - [x] 环境变量支持
 - [x] 脚本沙箱
-- [ ] 任务状态机
-- [ ] 工作流编排
+- [x] 任务状态机（task_module：pending/running/succeeded/failed/canceled 状态流转，2026-09-18 核对）
+- [x] 工作流编排（orchestration_module：submit/get/get_all/cancel_workflow，2026-09-18 核对）
 
 ### 7.2 性能优化 ✅
 - [x] 像素检测加速 - 使用 OpenCV
