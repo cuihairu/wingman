@@ -30,6 +30,9 @@ add_library(wingman_transport STATIC
 
 target_include_directories(wingman_transport PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    # 公共头引用 socket 兼容薄层（src/platform/socket_compat.hpp，§8.4）；
+    # BUILD_INTERFACE 限定：安装/导出时不暴露内部 src 树
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 )
 
 target_link_libraries(wingman_transport PUBLIC asio::asio)

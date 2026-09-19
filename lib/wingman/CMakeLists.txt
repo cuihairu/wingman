@@ -41,7 +41,6 @@ set(WINGMAN_SOURCES
     src/event.cpp
 
     # Vision and capture
-    src/capture/capture_source.cpp
     src/vision/image_analyzer.cpp
 
     # I/O
@@ -67,9 +66,9 @@ set(WINGMAN_SOURCES
     src/kvstore.cpp
 
     # IPC communication
-    src/ipc/ipc_factory.cpp
-    src/ipc/tcp_channel.cpp
-    src/ipc/unix_socket_channel.cpp
+    src/platform/ipc_factory.cpp
+    src/platform/common/tcp_channel.cpp
+    src/platform/posix/unix_socket_channel.cpp
 
     # Network
     src/http.cpp
@@ -165,6 +164,7 @@ endif()
 if(WIN32)
     list(APPEND WINGMAN_SOURCES
         src/screenshot_reporter.cpp
+        src/platform/win/capture_source.cpp
         src/platform/win/win32_clipboard.cpp
         src/platform/win/win32_filewatcher.cpp
         src/platform/win/named_pipe_channel.cpp

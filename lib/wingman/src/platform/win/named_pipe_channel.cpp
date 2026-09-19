@@ -1,4 +1,4 @@
-#include "wingman/ipc/windows/named_pipe_channel.hpp"
+#include "platform/win/named_pipe_channel.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <exception>

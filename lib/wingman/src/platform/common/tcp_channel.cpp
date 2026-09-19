@@ -1,4 +1,4 @@
-#include "wingman/ipc/tcp_channel.hpp"
+#include "platform/common/tcp_channel.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <cstring>

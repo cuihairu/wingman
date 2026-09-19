@@ -1,13 +1,13 @@
 #include "wingman/ipc/ipc_factory.hpp"
-#include "wingman/ipc/tcp_channel.hpp"
+#include "platform/common/tcp_channel.hpp"
 #include <spdlog/spdlog.h>
 #include <cstdlib>
 
 #ifdef _WIN32
-#include "wingman/ipc/windows/named_pipe_channel.hpp"
+#include "platform/win/named_pipe_channel.hpp"
 using NamedPipeChannel = wingman::ipc::windows::NamedPipeChannel;
 #elif defined(__unix__) || defined(__APPLE__)
-#include "wingman/ipc/unix_socket_channel.hpp"
+#include "platform/posix/unix_socket_channel.hpp"
 #endif
 
 namespace wingman::ipc {

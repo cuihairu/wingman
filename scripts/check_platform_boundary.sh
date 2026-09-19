@@ -22,6 +22,7 @@ mapfile -t files < <(git ls-files -- \
 	'*.cpp' '*.cc' '*.cxx' '*.c' '*.hpp' '*.hh' '*.h' '*.mm' '*.m' \
 	| grep -E '^(lib/wingman/src|lib/wingman/include|libs/|apps/)' \
 	| grep -v '^lib/wingman/src/platform/' \
+	| grep -v '^libs/transport/src/platform/' \
 	| grep -vE '(^|/)tests?/')
 
 hits=$(mktemp)

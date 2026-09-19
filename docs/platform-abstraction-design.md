@@ -391,8 +391,11 @@ lib/wingman/
 │   ├── win/                             # namespace wingman::platform::win（P1 统一）
 │   ├── mac/                             # namespace wingman::platform::mac
 │   ├── linux/                           # namespace wingman::platform::linux（宏守卫见 §8）
-│   ├── posix/                           # win/mac 共享的 posix 实现（如 TriggerManager，
-│                                         #   plain namespace wingman；P1 由 unix/ 更名）
+│   ├── posix/                           # win/mac 共享的 posix 实现（TriggerManager、
+│                                         #   UnixSocketChannel；P1/P2 由 unix/ 更名并入）
+│   ├── common/                          # 跨平台传输实现（TcpChannel，P2 收回）
+│   ├── ipc_factory.cpp / input_factory.cpp
+│   │                                    # 跨平台分发器（按平台选实现，P2 收回 ipc_factory）
 │   ├── mock/                            # 测试租户
 │   └── android/                         # 【预留】移动端 Agent 租户（JNI 桥 +
 │                                        #   AccessibilityService/MediaProjection），
@@ -427,13 +430,13 @@ lib/wingman/
 ### 6.4 状态与后续阶段（2026-09-19）
 
 第一至第三阶段已完成（接口 + 三平台实现 + CMake 按平台选源）。当前欠账：
-公共路径仍有 46 个文件带平台宏（P0 冻结于迁移清单，见 §8）。
+公共路径仍有 31 个文件带平台宏（P0 冻结 47 个，见 §8）。
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
 | P0 | 薄层纪律成文 + 边界守卫（`scripts/check_platform_boundary.sh`）+ 迁移清单冻结 | ✅ |
 | P1 | 命名统一（`platform::windows`→`::win`）、`unix/`→`posix/` 更名、include 侧平台私有头收回、`linux` 宏守卫 | ✅（2026-09-19） |
-| P2 | 泄漏销号：ipc 通道（管道/socket 实现搬入 platform/）、capture_source、transport 宏归位 | 待办 |
+| P2 | 泄漏销号：ipc 通道（管道/socket 实现搬入 platform/）、capture_source、transport 宏归位 | ✅（2026-09-19） |
 | P3 | 接口补缺：security 探测、recorder 钩子各抽小接口 | 按需 |
 | P4 | 遗留静态类下线（`screen.cpp`/`window.cpp`/`clipboard.cpp` 等，ADR 已冻结） | 待办 |
 | P5 | android 租户接入（移动端 A1 时目录/namespace 直接就位） | 规划中 |
@@ -488,8 +491,25 @@ lib/wingman/
 scripts/check_platform_boundary.sh   # 无依赖，CI 首个 job 运行（Platform Boundary Guard）
 ```
 
-- 扫描 C++ 生产代码（`lib/wingman`、`libs/`、`apps/`，排除 `src/platform/` 与全部 `tests/`），
-  命中平台宏且不在迁移清单中的文件即失败并列出位置。
-- 迁移清单 `scripts/platform_boundary_allowlist.txt`（P0 冻结时的 48 个历史欠账文件）**只减不增**：
+- 扫描 C++ 生产代码（`lib/wingman`、`libs/`、`apps/`，排除 `lib/wingman/src/platform/`、
+  `libs/transport/src/platform/`（§8.4）与全部 `tests/`），命中平台宏且不在迁移清单中的
+  文件即失败并列出位置。
+- 迁移清单 `scripts/platform_boundary_allowlist.txt`（P0 冻结时的 47 个历史欠账文件）**只减不增**：
   每完成一处迁移删除一行并跑守卫验证；新增文件入清单须经维护者批准并在 PR 中说明理由。
+  P1 收回 2 行、P2 收回 14 行（ipc 6 + capture_source 2 + transport 6），现存 31 行。
 - 欠账清零后，本守卫退化为纯红线检查（清单为空、只拦新增违规）。
+
+### 8.4 独立库薄层
+
+可独立移植的库（当前仅 `libs/transport`，需随 Android Agent 交叉编译）**自带**薄层目录，
+不依赖 `lib/wingman/src/platform/`：
+
+- `libs/transport/src/platform/socket_compat.hpp`：统一 Winsock / POSIX 的头卫生
+  （WIN32_LEAN_AND_MEAN/NOMINMAX/_WIN32_WINNT、`Get`/`min`/`max` undef）、句柄类型
+  （`SocketType`）、值宏（`INVALID_SOCKET_VALUE`/`SOCKET_ERROR_VALUE`）与原语
+  （`ensureWinsock`/`closeSocketCompat`/`sendCompat`/`recvCompat`/`lastSocketError`/
+  `isWouldBlock`/`setTcpKeepAlive`）。
+- 公共头经 `#include "platform/socket_compat.hpp"` 引用；transport 的 CMake 以
+  `$<BUILD_INTERFACE>` 暴露 `src/`，安装/导出接口不外泄内部树。
+- 守卫（§8.3）将 `libs/transport/src/platform/` 与 `lib/wingman/src/platform/`
+  同等豁免。后续新增独立可移植库时比照办理。

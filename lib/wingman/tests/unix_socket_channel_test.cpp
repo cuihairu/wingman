@@ -3,7 +3,7 @@
 #if !defined(_WIN32)
 
 #include <gtest/gtest.h>
-#include "wingman/ipc/unix_socket_channel.hpp"
+#include "platform/posix/unix_socket_channel.hpp"
 
 #include <atomic>
 #include <chrono>

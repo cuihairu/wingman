@@ -1,4 +1,4 @@
-#include "wingman/ipc/unix_socket_channel.hpp"
+#include "platform/posix/unix_socket_channel.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <cerrno>

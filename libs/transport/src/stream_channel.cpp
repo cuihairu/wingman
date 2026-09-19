@@ -3,20 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
-    #include <mstcpip.h>
-    #include <mswsock.h>
-#else
-    #include <arpa/inet.h>
-    #include <netinet/in.h>
-    #include <netinet/tcp.h>
-    #include <sys/types.h>
-    #include <netdb.h>
-    #include <unistd.h>
-    #include <fcntl.h>
-#endif
+#include "platform/socket_compat.hpp"
 
 namespace wingman::transport {
 
@@ -68,16 +55,7 @@ bool StreamChannel::connect(const std::string& host, int port) {
 
     setState(StreamState::Connecting);
 
-#ifdef _WIN32
-    // 初始化 Winsock（仅第一次）
-    static bool winsockInitialized = false;
-    if (!winsockInitialized) {
-        WSADATA wsaData;
-        if (WSAStartup(MAKEWORD(2, 2), &wsaData) == 0) {
-            winsockInitialized = true;
-        }
-    }
-#endif
+    ensureWinsock();
 
     // 创建 Socket
     socket_ = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -158,15 +136,7 @@ bool StreamChannel::listen(const std::string& host, int port) {
 
     setState(StreamState::Connecting);
 
-#ifdef _WIN32
-    static bool winsockInitialized = false;
-    if (!winsockInitialized) {
-        WSADATA wsaData;
-        if (WSAStartup(MAKEWORD(2, 2), &wsaData) == 0) {
-            winsockInitialized = true;
-        }
-    }
-#endif
+    ensureWinsock();
 
     // 创建 Socket
     socket_ = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -248,12 +218,7 @@ void StreamChannel::disconnect() {
     // 注意：Linux 上 close() 不会可靠地唤醒阻塞中的 recv()，
     // 必须先 shutdown 触发 EOF，再 close 释放描述符。
     if (socket_ != INVALID_SOCKET_VALUE) {
-#ifdef _WIN32
-        closesocket(socket_);
-#else
-        shutdown(socket_, SHUT_RDWR);
-        close(socket_);
-#endif
+        closeSocketCompat(socket_);
         socket_ = INVALID_SOCKET_VALUE;
     }
 
@@ -322,32 +287,8 @@ void StreamChannel::applySocketOptions() {
 
     // SO_KEEPALIVE
     if (params_.keepAlive) {
-#ifdef _WIN32
-        tcp_keepalive keepalive{};
-        keepalive.onoff = 1;
-        keepalive.keepalivetime = params_.keepAliveIdle * 1000;
-        keepalive.keepaliveinterval = params_.keepAliveInterval * 1000;
-        DWORD bytesReturned = 0;
-        WSAIoctl(socket_, SIO_KEEPALIVE_VALS, &keepalive, sizeof(keepalive),
-                 nullptr, 0, &bytesReturned, nullptr, nullptr);
-#else
-        int flag = 1;
-        setsockopt(socket_, SOL_SOCKET, SO_KEEPALIVE,
-                   reinterpret_cast<const char*>(&flag), sizeof(flag));
-
-        #ifdef TCP_KEEPIDLE
-        setsockopt(socket_, IPPROTO_TCP, TCP_KEEPIDLE,
-                   reinterpret_cast<const char*>(&params_.keepAliveIdle), sizeof(int));
-        #endif
-        #ifdef TCP_KEEPINTVL
-        setsockopt(socket_, IPPROTO_TCP, TCP_KEEPINTVL,
-                   reinterpret_cast<const char*>(&params_.keepAliveInterval), sizeof(int));
-        #endif
-        #ifdef TCP_KEEPCNT
-        setsockopt(socket_, IPPROTO_TCP, TCP_KEEPCNT,
-                   reinterpret_cast<const char*>(&params_.keepAliveCount), sizeof(int));
-        #endif
-#endif
+        setTcpKeepAlive(socket_, params_.keepAliveIdle,
+                        params_.keepAliveInterval, params_.keepAliveCount);
     }
 
     // SO_SNDBUF
@@ -369,34 +310,19 @@ void StreamChannel::receiveLoop() {
 
     while (receiving_.load() && isConnected()) {
         uint8_t buffer[4096];
-#ifdef _WIN32
-        int n = ::recv(socket_, reinterpret_cast<char*>(buffer), sizeof(buffer), 0);
-        if (n == SOCKET_ERROR_VALUE) {
-            int error = WSAGetLastError();
-            if (error != WSAEWOULDBLOCK) {
-                peerError = true;
-                if (errorCallback_) {
-                    errorCallback_(std::error_code(error, std::system_category()));
-                }
-            }
-            break;
-        }
-        if (n == 0) {
-            // 连接关闭
-            break;
-        }
-#else
-        ssize_t n = ::recv(socket_, buffer, sizeof(buffer), 0);
+        ssize_t n = recvCompat(socket_, buffer, sizeof(buffer));
         if (n <= 0) {
             if (n < 0) {
-                peerError = true;
-                if (errorCallback_) {
-                    errorCallback_(std::error_code(errno, std::system_category()));
+                int error = lastSocketError();
+                if (!isWouldBlock(error)) {
+                    peerError = true;
+                    if (errorCallback_) {
+                        errorCallback_(std::error_code(error, std::system_category()));
+                    }
                 }
             }
-            break;
+            break; // <0 错误，0 连接关闭
         }
-#endif
 
         // 解析消息
         auto messages = receiver.receive(buffer, n);

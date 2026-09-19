@@ -3,14 +3,6 @@
 #include <cstring>
 #include <algorithm>
 
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
-#else
-    #include <unistd.h>
-    #include <sys/socket.h>
-    #include <errno.h>
-#endif
 
 namespace wingman::transport {
 
@@ -118,23 +110,12 @@ bool Protocol::sendMessage(SocketType socket, const SimpleMessage& message, std:
     size_t remaining = data.size();
 
     while (remaining > 0) {
-#ifdef _WIN32
-        int sent = ::send(socket, reinterpret_cast<const char*>(ptr),
-                         static_cast<int>(remaining), 0);
-#else
-        ssize_t sent = ::send(socket, ptr, remaining, 0);
-#endif
+        ssize_t sent = sendCompat(socket, ptr, remaining);
 
         if (sent <= 0) {
-#ifdef _WIN32
-            if (sent == SOCKET_ERROR_VALUE) {
-                ec.assign(WSAGetLastError(), std::system_category());
-            }
-#else
             if (sent < 0) {
-                ec.assign(errno, std::system_category());
+                ec.assign(lastSocketError(), std::system_category());
             }
-#endif
             return false;
         }
 
@@ -152,22 +133,10 @@ std::unique_ptr<SimpleMessage> Protocol::readMessage(SocketType socket, std::err
     size_t bytesRead = 0;
 
     while (bytesRead < SimpleMessage::LENGTH_SIZE) {
-#ifdef _WIN32
-        int n = ::recv(socket, reinterpret_cast<char*>(lengthBytes) + bytesRead,
-                       static_cast<int>(SimpleMessage::LENGTH_SIZE - bytesRead), 0);
-        if (n == SOCKET_ERROR_VALUE) {
-            ec.assign(WSAGetLastError(), std::system_category());
-            return nullptr;
-        }
-        if (n == 0) {
-            // 连接关闭
-            ec.assign(0, std::system_category());
-            return nullptr;
-        }
-#else
-        ssize_t n = ::recv(socket, lengthBytes + bytesRead, SimpleMessage::LENGTH_SIZE - bytesRead, 0);
+        ssize_t n = recvCompat(socket, lengthBytes + bytesRead,
+                               SimpleMessage::LENGTH_SIZE - bytesRead);
         if (n < 0) {
-            ec.assign(errno, std::system_category());
+            ec.assign(lastSocketError(), std::system_category());
             return nullptr;
         }
         if (n == 0) {
@@ -175,7 +144,6 @@ std::unique_ptr<SimpleMessage> Protocol::readMessage(SocketType socket, std::err
             ec.assign(0, std::system_category());
             return nullptr;
         }
-#endif
 
         bytesRead += n;
     }
@@ -195,22 +163,9 @@ std::unique_ptr<SimpleMessage> Protocol::readMessage(SocketType socket, std::err
     bytesRead = 0;
 
     while (bytesRead < length) {
-#ifdef _WIN32
-        int n = ::recv(socket, reinterpret_cast<char*>(payload.data()) + bytesRead,
-                       static_cast<int>(length - bytesRead), 0);
-        if (n == SOCKET_ERROR_VALUE) {
-            ec.assign(WSAGetLastError(), std::system_category());
-            return nullptr;
-        }
-        if (n == 0) {
-            // 连接关闭
-            ec.assign(0, std::system_category());
-            return nullptr;
-        }
-#else
-        ssize_t n = ::recv(socket, payload.data() + bytesRead, length - bytesRead, 0);
+        ssize_t n = recvCompat(socket, payload.data() + bytesRead, length - bytesRead);
         if (n < 0) {
-            ec.assign(errno, std::system_category());
+            ec.assign(lastSocketError(), std::system_category());
             return nullptr;
         }
         if (n == 0) {
@@ -218,7 +173,6 @@ std::unique_ptr<SimpleMessage> Protocol::readMessage(SocketType socket, std::err
             ec.assign(0, std::system_category());
             return nullptr;
         }
-#endif
 
         bytesRead += n;
     }

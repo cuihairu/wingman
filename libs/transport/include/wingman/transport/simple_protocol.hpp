@@ -6,15 +6,7 @@
 #include <string>
 #include <system_error>
 
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
-#else
-    #include <sys/socket.h>
-    #include <arpa/inet.h>
-    #include <unistd.h>
-    #include <fcntl.h>
-#endif
+#include "platform/socket_compat.hpp"
 
 namespace wingman::transport {
 
@@ -148,15 +140,7 @@ namespace Protocol {
 /**
  * @brief Socket 类型定义
  */
-#ifdef _WIN32
-    using SocketType = SOCKET;
-    #define INVALID_SOCKET_VALUE INVALID_SOCKET
-    #define SOCKET_ERROR_VALUE SOCKET_ERROR
-#else
-    using SocketType = int;
-    #define INVALID_SOCKET_VALUE -1
-    #define SOCKET_ERROR_VALUE -1
-#endif
+using SocketType = wingman::transport::SocketType;
 
 /**
  * @brief 32位整数转网络字节序（大端）

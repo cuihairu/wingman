@@ -1,22 +1,19 @@
-#include "wingman/capture/capture_source.hpp"
-#include <spdlog/spdlog.h>
+// Windows 平台的捕获源实现（P2 由 src/capture/capture_source.cpp 收回，
+// 接口定义见 include/wingman/capture/capture_source.hpp）。
 
-#ifdef _WIN32
-#include <Windows.h>
-#include <shellscalingapi.h>
-#pragma comment(lib, "shcore.lib")
-#endif
+#include "capture_source.hpp"
+#include <spdlog/spdlog.h>
 
 namespace wingman::capture {
 
-#ifdef _WIN32
+namespace {
 
 struct WindowEnumData {
     std::string titlePattern;
     HWND result = nullptr;
 };
 
-static BOOL CALLBACK enumWindowsCallback(HWND hwnd, LPARAM lParam) {
+BOOL CALLBACK enumWindowsCallback(HWND hwnd, LPARAM lParam) {
     auto* data = reinterpret_cast<WindowEnumData*>(lParam);
 
     char title[256];
@@ -30,7 +27,7 @@ static BOOL CALLBACK enumWindowsCallback(HWND hwnd, LPARAM lParam) {
     return TRUE;
 }
 
-static BOOL CALLBACK listTopLevelWindowsCallback(HWND hwnd, LPARAM lParam) {
+BOOL CALLBACK listTopLevelWindowsCallback(HWND hwnd, LPARAM lParam) {
     auto* windows = reinterpret_cast<std::vector<HWND>*>(lParam);
     if (IsWindowVisible(hwnd)) {
         windows->push_back(hwnd);
@@ -38,7 +35,7 @@ static BOOL CALLBACK listTopLevelWindowsCallback(HWND hwnd, LPARAM lParam) {
     return TRUE;
 }
 
-#endif // _WIN32
+} // namespace
 
 // ========== ScreenCaptureSource ==========
 
@@ -61,7 +58,6 @@ void ScreenCaptureSource::onStop() {
 }
 
 std::unique_ptr<Bitmap> ScreenCaptureSource::capture(const Rect& region) {
-#ifdef _WIN32
     if (!available_) {
         spdlog::warn("[ScreenCaptureSource] Source not available");
         return nullptr;
@@ -112,11 +108,6 @@ std::unique_ptr<Bitmap> ScreenCaptureSource::capture(const Rect& region) {
     ReleaseDC(nullptr, hdcScreen);
 
     return bitmap;
-#else
-    (void)region;
-    spdlog::warn("[ScreenCaptureSource] Screen capture not implemented on this platform");
-    return nullptr;
-#endif
 }
 
 Rect ScreenCaptureSource::getBounds() const {
@@ -132,7 +123,6 @@ std::string ScreenCaptureSource::getName() const {
 }
 
 bool ScreenCaptureSource::queryDisplayInfo() {
-#ifdef _WIN32
     DISPLAY_DEVICE dd = {};
     dd.cb = sizeof(dd);
     if (!EnumDisplayDevicesA(nullptr, monitorIndex_, &dd, 0)) {
@@ -149,14 +139,9 @@ bool ScreenCaptureSource::queryDisplayInfo() {
 
     bounds_ = Rect{0, 0, static_cast<int>(dm.dmPelsWidth), static_cast<int>(dm.dmPelsHeight)};
     return true;
-#else
-    bounds_ = Rect{0, 0, 1920, 1080};
-    return true;
-#endif
 }
 
 int ScreenCaptureSource::getMonitorCount() {
-#ifdef _WIN32
     int count = 0;
     DISPLAY_DEVICE dd = {};
     dd.cb = sizeof(dd);
@@ -164,16 +149,12 @@ int ScreenCaptureSource::getMonitorCount() {
         count++;
     }
     return count;
-#else
-    return 1;
-#endif
 }
 
 std::shared_ptr<ScreenCaptureSource> ScreenCaptureSource::getPrimaryScreen() {
     return std::shared_ptr<ScreenCaptureSource>(new ScreenCaptureSource(0));
 }
 
-#ifdef _WIN32
 // ========== WindowCaptureSource ==========
 
 WindowCaptureSource::WindowCaptureSource(HWND hwnd)
@@ -195,7 +176,6 @@ void WindowCaptureSource::onStop() {
 }
 
 std::unique_ptr<Bitmap> WindowCaptureSource::capture(const Rect& region) {
-#ifdef _WIN32
     if (!available_ || !IsWindow(hwnd_)) {
         spdlog::warn("[WindowCaptureSource] Window not available");
         return nullptr;
@@ -252,10 +232,6 @@ std::unique_ptr<Bitmap> WindowCaptureSource::capture(const Rect& region) {
     ReleaseDC(hwnd_, hdcWindow);
 
     return bitmap;
-#else
-    spdlog::warn("[WindowCaptureSource] Window capture not implemented on this platform");
-    return nullptr;
-#endif
 }
 
 Rect WindowCaptureSource::getBounds() const {
@@ -263,11 +239,7 @@ Rect WindowCaptureSource::getBounds() const {
 }
 
 bool WindowCaptureSource::isAvailable() const {
-#ifdef _WIN32
     return available_ && IsWindow(hwnd_);
-#else
-    return available_;
-#endif
 }
 
 std::string WindowCaptureSource::getName() const {
@@ -275,7 +247,6 @@ std::string WindowCaptureSource::getName() const {
 }
 
 bool WindowCaptureSource::queryWindowInfo() {
-#ifdef _WIN32
     if (!IsWindow(hwnd_)) {
         return false;
     }
@@ -293,28 +264,17 @@ bool WindowCaptureSource::queryWindowInfo() {
 
     available_ = true;
     return true;
-#else
-    windowTitle_ = "Window";
-    bounds_ = Rect{0, 0, 800, 600};
-    available_ = true;
-    return true;
-#endif
 }
 
 std::string WindowCaptureSource::getWindowTitle(HWND hwnd) {
-#ifdef _WIN32
     char title[256];
     if (GetWindowTextA(hwnd, title, sizeof(title)) > 0) {
         return std::string(title);
     }
     return "Unknown";
-#else
-    return "Unknown";
-#endif
 }
 
 std::unique_ptr<WindowCaptureSource> WindowCaptureSource::findByTitle(const std::string& title) {
-#ifdef _WIN32
     WindowEnumData data;
     data.titlePattern = title;
     EnumWindows(enumWindowsCallback, reinterpret_cast<LPARAM>(&data));
@@ -323,26 +283,21 @@ std::unique_ptr<WindowCaptureSource> WindowCaptureSource::findByTitle(const std:
         return std::unique_ptr<WindowCaptureSource>(
             new WindowCaptureSource(data.result));
     }
-#endif
     return nullptr;
 }
 
 std::unique_ptr<WindowCaptureSource> WindowCaptureSource::findByClassName(const std::string& className) {
-#ifdef _WIN32
     HWND hwnd = FindWindowA(className.c_str(), nullptr);
     if (hwnd) {
         return std::unique_ptr<WindowCaptureSource>(
             new WindowCaptureSource(hwnd));
     }
-#endif
     return nullptr;
 }
 
 std::vector<HWND> WindowCaptureSource::listTopLevelWindows() {
     std::vector<HWND> windows;
-#ifdef _WIN32
     EnumWindows(listTopLevelWindowsCallback, reinterpret_cast<LPARAM>(&windows));
-#endif
     return windows;
 }
 
@@ -394,8 +349,6 @@ std::shared_ptr<ScreenCaptureSource> CaptureSourceManager::getScreenSource(const
     }
     return nullptr;
 }
-#endif // _WIN32
-#ifdef _WIN32
 
 std::shared_ptr<WindowCaptureSource> CaptureSourceManager::getWindowSource(const std::string& name) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -406,7 +359,6 @@ std::shared_ptr<WindowCaptureSource> CaptureSourceManager::getWindowSource(const
     return nullptr;
 }
 
-#endif // _WIN32
 std::vector<std::shared_ptr<ICaptureSource>> CaptureSourceManager::listSources() const {
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<std::shared_ptr<ICaptureSource>> result;

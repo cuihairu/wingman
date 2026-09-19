@@ -10,13 +10,7 @@
 #include <mutex>
 #include <thread>
 
-#ifdef _WIN32
-    #include <winsock2.h>
-#else
-    #include <sys/socket.h>
-    typedef int SOCKET;
-    #define INVALID_SOCKET_VALUE -1
-#endif
+#include "platform/socket_compat.hpp"
 
 namespace wingman::transport {
 

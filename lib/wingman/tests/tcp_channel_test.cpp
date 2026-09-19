@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "wingman/ipc/tcp_channel.hpp"
+#include "platform/common/tcp_channel.hpp"
 
 using namespace wingman::ipc;
 

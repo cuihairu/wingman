@@ -1,17 +1,6 @@
 #pragma once
 
-// 避免 Windows 宏冲突
-#ifdef _WIN32
-#ifdef Get
-#undef Get
-#endif
-#ifdef min
-#undef min
-#endif
-#ifdef max
-#undef max
-#endif
-#endif
+#include "platform/socket_compat.hpp"
 
 #include "wingman/transport/session/session.hpp"
 #include <map>
