@@ -31,6 +31,17 @@ env:
   VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
 
 jobs:
+  platform-boundary:
+    name: Platform Boundary Guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Check platform macro boundary (P0 thin-layer discipline)
+        run: ./scripts/check_platform_boundary.sh
+
   cpp-windows:
     name: C++ Windows
     runs-on: windows-2022

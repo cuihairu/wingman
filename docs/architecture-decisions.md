@@ -343,6 +343,24 @@ language forfeits one of these; keeping both forfeits neither.
 - Introducing a third language (e.g. JavaScript for Auto.js script
   compatibility) requires a separate decision.
 
+## Platform Macro Boundary
+
+Platform-conditional macros (`_WIN32`, `__APPLE__`, `__linux__`, `__ANDROID__`,
+`_MSC_VER`, ...) are confined to the thin implementation layer
+`lib/wingman/src/platform/<os>/`. The common layers (`src/` outside
+`platform/`, `include/wingman/platform/`, `libs/`, `apps/` production code)
+carry zero platform macros.
+
+- Enforced by `scripts/check_platform_boundary.sh`, run as the first CI job
+  (`Platform Boundary Guard`).
+- Historical debt frozen at P0 (2026-09-19) lives in
+  `scripts/platform_boundary_allowlist.txt`: shrink-only. Adding new files
+  to the allowlist requires maintainer approval and PR justification.
+- Rules and namespace conventions: `docs/platform-abstraction-design.md` §8.
+  New platform tenants (e.g. `android` for the on-device agent) join by
+  implementing the existing interfaces in their own directory — no common-
+  layer changes, no new platform branches in common code.
+
 ## Documentation Requirement
 
 When changing runtime control, local UI, or remote orchestration code, update this document and `docs/architecture.md` in the same change. If implementation is experimental, mark it explicitly as experimental instead of presenting it as the stable architecture.

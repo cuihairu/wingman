@@ -1,0 +1,54 @@
+# 平台边界守卫迁移清单（只减不增）
+#
+# 政策：本清单是 P0 冻结时的历史欠账（见 docs/platform-abstraction-design.md §8）。
+#  - P1/P2 迁移完成后，对应行必须删除（每删一行跑一次本守卫验证）；
+#  - 新增文件不允许加入本清单；确需例外须经维护者批准并在 PR 中说明理由；
+#  - 行格式：仓库相对路径，一行一个，# 开头为注释。
+#
+apps/runtime/src/agent.cpp
+apps/runtime/src/commands/build_command.cpp
+apps/runtime/src/commands/stop_command.cpp
+apps/runtime/src/packer.cpp
+apps/runtime/src/remote_client.cpp
+apps/runtime/src/resource_loader.cpp
+libs/debug/src/emmy_adapter.cpp
+libs/transport/include/wingman/transport/channel/channel.hpp
+libs/transport/include/wingman/transport/session/session.hpp
+libs/transport/include/wingman/transport/simple_protocol.hpp
+libs/transport/include/wingman/transport/stream_channel.hpp
+libs/transport/src/simple_protocol.cpp
+libs/transport/src/stream_channel.cpp
+lib/wingman/include/wingman/capture/capture_source.hpp
+lib/wingman/include/wingman/clipboard.hpp
+lib/wingman/include/wingman/ipc/tcp_channel.hpp
+lib/wingman/include/wingman/ipc/unix_socket_channel.hpp
+lib/wingman/include/wingman/ipc/windows/named_pipe_channel.hpp
+lib/wingman/include/wingman/platform/platform_types.hpp
+lib/wingman/include/wingman/platform/win/win32_clipboard.hpp
+lib/wingman/include/wingman/platform/win/win32_filewatcher.hpp
+lib/wingman/include/wingman/process.hpp
+lib/wingman/include/wingman/recorder.hpp
+lib/wingman/include/wingman/screen.hpp
+lib/wingman/include/wingman/screenshot_reporter.hpp
+lib/wingman/include/wingman/system.hpp
+lib/wingman/include/wingman/window.hpp
+lib/wingman/src/capture/capture_source.cpp
+lib/wingman/src/clipboard.cpp
+lib/wingman/src/filewatcher.cpp
+lib/wingman/src/game_profile.cpp
+lib/wingman/src/ipc/ipc_factory.cpp
+lib/wingman/src/ipc/tcp_channel.cpp
+lib/wingman/src/ipc/unix_socket_channel.cpp
+lib/wingman/src/ml.cpp
+lib/wingman/src/ocr.cpp
+lib/wingman/src/performance.cpp
+lib/wingman/src/screen.cpp
+lib/wingman/src/screenshot_reporter.cpp
+lib/wingman/src/script_manager.cpp
+lib/wingman/src/script/modules/db_module.cpp
+lib/wingman/src/script/modules/misc_modules.cpp
+lib/wingman/src/script/modules/window_module.cpp
+lib/wingman/src/security.cpp
+lib/wingman/src/ui_automation.cpp
+lib/wingman/src/verification.cpp
+lib/wingman/src/window.cpp

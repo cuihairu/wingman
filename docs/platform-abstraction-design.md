@@ -373,44 +373,32 @@ auto capture = factory.createCapture({
 
 ## 5. 目录结构
 
+> 🔄 更新（2026-09-19）：下图为当前实际形态（非最初的设想稿），并预留 android 租户。
+> 纪律约束见 §8。
+
 ```
 lib/wingman/
-├── include/wingman/platform/
-│   ├── icapture.hpp          # 捕获接口
-│   ├── iinput.hpp            # 输入接口
-│   ├── iwindow.hpp           # 窗口接口
-│   ├── iscreen.hpp           # 屏幕接口
-│   ├── platform_types.hpp    # 通用类型定义
-│   └── platform_factory.hpp  # 工厂接口
+├── include/wingman/platform/            # 【公共契约】接口 + 工厂 + 平台无关类型
+│   ├── icapture.hpp / iinput.hpp / iwindow.hpp / iscreen.hpp
+│   ├── iclipboard.hpp / ifilewatcher.hpp
+│   ├── input_factory.hpp / screen_factory.hpp
+│   ├── mock_input.hpp                   # 测试租户（本身平台无关）
+│   └── platform_types.hpp               # Bitmap/Rect/KeyCode；OS 句柄一律 opaque
+│                                        # ⚠️ 平台私有头禁止放入 include/（历史残留
+│                                        #    的 win/ 子目录由 P1 收回，见 §6.4）
 │
-├── src/platform/
-│   ├── win/
-│   │   ├── gdi_capture.cpp           # GDI+ 捕获实现
-│   │   ├── dxgi_capture.cpp          # DXGI 捕获实现
-│   │   ├── sendinput_input.cpp       # SendInput 实现
-│   │   ├── win32_window.cpp          # Win32 窗口实现
-│   │   └── win32_screen.cpp          # Win32 屏幕实现
-│   │
-│   ├── mac/
-│   │   ├── cg_capture.cpp            # Core Graphics 捕获
-│   │   ├── sc_capture.cpp            # ScreenCaptureKit 捕获
-│   │   ├── cgevent_input.cpp         # CGEvent 输入
-│   │   ├── cocoa_window.cpp          # Cocoa 窗口
-│   │   └── cocoa_screen.cpp          # Cocoa 屏幕
-│   │
-│   ├── linux/
-│   │   ├── x11_capture.cpp           # X11 捕获
-│   │   ├── pipewire_capture.cpp      # PipeWire 捕获
-│   │   ├── xtest_input.cpp           # XTest 输入
-│   │   ├── x11_window.cpp            # X11 窗口
-│   │   └── x11_screen.cpp            # X11 屏幕
-│   │
-│   └── factory.cpp                   # 平台工厂实现
+├── src/platform/                        # 【薄层租户】每系统一个目录，互不可见
+│   ├── win/                             # namespace wingman::platform::win
+│   ├── mac/                             # namespace wingman::platform::mac
+│   ├── linux/                           # namespace wingman::platform::linux（宏守卫见 §8）
+│   ├── unix/                            # posix 共享实现（P1 更名 posix/，namespace 同步）
+│   ├── mock/                            # 测试租户
+│   └── android/                         # 【预留】移动端 Agent 租户（JNI 桥 +
+│                                        #   AccessibilityService/MediaProjection），
+│                                        #   移动端 A1 启动时入住，见
+│                                        #   docs/mobile-support-feasibility.md
 │
-└── src/
-    ├── screen.cpp          # 使用 IScreen 接口
-    ├── window.cpp          # 使用 IWindow 接口
-    └── input.cpp           # 使用 IInput 接口
+└── src/{vision,script,ipc,rpc,core}/    # 【公共层】平台宏数量必须为 0（§8 守卫）
 ```
 
 ---
@@ -435,6 +423,20 @@ lib/wingman/
 2. 实现 Linux 平台（X11/PipeWire, XTest）
 3. 添加编译条件
 
+### 6.4 状态与后续阶段（2026-09-19）
+
+第一至第三阶段已完成（接口 + 三平台实现 + CMake 按平台选源）。当前欠账：
+公共路径仍有 48 个文件带平台宏（P0 冻结于迁移清单，见 §8）。
+
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| P0 | 薄层纪律成文 + 边界守卫（`scripts/check_platform_boundary.sh`）+ 迁移清单冻结 | ✅ |
+| P1 | 命名统一（`platform::windows`→`::win`）、`unix/`→`posix/` 更名、include 侧平台私有头收回、`linux` 宏守卫 | 待办 |
+| P2 | 泄漏销号：ipc 通道（管道/socket 实现搬入 platform/）、capture_source、transport 宏归位 | 待办 |
+| P3 | 接口补缺：security 探测、recorder 钩子各抽小接口 | 按需 |
+| P4 | 遗留静态类下线（`screen.cpp`/`window.cpp`/`clipboard.cpp` 等，ADR 已冻结） | 待办 |
+| P5 | android 租户接入（移动端 A1 时目录/namespace 直接就位） | 规划中 |
+
 ---
 
 ## 7. 优势总结
@@ -446,3 +448,40 @@ lib/wingman/
 | **新增平台** | 散落各处，容易遗漏 | 实现接口即可 |
 | **单元测试** | 无法 mock 平台代码 | 可注入 mock 实现 |
 | **代码复用** | 平台代码与业务混在一起 | 业务代码完全平台无关 |
+
+---
+
+## 8. 薄层纪律与平台边界守卫
+
+> 立规（2026-09-19，P0）。本节是把「平台代码只有一个家」从约定变成可检查约束的定义。
+
+### 8.1 四条纪律
+
+1. **薄层只做翻译**：`src/platform/<os>/` 只负责 OS API ⇄ 接口结构体（`Bitmap`/`Rect`/`KeyCode`）
+   的转换，禁止业务逻辑、禁止反向 include 公共实现、禁止策略（重试/缓存/调度等一律在公共层）。
+2. **公共层零平台宏**：`_WIN32`/`__APPLE__`/`__linux__`/`__ANDROID__`/`_MSC_VER` 等条件编译
+   只允许出现在 `src/platform/`。公共层新增平台分支即违规。
+3. **平台私有头不进 `include/`**：只有公共契约放 `include/wingman/platform/`；每个 OS 的实现头
+   留在 `src/platform/<os>/` 内部（历史残留的 `include/wingman/platform/win/` 由 P1 收回）。
+4. **新增平台 = 新增一个租户目录**：实现既有接口即可，公共层零改动（android 将是第一个验证
+   本纪律的新租户）。
+
+### 8.2 namespace 规范
+
+- 接口与工厂：`wingman::platform`；实现：`wingman::platform::<os>`（`win` / `mac` / `linux` /
+  `posix` / `mock` / `android`）。
+- ⚠️ `platform::windows` 与 `platform::win` 两套拼写并存属历史欠账，P1 统一为 `win`。
+- ⚠️ `linux` 是 GCC/Clang 非 strict 模式下的预定义宏，`namespace linux` 依赖 strict
+  `-std=c++*` 才能编译。P1 在平台头加编译守卫：`#ifdef linux #error "strict -std required"`。
+
+### 8.3 边界守卫
+
+```bash
+scripts/check_platform_boundary.sh   # 无依赖，CI 首个 job 运行（Platform Boundary Guard）
+```
+
+- 扫描 C++ 生产代码（`lib/wingman`、`libs/`、`apps/`，排除 `src/platform/` 与全部 `tests/`），
+  命中平台宏且不在迁移清单中的文件即失败并列出位置。
+- 迁移清单 `scripts/platform_boundary_allowlist.txt`（P0 冻结时的 48 个历史欠账文件）**只减不增**：
+  每完成一处迁移删除一行并跑守卫验证；新增文件入清单须经维护者批准并在 PR 中说明理由。
+- 欠账清零后，本守卫退化为纯红线检查（清单为空、只拦新增违规）。
