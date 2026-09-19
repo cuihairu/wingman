@@ -132,6 +132,7 @@ export default {
   'pages.agents.tagInputPlaceholder': 'Digite uma tag e pressione Enter',
   'pages.agents.viewDetails': 'Ver detalhes',
   'pages.agents.hostname': 'Nome do host',
+  'pages.agents.platform': 'Plataforma',
   'pages.agents.ipAddress': 'Endereço IP',
   'pages.agents.tags': 'Tags',
   'pages.agents.memory': 'Memória',

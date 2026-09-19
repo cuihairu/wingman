@@ -132,6 +132,7 @@ export default {
   'pages.agents.tagInputPlaceholder': 'Ketik tag lalu tekan Enter',
   'pages.agents.viewDetails': 'Lihat detail',
   'pages.agents.hostname': 'Nama host',
+  'pages.agents.platform': 'Platform',
   'pages.agents.ipAddress': 'Alamat IP',
   'pages.agents.tags': 'Tag',
   'pages.agents.memory': 'Memori',

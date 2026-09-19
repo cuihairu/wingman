@@ -1,6 +1,10 @@
 import {
+  AndroidOutlined,
+  AppleOutlined,
   DeleteOutlined,
+  DesktopOutlined,
   InfoCircleOutlined,
+  MobileOutlined,
   NodeIndexOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
@@ -57,6 +61,29 @@ import {
 import wsService from '@/services/websocket';
 
 const { Text } = Typography;
+
+// PlatformTag 平台标识：desktop（含缺省，兼容未上报的旧 agent）→ 桌面、
+// android → 安卓、ios → Apple、其余 → 移动设备（docs/android-agent-design.md §3.3）
+const PlatformTag: React.FC<{ platform?: string }> = ({ platform }) => {
+  const value = platform || 'desktop';
+  const icon =
+    value === 'android' ? (
+      <AndroidOutlined />
+    ) : value === 'ios' ? (
+      <AppleOutlined />
+    ) : value === 'desktop' ? (
+      <DesktopOutlined />
+    ) : (
+      <MobileOutlined />
+    );
+  const color =
+    value === 'android' ? 'green' : value === 'desktop' ? 'geekblue' : 'default';
+  return (
+    <Tag icon={icon} color={color}>
+      {value.toUpperCase()}
+    </Tag>
+  );
+};
 
 // extractErrorMessage 从 umi request 抛出的错误中提取可读文本；
 // 模块级纯函数拿不到 intl，兜底文案由调用方传入
@@ -400,6 +427,13 @@ const Agents: React.FC = () => {
       width: 150,
     },
     {
+      title: formatMessage('pages.agents.platform'),
+      dataIndex: 'platform',
+      key: 'platform',
+      width: 120,
+      render: (_, record) => <PlatformTag platform={record.platform} />,
+    },
+    {
       title: formatMessage('pages.agents.ipAddress'),
       dataIndex: 'ip',
       key: 'ip',
@@ -727,6 +761,11 @@ const Agents: React.FC = () => {
                     {
                       title: formatMessage('pages.agents.hostname'),
                       dataIndex: 'hostname',
+                    },
+                    {
+                      title: formatMessage('pages.agents.platform'),
+                      dataIndex: 'platform',
+                      render: (_, record) => <PlatformTag platform={record.platform} />,
                     },
                     {
                       title: formatMessage('pages.agents.ipAddress'),

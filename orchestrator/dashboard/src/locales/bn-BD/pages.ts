@@ -130,6 +130,7 @@ export default {
   'pages.agents.tagInputPlaceholder': 'ট্যাগ লিখে Enter চাপুন',
   'pages.agents.viewDetails': 'বিস্তারিত দেখুন',
   'pages.agents.hostname': 'হোস্টনাম',
+  'pages.agents.platform': 'প্ল্যাটফর্ম',
   'pages.agents.ipAddress': 'আইপি ঠিকানা',
   'pages.agents.tags': 'ট্যাগ',
   'pages.agents.memory': 'মেমোরি',

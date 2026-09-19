@@ -129,6 +129,7 @@ export default {
   'pages.agents.tagInputPlaceholder': 'برچسب را بنویسید و Enter بزنید',
   'pages.agents.viewDetails': 'مشاهده جزئیات',
   'pages.agents.hostname': 'نام میزبان',
+  'pages.agents.platform': 'پلتفرم',
   'pages.agents.ipAddress': 'آدرس IP',
   'pages.agents.tags': 'برچسب‌ها',
   'pages.agents.memory': 'حافظه',

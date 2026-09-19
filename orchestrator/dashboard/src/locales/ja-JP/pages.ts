@@ -129,6 +129,7 @@ export default {
   'pages.agents.tagInputPlaceholder': 'タグを入力して Enter',
   'pages.agents.viewDetails': '詳細を見る',
   'pages.agents.hostname': 'ホスト名',
+  'pages.agents.platform': 'プラットフォーム',
   'pages.agents.ipAddress': 'IP アドレス',
   'pages.agents.tags': 'タグ',
   'pages.agents.memory': 'メモリ',

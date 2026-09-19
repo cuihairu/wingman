@@ -127,6 +127,7 @@ export default {
   'pages.agents.tagInputPlaceholder': '輸入標籤後按 Enter',
   'pages.agents.viewDetails': '查看詳情',
   'pages.agents.hostname': '主機名稱',
+  'pages.agents.platform': '平臺',
   'pages.agents.ipAddress': 'IP 位址',
   'pages.agents.tags': '標籤',
   'pages.agents.memory': '記憶體',

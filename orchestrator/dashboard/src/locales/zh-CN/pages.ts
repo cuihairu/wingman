@@ -403,6 +403,7 @@ export default {
   'pages.agents.tagInputPlaceholder': '输入标签后回车',
   'pages.agents.viewDetails': '查看详情',
   'pages.agents.hostname': '主机名',
+  'pages.agents.platform': '平台',
   'pages.agents.ipAddress': 'IP 地址',
   'pages.agents.tags': '标签',
   'pages.agents.memory': '内存',
