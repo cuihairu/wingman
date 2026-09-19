@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include "test_helpers.hpp" // 静态初始化 WINGMAN_CONFIG_DIR -> 临时目录，避免污染真实 config
 #include "wingman/script/module_registry.hpp"
 #include "wingman/script/iscript_engine.hpp"
 #include "wingman/json.hpp"

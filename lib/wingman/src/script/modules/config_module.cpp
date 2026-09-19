@@ -1,14 +1,22 @@
 #include "wingman/script/iscript_engine.hpp"
 #include "wingman/config.hpp"
 #include <nlohmann/json.hpp>
+#include <cstdlib>
+#include <string>
 
 namespace wingman {
 namespace script {
 namespace modules {
 
 // Module-level shared ConfigManager instance
+// WINGMAN_CONFIG_DIR 可重定向配置目录（测试用，避免写穿仓库真实配置；运行时未设置时保持默认）
 static ConfigManager& getConfigManager() {
-	static ConfigManager instance;
+	static ConfigManager instance([] {
+		if (const char* dir = std::getenv("WINGMAN_CONFIG_DIR")) {
+			if (*dir != '\0') return std::string(dir);
+		}
+		return std::string("config");
+	}());
 	return instance;
 }
 
