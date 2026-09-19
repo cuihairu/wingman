@@ -27,8 +27,9 @@
 > **🔄 核对更新（2026-09-18）**：对照 `lib/wingman/src/script/modules/`（45 个模块源文件）、
 > `libs/python/typing/wingman/`（37 个 .pyi）与 200+ 条模块测试逐项核对。P0/P1 的
 > event/fsm/task/notify 均已落地并有完整测试（各 38/44/42/39 条用例）与 typing 文件，
-> 此前清单未同步勾选。orchestration 已有基础工作流 API。仍缺：timer/hotkey 模块、
-> 文件 IO 工具、notify tray、事件按名清理与监听器查询、task pause/resume。
+> 此前清单未同步勾选。orchestration 已有基础工作流 API。timer 已于 2026-09-19 落地
+> （timer_module.cpp + timer.pyi + 12 条测试）。仍缺：hotkey 模块、文件 IO 工具、
+> notify tray、事件按名清理与监听器查询、task pause/resume。
 
 ### 脚本与运行时
 - [ ] 统一 Lua / Python API 形状与文档
@@ -89,7 +90,7 @@
 - [x] 剪贴板模块（clipboard_module.cpp + clipboard.pyi）
 - [ ] 文件系统模块（filewatcher 已提供文件变化监控；文件 IO 工具未实现）
 - [ ] 热键监听模块（未实现）
-- [ ] 定时器 / 计划任务模块（未实现）
+- [x] 定时器 / 计划任务模块（timer_module.cpp + timer.pyi + 12 条测试；after/every/取消/查询/sleep）
 - [ ] 更完整的 UI 控件树遍历与等待（uia 模块已有树遍历基础，等待类 API 待补）
 - [ ] 图像模板批量管理与识别
 - [x] 录制 / 回放闭环（macro_module.cpp）
@@ -99,7 +100,7 @@
 ### 优先级建议
 - [x] P0: `event`、`task`、`fsm`
 - [x] P1: `notify`、`orchestration`
-- [ ] P2: `clipboard` ✅、`file`（监控 ✅ / IO ❌）、`hotkey` ❌、`timer` ❌
+- [ ] P2: `clipboard` ✅、`file`（监控 ✅ / IO ❌）、`hotkey` ❌、`timer` ✅
 - [ ] P3: UI 树、模板管理、录制回放增强（录制回放主体 ✅）
 
 ### 建议的落地顺序
@@ -108,6 +109,38 @@
 3. `task` 引入任务生命周期和重试/超时封装
 4. `notify` 消费 `event` / `task`，统一输出到日志、托盘和 webhook
 5. `orchestration` 复用 `task` + `fsm` 做工作流编排
+
+---
+
+## 移动端支持（规划，2026-09-19 立项）
+
+> 可行性分析与路线图详见 [mobile-support-feasibility.md](./mobile-support-feasibility.md)。
+> 核心形态：**Android 端侧 Agent + TCP 长链接直连 Go Server（云控模式）**，控制面在
+> Server、执行面在端侧；iOS 端侧不可行（沙箱无合法通道），iOS 主机控（WDA）为远期可选。
+
+### A1 PoC：链路打通
+- [ ] Kotlin 壳：ForegroundService + 长链接（复用 libs/transport 编译到 Android）
+- [ ] wingman 核心 NDK 编译通过（Lua + transport + 核心库；vcpkg 扩展 arm64-android triplet）
+- [ ] Go Server 下发 hello-world Lua 脚本 → 端侧执行 → 日志回传 Dashboard
+
+### A2 能力闭环
+- [ ] `platform/android/` IInput 后端（AccessibilityService dispatchGesture，经 JNI）
+- [ ] `platform/android/` ICapture 后端（MediaProjection 主 + takeScreenshot API 30+ 兜底）
+- [ ] 找色/找图/像素检测对手机截帧可用；screen/input 脚本 API 全通
+- [ ] 触发器系统端侧跑通（定时/像素触发）
+
+### A3 可靠性与部署体验
+- [ ] 开机自启、崩溃自重启、断连自治（缓存脚本继续执行、重连后汇报）
+- [ ] Android 13+ 受限设置引导（手动允许 / adb 预授权 / Device Owner 批量部署）
+- [ ] 模板图片 asset.sync 下发、脚本版本管理
+
+### A4 多设备编排
+- [ ] Team/inbox 模块接入端侧 Agent
+- [ ] Dashboard 设备视图（分组、批量下发、状态大盘）
+
+### 远期可选
+- [ ] I1: iOS 主机控——PC 端 ICapture/IInput 的 WDA 后端（usbmuxd/libimobiledevice，依赖 Mac 签名链）
+- [ ] 端侧 Python 引擎评估（Lua-first，Python+NDK 体积/维护成本高，暂缓）
 
 ---
 

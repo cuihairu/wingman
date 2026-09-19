@@ -292,6 +292,57 @@ The Dashboard consumes these endpoints from the Agents page (row selection
 + batch toolbar + result table); the trigger form is shared with the
 Monitor page as a callback-style component.
 
+## Scripting Language Strategy (Dual-Language, Tiered Primacy)
+
+Decision (2026-09-19): Wingman keeps **both** Lua and Python as script
+languages. Consolidating to a single language is explicitly rejected.
+
+### Why the dual-language tax is small by construction
+
+- Script modules are written **once** in C++ as `ModuleDescriptor`s
+  (`lib/wingman/src/script/modules/module_registry.cpp`) and bound
+  generically by both engines (Lua via sol2, Python via pybind11, which
+  additionally registers snake_case aliases). A new module costs one C++
+  file plus a Python `.pyi`; dual-language support is not a per-feature
+  rewrite.
+- Total engine glue is ~1.2k LOC (`libs/lua/src` 544 + `libs/python/src`
+  704). The Python-only burden is the `libs/python/typing` stubs; Lua has
+  no parallel annotation layer to maintain.
+
+### Tiered primacy
+
+| Surface | Primary language | Rationale |
+|---------|-----------------|-----------|
+| Desktop (Win/Linux/macOS) | **Python** | LLM-assisted script authoring, larger talent pool, adjacent ml/AI scripting |
+| Android on-device agent (planned, see `docs/mobile-support-feasibility.md`) | **Lua** | ~0.3 MB footprint vs ~20-30 MB embedded CPython, ~1 ms engine startup, per-script Lua state with no GIL for concurrent scripts |
+
+Interpreter speed is not the deciding factor: the script layer only
+orchestrates, while wall time is dominated by native capture / OpenCV
+matching / input injection. Where efficiency does matter (startup,
+per-instance memory, concurrency, APK size), Lua wins — and those are
+exactly the multi-instance and mobile constraints. LLM-era authoring
+convenience is Python's win, and it is equally strategic. Cutting either
+language forfeits one of these; keeping both forfeits neither.
+
+### Cost-reduction commitments (keeping the tax near zero)
+
+1. Generate `libs/python/typing/*.pyi` from `ModuleDescriptor` signature
+   strings instead of hand-maintaining stubs.
+2. New docs and examples are written Python-first; Lua examples are kept
+   as secondary references, not duplicated prose.
+3. Module global-state cleanup converges on a single registry mechanism
+   instead of per-engine manual `cleanup*Module()` declarations.
+
+### Non-goals
+
+- Dropping Lua: it is the only viable language for the mobile agent path
+  (footprint/GIL/startup) and the migration path from the Lua-based
+  mobile game automation user base.
+- Dropping Python: it carries desktop scripting UX and LLM-era
+  accessibility.
+- Introducing a third language (e.g. JavaScript for Auto.js script
+  compatibility) requires a separate decision.
+
 ## Documentation Requirement
 
 When changing runtime control, local UI, or remote orchestration code, update this document and `docs/architecture.md` in the same change. If implementation is experimental, mark it explicitly as experimental instead of presenting it as the stable architecture.
