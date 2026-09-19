@@ -2,6 +2,8 @@ package integration
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +21,12 @@ func TestRBACAgentOperationPermissions(t *testing.T) {
 
 	a := newSimAgent(t, env.agentAddr, "it-rbac-agent", "rbac-host", nil)
 	env.waitForAgentStatus(t, admin, "it-rbac-agent", "online")
+
+	// run_script 下发时 server 会读取脚本内容（content 内联），先落盘
+	if err := os.WriteFile(filepath.Join(env.scriptsDir, "rbac.lua"),
+		[]byte("print('rbac')"), 0o644); err != nil {
+		t.Fatalf("write rbac.lua: %v", err)
+	}
 
 	validSteps := []map[string]any{{"id": "s1", "script": "rbac.lua"}}
 

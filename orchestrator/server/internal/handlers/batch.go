@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -239,21 +240,44 @@ func (h *BatchHandler) HandleBatchRunScript(c *gin.Context) {
 	}
 
 	targets := h.resolveTargets(ids, tagList)
-	summary := runBatch(targets, func(info *agent.AgentInfo) (bool, string) {
-		if info.Client == nil || info.Status != agent.StatusOnline {
-			return false, "agent offline"
-		}
-		resp, err := info.Client.SendCommandWithTimeout("run_script", map[string]any{
-			"path": scriptPath,
-		}, 30*time.Second)
+
+	var summary BatchSummary
+	if len(targets) > 0 {
+		// 读取脚本内容内联下发：与单 agent HandleRun 一致（docs/android-agent-design.md
+		// §3.2），Android 等无服务器文件系统的 agent 依赖 content 字段；
+		// 桌面 runtime 忽略 content 继续用 path。零目标时不读文件、零下发。
+		content, err := os.ReadFile(scriptPath)
 		if err != nil {
-			return false, err.Error()
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "read script: " + err.Error()})
+			return
 		}
-		if success, ok := resp["success"].(bool); ok && !success {
-			return false, commandErrorText(resp, nil)
+		if len(content) > maxInlineScriptSize {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": fmt.Sprintf(
+				"script too large: %d bytes (max %d)", len(content), maxInlineScriptSize)})
+			return
 		}
-		return true, ""
-	})
+		payload := map[string]any{
+			"path":    scriptPath,
+			"content": string(content),
+		}
+		if lang := scriptLanguage(scriptPath); lang != "" {
+			payload["language"] = lang
+		}
+
+		summary = runBatch(targets, func(info *agent.AgentInfo) (bool, string) {
+			if info.Client == nil || info.Status != agent.StatusOnline {
+				return false, "agent offline"
+			}
+			resp, err := info.Client.SendCommandWithTimeout("run_script", payload, 30*time.Second)
+			if err != nil {
+				return false, err.Error()
+			}
+			if success, ok := resp["success"].(bool); ok && !success {
+				return false, commandErrorText(resp, nil)
+			}
+			return true, ""
+		})
+	}
 
 	// DB 写在 fan-out 之后串行执行
 	if summary.Succeeded > 0 {

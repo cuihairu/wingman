@@ -21,6 +21,8 @@
 #endif
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <mstcpip.h> // tcp_keepalive / SIO_KEEPALIVE_VALS
+#include <cstddef>
 
 // Windows.h 的宏污染（GetMessage/min/max 等）会撞掉方法名，
 // 在包含 Winsock 的同时一并清除
@@ -37,6 +39,10 @@
 namespace wingman::transport {
 
 using SocketType = SOCKET;
+
+// Windows 无 POSIX 的 ssize_t（MSVC 仅在 CRT 宏分歧下偶发提供），
+// 与 POSIX 侧同语义：收发原语的返回类型（<0 错误，0 对端关闭）
+using ssize_t = std::ptrdiff_t;
 
 #ifndef INVALID_SOCKET_VALUE
 #define INVALID_SOCKET_VALUE INVALID_SOCKET
