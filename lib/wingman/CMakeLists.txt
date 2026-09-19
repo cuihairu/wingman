@@ -116,6 +116,7 @@ set(WINGMAN_SOURCES
     src/script/modules/macro_module.cpp
     src/script/modules/script_module.cpp
     src/script/modules/ml_module.cpp
+    src/script/modules/timer_module.cpp
     src/script/modules/module_registry.cpp
     src/platform/input_factory.cpp
     src/platform/mock/mock_input.cpp

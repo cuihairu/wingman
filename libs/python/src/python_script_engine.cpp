@@ -14,6 +14,7 @@ namespace wingman {
 namespace script {
 namespace modules {
 	void cleanupFsmModule();
+	void cleanupTimerModule();
 }
 }
 }
@@ -234,6 +235,8 @@ void PythonScriptEngine::shutdown() {
 	// The EventHub cleanup is NOT called here to avoid affecting other scripts
 	// Clear FSM global state
 	script::modules::cleanupFsmModule();
+	// Cancel timers created by this script (callbacks hold engine-owned callables)
+	script::modules::cleanupTimerModule();
 
 	// 注意：不调用 Py_Finalize()，因为其他 Python 对象可能仍存在
 	// CPython 会在进程退出时清理

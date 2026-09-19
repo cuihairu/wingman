@@ -30,6 +30,7 @@ if(BUILD_CORE_TESTS)
         task_module_test.cpp
         notify_module_test.cpp
         fsm_module_test.cpp
+        timer_module_test.cpp
         behavior_tree_test.cpp
         config_test.cpp
         verification_test.cpp

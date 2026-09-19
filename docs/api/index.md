@@ -246,6 +246,7 @@ end
 - [gameprofile](./gameprofile.md) - 游戏配置档案
 - [debugger](./debugger.md) - 调试器
 - [util](./util.md) - 工具函数（sleep、随机数等）
+- [timer](./timer.md) - 定时器（一次性/周期回调、sleep）
 
 ### 安全与加密
 

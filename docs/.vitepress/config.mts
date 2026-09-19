@@ -139,6 +139,7 @@ export default defineConfig({
             { text: 'wingman.gameprofile', link: '/api/gameprofile' },
             { text: 'wingman.debugger', link: '/api/debugger' },
             { text: 'wingman.util', link: '/api/util' },
+            { text: 'wingman.timer', link: '/api/timer' },
             { text: 'wingman.perf', link: '/api/perf' },
             { text: '数据类型', link: '/api/types' }
           ]

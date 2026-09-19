@@ -46,6 +46,7 @@ ModuleDescriptor createFileWatcherModule();
 ModuleDescriptor createMacroModule();
 ModuleDescriptor createScriptModule();
 ModuleDescriptor createMlModule();
+ModuleDescriptor createTimerModule();
 
 std::vector<ModuleDescriptor> getAllModules() {
 	std::vector<ModuleDescriptor> modules;
@@ -87,6 +88,7 @@ std::vector<ModuleDescriptor> getAllModules() {
 	modules.push_back(createMacroModule());
 	modules.push_back(createScriptModule());
 	modules.push_back(createMlModule());
+	modules.push_back(createTimerModule());
 	return modules;
 }
 

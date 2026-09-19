@@ -11,6 +11,7 @@ namespace modules {
 	void cleanupFsmModule();
 	void cleanupMacroModule();
 	void cleanupMlModule();
+	void cleanupTimerModule();
 }
 }
 }
@@ -86,6 +87,8 @@ void LuaScriptEngine::shutdown() {
 		script::modules::cleanupFsmModule();
 		script::modules::cleanupMacroModule();
 		script::modules::cleanupMlModule();
+		// Cancel timers created by this script (callbacks hold engine-owned callables)
+		script::modules::cleanupTimerModule();
 		initialized_ = false;
 	}
 }
