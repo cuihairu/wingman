@@ -7,12 +7,17 @@ if(BUILD_LUA_TESTS)
     find_package(GTest CONFIG REQUIRED)
 
     # 创建测试可执行文件
-    add_executable(lua_tests
-        lua_test.cpp
+    # script_runner_test：Android 端执行器（apps/android/cpp/agent/），桌面同源编译
+    set(LUA_TESTS_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/lua_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/script_runner_test.cpp
+        ${CMAKE_SOURCE_DIR}/apps/android/cpp/agent/script_runner.cpp
     )
+    add_executable(lua_tests ${LUA_TESTS_SOURCES})
 
     target_include_directories(lua_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_SOURCE_DIR}/apps/android/cpp
     )
 
     target_link_libraries(lua_tests PRIVATE

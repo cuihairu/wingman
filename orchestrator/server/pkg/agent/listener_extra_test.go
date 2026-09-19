@@ -16,6 +16,7 @@ type recordingRegistry struct {
 	unregistered []string
 	statuses    map[string]string
 	heartbeats  []string
+	platforms   []string
 	clients     map[string]any
 }
 
@@ -30,6 +31,12 @@ func (r *recordingRegistry) Register(agentID, hostname, ip string, conn any) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.registered = append(r.registered, agentID)
+}
+
+func (r *recordingRegistry) UpdatePlatform(agentID string, platform string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.platforms = append(r.platforms, platform)
 }
 
 func (r *recordingRegistry) Unregister(agentID string) {

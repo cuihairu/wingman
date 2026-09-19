@@ -27,6 +27,7 @@ type AgentRegistrar interface {
 	UpdateStatus(agentID string, status string, resources any)
 	UpdateHeartbeat(agentID string)
 	UpdateLinkHealth(agentID string, raw map[string]any)
+	UpdatePlatform(agentID string, platform string)
 	SetClient(agentID string, conn any)
 }
 
@@ -486,6 +487,9 @@ func (ac *agentConn) handleRequest(header *MessageHeader, _ []byte) {
 func (ac *agentConn) handleRegister(msg map[string]any) {
 	agentID, _ := msg["agentId"].(string)
 	hostname, _ := msg["hostname"].(string)
+	// 平台标识（android/desktop/...）：桌面 agent 旧版本不上报，缺省由
+	// Registry 归一为 desktop。见 docs/android-agent-design.md §3.3。
+	platform, _ := msg["platform"].(string)
 
 	if agentID == "" {
 		agentID = fmt.Sprintf("agent_%s", ac.conn.RemoteAddr().String())
@@ -493,6 +497,7 @@ func (ac *agentConn) handleRegister(msg map[string]any) {
 
 	ac.setAgentID(agentID)
 	ac.listener.registry.Register(agentID, hostname, ac.conn.RemoteAddr().String(), ac)
+	ac.listener.registry.UpdatePlatform(agentID, platform)
 	ac.listener.registry.SetClient(agentID, ac)
 
 	ac.sendNotify("agent.register_ack", map[string]any{

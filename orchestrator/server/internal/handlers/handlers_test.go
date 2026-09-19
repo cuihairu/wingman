@@ -215,6 +215,10 @@ func TestScriptRunWithMockAgent(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := newDB(t)
 	dir := t.TempDir()
+	// run_script 内联读文件内容下发，预先落盘目标脚本
+	if err := os.WriteFile(filepath.Join(dir, "demo.lua"), []byte("print('ok')"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	reg, _ := newRegistry(t)
 	reg.Register("a1", "h1", "10.0.0.1", &handlerMockConn{responses: []map[string]any{{"success": true}}})
 

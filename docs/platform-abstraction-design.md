@@ -397,10 +397,10 @@ lib/wingman/
 │   ├── ipc_factory.cpp / input_factory.cpp
 │   │                                    # 跨平台分发器（按平台选实现，P2 收回 ipc_factory）
 │   ├── mock/                            # 测试租户
-│   └── android/                         # 【预留】移动端 Agent 租户（JNI 桥 +
-│                                        #   AccessibilityService/MediaProjection），
-│                                        #   移动端 A1 启动时入住，见
-│                                        #   docs/mobile-support-feasibility.md
+│   └── android/                         # Android 租户：A1 已入住（占位 stub +
+│                                        #   CMake ANDROID 分支）；JNI 桥与
+│                                        #   IInput/ICapture 真实现 A2 落地，
+│                                        #   见 docs/android-agent-design.md §5.5
 │
 └── src/{vision,script,ipc,rpc,core}/    # 【公共层】平台宏数量必须为 0（§8 守卫）
 ```
@@ -439,7 +439,7 @@ lib/wingman/
 | P2 | 泄漏销号：ipc 通道（管道/socket 实现搬入 platform/）、capture_source、transport 宏归位 | ✅（2026-09-19） |
 | P3 | 接口补缺：security 探测、recorder 钩子各抽小接口 | 按需 |
 | P4 | 遗留静态类下线（`screen.cpp`/`window.cpp`/`clipboard.cpp` 等，ADR 已冻结） | 待办 |
-| P5 | android 租户接入（移动端 A1 时目录/namespace 直接就位） | 规划中 |
+| P5 | android 租户接入（A1 目录/构建分支已就位；真实现随移动端 A2） | A1 部分 ✅ |
 
 ---
 

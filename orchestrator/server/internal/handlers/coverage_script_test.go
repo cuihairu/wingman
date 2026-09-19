@@ -120,6 +120,10 @@ func TestScriptRunErrorVariants(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := newDB(t)
 	dir := t.TempDir()
+	// run_script 现在内联读文件内容下发，预先落盘目标脚本
+	if err := os.WriteFile(filepath.Join(dir, "demo.lua"), []byte("print('ok')"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// bind 失败
 	reg, _ := newRegistry(t)
@@ -263,5 +267,69 @@ func TestScriptLogsValidation(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	if len(resp.Data) != 2 {
 		t.Errorf("limit=2 should return 2, got %d", len(resp.Data))
+	}
+}
+
+// TestScriptRunContentInline run_script 下发 payload 必须内联脚本内容与语言
+// 标识（Android agent 无服务器文件系统，依赖 content 执行；
+// docs/android-agent-design.md §3.2）。
+func TestScriptRunContentInline(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := newDB(t)
+	dir := t.TempDir()
+	scriptBody := "print('hello android')"
+	if err := os.WriteFile(filepath.Join(dir, "demo.lua"), []byte(scriptBody), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	mock := &handlerMockConn{responses: []map[string]any{{"success": true}}}
+	reg, _ := newRegistry(t)
+	reg.Register("a1", "h", "10.0.0.1", mock)
+	sh := NewScriptHandler(db, dir, reg)
+	r := gin.New()
+	r.POST("/run", asAdmin(1), sh.HandleRun)
+
+	w := doJSON(r, "POST", "/run", map[string]any{"path": "demo.lua"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("run: %d %s", w.Code, w.Body.String())
+	}
+
+	cmds := mock.dispatchedCommands()
+	if len(cmds) != 1 || cmds[0].Method != "run_script" {
+		t.Fatalf("expected 1 run_script command, got %+v", cmds)
+	}
+	if got, _ := cmds[0].Data["content"].(string); got != scriptBody {
+		t.Errorf("content: expected %q, got %q", scriptBody, got)
+	}
+	if got, _ := cmds[0].Data["language"].(string); got != "lua" {
+		t.Errorf("language: expected lua, got %q", got)
+	}
+	if _, ok := cmds[0].Data["path"]; !ok {
+		t.Error("path should still be present (desktop compatibility)")
+	}
+}
+
+// TestScriptRunContentTooLarge 超过内联上限的脚本应拒绝下发（400）。
+func TestScriptRunContentTooLarge(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := newDB(t)
+	dir := t.TempDir()
+	big := make([]byte, maxInlineScriptSize+1)
+	for i := range big {
+		big[i] = 'a'
+	}
+	if err := os.WriteFile(filepath.Join(dir, "big.lua"), big, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	reg, _ := newRegistry(t)
+	reg.Register("a1", "h", "10.0.0.1", &handlerMockConn{})
+	sh := NewScriptHandler(db, dir, reg)
+	r := gin.New()
+	r.POST("/run", asAdmin(1), sh.HandleRun)
+
+	w := doJSON(r, "POST", "/run", map[string]any{"path": "big.lua"})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("oversize: expected 400, got %d %s", w.Code, w.Body.String())
 	}
 }

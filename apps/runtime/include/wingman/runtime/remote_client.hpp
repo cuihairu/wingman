@@ -91,6 +91,16 @@ public:
     // 获取配置
     const RemoteClientConfig& getConfig() const;
 
+    // 设置注册身份（须在 start() 前调用）。留空的字段保持默认行为：
+    // agentId 自动生成 agent_<hostname>_<rand>，hostname 取系统主机名。
+    // Android 端经 JNI 由 Kotlin 侧下发设备标识（docs/android-agent-design.md §3.3）。
+    void setIdentity(const std::string& agentId, const std::string& hostname);
+
+    // 设置 agent.register 的附加字段（须在 start() 前调用），逐键合并进注册
+    // 消息顶层。Android 端传 {"platform": "android", "capabilities": {...}}；
+    // 桌面端不设置，server 侧归一为 desktop。
+    void setRegisterMetadata(const nlohmann::json& fields);
+
     // 当前连接状态名（connected/connecting/reconnecting/disconnected/error）。
     // 本地 RPC system.getStatus 经此向 GUI 暴露远程链路状态，修复事件驱动陈旧问题。
     std::string connectionStateName() const {

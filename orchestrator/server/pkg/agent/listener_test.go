@@ -256,6 +256,8 @@ func (m *mockRegistry) Register(agentID, hostname, ip string, conn any) {
 	m.agents[agentID] = true
 }
 
+func (m *mockRegistry) UpdatePlatform(agentID string, platform string) {}
+
 func (m *mockRegistry) Unregister(agentID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

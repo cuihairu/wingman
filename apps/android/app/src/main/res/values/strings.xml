@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wingman Agent</string>
+    <string name="accessibility_label">Wingman 注入服务（A2）</string>
+    <string name="notification_channel">Agent 运行状态</string>
+    <string name="notification_title">Wingman Agent 运行中</string>
+    <string name="notification_text">与中控服务器保持长连接</string>
+
+    <string name="hint_server_ip">中控服务器 IP</string>
+    <string name="hint_server_port">端口</string>
+    <string name="hint_agent_id">设备 ID</string>
+    <string name="btn_start">启动 Agent</string>
+    <string name="btn_stop">停止 Agent</string>
+    <string name="btn_accessibility">无障碍设置（A2 注入能力）</string>
+    <string name="status_placeholder">状态：未连接</string>
+    <string name="toast_started">Agent 已启动</string>
+    <string name="toast_stopped">Agent 已停止</string>
+    <string name="status_format">连接：%1$s&#10;核心运行：%2$s&#10;当前脚本：%3$s&#10;脚本运行：%4$s</string>
+</resources>

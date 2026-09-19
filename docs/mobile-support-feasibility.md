@@ -194,10 +194,12 @@ Android App（Kotlin 壳）
 
 ## 8. 分阶段路线图
 
-- [ ] **A1 PoC：链路打通**（最小验证）
-  - [ ] Kotlin 壳：ForegroundService + 长链接（复用 libs/transport 编译到 Android）
-  - [ ] wingman 核心 NDK 编译通过（Lua + transport + 核心库）
-  - [ ] Go Server 下发 hello-world Lua 脚本 → 端侧执行 → 日志回传 Dashboard
+- [x] **A1 PoC：链路打通**（✅ 2026-09-19 实施完成，工程设计与验收步骤见
+  `docs/android-agent-design.md`；完整工程在 `apps/android/`）
+  - [x] Kotlin 壳：ForegroundService + 长链接（复用 libs/transport + RemoteClient 编译到 Android）
+  - [x] C++ 核心可移植面就位（transport + RemoteClient + Lua/Sol2 + ScriptRunner；
+    lib/wingman 本体 Android 编译随 A2 接入，租户目录与构建分支已就位）
+  - [ ] 真机端到端验收（需 Android SDK/NDK 环境，步骤见 apps/android/README.md）
 - [ ] **A2 能力闭环：自动化可用**
   - [ ] `platform/android/` IInput 后端（dispatchGesture，JNI）
   - [ ] `platform/android/` ICapture 后端（MediaProjection 主 + takeScreenshot 兜底）

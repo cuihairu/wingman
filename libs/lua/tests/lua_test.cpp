@@ -12,7 +12,8 @@ using namespace wingman::lua;
 
 TEST(LuaEngineTest, CreateEngine) {
     LuaEngine engine;
-    EXPECT_NE(engine.getState(), nullptr);
+    // sol::state 私有继承 unique_ptr，不能与 nullptr 直接比较；取裸指针断言
+    EXPECT_NE(engine.getState().lua_state(), nullptr);
 }
 
 TEST(LuaEngineTest, ExecuteString) {

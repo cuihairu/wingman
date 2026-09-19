@@ -62,6 +62,8 @@ public:
     // Agent 信息
     std::string agentId;
     std::string hostname;
+    // agent.register 附加字段（platform/capabilities 等，setRegisterMetadata 注入）
+    nlohmann::json registerMetadata = nlohmann::json::object();
     bool registered = false;
 
     // 重连退避状态
@@ -405,6 +407,10 @@ void RemoteClient::sendRegister() {
         {"agentId", impl_->agentId},
         {"hostname", impl_->hostname}
     };
+    // 合并附加注册字段（platform/capabilities 等，见 setRegisterMetadata）
+    for (auto it = impl_->registerMetadata.begin(); it != impl_->registerMetadata.end(); ++it) {
+        registerMsg[it.key()] = it.value();
+    }
 
     auto message = std::make_shared<transport::Message>();
     message->header.type = transport::MessageType::Notify;
@@ -625,6 +631,15 @@ std::string RemoteClient::stateName(ConnectionState state) {
 
 const RemoteClientConfig& RemoteClient::getConfig() const {
     return impl_->config;
+}
+
+void RemoteClient::setIdentity(const std::string& agentId, const std::string& hostname) {
+    impl_->agentId = agentId;
+    impl_->hostname = hostname;
+}
+
+void RemoteClient::setRegisterMetadata(const nlohmann::json& fields) {
+    impl_->registerMetadata = fields;
 }
 
 // deliverMessage 投递出站消息：已连接则即时发送；失败且 queueable 时入断线缓冲。

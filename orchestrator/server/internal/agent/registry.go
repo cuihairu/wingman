@@ -44,6 +44,9 @@ type AgentInfo struct {
 	LastSeen  time.Time
 	Client    AgentConn
 	Tags      []string
+	// Platform 设备平台（android/desktop/...），agent.register 上报；
+	// 空值视为 desktop（旧版桌面 agent 不上报）。见 docs/android-agent-design.md §3.3。
+	Platform string
 }
 
 // TagStore agent 标签持久化接口（由 DB 层实现，Registry 不直接依赖 gorm）。
@@ -366,6 +369,17 @@ func (r *Registry) SetClient(agentID string, conn any) {
 	}
 }
 
+// UpdatePlatform 记录 agent.register 上报的平台标识（实现 pkg/agent.AgentRegistrar
+// 接口）。每次重连都会随 register 重新上报，这里直接覆盖即可。
+func (r *Registry) UpdatePlatform(agentID string, platform string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if info, ok := r.agents[agentID]; ok {
+		info.Platform = platform
+	}
+}
+
 // StartHeartbeatCheck 启动心跳检测
 func (r *Registry) StartHeartbeatCheck() {
 	r.mu.RLock()
@@ -445,11 +459,17 @@ func (info *AgentInfo) ToJSON() map[string]any {
 		"sessionUptimeMs":      info.Link.SessionUptimeMs,
 		"heartbeatAgeMs":       time.Since(info.LastSeen).Milliseconds(),
 	}
+	// 平台归一：未上报（旧版桌面 agent）按 desktop 展示
+	platform := info.Platform
+	if platform == "" {
+		platform = "desktop"
+	}
 	return map[string]any{
 		"agentId":     info.AgentID,
 		"hostname":    info.Hostname,
 		"ip":          info.IP,
 		"status":      string(info.Status),
+		"platform":    platform,
 		"resources":   info.Resources,
 		"link":        link,
 		"lastSeen":    info.LastSeen.UnixMilli(),

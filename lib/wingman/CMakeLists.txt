@@ -208,6 +208,12 @@ elseif(APPLE)
     find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
     find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
     find_library(SCREENCAPTUREKIT_FRAMEWORK ScreenCaptureKit)
+elseif(ANDROID)
+    # Android 租户（A1 占位：lib/wingman 本体不进 NDK 构建，见
+    # docs/android-agent-design.md §5.5；A2 替换为真实 IInput/ICapture 实现）
+    list(APPEND WINGMAN_SOURCES
+        src/platform/android/android_stub.cpp
+    )
 elseif(UNIX AND NOT APPLE)
     list(APPEND WINGMAN_SOURCES
         src/platform/linux/x11_factory.cpp
