@@ -1,4 +1,4 @@
-#include "wingman/platform/win/win32_filewatcher.hpp"
+#include "platform/win/win32_filewatcher.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -16,7 +16,7 @@
 #endif
 #include <windows.h>
 
-namespace wingman::platform::windows {
+namespace wingman::platform::win {
 
 WatchItem::WatchItem()
     : id(0)
@@ -341,6 +341,6 @@ void Win32FileWatcher::checkIOCompletion() {
     }
 }
 
-} // namespace wingman::platform::windows
+} // namespace wingman::platform::win
 
 #endif // _WIN32

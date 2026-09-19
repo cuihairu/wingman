@@ -11,6 +11,8 @@ endif()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# strict 模式（linux/unix 宏守卫，见 src/platform/linux/strict_std.hpp）
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Find dependencies
 find_package(OpenCV CONFIG QUIET)
@@ -188,7 +190,7 @@ elseif(APPLE)
         src/platform/mac/sccapture_capture.cpp
         src/platform/mac/cocoa_clipboard.cpp
         src/platform/mac/fsevents_filewatcher.cpp
-        src/platform/unix/posix_trigger.cpp
+        src/platform/posix/posix_trigger.cpp
     )
     set_source_files_properties(
         src/platform/mac/cgevent_input.cpp
@@ -212,7 +214,7 @@ elseif(UNIX AND NOT APPLE)
         src/platform/linux/posix_process.cpp
         src/platform/linux/posix_system.cpp
         src/platform/linux/x11_recorder.cpp
-        src/platform/unix/posix_trigger.cpp
+        src/platform/posix/posix_trigger.cpp
     )
     # Linux requires X11 and XRandR
     find_package(PkgConfig REQUIRED)
@@ -237,6 +239,10 @@ target_include_directories(wingman PUBLIC
 )
 # Add generated header file directory (without generator expression)
 target_include_directories(wingman PUBLIC ${WINGMAN_GENERATED_DIR})
+
+# Platform-private headers live inside src/platform/<os>/ (thin-layer discipline,
+# docs/platform-abstraction-design.md §8): visible to the wingman target only.
+target_include_directories(wingman PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Link libraries
 set(WINGMAN_LINK_LIBS

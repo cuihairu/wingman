@@ -1,5 +1,7 @@
 #ifdef __linux__
 
+#include "strict_std.hpp" // linux 宏守卫：要求 strict -std（§8.2）
+
 // Undefine linux macro (some compilers define it as 1)
 #undef linux
 

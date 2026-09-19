@@ -2,8 +2,8 @@
 #include <spdlog/spdlog.h>
 
 #ifdef _WIN32
-#include "wingman/platform/win/win32_clipboard.hpp"
-using PlatformClipboard = wingman::platform::windows::Win32Clipboard;
+#include "platform/win/win32_clipboard.hpp"
+using PlatformClipboard = wingman::platform::win::Win32Clipboard;
 #else
 
 namespace wingman::platform {

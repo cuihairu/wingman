@@ -16,7 +16,7 @@
 #endif
 #include <windows.h>
 
-namespace wingman::platform::windows {
+namespace wingman::platform::win {
 
 /**
  * @brief Watch item
@@ -76,6 +76,6 @@ private:
     void checkIOCompletion();
 };
 
-} // namespace wingman::platform::windows
+} // namespace wingman::platform::win
 
 #endif // _WIN32

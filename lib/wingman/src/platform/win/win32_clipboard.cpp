@@ -1,4 +1,4 @@
-#include "wingman/platform/win/win32_clipboard.hpp"
+#include "platform/win/win32_clipboard.hpp"
 #include <spdlog/spdlog.h>
 #include <vector>
 #include <cstring>
@@ -10,7 +10,7 @@
 #include <windows.h>
 #include <shlobj.h>
 
-namespace wingman::platform::windows {
+namespace wingman::platform::win {
 
 Win32Clipboard::Win32Clipboard() : initialized_(false), opened_(false) {}
 
@@ -598,6 +598,6 @@ UINT Win32Clipboard::getHtmlFormat() {
     return cfHTML;
 }
 
-} // namespace wingman::platform::windows
+} // namespace wingman::platform::win
 
 #endif // _WIN32

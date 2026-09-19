@@ -10,7 +10,7 @@
 #endif
 #include <windows.h>
 
-namespace wingman::platform::windows {
+namespace wingman::platform::win {
 
 /**
  * @brief Windows clipboard implementation
@@ -67,6 +67,6 @@ private:
     static UINT getHtmlFormat();
 };
 
-} // namespace wingman::platform::windows
+} // namespace wingman::platform::win
 
 #endif // _WIN32

@@ -3,7 +3,7 @@
 #include <memory>
 
 #ifdef _WIN32
-#include "wingman/platform/win/win32_filewatcher.hpp"
+#include "platform/win/win32_filewatcher.hpp"
 #else
 
 namespace wingman::platform {
@@ -53,7 +53,7 @@ namespace wingman {
 platform::IFileWatcher& FileWatcher::instance() {
     static std::unique_ptr<platform::IFileWatcher> instance = [] {
 #ifdef _WIN32
-        auto watcher = std::make_unique<platform::windows::Win32FileWatcher>();
+        auto watcher = std::make_unique<platform::win::Win32FileWatcher>();
         if (!watcher->initialize()) {
             spdlog::error("[FileWatcher] Failed to initialize platform file watcher");
         }

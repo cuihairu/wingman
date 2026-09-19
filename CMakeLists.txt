@@ -3,6 +3,11 @@ project(Wingman VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# strict 标准模式：GNU 扩展（gnu++23）下 GCC/Clang 预定义 linux/unix 宏，
+# 会破坏 namespace wingman::platform::linux（守卫见
+# lib/wingman/src/platform/linux/strict_std.hpp，规范见
+# docs/platform-abstraction-design.md §8.2）。
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # 使用静态运行时库 (与 vcpkg x64-windows-static 一致)
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")

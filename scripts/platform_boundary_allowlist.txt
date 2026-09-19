@@ -24,8 +24,6 @@ lib/wingman/include/wingman/ipc/tcp_channel.hpp
 lib/wingman/include/wingman/ipc/unix_socket_channel.hpp
 lib/wingman/include/wingman/ipc/windows/named_pipe_channel.hpp
 lib/wingman/include/wingman/platform/platform_types.hpp
-lib/wingman/include/wingman/platform/win/win32_clipboard.hpp
-lib/wingman/include/wingman/platform/win/win32_filewatcher.hpp
 lib/wingman/include/wingman/process.hpp
 lib/wingman/include/wingman/recorder.hpp
 lib/wingman/include/wingman/screen.hpp

@@ -384,14 +384,15 @@ lib/wingman/
 │   ├── input_factory.hpp / screen_factory.hpp
 │   ├── mock_input.hpp                   # 测试租户（本身平台无关）
 │   └── platform_types.hpp               # Bitmap/Rect/KeyCode；OS 句柄一律 opaque
-│                                        # ⚠️ 平台私有头禁止放入 include/（历史残留
-│                                        #    的 win/ 子目录由 P1 收回，见 §6.4）
+│                                        # 平台私有头禁止放入 include/（历史残留的
+│                                        #    win/ 子目录已由 P1 收回至 src/platform/win/）
 │
 ├── src/platform/                        # 【薄层租户】每系统一个目录，互不可见
-│   ├── win/                             # namespace wingman::platform::win
+│   ├── win/                             # namespace wingman::platform::win（P1 统一）
 │   ├── mac/                             # namespace wingman::platform::mac
 │   ├── linux/                           # namespace wingman::platform::linux（宏守卫见 §8）
-│   ├── unix/                            # posix 共享实现（P1 更名 posix/，namespace 同步）
+│   ├── posix/                           # win/mac 共享的 posix 实现（如 TriggerManager，
+│                                         #   plain namespace wingman；P1 由 unix/ 更名）
 │   ├── mock/                            # 测试租户
 │   └── android/                         # 【预留】移动端 Agent 租户（JNI 桥 +
 │                                        #   AccessibilityService/MediaProjection），
@@ -426,12 +427,12 @@ lib/wingman/
 ### 6.4 状态与后续阶段（2026-09-19）
 
 第一至第三阶段已完成（接口 + 三平台实现 + CMake 按平台选源）。当前欠账：
-公共路径仍有 48 个文件带平台宏（P0 冻结于迁移清单，见 §8）。
+公共路径仍有 46 个文件带平台宏（P0 冻结于迁移清单，见 §8）。
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
 | P0 | 薄层纪律成文 + 边界守卫（`scripts/check_platform_boundary.sh`）+ 迁移清单冻结 | ✅ |
-| P1 | 命名统一（`platform::windows`→`::win`）、`unix/`→`posix/` 更名、include 侧平台私有头收回、`linux` 宏守卫 | 待办 |
+| P1 | 命名统一（`platform::windows`→`::win`）、`unix/`→`posix/` 更名、include 侧平台私有头收回、`linux` 宏守卫 | ✅（2026-09-19） |
 | P2 | 泄漏销号：ipc 通道（管道/socket 实现搬入 platform/）、capture_source、transport 宏归位 | 待办 |
 | P3 | 接口补缺：security 探测、recorder 钩子各抽小接口 | 按需 |
 | P4 | 遗留静态类下线（`screen.cpp`/`window.cpp`/`clipboard.cpp` 等，ADR 已冻结） | 待办 |
@@ -470,9 +471,16 @@ lib/wingman/
 
 - 接口与工厂：`wingman::platform`；实现：`wingman::platform::<os>`（`win` / `mac` / `linux` /
   `posix` / `mock` / `android`）。
-- ⚠️ `platform::windows` 与 `platform::win` 两套拼写并存属历史欠账，P1 统一为 `win`。
-- ⚠️ `linux` 是 GCC/Clang 非 strict 模式下的预定义宏，`namespace linux` 依赖 strict
-  `-std=c++*` 才能编译。P1 在平台头加编译守卫：`#ifdef linux #error "strict -std required"`。
+- `platform::windows` 与 `platform::win` 曾两套拼写并存，P1 已统一为 `win`。
+- `posix/` 目录（P1 由 `unix/` 更名）存放 win/mac 共享的 posix 实现；其中只补公共类成员函数
+  的文件（如 `posix_trigger.cpp` 实现 `TriggerManager`）用 plain `namespace wingman`，
+  不新定义类型、不算租户 namespace 例外。
+- ⚠️ `linux`（及 `unix`）是 GCC/Clang 非 strict 模式（`gnu++*`）下的预定义宏，会把
+  `namespace linux` 预处理成非法的 `::1`。约束已双重落地（P1）：
+  1. 根 CMake 与 lib CMake 均 `set(CMAKE_CXX_EXTENSIONS OFF)`，全仓 strict `-std=c++23`；
+  2. `src/platform/linux/strict_std.hpp` 编译守卫（`#ifdef linux #error`），在
+     `x11_factory.cpp`（linux 租户 unity 中枢）最先 include，防止绕过 CMake 直接编译时
+     静默踩坑。
 
 ### 8.3 边界守卫
 
