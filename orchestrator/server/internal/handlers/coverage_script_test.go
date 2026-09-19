@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/scripts"
 	"github.com/gin-gonic/gin"
 )
 
@@ -314,7 +315,7 @@ func TestScriptRunContentTooLarge(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := newDB(t)
 	dir := t.TempDir()
-	big := make([]byte, maxInlineScriptSize+1)
+	big := make([]byte, scripts.MaxInlineScriptSize+1)
 	for i := range big {
 		big[i] = 'a'
 	}

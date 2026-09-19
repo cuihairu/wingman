@@ -691,11 +691,25 @@ func validateConditionStep(step models.WorkflowStep) error {
 
 // runScriptOnce 向 agent 发起一次脚本执行，遵循步骤超时与工作流取消。
 func (e *Engine) runScriptOnce(ctx context.Context, conn agent.AgentConn, step models.WorkflowStep, timeout time.Duration) error {
+	// 内容内联：与 handlers 单发/批量一致（docs/android-agent-design.md §3.2），
+	// Android 等无服务器文件系统的 agent 依赖 content 字段；桌面 runtime 忽略
+	// content 继续用 path。step.Script 已在 validateSteps 解析为绝对路径；
+	// 桌面工作流的既有部署契约是 server 与 agent 共享文件系统，故读失败
+	// 直接判步骤失败（此时 runtime 同样读不到，失败只是更早、信息更清晰）。
+	content, err := scripts.ReadInline(step.Script)
+	if err != nil {
+		return fmt.Errorf("step %s: %w", step.ID, err)
+	}
+
 	done := make(chan error, 1)
 	go func() {
 		data := map[string]any{
 			"path":    step.Script,
+			"content": string(content),
 			"timeout": int(timeout.Milliseconds()),
+		}
+		if lang := scripts.LanguageOf(step.Script); lang != "" {
+			data["language"] = lang
 		}
 		maps.Copy(data, step.Parameters)
 

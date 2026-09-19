@@ -89,16 +89,21 @@ type ∈ Request(1)/Response(2)/Notify(3)/Error(4)。
 
 ### 3.2 run_script 的 content 扩展（本设计唯一的协议变更）
 
-server 侧 `script.go`：下发时读脚本文件内容内联：
+server 侧三条脚本下发路径（单发 / 批量 / 工作流步骤）统一在下发时读取
+脚本文件内容内联：
 
 ```json
 { "path": "scripts/hello.lua", "content": "print('hello')", "language": "lua" }
 ```
 
 - 桌面 runtime：忽略 `content`，继续用 `path` —— **向后兼容，桌面零改动**。
+  （桌面工作流的既有部署契约是 server 与 agent 共享文件系统，故 server 读
+  不到文件即 agent 也读不到，下发前失败只是把错误暴露得更早更清晰。）
 - Android Agent：优先 `content`；无 `content` 时回错误（设备无服务器文件系统）。
 - 大小约束：脚本 ≤ 1MB（server 侧校验，帧上限 16MB 的安全余量）。
 - `language` 字段预留：A1 仅 `lua`；Python 端侧按移动端双语言决策暂缓。
+- 实现收敛在 `internal/scripts`（`ReadInline`/`LanguageOf`/`MaxInlineScriptSize`），
+  handlers 与 workflow 引擎共用。
 
 ### 3.3 注册与能力上报（弱约定）
 
@@ -125,10 +130,13 @@ server 侧 `script.go`：下发时读脚本文件内容内联：
 
 | 文件 | 改动 |
 |------|------|
-| `internal/handlers/script.go` | `run_script` 下发时读文件内容，payload 增加 `content`/`language`；>1MB 拒绝 |
+| `internal/scripts/inline.go` | `ReadInline`/`LanguageOf`/`MaxInlineScriptSize`：内容内联共享实现 |
+| `internal/handlers/script.go` | 单发 `run_script` 下发时读文件内容，payload 增加 `content`/`language`；>1MB 拒绝 |
+| `internal/handlers/batch.go` | 批量下发同上（先解析目标，零目标零下发不读文件） |
+| `internal/workflow/engine.go` | 工作流 `runScriptOnce` 同上（读失败判步骤失败） |
 | `internal/agent/registry.go` | `AgentInfo` 增加 `Platform` 字段（空值视为 desktop，兼容旧 agent） |
 | `pkg/agent/listener.go` | `handleRegister` 读取 `platform` 透传给 Registry（~3 行） |
-| 测试 | registry 平台字段测试 + run_script content 下发测试 |
+| 测试 | registry 平台字段测试 + 三条路径 content 下发测试 |
 
 ---
 

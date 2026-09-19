@@ -3,6 +3,8 @@ package integration
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +22,12 @@ func TestWorkflowSubmitAgentExecuteResultChain(t *testing.T) {
 		return map[string]any{"success": true, "message": "ok"}
 	})
 	env.waitForAgentStatus(t, admin, "it-worker-1", "online")
+
+	// run_script 内联下发读取真实脚本文件（与单发/批量一致），先落盘
+	if err := os.WriteFile(filepath.Join(env.scriptsDir, "e2e.lua"),
+		[]byte("print('e2e')"), 0o644); err != nil {
+		t.Fatalf("write e2e.lua: %v", err)
+	}
 
 	// 1) 提交 s1 → s2（依赖串行）工作流
 	wfID := env.createWorkflow(t, admin, "e2e-chain", []map[string]any{
@@ -42,6 +50,12 @@ func TestWorkflowSubmitAgentExecuteResultChain(t *testing.T) {
 		}
 		if _, ok := c.Data["timeout"]; !ok {
 			t.Errorf("cmd[%d] run_script 应携带 timeout", i)
+		}
+		if c.Data["content"] != "print('e2e')" {
+			t.Errorf("cmd[%d] run_script 应内联 content, got %v", i, c.Data["content"])
+		}
+		if c.Data["language"] != "lua" {
+			t.Errorf("cmd[%d] run_script 应携带 language=lua, got %v", i, c.Data["language"])
 		}
 	}
 	if !cmds[0].At.Before(cmds[1].At) {

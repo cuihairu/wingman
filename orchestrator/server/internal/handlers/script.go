@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,22 +16,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// maxInlineScriptSize run_script 内联下发脚本内容的大小上限。
-// 帧协议上限 16MB，这里留足余量；超大脚本应拆分或走 asset 分发（A4）。
-const maxInlineScriptSize = 1 << 20
-
-// scriptLanguage 按扩展名推断脚本语言（Android 端 A1 仅执行 lua；
-// 未知扩展名返回空串，由 agent 侧自行判定）。
-func scriptLanguage(path string) string {
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".lua":
-		return "lua"
-	case ".py":
-		return "python"
-	default:
-		return ""
-	}
-}
+// maxInlineScriptSize 与 scriptLanguage 收敛到 internal/scripts（与 workflow
+// 引擎共用），见 scripts.MaxInlineScriptSize / scripts.ReadInline / scripts.LanguageOf。
 
 type ScriptHandler struct {
 	db       *gorm.DB
@@ -426,14 +412,13 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 	// 读取脚本内容内联下发：Android 等无服务器文件系统的 agent 依赖 content
 	// 字段执行；桌面 runtime 忽略 content 继续用 path，向后兼容。
 	// 见 docs/android-agent-design.md §3.2。
-	content, err := os.ReadFile(scriptPath)
+	content, err := scripts.ReadInline(scriptPath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "read script: " + err.Error()})
-		return
-	}
-	if len(content) > maxInlineScriptSize {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": fmt.Sprintf(
-			"script too large: %d bytes (max %d)", len(content), maxInlineScriptSize)})
+		if errors.Is(err, scripts.ErrScriptTooLarge) {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "read script: " + err.Error()})
+		}
 		return
 	}
 
@@ -441,7 +426,7 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		"path":    scriptPath,
 		"content": string(content),
 	}
-	if lang := scriptLanguage(scriptPath); lang != "" {
+	if lang := scripts.LanguageOf(scriptPath); lang != "" {
 		payload["language"] = lang
 	}
 

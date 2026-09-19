@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -246,21 +245,20 @@ func (h *BatchHandler) HandleBatchRunScript(c *gin.Context) {
 		// 读取脚本内容内联下发：与单 agent HandleRun 一致（docs/android-agent-design.md
 		// §3.2），Android 等无服务器文件系统的 agent 依赖 content 字段；
 		// 桌面 runtime 忽略 content 继续用 path。零目标时不读文件、零下发。
-		content, err := os.ReadFile(scriptPath)
+		content, err := scripts.ReadInline(scriptPath)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "read script: " + err.Error()})
-			return
-		}
-		if len(content) > maxInlineScriptSize {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": fmt.Sprintf(
-				"script too large: %d bytes (max %d)", len(content), maxInlineScriptSize)})
+			if errors.Is(err, scripts.ErrScriptTooLarge) {
+				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "read script: " + err.Error()})
+			}
 			return
 		}
 		payload := map[string]any{
 			"path":    scriptPath,
 			"content": string(content),
 		}
-		if lang := scriptLanguage(scriptPath); lang != "" {
+		if lang := scripts.LanguageOf(scriptPath); lang != "" {
 			payload["language"] = lang
 		}
 

@@ -448,7 +448,9 @@ func TestListAndGetWorkflow(t *testing.T) {
 
 func TestRunScriptOnceResponseFailures(t *testing.T) {
 	e, reg, _ := newTestEngine(t)
+	writeScript(t, e, "a.lua")
 	step := models.WorkflowStep{ID: "s", Script: "a.lua"}
+	step.Script, _ = e.store.Resolve(step.Script) // 模拟 validateSteps 已解析为绝对路径
 
 	conn := &mockConn{responses: []map[string]any{{"success": false, "message": "agent says no"}}}
 	registerAgent(reg, "a1", conn)
@@ -471,9 +473,11 @@ func TestRunScriptOnceResponseFailures(t *testing.T) {
 
 func TestRunScriptOnceTimesOut(t *testing.T) {
 	e, reg, _ := newTestEngine(t)
+	writeScript(t, e, "a.lua")
 	conn := &mockConn{delay: 2 * time.Second}
 	registerAgent(reg, "a1", conn)
 	step := models.WorkflowStep{ID: "s", Script: "a.lua"}
+	step.Script, _ = e.store.Resolve(step.Script)
 	start := time.Now()
 	err := e.runScriptOnce(context.Background(), conn, step, 200*time.Millisecond)
 	if err == nil {
@@ -481,6 +485,57 @@ func TestRunScriptOnceTimesOut(t *testing.T) {
 	}
 	if time.Since(start) > time.Second {
 		t.Error("timeout should not wait for slow agent")
+	}
+}
+
+// TestRunScriptOnceSendsInlineContent 内联下发应携带 content/language（与
+// handlers 单发/批量一致，docs/android-agent-design.md §3.2）。
+func TestRunScriptOnceSendsInlineContent(t *testing.T) {
+	e, reg, _ := newTestEngine(t)
+	writeScript(t, e, "a.lua")
+	conn := &mockConn{responses: []map[string]any{{"success": true}}}
+	registerAgent(reg, "a1", conn)
+
+	step := models.WorkflowStep{ID: "s", Script: "a.lua"}
+	step.Script, _ = e.store.Resolve(step.Script)
+	if err := e.runScriptOnce(context.Background(), conn, step, 2*time.Second); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	conn.mu.Lock()
+	data := conn.lastData
+	conn.mu.Unlock()
+	if data["path"] == "" || !strings.HasSuffix(data["path"].(string), "a.lua") {
+		t.Errorf("path should be resolved absolute path, got %v", data["path"])
+	}
+	if data["content"] != "print('a.lua')" {
+		t.Errorf("content should be inlined file body, got %v", data["content"])
+	}
+	if data["language"] != "lua" {
+		t.Errorf("language should be inferred lua, got %v", data["language"])
+	}
+	if ms, ok := data["timeout"].(int); !ok || ms != 2000 {
+		t.Errorf("timeout should be 2000ms, got %v", data["timeout"])
+	}
+}
+
+// TestRunScriptOnceMissingScriptFails server 读不到脚本时步骤直接失败
+// （桌面部署契约是共享文件系统，读不到即 agent 也读不到，早失败更清晰）。
+func TestRunScriptOnceMissingScriptFails(t *testing.T) {
+	e, reg, _ := newTestEngine(t)
+	conn := &mockConn{}
+	registerAgent(reg, "a1", conn)
+
+	step := models.WorkflowStep{ID: "s", Script: "gone.lua"}
+	step.Script, _ = e.store.Resolve(step.Script)
+	err := e.runScriptOnce(context.Background(), conn, step, time.Second)
+	if err == nil {
+		t.Fatal("missing script should fail the step")
+	}
+	if !strings.Contains(err.Error(), "step s") {
+		t.Errorf("error should carry step ID, got %v", err)
+	}
+	if conn.callCount() != 0 {
+		t.Errorf("missing script should not reach agent, got %d calls", conn.callCount())
 	}
 }
 
@@ -689,6 +744,7 @@ func TestExecuteStepMissingStepState(t *testing.T) {
 
 func TestExecuteStepDefaultTimeoutAndClampedRetries(t *testing.T) {
 	e, reg, db := newTestEngine(t)
+	writeScript(t, e, "a.lua")
 	conn := &mockConn{responses: []map[string]any{{"success": true}}}
 	registerAgent(reg, "a1", conn)
 
@@ -699,6 +755,7 @@ func TestExecuteStepDefaultTimeoutAndClampedRetries(t *testing.T) {
 	ss := &models.StepStatus{WorkflowID: wf.ID, StepID: "s1", Status: "pending"}
 	db.Create(ss)
 	exec := &Execution{Workflow: wf, Steps: wf.GetSteps(), StepState: map[string]*models.StepStatus{"s1": ss}}
+	exec.Steps[0].Script, _ = e.store.Resolve(exec.Steps[0].Script)
 
 	if err := e.executeStep(context.Background(), exec, exec.Steps[0]); err != nil {
 		t.Fatalf("default timeout path should succeed: %v", err)
@@ -998,6 +1055,7 @@ func TestExecuteScreenshotStepUsesDefaultTimeout(t *testing.T) {
 
 func TestSubmitParallelStepsDistribute(t *testing.T) {
 	e, reg, _ := newTestEngine(t)
+	writeScript(t, e, "a.lua", "b.lua", "c.lua", "d.lua")
 	registerAgent(reg, "a1", &mockConn{responses: []map[string]any{{"success": true}}})
 	registerAgent(reg, "a2", &mockConn{responses: []map[string]any{{"success": true}}})
 

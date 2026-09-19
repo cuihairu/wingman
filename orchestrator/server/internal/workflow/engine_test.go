@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -91,6 +93,18 @@ func newTestEngine(tb testing.TB) (*Engine, *agent.Registry, *gorm.DB) {
 
 func registerAgent(reg *agent.Registry, id string, conn agent.AgentConn) {
 	reg.Register(id, "host-"+id, "10.0.0."+id[len(id)-1:], conn)
+}
+
+// writeScript 在测试引擎的 scripts 目录落盘脚本文件：run_script 内联下发
+// 读取真实文件内容（见 runScriptOnce），执行脚本步骤的用例需先落盘。
+func writeScript(tb testing.TB, e *Engine, names ...string) {
+	tb.Helper()
+	for _, name := range names {
+		path := filepath.Join(e.store.Root(), name)
+		if err := os.WriteFile(path, []byte("print('"+name+"')"), 0o644); err != nil {
+			tb.Fatalf("write %s: %v", name, err)
+		}
+	}
 }
 
 // ---------- 纯逻辑：DAG 环检测 ----------
@@ -198,6 +212,7 @@ func TestSelectAgentNoAgentAvailable(t *testing.T) {
 
 func TestExecuteStepSuccess(t *testing.T) {
 	e, reg, db := newTestEngine(t)
+	writeScript(t, e, "a.lua")
 	conn := &mockConn{responses: []map[string]any{{"success": true}}}
 	registerAgent(reg, "a1", conn)
 
@@ -208,6 +223,8 @@ func TestExecuteStepSuccess(t *testing.T) {
 	ss := &models.StepStatus{WorkflowID: wf.ID, StepID: "s1", Status: "pending"}
 	db.Create(ss)
 	exec := &Execution{Workflow: wf, Steps: wf.GetSteps(), StepState: map[string]*models.StepStatus{"s1": ss}}
+	// 直接驱动 executeStep 时需自行解析路径（生产链路由 validateSteps 完成）
+	exec.Steps[0].Script, _ = e.store.Resolve(exec.Steps[0].Script)
 
 	err := e.executeStep(context.Background(), exec, exec.Steps[0])
 	if err != nil {
@@ -225,6 +242,7 @@ func TestExecuteStepSuccess(t *testing.T) {
 
 func TestExecuteStepRetryThenSuccess(t *testing.T) {
 	e, reg, db := newTestEngine(t)
+	writeScript(t, e, "a.lua")
 	// 前两次失败，第三次成功
 	conn := &mockConn{
 		responses: []map[string]any{
@@ -244,6 +262,7 @@ func TestExecuteStepRetryThenSuccess(t *testing.T) {
 	ss := &models.StepStatus{WorkflowID: wf.ID, StepID: "s1", Status: "pending"}
 	db.Create(ss)
 	exec := &Execution{Workflow: wf, Steps: wf.GetSteps(), StepState: map[string]*models.StepStatus{"s1": ss}}
+	exec.Steps[0].Script, _ = e.store.Resolve(exec.Steps[0].Script)
 
 	if err := e.executeStep(context.Background(), exec, exec.Steps[0]); err != nil {
 		t.Fatalf("expected eventual success, got %v", err)
@@ -260,6 +279,7 @@ func TestExecuteStepRetryThenSuccess(t *testing.T) {
 
 func TestExecuteStepRetryExhausted(t *testing.T) {
 	e, reg, db := newTestEngine(t)
+	writeScript(t, e, "a.lua")
 	conn := &mockConn{responses: []map[string]any{{"success": false, "message": "fail"}}}
 	registerAgent(reg, "a1", conn)
 
@@ -272,6 +292,7 @@ func TestExecuteStepRetryExhausted(t *testing.T) {
 	ss := &models.StepStatus{WorkflowID: wf.ID, StepID: "s1", Status: "pending"}
 	db.Create(ss)
 	exec := &Execution{Workflow: wf, Steps: wf.GetSteps(), StepState: map[string]*models.StepStatus{"s1": ss}}
+	exec.Steps[0].Script, _ = e.store.Resolve(exec.Steps[0].Script)
 
 	if err := e.executeStep(context.Background(), exec, exec.Steps[0]); err == nil {
 		t.Fatal("expected failure after retries exhausted")
@@ -308,6 +329,7 @@ func TestExecuteStepNoAgent(t *testing.T) {
 
 func TestExecuteStepCancelled(t *testing.T) {
 	e, reg, db := newTestEngine(t)
+	writeScript(t, e, "a.lua")
 	conn := &mockConn{delay: 2 * time.Second} // 慢响应
 	registerAgent(reg, "a1", conn)
 
@@ -317,6 +339,7 @@ func TestExecuteStepCancelled(t *testing.T) {
 	ss := &models.StepStatus{WorkflowID: wf.ID, StepID: "s1", Status: "pending"}
 	db.Create(ss)
 	exec := &Execution{Workflow: wf, Steps: wf.GetSteps(), StepState: map[string]*models.StepStatus{"s1": ss}}
+	exec.Steps[0].Script, _ = e.store.Resolve(exec.Steps[0].Script)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -335,6 +358,7 @@ func TestExecuteStepCancelled(t *testing.T) {
 
 func TestSubmitRunsWorkflowToCompletion(t *testing.T) {
 	e, reg, db := newTestEngine(t)
+	writeScript(t, e, "a.lua", "b.lua")
 	registerAgent(reg, "a1", &mockConn{responses: []map[string]any{{"success": true}}})
 
 	wf := &models.Workflow{Name: "end-to-end"}
