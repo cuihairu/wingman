@@ -24,6 +24,7 @@ endif()
 find_package(sol2 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(unofficial-lua CONFIG REQUIRED)
 
 # transport（独立库自带 platform 薄层，§8.4；Android 走 socket_compat POSIX 分支）
 set(BUILD_TRANSPORT_TESTS OFF)
@@ -45,7 +46,7 @@ target_include_directories(wingman_agent PRIVATE
 target_link_libraries(wingman_agent PRIVATE
     wingman::transport
     sol2::sol2
-    unofficial-lua::unofficial-lua
+    unofficial::lua::lua
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
 )
