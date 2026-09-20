@@ -338,7 +338,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version: '1.26.x'
           cache-dependency-path: orchestrator/server/go.sum
 
       - name: Vet
