@@ -502,7 +502,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.7'
+          gradle-version: '8.9'
 
       - name: Setup vcpkg
         run: bash ./build-scripts/ci/setup-vcpkg.sh
@@ -528,7 +528,26 @@ jobs:
         working-directory: apps/android
         run: |
           sed -i "s|^wingmanVcpkgRoot=.*|wingmanVcpkgRoot=$VCPKG_ROOT|" gradle.properties
-          gradle :app:assembleDebug --no-daemon
+          gradle :app:assembleDebug --no-daemon 2>&1 | tee gradle-build.log
+
+      # AGP 的 "error parsing CMake File API result" 只给结论不给现场，
+      # 失败时上传 .cxx（含 File API reply）供离线分析
+      - name: Collect CMake diagnostics on failure
+        if: failure()
+        run: |
+          tar czf cmake-fileapi-debug.tar.gz -C apps/android/app .cxx 2>/dev/null || true
+          ls -la cmake-fileapi-debug.tar.gz || true
+
+      - name: Upload CMake diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-cmake-debug
+          path: |
+            cmake-fileapi-debug.tar.gz
+            apps/android/gradle-build.log
+          retention-days: 5
+          if-no-files-found: ignore
 
       # ====== Package ======
       - name: Package
