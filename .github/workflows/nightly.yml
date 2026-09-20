@@ -90,6 +90,7 @@ jobs:
             | `wingman-*-windows-x64.zip` | C++ Runtime / Tauri GUI Installer / Go Server / Dashboard / scripts / config |
             | `wingman-*-linux-x64.tar.gz` | C++ Runtime / Tauri AppImage+deb / Go Server / Dashboard / scripts / config |
             | `wingman-*-macos-x64.tar.gz` | C++ Runtime / Tauri dmg+app / Go Server / Dashboard / scripts / config |
+            | `wingman-*-android-arm64.apk` | Android Agent（arm64，debug 签名；iOS 因无签名证书暂不提供） |
 
             ⚠️ nightly 为预发布构建，仅供测试，不建议生产使用。
           prerelease: true

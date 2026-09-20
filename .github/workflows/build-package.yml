@@ -473,6 +473,76 @@ jobs:
           retention-days: 30
           overwrite: true
 
+  # Android Agent（arm64，docs/android-agent-design.md §6）：Kotlin 壳 +
+  # NDK C++ 核心（vcpkg arm64-android 依赖，桌面同源）。debug APK 自动
+  # debug 签名，无需发布证书；iOS 因无签名证书不提供（docs/mobile-support-feasibility.md）。
+  build-android:
+    name: Android arm64
+    runs-on: ubuntu-latest
+    env:
+      VCPKG_BINARY_SOURCES: "clear"
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      # 壳工程为 classic 模式（gradle 直调 NDK CMake，不消费根 manifest），
+      # 按需安装 arm64-android 依赖（包集合与桌面同源，见 apps/android/README.md）
+      - name: Setup vcpkg
+        run: bash ./build-scripts/ci/setup-vcpkg.sh
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: ${{ runner.os }}-android-vcpkg-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-android-vcpkg-
+
+      - name: Install vcpkg android dependencies
+        run: |
+          mkdir -p "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
+          ./vcpkg/vcpkg install --triplet arm64-android asio lua sol2 spdlog nlohmann-json
+
+      - name: Build Android APK
+        working-directory: apps/android
+        run: |
+          sed -i "s|^wingmanVcpkgRoot=.*|wingmanVcpkgRoot=$VCPKG_ROOT|" gradle.properties
+          gradle :app:assembleDebug --no-daemon
+
+      # ====== Package ======
+      - name: Package
+        run: |
+          version="${{ inputs.version }}"
+          cp apps/android/app/build/outputs/apk/debug/app-debug.apk \
+            "wingman-${version}-android-arm64.apk"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: wingman-${{ inputs.version }}-android-arm64
+          path: wingman-${{ inputs.version }}-android-arm64.apk
+          retention-days: 30
+          overwrite: true
+
   # 统一 Release 发布：三平台构建全部成功后，顺序上传产物（gh release upload
   # --clobber + 指数退避重试 + 远端大小校验）。替代原先各平台 job 里的并发
   # softprops 上传——2026-09-17 一晚两次上传抖动（Windows Headers Timeout /
@@ -480,7 +550,7 @@ jobs:
   # 经 artifacts 传递，release notes 仍由调用方统一写入（不携带 body）。
   publish-assets:
     name: Publish Release Assets
-    needs: [build-windows, build-linux, build-macos]
+    needs: [build-windows, build-linux, build-macos, build-android]
     runs-on: ubuntu-latest
     steps:
       - name: Download all platform artifacts
