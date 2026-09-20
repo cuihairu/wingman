@@ -504,8 +504,6 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      # 壳工程为 classic 模式（gradle 直调 NDK CMake，不消费根 manifest），
-      # 按需安装 arm64-android 依赖（包集合与桌面同源，见 apps/android/README.md）
       - name: Setup vcpkg
         run: bash ./build-scripts/ci/setup-vcpkg.sh
 
@@ -513,15 +511,15 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-          key: ${{ runner.os }}-android-vcpkg-${{ hashFiles('vcpkg.json') }}
+          key: ${{ runner.os }}-android-vcpkg-${{ hashFiles('apps/android/cpp/vcpkg.json') }}
           restore-keys: |
             ${{ runner.os }}-android-vcpkg-
 
-      - name: Install vcpkg android dependencies
-        run: |
-          mkdir -p "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
-          ./vcpkg/vcpkg install --triplet arm64-android asio lua sol2 spdlog nlohmann-json
+      - name: Prepare vcpkg cache
+        run: mkdir -p "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
 
+      # NDK 工程消费 apps/android/cpp/vcpkg.json manifest（与桌面同构）：
+      # gradle → NDK CMake configure 时经 vcpkg toolchain 自动安装依赖
       - name: Build Android APK
         working-directory: apps/android
         run: |

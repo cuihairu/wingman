@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "wingman-agent-android",
+  "version": "0.1.0",
+  "description": "Wingman Android Agent NDK C++ 依赖（与桌面同源包集合的子集，见 apps/android/README.md）",
+  "builtin-baseline": "9e593bb18ea69cc5095e012465dcd675a822ed0d",
+  "dependencies": [
+    "asio",
+    "lua",
+    "sol2",
+    "spdlog",
+    "nlohmann-json"
+  ]
+}
