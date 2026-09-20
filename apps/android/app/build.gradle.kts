@@ -18,6 +18,10 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
+        // 显式对齐 CI runner 预装版本（AGP 默认 NDK 26.1 过旧，与最新 vcpkg
+        // toolchain 的探测/组合行为不一致）
+        ndkVersion = "27.3.13750724"
+
         ndk {
             // A1 只出 arm64 真机；模拟器按需加 x86_64
             abiFilters += listOf("arm64-v8a")
@@ -38,7 +42,9 @@ android {
         cmake {
             // C++ 工程位于仓库 apps/android/cpp（与 Kotlin 壳分层，见 §5.2）
             path = file("../cpp/CMakeLists.txt")
-            version = "3.22.1"
+            // 3.22.1 的 File API reply 与 AGP 8.5 + 最新 vcpkg toolchain 组合
+            // 触发 AGP readCmakeFileApiReply 解析失败，升到 SDK 3.31 组件
+            version = "3.31.1"
         }
     }
 
