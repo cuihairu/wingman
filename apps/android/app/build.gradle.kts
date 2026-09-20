@@ -37,7 +37,7 @@ android {
     externalNativeBuild {
         cmake {
             // C++ 工程位于仓库 apps/android/cpp（与 Kotlin 壳分层，见 §5.2）
-            path = file("../../cpp/CMakeLists.txt")
+            path = file("../cpp/CMakeLists.txt")
             version = "3.22.1"
         }
     }
