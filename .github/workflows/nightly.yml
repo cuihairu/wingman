@@ -97,3 +97,37 @@ jobs:
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 发布成功后修剪历史资产：只保留最近 7 天的日期构建（wingman-
+  # YYYY.MM.DD-nightly-*），其余连同旧格式遗留包一并删除，防止
+  # nightly 长期积压拖慢 release 页面
+  cleanup-assets:
+    name: Prune Old Nightly Assets
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove nightly assets older than 7 days
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          repo="${{ github.repository }}"
+          cutoff=$(date -u -d '7 days ago' +%Y.%m.%d)
+          echo "保留 ${cutoff} 及以后的日期构建，删除更早资产与旧格式遗留包"
+
+          gh api "repos/${repo}/releases/tags/nightly" --jq '.assets[] | "\(.id)\t\(.name)"' |
+          while IFS=$'\t' read -r id name; do
+            if [[ "$name" =~ ^wingman-([0-9]{4}\.[0-9]{2}\.[0-9]{2})-nightly- ]]; then
+              d="${BASH_REMATCH[1]}"
+              if [[ "$d" < "$cutoff" ]]; then
+                echo "删除过期: ${name}"
+                gh api -X DELETE "repos/${repo}/releases/assets/${id}"
+              else
+                echo "保留: ${name}"
+              fi
+            else
+              echo "删除旧格式: ${name}"
+              gh api -X DELETE "repos/${repo}/releases/assets/${id}"
+            fi
+          done
+          echo "清理完成，剩余资产: $(gh api "repos/${repo}/releases/tags/nightly" --jq '.assets | length')"
