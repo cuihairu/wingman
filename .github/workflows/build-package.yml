@@ -518,6 +518,10 @@ jobs:
       - name: Prepare vcpkg cache
         run: mkdir -p "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
 
+      # AGP 只自动安装默认 cmake 组件（3.22.1），非默认版本需显式预装
+      - name: Install SDK CMake 3.31.1
+        run: sdkmanager --install "cmake;3.31.1" > /dev/null
+
       # NDK 工程消费 apps/android/cpp/vcpkg.json manifest（与桌面同构）：
       # gradle → NDK CMake configure 时经 vcpkg toolchain 自动安装依赖
       - name: Build Android APK
