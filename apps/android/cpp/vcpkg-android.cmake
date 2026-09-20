@@ -21,7 +21,15 @@ if(NOT DEFINED VCPKG_CHAINLOAD_TOOLCHAIN_FILE)
 endif()
 
 if(NOT DEFINED WINGMAN_VCPKG_ROOT)
-    message(FATAL_ERROR "vcpkg-android.cmake: 需要 -DWINGMAN_VCPKG_ROOT=<vcpkg 安装根>（gradle.properties 的 wingmanVcpkgRoot）")
+    if(DEFINED ENV{VCPKG_ROOT})
+        set(WINGMAN_VCPKG_ROOT "$ENV{VCPKG_ROOT}")
+    else()
+        message(FATAL_ERROR "vcpkg-android.cmake: 需要 -DWINGMAN_VCPKG_ROOT=<vcpkg 安装根>（gradle.properties 的 wingmanVcpkgRoot）或环境变量 VCPKG_ROOT")
+    endif()
 endif()
+
+# vcpkg.cmake 只向 try_compile 传播其固定变量清单，自定义变量必须
+# 显式登记，否则 try_compile 重跑本文件时 WINGMAN_VCPKG_ROOT 丢失
+list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES WINGMAN_VCPKG_ROOT)
 
 include("${WINGMAN_VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
