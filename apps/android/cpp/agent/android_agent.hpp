@@ -33,6 +33,9 @@ public:
         // 附加注册字段 JSON 对象字符串（可空），如 {"apiLevel":34,"abi":"arm64-v8a"}，
         // 合并进 agent.register 的 capabilities 键
         std::string capabilitiesJson;
+        // 注册鉴权 token（可空；server 侧 WINGMAN_AGENT_TOKENS 开启鉴权时必填，
+        // 见 docs/agent-token-auth-design.md §4.2）
+        std::string authToken;
     };
 
     AndroidAgent() = default;

@@ -39,13 +39,15 @@ class MainActivity : AppCompatActivity() {
         val ipView = findViewById<EditText>(R.id.editServerIp)
         val portView = findViewById<EditText>(R.id.editServerPort)
         val agentView = findViewById<EditText>(R.id.editAgentId)
+        val tokenView = findViewById<EditText>(R.id.editServerToken)
 
         ipView.setText(prefs.getString("serverIp", "192.168.1.10"))
         portView.setText(prefs.getInt("serverPort", 8888).toString())
         agentView.setText(prefs.getString("agentId", "android-" + android.os.Build.MODEL))
+        tokenView.setText(prefs.getString("serverToken", ""))
 
         findViewById<Button>(R.id.btnStart).setOnClickListener {
-            saveConfig(ipView, portView, agentView)
+            saveConfig(ipView, portView, agentView, tokenView)
             startForegroundService(Intent(this, WingmanService::class.java).apply {
                 action = WingmanService.ACTION_START
             })
@@ -77,11 +79,12 @@ class MainActivity : AppCompatActivity() {
         uiHandler.removeCallbacks(pollStatus)
     }
 
-    private fun saveConfig(ipView: EditText, portView: EditText, agentView: EditText) {
+    private fun saveConfig(ipView: EditText, portView: EditText, agentView: EditText, tokenView: EditText) {
         prefs.edit()
             .putString("serverIp", ipView.text.toString().trim())
             .putInt("serverPort", portView.text.toString().trim().toIntOrNull() ?: 8888)
             .putString("agentId", agentView.text.toString().trim())
+            .putString("serverToken", tokenView.text.toString().trim())
             .apply()
     }
 

@@ -271,6 +271,11 @@ const AgentConfig& Agent::getConfig() const {
 
 bool Agent::initRemoteClient() {
     impl_->remoteClient = std::make_unique<RemoteClient>(impl_->config.remoteClient);
+    // 注册鉴权 token（配置于 [remote] register_token；空 = 不携带，
+    // 见 docs/agent-token-auth-design.md §4.1）
+    if (!impl_->config.remoteClient.registerToken.empty()) {
+        impl_->remoteClient->setAuthToken(impl_->config.remoteClient.registerToken);
+    }
 
     impl_->remoteDispatcher = std::make_unique<rpc::RpcDispatcher>();
     impl_->screen = platform::createPlatformScreen();

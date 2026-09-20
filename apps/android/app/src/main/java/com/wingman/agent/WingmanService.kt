@@ -70,6 +70,8 @@ class WingmanService : Service() {
             put("hostname", android.os.Build.MODEL)
             put("platform", "android")
             put("capabilitiesJson", capabilities.toString())
+            // 注册鉴权 token（可空；server 开启 WINGMAN_AGENT_TOKENS 时必填）
+            put("authToken", prefs.getString("serverToken", "") ?: "")
         }
         val started = WingmanJni.nativeStart(config.toString())
         Log.i(TAG, "nativeStart: $started config=$config")

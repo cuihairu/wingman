@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"crypto/subtle"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -63,6 +64,9 @@ type FrameListener struct {
 	stopOnce  sync.Once
 	onScript  ScriptOutputHandler
 	teamMgr   *TeamManager
+	// agentTokens agent 注册 token 白名单；空 = 关闭注册鉴权（向后兼容）。
+	// 支持 多 token 并存以平滑轮换。见 docs/agent-token-auth-design.md §3。
+	agentTokens []string
 }
 
 // agentConn represents a single agent TCP connection.
@@ -91,6 +95,41 @@ func NewFrameListener(registry AgentRegistrar, broadcast Broadcaster) *FrameList
 	// 装配收件箱实时下发：TeamManager 消息入队后经此回调推送给在线 agent
 	l.teamMgr.SetMessageNotifier(l.deliverInboxMessage)
 	return l
+}
+
+// SetAgentTokens sets the agent register token whitelist (empty disables auth).
+// 配合 SetTeamManager 风格：构造后注入，既有调用方与测试不受影响。
+func (l *FrameListener) SetAgentTokens(tokens []string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.agentTokens = tokens
+}
+
+// authEnabled reports whether register token auth is on.
+func (l *FrameListener) authEnabled() bool {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return len(l.agentTokens) > 0
+}
+
+// tokenValid 用 constant-time 比对校验 token（防时序侧信道逐字节猜测），
+// 任一白名单项命中即通过。
+func (l *FrameListener) tokenValid(token string) bool {
+	l.mu.RLock()
+	tokens := l.agentTokens
+	l.mu.RUnlock()
+	if len(tokens) == 0 {
+		return true
+	}
+	if token == "" {
+		return false
+	}
+	for _, t := range tokens {
+		if subtle.ConstantTimeCompare([]byte(token), []byte(t)) == 1 {
+			return true
+		}
+	}
+	return false
 }
 
 // SetTeamManager sets the team manager (for testing/customization).
@@ -490,6 +529,25 @@ func (ac *agentConn) handleRegister(msg map[string]any) {
 	// 平台标识（android/desktop/...）：桌面 agent 旧版本不上报，缺省由
 	// Registry 归一为 desktop。见 docs/android-agent-design.md §3.3。
 	platform, _ := msg["platform"].(string)
+
+	// 注册鉴权（docs/agent-token-auth-design.md §2）：开关开启时校验顶层
+	// token，失败回 ack success:false 后立即断连——不 set agentID、不入
+	// Registry，未授权连接不允许停留在链路上（readLoop 退出时 agentID 为空
+	// 自然跳过 Unregister）。
+	if ac.listener.authEnabled() {
+		token, _ := msg["token"].(string)
+		if !ac.listener.tokenValid(token) {
+			ac.sendNotify("agent.register_ack", map[string]any{
+				"success": false,
+				"agentId": agentID,
+				"error":   "invalid or missing token",
+			})
+			log.Printf("[Auth] register rejected from %s (agentId=%q)",
+				ac.conn.RemoteAddr(), agentID)
+			ac.conn.Close()
+			return
+		}
+	}
 
 	if agentID == "" {
 		agentID = fmt.Sprintf("agent_%s", ac.conn.RemoteAddr().String())

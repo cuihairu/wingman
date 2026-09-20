@@ -61,6 +61,9 @@ bool AndroidAgent::start(const Config& config) {
         }
     }
     client_->setRegisterMetadata(metadata);
+    if (!config.authToken.empty()) {
+        client_->setAuthToken(config.authToken);
+    }
 
     // 脚本输出 → agent.event "script_output"（字段与桌面 standalone_mode.cpp
     // 的 script.output 一致：id/output 加 level；server handleEvent 落库

@@ -57,7 +57,9 @@ gradle :app:assembleDebug
 
 1. 启动 Go Server（`orchestrator/server`，监听 agent 端口 8888 与 Dashboard）。
 2. 手机安装 APK，同网段；首次启动会创建常驻通知（前台服务要求）。
-3. App 内填入服务器 IP / 端口 / 设备 ID → 「启动 Agent」。
+3. App 内填入服务器 IP / 端口 / 设备 ID → 「启动 Agent」。若 server 设置了
+   `WINGMAN_AGENT_TOKENS`（注册 token 白名单），需同时填入注册 Token
+   （见 `docs/agent-token-auth-design.md`；默认关闭可留空）。
 4. Dashboard 的 Agent 列表出现该设备（platform=android，来自 agent.register）。
 5. Dashboard 新建脚本 `hello.lua`：`print('hello android')` 并运行到该设备。
 6. 验收点：

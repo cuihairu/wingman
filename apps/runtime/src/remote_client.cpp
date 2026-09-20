@@ -64,6 +64,8 @@ public:
     std::string hostname;
     // agent.register 附加字段（platform/capabilities 等，setRegisterMetadata 注入）
     nlohmann::json registerMetadata = nlohmann::json::object();
+    // 注册鉴权 token（setAuthToken 注入；空 = 不携带 token 字段）
+    std::string authToken;
     bool registered = false;
 
     // 重连退避状态
@@ -411,6 +413,10 @@ void RemoteClient::sendRegister() {
     for (auto it = impl_->registerMetadata.begin(); it != impl_->registerMetadata.end(); ++it) {
         registerMsg[it.key()] = it.value();
     }
+    // 注册鉴权 token（server 侧 WINGMAN_AGENT_TOKENS 白名单校验，见 listener.go handleRegister）
+    if (!impl_->authToken.empty()) {
+        registerMsg["token"] = impl_->authToken;
+    }
 
     auto message = std::make_shared<transport::Message>();
     message->header.type = transport::MessageType::Notify;
@@ -640,6 +646,10 @@ void RemoteClient::setIdentity(const std::string& agentId, const std::string& ho
 
 void RemoteClient::setRegisterMetadata(const nlohmann::json& fields) {
     impl_->registerMetadata = fields;
+}
+
+void RemoteClient::setAuthToken(const std::string& token) {
+    impl_->authToken = token;
 }
 
 // deliverMessage 投递出站消息：已连接则即时发送；失败且 queueable 时入断线缓冲。

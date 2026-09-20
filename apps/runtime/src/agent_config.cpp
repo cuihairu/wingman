@@ -184,6 +184,7 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
                 // Remote section keys
                 if (currentSection == "remote") {
                     if (key == "server_ip") config.remoteClient.serverIp = value;
+                    if (key == "register_token") config.remoteClient.registerToken = value;
                 }
                 // Standalone section keys
                 if (currentSection == "standalone") {
@@ -221,7 +222,8 @@ bool AgentConfig::saveToFile(const std::string& path) const {
     file << "reconnect_interval = " << remoteClient.reconnectInterval << "\n";
     file << "max_reconnect_interval = " << remoteClient.maxReconnectInterval << "\n";
     file << "heartbeat_interval = " << remoteClient.heartbeatInterval << "\n";
-    file << "connect_timeout = " << remoteClient.connectTimeout << "\n\n";
+    file << "connect_timeout = " << remoteClient.connectTimeout << "\n";
+    file << "register_token = \"" << remoteClient.registerToken << "\"\n\n";
 
     file << "# ========== 单机模式配置 ==========\n";
     file << "[standalone]\n";

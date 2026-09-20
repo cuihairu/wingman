@@ -9,6 +9,7 @@
     <string name="hint_server_ip">中控服务器 IP</string>
     <string name="hint_server_port">端口</string>
     <string name="hint_agent_id">设备 ID</string>
+    <string name="hint_server_token">注册 Token（服务端开启鉴权时必填）</string>
     <string name="btn_start">启动 Agent</string>
     <string name="btn_stop">停止 Agent</string>
     <string name="btn_accessibility">无障碍设置（A2 注入能力）</string>

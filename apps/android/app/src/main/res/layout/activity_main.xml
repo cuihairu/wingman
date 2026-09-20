@@ -26,6 +26,14 @@
         android:hint="@string/hint_agent_id"
         android:inputType="text" />
 
+    <EditText
+        android:id="@+id/editServerToken"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/hint_server_token"
+        android:inputType="text"
+        android:importantForAutofill="no" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

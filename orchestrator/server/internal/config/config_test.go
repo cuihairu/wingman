@@ -54,6 +54,40 @@ func TestLoadOverrides(t *testing.T) {
 	}
 }
 
+// TestLoadAgentTokens agent 注册 token 白名单解析：多 token / 空白过滤 /
+// 未设置时为 nil（关闭鉴权）。docs/agent-token-auth-design.md §3。
+func TestLoadAgentTokens(t *testing.T) {
+	t.Setenv("WINGMAN_JWT_SECRET", testSecret)
+
+	t.Setenv("WINGMAN_AGENT_TOKENS", " tok-a , ,tok-b ")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(cfg.AgentTokens) != 2 || cfg.AgentTokens[0] != "tok-a" || cfg.AgentTokens[1] != "tok-b" {
+		t.Errorf("agent tokens parsing failed: %v", cfg.AgentTokens)
+	}
+
+	t.Setenv("WINGMAN_AGENT_TOKENS", " , ")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(cfg.AgentTokens) != 0 {
+		t.Errorf("blank-only tokens should yield empty list, got %v", cfg.AgentTokens)
+	}
+
+	t.Setenv("WINGMAN_AGENT_TOKENS", "")
+	os.Unsetenv("WINGMAN_AGENT_TOKENS")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.AgentTokens != nil {
+		t.Errorf("unset tokens should be nil, got %v", cfg.AgentTokens)
+	}
+}
+
 func TestLoadInvalidValues(t *testing.T) {
 	cases := []struct {
 		name string

@@ -101,6 +101,11 @@ public:
     // 桌面端不设置，server 侧归一为 desktop。
     void setRegisterMetadata(const nlohmann::json& fields);
 
+    // 设置注册鉴权 token（须在 start() 前调用）：写入 register payload 顶层
+    // "token" 字段；留空则不携带该字段（server 鉴权关闭时无需设置）。
+    // 见 docs/agent-token-auth-design.md §2.1/§4.1。
+    void setAuthToken(const std::string& token);
+
     // 当前连接状态名（connected/connecting/reconnecting/disconnected/error）。
     // 本地 RPC system.getStatus 经此向 GUI 暴露远程链路状态，修复事件驱动陈旧问题。
     std::string connectionStateName() const {

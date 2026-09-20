@@ -283,8 +283,13 @@ Go 1.2x（server 侧）。本仓库开发机（Linux）当前无 SDK/NDK，A1 �
 
 - A1：与现有桌面 agent 相同的信任模型（局域网/内网部署，register 无鉴权）；
   脚本内容经 TLS 与否取决于 server 部署形态，与桌面一致，A1 不新增面。
-- A3：register 增加 token 校验（server 侧已有 RBAC/audit 框架可挂），
-  设备侧 token 存 Android Keystore。**不在 A1 半途引入**，避免两套半成品鉴权。
+- A3-P1（已落地）：register 增加 token 白名单校验（`WINGMAN_AGENT_TOKENS`，
+  默认关闭、完全向后兼容），协议与端侧改动见
+  `docs/agent-token-auth-design.md`；Android 侧 token 经 App 配置页写入
+  SharedPreferences，随 configJson 传入 C++ 核心。
+- A3-P2（演进）：per-agent token + Dashboard 管理与审计、token 迁移
+  Android Keystore、challenge-response（需 NDK 引入 OpenSSL）与 TLS，
+  见 `docs/agent-token-auth-design.md` §6。
 
 ---
 

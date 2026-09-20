@@ -38,11 +38,15 @@
 - `WINGMAN_CORS_ORIGINS`
 - `WINGMAN_JWT_SECRET`
 - `WINGMAN_ADMIN_PASSWORD`
+- `WINGMAN_AGENT_TOKENS`
 
 其中：
 
 - `WINGMAN_JWT_SECRET` 必填，且长度至少 32 个字符
 - `WINGMAN_ADMIN_PASSWORD` 仅用于首次无用户时引导初始化管理员账号
+- `WINGMAN_AGENT_TOKENS` agent 注册 token 白名单（逗号分隔，支持多 token
+  并存以平滑轮换）；**空/未设置 = 关闭注册鉴权（默认，向后兼容）**。
+  详见 `docs/agent-token-auth-design.md`
 
 ## 启动
 

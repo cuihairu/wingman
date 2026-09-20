@@ -47,6 +47,14 @@ type testEnv struct {
 	scriptsDir string
 }
 
+// newTestEnvWithTokens 启动带 agent 注册 token 白名单的完整栈（与
+// newTestEnv 同构，仅 listener 注入 token；docs/agent-token-auth-design.md §7）。
+func newTestEnvWithTokens(t *testing.T, tokens ...string) *testEnv {
+	env := newTestEnv(t)
+	env.listener.SetAgentTokens(tokens)
+	return env
+}
+
 // newTestEnv 启动一套隔离的编排器栈：内存 SQLite + RBAC 种子 + 内置用户 +
 // WebSocket Hub + Agent Registry + FrameListener + 真实中间件路由。
 func newTestEnv(t *testing.T) *testEnv {

@@ -7,7 +7,7 @@
 // 配置经 JSON 字符串传入（Kotlin 侧组装，nlohmann 解析）：
 //   {"serverIp":"10.0.0.2","serverPort":8888,
 //    "agentId":"android-pixel-8","hostname":"Pixel 8",
-//    "capabilitiesJson":"{\"apiLevel\":34}"}
+//    "capabilitiesJson":"{\"apiLevel\":34}","authToken":"..."}
 
 #include <jni.h>
 
@@ -74,6 +74,9 @@ Java_com_wingman_agent_WingmanJni_nativeStart(JNIEnv* env, jclass /*clazz*/,
     config.hostname = parsed.value("hostname", "");
     config.platform = parsed.value("platform", "android");
     config.capabilitiesJson = parsed.value("capabilitiesJson", "");
+    // 注册鉴权 token（可空；server 侧 token 白名单开启时必填，
+    // docs/agent-token-auth-design.md §4.2）
+    config.authToken = parsed.value("authToken", "");
 
     auto& agent = agentInstance();
     if (!agent) {

@@ -92,6 +92,9 @@ func run() error {
 	// Note: cfg.AgentAddr is the listening address for runtime connections,
 	// not a target address for dialing (deprecated old approach).
 	frameListener := agentPkg.NewFrameListener(registry, wsHub)
+	// agent 注册 token 鉴权（WINGMAN_AGENT_TOKENS，空=关闭；
+	// docs/agent-token-auth-design.md §3）
+	frameListener.SetAgentTokens(cfg.AgentTokens)
 	agentListenAddr := cfg.AgentAddr
 	go func() {
 		if err := frameListener.Start(agentListenAddr); err != nil {

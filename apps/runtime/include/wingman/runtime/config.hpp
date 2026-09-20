@@ -46,6 +46,8 @@ struct RemoteClientConfig {
     int maxReconnectInterval = 60;  // 秒（退避上限）
     int heartbeatInterval = 30;     // 秒
     int connectTimeout = 10;        // 秒
+    // 注册鉴权 token（[remote] register_token；空 = 不携带，server 鉴权默认关闭）
+    std::string registerToken;
 };
 
 struct StandaloneModeConfig {

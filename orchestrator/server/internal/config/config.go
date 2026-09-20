@@ -27,6 +27,10 @@ type Config struct {
 	ScriptsDir  string
 	JWTSecret   string
 	CORSOrigins []string
+	// AgentTokens agent 注册 token 列表（WINGMAN_AGENT_TOKENS，逗号分隔）。
+	// 空 = 关闭 agent 注册鉴权（默认，向后兼容既有部署）。
+	// 设计见 docs/agent-token-auth-design.md。
+	AgentTokens []string
 }
 
 // filepathAbs 以变量形式间接引用 filepath.Abs，便于测试注入失败场景
@@ -43,6 +47,7 @@ func Load() (Config, error) {
 		ScriptsDir:  getenv("WINGMAN_SCRIPTS_DIR", defaultScriptsDir),
 		JWTSecret:   os.Getenv("WINGMAN_JWT_SECRET"),
 		CORSOrigins: splitList(os.Getenv("WINGMAN_CORS_ORIGINS")),
+		AgentTokens: splitList(os.Getenv("WINGMAN_AGENT_TOKENS")),
 	}
 
 	if cfg.JWTSecret == "" {
