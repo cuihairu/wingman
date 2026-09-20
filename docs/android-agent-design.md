@@ -250,13 +250,19 @@ vcpkg install --triplet arm64-android asio lua sol2 spdlog nlohmann-json
 
 ```
 gradle :app:assembleDebug
-  └─ externalNativeBuild → NDK CMake (app/src/main/cpp/CMakeLists.txt)
-       └─ -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+  └─ externalNativeBuild → NDK CMake (cpp/CMakeLists.txt)
+       └─ -DCMAKE_TOOLCHAIN_FILE=cpp/vcpkg-android.cmake（入口 helper）
+            ├─ set VCPKG_CHAINLOAD_TOOLCHAIN_FILE=<ANDROID_NDK>/build/cmake/android.toolchain.cmake
+            ├─ include $VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake（manifest 安装依赖）
+            └─ vcpkg.cmake 内部 chainload NDK 工具链 → sysroot/编译标志齐全
           -DVCPKG_TARGET_TRIPLET=arm64-android
           → libwingman_agent.so（JNI so，含 transport/RemoteClient/lua/glue）
 ```
 
-- NDK 工具链由 AGP 提供，vcpkg 工具链文件叠加（vcpkg 官方支持的组合）。
+- NDK 工具链由 AGP 提供；vcpkg **不自动加载** NDK 工具链（官方 triplet 亦然），
+  须经入口 helper 显式 chainload。直接把 CMAKE_TOOLCHAIN_FILE 指向 vcpkg.cmake
+  会导致 ANDROID_* 变量失效、无 sysroot，CMake 不产出 File API toolchains
+  对象，AGP 解析 reply 报 "sysroot has not been initialized"。
 - 远程 CI 的 Android job 与签名/发布流程属于 A3 工程化，A1 先本地构建。
 
 ### 6.3 环境要求（README 展开）

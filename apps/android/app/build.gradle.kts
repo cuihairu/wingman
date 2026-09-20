@@ -28,9 +28,12 @@ android {
         }
         externalNativeBuild {
             cmake {
-                // vcpkg 工具链与 NDK 工具链叠加（vcpkg 官方支持的组合，§6.2）
+                // vcpkg 工具链与 NDK 工具链叠加（§6.2）：经 cpp/vcpkg-android.cmake
+                // 显式 chainload NDK android.toolchain.cmake——vcpkg 不自动加载
+                // NDK 工具链，直接指向 vcpkg.cmake 会导致 ANDROID_* 变量失效
                 arguments += listOf(
-                    "-DCMAKE_TOOLCHAIN_FILE=$wingmanVcpkgRoot/scripts/buildsystems/vcpkg.cmake",
+                    "-DCMAKE_TOOLCHAIN_FILE=" + file("../cpp/vcpkg-android.cmake").absolutePath,
+                    "-DWINGMAN_VCPKG_ROOT=$wingmanVcpkgRoot",
                     "-DVCPKG_TARGET_TRIPLET=arm64-android",
                     "-DANDROID_STL=c++_static",
                 )
