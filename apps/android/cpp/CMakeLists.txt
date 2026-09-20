@@ -26,6 +26,19 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(unofficial-lua CONFIG REQUIRED)
 
+# vcpkg 的 spdlog port 在 INTERFACE_COMPILE_DEFINITIONS 硬编码
+# SPDLOG_FWRITE_UNLOCKED（glibc 扩展 ::fwrite_unlocked），bionic 没有
+# 该函数——Android 上剥离宏，spdlog 回退到 std::fwrite（语义等价）
+foreach(_spd_target spdlog::spdlog spdlog::spdlog_header_only)
+    if(TARGET ${_spd_target})
+        get_target_property(_spd_defs ${_spd_target} INTERFACE_COMPILE_DEFINITIONS)
+        if(_spd_defs)
+            list(REMOVE_ITEM _spd_defs SPDLOG_FWRITE_UNLOCKED)
+            set_target_properties(${_spd_target} PROPERTIES INTERFACE_COMPILE_DEFINITIONS "${_spd_defs}")
+        endif()
+    endif()
+endforeach()
+
 # transport（独立库自带 platform 薄层，§8.4；Android 走 socket_compat POSIX 分支）
 set(BUILD_TRANSPORT_TESTS OFF)
 add_subdirectory("${WINGMAN_REPO_ROOT}/libs/transport" transport_build)
