@@ -141,6 +141,69 @@
 		logs.add('已恢复默认应用设置', 'info');
 	}
 
+	// ===== 远程注册配置（runtime → Go server，经本地 IPC 读写） =====
+	let remoteConfig = $state({ serverIp: '', serverPort: 8888, registerToken: '' });
+	let remoteConfigBusy = $state(false);
+	let remoteConfigMessage = $state('');
+	let remoteConfigOk = $state(false);
+	let showToken = $state(false);
+
+	function setRemoteConfigMessage(message: string, ok: boolean) {
+		remoteConfigMessage = message;
+		remoteConfigOk = ok;
+	}
+
+	async function loadRemoteConfig() {
+		const invoke = (window as any).__TAURI_INVOKE__;
+		if (!invoke) {
+			setRemoteConfigMessage('读取失败: 本地 IPC 未连接', false);
+			return;
+		}
+		remoteConfigBusy = true;
+		try {
+			remoteConfig = await invoke('get_remote_config');
+			setRemoteConfigMessage('已读取 runtime 当前生效的远程配置', true);
+		} catch (error: any) {
+			setRemoteConfigMessage('读取失败: ' + error, false);
+		} finally {
+			remoteConfigBusy = false;
+		}
+	}
+
+	async function saveRemoteConfig() {
+		const invoke = (window as any).__TAURI_INVOKE__;
+		if (!invoke) {
+			setRemoteConfigMessage('保存失败: 本地 IPC 未连接', false);
+			return;
+		}
+		const serverIp = remoteConfig.serverIp.trim();
+		if (!serverIp) {
+			setRemoteConfigMessage('Server 地址不能为空', false);
+			return;
+		}
+		const serverPort = Number(remoteConfig.serverPort);
+		if (!Number.isInteger(serverPort) || serverPort < 1 || serverPort > 65535) {
+			setRemoteConfigMessage('端口必须为 1-65535 的整数', false);
+			return;
+		}
+		remoteConfigBusy = true;
+		try {
+			remoteConfig = await invoke('set_remote_config', {
+				serverIp,
+				serverPort,
+				registerToken: remoteConfig.registerToken,
+			});
+			// runtime 会热重建远程链路并写回配置文件
+			setRemoteConfigMessage('已应用并写回 runtime 配置文件', true);
+			logs.add(`远程注册配置已更新: ${remoteConfig.serverIp}:${remoteConfig.serverPort}`, 'success');
+		} catch (error: any) {
+			setRemoteConfigMessage('保存失败: ' + error, false);
+			logs.add('远程注册配置保存失败: ' + error, 'error');
+		} finally {
+			remoteConfigBusy = false;
+		}
+	}
+
 	function updateProfileField(field: keyof GameProfile, value: any) {
 		/* istanbul ignore next -- 不可达防御守卫 */
 		if (!editingProfile) return;
@@ -231,6 +294,65 @@
 				placeholder="http://localhost:9527"
 			>
 			<div class="empty-hint">Dashboard 默认通过 `/api` 访问服务端；GUI 这里记录本机编排服务地址，供后续一键打开和联调使用。</div>
+		</div>
+	</div>
+</div>
+
+<div class="card">
+	<div class="card-header">
+		<span class="card-title">远程注册配置</span>
+		<div class="card-actions">
+			<button class="btn btn-sm" onclick={loadRemoteConfig} disabled={remoteConfigBusy}>读取当前配置</button>
+		</div>
+	</div>
+	<div class="card-body">
+		<div class="form-group">
+			<span class="form-label">Server 地址</span>
+			<input
+				type="text"
+				class="form-input remote-input"
+				bind:value={remoteConfig.serverIp}
+				placeholder="例如 10.0.0.8 或 orchestrator.example.com"
+				disabled={remoteConfigBusy}
+			>
+		</div>
+		<div class="form-group">
+			<span class="form-label">端口</span>
+			<input
+				type="number"
+				class="form-input remote-input"
+				bind:value={remoteConfig.serverPort}
+				min="1"
+				max="65535"
+				placeholder="8888"
+				disabled={remoteConfigBusy}
+			>
+		</div>
+		<div class="form-group">
+			<span class="form-label">注册令牌（A3-P1）</span>
+			<div class="token-row">
+				<input
+					type={showToken ? 'text' : 'password'}
+					class="form-input"
+					bind:value={remoteConfig.registerToken}
+					placeholder="留空表示不携带令牌"
+					disabled={remoteConfigBusy}
+				>
+				<button class="btn btn-sm" onclick={() => showToken = !showToken}>
+					{showToken ? '隐藏' : '显示'}
+				</button>
+			</div>
+		</div>
+		<button class="btn btn-primary" onclick={saveRemoteConfig} disabled={remoteConfigBusy}>
+			{remoteConfigBusy ? '应用中...' : '保存并应用'}
+		</button>
+		{#if remoteConfigMessage}
+			<div class="remote-config-msg" class:msg-ok={remoteConfigOk} class:msg-bad={!remoteConfigOk}>
+				{remoteConfigMessage}
+			</div>
+		{/if}
+		<div class="empty-hint">
+			保存后 runtime 会热重建远程链路（无需重启），并把配置写回 agent.toml；注册令牌仅经本地 IPC 传递，Dashboard / Go server 侧无法改写。
 		</div>
 	</div>
 </div>
@@ -597,6 +719,26 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	.remote-input { max-width: 360px; display: block; }
+	.token-row { display: flex; gap: 8px; align-items: center; max-width: 440px; }
+	.token-row .form-input { flex: 1; }
+	.remote-config-msg {
+		margin-top: 10px;
+		padding: 8px 12px;
+		border-radius: 6px;
+		font-size: 12px;
+	}
+	.msg-ok {
+		border: 1px solid rgba(63, 185, 80, 0.42);
+		background: rgba(63, 185, 80, 0.08);
+		color: var(--accent-green);
+	}
+	.msg-bad {
+		border: 1px solid rgba(248, 81, 73, 0.42);
+		background: rgba(248, 81, 73, 0.08);
+		color: var(--accent-red);
 	}
 
 	.checkbox-label {

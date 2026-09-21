@@ -122,6 +122,12 @@ Go server 经 `/api/agents/:agentId/triggers`（读，登录即可）与 `/trigg
 `DELETE /triggers/:triggerId`（删除）（均需 agents:manage）透传给 Dashboard
 （见 architecture-decisions.md 的 Dispatcher Reuse）。
 
+远程注册配置（orchestrator 地址 + A3-P1 注册令牌）经本地 IPC 的
+`config.getRemote` / `config.setRemote` 读写，GUI 设置页提供对应入口；
+`config.setRemote` 校验后热重建远程客户端并写回 `agent.toml`。该命令**仅注册在
+本地 IPC dispatcher**，刻意不提供远程 agent 命令——远程配置不允许从 Go server
+侧改写（见 architecture-decisions.md 的 Remote Config Commands）。
+
 **Agent 分组与批量操作**：agent 标签由 Registry 内存持有，并经 `TagStore`
 回调写穿持久化到 `models.Agent.tags`（server 重启恢复、断线重连保留内存值）。
 批量端点 `POST /api/agents/batch/run-script`、`/stop-script`（scripts:run）与

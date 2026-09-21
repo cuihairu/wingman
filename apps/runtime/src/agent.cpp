@@ -7,6 +7,7 @@
 #include "wingman/runtime/event_buffer.hpp"
 #include "wingman/runtime/local_ipc_server.hpp"
 #include "wingman/runtime/remote_client.hpp"
+#include "wingman/runtime/rpc/config_handler.hpp"
 #include "wingman/runtime/rpc/screenshot_handler.hpp"
 #include "wingman/runtime/standalone_mode.hpp"
 #include <nlohmann/json.hpp>
@@ -87,6 +88,9 @@ class Agent::Impl {
 public:
     AgentConfig config;
     RunMode mode = RunMode::Unknown;
+    // initialize(configPath) 记录的配置文件路径；config.setRemote 写回时使用。
+    // 经 initialize(AgentConfig) 构造时为空（不落盘，如测试/嵌入式场景）。
+    std::string configPath;
 
     std::unique_ptr<RemoteClient> remoteClient;
     std::unique_ptr<StandaloneMode> standaloneMode;
@@ -104,6 +108,7 @@ Agent::~Agent() {
 }
 
 bool Agent::initialize(const std::string& configPath) {
+    impl_->configPath = configPath;
     try {
         impl_->config = AgentConfig::loadFromFile(configPath);
     } catch (const std::exception& e) {
@@ -231,6 +236,51 @@ bool Agent::start() {
                 return static_cast<int>(mode);
             },
         });
+        // config.getRemote / config.setRemote：GUI 读写远程注册配置（地址 +
+        // A3-P1 注册令牌），仅本地 IPC，无对应远程命令——远程配置不允许从
+        // Go server 侧改写（见 docs/agent-token-auth-design.md §4.1）
+        impl_->localIpcServer->setRemoteConfigAccess(rpc::RemoteConfigAccess{
+            [this]() -> nlohmann::json {
+                const auto& rc = impl_->config.remoteClient;
+                return {
+                    {"serverIp", rc.serverIp},
+                    {"serverPort", rc.serverPort},
+                    {"registerToken", rc.registerToken},
+                };
+            },
+            [this](const nlohmann::json& req) -> std::string {
+                const auto& cur = impl_->config.remoteClient;
+                RemoteClientConfig next = cur;
+
+                if (req.contains("serverIp")) {
+                    if (!req["serverIp"].is_string() || req["serverIp"].get<std::string>().empty()) {
+                        return "serverIp 必须为非空字符串";
+                    }
+                    next.serverIp = req["serverIp"].get<std::string>();
+                }
+                if (req.contains("serverPort")) {
+                    if (!req["serverPort"].is_number_integer()) {
+                        return "serverPort 必须为整数";
+                    }
+                    const int port = req["serverPort"].get<int>();
+                    if (port < 1 || port > 65535) {
+                        return "serverPort 超出范围 (1-65535)";
+                    }
+                    next.serverPort = port;
+                }
+                if (req.contains("registerToken")) {
+                    if (!req["registerToken"].is_string()) {
+                        return "registerToken 必须为字符串";
+                    }
+                    auto token = req["registerToken"].get<std::string>();
+                    if (token.size() > 256) {
+                        return "registerToken 过长（上限 256 字符）";
+                    }
+                    next.registerToken = std::move(token);
+                }
+                return applyRemoteConfig(std::move(next));
+            },
+        });
         if (!impl_->localIpcServer->start()) {
             spdlog::error("Failed to start local IPC server");
             success = false;
@@ -251,6 +301,42 @@ void Agent::stop() {
     if (impl_->remoteClient) impl_->remoteClient->stop();
     if (impl_->localIpcServer) impl_->localIpcServer->stop();
     if (impl_->standaloneMode) impl_->standaloneMode->stop();
+}
+
+std::string Agent::applyRemoteConfig(RemoteClientConfig next) {
+    if (!impl_->remoteClient) {
+        return "远程出站未启用，无法应用远程配置";
+    }
+
+    // 整体重建远程客户端（serverIp/serverPort 是构造参数，token 需 start 前
+    // 设置）。initRemoteClient 可重入：remoteDispatcher/screen 均为整体替换，
+    // EventBuffer::setRemoteSink 为覆盖语义，无重复注册风险。
+    const bool wasRunning = running_.load();
+    impl_->remoteClient->stop();
+    impl_->screen.reset();
+    impl_->remoteClient.reset();
+    impl_->remoteDispatcher.reset();
+
+    impl_->config.remoteClient = std::move(next);
+    if (!initRemoteClient()) {
+        return "远程客户端重建失败";
+    }
+    if (wasRunning && !impl_->remoteClient->start()) {
+        // server 暂时不可达是常态：配置保留（下方照常落盘），重启后继续重连
+        if (impl_->configPath.empty() || impl_->config.saveToFile(impl_->configPath)) {
+            return "远程客户端已按新配置写入，但连接启动失败（将在重启后重试）";
+        }
+        return "远程客户端连接启动失败，且写入配置文件失败";
+    }
+    spdlog::info("Remote config applied: {}:{} (token {})",
+        impl_->config.remoteClient.serverIp, impl_->config.remoteClient.serverPort,
+        impl_->config.remoteClient.registerToken.empty() ? "cleared" : "set");
+
+    // 写回配置文件，runtime 重启后配置保持
+    if (!impl_->configPath.empty() && !impl_->config.saveToFile(impl_->configPath)) {
+        return "配置已应用（本次运行生效），但写入配置文件失败";
+    }
+    return "";
 }
 
 RemoteClient* Agent::getRemoteClient() {

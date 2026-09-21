@@ -1,5 +1,6 @@
 #pragma once
 
+#include "wingman/runtime/rpc/config_handler.hpp"
 #include "wingman/runtime/rpc/system_handler.hpp"
 #include <atomic>
 #include <condition_variable>
@@ -37,6 +38,10 @@ public:
 
     // 注入 system.getStatus 的运行模式上下文（Agent 在 start() 前调用）
     void setStatusProviders(rpc::RuntimeStatusProviders providers);
+
+    // 注入 config.getRemote / config.setRemote 的读写通道（Agent 在 start()
+    // 前调用）；未注入时 GUI 请求返回 "not available"
+    void setRemoteConfigAccess(rpc::RemoteConfigAccess access);
 
 private:
     std::unique_ptr<Impl> impl_;

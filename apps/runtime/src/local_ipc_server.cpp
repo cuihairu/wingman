@@ -22,6 +22,7 @@
 #include <spdlog/spdlog.h>
 #include <chrono>
 #include <mutex>
+#include <optional>
 #include <thread>
 
 namespace wingman::runtime {
@@ -36,6 +37,8 @@ public:
     std::unique_ptr<TriggerManager> triggerManager;
     std::unique_ptr<platform::IScreen> screen;
     std::unique_ptr<MacroRecorder> recorder;
+    // config.getRemote / config.setRemote 读写通道（Agent 注入；空 = GUI 只读失败）
+    std::optional<rpc::RemoteConfigAccess> remoteConfigAccess;
     std::thread serverThread;
     std::atomic<bool> stopping{false};
     std::mutex channelMutex;
@@ -54,6 +57,11 @@ LocalIpcServer::LocalIpcServer(StandaloneMode& standalone, std::string endpoint,
 void LocalIpcServer::setStatusProviders(rpc::RuntimeStatusProviders providers)
 {
     impl_->statusProviders = std::move(providers);
+}
+
+void LocalIpcServer::setRemoteConfigAccess(rpc::RemoteConfigAccess access)
+{
+    impl_->remoteConfigAccess = std::move(access);
 }
 
 LocalIpcServer::~LocalIpcServer() {
@@ -100,6 +108,9 @@ bool LocalIpcServer::start() {
     }
     rpc::registerEventHandlers(*impl_->dispatcher);
     rpc::registerMacroHandlers(*impl_->dispatcher, *impl_->recorder);
+    if (impl_->remoteConfigAccess) {
+        rpc::registerRuntimeConfigHandlers(*impl_->dispatcher, *impl_->remoteConfigAccess);
+    }
 
     {
         std::lock_guard<std::mutex> lock(startMutex_);

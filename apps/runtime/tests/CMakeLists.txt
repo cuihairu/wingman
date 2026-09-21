@@ -18,6 +18,7 @@ add_executable(runtime_tests
     ../src/local_ipc_server.cpp
     ../src/rpc/handlers/script_handler.cpp
     ../src/rpc/handlers/system_handler.cpp
+    ../src/rpc/handlers/config_handler.cpp
     ../src/rpc/handlers/screenshot_handler.cpp
     ../src/rpc/handlers/event_handler.cpp
     ../src/rpc/handlers/macro_handler.cpp

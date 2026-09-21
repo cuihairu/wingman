@@ -119,7 +119,11 @@ agent                                server
 
 - `RemoteClientConfig`（config.hpp）增 `registerToken`；
 - INI 配置 `[remote] register_token = "..."`（agent_config.cpp 解析 + 保存）；
-- `Agent::initRemoteClient()` 装配点调用 `setAuthToken`。
+- `Agent::initRemoteClient()` 装配点调用 `setAuthToken`；
+- GUI 入口：Tauri 设置页「远程注册配置」经本地 IPC
+  `config.getRemote` / `config.setRemote` 读写 server 地址与 token，
+  保存即热生效并写回配置文件（仅本地 IPC，无远程命令，见
+  architecture-decisions.md 的 Remote Config Commands）。
 
 ### 4.3 Android
 

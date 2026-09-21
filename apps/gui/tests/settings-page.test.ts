@@ -61,9 +61,10 @@ describe('设置页：连接区块', () => {
 
 	it('端点输入同步 settings 并持久化 localStorage', async () => {
 		render(Page);
-		// 表单标签是 span 而非 label 元素，直接按 class 定位文本输入（0 端点 / 1 Orchestrator）
+		// 表单标签是 span 而非 label 元素，直接按 class 定位文本输入
+		//（0 端点 / 1 Orchestrator / 2-4 远程注册卡片的地址、端口、令牌）
 		const inputs = document.querySelectorAll<HTMLInputElement>('input.form-input');
-		expect(inputs.length).toBe(2);
+		expect(inputs.length).toBe(5);
 		await fireEvent.change(inputs[0], { target: { value: 'custom_pipe' } });
 		expect(get(settings).ipcEndpoint).toBe('custom_pipe');
 		expect(JSON.parse(localStorage.getItem('wingman-settings')!).ipcEndpoint).toBe('custom_pipe');

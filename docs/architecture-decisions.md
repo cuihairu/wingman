@@ -175,6 +175,30 @@ full trigger management surface to the dashboard, all under `agents:manage`:
 
 No new transport or listener is introduced.
 
+### Remote Config Commands (Local IPC Only)
+
+`config.getRemote` / `config.setRemote` expose the runtime's remote-registration
+config (orchestrator address + A3-P1 register token, see
+`docs/agent-token-auth-design.md`) to the Tauri UI through local IPC:
+
+- `config.getRemote` returns the currently effective `{serverIp, serverPort, registerToken}`.
+- `config.setRemote` performs a partial update (missing fields keep current values),
+  validates the result (non-empty `serverIp`, integer port 1–65535, token ≤ 256
+  chars), then hot-applies: `Agent::applyRemoteConfig` rebuilds the remote client
+  (stop → dispose screen/dispatcher → re-init → reconnect if it was running) and
+  writes the new values back to `agent.toml` so they survive restarts.
+
+There is **deliberately no corresponding remote agent command**. The remote
+config must not be writable from the Go server / dashboard side — an agent that
+lets its orchestrator rewrite its own registration target would let a compromised
+server silently redirect agents. The write path is local-UI-only, matching the
+trust model of the local IPC boundary.
+
+Implementation: `rpc::RemoteConfigAccess` (get/apply callbacks) is injected into
+`LocalIpcServer` by `Agent` before `start()`, following the `setStatusProviders`
+setter-before-start pattern; the handler layer (`config_handler.cpp`) stays
+decoupled from the `Agent` type.
+
 ## Display Selection
 
 Multi-monitor capture is an extension of the existing screenshot path, not a new

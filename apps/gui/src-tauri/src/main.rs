@@ -53,6 +53,9 @@ fn main() {
             commands::system::stop_all,
             commands::system::is_paused,
             commands::system::reload_hotkeys,
+            // 远程注册配置（本地 IPC only）
+            commands::config::get_remote_config,
+            commands::config::set_remote_config,
             // 屏幕预览
             commands::screen::capture_screenshot,
             commands::screen::list_monitors,

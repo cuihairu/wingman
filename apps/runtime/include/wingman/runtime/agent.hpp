@@ -32,6 +32,12 @@ public:
     bool initialize(const AgentConfig& config);
     void shutdown();
 
+    // 应用新的远程配置（config.setRemote 经本地 IPC 调入）：更新内存配置 +
+    // 写回配置文件 + 热重建远程客户端（无需重启 runtime）。运行中重建后
+    // 自动重连；校验在调用方（config handler 装配层）完成。
+    // 返回错误串，空串 = 成功。
+    std::string applyRemoteConfig(RemoteClientConfig next);
+
     // 运行控制
     bool start();
     void stop();
