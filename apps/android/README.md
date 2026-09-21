@@ -47,6 +47,10 @@ gradle :app:assembleDebug
 → vcpkg arm64-android 依赖 + 仓库内 `libs/transport`、`apps/runtime` 的
 `remote_client.cpp`、`apps/android/cpp/agent`（桌面同源）→ `libwingman_agent.so`。
 
+> ⚠️ 双端同源文件（`apps/runtime/src/remote_client.cpp`、`event_buffer.cpp`，
+> 以及 `libs/transport` 等共享层）同时编译进桌面 `wingman-runtime` 与 Android
+> `libwingman_agent.so`：改动必须过两端编译与桌面同源单测，不要只验证桌面侧。
+
 > 说明：本仓库开发机（Linux，无 SDK/NDK）不构建此工程；Android 侧以
 > 「代码交付 + 构建脚本」为准，首次构建在本文件环境准备完成后进行。
 > C++ 核心逻辑（ScriptRunner/协议/重连）已在桌面环境有同源单测
