@@ -68,6 +68,7 @@ add_library(wingman_agent SHARED
 )
 
 target_include_directories(wingman_agent PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
     "${WINGMAN_REPO_ROOT}/apps/runtime/include"
     "${WINGMAN_REPO_ROOT}/lib/wingman/include"
     "${WINGMAN_REPO_ROOT}/lib/wingman/src"
