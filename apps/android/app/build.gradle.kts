@@ -13,7 +13,9 @@ android {
 
     defaultConfig {
         applicationId = "com.wingman.agent"
-        minSdk = 26
+        // A2：OpenCV 4.12 的 OpenCVConfig 要求 android-28 起步（低于则
+        // OpenCV_FOUND=FALSE），26 → 28（Android 9，2018）
+        minSdk = 28
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
