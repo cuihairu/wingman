@@ -138,7 +138,7 @@ jobs:
               print("今日尚无构建资产，保留全部日期资产不动")
               raise SystemExit(0)
           keep = max(today_groups, key=lambda k: max(
-              a["updatedAt"] for a in today_groups[k]))
+              a["updated_at"] for a in today_groups[k]))  # REST API 为 snake_case
           print("保留今日最新组:", keep)
           for key, assets in groups.items():
               for a in assets:
