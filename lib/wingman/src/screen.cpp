@@ -1,5 +1,8 @@
 #include "wingman/screen.hpp"
 
+// Bitmap 纯核心实现已抽至 bitmap.cpp（A2，Android NDK 与 lua_tests 轻量
+// 链接用）；本文件保留 fromFile/save/平台 Screen 等平台相关部分。
+
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -25,9 +28,11 @@
 #include <unistd.h>
 #endif
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
 // Linux 截图装配：接线 X11Capture（此前 Screen::capture 恒 nullptr 的装配断链，
 // 与 Clipboard 同款，2026-09-14 修复）。截图/取色/找色不依赖 OpenCV。
+// __ANDROID__ 亦定义 __linux__，X11 装配在 NDK 下不适用（A2 起 Android 走
+// MediaProjection 采集源，不经本文件 Screen 静态）。
 #include "wingman/platform/icapture.hpp"
 #include "wingman/platform/screen_factory.hpp"
 
@@ -49,70 +54,7 @@ std::unique_ptr<ICapture> createX11Capture(const CaptureConfig& config);
 
 namespace wingman {
 
-// ============================================================================
-// Bitmap Implementation
-// ============================================================================
-
-Bitmap::Bitmap(int width, int height)
-    : m_width(width), m_height(height),
-      m_data(new uint8_t[width * height * 4]()) {
-    // Value-initialize array to zeros (prevents garbage data)
-}
-
-Bitmap::Bitmap(const Bitmap& other)
-    : m_width(other.m_width), m_height(other.m_height),
-      m_data(new uint8_t[m_width * m_height * 4]) {
-    std::memcpy(m_data.get(), other.m_data.get(), m_width * m_height * 4);
-}
-
-Bitmap::Bitmap(Bitmap&& other) noexcept
-    : m_width(other.m_width), m_height(other.m_height),
-      m_data(std::move(other.m_data)) {
-    other.m_width = 0;
-    other.m_height = 0;
-}
-
-Bitmap::~Bitmap() = default;
-
-Bitmap& Bitmap::operator=(const Bitmap& other) {
-    if (this != &other) {
-        m_width = other.m_width;
-        m_height = other.m_height;
-        m_data.reset(new uint8_t[m_width * m_height * 4]);
-        std::memcpy(m_data.get(), other.m_data.get(), m_width * m_height * 4);
-    }
-    return *this;
-}
-
-Bitmap& Bitmap::operator=(Bitmap&& other) noexcept {
-    if (this != &other) {
-        m_width = other.m_width;
-        m_height = other.m_height;
-        m_data = std::move(other.m_data);
-        other.m_width = 0;
-        other.m_height = 0;
-    }
-    return *this;
-}
-
-Color Bitmap::getPixel(int x, int y) const {
-    if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
-        return Color();
-    }
-    const uint8_t* p = m_data.get() + (y * m_width + x) * 4;
-    return Color(p[2], p[1], p[0], p[3]);
-}
-
-void Bitmap::setPixel(int x, int y, const Color& color) {
-    if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
-        return;
-    }
-    uint8_t* p = m_data.get() + (y * m_width + x) * 4;
-    p[0] = color.b;
-    p[1] = color.g;
-    p[2] = color.r;
-    p[3] = color.a;
-}
+// Bitmap 纯核心（构造/拷贝/移动/像素读写）见 bitmap.cpp（A2 抽出）。
 
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined(WINGMAN_ENABLE_VISION)
 namespace {
@@ -903,7 +845,7 @@ bool Bitmap::save(const std::string& filepath) const {
 // 每次调用经工厂独立创建 ICapture（自带 X 连接），规避跨线程共享 Display
 // 的线程安全问题；XOpenDisplay 走本地 socket，开销亚毫秒。
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
 namespace {
 
 std::unique_ptr<platform::ICapture> linuxCapture() {

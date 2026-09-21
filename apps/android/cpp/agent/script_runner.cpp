@@ -1,5 +1,7 @@
 #include "script_runner.hpp"
 
+#include "agent/android_script_api.hpp"
+
 #include <sol/sol.hpp>
 
 #include <algorithm>
@@ -116,6 +118,14 @@ void ScriptRunner::setOutputCallback(OutputCallback callback) {
     output_ = std::move(callback);
 }
 
+void ScriptRunner::setHostBridge(platform::android::AndroidHostBridge* bridge) {
+    hostBridge_ = bridge;
+}
+
+void ScriptRunner::setFilesDir(std::string dir) {
+    filesDir_ = std::move(dir);
+}
+
 void ScriptRunner::emitLine(const std::string& line) {
     OutputCallback cb;
     {
@@ -154,6 +164,10 @@ bool ScriptRunner::runSync(const std::string& executionId, const std::string& co
         luaPrint(lua, stopFlag, output, va);
     };
     lua["wingman"]["sleep"] = [&stopFlag](double ms) { wingmanSleep(stopFlag, ms); };
+
+    // A2 能力 API（input/screen/vision）：桥为 null 时函数仍注册但降级
+    // 返回 false/nil（无宿主环境行为可预期，见 android_script_api.hpp）
+    registerAndroidApis(lua, stopFlag, hostBridge_, filesDir_);
 
     // 注册指令计数 hook（注册表携带停止标志指针）
     lua_State* L = lua.lua_state();

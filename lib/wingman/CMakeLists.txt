@@ -41,6 +41,7 @@ set(WINGMAN_SOURCES
     src/event.cpp
 
     # Vision and capture
+    src/bitmap.cpp
     src/vision/image_analyzer.cpp
 
     # I/O
@@ -209,10 +210,13 @@ elseif(APPLE)
     find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
     find_library(SCREENCAPTUREKIT_FRAMEWORK ScreenCaptureKit)
 elseif(ANDROID)
-    # Android 租户（A1 占位：lib/wingman 本体不进 NDK 构建，见
-    # docs/android-agent-design.md §5.5；A2 替换为真实 IInput/ICapture 实现）
+    # Android 租户（A2，docs/android-agent-design.md §5.6 反向 JNI 桥）：
+    # 宿主桥抽象 + MediaProjection 采集源。lib/wingman 本体仍不整体进 NDK
+    # 构建（apps/android/cpp/CMakeLists.txt cherry-pick 视觉/位图/租户子集，
+    # 规避本目录 find_package(OpenSSL REQUIRED) 等重量依赖）。
     list(APPEND WINGMAN_SOURCES
-        src/platform/android/android_stub.cpp
+        src/platform/android/android_host_bridge.cpp
+        src/platform/android/android_capture.cpp
     )
 elseif(UNIX AND NOT APPLE)
     list(APPEND WINGMAN_SOURCES

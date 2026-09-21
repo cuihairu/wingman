@@ -19,6 +19,10 @@
 #include <string>
 #include <thread>
 
+namespace wingman::platform::android {
+class AndroidHostBridge;
+}
+
 namespace wingman::android {
 
 class ScriptRunner {
@@ -47,6 +51,13 @@ public:
 
     void setOutputCallback(OutputCallback callback);
 
+    // 注入宿主桥（手势注入 + 屏幕采集，A2）：启动脚本前设置；null = 仅
+    // log/sleep 可用（wingman.input/screen/vision 函数存在但降级返回
+    // false/nil，保证无宿主环境——如桌面单测——行为可预期）
+    void setHostBridge(platform::android::AndroidHostBridge* bridge);
+    // 模板图根目录（findImage 相对路径按此解析；空 = 仅绝对路径可用）
+    void setFilesDir(std::string dir);
+
     // 同步执行入口：start() 的内部线程与单测共用。
     // stopFlag 置位后，sleep 检查点与指令 hook 均会中断脚本；
     // 返回脚本是否正常跑完（无 Lua 错误、未被停止）。
@@ -65,6 +76,10 @@ private:
     std::string executionId_;
     mutable std::mutex outputMutex_;
     OutputCallback output_;
+    // 宿主桥与模板根目录：start() 前设置，执行线程只读（所有权在
+    // jni_bridge / AndroidAgent，此处仅观察）
+    platform::android::AndroidHostBridge* hostBridge_ = nullptr;
+    std::string filesDir_;
 };
 
 } // namespace wingman::android
