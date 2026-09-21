@@ -9,6 +9,18 @@
     "lua",
     "sol2",
     "spdlog",
-    "nlohmann-json"
+    "nlohmann-json",
+    {
+      "name": "opencv4",
+      "default-features": false,
+      "features": [
+        "intrinsics",
+        "jpeg",
+        "png",
+        "thread",
+        "tiff",
+        "webp"
+      ]
+    }
   ]
 }

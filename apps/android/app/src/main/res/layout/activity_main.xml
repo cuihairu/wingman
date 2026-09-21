@@ -63,6 +63,13 @@
         android:text="@string/status_placeholder" />
 
     <Button
+        android:id="@+id/btnCapture"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/btn_capture" />
+
+    <Button
         android:id="@+id/btnAccessibility"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

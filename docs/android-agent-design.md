@@ -23,7 +23,7 @@ Dashboard 点击运行 → Go Server run_script{content} → 设备执行 Lua
 
 | 里程碑 | 内容 | 本文只做 |
 |--------|------|----------|
-| A2 能力闭环 | `platform/android` 的 IInput（dispatchGesture）/ICapture（MediaProjection）真实现，找色找图 | 租户目录 + stub 骨架 |
+| A2 能力闭环（已实施，2026-09-21） | `platform/android` 宿主桥（dispatchGesture 手势注入）/MediaProjection 采集真实现，找色找图，`screenshot.capture` 远程截图 | 租户目录 + stub 骨架 |
 | A3 可靠性 | 开机自启、崩溃自重启、断连缓存自治、token 认证 | 设计约束成文 |
 | A4 多设备编排 | Dashboard 设备视图、批量下发、asset.sync 模板分发 | 协议预留 |
 
@@ -227,12 +227,76 @@ A2 的 capture/inject 反向接口）届时以同模式追加，A1 不预埋。
 `POST_NOTIFICATIONS`（前台服务通知）、`RECEIVE_BOOT_COMPLETED`（A3）、
 `BIND_ACCESSIBILITY_SERVICE`（A2 注入）。
 
-### 5.5 platform/android 租户骨架（A2 落地的占位）
+### 5.5 platform/android 租户（A2 已实装）
 
-`lib/wingman/src/platform/android/`：A1 只放入租户说明与 IInput/ICapture 的
-stub 翻译层声明（`android_input.cpp`/`android_capture.cpp` 返回不可用），
-`lib/wingman/CMakeLists.txt` 增加 `elseif(ANDROID)` 分支选入 —— 结构就位，
-真实 JNI 桥接在 A2 填充（与 Kotlin 的 MediaProjection/AccessibilityService 对接）。
+`lib/wingman/src/platform/android/`：A1 只放入 stub 占位（已删除）；A2 实装为：
+
+- `android_host_bridge.{hpp,cpp}`：`AndroidHostBridge` 抽象（tap/swipe/
+  longPress/captureFrame/screenSize，全部**同步阻塞契约**）+ 全局 setter
+  （`setGlobalHostBridge`，与 script/modules 的 `setGlobalRecorder` 同款）。
+  lib/wingman 不依赖任何 JNI/Android 头；
+- `android_capture.{hpp,cpp}`：`AndroidCaptureSource : ICaptureSource`，把桥的
+  captureFrame 适配为通用采集源（region 裁剪），供脚本 API 与截图命令消费。
+
+**偏离说明**：设计初期设想把 30 方法的鼠标语义 `IInput` 映射到 dispatchGesture；
+A2 实施时确认这是无人消费的死代码路径（Android ScriptRunner 不走桌面模块
+注册表），租户只放被消费的 HostBridge + CaptureSource，触屏语义经
+`wingman.input.*` Lua API 直接暴露。
+
+### 5.6 反向 JNI 桥与 A2 能力闭环（A2 实装）
+
+**宿主桥模式**：`jni_bridge.cpp`（唯一 JNIEnv 翻译层）实现 `JniHostBridge`，
+`nativeStart` 时注册进全局 setter。规则：
+
+- **线程**：native 方法来自 JVM 已 attach 线程；C++ 脚本线程经 thread_local
+  RAII（GetEnv → EDETACHED 才 AttachCurrentThread，析构仅 detach 自身 attach 的）；
+- **类引用**：不用 FindClass（非主线程 FindClass 应用类走 system classloader
+  会失败）——Kotlin 在 onServiceConnected 调 `nativeSetInputBridge(this)`，
+  C++ GetObjectClass + GlobalRef + 缓存 jmethodID；
+- **手势**：C++ `tap/swipe/longPress` → Kotlin `performGesture(x1,y1,x2,y2,
+  durationMs)` 返回 seq → 主线程 `dispatchGesture` → GestureResultCallback →
+  `nativeOnGestureResult(seq, completed)` 唤醒 C++ promise 等待；超时
+  durationMs+2s 兜底；tap/longPress 为同点手势（duration 区分）；
+- **采集**：帧走推送——ImageReader `onImageAvailable`（独立 HandlerThread）
+  `acquireLatestImage` 取最新、拷平面字节、立即 close，`nativeOnFrame` 推给
+  C++ 缓存；RGBA→BGRA 换序与 rowStride 逐行拷贝在 C++（`captureFrame` 纯读
+  缓存，无 JNI）。屏幕尺寸随首帧建立（取帧前 getScreenWidth 返回 0）。
+
+**权限 UX**（首次使用需两步引导，均在 App 内）：
+无障碍设置开启 Wingman 注入服务 → App 点「开启投屏」→ 系统
+MediaProjection 授权对话框 → 结果转发 WingmanService（API 34 硬约束：
+先以 `mediaProjection` 类型 startForeground，再 getMediaProjection +
+createVirtualDisplay，否则 SecurityException）。投屏授权单会话一次性
+（Android 14+），每次重开投屏都会再弹系统对话框。
+
+**脚本 API**（挂 ScriptRunner 的 `wingman` 表，与桌面同名同形，脚本可跨端；
+桥缺失/投屏未授权时降级返回 false/nil，不抛错）：
+
+```lua
+wingman.input.click(x, y[, durationMs=60]) -> bool   -- >=500ms 走长按
+wingman.input.swipe(x1,y1,x2,y2[, durationMs=300]) -> bool
+wingman.input.delay(ms)                              -- 50ms 分片 + 停止中断
+wingman.screen.getScreenWidth()/getScreenHeight() -> int
+wingman.screen.getPixel(x,y) -> {r,g,b,a}
+wingman.screen.capture() -> bool                     -- 仅报成功与否（桌面同形）
+wingman.screen.findColor(color, region, tolerance=10) -> {point|nil, found}
+wingman.screen.findColors(color, region, tolerance=10, maxCount=0) -> {{x,y}}
+wingman.screen.findImage(path, region?, threshold=0.9) -> {point|nil, found}
+wingman.vision.findColor(color[, tolerance=10][, region]) -> {x,y}|nil
+wingman.vision.findAllColors(color[, tolerance][, region]) -> {{x,y}}
+wingman.vision.hasColor(color[, tolerance][, region]) -> bool
+wingman.vision.getDominantColor([region]) -> {r,g,b,a}  -- 均色近似桌面 kmeans k=1
+wingman.vision.findImage(templatePath[, threshold=0.9][, region]) -> {found, position?, confidence?, region?}
+```
+
+color 接受 `0xRRGGBB` 整数或 `{r,g,b}` 表；findImage 相对路径按 configJson
+`filesDir` 解析（app external files，`adb push` 可写）。找色找图走桌面同款
+`ImageAnalyzer`（bitmap-first：每 API 调用取一帧再分析，与桌面 Vision 每次查找
+重新截屏的结构差异——投屏取帧代价更高）。
+
+**远程截图**：AndroidAgent 响应 `screenshot.capture`（与桌面 screenshot_handler
+同形：region 参数、4K clamp、BGRA→BGR→JPEG q82→base64 data URI），Go server
+workflow 的 screenshot 步骤零改动覆盖 Android 设备。displayId 接受即忽略。
 
 ---
 
@@ -241,10 +305,12 @@ stub 翻译层声明（`android_input.cpp`/`android_capture.cpp` 返回不可用
 ### 6.1 依赖（全部 vcpkg，遵守项目依赖管理规则）
 
 ```
-vcpkg install --triplet arm64-android asio lua sol2 spdlog nlohmann-json
+vcpkg install --triplet arm64-android asio lua sol2 spdlog nlohmann-json opencv4
 ```
 
-（sol2 头-only；lua 为 sol2 依赖。Android Gradle 与 vcpkg 工具链对接见 6.2。）
+（A2 起 NDK 增加 opencv4：`default-features:false` + jpeg/png 等，见
+`apps/android/cpp/vcpkg.json`——关默认特性避免拉 GUI 面。sol2 头-only；
+lua 为 sol2 依赖。Android Gradle 与 vcpkg 工具链对接见 6.2。）
 
 ### 6.2 构建链路
 
@@ -306,6 +372,7 @@ Go 1.2x（server 侧）。本仓库开发机（Linux）当前无 SDK/NDK，A1 �
 | Go 协议（content 下发/platform 注册） | `go test ./...` 新增用例 | ✅ |
 | C++ 帧协议/重连 | transport_tests 既有 118 例（Android 编译同一份代码） | ✅（Linux 面） |
 | ScriptRunner Lua 语义 | 抽为纯逻辑单测（注入 fake 回调），跑在 core_tests | ✅ |
+| A2 脚本能力 API（input/screen/vision） | FakeHostBridge 直测（合成帧找色/手势透传/降级），跑在 lua_tests | ✅ |
 | JNI 桥/Kotlin/Gradle | 需 Android SDK；A1 交付 + README，接手环境首次构建验证 | ❌ |
 | 端到端链路 | 真机/模拟器 + Go Server 联调 | ❌（A1 验收步骤写入 README） |
 
@@ -315,7 +382,26 @@ ScriptRunner 的 Lua 执行与停止语义不依赖 Android（纯 sol2），因�
 
 ---
 
-## 10. A1 实施清单（本文对应提交的内容）
+## 10. A2 实施摘要（2026-09-21）
+
+- C++ 租户：`AndroidHostBridge` 抽象 + `AndroidCaptureSource`；Bitmap 纯核心
+  自 screen.cpp 抽至 bitmap.cpp（零平台宏，NDK/lua_tests 轻量链接；screen.cpp
+  两处 linux guard 加 `!defined(__ANDROID__)`，桌面行为不变）
+- 脚本 API：`android_script_api.cpp` 挂 wingman.input/screen/vision；测试
+  `libs/lua/tests/android_api_test.cpp`（FakeHostBridge）
+- 反向 JNI 桥：jni_bridge.cpp 增 JNI_OnLoad/JniEnvGuard/JniHostBridge 与
+  nativeSetInputBridge/nativeOnGestureResult/nativeOnFrame
+- Kotlin：WingmanAccessibilityService 实装 dispatchGesture；新增
+  ScreenCaptureManager（MediaProjection/VirtualDisplay/ImageReader 生命周期）；
+  WingmanService 投屏动作与 startForeground 类型时序；MainActivity 投屏授权流
+- 远程截图：`android_screenshot.cpp`（与桌面同形），AndroidAgent 分发
+- 构建：NDK cherry-pick lib/wingman 子集 + opencv4（关默认特性）
+- 真机验收：见 apps/android/README.md A2 步骤（息屏不出帧是 A2 已知前提，
+  息屏采集/保活归 A3）
+
+---
+
+## 10'. A1 实施清单（本文对应提交的内容）
 
 - [x] 本设计文档
 - [x] Go：run_script content 下发 + AgentInfo.Platform + 测试

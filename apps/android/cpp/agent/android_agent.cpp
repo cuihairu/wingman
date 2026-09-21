@@ -1,5 +1,8 @@
 #include "android_agent.hpp"
 
+#include "agent/android_screenshot.hpp"
+#include "platform/android/android_host_bridge.hpp"
+
 #include <nlohmann/json.hpp>
 
 #include <chrono>
@@ -77,6 +80,11 @@ bool AndroidAgent::start(const Config& config) {
             }
             sendScriptOutput(scriptId, line, "");
         });
+
+    // A2 能力注入：宿主桥（jni_bridge 在 start 前注册全局；未注册时脚本
+    // API 降级）+ 模板图根目录
+    runner_.setHostBridge(platform::android::globalHostBridge());
+    runner_.setFilesDir(config.filesDir);
 
     client_->setCommandCallback(
         [this](const std::string& command, const CommandData& data) {
@@ -164,6 +172,13 @@ CommandResult AndroidAgent::onCommand(const std::string& command,
     } else if (command == "stop_script") {
         runner_.stop();
         return CommandResult::ok("stop requested");
+
+    } else if (command == "screenshot.capture") {
+        // A2：与桌面同形返回（JPEG q82 + base64 data URI），Go server
+        // workflow 的 screenshot 步骤零改动消费；桥在命令时点解析，
+        // 支持服务连接晚于 agent 启动的时序
+        return handleScreenshotCapture(
+            data, platform::android::globalHostBridge());
 
     } else if (command == "system.shutdown") {
         // 服务生命周期归 Kotlin 前台服务管理，不响应远端关停

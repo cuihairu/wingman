@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- A2 实际使用：投屏采集（MediaProjection） -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <!-- A3 启用：开机自启 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" /> -->
 
     <application
@@ -23,13 +25,14 @@
             </intent-filter>
         </activity>
 
-        <!-- 前台服务：托管 C++ 核心生命周期与长链接保活（§5.4） -->
+        <!-- 前台服务：托管 C++ 核心生命周期与长链接保活（§5.4）；
+             A2 追加 mediaProjection 类型承载投屏采集（§5.6） -->
         <service
             android:name=".WingmanService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="dataSync|mediaProjection" />
 
-        <!-- A2 骨架：无障碍注入能力占位，A1 不实现 dispatchGesture -->
+        <!-- A2：无障碍手势注入（dispatchGesture，§5.6） -->
         <service
             android:name=".WingmanAccessibilityService"
             android:exported="false"

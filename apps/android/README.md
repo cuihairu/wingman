@@ -72,11 +72,48 @@ gradle :app:assembleDebug
      ExecutionLog 落库 → WS 转发）与 `[exec_...] finished`；
    - 长死循环脚本可被停止（stop_script → Lua 指令 hook 强制中断）。
 
+## A2 能力闭环使用步骤（手势注入 + 屏幕采集 + 找色找图）
+
+前置：完成上面 A1 链路验收（Agent 在线）。
+
+1. **开启无障碍注入**：App 内点「无障碍设置」→ 系统设置里启用
+   Wingman 注入服务（服务连接后自动注册进 C++ 核心）。
+2. **开启投屏采集**：App 内点「开启投屏」→ 系统弹出 MediaProjection
+   授权对话框 → 同意。Android 14+ 每次重开投屏都会再弹一次（系统约束）。
+3. **跑示例脚本**（Dashboard 下发，`wingman.*` API 与桌面同名同形）：
+
+   ```lua
+   -- 找红色按钮并点击（0xRRGGBB 或 {r,g,b} 表）
+   local pt = wingman.vision.findColor(0xE23B3B, 10)
+   if pt then
+       wingman.input.tap(pt.x, pt.y)
+       wingman.input.delay(500)
+   end
+   -- 滑动列表
+   wingman.input.swipe(540, 1800, 540, 600, 400)
+   -- 模板找图（相对路径按 app external files 解析）
+   local m = wingman.vision.findImage('templates/ok.png', 0.9)
+   if m.found then wingman.input.tap(m.position.x, m.position.y) end
+   ```
+
+4. **远程截图验收**：Dashboard workflow 加 screenshot 步骤选该设备 →
+   截图上屏（与桌面同形，JPEG q82）。
+
+模板图放置（app 对自身 external files 免存储权限）：
+
+```bash
+adb push ok.png /sdcard/Android/data/com.wingman.agent/files/templates/
+```
+
+**A2 已知前提**：投屏仅在设备亮屏时出帧（息屏采集/保活归 A3）；
+无障碍/投屏未授权时脚本 API 降级返回 false/nil，不报错。
+
 ## 里程碑
 
 - **A1（本目录）**：链路打通（连接/注册/脚本下发/日志回传/停止）。
-- **A2 能力闭环**：`lib/wingman/src/platform/android` 的 IInput
-  （dispatchGesture）/ICapture（MediaProjection）真实现 + JNI capture/inject
-  接口；找色找图（vision 模块进 NDK）。
+- **A2 能力闭环（已实施，2026-09-21）**：宿主桥（dispatchGesture 手势注入）/
+  MediaProjection 采集真实现（`platform/android` 租户 + 反向 JNI 桥）；
+  找色找图（ImageAnalyzer + OpenCV 进 NDK）；wingman.input/screen/vision
+  脚本 API；screenshot.capture 远程截图。见设计文档 §5.5/§5.6。
 - **A3 可靠性**：开机自启、崩溃自重启、断连自治、token 认证、CI Android job。
 - **A4 多设备编排**：Dashboard 设备视图、批量下发、asset.sync 模板分发。

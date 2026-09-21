@@ -13,8 +13,11 @@
     <string name="btn_start">启动 Agent</string>
     <string name="btn_stop">停止 Agent</string>
     <string name="btn_accessibility">无障碍设置（A2 注入能力）</string>
+    <string name="btn_capture">开启投屏（A2 屏幕采集）</string>
     <string name="status_placeholder">状态：未连接</string>
     <string name="toast_started">Agent 已启动</string>
     <string name="toast_stopped">Agent 已停止</string>
+    <string name="toast_capture_started">投屏已开启</string>
+    <string name="toast_capture_denied">投屏授权被拒绝</string>
     <string name="status_format">连接：%1$s&#10;核心运行：%2$s&#10;当前脚本：%3$s&#10;脚本运行：%4$s</string>
 </resources>

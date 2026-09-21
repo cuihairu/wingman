@@ -17,6 +17,7 @@
 #include <mutex>
 #include <string>
 
+#include "platform/android/android_host_bridge.hpp"
 #include "wingman/runtime/remote_client.hpp"
 #include "script_runner.hpp"
 
@@ -36,6 +37,9 @@ public:
         // 注册鉴权 token（可空；server 侧 WINGMAN_AGENT_TOKENS 开启鉴权时必填，
         // 见 docs/agent-token-auth-design.md §4.2）
         std::string authToken;
+        // 模板图根目录（A2：wingman.vision.findImage 相对路径解析根；
+        // 经 configJson 由 jni_bridge 传入）
+        std::string filesDir;
     };
 
     AndroidAgent() = default;

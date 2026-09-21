@@ -199,6 +199,36 @@ Implementation: `rpc::RemoteConfigAccess` (get/apply callbacks) is injected into
 setter-before-start pattern; the handler layer (`config_handler.cpp`) stays
 decoupled from the `Agent` type.
 
+## Android Reverse JNI Bridge
+
+The Android agent (see `docs/android-agent-design.md`) keeps the hard
+constraint that `jni_bridge.cpp` is the only translation unit touching
+`JNIEnv`. Platform capabilities (gesture injection via
+`AccessibilityService#dispatchGesture`, screen capture via
+`MediaProjection`) reach the C++ core through one narrow seam:
+
+- `platform::android::AndroidHostBridge` (lib/wingman, JNI-free) is an
+  abstract interface with synchronous blocking semantics
+  (tap/swipe/longPress/captureFrame/screenSize); a global setter
+  (`setGlobalHostBridge`, same pattern as `setGlobalRecorder`) lets the
+  JNI layer inject the implementation before the agent starts.
+- `jni_bridge.cpp` implements it (`JniHostBridge`): GlobalRef + cached
+  method IDs (no `FindClass` from non-main threads), thread_local
+  attach/detach guards for script threads, seq/promise hand-off for
+  gesture completion, and a latest-frame cache fed by pushed frames
+  (`nativeOnFrame`).
+- Script-facing APIs (`wingman.input/screen/vision`) and the
+  `screenshot.capture` agent command consume the bridge; when the bridge
+  is absent or permissions are ungranted they degrade to false/nil
+  instead of erroring.
+
+This adds no new listeners, transports, or control planes: everything is
+in-process JNI between the Kotlin shell and the C++ core, and the agent
+still only holds outbound TCP connections. Remote config remains
+local-only per the Remote Config Commands decision above; the Android
+agent additionally accepts `screenshot.capture` from the Go server via
+the existing generic command path (same JSON shape as desktop).
+
 ## Display Selection
 
 Multi-monitor capture is an extension of the existing screenshot path, not a new

@@ -8,19 +8,36 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
 
 /**
- * 主界面（A1，docs/android-agent-design.md §5.4）：
- * 服务器配置 + 启停 + 状态轮询（1s nativeStatus）。
- * 状态事件回调（C++ → Kotlin onCoreStatus）A2 引入，A1 轮询够用。
+ * 主界面（A1，docs/android-agent-design.md §5.4；A2 投屏授权 §5.6）：
+ * 服务器配置 + 启停 + 状态轮询（1s nativeStatus）+ 权限引导
+ * （无障碍设置入口、投屏授权对话框）。
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: android.content.SharedPreferences
     private lateinit var statusView: TextView
     private val uiHandler = Handler(Looper.getMainLooper())
+
+    // 投屏授权（MediaProjection）：结果转发前台服务；Android 14 起授权
+    // 单服务会话一次性，每次重开投屏都会再走一遍系统对话框（符合预期）
+    private val projectionConsent =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK && result.data != null) {
+                startService(Intent(this, WingmanService::class.java).apply {
+                    action = WingmanService.ACTION_START_CAPTURE
+                    putExtra(WingmanService.EXTRA_RESULT_CODE, result.resultCode)
+                    putExtra(WingmanService.EXTRA_RESULT_DATA, result.data)
+                })
+                Toast.makeText(this, R.string.toast_capture_started, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, R.string.toast_capture_denied, Toast.LENGTH_SHORT).show()
+            }
+        }
 
     private val pollStatus = object : Runnable {
         override fun run() {
@@ -61,7 +78,13 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.toast_stopped, Toast.LENGTH_SHORT).show()
         }
 
-        // A2：无障碍能力启用入口（现在是占位）
+        findViewById<Button>(R.id.btnCapture).setOnClickListener {
+            val manager = getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE)
+                as android.media.projection.MediaProjectionManager
+            projectionConsent.launch(manager.createScreenCaptureIntent())
+        }
+
+        // 无障碍能力启用入口（注入前置）
         findViewById<Button>(R.id.btnAccessibility).setOnClickListener {
             startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
