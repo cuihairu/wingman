@@ -59,8 +59,9 @@ enum class BasicTriggerAction {
 struct TriggerActionData {
     BasicTriggerAction type;
     std::string value;
-    int x, y;           // Coordinates
-    int delay;          // Delay
+    int x = 0, y = 0;   // Coordinates
+    int delay = 0;      // Delay (ms)——必须默认置 0：executeActions 会对 delay>0 的动作 sleep，
+                        // 未初始化的栈垃圾值曾使 watchLoop 睡 24 天（覆盖率补测中实测复现）
 };
 
 // Trigger configuration
