@@ -8,6 +8,18 @@
 
 ---
 
+## 📅 2026-09-22 真机验证自动化（架构盘点第九轮）
+
+两项真机验证遗留项从「纯人工多步操作」升级为「真机各跑一条命令」，自动化链路本身已在本机验证：
+
+- **XRecord 正向端到端用例**（`recorder_x11_e2e_test.cpp`，仅 Linux 编译，注册于 tests CMake `UNIX AND NOT APPLE` 块）：XTest 注入按键（优先 F13 防误触焦点窗口，键码缺失回退 'a'）→ 轮询捕获计数 → `saveToJSON` 内容精确断言（`"type": 5` 即 KeyDown——x11_recorder 回调只把 KeyPress 映射为 KeyDown、KeyRelease 丢弃；`"keyCode": <注入键码>` 带字段名匹配防 timestamp 数字误命中）。Xvfb 下 EnableContext 必然失败 → GTEST_SKIP；本机双场景实测（无 DISPLAY、Xvfb :99）均正确 skip 且不误报失败，Xvfb 场景 ~300ms 耗时证明真实走过 EnableContext 尝试路径。与 XTest 注入共用 `X11ServerLockGuard`，ctest -j 下与窗口/剪贴板测试串行化。
+- **一键验证脚本**：`scripts/verify-xrecord-desktop.sh`（Linux + DISPLAY 守卫；用例全 skip 判「未验证」exit 2 不放绿；`--build` 强制重建）；`scripts/verify-macos-runtime.sh`（darwin + VCPKG_ROOT 守卫——缺失即报错不回退系统库，triplet 按 uname -m 自动选，跑 Clipboard/FileWatcher/Screen/Input/UnixSocketChannel 五套件，附 CGEvent 授权等人工观察项提示）。脚本三态自测通过（本机 SKIP、Xvfb SKIP 均不放绿）。
+- **回归确认**：core_tests 增量编译通过；既有 `MacroRecorder*`/`*Recorder*` 用例无回归（19 个 skip 为录制后端不可用的预期降级，其余全 OK）。
+
+剩余：真桌面 Linux 跑 `scripts/verify-xrecord-desktop.sh`、macOS 跑 `scripts/verify-macos-runtime.sh`；回放时序手感、CGEvent 辅助功能授权、录屏授权弹窗等仍属真机人工观察。
+
+---
+
 ## 📅 2026-09-22 死代码清理（架构盘点第一轮）
 
 架构盘点结论：宏架构（双控制面 / platform 抽象 / apps+lib / orchestrator 边界）合理且执行到位；主要问题为死代码撑起的虚假复杂度、lib/libs 边界失效、Android 源码级耦合。本轮完成第一优先级：
@@ -286,11 +298,11 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 > 编译跨平台已由 CI 矩阵保证（C++ Ubuntu/macOS、Go 三平台、Dashboard 三平台打包）。
 > 以下为各平台**运行时功能**的人工/集成验证（需在实际 OS 上执行）：
 
-- [ ] **macOS**（基础实现已存在，装配断链已全部接线 2026-09-16）：UDS / Clipboard / CGWindowList 截图 / FileWatcher / CGEvent 输入 — ⚠️ 需 macOS 真机验证，无法在当前环境完成
+- [ ] **macOS**（基础实现已存在，装配断链已全部接线 2026-09-16）：UDS / Clipboard / CGWindowList 截图 / FileWatcher / CGEvent 输入 — 验证已自动化（2026-09-22）：macOS 真机执行 `scripts/verify-macos-runtime.sh`（五项对应五套件；VCPKG_ROOT 守卫、triplet 按 arch 自动选、`--build` 强制重建），剩真机跑该脚本 + 人工观察项（CGEvent 需辅助功能授权、录屏授权弹窗、activate 后台激活语义）
 - [x] **macOS 三后端装配断链**（2026-09-16 接线，2026-09-17 编译验证闭环）：`cocoa_clipboard.cpp`/`cocoa_window.cpp`/`fsevents_filewatcher.cpp` 均为「实现完整但无工厂导出、全库零消费者」，顶层 `Clipboard`/`Window`/`FileWatcher` 在 macOS 恒落 Null/空 stub（与 Linux 同款缺陷，2026-09-14/15 Linux 侧已修）。三平台源文件补工厂导出（同 linux x11_factory 模式：new + initialize() 后交 unique_ptr，无公开头文件，facade 经前向声明消费）；`clipboard.cpp`/`window.cpp`/`filewatcher.cpp` Apple 分支接入——`window.cpp` 删除 macOS 恒空 stub 段改 `windowBackend()` 统一分派（X11/Cocoa/其余平台恒空）。**接线后实现审查**（首次获得真实消费者，2026-09-17）：① `fsevents_filewatcher.cpp` 回调空壳（P0——构造 FileChange 后仅打日志从不调用回调，watch 假成功）已修：回调载荷移入堆上 shared_ptr 控制块（CF 回调只给 void*，与 map 生命周期解耦）、每 stream 专用串行队列保序、锁内摘条目锁外停流释放、补 Start 返回值检查，全模式对齐 win32/inotify；② `cocoa_clipboard.cpp` MRC 泄漏两处（getHTML NSString/setImage NSImage alloc 无 release，本文件无 fobjc-arc）+ setImage 补 buffer 尺寸校验（防 CGBitmapContext 读越界）；③ `cocoa_window.cpp` 质量可接受（activate 后台激活常无效、hide 实为最小化等语义疑点归真机验证）。验证：Linux 侧全量无回归（vision 构建 Xvfb 真跑 1929/1929、stub 构建通过、主线 CI 全绿）；macOS 分支 CI `cpp-compat` 只编译 proto/transport 不含 lib，**真实编译验证由 Nightly 三平台全量构建完成**——接线提交与修复提交两轮 Nightly 的 macOS job Build 步骤均 success；运行时行为（CGEvent 需 Accessibility 权限、CGDisplay 非 GUI 会话受限）仍待真机
 - [x] **Linux 截图装配断链**（2026-09-15 修复）：`screen.cpp` 删除两个恒 nullptr 的 stub Screen 段（有/无 vision 重复），合并为单个 `#if __linux__` 实现接线 X11Capture——`Screen::capture/capture(region)/getPixel/findColor/findColors/getScreen*` 全部可用（Xvfb 验证，j4 全量 1894/1894）；X11Capture 加宽容 X error handler（越界坐标 BadMatch 不再杀进程）。遗留 `findImage`/screenshot JPEG 已于 2026-09-15 解决（见下条 vision 接线）
 - [x] **Linux 窗口管理装配断链**（2026-09-15 修复）：`window.cpp` 非 Windows 分支恒空 stub，X11Window 有完整实现却全库零消费者（与 Clipboard/Screen 同款缺陷）。Linux 分支改为经工厂转发 X11Window——`Window::enumerate/find/findAll/getForeground/getTitle/getBounds/setBounds/move/resize/activate/minimize/maximize/restore/close/waitFor/waitClose/isVisible/isValid/isForeground` 全部可用，消费者 `agent.cpp list_windows` 与 Lua `getWindows` 自动受益；语义对齐 Windows 分支（enumerate 只列可见顶层窗口、写操作对无效句柄返回 false 不再假成功）；X11Window 加宽容 X error handler（旧句柄 BadWindow 不再 exit 杀进程）。Xvfb 验证（测试进程直写根窗口 EWMH 属性模拟 WM，新增 4 用例 + flock 串行化，j4 全量 1898/1898）。真实 WM 集成测试补齐（2026-09-15，`X11WmIntegrationTest` 3 用例：minimize↔show 状态翻转、maximize/restore 原子与宽度断言、activate→_NET_ACTIVE_WINDOW 前台轮询 + WM 自维护 _NET_CLIENT_LIST 枚举；环境自起自毁 Xvfb+openbox 子进程，flock 串行化 + display 归属校验 + 失败换号整体重建；openbox 启动窗口静默 600ms 规避外来连接竞态——50ms 高频探测轮询实测 ~40% 间歇失败，静默后 40/40 稳定；压测 40 轮零 flake，DISPLAY=:99 全量 1901/1901）。macOS 同款断链已于 2026-09-16 接线（见上条三后端装配断链）
-- [ ] **Linux 宏录制（XRecord）真桌面验证**：Xvfb 的 RECORD 扩展存在但 EnableContext 必然失败（XRecordBadContext）；产品已改为优雅降级（`isRecording()` 回落 false，不再 exit 进程，2026-09-14）。正向录制路径（事件捕获/回放）需真实桌面 X server 人工验证
+- [ ] **Linux 宏录制（XRecord）真桌面验证**：Xvfb 的 RECORD 扩展存在但 EnableContext 必然失败（XRecordBadContext）；产品已改为优雅降级（`isRecording()` 回落 false，不再 exit 进程，2026-09-14）。正向捕获闭环已自动化（2026-09-22）：`RecorderX11E2E.*` 端到端用例（XTest 注入→捕获→JSON 精确断言，Xvfb 自动 SKIP 防误报绿），真桌面执行 `scripts/verify-xrecord-desktop.sh` 即完成验证；剩回放（playback）时序手感人工观察
 - [x] **Linux 运行时功能自动化验证**（2026-09-14，Xvfb 1280x800x24 真跑，无 X 环境 GTEST_SKIP；j4 并行与串行、带/不带 DISPLAY 四套矩阵全绿 1890/1890）：UDS IPC（`ipc_test`/`unix_socket_channel_test` 真 backend 真跑）；inotify FileWatcher（12 用例）；X11 三件套 + 装配（`platform_x11_test.cpp` 7 用例：createPlatformScreen 显示器元数据 / X11Capture XGetImage 真捕获（全屏=显示器 bounds、区域 64x64）/ XTest 鼠标移动 XQueryPointer 回读 + 按键 XQueryKeymap 状态 / 顶层 Clipboard 装配为 X11/xclip / **xclip 文本回读真跑通过**（xclip 已装；未装环境 setText 优雅失败、测试 skip））。附带修复三个实测暴露的缺陷：xclip daemon 继承输出管道致 EOF 挂起、XRecord 坏环境下 exit 进程、剪贴板并行测试缺跨进程锁（flock 守卫）。桌面人工验证（多显示器/真实键鼠/XRecord 正向路径）待真机
 - [x] **Linux OpenCV vision 构建接线**（2026-09-15 完成）：vcpkg 新增 `vision` feature 承载 Linux opencv4（`-DVCPKG_MANIFEST_FEATURES="tests;vision"` 启用，源码编译 ~15-30 分钟；Windows 顶层依赖与 CI Linux job 零变化）；`screen.cpp` 抽 `matchTemplateOnBitmap` 共享 helper（imread → BGRA→BGR → matchTemplate TM_CCOEFF_NORMED → minMaxLoc 阈值判定），Windows findImage 改薄委托（行为不变）、Linux `#ifdef WINGMAN_ENABLE_VISION` 同款接入、无 vision 构建保持 stub 恒 false。测试三面：`X11PlatformTest.ScreenFindImageLocatesDrawnPattern`（Xvfb 根窗口画非均匀红绿图案→capture→save 模板→findImage 找回坐标；纯色模板 TM_CCOEFF_NORMED 零方差未定义，必须非均匀）；`vision_test.cpp` findImage 系改双模式断言（不存在路径 vision/stub 一致 not found + 合成模板 vision 下真匹配不命中，stub 构建 GTEST_SKIP；SaveImage 改真回读断言，废弃裸 return 假 pass）；`screenshot_handler_test.cpp` RPC 端到端（vision 下 JPEG data URI + base64 解码首两字节 FF D8 SOI 硬证据 + width/height/region 回显；无 vision 下错误信封含 WINGMAN_ENABLE_VISION）。验证：build-runtime（vision）全量 **1929/1929**、build-novision（stub）全量 **1902/1902**（`performance_test` 首入 Linux vision 构建；一次 `X11WindowPlatformFeatures` 间歇失败为共享 :99 的既有低频 flaky——单跑通过、复跑全量全绿，与本改动无关，新用例均持 flock 锁或纯文件操作）。遗留：macOS 侧 vision 构建无环境验证
 

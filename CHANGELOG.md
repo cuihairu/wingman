@@ -11,6 +11,11 @@
 
 自 v0.1.1 以来共 210 个提交（feat 48 / fix 88 / docs 28 / test 8 / ci 8 / refactor 2 / chore 12）。
 
+### test（2026-09-22，真机验证自动化）
+
+- **XRecord 正向录制端到端用例**：新增 `RecorderX11E2E.*`（仅 Linux 编译）——XTest 注入按键（优先 F13、键码缺失回退 'a'）→ 轮询捕获计数 → `saveToJSON` 内容精确断言（`"type": 5` 即 KeyDown、`"keyCode": <注入键码>` 带字段名匹配防 timestamp 误命中）。Xvfb 下 EnableContext 必然失败（XRecordBadContext），用例自动 GTEST_SKIP；无 DISPLAY 与 Xvfb 双场景实测 skip 正确、不误报失败，防无头环境放绿。
+- **真机验证一键脚本**：`scripts/verify-xrecord-desktop.sh`（Linux + DISPLAY 守卫，用例全 skip 判「未验证」exit 2 而非通过）与 `scripts/verify-macos-runtime.sh`（darwin + VCPKG_ROOT 守卫、缺失即报错不回退系统库，triplet 按 arch 自动选，跑 Clipboard/FileWatcher/Screen/Input/UnixSocketChannel 五套件并提示 CGEvent 授权等人工观察项）。macOS / XRecord 两项真机验证遗留自此降为「真机各跑一条命令」。
+
 ### 清理（2026-09-22）
 
 - **M4/M5 收尾校准**：三套 UI 测试基线全绿（Dashboard jest 235、GUI vitest 506、Rust cargo 14）；M4 三层契约审计无缺口（server 7 类下发命令 runtime 全支持、3 类上行事件全转发、9 类广播 Dashboard 全消费，log.line 有意不转发）；ROADMAP M4/M5 状态 🚧 → ✅，清理过时的 PermissionRequired「未接线」注记。

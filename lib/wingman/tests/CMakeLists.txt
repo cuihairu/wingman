@@ -64,6 +64,9 @@ if(BUILD_CORE_TESTS)
     # Linux X11 平台集成测试（X11 链接随 wingman PUBLIC 传递；无 X 运行时用例自行 skip）
     if(UNIX AND NOT APPLE)
         target_sources(core_tests PRIVATE platform_x11_test.cpp)
+        # XRecord 正向录制端到端（真实桌面 X server 上执行；Xvfb 下 EnableContext
+        # 必然失败，用例自行 skip —— 见 recorder_x11_e2e_test.cpp 顶部注释）
+        target_sources(core_tests PRIVATE recorder_x11_e2e_test.cpp)
     endif()
 
     if(WIN32)
