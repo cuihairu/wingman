@@ -378,8 +378,13 @@ ModuleDescriptor createTeamModule() {
 		}
 
 		auto& manager = TeamManager::instance();
-		int handle = manager.createClient("default");
-		auto* client = manager.getClient(handle);
+		// 复用默认客户端（与 leaveTeam/getTeamStatus 等固定 handle 1 的语义
+		// 一致）：此前每次 joinTeam 都 createClient 新建实例，其乐观加入状态
+		// 对脚本查询不可见（查询落在 handle 1），且句柄随调用次数泄漏
+		if (!manager.getClient(1)) {
+			manager.createClient("default");
+		}
+		auto* client = manager.getClient(1);
 
 		return ScriptValue::fromBool(client ? client->joinTeam(teamId, memberId) : false);
 	}, "teamId:string, memberId?:string -> bool"});

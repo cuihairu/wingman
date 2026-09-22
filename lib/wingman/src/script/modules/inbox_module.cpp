@@ -75,14 +75,16 @@ public:
 			return false;
 		}
 
-		// 发送注册消息
+		// sendNotify 以 connected_ 为发送守卫，而注册消息在下方才发出，
+		// 故先置位（注册是 fire-and-forget：发送失败即回滚判定为连接失败）
+		connected_.store(true);
 		if (!sendRegister()) {
 			client_->disconnect();
+			connected_.store(false);
 			return false;
 		}
 
 		running_.store(true);
-		connected_.store(true);
 		heartbeatThread_ = std::thread(&InboxClient::heartbeatLoop, this);
 
 		spdlog::info("[Inbox] Connected to {}:{}", host, port);
@@ -222,7 +224,10 @@ private:
 		auto message = wingman::transport::Message::create(
 			wingman::transport::MessageType::Notify, body);
 
-		std::lock_guard<std::mutex> lock(clientMutex_);
+		// 不拿 clientMutex_：connect() 持锁调用 sendRegister→本函数会自锁
+		// 死锁（std::mutex 不可重入，实际发生过：脚本线程 connect 成功后
+		// 永久卡死）。connected_ 是原子量，send 与 disconnect 的竞态窗口
+		// 由 TcpClient::send 的 session/connected 检查兜底返回 false。
 		if (!connected_.load()) {
 			return false;
 		}

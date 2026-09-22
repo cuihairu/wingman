@@ -7,6 +7,7 @@
 #include <atomic>
 #include <map>
 #include <mutex>
+#include <optional>
 
 namespace wingman::transport {
 
@@ -26,6 +27,11 @@ public:
     // 启动
     bool start() override {
         if (running_) return true;
+        // 重建保活守卫（上一轮 stop() 中已释放）：没有它，ioContext_.run()
+        // 在无异步工作时立即返回、IO 线程空转退出，而 async_accept 是在
+        // 之后的 listen() 里才注册的——start→listen 顺序下 server 将永远
+        // 不接受连接
+        workGuard_.emplace(asio::make_work_guard(ioContext_));
         running_ = true;
 
         // 启动 IO 线程
@@ -48,8 +54,11 @@ public:
         asio::error_code ec;
         acceptor_.close(ec);
 
-        // 不调用 ioContext_.stop()：让 IO 线程排干被取消的回调后
-        // 因无剩余工作自然退出，避免残留处理器在 restart 后执行
+        // 释放保活守卫，IO 线程排干被取消的回调后
+        // 因无剩余工作自然退出（不调 ioContext_.stop()，避免残留
+        // 处理器在 restart 后执行）
+        workGuard_.reset();
+
         if (ioThread_.joinable()) {
             ioThread_.join();
         }
@@ -188,6 +197,10 @@ private:
 
     asio::io_context ioContext_;
     asio::ip::tcp::acceptor acceptor_;
+    // 保活守卫（start() 建立、stop() 释放）：防止 ioContext_.run() 在无
+    // 异步工作时立即返回——async_accept 是在 listen() 里才注册的，
+    // 晚于 start()。此版 asio 的 guard 不可赋值，用 optional 持有
+    std::optional<asio::executor_work_guard<asio::io_context::executor_type>> workGuard_;
     std::thread ioThread_;
     std::atomic<bool> running_ = false;
     SessionId nextSessionId_;
