@@ -156,3 +156,4 @@ describe('屏幕预览页：坐标输入与以坐标为中心', () => {
 		expect((screen.getByLabelText('H') as HTMLInputElement).value).toBe('160');
 	});
 });
+

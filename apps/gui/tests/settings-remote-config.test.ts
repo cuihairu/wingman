@@ -147,3 +147,20 @@ describe('设置页：远程注册配置区块', () => {
 		expect(screen.getByRole('button', { name: '隐藏' })).toBeInTheDocument();
 	});
 });
+
+describe('设置页：读取远程配置的 runtime 错误分支', () => {
+	it('invoke 实际调用后 reject 时显示"读取失败: <错误>"', async () => {
+		installInvoke((cmd) => {
+			if (cmd === 'get_remote_config') {
+				throw new Error('runtime 未就绪');
+			}
+			return {};
+		});
+		render(Page);
+		await fireEvent.click(screen.getByRole('button', { name: '读取当前配置' }));
+
+		expect(await screen.findByText(/读取失败: (Error: )?runtime 未就绪/)).toBeInTheDocument();
+		// 错误路径下忙碌状态必须复位，按钮恢复可用
+		expect(screen.getByRole('button', { name: '读取当前配置' })).toBeEnabled();
+	});
+});

@@ -241,3 +241,27 @@ describe('屏幕预览页（invoke 模式）', () => {
 		});
 	});
 });
+
+describe('屏幕预览页：monitor.name 空回退', () => {
+	it('name 为空的显示器下拉显示 "显示器 N"', async () => {
+		const { render, screen, waitFor, Page } = await fresh((cmd) => {
+			if (cmd === 'list_monitors') {
+				return [
+					{ id: 2, name: '', isPrimary: false, bounds: { x: 0, y: 0, width: 800, height: 600 } },
+					{ id: 3, name: 'Dell U2720', isPrimary: true, bounds: { x: 800, y: 0, width: 1920, height: 1080 } },
+				];
+			}
+			if (cmd === 'capture_screenshot') return makeShot();
+			return {};
+		});
+
+		render(Page);
+		await waitFor(() => {
+			expect(screen.getByText(/2 个/)).toBeInTheDocument();
+		});
+		const select = screen.getByDisplayValue('主显示器') as HTMLSelectElement;
+		const optionTexts = [...select.options].map(o => o.textContent?.replace(/\s+/g, ' '));
+		expect(optionTexts.some(t => t?.includes('显示器 2') && t.includes('800x600'))).toBe(true);
+		expect(optionTexts.some(t => t?.includes('Dell U2720') && t.includes('（主）'))).toBe(true);
+	});
+});

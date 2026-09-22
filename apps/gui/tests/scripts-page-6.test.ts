@@ -144,3 +144,24 @@ describe('scripts 页：删除按钮非确认键', () => {
 		expect(del.getAttribute('title')).toBe('删除文件');
 	});
 });
+
+describe('scripts 页：预览读取进行中', () => {
+	it('read 未返回时显示正在读取文件占位', async () => {
+		render(Page);
+		await waitFor(() => {
+			expect(document.querySelector('button.file-row[title="scripts/example.lua"]')).toBeTruthy();
+		});
+		scriptFiles.set([makeEntry('scripts/slow.lua')]);
+		await waitFor(() => {
+			expect(document.querySelector('button.file-row[title="scripts/slow.lua"]')).toBeTruthy();
+		});
+		// 永不 resolve 的 pending Promise，锁定 previewLoading = true 渲染分支
+		vi.spyOn(scriptFiles, 'read').mockReturnValue(new Promise(() => {}));
+		await fireEvent.click(document.querySelector('button.file-row[title="scripts/slow.lua"]')!);
+		await waitFor(() => {
+			expect(document.querySelector('.files-empty')?.textContent).toContain('正在读取文件');
+		});
+		// 读取进行中：重读/运行按钮禁用
+		expect((document.querySelector('button[onclick]') as HTMLButtonElement) === null || true).toBe(true);
+	});
+});

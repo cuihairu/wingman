@@ -235,3 +235,23 @@ describe('buildDownloadUrl', () => {
     expect(new URL(url, 'http://localhost:8000').pathname).toBe('/api/export');
   });
 });
+
+describe('fetchJSON 存储异常降级', () => {
+  it('localStorage 读取抛异常时 getToken 走 catch，请求照常发出', async () => {
+    const spy = jest
+      .spyOn(Storage.prototype, 'getItem')
+      .mockImplementation(() => {
+        throw new Error('storage disabled');
+      });
+    try {
+      jest.clearAllMocks();  // fetchMock 全文件共享，清掉前序用例的调用记录
+      fetchMock.mockResolvedValue(jsonResponse());
+      await expect(fetchJSON('/api/ping')).resolves.toEqual({});
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const headers = new Headers(fetchMock.mock.calls[0][1].headers);
+      expect(headers.get('Authorization')).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});

@@ -206,3 +206,32 @@ describe('ScreenPickerModal（region 模式）', () => {
 		expect(onconfirm).not.toHaveBeenCalled();
 	});
 });
+
+describe('ScreenPickerModal（footer 操作）', () => {
+	it('点击取消按钮触发 onclose', async () => {
+		installCanvasStub();
+		const onconfirm = vi.fn();
+		const onclose = vi.fn();
+		render(ScreenPickerModal, { props: { mode: 'color', onconfirm, onclose } });
+		await readyModal();
+
+		await fireEvent.click(screen.getByRole('button', { name: '取消' }));
+		expect(onclose).toHaveBeenCalledTimes(1);
+		expect(onconfirm).not.toHaveBeenCalled();
+	});
+
+	it('点击重新截图按钮触发 refresh 全链', async () => {
+		installCanvasStub();
+		const onconfirm = vi.fn();
+		const onclose = vi.fn();
+		render(ScreenPickerModal, { props: { mode: 'color', onconfirm, onclose } });
+		await readyModal();
+
+		await fireEvent.click(screen.getByRole('button', { name: '重新截图' }));
+		// refresh 重置选择态后重新捕获，就绪提示恢复
+		await waitFor(() => {
+			expect(screen.getByText('拾取屏幕颜色')).toBeInTheDocument();
+		});
+		expect(onclose).not.toHaveBeenCalled();
+	});
+});
