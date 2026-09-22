@@ -56,9 +56,12 @@ if(BUILD_CORE_TESTS)
         rpc_test.cpp
     )
 
-    # Unix domain socket 通道仅在非 Windows 平台编译（依赖 POSIX socket API）
+    # Unix domain socket 通道与 posix TriggerManager 分支补测仅在非 Windows 平台编译
+    # （前者依赖 POSIX socket API；后者针对 posix_trigger.cpp 实现行为，用例含
+    #   unistd.h/access——2026-09-22 Windows CI 编译失败后收进本 gate）
     if(NOT WIN32)
         target_sources(core_tests PRIVATE unix_socket_channel_test.cpp)
+        target_sources(core_tests PRIVATE trigger_posix_coverage_test.cpp)
     endif()
 
     # Linux X11 平台集成测试（X11 链接随 wingman PUBLIC 传递；无 X 运行时用例自行 skip）
@@ -74,8 +77,6 @@ if(BUILD_CORE_TESTS)
     target_sources(core_tests PRIVATE smart_trigger_test.cpp)
     # misc_modules（smarttrigger/bt/node/ocr 胶水）缺口补测
     target_sources(core_tests PRIVATE misc_modules_coverage_test.cpp)
-    # posix TriggerManager 条件/动作分支补测
-    target_sources(core_tests PRIVATE trigger_posix_coverage_test.cpp)
     # crypto/clipboard/macro 胶水补测
     target_sources(core_tests PRIVATE small_modules_coverage_test.cpp)
 
