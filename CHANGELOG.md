@@ -9,7 +9,19 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 210 个提交（feat 48 / fix 88 / docs 28 / test 8 / ci 8 / refactor 2 / chore 12）。
+自 v0.1.1 以来共 213 个提交（feat 48 / fix 89 / docs 29 / test 9 / ci 8 / refactor 2 / chore 12）。
+
+### fix（2026-09-22，filewatcher 胶水缺参越界）
+
+- **filewatcher 胶水三函数参数裸下标越界**（`filewatcher_module.cpp`）：`watch`/`unwatch`/`isWatching` 的参数校验直接 `args[0]`/`args[1]` 下标访问而无长度检查——脚本侧少传参调用（如 `filewatcher.watch("/tmp/x")`）即触发 `std::vector` 越界断言 abort 整个 runtime 进程（第六批补测用例实测复现）。修复：三处统一补 `args.size()` 前置检查（不足即返回 false/null 防御值），测试补缺参回归守卫断言。
+
+### test（2026-09-22，C++ 第六批补测：smart_trigger 触发链/misc uia+bt/notify bridge 全驱动）
+
+- **新增 21 用例，行覆盖 86.8% → 87.9%（13092 行），函数 93.4% → 93.8%**（v10 基线，全量 1930 用例：1890 PASSED + 40 skip）。① smart_trigger 真实触发链 12 用例（`smart_trigger_triggerpath_coverage_test.cpp`——此前 executeActions 七种动作、watchLoop 触发段、六种条件 case 体为纯零覆盖，现有用例全是"条件不满足 + start 即 stop"穿行）：恒真条件驱动完整触发——IMAGE_NOT_FOUND（坏模板恒找不到）触发至 maxTriggers 自停、TEXT_NOT_FOUND（OCR 无数据 !success 恒真）即触、COLOR_NOT_FOUND（空屏无目标色）即触；全动作类型单轮走完（CLICK/KEY_PRESS 经 `platform::mock::MockInput` 第二构造注入断言副作用、WAIT/LUA_SCRIPT/CUSTOM_CALLBACK 计数、LOG、STOP 收尾）+ watchLoop fast-exit；STOP 动作自停路径、maxTriggers=1 精确计数、start 二次调用已运行返回 false、默认 input 注入分支（第一构造委托第二构造预注入 `defaultSharedInput()` 使 input_ 恒非空，显式传 nullptr 才走 watchLoop 注入分支，仅 LOG 动作无真实点击副作用）；恒假条件（TEXT_FOUND/OCR_CONTAINS/OCR_EQUALS 不可达文本、EDGE_DETECTED 空 region、COLOR_CHANGED 静态画面自比较、IMAGE_FOUND 坏模板）循环执行 case 体且保持不触发。② misc uia/node/bt 缺口 6 用例（`misc_uia_node_coverage_test.cpp`）：uia 全查找函数 Linux stub 路径（11 函数 null/空数组 + makeUiaElementObject 无元素分支）、事件监听全防御分支（缺参/非 callable/非线程安全 callable 拒绝/线程安全经门面到无后端返回 0、remove_event_listener）、bt action callable 的 RUNNING/FAILURE 字符串映射 tick（此前仅 SUCCESS 路径）、tick 未知树 default、bt.wait 构造、smarttrigger.setCheckInterval 存在路径、node.sendHeartbeat、ocr.recognize text 字段。③ notify bridge 真驱动 2 用例：EventHub 订阅捕获证实 bridge 订阅回调此前从未被 emit 触发——event:// 目标转发（transform 合并 + original 载荷送达）、http:// 目标经 g_webhookSender 直连走白名单拒绝路径（blocked 事件断言）。④ x11 集成 1 用例（platform_x11_test）：node.getWindows 胶水窗口枚举循环体（TestX11Window 模拟 _NET_CLIENT_LIST，无 X 时该循环恒空转零覆盖）。⑤ filewatcher 胶水修正：第五批"ScriptValue 无公开 Callable 构造器"论证有误（`fromCallable` 公开存在），`ScriptValue::fromCallable` 构造回调后 watch 成功行直接可达已覆盖。
+- **目标文件**：smart_trigger.cpp 52.3% → **100% 行**（v9 全库最低之一）、misc_modules.cpp 68.8% → 77.0%、notify_module.cpp 71.6% → 75.5%、filewatcher 胶水 → 94.1%。
+- **顺带修复在案 flaky**：`ClipboardTest.HasFiles`——x11 后端 selection 所有权转移异步生效，clear 后立即探测可能命中前一用例残留的 FILE_LIST target（第六批全量实测偶发失败），改为轮询等待（100×10ms 上限）替代定值断言。
+- **顺带修复第五批 Windows CI 失败**：`ClipboardModuleGlue.HtmlImageAndFilesBehavior`（`module_glue_gaps_coverage_test.cpp`）——用例按 X11 后端在案行为（setImage 恒 false → getImage null → hasImage false）写死断言，但 Windows CF_DIB 后端可真实写入 image（"ab" 4 字节恰为 2×2 像素 BGRA 合法尺寸，返回 true/非空/true），第五批推送后 Windows job 即失败。修正为平台无关自洽断言：`imageSet ↔ hasImage ↔ getImage 非空` 三态一致，写入失败则三者反向一致（X11 实测走反向分支 PASSED）。
+- **不可覆盖论证（逐条记录，不硬凑）**：① notify WebhookSender 异步 worker/HTTP 段与 isUrlAllowed URL 解析分支——白名单与开关无任何胶水配置入口（`NotifyManager::webhook` 忽略 options、bridge 直连 sender），默认空白名单在 send 入口同步拒绝、worker 线程永不启动，可达性需产品补胶水层白名单配置函数（潜在缺口已记录）；② WebhookSender 析构 join 与 shutdown 入口分支——进程退出路径，静态析构顺序在 gcov flush 之后；③ misc UIElement 12 方法闭包体与 uiaElementRegistry/uiaStoreElement——需平台 UIA 后端产生真实 IUIAElement 实例，Linux `ui_automation.cpp` 无后端实现（#else 恒 warn+return false）且 registry 无注入点永空；④ filewatcher 胶水 2 行 gcov 行归属伪影（lambda 尾聚合行，函数体已全覆盖）。
 
 ### fix（2026-09-22，超时脚本执行线程悬空引用 + Xvfb 刷新率 NaN）
 
