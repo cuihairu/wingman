@@ -45,7 +45,7 @@ class WingmanAccessibilityService : AccessibilityService() {
                 lineTo(x2.toFloat(), y2.toFloat())
             }
         }
-        val stroke = GestureDescription.StrokeDescription(path, 0, duration)
+        val stroke = GestureDescription.StrokeDescription(path, 0L, duration.toLong())
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
         val dispatched = dispatchGesture(gesture, object : GestureResultCallback() {
             override fun onCompleted(gestureDescription: GestureDescription?) {
