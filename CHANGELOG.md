@@ -11,9 +11,20 @@
 
 自 v0.1.1 以来共 210 个提交（feat 48 / fix 88 / docs 28 / test 8 / ci 8 / refactor 2 / chore 12）。
 
+### fix（2026-09-22，传输/胶水层三处补测中复现的真实缺陷）
+
+- **`TcpServer::start()` 在 `listen()` 前调用时 server 永不接受连接**（`transport_server.hpp`）：`start()` 启动 IO 线程跑 `ioContext_.run()`，此刻无任何异步工作，`run()` 立即返回、IO 线程空转退出；而 `async_accept` 是之后的 `listen()` 里才注册的——已无人执行。胶水层 `tcpListen` 的固定顺序恰为 start→listen，故 server 从不 accept 会话（sessions 恒空）。修复：`executor_work_guard` 保活（start 重建 / stop 释放），start/listen 顺序无关；此版 asio 的 guard 不可赋值，以 `std::optional` 持有。
+- **`inbox.connect()` 自死锁**（`inbox_module.cpp`）：`connect()` 持 `clientMutex_` 调用 `sendRegister()`→`sendNotify()`，后者再次对同一把不可重入锁加锁——脚本线程 connect 成功后永久卡死（strace 实证：connect 返回后主线程 futex 无限等待）。修复：`sendNotify` 去锁（`connected_` 原子守卫 + `TcpClient::send` 的 session/connected 检查兜底），并把 `connected_` 置位挪到注册发送前（注册是 fire-and-forget，发送失败即回滚为连接失败）。
+- **`team.joinTeam` 每次调用新建客户端**（`team_module.cpp`）：胶水层每次 `createClient` 新建实例（句柄随调用次数泄漏），其乐观加入状态对脚本查询不可见——`leaveTeam`/`isJoined`/`getTeamStatus` 固定读 handle 1，首次 joinTeam 之后 `isJoined()` 恒 false。修复：复用 handle 1（与其它函数语义一致）。
+
 ### fix（2026-09-22，TriggerActionData 未初始化成员）
 
 - `TriggerActionData` 的 `int x, y, delay` 补默认初始化器（`trigger.hpp`）。此前为裸 POD 成员：构造方若未显式赋值（如触发器动作缺省 `delay` 字段），读到的是栈垃圾；`posix_trigger.cpp` 的 `executeActions` 会对 `delay > 0` 的动作 `sleep(delay ms)`——垃圾值恰好为正时 watchLoop 一次可睡数天（覆盖率补测中实测复现 24 天，进程假死）。Windows/mac 平台实现共用同一结构体，一并受益。
+
+### test（2026-09-22，C++ 第二批补测：db/transport/inbox/team 胶水端到端）
+
+- **新增 28 用例，行覆盖 74.7% → 81.2%（13106 行）中间态**。① `db_module_glue_coverage_test.cpp`（12 用例）：open/execute/query/scalar/transaction（含回调异常回滚）/table ORM 全生命周期（insert/get/where/limit/order_by/update/delete）与全部句柄防护分支，连接一律 `:memory:` 不落盘；② `transport_inbox_coverage_test.cpp`（8 用例，仅非 Windows 编译）：127.0.0.1 真实 TCP/UDP 端到端——自连自收 + session 管理、拒绝/端口冲突/非法句柄分支、UDP bind→sendTo→recvFrom 往返（先发后收规避 `receive_from` 无超时阻塞）、inbox 对真实 listener 的 connect/heartbeat/consume/ack/report 生命周期与错误分支（sendRegister 为 fire-and-forget，对任意可连 listener 即成功）；③ `team_module_glue_coverage_test.cpp`（8 用例）：join 生命周期（重复 join 拒绝/重复 leave 拒绝）、投票/广播/状态上报的 JSON 解析三分支（合法/回退/object）与 joined 守卫、事件订阅含回调异常吞噬。补测中复现并修复上节三处真实缺陷。④ 修复在案低频 flaky `X11WindowPlatformFeatures`：`findByClassName` 在窗口刚映射后即时枚举，X server 侧 WM_CLASS 属性同步偶发滞后，改为轮询等待（至多 ~2s），全量套件首次零失败。
+- 已知胶水不可达分支（不硬凑）：`getVoteResult` 命中 `votes_` 的分支仅由 `TeamClient::handleServerMessage` 填充，胶水层无入口；`UdpSocket::recvFrom` 的 timeoutMs 参数未实现（asio `receive_from` 同步阻塞），超时分支不存在。
 
 ### test（2026-09-22，Go 覆盖率 100% 收口 + C++ 基线与第一批补测）
 
