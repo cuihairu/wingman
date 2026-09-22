@@ -69,9 +69,15 @@ if(BUILD_CORE_TESTS)
         target_sources(core_tests PRIVATE recorder_x11_e2e_test.cpp)
     endif()
 
-    if(WIN32)
-        target_sources(core_tests PRIVATE smart_trigger_test.cpp)
-    endif()
+    # smart_trigger 测试此前误 gate 在 WIN32（用例全部走 wingman 跨平台抽象，
+    # 无 Windows API），导致 Linux 覆盖率长期缺失该文件——2026-09-22 解除
+    target_sources(core_tests PRIVATE smart_trigger_test.cpp)
+    # misc_modules（smarttrigger/bt/node/ocr 胶水）缺口补测
+    target_sources(core_tests PRIVATE misc_modules_coverage_test.cpp)
+    # posix TriggerManager 条件/动作分支补测
+    target_sources(core_tests PRIVATE trigger_posix_coverage_test.cpp)
+    # crypto/clipboard/macro 胶水补测
+    target_sources(core_tests PRIVATE small_modules_coverage_test.cpp)
 
     target_include_directories(core_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include

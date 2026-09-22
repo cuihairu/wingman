@@ -11,10 +11,15 @@
 
 自 v0.1.1 以来共 210 个提交（feat 48 / fix 88 / docs 28 / test 8 / ci 8 / refactor 2 / chore 12）。
 
-### test（2026-09-22，Go 覆盖率 100% 收口 + C++ 覆盖率基线）
+### fix（2026-09-22，TriggerActionData 未初始化成员）
+
+- `TriggerActionData` 的 `int x, y, delay` 补默认初始化器（`trigger.hpp`）。此前为裸 POD 成员：构造方若未显式赋值（如触发器动作缺省 `delay` 字段），读到的是栈垃圾；`posix_trigger.cpp` 的 `executeActions` 会对 `delay > 0` 的动作 `sleep(delay ms)`——垃圾值恰好为正时 watchLoop 一次可睡数天（覆盖率补测中实测复现 24 天，进程假死）。Windows/mac 平台实现共用同一结构体，一并受益。
+
+### test（2026-09-22，Go 覆盖率 100% 收口 + C++ 基线与第一批补测）
 
 - **Go 侧 statements 100.0%**（全 internal 包 + 根包，`go test -coverprofile`）。第五轮补测收尾：batch stop/trigger 校验失败与离线/传输错误分支、`commandErrorText` 五分支优先级（err > error 字段 > message 字段 > 兜底）、`runBatch` 空目标短路、脚本 ReadInline 缺文件 500 与超限 400、`RegisterRoutes` 以真实依赖完整装配并断言 23 条域路由（补 routes.go 装配路径 0% 缺口）、tagstore nil-db 分支。两处不可达防御分支不做无效测试、以行为等价重构收口：`listener.go` tokenValid 的空白名单分支（唯一调用点已被 `authEnabled()` 守卫）、`tagstore.go` SaveTags 的 marshal 死分支（`[]string` 的 MarshalJSON 恒成功）。
 - **C++ 行覆盖率基线确立：71.5%（13101 行）/ 分支 79.4%**。口径修正先行：仅 `CODE_COVERAGE` 选项只给 core_tests 插桩（库对象无 gcda），数字虚高无意义；正确口径为全局 `CMAKE_CXX_FLAGS="--coverage -O0"` + lcov extract `lib/wingman/*`（跨目录通配）+ remove `*/tests/*`，固化为 `scripts/cxx-coverage-baseline.sh`。缺口大头：脚本模块 sol2 胶水层（db 881 / misc 430 / inbox 315 / transport 308 行）与 Linux X11 平台实现，补测清单见 [development-todo](docs/development-todo.md)。
+- **C++ 第一批补测：71.5%/79.4% → 74.7% 行（13106 行）/82.3% 分支**。① 解锁 `smart_trigger_test.cpp`——774 行/49 用例被历史遗留的 `if(WIN32)` 误 gate（用例全走跨平台抽象，无 Windows API），Linux 从未编译，此为 smart_trigger.cpp 覆盖率 20% 的直接原因，解 gate 后升至 52.3% 行/95% 分支；② 新增 `misc_modules_coverage_test.cpp`（smarttrigger 全条件/动作类型映射、bt 行为树胶水含 parallel 四 policy 与无效句柄防御、node 心跳形状、ocr 字段形状，10 用例）；③ 新增 `trigger_posix_coverage_test.cpp`（TriggerManager 注入 MockInput，checkTrigger 十条件 × executeActions 九动作逐分支触达，14 用例；弹窗/音频等阻塞分支以 `access()` 环境守卫，规避多线程 + fork 的 `std::system` 死锁）；④ 新增 `small_modules_coverage_test.cpp`（crypto 纯计算往返含 AES salt 16 字节约束、clipboard X11 往返、macro 录制状态机与 save/load 校验分支，12 用例）。补测过程中实测复现 `TriggerActionData` 未初始化缺陷（见上条 fix）并一并收口。全量套件唯一失败 `X11PlatformTest.X11WindowPlatformFeatures` 为在案既有低频 flaky（单跑必过），与补测无关。
 
 ### test（2026-09-22，真机验证自动化）
 

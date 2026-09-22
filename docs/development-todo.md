@@ -491,7 +491,8 @@
 ### 测试覆盖率（2026-09-22 启动，目标 100%）
 - [x] Go 侧 100%（`go test -coverprofile` 全 internal+根包 statements 100.0%；五轮补测：batch/stop/trigger 校验与失败分支、commandErrorText 优先级链、ReadInline 400/500、routes.go 装配全量断言、tagstore nil-db；两处不可达防御分支以行为等价重构收口——listener.go 空白名单 tokenValid、tagstore.go marshal 恒成功）
 - [x] C++ 基线采集口径确立：`scripts/cxx-coverage-baseline.sh`（全局 `--coverage -O0` 插桩 + lcov extract `lib/wingman/*` + remove `*/tests/*`；仅 CODE_COVERAGE 选项只插桩测试自身，数字虚高不可用）
-- [ ] C++ 生产代码补测（当前基线 **71.5% 行 / 79.4% 分支**，13101 行）。缺口大头：脚本模块 sol2 胶水层（db 881/inbox 315/transport 308/misc 430 行，需经 Lua 调用触达）、Linux X11 平台实现（screen/recorder/capture/xtest_input，需 DISPLAY/Xvfb）、smart_trigger 195 行
+- [x] C++ 第一批补测（2026-09-22）：① **解锁 smart_trigger_test.cpp**——774 行/49 用例被历史遗留的 `if(WIN32)` 误 gate，Linux 从未编译（smart_trigger.cpp 20% 覆盖的直接原因），解 gate 后 20% → 52.3% 行/95% 分支；② misc_modules 胶水补测（smarttrigger 全类型映射/bt 行为树胶水/node/ocr，10 用例）；③ posix TriggerManager 补测（checkTrigger 十条件 × executeActions 九动作，14 用例，MockInput 断言副作用）；④ crypto/clipboard/macro 胶水补测（12 用例，SHA/编解码/AES 往返）。**基线 71.5%/79.4% → 74.7% 行（13106 行）/82.3% 分支**（v5，36 个新用例 + 解 gate 55 用例全量跑出）。补测中发现并修复 `TriggerActionData` 未初始化成员缺陷（delay 栈垃圾使 watchLoop 睡 24 天，见 CHANGELOG fix 条目）；全量套件唯一失败为 `X11PlatformTest.X11WindowPlatformFeatures`（todo 在案的既有低频 flaky，单跑必过，与补测无关）
+- [ ] C++ 生产代码继续补测（v5 基线 74.7% 行/82.3% 分支，13106 行）。剩余缺口大头：transport_module 308 行 + inbox_module 315 行（需 localhost socket 测试基建）、db_module 881 行、misc_modules UIA 注册表段、x11 平台实现（screen/recorder/capture/xtest_input）、clipboard.cpp/crypt.cpp/http.cpp
 
 ---
 

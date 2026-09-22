@@ -15,7 +15,8 @@ BIN=build-cov/lib/wingman/tests/core_tests
 [[ -x "$BIN" ]] || { echo "core_tests 不存在，先构建 build-cov"; exit 1; }
 
 echo "==> 全量测试（DISPLAY=${DISPLAY:-无}）"
-"$BIN" 2>&1 | tail -3
+# 个别用例失败（含在案 flaky）不中断采集：gcda 按已执行代码写出，依然有效
+"$BIN" 2>&1 | tail -3 || echo "（测试存在失败，继续采集）"
 
 echo "==> lcov 捕获（gcda 于进程退出时已写出）"
 "$LC/lcov" --capture --directory build-cov --output-file /tmp/cxx-base.info \
