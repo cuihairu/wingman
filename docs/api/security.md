@@ -192,89 +192,9 @@ wingman.input.click(100 + offsetX, 200 + offsetY)
 
 :::
 
----
-
-## 加密字符串
-
-### encrypt_string(str, key) / encryptString(str, key)
-
-**说明**：加密字符串。
-
-**函数签名**：
-
-```python
-encrypt_string(str: str, key: str) -> str
-```
-
-```lua
-encryptString(str: string, key: string) -> string
-```
-
-**参数**：
-- `str` - 要加密的字符串
-- `key` - 加密密钥
-
-**返回**：
-- 加密后的字符串
-
----
-
-## 解密字符串
-
-### decrypt_string(str, key) / decryptString(str, key)
-
-**说明**：解密字符串。
-
-**函数签名**：
-
-```python
-decrypt_string(str: str, key: str) -> str
-```
-
-```lua
-decryptString(str: string, key: string) -> string
-```
-
-**参数**：
-- `str` - 要解密的字符串
-- `key` - 解密密钥
-
-**返回**：
-- 解密后的字符串
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import security
-
-# 加密字符串
-key = "my_secret_key"
-encrypted = security.encrypt_string("sensitive_data", key)
-print(f"加密后: {encrypted}")
-
-# 解密字符串
-decrypted = security.decrypt_string(encrypted, key)
-print(f"解密后: {decrypted}")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
--- 加密字符串
-local key = "my_secret_key"
-local encrypted = wingman.security.encryptString("sensitive_data", key)
-print("加密后: " .. encrypted)
-
--- 解密字符串
-local decrypted = wingman.security.decryptString(encrypted, key)
-print("解密后: " .. decrypted)
-```
-
-:::
+> ⚠️ 原 `security.encryptString` / `security.decryptString`（XOR 混淆，非真实加密）
+> 已于 2026-09 移除。加密请使用 crypto 模块的 `crypto.encryptAES` / `crypto.decryptAES`
+> （AES-256-GCM），见 [crypto API](crypto.md)。
 
 ---
 
@@ -416,7 +336,5 @@ print(safeString)  -- "password=***&token=***"
 | `get_random_delay()` | `getRandomDelay()` | 获取随机延迟 | 返回: 毫秒数 |
 | `get_random_offset()` | `getRandomOffset()` | 获取随机偏移 | 返回: X和Y偏移量 |
 | `hash_string(str)` | `hashString(str)` | 计算哈希 | str: 字符串<br>返回: 哈希值 |
-| `encrypt_string(str, key)` | `encryptString(str, key)` | 加密字符串 | str: 明文<br>key: 密钥<br>返回: 密文 |
-| `decrypt_string(str, key)` | `decryptString(str, key)` | 解密字符串 | str: 密文<br>key: 密钥<br>返回: 明文 |
 | `generate_random_string(length)` | `generateRandomString(length)` | 生成随机字符串 | length: 字符串长度<br>返回: 随机字符串 |
 | `filter_sensitive(str)` | `filterSensitive(str)` | 过滤敏感信息 | str: 原字符串<br>返回: 过滤后字符串 |

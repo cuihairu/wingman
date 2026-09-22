@@ -11,7 +11,6 @@
 #include "wingman/runtime/rpc/event_handler.hpp"
 #include "wingman/runtime/rpc/macro_handler.hpp"
 #include "wingman/runtime/rpc/screenshot_handler.hpp"
-#include "wingman/rpc/system_handler.hpp"
 #include "wingman/runtime/rpc/system_handler.hpp"
 #include "wingman/rpc/trigger_handler.hpp"
 #include "wingman/runtime/standalone_mode.hpp"
@@ -97,7 +96,6 @@ bool LocalIpcServer::start() {
     impl_->recorder = std::make_unique<MacroRecorder>();
     // 与 RPC macro.* 共享同一录制器实例
     wingman::script::modules::setGlobalRecorder(impl_->recorder.get());
-    rpc::registerSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION);
     rpc::registerRuntimeSystemHandlers(*impl_->dispatcher, WINGMAN_VERSION, impl_->standalone,
         impl_->statusProviders);
     rpc::registerScriptHandlers(*impl_->dispatcher, impl_->standalone);

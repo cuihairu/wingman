@@ -18,7 +18,16 @@
 - 同步清理：根/runtime/lua CMake 选项与链接、`vcpkg.json` protobuf、CI compat 目标、`build-scripts` 安装列表、platform_boundary_allowlist（-1 条）、BUILD.md / setup / DEVELOPMENT / project-structure / architecture / remote_protocol / debugging 文档、CHANGELOG Unreleased。
 - Go 侧 `google.golang.org/protobuf // indirect` 为 gin/swag 传递依赖，非死代码，保留。
 
-**后续轮次（已识别待办）**：② lib vs libs 重划 / 平行实现合并（双 TCP 通道、双 system_handler、双加密）；③ Go `internal/handlers` 拆包 + `internal/agent` vs `pkg/agent` 改名；④ 文档去重（getting-started×4、guide/guides）与根目录会话产物清理。
+**后续轮次（已识别待办）**：③ Go `internal/handlers` 拆包 + `internal/agent` vs `pkg/agent` 改名；④ 文档去重（getting-started×4、guide/guides）与根目录会话产物清理。
+
+---
+
+## 📅 2026-09-22 平行实现合并（架构盘点第三轮）
+
+盘点假设"双 TCP 通道"经查证**不成立**：`lib/wingman` 的 `TcpChannel` 是本地 IPC（IIpcChannel 家族）的显式 fallback（`allowTcpFallback` 安全闸、纯 JSON 无帧头），与 `libs/transport`（远程链路、16 字节头 + JSON）职责正交，保留。真正合并的两处：
+
+- **双 system_handler 删除**：lib/wingman 的 `wingman/rpc/system_handler` 是 stub 版（`system.getStatus` 返回硬编码假数据），在 LocalIpcServer 注册后立即被 runtime 版静默覆盖（`registerHandler` 为 map 赋值，后注册覆盖先注册）——假数据陷阱。整层删除；`system.getVersion` 并入 runtime 版统一提供，协议方法不减；用例自 rpc_test 迁移为 `apps/runtime/tests/system_handler_test.cpp`（3 用例，覆盖 providers 空注入回退值）。
+- **XOR 混淆遗留移除（breaking）**：`SecurityManager::encryptString/decryptString` + Lua `security.encryptString/decryptString` 删除（XOR 非真实加密，已 deprecated + 运行时告警多年，生产 C++ 零调用）；加密统一走 `crypto.encryptAES/decryptAES`（AES-256-GCM）。**手写 SHA-256 收口**：security.cpp 内 60 行手写实现删除，`hashString` 改调 `wingman::crypt::sha256`（OpenSSL EVP），输出格式不变。security_test 清 14 个 XOR 用例（保留 GenerateRandomStringsAreDifferent）、script_function_test 清 1 个、docs/api/security.md 同步。
 
 ---
 

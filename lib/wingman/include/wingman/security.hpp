@@ -101,21 +101,6 @@ public:
     // Self-sign (for development)
     bool selfSign(const std::string& certPath, const std::string& keyPath);
 
-    // ========== Obfuscation ==========
-
-    // DEPRECATED: XOR-based obfuscation (NOT secure encryption!)
-    // These functions use simple XOR which provides NO real security.
-    // They are only suitable for basic obfuscation to hide data from casual inspection.
-    // DO NOT use for protecting sensitive data, passwords, or secrets.
-    // For proper encryption, use the crypto module (crypto.encryptAES, crypto.decryptAES).
-    //
-    // @deprecated Use the crypto module instead for proper encryption
-    [[deprecated("XOR obfuscation is not secure. Use crypto.encryptAES instead.")]]
-    static std::string encryptString(const std::string& input, const std::string& key);
-
-    [[deprecated("XOR obfuscation is not secure. Use crypto.decryptAES instead.")]]
-    static std::string decryptString(const std::string& input, const std::string& key);
-
     // Generate random string
     static std::string generateRandomString(size_t length);
 

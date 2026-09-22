@@ -71,40 +71,6 @@ TEST(ObfuscationConfigTest, DefaultValues) {
 
 // ========== SecurityManager Static Methods ==========
 
-TEST(SecurityManagerTest, EncryptDecryptRoundtrip) {
-    std::string original = "Hello, World!";
-    std::string key = "secret_key";
-
-    std::string encrypted = SecurityManager::encryptString(original, key);
-    EXPECT_NE(encrypted, original);
-
-    std::string decrypted = SecurityManager::decryptString(encrypted, key);
-    EXPECT_EQ(decrypted, original);
-}
-
-TEST(SecurityManagerTest, EncryptEmptyString) {
-    std::string result = SecurityManager::encryptString("", "key");
-    EXPECT_TRUE(result.empty());
-}
-
-TEST(SecurityManagerTest, EncryptDecryptWithKeyEqualToInput) {
-    std::string original = "test";
-    std::string key = "test";
-    // Key same length as input — each char XORs with itself, result is all zeros
-    std::string encrypted = SecurityManager::encryptString(original, key);
-    EXPECT_NE(encrypted, original);
-    std::string decrypted = SecurityManager::decryptString(encrypted, key);
-    EXPECT_EQ(decrypted, original);
-}
-
-TEST(SecurityManagerTest, EncryptSingleCharKey) {
-    std::string original = "abc";
-    std::string key = "k";
-    std::string encrypted = SecurityManager::encryptString(original, key);
-    std::string decrypted = SecurityManager::decryptString(encrypted, key);
-    EXPECT_EQ(decrypted, original);
-}
-
 TEST(SecurityManagerTest, GenerateRandomStringLength) {
     std::string s1 = SecurityManager::generateRandomString(10);
     EXPECT_EQ(s1.size(), 10u);
@@ -367,24 +333,6 @@ TEST(SecurityManagerTest, HashStringKnownValue) {
     std::string hash = SecurityManager::hashString("hello");
     EXPECT_EQ(hash, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
 }
-
-TEST(SecurityManagerTest, EncryptDecryptWithSingleCharKey) {
-    std::string original = "test data";
-    std::string key = "x";
-    std::string encrypted = SecurityManager::encryptString(original, key);
-    EXPECT_NE(encrypted, original);
-    std::string decrypted = SecurityManager::decryptString(encrypted, key);
-    EXPECT_EQ(decrypted, original);
-}
-
-TEST(SecurityManagerTest, EncryptDecryptUnicodeString) {
-    std::string original = "Hello World 🌍";
-    std::string key = "key123";
-    std::string encrypted = SecurityManager::encryptString(original, key);
-    std::string decrypted = SecurityManager::decryptString(encrypted, key);
-    EXPECT_EQ(decrypted, original);
-}
-
 TEST(SecurityManagerTest, FilterSensitiveAllPatterns) {
     // Test all sensitive patterns are replaced
     std::vector<std::string> patterns = {"password", "passwd", "pwd", "token", "key", "secret", "api_key", "apikey"};
@@ -508,33 +456,11 @@ TEST(SecurityManagerTest, HashStringLongInput) {
     EXPECT_EQ(hash, hash2);
 }
 
-TEST(SecurityManagerTest, EncryptStringKeyLongerThanInput) {
-    std::string original = "hi";
-    std::string key = "very_long_key_that_exceeds_input";
-    std::string encrypted = SecurityManager::encryptString(original, key);
-    EXPECT_NE(encrypted, original);
-    std::string decrypted = SecurityManager::decryptString(encrypted, key);
-    EXPECT_EQ(decrypted, original);
-}
-
-TEST(SecurityManagerTest, EncryptStringWithNullCharInKey) {
-    std::string original = "hello";
-    std::string key = "ke\0y";
-    key.resize(4); // include null character
-    std::string encrypted = SecurityManager::encryptString(original, key);
-    std::string decrypted = SecurityManager::decryptString(encrypted, key);
-    EXPECT_EQ(decrypted, original);
-}
-
-TEST(SecurityManagerTest, EncryptStringWithBinaryData) {
-    std::string original;
-    for (int i = 0; i < 256; ++i) {
-        original += static_cast<char>(i);
-    }
-    std::string key = "binarykey";
-    std::string encrypted = SecurityManager::encryptString(original, key);
-    std::string decrypted = SecurityManager::decryptString(encrypted, key);
-    EXPECT_EQ(decrypted, original);
+TEST(SecurityManagerTest, GenerateRandomStringsAreDifferent) {
+    std::string a = SecurityManager::generateRandomString(32);
+    std::string b = SecurityManager::generateRandomString(32);
+    // Extremely unlikely to be equal
+    EXPECT_NE(a, b);
 }
 
 TEST(SecurityManagerTest, GenerateRandomStringBoundaryLengths) {
@@ -714,21 +640,6 @@ TEST(SecurityManagerTest, GetRandomDelaySameMinMax) {
 }
 
 // ========== Encrypt with Empty Key ==========
-
-TEST(SecurityManagerTest, EncryptStringEmptyKeyReturnsInput) {
-    std::string input = "hello world";
-    std::string result = SecurityManager::encryptString(input, "");
-    EXPECT_EQ(result, input);
-}
-
-TEST(SecurityManagerTest, DecryptStringEmptyKeyReturnsInput) {
-    std::string input = "encrypted data";
-    std::string result = SecurityManager::decryptString(input, "");
-    EXPECT_EQ(result, input);
-}
-
-// ========== Hash String Format ==========
-
 TEST(SecurityManagerTest, HashStringReturns64HexChars) {
     std::string hash = SecurityManager::hashString("test input");
     EXPECT_EQ(hash.size(), 64u);
@@ -980,38 +891,6 @@ TEST(SecurityManagerTest, GenerateRandomStringLength100) {
     std::string s = SecurityManager::generateRandomString(100);
     EXPECT_EQ(s.size(), 100u);
 }
-
-TEST(SecurityManagerTest, GenerateRandomStringsAreDifferent) {
-    std::string a = SecurityManager::generateRandomString(32);
-    std::string b = SecurityManager::generateRandomString(32);
-    // Extremely unlikely to be equal
-    EXPECT_NE(a, b);
-}
-
-// ========== encryptString / decryptString Edge Cases ==========
-
-TEST(SecurityManagerTest, EncryptDecryptBinaryData) {
-    std::string binary;
-    for (int i = 0; i < 256; ++i) {
-        binary += static_cast<char>(i);
-    }
-    std::string key = "binarykey";
-    std::string encrypted = SecurityManager::encryptString(binary, key);
-    EXPECT_EQ(encrypted.size(), binary.size());
-    std::string decrypted = SecurityManager::decryptString(encrypted, key);
-    EXPECT_EQ(decrypted, binary);
-}
-
-TEST(SecurityManagerTest, EncryptWithLongKey) {
-    std::string input = "short";
-    std::string key = "this_is_a_very_long_key_that_exceeds_input_length";
-    std::string encrypted = SecurityManager::encryptString(input, key);
-    std::string decrypted = SecurityManager::decryptString(encrypted, key);
-    EXPECT_EQ(decrypted, input);
-}
-
-// ========== hashString Determinism ==========
-
 TEST(SecurityManagerTest, HashStringIsDeterministic) {
     std::string hash1 = SecurityManager::hashString("deterministic");
     std::string hash2 = SecurityManager::hashString("deterministic");

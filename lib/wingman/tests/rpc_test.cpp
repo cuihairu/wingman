@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 #include "wingman/rpc/rpc_dispatcher.hpp"
 #include "wingman/rpc/trigger_handler.hpp"
-#include "wingman/rpc/system_handler.hpp"
 #include "wingman/trigger.hpp"
 #include "wingman/platform/mock_input.hpp"
 #include <nlohmann/json.hpp>
@@ -78,7 +77,6 @@ class TriggerRpcTest : public ::testing::Test {
 protected:
     void SetUp() override {
         registerTriggerHandlers(dispatcher, manager);
-        registerSystemHandlers(dispatcher, "test-version");
     }
 
     json call(const std::string& method, const json& params = json::object(), const std::string& id = "1") {
@@ -267,26 +265,4 @@ TEST_F(TriggerRpcTest, ToggleNonexistentTrigger) {
     auto response = call("trigger.toggle", {{"id", "1234"}});
     EXPECT_FALSE(response["data"]["success"].get<bool>());
     EXPECT_EQ(response["data"]["error"], "Trigger not found");
-}
-
-// ========== System Handlers ==========
-
-TEST_F(TriggerRpcTest, SystemGetStatus) {
-    auto response = call("system.getStatus");
-    EXPECT_TRUE(response["data"]["success"].get<bool>());
-    const auto& result = response["data"]["result"];
-    EXPECT_EQ(result["server"], "wingman");
-    EXPECT_EQ(result["version"], "0.1.0");
-    EXPECT_TRUE(result.contains("uptime"));
-    EXPECT_EQ(result["runningScripts"], 0);
-    EXPECT_FALSE(result["paused"].get<bool>());
-}
-
-TEST_F(TriggerRpcTest, SystemGetVersion) {
-    auto response = call("system.getVersion");
-    EXPECT_TRUE(response["data"]["success"].get<bool>());
-    const auto& result = response["data"]["result"];
-    EXPECT_EQ(result["server"], "wingman");
-    EXPECT_EQ(result["version"], "test-version");
-    EXPECT_TRUE(result.contains("buildDate"));
 }

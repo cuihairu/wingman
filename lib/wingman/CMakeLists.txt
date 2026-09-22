@@ -126,7 +126,6 @@ set(WINGMAN_SOURCES
     # Transport-agnostic command dispatcher and handlers
     src/rpc/rpc_dispatcher.cpp
     src/rpc/handlers/trigger_handler.cpp
-    src/rpc/handlers/system_handler.cpp
 )
 
 # OCR support (optional)

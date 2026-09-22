@@ -16,6 +16,12 @@
 - 移除从未接入链路的死代码层：`protobuf/` 协议定义、`libs/proto`（构建脚本指向不存在的路径，protoc 从未生成代码）、`libs/debug` EmmyLua C++ 适配器（无任何调用方）、clasp 命令行库（submodule + vcpkg overlay port 双落位、零引用）。Agent 传输协议以 **16 字节头 + JSON 体** 为准（见 [protocols.md](docs/protocols.md)）。
 - 同步清理：CMake 选项 `WINGMAN_BUILD_PROTO`/`WINGMAN_BUILD_DEBUG`/`WINGMAN_ENABLE_EMMY`/`WINGMAN_BUILD_DEBUGGER` 及相关测试开关、vcpkg.json 与安装脚本中的 protobuf、CI compat 构建目标、平台边界 allowlist 中的 `libs/debug` 条目。
 
+### refactor（2026-09-22，平行实现合并）
+
+- **删除 lib/wingman 的 system RPC stub 版**：`wingman/rpc/system_handler`（`system.getStatus` 返回硬编码假数据）在 LocalIpcServer 中注册后即被 runtime 版静默覆盖，属假数据陷阱；`system.getVersion` 并入 runtime 版统一提供，协议方法不减。
+- **移除 XOR 混淆遗留**（**breaking**）：`SecurityManager::encryptString/decryptString` 与 Lua `security.encryptString/decryptString` 删除（XOR 非真实加密，此前已标 deprecated 并运行时告警）；加密请改用 `crypto.encryptAES`/`crypto.decryptAES`（AES-256-GCM）。
+- **手写 SHA-256 收口**：`security.cpp` 内 60 行手写实现删除，`SecurityManager::hashString` 改调 `wingman::crypt::sha256`（OpenSSL EVP），输出格式不变（64 字符 hex）。
+
 ### 里程碑完成度速览（M1–M7）
 
 | 里程碑 | 状态 | 本区间关键进展 |

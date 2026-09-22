@@ -1,4 +1,5 @@
 #include "wingman/security.hpp"
+#include "wingman/crypt.hpp"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -36,98 +37,6 @@ static const GUID WINTRUST_ACTION_GENERIC_VERIFY_V2 =
 
 namespace wingman {
 
-namespace {
-
-uint32_t rotr(uint32_t value, uint32_t bits) {
-    return (value >> bits) | (value << (32U - bits));
-}
-
-std::array<uint8_t, 32> sha256(const std::string& input) {
-    static constexpr std::array<uint32_t, 64> k = {
-        0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U,
-        0x3956c25bU, 0x59f111f1U, 0x923f82a4U, 0xab1c5ed5U,
-        0xd807aa98U, 0x12835b01U, 0x243185beU, 0x550c7dc3U,
-        0x72be5d74U, 0x80deb1feU, 0x9bdc06a7U, 0xc19bf174U,
-        0xe49b69c1U, 0xefbe4786U, 0x0fc19dc6U, 0x240ca1ccU,
-        0x2de92c6fU, 0x4a7484aaU, 0x5cb0a9dcU, 0x76f988daU,
-        0x983e5152U, 0xa831c66dU, 0xb00327c8U, 0xbf597fc7U,
-        0xc6e00bf3U, 0xd5a79147U, 0x06ca6351U, 0x14292967U,
-        0x27b70a85U, 0x2e1b2138U, 0x4d2c6dfcU, 0x53380d13U,
-        0x650a7354U, 0x766a0abbU, 0x81c2c92eU, 0x92722c85U,
-        0xa2bfe8a1U, 0xa81a664bU, 0xc24b8b70U, 0xc76c51a3U,
-        0xd192e819U, 0xd6990624U, 0xf40e3585U, 0x106aa070U,
-        0x19a4c116U, 0x1e376c08U, 0x2748774cU, 0x34b0bcb5U,
-        0x391c0cb3U, 0x4ed8aa4aU, 0x5b9cca4fU, 0x682e6ff3U,
-        0x748f82eeU, 0x78a5636fU, 0x84c87814U, 0x8cc70208U,
-        0x90befffaU, 0xa4506cebU, 0xbef9a3f7U, 0xc67178f2U
-    };
-
-    std::array<uint32_t, 8> h = {
-        0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU,
-        0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U
-    };
-
-    std::vector<uint8_t> data(input.begin(), input.end());
-    const uint64_t bitLen = static_cast<uint64_t>(data.size()) * 8U;
-    data.push_back(0x80U);
-    while ((data.size() % 64U) != 56U) {
-        data.push_back(0U);
-    }
-    for (int i = 7; i >= 0; --i) {
-        data.push_back(static_cast<uint8_t>((bitLen >> (i * 8)) & 0xffU));
-    }
-
-    for (size_t offset = 0; offset < data.size(); offset += 64) {
-        std::array<uint32_t, 64> w{};
-        for (size_t i = 0; i < 16; ++i) {
-            const size_t j = offset + i * 4;
-            w[i] = (static_cast<uint32_t>(data[j]) << 24U) |
-                   (static_cast<uint32_t>(data[j + 1]) << 16U) |
-                   (static_cast<uint32_t>(data[j + 2]) << 8U) |
-                   static_cast<uint32_t>(data[j + 3]);
-        }
-        for (size_t i = 16; i < 64; ++i) {
-            const uint32_t s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >> 3U);
-            const uint32_t s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >> 10U);
-            w[i] = w[i - 16] + s0 + w[i - 7] + s1;
-        }
-
-        uint32_t a = h[0], b = h[1], c = h[2], d = h[3];
-        uint32_t e = h[4], f = h[5], g = h[6], hh = h[7];
-
-        for (size_t i = 0; i < 64; ++i) {
-            const uint32_t s1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
-            const uint32_t ch = (e & f) ^ ((~e) & g);
-            const uint32_t temp1 = hh + s1 + ch + k[i] + w[i];
-            const uint32_t s0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
-            const uint32_t maj = (a & b) ^ (a & c) ^ (b & c);
-            const uint32_t temp2 = s0 + maj;
-
-            hh = g;
-            g = f;
-            f = e;
-            e = d + temp1;
-            d = c;
-            c = b;
-            b = a;
-            a = temp1 + temp2;
-        }
-
-        h[0] += a; h[1] += b; h[2] += c; h[3] += d;
-        h[4] += e; h[5] += f; h[6] += g; h[7] += hh;
-    }
-
-    std::array<uint8_t, 32> digest{};
-    for (size_t i = 0; i < h.size(); ++i) {
-        digest[i * 4] = static_cast<uint8_t>((h[i] >> 24U) & 0xffU);
-        digest[i * 4 + 1] = static_cast<uint8_t>((h[i] >> 16U) & 0xffU);
-        digest[i * 4 + 2] = static_cast<uint8_t>((h[i] >> 8U) & 0xffU);
-        digest[i * 4 + 3] = static_cast<uint8_t>(h[i] & 0xffU);
-    }
-    return digest;
-}
-
-} // namespace
 
 // ========== SecurityManager Implementation ==========
 
@@ -615,62 +524,6 @@ bool SecurityManager::selfSign(const std::string& certPath, const std::string& k
     return false;
 }
 
-// ========== Obfuscation ==========
-//
-// WARNING: The following functions implement XOR-based obfuscation ONLY.
-// This is NOT real encryption and provides NO security guarantees.
-//
-// Vulnerabilities:
-// - XOR is symmetric and reversible with known plaintext
-// - Vulnerable to known-plaintext attacks
-// - No integrity protection (tampering undetectable)
-// - No authentication
-// - Key reuse exposes patterns
-//
-// These functions should ONLY be used for:
-// - Hiding data from casual inspection
-// - Obfuscating non-sensitive configuration
-// - Educational/demonstration purposes
-//
-// DO NOT use for:
-// - Protecting passwords, API keys, or secrets
-// - Encrypting user data
-// - Secure communications
-// - Compliance with security requirements
-//
-// For proper encryption, use:
-// - AES-256-GCM (OpenSSL EVP API, libsodium)
-// - ChaCha20-Poly1305 (libsodium)
-// - With proper key derivation (PBKDF2, scrypt, argon2)
-
-std::string SecurityManager::encryptString(const std::string& input, const std::string& key) {
-    // DEPRECATED: XOR obfuscation is NOT secure
-    // This function is kept for backward compatibility only.
-    // Use proper encryption libraries for real security.
-
-    if (key.empty()) {
-        return input;
-    }
-
-    std::string output;
-    output.reserve(input.size());
-
-    size_t keyLen = key.size();
-    for (size_t i = 0; i < input.size(); ++i) {
-        output += input[i] ^ key[i % keyLen];
-    }
-
-    return output;
-}
-
-std::string SecurityManager::decryptString(const std::string& input, const std::string& key) {
-    // DEPRECATED: XOR obfuscation is NOT secure
-    // This function is kept for backward compatibility only.
-    // Use proper encryption libraries for real security.
-
-    return encryptString(input, key); // XOR is symmetric
-}
-
 std::string SecurityManager::generateRandomString(size_t length) {
     static const char chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     std::uniform_int_distribution<int> dist(0, sizeof(chars) - 2);
@@ -689,13 +542,8 @@ std::string SecurityManager::generateRandomString(size_t length) {
 }
 
 std::string SecurityManager::hashString(const std::string& input) {
-    const auto hash = sha256(input);
-    std::stringstream ss;
-    for (uint8_t byte : hash) {
-        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
-    }
-
-    return ss.str();
+    // 统一走 wingman::crypt 的 OpenSSL 实现（原手写 SHA-256 已删除）
+    return crypt::sha256(input);
 }
 
 // ========== Memory Protection ==========

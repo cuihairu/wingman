@@ -744,20 +744,6 @@ TEST(SecurityModuleFunctionsTest, HashString) {
     EXPECT_TRUE(result.isString());
     EXPECT_EQ(result.asString().size(), 64u);
 }
-
-TEST(SecurityModuleFunctionsTest, EncryptDecryptString) {
-    auto encFn = findFunction("security", "encryptString");
-    auto decFn = findFunction("security", "decryptString");
-    ASSERT_FALSE(encFn.name.empty());
-
-    auto encrypted = encFn({ScriptValue::fromString("hello"), ScriptValue::fromString("key")});
-    EXPECT_TRUE(encrypted.isString());
-
-    auto decrypted = decFn({encrypted, ScriptValue::fromString("key")});
-    EXPECT_TRUE(decrypted.isString());
-    EXPECT_EQ(decrypted.asString(), "hello");
-}
-
 TEST(SecurityModuleFunctionsTest, GenerateRandomString) {
     auto fn = findFunction("security", "generateRandomString");
     ASSERT_FALSE(fn.name.empty());

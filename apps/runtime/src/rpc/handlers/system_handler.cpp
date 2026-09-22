@@ -63,6 +63,14 @@ void registerRuntimeSystemHandlers(RpcDispatcher& dispatcher,
         };
     });
 
+    dispatcher.registerHandler("system.getVersion", [version](const json&) -> json {
+        return {
+            {"server", "wingman"},
+            {"version", version},
+            {"buildDate", __DATE__ " " __TIME__}
+        };
+    });
+
     dispatcher.registerHandler("system.togglePause", [&standalone](const json&) -> json {
         const auto scripts = standalone.listScripts();
         bool hasPaused = false;
