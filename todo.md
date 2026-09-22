@@ -20,6 +20,12 @@
 
 ---
 
+## 📅 2026-09-22 文档站构建验证与死链修复（架构盘点第七轮）
+
+第五轮改 VitePress sidebar 后未实际构建——本轮补上：`npm run docs:build` 成功（83.6s，仅 chunk 体积警告）；`ignoreDeadLinks: true` 会静默放过死链，故另写全量站内链接扫描（206 条链接，排除 node_modules/dist/锚点/外链）：发现 4 条真死链并修复——`guide/getting-started.md` 的架构决策链接多跳一级（`../../` → `../`）、`guides/database.md` 与 `guides/configuration.md` 引用不存在的 `api/storage.md`/`api/serialization.md`（与第五轮 docs/README 同款历史错误，改指 api/db.md、api/serialize.md）。复扫真死链 0。另将「测试」段两项实质完成（C++ runtime 保持水准、三条集成测试全 ✅）按事实勾选。剩余未勾项仅 macOS 真机验证与 Linux XRecord 真桌面验证两项，均需真机人工执行。
+
+---
+
 ## 📅 2026-09-22 handlers 评估与辅助函数收口（架构盘点第六轮）——⑤ 关闭
 
 **评估结论：不拆 Go 子包，⑤ 关闭。** 实测数据：46 文件全部 `package handlers` 单包、一域一文件（21 个生产文件命名即导航）、仅依赖 gin + gorm + 内部 models/middleware/rbac/security；测试 6300+ 行全为黑盒 HTTP 测试（经 gin 路由发请求，coverage_*×11 引用 handler 符号数为 0），天然依附路由装配点 routes.go。拆包成本 = 9 个 setup helper 重排 + coverage 跨域文件拆散归属 + 共享辅助抽包 + routes.go import 全部子包，收益仅目录观感——单包 HTTP 层是 Go 惯用模式（net/http 同例），维持现状。
@@ -340,8 +346,8 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
   - [x] middleware auth（JWT 校验）
   - [x] 修复 listener_test.go 既有 vet 警告（goroutine 内 Fatalf → channel 回传测试 goroutine）
   - [x] handlers（script/agent/audit/screenshot）补全
-- [ ] **C++ runtime**：当前 ~1705 测试 / 90%+ 覆盖（保持水准；2026-06-23 已修复 `runtime_tests` 链接缺源、`gtest_discover_tests(... PRE_TEST)` 多配置发现，以及 `WINGMAN_BUILD_TESTS` 自动联动 core/runtime/transport/proto/debug 标准测试集）
-- [ ] **集成测试**：✅ server HTTP 链路（`TestIntegrationAuthAndPermissionFlow`：JWT 签发→AuthRequired→PermissionRequired admin 旁路/viewer 拒绝→handler，8 断言）；✅ Agent→Orchestrator 跨语言集成（6 文件 3 测试全通过）；✅ GUI↔IPC↔Runtime 跨语言集成（2026-09-14：Rust 侧 spawn 真 runtime 子进程，5 用例走 UDS 帧协议 + 二进制缺失优雅 skip；C++ `ipc_test` 移除 Linux 跳过经 UnixSocket 真跑）
+- [x] **C++ runtime**：当前 ~1705 测试 / 90%+ 覆盖（保持水准；2026-06-23 已修复 `runtime_tests` 链接缺源、`gtest_discover_tests(... PRE_TEST)` 多配置发现，以及 `WINGMAN_BUILD_TESTS` 自动联动 core/runtime/transport/proto/debug 标准测试集）
+- [x] **集成测试**：✅ server HTTP 链路（`TestIntegrationAuthAndPermissionFlow`：JWT 签发→AuthRequired→PermissionRequired admin 旁路/viewer 拒绝→handler，8 断言）；✅ Agent→Orchestrator 跨语言集成（6 文件 3 测试全通过）；✅ GUI↔IPC↔Runtime 跨语言集成（2026-09-14：Rust 侧 spawn 真 runtime 子进程，5 用例走 UDS 帧协议 + 二进制缺失优雅 skip；C++ `ipc_test` 移除 Linux 跳过经 UnixSocket 真跑）
 - [x] **性能测试**（Go server 基准）：`go test -bench=. -benchmem ./internal/rbac/ ./internal/workflow/`；rbac 非admin 解析 160µs/689 allocs、admin 旁路 17µs（~9×，验证短路 + 请求级缓存有效）、DAG 环检测 44µs（100 节点）、selectAgent 9µs（20 agent）；C++ 截图/WS 基准待续
 - [x] **Go Team/Inbox 三断链修复**（2026-09-14，此前「有 API 无投递」不可用）：① 消息入队后经 `MessageNotifier` 回调实时下发在线 agent（`listener.go deliverInboxMessage`，帧契约与 runtime inbox 模块对齐）；② 断连/RemoveAgent 清理收件箱与团队关系（空团队解散 + 锁外发 `team.member_left`，含重连竞态防护 `hasOtherConnForAgent`）；③ 补 `CreateTeamNamed` 供 handler 创建具名团队；收件箱 FIFO 保序（`InboxMessage.Seq` + 显式排序，修复 map 遍历乱序 flaky）
 - [x] **Go 收件箱 FIFO flaky 修复**：`GetMessages` 按 `Seq` 升序输出（原 map 遍历无序导致 3 跑 1 挂）；单测 15 连跑 + 包级 5 连跑 + race 全绿

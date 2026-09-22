@@ -132,7 +132,7 @@ wingman-runtime.exe --help
 
 ## 运行模式
 
-Wingman 有三种运行模式，按控制路径区分（详见 [架构决策](../../architecture-decisions.md)）：
+Wingman 有三种运行模式，按控制路径区分（详见 [架构决策](../architecture-decisions.md)）：
 
 | 模式 | 命令 | 控制路径 | 适用场景 |
 |------|------|----------|----------|

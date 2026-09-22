@@ -1237,8 +1237,8 @@ print(string.format("Database: %s", db_name))
 
 ## 🔗 相关文档
 
-- [序列化 API](../api/serialization.md)
-- [数据持久化 API](../api/storage.md)
+- [序列化 API](../api/serialize.md)
+- [数据持久化 API](../api/db.md)
 - [脚本 API](../api/script.md)
 
 ---

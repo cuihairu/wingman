@@ -1106,7 +1106,7 @@ end
 
 ## 🔗 相关文档
 
-- [数据持久化 API](../api/storage.md)
+- [数据持久化 API](../api/db.md)
 - [配置管理指南](configuration.md)
 - [核心 API](../api/core.md)
 
