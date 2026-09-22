@@ -6,15 +6,15 @@ import (
 	"strings"
 	"testing"
 
-	agentPkg "github.com/cuihaitao/wingman/orchestrator/server/pkg/agent"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/gin-gonic/gin"
 )
 
 // setupTeamRouter 装配仅含 POST /teams 的路由（asAdmin 绕过 JWT）。
-func setupTeamRouter(t *testing.T) (*gin.Engine, *agentPkg.TeamManager) {
+func setupTeamRouter(t *testing.T) (*gin.Engine, *agent.TeamManager) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
-	tm := agentPkg.NewTeamManager()
+	tm := agent.NewTeamManager()
 	r := gin.New()
 	r.POST("/api/teams", asAdmin(7), NewTeamHandler(tm).HandleCreate)
 	return r, tm

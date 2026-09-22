@@ -43,9 +43,9 @@ type DiskStats struct {
 
 // NetworkStats 网络统计
 type NetworkStats struct {
-	Up      uint64 `json:"up"`
-	Down    uint64 `json:"down"`
-	LocalIP string `json:"localIp"`
+	Up       uint64 `json:"up"`
+	Down     uint64 `json:"down"`
+	LocalIP  string `json:"localIp"`
 	PublicIP string `json:"publicIp"`
 }
 

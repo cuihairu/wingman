@@ -58,7 +58,7 @@ type TagStore interface {
 }
 
 // Registry Agent 内存注册表
-// 实现 pkg/agent.AgentRegistrar 接口
+// 实现 AgentRegistrar 接口
 type Registry struct {
 	agents    map[string]*AgentInfo
 	mu        sync.RWMutex
@@ -97,7 +97,7 @@ func (r *Registry) tagStoreRef() TagStore {
 	return r.tagStore
 }
 
-// Register 注册 Agent（实现 pkg/agent.AgentRegistrar 接口）
+// Register 注册 Agent（实现 AgentRegistrar 接口）
 // conn 参数可以是任何实现了 SendCommand 的类型。
 // 标签恢复：内存中已有条目（重连）保留内存 Tags；否则从 TagStore（DB）载入，
 // 使 server 重启后标签不丢失。DB IO 一律在锁外。
@@ -161,7 +161,7 @@ func (r *Registry) Unregister(agentID string) {
 	}
 }
 
-// UpdateStatus 更新 Agent 状态和资源（实现 pkg/agent.AgentRegistrar 接口）
+// UpdateStatus 更新 Agent 状态和资源（实现 AgentRegistrar 接口）
 // status 为字符串 "online"/"offline" 等，resources 为 any（可以是 ResourceStats 或 map）
 func (r *Registry) UpdateStatus(agentID string, status string, resources any) {
 	r.mu.Lock()
@@ -357,7 +357,7 @@ func (r *Registry) GetClient(agentID string) (AgentConn, bool) {
 	return info.Client, true
 }
 
-// SetClient 设置 Agent 的 TCP 连接（实现 pkg/agent.AgentRegistrar 接口）
+// SetClient 设置 Agent 的 TCP 连接（实现 AgentRegistrar 接口）
 func (r *Registry) SetClient(agentID string, conn any) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -369,7 +369,7 @@ func (r *Registry) SetClient(agentID string, conn any) {
 	}
 }
 
-// UpdatePlatform 记录 agent.register 上报的平台标识（实现 pkg/agent.AgentRegistrar
+// UpdatePlatform 记录 agent.register 上报的平台标识（实现 AgentRegistrar
 // 接口）。每次重连都会随 register 重新上报，这里直接覆盖即可。
 func (r *Registry) UpdatePlatform(agentID string, platform string) {
 	r.mu.Lock()

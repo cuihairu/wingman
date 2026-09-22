@@ -21,8 +21,8 @@ import (
 	"unsafe"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
+	agentPkg "github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
-	agentPkg "github.com/cuihaitao/wingman/orchestrator/server/pkg/agent"
 	ws "github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

@@ -22,6 +22,11 @@
 - **移除 XOR 混淆遗留**（**breaking**）：`SecurityManager::encryptString/decryptString` 与 Lua `security.encryptString/decryptString` 删除（XOR 非真实加密，此前已标 deprecated 并运行时告警）；加密请改用 `crypto.encryptAES`/`crypto.decryptAES`（AES-256-GCM）。
 - **手写 SHA-256 收口**：`security.cpp` 内 60 行手写实现删除，`SecurityManager::hashString` 改调 `wingman::crypt::sha256`（OpenSSL EVP），输出格式不变（64 字符 hex）。
 
+### refactor（2026-09-22，Go 包收敛）
+
+- **`pkg/agent` 并入 `internal/agent`**：同名 `agent` 包不再分居 pkg/internal 两处；FrameListener / TeamManager / Registry / 线协议类型单包收口，消费方 import 与别名全量清理。
+- **路由装配收口**：main.go 的中间件与全部路由注册（约 230 行）抽至 `internal/handlers/routes.go` 的 `RegisterRoutes`，main.go 415 → 178 行，行为等价。
+
 ### 里程碑完成度速览（M1–M7）
 
 | 里程碑 | 状态 | 本区间关键进展 |

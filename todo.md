@@ -18,7 +18,15 @@
 - 同步清理：根/runtime/lua CMake 选项与链接、`vcpkg.json` protobuf、CI compat 目标、`build-scripts` 安装列表、platform_boundary_allowlist（-1 条）、BUILD.md / setup / DEVELOPMENT / project-structure / architecture / remote_protocol / debugging 文档、CHANGELOG Unreleased。
 - Go 侧 `google.golang.org/protobuf // indirect` 为 gin/swag 传递依赖，非死代码，保留。
 
-**后续轮次（已识别待办）**：③ Go `internal/handlers` 拆包 + `internal/agent` vs `pkg/agent` 改名；④ 文档去重（getting-started×4、guide/guides）与根目录会话产物清理。
+**后续轮次（已识别待办）**：④ 文档去重（getting-started×4、guide/guides）与根目录会话产物清理；⑤ handlers 按域拆子包（前置已完成：路由装配收口 routes.go，待评估 5900 行测试重排成本）。
+
+---
+
+## 📅 2026-09-22 Go 包收敛与路由装配收口（架构盘点第四轮）
+
+- **`pkg/agent` 并入 `internal/agent`**：同名词包分居两处（listener/team/client 在 pkg，registry/types 在 internal），实为同一条 runtime 接入链路的两半，靠接口跨包解耦。合并后单包 20 文件（线协议类型 / FrameListener / TeamManager / Registry / types），`pkg/agent` 消失；`Broadcaster`/`AgentRegistrar` 接口保留（依赖倒置，注释已更新为准确表述）。消费方 import 与 `agentPkg` 别名全部清理（main.go 同包双别名导入一并消除）。
+- **main.go 路由装配收口**：gin 中间件、静态资源与全部 API 路由（~230 行）从 main.go 抽至 `internal/handlers/routes.go`（`RegisterRoutes(r, RouterDeps)`），main.go 415 → 178 行，回到"配置 + 组件生命周期"职责；装配点集中是后续 handlers 按域拆子包的前置。**决策**：handlers 不立即拆多包——21 文件已一域一 Handler，拆包主要成本在 5900 行测试与 coverage_* 跨域用例重排，当前收益不足，列为后续评估项。
+- gofmt 全仓修齐（含 3 个历史遗留未格式化文件）；go vet 0、全部 Go 测试通过（integration / handlers / workflow / agent 等 14 包）。
 
 ---
 

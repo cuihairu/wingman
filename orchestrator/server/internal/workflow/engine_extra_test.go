@@ -159,28 +159,28 @@ func TestEvaluateConditionOperatorAliasesAndUnknown(t *testing.T) {
 
 func TestNormalizeConditionOperator(t *testing.T) {
 	cases := map[string]string{
-		"":               "truthy",
-		"TRUE":           "truthy",
-		"is_true":        "truthy",
-		"False":          "falsy",
-		"is_false":       "falsy",
-		"=":              "eq",
-		"==":             "eq",
-		"equals":         "eq",
-		"!=":             "ne",
-		"<>":             "ne",
-		"not_equals":     "ne",
-		">":              "gt",
-		">=":             "gte",
-		"<":              "lt",
-		"<=":             "lte",
-		"contains":       "contains",
-		"in":             "contains",
-		"not_contains":   "not_contains",
-		"not-contains":   "not_contains",
-		"not in":         "not_contains",
-		"not_in":         "not_contains",
-		"  Weird  Op  ":  "weird  op",
+		"":              "truthy",
+		"TRUE":          "truthy",
+		"is_true":       "truthy",
+		"False":         "falsy",
+		"is_false":      "falsy",
+		"=":             "eq",
+		"==":            "eq",
+		"equals":        "eq",
+		"!=":            "ne",
+		"<>":            "ne",
+		"not_equals":    "ne",
+		">":             "gt",
+		">=":            "gte",
+		"<":             "lt",
+		"<=":            "lte",
+		"contains":      "contains",
+		"in":            "contains",
+		"not_contains":  "not_contains",
+		"not-contains":  "not_contains",
+		"not in":        "not_contains",
+		"not_in":        "not_contains",
+		"  Weird  Op  ": "weird  op",
 	}
 	for in, want := range cases {
 		if got := normalizeConditionOperator(in); got != want {
@@ -951,7 +951,7 @@ func TestExecuteConditionStepCustomMessage(t *testing.T) {
 	e, _, db := newTestEngine(t)
 	wf := &models.Workflow{Name: "w", Status: "running"}
 	wf.SetSteps([]models.WorkflowStep{{
-		ID:         "s1", Type: "condition",
+		ID: "s1", Type: "condition",
 		Parameters: map[string]any{"value": false, "operator": "falsy"},
 	}})
 	db.Create(wf)

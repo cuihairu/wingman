@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
-	agentPkg "github.com/cuihaitao/wingman/orchestrator/server/pkg/agent"
+	agentPkg "github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	ws "github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -132,9 +132,9 @@ func TestWaitHTTPServerReturnsNilAfterServerClosed(t *testing.T) {
 
 // blockingListener 的 Accept 在首个连接前阻塞，Close 解除该阻塞并强制返回
 // 错误：srv.Shutdown 会先关闭 listener 再等待所有 Accept 循环退出
-//（listenerGroup.Wait），因此 Close 必须让 Accept 返回，否则 Shutdown 死锁。
+// （listenerGroup.Wait），因此 Close 必须让 Accept 返回，否则 Shutdown 死锁。
 // Close 的错误会被 Shutdown 收集返回，覆盖 waitHTTPServer 的错误日志分支
-//（错误仅记录，不影响最终返回 nil）。
+// （错误仅记录，不影响最终返回 nil）。
 type blockingListener struct {
 	accepted   chan struct{} // 首次 Accept 调用时关闭
 	closed     chan struct{} // Close 时关闭，解除 Accept 阻塞

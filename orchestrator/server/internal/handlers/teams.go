@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	agentPkg "github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
-	agentPkg "github.com/cuihaitao/wingman/orchestrator/server/pkg/agent"
 	"github.com/gin-gonic/gin"
 )
 

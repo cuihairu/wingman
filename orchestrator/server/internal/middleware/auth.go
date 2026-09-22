@@ -107,7 +107,7 @@ func GenerateToken(userID uint, username, role string) (string, error) {
 		Username: username,
 		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			IssuedAt:  jwt.NewNumericDate(now),
+			IssuedAt: jwt.NewNumericDate(now),
 			// Reduced from 24h to 15 minutes for better security
 			// Short-lived tokens reduce the window for token theft
 			// Consider implementing refresh tokens for better UX

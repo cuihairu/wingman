@@ -12,7 +12,7 @@ import (
 	"unsafe"
 )
 
-// 与 pkg/agent 一致的 16 字节消息头布局（本机字节序）。
+// 与 internal/agent 一致的 16 字节消息头布局（本机字节序）。
 const (
 	frameHeaderSize = 16
 	frameRequest    = byte(1)

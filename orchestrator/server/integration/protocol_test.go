@@ -12,7 +12,7 @@ package integration
 //	  (padding)             // [9:12] 3 字节对齐填充
 //	  uint32_t reserved;    // [12:16]保留
 //
-// Go 侧镜像定义见 pkg/agent/client.go。四种 frame 类型对应架构文档的命令流：
+// Go 侧镜像定义见 internal/agent/client.go。四种 frame 类型对应架构文档的命令流：
 // agent.register / agent.heartbeat / command dispatch（Request+Response，即
 // command.run_script → command.result 的 wire 形式）/ event report（agent.event）。
 //
@@ -38,7 +38,7 @@ const (
 	cppError    = byte(4)
 )
 
-// maxFrameBody 与 pkg/agent maxResponseSize（16 MiB）一致。
+// maxFrameBody 与 internal/agent maxResponseSize（16 MiB）一致。
 const maxFrameBody = 16 * 1024 * 1024
 
 // dialProtocol 建立到 FrameListener 的裸连接（模拟 C++ runtime outbound）。

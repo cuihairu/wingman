@@ -11,13 +11,13 @@ import (
 // ---------- 捕获型 mock ----------
 
 type recordingRegistry struct {
-	mu          sync.Mutex
-	registered  []string
+	mu           sync.Mutex
+	registered   []string
 	unregistered []string
-	statuses    map[string]string
-	heartbeats  []string
-	platforms   []string
-	clients     map[string]any
+	statuses     map[string]string
+	heartbeats   []string
+	platforms    []string
+	clients      map[string]any
 }
 
 func newRecordingRegistry() *recordingRegistry {
@@ -351,9 +351,9 @@ func TestAgentHeartbeatUpdatesStatus(t *testing.T) {
 	conn := dialAndRegister(t, addr, "hb-agent")
 
 	sendMessage(t, conn, Notify, 0, map[string]any{
-		"type":  "agent.heartbeat",
-		"agentId": "hb-agent",
-		"status": "busy",
+		"type":      "agent.heartbeat",
+		"agentId":   "hb-agent",
+		"status":    "busy",
 		"resources": map[string]any{"cpu": map[string]any{"usage": 10.0}},
 	})
 	waitForCond(t, time.Second, func() bool {

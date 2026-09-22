@@ -15,13 +15,13 @@ import (
 	"unsafe"
 )
 
-// Broadcaster avoids circular dependency between internal/agent and pkg/websocket.
+// Broadcaster 由 pkg/websocket 的 Hub 实现（依赖倒置：本包不导入 websocket 包）。
 type Broadcaster interface {
 	BroadcastAgentEvent(eventType string, data any)
 	BroadcastEvent(eventType string, data any)
 }
 
-// AgentRegistrar avoids circular dependency.
+// AgentRegistrar 由同包的 Registry 实现（listener 与 registry 的解耦点）。
 type AgentRegistrar interface {
 	Register(agentID, hostname, ip string, conn any)
 	Unregister(agentID string)

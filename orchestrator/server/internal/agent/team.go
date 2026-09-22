@@ -17,7 +17,7 @@ type TeamInfo struct {
 	Description string
 	LeaderID    string
 	Members     map[string]string // memberID -> agentID
-	State       string           // "idle", "voting", "working"
+	State       string            // "idle", "voting", "working"
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	mu          sync.RWMutex
@@ -25,15 +25,15 @@ type TeamInfo struct {
 
 // VoteInfo 投票信息
 type VoteInfo struct {
-	VoteID      string
-	TeamID      string
-	ProposerID  string
-	Subject     string
-	Responses   map[string]string // memberID -> response
-	CreatedAt   time.Time
-	Deadline    time.Time
-	Active      bool
-	mu          sync.RWMutex
+	VoteID     string
+	TeamID     string
+	ProposerID string
+	Subject    string
+	Responses  map[string]string // memberID -> response
+	CreatedAt  time.Time
+	Deadline   time.Time
+	Active     bool
+	mu         sync.RWMutex
 }
 
 // InboxMessage 收件箱消息
@@ -153,18 +153,18 @@ func (tm *TeamManager) JoinTeam(teamID, memberID, agentID string) error {
 		if mid == memberID {
 			// 给新成员发送加入确认
 			tm.sendToInbox(aid, map[string]any{
-				"type":      "team.joined",
-				"teamId":    teamID,
-				"leaderId":  team.LeaderID,
-				"memberId":  memberID,
-				"members":   tm.getMemberListLocked(team),
+				"type":     "team.joined",
+				"teamId":   teamID,
+				"leaderId": team.LeaderID,
+				"memberId": memberID,
+				"members":  tm.getMemberListLocked(team),
 			})
 		} else {
 			// 通知其他成员有新成员加入
 			tm.sendToInbox(aid, map[string]any{
-				"type":      "team.member_joined",
-				"teamId":    teamID,
-				"memberId":  memberID,
+				"type":     "team.member_joined",
+				"teamId":   teamID,
+				"memberId": memberID,
 			})
 		}
 	}
@@ -202,9 +202,9 @@ func (tm *TeamManager) LeaveTeam(teamID, memberID string) error {
 	// 通知其他成员
 	for _, aid := range team.Members {
 		tm.sendToInbox(aid, map[string]any{
-			"type":      "team.member_left",
-			"teamId":    teamID,
-			"memberId":  memberID,
+			"type":     "team.member_left",
+			"teamId":   teamID,
+			"memberId": memberID,
 		})
 	}
 
@@ -241,14 +241,14 @@ func (tm *TeamManager) CreateVote(teamID, proposerID, subject string, timeout ti
 	tm.nextVoteID++
 
 	vote := &VoteInfo{
-		VoteID:    voteID,
-		TeamID:    teamID,
+		VoteID:     voteID,
+		TeamID:     teamID,
 		ProposerID: proposerID,
-		Subject:   subject,
-		Responses: make(map[string]string),
-		CreatedAt: time.Now(),
-		Deadline:  time.Now().Add(timeout),
-		Active:    true,
+		Subject:    subject,
+		Responses:  make(map[string]string),
+		CreatedAt:  time.Now(),
+		Deadline:   time.Now().Add(timeout),
+		Active:     true,
 	}
 
 	tm.votes[voteID] = vote
@@ -269,12 +269,12 @@ func (tm *TeamManager) CreateVote(teamID, proposerID, subject string, timeout ti
 
 	for _, agentID := range members {
 		tm.sendToInbox(agentID, map[string]any{
-			"type":      "team.vote_started",
-			"voteId":    voteID,
-			"teamId":    teamID,
+			"type":       "team.vote_started",
+			"voteId":     voteID,
+			"teamId":     teamID,
 			"proposerId": proposerID,
-			"subject":   subject,
-			"deadline":  vote.Deadline.UnixMilli(),
+			"subject":    subject,
+			"deadline":   vote.Deadline.UnixMilli(),
 		})
 	}
 

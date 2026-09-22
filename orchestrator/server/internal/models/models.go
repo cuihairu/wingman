@@ -119,9 +119,9 @@ type Message struct {
 // 这样广播消息（recipient='*'）的单行被多个用户共享时，
 // 每个用户的已读状态相互独立，避免污染。
 type MessageRead struct {
-	ID        uint `gorm:"primaryKey" json:"id"`
-	UserID    uint `gorm:"index:idx_msgread_user,unique" json:"userId"`
-	MessageID uint `gorm:"index:idx_msgread_user,unique" json:"messageId"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"index:idx_msgread_user,unique" json:"userId"`
+	MessageID uint      `gorm:"index:idx_msgread_user,unique" json:"messageId"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 

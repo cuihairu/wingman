@@ -15,8 +15,8 @@ type RateLimiter struct {
 }
 
 type clientInfo struct {
-	attempts  int
-	lastReset time.Time
+	attempts   int
+	lastReset  time.Time
 	blockUntil time.Time
 }
 
@@ -34,9 +34,9 @@ func NewRateLimiter() *RateLimiter {
 
 // MaxAttempts and window duration for rate limiting
 const (
-	maxAttempts = 5               // Max failed attempts per window
-	windowDuration = 15 * time.Minute  // Time window for attempts
-	blockDuration = 30 * time.Minute   // How long to block after exceeding max attempts
+	maxAttempts    = 5                // Max failed attempts per window
+	windowDuration = 15 * time.Minute // Time window for attempts
+	blockDuration  = 30 * time.Minute // How long to block after exceeding max attempts
 )
 
 // Check returns true if the request should be allowed
@@ -122,7 +122,7 @@ func RateLimitMiddleware(rl *RateLimiter) gin.HandlerFunc {
 		if !rl.Check(clientID) {
 			c.JSON(http.StatusTooManyRequests, gin.H{
 				"success": false,
-				"error": "Too many failed attempts. Please try again later.",
+				"error":   "Too many failed attempts. Please try again later.",
 			})
 			c.Abort()
 			return
