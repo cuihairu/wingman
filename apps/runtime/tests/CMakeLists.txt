@@ -10,10 +10,8 @@ add_executable(runtime_tests
     ../src/cli.cpp
     ../src/packer.cpp
     ../src/runtime_context.cpp
-    ../src/event_buffer.cpp
     ../src/agent.cpp
     ../src/agent_config.cpp
-    ../src/remote_client.cpp
     ../src/standalone_mode.cpp
     ../src/local_ipc_server.cpp
     ../src/rpc/handlers/script_handler.cpp
@@ -37,6 +35,7 @@ target_link_libraries(runtime_tests PRIVATE
     GTest::gtest
     GTest::gtest_main
     wingman
+    wingman::agentcore
     wingman::transport
     nlohmann_json::nlohmann_json
     spdlog::spdlog_header_only

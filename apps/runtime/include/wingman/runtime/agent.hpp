@@ -1,7 +1,7 @@
 #pragma once
 
 #include "wingman/runtime/config.hpp"
-#include "wingman/runtime/remote_client.hpp"
+#include "wingman/agentcore/remote_client.hpp"
 #include <memory>
 #include <atomic>
 #include <string>

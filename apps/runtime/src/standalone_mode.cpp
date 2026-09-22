@@ -1,5 +1,5 @@
 #include "wingman/runtime/standalone_mode.hpp"
-#include "wingman/runtime/event_buffer.hpp"
+#include "wingman/agentcore/event_buffer.hpp"
 #include "wingman/runtime/runtime_context.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>

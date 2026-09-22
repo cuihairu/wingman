@@ -18,7 +18,18 @@
 - 同步清理：根/runtime/lua CMake 选项与链接、`vcpkg.json` protobuf、CI compat 目标、`build-scripts` 安装列表、platform_boundary_allowlist（-1 条）、BUILD.md / setup / DEVELOPMENT / project-structure / architecture / remote_protocol / debugging 文档、CHANGELOG Unreleased。
 - Go 侧 `google.golang.org/protobuf // indirect` 为 gin/swag 传递依赖，非死代码，保留。
 
-**后续轮次（已识别待办）**：① Android 共用 agent 核心（remote_client/event_buffer）下沉为库目标，消除 `apps/android/cpp` 对 `apps/runtime/src` + `lib/wingman/src` 私有树的源码摘编；② lib vs libs 重划 / 平行实现合并（双 TCP 通道、双 system_handler、双加密）；③ Go `internal/handlers` 拆包 + `internal/agent` vs `pkg/agent` 改名；④ 文档去重（getting-started×4、guide/guides）与根目录会话产物清理。
+**后续轮次（已识别待办）**：② lib vs libs 重划 / 平行实现合并（双 TCP 通道、双 system_handler、双加密）；③ Go `internal/handlers` 拆包 + `internal/agent` vs `pkg/agent` 改名；④ 文档去重（getting-started×4、guide/guides）与根目录会话产物清理。
+
+---
+
+## 📅 2026-09-22 Android agent 核心下沉（架构盘点第二轮）
+
+消除 `apps/android/cpp` 对 `apps/runtime/src` + `lib/wingman/src` 私有树的源码摘编，共用核心改为正经库目标：
+
+- **`libs/agentcore`（新）**：`remote_client` / `event_buffer` / `remote_client_config` 自 `apps/runtime` git mv 下沉，命名空间保持 `wingman::runtime`；仅依赖 transport + spdlog/nlohmann（硬约束：不得依赖 lib/wingman 本体，NDK 侧不编 core）。`apps/runtime/config.hpp` 引入下沉后的 `RemoteClientConfig` 维持 `AgentConfig` 完整定义。
+- **`libs/androidagent`（新）**：`script_runner` / `android_script_api` 自 `apps/android/cpp/agent` git mv 下沉；并收口全仓库唯一的 lib/wingman cherry-pick 清单（bitmap / screen / image_analyzer / platform/android 租户），消费方不得再自行向 `lib/wingman/src` 加 include。OpenCV 判定与 core 严格一致，重复编译 TU 配置相同、链接器仅取其一。
+- **消费方收口**：`apps/android/cpp`（NDK 壳）只链 transport/agentcore/androidagent 三库；`libs/lua/tests` 经 `wingman::androidagent` 桌面同源编译全部 androidagent 源（script_runner_test / android_api_test 22 用例，替代 NDK 验证所有可宿主 TU）。
+- 边界检查通过（223 文件，allowlist 仅路径更新）；runtime_tests 29/29；NDK 专属 TU（jni_bridge / android_screenshot）依赖 NDK sysroot 头，由 CI build-android 覆盖。
 
 ---
 

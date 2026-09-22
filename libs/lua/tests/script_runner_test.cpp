@@ -1,14 +1,14 @@
 /**
  * ScriptRunner 测试 — Android 端 Lua 执行器（docs/android-agent-design.md §5.2/§9）
  *
- * ScriptRunner 是纯 C++ + sol2 实现（apps/android/cpp/agent/script_runner.cpp），
+ * ScriptRunner 是纯 C++ + sol2 实现（libs/androidagent/src/script_runner.cpp），
  * 不依赖 Android API：桌面与 NDK 编译同一份源码。本测试验证 Lua 执行、
  * print 重定向、wingman.sleep 协作中断与死循环 hook 兜底。
  */
 
 #include <gtest/gtest.h>
 
-#include "agent/script_runner.hpp"
+#include "wingman/androidagent/script_runner.hpp"
 
 #include <atomic>
 #include <chrono>

@@ -43,13 +43,14 @@ gradle :app:assembleDebug
 # 产物 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-构建链路：AGP externalNativeBuild → NDK CMake（`app/src/main/cpp/CMakeLists.txt`）
-→ vcpkg arm64-android 依赖 + 仓库内 `libs/transport`、`apps/runtime` 的
-`remote_client.cpp`、`apps/android/cpp/agent`（桌面同源）→ `libwingman_agent.so`。
+构建链路：AGP externalNativeBuild → NDK CMake（`apps/android/cpp/CMakeLists.txt`）
+→ vcpkg arm64-android 依赖 + 仓库内共享库 `libs/transport`、`libs/agentcore`
+（远程链路，桌面 runtime 同源链接）、`libs/androidagent`（ScriptRunner +
+脚本能力 API + core 子集）→ `libwingman_agent.so`。
 
-> ⚠️ 双端同源文件（`apps/runtime/src/remote_client.cpp`、`event_buffer.cpp`，
-> 以及 `libs/transport` 等共享层）同时编译进桌面 `wingman-runtime` 与 Android
-> `libwingman_agent.so`：改动必须过两端编译与桌面同源单测，不要只验证桌面侧。
+> ⚠️ 双端同源文件（`libs/agentcore`、`libs/androidagent`，以及 `libs/transport`
+> 等共享层）同时编译进桌面 `wingman-runtime` 与 Android `libwingman_agent.so`：
+> 改动必须过两端编译与桌面同源单测，不要只验证桌面侧。
 
 > 说明：本仓库开发机（Linux，无 SDK/NDK）不构建此工程；Android 侧以
 > 「代码交付 + 构建脚本」为准，首次构建在本文件环境准备完成后进行。

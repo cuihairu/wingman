@@ -1,5 +1,5 @@
-#include "wingman/runtime/remote_client.hpp"
-#include "wingman/runtime/event_buffer.hpp"
+#include "wingman/agentcore/remote_client.hpp"
+#include "wingman/agentcore/event_buffer.hpp"
 #include "wingman/transport/transport_client.hpp"
 #include <spdlog/spdlog.h>
 #include <thread>

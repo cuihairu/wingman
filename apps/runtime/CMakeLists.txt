@@ -17,14 +17,12 @@ set(RUNTIME_SOURCES
     src/cli.cpp
     src/main.cpp
     src/agent.cpp
-    src/remote_client.cpp
     src/standalone_mode.cpp
     src/local_ipc_server.cpp
     src/agent_config.cpp
     src/packer.cpp
     src/resource_loader.cpp
     src/runtime_context.cpp
-    src/event_buffer.cpp
     # 命令实现
     src/commands/start_command.cpp
     src/commands/stop_command.cpp
@@ -50,6 +48,7 @@ target_include_directories(wingman-runtime PRIVATE
 
 # 链接库
 target_link_libraries(wingman-runtime PRIVATE
+    wingman::agentcore
     wingman::transport
     wingman
     spdlog::spdlog_header_only

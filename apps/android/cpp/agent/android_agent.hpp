@@ -18,8 +18,8 @@
 #include <string>
 
 #include "platform/android/android_host_bridge.hpp"
-#include "wingman/runtime/remote_client.hpp"
-#include "script_runner.hpp"
+#include "wingman/agentcore/remote_client.hpp"
+#include "wingman/androidagent/script_runner.hpp"
 
 namespace wingman::android {
 

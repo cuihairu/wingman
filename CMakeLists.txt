@@ -123,6 +123,10 @@ if(WINGMAN_BUILD_TRANSPORT)
     add_subdirectory(libs/transport)
 endif()
 
+if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_RUNTIME)
+    add_subdirectory(libs/agentcore)
+endif()
+
 if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_LUA)
     add_subdirectory(libs/lua)
 endif()

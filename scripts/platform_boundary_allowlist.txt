@@ -9,7 +9,7 @@ apps/runtime/src/agent.cpp
 apps/runtime/src/commands/build_command.cpp
 apps/runtime/src/commands/stop_command.cpp
 apps/runtime/src/packer.cpp
-apps/runtime/src/remote_client.cpp
+libs/agentcore/src/remote_client.cpp
 apps/runtime/src/resource_loader.cpp
 lib/wingman/include/wingman/clipboard.hpp
 lib/wingman/include/wingman/platform/platform_types.hpp

@@ -8,7 +8,7 @@
 
 #include <string>
 
-#include "wingman/runtime/remote_client.hpp"
+#include "wingman/agentcore/remote_client.hpp"
 
 namespace wingman::android {
 

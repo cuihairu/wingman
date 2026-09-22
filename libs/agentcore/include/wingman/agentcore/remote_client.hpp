@@ -1,6 +1,9 @@
 #pragma once
 
-#include "wingman/runtime/config.hpp"
+#include "wingman/agentcore/remote_client_config.hpp"
+
+// 自 apps/runtime 下沉（2026-09-22）：桌面 runtime 与 Android agent 同源链接。
+// 命名空间保持 wingman::runtime（与文档/调用方一致）。
 #include "wingman/transport/transport.hpp"
 #include <atomic>
 #include <chrono>

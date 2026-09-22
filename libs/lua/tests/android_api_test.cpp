@@ -11,7 +11,7 @@
 
 #include <gtest/gtest.h>
 
-#include "agent/android_script_api.hpp"
+#include "wingman/androidagent/android_script_api.hpp"
 #include "platform/android/android_host_bridge.hpp"
 
 #include <sol/sol.hpp>

@@ -4,6 +4,10 @@
 #include <memory>
 #include <vector>
 
+// RemoteClientConfig 已下沉至 libs/agentcore（桌面/Android 同源），
+// 此处引入以维持 AgentConfig 的完整定义。
+#include "wingman/agentcore/remote_client_config.hpp"
+
 namespace wingman::runtime {
 
 // ========== 运行能力位标志 ==========
@@ -38,17 +42,6 @@ enum class RunMode {
 };
 
 // ========== 配置结构 ==========
-
-struct RemoteClientConfig {
-    std::string serverIp = "127.0.0.1";
-    int serverPort = 8888;
-    int reconnectInterval = 5;      // 秒（退避基数）
-    int maxReconnectInterval = 60;  // 秒（退避上限）
-    int heartbeatInterval = 30;     // 秒
-    int connectTimeout = 10;        // 秒
-    // 注册鉴权 token（[remote] register_token；空 = 不携带，server 鉴权默认关闭）
-    std::string registerToken;
-};
 
 struct StandaloneModeConfig {
     std::string scriptDir = "./scripts";

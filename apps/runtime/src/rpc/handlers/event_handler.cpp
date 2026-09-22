@@ -1,5 +1,5 @@
 #include "wingman/runtime/rpc/event_handler.hpp"
-#include "wingman/runtime/event_buffer.hpp"
+#include "wingman/agentcore/event_buffer.hpp"
 
 namespace wingman::rpc {
 

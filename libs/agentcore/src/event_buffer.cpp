@@ -1,4 +1,4 @@
-#include "wingman/runtime/event_buffer.hpp"
+#include "wingman/agentcore/event_buffer.hpp"
 
 #include <chrono>
 

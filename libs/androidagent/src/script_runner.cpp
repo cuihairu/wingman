@@ -1,6 +1,6 @@
-#include "script_runner.hpp"
+#include "wingman/androidagent/script_runner.hpp"
 
-#include "agent/android_script_api.hpp"
+#include "wingman/androidagent/android_script_api.hpp"
 
 #include <sol/sol.hpp>
 
