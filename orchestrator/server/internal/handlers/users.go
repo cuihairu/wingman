@@ -6,7 +6,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/rbac"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/security"
@@ -359,19 +358,4 @@ func validUsername(name string) bool {
 		}
 	}
 	return true
-}
-
-func actorName(c *gin.Context) (string, uint) {
-	_, username, _ := middleware.GetCurrentUser(c)
-	userID, _ := c.Get("user_id")
-	id, _ := userID.(uint)
-	return username, id
-}
-
-func isUniqueConstraint(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := err.Error()
-	return strings.Contains(msg, "UNIQUE constraint") || strings.Contains(msg, "Duplicate entry")
 }

@@ -156,18 +156,6 @@ func deriveIPRegion(meta map[string]any) (string, bool) {
 	return "", false
 }
 
-func parsePositiveInt(value string, fallback int) int {
-	if strings.TrimSpace(value) == "" {
-		return fallback
-	}
-	var result int
-	_, err := fmt.Sscanf(value, "%d", &result)
-	if err != nil || result <= 0 {
-		return fallback
-	}
-	return result
-}
-
 func splitCSV(value string) []string {
 	if strings.TrimSpace(value) == "" {
 		return nil

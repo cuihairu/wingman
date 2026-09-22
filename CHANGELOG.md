@@ -13,6 +13,7 @@
 
 ### 清理（2026-09-22）
 
+- **handlers 评估收口（⑤ 关闭）**：经实测评估不拆 Go 子包——46 文件一域一文件、测试全为黑盒 HTTP 测试（经路由层，零直接符号引用），拆包纯成本无收益；跨文件共享的辅助函数（`parsePositiveInt`、`actorName`、`isUniqueConstraint`）归位新建 `helpers.go`。
 - **文档去重与会话产物清理**：删除 15 个文件——根目录 `macOS_SESSION_SUMMARY`/`macOS_VERIFICATION_REPORT` 会话产物、`docs/superpowers/` 会话计划、`pending-changes`/`project-improvements`×2/`architecture-improvement-plan` 时令文档、重复的根级 `getting-started.md`（保留 `docs/guide/getting-started.md`）、`docs/installation.md` 与 `docs/setup.md`（收口至 [BUILD.md](BUILD.md)，独有故障排除已并入）、大全式 `user-guide.md`（内容由站点专篇覆盖）；`guides/` 下 configuration/database/triggers 三篇教程挂上文档站「进阶指南」导航；修复 docs/README 索引中 3 个死链（storage/serialization/debugging → kv/db、serialize/json/ini、debugger）。
 - 移除从未接入链路的死代码层：`protobuf/` 协议定义、`libs/proto`（构建脚本指向不存在的路径，protoc 从未生成代码）、`libs/debug` EmmyLua C++ 适配器（无任何调用方）、clasp 命令行库（submodule + vcpkg overlay port 双落位、零引用）。Agent 传输协议以 **16 字节头 + JSON 体** 为准（见 [protocols.md](docs/protocols.md)）。
 - 同步清理：CMake 选项 `WINGMAN_BUILD_PROTO`/`WINGMAN_BUILD_DEBUG`/`WINGMAN_ENABLE_EMMY`/`WINGMAN_BUILD_DEBUGGER` 及相关测试开关、vcpkg.json 与安装脚本中的 protobuf、CI compat 构建目标、平台边界 allowlist 中的 `libs/debug` 条目。

@@ -18,7 +18,15 @@
 - 同步清理：根/runtime/lua CMake 选项与链接、`vcpkg.json` protobuf、CI compat 目标、`build-scripts` 安装列表、platform_boundary_allowlist（-1 条）、BUILD.md / setup / DEVELOPMENT / project-structure / architecture / remote_protocol / debugging 文档、CHANGELOG Unreleased。
 - Go 侧 `google.golang.org/protobuf // indirect` 为 gin/swag 传递依赖，非死代码，保留。
 
-**后续轮次（已识别待办）**：⑤ handlers 按域拆子包（前置已完成：路由装配收口 routes.go，待评估 5900 行测试重排成本）。
+---
+
+## 📅 2026-09-22 handlers 评估与辅助函数收口（架构盘点第六轮）——⑤ 关闭
+
+**评估结论：不拆 Go 子包，⑤ 关闭。** 实测数据：46 文件全部 `package handlers` 单包、一域一文件（21 个生产文件命名即导航）、仅依赖 gin + gorm + 内部 models/middleware/rbac/security；测试 6300+ 行全为黑盒 HTTP 测试（经 gin 路由发请求，coverage_*×11 引用 handler 符号数为 0），天然依附路由装配点 routes.go。拆包成本 = 9 个 setup helper 重排 + coverage 跨域文件拆散归属 + 共享辅助抽包 + routes.go import 全部子包，收益仅目录观感——单包 HTTP 层是 Go 惯用模式（net/http 同例），维持现状。
+
+**顺手收口**：跨文件共享的辅助函数归位新建 `helpers.go`——`parsePositiveInt`（audit/messages/users 三域共用）、`actorName` + `isUniqueConstraint`（roles/users 共用）；`WriteAuditLog` 留 audit.go（横切领域函数，语义归属正确）。单文件私有辅助不动。
+
+验证：gofmt 0、go vet 0、14 包全过（含 integration 完整跑）。
 
 ---
 
