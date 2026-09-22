@@ -91,9 +91,9 @@ runtime::CommandResult handleScreenshotCapture(const CommandData& data,
 
     // BGRA 帧包一层 Mat（零拷贝），转 BGR 后 JPEG 编码（对齐桌面 q82）
     cv::Mat bgraMat(region.height, region.width, CV_8UC4,
-                    frame->getData() + (static_cast<size_t>(region.y) * frame.getWidth() +
+                    frame->getData() + (static_cast<size_t>(region.y) * frame->getWidth() +
                                         region.x) * 4,
-                    static_cast<size_t>(frame.getWidth()) * 4);
+                    static_cast<size_t>(frame->getWidth()) * 4);
     cv::Mat bgrMat;
     cv::cvtColor(bgraMat, bgrMat, cv::COLOR_BGRA2BGR);
 

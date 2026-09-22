@@ -8,6 +8,7 @@
 
 #include <string>
 
+#include "platform/android/android_host_bridge.hpp"
 #include "wingman/agentcore/remote_client.hpp"
 
 namespace wingman::android {

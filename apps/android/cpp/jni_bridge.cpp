@@ -283,6 +283,12 @@ JniHostBridge& hostBridge() {
     return bridge;
 }
 
+// AndroidAgent 进程级单例（nativeStart/nativeStop/nativeStatus 共享同一实例）
+std::unique_ptr<AndroidAgent>& agentInstance() {
+    static std::unique_ptr<AndroidAgent> instance;
+    return instance;
+}
+
 } // namespace
 
 extern "C" {
