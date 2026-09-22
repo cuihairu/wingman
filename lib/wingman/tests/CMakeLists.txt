@@ -65,6 +65,8 @@ if(BUILD_CORE_TESTS)
         target_sources(core_tests PRIVATE unix_socket_channel_test.cpp)
         target_sources(core_tests PRIVATE trigger_posix_coverage_test.cpp)
         target_sources(core_tests PRIVATE transport_inbox_coverage_test.cpp)
+        # posix_process 全链路（fork/exec + /proc 遍历 + 信号终止；仅 POSIX 实现）
+        target_sources(core_tests PRIVATE posix_process_coverage_test.cpp)
     endif()
 
     # Linux X11 平台集成测试（X11 链接随 wingman PUBLIC 传递；无 X 运行时用例自行 skip）
@@ -73,6 +75,8 @@ if(BUILD_CORE_TESTS)
         # XRecord 正向录制端到端（真实桌面 X server 上执行；Xvfb 下 EnableContext
         # 必然失败，用例自行 skip —— 见 recorder_x11_e2e_test.cpp 顶部注释）
         target_sources(core_tests PRIVATE recorder_x11_e2e_test.cpp)
+        # MacroRecorder 平台无关状态机（recordEvent 手动注入，不依赖 XRecord）
+        target_sources(core_tests PRIVATE recorder_offline_test.cpp)
     endif()
 
     # smart_trigger 测试此前误 gate 在 WIN32（用例全部走 wingman 跨平台抽象，
@@ -86,6 +90,14 @@ if(BUILD_CORE_TESTS)
     target_sources(core_tests PRIVATE small_modules_coverage_test.cpp)
     # team_module（投票/广播/状态上报/事件订阅胶水分支）补测
     target_sources(core_tests PRIVATE team_module_glue_coverage_test.cpp)
+    # script_manager 真实执行路径补测（引擎创建/输出路由/超时/事件分发）。
+    # 引擎由 libs/lua 的 registerLuaEngine() 自注册进 ScriptEngineFactory，
+    # runtime 在 main 里链接并调用——测试进程同理需要链接 wingman::lua
+    target_sources(core_tests PRIVATE script_manager_exec_coverage_test.cpp)
+    if(TARGET wingman::lua)
+        target_link_libraries(core_tests PRIVATE wingman::lua)
+        message(STATUS "Core tests: linking wingman::lua for script execution tests")
+    endif()
 
     target_include_directories(core_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include

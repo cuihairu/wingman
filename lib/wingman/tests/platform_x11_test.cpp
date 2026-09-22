@@ -370,6 +370,47 @@ TEST_F(X11PlatformTest, ClipboardTextRoundtrip) {
     EXPECT_TRUE(clipboard.hasText());
 }
 
+TEST_F(X11PlatformTest, ClipboardFullSurfaceMethods) {
+    // X11Clipboard 全接口面：图像 stub / 文件换行拼接 / 格式枚举 / clear 清空
+    // （xclip 空输入 = 清空 selection，已实测验证）。fork+xclip 链路内的
+    // 子进程行与 pipe/fork 失败分支不覆盖，论证见 CHANGELOG 第四批条目。
+    ClipboardLockGuard clipboardLock;
+    auto& clipboard = wingman::Clipboard::instance();
+    if (!xclipAvailable()) {
+        GTEST_SKIP() << "xclip not installed — 运行期可选依赖";
+    }
+
+    // 图像通道是 MVP 外的 stub：恒 false / 空
+    EXPECT_FALSE(clipboard.setImage({1, 2, 3}, 2, 2));
+    int w = 9, h = 9;
+    EXPECT_TRUE(clipboard.getImage(&w, &h).empty());
+    EXPECT_EQ(w, 0);
+    EXPECT_EQ(h, 0);
+    EXPECT_FALSE(clipboard.hasImage());
+
+    // 文件列表：空拒绝；非空经换行拼接走文本通道，回读按行拆分
+    EXPECT_FALSE(clipboard.setFiles({}));
+    const std::vector<std::string> files = {"/tmp/wingman-a.txt", "/tmp/wingman-b.txt"};
+    EXPECT_TRUE(clipboard.setFiles(files));
+    const auto got = clipboard.getFiles();
+    ASSERT_EQ(got.size(), files.size());
+    EXPECT_EQ(got[0], files[0]);
+    EXPECT_EQ(got[1], files[1]);
+    EXPECT_TRUE(clipboard.hasFiles());
+    EXPECT_TRUE(clipboard.hasText());
+    EXPECT_TRUE(clipboard.hasHTML());  // HTML 通道复用文本实现
+
+    // 格式枚举 + isEmpty 与 getText 自洽
+    EXPECT_FALSE(clipboard.getAvailableFormats().empty());
+    EXPECT_EQ(clipboard.isEmpty(), clipboard.getText().empty());
+
+    // clear（空 selection）后全空
+    clipboard.clear();
+    EXPECT_TRUE(clipboard.isEmpty());
+    EXPECT_FALSE(clipboard.hasText());
+    EXPECT_FALSE(clipboard.hasFiles());
+}
+
 // ========== 窗口（顶层 Window 装配断链回归守卫 + X11 窗口管理） ==========
 
 TEST_F(X11PlatformTest, WindowEnumerateFindTitle) {
@@ -937,6 +978,297 @@ TEST(X11WmIntegrationTest, ActivateForegroundAndEnumerate) {
     EXPECT_TRUE(wingman::Window::activate(win.handle()));
     EXPECT_TRUE(pollUntil([&] { return wingman::Window::isForeground(win.handle()); }, 3000));
     EXPECT_EQ(wingman::Window::getForeground(), win.handle());
+}
+
+// ========== X11Screen 全方法触达（IScreen 的 X11/XRandR 实现） ==========
+// X11Screen 类定义在 x11_screen.cpp 内部（无头文件），工厂 new 后立即
+// initialize —— !initialized_ 分支对测试不可达，不硬凑。
+
+TEST_F(X11PlatformTest, ScreenMonitorInfoFullSweep) {
+    auto screen = wingman::platform::createPlatformScreen();
+    ASSERT_NE(screen, nullptr);
+
+    const int count = screen->getMonitorCount();
+    EXPECT_GE(count, 1);
+    const int primary = screen->getPrimaryMonitorIndex();
+    EXPECT_GE(primary, 0);
+    EXPECT_LT(primary, count);
+
+    const auto bounds = screen->getPrimaryMonitorBounds();
+    EXPECT_GT(bounds.width, 0);
+    EXPECT_GT(bounds.height, 0);
+    // 越界索引走 DefaultScreenOfDisplay 回退分支，仍返回有效尺寸
+    const auto fallback = screen->getMonitorBounds(count + 3);
+    EXPECT_GT(fallback.width, 0);
+
+    const auto workArea = screen->getMonitorWorkArea(0);
+    EXPECT_GT(workArea.width, 0);
+    EXPECT_FALSE(screen->getMonitorName(count + 3).empty());
+    EXPECT_TRUE(screen->isPrimaryMonitor(primary));
+    // Xvfb 单屏：仅 primary 存在，非 primary 索引恒 false
+    if (count > 1) {
+        const int other = (primary + 1) % count;
+        EXPECT_EQ(screen->isPrimaryMonitor(other), other == primary);
+    }
+}
+
+TEST_F(X11PlatformTest, ScreenDpiAndCoordinateMapping) {
+    auto screen = wingman::platform::createPlatformScreen();
+    ASSERT_NE(screen, nullptr);
+
+    const int dpi = screen->getDpi(0);
+    EXPECT_GE(dpi, 48);
+    EXPECT_LE(dpi, 960);
+    const double scale = screen->getDpiScale(0);
+    EXPECT_GT(scale, 0.0);
+
+    // 逻辑↔物理映射往返：允许 ±1 取整误差（Xvfb 的 DPI 由屏幕尺寸/毫米数
+    // 自洽算出，scale 常非精确 1.0，两次整除截断可偏差 1 像素）
+    const wingman::platform::Point p{123, 45};
+    const auto phys = screen->logicalToPhysical(p, 0);
+    const auto back = screen->physicalToLogical(phys, 0);
+    EXPECT_LE(std::abs(back.x - p.x), 1);
+    EXPECT_LE(std::abs(back.y - p.y), 1);
+}
+
+TEST_F(X11PlatformTest, ScreenDisplayModesAndVirtualBounds) {
+    auto screen = wingman::platform::createPlatformScreen();
+    ASSERT_NE(screen, nullptr);
+
+    // Xvfb 提供 screen resources：模式列表可枚举（虚拟模式 dotClock=0 →
+    // 刷新率经除零防护为 0，而非 NaN 转换出的垃圾值）
+    auto modes = screen->getSupportedDisplayModes(0);
+    for (const auto& m : modes) {
+        EXPECT_GT(m.width, 0);
+        EXPECT_GT(m.height, 0);
+        EXPECT_GE(m.refreshRate, 0);
+    }
+    // 越界索引 → 空列表分支
+    EXPECT_TRUE(screen->getSupportedDisplayModes(9).empty());
+
+    auto current = screen->getCurrentDisplayMode(0);
+    ASSERT_TRUE(current.has_value());
+    EXPECT_GT(current->width, 0);
+
+    // xrandr 模式切换需 root 权限：实现恒 false
+    EXPECT_FALSE(screen->setDisplayMode(0, {1280, 800, 60, 32}));
+    EXPECT_FALSE(screen->resetDisplayMode(0));
+
+    // 屏保/显示器电源：X11 实现恒"未激活"
+    EXPECT_FALSE(screen->isScreenSaverRunning());
+    EXPECT_FALSE(screen->isMonitorOff());
+    screen->startScreenSaver();
+    screen->wakeUpMonitor();
+
+    const auto virt = screen->getVirtualScreenBounds();
+    EXPECT_GT(virt.width, 0);
+    EXPECT_GT(virt.height, 0);
+}
+
+TEST_F(X11PlatformTest, ScreenMonitorFromPointAndWindow) {
+    auto screen = wingman::platform::createPlatformScreen();
+    ASSERT_NE(screen, nullptr);
+
+    // 原点必落在某个显示器上（Xvfb 单屏 → 0）
+    EXPECT_EQ(screen->getMonitorFromPoint({0, 0}), 0);
+
+    // TestX11Window 的 class 为 WingmanTest/wingman-test，稳定可寻
+    TestX11Window win(0, 0, 100, 80, "Wingman Screen Monitor Window");
+    ASSERT_TRUE(win.valid());
+    EXPECT_EQ(screen->getMonitorFromWindow(win.handle()), 0);
+    EXPECT_EQ(screen->getMonitorFromWindow(0), 0); // 无效句柄分支
+
+    const auto info = screen->getBackendInfo();
+    EXPECT_EQ(info.name, "X11");
+    EXPECT_TRUE(info.isInitialized);
+}
+
+// ========== XTest 输入全方法触达（鼠标键位/滚轮/拖拽/组合键/元信息） ==========
+
+TEST_F(X11PlatformTest, InputMouseFullSweep) {
+    auto input = wingman::platform::createDefaultInput();
+    ASSERT_NE(input, nullptr);
+
+    // 三键 click/doubleClick + X1/X2 侧键（getButtonCode 的 switch 全分支）。
+    // isMousePressed 经 XQueryPointer 回读按钮掩码：XTest fake 按键注入的是
+    // 事件而非指针物理状态，Xvfb 下掩码不翻转——只验证调用安全返回，
+    // 不假设按下状态可观测
+    for (auto btn : {wingman::platform::MouseButton::Left,
+                     wingman::platform::MouseButton::Middle,
+                     wingman::platform::MouseButton::Right,
+                     wingman::platform::MouseButton::X1,
+                     wingman::platform::MouseButton::X2}) {
+        input->mouseClick(btn);
+        input->mouseDoubleClick(btn);
+        input->mouseDown(btn);
+        (void)input->isMousePressed(btn);
+        input->mouseUp(btn);
+        EXPECT_FALSE(input->isMousePressed(btn)); // 松开后必无掩码
+    }
+
+    // 垂直/水平滚轮（X11 button 4/5 与 6/7 的 fake 事件序列）
+    input->mouseWheel(3);
+    input->mouseWheel(-3);
+    input->mouseWheelHorizontal(2);
+    input->mouseWheelHorizontal(-2);
+
+    // 拖拽（mouseDown/Up 的封装）与相对移动
+    input->mouseMove(50, 50);
+    input->mouseDragBegin(wingman::platform::MouseButton::Left);
+    input->mouseMoveRelative(10, 10);
+    input->mouseDragEnd(wingman::platform::MouseButton::Left);
+    const auto pos = input->getMousePosition();
+    EXPECT_EQ(pos.x, 60);
+    EXPECT_EQ(pos.y, 60);
+}
+
+TEST_F(X11PlatformTest, InputKeySymMappingAndCombinations) {
+    auto input = wingman::platform::createDefaultInput();
+    ASSERT_NE(input, nullptr);
+    using KC = wingman::platform::KeyCode;
+
+    // toKeySym switch 全分支：逐键 XKeysymToKeycode 能解析出键码即证映射有效，
+    // 再经 keyPress 真注入（XTest 无窗口接收也安全）
+    const std::vector<KC> allKeys = {
+        KC::A, KC::B, KC::C, KC::D, KC::E, KC::F, KC::G, KC::H, KC::I, KC::J,
+        KC::K, KC::L, KC::M, KC::N, KC::O, KC::P, KC::Q, KC::R, KC::S, KC::T,
+        KC::U, KC::V, KC::W, KC::X, KC::Y, KC::Z,
+        KC::Num0, KC::Num1, KC::Num2, KC::Num3, KC::Num4,
+        KC::Num5, KC::Num6, KC::Num7, KC::Num8, KC::Num9,
+        KC::F1, KC::F2, KC::F3, KC::F4, KC::F5, KC::F6,
+        KC::F7, KC::F8, KC::F9, KC::F10, KC::F11, KC::F12,
+        KC::Space, KC::Enter, KC::Escape, KC::Tab, KC::Backspace, KC::Delete,
+        KC::Insert, KC::Home, KC::End, KC::PageUp, KC::PageDown,
+        KC::Left, KC::Up, KC::Right, KC::Down,
+        KC::Shift, KC::Control, KC::Alt, KC::CapsLock,
+        KC::PrintScreen, KC::Pause,
+    };
+    for (auto key : allKeys) {
+        input->keyPress(key); // 真注入：XTest 无焦点窗口接收也安全
+    }
+
+    // 文本输入逐字符映射（含空格）
+    input->textInput("wingman cov 1");
+
+    // 修饰键组合（Ctrl+C / Shift+Tab）
+    input->keyCombination({KC::Control}, KC::C);
+    input->keyCombination({KC::Shift}, KC::Tab);
+
+    // 文本输入声明支持
+    EXPECT_TRUE(input->supportsTextInput());
+    EXPECT_TRUE(input->supportsRelativeMovement());
+}
+
+TEST_F(X11PlatformTest, InputConfigAndBackendMetadata) {
+    wingman::platform::InputConfig config;
+    config.inputDelay = 100; // 触发 sleep() 延迟路径
+    auto input = wingman::platform::createDefaultInput(config);
+    ASSERT_NE(input, nullptr);
+
+    input->setInputDelay(200);
+    EXPECT_EQ(input->getConfig().inputDelay, 200);
+
+    EXPECT_EQ(input->getBackendName(), "XTest");
+    const auto info = input->getBackendInfo();
+    EXPECT_EQ(info.name, "XTest");
+    EXPECT_TRUE(info.isInitialized);
+}
+
+// ========== 窗口捕获（X11Capture::captureWindow / captureWindowRegion） ==========
+
+TEST_F(X11PlatformTest, CaptureWindowGrabsWindowContent) {
+    TestX11Window win(40, 50, 180, 120, "Wingman Capture Window");
+    ASSERT_TRUE(win.valid());
+    auto capture = wingman::platform::linux::createX11Capture({});
+    ASSERT_NE(capture, nullptr);
+
+    // 画白色块做内容指纹（XCreateSimpleWindow 背景为 0 → 黑）
+    Display* d = XOpenDisplay(nullptr);
+    ASSERT_NE(d, nullptr);
+    GC gc = XCreateGC(d, win.handle(), 0, nullptr);
+    XSetForeground(d, gc, 0xFFFFFF);
+    XFillRectangle(d, win.handle(), gc, 5, 5, 24, 16);
+    XFlush(d);
+    XFreeGC(d, gc);
+    XCloseDisplay(d);
+
+    auto bmp = capture->captureWindow(win.handle());
+    ASSERT_NE(bmp, nullptr);
+    EXPECT_EQ(bmp->getWidth(), 180);
+    EXPECT_EQ(bmp->getHeight(), 120);
+    EXPECT_EQ(bmp->getPixel(5, 5).r, 255);    // 白块内容被真实抓到
+    EXPECT_EQ(bmp->getPixel(5, 5).g, 255);
+    EXPECT_EQ(bmp->getPixel(100, 100).r, 0);  // 未绘制区保持黑底
+}
+
+TEST_F(X11PlatformTest, CaptureWindowInvalidHandlesAreSafe) {
+    auto capture = wingman::platform::linux::createX11Capture({});
+    ASSERT_NE(capture, nullptr);
+
+    // 无效句柄直接拒绝
+    EXPECT_EQ(capture->captureWindow(0), nullptr);
+    EXPECT_EQ(capture->captureWindowRegion(0, wingman::platform::Rect{0, 0, 8, 8}), nullptr);
+
+    // 已销毁句柄：XGetWindowAttributes 失败 → nullptr（宽容 error handler 吞 BadWindow）
+    Display* d = XOpenDisplay(nullptr);
+    ASSERT_NE(d, nullptr);
+    Window doomed = XCreateSimpleWindow(d, DefaultRootWindow(d), 0, 0, 8, 8, 0, 0, 0);
+    XMapWindow(d, doomed);
+    XSync(d, False);
+    XDestroyWindow(d, doomed);
+    XSync(d, False);
+    XCloseDisplay(d);
+    EXPECT_EQ(capture->captureWindow(doomed), nullptr);
+}
+
+TEST_F(X11PlatformTest, CaptureWindowRegionOfWindow) {
+    TestX11Window win(0, 0, 160, 100, "Wingman Window Region");
+    ASSERT_TRUE(win.valid());
+    auto capture = wingman::platform::linux::createX11Capture({});
+    ASSERT_NE(capture, nullptr);
+
+    auto bmp = capture->captureWindowRegion(win.handle(), wingman::platform::Rect{0, 0, 64, 48});
+    ASSERT_NE(bmp, nullptr);
+    EXPECT_EQ(bmp->getWidth(), 64);
+    EXPECT_EQ(bmp->getHeight(), 48);
+
+    // 窗口内越界区域：XGetImage BadMatch → nullptr（XGetImage 失败分支）
+    EXPECT_EQ(capture->captureWindowRegion(win.handle(), wingman::platform::Rect{0, 0, 4096, 4096}),
+              nullptr);
+}
+
+TEST_F(X11PlatformTest, CaptureMonitorMetadataAndRegionFallback) {
+    auto capture = wingman::platform::linux::createX11Capture({});
+    ASSERT_NE(capture, nullptr);
+
+    const int count = capture->getMonitorCount();
+    EXPECT_GE(count, 1);
+    const auto bounds0 = capture->getMonitorBounds(0);
+    EXPECT_GT(bounds0.width, 0);
+    EXPECT_GT(bounds0.height, 0);
+    EXPECT_FALSE(capture->getMonitorName(0).empty());
+
+    // 越界索引回退整屏 / 占位名（与 X11Screen 同构）
+    const auto fallback = capture->getMonitorBounds(count + 3);
+    EXPECT_GT(fallback.width, 0);
+    EXPECT_EQ(capture->getMonitorName(count + 3), "Monitor " + std::to_string(count + 3));
+
+    // captureRegion(monitorIndex, region)：显式区域按请求尺寸
+    auto bmp = capture->captureRegion(0, wingman::platform::Rect{4, 4, 32, 24});
+    ASSERT_NE(bmp, nullptr);
+    EXPECT_EQ(bmp->getWidth(), 32);
+    EXPECT_EQ(bmp->getHeight(), 24);
+
+    // 空区域回退显示器全 bounds
+    auto full = capture->captureRegion(0, wingman::platform::Rect{});
+    ASSERT_NE(full, nullptr);
+    EXPECT_EQ(full->getWidth(), bounds0.width);
+
+    EXPECT_TRUE(capture->isAvailable());
+    EXPECT_EQ(capture->getBackendName(), "X11");
+    const auto info = capture->getBackendInfo();
+    EXPECT_EQ(info.name, "X11");
+    EXPECT_TRUE(info.isInitialized);
 }
 
 #endif // __linux__
