@@ -8,11 +8,10 @@
 
 | 文档 | 说明 |
 |------|------|
-| [快速开始](getting-started.md) | 本地编译、运行第一个脚本 |
-| [安装指南](installation.md) | 平台依赖、vcpkg 和故障排查 |
-| [用户指南](user-guide.md) | 常见使用流程和脚本示例 |
+| [快速开始](guide/getting-started.md) | 本地编译、运行第一个脚本 |
+| [构建指南](../BUILD.md) | 平台依赖、vcpkg、测试与故障排查（仓库根目录） |
 | [VS Code 开发环境](development-environment.md) | Lua/Python 补全、调试和任务配置 |
-| [配置指南](guides/configuration.md) | INI/JSON 配置管理实践 |
+| [配置管理实践](guides/configuration.md) | INI/JSON 配置管理实践 |
 
 ### API 参考
 
@@ -21,10 +20,10 @@
 | [API 总览](api/overview.md) | 脚本 API 的整体设计和命名约定 |
 | [API 索引](api/index.md) | 所有模块入口 |
 | [核心 API](api/core.md) | 屏幕、输入、窗口等核心能力 |
-| [数据持久化](api/storage.md) | kv 键值存储和 SQLite |
-| [序列化](api/serialization.md) | JSON、INI 等格式处理 |
+| [键值存储](api/kv.md) / [数据库](api/db.md) | kv 键值存储和 SQLite |
+| [序列化](api/serialize.md) / [JSON](api/json.md) / [INI](api/ini.md) | JSON、INI 等格式处理 |
 | [脚本 API](api/script.md) | 脚本执行、任务和事件 |
-| [调试 API](api/debugging.md) | Lua 调试接口说明 |
+| [调试器](api/debugger.md) | Lua 调试接口说明 |
 
 ### 使用指南
 

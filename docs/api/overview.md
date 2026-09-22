@@ -327,9 +327,7 @@ except Exception as e:
 
 ## 🔗 相关文档
 
-- [快速开始](../getting-started.md)
-- [用户指南](../user-guide.md)
-- [快速开始](../getting-started.md)
+- [快速开始](../guide/getting-started.md)
 
 ---
 

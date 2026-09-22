@@ -898,7 +898,7 @@ for word in words:
 - [人性化模拟](human.md)
 - [数据持久化 API](data.md)
 - [序列化 API](serialize.md)
-- [快速开始](../getting-started.md)
+- [快速开始](../guide/getting-started.md)
 
 ---
 

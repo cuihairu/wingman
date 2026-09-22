@@ -156,6 +156,39 @@ $env:VCPKG_DEFAULT_BINARY_CACHE = "C:\vcpkg\archives"
 
 确保使用静态运行时库，项目默认配置已设置。
 
+### macOS：Xcode 未找到
+
+**问题**: `xcode-select: error: tool 'xcodebuild' requires Xcode`
+
+```bash
+xcode-select --install
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+```
+
+### macOS：编译时权限被拒绝
+
+```bash
+sudo chown -R $(whoami) ~/vcpkg
+```
+
+### Linux：缺少系统依赖
+
+**问题**: 缺少头文件或库
+
+```bash
+sudo apt install -y build-essential cmake git ninja-build \
+    libx11-dev libxext-dev libxrandr-dev libxinerama-dev \
+    libxi-dev libgl1-mesa-dev libglu1-mesa-dev
+```
+
+### Linux：vcpkg 依赖失败
+
+**问题**: vcpkg 无法安装某些包
+
+```bash
+sudo apt install -y g++ gcc rsync
+```
+
 ## CI/CD
 
 项目使用 GitHub Actions 进行持续集成：

@@ -16,7 +16,7 @@ C++ + Lua/Python 的高性能游戏自动化框架
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-[文档](docs/README.md) · [快速开始](docs/getting-started.md) · [API 参考](docs/api/overview.md) · [示例](docs/examples/) · [贡献指南](CONTRIBUTING.md)
+[文档](docs/README.md) · [快速开始](docs/guide/getting-started.md) · [API 参考](docs/api/overview.md) · [示例](docs/examples/) · [贡献指南](CONTRIBUTING.md)
 
 </div>
 
@@ -83,7 +83,7 @@ build-scripts\build-runtime-msvc-ninja.bat
 .\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script examples\hello.lua
 ```
 
-**详细安装指南请查看 [安装文档](docs/installation.md)**
+**详细构建步骤请查看 [构建指南](BUILD.md)**
 
 ---
 
@@ -129,8 +129,8 @@ if points:
 
 ## 📚 文档
 
-- [快速开始](docs/getting-started.md) - 5 分钟上手指南
-- [安装指南](docs/installation.md) - 详细的安装和配置说明
+- [快速开始](docs/guide/getting-started.md) - 5 分钟上手指南
+- [构建指南](BUILD.md) - 详细的构建、测试和故障排除说明
 - [API 参考](docs/api/overview.md) - 完整的 API 文档
 - [架构设计](docs/architecture.md) - 系统架构和设计决策
 - [开发指南](docs/DEVELOPMENT.md) - 贡献和开发指南

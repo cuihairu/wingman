@@ -18,7 +18,21 @@
 - 同步清理：根/runtime/lua CMake 选项与链接、`vcpkg.json` protobuf、CI compat 目标、`build-scripts` 安装列表、platform_boundary_allowlist（-1 条）、BUILD.md / setup / DEVELOPMENT / project-structure / architecture / remote_protocol / debugging 文档、CHANGELOG Unreleased。
 - Go 侧 `google.golang.org/protobuf // indirect` 为 gin/swag 传递依赖，非死代码，保留。
 
-**后续轮次（已识别待办）**：④ 文档去重（getting-started×4、guide/guides）与根目录会话产物清理；⑤ handlers 按域拆子包（前置已完成：路由装配收口 routes.go，待评估 5900 行测试重排成本）。
+**后续轮次（已识别待办）**：⑤ handlers 按域拆子包（前置已完成：路由装配收口 routes.go，待评估 5900 行测试重排成本）。
+
+---
+
+## 📅 2026-09-22 文档去重与会话产物清理（架构盘点第五轮）
+
+共删除 15 个文件，全仓交叉引用清零校验通过：
+
+- **根目录会话产物删除**：`macOS_SESSION_SUMMARY.md`、`macOS_VERIFICATION_REPORT.md`（2026-06-22 macOS 验证会话产物，零引用）；`docs/superpowers/`（5 份 2026-06-27/28 会话计划/交接文档，仅自引用）。
+- **时令文档删除**：`docs/pending-changes.md`（2026-06-21 一次性改动分析，todo.md 引用改纯文字）、`docs/project-improvements-2026-05-06.md`、`docs/project-improvements-plan.md`（零引用）、`docs/architecture-improvement-plan.md`（自标"历史设计草案，部分内容已过期"）。
+- **getting-started 去重**：根级 `docs/getting-started.md` 删除（内容较旧），保留 `docs/guide/getting-started.md`（站点 sidebar 主文档，含 CLI 参数/运行模式/agent.toml 等新架构内容）；README×2、api/overview、api/core、docs/README 共 5 处引用改指新路径。
+- **安装文档三份收口为 BUILD.md**：删 `docs/installation.md`（312 行，2026-06-23 旧版）与 `docs/setup.md`（131 行，零引用）；installation 独有的 macOS/Linux 故障排除（Xcode-select、权限、系统依赖、vcpkg 失败）并入 BUILD.md；README 安装入口改指 BUILD.md（CONTRIBUTING/project-structure 原已指向它）。
+- **user-guide.md 删除**：385 行大全式手册，安装/配置/API/调试各章均已被站点对应专篇覆盖且更新。
+- **guides 三孤儿挂上站点**：`guides/configuration.md`、`guides/database.md`、`guides/triggers.md` 加入 VitePress sidebar「进阶指南」组——与 `guide/config.md` 主题正交（前者是 wingman.config API 实践教程，后者是 config.json 配置文件参考），去重结论为"挂出来"而非合并。
+- **死链修复**：docs/README.md 索引引用的 `api/storage.md`、`api/serialization.md`、`api/debugging.md` 三个不存在的文件，改指实际存在的 kv/db、serialize/json/ini、debugger。
 
 ---
 
@@ -123,7 +137,7 @@ dashboard → server → agent 请求/响应模型）。原裸 501 stub 已替�
 
 ## ✅ 代码缺陷（2026-06-21 分析发现，已全部修复）
 
-> 来源：[docs/pending-changes.md](./docs/pending-changes.md) 第 5 节。
+> 来源：2026-06-21 工作区未提交改动分析（原文档已随文档去重删除）。
 > 全部 10 项已修复（含回归测试 `TestBroadcastMessagePerUserReadState`）。
 
 ### 高优先级

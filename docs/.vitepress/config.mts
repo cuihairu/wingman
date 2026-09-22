@@ -37,7 +37,10 @@ export default defineConfig({
           text: '进阶指南',
           items: [
             { text: 'UI Automation', link: '/guides/uia-guide' },
-            { text: 'YOLO 模型使用', link: '/guides/yolo-guide' }
+            { text: 'YOLO 模型使用', link: '/guides/yolo-guide' },
+            { text: '配置管理实践', link: '/guides/configuration' },
+            { text: '数据库使用', link: '/guides/database' },
+            { text: '触发器系统', link: '/guides/triggers' }
           ]
         },
         {
