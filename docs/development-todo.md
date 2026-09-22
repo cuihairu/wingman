@@ -118,15 +118,15 @@
 > 核心形态：**Android 端侧 Agent + TCP 长链接直连 Go Server（云控模式）**，控制面在
 > Server、执行面在端侧；iOS 端侧不可行（沙箱无合法通道），iOS 主机控（WDA）为远期可选。
 
-### A1 PoC：链路打通
-- [ ] Kotlin 壳：ForegroundService + 长链接（复用 libs/transport 编译到 Android）
-- [ ] wingman 核心 NDK 编译通过（Lua + transport + 核心库；vcpkg 扩展 arm64-android triplet）
-- [ ] Go Server 下发 hello-world Lua 脚本 → 端侧执行 → 日志回传 Dashboard
+### A1 PoC：链路打通 ✅（2026-09-22 校准，代码已落地）
+- [x] Kotlin 壳：ForegroundService + 长链接（`WingmanService.kt`：前台服务 + START_STICKY + dataSync|mediaProjection 类型；复用 libs/transport 编译到 Android）
+- [x] wingman 核心 NDK 编译通过（Lua + transport + 核心库；vcpkg 扩展 arm64-android triplet；nightly Android arm64 job 全绿，2026-09-22）
+- [x] Go Server 下发脚本 → 端侧执行（`android_agent.cpp` 支持 run_script/stop_script/screenshot.capture/system.shutdown 四命令；日志经 agent.event 上行回传 Dashboard）
 
-### A2 能力闭环
-- [ ] `platform/android/` IInput 后端（AccessibilityService dispatchGesture，经 JNI）
-- [ ] `platform/android/` ICapture 后端（MediaProjection 主 + takeScreenshot API 30+ 兜底）
-- [ ] 找色/找图/像素检测对手机截帧可用；screen/input 脚本 API 全通
+### A2 能力闭环（2026-09-22 校准：IInput/ICapture/脚本 API 已落地，余触发器与真机验证）
+- [x] `platform/android/` IInput 后端（AccessibilityService dispatchGesture，经 JNI；`WingmanAccessibilityService.kt` 主线程 post + seq/promise 回执，超时兜底在 C++）
+- [x] `platform/android/` ICapture 后端（MediaProjection 主通道；`ScreenCaptureManager.kt` + AndroidHostBridge::captureFrame。⚠️ takeScreenshot API 30+ 兜底未做）
+- [x] 找色/找图/像素检测对手机截帧可用；screen/input 脚本 API 全通（input click/tap/longPress/swipe/delay + screen getScreenWidth/Height/capture/getPixel/findColor/findColors/findImage + vision 五函数；桌面同源编译验证：android_api_test 6 + script_runner_test 8 用例。⚠️ 真机触摸/截帧行为待真机验证）
 - [ ] 触发器系统端侧跑通（定时/像素触发）
 
 ### A3 可靠性与部署体验
