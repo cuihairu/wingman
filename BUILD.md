@@ -9,26 +9,6 @@
 - vcpkg 包管理器
 - Git
 
-### Clasp (本地开发依赖)
-
-Wingman 使用 [Clasp](https://github.com/cuihairu/clasp) 作为命令行库。通过 **overlay ports** 本地管理：
-
-#### 方式1: Clasp 在本地开发目录
-
-```bash
-# clasp 位于 sibling 目录 (如: C:\Users\你的用户名\Workspaces\clasp)
-# 或设置环境变量
-set CLASP_SOURCE_DIR=C:\path\to\clasp
-```
-
-#### 方式2: 添加为 Git Submodule
-
-```bash
-cd wingman
-git submodule add https://github.com/cuihairu/clasp.git libs/clasp
-git submodule update --init --recursive
-```
-
 ## 快速开始
 
 ### 1. 安装 vcpkg
@@ -47,9 +27,6 @@ cd wingman
 
 # 配置 MSVC + Ninja + vcpkg
 build-scripts\configure-msvc-ninja.bat
-
-# 如果 clasp 不在默认位置，设置环境变量
-# $env:CLASP_SOURCE_DIR = "C:\path\to\clasp"
 ```
 
 ### 3. 编译
@@ -79,11 +56,11 @@ cmake -S . -B build-tests `
 ### 运行测试
 
 ```bash
-cmake --build build-tests --config Debug --target core_tests runtime_tests transport_tests proto_tests debug_tests
+cmake --build build-tests --config Debug --target core_tests runtime_tests transport_tests
 ctest --test-dir build-tests -C Debug --output-on-failure
 ```
 
-`WINGMAN_BUILD_TESTS=ON` 会自动启用标准 C++ 测试目标（core/runtime/transport/proto/debug）。
+`WINGMAN_BUILD_TESTS=ON` 会自动启用标准 C++ 测试目标（core/runtime/transport）。
 如果还需要单独验证 Lua 绑定层，再额外加 `-DBUILD_LUA_TESTS=ON` 并构建 `lua_tests`。
 建议测试使用单独的 `build-tests/` 目录，避免和现有 `build/` 的生成器或配置冲突。
 
@@ -130,8 +107,6 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxilia
 | `BUILD_CORE_TESTS` | OFF | 构建核心库测试 |
 | `BUILD_TRANSPORT_TESTS` | OFF | 构建传输库测试 |
 | `BUILD_LUA_TESTS` | OFF | 构建 Lua 绑定层测试（默认手动开启） |
-| `BUILD_PROTO_TESTS` | OFF | 构建协议库测试 |
-| `BUILD_DEBUG_TESTS` | OFF | 构建调试库测试 |
 
 ### Vcpkg Features
 
@@ -146,14 +121,12 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxilia
 ## 依赖项
 
 ### 核心依赖 (自动安装)
-- clasp (命令行库，通过 overlay ports)
 - lua 5.4
 - spdlog
 - nlohmann-json
 - asio
 - curl
 - sqlite3
-- protobuf
 
 ### 可选依赖
 - tesseract (OCR)

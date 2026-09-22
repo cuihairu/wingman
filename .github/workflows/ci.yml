@@ -235,7 +235,7 @@ jobs:
           fi
 
       - name: Build
-        run: cmake --build build --parallel --target wingman_proto wingman_transport
+        run: cmake --build build --parallel --target wingman_transport
 
       - name: Save vcpkg cache
         if: always()

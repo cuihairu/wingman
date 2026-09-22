@@ -29,7 +29,7 @@ Write-Host "VCPKG_CACHE: $env:VCPKG_DEFAULT_BINARY_CACHE"
 
 Write-Host ""
 Write-Host "=== Installing vcpkg dependencies ===" -ForegroundColor Green
-.\vcpkg\vcpkg install --triplet=x64-windows lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf
+.\vcpkg\vcpkg install --triplet=x64-windows lua opencv4 spdlog nlohmann-json asio curl sqlite3
 
 Write-Host ""
 Write-Host "=== vcpkg setup complete ===" -ForegroundColor Green

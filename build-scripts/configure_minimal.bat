@@ -29,7 +29,6 @@ cmake -B build-minimal -S . ^
     -DWINGMAN_BUILD_TESTS=OFF ^
     -DOPENCV_FOUND=OFF ^
     -DSPDLOG_FOUND=OFF ^
-    -DPROTOBUF_FOUND=OFF
 
 if errorlevel 1 (
     echo.

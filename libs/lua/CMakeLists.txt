@@ -23,7 +23,6 @@ set(LUA_SOURCES
     src/lua_script_engine.cpp
     # src/lua_bindings.cpp  # TODO: 需要额外的头文件
     # src/lua_extensions.cpp  # TODO: 需要额外的头文件
-    # src/debug_adapter.cpp  # TODO: 依赖 emmy_adapter
     # src/script_manager.cpp  # TODO: 依赖 lua_bindings
 )
 
@@ -54,16 +53,9 @@ target_link_libraries(wingman_lua PUBLIC
 # 导出库
 add_library(wingman::lua ALIAS wingman_lua)
 
-# EmmyLua Debugger 支持
-option(WINGMAN_ENABLE_EMMY "Enable EmmyLua Debugger integration" ON)
-if(WINGMAN_ENABLE_EMMY)
-    target_compile_definitions(wingman_lua PUBLIC WINGMAN_ENABLE_EMMY)
-
-    # EmmyLua 将在运行时从以下位置加载：
-    # 1. <exe-dir>/emmy/emmy_core.dll
-    # 2. WINGMAN_EMMY_PATH 环境变量
-    message(STATUS "EmmyLua Debugger integration enabled")
-endif()
+# EmmyLua 调试：emmy_core 由 Lua 脚本在运行时 require 加载
+# （查找顺序：<exe-dir>/emmy/emmy_core.dll → WINGMAN_EMMY_PATH），
+# 构建期无任何开关。
 
 # ========== 编译选项 ==========
 target_compile_features(wingman_lua PUBLIC cxx_std_23)

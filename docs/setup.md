@@ -49,7 +49,7 @@ bootstrap-vcpkg.bat -disableMetrics
 ### 安装依赖
 
 ```cmd
-vcpkg install --triplet=x64-windows-static lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf
+vcpkg install --triplet=x64-windows-static lua opencv4 spdlog nlohmann-json asio curl sqlite3
 ```
 
 ### 配置 CMake
@@ -69,16 +69,12 @@ wingman/
 ├── lib/                     # 核心库
 │   └── wingman/             # 核心功能库
 ├── libs/                    # 辅助库
-│   ├── clasp/               # 命令行库
-│   ├── debug/               # EmmyLua 调试器适配
 │   ├── lua/                 # Lua 引擎绑定
 │   ├── python/              # Python 引擎绑定
-│   ├── proto/               # Protobuf 协议封装
 │   └── transport/           # TCP/WebSocket 传输层
 ├── orchestrator/            # 编排层
 │   ├── dashboard/           # Web 控制面板
 │   └── server/             # Go 服务端
-├── protobuf/                # Protobuf 协议定义
 ├── examples/                # 示例和模板
 └── build/                   # 构建输出
 ```
@@ -113,7 +109,6 @@ wingman/
 | asio | 网络库 |
 | curl | HTTP 客户端 |
 | sqlite3 | 数据库 |
-| protobuf | 序列化协议 |
 
 ## 故障排除
 

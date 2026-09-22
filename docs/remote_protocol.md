@@ -2,7 +2,7 @@
 
 > ⚠️ **历史文档**：本文记录旧 JSON-RPC 协议的迁移说明。当前权威协议规范见 [protocols.md](./protocols.md)。
 >
-> 注意：本文早前描述的「Protobuf 序列化」与实际实现不符——Agent TCP 实际使用 **16 字节头 + JSON 体**（见 protocols.md ②）。`protobuf/` 目录为预留，未用于当前 agent 链路。
+> 注意：本文早前描述的「Protobuf 序列化」与实际实现不符——Agent TCP 实际使用 **16 字节头 + JSON 体**（见 protocols.md ②）。曾预留的 `protobuf/` 目录从未接入链路，已于 2026-09-22 移除。
 
 ## 协议演进说明
 
@@ -16,7 +16,7 @@ Runtime 现在作为**主动 Agent** 运行，通过 outbound transport 连接 G
 
 ### 1. Transport TCP（Agent 到编排器）
 
-Agent 通过 `wingman::runtime::RemoteClient`（基于 transport 层的 TCP）主动连接到 Go 编排器（orchestrator），通信采用 **Protobuf** 序列化格式，而非旧的 JSON-RPC。
+Agent 通过 `wingman::runtime::RemoteClient`（基于 transport 层的 TCP）主动连接到 Go 编排器（orchestrator），通信采用 **16 字节头 + JSON 体**（Header + Body），而非旧的 JSON-RPC。
 
 ```
 Agent (Runtime)  ──主动连接──>  Go Orchestrator (TCP Server)
@@ -29,7 +29,6 @@ Agent (Runtime)  ──主动连接──>  Go Orchestrator (TCP Server)
 关键实现文件：
 - `apps/runtime/src/remote_client.cpp` - 远程客户端，主动连接编排器
 - `libs/transport/` - 网络传输层
-- `libs/proto/` - Protobuf 协议封装
 
 ### 2. Local IPC（本地 GUI 控制）
 
@@ -113,7 +112,7 @@ Web Dashboard (React/Umi)  ──WebSocket──>  Go Orchestrator  ──Transp
 
 2. **连接方向变更** - 旧模式中 Runtime 被动等待外部连接；新模式中 Runtime 主动连接到编排器。
 
-3. **协议变更** - 旧的 JSON-RPC over raw TCP 已替换为 Protobuf over transport TCP。消息格式定义在 `protobuf/` 目录。
+3. **协议变更** - 旧的 JSON-RPC over raw TCP 已替换为 16 字节头 + JSON over transport TCP。消息格式见 [protocols.md](./protocols.md)。（曾预留的 `protobuf/` 目录与 `libs/proto` 已于 2026-09-22 移除——该层从未接入实际链路。）
 
 4. **客户端库** - `wingman::RemoteControlClient` 已移除。外部工具应通过 Go 编排器的 REST/WebSocket API 间接控制 Agent。
 

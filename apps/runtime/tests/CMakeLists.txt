@@ -37,7 +37,6 @@ target_link_libraries(runtime_tests PRIVATE
     GTest::gtest
     GTest::gtest_main
     wingman
-    wingman::proto
     wingman::transport
     nlohmann_json::nlohmann_json
     spdlog::spdlog_header_only

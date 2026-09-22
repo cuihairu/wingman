@@ -310,15 +310,12 @@ wingman/
 │   └── client/              # 客户端库
 ├── lib/wingman/             # C++ 核心引擎
 ├── libs/                    # 辅助库
-│   ├── transport/           # TCP/WebSocket 传输层
 │   ├── lua/                 # Lua 绑定
 │   ├── python/              # Python 绑定
-│   ├── proto/               # Protobuf 封装
-│   └── debug/               # EmmyLua 调试器
+│   └── transport/           # TCP/WebSocket 传输层
 ├── orchestrator/            # 编排层
 │   ├── dashboard/           # Web 控制面板 (React/Umi)
 │   └── server/              # Go 服务端
-├── protobuf/                # Protobuf 协议定义
 ├── docs/                    # 文档
 ├── scripts/                 # Lua 脚本示例
 └── tests/                   # 测试

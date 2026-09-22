@@ -44,7 +44,7 @@ echo This may take 30-60 minutes on first run...
 echo.
 
 vcpkg\vcpkg install --triplet=x64-windows ^
-    lua opencv4 spdlog nlohmann-json asio curl sqlite3 protobuf
+    lua opencv4 spdlog nlohmann-json asio curl sqlite3
 
 if errorlevel 1 (
     echo ERROR: Failed to install dependencies

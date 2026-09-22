@@ -540,6 +540,8 @@ local wingman = require('wingman')
 
 **交付物**: EmmyLua 集成完成，IDE 调试可用
 
+> 注（2026-09-22）：实际调试链路是脚本运行时 `require('emmy_core')`（动态库随 runtime 分发）。C++ 侧的 `libs/debug` EmmyAdapter 从未被任何代码调用，已作为死代码移除。
+
 ---
 
 ## Milestone 8: 发布准备

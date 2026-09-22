@@ -50,7 +50,6 @@ target_include_directories(wingman-runtime PRIVATE
 
 # 链接库
 target_link_libraries(wingman-runtime PRIVATE
-    wingman::proto
     wingman::transport
     wingman
     spdlog::spdlog_header_only
@@ -60,11 +59,6 @@ target_link_libraries(wingman-runtime PRIVATE
 if(TARGET wingman::lua)
     target_link_libraries(wingman-runtime PRIVATE wingman::lua)
     target_compile_definitions(wingman-runtime PRIVATE WINGMAN_HAS_LUA)
-endif()
-
-if(TARGET wingman::debug)
-    target_link_libraries(wingman-runtime PRIVATE wingman::debug)
-    target_compile_definitions(wingman-runtime PRIVATE WINGMAN_HAS_DEBUG)
 endif()
 
 if(WINGMAN_HAS_OPENCV)

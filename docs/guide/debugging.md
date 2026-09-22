@@ -70,5 +70,4 @@ wingman.notify.error("Error message")
 ### 断点未命中
 
 - 确认 VS Code 已连接到 `localhost:9966`
-- 确认 runtime 构建启用了 `WINGMAN_ENABLE_EMMY`
-- 确认运行目录中存在 EmmyLua 调试组件
+- 确认运行目录中存在 EmmyLua 调试组件（`emmy_core`）

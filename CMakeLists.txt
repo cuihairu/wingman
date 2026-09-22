@@ -35,7 +35,6 @@ endif()
 message(STATUS "Using vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
 
 # ========== 构建选项 ==========
-option(WINGMAN_BUILD_DEBUGGER "Build debugger (legacy)" OFF)       # 默认关闭，使用 EmmyLua
 option(WINGMAN_BUILD_TESTS "Build tests" OFF)
 option(WINGMAN_ENABLE_OCR "Enable OCR support (requires Tesseract)" OFF)  # 默认关闭
 option(WINGMAN_ENABLE_ML "Enable ML/AI support (requires ONNX Runtime)" OFF)  # 默认关闭
@@ -44,29 +43,18 @@ option(WINGMAN_COMPAT_BUILD "Build only portable compatibility targets" OFF)
 
 # ========== 新架构选项 ==========
 option(WINGMAN_BUILD_AGENT "Build new Agent (multi-module)" ON)
-option(WINGMAN_ENABLE_EMMY "Enable EmmyLua Debugger integration" ON)
-option(WINGMAN_BUILD_PROTO "Build protobuf module" ${WINGMAN_BUILD_AGENT})
 option(WINGMAN_BUILD_TRANSPORT "Build transport module" ${WINGMAN_BUILD_AGENT})
 option(WINGMAN_BUILD_CORE "Build core wingman library" ${WINGMAN_BUILD_AGENT})
 option(WINGMAN_BUILD_LUA "Build Lua module" ${WINGMAN_BUILD_AGENT})
-option(WINGMAN_BUILD_DEBUG "Build debug module" ${WINGMAN_BUILD_AGENT})
 option(WINGMAN_BUILD_RUNTIME "Build runtime app" ${WINGMAN_BUILD_AGENT})
 
 if(WINGMAN_BUILD_RUNTIME)
     if(NOT WINGMAN_BUILD_CORE)
         message(FATAL_ERROR "WINGMAN_BUILD_RUNTIME=ON requires WINGMAN_BUILD_CORE=ON")
     endif()
-    if(NOT WINGMAN_BUILD_PROTO)
-        message(FATAL_ERROR "WINGMAN_BUILD_RUNTIME=ON requires WINGMAN_BUILD_PROTO=ON")
-    endif()
     if(NOT WINGMAN_BUILD_TRANSPORT)
         message(FATAL_ERROR "WINGMAN_BUILD_RUNTIME=ON requires WINGMAN_BUILD_TRANSPORT=ON")
     endif()
-endif()
-
-if(WINGMAN_BUILD_DEBUG AND NOT WINGMAN_BUILD_LUA AND NOT WINGMAN_ENABLE_PYTHON)
-    message(STATUS "WINGMAN_BUILD_DEBUG requested without Lua or Python support; disabling debug module")
-    set(WINGMAN_BUILD_DEBUG OFF CACHE BOOL "Build debug module" FORCE)
 endif()
 
 # ========== 测试选项 ==========
@@ -74,8 +62,6 @@ option(BUILD_CLIENT_TESTS "Build runtime app tests" OFF)
 option(BUILD_CORE_TESTS "Build core library tests" OFF)
 option(BUILD_TRANSPORT_TESTS "Build transport library tests" OFF)
 option(BUILD_LUA_TESTS "Build lua library tests" OFF)
-option(BUILD_PROTO_TESTS "Build proto library tests" OFF)
-option(BUILD_DEBUG_TESTS "Build debug library tests" OFF)
 option(BUILD_PYTHON_TESTS "Build python library tests" OFF)
 
 # WINGMAN_BUILD_TESTS acts as the top-level switch for the standard C++ test suites.
@@ -91,12 +77,6 @@ if(WINGMAN_BUILD_TESTS)
     if(WINGMAN_BUILD_TRANSPORT)
         set(BUILD_TRANSPORT_TESTS ON CACHE BOOL "Build transport library tests" FORCE)
     endif()
-    if(WINGMAN_BUILD_PROTO)
-        set(BUILD_PROTO_TESTS ON CACHE BOOL "Build proto library tests" FORCE)
-    endif()
-    if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DEBUG AND (WINGMAN_BUILD_LUA OR WINGMAN_ENABLE_PYTHON))
-        set(BUILD_DEBUG_TESTS ON CACHE BOOL "Build debug library tests" FORCE)
-    endif()
     if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_ENABLE_PYTHON)
         set(BUILD_PYTHON_TESTS ON CACHE BOOL "Build python library tests" FORCE)
     endif()
@@ -107,7 +87,7 @@ if(BUILD_CLIENT_TESTS)
 endif()
 
 if(WINGMAN_BUILD_TESTS OR BUILD_CLIENT_TESTS OR BUILD_CORE_TESTS OR BUILD_TRANSPORT_TESTS OR
-   BUILD_LUA_TESTS OR BUILD_PROTO_TESTS OR BUILD_DEBUG_TESTS OR BUILD_PYTHON_TESTS)
+   BUILD_LUA_TESTS OR BUILD_PYTHON_TESTS)
     enable_testing()
 endif()
 
@@ -128,12 +108,6 @@ if(WINGMAN_ENABLE_ML AND NOT WINGMAN_COMPAT_BUILD)
     message(STATUS "ML/AI support enabled")
 endif()
 
-# EmmyLua 支持
-if(WINGMAN_ENABLE_EMMY AND WINGMAN_BUILD_LUA)
-    add_compile_definitions(WINGMAN_ENABLE_EMMY)
-    message(STATUS "EmmyLua Debugger enabled")
-endif()
-
 # ========== 版本信息 ==========
 set(WINGMAN_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/include" CACHE INTERNAL "Generated headers directory")
 configure_file(
@@ -145,20 +119,12 @@ configure_file(
 # ========== 多模块架构 ==========
 
 # 共享库子目录
-if(WINGMAN_BUILD_PROTO)
-    add_subdirectory(libs/proto)
-endif()
-
 if(WINGMAN_BUILD_TRANSPORT)
     add_subdirectory(libs/transport)
 endif()
 
 if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_LUA)
     add_subdirectory(libs/lua)
-endif()
-
-if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DEBUG AND (WINGMAN_BUILD_LUA OR WINGMAN_ENABLE_PYTHON))
-    add_subdirectory(libs/debug)
 endif()
 
 if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_ENABLE_PYTHON)

@@ -36,9 +36,7 @@ if ($EnableTests) {
     $args += @(
         "-DWINGMAN_BUILD_TESTS=ON",
         "-DBUILD_CORE_TESTS=ON",
-        "-DBUILD_TRANSPORT_TESTS=ON",
-        "-DBUILD_PROTO_TESTS=ON",
-        "-DBUILD_DEBUG_TESTS=ON"
+        "-DBUILD_TRANSPORT_TESTS=ON"
     )
 }
 

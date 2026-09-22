@@ -41,11 +41,8 @@ wingman/
 ├── lib/                     # Core library
 │   └── wingman/             # Core functionality
 ├── libs/                    # Support libraries
-│   ├── clasp/               # Command-line library
-│   ├── debug/               # EmmyLua debugger adapter
 │   ├── lua/                 # Lua engine binding
 │   ├── python/              # Python engine binding
-│   ├── proto/               # Protobuf wrapper
 │   └── transport/           # TCP/WebSocket transport
 └── orchestrator/            # Orchestration layer
     ├── dashboard/           # Web dashboard

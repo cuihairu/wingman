@@ -63,7 +63,7 @@ wingman/
 │   │   ├── include/wingman/lua/
 │   │   └── src/
 │   │
-│   └── proto/                    ← Protobuf
+│
 │
 ├── examples/                     ← 示例代码
 ├── scripts/                      ← 脚本

@@ -1,10 +1,24 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-09-14
+> 最后更新: 2026-09-22
 > 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）
 
 > ⚠️ 本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
+
+---
+
+## 📅 2026-09-22 死代码清理（架构盘点第一轮）
+
+架构盘点结论：宏架构（双控制面 / platform 抽象 / apps+lib / orchestrator 边界）合理且执行到位；主要问题为死代码撑起的虚假复杂度、lib/libs 边界失效、Android 源码级耦合。本轮完成第一优先级：
+
+- **protobuf 链移除**：`protobuf/`（3 个 .proto 无人消费）+ `libs/proto`（`PROTO_PATH` 指向不存在的根目录 `proto/`，protoc 从未生成代码；孤儿文件 proto_wrapper_json.cpp）。实际协议 = 16 字节头 + JSON 体（C++ `MessageHeader` 与 Go `pkg/agent/client.go` 手写对齐，由 `integration/protocol_test.go` 兜底）。若未来需要 IDL，须双侧生成后一并落地。
+- **libs/debug 移除**：EmmyAdapter 无任何调用方（runtime 仅链接未使用，自带测试也不链接它）；`WINGMAN_ENABLE_EMMY`/`WINGMAN_HAS_DEBUG` 宏零源码消费者。实际调试链路 = 脚本运行时 require `emmy_core`。
+- **clasp 移除**：submodule + vcpkg overlay port 双落位、全仓库零引用。
+- 同步清理：根/runtime/lua CMake 选项与链接、`vcpkg.json` protobuf、CI compat 目标、`build-scripts` 安装列表、platform_boundary_allowlist（-1 条）、BUILD.md / setup / DEVELOPMENT / project-structure / architecture / remote_protocol / debugging 文档、CHANGELOG Unreleased。
+- Go 侧 `google.golang.org/protobuf // indirect` 为 gin/swag 传递依赖，非死代码，保留。
+
+**后续轮次（已识别待办）**：① Android 共用 agent 核心（remote_client/event_buffer）下沉为库目标，消除 `apps/android/cpp` 对 `apps/runtime/src` + `lib/wingman/src` 私有树的源码摘编；② lib vs libs 重划 / 平行实现合并（双 TCP 通道、双 system_handler、双加密）；③ Go `internal/handlers` 拆包 + `internal/agent` vs `pkg/agent` 改名；④ 文档去重（getting-started×4、guide/guides）与根目录会话产物清理。
 
 ---
 

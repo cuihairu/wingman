@@ -57,7 +57,7 @@ wait_for_ide = false
 
 VS Code 中选择 `Attach to Wingman Lua (EmmyLua :9966)`，再运行启用了 EmmyLua 调试入口的 Lua 脚本即可连接。该配置使用 `emmylua_new` 调试器，走 `launch + ideConnectDebugger=true` 方式连接，默认端口为 `9966`。
 
-> 注意：当前调试链路依赖 EmmyLua 调试组件和 runtime 构建参数 `WINGMAN_ENABLE_EMMY=ON`。如果运行时目录缺少 `emmy_core` 动态库，调试会降级为不可用，但脚本执行不受影响。
+> 注意：当前调试链路依赖 EmmyLua 调试组件（`emmy_core` 动态库，由脚本运行时 require 加载，构建期无开关）。如果运行时目录缺少 `emmy_core`，调试会降级为不可用，但脚本执行不受影响。
 
 ## 运行脚本
 

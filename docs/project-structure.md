@@ -11,16 +11,12 @@ wingman/
 ├── lib/                     # 核心库
 │   └── wingman/             # 核心功能库
 ├── libs/                    # 辅助库
-│   ├── clasp/               # 命令行库
-│   ├── debug/               # EmmyLua 调试器适配
 │   ├── lua/                 # Lua 引擎绑定
 │   ├── python/              # Python 引擎绑定
-│   ├── proto/               # Protobuf 协议封装
 │   └── transport/           # TCP/WebSocket 传输层
 ├── orchestrator/            # 编排层
 │   ├── dashboard/           # Web 控制面板 (React/Umi)
 │   └── server/             # Go 服务端
-├── protobuf/                # Protobuf 协议定义
 ├── assets/                  # 资源文件
 ├── build-scripts/          # 构建脚本
 ├── cmake/                   # CMake 模块
@@ -65,11 +61,8 @@ Tauri/Svelte 桌面 GUI 应用，通过 Tauri Rust backend 使用本地 IPC 控�
 
 | 模块 | 说明 |
 |------|------|
-| **clasp** | 命令行库（通过 overlay ports 管理） |
-| **debug** | EmmyLua 调试器适配层 |
 | **lua** | Lua 引擎绑定（sol2） |
 | **python** | Python 引擎绑定（pybind11） |
-| **proto** | Protobuf 协议封装 |
 | **transport** | TCP/WebSocket 传输层 |
 
 ### orchestrator/
@@ -81,13 +74,6 @@ Web 控制面板（基于 React/Umi），用于监控和管理 Agent
 
 #### server/
 Go 服务端程序，提供远程控制和 API 服务
-
-### protobuf/
-
-Protobuf 协议定义文件：
-- `agent_api.proto` - Agent API 服务定义
-- `common.proto` - 公共类型定义
-- `debug.proto` - 调试协议定义
 
 ## 调用链
 
