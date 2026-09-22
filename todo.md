@@ -20,6 +20,21 @@
 
 ---
 
+## 📅 2026-09-22 M4/M5 收尾校准（架构盘点第八轮）
+
+**基线验证（三套 UI 测试全绿）**：Dashboard jest 235/235、GUI vitest 506/506、Tauri Rust cargo test 14/14（含 IPC 集成 5 用例）。
+
+**M4 三层契约审计（跨端对齐，无缺口）**：
+- 命令方向（server → runtime）：server 生产代码下发 `run_script`/`stop_script`/`list_windows`/`get_status`/`screenshot.capture`/`system.shutdown`/`trigger.*` 共 7 类，`agent.cpp handleRemoteCommand` 全部支持（trigger.* 前缀经 remoteDispatcher 复用本地 RPC handler）。
+- 事件上行（runtime → server）：runtime 仅转发 `trigger_fired`/`script_state`/`script_output` 三类（`log.line`/`connection.state_changed` 有意不转发——防高频日志淹没 agent 上行链路，agent.cpp:385 注释明确），server `handleEvent` 三 case 全接并广播。
+- 广播下行（server → Dashboard）：server 广播 agent connected/disconnected/status_changed、workflow submitted/status_changed/progress、script output/state_changed、trigger_fired、screenshot 共 9 类，Dashboard websocket.ts 全部消费。
+
+**文档校准**：ROADMAP M4/M5 状态 🚧 → ✅（附审计与测试证据）；删除 M4 RBAC 条目过时的「⚠️ PermissionRequired 已实现未接线」注（已接线 8 权限码）；todo.md 里程碑表 M4 100% / M5 ~95%，完成度表权限系统 95% → 100%（Swagger 47 端点已全注解）。
+
+**剩余**（用户确认跳过）：macOS 真机运行时验证、Linux XRecord 真桌面验证——均需真机人工执行。
+
+---
+
 ## 📅 2026-09-22 文档站构建验证与死链修复（架构盘点第七轮）
 
 第五轮改 VitePress sidebar 后未实际构建——本轮补上：`npm run docs:build` 成功（83.6s，仅 chunk 体积警告）；`ignoreDeadLinks: true` 会静默放过死链，故另写全量站内链接扫描（206 条链接，排除 node_modules/dist/锚点/外链）：发现 4 条真死链并修复——`guide/getting-started.md` 的架构决策链接多跳一级（`../../` → `../`）、`guides/database.md` 与 `guides/configuration.md` 引用不存在的 `api/storage.md`/`api/serialization.md`（与第五轮 docs/README 同款历史错误，改指 api/db.md、api/serialize.md）。复扫真死链 0。另将「测试」段两项实质完成（C++ runtime 保持水准、三条集成测试全 ✅）按事实勾选。剩余未勾项仅 macOS 真机验证与 Linux XRecord 真桌面验证两项，均需真机人工执行。
@@ -97,8 +112,8 @@
 | M1: 核心功能 | 基础屏幕捕获、输入模拟、Lua 脚本 | ✅ 完成 | 100% |
 | M2: 触发器系统 | 条件触发、自动化配置 | ✅ 完成 | 100% |
 | M3: 宏系统 | 录制回放 | ✅ 完成 | 100% |
-| M4: 远程编排 | Orchestrator 中控、Agent 通信、工作流引擎 | 🚧 收尾 | ~95% |
-| M5: GUI 界面 | 本地控制台 (Tauri) + 远程 Dashboard (React) | 🚧 收尾 | ~85% |
+| M4: 远程编排 | Orchestrator 中控、Agent 通信、工作流引擎 | ✅ 完成 | 100% |
+| M5: GUI 界面 | 本地控制台 (Tauri) + 远程 Dashboard (React) | ✅ 完成 | ~95%（macOS 真机验证为独立遗留项） |
 | M6: 人性化模拟 | 防检测、随机化 | ✅ 完成 | 100% |
 | M7: 调试器集成 | EmmyLua 调试支持 | ✅ 完成 | 100% |
 
@@ -430,7 +445,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 | | WebSocket | 90% | Hub + rooms + agent/workflow/debugger 事件广播 |
 | | Agent 监听 | 100% | FrameListener TCP 协议 + 心跳 + Team/Inbox 全链路（2026-09-14 修复投递/清理/建团三断链） |
 | | 工作流引擎 | 100% | DAG/环检测/持久化/取消/超时/重试/负载均衡/模板/独立步骤类型（wait/condition/screenshot） |
-| | 权限系统 | 95% | ✅ RBAC（模型+中间件+API+Dashboard 页面 + PermissionRequired 已接线 8 权限码）；可选：Swagger |
+| | 权限系统 | 100% | ✅ RBAC（模型+中间件+API+Dashboard 页面 + PermissionRequired 已接线 8 权限码）；Swagger 47 端点全注解（2026-09-09） |
 | | Debugger | 100% | `/api/debugger/info` 直连模式契约 |
 | | 测试 | 100% 覆盖 | 431 个测试函数；覆盖率 stmt/branch/func 均 100.0%（2026-09-14）；vet 全清、race 全绿 |
 | **Dashboard (React)** | 页面框架 | 95% | 9 页面（+Settings）+ 路由 + admin 子页 access 守卫全覆盖 |

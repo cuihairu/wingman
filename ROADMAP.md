@@ -321,11 +321,11 @@ class TriggerEngine {
 
 ---
 
-## Milestone 4: 远程编排 🚧
+## Milestone 4: 远程编排 ✅
 
 **目标**: runtime 作为 agent 主动连接 Go orchestrator，由 Go server 做远程中控编排
 
-**状态**: 收尾中 (2026-06-21) — 核心链路全部打通，RBAC/事件/Debugger/测试均已落地，详见 todo.md
+**状态**: 完成 (2026-09-22 校准) — 交付物全部落地；三层契约审计干净（server 下发 7 类命令 runtime 全支持；runtime 上行 trigger_fired/script_state/script_output 三类事件 server 全部转发，log.line 有意不转发防高频淹没上行；server 广播的 agent/workflow/script/screenshot 事件 Dashboard wsService 全部消费）；Go server 14 包测试 stmt/branch/func 100% 覆盖，三套 UI 基线全绿（Dashboard jest 235、GUI vitest 506、Rust cargo 14）
 
 **交付物**:
 - ✅ Runtime outbound client（`apps/runtime/src/remote_client.cpp`：心跳 30s + 重连 + 指数退避 + 注册 + 有界 outbox）
@@ -335,7 +335,7 @@ class TriggerEngine {
 - ✅ Team/投票/Inbox 多 agent 协同（`pkg/agent/team.go`）
 - ✅ JWT auth + bcrypt + 限流 + 审计日志
 - ✅ Dashboard 仅连接 Go server（`orchestrator/dashboard/` wsService），不直接连接 runtime
-- ✅ RBAC 权限系统（`internal/rbac/` + Role/Permission 模型 + `PermissionRequired` 中间件 + 用户/角色管理 API + Dashboard Admin 页面；⚠️ `PermissionRequired` 已实现未接线，见 todo.md「代码缺陷」）
+- ✅ RBAC 权限系统（`internal/rbac/` + Role/Permission 模型 + `PermissionRequired` 中间件 + 用户/角色管理 API + Dashboard Admin 页面；`PermissionRequired` 已接线 8 权限码，历史「已实现未接线」缺陷已修复）
 - ✅ Debugger 端点（`/api/debugger/info` 直连模式契约：返回各 agent host:9966 + launch.json，非中转）
 - ✅ Runtime IPC 事件推送（EventBuffer + `events.drain` pull 模型 + log/trigger/script/connection 事件 + 公平性优先丢 log.line + dropped 计数）
 - ✅ Go orchestrator 测试覆盖（75 个测试函数：rbac/workflow/handlers/agent/ws/middleware/debugger，`go test ./...` 全绿）
@@ -354,11 +354,11 @@ Runtime 不作为远程控制 server 被 Go server 反向拨入。
 
 ---
 
-## Milestone 5: GUI 界面 🚧
+## Milestone 5: GUI 界面 ✅
 
 **目标**: 类似 Chimpeeon 的可视化配置界面
 
-**状态**: 🟡 收尾中 (2026-09) — 核心交互全部落地
+**状态**: 完成 (2026-09-22 校准) — 本地 Tauri GUI 六页面 + 远程 Dashboard 九页面全部可用；GUI↔IPC↔Runtime 跨语言集成测试（Rust spawn 真 runtime 子进程）通过；macOS 真机运行时验证为独立遗留项（见 todo.md 跨平台验证）
 
 **已完成**:
 - ✅ Tauri 2.0 框架集成

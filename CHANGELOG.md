@@ -13,6 +13,7 @@
 
 ### 清理（2026-09-22）
 
+- **M4/M5 收尾校准**：三套 UI 测试基线全绿（Dashboard jest 235、GUI vitest 506、Rust cargo 14）；M4 三层契约审计无缺口（server 7 类下发命令 runtime 全支持、3 类上行事件全转发、9 类广播 Dashboard 全消费，log.line 有意不转发）；ROADMAP M4/M5 状态 🚧 → ✅，清理过时的 PermissionRequired「未接线」注记。
 - **文档站构建验证与死链修复**：`docs:build` 成功；`ignoreDeadLinks: true` 不拦死链，全量扫描 206 条站内链接发现并修复 4 条真死链（getting-started 架构决策链接层级错、guides 两篇引用不存在的 `api/storage.md`/`api/serialization.md`）。
 - **handlers 评估收口（⑤ 关闭）**：经实测评估不拆 Go 子包——46 文件一域一文件、测试全为黑盒 HTTP 测试（经路由层，零直接符号引用），拆包纯成本无收益；跨文件共享的辅助函数（`parsePositiveInt`、`actorName`、`isUniqueConstraint`）归位新建 `helpers.go`。
 - **文档去重与会话产物清理**：删除 15 个文件——根目录 `macOS_SESSION_SUMMARY`/`macOS_VERIFICATION_REPORT` 会话产物、`docs/superpowers/` 会话计划、`pending-changes`/`project-improvements`×2/`architecture-improvement-plan` 时令文档、重复的根级 `getting-started.md`（保留 `docs/guide/getting-started.md`）、`docs/installation.md` 与 `docs/setup.md`（收口至 [BUILD.md](BUILD.md)，独有故障排除已并入）、大全式 `user-guide.md`（内容由站点专篇覆盖）；`guides/` 下 configuration/database/triggers 三篇教程挂上文档站「进阶指南」导航；修复 docs/README 索引中 3 个死链（storage/serialization/debugging → kv/db、serialize/json/ini、debugger）。
