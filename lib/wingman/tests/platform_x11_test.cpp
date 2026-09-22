@@ -16,6 +16,8 @@
 #include "wingman/platform/iwindow.hpp"
 #include "wingman/clipboard.hpp"
 #include "wingman/window.hpp"
+#include "wingman/script/module_registry.hpp"
+#include "wingman/script/iscript_engine.hpp"
 #include "clipboard_lock_guard.hpp"
 #include "x11_test_lock.hpp"
 #include "wingman/screen.hpp"  // Bitmap 完整定义（icapture.hpp 仅前向声明）
@@ -443,6 +445,42 @@ TEST_F(X11PlatformTest, WindowEnumerateFindTitle) {
     EXPECT_EQ(wingman::Window::getForeground(), win.handle());
     // 已存在 → waitFor 立即真，不耗超时
     EXPECT_TRUE(wingman::Window::waitFor("Test Window", 500));
+}
+
+// node 模块 getWindows 胶水（misc_modules.cpp）的窗口枚举循环体：
+// 无 X 时 Window::enumerate() 返回空数组、循环体零覆盖；此处借 TestX11Window
+// 模拟 _NET_CLIENT_LIST 使胶水循环体真实执行（2026-09-22 覆盖率第六批）。
+TEST_F(X11PlatformTest, NodeGlueGetWindowsEnumeratesCreatedWindow) {
+    X11ServerLockGuard x11Lock;
+    TestX11Window win(50, 60, 180, 120, "Wingman Glue GetWindows");
+    ASSERT_TRUE(win.valid());
+
+    wingman::script::ModuleDescriptor mod;
+    for (auto& m : wingman::script::modules::getAllModules()) {
+        if (m.name == "node") { mod = m; break; }
+    }
+    ASSERT_EQ(mod.name, "node");
+    const wingman::script::ModuleDescriptor::FunctionEntry* fn = nullptr;
+    for (const auto& f : mod.functions) {
+        if (f.name == "getWindows") { fn = &f; break; }
+    }
+    ASSERT_NE(fn, nullptr);
+
+    const auto arr = (*fn)({});
+    ASSERT_TRUE(arr.isArray());
+    ASSERT_GE(arr.size(), 1u);
+    const wingman::script::ScriptValue* entry = nullptr;
+    for (const auto& v : arr.arrayVal) {
+        const auto* h = v.get("handle");
+        if (h && static_cast<uint64_t>(h->asInt()) == win.handle()) { entry = &v; break; }
+    }
+    ASSERT_NE(entry, nullptr) << "test window missing from getWindows()";
+    EXPECT_EQ(entry->get("title")->asString(), "Wingman Glue GetWindows");
+    EXPECT_EQ(entry->get("isForeground")->asBool(), false);
+    const auto* bounds = entry->get("bounds");
+    ASSERT_NE(bounds, nullptr);
+    EXPECT_EQ(bounds->get("x")->asInt(), 50);
+    EXPECT_EQ(bounds->get("width")->asInt(), 180);
 }
 
 TEST_F(X11PlatformTest, WindowBoundsMoveResize) {

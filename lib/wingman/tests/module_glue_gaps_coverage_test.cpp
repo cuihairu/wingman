@@ -47,27 +47,38 @@ ModuleDescriptor getModule(const std::string& name) {
 } // namespace
 
 // ========== filewatcher：stub 胶水参数校验分支 ==========
-// 实现为简化桩（不接 FileWatcher）。已知不可达分支（论证记录，不硬凑）：
-// watch 的成功返回行——ScriptValue 无公开 Callable 构造器（Callable 实例
-// 仅由脚本引擎在调用胶水时构造），args[1].isCallable() 恒 false，
-// 校验 if 恒命中 false 分支。其余函数无 callable 依赖，全覆盖。
+// 实现为简化桩（不接 FileWatcher）。第五批曾论证"ScriptValue 无公开 Callable
+// 构造器、watch 成功行不可达"——该论证有误：iscript_engine.hpp 提供
+// ScriptValue::fromCallable(CallableFunc, bool threadSafe=false)，测试可直接
+// 构造 callable（第六批修正）。watch/unwatch/unwatchAll/isWatching/getWatchedPaths
+// 全部可达行均已覆盖。
 
 TEST(FileWatcherModuleGlue, StubValidationBranches) {
     const auto mod = getModule("filewatcher");
     ASSERT_FALSE(mod.name.empty());
 
-    // watch：path 非 string（ callable 占位同样非 callable）→ false
+    // watch：path 非 string / callable 非 callable → false
     ScriptValue notCallable = ScriptValue::fromBool(true);
     EXPECT_EQ(call(mod, "watch", {ScriptValue::fromInt(1), notCallable}).asBool(), false);
     EXPECT_EQ(call(mod, "watch", {ScriptValue::fromString("/tmp/x"), notCallable}).asBool(), false);
 
+    // watch：合法参数（fromCallable 构造回调）→ 简化桩直接 true（成功返回行）
+    ScriptValue cb = ScriptValue::fromCallable(
+        [](const std::vector<ScriptValue>&) { return ScriptValue::null(); });
+    EXPECT_EQ(call(mod, "watch", {ScriptValue::fromString("/tmp/wg6_watch"), cb}).asBool(), true);
+    // 缺参防御（第六批修复的越界崩溃回归守卫：原实现 args[1] 裸下标）
+    EXPECT_EQ(call(mod, "watch", {ScriptValue::fromString("/tmp/wg6_watch")}).asBool(), false);
+    EXPECT_EQ(call(mod, "watch", {}).asBool(), false);
+
     EXPECT_EQ(call(mod, "unwatch", {ScriptValue::fromString("/tmp/x")}).asBool(), true);
     EXPECT_EQ(call(mod, "unwatch", {ScriptValue::fromInt(2)}).asBool(), false);
+    EXPECT_EQ(call(mod, "unwatch", {}).asBool(), false);
 
     EXPECT_TRUE(call(mod, "unwatchAll").isNull());
 
     EXPECT_EQ(call(mod, "isWatching", {ScriptValue::fromString("/tmp/x")}).asBool(), false);
     EXPECT_EQ(call(mod, "isWatching", {ScriptValue::fromInt(3)}).asBool(), false);
+    EXPECT_EQ(call(mod, "isWatching", {}).asBool(), false);
 
     const auto paths = call(mod, "getWatchedPaths");
     EXPECT_TRUE(paths.isArray());
@@ -118,12 +129,15 @@ TEST_F(ClipboardModuleGlue, HtmlImageAndFilesBehavior) {
     EXPECT_EQ(call(mod_, "setImage", {ScriptValue::fromString("ab"),
                                       ScriptValue::fromString("2"),
                                       ScriptValue::fromInt(2)}).asBool(), false);
-    // X11/xclip 后端无 image 写入能力（恒 false，在案行为）→ getImage 恒 null
-    EXPECT_EQ(call(mod_, "setImage", {ScriptValue::fromString("ab"),
-                                      ScriptValue::fromInt(2),
-                                      ScriptValue::fromInt(2)}).asBool(), false);
-    EXPECT_TRUE(call(mod_, "getImage").isNull());
-    EXPECT_EQ(call(mod_, "hasImage").asBool(), false);
+    // image 通道后端能力相关：X11/xclip 无 image 写入能力（恒 false）；Windows CF_DIB
+    // 后端可真实写入（"ab" 4 字节恰为 2×2 像素 BGRA 合法尺寸。第五批按 X11 行为写死
+    // 断言致 Windows CI 失败，第六批修正为平台无关自洽断言）。
+    // 接口自洽：写入成功 ↔ hasImage true ↔ getImage 非空；写入失败则三者反向一致。
+    const bool imageSet = call(mod_, "setImage", {ScriptValue::fromString("ab"),
+                                                  ScriptValue::fromInt(2),
+                                                  ScriptValue::fromInt(2)}).asBool();
+    EXPECT_EQ(imageSet, call(mod_, "hasImage").asBool());
+    EXPECT_EQ(imageSet, !call(mod_, "getImage").isNull());
 
     // setFiles 混合参数形态：字符串、数组内字符串、非字符串项忽略
     EXPECT_EQ(call(mod_, "setFiles", {

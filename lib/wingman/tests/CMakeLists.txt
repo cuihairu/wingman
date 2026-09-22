@@ -98,6 +98,10 @@ if(BUILD_CORE_TESTS)
     target_sources(core_tests PRIVATE script_module_glue_coverage_test.cpp)
     # filewatcher/clipboard/verification/ml/game_profile 胶水缺口补测
     target_sources(core_tests PRIVATE module_glue_gaps_coverage_test.cpp)
+    # smart_trigger 真实触发路径补测（恒真条件驱动 executeActions/maxTriggers/fast-exit）
+    target_sources(core_tests PRIVATE smart_trigger_triggerpath_coverage_test.cpp)
+    # misc uia/node/bt 缺口补测（Linux stub 查找路径、bt 状态映射 tick、node 心跳）
+    target_sources(core_tests PRIVATE misc_uia_node_coverage_test.cpp)
     if(TARGET wingman::lua)
         target_link_libraries(core_tests PRIVATE wingman::lua)
         message(STATUS "Core tests: linking wingman::lua for script execution tests")

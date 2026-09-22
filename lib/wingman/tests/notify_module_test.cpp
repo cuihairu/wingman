@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 
 #include "wingman/script/iscript_engine.hpp"
+#include "wingman/event.hpp"
+
+#include <atomic>
+#include <nlohmann/json.hpp>
 
 namespace wingman {
 namespace script {
@@ -492,4 +496,72 @@ TEST(NotifyModuleTest, ErrorWithNonStringArgReturnsNull) {
 
 	auto result = fn({ScriptValue::fromInt(500)});
 	EXPECT_TRUE(result.isNull());
+}
+
+// ========== bridge lambda 真驱动（2026-09-22 覆盖率第六批）==========
+// 此前 bridge 用例只断言注册返回 null，订阅回调从未被 emit 触发；
+// 此处经 EventHub 发源事件使 http:// 分支与 event:// 转发分支真实执行。
+
+TEST(NotifyModuleTest, BridgeForwardsToEventTargetOnEmit) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "bridge");
+	ASSERT_FALSE(fn.name.empty());
+
+	static std::atomic<int> seq{0};
+	const int id = seq++;
+	const std::string src = "bridge6.src." + std::to_string(id);
+	const std::string dst = "bridge6.dst." + std::to_string(id);
+
+	nlohmann::json received = nlohmann::json::object();
+	auto subId = wingman::EventHub::instance().subscribe(dst,
+		[&received](const wingman::EventMessage& msg) { received = msg.payload; });
+
+	auto result = fn({
+		ScriptValue::fromString(src),
+		ScriptValue::fromString("event://" + dst),
+		ScriptValue::fromObject({{"transform", ScriptValue::fromObject(
+			{{"marker", ScriptValue::fromString("bridge6")}})}})
+	});
+	EXPECT_TRUE(result.isNull());
+
+	nlohmann::json payload = {{"k", "v"}};
+	wingman::EventHub::instance().emit(src, payload, "test");
+
+	EXPECT_EQ(received.value("marker", ""), "bridge6");
+	ASSERT_TRUE(received.contains("original"));
+	EXPECT_EQ(received["original"].value("k", ""), "v");
+
+	wingman::EventHub::instance().unsubscribe(subId);
+}
+
+TEST(NotifyModuleTest, BridgeHttpTargetRoutesThroughWebhookSenderOnEmit) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "bridge");
+	ASSERT_FALSE(fn.name.empty());
+
+	static std::atomic<int> seq2{0};
+	const std::string src = "bridge6.http." + std::to_string(seq2++);
+
+	// 捕获 webhook 被拒后的 notify.webhook.blocked 事件（白名单默认空 → send 拒绝路径；
+	// 注意 bridge 直连 g_webhookSender.send 且 callback 为空，不经 NotifyManager 的
+	// notify.failed 转发——拒绝路径的对外信号只有 blocked 事件）
+	nlohmann::json blocked;
+	auto subId = wingman::EventHub::instance().subscribe("notify.webhook.blocked",
+		[&blocked](const wingman::EventMessage& msg) { blocked = msg.payload; });
+
+	auto result = fn({
+		ScriptValue::fromString(src),
+		ScriptValue::fromString("https://127.0.0.1:9/hook"),
+		ScriptValue::fromObject({{"transform", ScriptValue::fromObject(
+			{{"key", ScriptValue::fromString("val")}})}})
+	});
+	EXPECT_TRUE(result.isNull());
+
+	wingman::EventHub::instance().emit(src, {{"n", 1}}, "test");
+
+	// 同步拒绝路径：send 在锁内检查白名单即 emit blocked
+	EXPECT_EQ(blocked.value("url", ""), "https://127.0.0.1:9/hook");
+	EXPECT_EQ(blocked.value("reason", ""), "URL not in whitelist or webhooks disabled");
+
+	wingman::EventHub::instance().unsubscribe(subId);
 }

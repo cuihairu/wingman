@@ -163,6 +163,14 @@ TEST_F(ClipboardTest, HasFiles) {
 
     Clipboard::clear();
 
+    // x11 后端 selection 所有权转移异步生效：clear 后立即探测可能命中前一用例
+    // 残留的 FILE_LIST target（第六批全量实测偶发失败）。轮询等待而非定值睡眠。
+    bool clearedNoFiles = false;
+    for (int i = 0; i < 100 && !clearedNoFiles; ++i) {
+        clearedNoFiles = !Clipboard::hasFiles();
+        if (!clearedNoFiles) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
     EXPECT_FALSE(Clipboard::hasFiles());
 
     Clipboard::setFiles(files);
