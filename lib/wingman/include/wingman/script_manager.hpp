@@ -67,7 +67,10 @@ struct ScriptInfo {
 	uint64_t lastLoaded = 0;
 
 	// Language-agnostic script engine instance
-	std::unique_ptr<script::IScriptEngine> engine;
+	// shared_ptr：执行线程与 ScriptManager 共享持有——runScript 超时 detach
+	// 后线程继续跑完脚本，manager 侧必须能先释放引用（否则下次运行会与
+	// detached 线程并发复用同一引擎）
+	std::shared_ptr<script::IScriptEngine> engine;
 	std::string language;
 
 	// Script stored data
@@ -185,12 +188,9 @@ private:
 	std::unique_ptr<script::IScriptEngine> createEngineForLanguage(const std::string& language, const ScriptConfig& scriptConfig);
 
 	// Private helpers (caller must NOT hold m_mutex)
-	bool checkTimeLimit(const std::string& name);
 	uint64_t getFileModifiedTime(const std::string& path);
 	bool loadJsonConfig(const std::string& path);
 	bool loadIniConfig(const std::string& path);
-    void triggerEvent(const std::string& name, ScriptEvent event, const std::string& message = "");
-    void triggerEventUnlocked(const std::string& name, ScriptEvent event, const std::string& message = "");
 
 	// Internal implementations (caller must hold m_mutex)
 	bool stopScript_Locked(const std::string& name);

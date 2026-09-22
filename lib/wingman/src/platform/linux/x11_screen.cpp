@@ -176,8 +176,11 @@ public:
             for (int j = 0; j < screenResources->nmode; j++) {
                 if (screenResources->modes[j].id == modeId) {
                     auto& m = screenResources->modes[j];
-                    double rate = m.dotClock /
-                        static_cast<double>(m.hTotal * m.vTotal);
+                    // Xvfb/虚拟 GPU 的模式 dotClock 可为 0：0/0 → NaN →
+                    // (int)NaN 为 UB（实测得 INT_MIN 垃圾刷新率流向调用方）
+                    double rate = (m.dotClock > 0 && m.hTotal > 0 && m.vTotal > 0)
+                        ? m.dotClock / static_cast<double>(m.hTotal * m.vTotal)
+                        : 0.0;
                     modes.push_back(DisplayMode{
                         static_cast<int>(m.width),
                         static_cast<int>(m.height),

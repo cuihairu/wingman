@@ -322,15 +322,20 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 	// Note: true interruptibility requires engine-level cooperation (e.g., debug hooks)
 	// This implementation provides timeout detection and state cleanup, but the engine
 	// may continue running in the background until it naturally completes or fails.
-	std::atomic<bool> scriptDone{false};
-	std::atomic<bool> scriptSuccess{false};
+	// 超时路径会 detach 执行线程，因此所有跨 detach 生命周期的对象必须按值
+	// 捕获（此前按引用捕获局部栈对象，线程在主线程返回后写悬空引用，实测段
+	// 错误）；engine 以 shared_ptr 与线程共享，超时时 manager 侧释放——杜绝
+	// detach 后 unload/重跑与执行并发复用同一引擎。
+	auto engineToRun = infoPtr->engine;
+	auto scriptDone = std::make_shared<std::atomic<bool>>(false);
+	auto scriptSuccess = std::make_shared<std::atomic<bool>>(false);
+	const std::string scriptPath = infoPtr->config.path;
 	std::thread execThread;
 
 	// Launch execution in a detached thread
-	execThread = std::thread([&infoPtr, &scriptDone, &scriptSuccess]() {
-		bool result = infoPtr->engine->executeFile(infoPtr->config.path);
-		scriptSuccess.store(result);
-		scriptDone.store(true);
+	execThread = std::thread([engineToRun, scriptPath, scriptDone, scriptSuccess]() {
+		scriptSuccess->store(engineToRun->executeFile(scriptPath));
+		scriptDone->store(true);
 	});
 
 	// Get timeout from config
@@ -340,7 +345,7 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 	auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 	bool timedOut = false;
 
-	while (!scriptDone.load()) {
+	while (!scriptDone->load()) {
 		if (std::chrono::steady_clock::now() >= deadline) {
 			timedOut = true;
 			break;
@@ -358,7 +363,9 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 		if (execThread.joinable()) {
 			execThread.detach();
 		}
-		// Abandon the engine - a new one will be created on next run
+		// manager 侧释放引擎（线程侧 shared_ptr 保活，跑完自动销毁），
+		// 下次运行将创建新引擎
+		infoPtr->engine.reset();
 		return false;
 	}
 
@@ -368,7 +375,7 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 	}
 
 	// Check result
-	if (!scriptSuccess.load()) {
+	if (!scriptSuccess->load()) {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		infoPtr->state = ScriptState::error;
 		infoPtr->lastError = infoPtr->engine->getLastError();
@@ -770,24 +777,6 @@ void ScriptManager::stopHotReload() {
 
 // ========== Private Helpers ==========
 
-bool ScriptManager::checkTimeLimit(const std::string& name) {
-	auto it = m_scripts.find(name);
-	if (it == m_scripts.end()) {
-		return true;
-	}
-
-	uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
-		std::chrono::steady_clock::now().time_since_epoch()
-	).count();
-
-	if (it->second->config.timeoutMs > 0 &&
-		now - it->second->lastLoaded > static_cast<uint64_t>(it->second->config.timeoutMs)) {
-		return false;
-	}
-
-	return true;
-}
-
 uint64_t ScriptManager::getFileModifiedTime(const std::string& path) {
 #ifdef _WIN32
 	WIN32_FILE_ATTRIBUTE_DATA data;
@@ -866,23 +855,6 @@ bool ScriptManager::loadIniConfig(const std::string& path) {
 	}
 
 	return true;
-}
-
-void ScriptManager::triggerEvent(const std::string& name, ScriptEvent event, const std::string& message) {
-	ScriptEventCallback callback;
-	{
-		std::lock_guard<std::mutex> lock(m_mutex);
-		callback = m_eventCallback;
-	}
-	if (callback) {
-		callback(name, event, message);
-	}
-}
-
-void ScriptManager::triggerEventUnlocked(const std::string& name, ScriptEvent event, const std::string& message) {
-	if (m_eventCallback) {
-		m_eventCallback(name, event, message);
-	}
 }
 
 } // namespace wingman
