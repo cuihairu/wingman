@@ -59,9 +59,12 @@ if(BUILD_CORE_TESTS)
     # Unix domain socket 通道与 posix TriggerManager 分支补测仅在非 Windows 平台编译
     # （前者依赖 POSIX socket API；后者针对 posix_trigger.cpp 实现行为，用例含
     #   unistd.h/access——2026-09-22 Windows CI 编译失败后收进本 gate）
+    # transport/inbox 胶水补测同理（127.0.0.1 真实 socket 往返 + 端口探测用 POSIX API；
+    #   Windows 下两模块本就是 stub 胶水）
     if(NOT WIN32)
         target_sources(core_tests PRIVATE unix_socket_channel_test.cpp)
         target_sources(core_tests PRIVATE trigger_posix_coverage_test.cpp)
+        target_sources(core_tests PRIVATE transport_inbox_coverage_test.cpp)
     endif()
 
     # Linux X11 平台集成测试（X11 链接随 wingman PUBLIC 传递；无 X 运行时用例自行 skip）
@@ -77,8 +80,12 @@ if(BUILD_CORE_TESTS)
     target_sources(core_tests PRIVATE smart_trigger_test.cpp)
     # misc_modules（smarttrigger/bt/node/ocr 胶水）缺口补测
     target_sources(core_tests PRIVATE misc_modules_coverage_test.cpp)
+    # db_module（open/execute/query/table_*/query_* 胶水与句柄防护分支）补测
+    target_sources(core_tests PRIVATE db_module_glue_coverage_test.cpp)
     # crypto/clipboard/macro 胶水补测
     target_sources(core_tests PRIVATE small_modules_coverage_test.cpp)
+    # team_module（投票/广播/状态上报/事件订阅胶水分支）补测
+    target_sources(core_tests PRIVATE team_module_glue_coverage_test.cpp)
 
     target_include_directories(core_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include

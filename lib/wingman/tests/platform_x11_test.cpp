@@ -472,8 +472,18 @@ TEST_F(X11PlatformTest, X11WindowPlatformFeatures) {
     TestX11Window win(0, 0, 100, 80, "Wingman Platform Window");
     ASSERT_TRUE(win.valid());
 
-    // WM_CLASS（res_name / res_class 任一匹配）
-    EXPECT_EQ(window->findByClassName("wingman-test"), win.handle());
+    // WM_CLASS（res_name / res_class 任一匹配）。全量运行时前面的用例
+    // 使 X server 侧属性同步偶发滞后，findByClassName 的枚举快照可能
+    // 短暂看不到新窗口——轮询等待（至多 ~2s）
+    auto findByClass = [&window]() {
+        return window->findByClassName("wingman-test");
+    };
+    Window byClass = findByClass();
+    for (int i = 0; i < 40 && byClass != win.handle(); ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        byClass = findByClass();
+    }
+    EXPECT_EQ(byClass, win.handle());
     EXPECT_EQ(window->findByClassName("WingmanTest"), win.handle());
 
     // _NET_WM_PID
