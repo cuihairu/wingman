@@ -11,6 +11,23 @@
 
 自 v0.1.1 以来共 210 个提交（feat 48 / fix 88 / docs 28 / test 8 / ci 8 / refactor 2 / chore 12）。
 
+### fix（2026-09-22，超时脚本执行线程悬空引用 + Xvfb 刷新率 NaN）
+
+- **`ScriptManager::runScriptInternal` 超时 detach 后悬空引用 UAF**（`script_manager.cpp`）：执行线程按引用捕获局部栈对象（`infoPtr`/`scriptDone`/`scriptSuccess`），超时路径 detach 后主线程返回、栈帧销毁，线程仍在写这些悬空引用——补测超时用例实测段错误（exit 139）。修复：全部改为按值捕获（`shared_ptr<atomic>` + 路径拷贝）；`ScriptInfo::engine` 改 `shared_ptr` 由执行线程与 manager 共享持有——超时时 manager 侧 `engine.reset()`，detached 线程持引用跑完脚本后自动销毁，杜绝超时后 unload/重跑与旧引擎并发复用。
+- **Xvfb/虚拟 GPU 下 `getSupportedDisplayModes` 返回 `INT_MIN` 垃圾刷新率**（`x11_screen.cpp`）：模式 `dotClock` 可为 0，`0/0 → NaN → (int)NaN` 为 UB（实测得 `INT_MIN` 流向调用方）。修复：dotClock/hTotal/vTotal 任一非正时刷新率取 0，不再做除法。
+- **死代码清理**（`script_manager.cpp/.hpp`）：删除 `checkTimeLimit`/`triggerEvent`/`triggerEventUnlocked`——全库 grep 零调用方（事件分发实际走 `setEventCallback` 存储的回调直调）。
+
+### test（2026-09-22，前端覆盖率收口：GUI vitest 行/语句/函数 100%，Dashboard 99.71%）
+
+- **GUI vitest（67 文件 511 用例全绿）：语句 100%（3830/3830）、函数 100%（719/719）、行 100%（2403/2403），分支 99.37%（1420/1429）**。本批新增 7 用例：ScreenPickerModal footer 两用例（取消按钮回调 `onclose` 且不触发 `onconfirm`；「重新截图」按钮 refresh 全链——重置选择态→重新捕获→就绪恢复）；scripts 页 previewLoading 占位（pending Promise 锁定「正在读取文件…」渲染分支）；scripts 页脚本名空回退用例编写中发现 `scripts` store 归一化（`name = String(input?.name || input?.path || '')`）已在 store 层保证 name 非空且该归一化已有专测——页面层 `script.name || fileName(script.path)` 回退分支不可达，用例删除改为论证记录；screen 页 monitor.name 空回退（`显示器 N` 兜底 + 主标记）；settings 页读取远程配置的 runtime 错误分支（invoke 抛错 → `读取失败: Error: …` 面板——字符串拼接 Error 对象产生双重前缀，与字符串错误路径不同）。
+- **Dashboard jest（20 套件 236 用例全绿）：行覆盖 99.71%**。新增 fetchJSON 存储异常降级用例（`localStorage.getItem` 抛异常时请求照常发出且不带 `Authorization` 头）。
+- 剩余 9 个未覆盖分支逐条论证（不硬凑）：triggers 页 5 个为 Svelte 编译器为 `{#each}`/`{:else if}` 链生成的空迭代与不可达组合分支（语义上无法与已覆盖路径区分）；scripts 页 640 行为 `previewLoading` 与 `previewError` 的编译器全组合分支——状态机前置清空（进入 loading 前置 `previewError = ''`）保证二者不同时为真；scripts 页 709 行见上（store 归一化保证 name 非空）；settings 页 401 行为 Svelte 事件处理编译产物防御分支（DOM `Event.target` 规范恒非空）；screen 页 461 行为监视器列表为空的 each 分支（真实设备恒有 ≥1 显示器）。Dashboard 唯一未覆盖行 `services/core/http.ts:21` 为 ts-jest sourcemap 映射伪影——该行 `localStorage.getItem('token')` 实际执行已由请求头断言证明。
+
+### test（2026-09-22，C++ 第三批补测：x11 平台/进程/HTTP/录制器/脚本执行）
+
+- **新增 33 用例，行覆盖 81.2% → 85.4%（13092 行）**（v8 终版基线，全量 1892 用例）。① x11 平台补测 7 用例（`platform_x11_test.cpp`）：screen 显示器信息全扫描（越界索引回退/DPI/坐标映射往返/displayModes/虚拟屏 bounds/monitorFromPoint·Window）、input 全扫描（鼠标五键 down/up/pressed、69 键 keysym 映射与组合键、textInput、配置与后端元数据）；② x11 截图补测 4 用例：真窗口内容指纹截图（绘制白块后逐像素验证）、无效/已销毁句柄安全 nullptr（宽容 error handler 吞 BadWindow）、窗口区域截图与越界失败分支、capture 侧显示器元数据与空区域回退全链；③ clipboard 全接口面 1 用例：图像 stub 通道、文件列表换行拼接走文本通道回读拆行、格式枚举、clear 清空（xclip 空输入 = 清空 selection，实测验证）；④ posix_process 全链路 6 用例（`posix_process_coverage_test.cpp`）：真实 fork/exec 生命周期（comm 轮询等待 exec 完成）、SIGTERM/SIGKILL 终止与超时分支、非法 pid 防御（waitpid ECHILD/kill ESRCH）、exec 失败立即退出、`/proc` 全量 enumerate 与 findAll/find、waitFor/waitExit 名字轮询；⑤ HTTP 本地真 server 3 用例（此前全部只打连接拒绝，成功路径零覆盖）：手写 POSIX 最小 HTTP server（随机端口、shutdown 唤醒 accept）——GET 往返含响应头解析（HeaderCallback 的 CRLF 剥离/冒号切分）、POST/PUT/DELETE 方法分支与 body 真实送达、postForm 表单编码与默认请求头下发；⑥ MacroRecorder 离线状态机 6 用例（`recorder_offline_test.cpp`，recordEvent 手动注入不依赖 XRecord）：连续 MouseMove 去重、saveToLua 六事件类型全分支、saveToJSON/loadFromJSON 往返保真与错误三分支（文件不存在/非法 JSON/缺 events 数组）、pause/resume、playback 经 XTest 真实注入并回读终点坐标、Xvfb 下 start 失败优雅回退（真桌面自动转 skip 由 e2e 用例覆盖）；⑦ script_manager 真实执行路径 6 用例（`script_manager_exec_coverage_test.cpp`，链接 wingman::lua 显式注册引擎）：加载/执行/输出路由/env 注入/语法错误捕获/超时标记（有限循环防永久忙等——本用例即 UAF 缺陷复现器）/事件回调/reload 重跑。
+- 结构性不可覆盖分支（不硬凑，论证记录）：x11_clipboard 的 fork 子进程行（execvp 成功替换映像 / `_exit` 退出均不触发 gcov flush）与 pipe/fork 失败分支（测试进程无法注入系统调用失败）；http 的 HEAD 分支（`perform` 私有、公共接口无 HEAD 入口）；posix_process 的 fork 失败分支（同前）；X11Capture/X11Screen 的 `!initialized_` 分支（类私有于 .cpp，工厂 new 后立即 initialize）；`ClipboardTest.Clear` 在极高系统负载（load>25）下偶发失败——xclip selection 接管异步窗口被拉长，低负载复测 5/5 通过，列为环境型在案 flaky。
+
 ### fix（2026-09-22，传输/胶水层三处补测中复现的真实缺陷）
 
 - **`TcpServer::start()` 在 `listen()` 前调用时 server 永不接受连接**（`transport_server.hpp`）：`start()` 启动 IO 线程跑 `ioContext_.run()`，此刻无任何异步工作，`run()` 立即返回、IO 线程空转退出；而 `async_accept` 是之后的 `listen()` 里才注册的——已无人执行。胶水层 `tcpListen` 的固定顺序恰为 start→listen，故 server 从不 accept 会话（sessions 恒空）。修复：`executor_work_guard` 保活（start 重建 / stop 释放），start/listen 顺序无关；此版 asio 的 guard 不可赋值，以 `std::optional` 持有。
