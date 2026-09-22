@@ -12,7 +12,7 @@ ModuleDescriptor createFileWatcherModule() {
 
 	// watch(path, callback) -> boolean
 	mod.functions.push_back({"watch", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		if (!args[0].isString() || !args[1].isCallable()) {
+		if (args.size() < 2 || !args[0].isString() || !args[1].isCallable()) {
 			return ScriptValue::fromBool(false);
 		}
 		const std::string path = args[0].asString();
@@ -25,7 +25,7 @@ ModuleDescriptor createFileWatcherModule() {
 
 	// unwatch(path) -> boolean
 	mod.functions.push_back({"unwatch", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		if (!args[0].isString()) {
+		if (args.size() < 1 || !args[0].isString()) {
 			return ScriptValue::fromBool(false);
 		}
 		const std::string path = args[0].asString();
@@ -41,7 +41,7 @@ ModuleDescriptor createFileWatcherModule() {
 
 	// isWatching(path) -> boolean
 	mod.functions.push_back({"isWatching", [](const std::vector<ScriptValue>& args) -> ScriptValue {
-		if (!args[0].isString()) {
+		if (args.size() < 1 || !args[0].isString()) {
 			return ScriptValue::fromBool(false);
 		}
 		const std::string path = args[0].asString();
