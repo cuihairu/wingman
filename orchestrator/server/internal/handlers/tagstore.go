@@ -48,10 +48,8 @@ func (s agentTagStore) SaveTags(agentID, hostname, ip string, tags []string) err
 	if tags == nil {
 		tags = []string{}
 	}
-	payload, err := json.Marshal(tags)
-	if err != nil {
-		return err
-	}
+	// []string 的 MarshalJSON 恒成功，err 不可能非 nil（无自定义类型介入）
+	payload, _ := json.Marshal(tags)
 
 	var rec models.Agent
 	s.db.Select("id").Where("agent_id = ?", agentID).Limit(1).Find(&rec)

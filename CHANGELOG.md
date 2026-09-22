@@ -11,6 +11,11 @@
 
 自 v0.1.1 以来共 210 个提交（feat 48 / fix 88 / docs 28 / test 8 / ci 8 / refactor 2 / chore 12）。
 
+### test（2026-09-22，Go 覆盖率 100% 收口 + C++ 覆盖率基线）
+
+- **Go 侧 statements 100.0%**（全 internal 包 + 根包，`go test -coverprofile`）。第五轮补测收尾：batch stop/trigger 校验失败与离线/传输错误分支、`commandErrorText` 五分支优先级（err > error 字段 > message 字段 > 兜底）、`runBatch` 空目标短路、脚本 ReadInline 缺文件 500 与超限 400、`RegisterRoutes` 以真实依赖完整装配并断言 23 条域路由（补 routes.go 装配路径 0% 缺口）、tagstore nil-db 分支。两处不可达防御分支不做无效测试、以行为等价重构收口：`listener.go` tokenValid 的空白名单分支（唯一调用点已被 `authEnabled()` 守卫）、`tagstore.go` SaveTags 的 marshal 死分支（`[]string` 的 MarshalJSON 恒成功）。
+- **C++ 行覆盖率基线确立：71.5%（13101 行）/ 分支 79.4%**。口径修正先行：仅 `CODE_COVERAGE` 选项只给 core_tests 插桩（库对象无 gcda），数字虚高无意义；正确口径为全局 `CMAKE_CXX_FLAGS="--coverage -O0"` + lcov extract `lib/wingman/*`（跨目录通配）+ remove `*/tests/*`，固化为 `scripts/cxx-coverage-baseline.sh`。缺口大头：脚本模块 sol2 胶水层（db 881 / misc 430 / inbox 315 / transport 308 行）与 Linux X11 平台实现，补测清单见 [development-todo](docs/development-todo.md)。
+
 ### test（2026-09-22，真机验证自动化）
 
 - **XRecord 正向录制端到端用例**：新增 `RecorderX11E2E.*`（仅 Linux 编译）——XTest 注入按键（优先 F13、键码缺失回退 'a'）→ 轮询捕获计数 → `saveToJSON` 内容精确断言（`"type": 5` 即 KeyDown、`"keyCode": <注入键码>` 带字段名匹配防 timestamp 误命中）。Xvfb 下 EnableContext 必然失败（XRecordBadContext），用例自动 GTEST_SKIP；无 DISPLAY 与 Xvfb 双场景实测 skip 正确、不误报失败，防无头环境放绿。

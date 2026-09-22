@@ -488,6 +488,11 @@
 - [ ] 性能基准测试
 - [ ] 用户反馈收集
 
+### 测试覆盖率（2026-09-22 启动，目标 100%）
+- [x] Go 侧 100%（`go test -coverprofile` 全 internal+根包 statements 100.0%；五轮补测：batch/stop/trigger 校验与失败分支、commandErrorText 优先级链、ReadInline 400/500、routes.go 装配全量断言、tagstore nil-db；两处不可达防御分支以行为等价重构收口——listener.go 空白名单 tokenValid、tagstore.go marshal 恒成功）
+- [x] C++ 基线采集口径确立：`scripts/cxx-coverage-baseline.sh`（全局 `--coverage -O0` 插桩 + lcov extract `lib/wingman/*` + remove `*/tests/*`；仅 CODE_COVERAGE 选项只插桩测试自身，数字虚高不可用）
+- [ ] C++ 生产代码补测（当前基线 **71.5% 行 / 79.4% 分支**，13101 行）。缺口大头：脚本模块 sol2 胶水层（db 881/inbox 315/transport 308/misc 430 行，需经 Lua 调用触达）、Linux X11 平台实现（screen/recorder/capture/xtest_input，需 DISPLAY/Xvfb）、smart_trigger 195 行
+
 ---
 
 ## 下一步计划

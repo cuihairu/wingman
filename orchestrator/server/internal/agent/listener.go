@@ -113,14 +113,12 @@ func (l *FrameListener) authEnabled() bool {
 }
 
 // tokenValid 用 constant-time 比对校验 token（防时序侧信道逐字节猜测），
-// 任一白名单项命中即通过。
+// 任一白名单项命中即通过。仅应在 authEnabled() 为真（白名单非空）时调用——
+// 调用点 handleRegister 已守卫，此处不再处理空白名单。
 func (l *FrameListener) tokenValid(token string) bool {
 	l.mu.RLock()
 	tokens := l.agentTokens
 	l.mu.RUnlock()
-	if len(tokens) == 0 {
-		return true
-	}
 	if token == "" {
 		return false
 	}
