@@ -11,6 +11,18 @@
 
 自 v0.1.1 以来共 354 个提交（feat 64 / fix 129 / docs 59 / test 37 / ci 17 / refactor 8 / chore 16）。
 
+### fix（2026-09-23，db_module 句柄注册表双泄漏 + 裸指针 UAF 防护缺失 + 死代码清理）
+
+- **g_queries/g_tables 注册表只增不删**（`db_module.cpp`）：`db.table()`/`db.table_where()` 每次调用 `storeTable`/`storeQuery` 新增注册项且全库无任何删除路径——脚本循环中反复建表查询，`shared_ptr` 永不释放（第八批补测 8 轮 create-close 循环用例实测暴露）。修复：新增 `table_close`/`query_close` 胶水函数显式释放，close 后旧句柄经注册表校验被拒绝，不会悬空。
+- **extractTable 裸 `reinterpret_cast` 无注册表校验**（同文件）：`extractConnection`/`extractQuery` 均验证句柄在注册表中命中才返回裸指针，唯 `extractTable` 把整型句柄直接 cast 成指针——句柄伪造或 close 后复用即 use-after-free（此前被泄漏掩盖：对象永不销毁故 UAF 不触发）。修复：对齐三处统一的注册表校验模式。
+- **死代码删除 88 行**（`db_module.cpp`/`db_connection.hpp`）：Stmt 移动构造/赋值（`prepare()` 返回纯右值，C++17 强制省略拷贝保证移动构造不可达）、executeUnlocked/queryUnlocked/scalarUnlocked 三件套（事务回调内直接用加锁版——`m_mutex` 为 recursive_mutex 可重入不死锁，三函数全库零调用方）、closeAllConnections（零调用方）。
+
+### test（2026-09-23，C++ 第八批补测：db/ini/tcp_channel 三模块深度收口）
+
+- **新增 48 用例，行覆盖 88.4% → 89.9%（13090 行，miss 1515 → 1324），函数 94.1% → 94.4%**（v12 基线，全量 1981 用例：1941 PASSED + 40 环境性 skip；总行数 -15 系死代码删除 88 行与新增 close 胶水的净效果）。目标文件：**db_module 81.97% → 94.81%**（867 行）、**ini_module 83.96% → 95.15%**（268 行）、**tcp_channel 77.19% → 95.06%**（263 行）。
+- ① db_module 深度补测 23 用例（`db_deep_coverage_test.cpp`）：目录路径陷阱触发 open CANTOPEN（POSIX open 目录返回 EISDIR）、closed 连接全操作拒绝、坏 SQL 全入口、嵌套事务防御（内层回调不执行）、maxRows 截断、表/字段/类型注入防护矩阵、query builder 非法操作符与排序方向、伪造句柄七函数拒绝（connection/table/query 三注册表校验）、table_close/query_close 生命周期与旧句柄失效、8 轮 create-close 循环无泄漏。② ini 分支补测 13 用例（`ini_branch_coverage_test.cpp`）：畸形行/畸形 section 容错跳过、非法转义保留反斜杠、非法 key/section 名警告降级、`\n \r \t \\` 转义矩阵编码解码往返、get/set/delete/has_*/sections/keys 全防御分支与副本语义、merge 类型覆盖分支。③ tcp_channel 真实 socket 错误路径 12 用例（`tcp_channel_e2e_coverage_test.cpp`，POSIX gate）：server 非法地址/端口占用/accept 阻塞中断解除、client 非法主机回退后重试耗尽（实测 ≥5s）、原始帧攻击注入（0 长度帧/超长 11MB 声明/合法长度头后对端消失——SO_LINGER 0 触发 RST）、坏 JSON 后连接存活、缺字段消息全默认值、payload 字符串/对象二态、空 payload 序列化为空对象、对端 RST 后 send 失败转 Error（SIGPIPE 屏蔽）。
+- **不可覆盖论证（不硬凑）**：db 剩余 45 行全为 sqlite3 内部失败防御（bind/begin/commit 失败需磁盘满或库损坏级注入）与 getScriptDataDir 环境回退；tcp_channel 剩余 13 行为 socket()/listen() 资源耗尽防御与 send 长度头首发失败（需内核发送缓冲满时序）；ini 剩余 13 行为逻辑不可达防御（刚插入的 section 必然 find 命中）与函数签名常量多行表达式 gcov 伪影（470-488，v11 既有现象）。
+
 ### fix（2026-09-23，inbox 下行链两处真实缺陷：timestamp 恒 0 与整型 payload 语义丢失）
 
 - **下行消息 timestamp 恒 0**（`inbox_module.cpp`）：`data.value("timestamp", uint64_t(0))`——nlohmann `value()` 严格匹配数值类型，JSON 整数字面量存为 signed int64，与 `uint64_t` 默认值类型不合时**静默回落默认值**，服务端下发的整数时间戳全部丢失为 0（第七批补测用例实测暴露：断言 `timestamp==1234` 得 0）。修复：`contains()` + `is_number()` + `get<int64_t>()` 中转。
