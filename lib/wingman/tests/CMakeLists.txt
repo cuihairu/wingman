@@ -65,6 +65,8 @@ if(BUILD_CORE_TESTS)
         target_sources(core_tests PRIVATE unix_socket_channel_test.cpp)
         target_sources(core_tests PRIVATE trigger_posix_coverage_test.cpp)
         target_sources(core_tests PRIVATE transport_inbox_coverage_test.cpp)
+        # inbox 下行链（server→client 推送驱动 handleMessage/consume 全链，同上 POSIX gate）
+        target_sources(core_tests PRIVATE inbox_downlink_coverage_test.cpp)
         # posix_process 全链路（fork/exec + /proc 遍历 + 信号终止；仅 POSIX 实现）
         target_sources(core_tests PRIVATE posix_process_coverage_test.cpp)
     endif()
