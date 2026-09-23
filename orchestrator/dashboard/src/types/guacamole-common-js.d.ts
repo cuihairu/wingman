@@ -1,8 +1,34 @@
 /**
  * guacamole-common-js 的最小类型声明（社区包未带完整 d.ts，
  * 只声明本工程用到的隧道/客户端/输入面）。
+ *
+ * 包的真实形状是 UMD：全部构造器挂在 default 导出对象上
+ * （webpack 生产构建实测 "possible exports: default"——具名 ESM
+ * 导入在转译层过不掉）。因此运行时代码必须
+ * `import Guacamole from 'guacamole-common-js'`；具名导出仅供
+ * `import type` 类型引用（转译后擦除，不触碰运行时形状）。
  */
 declare module 'guacamole-common-js' {
+  export interface GuacamoleMouseState {
+    x: number;
+    y: number;
+    left: boolean;
+    middle: boolean;
+    right: boolean;
+    up: boolean;
+    down: boolean;
+  }
+
+  export interface GuacamoleDisplay {
+    getElement(): HTMLElement;
+    getWidth(): number;
+    getHeight(): number;
+    scale: number;
+    showCursor(show: boolean): void;
+    onUpdate?: (dirty: boolean) => void;
+    onresize?: (width: number, height: number) => void;
+  }
+
   export class WebSocketTunnel {
     constructor(url: string);
     uuid: string;
@@ -12,16 +38,6 @@ declare module 'guacamole-common-js' {
     onerror?: (status: unknown) => void;
     connect(): void;
     disconnect(): void;
-  }
-
-  export interface GuacamoleMouseState {
-    x: number;
-    y: number;
-    left: boolean;
-    middle: boolean;
-    right: boolean;
-    up: boolean;
-    down: boolean;
   }
 
   export class Mouse {
@@ -44,16 +60,6 @@ declare module 'guacamole-common-js' {
     onmouseup?: (state: { x: number; y: number }) => void;
   }
 
-  export interface GuacamoleDisplay {
-    getElement(): HTMLElement;
-    getWidth(): number;
-    getHeight(): number;
-    scale: number;
-    showCursor(show: boolean): void;
-    onUpdate?: (dirty: boolean) => void;
-    onresize?: (width: number, height: number) => void;
-  }
-
   export class Client {
     constructor(tunnel: WebSocketTunnel);
     getDisplay(): GuacamoleDisplay;
@@ -65,4 +71,13 @@ declare module 'guacamole-common-js' {
     onerror?: (status: unknown) => void;
     onstatechange?: (state: number) => void;
   }
+
+  const Guacamole: {
+    WebSocketTunnel: typeof WebSocketTunnel;
+    Mouse: typeof Mouse;
+    Keyboard: typeof Keyboard;
+    Touchscreen: typeof Touchscreen;
+    Client: typeof Client;
+  };
+  export default Guacamole;
 }

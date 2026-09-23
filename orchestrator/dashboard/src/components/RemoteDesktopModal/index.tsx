@@ -6,7 +6,10 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Spin, Typography } from 'antd';
-import { Client, Keyboard, Mouse, WebSocketTunnel } from 'guacamole-common-js';
+// UMD 包：构造器全在 default 导出上（具名导入 webpack 生产构建解析失败）；
+// 类型经 import type 引用，转译后擦除、不触碰运行时形状。
+import Guacamole from 'guacamole-common-js';
+import type { Client, Keyboard } from 'guacamole-common-js';
 import { createRemoteTicket, guacamoleWSPath, type RemoteProtocol } from '@/services/remote';
 
 const { Text } = Typography;
@@ -76,8 +79,8 @@ export default function RemoteDesktopModal({
           return;
         }
 
-        const tunnel = new WebSocketTunnel(guacamoleWSPath(ticket));
-        client = new Client(tunnel);
+        const tunnel = new Guacamole.WebSocketTunnel(guacamoleWSPath(ticket));
+        client = new Guacamole.Client(tunnel);
         clientRef.current = client;
         client.onerror = () => {
           if (!cancelled) {
@@ -106,11 +109,11 @@ export default function RemoteDesktopModal({
 
         // 键鼠注入：监看模式不挂输入事件
         if (!readOnly) {
-          const mouse = new Mouse(display.getElement());
+          const mouse = new Guacamole.Mouse(display.getElement());
           mouse.onmousedown = mouse.onmouseup = mouse.onmousemove = (state) => {
             client?.sendMouseState(state);
           };
-          keyboard = new Keyboard(document);
+          keyboard = new Guacamole.Keyboard(document);
           keyboard.onkeydown = (keysym) => client?.sendKeyEvent(1, keysym);
           keyboard.onkeyup = (keysym) => client?.sendKeyEvent(0, keysym);
         }

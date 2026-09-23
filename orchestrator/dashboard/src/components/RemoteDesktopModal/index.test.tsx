@@ -25,7 +25,7 @@ jest.mock('guacamole-common-js', () => {
     scale: 1,
     showCursor: jest.fn(),
   });
-  return {
+  const mocks = {
     WebSocketTunnel: jest.fn().mockImplementation((url: string) => ({ url })),
     Client: jest.fn().mockImplementation(() => ({
       getDisplay: mockDisplay,
@@ -39,6 +39,9 @@ jest.mock('guacamole-common-js', () => {
     Keyboard: jest.fn().mockImplementation(() => ({})),
     Touchscreen: jest.fn().mockImplementation(() => ({})),
   };
+  // 真实包是 UMD（构造器挂 default）；组件走 default，测试断言用具名——
+  // 同一引用两条导出路径都通。
+  return { __esModule: true, default: mocks, ...mocks };
 });
 
 const mockedCreate = createRemoteTicket as jest.MockedFunction<typeof createRemoteTicket>;
