@@ -9,7 +9,19 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 215 个提交（feat 48 / fix 90 / docs 30 / test 9 / ci 8 / refactor 2 / chore 12）。
+自 v0.1.1 以来共 354 个提交（feat 64 / fix 129 / docs 59 / test 37 / ci 17 / refactor 8 / chore 16）。
+
+### fix（2026-09-23，inbox 下行链两处真实缺陷：timestamp 恒 0 与整型 payload 语义丢失）
+
+- **下行消息 timestamp 恒 0**（`inbox_module.cpp`）：`data.value("timestamp", uint64_t(0))`——nlohmann `value()` 严格匹配数值类型，JSON 整数字面量存为 signed int64，与 `uint64_t` 默认值类型不合时**静默回落默认值**，服务端下发的整数时间戳全部丢失为 0（第七批补测用例实测暴露：断言 `timestamp==1234` 得 0）。修复：`contains()` + `is_number()` + `get<int64_t>()` 中转。
+- **整型 payload 经 consume 后 `asInt()` 恒 0**（同文件）：胶水层 payload 转换缺 `is_number_integer` 分支，正整数走 `fromFloat`——而 `ScriptValue::asInt()` 对 `Type::Float` **恒返回默认值 0**（无转换，见 `iscript_engine.hpp` 数值语义），脚本侧拿到的整数语义尽失。修复：补 `is_number_integer` 分支走 `fromInt` 保真。
+
+### test（2026-09-23，C++ 第七批补测：inbox 下行链全驱动 + crypt KDF 失败分支）
+
+- **新增 4 用例，行覆盖 87.9% → 88.4%（13105 行），函数 93.8% → 94.1%**（v11 基线，全量 1933 用例：1893 PASSED + 40 环境性 skip）。目标文件：**inbox_module 72.1% → 95.0%**（35 函数 100%）、**crypt 70.5% → 72.0%**。
+- ① inbox 下行链 2 用例（`inbox_downlink_coverage_test.cpp`，此前仅上行生命周期覆盖，server→client 方向为零覆盖）：transport 胶水 `tcpListen` 起 server、`tcpSendTo` 向已注册 session 推 JSON 帧驱动 client IO 线程，端到端触达——`handleMessage` 三类型分发（register_ack/heartbeat_ack/未知 type）+ 坏 JSON 异常分支；`handleInboxMessage` 入队/pending 上限拒绝（maxPending=1，push 后 sleep 300ms 定格——loopback 往返 <5ms，两个数量级冗余窗口，避免与随后的 report 竞态）/空 msgId 防御丢弃；consume 出队与 payload 五类型转换（object 的 kv 值为 dump 字符串/string/integer/bool/array）；ack 标记 pending + report 释放恢复接收；connect 二次调用复用同 handle（clientId 遍历命中 + "Already connected" 短路）。② crypt KDF 失败分支 1 用例：`deriveKey(pw, salt, iter=0)` 使 PBKDF2 的 `EVP_KDF_derive` 返回 ≤0，触达错误清理分支（ctx/kdf 释放 + 空串）——该文件其余 miss 全为 RAND 失败/EVP ctx OOM/合法输入下中途失败等 OpenSSL 内部防御，不可确定性触发，本用例是唯一可稳定触达的错误分支。
+- **不可覆盖论证（不硬凑）**：inbox `setMessageCallback` 与回调调用点无胶水入口（脚本域不暴露回调注册）；`sendRegister` 失败回滚（connect 中 disconnect+复位）需 TCP 握手成功后首包 send 失败——RST 时序竞态不可控。
+- **环境事故记录**：首测因宿主机重启后 Xvfb `:98` 未恢复，44 个 X11/剪贴板/Recorder 用例被环境性 skip（40→84），覆盖率假低至 82.9%；恢复 Xvfb 后同口径全量重测，以 88.4% 为准。教训：**覆盖率基线采集前必须先验证 X 环境存活**（PASSED 计数与上批基线差 >5 即应怀疑环境）。
 
 ### fix（2026-09-23，ctype 函数收负值致 MSVC Debug 断言对话框挂死 Windows CI）
 
