@@ -257,7 +257,13 @@ private:
 		std::string msgId = data.value("msgId", "");
 		std::string messageType = data.value("messageType", "");
 		auto payload = data.value("payload", nlohmann::json::object());
-		uint64_t timestamp = data.value("timestamp", uint64_t(0));
+		// nlohmann value() 严格匹配数值类型：JSON 整数字面量是 signed int64，与
+		// uint64_t 默认值类型不合会静默回落 0（服务端整数时间戳全部丢失），故经
+		// int64 中转
+		uint64_t timestamp = 0;
+		if (data.contains("timestamp") && data["timestamp"].is_number()) {
+			timestamp = static_cast<uint64_t>(data["timestamp"].get<int64_t>());
+		}
 
 		if (msgId.empty()) {
 			spdlog::warn("[Inbox] Received message without msgId");
@@ -473,6 +479,10 @@ ModuleDescriptor createInboxModule() {
 			payload = ScriptValue::null();
 		} else if (msg.payload.is_boolean()) {
 			payload = ScriptValue::fromBool(msg.payload.get<bool>());
+		} else if (msg.payload.is_number_integer()) {
+			// JSON 整数字面量（nlohmann 正整数存 unsigned）保真为 Int：
+			// ScriptValue::asInt 对 Float 恒返回默认 0，fromFloat 会让整数语义丢失
+			payload = ScriptValue::fromInt(static_cast<int64_t>(msg.payload.get<uint64_t>()));
 		} else if (msg.payload.is_number()) {
 			payload = ScriptValue::fromFloat(msg.payload.get<double>());
 		} else if (msg.payload.is_string()) {
