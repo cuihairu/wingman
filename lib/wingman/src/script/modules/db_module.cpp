@@ -208,20 +208,8 @@ DbConnection::Stmt::~Stmt() {
 	}
 }
 
-DbConnection::Stmt::Stmt(Stmt&& other) noexcept : m_stmt(other.m_stmt) {
-	other.m_stmt = nullptr;
-}
-
-DbConnection::Stmt& DbConnection::Stmt::operator=(Stmt&& other) noexcept {
-	if (this != &other) {
-		if (m_stmt) {
-			sqlite3_finalize(m_stmt);
-		}
-		m_stmt = other.m_stmt;
-		other.m_stmt = nullptr;
-	}
-	return *this;
-}
+// Stmt 不提供移动语义（声明处已说明）：prepare() 以纯右值返回，
+// C++17 强制省略拷贝保证不调用移动构造，故此处无移动操作定义。
 
 DbConnection::Stmt DbConnection::prepare(const std::string& sql) {
 	if (!m_db) {
@@ -407,73 +395,9 @@ int DbConnection::changes() const {
 	return 0;
 }
 
-// 内部解锁版本的 execute（用于事务回调内）
-bool DbConnection::executeUnlocked(const std::string& sql, const Params& params) {
-	// 不加锁 - 调用者必须已持有锁
-	if (!m_db) {
-		return false;
-	}
-
-	auto stmt = prepare(sql);
-	if (!stmt) {
-		return false;
-	}
-
-	if (!bindParams(stmt, params)) {
-		return false;
-	}
-
-	int rc = sqlite3_step(stmt.get());
-	if (rc != SQLITE_DONE) {
-		spdlog::error("Failed to execute SQL: {}", sqlite3_errmsg(m_db));
-		return false;
-	}
-
-	return true;
-}
-
-// 内部解锁版本的 query（用于事务回调内）
-Rows DbConnection::queryUnlocked(const std::string& sql, const Params& params, size_t maxRows) {
-	// 不加锁 - 调用者必须已持有锁
-	if (!m_db) {
-		return {};
-	}
-
-	auto stmt = prepare(sql);
-	if (!stmt) {
-		return {};
-	}
-
-	if (!bindParams(stmt, params)) {
-		return {};
-	}
-
-	return fetchResults(stmt, maxRows);
-}
-
-// 内部解锁版本的 scalar（用于事务回调内）
-std::string DbConnection::scalarUnlocked(const std::string& sql, const Params& params) {
-	// 不加锁 - 调用者必须已持有锁
-	if (!m_db) {
-		return "";
-	}
-
-	auto stmt = prepare(sql);
-	if (!stmt) {
-		return "";
-	}
-
-	if (!bindParams(stmt, params)) {
-		return "";
-	}
-
-	if (sqlite3_step(stmt.get()) == SQLITE_ROW) {
-		const char* value = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 0));
-		return value ? value : "";
-	}
-
-	return "";
-}
+// 事务回调内直接使用加锁版 execute/query/scalar：m_mutex 为
+// recursive_mutex，回调重入加锁版不会死锁，曾经的 Unlocked 变体
+// 从未有任何调用方（死代码），已于 2026-09 移除。
 
 #else // !WINGMAN_HAS_SQLITE
 
@@ -882,11 +806,6 @@ namespace {
 		g_connections.erase(name);
 	}
 
-	void closeAllConnections() {
-		std::lock_guard<std::mutex> lock(g_connectionsMutex);
-		g_connections.clear();
-	}
-
 	// 表注册表
 	std::unordered_map<uintptr_t, std::shared_ptr<DbTable>> g_tables;
 	std::mutex g_tablesMutex;
@@ -935,6 +854,27 @@ namespace {
 	void removeQuery(uintptr_t ptr) {
 		std::lock_guard<std::mutex> lock(g_queriesMutex);
 		g_queries.erase(ptr);
+	}
+
+	// DbTable 注册表访问函数：dbTable 胶水创建的表对象统一经此存取，
+	// table_close 负责释放，extractTable 依赖注册表校验句柄有效性
+	std::shared_ptr<DbTable> getTable(uintptr_t ptr) {
+		std::lock_guard<std::mutex> lock(g_tablesMutex);
+		auto it = g_tables.find(ptr);
+		if (it != g_tables.end()) {
+			return it->second;
+		}
+		return nullptr;
+	}
+
+	void storeTable(uintptr_t ptr, std::shared_ptr<DbTable> table) {
+		std::lock_guard<std::mutex> lock(g_tablesMutex);
+		g_tables[ptr] = table;
+	}
+
+	void removeTable(uintptr_t ptr) {
+		std::lock_guard<std::mutex> lock(g_tablesMutex);
+		g_tables.erase(ptr);
 	}
 } // anonymous namespace
 
@@ -1194,8 +1134,7 @@ static ScriptValue dbTable(const std::vector<ScriptValue>& args) {
 	auto table = std::make_shared<DbTable>(sharedConn, tableName);
 
 	// 存储表指针
-	std::lock_guard<std::mutex> lock(g_tablesMutex);
-	g_tables[reinterpret_cast<uintptr_t>(table.get())] = table;
+	storeTable(reinterpret_cast<uintptr_t>(table.get()), table);
 
 	// 返回 table 对象
 	std::unordered_map<std::string, ScriptValue> obj;
@@ -1215,7 +1154,13 @@ static DbTable* extractTable(const ScriptValue& value) {
 		return nullptr;
 	}
 
-	return reinterpret_cast<DbTable*>(ptrVal->asInt());
+	// 从注册表中获取（防止 use-after-free：table_close 释放后句柄失效）
+	auto table = getTable(static_cast<uintptr_t>(ptrVal->asInt()));
+	if (!table) {
+		return nullptr;
+	}
+
+	return table.get();
 }
 
 static ScriptValue tableCreate(const std::vector<ScriptValue>& args) {
@@ -1474,6 +1419,37 @@ static ScriptValue queryOrderBy(const std::vector<ScriptValue>& args) {
 	return args[0];  // 返回原对象（支持链式调用）
 }
 
+// 显式释放 table/query 句柄。此前 g_tables/g_queries 只增不删，
+// 脚本循环中反复 db.table()/db.table_where() 会持续泄漏对象；
+// close 后旧句柄经 extractXxx 的注册表校验被拒绝，不会悬空。
+static ScriptValue tableClose(const std::vector<ScriptValue>& args) {
+	if (args.empty()) {
+		return ScriptValue::fromBool(false);
+	}
+
+	DbTable* table = extractTable(args[0]);
+	if (!table) {
+		return ScriptValue::fromBool(false);
+	}
+
+	removeTable(reinterpret_cast<uintptr_t>(table));
+	return ScriptValue::fromBool(true);
+}
+
+static ScriptValue queryClose(const std::vector<ScriptValue>& args) {
+	if (args.empty()) {
+		return ScriptValue::fromBool(false);
+	}
+
+	QueryBuilder* query = extractQuery(args[0]);
+	if (!query) {
+		return ScriptValue::fromBool(false);
+	}
+
+	removeQuery(reinterpret_cast<uintptr_t>(query));
+	return ScriptValue::fromBool(true);
+}
+
 static ScriptValue tableAll(const std::vector<ScriptValue>& args) {
 	if (args.empty()) {
 		return ScriptValue::fromArray({});
@@ -1529,6 +1505,7 @@ ModuleDescriptor createDbModule() {
 
 	// ORM table 函数
 	mod.functions.push_back({"table", dbTable, "conn:connection, tableName:string -> table"});
+	mod.functions.push_back({"table_close", tableClose, "table:table -> bool"});
 
 	// table 方法（通过第一个参数识别）
 	mod.functions.push_back({"table_create", tableCreate, "table:table, schema:object -> bool"});
@@ -1546,6 +1523,7 @@ ModuleDescriptor createDbModule() {
 	mod.functions.push_back({"query_delete", queryDelete, "query:query -> int"});
 	mod.functions.push_back({"query_limit", queryLimit, "query:query, n:int -> query"});
 	mod.functions.push_back({"query_order_by", queryOrderBy, "query:query, field:string, direction:string -> query"});
+	mod.functions.push_back({"query_close", queryClose, "query:query -> bool"});
 
 	return mod;
 }

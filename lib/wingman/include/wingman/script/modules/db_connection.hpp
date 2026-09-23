@@ -153,8 +153,8 @@ private:
 
 		Stmt(const Stmt&) = delete;
 		Stmt& operator=(const Stmt&) = delete;
-		Stmt(Stmt&& other) noexcept;
-		Stmt& operator=(Stmt&& other) noexcept;
+		// 不提供移动语义：prepare() 返回纯右值依赖 C++17 强制省略拷贝，
+		// Stmt 从不作为成员或容器元素存储，移动构造/赋值没有可达调用方
 
 		sqlite3_stmt* get() const { return m_stmt; }
 		explicit operator bool() const { return m_stmt != nullptr; }
@@ -177,24 +177,6 @@ private:
 	 * 获取查询结果
 	 */
 	Rows fetchResults(Stmt& stmt, size_t maxRows);
-
-	/**
-	 * 内部解锁版本的 execute（用于事务回调内）
-	 * 调用者必须已持有 m_mutex
-	 */
-	bool executeUnlocked(const std::string& sql, const Params& params = {});
-
-	/**
-	 * 内部解锁版本的 query（用于事务回调内）
-	 * 调用者必须已持有 m_mutex
-	 */
-	Rows queryUnlocked(const std::string& sql, const Params& params = {}, size_t maxRows = kDefaultMaxRows);
-
-	/**
-	 * 内部解锁版本的 scalar（用于事务回调内）
-	 * 调用者必须已持有 m_mutex
-	 */
-	std::string scalarUnlocked(const std::string& sql, const Params& params = {});
 
 	sqlite3* m_db = nullptr;
 	std::string m_name;
