@@ -11,6 +11,13 @@
 
 自 v0.1.1 以来共 354 个提交（feat 64 / fix 129 / docs 59 / test 37 / ci 17 / refactor 8 / chore 16）。
 
+### test（2026-09-23，C++ 第九批补测：trigger 序列化全枚举/timer+system+human 胶水收口）
+
+- **新增 12 用例，行覆盖 89.9% → 90.4%（13090 行，miss 1324 → 1252），函数 94.4% → 94.7%**（v13 基线，全量 1993 用例：1953 PASSED + 40 环境性 skip）。目标文件：**trigger_handler 86.89% → 98.36%**（rpc/handlers）、**timer_module 84.31% → 93.46%**、**system_module 84.48% → 92.24%**、**posix_system 89.03% → 98.39%**（platform 层）、human_module 86.96% → 88.41%（剩余全为签名常量尾行 gcov 伪影）。
+- ① trigger RPC list 序列化 3 用例（`trigger_list_serialization_test.cpp`——既有 ListTriggers 只 list 过 ColorFound+Click 单一组合，两个序列化函数的其余枚举 case 全部零覆盖）：11 种 condition 类型 list 全枚举断言 type 字符串、10 种 action 类型全枚举断言、非法枚举值 999 经 static_cast 入库后 list 走 switch 兜底回退（"ColorFound"/"Log"，宽容不崩溃——同时覆盖两函数 switch 后的兜底 return）。② timer 胶水 4 用例：setTimeout 真实触发回调、参数防御、setInterval 周期触发 + cancel 正路径停转、clearTimeout/clearInterval 别名函数与缺参/未知 id 防御（既有测试只覆盖 after/every 老入口）。③ system 胶水 4 用例：getCpuUsage 首调基线 0 + 二调 [0,100] 值域、getDiskInfo 带路径参数返回单对象（既有只测无参数组版）、**fake-xrandr PATH 注入驱动 getDisplayInfo 解析链**——popen("xrandr …") 继承 PATH，临时目录注入 fake 脚本输出 connected+primary+disconnected 三行，真实驱动 platform 层 fgets 循环/换行剥除/connected 匹配/分辨率 stoi/isPrimary 判定/disconnected 跳过（宿主机无 xrandr，该解析链自项目创建以来零覆盖）、getNetworkAdapters 全枚举（ifa_addr 空项 continue 分支）。④ human setConfig 通用入口 1 用例：move_speed/typing_variance 两 key 写读往返与后端映射（既有测试只走 setMoveSpeed/setTypingVariance 专用函数，通用入口分支零覆盖）。
+- **顺带修复在案 flaky**（v13 全量实测暴露）：`TriggerPosixCoverageTest.InputActionsDriveMockInput`——pump(2) 固定 sleep 120ms 等待 watchLoop 触发，全量 1993 用例高负载下调度延迟超窗口致 0 轮触发断言全挂；改为条件轮询等待（上限 2s），同文件另外 2 处同型断言点一并加固。
+- **不可覆盖论证（不硬凑）**：kv_module 剩余 21 行全为函数签名常量多行表达式 gcov 归属伪影（与 ini 470-488 同现象，函数体均已覆盖）；human/timer/system 剩余 miss 同为尾行伪影 + 少量跨行表达式归属伪影；posix_system 剩余 5 行为 popen/getifaddrs 系统调用失败与 macOS 兜底分支；trigger_handler 剩余 3 行为 region Rect 构造跨行伪影与 list 空循环闭合伪影。
+
 ### fix（2026-09-23，db_module 句柄注册表双泄漏 + 裸指针 UAF 防护缺失 + 死代码清理）
 
 - **g_queries/g_tables 注册表只增不删**（`db_module.cpp`）：`db.table()`/`db.table_where()` 每次调用 `storeTable`/`storeQuery` 新增注册项且全库无任何删除路径——脚本循环中反复建表查询，`shared_ptr` 永不释放（第八批补测 8 轮 create-close 循环用例实测暴露）。修复：新增 `table_close`/`query_close` 胶水函数显式释放，close 后旧句柄经注册表校验被拒绝，不会悬空。
