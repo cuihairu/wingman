@@ -67,6 +67,8 @@ if(BUILD_CORE_TESTS)
         target_sources(core_tests PRIVATE transport_inbox_coverage_test.cpp)
         # inbox 下行链（server→client 推送驱动 handleMessage/consume 全链，同上 POSIX gate）
         target_sources(core_tests PRIVATE inbox_downlink_coverage_test.cpp)
+        # tcp_channel 真实 socket 错误路径（bind 失败/坏帧注入/RST 后 send；POSIX 原语）
+        target_sources(core_tests PRIVATE tcp_channel_e2e_coverage_test.cpp)
         # posix_process 全链路（fork/exec + /proc 遍历 + 信号终止；仅 POSIX 实现）
         target_sources(core_tests PRIVATE posix_process_coverage_test.cpp)
     endif()
@@ -88,6 +90,10 @@ if(BUILD_CORE_TESTS)
     target_sources(core_tests PRIVATE misc_modules_coverage_test.cpp)
     # db_module（open/execute/query/table_*/query_* 胶水与句柄防护分支）补测
     target_sources(core_tests PRIVATE db_module_glue_coverage_test.cpp)
+    # db_module 深度补测（open 失败/坏 SQL/嵌套事务防御、table/query_close 生命周期）
+    target_sources(core_tests PRIVATE db_deep_coverage_test.cpp)
+    # ini 转义矩阵/畸形行容错/防御分支补测
+    target_sources(core_tests PRIVATE ini_branch_coverage_test.cpp)
     # crypto/clipboard/macro 胶水补测
     target_sources(core_tests PRIVATE small_modules_coverage_test.cpp)
     # team_module（投票/广播/状态上报/事件订阅胶水分支）补测
