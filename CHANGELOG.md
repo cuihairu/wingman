@@ -9,7 +9,13 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 213 个提交（feat 48 / fix 89 / docs 29 / test 9 / ci 8 / refactor 2 / chore 12）。
+自 v0.1.1 以来共 215 个提交（feat 48 / fix 90 / docs 30 / test 9 / ci 8 / refactor 2 / chore 12）。
+
+### fix（2026-09-23，ctype 函数收负值致 MSVC Debug 断言对话框挂死 Windows CI）
+
+- **`GameProfileModuleGlue.CreateTemplateAndDelete` 在 Windows CI 100% 确定性挂死**：第五批、第六批两次 Windows job 均在该用例 `[ RUN ]` 后无输出静止 58 分钟，直到步骤 60 分钟超时强杀（`Terminate batch job`，第五批曾被同 job 的 Clipboard 断言失败掩盖）。根因：用例传中文 gameName `"胶水游戏"`，`GameProfileManager::createTemplate`（`game_profile.cpp`）的 `std::transform(..., ::tolower)` 与 `std::replace_if(..., ::isspace)` 把 signed char 直接传给 ctype 函数——UTF-8 字节（如 `0xE8`）为负值，MSVC UCRT 对负值（除 EOF）触发 `_CrtDbgReport` **模态断言对话框**，headless runner 无人点击即进程永久阻塞；Linux glibc/macOS 对负值查表偏移安全故全绿。
+- **全库排查并修复 9 处同类隐患**（每处改为 `static_cast<unsigned char>` 转换后再调 ctype）：`game_profile.cpp`（tolower/isspace，本次根因）、`smart_trigger.cpp`（OCR_EQUALS 归一化两处 isspace）、`security.cpp`（VM 进程名 tolower）、`script_manager.cpp`（配置扩展名 tolower 两处）、`db_module.cpp`（SQL 操作符 tolower）、`human.cpp`（randomCase isalpha——同函数旁 toupper/tolower 原已转换，此处系漏网）、`verification.cpp`（Base32 toupper）、`posix_system.cpp`（/proc 目录名 isdigit）。
+- **测试兜底防线**：core_tests 以 namespace 级静态对象先于 main 执行 `_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE)` + `_CRTDBG_FILE_STDERR`（仅 `_WIN32 && _DEBUG`）——未来任何漏网断言在 headless 环境输出到 stderr 而非弹窗挂死，行为与 Linux 对齐。
 
 ### fix（2026-09-22，filewatcher 胶水缺参越界）
 
