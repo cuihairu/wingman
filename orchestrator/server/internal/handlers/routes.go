@@ -34,6 +34,9 @@ type RouterDeps struct {
 	WfEngine *workflow.Engine
 	// AuthHandler 已执行 InitAdmin 的认证 handler（main 侧种子后传入）
 	AuthHandler *AuthHandler
+	// Guacamole 像素面网关（票据 REST + WS 反代 guacd；nil = 不启用，
+	// 远程桌面经 guacd 翻译，见 docs/remote-gateway-guacamole-design.md）
+	Guacamole *GuacamoleHandler
 	// ScriptsDir / StaticDir 静态资源与脚本目录
 	ScriptsDir string
 	StaticDir  string
@@ -215,6 +218,23 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 		{
 			settingsEdit.PUT("/settings", settingsHandler.HandleUpdateSettings)
 		}
+
+		// 远程桌面（Guacamole 像素面）：票据签发。监看/接管任一权限即可申请；
+		// 接管（readOnly=false）在 handler 内额外要求 desktop:control。
+		if deps.Guacamole != nil {
+			desktop := api.Group("")
+			desktop.Use(middleware.PermissionRequired(deps.DB, "desktop:view", "desktop:control"))
+			{
+				desktop.POST("/remote/tickets", deps.Guacamole.HandleTicketCreate)
+			}
+		}
+	}
+
+	// 像素面 WS 隧道：票据即凭证（浏览器 WS 无法自定义 header，不挂
+	// AuthRequired，与 /ws 先例一致），故挂在 /api 组之外、路径仍收敛在
+	// /api 前缀下（与 cockpit 端点约定对齐——DG-6 同一套端点）。
+	if deps.Guacamole != nil {
+		r.GET("/api/remote/guacamole", deps.Guacamole.HandleWS)
 	}
 
 	// ====== Debugger 路由（仅 admin，直连模式） ======

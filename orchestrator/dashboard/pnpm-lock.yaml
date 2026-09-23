@@ -132,6 +132,9 @@ importers:
       form-render:
         specifier: ^2.5.6
         version: 2.5.6(@types/react@18.3.31)(antd@5.29.3(date-fns@2.30.0)(moment@2.30.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(immer@9.0.21)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      guacamole-common-js:
+        specifier: ^1.5.0
+        version: 1.5.0
       lodash:
         specifier: ^4.18.1
         version: 4.18.1
@@ -5017,6 +5020,9 @@ packages:
 
   graphemer@1.4.0:
     resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==}
+
+  guacamole-common-js@1.5.0:
+    resolution: {integrity: sha512-zxztif3GGhKbg1RgOqwmqot8kXgv2HmHFg1EvWwd4q7UfEKvBcYZ0f+7G8HzvU+FUxF0Psqm9Kl5vCbgfrRgJg==}
 
   handle-thing@2.0.1:
     resolution: {integrity: sha512-9Qn4yBxelxoh2Ow62nP+Ka/kMnOXRi8BXnRaUwezLNhqelnN49xKz4F/dPP8OYLxLxq6JDtZb2i9XznUQbNPTg==}
@@ -15264,6 +15270,8 @@ snapshots:
   graceful-fs@4.2.11: {}
 
   graphemer@1.4.0: {}
+
+  guacamole-common-js@1.5.0: {}
 
   handle-thing@2.0.1: {}
 

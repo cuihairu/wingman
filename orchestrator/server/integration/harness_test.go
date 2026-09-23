@@ -18,6 +18,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/rbac"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/remoteticket"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/security"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/workflow"
 	ws "github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
@@ -207,6 +209,15 @@ func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *w
 			scriptsRun.POST("/agents/batch/stop-script", batchHandler.HandleBatchStopScript)
 		}
 	}
+
+	// 远程桌面（Guacamole 像素面）：与 main.go 同构挂载（票据 REST 在
+	// desktop 权限组内，WS 隧道挂 /api 组外——票据即凭证）。
+	// guacd 地址经 WINGMAN_GUACD_E2E_GUACD 注入（e2e 测试用；未设则回环默认）。
+	tickets := remoteticket.NewManager()
+	guacHandler := handlers.NewGuacamoleHandler(db, registry, tickets, os.Getenv("WINGMAN_GUACD_E2E_GUACD"))
+	desktopAPI := api.Group("", middleware.PermissionRequired(db, "desktop:view", "desktop:control"))
+	desktopAPI.POST("/remote/tickets", guacHandler.HandleTicketCreate)
+	r.GET("/api/remote/guacamole", guacHandler.HandleWS)
 
 	r.GET("/ws", func(c *gin.Context) { ws.HandleWebSocket(c, hub) })
 	return r

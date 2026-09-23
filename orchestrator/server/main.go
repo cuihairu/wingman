@@ -26,6 +26,7 @@ import (
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/handlers"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/rbac"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/remoteticket"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/workflow"
 	"github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
 	"github.com/gin-gonic/gin"
@@ -115,6 +116,12 @@ func run() error {
 	// 工作流引擎
 	wfEngine := workflow.NewEngine(db, registry, wsHub, cfg.ScriptsDir)
 
+	// 像素面票据管理器 + Guacamole 网关（远程桌面经 guacd 翻译；
+	// docs/remote-gateway-guacamole-design.md §4/DG-6）
+	desktopTickets := remoteticket.NewManager()
+	defer desktopTickets.Stop()
+	guacamoleHandler := handlers.NewGuacamoleHandler(db, registry, desktopTickets, cfg.GuacdAddr)
+
 	// gin engine 与全部路由（中间件/静态资源/API）由 handlers 包统一装配
 	r := gin.New()
 	handlers.RegisterRoutes(r, handlers.RouterDeps{
@@ -124,6 +131,7 @@ func run() error {
 		TeamManager:  frameListener.GetTeamManager(),
 		WfEngine:     wfEngine,
 		AuthHandler:  authHandler,
+		Guacamole:    guacamoleHandler,
 		ScriptsDir:   cfg.ScriptsDir,
 		StaticDir:    cfg.StaticDir,
 		ProcessStart: processStartedAt,

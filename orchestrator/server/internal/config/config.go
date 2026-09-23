@@ -16,6 +16,7 @@ const (
 	defaultStaticDir  = "../build/dist"
 	defaultAgentAddr  = "127.0.0.1:8888"
 	defaultScriptsDir = "./scripts"
+	defaultGuacdAddr  = "127.0.0.1:4822"
 )
 
 type Config struct {
@@ -31,6 +32,10 @@ type Config struct {
 	// 空 = 关闭 agent 注册鉴权（默认，向后兼容既有部署）。
 	// 设计见 docs/agent-token-auth-design.md。
 	AgentTokens []string
+	// GuacdAddr guacd 协议翻译守护进程地址（WINGMAN_GUACD_ADDR）。
+	// 像素面（Guacamole 远程桌面）反代目标；仅同机回环/内网，不经公网。
+	// 设计见 docs/remote-gateway-guacamole-design.md §4/DG-6。
+	GuacdAddr string
 }
 
 // filepathAbs 以变量形式间接引用 filepath.Abs，便于测试注入失败场景
@@ -48,6 +53,7 @@ func Load() (Config, error) {
 		JWTSecret:   os.Getenv("WINGMAN_JWT_SECRET"),
 		CORSOrigins: splitList(os.Getenv("WINGMAN_CORS_ORIGINS")),
 		AgentTokens: splitList(os.Getenv("WINGMAN_AGENT_TOKENS")),
+		GuacdAddr:   getenv("WINGMAN_GUACD_ADDR", defaultGuacdAddr),
 	}
 
 	if cfg.JWTSecret == "" {

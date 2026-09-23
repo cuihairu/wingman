@@ -1,0 +1,17 @@
+# guacd 协议翻译守护进程（Apache Guacamole 像素面，与 cockpit 共用同一套
+# 部署约定——docs/remote-gateway-guacamole-design.md DG-6）。
+#
+# 部署要点：
+#   - 端口只绑回环/内网：Go server 反代连接此端口，浏览器永不定连 guacd；
+#   - GUACD_LOG_LEVEL 保持 info（debug 会打印 connect 指令参数，含口令）；
+#   - Go server 侧经 WINGMAN_GUACD_ADDR 指向本地址（默认 127.0.0.1:4822）。
+services:
+  guacd:
+    image: guacamole/guacd:1.5.5
+    container_name: wingman-guacd
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4822:4822"
+    environment:
+      GUACD_LOG_LEVEL: info
+      TZ: Asia/Shanghai

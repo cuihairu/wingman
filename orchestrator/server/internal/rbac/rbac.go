@@ -33,6 +33,8 @@ var builtinPermissions = []models.Permission{
 	{Code: "workflows:view", Name: "查看工作流", Description: "查看工作流列表与详情", Category: "workflow", Builtin: true},
 	{Code: "workflows:run", Name: "运行工作流", Description: "提交/取消工作流", Category: "workflow", Builtin: true},
 	{Code: "monitor:view", Name: "监控查看", Description: "查看实时监控与截图", Category: "monitor", Builtin: true},
+	{Code: "desktop:view", Name: "桌面监看", Description: "以只读方式监看 agent 桌面（远程桌面像素面）", Category: "agent", Builtin: true},
+	{Code: "desktop:control", Name: "桌面接管", Description: "接管 agent 桌面键鼠（含监看能力）", Category: "agent", Builtin: true},
 	{Code: "audit:view", Name: "审计查看", Description: "查看登录/操作审计日志", Category: "admin", Builtin: true},
 	{Code: "settings:view", Name: "查看设置", Description: "读取系统设置", Category: "settings", Builtin: true},
 	{Code: "settings:edit", Name: "编辑设置", Description: "更新系统设置", Category: "settings", Builtin: true},
@@ -50,11 +52,11 @@ var builtinRoles = []struct {
 	},
 	{
 		Role:  models.Role{Code: "operator", Name: "操作员", Description: "可运行脚本/工作流并监控", Builtin: true},
-		Codes: []string{"agents:view", "agents:manage", "scripts:view", "scripts:edit", "scripts:run", "workflows:view", "workflows:run", "monitor:view", "audit:view", "settings:view"},
+		Codes: []string{"agents:view", "agents:manage", "scripts:view", "scripts:edit", "scripts:run", "workflows:view", "workflows:run", "monitor:view", "desktop:view", "desktop:control", "audit:view", "settings:view"},
 	},
 	{
 		Role:  models.Role{Code: "viewer", Name: "只读用户", Description: "仅查看权限", Builtin: true},
-		Codes: []string{"agents:view", "scripts:view", "workflows:view", "monitor:view", "audit:view", "settings:view"},
+		Codes: []string{"agents:view", "scripts:view", "workflows:view", "monitor:view", "desktop:view", "audit:view", "settings:view"},
 	},
 }
 

@@ -419,7 +419,7 @@ false/nil（既有约定）。
 | **A2 收尾**（进行中） | 真机行为验证：dispatchGesture 真机手感、MediaProjection 息屏约束确认、takeScreenshot API 30+ 兜底 | 真机完成 development-todo 移动端清单 A2 剩余人工项；FakeHostBridge 测试全绿保持 |
 | **A2.5 控件树 + OCR**（本设计核心交付） | D4 wingman.ui.* 全套；D5 wingman.ocr.findText；capabilities 扩展（D7） | ① 选择器单测（Kotlin 快照 JSON 固定样例→C++ 求值，桌面可跑）；② 真机验收：在设置 App 中经 wingman.ui 找到指定开关并点击，无需任何坐标；③ OCR 真机验收：对含已知文字的截帧 findText 命中坐标误差 ≤ 文字框高度；④ capabilities 变更（关无障碍）10s 内反映到 server |
 | **A3 可靠性**（既有计划 + 本设计增强） | 自愈三件套、断连自治、受限设置预授权脚本、**降级审计**（D9） | 断网 5 分钟自治运行且重连后日志补发；杀进程/重启后 60s 内恢复纳管；预授权脚本在 5 台主流 ROM 实测通过；降级事件全链路可见 |
-| **A4 多设备编排**（既有计划） | Team/inbox 端侧接入、Dashboard 设备视图（capabilities/降级告警展示、按 platform 分组、scrcpy 只读预览**可选**） | 20 台设备分组批量下发成功率 ≥ 既有 batch 基线；设备视图能区分「在线但能力降级」与「健康」设备 |
+| **A4 多设备编排**（既有计划） | Team/inbox 端侧接入、Dashboard 设备视图（capabilities/降级告警展示、按 platform 分组、远程桌面预览/接管经 Guacamole 像素面网关——见 `remote-gateway-guacamole-design.md`，P0 已实现） | 20 台设备分组批量下发成功率 ≥ 既有 batch 基线；设备视图能区分「在线但能力降级」与「健康」设备 |
 | **I1 iOS**（远期，不变） | 见 ios-agent-design.md | 启动条件不变 |
 
 ---
@@ -429,7 +429,7 @@ false/nil（既有约定）。
 | 项 | 决策 | 理由 |
 |----|------|------|
 | uiautomator2 / Appium instrumentation | **不做** | D4/D2：检测面、部署面、架构卫生三输，能力经宿主桥自建 |
-| scrcpy 进自动化数据面 | **不做** | D3：adb 常连违背 D1；Dashboard 预览场景 A4 另议（只读、人工触发） |
+| scrcpy 进自动化数据面 | **不做** | D3：adb 常连违背 D1；「人看设备画面」已另议定案——Dashboard 预览走 Guacamole 像素面（VNC 桥 + guacd），见 `remote-gateway-guacamole-design.md` |
 | WebDriver/W3C 协议面 | **不做** | D8：session 语义与挂机模型冲突；能力等价物已各有归属 |
 | JS 引擎兼容 AutoJS 脚本 | **不做** | 双语言决策已闭（Lua/Python）；生态迁移靠 API 对照文档 |
 | 绕过 FLAG_SECURE / 反检测承诺 | **不做** | 合规红线；人化模拟是工程手段不是对抗承诺 |

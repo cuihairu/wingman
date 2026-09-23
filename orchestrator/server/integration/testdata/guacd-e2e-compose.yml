@@ -1,0 +1,39 @@
+# Guacamole e2e 链路测试的本地容器栈（仅测试用，勿用于生产）。
+#
+#   podman compose -f guacd-e2e-compose.yml up -d
+#   WINGMAN_GUACD_E2E=1 go test ./integration/ -run TestGuacdE2E -v
+#
+# 全部 network_mode: host：guacd(4822) / sshd(2222) / vnc(5901) / xrdp(3389)
+# 直接监听宿主回环，agent 注册表以 127.0.0.1 作为目标 IP。
+services:
+  guacd:
+    # 锁定 1.5.5：官方 1.6.0（含 2026-02 latest 重建）RDP 双崩溃——
+    # guac_audio_assign_encoder 空指针（编码器未链接）与 guac_user_supports_webp
+    # 空指针（display 重构竞态），均无客户端侧规避参数；网关已对 1.5.5 显式
+    # disable-audio 规避其音频路径崩溃（见 handlers/guacamole.go guacParamTable）。
+    image: guacamole/guacd:1.5.5
+    container_name: wg-e2e-guacd
+    network_mode: host
+    environment:
+      GUACD_LOG_LEVEL: info
+
+  sshd:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: wg-e2e-sshd
+    network_mode: host
+    environment:
+      PASSWORD_ACCESS: "true"
+      USER_NAME: test
+      USER_PASSWORD: test
+
+  vnc:
+    image: docker.io/accetto/ubuntu-vnc-xfce-g3:latest
+    container_name: wg-e2e-vnc
+    network_mode: host
+    environment:
+      VNC_PW: headless
+
+  xrdp:
+    image: docker.io/danielguerra/ubuntu-xrdp:latest
+    container_name: wg-e2e-xrdp
+    network_mode: host

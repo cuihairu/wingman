@@ -1,9 +1,13 @@
 # 远程网关像素面集成 Apache Guacamole 设计
 
-- 状态：已定案（设计），实现未启动
+- 状态：P0 已实现（服务端网关 + 票据 + RBAC + 三协议 e2e + 前端组件，2026-09-23）；阶段二（录制、文件传输、剪贴板控制 UI）未启动
 - 日期：2026-09-23
 - 关联文档：`architecture-decisions.md`（硬约束）、`mobile-automation-design.md`（Mobile D1–D9 决策）、`ROADMAP.md`（A4 里程碑）
 - 本文编号：**DG-x**（Guacamole 相关决策），与 Mobile D1–D9、架构 ADEC 并列互引
+- 实现落点：`orchestrator/server/internal/handlers/guacamole.go`（网关）、
+  `internal/remoteticket/`（一次性票据）、`deployments/guacd/`（部署，锁定 1.5.5）、
+  `orchestrator/dashboard/src/services/remote.ts` + `src/components/RemoteDesktopModal/`（前端）；
+  e2e：`orchestrator/server/integration/guacd_e2e_test.go`（SSH/VNC/RDP 三协议真实链路）
 
 ---
 
@@ -236,8 +240,46 @@ cockpit 项目同样需要"浏览器看画面 + 接管"能力，且 wingman 与 
 
 ## 12. 对既有文档的修订点
 
-实现启动时（P0）需同步：
+实现启动时（P0）需同步（✅ 三项均已于 2026-09-23 随 P0 实现完成）：
 
-1. `architecture-decisions.md`：Allowed WebSocket Usage 一节补记"Guacamole 指令流（dashboard↔Go server）"；Forbidden Changes 补一行"浏览器不得直连 guacd/endpoint"。
-2. `ROADMAP.md` A4 里程碑：把"scrcpy 只读预览（可选）"改为指向本文的像素面方案。
-3. `mobile-automation-design.md` §7 风险表"scrcpy 进自动化数据面——不做"行补交叉引用（远期 Android 像素面走 §6.1 的 VNC 桥路线，非 scrcpy）。
+1. ✅ `architecture-decisions.md`：Allowed WebSocket Usage 一节补记"Guacamole 指令流（dashboard↔Go server）"；Forbidden Changes 补一行"浏览器不得直连 guacd/endpoint"。
+2. ✅ A4 里程碑行（实际位于 `mobile-automation-design.md` §6，ROADMAP.md 无移动端条目）：把"scrcpy 只读预览（可选）"改为指向本文的像素面方案。
+3. ✅ `mobile-automation-design.md` §7 风险表"scrcpy 进自动化数据面——不做"行补交叉引用（远期 Android 像素面走 §6.1 的 VNC 桥路线，非 scrcpy）。
+
+---
+
+## 13. P0 实现验证备注（2026-09-23，三协议 e2e 实测）
+
+### 13.1 Guacamole 协议要点（实现固化的坑）
+
+- **connect 参数必须与 args 名单按位置一一对应且等长**：guacd 对 select 返回
+  args 指令（首段为协议版本名如 `VERSION_1_5_0`），connect 必须按名单顺序
+  逐位填值（未提供参数空串占位），且**首参必须回应该版本串**。guacd 对参数
+  个数硬校验——个数不等直接静默断连（`Client did not return the expected
+  number of arguments`），浏览器侧只表现为会话无响应。回归护栏：
+  `TestGuacApplyVersionArg`（39 段真实 SSH 名单对齐断言）。
+- **隧道内部指令**（空 opcode，如 ping）由网关拦截回显，绝不转发 guacd
+  （common-js 15s receiveTimeout 语义）。
+- 票据双通道：URL query `?ticket=`（首选，common-js WebSocketTunnel 硬编码
+  subprotocol 且把 connect(data) 拼 query）+ `Sec-WebSocket-Protocol[0]` 兼容位。
+
+### 13.2 guacd 版本锁定：1.5.5（1.6.0 双崩溃）
+
+官方 1.6.0 镜像（含 2026-02 latest 重建）RDP 链路 gdb 实测两个空指针崩溃，
+均无客户端侧规避参数：
+
+1. `guac_audio_assign_encoder`（libguac 未链接音频编码器，RDPSND 协商即崩）
+   ——网关已对 1.5.5 显式 `disable-audio` 规避同类路径；
+2. `guac_user_supports_webp`（1.6.0 display 重构后 WebP 能力探测竞态崩溃，
+   无 connect 参数可关）。
+
+锁定 1.5.5 直至上游修复；`deployments/guacd/` 与 e2e compose 均已固化。
+另：`GUACD_LOG_LEVEL=debug` 会打印 connect 参数（含口令），生产保持 info。
+
+### 13.3 对 cockpit 的反哺项（P1 抽取前核对）
+
+cockpit 现网关实现（`internal/server/api_guacamole.go`）的 connect 以
+`name=value` 形式发参数，与协议要求的按位对应不符（guacd 会把
+`hostname=10.0.0.5` 整串当 host 值）——与本文 §13.1 同坑，联调时需先对齐；
+wingman 版实现与单测护栏可直接复用（DG-6：第一方实现完成后抽公共组件，
+不允许第二方复制粘贴分叉）。

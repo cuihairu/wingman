@@ -43,6 +43,8 @@ import {
 } from 'antd';
 import React, { useState, useEffect } from 'react';
 import TriggerFormModal from '@/components/TriggerFormModal';
+import RemoteDesktopModal from '@/components/RemoteDesktopModal';
+import type { RemoteProtocol } from '@/services/remote';
 import {
   AgentStatus,
   AgentInfo,
@@ -101,6 +103,28 @@ const Agents: React.FC = () => {
   const canAgentManage = Boolean(access.canAgentManage);
   const canScriptRun = Boolean(access.canScriptRun);
   const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
+  // 远程桌面（Guacamole 像素面）：desktopForm = 连接参数表单；desktopTarget = 确认后待连目标
+  const [desktopForm, setDesktopForm] = useState<{
+    agentId: string;
+    protocol: RemoteProtocol;
+    username: string;
+    password: string;
+    readOnly: boolean;
+  } | null>(null);
+  const [desktopTarget, setDesktopTarget] = useState<{
+    agentId: string;
+    protocol: RemoteProtocol;
+    username: string;
+    password: string;
+    readOnly: boolean;
+  } | null>(null);
+  // openDesktop 表单确认：把表单参数固化为连接目标（触发 RemoteDesktopModal 建连）
+  const openDesktop = () => {
+    if (desktopForm) {
+      setDesktopTarget(desktopForm);
+    }
+    setDesktopForm(null);
+  };
   const [wsConnected, setWsConnected] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]); // 本地状态用于实时更新
   const [tagDraft, setTagDraft] = useState<{ agentId: string; tags: string[] } | null>(null);
@@ -560,6 +584,23 @@ const Agents: React.FC = () => {
               onClick={() => setSelectedAgent(record)}
             />
           </Tooltip>
+          <Tooltip title="远程桌面">
+            <Button
+              type="link"
+              size="small"
+              icon={<DesktopOutlined />}
+              onClick={() =>
+                setDesktopForm({
+                  agentId: record.agentId,
+                  protocol: record.platform === 'android' ? 'vnc' : 'rdp',
+                  username: '',
+                  password: '',
+                  readOnly: true,
+                })
+              }
+              disabled={record.status === AgentStatus.Offline}
+            />
+          </Tooltip>
           <Tooltip title={formatMessage('pages.agents.shutdownTooltip')}>
             <Button
               type="link"
@@ -804,6 +845,64 @@ const Agents: React.FC = () => {
           </Col>
         )}
       </Row>
+
+      {/* 远程桌面（Guacamole 像素面）：一次性票据 + WS 隧道，关闭即断开。
+          连接参数（协议/凭据/监看）经小表单确认后下发。 */}
+      <Modal
+        open={!!desktopForm}
+        title={desktopForm ? `远程桌面 - ${desktopForm.agentId}` : ''}
+        width={420}
+        onOk={openDesktop}
+        okText="连接"
+        onCancel={() => setDesktopForm(null)}
+        destroyOnClose
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Select
+            style={{ width: '100%' }}
+            value={desktopForm?.protocol}
+            onChange={(value) => desktopForm && setDesktopForm({ ...desktopForm, protocol: value })}
+            options={[
+              { value: 'rdp', label: 'RDP (Windows 桌面)' },
+              { value: 'vnc', label: 'VNC (macOS / Linux / Android)' },
+              { value: 'ssh', label: 'SSH (终端)' },
+            ]}
+          />
+          <Input
+            placeholder="用户名（可选）"
+            value={desktopForm?.username}
+            onChange={(e) => desktopForm && setDesktopForm({ ...desktopForm, username: e.target.value })}
+          />
+          <Input
+            placeholder="密码（可选）"
+            type="password"
+            value={desktopForm?.password}
+            onChange={(e) => desktopForm && setDesktopForm({ ...desktopForm, password: e.target.value })}
+          />
+          <Select
+            style={{ width: '100%' }}
+            value={desktopForm?.readOnly ? 'view' : 'control'}
+            onChange={(value) =>
+              desktopForm && setDesktopForm({ ...desktopForm, readOnly: value === 'view' })
+            }
+            options={[
+              { value: 'view', label: '监看（只读）' },
+              { value: 'control', label: '接管（需 desktop:control 权限）' },
+            ]}
+          />
+        </Space>
+      </Modal>
+      {desktopTarget && (
+        <RemoteDesktopModal
+          open
+          agentId={desktopTarget.agentId}
+          protocol={desktopTarget.protocol}
+          username={desktopTarget.username || undefined}
+          password={desktopTarget.password || undefined}
+          readOnly={desktopTarget.readOnly}
+          onCancel={() => setDesktopTarget(null)}
+        />
+      )}
 
       {/* 批量运行脚本：脚本列表来自 /api/scripts，服务端会先做路径校验 */}
       <Modal

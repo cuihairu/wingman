@@ -11,6 +11,15 @@
 
 自 v0.1.1 以来共 354 个提交（feat 64 / fix 129 / docs 59 / test 37 / ci 17 / refactor 8 / chore 16）。
 
+### feat（2026-09-23，Guacamole 远程桌面像素面网关 P0：票据门禁 + 三协议 e2e + Dashboard 组件）
+
+- **架构落位**（`docs/remote-gateway-guacamole-design.md` 方案B）：浏览器 ⇄ Go server（`GET /api/remote/guacamole` WebSocket 承载 Guacamole 指令流）⇄ guacd（纯 TCP，loopback/内网）⇄ agent 桌面（RDP/VNC/SSH）。**runtime 零参与**像素面——不改 C++、不加监听，已同步 `architecture-decisions.md`（Allowed WebSocket Usage 补像素面网关段 / Forbidden Changes 补「浏览器直连 guacd」禁项）。
+- **一次性票据门禁**：`POST /api/remote/tickets`（`desktop:view`/`desktop:control` 任一可申请；接管模式 handler 内额外要求 `desktop:control`），新增 `desktop:view`/`desktop:control` 两个内置权限并配入 Viewer/Operator 角色。票据短时效单次有效，经 URL query `?ticket=`（首选）+ `Sec-WebSocket-Protocol[0]`（兼容位）双通道传递；WS 端点不挂 AuthRequired（浏览器 WS 无法自定义 header，票据即凭证，与 `/ws` 先例一致）。配置新增 `WINGMAN_GUACD_ADDR`（默认 `127.0.0.1:4822`）。
+- **协议实现要点**（单测回归护栏固化）：guacd 对 select 回的 args 名单做**参数个数硬校验**——connect 必须与名单按位等长（含首段版本名，`VERSION_x_y_z` 原样回显），短一位即静默断连（浏览器侧只见会话无响应）；rdp 显式 `disable-audio`（guacd 镜像 libguac 未链音频编码器，RDPSND 协商即 NULL 崩溃）与 `disable-gfx`（xrdp 类 VNC 后端不支持 rdpgfx 通道，FreeRDP 等 GFX 帧无限挂起；仅 1.6.0 认识该参数，1.5.5 自动忽略）。
+- **guacd 版本锁定 1.5.x**：1.6.0 实测双崩溃（gdb 符号栈定位：`guac_audio_assign_encoder` NULL 与 display 重构后 `guac_user_supports_webp` NULL 竞态，后者无参数可规避），e2e compose、`deployments/guacd/README.md`、设计文档 §13.2 三处固化；另记录 cockpit 侧 `api_guacamole.go` connect 以 name=value 发参的协议缺陷待反哺（§13.3）。
+- **三协议 e2e**（`integration/guacd_e2e_test.go`，`WINGMAN_GUACD_E2E=1` 门控；podman 起 guacd/sshd/xrdp/VNC 容器）：SSH/VNC/RDP 各一条完整链路（select→握手→connect→指令流像素帧到达），隧道读帧按 gorilla「读失败即毒化」语义单次总 deadline 实现。
+- **Dashboard 前端**：`services/remote.ts`（票据申请 + WS 路径拼接）、`RemoteDesktopModal` 组件（fitScale 自适应缩放、监看/接管分态挂载键鼠、关闭清理会话）、Agents 页「远程桌面」入口（协议/凭据/监看-接管表单）；guacamole-common-js 最小类型声明；新增 8 用例（服务层 4 + 组件 4）。
+
 ### test（2026-09-23，C++ 第九批补测：trigger 序列化全枚举/timer+system+human 胶水收口）
 
 - **新增 12 用例，行覆盖 89.9% → 90.4%（13090 行，miss 1324 → 1252），函数 94.4% → 94.7%**（v13 基线，全量 1993 用例：1953 PASSED + 40 环境性 skip）。目标文件：**trigger_handler 86.89% → 98.36%**（rpc/handlers）、**timer_module 84.31% → 93.46%**、**system_module 84.48% → 92.24%**、**posix_system 89.03% → 98.39%**（platform 层）、human_module 86.96% → 88.41%（剩余全为签名常量尾行 gcov 伪影）。

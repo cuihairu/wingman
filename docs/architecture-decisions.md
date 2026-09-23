@@ -134,6 +134,9 @@ Do not add these without explicit owner approval:
 - Go orchestrator code that assumes runtime is a passive listener.
 - New TCP listeners in runtime for production control paths.
 - New third-party network server frameworks in runtime for local UI control.
+- Browser/remote clients connecting directly to guacd (the pixel-plane
+  guacd port stays loopback/intranet-only; all browser traffic goes through
+  the Go server's ticket-gated `/api/remote/guacamole` gateway).
 
 If a local control feature is needed, implement it through the IPC abstraction.
 
@@ -144,6 +147,13 @@ WebSocket is allowed at the Go server boundary for dashboard/browser communicati
 ```text
 dashboard <-> Go server WebSocket
 ```
+
+This includes the remote-desktop pixel-plane gateway (`/api/remote/guacamole`):
+the browser-facing side is WebSocket carrying the Guacamole instruction stream,
+the guacd-facing side is plain TCP. The runtime agent is not involved in any
+part of it — desktop sessions terminate on the Go server and connect to the
+agent's registered LAN address directly (one-time ticket-gated, see
+`docs/remote-gateway-guacamole-design.md`).
 
 WebSocket is not allowed as the runtime local-control mechanism.
 
