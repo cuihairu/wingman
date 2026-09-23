@@ -31,7 +31,8 @@ static std::string base32Decode(const std::string& encoded) {
     for (char c : encoded) {
         if (c == ' ' || c == '\t' || c == '\r' || c == '\n') continue;
 
-        const char* p = std::strchr(BASE32_ALPHABET, std::toupper(c));
+        const char* p = std::strchr(BASE32_ALPHABET,
+                                    std::toupper(static_cast<unsigned char>(c)));
         if (!p) continue;
 
         int value = static_cast<int>(p - BASE32_ALPHABET);

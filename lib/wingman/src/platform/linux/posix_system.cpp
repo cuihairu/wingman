@@ -747,7 +747,8 @@ int System::getThreadCount() {
     int count = 0;
     for (const auto& entry : std::filesystem::directory_iterator("/proc")) {
         std::string name = entry.path().filename().string();
-        if (std::all_of(name.begin(), name.end(), ::isdigit)) {
+        if (std::all_of(name.begin(), name.end(),
+                        [](unsigned char c) { return std::isdigit(c) != 0; })) {
             std::ifstream ifs(entry.path() / "stat");
             std::string line;
             if (std::getline(ifs, line)) {

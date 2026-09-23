@@ -533,7 +533,8 @@ bool ScriptManager::loadConfig(const std::string& path) {
 
 	if (path.size() > 5) {
 		std::string ext = path.substr(path.size() - 5);
-		std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+		std::transform(ext.begin(), ext.end(), ext.begin(),
+					   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 		if (ext == ".json") {
 			return loadJsonConfig(path);
 		}
@@ -541,7 +542,8 @@ bool ScriptManager::loadConfig(const std::string& path) {
 
 	if (path.size() > 4) {
 		std::string ext = path.substr(path.size() - 4);
-		std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+		std::transform(ext.begin(), ext.end(), ext.begin(),
+					   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 		if (ext == ".ini" || ext == ".cfg") {
 			return loadIniConfig(path);
 		}

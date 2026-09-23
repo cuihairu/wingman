@@ -15,6 +15,28 @@
 #include <filesystem>
 #include <fstream>
 
+// MSVC Debug CRT：ctype 类函数收到负值（UTF-8 字节经 signed char）默认触发
+// _CrtDbgReport 模态断言对话框，headless CI/无人值守环境下进程永久挂死
+//（第六批 Windows CI 实测挂死 60 分钟直到步骤超时，见 CHANGELOG fix）。
+// 静态对象先于 main 把断言重定向为 stderr/调试器输出：断言可见、进程可继续，
+// 与 Linux 行为对齐。此为兜底防线，产品侧已在全部 ctype 调用点转 unsigned char。
+#if defined(_WIN32) && defined(_DEBUG)
+#include <crtdbg.h>
+namespace {
+struct CrtAssertToStderr {
+    CrtAssertToStderr() {
+        _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG | _CRTDBG_MODE_FILE);
+        _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
+        _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG | _CRTDBG_MODE_FILE);
+        _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+        _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_DEBUG | _CRTDBG_MODE_FILE);
+        _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+    }
+};
+const CrtAssertToStderr crtAssertToStderrInstance;
+} // namespace
+#endif
+
 using namespace wingman;
 using wingman::script::ScriptValue;
 using wingman::script::ModuleDescriptor;

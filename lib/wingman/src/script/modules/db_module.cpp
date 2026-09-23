@@ -513,7 +513,8 @@ bool DbTable::isValidIdentifier(const std::string& name) {
 
 bool DbTable::isValidOperator(const std::string& op) {
 	std::string lowerOp = op;
-	std::transform(lowerOp.begin(), lowerOp.end(), lowerOp.begin(), ::tolower);
+	std::transform(lowerOp.begin(), lowerOp.end(), lowerOp.begin(),
+				   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 	return g_validOperators.count(lowerOp) > 0;
 }
 

@@ -293,7 +293,8 @@ bool SecurityManager::checkVMProcesses() {
     do {
         char processName[MAX_PATH];
         strcpy_s(processName, pe32.szExeFile);
-        std::transform(processName, processName + strlen(processName), processName, ::tolower);
+        std::transform(processName, processName + strlen(processName), processName,
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
         for (int i = 0; vmProcesses[i]; ++i) {
             if (strstr(processName, vmProcesses[i])) {

@@ -444,8 +444,12 @@ GameProfile GameProfileManager::createTemplate(const std::string& gameName) cons
     GameProfile profile;
 
     std::string id = gameName;
-    std::transform(id.begin(), id.end(), id.begin(), ::tolower);
-    std::replace_if(id.begin(), id.end(), ::isspace, '_');
+    // ctype 函数禁止传负值（UTF-8 字节经 signed char 即为负）：MSVC Debug CRT 会触发
+    // 模态断言对话框使进程挂死（第六批 Windows CI 实测挂死 60 分钟），必须先转 unsigned char
+    std::transform(id.begin(), id.end(), id.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::replace_if(id.begin(), id.end(),
+                    [](unsigned char c) { return std::isspace(c) != 0; }, '_');
 
     profile.id = id;
     profile.name = gameName;

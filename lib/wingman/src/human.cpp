@@ -457,7 +457,7 @@ void HumanKeyboard::type(const std::string& text) {
 void HumanKeyboard::type(const std::string& text, bool randomCase) {
     for (char c : text) {
         // Random case
-        if (randomCase && std::isalpha(c)) {
+        if (randomCase && std::isalpha(static_cast<unsigned char>(c))) {
             if (randomInt(0, 1) == 1) {
                 c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
             } else {

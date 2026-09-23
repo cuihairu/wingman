@@ -115,9 +115,12 @@ bool SmartTrigger::checkConditions() {
             case TriggerConditionType::OCR_EQUALS: {
                 auto result = OCR::recognize(condition.searchRegion);
                 std::string text = result.text;
-                text.erase(std::remove_if(text.begin(), text.end(), ::isspace), text.end());
+                // isspace 拒收负值：UTF-8 文本须先转 unsigned char，否则 MSVC Debug 断言挂死
+                text.erase(std::remove_if(text.begin(), text.end(),
+                           [](unsigned char c) { return std::isspace(c) != 0; }), text.end());
                 std::string target = condition.targetText;
-                target.erase(std::remove_if(target.begin(), target.end(), ::isspace), target.end());
+                target.erase(std::remove_if(target.begin(), target.end(),
+                             [](unsigned char c) { return std::isspace(c) != 0; }), target.end());
                 conditionMet = text == target;
                 break;
             }
