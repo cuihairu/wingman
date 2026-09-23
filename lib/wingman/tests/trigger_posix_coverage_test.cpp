@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 #include <unistd.h>
 #include <chrono>
+#include <functional>
 #include <thread>
 #include <cstdio>
 
@@ -39,6 +40,17 @@ bool hasBlockingDialogTool() {
 // 等 manager 轮询线程至少跑 n 轮（轮询间隔 50ms）
 void pump(int rounds) {
     std::this_thread::sleep_for(std::chrono::milliseconds(60 * rounds));
+}
+
+// 轮询等待条件成立（上限 2s）。固定 sleep 在全量高负载下会被调度延迟
+// 击穿（v13 全量实测 InputActionsDriveMockInput 0 触发），改条件等待
+bool waitForCond(const std::function<bool()>& cond) {
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (cond()) return true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    return cond();
 }
 
 TriggerConfig elapsedConfig(const std::string& name, int intervalMs = 30) {
@@ -105,7 +117,7 @@ TEST_F(TriggerPosixCoverageTest, TimeElapsedFiresAndHonorsCooldownAndOneShot) {
     manager_->setOnFired([&](const TriggerInstance&) { cdFired++; });
     manager_->add(cd);
     manager_->start();
-    pump(2);
+    waitForCond([&] { return cdFired.load() >= 1; });
     manager_->stop();
     EXPECT_GE(cdFired.load(), 1);
     EXPECT_LE(cdFired.load(), 2); // 5s 冷却内至多 1-2 次
@@ -203,7 +215,7 @@ TEST_F(TriggerPosixCoverageTest, HotkeyConditionViaMockInput) {
 
     input_->keyDown(static_cast<platform::KeyCode>(65));
     manager_->start();
-    pump(2);
+    waitForCond([&] { return fired.load() >= 1; });
     input_->keyUp(static_cast<platform::KeyCode>(65));
     manager_->stop();
     EXPECT_GE(fired.load(), 1); // 按住期间必然命中过
@@ -278,7 +290,12 @@ TEST_F(TriggerPosixCoverageTest, InputActionsDriveMockInput) {
     manager_->add(cfg);
 
     manager_->start();
-    pump(2);
+    waitForCond([&] {
+        return input_->getMouseMoveCallCount() >= 1 &&
+               input_->getClickCallCount(platform::MouseButton::Left) >= 1 &&
+               input_->getKeyPressCallCount(static_cast<platform::KeyCode>(66)) >= 1 &&
+               input_->getInputText() == "hello cov";
+    });
     manager_->stop();
 
     EXPECT_GE(input_->getMouseMoveCallCount(), 1);

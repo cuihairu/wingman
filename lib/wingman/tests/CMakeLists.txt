@@ -94,6 +94,10 @@ if(BUILD_CORE_TESTS)
     target_sources(core_tests PRIVATE db_deep_coverage_test.cpp)
     # ini 转义矩阵/畸形行容错/防御分支补测
     target_sources(core_tests PRIVATE ini_branch_coverage_test.cpp)
+    # trigger list 序列化全枚举（triggerTypeToString/actionTypeToString 全 case + 非法枚举兜底）
+    target_sources(core_tests PRIVATE trigger_list_serialization_test.cpp)
+    # timer setTimeout/setInterval 等价入口 + system getCpuUsage/getDiskInfo 带参/fake-xrandr 显示器解析 + human setConfig 通用入口
+    target_sources(core_tests PRIVATE timer_system_glue_coverage_test.cpp)
     # crypto/clipboard/macro 胶水补测
     target_sources(core_tests PRIVATE small_modules_coverage_test.cpp)
     # team_module（投票/广播/状态上报/事件订阅胶水分支）补测
