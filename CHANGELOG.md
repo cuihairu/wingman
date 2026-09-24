@@ -24,6 +24,7 @@
 - **task 生命周期语义实测记录**：async 任务达终态即被自己 worker 收尾的 `cleanupFinishedTasks` erase（事后 status 恒 "failed"、wait 已 erase 任务恒 false）；同步任务完成后留 map 可 retry 复提交，但任何 async worker 收尾的 cleanup 会把已终态同步任务一并 erase——retry(syncId) 断言块必须先于任何 async 提交。
 - **不可覆盖论证（不硬凑）**：transport 270-273/342-354 为 client/server 工厂创建失败（bad_alloc 级）与 server 线程启动失败防御，不可稳定注入；inbox 82-84 为 TCP 握手成功后注册消息立即发送失败（发送缓冲区空时不可注入）、232/287 为模块内部类 InboxClient 的 send/messageCallback_ 胶水面无暴露；task 38 为枚举全 case 后 default 兜底、306 为 TaskManager 析构期 shutdown_ 防御（submit-after-shutdown 仅存在于进程退出瞬间，无观察点）；screen 813 为 BMP 写 header 失败（磁盘满/IO 硬错误）、956/964 仅无 X11 连接环境可达（测试进程预置 DISPLAY）、335 的 seekg 超文件尾在 libstdc++ 不置 failbit（u32 offset 经 streamoff 恒非负）；inotify 26-27 为 inotify_init1 资源耗尽、143-144 为 removeWatch 与内核 IN_IGNORED 事件竞态；posix_trigger 343-344 需真实屏幕像素在两次采样间变化超容差、349-350 为全枚举 switch 兜底、461-462/491-492 为 zenity/aplay fork 子进程侧（exec 替换映像或 `_exit`，gcda 永不写出——gcov 结构性盲区，行为由 PlayAudioValidPathForksPlayer 实证）；x11_screen 65-66 需多显示器 primary 标志（Xvfb 单显示器不置位）、146/172-173 为 DisplayWidthMM/noutput 畸形数据防御、184-185 为显示器热拔竞态；posix_process 191-216 为 fork 子进程侧同上盲区（行为由 WaitForever 等实证）、34/61/99/107/185 为 /proc 未挂载级病态环境与 fork 资源耗尽防御、61/281 换行剥离分支因读取路径产出不含尾换行为防御性不可达；x11_factory 40-70 为无 X/无扩展环境拒绝分支（测试进程预置健康 Xvfb 恒不触发）。
 - **gcov 行归属伪影清单（分支实际已覆盖，不硬凑）**：跨行 `spdlog::warn` 调用首行无指令归属（条件行/续行/return 计数齐全）——event 23/29/39/102；跨行 `ScriptValue::fromObject` 块中单行漂移——transport 287/293/362/368/454/469/503、inbox 505；`push_back({...})` 收尾行——transport 320/328/418/443/521、inbox 567/578/589、task 497/503/510/516/522；其余——task 213（wait 超时 emit 参数中间行）、transport 279-281（跨行 debug 调用）、posix_trigger 288/454（跨行构造/lambda 收尾）、posix_process 176（循环闭合）。
+- **Windows CI 编译两轮收口**（[de76a93](https://github.com/cuihairu/wingman/commit/de76a93)、[00256c4](https://github.com/cuihairu/wingman/commit/00256c4)）：batch11_glue 先是多余 `unistd.h`（MSVC C1083）、删除后暴露真实 POSIX 调用 `geteuid`/`chmod`（权限块属 POSIX 语义，整块 `#ifndef _WIN32`）——本地 Linux 全绿不代表 Windows 可编，且 MSVC 在 C1083 预处理即断、并发编译取消其余单元，会掩盖后续文件与同文件后续符号错误；教训：跨平台测试文件 push 前两步自查（POSIX-only 头 + POSIX 符号调用），root 权限类语义用 `_WIN32` 条件编译隔离。
 
 ### fix（2026-09-24，task async 等待唤醒缺陷 + X11 屏幕/录制健壮性）
 
@@ -257,6 +258,7 @@
 
 ### docs 文档
 
+- 平台支持与 API 适用性文档 `docs/platforms.md`：平台信息唯一对账表（README 承诺 / CI 验证范围 / 代码条件编译三线对齐）——支持矩阵（桌面三平台已支持、Android 实验性、iOS 规划中）、36 个 Lua 模块逐平台 API 适用性标注（Android 端侧仅 A2 三子表，每条不可用写明原因）、实际踩坑环境差异、CI 覆盖缺口如实标注（Linux/macOS C++ 核心无 CI 测试、macOS continue-on-error、Android 仅打包）、Linux 本机验证命令与收敛路线（[0e016f2](https://github.com/cuihairu/wingman/commit/0e016f2)）
 - 补全所有 handler 端点 Swagger 注解（[5c6db74](https://github.com/cuihairu/wingman/commit/5c6db74)）
 - API 文档对齐实际 33 个模块（[59e8831](https://github.com/cuihairu/wingman/commit/59e8831)）及 screen/input/vision/ocr/fsm/event/kv/perf/util/config/http 全量对齐（[a32e7cc](https://github.com/cuihairu/wingman/commit/a32e7cc)、[3e112d3](https://github.com/cuihairu/wingman/commit/3e112d3)、[47fb06b](https://github.com/cuihairu/wingman/commit/47fb06b)）
 - Dashboard 与 Runtime GUI 使用教程（[8074bfa](https://github.com/cuihairu/wingman/commit/8074bfa)）；架构文档记录 display selection 设计（[201375a](https://github.com/cuihairu/wingman/commit/201375a)）
