@@ -40,6 +40,7 @@
 |------|------|
 | [架构概览](architecture.md) | Runtime、GUI、Orchestrator 的边界 |
 | [架构决策](architecture-decisions.md) | 关键设计决策记录 |
+| [平台支持](platforms.md) | 支持矩阵、各平台 API 适用性与环境差异 |
 | [平台抽象设计](platform-abstraction-design.md) | 跨平台抽象层设计 |
 | [UIA 抽象设计](uia-abstraction-design.md) | UI Automation 抽象层设计 |
 | [项目结构](project-structure.md) | 目录职责和模块划分 |

@@ -16,7 +16,7 @@ C++ + Lua/Python 的高性能游戏自动化框架
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-[文档](docs/README.md) · [快速开始](docs/guide/getting-started.md) · [API 参考](docs/api/overview.md) · [示例](docs/examples/) · [贡献指南](CONTRIBUTING.md)
+[文档](docs/README.md) · [快速开始](docs/guide/getting-started.md) · [平台支持](docs/platforms.md) · [API 参考](docs/api/overview.md) · [示例](docs/examples/) · [贡献指南](CONTRIBUTING.md)
 
 </div>
 
@@ -34,7 +34,7 @@ C++ + Lua/Python 的高性能游戏自动化框架
 - **🐍 多语言** - 同时支持 Lua 和 Python，统一 API 接口
 - **🔒 安全可靠** - 纯用户态运行，使用合法平台 API，不读写游戏内存
 - **🎮 可编程** - 脚本控制，灵活扩展，支持复杂业务逻辑
-- **🌐 跨平台** - 支持 Windows、macOS、Linux，统一接口抽象
+- **🌐 跨平台** - 支持 Windows、macOS、Linux，统一接口抽象；Android 实验性支持、iOS 规划中（[平台支持详情](docs/platforms.md)）
 
 ### 功能模块
 
@@ -131,6 +131,7 @@ if points:
 
 - [快速开始](docs/guide/getting-started.md) - 5 分钟上手指南
 - [构建指南](BUILD.md) - 详细的构建、测试和故障排除说明
+- [平台支持](docs/platforms.md) - 各平台状态、API 适用性与环境差异
 - [API 参考](docs/api/overview.md) - 完整的 API 文档
 - [架构设计](docs/architecture.md) - 系统架构和设计决策
 - [开发指南](docs/DEVELOPMENT.md) - 贡献和开发指南
