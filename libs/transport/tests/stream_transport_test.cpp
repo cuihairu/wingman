@@ -51,15 +51,18 @@ public:
     FdExhaustionGuard() {
         ::getrlimit(RLIMIT_NOFILE, &original_);
 
-        // 用 fcntl 而非 /proc/self/fd 统计：后者自身会打开新的 fd
-        int openCount = 0;
-        for (rlim_t fd = 0; fd < original_.rlim_cur; ++fd) {
-            if (::fcntl(static_cast<int>(fd), F_GETFD) != -1) {
-                ++openCount;
-            }
+        // Linux 的 RLIMIT_NOFILE 按「新分配 fd 的编号」判 EMFILE（编号 >= soft），
+        // 不是按「已打开个数」——ctest 独立进程 / CI runner 环境下 fd 编号可能
+        // 稀疏（如 {0,1,2,3,4,900}，存在高于「打开个数」的已占编号），把 soft
+        // 压到「打开个数」拦不住低位的空闲编号，socket 照样成功（CI 实测）。
+        // 改为把 soft 压到「最低空闲编号」：任何新分配的首选编号必 >= soft，
+        // 与 fd 布局无关，严格生效。
+        rlim_t lowestFree = 0;
+        while (::fcntl(static_cast<int>(lowestFree), F_GETFD) != -1) {
+            ++lowestFree;
         }
 
-        rlimit exhausted{static_cast<rlim_t>(openCount), original_.rlim_max};
+        rlimit exhausted{lowestFree, original_.rlim_max};
         ::setrlimit(RLIMIT_NOFILE, &exhausted);
     }
 
