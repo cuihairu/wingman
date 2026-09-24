@@ -642,7 +642,9 @@ TEST(GameProfileManagerTest, LoadProfileFromDirNonexistent) {
 TEST(GameProfileManagerTest, ScanProfilesDirectory) {
     auto& mgr = GameProfileManager::instance();
 
-    auto tempDir = std::filesystem::temp_directory_path() / "wingman_scan_test";
+    // 目录名与 game_profile_io_test.cpp 的同名用例区分：两用例并行时共用
+    // 固定路径会互相 remove_all 对方正使用的目录（ctest --parallel 实测碰撞对）
+    auto tempDir = std::filesystem::temp_directory_path() / "wingman_scan_test_mgr";
     std::filesystem::create_directories(tempDir);
 
     // Create a subdirectory with a profile config

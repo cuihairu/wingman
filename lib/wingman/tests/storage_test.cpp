@@ -179,8 +179,10 @@ TEST(StorageFactoryTest, CreateSession) {
 }
 
 TEST(StorageFactoryTest, CreateLocal) {
+    // random_device 而非裸 std::rand()（同 SetUp）：未播种时各进程序列相同，
+    // 并行下目录名碰撞会互相 remove_all 对方正使用的目录
     auto dir = std::filesystem::temp_directory_path() /
-        ("wingman_test_factory_" + std::to_string(std::rand()));
+        ("wingman_test_factory_" + std::to_string(std::random_device{}()));
     auto storage = StorageFactory::createLocal(dir);
     ASSERT_NE(storage, nullptr);
     EXPECT_EQ(storage->length(), 0u);

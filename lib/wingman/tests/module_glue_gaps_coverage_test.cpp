@@ -16,6 +16,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <random>
 #include <thread>
 
 // MSVC Debug CRT：ctype 类函数收到负值（UTF-8 字节经 signed char）默认触发
@@ -312,7 +313,11 @@ protected:
         mod_ = getModule("gameprofile");
         ASSERT_FALSE(mod_.name.empty());
         origDir_ = call(mod_, "getProfilesDirectory").asString();
-        dir_ = std::filesystem::temp_directory_path() / "wingman_gp_glue_profiles";
+        // random_device 进程唯一（同 storage_test）：fixture 3 个用例在 ctest
+        // --parallel 下各占一进程，固定目录名会让 SetUp 的 remove_all 互删对方
+        // 刚建好的目录
+        dir_ = std::filesystem::temp_directory_path() /
+            ("wingman_gp_glue_profiles_" + std::to_string(std::random_device{}()));
         std::error_code ec;
         std::filesystem::remove_all(dir_, ec);
         std::filesystem::create_directories(dir_);
