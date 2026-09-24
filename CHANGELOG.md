@@ -9,7 +9,20 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 354 个提交（feat 64 / fix 129 / docs 59 / test 37 / ci 17 / refactor 8 / chore 16）。
+自 v0.1.1 以来共 362 个提交（feat 65 / fix 132 / docs 62 / test 40 / ci 17 / refactor 8 / chore 16）。
+
+### fix（2026-09-23，IPC 双通道 SIGPIPE 进程杀手 + notify 桥订阅泄漏）
+
+- **UnixSocket/Tcp 通道对端断开后 send 触发 SIGPIPE 终止整个进程**（`unix_socket_channel.cpp`/`tcp_channel.cpp`）：POSIX 默认语义下向已断开对端 send 收到 EPIPE 的同时进程被 SIGPIPE 杀死——GUI/runtime 同样暴露，且 receiveLoop 感知断开与下一次 send 之间存在天然竞态窗口（第十批补测用例首次实证：`SendAfterPeerDisconnectFailsGracefully` 无修复时整个测试进程消失）。修复：Linux 侧 send 加 `MSG_NOSIGNAL`、macOS 侧 socket 挂 `SO_NOSIGPIPE`（Windows NamedPipe 通道无此语义），send 失败统一走既有 Error 状态而非进程死亡。
+- **notify bridge 订阅泄漏**（`notify_module.cpp`）：`bridge()` 同 target 重复建桥不摘旧订阅，而 EventHub 对同名订阅不去重——脚本每次重跑都新增一份订阅，同一事件被重复转发 N 次且永不释放（第九批 db 句柄泄漏同型：胶水层只增不减）。修复：建桥前按固定订阅名（`notify.bridge.<target>`）摘旧订阅并清 `bridges_` 陈旧项；回归用例 `BridgeSameTargetReplacesOldSubscription`（修复前同一 emit 投递 2 次，修复后恰 1 次）。
+- **死代码删除**：`script_manager.cpp` `checkAllReloads_Locked`（与 `checkAllReloads` 内联逻辑完全重复，全库零调用方）、`x11_clipboard.cpp` `escapeShell`（private static，零调用方）、`notify_module.cpp` `clearBridges`（ModuleDescriptor 无生命周期钩子，该清理函数全库无执行路径）。
+
+### test（2026-09-23，C++ 第十批补测：IPC 错误路径与原始帧注入 + X11 wait/close 家族 + script_manager 配置重载）
+
+- **新增 10 用例，行覆盖 90.7% → 91.0%（13090 → 13098 行，miss 1217 → 1185），函数 95.2%（1766/1856）**（v15 基线，全量 2003 用例：1963 PASSED + 40 环境性 skip，skip 口径与 v14 同；基线为重启后自起 Xvfb :98 全量重采，lcov 1.16 按生产 TU/libs/tests 三子树并行 capture 后合并，与单次全量 capture 逐 SF 等价）。目标文件（v15 绝对值）：**x11_window 98.6%**（272/276——wait 家族/close/forceClose/center 批前全部零覆盖）、**unix_socket_channel 91.6%**（229/250）、**script_manager 91.0%**（463/509）、**notify_module 76.1%**（162/213，剩余全为白名单断链，见不可覆盖论证）。
+- ① unix_socket_channel 5 用例（含 RawSocketClient 裸帧注入器，绕过 IpcMessage 封装直接构造协议层畸形输入）：`setErrorCallback` 首个真实触发用例（连接失败置 Error 回调携带路径——该回调此前全库零调用方）；空 payload 序列化为 object 分支；裸帧坏 JSON → deserializeMessage 异常分支 → Error 消息进回调；0 长度帧 → receiveLoop 长度校验 break → 通道转 Disconnected；对端断开后 send 优雅失败（SIGPIPE 修复回归）。② x11_window 1 用例（`X11WindowCloseCenterAndWaitFamily`）+ 剪贴板断言补全：center 居中、waitFor 250ms 轮询超时 false、waitClose 存在/不存在两分支、waitForForeground 死句柄 false 与真前台 true、getBackendInfo、close（WM_DELETE_WINDOW ClientMessage 无 WM 下断言请求本身）、forceClose——**XKillClient 语义为终结拥有目标资源的客户端连接**，打在本进程自建窗口上等于切断自己的 X 连接（首版踩坑：后续任何 Xlib 调用触发 fatal IO error 整进程退出），用例改为 fork 子进程扮演外部客户端持窗、管道传句柄、EOF 退出；`ClipboardFullSurfaceMethods` 补 getBackendInfo/空格式表断言。③ script_manager 3 用例（`script_manager_config_reload_test.cpp`）：loadJsonConfig 非 object 根拒绝（数组/字符串/数字/坏 JSON 四态，对照组合法对象可载）、autoReload 关闭时 checkReload 早退（重写文件使 mtime 前移 + 打开全局开关反向证明早退门控真实生效，随后 reload 返回 true 且 lastModified 刷新）、脚本文件删除后 stat 失败返回 0 不误触发 reload（注册表不受影响）。④ notify_module 1 用例（订阅去重回归，见上条 fix）。
+- **通道并发语义实测记录**：对端存活时裸调 `stopReceiving()` 永久挂起——接收线程阻塞在无超时 `recv()` 上，`join()` 永等；`disconnect()` 内部先 `shutdown` 再 stop 才是唯一安全序（既有 `StopReceivingWithoutStartIsSafe` 注释同理）。初版两个用例据此挂死，均改为不触碰接收线程的确定性方案。
+- **不可覆盖论证（不硬凑）**：clipboard 剩余 26 行全为 NullClipboard 兜底类（仅 XInitThreads 失败时使用）与工厂恒 `make_unique` 不返回空的分支；x11_clipboard 剩余 ~30 行为 fork+execvp 子进程侧代码——子进程被 exec 替换或 `_exit`，gcda 永不写出，属 gcov 结构性盲区；notify 剩余 ~47 行为 webhook 白名单**装配断链**：`setWebhooksEnabled`/`setAllowedHosts` 全库零调用方 → `allowedHosts_` 恒空 → `isUrlAllowed` 恒 false → 所有 webhook 永远被拒，属功能级缺陷（修复需新增配置入口的产品决策，另行跟踪）；script_manager 剩余 running 态分支为同步执行模型遗留（`runScript` 同步等待完成即 completed，无任何入口将脚本置为 running，`callFunction`/`pauseScript`/`resumeScript` 的 running 路径不可达）；unix_socket 剩余 14 行为 `socket()`/`listen()`/`accept()` 资源耗尽级失败（fd 打满）不可注入。
 
 ### feat（2026-09-23，Guacamole 远程桌面像素面网关 P0：票据门禁 + 三协议 e2e + Dashboard 组件）
 
