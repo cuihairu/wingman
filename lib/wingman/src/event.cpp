@@ -5,7 +5,11 @@
 namespace wingman {
 
 EventHub& EventHub::instance() {
-    static EventHub hub;
+    // 泄漏式单例：进程退出期（静态析构阶段）后台任务线程仍可能 emit
+    // （如 TaskManager 析构 shutdown→join 等待期间的任务 cancel/completed 事件），
+    // Meyer's 静态局部此时已按逆序析构，emit 访问悬空的 unordered_map 直接段错误。
+    // EventHub 无自定义析构逻辑，内存交由 OS 回收。
+    static EventHub& hub = *new EventHub();
     return hub;
 }
 

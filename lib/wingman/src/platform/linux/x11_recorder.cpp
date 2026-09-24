@@ -43,8 +43,10 @@ static MacroRecorder* g_instance = nullptr;
 static Display* g_display = nullptr;
 
 // RECORD 请求出错探针：Xlib 默认 error handler 会直接 exit() 杀死整个进程。
-// 部分 X server（如 Xvfb）RECORD 扩展存在但 XRecordEnableContext 必然失败
-// （XRecordBadContext），必须转为「录制不可用」的优雅降级。
+// CreateContext/EnableContext 的 X error（如 context 资源未就绪时的
+// XRecordBadContext）必须转为「录制不可用」的优雅降级。
+// 注：控制/数据双连接的请求无全局顺序，CreateContext 后必须对控制连接
+// XSync 确保 context 先于 EnableContext 落达 server。
 static std::atomic<bool> g_recordXError{false};
 static std::atomic<bool> g_recordDataFlowing{false};
 static XErrorHandler g_previousXHandler = nullptr;
@@ -195,6 +197,12 @@ void MacroRecorder::start() {
         return;
     }
 
+    // 流动标志必须在 enable 之前清零：libXtst 的 EnableContextAsync 会在返回
+    // 前同步投递 StartOfData 到回调（实测 cat=XRecordStartOfData 在 enable
+    // 返回值求值期间先至）。若在 enable 之后再清零，会把回调刚置位的标志
+    // 抹掉，下方 300ms 流动性检查永远超时，任何健康 X server 上录制都无法
+    // 启动（此前被误判为「Xvfb 必然失败」，实为本序缺陷）。
+    g_recordDataFlowing = false;
     if (!XRecordEnableContextAsync(dataDisplay, m_recordContext, eventCallback, nullptr)) {
         XSetErrorHandler(g_previousXHandler);
         XRecordFreeContext(controlDisplay, m_recordContext);
@@ -206,7 +214,6 @@ void MacroRecorder::start() {
 
     m_display = controlDisplay;
     g_display = dataDisplay;
-    g_recordDataFlowing = false;
 
     // Start processing thread
     m_processThread = std::thread([this]() {

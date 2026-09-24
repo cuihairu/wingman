@@ -78,6 +78,8 @@ public:
 				// Timeout reached - set status to timeout if still running
 				if (status_ == TaskStatus::running) {
 					status_ = TaskStatus::timeout;
+					// Task::wait 睡在本 cond_ 上，任何终态置位都必须唤醒
+					cond_.notify_all();
 				}
 			});
 		}
@@ -109,6 +111,10 @@ public:
 						result_ = result;
 						status_ = TaskStatus::succeeded;
 					}
+					// Task::wait 与 timeoutThread 都睡在本 cond_ 上：成功置位
+					// 同样必须唤醒，否则 wait 只能空等到 deadline（实测 500ms 的
+					// work 令 wait(5000) 阻塞满 5s 才返回 true）
+					cond_.notify_all();
 				}
 				// Only emit succeeded event if status is succeeded
 				if (status() == TaskStatus::succeeded) {

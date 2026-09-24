@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
+
+#include <chrono>
+#include <thread>
 #include "test_helpers.hpp"
+#include "clipboard_poll.hpp"
 #include "wingman/script/module_registry.hpp"
 #include "wingman/script/iscript_engine.hpp"
 #include <cstdio>
@@ -144,9 +148,11 @@ TEST(ClipboardModuleTest, TextRoundTripWhenAvailable) {
     ASSERT_NE(setText, nullptr);
     ASSERT_NE(getText, nullptr);
 
-    // Xvfb 下剪贴板真实可用：往返成立；无显示环境 setText 失败，跳过往返断言
+    // Xvfb 下剪贴板真实可用：往返成立；无显示环境 setText 失败，跳过往返断言。
+    // xclip daemon 化持 selection 是异步的，轮询等待（clipboard_poll.hpp）
     if ((*setText)({ScriptValue::fromString("wingman-cov-text")}).asBool()) {
-        EXPECT_EQ((*getText)({}).asString(), "wingman-cov-text");
+        EXPECT_TRUE(clipboard_test::waitFor(
+            [&] { return (*getText)({}).asString() == "wingman-cov-text"; }));
     }
 }
 

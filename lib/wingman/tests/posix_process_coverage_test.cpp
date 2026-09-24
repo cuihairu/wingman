@@ -133,4 +133,19 @@ TEST(PosixProcessTest, WaitForNamePolling) {
     EXPECT_FALSE(Process::waitExit(selfName, 200));
 }
 
+// ========== 第十一批补测：无限等待与未知 pid 的 name/path 空返回 ==========
+
+TEST(PosixProcessTest, WaitForeverBlocksUntilExit) {
+    // timeoutMs<=0 走阻塞式 waitpid（250-251）：子进程 2s 后自然退出
+    SleepChild child(2);
+    EXPECT_TRUE(Process::wait(child.pid(), 0));
+    EXPECT_FALSE(Process::exists(child.pid()));
+}
+
+TEST(PosixProcessTest, UnknownPidNameAndPathAreEmpty) {
+    // /proc/<dead>/comm 打不开 → 空（271-272）；readlink 失败 → 空（309）
+    EXPECT_EQ(Process::getName(999999), "");
+    EXPECT_EQ(Process::getPath(999999), "");
+}
+
 #endif // __linux__

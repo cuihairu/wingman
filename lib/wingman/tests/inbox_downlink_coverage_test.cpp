@@ -258,6 +258,42 @@ TEST_F(InboxDownlinkCoverageTest, ConnectTwiceReusesClientAndHandle) {
     call(inbox_, "disconnect", {ScriptValue::fromInt(handle)});
 }
 
+// ========== payload null / float 转换（第十一批补测：五类型转换仅剩的两型） ==========
+
+TEST_F(InboxDownlinkCoverageTest, ConsumeNullAndFloatPayloadVariants) {
+    auto conn = connectInbox(30000, 100);
+    ASSERT_TRUE(asBool(conn, "success"));
+    const int handle = asInt(conn, "handle");
+    ASSERT_GT(handle, 0);
+    ASSERT_TRUE(waitUntil([&] { return waitForSession() >= 0; })) << "server never saw the session";
+
+    // payload:null → ScriptValue::null()（479）；消息对象仍带 payload 键（507）
+    ASSERT_TRUE(push(R"({"type":"inbox.message","msgId":"n1","payload":null,"timestamp":7})"));
+    ScriptValue n1;
+    ASSERT_TRUE(waitUntil([&] {
+        n1 = call(inbox_, "consume", {ScriptValue::fromInt(handle), ScriptValue::fromInt(50)});
+        return !n1.isNull();  // 判据是消息对象非空，payload 本身应为 null
+    })) << "n1 never arrived";
+    EXPECT_EQ(n1.get("msgId")->asString(), "n1");
+    ASSERT_NE(n1.get("payload"), nullptr);
+    EXPECT_TRUE(n1.get("payload")->isNull());
+    EXPECT_TRUE(call(inbox_, "report", {ScriptValue::fromInt(handle),
+                                        ScriptValue::fromString("n1")}).asBool());
+
+    // payload:1.5 → fromFloat（487）
+    ASSERT_TRUE(push(R"({"type":"inbox.message","msgId":"f1","payload":1.5})"));
+    ScriptValue f1;
+    ASSERT_TRUE(waitUntil([&] {
+        f1 = call(inbox_, "consume", {ScriptValue::fromInt(handle), ScriptValue::fromInt(50)});
+        return !f1.isNull();
+    })) << "f1 never arrived";
+    EXPECT_DOUBLE_EQ(f1.get("payload")->asFloat(), 1.5);
+    EXPECT_TRUE(call(inbox_, "report", {ScriptValue::fromInt(handle),
+                                        ScriptValue::fromString("f1")}).asBool());
+
+    call(inbox_, "disconnect", {ScriptValue::fromInt(handle)});
+}
+
 // ========== crypt.deriveKey：iter=0 → PBKDF2 拒绝 → KDF 失败分支 ==========
 
 TEST(CryptDeriveKeyFailureTest, ZeroIterationsFailsDerivation) {

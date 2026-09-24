@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "wingman/clipboard.hpp"
 #include "clipboard_lock_guard.hpp"
+#include "clipboard_poll.hpp"
 #include <thread>
 #include <chrono>
 
@@ -20,6 +21,20 @@ protected:
 
     // fixture 生命周期 = 整个测试体：锁覆盖 SetUp→TearDown 全程
     ClipboardLockGuard clipboardLock_;
+
+    // X11 selection 的写入→可读存在异步窗口（XSetSelectionOwner 返回后
+    // 所有权传播与 property 写入非同步可见），全套件高负载下 setText 后
+    // 立即 getText 可能读回上一用例的旧内容（实测读回 probe 文本的偶发
+    // flaky）。读回不匹配时短暂轮询；首次读取即命中的后端行为不变
+    std::string setTextAndGetText(const std::string& text) {
+        EXPECT_TRUE(Clipboard::setText(text));
+        for (int attempt = 0; attempt < 40; ++attempt) {
+            std::string result = Clipboard::getText();
+            if (result == text) return result;
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        return Clipboard::getText(); // 最终值交给调用方断言报告差异
+    }
 };
 
 // ========== Text Operation Tests ==========
@@ -27,43 +42,32 @@ protected:
 TEST_F(ClipboardTest, SetAndGetText) {
     std::string testText = "Hello, Wingman!";
 
-    EXPECT_TRUE(Clipboard::setText(testText));
-    std::string result = Clipboard::getText();
-
-    EXPECT_EQ(result, testText);
+    EXPECT_EQ(setTextAndGetText(testText), testText);
 }
 
 TEST_F(ClipboardTest, SetEmptyText) {
-    EXPECT_TRUE(Clipboard::setText(""));
-    std::string result = Clipboard::getText();
-    EXPECT_EQ(result, "");
+    EXPECT_EQ(setTextAndGetText(""), "");
 }
 
 TEST_F(ClipboardTest, SetUnicodeText) {
     std::string testText = "Hello World 🚀 Wingman";
 
-    EXPECT_TRUE(Clipboard::setText(testText));
-    std::string result = Clipboard::getText();
-
-    EXPECT_EQ(result, testText);
+    EXPECT_EQ(setTextAndGetText(testText), testText);
 }
 
 TEST_F(ClipboardTest, HasText) {
     Clipboard::clear();
 
-    EXPECT_FALSE(Clipboard::hasText());
+    EXPECT_FALSE(clipboard_test::waitFor([] { return Clipboard::hasText(); }));
 
     Clipboard::setText("Test content");
-    EXPECT_TRUE(Clipboard::hasText());
+    EXPECT_TRUE(clipboard_test::waitFor([] { return Clipboard::hasText(); }));
 }
 
 TEST_F(ClipboardTest, LongText) {
     std::string longText(10000, 'A');  // 10KB text
 
-    EXPECT_TRUE(Clipboard::setText(longText));
-    std::string result = Clipboard::getText();
-
-    EXPECT_EQ(result, longText);
+    EXPECT_EQ(setTextAndGetText(longText), longText);
 }
 
 // ========== HTML Operation Tests ==========
@@ -81,10 +85,10 @@ TEST_F(ClipboardTest, SetAndGetHTML) {
 TEST_F(ClipboardTest, HasHTML) {
     Clipboard::clear();
 
-    EXPECT_FALSE(Clipboard::hasHTML());
+    EXPECT_FALSE(clipboard_test::waitFor([] { return Clipboard::hasHTML(); }));
 
     Clipboard::setHTML("<p>Test</p>");
-    EXPECT_TRUE(Clipboard::hasHTML());
+    EXPECT_TRUE(clipboard_test::waitFor([] { return Clipboard::hasHTML(); }));
 }
 
 // ========== Image Operation Tests ==========
@@ -164,36 +168,31 @@ TEST_F(ClipboardTest, HasFiles) {
     Clipboard::clear();
 
     // x11 后端 selection 所有权转移异步生效：clear 后立即探测可能命中前一用例
-    // 残留的 FILE_LIST target（第六批全量实测偶发失败）。轮询等待而非定值睡眠。
-    bool clearedNoFiles = false;
-    for (int i = 0; i < 100 && !clearedNoFiles; ++i) {
-        clearedNoFiles = !Clipboard::hasFiles();
-        if (!clearedNoFiles) std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-
-    EXPECT_FALSE(Clipboard::hasFiles());
+    // 残留的 FILE_LIST target（第六批全量实测偶发失败，本批统一到共享轮询
+    // helper clipboard_poll.hpp）
+    EXPECT_FALSE(clipboard_test::waitFor([] { return Clipboard::hasFiles(); }));
 
     Clipboard::setFiles(files);
 
-    EXPECT_TRUE(Clipboard::hasFiles());
+    EXPECT_TRUE(clipboard_test::waitFor([] { return Clipboard::hasFiles(); }));
 }
 
 // ========== General Operation Tests ==========
 
 TEST_F(ClipboardTest, Clear) {
     Clipboard::setText("Some content");
-    EXPECT_FALSE(Clipboard::isEmpty());
+    EXPECT_FALSE(clipboard_test::waitFor([] { return Clipboard::isEmpty(); }));
 
     Clipboard::clear();
-    EXPECT_TRUE(Clipboard::isEmpty());
+    EXPECT_TRUE(clipboard_test::waitFor([] { return Clipboard::isEmpty(); }));
 }
 
 TEST_F(ClipboardTest, IsEmpty) {
     Clipboard::clear();
-    EXPECT_TRUE(Clipboard::isEmpty());
+    EXPECT_TRUE(clipboard_test::waitFor([] { return Clipboard::isEmpty(); }));
 
     Clipboard::setText("Test");
-    EXPECT_FALSE(Clipboard::isEmpty());
+    EXPECT_FALSE(clipboard_test::waitFor([] { return Clipboard::isEmpty(); }));
 }
 
 // ========== Boundary Condition Tests ==========
@@ -202,8 +201,7 @@ TEST_F(ClipboardTest, MultipleOperations) {
     // Test consecutive multiple operations
     for (int i = 0; i < 10; ++i) {
         std::string text = "Iteration " + std::to_string(i);
-        EXPECT_TRUE(Clipboard::setText(text));
-        EXPECT_EQ(Clipboard::getText(), text);
+        EXPECT_EQ(setTextAndGetText(text), text);
     }
 }
 
@@ -227,8 +225,5 @@ TEST_F(ClipboardTest, SpecialCharacters) {
     std::string specialText = "Line1\nLine2\r\nLine3\tTabbed\0Binary";
     std::string textWithoutNull = specialText.substr(0, specialText.find('\0'));
 
-    EXPECT_TRUE(Clipboard::setText(textWithoutNull));
-    std::string result = Clipboard::getText();
-
-    EXPECT_EQ(result, textWithoutNull);
+    EXPECT_EQ(setTextAndGetText(textWithoutNull), textWithoutNull);
 }

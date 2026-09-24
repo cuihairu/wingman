@@ -117,6 +117,12 @@ if(BUILD_CORE_TESTS)
     target_sources(core_tests PRIVATE smart_trigger_triggerpath_coverage_test.cpp)
     # misc uia/node/bt 缺口补测（Linux stub 查找路径、bt 状态映射 tick、node 心跳）
     target_sources(core_tests PRIVATE misc_uia_node_coverage_test.cpp)
+    # EventHub 防御分支补测（空/超长 type、订阅名超长、单事件订阅上限）
+    target_sources(core_tests PRIVATE batch11_event_coverage_test.cpp)
+    # 第十一批胶水补测（team 空态/macro 全家族/task async/inbox report/BMP 解析与
+    #   save 失败分支）；team 空态用例以 teamId 检测进程级单例前提，不满足时
+    #   GTEST_SKIP（gtest 单进程按注册顺序运行，前提仅在独立进程下成立）
+    target_sources(core_tests PRIVATE batch11_glue_coverage_test.cpp)
     if(TARGET wingman::lua)
         target_link_libraries(core_tests PRIVATE wingman::lua)
         message(STATUS "Core tests: linking wingman::lua for script execution tests")

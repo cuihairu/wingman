@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "wingman/trigger.hpp"
+#include "wingman/lua/lua_script_engine.hpp" // registerLuaEngine（RunScript 真实引擎链）
 #include "wingman/platform/mock_input.hpp"
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
@@ -320,6 +321,10 @@ TEST_F(TriggerPosixCoverageTest, InvalidKeyValueHitsErrorBranch) {
 }
 
 TEST_F(TriggerPosixCoverageTest, ScriptActionsRunAndEmptyBranches) {
+    // RunScript 走真实 lua 链（engine 创建/模块注入/executeString/shutdown）：
+    // lua 引擎靠显式 registerLuaEngine() 注册（runtime main 同款），不注册时
+    // createEngine 返回空、脚本分支静默落 warn 兜底（registerLuaEngine 幂等）
+    wingman::lua::registerLuaEngine();
     TriggerActionData run;
     run.type = BasicTriggerAction::RunScript;
     run.value = "wingman.log('cov-ok')";
@@ -332,6 +337,8 @@ TEST_F(TriggerPosixCoverageTest, ScriptActionsRunAndEmptyBranches) {
     cfg.actions = {run, empty};
     cfg.cooldown = 5000;
     manager_->add(cfg);
+    manager_->start();
+    // 运行中二次 start：CAS 失败早退（幂等防护，不新建线程）
     manager_->start();
     pump(2);
     manager_->stop();
@@ -394,5 +401,52 @@ TEST_F(TriggerPosixCoverageTest, PlayAudioInvalidPathBranch) {
     manager_->start();
     pump(2);
     manager_->stop();
+    SUCCEED();
+}
+
+// ========== 第十一批补测：构造重载 / setter 家族 / PlayAudio fork 父进程段 ==========
+
+// 35-36 logger 单参构造、44 null logger 回退 default_logger、
+// 52-65 setScriptManager/setLogger/setInput 三 setter（纯赋值，无轮询依赖）
+TEST_F(TriggerPosixCoverageTest, ConstructorOverloadsAndSetters) {
+    {
+        // logger 单参重载 → defaultSharedInput() 路径
+        TriggerManager byLogger(quietLogger());
+        byLogger.stop();
+    }
+    {
+        // null logger → m_logger = spdlog::default_logger() 回退分支
+        TriggerManager nullLogger(input_, nullptr);
+        nullLogger.stop();
+    }
+    // setter 家族：纯赋值 + null logger 回退分支（59 行三元）
+    manager_->setScriptManager(nullptr);
+    manager_->setLogger(nullptr);
+    manager_->setLogger(quietLogger());
+    manager_->setInput(std::make_shared<platform::mock::MockInput>());
+    SUCCEED();
+}
+
+// 489-495 PlayAudio 有效路径：stat 通过后 fork（父进程 489/493/495 可覆盖；
+// 子进程 execlp/_exit 段 491-492 因 _exit 跳过 gcov flush 天然不可计）。
+// 本机无 aplay：execlp 失败 _exit(127)，waitpid 立即收尸，无副作用。
+TEST_F(TriggerPosixCoverageTest, PlayAudioValidPathForksPlayer) {
+    const char* wavPath = "/tmp/batch11_cov_sound.wav";
+    FILE* f = ::fopen(wavPath, "wb");
+    ASSERT_NE(f, nullptr);
+    ::fclose(f);
+
+    TriggerActionData audio;
+    audio.type = BasicTriggerAction::PlayAudio;
+    audio.value = wavPath;
+
+    TriggerConfig cfg = elapsedConfig("cov_act_audio_ok", 30);
+    cfg.actions = {audio};
+    cfg.cooldown = 5000;
+    manager_->add(cfg);
+    manager_->start();
+    pump(2);
+    manager_->stop();
+    ::remove(wavPath);
     SUCCEED();
 }

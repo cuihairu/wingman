@@ -15,10 +15,12 @@
 #include "wingman/platform/iclipboard.hpp"
 #include "wingman/platform/iwindow.hpp"
 #include "wingman/clipboard.hpp"
+#include "wingman/filewatcher.hpp"
 #include "wingman/window.hpp"
 #include "wingman/script/module_registry.hpp"
 #include "wingman/script/iscript_engine.hpp"
 #include "clipboard_lock_guard.hpp"
+#include "clipboard_poll.hpp"
 #include "x11_test_lock.hpp"
 #include "wingman/screen.hpp"  // Bitmap 完整定义（icapture.hpp 仅前向声明）
 
@@ -34,14 +36,18 @@
 #include <algorithm>
 #include <cerrno>
 #include <chrono>
+#include <atomic>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -52,6 +58,9 @@
 namespace wingman::platform::linux {
 std::unique_ptr<ICapture> createX11Capture(const CaptureConfig& config);
 std::unique_ptr<IWindow> createX11Window();
+// inotify 后端工厂（filewatcher.cpp 内部声明、x11_factory.cpp 定义），
+// 用独立实例验证 shutdown 清理——FileWatcher 单例 shutdown 会污染后续用例
+std::unique_ptr<IFileWatcher> createInotifyFileWatcher();
 }
 
 namespace {
@@ -368,6 +377,9 @@ TEST_F(X11PlatformTest, ClipboardTextRoundtrip) {
         }
         FAIL() << "setText failed although xclip is available";
     }
+    // xclip daemon 化持 selection 是异步的：setText 返回 true 时新 owner 可能
+    // 尚未接管（高负载全量跑下实测读回上一用例旧内容的偶发 flaky）
+    EXPECT_TRUE(clipboard_test::waitFor([&] { return clipboard.getText() == payload; }));
     EXPECT_EQ(clipboard.getText(), payload);
     EXPECT_TRUE(clipboard.hasText());
 }
@@ -394,6 +406,11 @@ TEST_F(X11PlatformTest, ClipboardFullSurfaceMethods) {
     EXPECT_FALSE(clipboard.setFiles({}));
     const std::vector<std::string> files = {"/tmp/wingman-a.txt", "/tmp/wingman-b.txt"};
     EXPECT_TRUE(clipboard.setFiles(files));
+    // xclip 异步接管 selection（同 ClipboardTextRoundtrip），轮询等待回读
+    EXPECT_TRUE(clipboard_test::waitFor([&] {
+        const auto got = clipboard.getFiles();
+        return got.size() == files.size() && got[0] == files[0] && got[1] == files[1];
+    }));
     const auto got = clipboard.getFiles();
     ASSERT_EQ(got.size(), files.size());
     EXPECT_EQ(got[0], files[0]);
@@ -406,9 +423,9 @@ TEST_F(X11PlatformTest, ClipboardFullSurfaceMethods) {
     EXPECT_FALSE(clipboard.getAvailableFormats().empty());
     EXPECT_EQ(clipboard.isEmpty(), clipboard.getText().empty());
 
-    // clear（空 selection）后全空
+    // clear（空 selection）后全空（clear→新 xclip 异步接管，轮询等待空态）
     clipboard.clear();
-    EXPECT_TRUE(clipboard.isEmpty());
+    EXPECT_TRUE(clipboard_test::waitFor([&] { return clipboard.isEmpty(); }));
     EXPECT_FALSE(clipboard.hasText());
     EXPECT_FALSE(clipboard.hasFiles());
 
@@ -635,6 +652,7 @@ TEST_F(X11PlatformTest, X11WindowCloseCenterAndWaitFamily) {
         Display* d = XOpenDisplay(nullptr);
         if (!d) _exit(1);
         Window w = XCreateSimpleWindow(d, DefaultRootWindow(d), 10, 10, 80, 60, 0, 0, 0);
+        if (w == 0) _exit(3); // 窗口创建失败时父侧 forceClose(0) 必落空
         XMapWindow(d, w);
         XFlush(d);
         if (::write(fds[1], &w, sizeof(w)) != static_cast<ssize_t>(sizeof(w))) _exit(2);
@@ -642,7 +660,10 @@ TEST_F(X11PlatformTest, X11WindowCloseCenterAndWaitFamily) {
         fd_set rfds;
         FD_ZERO(&rfds);
         FD_SET(ConnectionNumber(d), &rfds);
-        select(ConnectionNumber(d) + 1, &rfds, nullptr, nullptr, nullptr);
+        // 限时 select：XKillClient 送达失败时 EOF 永不到来，无超时会让
+        // 父进程 waitpid 挂死整个运行（v18 基线采集实测一次）
+        struct timeval tv = {10, 0};
+        select(ConnectionNumber(d) + 1, &rfds, nullptr, nullptr, &tv);
         _exit(0);
     }
     close(fds[1]);
@@ -653,7 +674,22 @@ TEST_F(X11PlatformTest, X11WindowCloseCenterAndWaitFamily) {
 
     EXPECT_TRUE(window->forceClose(foreignWin));
     int holderStatus = 0;
-    waitpid(holder, &holderStatus, 0);  // 连接被杀 → 子进程 select 命中 EOF 退出
+    // 防挂死护栏：正常路径连接被杀、select 命中 EOF 立即退出；极端时序下
+    // （XKillClient 落空）子进程会困在 select 里，waitpid(0) 阻塞式等待将
+    // 挂死整个运行——限时轮询，超时 SIGKILL 收尸并如实报失败
+    bool holderGone = false;
+    for (int i = 0; i < 100; ++i) {
+        if (waitpid(holder, &holderStatus, WNOHANG) == holder) {
+            holderGone = true;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    if (!holderGone) {
+        kill(holder, SIGKILL);
+        waitpid(holder, &holderStatus, 0);
+        ADD_FAILURE() << "holder did not exit within 5s after forceClose";
+    }
     EXPECT_TRUE(WIFEXITED(holderStatus));
     for (int i = 0; i < 20 && window->isValid(foreignWin); ++i) {
         std::this_thread::sleep_for(std::chrono::milliseconds(25));
@@ -1385,6 +1421,232 @@ TEST_F(X11PlatformTest, CaptureMonitorMetadataAndRegionFallback) {
     const auto info = capture->getBackendInfo();
     EXPECT_EQ(info.name, "X11");
     EXPECT_TRUE(info.isInitialized);
+}
+
+// ========== 第十一批补测：查询回退 / RESOURCE_MANAGER DPI 链 / 无显示降级 ==========
+//
+// XResourceManagerString 返回的是 Xlib 连接建立时缓存的字符串，属性写入后
+// 必须新开 Display 连接（新的 createPlatformScreen）才能观察到。
+
+namespace {
+
+// RESOURCE_MANAGER 属性 RAII：构造时保存原值，析构恢复；display 由 guard
+// 拥有并在恢复完成后关闭（恢复必须发生在连接存活期内）
+class ResourceMgrGuard {
+public:
+    explicit ResourceMgrGuard(Display* d) : d_(d) {
+        root_ = DefaultRootWindow(d_);
+        prop_ = XInternAtom(d_, "RESOURCE_MANAGER", False);
+        unsigned char* data = nullptr;
+        if (XGetWindowProperty(d_, root_, prop_, 0, 8192, False, AnyPropertyType,
+                               &type_, &format_, &n_, &after_, &data) == Success && data) {
+            orig_.assign(data, data + n_);
+            XFree(data);
+        }
+    }
+    ~ResourceMgrGuard() {
+        if (!orig_.empty()) {
+            XChangeProperty(d_, root_, prop_, type_, format_, PropModeReplace,
+                            orig_.data(), static_cast<int>(orig_.size()));
+        } else {
+            XDeleteProperty(d_, root_, prop_);
+        }
+        XSync(d_, False);
+        XCloseDisplay(d_);
+    }
+
+    ResourceMgrGuard(const ResourceMgrGuard&) = delete;
+    ResourceMgrGuard& operator=(const ResourceMgrGuard&) = delete;
+
+    void set(const char* text) {
+        XChangeProperty(d_, root_, prop_, XA_STRING, 8, PropModeReplace,
+                        reinterpret_cast<const unsigned char*>(text),
+                        static_cast<int>(std::strlen(text)));
+        XSync(d_, False);
+    }
+
+private:
+    Display* d_;
+    Window root_ = 0;
+    Atom prop_ = 0;
+    Atom type_ = 0;
+    int format_ = 0;
+    unsigned long n_ = 0;
+    unsigned long after_ = 0;
+    std::vector<unsigned char> orig_;
+};
+
+// 坏 DISPLAY RAII：指向 probe 范围（20..90）之外、本机不会存在的 display
+class BrokenDisplayGuard {
+public:
+    BrokenDisplayGuard() {
+        if (const char* old = ::getenv("DISPLAY")) old_ = old;
+        ::setenv("DISPLAY", ":91", 1);
+    }
+    ~BrokenDisplayGuard() {
+        if (old_) {
+            ::setenv("DISPLAY", old_->c_str(), 1);
+        } else {
+            ::unsetenv("DISPLAY");
+        }
+    }
+
+    BrokenDisplayGuard(const BrokenDisplayGuard&) = delete;
+    BrokenDisplayGuard& operator=(const BrokenDisplayGuard&) = delete;
+
+private:
+    std::optional<std::string> old_;
+};
+
+} // namespace
+
+TEST_F(X11PlatformTest, ScreenMonitorQueryFallbacks) {
+    auto screen = wingman::platform::createPlatformScreen();
+    ASSERT_NE(screen, nullptr);
+
+    // 越界坐标不落任何显示器 → XRRGetMonitors 遍历空手 return 0（237-238）
+    EXPECT_EQ(screen->getMonitorFromPoint({999999, 999999}), 0);
+    // 非零死句柄 → XGetWindowAttributes 失败 → 0（246；hwnd==0 已由
+    // ScreenMonitorFromPointAndWindow 覆盖，这里是同行的另一分支）
+    EXPECT_EQ(screen->getMonitorFromWindow(0xDEADBEEF), 0);
+}
+
+TEST_F(X11PlatformTest, ScreenDpiResourceManagerChain) {
+    X11ServerLockGuard x11Lock;
+    Display* d = XOpenDisplay(nullptr);
+    ASSERT_NE(d, nullptr);
+    ResourceMgrGuard guard(d);
+
+    // 变体 1：Xft.dpi 资源命中 → atoi 直返（114-121）
+    guard.set("Xft.dpi: 112\n");
+    {
+        auto screen = wingman::platform::createPlatformScreen();
+        ASSERT_NE(screen, nullptr);
+        EXPECT_EQ(screen->getDpi(0), 112);
+    }
+
+    // 变体 2：资源库可解析但无 Xft.dpi → GetResource 失败，销毁 db 后
+    // 落屏幕物理尺寸换算（123-130）
+    guard.set("custom.key: value\n");
+    {
+        auto screen = wingman::platform::createPlatformScreen();
+        ASSERT_NE(screen, nullptr);
+        const int dpi = screen->getDpi(0);
+        EXPECT_GT(dpi, 0);
+        EXPECT_LE(dpi, 960);
+    }
+}
+
+TEST_F(X11PlatformTest, ScreenStaticApiFailsGracefullyWithoutDisplay) {
+    // 坏 DISPLAY：静态门面的全部捕获/查询失败分支优雅呈现
+    // （screen.cpp 854/867-869/878-880/887-889/896-898/917-919 +
+    // x11_screen initialize 失败 20-21）
+    BrokenDisplayGuard broken;
+
+    auto screen = wingman::platform::createPlatformScreen();
+    ASSERT_NE(screen, nullptr);
+    EXPECT_FALSE(screen->getBackendInfo().isInitialized);
+
+    EXPECT_EQ(wingman::Screen::capture(), nullptr);
+    EXPECT_EQ(wingman::Screen::capture(wingman::Rect{1, 1, 5, 5}), nullptr);
+    const auto px = wingman::Screen::getPixel(3, 4);
+    EXPECT_EQ(px.r, 0);
+    EXPECT_EQ(px.g, 0);
+    EXPECT_EQ(px.b, 0);
+    wingman::Point pt;
+    EXPECT_FALSE(wingman::Screen::findColor(
+        wingman::Color(1, 2, 3), wingman::Rect{0, 0, 8, 8}, 0, pt));
+    EXPECT_TRUE(wingman::Screen::findColors(
+        wingman::Color(1, 2, 3), wingman::Rect{0, 0, 8, 8}, 0).empty());
+}
+
+TEST_F(X11PlatformTest, ScreenCaptureEmptyRegionRejectedEarly) {
+    // 空区域在创建捕获连接之前即拒绝（874-876，与 X 可用性无关）
+    EXPECT_EQ(wingman::Screen::capture(wingman::Rect{0, 0, 0, 0}), nullptr);
+    EXPECT_EQ(wingman::Screen::capture(wingman::Rect{5, 5, -1, 10}), nullptr);
+}
+
+TEST_F(X11PlatformTest, InputUnknownMouseButtonFallsBackToLeft) {
+    auto input = wingman::platform::createDefaultInput();
+    ASSERT_NE(input, nullptr);
+    // 越界枚举走 getButtonCode default 分支按左键码注入（218），不崩即达意
+    input->mouseClick(static_cast<wingman::platform::MouseButton>(99));
+    input->mouseDown(static_cast<wingman::platform::MouseButton>(99));
+    input->mouseUp(static_cast<wingman::platform::MouseButton>(99));
+    SUCCEED();
+}
+
+TEST_F(X11PlatformTest, WindowCenterInvalidHandleReturnsFalse) {
+    X11ServerLockGuard x11Lock;
+    auto window = wingman::platform::linux::createX11Window();
+    ASSERT_NE(window, nullptr);
+    // XGetWindowAttributes(死句柄) 失败 → false（290）
+    EXPECT_FALSE(window->center(0xDEADBEEF, 0));
+}
+
+TEST_F(X11PlatformTest, InotifyBackendNameAndFileRecursiveEarlyOut) {
+    auto& watcher = wingman::FileWatcher::instance();
+    EXPECT_EQ(watcher.getBackendName(), "inotify");
+
+    // 对普通文件 recursive=true：递归遍历发现根路径非目录即早退（163），
+    // 文件自身的 watch 仍正常建立，随后清理
+    const std::string filePath = "/tmp/wingman_batch11_inotify_probe.txt";
+    {
+        std::ofstream file(filePath);
+        file << "probe";
+    }
+    const uint64_t id = watcher.watch(
+        filePath, true, [](const wingman::platform::FileChange&) {});
+    EXPECT_NE(id, 0u);
+    EXPECT_TRUE(watcher.unwatch(id));
+    std::remove(filePath.c_str());
+}
+
+// 独立 inotify 实例：递归遍历权限跳过 + 回调异常吞噬 + shutdown 清理
+TEST_F(X11PlatformTest, InotifyCallbackExceptionRecursivePermissionAndShutdownCleanup) {
+    auto watcher = wingman::platform::linux::createInotifyFileWatcher();
+    ASSERT_NE(watcher, nullptr);
+    // 工厂内部已完成 initialize（x11_factory.cpp createInotifyFileWatcher）；
+    // 幂等防护下二次调用安全返回 true，不重建 pollThread_
+    EXPECT_TRUE(watcher->initialize());
+    EXPECT_TRUE(watcher->getBackendInfo().isInitialized);
+
+    namespace fs = std::filesystem;
+    const std::string root = "/tmp/wingman_batch11_inotify_" + std::to_string(::getpid());
+    fs::remove_all(root);
+    fs::create_directories(root + "/sub");
+    // 递归遍历权限错误分支（170-173）：blocked 无读权限，iterator increment
+    // 报错被逐条跳过（root 用户下权限检查旁路，不触发但不影响用例语义）
+    fs::create_directories(root + "/blocked");
+    ::chmod((root + "/blocked").c_str(), 0000);
+
+    // 回调先计数再抛异常 → pollThread catch 吞噬（289-293），watcher 不受影响
+    std::atomic<int> callbackCalls{0};
+    const uint64_t id = watcher->watch(root, /*recursive=*/true,
+        [&callbackCalls](const wingman::platform::FileChange&) {
+            ++callbackCalls;
+            throw std::runtime_error("batch11 inotify callback boom");
+        });
+    ASSERT_NE(id, 0u);
+    ::chmod((root + "/blocked").c_str(), 0755); // 遍历完成即恢复，避免残留
+
+    {
+        std::ofstream f(root + "/sub/probe.txt");
+        f << "batch11";
+    }
+    // 事件派发是 pollThread 异步的，轮询等待（至多 ~3s）
+    bool sawCallback = false;
+    for (int i = 0; i < 30 && !sawCallback; ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        sawCallback = callbackCalls.load() > 0;
+    }
+    EXPECT_TRUE(sawCallback); // 回调确曾执行且异常被吞噬（watcher 存活可 shutdown）
+
+    // shutdown 对活跃 watch 执行 inotify_rm_watch 清理循环（38-44）
+    watcher->shutdown();
+    watcher.reset();
+    std::error_code ec;
+    fs::remove_all(root, ec);
 }
 
 #endif // __linux__

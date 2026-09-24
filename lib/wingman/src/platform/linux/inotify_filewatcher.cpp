@@ -21,6 +21,9 @@ public:
     ~InotifyFileWatcher() override { shutdown(); }
 
     bool initialize() override {
+        // 幂等防护：工厂（x11_factory）与单例初始化路径可能各自调用一次，
+        // 对已 joinable 的 pollThread_ 重新赋值会 std::terminate
+        if (initialized_) return true;
         inotifyFd_ = inotify_init1(IN_NONBLOCK);
         if (inotifyFd_ < 0) {
             spdlog::error("InotifyFileWatcher: inotify_init failed");

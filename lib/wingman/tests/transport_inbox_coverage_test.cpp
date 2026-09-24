@@ -122,6 +122,9 @@ TEST_F(TransportInboxCoverageTest, TcpSelfConnectSendAndSessionManagement) {
     int sessionId = static_cast<int>(sessions.at(0).asInt());
     EXPECT_TRUE((*sendToFn)({ScriptValue::fromInt(srvHandle),
                              ScriptValue::fromInt(sessionId), ScriptValue::fromString("hi-you")}).asBool());
+    // 等 client 侧收包线程派发 messageHandler（v17 基线实测：sendTo 后立即
+    // 清理会与派发竞速，回调时序性漏覆盖；loopback 收包 <1ms，100ms 充裕）
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     const auto* closeSessionFn = findFunction(transport_, "tcpCloseSession");
     EXPECT_TRUE((*closeSessionFn)({ScriptValue::fromInt(srvHandle), ScriptValue::fromInt(sessionId)}).asBool());
@@ -339,6 +342,33 @@ TEST_F(TransportInboxCoverageTest, InboxErrorBranches) {
     // disconnect 幂等
     const auto* disconnectFn = findFunction(inbox_, "disconnect");
     EXPECT_TRUE((*disconnectFn)({bogus}).asBool());
+}
+
+// ========== inbox：tcp:// 无端口 URL 解析 + report 结果非 JSON 回退 ==========
+
+TEST_F(TransportInboxCoverageTest, InboxUrlWithoutPortAndReportBadJsonResult) {
+    const auto* connectFn = findFunction(inbox_, "connect");
+    const auto* disconnectFn = findFunction(inbox_, "disconnect");
+    ASSERT_NE(connectFn, nullptr);
+    ASSERT_NE(disconnectFn, nullptr);
+
+    // tcp:// 无端口变体 → host 解析走 else 分支（415-417），port 落默认值。
+    // 默认端口是否有监听不确定（连上/失败均合法），解析代码执行即达覆盖，
+    // 只需保证句柄不泄漏
+    auto noPort = (*connectFn)({ScriptValue::fromString("tcp://127.0.0.1"),
+                                ScriptValue::fromObject({
+                                    {"agentId", ScriptValue::fromString("cov-nop")},
+                                    {"heartbeatInterval", ScriptValue::fromInt(30000)},
+                                })});
+    const int noPortHandle = asInt(noPort, "handle");
+    if (noPortHandle > 0) (*disconnectFn)({ScriptValue::fromInt(noPortHandle)});
+
+    // report 第三参为非法 JSON 字符串 → parse 抛出被 catch → 回退原始串。
+    // 结果解析发生在 handle/client 校验之前（534-546），无需真实连接
+    const auto* reportFn = findFunction(inbox_, "report");
+    ASSERT_NE(reportFn, nullptr);
+    EXPECT_FALSE((*reportFn)({ScriptValue::fromInt(1), ScriptValue::fromString("m"),
+                              ScriptValue::fromString("{definitely not json")}).asBool());
 }
 
 } // anonymous namespace

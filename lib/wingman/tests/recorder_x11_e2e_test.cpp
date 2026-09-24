@@ -3,10 +3,8 @@
 // 与 recorder_test.cpp 的状态机用例互补：本文件验证「捕获 → 保存」的正向闭环——
 // start 后经 XTest 注入真实按键，断言 XRecord 捕获到事件并可序列化。
 //
-// 环境要求：真实桌面 X server。Xvfb 的 RECORD 扩展存在但 EnableContext
-// 必然失败（XRecordBadContext，见 x11_recorder.cpp 顶部注释），此时
-// GTEST_SKIP——本用例只在有真实 X 会话的机器上执行（人工真桌面验证 =
-// 跑 core_tests --gtest_filter='RecorderX11E2E.*'）。
+// Xvfb（RECORD 1.13）已实证可用：EnableContext 正常，StartOfData 毫秒级送达。
+// 仅当无 X server（DISPLAY 不可用）时 GTEST_SKIP。
 //
 // 注入的按键会进入当前焦点窗口：优先 F13（绝大多数桌面无副作用），
 // 键码不存在时回退普通键 'a' 并在输出中提示。
@@ -33,12 +31,15 @@ namespace fs = std::filesystem;
 namespace {
 
 // XTest 注入一个完整的按键（press + release）。
+// 必须用 XSync 而非 XFlush：XFlush 只写入 socket 不等 server 消费，Xvfb 上
+// FakeInput 请求可能在 server 侧滞留不注入（实测 2s 内 RECORD 收不到事件）；
+// XSync 的往返强制 server 处理完请求后事件才落地。
 void injectKeyTap(Display* d, unsigned int keycode) {
     XTestFakeKeyEvent(d, keycode, True, CurrentTime);
-    XFlush(d);
+    XSync(d, False);
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
     XTestFakeKeyEvent(d, keycode, False, CurrentTime);
-    XFlush(d);
+    XSync(d, False);
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
 }
 

@@ -9,6 +9,18 @@
 
 namespace wingman::platform::linux {
 
+namespace {
+
+// 宽容 error handler（同 x11_capture.cpp / x11_window.cpp）：Xlib 默认 handler
+// 会 exit() 杀死整个进程。显示器查询暴露给任意句柄输入（脚本 getWindows 后
+// 窗口销毁 → getMonitorFromWindow 死句柄 → XGetWindowAttributes BadWindow），
+// 必须让失败的请求以 NULL 返回值/降级呈现而不是进程死亡。
+int screenXErrorHandler(Display*, XErrorEvent*) {
+    return 0;
+}
+
+} // namespace
+
 class X11Screen : public IScreen {
 public:
     X11Screen() = default;
@@ -20,6 +32,8 @@ public:
             spdlog::error("X11Screen: failed to open X display");
             return false;
         }
+        // 幂等安装（同进程重复 initialize 指向同一函数，无叠加效应）
+        XSetErrorHandler(screenXErrorHandler);
         root_ = DefaultRootWindow(display_);
         initialized_ = true;
         return true;

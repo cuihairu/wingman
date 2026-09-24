@@ -7,13 +7,16 @@
 #include <gtest/gtest.h>
 
 #include "clipboard_lock_guard.hpp"
+#include "clipboard_poll.hpp"
 #include "wingman/script/module_registry.hpp"
 #include "wingman/clipboard.hpp"
 #include "wingman/game_profile.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <thread>
 
 // MSVC Debug CRT：ctype 类函数收到负值（UTF-8 字节经 signed char）默认触发
 // _CrtDbgReport 模态断言对话框，headless CI/无人值守环境下进程永久挂死
@@ -122,24 +125,37 @@ protected:
 
     ModuleDescriptor mod_;
     ClipboardLockGuard lock_; // 锁覆盖 SetUp 探测→测试体全程
+
+    // 同 clipboard_test.cpp：X11 selection 写后读存在异步窗口（高负载全量
+    // 跑下可能读回旧内容），轮询 helper 见 clipboard_poll.hpp
+    std::string glueSetTextAndGet(const std::string& text) {
+        EXPECT_EQ(call(mod_, "setText", {ScriptValue::fromString(text)}).asBool(), true);
+        return clipboard_test::waitFor(
+            [this, &text] { return call(mod_, "getText").asString() == text; })
+            ? text : call(mod_, "getText").asString();
+    }
 };
 
 TEST_F(ClipboardModuleGlue, TextRoundtripAndClear) {
-    EXPECT_EQ(call(mod_, "setText", {ScriptValue::fromString("glue-文本")}).asBool(), true);
+    EXPECT_EQ(glueSetTextAndGet("glue-文本"), "glue-文本");
     EXPECT_EQ(call(mod_, "hasText").asBool(), true);
-    EXPECT_EQ(call(mod_, "getText").asString(), "glue-文本");
     EXPECT_EQ(call(mod_, "isEmpty").asBool(), false);
 
     call(mod_, "clear");
-    EXPECT_EQ(call(mod_, "isEmpty").asBool(), true);
+    // clear→新 xclip 异步接管（同上），轮询等待空态生效
+    EXPECT_TRUE(clipboard_test::waitFor(
+        [this] { return call(mod_, "isEmpty").asBool(); }));
     EXPECT_EQ(call(mod_, "hasText").asBool(), false);
 }
 
 TEST_F(ClipboardModuleGlue, HtmlImageAndFilesBehavior) {
-    // HTML/图像通道：后端能力相关，断言接口行为自洽而非具体值
+    // HTML/图像通道：后端能力相关，断言接口行为自洽而非具体值。
+    // getHTML 读回走同一 X11 异步窗口，轮询（同 glueSetTextAndGet）
     const auto setHtml = call(mod_, "setHTML", {ScriptValue::fromString("<b>x</b>")});
     EXPECT_TRUE(setHtml.isBool());
     if (setHtml.asBool()) {
+        EXPECT_TRUE(clipboard_test::waitFor(
+            [this] { return call(mod_, "getHTML").asString() == "<b>x</b>"; }));
         EXPECT_EQ(call(mod_, "getHTML").asString(), "<b>x</b>");
         EXPECT_EQ(call(mod_, "hasHTML").asBool(), true);
     }
