@@ -355,13 +355,16 @@ TEST(A11Batch11GlueTest, BitmapBmpParsingAndSaveFailureBranches) {
     writeBytes(dir + "/ok.bmp", makeBmpBytes(2, 2, 24));
     EXPECT_NE(Bitmap::fromFile(dir + "/ok.bmp"), nullptr);
 
-    // 存在但不可读 → ifstream 打不开（303；root 无视文件权限，跳过）
+    // 存在但不可读 → ifstream 打不开（303；root 无视文件权限，跳过）。
+    // POSIX 文件权限语义，Windows（MSVC 无 geteuid，权限模型不同）不适用
+#ifndef _WIN32
     if (geteuid() != 0) {
         writeBytes(dir + "/noread.bmp", makeBmpBytes(2, 2, 24));
         ::chmod((dir + "/noread.bmp").c_str(), 0000);
         EXPECT_EQ(Bitmap::fromFile(dir + "/noread.bmp"), nullptr);
         ::chmod((dir + "/noread.bmp").c_str(), 0644);
     }
+#endif
 
     // save：非法宽高（778）/ 打不开的路径（807）
     Bitmap empty(0, 4);
