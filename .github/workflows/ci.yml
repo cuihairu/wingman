@@ -249,9 +249,14 @@ jobs:
   cpp-linux-tests:
     # Linux 完整构建 + 全量 core_tests。cpp-compat 只编译 wingman_transport
     # 单 target，Linux 核心测试此前无 CI 覆盖（全量测试仅 Windows job 独跑）。
-    # xvfb-run 提供 DISPLAY：XTest 注入/窗口枚举/剪贴板用例在 Xvfb 下真实执行；
-    # openbox/xclip 作为运行期可选依赖随 apt 安装，缺失时对应用例 GTEST_SKIP
-    # 而非失败（platform_x11_test 的 WmEnvironment 还会自起 Xvfb + openbox）。
+    # xvfb-run 提供 DISPLAY（显式 1280x800x24，与 WmEnvironment 自起参数一致）：
+    # XTest 注入/窗口枚举/剪贴板用例在 Xvfb 下真实执行；openbox/xclip 作为运行
+    # 期可选依赖随 apt 安装，缺失时对应用例 GTEST_SKIP 而非失败。
+    # 串行执行（ctest 默认单进程、每用例独立进程）：并行模式下实测 4 处用例
+    # 不安全——两处 TearDown 清理共享临时目录竞态（storage_test 固定种子目录名
+    # 碰撞、trigger_engine_test 完全固定路径被并行进程抢先删除）、team 用例对
+    # TeamManager 单例前置状态的依赖、X11 同标题窗口跨进程串扰；并行安全是
+    # 独立后续工作，先以与 Windows job 相同的串行精神保证 CI 稳定。
     name: C++ Linux (full tests)
     runs-on: ubuntu-24.04
     env:
@@ -327,8 +332,8 @@ jobs:
         run: cmake --build build --parallel
 
       - name: Run tests
-        run: xvfb-run -a ctest --test-dir build --output-on-failure --parallel 4 --timeout 300
-        timeout-minutes: 40
+        run: xvfb-run -a --server-args="-screen 0 1280x800x24" ctest --test-dir build --output-on-failure --timeout 300
+        timeout-minutes: 60
 
       - name: Save vcpkg cache
         if: always()

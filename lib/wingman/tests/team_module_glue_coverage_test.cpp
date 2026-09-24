@@ -117,8 +117,13 @@ TEST_F(TeamGlueCoverageTest, GetVoteResultMissingArgsAndUnknownVote) {
     const auto* fn = findFunction(mod_, "getVoteResult");
     EXPECT_TRUE((*fn)({}).isNull());
 
+    // ctest 独立进程（gtest_discover_tests）下 TeamManager 是干净单例，
+    // 胶水 getClient(1) 判空提前返回 null，触达不了 votes_ 查找——按文件头
+    // 约定自带准备状态，不依赖其他用例先建过 client。
+    ensureJoined();
     std::string result = (*fn)({ScriptValue::fromString("no-such-vote")}).asString();
     EXPECT_NE(result.find("Vote not found"), std::string::npos);
+    ensureLeft();
 }
 
 // ========== reportStatus：JSON 解析三分支 + joined 守卫 ==========
