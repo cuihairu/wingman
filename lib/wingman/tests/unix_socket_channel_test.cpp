@@ -320,4 +320,121 @@ TEST_F(UnixSocketChannelTestEnv, SocketFileRemovedOnServerDisconnect) {
     EXPECT_FALSE(std::filesystem::exists(path));
 }
 
+// ========== 第十批补测：错误回调 / 序列化边界 / 原始帧注入 / SIGPIPE ==========
+
+namespace {
+
+// 绕过 IpcMessage 封装的裸 socket 客户端：直接发长度前缀帧，用于注入
+// 协议层无法构造的畸形输入（0 长度帧 / 非 JSON body）。
+class RawSocketClient {
+public:
+    explicit RawSocketClient(const std::string& path) {
+        fd_ = ::socket(AF_UNIX, SOCK_STREAM, 0);
+        if (fd_ < 0) return;
+        sockaddr_un addr{};
+        addr.sun_family = AF_UNIX;
+        strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path) - 1);
+        if (::connect(fd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) {
+            ::close(fd_);
+            fd_ = -1;
+        }
+    }
+    ~RawSocketClient() {
+        if (fd_ >= 0) ::close(fd_);
+    }
+    bool valid() const { return fd_ >= 0; }
+
+    // 4 字节小端长度前缀 + body
+    void sendFrame(const std::string& body) const {
+        uint32_t len = static_cast<uint32_t>(body.size());
+        std::string frame(reinterpret_cast<const char*>(&len), sizeof(len));
+        frame += body;
+        size_t off = 0;
+        while (off < frame.size()) {
+            ssize_t n = ::send(fd_, frame.data() + off, frame.size() - off, 0);
+            if (n <= 0) break;
+            off += static_cast<size_t>(n);
+        }
+    }
+
+private:
+    int fd_ = -1;
+};
+
+} // namespace
+
+TEST_F(UnixSocketChannelTestEnv, ErrorCallbackFiresOnConnectFailure) {
+    // setErrorCallback 此前零调用方；连接失败 setState(Error) 时回调触发
+    UnixSocketChannel dead(false, path + ".missing");
+    std::atomic<bool> fired{false};
+    std::string received;
+    dead.setErrorCallback([&](const std::string& msg) {
+        fired = true;
+        received = msg;
+    });
+    EXPECT_FALSE(dead.connect(""));
+    EXPECT_EQ(dead.getState(), IpcState::Error);
+    EXPECT_TRUE(fired.load());
+    EXPECT_NE(received.find(".missing"), std::string::npos);
+}
+
+TEST_F(UnixSocketChannelTestEnv, EmptyPayloadSerializedAsObject) {
+    // serializeMessage 空 payload → j["payload"]=object 分支此前未触达
+    ASSERT_TRUE(connectPair());
+    EXPECT_GT(client->sendRequest("empty.payload", ""), 0u);
+    ASSERT_TRUE(serverCollector->waitFor(1));
+    EXPECT_EQ(serverCollector->at(0).method, "empty.payload");
+}
+
+TEST_F(UnixSocketChannelTestEnv, MalformedJsonYieldsErrorMessage) {
+    // 坏 JSON 帧 → deserializeMessage 异常分支 → Error 消息进回调
+    server->connect("");
+    RawSocketClient raw(path);
+    ASSERT_TRUE(raw.valid());
+    server->startReceiving();  // accept 裸客户端
+    std::this_thread::sleep_for(100ms);
+
+    raw.sendFrame("{{{not-json-at-all");
+    ASSERT_TRUE(serverCollector->waitFor(1));
+    EXPECT_EQ(serverCollector->at(0).type, IpcMessageType::Error);
+}
+
+TEST_F(UnixSocketChannelTestEnv, ZeroLengthFrameDropsConnection) {
+    // 0 长度帧 → receiveLoop 长度校验 break → 通道转 Disconnected
+    server->connect("");
+    RawSocketClient raw(path);
+    ASSERT_TRUE(raw.valid());
+    server->startReceiving();
+    std::this_thread::sleep_for(100ms);
+    ASSERT_TRUE(server->isConnected());
+
+    raw.sendFrame("");
+    for (int i = 0; i < 40 && server->isConnected(); ++i) {
+        std::this_thread::sleep_for(25ms);
+    }
+    EXPECT_FALSE(server->isConnected());
+}
+
+TEST_F(UnixSocketChannelTestEnv, SendAfterPeerDisconnectFailsGracefully) {
+    // SIGPIPE 修复回归：对端断开后 send 必须返回 false 并置 Error
+    // （MSG_NOSIGNAL / SO_NOSIGPIPE 屏蔽），而不是默认 SIGPIPE 终止整个
+    // 测试进程。全程不启动接收线程：接收线程阻塞在无超时 recv() 上，对端
+    // 存活时裸调 stopReceiving 会永久挂起（既有 StopReceivingWithoutStartIsSafe
+    // 用例注释），此处 server disconnect 内部先 shutdown 再 stop，接收线程
+    // 经 EOF 干净退出；client 无接收线程故不会把状态抢先改成 Disconnected。
+    ASSERT_TRUE(server->connect(""));
+    ASSERT_TRUE(client->connect(""));
+    server->startReceiving();  // 仅 accept，client 侧保持 Connected
+    std::this_thread::sleep_for(100ms);
+    ASSERT_TRUE(client->isConnected());
+
+    server->disconnect();
+
+    IpcMessage msg;
+    msg.type = IpcMessageType::Request;
+    msg.method = "after.peer.close";
+    EXPECT_FALSE(client->send(msg));
+    EXPECT_EQ(client->getState(), IpcState::Error);
+}
+
 #endif // !defined(_WIN32)

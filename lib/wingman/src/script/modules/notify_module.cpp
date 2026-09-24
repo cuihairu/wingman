@@ -221,6 +221,18 @@ public:
 	void bridge(const std::string& eventName, const std::string& target, const nlohmann::json& options) {
 		std::lock_guard<std::mutex> lock(mutex_);
 
+		// 同 target 重复建桥先摘旧订阅：EventHub 不去重，脚本重跑会无界
+		// 累积订阅。订阅名固定为 "notify.bridge." + target，按名退订即可
+		// 定位旧实例（unsubscribe 仅摘除不触发回调，无锁序风险）。
+		EventHub::instance().unsubscribe("notify.bridge." + target);
+		for (auto it = bridges_.begin(); it != bridges_.end();) {
+			if (it->second.target == target) {
+				it = bridges_.erase(it);
+			} else {
+				++it;
+			}
+		}
+
 		// Create a bridge subscription (exact event name match only, not pattern)
 		uint64_t subId = EventHub::instance().subscribe(eventName, [target, options](const EventMessage& msg) {
 			// Forward to target (could be another event, webhook, etc.)
@@ -238,14 +250,6 @@ public:
 		}, "notify.bridge." + target, false);
 
 		bridges_[subId] = {eventName, target};
-	}
-
-	void clearBridges() {
-		std::lock_guard<std::mutex> lock(mutex_);
-		for (const auto& [id, _] : bridges_) {
-			EventHub::instance().unsubscribe(id);
-		}
-		bridges_.clear();
 	}
 
 private:

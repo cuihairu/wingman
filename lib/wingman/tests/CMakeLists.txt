@@ -106,6 +106,9 @@ if(BUILD_CORE_TESTS)
     # 引擎由 libs/lua 的 registerLuaEngine() 自注册进 ScriptEngineFactory，
     # runtime 在 main 里链接并调用——测试进程同理需要链接 wingman::lua
     target_sources(core_tests PRIVATE script_manager_exec_coverage_test.cpp)
+    # script_manager 配置加载与热重载检查补测（JSON 非对象根拒绝/autoReload
+    # 关闭早退/脚本文件删除后 stat 失败）
+    target_sources(core_tests PRIVATE script_manager_config_reload_test.cpp)
     # script_module 胶水全链（真实 ScriptManager 注入 wingman.script.* 12 函数）
     target_sources(core_tests PRIVATE script_module_glue_coverage_test.cpp)
     # filewatcher/clipboard/verification/ml/game_profile 胶水缺口补测

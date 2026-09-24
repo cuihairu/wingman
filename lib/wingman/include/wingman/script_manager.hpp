@@ -197,7 +197,6 @@ private:
 	bool unloadScript_Locked(const std::string& name);
 	bool reloadScript_Locked(const std::string& name);
 	bool checkReload_Locked(const std::string& name);
-	void checkAllReloads_Locked();
 	std::vector<std::string> getScriptNames_Locked() const;
 
 	// Runs script execution outside m_mutex.

@@ -11,6 +11,19 @@
 #include <fcntl.h>
 #endif
 
+#if defined(__APPLE__)
+namespace {
+void disableSigpipe(int fd) {
+    int one = 1;
+    setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
+}
+} // namespace
+#else
+namespace {
+void disableSigpipe(int) {}
+} // namespace
+#endif
+
 namespace wingman::ipc {
 
 // Winsock initialization (Windows only)
@@ -200,6 +213,7 @@ void TcpChannel::setState(IpcState state) {
 
 bool TcpChannel::createServer() {
     listenSocket_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    disableSigpipe(listenSocket_);
     if (listenSocket_ == INVALID_SOCKET) {
         spdlog::error("[TCP] socket() failed");
         setState(IpcState::Error);
@@ -244,6 +258,7 @@ bool TcpChannel::createServer() {
 
     // Accept one connection
     dataSocket_ = accept(listenSocket_, nullptr, nullptr);
+    disableSigpipe(dataSocket_);
     if (dataSocket_ == INVALID_SOCKET) {
         spdlog::error("[TCP] accept() failed");
         closesocket(listenSocket_);
@@ -263,6 +278,7 @@ bool TcpChannel::createServer() {
 
 bool TcpChannel::connectToServer() {
     dataSocket_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    disableSigpipe(dataSocket_);
     if (dataSocket_ == INVALID_SOCKET) {
         spdlog::error("[TCP] socket() failed");
         setState(IpcState::Error);
@@ -336,7 +352,11 @@ bool TcpChannel::sendRaw(const void* data, size_t len) {
     size_t remaining = len;
 
     while (remaining > 0) {
+#if !defined(_WIN32) && !defined(__APPLE__)
+        int sent = ::send(dataSocket_, ptr, static_cast<int>(remaining), MSG_NOSIGNAL);
+#else
         int sent = ::send(dataSocket_, ptr, static_cast<int>(remaining), 0);
+#endif
         if (sent == SOCKET_ERROR || sent == 0) {
             spdlog::error("[TCP] send() failed");
             setState(IpcState::Error);

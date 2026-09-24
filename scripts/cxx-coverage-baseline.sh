@@ -19,8 +19,21 @@ echo "==> 全量测试（DISPLAY=${DISPLAY:-无}）"
 "$BIN" 2>&1 | tail -3 || echo "（测试存在失败，继续采集）"
 
 echo "==> lcov 捕获（gcda 于进程退出时已写出）"
-"$LC/lcov" --capture --directory build-cov --output-file /tmp/cxx-base.info \
-	--gcov-tool "$(command -v gcov)" 2>&1 | tail -1
+# 按子树三路并行 capture 后合并：148 个 gcda（大量模板头派生 SF）单线程
+# capture 实测 >1h，三路并行墙钟约 1/3；--add-tracefile 逐 SF 求和，与单次
+# 全量 capture 等价
+"$LC/lcov" --capture --directory build-cov/libs --output-file /tmp/cxx-base-libs.info \
+	--gcov-tool "$(command -v gcov)" >/dev/null 2>&1 &
+P1=$!
+"$LC/lcov" --capture --directory build-cov/lib/wingman/CMakeFiles/wingman.dir \
+	--output-file /tmp/cxx-base-prod.info --gcov-tool "$(command -v gcov)" >/dev/null 2>&1 &
+P2=$!
+"$LC/lcov" --capture --directory build-cov/lib/wingman/tests --output-file /tmp/cxx-base-tests.info \
+	--gcov-tool "$(command -v gcov)" >/dev/null 2>&1 &
+P3=$!
+wait $P1 $P2 $P3
+"$LC/lcov" --add-tracefile /tmp/cxx-base-libs.info --add-tracefile /tmp/cxx-base-prod.info \
+	--add-tracefile /tmp/cxx-base-tests.info --output-file /tmp/cxx-base.info >/dev/null
 "$LC/lcov" --extract /tmp/cxx-base.info "$PWD/lib/wingman/*" "$PWD/apps/*" \
 	--output-file /tmp/cxx-prod.info >/dev/null
 # tests 目录是测试代码自身，不计生产覆盖口径

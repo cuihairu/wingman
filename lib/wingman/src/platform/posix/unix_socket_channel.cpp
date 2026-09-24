@@ -17,6 +17,20 @@ constexpr int kSocketError = -1;
 void closeSocket(UnixSocketHandle fd) {
     close(fd);
 }
+
+// 对端断开后的 send 默认触发 SIGPIPE 终止整个进程（GUI/runtime 同样暴露，
+// 且 receiveLoop 感知断开与下一次 send 之间存在竞态窗口）。Linux 以
+// MSG_NOSIGNAL（send 侧）、macOS 以 SO_NOSIGPIPE（socket 侧）屏蔽，失败
+// 统一走既有 Error 状态而非进程死亡。Windows 无此语义（NamedPipe 通道）。
+#if defined(__APPLE__)
+void disableSigpipe(UnixSocketHandle fd) {
+    int one = 1;
+    setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
+}
+#else
+void disableSigpipe(UnixSocketHandle) {}
+constexpr int kSendFlags = MSG_NOSIGNAL;
+#endif
 } // namespace
 
 UnixSocketChannel::UnixSocketChannel(bool serverMode, const std::string& socketPath)
@@ -171,6 +185,7 @@ bool UnixSocketChannel::createServer() {
     unlink(socketPath_.c_str());
 
     listenFd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+    disableSigpipe(listenFd_);
     if (listenFd_ == kInvalidSocket) {
         spdlog::error("[UnixSocket] socket() failed: {}", strerror(errno));
         setState(IpcState::Error);
@@ -224,6 +239,7 @@ bool UnixSocketChannel::acceptServerClient() {
     closeSocket(listenFd_);
     listenFd_ = kInvalidSocket;
 
+    disableSigpipe(dataFd_);
     serverAccepted_ = true;
     setState(IpcState::Connected);
     spdlog::info("[UnixSocket] Server connected");
@@ -232,6 +248,7 @@ bool UnixSocketChannel::acceptServerClient() {
 
 bool UnixSocketChannel::connectToServer() {
     dataFd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+    disableSigpipe(dataFd_);
     if (dataFd_ == kInvalidSocket) {
         spdlog::error("[UnixSocket] socket() failed: {}", strerror(errno));
         setState(IpcState::Error);
@@ -299,7 +316,11 @@ bool UnixSocketChannel::sendRaw(const void* data, size_t len) {
     size_t remaining = len;
 
     while (remaining > 0) {
+#if defined(__APPLE__)
         ssize_t sent = ::send(dataFd_, ptr, remaining, 0);
+#else
+        ssize_t sent = ::send(dataFd_, ptr, remaining, kSendFlags);
+#endif
         if (sent <= 0) {
             if (!stopping_) spdlog::error("[UnixSocket] send() failed");
             setState(IpcState::Error);

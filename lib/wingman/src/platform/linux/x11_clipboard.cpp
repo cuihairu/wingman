@@ -234,15 +234,6 @@ private:
     Window root_ = 0;
     bool initialized_ = false;
     Atom clipboardAtom_, utf8Atom_, xaString_, targetsAtom_;
-
-    static std::string escapeShell(const std::string& s) {
-        std::string out;
-        for (char c : s) {
-            if (c == '\'') out += "'\\''";
-            else out += c;
-        }
-        return out;
-    }
 };
 
 } // namespace wingman::platform::linux

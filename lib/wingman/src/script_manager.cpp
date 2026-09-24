@@ -228,13 +228,6 @@ void ScriptManager::checkAllReloads() {
 	}
 }
 
-void ScriptManager::checkAllReloads_Locked() {
-	std::vector<std::string> names = getScriptNames_Locked();
-	for (const auto& name : names) {
-		checkReload_Locked(name);
-	}
-}
-
 // ========== Script Execution ==========
 
 bool ScriptManager::runScript(const std::string& name) {

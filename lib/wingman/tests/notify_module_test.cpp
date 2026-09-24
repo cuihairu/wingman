@@ -534,6 +534,41 @@ TEST(NotifyModuleTest, BridgeForwardsToEventTargetOnEmit) {
 	wingman::EventHub::instance().unsubscribe(subId);
 }
 
+TEST(NotifyModuleTest, BridgeSameTargetReplacesOldSubscription) {
+	// 第十批订阅泄漏修复回归：同 target 重复建桥先摘旧订阅。EventHub 对
+	// 同名订阅不去重，旧实现下脚本每次重跑都新增一份订阅 → 同一事件被
+	// 转发 N 次（与第九批 db 句柄泄漏同型：胶水层只增不减）。
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "bridge");
+	ASSERT_FALSE(fn.name.empty());
+
+	static std::atomic<int> seq3{0};
+	const int id = seq3++;
+	const std::string src = "bridge10.src." + std::to_string(id);
+	const std::string dst = "bridge10.dst." + std::to_string(id);
+
+	std::atomic<int> hits{0};
+	auto subId = wingman::EventHub::instance().subscribe(dst,
+		[&hits](const wingman::EventMessage&) { ++hits; });
+
+	// 同 (src → event://dst) 连建两桥：第二次应摘除第一次的订阅
+	for (int i = 0; i < 2; ++i) {
+		auto result = fn({
+			ScriptValue::fromString(src),
+			ScriptValue::fromString("event://" + dst),
+			ScriptValue::fromObject({{"transform", ScriptValue::fromObject(
+				{{"marker", ScriptValue::fromString("bridge10")}})}})
+		});
+		EXPECT_TRUE(result.isNull());
+	}
+
+	wingman::EventHub::instance().emit(src, {{"k", "v"}}, "test");
+	// 修复前此处为 2（两份订阅各投递一次）；修复后恰 1
+	EXPECT_EQ(hits.load(), 1);
+
+	wingman::EventHub::instance().unsubscribe(subId);
+}
+
 TEST(NotifyModuleTest, BridgeHttpTargetRoutesThroughWebhookSenderOnEmit) {
 	auto mod = createNotifyModule();
 	auto fn = findNotifyFunction(mod, "bridge");

@@ -411,6 +411,12 @@ TEST_F(X11PlatformTest, ClipboardFullSurfaceMethods) {
     EXPECT_TRUE(clipboard.isEmpty());
     EXPECT_FALSE(clipboard.hasText());
     EXPECT_FALSE(clipboard.hasFiles());
+
+    // 空剪贴板的格式枚举空返回 + 后端元数据（第十批补测：getBackendInfo
+    // 与 hasText=false 的枚举分支此前从未触达）
+    EXPECT_TRUE(clipboard.getAvailableFormats().empty());
+    const auto info = clipboard.getBackendInfo();
+    EXPECT_EQ(info.name, "X11/xclip");
 }
 
 // ========== 窗口（顶层 Window 装配断链回归守卫 + X11 窗口管理） ==========
@@ -581,6 +587,78 @@ TEST_F(X11PlatformTest, X11WindowPlatformFeatures) {
     // activate：XRaiseWindow + XSetInputFocus 真执行（无 WM 时
     // _NET_ACTIVE_WINDOW 无人维护，只断言请求本身成功）
     EXPECT_TRUE(window->activate(win.handle()));
+}
+
+TEST_F(X11PlatformTest, X11WindowCloseCenterAndWaitFamily) {
+    // 第十批补测：close/forceClose/center 与 wait 家族的轮询/超时路径——
+    // 顶层 facade 既有用例只覆盖过 waitFor 立即命中与 waitClose 立即真，
+    // 后端 waitFor 轮询循环、waitClose 超时 false、waitForForeground 与
+    // close/forceClose/center 从未触达。
+    X11ServerLockGuard x11Lock;
+    auto window = wingman::platform::linux::createX11Window();
+    ASSERT_NE(window, nullptr);
+
+    TestX11Window win(0, 0, 120, 90, "Wingman Close Center Window");
+    ASSERT_TRUE(win.valid());
+    win.setActive();
+
+    // center：DefaultScreenOfDisplay 尺寸居中（XGetWindowAttributes + XMoveWindow）
+    EXPECT_TRUE(window->center(win.handle(), 0));
+
+    // wait 家族：250ms 轮询窗口足以覆盖 sleep 循环体
+    EXPECT_FALSE(window->waitFor("no-such-title-anywhere", 250));
+    EXPECT_FALSE(window->waitClose("Close Center Window", 250));   // 窗口在 → 轮询至超时
+    EXPECT_TRUE(window->waitClose("no-such-title-anywhere", 250)); // 无匹配 → 立即真
+    EXPECT_FALSE(window->waitForForeground(0xDEADBEEF, 250));      // 死句柄非前台
+    EXPECT_TRUE(window->waitForForeground(win.handle(), 2000));    // setActive 已写 _NET_ACTIVE_WINDOW
+
+    const auto info = window->getBackendInfo();
+    EXPECT_EQ(info.name, "X11");
+    EXPECT_TRUE(info.isInitialized);
+
+    // close：WM_PROTOCOLS/WM_DELETE_WINDOW ClientMessage 发送成功（无 WM 时
+    // 无人响应，断言请求本身即可）
+    EXPECT_TRUE(window->close(win.handle()));
+
+    // forceClose（XKillClient）必须打在“别的客户端”的窗口上：XKillClient
+    // 会终结拥有该资源的连接——win 由本进程 display_ 创建，杀它等于切断
+    // 自己的 X 连接（后续任何 Xlib 调用触发 fatal IO error 整进程退出）。
+    // 真实场景是强杀外部进程的窗口，故 fork 子进程扮演外部客户端持窗。
+    int fds[2];
+    ASSERT_EQ(pipe(fds), 0);
+    const pid_t holder = fork();
+    ASSERT_GE(holder, 0);
+    if (holder == 0) {
+        // 子进程：开独立 X 连接建窗，句柄经管道交给父进程；连接被杀
+        // （EOF 可读）后 _exit 跳过 gcov flush，避免与父进程 gcda 合并竞争
+        close(fds[0]);
+        Display* d = XOpenDisplay(nullptr);
+        if (!d) _exit(1);
+        Window w = XCreateSimpleWindow(d, DefaultRootWindow(d), 10, 10, 80, 60, 0, 0, 0);
+        XMapWindow(d, w);
+        XFlush(d);
+        if (::write(fds[1], &w, sizeof(w)) != static_cast<ssize_t>(sizeof(w))) _exit(2);
+        close(fds[1]);
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(ConnectionNumber(d), &rfds);
+        select(ConnectionNumber(d) + 1, &rfds, nullptr, nullptr, nullptr);
+        _exit(0);
+    }
+    close(fds[1]);
+    Window foreignWin = 0;
+    const ssize_t n = ::read(fds[0], &foreignWin, sizeof(foreignWin));
+    close(fds[0]);
+    ASSERT_EQ(n, static_cast<ssize_t>(sizeof(foreignWin)));
+
+    EXPECT_TRUE(window->forceClose(foreignWin));
+    int holderStatus = 0;
+    waitpid(holder, &holderStatus, 0);  // 连接被杀 → 子进程 select 命中 EOF 退出
+    EXPECT_TRUE(WIFEXITED(holderStatus));
+    for (int i = 0; i < 20 && window->isValid(foreignWin); ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+    }
+    EXPECT_FALSE(window->isValid(foreignWin));  // 杀连接连带销毁其全部资源
 }
 
 // ========== 真实 WM 集成（自起 Xvfb + openbox 子进程） ==========
