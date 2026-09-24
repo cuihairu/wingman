@@ -18,7 +18,6 @@
 #include <stdexcept>
 #include <sys/stat.h>
 #include <thread>
-#include <unistd.h>
 #include <vector>
 
 #include "script/modules/macro_module.hpp" // cleanupMacroModule（公开头只有 setGlobalRecorder）
