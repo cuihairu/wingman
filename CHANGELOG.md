@@ -266,6 +266,7 @@
 
 ### ci / chore 工程与维护
 
+- **新增 `C++ Linux (full tests)` job：Linux 核心测试首次获得 CI 覆盖**（[402d2ec](https://github.com/cuihairu/wingman/commit/402d2ec)）。此前 Linux 在 CI 上仅 compat 编译 `wingman_transport` 单 target，全量核心测试只有 Windows job 与开发者本地执行（[platforms.md](docs/platforms.md) CI 对账节标注的最大验证缺口）。要点：ubuntu-24.04（GCC 13，C++23 全量编译；compat 矩阵的 ubuntu-22.04/GCC 11 全库编译仍未验证，文档如实标注）完整构建 + 全量 core_tests；`xvfb-run` 提供虚拟显示使 XTest 注入/窗口枚举/剪贴板用例真实执行而非 skip；openbox/xclip 随 apt 安装——WM 集成用例（WmEnvironment 自起 Xvfb+openbox）与 xclip fork 链路用例由环境性 skip 变为真跑；vcpkg 缓存独立 key 并以 restore-keys 兜底复用 compat 缓存；`ctest --parallel 4` 依赖测试内既有 flock 串行化守卫（X11 根属性/焦点锁、剪贴板 selection 锁、WM 搭建锁）保证跨进程安全。
 - 新增 deploy-server workflow（自建 runner docker，[a41a150](https://github.com/cuihairu/wingman/commit/a41a150)）与 dashboard 部署（[cd55ff4](https://github.com/cuihairu/wingman/commit/cd55ff4)），镜像构建超时 15m→45m（[dc3a5e0](https://github.com/cuihairu/wingman/commit/dc3a5e0)）
 - release workflow 与可复用 build-package（[4c14086](https://github.com/cuihairu/wingman/commit/4c14086)）；nightly 构建补齐 Go server / dashboard / 多平台包（[bef1cf4](https://github.com/cuihairu/wingman/commit/bef1cf4)）
 - GitHub Actions 升级至最新版本（[9f8bd1c](https://github.com/cuihairu/wingman/commit/9f8bd1c)）；docs-only 变更跳过 CI（[0aa55b1](https://github.com/cuihairu/wingman/commit/0aa55b1)）
