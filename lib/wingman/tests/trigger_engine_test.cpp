@@ -2,13 +2,22 @@
 #include "wingman/trigger_engine.hpp"
 #include <fstream>
 #include <filesystem>
+#include <random>
 
 using namespace wingman;
 
 namespace {
 
+// 进程内恒定、跨进程唯一（random_device）：固定路径在 ctest --parallel 下
+// 会被并行进程抢先 remove_all（TearDown 报 No such file or directory）
+const std::filesystem::path& triggerTestDir() {
+    static const auto dir = std::filesystem::temp_directory_path() /
+        ("wingman_trigger_test_" + std::to_string(std::random_device{}()));
+    return dir;
+}
+
 std::string writeTempLua(const std::string& content, const std::string& name) {
-    auto dir = std::filesystem::temp_directory_path() / "wingman_trigger_test";
+    const auto& dir = triggerTestDir();
     std::filesystem::create_directories(dir);
     auto path = dir / name;
     std::ofstream f(path);
@@ -31,8 +40,8 @@ protected:
     void TearDown() override {
         engine.stop();
         // Clean up temp files
-        auto dir = std::filesystem::temp_directory_path() / "wingman_trigger_test";
-        std::filesystem::remove_all(dir);
+        std::error_code ec;
+        std::filesystem::remove_all(triggerTestDir(), ec);
     }
 
     TriggerEngine engine;

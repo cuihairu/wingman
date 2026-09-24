@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <random>
 
 using namespace wingman;
 
@@ -84,8 +85,11 @@ protected:
     std::filesystem::path tempDir;
 
     void SetUp() override {
+        // random_device 而非裸 std::rand()：未播种时各进程产生相同序列，
+        // ctest --parallel 并行下目录名必然碰撞（TearDown 撞并行写入报
+        // Directory not empty，CI 实测）
         tempDir = std::filesystem::temp_directory_path() /
-            ("wingman_test_storage_" + std::to_string(std::rand()));
+            ("wingman_test_storage_" + std::to_string(std::random_device{}()));
         std::filesystem::create_directories(tempDir);
     }
 

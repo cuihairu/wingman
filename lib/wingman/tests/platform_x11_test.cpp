@@ -615,7 +615,11 @@ TEST_F(X11PlatformTest, X11WindowCloseCenterAndWaitFamily) {
     auto window = wingman::platform::linux::createX11Window();
     ASSERT_NE(window, nullptr);
 
-    TestX11Window win(0, 0, 120, 90, "Wingman Close Center Window");
+    // 标题进程唯一：X server 的窗口枚举是全局的，ctest --parallel 下其他
+    // 测试进程的同名窗口会被标题匹配类断言（waitFor/waitClose）互相串扰
+    const std::string uniqueTitle = std::string("Wingman Close Center Window #") +
+        std::to_string(static_cast<long>(::getpid()));
+    TestX11Window win(0, 0, 120, 90, uniqueTitle.c_str());
     ASSERT_TRUE(win.valid());
     win.setActive();
 
@@ -624,7 +628,7 @@ TEST_F(X11PlatformTest, X11WindowCloseCenterAndWaitFamily) {
 
     // wait 家族：250ms 轮询窗口足以覆盖 sleep 循环体
     EXPECT_FALSE(window->waitFor("no-such-title-anywhere", 250));
-    EXPECT_FALSE(window->waitClose("Close Center Window", 250));   // 窗口在 → 轮询至超时
+    EXPECT_FALSE(window->waitClose(uniqueTitle, 250));   // 窗口在 → 轮询至超时
     EXPECT_TRUE(window->waitClose("no-such-title-anywhere", 250)); // 无匹配 → 立即真
     EXPECT_FALSE(window->waitForForeground(0xDEADBEEF, 250));      // 死句柄非前台
     EXPECT_TRUE(window->waitForForeground(win.handle(), 2000));    // setActive 已写 _NET_ACTIVE_WINDOW
