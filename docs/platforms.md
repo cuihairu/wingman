@@ -130,7 +130,8 @@ Unix 系用 Unix 域套接字，均带 TCP 回退（`127.0.0.1:9800`）——嵌
 - **Linux 只支持 X11**：截屏、取色、注入、宏录制（XRecord）全部建立在 X 协议上。
   原因是历史与生态——XTest/XRecord 是 Linux 桌面注入的事实标准，而 Wayland 出于
   安全模型刻意不提供全局注入通道。影响：Wayland 会话需切换到 XWayland 或 X11 会话；
-  无头环境用虚拟显示（Xvfb，如 CI 的 `DISPLAY=:98`）即可跑全量测试。
+  无头环境用虚拟显示（Xvfb）即可跑全量测试——CI 的 Linux 测试 job 与本机覆盖率采集
+  都是这样执行的。
 - **无显示环境的优雅降级**：Linux 无 `DISPLAY` 时，屏幕/窗口类查询返回降级值而非崩溃
   （有专门的宽容 X 错误处理器，BadWindow 等错误以降级返回值呈现——这是踩过"死句柄
   查询杀死整个进程"的坑后修的）。影响：脚本可以对无头环境做功能探测后自行分支。
@@ -209,6 +210,7 @@ iOS 的状态不是"还没做"，而是"端侧做不了"。App Store 沙箱（Sa
 | Windows | `Platform Boundary Guard` | ubuntu-latest | 全平台平台宏边界检查（每提交） | — |
 | Windows | `C++ Windows` | windows-2022 | **C++ 全量测试 + 覆盖率**（OpenCppCoverage） | ✅（`build-package.yml`，zip） |
 | Windows | `C++ Windows (Python engine)` | windows-2022 | Python 引擎实验编译 + best-effort 测试 | — |
+| Linux | `C++ Linux (full tests)` | ubuntu-24.04 | **C++ 完整构建 + 全量核心测试**（xvfb-run 提供虚拟显示，openbox/xclip 随 apt 安装） | — |
 | Linux | `C++ ubuntu-22.04`（compat matrix） | ubuntu-22.04 | ⚠️ **仅编译** compat 层 `wingman_transport` 单 target，**无核心测试** | ✅（tar.gz/AppImage/deb） |
 | macOS | `C++ macos-15-intel`（compat matrix） | macos-15-intel | ⚠️ 同上，且 `continue-on-error: true`（失败不阻塞合并） | ✅（tar.gz/dmg/app） |
 | Android | — | — | ❌ **无 CI 测试 job** | ✅（debug 签名 APK） |
@@ -216,12 +218,12 @@ iOS 的状态不是"还没做"，而是"端侧做不了"。App Store 沙箱（Sa
 
 **必须如实标注的现状**（即"为什么这么组织"一节所说的对账结论）：
 
-1. **Linux/macOS 的 C++ 核心没有 CI 测试覆盖**。compat matrix 的定位是验证可移植
-   兼容层能编译，不是验证行为正确性；Windows job 是唯一跑 C++ 全量测试的平台。
-   之所以还能维持质量，是因为当前主力开发在 Linux 上进行，全量测试由开发者本地执行
-   （命令见下节）——但这依赖人的自觉而非流程强制，是当前最大的验证缺口。
-2. **macOS job 允许失败**（continue-on-error），意味着 macOS 的"已支持"目前由打包
-   成功 + 兼容层编译成功支撑，核心行为无 CI 证据。
+1. **Linux 的 C++ 核心测试已由 `C++ Linux (full tests)` job 覆盖**：ubuntu-24.04 上
+   完整构建 + 全量核心测试，X11 用例经 xvfb-run 在虚拟显示下真实执行，非 skip。
+   但需注意该 job 使用的 GCC 版本（13）与 compat matrix（ubuntu-22.04 的 GCC 11）
+   不同——最低支持工具链（README 声称 GCC 11+）的全量编译仍未经 CI 验证。
+2. **macOS 的 C++ 核心仍无测试覆盖，且 job 允许失败**（continue-on-error），意味着
+   macOS 的"已支持"目前由打包成功 + 兼容层编译成功支撑，核心行为无 CI 证据。
 3. **Android 只有打包验证**。签名/发布流程的工程化在 A3 里程碑中，测试 job 亦然。
 4. **iOS 无任何 CI**（对应"规划中"状态）。
 

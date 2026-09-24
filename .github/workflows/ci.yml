@@ -246,6 +246,99 @@ jobs:
             ${{ github.workspace }}/vcpkg/downloads
           key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
 
+  cpp-linux-tests:
+    # Linux 完整构建 + 全量 core_tests。cpp-compat 只编译 wingman_transport
+    # 单 target，Linux 核心测试此前无 CI 覆盖（全量测试仅 Windows job 独跑）。
+    # xvfb-run 提供 DISPLAY：XTest 注入/窗口枚举/剪贴板用例在 Xvfb 下真实执行；
+    # openbox/xclip 作为运行期可选依赖随 apt 安装，缺失时对应用例 GTEST_SKIP
+    # 而非失败（platform_x11_test 的 WmEnvironment 还会自起 Xvfb + openbox）。
+    name: C++ Linux (full tests)
+    runs-on: ubuntu-24.04
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/vcpkg/archives,readwrite"
+      VCPKG_ASSET_SOURCES: "clear;files,${{ github.workspace }}/vcpkg/downloads,readwrite"
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libx11-dev libxrandr-dev libxext-dev libxtst-dev libxinerama-dev ninja-build xvfb xclip openbox
+
+      - name: Restore vcpkg cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg/archives
+            ${{ github.workspace }}/vcpkg/downloads
+          key: ${{ runner.os }}-vcpkg-tests-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-tests-
+            ${{ runner.os }}-vcpkg-
+
+      - name: Setup vcpkg
+        run: bash ./build-scripts/ci/setup-vcpkg.sh
+
+      - name: Prepare vcpkg cache
+        run: mkdir -p "${{ github.workspace }}/vcpkg/archives" "${{ github.workspace }}/vcpkg/downloads"
+
+      - name: Configure CMake
+        run: |
+          max_retries=3
+          retry_count=0
+          success=false
+
+          while [ "$success" = "false" ] && [ $retry_count -lt $max_retries ]; do
+            retry_count=$((retry_count + 1))
+            echo "Attempt $retry_count of $max_retries..."
+
+            if cmake -B build -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+              -DVCPKG_OVERLAY_PORTS="$PWD/vcpkg-ports" \
+              -DVCPKG_TARGET_TRIPLET=x64-linux \
+              -DCMAKE_BUILD_TYPE=Debug \
+              -DVCPKG_MANIFEST_FEATURES=tests \
+              -DWINGMAN_BUILD_CORE=ON \
+              -DWINGMAN_BUILD_TESTS=ON \
+              -DBUILD_CORE_TESTS=ON; then
+              success=true
+            else
+              echo "CMake configure failed with exit code $?"
+              if [ $retry_count -lt $max_retries ]; then
+                echo "Waiting 30 seconds before retry..."
+                sleep 30
+              fi
+            fi
+          done
+
+          if [ "$success" = "false" ]; then
+            echo "Failed after $max_retries attempts"
+            exit 1
+          fi
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run tests
+        run: xvfb-run -a ctest --test-dir build --output-on-failure --parallel 4 --timeout 300
+        timeout-minutes: 40
+
+      - name: Save vcpkg cache
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg/archives
+            ${{ github.workspace }}/vcpkg/downloads
+          key: ${{ runner.os }}-vcpkg-tests-${{ hashFiles('vcpkg.json') }}
+
   cpp-python:
     # 实验性 job：验证 WINGMAN_ENABLE_PYTHON（vcpkg CPython + pybind11 嵌入构建）
     # 在 CI 环境的可用性。Python 引擎默认关闭，此 job 仅用于回归 Python 绑层
