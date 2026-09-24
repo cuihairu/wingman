@@ -2,6 +2,7 @@
 
 #if defined(__linux__) || defined(__APPLE__)
 
+#include <algorithm>  // std::all_of（GCC 13 无传递包含，CI 实测）
 #include <fstream>
 #include <filesystem>
 #include <sstream>

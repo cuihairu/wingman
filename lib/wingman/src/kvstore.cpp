@@ -1,5 +1,6 @@
 #include "wingman/kvstore.hpp"
 
+#include <algorithm>  // std::remove_if（显式包含，不依赖传递包含）
 #include <unordered_map>
 #include <list>
 #include <mutex>

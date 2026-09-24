@@ -2,6 +2,7 @@
 #include "wingman/event.hpp"
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
+#include <algorithm>  // std::find（显式包含，不依赖传递包含）
 #include <unordered_map>
 #include <string>
 #include <vector>

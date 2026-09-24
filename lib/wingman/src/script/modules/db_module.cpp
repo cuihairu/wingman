@@ -1,6 +1,7 @@
 #include "wingman/script/modules/db_connection.hpp"
 #include "wingman/script/iscript_engine.hpp"
 #include <spdlog/spdlog.h>
+#include <algorithm>  // std::transform（显式包含，不依赖传递包含）
 #include <regex>
 #include <sstream>
 #include <unordered_set>

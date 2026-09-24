@@ -1,5 +1,6 @@
 #include "wingman/runtime/resource_loader.hpp"
 #include <spdlog/spdlog.h>
+#include <algorithm>  // std::any_of（显式包含，不依赖传递包含）
 #include <cstring>
 
 #ifdef _WIN32
