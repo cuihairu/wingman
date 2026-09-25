@@ -246,6 +246,13 @@ TEST_F(FileWatcherTest, UnwatchPath) {
     const size_t removed = FileWatcher::unwatchPath(testDir);
     EXPECT_EQ(removed, 2U);
     EXPECT_EQ(FileWatcher::getWatchCount(), 1U);
+
+    // dir2 的 watch 不受 unwatchPath(testDir) 影响正是上面的断言意图，
+    // 但回调 capture this：必须在本用例结束前清掉，否则测试对象析构后
+    // 进程级单例仍持有它，后续事件触发即 UAF（ASan 实测）。TearDown 的
+    // unwatchPath(testDir) 精确匹配不到 dir2，救不了。
+    EXPECT_EQ(FileWatcher::unwatchPath(dir2), 1U);
+    EXPECT_EQ(FileWatcher::getWatchCount(), 0U);
 }
 
 TEST_F(FileWatcherTest, WatchNonExistentPath) {
@@ -278,6 +285,10 @@ TEST_F(FileWatcherTest, WatchFileInsteadOfDirectory) {
 
     const uint64_t watchId = FileWatcher::watch(filePath, getCallback(), false);
     EXPECT_NE(watchId, 0U);
+
+    // TearDown 的 unwatchPath(testDir) 精确匹配不到 filePath，必须显式
+    // 清掉：回调 capture this，残留会在测试对象析构后触发 UAF（ASan 实测）
+    EXPECT_TRUE(FileWatcher::unwatch(watchId));
 }
 
 TEST_F(FileWatcherTest, MultipleRapidChanges) {
