@@ -80,14 +80,39 @@ type GuacamoleHandler struct {
 	registry  *agent.Registry
 	tickets   *remoteticket.Manager
 	guacdAddr string
+	// drivePath RDP 文件传输虚拟盘（guacd 容器内路径，设计 §15）
+	drivePath string
+	// recordingPath / recordingDir 会话录制（设计 §16）。两者均非空才启用
+	// record=true 票据与录像检索；recordingDir 是 server 侧检索挂载点。
+	recordingPath string
+	recordingDir  string
 }
 
-// NewGuacamoleHandler 构造网关。guacdAddr 为空时回退 127.0.0.1:4822。
-func NewGuacamoleHandler(db *gorm.DB, registry *agent.Registry, tickets *remoteticket.Manager, guacdAddr string) *GuacamoleHandler {
+// NewGuacamoleHandler 构造网关。guacdAddr 为空时回退 127.0.0.1:4822；
+// drivePath 为空时回退 /wingman-drive（与 deployments/guacd 挂卷对齐）。
+// recordingPath/recordingDir 为空 = 会话录制关闭（record 票据 400、
+// 检索 API 501，设计 §16）。
+func NewGuacamoleHandler(db *gorm.DB, registry *agent.Registry, tickets *remoteticket.Manager, guacdAddr, drivePath, recordingPath, recordingDir string) *GuacamoleHandler {
 	if strings.TrimSpace(guacdAddr) == "" {
 		guacdAddr = "127.0.0.1:4822"
 	}
-	return &GuacamoleHandler{db: db, registry: registry, tickets: tickets, guacdAddr: guacdAddr}
+	if strings.TrimSpace(drivePath) == "" {
+		drivePath = "/wingman-drive"
+	}
+	return &GuacamoleHandler{
+		db:            db,
+		registry:      registry,
+		tickets:       tickets,
+		guacdAddr:     guacdAddr,
+		drivePath:     drivePath,
+		recordingPath: strings.TrimSpace(recordingPath),
+		recordingDir:  strings.TrimSpace(recordingDir),
+	}
+}
+
+// recordingEnabled 录制链路是否配置完整（guacd 写入路径 + server 检索路径）。
+func (h *GuacamoleHandler) recordingEnabled() bool {
+	return h.recordingPath != "" && h.recordingDir != ""
 }
 
 // guacProtocolPort 各协议的 agent 侧默认端口（endpoint 矩阵 §5：RDP 3389、
@@ -208,6 +233,50 @@ func guacParamTable(protocol, host string, port int, params map[string]string, w
 	return table
 }
 
+// guacApplyFileTransfer 文件传输通道参数（设计 §15/DG-8）：SSH 走 SFTP
+// 子系统（恒开——通道存在不代表能绕过远端文件系统权限，鉴权仍在 SSH 凭证
+// 层）；RDP 走设备重定向虚拟盘（drive-path 挂在 guacd 容器卷，上行=写入
+// 虚拟盘、下行=会话内拷入虚拟盘触发 guacd 推 file 流）；VNC 无文件通道
+// （RFB 协议层不可能），不注入参数。
+func guacApplyFileTransfer(protocol string, table map[string]string, drivePath string) {
+	switch protocol {
+	case "ssh":
+		table["enable-sftp"] = "true"
+	case "rdp":
+		table["enable-drive"] = "true"
+		table["drive-path"] = drivePath
+	}
+}
+
+// guacRecordingName 录像文件名：{agentID}-{sessionID}.mjs。agentID 进入
+// 文件名前做字符白名单清洗（录像目录是共享卷，杜绝路径注入）。
+func guacRecordingName(agentID, sessionID string) string {
+	safe := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
+			r == '.', r == '_', r == '-':
+			return r
+		}
+		return '_'
+	}, agentID)
+	if safe == "" || safe == "." || safe == ".." {
+		safe = "agent"
+	}
+	return safe + "-" + sessionID + ".mjs"
+}
+
+// guacApplyRecording 会话录制参数（设计 §16/DG-9）。安全默认：
+// recording-include-keys=false——**永不**把按键内容写进录像（录像出现明文
+// 口令是审计资产变泄漏源）；鼠标轨迹保留（排障关键信息）。
+// create-recording-path=true 免去部署侧预建目录。
+func guacApplyRecording(table map[string]string, path, name string) {
+	table["recording-path"] = path
+	table["recording-name"] = name
+	table["create-recording-path"] = "true"
+	table["recording-include-keys"] = "false"
+	table["recording-exclude-mouse"] = "false"
+}
+
 // guacApplyVersionArg 版本协商占位：名单首段若为协议版本名（VERSION_x_y_z），
 // 把回显值写进参数表，保证 connect 与 args 名单等长且首参回应版本串。
 func guacApplyVersionArg(argNames []string, table map[string]string) {
@@ -267,13 +336,28 @@ type ticketRequest struct {
 	Width    int    `json:"width"`
 	Height   int    `json:"height"`
 	ReadOnly bool   `json:"readOnly"`
-	Port     int    `json:"port"` // 0 = 协议默认端口
+	Port     int    `json:"port"`   // 0 = 协议默认端口
+	Record   bool   `json:"record"` // 会话录制（需服务端已配置录制，设计 §16）
 }
 
 // HandleTicketCreate 签发一次性连接票据（5 分钟有效）。挂 /api 组
 // （AuthRequired）+ desktop:view/desktop:control 任一权限；
 // readOnly=false（接管）额外要求 desktop:control。
 // host 一律取 agent 注册表上报 IP（注册表即白名单，见文件头出口边界注释）。
+// @Summary      签发远程桌面连接票据
+// @Description  为指定 agent 签发一次性 guacamole 连接票据（5 分钟有效，单次使用）；host 取注册表上报 IP；接管模式额外要求 desktop:control；record=true 需服务端已配置录制双路径
+// @Tags         remote
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body  ticketRequest  true  "连接参数（protocol: rdp/vnc/ssh）"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /remote/tickets [post]
 func (h *GuacamoleHandler) HandleTicketCreate(c *gin.Context) {
 	var req ticketRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -284,6 +368,12 @@ func (h *GuacamoleHandler) HandleTicketCreate(c *gin.Context) {
 	req.AgentID = strings.TrimSpace(req.AgentID)
 	if !guacSupportedProtocol(req.Protocol) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "protocol must be rdp/vnc/ssh"})
+		return
+	}
+	// 录制需服务端双路径配置（guacd 写入 + server 检索，设计 §16），
+	// 未配置时在票据申请即拒绝，不留给握手期
+	if req.Record && !h.recordingEnabled() {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "session recording not configured (set WINGMAN_GUACD_RECORDING_PATH and WINGMAN_RECORDING_DIR)"})
 		return
 	}
 
@@ -322,14 +412,15 @@ func (h *GuacamoleHandler) HandleTicketCreate(c *gin.Context) {
 	}
 
 	params := map[string]string{
-		"agent_id": req.AgentID,
-		"host":     info.IP,
-		"port":     strconv.Itoa(port),
-		"protocol": req.Protocol,
-		"username": req.Username,
-		"password": req.Password,
-		"domain":   req.Domain,
+		"agent_id":  req.AgentID,
+		"host":      info.IP,
+		"port":      strconv.Itoa(port),
+		"protocol":  req.Protocol,
+		"username":  req.Username,
+		"password":  req.Password,
+		"domain":    req.Domain,
 		"read_only": strconv.FormatBool(req.ReadOnly),
+		"record":    strconv.FormatBool(req.Record),
 	}
 	if req.Width > 0 {
 		params["width"] = strconv.Itoa(req.Width)
@@ -349,6 +440,7 @@ func (h *GuacamoleHandler) HandleTicketCreate(c *gin.Context) {
 		"host":     info.IP,
 		"port":     port,
 		"readOnly": req.ReadOnly,
+		"record":   req.Record,
 	})
 
 	c.JSON(http.StatusOK, gin.H{
@@ -364,20 +456,20 @@ func (h *GuacamoleHandler) HandleTicketCreate(c *gin.Context) {
 
 // GuacamoleSession 一条桌面会话：浏览器 WS ↔ guacd TCP 双跳管道。
 type GuacamoleSession struct {
-	ID        string
-	Username  string
-	Protocol  string
-	AgentID   string
-	Host      string
-	Port      int
-	ReadOnly  bool
-	ClientWS  *websocket.Conn
-	guacd     net.Conn
-	guacdRd   *bufio.Reader
-	Created   time.Time
-	writeMu   sync.Mutex
-	done      chan struct{}
-	once      sync.Once
+	ID       string
+	Username string
+	Protocol string
+	AgentID  string
+	Host     string
+	Port     int
+	ReadOnly bool
+	ClientWS *websocket.Conn
+	guacd    net.Conn
+	guacdRd  *bufio.Reader
+	Created  time.Time
+	writeMu  sync.Mutex
+	done     chan struct{}
+	once     sync.Once
 }
 
 // guacTicketFromRequest 票据双通道提取：URL query ?ticket=（首选，
@@ -414,12 +506,20 @@ func (h *GuacamoleHandler) HandleWS(c *gin.Context) {
 	agentID := tk.Params["agent_id"]
 	protocol := tk.Params["protocol"]
 	readOnly, _ := strconv.ParseBool(tk.Params["read_only"])
+	record, _ := strconv.ParseBool(tk.Params["record"])
 	port, _ := strconv.Atoi(tk.Params["port"])
 	width, _ := strconv.Atoi(tk.Params["width"])
 	height, _ := strconv.Atoi(tk.Params["height"])
 	if host == "" || agentID == "" || !guacSupportedProtocol(protocol) || port <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "missing connection parameters in ticket"})
 		return
+	}
+	// 票据签发后配置被摘除的边缘场景（如运行中改环境变量重启前）：
+	// record 票据降级为不录制继续连接，而不是拒绝——连接可用性优先，
+	// 录制缺失记日志可查
+	if record && !h.recordingEnabled() {
+		log.Printf("Guacamole: ticket requests recording but server recording disabled; continuing without recording")
+		record = false
 	}
 
 	// 拨 guacd TCP（不暴露 guacd 端口给浏览器——网关反代，设计 §4.1）
@@ -480,6 +580,12 @@ func (h *GuacamoleHandler) HandleWS(c *gin.Context) {
 	}
 	argNames := guacParseArgs(argsFrame)
 	table := guacParamTable(protocol, host, port, tk.Params, width, height, readOnly)
+	// 文件传输通道（§15）与会话录制（§16）参数：都是按名注入，args 名单里
+	// 没有的协议（如 vnc 的文件参数）自然落空，不影响按位对应
+	guacApplyFileTransfer(protocol, table, h.drivePath)
+	if record {
+		guacApplyRecording(table, h.recordingPath, guacRecordingName(agentID, session.ID))
+	}
 	// 版本协商：args 首段是 guacd 声明的协议版本（如 VERSION_1_5_0），connect
 	// 首参必须回应该版本串占住第一参数位（官方 common-js 即回显同串；回应
 	// 不得高于服务器声明，回显天然满足）。不回应则参数整体少一位，guacd 拒连。
@@ -496,7 +602,7 @@ func (h *GuacamoleHandler) HandleWS(c *gin.Context) {
 
 	WriteAuditLog(h.db, tk.Username, "desktop.connect", agentID, map[string]any{
 		"protocol": protocol, "host": host, "port": port,
-		"session": session.ID, "readOnly": readOnly,
+		"session": session.ID, "readOnly": readOnly, "record": record,
 	})
 	log.Printf("Guacamole session created: %s -> %s:%d (%s, read-only=%v)", session.ID, host, port, protocol, readOnly)
 
@@ -573,7 +679,7 @@ func (h *GuacamoleHandler) closeSession(gs *GuacamoleSession) {
 		log.Printf("Guacamole session closed: %s", gs.ID)
 		WriteAuditLog(h.db, gs.Username, "desktop.close", gs.AgentID, map[string]any{
 			"protocol": gs.Protocol, "host": gs.Host, "port": gs.Port,
-			"session": gs.ID,
+			"session":    gs.ID,
 			"durationMs": time.Since(gs.Created).Milliseconds(),
 		})
 	})

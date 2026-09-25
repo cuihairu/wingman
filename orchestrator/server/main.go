@@ -117,10 +117,13 @@ func run() error {
 	wfEngine := workflow.NewEngine(db, registry, wsHub, cfg.ScriptsDir)
 
 	// 像素面票据管理器 + Guacamole 网关（远程桌面经 guacd 翻译；
-	// docs/remote-gateway-guacamole-design.md §4/DG-6）
+	// docs/remote-gateway-guacamole-design.md §4/DG-6）。会话录像检索
+	// 经共享卷目录读取（设计 §16），录制双路径未配置时 handler 侧 501
 	desktopTickets := remoteticket.NewManager()
 	defer desktopTickets.Stop()
-	guacamoleHandler := handlers.NewGuacamoleHandler(db, registry, desktopTickets, cfg.GuacdAddr)
+	guacamoleHandler := handlers.NewGuacamoleHandler(db, registry, desktopTickets,
+		cfg.GuacdAddr, cfg.GuacdDrivePath, cfg.GuacdRecordingPath, cfg.RecordingDir)
+	recordingsHandler := handlers.NewRecordingsHandler(db, cfg.RecordingDir)
 
 	// gin engine 与全部路由（中间件/静态资源/API）由 handlers 包统一装配
 	r := gin.New()
@@ -132,6 +135,7 @@ func run() error {
 		WfEngine:     wfEngine,
 		AuthHandler:  authHandler,
 		Guacamole:    guacamoleHandler,
+		Recordings:   recordingsHandler,
 		ScriptsDir:   cfg.ScriptsDir,
 		StaticDir:    cfg.StaticDir,
 		ProcessStart: processStartedAt,

@@ -15,6 +15,14 @@ if (typeof window !== 'undefined') {
 }
 global.localStorage = localStorageMock;
 
+// jsdom 不带 TextEncoder/TextDecoder（RemoteDesktopModal 的 base64 流
+// 载荷编解码用），从 node:util 补齐
+if (typeof window !== 'undefined' && !window.TextEncoder) {
+  const util = require('util');
+  window.TextEncoder = util.TextEncoder;
+  window.TextDecoder = util.TextDecoder;
+}
+
 Object.defineProperty(URL, 'createObjectURL', {
   writable: true,
   value: jest.fn(),

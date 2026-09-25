@@ -214,7 +214,7 @@ func newGuacTestHandler(t *testing.T) (*GuacamoleHandler, *gin.Engine) {
 	tickets := remoteticket.NewManager()
 	t.Cleanup(tickets.Stop)
 	reg, _ := newRegistry(t)
-	h := NewGuacamoleHandler(db, reg, tickets, "127.0.0.1:4822")
+	h := NewGuacamoleHandler(db, reg, tickets, "127.0.0.1:4822", "", "", "")
 	r := gin.New()
 	r.POST("/api/remote/tickets", h.HandleTicketCreate)
 	return h, r
@@ -233,5 +233,90 @@ func TestHandleTicketCreateValidation(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("bad protocol: got %d want 400 (%s)", w.Code, w.Body.String())
+	}
+}
+
+// ---------- 阶段二：文件传输 / 录制参数（设计 §15/§16） ----------
+
+func TestGuacApplyFileTransfer(t *testing.T) {
+	// SSH：SFTP 恒开（§15——鉴权仍在 SSH 凭证层）
+	ssh := map[string]string{}
+	guacApplyFileTransfer("ssh", ssh, "/wingman-drive")
+	if ssh["enable-sftp"] != "true" {
+		t.Errorf("ssh must enable sftp: %v", ssh)
+	}
+	if _, ok := ssh["enable-drive"]; ok {
+		t.Errorf("ssh must not carry drive params: %v", ssh)
+	}
+
+	// RDP：虚拟盘双参数，drive-path 取配置注入
+	rdp := map[string]string{}
+	guacApplyFileTransfer("rdp", rdp, "/data/drive")
+	if rdp["enable-drive"] != "true" || rdp["drive-path"] != "/data/drive" {
+		t.Errorf("rdp drive params wrong: %v", rdp)
+	}
+
+	// VNC：RFB 无文件通道，零注入
+	vnc := map[string]string{}
+	guacApplyFileTransfer("vnc", vnc, "/wingman-drive")
+	if len(vnc) != 0 {
+		t.Errorf("vnc must have no file transfer params: %v", vnc)
+	}
+}
+
+func TestGuacRecordingName(t *testing.T) {
+	// 常规 agentID 原样保留
+	if got := guacRecordingName("agent-01", "sess1234"); got != "agent-01-sess1234.mjs" {
+		t.Errorf("plain agent id: got %q", got)
+	}
+	// 路径注入字符全部清洗为下划线（录像名进入共享卷文件系统）
+	if got := guacRecordingName("../../etc", "s"); got != ".._.._etc-s.mjs" {
+		t.Errorf("path chars must be sanitized: got %q", got)
+	}
+	if got := guacRecordingName("a/b\\c:d", "s"); got != "a_b_c_d-s.mjs" {
+		t.Errorf("separators must be sanitized: got %q", got)
+	}
+	// 清洗后无分隔符残留即安全（"___" 是合法文件名，无需兜底）
+	if got := guacRecordingName("///", "s"); got != "___-s.mjs" {
+		t.Errorf("all-sanitized id must have no separators: got %q", got)
+	}
+	if got := guacRecordingName("..", "s"); got != "agent-s.mjs" {
+		t.Errorf("dotdot id must fall back: got %q", got)
+	}
+}
+
+func TestGuacApplyRecording(t *testing.T) {
+	table := map[string]string{}
+	guacApplyRecording(table, "/recordings", "agent-1-sess-9.mjs")
+	if table["recording-path"] != "/recordings" || table["recording-name"] != "agent-1-sess-9.mjs" {
+		t.Errorf("recording paths wrong: %v", table)
+	}
+	if table["create-recording-path"] != "true" {
+		t.Errorf("create-recording-path must be true: %v", table)
+	}
+	// 安全默认：永不录制按键内容（§16——录像出现明文口令是泄漏源）
+	if table["recording-include-keys"] != "false" {
+		t.Errorf("recording-include-keys must stay false: %v", table)
+	}
+	// 鼠标轨迹保留（排障关键信息）
+	if table["recording-exclude-mouse"] != "false" {
+		t.Errorf("recording-exclude-mouse must stay false: %v", table)
+	}
+}
+
+func TestHandleTicketCreateRecordValidation(t *testing.T) {
+	// 未配置录制（recordingPath/recordingDir 双空）：record=true 400，
+	// 且错误信息指引两个环境变量
+	_, r := newGuacTestHandler(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/remote/tickets",
+		strings.NewReader(`{"agentId":"a1","protocol":"vnc","record":true}`))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("record without config: got %d want 400 (%s)", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "recording not configured") {
+		t.Errorf("error should explain recording config: %s", w.Body.String())
 	}
 }

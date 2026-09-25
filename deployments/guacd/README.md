@@ -26,6 +26,24 @@ podman compose up -d    # 或 docker compose up -d
 
 Go server 经 `WINGMAN_GUACD_ADDR`（默认 `127.0.0.1:4822`）连接。
 
+## 阶段二：文件传输与录制（共享卷）
+
+compose 里两个 bind 挂载对应网关注入的 connect 参数（设计 §15/§16）：
+
+| 卷（容器内路径） | 用途 | server 侧环境变量 |
+| --- | --- | --- |
+| `./drive` → `/wingman-drive` | RDP 驱动器重定向（上传的文件出现在远端"计算机"共享盘） | `WINGMAN_GUACD_DRIVE_PATH=/wingman-drive` |
+| `./recordings` → `/recordings` | 会话录像（`.mjs`，guacd 原生格式）写入 | `WINGMAN_GUACD_RECORDING_PATH=/recordings` |
+
+- SSH 的文件传输走 SFTP 通道（`enable-sftp=true`），**不落 guacd 本地盘**，
+  无需 drive 卷；
+- 录像检索：server 侧把同一 `recordings` 目录挂到
+  `WINGMAN_RECORDING_DIR`（例如宿主机同路径 `/var/lib/wingman/recordings`），
+  经 `/api/remote/recordings` 提供 list/download/delete；
+- `.mjs` 回放用官方 `guacenc` 离线转 mp4（浏览器内回放列为远期）；
+- 录像安全默认：网关强制 `recording-include-keys=false`，**按键内容永不
+  入录像**（口令不会以明文出现在录像里）。
+
 ## 安全约定
 
 - 端口只绑 `127.0.0.1`：浏览器/远程客户端只连 Go server 的

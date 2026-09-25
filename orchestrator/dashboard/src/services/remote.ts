@@ -1,8 +1,8 @@
 /**
  * 远程桌面（Guacamole 像素面）服务
- * @description 票据申请 + WS 隧道参数。后端见 orchestrator/server
- *              internal/handlers/guacamole.go；设计见
- *              docs/remote-gateway-guacamole-design.md。
+ * @description 票据申请 + WS 隧道参数 + 会话录像检索。后端见
+ *              orchestrator/server internal/handlers/guacamole.go 与
+ *              recordings.go；设计见 docs/remote-gateway-guacamole-design.md。
  */
 
 import { request } from '@umijs/max';
@@ -22,6 +22,11 @@ export interface RemoteTicketParams {
   domain?: string;
   /** 只读监看（false 为接管，需 desktop:control 权限） */
   readOnly?: boolean;
+  /**
+   * 会话录制（设计 §16）：服务端配置录制双路径后才可开，
+   * 否则票据申请被 400 拒绝并附配置指引
+   */
+  record?: boolean;
   width?: number;
   height?: number;
 }
@@ -51,4 +56,53 @@ export async function createRemoteTicket(params: RemoteTicketParams): Promise<Re
 export function guacamoleWSPath(ticket: string): string {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   return `${proto}://${location.host}/api/remote/guacamole?ticket=${encodeURIComponent(ticket)}`;
+}
+
+// ---------- 会话录像检索（设计 §16：desktop:view 列/下载，desktop:control 删） ----------
+
+export interface RecordingEntry {
+  /** 录像文件名（{agentID}-{sessionID}.mjs，网关侧生成） */
+  name: string;
+  sizeBytes: number;
+  /** RFC3339（UTC）修改时间 */
+  modifiedAt: string;
+}
+
+/** 列出会话录像（按修改时间倒序）；录制未配置时后端返回 501 + 指引 */
+export async function listRecordings(): Promise<RecordingEntry[]> {
+  const res = await request<ApiResponse<RecordingEntry[]>>('/api/remote/recordings');
+  if (!res?.success) {
+    // 501 的 error/hint 直抛，由调用方展示配置指引
+    throw new Error(res?.error || '获取会话录像列表失败');
+  }
+  return res.data || [];
+}
+
+/**
+ * 下载会话录像到浏览器（.mjs 为 Guacamole session 格式，
+ * 可用官方 guacenc 离线转 mp4）。鉴权走 request 拦截器的
+ * Bearer 头，不能用裸 <a href>（不带 token）。
+ */
+export async function downloadRecording(name: string): Promise<void> {
+  const res = await request<Blob>(`/api/remote/recordings/${encodeURIComponent(name)}/download`, {
+    responseType: 'blob',
+  });
+  const blob = res instanceof Blob ? res : new Blob([res as unknown as BlobPart]);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** 删除会话录像（desktop:control；服务端记 desktop.recording_delete 审计） */
+export async function deleteRecording(name: string): Promise<void> {
+  const res = await request<ApiResponse<null>>(
+    `/api/remote/recordings/${encodeURIComponent(name)}`,
+    { method: 'DELETE' },
+  );
+  if (!res?.success) {
+    throw new Error(res?.error || '删除会话录像失败');
+  }
 }

@@ -1,10 +1,17 @@
 # guacd 协议翻译守护进程（Apache Guacamole 像素面，与 cockpit 共用同一套
-# 部署约定——docs/remote-gateway-guacamole-design.md DG-6）。
+# 部署约定——docs/remote-gateway-guacamole-design.md DG-6/DG-8/DG-9）。
 #
 # 部署要点：
 #   - 端口只绑回环/内网：Go server 反代连接此端口，浏览器永不定连 guacd；
 #   - GUACD_LOG_LEVEL 保持 info（debug 会打印 connect 指令参数，含口令）；
-#   - Go server 侧经 WINGMAN_GUACD_ADDR 指向本地址（默认 127.0.0.1:4822）。
+#   - Go server 侧经 WINGMAN_GUACD_ADDR 指向本地址（默认 127.0.0.1:4822）；
+#   - 两个共享卷是阶段二能力的锚点（设计 §15/§16）：
+#       drive       RDP 驱动器重定向的落盘目录（容器内 /wingman-drive，
+#                   与 server 的 WINGMAN_GUACD_DRIVE_PATH 一致）；
+#       recordings  会话录像写入目录（容器内 /recordings，与 server 的
+#                   WINGMAN_GUACD_RECORDING_PATH 一致；server 侧同卷挂到
+#                   WINGMAN_RECORDING_DIR 提供 list/download/delete）。
+#     不需要文件传输/录制时可整段删除 volumes 与两处 bind 挂载。
 services:
   guacd:
     image: guacamole/guacd:1.5.5
@@ -15,3 +22,6 @@ services:
     environment:
       GUACD_LOG_LEVEL: info
       TZ: Asia/Shanghai
+    volumes:
+      - ./drive:/wingman-drive
+      - ./recordings:/recordings

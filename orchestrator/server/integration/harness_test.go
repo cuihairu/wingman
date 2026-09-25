@@ -212,12 +212,22 @@ func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *w
 
 	// 远程桌面（Guacamole 像素面）：与 main.go 同构挂载（票据 REST 在
 	// desktop 权限组内，WS 隧道挂 /api 组外——票据即凭证）。
-	// guacd 地址经 WINGMAN_GUACD_E2E_GUACD 注入（e2e 测试用；未设则回环默认）。
+	// guacd 地址经 WINGMAN_GUACD_E2E_GUACD 注入（e2e 测试用；未设则回环默认）；
+	// 录制双路径经 WINGMAN_GUACD_RECORDING_PATH/WINGMAN_RECORDING_DIR 注入
+	//（e2e 录制用例；未设 = 录制关闭）。
 	tickets := remoteticket.NewManager()
-	guacHandler := handlers.NewGuacamoleHandler(db, registry, tickets, os.Getenv("WINGMAN_GUACD_E2E_GUACD"))
+	guacHandler := handlers.NewGuacamoleHandler(db, registry, tickets, os.Getenv("WINGMAN_GUACD_E2E_GUACD"),
+		"", os.Getenv("WINGMAN_GUACD_RECORDING_PATH"), os.Getenv("WINGMAN_RECORDING_DIR"))
 	desktopAPI := api.Group("", middleware.PermissionRequired(db, "desktop:view", "desktop:control"))
 	desktopAPI.POST("/remote/tickets", guacHandler.HandleTicketCreate)
 	r.GET("/api/remote/guacamole", guacHandler.HandleWS)
+	// 会话录像检索（设计 §16）：与 main.go 同构
+	recordingsHandler := handlers.NewRecordingsHandler(db, os.Getenv("WINGMAN_RECORDING_DIR"))
+	recordingsView := api.Group("", middleware.PermissionRequired(db, "desktop:view"))
+	recordingsView.GET("/remote/recordings", recordingsHandler.HandleList)
+	recordingsView.GET("/remote/recordings/:name/download", recordingsHandler.HandleDownload)
+	recordingsCtrl := api.Group("", middleware.PermissionRequired(db, "desktop:control"))
+	recordingsCtrl.DELETE("/remote/recordings/:name", recordingsHandler.HandleDelete)
 
 	r.GET("/ws", func(c *gin.Context) { ws.HandleWebSocket(c, hub) })
 	return r

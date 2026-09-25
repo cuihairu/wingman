@@ -3,6 +3,7 @@ import {
   AppleOutlined,
   DeleteOutlined,
   DesktopOutlined,
+  DownloadOutlined,
   InfoCircleOutlined,
   MobileOutlined,
   NodeIndexOutlined,
@@ -11,6 +12,7 @@ import {
   ReloadOutlined,
   ScheduleOutlined,
   ThunderboltOutlined,
+  VideoCameraOutlined,
   WifiOutlined,
 } from '@ant-design/icons';
 import {
@@ -24,8 +26,10 @@ import { useAccess, useIntl, useRequest } from '@umijs/max';
 import {
   Button,
   Card,
+  Checkbox,
   Col,
   Input,
+  Popconfirm,
   Popover,
   Progress,
   Row,
@@ -44,7 +48,13 @@ import {
 import React, { useState, useEffect } from 'react';
 import TriggerFormModal from '@/components/TriggerFormModal';
 import RemoteDesktopModal from '@/components/RemoteDesktopModal';
-import type { RemoteProtocol } from '@/services/remote';
+import {
+  deleteRecording,
+  downloadRecording,
+  listRecordings,
+  type RecordingEntry,
+  type RemoteProtocol,
+} from '@/services/remote';
 import {
   AgentStatus,
   AgentInfo,
@@ -78,8 +88,7 @@ const PlatformTag: React.FC<{ platform?: string }> = ({ platform }) => {
     ) : (
       <MobileOutlined />
     );
-  const color =
-    value === 'android' ? 'green' : value === 'desktop' ? 'geekblue' : 'default';
+  const color = value === 'android' ? 'green' : value === 'desktop' ? 'geekblue' : 'default';
   return (
     <Tag icon={icon} color={color}>
       {value.toUpperCase()}
@@ -110,6 +119,7 @@ const Agents: React.FC = () => {
     username: string;
     password: string;
     readOnly: boolean;
+    record: boolean;
   } | null>(null);
   const [desktopTarget, setDesktopTarget] = useState<{
     agentId: string;
@@ -117,6 +127,7 @@ const Agents: React.FC = () => {
     username: string;
     password: string;
     readOnly: boolean;
+    record: boolean;
   } | null>(null);
   // openDesktop 表单确认：把表单参数固化为连接目标（触发 RemoteDesktopModal 建连）
   const openDesktop = () => {
@@ -124,6 +135,51 @@ const Agents: React.FC = () => {
       setDesktopTarget(desktopForm);
     }
     setDesktopForm(null);
+  };
+  // ===== 会话录像（设计 §16）：desktop:view 列/下载，desktop:control 删 =====
+  const canDesktopView = Boolean(access.canDesktopView);
+  const canDesktopControl = Boolean(access.canDesktopControl);
+  const [recordingsOpen, setRecordingsOpen] = useState(false);
+  const [recordings, setRecordings] = useState<RecordingEntry[]>([]);
+  const [recordingsError, setRecordingsError] = useState('');
+  const [recordingsLoading, setRecordingsLoading] = useState(false);
+  const [deletingRecording, setDeletingRecording] = useState<string | null>(null);
+  const fetchRecordings = async (silent = false) => {
+    if (!silent) {
+      setRecordingsLoading(true);
+    }
+    setRecordingsError('');
+    try {
+      setRecordings(await listRecordings());
+    } catch (e) {
+      // 501（未配置）与其他错误都转为面板文案：错误串本身带配置指引
+      setRecordingsError(e instanceof Error ? e.message : '获取会话录像列表失败');
+    } finally {
+      setRecordingsLoading(false);
+    }
+  };
+  const openRecordings = () => {
+    setRecordingsOpen(true);
+    fetchRecordings();
+  };
+  const handleDownloadRecording = async (name: string) => {
+    try {
+      await downloadRecording(name);
+    } catch (e) {
+      message.error(extractErrorMessage(e, '下载会话录像失败'));
+    }
+  };
+  const handleDeleteRecording = async (name: string) => {
+    setDeletingRecording(name);
+    try {
+      await deleteRecording(name);
+      message.success(`已删除 ${name}`);
+      await fetchRecordings(true);
+    } catch (e) {
+      message.error(extractErrorMessage(e, '删除会话录像失败'));
+    } finally {
+      setDeletingRecording(null);
+    }
   };
   const [wsConnected, setWsConnected] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]); // 本地状态用于实时更新
@@ -561,12 +617,18 @@ const Agents: React.FC = () => {
         const diff = Date.now() - record.lastSeen;
         if (diff < 60000) return formatMessage('pages.agents.lessThanMinute');
         if (diff < 3600000)
-          return intl.formatMessage({ id: 'pages.agents.minutesAgo' }, {
-            count: Math.floor(diff / 60000),
-          });
-        return intl.formatMessage({ id: 'pages.agents.hoursAgo' }, {
-          count: Math.floor(diff / 3600000),
-        });
+          return intl.formatMessage(
+            { id: 'pages.agents.minutesAgo' },
+            {
+              count: Math.floor(diff / 60000),
+            },
+          );
+        return intl.formatMessage(
+          { id: 'pages.agents.hoursAgo' },
+          {
+            count: Math.floor(diff / 3600000),
+          },
+        );
       },
     },
     {
@@ -596,6 +658,7 @@ const Agents: React.FC = () => {
                   username: '',
                   password: '',
                   readOnly: true,
+                  record: false,
                 })
               }
               disabled={record.status === AgentStatus.Offline}
@@ -690,6 +753,11 @@ const Agents: React.FC = () => {
                     {formatMessage('pages.agents.realtimeUpdate')}
                   </Tag>
                 )}
+                {canDesktopView && (
+                  <Button icon={<VideoCameraOutlined />} onClick={openRecordings}>
+                    会话录像
+                  </Button>
+                )}
                 <Button icon={<ReloadOutlined />} onClick={refresh} loading={loading}>
                   {formatMessage('pages.common.refresh')}
                 </Button>
@@ -739,9 +807,12 @@ const Agents: React.FC = () => {
               )}
               {selectedIds.length > 0 && (
                 <Text type="secondary">
-                  {intl.formatMessage({ id: 'pages.agents.selectedCount' }, {
-                    count: selectedIds.length,
-                  })}
+                  {intl.formatMessage(
+                    { id: 'pages.agents.selectedCount' },
+                    {
+                      count: selectedIds.length,
+                    },
+                  )}
                 </Text>
               )}
             </Space>
@@ -824,9 +895,8 @@ const Agents: React.FC = () => {
                     {
                       title: formatMessage('pages.agents.currentTask'),
                       dataIndex: 'currentTask',
-                      render: (task) => task || (
-                        <Text type="secondary">{formatMessage('pages.common.none')}</Text>
-                      ),
+                      render: (task) =>
+                        task || <Text type="secondary">{formatMessage('pages.common.none')}</Text>,
                     },
                     {
                       title: formatMessage('pages.agents.os'),
@@ -871,13 +941,17 @@ const Agents: React.FC = () => {
           <Input
             placeholder="用户名（可选）"
             value={desktopForm?.username}
-            onChange={(e) => desktopForm && setDesktopForm({ ...desktopForm, username: e.target.value })}
+            onChange={(e) =>
+              desktopForm && setDesktopForm({ ...desktopForm, username: e.target.value })
+            }
           />
           <Input
             placeholder="密码（可选）"
             type="password"
             value={desktopForm?.password}
-            onChange={(e) => desktopForm && setDesktopForm({ ...desktopForm, password: e.target.value })}
+            onChange={(e) =>
+              desktopForm && setDesktopForm({ ...desktopForm, password: e.target.value })
+            }
           />
           <Select
             style={{ width: '100%' }}
@@ -890,6 +964,14 @@ const Agents: React.FC = () => {
               { value: 'control', label: '接管（需 desktop:control 权限）' },
             ]}
           />
+          <Checkbox
+            checked={desktopForm?.record}
+            onChange={(e) =>
+              desktopForm && setDesktopForm({ ...desktopForm, record: e.target.checked })
+            }
+          >
+            会话录制（需服务端配置录制路径，录像不含按键内容）
+          </Checkbox>
         </Space>
       </Modal>
       {desktopTarget && (
@@ -900,16 +982,108 @@ const Agents: React.FC = () => {
           username={desktopTarget.username || undefined}
           password={desktopTarget.password || undefined}
           readOnly={desktopTarget.readOnly}
+          record={desktopTarget.record}
           onCancel={() => setDesktopTarget(null)}
         />
       )}
 
+      {/* 会话录像（设计 §16）：guacd 录制目录检索；.mjs 下载后可用
+          guacenc 离线转 mp4；删除需 desktop:control */}
+      <Modal
+        open={recordingsOpen}
+        title="会话录像"
+        width={680}
+        footer={
+          <Button type="primary" onClick={() => setRecordingsOpen(false)}>
+            关闭
+          </Button>
+        }
+        onCancel={() => setRecordingsOpen(false)}
+      >
+        {recordingsError ? (
+          <Alert
+            type="warning"
+            showIcon
+            message="会话录像不可用"
+            description={recordingsError}
+            action={
+              <Button size="small" onClick={() => fetchRecordings()}>
+                重试
+              </Button>
+            }
+          />
+        ) : (
+          <Table
+            rowKey="name"
+            size="small"
+            loading={recordingsLoading}
+            dataSource={recordings}
+            pagination={{ pageSize: 8, hideOnSinglePage: true }}
+            locale={{ emptyText: '暂无录像（连接时勾选“会话录制”生成）' }}
+            columns={[
+              { title: '文件名', dataIndex: 'name', ellipsis: true },
+              {
+                title: '大小',
+                dataIndex: 'sizeBytes',
+                width: 90,
+                render: (v: number) => formatBytes(v),
+              },
+              {
+                title: '录制时间',
+                dataIndex: 'modifiedAt',
+                width: 170,
+                render: (v: string) => (v ? new Date(v).toLocaleString() : '-'),
+              },
+              {
+                title: '操作',
+                key: 'actions',
+                width: 150,
+                render: (_: unknown, r: RecordingEntry) => (
+                  <Space>
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      onClick={() => handleDownloadRecording(r.name)}
+                    >
+                      下载
+                    </Button>
+                    {canDesktopControl && (
+                      <Popconfirm
+                        title={`删除 ${r.name}？`}
+                        description="删除后不可恢复"
+                        okText="删除"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={() => handleDeleteRecording(r.name)}
+                      >
+                        <Button
+                          type="link"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                          loading={deletingRecording === r.name}
+                        >
+                          删除
+                        </Button>
+                      </Popconfirm>
+                    )}
+                  </Space>
+                ),
+              },
+            ]}
+          />
+        )}
+      </Modal>
+
       {/* 批量运行脚本：脚本列表来自 /api/scripts，服务端会先做路径校验 */}
       <Modal
         open={batchModal === 'run'}
-        title={intl.formatMessage({ id: 'pages.agents.batchRunModalTitle' }, {
-          count: selectedIds.length,
-        })}
+        title={intl.formatMessage(
+          { id: 'pages.agents.batchRunModalTitle' },
+          {
+            count: selectedIds.length,
+          },
+        )}
         width={520}
         onOk={submitBatchRun}
         onCancel={() => setBatchModal(null)}
@@ -933,9 +1107,12 @@ const Agents: React.FC = () => {
       {/* 批量停止脚本：executionId 即脚本名，与单 agent stop 语义一致 */}
       <Modal
         open={batchModal === 'stop'}
-        title={intl.formatMessage({ id: 'pages.agents.batchStopModalTitle' }, {
-          count: selectedIds.length,
-        })}
+        title={intl.formatMessage(
+          { id: 'pages.agents.batchStopModalTitle' },
+          {
+            count: selectedIds.length,
+          },
+        )}
         width={520}
         onOk={submitBatchStop}
         onCancel={() => setBatchModal(null)}
@@ -951,9 +1128,12 @@ const Agents: React.FC = () => {
       {/* 批量下发触发器：复用共享表单，提交即 fan-out trigger.add */}
       <TriggerFormModal
         open={triggerModalOpen}
-        title={intl.formatMessage({ id: 'pages.agents.batchTriggerModalTitle' }, {
-          count: selectedIds.length,
-        })}
+        title={intl.formatMessage(
+          { id: 'pages.agents.batchTriggerModalTitle' },
+          {
+            count: selectedIds.length,
+          },
+        )}
         onSubmit={async (config) => {
           let response;
           try {
@@ -993,11 +1173,14 @@ const Agents: React.FC = () => {
                     : 'warning'
               }
               showIcon
-              message={intl.formatMessage({ id: 'pages.agents.batchResultSummary' }, {
-                total: batchResult.total,
-                succeeded: batchResult.succeeded,
-                failed: batchResult.failed,
-              })}
+              message={intl.formatMessage(
+                { id: 'pages.agents.batchResultSummary' },
+                {
+                  total: batchResult.total,
+                  succeeded: batchResult.succeeded,
+                  failed: batchResult.failed,
+                },
+              )}
             />
             <Table
               size="small"

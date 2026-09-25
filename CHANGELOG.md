@@ -11,6 +11,16 @@
 
 自 v0.1.1 以来共 380 个提交（feat 68 / fix 140 / docs 72 / test 43 / ci 20 / refactor 8 / chore 20）。
 
+### feat（2026-09-25，M4 远控阶段二：Guacamole 剪贴板 / 文件传输 / 会话录制）
+
+- **选型落地**：第三方 VNC/SSH/RDP 远控集成采用 Apache Guacamole（guacd 1.5.5 协议翻译 + Go server 反代 WS 网关 + 浏览器 guacamole-common-js 像素面），runtime 零参与不破架构硬约束；备选方案（myrtille、websockify+novnc、自研三协议客户端）否决理由见 `docs/remote-gateway-guacamole-design.md` §9。P0 网关/票据/RBAC/Dashboard 弹窗已先行合入（20fdb30），本轮补齐阶段二 DG-7/8/9：
+- **剪贴板（§14）**：`onclipboard` 接收（逐块 ack）+ `createClipboardStream` 发送（text/plain），监看模式隐藏发送 UI；网关零改动纯透传。
+- **文件传输（§15）**：按协议注入 connect 参数——SSH `enable-sftp=true`、RDP `enable-drive`+`drive-path`（默认 `/wingman-drive`）、VNC 无通道（UI 整块隐藏）；上传 `createFileStream`+`BlobWriter` 分块，下载 `onfile` 聚合 Blob 触发浏览器下载。
+- **会话录制（§16）**：票据新增 `record` 字段（未配置双路径时 400 拒绝并附指引）→ connect 注入 `recording-path/{agentID}-{sessionID}.mjs`；安全默认 `recording-include-keys=false`（按键内容永不入录像）；新增检索 API：`GET /api/remote/recordings`（desktop:view，mtime 倒序）+ `GET .../:name/download`（desktop:view + 审计）+ `DELETE .../:name`（desktop:control + 审计），名字 basename+.mjs 白名单防穿越，未配置返回结构化 501。
+- **配置**：`WINGMAN_GUACD_DRIVE_PATH` / `WINGMAN_GUACD_RECORDING_PATH` / `WINGMAN_RECORDING_DIR` 三环境变量；`deployments/guacd` compose 增加 drive/recordings 共享卷与 README 说明。
+- **Dashboard**：类型声明补齐 1.5.0 实测流 API（InputStream/OutputStream/BlobWriter/Status.Code）；remote.ts 增 record 透传与录像三 API；RemoteDesktopModal 增剪贴板面板（Unicode 安全 base64 编解码）、上传入口（SSH/RDP）、下载、录制指示；Agents 页连接表单增录制勾选 + 会话录像管理（列表/下载/删除）；access 增 canDesktopView/canDesktopControl。
+- **测试**：Go 侧新增 mock-guacd（讲线协议的假 guacd）三用例验证 connect 按位注入（SSH SFTP+录制、RDP drive、VNC 无文件参数）+ recordings handler 6 用例 + guacamole 参数单元 4 用例；Dashboard jest 235 → 261（modal 流行为/服务层录像 API）；Swagger 注解补齐 remote REST 端点并再生成。验证基线：Go `go vet`+`go test -race` 14 包全过、tsc 0 错、eslint 仅存量 2 警告。
+
 ### fix（2026-09-25，Windows CI 假绿揭穿与四用例平台前提修复）
 
 - **Windows CI 的「success」是退出码吞没造成的假绿，4 个失败用例自 batch11 合入起就一直在失败**（对照 70c44b9 与 438e80c 两轮 job 日志实证）：`run-windows-coverage.ps1` 为防 OpenCppCoverage 退出期 ACCESS_VIOLATION 误伤，对非 1 退出码一律放行——昨晚测试红 + 退出期崩溃（exit -1073741819）被吞成 0 判绿，今晨进程正常 exit 1 才首次如实报红。**修复**：bat 内将测试输出重定向至日志文件，脚本改为以 gtest 的 `[  FAILED  ] N tests` 汇总行为失败判据（退出码仅作辅助），失败时输出逐条 FAILED 清单与日志尾部 40 行供排查；PASSED 汇总行同步打印，CI 日志恢复对测试结果的可观测性。

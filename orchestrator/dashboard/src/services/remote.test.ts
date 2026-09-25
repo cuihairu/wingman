@@ -1,8 +1,15 @@
 /**
- * 远程桌面服务层测试：票据申请请求形状 + WS 路径拼接。
+ * 远程桌面服务层测试：票据申请请求形状（含 record）+ WS 路径拼接 +
+ * 会话录像检索（列表/下载/删除）。
  */
 import { request } from '@umijs/max';
-import { createRemoteTicket, guacamoleWSPath } from './remote';
+import {
+  createRemoteTicket,
+  deleteRecording,
+  downloadRecording,
+  guacamoleWSPath,
+  listRecordings,
+} from './remote';
 
 jest.mock('@umijs/max', () => ({
   request: jest.fn(),
@@ -49,8 +56,25 @@ describe('services/remote', () => {
       });
     });
 
+    it('record 透传到请求体（会话录制，设计 §16）', async () => {
+      mockedRequest.mockResolvedValueOnce({
+        success: true,
+        data: { ticket: 'tk-rec', expiresAt: '2026-09-25T12:00:00Z' },
+      });
+
+      await createRemoteTicket({ agentId: 'agent-1', protocol: 'ssh', record: true });
+
+      expect(mockedRequest).toHaveBeenCalledWith('/api/remote/tickets', {
+        method: 'POST',
+        data: expect.objectContaining({ protocol: 'ssh', record: true }),
+      });
+    });
+
     it('success=false 时抛出后端 error', async () => {
-      mockedRequest.mockResolvedValueOnce({ success: false, error: 'desktop:control permission required for control mode' });
+      mockedRequest.mockResolvedValueOnce({
+        success: false,
+        error: 'desktop:control permission required for control mode',
+      });
       await expect(createRemoteTicket({ agentId: 'a', protocol: 'ssh' })).rejects.toThrow(
         'desktop:control permission required for control mode',
       );
@@ -58,13 +82,87 @@ describe('services/remote', () => {
 
     it('响应缺 ticket 时抛出兜底错误', async () => {
       mockedRequest.mockResolvedValueOnce({ success: true, data: {} });
-      await expect(createRemoteTicket({ agentId: 'a', protocol: 'vnc' })).rejects.toThrow('申请桌面连接票据失败');
+      await expect(createRemoteTicket({ agentId: 'a', protocol: 'vnc' })).rejects.toThrow(
+        '申请桌面连接票据失败',
+      );
     });
   });
 
   describe('guacamoleWSPath', () => {
     it('拼接 ws 隧道地址并编码票据', () => {
-      expect(guacamoleWSPath('abc+def/1')).toBe('ws://localhost:8000/api/remote/guacamole?ticket=abc%2Bdef%2F1');
+      expect(guacamoleWSPath('abc+def/1')).toBe(
+        'ws://localhost:8000/api/remote/guacamole?ticket=abc%2Bdef%2F1',
+      );
+    });
+  });
+
+  describe('listRecordings', () => {
+    it('GET /api/remote/recordings 返回列表', async () => {
+      mockedRequest.mockResolvedValueOnce({
+        success: true,
+        data: [{ name: 'agent-1-sess-9.mjs', sizeBytes: 1024, modifiedAt: '2026-09-25T10:00:00Z' }],
+      });
+
+      const list = await listRecordings();
+
+      expect(mockedRequest).toHaveBeenCalledWith('/api/remote/recordings');
+      expect(list).toHaveLength(1);
+      expect(list[0].name).toBe('agent-1-sess-9.mjs');
+    });
+
+    it('success=false（501 未配置）抛出后端 error 供面板展示指引', async () => {
+      mockedRequest.mockResolvedValueOnce({
+        success: false,
+        error: 'session recording not configured',
+      });
+      await expect(listRecordings()).rejects.toThrow('session recording not configured');
+    });
+  });
+
+  describe('downloadRecording', () => {
+    beforeEach(() => {
+      // jsdom 未实现 createObjectURL：下载路径需要手动补
+      (URL as unknown as { createObjectURL: jest.Mock }).createObjectURL = jest.fn(
+        () => 'blob:mock',
+      );
+      (URL as unknown as { revokeObjectURL: jest.Mock }).revokeObjectURL = jest.fn();
+    });
+
+    it('blob 响应触发浏览器下载（名字编码进路径）', async () => {
+      mockedRequest.mockResolvedValueOnce(new Blob(['session-bytes']));
+
+      await downloadRecording('agent-1-sess-9.mjs');
+
+      expect(mockedRequest).toHaveBeenCalledWith(
+        '/api/remote/recordings/agent-1-sess-9.mjs/download',
+        {
+          responseType: 'blob',
+        },
+      );
+      expect(URL.createObjectURL).toHaveBeenCalled();
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
+    });
+  });
+
+  describe('deleteRecording', () => {
+    it('DELETE /api/remote/recordings/:name', async () => {
+      mockedRequest.mockResolvedValueOnce({ success: true, data: null });
+
+      await deleteRecording('gone.mjs');
+
+      expect(mockedRequest).toHaveBeenCalledWith('/api/remote/recordings/gone.mjs', {
+        method: 'DELETE',
+      });
+    });
+
+    it('success=false 抛出后端 error', async () => {
+      mockedRequest.mockResolvedValueOnce({
+        success: false,
+        error: 'desktop:control permission required',
+      });
+      await expect(deleteRecording('gone.mjs')).rejects.toThrow(
+        'desktop:control permission required',
+      );
     });
   });
 });

@@ -37,6 +37,8 @@ type RouterDeps struct {
 	// Guacamole 像素面网关（票据 REST + WS 反代 guacd；nil = 不启用，
 	// 远程桌面经 guacd 翻译，见 docs/remote-gateway-guacamole-design.md）
 	Guacamole *GuacamoleHandler
+	// Recordings 会话录像检索（nil = 不启用；录制配置见设计 §16）
+	Recordings *RecordingsHandler
 	// ScriptsDir / StaticDir 静态资源与脚本目录
 	ScriptsDir string
 	StaticDir  string
@@ -226,6 +228,22 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 			desktop.Use(middleware.PermissionRequired(deps.DB, "desktop:view", "desktop:control"))
 			{
 				desktop.POST("/remote/tickets", deps.Guacamole.HandleTicketCreate)
+			}
+		}
+
+		// 会话录像检索（设计 §16）：列表/下载 desktop:view，删除
+		// desktop:control。未配置录制时 handler 返回结构化 501
+		if deps.Recordings != nil {
+			recListView := api.Group("")
+			recListView.Use(middleware.PermissionRequired(deps.DB, "desktop:view"))
+			{
+				recListView.GET("/remote/recordings", deps.Recordings.HandleList)
+				recListView.GET("/remote/recordings/:name/download", deps.Recordings.HandleDownload)
+			}
+			recCtrl := api.Group("")
+			recCtrl.Use(middleware.PermissionRequired(deps.DB, "desktop:control"))
+			{
+				recCtrl.DELETE("/remote/recordings/:name", deps.Recordings.HandleDelete)
 			}
 		}
 	}

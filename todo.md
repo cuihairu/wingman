@@ -1,10 +1,25 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-09-22
+> 最后更新: 2026-09-25
 > 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）
 
 > ⚠️ 本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
+
+---
+
+## 📅 2026-09-25 VNC/SSH/RDP 远控集成（Guacamole，P0 + 阶段二）
+
+第三方远控方案选型 **Apache Guacamole（guacd 1.5.5）**：浏览器侧 guacamole-common-js 像素面 + Go server 反代 WS 网关 + guacd 协议翻译（RDP/VNC/SSH 三协议客户端在 guacd 内实现）。runtime 零参与（像素面与控制面正交，架构硬约束不破）。设计文档 `docs/remote-gateway-guacamole-design.md`（§9 备选方案：myrtille/Apache 老栈、websockify+novnc、自研三协议客户端均否决的理由）。
+
+- **P0（commit 20fdb30，2026-09-23）**：一次性 5 分钟票据（`remoteticket.Manager`）+ RBAC（desktop:view 监看 / desktop:control 接管）+ 网关 WS 隧道（`/api/remote/guacamole`，票据即凭证）+ Dashboard RemoteDesktopModal + 三协议 e2e（`WINGMAN_GUACD_E2E=1` 门控，需容器栈）。
+- **阶段二（本轮，DG-7/8/9）**：
+  - **剪贴板（§14）**：common-js `onclipboard` 收（逐块 ack）+ `createClipboardStream` 发；监看模式隐藏发送 UI；仅 text/*。
+  - **文件传输（§15）**：SSH 经 SFTP（`enable-sftp=true`）、RDP 经驱动器重定向（`enable-drive`+`drive-path`）、VNC 无通道（RFB 协议层没有，UI 整块隐藏）；上传 `createFileStream`+`BlobWriter`，下载 `onfile` 聚合 Blob。
+  - **会话录制（§16）**：record 票据 → connect 注入 `recording-path/name`；安全默认 `recording-include-keys=false`（按键永不入录像）；检索 API `/api/remote/recordings`（list/download=desktop:view，delete=desktop:control）+ Dashboard 录像管理；`deployments/guacd` 增加 drive/recordings 共享卷。
+  - 服务端新增 mock-guacd 握手测试（讲线协议的假 guacd 验证 connect 按位注入）+ recordings handler 全路径测试；Swagger 注解补齐全部 remote REST 端点并再生成。
+- **验证基线**：Go 14 包 `go vet` + `go test -race` 全过；Dashboard jest 261/261、tsc 0 错、eslint 仅存量 2 警告、prettier 干净。
+- **剩余（P1/远期）**：cockpit 共享像素面组件、SSH 文件浏览器（`onfilesystem` SFTP 树）、浏览器内录像回放（session-player 非 npm 分发）、i18n 接线（阶段二 UI 文案暂为特性内中文硬编码，沿用 P0 先例）。
 
 ---
 
