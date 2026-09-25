@@ -9,7 +9,15 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 379 个提交（feat 68 / fix 139 / docs 72 / test 43 / ci 20 / refactor 8 / chore 20）。
+自 v0.1.1 以来共 380 个提交（feat 68 / fix 140 / docs 72 / test 43 / ci 20 / refactor 8 / chore 20）。
+
+### fix（2026-09-25，Windows CI 假绿揭穿与四用例平台前提修复）
+
+- **Windows CI 的「success」是退出码吞没造成的假绿，4 个失败用例自 batch11 合入起就一直在失败**（对照 70c44b9 与 438e80c 两轮 job 日志实证）：`run-windows-coverage.ps1` 为防 OpenCppCoverage 退出期 ACCESS_VIOLATION 误伤，对非 1 退出码一律放行——昨晚测试红 + 退出期崩溃（exit -1073741819）被吞成 0 判绿，今晨进程正常 exit 1 才首次如实报红。**修复**：bat 内将测试输出重定向至日志文件，脚本改为以 gtest 的 `[  FAILED  ] N tests` 汇总行为失败判据（退出码仅作辅助），失败时输出逐条 FAILED 清单与日志尾部 40 行供排查；PASSED 汇总行同步打印，CI 日志恢复对测试结果的可观测性。
+- ① **`MacroModuleFullFamilyViaLazyDefault`**（`batch11_glue_coverage_test.cpp`）：save/load 路径硬编码 `/tmp/...`——Windows 无此目录（saveToJSON 打开文件即失败），改 `temp_directory_path()`；同用例的「不存在文件」负例与 Bitmap 用例的 save 负例路径一并迁移。
+- ② **`BitmapBmpParsingAndSaveFailureBranches`**（同文件）：测试目录改 `temp_directory_path()` 下进程唯一子目录；坏 planes / 坏 bitCount 两条断言按平台分支——Windows 的 `Bitmap::fromFile` 走 GDI+ 系统解码器（拒坏签名但对 planes/bitCount 头字段宽容，实测照样解析出 2x2 图），Linux/mac 走自写解析器严格拒绝，断言各平台的真实语义；坏签名 / 截断 / noread 断言两平台一致不动。
+- ③ **`UiaModuleGlueTest` 两用例**（`misc_uia_node_coverage_test.cpp`）：用例设计前提是「Linux stub 无后端」，Windows 有真实 UIA Automation 系统服务——`AllFindFunctionsReturnNullWithoutBackend` 在 `_WIN32` 下 `GTEST_SKIP` 明示（team 空态用例同款模式）；`EventListenersAllBranches` 前 6 条防御分支断言 Windows 同样成立不动，仅 threadSafe 两条按平台分支（Linux 无后端 listenerId 恒 0，Windows 真实注册返回正数 id）。
+- 本组 4 用例在 Linux（常规 + ASan/UBSan）复验全绿，Windows 行为由 CI 验证。
 
 ### fix（2026-09-25，ASan+UBSan 首战四组真实缺陷：悬垂回调 / 析构期日志 / memcpy UB / sqlite 句柄泄漏）
 

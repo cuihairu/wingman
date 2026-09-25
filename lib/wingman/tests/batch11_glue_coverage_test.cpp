@@ -29,6 +29,8 @@ using namespace wingman;
 using namespace wingman::script;
 using namespace wingman::script::modules;
 
+namespace fs = std::filesystem;
+
 namespace {
 
 ModuleDescriptor getModule(const std::string& name) {
@@ -151,15 +153,18 @@ TEST(A11Batch11GlueTest, MacroModuleFullFamilyViaLazyDefault) {
     // 显式清空注入指针（34-36），确认后续走 lazy 默认实例路径
     setGlobalRecorder(nullptr);
 
-    const std::string jsonPath = "/tmp/batch11_macro_events.json";
-    const std::string luaPath = "/tmp/batch11_macro_events.lua";
+    // 路径用平台临时目录：/tmp 在 Windows 不存在，saveToJSON 打开文件即
+    // 失败返回 false（Windows CI 实测）；固定文件名进程内自清理
+    const std::string jsonPath = (fs::temp_directory_path() / "batch11_macro_events.json").string();
+    const std::string luaPath = (fs::temp_directory_path() / "batch11_macro_events.lua").string();
 
     // 空事件列表导出两种格式均成功（97/103）
     EXPECT_EQ(call(mod, "saveToJSON", {ScriptValue::fromString(jsonPath)}).asBool(), true);
     EXPECT_EQ(call(mod, "saveToLua", {ScriptValue::fromString(luaPath)}).asBool(), true);
     // 往返加载自身导出的合法文件（109 的成功分支）
     EXPECT_EQ(call(mod, "loadFromJSON", {ScriptValue::fromString(jsonPath)}).asBool(), true);
-    EXPECT_EQ(call(mod, "loadFromJSON", {ScriptValue::fromString("/tmp/batch11_no_such.json")}).asBool(), false);
+    EXPECT_EQ(call(mod, "loadFromJSON", {ScriptValue::fromString(
+        (fs::temp_directory_path() / "batch11_no_such.json").string())}).asBool(), false);
     std::remove(jsonPath.c_str());
     std::remove(luaPath.c_str());
 
@@ -328,7 +333,10 @@ TEST(A11Batch11GlueTest, InboxReportNonStringResultBranch) {
 // ========== Bitmap：手工 BMP 解析容错与 save 失败分支 ==========
 
 TEST(A11Batch11GlueTest, BitmapBmpParsingAndSaveFailureBranches) {
-    const std::string dir = "/tmp/batch11_bmp";
+    // 平台临时目录 + 进程唯一子目录（/tmp 在 Windows 不存在，Windows CI 实测）
+    const std::string dir = (fs::temp_directory_path() /
+        ("batch11_bmp_" + std::to_string(
+            std::chrono::steady_clock::now().time_since_epoch().count()))).string();
     std::filesystem::create_directories(dir);
 
     // 文件不足双头大小 → 头读取失败（310-311；root 环境同样有效）
@@ -338,13 +346,23 @@ TEST(A11Batch11GlueTest, BitmapBmpParsingAndSaveFailureBranches) {
     }
     EXPECT_EQ(Bitmap::fromFile(dir + "/tiny.bmp"), nullptr);
 
-    // 坏签名 / 坏 planes / 坏 bitCount → 头校验拒绝（321）
+    // 坏签名 / 坏 planes / 坏 bitCount → 头校验拒绝（321）。
+    // Windows 走 GDI+ 系统解码器：拒坏签名，但对 planes/bitCount 头字段
+    // 宽容（照样解析出 2x2 图，Windows CI 实测）——按各平台真实语义断言
     writeBytes(dir + "/badsig.bmp", makeBmpBytes(2, 2, 24, /*badSignature=*/true));
     EXPECT_EQ(Bitmap::fromFile(dir + "/badsig.bmp"), nullptr);
     writeBytes(dir + "/badplanes.bmp", makeBmpBytes(2, 2, 24, false, /*badPlanes=*/true));
+#ifdef _WIN32
+    EXPECT_NE(Bitmap::fromFile(dir + "/badplanes.bmp"), nullptr);
+#else
     EXPECT_EQ(Bitmap::fromFile(dir + "/badplanes.bmp"), nullptr);
+#endif
     writeBytes(dir + "/badbpp.bmp", makeBmpBytes(2, 2, 24, false, false, /*badBitCount=*/true));
+#ifdef _WIN32
+    EXPECT_NE(Bitmap::fromFile(dir + "/badbpp.bmp"), nullptr);
+#else
     EXPECT_EQ(Bitmap::fromFile(dir + "/badbpp.bmp"), nullptr);
+#endif
 
     // 像素数据截断 → 行读取失败（341）
     writeBytes(dir + "/truncated.bmp", makeBmpBytes(2, 2, 24, false, false, false, /*truncatePixelsTo=*/1));
@@ -370,7 +388,8 @@ TEST(A11Batch11GlueTest, BitmapBmpParsingAndSaveFailureBranches) {
     Bitmap empty(0, 4);
     EXPECT_EQ(empty.save(dir + "/empty.bmp"), false);
     Bitmap valid(8, 8);
-    EXPECT_EQ(valid.save("/tmp/batch11_no_such_dir/x.bmp"), false);
+    EXPECT_EQ(valid.save((fs::temp_directory_path() /
+        "batch11_no_such_dir" / "x.bmp").string()), false);
 
     // /dev/full：打开成功但缓冲刷新 ENOSPC → 行写入失败（828）。
     // 流缓冲使 header 不落盘即返回，行数据量大时才会触发流错误

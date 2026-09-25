@@ -46,6 +46,12 @@ ScriptValue callable(ScriptValue::CallableFunc fn, bool threadSafe = false) {
 // ========== uia：Linux 无后端时全部查找函数返回 null / 空数组 ==========
 
 TEST(UiaModuleGlueTest, AllFindFunctionsReturnNullWithoutBackend) {
+#ifdef _WIN32
+    // Windows 有真实 UIA Automation 后端（系统服务），查找函数返回真实
+    // 元素而非 null——「无后端返回 null」语义仅在 Linux stub 下成立
+    //（Windows CI 实测 from_foreground 非空）
+    GTEST_SKIP() << "UIA backend exists on Windows; null-return semantics are Linux-stub only";
+#endif
     const auto mod = getModule("uia");
     ASSERT_EQ(mod.name, "uia");
 
@@ -80,21 +86,35 @@ TEST(UiaModuleGlueTest, EventListenersAllBranches) {
     EXPECT_EQ(call(mod, "on_property_changed",
                    {ScriptValue::fromString("x"),
                     callable([](const std::vector<ScriptValue>&) { return ScriptValue::null(); })}).asInt(), 0);
-    // 线程安全 callable：Linux 无后端，listenerId 仍为 0 但覆盖包装闭包构造路径
+    // 线程安全 callable：Linux 无后端 listenerId 恒 0，但覆盖包装闭包构造
+    // 路径；Windows 真实后端注册成功返回正数 id（Windows CI 实测 1/2），
+    // 按各平台真实语义断言
+#ifdef _WIN32
+    EXPECT_GE(call(mod, "on_property_changed",
+                   {ScriptValue::fromString("x"),
+                    callable([](const std::vector<ScriptValue>&) { return ScriptValue::null(); }, true)}).asInt(), 1);
+#else
     EXPECT_EQ(call(mod, "on_property_changed",
                    {ScriptValue::fromString("x"),
                     callable([](const std::vector<ScriptValue>&) { return ScriptValue::null(); }, true)}).asInt(), 0);
+#endif
 
-    // on_structure_changed 同构四分支
+    // on_structure_changed 同构四分支（threadSafe 末分支平台语义同上）
     EXPECT_EQ(call(mod, "on_structure_changed", {ScriptValue::fromString("x")}).asInt(), 0);
     EXPECT_EQ(call(mod, "on_structure_changed",
                    {ScriptValue::fromString("x"), ScriptValue::fromInt(7)}).asInt(), 0);
     EXPECT_EQ(call(mod, "on_structure_changed",
                    {ScriptValue::fromString("x"),
                     callable([](const std::vector<ScriptValue>&) { return ScriptValue::null(); })}).asInt(), 0);
+#ifdef _WIN32
+    EXPECT_GE(call(mod, "on_structure_changed",
+                   {ScriptValue::fromString("x"),
+                    callable([](const std::vector<ScriptValue>&) { return ScriptValue::null(); }, true)}).asInt(), 1);
+#else
     EXPECT_EQ(call(mod, "on_structure_changed",
                    {ScriptValue::fromString("x"),
                     callable([](const std::vector<ScriptValue>&) { return ScriptValue::null(); }, true)}).asInt(), 0);
+#endif
 
     // remove_event_listener：无后端 → false；缺参默认 id=0 → false
     EXPECT_EQ(call(mod, "remove_event_listener", {ScriptValue::fromInt(42)}).asBool(), false);
