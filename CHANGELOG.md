@@ -9,7 +9,18 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 364 个提交（feat 65 / fix 133 / docs 63 / test 41 / ci 17 / refactor 8 / chore 16）。
+自 v0.1.1 以来共 379 个提交（feat 68 / fix 139 / docs 72 / test 43 / ci 20 / refactor 8 / chore 20）。
+
+### fix（2026-09-25，ASan+UBSan 首战四组真实缺陷：悬垂回调 / 析构期日志 / memcpy UB / sqlite 句柄泄漏）
+
+- **ASan+UBSan 全量插桩首跑即抓到 12 个用例失败，归并为四组根因，全部修复并复验**（`-fsanitize=address,undefined` + `UBSAN_OPTIONS=halt_on_error=1`，vcpkg 依赖不插桩；插件构建目录 `build-san` 仅测试用，不进常规 CI）。
+- ① **InotifyFileWatcher pollLoop 在锁外执行用户回调**（`inotify_filewatcher.cpp`）：回调先拷贝进局部 `pendingCallbacks` 再释放锁执行——`unwatch()` 在此窗口移除 entry 并释放调用方上下文后，旧拷贝仍被调用（ASan 实测 heap-use-after-free：gtest Test 对象析构后 pollThread 还在跑其 capture `this` 的 lambda）。修复：回调执行挪进锁作用域（单 poll 线程，锁内执行无并发损失），`mutex_` 改 `std::recursive_mutex` 使回调重入 `watch()`/`unwatch()` 不死锁。
+- ② **DbConnection::close() 在析构路径打日志**（`db_module.cpp`）：进程退出时静态对象析构顺序不定，spdlog registry 先析构（销毁全部 logger）、存活期更长的 DbConnection 后析构，`close()` 里的 `spdlog::debug` 访问已销毁 logger（ASan 实测 heap-use-after-free，6 个 DB 用例同根因）。修复：`close()` 删日志并注释「析构路径禁止打日志」。
+- ③ **Tensor::createFloat32/createInt32 空数据 memcpy(null, null, 0)**（`ml_stub.cpp`）：UBSan 实测 null pointer passed as argument 1——C 标准明文 memcpy 参数不可为 null，与 size 是否为 0 无关。修复：`byteSize > 0` 守卫。
+- ④ **KeyValueStore sqlite3_open 失败分支泄漏连接句柄**（`kvstore.cpp`）：sqlite3_open 失败时 handle 仍非空（供取错误信息），原代码直接 `return false` 不关闭（LSan 实测泄漏，save/load 两处）。修复：失败分支补 `sqlite3_close(raw)`。
+- **测试侧配套修复**（`filewatcher_test.cpp`）：`UnwatchPath` 故意保留的 dir2 watch（断言意图所在）与 `WatchFileInsteadOfDirectory` 的 filePath watch 均不被 TearDown 的 `unwatchPath(testDir)`（精确路径匹配）清理，回调 capture `this`，测试对象析构后条目残留进程级单例，后续任意事件触发即 UAF（事件到达时机不定，表现为 flaky）——两用例在行为断言完成后显式补清理。修复后 FileWatcher 全套 12 用例 ASan 下 15 轮压竞态复验全绿；**ASan+UBSan 全量复跑 2180 用例零失败，首轮 12 个失败全部清零**。
+- **win32 后端同构缺陷预防性修复**（`win32_filewatcher.cpp`/`.hpp`）：`checkIOCompletion` 与 inotify 修复前完全同构——锁内收集 pendingCallbacks、锁外执行，unwatch 窗口同样 UAF。同步修复：回调执行挪进锁块、`watchesMutex_` 改 `std::recursive_mutex`（7 处 `lock_guard` 显式模板参数随之同步，linux 后端用 CTAD 无此问题）。Linux 主机无法编译 _WIN32 分支，语法经锁块配对与引用清点自查，行为由 Windows CI 验证；mac/fsevents 后端已用 `shared_ptr<CallbackContext>` 拷贝持有方案，无此缺陷，不改动。
+
 
 ### test（2026-09-24，C++ 第十一批补测：EventHub 全家族 + task 重试间隙 + inotify 独立实例 + clipboard flaky 收口）
 

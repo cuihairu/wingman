@@ -63,7 +63,9 @@ private:
     std::atomic<uint64_t> nextId_;
 
     std::unordered_map<uint64_t, std::unique_ptr<WatchItem>> watches_;
-    mutable std::mutex watchesMutex_;
+    // recursive_mutex：事件线程在锁内执行用户回调，回调重入 watch()/unwatch()
+    // 时同线程再加锁不能死锁（与 linux inotify 后端同模式）
+    mutable std::recursive_mutex watchesMutex_;
 
     // Event processing thread
     std::thread eventThread_;

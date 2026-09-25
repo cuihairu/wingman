@@ -55,7 +55,7 @@ void Win32FileWatcher::shutdown() {
     }
 
     {
-        std::lock_guard<std::mutex> lock(watchesMutex_);
+        std::lock_guard<std::recursive_mutex> lock(watchesMutex_);
         for (auto& pair : watches_) {
             closeWatchHandle(pair.second.get());
         }
@@ -78,7 +78,7 @@ uint64_t Win32FileWatcher::watch(const std::string& path, bool recursive, FileCh
         return 0;
     }
 
-    std::lock_guard<std::mutex> lock(watchesMutex_);
+    std::lock_guard<std::recursive_mutex> lock(watchesMutex_);
 
     char fullPath[MAX_PATH];
     GetFullPathNameA(path.c_str(), MAX_PATH, fullPath, nullptr);
@@ -135,7 +135,7 @@ uint64_t Win32FileWatcher::watch(const std::string& path, bool recursive, FileCh
 }
 
 bool Win32FileWatcher::unwatch(uint64_t watchId) {
-    std::lock_guard<std::mutex> lock(watchesMutex_);
+    std::lock_guard<std::recursive_mutex> lock(watchesMutex_);
 
     const auto it = watches_.find(watchId);
     if (it == watches_.end()) {
@@ -153,7 +153,7 @@ size_t Win32FileWatcher::unwatchPath(const std::string& path) {
     char fullPath[MAX_PATH];
     GetFullPathNameA(path.c_str(), MAX_PATH, fullPath, nullptr);
 
-    std::lock_guard<std::mutex> lock(watchesMutex_);
+    std::lock_guard<std::recursive_mutex> lock(watchesMutex_);
 
     size_t count = 0;
     for (auto it = watches_.begin(); it != watches_.end();) {
@@ -170,12 +170,12 @@ size_t Win32FileWatcher::unwatchPath(const std::string& path) {
 }
 
 size_t Win32FileWatcher::getWatchCount() const {
-    std::lock_guard<std::mutex> lock(watchesMutex_);
+    std::lock_guard<std::recursive_mutex> lock(watchesMutex_);
     return watches_.size();
 }
 
 bool Win32FileWatcher::hasWatches() const {
-    std::lock_guard<std::mutex> lock(watchesMutex_);
+    std::lock_guard<std::recursive_mutex> lock(watchesMutex_);
     return !watches_.empty();
 }
 
@@ -242,7 +242,7 @@ void Win32FileWatcher::checkIOCompletion() {
     std::vector<std::function<void()>> pendingCallbacks;
 
     {
-        std::lock_guard<std::mutex> lock(watchesMutex_);
+        std::lock_guard<std::recursive_mutex> lock(watchesMutex_);
 
         for (auto& pair : watches_) {
             WatchItem* item = pair.second.get();
@@ -332,12 +332,14 @@ void Win32FileWatcher::checkIOCompletion() {
             // Restart the async read for this watch
             beginRead(item);
         }
-    }
 
-    // Invoke all callbacks WITHOUT holding the lock to prevent deadlock
-    // and allow callbacks to safely call unwatch() without race conditions
-    for (auto& callback : pendingCallbacks) {
-        callback();
+        // 回调必须在锁内执行：锁外执行时 unwatch() 已移除 entry 并释放调用方
+        // 上下文，拷贝进 pendingCallbacks 的旧回调仍会触发（linux inotify 后端
+        // ASan 实测 heap-use-after-free，本处为同构缺陷）。watchesMutex_ 为
+        // recursive_mutex，回调重入 watch()/unwatch() 不死锁。
+        for (auto& callback : pendingCallbacks) {
+            callback();
+        }
     }
 }
 
