@@ -27,6 +27,9 @@
 
 - **前端公共组件抽取**（设计 §7.3 落地，记 §7.1）：新建 `orchestrator/dashboard/src/components/RemoteDesktop/`，四件边界一一对应——`useGuacamoleSession`（连接生命周期 hook，票据一次性故无自动重连）、`TicketClient` 接口 + `createWingmanTicketClient`（票据客户端，接口化以便第二方换 API base）、`RemoteErrorNotice` + `classifyRemoteError`（错误与降级，权限/未配置类不渲染重试）、`RemoteDesktopToolbar`（监看接管与工具栏）。`RemoteDesktopPanel` 为容器无关合成件，`RemoteDesktopModal` 降级为 Modal 容器适配器；`RemoteProtocol`/`RemoteSessionParams` 收敛到公共件 `types.ts` 唯一定义（消除协议枚举分叉）。jest 261 → 328，新/改文件四项覆盖率 100%。
 - **会话审计落库与查询接口**（设计 §17）：新增 `models.RemoteSessionAudit`（表 `remote_session_audits`）——**不复用 AuditLog**（事件流水的 meta 是 JSON，聚合既慢又脆；两者受众不同，缺一不可）。只写终态（closed/failed），进行中不落行（否则报表把未结束会话算进时长、崩溃留不闭合脏行）；`RecordRemoteSession` 唯一落库入口（UTC 归一/时长口径/终态枚举是契约），写失败只记日志不阻断会话关闭。`GET /api/remote/sessions`（desktop:view，**不新增 RBAC 码**——报表只读、无接管能力）一次返回列表 + 汇总 + 维度聚合 + 时间趋势四块视图，四条查询共用同一过滤器，汇总/分组/分桶基于全量而非当页；`groupBy` 白名单化杜绝 SQL 注入。录像名与会话同源可关联；会话 ID 提前到拨号前生成，故建连失败也有唯一标识。Dashboard 新增 `RemoteSessionReportModal`（Agents 页「会话审计」入口，录像管文件、报表管行为）。jest 328 → 351，新文件四项覆盖率 100%。
+- **三协议 e2e 容器栈补强**（设计 §13.4）：四个目标端点镜像**全部钉 digest**（除 guacd 外原为 `latest`——上游重建会静默换内容，e2e 在无人改代码时变红，排查方向先怀疑网关）；新增一键脚本 `scripts/verify-guacd-e2e.sh`（up/test/run/down/status，解决 `compose up -d` 早于端口监听返回导致「栈没起好」与「代码有 bug」形状无法区分）；四服务补 healthcheck（bash `/dev/tcp`，不依赖 curl/nc）。契约由 10 个 Go 用例锁住（假引擎 + 净化 PATH，0.5s 跑完，不碰真容器）。
+- **验证基线**：Go 14 包 `go vet` + `go test -race` 全过；Dashboard jest 351/351、tsc 0 错、eslint 仅存量 2 警告、prettier 干净；Go 侧新增/改动文件覆盖率 100%（remote_session.go 全函数 100%）。
+- **未完成（需真机/容器环境）**：C++ 全量测试本机无预编译产物（`core_tests_NOT_BUILT`），本轮未改 C++；e2e 三协议链路实测需 `scripts/verify-guacd-e2e.sh run`（本机 docker 无 compose 插件，脚本正确报 SKIP）。
 
 
 ---

@@ -374,6 +374,30 @@ cockpit 现网关实现（`internal/server/api_guacamole.go`）的 connect 以
 wingman 版实现与单测护栏可直接复用（DG-6：第一方实现完成后抽公共组件，
 不允许第二方复制粘贴分叉）。
 
+### 13.4 e2e 容器栈补强（2026-09-25）
+
+三协议链路用例（`guacd_e2e_test.go`）的四个目标端点此前除 guacd 外全用
+`latest`，且只有一段 README 手抄命令。补强三处：
+
+1. **镜像全部钉 digest**（guacd 仍锁 1.5.5）。上游任一次重建都会静默换掉
+   镜像内容，e2e 会在无人改代码的情况下变红，而排查方向会先怀疑网关。
+   护栏：`TestGuacdE2EComposePinsImageDigests` 断言四服务都钉 digest。
+2. **一键脚本 `scripts/verify-guacd-e2e.sh`**（up/test/run/down/status）。
+   `compose up -d` 在容器尚未监听端口时就返回，xrdp 首启要几十秒——原文档
+   没写「等就绪」，于是「栈没起好」与「代码有 bug」两类失败形状一模一样。
+   脚本把「谁没就绪」显式报出，并沿用仓库三态：PASS / FAIL / SKIP(未验证)。
+   引擎探测不只 `command -v`（装了 docker 但没装 compose 插件时要报 SKIP 并
+   说清缺什么，不能在 compose 那一步炸出无关的 unknown command）。
+3. **四服务带 healthcheck**（bash `/dev/tcp` 探端口，不依赖 curl/nc——目标
+   镜像未必自带）。端口可达只说明「已监听」，不等于「协议握手可用」，后者
+   交给 e2e 用例自己的等待窗口。
+
+脚本与 compose 的契约（镜像钉 digest、探针形状、脚本端口与 e2e 目标端口
+一致、`WINGMAN_GUACD_E2E` 门控仍在）由 `guacd_e2e_script_test.go` 10 个用例
+锁住——脚本是「人跑的操作入口」，不进测试就会在某次改动里静默退化。
+
+---
+
 ## 14. 阶段二：剪贴板控制 UI（DG-7）
 
 ### 选型与理由

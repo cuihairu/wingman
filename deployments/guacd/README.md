@@ -55,10 +55,52 @@ compose 里两个 bind 挂载对应网关注入的 connect 参数（设计 §15/
 ## 端到端联调（三协议链路测试）
 
 `orchestrator/server/integration/guacd_e2e_test.go` 提供 SSH/VNC/RDP 三条
-链路用例，目标端点栈见 `orchestrator/server/integration/testdata/`：
+链路用例（`WINGMAN_GUACD_E2E=1` 门控，CI 无容器栈故默认跳过），目标端点栈见
+`orchestrator/server/integration/testdata/guacd-e2e-compose.yml`。用一键脚本：
+
+```bash
+scripts/verify-guacd-e2e.sh up      # 拉起四服务并等端口就绪
+scripts/verify-guacd-e2e.sh test    # 跑三协议链路用例
+scripts/verify-guacd-e2e.sh run     # up + test + 自动 down（一条龙）
+scripts/verify-guacd-e2e.sh down    # 拆栈
+scripts/verify-guacd-e2e.sh status  # 只看就绪状态
+```
+
+脚本存在的原因（原来只有一段手抄命令）：`compose up -d` 在容器**尚未监听
+端口**时就返回，随即跑用例必然连不上——xrdp 首启要几十秒。原文档没写「等
+就绪」，于是「栈没起好」和「代码有 bug」两类失败长得一模一样，只能靠人肉
+重试区分。脚本把「谁没就绪」显式报出来，并沿用仓库三态约定：PASS / FAIL /
+SKIP(未验证)——**绝不把「没跑成」判成通过**。
+
+手工等价命令（排查时用）：
 
 ```bash
 podman compose -f orchestrator/server/integration/testdata/guacd-e2e-compose.yml up -d
 cd orchestrator/server
 WINGMAN_GUACD_E2E=1 go test ./integration/ -run TestGuacdE2E -v
 ```
+
+### e2e 目标端点镜像全部钉 digest
+
+compose 里四个镜像除 guacd 外都用 `latest`——上游任何一次重建都会静默换掉
+镜像内容，e2e 会在**无人改代码**的情况下变红，而排查方向会先怀疑网关。故
+全部改为 `image@sha256:...`（guacd 仍锁 1.5.5）。更新镜像必须是一次显式的、
+可评审的改动：
+
+```bash
+# 1. 改 tag；2. 取 digest；3. 一并改回 compose
+docker manifest inspect -v <image>            # 多架构看 Descriptor.digest
+# lscr.io 走 ghcr.io：
+#   curl -sI -H "Authorization: Bearer $(curl -s \
+#     'https://ghcr.io/token?scope=repository:linuxserver/openssh-server:pull&service=ghcr.io' \
+#     | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')" \
+#     -H 'Accept: application/vnd.oci.image.index.v1+json' \
+#     https://ghcr.io/v2/linuxserver/openssh-server/manifests/latest | grep -i docker-content-digest
+```
+
+`TestGuacdE2EComposePinsImageDigests` 会断言四服务都钉了 digest——改回
+`latest` 不会有任何测试变红，这条断言就是防它退化的护栏。
+
+四个服务都带 healthcheck（用 bash `/dev/tcp` 探端口，**不依赖 curl/nc**——
+目标镜像未必自带）。注意端口可达只说明「容器已监听」，不等于「协议握手可用」
+（xrdp 的 X session 冷启要等首帧），后者交给 e2e 用例自己的 40s 窗口。

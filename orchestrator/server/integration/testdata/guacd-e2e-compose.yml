@@ -1,39 +1,90 @@
 # Guacamole e2e 链路测试的本地容器栈（仅测试用，勿用于生产）。
 #
-#   podman compose -f guacd-e2e-compose.yml up -d
-#   WINGMAN_GUACD_E2E=1 go test ./integration/ -run TestGuacdE2E -v
+#   scripts/verify-guacd-e2e.sh up      # 拉起 + 等就绪
+#   scripts/verify-guacd-e2e.sh test    # 跑三协议链路用例
+#   scripts/verify-guacd-e2e.sh down    # 拆栈
 #
 # 全部 network_mode: host：guacd(4822) / sshd(2222) / vnc(5901) / xrdp(3389)
 # 直接监听宿主回环，agent 注册表以 127.0.0.1 作为目标 IP。
+#
+# 镜像全部**钉到 digest**（不只是 tag）。原因：三条目标端点的上游都用
+# `latest`，上游任何一次重建都会静默换掉镜像内容——e2e 会在无人改代码
+# 的情况下变红，而排查方向会先怀疑网关。钉 digest 后「镜像变了」必须是
+# 一次显式的、可评审的改动。
+#   更新方式：改 tag → 跑 `docker manifest inspect -v <image>` 取
+#   Descriptor.digest（多架构取 index digest，见各处注释）→ 一并改这里。
 services:
   guacd:
     # 锁定 1.5.5：官方 1.6.0（含 2026-02 latest 重建）RDP 双崩溃——
     # guac_audio_assign_encoder 空指针（编码器未链接）与 guac_user_supports_webp
     # 空指针（display 重构竞态），均无客户端侧规避参数；网关已对 1.5.5 显式
     # disable-audio 规避其音频路径崩溃（见 handlers/guacamole.go guacParamTable）。
-    image: guacamole/guacd:1.5.5
+    # digest 2026-09-25 实测取得。
+    image: guacamole/guacd:1.5.5@sha256:38232cae271361ef53db46faf5c49fe64049a1320a05b82c597425b69d6ce77e
     container_name: wg-e2e-guacd
     network_mode: host
     environment:
       GUACD_LOG_LEVEL: info
+    healthcheck:
+      # guacd 无 HTTP 面，唯一探针是「4822 端口可连」。用 bash 内建 /dev/tcp
+      # ——镜像内无 curl/nc，不能依赖它们。
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/4822' || exit 1"]
+      interval: 3s
+      timeout: 3s
+      # 启动探测给足余量：guacd 起来即可连，但冷启动要拉解压层
+      retries: 20
+      start_period: 5s
 
   sshd:
-    image: lscr.io/linuxserver/openssh-server:latest
+    # linuxserver/openssh-server：index digest（多架构，amd64/arm64 都可用）
+    image: lscr.io/linuxserver/openssh-server:latest@sha256:946fa26105e0ec212fdf821b9ddc59aab65f2c2d07c02b25ff0f5001fc332ff0
     container_name: wg-e2e-sshd
     network_mode: host
     environment:
       PASSWORD_ACCESS: "true"
       USER_NAME: test
       USER_PASSWORD: test
+      # 固定 locale/timezone：时区会进登录 shell 的 motd 与时区数据，
+      # 跨时区跑出来的输出不可比
+      TZ: Asia/Shanghai
+    healthcheck:
+      # 22 是容器内端口；宿主映射在 2222。network_mode: host 下容器内也是
+      # 2222（linuxserver 镜像把 sshd 监听端口改成 2222 正是为了避开宿主 22），
+      # 故探 2222。
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/2222' || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
 
   vnc:
-    image: docker.io/accetto/ubuntu-vnc-xfce-g3:latest
+    # accetto/ubuntu-vnc-xfce-g3：index digest（多架构）
+    image: docker.io/accetto/ubuntu-vnc-xfce-g3:latest@sha256:a1d09470ba581a4b321ca87b70de43c4ac280fe92b3400758a772af0d791c824
     container_name: wg-e2e-vnc
     network_mode: host
     environment:
       VNC_PW: headless
+    healthcheck:
+      # accetto 镜像无 curl/nc/bash 探针可用 nc 不可靠；改用其自带的
+      # x11vnc 进程存在性 + 5901 端口（/dev/tcp 需 bash，此镜像有 bash）
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/5901' || exit 1"]
+      interval: 5s
+      timeout: 4s
+      # VNC 首启要装包/建 profile，实测比 sshd 慢不少
+      retries: 30
+      start_period: 10s
 
   xrdp:
-    image: docker.io/danielguerra/ubuntu-xrdp:latest
+    # danielguerra/ubuntu-xrdp：单架构 manifest digest
+    image: docker.io/danielguerra/ubuntu-xrdp:latest@sha256:1a00da32f4e486f2f5fd8f656fc23bb235987c219153a587894469cad300b12d
     container_name: wg-e2e-xrdp
     network_mode: host
+    healthcheck:
+      # xrdp 监听 3389。探针只能判「端口在」，不能判「X session 起好」——
+      # 后者要等首帧，交给 e2e 用例自己的 40s 窗口。
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/3389' || exit 1"]
+      interval: 5s
+      timeout: 4s
+      # xrdp 首次会话建立最慢（X session 冷启），给足重试
+      retries: 30
+      start_period: 10s

@@ -11,6 +11,13 @@
 
 自 v0.1.1 以来共 380 个提交（feat 68 / fix 140 / docs 72 / test 43 / ci 20 / refactor 8 / chore 20）。
 
+### test（2026-09-25，M4 远控 P1：三协议 e2e 容器栈补强）
+
+- **镜像全部钉 digest**（guacd 仍锁 1.5.5）：四个目标端点除 guacd 外全用 `latest`，上游任何一次重建都会**静默换掉镜像内容**，e2e 会在无人改代码的情况下变红，而排查方向会先怀疑网关。护栏是 `TestGuacdE2EComposePinsImageDigests`——没有它，改回 `latest` 不会有任何测试变红。
+- **一键脚本 `scripts/verify-guacd-e2e.sh`**（up/test/run/down/status）：`compose up -d` 在容器**尚未监听端口**时就返回（xrdp 首启要几十秒），原文档没写「等就绪」，于是「栈没起好」与「代码有 bug」两类失败形状一模一样，只能靠人肉重试区分。脚本把「谁没就绪」显式报出，沿用仓库三态 PASS / FAIL / SKIP(未验证)——绝不把「没跑成」判成通过。引擎探测不只 `command -v`：装了 docker 但没装 compose 插件时报 SKIP 并说清缺什么，不在 compose 那一步炸出无关的 `unknown command`。
+- **四服务带 healthcheck**：用 bash `/dev/tcp` 探端口，**不依赖 curl/nc**（目标镜像未必自带）。端口可达只说明「已监听」，不等于「协议握手可用」，后者交给 e2e 用例自己的等待窗口。
+- **契约测试**（`guacd_e2e_script_test.go`，10 例）：脚本三态（无引擎 / 引擎缺 compose / 端口未就绪 / 未知子命令 / 未知 flag / `--help`）、compose 四服务钉 digest + healthcheck 探针形状、脚本端口与 e2e 目标端口一致、`WINGMAN_GUACD_E2E` 门控仍在。用假引擎 + 净化 PATH 在 0.5s 内跑完，**不碰真容器**。
+
 ### feat（2026-09-25，M4 远控 P1：远程桌面会话审计报表）
 
 - **另立专表而非复用 AuditLog**：`AuditLog` 是事件流水（一条事件一行、meta 是 JSON），适合「谁在何时做了什么」的合规逐条查；报表要的是「这台机器被谁接管了多久、失败几次」，需要**可聚合的结构化列**——在 JSON meta 上聚合既慢又脆（`json_extract` 走不到索引，且 meta 结构会随事件演进漂移）。新增 `models.RemoteSessionAudit`（表 `remote_session_audits`），既有四事件审计**保持不变**：两者受众不同，缺一不可。
