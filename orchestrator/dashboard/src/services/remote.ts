@@ -3,39 +3,25 @@
  * @description 票据申请 + WS 隧道参数 + 会话录像检索。后端见
  *              orchestrator/server internal/handlers/guacamole.go 与
  *              recordings.go；设计见 docs/remote-gateway-guacamole-design.md。
+ *
+ * 连接协议/参数类型由公共件 `@/components/RemoteDesktop/types` 唯一定义
+ * （设计 §7 第 3 条不允许第二方复制分叉），本模块只负责「与本仓 Go server
+ * 说话」的具体端点绑定。
  */
 
 import { request } from '@umijs/max';
+import type {
+  RemoteProtocol,
+  RemoteSessionParams,
+  RemoteTicket,
+} from '@/components/RemoteDesktop/types';
 import type { ApiResponse } from './wingman';
 
-/** 桌面协议（与后端 guacSupportedProtocol 对齐） */
-export type RemoteProtocol = 'rdp' | 'vnc' | 'ssh';
+/** @deprecated 票据申请入参请用公共件的 RemoteSessionParams */
+export type RemoteTicketParams = RemoteSessionParams;
 
-export interface RemoteTicketParams {
-  /** 目标 agent（host 取注册表上报 IP，前端不可指定地址） */
-  agentId: string;
-  protocol: RemoteProtocol;
-  /** 协议默认端口（rdp 3389 / vnc 5900 / ssh 22），0 或缺省用默认 */
-  port?: number;
-  username?: string;
-  password?: string;
-  domain?: string;
-  /** 只读监看（false 为接管，需 desktop:control 权限） */
-  readOnly?: boolean;
-  /**
-   * 会话录制（设计 §16）：服务端配置录制双路径后才可开，
-   * 否则票据申请被 400 拒绝并附配置指引
-   */
-  record?: boolean;
-  width?: number;
-  height?: number;
-}
-
-export interface RemoteTicket {
-  /** 一次性连接票据（5 分钟有效），经 WS query 传给网关 */
-  ticket: string;
-  expiresAt: string;
-}
+/** @deprecated 协议枚举请用公共件的 RemoteProtocol */
+export type { RemoteProtocol };
 
 /**
  * 申请一次性桌面连接票据。鉴权走登录 token（desktop:view/
@@ -52,10 +38,19 @@ export async function createRemoteTicket(params: RemoteTicketParams): Promise<Re
   return res.data;
 }
 
-/** Guacamole WS 隧道地址（票据即凭证，路径与后端路由对齐） */
-export function guacamoleWSPath(ticket: string): string {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${proto}://${location.host}/api/remote/guacamole?ticket=${encodeURIComponent(ticket)}`;
+/**
+ * Guacamole WS 隧道地址（票据即凭证，路径与后端路由对齐）。
+ *
+ * loc 可注入：https 页面必须升级为 wss（否则 TLS 页面会把像素面隧道降级成
+ * 明文）。jsdom 无法改写 location.protocol，故留参数便于单测覆盖该分支，
+ * 也让 SSR/测试环境能显式指定来源。
+ */
+export function guacamoleWSPath(
+  ticket: string,
+  loc: Pick<Location, 'protocol' | 'host'> = location,
+): string {
+  const proto = loc.protocol === 'https:' ? 'wss' : 'ws';
+  return `${proto}://${loc.host}/api/remote/guacamole?ticket=${encodeURIComponent(ticket)}`;
 }
 
 // ---------- 会话录像检索（设计 §16：desktop:view 列/下载，desktop:control 删） ----------

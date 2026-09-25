@@ -11,6 +11,16 @@
 
 自 v0.1.1 以来共 380 个提交（feat 68 / fix 140 / docs 72 / test 43 / ci 20 / refactor 8 / chore 20）。
 
+### refactor（2026-09-25，M4 远控 P1：远程桌面前端公共件抽取）
+
+- **动机**：`RemoteDesktopModal` 此前是「连接逻辑 + 阶段二 UI」混在一起的单体，cockpit 要复用连接语义只能复制粘贴——而设计 §7 第 3 条明确禁止（复制品会在协议细节上分叉）。按该条约定抽公共件 `src/components/RemoteDesktop/`，四件边界一一对应：`useGuacamoleSession`（连接生命周期）、`TicketClient` 接口 + `createWingmanTicketClient`（票据客户端）、`RemoteErrorNotice`/`classifyRemoteError`（错误与降级）、`RemoteDesktopToolbar`（监看接管与工具栏）。
+- **容器解耦**：`RemoteDesktopPanel` 是不假定容器的合成件（画布 + 工具栏 + 错误条）；`RemoteDesktopModal` 降级为 Modal 容器适配器，cockpit 可直接放进抽屉/全屏页而无需 fork。`TicketClient` 抽成接口正是因为两边 API base 与鉴权方式可能不同。
+- **类型单一来源**：`RemoteProtocol`/`RemoteSessionParams` 收敛到公共件 `types.ts`，`services/remote.ts` 不再重复声明——协议枚举分叉正是 §7 要防的那类复制分叉。顺手补齐 `guacamoleWSPath` 的 https→wss 分支可测性（loc 可注入）。
+- **错误分类落地**：权限拒绝/能力未配置**不渲染重试按钮**（重试无意义且诱导反复点），只有断链与未知类给重试——票据一次性意味着重试只能是重新申请票据 + 重建会话。
+- **死代码清理**：`classifyRemoteError` 三处 `text ||` 兜底为不可达分支（命中条件本身要求原文非空）已删；工具栏 file input 复位改用 `e.target`（查 ref 是不可达分支）。
+- **测试**：新增 `RemoteDesktop/index.test.tsx` 60 例（hook 生命周期/取消竞态、协议能力派生、四类错误分类、工具栏监看与 VNC 约束、面板下载与剪贴板），补 `services/remote.test.ts` 5 例（wss 分支、录像兜底、非 Blob 响应）。**新文件与改动文件 stmt/branch/func/line 四项 100%**；Dashboard jest 261 → 328。
+- **附带修 load-induced flake**：`RemoteDesktop*` 两个测试文件的 `waitFor` 统一放宽到 5s（只放宽等待窗口不放宽断言）。实测 8 份全量 jest 并发压满 CPU 时，旧的 1s 窗口会假红；放宽后同款压力下新代码 0 失败。**注**：`tests/loginPage.test.tsx` 与 `tests/triggerFormModal.test.tsx` 在同款压力下仍有既有 load flake（本轮未触碰其代码，已在基线提交上复现确认为存量问题）。
+
 ### feat（2026-09-25，M4 远控阶段二：Guacamole 剪贴板 / 文件传输 / 会话录制）
 
 - **选型落地**：第三方 VNC/SSH/RDP 远控集成采用 Apache Guacamole（guacd 1.5.5 协议翻译 + Go server 反代 WS 网关 + 浏览器 guacamole-common-js 像素面），runtime 零参与不破架构硬约束；备选方案（myrtille、websockify+novnc、自研三协议客户端）否决理由见 `docs/remote-gateway-guacamole-design.md` §9。P0 网关/票据/RBAC/Dashboard 弹窗已先行合入（20fdb30），本轮补齐阶段二 DG-7/8/9：

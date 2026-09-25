@@ -74,6 +74,16 @@ const MockedClient = Client as jest.Mock;
 const MockedKeyboard = Keyboard as jest.Mock;
 const MockedBlobWriter = BlobWriter as jest.Mock;
 
+/**
+ * waitFor 的放宽版：默认 1000ms 在 CPU 饱和（CI 并行跑全仓）时偶尔不够，
+ * 「申请票据 → 建 client → setState」这条异步链会假红（仓库既有
+ * loginPage/triggerFormModal 在同款负载下已实测复现）。只放宽等待窗口，
+ * 不放宽任何断言。
+ */
+const WAIT_TIMEOUT = 5000;
+const waitForUI: typeof waitFor = (callback, options) =>
+  waitFor(callback, { timeout: WAIT_TIMEOUT, ...options });
+
 function renderModal(
   open: boolean,
   props: Partial<React.ComponentProps<typeof RemoteDesktopModal>> = {},
@@ -128,7 +138,7 @@ describe('RemoteDesktopModal', () => {
 
   it('open 时申请票据并建立 WS 隧道 + connect', async () => {
     const { unmount } = renderModal(true);
-    await waitFor(() => expect(MockedClient).toHaveBeenCalled());
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
     expect(mockedCreate).toHaveBeenCalledWith(
       expect.objectContaining({ agentId: 'agent-1', protocol: 'rdp', readOnly: false }),
     );
@@ -140,24 +150,24 @@ describe('RemoteDesktopModal', () => {
 
   it('接管模式挂载键盘注入，监看模式不挂', async () => {
     const { unmount } = renderModal(true);
-    await waitFor(() => expect(Keyboard).toHaveBeenCalled());
+    await waitForUI(() => expect(Keyboard).toHaveBeenCalled());
     unmount();
 
     mockedCreate.mockResolvedValue({ ticket: 'tk-ro', expiresAt: 'x' });
     const { unmount: unmount2 } = renderModal(true, { readOnly: true });
-    await waitFor(() => expect(MockedClient).toHaveBeenCalledTimes(2));
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalledTimes(2));
     expect(Keyboard).toHaveBeenCalledTimes(1); // 监看未新增键盘
     unmount2();
   });
 
   it('关闭时 disconnect', async () => {
     const { rerender } = renderModal(true);
-    await waitFor(() => expect(MockedClient).toHaveBeenCalled());
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
     const instance = lastClient();
     rerender(
       <RemoteDesktopModal open={false} onCancel={jest.fn()} agentId="agent-1" protocol="rdp" />,
     );
-    await waitFor(() => expect(instance.disconnect).toHaveBeenCalled());
+    await waitForUI(() => expect(instance.disconnect).toHaveBeenCalled());
   });
 
   it('票据申请失败展示错误', async () => {
@@ -179,7 +189,7 @@ describe('RemoteDesktopModal', () => {
 
   it('默认不录制：票据无 record 且无指示', async () => {
     const { queryByText, unmount } = renderModal(true);
-    await waitFor(() => expect(MockedClient).toHaveBeenCalled());
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
     expect(mockedCreate).toHaveBeenCalledWith(expect.objectContaining({ record: false }));
     expect(queryByText(/会话录制中/)).toBeNull();
     unmount();
@@ -189,7 +199,7 @@ describe('RemoteDesktopModal', () => {
 
   it('onclipboard 收到文本：逐块 ack + 展示 + 复制按钮', async () => {
     const { findByText, unmount } = renderModal(true);
-    await waitFor(() => expect(MockedClient).toHaveBeenCalled());
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
     const client = lastClient();
 
     const { stream, emitBlob, emitEnd } = fakeInputStream();
@@ -207,7 +217,7 @@ describe('RemoteDesktopModal', () => {
 
   it('非 text/* 剪贴板流以 UNSUPPORTED ack 拒绝', async () => {
     const { unmount } = renderModal(true);
-    await waitFor(() => expect(MockedClient).toHaveBeenCalled());
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
     const client = lastClient();
 
     const sendAck = jest.fn();
@@ -218,7 +228,7 @@ describe('RemoteDesktopModal', () => {
 
   it('接管模式发送剪贴板：createClipboardStream + base64 + sendEnd', async () => {
     const { findByPlaceholderText, findByText, unmount } = renderModal(true);
-    await waitFor(() => expect(MockedClient).toHaveBeenCalled());
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
     const client = lastClient();
 
     const input = await findByPlaceholderText('输入文本发送到远端剪贴板');
@@ -235,7 +245,7 @@ describe('RemoteDesktopModal', () => {
 
   it('监看模式隐藏剪贴板发送入口', async () => {
     const { queryByPlaceholderText, unmount } = renderModal(true, { readOnly: true });
-    await waitFor(() => expect(MockedClient).toHaveBeenCalled());
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
     expect(queryByPlaceholderText('输入文本发送到远端剪贴板')).toBeNull();
     unmount();
   });
@@ -245,7 +255,7 @@ describe('RemoteDesktopModal', () => {
   it('ssh 显示上传入口；上传走 createFileStream + BlobWriter + 完成后 sendEnd', async () => {
     const messageSpy = jest.spyOn(message, 'success').mockImplementation(() => ({}) as never);
     const { container, unmount } = renderModal(true, { protocol: 'ssh' });
-    await waitFor(() => expect(MockedClient).toHaveBeenCalled());
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
     const client = lastClient();
 
     // Modal 内容渲染进 body portal，用 document.body 查询
@@ -264,14 +274,14 @@ describe('RemoteDesktopModal', () => {
     // 传输完成回调：先 sendEnd 再提示（message 为全局挂载，spy 断言）
     writer.oncomplete();
     expect(stream.sendEnd).toHaveBeenCalled();
-    await waitFor(() => expect(messageSpy).toHaveBeenCalledWith('report.txt 上传完成'));
+    await waitForUI(() => expect(messageSpy).toHaveBeenCalledWith('report.txt 上传完成'));
     messageSpy.mockRestore();
     unmount();
   });
 
   it('vnc 无文件通道：整个文件传输 UI 不渲染', async () => {
     const { queryByText, unmount } = renderModal(true, { protocol: 'vnc' });
-    await waitFor(() => expect(MockedClient).toHaveBeenCalled());
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
     expect(document.body.querySelector('input[type="file"]')).toBeNull();
     expect(queryByText(/上传文件/)).toBeNull();
     unmount();
@@ -302,7 +312,7 @@ describe('RemoteDesktopModal', () => {
 
     try {
       const { unmount } = renderModal(true);
-      await waitFor(() => expect(MockedClient).toHaveBeenCalled());
+      await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
       const client = lastClient();
 
       const { stream, emitBlob, emitEnd } = fakeInputStream();

@@ -179,6 +179,25 @@ cockpit 项目同样需要"浏览器看画面 + 接管"能力，且 wingman 与 
 2. **前端渲染：双方 dashboard 都用 `guacamole-common-js`。** wingman dashboard（React 18 + TS）与 cockpit dashboard 各自集成，但连接管理逻辑抽公共件。
 3. **谁先实现谁抽公共组件。** 抽取边界约定为四件：连接生命周期 hook（建连/重连/断连状态机）、票据获取客户端、错误与降级展示、监看/接管模式切换与工具栏。抽取时机：第一方（wingman 或 cockpit）实现完成后立即抽，不允许第二方复制粘贴——复制品会立刻在协议细节上分叉。
 
+### 7.1 抽取落地（2026-09-25，wingman 侧先行）
+
+按第 3 条四件边界抽出公共件 `orchestrator/dashboard/src/components/RemoteDesktop/`，
+wingman 侧入口 `index.ts` 即第二方的接入点（cockpit 只需 import 同一出口，
+不 fork 组件）：
+
+| 边界件 | 实现 | 关键约束 |
+|---|---|---|
+| 连接生命周期 hook | `useGuacamoleSession.ts` | 票据一次性 → **无自动重连**（重连即重新申请票据）；卸载/参数变化必 disconnect + 清空 stage；监看不挂输入面 |
+| 票据获取客户端 | `types.ts` 的 `TicketClient` 接口 + `createWingmanTicketClient()` | 抽成接口而非直接调本仓 `services/remote`：两边 API base/鉴权可不同 |
+| 错误与降级展示 | `RemoteErrorNotice.tsx` | 权限/未配置**不渲染重试**（重试无意义且诱导反复点），断链/未知才给重试 |
+| 监看接管与工具栏 | `RemoteDesktopToolbar.tsx` | 监看 = 无输入注入 + 无发送入口（双层约束）；VNC 整块文件 UI 不渲染 |
+
+配套：`RemoteDesktopPanel.tsx` 是容器无关的合成件（画布 + 工具栏 + 错误条），
+`RemoteDesktopModal` 降级为 Modal 容器适配器（wingman Agents 页用），cockpit
+可放进抽屉/全屏页。类型单一来源：`RemoteProtocol`/`RemoteSessionParams` 由
+`types.ts` 唯一定义，`services/remote.ts` 不再重复声明（避免协议枚举分叉——
+正是第 3 条要防的那类复制分叉）。
+
 ---
 
 ## 8. 安全模型
@@ -235,7 +254,7 @@ cockpit 项目同样需要"浏览器看画面 + 接管"能力，且 wingman 与 
 
 - **P0（本文档批准后的第一批实现）**：Go server gateway 桥 + guacd 部署约定 + Windows(RDP)/macOS(VNC)/Linux(x11vnc) 三平台 endpoint 矩阵 + wingman dashboard 监看/接管组件 + RBAC 两权限点 + 审计四事件。✅ 2026-09-23 完成。
 - **阶段二（2026-09-25 实现）**：剪贴板控制 UI（§14，DG-7）+ 文件传输（§15，DG-8）+ 会话录制与检索（§16，DG-9）。
-- **P1**：cockpit 接入同一网关；按 §7 第 3 条抽取前端公共组件；审计报表呈现。
+- **P1**：cockpit 接入同一网关；按 §7 第 3 条抽取前端公共组件（✅ 2026-09-25 wingman 侧先行，见 §7.1）；审计报表呈现。
 - **远期（触发式）**：droidVNC-NG 桥独立设计（含注入仲裁）；公网弱网场景的 WebRTC 第二通道评估；SSH/SFTP 文件浏览器 UI（guacd `filesystem` 对象已可用，第一版只做拖拽上行 + 被动下行，见 §15「不做」）。
 
 ---

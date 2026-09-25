@@ -94,6 +94,19 @@ describe('services/remote', () => {
         'ws://localhost:8000/api/remote/guacamole?ticket=abc%2Bdef%2F1',
       );
     });
+
+    it('https 页面升级为 wss（防把 TLS 页面降级成明文隧道）', () => {
+      // jsdom 的 location.protocol 不可改写，按签名注入来源
+      expect(
+        guacamoleWSPath('tk', { protocol: 'https:', host: 'desk.example.com' } as Location),
+      ).toBe('wss://desk.example.com/api/remote/guacamole?ticket=tk');
+    });
+
+    it('http 页面保持 ws（显式注入来源，与默认 location 行为一致）', () => {
+      expect(
+        guacamoleWSPath('tk', { protocol: 'http:', host: 'desk.example.com' } as Location),
+      ).toBe('ws://desk.example.com/api/remote/guacamole?ticket=tk');
+    });
   });
 
   describe('listRecordings', () => {
@@ -116,6 +129,16 @@ describe('services/remote', () => {
         error: 'session recording not configured',
       });
       await expect(listRecordings()).rejects.toThrow('session recording not configured');
+    });
+
+    it('success=false 且无 error 时抛兜底文案', async () => {
+      mockedRequest.mockResolvedValueOnce({ success: false });
+      await expect(listRecordings()).rejects.toThrow('获取会话录像列表失败');
+    });
+
+    it('成功但 data 缺失时返回空数组（面板不炸）', async () => {
+      mockedRequest.mockResolvedValueOnce({ success: true });
+      await expect(listRecordings()).resolves.toEqual([]);
     });
   });
 
@@ -142,6 +165,16 @@ describe('services/remote', () => {
       expect(URL.createObjectURL).toHaveBeenCalled();
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
     });
+
+    it('非 Blob 响应（如拦截器已解析为字符串）仍能触发下载', async () => {
+      mockedRequest.mockResolvedValueOnce('raw-session-bytes');
+
+      await downloadRecording('agent-1-sess-9.mjs');
+
+      expect(URL.createObjectURL).toHaveBeenCalled();
+      const blob = (URL.createObjectURL as jest.Mock).mock.calls[0][0] as Blob;
+      expect(blob).toBeInstanceOf(Blob);
+    });
   });
 
   describe('deleteRecording', () => {
@@ -163,6 +196,11 @@ describe('services/remote', () => {
       await expect(deleteRecording('gone.mjs')).rejects.toThrow(
         'desktop:control permission required',
       );
+    });
+
+    it('success=false 且无 error 时抛兜底文案', async () => {
+      mockedRequest.mockResolvedValueOnce({ success: false });
+      await expect(deleteRecording('gone.mjs')).rejects.toThrow('删除会话录像失败');
     });
   });
 });

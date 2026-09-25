@@ -21,6 +21,13 @@
 - **验证基线**：Go 14 包 `go vet` + `go test -race` 全过；Dashboard jest 261/261、tsc 0 错、eslint 仅存量 2 警告、prettier 干净。
 - **剩余（P1/远期）**：cockpit 共享像素面组件、SSH 文件浏览器（`onfilesystem` SFTP 树）、浏览器内录像回放（session-player 非 npm 分发）、i18n 接线（阶段二 UI 文案暂为特性内中文硬编码，沿用 P0 先例）。
 
+## 📅 2026-09-25 远控 P1 推进（公共件抽取 / 会话审计 / e2e 容器栈）
+
+设计 §11 P1 三项中**可独立完成**的部分（cockpit 实际接入需对方仓库，不在本轮）：
+
+- **前端公共组件抽取**（设计 §7.3 落地，记 §7.1）：新建 `orchestrator/dashboard/src/components/RemoteDesktop/`，四件边界一一对应——`useGuacamoleSession`（连接生命周期 hook，票据一次性故无自动重连）、`TicketClient` 接口 + `createWingmanTicketClient`（票据客户端，接口化以便第二方换 API base）、`RemoteErrorNotice` + `classifyRemoteError`（错误与降级，权限/未配置类不渲染重试）、`RemoteDesktopToolbar`（监看接管与工具栏）。`RemoteDesktopPanel` 为容器无关合成件，`RemoteDesktopModal` 降级为 Modal 容器适配器；`RemoteProtocol`/`RemoteSessionParams` 收敛到公共件 `types.ts` 唯一定义（消除协议枚举分叉）。jest 261 → 328，新/改文件四项覆盖率 100%。
+
+
 ---
 
 ## 📅 2026-09-22 真机验证自动化（架构盘点第九轮）
