@@ -221,7 +221,14 @@ iOS 的状态不是"还没做"，而是"端侧做不了"。App Store 沙箱（Sa
 1. **Linux 的 C++ 核心测试已由 `C++ Linux (full tests)` job 覆盖**：ubuntu-24.04 上
    完整构建 + 全量核心测试，X11 用例经 xvfb-run 在虚拟显示下真实执行，非 skip。
    但需注意该 job 使用的 GCC 版本（13）与 compat matrix（ubuntu-22.04 的 GCC 11）
-   不同——最低支持工具链（README 声称 GCC 11+）的全量编译仍未经 CI 验证。
+   不同。最低支持工具链 GCC 11 的全量编译已于 2026-09-25 本地实测（g++-11 完整
+   构建，vcpkg 依赖全重编）：**唯一缺口**是 `ScriptValue::objectVal`——类内递归
+   `std::unordered_map<std::string, ScriptValue>` 成员（标准仅给 vector/list/
+   forward_list 不完整类型豁免；GCC 15 的 libstdc++ 碰巧容忍，GCC 11 在 pair
+   实例化时正确拒绝），连锁导致脚本子系统 53 个编译目标失败，其余目标全部编译
+   通过。修复需将对象表示改为标准豁免容器或间接层（`fromObject` 243 处调用 +
+   `objectVal` 35 处访问的破坏性重构），暂不进行——GCC 11 支持维持在 transport
+   层（compat job）的既有承诺范围。
 2. **macOS 的 C++ 核心仍无测试覆盖，且 job 允许失败**（continue-on-error），意味着
    macOS 的"已支持"目前由打包成功 + 兼容层编译成功支撑，核心行为无 CI 证据。
 3. **Android 只有打包验证**。签名/发布流程的工程化在 A3 里程碑中，测试 job 亦然。
