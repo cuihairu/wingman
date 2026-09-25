@@ -119,7 +119,9 @@ private:
         std::vector<int> wds;
     };
 
-    mutable std::mutex mutex_;
+    // recursive_mutex：pollLoop 在锁内执行用户回调，回调重入 watch()/unwatch()
+    // 时同线程再加锁不能死锁
+    mutable std::recursive_mutex mutex_;
     std::unordered_map<uint64_t, WatchInfo> watches_;
     std::unordered_map<int, std::vector<uint64_t>> wdToIds_;
     std::unordered_map<int, std::string> wdToPath_;
@@ -286,13 +288,19 @@ private:
                             }
                         }
                     }
-                }
 
-                for (const auto& [callback, change] : pendingCallbacks) {
-                    try {
-                        callback(change);
-                    } catch (const std::exception& e) {
-                        spdlog::error("InotifyFileWatcher: callback exception: {}", e.what());
+                    // 回调必须在锁内执行：锁外执行时 unwatch() 已移除 entry 并
+                    // 释放调用方上下文，拷贝进 pendingCallbacks 的旧回调仍会
+                    // 触发（ASan 实测 heap-use-after-free：gtest Test 对象析构后
+                    // pollLoop 还在调用其 lambda）。锁内执行保证 unwatch() 返回
+                    // 后不再触发；recursive_mutex 使回调重入 watch()/unwatch()
+                    // 不死锁。
+                    for (const auto& [callback, change] : pendingCallbacks) {
+                        try {
+                            callback(change);
+                        } catch (const std::exception& e) {
+                            spdlog::error("InotifyFileWatcher: callback exception: {}", e.what());
+                        }
                     }
                 }
 

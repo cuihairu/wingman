@@ -86,6 +86,8 @@ public:
     bool saveToSqlite(const std::string& filepath) {
         sqlite3* raw = nullptr;
         if (sqlite3_open(filepath.c_str(), &raw) != SQLITE_OK) {
+            // sqlite 失败时 handle 仍非空（供取错误信息），必须关闭（LSan 实测泄漏）
+            if (raw) sqlite3_close(raw);
             return false;
         }
         SqliteRaii db(raw);
@@ -120,6 +122,8 @@ public:
     bool loadFromSqlite(const std::string& filepath) {
         sqlite3* raw = nullptr;
         if (sqlite3_open(filepath.c_str(), &raw) != SQLITE_OK) {
+            // sqlite 失败时 handle 仍非空（供取错误信息），必须关闭（LSan 实测泄漏）
+            if (raw) sqlite3_close(raw);
             return false;
         }
         SqliteRaii db(raw);

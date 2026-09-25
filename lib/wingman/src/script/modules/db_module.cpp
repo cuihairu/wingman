@@ -193,7 +193,9 @@ void DbConnection::close() {
 	if (m_db) {
 		sqlite3_close(m_db);
 		m_db = nullptr;
-		spdlog::debug("Closed database: {}", m_path);
+		// 不打日志：close 会从 ~DbConnection 触发，进程退出阶段静态对象的
+		// 析构顺序不定，spdlog registry 可能已先析构（ASan 实测对已销毁
+		// logger 的 heap-use-after-free）。析构路径禁止打日志。
 	}
 }
 

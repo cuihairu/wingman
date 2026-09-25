@@ -91,7 +91,11 @@ TensorData Tensor::createFloat32(const TensorShape& shape, const std::vector<flo
 
     size_t byteSize = data.size() * sizeof(float);
     tensor.data.resize(byteSize);
-    std::memcpy(tensor.data.data(), data.data(), byteSize);
+    // byteSize 为 0 时两侧 data() 均为 null，memcpy(null, null, 0) 是 UB
+    //（UBSan 实测：null pointer passed as argument 1）
+    if (byteSize > 0) {
+        std::memcpy(tensor.data.data(), data.data(), byteSize);
+    }
 
     return tensor;
 }
@@ -103,7 +107,9 @@ TensorData Tensor::createInt32(const TensorShape& shape, const std::vector<int32
 
     size_t byteSize = data.size() * sizeof(int32_t);
     tensor.data.resize(byteSize);
-    std::memcpy(tensor.data.data(), data.data(), byteSize);
+    if (byteSize > 0) {
+        std::memcpy(tensor.data.data(), data.data(), byteSize);
+    }
 
     return tensor;
 }
