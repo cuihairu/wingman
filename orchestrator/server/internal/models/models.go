@@ -146,6 +146,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&Settings{},
 		&ExecutionLog{},
 		&AuditLog{},
+		&RemoteSessionAudit{},
 		&Message{},
 		&MessageRead{},
 		&Feedback{},

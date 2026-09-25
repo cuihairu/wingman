@@ -39,6 +39,8 @@ type RouterDeps struct {
 	Guacamole *GuacamoleHandler
 	// Recordings 会话录像检索（nil = 不启用；录制配置见设计 §16）
 	Recordings *RecordingsHandler
+	// RemoteSessions 远程桌面会话审计报表（nil = 不启用；设计 §11 P1）
+	RemoteSessions *RemoteSessionHandler
 	// ScriptsDir / StaticDir 静态资源与脚本目录
 	ScriptsDir string
 	StaticDir  string
@@ -244,6 +246,16 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 			recCtrl.Use(middleware.PermissionRequired(deps.DB, "desktop:control"))
 			{
 				recCtrl.DELETE("/remote/recordings/:name", deps.Recordings.HandleDelete)
+			}
+		}
+
+		// 远程桌面会话审计报表（设计 §11 P1「审计报表呈现」）：只读查询，
+		// desktop:view 即够——报表不含任何接管能力，没有理由要更高权限
+		if deps.RemoteSessions != nil {
+			sessionView := api.Group("")
+			sessionView.Use(middleware.PermissionRequired(deps.DB, "desktop:view"))
+			{
+				sessionView.GET("/remote/sessions", deps.RemoteSessions.HandleList)
 			}
 		}
 	}

@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/rbac"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/remoteticket"
 	"github.com/gin-gonic/gin"
@@ -463,13 +464,17 @@ type GuacamoleSession struct {
 	Host     string
 	Port     int
 	ReadOnly bool
-	ClientWS *websocket.Conn
-	guacd    net.Conn
-	guacdRd  *bufio.Reader
-	Created  time.Time
-	writeMu  sync.Mutex
-	done     chan struct{}
-	once     sync.Once
+	// Record 会话是否在录制（close 时写进审计，供报表关联录像）
+	Record bool
+	// RecordingName 录像文件名（{agentID}-{sessionID}.mjs）；未录制为空
+	RecordingName string
+	ClientWS      *websocket.Conn
+	guacd         net.Conn
+	guacdRd       *bufio.Reader
+	Created       time.Time
+	writeMu       sync.Mutex
+	done          chan struct{}
+	once          sync.Once
 }
 
 // guacTicketFromRequest 票据双通道提取：URL query ?ticket=（首选，
@@ -522,12 +527,33 @@ func (h *GuacamoleHandler) HandleWS(c *gin.Context) {
 		record = false
 	}
 
+	// 会话 ID 在任何可能失败的步骤之前生成：失败的尝试同样要能在审计里
+	// 被唯一标识（否则报表只能看到「有一次失败」而无法定位是哪次）。
+	sessionID := newGuacSessionID()
+	startedAt := time.Now()
+
 	// 拨 guacd TCP（不暴露 guacd 端口给浏览器——网关反代，设计 §4.1）
 	guacdConn, err := net.DialTimeout("tcp", h.guacdAddr, guacdDialTimeout)
 	if err != nil {
 		log.Printf("Guacamole: dial guacd %s failed: %v", h.guacdAddr, err)
 		WriteAuditLog(h.db, tk.Username, "desktop.connect_fail", agentID, map[string]any{
 			"protocol": protocol, "host": host, "port": port, "reason": "guacd unreachable",
+		})
+		// 会话审计也要记 failed 行：报表要能回答「拨不通 guacd 发生过
+		// 多少次」——只在 AuditLog 里的话聚合得翻 JSON meta。
+		// 会话 ID 在拨号前就生成，好让失败行也能与后续重试关联。
+		RecordRemoteSession(h.db, models.RemoteSessionAudit{
+			SessionID:  sessionID,
+			AgentID:    agentID,
+			Operator:   tk.Username,
+			Protocol:   protocol,
+			Host:       host,
+			Port:       port,
+			ReadOnly:   readOnly,
+			Record:     record,
+			Status:     models.RemoteSessionStatusFailed,
+			FailReason: "guacd unreachable",
+			StartedAt:  startedAt,
 		})
 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "guacamole daemon unavailable"})
 		return
@@ -540,18 +566,27 @@ func (h *GuacamoleHandler) HandleWS(c *gin.Context) {
 		return
 	}
 
+	// 录像文件名在会话建立时就定下来（与审计同源唯一），close 时写入会话
+	// 审计，报表因此能与录像检索 API 的 name 直接对上
+	recordingName := ""
+	if record {
+		recordingName = guacRecordingName(agentID, sessionID)
+	}
+
 	session := &GuacamoleSession{
-		ID:       newGuacSessionID(),
-		Username: tk.Username,
-		Protocol: protocol,
-		AgentID:  agentID,
-		Host:     host,
-		Port:     port,
-		ReadOnly: readOnly,
-		ClientWS: conn,
-		guacd:    guacdConn,
-		Created:  time.Now(),
-		done:     make(chan struct{}),
+		ID:            sessionID,
+		Username:      tk.Username,
+		Protocol:      protocol,
+		AgentID:       agentID,
+		Host:          host,
+		Port:          port,
+		ReadOnly:      readOnly,
+		Record:        record,
+		RecordingName: recordingName,
+		ClientWS:      conn,
+		guacd:         guacdConn,
+		Created:       startedAt,
+		done:          make(chan struct{}),
 	}
 
 	// tunnel UUID 先发浏览器（INTERNAL_DATA 空 opcode 单元素指令）：common-js
@@ -584,7 +619,7 @@ func (h *GuacamoleHandler) HandleWS(c *gin.Context) {
 	// 没有的协议（如 vnc 的文件参数）自然落空，不影响按位对应
 	guacApplyFileTransfer(protocol, table, h.drivePath)
 	if record {
-		guacApplyRecording(table, h.recordingPath, guacRecordingName(agentID, session.ID))
+		guacApplyRecording(table, h.recordingPath, recordingName)
 	}
 	// 版本协商：args 首段是 guacd 声明的协议版本（如 VERSION_1_5_0），connect
 	// 首参必须回应该版本串占住第一参数位（官方 common-js 即回显同串；回应
@@ -672,15 +707,34 @@ func (gs *GuacamoleSession) writeWS(payload []byte) {
 }
 
 // closeSession 幂等关闭：WS + guacd TCP + 审计结束（含时长；不含口令）。
+// 关闭时才落会话审计终态行（设计 §11 报表）：进行中不落行，避免报表把
+// 未结束会话算进时长，崩溃后也不会留永远不闭合的脏行。
 func (h *GuacamoleHandler) closeSession(gs *GuacamoleSession) {
 	gs.once.Do(func() {
 		_ = gs.ClientWS.Close()
 		_ = gs.guacd.Close()
+		endedAt := time.Now()
+		durationMs := endedAt.Sub(gs.Created).Milliseconds()
 		log.Printf("Guacamole session closed: %s", gs.ID)
 		WriteAuditLog(h.db, gs.Username, "desktop.close", gs.AgentID, map[string]any{
 			"protocol": gs.Protocol, "host": gs.Host, "port": gs.Port,
 			"session":    gs.ID,
-			"durationMs": time.Since(gs.Created).Milliseconds(),
+			"durationMs": durationMs,
+		})
+		RecordRemoteSession(h.db, models.RemoteSessionAudit{
+			SessionID:     gs.ID,
+			AgentID:       gs.AgentID,
+			Operator:      gs.Username,
+			Protocol:      gs.Protocol,
+			Host:          gs.Host,
+			Port:          gs.Port,
+			ReadOnly:      gs.ReadOnly,
+			Record:        gs.Record,
+			RecordingName: gs.RecordingName,
+			Status:        models.RemoteSessionStatusClosed,
+			StartedAt:     gs.Created,
+			EndedAt:       &endedAt,
+			DurationMs:    durationMs,
 		})
 	})
 }

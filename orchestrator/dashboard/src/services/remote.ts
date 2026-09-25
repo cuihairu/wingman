@@ -101,3 +101,127 @@ export async function deleteRecording(name: string): Promise<void> {
     throw new Error(res?.error || '删除会话录像失败');
   }
 }
+
+// ---------- 会话审计报表（设计 §11 P1：可聚合的会话终态视图） ----------
+
+/** 一条已结束的远程桌面会话（不含凭证与画面内容） */
+export interface RemoteSessionEntry {
+  id: number;
+  /** 网关会话 ID，与录像文件名同源可关联 */
+  sessionId: string;
+  agentId: string;
+  operator: string;
+  protocol: RemoteProtocol;
+  host: string;
+  port: number;
+  /** true 监看 / false 接管 */
+  readOnly: boolean;
+  record: boolean;
+  /** 录像文件名（record 时），可直接跳录像检索 */
+  recordingName?: string;
+  /** closed=正常断开 / failed=建连失败 */
+  status: 'closed' | 'failed';
+  failReason?: string;
+  startedAt: string;
+  endedAt?: string;
+  durationMs: number;
+}
+
+/** 区间汇总（不受分页影响） */
+export interface RemoteSessionSummary {
+  total: number;
+  closed: number;
+  failed: number;
+  recorded: number;
+  control: number;
+  viewOnly: number;
+  totalMsSum: number;
+}
+
+/** 维度聚合行 */
+export interface RemoteSessionGroup {
+  key: string;
+  count: number;
+  msSum: number;
+  failed: number;
+}
+
+/** 时间趋势桶 */
+export interface RemoteSessionBucket {
+  bucket: string;
+  count: number;
+  failed: number;
+  msSum: number;
+}
+
+/** 报表查询参数（全部可选，空值即不筛选） */
+export interface RemoteSessionQuery {
+  page?: number;
+  size?: number;
+  agentId?: string;
+  protocol?: RemoteProtocol;
+  operator?: string;
+  status?: 'closed' | 'failed';
+  /** view=监看 / control=接管 */
+  mode?: 'view' | 'control';
+  record?: boolean;
+  /** RFC3339 */
+  start?: string;
+  end?: string;
+  /** 分组维度，默认 protocol */
+  groupBy?: 'protocol' | 'operator' | 'agentId';
+  /** 时间桶粒度，默认 day */
+  bucket?: 'hour' | 'day' | 'week' | 'month';
+}
+
+export interface RemoteSessionReport {
+  data: RemoteSessionEntry[];
+  total: number;
+  page: number;
+  size: number;
+  summary: RemoteSessionSummary;
+  groups: RemoteSessionGroup[];
+  buckets: RemoteSessionBucket[];
+}
+
+/**
+ * 查询远程桌面会话审计报表。权限 desktop:view（报表只读，不含接管能力）。
+ *
+ * 一次请求同时返回列表 + 汇总 + 维度聚合 + 时间趋势：报表的四块视图口径
+ * 必须一致，分成四个端点迟早出现「列表 12 条、汇总 13 条」的对不上。
+ */
+export async function listRemoteSessions(
+  query: RemoteSessionQuery = {},
+): Promise<RemoteSessionReport> {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      params.set(key, String(value));
+    }
+  });
+  const qs = params.toString();
+  const res = await request<ApiResponse<RemoteSessionReport>>(
+    `/api/remote/sessions${qs ? `?${qs}` : ''}`,
+  );
+  if (!res?.success) {
+    throw new Error(res?.error || '获取会话审计报表失败');
+  }
+  const payload = res.data;
+  return {
+    data: payload?.data || [],
+    total: payload?.total || 0,
+    page: payload?.page || 1,
+    size: payload?.size || 20,
+    summary: payload?.summary || {
+      total: 0,
+      closed: 0,
+      failed: 0,
+      recorded: 0,
+      control: 0,
+      viewOnly: 0,
+      totalMsSum: 0,
+    },
+    groups: payload?.groups || [],
+    buckets: payload?.buckets || [],
+  };
+}

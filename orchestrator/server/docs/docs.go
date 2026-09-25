@@ -2172,6 +2172,114 @@ const docTemplate = `{
                 }
             }
         },
+        "/remote/sessions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "分页查询已结束的 Guacamole 远程桌面会话审计（按开始时间倒序），支持按 agent/协议/操作者/模式/录制/状态/时间范围过滤；返回带 total 与分组/汇总的报表数据",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "remote"
+                ],
+                "summary": "远程桌面会话审计列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "每页条数（最大 200）",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "按目标 agent 过滤",
+                        "name": "agentId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "按协议过滤（rdp/vnc/ssh）",
+                        "name": "protocol",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "按操作者过滤",
+                        "name": "operator",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "按状态过滤（closed/failed）",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "按模式过滤：view=监看 / control=接管",
+                        "name": "mode",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "只看有录像的会话",
+                        "name": "record",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "起始时间（RFC3339）",
+                        "name": "start",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "结束时间（RFC3339）",
+                        "name": "end",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "分组维度：protocol/operator/agentId（默认 protocol）",
+                        "name": "groupBy",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/remote/tickets": {
             "post": {
                 "security": [

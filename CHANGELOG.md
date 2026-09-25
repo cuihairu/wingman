@@ -11,6 +11,15 @@
 
 自 v0.1.1 以来共 380 个提交（feat 68 / fix 140 / docs 72 / test 43 / ci 20 / refactor 8 / chore 20）。
 
+### feat（2026-09-25，M4 远控 P1：远程桌面会话审计报表）
+
+- **另立专表而非复用 AuditLog**：`AuditLog` 是事件流水（一条事件一行、meta 是 JSON），适合「谁在何时做了什么」的合规逐条查；报表要的是「这台机器被谁接管了多久、失败几次」，需要**可聚合的结构化列**——在 JSON meta 上聚合既慢又脆（`json_extract` 走不到索引，且 meta 结构会随事件演进漂移）。新增 `models.RemoteSessionAudit`（表 `remote_session_audits`），既有四事件审计**保持不变**：两者受众不同，缺一不可。
+- **只写终态**：仅 `closed`/`failed` 落行，进行中不落。否则报表把未结束会话算进时长、进程崩溃还留永远不闭合的脏行（无法与真实零时长会话区分）。代价是「当前几人在看」拿不到——那是实时态，属 registry 职责不属审计。`RecordRemoteSession` 为唯一落库入口（UTC 归一/时长口径/终态枚举是契约，散在调用点迟早分叉），写失败只记日志不阻断会话关闭。
+- **录像可关联**：`recording_name` 与录像检索 API 的 name 同值（`{agentID}-{sessionID}.mjs`）；会话 ID 提前到拨号前生成，故**建连失败也有唯一标识**（否则报表只能说「有一次失败」而无法定位）。
+- **查询接口** `GET /api/remote/sessions`（desktop:view，不新增 RBAC 码——报表是只读视图，无接管能力）：多维过滤（agent/协议/操作者/状态/监看接管/录制/时间范围）+ `groupBy`（白名单化，杜绝 SQL 注入）+ `bucket`（hour/day/week/month）。**一次请求返回列表 + 汇总 + 维度聚合 + 时间趋势四块视图**——分四个端点迟早出现「列表 12 条、汇总 13 条」的口径分叉；四条查询共用同一过滤器，汇总/分组/分桶基于全量而非当页。
+- **Dashboard**：`RemoteSessionReportModal`（Agents 页「会话审计」入口）渲染汇总六项 + 维度分布 + 时间趋势 + 明细表，与录像面板并列——录像面板管**文件**，本面板管**行为**。前端不做二次聚合（后端已保证四块视图同口径）。
+- **测试**：Go 侧 12 个用例（落库契约的 UTC/时长/枚举归一、16 组过滤口径、多维度分组、四种分桶、分页口径、五条查询失败分支逐条注入、gorm 回调链探针）；Dashboard 侧面板 14 例 + 服务层 7 例。**新文件 stmt/branch/func/line 四项 100%**；jest 328 → 351。Swagger 已再生成（仅新增 `/remote/sessions`）。
+
 ### refactor（2026-09-25，M4 远控 P1：远程桌面前端公共件抽取）
 
 - **动机**：`RemoteDesktopModal` 此前是「连接逻辑 + 阶段二 UI」混在一起的单体，cockpit 要复用连接语义只能复制粘贴——而设计 §7 第 3 条明确禁止（复制品会在协议细节上分叉）。按该条约定抽公共件 `src/components/RemoteDesktop/`，四件边界一一对应：`useGuacamoleSession`（连接生命周期）、`TicketClient` 接口 + `createWingmanTicketClient`（票据客户端）、`RemoteErrorNotice`/`classifyRemoteError`（错误与降级）、`RemoteDesktopToolbar`（监看接管与工具栏）。

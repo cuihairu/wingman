@@ -21,6 +21,8 @@ export const createWingmanTicketClient = (): TicketClient => ({
 
 export { default as RemoteDesktopPanel } from './RemoteDesktopPanel';
 export { default as RemoteDesktopToolbar } from './RemoteDesktopToolbar';
+export { default as RemoteSessionReportModal } from './RemoteSessionReportModal';
+export type { RemoteSessionReportModalProps } from './RemoteSessionReportModal';
 export { default as RemoteErrorNotice, classifyRemoteError } from './RemoteErrorNotice';
 export type {
   ClassifiedRemoteError,

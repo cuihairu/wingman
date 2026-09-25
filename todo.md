@@ -26,6 +26,7 @@
 设计 §11 P1 三项中**可独立完成**的部分（cockpit 实际接入需对方仓库，不在本轮）：
 
 - **前端公共组件抽取**（设计 §7.3 落地，记 §7.1）：新建 `orchestrator/dashboard/src/components/RemoteDesktop/`，四件边界一一对应——`useGuacamoleSession`（连接生命周期 hook，票据一次性故无自动重连）、`TicketClient` 接口 + `createWingmanTicketClient`（票据客户端，接口化以便第二方换 API base）、`RemoteErrorNotice` + `classifyRemoteError`（错误与降级，权限/未配置类不渲染重试）、`RemoteDesktopToolbar`（监看接管与工具栏）。`RemoteDesktopPanel` 为容器无关合成件，`RemoteDesktopModal` 降级为 Modal 容器适配器；`RemoteProtocol`/`RemoteSessionParams` 收敛到公共件 `types.ts` 唯一定义（消除协议枚举分叉）。jest 261 → 328，新/改文件四项覆盖率 100%。
+- **会话审计落库与查询接口**（设计 §17）：新增 `models.RemoteSessionAudit`（表 `remote_session_audits`）——**不复用 AuditLog**（事件流水的 meta 是 JSON，聚合既慢又脆；两者受众不同，缺一不可）。只写终态（closed/failed），进行中不落行（否则报表把未结束会话算进时长、崩溃留不闭合脏行）；`RecordRemoteSession` 唯一落库入口（UTC 归一/时长口径/终态枚举是契约），写失败只记日志不阻断会话关闭。`GET /api/remote/sessions`（desktop:view，**不新增 RBAC 码**——报表只读、无接管能力）一次返回列表 + 汇总 + 维度聚合 + 时间趋势四块视图，四条查询共用同一过滤器，汇总/分组/分桶基于全量而非当页；`groupBy` 白名单化杜绝 SQL 注入。录像名与会话同源可关联；会话 ID 提前到拨号前生成，故建连失败也有唯一标识。Dashboard 新增 `RemoteSessionReportModal`（Agents 页「会话审计」入口，录像管文件、报表管行为）。jest 328 → 351，新文件四项覆盖率 100%。
 
 
 ---

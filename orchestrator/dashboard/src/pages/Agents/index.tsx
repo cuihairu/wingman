@@ -1,6 +1,7 @@
 import {
   AndroidOutlined,
   AppleOutlined,
+  AuditOutlined,
   DeleteOutlined,
   DesktopOutlined,
   DownloadOutlined,
@@ -48,6 +49,7 @@ import {
 import React, { useState, useEffect } from 'react';
 import TriggerFormModal from '@/components/TriggerFormModal';
 import RemoteDesktopModal from '@/components/RemoteDesktopModal';
+import RemoteSessionReportModal from '@/components/RemoteDesktop/RemoteSessionReportModal';
 import {
   deleteRecording,
   downloadRecording,
@@ -162,6 +164,8 @@ const Agents: React.FC = () => {
     setRecordingsOpen(true);
     fetchRecordings();
   };
+  // 会话审计报表（设计 §11 P1）：只读视图，desktop:view 即可
+  const [sessionReportOpen, setSessionReportOpen] = useState(false);
   const handleDownloadRecording = async (name: string) => {
     try {
       await downloadRecording(name);
@@ -758,6 +762,12 @@ const Agents: React.FC = () => {
                     会话录像
                   </Button>
                 )}
+                {/* 会话审计报表（设计 §11 P1）：录像看文件，报表看行为 */}
+                {canDesktopView && (
+                  <Button icon={<AuditOutlined />} onClick={() => setSessionReportOpen(true)}>
+                    会话审计
+                  </Button>
+                )}
                 <Button icon={<ReloadOutlined />} onClick={refresh} loading={loading}>
                   {formatMessage('pages.common.refresh')}
                 </Button>
@@ -1074,6 +1084,15 @@ const Agents: React.FC = () => {
           />
         )}
       </Modal>
+
+      {/* 远程桌面会话审计报表（设计 §11 P1）：谁在何时接管了哪台机器、多久、
+          失败几次；与录像面板同属一批会话的两个侧面（文件 vs 行为） */}
+      {canDesktopView && (
+        <RemoteSessionReportModal
+          open={sessionReportOpen}
+          onCancel={() => setSessionReportOpen(false)}
+        />
+      )}
 
       {/* 批量运行脚本：脚本列表来自 /api/scripts，服务端会先做路径校验 */}
       <Modal

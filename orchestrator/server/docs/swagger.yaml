@@ -2163,6 +2163,78 @@ paths:
       summary: 下载会话录像
       tags:
       - remote
+  /remote/sessions:
+    get:
+      description: 分页查询已结束的 Guacamole 远程桌面会话审计（按开始时间倒序），支持按 agent/协议/操作者/模式/录制/状态/时间范围过滤；返回带
+        total 与分组/汇总的报表数据
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页条数（最大 200）
+        in: query
+        name: size
+        type: integer
+      - description: 按目标 agent 过滤
+        in: query
+        name: agentId
+        type: string
+      - description: 按协议过滤（rdp/vnc/ssh）
+        in: query
+        name: protocol
+        type: string
+      - description: 按操作者过滤
+        in: query
+        name: operator
+        type: string
+      - description: 按状态过滤（closed/failed）
+        in: query
+        name: status
+        type: string
+      - description: 按模式过滤：view=监看 / control=接管
+        in: query
+        name: mode
+        type: string
+      - description: 只看有录像的会话
+        in: query
+        name: record
+        type: boolean
+      - description: 起始时间（RFC3339）
+        in: query
+        name: start
+        type: string
+      - description: 结束时间（RFC3339）
+        in: query
+        name: end
+        type: string
+      - description: 分组维度：protocol/operator/agentId（默认 protocol）
+        in: query
+        name: groupBy
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 远程桌面会话审计列表
+      tags:
+      - remote
   /remote/tickets:
     post:
       consumes:

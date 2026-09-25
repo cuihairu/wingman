@@ -9,6 +9,7 @@ import {
   downloadRecording,
   guacamoleWSPath,
   listRecordings,
+  listRemoteSessions,
 } from './remote';
 
 jest.mock('@umijs/max', () => ({
@@ -201,6 +202,158 @@ describe('services/remote', () => {
     it('success=false 且无 error 时抛兜底文案', async () => {
       mockedRequest.mockResolvedValueOnce({ success: false });
       await expect(deleteRecording('gone.mjs')).rejects.toThrow('删除会话录像失败');
+    });
+  });
+
+  describe('listRemoteSessions', () => {
+    const emptyReport = {
+      data: [],
+      total: 0,
+      page: 1,
+      size: 20,
+      summary: {
+        total: 0,
+        closed: 0,
+        failed: 0,
+        recorded: 0,
+        control: 0,
+        viewOnly: 0,
+        totalMsSum: 0,
+      },
+      groups: [],
+      buckets: [],
+    };
+
+    it('无参数时不拼 query string', async () => {
+      mockedRequest.mockResolvedValueOnce({ success: true, data: emptyReport });
+
+      await listRemoteSessions();
+
+      expect(mockedRequest).toHaveBeenCalledWith('/api/remote/sessions');
+    });
+
+    it('拼装全部筛选参数（URLSearchParams 编码）', async () => {
+      mockedRequest.mockResolvedValueOnce({ success: true, data: emptyReport });
+
+      await listRemoteSessions({
+        page: 2,
+        size: 10,
+        agentId: 'agent a/1',
+        protocol: 'rdp',
+        operator: 'alice',
+        status: 'closed',
+        mode: 'control',
+        record: true,
+        start: '2026-09-01T00:00:00Z',
+        end: '2026-09-25T00:00:00Z',
+        groupBy: 'operator',
+        bucket: 'month',
+      });
+
+      const url = mockedRequest.mock.calls[0][0] as string;
+      expect(url.startsWith('/api/remote/sessions?')).toBe(true);
+      const qs = new URLSearchParams(url.split('?')[1]);
+      expect(qs.get('page')).toBe('2');
+      expect(qs.get('size')).toBe('10');
+      expect(qs.get('agentId')).toBe('agent a/1');
+      expect(qs.get('protocol')).toBe('rdp');
+      expect(qs.get('operator')).toBe('alice');
+      expect(qs.get('status')).toBe('closed');
+      expect(qs.get('mode')).toBe('control');
+      expect(qs.get('record')).toBe('true');
+      expect(qs.get('start')).toBe('2026-09-01T00:00:00Z');
+      expect(qs.get('end')).toBe('2026-09-25T00:00:00Z');
+      expect(qs.get('groupBy')).toBe('operator');
+      expect(qs.get('bucket')).toBe('month');
+    });
+
+    it('空值/undefined/null 不进 query（避免 ?k= 噪声）', async () => {
+      mockedRequest.mockResolvedValueOnce({ success: true, data: emptyReport });
+
+      await listRemoteSessions({
+        page: undefined,
+        agentId: '',
+        operator: null as unknown as undefined,
+        record: false,
+        mode: undefined,
+      });
+
+      expect(mockedRequest).toHaveBeenCalledWith('/api/remote/sessions?record=false');
+    });
+
+    it('返回后端四块视图原样透出', async () => {
+      mockedRequest.mockResolvedValueOnce({
+        success: true,
+        data: {
+          data: [{ id: 1, sessionId: 's1' }],
+          total: 1,
+          page: 1,
+          size: 10,
+          summary: {
+            total: 1,
+            closed: 1,
+            failed: 0,
+            recorded: 0,
+            control: 1,
+            viewOnly: 0,
+            totalMsSum: 5,
+          },
+          groups: [{ key: 'rdp', count: 1, msSum: 5, failed: 0 }],
+          buckets: [{ bucket: '2026-09-25T00:00:00Z', count: 1, failed: 0, msSum: 5 }],
+        },
+      });
+
+      const report = await listRemoteSessions();
+
+      expect(report.total).toBe(1);
+      expect(report.data).toHaveLength(1);
+      expect(report.summary.totalMsSum).toBe(5);
+      expect(report.groups[0].key).toBe('rdp');
+      expect(report.buckets[0].count).toBe(1);
+    });
+
+    it('响应缺字段时逐项兜底（前端不因后端裁字段而崩）', async () => {
+      mockedRequest.mockResolvedValueOnce({ success: true, data: undefined });
+      const empty = await listRemoteSessions();
+      expect(empty).toEqual({
+        data: [],
+        total: 0,
+        page: 1,
+        size: 20,
+        summary: {
+          total: 0,
+          closed: 0,
+          failed: 0,
+          recorded: 0,
+          control: 0,
+          viewOnly: 0,
+          totalMsSum: 0,
+        },
+        groups: [],
+        buckets: [],
+      });
+
+      mockedRequest.mockResolvedValueOnce({
+        success: true,
+        data: { groups: undefined, buckets: undefined },
+      });
+      const partial = await listRemoteSessions();
+      expect(partial.groups).toEqual([]);
+      expect(partial.buckets).toEqual([]);
+      expect(partial.page).toBe(1);
+    });
+
+    it('success=false 抛出后端 error', async () => {
+      mockedRequest.mockResolvedValueOnce({
+        success: false,
+        error: 'desktop:view permission required',
+      });
+      await expect(listRemoteSessions()).rejects.toThrow('desktop:view permission required');
+    });
+
+    it('success=false 且无 error 时抛兜底文案', async () => {
+      mockedRequest.mockResolvedValueOnce({ success: false });
+      await expect(listRemoteSessions()).rejects.toThrow('获取会话审计报表失败');
     });
   });
 });

@@ -124,21 +124,24 @@ func run() error {
 	guacamoleHandler := handlers.NewGuacamoleHandler(db, registry, desktopTickets,
 		cfg.GuacdAddr, cfg.GuacdDrivePath, cfg.GuacdRecordingPath, cfg.RecordingDir)
 	recordingsHandler := handlers.NewRecordingsHandler(db, cfg.RecordingDir)
+	// 会话审计报表（设计 §11 P1）：与网关同库，网关在会话结束时落终态行
+	remoteSessionsHandler := handlers.NewRemoteSessionHandler(db)
 
 	// gin engine 与全部路由（中间件/静态资源/API）由 handlers 包统一装配
 	r := gin.New()
 	handlers.RegisterRoutes(r, handlers.RouterDeps{
-		DB:           db,
-		Registry:     registry,
-		WsHub:        wsHub,
-		TeamManager:  frameListener.GetTeamManager(),
-		WfEngine:     wfEngine,
-		AuthHandler:  authHandler,
-		Guacamole:    guacamoleHandler,
-		Recordings:   recordingsHandler,
-		ScriptsDir:   cfg.ScriptsDir,
-		StaticDir:    cfg.StaticDir,
-		ProcessStart: processStartedAt,
+		DB:             db,
+		Registry:       registry,
+		WsHub:          wsHub,
+		TeamManager:    frameListener.GetTeamManager(),
+		WfEngine:       wfEngine,
+		AuthHandler:    authHandler,
+		Guacamole:      guacamoleHandler,
+		Recordings:     recordingsHandler,
+		RemoteSessions: remoteSessionsHandler,
+		ScriptsDir:     cfg.ScriptsDir,
+		StaticDir:      cfg.StaticDir,
+		ProcessStart:   processStartedAt,
 	})
 
 	addr := config.Addr(cfg)

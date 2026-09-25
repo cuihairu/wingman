@@ -199,6 +199,31 @@ describe('protocolCapabilities', () => {
   });
 });
 
+// ---------- 公共出口完整性（设计 §7 第 3 条的契约面） ----------
+
+describe('公共出口（index.ts）', () => {
+  it('四件边界 + 报表 + 工具全部可从出口取到（cockpit 按此接入）', async () => {
+    const barrel = await import('./index');
+    // 抽取边界四件
+    expect(typeof barrel.useGuacamoleSession).toBe('function');
+    expect(typeof barrel.RemoteErrorNotice).toBe('function');
+    expect(typeof barrel.classifyRemoteError).toBe('function');
+    expect(typeof barrel.RemoteDesktopToolbar).toBe('function');
+    // 票据客户端
+    expect(typeof barrel.createWingmanTicketClient).toBe('function');
+    // 合成件与报表
+    expect(typeof barrel.RemoteDesktopPanel).toBe('function');
+    expect(typeof barrel.RemoteSessionReportModal).toBe('function');
+    // base64 工具
+    expect(typeof barrel.guacEncodeBase64).toBe('function');
+    expect(typeof barrel.guacDecodeBase64).toBe('function');
+    expect(typeof barrel.guacDecodeBase64ToBytes).toBe('function');
+    // 类型与常量
+    expect(typeof barrel.protocolCapabilities).toBe('function');
+    expect(barrel.REMOTE_PROTOCOL_LABEL).toBeDefined();
+  });
+});
+
 // ---------- 票据客户端 ----------
 
 describe('createWingmanTicketClient', () => {
