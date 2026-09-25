@@ -163,13 +163,13 @@ func TestGuacIsInternal(t *testing.T) {
 		frame string
 		want  bool
 	}{
-		{"0.,12.abc123def456;", true},  // 空 opcode（uuid/ping 家族）
-		{"0.5.ping;", true},            // INTERNAL_DATA ping（空 opcode 单元素）
-		{"4.size,3.256;", false},       // 正常指令
-		{"6.select,3.rdp;", false},     // 正常指令
-		{"size,3.256;", false},         // 无长度前缀
-		{".ping;", false},              // 空长度段
-		{"1a.size,3.256;", false},      // 非数字长度
+		{"0.,12.abc123def456;", true}, // 空 opcode（uuid/ping 家族）
+		{"0.5.ping;", true},           // INTERNAL_DATA ping（空 opcode 单元素）
+		{"4.size,3.256;", false},      // 正常指令
+		{"6.select,3.rdp;", false},    // 正常指令
+		{"size,3.256;", false},        // 无长度前缀
+		{".ping;", false},             // 空长度段
+		{"1a.size,3.256;", false},     // 非数字长度
 	}
 	for _, tc := range cases {
 		if got := guacIsInternal([]byte(tc.frame)); got != tc.want {

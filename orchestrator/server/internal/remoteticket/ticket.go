@@ -39,11 +39,11 @@ type Ticket struct {
 // Manager 票据管理器。零依赖（不碰 DB/网络），便于单测；
 // 后台清扫 goroutine 防止长期运行下过期票据累积。
 type Manager struct {
-	mu        sync.Mutex
-	tickets   map[string]*Ticket
+	mu            sync.Mutex
+	tickets       map[string]*Ticket
 	sweepInterval time.Duration
-	stopCh    chan struct{}
-	stopOnce  sync.Once
+	stopCh        chan struct{}
+	stopOnce      sync.Once
 }
 
 // NewManager 创建管理器并启动过期清扫（Stop 停止；测试可传短周期）。
