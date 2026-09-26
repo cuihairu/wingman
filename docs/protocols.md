@@ -24,7 +24,7 @@
 
 ---
 
-## ① Local IPC（Tauri GUI ↔ Runtime）
+## ① Local IPC（Tauri GUI [Runtime]
 
 本地控制通道，传输层为 Named Pipe（Windows）/ Unix Domain Socket（macOS/Linux）。
 
@@ -83,7 +83,7 @@ GUI 侧从 `data.result` 取业务字段（如 `data.result.paused`）。
 
 ---
 
-## ② Agent TCP（Runtime ↔ Go Orchestrator）
+## ② Agent TCP（Runtime [Go Orchestrator]
 
 Runtime 作为 **outbound agent** 主动连接 Go server（默认 `127.0.0.1:8888`）。Go server 监听，不反向拨入。
 
@@ -99,7 +99,7 @@ MessageHeader (16 bytes, 小端):
 Body: JSON（最大 16 MiB）
 ```
 
-### Notify（runtime → server，无需响应）
+### Notify（runtime [server，无需响应]
 
 | type 字段 | 说明 |
 |-----------|------|
@@ -108,7 +108,7 @@ Body: JSON（最大 16 MiB）
 | `agent.event` | 通用事件 |
 | 原始 `PING`（4 字节体） | server 回 `PONG` + `UpdateHeartbeat` |
 
-### Request（server → runtime，需 Response）
+### Request（server [runtime，需 Response]
 
 | method | 用途 |
 |--------|------|
@@ -128,11 +128,11 @@ Response：`{success, method, message?, error?, data?}`，`sequence` 与请求�
 
 ---
 
-## ③ Dashboard WebSocket（Dashboard ↔ Go Orchestrator）
+## ③ Dashboard WebSocket（Dashboard [Go Orchestrator]
 
 升级端点 `GET /ws?token=<JWT>`（或 `Authorization: Bearer`），同源校验防 CSWSH。
 
-### 服务端→客户端消息
+### 服务端 [客户端消息]
 
 ```json
 { "type": "agent", "event": "connected", "data": {...}, "timestamp": 1715299200 }
@@ -147,7 +147,7 @@ Response：`{success, method, message?, error?, data?}`，`sequence` 与请求�
 | `screenshot` | — | 截图广播 |
 | `ping` | — | 服务端 ping，客户端回 pong |
 
-### 客户端→服务端消息
+### 客户端 [服务端消息]
 
 | type | 说明 |
 |------|------|

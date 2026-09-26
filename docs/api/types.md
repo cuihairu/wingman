@@ -42,7 +42,7 @@ result = screen.find_image(img, 0, 0, 1920, 1080)
 
 ## UIElement 对象
 
-> ✅ 以下 12 方法已实现（Windows UIAutomation + macOS Accessibility 双平台）。UIElement 以脚本对象形式返回，内部通过句柄引用 `IUIAElement`。
+> [以下 12 方法已实现（Windows UIAutomation + macOS Accessibility 双平台）。UIElement 以脚本对象形式返回，内部通过句柄引用 `IUIAElement`。]
 
 **来源**：所有 `uia` 模块的查找函数
 

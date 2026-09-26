@@ -1,0 +1,59 @@
+/* wingman palette — logo.svg 主色 #fe7236 ×3 橙
+ *   #fe7236  brand（链接、按钮、feature 图标）
+ *   #e5622b  hover
+ *   #cc5422  active / 标题强调
+ *   #ffb08a  暗色模式提亮
+ * 其余沿用 VitePress 默认中性色，避免整站被染色。
+ */
+:root {
+  --vp-c-brand-1: #fe7236;
+  --vp-c-brand-2: #e5622b;
+  --vp-c-brand-3: #cc5422;
+  --vp-c-brand-soft: rgba(254,114,54, 0.13);
+
+  --vp-button-brand-bg: #fe7236;
+  --vp-button-brand-hover-bg: #e5622b;
+  --vp-button-brand-active-bg: #cc5422;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(
+    115deg,
+    #cc5422 8%,
+    #fe7236 52%,
+    #ffb08a 96%
+  );
+
+  --vp-custom-outline: #fe7236;
+
+  .VPFeature .icon {
+    border-radius: 10px;
+    background-color: var(--vp-c-brand-soft);
+    color: var(--vp-c-brand-1);
+  }
+}
+
+/* 暗色：亮色系主色压暗会发闷，整体提一档 */
+.dark {
+  --vp-c-brand-1: #ffb08a;
+  --vp-c-brand-2: #fe7236;
+  --vp-c-brand-3: #ffb08a;
+  --vp-c-brand-soft: rgba(255,176,138, 0.16);
+
+  --vp-button-brand-bg: #fe7236;
+  --vp-button-brand-hover-bg: #ffb08a;
+  --vp-button-brand-active-bg: #e5622b;
+
+  --vp-home-hero-name-background: linear-gradient(
+    115deg,
+    #ffb08a 8%,
+    #fe7236 52%,
+    #cc5422 96%
+  );
+
+  --vp-custom-outline: #ffb08a;
+}
+
+/* 行内代码沿用品牌色，替掉默认蓝 */
+code {
+  color: var(--vp-c-brand-1);
+}

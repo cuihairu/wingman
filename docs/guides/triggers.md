@@ -26,7 +26,7 @@
 >
 > **转换指南**：下文部分示例沿用旧的 `trigger.create({condition..., action=function...})` 声明式写法展示配置结构。将其等价改写为 `smarttrigger.create(name)` + `addCondition(name, cond)` + `addAction(name, act)` 序列即可运行；其中 `action = function() ... end` 的回调按内部操作拆解为对应的 `key_press` / `click` / `log` 等动作。
 
-## 📋 目录
+## 目录
 
 - [概述](#概述)
 - [快速开始](#快速开始)
@@ -1059,7 +1059,7 @@ local debug_trigger = trigger.create({
 
 ---
 
-## 🔗 相关文档
+## 相关文档
 
 - [核心 API - Trigger](../api/core.md#trigger-触发器系统)
 - [脚本 API - Task](../api/script.md#task-任务管理)

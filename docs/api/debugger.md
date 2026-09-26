@@ -1,6 +1,6 @@
 # API: wingman.debugger
 
-> ⚠️ 调试器尚未实现，当前为 stub。`start` 恒返回 false。完整调试 API（断点管理/单步/求值/堆栈）规划中。
+> [调试器尚未实现，当前为 stub。`start` 恒返回 false。完整调试 API（断点管理/单步/求值/堆栈）规划中。]
 
 ## 模块概述
 

@@ -1,4 +1,4 @@
-# API 文档 ↔ 代码实现 一致性审查报告
+# API 文档 [代码实现 一致性审查报告]
 
 > 审查日期：2026-06-27
 > 审查范围：`docs/api/*.md`（API 文档）↔ `lib/wingman/src/script/modules/`（C++ 脚本模块）+ `libs/python/`（Python 引擎）
@@ -17,12 +17,12 @@
 
 ## 1. 关键查证结论（影响分类判断）
 
-### 1.1 Python 绑定层不做 snake_case 转换 ⚠️
+### 1.1 Python 绑定层不做 snake_case 转换
 - 证据：`libs/python/src/python_script_engine.cpp:301` — `moduleObject.attr(fn.name.c_str())`，直接用代码注册名（如 `getForeground`），无任何转换。
 - 结论：文档中**所有 Python `snake_case` 函数名**（`get_foreground`/`tcp_connect`/`move_mouse`/`get_gpu_info`/`find_color`…）在 Python 中 `AttributeError` 失效。Python/Lua 均须用代码注册的精确名。
 - 影响模块：`window` `transport` `process` `input` `screen` `system` `perf` `kv` `config` `http` 等几乎所有含 Python 示例的文档。
 
-### 1.2 Python 引擎默认关闭且 CI 不验证 ⚠️
+### 1.2 Python 引擎默认关闭且 CI 不验证
 - 证据：`CMakeLists.txt:37` — `option(WINGMAN_ENABLE_PYTHON ... OFF)`；CI workflows 无 `WINGMAN_ENABLE_PYTHON`；无 Python 测试。
 - 现状：Python 引擎实现存在（`libs/python`，pybind11），但默认不编译、CI 不构建、无测试。
 - 矛盾：`index.md`/`ROADMAP.md` 声称"Python 支持已完成"，与"默认 OFF + 无 CI 验证"严重不符。

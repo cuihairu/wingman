@@ -118,7 +118,7 @@
 > 核心形态：**Android 端侧 Agent + TCP 长链接直连 Go Server（云控模式）**，控制面在
 > Server、执行面在端侧；iOS 端侧不可行（沙箱无合法通道），iOS 主机控（WDA）为远期可选。
 
-### A1 PoC：链路打通 ✅（2026-09-22 校准，代码已落地）
+### A1 PoC：链路打通 [2026-09-22 校准，代码已落地]
 - [x] Kotlin 壳：ForegroundService + 长链接（`WingmanService.kt`：前台服务 + START_STICKY + dataSync|mediaProjection 类型；复用 libs/transport 编译到 Android）
 - [x] wingman 核心 NDK 编译通过（Lua + transport + 核心库；vcpkg 扩展 arm64-android triplet；nightly Android arm64 job 全绿，2026-09-22）
 - [x] Go Server 下发脚本 → 端侧执行（`android_agent.cpp` 支持 run_script/stop_script/screenshot.capture/system.shutdown 四命令；日志经 agent.event 上行回传 Dashboard）
@@ -144,9 +144,9 @@
 
 ---
 
-## Phase 1: 核心引擎 (C++) ✅
+## Phase 1: 核心引擎 (C++)
 
-### 1.1 屏幕操作模块 ✅
+### 1.1 屏幕操作模块
 - [x] `screen.capture()` - 截取屏幕/窗口
 - [x] `screen.getPixel(x, y)` - 获取单点像素
 - [x] `screen.findColor(color, x1, y1, x2, y2, tolerance)` - 单点颜色查找
@@ -155,7 +155,7 @@
 - [x] `screen.getWindowTitle(hwnd)` - 获取窗口标题
 - [x] `screen.getWindowBounds(hwnd)` - 获取窗口位置
 
-### 1.2 输入模拟模块 ✅
+### 1.2 输入模拟模块
 - [x] `input.click(x, y, button)` - 鼠标点击
 - [x] `input.move(x, y, duration)` - 鼠标移动（贝塞尔曲线）
 - [x] `input.scroll(x, y, delta)` - 鼠标滚轮
@@ -163,7 +163,7 @@
 - [x] `input.keyUp(key)` - 按键释放
 - [x] `input.type(text, delay)` - 文本输入
 
-### 1.3 窗口管理模块 ✅
+### 1.3 窗口管理模块
 - [x] `window.find(title)` - 查找窗口
 - [x] `window.activate(hwnd)` - 激活窗口
 - [x] `window.getBounds(hwnd)` - 获取窗口位置
@@ -171,7 +171,7 @@
 - [x] `window.getForeground()` - 获取前台窗口
 - [x] `window.waitFor(title)` - 等待窗口出现
 
-### 1.4 进程管理模块 ✅
+### 1.4 进程管理模块
 - [x] `process.find(name)` - 查找进程
 - [x] `process.start(path, args)` - 启动进程
 - [x] `process.wait(pid)` - 等待进程
@@ -179,12 +179,12 @@
 - [x] `process.exists(pid)` - 检查进程存在
 - [x] `process.waitFor(name)` - 等待进程启动
 
-### 1.5 人性化模拟模块 ✅
+### 1.5 人性化模拟模块
 - [x] `input.move(x, y, duration)` - 贝塞尔曲线移动
 - [x] `input.randomDelay(min, max)` - 随机延迟
 - [x] 集成在 input 模块中
 
-### 1.6 Lua 绑定 ✅
+### 1.6 Lua 绑定
 - [x] 暴露所有 C++ API 到 Lua
 - [x] Lua 集成
 - [x] 错误处理和异常转换
@@ -195,9 +195,9 @@
 
 ---
 
-## Phase 2: 触发器系统 ✅
+## Phase 2: 触发器系统
 
-### 2.1 触发器类型 ✅
+### 2.1 触发器类型
 - [x] 像素触发器 - 检测到指定颜色/图像
 - [x] 定时触发器 - 间隔执行
 - [x] 时间触发器 - 指定时间执行
@@ -206,7 +206,7 @@
 - [x] 像素变化触发器
 - [ ] 触发器统一接入 `wingman.event`
 
-### 2.2 触发器动作 ✅
+### 2.2 触发器动作
 - [x] 发送按键
 - [x] 鼠标操作
 - [x] 显示消息
@@ -217,16 +217,16 @@
 
 ---
 
-## Phase 3: 宏系统 ✅
+## Phase 3: 宏系统
 
-### 3.1 录制功能 ✅
+### 3.1 录制功能
 - [x] `macro.startRecording()` - 开始录制
 - [x] `macro.stopRecording()` - 停止录制
 - [x] 记录鼠标移动/点击
 - [x] 记录键盘输入
 - [x] 时间戳记录
 
-### 3.2 回放功能 ✅
+### 3.2 回放功能
 - [x] `macro.play(name)` - 播放宏
 - [x] `macro.save(name, path)` - 保存宏
 - [x] 回放速度控制
@@ -236,7 +236,7 @@
 
 ---
 
-## Phase 4: 调试工具 🚧
+## Phase 4: 调试工具
 
 ### 6.1 VS Code 开发环境
 - [x] 使用 EmmyLua 插件提供语法高亮、自动完成、悬停提示
@@ -253,9 +253,9 @@
 
 ---
 
-## Phase 5: 高级功能 ✅
+## Phase 5: 高级功能
 
-### 7.1 脚本管理 ✅
+### 7.1 脚本管理
 - [x] 脚本热加载
 - [x] 配置文件解析
 - [x] 环境变量支持
@@ -263,14 +263,14 @@
 - [x] 任务状态机（task_module：pending/running/succeeded/failed/canceled 状态流转，2026-09-18 核对）
 - [x] 工作流编排（orchestration_module：submit/get/get_all/cancel_workflow，2026-09-18 核对）
 
-### 7.2 性能优化 ✅
+### 7.2 性能优化
 - [x] 像素检测加速 - 使用 OpenCV
 - [x] 图像匹配缓存 - LRU 缓存机制
 - [x] 多线程处理 - OpenCV 并行
 - [x] 图像金字塔加速
 - [x] 内存优化 (智能缓存管理)
 
-### 7.3 安全特性 ✅
+### 7.3 安全特性
 - [x] 代码签名 (验证支持)
 - [x] 进程保护 (反调试、反VM)
 - [x] 反检测机制 (随机延迟、点击抖动)
@@ -278,9 +278,9 @@
 
 ---
 
-## Phase 6: 文档和示例 ✅
+## Phase 6: 文档和示例
 
-### 8.1 文档 ✅
+### 8.1 文档
 - [x] API 参考文档
 - [x] 快速入门指南
 - [x] UI Automation API 文档
@@ -288,7 +288,7 @@
 - [x] Process API 文档
 - [ ] 视频教程
 
-### 8.2 示例脚本 ✅
+### 8.2 示例脚本
 - [x] Hello World
 - [x] 像素检测示例
 - [x] 图像匹配示例
@@ -305,16 +305,16 @@
 
 ---
 
-## Phase 9: UI Automation (新增) ✅
+## Phase 9: UI Automation (新增)
 
-### 9.1 核心功能 ✅
+### 9.1 核心功能
 - [x] UI Automation COM 接口集成
 - [x] 元素查找 (byName, byId, byControlType)
 - [x] 元素操作 (click, setValue, getValue)
 - [x] 元素遍历 (getChildren, getParent)
 - [x] 元素等待 (waitFor)
 
-### 9.2 Lua 绑定 ✅
+### 9.2 Lua 绑定
 - [x] `uia.fromForeground()` - 获取前台窗口根元素
 - [x] `uia.fromPoint(x, y)` - 从坐标获取元素
 - [x] `uia.fromWindow(hwnd)` - 从句柄获取元素
@@ -325,7 +325,7 @@
 - [x] `uia.findById(id)` - 按 ID 查找
 - [x] `uia.waitForName(name, timeout)` - 等待元素
 
-### 9.3 UIElement 方法 ✅
+### 9.3 UIElement 方法
 - [x] `:click()` - 点击
 - [x] `:rightClick()` - 右键点击
 - [x] `:doubleClick()` - 双击

@@ -20,7 +20,7 @@
 
 ---
 
-## 🏗️ 新架构 (2025)
+## 新架构 (2025)
 
 ### 架构设计
 
@@ -195,13 +195,13 @@ Runtime 不再按互斥“运行模式”建模。远程编排和本地 UI 控�
 
 ---
 
-## Milestone 1: MVP (最小可行产品) ✅
+## Milestone 1: MVP (最小可行产品)
 
 **目标**: 实现基本的像素检测和输入模拟
 
 **状态**: 已完成
 
-### 1.1 核心模块 ✅
+### 1.1 核心模块
 ```cpp
 // screen.cpp - 已实现
 class Screen {
@@ -219,7 +219,7 @@ class Input {
 };
 ```
 
-### 1.2 Lua 基础绑定 ✅
+### 1.2 Lua 基础绑定
 ```lua
 -- test.lua
 local wingman = require("wingman")
@@ -236,7 +236,7 @@ if points then
 end
 ```
 
-### 1.3 命令行工具 ✅
+### 1.3 命令行工具
 ```bash
 wingman-cli.exe start              # 启动服务
 wingman-cli.exe stop               # 停止服务
@@ -321,25 +321,25 @@ class TriggerEngine {
 
 ---
 
-## Milestone 4: 远程编排 ✅
+## Milestone 4: 远程编排
 
 **目标**: runtime 作为 agent 主动连接 Go orchestrator，由 Go server 做远程中控编排
 
 **状态**: 完成 (2026-09-22 校准) — 交付物全部落地；三层契约审计干净（server 下发 7 类命令 runtime 全支持；runtime 上行 trigger_fired/script_state/script_output 三类事件 server 全部转发，log.line 有意不转发防高频淹没上行；server 广播的 agent/workflow/script/screenshot 事件 Dashboard wsService 全部消费）；Go server 14 包测试 stmt/branch/func 100% 覆盖，三套 UI 基线全绿（Dashboard jest 235、GUI vitest 506、Rust cargo 14）
 
 **交付物**:
-- ✅ Runtime outbound client（`apps/runtime/src/remote_client.cpp`：心跳 30s + 重连 + 指数退避 + 注册 + 有界 outbox）
-- ✅ Go orchestrator 作为远程中控边界（`orchestrator/server/`）
-- ✅ Agent 注册、心跳、命令下发、结果回传（FrameListener TCP 协议 + 30s/90s 超时）
-- ✅ 工作流引擎（`internal/workflow/engine.go`：DAG 调度 + 环检测 + 持久化 + 取消/超时 + 指数退避重试 + 负载均衡 + wait 步骤 + 模板库）
-- ✅ Team/投票/Inbox 多 agent 协同（`pkg/agent/team.go`）
-- ✅ JWT auth + bcrypt + 限流 + 审计日志
-- ✅ Dashboard 仅连接 Go server（`orchestrator/dashboard/` wsService），不直接连接 runtime
-- ✅ RBAC 权限系统（`internal/rbac/` + Role/Permission 模型 + `PermissionRequired` 中间件 + 用户/角色管理 API + Dashboard Admin 页面；`PermissionRequired` 已接线 8 权限码，历史「已实现未接线」缺陷已修复）
-- ✅ Debugger 端点（`/api/debugger/info` 直连模式契约：返回各 agent host:9966 + launch.json，非中转）
-- ✅ Runtime IPC 事件推送（EventBuffer + `events.drain` pull 模型 + log/trigger/script/connection 事件 + 公平性优先丢 log.line + dropped 计数）
-- ✅ Go orchestrator 测试覆盖（75 个测试函数：rbac/workflow/handlers/agent/ws/middleware/debugger，`go test ./...` 全绿）
-- ✅ 跨语言 frame/protocol 集成测试（`integration/protocol_test.go`：按 C++ `MessageHeader` 16 字节小端布局的字节级裸 TCP 读写，覆盖 agent.register/agent.heartbeat/command dispatch+result/event report 四类帧 + 边界（超大 payload>16MiB 断连、非法 JSON/未知类型/截断 header 容错、断线重连恢复），`go test ./...` 全绿）
+- [Runtime outbound client（`apps/runtime/src/remote_client.cpp`：心跳 30s + 重连 + 指数退避 + 注册 + 有界 outbox）]
+- [Go orchestrator 作为远程中控边界（`orchestrator/server/`）]
+- [Agent 注册、心跳、命令下发、结果回传（FrameListener TCP 协议 + 30s/90s 超时）]
+- [工作流引擎（`internal/workflow/engine.go`：DAG 调度 + 环检测 + 持久化 + 取消/超时 + 指数退避重试 + 负载均衡 + wait 步骤 + 模板库）]
+- [Team/投票/Inbox 多 agent 协同（`pkg/agent/team.go`）]
+- [JWT auth + bcrypt + 限流 + 审计日志]
+- [Dashboard 仅连接 Go server（`orchestrator/dashboard/` wsService），不直接连接 runtime]
+- [RBAC 权限系统（`internal/rbac/` + Role/Permission 模型 + `PermissionRequired` 中间件 + 用户/角色管理 API + Dashboard Admin 页面；`PermissionRequired` 已接线 8 权限码，历史「已实现未接线」缺陷已修复）]
+- [Debugger 端点（`/api/debugger/info` 直连模式契约：返回各 agent host:9966 + launch.json，非中转）]
+- [Runtime IPC 事件推送（EventBuffer + `events.drain` pull 模型 + log/trigger/script/connection 事件 + 公平性优先丢 log.line + dropped 计数）]
+- [Go orchestrator 测试覆盖（75 个测试函数：rbac/workflow/handlers/agent/ws/middleware/debugger，`go test ./...` 全绿）]
+- [跨语言 frame/protocol 集成测试（`integration/protocol_test.go`：按 C++ `MessageHeader` 16 字节小端布局的字节级裸 TCP 读写，覆盖 agent.register/agent.heartbeat/command dispatch+result/event report 四类帧 + 边界（超大 payload>16MiB 断连、非法 JSON/未知类型/截断 header 容错、断线重连恢复），`go test ./...` 全绿）]
 
 **目标命令流**:
 
@@ -354,28 +354,28 @@ Runtime 不作为远程控制 server 被 Go server 反向拨入。
 
 ---
 
-## Milestone 5: GUI 界面 ✅
+## Milestone 5: GUI 界面
 
 **目标**: 类似 Chimpeeon 的可视化配置界面
 
 **状态**: 完成 (2026-09-22 校准) — 本地 Tauri GUI 六页面 + 远程 Dashboard 九页面全部可用；GUI↔IPC↔Runtime 跨语言集成测试（Rust spawn 真 runtime 子进程）通过；macOS 真机运行时验证为独立遗留项（见 todo.md 跨平台验证）
 
 **已完成**:
-- ✅ Tauri 2.0 框架集成
-- ✅ Rust backend 通过 local IPC 连接 runtime
-- ✅ IPC 方法路由 (script.start, script.stop, script.list, system.*)
-- ✅ 前端界面原型
-- ✅ IPC 连接状态管理（状态机 + 指数退避重连 + 连接诊断，2026-09）
-- ✅ 触发器可视化配置（截图拾取 + 全类型 + 值转换层，2026-09）
-- ✅ 屏幕预览面板（拖拽选区 + 真实取色 + 匹配高亮，2026-09）
-- ✅ 日志实时显示（来源标记 + 丢弃提示 + 智能滚动，2026-09）
-- ✅ 脚本管理增强（2026-09）：runtime RPC 新增 script.pause/resume/restart/unload；script.list 返回 state/error/loadedAt；GUI 脚本页五态生命周期管理（按状态操作矩阵、批量暂停/恢复/停止、运行时长、错误展示）；script.state_changed 事件实时联动列表状态
+- [Tauri 2.0 框架集成]
+- [Rust backend 通过 local IPC 连接 runtime]
+- [IPC 方法路由 (script.start, script.stop, script.list, system.*)]
+- [前端界面原型]
+- [IPC 连接状态管理（状态机 + 指数退避重连 + 连接诊断，2026-09）]
+- [触发器可视化配置（截图拾取 + 全类型 + 值转换层，2026-09）]
+- [屏幕预览面板（拖拽选区 + 真实取色 + 匹配高亮，2026-09）]
+- [日志实时显示（来源标记 + 丢弃提示 + 智能滚动，2026-09）]
+- [脚本管理增强（2026-09）：runtime RPC 新增 script.pause/resume/restart/unload；script.list 返回 state/error/loadedAt；GUI 脚本页五态生命周期管理（按状态操作矩阵、批量暂停/恢复/停止、运行时长、错误展示）；script.state_changed 事件实时联动列表状态]
 
 **已完成**:
-- ✅ 日志实时显示（2026-09）：日志来源标记（GUI/Runtime 徽标 + 按来源筛选）；runtime EventBuffer 溢出丢弃提示（Rust 端透传 events.drain 的 dropped/remaining，累计丢弃时显示横幅）；settings.logLevel 联动入口过滤（debug 级别映射）；智能自动滚动（上滚暂停跟随 + 「N 条新日志」跳转按钮）；单条点击复制；导出含来源列
-- ✅ 屏幕预览面板（2026-09）：预览图直接交互——拖拽框选区域（同步 RegionPicker）+ 单击拾取真实像素颜色（离屏 canvas 读色，替代原假取色）+ 悬停跟随读数（屏幕绝对坐标 + hex + 放大镜）+ 坐标/颜色/区域一键复制 + 颜色匹配高亮（与 runtime Color::matches 同公式：欧氏距离 ≤ tolerance，品红叠加层 + 匹配计数）+「设为查找颜色」联动；修复副显示器时 overlay 错位（region 与捕获起点换算）
-- ✅ 触发器可视化配置（2026-09）：ScreenPickerModal 截图拾取组件（拖拽选区 + 放大镜取色，坐标换算到屏幕绝对坐标）；ColorPicker/RegionPicker 接通屏幕取色/框选；条件类型补全至 runtime 全部 11 种（窗口/进程/像素变化，分组展示）；动作类型补全至 10 种并按类型结构化编辑（坐标拾取/delay/路径等）+ 动作排序；GUI⇄runtime 值格式转换层（#rrggbb⇄0xRRGGBB、键名⇄VK 码、像素坐标⇄region）；修复 get_triggers 丢条件/动作、颜色值 runtime 无法解析两个缺陷
-- ✅ IPC 连接状态、断线重连、错误提示完善（2026-09）：GUI 端 IPC 链路状态机（disconnected/connecting/connected/reconnecting/error）+ 指数退避自动重连（1s→30s，可设置开关）+ 手动断开抑制自动重连 + TopBar 五态连接指示（tooltip 显示端点/错误/重试次数，可点击立即重试）+ Settings 连接诊断（实际端点/错误信息/重试按钮）+ Rust `get_ipc_state` 诊断命令
+- [日志实时显示（2026-09）：日志来源标记（GUI/Runtime 徽标 + 按来源筛选）；runtime EventBuffer 溢出丢弃提示（Rust 端透传 events.drain 的 dropped/remaining，累计丢弃时显示横幅）；settings.logLevel 联动入口过滤（debug 级别映射）；智能自动滚动（上滚暂停跟随 + 「N 条新日志」跳转按钮）；单条点击复制；导出含来源列]
+- [屏幕预览面板（2026-09）：预览图直接交互——拖拽框选区域（同步 RegionPicker）+ 单击拾取真实像素颜色（离屏 canvas 读色，替代原假取色）+ 悬停跟随读数（屏幕绝对坐标 + hex + 放大镜）+ 坐标/颜色/区域一键复制 + 颜色匹配高亮（与 runtime Color::matches 同公式：欧氏距离 ≤ tolerance，品红叠加层 + 匹配计数）+「设为查找颜色」联动；修复副显示器时 overlay 错位（region 与捕获起点换算）]
+- [触发器可视化配置（2026-09）：ScreenPickerModal 截图拾取组件（拖拽选区 + 放大镜取色，坐标换算到屏幕绝对坐标）；ColorPicker/RegionPicker 接通屏幕取色/框选；条件类型补全至 runtime 全部 11 种（窗口/进程/像素变化，分组展示）；动作类型补全至 10 种并按类型结构化编辑（坐标拾取/delay/路径等）+ 动作排序；GUI⇄runtime 值格式转换层（#rrggbb⇄0xRRGGBB、键名⇄VK 码、像素坐标⇄region）；修复 get_triggers 丢条件/动作、颜色值 runtime 无法解析两个缺陷]
+- [IPC 连接状态、断线重连、错误提示完善（2026-09）：GUI 端 IPC 链路状态机（disconnected/connecting/connected/reconnecting/error）+ 指数退避自动重连（1s→30s，可设置开关）+ 手动断开抑制自动重连 + TopBar 五态连接指示（tooltip 显示端点/错误/重试次数，可点击立即重试）+ Settings 连接诊断（实际端点/错误信息/重试按钮）+ Rust `get_ipc_state` 诊断命令]
 
 ### 5.1 主界面布局
 ```
@@ -446,9 +446,9 @@ human.config = {
 [EmmyLuaDebugger](https://github.com/EmmyLua/EmmyLuaDebugger) 是成熟的 Lua 调试器：
 
 **特性：**
-- ✅ 完整调试功能：断点、单步、变量监视、调用栈
-- ✅ 多 Lua 版本：Lua 5.1-5.5、LuaJIT
-- ✅ 高性能 TCP 通信
+- [完整调试功能：断点、单步、变量监视、调用栈]
+- [多 Lua 版本：Lua 5.1-5.5、LuaJIT]
+- [高性能 TCP 通信]
 
 ### 7.2 集成方式
 
@@ -582,7 +582,7 @@ local wingman = require('wingman')
 
 ## 下一阶段行动
 
-### 🔥 当前重点（2026-06-21 校准）
+### 当前重点（2026-06-21 校准）
 
 | 优先级 | 任务 | 预计时间 | 状态 |
 |--------|------|----------|------|
@@ -603,7 +603,7 @@ local wingman = require('wingman')
 | ✅ | 移除账号/二维码/认证模块 | - | ✅ 已完成 |
 | ✅ | 工作流引擎 + Agent 心跳 + 审计 | - | ✅ 已完成 |
 
-### 📋 检查清单
+### 检查清单
 
 #### Phase 7: 测试与文档 (已完成)
 - [x] Windows 构建 - MSVC + x64-windows-static

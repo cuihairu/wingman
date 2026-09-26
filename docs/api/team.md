@@ -747,7 +747,7 @@ print("最终结果:", wingman.json.encode(result.responses))
 
 ## 协议消息格式
 
-### Runtime → Server
+### Runtime [Server]
 
 **加入队伍**：
 ```json
@@ -815,7 +815,7 @@ print("最终结果:", wingman.json.encode(result.responses))
 }
 ```
 
-### Server → Runtime
+### Server [Runtime]
 
 **加入确认**：
 ```json

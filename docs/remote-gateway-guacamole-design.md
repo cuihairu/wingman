@@ -150,7 +150,7 @@ Go server 需要知道目标机的 VNC/RDP 端点地址。来源：agent 注册/
 
 Mobile D3 已裁决：自动化数据面用 MediaProjection 自采集，拒绝 scrcpy（adb 常连违背 D1 端侧自治）。本设计**不推翻也不触碰**该决策：Android 的自动化截图/采集路径保持现状，Guacamole 不进入 Android 自动化数据面。
 
-### 6.1 "人看 Android"：droidVNC-NG → guacd VNC 桥的取舍（单独成节）
+### 6.1 "人看 Android"：droidVNC-NG [guacd VNC 桥的取舍（单独成节]
 
 **动机。** 若希望 Android 也获得与桌面三平台一致的"人看 + 人管"体验，社区方案是 [droidVNC-NG](https://github.com/bk138/droidVNC-NG)：无 root 的 Android VNC server，以普通 App 形式运行，MediaProjection 采集画面、AccessibilityService 注入输入，监听本地端口供 guacd 以标准 VNC 接入。接通后 guacd 侧与桌面 VNC 完全同构。
 
@@ -332,9 +332,9 @@ GET /api/remote/sessions            desktop:view（只读，报表不含接管�
 
 实现启动时（P0）需同步（✅ 三项均已于 2026-09-23 随 P0 实现完成）：
 
-1. ✅ `architecture-decisions.md`：Allowed WebSocket Usage 一节补记"Guacamole 指令流（dashboard↔Go server）"；Forbidden Changes 补一行"浏览器不得直连 guacd/endpoint"。
-2. ✅ A4 里程碑行（实际位于 `mobile-automation-design.md` §6，ROADMAP.md 无移动端条目）：把"scrcpy 只读预览（可选）"改为指向本文的像素面方案。
-3. ✅ `mobile-automation-design.md` §7 风险表"scrcpy 进自动化数据面——不做"行补交叉引用（远期 Android 像素面走 §6.1 的 VNC 桥路线，非 scrcpy）。
+1. [`architecture-decisions.md`：Allowed WebSocket Usage 一节补记"Guacamole 指令流（dashboard↔Go server）"；Forbidden Changes 补一行"浏览器不得直连 guacd/endpoint"。]
+2. [A4 里程碑行（实际位于 `mobile-automation-design.md` §6，ROADMAP.md 无移动端条目）：把"scrcpy 只读预览（可选）"改为指向本文的像素面方案。]
+3. [`mobile-automation-design.md` §7 风险表"scrcpy 进自动化数据面——不做"行补交叉引用（远期 Android 像素面走 §6.1 的 VNC 桥路线，非 scrcpy）。]
 
 ---
 

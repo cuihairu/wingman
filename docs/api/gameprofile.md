@@ -50,7 +50,7 @@ gameprofile.scan()
 
 ## 模板
 
-### createTemplate(gameName) → id, name
+### createTemplate(gameName) [id, name]
 
 基于游戏名创建默认模板并注册（id 由游戏名派生：小写 + 空格转下划线）。模板包含初始 `version = "1.0.0"`。已存在同名 id 时返回 `nil`。
 
@@ -63,7 +63,7 @@ local id, name = gameprofile.createTemplate("示例游戏")
 
 ## 读取
 
-### list() → {id}
+### list() [{id}]
 
 返回所有已加载档案的 id 列表。
 
@@ -74,15 +74,15 @@ for _, id in ipairs(ids) do
 end
 ```
 
-### get(id) → name, title?
+### get(id) [name, title?]
 
 返回指定档案的名称与窗口标题；不存在返回 `nil`。
 
-### getActive() → id, name?
+### getActive() [id, name?]
 
 返回当前激活档案。
 
-### findByWindow(title) → id, name?
+### findByWindow(title) [id, name?]
 
 按窗口标题匹配档案。
 
@@ -90,19 +90,19 @@ end
 
 ## 写入
 
-### load(id) → bool
+### load(id) [bool]
 
 从目录载入指定档案。
 
-### save(id) → bool
+### save(id) [bool]
 
 保存指定档案到文件。
 
-### setActive(id) → bool
+### setActive(id) [bool]
 
 设置当前激活档案。
 
-### delete(id) → bool
+### delete(id) [bool]
 
 删除指定档案。
 
@@ -110,7 +110,7 @@ end
 
 ## 导入 / 导出
 
-### exportJson(id) → json
+### exportJson(id) [json]
 
 导出档案为 JSON 字符串（含 `version`、`window`、`colors`、`images`、`triggers`、`scripts`、`settings` 全部字段）。
 
@@ -119,7 +119,7 @@ local json = gameprofile.exportJson(id)
 -- 可写入文件或网络传输
 ```
 
-### importJson(json, id?) → bool
+### importJson(json, id?) [bool]
 
 从 JSON 字符串导入档案（自动校验；可选指定 id 覆盖原 id）。
 
@@ -128,11 +128,11 @@ gameprofile.importJson(jsonStr)        -- 使用 JSON 内的 id
 gameprofile.importJson(jsonStr, "my")  -- 强制 id 为 "my"
 ```
 
-### exportPackage(id, outputPath) → bool
+### exportPackage(id, outputPath) [bool]
 
 导出档案为独立文件包（当前实现为 JSON 文件，预留 ZIP 打包扩展）。
 
-### importPackage(packagePath) → bool
+### importPackage(packagePath) [bool]
 
 从文件包导入档案。
 

@@ -2,7 +2,7 @@
 
 本指南详细介绍如何使用 Wingman 的配置管理功能。
 
-## 📋 目录
+## 目录
 
 - [概述](#概述)
 - [快速开始](#快速开始)
@@ -1235,7 +1235,7 @@ print(string.format("Database: %s", db_name))
 
 ---
 
-## 🔗 相关文档
+## 相关文档
 
 - [序列化 API](../api/serialize.md)
 - [数据持久化 API](../api/db.md)

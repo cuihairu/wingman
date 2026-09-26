@@ -192,7 +192,7 @@ wingman.input.click(100 + offsetX, 200 + offsetY)
 
 :::
 
-> ⚠️ 原 `security.encryptString` / `security.decryptString`（XOR 混淆，非真实加密）
+> [原 `security.encryptString` / `security.decryptString`（XOR 混淆，非真实加密）]
 > 已于 2026-09 移除。加密请使用 crypto 模块的 `crypto.encryptAES` / `crypto.decryptAES`
 > （AES-256-GCM），见 [crypto API](crypto.md)。
 

@@ -48,7 +48,7 @@ gradle :app:assembleDebug
 （远程链路，桌面 runtime 同源链接）、`libs/androidagent`（ScriptRunner +
 脚本能力 API + core 子集）→ `libwingman_agent.so`。
 
-> ⚠️ 双端同源文件（`libs/agentcore`、`libs/androidagent`，以及 `libs/transport`
+> [双端同源文件（`libs/agentcore`、`libs/androidagent`，以及 `libs/transport`]
 > 等共享层）同时编译进桌面 `wingman-runtime` 与 Android `libwingman_agent.so`：
 > 改动必须过两端编译与桌面同源单测，不要只验证桌面侧。
 

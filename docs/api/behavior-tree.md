@@ -2,7 +2,7 @@
 
 行为树引擎，提供基础的 AI 决策系统。
 
-> ✅ 已实现 `create`/`tick`/`remove` 三基础函数 + 节点构造（sequence/selector/parallel/inverter/repeat/wait/condition/action）+ 组装（addChild/setRoot），可在脚本端完整构建并 tick 行为树（见 [节点构造](#节点构造)）。
+> [已实现 `create`/`tick`/`remove` 三基础函数 + 节点构造（sequence/selector/parallel/inverter/repeat/wait/condition/action）+ 组装（addChild/setRoot），可在脚本端完整构建并 tick 行为树（见 [节点构造](#节点构造)）。]
 
 ## 模块概述
 

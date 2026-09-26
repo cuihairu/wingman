@@ -373,7 +373,7 @@ auto capture = factory.createCapture({
 
 ## 5. 目录结构
 
-> 🔄 更新（2026-09-19）：下图为当前实际形态（非最初的设想稿），并预留 android 租户。
+> [更新（2026-09-19）：下图为当前实际形态（非最初的设想稿），并预留 android 租户。]
 > 纪律约束见 §8。
 
 ```
@@ -478,7 +478,7 @@ lib/wingman/
 - `posix/` 目录（P1 由 `unix/` 更名）存放 win/mac 共享的 posix 实现；其中只补公共类成员函数
   的文件（如 `posix_trigger.cpp` 实现 `TriggerManager`）用 plain `namespace wingman`，
   不新定义类型、不算租户 namespace 例外。
-- ⚠️ `linux`（及 `unix`）是 GCC/Clang 非 strict 模式（`gnu++*`）下的预定义宏，会把
+- [`linux`（及 `unix`）是 GCC/Clang 非 strict 模式（`gnu++*`）下的预定义宏，会把]
   `namespace linux` 预处理成非法的 `::1`。约束已双重落地（P1）：
   1. 根 CMake 与 lib CMake 均 `set(CMAKE_CXX_EXTENSIONS OFF)`，全仓 strict `-std=c++23`；
   2. `src/platform/linux/strict_std.hpp` 编译守卫（`#ifdef linux #error`），在

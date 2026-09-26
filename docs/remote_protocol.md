@@ -1,6 +1,6 @@
 # Wingman 远程控制协议文档
 
-> ⚠️ **历史文档**：本文记录旧 JSON-RPC 协议的迁移说明。当前权威协议规范见 [protocols.md](./protocols.md)。
+> [**历史文档**：本文记录旧 JSON-RPC 协议的迁移说明。当前权威协议规范见 [protocols.md](./protocols.md)。]
 >
 > 注意：本文早前描述的「Protobuf 序列化」与实际实现不符——Agent TCP 实际使用 **16 字节头 + JSON 体**（见 protocols.md ②）。曾预留的 `protobuf/` 目录从未接入链路，已于 2026-09-22 移除。
 

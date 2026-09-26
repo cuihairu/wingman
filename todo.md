@@ -3,12 +3,12 @@
 > 最后更新: 2026-09-25
 > 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）
 
-> ⚠️ 本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator
+> [本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator]
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
 
 ---
 
-## 📅 2026-09-25 VNC/SSH/RDP 远控集成（Guacamole，P0 + 阶段二）
+## 2026-09-25 VNC/SSH/RDP 远控集成（Guacamole，P0 + 阶段二）
 
 第三方远控方案选型 **Apache Guacamole（guacd 1.5.5）**：浏览器侧 guacamole-common-js 像素面 + Go server 反代 WS 网关 + guacd 协议翻译（RDP/VNC/SSH 三协议客户端在 guacd 内实现）。runtime 零参与（像素面与控制面正交，架构硬约束不破）。设计文档 `docs/remote-gateway-guacamole-design.md`（§9 备选方案：myrtille/Apache 老栈、websockify+novnc、自研三协议客户端均否决的理由）。
 
@@ -21,7 +21,7 @@
 - **验证基线**：Go 14 包 `go vet` + `go test -race` 全过；Dashboard jest 261/261、tsc 0 错、eslint 仅存量 2 警告、prettier 干净。
 - **剩余（P1/远期）**：cockpit 接入像素面公共组件（公共件已抽出，wingman 侧先行 ✅）、浏览器内录像回放（2026-09-26 复核结论：`SessionRecording` 就在既有依赖 guacamole-common-js@1.5.0 npm 包内，可行、零新增依赖，待真实录像数据再接，见设计 §16「回放」）、i18n 接线（阶段二 UI 文案暂为特性内中文硬编码，沿用 P0 先例）。
 
-## 📅 2026-09-25 远控 P1 推进（公共件抽取 / 会话审计 / e2e 容器栈）
+## 2026-09-25 远控 P1 推进（公共件抽取 / 会话审计 / e2e 容器栈）
 
 设计 §11 P1 三项中**可独立完成**的部分（cockpit 实际接入需对方仓库，不在本轮）：
 
@@ -34,7 +34,7 @@
 
 ---
 
-## 📅 2026-09-22 真机验证自动化（架构盘点第九轮）
+## 2026-09-22 真机验证自动化（架构盘点第九轮）
 
 两项真机验证遗留项从「纯人工多步操作」升级为「真机各跑一条命令」，自动化链路本身已在本机验证：
 
@@ -46,7 +46,7 @@
 
 ---
 
-## 📅 2026-09-22 死代码清理（架构盘点第一轮）
+## 2026-09-22 死代码清理（架构盘点第一轮）
 
 架构盘点结论：宏架构（双控制面 / platform 抽象 / apps+lib / orchestrator 边界）合理且执行到位；主要问题为死代码撑起的虚假复杂度、lib/libs 边界失效、Android 源码级耦合。本轮完成第一优先级：
 
@@ -58,7 +58,7 @@
 
 ---
 
-## 📅 2026-09-22 M4/M5 收尾校准（架构盘点第八轮）
+## 2026-09-22 M4/M5 收尾校准（架构盘点第八轮）
 
 **基线验证（三套 UI 测试全绿）**：Dashboard jest 235/235、GUI vitest 506/506、Tauri Rust cargo test 14/14（含 IPC 集成 5 用例）。
 
@@ -73,13 +73,13 @@
 
 ---
 
-## 📅 2026-09-22 文档站构建验证与死链修复（架构盘点第七轮）
+## 2026-09-22 文档站构建验证与死链修复（架构盘点第七轮）
 
 第五轮改 VitePress sidebar 后未实际构建——本轮补上：`npm run docs:build` 成功（83.6s，仅 chunk 体积警告）；`ignoreDeadLinks: true` 会静默放过死链，故另写全量站内链接扫描（206 条链接，排除 node_modules/dist/锚点/外链）：发现 4 条真死链并修复——`guide/getting-started.md` 的架构决策链接多跳一级（`../../` → `../`）、`guides/database.md` 与 `guides/configuration.md` 引用不存在的 `api/storage.md`/`api/serialization.md`（与第五轮 docs/README 同款历史错误，改指 api/db.md、api/serialize.md）。复扫真死链 0。另将「测试」段两项实质完成（C++ runtime 保持水准、三条集成测试全 ✅）按事实勾选。剩余未勾项仅 macOS 真机验证与 Linux XRecord 真桌面验证两项，均需真机人工执行。
 
 ---
 
-## 📅 2026-09-22 handlers 评估与辅助函数收口（架构盘点第六轮）——⑤ 关闭
+## 2026-09-22 handlers 评估与辅助函数收口（架构盘点第六轮）——⑤ 关闭
 
 **评估结论：不拆 Go 子包，⑤ 关闭。** 实测数据：46 文件全部 `package handlers` 单包、一域一文件（21 个生产文件命名即导航）、仅依赖 gin + gorm + 内部 models/middleware/rbac/security；测试 6300+ 行全为黑盒 HTTP 测试（经 gin 路由发请求，coverage_*×11 引用 handler 符号数为 0），天然依附路由装配点 routes.go。拆包成本 = 9 个 setup helper 重排 + coverage 跨域文件拆散归属 + 共享辅助抽包 + routes.go import 全部子包，收益仅目录观感——单包 HTTP 层是 Go 惯用模式（net/http 同例），维持现状。
 
@@ -89,7 +89,7 @@
 
 ---
 
-## 📅 2026-09-22 文档去重与会话产物清理（架构盘点第五轮）
+## 2026-09-22 文档去重与会话产物清理（架构盘点第五轮）
 
 共删除 15 个文件，全仓交叉引用清零校验通过：
 
@@ -103,7 +103,7 @@
 
 ---
 
-## 📅 2026-09-22 Go 包收敛与路由装配收口（架构盘点第四轮）
+## 2026-09-22 Go 包收敛与路由装配收口（架构盘点第四轮）
 
 - **`pkg/agent` 并入 `internal/agent`**：同名词包分居两处（listener/team/client 在 pkg，registry/types 在 internal），实为同一条 runtime 接入链路的两半，靠接口跨包解耦。合并后单包 20 文件（线协议类型 / FrameListener / TeamManager / Registry / types），`pkg/agent` 消失；`Broadcaster`/`AgentRegistrar` 接口保留（依赖倒置，注释已更新为准确表述）。消费方 import 与 `agentPkg` 别名全部清理（main.go 同包双别名导入一并消除）。
 - **main.go 路由装配收口**：gin 中间件、静态资源与全部 API 路由（~230 行）从 main.go 抽至 `internal/handlers/routes.go`（`RegisterRoutes(r, RouterDeps)`），main.go 415 → 178 行，回到"配置 + 组件生命周期"职责；装配点集中是后续 handlers 按域拆子包的前置。**决策**：handlers 不立即拆多包——21 文件已一域一 Handler，拆包主要成本在 5900 行测试与 coverage_* 跨域用例重排，当前收益不足，列为后续评估项。
@@ -111,7 +111,7 @@
 
 ---
 
-## 📅 2026-09-22 平行实现合并（架构盘点第三轮）
+## 2026-09-22 平行实现合并（架构盘点第三轮）
 
 盘点假设"双 TCP 通道"经查证**不成立**：`lib/wingman` 的 `TcpChannel` 是本地 IPC（IIpcChannel 家族）的显式 fallback（`allowTcpFallback` 安全闸、纯 JSON 无帧头），与 `libs/transport`（远程链路、16 字节头 + JSON）职责正交，保留。真正合并的两处：
 
@@ -120,7 +120,7 @@
 
 ---
 
-## 📅 2026-09-22 Android agent 核心下沉（架构盘点第二轮）
+## 2026-09-22 Android agent 核心下沉（架构盘点第二轮）
 
 消除 `apps/android/cpp` 对 `apps/runtime/src` + `lib/wingman/src` 私有树的源码摘编，共用核心改为正经库目标：
 
@@ -131,7 +131,7 @@
 
 ---
 
-## 📌 位置澄清（重要）
+## 位置澄清（重要）
 
 | 路径 | 实际内容 |
 |------|----------|
@@ -143,7 +143,7 @@
 
 ---
 
-## 🎯 里程碑规划（已校准）
+## 里程碑规划（已校准）
 
 | 里程碑 | 目标 | 状态 | 完成度 |
 |--------|------|------|--------|
@@ -157,9 +157,9 @@
 
 ---
 
-## 🔴 P0 - 必须完成（阻塞交付）
+## P0 - 必须完成（阻塞交付）
 
-### RBAC 权限系统（Go orchestrator）— ✅ 已完成 (2026-06-20)
+### RBAC 权限系统（Go orchestrator）— [已完成 (2026-06-20]
 
 实现：`internal/rbac/`（种子+解析）、`internal/models/role.go`（Role/Permission 多对多）、
 `internal/middleware/auth.go` `PermissionRequired`、`internal/handlers/users.go`/`roles.go`、
@@ -173,7 +173,7 @@
 - [x] **测试**：`rbac_test.go` + `handlers/rbac_test.go`（种子幂等、权限解析、inactive、CRUD、内置保护）
 - [x] 可选增强：将现有 `RoleRequired("admin")` 写路由渐进迁移到 `PermissionRequired`（✅ 已接线，2026-06-21：agents/workflows/scripts/users/roles/settings 写操作均按权限码鉴权）；Swagger 文档待补
 
-### Runtime IPC 事件推送（C++ runtime → Tauri GUI）— ✅ 机制完成 (2026-06-20)
+### Runtime IPC 事件推送（C++ runtime [Tauri GUI）— ✅ 机制完成 (2026-06-20]
 
 现状：runtime 通过 RPC `events.drain` 暴露缓冲事件，GUI 轮询拉取并分发。采用 **pull 模型**
 （非 type=2 push），避免 Rust IPC 客户端在 Windows 阻塞 IO 下引入异步读取循环导致帧错位
@@ -190,7 +190,7 @@
 - [x] **截图事件**：`screenshot.frame` —— 经评估**不接入 drain 缓冲**（全屏 base64 大负载会淹没有界缓冲；截图保持按需 `screenshot.capture`，见 architecture-decisions.md）
 - [x] IPC 调用超时处理（Rust `IpcClient` 已有 30s 超时；GUI `connection.refresh` 捕获错误并置 disconnected）
 
-### Debugger 端点实现（Go orchestrator）— ✅ 完成（直连模式，2026-06-20）
+### Debugger 端点实现（Go orchestrator）— [完成（直连模式，2026-06-20]
 
 现状：EmmyLua 调试由 VSCode 直连 runtime:9966，Go server 不中转调试协议（双向流不适合
 dashboard → server → agent 请求/响应模型）。原裸 501 stub 已替换为结构化「直连模式」契约。
@@ -202,7 +202,7 @@ dashboard → server → agent 请求/响应模型）。原裸 501 stub 已替�
 
 ---
 
-## ✅ 代码缺陷（2026-06-21 分析发现，已全部修复）
+## 代码缺陷（2026-06-21 分析发现，已全部修复）
 
 > 来源：2026-06-21 工作区未提交改动分析（原文档已随文档去重删除）。
 > 全部 10 项已修复（含回归测试 `TestBroadcastMessagePerUserReadState`）。
@@ -234,16 +234,16 @@ dashboard → server → agent 请求/响应模型）。原裸 501 stub 已替�
 
 ---
 
-## 🟡 P1 - 高优先级（功能完善）
+## P1 - 高优先级（功能完善）
 
 ### Orchestrator Dashboard（`orchestrator/dashboard/`）收尾
 
 **已完成页面**（已对接真实 API + WebSocket，勿重做）：
-- ✅ Welcome、Agents（getAgents + shutdownAgent + WS 事件）
-- ✅ Scripts（Monaco 编辑器 + CRUD + run/stop/logs）
-- ✅ Workflows（submit/cancel + WS submitted/status_changed/progress + Steps 可视化）
-- ✅ Admin/LoginLogs、Admin/OperationLogs（listAudit + CSV 导出）
-- ✅ User/Login、Profile（7 tab，最完整）
+- [Welcome、Agents（getAgents + shutdownAgent + WS 事件）]
+- [Scripts（Monaco 编辑器 + CRUD + run/stop/logs）]
+- [Workflows（submit/cancel + WS submitted/status_changed/progress + Steps 可视化）]
+- [Admin/LoginLogs、Admin/OperationLogs（listAudit + CSV 导出）]
+- [User/Login、Profile（7 tab，最完整）]
 
 **待完善**：
 - [x] **Monitor 页面**（`Monitor/index.tsx`）：mock 已移除（trigger 列表改为 WS 事件驱动上限 20，无 agent 时空态 + Alert）；远程 `trigger.list` API 已暴露并接入；触发器 CRUD（新增/编辑/删除表单，经 `POST/PUT/DELETE /api/agents/:id/triggers`，agents:manage）
@@ -317,7 +317,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ---
 
-## 🟢 P2 - 中优先级（功能增强）
+## P2 - 中优先级（功能增强）
 
 ### 跨平台验证
 
@@ -354,9 +354,9 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ---
 
-## 🔵 P3 - 低优先级（工程优化）
+## P3 - 低优先级（工程优化）
 
-## 📅 Agent 分组与批量操作（2026-09-14 完成）
+## Agent 分组与批量操作（2026-09-14 完成）
 
 集中管理能力强化：agent 标签从内存态升级为持久化，并新增基于标签/ID 的批量操作。纯 Go server + Dashboard，runtime 不改（决策记录见 `docs/architecture-decisions.md`「Agent Groups & Batch Operations」）。
 
@@ -366,7 +366,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 | 批量 API | `POST /api/agents/batch/run-script`、`/stop-script`（scripts:run）、`/trigger`（agents:manage）；选择器 agentIds/tags 并集去重（皆空 400、上限 500、无匹配 total=0）；信号量并发 8 逐台下发既有命令，离线记 "agent offline"，部分失败一律 200 + 逐台结果；脚本路径先服务端 Resolve；审计 `script.batch_run`/`script.batch_stop`/`agent.batch_trigger_add`（meta 含选择器与逐台摘要） | `handlers/batch_test.go` 10 用例 + `integration/batch_test.go`（打标→按标签批量运行→批量触发器→RBAC viewer 403/operator 200）；swagger 已再生成 |
 | Dashboard 批量 UI | `TriggerFormModal` 从 Monitor 抽取为共享组件（回调式 onSubmit）；Agents 页 rowSelection（权限门控）+ 批量工具栏 3 按钮（选中 0 台禁用）+ 标签筛选 + 结果弹窗（Alert 汇总 + 逐台明细）；`wingman.ts` 新增 batch 服务函数；`access.ts` 新增 `canScriptRun` | jest 235 用例全绿（含 wingman batch 4 例 + 组件 10 例，组件覆盖率 100%）；tsc/eslint/prettier 干净 |
 
-## 📅 2026-09-14 功能修复与覆盖率冲刺
+## 2026-09-14 功能修复与覆盖率冲刺
 
 **功能修复（「声明完成但实际不可用」类缺陷，经全库完成度分析裁定）**：
 
@@ -424,7 +424,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ---
 
-## 📅 2026-09-15 X11 WM 测试间歇失败根因排查（X11WmIntegrationTest flaky）
+## 2026-09-15 X11 WM 测试间歇失败根因排查（X11WmIntegrationTest flaky）
 
 **现象**：自起 Xvfb+openbox 的 WM 集成测试 ~30-50% 间歇启动失败，且呈负载相关的 episodic 簇状（同机 10 个 peer 会话高负载时恶化）。加自愈重试（归属校验+换号整体重建）后压测反而 12/20 失败，遂转入系统性根因排查。
 
@@ -453,7 +453,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ---
 
-## 📅 2026-09-16 Go Server CI race 失败修复（FrameListener.teamMgr 数据竞争）
+## 2026-09-16 Go Server CI race 失败修复（FrameListener.teamMgr 数据竞争）
 
 **现象**：CI Go Server (ubuntu-latest) 连续两轮在 race detector 下失败（run 34976763718 / 35034266626），`TestTeamStatusReportUnknownTeamNoop` 报 `WARNING: DATA RACE`；同 workflow 三平台的 windows/macos job 通过（race 时序依赖调度）。
 
@@ -467,7 +467,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ---
 
-## 📊 各模块实际完成度（已校准 2026-09-04，含 Dashboard 审核修复）
+## 各模块实际完成度（已校准 2026-09-04，含 Dashboard 审核修复）
 
 | 模块 | 子功能 | 完成度 | 说明 |
 |------|--------|--------|------|
@@ -493,14 +493,14 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ---
 
-## 🗓️ 迭代计划（已校准）
+## 迭代计划（已校准）
 
-### Sprint A (2周) — RBAC 权限系统 ✅ 已完成 (2026-06-20)
+### Sprint A (2周) — RBAC 权限系统 [已完成 (2026-06-20]
 - [x] Role/Permission 模型 + AutoMigrate
 - [x] 用户/角色管理 API + PermissionRequired 中间件
 - [x] Dashboard 权限页面 (Admin/Users、Admin/Roles) + 路由守卫
 
-### Sprint B (2周) — Runtime IPC 事件推送 ✅ 完成 (2026-06-20)
+### Sprint B (2周) — Runtime IPC 事件推送 [完成 (2026-06-20]
 - [x] runtime → local IPC 事件缓冲 + `events.drain` RPC（EventBuffer + spdlog sink）
 - [x] GUI 事件轮询分发（events.ts → logs.addRuntime + triggers.markFired）
 - [x] trigger.fired 事件源（TriggerManager::setOnFired → EventBuffer）
@@ -508,7 +508,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 - [x] screenshot.frame 评估：不接入 drain（按需 capture）
 - [x] IPC 调用超时（Rust 30s + GUI 错误处理）
 
-### Sprint C (1周) — Dashboard 收尾 ✅ 完成
+### Sprint C (1周) — Dashboard 收尾 [完成]
 - [x] Monitor triggers/macros 去 mock（WS 事件驱动 + 空态）、指标空态
 - [x] 独立 Settings 页面
 - [x] 截图链路（按需 capture + events）
@@ -528,7 +528,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ---
 
-## 📝 注意事项
+## 注意事项
 
 1. **架构优先**：修改 runtime/orchestrator 前，先看 `docs/architecture-decisions.md`
 2. **IPC 边界**：GUI 只能通过 local IPC 控制 runtime，禁止 runtime 开 HTTP/WS server
@@ -539,7 +539,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ---
 
-## 🔗 相关文档
+## 相关文档
 
 - [ROADMAP.md](./ROADMAP.md) — 项目开发路线图
 - [docs/architecture.md](./docs/architecture.md) — 架构设计文档

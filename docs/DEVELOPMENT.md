@@ -210,7 +210,7 @@ REM Requires LuaRocks and Busted (see above)
 scripts\run-lua-tests.cmd
 ```
 
-### GUI↔Runtime 跨语言集成测试（Linux）
+### GUI [Runtime 跨语言集成测试（Linux]
 
 GUI 侧 Rust `IpcClient` ↔ C++ runtime `LocalIpcServer` 的本地 IPC 端到端测试
 （`apps/gui/src-tauri/src/ipc/integration_tests.rs`）。每个用例 spawn 真 runtime

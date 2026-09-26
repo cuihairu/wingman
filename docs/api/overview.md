@@ -2,7 +2,7 @@
 
 Wingman 提供了丰富的 API 来支持游戏自动化开发。
 
-## 📋 目录
+## 目录
 
 - [核心 API](#核心-api)
 - [数据持久化 API](#数据持久化-api)
@@ -221,42 +221,42 @@ wingman.debugger.breakHere()
 
 ### 屏幕和图像
 
-- 📸 **截图**: `screen.capture()`, `screen.captureRegion()`
-- 🎨 **颜色检测**: `screen.findColor()`, `screen.findColors()`
-- 🖼️ **图像识别**: `screen.findImage()`
-- 📖 **OCR**: `ocr.recognize()`
+- [**截图**: `screen.capture()`, `screen.captureRegion()`]
+- [**颜色检测**: `screen.findColor()`, `screen.findColors()`]
+- [**图像识别**: `screen.findImage()`]
+- [**OCR**: `ocr.recognize()`]
 
 ### 输入和控制
 
-- 🖱️ **鼠标**: `input.click()`, `input.move()`, `input.scroll()`
+- [**鼠标**: `input.click()`, `input.move()`, `input.scroll()`]
 - ⌨️ **键盘**: `input.keyDown()`, `input.keyUp()`, `input.key()`
-- 📝 **文本**: `input.type()`
-- 🎯 **人性化**: `human.mouse_move()`, `human.mouse_click()`, `human.keyboard_type()`
+- [**文本**: `input.type()`]
+- [**人性化**: `human.mouse_move()`, `human.mouse_click()`, `human.keyboard_type()`]
 
 ### 窗口和进程
 
-- 🪟 **窗口**: `window.find()`, `window.activate()`, `window.getBounds()`
-- 📊 **进程**: `process.find()`, `process.exists()`
+- [**窗口**: `window.find()`, `window.activate()`, `window.getBounds()`]
+- [**进程**: `process.find()`, `process.exists()`]
 
 ### 数据和配置
 
-- 💾 **存储**: `kv.set()`, `kv.get()`, `db.open()`
-- 📄 **配置**: `json.encode()`, `json.decode()`, `ini.encode()`, `ini.decode()`
+- [**存储**: `kv.set()`, `kv.get()`, `db.open()`]
+- [**配置**: `json.encode()`, `json.decode()`, `ini.encode()`, `ini.decode()`]
 
 ### 自动化
 
-- ⚡ **触发器**: `smarttrigger.create()`, `smarttrigger.start()`
-- 📼 **录制**: `macro.start()`, `macro.stop()`, `macro.playback()`
-- 🔔 **事件**: `event.on()`, `event.emit()`
-- 📋 **任务**: `task.submit()`, `task.status()`
+- [**触发器**: `smarttrigger.create()`, `smarttrigger.start()`]
+- [**录制**: `macro.start()`, `macro.stop()`, `macro.playback()`]
+- [**事件**: `event.on()`, `event.emit()`]
+- [**任务**: `task.submit()`, `task.status()`]
 
 ### 网络
 
-- 🌐 **HTTP**: `http.get()`, `http.post()`
+- [**HTTP**: `http.get()`, `http.post()`]
 
 ### 调试
 
-- 🐛 **调试器**: `debugger.start()`, `debugger.breakpoint()`, `debugger.breakHere()`
+- [**调试器**: `debugger.start()`, `debugger.breakpoint()`, `debugger.breakHere()`]
 
 ## API 命名约定
 
@@ -272,7 +272,7 @@ wingman.debugger.breakHere()
 - 方法使用蛇形命名: `screen.capture()`
 - 常量使用全大写: `KEY_CTRL`
 
-> ✅ **命名约定**：Python 绑层对每个模块函数同时注册 camelCase（与 Lua 一致）与 snake_case（PEP 8 风格）两种形式，例如 `get_foreground()` 与 `getForeground()` 等价可用。推荐脚本使用 snake_case，camelCase 保留以兼容历史脚本。
+> [**命名约定**：Python 绑层对每个模块函数同时注册 camelCase（与 Lua 一致）与 snake_case（PEP 8 风格）两种形式，例如 `get_foreground()` 与 `getForeground()` 等价可用。推荐脚本使用 snake_case，camelCase 保留以兼容历史脚本。]
 
 ## 类型转换
 
@@ -325,7 +325,7 @@ except Exception as e:
     print(f"Error: {e}")
 ```
 
-## 🔗 相关文档
+## 相关文档
 
 - [快速开始](../guide/getting-started.md)
 
