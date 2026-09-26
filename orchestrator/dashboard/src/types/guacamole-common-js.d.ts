@@ -26,10 +26,81 @@ declare module 'guacamole-common-js' {
     getElement(): HTMLElement;
     getWidth(): number;
     getHeight(): number;
-    scale: number;
+    /**
+     * 等比缩放画面（1 = 原始分辨率）。1.5.0 是方法而非可写属性
+     * （dist/esm 实测 this.scale = function(scale)），赋值只会顶掉
+     * 方法、缩放永不生效——必须调用。
+     */
+    scale(scale: number): void;
+    getScale(): number;
     showCursor(show: boolean): void;
     onUpdate?: (dirty: boolean) => void;
     onresize?: (width: number, height: number) => void;
+  }
+
+  /**
+   * SessionRecording 隧道源的最小面（录像是 Blob 时由
+   * recordingPlayer.ts 的适配器提供——1.5.0 的 Blob 直连分支有上游
+   * 缺陷，见 recordingPlayer.ts 头注）。
+   */
+  export interface RecordingTunnelSource {
+    connect(data?: string): void;
+    sendMessage(elements: string[]): void;
+    disconnect(): void;
+    /** SessionRecording 构造后接管：逐条装载指令 */
+    oninstruction?: (opcode: string, args: string[]) => void;
+    onerror?: (status: { message: string }) => void;
+    onstatechange?: (state: number) => void;
+  }
+
+  export const Tunnel: {
+    State: { CONNECTING: 0; OPEN: 1; CLOSED: 2; UNSTABLE: 3 };
+  };
+
+  /**
+   * Guacamole 协议指令解析器（纯字符串处理，无 DOM 依赖）：
+   * receive 喂入指令流文本，逐条回调 oninstruction；非法流抛 Error。
+   */
+  export class Parser {
+    oninstruction?: (opcode: string, args: string[]) => void;
+    receive(text: string): void;
+  }
+
+  /**
+   * 会话录像回放（设计 §16「回放」）：构造时即开始解析录像源，
+   * 帧以 sync 指令毫秒时间戳收口，回放位置以首帧为原点（相对毫秒）。
+   * 播放/暂停/跳转全在浏览器本地，不经网关。
+   */
+  export class SessionRecording {
+    /** 录像源：Blob 直连（1.5.0 有缺陷，勿用）或隧道适配器 */
+    constructor(source: Blob | RecordingTunnelSource);
+    /** 回放画面（div 包裹的 canvas 组），由调用方挂到 DOM */
+    getDisplay(): GuacamoleDisplay;
+    isPlaying(): boolean;
+    /** 当前回放位置（相对首帧的毫秒数） */
+    getPosition(): number;
+    /** 录像总时长（毫秒；解析完成后恒定） */
+    getDuration(): number;
+    play(): void;
+    pause(): void;
+    /** 跳到指定位置；播放中跳转后继续播，暂停中跳转后保持暂停 */
+    seek(positionMs: number, callback?: () => void): void;
+    /** 中止进行中的 seek（位置停在已到达处） */
+    cancel(): void;
+    /** 终止录像解析（Blob 源播放中调用即停止加载后续帧） */
+    abort(): void;
+    connect(data?: string): void;
+    disconnect(): void;
+    /** 解析完成（时长/帧就绪，可 play/seek） */
+    onload?: () => void;
+    /** 解析失败（非法指令流），回放不可用 */
+    onerror?: (message: string) => void;
+    /** 解析进度（每收口一帧触发一次）：duration 总时长，parsedSize 已解析字节 */
+    onprogress?: (durationMs: number, parsedSize: number) => void;
+    onplay?: () => void;
+    onpause?: () => void;
+    /** 位置变化（播放逐帧推进与 seek 都走这里） */
+    onseek?: (positionMs: number, current: number, total: number) => void;
   }
 
   export class WebSocketTunnel {
@@ -176,6 +247,9 @@ declare module 'guacamole-common-js' {
     Client: typeof Client;
     BlobWriter: typeof BlobWriter;
     GuacamoleObject: typeof GuacamoleObject;
+    SessionRecording: typeof SessionRecording;
+    Tunnel: { State: { CONNECTING: 0; OPEN: 1; CLOSED: 2; UNSTABLE: 3 } };
+    Parser: typeof Parser;
     Status: Status;
   };
   export default Guacamole;

@@ -75,15 +75,23 @@ export async function listRecordings(): Promise<RecordingEntry[]> {
 }
 
 /**
- * 下载会话录像到浏览器（.mjs 为 Guacamole session 格式，
- * 可用官方 guacenc 离线转 mp4）。鉴权走 request 拦截器的
- * Bearer 头，不能用裸 <a href>（不带 token）。
+ * 拉取会话录像内容为 Blob（§16 回放面板用；鉴权走 request 拦截器的
+ * Bearer 头，不能用裸 <a href>——不带 token）。
  */
-export async function downloadRecording(name: string): Promise<void> {
+export async function fetchRecordingBlob(name: string): Promise<Blob> {
   const res = await request<Blob>(`/api/remote/recordings/${encodeURIComponent(name)}/download`, {
     responseType: 'blob',
   });
-  const blob = res instanceof Blob ? res : new Blob([res as unknown as BlobPart]);
+  return res instanceof Blob ? res : new Blob([res as unknown as BlobPart]);
+}
+
+/**
+ * 下载会话录像到浏览器（.mjs 为 Guacamole session 格式，
+ * 可用官方 guacenc 离线转 mp4；也可直接在浏览器内回放——
+ * RemoteRecordingPlayer 走 fetchRecordingBlob）。
+ */
+export async function downloadRecording(name: string): Promise<void> {
+  const blob = await fetchRecordingBlob(name);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

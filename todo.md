@@ -8,6 +8,21 @@
 
 ---
 
+## 2026-09-26 浏览器内录像回放（设计 §16「回放」第二版）
+
+录像列表加「回放」入口（desktop:view 同级，取回即 `desktop.recording_download` 审计）→ `RemoteRecordingPlayer` 拉取 Blob → `guacamole-common-js` 自带 `SessionRecording` 本地解析回放（播放/暂停/拖动进度 + 画面等比缩放，纯浏览器本地行为不经网关、无注入面）：
+
+- **上游缺陷绕行（关键）**：1.5.0 `SessionRecording` 的 Blob 直连分支把从未赋值的 `recordingBlob` 交给解析器（缺 `recordingBlob = source`），构造即抛 TypeError，npm 无更新版本。`recordingPlayer.ts` 的 `BlobRecordingTunnel` 把 Blob 转成隧道源（官方 Parser 解析 → 逐条喂 → 读完发 CLOSED），走官方播放器「边下边播」的隧道分支；测试用真实库 + 样例录像锁契约，含「Blob 直连构造即抛」防退化用例。
+- **样例录像**：本机无任何真实 .mjs（recordings 卷恒空），按用户许可造最小样例 `deployments/guacd/recordings/sample-session.mjs`（`gen-sample-recording.js` 生成，12 帧/4.4s/1280x720 移动色带）——栈启动后回放面板即有真实条目；录像格式 = 裸指令流、`sync,<毫秒>` 分帧的契约经 dist/esm 源码与真实解析双重验证。
+- **顺手修一处存量缺陷**：`display.scale` 在 1.5.0 是方法而非可写属性，`useGuacamoleSession` 原来赋值式调用让监看/接管的画面自适应缩放从未生效（静默顶掉方法）；改调用式并对齐类型声明。不做倍速：1.5.0 无变速 API。
+- 服务层 `fetchRecordingBlob`（下载复用同一取回路径）；jest 401 → 420（新增回放封装 8 用例 + 组件 9 用例 + 服务 2 用例），录制语法/播放状态机/组件三态全锁。
+
+## 2026-09-26 阶段二页面层 i18n 接线
+
+Agents 页的阶段二文案（连接表单「会话录制」勾选 + 会话录像面板 19 条）改走 umi intl（`pages.agents.recordings.*`），八份 locale（zh-CN/zh-TW/en-US/ja-JP/pt-BR/bn-BD/fa-IR/id-ID）全量补齐，`{name}` 插值沿用同页先例；纯文案接线，zh-CN 渲染文本逐字不变。
+
+- **组件层明确不接（留档）**：`RemoteDesktop/*` 是给 cockpit 复用的公共件，全目录零 `@umijs/max` 依赖是既成设计；umi `useIntl` 在 jest 下不可用（`.umi` 不入库、react-intl 未 hoist），接 intl 要么加 react-intl 直依赖要么文案 props 化 + 补测试基建——架构代价大于收益。回放面板/文件浏览器/剪贴板等组件文案维持中文硬编码，多语言留给消费方。
+
 ## 2026-09-26 文件浏览器第二版（分页/进度/重试/文件操作审计）
 
 SSH/SFTP 文件浏览器在第一版（commit cc7d094，设计 §15.1）之上继续收口「协议内可做」的四件事（设计 §15.2）：
@@ -28,7 +43,7 @@ SSH/SFTP 文件浏览器在第一版（commit cc7d094，设计 §15.1）之上�
   - **会话录制（§16）**：record 票据 → connect 注入 `recording-path/name`；安全默认 `recording-include-keys=false`（按键永不入录像）；检索 API `/api/remote/recordings`（list/download=desktop:view，delete=desktop:control）+ Dashboard 录像管理；`deployments/guacd` 增加 drive/recordings 共享卷。
   - 服务端新增 mock-guacd 握手测试（讲线协议的假 guacd 验证 connect 按位注入）+ recordings handler 全路径测试；Swagger 注解补齐全部 remote REST 端点并再生成。
 - **验证基线**：Go 14 包 `go vet` + `go test -race` 全过；Dashboard jest 261/261、tsc 0 错、eslint 仅存量 2 警告、prettier 干净。
-- **剩余（P1/远期）**：cockpit 接入像素面公共组件（公共件已抽出，wingman 侧先行 ✅）、浏览器内录像回放（2026-09-26 复核结论：`SessionRecording` 就在既有依赖 guacamole-common-js@1.5.0 npm 包内，可行、零新增依赖，待真实录像数据再接，见设计 §16「回放」）、i18n 接线（阶段二 UI 文案暂为特性内中文硬编码，沿用 P0 先例）。
+- **剩余（P1/远期）**：cockpit 接入像素面公共组件（公共件已抽出，wingman 侧先行 ✅）、浏览器内录像回放（✅ 2026-09-26 实现，见「浏览器内录像回放」）、i18n 接线（✅ 2026-09-26 页面层完成，组件层经裁定不接，见「阶段二页面层 i18n 接线」）。
 
 ## 2026-09-25 远控 P1 推进（公共件抽取 / 会话审计 / e2e 容器栈）
 

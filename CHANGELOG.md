@@ -9,7 +9,21 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 388 个提交（feat 69 / fix 137 / docs 67 / test 44 / ci 19 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 389 个提交（feat 70 / fix 137 / docs 67 / test 44 / ci 19 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### feat（2026-09-26，M4 远控 P1：浏览器内录像回放——SessionRecording 本地解析）
+
+- **回放入口**：录像列表新增「回放」（与下载同级，desktop:view 即可回放，审计语义不变——取回本身已走 `desktop.recording_download`）；`RemoteRecordingPlayer` Modal 内本地解析 `.mjs`，SessionRecording 就在既有依赖 guacamole-common-js@1.5.0 里，零新增依赖（设计 §16「回放」落地，§11 远期清单同步销项）。播放/暂停/进度/seek/时长全走 1.5.0 官方 API；不做倍速——1.5.0 无变速 API，不硬造。
+- **上游 Blob 直连缺陷绕行**：1.5.0 `new SessionRecording(blob)` 构造即抛 `Cannot read properties of undefined (reading 'size')`——构造器只给 tunnel 分支赋 `recordingBlob`，Blob 分支漏赋值；npm 无 >1.5.0 修复版。绕行走官方「边下边播」同款 tunnel 源：`BlobRecordingTunnel`（`recordingPlayer.ts`）把已取回的 Blob 按裸指令流喂 Parser，并配防退化用例锁「不许改回 Blob 直连」。
+- **样例录像**：本机无任何真实 `.mjs`（录像卷/目录皆空），按裁定造最小样例而非硬接空数据——`gen-sample-recording.js` 生成 12 帧/4.4s/1280x720（裸指令流 + sync 分帧，与 guacd 录像格式一致），入库 `recordings/sample-session.mjs`，栈起来后回放面板即有真实条目；首帧时间戳从 1000 起（`isPlaying` 以时间戳真值判定，0 会永久「未在播放」）。guacd 真实录像出现即插即用。
+- **顺手修存量缺陷**：`useGuacamoleSession` fit 自适应缩放对 `display.scale` 用赋值写法——1.5.0 里它是方法，赋值只会顶掉方法、缩放永不生效；改为调用并同步修 `.d.ts` 类型标注。该文件为桌面会话共享路径，但改动仅此一处语义修复，桌面主链路用例同步更新且全绿。
+- 测试：recordingPlayer 封装 8 项（真实库解析样例录像：帧表/进度事件/播放暂停/seek 钳位/坏载荷报错/Blob 直连防退化）+ 回放面板 9 项（加载/就绪/错误三态、控制条联动、重试、关闭清理、fitScale）+ 服务层 `fetchRecordingBlob` 2 项（blob 直传/非 Blob 包装）；全套 420 项 jest 全绿。
+
+### feat（2026-09-26，M4 远控 P1：阶段二页面层 i18n 接线——录像面板文案 8 语言全量）
+
+- **范围裁定（只接「机制所在层」）**：Agents 页的阶段二文案——连接表单「会话录制」勾选 + 会话录像面板 19 条（标题/关闭/空态/列头/回放/下载/删除确认与提示/错误兜底）——改走 umi intl（`pages.agents.recordings.*`），zh-CN/zh-TW/en-US/ja-JP/pt-BR/bn-BD/fa-IR/id-ID 八份 locale 全量补齐；插值占位符用 `{name}`（react-intl 惯例，同页 `shutdownConfirmContent` 先例）。
+- **组件层明确不接（留档）**：`RemoteDesktop/*` 是给未来 cockpit 复用的公共件（「Modal 与未来 cockpit 按同一入口接入」），全目录零 `@umijs/max` 依赖是既成设计；且 umi 的 `useIntl` 在 jest 下不可用（`src/.umi` 生成目录不入库、react-intl 未 hoist 到顶层），组件接 intl 需引入 react-intl 直依赖或文案 props 化并补测试基建——架构代价大于本轮收益。回放面板/文件浏览器/剪贴板等组件文案维持中文硬编码（P0 先例），多语言策略留给消费方决定。
+- 纯文案接线：不改业务逻辑、零新增依赖，zh-CN 渲染文本与接线前逐字一致；全套 420 项 jest、tsc、eslint（仅存量 2 警告）、prettier 全绿。
 
 ### feat（2026-09-26，M4 远控 P1：文件浏览器第二版——分页/进度/重试/文件操作审计）
 

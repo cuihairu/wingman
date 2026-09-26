@@ -203,11 +203,14 @@ export function useGuacamoleSession(options: UseGuacamoleSessionOptions): Guacam
         stage.appendChild(display.getElement());
 
         // 显示自适应：按 stage 尺寸等比缩放远端桌面
+        // （scale 是方法，1.5.0 dist/esm 实测——赋值只会顶掉方法、缩放不生效）
         const fitScale = () => {
           if (display.getWidth() > 0 && stage.clientWidth > 0) {
-            display.scale = Math.min(
-              stage.clientWidth / display.getWidth(),
-              stage.clientHeight / display.getHeight(),
+            display.scale(
+              Math.min(
+                stage.clientWidth / display.getWidth(),
+                stage.clientHeight / display.getHeight(),
+              ),
             );
           }
         };

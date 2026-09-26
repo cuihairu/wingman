@@ -40,7 +40,13 @@ compose 里两个 bind 挂载对应网关注入的 connect 参数（设计 §15/
 - 录像检索：server 侧把同一 `recordings` 目录挂到
   `WINGMAN_RECORDING_DIR`（例如宿主机同路径 `/var/lib/wingman/recordings`），
   经 `/api/remote/recordings` 提供 list/download/delete；
-- `.mjs` 回放用官方 `guacenc` 离线转 mp4（浏览器内回放列为远期）；
+- `.mjs` 回放：浏览器内直接回放（dashboard 录像列表「回放」入口，
+  SessionRecording 本地解析，见设计 §16）；下载后也可用官方 `guacenc`
+  离线转 mp4；
+- 样例录像：`recordings/sample-session.mjs`（12 帧 / 4.4 秒 / 1280x720，
+  底部移动色带），由 `gen-sample-recording.js` 生成——栈启动后回放面板
+  即有真实条目可验证；重新生成：
+  `node gen-sample-recording.js --frames 12 --gap 400`；
 - 录像安全默认：网关强制 `recording-include-keys=false`，**按键内容永不
   入录像**（口令不会以明文出现在录像里）。
 

@@ -31,6 +31,10 @@ export type {
 } from './RemoteErrorNotice';
 export { default as RemoteFileBrowser } from './RemoteFileBrowser';
 export type { RemoteFileBrowserProps } from './RemoteFileBrowser';
+export { default as RemoteRecordingPlayer } from './RemoteRecordingPlayer';
+export type { RemoteRecordingPlayerProps } from './RemoteRecordingPlayer';
+export { createRecordingPlayer, formatRecordingTime } from './recordingPlayer';
+export type { RecordingPlayer, RecordingPlayerEvents } from './recordingPlayer';
 export type { RemoteFileOpAudit } from './types';
 export { useGuacamoleSession } from './useGuacamoleSession';
 export type { GuacamoleSessionState, UseGuacamoleSessionOptions } from './useGuacamoleSession';

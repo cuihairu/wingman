@@ -36,12 +36,13 @@ jest.mock('@/services/remote', () => ({
 }));
 
 jest.mock('guacamole-common-js', () => {
-  // 每个 Client 一个稳定 display 实例：测试要读 scale 断言缩放
+  // 每个 Client 一个稳定 display 实例：测试要读 scale 调用断言缩放
   const makeDisplay = () => ({
     getElement: () => document.createElement('div'),
     getWidth: jest.fn(() => 1280),
     getHeight: jest.fn(() => 800),
-    scale: 1,
+    // 1.5.0 的 scale 是方法（this.scale = function(scale)），赋值不生效
+    scale: jest.fn(),
     showCursor: jest.fn(),
     onresize: undefined as undefined | (() => void),
   });
@@ -368,14 +369,14 @@ describe('useGuacamoleSession', () => {
     await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
     const display = lastClient().display;
     // display 1280x800 装进 stage 640x480 → min(0.5, 0.6) = 0.5
-    expect(display.scale).toBe(1);
+    expect(display.scale).not.toHaveBeenCalled();
     fireEvent(window, new Event('resize'));
-    expect(display.scale).toBeCloseTo(0.5);
+    expect(display.scale).toHaveBeenCalledWith(expect.closeTo(0.5));
     // 挂载后的 display.onresize 走同一条 fitScale 闭包
     Object.defineProperty(stage, 'clientWidth', { value: 320, configurable: true });
     Object.defineProperty(stage, 'clientHeight', { value: 800, configurable: true });
     display.onresize?.();
-    expect(display.scale).toBeCloseTo(0.25);
+    expect(display.scale).toHaveBeenCalledWith(expect.closeTo(0.25));
     unmount();
   });
 
@@ -393,7 +394,7 @@ describe('useGuacamoleSession', () => {
     const { unmount } = render(<Probe />);
     await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
     fireEvent(window, new Event('resize'));
-    expect(lastClient().display.scale).toBe(1);
+    expect(lastClient().display.scale).not.toHaveBeenCalled();
     unmount();
   });
 

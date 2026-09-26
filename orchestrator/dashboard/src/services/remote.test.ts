@@ -7,6 +7,7 @@ import {
   createRemoteTicket,
   deleteRecording,
   downloadRecording,
+  fetchRecordingBlob,
   guacamoleWSPath,
   listRecordings,
   listRemoteSessions,
@@ -176,6 +177,35 @@ describe('services/remote', () => {
       expect(URL.createObjectURL).toHaveBeenCalled();
       const blob = (URL.createObjectURL as jest.Mock).mock.calls[0][0] as Blob;
       expect(blob).toBeInstanceOf(Blob);
+    });
+  });
+
+  describe('fetchRecordingBlob', () => {
+    beforeEach(() => {
+      // setupTests 全局给的 createObjectURL 可能已被下载用例调用过，重置计数
+      (URL as unknown as { createObjectURL: jest.Mock }).createObjectURL = jest.fn();
+    });
+
+    it('拉取录像 Blob（路径编码、blob 响应直传，不触发下载）', async () => {
+      const blob = new Blob(['session-bytes']);
+      mockedRequest.mockResolvedValueOnce(blob);
+
+      await expect(fetchRecordingBlob('a b/会话.mjs')).resolves.toBe(blob);
+
+      expect(mockedRequest).toHaveBeenCalledWith(
+        `/api/remote/recordings/${encodeURIComponent('a b/会话.mjs')}/download`,
+        { responseType: 'blob' },
+      );
+      expect(URL.createObjectURL).not.toHaveBeenCalled();
+    });
+
+    it('非 Blob 响应（如拦截器已解析为字符串）包装为 Blob', async () => {
+      mockedRequest.mockResolvedValueOnce('raw-session-bytes');
+
+      const blob = await fetchRecordingBlob('a.mjs');
+
+      expect(blob).toBeInstanceOf(Blob);
+      await expect(blob.text()).resolves.toBe('raw-session-bytes');
     });
   });
 

@@ -53,10 +53,12 @@ import RemoteSessionReportModal from '@/components/RemoteDesktop/RemoteSessionRe
 import {
   deleteRecording,
   downloadRecording,
+  fetchRecordingBlob,
   listRecordings,
   type RecordingEntry,
   type RemoteProtocol,
 } from '@/services/remote';
+import RemoteRecordingPlayer from '@/components/RemoteDesktop/RemoteRecordingPlayer';
 import {
   AgentStatus,
   AgentInfo,
@@ -138,10 +140,12 @@ const Agents: React.FC = () => {
     }
     setDesktopForm(null);
   };
-  // ===== 会话录像（设计 §16）：desktop:view 列/下载，desktop:control 删 =====
+  // ===== 会话录像（设计 §16）：desktop:view 列/下载/回放，desktop:control 删 =====
   const canDesktopView = Boolean(access.canDesktopView);
   const canDesktopControl = Boolean(access.canDesktopControl);
   const [recordingsOpen, setRecordingsOpen] = useState(false);
+  // 浏览器内回放（§16「回放」）：点回放拉取 Blob 本地解析，不经网关
+  const [playingRecording, setPlayingRecording] = useState<string | null>(null);
   const [recordings, setRecordings] = useState<RecordingEntry[]>([]);
   const [recordingsError, setRecordingsError] = useState('');
   const [recordingsLoading, setRecordingsLoading] = useState(false);
@@ -155,7 +159,9 @@ const Agents: React.FC = () => {
       setRecordings(await listRecordings());
     } catch (e) {
       // 501（未配置）与其他错误都转为面板文案：错误串本身带配置指引
-      setRecordingsError(e instanceof Error ? e.message : '获取会话录像列表失败');
+      setRecordingsError(
+        e instanceof Error ? e.message : formatMessage('pages.agents.recordings.listFailed'),
+      );
     } finally {
       setRecordingsLoading(false);
     }
@@ -170,17 +176,19 @@ const Agents: React.FC = () => {
     try {
       await downloadRecording(name);
     } catch (e) {
-      message.error(extractErrorMessage(e, '下载会话录像失败'));
+      message.error(
+        extractErrorMessage(e, formatMessage('pages.agents.recordings.downloadFailed')),
+      );
     }
   };
   const handleDeleteRecording = async (name: string) => {
     setDeletingRecording(name);
     try {
       await deleteRecording(name);
-      message.success(`已删除 ${name}`);
+      message.success(intl.formatMessage({ id: 'pages.agents.recordings.deleted' }, { name }));
       await fetchRecordings(true);
     } catch (e) {
-      message.error(extractErrorMessage(e, '删除会话录像失败'));
+      message.error(extractErrorMessage(e, formatMessage('pages.agents.recordings.deleteFailed')));
     } finally {
       setDeletingRecording(null);
     }
@@ -980,7 +988,7 @@ const Agents: React.FC = () => {
               desktopForm && setDesktopForm({ ...desktopForm, record: e.target.checked })
             }
           >
-            会话录制（需服务端配置录制路径，录像不含按键内容）
+            {formatMessage('pages.agents.recordings.checkboxLabel')}
           </Checkbox>
         </Space>
       </Modal>
@@ -1001,11 +1009,11 @@ const Agents: React.FC = () => {
           guacenc 离线转 mp4；删除需 desktop:control */}
       <Modal
         open={recordingsOpen}
-        title="会话录像"
+        title={formatMessage('pages.agents.recordings.title')}
         width={680}
         footer={
           <Button type="primary" onClick={() => setRecordingsOpen(false)}>
-            关闭
+            {formatMessage('pages.agents.recordings.close')}
           </Button>
         }
         onCancel={() => setRecordingsOpen(false)}
@@ -1014,11 +1022,11 @@ const Agents: React.FC = () => {
           <Alert
             type="warning"
             showIcon
-            message="会话录像不可用"
+            message={formatMessage('pages.agents.recordings.unavailable')}
             description={recordingsError}
             action={
               <Button size="small" onClick={() => fetchRecordings()}>
-                重试
+                {formatMessage('pages.agents.recordings.retry')}
               </Button>
             }
           />
@@ -1029,40 +1037,57 @@ const Agents: React.FC = () => {
             loading={recordingsLoading}
             dataSource={recordings}
             pagination={{ pageSize: 8, hideOnSinglePage: true }}
-            locale={{ emptyText: '暂无录像（连接时勾选“会话录制”生成）' }}
+            locale={{
+              emptyText: formatMessage('pages.agents.recordings.empty'),
+            }}
             columns={[
-              { title: '文件名', dataIndex: 'name', ellipsis: true },
               {
-                title: '大小',
+                title: formatMessage('pages.agents.recordings.colName'),
+                dataIndex: 'name',
+                ellipsis: true,
+              },
+              {
+                title: formatMessage('pages.agents.recordings.colSize'),
                 dataIndex: 'sizeBytes',
                 width: 90,
                 render: (v: number) => formatBytes(v),
               },
               {
-                title: '录制时间',
+                title: formatMessage('pages.agents.recordings.colTime'),
                 dataIndex: 'modifiedAt',
                 width: 170,
                 render: (v: string) => (v ? new Date(v).toLocaleString() : '-'),
               },
               {
-                title: '操作',
+                title: formatMessage('pages.agents.recordings.colActions'),
                 key: 'actions',
-                width: 150,
+                width: 210,
                 render: (_: unknown, r: RecordingEntry) => (
                   <Space>
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<PlayCircleOutlined />}
+                      onClick={() => setPlayingRecording(r.name)}
+                    >
+                      {formatMessage('pages.agents.recordings.play')}
+                    </Button>
                     <Button
                       type="link"
                       size="small"
                       icon={<DownloadOutlined />}
                       onClick={() => handleDownloadRecording(r.name)}
                     >
-                      下载
+                      {formatMessage('pages.agents.recordings.download')}
                     </Button>
                     {canDesktopControl && (
                       <Popconfirm
-                        title={`删除 ${r.name}？`}
-                        description="删除后不可恢复"
-                        okText="删除"
+                        title={intl.formatMessage(
+                          { id: 'pages.agents.recordings.deleteConfirm' },
+                          { name: r.name },
+                        )}
+                        description={formatMessage('pages.agents.recordings.deleteIrreversible')}
+                        okText={formatMessage('pages.agents.recordings.delete')}
                         okButtonProps={{ danger: true }}
                         onConfirm={() => handleDeleteRecording(r.name)}
                       >
@@ -1073,7 +1098,7 @@ const Agents: React.FC = () => {
                           icon={<DeleteOutlined />}
                           loading={deletingRecording === r.name}
                         >
-                          删除
+                          {formatMessage('pages.agents.recordings.delete')}
                         </Button>
                       </Popconfirm>
                     )}
@@ -1084,6 +1109,14 @@ const Agents: React.FC = () => {
           />
         )}
       </Modal>
+
+      {/* 浏览器内录像回放（设计 §16「回放」）：本地解析 .mjs，desktop:view 同级 */}
+      <RemoteRecordingPlayer
+        open={playingRecording !== null}
+        name={playingRecording ?? ''}
+        load={() => fetchRecordingBlob(playingRecording as string)}
+        onClose={() => setPlayingRecording(null)}
+      />
 
       {/* 远程桌面会话审计报表（设计 §11 P1）：谁在何时接管了哪台机器、多久、
           失败几次；与录像面板同属一批会话的两个侧面（文件 vs 行为） */}

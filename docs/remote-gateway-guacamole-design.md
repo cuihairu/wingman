@@ -1,7 +1,7 @@
 # 远程网关像素面集成 Apache Guacamole 设计
 
 - 状态：P0 已实现（服务端网关 + 票据 + RBAC + 三协议 e2e + 前端组件，2026-09-23）；阶段二（剪贴板控制 UI、文件传输、会话录制）2026-09-25 实现完成（设计见 §14–§16，DG-7/DG-8/DG-9）；P1（cockpit 接入、前端公共组件抽取、审计报表）✅ 2026-09-25 完成（§7.1/§17）；SSH/SFTP 文件浏览器第一版 ✅ 2026-09-26 实现（§15.1），第二版（分页/进度/重试/审计）✅ 同日实现（§15.2）
-- 日期：2026-09-23（P0 设计），2026-09-25（阶段二设计），2026-09-26（文件浏览器与回放可行性复核）
+- 日期：2026-09-23（P0 设计），2026-09-25（阶段二设计），2026-09-26（文件浏览器与浏览器内回放实现）
 - 关联文档：`architecture-decisions.md`（硬约束）、`mobile-automation-design.md`（Mobile D1–D9 决策）、`ROADMAP.md`（A4 里程碑）
 - 本文编号：**DG-x**（Guacamole 相关决策），与 Mobile D1–D9、架构 ADEC 并列互引
 - 实现落点：`orchestrator/server/internal/handlers/guacamole.go`（网关）、
@@ -324,7 +324,7 @@ GET /api/remote/sessions            desktop:view（只读，报表不含接管�
 - **P0（本文档批准后的第一批实现）**：Go server gateway 桥 + guacd 部署约定 + Windows(RDP)/macOS(VNC)/Linux(x11vnc) 三平台 endpoint 矩阵 + wingman dashboard 监看/接管组件 + RBAC 两权限点 + 审计四事件。✅ 2026-09-23 完成。
 - **阶段二（2026-09-25 实现）**：剪贴板控制 UI（§14，DG-7）+ 文件传输（§15，DG-8）+ 会话录制与检索（§16，DG-9）。
 - **P1**：cockpit 接入同一网关；按 §7 第 3 条抽取前端公共组件（✅ 2026-09-25 wingman 侧先行，见 §7.1）；审计报表呈现（✅ 2026-09-25，见 §17）。
-- **远期（触发式）**：droidVNC-NG 桥独立设计（含注入仲裁）；公网弱网场景的 WebRTC 第二通道评估；浏览器内录像回放（`SessionRecording` 数据源适配——可行性已复核为可行、零新增依赖，见 §16「回放」）。
+- **远期（触发式）**：droidVNC-NG 桥独立设计（含注入仲裁）；公网弱网场景的 WebRTC 第二通道评估；浏览器内录像回放（✅ 2026-09-26 提前实现，见 §16「回放」）。
 
 ---
 
@@ -591,8 +591,24 @@ WINGMAN_RECORDING_DIR 均已设，否则 400）→ WS 握手时 connect 参数�
   此前「官方 session-player 非 npm 分发」的前提不成立；缺的只是把 .mjs
   （经 `/api/remote/recordings/:name/download` 取回的 Blob）喂给
   `SessionRecording` 构造器的数据源适配，以及一个播放器壳（进度条/倍速）。
-  仍列为远期（触发式）：审计报表目前尚无真实部署的录像数据，先接回放是
-  为空数据造 UI；待有真实使用再实现。
+  **浏览器内回放已实现（2026-09-26，见下节）**。
+- 回放第二版（浏览器内，2026-09-26 实现）：录像列表加「回放」入口
+  （desktop:view 同级，取回即 `desktop.recording_download` 审计）→
+  `RemoteRecordingPlayer` 面板拉取 Blob → `SessionRecording` 本地解析回放
+  （播放/暂停/拖动进度 + 画面等比缩放）。要点：
+  - **1.5.0 的 Blob 直连分支是坏的**：构造器把从未赋值的 `recordingBlob`
+    交给解析器（缺 `recordingBlob = source` 一行），构造即抛 TypeError，
+    npm 无更新版本。绕行：`BlobRecordingTunnel` 把 Blob 转成隧道源喂
+    （官方 Parser 解析 → 逐条 oninstruction → 读完发 CLOSED），走官方
+    播放器「边下边播」的隧道分支；recordingPlayer.test.ts 用真实库 +
+    样例录像锁住该契约（含「Blob 直连构造即抛」防退化用例）。
+  - 录像格式即裸指令流：非 sync 指令累积、`sync,<毫秒>` 收口为一帧，
+    回放位置以首帧时间戳为原点；gen-sample-recording.js 生成
+    `deployments/guacd/recordings/sample-session.mjs` 供本地栈验证
+    （真实录像此前恒缺——回放不再是「为空数据造 UI」：样例 + 审计报表
+    已有的真实会话数据链路足以验证端到端）。
+  - 不做倍速：1.5.0 无变速 API，自行重排帧时序等于复刻解析器。
+  - 下载转码（guacenc）继续保留，回放/下载互不替代。
 
 ### 备选与否决
 

@@ -23,6 +23,20 @@ if (typeof window !== 'undefined' && !window.TextEncoder) {
   window.TextDecoder = util.TextDecoder;
 }
 
+// jsdom 的 Blob 没有 text()（浏览器现代标准方法；录像回放里
+// guacamole-common-js 内部 clientState.text() 也会调到），
+// 用 FileReader 补齐（与库内部读法一致）
+if (typeof Blob !== 'undefined' && !Blob.prototype.text) {
+  Blob.prototype.text = function blobText() {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error ?? new Error('Blob read failed'));
+      reader.readAsText(this);
+    });
+  };
+}
+
 Object.defineProperty(URL, 'createObjectURL', {
   writable: true,
   value: jest.fn(),
