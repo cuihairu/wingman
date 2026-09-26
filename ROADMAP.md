@@ -189,7 +189,7 @@ Runtime 不再按互斥“运行模式”建模。远程编排和本地 UI 控�
 | Phase 5 | Tauri GUI 通过 local IPC 控制 runtime | 🚧 进行中 |
 | Phase 6 | EmmyLua 集成 | ✅ 已完成 |
 | Phase 7 | 测试与文档 | ✅ 已完成 |
-| Phase 8 | 脚本层抽象 (IScriptEngine) + Lua 引擎；Python 为可选后端（默认关闭，按需启用） | 🟡 抽象层✓ / Py⚙️ |
+| Phase 8 | 脚本层抽象 (IScriptEngine) + Lua 引擎；Python 为可选后端（默认关闭，按需启用；引擎已纳入主 CI——Linux 全量测试维度 + Windows 链接链路 job，默认启用经评估维持关闭，2026-09-26） | ✅ |
 | Phase 9 | 移除账号/二维码/认证模块，TOTP 重构为纯函数 | ✅ 已完成 |
 | Milestone 1 | MVP (最小可行产品) | ✅ 已完成 |
 
@@ -599,7 +599,7 @@ local wingman = require('wingman')
 | ✅ | 工作流引擎增强（重试/负载均衡/模板/wait） | - | ✅ 已完成 |
 | ✅ | Milestone 6: 人性化模拟 | - | ✅ 已完成 |
 | ✅ | 代码覆盖率 90% (C++ runtime) | - | ✅ 已完成 |
-| ✅ | 脚本层抽象：Lua 生产就绪（默认构建+CI）；Python 引擎代码就绪但默认关闭、未纳入主 CI | - | 🟡 Lua✓ Py⚙️ |
+| ✅ | 脚本层抽象：Lua 生产就绪（默认构建+CI）；Python 引擎纳入主 CI（Linux 全量测试维度 + Windows 链接链路 job，2026-09-26），默认构建仍关闭 | - | ✅ |
 | ✅ | 移除账号/二维码/认证模块 | - | ✅ 已完成 |
 | ✅ | 工作流引擎 + Agent 心跳 + 审计 | - | ✅ 已完成 |
 

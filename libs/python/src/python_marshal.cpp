@@ -1,5 +1,8 @@
 #include "wingman/python/python_marshal.hpp"
 
+#include <pybind11/gil_simple.h>
+#include <memory>
+
 namespace wingman {
 namespace python {
 
@@ -80,10 +83,19 @@ script::ScriptValue toScriptValue(const py::object& obj) {
 		}
 		// Check if callable (function, lambda, etc.)
 		if (py::isinstance<py::function>(obj) || PyObject_HasAttrString(obj.ptr(), "__call__")) {
-			// Keep a reference to the Python object
-			py::object pyCallable = obj;
+			// ScriptValue 的销毁发生在调用方任意时刻、任意线程（不保证持有
+			// GIL），而 py::object 析构的 dec_ref 需要 GIL——引用放进带 GIL
+			// 守卫 deleter 的 shared_ptr，拷贝共享同一引用，最后一个释放者
+			// 在 deleter 里补取 GIL
+			auto pyCallable = std::shared_ptr<py::object>(
+				new py::object(obj),
+				[](py::object* held) {
+					PyGILState_STATE gstate = PyGILState_Ensure();
+					delete held;
+					PyGILState_Release(gstate);
+				});
 			return script::ScriptValue::fromCallable([pyCallable](const std::vector<script::ScriptValue>& args) -> script::ScriptValue {
-				py::gil_scoped_acquire gil;
+				py::gil_scoped_acquire_simple gil;
 				try {
 					// Convert ScriptValue args to Python tuple
 					py::tuple pyArgs(args.size());
@@ -91,7 +103,7 @@ script::ScriptValue toScriptValue(const py::object& obj) {
 						pyArgs[i] = toPythonObject(args[i]);
 					}
 					// Call the Python callable
-					py::object result = pyCallable(*pyArgs);
+					py::object result = (*pyCallable)(*pyArgs);
 					// Convert result back to ScriptValue
 					return toScriptValue(result);
 				} catch (const py::error_already_set& e) {

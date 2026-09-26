@@ -46,7 +46,12 @@ public:
 
 private:
 	py::module_ mainModule_;
-	py::dict globals_;
+	// 必须是 py::object 而非 py::dict：pybind11 的 py::dict 默认构造就会
+	// 调 PyDict_New（需要解释器已就绪），作为成员意味着引擎对象一构造
+	// 就摸 C-API——首个引擎构造先于 initialize()/Py_Initialize 时整个
+	// 进程 fatal abort（core_tests 首跑抓到）。真正的 dict 在 initialize()
+	// 里赋值。
+	py::object globals_;
 	std::string lastError_;
 	bool initialized_ = false;
 	bool sandboxed_ = false;

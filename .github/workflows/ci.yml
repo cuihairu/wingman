@@ -346,6 +346,110 @@ jobs:
             ${{ github.workspace }}/vcpkg/downloads
           key: ${{ runner.os }}-vcpkg-tests-${{ hashFiles('vcpkg.json') }}
 
+  cpp-linux-python-tests:
+    # Python 引擎维度进主 CI（ROADMAP Phase 8 收口）。与 cpp-linux-tests
+    # 同一套全量构建+测试，仅叠加 -DWINGMAN_ENABLE_PYTHON=ON + manifest
+    # feature python（vcpkg python3 + pybind11 端口，include/lib 与 triplet
+    # 一致，不碰 runner 系统 CPython）。全量跑而非只跑 Python 子集——
+    # 同时证明「开 Python 不破坏 Lua/既有路径」：该开关只追加
+    # WINGMAN_ENABLE_PYTHON 编译定义并新增 libs/python 子目录，Lua 侧
+    # 源码与注册路径不变。
+    # 独立 job 而非给 cpp-linux-tests 加矩阵：Lua 默认路径的 job 保持原样
+    # （不许改既有 job）。缓存键带 -python- 后缀：本 job 的归档缓存是
+    # 基础 job 的超集（多 python3/pybind11），restore 时先回退共享前缀，
+    # save 时写自己的键，避免两个 job 争同一个精确键。
+    name: C++ Linux (full tests, Python engine)
+    runs-on: ubuntu-24.04
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/vcpkg/archives,readwrite"
+      VCPKG_ASSET_SOURCES: "clear;files,${{ github.workspace }}/vcpkg/downloads,readwrite"
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Install Linux dependencies
+        # autoconf-archive：vcpkg python3 → libb2 的 configure 需要
+        # （aclocal 缺 autoconf-archive 宏会直接 BUILD_FAILED，本地实测）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libx11-dev libxrandr-dev libxext-dev libxtst-dev libxinerama-dev ninja-build xvfb xclip openbox autoconf-archive
+
+      - name: Restore vcpkg cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg/archives
+            ${{ github.workspace }}/vcpkg/downloads
+          key: ${{ runner.os }}-vcpkg-tests-python-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-tests-python-
+            ${{ runner.os }}-vcpkg-tests-
+            ${{ runner.os }}-vcpkg-
+
+      - name: Setup vcpkg
+        run: bash ./build-scripts/ci/setup-vcpkg.sh
+
+      - name: Prepare vcpkg cache
+        run: mkdir -p "${{ github.workspace }}/vcpkg/archives" "${{ github.workspace }}/vcpkg/downloads"
+
+      - name: Configure CMake
+        run: |
+          max_retries=3
+          retry_count=0
+          success=false
+
+          while [ "$success" = "false" ] && [ $retry_count -lt $max_retries ]; do
+            retry_count=$((retry_count + 1))
+            echo "Attempt $retry_count of $max_retries..."
+
+            if cmake -B build -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+              -DVCPKG_OVERLAY_PORTS="$PWD/vcpkg-ports" \
+              -DVCPKG_TARGET_TRIPLET=x64-linux \
+              -DCMAKE_BUILD_TYPE=Debug \
+              -DVCPKG_MANIFEST_FEATURES="tests;python" \
+              -DWINGMAN_BUILD_CORE=ON \
+              -DWINGMAN_BUILD_TESTS=ON \
+              -DBUILD_CORE_TESTS=ON \
+              -DWINGMAN_ENABLE_PYTHON=ON \
+              -DBUILD_PYTHON_TESTS=ON; then
+              success=true
+            else
+              echo "CMake configure failed with exit code $?"
+              if [ $retry_count -lt $max_retries ]; then
+                echo "Waiting 30 seconds before retry..."
+                sleep 30
+              fi
+            fi
+          done
+
+          if [ "$success" = "false" ]; then
+            echo "Failed after $max_retries attempts"
+            exit 1
+          fi
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run tests
+        run: xvfb-run -a --server-args="-screen 0 1280x800x24" ctest --test-dir build --output-on-failure --timeout 300
+        timeout-minutes: 60
+
+      - name: Save vcpkg cache
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg/archives
+            ${{ github.workspace }}/vcpkg/downloads
+          key: ${{ runner.os }}-vcpkg-tests-python-${{ hashFiles('vcpkg.json') }}
+
   cpp-python:
     # 实验性 job：验证 WINGMAN_ENABLE_PYTHON（vcpkg CPython + pybind11 嵌入构建）
     # 在 CI 环境的可用性。Python 引擎默认关闭，此 job 仅用于回归 Python 绑层

@@ -3,6 +3,7 @@
 #include "wingman/script/script_engine_factory.hpp"
 #include "wingman/event.hpp"
 #include <pybind11/eval.h>
+#include <pybind11/gil_simple.h>
 #include <memory>
 #include <iostream>
 #include <fstream>
@@ -160,10 +161,15 @@ bool PythonScriptEngine::initialize(const script::EngineConfig& config) {
 			Py_Initialize();
 			g_interpreterInitialized = true;
 			ownsInterpreter_ = true;
+			// Py_Initialize 返回时调用线程持有 GIL。必须在这里释放：
+			// 否则初始化线程从此永久持有 GIL，任何其他线程（ScriptManager
+			// 的脚本执行线程）一碰引擎就死锁。此后所有 C-API 段都由
+			// gil_scoped_acquire_simple（PyGILState_Ensure/Release）配对持有
+			PyEval_SaveThread();
 		}
 
 		// 确保当前线程有 GIL
-		py::gil_scoped_acquire gil;
+		py::gil_scoped_acquire_simple gil;
 
 		// 创建隔离的 globals dict
 		globals_ = py::dict();
@@ -209,7 +215,7 @@ void PythonScriptEngine::shutdown() {
 	if (!initialized_) return;
 
 	try {
-		py::gil_scoped_acquire gil;
+		py::gil_scoped_acquire_simple gil;
 		flushOutputCapture();
 		py::module_ sys = py::module_::import("sys");
 		if (previousStdout_ && !previousStdout_.is_none()) {
@@ -222,7 +228,9 @@ void PythonScriptEngine::shutdown() {
 		stderrProxy_ = py::object();
 		previousStdout_ = py::object();
 		previousStderr_ = py::object();
-		globals_ = py::dict();
+		// 置空对象（而非空 dict）：成员析构时 dec_ref 需要 GIL，而析构发生
+		// 在 shutdown 返回之后（GIL 已释放）——null handle 析构不碰 C-API
+		globals_ = py::object();
 		mainModule_ = py::module_();
 	} catch (...) {
 		// 忽略 shutdown 时的异常
@@ -247,7 +255,7 @@ bool PythonScriptEngine::executeFile(const std::string& path) {
 	if (!initialized_) return false;
 
 	try {
-		py::gil_scoped_acquire gil;
+		py::gil_scoped_acquire_simple gil;
 
 		// 读取文件内容
 		std::ifstream file(path);
@@ -273,7 +281,7 @@ bool PythonScriptEngine::executeString(const std::string& code) {
 	if (!initialized_) return false;
 
 	try {
-		py::gil_scoped_acquire gil;
+		py::gil_scoped_acquire_simple gil;
 		py::eval<py::eval_statements>(code, globals_);
 		flushOutputCapture();
 		return true;
@@ -290,7 +298,7 @@ bool PythonScriptEngine::callFunction(const std::string& name,
 	if (!initialized_) return false;
 
 	try {
-		py::gil_scoped_acquire gil;
+		py::gil_scoped_acquire_simple gil;
 
 		// 从 globals 查找函数
 		if (!globals_.contains(name.c_str())) {
@@ -326,7 +334,7 @@ void PythonScriptEngine::registerModule(const script::ModuleDescriptor& module) 
 	if (!initialized_) return;
 
 	try {
-		py::gil_scoped_acquire gil;
+		py::gil_scoped_acquire_simple gil;
 
 		py::module_ types = py::module_::import("types");
 		py::module_ sys = py::module_::import("sys");
@@ -393,13 +401,13 @@ void PythonScriptEngine::registerModule(const script::ModuleDescriptor& module) 
 
 void PythonScriptEngine::setGlobal(const std::string& name, const script::ScriptValue& value) {
 	if (!initialized_) return;
-	py::gil_scoped_acquire gil;
+	py::gil_scoped_acquire_simple gil;
 	globals_[name.c_str()] = toPythonObject(value);
 }
 
 script::ScriptValue PythonScriptEngine::getGlobal(const std::string& name) {
 	if (!initialized_) return script::ScriptValue::null();
-	py::gil_scoped_acquire gil;
+	py::gil_scoped_acquire_simple gil;
 	if (!globals_.contains(name.c_str())) {
 		return script::ScriptValue::null();
 	}
@@ -426,14 +434,14 @@ void PythonScriptEngine::enableSandbox(const script::EngineConfig& config) {
 void PythonScriptEngine::disableSandbox() {
 	if (!initialized_) return;
 	// 恢复完整的 builtins
-	py::gil_scoped_acquire gil;
+	py::gil_scoped_acquire_simple gil;
 	globals_["__builtins__"] = py::module_::import("builtins");
 	sandboxed_ = false;
 }
 
 void PythonScriptEngine::setOutputCallback(const std::function<void(const std::string&)>& callback) {
 	if (initialized_ && !callback && outputCallback_) {
-		py::gil_scoped_acquire gil;
+		py::gil_scoped_acquire_simple gil;
 		flushOutputCapture();
 		py::module_ sys = py::module_::import("sys");
 		if (previousStdout_ && !previousStdout_.is_none()) {
@@ -460,7 +468,7 @@ void PythonScriptEngine::setOutputCallback(const std::function<void(const std::s
 	}
 
 	if (!initialized_) return;
-	py::gil_scoped_acquire gil;
+	py::gil_scoped_acquire_simple gil;
 	if (outputCallback_) {
 		installOutputCapture();
 	}
@@ -516,9 +524,12 @@ void PythonScriptEngine::flushOutputCapture() {
 }
 
 void PythonScriptEngine::applySandbox(const script::EngineConfig& config) {
-	if (!initialized_) return;
+	// 以 globals_ 就绪为准，而非 initialized_：initialize() 在置位
+	// initialized_ 之前调用本函数，用旧守卫会让沙箱在每次初始化时
+	// 静默跳过（首次被 python_engine_tests 抓到）
+	if (!globals_.ptr()) return;
 
-	py::gil_scoped_acquire gil;
+	py::gil_scoped_acquire_simple gil;
 
 	// 创建受限的 builtins
 	py::dict safeBuiltins;
@@ -536,9 +547,11 @@ void PythonScriptEngine::applySandbox(const script::EngineConfig& config) {
 	};
 
 	for (int i = 0; safeNames[i]; ++i) {
-		std::string name = safeNames[i];
-		if (builtins.contains(name.c_str())) {
-			safeBuiltins[name.c_str()] = builtins.attr(name.c_str());
+		const char* name = safeNames[i];
+		// 不能用 builtins.contains(name)：pybind11 的 contains 走
+		// obj.__contains__，模块没有该属性会直接抛 AttributeError
+		if (py::hasattr(builtins, name)) {
+			safeBuiltins[name] = builtins.attr(name);
 		}
 	}
 

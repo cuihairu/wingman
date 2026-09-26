@@ -11,11 +11,13 @@ Wingman 脚本用 **Lua** 或 **Python** 编写，调用统一的 `wingman` 模�
 | | Lua | Python |
 |---|---|---|
 | 启动速度 | 极快 | 较慢（解释器冷启动） |
-| 依赖 | 仅 Lua 5.4（sol2 绑定） | Python 3.8+（pybind11） |
+| 依赖 | 仅 Lua 5.4（sol2 绑定） | Python 3（vcpkg `python3` 端口，当前 3.12.x；pybind11 嵌入） |
 | 适用 | 高频、低延迟、嵌入式场景 | 复杂逻辑、复用 Python 生态 |
 | 编辑/调试 | VS Code + EmmyLua（推荐） | VS Code + Python 扩展 |
 
 > 本地 GUI 的脚本**编辑统一在 VS Code**，GUI 只负责加载/运行/停止。远程 Dashboard 才有内置编辑器。
+
+> **Python 引擎默认关闭**：官方发布的 runtime 包（release/nightly）只内置 Lua 引擎，直接运行 `.py` 脚本会提示引擎不存在。要使用 Python 需自行构建：CMake 加 `-DWINGMAN_ENABLE_PYTHON=ON`（vcpkg manifest `python` feature，会拉起 `python3` + `pybind11` 端口，勿混用系统 CPython）。该维度已纳入主 CI：`cpp-linux-python-tests` job 在 Linux 上带 Python 开关跑全量测试，`cpp-python` job 验证 Windows 链接链路。
 
 ## 第一个脚本
 
@@ -51,11 +53,13 @@ w, h = screen.getScreenWidth(), screen.getScreenHeight()
 print(f"屏幕: {w}x{h}")
 ```
 
-运行：
+运行（需启用 Python 引擎的构建，见上节「Python 引擎默认关闭」）：
 
 ```bash
 wingman-runtime script hello.py
 ```
+
+> Python 侧的 `wingman` 模块面与 Lua 完全一致（引擎无关的统一注册），模块函数同时以原始 camelCase 与 snake_case 两个名字暴露——`screen.getScreenWidth()` 与 `screen.get_screen_width()` 等价，后者符合 PEP 8。`libs/python/typing/` 提供 `.pyi` 类型桩。
 
 ## 核心模块速览
 

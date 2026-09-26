@@ -9,7 +9,19 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 389 个提交（feat 70 / fix 137 / docs 67 / test 44 / ci 19 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 390 个提交（feat 70 / fix 137 / docs 67 / test 44 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### ci（2026-09-26，Phase 8 收口：Python 脚本引擎纳入主 CI——本地实测连修五个真缺陷）
+
+- **新 job `cpp-linux-python-tests`**：ubuntu-24.04 + GCC 13，与 `cpp-linux-tests` 同一套全量构建 + ctest，仅叠加 vcpkg manifest `python` feature 与 `-DWINGMAN_ENABLE_PYTHON=ON`。全量跑而非只跑 Python 子集——该开关只追加编译定义与 libs/python 子目录，同一轮同时证明「开 Python 不破坏 Lua/既有路径」。独立 job 而非矩阵维度：既有 Lua 默认路径的 job 原样不动。缓存键独立（`-vcpkg-tests-python-`，归档为基础 job 超集，restore 回退共享前缀防两 job 争同一精确键）。apt 清单补 `autoconf-archive`：vcpkg `python3` → `libb2` 的 configure 需要 aclocal 宏，缺失即 BUILD_FAILED（本地实测抓到，CI 预防）。
+- **本地把 Python 维度跑通的过程连修五个真缺陷**——全部是「引擎代码就绪但从未真跑过」的直接后果（默认构建不带 `WINGMAN_ENABLE_PYTHON`，Windows `cpp-python` job 只跑名字转换，沙箱/线程/析构路径零执行）：
+  1. **沙箱从未生效**：`applySandbox` 以 `!initialized_` 提前返回，而它只在 `initialize()` 置位 `initialized_` 之前被调用——守卫永远命中，「沙箱」里 `import os`、`open()` 畅通。守卫改为以 `globals_` 就绪为准。
+  2. **沙箱白名单构建本身会抛**：`builtins.contains(name)` 走 pybind11 的 `__contains__`，模块没有该属性直接 AttributeError（被缺陷 1 掩盖）——改 `py::hasattr`。
+  3. **引擎对象一构造就摸 C-API**：pybind11 的 `py::dict` 默认构造即调 `PyDict_New`，作为成员意味着工厂一创建引擎、在 `Py_Initialize` 之前就 fatal abort——成员改 `py::object`，真正的 dict 在 `initialize()` 里赋值。
+  4. **GIL 永不释放，ScriptManager 用法必死锁**：旧 `py::gil_scoped_acquire` 在「进入时已持锁」路径上析构不释放，调用线程从此永久持有 GIL；而 ScriptManager 一律在 detached 工作线程跑脚本——Python 引擎在生产路径上 100% 死锁（30s 超时，gdb 实锤在 `take_gil` futex）。修复：裸 `Py_Initialize()` 后 `PyEval_SaveThread()`，引擎全部 C-API 段改 `gil_scoped_acquire_simple`（`PyGILState_Ensure/Release`，按线程管理 tstate，无 pybind11 全局 tstate 共享隐患）。
+  5. **marshal 出的可调用对象析构崩进程**：`toScriptValue` 把 `py::object` 按值捕获进 `ScriptValue` 的 lambda——ScriptValue 在调用方任意线程/任意时刻销毁，pybind11 3.0 的 dec_ref GIL 断言直接 abort（此前被「GIL 恰好被主线程一直持有」掩盖）。改 shared_ptr + 取 GIL 的 deleter，拷贝共享引用。
+- **Python 测试从 1 个目标扩到 3 个（19 → 51 用例）**：既有 `python_name_conversion_tests`（camelToSnake 纯函数，不起解释器）之外新增 `python_marshal_tests`（ScriptValue ↔ py::object 全类型往返：bool 先于 int 判定锁序、tuple→array、dict 非字符串键静默丢弃、异常回落 null、C++/Python 可调用互转）与 `python_engine_tests`（真实嵌入式 CPython：工厂注册/执行/函数调用全 marshal 链路/globals 读写/语法错误恢复/沙箱白名单只含白名单键且 import/open 封禁/shutdown 后安全/**工作线程执行**——ScriptManager 的真实线程模型，executeString/executeFile/callFunction 各一例 + 「引擎方法返回后调用线程不持有 GIL」回归锁）。core_tests 里 `PythonStdoutAndStderrRouteToOutputCallback`（stdout/stderr → 输出回调 → script_output 上行）此前从未在任何 CI 执行过，本批随 Linux 全量维度首次真跑通过。
+- **评估结论：默认维持关闭**。依据：官方包（release/nightly 默认构建）全 Lua；CPython 依赖面大（vcpkg `python3` 拉起 gettext/libffi/libb2/libuuid 等）且嵌入解释器吃体积；沙箱是白名单而非硬边界（同进程嵌入，属性访问未限制，经典 `__subclasses__` 逃逸路径仍在）；部署侧暂无真实 Python 脚本需求——但本批五个缺陷证明「代码就绪」≠「可运行」，CI 维度从此保证「开关打开即正确」。开启路径已文档化（docs/guide/script-development.md「Python 引擎默认关闭」节），需求出现时重评估。ROADMAP Phase 8 状态据此收口为 ✅。
 
 ### feat（2026-09-26，M4 远控 P1：浏览器内录像回放——SessionRecording 本地解析）
 
