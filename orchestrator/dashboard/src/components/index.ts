@@ -11,12 +11,4 @@ import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 import PageStatePanel from './PageStatePanel';
 import ScreenshotView from './ScreenshotView';
 
-export {
-  Footer,
-  Question,
-  SelectLang,
-  AvatarDropdown,
-  AvatarName,
-  PageStatePanel,
-  ScreenshotView,
-};
+export { Footer, Question, SelectLang, AvatarDropdown, AvatarName, PageStatePanel, ScreenshotView };

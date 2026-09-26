@@ -43,9 +43,7 @@ describe('fetchJSON', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (global as any).fetch = fetchMock;
-    localStorageMock.getItem.mockImplementation((key: string) =>
-      key === 'token' ? 'tk-1' : null,
-    );
+    localStorageMock.getItem.mockImplementation((key: string) => (key === 'token' ? 'tk-1' : null));
     setScope({ gameId: 'g1', env: 'prod' }, { persist: false, emit: false });
   });
 
@@ -177,9 +175,7 @@ describe('createEventSource', () => {
 
   beforeEach(() => {
     FakeEventSource.instances = [];
-    localStorageMock.getItem.mockImplementation((key: string) =>
-      key === 'token' ? 'tk-2' : null,
-    );
+    localStorageMock.getItem.mockImplementation((key: string) => (key === 'token' ? 'tk-2' : null));
   });
 
   it('合并 params 并附加 token', () => {
@@ -238,13 +234,11 @@ describe('buildDownloadUrl', () => {
 
 describe('fetchJSON 存储异常降级', () => {
   it('localStorage 读取抛异常时 getToken 走 catch，请求照常发出', async () => {
-    const spy = jest
-      .spyOn(Storage.prototype, 'getItem')
-      .mockImplementation(() => {
-        throw new Error('storage disabled');
-      });
+    const spy = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage disabled');
+    });
     try {
-      jest.clearAllMocks();  // fetchMock 全文件共享，清掉前序用例的调用记录
+      jest.clearAllMocks(); // fetchMock 全文件共享，清掉前序用例的调用记录
       fetchMock.mockResolvedValue(jsonResponse());
       await expect(fetchJSON('/api/ping')).resolves.toEqual({});
       expect(fetchMock).toHaveBeenCalledTimes(1);

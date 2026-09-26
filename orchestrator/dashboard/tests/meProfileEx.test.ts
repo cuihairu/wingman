@@ -15,11 +15,7 @@ describe('getMyPermissions 容错', () => {
     mockedRequest.mockResolvedValueOnce({
       admin: true,
       roles: ['admin'],
-      permissions: [
-        null,
-        { actions: ['read'] },
-        { resource: 'agent', actions: null },
-      ],
+      permissions: [null, { actions: ['read'] }, { resource: 'agent', actions: null }],
     });
 
     const resp = await me.getMyPermissions({ gameId: 'g1', env: 'prod' });

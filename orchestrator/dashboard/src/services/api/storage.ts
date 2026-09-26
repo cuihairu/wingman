@@ -27,7 +27,10 @@ export function buildAvatarObjectKey(file: File): string {
  * 上传资源文件
  * 返回可直接保存到 profile.avatar 的 Data URL。
  */
-export async function uploadAsset(file: File, options?: UploadOptions): Promise<UploadResult | undefined> {
+export async function uploadAsset(
+  file: File,
+  options?: UploadOptions,
+): Promise<UploadResult | undefined> {
   void options;
   if (typeof URL !== 'undefined' && typeof FileReader !== 'undefined') {
     return new Promise((resolve, reject) => {

@@ -11,6 +11,10 @@
 
 自 v0.1.1 以来共 380 个提交（feat 68 / fix 140 / docs 72 / test 43 / ci 20 / refactor 8 / chore 20）。
 
+### style（2026-09-26，Dashboard 存量 36 文件 prettier 对齐）
+
+- **prettier ^3.8.3 全量检查暴露 36 个存量文件格式漂移**（最老 2026-05-10 的 PageStatePanel/global.less，新到 2026-09-22 的 http.test.ts）：这些文件写入时点早于当前锁定版本的格式化规则（长行折叠、数组逐项换行、JSX 缩进层级），`lint:prettier`（检查+写入）后一次性对齐。**被审 4 个远控提交零命中**（漂移清单与 RemoteDesktop 系文件无交集）；`git diff -w` 抽查为纯重排无语义变更，tsc + jest 351/351 复跑实证。仓库 `lint:prettier` 脚本本就是「检查+写入」自愈口径，此前各轮只跑 `-c` 检查未见漂移是因 prettier 依赖近期才升到 3.8.x。
+
 ### test（2026-09-25，M4 远控 P1：三协议 e2e 容器栈补强）
 
 - **镜像全部钉 digest**（guacd 仍锁 1.5.5）：四个目标端点除 guacd 外全用 `latest`，上游任何一次重建都会**静默换掉镜像内容**，e2e 会在无人改代码的情况下变红，而排查方向会先怀疑网关。护栏是 `TestGuacdE2EComposePinsImageDigests`——没有它，改回 `latest` 不会有任何测试变红。

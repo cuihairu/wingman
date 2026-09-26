@@ -486,9 +486,12 @@ const Monitor: React.FC = () => {
       addEvent({
         type: 'trigger',
         level: 'processing',
-        message: translate(enabled ? 'pages.monitor.triggerEnabled' : 'pages.monitor.triggerDisabled', {
-          name: trigger.name,
-        }),
+        message: translate(
+          enabled ? 'pages.monitor.triggerEnabled' : 'pages.monitor.triggerDisabled',
+          {
+            name: trigger.name,
+          },
+        ),
       });
     } catch (error) {
       addEvent({
@@ -843,7 +846,9 @@ const Monitor: React.FC = () => {
                           <span>{trigger.name}</span>
                           {trigger.oneShot && <Tag>{formatMessage('pages.monitor.oneShot')}</Tag>}
                           {trigger.cooldown > 0 && (
-                            <Tag>{translate('pages.monitor.cooldown', { ms: trigger.cooldown })}</Tag>
+                            <Tag>
+                              {translate('pages.monitor.cooldown', { ms: trigger.cooldown })}
+                            </Tag>
                           )}
                         </Space>
                       }
@@ -854,8 +859,7 @@ const Monitor: React.FC = () => {
                           formatMessage('pages.monitor.noCondition'),
                         actions: trigger.actions.length,
                         hits: trigger.hitCount || 0,
-                        lastFired:
-                          trigger.lastFiredAt || formatMessage('pages.monitor.neverFired'),
+                        lastFired: trigger.lastFiredAt || formatMessage('pages.monitor.neverFired'),
                       })}
                     />
                   </List.Item>

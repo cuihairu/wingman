@@ -122,11 +122,15 @@ const Welcome: React.FC = () => {
                 style={{ background: 'rgba(255,255,255,0.65)', borderColor: token.colorBorder }}
               >
                 <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                  <Typography.Text strong>{formatMessage('pages.welcome.quickStart')}</Typography.Text>
+                  <Typography.Text strong>
+                    {formatMessage('pages.welcome.quickStart')}
+                  </Typography.Text>
                   <Space wrap size={[8, 8]}>
                     <Tag color="blue">{formatMessage('pages.welcome.tagAgentAccess')}</Tag>
                     <Tag color="geekblue">{formatMessage('pages.welcome.tagScriptDelivery')}</Tag>
-                    <Tag color="purple">{formatMessage('pages.welcome.tagWorkflowOrchestration')}</Tag>
+                    <Tag color="purple">
+                      {formatMessage('pages.welcome.tagWorkflowOrchestration')}
+                    </Tag>
                   </Space>
                   <Typography.Text type="secondary">
                     {formatMessage('pages.welcome.quickStartHint')}
@@ -231,7 +235,9 @@ const Welcome: React.FC = () => {
             <Col xs={12} sm={6}>
               <Space direction="vertical" size={4}>
                 <ApiOutlined style={{ fontSize: 24, color: token.colorPrimary }} />
-                <Typography.Text strong>{formatMessage('pages.welcome.techProtobuf')}</Typography.Text>
+                <Typography.Text strong>
+                  {formatMessage('pages.welcome.techProtobuf')}
+                </Typography.Text>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   {formatMessage('pages.welcome.techProtobufDescription')}
                 </Typography.Text>
@@ -262,7 +268,9 @@ const Welcome: React.FC = () => {
             <Col xs={12} sm={6}>
               <Space direction="vertical" size={4}>
                 <DesktopOutlined style={{ fontSize: 24, color: token.colorError }} />
-                <Typography.Text strong>{formatMessage('pages.welcome.techLuaScript')}</Typography.Text>
+                <Typography.Text strong>
+                  {formatMessage('pages.welcome.techLuaScript')}
+                </Typography.Text>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   {formatMessage('pages.welcome.techLuaScriptDescription')}
                 </Typography.Text>

@@ -1,5 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag, App } from 'antd';
+import {
+  Button,
+  Card,
+  Form,
+  Input,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+  Switch,
+  Table,
+  Tag,
+  App,
+} from 'antd';
 import { PageContainer } from '@ant-design/pro-components';
 import { useIntl } from '@umijs/max';
 import {
@@ -172,9 +185,12 @@ export default function UsersPage() {
             {formatMessage('pages.adminUsers.resetPassword')}
           </Button>
           <Popconfirm
-            title={intl.formatMessage({ id: 'pages.adminUsers.deleteConfirm' }, {
-              name: record.username,
-            })}
+            title={intl.formatMessage(
+              { id: 'pages.adminUsers.deleteConfirm' },
+              {
+                name: record.username,
+              },
+            )}
             onConfirm={() => onDelete(record.id)}
             okButtonProps={{ danger: true }}
           >
@@ -242,14 +258,18 @@ export default function UsersPage() {
           <Form.Item
             name="username"
             label={formatMessage('pages.adminUsers.username')}
-            rules={[{ required: true, message: formatMessage('pages.adminUsers.usernameRequired') }]}
+            rules={[
+              { required: true, message: formatMessage('pages.adminUsers.usernameRequired') },
+            ]}
           >
             <Input placeholder={formatMessage('pages.adminUsers.usernamePlaceholder')} />
           </Form.Item>
           <Form.Item
             name="password"
             label={formatMessage('pages.adminUsers.password')}
-            rules={[{ required: true, message: formatMessage('pages.adminUsers.passwordRequired') }]}
+            rules={[
+              { required: true, message: formatMessage('pages.adminUsers.passwordRequired') },
+            ]}
           >
             <Input.Password placeholder={formatMessage('pages.adminUsers.passwordPlaceholder')} />
           </Form.Item>
@@ -271,9 +291,12 @@ export default function UsersPage() {
       </Modal>
 
       <Modal
-        title={intl.formatMessage({ id: 'pages.adminUsers.editModalTitle' }, {
-          name: editTarget?.username || '',
-        })}
+        title={intl.formatMessage(
+          { id: 'pages.adminUsers.editModalTitle' },
+          {
+            name: editTarget?.username || '',
+          },
+        )}
         open={!!editTarget}
         onOk={submitEdit}
         onCancel={() => setEditTarget(null)}
@@ -298,9 +321,12 @@ export default function UsersPage() {
       </Modal>
 
       <Modal
-        title={intl.formatMessage({ id: 'pages.adminUsers.resetModalTitle' }, {
-          name: resetTarget?.username || '',
-        })}
+        title={intl.formatMessage(
+          { id: 'pages.adminUsers.resetModalTitle' },
+          {
+            name: resetTarget?.username || '',
+          },
+        )}
         open={!!resetTarget}
         onOk={submitReset}
         onCancel={() => setResetTarget(null)}

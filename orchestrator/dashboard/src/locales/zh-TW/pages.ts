@@ -319,7 +319,8 @@ export default {
   'pages.monitor.triggerDescription': '{condition} · 動作 {actions} · 命中 {hits} · {lastFired}',
   'pages.monitor.macros': '巨集命令',
   'pages.monitor.macroApiNotAvailable': '巨集命令 API 尚未接入',
-  'pages.monitor.macroApiDescription': '目前遠端 Agent 協定還沒有公開 macro.list / macro.run。這裡不再展示硬編碼範例，避免誤下發假命令。',
+  'pages.monitor.macroApiDescription':
+    '目前遠端 Agent 協定還沒有公開 macro.list / macro.run。這裡不再展示硬編碼範例，避免誤下發假命令。',
   'pages.monitor.eventStream': '即時事件流',
   'pages.monitor.eventDriven': '事件驅動',
   'pages.monitor.waitingForEvents': '等待 Agent、觸發器或腳本事件...',
@@ -356,7 +357,8 @@ export default {
   'pages.settings.maxScriptsRequired': '請輸入數量',
   'pages.settings.rawSettings': '原始鍵值（唯讀）',
   'pages.settings.debugTitle': '除錯（直連模式）',
-  'pages.settings.debugDescriptionBefore': 'Lua 除錯由 VSCode EmmyLua 直連 runtime 除錯連接埠（預設 9966），Go server 不中轉。各 agent 的除錯端點見',
+  'pages.settings.debugDescriptionBefore':
+    'Lua 除錯由 VSCode EmmyLua 直連 runtime 除錯連接埠（預設 9966），Go server 不中轉。各 agent 的除錯端點見',
   'pages.settings.debugDescriptionAfter': '。',
   'pages.settings.loadFailed': '載入設定失敗',
   'pages.settings.saved': '設定已儲存',
@@ -402,7 +404,8 @@ export default {
   // ===== 回饋中心 =====
   'pages.supportFeedback.title': '回饋中心',
   'pages.supportFeedback.alertMessage': '提交後會產生站內訊息',
-  'pages.supportFeedback.alertDescription': '權限申請、問題回饋和功能建議都會寫入後端回饋記錄，並在訊息中心留下可追蹤通知。',
+  'pages.supportFeedback.alertDescription':
+    '權限申請、問題回饋和功能建議都會寫入後端回饋記錄，並在訊息中心留下可追蹤通知。',
   'pages.supportFeedback.category': '回饋類型',
   'pages.supportFeedback.categoryGeneral': '一般回饋',
   'pages.supportFeedback.categoryPermission': '權限申請',
@@ -416,7 +419,8 @@ export default {
   'pages.supportFeedback.contentRequired': '請輸入回饋內容',
   'pages.supportFeedback.contentMinLength': '內容至少 5 個字元',
   'pages.supportFeedback.contentPlaceholder': '請描述背景、期望結果、重現步驟或權限使用場景。',
-  'pages.supportFeedback.persistHint': '回饋會進入後端持久化記錄；如果是權限申請，建議附上權限標識和業務理由。',
+  'pages.supportFeedback.persistHint':
+    '回饋會進入後端持久化記錄；如果是權限申請，建議附上權限標識和業務理由。',
   'pages.supportFeedback.submit': '提交回饋',
   'pages.supportFeedback.submitFailed': '提交失敗',
   'pages.supportFeedback.submitted': '回饋已提交',
@@ -425,31 +429,38 @@ export default {
   'pages.welcome.tagWorkflow': '工作流引擎',
   'pages.welcome.tagMonitor': '即時監控',
   'pages.welcome.heroTitle': 'Wingman 遊戲自動化控制引擎',
-  'pages.welcome.heroDescription': '分散式自動化控制平台，支援多 Agent 協同工作、視覺化工作流編排、即時任務監控。透過 Lua 腳本實現靈活的遊戲自動化操作。',
+  'pages.welcome.heroDescription':
+    '分散式自動化控制平台，支援多 Agent 協同工作、視覺化工作流編排、即時任務監控。透過 Lua 腳本實現靈活的遊戲自動化操作。',
   'pages.welcome.createWorkflow': '建立工作流',
   'pages.welcome.manageAgents': '管理 Agent',
   'pages.welcome.quickStart': '快速開始',
   'pages.welcome.tagAgentAccess': 'Agent 接入',
   'pages.welcome.tagScriptDelivery': '腳本下發',
   'pages.welcome.tagWorkflowOrchestration': '工作流編排',
-  'pages.welcome.quickStartHint': '前往「Agent 管理」確認節點線上狀態，隨後即可建立工作流或執行腳本。',
+  'pages.welcome.quickStartHint':
+    '前往「Agent 管理」確認節點線上狀態，隨後即可建立工作流或執行腳本。',
   'pages.welcome.monitorCardTitle': '遊戲監控',
-  'pages.welcome.monitorCardDescription': '即時查看遊戲畫面、管理觸發器、執行巨集命令、監控系統資源。',
+  'pages.welcome.monitorCardDescription':
+    '即時查看遊戲畫面、管理觸發器、執行巨集命令、監控系統資源。',
   'pages.welcome.monitorCardAction': '開啟監控',
   'pages.welcome.agentsCardTitle': 'Agent 管理',
-  'pages.welcome.agentsCardDescription': '查看所有已註冊的 Agent 節點，監控 CPU、記憶體、網路等資源使用情況，管理 Agent 狀態。',
+  'pages.welcome.agentsCardDescription':
+    '查看所有已註冊的 Agent 節點，監控 CPU、記憶體、網路等資源使用情況，管理 Agent 狀態。',
   'pages.welcome.agentsCardAction': '管理節點',
   'pages.welcome.workflowsCardTitle': '工作流編排',
-  'pages.welcome.workflowsCardDescription': '建立和管理自動化工作流，支援多步驟任務編排、依賴配置、並行執行和失敗重試。',
+  'pages.welcome.workflowsCardDescription':
+    '建立和管理自動化工作流，支援多步驟任務編排、依賴配置、並行執行和失敗重試。',
   'pages.welcome.workflowsCardAction': '建立工作流',
   'pages.welcome.usageTitle': '使用流程',
   'pages.welcome.step1Tag': '步驟 1',
   'pages.welcome.step1Title': '註冊 Agent',
-  'pages.welcome.step1Description': '啟動 Wingman 客戶端，自動註冊到伺服器。在 Agent 管理頁面查看所有線上節點。',
+  'pages.welcome.step1Description':
+    '啟動 Wingman 客戶端，自動註冊到伺服器。在 Agent 管理頁面查看所有線上節點。',
   'pages.welcome.step1Action': '查看 Agent',
   'pages.welcome.step2Tag': '步驟 2',
   'pages.welcome.step2Title': '建立工作流',
-  'pages.welcome.step2Description': '在工作流管理頁面建立任務流，配置執行步驟、依賴關係和逾時時間。',
+  'pages.welcome.step2Description':
+    '在工作流管理頁面建立任務流，配置執行步驟、依賴關係和逾時時間。',
   'pages.welcome.step2Action': '建立工作流',
   'pages.welcome.step3Tag': '步驟 3',
   'pages.welcome.step3Title': '監控執行',

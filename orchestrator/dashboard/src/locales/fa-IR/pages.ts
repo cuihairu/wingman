@@ -95,11 +95,13 @@ export default {
   'pages.agents.batchStopScript': 'توقف گروهی اسکریپت',
   'pages.agents.batchDeployTrigger': 'استقرار گروهی تریگر',
   'pages.agents.batchRunConfirmTitle': 'اجرای گروهی اسکریپت',
-  'pages.agents.batchRunConfirmContent': 'اجرای {target} روی {count} ایجنت انتخاب‌شده تأیید می‌شود؟',
+  'pages.agents.batchRunConfirmContent':
+    'اجرای {target} روی {count} ایجنت انتخاب‌شده تأیید می‌شود؟',
   'pages.agents.batchRun': 'اجرای گروهی',
   'pages.agents.batchRunFailed': 'اجرای گروهی ناموفق بود',
   'pages.agents.batchStopConfirmTitle': 'توقف گروهی اسکریپت',
-  'pages.agents.batchStopConfirmContent': 'توقف {target} روی {count} ایجنت انتخاب‌شده تأیید می‌شود؟',
+  'pages.agents.batchStopConfirmContent':
+    'توقف {target} روی {count} ایجنت انتخاب‌شده تأیید می‌شود؟',
   'pages.agents.batchStop': 'توقف گروهی',
   'pages.agents.batchStopFailed': 'توقف گروهی ناموفق بود',
   'pages.agents.selectScriptFirst': 'ابتدا یک اسکریپت انتخاب کنید',
@@ -252,7 +254,8 @@ export default {
   'pages.adminUsers.usernamePlaceholder': '۳-۳۲ نویسه: حروف/رقم/_/-',
   'pages.adminUsers.password': 'رمز عبور',
   'pages.adminUsers.passwordRequired': 'لطفاً رمز عبور را وارد کنید',
-  'pages.adminUsers.passwordPlaceholder': 'حداقل ۸ نویسه، شامل هر ۳ مورد از: حروف بزرگ/کوچک، رقم، نویسه ویژه',
+  'pages.adminUsers.passwordPlaceholder':
+    'حداقل ۸ نویسه، شامل هر ۳ مورد از: حروف بزرگ/کوچک، رقم، نویسه ویژه',
   'pages.adminUsers.editModalTitle': 'ویرایش کاربر - {name}',
   'pages.adminUsers.resetModalTitle': 'بازنشانی رمز عبور - {name}',
   'pages.adminUsers.newPassword': 'رمز عبور جدید',
@@ -281,7 +284,8 @@ export default {
   'pages.adminRoles.codePlaceholder': '۲-۳۲ نویسه: حروف/رقم/_/- (با admin تداخل نداشته باشد)',
   'pages.adminRoles.permsLabel': 'دسترسی‌ها',
   'pages.adminRoles.drawerTitle': 'ویرایش نقش - {name}',
-  'pages.adminRoles.adminWildcardHint': 'نقش admin دارای دسترسی wildcard * است و در اینجا قابل تغییر نیست',
+  'pages.adminRoles.adminWildcardHint':
+    'نقش admin دارای دسترسی wildcard * است و در اینجا قابل تغییر نیست',
   'pages.adminRoles.assignedCount': '{count} دسترسی اختصاص یافته است',
   'pages.adminRoles.noCatalog': 'فهرست دسترسی‌ها خالی است',
   'pages.adminRoles.selectPlaceholder': 'انتخاب دسترسی‌ها',
@@ -293,7 +297,8 @@ export default {
   'pages.monitor.paused': 'متوقف شده',
   'pages.monitor.settings': 'تنظیمات',
   'pages.monitor.noAgentsTitle': 'هنوز عاملی آنلاین نیست',
-  'pages.monitor.noAgentsDescription': 'این صفحه به گوش دادن به WebSocket ادامه می‌دهد؛ پس از آنلاین شدن عامل، معیارهای واقعی به‌طور خودکار نمایش داده می‌شوند.',
+  'pages.monitor.noAgentsDescription':
+    'این صفحه به گوش دادن به WebSocket ادامه می‌دهد؛ پس از آنلاین شدن عامل، معیارهای واقعی به‌طور خودکار نمایش داده می‌شوند.',
   'pages.monitor.cpuUsage': 'مصرف CPU',
   'pages.monitor.memoryUsage': 'مصرف حافظه',
   'pages.monitor.uptime': 'مدت کارکرد',
@@ -312,7 +317,8 @@ export default {
   'pages.monitor.triggersUnavailable': 'داده‌های ماشه در دسترس نیست',
   'pages.monitor.triggersEmpty': 'این عامل ماشه‌ای ندارد (runtime trigger.list خالی است)',
   'pages.monitor.deleteTriggerTitle': 'حذف ماشه',
-  'pages.monitor.deleteTriggerConfirm': 'حذف «{name}»؟ این عملیات بلافاصله به runtime ارسال می‌شود.',
+  'pages.monitor.deleteTriggerConfirm':
+    'حذف «{name}»؟ این عملیات بلافاصله به runtime ارسال می‌شود.',
   'pages.monitor.delete': 'حذف',
   'pages.monitor.oneShot': 'یک‌باره',
   'pages.monitor.cooldown': 'خنک‌سازی {ms}ms',
@@ -321,12 +327,14 @@ export default {
   'pages.monitor.triggerDescription': '{condition} · {actions} کنش · {hits} برخورد · {lastFired}',
   'pages.monitor.macros': 'دستورات ماکرو',
   'pages.monitor.macroApiNotAvailable': 'API ماکرو هنوز متصل نشده است',
-  'pages.monitor.macroApiDescription': 'پروتکل عامل راه دور هنوز macro.list / macro.run را ارائه نمی‌دهد. برای جلوگیری از ارسال فرمان جعلی، نمونه‌های هاردکد دیگر اینجا نمایش داده نمی‌شوند.',
+  'pages.monitor.macroApiDescription':
+    'پروتکل عامل راه دور هنوز macro.list / macro.run را ارائه نمی‌دهد. برای جلوگیری از ارسال فرمان جعلی، نمونه‌های هاردکد دیگر اینجا نمایش داده نمی‌شوند.',
   'pages.monitor.eventStream': 'جریان رویداد زنده',
   'pages.monitor.eventDriven': 'رویدادمحور',
   'pages.monitor.waitingForEvents': 'در انتظار رویداد عامل، ماشه یا اسکریپت...',
   'pages.monitor.agentNotConnected': 'عامل متصل نیست',
-  'pages.monitor.loadAgentsFailed': 'بارگذاری فهرست عامل‌ها ناموفق بود؛ در انتظار رویدادهای WebSocket',
+  'pages.monitor.loadAgentsFailed':
+    'بارگذاری فهرست عامل‌ها ناموفق بود؛ در انتظار رویدادهای WebSocket',
   'pages.monitor.agentOnline': 'عامل {name} آنلاین شد',
   'pages.monitor.agentOffline': 'عامل {name} آفلاین شد',
   'pages.monitor.unknownTrigger': 'ماشه ناشناخته',
@@ -358,7 +366,8 @@ export default {
   'pages.settings.maxScriptsRequired': 'تعداد را وارد کنید',
   'pages.settings.rawSettings': 'کلید-مقدارهای خام (فقط‌خواندنی)',
   'pages.settings.debugTitle': 'اشکال‌زدایی (حالت اتصال مستقیم)',
-  'pages.settings.debugDescriptionBefore': 'اشکال‌زدایی Lua مستقیماً از VSCode EmmyLua به پورت اشکال‌زدایی runtime (پیش‌فرض 9966) متصل می‌شود و Go server واسط نیست. نقطه پایانی اشکال‌زدایی هر عامل را ببینید در',
+  'pages.settings.debugDescriptionBefore':
+    'اشکال‌زدایی Lua مستقیماً از VSCode EmmyLua به پورت اشکال‌زدایی runtime (پیش‌فرض 9966) متصل می‌شود و Go server واسط نیست. نقطه پایانی اشکال‌زدایی هر عامل را ببینید در',
   'pages.settings.debugDescriptionAfter': '.',
   'pages.settings.loadFailed': 'بارگذاری تنظیمات ناموفق بود',
   'pages.settings.saved': 'تنظیمات ذخیره شد',
@@ -404,7 +413,8 @@ export default {
   // ===== مرکز بازخورد =====
   'pages.supportFeedback.title': 'مرکز بازخورد',
   'pages.supportFeedback.alertMessage': 'پس از ارسال، یک پیام درون‌برنامه‌ای ایجاد می‌شود',
-  'pages.supportFeedback.alertDescription': 'درخواست‌های دسترسی، گزارش مشکلات و پیشنهادهای ویژگی در سابقه بازخورد بک‌اند ثبت می‌شوند و اطلاع‌رسانی قابل پیگیری در مرکز پیام‌ها باقی می‌گذارند.',
+  'pages.supportFeedback.alertDescription':
+    'درخواست‌های دسترسی، گزارش مشکلات و پیشنهادهای ویژگی در سابقه بازخورد بک‌اند ثبت می‌شوند و اطلاع‌رسانی قابل پیگیری در مرکز پیام‌ها باقی می‌گذارند.',
   'pages.supportFeedback.category': 'نوع بازخورد',
   'pages.supportFeedback.categoryGeneral': 'بازخورد عمومی',
   'pages.supportFeedback.categoryPermission': 'درخواست دسترسی',
@@ -417,8 +427,10 @@ export default {
   'pages.supportFeedback.content': 'محتوا',
   'pages.supportFeedback.contentRequired': 'لطفاً بازخورد خود را وارد کنید',
   'pages.supportFeedback.contentMinLength': 'محتوا حداقل ۵ نویسه است',
-  'pages.supportFeedback.contentPlaceholder': 'لطفاً زمینه، نتیجه مورد انتظار، مراحل بازتولید یا سناریوی استفاده از دسترسی را شرح دهید.',
-  'pages.supportFeedback.persistHint': 'بازخورد در بک‌اند به‌صورت ماندگار ذخیره می‌شود؛ برای درخواست دسترسی، درج شناسه دسترسی و دلیل کاری توصیه می‌شود.',
+  'pages.supportFeedback.contentPlaceholder':
+    'لطفاً زمینه، نتیجه مورد انتظار، مراحل بازتولید یا سناریوی استفاده از دسترسی را شرح دهید.',
+  'pages.supportFeedback.persistHint':
+    'بازخورد در بک‌اند به‌صورت ماندگار ذخیره می‌شود؛ برای درخواست دسترسی، درج شناسه دسترسی و دلیل کاری توصیه می‌شود.',
   'pages.supportFeedback.submit': 'ارسال بازخورد',
   'pages.supportFeedback.submitFailed': 'ارسال ناموفق بود',
   'pages.supportFeedback.submitted': 'بازخورد ارسال شد',
@@ -427,35 +439,43 @@ export default {
   'pages.welcome.tagWorkflow': 'موتور گردش کار',
   'pages.welcome.tagMonitor': 'پایش بلادرنگ',
   'pages.welcome.heroTitle': 'موتور کنترل اتوماسیون بازی Wingman',
-  'pages.welcome.heroDescription': 'پلتفرم توزیع‌شده کنترل اتوماسیون با پشتیبانی از همکاری چند Agent، گردش کار بصری و پایش بلادرنگ وظایف. با اسکریپت‌های Lua اتوماسیون انعطاف‌پذیر بازی بسازید.',
+  'pages.welcome.heroDescription':
+    'پلتفرم توزیع‌شده کنترل اتوماسیون با پشتیبانی از همکاری چند Agent، گردش کار بصری و پایش بلادرنگ وظایف. با اسکریپت‌های Lua اتوماسیون انعطاف‌پذیر بازی بسازید.',
   'pages.welcome.createWorkflow': 'ایجاد گردش کار',
   'pages.welcome.manageAgents': 'مدیریت Agentها',
   'pages.welcome.quickStart': 'شروع سریع',
   'pages.welcome.tagAgentAccess': 'اتصال Agent',
   'pages.welcome.tagScriptDelivery': 'توزیع اسکریپت',
   'pages.welcome.tagWorkflowOrchestration': 'ارکستراسیون گردش کار',
-  'pages.welcome.quickStartHint': 'برای اطمینان از وضعیت آنلاین گره‌ها به «مدیریت Agent» بروید، سپس گردش کار بسازید یا اسکریپت اجرا کنید.',
+  'pages.welcome.quickStartHint':
+    'برای اطمینان از وضعیت آنلاین گره‌ها به «مدیریت Agent» بروید، سپس گردش کار بسازید یا اسکریپت اجرا کنید.',
   'pages.welcome.monitorCardTitle': 'پایش بازی',
-  'pages.welcome.monitorCardDescription': 'مشاهده بلادرنگ تصویر بازی، مدیریت تریگرها، اجرای دستورات ماکرو و پایش منابع سیستم.',
+  'pages.welcome.monitorCardDescription':
+    'مشاهده بلادرنگ تصویر بازی، مدیریت تریگرها، اجرای دستورات ماکرو و پایش منابع سیستم.',
   'pages.welcome.monitorCardAction': 'باز کردن پایش',
   'pages.welcome.agentsCardTitle': 'مدیریت Agent',
-  'pages.welcome.agentsCardDescription': 'مشاهده همه گره‌های Agent ثبت‌شده، پایش مصرف CPU، حافظه و شبکه و مدیریت وضعیت Agentها.',
+  'pages.welcome.agentsCardDescription':
+    'مشاهده همه گره‌های Agent ثبت‌شده، پایش مصرف CPU، حافظه و شبکه و مدیریت وضعیت Agentها.',
   'pages.welcome.agentsCardAction': 'مدیریت گره‌ها',
   'pages.welcome.workflowsCardTitle': 'ارکستراسیون گردش کار',
-  'pages.welcome.workflowsCardDescription': 'ایجاد و مدیریت گردش کارهای اتوماسیون با پشتیبانی از وظایف چندمرحله‌ای، پیکربندی وابستگی‌ها، اجرای موازی و تلاش مجدد پس از خطا.',
+  'pages.welcome.workflowsCardDescription':
+    'ایجاد و مدیریت گردش کارهای اتوماسیون با پشتیبانی از وظایف چندمرحله‌ای، پیکربندی وابستگی‌ها، اجرای موازی و تلاش مجدد پس از خطا.',
   'pages.welcome.workflowsCardAction': 'ایجاد گردش کار',
   'pages.welcome.usageTitle': 'روند استفاده',
   'pages.welcome.step1Tag': 'گام 1',
   'pages.welcome.step1Title': 'ثبت Agent',
-  'pages.welcome.step1Description': 'کلاینت Wingman را اجرا کنید تا به‌طور خودکار ثبت شود. همه گره‌های آنلاین را در صفحه مدیریت Agent ببینید.',
+  'pages.welcome.step1Description':
+    'کلاینت Wingman را اجرا کنید تا به‌طور خودکار ثبت شود. همه گره‌های آنلاین را در صفحه مدیریت Agent ببینید.',
   'pages.welcome.step1Action': 'مشاهده Agentها',
   'pages.welcome.step2Tag': 'گام 2',
   'pages.welcome.step2Title': 'ایجاد گردش کار',
-  'pages.welcome.step2Description': 'در صفحه مدیریت گردش کار جریان وظیفه بسازید و مراحل اجرا، وابستگی‌ها و زمان انقضا را پیکربندی کنید.',
+  'pages.welcome.step2Description':
+    'در صفحه مدیریت گردش کار جریان وظیفه بسازید و مراحل اجرا، وابستگی‌ها و زمان انقضا را پیکربندی کنید.',
   'pages.welcome.step2Action': 'ایجاد گردش کار',
   'pages.welcome.step3Tag': 'گام 3',
   'pages.welcome.step3Title': 'پایش اجرا',
-  'pages.welcome.step3Description': 'وضعیت اجرای گردش کار را بلادرنگ پایش کنید و پیشرفت مراحل و مصرف منابع Agent را ببینید.',
+  'pages.welcome.step3Description':
+    'وضعیت اجرای گردش کار را بلادرنگ پایش کنید و پیشرفت مراحل و مصرف منابع Agent را ببینید.',
   'pages.welcome.step3Action': 'مشاهده گردش کار',
   'pages.welcome.techTitle': 'ویژگی‌های فنی',
   'pages.welcome.techProtobuf': 'ارتباط Protobuf',
@@ -467,12 +487,15 @@ export default {
   'pages.welcome.techLuaScript': 'اسکریپت Lua',
   'pages.welcome.techLuaScriptDescription': 'تعریف انعطاف‌پذیر وظایف',
   'pages.403.title': 'به این صفحه دسترسی ندارید',
-  'pages.403.subTitle': 'متأسفیم، شما اجازه دسترسی به این صفحه را ندارید. به صفحه اصلی برگردید یا از ورودی دارای دسترسی استفاده کنید.',
+  'pages.403.subTitle':
+    'متأسفیم، شما اجازه دسترسی به این صفحه را ندارید. به صفحه اصلی برگردید یا از ورودی دارای دسترسی استفاده کنید.',
   'pages.403.buttonText': 'بازگشت به صفحه اصلی',
   'pages.404.title': 'صفحه وجود ندارد',
   'pages.login.forgotPasswordContactAdmin': 'برای بازنشانی رمز عبور با مدیر تماس بگیرید.',
-  'pages.login.forgotPasswordAdminHint': 'اگر مدیر هستید، در مدیریت کاربران رمز عبور جدیدی برای حساب هدف تنظیم کنید.',
-  'profile.avatar.modal.previewHint': 'کشیدن و رها کردن تصویر، کلیک برای بارگذاری، یا ورود مستقیم URL تصویر پشتیبانی می‌شود.',
+  'pages.login.forgotPasswordAdminHint':
+    'اگر مدیر هستید، در مدیریت کاربران رمز عبور جدیدی برای حساب هدف تنظیم کنید.',
+  'profile.avatar.modal.previewHint':
+    'کشیدن و رها کردن تصویر، کلیک برای بارگذاری، یا ورود مستقیم URL تصویر پشتیبانی می‌شود.',
   'profile.avatar.modal.uploadLabel': 'بارگذاری آواتار',
   'profile.avatar.modal.dragText': 'تصویر را اینجا رها کنید یا برای بارگذاری کلیک کنید',
   'profile.avatar.modal.uploadHint': 'پس از بارگذاری، به‌طور خودکار در نشانی آواتار درج می‌شود',

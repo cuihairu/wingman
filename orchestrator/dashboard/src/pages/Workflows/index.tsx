@@ -61,8 +61,16 @@ import wsService from '@/services/websocket';
 const { Text, Title } = Typography;
 
 function splitList(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
-  if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+  if (Array.isArray(value))
+    return value
+      .map(String)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  if (typeof value === 'string')
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
   return [];
 }
 
@@ -79,7 +87,11 @@ const Workflows: React.FC = () => {
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
 
   // 获取工作流列表
-  const { data: workflowsData, loading, refresh } = useRequest(
+  const {
+    data: workflowsData,
+    loading,
+    refresh,
+  } = useRequest(
     async (): Promise<Workflow[]> => {
       const response = await getWorkflows();
       return response.data || [];
@@ -89,7 +101,7 @@ const Workflows: React.FC = () => {
         setWorkflows(Array.isArray(data) ? (data as Workflow[]) : []);
       },
       pollingInterval: 10000, // 降低轮询频率
-    }
+    },
   );
 
   // WebSocket 连接状态
@@ -111,45 +123,72 @@ const Workflows: React.FC = () => {
     const unsubscribes: (() => void)[] = [];
 
     // 工作流提交
-    unsubscribes.push(wsService.onWorkflowSubmitted((data) => {
-      const nextWorkflow = normalizeWorkflow(data);
-      setWorkflows((prev) => {
-        const exists = prev.some((workflow) => workflow.id === nextWorkflow.id);
-        return exists ? prev.map((workflow) => workflow.id === nextWorkflow.id ? nextWorkflow : workflow) : [nextWorkflow, ...prev];
-      });
-      message.success(intl.formatMessage({ id: 'pages.workflows.submitted' }, { name: String(data.name ?? '') }));
-    }));
+    unsubscribes.push(
+      wsService.onWorkflowSubmitted((data) => {
+        const nextWorkflow = normalizeWorkflow(data);
+        setWorkflows((prev) => {
+          const exists = prev.some((workflow) => workflow.id === nextWorkflow.id);
+          return exists
+            ? prev.map((workflow) => (workflow.id === nextWorkflow.id ? nextWorkflow : workflow))
+            : [nextWorkflow, ...prev];
+        });
+        message.success(
+          intl.formatMessage(
+            { id: 'pages.workflows.submitted' },
+            { name: String(data.name ?? '') },
+          ),
+        );
+      }),
+    );
 
     // 工作流状态变化
-    unsubscribes.push(wsService.onWorkflowStatusChanged((data) => {
-      const workflowId = String(data.id ?? data.workflowId ?? '');
-      setWorkflows((prev) =>
-        prev.map((w) =>
-          w.id === workflowId ? { ...w, status: String(data.status || w.status) as WorkflowStatus, endTime: Date.now() } : w
-        )
-      );
+    unsubscribes.push(
+      wsService.onWorkflowStatusChanged((data) => {
+        const workflowId = String(data.id ?? data.workflowId ?? '');
+        setWorkflows((prev) =>
+          prev.map((w) =>
+            w.id === workflowId
+              ? {
+                  ...w,
+                  status: String(data.status || w.status) as WorkflowStatus,
+                  endTime: Date.now(),
+                }
+              : w,
+          ),
+        );
 
-      // 更新详情面板中当前选中的工作流
-      if (selectedWorkflow && selectedWorkflow.id === workflowId) {
-        setSelectedWorkflow((prev) => prev ? { ...prev, status: String(data.status || prev.status) as WorkflowStatus, endTime: Date.now() } : null);
-      }
-    }));
+        // 更新详情面板中当前选中的工作流
+        if (selectedWorkflow && selectedWorkflow.id === workflowId) {
+          setSelectedWorkflow((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: String(data.status || prev.status) as WorkflowStatus,
+                  endTime: Date.now(),
+                }
+              : null,
+          );
+        }
+      }),
+    );
 
     // 工作流进度更新
-    unsubscribes.push(wsService.onWorkflowProgress((data) => {
-      const workflowId = String(data.workflowId ?? data.id ?? '');
-      // 更新详情面板
-      if (selectedWorkflow && selectedWorkflow.id === workflowId) {
-        setSelectedWorkflow((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            stepStatus: { ...prev.stepStatus, [String(data.stepId)]: data.status as StepStatus },
-            currentStepId: String(data.stepId || ''),
-          };
-        });
-      }
-    }));
+    unsubscribes.push(
+      wsService.onWorkflowProgress((data) => {
+        const workflowId = String(data.workflowId ?? data.id ?? '');
+        // 更新详情面板
+        if (selectedWorkflow && selectedWorkflow.id === workflowId) {
+          setSelectedWorkflow((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              stepStatus: { ...prev.stepStatus, [String(data.stepId)]: data.status as StepStatus },
+              currentStepId: String(data.stepId || ''),
+            };
+          });
+        }
+      }),
+    );
 
     return () => {
       unsubscribes.forEach((unsub) => unsub());
@@ -168,7 +207,7 @@ const Workflows: React.FC = () => {
         setSelectedWorkflow(data);
         setDrawerVisible(true);
       },
-    }
+    },
   );
 
   // 加载内置模板目录
@@ -194,7 +233,9 @@ const Workflows: React.FC = () => {
         timeoutSeconds: s.timeoutSeconds ?? 300,
       })),
     });
-    message.success(intl.formatMessage({ id: 'pages.workflows.templateLoaded' }, { name: tpl.name }));
+    message.success(
+      intl.formatMessage({ id: 'pages.workflows.templateLoaded' }, { name: tpl.name }),
+    );
   };
 
   // 提交工作流
@@ -268,9 +309,7 @@ const Workflows: React.FC = () => {
       key: 'status',
       width: 100,
       render: (_, record) => (
-        <Tag color={getWorkflowStatusColor(record.status)}>
-          {record.status.toUpperCase()}
-        </Tag>
+        <Tag color={getWorkflowStatusColor(record.status)}>{record.status.toUpperCase()}</Tag>
       ),
     },
     {
@@ -350,11 +389,7 @@ const Workflows: React.FC = () => {
           <Space>
             {icon && <span style={{ fontWeight: 'bold' }}>{icon}</span>}
             <Text strong>{step.name}</Text>
-            {status && (
-              <Tag color={getStepStatusColor(status)}>
-                {status.toUpperCase()}
-              </Tag>
-            )}
+            {status && <Tag color={getStepStatusColor(status)}>{status.toUpperCase()}</Tag>}
           </Space>
           <Text type="secondary" style={{ fontSize: 12 }}>
             Script: {step.script}
@@ -368,7 +403,10 @@ const Workflows: React.FC = () => {
           )}
           {step.dependsOn.length > 0 && (
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {intl.formatMessage({ id: 'pages.workflows.dependsOn' }, { names: step.dependsOn.join(', ') })}
+              {intl.formatMessage(
+                { id: 'pages.workflows.dependsOn' },
+                { names: step.dependsOn.join(', ') },
+              )}
             </Text>
           )}
         </Space>
@@ -408,7 +446,9 @@ const Workflows: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Statistic
                 title={formatMessage('pages.workflows.running')}
-                value={workflows.filter((w: Workflow) => w.status === WorkflowStatus.Running).length}
+                value={
+                  workflows.filter((w: Workflow) => w.status === WorkflowStatus.Running).length
+                }
                 valueStyle={{ color: '#1890ff' }}
               />
               <PlayCircleOutlined style={{ fontSize: 24, color: '#1890ff' }} />
@@ -420,7 +460,9 @@ const Workflows: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Statistic
                 title={formatMessage('pages.workflows.completed')}
-                value={workflows.filter((w: Workflow) => w.status === WorkflowStatus.Completed).length}
+                value={
+                  workflows.filter((w: Workflow) => w.status === WorkflowStatus.Completed).length
+                }
                 valueStyle={{ color: '#52c41a' }}
               />
               <span style={{ fontSize: 24 }}>✓</span>
@@ -451,11 +493,7 @@ const Workflows: React.FC = () => {
                 {formatMessage('pages.workflows.realtimeUpdate')}
               </Tag>
             )}
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={refresh}
-              loading={loading}
-            >
+            <Button icon={<ReloadOutlined />} onClick={refresh} loading={loading}>
               {formatMessage('pages.common.refresh')}
             </Button>
             <Button
@@ -534,11 +572,34 @@ const Workflows: React.FC = () => {
             </ProCard>
           )}
         >
-          <ProFormText name="id" label={formatMessage('pages.workflows.stepId')} rules={[{ required: true }]} placeholder="step_1" />
-          <ProFormText name="name" label={formatMessage('pages.workflows.stepName')} rules={[{ required: true }]} placeholder="数据采集" />
-          <ProFormText name="script" label={formatMessage('pages.workflows.scriptPath')} rules={[{ required: true }]} placeholder="scripts/collect.lua" />
-          <ProFormText name="workers" label={formatMessage('pages.workflows.assignAgents')} fieldProps={{ placeholder: 'agent1,agent2' }} />
-          <ProFormText name="dependsOn" label={formatMessage('pages.workflows.dependsOnSteps')} fieldProps={{ placeholder: 'step_1,step_2' }} />
+          <ProFormText
+            name="id"
+            label={formatMessage('pages.workflows.stepId')}
+            rules={[{ required: true }]}
+            placeholder="step_1"
+          />
+          <ProFormText
+            name="name"
+            label={formatMessage('pages.workflows.stepName')}
+            rules={[{ required: true }]}
+            placeholder="数据采集"
+          />
+          <ProFormText
+            name="script"
+            label={formatMessage('pages.workflows.scriptPath')}
+            rules={[{ required: true }]}
+            placeholder="scripts/collect.lua"
+          />
+          <ProFormText
+            name="workers"
+            label={formatMessage('pages.workflows.assignAgents')}
+            fieldProps={{ placeholder: 'agent1,agent2' }}
+          />
+          <ProFormText
+            name="dependsOn"
+            label={formatMessage('pages.workflows.dependsOnSteps')}
+            fieldProps={{ placeholder: 'step_1,step_2' }}
+          />
           <ProFormText
             name="timeoutSeconds"
             label={formatMessage('pages.workflows.timeoutSeconds')}
@@ -594,7 +655,7 @@ const Workflows: React.FC = () => {
             <ProCard title={formatMessage('pages.workflows.progress')} headerBordered>
               <Steps
                 current={selectedWorkflow.steps.findIndex(
-                  (s) => selectedWorkflow.stepStatus?.[s.id] !== StepStatus.Completed
+                  (s) => selectedWorkflow.stepStatus?.[s.id] !== StepStatus.Completed,
                 )}
                 direction="vertical"
               >
@@ -613,9 +674,7 @@ const Workflows: React.FC = () => {
                         <Space>
                           <Text type="secondary">{step.id}</Text>
                           {status && (
-                            <Tag color={getStepStatusColor(status)}>
-                              {status.toUpperCase()}
-                            </Tag>
+                            <Tag color={getStepStatusColor(status)}>{status.toUpperCase()}</Tag>
                           )}
                         </Space>
                       }

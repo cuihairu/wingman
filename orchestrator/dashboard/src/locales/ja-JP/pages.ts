@@ -1,8 +1,7 @@
 export default {
   'pages.layouts.userLayout.title': 'Ant Designは、西湖区で最も影響力のあるWebデザイン仕様です。',
   'pages.login.accountLogin.tab': 'アカウントログイン',
-  'pages.login.accountLogin.errorMessage':
-    'ユーザー名またはパスワードが正しくありません',
+  'pages.login.accountLogin.errorMessage': 'ユーザー名またはパスワードが正しくありません',
   'pages.login.failure': 'ログインに失敗したら、もう一度試してください!',
   'pages.login.success': 'ログイン成功!',
   'pages.login.username.placeholder': 'ユーザー名：adminまたはuser',
@@ -95,11 +94,13 @@ export default {
   'pages.agents.batchStopScript': 'スクリプト一括停止',
   'pages.agents.batchDeployTrigger': 'トリガー一括配布',
   'pages.agents.batchRunConfirmTitle': 'スクリプト一括実行',
-  'pages.agents.batchRunConfirmContent': '選択した {count} 台の Agent で {target} を実行します。よろしいですか？',
+  'pages.agents.batchRunConfirmContent':
+    '選択した {count} 台の Agent で {target} を実行します。よろしいですか？',
   'pages.agents.batchRun': '一括実行',
   'pages.agents.batchRunFailed': '一括実行に失敗しました',
   'pages.agents.batchStopConfirmTitle': 'スクリプト一括停止',
-  'pages.agents.batchStopConfirmContent': '選択した {count} 台の Agent で {target} を停止します。よろしいですか？',
+  'pages.agents.batchStopConfirmContent':
+    '選択した {count} 台の Agent で {target} を停止します。よろしいですか？',
   'pages.agents.batchStop': '一括停止',
   'pages.agents.batchStopFailed': '一括停止に失敗しました',
   'pages.agents.selectScriptFirst': '先にスクリプトを選択してください',
@@ -281,7 +282,8 @@ export default {
   'pages.adminRoles.codePlaceholder': '2-32 文字の半角英数字/_/-（admin とは重複不可）',
   'pages.adminRoles.permsLabel': '権限',
   'pages.adminRoles.drawerTitle': 'ロールを編集 - {name}',
-  'pages.adminRoles.adminWildcardHint': 'admin ロールはワイルドカード権限 * を持つため、ここでは変更できません',
+  'pages.adminRoles.adminWildcardHint':
+    'admin ロールはワイルドカード権限 * を持つため、ここでは変更できません',
   'pages.adminRoles.assignedCount': '{count} 件の権限を割り当て済み',
   'pages.adminRoles.noCatalog': '権限カタログがありません',
   'pages.adminRoles.selectPlaceholder': '権限を選択',
@@ -293,7 +295,8 @@ export default {
   'pages.monitor.paused': '一時停止中',
   'pages.monitor.settings': '設定',
   'pages.monitor.noAgentsTitle': 'オンラインの Agent がありません',
-  'pages.monitor.noAgentsDescription': 'このページは WebSocket の監視を続け、Agent がオンラインになると実際の指標を自動表示します。',
+  'pages.monitor.noAgentsDescription':
+    'このページは WebSocket の監視を続け、Agent がオンラインになると実際の指標を自動表示します。',
   'pages.monitor.cpuUsage': 'CPU 使用率',
   'pages.monitor.memoryUsage': 'メモリ使用量',
   'pages.monitor.uptime': '稼働時間',
@@ -312,16 +315,19 @@ export default {
   'pages.monitor.triggersUnavailable': 'トリガーデータを利用できません',
   'pages.monitor.triggersEmpty': 'この Agent にはトリガーがありません（runtime trigger.list が空）',
   'pages.monitor.deleteTriggerTitle': 'トリガーを削除',
-  'pages.monitor.deleteTriggerConfirm': '「{name}」を削除しますか？操作は即時に runtime へ反映されます。',
+  'pages.monitor.deleteTriggerConfirm':
+    '「{name}」を削除しますか？操作は即時に runtime へ反映されます。',
   'pages.monitor.delete': '削除',
   'pages.monitor.oneShot': '一回限り',
   'pages.monitor.cooldown': 'クールダウン {ms}ms',
   'pages.monitor.noCondition': '条件なし',
   'pages.monitor.neverFired': '未発火',
-  'pages.monitor.triggerDescription': '{condition} · アクション {actions} · ヒット {hits} · {lastFired}',
+  'pages.monitor.triggerDescription':
+    '{condition} · アクション {actions} · ヒット {hits} · {lastFired}',
   'pages.monitor.macros': 'マクロコマンド',
   'pages.monitor.macroApiNotAvailable': 'マクロ API は未接続です',
-  'pages.monitor.macroApiDescription': 'リモート Agent プロトコルはまだ macro.list / macro.run を公開していません。誤って偽コマンドを送信しないよう、ハードコード済みサンプルは表示していません。',
+  'pages.monitor.macroApiDescription':
+    'リモート Agent プロトコルはまだ macro.list / macro.run を公開していません。誤って偽コマンドを送信しないよう、ハードコード済みサンプルは表示していません。',
   'pages.monitor.eventStream': 'リアルタイムイベントストリーム',
   'pages.monitor.eventDriven': 'イベント駆動',
   'pages.monitor.waitingForEvents': 'Agent・トリガー・スクリプトのイベントを待機中...',
@@ -332,7 +338,8 @@ export default {
   'pages.monitor.unknownTrigger': '不明なトリガー',
   'pages.monitor.triggerFired': 'トリガー {name} が発火しました',
   'pages.monitor.scriptStatusUpdate': 'スクリプト状態更新',
-  'pages.monitor.agentOfflineNoTriggers': 'Agent {name} はオフラインのため、トリガーを取得できません',
+  'pages.monitor.agentOfflineNoTriggers':
+    'Agent {name} はオフラインのため、トリガーを取得できません',
   'pages.monitor.triggersLoadFailed': 'トリガーリストの取得に失敗: {detail}',
   'pages.monitor.agentNotConnectedToggle': 'Agent 未接続のため、トリガーを切り替えできません',
   'pages.monitor.triggerEnabled': 'トリガー {name} を有効化しました',
@@ -358,7 +365,8 @@ export default {
   'pages.settings.maxScriptsRequired': '数値を入力してください',
   'pages.settings.rawSettings': '生のキーと値（読み取り専用）',
   'pages.settings.debugTitle': 'デバッグ（直接接続モード）',
-  'pages.settings.debugDescriptionBefore': 'Lua デバッグは VSCode EmmyLua から runtime のデバッグポート（既定 9966）へ直接接続し、Go server は中継しません。各 agent のデバッグエンドポイントは',
+  'pages.settings.debugDescriptionBefore':
+    'Lua デバッグは VSCode EmmyLua から runtime のデバッグポート（既定 9966）へ直接接続し、Go server は中継しません。各 agent のデバッグエンドポイントは',
   'pages.settings.debugDescriptionAfter': 'を参照。',
   'pages.settings.loadFailed': '設定の読み込みに失敗しました',
   'pages.settings.saved': '設定を保存しました',
@@ -404,7 +412,8 @@ export default {
   // ===== フィードバックセンター =====
   'pages.supportFeedback.title': 'フィードバックセンター',
   'pages.supportFeedback.alertMessage': '送信後にアプリ内メッセージが生成されます',
-  'pages.supportFeedback.alertDescription': '権限リクエスト・問題報告・機能提案はすべてバックエンドのフィードバック記録に書き込まれ、メッセージセンターに追跡可能な通知が残ります。',
+  'pages.supportFeedback.alertDescription':
+    '権限リクエスト・問題報告・機能提案はすべてバックエンドのフィードバック記録に書き込まれ、メッセージセンターに追跡可能な通知が残ります。',
   'pages.supportFeedback.category': 'フィードバックの種類',
   'pages.supportFeedback.categoryGeneral': '一般フィードバック',
   'pages.supportFeedback.categoryPermission': '権限リクエスト',
@@ -417,8 +426,10 @@ export default {
   'pages.supportFeedback.content': '内容',
   'pages.supportFeedback.contentRequired': 'フィードバック内容を入力してください',
   'pages.supportFeedback.contentMinLength': '内容は 5 文字以上である必要があります',
-  'pages.supportFeedback.contentPlaceholder': '背景、期待する結果、再現手順、権限の使用場面を記入してください。',
-  'pages.supportFeedback.persistHint': 'フィードバックはバックエンドに永続化されます。権限リクエストの場合は、権限識別子と業務上の理由を添えてください。',
+  'pages.supportFeedback.contentPlaceholder':
+    '背景、期待する結果、再現手順、権限の使用場面を記入してください。',
+  'pages.supportFeedback.persistHint':
+    'フィードバックはバックエンドに永続化されます。権限リクエストの場合は、権限識別子と業務上の理由を添えてください。',
   'pages.supportFeedback.submit': 'フィードバックを送信',
   'pages.supportFeedback.submitFailed': '送信に失敗しました',
   'pages.supportFeedback.submitted': 'フィードバックを送信しました',
@@ -427,35 +438,43 @@ export default {
   'pages.welcome.tagWorkflow': 'ワークフローエンジン',
   'pages.welcome.tagMonitor': 'リアルタイム監視',
   'pages.welcome.heroTitle': 'Wingman ゲーム自動化コントロールエンジン',
-  'pages.welcome.heroDescription': '複数 Agent の協調作業、ビジュアルワークフロー編成、リアルタイムタスク監視をサポートする分散自動化制御プラットフォーム。Lua スクリプトで柔軟なゲーム自動化を実現します。',
+  'pages.welcome.heroDescription':
+    '複数 Agent の協調作業、ビジュアルワークフロー編成、リアルタイムタスク監視をサポートする分散自動化制御プラットフォーム。Lua スクリプトで柔軟なゲーム自動化を実現します。',
   'pages.welcome.createWorkflow': 'ワークフローを作成',
   'pages.welcome.manageAgents': 'Agent を管理',
   'pages.welcome.quickStart': 'クイックスタート',
   'pages.welcome.tagAgentAccess': 'Agent 接続',
   'pages.welcome.tagScriptDelivery': 'スクリプト配信',
   'pages.welcome.tagWorkflowOrchestration': 'ワークフロー編成',
-  'pages.welcome.quickStartHint': '「Agent 管理」でノードのオンライン状態を確認し、ワークフローの作成やスクリプトの実行を始めましょう。',
+  'pages.welcome.quickStartHint':
+    '「Agent 管理」でノードのオンライン状態を確認し、ワークフローの作成やスクリプトの実行を始めましょう。',
   'pages.welcome.monitorCardTitle': 'ゲーム監視',
-  'pages.welcome.monitorCardDescription': 'ゲーム画面のリアルタイム表示、トリガー管理、マクロコマンド実行、システムリソースの監視。',
+  'pages.welcome.monitorCardDescription':
+    'ゲーム画面のリアルタイム表示、トリガー管理、マクロコマンド実行、システムリソースの監視。',
   'pages.welcome.monitorCardAction': '監視を開く',
   'pages.welcome.agentsCardTitle': 'Agent 管理',
-  'pages.welcome.agentsCardDescription': '登録済みの全 Agent ノードを確認し、CPU・メモリ・ネットワークなどの使用状況を監視して Agent の状態を管理します。',
+  'pages.welcome.agentsCardDescription':
+    '登録済みの全 Agent ノードを確認し、CPU・メモリ・ネットワークなどの使用状況を監視して Agent の状態を管理します。',
   'pages.welcome.agentsCardAction': 'ノードを管理',
   'pages.welcome.workflowsCardTitle': 'ワークフロー編成',
-  'pages.welcome.workflowsCardDescription': '多ステップタスクの編成、依存関係の設定、並列実行、失敗時のリトライに対応する自動化ワークフローを作成・管理します。',
+  'pages.welcome.workflowsCardDescription':
+    '多ステップタスクの編成、依存関係の設定、並列実行、失敗時のリトライに対応する自動化ワークフローを作成・管理します。',
   'pages.welcome.workflowsCardAction': 'ワークフローを作成',
   'pages.welcome.usageTitle': '利用の流れ',
   'pages.welcome.step1Tag': 'ステップ 1',
   'pages.welcome.step1Title': 'Agent を登録',
-  'pages.welcome.step1Description': 'Wingman クライアントを起動すると自動で登録されます。Agent 管理ページでオンラインノードを確認できます。',
+  'pages.welcome.step1Description':
+    'Wingman クライアントを起動すると自動で登録されます。Agent 管理ページでオンラインノードを確認できます。',
   'pages.welcome.step1Action': 'Agent を見る',
   'pages.welcome.step2Tag': 'ステップ 2',
   'pages.welcome.step2Title': 'ワークフローを作成',
-  'pages.welcome.step2Description': 'ワークフロー管理ページでタスクフローを作成し、実行ステップ・依存関係・タイムアウトを設定します。',
+  'pages.welcome.step2Description':
+    'ワークフロー管理ページでタスクフローを作成し、実行ステップ・依存関係・タイムアウトを設定します。',
   'pages.welcome.step2Action': 'ワークフローを作成',
   'pages.welcome.step3Tag': 'ステップ 3',
   'pages.welcome.step3Title': '実行を監視',
-  'pages.welcome.step3Description': 'ワークフローの実行状態をリアルタイムで監視し、ステップの進捗と Agent のリソース使用状況を確認できます。',
+  'pages.welcome.step3Description':
+    'ワークフローの実行状態をリアルタイムで監視し、ステップの進捗と Agent のリソース使用状況を確認できます。',
   'pages.welcome.step3Action': 'ワークフローを見る',
   'pages.welcome.techTitle': '技術特長',
   'pages.welcome.techProtobuf': 'Protobuf 通信',
@@ -467,12 +486,16 @@ export default {
   'pages.welcome.techLuaScript': 'Lua スクリプト',
   'pages.welcome.techLuaScriptDescription': '柔軟なタスク定義',
   'pages.403.title': 'このページへのアクセス権がありません',
-  'pages.403.subTitle': '申し訳ありません。このページにアクセスする権限がありません。ホームに戻るか、権限を持つ入口からアクセスしてください。',
+  'pages.403.subTitle':
+    '申し訳ありません。このページにアクセスする権限がありません。ホームに戻るか、権限を持つ入口からアクセスしてください。',
   'pages.403.buttonText': 'ホームに戻る',
   'pages.404.title': 'ページが存在しません',
-  'pages.login.forgotPasswordContactAdmin': '管理者に連絡してパスワードの再設定を依頼してください。',
-  'pages.login.forgotPasswordAdminHint': '管理者の場合は、ユーザー管理で対象アカウントに新しいパスワードを設定してください。',
-  'profile.avatar.modal.previewHint': '画像のドラッグ＆ドロップ、クリックでアップロード、画像 URL の直接入力に対応しています。',
+  'pages.login.forgotPasswordContactAdmin':
+    '管理者に連絡してパスワードの再設定を依頼してください。',
+  'pages.login.forgotPasswordAdminHint':
+    '管理者の場合は、ユーザー管理で対象アカウントに新しいパスワードを設定してください。',
+  'profile.avatar.modal.previewHint':
+    '画像のドラッグ＆ドロップ、クリックでアップロード、画像 URL の直接入力に対応しています。',
   'profile.avatar.modal.uploadLabel': 'アバターをアップロード',
   'profile.avatar.modal.dragText': 'ここに画像をドラッグ、またはクリックしてアップロード',
   'profile.avatar.modal.uploadHint': 'アップロード後、自動的にアバター URL に反映されます',

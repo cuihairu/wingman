@@ -96,7 +96,8 @@ export default {
   'pages.agents.batchStopScript': 'স্ক্রিপ্ট ব্যাচ স্টপ',
   'pages.agents.batchDeployTrigger': 'ট্রিগার ব্যাচ ডিপ্লয়',
   'pages.agents.batchRunConfirmTitle': 'স্ক্রিপ্ট ব্যাচ রান',
-  'pages.agents.batchRunConfirmContent': 'নির্বাচিত {count}টি এজেন্টে {target} চালানো হবে, নিশ্চিত?',
+  'pages.agents.batchRunConfirmContent':
+    'নির্বাচিত {count}টি এজেন্টে {target} চালানো হবে, নিশ্চিত?',
   'pages.agents.batchRun': 'ব্যাচ রান',
   'pages.agents.batchRunFailed': 'ব্যাচ রান ব্যর্থ হয়েছে',
   'pages.agents.batchStopConfirmTitle': 'স্ক্রিপ্ট ব্যাচ স্টপ',
@@ -253,7 +254,8 @@ export default {
   'pages.adminUsers.usernamePlaceholder': '৩-৩২ অক্ষর: অক্ষর/সংখ্যা/_/-',
   'pages.adminUsers.password': 'পাসওয়ার্ড',
   'pages.adminUsers.passwordRequired': 'পাসওয়ার্ড লিখুন',
-  'pages.adminUsers.passwordPlaceholder': 'কমপক্ষে ৮ অক্ষর, যেকোনো ৩টি ধরন: বড়/ছোট হাতের অক্ষর, সংখ্যা, বিশেষ অক্ষর',
+  'pages.adminUsers.passwordPlaceholder':
+    'কমপক্ষে ৮ অক্ষর, যেকোনো ৩টি ধরন: বড়/ছোট হাতের অক্ষর, সংখ্যা, বিশেষ অক্ষর',
   'pages.adminUsers.editModalTitle': 'ব্যবহারকারী সম্পাদনা - {name}',
   'pages.adminUsers.resetModalTitle': 'পাসওয়ার্ড রিসেট - {name}',
   'pages.adminUsers.newPassword': 'নতুন পাসওয়ার্ড',
@@ -279,10 +281,12 @@ export default {
   'pages.adminRoles.create': 'নতুন ভূমিকা',
   'pages.adminRoles.codeLabel': 'ভূমিকার কোড',
   'pages.adminRoles.codeRequired': 'ভূমিকার কোড লিখুন',
-  'pages.adminRoles.codePlaceholder': '২-৩২ অক্ষর: অক্ষর/সংখ্যা/_/- (admin এর সাথে সংঘাত হতে পারে না)',
+  'pages.adminRoles.codePlaceholder':
+    '২-৩২ অক্ষর: অক্ষর/সংখ্যা/_/- (admin এর সাথে সংঘাত হতে পারে না)',
   'pages.adminRoles.permsLabel': 'অনুমতি',
   'pages.adminRoles.drawerTitle': 'ভূমিকা সম্পাদনা - {name}',
-  'pages.adminRoles.adminWildcardHint': 'admin ভূমিকার কাছে ওয়াইল্ডকার্ড অনুমতি * আছে, এখানে পরিবর্তন করা যাবে না',
+  'pages.adminRoles.adminWildcardHint':
+    'admin ভূমিকার কাছে ওয়াইল্ডকার্ড অনুমতি * আছে, এখানে পরিবর্তন করা যাবে না',
   'pages.adminRoles.assignedCount': '{count}টি অনুমতি বরাদ্দ করা হয়েছে',
   'pages.adminRoles.noCatalog': 'কোনো অনুমতি ক্যাটালগ নেই',
   'pages.adminRoles.selectPlaceholder': 'অনুমতি নির্বাচন করুন',
@@ -294,7 +298,8 @@ export default {
   'pages.monitor.paused': 'বিরত',
   'pages.monitor.settings': 'সেটিংস',
   'pages.monitor.noAgentsTitle': 'কোনো অনলাইন এজেন্ট নেই',
-  'pages.monitor.noAgentsDescription': 'পেজটি WebSocket শোনা চালিয়ে যাবে; এজেন্ট অনলাইনে এলে প্রকৃত মেট্রিক্স স্বয়ংক্রিয়ভাবে দেখাবে।',
+  'pages.monitor.noAgentsDescription':
+    'পেজটি WebSocket শোনা চালিয়ে যাবে; এজেন্ট অনলাইনে এলে প্রকৃত মেট্রিক্স স্বয়ংক্রিয়ভাবে দেখাবে।',
   'pages.monitor.cpuUsage': 'CPU ব্যবহার',
   'pages.monitor.memoryUsage': 'মেমোরি ব্যবহার',
   'pages.monitor.uptime': 'চলার সময়',
@@ -322,7 +327,8 @@ export default {
   'pages.monitor.triggerDescription': '{condition} · {actions} অ্যাকশন · {hits} হিট · {lastFired}',
   'pages.monitor.macros': 'ম্যাক্রো কমান্ড',
   'pages.monitor.macroApiNotAvailable': 'ম্যাক্রো API এখনো সংযুক্ত নয়',
-  'pages.monitor.macroApiDescription': 'রিমোট এজেন্ট প্রোটোকল এখনো macro.list / macro.run সরবরাহ করে না। ভুলভাবে নকল কমান্ড পাঠানো এড়াতে এখানে হার্ডকোড নমুনা আর দেখানো হয় না।',
+  'pages.monitor.macroApiDescription':
+    'রিমোট এজেন্ট প্রোটোকল এখনো macro.list / macro.run সরবরাহ করে না। ভুলভাবে নকল কমান্ড পাঠানো এড়াতে এখানে হার্ডকোড নমুনা আর দেখানো হয় না।',
   'pages.monitor.eventStream': 'রিয়েলটাইম ইভেন্ট স্ট্রিম',
   'pages.monitor.eventDriven': 'ইভেন্ট-চালিত',
   'pages.monitor.waitingForEvents': 'এজেন্ট, ট্রিগার বা স্ক্রিপ্ট ইভেন্টের অপেক্ষায়...',
@@ -359,7 +365,8 @@ export default {
   'pages.settings.maxScriptsRequired': 'সংখ্যা লিখুন',
   'pages.settings.rawSettings': 'কাঁচা কী-মান (শুধুপাঠ্য)',
   'pages.settings.debugTitle': 'ডিবাগ (সরাসরি সংযোগ মোড)',
-  'pages.settings.debugDescriptionBefore': 'Lua ডিবাগিং VSCode EmmyLua থেকে সরাসরি runtime ডিবাগ পোর্টে (ডিফল্ট 9966) সংযোগ করে, Go server মাঝে নেই। প্রতিটি এজেন্টের ডিবাগ এন্ডপয়েন্ট দেখুন',
+  'pages.settings.debugDescriptionBefore':
+    'Lua ডিবাগিং VSCode EmmyLua থেকে সরাসরি runtime ডিবাগ পোর্টে (ডিফল্ট 9966) সংযোগ করে, Go server মাঝে নেই। প্রতিটি এজেন্টের ডিবাগ এন্ডপয়েন্ট দেখুন',
   'pages.settings.debugDescriptionAfter': '।',
   'pages.settings.loadFailed': 'সেটিংস লোড ব্যর্থ',
   'pages.settings.saved': 'সেটিংস সংরক্ষিত হয়েছে',
@@ -405,7 +412,8 @@ export default {
   // ===== ফিডব্যাক কেন্দ্র =====
   'pages.supportFeedback.title': 'ফিডব্যাক কেন্দ্র',
   'pages.supportFeedback.alertMessage': 'জমা দেওয়ার পর একটি ইন-অ্যাপ মেসেজ তৈরি হবে',
-  'pages.supportFeedback.alertDescription': 'অনুমতির অনুরোধ, সমস্যার প্রতিবেদন এবং ফিচার প্রস্তাব ব্যাকএন্ড ফিডব্যাক রেকর্ডে লেখা হয় এবং মেসেজ কেন্দ্রে একটি ট্র্যাকযোগ্য নোটিশ রেখে যায়।',
+  'pages.supportFeedback.alertDescription':
+    'অনুমতির অনুরোধ, সমস্যার প্রতিবেদন এবং ফিচার প্রস্তাব ব্যাকএন্ড ফিডব্যাক রেকর্ডে লেখা হয় এবং মেসেজ কেন্দ্রে একটি ট্র্যাকযোগ্য নোটিশ রেখে যায়।',
   'pages.supportFeedback.category': 'ফিডব্যাকের ধরন',
   'pages.supportFeedback.categoryGeneral': 'সাধারণ ফিডব্যাক',
   'pages.supportFeedback.categoryPermission': 'অনুমতির অনুরোধ',
@@ -418,8 +426,10 @@ export default {
   'pages.supportFeedback.content': 'বিষয়বস্তু',
   'pages.supportFeedback.contentRequired': 'অনুগ্রহ করে আপনার ফিডব্যাক লিখুন',
   'pages.supportFeedback.contentMinLength': 'বিষয়বস্তু কমপক্ষে ৫ অক্ষরের হতে হবে',
-  'pages.supportFeedback.contentPlaceholder': 'প্রেক্ষাপট, প্রত্যাশিত ফলাফল, পুনরুৎপাদনের ধাপ বা অনুমতি ব্যবহারের পরিস্থিতি বর্ণনা করুন।',
-  'pages.supportFeedback.persistHint': 'ফিডব্যাক ব্যাকএন্ডে স্থায়ীভাবে সংরক্ষিত হয়; অনুমতির অনুরোধ হলে অনুমতির শনাক্তকারী এবং ব্যবসায়িক কারণ যুক্ত করার পরামর্শ দেওয়া হয়।',
+  'pages.supportFeedback.contentPlaceholder':
+    'প্রেক্ষাপট, প্রত্যাশিত ফলাফল, পুনরুৎপাদনের ধাপ বা অনুমতি ব্যবহারের পরিস্থিতি বর্ণনা করুন।',
+  'pages.supportFeedback.persistHint':
+    'ফিডব্যাক ব্যাকএন্ডে স্থায়ীভাবে সংরক্ষিত হয়; অনুমতির অনুরোধ হলে অনুমতির শনাক্তকারী এবং ব্যবসায়িক কারণ যুক্ত করার পরামর্শ দেওয়া হয়।',
   'pages.supportFeedback.submit': 'ফিডব্যাক জমা দিন',
   'pages.supportFeedback.submitFailed': 'জমা দিতে ব্যর্থ',
   'pages.supportFeedback.submitted': 'ফিডব্যাক জমা দেওয়া হয়েছে',
@@ -428,35 +438,43 @@ export default {
   'pages.welcome.tagWorkflow': 'ওয়ার্কফ্লো ইঞ্জিন',
   'pages.welcome.tagMonitor': 'রিয়েল-টাইম মনিটরিং',
   'pages.welcome.heroTitle': 'Wingman গেম অটোমেশন কন্ট্রোল ইঞ্জিন',
-  'pages.welcome.heroDescription': 'বিতরণী অটোমেশন কন্ট্রোল প্ল্যাটফর্ম — মাল্টি-Agent সহযোগিতা, ভিজ্যুয়াল ওয়ার্কফ্লো অর্কেস্ট্রেশন এবং রিয়েল-টাইম টাস্ক মনিটরিং সমর্থন করে। Lua স্ক্রিপ্ট দিয়ে নমনীয় গেম অটোমেশন তৈরি করুন।',
+  'pages.welcome.heroDescription':
+    'বিতরণী অটোমেশন কন্ট্রোল প্ল্যাটফর্ম — মাল্টি-Agent সহযোগিতা, ভিজ্যুয়াল ওয়ার্কফ্লো অর্কেস্ট্রেশন এবং রিয়েল-টাইম টাস্ক মনিটরিং সমর্থন করে। Lua স্ক্রিপ্ট দিয়ে নমনীয় গেম অটোমেশন তৈরি করুন।',
   'pages.welcome.createWorkflow': 'ওয়ার্কফ্লো তৈরি করুন',
   'pages.welcome.manageAgents': 'Agent পরিচালনা করুন',
   'pages.welcome.quickStart': 'দ্রুত শুরু',
   'pages.welcome.tagAgentAccess': 'Agent সংযোগ',
   'pages.welcome.tagScriptDelivery': 'স্ক্রিপ্ট সরবরাহ',
   'pages.welcome.tagWorkflowOrchestration': 'ওয়ার্কফ্লো অর্কেস্ট্রেশন',
-  'pages.welcome.quickStartHint': 'নোডের অনলাইন অবস্থা নিশ্চিত করতে "Agent ব্যবস্থাপনা"-এ যান, তারপর ওয়ার্কফ্লো তৈরি করুন বা স্ক্রিপ্ট চালান।',
+  'pages.welcome.quickStartHint':
+    'নোডের অনলাইন অবস্থা নিশ্চিত করতে "Agent ব্যবস্থাপনা"-এ যান, তারপর ওয়ার্কফ্লো তৈরি করুন বা স্ক্রিপ্ট চালান।',
   'pages.welcome.monitorCardTitle': 'গেম মনিটরিং',
-  'pages.welcome.monitorCardDescription': 'রিয়েল-টাইমে গেমের পর্দা দেখুন, ট্রিগার পরিচালনা করুন, ম্যাক্রো কমান্ড চালান এবং সিস্টেম রিসোর্স মনিটর করুন।',
+  'pages.welcome.monitorCardDescription':
+    'রিয়েল-টাইমে গেমের পর্দা দেখুন, ট্রিগার পরিচালনা করুন, ম্যাক্রো কমান্ড চালান এবং সিস্টেম রিসোর্স মনিটর করুন।',
   'pages.welcome.monitorCardAction': 'মনিটরিং খুলুন',
   'pages.welcome.agentsCardTitle': 'Agent ব্যবস্থাপনা',
-  'pages.welcome.agentsCardDescription': 'নিবন্ধিত সব Agent নোড দেখুন, CPU, মেমরি, নেটওয়ার্ক ব্যবহার মনিটর করুন এবং Agent অবস্থা পরিচালনা করুন।',
+  'pages.welcome.agentsCardDescription':
+    'নিবন্ধিত সব Agent নোড দেখুন, CPU, মেমরি, নেটওয়ার্ক ব্যবহার মনিটর করুন এবং Agent অবস্থা পরিচালনা করুন।',
   'pages.welcome.agentsCardAction': 'নোড পরিচালনা',
   'pages.welcome.workflowsCardTitle': 'ওয়ার্কফ্লো অর্কেস্ট্রেশন',
-  'pages.welcome.workflowsCardDescription': 'মাল্টি-স্টেপ টাস্ক অর্কেস্ট্রেশন, ডিপেন্ডেন্সি কনফিগারেশন, সমান্তরাল এক্সিকিউশন এবং ব্যর্থতায় পুনরায় চেষ্টা সমর্থন সহ অটোমেশন ওয়ার্কফ্লো তৈরি ও পরিচালনা করুন।',
+  'pages.welcome.workflowsCardDescription':
+    'মাল্টি-স্টেপ টাস্ক অর্কেস্ট্রেশন, ডিপেন্ডেন্সি কনফিগারেশন, সমান্তরাল এক্সিকিউশন এবং ব্যর্থতায় পুনরায় চেষ্টা সমর্থন সহ অটোমেশন ওয়ার্কফ্লো তৈরি ও পরিচালনা করুন।',
   'pages.welcome.workflowsCardAction': 'ওয়ার্কফ্লো তৈরি করুন',
   'pages.welcome.usageTitle': 'ব্যবহার প্রক্রিয়া',
   'pages.welcome.step1Tag': 'ধাপ ১',
   'pages.welcome.step1Title': 'Agent নিবন্ধন করুন',
-  'pages.welcome.step1Description': 'Wingman ক্লায়েন্ট চালু করলেই স্বয়ংক্রিয়ভাবে নিবন্ধিত হয়। Agent ব্যবস্থাপনা পৃষ্ঠায় সব অনলাইন নোড দেখুন।',
+  'pages.welcome.step1Description':
+    'Wingman ক্লায়েন্ট চালু করলেই স্বয়ংক্রিয়ভাবে নিবন্ধিত হয়। Agent ব্যবস্থাপনা পৃষ্ঠায় সব অনলাইন নোড দেখুন।',
   'pages.welcome.step1Action': 'Agent দেখুন',
   'pages.welcome.step2Tag': 'ধাপ ২',
   'pages.welcome.step2Title': 'ওয়ার্কফ্লো তৈরি করুন',
-  'pages.welcome.step2Description': 'ওয়ার্কফ্লো ব্যবস্থাপনা পৃষ্ঠায় টাস্ক ফ্লো তৈরি করুন, এক্সিকিউশন ধাপ, ডিপেন্ডেন্সি এবং টাইমআউট কনফিগার করুন।',
+  'pages.welcome.step2Description':
+    'ওয়ার্কফ্লো ব্যবস্থাপনা পৃষ্ঠায় টাস্ক ফ্লো তৈরি করুন, এক্সিকিউশন ধাপ, ডিপেন্ডেন্সি এবং টাইমআউট কনফিগার করুন।',
   'pages.welcome.step2Action': 'ওয়ার্কফ্লো তৈরি করুন',
   'pages.welcome.step3Tag': 'ধাপ ৩',
   'pages.welcome.step3Title': 'এক্সিকিউশন মনিটর করুন',
-  'pages.welcome.step3Description': 'ওয়ার্কফ্লো এক্সিকিউশন রিয়েল-টাইমে মনিটর করুন, ধাপের অগ্রগতি এবং Agent রিসোর্স ব্যবহার দেখুন।',
+  'pages.welcome.step3Description':
+    'ওয়ার্কফ্লো এক্সিকিউশন রিয়েল-টাইমে মনিটর করুন, ধাপের অগ্রগতি এবং Agent রিসোর্স ব্যবহার দেখুন।',
   'pages.welcome.step3Action': 'ওয়ার্কফ্লো দেখুন',
   'pages.welcome.techTitle': 'প্রযুক্তিগত বৈশিষ্ট্য',
   'pages.welcome.techProtobuf': 'Protobuf যোগাযোগ',
@@ -468,12 +486,16 @@ export default {
   'pages.welcome.techLuaScript': 'Lua স্ক্রিপ্ট',
   'pages.welcome.techLuaScriptDescription': 'নমনীয় টাস্ক সংজ্ঞা',
   'pages.403.title': 'এই পৃষ্ঠায় প্রবেশাধিকার নেই',
-  'pages.403.subTitle': 'দুঃখিত, এই পৃষ্ঠায় প্রবেশের অনুমতি আপনার নেই। হোমপেজে ফিরে যান বা প্রয়োজনীয় অনুমতিসম্পন্ন প্রবেশপথ ব্যবহার করুন।',
+  'pages.403.subTitle':
+    'দুঃখিত, এই পৃষ্ঠায় প্রবেশের অনুমতি আপনার নেই। হোমপেজে ফিরে যান বা প্রয়োজনীয় অনুমতিসম্পন্ন প্রবেশপথ ব্যবহার করুন।',
   'pages.403.buttonText': 'হোমপেজে ফিরুন',
   'pages.404.title': 'পৃষ্ঠাটি বিদ্যমান নেই',
-  'pages.login.forgotPasswordContactAdmin': 'পাসওয়ার্ড রিসেটের জন্য অ্যাডমিনিস্ট্রেটরের সাথে যোগাযোগ করুন।',
-  'pages.login.forgotPasswordAdminHint': 'আপনি যদি অ্যাডমিনিস্ট্রেটর হন, ব্যবহারকারী ব্যবস্থাপনায় লক্ষ্য অ্যাকাউন্টের জন্য নতুন পাসওয়ার্ড সেট করুন।',
-  'profile.avatar.modal.previewHint': 'ছবি ড্র্যাগ করা, ক্লিক করে আপলোড, বা সরাসরি ছবির URL দেওয়া — সবই সমর্থিত।',
+  'pages.login.forgotPasswordContactAdmin':
+    'পাসওয়ার্ড রিসেটের জন্য অ্যাডমিনিস্ট্রেটরের সাথে যোগাযোগ করুন।',
+  'pages.login.forgotPasswordAdminHint':
+    'আপনি যদি অ্যাডমিনিস্ট্রেটর হন, ব্যবহারকারী ব্যবস্থাপনায় লক্ষ্য অ্যাকাউন্টের জন্য নতুন পাসওয়ার্ড সেট করুন।',
+  'profile.avatar.modal.previewHint':
+    'ছবি ড্র্যাগ করা, ক্লিক করে আপলোড, বা সরাসরি ছবির URL দেওয়া — সবই সমর্থিত।',
   'profile.avatar.modal.uploadLabel': 'অ্যাভাটার আপলোড করুন',
   'profile.avatar.modal.dragText': 'ছবি এখানে ড্র্যাগ করুন, বা আপলোড করতে ক্লিক করুন',
   'profile.avatar.modal.uploadHint': 'আপলোডের পরে স্বয়ংক্রিয়ভাবে অ্যাভাটার ঠিকানায় বসে যাবে',

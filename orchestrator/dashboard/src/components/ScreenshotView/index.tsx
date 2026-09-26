@@ -61,12 +61,16 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = ({ width = '100%', height 
       title="游戏画面"
       extra={
         <Space>
-          <Text type="secondary">
-            {dimensions && `${dimensions.width}x${dimensions.height}`}
-          </Text>
+          <Text type="secondary">{dimensions && `${dimensions.width}x${dimensions.height}`}</Text>
           <Text type="secondary">更新于: {formatTime(timestamp)}</Text>
           <Switch checked={enabled} onChange={handleToggle} size="small" />
-          <Button icon={<ReloadOutlined />} size="small" onClick={handleRefresh} loading={loading} disabled={!enabled} />
+          <Button
+            icon={<ReloadOutlined />}
+            size="small"
+            onClick={handleRefresh}
+            loading={loading}
+            disabled={!enabled}
+          />
         </Space>
       }
       bodyStyle={{ padding: 0 }}

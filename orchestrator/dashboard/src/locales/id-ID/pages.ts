@@ -255,7 +255,8 @@ export default {
   'pages.adminUsers.usernamePlaceholder': '3-32 karakter: huruf/angka/_/-',
   'pages.adminUsers.password': 'Kata Sandi',
   'pages.adminUsers.passwordRequired': 'Silakan masukkan kata sandi',
-  'pages.adminUsers.passwordPlaceholder': 'Minimal 8 karakter, memuat 3 dari: huruf besar/kecil, angka, karakter khusus',
+  'pages.adminUsers.passwordPlaceholder':
+    'Minimal 8 karakter, memuat 3 dari: huruf besar/kecil, angka, karakter khusus',
   'pages.adminUsers.editModalTitle': 'Edit Pengguna - {name}',
   'pages.adminUsers.resetModalTitle': 'Reset Kata Sandi - {name}',
   'pages.adminUsers.newPassword': 'Kata Sandi Baru',
@@ -281,10 +282,12 @@ export default {
   'pages.adminRoles.create': 'Peran Baru',
   'pages.adminRoles.codeLabel': 'Kode Peran',
   'pages.adminRoles.codeRequired': 'Silakan masukkan kode peran',
-  'pages.adminRoles.codePlaceholder': '2-32 karakter: huruf/angka/_/- (tidak boleh bentrok dengan admin)',
+  'pages.adminRoles.codePlaceholder':
+    '2-32 karakter: huruf/angka/_/- (tidak boleh bentrok dengan admin)',
   'pages.adminRoles.permsLabel': 'Izin',
   'pages.adminRoles.drawerTitle': 'Edit Peran - {name}',
-  'pages.adminRoles.adminWildcardHint': 'Peran admin memiliki izin wildcard * dan tidak dapat diubah di sini',
+  'pages.adminRoles.adminWildcardHint':
+    'Peran admin memiliki izin wildcard * dan tidak dapat diubah di sini',
   'pages.adminRoles.assignedCount': '{count} izin ditetapkan',
   'pages.adminRoles.noCatalog': 'Tidak ada katalog izin',
   'pages.adminRoles.selectPlaceholder': 'Pilih izin',
@@ -296,7 +299,8 @@ export default {
   'pages.monitor.paused': 'Dijeda',
   'pages.monitor.settings': 'Pengaturan',
   'pages.monitor.noAgentsTitle': 'Belum ada agen online',
-  'pages.monitor.noAgentsDescription': 'Halaman terus memantau WebSocket; metrik nyata akan tampil otomatis begitu agen online.',
+  'pages.monitor.noAgentsDescription':
+    'Halaman terus memantau WebSocket; metrik nyata akan tampil otomatis begitu agen online.',
   'pages.monitor.cpuUsage': 'Penggunaan CPU',
   'pages.monitor.memoryUsage': 'Penggunaan memori',
   'pages.monitor.uptime': 'Waktu berjalan',
@@ -324,7 +328,8 @@ export default {
   'pages.monitor.triggerDescription': '{condition} · {actions} aksi · {hits} kena · {lastFired}',
   'pages.monitor.macros': 'Perintah makro',
   'pages.monitor.macroApiNotAvailable': 'API makro belum terhubung',
-  'pages.monitor.macroApiDescription': 'Protokol agen remote belum mengekspos macro.list / macro.run. Contoh hardcode tidak lagi ditampilkan di sini agar perintah palsu tidak terkirim.',
+  'pages.monitor.macroApiDescription':
+    'Protokol agen remote belum mengekspos macro.list / macro.run. Contoh hardcode tidak lagi ditampilkan di sini agar perintah palsu tidak terkirim.',
   'pages.monitor.eventStream': 'Aliran acara realtime',
   'pages.monitor.eventDriven': 'Berbasis acara',
   'pages.monitor.waitingForEvents': 'Menunggu acara agen, pemicu, atau skrip...',
@@ -337,7 +342,8 @@ export default {
   'pages.monitor.scriptStatusUpdate': 'Pembaruan status skrip',
   'pages.monitor.agentOfflineNoTriggers': 'Agen {name} offline; tidak dapat membaca pemicu',
   'pages.monitor.triggersLoadFailed': 'Gagal memuat daftar pemicu: {detail}',
-  'pages.monitor.agentNotConnectedToggle': 'Agen tidak terhubung; tidak dapat mengubah status pemicu',
+  'pages.monitor.agentNotConnectedToggle':
+    'Agen tidak terhubung; tidak dapat mengubah status pemicu',
   'pages.monitor.triggerEnabled': 'Pemicu {name} diaktifkan',
   'pages.monitor.triggerDisabled': 'Pemicu {name} dinonaktifkan',
   'pages.monitor.triggerToggleFailed': 'Gagal mengubah pemicu {name}: {detail}',
@@ -361,7 +367,8 @@ export default {
   'pages.settings.maxScriptsRequired': 'Masukkan jumlah',
   'pages.settings.rawSettings': 'Nilai kunci mentah (hanya baca)',
   'pages.settings.debugTitle': 'Debug (mode koneksi langsung)',
-  'pages.settings.debugDescriptionBefore': 'Debug Lua terhubung langsung dari VSCode EmmyLua ke port debug runtime (bawaan 9966), tanpa perantara Go server. Endpoint debug tiap agen lihat',
+  'pages.settings.debugDescriptionBefore':
+    'Debug Lua terhubung langsung dari VSCode EmmyLua ke port debug runtime (bawaan 9966), tanpa perantara Go server. Endpoint debug tiap agen lihat',
   'pages.settings.debugDescriptionAfter': '.',
   'pages.settings.loadFailed': 'Gagal memuat pengaturan',
   'pages.settings.saved': 'Pengaturan disimpan',
@@ -407,7 +414,8 @@ export default {
   // ===== Pusat Umpan Balik =====
   'pages.supportFeedback.title': 'Pusat Umpan Balik',
   'pages.supportFeedback.alertMessage': 'Setelah dikirim, pesan dalam aplikasi akan dibuat',
-  'pages.supportFeedback.alertDescription': 'Permintaan izin, laporan masalah, dan saran fitur akan dicatat di backend dan meninggalkan pemberitahuan yang dapat dilacak di Pusat Pesan.',
+  'pages.supportFeedback.alertDescription':
+    'Permintaan izin, laporan masalah, dan saran fitur akan dicatat di backend dan meninggalkan pemberitahuan yang dapat dilacak di Pusat Pesan.',
   'pages.supportFeedback.category': 'Jenis umpan balik',
   'pages.supportFeedback.categoryGeneral': 'Umpan balik umum',
   'pages.supportFeedback.categoryPermission': 'Permintaan izin',
@@ -420,8 +428,10 @@ export default {
   'pages.supportFeedback.content': 'Konten',
   'pages.supportFeedback.contentRequired': 'Masukkan umpan balik Anda',
   'pages.supportFeedback.contentMinLength': 'Konten minimal 5 karakter',
-  'pages.supportFeedback.contentPlaceholder': 'Jelaskan latar belakang, hasil yang diharapkan, langkah reproduksi, atau skenario penggunaan izin.',
-  'pages.supportFeedback.persistHint': 'Umpan balik disimpan permanen di backend; untuk permintaan izin, sertakan pengenal izin dan alasan bisnis.',
+  'pages.supportFeedback.contentPlaceholder':
+    'Jelaskan latar belakang, hasil yang diharapkan, langkah reproduksi, atau skenario penggunaan izin.',
+  'pages.supportFeedback.persistHint':
+    'Umpan balik disimpan permanen di backend; untuk permintaan izin, sertakan pengenal izin dan alasan bisnis.',
   'pages.supportFeedback.submit': 'Kirim umpan balik',
   'pages.supportFeedback.submitFailed': 'Pengiriman gagal',
   'pages.supportFeedback.submitted': 'Umpan balik terkirim',
@@ -430,35 +440,43 @@ export default {
   'pages.welcome.tagWorkflow': 'Mesin Alur Kerja',
   'pages.welcome.tagMonitor': 'Pemantauan Waktu Nyata',
   'pages.welcome.heroTitle': 'Mesin Kontrol Otomasi Game Wingman',
-  'pages.welcome.heroDescription': 'Platform kontrol otomasi terdistribusi yang mendukung kolaborasi multi-Agent, orkestrasi alur kerja visual, dan pemantauan tugas waktu nyata. Bangun otomasi game yang fleksibel dengan skrip Lua.',
+  'pages.welcome.heroDescription':
+    'Platform kontrol otomasi terdistribusi yang mendukung kolaborasi multi-Agent, orkestrasi alur kerja visual, dan pemantauan tugas waktu nyata. Bangun otomasi game yang fleksibel dengan skrip Lua.',
   'pages.welcome.createWorkflow': 'Buat Alur Kerja',
   'pages.welcome.manageAgents': 'Kelola Agent',
   'pages.welcome.quickStart': 'Mulai Cepat',
   'pages.welcome.tagAgentAccess': 'Integrasi Agent',
   'pages.welcome.tagScriptDelivery': 'Distribusi Skrip',
   'pages.welcome.tagWorkflowOrchestration': 'Orkestrasi Alur Kerja',
-  'pages.welcome.quickStartHint': 'Buka "Manajemen Agent" untuk memastikan status node daring, lalu buat alur kerja atau jalankan skrip.',
+  'pages.welcome.quickStartHint':
+    'Buka "Manajemen Agent" untuk memastikan status node daring, lalu buat alur kerja atau jalankan skrip.',
   'pages.welcome.monitorCardTitle': 'Pemantauan Game',
-  'pages.welcome.monitorCardDescription': 'Lihat layar game secara waktu nyata, kelola pemicu, jalankan perintah makro, dan pantau sumber daya sistem.',
+  'pages.welcome.monitorCardDescription':
+    'Lihat layar game secara waktu nyata, kelola pemicu, jalankan perintah makro, dan pantau sumber daya sistem.',
   'pages.welcome.monitorCardAction': 'Buka Pemantauan',
   'pages.welcome.agentsCardTitle': 'Manajemen Agent',
-  'pages.welcome.agentsCardDescription': 'Lihat semua node Agent terdaftar, pantau penggunaan CPU, memori, dan jaringan, serta kelola status Agent.',
+  'pages.welcome.agentsCardDescription':
+    'Lihat semua node Agent terdaftar, pantau penggunaan CPU, memori, dan jaringan, serta kelola status Agent.',
   'pages.welcome.agentsCardAction': 'Kelola Node',
   'pages.welcome.workflowsCardTitle': 'Orkestrasi Alur Kerja',
-  'pages.welcome.workflowsCardDescription': 'Buat dan kelola alur kerja otomasi dengan tugas multi-langkah, konfigurasi dependensi, eksekusi paralel, dan percobaan ulang saat gagal.',
+  'pages.welcome.workflowsCardDescription':
+    'Buat dan kelola alur kerja otomasi dengan tugas multi-langkah, konfigurasi dependensi, eksekusi paralel, dan percobaan ulang saat gagal.',
   'pages.welcome.workflowsCardAction': 'Buat Alur Kerja',
   'pages.welcome.usageTitle': 'Alur Penggunaan',
   'pages.welcome.step1Tag': 'Langkah 1',
   'pages.welcome.step1Title': 'Daftarkan Agent',
-  'pages.welcome.step1Description': 'Jalankan klien Wingman untuk mendaftar otomatis. Lihat semua node daring di halaman Manajemen Agent.',
+  'pages.welcome.step1Description':
+    'Jalankan klien Wingman untuk mendaftar otomatis. Lihat semua node daring di halaman Manajemen Agent.',
   'pages.welcome.step1Action': 'Lihat Agent',
   'pages.welcome.step2Tag': 'Langkah 2',
   'pages.welcome.step2Title': 'Buat Alur Kerja',
-  'pages.welcome.step2Description': 'Buat alur tugas di halaman manajemen alur kerja, atur langkah eksekusi, dependensi, dan batas waktu.',
+  'pages.welcome.step2Description':
+    'Buat alur tugas di halaman manajemen alur kerja, atur langkah eksekusi, dependensi, dan batas waktu.',
   'pages.welcome.step2Action': 'Buat Alur Kerja',
   'pages.welcome.step3Tag': 'Langkah 3',
   'pages.welcome.step3Title': 'Pantau Eksekusi',
-  'pages.welcome.step3Description': 'Pantau status eksekusi alur kerja secara waktu nyata, lihat progres langkah dan penggunaan sumber daya Agent.',
+  'pages.welcome.step3Description':
+    'Pantau status eksekusi alur kerja secara waktu nyata, lihat progres langkah dan penggunaan sumber daya Agent.',
   'pages.welcome.step3Action': 'Lihat Alur Kerja',
   'pages.welcome.techTitle': 'Keunggulan Teknis',
   'pages.welcome.techProtobuf': 'Komunikasi Protobuf',
@@ -470,12 +488,16 @@ export default {
   'pages.welcome.techLuaScript': 'Skrip Lua',
   'pages.welcome.techLuaScriptDescription': 'Definisi tugas yang fleksibel',
   'pages.403.title': 'Tidak Ada Akses ke Halaman Ini',
-  'pages.403.subTitle': 'Maaf, Anda tidak memiliki izin untuk mengakses halaman ini. Kembali ke beranda atau gunakan entri yang memiliki izin.',
+  'pages.403.subTitle':
+    'Maaf, Anda tidak memiliki izin untuk mengakses halaman ini. Kembali ke beranda atau gunakan entri yang memiliki izin.',
   'pages.403.buttonText': 'Kembali ke Beranda',
   'pages.404.title': 'Halaman Tidak Ditemukan',
-  'pages.login.forgotPasswordContactAdmin': 'Hubungi administrator untuk mengatur ulang kata sandi akun Anda.',
-  'pages.login.forgotPasswordAdminHint': 'Jika Anda administrator, atur kata sandi baru untuk akun tujuan di Manajemen Pengguna.',
-  'profile.avatar.modal.previewHint': 'Mendukung seret gambar, klik untuk mengunggah, atau masukkan URL gambar secara langsung.',
+  'pages.login.forgotPasswordContactAdmin':
+    'Hubungi administrator untuk mengatur ulang kata sandi akun Anda.',
+  'pages.login.forgotPasswordAdminHint':
+    'Jika Anda administrator, atur kata sandi baru untuk akun tujuan di Manajemen Pengguna.',
+  'profile.avatar.modal.previewHint':
+    'Mendukung seret gambar, klik untuk mengunggah, atau masukkan URL gambar secara langsung.',
   'profile.avatar.modal.uploadLabel': 'Unggah Avatar',
   'profile.avatar.modal.dragText': 'Seret gambar ke sini, atau klik untuk mengunggah',
   'profile.avatar.modal.uploadHint': 'Setelah diunggah, otomatis mengisi alamat avatar',

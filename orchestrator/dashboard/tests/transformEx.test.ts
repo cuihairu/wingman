@@ -60,7 +60,12 @@ describe('getByPath 边界', () => {
 
 describe('谓词算子', () => {
   const root = {};
-  const data = { items: [{ n: 1, s: 'alpha' }, { n: 2, s: 'beta' }] };
+  const data = {
+    items: [
+      { n: 1, s: 'alpha' },
+      { n: 2, s: 'beta' },
+    ],
+  };
   const forEach = (where: any) =>
     applyTransform(data, {
       template: { forEach: { path: '$.items', where, template: { n: '$.n' } } },
@@ -229,10 +234,7 @@ describe('pluck 值指令与 aggregate 边界', () => {
       applyTransform({ arr: [] }, { template: { avg: { path: '$.arr', value: '$.v' } } }),
     ).toBe(0);
     expect(
-      applyTransform(
-        { arr: [{ v: 'x' }] },
-        { template: { avg: { path: '$.arr', value: '$.v' } } },
-      ),
+      applyTransform({ arr: [{ v: 'x' }] }, { template: { avg: { path: '$.arr', value: '$.v' } } }),
     ).toBe(0);
   });
 
@@ -253,8 +255,14 @@ describe('pluck 值指令与 aggregate 边界', () => {
 
   it('path 非数组时聚合返回 0，forEach/map/pluck 返回 []', () => {
     expect(applyTransform({ n: 1 }, { template: { sum: { path: '$.n', value: '$' } } })).toBe(0);
-    expect(applyTransform({ n: 1 }, { template: { forEach: { path: '$.n', template: '$' } } })).toEqual([]);
-    expect(applyTransform({ n: 1 }, { template: { map: { path: '$.n', template: '$' } } })).toEqual([]);
-    expect(applyTransform({ n: 1 }, { template: { pluck: { path: '$.n', value: '$' } } })).toEqual([]);
+    expect(
+      applyTransform({ n: 1 }, { template: { forEach: { path: '$.n', template: '$' } } }),
+    ).toEqual([]);
+    expect(applyTransform({ n: 1 }, { template: { map: { path: '$.n', template: '$' } } })).toEqual(
+      [],
+    );
+    expect(applyTransform({ n: 1 }, { template: { pluck: { path: '$.n', value: '$' } } })).toEqual(
+      [],
+    );
   });
 });

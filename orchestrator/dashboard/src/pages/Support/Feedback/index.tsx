@@ -53,13 +53,19 @@ export default function SupportFeedbackPage() {
             >
               <Select
                 options={[
-                  { label: formatMessage('pages.supportFeedback.categoryGeneral'), value: 'general' },
+                  {
+                    label: formatMessage('pages.supportFeedback.categoryGeneral'),
+                    value: 'general',
+                  },
                   {
                     label: formatMessage('pages.supportFeedback.categoryPermission'),
                     value: 'permission_request',
                   },
                   { label: formatMessage('pages.supportFeedback.categoryBug'), value: 'bug' },
-                  { label: formatMessage('pages.supportFeedback.categoryFeature'), value: 'feature' },
+                  {
+                    label: formatMessage('pages.supportFeedback.categoryFeature'),
+                    value: 'feature',
+                  },
                 ]}
               />
             </Form.Item>

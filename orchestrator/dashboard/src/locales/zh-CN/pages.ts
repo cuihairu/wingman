@@ -595,7 +595,8 @@ export default {
   'pages.monitor.triggerDescription': '{condition} · 动作 {actions} · 命中 {hits} · {lastFired}',
   'pages.monitor.macros': '宏命令',
   'pages.monitor.macroApiNotAvailable': '宏命令 API 尚未接入',
-  'pages.monitor.macroApiDescription': '当前远程 Agent 协议还没有暴露 macro.list / macro.run。这里不再展示硬编码示例，避免误下发假命令。',
+  'pages.monitor.macroApiDescription':
+    '当前远程 Agent 协议还没有暴露 macro.list / macro.run。这里不再展示硬编码示例，避免误下发假命令。',
   'pages.monitor.eventStream': '实时事件流',
   'pages.monitor.eventDriven': '事件驱动',
   'pages.monitor.waitingForEvents': '等待 Agent、触发器或脚本事件...',
@@ -632,7 +633,8 @@ export default {
   'pages.settings.maxScriptsRequired': '请输入数量',
   'pages.settings.rawSettings': '原始键值（只读）',
   'pages.settings.debugTitle': '调试（直连模式）',
-  'pages.settings.debugDescriptionBefore': 'Lua 调试由 VSCode EmmyLua 直连 runtime 调试端口（默认 9966），Go server 不中转。各 agent 的调试端点见',
+  'pages.settings.debugDescriptionBefore':
+    'Lua 调试由 VSCode EmmyLua 直连 runtime 调试端口（默认 9966），Go server 不中转。各 agent 的调试端点见',
   'pages.settings.debugDescriptionAfter': '。',
   'pages.settings.loadFailed': '加载设置失败',
   'pages.settings.saved': '设置已保存',
@@ -678,7 +680,8 @@ export default {
   // ===== 反馈中心 =====
   'pages.supportFeedback.title': '反馈中心',
   'pages.supportFeedback.alertMessage': '提交后会生成站内消息',
-  'pages.supportFeedback.alertDescription': '权限申请、问题反馈和功能建议都会写入后端反馈记录，并在消息中心留下可追踪通知。',
+  'pages.supportFeedback.alertDescription':
+    '权限申请、问题反馈和功能建议都会写入后端反馈记录，并在消息中心留下可追踪通知。',
   'pages.supportFeedback.category': '反馈类型',
   'pages.supportFeedback.categoryGeneral': '一般反馈',
   'pages.supportFeedback.categoryPermission': '权限申请',
@@ -692,7 +695,8 @@ export default {
   'pages.supportFeedback.contentRequired': '请输入反馈内容',
   'pages.supportFeedback.contentMinLength': '内容至少 5 个字符',
   'pages.supportFeedback.contentPlaceholder': '请描述背景、期望结果、复现步骤或权限使用场景。',
-  'pages.supportFeedback.persistHint': '反馈会进入后端持久化记录；如果是权限申请，建议附上权限标识和业务理由。',
+  'pages.supportFeedback.persistHint':
+    '反馈会进入后端持久化记录；如果是权限申请，建议附上权限标识和业务理由。',
   'pages.supportFeedback.submit': '提交反馈',
   'pages.supportFeedback.submitFailed': '提交失败',
   'pages.supportFeedback.submitted': '反馈已提交',
@@ -701,31 +705,38 @@ export default {
   'pages.welcome.tagWorkflow': '工作流引擎',
   'pages.welcome.tagMonitor': '实时监控',
   'pages.welcome.heroTitle': 'Wingman 游戏自动化控制引擎',
-  'pages.welcome.heroDescription': '分布式自动化控制平台，支持多 Agent 协同工作、可视化工作流编排、实时任务监控。通过 Lua 脚本实现灵活的游戏自动化操作。',
+  'pages.welcome.heroDescription':
+    '分布式自动化控制平台，支持多 Agent 协同工作、可视化工作流编排、实时任务监控。通过 Lua 脚本实现灵活的游戏自动化操作。',
   'pages.welcome.createWorkflow': '创建工作流',
   'pages.welcome.manageAgents': '管理 Agent',
   'pages.welcome.quickStart': '快速开始',
   'pages.welcome.tagAgentAccess': 'Agent 接入',
   'pages.welcome.tagScriptDelivery': '脚本下发',
   'pages.welcome.tagWorkflowOrchestration': '工作流编排',
-  'pages.welcome.quickStartHint': '前往「Agent 管理」确认节点在线状态，随后即可创建工作流或运行脚本。',
+  'pages.welcome.quickStartHint':
+    '前往「Agent 管理」确认节点在线状态，随后即可创建工作流或运行脚本。',
   'pages.welcome.monitorCardTitle': '游戏监控',
-  'pages.welcome.monitorCardDescription': '实时查看游戏画面、管理触发器、执行宏命令、监控系统资源。',
+  'pages.welcome.monitorCardDescription':
+    '实时查看游戏画面、管理触发器、执行宏命令、监控系统资源。',
   'pages.welcome.monitorCardAction': '打开监控',
   'pages.welcome.agentsCardTitle': 'Agent 管理',
-  'pages.welcome.agentsCardDescription': '查看所有已注册的 Agent 节点，监控 CPU、内存、网络等资源使用情况，管理 Agent 状态。',
+  'pages.welcome.agentsCardDescription':
+    '查看所有已注册的 Agent 节点，监控 CPU、内存、网络等资源使用情况，管理 Agent 状态。',
   'pages.welcome.agentsCardAction': '管理节点',
   'pages.welcome.workflowsCardTitle': '工作流编排',
-  'pages.welcome.workflowsCardDescription': '创建和管理自动化工作流，支持多步骤任务编排、依赖配置、并行执行和失败重试。',
+  'pages.welcome.workflowsCardDescription':
+    '创建和管理自动化工作流，支持多步骤任务编排、依赖配置、并行执行和失败重试。',
   'pages.welcome.workflowsCardAction': '创建工作流',
   'pages.welcome.usageTitle': '使用流程',
   'pages.welcome.step1Tag': '步骤 1',
   'pages.welcome.step1Title': '注册 Agent',
-  'pages.welcome.step1Description': '启动 Wingman 客户端，自动注册到服务器。在 Agent 管理页面查看所有在线节点。',
+  'pages.welcome.step1Description':
+    '启动 Wingman 客户端，自动注册到服务器。在 Agent 管理页面查看所有在线节点。',
   'pages.welcome.step1Action': '查看 Agent',
   'pages.welcome.step2Tag': '步骤 2',
   'pages.welcome.step2Title': '创建工作流',
-  'pages.welcome.step2Description': '在工作流管理页面创建任务流，配置执行步骤、依赖关系和超时时间。',
+  'pages.welcome.step2Description':
+    '在工作流管理页面创建任务流，配置执行步骤、依赖关系和超时时间。',
   'pages.welcome.step2Action': '创建工作流',
   'pages.welcome.step3Tag': '步骤 3',
   'pages.welcome.step3Title': '监控执行',

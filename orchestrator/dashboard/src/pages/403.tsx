@@ -14,9 +14,9 @@ const ForbiddenPage: React.FC = () => {
         title={formatMessage('pages.403.title')}
         description={formatMessage('pages.403.subTitle')}
         actions={
-      <Button type="primary" onClick={() => history.push('/')}>
-        {formatMessage('pages.403.buttonText')}
-      </Button>
+          <Button type="primary" onClick={() => history.push('/')}>
+            {formatMessage('pages.403.buttonText')}
+          </Button>
         }
       />
     </div>

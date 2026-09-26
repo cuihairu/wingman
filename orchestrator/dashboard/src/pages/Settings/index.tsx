@@ -85,7 +85,9 @@ export default function SettingsPage() {
             <Form.Item
               label={formatMessage('pages.settings.logLevel')}
               name="logLevel"
-              rules={[{ required: true, message: formatMessage('pages.settings.logLevelRequired') }]}
+              rules={[
+                { required: true, message: formatMessage('pages.settings.logLevelRequired') },
+              ]}
             >
               <Select
                 options={[

@@ -159,7 +159,10 @@ export default function OperationLogsPage() {
               title: formatMessage('pages.adminOperationLogs.colRegion'),
               render: (_value, record: any) => String(record?.meta?.ip_region || '-'),
             },
-            { title: formatMessage('pages.adminOperationLogs.colAgent'), dataIndex: ['meta', 'agent_id'] },
+            {
+              title: formatMessage('pages.adminOperationLogs.colAgent'),
+              dataIndex: ['meta', 'agent_id'],
+            },
             {
               title: formatMessage('pages.adminOperationLogs.colWorkflow'),
               dataIndex: ['meta', 'workflow_id'],

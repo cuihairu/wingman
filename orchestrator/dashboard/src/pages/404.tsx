@@ -13,9 +13,9 @@ const NoFoundPage: React.FC = () => {
         title={intl.formatMessage({ id: 'pages.404.title' })}
         description={intl.formatMessage({ id: 'pages.404.subTitle' })}
         actions={
-      <Button type="primary" onClick={() => history.push('/')}>
-        {intl.formatMessage({ id: 'pages.404.buttonText' })}
-      </Button>
+          <Button type="primary" onClick={() => history.push('/')}>
+            {intl.formatMessage({ id: 'pages.404.buttonText' })}
+          </Button>
         }
       />
     </div>

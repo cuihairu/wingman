@@ -114,7 +114,8 @@ export default {
   'pages.agents.batchTriggerModalTitle': 'Implantar Gatilhos em Lote ({count} selecionados)',
   'pages.agents.batchDeployFailed': 'Falha na implantação em lote',
   'pages.agents.batchResultTitle': 'Resultados da Operação em Lote',
-  'pages.agents.batchResultSummary': 'Total de {total}: {succeeded} com sucesso, {failed} com falha',
+  'pages.agents.batchResultSummary':
+    'Total de {total}: {succeeded} com sucesso, {failed} com falha',
   'pages.agents.resultColumn': 'Resultado',
   'pages.agents.failureReason': 'Motivo da falha',
   'pages.agents.shutdownConfirmTitle': 'Confirmar desligamento',
@@ -125,7 +126,8 @@ export default {
   'pages.agents.managePermissionRequired': 'Permissão agents:manage necessária',
   'pages.agents.tagPermissionTooltip': 'É necessária a permissão agents:manage para editar tags',
   'pages.agents.tagsUpdated': 'Tags atualizadas',
-  'pages.agents.tagsUpdateFailed': 'Falha ao atualizar tags (pode ser necessária permissão de administrador)',
+  'pages.agents.tagsUpdateFailed':
+    'Falha ao atualizar tags (pode ser necessária permissão de administrador)',
   'pages.agents.editTags': 'Editar tags',
   'pages.agents.addTag': '+ Adicionar',
   'pages.agents.noTags': 'Sem tags',
@@ -255,7 +257,8 @@ export default {
   'pages.adminUsers.usernamePlaceholder': '3-32 caracteres: letras/números/_/-',
   'pages.adminUsers.password': 'Senha',
   'pages.adminUsers.passwordRequired': 'Informe a senha',
-  'pages.adminUsers.passwordPlaceholder': 'Mínimo de 8 caracteres com 3 quaisquer de: maiúsculas/minúsculas, números, caracteres especiais',
+  'pages.adminUsers.passwordPlaceholder':
+    'Mínimo de 8 caracteres com 3 quaisquer de: maiúsculas/minúsculas, números, caracteres especiais',
   'pages.adminUsers.editModalTitle': 'Editar usuário - {name}',
   'pages.adminUsers.resetModalTitle': 'Redefinir senha - {name}',
   'pages.adminUsers.newPassword': 'Nova senha',
@@ -281,10 +284,12 @@ export default {
   'pages.adminRoles.create': 'Novo papel',
   'pages.adminRoles.codeLabel': 'Código do papel',
   'pages.adminRoles.codeRequired': 'Informe o código do papel',
-  'pages.adminRoles.codePlaceholder': '2-32 caracteres: letras/números/_/- (não pode conflitar com admin)',
+  'pages.adminRoles.codePlaceholder':
+    '2-32 caracteres: letras/números/_/- (não pode conflitar com admin)',
   'pages.adminRoles.permsLabel': 'Permissões',
   'pages.adminRoles.drawerTitle': 'Editar papel - {name}',
-  'pages.adminRoles.adminWildcardHint': 'O papel admin possui a permissão curinga * e não pode ser alterado aqui',
+  'pages.adminRoles.adminWildcardHint':
+    'O papel admin possui a permissão curinga * e não pode ser alterado aqui',
   'pages.adminRoles.assignedCount': '{count} permissões atribuídas',
   'pages.adminRoles.noCatalog': 'Nenhum catálogo de permissões',
   'pages.adminRoles.selectPlaceholder': 'Selecionar permissões',
@@ -296,7 +301,8 @@ export default {
   'pages.monitor.paused': 'Pausado',
   'pages.monitor.settings': 'Configurações',
   'pages.monitor.noAgentsTitle': 'Nenhum agente online',
-  'pages.monitor.noAgentsDescription': 'A página continua ouvindo o WebSocket; as métricas reais aparecem automaticamente quando um agente ficar online.',
+  'pages.monitor.noAgentsDescription':
+    'A página continua ouvindo o WebSocket; as métricas reais aparecem automaticamente quando um agente ficar online.',
   'pages.monitor.cpuUsage': 'Uso de CPU',
   'pages.monitor.memoryUsage': 'Uso de memória',
   'pages.monitor.uptime': 'Tempo de atividade',
@@ -315,21 +321,25 @@ export default {
   'pages.monitor.triggersUnavailable': 'Dados de gatilhos indisponíveis',
   'pages.monitor.triggersEmpty': 'Sem gatilhos para este agente (runtime trigger.list vazio)',
   'pages.monitor.deleteTriggerTitle': 'Excluir gatilho',
-  'pages.monitor.deleteTriggerConfirm': 'Excluir "{name}"? A operação é enviada ao runtime imediatamente.',
+  'pages.monitor.deleteTriggerConfirm':
+    'Excluir "{name}"? A operação é enviada ao runtime imediatamente.',
   'pages.monitor.delete': 'Excluir',
   'pages.monitor.oneShot': 'Único',
   'pages.monitor.cooldown': 'Recarga {ms}ms',
   'pages.monitor.noCondition': 'Sem condição',
   'pages.monitor.neverFired': 'nunca disparado',
-  'pages.monitor.triggerDescription': '{condition} · {actions} ações · {hits} acertos · {lastFired}',
+  'pages.monitor.triggerDescription':
+    '{condition} · {actions} ações · {hits} acertos · {lastFired}',
   'pages.monitor.macros': 'Comandos de macro',
   'pages.monitor.macroApiNotAvailable': 'API de macros ainda não integrada',
-  'pages.monitor.macroApiDescription': 'O protocolo remoto do agente ainda não expõe macro.list / macro.run. Exemplos fixos não são mais exibidos aqui para evitar o envio de comandos falsos.',
+  'pages.monitor.macroApiDescription':
+    'O protocolo remoto do agente ainda não expõe macro.list / macro.run. Exemplos fixos não são mais exibidos aqui para evitar o envio de comandos falsos.',
   'pages.monitor.eventStream': 'Fluxo de eventos em tempo real',
   'pages.monitor.eventDriven': 'Dirigido por eventos',
   'pages.monitor.waitingForEvents': 'Aguardando eventos de agente, gatilho ou script...',
   'pages.monitor.agentNotConnected': 'Agente não conectado',
-  'pages.monitor.loadAgentsFailed': 'Não foi possível carregar a lista de agentes; aguardando eventos do WebSocket',
+  'pages.monitor.loadAgentsFailed':
+    'Não foi possível carregar a lista de agentes; aguardando eventos do WebSocket',
   'pages.monitor.agentOnline': 'Agente {name} ficou online',
   'pages.monitor.agentOffline': 'Agente {name} ficou offline',
   'pages.monitor.unknownTrigger': 'Gatilho desconhecido',
@@ -337,11 +347,13 @@ export default {
   'pages.monitor.scriptStatusUpdate': 'Atualização de status de script',
   'pages.monitor.agentOfflineNoTriggers': 'Agente {name} offline; não é possível ler os gatilhos',
   'pages.monitor.triggersLoadFailed': 'Falha ao carregar lista de gatilhos: {detail}',
-  'pages.monitor.agentNotConnectedToggle': 'Agente não conectado; não é possível alternar o gatilho',
+  'pages.monitor.agentNotConnectedToggle':
+    'Agente não conectado; não é possível alternar o gatilho',
   'pages.monitor.triggerEnabled': 'Gatilho {name} ativado',
   'pages.monitor.triggerDisabled': 'Gatilho {name} desativado',
   'pages.monitor.triggerToggleFailed': 'Falha ao alternar o gatilho {name}: {detail}',
-  'pages.monitor.agentNotConnectedCreate': 'Agente não conectado; não é possível adicionar um gatilho',
+  'pages.monitor.agentNotConnectedCreate':
+    'Agente não conectado; não é possível adicionar um gatilho',
   'pages.monitor.agentNotConnectedRemove': 'Agente não conectado; não é possível excluir o gatilho',
   'pages.monitor.triggerRemoved': 'Gatilho {name} excluído',
   'pages.monitor.triggerRemoveFailed': 'Falha ao excluir o gatilho {name}: {detail}',
@@ -361,7 +373,8 @@ export default {
   'pages.settings.maxScriptsRequired': 'Informe a quantidade',
   'pages.settings.rawSettings': 'Chaves e valores originais (somente leitura)',
   'pages.settings.debugTitle': 'Depuração (modo de conexão direta)',
-  'pages.settings.debugDescriptionBefore': 'A depuração de Lua conecta diretamente do VSCode EmmyLua à porta de depuração do runtime (padrão 9966), sem intermediação do Go server. Os endpoints de depuração de cada agente estão em',
+  'pages.settings.debugDescriptionBefore':
+    'A depuração de Lua conecta diretamente do VSCode EmmyLua à porta de depuração do runtime (padrão 9966), sem intermediação do Go server. Os endpoints de depuração de cada agente estão em',
   'pages.settings.debugDescriptionAfter': '.',
   'pages.settings.loadFailed': 'Falha ao carregar as configurações',
   'pages.settings.saved': 'Configurações salvas',
@@ -407,7 +420,8 @@ export default {
   // ===== Central de Feedback =====
   'pages.supportFeedback.title': 'Central de Feedback',
   'pages.supportFeedback.alertMessage': 'Após o envio, uma mensagem interna será gerada',
-  'pages.supportFeedback.alertDescription': 'Solicitações de permissão, relatórios de problemas e sugestões de recursos são registrados no backend e geram um aviso rastreável na Central de Mensagens.',
+  'pages.supportFeedback.alertDescription':
+    'Solicitações de permissão, relatórios de problemas e sugestões de recursos são registrados no backend e geram um aviso rastreável na Central de Mensagens.',
   'pages.supportFeedback.category': 'Tipo de feedback',
   'pages.supportFeedback.categoryGeneral': 'Feedback geral',
   'pages.supportFeedback.categoryPermission': 'Solicitação de permissão',
@@ -420,8 +434,10 @@ export default {
   'pages.supportFeedback.content': 'Conteúdo',
   'pages.supportFeedback.contentRequired': 'Insira seu feedback',
   'pages.supportFeedback.contentMinLength': 'O conteúdo deve ter pelo menos 5 caracteres',
-  'pages.supportFeedback.contentPlaceholder': 'Descreva o contexto, o resultado esperado, as etapas de reprodução ou o caso de uso da permissão.',
-  'pages.supportFeedback.persistHint': 'O feedback é persistido no backend; para solicitações de permissão, inclua o identificador da permissão e a justificativa de negócio.',
+  'pages.supportFeedback.contentPlaceholder':
+    'Descreva o contexto, o resultado esperado, as etapas de reprodução ou o caso de uso da permissão.',
+  'pages.supportFeedback.persistHint':
+    'O feedback é persistido no backend; para solicitações de permissão, inclua o identificador da permissão e a justificativa de negócio.',
   'pages.supportFeedback.submit': 'Enviar feedback',
   'pages.supportFeedback.submitFailed': 'Falha no envio',
   'pages.supportFeedback.submitted': 'Feedback enviado',
@@ -430,35 +446,43 @@ export default {
   'pages.welcome.tagWorkflow': 'Motor de Fluxo de Trabalho',
   'pages.welcome.tagMonitor': 'Monitoramento em Tempo Real',
   'pages.welcome.heroTitle': 'Motor de Controle de Automação de Jogos Wingman',
-  'pages.welcome.heroDescription': 'Plataforma distribuída de controle de automação com suporte a colaboração multi-Agent, orquestração visual de fluxos de trabalho e monitoramento de tarefas em tempo real. Crie automação flexível de jogos com scripts Lua.',
+  'pages.welcome.heroDescription':
+    'Plataforma distribuída de controle de automação com suporte a colaboração multi-Agent, orquestração visual de fluxos de trabalho e monitoramento de tarefas em tempo real. Crie automação flexível de jogos com scripts Lua.',
   'pages.welcome.createWorkflow': 'Criar Fluxo de Trabalho',
   'pages.welcome.manageAgents': 'Gerenciar Agents',
   'pages.welcome.quickStart': 'Início Rápido',
   'pages.welcome.tagAgentAccess': 'Integração de Agent',
   'pages.welcome.tagScriptDelivery': 'Distribuição de Scripts',
   'pages.welcome.tagWorkflowOrchestration': 'Orquestração de Fluxos',
-  'pages.welcome.quickStartHint': 'Acesse "Gerenciamento de Agents" para confirmar o status dos nós e, em seguida, crie fluxos de trabalho ou execute scripts.',
+  'pages.welcome.quickStartHint':
+    'Acesse "Gerenciamento de Agents" para confirmar o status dos nós e, em seguida, crie fluxos de trabalho ou execute scripts.',
   'pages.welcome.monitorCardTitle': 'Monitoramento de Jogo',
-  'pages.welcome.monitorCardDescription': 'Veja a tela do jogo em tempo real, gerencie gatilhos, execute macro comandos e monitore recursos do sistema.',
+  'pages.welcome.monitorCardDescription':
+    'Veja a tela do jogo em tempo real, gerencie gatilhos, execute macro comandos e monitore recursos do sistema.',
   'pages.welcome.monitorCardAction': 'Abrir Monitoramento',
   'pages.welcome.agentsCardTitle': 'Gerenciamento de Agents',
-  'pages.welcome.agentsCardDescription': 'Veja todos os nós de Agent registrados, monitore o uso de CPU, memória e rede e gerencie o status dos Agents.',
+  'pages.welcome.agentsCardDescription':
+    'Veja todos os nós de Agent registrados, monitore o uso de CPU, memória e rede e gerencie o status dos Agents.',
   'pages.welcome.agentsCardAction': 'Gerenciar Nós',
   'pages.welcome.workflowsCardTitle': 'Orquestração de Fluxos',
-  'pages.welcome.workflowsCardDescription': 'Crie e gerencie fluxos de trabalho de automação com tarefas de múltiplas etapas, configuração de dependências, execução paralela e novas tentativas em caso de falha.',
+  'pages.welcome.workflowsCardDescription':
+    'Crie e gerencie fluxos de trabalho de automação com tarefas de múltiplas etapas, configuração de dependências, execução paralela e novas tentativas em caso de falha.',
   'pages.welcome.workflowsCardAction': 'Criar Fluxo de Trabalho',
   'pages.welcome.usageTitle': 'Como Usar',
   'pages.welcome.step1Tag': 'Etapa 1',
   'pages.welcome.step1Title': 'Registrar um Agent',
-  'pages.welcome.step1Description': 'Inicie o cliente Wingman para registrar automaticamente. Veja todos os nós online na página de Gerenciamento de Agents.',
+  'pages.welcome.step1Description':
+    'Inicie o cliente Wingman para registrar automaticamente. Veja todos os nós online na página de Gerenciamento de Agents.',
   'pages.welcome.step1Action': 'Ver Agents',
   'pages.welcome.step2Tag': 'Etapa 2',
   'pages.welcome.step2Title': 'Criar um Fluxo de Trabalho',
-  'pages.welcome.step2Description': 'Crie fluxos de tarefas na página de gerenciamento de fluxos, configurando etapas, dependências e tempos limite.',
+  'pages.welcome.step2Description':
+    'Crie fluxos de tarefas na página de gerenciamento de fluxos, configurando etapas, dependências e tempos limite.',
   'pages.welcome.step2Action': 'Criar Fluxo de Trabalho',
   'pages.welcome.step3Tag': 'Etapa 3',
   'pages.welcome.step3Title': 'Monitorar a Execução',
-  'pages.welcome.step3Description': 'Monitore a execução dos fluxos de trabalho em tempo real, com progresso das etapas e uso de recursos dos Agents.',
+  'pages.welcome.step3Description':
+    'Monitore a execução dos fluxos de trabalho em tempo real, com progresso das etapas e uso de recursos dos Agents.',
   'pages.welcome.step3Action': 'Ver Fluxos',
   'pages.welcome.techTitle': 'Destaques Técnicos',
   'pages.welcome.techProtobuf': 'Comunicação Protobuf',
@@ -470,15 +494,20 @@ export default {
   'pages.welcome.techLuaScript': 'Scripts Lua',
   'pages.welcome.techLuaScriptDescription': 'Definição flexível de tarefas',
   'pages.403.title': 'Sem Acesso a Esta Página',
-  'pages.403.subTitle': 'Desculpe, você não tem permissão para acessar esta página. Volte à página inicial ou use um acesso com as permissões necessárias.',
+  'pages.403.subTitle':
+    'Desculpe, você não tem permissão para acessar esta página. Volte à página inicial ou use um acesso com as permissões necessárias.',
   'pages.403.buttonText': 'Voltar ao Início',
   'pages.404.title': 'Página Não Encontrada',
-  'pages.login.forgotPasswordContactAdmin': 'Entre em contato com o administrador para redefinir sua senha.',
-  'pages.login.forgotPasswordAdminHint': 'Se você for o administrador, defina uma nova senha para a conta no Gerenciamento de Usuários.',
-  'profile.avatar.modal.previewHint': 'Arraste uma imagem, clique para enviar ou insira diretamente uma URL de imagem.',
+  'pages.login.forgotPasswordContactAdmin':
+    'Entre em contato com o administrador para redefinir sua senha.',
+  'pages.login.forgotPasswordAdminHint':
+    'Se você for o administrador, defina uma nova senha para a conta no Gerenciamento de Usuários.',
+  'profile.avatar.modal.previewHint':
+    'Arraste uma imagem, clique para enviar ou insira diretamente uma URL de imagem.',
   'profile.avatar.modal.uploadLabel': 'Enviar Avatar',
   'profile.avatar.modal.dragText': 'Arraste uma imagem para cá ou clique para enviar',
-  'profile.avatar.modal.uploadHint': 'Após o envio, o endereço do avatar é preenchido automaticamente',
+  'profile.avatar.modal.uploadHint':
+    'Após o envio, o endereço do avatar é preenchido automaticamente',
   'profile.avatar.modal.title': 'Definir URL do Avatar',
   'profile.avatar.modal.submit': 'Salvar Avatar',
   'profile.avatar.modal.label': 'URL do Avatar',

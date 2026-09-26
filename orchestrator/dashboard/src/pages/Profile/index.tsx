@@ -563,8 +563,8 @@ export default function Profile() {
             <List.Item.Meta
               title={
                 <Space>
-                    <Text strong>{game.gameName || game.gameId || 'N/A'}</Text>
-                    {game.gameId ? <Tag>{game.gameId}</Tag> : null}
+                  <Text strong>{game.gameName || game.gameId || 'N/A'}</Text>
+                  {game.gameId ? <Tag>{game.gameId}</Tag> : null}
                 </Space>
               }
               description={
@@ -902,9 +902,7 @@ export default function Profile() {
               <InboxOutlined />
             </p>
             <p className="ant-upload-text">{formatMessage('profile.avatar.modal.dragText')}</p>
-            <p className="ant-upload-hint">
-              {formatMessage('profile.avatar.modal.uploadHint')}
-            </p>
+            <p className="ant-upload-hint">{formatMessage('profile.avatar.modal.uploadHint')}</p>
           </Upload.Dragger>
         </Form.Item>
         <Form.Item

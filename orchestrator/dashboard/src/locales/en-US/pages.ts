@@ -1,5 +1,6 @@
 export default {
-  'pages.layouts.userLayout.title': 'Wingman control plane for orchestration, automation, and audit',
+  'pages.layouts.userLayout.title':
+    'Wingman control plane for orchestration, automation, and audit',
   'pages.login.accountLogin.tab': 'Account Login',
   'pages.login.accountLogin.errorMessage': 'Incorrect username or password',
   'pages.login.failure': 'Login failed, please try again!',
@@ -545,7 +546,8 @@ export default {
   'pages.adminUsers.usernamePlaceholder': '3-32 chars: letters/digits/_/-',
   'pages.adminUsers.password': 'Password',
   'pages.adminUsers.passwordRequired': 'Please enter a password',
-  'pages.adminUsers.passwordPlaceholder': 'At least 8 chars with any 3 of: upper/lowercase, digits, special characters',
+  'pages.adminUsers.passwordPlaceholder':
+    'At least 8 chars with any 3 of: upper/lowercase, digits, special characters',
   'pages.adminUsers.editModalTitle': 'Edit User - {name}',
   'pages.adminUsers.resetModalTitle': 'Reset Password - {name}',
   'pages.adminUsers.newPassword': 'New Password',
@@ -571,10 +573,12 @@ export default {
   'pages.adminRoles.create': 'New Role',
   'pages.adminRoles.codeLabel': 'Role Code',
   'pages.adminRoles.codeRequired': 'Please enter a role code',
-  'pages.adminRoles.codePlaceholder': '2-32 chars: letters/digits/_/- (must not conflict with admin)',
+  'pages.adminRoles.codePlaceholder':
+    '2-32 chars: letters/digits/_/- (must not conflict with admin)',
   'pages.adminRoles.permsLabel': 'Permissions',
   'pages.adminRoles.drawerTitle': 'Edit Role - {name}',
-  'pages.adminRoles.adminWildcardHint': 'The admin role owns the wildcard permission * and cannot be edited here',
+  'pages.adminRoles.adminWildcardHint':
+    'The admin role owns the wildcard permission * and cannot be edited here',
   'pages.adminRoles.assignedCount': '{count} permissions assigned',
   'pages.adminRoles.noCatalog': 'No permission catalog',
   'pages.adminRoles.selectPlaceholder': 'Select permissions',
@@ -586,7 +590,8 @@ export default {
   'pages.monitor.paused': 'Paused',
   'pages.monitor.settings': 'Settings',
   'pages.monitor.noAgentsTitle': 'No online agents yet',
-  'pages.monitor.noAgentsDescription': 'The page keeps listening to WebSocket; real metrics appear automatically once an agent comes online.',
+  'pages.monitor.noAgentsDescription':
+    'The page keeps listening to WebSocket; real metrics appear automatically once an agent comes online.',
   'pages.monitor.cpuUsage': 'CPU usage',
   'pages.monitor.memoryUsage': 'Memory usage',
   'pages.monitor.uptime': 'Uptime',
@@ -605,7 +610,8 @@ export default {
   'pages.monitor.triggersUnavailable': 'Trigger data unavailable',
   'pages.monitor.triggersEmpty': 'No triggers for this agent (runtime trigger.list is empty)',
   'pages.monitor.deleteTriggerTitle': 'Delete trigger',
-  'pages.monitor.deleteTriggerConfirm': 'Delete "{name}"? The change is pushed to the runtime immediately.',
+  'pages.monitor.deleteTriggerConfirm':
+    'Delete "{name}"? The change is pushed to the runtime immediately.',
   'pages.monitor.delete': 'Delete',
   'pages.monitor.oneShot': 'One-shot',
   'pages.monitor.cooldown': 'Cooldown {ms}ms',
@@ -614,7 +620,8 @@ export default {
   'pages.monitor.triggerDescription': '{condition} · {actions} actions · {hits} hits · {lastFired}',
   'pages.monitor.macros': 'Macro commands',
   'pages.monitor.macroApiNotAvailable': 'Macro API not wired up yet',
-  'pages.monitor.macroApiDescription': 'The remote agent protocol does not expose macro.list / macro.run yet. Hardcoded samples are no longer shown here to avoid dispatching fake commands.',
+  'pages.monitor.macroApiDescription':
+    'The remote agent protocol does not expose macro.list / macro.run yet. Hardcoded samples are no longer shown here to avoid dispatching fake commands.',
   'pages.monitor.eventStream': 'Live event stream',
   'pages.monitor.eventDriven': 'Event-driven',
   'pages.monitor.waitingForEvents': 'Waiting for agent, trigger or script events...',
@@ -651,7 +658,8 @@ export default {
   'pages.settings.maxScriptsRequired': 'Please enter a number',
   'pages.settings.rawSettings': 'Raw key-value pairs (read-only)',
   'pages.settings.debugTitle': 'Debugging (direct-connection mode)',
-  'pages.settings.debugDescriptionBefore': 'Lua debugging connects directly from VSCode EmmyLua to the runtime debug port (default 9966); the Go server does not relay it. Each agent has its own debug endpoint, see',
+  'pages.settings.debugDescriptionBefore':
+    'Lua debugging connects directly from VSCode EmmyLua to the runtime debug port (default 9966); the Go server does not relay it. Each agent has its own debug endpoint, see',
   'pages.settings.debugDescriptionAfter': '.',
   'pages.settings.loadFailed': 'Failed to load settings',
   'pages.settings.saved': 'Settings saved',
@@ -697,7 +705,8 @@ export default {
   // ===== Feedback Center =====
   'pages.supportFeedback.title': 'Feedback Center',
   'pages.supportFeedback.alertMessage': 'An in-app message will be generated after submission',
-  'pages.supportFeedback.alertDescription': 'Permission requests, issue reports, and feature suggestions are recorded in the backend and leave a trackable notice in the Message Center.',
+  'pages.supportFeedback.alertDescription':
+    'Permission requests, issue reports, and feature suggestions are recorded in the backend and leave a trackable notice in the Message Center.',
   'pages.supportFeedback.category': 'Category',
   'pages.supportFeedback.categoryGeneral': 'General',
   'pages.supportFeedback.categoryPermission': 'Permission request',
@@ -710,8 +719,10 @@ export default {
   'pages.supportFeedback.content': 'Content',
   'pages.supportFeedback.contentRequired': 'Please enter your feedback',
   'pages.supportFeedback.contentMinLength': 'Content must be at least 5 characters',
-  'pages.supportFeedback.contentPlaceholder': 'Describe the context, expected results, reproduction steps, or the permission use case.',
-  'pages.supportFeedback.persistHint': 'Feedback is persisted in the backend; for permission requests, include the permission identifier and the business justification.',
+  'pages.supportFeedback.contentPlaceholder':
+    'Describe the context, expected results, reproduction steps, or the permission use case.',
+  'pages.supportFeedback.persistHint':
+    'Feedback is persisted in the backend; for permission requests, include the permission identifier and the business justification.',
   'pages.supportFeedback.submit': 'Submit feedback',
   'pages.supportFeedback.submitFailed': 'Submission failed',
   'pages.supportFeedback.submitted': 'Feedback submitted',
@@ -720,35 +731,43 @@ export default {
   'pages.welcome.tagWorkflow': 'Workflow Engine',
   'pages.welcome.tagMonitor': 'Real-Time Monitoring',
   'pages.welcome.heroTitle': 'Wingman Game Automation Control Engine',
-  'pages.welcome.heroDescription': 'A distributed automation control platform supporting multi-Agent collaboration, visual workflow orchestration, and real-time task monitoring. Build flexible game automation with Lua scripts.',
+  'pages.welcome.heroDescription':
+    'A distributed automation control platform supporting multi-Agent collaboration, visual workflow orchestration, and real-time task monitoring. Build flexible game automation with Lua scripts.',
   'pages.welcome.createWorkflow': 'Create Workflow',
   'pages.welcome.manageAgents': 'Manage Agents',
   'pages.welcome.quickStart': 'Quick Start',
   'pages.welcome.tagAgentAccess': 'Agent Onboarding',
   'pages.welcome.tagScriptDelivery': 'Script Delivery',
   'pages.welcome.tagWorkflowOrchestration': 'Workflow Orchestration',
-  'pages.welcome.quickStartHint': 'Go to "Agent Management" to confirm node status, then create workflows or run scripts.',
+  'pages.welcome.quickStartHint':
+    'Go to "Agent Management" to confirm node status, then create workflows or run scripts.',
   'pages.welcome.monitorCardTitle': 'Game Monitoring',
-  'pages.welcome.monitorCardDescription': 'View game screens in real time, manage triggers, run macro commands, and monitor system resources.',
+  'pages.welcome.monitorCardDescription':
+    'View game screens in real time, manage triggers, run macro commands, and monitor system resources.',
   'pages.welcome.monitorCardAction': 'Open Monitoring',
   'pages.welcome.agentsCardTitle': 'Agent Management',
-  'pages.welcome.agentsCardDescription': 'View all registered Agent nodes, monitor CPU, memory, and network usage, and manage Agent status.',
+  'pages.welcome.agentsCardDescription':
+    'View all registered Agent nodes, monitor CPU, memory, and network usage, and manage Agent status.',
   'pages.welcome.agentsCardAction': 'Manage Nodes',
   'pages.welcome.workflowsCardTitle': 'Workflow Orchestration',
-  'pages.welcome.workflowsCardDescription': 'Create and manage automation workflows with multi-step tasks, dependencies, parallel execution, and failure retries.',
+  'pages.welcome.workflowsCardDescription':
+    'Create and manage automation workflows with multi-step tasks, dependencies, parallel execution, and failure retries.',
   'pages.welcome.workflowsCardAction': 'Create Workflow',
   'pages.welcome.usageTitle': 'How It Works',
   'pages.welcome.step1Tag': 'Step 1',
   'pages.welcome.step1Title': 'Register an Agent',
-  'pages.welcome.step1Description': 'Start the Wingman client to register automatically. View all online nodes on the Agent Management page.',
+  'pages.welcome.step1Description':
+    'Start the Wingman client to register automatically. View all online nodes on the Agent Management page.',
   'pages.welcome.step1Action': 'View Agents',
   'pages.welcome.step2Tag': 'Step 2',
   'pages.welcome.step2Title': 'Create a Workflow',
-  'pages.welcome.step2Description': 'Create task flows on the workflow management page, configuring steps, dependencies, and timeouts.',
+  'pages.welcome.step2Description':
+    'Create task flows on the workflow management page, configuring steps, dependencies, and timeouts.',
   'pages.welcome.step2Action': 'Create Workflow',
   'pages.welcome.step3Tag': 'Step 3',
   'pages.welcome.step3Title': 'Monitor Execution',
-  'pages.welcome.step3Description': 'Monitor workflow execution in real time, with step progress and Agent resource usage.',
+  'pages.welcome.step3Description':
+    'Monitor workflow execution in real time, with step progress and Agent resource usage.',
   'pages.welcome.step3Action': 'View Workflows',
   'pages.welcome.techTitle': 'Technical Highlights',
   'pages.welcome.techProtobuf': 'Protobuf Communication',
@@ -760,12 +779,16 @@ export default {
   'pages.welcome.techLuaScript': 'Lua Scripting',
   'pages.welcome.techLuaScriptDescription': 'Flexible task definitions',
   'pages.403.title': 'No Access to This Page',
-  'pages.403.subTitle': 'Sorry, you do not have permission to access this page. Go back to the home page or use an entry with the required permissions.',
+  'pages.403.subTitle':
+    'Sorry, you do not have permission to access this page. Go back to the home page or use an entry with the required permissions.',
   'pages.403.buttonText': 'Back to Home',
   'pages.404.title': 'Page Not Found',
-  'pages.login.forgotPasswordContactAdmin': 'Please contact an administrator to reset your password.',
-  'pages.login.forgotPasswordAdminHint': 'If you are an administrator, set a new password for the account in User Management.',
-  'profile.avatar.modal.previewHint': 'Drag an image here, click to upload, or paste an image URL directly.',
+  'pages.login.forgotPasswordContactAdmin':
+    'Please contact an administrator to reset your password.',
+  'pages.login.forgotPasswordAdminHint':
+    'If you are an administrator, set a new password for the account in User Management.',
+  'profile.avatar.modal.previewHint':
+    'Drag an image here, click to upload, or paste an image URL directly.',
   'profile.avatar.modal.uploadLabel': 'Upload Avatar',
   'profile.avatar.modal.dragText': 'Drag an image here, or click to upload',
   'profile.avatar.modal.uploadHint': 'The avatar URL will be filled in automatically after upload',

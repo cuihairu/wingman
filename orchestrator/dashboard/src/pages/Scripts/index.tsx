@@ -20,16 +20,7 @@ import {
   ProTable,
 } from '@ant-design/pro-components';
 import { useIntl, useRequest } from '@umijs/max';
-import {
-  Button,
-  Space,
-  Typography,
-  message,
-  Modal,
-  Row,
-  Col,
-  Tag,
-} from 'antd';
+import { Button, Space, Typography, message, Modal, Row, Col, Tag } from 'antd';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { CodeEditor } from '@/components/MonacoDynamic';
 import {
@@ -64,7 +55,11 @@ const Scripts: React.FC = () => {
   const [createModalVisible, setCreateModalVisible] = useState(false);
 
   // 获取脚本列表
-  const { data: scriptsData, loading, refresh } = useRequest(
+  const {
+    data: scriptsData,
+    loading,
+    refresh,
+  } = useRequest(
     async () => {
       const response = await getScripts();
       return response.data || [];
@@ -76,22 +71,31 @@ const Scripts: React.FC = () => {
 
   const scripts: ScriptInfo[] = Array.isArray(scriptsData) ? (scriptsData as ScriptInfo[]) : [];
 
-  const activeExecutionId = selectedScript ? runningExecutions[selectedScript.path] || executionIdFor(selectedScript) : '';
+  const activeExecutionId = selectedScript
+    ? runningExecutions[selectedScript.path] || executionIdFor(selectedScript)
+    : '';
 
-  const refreshLogs = useCallback(async (script?: ScriptInfo | null) => {
-    const target = script || selectedScript;
-    if (!target) {
-      setLogs([]);
-      return;
-    }
+  const refreshLogs = useCallback(
+    async (script?: ScriptInfo | null) => {
+      const target = script || selectedScript;
+      if (!target) {
+        setLogs([]);
+        return;
+      }
 
-    try {
-      const response = await getScriptLogs(runningExecutions[target.path] || executionIdFor(target), 0, 200);
-      setLogs(response.data || []);
-    } catch (error) {
-      setLogs([]);
-    }
-  }, [runningExecutions, selectedScript]);
+      try {
+        const response = await getScriptLogs(
+          runningExecutions[target.path] || executionIdFor(target),
+          0,
+          200,
+        );
+        setLogs(response.data || []);
+      } catch (error) {
+        setLogs([]);
+      }
+    },
+    [runningExecutions, selectedScript],
+  );
 
   // 加载脚本内容
   const loadScriptContent = useCallback(async (script: ScriptInfo) => {
@@ -101,7 +105,9 @@ const Scripts: React.FC = () => {
     } catch (error) {
       message.error(formatMessage('pages.scripts.loadFailed'));
       // 设置默认内容
-      setScriptContent(`-- ${script.name}\n-- ${script.description || ''}\n\nfunction main()\n    print("Hello, Wingman!")\nend\n\nmain()\n`);
+      setScriptContent(
+        `-- ${script.name}\n-- ${script.description || ''}\n\nfunction main()\n    print("Hello, Wingman!")\nend\n\nmain()\n`,
+      );
     }
   }, []);
 
@@ -158,7 +164,10 @@ const Scripts: React.FC = () => {
   const handleDeleteScript = async (script: ScriptInfo) => {
     Modal.confirm({
       title: formatMessage('pages.scripts.deleteConfirmTitle'),
-      content: intl.formatMessage({ id: 'pages.scripts.deleteConfirmContent' }, { name: script.name }),
+      content: intl.formatMessage(
+        { id: 'pages.scripts.deleteConfirmContent' },
+        { name: script.name },
+      ),
       onOk: async () => {
         try {
           await deleteScript(script.path);
@@ -221,7 +230,9 @@ const Scripts: React.FC = () => {
       key: 'modifiedTime',
       width: 180,
       render: (_, record) => (
-        <Text type="secondary">{record.modifiedTime ? new Date(record.modifiedTime).toLocaleString() : '-'}</Text>
+        <Text type="secondary">
+          {record.modifiedTime ? new Date(record.modifiedTime).toLocaleString() : '-'}
+        </Text>
       ),
     },
     {
@@ -250,11 +261,7 @@ const Scripts: React.FC = () => {
               {formatMessage('pages.scripts.run')}
             </Button>
           )}
-          <Button
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEditScript(record)}
-          >
+          <Button size="small" icon={<EditOutlined />} onClick={() => handleEditScript(record)}>
             {formatMessage('pages.scripts.edit')}
           </Button>
           <Button
@@ -275,11 +282,7 @@ const Scripts: React.FC = () => {
         breadcrumb: {},
       }}
       extra={[
-        <Button
-          key="refresh"
-          icon={<ReloadOutlined />}
-          onClick={refresh}
-        >
+        <Button key="refresh" icon={<ReloadOutlined />} onClick={refresh}>
           {formatMessage('pages.common.refresh')}
         </Button>,
         <Button
@@ -301,7 +304,10 @@ const Scripts: React.FC = () => {
             extra={
               <Space>
                 <Text type="secondary">
-                  {intl.formatMessage({ id: 'pages.scripts.totalCount' }, { count: scripts.length })}
+                  {intl.formatMessage(
+                    { id: 'pages.scripts.totalCount' },
+                    { count: scripts.length },
+                  )}
                 </Text>
               </Space>
             }
@@ -332,7 +338,10 @@ const Scripts: React.FC = () => {
                   <Space>
                     <CodeOutlined />
                     <span>
-                      {intl.formatMessage({ id: 'pages.scripts.editTitle' }, { name: selectedScript?.name || '' })}
+                      {intl.formatMessage(
+                        { id: 'pages.scripts.editTitle' },
+                        { name: selectedScript?.name || '' },
+                      )}
                     </span>
                   </Space>
                 }
@@ -342,11 +351,7 @@ const Scripts: React.FC = () => {
                     <Button onClick={() => setEditorVisible(false)}>
                       {formatMessage('pages.common.close')}
                     </Button>
-                    <Button
-                      type="primary"
-                      icon={<SaveOutlined />}
-                      onClick={handleSaveScript}
-                    >
+                    <Button type="primary" icon={<SaveOutlined />} onClick={handleSaveScript}>
                       {formatMessage('pages.common.save')}
                     </Button>
                   </Space>
@@ -393,16 +398,10 @@ const Scripts: React.FC = () => {
                   ) : (
                     logs.map((log, index) => (
                       <div key={index} className={styles.logLine}>
-                        <Text type="secondary">
-                          {new Date(log.timestamp).toLocaleTimeString()}
-                        </Text>
+                        <Text type="secondary">{new Date(log.timestamp).toLocaleTimeString()}</Text>
                         <Tag
                           color={
-                            log.level === 'error'
-                              ? 'red'
-                              : log.level === 'warn'
-                                ? 'orange'
-                                : 'blue'
+                            log.level === 'error' ? 'red' : log.level === 'warn' ? 'orange' : 'blue'
                           }
                         >
                           {log.level}

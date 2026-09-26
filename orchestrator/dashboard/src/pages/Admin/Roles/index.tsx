@@ -1,5 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, App, Empty } from 'antd';
+import {
+  Button,
+  Card,
+  Drawer,
+  Form,
+  Input,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  Tag,
+  App,
+  Empty,
+} from 'antd';
 import { PageContainer } from '@ant-design/pro-components';
 import { useIntl } from '@umijs/max';
 import {
@@ -104,16 +118,27 @@ export default function RolesPage() {
   };
 
   const columns = [
-    { title: formatMessage('pages.adminRoles.code'), dataIndex: 'code', render: (code: string, r: AdminRole) => (
-      <Space><span>{code}</span>{r.builtin && <Tag color="gold">{formatMessage('pages.adminRoles.builtinTag')}</Tag>}</Space>
-    ) },
+    {
+      title: formatMessage('pages.adminRoles.code'),
+      dataIndex: 'code',
+      render: (code: string, r: AdminRole) => (
+        <Space>
+          <span>{code}</span>
+          {r.builtin && <Tag color="gold">{formatMessage('pages.adminRoles.builtinTag')}</Tag>}
+        </Space>
+      ),
+    },
     { title: formatMessage('pages.adminRoles.name'), dataIndex: 'name' },
-    { title: formatMessage('pages.adminRoles.description'), dataIndex: 'description', ellipsis: true },
+    {
+      title: formatMessage('pages.adminRoles.description'),
+      dataIndex: 'description',
+      ellipsis: true,
+    },
     {
       title: formatMessage('pages.adminRoles.permCount'),
       dataIndex: 'permissions',
       width: 90,
-      render: (perms: AdminPermission[]) => (perms?.length || 0),
+      render: (perms: AdminPermission[]) => perms?.length || 0,
     },
     {
       title: formatMessage('pages.common.action'),
@@ -135,13 +160,18 @@ export default function RolesPage() {
           </Button>
           {!record.builtin && (
             <Popconfirm
-              title={intl.formatMessage({ id: 'pages.adminRoles.deleteConfirm' }, {
-                code: record.code,
-              })}
+              title={intl.formatMessage(
+                { id: 'pages.adminRoles.deleteConfirm' },
+                {
+                  code: record.code,
+                },
+              )}
               onConfirm={() => onDelete(record.code)}
               okButtonProps={{ danger: true }}
             >
-              <Button size="small" danger>{formatMessage('pages.adminRoles.delete')}</Button>
+              <Button size="small" danger>
+                {formatMessage('pages.adminRoles.delete')}
+              </Button>
             </Popconfirm>
           )}
         </Space>
@@ -153,7 +183,13 @@ export default function RolesPage() {
     <PageContainer>
       <Card>
         <Space style={{ marginBottom: 16 }}>
-          <Button type="primary" onClick={() => { createForm.resetFields(); setCreateOpen(true); }}>
+          <Button
+            type="primary"
+            onClick={() => {
+              createForm.resetFields();
+              setCreateOpen(true);
+            }}
+          >
             {formatMessage('pages.adminRoles.create')}
           </Button>
         </Space>
@@ -194,16 +230,23 @@ export default function RolesPage() {
       </Modal>
 
       <Drawer
-        title={intl.formatMessage({ id: 'pages.adminRoles.drawerTitle' }, {
-          name: editTarget?.name || editTarget?.code || '',
-        })}
+        title={intl.formatMessage(
+          { id: 'pages.adminRoles.drawerTitle' },
+          {
+            name: editTarget?.name || editTarget?.code || '',
+          },
+        )}
         width={520}
         open={!!editTarget}
         onClose={() => setEditTarget(null)}
         extra={
           <Space>
-            <Button onClick={() => setEditTarget(null)}>{formatMessage('pages.common.cancel')}</Button>
-            <Button type="primary" onClick={submitEdit}>{formatMessage('pages.common.save')}</Button>
+            <Button onClick={() => setEditTarget(null)}>
+              {formatMessage('pages.common.cancel')}
+            </Button>
+            <Button type="primary" onClick={submitEdit}>
+              {formatMessage('pages.common.save')}
+            </Button>
           </Space>
         }
         destroyOnClose
@@ -220,9 +263,12 @@ export default function RolesPage() {
               <span style={{ color: '#888', fontSize: 12 }}>
                 {editTarget.code === 'admin'
                   ? formatMessage('pages.adminRoles.adminWildcardHint')
-                  : intl.formatMessage({ id: 'pages.adminRoles.assignedCount' }, {
-                    count: (editTarget.permissions || []).length,
-                  })}
+                  : intl.formatMessage(
+                      { id: 'pages.adminRoles.assignedCount' },
+                      {
+                        count: (editTarget.permissions || []).length,
+                      },
+                    )}
               </span>
             </Form.Item>
             {editTarget.code !== 'admin' && (
@@ -258,7 +304,8 @@ function PermissionSelect({
     }));
   }, [grouped, disabled]);
 
-  if (options.length === 0) return <Empty description={intl.formatMessage({ id: 'pages.adminRoles.noCatalog' })} />;
+  if (options.length === 0)
+    return <Empty description={intl.formatMessage({ id: 'pages.adminRoles.noCatalog' })} />;
   return (
     <Select
       mode="multiple"

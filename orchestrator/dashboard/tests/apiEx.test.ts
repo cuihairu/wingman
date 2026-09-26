@@ -74,7 +74,14 @@ describe('admin.ts 权限目录分类', () => {
 
 describe('audit.ts 全参数', () => {
   it('listAudit 透传 actor/start/end/size/page', async () => {
-    await audit.listAudit({ actor: 'admin', kinds: 'login', start: 't0', end: 't1', size: 50, page: 3 });
+    await audit.listAudit({
+      actor: 'admin',
+      kinds: 'login',
+      start: 't0',
+      end: 't1',
+      size: 50,
+      page: 3,
+    });
     const { url } = lastFetch();
     expect(url).toBe('/api/audit?actor=admin&kinds=login&start=t0&end=t1&size=50&page=3');
   });

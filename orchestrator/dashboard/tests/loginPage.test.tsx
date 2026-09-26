@@ -84,7 +84,10 @@ describe('Login 页扩展分支', () => {
   });
 
   it('登录成功且返回游戏列表时写入 scope 并跳转 redirect', async () => {
-    mockCreateSession.mockResolvedValueOnce({ token: 'tok-9', user: { username: 'admin', roles: ['admin'] } });
+    mockCreateSession.mockResolvedValueOnce({
+      token: 'tok-9',
+      user: { username: 'admin', roles: ['admin'] },
+    });
     mockFetchCurrentUserGames.mockResolvedValueOnce({
       games: [{ gameId: 'g-9', name: 'fallback-name', envs: ['prod', 'dev'] }],
     });
@@ -97,16 +100,19 @@ describe('Login 页扩展分支', () => {
       expect(historyMock.push).toHaveBeenCalledWith('/monitor');
     });
     expect((localStorage.setItem as jest.Mock).mock.calls.some(([k]) => k === 'token')).toBe(true);
-    expect(
-      (localStorage.setItem as jest.Mock).mock.calls.some(([k]) => k === 'game_id'),
-    ).toBe(true);
+    expect((localStorage.setItem as jest.Mock).mock.calls.some(([k]) => k === 'game_id')).toBe(
+      true,
+    );
 
     window.history.replaceState({}, '', '/');
     root.unmount();
   });
 
   it('游戏列表加载失败不影响登录成功跳转', async () => {
-    mockCreateSession.mockResolvedValueOnce({ token: 'tok-8', user: { username: 'admin', roles: [] } });
+    mockCreateSession.mockResolvedValueOnce({
+      token: 'tok-8',
+      user: { username: 'admin', roles: [] },
+    });
     mockFetchCurrentUserGames.mockRejectedValueOnce(new Error('games unavailable'));
 
     const root = await submitLoginForm();
@@ -118,7 +124,10 @@ describe('Login 页扩展分支', () => {
   });
 
   it('games 响应为 undefined 时按空列表处理', async () => {
-    mockCreateSession.mockResolvedValueOnce({ token: 'tok-7', user: { username: 'admin', roles: [] } });
+    mockCreateSession.mockResolvedValueOnce({
+      token: 'tok-7',
+      user: { username: 'admin', roles: [] },
+    });
     mockFetchCurrentUserGames.mockResolvedValueOnce(undefined);
 
     const root = await submitLoginForm();
@@ -130,7 +139,10 @@ describe('Login 页扩展分支', () => {
   });
 
   it('envMeta 派生 env 且无 gameId 时只写入 env', async () => {
-    mockCreateSession.mockResolvedValueOnce({ token: 'tok-6', user: { username: 'admin', roles: [] } });
+    mockCreateSession.mockResolvedValueOnce({
+      token: 'tok-6',
+      user: { username: 'admin', roles: [] },
+    });
     mockFetchCurrentUserGames.mockResolvedValueOnce({
       games: [{ envMeta: [{ env: 'meta-env' }] }],
     });
@@ -138,18 +150,19 @@ describe('Login 页扩展分支', () => {
     const root = await submitLoginForm();
 
     await waitFor(() => {
-      expect(
-        (localStorage.setItem as jest.Mock).mock.calls.some(([k]) => k === 'env'),
-      ).toBe(true);
+      expect((localStorage.setItem as jest.Mock).mock.calls.some(([k]) => k === 'env')).toBe(true);
     });
-    expect(
-      (localStorage.setItem as jest.Mock).mock.calls.some(([k]) => k === 'game_id'),
-    ).toBe(false);
+    expect((localStorage.setItem as jest.Mock).mock.calls.some(([k]) => k === 'game_id')).toBe(
+      false,
+    );
     root.unmount();
   });
 
   it('仅有 gameId 无 env 时只写入 gameId', async () => {
-    mockCreateSession.mockResolvedValueOnce({ token: 'tok-5', user: { username: 'admin', roles: [] } });
+    mockCreateSession.mockResolvedValueOnce({
+      token: 'tok-5',
+      user: { username: 'admin', roles: [] },
+    });
     mockFetchCurrentUserGames.mockResolvedValueOnce({
       games: [{ gameId: 'only-game' }],
     });
@@ -157,19 +170,20 @@ describe('Login 页扩展分支', () => {
     const root = await submitLoginForm();
 
     await waitFor(() => {
-      expect(
-        (localStorage.setItem as jest.Mock).mock.calls.some(([k]) => k === 'game_id'),
-      ).toBe(true);
+      expect((localStorage.setItem as jest.Mock).mock.calls.some(([k]) => k === 'game_id')).toBe(
+        true,
+      );
     });
-    expect(
-      (localStorage.setItem as jest.Mock).mock.calls.some(([k]) => k === 'env'),
-    ).toBe(false);
+    expect((localStorage.setItem as jest.Mock).mock.calls.some(([k]) => k === 'env')).toBe(false);
     root.unmount();
   });
 
   it('initialState 无 fetchUserInfo 时跳过用户信息刷新', async () => {
     mockModelState.initialState = { nickname: 'n' };
-    mockCreateSession.mockResolvedValueOnce({ token: 'tok-4', user: { username: 'admin', roles: [] } });
+    mockCreateSession.mockResolvedValueOnce({
+      token: 'tok-4',
+      user: { username: 'admin', roles: [] },
+    });
     mockFetchCurrentUserGames.mockResolvedValueOnce({ games: [] });
 
     const root = await submitLoginForm();
@@ -209,7 +223,10 @@ describe('Login 页扩展分支', () => {
     mockModelState.setInitialState = jest.fn((updater: (s: unknown) => unknown) => {
       updaterResults.push(updater?.({ prev: 'kept' }));
     });
-    mockCreateSession.mockResolvedValueOnce({ token: 'tok-3', user: { username: 'admin', roles: [] } });
+    mockCreateSession.mockResolvedValueOnce({
+      token: 'tok-3',
+      user: { username: 'admin', roles: [] },
+    });
     mockFetchCurrentUserGames.mockResolvedValueOnce({ games: [] });
 
     const root = await submitLoginForm();

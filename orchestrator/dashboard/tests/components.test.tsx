@@ -306,7 +306,12 @@ describe('ScreenshotView', () => {
     act(() => {
       socket!.simulateMessage({
         type: 'screenshot',
-        data: { image: 'data:image/png;base64,x', width: 800, height: 600, timestamp: 1700000000000 },
+        data: {
+          image: 'data:image/png;base64,x',
+          width: 800,
+          height: 600,
+          timestamp: 1700000000000,
+        },
       });
     });
     act(() => {
@@ -403,4 +408,3 @@ describe('ScreenshotView', () => {
     expect(screen.queryByText('预览已关闭')).not.toBeInTheDocument();
   });
 });
-

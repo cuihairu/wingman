@@ -43,7 +43,9 @@ export async function listMessages(params: ListMessagesParams = {}): Promise<Lis
   if (params.pageSize) search.set('pageSize', String(params.pageSize));
   if (params.page) search.set('page', String(params.page));
   const suffix = search.toString();
-  const response = await fetchJSON<ListMessagesResponse>(`/api/messages${suffix ? `?${suffix}` : ''}`);
+  const response = await fetchJSON<ListMessagesResponse>(
+    `/api/messages${suffix ? `?${suffix}` : ''}`,
+  );
   return {
     items: (response.items || []).map(normalizeMessage),
     total: response.total,

@@ -80,7 +80,9 @@ export default function AccountMessagesPage() {
             >
               {formatMessage('pages.account.messages.unread.button')}
             </Button>
-            <Button onClick={markAllRead}>{formatMessage('pages.account.messages.mark.all.read')}</Button>
+            <Button onClick={markAllRead}>
+              {formatMessage('pages.account.messages.mark.all.read')}
+            </Button>
             <Button onClick={() => load()}>{formatMessage('pages.common.refresh')}</Button>
           </Space>
         }
@@ -107,7 +109,9 @@ export default function AccountMessagesPage() {
                 title={
                   <Space wrap>
                     <Badge status={item.status === 'read' ? 'default' : 'processing'} />
-                    <Text strong>{item.title || formatMessage('pages.accountMessages.systemNotice')}</Text>
+                    <Text strong>
+                      {item.title || formatMessage('pages.accountMessages.systemNotice')}
+                    </Text>
                     {item.category ? <Tag>{item.category}</Tag> : null}
                     {item.source ? <Tag color="blue">{item.source}</Tag> : null}
                   </Space>
