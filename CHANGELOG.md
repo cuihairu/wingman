@@ -9,7 +9,16 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 380 个提交（feat 68 / fix 140 / docs 72 / test 43 / ci 20 / refactor 8 / chore 20）。
+自 v0.1.1 以来共 387 个提交（feat 68 / fix 137 / docs 67 / test 44 / ci 19 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### feat（2026-09-26，M4 远控 P1 递补：SSH 文件浏览器——onfilesystem SFTP 树）
+
+- **协议边界即能力边界**：Guacamole 1.5.x 对象流只有 `get`/`put`，**没有 delete/rename 指令**——浏览器第一版只有列目录/下载/上传。删除不是被砍掉，是线协议不存在该指令；需求出现走会话内 shell（`rm`）或等上游扩展，不自行造指令。
+- **复用公共件，不在消费方另起一套**：`RemoteFileBrowser` + `filesystem.ts`（列目录 JSON 分块聚合、逐 blob ack 流控、BlobWriter 上传完成手动 `sendEnd`）全部落在 `RemoteDesktop/` 公共出口，Modal 与未来 cockpit 按同一入口接入。工具栏入口仅 SSH 渲染、SFTP 对象上报后才可展开；监看可浏览/下载、上传仅接管（收发不对称先例同 §14 剪贴板）。
+- **网关零改动**：`filesystem`/`get`/`put`/`body`/`ack` 等对象流指令对网关就是普通数据帧（wsToGuacd/guacdToWS 原样转发）；新增 `guacamole_filesystem_test.go` 透传回归测试，锁「网关不碰对象流」不变式。
+- **stage 不变量**：浏览器展开/收起只改布局，像素面 stage 恒挂载——卸载即销毁 display 元素，无法恢复。
+- **录像回放可行性复核**（只给结论不实现）：`Guacamole.SessionRecording` 就在既有依赖 guacamole-common-js@1.5.0 的 npm 包内（`_PlaybackTunnel`/逐帧解析/play-pause-seek 实测在），「官方 session-player 非 npm 分发」前提不成立——**可行、零新增依赖**，缺的只是 .mjs 数据源适配与播放器壳；待真实录像数据出现再接（设计 §16「回放」）。
+- 新代码四项覆盖率 100%（filesystem.ts / RemoteFileBrowser.tsx / useGuacamoleSession.ts / RemoteDesktopToolbar.tsx / RemoteDesktopPanel.tsx / types.ts）。
 
 ### style（2026-09-26，Dashboard 存量 36 文件 prettier 对齐）
 

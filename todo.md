@@ -19,7 +19,7 @@
   - **会话录制（§16）**：record 票据 → connect 注入 `recording-path/name`；安全默认 `recording-include-keys=false`（按键永不入录像）；检索 API `/api/remote/recordings`（list/download=desktop:view，delete=desktop:control）+ Dashboard 录像管理；`deployments/guacd` 增加 drive/recordings 共享卷。
   - 服务端新增 mock-guacd 握手测试（讲线协议的假 guacd 验证 connect 按位注入）+ recordings handler 全路径测试；Swagger 注解补齐全部 remote REST 端点并再生成。
 - **验证基线**：Go 14 包 `go vet` + `go test -race` 全过；Dashboard jest 261/261、tsc 0 错、eslint 仅存量 2 警告、prettier 干净。
-- **剩余（P1/远期）**：cockpit 共享像素面组件、SSH 文件浏览器（`onfilesystem` SFTP 树）、浏览器内录像回放（session-player 非 npm 分发）、i18n 接线（阶段二 UI 文案暂为特性内中文硬编码，沿用 P0 先例）。
+- **剩余（P1/远期）**：cockpit 接入像素面公共组件（公共件已抽出，wingman 侧先行 ✅）、浏览器内录像回放（2026-09-26 复核结论：`SessionRecording` 就在既有依赖 guacamole-common-js@1.5.0 npm 包内，可行、零新增依赖，待真实录像数据再接，见设计 §16「回放」）、i18n 接线（阶段二 UI 文案暂为特性内中文硬编码，沿用 P0 先例）。
 
 ## 📅 2026-09-25 远控 P1 推进（公共件抽取 / 会话审计 / e2e 容器栈）
 

@@ -1,7 +1,7 @@
 # 远程网关像素面集成 Apache Guacamole 设计
 
-- 状态：P0 已实现（服务端网关 + 票据 + RBAC + 三协议 e2e + 前端组件，2026-09-23）；阶段二（剪贴板控制 UI、文件传输、会话录制）2026-09-25 实现完成（设计见 §14–§16，DG-7/DG-8/DG-9）；P1（cockpit 接入、前端公共组件抽取、审计报表）未启动
-- 日期：2026-09-23（P0 设计），2026-09-25（阶段二设计）
+- 状态：P0 已实现（服务端网关 + 票据 + RBAC + 三协议 e2e + 前端组件，2026-09-23）；阶段二（剪贴板控制 UI、文件传输、会话录制）2026-09-25 实现完成（设计见 §14–§16，DG-7/DG-8/DG-9）；P1（cockpit 接入、前端公共组件抽取、审计报表）✅ 2026-09-25 完成（§7.1/§17）；SSH/SFTP 文件浏览器第一版 ✅ 2026-09-26 实现（§15.1）
+- 日期：2026-09-23（P0 设计），2026-09-25（阶段二设计），2026-09-26（文件浏览器与回放可行性复核）
 - 关联文档：`architecture-decisions.md`（硬约束）、`mobile-automation-design.md`（Mobile D1–D9 决策）、`ROADMAP.md`（A4 里程碑）
 - 本文编号：**DG-x**（Guacamole 相关决策），与 Mobile D1–D9、架构 ADEC 并列互引
 - 实现落点：`orchestrator/server/internal/handlers/guacamole.go`（网关）、
@@ -324,7 +324,7 @@ GET /api/remote/sessions            desktop:view（只读，报表不含接管�
 - **P0（本文档批准后的第一批实现）**：Go server gateway 桥 + guacd 部署约定 + Windows(RDP)/macOS(VNC)/Linux(x11vnc) 三平台 endpoint 矩阵 + wingman dashboard 监看/接管组件 + RBAC 两权限点 + 审计四事件。✅ 2026-09-23 完成。
 - **阶段二（2026-09-25 实现）**：剪贴板控制 UI（§14，DG-7）+ 文件传输（§15，DG-8）+ 会话录制与检索（§16，DG-9）。
 - **P1**：cockpit 接入同一网关；按 §7 第 3 条抽取前端公共组件（✅ 2026-09-25 wingman 侧先行，见 §7.1）；审计报表呈现（✅ 2026-09-25，见 §17）。
-- **远期（触发式）**：droidVNC-NG 桥独立设计（含注入仲裁）；公网弱网场景的 WebRTC 第二通道评估；SSH/SFTP 文件浏览器 UI（guacd `filesystem` 对象已可用，第一版只做拖拽上行 + 被动下行，见 §15「不做」）。
+- **远期（触发式）**：droidVNC-NG 桥独立设计（含注入仲裁）；公网弱网场景的 WebRTC 第二通道评估；浏览器内录像回放（`SessionRecording` 数据源适配——可行性已复核为可行、零新增依赖，见 §16「回放」）。
 
 ---
 
@@ -487,7 +487,30 @@ wingman 版实现与单测护栏可直接复用（DG-6：第一方实现完成�
 | 网关侧中转存储（浏览器→server→guacd 落盘再转） | 双份存储 + 网关要理解流语义 + 大文件占 server 内存/磁盘；透传本身就是 Guacamole 协议的设计意图 |
 | SSH 终端内 zmodem/sz-rz | guacd 的 SSH 终端是服务端仿真的像素流，浏览器侧没有终端仿真层可挂 zmodem；要挂就得换 xterm.js 本地终端——等于放弃 guacd 终端，重来一遍 |
 | 给 VNC 补文件通道（经 agent 中转） | 让 runtime 参与像素面数据链路，违反 §4.3「runtime 零参与」；且 agent 不在 VNC 会话里，凭空造一条旁路 |
-| SSH/SFTP 文件浏览器 UI（第一版） | guacd `filesystem` 对象 + `get`/`put` 指令已支持，但目录树 UI（浏览/导航/进度）是一整块前端工作量，与拖拽传输的收益不成比例；列为 P1 后续项 |
+| SSH/SFTP 文件浏览器 UI（第一版） | 曾据此推迟（目录树 UI 与拖拽传输收益不成比例，列为 P1 后续项）；**已实现**（2026-09-26），设计与取舍见 §15.1 |
+
+### 15.1 SSH/SFTP 文件浏览器（第一版，2026-09-26 实现）
+
+复用既有文件传输通道（SSH 恒开 `enable-sftp=true`，guacd 上报 `filesystem`
+对象），前端复用 RemoteDesktop 公共件（`RemoteFileBrowser` + `filesystem.ts`
+协议编排），不在任何消费方（Modal/cockpit）另起一套：
+
+- 通道：`client.onfilesystem` 收对象 → 列目录 = `get <obj> <绝对路径>`，
+  目录体为 UTF-8 JSON 数组 `[{name,directory,mimetype,size}]`（分块到达需
+  聚合）；下载同为 `get` 聚合字节；上传 = `put`（`createOutputStream` +
+  `BlobWriter`，完成回调手动 `sendEnd`）。
+- **能力边界即协议边界**：Guacamole 1.5.x 对象流只有 `get`/`put`，不存在
+  delete/rename 指令——浏览器第一版只有列目录/下载/上传，这是协议事实而非
+  UI 取舍。删除需求出现时走会话内 shell（`rm`），或等上游协议扩展，不自行
+  造指令。
+- 权限沿用收发不对称先例（同 §14 剪贴板）：监看可浏览/下载（只读动作），
+  上传入口仅接管模式渲染。网关不解析指令，约束在 UI 层收口；
+  工具栏入口仅 SSH 渲染，SFTP 对象上报后才可展开。
+- 网关零改动：对象流指令（`filesystem`/`get`/`put`/`body`/`ack`/`blob`/
+  `end`）均为普通数据帧，wsToGuacd/guacdToWS 原样转发；新增透传回归测试
+  （`guacamole_filesystem_test.go`）锁「网关不碰对象流」不变式。
+- stage 不变量：浏览器展开/收起只改布局，像素面 stage 恒挂载（卸载即销毁
+  display 元素，无法恢复）。
 
 ---
 
@@ -533,8 +556,15 @@ WINGMAN_RECORDING_DIR 均已设，否则 400）→ WS 握手时 connect 参数�
   不审计（与 agents 列表同策略）；
 - 文件名安全：检索 API 对 name 做 basename 校验（拒绝路径分隔符与 `..`），
   录像目录外的文件不可达；
-- 回放：第一版提供下载（本地 `guacenc -t <in.mjs> <out.mp4>` 转码后观看）；
-  浏览器内直接回放需官方 session-player（非 npm 分发），列为远期。
+- 回放：第一版提供下载（本地 `guacenc -t <in.mjs> <out.mp4>` 转码后观看）。
+  浏览器内回放可行性复核（2026-09-26）：**可行，零新增依赖**——
+  `Guacamole.SessionRecording` 就在既有依赖 guacamole-common-js@1.5.0 的
+  npm 包内（dist/esm 实测含 `_PlaybackTunnel`、逐帧解析与 play/pause/seek），
+  此前「官方 session-player 非 npm 分发」的前提不成立；缺的只是把 .mjs
+  （经 `/api/remote/recordings/:name/download` 取回的 Blob）喂给
+  `SessionRecording` 构造器的数据源适配，以及一个播放器壳（进度条/倍速）。
+  仍列为远期（触发式）：审计报表目前尚无真实部署的录像数据，先接回放是
+  为空数据造 UI；待有真实使用再实现。
 
 ### 备选与否决
 

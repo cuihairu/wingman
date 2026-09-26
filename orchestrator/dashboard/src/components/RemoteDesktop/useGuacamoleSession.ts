@@ -21,7 +21,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Guacamole from 'guacamole-common-js';
 import type { Client, Keyboard } from 'guacamole-common-js';
 import { guacDecodeBase64, guacDecodeBase64ToBytes, guacEncodeBase64 } from './base64';
-import { type RemotePhaseName, type RemoteSessionParams, type TicketClient } from './types';
+import {
+  type RemoteFileSystemObject,
+  type RemotePhaseName,
+  type RemoteSessionParams,
+  type TicketClient,
+} from './types';
 
 export interface UseGuacamoleSessionOptions {
   /** true 时建连；false 时断开（受控开关，对应弹窗 open） */
@@ -45,6 +50,11 @@ export interface GuacamoleSessionState {
   error: string;
   /** 最近一次收到的远端剪贴板文本 */
   clipboard: string;
+  /**
+   * 远端文件系统对象（§15 SSH/SFTP 树）：guacd 随 SFTP 子系统上报后出现，
+   * 会话重建即清空。RDP 驱动器对象也走此通道（UI 是否使用由消费方决定）。
+   */
+  filesystem?: RemoteFileSystemObject;
   /** 当前 client（发送通道用；未建连时 undefined） */
   client?: Client;
   /** 发送文本到远端剪贴板（text/plain 单流；未建连或空文本为 no-op） */
@@ -76,6 +86,7 @@ export function useGuacamoleSession(options: UseGuacamoleSessionOptions): Guacam
   const [phase, setPhase] = useState<RemotePhaseName>('idle');
   const [error, setError] = useState('');
   const [clipboard, setClipboard] = useState('');
+  const [filesystem, setFilesystem] = useState<RemoteFileSystemObject>();
 
   // 回调进 ref：消费方通常传内联箭头函数，放进 effect 依赖会导致每渲染
   // 重建会话（票据一次性，重建即浪费一次申请 + 打断像素面）。
@@ -98,6 +109,7 @@ export function useGuacamoleSession(options: UseGuacamoleSessionOptions): Guacam
     setPhase('connecting');
     setError('');
     setClipboard('');
+    setFilesystem(undefined);
 
     (async () => {
       try {
@@ -162,6 +174,14 @@ export function useGuacamoleSession(options: UseGuacamoleSessionOptions): Guacam
               blob: new Blob(chunks, { type: mimetype || 'application/octet-stream' }),
             });
           };
+        };
+
+        // 文件系统对象上线（§15 SSH/SFTP 树）：对象随握手后的 SFTP 子系统
+        // 就绪到达；会话重建/断连时随 effect 清理置空（上面已 reset）
+        client.onfilesystem = (object) => {
+          if (!cancelled) {
+            setFilesystem(object);
+          }
         };
 
         const stage = stageRef.current;
@@ -277,5 +297,13 @@ export function useGuacamoleSession(options: UseGuacamoleSessionOptions): Guacam
     });
   }, []);
 
-  return { phase, error, clipboard, client: clientRef.current, sendClipboard, uploadFiles };
+  return {
+    phase,
+    error,
+    clipboard,
+    filesystem,
+    client: clientRef.current,
+    sendClipboard,
+    uploadFiles,
+  };
 }

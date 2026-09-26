@@ -14,10 +14,11 @@
  *   2) 传连接参数；
  *   3) 决定容器（Modal / Drawer / 全屏 div）——面板本身不假定容器。
  */
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Spin, message } from 'antd';
 import RemoteDesktopToolbar from './RemoteDesktopToolbar';
 import RemoteErrorNotice from './RemoteErrorNotice';
+import RemoteFileBrowser from './RemoteFileBrowser';
 import { useGuacamoleSession } from './useGuacamoleSession';
 import type { RemoteSessionParams, TicketClient } from './types';
 
@@ -91,7 +92,7 @@ export default function RemoteDesktopPanel({
     [handleNotify],
   );
 
-  const { phase, error, clipboard, sendClipboard, uploadFiles } = useGuacamoleSession({
+  const { phase, error, clipboard, filesystem, sendClipboard, uploadFiles } = useGuacamoleSession({
     active,
     params,
     ticketClient,
@@ -99,6 +100,10 @@ export default function RemoteDesktopPanel({
     onNotify: handleNotify,
     onFile: handleFile,
   });
+
+  // 文件浏览器展开态（§15 SSH/SFTP 树）。浏览器收起/展开只改变布局，
+  // stage 恒挂载——卸载会连带销毁 display 元素，像素面无法恢复。
+  const [browserOpen, setBrowserOpen] = useState(false);
 
   return (
     <div data-testid="remote-desktop-panel">
@@ -109,6 +114,15 @@ export default function RemoteDesktopPanel({
         </Spin>
       )}
       {phase === 'error' && <RemoteErrorNotice error={error} onRetry={onRetry} />}
+      {browserOpen && filesystem && (
+        <div style={{ marginBottom: 8, border: '1px solid #f0f0f0', borderRadius: 4, padding: 8 }}>
+          <RemoteFileBrowser
+            fs={filesystem}
+            readOnly={params.readOnly ?? false}
+            notify={handleNotify}
+          />
+        </div>
+      )}
       <div
         ref={stageRef}
         data-testid="remote-stage"
@@ -122,6 +136,9 @@ export default function RemoteDesktopPanel({
         onSendClipboard={sendClipboard}
         onCopyToLocal={handleCopyToLocal}
         onUploadFiles={uploadFiles}
+        fileBrowserReady={Boolean(filesystem)}
+        fileBrowserOpen={browserOpen}
+        onToggleFileBrowser={() => setBrowserOpen((v) => !v)}
       />
     </div>
   );

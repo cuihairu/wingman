@@ -93,6 +93,24 @@ declare module 'guacamole-common-js' {
     message: string;
   }
 
+  /**
+   * 远端文件系统对象（guacd `filesystem` 指令，设计 §15 SSH/SFTP 树）：
+   * 目录体与文件内容都以「name = 绝对路径」的输入流下发（目录体是 JSON
+   * listing），上传用 createOutputStream（`put` 指令）。
+   */
+  export class GuacamoleObject {
+    index: number;
+    /** 请求 name（对象内路径）对应的输入流；body 到达时回调 */
+    requestInputStream(
+      name: string,
+      bodyCallback?: (stream: InputStream, mimetype: string) => void,
+    ): void;
+    /** 创建对象输出流（`put`；name 为对象内路径，写在该路径上） */
+    createOutputStream(mimetype: string, name: string): OutputStream;
+    onbody?: (stream: InputStream, mimetype: string, name: string) => void;
+    onundefine?: () => void;
+  }
+
   export class Client {
     constructor(tunnel: WebSocketTunnel);
     getDisplay(): GuacamoleDisplay;
@@ -111,6 +129,8 @@ declare module 'guacamole-common-js' {
     onclipboard?: (stream: InputStream, mimetype: string) => void;
     /** 远端文件下发（SFTP 下载 / RDP 驱动器读回） */
     onfile?: (stream: InputStream, filename: string, mimetype: string) => void;
+    /** 远端文件系统对象上线（SSH=SFTP / RDP=驱动器；§15 文件浏览器入口） */
+    onfilesystem?: (object: GuacamoleObject, name: string) => void;
     onerror?: (status: GuacamoleStatus) => void;
     onstatechange?: (state: number) => void;
   }
@@ -147,6 +167,7 @@ declare module 'guacamole-common-js' {
     Touchscreen: typeof Touchscreen;
     Client: typeof Client;
     BlobWriter: typeof BlobWriter;
+    GuacamoleObject: typeof GuacamoleObject;
     Status: Status;
   };
   export default Guacamole;

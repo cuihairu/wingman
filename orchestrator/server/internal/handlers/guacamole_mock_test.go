@@ -36,6 +36,10 @@ type mockGuacd struct {
 	ln       net.Listener
 	argsList []string // select 后回放的参数名名单（含首段版本名）
 
+	// postConnect 可选：握手完成后替代默认 error 收尾，继续在真连接上
+	// 收发指令（对象流透传测试用；nil 保持原行为）。
+	postConnect func(conn net.Conn, rd *bufio.Reader)
+
 	mu            sync.Mutex
 	selectProto   string
 	connectValues []string
@@ -133,6 +137,12 @@ func (m *mockGuacd) serveOne() {
 	m.connectValues = values
 	m.mu.Unlock()
 	close(m.handshakeDone)
+
+	// 自定义收尾：对象流透传等测试在真连接上继续收发指令
+	if m.postConnect != nil {
+		m.postConnect(conn, rd)
+		return
+	}
 
 	// 以 error 指令收尾（网关原样转发 WS；随后关 TCP 触发会话清理）
 	_, _ = conn.Write([]byte(guacEncodeForTest("error", "mock-end")))

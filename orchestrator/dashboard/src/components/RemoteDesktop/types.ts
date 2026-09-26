@@ -83,3 +83,43 @@ export function protocolCapabilities(protocol: RemoteProtocol): ProtocolCapabili
   }
   return { fileTransfer: false, fileTransferHint: '' };
 }
+
+/** guacd 目录 listing 里的一条文件项（JSON 契约，设计 §15） */
+export interface RemoteFileEntry {
+  name: string;
+  directory: boolean;
+  mimetype: string;
+  /** 字节数；目录恒 0 */
+  size: number;
+}
+
+/** 远端输入流（Guacamole.InputStream 的结构化最小面，便于伪造测试） */
+export interface RemoteStreamIn {
+  onblob?: (data: string) => void;
+  onend?: () => void;
+  sendAck(message: string, code: number): void;
+}
+
+/** 远端输出流（Guacamole.OutputStream 的结构化最小面） */
+export interface RemoteStreamOut {
+  onack?: (status: { code: number; message: string }) => void;
+  sendBlob(data: string): void;
+  sendEnd(): void;
+}
+
+/**
+ * 远端文件系统对象（guacd `filesystem` 指令下发的 Guacamole.Object 的
+ * 结构化最小面）。SSH 会话由 guacd 随 SFTP 子系统上报；RDP 驱动器也走
+ * 同一对象协议。目录/文件内容都以「name = 对象内绝对路径」的流下发。
+ *
+ * 协议边界（1.5.x 线协议只有 get/put）：**没有删除/重命名指令**——
+ * 文件浏览器只提供列目录/下载/上传，删除属协议层不可行（不是 UI 取舍）。
+ */
+export interface RemoteFileSystemObject {
+  index: number;
+  requestInputStream(
+    name: string,
+    bodyCallback?: (stream: RemoteStreamIn, mimetype: string) => void,
+  ): void;
+  createOutputStream(mimetype: string, name: string): RemoteStreamOut;
+}

@@ -13,11 +13,12 @@
  *  - 录制中明示「按键内容不会被录入录像」（安全默认，设计 §16）。
  */
 import { useRef, useState } from 'react';
-import { Badge, Button, Input, Space, Typography } from 'antd';
+import { Badge, Button, Input, Space, Tooltip, Typography } from 'antd';
 import {
   CopyOutlined,
   DesktopOutlined,
   EyeOutlined,
+  FolderOpenOutlined,
   SendOutlined,
   UploadOutlined,
   VideoCameraOutlined,
@@ -40,6 +41,13 @@ export interface RemoteDesktopToolbarProps {
   onCopyToLocal: (text: string) => void;
   /** 选择文件上传（监看模式禁用；VNC 无入口） */
   onUploadFiles: (files: FileList | null) => void;
+  /** 文件浏览器（§15 SSH/SFTP 树）：已就绪（文件系统对象已上报）才可打开。
+      可选（缺省视为未就绪/收起）——第二方可以完全不用浏览器。 */
+  fileBrowserReady?: boolean;
+  /** 浏览器当前是否展开 */
+  fileBrowserOpen?: boolean;
+  /** 展开/收起文件浏览器 */
+  onToggleFileBrowser?: () => void;
 }
 
 /** RemoteDesktopToolbar 工具栏（无连接逻辑，纯粹受控渲染）。 */
@@ -51,6 +59,9 @@ export default function RemoteDesktopToolbar({
   onSendClipboard,
   onCopyToLocal,
   onUploadFiles,
+  fileBrowserReady = false,
+  fileBrowserOpen = false,
+  onToggleFileBrowser,
 }: RemoteDesktopToolbarProps) {
   const [draft, setDraft] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -162,6 +173,26 @@ export default function RemoteDesktopToolbar({
             data-testid="remote-file-input"
           />
         </Space>
+      )}
+
+      {/* 文件浏览器（§15 SSH/SFTP 树）：仅 SSH；SFTP 对象上报后才可用。
+          监看模式同样可浏览/下载（只读动作），上传入口在浏览器内部按
+          readOnly 隐藏——与剪贴板「收全协议、发仅接管」先例一致。 */}
+      {protocol === 'ssh' && (
+        <Tooltip
+          title={fileBrowserReady ? '浏览远端文件（列目录/下载/上传）' : '等待 SFTP 通道就绪…'}
+        >
+          <Button
+            size="small"
+            icon={<FolderOpenOutlined />}
+            disabled={!fileBrowserReady}
+            type={fileBrowserOpen ? 'primary' : 'default'}
+            onClick={() => onToggleFileBrowser?.()}
+            data-testid="remote-fs-toggle"
+          >
+            文件浏览
+          </Button>
+        </Tooltip>
       )}
     </Space>
   );

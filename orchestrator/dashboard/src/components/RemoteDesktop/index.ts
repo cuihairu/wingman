@@ -29,15 +29,29 @@ export type {
   RemoteErrorKind,
   RemoteErrorNoticeProps,
 } from './RemoteErrorNotice';
+export { default as RemoteFileBrowser } from './RemoteFileBrowser';
+export type { RemoteFileBrowserProps } from './RemoteFileBrowser';
 export { useGuacamoleSession } from './useGuacamoleSession';
 export type { GuacamoleSessionState, UseGuacamoleSessionOptions } from './useGuacamoleSession';
+export {
+  downloadRemoteFile,
+  formatRemoteSize,
+  joinRemotePath,
+  listRemoteDirectory,
+  remoteBaseName,
+  uploadRemoteFile,
+} from './filesystem';
 export { guacDecodeBase64, guacDecodeBase64ToBytes, guacEncodeBase64 } from './base64';
 export { protocolCapabilities, REMOTE_PROTOCOL_LABEL } from './types';
 export type {
   ProtocolCapabilities,
+  RemoteFileEntry,
+  RemoteFileSystemObject,
   RemotePhaseName,
   RemoteProtocol,
   RemoteSessionParams,
+  RemoteStreamIn,
+  RemoteStreamOut,
   RemoteTicket,
   TicketClient,
 } from './types';

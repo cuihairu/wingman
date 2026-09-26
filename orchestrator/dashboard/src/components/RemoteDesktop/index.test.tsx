@@ -843,6 +843,51 @@ describe('useGuacamoleSession', () => {
     unmount();
     expect(() => client.onerror?.({ code: 1, message: 'x' })).not.toThrow();
   });
+
+  it('onfilesystem 上报 → state.filesystem 就绪；参数变化重建会话即复位', async () => {
+    const stageRef = { current: document.createElement('div') };
+    const result: { current?: ReturnType<typeof useGuacamoleSession> } = {};
+    function Probe({ agentId }: { agentId: string }) {
+      result.current = useGuacamoleSession({
+        active: true,
+        params: { agentId, protocol: 'ssh' },
+        ticketClient: probeClient,
+        stageRef: stageRef as never,
+      });
+      return null;
+    }
+    const { rerender, unmount } = render(<Probe agentId="agent-1" />);
+    await waitForUI(() => expect(result.current!.phase).toBe('connected'));
+    // SFTP 对象未上报前 filesystem 为空（工具栏据此禁用文件浏览）
+    expect(result.current!.filesystem).toBeUndefined();
+    lastClient().onfilesystem?.({ index: 0 }, '/');
+    await waitForUI(() => expect(result.current!.filesystem).toBeDefined());
+    // 任一参数变化 → 票据一次性必须重建会话 → 旧 SFTP 对象作废，复位为空
+    rerender(<Probe agentId="agent-2" />);
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalledTimes(2));
+    expect(result.current!.filesystem).toBeUndefined();
+    unmount();
+  });
+
+  it('会话已取消时 onfilesystem 不再 setState', async () => {
+    const stageRef = { current: document.createElement('div') };
+    const result: { current?: ReturnType<typeof useGuacamoleSession> } = {};
+    function Probe() {
+      result.current = useGuacamoleSession({
+        active: true,
+        params: BASE_PARAMS,
+        ticketClient: probeClient,
+        stageRef: stageRef as never,
+      });
+      return null;
+    }
+    const { unmount } = render(<Probe />);
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
+    const client = lastClient();
+    unmount();
+    expect(() => client.onfilesystem?.({ index: 0 }, '/')).not.toThrow();
+    expect(result.current!.filesystem).toBeUndefined();
+  });
 });
 
 // ---------- 工具栏 ----------
@@ -1032,6 +1077,54 @@ describe('RemoteDesktopToolbar', () => {
     fireEvent.change(input, { target: { files: [] } });
     expect(onUploadFiles).toHaveBeenCalledWith([]);
     expect(input.value).toBe('');
+  });
+
+  it('ssh：文件浏览按钮就绪前禁用，就绪后可开合；展开态高亮', () => {
+    const onToggleFileBrowser = jest.fn();
+    const props = {
+      protocol: 'ssh' as const,
+      readOnly: false,
+      record: false,
+      clipboard: '',
+      onSendClipboard: noop,
+      onCopyToLocal: noop,
+      onUploadFiles: noop,
+      onToggleFileBrowser,
+    };
+    const { getByTestId, rerender } = render(
+      <RemoteDesktopToolbar {...props} fileBrowserReady={false} fileBrowserOpen={false} />,
+    );
+    // SFTP 对象未上报：禁用且不触发回调
+    const disabledBtn = getByTestId('remote-fs-toggle') as HTMLButtonElement;
+    expect(disabledBtn.disabled).toBe(true);
+    fireEvent.click(disabledBtn);
+    expect(onToggleFileBrowser).not.toHaveBeenCalled();
+
+    // 就绪：可点击；展开态 primary 高亮
+    rerender(<RemoteDesktopToolbar {...props} fileBrowserReady fileBrowserOpen />);
+    const readyBtn = getByTestId('remote-fs-toggle') as HTMLButtonElement;
+    expect(readyBtn.disabled).toBe(false);
+    expect(readyBtn.className).toContain('ant-btn-primary');
+    fireEvent.click(readyBtn);
+    expect(onToggleFileBrowser).toHaveBeenCalledTimes(1);
+  });
+
+  it('文件浏览按钮仅 SSH 渲染（vnc/rdp 无 SFTP 通道）', () => {
+    for (const protocol of ['vnc', 'rdp'] as const) {
+      const { queryByTestId } = render(
+        <RemoteDesktopToolbar
+          protocol={protocol}
+          readOnly={false}
+          record={false}
+          clipboard=""
+          onSendClipboard={noop}
+          onCopyToLocal={noop}
+          onUploadFiles={noop}
+          fileBrowserReady
+        />,
+      );
+      expect(queryByTestId('remote-fs-toggle')).toBeNull();
+    }
   });
 });
 
@@ -1264,5 +1357,40 @@ describe('RemoteDesktopPanel', () => {
       />,
     );
     expect((getByTestId('remote-stage') as HTMLElement).style.height).toBe('320px');
+  });
+
+  it('SSH 文件浏览：SFTP 对象上报后才可展开；开合不卸载 stage', async () => {
+    const { getByTestId, queryByTestId } = render(
+      <RemoteDesktopPanel
+        active
+        params={{ agentId: 'agent-1', protocol: 'ssh' }}
+        ticketClient={fakeTicketClient()}
+        notify={jest.fn()}
+      />,
+    );
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
+    const toggle = () => getByTestId('remote-fs-toggle') as HTMLButtonElement;
+    // SFTP 对象未上报：按钮禁用，浏览器不可展开
+    expect(toggle().disabled).toBe(true);
+
+    // guacd 下发 filesystem 指令 → hook 上报对象 → 按钮就绪
+    const fsObj = {
+      index: 0,
+      requestInputStream: jest.fn(),
+      createOutputStream: jest.fn(),
+    };
+    lastClient().onfilesystem?.(fsObj, '/');
+    await waitForUI(() => expect(toggle().disabled).toBe(false));
+
+    // 展开：浏览器渲染并向对象请求根目录；stage 必须仍在（像素面不可重建）
+    fireEvent.click(toggle());
+    expect(getByTestId('remote-file-browser')).toBeTruthy();
+    expect(getByTestId('remote-stage')).toBeTruthy();
+    expect(fsObj.requestInputStream).toHaveBeenCalledWith('/', expect.any(Function));
+
+    // 收起：浏览器卸载，stage 依旧挂载
+    fireEvent.click(toggle());
+    expect(queryByTestId('remote-file-browser')).toBeNull();
+    expect(getByTestId('remote-stage')).toBeTruthy();
   });
 });
