@@ -123,3 +123,23 @@ export interface RemoteFileSystemObject {
   ): void;
   createOutputStream(mimetype: string, name: string): RemoteStreamOut;
 }
+
+/**
+ * 文件操作审计上报载荷（§15.1 第二版，设计 §15.1「审计」小节）。客户端
+ * best-effort 上报下载/上传的最终结果；服务端按 ticket 反解会话/agent/
+ * 操作者（请求体同类字段不采信），list 高频不审计。
+ */
+export interface RemoteFileOpAudit {
+  /** 当前会话票据（服务端反查键；会话关闭后上报则落 no_session 降级行） */
+  ticket?: string;
+  action: 'download' | 'upload';
+  /** 远端绝对路径（含文件名） */
+  path: string;
+  result: 'ok' | 'fail';
+  /** 文件字节数（客户端已知时带） */
+  sizeBytes?: number;
+  /** 实际尝试次数（重试后成功 >1；上限 5） */
+  attempts?: number;
+  /** 最终失败原因（result=fail 时带，服务端截断落库） */
+  error?: string;
+}

@@ -21,9 +21,11 @@ import {
   guacDecodeBase64,
   guacEncodeBase64,
   REMOTE_PROTOCOL_LABEL,
+  type RemoteFileOpAudit,
   type RemoteProtocol,
   type TicketClient,
 } from '@/components/RemoteDesktop';
+import { reportRemoteFileOp } from '@/services/remote';
 
 export { guacDecodeBase64, guacEncodeBase64 };
 
@@ -73,6 +75,11 @@ export default function RemoteDesktopModal({
   const defaultClient = useMemo(() => createWingmanTicketClient(), []);
   const client = ticketClient ?? defaultClient;
 
+  // 文件操作审计上报（§15.1）：best-effort，失败静默（审计不打断操作主流程）
+  const handleAudit = (op: RemoteFileOpAudit) => {
+    reportRemoteFileOp(op).catch(() => undefined);
+  };
+
   const params = useMemo(
     () => ({
       agentId,
@@ -105,6 +112,7 @@ export default function RemoteDesktopModal({
         ticketClient={client}
         height={stageHeight}
         onRetry={onCancel}
+        audit={handleAudit}
       />
     </Modal>
   );

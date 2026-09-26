@@ -11,6 +11,7 @@
 
 import { request } from '@umijs/max';
 import type {
+  RemoteFileOpAudit,
   RemoteProtocol,
   RemoteSessionParams,
   RemoteTicket,
@@ -224,4 +225,19 @@ export async function listRemoteSessions(
     groups: payload?.groups || [],
     buckets: payload?.buckets || [],
   };
+}
+
+// ---------- 文件操作审计上报（设计 §15.1 第二版） ----------
+
+/**
+ * 上报 SFTP 浏览器文件操作（下载/上传）的最终结果，供服务端落审计。
+ * best-effort：网络失败不打断操作主流程（调用方 fire-and-forget 吞错）。
+ * 服务端按 ticket 反解会话/agent/操作者，请求体同类字段不采信；list 高频
+ * 不审计（与 agents 列表同策略）。
+ */
+export async function reportRemoteFileOp(op: RemoteFileOpAudit): Promise<void> {
+  await request<ApiResponse<null>>('/api/remote/file-ops', {
+    method: 'POST',
+    data: op,
+  });
 }

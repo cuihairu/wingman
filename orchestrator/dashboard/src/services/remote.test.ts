@@ -10,6 +10,7 @@ import {
   guacamoleWSPath,
   listRecordings,
   listRemoteSessions,
+  reportRemoteFileOp,
 } from './remote';
 
 jest.mock('@umijs/max', () => ({
@@ -354,6 +355,40 @@ describe('services/remote', () => {
     it('success=false 且无 error 时抛兜底文案', async () => {
       mockedRequest.mockResolvedValueOnce({ success: false });
       await expect(listRemoteSessions()).rejects.toThrow('获取会话审计报表失败');
+    });
+  });
+
+  describe('reportRemoteFileOp', () => {
+    it('POST /api/remote/file-ops，载荷原样进请求体', async () => {
+      mockedRequest.mockResolvedValueOnce({ success: true, data: null });
+
+      await reportRemoteFileOp({
+        ticket: 'tk-1',
+        action: 'download',
+        path: '/var/log/app.log',
+        result: 'ok',
+        sizeBytes: 1234,
+        attempts: 2,
+      });
+
+      expect(mockedRequest).toHaveBeenCalledWith('/api/remote/file-ops', {
+        method: 'POST',
+        data: {
+          ticket: 'tk-1',
+          action: 'download',
+          path: '/var/log/app.log',
+          result: 'ok',
+          sizeBytes: 1234,
+          attempts: 2,
+        },
+      });
+    });
+
+    it('失败照原样抛出（调用方 fire-and-forget 吞错，审计不打断主流程）', async () => {
+      mockedRequest.mockRejectedValueOnce(new Error('network down'));
+      await expect(
+        reportRemoteFileOp({ action: 'upload', path: '/a', result: 'fail' }),
+      ).rejects.toThrow('network down');
     });
   });
 });

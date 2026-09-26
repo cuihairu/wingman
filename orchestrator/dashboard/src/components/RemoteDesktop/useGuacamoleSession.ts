@@ -55,6 +55,11 @@ export interface GuacamoleSessionState {
    * 会话重建即清空。RDP 驱动器对象也走此通道（UI 是否使用由消费方决定）。
    */
   filesystem?: RemoteFileSystemObject;
+  /**
+   * 当前会话的一次性票据（§15.1 文件操作审计上报的会话反查键；会话重建即
+   * 失效置空，断连后的迟到上报由服务端落 no_session 降级行）
+   */
+  ticket?: string;
   /** 当前 client（发送通道用；未建连时 undefined） */
   client?: Client;
   /** 发送文本到远端剪贴板（text/plain 单流；未建连或空文本为 no-op） */
@@ -87,6 +92,7 @@ export function useGuacamoleSession(options: UseGuacamoleSessionOptions): Guacam
   const [error, setError] = useState('');
   const [clipboard, setClipboard] = useState('');
   const [filesystem, setFilesystem] = useState<RemoteFileSystemObject>();
+  const [ticket, setTicket] = useState<string>();
 
   // 回调进 ref：消费方通常传内联箭头函数，放进 effect 依赖会导致每渲染
   // 重建会话（票据一次性，重建即浪费一次申请 + 打断像素面）。
@@ -110,6 +116,7 @@ export function useGuacamoleSession(options: UseGuacamoleSessionOptions): Guacam
     setError('');
     setClipboard('');
     setFilesystem(undefined);
+    setTicket(undefined);
 
     (async () => {
       try {
@@ -128,6 +135,8 @@ export function useGuacamoleSession(options: UseGuacamoleSessionOptions): Guacam
         if (cancelled) {
           return;
         }
+        // 票据在消费（建连）后才可用于审计反查，留给上层做文件操作上报
+        setTicket(ticket);
 
         const tunnel = new Guacamole.WebSocketTunnel(ticketClient.tunnelURL(ticket));
         client = new Guacamole.Client(tunnel);
@@ -302,6 +311,7 @@ export function useGuacamoleSession(options: UseGuacamoleSessionOptions): Guacam
     error,
     clipboard,
     filesystem,
+    ticket,
     client: clientRef.current,
     sendClipboard,
     uploadFiles,

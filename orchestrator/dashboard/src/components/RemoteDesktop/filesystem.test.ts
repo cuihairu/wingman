@@ -1,12 +1,15 @@
 /**
- * 远端文件系统操作助手测试（设计 §15 SSH/SFTP 树第一版）。
+ * 远端文件系统操作助手测试（设计 §15 SSH/SFTP 树，第二版含进度/重试/护栏）。
  *
  * guacamole-common-js 全程 mock（与 index.test.tsx 同款工厂）；文件系统
  * 对象用 types.ts 的结构化最小面直接伪造——不触碰 Guacamole 类。
- * 重点锁协议编排的三个不变式：
+ * 重点锁协议编排的不变式：
  *   1. 每个 blob 都必须 ack（不 ack guacd 停发）；
  *   2. 目录体是 UTF-8 JSON 数组（guacd SFTP 契约），坏载荷显式报错；
- *   3. 上传走 createOutputStream（put）且 BlobWriter 完成后手动 sendEnd。
+ *   3. 上传走 createOutputStream（put）且 BlobWriter 完成后手动 sendEnd；
+ *   4. 上传失败必须从 onack（错误 ack）判定——1.5.0 对错误 ack 停发不报错
+ *      （onerror 仅本地读失败触发），失败时 Promise 不许悬挂；
+ *   5. 看门狗兜底协议静默；重试按序退避并回报实际尝试次数。
  */
 import Guacamole from 'guacamole-common-js';
 import {
@@ -16,6 +19,7 @@ import {
   listRemoteDirectory,
   remoteBaseName,
   uploadRemoteFile,
+  withRetry,
 } from './filesystem';
 import type { RemoteFileSystemObject, RemoteStreamIn } from './types';
 
@@ -27,6 +31,7 @@ jest.mock('guacamole-common-js', () => ({
       oncomplete: null,
       onerror: null,
       onprogress: null,
+      onack: null,
       stream,
     })),
     Status: { Code: { SUCCESS: 0x0000, UNSUPPORTED: 0x0100 } },
@@ -34,6 +39,10 @@ jest.mock('guacamole-common-js', () => ({
 }));
 
 const MockedBlobWriter = Guacamole.BlobWriter as unknown as jest.Mock;
+
+beforeEach(() => {
+  MockedBlobWriter.mockClear();
+});
 
 /** 假输入流：捕获注册的 onblob/onend，供逐块投喂（setter 转发闭包） */
 function fakeInputStream() {
@@ -153,6 +162,20 @@ describe('listRemoteDirectory', () => {
     stream.emitEnd();
     await expect(pending).rejects.toThrow('非数组');
   });
+
+  it('大目录护栏：超限 reject 且停止 ack（流控止住 guacd）', async () => {
+    const { fs, requests } = fakeFs();
+    const pending = listRemoteDirectory(fs, '/huge', { maxBytes: 16 });
+    const stream = fakeInputStream();
+    requests[0].cb(stream.stream, 'text/json');
+    stream.emitBlob(btoa('{"name":"a"}')); // 14 字节，未超限 → ack
+    stream.emitBlob(btoa('{"name":"bbbbbb"}')); // 累计超限 → 拒绝且不 ack
+    await expect(pending).rejects.toThrow('目录内容过大');
+    expect(stream.stream.sendAck).toHaveBeenCalledTimes(1);
+    // 迟到的 end 不改变已拒绝的结果
+    stream.emitEnd();
+    await expect(pending).rejects.toThrow('目录内容过大');
+  });
 });
 
 describe('downloadRemoteFile', () => {
@@ -181,6 +204,28 @@ describe('downloadRemoteFile', () => {
     expect(filename).toBe('remote-file');
     expect(blob.type).toBe('application/octet-stream');
   });
+
+  it('逐块上报已收字节进度', async () => {
+    const { fs, requests } = fakeFs();
+    const onProgress = jest.fn();
+    const pending = downloadRemoteFile(fs, '/a.bin', { onProgress });
+    const stream = fakeInputStream();
+    requests[0].cb(stream.stream, 'application/octet-stream');
+    stream.emitBlob(btoa('AB')); // 2 字节
+    stream.emitBlob(btoa('CD')); // 累计 4 字节
+    stream.emitEnd();
+    await pending;
+    expect(onProgress).toHaveBeenNthCalledWith(1, 2);
+    expect(onProgress).toHaveBeenNthCalledWith(2, 4);
+  });
+
+  it('下载看门狗：停滞时 reject（上层可重试）', async () => {
+    const { fs, requests } = fakeFs();
+    const pending = downloadRemoteFile(fs, '/stall.bin', { stallTimeoutMs: 20 });
+    const stream = fakeInputStream();
+    requests[0].cb(stream.stream, 'application/octet-stream');
+    await expect(pending).rejects.toThrow('下载超时');
+  });
 });
 
 describe('uploadRemoteFile', () => {
@@ -201,10 +246,88 @@ describe('uploadRemoteFile', () => {
     const { fs } = fakeFs();
     const file = new File(['x'], 'bad.bin', { type: '' });
     const pending = uploadRemoteFile(fs, file, '/');
-    const writer = MockedBlobWriter.mock.results[1].value;
+    const writer = MockedBlobWriter.mock.results[0].value;
     writer.onerror();
     await expect(pending).rejects.toThrow('bad.bin 上传失败');
     // mimetype 缺省回退
     expect(fs.createOutputStream).toHaveBeenCalledWith('application/octet-stream', '/bad.bin');
+  });
+
+  it('错误 ack 必须落定 Promise（1.5.0 停发不报错，失败从 onack 判定）', async () => {
+    const { fs } = fakeFs();
+    const file = new File(['hello'], 'denied.bin', { type: 'text/plain' });
+    const pending = uploadRemoteFile(fs, file, '/');
+    const writer = MockedBlobWriter.mock.results[0].value;
+    writer.onack({ code: 0x0200, message: 'server refused' });
+    await expect(pending).rejects.toThrow('denied.bin 上传失败（协议错误码 0x200）');
+  });
+
+  it('onprogress 逐 ack 上报进度（offset 与文件总字节）', async () => {
+    const { fs } = fakeFs();
+    const file = new File(['hello'], 'up.txt', { type: 'text/plain' });
+    const onProgress = jest.fn();
+    const pending = uploadRemoteFile(fs, file, '/', { onProgress });
+    const writer = MockedBlobWriter.mock.results[0].value;
+    writer.onprogress(new Blob(), 3);
+    writer.onprogress(new Blob(), 5);
+    expect(onProgress).toHaveBeenNthCalledWith(1, 3, 5);
+    expect(onProgress).toHaveBeenNthCalledWith(2, 5, 5);
+    writer.oncomplete();
+    await expect(pending).resolves.toBeUndefined();
+  });
+
+  it('上传看门狗：无进展回应时 reject 兜底', async () => {
+    const { fs } = fakeFs();
+    const file = new File(['x'], 'slow.bin', { type: '' });
+    const pending = uploadRemoteFile(fs, file, '/', { stallTimeoutMs: 20 });
+    await expect(pending).rejects.toThrow('上传超时');
+  });
+
+  it('看门狗可关闭（stallTimeoutMs=0）且 settle 后不再计时', async () => {
+    const { fs } = fakeFs();
+    const file = new File(['x'], 'calm.bin', { type: '' });
+    const pending = uploadRemoteFile(fs, file, '/', { stallTimeoutMs: 0 });
+    const writer = MockedBlobWriter.mock.results[0].value;
+    writer.oncomplete();
+    await expect(pending).resolves.toBeUndefined();
+    // 迟到的错误 ack 不改变已落定的结果（settle-once）
+    writer.onack({ code: 0x0200, message: 'late' });
+    await expect(pending).resolves.toBeUndefined();
+  });
+});
+
+describe('withRetry', () => {
+  it('首次成功不重试，attempts=1', async () => {
+    const op = jest.fn().mockResolvedValue('ok');
+    await expect(withRetry(op)).resolves.toEqual({ value: 'ok', attempts: 1 });
+    expect(op).toHaveBeenCalledTimes(1);
+  });
+
+  it('失败后按序退避重试并回报实际尝试次数', async () => {
+    const sleeps: number[] = [];
+    const op = jest.fn().mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce('fine');
+    const result = await withRetry(op, {
+      attempts: 3,
+      baseDelayMs: 100,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+    });
+    expect(result).toEqual({ value: 'fine', attempts: 2 });
+    expect(sleeps).toEqual([100]);
+    expect(op).toHaveBeenCalledTimes(2);
+  });
+
+  it('全部失败抛最后一次错误', async () => {
+    const op = jest.fn().mockRejectedValue(new Error('still down'));
+    await expect(withRetry(op, { attempts: 3, sleep: async () => undefined })).rejects.toThrow(
+      'still down',
+    );
+    expect(op).toHaveBeenCalledTimes(3);
+  });
+
+  it('attempts 归一化（0/负数至少尝试 1 次）', async () => {
+    const op = jest.fn().mockResolvedValue('v');
+    await expect(withRetry(op, { attempts: 0 })).resolves.toEqual({ value: 'v', attempts: 1 });
   });
 });

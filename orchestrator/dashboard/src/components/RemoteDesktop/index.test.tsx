@@ -310,6 +310,13 @@ describe('useGuacamoleSession', () => {
     expect(MockedClient).not.toHaveBeenCalled();
   });
 
+  it('会话票据随建连暴露在状态中（§15.1 文件操作审计反查键）', async () => {
+    const { result } = renderHook(true);
+    expect(result.current!.ticket).toBeUndefined();
+    await connected(result);
+    expect(result.current!.ticket).toBe('tk-1');
+  });
+
   it('接管模式挂键鼠注入，监看模式不挂', async () => {
     const { unmount } = renderHook(true, { ...BASE_PARAMS, readOnly: false });
     await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
@@ -1392,5 +1399,91 @@ describe('RemoteDesktopPanel', () => {
     fireEvent.click(toggle());
     expect(queryByTestId('remote-file-browser')).toBeNull();
     expect(getByTestId('remote-stage')).toBeTruthy();
+  });
+
+  it('SSH 文件操作审计：面板把票据注入审计回调（§15.1 端到端）', async () => {
+    const urlMock = { createObjectURL: jest.fn(() => 'blob:mock'), revokeObjectURL: jest.fn() };
+    Object.assign(URL, urlMock);
+    const audit = jest.fn();
+    // 路径感知假对象：列根目录回目录体，下载请求回文件流（同步应答）
+    const fsObj = {
+      index: 0,
+      requestInputStream: jest.fn((name: string, cb: (s: unknown, m: string) => void) => {
+        const stream = {
+          sendAck: jest.fn(),
+          onblob: undefined as undefined | ((d: string) => void),
+          onend: undefined as undefined | (() => void),
+        };
+        cb(stream, name === '/' ? 'text/json' : 'text/plain');
+        // cb 返回时 onblob/onend 已被协议层同步注册，直接投喂
+        if (name === '/') {
+          stream.onblob?.(
+            btoa(
+              JSON.stringify([
+                { name: 'a.txt', directory: false, mimetype: 'text/plain', size: 4 },
+              ]),
+            ),
+          );
+        } else {
+          stream.onblob?.(btoa('data'));
+        }
+        stream.onend?.();
+      }),
+      createOutputStream: jest.fn(),
+    };
+    const { getByTestId, findByTestId } = render(
+      <RemoteDesktopPanel
+        active
+        params={{ agentId: 'agent-1', protocol: 'ssh' }}
+        ticketClient={fakeTicketClient()}
+        notify={jest.fn()}
+        audit={audit}
+      />,
+    );
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
+    lastClient().onfilesystem?.(fsObj, '/');
+    // SFTP 对象就绪（state 冲刷）前按钮禁用，点了也开不了
+    await waitForUI(() =>
+      expect(getByTestId('remote-fs-toggle') as HTMLButtonElement).toHaveProperty(
+        'disabled',
+        false,
+      ),
+    );
+    fireEvent.click(getByTestId('remote-fs-toggle') as HTMLButtonElement);
+    fireEvent.click(await findByTestId('remote-fs-download-a.txt'));
+    await waitForUI(() =>
+      expect(audit).toHaveBeenCalledWith({
+        action: 'download',
+        path: '/a.txt',
+        result: 'ok',
+        sizeBytes: 4,
+        attempts: 1,
+        ticket: 'tk-1',
+      }),
+    );
+  });
+
+  it('不传 audit 时浏览器照常工作（回调可缺省）', async () => {
+    const { getByTestId } = render(
+      <RemoteDesktopPanel
+        active
+        params={{ agentId: 'agent-1', protocol: 'ssh' }}
+        ticketClient={fakeTicketClient()}
+        notify={jest.fn()}
+      />,
+    );
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
+    lastClient().onfilesystem?.(
+      { index: 0, requestInputStream: jest.fn(), createOutputStream: jest.fn() },
+      '/',
+    );
+    await waitForUI(() =>
+      expect(getByTestId('remote-fs-toggle') as HTMLButtonElement).toHaveProperty(
+        'disabled',
+        false,
+      ),
+    );
+    fireEvent.click(getByTestId('remote-fs-toggle') as HTMLButtonElement);
+    expect(getByTestId('remote-file-browser')).toBeTruthy();
   });
 });

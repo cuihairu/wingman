@@ -9,7 +9,16 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 387 个提交（feat 68 / fix 137 / docs 67 / test 44 / ci 19 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 388 个提交（feat 69 / fix 137 / docs 67 / test 44 / ci 19 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### feat（2026-09-26，M4 远控 P1：文件浏览器第二版——分页/进度/重试/文件操作审计）
+
+- **大目录**：协议一次 `get` 返回整个目录体（**无服务端分页**），分页做在浏览器侧（每页 50 行、小列表自动隐藏翻页，排序维持目录在前名称升序）；目录体聚合加 8 MiB 护栏，超限拒绝并停止 ack——ack 纪律即流控，guacd 自然停发，防异常目录打爆内存。
+- **关键协议修正（v1 遗留缺陷）**：1.5.0 `BlobWriter` 对错误 ack **只停发不报错**（`onerror` 仅本地读文件失败触发，dist/esm 实测佐证）——v1 上传失败路径是死代码，失败时 Promise 永不落定。v2 从 `writer.onack`（`status.code !== 0`）判定失败，并叠「无进展看门狗」（默认 60s，可注入，0 关闭）兜底协议静默；下载侧协议无错误 ack 可判，停滞检测同靠看门狗。
+- **进度与有限重试**：下载逐块上报已收字节（总量取 `entry.size` 折百分比）、上传走 `BlobWriter.onprogress`（逐 ack 触发，第二参为已发字节）；`withRetry` 默认 2 次尝试按序退避，重试耗尽才报错，实际尝试次数进审计。
+- **文件操作审计（服务端）**：新增 `POST /api/remote/file-ops`（desktop:view 路由组；upload 为写动作，handler 内联追加 desktop:control——监看可浏览/下载、上传仅接管的权限矩阵在审计通道同样成立）。**信任模型**：上报是客户端 best-effort，会话/agent/操作者由服务端按票据反解（网关 WS 建连后存「票据→会话快照」，closeSession 清除；请求体同类字段不采信），反解不到（进程重启/会话已关）落 `no_session` 降级行而非拒绝；审计 kind `desktop.file_download`/`desktop.file_upload`；列表高频不审计（与 agents 列表同策略）。
+- **协议边界不动**：删除/重命名仍不可行（对象流只有 get/put）、服务端分页不存在，均不硬做（设计 §15.2 明确）。
+- 测试：Go 新增 7 个 handler 测试（票据→会话快照全链路生命周期走真 mock guacd WS、载荷校验、权限矩阵、降级行、截断）；Dashboard filesystem/浏览器/面板/Modal/服务层全链路测试（401 项 jest 全绿）。
 
 ### feat（2026-09-26，M4 远控 P1 递补：SSH 文件浏览器——onfilesystem SFTP 树）
 

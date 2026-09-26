@@ -84,8 +84,16 @@ declare module 'guacamole-common-js' {
     constructor(stream: OutputStream);
     sendBlob(blob: Blob): void;
     oncomplete?: () => void;
+    /** 仅本地读文件失败触发；服务端错误 ack 不走这里（见 onack） */
     onerror?: (status: GuacamoleStatus) => void;
-    onprogress?: (offset: number) => void;
+    /** 每个 blob 的 ack 到达时触发（blob = 正在发送的文件，offset = 已发字节） */
+    onprogress?: (blob: Blob, offset: number) => void;
+    /**
+     * 每个 ack 都转发到这里——包括错误 ack（dist/esm 实测：错误 ack 转发后
+     * 直接 return，发送循环停摆且 onerror 不触发）。上传失败判定必须走
+     * status.code !== 0，否则失败时 Promise 永不落定。
+     */
+    onack?: (status: GuacamoleStatus) => void;
   }
 
   export interface GuacamoleStatus {

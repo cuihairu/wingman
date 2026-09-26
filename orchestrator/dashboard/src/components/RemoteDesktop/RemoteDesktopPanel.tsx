@@ -20,7 +20,7 @@ import RemoteDesktopToolbar from './RemoteDesktopToolbar';
 import RemoteErrorNotice from './RemoteErrorNotice';
 import RemoteFileBrowser from './RemoteFileBrowser';
 import { useGuacamoleSession } from './useGuacamoleSession';
-import type { RemoteSessionParams, TicketClient } from './types';
+import type { RemoteFileOpAudit, RemoteSessionParams, TicketClient } from './types';
 
 export interface RemoteDesktopPanelProps {
   /** true 建连 / false 断开（受控） */
@@ -35,6 +35,11 @@ export interface RemoteDesktopPanelProps {
   onRetry?: () => void;
   /** 自定义提示（默认 antd message；第二方可换成自己的 toast） */
   notify?: (kind: 'success' | 'error', text: string) => void;
+  /**
+   * 文件操作审计回调（§15.1 第二版）。面板自动补当前票据（服务端按票据
+   * 反解会话）；不传则浏览器照常工作、仅不上报。审计失败不影响操作。
+   */
+  audit?: (op: RemoteFileOpAudit) => void;
 }
 
 /**
@@ -48,6 +53,7 @@ export default function RemoteDesktopPanel({
   height = 480,
   onRetry,
   notify,
+  audit,
 }: RemoteDesktopPanelProps) {
   const stageRef = useRef<HTMLDivElement>(null);
 
@@ -92,14 +98,26 @@ export default function RemoteDesktopPanel({
     [handleNotify],
   );
 
-  const { phase, error, clipboard, filesystem, sendClipboard, uploadFiles } = useGuacamoleSession({
-    active,
-    params,
-    ticketClient,
-    stageRef,
-    onNotify: handleNotify,
-    onFile: handleFile,
-  });
+  const { phase, error, clipboard, filesystem, ticket, sendClipboard, uploadFiles } =
+    useGuacamoleSession({
+      active,
+      params,
+      ticketClient,
+      stageRef,
+      onNotify: handleNotify,
+      onFile: handleFile,
+    });
+
+  // 文件操作审计（§15.1）：票据由面板注入（服务端按票据反解会话），回调
+  // 引用进 ref 避免内联箭头函数成为浏览器 props 的渲染期变化源
+  const auditRef = useRef(audit);
+  auditRef.current = audit;
+  const handleAudit = useCallback(
+    (op: Omit<RemoteFileOpAudit, 'ticket'>) => {
+      auditRef.current?.({ ...op, ticket });
+    },
+    [ticket],
+  );
 
   // 文件浏览器展开态（§15 SSH/SFTP 树）。浏览器收起/展开只改变布局，
   // stage 恒挂载——卸载会连带销毁 display 元素，像素面无法恢复。
@@ -120,6 +138,7 @@ export default function RemoteDesktopPanel({
             fs={filesystem}
             readOnly={params.readOnly ?? false}
             notify={handleNotify}
+            audit={audit ? handleAudit : undefined}
           />
         </div>
       )}

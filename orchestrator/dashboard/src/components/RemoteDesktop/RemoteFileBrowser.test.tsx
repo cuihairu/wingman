@@ -215,7 +215,7 @@ describe('RemoteFileBrowser', () => {
     reply();
   });
 
-  it('上传失败：notify 报错后仍刷新列表', async () => {
+  it('上传失败：重试一次仍失败才报错，报错后仍刷新列表', async () => {
     const { fs, requests, reply } = fakeFs();
     const notify = jest.fn();
     const { findByTestId, findByText } = render(
@@ -226,12 +226,185 @@ describe('RemoteFileBrowser', () => {
     const input = (await findByTestId('remote-fs-upload-input')) as HTMLInputElement;
     const file = new File(['x'], 'bad.bin', { type: '' });
     fireEvent.change(input, { target: { files: [file] } });
-    await waitForUI(() => expect(MockedBlobWriter).toHaveBeenCalled());
+    await waitForUI(() => expect(MockedBlobWriter).toHaveBeenCalledTimes(1));
     MockedBlobWriter.mock.results[0].value.onerror();
-    await waitForUI(() => expect(notify).toHaveBeenCalledWith('error', 'bad.bin 上传失败'));
+    // 有限重试：第一次失败后自动再试一次（第二次 put）
+    await waitForUI(() => expect(MockedBlobWriter).toHaveBeenCalledTimes(2));
+    MockedBlobWriter.mock.results[1].value.onerror();
+    await waitForUI(() =>
+      expect(notify).toHaveBeenCalledWith('error', 'bad.bin 上传失败（本地读取失败）'),
+    );
     // 出错不中断流程：列表仍会重取
     await waitForUI(() => expect(requests.length).toBe(2));
     reply();
+  });
+
+  it('下载失败后重试成功：提示成功且审计回报 attempts=2', async () => {
+    const urlMock = { createObjectURL: jest.fn(() => 'blob:mock'), revokeObjectURL: jest.fn() };
+    Object.assign(URL, urlMock);
+    const audit = jest.fn();
+    let calls = 0;
+    const fs: RemoteFileSystemObject = {
+      index: 0,
+      requestInputStream: jest.fn((name: string, cb: (s: RemoteStreamIn, m: string) => void) => {
+        calls += 1;
+        if (calls === 1) {
+          // 首次列目录，渲染出下载入口
+          const stream = fakeInputStream();
+          cb(stream.stream, 'text/json');
+          stream.emitBlob(btoa(JSON.stringify(ENTRIES)));
+          stream.emitEnd();
+          return;
+        }
+        if (calls === 2) {
+          throw new Error('sftp hiccup'); // 下载第 1 次尝试失败
+        }
+        // 重试：正常回放文件流
+        const stream = fakeInputStream();
+        cb(stream.stream, 'text/plain');
+        stream.emitBlob(btoa('data'));
+        stream.emitEnd();
+      }),
+      createOutputStream: jest.fn(),
+    };
+    const notify = jest.fn();
+    const { findByTestId } = render(
+      <RemoteFileBrowser fs={fs} readOnly={false} notify={notify} audit={audit} />,
+    );
+    fireEvent.click(await findByTestId('remote-fs-download-zed.txt'));
+    await waitForUI(() => expect(notify).toHaveBeenCalledWith('success', '已下载 zed.txt'));
+    expect(audit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'download', path: '/zed.txt', result: 'ok', attempts: 2 }),
+    );
+  });
+
+  it('下载成功走审计回调（含路径/大小/attempts），失败回报 error', async () => {
+    const urlMock = { createObjectURL: jest.fn(() => 'blob:mock'), revokeObjectURL: jest.fn() };
+    Object.assign(URL, urlMock);
+    const audit = jest.fn();
+    const notify = jest.fn();
+    const { fs, requests, reply } = fakeFs();
+    const { findByTestId, unmount } = render(
+      <RemoteFileBrowser fs={fs} readOnly={false} notify={notify} audit={audit} />,
+    );
+    reply();
+    fireEvent.click(await findByTestId('remote-fs-download-zed.txt'));
+    await waitForUI(() => expect(requests[1]?.name).toBe('/zed.txt'));
+    const stream = fakeInputStream();
+    requests[1].cb(stream.stream, 'text/plain');
+    stream.emitBlob(btoa('file-data'));
+    stream.emitEnd();
+    await waitForUI(() => expect(audit).toHaveBeenCalledTimes(1));
+    expect(audit).toHaveBeenCalledWith({
+      action: 'download',
+      path: '/zed.txt',
+      result: 'ok',
+      sizeBytes: 9,
+      attempts: 1,
+    });
+    unmount();
+
+    // 失败（重试耗尽）：result=fail + error 文案
+    const audit2 = jest.fn();
+    let calls = 0;
+    const fs2: RemoteFileSystemObject = {
+      index: 0,
+      requestInputStream: jest.fn((_n: string, _cb: (s: RemoteStreamIn, m: string) => void) => {
+        calls += 1;
+        if (calls === 1) {
+          const stream = fakeInputStream();
+          _cb(stream.stream, 'text/json');
+          stream.emitBlob(btoa(JSON.stringify(ENTRIES)));
+          stream.emitEnd();
+          return;
+        }
+        throw new Error('sftp gone');
+      }),
+      createOutputStream: jest.fn(),
+    };
+    const { findByTestId: findByTestId2 } = render(
+      <RemoteFileBrowser fs={fs2} readOnly={false} notify={notify} audit={audit2} />,
+    );
+    fireEvent.click(await findByTestId2('remote-fs-download-zed.txt'));
+    await waitForUI(() => expect(notify).toHaveBeenCalledWith('error', 'sftp gone'));
+    await waitForUI(() => expect(audit2).toHaveBeenCalledTimes(1));
+    expect(audit2).toHaveBeenCalledWith({
+      action: 'download',
+      path: '/zed.txt',
+      result: 'fail',
+      sizeBytes: 2048,
+      error: 'sftp gone',
+    });
+  });
+
+  it('上传成功走审计回调；不传 audit 时浏览器照常工作', async () => {
+    const { fs, requests, reply } = fakeFs();
+    const audit = jest.fn();
+    const notify = jest.fn();
+    const { getByText, findByTestId, findByText } = render(
+      <RemoteFileBrowser fs={fs} readOnly={false} notify={notify} audit={audit} />,
+    );
+    reply();
+    await findByText('logs');
+    const input = (await findByTestId('remote-fs-upload-input')) as HTMLInputElement;
+    const file = new File(['up'], 'new.txt', { type: 'text/plain' });
+    fireEvent.change(input, { target: { files: [file] } });
+    await waitForUI(() => expect(fs.createOutputStream).toHaveBeenCalled());
+    MockedBlobWriter.mock.results[0].value.oncomplete();
+    await waitForUI(() => expect(notify).toHaveBeenCalledWith('success', 'new.txt 上传完成'));
+    expect(audit).toHaveBeenCalledWith({
+      action: 'upload',
+      path: '/new.txt',
+      result: 'ok',
+      sizeBytes: 2,
+      attempts: 1,
+    });
+    await waitForUI(() => expect(requests.length).toBe(2));
+    reply();
+  });
+
+  it('浏览器侧分页：超过 pageSize 出现翻页，小列表隐藏', async () => {
+    const { fs, reply } = fakeFs();
+    const view1 = render(
+      <RemoteFileBrowser fs={fs} readOnly={false} notify={jest.fn()} pageSize={2} />,
+    );
+    reply();
+    expect(await view1.findByText('logs')).toBeTruthy();
+    // 第 1 页：排序后 logs、abc.txt；zed.txt 在第 2 页
+    expect(view1.queryByText('zed.txt')).toBeNull();
+    expect(view1.getByText('共 3 项')).toBeTruthy();
+    fireEvent.click(view1.getByTitle('2'));
+    expect(await view1.findByText('zed.txt')).toBeTruthy();
+    view1.unmount();
+
+    // 默认 pageSize=50：3 条不出翻页（独立挂载，避免与上一棵树混淆）
+    const { fs: fs2, reply: reply2 } = fakeFs();
+    const view2 = render(<RemoteFileBrowser fs={fs2} readOnly={false} notify={jest.fn()} />);
+    reply2();
+    await view2.findByText('logs');
+    expect(view2.queryByTitle('2')).toBeNull();
+  });
+
+  it('传输进度条：分块到达时显示、完成/失败后清除', async () => {
+    const urlMock = { createObjectURL: jest.fn(() => 'blob:mock'), revokeObjectURL: jest.fn() };
+    Object.assign(URL, urlMock);
+    const { fs, requests, reply } = fakeFs();
+    const { getByTestId, findByTestId, queryByTestId } = render(
+      <RemoteFileBrowser fs={fs} readOnly={false} notify={jest.fn()} />,
+    );
+    reply();
+    fireEvent.click(await findByTestId('remote-fs-download-zed.txt'));
+    await waitForUI(() => expect(requests[1]?.name).toBe('/zed.txt'));
+    const stream = fakeInputStream();
+    requests[1].cb(stream.stream, 'text/plain');
+    // 第一块（1024/2048 = 50%）：进度区出现，未完成前不消失
+    stream.emitBlob(btoa('x'.repeat(1024)));
+    await waitForUI(() => expect(getByTestId('remote-fs-transfers')).toBeTruthy());
+    expect(getByTestId('remote-fs-progress-download:zed.txt')).toBeTruthy();
+    // 完成后进度条清除
+    stream.emitBlob(btoa('y'.repeat(1024)));
+    stream.emitEnd();
+    await waitForUI(() => expect(queryByTestId('remote-fs-transfers')).toBeNull());
   });
 
   it('监看模式：上传入口不渲染（浏览与下载不受限）', async () => {

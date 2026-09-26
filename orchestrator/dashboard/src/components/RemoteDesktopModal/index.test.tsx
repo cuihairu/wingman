@@ -9,10 +9,11 @@ import React from 'react';
 import { message } from 'antd';
 import { BlobWriter, Client, Keyboard, Mouse, WebSocketTunnel } from 'guacamole-common-js';
 import RemoteDesktopModal, { guacDecodeBase64, guacEncodeBase64 } from './index';
-import { createRemoteTicket } from '@/services/remote';
+import { createRemoteTicket, reportRemoteFileOp } from '@/services/remote';
 
 jest.mock('@/services/remote', () => ({
   createRemoteTicket: jest.fn(),
+  reportRemoteFileOp: jest.fn(),
   guacamoleWSPath: jest.fn(
     (ticket: string) => `ws://localhost/api/remote/guacamole?ticket=${ticket}`,
   ),
@@ -70,6 +71,7 @@ jest.mock('guacamole-common-js', () => {
 });
 
 const mockedCreate = createRemoteTicket as jest.MockedFunction<typeof createRemoteTicket>;
+const mockedReport = reportRemoteFileOp as jest.MockedFunction<typeof reportRemoteFileOp>;
 const MockedClient = Client as jest.Mock;
 const MockedKeyboard = Keyboard as jest.Mock;
 const MockedBlobWriter = BlobWriter as jest.Mock;
@@ -134,6 +136,8 @@ describe('RemoteDesktopModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedCreate.mockResolvedValue({ ticket: 'tk-9', expiresAt: '2026-09-23T12:00:00Z' });
+    // handleAudit 对返回值 .catch 吞错：必须回 Promise
+    mockedReport.mockResolvedValue(undefined);
   });
 
   it('open 时申请票据并建立 WS 隧道 + connect', async () => {
@@ -338,5 +342,52 @@ describe('RemoteDesktopModal', () => {
     expect(guacDecodeBase64(guacEncodeBase64(text))).toBe(text);
     // 与标准 base64 一致（UTF-8 字节）
     expect(guacEncodeBase64('abc')).toBe(btoa('abc'));
+  });
+
+  it('文件操作审计：浏览器下载经 Modal 上报端点（ticket 一并携带）', async () => {
+    Object.assign(URL, {
+      createObjectURL: jest.fn(() => 'blob:mock'),
+      revokeObjectURL: jest.fn(),
+    });
+    const fsObj = {
+      index: 0,
+      requestInputStream: jest.fn((name: string, cb: (s: unknown, m: string) => void) => {
+        const stream = {
+          sendAck: jest.fn(),
+          onblob: undefined as undefined | ((d: string) => void),
+          onend: undefined as undefined | (() => void),
+        };
+        cb(stream, name === '/' ? 'text/json' : 'text/plain');
+        if (name === '/') {
+          stream.onblob?.(
+            btoa(
+              JSON.stringify([
+                { name: 'a.log', directory: false, mimetype: 'text/plain', size: 4 },
+              ]),
+            ),
+          );
+        } else {
+          stream.onblob?.(btoa('data'));
+        }
+        stream.onend?.();
+      }),
+      createOutputStream: jest.fn(),
+    };
+    const { getByTestId, findByTestId } = renderModal(true, { protocol: 'ssh' });
+    await waitForUI(() => expect(MockedClient).toHaveBeenCalled());
+    lastClient().onfilesystem?.(fsObj, '/');
+    const toggle = getByTestId('remote-fs-toggle') as HTMLButtonElement;
+    await waitForUI(() => expect(toggle.disabled).toBe(false));
+    fireEvent.click(toggle);
+    fireEvent.click(await findByTestId('remote-fs-download-a.log'));
+    await waitForUI(() => expect(mockedReport).toHaveBeenCalled());
+    expect(mockedReport).toHaveBeenCalledWith({
+      action: 'download',
+      path: '/a.log',
+      result: 'ok',
+      sizeBytes: 4,
+      attempts: 1,
+      ticket: 'tk-9',
+    });
   });
 });

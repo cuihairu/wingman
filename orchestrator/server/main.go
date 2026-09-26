@@ -126,6 +126,8 @@ func run() error {
 	recordingsHandler := handlers.NewRecordingsHandler(db, cfg.RecordingDir)
 	// 会话审计报表（设计 §11 P1）：与网关同库，网关在会话结束时落终态行
 	remoteSessionsHandler := handlers.NewRemoteSessionHandler(db)
+	// 文件操作审计上报（设计 §15.1）：与网关同库；票据→会话反解走网关快照
+	fileOpsHandler := handlers.NewRemoteFileOpsHandler(db, guacamoleHandler)
 
 	// gin engine 与全部路由（中间件/静态资源/API）由 handlers 包统一装配
 	r := gin.New()
@@ -139,6 +141,7 @@ func run() error {
 		Guacamole:      guacamoleHandler,
 		Recordings:     recordingsHandler,
 		RemoteSessions: remoteSessionsHandler,
+		FileOps:        fileOpsHandler,
 		ScriptsDir:     cfg.ScriptsDir,
 		StaticDir:      cfg.StaticDir,
 		ProcessStart:   processStartedAt,

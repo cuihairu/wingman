@@ -41,6 +41,8 @@ type RouterDeps struct {
 	Recordings *RecordingsHandler
 	// RemoteSessions 远程桌面会话审计报表（nil = 不启用；设计 §11 P1）
 	RemoteSessions *RemoteSessionHandler
+	// FileOps SFTP 文件操作审计上报（nil = 不启用；设计 §15.1 第二版）
+	FileOps *RemoteFileOpsHandler
 	// ScriptsDir / StaticDir 静态资源与脚本目录
 	ScriptsDir string
 	StaticDir  string
@@ -256,6 +258,17 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 			sessionView.Use(middleware.PermissionRequired(deps.DB, "desktop:view"))
 			{
 				sessionView.GET("/remote/sessions", deps.RemoteSessions.HandleList)
+			}
+		}
+
+		// 文件操作审计上报（设计 §15.1）：上报动作只读（download）要 view；
+		// upload 的写语义在 handler 内联追加 control 校验（监看可浏览/下载、
+		// 上传仅接管的矩阵在审计通道同样成立）
+		if deps.FileOps != nil {
+			fileOpsView := api.Group("")
+			fileOpsView.Use(middleware.PermissionRequired(deps.DB, "desktop:view"))
+			{
+				fileOpsView.POST("/remote/file-ops", deps.FileOps.HandleReport)
 			}
 		}
 	}

@@ -87,6 +87,9 @@ type GuacamoleHandler struct {
 	// record=true 票据与录像检索；recordingDir 是 server 侧检索挂载点。
 	recordingPath string
 	recordingDir  string
+	// opSessions 票据 ID → 会话快照（§15.1 文件操作审计：客户端上报只带
+	// 票据，session/agent/操作者由服务端反解，不信任请求体）。
+	opSessions sync.Map
 }
 
 // NewGuacamoleHandler 构造网关。guacdAddr 为空时回退 127.0.0.1:4822；
@@ -468,13 +471,15 @@ type GuacamoleSession struct {
 	Record bool
 	// RecordingName 录像文件名（{agentID}-{sessionID}.mjs）；未录制为空
 	RecordingName string
-	ClientWS      *websocket.Conn
-	guacd         net.Conn
-	guacdRd       *bufio.Reader
-	Created       time.Time
-	writeMu       sync.Mutex
-	done          chan struct{}
-	once          sync.Once
+	// TicketID 消费的一次性票据（§15.1 文件操作审计反查键；closeSession 清除）
+	TicketID string
+	ClientWS *websocket.Conn
+	guacd    net.Conn
+	guacdRd  *bufio.Reader
+	Created  time.Time
+	writeMu  sync.Mutex
+	done     chan struct{}
+	once     sync.Once
 }
 
 // guacTicketFromRequest 票据双通道提取：URL query ?ticket=（首选，
@@ -583,6 +588,7 @@ func (h *GuacamoleHandler) HandleWS(c *gin.Context) {
 		ReadOnly:      readOnly,
 		Record:        record,
 		RecordingName: recordingName,
+		TicketID:      ticketID,
 		ClientWS:      conn,
 		guacd:         guacdConn,
 		Created:       startedAt,
@@ -640,6 +646,15 @@ func (h *GuacamoleHandler) HandleWS(c *gin.Context) {
 		"session": session.ID, "readOnly": readOnly, "record": record,
 	})
 	log.Printf("Guacamole session created: %s -> %s:%d (%s, read-only=%v)", session.ID, host, port, protocol, readOnly)
+
+	// 快照在会话建立后入库（§15.1 文件操作审计的服务端可信来源；closeSession 删除）
+	h.opSessions.Store(ticketID, GuacFileOpSession{
+		SessionID: sessionID,
+		AgentID:   agentID,
+		Protocol:  protocol,
+		Username:  tk.Username,
+		ReadOnly:  readOnly,
+	})
 
 	go session.guacdToWS()
 	session.wsToGuacd()
@@ -713,6 +728,9 @@ func (h *GuacamoleHandler) closeSession(gs *GuacamoleSession) {
 	gs.once.Do(func() {
 		_ = gs.ClientWS.Close()
 		_ = gs.guacd.Close()
+		if gs.TicketID != "" {
+			h.opSessions.Delete(gs.TicketID)
+		}
 		endedAt := time.Now()
 		durationMs := endedAt.Sub(gs.Created).Milliseconds()
 		log.Printf("Guacamole session closed: %s", gs.ID)
@@ -746,4 +764,25 @@ func newGuacSessionID() string {
 		return fmt.Sprintf("sess-%d", time.Now().UnixNano())
 	}
 	return hex.EncodeToString(buf)
+}
+
+// GuacFileOpSession 文件操作审计的会话快照（§15.1）：客户端上报只带票据 ID，
+// 服务端由此反解出可信的会话/agent/操作者，请求体里的同类字段一律不采信。
+type GuacFileOpSession struct {
+	SessionID string
+	AgentID   string
+	Protocol  string
+	Username  string
+	ReadOnly  bool
+}
+
+// ResolveFileOpSession 按票据 ID 反解会话快照。票据一次性、WS 建连即消费，
+// 但快照独立存续到会话关闭——上报发生在连接期间，正常必然查到；查不到
+// （进程重启/会话已关）返回 false，调用方按无会话落审计（降级不拒绝）。
+func (h *GuacamoleHandler) ResolveFileOpSession(ticketID string) (GuacFileOpSession, bool) {
+	if v, ok := h.opSessions.Load(ticketID); ok {
+		s, _ := v.(GuacFileOpSession)
+		return s, true
+	}
+	return GuacFileOpSession{}, false
 }

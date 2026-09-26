@@ -1,15 +1,17 @@
 /**
- * 远端文件浏览器（公共件，设计 §15 SSH/SFTP 树第一版）。
+ * 远端文件浏览器（公共件，设计 §15 SSH/SFTP 树）。
  *
  * 纯受控组件：文件系统对象由 useGuacamoleSession 上报后经 props 注入，
  * 这里不含任何连接逻辑。能力边界即协议边界（1.5.x 线协议只有 get/put）：
  * 列目录 / 下载 / 上传；没有删除/重命名——不是 UI 取舍，是协议层不存在。
  *
- * 权限沿用 §14/§15 先例（收发不对称）：监看模式可浏览与下载（只读动作），
- * 上传入口仅接管模式渲染（网关不解析指令，UI 层不给入口是无歧义的约束）。
+ * 第二版（§15.1）：大目录浏览器侧分页（协议一次 get 返回整个目录体，无
+ * 服务端分页）、传输进度与有限重试、下载/上传结果经 audit 回调上报
+ * （列表高频不审计）。权限沿用 §14/§15 先例（收发不对称）：监看模式可
+ * 浏览与下载（只读动作），上传入口仅接管模式渲染。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Space, Table, Tooltip, Typography } from 'antd';
+import { Button, Progress, Space, Table, Tooltip, Typography } from 'antd';
 import {
   ArrowUpOutlined,
   DownloadOutlined,
@@ -25,10 +27,18 @@ import {
   joinRemotePath,
   listRemoteDirectory,
   uploadRemoteFile,
+  withRetry,
 } from './filesystem';
-import type { RemoteFileEntry, RemoteFileSystemObject } from './types';
+import type { RemoteFileEntry, RemoteFileOpAudit, RemoteFileSystemObject } from './types';
 
 const { Text } = Typography;
+
+/** 进行中的传输（进度条渲染；key = kind:name） */
+interface ActiveTransfer {
+  kind: 'download' | 'upload';
+  current: number;
+  total?: number;
+}
 
 export interface RemoteFileBrowserProps {
   /** 会话上报的文件系统对象（SSH=SFTP；RDP 驱动器同协议） */
@@ -37,6 +47,13 @@ export interface RemoteFileBrowserProps {
   readOnly: boolean;
   /** 瞬时反馈（上传完成/失败、列目录失败等） */
   notify: (kind: 'success' | 'error', text: string) => void;
+  /**
+   * 文件操作审计回调（下载/上传的最终结果；list 不上报）。可选：无消费者
+   * （cockpit 二方未接审计端点）时不上报。票据由容器层注入。
+   */
+  audit?: (op: RemoteFileOpAudit) => void;
+  /** 每页行数（浏览器侧分页；协议无服务端分页），默认 50 */
+  pageSize?: number;
   /** 列表滚动区高度（px），默认 240 */
   height?: number;
 }
@@ -56,15 +73,30 @@ export default function RemoteFileBrowser({
   fs,
   readOnly,
   notify,
+  audit,
+  pageSize = 50,
   height = 240,
 }: RemoteFileBrowserProps) {
   // 路径以段表示（根 = []），面包屑与导航共用
   const [segments, setSegments] = useState<string[]>([]);
   const [entries, setEntries] = useState<RemoteFileEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [transfers, setTransfers] = useState<Record<string, ActiveTransfer>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const path = segments.length === 0 ? '/' : `/${segments.join('/')}`;
+
+  const setTransfer = (key: string, t: ActiveTransfer | null) => {
+    setTransfers((prev) => {
+      const next = { ...prev };
+      if (t === null) {
+        delete next[key];
+      } else {
+        next[key] = t;
+      }
+      return next;
+    });
+  };
 
   const load = useCallback(
     async (dir: string) => {
@@ -93,12 +125,39 @@ export default function RemoteFileBrowser({
   const jump = (depth: number) => setSegments((prev) => prev.slice(0, depth));
 
   const handleDownload = async (entry: RemoteFileEntry) => {
+    const key = `download:${entry.name}`;
+    const fullPath = joinRemotePath(path, entry.name);
+    setTransfer(key, { kind: 'download', current: 0, total: entry.size });
     try {
-      const { filename, blob } = await downloadRemoteFile(fs, joinRemotePath(path, entry.name));
-      saveBlobDownload(filename, blob);
-      notify('success', `已下载 ${filename}`);
+      const { value, attempts } = await withRetry(
+        () =>
+          downloadRemoteFile(fs, fullPath, {
+            onProgress: (current) =>
+              setTransfer(key, { kind: 'download', current, total: entry.size }),
+          }),
+        { attempts: 2 },
+      );
+      saveBlobDownload(value.filename, value.blob);
+      notify('success', `已下载 ${value.filename}`);
+      audit?.({
+        action: 'download',
+        path: fullPath,
+        result: 'ok',
+        sizeBytes: value.blob.size,
+        attempts,
+      });
     } catch (e) {
-      notify('error', e instanceof Error ? e.message : `${entry.name} 下载失败`);
+      const message = e instanceof Error ? e.message : `${entry.name} 下载失败`;
+      notify('error', message);
+      audit?.({
+        action: 'download',
+        path: fullPath,
+        result: 'fail',
+        sizeBytes: entry.size,
+        error: message,
+      });
+    } finally {
+      setTransfer(key, null);
     }
   };
 
@@ -109,11 +168,38 @@ export default function RemoteFileBrowser({
       return;
     }
     for (const file of Array.from(files)) {
+      const key = `upload:${file.name}`;
+      const fullPath = joinRemotePath(path, file.name);
+      setTransfer(key, { kind: 'upload', current: 0, total: file.size });
       try {
-        await uploadRemoteFile(fs, file, path);
+        const { attempts } = await withRetry(
+          () =>
+            uploadRemoteFile(fs, file, path, {
+              onProgress: (current, total) =>
+                setTransfer(key, { kind: 'upload', current, total: total ?? file.size }),
+            }),
+          { attempts: 2 },
+        );
         notify('success', `${file.name} 上传完成`);
+        audit?.({
+          action: 'upload',
+          path: fullPath,
+          result: 'ok',
+          sizeBytes: file.size,
+          attempts,
+        });
       } catch (err) {
-        notify('error', err instanceof Error ? err.message : `${file.name} 上传失败`);
+        const message = err instanceof Error ? err.message : `${file.name} 上传失败`;
+        notify('error', message);
+        audit?.({
+          action: 'upload',
+          path: fullPath,
+          result: 'fail',
+          sizeBytes: file.size,
+          error: message,
+        });
+      } finally {
+        setTransfer(key, null);
       }
     }
     load(path);
@@ -213,13 +299,49 @@ export default function RemoteFileBrowser({
           )}
         </Space>
       </Space>
+      {Object.entries(transfers).length > 0 && (
+        <div data-testid="remote-fs-transfers" style={{ marginBottom: 8 }}>
+          {Object.entries(transfers).map(([key, t]) => {
+            const label = `${t.kind === 'download' ? '下载' : '上传'} ${key.slice(key.indexOf(':') + 1)}`;
+            const pct = t.total
+              ? Math.min(100, Math.floor((t.current / t.total) * 100))
+              : undefined;
+            return (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontSize: 12, flexShrink: 0 }} type="secondary">
+                  {label}
+                </Text>
+                <div style={{ flex: 1 }}>
+                  <Progress
+                    percent={pct ?? 100}
+                    showInfo={pct !== undefined}
+                    status={pct === undefined ? 'active' : 'normal'}
+                    size="small"
+                    data-testid={`remote-fs-progress-${key}`}
+                  />
+                </div>
+                {pct === undefined && (
+                  <Text style={{ fontSize: 12 }} type="secondary">
+                    {formatRemoteSize(t.current)}
+                  </Text>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
       <Table<RemoteFileEntry>
         size="small"
         rowKey={(r) => r.name}
         columns={columns}
         dataSource={entries}
         loading={loading}
-        pagination={false}
+        pagination={{
+          pageSize,
+          hideOnSinglePage: true,
+          showSizeChanger: false,
+          showTotal: (total) => `共 ${total} 项`,
+        }}
         scroll={{ y: height }}
         locale={{ emptyText: '（空目录）' }}
       />

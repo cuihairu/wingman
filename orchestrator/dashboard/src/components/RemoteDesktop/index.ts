@@ -31,6 +31,7 @@ export type {
 } from './RemoteErrorNotice';
 export { default as RemoteFileBrowser } from './RemoteFileBrowser';
 export type { RemoteFileBrowserProps } from './RemoteFileBrowser';
+export type { RemoteFileOpAudit } from './types';
 export { useGuacamoleSession } from './useGuacamoleSession';
 export type { GuacamoleSessionState, UseGuacamoleSessionOptions } from './useGuacamoleSession';
 export {
