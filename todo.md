@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-09-26 存量 flaky 测试根治（loginPage / triggerFormModal 的 load flake）
+
+上轮远控重构批次遗留的独立任务（该批只放宽了 `RemoteDesktop*` 两文件的等待窗口，未触碰这两个文件）。**根因：纯时序，非逻辑回归**——不需要改任何产品代码。
+
+- **复现（基线，14 核共享机自起 14 个 CPU burner + 外部负载 ~52）**：`npx jest tests/loginPage.test.tsx tests/triggerFormModal.test.tsx` 重复 10 次 → **0/10 通过**。失败形状两段：10/10 命中 jest 默认 **5s 单测预算**（`Exceeded timeout of 5000 ms for a test`）；其中 4/10 另外命中 RTL 默认 **1s `waitFor`/`findBy` 窗口**（`Unable to find an element with the text: Wingman`）。两条都是「wall-clock 猜测」在 CPU 超售下不够用，断言条件本身都指向真实异步条件（antd Form/Modal 校验与提交、登录跳转），无固定 sleep、无 fake timer。
+- **修复口径（只放宽窗口，不放宽断言；不做 fake timers）**：`jest.config.ts` 加 `testTimeout: 15000`；新增 `tests/setupRTL.jsx` 里 `configure({ asyncUtilTimeout: 5000 })` 全局放宽 RTL 等待窗口——它同时覆盖 `tests/` 与 `src/` 下全部 `waitFor`/`findBy` 站点（24 处），无需逐文件改写。**否决 fake timers**：antd Form/Modal 内部异步链在 fake timers 下需手工推进会侵入组件行为，且等待条件本就指向真实条件，不增确定性只增脆弱。
+- **踩过的坑（必须记，别再踩）**：`configure` 最初写在 `setupFiles`（`setupTests.jsx`）里 → 5 个用例**确定性**失败（弹窗跨用例堆积、`Found multiple elements`、按钮点到上一个用例的旧弹窗）。根因：RTL 在**首次 import 时**以 `typeof afterEach === 'function'` 决定是否注册自动 cleanup，而 `setupFiles` 阶段 jest 测试框架尚未安装、`afterEach` 不存在——在那里提前 import 会**永久禁用自动 cleanup**。故 `configure` 必须挂在 `setupFilesAfterEnv`（新文件 `tests/setupRTL.jsx`），头注释已写死这条约束。
+- **验证**：同款高负载下（实测 load average 68，高于基线的 52）重复跑 10 次 → **10/10 全绿，每次 21/21 用例**。随后全量 dashboard 套件：jest **420/420**（28 套件，75.5s）、`tsc --noEmit` 0 错、eslint 仅存量 2 警告、prettier 干净。本轮未动 C++/Go，未重跑。
+
 ## 2026-09-26 浏览器内录像回放（设计 §16「回放」第二版）
 
 录像列表加「回放」入口（desktop:view 同级，取回即 `desktop.recording_download` 审计）→ `RemoteRecordingPlayer` 拉取 Blob → `guacamole-common-js` 自带 `SessionRecording` 本地解析回放（播放/暂停/拖动进度 + 画面等比缩放，纯浏览器本地行为不经网关、无注入面）：

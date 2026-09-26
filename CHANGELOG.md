@@ -9,7 +9,14 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 390 个提交（feat 70 / fix 137 / docs 67 / test 44 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 391 个提交（feat 70 / fix 137 / docs 67 / test 45 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-26，存量 flaky 测试根治：loginPage/triggerFormModal 的 load 假红收口）
+
+- **根因（纯时序，非逻辑回归）**：14 核共享机 14 个 CPU burner + 外部负载下，两文件重复 10 跑 0/10 通过——10/10 超 jest 默认 5s 单测预算、4/10 另超 RTL 默认 1s `waitFor`/`findBy` 窗口。等待条件本身都指向真实异步条件（antd Form/Modal 校验提交、登录跳转），无固定 sleep 可去除；**否决 fake timers**（antd 内部异步链手工推进会侵入组件行为，不增确定性只增脆弱）。
+- **修复（只放宽窗口不放宽断言）**：`jest.config.ts` 加 `testTimeout: 15000`；新增 `tests/setupRTL.jsx`（挂 `setupFilesAfterEnv`）里 `configure({ asyncUtilTimeout: 5000 })` 全局覆盖 `tests/` 与 `src/` 全部 24 处 `waitFor`/`findBy` 站点，免逐文件改写。
+- **顺带锁死一个 RTL 装配陷阱**：`configure` 若写在 `setupFiles` 阶段，RTL 首次 import 时 `afterEach` 尚不存在（测试框架未装）→ **自动 cleanup 被永久禁用** → 弹窗跨用例堆积、按钮点到旧用例弹窗（实测 5 用例确定性失败）。`setupRTL.jsx` 头注释与 `jest.config.ts` 内联注释均写明该约束。
+- **实测口径**：修复前 0/10（10 次全失败）；修复后同款压力（load 68 > 基线 52）10/10 全绿（每次 21/21）；全量 dashboard：jest 420/420、tsc 0 错、eslint 仅存量 2 警告、prettier 干净。
 
 ### ci（2026-09-26，Phase 8 收口：Python 脚本引擎纳入主 CI——本地实测连修五个真缺陷）
 
