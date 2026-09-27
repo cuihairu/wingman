@@ -59,15 +59,60 @@ var coreutilsNeededByScript = []string{
 	"sleep", "awk", "sed", "grep", "cat", "head", "sort", "tr", "cut", "date", "wc", "timeout",
 }
 
-// linkCoreutils 把基础命令软链进 dir。
+// requireBashSandbox 判本用例能否在「净化 PATH + 假引擎」下跑被测 shell 脚本。
+//
+// Windows 上显式 SKIP，理由写在这里而不是让人去猜 exit=127：
+//  1. 被测对象 scripts/verify-guacd-e2e.sh 是 POSIX bash 脚本（/dev/tcp 探测、
+//     sed 区间回显用法、printf 对齐），支持的执行环境是 Linux/macOS 的 bash；
+//  2. 净化 PATH 靠往临时目录里放命令，而 Windows runner 默认没有建符号链接的
+//     权限——实测 os.Symlink 逐个失败、PATH 目录为空，脚本里每个外部命令都
+//     exit=127，表现与被测逻辑真坏了完全一样（正是本文件反对的那类假信号）。
+//
+// 脚本契约在 Linux + macOS 两个维度上守；Windows 维度连 shell 语义都不守，
+// 少守一个 bash 脚本不算损失，误报成「脚本有 bug」才是。
+//
+// 反过来，macOS 维度恰恰不能跳：本轮的崩溃信息（`line 60: guacd: unbound
+// variable`）就是证据，说明那条 runner 解析到的 bash 确实是 3.2，本用例等于
+// 直接在 bash 4 以下的环境里跑脚本——脚本一旦重新用上 declare -A、mapfile、
+// ${var^^} 之类 4.x 语法，红在这里，而不是等到有人在 macOS 上手跑。
+//
+// 由 linkCoreutils 统一拦：本文件里所有跑脚本的用例都要先造假环境，那条路
+// 必经 linkCoreutils，所以不需要每个用例各写一遍守卫。
+func requireBashSandbox(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX bash 脚本的契约测试不在 Windows 跑（无符号链接权限，净化 PATH 造不出来）")
+	}
+}
+
+// putCommand 把宿主命令以同名放进净化 PATH：优先软链（零拷贝），
+// 不支持符号链接的文件系统退化为复制。
+func putCommand(src, dst string) error {
+	if err := os.Symlink(src, dst); err == nil {
+		return nil
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0o755)
+}
+
+// linkCoreutils 把基础命令放进 dir。
+//
+// 放不进去必须显式 SKIP，不能静默继续：静默的净果是 PATH 目录缺命令，脚本
+// 自身先崩，红得像是被测逻辑有问题（上面第 2 条实测踩过）。
 func linkCoreutils(t *testing.T, dir string) {
 	t.Helper()
+	requireBashSandbox(t)
 	for _, bin := range coreutilsNeededByScript {
 		src, err := exec.LookPath(bin)
 		if err != nil {
-			continue // 宿主没有该命令，跳过（脚本对应路径不会被触发）
+			continue // 宿主没有该命令（如 macOS 无 timeout），对应路径不会被触发
 		}
-		_ = os.Symlink(src, filepath.Join(dir, bin))
+		if err := putCommand(src, filepath.Join(dir, bin)); err != nil {
+			t.Skipf("无法把 %s 放进净化 PATH（软链与复制都失败），假环境建不起来: %v", bin, err)
+		}
 	}
 }
 

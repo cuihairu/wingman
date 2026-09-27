@@ -57,12 +57,27 @@ usage() {
 # ---------- 就绪探测 ----------
 # 端口可达性 = 「容器已监听」；不等于「协议握手可用」——后者由 e2e 用例断言。
 # 分开是因为二者失败含义不同：端口不通是栈问题，通了不 ready 是链路问题。
-declare -A READY_PORTS=(
-	[guacd]=4822
-	[sshd]=2222
-	[vnc]=5901
-	[xrdp]=3389
-)
+# 就绪目标用两条平行数组，不用 declare -A 关联数组：macOS 自带 bash 3.2 不支持
+# 后者，`[guacd]=4822` 会被解释成给未变量 $guacd 赋值，在 set -u 下当场崩
+# （CI 实测 "verify-guacd-e2e.sh: line 60: guacd: unbound variable"）。崩溃发生在
+# 引擎探测之后、任何 SKIP 分支之前，于是「环境不具备 → SKIP(2)」被吞成 exit 1，
+# 与本脚本立意相反——绝不把「没跑成」和「有 bug」混成同一种表现。仓库其余
+# verify-*.sh 也一律不用关联数组，这里是唯一的例外，现已改齐。
+READY_NAMES=(guacd sshd vnc xrdp)
+READY_PORTS=(4822 2222 5901 3389)
+
+# ready_port NAME 按名字查端口（数组下标对齐）。
+ready_port() {
+	local i
+	for i in "${!READY_NAMES[@]}"; do
+		if [[ "${READY_NAMES[$i]}" == "$1" ]]; then
+			echo "${READY_PORTS[$i]}"
+			return 0
+		fi
+	done
+	return 1
+}
+
 # 冷启动预算：xrdp 最慢（X session 冷启实测数十秒）
 READY_TIMEOUT="${GUACD_E2E_READY_TIMEOUT:-180}"
 
@@ -102,11 +117,12 @@ compose() {
 # 返回 1 = 超时（有端口不通），返回 2 = 缺探测工具（环境问题，不判失败）。
 wait_ready() {
 	local deadline=$((SECONDS + READY_TIMEOUT))
-	local pending=("${!READY_PORTS[@]}")
+	local pending=("${READY_NAMES[@]}")
 	while ((SECONDS < deadline)); do
 		local still=()
 		for name in "${pending[@]}"; do
-			local port="${READY_PORTS[$name]}"
+			local port
+			port="$(ready_port "$name")"
 			port_open "$port"
 			case $? in
 				0) : ;;
@@ -126,7 +142,7 @@ wait_ready() {
 	done
 	echo "FAIL: ${READY_TIMEOUT}s 内以下端口未就绪："
 	for name in "${pending[@]}"; do
-		echo "  - $name (127.0.0.1:${READY_PORTS[$name]})"
+		echo "  - $name (127.0.0.1:$(ready_port "$name"))"
 	done
 	echo "  排查：$ENGINE compose -f $COMPOSE_FILE logs --tail 50"
 	return 1
@@ -159,8 +175,9 @@ do_down() {
 do_status() {
 	require_engine
 	local rc=0
-	for name in guacd sshd vnc xrdp; do
-		local port="${READY_PORTS[$name]}"
+	for name in "${READY_NAMES[@]}"; do
+		local port
+		port="$(ready_port "$name")"
 		if port_open "$port"; then
 			printf '  %-6s :%s  READY\n' "$name" "$port"
 		else

@@ -89,7 +89,12 @@ public:
 
         // 完整资源数据（头部 + 负载）由平台无关的同一条代码产出：
         // PE 嵌入只是给这份字节流换个容器，Linux 上测的字节语义与此处完全一致。
-        const std::vector<uint8_t> resourceData =
+        //
+        // 这里不能写成 const：UpdateResourceA 的第 5 参是 LPVOID（它只读这份
+        // 字节，签名不带 const 是 Win32 的历史包袱），MSVC 对 const uint8_t*
+        // → LPVOID 直接 C2664，而这段在 Linux 上根本不参与编译——只有 Windows
+        // CI 会红（实测踩过，改回非 const 即可，无需 const_cast）。
+        std::vector<uint8_t> resourceData =
             Packer::buildResourceBytes(scriptData, options.encrypt, options.compress, options.password);
 
         // 添加资源

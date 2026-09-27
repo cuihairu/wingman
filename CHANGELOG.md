@@ -9,7 +9,15 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 394 个提交（feat 71 / fix 137 / docs 68 / test 46 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 395 个提交（feat 71 / fix 138 / docs 68 / test 46 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### fix（2026-09-27，guacd e2e 脚本契约测试在 macOS/Windows 恒红：bash 3.2 关联数组 + 被吞掉的 symlink 错误）
+
+- **症状与范围**：CI 自 `fcf7cf9`（2026-09-25，脚本与契约测试引入的那轮）起 **连续 9 个 push 红**，上一个绿的是 `4f97996`。只红 `Go Server (macos-latest)` 与 `(windows-latest)` 两个 job，失败集合恒定——就是本脚本的 8 个 shell 契约用例，同 job 内其它 Go 包全 `ok`。门禁失效比红本身更贵：任何人此后的真回归都混在这 9 个红里，而「全绿才推送」无从判定。
+- **macOS 根因（一条真缺陷）**：`declare -A READY_PORTS` 是 bash 4 特性，macOS 自带 `/bin/bash` 停在 3.2 → `[guacd]=4822` 被解析成给未变量 `$guacd` 赋值，`set -u` 下当场崩；崩点在引擎探测之后、任何 SKIP 分支之前，于是「环境不具备 → SKIP(2)」被吞成 exit 1，正是本脚本自己反对的「两种失败长得一模一样」。**实测复现**：`docker run bash:3.2` 跑改前脚本 → `line 60: guacd: unbound variable`，与 CI 日志逐字相同。
+- **修复（改齐仓库惯例）**：两条平行数组 `READY_NAMES`/`READY_PORTS` + `ready_port()` 按下标查表——其余 `verify-*.sh` 一律不用关联数组，本脚本是全仓唯一例外，现已消除；`do_status` 的服务名也改取同一张表，端口映射回到单一来源。bash 3.2 与 bash 5.3 下逐路径对拍一致：`--help`(0)、无引擎 `up/test/run/status`(SKIP 2)、未知子命令与未知 flag(2)、假引擎 `up` 端口未就绪(1，四行端口报告正确)、假引擎 `status`(1，NOT READY×4)。
+- **Windows 根因（测试自己的缺陷）**：契约用例靠往临时目录软链 coreutils 拼出「净化 PATH」，而 `os.Symlink` 的错误被 `_ =` 静默吞掉；Windows runner 默认没有建符号链接的权限 → PATH 目录为空 → 脚本里每个外部命令 exit=127，看起来像被测脚本坏了。改为软链失败退化成复制；复制也失败就带原因 SKIP；POSIX bash 脚本的契约测试在 Windows 显式 SKIP（守卫集中在 `linkCoreutils`，所有跑脚本的用例必经此处），宿主缺单个命令（如 macOS 无 `timeout`）仍按原语义继续。
+- **本轮为何越界改别人的文件**：诊断已完成且修复局部（一个 shell 查表 + 一个测试守卫），留下则 main 继续红、后续批次全部失去门禁判定；两处都是真缺陷而非口味问题。全量 Go 门照跑（`go vet ./...` + `go test -race` integration 包）。
 
 ### feat（2026-09-27，加密资源打包→加载闭环：PBKDF2 口令派生 + PACK_HEADER v2）
 
@@ -20,6 +28,7 @@
 - **顺手修一个真缺陷（变换顺序）**：旧顺序 encrypt → compress，而该简化 LZ 的匹配模型只认「同一字节连出现 ≥4 次」（`data[i - j]` 左下标不随 count 前进），密文里找不到字节连串 → `--encrypt --compress` 静默退化成「只加密」。改为 compress → encrypt（读侧镜像 decrypt → decompress），加密包从此真能压小；无存量产物受影响。
 - **让非 Windows 跑到生产代码**：`Packer::buildResourceBytes()` / `ResourceLoader::loadScriptFromBytes()` 这对平台无关字节级入口是往返与错口令用例的执行体（PE 读写 `BeginUpdateResource*`/`FindResourceA` 仍是 Windows-only，只负责换容器），ELF 侧嵌入未实现即明确失败，不静默写「看着成功其实没嵌脚本」的产物。顺带修 `main.cpp` 上「Version/Size 恒打 0」的存量显示 bug（头部字段要解头后才进 `ResourceInfo`）。
 - **测试**：`apps/runtime/tests/resource_pack_test.cpp` 新增 43 例（格式布局/KDF 与指纹/写侧标志与随机性/参数化「明文 vs 加密」往返/负路径：错口令、缺口令、改密文、改 salt、改 IV、改迭代次数、截断、未加密包改字节、头部谎报压缩、隐藏压缩、伪造指纹、坏 magic、短输入、v1 加密拒绝、未知版本、v1 明文仍可加载）；`crypt_test.cpp` +10 例（AES-GCM 原始字节对：空明文/大数据/非标准 IV 长度/错密钥/错 IV/改密文/改标签/非法长度）；`cli_test.cpp` 的 `PackerRejectsEncryptedResourcesUntilLoaderSupportsThem` 语义作废，改写为「无口令拒绝加密 / 有口令放行到平台边界」两条。全量 ctest **2234 例 0 红**（31 例平台性 skip），同轮 Go `go vet` + `go test -race ./...` 全绿。
+- **本机门禁的盲区，由 Windows CI 补上（本轮自身缺陷，已修）**：`updateResource()` 里把资源字节接成 `const std::vector<uint8_t>`，而 `UpdateResourceA` 第 5 参是 `LPVOID`（只读，签名不带 const）→ MSVC C2664，两个 Windows job 编译失败。该段在 `#ifdef _WIN32` 内，Linux 全量 ctest 永远看不见它——「本地 2234 例 0 红」为真但不足以覆盖 PE 写入侧。修法：局部变量去 const（无需 const_cast），并用同签名探针 TU 复现与验证（const 版报 `no known conversion from 'const unsigned char *' to 'LPVOID'`、非 const 版干净）。副作用是 Windows 侧那 43 例新用例与「Windows 端到端嵌入成功」的断言此前从未真跑，修完才进 CI。
 
 ### test（2026-09-27，高负载 flake 二轮根治：等待窗口随 CPU 超售自适应）
 

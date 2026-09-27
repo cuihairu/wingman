@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-09-27 修 main 长期红：guacd e2e 脚本契约测试在 macOS/Windows 恒红
+
+**为什么动别人的文件**：CI 自 `fcf7cf9`（2026-09-25）起连续 9 个 push 红（上一个绿的是 `4f97996`），只红 `Go Server (macos-latest)`/`(windows-latest)` 两个 job，失败集合恒定为 `scripts/verify-guacd-e2e.sh` 的 8 个 shell 契约用例。长期红让「全绿才推送」的门禁失去判定力——此后任何人的真回归都混在这 9 个红里。诊断已做完且修复局部，故顺手收掉；两处都是真缺陷，不是口味问题。
+
+- **macOS（被测脚本的真缺陷）**：`declare -A READY_PORTS` 是 bash 4 语法，macOS 自带 `/bin/bash` 停在 3.2 → `[guacd]=4822` 被当作给未变量 `$guacd` 赋值，`set -u` 下当场崩；崩点在引擎探测之后、任何 SKIP 分支之前，于是「环境不具备 → SKIP(2)」变 exit 1。改法：`READY_NAMES`/`READY_PORTS` 两条平行数组 + `ready_port()` 下标查表（其余 `verify-*.sh` 一律不用关联数组，本脚本是全仓唯一例外），`do_status` 的服务名也改取同表，端口映射回到单一来源。
+- **实测复现与对拍（不靠推理）**：`docker run --rm bash:3.2` 跑改前脚本 → `line 60: guacd: unbound variable`，与 CI 日志逐字相同；改后在 bash 3.2 与本机 bash 5.3 下逐路径对拍一致——`--help`(0)、无引擎 `up/test/run/status`(SKIP 2)、未知子命令/未知 flag(2)、假引擎 `up` 端口未就绪(1 且四行端口报告正确)、假引擎 `status`(1，NOT READY×4)。Linux 全量 10 用例绿。
+- **Windows（契约测试自己的缺陷）**：用例靠往临时目录软链 coreutils 拼「净化 PATH」，而 `os.Symlink` 的错误被 `_ =` 吞掉；Windows runner 默认无建符号链接权限 → PATH 目录为空 → 脚本里每个命令 exit=127。改法：软链失败退化为复制，复制也失败则带原因 SKIP（不再静默）；POSIX bash 脚本的契约测试在 Windows 显式 SKIP，守卫集中在 `linkCoreutils`（所有跑脚本的用例必经）；宿主缺单个命令（macOS 无 `timeout`）仍按原语义继续，避免把 macOS 覆盖一起 skip 掉。
+- **同轮 CI 另抓到的两处（都不在本轮改动内）**：① `apps/runtime/src/packer.cpp` 的 `const std::vector<uint8_t> resourceData` 传给 `UpdateResourceA` 的 `LPVOID` 参数，MSVC 报 C2664——该段是 `_WIN32` 专属，Linux 编译看不见，只有 Windows CI 会红（本轮改动引入，已随本轮修复：去掉 `const`；本地用同签名的探针 TU 复现并验证：const 版报 `no known conversion from 'const unsigned char *' to 'LPVOID'`，非 const 版干净）。② `internal/workflow` 的 `TestCancelRunningWorkflow` 在 ubuntu runner 上偶发红（`engine_extra_test.go:409: expected cancelled, got completed`；此前三个 push 同 job 均为绿，本轮 Go 文件零改动）。机制是可复现的写序竞争而非玄学：`Engine.Cancel`（engine.go:249）先写 `status=cancelled`，而 runner goroutine 收尾处（engine.go:358-361）**无条件**写 `completed`/`failed`，最后写者赢；工作流极快跑完时二者只差几毫秒。修法是一条条件更新（收尾 UPDATE 加 `WHERE status = 'running'`，并据此决定是否广播），但那是 workflow 引擎的语义改动、不属本轮，留给独立一轮。
+- **待观察**：macOS 维度这 8 个用例是首次真跑，若仍有红，最可能的下一处是 `/dev/tcp` 在 macOS 系统 bash 上的可用性（`port_open` 已留 `nc` 退化路径，两个都没有则脚本按设计报 SKIP 2，而 `status` 用例期望 1）。本轮无 macOS 机器，只能靠 CI 判定。
+
+---
+
 ## 2026-09-27 加密资源打包→加载闭环（PBKDF2 口令派生 + PACK_HEADER v2）
 
 全仓唯一代码 TODO（`apps/runtime/src/resource_loader.cpp` 的「Encrypted resources are not supported yet」）落地：加密资源从「两端一致禁用」变成「打包→加载真闭环」，并且第一次在 Linux 上跑通同一条链路。
