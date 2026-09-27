@@ -24,6 +24,7 @@
 #include <thread>
 
 #include "x11_test_lock.hpp"
+#include "platform/linux/x11_display.hpp"  // openX11Display：瞬态 accept 拒绝重试
 #include "wingman/recorder.hpp"
 
 namespace fs = std::filesystem;
@@ -68,7 +69,7 @@ TEST(RecorderX11E2E, RecordsXTestInjectedKeyEvents) {
                         "run on a real desktop X server";
     }
 
-    Display* d = XOpenDisplay(nullptr);
+    Display* d = wingman::platform::linux::openX11Display(nullptr);
     ASSERT_NE(d, nullptr);
 
     bool usedFallback = false;
@@ -110,7 +111,7 @@ TEST(RecorderX11E2E, SavesCapturedEventsToJSON) {
                         "run on a real desktop X server";
     }
 
-    Display* d = XOpenDisplay(nullptr);
+    Display* d = wingman::platform::linux::openX11Display(nullptr);
     ASSERT_NE(d, nullptr);
 
     bool usedFallback = false;

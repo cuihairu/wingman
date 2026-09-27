@@ -10,6 +10,7 @@
 #include "wingman/platform/input_factory.hpp"
 
 #include <X11/Xlib.h>
+#include "platform/linux/x11_display.hpp"  // openX11Display：瞬态 accept 拒绝重试
 
 #include <cstdio>
 #include <cstdlib>
@@ -24,7 +25,7 @@ namespace {
 
 bool x11Available() {
     static const bool cached = [] {
-        Display* d = XOpenDisplay(nullptr);
+        Display* d = wingman::platform::linux::openX11Display(nullptr);
         if (!d) return false;
         XCloseDisplay(d);
         return true;

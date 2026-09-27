@@ -22,6 +22,7 @@
 #include "clipboard_lock_guard.hpp"
 #include "clipboard_poll.hpp"
 #include "x11_test_lock.hpp"
+#include "platform/linux/x11_display.hpp"  // openX11Display：瞬态 accept 拒绝重试
 #include "wingman/screen.hpp"  // Bitmap 完整定义（icapture.hpp 仅前向声明）
 
 #include <X11/Xlib.h>
@@ -65,10 +66,14 @@ std::unique_ptr<IFileWatcher> createInotifyFileWatcher();
 
 namespace {
 
+using wingman::platform::linux::openX11Display;  // 断开→重连瞬态拒绝重试（x11_display.hpp）
+
 // XOpenDisplay 探测（结果缓存）：DISPLAY 未设置或连不上时各用例跳过而非失败。
+// 探测本身也必须抗瞬态拒绝：这里的假阴性会把整个 fixture 误判为无 X 而全量
+// skip，把真实回归吞成绿色。
 bool x11Available() {
     static const bool cached = [] {
-        Display* display = XOpenDisplay(nullptr);
+        Display* display = openX11Display(nullptr);
         if (!display) {
             return false;
         }
@@ -84,6 +89,23 @@ bool xclipAvailable() {
     return cached;
 }
 
+// 等待窗口随 CPU 超售自适应（同 dashboard 二轮根治口径）：共享机 load 达到核数
+// 数倍时，固定秒数的防挂死护栏会被调度饥饿本身击穿——护栏报警的其实是负载，
+// 不是被测行为。factor = clamp(load1/nproc, 1, 8)。
+double x11OversubscriptionFactor() {
+    double load = 0.0;
+    if (::getloadavg(&load, 1) != 1) {
+        return 1.0;
+    }
+    const long nproc = ::sysconf(_SC_NPROCESSORS_ONLN);
+    if (nproc <= 0) {
+        return 1.0;
+    }
+    const double factor = load / static_cast<double>(nproc);
+    if (factor < 1.0) return 1.0;
+    return factor > 8.0 ? 8.0 : factor;
+}
+
 // 窗口用例的 RAII 测试窗口。Xvfb 无窗口管理器，EWMH 属性（_NET_CLIENT_LIST /
 // _NET_ACTIVE_WINDOW）本应由 WM 维护——测试进程直接写根窗口属性模拟 WM 行为
 // （与 WM 同为属性写者，合法）。析构销毁窗口并删除根属性，避免污染并行/后续
@@ -91,7 +113,7 @@ bool xclipAvailable() {
 class TestX11Window {
 public:
     TestX11Window(int x, int y, int width, int height, const char* title) {
-        display_ = XOpenDisplay(nullptr);
+        display_ = openX11Display(nullptr);
         if (!display_) return;
         Window root = DefaultRootWindow(display_);
         window_ = XCreateSimpleWindow(display_, root, x, y, width, height,
@@ -122,7 +144,11 @@ public:
                         reinterpret_cast<const unsigned char*>(&window_), 1);
 
         XMapWindow(display_, window_);
-        XFlush(display_);
+        // XSync 而非 XFlush：门面用的是另一条连接，跨连接读回（enumerate/
+        // getBounds/foreground）必须看到已落地的窗口与根属性；XFlush 只保证
+        // 发出、不保证 server 已处理，负载下会读到半初始化状态（2026-09-27
+        // flake 登记项之一）
+        XSync(display_, False);
     }
 
     ~TestX11Window() {
@@ -135,7 +161,7 @@ public:
                             XInternAtom(display_, "_NET_CLIENT_LIST", False));
             XDeleteProperty(display_, root,
                             XInternAtom(display_, "_NET_ACTIVE_WINDOW", False));
-            XFlush(display_);
+            XSync(display_, False);  // 根属性清理对后续用例立即可见（同 ctor 理由）
         }
         XCloseDisplay(display_);
     }
@@ -153,7 +179,7 @@ public:
                         XInternAtom(display_, "_NET_ACTIVE_WINDOW", False),
                         XA_WINDOW, 32, PropModeReplace,
                         reinterpret_cast<const unsigned char*>(&window_), 1);
-        XFlush(display_);
+        XSync(display_, False);  // 门面另一条连接要能立刻读到此属性（同 ctor 理由）
     }
 
 private:
@@ -287,7 +313,7 @@ TEST_F(X11PlatformTest, ScreenFindImageLocatesDrawnPattern) {
     // 确定（均匀底色下多个完美匹配会让 minMaxLoc 位置不定）；负向断言：
     // 不存在的模板路径优雅 false
     X11ServerLockGuard x11Lock;
-    Display* d = XOpenDisplay(nullptr);
+    Display* d = openX11Display(nullptr);
     ASSERT_NE(d, nullptr);
     Window root = DefaultRootWindow(d);
     GC gc = XCreateGC(d, root, 0, nullptr);
@@ -325,7 +351,7 @@ TEST_F(X11PlatformTest, ScreenFindImageLocatesDrawnPattern) {
     std::remove(path);
 
     // 清理画在根窗口的图案（跨轮次/其他用例自洽性）
-    d = XOpenDisplay(nullptr);
+    d = openX11Display(nullptr);
     if (d) {
         XClearArea(d, DefaultRootWindow(d), tplRect.x, tplRect.y,
                    tplRect.width, tplRect.height, False);
@@ -653,12 +679,16 @@ TEST_F(X11PlatformTest, X11WindowCloseCenterAndWaitFamily) {
         // 子进程：开独立 X 连接建窗，句柄经管道交给父进程；连接被杀
         // （EOF 可读）后 _exit 跳过 gcov flush，避免与父进程 gcda 合并竞争
         close(fds[0]);
-        Display* d = XOpenDisplay(nullptr);
+        Display* d = openX11Display(nullptr);
         if (!d) _exit(1);
         Window w = XCreateSimpleWindow(d, DefaultRootWindow(d), 10, 10, 80, 60, 0, 0, 0);
         if (w == 0) _exit(3); // 窗口创建失败时父侧 forceClose(0) 必落空
         XMapWindow(d, w);
-        XFlush(d);
+        // XSync 而非 XFlush：句柄交给父进程之前，CreateWindow/MapWindow 必须
+        // 已被 server 处理。XFlush 只保证发出——父进程可能抢在 server 建窗之前
+        // XKillClient，杀不到还不存在的资源，子进程困在 select 里直到父侧 5s
+        // 护栏报警（2026-09-27 flake 登记项之一）
+        XSync(d, False);
         if (::write(fds[1], &w, sizeof(w)) != static_cast<ssize_t>(sizeof(w))) _exit(2);
         close(fds[1]);
         fd_set rfds;
@@ -680,9 +710,13 @@ TEST_F(X11PlatformTest, X11WindowCloseCenterAndWaitFamily) {
     int holderStatus = 0;
     // 防挂死护栏：正常路径连接被杀、select 命中 EOF 立即退出；极端时序下
     // （XKillClient 落空）子进程会困在 select 里，waitpid(0) 阻塞式等待将
-    // 挂死整个运行——限时轮询，超时 SIGKILL 收尸并如实报失败
+    // 挂死整个运行——限时轮询，超时 SIGKILL 收尸并如实报失败。基线 5s 随 CPU
+    // 超售缩放：共享机 load 数倍于核数时，子进程从 EOF 到被收割全程都可能被
+    // 调度饿死，固定窗口报警的是负载不是被测行为
+    const double oversell = x11OversubscriptionFactor();
+    const int reapIterations = static_cast<int>(100 * oversell);
     bool holderGone = false;
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < reapIterations; ++i) {
         if (waitpid(holder, &holderStatus, WNOHANG) == holder) {
             holderGone = true;
             break;
@@ -692,13 +726,47 @@ TEST_F(X11PlatformTest, X11WindowCloseCenterAndWaitFamily) {
     if (!holderGone) {
         kill(holder, SIGKILL);
         waitpid(holder, &holderStatus, 0);
-        ADD_FAILURE() << "holder did not exit within 5s after forceClose";
+        ADD_FAILURE() << "holder did not exit within " << (reapIterations * 50 / 1000)
+                      << "s after forceClose (load factor " << oversell << ")";
     }
     EXPECT_TRUE(WIFEXITED(holderStatus));
     for (int i = 0; i < 20 && window->isValid(foreignWin); ++i) {
         std::this_thread::sleep_for(std::chrono::milliseconds(25));
     }
     EXPECT_FALSE(window->isValid(foreignWin));  // 杀连接连带销毁其全部资源
+}
+
+// 回归钉（2026-09-27 flake 根治轮）：X server 对「前一个本地连接刚断开 → 新
+// 连接立即到达」会在 accept 阶段瞬态掐断新连接——strace 双侧实证：server 读完
+// SO_PEERCRED 与 /proc/<pid>/cmdline 后连 setup 请求都不读就 shutdown，客户端
+// XOpenDisplay 返回 NULL，紧接着再 open 立即成功（裸 open→close 循环 load≈40
+// 实测 11/3000 失败、11/11 重试即成功）。当时单用例在 xvfb-run 下 ~1/4 红：
+// 门面 initialize 撞上一次拒绝 → initialized_=false → center/close/
+// isInitialized 成片 false、forceClose 落空、holder 护栏报警，整条多米诺都源自
+// 这一次 open。修复 = 生产侧 openX11Display 重试（x11_display.hpp）。
+// 每轮 = 「探测连接 open→close」紧接「门面 open」——复刻实证的竞态形状。轮数
+// 25：负载高时每次 open ~75ms，整测 ~6s；瞬态拒绝本身不作断言（裸 open 失败是
+// 预期压力），钉死的是门面必须靠重试站起来，以及末轮门面功能可用。
+TEST_F(X11PlatformTest, WindowInitializeSurvivesConnectionChurn) {
+    X11ServerLockGuard x11Lock;
+    for (int i = 0; i < 25; ++i) {
+        Display* probe = XOpenDisplay(nullptr);
+        if (probe) {
+            XCloseDisplay(probe);
+        }
+        auto window = wingman::platform::linux::createX11Window();
+        ASSERT_NE(window, nullptr) << "iter " << i;
+        EXPECT_TRUE(window->getBackendInfo().isInitialized)
+            << "iter " << i << ": facade initialize() succumbed to transient churn";
+    }
+    // 末轮门面功能可用（churn 后不是只剩空壳）
+    auto window = wingman::platform::linux::createX11Window();
+    ASSERT_NE(window, nullptr);
+    TestX11Window win(0, 0, 120, 90, "Wingman Churn Window");
+    ASSERT_TRUE(win.valid());
+    win.setActive();
+    EXPECT_TRUE(window->center(win.handle(), 0));
+    EXPECT_TRUE(window->close(win.handle()));
 }
 
 // ========== 真实 WM 集成（自起 Xvfb + openbox 子进程） ==========
@@ -1016,7 +1084,7 @@ private:
 class WmTestWindow {
 public:
     WmTestWindow(int x, int y, int width, int height, const char* title) {
-        display_ = XOpenDisplay(nullptr);  // WmEnvironment 已设 DISPLAY
+        display_ = openX11Display(nullptr);  // WmEnvironment 已设 DISPLAY
         if (!display_) return;
         window_ = XCreateSimpleWindow(display_, DefaultRootWindow(display_),
                                       x, y, width, height, 0, 0, 0);
@@ -1339,7 +1407,7 @@ TEST_F(X11PlatformTest, CaptureWindowGrabsWindowContent) {
     ASSERT_NE(capture, nullptr);
 
     // 画白色块做内容指纹（XCreateSimpleWindow 背景为 0 → 黑）
-    Display* d = XOpenDisplay(nullptr);
+    Display* d = openX11Display(nullptr);
     ASSERT_NE(d, nullptr);
     GC gc = XCreateGC(d, win.handle(), 0, nullptr);
     XSetForeground(d, gc, 0xFFFFFF);
@@ -1366,7 +1434,7 @@ TEST_F(X11PlatformTest, CaptureWindowInvalidHandlesAreSafe) {
     EXPECT_EQ(capture->captureWindowRegion(0, wingman::platform::Rect{0, 0, 8, 8}), nullptr);
 
     // 已销毁句柄：XGetWindowAttributes 失败 → nullptr（宽容 error handler 吞 BadWindow）
-    Display* d = XOpenDisplay(nullptr);
+    Display* d = openX11Display(nullptr);
     ASSERT_NE(d, nullptr);
     Window doomed = XCreateSimpleWindow(d, DefaultRootWindow(d), 0, 0, 8, 8, 0, 0, 0);
     XMapWindow(d, doomed);
@@ -1517,7 +1585,7 @@ TEST_F(X11PlatformTest, ScreenMonitorQueryFallbacks) {
 
 TEST_F(X11PlatformTest, ScreenDpiResourceManagerChain) {
     X11ServerLockGuard x11Lock;
-    Display* d = XOpenDisplay(nullptr);
+    Display* d = openX11Display(nullptr);
     ASSERT_NE(d, nullptr);
     ResourceMgrGuard guard(d);
 
