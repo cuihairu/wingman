@@ -94,16 +94,20 @@ TEST(HumanMouseTest, PathRandomness) {
     Point start(0, 0);
     Point end(200, 200);
 
-    // Generate two paths, they should differ
-    auto path1 = mouse.generateBezierPath(start, end);
-    auto path2 = mouse.generateBezierPath(start, end);
-
-    // Paths should not be identical (due to randomness)
+    // 控制点偏移经 static_cast<int> 向零截断量化：±1.414 以内的偏移落入
+    // 零桶（双倍宽），两条独立路径有非零概率整体量化后完全一致，单次对比
+    // 断言会低频误报。多轮生成取「至少一对不同」，把运气事件变成分布事件；
+    // 同时以 i+1<size 规避 size<2 时 size-1 的无符号下溢。
     bool different = false;
-    for (size_t i = 1; i < path1.size() - 1; ++i) {
-        if (path1[i].x != path2[i].x || path1[i].y != path2[i].y) {
-            different = true;
-            break;
+    for (int round = 0; round < 20 && !different; ++round) {
+        auto path1 = mouse.generateBezierPath(start, end);
+        auto path2 = mouse.generateBezierPath(start, end);
+        const size_t n = path1.size() < path2.size() ? path1.size() : path2.size();
+        for (size_t i = 1; i + 1 < n; ++i) {
+            if (path1[i].x != path2[i].x || path1[i].y != path2[i].y) {
+                different = true;
+                break;
+            }
         }
     }
     EXPECT_TRUE(different);
