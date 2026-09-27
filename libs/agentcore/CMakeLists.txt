@@ -43,3 +43,9 @@ target_link_libraries(wingman_agentcore PUBLIC
 )
 
 target_compile_features(wingman_agentcore PUBLIC cxx_std_23)
+
+# ========== 测试 ==========
+option(BUILD_AGENTCORE_TESTS "Build agentcore library tests" OFF)
+if(BUILD_AGENTCORE_TESTS)
+    add_subdirectory(tests)
+endif()
