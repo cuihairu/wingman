@@ -241,6 +241,15 @@ bool AgentConfig::saveToFile(const std::string& path) const {
     file << "file = \"" << logging.file << "\"\n";
     file << "console = " << (logging.console ? "true" : "false") << "\n\n";
 
+    // 与 loadFromString 保持对称：loadFromString 支持 [performance] 三个整型键，
+    // saveToFile 若不写回，用户手调的性能配置会在 runtime 首次落盘（如远程配置
+    // 写回路径 Agent::applyRemoteConfig）时被静默抹掉。
+    file << "# ========== 性能配置 ==========\n";
+    file << "[performance]\n";
+    file << "screenshot_cache_size = " << performance.screenshotCacheSize << "\n";
+    file << "match_thread_pool_size = " << performance.matchThreadPoolSize << "\n";
+    file << "memory_limit_mb = " << performance.memoryLimitMb << "\n\n";
+
     return file.good();
 }
 

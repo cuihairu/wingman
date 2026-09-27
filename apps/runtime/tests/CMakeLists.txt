@@ -3,6 +3,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
 add_executable(runtime_tests
+    agent_config_test.cpp
     cli_test.cpp
     resource_pack_test.cpp
     screen_runtime_test.cpp
