@@ -9,7 +9,15 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 413 个提交（feat 73 / fix 142 / docs 72 / test 53 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 415 个提交（feat 73 / fix 142 / docs 74 / test 54 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-27，C++（Linux）覆盖率扫描续：LuaScriptEngine 55% → 86%（31 例），余量全部登记不可归因/防御分支）
+
+- **缺口定位**：上轮扫描的次低自有可测模块 `libs/lua/src/lua_script_engine.cpp` 55%（75 行未覆盖）。既有覆盖仅来自 script_manager/script_module 胶水测试的间接驱动——`executeString`/`callFunction`/`getGlobal`/`setGlobal`/`enableSandbox`/`disableSandbox`/`getLanguageName` 等公开面整段零直测；round-1 修复的 `package.preload` 钩子（非沙箱分支）此前从未被任何测试驱动过。
+- **新增 `lib/wingman/tests/lua_script_engine_test.cpp` 31 例**（core_tests 直链 wingman::lua，既有接线；纯引擎 API + std::filesystem，无 POSIX/X11 分支，Windows CI 全量参与）：initialize 6 例（沙箱危险全局清除全集 io/os/debug/package/dofile/loadfile/load/require、非沙箱全库打开、**require("wingman") 非沙箱解析为 wingman 表**、沙箱 require 调用报错、config.env 注入为 `_ENV_*` 全局、二次 initialize 幂等）；executeString/executeFile 4 例（语法/运行时错误 lastError、文件成功+缺失失败、未初始化拒绝执行）；callFunction 6 例（未找到报 "Function not found: N"、参数传递+整数返回、Lua error 进 lastError、nil 返回→Null、混合标量参数转换、Lua 5.4 整数性保持 Int/Float 分流）；registerModule 4 例（注册函数被 Lua 调用+返回、实参值传递、**C++ 异常 → sol::error 传播为 Lua error**、未初始化注册为 no-op）；global 3 例（四标量类型往返、未知名→Null、未初始化 no-op）；沙箱开关 3 例（enableSandbox 事后剥离、**disableSandbox 只重开 io/os/debug——package/require 不恢复（按现状钉）**、未初始化 no-op）；print 捕获 4 例（简单捕获、变参制表符分隔+非 string 走 tostring 匹配 Lua 原生、空 print 空串回调、**initialize 前安装回调不生效（initialized_ 门挡下 set_function，按现状钉死并注明调用方约束）**）；shutdown 1 例（幂等+执行拒绝）。
+- **余量 22 行全部登记（不写假用例）**：① 35-37/45-51（9 行）= `open_libraries` 的 sol 变参模板实参行——沙箱/非沙箱两分支均已被用例真实驱动（沙箱另经 StandaloneMode 间接覆盖），gcov 对变参展开不落行归因，属工具盲区非测试缺口；② 80-83（4 行）= initialize 的防御 catch——无故障注入无自然触发路径（登记口径同 crypt.cpp）；③ 108-111/125-128（9 行）= executeFile/executeString 的 `!result.valid()` 腿——**实证不可达**：本轮全部失败用例（语法错误/运行时 error/文件缺失）在该 sol 版本下均走 catch 异常腿，invalid-result 分支是对实际 sol 行为的死防御。
+- **覆盖率**（gcovr 行）：`lua_script_engine.cpp` 55%（93/168）→ **86%**（146/168）；TOTAL 86.5%→**87.1%**（14457/16599）。工具注记：本次 gcov 处理触发 gcc bug 68080（smart_trigger.cpp switch 行负值），按 gcovr 文档以 `--gcov-ignore-parse-errors negative_hits.warn` 出报告——smart_trigger.cpp 行数归因由 235 变 197（98%→100%），为跳过记录的伪影、真实覆盖未变（对 TOTAL 影响 ≈0.03pp，方向中性）。
+- **验证**：新增 31 例 26ms 全绿；build/ 全量 ctest **2386/2386**（2355+31 精确吻合）；插桩 build-cov 全量 ctest 2386/2386；Go `-race -count=1 -timeout 90m` 全绿；dashboard jest 420、GUI vitest 511 全绿；CI 结果见本提交对应的 workflow run。
 
 ### test（2026-09-27，C++（Linux）覆盖率扫描续：AgentConfig 45% → 100%（24 例），连带根治 saveToFile 丢失 [performance] 节）
 

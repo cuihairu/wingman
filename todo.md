@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-09-27 C++（Linux）覆盖率扫描续：LuaScriptEngine 55% → 86%（31 例，余量全部登记不可归因/防御分支）
+
+上轮扫描的次低自有可测模块。既有覆盖仅来自 script_manager/script_module 胶水的间接驱动，`executeString`/`callFunction`/`getGlobal`/`setGlobal`/沙箱开关/`getLanguageName` 等公开面整段零直测；round-1 修复的 `package.preload` 钩子（非沙箱分支）此前从未被任何测试驱动。
+
+- **测试**：新增 `lib/wingman/tests/lua_script_engine_test.cpp` 31 例（core_tests 直链 wingman::lua 既有接线；纯引擎 API，Windows CI 全量参与）：initialize 6（沙箱危险全局清除全集、非沙箱全库、require("wingman") 非沙箱解析、沙箱 require 报错、env→`_ENV_*`、幂等）；execute 4（语法/运行时错误 lastError、文件成败、未初始化拒绝）；callFunction 6（未找到、参数+整数返回、error 进 lastError、nil→Null、混合标量、Lua 5.4 整数性 Int/Float 分流）；registerModule 4（被 Lua 调用+返回、实参传递、C++ 异常→sol::error 传播、未初始化 no-op）；global 3（四标量往返、未知名 Null、未初始化 no-op）；沙箱开关 3（事后剥离、disableSandbox 只重开 io/os/debug——package/require 不恢复按现状钉、未初始化 no-op）；print 捕获 4（简单、变参制表符+tostring 匹配 Lua 原生、空 print 空串、**initialize 前安装回调不生效按现状钉死**）；shutdown 幂等 1。
+- **余量 22 行全部登记（不写假用例）**：① 9 行 `open_libraries` sol 变参模板实参行——两分支均被真实驱动（沙箱另经 StandaloneMode），gcov 变参展开不落行归因，工具盲区；② 4 行 initialize 防御 catch——无故障注入不可达（登记口径同 crypt.cpp）；③ 9 行 executeFile/String 的 `!result.valid()` 腿——实证不可达：本轮全部失败用例在该 sol 版本下均走 catch 异常腿，invalid-result 为死防御。
+- **覆盖率**（gcovr 行）：lua_script_engine.cpp 55%（93/168）→ **86%**（146/168）；**TOTAL 86.5%→87.1%**（14457/16599）。工具注记：gcov 触发 gcc#68080（smart_trigger switch 负值），按 gcovr 文档以 `--gcov-ignore-parse-errors negative_hits.warn` 出报告；smart_trigger 行归因 235→197（98%→100%）为跳过记录伪影、真实覆盖未变（TOTAL 影响 ≈0.03pp）。
+- **验证**：新增 31 例全绿；build/ 全量 ctest **2386/2386**（2355+31）；插桩 build-cov 全量 ctest 2386/2386；Go `-race -count=1` 全绿；dashboard jest 420、GUI vitest 511 全绿；CI 结果见提交对应 run。
+
+---
+
 ## 2026-09-27 C++（Linux）覆盖率扫描续：AgentConfig 45% → 100%（24 例 + saveToFile 丢 [performance] 节根治）
 
 todo.md 真机两项继续搁置。双端扫描：Go 侧 `go test -cover` total **98.5%**（<80% 仅 7 个函数：`remoteticket.NewManager` 一行包装 0%——测试走 `newManagerWithSweep` 短周期 seam；guacamole/recordings 6 个 70~75% 分支需 guacd 基础设施，环境依赖），不构成实质缺口；C++ 侧 gcovr（TOTAL 86.0%）最低且无平台耦合的自有模块锁定 `apps/runtime/src/agent_config.cpp` **45%（78 行未覆盖）**——能力/模式派生、loadFromFile、debugger/logging/performance 节解析、saveToFile 整段零覆盖，而它们是 agent.cpp 的真实生产路径（`Agent::initialize` 派生 RunMode、远程配置写回 `saveToFile`）。
