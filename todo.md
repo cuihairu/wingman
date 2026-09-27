@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-09-27 根包 TestRunHTTPEndpointsAndScriptOutput 负载 flake 根治（共享 deadline 耗尽 → nil conn SIGSEGV → waitTCPUp 收口）
+
+工作流取消根治同日全仓 `-race` 复跑红过一次而登记的欠账，本轮收掉；压测还揪出了 SIGSEGV 一直掩盖着的第二层事实。
+
+- **根因（一处共享 deadline，三处后果）**：15s HTTP 就绪循环与 agent 拨号循环复用同一个 `deadline`。负载下就绪等待耗完 15s 后，拨号循环 `for time.Now().Before(deadline)` 的循环体**一次都不执行**——`agentConn` 保持 nil、循环外的 `err` 也没被赋值（还是 `os.Getwd` 留下的 nil），`if err != nil { Fatalf }` 形同虚设，nil conn 一路传进 `writeAgentFrame` 才 SIGSEGV，崩掉的栈指向不了「server 没起来」这个真根因。就绪循环自身超时不收口，server 没起来时后续请求只产生 connection refused 的 `Errorf` 假信号。同测试还有一处同族缺陷：落库轮询 `time.Now().Before(time.Now().Add(5s))` 恒真，事件不落库就挂到测试全局超时而非干净失败。
+- **压测揪出的第二层（SIGSEGV 掩盖的）**：`-race` 构建在 load 50-70 的共享机上，server 启动实测要 **30s 上下**——失败实例的日志里 Fatalf 之后才出现 route 注册 → seed → `Server starting`。原 15s 窗口本身就低于慢启动机器的真实需要，这是 load 46 那次红的直接触发条件。
+- **修法（waitTCPUp 一个收口点 + 窗口只作失败上界）**：新增 `waitTCPUp(t, name, addr, timeout)`——每次调用独立起算窗口、到点带名字与地址 `Fatalf`；HTTP 就绪（60s）与 frame listener 拨号（15s）都走它，nil conn 结构上不可能再往下漏。落库轮询改先算好的 `dbDeadline`（15s）。窗口就绪即返回，绿路径零成本。
+- **验证**：空闲单跑 10s 绿；28 个 CPU burner（load 50-70）下 `-race -count=10` **10/10 全绿**（263s）。中途 30s 窗口版在压测下 4/10 **干净红**、错误信息直指 server 未就绪（收口与诊断价值同时验证）——正是这次干净红暴露了 30s 启动事实，随后 60s 复跑全绿。`go vet` 干净、全仓 `go test -race -count=1 ./...` 全绿；工作流取消根治同轮未回退（workflow 与 handlers 包均绿）。X11WindowClose 那条 flake 按指示另立一轮，未动。
+
+---
+
 ## 2026-09-27 工作流取消被终态回写覆盖（TestCancelRunningWorkflow 的写序竞争根治）
 
 上一轮末尾登记的欠账，本轮单独收掉。
@@ -19,12 +30,6 @@
 - **验证**：`-race -count=50 ./internal/workflow` 全绿；`go vet ./...` 0 告警、`gofmt -l` 干净；全仓 `go test -race -count=1 ./...` 全绿（integration 包共享机负载下需 `-timeout 90m`）。上一轮 CI 根治未回退（脚本仍无 `declare -A`，10 个 shell 契约用例同轮绿）。
 
 - **验证**：`-race -count=50 ./internal/workflow` 全绿；`go vet ./...` 0 告警、`gofmt -l` 干净；全仓 `go test -race -count=1 ./...` 全绿（integration 包共享机负载下需 `-timeout 90m`）。上一轮 CI 根治未回退（脚本仍无 `declare -A`，10 个 shell 契约用例同轮绿）。
-
----
-
-## 待办：根包 TestRunHTTPEndpointsAndScriptOutput 的负载 flake（本轮定性为存量、不属取消语义，未修）
-
-2026-09-27 全仓 `-race` 复跑时（load 46+）红过一次：15s 就绪循环超时（server 端口没起来）→ 两个 GET 报 connection refused（`t.Errorf` 不终止）→ **agent 拨号循环复用同一个已过期的 `deadline`，循环体一次都不执行**，沿用外层旧 `err == nil` 压掉了 `Fatalf`，nil `agentConn` 传进 `writeAgentFrame` → SIGSEGV（`main_coverage_test.go:375`）。复跑 `-count=3` 全绿、CI 常态绿、与本轮 diff 无交集（启动/监听/帧监听路径未动）→ 存量负载 flake。修法待做：拨号循环用独立 deadline + 就绪循环超时后 Fatalf 收口， panic 换成干净的测试失败信息。
 
 ---
 

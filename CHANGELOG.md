@@ -9,7 +9,14 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 396 个提交（feat 71 / fix 139 / docs 68 / test 46 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 397 个提交（feat 71 / fix 139 / docs 68 / test 47 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-27，根包 `TestRunHTTPEndpointsAndScriptOutput` 负载 flake 根治：共享 deadline 耗尽 → nil conn SIGSEGV → `waitTCPUp` 收口）
+
+- **症状与定性**：全仓 `-race` 复跑（load 46+）红过一次——15s HTTP 就绪循环超时后，两个 GET 报 connection refused（`t.Errorf` 不终止）；agent 拨号循环因**复用同一个已耗尽的 `deadline`**，循环体一次都不执行，循环外的 `err` 保持 `os.Getwd` 留下的 nil、压掉了 `if err != nil { Fatalf }`，nil `agentConn` 传进 `writeAgentFrame` → SIGSEGV。复跑 `-count=3` 绿、CI 常态绿、与同期 workflow 改动无交集，先登记为独立欠账，本轮收掉。
+- **修法（一个收口点，三处同族缺陷一起清）**：新增 `waitTCPUp(t, name, addr, timeout)`——每次调用**独立起算**超时窗口、到点带名字与地址 `Fatalf` 收口；HTTP 就绪等待与 frame listener 拨号都走它，nil conn 结构上不可能再往下漏，SIGSEGV 换成可读的失败信息。同测试里落库轮询的 `time.Now().Before(time.Now().Add(5*time.Second))` 恒真条件（事件不落库时挂到测试全局超时而非干净失败）改为先算好的 `dbDeadline`。
+- **压测揪出 SIGSEGV 掩盖的第二层**：`-race` + load 50-70 下 server 启动实测要 30s 上下（失败实例 Fatalf 之后才打印 route 注册 → seed → `Server starting`）——原 15s 窗口本身就低于慢启动机器的真实需要，这是 load 46 那次红的直接触发条件。就绪窗口放宽到 60s、落库轮询 15s：窗口只是失败上界，就绪即返回，绿路径零成本。
+- **验证**：空闲单跑 10s 绿；28 个 CPU burner（load 50-70）下 `-race -count=10` **10/10 绿**（263s）；中途 30s 窗口版在压测下 4/10 **干净红**、错误信息直指 server 未就绪（收口的诊断价值同步验证，正是它暴露了 30s 启动事实）；`go vet` 干净；全仓 `go test -race -count=1 ./...` 全绿，工作流取消根治同轮未回退。
 
 ### fix（2026-09-27，工作流取消被终态回写覆盖：`TestCancelRunningWorkflow` 的写序竞争根治）
 

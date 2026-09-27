@@ -290,6 +290,26 @@ func writeAgentFrame(t *testing.T, conn net.Conn, payload map[string]any) {
 	}
 }
 
+// waitTCPUp 等待 addr 可拨通并返回这条连接，超时窗口每次调用独立起算、到点
+// 直接 Fatal 收口。两个约束都是 TestRunHTTPEndpointsAndScriptOutput 在 2026-09-27
+// 负载下 SIGSEGV 换来的教训：就绪等待把共享 deadline 耗完后，后续拨号循环体
+// 一次都不执行，连 err 都不会赋值（留在循环外的还是旧值 nil），nil conn 一路
+// 漏到 writeAgentFrame 才炸，崩掉的栈完全看不出真根因；而就绪等待自身不收口的
+// 话，server 没起来时后续请求只产生 connection refused 的 Errorf 假信号。
+func waitTCPUp(t *testing.T, name, addr string, timeout time.Duration) net.Conn {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", addr, 200*time.Millisecond)
+		if err == nil {
+			return conn
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("%s %s 在 %s 内未就绪", name, addr, timeout)
+	return nil
+}
+
 // 完整启动 run() 后：
 //  1. GET / 与 GET /ws（无升级头）覆盖静态路由与 WS 路由 handler；
 //  2. 模拟 runtime 连接并推送 script_output 事件（缺省 level 与显式 level 两个分支），
@@ -332,17 +352,12 @@ func TestRunHTTPEndpointsAndScriptOutput(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- run() }()
 
-	// 等待 HTTP server 就绪
+	// 等待 HTTP server 就绪：超时 Fatal 收口，不能带着「可能没起来」的状态往下
+	// 走产生假信号。窗口 60s 只在失败时才耗满——race 构建在 load 60+ 的共享机
+	// 上实测启动要 30s 上下（gin 路由注册到 seed 完成之间被调度饿死），15s 挡不
+	// 住；就绪即返回，绿路径零成本。
 	base := fmt.Sprintf("http://127.0.0.1:%d", httpPort)
-	deadline := time.Now().Add(15 * time.Second)
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", "127.0.0.1:"+strconv.Itoa(httpPort), 200*time.Millisecond)
-		if err == nil {
-			conn.Close()
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
+	waitTCPUp(t, "http server", "127.0.0.1:"+strconv.Itoa(httpPort), 60*time.Second).Close()
 
 	// GET / → c.File handler（index.html 缺失返回 404，handler 已执行）
 	if resp, err := http.Get(base + "/"); err != nil {
@@ -361,17 +376,7 @@ func TestRunHTTPEndpointsAndScriptOutput(t *testing.T) {
 
 	// 模拟 runtime：连接 FrameListener，注册并推送两条 script_output（覆盖默认/显式 level）
 	agentAddr := "127.0.0.1:" + strconv.Itoa(agentPort)
-	var agentConn net.Conn
-	for time.Now().Before(deadline) {
-		agentConn, err = net.DialTimeout("tcp", agentAddr, 200*time.Millisecond)
-		if err == nil {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	if err != nil {
-		t.Fatalf("dial frame listener: %v", err)
-	}
+	agentConn := waitTCPUp(t, "frame listener", agentAddr, 15*time.Second)
 	defer agentConn.Close()
 
 	writeAgentFrame(t, agentConn, map[string]any{"type": "agent.register", "agentId": "cov-agent", "hostname": "cov-host"})
@@ -390,7 +395,11 @@ func TestRunHTTPEndpointsAndScriptOutput(t *testing.T) {
 		t.Fatalf("open db for verification: %v", err)
 	}
 	ok := false
-	for time.Now().Before(time.Now().Add(5 * time.Second)) {
+	// 窗口必须是先算好的 deadline：写成 time.Now().Before(time.Now().Add(...))
+	// 恒真，事件一旦不落库就挂到测试全局超时，而不是给出干净的失败信息。
+	// 15s 同样是失败上界：负载峰值下回调落库也排队，5s 挡不住。
+	dbDeadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(dbDeadline) {
 		var logs []models.ExecutionLog
 		if err := reader.Where("script_id IN ?", []string{"cov1", "cov2"}).Order("script_id").Find(&logs).Error; err == nil &&
 			len(logs) == 2 && logs[0].Level == "info" && logs[1].Level == "warn" {
