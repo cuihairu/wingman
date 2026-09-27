@@ -9,7 +9,14 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 397 个提交（feat 71 / fix 139 / docs 68 / test 47 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 400 个提交（feat 71 / fix 140 / docs 69 / test 48 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### fix（2026-09-27，X11 `XOpenDisplay` 瞬态拒绝根治 + `X11WindowCloseCenterAndWaitFamily` 负载 flake 收口）
+
+- **症状与定位（测试进程 + Xvfb 双侧 strace）**：`X11PlatformTest.X11WindowCloseCenterAndWaitFamily` 在 CPU 超售时不稳（load 55~61 下 10 跑 7 红，此前已两轮登记未修）。本轮把红实例的现场抓齐了：每个红都以 `[error] X11Window: failed to open X display` 开场——门面 `XOpenDisplay` 返回 NULL → `initialized_=false` → center/close/isInitialized 成片 false、forceClose 落空、holder 防挂死护栏报警，此前登记的两种失败形状全是这一跳的级联。门面那次连接 connect 成功、Xauthority cookie 也读到了，但 **Xvfb 在 accept 后读完 `SO_PEERCRED` 与 `/proc/<pid>/cmdline`，连客户端的 setup 请求都没读就 `shutdown`**（随后按 Xorg 惯例打开 `/etc/X<disp>.hosts` 与 `protocol.txt` 组织拒绝信息）；同一进程几毫秒后的下一次 open 完全正常。用不带任何 wingman 代码的裸 open→close 循环隔离验证：load≈40 下 11/3000 失败、**11/11 立即重试成功**；自造 load≈67 下 7/800、7/7。定性：X server 对「前一个本地连接刚断开 → 新连接立即到达」存在 accept 阶段的瞬态拒绝（对应 `os/access.c`/`os/client.c` 按 pid 缓存的本地凭据在断连清理窗口的竞态），CPU 超售放大概率——不是调用方的时序错误，但只能由调用方吸收。全 fixture 复跑在 screen/capture/input/window 各类都见过散片同款失败（load 38~91 每轮 13~23 次），六个 Linux 门面同病。
+- **修法（生产侧一个收口点，测试侧补齐登记的另两项）**：新增 `src/platform/linux/x11_display.hpp` 的 `openX11Display(name, attempts=6, backoff_us=20000)`——瞬态拒绝重试，最坏 120ms 只在失败路径付出；`x11_window`/`x11_screen`/`x11_capture`/`x11_clipboard`/`xtest_input`/`x11_recorder`（control+data 双连接）的 `XOpenDisplay` 全部改走它，重试耗尽仍按原语义 false/nullptr。测试侧：`TestX11Window` ctor/`setActive`/析构与 fork holder 子进程的 `XFlush` 改 `XSync`——登记项「子进程未 XSync、父侧 XKillClient 打在 server 建窗之前落空」是独立次级隐患，跨连接读回与强杀目标必须以 server 已处理为前提；holder 收割护栏 5s 改为随超售缩放（`clamp(load1/nproc, 1, 8)` × 5s，同 dashboard 二轮口径），报警信息带实际秒数与因子。WM 集成用例的就绪探测（`displayAccepts`/`wmRegistered` 等）保持裸 open——它们本身就在等待循环里，瞬态失败由循环吸收。
+- **回归钉**：新增 `X11PlatformTest.WindowInitializeSurvivesConnectionChurn`——25 轮「探测连接 open→close 紧接门面 open」逐轮复刻实证的竞态形状，断言门面每轮必须靠重试站起来、末轮功能真实可用（center/close 生效）；循环里的裸 open 失败不作断言（那是压力本身）。
+- **验证**：自造 CPU 超售（load 60~77，高于登记红区间 55~61）：目标用例 + 回归用例连跑 **10/10 绿**；`ctest -R 'X11PlatformTest\.|Recorder|X11'` 66 用例 **×3 轮全绿**；全量 ctest **2235 例 0 红**（含新增回归钉，load 30~60 共享机背景负载下）。修复前同方法复现：单用例 xvfb-run 连跑 4 轮红 1，与本轮红实例签名一致。
 
 ### test（2026-09-27，根包 `TestRunHTTPEndpointsAndScriptOutput` 负载 flake 根治：共享 deadline 耗尽 → nil conn SIGSEGV → `waitTCPUp` 收口）
 

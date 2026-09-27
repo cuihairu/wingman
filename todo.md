@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-09-27 X11WindowCloseCenterAndWaitFamily flake 根治（X server 断开→重连瞬态拒绝 → openX11Display 重试 + 建窗 XSync + 护栏随超售缩放）
+
+上轮按指示未动的登记欠账（「高负载 flake 二轮根治」条目末尾），本轮单独收掉。登记过的两种失败形状（①forceClose 后 holder 5s 护栏报警；②center/close/isInitialized 成片 false）本轮都追到了同一个上游。
+
+- **定位（测试进程 + Xvfb 双侧 strace）**：单用例在 `xvfb-run -a` 下连跑 4 轮红 1（登记数据：load 55~61 → 10 跑 7 红），本轮捕获的每个红实例都以 `[error] X11Window: failed to open X display` 开场——门面的 `XOpenDisplay` 返回 NULL → `initialized_=false` → 后续每个方法静默 false → forceClose 落空 → holder 护栏报警，①②都是这一跳的级联。抓失败现场的 trace：门面那次连接 connect 成功、Xauthority 里的 cookie 也读到了，但 **Xvfb 在 accept 后读完 `SO_PEERCRED` 与 `/proc/<pid>/cmdline`，连客户端的 setup 请求都没读就 `shutdown`**（随后按 Xorg 惯例打开 `/etc/X<disp>.hosts` 与 `protocol.txt` 组织拒绝信息）；同一进程几毫秒后的下一次 open 完全正常。用不带任何 wingman 代码的裸 open→close 循环隔离验证：load≈40 下 11/3000 失败、**11/11 立即重试成功**；自造 load≈67 下 7/800、7/7。定性：X server 对「前一个本地连接刚断开 → 新连接立即到达」存在 accept 阶段的**瞬态拒绝**（对应 `os/access.c`/`os/client.c` 按 pid 缓存的本地凭据在断连清理窗口的竞态，ComputeLocalClient/DetermineClientCmd 一路），CPU 超售放大概率。全 fixture 复跑（load 38~91）在 screen/capture/input/window 各类都见过散片 `failed to open X display`（每轮 13~23 次）——不是某条用例的时序错误，但每个 open 都可能撞上，只能由调用方吸收。
+- **修法（生产侧收口为主，测试侧补齐登记的另两项）**：① 新增 `src/platform/linux/x11_display.hpp`：`openX11Display(name, attempts=6, backoff_us=20000)`，瞬态拒绝重试，最坏 120ms 只在失败路径付出；6 个 Linux 门面（`x11_window`/`x11_screen`/`x11_capture`/`x11_clipboard`/`xtest_input`/`x11_recorder` 的 control+data 双连接）的 `XOpenDisplay` 全部改走它，重试耗尽仍按原语义 false/nullptr。② 测试侧 `TestX11Window` ctor/`setActive`/析构与 fork holder 子进程的 `XFlush` 改 `XSync`——登记项①（子进程未 XSync、父侧 XKillClient 打在 server 建窗之前落空）是独立存在的次级隐患，本轮一并堵死：跨连接读回与强杀目标必须以 server 已处理为前提。③ holder 收割护栏 5s 改为随超售缩放（`clamp(load1/nproc, 1, 8)` × 5s，同 dashboard 二轮口径），报警信息带实际秒数与因子——固定窗口报警的其实是负载。WM 集成用例的 `displayAccepts`/`wmRegistered` 等就绪探测保持裸 open：它们本身就在等待循环里，瞬态失败由循环自己吸收。
+- **回归钉**：新增 `X11PlatformTest.WindowInitializeSurvivesConnectionChurn`——25 轮「探测连接 open→close 紧接门面 open」逐轮复刻实证的竞态形状，断言门面每轮必须靠重试站起来（`isInitialized`），末轮还要真实可用（center/close 生效）。修复前这正是 ~1/4 红的形状；循环里的裸 open 失败不作断言（那是压力本身）。
+- **验证（本机自造负载）**：裸循环在 load≈67 确认竞态真实（7/800 瞬态失败、全部可重试）；`X11WindowCloseCenterAndWaitFamily` + 回归用例连跑 **10/10 绿**（负载 31→83 全程覆盖登记区间）；`ctest -R 'X11PlatformTest\.|Recorder|X11'` 66 用例 **×3 轮全绿**（load 60~77）。全量 ctest 与 CI `C++ Linux (full tests)` 结果见提交记录/CHANGELOG 本条目末尾补充。
+
+---
+
 ## 2026-09-27 根包 TestRunHTTPEndpointsAndScriptOutput 负载 flake 根治（共享 deadline 耗尽 → nil conn SIGSEGV → waitTCPUp 收口）
 
 工作流取消根治同日全仓 `-race` 复跑红过一次而登记的欠账，本轮收掉；压测还揪出了 SIGSEGV 一直掩盖着的第二层事实。
@@ -15,7 +26,7 @@
 - **根因（一处共享 deadline，三处后果）**：15s HTTP 就绪循环与 agent 拨号循环复用同一个 `deadline`。负载下就绪等待耗完 15s 后，拨号循环 `for time.Now().Before(deadline)` 的循环体**一次都不执行**——`agentConn` 保持 nil、循环外的 `err` 也没被赋值（还是 `os.Getwd` 留下的 nil），`if err != nil { Fatalf }` 形同虚设，nil conn 一路传进 `writeAgentFrame` 才 SIGSEGV，崩掉的栈指向不了「server 没起来」这个真根因。就绪循环自身超时不收口，server 没起来时后续请求只产生 connection refused 的 `Errorf` 假信号。同测试还有一处同族缺陷：落库轮询 `time.Now().Before(time.Now().Add(5s))` 恒真，事件不落库就挂到测试全局超时而非干净失败。
 - **压测揪出的第二层（SIGSEGV 掩盖的）**：`-race` 构建在 load 50-70 的共享机上，server 启动实测要 **30s 上下**——失败实例的日志里 Fatalf 之后才出现 route 注册 → seed → `Server starting`。原 15s 窗口本身就低于慢启动机器的真实需要，这是 load 46 那次红的直接触发条件。
 - **修法（waitTCPUp 一个收口点 + 窗口只作失败上界）**：新增 `waitTCPUp(t, name, addr, timeout)`——每次调用独立起算窗口、到点带名字与地址 `Fatalf`；HTTP 就绪（60s）与 frame listener 拨号（15s）都走它，nil conn 结构上不可能再往下漏。落库轮询改先算好的 `dbDeadline`（15s）。窗口就绪即返回，绿路径零成本。
-- **验证**：空闲单跑 10s 绿；28 个 CPU burner（load 50-70）下 `-race -count=10` **10/10 全绿**（263s）。中途 30s 窗口版在压测下 4/10 **干净红**、错误信息直指 server 未就绪（收口与诊断价值同时验证）——正是这次干净红暴露了 30s 启动事实，随后 60s 复跑全绿。`go vet` 干净、全仓 `go test -race -count=1 ./...` 全绿；工作流取消根治同轮未回退（workflow 与 handlers 包均绿）。X11WindowClose 那条 flake 按指示另立一轮，未动。
+- **验证**：空闲单跑 10s 绿；28 个 CPU burner（load 50-70）下 `-race -count=10` **10/10 全绿**（263s）。中途 30s 窗口版在压测下 4/10 **干净红**、错误信息直指 server 未就绪（收口与诊断价值同时验证）——正是这次干净红暴露了 30s 启动事实，随后 60s 复跑全绿。`go vet` 干净、全仓 `go test -race -count=1 ./...` 全绿；工作流取消根治同轮未回退（workflow 与 handlers 包均绿）。X11WindowClose 那条 flake 按指示另立一轮，未动（同日下一轮已根治，见顶部）。
 
 ---
 
@@ -29,7 +40,6 @@
 - **回归用例四条**：① `TestCancelAfterStepStartedKeepsCancelledStatus`（探针转正，同步点后取消必生效必 nil、终态恒 cancelled）② `TestExecuteFinalStatusHonoursCancelledContext`（绕开 `Cancel` 直接 cancel runner ctx，锁取值层：finalStatus 必须认 ctx 取消，不误算 completed）③ `TestTerminalWriteYieldsWhenRowNotRunning`（直接驱动 `execute`，锁让位条件）④ `TestCancelYieldsWhenWorkflowAlreadyTerminal`（对称方向：不改写终态、不标 skipped、返回错误）。原 `TestCancelRunningWorkflow` 无同步点，`Cancel` 撞「工作流真已跑完」让位分支时改为只要求行处于合法终态。
 - **验证**：`-race -count=50 ./internal/workflow` 全绿；`go vet ./...` 0 告警、`gofmt -l` 干净；全仓 `go test -race -count=1 ./...` 全绿（integration 包共享机负载下需 `-timeout 90m`）。上一轮 CI 根治未回退（脚本仍无 `declare -A`，10 个 shell 契约用例同轮绿）。
 
-- **验证**：`-race -count=50 ./internal/workflow` 全绿；`go vet ./...` 0 告警、`gofmt -l` 干净；全仓 `go test -race -count=1 ./...` 全绿（integration 包共享机负载下需 `-timeout 90m`）。上一轮 CI 根治未回退（脚本仍无 `declare -A`，10 个 shell 契约用例同轮绿）。
 
 ---
 
@@ -58,7 +68,7 @@
 - **口令来源与 CLI 语义**：打包侧 `--password <p>`（隐含 `--encrypt`）或环境变量 `WINGMAN_PACK_PASSWORD`；`--encrypt` 无口令在复制 stub **之前**硬拒（没有口令的加密产物再也打不开，宁可不产出），`--no-encrypt` 在 `--password` 之后出现即取消加密并清掉口令。运行加密产物侧读 `WINGMAN_SCRIPT_PASSWORD`（口令一律不进命令行，避免落进 shell 历史与进程列表）。`cli_test.cpp` 里原 `PackerRejectsEncryptedResourcesUntilLoaderSupportsThem` 的语义作废，改写为「有口令放行 / 无口令硬拒」两条；`main.cpp` 顺带修掉「Version/Size 恒打 0」的存量显示 bug（ResourceInfo 要解头之后才填）。
 - **本轮自决假设（非交互）**：salt 16B、IV 12B（GCM 推荐 96-bit）、100000 轮、AES-256、`keyHash` 沿用 v1 字段位与语义；ELF/Mach-O 侧的资源嵌入仍明确失败（要产出可分发单文件得另设容器方案，不在本轮范围，不静默写「看着成功其实没嵌脚本」的产物）；不加新依赖（openssl 已在 vcpkg.json）。
 - **验证**：新增 `apps/runtime/tests/resource_pack_test.cpp` 43 例（格式布局/KDF/写侧标志/参数化往返 明文+加密/负路径口令与篡改与版本）+ `lib/wingman/tests/crypt_test.cpp` +10 例（AES-GCM 原始字节对）+ cli 测试语义改写；全量 ctest **2234 例 0 红**（31 例平台性 skip；共享机 load 33~47 下复跑，Go 门 `go vet` + `go test -race ./...` 同轮全绿，integration 包在高负载下需把 `-timeout` 放到 90m 才跑得完）。
-- **本轮暴露的存量 flake（记录，未修）**：`X11PlatformTest.X11WindowCloseCenterAndWaitFamily` 在 CPU 超售时不稳（load 55~61 时 10 跑 7 红，两种形状：① `forceClose` 后子进程 5s 护栏超时——fork 子进程 `XFlush` 后未 `XSync`，父进程可能在 X server 处理建窗请求前就 XKillClient，落空则子进程困在自己的 10s select 里；② `center/close/isInitialized` 成片返回 false 的无 WM 时序依赖）。与本轮改动无关（该用例不链接也不触达打包/密码学路径），修法属独立一轮：子进程建窗后补 `XSync`、并把 5s 护栏随超售缩放（同 2026-09-27 dashboard 那轮的口径）。复测数据：load 38~48 → 6 跑 1 红；load 55~61 → 10 跑 7 红；同日另一轮全量 ctest（load ~18）同一用例为绿。
+- **本轮暴露的存量 flake（已修，见顶部 2026-09-27 X11 根治轮）**：`X11PlatformTest.X11WindowCloseCenterAndWaitFamily` 在 CPU 超售时不稳（load 55~61 时 10 跑 7 红，两种形状：① `forceClose` 后子进程 5s 护栏超时——fork 子进程 `XFlush` 后未 `XSync`，父进程可能在 X server 处理建窗请求前就 XKillClient，落空则子进程困在自己的 10s select 里；② `center/close/isInitialized` 成片返回 false 的无 WM 时序依赖）。与本轮改动无关（该用例不链接也不触达打包/密码学路径），修法属独立一轮：子进程建窗后补 `XSync`、并把 5s 护栏随超售缩放（同 2026-09-27 dashboard 那轮的口径）。复测数据：load 38~48 → 6 跑 1 红；load 55~61 → 10 跑 7 红；同日另一轮全量 ctest（load ~18）同一用例为绿。根治轮补充定性：两种形状的共同上游是 X server 对断开→重连的 accept 阶段瞬态拒绝，先致门面 `initialized_=false`，①②都是级联；XSync（②→①的次级隐患）与护栏缩放按登记口径落实，主修为 `openX11Display` 生产侧重试。
 
 ---
 
