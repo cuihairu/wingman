@@ -78,6 +78,15 @@ ScriptValue fromEventMessage(const EventMessage& msg) {
 	});
 }
 
+ScriptValue fromSubscriptionInfo(const SubscriptionInfo& info) {
+	return ScriptValue::fromObject({
+		{"id", ScriptValue::fromInt(static_cast<int64_t>(info.id))},
+		{"type", ScriptValue::fromString(info.type)},
+		{"name", ScriptValue::fromString(info.name)},
+		{"once", ScriptValue::fromBool(info.once)}
+	});
+}
+
 } // namespace
 
 ModuleDescriptor createEventModule() {
@@ -184,10 +193,48 @@ ModuleDescriptor createEventModule() {
 		return ScriptValue::fromBool(true);
 	}, "subscription:int|string -> bool"});
 
-	mod.functions.push_back({"clear", [](const std::vector<ScriptValue>&) -> ScriptValue {
-		EventHub::instance().clear();
-		return ScriptValue::null();
-	}, "() -> nil"});
+	// listener(id: int | name: string) -> listener|nil
+	// 查询单个监听器：按订阅 ID 或监听器名（同名取最早注册者）。
+	mod.functions.push_back({"listener", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.empty()) return ScriptValue::fromBool(false);
+		if (args[0].isString()) {
+			auto info = EventHub::instance().subscriptionByName(args[0].asString());
+			return info ? fromSubscriptionInfo(*info) : ScriptValue::null();
+		}
+		if (args[0].isInt()) {
+			auto info = EventHub::instance().subscription(static_cast<uint64_t>(args[0].asInt()));
+			return info ? fromSubscriptionInfo(*info) : ScriptValue::null();
+		}
+		return ScriptValue::fromBool(false);
+	}, "id:int|name:string -> listener|nil"});
+
+	// listeners(type: string) -> listener[]
+	// 列出某事件的全部监听器（按订阅 ID 升序）；未注册事件返回空数组。
+	mod.functions.push_back({"listeners", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.empty() || !args[0].isString()) return ScriptValue::fromBool(false);
+		auto infos = EventHub::instance().subscriptionsForType(args[0].asString());
+		std::vector<ScriptValue> arr;
+		arr.reserve(infos.size());
+		for (const auto& info : infos) {
+			arr.push_back(fromSubscriptionInfo(info));
+		}
+		return ScriptValue::fromArray(std::move(arr));
+	}, "type:string -> listener[]"});
+
+	// clear(type?: string) -> nil
+	// 无参或 nil 清空全部监听（原语义）；传事件名只清理该事件的全部订阅；
+	// 其他类型参数属用法错误，返回 false 而不是静默全量清理。
+	mod.functions.push_back({"clear", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.empty() || args[0].isNull()) {
+			EventHub::instance().clear();
+			return ScriptValue::null();
+		}
+		if (args[0].isString()) {
+			EventHub::instance().clear(args[0].asString());
+			return ScriptValue::null();
+		}
+		return ScriptValue::fromBool(false);
+	}, "type?:string -> nil"});
 
 	mod.functions.push_back({"message", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		EventMessage msg;
