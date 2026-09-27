@@ -27,6 +27,13 @@ public:
     // 连接
     bool connect(const std::string& host, int port) override {
         try {
+            // 重连入口（RemoteClient 的 reconnectLoop 直接调 connect，不经
+            // disconnect）：此时旧 IO 线程仍 joinable，对其赋值新线程会
+            // std::terminate；旧 socket 已被 move 进 session，reset 后 asio
+            // 会自动重开。故先隐式收口上一条连接再建新连接。
+            if (ioThread_.joinable() || session_) {
+                disconnect();
+            }
             asio::ip::tcp::endpoint endpoint(asio::ip::make_address(host), static_cast<asio::ip::port_type>(port));
             asio::error_code ec;
 
