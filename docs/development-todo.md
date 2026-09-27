@@ -339,6 +339,12 @@
 ---
 
 ## Phase 7: TCP 协议增强 (可选)
+
+#### 请求消息结构 ✅
+```json
+{
+  "type": "heartbeat",           // 消息类型
+  "id": "req-002",               // 请求 ID
   "timestamp": 1714928900,       // 发送时间戳（通用字段）
   "agent_id": "vm-wow-1",        // 发送者 ID（已注册客户端）
   "priority": 0,                 // 优先级（可选）

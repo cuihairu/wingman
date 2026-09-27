@@ -303,7 +303,7 @@ input.keyDown("CTRL")
 input.keyDown("A")
 ```
 
-#### `keyUp(key)**
+#### `keyUp(key)`
 
 释放指定按键。
 
@@ -323,7 +323,7 @@ input.keyUp("A")
 input.keyUp("CTRL")
 ```
 
-#### `keyPress(key, duration)**
+#### `keyPress(key, duration)`
 
 执行按键按下和释放的组合操作。
 
