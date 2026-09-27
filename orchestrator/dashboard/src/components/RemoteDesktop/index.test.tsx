@@ -29,6 +29,7 @@ import {
   type TicketClient,
 } from './index';
 import { createRemoteTicket, guacamoleWSPath } from '@/services/remote';
+import { RTL_ASYNC_UTIL_TIMEOUT } from '@/testSupport/rtlWindow';
 
 jest.mock('@/services/remote', () => ({
   createRemoteTicket: jest.fn(),
@@ -135,11 +136,11 @@ const BASE_PARAMS: RemoteSessionParams = { agentId: 'agent-1', protocol: 'rdp' }
 
 /**
  * waitFor 的放宽版：jest/RTL 默认超时 1000ms，CPU 饱和（CI 并行跑全仓）
- * 时「申请票据 → 建 client → setState」这条异步链偶尔超时会假红。仓库既有
- * loginPage/triggerFormModal 在同款负载下也有同类 flake（已实测复现）。
- * 这里只放宽**等待窗口**，不放宽任何断言。
+ * 时「申请票据 → 建 client → setState」这条异步链偶尔超时会假红。窗口取
+ * 共享自适应值（随 CPU 超售放大、空闲=5s，见 @/testSupport/rtlWindow）。
+ * 只放宽**等待窗口**，不放宽任何断言。
  */
-const WAIT_TIMEOUT = 5000;
+const WAIT_TIMEOUT = RTL_ASYNC_UTIL_TIMEOUT;
 const waitForUI: typeof waitFor = (callback, options) =>
   waitFor(callback, { timeout: WAIT_TIMEOUT, ...options });
 

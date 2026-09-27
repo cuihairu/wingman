@@ -9,6 +9,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react';
 import React from 'react';
 import Guacamole from 'guacamole-common-js';
 import RemoteFileBrowser from './RemoteFileBrowser';
+import { RTL_ASYNC_UTIL_TIMEOUT } from '@/testSupport/rtlWindow';
 import type { RemoteFileEntry, RemoteFileSystemObject, RemoteStreamIn } from './types';
 
 jest.mock('guacamole-common-js', () => ({
@@ -27,7 +28,9 @@ jest.mock('guacamole-common-js', () => ({
 
 const MockedBlobWriter = Guacamole.BlobWriter as unknown as jest.Mock;
 
-const WAIT_TIMEOUT = 5000;
+// 等待窗口取共享自适应值（随 CPU 超售放大、空闲=5s）：显式硬编码超时会
+// 绕过 setupRTL 的全局 configure，高负载下成为下一个假红点
+const WAIT_TIMEOUT = RTL_ASYNC_UTIL_TIMEOUT;
 const waitForUI: typeof waitFor = (callback, options) =>
   waitFor(callback, { timeout: WAIT_TIMEOUT, ...options });
 

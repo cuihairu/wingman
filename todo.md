@@ -1,12 +1,23 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-09-26
+> 最后更新: 2026-09-27
 > 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）
 
 > [本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator]
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
 
 ---
+
+## 2026-09-27 高负载 flake 二轮根治（窗口随 CPU 超售自适应 + 固定 sleep 清除）
+
+上一轮「固定 5s/15s 窗口」口径在更极端负载下再度假红（load ~89、20 会话并行：4 套件 11 用例，login/RemoteFileBrowser 两个新套件也红）。本轮分类复现 + 三处修复：
+
+- **分类（单跑 vs 全量）**：4 个失败套件 `--runInBand` 单跑各 2 次共 8/8 全绿（负载 82~93）→ 纯负载时序；失败形状全部是窗口/预算超时（jest 15s 预算、RTL 5s 窗口），零断言/逻辑失败。4 套件 4-worker 并行在 load ~60 也全绿——红线场景 = 全量 13 worker × 外部负载的超售。
+- **根因**：固定 wall-clock 窗口按「独占机器」标定，机器超售 6~7 倍时「条件正确、只是慢」也会超窗。窗口必须随超售程度缩放，而非再取一个更大的固定值。
+- **修复 1（窗口自适应，单一来源 `src/testSupport/rtlWindow.ts`）**：窗口 = 5s × 超售系数（1 分钟 loadavg / 核数，向上取整、下限 1、封顶 60s）；`tests/setupRTL.jsx` 的全局 `configure` 与测试文件的显式 `WAIT_TIMEOUT` 都从这里取值；`jest.config.ts` 的 `testTimeout` = 3 × 窗口（下限 15s、封顶 180s，内联同款公式——config 由 jest 原生 ESM 加载，不能走 moduleNameMapper import）。空闲/CI 系数=1，行为与固定 5s/15s 逐位一致；绿路径零额外耗时（条件满足即返回，窗口只是失败上界）。
+- **修复 2（真缺陷：固定 sleep）**：`src/pages/User/Login/login.test.tsx` 原来固定 `sleep 200ms` 后直接断言（不走 waitFor，负载下必假红）→ 改条件化 `waitFor` 同时等 token 写入与跳转；死掉的 `waitTime` helper 一并删除。
+- **修复 3（显式超时绕过全局）**：RemoteFileBrowser / RemoteDesktop / RemoteDesktopModal 三个测试文件的 `WAIT_TIMEOUT = 5000` 显式超时会绕过全局 configure（永远吃不到自适应值）→ 改引共享常量；RemoteSessionReportModal 的同名常量是零引用死代码，删除。
+- **实测**：load 108~129（9 倍超售，超过用户红线场景的 89）全量 jest **420/420**；tsc 0 错、eslint 仅存量 2 警告、prettier 干净（同负载下跑）。**残余风险**：系数在进程启动时采样一次，若运行中负载再涨数倍（起跑后从 129 涨到 250+）理论上仍可能超窗——封顶 60s/180s 是有意为之（防病态挂死），届时重跑即可。
 
 ## 2026-09-26 存量 flaky 测试根治（loginPage / triggerFormModal 的 load flake）
 

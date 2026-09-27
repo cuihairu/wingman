@@ -20,11 +20,8 @@ jest.mock('@/services/remote', () => ({
 
 const mockedList = listRemoteSessions as jest.MockedFunction<typeof listRemoteSessions>;
 
-/**
- * waitFor 放宽到 5s：CPU 饱和（CI 并行跑全仓）时默认 1s 窗口偶尔不够，
- * 「请求 → setState → 渲染」会假红。只放宽等待窗口，不放宽断言。
- */
-const WAIT_TIMEOUT = 5000;
+// waitFor 窗口由 setupRTL 全局配置（随 CPU 超售自适应，见
+// @/testSupport/rtlWindow），这里不再本地声明
 
 /** 构造一份完整报表响应 */
 function makeReport(overrides: Partial<RemoteSessionReport> = {}): RemoteSessionReport {

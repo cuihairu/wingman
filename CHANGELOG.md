@@ -9,7 +9,14 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 391 个提交（feat 70 / fix 137 / docs 67 / test 45 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 392 个提交（feat 70 / fix 137 / docs 67 / test 46 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-27，高负载 flake 二轮根治：等待窗口随 CPU 超售自适应）
+
+- **上一轮固定 5s/15s 窗口在 load ~89（14 核被 20 会话 + 13 个 jest worker 压到 6~7 倍超售）再度假红**：4 套件 11 用例（loginPage / triggerFormModal / login / RemoteFileBrowser）。分类复现：4 套件 `--runInBand` 单跑 8/8 全绿（负载 82~93），失败形状全部为窗口/预算超时、零断言失败——纯负载时序；红线场景 = 全量 13 worker × 外部负载，4-worker 并行在 load 60 仍绿。
+- **核心修复（窗口缩放而非再取大固定值）**：新增单一来源 `src/testSupport/rtlWindow.ts`——窗口 = 5s × 超售系数（1 分钟 loadavg / 核数，向上取整、下限 1、封顶 60s）。`setupRTL.jsx` 全局 `configure` 与各测试文件显式 `WAIT_TIMEOUT` 统一取该值；`jest.config.ts` `testTimeout` = 3 × 窗口（下限 15s、封顶 180s，config 内联同款公式——原生 ESM 加载不能走 moduleNameMapper）。空闲机器与 CI runner 系数=1，行为与固定 5s/15s 逐位一致；绿路径零额外耗时（条件满足即返回，窗口只是失败上界）。
+- **真缺陷两处**：① `login.test.tsx` 固定 `sleep 200ms` 后直接断言（不走 waitFor，负载下必假红）→ 改条件化 `waitFor`（同时等 token 写入与跳转），删除死的 `waitTime` helper；② RemoteFileBrowser / RemoteDesktop / RemoteDesktopModal 三测试文件的显式 `WAIT_TIMEOUT = 5000` 绕过全局 configure（自适应永远不生效）→ 改引共享常量，RemoteSessionReportModal 的同名常量为零引用死代码删除。
+- **实测**：load 108~138（9~10 倍超售，超过用户红线场景的 89）全量 jest **420/420**、`tsc --noEmit` 0 错、eslint 仅存量 2 警告、prettier 干净（全部同负载下复跑）。残余风险：系数进程启动采样一次，运行中负载再涨数倍仍可能超窗（封顶防病态挂死系有意），重跑即可。
 
 ### test（2026-09-26，存量 flaky 测试根治：loginPage/triggerFormModal 的 load 假红收口）
 

@@ -10,6 +10,7 @@ import { message } from 'antd';
 import { BlobWriter, Client, Keyboard, Mouse, WebSocketTunnel } from 'guacamole-common-js';
 import RemoteDesktopModal, { guacDecodeBase64, guacEncodeBase64 } from './index';
 import { createRemoteTicket, reportRemoteFileOp } from '@/services/remote';
+import { RTL_ASYNC_UTIL_TIMEOUT } from '@/testSupport/rtlWindow';
 
 jest.mock('@/services/remote', () => ({
   createRemoteTicket: jest.fn(),
@@ -78,11 +79,11 @@ const MockedBlobWriter = BlobWriter as jest.Mock;
 
 /**
  * waitFor 的放宽版：默认 1000ms 在 CPU 饱和（CI 并行跑全仓）时偶尔不够，
- * 「申请票据 → 建 client → setState」这条异步链会假红（仓库既有
- * loginPage/triggerFormModal 在同款负载下已实测复现）。只放宽等待窗口，
- * 不放宽任何断言。
+ * 「申请票据 → 建 client → setState」这条异步链会假红。窗口取共享自适应
+ * 值（随 CPU 超售放大、空闲=5s，见 @/testSupport/rtlWindow）。
+ * 只放宽等待窗口，不放宽任何断言。
  */
-const WAIT_TIMEOUT = 5000;
+const WAIT_TIMEOUT = RTL_ASYNC_UTIL_TIMEOUT;
 const waitForUI: typeof waitFor = (callback, options) =>
   waitFor(callback, { timeout: WAIT_TIMEOUT, ...options });
 
