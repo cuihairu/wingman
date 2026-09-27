@@ -55,6 +55,10 @@ public:
     std::thread heartbeatThread;
     std::thread reconnectThread;
     std::atomic<bool> shouldStop{false};
+    // 心跳线程生命周期互斥：stop() 与重连线程 connect()→startHeartbeat()
+    // 并发时，无锁会让「旧线程 join / 新线程 spawn」交错，Impl 析构时销毁
+    // 仍 joinable 的 thread 对象触发 std::terminate。
+    std::mutex heartbeatMutex;
 
     // 上次心跳时间
     std::chrono::steady_clock::time_point lastHeartbeat;
@@ -161,7 +165,9 @@ bool RemoteClient::start() {
     connected_.store(true);
     impl_->lastHeartbeat = std::chrono::steady_clock::now();
     impl_->reconnectAttempt.store(0);  // 连接成功，重置退避计数
-    markConnected();
+    // markConnected 不在此调用：TcpClient::connect 返回前已同步触发
+    // SessionEvent::Connected（上方事件处理器统一记账）。双重调用会把
+    // 首次连接计成一次重连（reconnects=1），污染心跳上报的链路统计。
     sendRegister();
 
     // 启动心跳
@@ -176,23 +182,24 @@ bool RemoteClient::start() {
 }
 
 void RemoteClient::stop() {
-    if (!running_.load()) {
-        return;
-    }
-
+    // 无条件收口（幂等）：running_ 仅在 start() 尾部置位，若以其做前置判断，
+    // start() 进行中并发 stop() 会漏掉尚未登记的线程，析构时 terminate。
     spdlog::info("Stopping RemoteClient");
     impl_->shouldStop.store(true);
     running_.store(false);
     connected_.store(false);
 
-    // 停止心跳线程
-    if (impl_->heartbeatThread.joinable()) {
-        impl_->heartbeatThread.join();
-    }
-
-    // 停止重连线程
+    // 先停重连线程：其 connect() 可能正在拉起新的心跳线程，须等它退出
     if (impl_->reconnectThread.joinable()) {
         impl_->reconnectThread.join();
+    }
+
+    // 再收口心跳线程（持互斥避免与 startHeartbeat 的 spawn 交错）
+    {
+        std::lock_guard<std::mutex> lock(impl_->heartbeatMutex);
+        if (impl_->heartbeatThread.joinable()) {
+            impl_->heartbeatThread.join();
+        }
     }
 
     // 断开连接
@@ -213,7 +220,7 @@ void RemoteClient::connect() {
     if (impl_->client->connect(impl_->config.serverIp, impl_->config.serverPort)) {
         connected_.store(true);
         impl_->lastHeartbeat = std::chrono::steady_clock::now();
-        markConnected();
+        // markConnected 由 SessionEvent::Connected 处理器统一记账（同 start()）
 
         // 连接成功后发送 agent.register 消息
         sendRegister();
@@ -313,9 +320,16 @@ void RemoteClient::startReconnectLoop() {
 }
 
 void RemoteClient::startHeartbeat() {
+    // 心跳线程生命周期互斥（见 Impl::heartbeatMutex 注释）
+    std::lock_guard<std::mutex> lock(impl_->heartbeatMutex);
     // 停止之前的心跳线程
     if (impl_->heartbeatThread.joinable()) {
         impl_->heartbeatThread.join();
+    }
+
+    // stop() 可能已并发执行：不再拉起新线程，避免其收口后仍残留 joinable 线程
+    if (impl_->shouldStop.load()) {
+        return;
     }
 
     impl_->lastHeartbeat = std::chrono::steady_clock::now();
@@ -323,7 +337,16 @@ void RemoteClient::startHeartbeat() {
     // 启动新的心跳线程
     impl_->heartbeatThread = std::thread([this]() {
         while (!impl_->shouldStop.load() && isConnected()) {
-            std::this_thread::sleep_for(std::chrono::seconds(impl_->config.heartbeatInterval));
+            // 以 100ms 粒度分段睡眠（与 sleepInterruptible 同款）：整段
+            // sleep_for(heartbeatInterval) 会让 stop()/startHeartbeat() 的
+            // join 阻塞至多一个心跳周期（默认 30s）——stop 拖慢进程退出，
+            // 重连路径 startHeartbeat 的 join 则把每次重连延迟放大到心跳周期。
+            const int intervalMs = impl_->config.heartbeatInterval * 1000;
+            int slept = 0;
+            while (!impl_->shouldStop.load() && isConnected() && slept < intervalMs) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                slept += 100;
+            }
             if (!impl_->shouldStop.load() && isConnected()) {
                 sendHeartbeat();
             }

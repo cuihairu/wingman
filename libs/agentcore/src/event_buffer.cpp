@@ -25,31 +25,35 @@ void EventBuffer::push(std::string method, nlohmann::json payload) {
 	std::string forwardMethod;
 	nlohmann::json forwardPayload;
 
-	std::lock_guard<std::mutex> lock(mutex_);
-	events_.emplace_back(std::move(evt));
-	while (events_.size() > kMaxEvents) {
-		// 公平性：容量超限时优先丢弃高频的 log.line，保护低频重要事件
-		// （trigger.fired / script.state_changed / connection.state_changed）。
-		bool evicted = false;
-		for (auto it = events_.begin(); it != events_.end(); ++it) {
-			if (it->method == "log.line") {
-				events_.erase(it);
-				evicted = true;
-				break;
+	{
+		std::lock_guard<std::mutex> lock(mutex_);
+		events_.emplace_back(std::move(evt));
+		while (events_.size() > kMaxEvents) {
+			// 公平性：容量超限时优先丢弃高频的 log.line，保护低频重要事件
+			// （trigger.fired / script.state_changed / connection.state_changed）。
+			bool evicted = false;
+			for (auto it = events_.begin(); it != events_.end(); ++it) {
+				if (it->method == "log.line") {
+					events_.erase(it);
+					evicted = true;
+					break;
+				}
 			}
+			if (!evicted) {
+				events_.pop_front();
+			}
+			++dropped_;
 		}
-		if (!evicted) {
-			events_.pop_front();
+
+		if (remoteSink_) {
+			sink = remoteSink_;
+			forwardMethod = events_.back().method;
+			forwardPayload = events_.back().payload;
 		}
-		++dropped_;
 	}
 
-	if (remoteSink_) {
-		sink = remoteSink_;
-		forwardMethod = events_.back().method;
-		forwardPayload = events_.back().payload;
-	}
-
+	// 必须在锁外回调：sink 内若再查 size()/drain() 或重入 push，
+	// 持锁调用会立即自死锁（此前实现漏掉了锁作用域收口）。
 	if (sink) {
 		sink(forwardMethod, std::move(forwardPayload));
 	}
