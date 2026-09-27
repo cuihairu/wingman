@@ -1,4 +1,5 @@
 #include "wingman/event.hpp"
+#include <algorithm>
 #include <chrono>
 #include <spdlog/spdlog.h>
 
@@ -91,6 +92,59 @@ void EventHub::unsubscribe(const std::string& name) {
     }
 }
 
+std::optional<SubscriptionInfo> EventHub::subscription(uint64_t subscriptionId) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto typeIt = subscriptionTypes_.find(subscriptionId);
+    if (typeIt == subscriptionTypes_.end()) {
+        return std::nullopt;
+    }
+    auto typeSubsIt = subscriptions_.find(typeIt->second);
+    if (typeSubsIt == subscriptions_.end()) {
+        return std::nullopt;
+    }
+    auto subIt = typeSubsIt->second.find(subscriptionId);
+    if (subIt == typeSubsIt->second.end()) {
+        return std::nullopt;
+    }
+    return SubscriptionInfo{subscriptionId, typeIt->second, subIt->second.name, subIt->second.once};
+}
+
+std::optional<SubscriptionInfo> EventHub::subscriptionByName(const std::string& name) {
+    if (name.empty()) {
+        // 匿名订阅（name 为空串）没有可查询的名字
+        return std::nullopt;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    // 同名订阅可注册多个（跨事件或同事件）：unordered_map 遍历无序，
+    // 固定取最早注册（ID 最小）的那个，保证结果确定。
+    std::optional<SubscriptionInfo> best;
+    for (const auto& [type, subs] : subscriptions_) {
+        for (const auto& [id, sub] : subs) {
+            if (sub.name != name) continue;
+            if (!best || id < best->id) {
+                best = SubscriptionInfo{id, type, sub.name, sub.once};
+            }
+        }
+    }
+    return best;
+}
+
+std::vector<SubscriptionInfo> EventHub::subscriptionsForType(const std::string& type) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<SubscriptionInfo> result;
+    auto typeSubsIt = subscriptions_.find(type);
+    if (typeSubsIt == subscriptions_.end()) {
+        return result;
+    }
+    result.reserve(typeSubsIt->second.size());
+    for (const auto& [id, sub] : typeSubsIt->second) {
+        result.push_back(SubscriptionInfo{id, type, sub.name, sub.once});
+    }
+    std::sort(result.begin(), result.end(),
+              [](const SubscriptionInfo& a, const SubscriptionInfo& b) { return a.id < b.id; });
+    return result;
+}
+
 void EventHub::emit(const std::string& type,
                     const nlohmann::json& payload,
                     const std::string& source,
@@ -167,6 +221,18 @@ void EventHub::clear() {
     std::lock_guard<std::mutex> lock(mutex_);
     subscriptions_.clear();
     subscriptionTypes_.clear();
+}
+
+void EventHub::clear(const std::string& type) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto typeSubsIt = subscriptions_.find(type);
+    if (typeSubsIt == subscriptions_.end()) {
+        return;
+    }
+    for (const auto& [id, sub] : typeSubsIt->second) {
+        subscriptionTypes_.erase(id);
+    }
+    subscriptions_.erase(typeSubsIt);
 }
 
 } // namespace wingman

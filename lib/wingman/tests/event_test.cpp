@@ -182,3 +182,92 @@ TEST(EventHubTest, SubscribeReturnsIncrementingId) {
     auto id2 = hub.subscribe("id.test2", [](const EventMessage&) {});
     EXPECT_GT(id2, id1);
 }
+
+// ========== 监听器查询与按事件名清理 ==========
+
+TEST(EventHubTest, SubscriptionQueryById) {
+    auto& hub = EventHub::instance();
+    hub.clear();
+
+    auto id = hub.subscribe("query.byid", [](const EventMessage&) {}, "named_h", true);
+    auto info = hub.subscription(id);
+    ASSERT_TRUE(info.has_value());
+    EXPECT_EQ(info->id, id);
+    EXPECT_EQ(info->type, "query.byid");
+    EXPECT_EQ(info->name, "named_h");
+    EXPECT_TRUE(info->once);
+
+    EXPECT_FALSE(hub.subscription(999999).has_value());
+
+    hub.unsubscribe(id);
+    EXPECT_FALSE(hub.subscription(id).has_value());
+}
+
+TEST(EventHubTest, SubscriptionByNameReturnsEarliest) {
+    auto& hub = EventHub::instance();
+    hub.clear();
+
+    auto first = hub.subscribe("by.name.first", [](const EventMessage&) {}, "dup_h");
+    hub.subscribe("by.name.second", [](const EventMessage&) {}, "dup_h");
+
+    auto info = hub.subscriptionByName("dup_h");
+    ASSERT_TRUE(info.has_value());
+    EXPECT_EQ(info->id, first);
+    EXPECT_EQ(info->type, "by.name.first");
+    EXPECT_FALSE(info->once);
+
+    EXPECT_FALSE(hub.subscriptionByName("missing_h").has_value());
+
+    // 匿名订阅（name 为空串）不可按名查询
+    hub.subscribe("by.name.anon", [](const EventMessage&) {});
+    EXPECT_FALSE(hub.subscriptionByName("").has_value());
+}
+
+TEST(EventHubTest, SubscriptionsForTypeListsAll) {
+    auto& hub = EventHub::instance();
+    hub.clear();
+
+    auto id1 = hub.subscribe("list.type", [](const EventMessage&) {}, "a");
+    auto id2 = hub.subscribe("list.type", [](const EventMessage&) {});
+    auto id3 = hub.subscribe("list.type", [](const EventMessage&) {}, "c", true);
+    hub.subscribe("other.type", [](const EventMessage&) {}, "d");
+
+    auto infos = hub.subscriptionsForType("list.type");
+    ASSERT_EQ(infos.size(), 3u);
+    // 按订阅 ID 升序，即注册顺序
+    EXPECT_EQ(infos[0].id, id1);
+    EXPECT_EQ(infos[0].type, "list.type");
+    EXPECT_EQ(infos[0].name, "a");
+    EXPECT_FALSE(infos[0].once);
+    EXPECT_EQ(infos[1].id, id2);
+    EXPECT_EQ(infos[1].name, "");
+    EXPECT_EQ(infos[2].id, id3);
+    EXPECT_TRUE(infos[2].once);
+
+    EXPECT_TRUE(hub.subscriptionsForType("other.type").size() == 1u);
+    EXPECT_TRUE(hub.subscriptionsForType("no.such.type").empty());
+}
+
+TEST(EventHubTest, ClearByTypeOnlyClearsThatEvent) {
+    auto& hub = EventHub::instance();
+    hub.clear();
+
+    int countTarget = 0, countOther = 0;
+    hub.subscribe("clear.target", [&](const EventMessage&) { ++countTarget; });
+    hub.subscribe("clear.target", [&](const EventMessage&) { ++countTarget; }, "t2");
+    hub.subscribe("clear.other", [&](const EventMessage&) { ++countOther; });
+
+    hub.clear("clear.target");
+    EXPECT_TRUE(hub.subscriptionsForType("clear.target").empty());
+
+    hub.emit("clear.target");
+    EXPECT_EQ(countTarget, 0);
+    hub.emit("clear.other");
+    EXPECT_EQ(countOther, 1);
+
+    // 清理不存在的事件：无副作用不崩溃
+    EXPECT_NO_THROW(hub.clear("never.subscribed"));
+    EXPECT_FALSE(hub.subscriptionByName("t2").has_value());
+
+    hub.clear();
+}
