@@ -8,6 +8,26 @@
 
 ---
 
+## 2026-09-27 工作流取消被终态回写覆盖（TestCancelRunningWorkflow 的写序竞争根治）
+
+上一轮末尾登记的欠账，本轮单独收掉。
+
+- **定性方法**：先用临时探针把取消动作同步到「步骤行已 `running`」之后（`waitFor` 轮询 `step_statuses.status`，此刻 runner 必已越过 `execute` 循环顶部的 ctx 早退检查），修复前 **60/60 全红** `expected cancelled, got completed`；`-race` 全程无报告、无共享变量误用 → **状态机真缺陷**，不是测试自身问题。原用例平时绿只是运气：它只等「进了 running 表」，而那是 `Submit` 同步写的，等于不等待，取消多半落在 runner 进循环之前——那条路径直接 `return`、不回写终态，缺陷不露面；CI 负载把窗口撑开才红。
+- **机制（两层，第二层由自建验收 gate 的 `-race -count=50` 抓出）**：取消让步骤以 `cancelled` 结束并返回 `ctx.Err()` → 调度循环按 `failed` 出环 → 但 `finalStatus` 只看 `anyStepStatus("failed")`，被取消的步骤状态是 `cancelled` 不是 `failed`，于是**误算成 `completed`**。第一层：两侧无条件 `Updates`，后落库者把 `Cancel` 刚写的 `cancelled` 覆盖。只加条件更新收口后，count=50 又红 3 次 + handlers 包 `TestWorkflowCancelLifecycle` 1 次：旧 `Cancel` **先 `exec.cancel()` 再落库**，被惊醒的 runner 带着误算的 `completed` **抢先**落库——守卫把「后到覆盖」变「先到赢」，先到者写的仍是错值，`Cancel` 反向让位回 400（该用例工作流是 `wait 30s`，不可能真跑完）。反方向（已完成被改写成 `cancelled`）同样由条件更新堵死。
+- **修法（终态收口 = 条件写 + 先落库后惊醒 + 诚实取值，不加锁）**：① 两侧终态回写都改条件更新 `WHERE id = ? AND status = 'running'`——终态只能从 running 迁移，后到让位（`RowsAffected == 0`），任何交错收敛到同一终态；② `Cancel` 改为**先落库、成功后才 `exec.cancel()`**——runner 被惊醒前终态已安装，取消必然生效、必然返回 nil，runner 的回写只会让位；③ runner 的 `finalStatus` 把 `ctx.Err() != nil` 判成 `cancelled`（优先于 failed 判定）——未来任何新增 cancel-ctx 路径（停机、超时策略）下取值也诚实。让位方不做后续动作：runner 不广播与库不一致的 `status_changed`；`Cancel` 让位时不 cancel ctx、不标 skipped、不广播，按既有契约返回 `workflow not running`。选 SQL 条件与调用顺序而非内存互斥：更小，且覆盖「ctx 检查与写库之间」这类 check-then-act 窗口。
+- **回归用例四条**：① `TestCancelAfterStepStartedKeepsCancelledStatus`（探针转正，同步点后取消必生效必 nil、终态恒 cancelled）② `TestExecuteFinalStatusHonoursCancelledContext`（绕开 `Cancel` 直接 cancel runner ctx，锁取值层：finalStatus 必须认 ctx 取消，不误算 completed）③ `TestTerminalWriteYieldsWhenRowNotRunning`（直接驱动 `execute`，锁让位条件）④ `TestCancelYieldsWhenWorkflowAlreadyTerminal`（对称方向：不改写终态、不标 skipped、返回错误）。原 `TestCancelRunningWorkflow` 无同步点，`Cancel` 撞「工作流真已跑完」让位分支时改为只要求行处于合法终态。
+- **验证**：`-race -count=50 ./internal/workflow` 全绿；`go vet ./...` 0 告警、`gofmt -l` 干净；全仓 `go test -race -count=1 ./...` 全绿（integration 包共享机负载下需 `-timeout 90m`）。上一轮 CI 根治未回退（脚本仍无 `declare -A`，10 个 shell 契约用例同轮绿）。
+
+- **验证**：`-race -count=50 ./internal/workflow` 全绿；`go vet ./...` 0 告警、`gofmt -l` 干净；全仓 `go test -race -count=1 ./...` 全绿（integration 包共享机负载下需 `-timeout 90m`）。上一轮 CI 根治未回退（脚本仍无 `declare -A`，10 个 shell 契约用例同轮绿）。
+
+---
+
+## 待办：根包 TestRunHTTPEndpointsAndScriptOutput 的负载 flake（本轮定性为存量、不属取消语义，未修）
+
+2026-09-27 全仓 `-race` 复跑时（load 46+）红过一次：15s 就绪循环超时（server 端口没起来）→ 两个 GET 报 connection refused（`t.Errorf` 不终止）→ **agent 拨号循环复用同一个已过期的 `deadline`，循环体一次都不执行**，沿用外层旧 `err == nil` 压掉了 `Fatalf`，nil `agentConn` 传进 `writeAgentFrame` → SIGSEGV（`main_coverage_test.go:375`）。复跑 `-count=3` 全绿、CI 常态绿、与本轮 diff 无交集（启动/监听/帧监听路径未动）→ 存量负载 flake。修法待做：拨号循环用独立 deadline + 就绪循环超时后 Fatalf 收口， panic 换成干净的测试失败信息。
+
+---
+
 ## 2026-09-27 修 main 长期红：guacd e2e 脚本契约测试在 macOS/Windows 恒红
 
 **为什么动别人的文件**：CI 自 `fcf7cf9`（2026-09-25）起连续 9 个 push 红（上一个绿的是 `4f97996`），只红 `Go Server (macos-latest)`/`(windows-latest)` 两个 job，失败集合恒定为 `scripts/verify-guacd-e2e.sh` 的 8 个 shell 契约用例。长期红让「全绿才推送」的门禁失去判定力——此后任何人的真回归都混在这 9 个红里。诊断已做完且修复局部，故顺手收掉；两处都是真缺陷，不是口味问题。
@@ -15,7 +35,7 @@
 - **macOS（被测脚本的真缺陷）**：`declare -A READY_PORTS` 是 bash 4 语法，macOS 自带 `/bin/bash` 停在 3.2 → `[guacd]=4822` 被当作给未变量 `$guacd` 赋值，`set -u` 下当场崩；崩点在引擎探测之后、任何 SKIP 分支之前，于是「环境不具备 → SKIP(2)」变 exit 1。改法：`READY_NAMES`/`READY_PORTS` 两条平行数组 + `ready_port()` 下标查表（其余 `verify-*.sh` 一律不用关联数组，本脚本是全仓唯一例外），`do_status` 的服务名也改取同表，端口映射回到单一来源。
 - **实测复现与对拍（不靠推理）**：`docker run --rm bash:3.2` 跑改前脚本 → `line 60: guacd: unbound variable`，与 CI 日志逐字相同；改后在 bash 3.2 与本机 bash 5.3 下逐路径对拍一致——`--help`(0)、无引擎 `up/test/run/status`(SKIP 2)、未知子命令/未知 flag(2)、假引擎 `up` 端口未就绪(1 且四行端口报告正确)、假引擎 `status`(1，NOT READY×4)。Linux 全量 10 用例绿。
 - **Windows（契约测试自己的缺陷）**：用例靠往临时目录软链 coreutils 拼「净化 PATH」，而 `os.Symlink` 的错误被 `_ =` 吞掉；Windows runner 默认无建符号链接权限 → PATH 目录为空 → 脚本里每个命令 exit=127。改法：软链失败退化为复制，复制也失败则带原因 SKIP（不再静默）；POSIX bash 脚本的契约测试在 Windows 显式 SKIP，守卫集中在 `linkCoreutils`（所有跑脚本的用例必经）；宿主缺单个命令（macOS 无 `timeout`）仍按原语义继续，避免把 macOS 覆盖一起 skip 掉。
-- **同轮 CI 另抓到的两处（都不在本轮改动内）**：① `apps/runtime/src/packer.cpp` 的 `const std::vector<uint8_t> resourceData` 传给 `UpdateResourceA` 的 `LPVOID` 参数，MSVC 报 C2664——该段是 `_WIN32` 专属，Linux 编译看不见，只有 Windows CI 会红（本轮改动引入，已随本轮修复：去掉 `const`；本地用同签名的探针 TU 复现并验证：const 版报 `no known conversion from 'const unsigned char *' to 'LPVOID'`，非 const 版干净）。② `internal/workflow` 的 `TestCancelRunningWorkflow` 在 ubuntu runner 上偶发红（`engine_extra_test.go:409: expected cancelled, got completed`；此前三个 push 同 job 均为绿，本轮 Go 文件零改动）。机制是可复现的写序竞争而非玄学：`Engine.Cancel`（engine.go:249）先写 `status=cancelled`，而 runner goroutine 收尾处（engine.go:358-361）**无条件**写 `completed`/`failed`，最后写者赢；工作流极快跑完时二者只差几毫秒。修法是一条条件更新（收尾 UPDATE 加 `WHERE status = 'running'`，并据此决定是否广播），但那是 workflow 引擎的语义改动、不属本轮，留给独立一轮。
+- **同轮 CI 另抓到的两处（都不在本轮改动内）**：① `apps/runtime/src/packer.cpp` 的 `const std::vector<uint8_t> resourceData` 传给 `UpdateResourceA` 的 `LPVOID` 参数，MSVC 报 C2664——该段是 `_WIN32` 专属，Linux 编译看不见，只有 Windows CI 会红（本轮改动引入，已随本轮修复：去掉 `const`；本地用同签名的探针 TU 复现并验证：const 版报 `no known conversion from 'const unsigned char *' to 'LPVOID'`，非 const 版干净）。② `internal/workflow` 的 `TestCancelRunningWorkflow` 在 ubuntu runner 上偶发红（`engine_extra_test.go:409: expected cancelled, got completed`；此前三个 push 同 job 均为绿，本轮 Go 文件零改动）。机制是可复现的写序竞争而非玄学：`Engine.Cancel`（engine.go:249）先写 `status=cancelled`，而 runner goroutine 收尾处（engine.go:358-361）**无条件**写 `completed`/`failed`，最后写者赢；工作流极快跑完时二者只差几毫秒。修法是一条条件更新（收尾 UPDATE 加 `WHERE status = 'running'`，并据此决定是否广播），但那是 workflow 引擎的语义改动、不属本轮，留给独立一轮。**该欠账已由同日「工作流取消被终态回写覆盖」一节收掉**（定性为真缺陷：把取消同步到步骤行 running 之后，修复前 60/60 复现覆盖）。
 - **待观察**：macOS 维度这 8 个用例是首次真跑，若仍有红，最可能的下一处是 `/dev/tcp` 在 macOS 系统 bash 上的可用性（`port_open` 已留 `nc` 退化路径，两个都没有则脚本按设计报 SKIP 2，而 `status` 用例期望 1）。本轮无 macOS 机器，只能靠 CI 判定。
 
 ---

@@ -9,7 +9,15 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 395 个提交（feat 71 / fix 138 / docs 68 / test 46 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 396 个提交（feat 71 / fix 139 / docs 68 / test 46 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### fix（2026-09-27，工作流取消被终态回写覆盖：`TestCancelRunningWorkflow` 的写序竞争根治）
+
+- **定性（先测再判）**：`-race` 干净、无共享变量误用，红的是**状态机真缺陷**而非测试时序。用一个临时探针把取消动作同步到「步骤行已 `running`」之后（此刻 runner 必已越过 `execute` 循环顶部的 ctx 早退检查），修复前 **60/60 全红**：`expected cancelled, got completed`。原用例平时绿只是运气——它只等「工作流进了 running 表」（`Submit` 同步写入，等于不等待），取消多半落在 runner 进循环之前，那条路径直接 `return`、不回写终态，缺陷就没机会露面；CI 上负载把窗口撑开才红。
+- **机制（两层，第二层是验收 gate 自己抓出来的）**：取消时步骤以 `cancelled` 结束并让步骤返回 `ctx.Err()`，调度循环按 `failed` 出环；而 `finalStatus` 只看 `anyStepStatus("failed")`，被取消的步骤状态是 `cancelled` 不是 `failed` → **误算成 `completed`**。第一层：两侧无条件 `Updates(status=...)`，谁后落库谁赢，`Cancel` 刚写的 `cancelled` 被覆盖。加条件更新收口后，自建验收 gate 的 `-race -count=50` 又抓到第二层（3/50 红 + handlers 包 `TestWorkflowCancelLifecycle` 1 次）：旧 `Cancel` **先 `exec.cancel()` 再落库**，被 ctx 惊醒的 runner 会带着误算的 `completed` **抢先**落库——守卫把「后到覆盖」变成「先到赢」，但先到者写的仍是错值，`Cancel` 反而向自己引发的错误终态让位、对用户回 400（该用例的工作流是 `wait 30s`，不可能真跑完，红即此机制）。
+- **修法（终态收口 = 条件写 + 先落库后惊醒 + 诚实取值，不做互斥体）**：① 两侧终态回写都改**条件更新** `WHERE id = ? AND status = 'running'`——终态只能从 running 迁移，后到让位（`RowsAffected == 0`），任何交错都收敛到同一终态；② `Cancel` 改为**先落库、成功后才 `exec.cancel()`**——runner 被 ctx 惊醒前终态已安装，取消必然生效、必然返回 nil，runner 的回写只会让位；③ runner 的 `finalStatus` 把 `ctx.Err() != nil` 判成 `cancelled`（优先于 failed 判定）——就算未来出现其他 cancel-ctx 路径（引擎停机、超时策略），runner 算出的终态也诚实，不再依赖「Cancel 先落库」的顺序假设。让位方同时不做后续动作：runner 不广播与库不一致的 `status_changed`；`Cancel` 让位时不 cancel ctx、不标 skipped、不广播，按既有契约返回 `workflow not running`（该窗口里工作流确实已跑完）。没加锁、没改 `Execution` 的并发结构——竞争在 SQL 条件与调用顺序层面收口比在内存里补锁更小，也覆盖住「ctx 检查与写库之间」这种 check-then-act 窗口。
+- **回归用例四条 + 原用例对齐**：① `TestCancelAfterStepStartedKeepsCancelledStatus`——同步在步骤行 `running` 之后取消（修复前 60/60 红），断言严格：取消必生效（nil）且终态恒为 `cancelled`；② `TestExecuteFinalStatusHonoursCancelledContext`——不经 `Cancel`（绕开「取消先落库」的顺序保护）直接 cancel runner 的 ctx，锁住取值层：runner 终态必须把 ctx 取消算成 `cancelled` 而非误算的 `completed`；③ `TestTerminalWriteYieldsWhenRowNotRunning`——不经调度竞争直接驱动 `execute`，锁住「行已是终态时回写让位、不覆盖」；④ `TestCancelYieldsWhenWorkflowAlreadyTerminal`——对称方向，行已 `completed` 时取消不得改写终态、不得标 skipped、按不在运行返回。原 `TestCancelRunningWorkflow` 没有同步点，`Cancel` 若撞上「工作流真已跑完」的让位分支，改为只要求行处于某个合法终态（`cancelled` 的专断言留给上面第一条用例），避免把合法让位判成失败。
+- **验证**：`go test -race -count=50 ./internal/workflow` 全绿（第一轮 gate 抓出第二层缺陷，修后复跑）；`go vet ./...` 0 告警、`gofmt -l` 干净；全仓 `go test -race -count=1 ./...` 全绿（integration 包在共享机负载下需 `-timeout 90m`）。上一轮 CI 根治未回退：`scripts/verify-guacd-e2e.sh` 仍是无 `declare -A` 的平行数组，10 个 shell 契约用例与 Go 包同轮复跑绿。
 
 ### fix（2026-09-27，guacd e2e 脚本契约测试在 macOS/Windows 恒红：bash 3.2 关联数组 + 被吞掉的 symlink 错误）
 

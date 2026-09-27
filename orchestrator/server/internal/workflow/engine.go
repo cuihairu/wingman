@@ -235,7 +235,6 @@ func (e *Engine) Cancel(workflowID uint) error {
 	e.mu.Lock()
 	exec, ok := e.running[workflowID]
 	if ok {
-		exec.cancel()
 		delete(e.running, workflowID)
 	}
 	e.mu.Unlock()
@@ -244,12 +243,32 @@ func (e *Engine) Cancel(workflowID uint) error {
 		return fmt.Errorf("workflow not running")
 	}
 
-	// 更新状态
+	// 终态收口（条件写 + 先落库后惊醒）：只有仍处于 running 的行才允许改写为
+	// cancelled，防止覆盖 execute 已写的 completed/failed；并且必须在
+	// exec.cancel() 之前落库——runner 被 ctx 惊醒后会立刻冲向自己的终态回写，
+	// 先惊醒再落库就把两侧变成纯赛跑（-race -count=50 实测 runner 会带着误算的
+	// completed 抢先落库，Cancel 反而向错误终态让位、对用户回 400）。先落库则
+	// 取消必然先安装终态，runner 的回写只会让位，两种交错都不再有输赢问题。
 	now := time.Now()
-	e.db.Model(&models.Workflow{}).Where("id = ?", workflowID).Updates(map[string]any{
-		"status":   "cancelled",
-		"end_time": now,
-	})
+	res := e.db.Model(&models.Workflow{}).
+		Where("id = ? AND status = ?", workflowID, "running").
+		Updates(map[string]any{"status": "cancelled", "end_time": now})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		// 极窄窗口：落库之前 execute 已先写终态——工作流已经跑完，无可取消。
+		// 按「不在运行」对齐既有契约（map 里还挂着只是因为 execute 的 defer
+		// 摘除晚于终态回写）。此时不 cancel ctx、不标 skipped、不广播：那三步
+		// 的前提「取消生效」都不成立，且 runner 已在收尾、无需再停。
+		log.Printf("[WorkflowEngine] Cancel %d: 工作流已先到达终态，取消让位", workflowID)
+		return fmt.Errorf("workflow not running")
+	}
+
+	// 终态已安装，此刻才停 runner：步骤内的 select 醒来把 running 步骤标
+	// cancelled，随后 runner 的终态回写向已落库的 cancelled 让位。
+	exec.cancel()
+
 	e.db.Model(&models.StepStatus{}).Where("workflow_id = ? AND status = ?", workflowID, "pending").
 		Update("status", "skipped")
 
@@ -348,17 +367,37 @@ func (e *Engine) execute(ctx context.Context, exec *Execution) {
 		wg.Wait()
 	}
 
-	// 确定最终状态
+	// 确定最终状态。ctx 已取消时终态必须是 cancelled——被取消的步骤状态是
+	// cancelled 不是 failed，anyStepStatus("failed") 判不出来，会误算成
+	// completed（-race -count=50 实测 runner 因此抢先落库错误的 completed）。
+	// 就算写入侧的条件守卫会让位，算出来的终态也必须诚实：万一未来出现其他
+	// cancel ctx 的路径（引擎停机、超时策略），这里不再依赖「Cancel 先落库」
+	// 这个顺序假设。
 	finalStatus := "completed"
-	if exec.anyStepStatus("failed") {
+	switch {
+	case ctx.Err() != nil:
+		finalStatus = "cancelled"
+	case exec.anyStepStatus("failed"):
 		finalStatus = "failed"
 	}
 
+	// 终态收口：只允许把仍处于 running 的行改成终态（后到者让位，理由同 Cancel
+	// 一侧的注释）。正常取消流程里 Cancel 先落库、runner 走到这里必然让位；
+	// 本侧自己的回写只在无人取消、或取消落在终态写入之后的窗口里生效。
 	now := time.Now()
-	e.db.Model(&models.Workflow{}).Where("id = ?", exec.Workflow.ID).Updates(map[string]any{
-		"status":   finalStatus,
-		"end_time": now,
-	})
+	res := e.db.Model(&models.Workflow{}).
+		Where("id = ? AND status = ?", exec.Workflow.ID, "running").
+		Updates(map[string]any{"status": finalStatus, "end_time": now})
+	switch {
+	case res.Error != nil:
+		log.Printf("[WorkflowEngine] Workflow %d 终态回写失败: %v", exec.Workflow.ID, res.Error)
+	case res.RowsAffected == 0:
+		// Cancel 先落库了：终态以 cancelled 为准，这里丢弃自己的终态与广播，
+		// 否则前端会收到一条与库里不一致的 status_changed。
+		log.Printf("[WorkflowEngine] Workflow %d 已被取消，终态回写让位（丢弃 %s）",
+			exec.Workflow.ID, finalStatus)
+		return
+	}
 
 	e.hub.BroadcastEvent("workflow", map[string]any{
 		"event": "status_changed",
@@ -368,7 +407,7 @@ func (e *Engine) execute(ctx context.Context, exec *Execution) {
 		},
 	})
 
-	log.Printf("[WorkflowEngine] Workflow %d completed with status: %s", exec.Workflow.ID, finalStatus)
+	log.Printf("[WorkflowEngine] Workflow %d 到达终态: %s", exec.Workflow.ID, finalStatus)
 }
 
 // findReadySteps 找到所有依赖已满足的就绪步骤

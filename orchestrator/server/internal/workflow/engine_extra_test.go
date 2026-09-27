@@ -396,7 +396,15 @@ func TestCancelRunningWorkflow(t *testing.T) {
 	}, "workflow should be running")
 
 	if err := e.Cancel(wf.ID); err != nil {
-		t.Fatalf("cancel: %v", err)
+		// 终态收口后的合法让位路径：runner 的终态回写若先于取消落库，
+		// Cancel 按「不在运行」返回错误——此时只要求行已到达某个终态，
+		// 不再要求 cancelled（下面的 cancelled 专断言只覆盖取消生效的路径）。
+		var probe models.Workflow
+		db.First(&probe, wf.ID)
+		if probe.Status != "completed" && probe.Status != "failed" && probe.Status != "cancelled" {
+			t.Fatalf("cancel: %v（且行状态 %q 不是合法终态）", err, probe.Status)
+		}
+		return
 	}
 
 	if _, ok := e.GetExecution(wf.ID); ok {
@@ -417,6 +425,167 @@ func TestCancelRunningWorkflow(t *testing.T) {
 	db.Where("workflow_id = ? AND status = ?", wf.ID, "skipped").Find(&skipped)
 	if len(skipped) == 0 {
 		t.Error("pending steps should be skipped after cancel")
+	}
+}
+
+// TestCancelAfterStepStartedKeepsCancelledStatus 锁住终态收口：取消发生在步骤
+// 已进入 running（runner 已越过循环顶部的 ctx 检查、正停在步骤内的 select 上）
+// 之后时，runner 会因步骤返回 ctx 错误而出环回写终态。初版修复（只加写入条件）
+// 后 -race -count=50 仍 3/50 红：Cancel 先 exec.cancel() 再落库的话，被惊醒的
+// runner 会带着误算的 completed 抢先落库，Cancel 反而向错误终态让位并回错误。
+// 现语义：Cancel 必须先落库再惊醒（取消必然生效、必然返回 nil），runner 的
+// 回写只会让位，行终态恒为 cancelled。本用例的同步点保证取消落在步骤内 select
+// 上——这正是修复前 60/60 复现 completed 覆盖 cancelled 的交错。
+func TestCancelAfterStepStartedKeepsCancelledStatus(t *testing.T) {
+	e, reg, db := newTestEngine(t)
+	registerAgent(reg, "a1", &mockConn{})
+
+	wf := &models.Workflow{Name: "cancel-after-step-started"}
+	wf.SetSteps([]models.WorkflowStep{{ID: "wait", Type: "wait", TimeoutSeconds: 30}})
+	if err := e.Submit(wf); err != nil {
+		t.Fatalf("submit: %v", err)
+	}
+
+	// 同步点：等到步骤行变 running——此刻 runner 必已离开循环顶部的早退检查，
+	// 取消只能走「步骤内 select 醒来 → 出环 → 终态回写」这条与 Cancel 竞争的路径
+	waitFor(t, 2*time.Second, func() bool {
+		var ss models.StepStatus
+		db.Where("workflow_id = ? AND step_id = ?", wf.ID, "wait").First(&ss)
+		return ss.Status == "running"
+	}, "wait step should reach running")
+
+	if err := e.Cancel(wf.ID); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+	// 等 runner 走完终态段（defer 从 running 表摘除之后再读库，读到的必是最终值）
+	waitFor(t, 2*time.Second, func() bool {
+		_, ok := e.GetExecution(wf.ID)
+		return !ok
+	}, "execution should be removed")
+
+	var got models.Workflow
+	db.First(&got, wf.ID)
+	if got.Status != "cancelled" {
+		t.Errorf("expected cancelled, got %s", got.Status)
+	}
+	if got.EndTime == nil {
+		t.Error("end time should be set")
+	}
+}
+
+// TestExecuteFinalStatusHonoursCancelledContext 直锁 runner 侧的终态取值：不经
+// Cancel（绕开「取消先落库」的顺序保护），直接 cancel runner 的 ctx，复现
+// 「步骤因 ctx 结束被标 cancelled → anyStepStatus("failed") 判不出 →
+// finalStatus 误算成 completed」的取值路径。终态取值必须把 ctx 取消算成
+// cancelled——否则一旦 runner 在写入竞争中先落库，库里就会被装上与事实相反的
+// completed；这也是未来任何新增 cancel-ctx 路径（停机、超时策略）的兜底。
+func TestExecuteFinalStatusHonoursCancelledContext(t *testing.T) {
+	e, _, db := newTestEngine(t)
+
+	wf := &models.Workflow{Name: "final-status-ctx-cancelled", Status: "running"}
+	steps := []models.WorkflowStep{{ID: "wait", Type: "wait", TimeoutSeconds: 30}}
+	wf.SetSteps(steps)
+	if err := db.Create(wf).Error; err != nil {
+		t.Fatal(err)
+	}
+	// 与 Submit 一致：StepStatus 既要进 StepState 也要落库——下面的同步点轮询
+	// 的是 step_statuses 表行，光建内存条目行不存在，updateStepStatusRow 会更新 0 行。
+	ssRow := &models.StepStatus{WorkflowID: wf.ID, StepID: "wait", Status: "pending"}
+	if err := db.Create(ssRow).Error; err != nil {
+		t.Fatal(err)
+	}
+	stepState := map[string]*models.StepStatus{
+		"wait": ssRow,
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	exec := &Execution{Workflow: wf, Steps: steps, StepState: stepState, cancel: cancel}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		e.execute(ctx, exec)
+	}()
+
+	// 同步到步骤行 running：runner 停在 wait 步骤的 select 上，此刻 cancel ctx
+	// 必走「步骤 cancelled → 出环 → 终态回写」路径，而非循环顶早退。
+	waitFor(t, 2*time.Second, func() bool {
+		var ss models.StepStatus
+		db.Where("workflow_id = ? AND step_id = ?", wf.ID, "wait").First(&ss)
+		return ss.Status == "running"
+	}, "wait step should reach running")
+
+	cancel()
+	<-done
+
+	var got models.Workflow
+	db.First(&got, wf.ID)
+	if got.Status != "cancelled" {
+		t.Errorf("runner terminal status should honour cancelled ctx, got %s", got.Status)
+	}
+}
+
+// TestTerminalWriteYieldsWhenRowNotRunning 直锁写入条件本身（不经调度竞争）：
+// 行已是终态（这里模拟 Cancel 先落库）时，execute 的终态回写必须让位——不覆盖
+// cancelled，也不补发 completed 的广播。
+func TestTerminalWriteYieldsWhenRowNotRunning(t *testing.T) {
+	e, _, db := newTestEngine(t)
+
+	wf := &models.Workflow{Name: "yield-on-terminal", Status: "cancelled"}
+	wf.SetSteps([]models.WorkflowStep{{ID: "w", Type: "wait", TimeoutSeconds: 1}})
+	if err := db.Create(wf).Error; err != nil {
+		t.Fatal(err)
+	}
+	stepState := map[string]*models.StepStatus{
+		"w": {WorkflowID: wf.ID, StepID: "w", Status: "pending"},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	e.execute(ctx, &Execution{Workflow: wf, Steps: wf.GetSteps(), StepState: stepState, cancel: cancel})
+
+	var got models.Workflow
+	db.First(&got, wf.ID)
+	if got.Status != "cancelled" {
+		t.Errorf("terminal write should yield to existing terminal status, got %s", got.Status)
+	}
+}
+
+// TestCancelYieldsWhenWorkflowAlreadyTerminal Cancel 侧的对称让位：查 running 表
+// 与落库之间的窄窗口里 execute 已先写终态时，取消不得把已完成改写成 cancelled，
+// 也不得把 pending 步骤标成 skipped；对齐「不在运行」的既有契约返回错误。
+func TestCancelYieldsWhenWorkflowAlreadyTerminal(t *testing.T) {
+	e, _, db := newTestEngine(t)
+
+	wf := &models.Workflow{Name: "cancel-after-terminal", Status: "completed"}
+	if err := db.Create(wf).Error; err != nil {
+		t.Fatal(err)
+	}
+	db.Create(&models.StepStatus{WorkflowID: wf.ID, StepID: "s1", Status: "pending"})
+	// 这里只要 cancel 函数：被手工挂进 running 表的 Execution 需要它，
+	// ctx 本身不参与（该用例不走 execute）
+	_, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// 手工把执行体挂回 running 表，复刻「defer 摘除晚于终态回写」的窄窗口
+	e.mu.Lock()
+	e.running[wf.ID] = &Execution{Workflow: wf, Steps: wf.GetSteps(),
+		StepState: map[string]*models.StepStatus{}, cancel: cancel}
+	e.mu.Unlock()
+
+	if err := e.Cancel(wf.ID); err == nil {
+		t.Error("cancelling an already-terminal workflow should error like not-running")
+	}
+
+	var got models.Workflow
+	db.First(&got, wf.ID)
+	if got.Status != "completed" {
+		t.Errorf("cancel should not overwrite terminal status, got %s", got.Status)
+	}
+	var skipped int64
+	db.Model(&models.StepStatus{}).Where("workflow_id = ? AND status = ?", wf.ID, "skipped").Count(&skipped)
+	if skipped != 0 {
+		t.Errorf("cancel that yielded should not skip steps, got %d skipped", skipped)
 	}
 }
 
