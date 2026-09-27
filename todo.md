@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-09-27 C++（Linux）覆盖率缺口收口：agentcore 0% → 28 例单测（顺带根治五个真实缺陷）+ 文档语法修复
+
+todo.md 仅剩两条需真机人工验证项（macOS 真机脚本、XRecord 真桌面），headless 不可执行，按优先级转覆盖率缺口。
+
+- **缺口定位**：gcovr 全量报告（TOTAL 行覆盖 80%）中行覆盖最低且不依赖 Lua/X11/平台限制的模块为 `libs/agentcore`（`remote_client.cpp` 390 行 + `event_buffer.cpp` 59 行 **0%**、零测试）；依赖仅 transport + nlohmann_json + spdlog，可纯 loopback 单测（Android 约束不破坏）。
+- **测试**：新增 `libs/agentcore/tests/agentcore_test.cpp` 28 例——EventBuffer 11 例（容量驱逐 / log.line 优先 / sink 重入 / dropped 增量）+ RemoteClient 17 例走真 loopback TcpServer（注册身份/token、ack 成败、命令回环六形态、1s 心跳 link 五元组、断线 outbox 冲刷、超容量丢弃恰好 100 条）；根 CMakeLists 与模块 CMake 接线 `BUILD_AGENTCORE_TESTS`（镜像 transport 模式）。覆盖率：EventBuffer 100%、RemoteClient 86%。
+- **意外收获——五个真实缺陷**（三个生产行为级）：① `TcpClient::connect()` 重连对 joinable IO 线程赋值 → `std::terminate`，**服务端一断链 agent 进程重连必崩**（transport 层收口：connect 入口隐式 disconnect）；② EventBuffer `push()` sink 持锁回调，违反自身「锁外回调」契约，sink 内查询/重入即自死锁（锁作用域收口）；③ 心跳线程整段 30s 睡眠不可打断，stop 与每次重连的 join 被放大一个心跳周期（改 100ms 分段睡眠）；④ stop 与重连线程拉起新心跳的生命周期竞争 → joinable 线程析构 terminate（heartbeatMutex 串行化 + 先停重连后收心跳 + 无条件幂等 stop）；⑤ markConnected 双计使首连 `reconnects=1`（删直接调用，统一由 SessionEvent::Connected 记账）。
+- **顺带**：全量 ctest 首红 `HumanMouseTest.PathRandomness` 定性为统计型 flake（int 向零截断零桶双倍宽 → 两路径可量化全等），改 20 轮分布断言 + 修 `size()-1` 无符号下溢，连跑 100 次绿；`TestRunGracefulShutdownOnSIGINT` 15s 就绪窗口为 d22abe3 同族第四处，收口至 `waitTCPUp` 60s。
+- **文档语法修复（用户指认）**：`docs/development-todo.md` Phase 7 请求块 `#### 请求消息结构` 标题 + ` ```json ` 开围栏自 c400bd6f 丢失（孤立闭合围栏吞掉响应节渲染），对照原提交补回；`docs/api/core.md` 两处 `#### `…)**` 标题反引号误写 `**`。docs:build 校验通过。
+- **验证**：agentcore 28 例 ×4 轮全绿；全量 ctest 2279 例（见提交）；Go `-race -timeout 90m` 全仓绿；dashboard jest 420、GUI vitest 511 全绿。
+
+---
+
 ## 2026-09-27 事件与状态收尾：wingman.event 监听器查询与按事件名清理（listener / listeners / clear(type?)）
 
 `docs/development-todo.md`「事件与状态」小节仅剩的两条未完成项，按登记口径实现收口。

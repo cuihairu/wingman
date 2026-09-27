@@ -9,7 +9,45 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 403 个提交（feat 73 / fix 140 / docs 70 / test 48 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 409 个提交（feat 73 / fix 142 / docs 71 / test 51 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### fix（2026-09-27，TcpClient 重连对 joinable IO 线程赋值 → `std::terminate`：服务端断链后的重连必崩根治）
+
+- **症状**：agentcore 新增的 loopback 重连单测（`DisconnectedEventsQueueAndFlushOnReconnect` 等）以 `terminate called without an active exception` 稳定崩进程，崩点在重连线程 `Connecting to server...` 之后。
+- **机制**：`TcpClient::connect()` 把 `socket_` move 进 session、用旧 IO 线程驱动 `ioContext_.run()`；`RemoteClient::reconnectLoop` 的重连路径**直接再调 `connect()`、不经 `disconnect()`**——此时 `ioThread_` 仍 joinable，`ioThread_ = std::thread(...)` 对 joinable 线程对象赋值按标准触发 `std::terminate`（move 进 session 的 socket 被 asio 自动重开，连接反而成功，恰好走到赋值那一行）。即：**服务端一断链，agent 进程在第一次重连尝试上必崩**，属生产行为级缺陷，非测试时序问题。
+- **修法**：`connect()` 入口对「上一条连接的 IO 线程/session 仍在」的情况先隐式 `disconnect()`（收口旧线程、restart io_context、重置 socket），再建新连接；既有显式 disconnect→connect 路径行为不变。
+- **验证**：agentcore 28 例（含断链重连、outbox 冲刷、超容量丢弃、心跳链路统计）连跑 4 轮全绿；全量 ctest 见本轮 test 条目。
+
+### fix（2026-09-27，agentcore 四缺陷：EventBuffer sink 持锁回调自死锁 / 心跳 join 阻塞一个心跳周期 / stop 与 startHeartbeat 生命周期竞争 / 首连重连计数双计）
+
+- **EventBuffer sink 持锁回调**：`push()` 的注释与头文件契约都写明「sink 在锁外回调」，实现却在 `lock_guard` 作用域内调用——sink 里任何 `size()/drain()` 或重入 `push()` 立即自死锁（新单测 `SinkMayQueryBufferWithoutDeadlock` 挂死暴露）。收口锁作用域：入队/驱逐/取快照持锁，回调挪到锁外，与既有「捕获局部变量再转发」的意图对齐。
+- **心跳线程整段睡眠**：`sleep_for(seconds(heartbeatInterval))`（默认 30s）不可打断，而 `stop()` 与重连路径 `startHeartbeat()` 都要 join 它——stop 拖慢进程退出至多一个心跳周期，**每次重连被放大 30s**。改 100ms 粒度分段睡眠（与 `sleepInterruptible` 同款），join 阻塞封顶 ~100ms，发送节奏不变。
+- **生命周期竞争 → terminate**：stop() 先 join 心跳、后 join 重连；重连线程在退出前 `connect()` 成功会**重新拉起心跳线程**，时序交错时 `Impl` 析构销毁仍 joinable 的 `thread` 对象 → `std::terminate`。收口：新增 `heartbeatMutex` 串行化「旧线程 join / 新线程 spawn」，stop() 改为先停重连再收心跳，`startHeartbeat()` 在 `shouldStop` 已置位时不再 spawn；`stop()` 去掉 `running_` 前置判断改为无条件幂等收口（start 进行中并发 stop 不再漏收线程）。
+- **markConnected 双计**：`start()`/`connect()` 成功路径同步调 `markConnected()`，而 `TcpClient::connect()` 返回前已同步触发 `SessionEvent::Connected`、事件处理器再记一次账——**每次首连 `reconnects=1`**（契约：初始连接不计重连），心跳上报的链路统计从第一条连接起就是错的。删除两处直接调用，统一由事件处理器记账。
+- **验证**：`HeartbeatCarriesLinkStats` 断言 `link.reconnects == 0` 修复前红（实测 1）、修复后绿；四缺陷修后 agentcore 28 例 ×4 轮全绿。
+
+### test（2026-09-27，C++（Linux）覆盖率缺口收口：agentcore 0% → 28 例单测，EventBuffer 100% / RemoteClient 86%）
+
+- **缺口定位**：gcovr 全量报告（TOTAL 行覆盖 80%）里行覆盖最低且无 Lua/X11/平台耦合的模块是 `libs/agentcore`——`remote_client.cpp` 390 行 + `event_buffer.cpp` 59 行 **0% 覆盖、零测试**。依赖仅 transport + nlohmann_json + spdlog（约束：不得依赖 lib/wingman 本体，Android 构建不引入），可纯 loopback 单测。
+- **新增 `libs/agentcore/tests/agentcore_test.cpp` 28 例**：EventBuffer 11 例（push/drain 保序、drain(max) 留余、drain(0)、clear、容量超限 FIFO 逐出 + `dropped_` 累计增量断言、log.line 优先驱逐、sink 逐条转发、sink 重入不死锁、null sink、`IpcEvent::toJson` 三字段、单例）；RemoteClient 17 例走真 loopback TcpServer（同 libs/transport TransportEnv 模式）：连不上端口后台重连 + 事件回调、stop 幂等、register 携带 identity/metadata/token、ack 成功→connected + `connection.state_changed` 入缓冲、ack 失败→error、ack 坏 JSON 不崩、命令回环（seq 透传 + okData JSON、无回调错误响应、回调 error 透传、data 非 JSON 字符串回退、请求体坏 JSON 错误响应）、1s 心跳携带 link 五元组、已连接直发 agent.event、断线事件入 outbox 重连冲刷、超容量（100 上限）丢弃恰好 100 条、config/stateName。全部等待有界，headless 可跑。
+- **接线**：根 CMakeLists 新增 `BUILD_AGENTCORE_TESTS`（镜像 transport：option + `WINGMAN_BUILD_TESTS` 级联 FORCE-ON + enable_testing 条件），`libs/agentcore/CMakeLists.txt` 尾部 option + `add_subdirectory(tests)`，`gtest_discover_tests DISCOVERY_MODE PRE_TEST`。
+- **覆盖率**：`event_buffer.cpp` 60/60 行 **100%**、`event_buffer.hpp` 7/7；`remote_client.cpp` 344/396 行 **86%**（余量为 Windows 分支、超时事件等边缘路径）。基线（修前）两文件均 0%。
+- **意外收获**：测试揪出五个真实缺陷（两fix条目），其中 TcpClient 重连 terminate 属生产行为级。
+- **验证**：28 例连跑 4 轮全绿；全量 ctest 2279 例见提交（含本条与 PathRandomness 收口）。
+
+### test（2026-09-27，`TestRunGracefulShutdownOnSIGINT` 15s 就绪窗口：d22abe3 同族第四处 → `waitTCPUp` 60s 收口）
+
+- `-race` + 共享机高负载下复红一次（15.05s 超时，实测同负载 server 启动 30s 上下）——与 d22abe3 收口的三处同族（共享/耗尽 deadline、短窗口误判就绪失败）形状一致，是该轮漏改的第四处。改走既有 `waitTCPUp(t, name, addr, 60*time.Second)`：独立窗口、到点带名收口，绿路径零成本。
+
+### test（2026-09-27，`HumanMouseTest.PathRandomness` 统计型 flake 根治：截断零桶双倍宽 → 多轮分布断言）
+
+- **机制**：控制点偏移经 `static_cast<int>` 向零截断量化，|offset| < ~1.414 落入零桶（向零截断使零桶双倍宽）；两条独立路径存在非零概率（~0.1%–4% 量级，随控制点数）整体量化后完全一致，单次对比断言 `EXPECT_TRUE(different)` 低频误报。全量 ctest 首次红即此（2247/2279，同用例此前多轮全绿）。
+- **修法**：20 轮生成取「至少一对不同」，把运气事件变成分布事件（联合失败概率 ≈ P^20）；顺以 `i + 1 < n` 规避 `size() - 1` 在 size<2 时的无符号下溢。修后单用例连跑 100 次全绿。
+
+### docs（2026-09-27，文档语法错误修复：development-todo.md Phase 7 请求块围栏丢失 + api/core.md 两处标题反引号残缺）
+
+- `docs/development-todo.md`「Phase 7: TCP 协议增强」：请求 JSON 块的 `#### 请求消息结构` 标题与 ` ```json ` 开围栏自 c400bd6f 起丢失（对照原提交补回 `type`/`id` 两字段），孤立的闭合围栏把 `#### 响应消息结构` 标题与其代码块吞成一块无法高亮的区域。
+- `docs/api/core.md`：`#### `keyUp(key)**` 与 `#### `keyPress(key, duration)**` 两处标题反引号误写成 `**`，行内代码不闭合（32 处同级标题中仅此 2 处）。
 
 ### feat（2026-09-27，`wingman.event` 监听器查询与按事件名清理：`listener` / `listeners` / `clear(type?)`）
 
