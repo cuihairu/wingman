@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-09-27 C++（Linux）覆盖率缺口收口：IPC/RPC 控制面约 405 行 0% → 52 例单测（顺带根治六个真实缺陷）
+
+todo.md 剩余两条真机观察项继续搁置，覆盖率方向继续推进。上轮收掉 agentcore 后，gcovr 报告里剔除「真机/人工观察」与「OpenSSL 内部失败分支不可达（crypt.cpp，无故障注入无解，登记假设）」后剩余最大缺口锁定 GUI ⇄ runtime 控制面集群：local_ipc_server / script_handler / macro_handler / config_handler / event_log_sink 合计约 340 行 **0%、零测试**（早已编进 runtime_tests 二进制但从未被驱动），system_handler 余 29 行 55%。
+
+- **测试**：新增 `apps/runtime/tests/rpc_ipc_test.cpp` 52 例 / 7 套件（tests/CMakeLists 接线 wingman::lua）。Linux loopback 真链路（UnixSocket 帧 + 真 StandaloneMode + 真 Lua 文件）；Windows 侧 loopback 套件 `#ifndef _WIN32` 跳过（NamedPipe 语义本机不可验证，登记假设；仅由 Windows CI 编译检查）。覆盖：script.* 全命令参数/错误信封与同步执行契约、events.drain 上限与 remaining、config.getRemote/setRemote 往返与 apply 失败透传、macro.* status/save/load/坏文件/越界钳制、system.getStatus 注入 provider 反映、EventLogSink 级别过滤与 4096 截断、LocalIpcServer 起/停/幂等/未知方法/坏 JSON/缺 method/Error 型/客户端断开事件/重连/带客户端干净停机。
+- **意外收获——六个真实缺陷**（四个生产行为级）：① `StandaloneMode::stop()` 提前 return，仅 LocalIpc 能力的 runtime 上 GUI 加载的脚本在全局 ScriptManager **永久泄漏**（去早退，无条件清登记）；② `macro.play` speed 未校验直传 recorder——**speed=0 SIGFPE、负数无符号下溢挂死**，RPC 边界单点钳制一次收口三平台实现；③ config_handler **引用捕获悬垂 → 段错误**（调用方传临时对象即 use-after-free，新测稳定复现），改按值捕获；④ Lua 引擎初始化无条件装 `package.preload` 钩子，沙箱模式 package 为 nil 直接抛错——**沙箱脚本（GUI script.start 唯一路径）100% 启动失败**，钩子改 `!sandboxed` 才装；⑤ LocalIpcServer 停机双 disconnect 竞态——server 线程与 stop() 都对同一通道 disconnect，并发进入双重 join 同一 receiveThread（UB，审读确认的硬化收口；实测挂死混有同机并发跑测干扰，诚实定性），channelMutex 串行 + 锁内复查 stopping；⑥ **EventLogSink 级别过滤方向写反**（`>` 应为 `<`）——info 下限时 warn/error 全被滤掉，GUI 日志面板永远收不到告警与错误（回归钉三连）。
+- **登记的产品契约与真机观察项**：ScriptManager 同步执行模型——`script.start` 阻塞至脚本跑完，顺序 RPC 打不进 running 窗口，**GUI 无法停运行中脚本**（stop 必报 Failed to stop script），pause/resume 成功路径同属真机观察；wingman::unloaded→runtime Stopped→JSON "stopped" 映射；macro.start 录制平台相关（无头只断言信封）。
+- **覆盖率**（gcovr 行覆盖）：local_ipc_server 0%→80%（余 34 行全为创建/连接失败与停机分支）、script_handler 0%→78%（余量即真机观察项）、macro_handler 0%→89%、config_handler 0%→**100%**、event_log_sink 0%→94%、system_handler 55%→75%、standalone_mode 70%；**TOTAL 80%→86%**（14278/16594）。
+- **验证**：新增 52 例 2.1s 全绿；loopback 压力 10/10 轮；runtime_tests 全量 128/128；插桩 build-cov 全量 ctest **2331/2331**（上轮 2279 + 本轮 52）；Go `-race -timeout 90m` 全仓绿；dashboard jest 420、GUI vitest 511 全绿。
+
+---
+
 ## 2026-09-27 C++（Linux）覆盖率缺口收口：agentcore 0% → 28 例单测（顺带根治五个真实缺陷）+ 文档语法修复
 
 todo.md 仅剩两条需真机人工验证项（macOS 真机脚本、XRecord 真桌面），headless 不可执行，按优先级转覆盖率缺口。

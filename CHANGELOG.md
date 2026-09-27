@@ -9,7 +9,22 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 409 个提交（feat 73 / fix 142 / docs 71 / test 51 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 411 个提交（feat 73 / fix 142 / docs 72 / test 52 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-27，C++（Linux）覆盖率缺口收口：IPC/RPC 控制面约 405 行 0% → 52 例单测，六缺陷根治）
+
+- **缺口定位**：gcovr 全量报告（TOTAL 行覆盖 80%）剔除「需真机/人工观察」与「OpenSSL 内部失败分支不可达（crypt.cpp，无故障注入无解）」后，剩余最大缺口是 GUI ⇄ runtime 的控制面集群——`local_ipc_server.cpp` 168 行、`script_handler.cpp` 95 行、`macro_handler.cpp` 44 行、`config_handler.cpp` 15 行、`event_log_sink.hpp` 18 行全部 **0%、零测试**（均已编进 runtime_tests 二进制但从未被驱动），`system_handler.cpp` 余 29 行 55%。
+- **新增 `apps/runtime/tests/rpc_ipc_test.cpp` 52 例 / 7 套件**（Linux 下 loopback 真链路；Windows 侧 `#ifndef _WIN32` 跳过 loopback——NamedPipe 语义本机不可验证，属登记假设，仅由 Windows CI 做编译检查）：ScriptHandler 15 例（真 StandaloneMode + 真 Lua 文件：列表映射、start/stop/restart/unload 参数与错误信封、同步执行模型契约、load 后析构释放登记）；EventHandler 2 例（drain 上限与 remaining 计数）；ConfigHandler 5 例（无 access 报错、apply 失败透传、往返取新值）；MacroHandler 13 例（status/save/load 往返、坏文件、空队列播放、speed/repeat 越界钳制、start/stop 信封）；SystemProviders 4 例（注入 provider 反映到 system.getStatus、无脚本时 pause/batch 为 no-op）；EventLogSink 3 例（级别过滤、4096 截断、构造参数抬高过滤下限）；LocalIpcServerLoopback 11 例（起停幂等、system.getVersion 往返、provider 状态、未知方法/坏 JSON/缺 method/Error 型信封、config 往返、events.drain、客户端断开事件与重连、带客户端停机干净 join）。
+- **意外收获——六个真实缺陷**（四个生产行为级）：
+  ① **StandaloneMode::stop() 提前 return → 进程级全局 ScriptManager 永久泄漏**：仅 LocalIpc 能力的 runtime 不会调 start()，但 GUI 可经 script.* 在实例上加载脚本、登记在全局单例；stop/析构跳过清理，脚本连同 Lua 引擎永久泄漏（去掉早退，无条件清空登记；回归钉 `DestructorReleasesNeverStartedLoadedScripts`）。
+  ② **macro.play speed=0 → SIGFPE、负数 → 无符号下溢挂死**：speed 未校验直传各平台 recorder 实现，0 作除数 / 负数经无符号运算下溢成天文数字。在 RPC 边界单点钳制 `speed<1→1、repeat<1→1`，一次收口 X11/Win32/Cocoa 三实现（回归钉 `PlayWithZeroSpeedIsClampedInsteadOfCrashing` / `PlayWithNegativeSpeedIsClampedInsteadOfHanging`，修前一个 SIGFPE 一个挂死，修后各 100ms 干净完成）。
+  ③ **config_handler 引用捕获悬垂 → 段错误**：`registerRuntimeConfigHandlers(Access&)` 的 handler 以引用捕获 access，调用方传临时对象即 use-after-free（新测 `GetRemoteWithoutAccessReturnsError` 稳定复现段错误）。改按值捕获（与 system_handler 的 by-value providers 一致）。
+  ④ **沙箱脚本 100% 启动失败**：Lua 引擎初始化无条件执行 `package.preload["wingman"]=...`，而沙箱模式 package 从未打开且被 applySandbox 置 nil，prelude 引用 nil 直接抛错——GUI `script.start` 的唯一路径是沙箱（StandaloneMode 强制 sandboxed=true），即 GUI 脚本启动全灭。钩子改为 `!sandboxed` 才安装（ScriptHandler 15 例即依赖此修复才能跑通）。
+  ⑤ **LocalIpcServer 停机双 disconnect 竞态**：server 线程与 stop() 都会对同一通道 `disconnect()`，并发进入时两边同时 join 同一 receiveThread（双重 pthread_join = UB，代码审读确认、实测间歇挂死——注：观测到的挂死混有同机并发跑测的干扰，定性为审读确认的硬化收口）。统一在 channelMutex 下串行、锁内复查 stopping。
+  ⑥ **EventLogSink 级别过滤方向反了**：写成 `> max_level_`，info 下限时 warn/error 全被滤掉、GUI 日志面板永远收不到告警与错误，反而放行 debug 噪音。改回 `<`（仅下发 ≥ 配置级别），回归钉 `ForwardsInfoWarnErrorAndFiltersDebug`。
+- **登记的产品契约与真机观察项**（测试注释内注明，不改变产品语义）：ScriptManager 同步执行模型——`script.start` 阻塞到脚本跑完，顺序 RPC 永远打不进 running 窗口，`script.stop` 对已完成脚本必报「Failed to stop script」→ **GUI 无法停运行中脚本**，pause/resume 成功路径与 GUI 停脚本均属真机观察范畴；wingman::unloaded → runtime Stopped → JSON "stopped" 的状态映射；macro.start 录制平台相关（无头环境只断言信封）。
+- **覆盖率**（gcovr，行覆盖）：`local_ipc_server.cpp` 0%→**80%**（余 34 行：server 通道创建失败/connect 失败/停机竞态跳过断连/发送失败等错误分支）、`script_handler.cpp` 0%→**78%**（余量即上述真机观察项）、`macro_handler.cpp` 0%→**89%**、`config_handler.cpp` 0%→**100%**、`event_log_sink.hpp` 0%→**94%**、`system_handler.cpp` 55%→**75%**、`standalone_mode.cpp` **70%**；TOTAL 80%→**86%**（14278/16594）。
+- **验证**：新增 52 例 2.1s 全绿；loopback 压力 10/10 轮干净；runtime_tests 全量 128/128（22.7s）；插桩 build-cov 全量 ctest **2331/2331**（上轮 2279 + 本轮 52，数目精确吻合）；Go `-race -timeout 90m` 全仓绿；dashboard jest 420、GUI vitest 511 全绿。
 
 ### fix（2026-09-27，TcpClient 重连对 joinable IO 线程赋值 → `std::terminate`：服务端断链后的重连必崩根治）
 
