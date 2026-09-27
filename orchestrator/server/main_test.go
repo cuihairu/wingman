@@ -136,21 +136,11 @@ func TestRunGracefulShutdownOnSIGINT(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- run() }()
 
-	// 轮询等待 HTTP server 就绪
-	deadline := time.Now().Add(15 * time.Second)
-	ready := false
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", "127.0.0.1:"+strconv.Itoa(httpPort), 200*time.Millisecond)
-		if err == nil {
-			conn.Close()
-			ready = true
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	if !ready {
-		t.Fatal("HTTP server did not become ready in time")
-	}
+	// 等待 HTTP server 就绪：独立 60s 窗口 + 到点 Fatalf 收口（waitTCPUp，见
+	// main_coverage_test.go）。手写 15s 轮询是 d22abe3 收口的三处同族缺陷之外
+	// 漏改的第四处：-race + 共享机高负载下 server 启动实测可超 30s，15s 窗口
+	// 只会在负载尖峰时把就绪等待误判成失败。
+	waitTCPUp(t, "http server", "127.0.0.1:"+strconv.Itoa(httpPort), 60*time.Second).Close()
 
 	// 发送 SIGINT 触发优雅关闭（Windows 无进程信号机制，整测试跳过）
 	signalSelfForShutdown(t)
