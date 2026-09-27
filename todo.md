@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-09-27 C++（Linux）覆盖率扫描续：AgentConfig 45% → 100%（24 例 + saveToFile 丢 [performance] 节根治）
+
+todo.md 真机两项继续搁置。双端扫描：Go 侧 `go test -cover` total **98.5%**（<80% 仅 7 个函数：`remoteticket.NewManager` 一行包装 0%——测试走 `newManagerWithSweep` 短周期 seam；guacamole/recordings 6 个 70~75% 分支需 guacd 基础设施，环境依赖），不构成实质缺口；C++ 侧 gcovr（TOTAL 86.0%）最低且无平台耦合的自有模块锁定 `apps/runtime/src/agent_config.cpp` **45%（78 行未覆盖）**——能力/模式派生、loadFromFile、debugger/logging/performance 节解析、saveToFile 整段零覆盖，而它们是 agent.cpp 的真实生产路径（`Agent::initialize` 派生 RunMode、远程配置写回 `saveToFile`）。
+
+- **测试**：新增 `apps/runtime/tests/agent_config_test.cpp` 24 例（tests/CMakeLists 接线，Windows CI 全量参与——纯文件 I/O 无平台分支、无 loopback 跳过、无真机观察项）：能力派生 6 例（默认 Hybrid、各单能力派生、仅 LocalIpc 与全关 → Unknown、Hybrid 优先于 Standalone 判定序）；loadFromString 13 例（[global] 别名、remote/debugger/logging/performance/standalone 全键、引号内 `#` 保留、未配对引号不剥、未知节/键静默忽略、类型不匹配忽略（当前容错契约）、超范围整数抛出由 `Agent::initialize` catch 兜底、文件不存在抛错带路径、不可写目录 false）；文件往返 5 例（全节段 save→load 相等、默认配置首跑写盘可读回、模式一致）。
+- **连带根治——saveToFile 漏写 `[performance]`**：解析端支持该节三整型键而写盘端不输出，用户手调的性能配置会在 runtime 首次配置落盘（`Agent::applyRemoteConfig` → `saveToFile`，agent.cpp:326/336）时被**静默抹掉**。补写 [performance] 节与解析端对称；回归钉 `SaveToFilePersistsPerformanceSection` 同时断言文件内容与读回值。
+- **覆盖率**（gcovr 行）：agent_config.cpp 45%（64/142）→ **100%**（147/147，含修复新增 5 行）；**TOTAL 86.0%→86.5%**（14366/16599）。
+- **验证**：新增 24 例全绿；build/ 全量 ctest **2355/2355**（2331+24）；插桩 build-cov 全量 ctest 2355/2355；Go `-race -count=1 -timeout 90m` 14 包全绿；dashboard jest 420、GUI vitest 511 全绿。
+
+---
+
 ## 2026-09-27 C++（Linux）覆盖率缺口收口：IPC/RPC 控制面约 405 行 0% → 52 例单测（顺带根治六个真实缺陷）
 
 todo.md 剩余两条真机观察项继续搁置，覆盖率方向继续推进。上轮收掉 agentcore 后，gcovr 报告里剔除「真机/人工观察」与「OpenSSL 内部失败分支不可达（crypt.cpp，无故障注入无解，登记假设）」后剩余最大缺口锁定 GUI ⇄ runtime 控制面集群：local_ipc_server / script_handler / macro_handler / config_handler / event_log_sink 合计约 340 行 **0%、零测试**（早已编进 runtime_tests 二进制但从未被驱动），system_handler 余 29 行 55%。

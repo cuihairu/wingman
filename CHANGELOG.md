@@ -9,7 +9,16 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 411 个提交（feat 73 / fix 142 / docs 72 / test 52 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 413 个提交（feat 73 / fix 142 / docs 72 / test 53 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-27，C++（Linux）覆盖率扫描续：AgentConfig 45% → 100%（24 例），连带根治 saveToFile 丢失 [performance] 节）
+
+- **双端扫描定位**：Go 侧 `go test -cover`（total **98.5%**）低于 80% 的仅 7 个函数——`remoteticket.NewManager` 0%（一行包装，测试走 `newManagerWithSweep` 短周期 seam）+ guacamole/recordings handler 6 个 70~75% 分支（需 guacd 基础设施，属环境依赖），不构成实质缺口；C++ 侧 gcovr（TOTAL 86.0%）最低且无平台耦合的自有模块为 `apps/runtime/src/agent_config.cpp` **45%（78 行未覆盖）**——能力/模式派生、loadFromFile、节域解析的 debugger/logging/performance 分支、saveToFile 整段为零覆盖，而它们是 agent.cpp 的真实生产路径（`Agent::initialize` 派生 RunMode、远程配置写回 `saveToFile`）。
+- **新增 `apps/runtime/tests/agent_config_test.cpp` 24 例**：能力派生 6 例（默认 Hybrid、仅远端 Remote、仅单机 Standalone、仅 LocalIpc→Unknown、全关 Unknown、Hybrid 优先于 Standalone 的判定序）；loadFromString 13 例（空串全默认、[global] 别名、remote 五整型键+两字符串键、debugger/logging/performance/standalone 全键、引号内 `#` 保留、未配对引号不剥、未知节/键静默忽略、int 键配非数字串走字符串分支被忽略（当前容错契约）、超范围整数 std::stoi 抛出且 `Agent::initialize` 的 catch 兜底、文件不存在抛错带路径、不可写目录 save 返回 false）；文件往返 5 例（全节段 save→load 相等、**[performance] 回归钉**、默认配置首跑写盘可读回、模式一致）。
+- **连带根治——saveToFile 漏写 `[performance]`**：loadFromString 支持该节三整型键而 saveToFile 不写回，用户手调的性能配置会在 runtime 首次配置落盘（`Agent::applyRemoteConfig` → `saveToFile`）时被**静默抹掉**。补写 [performance] 节（3 行），与解析端对称；回归钉 `SaveToFilePersistsPerformanceSection` 同时断言文件内容含该节与读回值相等。
+- **平台说明**：纯 std::filesystem/fstream，Windows CI 全量参与（无 loopback 跳过、无真机观察项）；解析器断言一律钉「当前实现的真实契约」（容错忽略而非报错），不写理想化用例。
+- **覆盖率**（gcovr 行）：`agent_config.cpp` 45%（64/142）→ **100%**（147/147，含修复新增 5 行）；TOTAL 86.0%→**86.5%**（14366/16599）。
+- **验证**：新增 24 例 5ms 全绿；build/ 全量 ctest **2355/2355**（2331+24 精确吻合）；插桩 build-cov 全量 ctest 2355/2355；Go `-race -count=1 -timeout 90m` 14 包全绿；dashboard jest 420、GUI vitest 511 全绿。
 
 ### test（2026-09-27，C++（Linux）覆盖率缺口收口：IPC/RPC 控制面约 405 行 0% → 52 例单测，六缺陷根治）
 
