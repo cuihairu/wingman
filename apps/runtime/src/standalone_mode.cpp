@@ -109,10 +109,11 @@ bool StandaloneMode::start() {
 }
 
 void StandaloneMode::stop() {
-    if (!running_.load()) {
-        return;
-    }
-
+    // running_ 只代表 start() 生命周期：仅 LocalIpc 能力的 runtime 不会调用
+    // start()（见 agent.cpp 的能力分支），但 GUI 仍可经 script.* handler 在本
+    // 实例上加载脚本，条目登记在进程级全局 ScriptManager 中。stop/析构必须
+    // 无条件清空登记，否则脚本连同引擎永久泄漏在全局单例里（原实现在此
+    // 提前 return，跳过了全部清理）。
     spdlog::info("Stopping StandaloneMode");
 
     std::vector<std::string> ids;

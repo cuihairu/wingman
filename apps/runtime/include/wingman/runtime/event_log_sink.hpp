@@ -22,7 +22,11 @@ public:
 
 protected:
 	void sink_it_(const spdlog::details::log_msg& msg) override {
-		if (static_cast<std::size_t>(msg.level) > max_level_) {
+		// spdlog 级别数值：trace=0 < debug=1 < info=2 < warn=3 < err=4。
+		// 低于配置级别的（如 info 下限时的 debug）不下发；原实现写成
+		// `> max_level_`，方向反了——warn/error 全被滤掉、GUI 日志面板
+		// 永远收不到告警与错误，反而放行低级别噪音。
+		if (static_cast<std::size_t>(msg.level) < max_level_) {
 			return; // 仅下发 >= 配置级别（info/warn/error）的日志
 		}
 

@@ -245,7 +245,17 @@ bool LocalIpcServer::start() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
 
-            channel->disconnect();
+            // 与 stop() 的 currentChannel->disconnect() 竞态收口：两条路径都会
+            // 对同一通道调用 disconnect，并发进入会让两边同时 join 同一
+            // receiveThread（双重 pthread_join = UB，实测间歇挂死）。统一在
+            // channelMutex 下串行；锁内复查 stopping，停机路径交由 stop()
+            // 抢先断开，此处跳过即可（通道 disconnect 幂等，重复调用无害）。
+            {
+                std::lock_guard<std::mutex> lock(impl_->channelMutex);
+                if (!impl_->stopping.load()) {
+                    channel->disconnect();
+                }
+            }
 
             // GUI 客户端下线（正常断开或链路故障）：仅在实际会话结束时上报
             if (clientConnected_.exchange(false)) {

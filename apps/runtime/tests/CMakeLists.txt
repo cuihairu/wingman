@@ -8,6 +8,7 @@ add_executable(runtime_tests
     screen_runtime_test.cpp
     screenshot_handler_test.cpp
     system_handler_test.cpp
+    rpc_ipc_test.cpp
     cli_test_stubs.cpp
     ../src/cli.cpp
     ../src/packer.cpp
@@ -30,6 +31,7 @@ add_executable(runtime_tests
 
 target_include_directories(runtime_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/lua/include
     ${WINGMAN_GENERATED_DIR}
 )
 
@@ -42,6 +44,12 @@ target_link_libraries(runtime_tests PRIVATE
     nlohmann_json::nlohmann_json
     spdlog::spdlog_header_only
 )
+
+# rpc_ipc_test 的脚本生命周期用例需要真实 Lua 引擎（registerLuaEngine()
+# 自注册进 ScriptEngineFactory，与 lib/wingman/tests 的接线方式一致）
+if(TARGET wingman::lua)
+    target_link_libraries(runtime_tests PRIVATE wingman::lua)
+endif()
 
 include(GoogleTest)
 gtest_discover_tests(runtime_tests DISCOVERY_MODE PRE_TEST)

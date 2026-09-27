@@ -20,8 +20,14 @@ void registerMacroHandlers(RpcDispatcher& dispatcher, MacroRecorder& recorder) {
 	});
 
 	dispatcher.registerHandler("macro.play", [&recorder](const json& params) -> json {
-		const int speed = params.value("speed", 100);
-		const int repeat = params.value("repeat", 1);
+		// RPC 边界统一钳制：speed=0 直达 playback 的整数除法触发 SIGFPE
+		// （进程崩溃），负 speed 使 (delay*100)/speed 得负值、赋给
+		// unsigned long 后下溢为巨量延迟挂死回放；repeat 非正数无语义。
+		// 平台 recorder 实现（X11/Win32/Cocoa）共用该契约，在此单点收口。
+		int speed = params.value("speed", 100);
+		int repeat = params.value("repeat", 1);
+		speed = speed < 1 ? 1 : speed;
+		repeat = repeat < 1 ? 1 : repeat;
 		// 回放在调用线程同步执行（含事件间 sleep）；GUI 侧应异步调用避免阻塞。
 		recorder.playback(speed, repeat);
 		return {{"success", true}};

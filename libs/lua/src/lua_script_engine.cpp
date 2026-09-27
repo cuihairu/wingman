@@ -61,13 +61,19 @@ bool LuaScriptEngine::initialize(const script::EngineConfig& config) {
 		// 创建 wingman 表用于存放所有模块
 		lua_["wingman"] = lua_.create_table();
 
-		// 设置 require("wingman") 支持
-		lua_.script(R"(
-			local wingmanTable = wingman
-			package.preload["wingman"] = function()
-				return wingmanTable
-			end
-		)");
+		// 设置 require("wingman") 支持。
+		// 沙箱模式必须跳过：package 从未打开且被 applySandbox 置 nil、require
+		// 亦被禁用，此钩子既不可达也不需要；原实现无条件执行，prelude 引用
+		// nil 的 package 直接抛错，导致沙箱脚本（GUI script.start 的唯一路径，
+		// StandaloneMode 强制 sandboxed=true）100% 启动失败。
+		if (!config.sandboxed) {
+			lua_.script(R"(
+				local wingmanTable = wingman
+				package.preload["wingman"] = function()
+					return wingmanTable
+				end
+			)");
+		}
 
 		initialized_ = true;
 		return true;
