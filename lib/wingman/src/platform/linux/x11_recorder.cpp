@@ -15,6 +15,7 @@
 #include <sys/time.h>
 
 // X11 Record Extension
+#include "x11_display.hpp"  // openX11Display：瞬态 accept 拒绝重试
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
@@ -142,9 +143,9 @@ void MacroRecorder::start() {
     m_paused = false;
     m_startTime = getTickCount();
 
-    // Open two Display connections
-    Display* controlDisplay = XOpenDisplay(nullptr);
-    Display* dataDisplay = XOpenDisplay(nullptr);
+    // Open two Display connections（断开→重连竞态会瞬态拒绝，重试见 x11_display.hpp）
+    Display* controlDisplay = platform::linux::openX11Display(nullptr);
+    Display* dataDisplay = platform::linux::openX11Display(nullptr);
 
     if (!controlDisplay || !dataDisplay) {
         m_recording = false;

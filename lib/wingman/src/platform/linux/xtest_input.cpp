@@ -1,6 +1,7 @@
 #ifdef __linux__
 
 #include "wingman/platform/iinput.hpp"
+#include "x11_display.hpp"
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
 #include <X11/keysym.h>
@@ -17,7 +18,7 @@ public:
 
     bool initialize(const InputConfig& config) override {
         config_ = config;
-        display_ = XOpenDisplay(nullptr);
+        display_ = openX11Display(nullptr);  // 瞬态 accept 拒绝重试，见 x11_display.hpp
         if (!display_) {
             spdlog::error("XTestInput: failed to open X display");
             return false;

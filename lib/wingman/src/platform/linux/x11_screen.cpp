@@ -1,6 +1,7 @@
 #ifdef __linux__
 
 #include "wingman/platform/iscreen.hpp"
+#include "x11_display.hpp"
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
 #include <X11/extensions/Xrandr.h>
@@ -27,7 +28,7 @@ public:
     ~X11Screen() override { shutdown(); }
 
     bool initialize() override {
-        display_ = XOpenDisplay(nullptr);
+        display_ = openX11Display(nullptr);  // 瞬态 accept 拒绝重试，见 x11_display.hpp
         if (!display_) {
             spdlog::error("X11Screen: failed to open X display");
             return false;

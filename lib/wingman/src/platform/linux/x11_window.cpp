@@ -1,6 +1,7 @@
 #ifdef __linux__
 
 #include "wingman/platform/iwindow.hpp"
+#include "x11_display.hpp"
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -29,7 +30,8 @@ public:
     ~X11Window() override { shutdown(); }
 
     bool initialize() override {
-        display_ = XOpenDisplay(nullptr);
+        // 瞬态 accept 拒绝（断开→重连竞态，见 x11_display.hpp），重试收口
+        display_ = openX11Display(nullptr);
         if (!display_) {
             spdlog::error("X11Window: failed to open X display");
             return false;

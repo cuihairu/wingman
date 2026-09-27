@@ -2,6 +2,7 @@
 
 #include "wingman/platform/icapture.hpp"
 #include "wingman/screen.hpp"
+#include "x11_display.hpp"
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/Xrandr.h>
@@ -28,7 +29,7 @@ public:
 
     bool initialize(const CaptureConfig& config) override {
         config_ = config;
-        display_ = XOpenDisplay(nullptr);
+        display_ = openX11Display(nullptr);  // 瞬态 accept 拒绝重试，见 x11_display.hpp
         if (!display_) {
             spdlog::error("X11Capture: failed to open X display");
             return false;
