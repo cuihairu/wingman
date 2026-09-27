@@ -30,6 +30,43 @@ std::string encryptAES(const std::string& plaintext, const std::string& password
 /// @return Decrypted plaintext, empty on error
 std::string decryptAES(const std::string& ciphertext, const std::string& password);
 
+/// ========== AES-256-GCM (raw bytes, caller-supplied key) ==========
+///
+/// 与 encryptAES/decryptAES 的分工：那两个是「口令进、base64 串出」的自描述格式
+/// （salt + IV 内嵌在载荷里，PBKDF2 迭代次数固定）。下面这对只吃/吐原始字节，
+/// 密钥与 IV 由调用方给出——供需要自定义密钥派生与二进制头部布局的格式使用
+/// （如 runtime 打包资源 PACK_HEADER，见 apps/runtime/include/wingman/runtime/resource_pack.hpp）。
+///
+
+/// Encrypt with AES-256-GCM using a caller-provided key
+///
+/// @param key 32-byte key (AES-256)
+/// @param iv Initialization vector, 1..16 bytes (12 recommended by GCM)
+/// @param plaintext Data to encrypt (may be empty)
+/// @return ciphertext || 16-byte auth tag
+/// @throws std::invalid_argument on wrong key/iv length
+/// @throws std::runtime_error when an OpenSSL call fails
+///
+/// 长度上限：明文按 int 传给 OpenSSL EVP_*Update，故单次调用需 < 2 GiB。
+/// 本函数的调用方是 PE 资源里的脚本载荷（DWORD 尺寸字段、实际量级为 KB），
+/// 不做运行时守卫——真要越界，packer 在读取脚本文件时就会先失败。
+std::vector<uint8_t> aesGcmEncrypt(const std::vector<uint8_t>& key,
+                                   const std::vector<uint8_t>& iv,
+                                   const std::vector<uint8_t>& plaintext);
+
+/// Decrypt AES-256-GCM data and verify the auth tag
+///
+/// @param key 32-byte key used for encryption
+/// @param iv Initialization vector used for encryption
+/// @param ciphertextWithTag ciphertext || 16-byte auth tag
+/// @return plaintext (may be empty)
+/// @throws std::invalid_argument on wrong key/iv/input length
+/// @throws std::runtime_error when authentication fails (wrong key or tampered
+///         data) or an OpenSSL call fails
+std::vector<uint8_t> aesGcmDecrypt(const std::vector<uint8_t>& key,
+                                   const std::vector<uint8_t>& iv,
+                                   const std::vector<uint8_t>& ciphertextWithTag);
+
 /// ========== Key Derivation ==========
 
 /// Derive a key from password using PBKDF2

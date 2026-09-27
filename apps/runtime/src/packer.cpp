@@ -1,5 +1,7 @@
 #include "wingman/runtime/packer.hpp"
+#include "wingman/runtime/resource_pack.hpp"
 #include <spdlog/spdlog.h>
+#include <algorithm>  // std::min（显式包含，不依赖传递包含）
 #include <fstream>
 #include <sstream>
 #include <cstring>
@@ -7,7 +9,6 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#include <wincrypt.h>
 #include <imagehlp.h>
 #include <shlobj.h>
 #pragma comment(lib, "imagehlp.lib")
@@ -23,211 +24,58 @@ namespace wingman::runtime {
 constexpr const char* WM_SCRIPT_RESOURCE = "WM_SCRIPT";
 constexpr const char* WM_MANIFEST_RESOURCE = "WM_MANIFEST";
 
-#ifdef _WIN32
-struct CryptoProviderHandle {
-    HCRYPTPROV value = 0;
-    ~CryptoProviderHandle() {
-        if (value) {
-            CryptReleaseContext(value, 0);
+namespace {
+
+/// 简化 LZ 压缩（LZ4 风格，非严格兼容）；与 resource_loader.cpp 的解压互为逆操作。
+/// 压缩不省字节时原样返回——调用方按「长度是否变短」决定是否置 PACK_FLAG_COMPRESSED。
+std::vector<uint8_t> compressPayload(const std::vector<uint8_t>& data) {
+    // 简单实现：使用重复序列压缩
+    std::vector<uint8_t> compressed;
+    size_t i = 0;
+
+    while (i < data.size()) {
+        // 查找重复序列
+        size_t maxRepeat = 0;
+        size_t repeatPos = 0;
+
+        for (size_t j = 1; j < 128 && j <= i; j++) {
+            size_t count = 0;
+            while (i + count < data.size() && count < 127 &&
+                   data[i - j] == data[i + count]) {
+                count++;
+            }
+            if (count > maxRepeat) {
+                maxRepeat = count;
+                repeatPos = j;
+            }
+        }
+
+        if (maxRepeat >= 4) {
+            // 写入重复引用
+            compressed.push_back(0x80 | static_cast<uint8_t>(repeatPos));  // 高位表示重复
+            compressed.push_back(static_cast<uint8_t>(maxRepeat));
+            i += maxRepeat;
+        } else {
+            // 写入原始字节（最多 127 字节）
+            size_t literalCount = std::min(size_t(127), data.size() - i);
+            compressed.push_back(static_cast<uint8_t>(literalCount));
+            compressed.insert(compressed.end(), data.begin() + i, data.begin() + i + literalCount);
+            i += literalCount;
         }
     }
-    HCRYPTPROV* out() { return &value; }
-    operator HCRYPTPROV() const { return value; }
-};
 
-struct CryptoHashHandle {
-    HCRYPTHASH value = 0;
-    ~CryptoHashHandle() {
-        if (value) {
-            CryptDestroyHash(value);
-        }
-    }
-    HCRYPTHASH* out() { return &value; }
-    operator HCRYPTHASH() const { return value; }
-};
+    spdlog::debug("Compression: {} -> {} bytes", data.size(), compressed.size());
+    return compressed.size() < data.size() ? compressed : data;
+}
 
-struct CryptoKeyHandle {
-    HCRYPTKEY value = 0;
-    ~CryptoKeyHandle() {
-        if (value) {
-            CryptDestroyKey(value);
-        }
-    }
-    HCRYPTKEY* out() { return &value; }
-    operator HCRYPTKEY() const { return value; }
-};
-#endif
-
-// ========== 加密头部 (32 字节) ==========
-struct PACK_HEADER {
-    uint8_t magic[4];           // "WMSP" (WingMan Script Pack)
-    uint32_t version;           // 版本号
-    uint32_t flags;             // 标志位
-    uint64_t originalSize;      // 原始大小
-    uint64_t compressedSize;    // 压缩后大小
-    uint8_t keyHash[32];        // 密钥哈希（SHA-256 of encryption key, for verification only - NOT the actual key）
-    uint8_t dataHash[32];       // 数据哈希（SHA-256 of original data for integrity verification）
-    uint8_t reserved[64];       // 保留
-};
-
-// ========== 标志位定义 ==========
-constexpr uint32_t PACK_FLAG_ENCRYPTED = 0x01;  // 数据已加密
-constexpr uint32_t PACK_FLAG_COMPRESSED = 0x02;  // 数据已压缩
-
+} // namespace
 
 class Packer::Impl {
 public:
     PackerOptions options;
 
-    // AES-256 加密
-    std::vector<uint8_t> aesEncrypt(const std::vector<uint8_t>& plaintext, const std::vector<uint8_t>& key) {
-#ifdef _WIN32
-        std::vector<uint8_t> ciphertext;
-
-        CryptoProviderHandle hProv;
-        CryptoKeyHandle hKey;
-        CryptoHashHandle hHash;
-
-        // 获取加密服务提供者
-        if (!CryptAcquireContextW(hProv.out(), NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
-            throw std::runtime_error("Failed to acquire crypto context");
-        }
-
-        // 创建哈希对象
-        if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, hHash.out())) {
-            throw std::runtime_error("Failed to create hash");
-        }
-
-        // 导入密钥
-        if (!CryptHashData(hHash, key.data(), static_cast<DWORD>(key.size()), 0)) {
-            throw std::runtime_error("Failed to hash key");
-        }
-
-        // 从哈希创建密钥
-        struct AES_KEY_BLOB {
-            BLOBHEADER header;
-            DWORD keySize;
-            BYTE keyBytes[32];
-        } keyBlob;
-
-        keyBlob.header.bType = PLAINTEXTKEYBLOB;
-        keyBlob.header.bVersion = 2;
-        keyBlob.header.reserved = 0;
-        keyBlob.header.aiKeyAlg = CALG_AES_256;
-        keyBlob.keySize = 32;
-        std::memcpy(keyBlob.keyBytes, key.data(), 32);
-
-        if (!CryptImportKey(hProv, reinterpret_cast<BYTE*>(&keyBlob),
-                           sizeof(AES_KEY_BLOB), 0, 0, hKey.out())) {
-            throw std::runtime_error("Failed to import key");
-        }
-
-        // AES 块大小
-        constexpr size_t AES_BLOCK_SIZE = 16;
-        size_t paddedSize = plaintext.size() + (AES_BLOCK_SIZE - (plaintext.size() % AES_BLOCK_SIZE));
-        std::vector<uint8_t> padded(paddedSize, 0);
-        std::memcpy(padded.data(), plaintext.data(), plaintext.size());
-
-        // PKCS7 填充
-        uint8_t paddingValue = AES_BLOCK_SIZE - (plaintext.size() % AES_BLOCK_SIZE);
-        for (size_t i = plaintext.size(); i < paddedSize; i++) {
-            padded[i] = paddingValue;
-        }
-
-        ciphertext.resize(paddedSize);
-
-        // 加密（使用 CBC 模式，这里简化为 ECB）
-        DWORD dataLen = static_cast<DWORD>(paddedSize);
-        if (!CryptEncrypt(hKey, 0, TRUE, 0, ciphertext.data(), &dataLen, static_cast<DWORD>(paddedSize))) {
-            throw std::runtime_error("Failed to encrypt data");
-        }
-
-        return ciphertext;
-#else
-        (void)plaintext;
-        (void)key;
-        throw std::runtime_error("Script encryption is not supported on this platform");
-#endif
-    }
-
-    // SHA256 哈希
-    std::vector<uint8_t> sha256(const std::vector<uint8_t>& data) {
-#ifdef _WIN32
-        CryptoProviderHandle hProv;
-        CryptoHashHandle hHash;
-        std::vector<uint8_t> hash(32);
-
-        if (!CryptAcquireContextW(hProv.out(), NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
-            throw std::runtime_error("Failed to acquire crypto context");
-        }
-
-        if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, hHash.out())) {
-            throw std::runtime_error("Failed to create hash");
-        }
-
-        if (!CryptHashData(hHash, data.data(), static_cast<DWORD>(data.size()), 0)) {
-            throw std::runtime_error("Failed to hash data");
-        }
-
-        DWORD hashLen = 32;
-        if (!CryptGetHashParam(hHash, HP_HASHVAL, hash.data(), &hashLen, 0)) {
-            throw std::runtime_error("Failed to get hash value");
-        }
-
-        return hash;
-#else
-        // 非 Windows 平台：简单哈希
-        std::vector<uint8_t> hash(32, 0);
-        for (size_t i = 0; i < data.size(); i++) {
-            hash[i % 32] ^= data[i];
-        }
-        return hash;
-#endif
-    }
-
-    // 简单压缩（LZ4 风格，简化版）
-    std::vector<uint8_t> compress(const std::vector<uint8_t>& data) {
-        // 简单实现：使用重复序列压缩
-        std::vector<uint8_t> compressed;
-        size_t i = 0;
-
-        while (i < data.size()) {
-            // 查找重复序列
-            size_t maxRepeat = 0;
-            size_t repeatPos = 0;
-
-            for (size_t j = 1; j < 128 && j <= i; j++) {
-                size_t count = 0;
-                while (i + count < data.size() && count < 127 &&
-                       data[i - j] == data[i + count]) {
-                    count++;
-                }
-                if (count > maxRepeat) {
-                    maxRepeat = count;
-                    repeatPos = j;
-                }
-            }
-
-            if (maxRepeat >= 4) {
-                // 写入重复引用
-                compressed.push_back(0x80 | repeatPos);  // 高位表示重复
-                compressed.push_back(static_cast<uint8_t>(maxRepeat));
-                i += maxRepeat;
-            } else {
-                // 写入原始字节（最多 127 字节）
-                size_t literalCount = std::min(size_t(127), data.size() - i);
-                compressed.push_back(static_cast<uint8_t>(literalCount));
-                compressed.insert(compressed.end(), data.begin() + i, data.begin() + i + literalCount);
-                i += literalCount;
-            }
-        }
-
-        spdlog::debug("Compression: {} -> {} bytes", data.size(), compressed.size());
-        return compressed.size() < data.size() ? compressed : data;
-    }
-
     // 更新 PE 资源
-    bool updateResource(const std::vector<uint8_t>& data) {
+    bool updateResource(const std::vector<uint8_t>& scriptData) {
 #ifdef _WIN32
         std::wstring outputPathW;
         outputPathW.assign(options.outputPath.begin(), options.outputPath.end());
@@ -239,54 +87,16 @@ public:
             return false;
         }
 
-        // 构建完整资源数据（头部 + 数据）
-        std::vector<uint8_t> resourceData;
-        PACK_HEADER header = {};
-        std::memcpy(header.magic, "WMSP", 4);
-        header.version = 1;
-        header.flags = 0;
-        header.originalSize = data.size();  // 始终记录原始大小
-
-        // 计算原始数据的哈希（用于完整性验证）
-        // 注意：hash 必须基于原始数据，而不是加密/压缩后的数据
-        std::vector<uint8_t> hash = sha256(data);
-        std::memcpy(header.dataHash, hash.data(), std::min(hash.size(), size_t(32)));
-
-        std::vector<uint8_t> payload = data;
-        if (options.encrypt) {
-            // 生成密钥
-            std::vector<uint8_t> key = generateKeyImpl();
-            payload = aesEncrypt(data, key);
-            // Security: Store hash of key instead of plaintext key for verification only.
-            // Actual encryption key must be provided externally via password for real security.
-            // This design makes encryption meaningful only when used with password protection.
-            std::vector<uint8_t> keyHash = sha256(key);
-            std::memcpy(header.keyHash, keyHash.data(), std::min(keyHash.size(), size_t(32)));
-            header.flags |= PACK_FLAG_ENCRYPTED;
-        }
-
-        if (options.compress) {
-            // Track size before compression for flag setting
-            size_t preCompressSize = payload.size();
-            payload = compress(payload);
-            // Only set compression flag if compression actually reduced size
-            if (payload.size() < preCompressSize) {
-                header.flags |= PACK_FLAG_COMPRESSED;
-            }
-        }
-
-        header.compressedSize = payload.size();
-
-        // 将头部和数据合并
-        resourceData.resize(sizeof(PACK_HEADER) + payload.size());
-        std::memcpy(resourceData.data(), &header, sizeof(PACK_HEADER));
-        std::memcpy(resourceData.data() + sizeof(PACK_HEADER), payload.data(), payload.size());
+        // 完整资源数据（头部 + 负载）由平台无关的同一条代码产出：
+        // PE 嵌入只是给这份字节流换个容器，Linux 上测的字节语义与此处完全一致。
+        const std::vector<uint8_t> resourceData =
+            Packer::buildResourceBytes(scriptData, options.encrypt, options.compress, options.password);
 
         // 添加资源
         BOOL result = UpdateResourceA(
             hUpdate,
-            RT_RCDATA,                    // 资源类型
-            MAKEINTRESOURCEA(100),        // 资源 ID
+            RT_RCDATA,                                    // 资源类型
+            MAKEINTRESOURCEA(PACK_PE_RESOURCE_ID),        // 资源 ID（与读侧同源常量）
             MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL),
             resourceData.data(),
             static_cast<DWORD>(resourceData.size())
@@ -307,6 +117,10 @@ public:
         spdlog::info("Resource embedded successfully: {} bytes", resourceData.size());
         return true;
 #else
+        // PE 资源写入（BeginUpdateResource/UpdateResource）不存在非 Windows 对应物：
+        // ELF 侧要产出可分发的自包含可执行文件得另设容器方案，未实现即明确失败，
+        // 不静默写出一份「看起来成功、实际没嵌脚本」的产物。
+        (void)scriptData;
         spdlog::error("Resource update not supported on this platform");
         return false;
 #endif
@@ -366,24 +180,6 @@ public:
         return true;
 #endif
     }
-
-    std::vector<uint8_t> generateKeyImpl() {
-        std::vector<uint8_t> key(32);
-#ifdef _WIN32
-        CryptoProviderHandle hProv;
-        if (!CryptAcquireContextW(hProv.out(), NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
-            throw std::runtime_error("Failed to acquire crypto context");
-        }
-        if (!CryptGenRandom(hProv, 32, key.data())) {
-            throw std::runtime_error("Failed to generate encryption key");
-        }
-#else
-        for (size_t i = 0; i < 32; i++) {
-            key[i] = static_cast<uint8_t>(rand() % 256);
-        }
-#endif
-        return key;
-    }
 };
 
 // ========== Packer 实现 ==========
@@ -412,11 +208,13 @@ PackerResult Packer::build() {
         spdlog::info("=== Wingman Packer ===");
         spdlog::info("Script: {}", impl_->options.scriptPath);
         spdlog::info("Output: {}", impl_->options.outputPath);
+        // 口令只参与密钥派生：不进日志、不写进产物（产物里只有 salt/IV 与密钥指纹）
         spdlog::info("Encrypt: {}", impl_->options.encrypt);
         spdlog::info("Compress: {}", impl_->options.compress);
 
-        if (impl_->options.encrypt) {
-            result.message = "Encrypted standalone resources are not supported yet; build without encryption";
+        if (impl_->options.encrypt && impl_->options.password.empty()) {
+            // 加密产物没有口令就是永久打不开的字节流，故在动手（复制 stub）之前硬拒。
+            result.message = "Encryption requires a password: pass --password (or set WINGMAN_PACK_PASSWORD)";
             spdlog::error("{}", result.message);
             return result;
         }
@@ -526,13 +324,57 @@ std::vector<uint8_t> Packer::compileToBytecode(const std::string& source) {
 #endif
 }
 
-std::vector<uint8_t> Packer::encryptData(const std::vector<uint8_t>& data) {
-    std::vector<uint8_t> key = generateKey();
-    return impl_->aesEncrypt(data, key);
-}
+std::vector<uint8_t> Packer::buildResourceBytes(const std::vector<uint8_t>& scriptData,
+                                                bool encrypt,
+                                                bool compress,
+                                                const std::string& password) {
+    PACK_HEADER header = {};
+    setPackMagic(header);
+    header.version = PACK_FORMAT_VERSION;
+    header.flags = 0;
+    header.originalSize = scriptData.size();  // 始终记录原始大小
 
-std::vector<uint8_t> Packer::compressData(const std::vector<uint8_t>& data) {
-    return impl_->compress(data);
+    // dataHash 必须基于原始明文——加密/压缩后的字节不参与完整性定义
+    const std::vector<uint8_t> hash = sha256Bytes(scriptData);
+    std::memcpy(header.dataHash, hash.data(), std::min(hash.size(), sizeof(header.dataHash)));
+
+    std::vector<uint8_t> payload = scriptData;
+
+    // 变换顺序是 compress → encrypt（读侧镜像：decrypt → decompress）。
+    // 反过来的话密文里没有字节连串可压，压缩永远不省字节 ——「加密 + 压缩」的组合
+    // 会静默退化成「只加密」（v2 之前正是这个顺序，但当时 build() 拒绝 encrypt，
+    // 故不存在依赖旧顺序的产物）。压缩明文只泄露「明文可压缩程度」这一弱信号，
+    // 且这里是静态一次性压缩、无攻击者可参与的自适应压缩，不构成 CRIME 类面。
+    if (compress) {
+        // 只有真的压小才置位：packer 在没省字节时原样返回，读侧据标志决定是否解压
+        const size_t preCompressSize = payload.size();
+        payload = compressPayload(payload);
+        if (payload.size() < preCompressSize) {
+            header.flags |= PACK_FLAG_COMPRESSED;
+        }
+    }
+
+    if (encrypt) {
+        // 口令 → PBKDF2 → AES-256 密钥；salt/IV 随机生成并写进头部（同口令两次打包密文不同）。
+        // derivePackKey 对空口令直接抛错：没有口令的加密产物再也解不开，宁可不产出。
+        const PackCryptoParams params = makePackCryptoParams();
+        const std::vector<uint8_t> key = derivePackKey(password, params);
+
+        setPackCryptoParams(header, params);
+        payload = wingman::crypt::aesGcmEncrypt(key, packCryptoIv(params), payload);
+        // keyHash 存的是 sha256(派生密钥)——不是密钥本身，只用于加载前的口令快速校验，
+        // 真正的边界是 AES-GCM 的认证标签。
+        const std::vector<uint8_t> keyHash = packKeyFingerprint(key);
+        std::memcpy(header.keyHash, keyHash.data(), std::min(keyHash.size(), sizeof(header.keyHash)));
+        header.flags |= PACK_FLAG_ENCRYPTED;
+    }
+
+    header.compressedSize = payload.size();
+
+    std::vector<uint8_t> resourceData(sizeof(PACK_HEADER) + payload.size());
+    std::memcpy(resourceData.data(), &header, sizeof(PACK_HEADER));
+    std::memcpy(resourceData.data() + sizeof(PACK_HEADER), payload.data(), payload.size());
+    return resourceData;
 }
 
 bool Packer::copyStub() {
@@ -728,14 +570,6 @@ bool Packer::setVersionInfo() {
     spdlog::warn("Version info not supported on this platform");
     return true;
 #endif
-}
-
-std::vector<uint8_t> Packer::generateKey() {
-    return impl_->generateKeyImpl();
-}
-
-std::vector<uint8_t> Packer::calculateHash(const std::vector<uint8_t>& data) {
-    return impl_->sha256(data);
 }
 
 } // namespace wingman::runtime

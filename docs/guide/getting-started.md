@@ -126,9 +126,35 @@ wingman-runtime.exe start
 # 打包单文件脚本运行时
 wingman-runtime.exe build --script script.lua --output script-runtime.exe
 
+# 加密打包（脚本源码以 AES-256-GCM 密文嵌入 PE 资源）
+wingman-runtime.exe build --script script.lua --output script-runtime.exe --password 'your-passphrase'
+
 # 帮助信息
 wingman-runtime.exe --help
 ```
+
+### 加密打包与加载
+
+`build` 的加密相关选项：
+
+| 选项 | 作用 |
+|------|------|
+| `--encrypt` | 打开加密（需要口令） |
+| `--password <p>` | 指定口令，并隐含 `--encrypt` |
+| `--no-encrypt` | 显式关闭加密（旧命令行兼容；写在 `--password` 之后即取消加密） |
+| `--no-compress` | 关闭压缩 |
+
+- 口令也可以不进命令行：`WINGMAN_PACK_PASSWORD=... wingman-runtime build --script ... --output ...`（命令行参数会留在 shell 历史与进程列表里，环境变量是更合适的默认来源）。
+- 没有口令就不允许加密：产物打不开等于永久作废，故 `--encrypt` 无口令时打包直接失败，而不是产出一个打不开的 exe。
+- 密钥由口令派生（PBKDF2-HMAC-SHA256，100000 轮迭代，随机 16 字节 salt 与 12 字节 IV 写进打包头），载荷为 AES-256-GCM 认证密文。改一个字节、换口令、或头部被篡改都会在加载时失败并给出可区分的原因（`Incorrect password` / `authentication failed` / `Hash verification failed`）。
+- 运行加密产物时从环境变量取口令：
+
+```bash
+WINGMAN_SCRIPT_PASSWORD='your-passphrase' ./script-runtime.exe
+```
+
+  口令错误或缺失时 runtime 会记录失败原因并退回普通 GUI/Agent 模式，不会执行脚本。
+- 兼容性：未加密包（新旧版本）都可被无口令加载；历史上被禁用的 v1 加密包（一次性随机密钥、只留下 `sha256(key)`）无法恢复，加载时明确拒绝并要求用 `--encrypt --password` 重新打包。
 
 ## 运行模式
 

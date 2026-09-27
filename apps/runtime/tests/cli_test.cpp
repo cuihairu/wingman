@@ -132,9 +132,16 @@ TEST(RuntimeCommandTest, BuildOptionsDefaultToUnencryptedResources) {
 
     EXPECT_FALSE(commandOptions.encrypt);
     EXPECT_FALSE(packerOptions.encrypt);
+    // 默认无口令 —— 加密是显式选择，且没有口令时打包会被拒绝
+    EXPECT_TRUE(commandOptions.password.empty());
+    EXPECT_TRUE(packerOptions.password.empty());
 }
 
-TEST(RuntimeCommandTest, PackerRejectsEncryptedResourcesUntilLoaderSupportsThem) {
+// 加密资源一度在 Packer::build() 里被整体拒绝（「loader 还不支持」）。
+// loader 现已支持口令派生密钥，那组语义随之作废：下面两条改写为
+// 「有口令放行、无口令硬拒」，字节级往返与错口令见 resource_pack_test.cpp。
+
+TEST(RuntimeCommandTest, PackerRejectsEncryptionWithoutPassword) {
     const auto tempDir = makeTempDir();
     const auto scriptPath = tempDir / "test.lua";
     const auto stubPath = tempDir / "stub.bin";
@@ -154,13 +161,52 @@ TEST(RuntimeCommandTest, PackerRejectsEncryptedResourcesUntilLoaderSupportsThem)
     options.stubPath = stubPath.string();
     options.outputPath = outputPath.string();
     options.encrypt = true;
+    options.password.clear();
 
     wingman::runtime::Packer packer(options);
     const auto result = packer.build();
 
+    // 没有口令的加密产物永久打不开，故拒绝要发生在复制 stub 之前
     EXPECT_FALSE(result.success);
-    EXPECT_NE(result.message.find("not supported"), std::string::npos);
+    EXPECT_NE(result.message.find("requires a password"), std::string::npos);
     EXPECT_FALSE(std::filesystem::exists(outputPath));
+}
+
+TEST(RuntimeCommandTest, PackerAcceptsEncryptedResourcesWhenGivenAPassword) {
+    const auto tempDir = makeTempDir();
+    const auto scriptPath = tempDir / "test.lua";
+    const auto stubPath = tempDir / "stub.bin";
+    const auto outputPath = tempDir / "out.bin";
+
+    {
+        std::ofstream script(scriptPath);
+        script << "print('ok')";
+    }
+    {
+        std::ofstream stub(stubPath, std::ios::binary);
+        stub << "stub";
+    }
+
+    wingman::runtime::PackerOptions options;
+    options.scriptPath = scriptPath.string();
+    options.stubPath = stubPath.string();
+    options.outputPath = outputPath.string();
+    options.encrypt = true;
+    options.password = "hunter2";
+
+    wingman::runtime::Packer packer(options);
+    const auto result = packer.build();
+
+    // 加密不再构成拒绝理由：剩下的唯一平台边界是 PE 资源写入本身
+    // （BeginUpdateResource/UpdateResource 无对应物），与非加密用例的边界一致。
+#ifdef _WIN32
+    EXPECT_TRUE(result.success);
+    EXPECT_TRUE(std::filesystem::exists(outputPath));
+#else
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(result.message, "Failed to embed script resource");
+    EXPECT_FALSE(std::filesystem::exists(outputPath));
+#endif
 }
 
 TEST(RuntimeCommandTest, PackerRemovesPartialOutputWhenResourceEmbeddingFails) {

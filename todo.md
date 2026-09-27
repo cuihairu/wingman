@@ -8,6 +8,23 @@
 
 ---
 
+## 2026-09-27 加密资源打包→加载闭环（PBKDF2 口令派生 + PACK_HEADER v2）
+
+全仓唯一代码 TODO（`apps/runtime/src/resource_loader.cpp` 的「Encrypted resources are not supported yet」）落地：加密资源从「两端一致禁用」变成「打包→加载真闭环」，并且第一次在 Linux 上跑通同一条链路。
+
+- **两套分叉实现收敛为一份**：`PACK_HEADER` 原先在 packer 与 loader 各抄一份 struct，两侧各有一份 `_WIN32` CryptAPI 加解密；非 Windows 分支只剩「XOR 假哈希 + `verifyHash` 恒返回 true + 一律拒绝加密」——即 Linux 上跑的加解密与完整性校验全是假的。现格式与 KDF 定义唯一化到新头 `apps/runtime/include/wingman/runtime/resource_pack.hpp`（`sizeof(PACK_HEADER)==160` 的 static_assert、reserved[] 布局、le32 读写、参数合法性判定都在一处），密码学统一走 `wingman::crypt`（OpenSSL EVP，新增原始字节 + 调用方给密钥的 `aesGcmEncrypt/aesGcmDecrypt`，供不能自描述的二进制格式用）→ Linux/macOS 上的哈希校验与加解密从此是真的。PE 资源 ID 也从两处字面量收敛为 `PACK_PE_RESOURCE_ID`。
+- **v2 格式与兼容性论证**：口令 → PBKDF2-HMAC-SHA256（100000 轮、随机 16B salt、随机 12B IV）→ AES-256-GCM（密文 || tag）；salt/IV/迭代次数写进 `reserved[0,32)`，尾字节清零。为什么升 v2 不破坏任何存量：v1 的加密密钥是打包时随机生成、只留 `sha256(key)`，构造上不可恢复，而当年 `build()` 又直接拒绝 encrypt → **合法产物里不存在 v1 加密包**；未加密包照旧写 v2（v1 读侧不解释 version/reserved，新写未加密包仍可被旧读侧加载）。v1 未加密包继续可读；未知版本一律拒绝（`Unsupported pack format version N`）；v1+ENCRYPTED 明确判为不可恢复并要求重打包，不做任何「猜密钥」回退。
+- **完整性分三层（各有不可替代的职责）**：GCM 标签是权威（错口令、改密文、改 IV 都拒）；`keyHash = sha256(派生密钥)` 只是解密**前**的口令指纹，作用是给出一条能区分「口令错」与「数据损坏」的信息（改 reserved 里的 salt → 派生密钥变 → 指纹先拒，省一次无用 AES 且不误报成磁盘损坏）；`dataHash = sha256(原始明文)` 在解密解压**后**校验，兜住「密文合法但头部被改写」这一类（把 COMPRESSED 位清掉或谎称压缩：GCM 与指纹都过，但解出的字节对不上 originalSize/dataHash）。有专门用例锁「伪造自洽 keyHash 绕过预检后仍被 GCM 拒」——预检不是安全边界。
+- **读侧 DoS 护栏**：迭代次数为 0 或 > 5000000 一律拒绝（0 让 PBKDF2 直接失败，超大值等于让加载方替打包方烧 CPU）；负载长度先按 `compressedSize` 核对，解码后按 `originalSize` 核对，头部说谎早失败早报错。
+- **让 Linux 真测到生产代码**：新增平台无关的字节级公共入口 `Packer::buildResourceBytes()` 与 `ResourceLoader::loadScriptFromBytes()`（PE 读写只是给这份字节流换容器，`BeginUpdateResource*`/`FindResourceA` 本身 Windows-only）→ 往返、错口令、篡改三类用例在非 Windows 上执行的就是生产实现本身，而不是另抄的测试副本。
+- **顺手修真缺陷：载荷变换顺序改为 compress → encrypt**（读侧镜像 decrypt → decompress）。旧顺序先加密，而此简化压缩器的匹配模型只认「同一字节连出现 ≥4 次」（`data[i - j]` 左下标不随 count 前进），密文里永远找不到字节连串 → `--encrypt --compress` 静默退化成「只加密」。v2 是新版本且历史上 encrypt 被禁，无存量产物受影响。压缩比只泄露「明文可压缩程度」这一弱信号，且是静态一次性压缩、无攻击者可参与的自适应压缩，不构成 CRIME 类面。
+- **口令来源与 CLI 语义**：打包侧 `--password <p>`（隐含 `--encrypt`）或环境变量 `WINGMAN_PACK_PASSWORD`；`--encrypt` 无口令在复制 stub **之前**硬拒（没有口令的加密产物再也打不开，宁可不产出），`--no-encrypt` 在 `--password` 之后出现即取消加密并清掉口令。运行加密产物侧读 `WINGMAN_SCRIPT_PASSWORD`（口令一律不进命令行，避免落进 shell 历史与进程列表）。`cli_test.cpp` 里原 `PackerRejectsEncryptedResourcesUntilLoaderSupportsThem` 的语义作废，改写为「有口令放行 / 无口令硬拒」两条；`main.cpp` 顺带修掉「Version/Size 恒打 0」的存量显示 bug（ResourceInfo 要解头之后才填）。
+- **本轮自决假设（非交互）**：salt 16B、IV 12B（GCM 推荐 96-bit）、100000 轮、AES-256、`keyHash` 沿用 v1 字段位与语义；ELF/Mach-O 侧的资源嵌入仍明确失败（要产出可分发单文件得另设容器方案，不在本轮范围，不静默写「看着成功其实没嵌脚本」的产物）；不加新依赖（openssl 已在 vcpkg.json）。
+- **验证**：新增 `apps/runtime/tests/resource_pack_test.cpp` 43 例（格式布局/KDF/写侧标志/参数化往返 明文+加密/负路径口令与篡改与版本）+ `lib/wingman/tests/crypt_test.cpp` +10 例（AES-GCM 原始字节对）+ cli 测试语义改写；全量 ctest **2234 例 0 红**（31 例平台性 skip；共享机 load 33~47 下复跑，Go 门 `go vet` + `go test -race ./...` 同轮全绿，integration 包在高负载下需把 `-timeout` 放到 90m 才跑得完）。
+- **本轮暴露的存量 flake（记录，未修）**：`X11PlatformTest.X11WindowCloseCenterAndWaitFamily` 在 CPU 超售时不稳（load 55~61 时 10 跑 7 红，两种形状：① `forceClose` 后子进程 5s 护栏超时——fork 子进程 `XFlush` 后未 `XSync`，父进程可能在 X server 处理建窗请求前就 XKillClient，落空则子进程困在自己的 10s select 里；② `center/close/isInitialized` 成片返回 false 的无 WM 时序依赖）。与本轮改动无关（该用例不链接也不触达打包/密码学路径），修法属独立一轮：子进程建窗后补 `XSync`、并把 5s 护栏随超售缩放（同 2026-09-27 dashboard 那轮的口径）。复测数据：load 38~48 → 6 跑 1 红；load 55~61 → 10 跑 7 红；同日另一轮全量 ctest（load ~18）同一用例为绿。
+
+---
+
 ## 2026-09-27 高负载 flake 二轮根治（窗口随 CPU 超售自适应 + 固定 sleep 清除）
 
 上一轮「固定 5s/15s 窗口」口径在更极端负载下再度假红（load ~89、20 会话并行：4 套件 11 用例，login/RemoteFileBrowser 两个新套件也红）。本轮分类复现 + 三处修复：
@@ -421,7 +438,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 | GUI scripts 页无文件管理（只能启动器式按路径加载） | `script_files.rs` 6 命令（list/read/write/delete/rename/exists + 路径安全校验）+ scripts 页文件树/预览/新建/删除 | Rust 9 单测（本机 glib/gtk/webkit2gtk 齐备，`cargo test` 可跑；Windows 为目标平台）+ vitest 18 用例 |
 | runtime 误执行 Lua 字节码无提示 | `resource_loader` `looksLikeLuaBytecode` 检测（Lua 5.x `\x1bLua` / LuaJIT `\x1bLJ`）报可读错误 | `cli_test.cpp` +6 全绿 |
 
-**设计决策（裁定不修，已记录）**：Debugger 501 直连模式为有意契约；GUI 不做内置编辑器（VS Code 统一）；PBKDF2 加密资源两端一致禁用。
+**设计决策（裁定不修，已记录）**：Debugger 501 直连模式为有意契约；GUI 不做内置编辑器（VS Code 统一）；~~PBKDF2 加密资源两端一致禁用~~（**2026-09-27 已推翻**：加密资源改走「口令派生密钥 + 打包头携带参数」，packer/loader 闭环打通、跨平台单实现，见「2026-09-27 加密资源打包→加载闭环」）。
 
 **覆盖率**：
 

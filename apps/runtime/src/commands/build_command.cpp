@@ -69,6 +69,7 @@ int buildCommand(const BuildOptions& options) {
     packerOptions.stubPath = stubPath->string();
     packerOptions.encrypt = options.encrypt;
     packerOptions.compress = options.compress;
+    packerOptions.password = options.password;
 
     // 确保输出目录存在
     std::filesystem::path outputPath(packerOptions.outputPath);

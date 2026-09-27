@@ -11,7 +11,9 @@
 #include "wingman/python/python_script_engine.hpp"
 #endif
 #include "wingman/version.hpp"
+#include <cstdlib>  // std::getenv（显式包含，不依赖传递包含）
 #include <memory>
+#include <string>
 #include <vector>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -28,16 +30,29 @@ bool runEmbeddedScript() {
 
     spdlog::info("=== Embedded Script Detected ===");
 
-    wingman::runtime::ResourceInfo info = loader.getResourceInfo();
-    spdlog::info("Version: {}", info.version);
-    spdlog::info("Original Size: {} bytes", info.originalSize);
-    spdlog::info("Compressed Size: {} bytes", info.compressedSize);
+    // 加密资源的口令只从环境取：命令行参数会进 shell 历史与进程列表，而这类产物的
+    // 卖点正是「脚本源码不落盘」。资源是否加密由 loader 解头时才知道，失败原因走回调。
+    std::string password;
+    if (const char* envPassword = std::getenv("WINGMAN_SCRIPT_PASSWORD")) {
+        password = envPassword;
+    }
 
-    auto loadedScript = loader.loadScript();
+    loader.setErrorCallback([](const std::string& message) {
+        spdlog::error("Embedded script load failed: {}", message);
+    });
+
+    auto loadedScript = loader.loadScript(password);
     if (!loadedScript) {
-        spdlog::error("Failed to load embedded script");
         return false;
     }
+
+    // 头部字段要解头之后才进 ResourceInfo，故这些元数据在加载成功后读
+    wingman::runtime::ResourceInfo info = loader.getResourceInfo();
+    spdlog::info("Version: {}{}{}", info.version,
+                 info.encrypted ? " (encrypted)" : "",
+                 info.compressed ? " (compressed)" : "");
+    spdlog::info("Original Size: {} bytes", info.originalSize);
+    spdlog::info("Stored Size: {} bytes", info.compressedSize);
 
     spdlog::info("Script loaded: {} bytes{}", loadedScript->data.size(),
                  loadedScript->isBytecode ? " (Lua bytecode)" : "");

@@ -4,6 +4,7 @@
 #include "wingman/runtime/commands/script_command.hpp"
 #include "wingman/runtime/commands/build_command.hpp"
 
+#include <cstdlib>  // std::getenv（WINGMAN_PACK_PASSWORD）
 #include <iostream>
 #include <string_view>
 
@@ -21,8 +22,11 @@ void printUsage() {
         << "  stop\n"
         << "  status\n"
         << "  script  <script-path> [args...]\n"
-        << "  build   --script|-s <path> --output|-o <path> [--icon|-i <path>] [--no-encrypt] [--no-compress]\n"
-        << "          encryption is currently disabled; --no-encrypt is accepted for compatibility\n";
+        << "  build   --script|-s <path> --output|-o <path> [--icon|-i <path>]\n"
+        << "          [--encrypt [--password <p>] | --no-encrypt] [--no-compress]\n"
+        << "          --password implies --encrypt; without a password --encrypt is refused.\n"
+        << "          Password may come from WINGMAN_PACK_PASSWORD instead of the command line.\n"
+        << "          Encrypted packs read the password from WINGMAN_SCRIPT_PASSWORD at startup.\n";
 }
 
 bool requireValue(const Args& args, size_t& index, const char* flag, std::string& out) {
@@ -70,6 +74,13 @@ int runScript(const Args& args) {
 int runBuild(const Args& args) {
     commands::BuildOptions options;
 
+    // 口令的默认来源是环境变量：命令行值会留在 shell 历史与进程列表里。
+    // 显式的 --password 在后面覆盖它。
+    if (const char* envPassword = std::getenv("WINGMAN_PACK_PASSWORD")) {
+        options.password = envPassword;
+        options.encrypt = true;  // 只给口令不给 --encrypt 视为要加密（见 --help）
+    }
+
     for (size_t i = 0; i < args.size(); ++i) {
         const auto& arg = args[i];
         if (arg == "--script" || arg == "-s") {
@@ -84,9 +95,19 @@ int runBuild(const Args& args) {
             if (!requireValue(args, i, arg.c_str(), options.iconPath)) {
                 return 1;
             }
+        } else if (arg == "--encrypt") {
+            options.encrypt = true;
+        } else if (arg == "--password") {
+            if (!requireValue(args, i, arg.c_str(), options.password)) {
+                return 1;
+            }
+            // 给了口令却没开加密 = 「以为加密了其实没加密」，比报错更危险，
+            // 故 --password 同时打开加密（--help 已注明该语义）。
+            options.encrypt = true;
         } else if (arg == "--no-encrypt") {
-            // 兼容旧命令行；当前默认已是不加密。
+            // 兼容旧命令行；在 --password 之后出现即取消加密（口令一并清掉）。
             options.encrypt = false;
+            options.password.clear();
         } else if (arg == "--no-compress") {
             options.compress = false;
         } else {

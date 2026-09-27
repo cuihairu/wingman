@@ -9,7 +9,17 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 392 个提交（feat 70 / fix 137 / docs 67 / test 46 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 394 个提交（feat 71 / fix 137 / docs 68 / test 46 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### feat（2026-09-27，加密资源打包→加载闭环：PBKDF2 口令派生 + PACK_HEADER v2）
+
+- **收掉全仓唯一代码 TODO**：`resource_loader` 里「Encrypted resources are not supported yet」的两侧一致禁用，改为口令派生密钥的真闭环——打包 `--encrypt --password`（或 `WINGMAN_PACK_PASSWORD`）→ 运行期 `WINGMAN_SCRIPT_PASSWORD` 解密加载。加密产物没有口令就是永久打不开的字节流，故 `build()` 在复制 stub **之前**硬拒空口令，而不是产出一个打不开的 exe。
+- **两套分叉实现收敛为一份**：`PACK_HEADER` 此前在 packer 与 loader 各抄一份，两侧各带一份 `_WIN32` CryptAPI 加解密；非 Windows 分支只剩「XOR 假哈希 + `verifyHash` 恒返回 true + 一律拒绝加密」——Linux 上那套「完整性校验」从来不是校验。新头 `resource_pack.hpp` 成为格式唯一权威（160 字节布局 static_assert、reserved[] 字段位、le32、参数合法性），密码学统一到 `wingman::crypt`（OpenSSL EVP；新增调用方给密钥的 `aesGcmEncrypt/aesGcmDecrypt` 原始字节对，与既有「口令进 base64 出」的 `encryptAES/decryptAES` 明确分工）。
+- **v2 版本语义与兼容性**：PBKDF2-HMAC-SHA256（100000 轮 / 随机 16B salt / 随机 12B IV）→ AES-256-GCM（密文 || tag），salt/IV/迭代次数落 `reserved[0,32)`、尾字节清零。升 v2 不破坏任何存量：v1 加密包用的是打包时随机生成、只留 `sha256(key)` 的一次性密钥，构造上不可恢复，而当年 `build()` 又拒绝 encrypt → 合法产物里不存在 v1 加密包（真遇到就明确判不可恢复，不猜密钥）；未加密包照旧写 v2 且 reserved 全零、无指纹，v1 读侧不解释 version/reserved 故仍可加载；未知版本一律拒绝，迭代次数 0 或 >5e6 拒绝（后者等于让加载方替打包方烧 CPU）。
+- **完整性三层各司其职 + 用例锁定**：GCM 标签是权威；`keyHash` 只是解密前的口令指纹，用来把「口令错」与「数据损坏」分成两条可读信息（改 salt → 指纹先拒；改 IV → 标签拒）；`dataHash = sha256(原始明文)` 在解密解压后校验，兜住头部篡改（清掉/谎称 COMPRESSED：密文合法但解出的字节对不上 originalSize/dataHash）。新增用例专门验证「伪造一份自洽 keyHash 绕过预检后仍被 GCM 拒」，即预检可绕、边界不塌。
+- **顺手修一个真缺陷（变换顺序）**：旧顺序 encrypt → compress，而该简化 LZ 的匹配模型只认「同一字节连出现 ≥4 次」（`data[i - j]` 左下标不随 count 前进），密文里找不到字节连串 → `--encrypt --compress` 静默退化成「只加密」。改为 compress → encrypt（读侧镜像 decrypt → decompress），加密包从此真能压小；无存量产物受影响。
+- **让非 Windows 跑到生产代码**：`Packer::buildResourceBytes()` / `ResourceLoader::loadScriptFromBytes()` 这对平台无关字节级入口是往返与错口令用例的执行体（PE 读写 `BeginUpdateResource*`/`FindResourceA` 仍是 Windows-only，只负责换容器），ELF 侧嵌入未实现即明确失败，不静默写「看着成功其实没嵌脚本」的产物。顺带修 `main.cpp` 上「Version/Size 恒打 0」的存量显示 bug（头部字段要解头后才进 `ResourceInfo`）。
+- **测试**：`apps/runtime/tests/resource_pack_test.cpp` 新增 43 例（格式布局/KDF 与指纹/写侧标志与随机性/参数化「明文 vs 加密」往返/负路径：错口令、缺口令、改密文、改 salt、改 IV、改迭代次数、截断、未加密包改字节、头部谎报压缩、隐藏压缩、伪造指纹、坏 magic、短输入、v1 加密拒绝、未知版本、v1 明文仍可加载）；`crypt_test.cpp` +10 例（AES-GCM 原始字节对：空明文/大数据/非标准 IV 长度/错密钥/错 IV/改密文/改标签/非法长度）；`cli_test.cpp` 的 `PackerRejectsEncryptedResourcesUntilLoaderSupportsThem` 语义作废，改写为「无口令拒绝加密 / 有口令放行到平台边界」两条。全量 ctest **2234 例 0 红**（31 例平台性 skip），同轮 Go `go vet` + `go test -race ./...` 全绿。
 
 ### test（2026-09-27，高负载 flake 二轮根治：等待窗口随 CPU 超售自适应）
 

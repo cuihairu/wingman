@@ -9,7 +9,9 @@
 
 #include <sstream>
 #include <iomanip>
+#include <memory>
 #include <random>
+#include <stdexcept>
 #include <cstring>
 
 namespace wingman::crypt {
@@ -457,6 +459,128 @@ std::string decryptAES(const std::string& ciphertext, const std::string& passwor
         spdlog::error("[Crypto] Decryption exception: {}", e.what());
         return "";
     }
+}
+
+// ========== AES-256-GCM (raw bytes, caller-supplied key) ==========
+
+namespace {
+
+constexpr size_t kGcmKeyLength = 32;      // AES-256
+constexpr size_t kGcmTagLength = 16;      // 128-bit auth tag
+constexpr size_t kGcmMaxIvLength = 16;    // 12 是推荐值；这里只拒绝明显不合理的长度
+
+/// 统一 OpenSSL 返回值检查——本组函数以异常表达失败（调用方 runtime 打包/加载链
+/// 整体在 try/catch 里，且原始字节载荷无法用「空串 = 失败」表达：空明文是合法输入）
+inline void requireOpenSSL(int rc, const char* what) {
+    if (rc == 1) {
+        return;
+    }
+    const unsigned long err = ERR_get_error();
+    if (err != 0) {
+        throw std::runtime_error(std::string(what) + ": " + ERR_error_string(err, nullptr));
+    }
+    throw std::runtime_error(std::string(what) + ": OpenSSL rejected the request");
+}
+
+void checkGcmKeyAndIv(const std::vector<uint8_t>& key, const std::vector<uint8_t>& iv) {
+    if (key.size() != kGcmKeyLength) {
+        throw std::invalid_argument("AES-GCM key must be 32 bytes");
+    }
+    if (iv.empty() || iv.size() > kGcmMaxIvLength) {
+        throw std::invalid_argument("AES-GCM iv must be 1..16 bytes (12 recommended)");
+    }
+}
+
+struct CipherCtxDeleter {
+    void operator()(EVP_CIPHER_CTX* ctx) const { EVP_CIPHER_CTX_free(ctx); }
+};
+
+} // namespace
+
+std::vector<uint8_t> aesGcmEncrypt(const std::vector<uint8_t>& key,
+                                   const std::vector<uint8_t>& iv,
+                                   const std::vector<uint8_t>& plaintext) {
+    checkGcmKeyAndIv(key, iv);
+
+    std::unique_ptr<EVP_CIPHER_CTX, CipherCtxDeleter> ctx(EVP_CIPHER_CTX_new());
+    if (!ctx) {
+        throw std::runtime_error("Failed to create cipher context");
+    }
+
+    requireOpenSSL(EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr),
+                   "Failed to initialize cipher");
+    requireOpenSSL(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(iv.size()), nullptr),
+                   "Failed to set IV length");
+    requireOpenSSL(EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, key.data(), iv.data()),
+                   "Failed to set key and IV");
+
+    std::vector<uint8_t> out(plaintext.size() + AES_BLOCK_SIZE);
+    int len = 0;
+    if (!plaintext.empty()) {
+        // 空 plaintext 时 .data() 可能为 nullptr，OpenSSL 不接受 null 指针参数（与 size 是否为 0 无关）
+        requireOpenSSL(EVP_EncryptUpdate(ctx.get(), out.data(), &len, plaintext.data(),
+                                         static_cast<int>(plaintext.size())),
+                       "Encryption failed");
+    }
+    int written = len;
+    requireOpenSSL(EVP_EncryptFinal_ex(ctx.get(), out.data() + written, &len),
+                   "Encryption finalization failed");
+    written += len;
+
+    // 给 tag 留出位置后原地写入（EVP_CIPHER_CTX_ctrl 按指针写入，不改长度）
+    out.resize(static_cast<size_t>(written) + kGcmTagLength);
+    requireOpenSSL(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, static_cast<int>(kGcmTagLength),
+                                       out.data() + written),
+                   "Failed to get auth tag");
+
+    return out;
+}
+
+std::vector<uint8_t> aesGcmDecrypt(const std::vector<uint8_t>& key,
+                                   const std::vector<uint8_t>& iv,
+                                   const std::vector<uint8_t>& ciphertextWithTag) {
+    checkGcmKeyAndIv(key, iv);
+    if (ciphertextWithTag.size() < kGcmTagLength) {
+        throw std::invalid_argument("AES-GCM input is shorter than the auth tag");
+    }
+
+    const size_t cipherLength = ciphertextWithTag.size() - kGcmTagLength;
+    std::vector<uint8_t> tag(ciphertextWithTag.begin() + static_cast<long>(cipherLength),
+                             ciphertextWithTag.end());
+
+    std::unique_ptr<EVP_CIPHER_CTX, CipherCtxDeleter> ctx(EVP_CIPHER_CTX_new());
+    if (!ctx) {
+        throw std::runtime_error("Failed to create cipher context");
+    }
+
+    requireOpenSSL(EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr),
+                   "Failed to initialize cipher");
+    requireOpenSSL(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(iv.size()), nullptr),
+                   "Failed to set IV length");
+    requireOpenSSL(EVP_DecryptInit_ex(ctx.get(), nullptr, nullptr, key.data(), iv.data()),
+                   "Failed to set key and IV");
+
+    std::vector<uint8_t> out(cipherLength + AES_BLOCK_SIZE);
+    int len = 0;
+    if (cipherLength > 0) {
+        requireOpenSSL(EVP_DecryptUpdate(ctx.get(), out.data(), &len, ciphertextWithTag.data(),
+                                         static_cast<int>(cipherLength)),
+                       "Decryption failed");
+    }
+    int written = len;
+
+    // SET_TAG 的接口签名要求非 const 指针，故上面先把 tag 拷进 vector
+    requireOpenSSL(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, static_cast<int>(kGcmTagLength), tag.data()),
+                   "Failed to set auth tag");
+
+    // 认证失败体现在 Final 的返回值上：口令错误或数据被篡改都走这里
+    if (EVP_DecryptFinal_ex(ctx.get(), out.data() + written, &len) != 1) {
+        throw std::runtime_error("AES-GCM authentication failed (wrong key or tampered data)");
+    }
+    written += len;
+
+    out.resize(static_cast<size_t>(written));
+    return out;
 }
 
 } // namespace wingman::crypt

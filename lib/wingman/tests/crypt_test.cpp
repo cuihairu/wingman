@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 #include "wingman/crypt.hpp"
+#include <cstdint>
+#include <cstring>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -192,4 +195,113 @@ TEST(CryptAesTest, LargeDataRoundTrip) {
     auto encrypted = encryptAES(large, "password");
     ASSERT_FALSE(encrypted.empty());
     EXPECT_EQ(decryptAES(encrypted, "password"), large);
+}
+
+// ========== AES-256-GCM（原始字节、调用方自备密钥）==========
+
+namespace {
+
+constexpr size_t kTagLen = 16;
+
+std::vector<uint8_t> makeKey(uint8_t seed) {
+    std::vector<uint8_t> key(32);
+    for (size_t i = 0; i < key.size(); ++i) {
+        key[i] = static_cast<uint8_t>(seed + i);
+    }
+    return key;
+}
+
+std::vector<uint8_t> bytesOf(const std::string& s) {
+    return std::vector<uint8_t>(s.begin(), s.end());
+}
+
+} // namespace
+
+TEST(CryptAesGcmRawTest, RoundTripReturnsExactPlaintext) {
+    auto key = makeKey(1);
+    auto iv = randomBytes(12);
+    const auto plaintext = bytesOf("Hello, Wingman!");
+
+    auto encrypted = aesGcmEncrypt(key, iv, plaintext);
+    ASSERT_EQ(encrypted.size(), plaintext.size() + kTagLen);
+    // 密文不等于明文
+    EXPECT_NE(std::memcmp(encrypted.data(), plaintext.data(), plaintext.size()), 0);
+
+    EXPECT_EQ(aesGcmDecrypt(key, iv, encrypted), plaintext);
+}
+
+TEST(CryptAesGcmRawTest, EmptyPlaintextRoundTrip) {
+    // 空明文合法：结果只剩 16 字节 tag，且不能与「失败」混淆（失败以异常表达）
+    auto key = makeKey(2);
+    auto iv = randomBytes(12);
+    auto encrypted = aesGcmEncrypt(key, iv, {});
+    ASSERT_EQ(encrypted.size(), kTagLen);
+    EXPECT_TRUE(aesGcmDecrypt(key, iv, encrypted).empty());
+}
+
+TEST(CryptAesGcmRawTest, LargeDataRoundTrip) {
+    auto key = makeKey(3);
+    auto iv = randomBytes(12);
+    std::vector<uint8_t> large(100000);
+    for (size_t i = 0; i < large.size(); ++i) {
+        large[i] = static_cast<uint8_t>(i * 31 + 7);
+    }
+    auto encrypted = aesGcmEncrypt(key, iv, large);
+    ASSERT_EQ(encrypted.size(), large.size() + kTagLen);
+    EXPECT_EQ(aesGcmDecrypt(key, iv, encrypted), large);
+}
+
+TEST(CryptAesGcmRawTest, NonStandardIvLengthWorks) {
+    auto key = makeKey(4);
+    const auto plaintext = bytesOf("iv length flexibility");
+    for (size_t ivLen : {1u, 8u, 12u, 16u}) {
+        auto iv = randomBytes(ivLen);
+        ASSERT_EQ(iv.size(), ivLen);
+        auto encrypted = aesGcmEncrypt(key, iv, plaintext);
+        EXPECT_EQ(aesGcmDecrypt(key, iv, encrypted), plaintext) << "ivLen=" << ivLen;
+    }
+}
+
+TEST(CryptAesGcmRawTest, RandomIvProducesDifferentCiphertext) {
+    auto key = makeKey(5);
+    const auto plaintext = bytesOf("same plaintext");
+    auto c1 = aesGcmEncrypt(key, randomBytes(12), plaintext);
+    auto c2 = aesGcmEncrypt(key, randomBytes(12), plaintext);
+    EXPECT_NE(c1, c2);
+}
+
+TEST(CryptAesGcmRawTest, DecryptWithWrongKeyFails) {
+    auto iv = randomBytes(12);
+    auto encrypted = aesGcmEncrypt(makeKey(6), iv, bytesOf("secret"));
+    EXPECT_THROW(aesGcmDecrypt(makeKey(7), iv, encrypted), std::runtime_error);
+}
+
+TEST(CryptAesGcmRawTest, DecryptWithWrongIvFails) {
+    auto key = makeKey(8);
+    auto encrypted = aesGcmEncrypt(key, randomBytes(12), bytesOf("secret"));
+    EXPECT_THROW(aesGcmDecrypt(key, randomBytes(12), encrypted), std::runtime_error);
+}
+
+TEST(CryptAesGcmRawTest, DecryptTamperedCiphertextFails) {
+    auto key = makeKey(9);
+    auto iv = randomBytes(12);
+    auto encrypted = aesGcmEncrypt(key, iv, bytesOf("secret data for tamper test"));
+    encrypted[0] ^= 0xFF;
+    EXPECT_THROW(aesGcmDecrypt(key, iv, encrypted), std::runtime_error);
+}
+
+TEST(CryptAesGcmRawTest, DecryptTamperedTagFails) {
+    auto key = makeKey(10);
+    auto iv = randomBytes(12);
+    auto encrypted = aesGcmEncrypt(key, iv, bytesOf("secret data for tamper test"));
+    encrypted.back() ^= 0xFF;
+    EXPECT_THROW(aesGcmDecrypt(key, iv, encrypted), std::runtime_error);
+}
+
+TEST(CryptAesGcmRawTest, InvalidKeyOrIvLengthThrows) {
+    EXPECT_THROW(aesGcmEncrypt(makeKey(11), {}, {}), std::invalid_argument);
+    EXPECT_THROW(aesGcmEncrypt(makeKey(11), randomBytes(17), {}), std::invalid_argument);
+    EXPECT_THROW(aesGcmEncrypt(std::vector<uint8_t>(16, 0), randomBytes(12), {}), std::invalid_argument);
+    EXPECT_THROW(aesGcmDecrypt(makeKey(11), randomBytes(12), std::vector<uint8_t>(kTagLen - 1, 0)),
+                 std::invalid_argument);
 }
