@@ -9,7 +9,13 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 400 个提交（feat 71 / fix 140 / docs 69 / test 48 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 403 个提交（feat 73 / fix 140 / docs 70 / test 48 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### feat（2026-09-27，`wingman.event` 监听器查询与按事件名清理：`listener` / `listeners` / `clear(type?)`）
+
+- **范围**：`docs/development-todo.md`「事件与状态」仅剩的两项未完成条目一次收口。核心层 `EventHub` 新增 `SubscriptionInfo{id,type,name,once}` 快照与三个查询：`subscription(id)`（按订阅 ID）、`subscriptionByName(name)`（同名订阅取最早注册者，匿名订阅不可按名查询，结果不依赖 unordered_map 遍历序）、`subscriptionsForType(type)`（按订阅 ID 升序，即注册顺序）；新增 `clear(type)` 重载只清理指定事件的全部订阅（事件不存在时为无副作用空操作），无参 `clear()` 全量清理语义不变。
+- **脚本层（Lua/Python 同步可用）**：`wingman.event` 新增 `listener(id|int|name|string)`（查询单个监听器，返回 `{id,type,name,once}`，不存在返回 nil）与 `listeners(type)`（列出该事件全部监听器，未注册事件返回空数组）；`clear(type?)` 升级——无参/nil 保持全量清理，传事件名只清理该事件，**其他类型参数返回 false 而不是静默全量清理**（`clear(123)` 误用不会清空全部监听）。缺参/不支持的参数类型返回 false，与 `on`/`off` 既有约定一致。Python 侧 `event.pyi` 同步 `ListenerInfo` TypedDict 与三个签名（camelCase 与 snake_case 别名由引擎统一注册）。
+- **测试与验证**：`EventHubTest` +4、`EventModuleTest` +12（38→50）——覆盖按 ID/按名查询、once 与匿名快照字段、同名取最早、查询排序、按名清理只影响目标事件（emit 不再触发、其他事件原样）、无参/nil 全量清理兼容、坏参数 false。全量 ctest 与 `go test ./...` 结果见提交记录。
 
 ### fix（2026-09-27，X11 `XOpenDisplay` 瞬态拒绝根治 + `X11WindowCloseCenterAndWaitFamily` 负载 flake 收口）
 

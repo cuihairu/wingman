@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-09-27 事件与状态收尾：wingman.event 监听器查询与按事件名清理（listener / listeners / clear(type?)）
+
+`docs/development-todo.md`「事件与状态」小节仅剩的两条未完成项，按登记口径实现收口。
+
+- **核心层（event.hpp/event.cpp）**：`EventHub` 新增 `SubscriptionInfo{id,type,name,once}` 快照与 `subscription(id)` / `subscriptionByName(name)` / `subscriptionsForType(type)` 三个查询 + `clear(type)` 按事件名清理重载。确定性约定：同名订阅取**最早注册者**（unordered_map 遍历无序，不能交给它决定）；`subscriptionsForType` 按订阅 ID 升序（注册顺序）；匿名订阅（name 为空串）不可按名查询；`clear(type)` 对未注册事件是无副作用空操作。无参 `clear()` 全量清理语义不变。
+- **脚本层（event_module.cpp，Lua/Python 经 ModuleDescriptor 自动可用）**：`listener(id|int|name|string)` 返回 `{id,type,name,once}` 或 nil；`listeners(type)` 返回数组（未注册事件为空数组）；`clear(type?)` ——无参/nil 全量清理、传事件名只清理该事件、**其他类型参数返回 false 而非静默全量清理**（防 `clear(123)` 误清全部）。缺参/坏类型返回 false，与 `on`/`off` 既有约定一致。`event.pyi` 同步 `ListenerInfo` TypedDict 与签名。
+- **测试**：`EventHubTest` +4、`EventModuleTest` +12（38→50）：按 ID/按名查询、once/匿名快照、同名取最早、排序、按名清理只影响目标事件（emit 不触发、其余事件原样）、全量清理兼容、坏参数 false。
+- **验证**：`EventHubTest.*:EventModuleTest.*:EventHubGuardTest.*` 74/74 绿；全量 ctest 与 `go test ./...` 见提交记录/CHANGELOG。
+
+---
+
 ## 2026-09-27 X11WindowCloseCenterAndWaitFamily flake 根治（X server 断开→重连瞬态拒绝 → openX11Display 重试 + 建窗 XSync + 护栏随超售缩放）
 
 上轮按指示未动的登记欠账（「高负载 flake 二轮根治」条目末尾），本轮单独收掉。登记过的两种失败形状（①forceClose 后 holder 5s 护栏报警；②center/close/isInitialized 成片 false）本轮都追到了同一个上游。

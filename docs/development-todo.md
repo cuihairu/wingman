@@ -39,13 +39,13 @@
 - [x] 所有 Python 公开 API 统一到 `wingman.*`（typing 命名空间 + module_registry 统一注册）
 
 ### 事件与状态
-- [x] `wingman.event`（event_module.cpp + event.pyi + 38 条测试）
+- [x] `wingman.event`（event_module.cpp + event.pyi + 50 条模块测试）
   - [x] `on(name, handler)` 注册持久监听
   - [x] `once(name, handler)` 注册一次性监听
   - [x] `off(id | name)` 按订阅 ID 或名称取消
   - [x] `emit(name, payload?, meta?)` 触发事件
-  - [ ] `listener(name)` / `listeners(name)` 查询监听器（未实现）
-  - [ ] `clear(name?)` 清理全部或指定事件（现状仅 `clear()` 全量清理，无按名清理）
+  - [x] `listener(id | name)` / `listeners(type)` 查询监听器（返回 `{id,type,name,once}`；同名取最早注册者，listeners 按订阅 ID 升序，未注册事件返回空数组）
+  - [x] `clear(type?)` 清理全部或指定事件（无参/nil 保持全量清理语义；传事件名只清理该事件）
   - [x] 事件对象统一字段：`name/type/source/correlationId/priority/timestamp/payload`（EventMessage TypedDict）
   - [x] 预留桥接：脚本事件 -> 任务事件 -> 通知事件（notify 模块 bridge/transform 机制）
 - [x] `wingman.fsm`（fsm_module.cpp + fsm.pyi + 44 条测试）

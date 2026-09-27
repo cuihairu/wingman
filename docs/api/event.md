@@ -9,6 +9,7 @@ event 模块提供发布-订阅模式的本地事件总线：
 - **订阅事件** - 持久订阅或一次性订阅
 - **发布事件** - 触发事件并传递数据
 - **取消订阅** - 取消指定订阅或清空全部
+- **查询监听器** - 按订阅 ID / 名称查询，或列出事件的全部订阅
 - **事件对象** - 标准化的事件消息结构
 
 ---
@@ -200,19 +201,22 @@ off(subscription: string | number) -> boolean
 
 ---
 
-### clear() / clear()
+### clear(type?) / clear(type?)
 
-**说明**：清空全部事件监听。
+**说明**：清理事件监听。无参（或 `nil`）清空全部事件监听；传入事件名时只清理该事件的全部订阅。
 
 **函数签名**：
 
 ```python
-clear() -> None
+clear(type: str | None = None) -> None
 ```
 
 ```lua
-clear() -> nil
+clear(type: string | nil = nil) -> nil
 ```
+
+**参数**：
+- `type` - 可选，事件名；省略时清空全部监听
 
 **返回**：
 - 无
@@ -227,6 +231,9 @@ from wingman import event
 # 取消指定订阅
 event.off(sub_id)
 
+# 只清理某事件的全部订阅
+event.clear("combat.enemy_found")
+
 # 清空所有监听
 event.clear()
 ```
@@ -239,8 +246,107 @@ local wingman = require("wingman")
 -- 取消指定订阅
 wingman.event.off(id)
 
+-- 只清理某事件的全部订阅
+wingman.event.clear("combat.enemy_found")
+
 -- 清空所有监听
 wingman.event.clear()
+```
+
+:::
+
+---
+
+## 查询监听器
+
+### listener(subscription) / listener(subscription)
+
+**说明**：查询单个已注册监听器，按订阅 ID 或监听器名（`on` 的第三个参数）。同名监听器注册了多个时返回最早注册的那个；不存在时返回 `nil`。
+
+**函数签名**：
+
+```python
+listener(subscription: int | str) -> ListenerInfo | None
+```
+
+```lua
+listener(subscription: number | string) -> table | nil
+```
+
+**参数**：
+- `subscription` - 订阅 ID（int）或监听器名（str）
+
+**返回**：
+- `ListenerInfo` 对象（字段见下表），未找到时为 `nil`/`None`
+
+### listeners(type) / listeners(type)
+
+**说明**：列出某事件的全部已注册监听器（按订阅 ID 升序，即注册顺序）。
+
+**函数签名**：
+
+```python
+listeners(type: str) -> list[ListenerInfo]
+```
+
+```lua
+listeners(type: string) -> table[]
+```
+
+**参数**：
+- `type` - 事件名
+
+**返回**：
+- `ListenerInfo` 数组；事件无订阅时为空数组
+
+**ListenerInfo 字段**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | int | 订阅 ID（可传给 `off` 取消订阅） |
+| type | string | 监听的事件名 |
+| name | string | 监听器名（匿名订阅为空串） |
+| once | bool | 是否为一次性订阅 |
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import event
+
+sub_id = event.on("combat.enemy_found", on_enemy, name="my-handler")
+
+# 按订阅 ID 查询
+info = event.listener(sub_id)
+print(info["type"], info["name"])   # combat.enemy_found my-handler
+
+# 按监听器名查询
+info = event.listener("my-handler")
+
+# 列出某事件的全部监听器
+for listener in event.listeners("combat.enemy_found"):
+    print(listener["id"], listener["once"])
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local id = wingman.event.on("combat.enemy_found", onEnemy, "my-handler")
+
+-- 按订阅 ID 查询
+local info = wingman.event.listener(id)
+print(info.type, info.name)         -- combat.enemy_found my-handler
+
+-- 按监听器名查询
+info = wingman.event.listener("my-handler")
+
+-- 列出某事件的全部监听器
+for _, listener in ipairs(wingman.event.listeners("combat.enemy_found")) do
+    print(listener.id, listener.once)
+end
 ```
 
 :::
@@ -296,5 +402,7 @@ message(type: string, payload: any = nil, meta: table = nil) -> table
 | `once(type, callback)` | `once(type, callback)` | 一次性订阅 | type: 事件名<br>callback: 回调函数<br>返回: 订阅 ID |
 | `emit(type, payload?, meta?)` | `emit(type, payload?, meta?)` | 发布事件 | type: 事件名<br>payload: 载荷(可选)<br>meta: 元数据(可选)<br>返回: 是否成功 |
 | `off(subscription)` | `off(subscription)` | 取消订阅 | subscription: 订阅 ID 或名称<br>返回: 是否成功 |
-| `clear()` | `clear()` | 清空全部监听 | 无返回值 |
+| `listener(subscription)` | `listener(subscription)` | 查询单个监听器 | subscription: 订阅 ID 或监听器名<br>返回: ListenerInfo 或 nil |
+| `listeners(type)` | `listeners(type)` | 列出事件的全部监听器 | type: 事件名<br>返回: ListenerInfo 数组 |
+| `clear(type?)` | `clear(type?)` | 清理全部或指定事件的监听 | type: 事件名(可选)<br>无返回值 |
 | `message(type, payload?, meta?)` | `message(type, payload?, meta?)` | 构造事件对象 | 返回: EventMessage 对象 |
