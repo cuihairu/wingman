@@ -9,20 +9,20 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 419 个提交（feat 74 / fix 142 / docs 74 / test 57 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 421 个提交（feat 74 / fix 142 / docs 75 / test 58 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
 
 ### test（2026-09-28，C++（Linux）覆盖率收口：Agent 主类 0% → 84%（35 例），两缺陷根治：system.shutdown 死锁 / shutdown 悬空事件 sink）
 
 - **缺口定位**：gcovr 全量报告（TOTAL 行覆盖 87.1%）剔除真机/平台耦合项（x11_recorder/x11_clipboard）、入口胶水（main.cpp）与 OpenSSL 内部失败分支后，行覆盖最低且可离线测的自有模块锁定 `apps/runtime/src/agent.cpp` **297 行 0%**——runtime 编排核心（initialize 能力分支、start 组件装配、applyRemoteConfig 热重建、handleRemoteCommand 全命令面、EventBuffer 远程转发）此前只被间接编译、无任何测试驱动。
 - **新增 `apps/runtime/tests/agent_loopback_test.cpp` 35 例 / 2 套件**（tests/CMakeLists 接线；TCP 回环沿用 agentcore 测试 harness 模式，IPC 客户端沿用 rpc_ipc_test 的 TestIpcClient 模式）：
   - **AgentLifecycleTest 17 例**（全平台，无 socket 依赖，Windows CI 全量参与）：能力→组件派生矩阵 4（各能力组合的 RemoteClient/StandaloneMode 派生与 RunMode）；配置文件首跑写默认+读回 2；生命周期契约 4（无组件 start/stop、shutdown 幂等、standalone 启停、**start 失败 running 仍置位的降级契约**）；applyRemoteConfig 矩阵 7（未启用拒绝、内存+落盘持久化、无 configPath 只改内存、写盘失败部分成功串、运行中重建「已写入待重连」与「连接+写盘双重失败」两腿）。
-  - **AgentLoopbackTest 18 例**（POSIX，`#ifndef _WIN32`——XDG_RUNTIME_DIR 端点重定向与 UnixSocket 通道为 POSIX 原语，Windows NamedPipe 默认端点语义本机不可验证，登记假设）：每用例把 XDG_RUNTIME_DIR/TMPDIR 重定向到私有目录后走 **Agent::start() 真实装配路径**。本地 IPC 面 7（system.getVersion 全链、system.getStatus providers 反映、config.getRemote 镜像、config.setRemote 校验矩阵 7 项+无远程能力拒绝、setRemote 应用+热重建+落盘全链、不可写配置路径部分成功、EventBuffer 三类事件转发+log.line 过滤、shutdown 摘 sink 回归钉）；远程命令面 11（get_status 含脚本 loaded→stopped 落定与 error 态、list_windows 信封、run_script 四腿、stop_script 三错误腿、unknown、trigger.* Dispatcher Reuse——JSON 串参数解析/非 JSON 字符串回退/handler 错误信封透传、screenshot.capture 信封、system.shutdown）。
+  - **AgentLoopbackTest 18 例**（POSIX，`#ifndef _WIN32`——XDG_RUNTIME_DIR 端点重定向与 UnixSocket 通道为 POSIX 原语，Windows NamedPipe 默认端点语义本机不可验证，登记假设）：每用例把 XDG_RUNTIME_DIR/TMPDIR 重定向到私有目录后走 **Agent::start() 真实装配路径**。本地 IPC 面 8（system.getVersion 全链、system.getStatus providers 反映、config.getRemote 镜像、config.setRemote 校验矩阵 7 项+无远程能力拒绝、setRemote 应用+热重建+落盘全链、不可写配置路径部分成功、EventBuffer 三类事件转发+log.line 过滤、shutdown 摘 sink 回归钉）；远程命令面 10（get_status 含脚本 loaded→stopped 落定与 error 态、list_windows 信封、run_script 四腿、stop_script 三错误腿、unknown、trigger.* Dispatcher Reuse——JSON 串参数解析/非 JSON 字符串回退/handler 错误信封透传、screenshot.capture 信封、system.shutdown）。
 - **两缺陷根治（均由本轮用例暴露）**：
   - ① **system.shutdown 远程命令自我死锁（EDEADLK）**：命令回调内联运行在 RemoteClient 消息处理线程上，同步 `stop()` 会回收正在执行回调的线程自身——实测日志 `Resource deadlock avoided`，ack 永远发不出、server 侧超时。改为先回 ack、stop 移交独立线程收尾；回归钉 `SystemShutdownCommandStopsAgent`（轮询组件全停再收尾，规避与后台 stop 线程的停机竞态）。
   - ② **`Agent::shutdown` 不摘除 EventBuffer 远程 sink**：sink lambda 捕获 `this`，而 EventBuffer 是进程级单例——Agent 析构/重建后任何 push 事件都会调用悬空回调（UB）。shutdown 补 `setRemoteSink(nullptr)`；回归钉 `ShutdownClearsRemoteEventSink`。
 - **登记假设与余量 46 行（不写假用例）**：stop_script 成功腿与脚本 running 态需长驻脚本协作停止（真机观察范畴，同 rpc_ipc_test 口径）；list_windows 窗口枚举循环体在 Xvfb 下无窗口不执行（真桌面依赖）；scriptStateToString 的 Loaded 为过渡态实测不停驻（加载后异步落定 stopped）、Running/Paused 同前、Unknown 为防御兜底；触发器 onFired→EventBuffer 推送需真实屏幕命中（真机观察）；screenshot/trigger 的 dispatcher 空指针防御与 initRemoteClient/initStandaloneMode 失败腿恒不可达（构造恒成功）；encodeWindowHandle 的 `_WIN32` 分支为非激活编译侧；多行 braced-init 与 spdlog 双行语句的行归因伪影（语句必然整体执行，响应字段断言为证）。
 - **覆盖率**（gcovr 行）：`agent.cpp` 0%（0/297）→ **84%**（252/298）；TOTAL 87.1% → **88%**（14740/16600）。
-- **验证**：新增 35 例全绿（连跑 3 轮稳定）；build/ 全量 ctest **2424/2424**（2386+34+新增回归钉 1+信封 1 等共 38 注册差随发现浮动）；插桩 build-cov 全量 ctest **2431/2431**；Go `-race -count=1 -timeout 90m` 14 包全绿（integration 包 1868s）；dashboard jest 420、GUI vitest 全绿；CI 结果见本提交对应的 workflow run。
+- **验证**：新增 35 例全绿（连跑 3 轮稳定）；build/ 全量 ctest **2431/2431**、插桩 build-cov 全量 ctest **2431/2431**（两树终版注册数一致；早前记录的 2424 为终版用例集落地前的陈旧注册数）；Go `-race -count=1 -timeout 90m` 14 包全绿（integration 包 1868s）；dashboard jest 420、GUI vitest 全绿。CI 注记：前笔 c97a57a 为加固未完成的中间态提交，其 Linux full-tests 两作业失败的 6 例（断言与实测契约错配 4、trigger.update 数值 id 的 JSON 解析歧义 1、system.shutdown 死锁超时 1）即本笔修复对象，最终 CI 结果见本提交对应的 workflow run。
 
 ### test（2026-09-27，C++（Linux）覆盖率扫描续：LuaScriptEngine 55% → 86%（31 例），余量全部登记不可归因/防御分支）
 
