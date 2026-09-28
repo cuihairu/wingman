@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-09-28 C++（Linux）覆盖率扫描续：module_helpers 张量转换层 68% → 96%（15 例，dtype 全矩阵直测）
+
+marshal 收口后继续扫缺口。gcovr 全量报告（xvfb 口径）按未覆盖行数重排并逐一验证可达性：packer.cpp 62% 的 63 行缺里 `compileToBytecode`/`replaceIcon`/`setVersionInfo` 均为 private 且 `build()` 不调用、Linux 成功路径被 PE 写入卡死，离线仅 ~10 行可达（暂记）；notify_module.cpp 75% 的 52 行缺几乎全落 WebhookSender——**`setAllowedHosts`/`setWebhooksEnabled` 全仓零调用方**，白名单默认空 → 每次连接都被 SSRF 防护拒绝，URL 解析/worker 管线/并发上限/shutdown join 在现网行为下均不可达（配置性死代码，登记；既有用例已钉住拒绝路径事件）；remote_client/standalone_mode 各 51 行散布重连/错误腿（暂记）；crypt 前轮既定口径。锁定 `module_helpers.hpp` **68%（58 行）**——缺口几乎全部是张量 dtype 矩阵（11 枚举仅 4 个被顺带踩过）。
+
+- **测试**：新增 `lib/wingman/tests/module_helpers_tensor_test.cpp` 15 例（core_tests 接线；纯头文件内联直测，无 I/O/平台分支，Windows CI 全量参与）：elementSize 全 11 dtype+越界兜底；typeFromString 全 11 名+未知/大小写敏感拒绝；**dtype 全矩阵往返**（spec→TensorData→ModelOutput→ScriptValue 逐 dtype 断言，一次驱动全部 appendBytes<T> 实例化与两侧 switch 分支）；int 经 asFloat 转换路径；bool 0→false；spec 错误矩阵（非对象/缺 data/空 data/非数组 data/未知与非字符串 dtype/shape 非数组）；shape 缺省一维与显式保留；未知 dtype 兜底 3（ModelOutput 空数据、直读 null、appendElement 直调不追加）。
+- **余量 7 行登记（不写假用例）**：106-111（static map 初始化）+ 213（聚合初始化）= -O2 行归因伪影——全部行为已被用例真实驱动（全 11 名解析 + 15+ 次 ModelOutput 输出），编译器将初始化代码合并至相邻行。
+- **覆盖率**（gcovr 行）：module_helpers.hpp 68%（128/186）→ **96%**（179/186）；**TOTAL 89%→89%**（14865/16600，+51 行）。
+- **验证**：新增 15 例全绿（连跑 3 轮稳定）；build/ 全量 ctest **2474/2474**、插桩 build-cov 全量 ctest **2474/2474**（两树注册数一致，含 +15；均 xvfb 口径 0 failed，31 例 xclip/XRecord 条件 skip 与既往一致）；Go/JS 零改动，CI 随推送复跑。
+
+---
+
 ## 2026-09-28 C++（Linux）覆盖率扫描续：lua_marshal 40% → 97%（28 例，双向转换契约直测）
 
 上轮 Agent 收口后继续扫缺口。gcovr 全量报告（本轮起本地门禁沿用 CI 的 xvfb-run 口径）按未覆盖行数排序：misc_modules 的 UIA OO 区块（Linux 无 UIAManager 后端、平台耦合）、lua_engine.cpp 0%（零引用遗留类）、screenshot_handler（VISION 编译变体门）、crypt OpenSSL 失败分支（既定口径）、x11/clipboard 平台后端、main/start_command 入口胶水均剔除，锁定 `libs/lua/src/lua_marshal.cpp` **40%（62/104）**——ScriptValue↔Lua 双向转换层，契约零直测。

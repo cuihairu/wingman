@@ -9,7 +9,15 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 423 个提交（feat 74 / fix 142 / docs 76 / test 59 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 424 个提交（feat 74 / fix 142 / docs 76 / test 60 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-28，C++（Linux）覆盖率扫描续：module_helpers 张量转换层 68% → 96%（15 例），dtype 全矩阵直测）
+
+- **缺口定位**：gcovr 全量报告（CI 同款 xvfb 口径，TOTAL 89%）按未覆盖行数重排（marshal 收口后）并逐一验证可达性——`packer.cpp` 62%（63 行缺：`compileToBytecode`/`replaceIcon`/`setVersionInfo` 均为 private 且 `build()` 不调用，Linux 成功路径被 PE 资源写入卡死（非 Windows `updateResource` 恒 false），离线仅 ~10 行可达，暂记）；`notify_module.cpp` 75%（52 行缺几乎全落 WebhookSender：**`setAllowedHosts`/`setWebhooksEnabled` 全仓零调用方**，白名单默认空 → 每次连接都被 SSRF 防护拒绝，URL 解析/worker HTTP 管线/并发上限/shutdown join 在现网行为下均不可达——既有用例已钉住「URL not in whitelist or webhooks disabled」拒绝路径，按配置性死代码登记）；`remote_client.cpp`/`standalone_mode.cpp` 各 51（散布的重连/错误腿，loopback 逐腿搭建性价比低，暂记）；`crypt.cpp` 79（前轮既定口径）。锁定 `lib/wingman/src/script/modules/module_helpers.hpp` **68%（58 行未覆盖）**——缺口几乎全部是张量 dtype 矩阵：11 个枚举值仅 FLOAT32/FLOAT64/INT8/BOOL 被既有 ml/misc 用例顺带踩过，其余 dtype 的 elementSize/类型名解析/appendBytes 实例化/appendElement/elementToScriptValue 分支全零覆盖。
+- **新增 `lib/wingman/tests/module_helpers_tensor_test.cpp` 15 例**（core_tests 接线；纯头文件内联函数直测，无 I/O/网络/平台分支，Windows CI 全量参与）：`tensorElementSize` 全 11 dtype + 越界兜底 0；`tensorTypeFromString` 全 11 名解析 + 未知名/大小写敏感拒绝（失败不动 out 哨兵）；**dtype 全矩阵往返**（ScriptValue spec → tensorFromScriptValue → TensorData → modelOutputToScriptValue → ScriptValue，逐 dtype 断言 shape/字节数/值语义，一次驱动全部 `tensorAppendBytes<T>` 实例化与 appendElement/elementToScriptValue 分支）；int 实参经 asFloat 的类型转换路径（int32 混合正负）；bool 0→false；spec 错误矩阵（非对象/缺 data/空 data/非数组 data/未知 dtype 名/**dtype 非字符串**——asString 落默认空串拼进错误信息按现状钉/shape 非数组）；shape 语义 2（缺省一维 = data 长度、显式 shape 逐字保留）；未知 dtype 兜底 3（elementSize==0 → ModelOutput 空数据且 shape 照常、elementToScriptValue 直读 → null、appendElement 直调不追加字节）。
+- **余量 7 行登记（不写假用例）**：106-111（6 行）= `tensorTypeFromString` 局部 static map 初始化、213 = `modelOutputToScriptValue` 聚合初始化——两处的全部行为均已被用例真实驱动（全 11 dtype 名解析 + 15+ 次 ModelOutput 输出），-O2 下编译器将初始化代码合并至相邻行、这些源行无独立代码归属，属行归因伪影非测试缺口。
+- **覆盖率**（gcovr 行）：`module_helpers.hpp` 68%（128/186）→ **96%**（179/186）；TOTAL 89% → **89%**（14865/16600，+51 行）。
+- **验证**：新增 15 例全绿（连跑 3 轮稳定）；build/ 全量 ctest **2474/2474**、插桩 build-cov 全量 ctest **2474/2474**（两树注册数一致，含本轮 +15；均 xvfb 口径 0 failed，31 例 xclip 未装/XRecord 扩展缺席条件 skip 与既往口径一致）；Go/JS 零改动沿用今日同一代码态已验结果，CI 随推送全量复跑；CI 结果见本提交对应的 workflow run。
 
 ### test（2026-09-28，C++（Linux）覆盖率扫描续：lua_marshal 40% → 97%（28 例），双向转换契约直测）
 

@@ -125,6 +125,9 @@ if(BUILD_CORE_TESTS)
     target_sources(core_tests PRIVATE smart_trigger_triggerpath_coverage_test.cpp)
     # misc uia/node/bt 缺口补测（Linux stub 查找路径、bt 状态映射 tick、node 心跳）
     target_sources(core_tests PRIVATE misc_uia_node_coverage_test.cpp)
+    # module_helpers 张量转换层缺口补测（11 dtype 全矩阵往返、类型名解析、
+    # spec 错误矩阵、shape 缺省/显式语义、未知 dtype 兜底）
+    target_sources(core_tests PRIVATE module_helpers_tensor_test.cpp)
     # EventHub 防御分支补测（空/超长 type、订阅名超长、单事件订阅上限）
     target_sources(core_tests PRIVATE batch11_event_coverage_test.cpp)
     # 第十一批胶水补测（team 空态/macro 全家族/task async/inbox report/BMP 解析与
