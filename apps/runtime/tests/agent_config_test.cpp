@@ -366,4 +366,94 @@ TEST_F(AgentConfigTest, DefaultConfigSavesAndReloadsIdentical) {
     EXPECT_EQ(loaded.getRunMode(), defaults.getRunMode());
 }
 
+// ========== Save/Load with performance section symmetry ==========
+
+TEST_F(AgentConfigTest, SaveToFileWritesPerformanceSectionAlways) {
+    // 确保 saveToFile 始终写入 [performance] 节——该契约由测试钉定，
+    // 防止 regress：若 loadFromString 支持 [performance] 但 saveToFile
+    // 突然停止写回，用户手调的性能配置会在 runtime 首次写回时被静默抹掉。
+    AgentConfig config;
+    config.performance.screenshotCacheSize = 48;
+    config.performance.matchThreadPoolSize = 6;
+    config.performance.memoryLimitMb = 4096;
+
+    const auto path = tempFile("perf-always");
+    ASSERT_TRUE(config.saveToFile(path.string()));
+
+    std::ifstream in(path);
+    const std::string content((std::istreambuf_iterator<char>(in)),
+        std::istreambuf_iterator<char>());
+    // [performance] 必须出现在保存的文件中
+    EXPECT_NE(content.find("[performance]"), std::string::npos)
+        << "saved config must contain [performance] section:\n" << content;
+}
+
+TEST_F(AgentConfigTest, LoadFromFileWithPerformanceSection) {
+    // loadFromFile 通过 loadFromString 处理，若配置文件包含 [performance]
+    // 节，其三个整型键应被正确解析并回填。
+    AgentConfig config;
+    config.performance.screenshotCacheSize = 32;
+    config.performance.matchThreadPoolSize = 8;
+    config.performance.memoryLimitMb = 1024;
+
+    const auto path = tempFile("perf-load");
+    ASSERT_TRUE(config.saveToFile(path.string()));
+
+    const auto loaded = AgentConfig::loadFromFile(path.string());
+    EXPECT_EQ(loaded.performance.screenshotCacheSize, 32);
+    EXPECT_EQ(loaded.performance.matchThreadPoolSize, 8);
+    EXPECT_EQ(loaded.performance.memoryLimitMb, 1024);
+}
+
+TEST_F(AgentConfigTest, SaveRoundtripWithAllSectionsIncludingPerformance) {
+    // 真实生产链路：Agent::initialize → loadFromFile → applyRemoteConfig → saveToFile
+    // 全部分区包括 [performance] 都应保持对称。
+    AgentConfig config;
+    config.enableRemote = false;
+    config.enableLocalIpc = true;
+    config.enableStandaloneScript = true;
+    config.remoteClient.serverIp = "10.0.0.1";
+    config.remoteClient.serverPort = 12345;
+    config.remoteClient.reconnectInterval = 30;
+    config.remoteClient.maxReconnectInterval = 120;
+    config.remoteClient.heartbeatInterval = 10;
+    config.remoteClient.registerToken = "tok#val";
+    config.standalone.scriptDir = "scripts/rt";
+    config.debugger.enable = true;
+    config.debugger.listenPort = 8901;
+    config.debugger.waitForIde = false;
+    config.logging.console = true;
+    config.logging.level = "info";
+    config.logging.file = "agent.log";
+    config.performance.screenshotCacheSize = 64;
+    config.performance.matchThreadPoolSize = 4;
+    config.performance.memoryLimitMb = 512;
+
+    const auto path = tempFile("full-roundtrip");
+    ASSERT_TRUE(config.saveToFile(path.string()));
+
+    const auto loaded = AgentConfig::loadFromFile(path.string());
+    EXPECT_EQ(loaded.enableRemote, config.enableRemote);
+    EXPECT_EQ(loaded.enableLocalIpc, config.enableLocalIpc);
+    EXPECT_EQ(loaded.enableStandaloneScript, config.enableStandaloneScript);
+    EXPECT_EQ(loaded.remoteClient.serverIp, config.remoteClient.serverIp);
+    EXPECT_EQ(loaded.remoteClient.serverPort, config.remoteClient.serverPort);
+    EXPECT_EQ(loaded.remoteClient.reconnectInterval, config.remoteClient.reconnectInterval);
+    EXPECT_EQ(loaded.remoteClient.maxReconnectInterval, config.remoteClient.maxReconnectInterval);
+    EXPECT_EQ(loaded.remoteClient.heartbeatInterval, config.remoteClient.heartbeatInterval);
+    EXPECT_EQ(loaded.remoteClient.registerToken, config.remoteClient.registerToken);
+    EXPECT_EQ(loaded.standalone.scriptDir, config.standalone.scriptDir);
+    EXPECT_EQ(loaded.debugger.enable, config.debugger.enable);
+    EXPECT_EQ(loaded.debugger.listenPort, config.debugger.listenPort);
+    EXPECT_EQ(loaded.debugger.waitForIde, config.debugger.waitForIde);
+    EXPECT_EQ(loaded.logging.console, config.logging.console);
+    EXPECT_EQ(loaded.logging.level, config.logging.level);
+    EXPECT_EQ(loaded.logging.file, config.logging.file);
+    // performance 键名：saveToFile 写 screenshot_cache_size / match_thread_pool_size / memory_limit_mb
+    // loadFromString 读 screenshot_cache_size / match_thread_pool_size / memory_limit_mb
+    EXPECT_EQ(loaded.performance.screenshotCacheSize, config.performance.screenshotCacheSize);
+    EXPECT_EQ(loaded.performance.matchThreadPoolSize, config.performance.matchThreadPoolSize);
+    EXPECT_EQ(loaded.performance.memoryLimitMb, config.performance.memoryLimitMb);
+}
+
 } // namespace
