@@ -175,6 +175,10 @@ bool Agent::initialize(const AgentConfig& config) {
 void Agent::shutdown() {
     spdlog::info("Shutting down Agent");
 
+    // 先摘除远程事件转发 sink：lambda 捕获 this，而 EventBuffer 是进程级
+    // 单例——不摘除则 Agent 析构/重建后 push 事件会调用悬空回调
+    EventBuffer::instance().setRemoteSink(nullptr);
+
     if (impl_->remoteClient) {
         impl_->remoteClient->stop();
         impl_->remoteClient.reset();
