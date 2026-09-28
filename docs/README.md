@@ -33,6 +33,7 @@
 | [触发器系统](guides/triggers.md) | 自动化触发条件与动作 |
 | [UIA 指南](guides/uia-guide.md) | Windows UI Automation 使用说明 |
 | [YOLO 指南](guides/yolo-guide.md) | 可选 ML/ONNX 模型准备与加载验证 |
+| [真机验证指引](guides/manual-verification.md) | macOS 运行时 / Linux XRecord 真机脚本操作与通过判定 |
 
 ### 架构与开发
 
