@@ -13,6 +13,8 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
+#include <thread>
+
 namespace wingman::runtime {
 
 namespace {
@@ -441,9 +443,11 @@ CommandResult Agent::handleRemoteCommand(const std::string& command, const Comma
         }
 
     } else if (command == "system.shutdown") {
-        // 关闭 agent
         spdlog::info("Shutting down agent due to remote command");
-        stop();
+        // 命令回调内联运行在 RemoteClient 的消息处理线程上，同步 stop() 会
+        // 停掉/回收正在执行本回调的线程（EDEADLK），ack 也无法发出——
+        // 先回 ack，stop 移交独立线程收尾
+        std::thread([this]() { stop(); }).detach();
         return CommandResult::ok("agent shutting down");
 
     } else if (command == "list_windows") {

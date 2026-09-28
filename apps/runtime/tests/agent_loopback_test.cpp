@@ -9,9 +9,15 @@
 //     （XDG_RUNTIME_DIR 重定向到用例私有目录，system.*/config.* 全链）与
 //     agentcore 协议回环（TcpServer 注册握手 + 远程命令往返 + EventBuffer
 //     远程转发过滤）
-// 缺陷回归钉：Agent::shutdown 原实现不摘除 EventBuffer 远程 sink（lambda 捕获
-// this），Agent 析构后进程级单例仍持有悬空回调，后续 push 即 UB——已在
-// shutdown 中补 setRemoteSink(nullptr)，本文件 ShutdownClearsRemoteEventSink 钉定。
+// 缺陷回归钉（两处，均由本文件用例暴露后根治）：
+//   1) Agent::shutdown 原实现不摘除 EventBuffer 远程 sink（lambda 捕获
+//      this），Agent 析构后进程级单例仍持有悬空回调，后续 push 即 UB——
+//      已在 shutdown 中补 setRemoteSink(nullptr)，
+//      ShutdownClearsRemoteEventSink 钉定。
+//   2) system.shutdown 远程命令原实现同步 stop()，而命令回调内联运行在
+//      RemoteClient 消息处理线程上 → 自我互等（EDEADLK），ack 永远发不出
+//      ——已改为先回 ack、stop 移交独立线程，SystemShutdownCommandStopsAgent
+//      钉定。
 //
 // 平台/环境注记（假设）：
 //   1) 回环组仅编入 Unix：XDG_RUNTIME_DIR 端点重定向与 UnixSocket 通道为 POSIX
@@ -278,9 +284,14 @@ TEST_F(AgentLifecycleTest, ApplyRemoteConfigWithoutRemoteFails) {
 
 TEST_F(AgentLifecycleTest, ApplyRemoteConfigPersistsViaConfigPath) {
     const auto path = tempFile("apply-file");
+    // 预写关闭 LocalIpc 的种子配置：initialize(path) 缺文件时会落默认配置
+    // （默认含 LocalIpc），后续 start() 会绑定真实 XDG 生产端点
+    const AgentConfig seed = makeApiConfig(true, false);
+    ASSERT_TRUE(seed.saveToFile(path.string()));
     Agent agent;
-    ASSERT_TRUE(agent.initialize(path.string())); // 默认配置含 RemoteOutbound
+    ASSERT_TRUE(agent.initialize(path.string()));
     ASSERT_TRUE(agent.getConfig().enableRemote);
+    ASSERT_FALSE(agent.getConfig().enableLocalIpc);
 
     AgentConfig next;
     next.enableRemote = true;
@@ -331,23 +342,28 @@ TEST_F(AgentLifecycleTest, ApplyRemoteConfigReportsPersistenceFailure) {
 }
 
 TEST_F(AgentLifecycleTest, ApplyRemoteConfigWhileRunningReportsDeferredReconnect) {
-    // 运行中换配置 + 新地址不可达（常态）：配置照常落盘，重连交给重启后重试
+    // 运行中换配置 + 新地址不可达（常态）：配置照常落盘，重连交给重启后重试。
+    // 不可达一律用 127.0.0.1 + 释放端口（立即 ECONNREFUSED）；不可路由 IP 的
+    // SYN 重试会让同步 connect 长时间挂起（已实测）
     const auto path = tempFile("apply-running");
+    const AgentConfig seed = makeApiConfig(true, false);
+    ASSERT_TRUE(seed.saveToFile(path.string()));
     Agent agent;
     ASSERT_TRUE(agent.initialize(path.string()));
     EXPECT_FALSE(agent.start()); // 初始地址即不可达，但 running 契约保持
     ASSERT_TRUE(agent.isRunning());
 
     AgentConfig next;
-    next.remoteClient.serverIp = "10.7.7.7";
-    next.remoteClient.serverPort = findFreePort();
+    next.remoteClient.serverIp = "127.0.0.1";
+    const auto newPort = static_cast<int>(findFreePort());
+    next.remoteClient.serverPort = newPort;
     EXPECT_EQ(agent.applyRemoteConfig(next.remoteClient),
         "远程客户端已按新配置写入，但连接启动失败（将在重启后重试）");
-    EXPECT_EQ(agent.getConfig().remoteClient.serverIp, "10.7.7.7");
+    EXPECT_EQ(agent.getConfig().remoteClient.serverPort, newPort);
 
     // 尽管连接未启动，配置已持久化
     const auto reloaded = AgentConfig::loadFromFile(path.string());
-    EXPECT_EQ(reloaded.remoteClient.serverIp, "10.7.7.7");
+    EXPECT_EQ(reloaded.remoteClient.serverPort, newPort);
     agent.stop();
 }
 
@@ -356,16 +372,21 @@ TEST_F(AgentLifecycleTest, ApplyRemoteConfigWhileRunningReportsReconnectAndPersi
     const auto dir = tempFile("dir2");
     const auto path = dir / "nested" / "config.toml";
     Agent agent;
-    ASSERT_TRUE(agent.initialize(path.string()));
+    ASSERT_TRUE(agent.initialize(path.string())); // 默认配置（远程开、LocalIpc 开）
+    // LocalIpc 能力下 start() 会绑定默认端点；显式关掉避免碰真实生产 socket
+    AgentConfig disabled = agent.getConfig();
+    disabled.enableLocalIpc = false;
+    ASSERT_TRUE(agent.initialize(disabled));
     EXPECT_FALSE(agent.start());
     ASSERT_TRUE(agent.isRunning());
 
     AgentConfig next;
-    next.remoteClient.serverIp = "10.8.8.8";
-    next.remoteClient.serverPort = findFreePort();
+    next.remoteClient.serverIp = "127.0.0.1";
+    const auto newPort = static_cast<int>(findFreePort());
+    next.remoteClient.serverPort = newPort;
     EXPECT_EQ(agent.applyRemoteConfig(next.remoteClient),
         "远程客户端连接启动失败，且写入配置文件失败");
-    EXPECT_EQ(agent.getConfig().remoteClient.serverIp, "10.8.8.8"); // 内存仍生效
+    EXPECT_EQ(agent.getConfig().remoteClient.serverPort, newPort); // 内存仍生效
     agent.stop();
 }
 
@@ -687,8 +708,9 @@ TEST_F(AgentLoopbackTest, GetStatusProvidersReflectLocalOnlyAgent) {
     const auto& data = response->at("data");
     ASSERT_TRUE(data.at("success").get<bool>());
     const auto& result = data.at("result");
+    // 配置含 StandaloneScript + LocalIpc（无远程）→ 派生 Standalone
     EXPECT_EQ(result.at("mode").get<int>(),
-        static_cast<int>(RunMode::Unknown));
+        static_cast<int>(RunMode::Standalone));
     EXPECT_FALSE(result.at("remoteConnected").get<bool>());
     EXPECT_EQ(result.at("remoteState").get<std::string>(), "disabled");
     EXPECT_TRUE(result.at("ipcClientConnected").get<bool>());
@@ -767,21 +789,24 @@ TEST_F(AgentLoopbackTest, ConfigSetRemoteAppliesAndPersists) {
     ipcClient_ = std::make_unique<LoopbackIpcClient>(ipcEndpoint());
     ASSERT_TRUE(ipcClient_->connect());
 
+    // 新地址指向回环 fixture server（127.0.0.1:port_）：重建后可即时重连。
+    // 注意不可用不可路由 IP（如 10.x 假地址）：同步 connect 的 SYN 重试会
+    // 长时间阻塞 applyRemoteConfig，进而拖垮 IPC 响应时序（已实测）
     const auto response = ipc("config.setRemote",
-        json{{"serverIp", "10.9.8.7"}, {"serverPort", 4950},
+        json{{"serverIp", "127.0.0.1"}, {"serverPort", port_},
              {"registerToken", "tok-9"}});
     ASSERT_TRUE(response.has_value());
     const auto& data = response->at("data");
     ASSERT_TRUE(data.at("success").get<bool>()) << data.dump();
-    EXPECT_EQ(data.at("result").at("serverIp").get<std::string>(), "10.9.8.7");
-    EXPECT_EQ(data.at("result").at("serverPort").get<int>(), 4950);
+    EXPECT_EQ(data.at("result").at("serverIp").get<std::string>(), "127.0.0.1");
+    EXPECT_EQ(data.at("result").at("serverPort").get<int>(), port_);
     EXPECT_EQ(data.at("result").at("registerToken").get<std::string>(), "tok-9");
 
     // 内存生效 + 落盘持久化（runtime 重启后保持）
-    EXPECT_EQ(agent_->getConfig().remoteClient.serverIp, "10.9.8.7");
+    EXPECT_EQ(agent_->getConfig().remoteClient.serverPort, port_);
     const auto reloaded = AgentConfig::loadFromFile(path.string());
-    EXPECT_EQ(reloaded.remoteClient.serverIp, "10.9.8.7");
-    EXPECT_EQ(reloaded.remoteClient.serverPort, 4950);
+    EXPECT_EQ(reloaded.remoteClient.serverIp, "127.0.0.1");
+    EXPECT_EQ(reloaded.remoteClient.serverPort, port_);
     EXPECT_EQ(reloaded.remoteClient.registerToken, "tok-9");
 }
 
@@ -789,7 +814,16 @@ TEST_F(AgentLoopbackTest, ConfigSetRemoteWithUnwritableConfigPathReportsPartialA
     const auto dir = fs::path(tempPath("dir3"));
     const auto path = dir / "nested" / "config.toml";
     agent_ = std::make_unique<Agent>();
-    ASSERT_TRUE(agent_->initialize(path.string())); // 默认配置（含远程）
+    // 配置路径不可写：initialize 落默认配置（远程指向默认 8888 端口），
+    // 先经 applyRemoteConfig 把远程改指回环 server（同样吃到写回失败腿），
+    // start 后远程可连，再走 IPC config.setRemote 全链
+    ASSERT_TRUE(agent_->initialize(path.string()));
+    AgentConfig redirect;
+    redirect.remoteClient.serverIp = "127.0.0.1";
+    redirect.remoteClient.serverPort = port_;
+    EXPECT_EQ(agent_->applyRemoteConfig(redirect.remoteClient),
+        "配置已应用（本次运行生效），但写入配置文件失败");
+
     ASSERT_TRUE(agent_->start());
     ASSERT_TRUE(waitForServerBodyType("agent.register", 1));
     ackAllRegisters();
@@ -799,14 +833,15 @@ TEST_F(AgentLoopbackTest, ConfigSetRemoteWithUnwritableConfigPathReportsPartialA
     ASSERT_TRUE(ipcClient_->connect());
 
     const auto response = ipc("config.setRemote",
-        json{{"serverIp", "10.4.4.4"}, {"serverPort", 4951}});
+        json{{"serverIp", "127.0.0.1"}, {"serverPort", port_},
+             {"registerToken", "tok-part"}});
     ASSERT_TRUE(response.has_value());
     const auto& data = response->at("data");
     // 新客户端对可达 server 重连成功，但配置文件写回失败 → 部分成功错误串
     EXPECT_FALSE(data.at("success").get<bool>()) << data.dump();
     EXPECT_EQ(data.at("error").get<std::string>(),
         "配置已应用（本次运行生效），但写入配置文件失败");
-    EXPECT_EQ(agent_->getConfig().remoteClient.serverIp, "10.4.4.4");
+    EXPECT_EQ(agent_->getConfig().remoteClient.registerToken, "tok-part");
 }
 
 TEST_F(AgentLoopbackTest, EventBufferForwardsSelectedEventsToServer) {
@@ -871,15 +906,28 @@ TEST_F(AgentLoopbackTest, ShutdownClearsRemoteEventSink) {
 TEST_F(AgentLoopbackTest, GetStatusReportsScriptsAndLinkState) {
     ASSERT_TRUE(startAgent(loopConfig(true, true, false), true));
 
-    // 预置一个已加载（未启动）脚本：get_status 应列出且状态为 loaded
+    // 预置一个已加载（未启动）脚本：get_status 应列出。真实契约：加载后
+    // 状态异步落定为 stopped（loaded 只是过渡态，首次查询可能仍见 loaded），
+    // 轮询到落定值再钉信封字段
     const auto scriptPath = writeScriptFile("loaded.lua", "return 1\n");
     const auto scriptId = agent_->getStandaloneMode()->loadScript(scriptPath);
     ASSERT_FALSE(scriptId.empty());
 
-    const auto body = sendCommand("get_status");
-    ASSERT_TRUE(body.is_object()) << "timed out waiting for get_status response";
-    ASSERT_TRUE(body.at("success").get<bool>()) << body.dump();
-    const auto& status = body.at("data");
+    json status;
+    bool settled = false;
+    for (int i = 0; i < 60 && !settled; ++i) {
+        const auto body = sendCommand("get_status");
+        ASSERT_TRUE(body.is_object()) << "timed out waiting for get_status response";
+        ASSERT_TRUE(body.at("success").get<bool>()) << body.dump();
+        status = body.at("data");
+        const auto& scripts = status.at("scripts");
+        if (!scripts.empty() && scripts[0].at("state") == "stopped") {
+            settled = true;
+        } else {
+            std::this_thread::sleep_for(50ms);
+        }
+    }
+    ASSERT_TRUE(settled) << status.dump();
     EXPECT_EQ(status.at("mode").get<int>(),
         static_cast<int>(agent_->getMode()));
     EXPECT_TRUE(status.at("remoteConnected").get<bool>());
@@ -888,17 +936,19 @@ TEST_F(AgentLoopbackTest, GetStatusReportsScriptsAndLinkState) {
     ASSERT_EQ(status.at("scripts").size(), 1u);
     EXPECT_EQ(status.at("scripts")[0].at("id"), scriptId);
     EXPECT_EQ(status.at("scripts")[0].at("path"), scriptPath);
-    EXPECT_EQ(status.at("scripts")[0].at("state"), "loaded");
+    EXPECT_EQ(status.at("scripts")[0].at("state"), "stopped");
 }
 
 TEST_F(AgentLoopbackTest, GetStatusReportsErroredScript) {
-    // 语法错误的脚本：启动受理后执行线程编译失败 → 状态轮询收敛到 error
+    // 语法错误的脚本：startScript 同步编译失败 → run_script 直接错误信封
+    //（failed to start script），脚本列在 get_status 中状态为 error
     ASSERT_TRUE(startAgent(loopConfig(true, true, false), true));
     const auto badPath = writeScriptFile("bad.lua", "this is not lua )(\n");
 
     const auto started = sendCommand("run_script", json{{"path", badPath}});
     ASSERT_TRUE(started.is_object()) << "timed out";
-    ASSERT_TRUE(started.at("success").get<bool>()) << started.dump();
+    ASSERT_FALSE(started.at("success").get<bool>()) << started.dump();
+    EXPECT_EQ(started.at("error").get<std::string>().rfind("failed to start script: ", 0), 0);
 
     for (int i = 0; i < 100; ++i) {
         const auto body = sendCommand("get_status");
@@ -1042,22 +1092,54 @@ TEST_F(AgentLoopbackTest, TriggerCommandsReuseRpcDispatcher) {
     EXPECT_NE(std::find(names.begin(), names.end(), "from-json"), names.end());
     EXPECT_NE(std::find(names.begin(), names.end(), "plain-name"), names.end());
 
-    // handler 错误信封 → success=false + error 原样回传（71-73 分支）
-    body = sendCommand("trigger.update", json{{"id", "999999"}});
+    // handler 错误信封 → success=false + error 原样回传（71-73 分支）。
+    // 不带 id 字段：CommandData 缺 id → handler 落默认 "0" → 不存在的触发器
+    //（带数字串 id 会被 dispatchViaRpcDispatcher 按 JSON 解析成数值，
+    //   handler 的 value("id","0") 再取字符串会抛 type_error——那是另一条
+    //   dispatcher 捕获腿，语义等价但不钉在此处）
+    body = sendCommand("trigger.update");
     ASSERT_TRUE(body.is_object()) << "timed out";
     EXPECT_FALSE(body.at("success").get<bool>());
     EXPECT_EQ(body.at("error"), "Trigger not found");
 }
 
+TEST_F(AgentLoopbackTest, ScreenshotCaptureReusesRpcDispatcherEnvelope) {
+    // screenshot.capture 经 dispatchViaRpcDispatcher 复用 handler。采集成败
+    // 随环境（有无 VISION/可用屏幕）不同，只钉信封契约：必有 success 布尔。
+    // 该信封含 success 无 result → 走 okData(payload.dump()) 兜底腿（79 行）
+    ASSERT_TRUE(startAgent(loopConfig(true, true, false), true));
+
+    const auto body = sendCommand("screenshot.capture");
+    ASSERT_TRUE(body.is_object()) << "timed out waiting for screenshot response";
+    EXPECT_TRUE(body.at("success").is_boolean()) << body.dump();
+}
+
 TEST_F(AgentLoopbackTest, SystemShutdownCommandStopsAgent) {
+    // 缺陷回归钉：system.shutdown 曾在命令回调线程内同步 stop() → 与
+    // RemoteClient 消息处理线程自我互等（EDEADLK），ack 永远发不出。现契约：
+    // 先回 ack，stop 由独立线程异步完成
     ASSERT_TRUE(startAgent(loopConfig(true, true, false), true));
 
     const auto body = sendCommand("system.shutdown");
     ASSERT_TRUE(body.is_object()) << "timed out waiting for shutdown response";
     ASSERT_TRUE(body.at("success").get<bool>()) << body.dump();
     EXPECT_EQ(body.at("message"), "agent shutting down");
+
+    // 异步 stop：轮询到组件全部落停（stop() 先清 running_ 再逐个停组件，
+    // 只等 isRunning 不足以确认收尾完成，TearDown 会与后台线程竞态）
+    const auto deadline = std::chrono::steady_clock::now() + 3000ms;
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (!agent_->isRunning() &&
+            !agent_->getRemoteClient()->isRunning() &&
+            !agent_->getStandaloneMode()->isRunning()) {
+            break;
+        }
+        std::this_thread::sleep_for(10ms);
+    }
     EXPECT_FALSE(agent_->isRunning());
     EXPECT_FALSE(agent_->getRemoteClient()->isRunning());
+    EXPECT_FALSE(agent_->getStandaloneMode()->isRunning());
+    std::this_thread::sleep_for(200ms); // 收尾余量：后台 stop 线程退出再进 TearDown
 }
 
 #endif // !_WIN32
