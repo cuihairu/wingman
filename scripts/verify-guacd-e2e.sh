@@ -162,7 +162,7 @@ do_up() {
 		awk '$2 != "healthy" && $2 != "" {print $1" ("$2")"}' || true)
 	if [[ -n "$unhealthy" ]]; then
 		echo "WARN: 端口已通但以下容器健康检查未过（多为探针在镜像内不可用，可忽略）："
-		echo "$unhealthy" | sed 's/^/  - /'
+		echo "  - ${unhealthy//$'\n'/$'\n  - '}"
 	fi
 }
 
