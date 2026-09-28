@@ -1,8 +1,8 @@
-# Wingman
-
 <div align="center">
 
 <img src="docs/public/logo.svg" alt="Wingman" width="100" />
+
+# Wingman
 
 **游戏自动化可编程控制引擎**
 
