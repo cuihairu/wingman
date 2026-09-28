@@ -4,6 +4,11 @@
 #include "wingman/script/iscript_engine.hpp"
 #include "wingman/game_profile.hpp"
 
+// cleanupMlModule 声明（ml_module.hpp 位于 src 内部，不对外暴露）
+namespace wingman::script::modules {
+void cleanupMlModule();
+}
+
 using namespace wingman;
 using namespace wingman::script;
 using namespace wingman::script::modules;
@@ -452,4 +457,81 @@ TEST(MlModuleTest, RunAfterFailedLoadFailsConsistently) {
 
     auto input = makeTensorSpec("images", {ScriptValue::fromFloat(0.5)});
     expectRunFailure(*runFn, {ScriptValue::fromString("ml-1"), ScriptValue::fromArray({input})});
+}
+
+// ========== ML Module: providers / unload / isLoaded / inputs / outputs / cleanup ==========
+
+TEST(MlModuleTest, ProvidersReturnsStringArray) {
+    auto mod = getMlModule();
+    ASSERT_FALSE(mod.name.empty()) << "ml module not found in registry";
+
+    const auto* providersFn = findFunction(mod, "providers");
+    ASSERT_NE(providersFn, nullptr);
+
+    const auto result = (*providersFn)({});
+    EXPECT_TRUE(result.isArray()) << "providers should return an array";
+    EXPECT_GT(result.size(), 0u) << "providers list should not be empty";
+}
+
+TEST(MlModuleTest, UnloadReturnsFalseForMissingModel) {
+    auto mod = getMlModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* unloadFn = findFunction(mod, "unload");
+    ASSERT_NE(unloadFn, nullptr);
+
+    const auto result = (*unloadFn)({ScriptValue::fromString("ml-never-existed")});
+    EXPECT_FALSE(result.asBool()) << "unload of missing model should return false";
+}
+
+TEST(MlModuleTest, IsLoadedReturnsFalseForMissingModel) {
+    auto mod = getMlModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* isLoadedFn = findFunction(mod, "isLoaded");
+    ASSERT_NE(isLoadedFn, nullptr);
+
+    const auto result = (*isLoadedFn)({ScriptValue::fromString("ml-never-existed")});
+    EXPECT_FALSE(result.asBool()) << "isLoaded of missing model should return false";
+}
+
+TEST(MlModuleTest, InputsReturnsEmptyArrayForMissingModel) {
+    auto mod = getMlModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* inputsFn = findFunction(mod, "inputs");
+    ASSERT_NE(inputsFn, nullptr);
+
+    const auto result = (*inputsFn)({ScriptValue::fromString("ml-never-existed")});
+    EXPECT_TRUE(result.isArray()) << "inputs should return an array";
+    EXPECT_EQ(result.size(), 0u) << "inputs of missing model should be empty";
+}
+
+TEST(MlModuleTest, OutputsReturnsEmptyArrayForMissingModel) {
+    auto mod = getMlModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const auto* outputsFn = findFunction(mod, "outputs");
+    ASSERT_NE(outputsFn, nullptr);
+
+    const auto result = (*outputsFn)({ScriptValue::fromString("ml-never-existed")});
+    EXPECT_TRUE(result.isArray()) << "outputs should return an array";
+    EXPECT_EQ(result.size(), 0u) << "outputs of missing model should be empty";
+}
+
+TEST(MlModuleTest, CleanupDoesNotCrash) {
+    EXPECT_NO_THROW(cleanupMlModule());
+}
+
+TEST(MlModuleTest, ModuleHasExpectedFunctionSet) {
+    auto mod = getMlModule();
+    ASSERT_FALSE(mod.name.empty());
+
+    const std::vector<std::string> expected = {
+        "providers", "loadModel", "unload", "isLoaded", "inputs", "outputs", "run",
+    };
+    for (const auto& name : expected) {
+        EXPECT_NE(findFunction(mod, name), nullptr) << "ml module missing function: " << name;
+    }
+    EXPECT_EQ(mod.functions.size(), expected.size()) << "ml module should expose exactly 7 functions";
 }

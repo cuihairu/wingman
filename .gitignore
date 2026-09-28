@@ -164,6 +164,8 @@ clients/
 /*.cmake
 
 # Test/coverage artifacts
+# *.gcov: gcov/gcovr 在错误工作目录（例如仓库根）运行时的散落文本产物
+*.gcov
 coverage.zip
 coverage_ci/
 coverage_ci2/
