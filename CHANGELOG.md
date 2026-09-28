@@ -9,7 +9,15 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 421 个提交（feat 74 / fix 142 / docs 75 / test 58 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 423 个提交（feat 74 / fix 142 / docs 76 / test 59 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-28，C++（Linux）覆盖率扫描续：lua_marshal 40% → 97%（28 例），双向转换契约直测）
+
+- **缺口定位与排除**：gcovr 全量报告（CI 同款 xvfb 口径，TOTAL 88%）按未覆盖行数排序后，剔除不可离线测项——`misc_modules.cpp` 359-462（UIA OO 区块：Linux 无 `createUIAManager` 后端，元素句柄闭包仅在 Win/Mac 可达，平台耦合）；`lua_engine.cpp` 80 行 0%（零引用遗留类，全仓仅 `registerLuaEngine()`——后者属 lua_script_engine.cpp）；`screenshot_handler.cpp` 19%（`WINGMAN_ENABLE_VISION` 编译变体门外，本机无 vision 构建）；`crypt.cpp` 75%（余量为 OpenSSL 内部失败分支，前轮既定口径）；x11_recorder/x11_clipboard/clipboard（平台后端）；main.cpp/start_command.cpp（入口胶水）。锁定 `libs/lua/src/lua_marshal.cpp` **40%（62/104 未覆盖）**——ScriptValue↔Lua 双向转换层，仅被 timer_module 间接触发零星分支，转换契约零直测。
+- **新增 `lib/wingman/tests/lua_marshal_test.cpp` 28 例**（core_tests 直链 wingman::lua 既有接线；纯嵌入式 sol::state，Windows CI 全量参与）：toLuaObject 10 例（null→nil、bool/int 保持 lua 5.4 integer 性/float/string 含 CJK 转义、数组→序列表、对象→映射表、嵌套容器 Lua 往返、C++ callable 经 variadic_args 实参 marshaling 被 Lua 调用（int/string/bool/nil/table 五类实参逐个钉型）、threadSafe callable 返回字符串往返）；toScriptValue 10 例（invalid 对象→null、bool、**lua_isinteger 整数性分流 42→Int/2.5→Float**、字符串、Lua function→**非线程安全** ScriptValue callable 并实调、数值实参与 Int 返回、error() 函数实证为 protected 调用落 null（与 executeString 直调走 catch 腿路径不同，按现状钉）、userdata→null 兜底）；tableToScriptValue 8 例（序列→数组、字符串键→对象、**空表落对象分支**、混合键丢数字键、非正整数键取消数组资格、稀疏数组保形空洞补 Null、嵌套递归、table 引用直转）。
+- **余量 3 行登记（不写假用例）**：48（toLuaObject switch 全 8 枚举 case 均在分支内返回，末尾兜底恒不可达）；57-58（sol::type::nil case——实测真实 nil 经 sol 代理均以 invalid 对象到达、走 52-53 已覆盖腿，valid-nil 引用无自然构造路径，防御分支）。
+- **覆盖率**（gcovr 行）：`lua_marshal.cpp` 40%（42/104）→ **97%**（101/104）；TOTAL 88% → **89%**（14814/16600）。
+- **验证**：新增 28 例全绿（连跑 3 轮稳定）；build/ 全量 ctest **2459/2459**、插桩 build-cov 全量 ctest **2459/2459**（两树注册数一致；本地全量门禁自本轮起沿用 CI 的 xvfb-run 口径，X 相关用例不再因环境缺 DISPLAY 而 skip）；Go `-race -count=1 -timeout 90m` 14 包全绿、dashboard jest 420、GUI vitest 全绿（本轮零 Go/JS 改动，沿用今日早前同一代码态的已验结果；CI 仍随推送全量复跑）；CI 结果见本提交对应的 workflow run。
 
 ### test（2026-09-28，C++（Linux）覆盖率收口：Agent 主类 0% → 84%（35 例），两缺陷根治：system.shutdown 死锁 / shutdown 悬空事件 sink）
 

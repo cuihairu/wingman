@@ -110,6 +110,10 @@ if(BUILD_CORE_TESTS)
     # executeString 成败、callFunction 全链、registerModule 注册函数被 Lua
     # 调用与异常传播、global 往返、沙箱开关语义、print 捕获契约）
     target_sources(core_tests PRIVATE lua_script_engine_test.cpp)
+    # lua_marshal 缺口补测（ScriptValue↔sol::object 双向转换：标量/容器/嵌套
+    # 往返、lua_isinteger 整数性分流、table 数组/对象判别矩阵、callable 双向
+    # 包装与实参 marshaling、userdata 回落 null）
+    target_sources(core_tests PRIVATE lua_marshal_test.cpp)
     # script_manager 配置加载与热重载检查补测（JSON 非对象根拒绝/autoReload
     # 关闭早退/脚本文件删除后 stat 失败）
     target_sources(core_tests PRIVATE script_manager_config_reload_test.cpp)

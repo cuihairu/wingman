@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-09-28 C++（Linux）覆盖率扫描续：lua_marshal 40% → 97%（28 例，双向转换契约直测）
+
+上轮 Agent 收口后继续扫缺口。gcovr 全量报告（本轮起本地门禁沿用 CI 的 xvfb-run 口径）按未覆盖行数排序：misc_modules 的 UIA OO 区块（Linux 无 UIAManager 后端、平台耦合）、lua_engine.cpp 0%（零引用遗留类）、screenshot_handler（VISION 编译变体门）、crypt OpenSSL 失败分支（既定口径）、x11/clipboard 平台后端、main/start_command 入口胶水均剔除，锁定 `libs/lua/src/lua_marshal.cpp` **40%（62/104）**——ScriptValue↔Lua 双向转换层，契约零直测。
+
+- **测试**：新增 `lib/wingman/tests/lua_marshal_test.cpp` 28 例（core_tests 既有接线；纯嵌入式 sol::state，Windows CI 全量参与）：toLuaObject 10（null→nil、integer 性保持、容器/嵌套往返、C++ callable 五类实参 marshaling 被 Lua 调用）；toScriptValue 10（invalid→null、lua_isinteger 分流、Lua function→非线程安全 callable 实调、error() 函数实证 protected 调用落 null 按现状钉、userdata 兜底）；tableToScriptValue 8（数组/对象判别矩阵：空表落对象、混合键丢数字键、非正整数键取消数组资格、稀疏数组保形补 Null、嵌套递归）。
+- **余量 3 行登记（不写假用例）**：48 = switch 全枚举兜底恒不可达；57-58 = valid-nil 防御（真实 nil 均以 invalid 对象到达 52-53 已覆盖腿）。
+- **覆盖率**（gcovr 行）：lua_marshal.cpp 40%（42/104）→ **97%**（101/104）；**TOTAL 88%→89%**（14814/16600）。
+- **验证**：新增 28 例全绿（连跑 3 轮稳定）；build/ 全量 ctest **2459/2459**、插桩 build-cov 全量 ctest **2459/2459**（均 xvfb 口径，两树注册数一致）；Go `-race` 14 包全绿、jest 420、vitest 全绿（零 Go/JS 改动沿用今日同一代码态已验结果，CI 随推送复跑）；CI 结果见提交对应 run。
+
+---
+
 ## 2026-09-28 C++（Linux）覆盖率收口：Agent 主类 0% → 84%（35 例），两缺陷根治：system.shutdown 死锁 / shutdown 悬空事件 sink
 
 todo 仅剩两条真机人工验证项（headless 不可执行），按既定规则转覆盖率缺口。gcovr 全量报告（口径沿用 `--gcov-ignore-parse-errors negative_hits.warn`，TOTAL 87.1%）剔除真机/平台耦合项（x11_recorder/x11_clipboard）、入口胶水（main.cpp）与 OpenSSL 内部失败分支后，行覆盖最低且可离线测的自有模块锁定 `apps/runtime/src/agent.cpp` **297 行 0%**——runtime 编排核心（initialize 能力分支、start 组件装配、applyRemoteConfig 热重建、handleRemoteCommand 全命令面、EventBuffer 远程转发）此前只被间接编译、无任何测试驱动。
