@@ -1,10 +1,22 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-09-27
+> 最后更新: 2026-09-28
 > 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）
 
 > [本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator]
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
+
+---
+
+## 2026-09-28 C++（Linux）覆盖率收口：Agent 主类 0% → 84%（35 例），两缺陷根治：system.shutdown 死锁 / shutdown 悬空事件 sink
+
+todo 仅剩两条真机人工验证项（headless 不可执行），按既定规则转覆盖率缺口。gcovr 全量报告（口径沿用 `--gcov-ignore-parse-errors negative_hits.warn`，TOTAL 87.1%）剔除真机/平台耦合项（x11_recorder/x11_clipboard）、入口胶水（main.cpp）与 OpenSSL 内部失败分支后，行覆盖最低且可离线测的自有模块锁定 `apps/runtime/src/agent.cpp` **297 行 0%**——runtime 编排核心（initialize 能力分支、start 组件装配、applyRemoteConfig 热重建、handleRemoteCommand 全命令面、EventBuffer 远程转发）此前只被间接编译、无任何测试驱动。
+
+- **测试**：新增 `apps/runtime/tests/agent_loopback_test.cpp` 35 例 / 2 套件（tests/CMakeLists 接线；TCP 回环沿用 agentcore 测试 harness 模式，IPC 客户端沿用 rpc_ipc_test 模式）。AgentLifecycleTest 17 例全平台（能力→组件派生矩阵 4、配置文件首跑写默认+读回 2、生命周期契约 4——含 start 失败 running 仍置位的降级契约、applyRemoteConfig 矩阵 7）；AgentLoopbackTest 18 例 POSIX（`#ifndef _WIN32`，XDG_RUNTIME_DIR/TMPDIR 重定向到用例私有目录后走 Agent::start() 真实装配路径：本地 IPC 面 8——getVersion 全链、getStatus providers、getRemote 镜像、setRemote 校验矩阵+应用落盘全链+不可写路径部分成功、EventBuffer 三类事件转发过滤+摘 sink 回归钉；远程命令面 10——get_status 脚本落定/error 态、list_windows 信封、run_script 四腿、stop_script 三错误腿、unknown、trigger.* Dispatcher Reuse、screenshot.capture 信封、system.shutdown）。
+- **两缺陷根治（均由本轮用例暴露）**：① system.shutdown 远程命令自我死锁——命令回调内联运行在 RemoteClient 消息处理线程上，同步 `stop()` 回收正在执行回调的线程自身（实测 `Resource deadlock avoided`），ack 永远发不出、server 侧超时；改为先回 ack、stop 移交独立线程收尾，`SystemShutdownCommandStopsAgent` 回归钉（轮询组件全停再收尾）。② `Agent::shutdown` 不摘除 EventBuffer 远程 sink——lambda 捕获 `this` 而 EventBuffer 是进程级单例，Agent 析构/重建后 push 事件即悬空回调 UB；shutdown 补 `setRemoteSink(nullptr)`，`ShutdownClearsRemoteEventSink` 回归钉。
+- **登记假设与余量 46 行（不写假用例）**：stop_script 成功腿与脚本 running 态需长驻脚本协作停止（真机观察，同 rpc_ipc_test 口径）；list_windows 循环体 Xvfb 无窗口不执行；scriptStateToString 的 Loaded 过渡态不停驻、Running/Paused 同前、Unknown 防御兜底；触发器 onFired→EventBuffer 推送需真实屏幕命中；screenshot/trigger 的 dispatcher 空指针防御与 initRemoteClient/initStandaloneMode 失败腿恒不可达；encodeWindowHandle `_WIN32` 分支非激活编译侧；多行 braced-init 与 spdlog 双行语句的行归因伪影。
+- **覆盖率**（gcovr 行）：`agent.cpp` 0%（0/297）→ **84%**（252/298）；**TOTAL 87.1%→88%**（14740/16600）。
+- **验证**：新增 35 例全绿（连跑 3 轮稳定）；build/ 全量 ctest **2431/2431**、插桩 build-cov 全量 ctest **2431/2431**（两树终版注册数一致）；Go `-race -count=1 -timeout 90m` 14 包全绿（integration 包 1868s）；dashboard jest 420、GUI vitest 全绿。CI 注记：前笔 c97a57a 为加固未完成的中间态提交，其 Linux full-tests 两作业失败的 6 例即本笔修复对象（断言与实测契约错配 4、trigger.update 数值 id 的 JSON 解析歧义 1、system.shutdown 死锁超时 1），最终 CI 结果见本提交对应的 workflow run。
 
 ---
 
