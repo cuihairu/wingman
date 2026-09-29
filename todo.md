@@ -1,10 +1,21 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-09-28
+> 最后更新: 2026-09-29
 > 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）
 
 > [本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator]
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
+
+---
+
+## 2026-09-29 C++（Linux）覆盖率扫描续：StandaloneMode 78% → 92%（12 例），ScriptManager 状态机结构性缺陷登记
+
+module_helpers 收口后继续。重跑 gcovr 全量（xvfb 门禁 2474/2474 全绿后出报），排除项复核不变，remote_client 与 standalone_mode 并列 51 miss；standalone_mode 为纯编排层（进程级 ScriptManager + EventBuffer，确定性可离线驱动），锁定 **78%（51 行）**。
+
+- **测试**：新增 `apps/runtime/tests/standalone_mode_coverage_test.cpp` 12 例（runtime_tests 接线 + registerLuaEngine() 惰性注册同 rpc_ipc_test；全平台编译）：start 幂等/scriptDir 被文件占据失败、autoStart 装配（输出回调空串跳过实证、completed→Unknown 现状钉）、缺失脚本跳过、loadScript 登记（unloaded→Stopped 现状钉、reload 后 Loaded）、失败脚本 error 态 + 事件推送全链、unknown-id 防御、manager 失同步降级三腿（getScript 默认/unloadScript false/stop 不崩）、批量操作闲置计数 0 契约、getConfig 镜像。
+- **结构性不可达登记（19 行）——ScriptManager 状态机缺陷**：runScriptInternal 从不赋值 running（唯一赋值点在 resumeScript，resume 前置 paused、pause 前置 running——死锁环）→ pause/resume 成功腿、批量计数增量、running/paused 状态映射均不可达（**真机同样不可达**，修正 round-4「真机观察」归类）；stopScript 成功腿仅 starting 态并发 stop 可达但伴生 engine->shutdown() 与执行线程的数据竞争，不触发。修复 = 补 running 赋值 + 引擎级协作停止（指令钩子），建议独立任务。另登记 167-168（manager 失败腿为 TOCTOU 外不可达的防御双检）、46（-O2 行归因伪影）。
+- **覆盖率**（gcovr 行）：standalone_mode.cpp 78%（189/240）→ **92%**（221/240）；**TOTAL 14849→14878/16600**（89%，+29 行）。
+- **验证**：新增 12 例全绿（连跑 3 轮稳定）；build/ 与插桩 build-cov 全量 ctest **2486/2486**（两树一致，含 +12；xvfb 口径 0 failed）；Go/JS 零改动，CI 随推送复跑。
 
 ---
 

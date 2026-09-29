@@ -9,7 +9,16 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 424 个提交（feat 74 / fix 142 / docs 76 / test 60 / ci 20 / refactor 9 / chore 18 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 427 个提交（feat 74 / fix 142 / docs 77 / test 61 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-29，C++（Linux）覆盖率扫描续：StandaloneMode 78% → 92%（12 例），ScriptManager 状态机结构性缺陷登记）
+
+- **缺口定位**：重跑 gcovr 全量报告（xvfb 口径门禁 2474/2474 全绿后出报，TOTAL 14849/16600），排除项复核不变（misc_modules UIA 平台耦合 / lua_engine 死代码 / crypt OpenSSL 失败分支 / x11_recorder 真桌面 / packer 私有死代码 + PE 平台 / main + start_command 入口胶水 / screenshot_handler VISION 变体门 / notify WebhookSender 配置性死代码）。remote_client.cpp 与 standalone_mode.cpp 并列 51 miss；后者为纯编排层（进程级 ScriptManager + EventBuffer，无网络/平台分支、确定性可离线驱动），可达行比例更高，锁定 `apps/runtime/src/standalone_mode.cpp` **78%（51 行未覆盖）**。
+- **新增 `apps/runtime/tests/standalone_mode_coverage_test.cpp` 12 例**（runtime_tests 接线 + `registerLuaEngine()` 惰性注册同 rpc_ipc_test 口径；全平台编译，Windows CI 全量参与）：start 二次调用幂等 true；scriptDir 被普通文件占据 → `create_directories` 异常 → false；autoStart 装配（快脚本加载 + 阻塞运行至完成、**输出回调空串跳过**——空 `print()` 的空串经引擎输出回调实证送达、只转发非空输出恰好一条、completed→Unknown 现状钉）；autoStart 缺失脚本跳过；loadScript 登记（**unloaded→Stopped 现状钉**：manager.loadScript 不置 loaded 态，`reloadScript` 后才 Loaded——两处状态映射按现状钉并在余量登记）；失败脚本 error 态 + error 事件经 start() 注册回调推送全链；startScript unknown-id false；manager 失同步（登记 map 命中、manager 条目已被直卸）→ getScript 回落默认 Info / unloadScript false / stop() 降级不崩；批量操作闲置脚本计数 0 契约（pauseAll/resumeAll/stopAll 三态一致）；getScript unknown-id 默认值；getConfig 构造镜像。
+- **结构性不可达登记（19 行，不写假用例）——ScriptManager 状态机缺陷发现**：`runScriptInternal` 从不赋值 `ScriptState::running`（全文件唯一赋值点在 resumeScript，而 resume 前置 paused、pause 前置 running——**死锁环**），故 pause/resume 成功腿（238-242 / 257-261）、pauseAll/resumeAll/stopAll 非零计数增量（295 / 314 / 333）、toRuntimeState 的 running/paused 映射（26-29）均结构性不可达——**真机同样不可达**（执行期状态为 starting 非 running；本轮修正 round-4 将其归为「真机观察范畴」的口径）；stopScript 成功腿（276-280）仅 starting 态并发 stop 可达，但该路径并发 `engine->shutdown()`（销毁执行线程正在使用的 lua_State，数据竞争）不触发。修复需补 running 赋值 + 引擎级协作停止设计（指令计数钩子），超出覆盖率轮范畴，建议独立任务。
+- **另登记**：167-168（manager 加载失败腿——manager.loadScript 唯一失败条件是文件不存在，而 StandaloneMode 已前置检查，TOCTOU 窗口外不可达，防御性双检）；46（toRuntimeInfo 尾行已被多次驱动仍计 miss，-O2 行归因伪影）。
+- **覆盖率**（gcovr 行）：`standalone_mode.cpp` 78%（189/240）→ **92%**（221/240）；TOTAL 14849 → **14878**/16600（89%，+29 行）。
+- **验证**：新增 12 例全绿（连跑 3 轮稳定）；build/ 全量 ctest **2486/2486**、插桩 build-cov 全量 ctest **2486/2486**（两树注册数一致，含本轮 +12；均 xvfb 口径 0 failed，31 例 xclip/XRecord 条件 skip 与既往一致）；Go/JS 零改动沿用已验结果，CI 随推送全量复跑。
 
 ### test（2026-09-28，C++（Linux）覆盖率扫描续：module_helpers 张量转换层 68% → 96%（15 例），dtype 全矩阵直测）
 
