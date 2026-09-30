@@ -19,7 +19,9 @@ import org.json.JSONObject
  * 服务器配置 + 启停 + 状态轮询（1s nativeStatus）+ 权限引导
  * （无障碍设置入口、投屏授权对话框）。
  * A3：开机自启开关（BootCompletedReceiver 的放行来源）+ 机型保活指引
- * （厂商 ROM 后台清理对策，详见 docs/guides/android-keep-alive.md）。
+ * （厂商 ROM 后台清理对策，详见 docs/guides/android-keep-alive.md）
+ * + 受限设置引导（Android 13+ 侧载开箱失败最高来源，自动弹一次 +
+ * 按钮常驻，详见 docs/guides/android-restricted-settings.md）。
  */
 class MainActivity : AppCompatActivity() {
 
@@ -93,6 +95,12 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
+        // A3 部署体验：受限设置指引（Android 13+ 侧载默认屏蔽无障碍等受限
+        // 服务——用户去系统设置打不开开关的根因；三档解法见对话框正文）
+        findViewById<Button>(R.id.btnRestrictedSettingsGuide).setOnClickListener {
+            showRestrictedSettingsGuide()
+        }
+
         // A3：开机自启开关（BootCompletedReceiver 放行判定读此键）
         val bootView = findViewById<CheckBox>(R.id.checkAutoStartBoot)
         bootView.isChecked = prefs.getBoolean(AgentPrefs.KEY_AUTO_START_ON_BOOT, true)
@@ -115,11 +123,45 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         uiHandler.post(pollStatus)
+        maybePromptRestrictedSettings()
     }
 
     override fun onPause() {
         super.onPause()
         uiHandler.removeCallbacks(pollStatus)
+    }
+
+    // A3 部署体验：Android 13+ 且无障碍未启用时，回前台自动弹一次受限设置
+    // 引导（判定口径与诚实边界见 RestrictedSettingsPolicy）。弹过一次即落
+    // ack 不再自动弹；按钮入口常驻，可随时重看。
+    private fun maybePromptRestrictedSettings() {
+        if (!RestrictedSettingsPolicy.shouldPrompt(
+                android.os.Build.VERSION.SDK_INT,
+                isAccessibilityEnabled(),
+                prefs.getBoolean(AgentPrefs.KEY_RESTRICTED_HINT_ACK, false),
+            )
+        ) {
+            return
+        }
+        prefs.edit().putBoolean(AgentPrefs.KEY_RESTRICTED_HINT_ACK, true).apply()
+        showRestrictedSettingsGuide()
+    }
+
+    private fun showRestrictedSettingsGuide() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.restricted_settings_guide_title)
+            .setMessage(R.string.restricted_settings_guide_body)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    // 与 WingmanService 同款判定：公开 API 无「被受限设置挡住」状态，只能查
+    // 已启用无障碍服务列表是否含本包。三行副本抽公共层需 Context 注入，
+    // 不值得；两处同步维护。
+    private fun isAccessibilityEnabled(): Boolean {
+        val setting = android.provider.Settings.Secure.getString(
+            contentResolver, android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        return setting?.contains(packageName) == true
     }
 
     private fun saveConfig(ipView: EditText, portView: EditText, agentView: EditText, tokenView: EditText) {

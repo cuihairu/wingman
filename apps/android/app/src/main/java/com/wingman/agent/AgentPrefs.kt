@@ -20,4 +20,7 @@ object AgentPrefs {
     const val KEY_CRASH_LAST_AT = "crashLastAt" // CrashState.lastCrashAtMs
     const val KEY_CRASH_WINDOW_START = "crashWindowStart" // CrashState.windowStartMs
     const val KEY_LAST_CRASH_MESSAGE = "lastCrashMessage" // 最近一次崩溃摘要（诊断用）
+
+    // A3 部署体验面（受限设置引导，MainActivity 读写）
+    const val KEY_RESTRICTED_HINT_ACK = "restrictedHintAck" // 自动引导弹过一次即置位
 }

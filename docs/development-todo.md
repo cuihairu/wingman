@@ -130,8 +130,8 @@
 - [ ] 触发器系统端侧跑通（定时/像素触发）
 
 ### A3 可靠性与部署体验
-- [ ] 开机自启、崩溃自重启、断连自治（缓存脚本继续执行、重连后汇报）
-- [ ] Android 13+ 受限设置引导（手动允许 / adb 预授权 / Device Owner 批量部署）
+- [x] 开机自启、崩溃自重启、断连自治（缓存脚本继续执行、重连后汇报）（2026-09-30，6cecfad：BootCompletedReceiver/退避闹钟/核心看门狗 + RemoteClient 既有 outbox）
+- [x] Android 13+ 受限设置引导（手动允许 / adb 预授权 / Device Owner 批量部署）（2026-09-30：`scripts/android-restricted-settings.sh`（幂等，Go 契约测试护栏）+ App 内引导（RestrictedSettingsPolicy 自动弹一次 + 常驻按钮）+ `docs/guides/android-restricted-settings.md`）
 - [ ] 模板图片 asset.sync 下发、脚本版本管理
 
 ### A4 多设备编排

@@ -129,6 +129,21 @@ adb push ok.png /sdcard/Android/data/com.wingman.agent/files/templates/
 已知边界：MediaProjection 授权在进程崩溃/重启后不恢复（Android 14 单会话
 一次性，系统约束），需重新点「开启投屏」。
 
+## A3 受限设置验证步骤（Android 13+ 侧载开箱）
+
+Android 13 起侧载安装的无障碍被「受限设置」默认屏蔽（开关打不开的根因），
+部署期一次性解开后不再复发：
+
+1. **脚本预授权（推荐）**：电脑连真机后
+   `scripts/android-restricted-settings.sh check` → FAIL 即未授权，
+   `allow` 幂等预授权后再 `check` 应 PASS；
+2. **手动允许**：系统设置 → 应用 → Wingman Agent → ⋮ → 允许受限制的
+   设置，随后无障碍开关即可正常打开；
+3. **App 内引导**：Android 13+ 且未开无障碍时主界面自动弹一次指引
+   （确认过不再自动弹，「受限设置指引」按钮常驻）。
+
+批量/Device Owner 路径与故障排查见 `docs/guides/android-restricted-settings.md`。
+
 ## 里程碑
 
 - **A1（本目录）**：链路打通（连接/注册/脚本下发/日志回传/停止）。
@@ -138,7 +153,9 @@ adb push ok.png /sdcard/Android/data/com.wingman.agent/files/templates/
   脚本 API；screenshot.capture 远程截图。见设计文档 §5.5/§5.6。
 - **A3 可靠性（剩余项已实施，2026-09-30）**：开机自启（BootCompletedReceiver
   + 开关）、崩溃自重启（退避闹钟 + 崩溃串放弃 + coreRunning 门控）、核心
-  看门狗、机型保活指引（docs/guides/android-keep-alive.md）；断连缓存自治
+  看门狗、机型保活指引（docs/guides/android-keep-alive.md）；受限设置引导
+  （docs/guides/android-restricted-settings.md + 预授权脚本 + App 内
+  RestrictedSettingsPolicy 引导，同日落地）；断连缓存自治
   自 A1 起由 C++ RemoteClient 现成承担（outbox/重连，agentcore_test 覆盖）。
   token 认证 P1 已于 2026-09-20 落地（见 docs/agent-token-auth-design.md），
   nightly CI 打 APK、JVM 单测入 build-android job。剩余 A3-P2 安全演进。

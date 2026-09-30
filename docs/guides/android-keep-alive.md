@@ -2,6 +2,8 @@
 
 > 适用：Wingman Android Agent（apps/android，A3 可靠性落地 2026-09-30）。
 > 配套设计：`docs/android-agent-design.md` §7（生命周期与保活）。
+> 姊妹篇：`docs/guides/android-restricted-settings.md`——Android 13+ 侧载
+> 安装时无障碍**打不开**是受限设置问题，先看那一页再回来。
 
 ## 背景：Agent 自身的保活已经做了什么
 

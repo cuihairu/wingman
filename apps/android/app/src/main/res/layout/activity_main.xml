@@ -76,6 +76,13 @@
         android:layout_marginTop="16dp"
         android:text="@string/btn_accessibility" />
 
+    <Button
+        android:id="@+id/btnRestrictedSettingsGuide"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/btn_restricted_settings_guide" />
+
     <CheckBox
         android:id="@+id/checkAutoStartBoot"
         android:layout_width="match_parent"

@@ -137,10 +137,11 @@ Android App（Kotlin 壳）
 
 ### 5.2 权限摩擦（重要，影响开箱体验）
 
-- **Android 13+ 受限设置**：侧载 App 的无障碍权限默认被系统屏蔽。解法（文档化到用户手册）：
+- **Android 13+ 受限设置**：侧载 App 的无障碍权限默认被系统屏蔽。解法（已落地，见 `docs/guides/android-restricted-settings.md`）：
   1. 用户手动：应用信息 → ⋮ → 「允许受限制的设置」→ 再开无障碍
-  2. 批量部署场景：`adb shell appops set <pkg> ACCESS_RESTRICTED_SETTINGS allow` 预授权
+  2. 批量部署场景：`adb shell appops set <pkg> ACCESS_RESTRICTED_SETTINGS allow` 预授权（已脚本化：`scripts/android-restricted-settings.sh check/allow/revoke/status`，幂等，Go 契约测试护栏）
   3. 企业/工作室批量纳管：Device Owner 模式静默授权（MDM 通用做法，也是群控系统的标准路径）
+  App 内两级引导（Android 13+ 且无障碍未启用自动弹一次 + 常驻按钮）已随 A3 部署体验落地（2026-09-30）。
 - **MediaProjection**：每次会话需用户确认投屏弹窗（配合前台服务类型 `mediaProjection` 可持续）；引导一次即可
 - **无障碍服务开关**：系统改版/重启可能失效，Agent 需检测并上报 Server 提醒用户
 
@@ -183,7 +184,7 @@ Android App（Kotlin 壳）
 
 | 风险 | 等级 | 缓解 |
 |------|------|------|
-| Android 13+ 受限设置导致开箱失败率高 | 高 | 文档引导 + adb 预授权脚本 + Device Owner 批量部署方案 |
+| Android 13+ 受限设置导致开箱失败率高 | 高 | 文档引导 + adb 预授权脚本 + Device Owner 批量部署方案（✅ 已落地 2026-09-30，见 §5.2 与 docs/guides/android-restricted-settings.md） |
 | 厂商 ROM 杀后台/自启被拦 | 高 | 自愈三件套（5.1）；按机型维护「保活设置指引」 |
 | 手游反检测（generated gesture 标记、投屏图标） | 中 | 人性化模拟强化；明确产品定位与合规声明 |
 | iOS 大版本变动 | — | iOS 仅做远期可选，不背主线成本 |
@@ -206,8 +207,9 @@ Android App（Kotlin 壳）
   - [ ] 找色/找图/像素检测对手机截帧可用；screen/input 脚本 API 全通
   - [ ] 触发器系统在端侧跑通（定时/像素触发）
 - [ ] **A3 可靠性与部署体验**
-  - [ ] 开机自启、崩溃自重启、断连自治（缓存脚本继续执行、重连后汇报）
-  - [ ] 受限设置引导 + adb 预授权脚本；无障碍失效检测上报
+  - [x] 开机自启、崩溃自重启、断连自治（缓存脚本继续执行、重连后汇报）（✅ 2026-09-30，6cecfad）
+  - [x] 受限设置引导 + adb 预授权脚本（✅ 2026-09-30：脚本 + App 内引导 + 手册 `docs/guides/android-restricted-settings.md`）
+  - [ ] 无障碍失效检测上报（依赖 device.capabilities 预留槽位，未做，登记）
   - [ ] 模板图片 asset.sync、脚本版本管理
 - [ ] **A4 多设备编排**
   - [ ] Team/inbox 模块接入端侧 Agent

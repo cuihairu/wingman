@@ -41,7 +41,8 @@ export default defineConfig({
             { text: '配置管理实践', link: '/guides/configuration' },
             { text: '数据库使用', link: '/guides/database' },
             { text: '触发器系统', link: '/guides/triggers' },
-            { text: 'Android Agent 保活', link: '/guides/android-keep-alive' }
+            { text: 'Android Agent 保活', link: '/guides/android-keep-alive' },
+            { text: 'Android Agent 受限设置', link: '/guides/android-restricted-settings' }
           ]
         },
         {

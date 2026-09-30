@@ -1,10 +1,23 @@
 # Wingman 项目待办事项
 
 > 最后更新: 2026-09-30
-> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地、A3-P2 与 A4 未排期（见「2026-09-30 Android Agent 现状登记」及其后 A3 可靠性实施条目）
+> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地（含 A3 可靠性与受限设置引导，见「2026-09-30 Android Agent 现状登记」及其后两条 A3 实施条目）、A3-P2 与 A4 未排期
 
 > [本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator]
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
+
+---
+
+## 2026-09-30 Android A3 受限设置引导落地（Android 13+ 侧载开箱：手动允许 / adb 预授权 / Device Owner）
+
+todo「Android 现状登记」A3 剩余项第二项（按 development-todo A3 节顺序，先于 asset.sync；触发器项属 A2 节残留且无设计成文章节，不属「A3 之后」）。Android 13（API 33）起侧载 App 的无障碍被「受限设置」默认屏蔽——开关打不开的根因、端侧开箱失败最高来源（mobile-support-feasibility.md §5.2，风险表评级：高）。
+
+- **脚本**：`scripts/android-restricted-settings.sh check/allow/revoke/status`——幂等 adb 预授权（allow 后复核；无 adb/无设备 SKIP、包未装 FAIL、API<33 PASS 不受约束；`tr -d '\r'` 处理 adb shell CRLF；`WINGMAN_ANDROID_PKG` 贯穿）。adb 只出现在部署期（设计决策 D7）。
+- **契约护栏**：`orchestrator/server/integration/android_restricted_settings_script_test.go` 11 例（假 adb 状态文件驱动 + calls 断言 + 净化 PATH，不碰真设备；同 guacd 脚本契约框架，bash 3.2 兼容）。
+- **App 内引导**：`RestrictedSettingsPolicy` 纯逻辑（API≥33 且无障碍未启用且未确认 → 提示；诚实边界：公开 API 无法区分「被挡」与「未开启」）+ MainActivity onResume 自动弹一次（`restrictedHintAck` ack）+ 常驻「受限设置指引」按钮（三档解法全文）。
+- **测试**：JVM 单测 +6（共 21 例全绿）；Go 契约 11 例全绿；shellcheck 干净。
+- **文档**：新增 `docs/guides/android-restricted-settings.md`（症状识别/三档解法/验证/已知边界，入文档站进阶指南，与保活指引互链）；development-todo A3 两项勾销（可靠性首项补 6cecfad 对账）；mobile-support-feasibility §5.2/§7/§8；android-agent-design §5.4/§9/新增 §10''；apps/android/README（受限设置验证步骤节 + 里程碑）；ROADMAP M9。
+- **遗留登记**：无障碍失效检测上报未做（依赖 device.capabilities 预留槽位）；五厂商定制 ROM 真机逐机型验收未做（本机无真机，手册按官方文档口径）；Device Owner 路径需设备纳管，仓库不附带 MDM 配置。
 
 ---
 

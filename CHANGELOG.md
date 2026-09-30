@@ -9,7 +9,18 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 429 个提交（feat 75 / fix 142 / docs 78 / test 61 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 430 个提交（feat 76 / fix 142 / docs 78 / test 61 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+
+### feat（2026-09-30，Android A3 部署体验：Android 13+ 受限设置引导——手动允许 / adb 预授权 / Device Owner 三档落地）
+
+- **范围**：development-todo A3 节「可靠性与部署体验」第二项（先于 asset.sync；触发器项属 A2 节残留且设计无成文章节，不属「A3 之后」顺位）。Android 13（API 33）起侧载 App 的无障碍被「受限设置」默认屏蔽——开关打不开的根因、端侧开箱失败最高来源（mobile-support-feasibility.md §5.2，风险表评级：高）。零 C++ 改动。
+- **预授权脚本**：`scripts/android-restricted-settings.sh check/allow/revoke/status`——幂等 adb 预授权（allow 后复核；无 adb/无已授权设备判 SKIP(2) 不与「检查不通过」混同、包未装判 FAIL(1) 可行动、API<33 判 PASS「不受约束」；`tr -d '\r'` 处理 adb shell CRLF 行尾；取值用参数展开而非 sed——e8dc57c 教训；`WINGMAN_ANDROID_PKG` 贯穿全部命令）。adb 只出现在部署/一次性授权路径（设计决策 D7 复述），运行时链路零 adb。
+- **契约护栏**：`orchestrator/server/integration/android_restricted_settings_script_test.go` 11 例——假 adb（状态文件驱动设备/包名/SDK/appops + calls 调用记录，shell 输出带 CRLF 对齐真 adb pty 行尾）+ 净化 PATH，三态/幂等/包名覆盖/revoke 复核/用法全路径不碰真设备；复用 guacd 脚本契约框架（Windows runner 显式 SKIP、macOS bash 3.2 兼容口径同守）。
+- **App 内引导**：`RestrictedSettingsPolicy` 纯逻辑对象（API≥33 且无障碍未启用且未确认 → 提示）+ MainActivity 常驻「受限设置指引」按钮（三档解法全文对话框）+ onResume 自动弹一次（`restrictedHintAck` prefs 键，弹过即落 ack 不再自动弹）。诚实边界：公开 API 无法区分「被受限设置挡住」与「未开启」，系统不暴露该状态——按口径触发，Android 12- 不弹；「无障碍失效检测上报」依赖 device.capabilities 预留槽位，登记未做。
+- **手册**：`docs/guides/android-restricted-settings.md`（背景/症状识别表/三档解法/验证/已知边界；入文档站「进阶指南」，与保活指引互链互补——本页解决「开不了」、保活页解决「被杀」）。
+- **测试**：Kotlin JVM 单测 +6（RestrictedSettingsPolicy API 门槛边界 + 提示矩阵，共 21 例全绿）；Go 契约 11 例全绿（1.6s）；shellcheck 零 finding；`npm run docs:build` 绿。
+- **文档同步**：development-todo A3 两项勾销（可靠性首项补 6cecfad 对账修正）；mobile-support-feasibility §5.2/§7 风险表/§8 分阶段（失效检测上报单列未做）；android-agent-design §5.4/§9 验证矩阵/新增 §10'' 实施摘要；apps/android/README（新增受限设置验证步骤节 + 里程碑行）；ROADMAP M9 A3 行与行动表；todo.md 新条目 + 状态行。
+- **假设与登记**：五厂商定制 ROM（小米/华为/OPPO/vivo/三星）真机逐机型 ⋮ 菜单验收未执行（本机无真机，手册按各厂商官方文档口径编写，登记待真机抽样）；Device Owner 路径需设备已纳管，仓库不附带 MDM 配置（手册记边界）；本地验证口径为 JVM 单测 + Go 契约 + docs 构建（真机 adb 预授权实操归真机验收）。
 
 ### feat（2026-09-30，Android A3 可靠性落地：开机自启 / 崩溃自重启 / 断连缓存自治 / 机型保活指引）
 

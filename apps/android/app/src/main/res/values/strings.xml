@@ -25,4 +25,8 @@
     <string name="btn_keep_alive_guide">机型保活指引（A3）</string>
     <string name="keep_alive_guide_title">厂商 ROM 保活设置指引</string>
     <string name="keep_alive_guide_body">部分厂商 ROM 会清理后台前台服务，Agent 被杀后仅能等系统/闹钟拉起。建议按机型完成：\n\n· 小米/Redmi（MIUI/HyperOS）：设置 → 应用设置 → 应用管理 → Wingman Agent → 省电策略 → 无限制；自启动开关打开\n· 华为/荣耀（EMUI/MagicOS）：设置 → 应用 → 应用启动管理 → Wingman Agent → 手动管理（允许自启动/关联启动/后台活动三项全开）\n· OPPO/一加（ColorOS）：设置 → 电池 → 更多 → 应用耗电管理 → Wingman Agent → 允许完全后台行为；自启动允许\n· vivo/iQOO（OriginOS/Funtouch）：设置 → 电池 → 后台耗电管理 → Wingman Agent → 允许后台高耗电\n· 三星（One UI）：设置 → 电池 → 后台使用限制 → Wingman Agent 移出「从未使用的应用」/ 不加入深度休眠\n· 通用：最近任务卡片下拉锁定；系统电池优化对 App 置于「不优化」\n\n完整说明见 docs/guides/android-keep-alive.md</string>
+
+    <string name="btn_restricted_settings_guide">受限设置指引（Android 13+）</string>
+    <string name="restricted_settings_guide_title">受限设置指引（Android 13+ 侧载）</string>
+    <string name="restricted_settings_guide_body">Android 13 起，侧载（非应用商店）安装的 App 默认被「受限设置」屏蔽无障碍等服务——去系统设置打不开开关正是这个原因。按场景三选一：\n\n· 手动允许（单台，无需电脑）：系统设置 → 应用 → Wingman Agent → 应用信息右上角 ⋮ → 允许受限制的设置，随后回开无障碍\n· adb 预授权（可脚本化、幂等）：电脑执行 scripts/android-restricted-settings.sh allow，或等价的 adb shell appops set com.wingman.agent ACCESS_RESTRICTED_SETTINGS allow\n· Device Owner / MDM 批量纳管：多设备一次性下发（见手册）\n\nAndroid 12 及以下不受影响。完整说明、验证方法与故障排查见 docs/guides/android-restricted-settings.md</string>
 </resources>

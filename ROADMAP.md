@@ -573,7 +573,7 @@ local wingman = require('wingman')
 |------|------|------|
 | A1 链路打通 | Dashboard→Go Server `run_script{content}`→设备端 NDK C++ 核心执行 Lua→`agent.event` 日志实时回传；Kotlin 壳（WingmanService 前台服务/MainActivity/JNI 窄接口）；复用 16B 帧头 + JSON 协议，零新消息类型 | ✅ 已完成（2026-09-19 设计并落地，ce4a648；2026-09-20 起 nightly 打 arm64 APK） |
 | A2 能力闭环 | `platform/android` 宿主桥：dispatchGesture 手势注入、MediaProjection 采集、找色找图、`screenshot.capture` 远程截图；反向 JNI 桥 | ✅ 已完成（2026-09-21，c1df705/c0a67fe） |
-| A3 可靠性 | A3-P1 register token 白名单（`WINGMAN_AGENT_TOKENS`，server+桌面+Android 三端，默认关闭、向后兼容）✅ 已落地（2026-09-20，4c9a8f4，见 [docs/agent-token-auth-design.md](docs/agent-token-auth-design.md)）；A3 剩余可靠性项（开机自启、崩溃自重启、断连缓存自治、机型保活指引）✅ 已落地（2026-09-30，见设计文档 §7/§10'：BootCompletedReceiver + 退避闹钟崩溃重启 + 核心看门狗 + [docs/guides/android-keep-alive.md](docs/guides/android-keep-alive.md)，Kotlin JVM 单测 15 例入 build-android CI job）；剩余 A3-P2 安全演进 | ✅ 可靠性已落地（P2 安全演进未实施） |
+| A3 可靠性 | A3-P1 register token 白名单（`WINGMAN_AGENT_TOKENS`，server+桌面+Android 三端，默认关闭、向后兼容）✅ 已落地（2026-09-20，4c9a8f4，见 [docs/agent-token-auth-design.md](docs/agent-token-auth-design.md)）；A3 剩余可靠性项（开机自启、崩溃自重启、断连缓存自治、机型保活指引）✅ 已落地（2026-09-30，见设计文档 §7/§10'：BootCompletedReceiver + 退避闹钟崩溃重启 + 核心看门狗 + [docs/guides/android-keep-alive.md](docs/guides/android-keep-alive.md)，Kotlin JVM 单测 15 例入 build-android CI job）；Android 13+ 受限设置引导 ✅ 已落地（2026-09-30，设计文档 §10''：[docs/guides/android-restricted-settings.md](docs/guides/android-restricted-settings.md) + scripts/android-restricted-settings.sh 幂等预授权（Go 契约测试）+ App 内 RestrictedSettingsPolicy 引导）；剩余 A3-P2 安全演进 | ✅ 可靠性与受限设置引导已落地（P2 安全演进未实施） |
 | A4 多设备编排 | Dashboard 设备视图、批量下发、asset.sync 模板分发 | ⬜ 协议预留，未实施 |
 
 工程基建：nightly CI 打 Android arm64 APK（vcpkg manifest 依赖、NDK 27；自 2026-09-30 起先跑 Kotlin JVM 单测再打 APK）；共用 agent 核心已下沉 `libs/agentcore`（RemoteClient/EventBuffer）与 `libs/androidagent`（ScriptRunner/脚本能力 API），与桌面同源编译、单测在桌面端跑（`libs/lua/tests`）。
@@ -607,6 +607,7 @@ local wingman = require('wingman')
 | 优先级 | 任务 | 预计时间 | 状态 |
 |--------|------|----------|------|
 | P2 | Android A3 可靠性剩余项（开机自启/崩溃自重启/断连缓存自治/机型保活指引） | — | ✅ 已完成（2026-09-30，android-agent-design.md §7/§10'） |
+| P2 | Android A3 受限设置引导（Android 13+ 侧载开箱：手动允许/adb 预授权/Device Owner） | — | ✅ 已完成（2026-09-30，android-agent-design.md §10''：手册 + scripts/android-restricted-settings.sh + App 内引导） |
 | P3 | Android A4 多设备编排（Dashboard 设备视图/批量下发/asset.sync 模板分发） | 未排期 | ⬜ 协议预留 |
 | P1 | Dashboard Monitor triggers 接真实 API（需扩 agent 协议） | 1周 | ✅ list/toggle + add/update/remove CRUD 全链路（runtime Dispatcher Reuse，agents:manage） |
 | P2 | 跨平台运行时验证（macOS/Linux，需真机） | — | ⬜ 待验证 |

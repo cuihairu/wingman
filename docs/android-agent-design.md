@@ -224,7 +224,8 @@ A2 的 capture/inject 反向接口）届时以同模式追加，A1 不预埋。
 
 **MainActivity**：状态卡片（连接/脚本状态，来自 nativeStatus + onCoreStatus）、
 启停按钮、服务器地址配置输入、无障碍权限引导入口（A2 用，A1 先放置）、
-开机自启开关与机型保活指引入口（A3）。
+开机自启开关与机型保活指引入口（A3）、受限设置指引入口（A3 部署体验，
+Android 13+ 且无障碍未启用时自动弹一次，`RestrictedSettingsPolicy` 判定）。
 
 **AndroidManifest** 权限（A1/A2/A3 实际使用）：
 `INTERNET`、`FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_DATA_SYNC`（API 34 要求）、
@@ -399,6 +400,8 @@ A3 可靠性剩余项于 2026-09-30 落地。逐场景的实现归属：
 | ScriptRunner Lua 语义 | 抽为纯逻辑单测（注入 fake 回调），跑在 core_tests | ✅ |
 | A2 脚本能力 API（input/screen/vision） | FakeHostBridge 直测（合成帧找色/手势透传/降级），跑在 lua_tests | ✅ |
 | A3 可靠性纯逻辑（RestartPolicy/BootStartGate/WatchdogPolicy） | Kotlin JVM 单测 15 例（`gradle :app:testDebugUnitTest`，org.json 以 Maven 真实现入测试类路径） | ✅（2026-09-30 起） |
+| A3 部署体验纯逻辑（RestrictedSettingsPolicy） | Kotlin JVM 单测 6 例（API 门槛边界 + 提示矩阵） | ✅（2026-09-30 起） |
+| A3 受限设置预授权脚本（scripts/android-restricted-settings.sh） | Go 契约测试 11 例（假 adb 驱动、净化 PATH，`orchestrator/server/integration/`，不碰真设备） | ✅ |
 | 断连缓存自治（outbox/重连冲刷） | agentcore_test 既有 28 例（Android 编译同一份代码） | ✅（Linux 面） |
 | JNI 桥/Kotlin/Gradle | 需 Android SDK；A1 交付 + README，接手环境首次构建验证 | ❌ |
 | 端到端链路 | 真机/模拟器 + Go Server 联调 | ❌（A1 验收步骤写入 README） |
@@ -447,6 +450,33 @@ ScriptRunner 的 Lua 执行与停止语义不依赖 Android（纯 sol2），因�
   agentcore_test 28 例覆盖，本轮零 C++ 改动；App 侧以看门狗补进程内自愈
 - 遗留登记：MediaProjection 授权崩溃后不可恢复（系统约束）；A3-P2 安全
   演进与 A4 多设备编排见 §1.2 与 agent-token-auth-design.md §6
+
+---
+
+## 10''. A3 受限设置引导实施摘要（2026-09-30）
+
+- **范围**：A3「可靠性与部署体验」第二项——Android 13（API 33）起侧载
+  App 的无障碍被「受限设置」默认屏蔽，是端侧开箱失败最高来源
+  （mobile-support-feasibility.md §5.2，风险表评级：高）。三档解法
+  （手动允许 / adb 预授权 / Device Owner）一次落地。
+- **脚本**：`scripts/android-restricted-settings.sh check/allow/revoke/status`
+  ——幂等 adb 预授权（allow 后复核）、三态约定同 verify-\*.sh（无 adb/
+  无设备 SKIP、包未装 FAIL、API<33 PASS「不受约束」）、`tr -d '\r'` 处理
+  adb shell 的 CRLF 行尾、`WINGMAN_ANDROID_PKG` 贯穿全部命令。
+- **契约护栏**：`orchestrator/server/integration/android_restricted_settings_script_test.go`
+  11 例——假 adb（状态文件驱动 + calls 调用记录 + CRLF 输出）+ 净化 PATH，
+  全路径不碰真设备；与 guacd 脚本契约测试同框架（bash 3.2 兼容口径）。
+- **App 内引导**：`RestrictedSettingsPolicy`（纯逻辑：API≥33 且无障碍未启用
+  且未确认 → 提示）+ MainActivity 自动弹一次（`restrictedHintAck` prefs 键，
+  弹过即落 ack）+ 常驻「受限设置指引」按钮（三档解法全文）。诚实边界：
+  公开 API 无法区分「被受限设置挡住」与「未开启」，按口径触发；
+  「无障碍失效检测上报」（依赖 device.capabilities 预留槽位）登记未做。
+- **adb 边界（设计决策 D7 复述）**：adb 只出现在部署/一次性授权路径——
+  即本脚本与手册，任何运行时链路零 adb 依赖。
+- **手册**：`docs/guides/android-restricted-settings.md`（症状识别/三档
+  解法/验证/已知边界，入文档站「进阶指南」，与保活指引互链）。
+- **测试**：JVM 单测 +6（21 例全绿）、Go 契约 11 例全绿；五厂商定制 ROM
+  真机逐机型验收登记未做（本机无真机）。
 
 ---
 
