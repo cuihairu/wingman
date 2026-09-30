@@ -1,0 +1,61 @@
+name: Platform Verification
+
+# 真机/真实环境验证腿（development-todo 平台验证项的 CI 化）：
+# - macOS：macos-latest runner 即真实 macOS 环境，跑 scripts/verify-macos-runtime.sh
+#   （vcpkg manifest 构建 core_tests + Clipboard/FileWatcher/Screen/Input/
+#   UnixSocketChannel 五套件）。CGEvent 辅助功能授权、录屏授权弹窗等 TCC
+#   交互项无法在无人值守 runner 上授予，仍属人工观察清单（脚本尾注同口径）。
+# - Linux XRecord 真桌面：本机 Xvfb 已实证可用（RECORD 1.13），由主 CI 的
+#   cpp-linux job（xvfb-run 全量 ctest，含 RecorderX11E2E.*）覆盖，不在此重复。
+#
+# 手动触发（不随 push 燃分钟）：Actions → Platform Verification → Run workflow，
+# 可选输入 ref 指定要验证的提交/分支。
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: '要验证的 ref（留空 = 当前默认分支）'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
+  VCPKG_BINARY_SOURCES: 'clear;files,${{ github.workspace }}/vcpkg/archives,readwrite'
+
+jobs:
+  macos-runtime:
+    name: macOS runtime 真机验证（五套件）
+    runs-on: macos-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          submodules: recursive
+
+      - name: Restore vcpkg cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/vcpkg/archives
+          key: macos-vcpkg-verify-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            macos-vcpkg-verify-
+            macos-vcpkg-
+
+      - name: Setup vcpkg
+        run: |
+          bash ./build-scripts/ci/setup-vcpkg.sh
+          mkdir -p "${VCPKG_DEFAULT_BINARY_CACHE}"
+
+      - name: Run verify-macos-runtime.sh
+        run: bash ./scripts/verify-macos-runtime.sh --build

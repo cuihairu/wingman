@@ -4,9 +4,10 @@
 # 覆盖：XRecord 正向闭环——start 后经 XTest 注入按键，断言捕获与 JSON 序列化。
 #       对应 core_tests 的 RecorderX11E2E.*（recorder_x11_e2e_test.cpp）。
 #
-# 环境要求：Linux + 真实桌面 X server。Xvfb 的 RECORD 扩展 EnableContext
-#           必然失败（XRecordBadContext），用例会 SKIP——脚本把 SKIP 判为
-#           「未验证」而非通过，防止在无头环境误报绿。
+# 环境要求：Linux + X server（含 RECORD 扩展）。2026-09-24 修复录制启动
+#           时序缺陷后 Xvfb（RECORD 1.13）实测可用（2026-09-30 本机
+#           DISPLAY=Xvfb 实证 PASS）；无 DISPLAY 或用例全部 SKIP 时判
+#           「未验证」（exit 2）而非通过，防止无头环境误报绿。
 #
 # 用法：scripts/verify-xrecord-desktop.sh [--build]
 #       --build  强制重新配置并编译 core_tests（默认缺二进制时才构建）
