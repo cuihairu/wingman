@@ -9,7 +9,19 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 428 个提交（feat 74 / fix 142 / docs 78 / test 61 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 429 个提交（feat 75 / fix 142 / docs 78 / test 61 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+
+### feat（2026-09-30，Android A3 可靠性落地：开机自启 / 崩溃自重启 / 断连缓存自治 / 机型保活指引）
+
+- **范围**：todo.md「Android 现状登记」未完成三项中的第一项（A3 剩余可靠性项优先于 A4），设计约束 android-agent-design.md §7，本轮同步落地摘要 §10'。零 C++/Go 改动（断连缓存自治的 C++ 面自 A1 现成），全部为 Kotlin 壳 + 文档 + CI。
+- **开机自启**：`BootCompletedReceiver`（BOOT_COMPLETED + MY_PACKAGE_REPLACED，两者均在系统后台 FGS 启动豁免名单内，exported=false 亦可收到系统保护广播）+ App 内开关（默认开，CheckBox 入主界面）+ 已配置服务器地址才放行；放行判定抽为纯逻辑 `BootStartGate`；Manifest 启用 `RECEIVE_BOOT_COMPLETED`（原注释占位转正）。
+- **崩溃自重启（带退避与放弃上限）**：新增 `WingmanApplication` 安装进程级 `CrashRestartHandler`——崩溃时记录状态/摘要到 prefs 并按 `RestartPolicy`（指数退避 1s→60s 封顶；10 分钟窗口内连崩 5 次放弃，防崩溃风暴；窗口外新崩溃重开计数）经 AlarmManager 调度 `CrashAlarmReceiver` 重启前台服务。诚实边界：闹钟腿是 best-effort（API 31+ 后台 FGS 启动限制可能被拒，捕获后让位于 START_STICKY 系统路径）；`coreRunning` prefs 门控保证只在「崩溃前服务确实在跑」时复活（MainActivity 崩溃不会拉起从未启动的 agent）；MediaProjection 授权单会话一次性、崩溃后不可恢复（系统约束，登记）。清零语义：用户/开机/覆盖安装路径清零崩溃串，崩溃闹钟路径保持累积。
+- **核心看门狗（断连/进程内自愈的 App 侧补位）**：WingmanService 内 30s 周期检查——服务期望核心在跑而 `nativeStatus` 报 `running!=true`（或状态不可解析）时幂等重拉 `nativeStart`（C++ `AndroidAgent::start` 对运行中 client 短路返回 true，重拉安全）。网络断开不在其列：`running` 反映 client 存活而非 connected，断连重连/outbox 冲刷由 RemoteClient 退避自治（agentcore_test 既有 28 例覆盖，含断连入 outbox、重连冲刷、超容量丢弃恰好 100 条）。判定抽为纯逻辑 `WatchdogPolicy`。
+- **机型保活指引**：`docs/guides/android-keep-alive.md`（小米/华为/OPPO/vivo/三星逐机型设置步骤 + 通用项 + 验证方法 + 已知边界；入文档站「进阶指南」导航）+ App 内「机型保活指引」对话框（五厂商要点内联）。
+- **测试（Android 工程首批单测）**：纯逻辑对象 `RestartPolicy`/`BootStartGate`/`WatchdogPolicy` 零 Android 依赖，Kotlin JVM 单测 15 例（`app/src/test`，JUnit 4.13.2）：退避进度/窗口内外串归并/放弃与恢复、开关与空白地址矩阵、看门狗期望态×状态解析矩阵（含缺字段/坏 JSON 保守重拉、connectionState 不参与判定）。org.json 以 Maven 真实现入测试类路径——android.jar 对其只部分真实实现（`optBoolean` 即 stub 抛「not mocked」，首跑 5 例实证）。本机 `gradle :app:testDebugUnitTest` 15/15 全绿（连跑两轮稳定；Gradle 8.10.1 + 本机 SDK，首次运行完整编译主源码+测试源码）。
+- **CI**：build-package 的 build-android job 在打 APK 前先跑 `gradle :app:testDebugUnitTest`——此前 Kotlin 逻辑无任何 CI 门禁（per-push CI 不编 Kotlin，nightly 只做编译检查）。该 workflow 为 workflow_call 型，随 nightly/release 生效。
+- **文档同步**：android-agent-design.md §1.2（A3 行转已落地）/§5.4（壳组件清单）/§6.3（开发机环境口径修正）/§7（生命周期表逐场景实现归属 + 实现要点）/§8（补注：可靠性组件全为本地组件、不改变信任模型——任务指定的口径同步点）/§9（验证矩阵补 JVM 单测与 outbox 行）；apps/android/README.md（标题范围、环境说明改「可本地跑 JVM 单测」、新增 A3 验证步骤节、里程碑对账）；ROADMAP M9 A3 行转 ✅（P2 安全演进另列）+ 行动表销项；todo.md 新增本轮条目 + 状态行。
+- **假设与登记**：开机自启默认开（A3 设计目标即无人值守，UI 可关）；本地验证口径为 JVM 单测 + 编译（NDK/vcpkg 全量 APK 组装由 nightly 验证）；`apps/android/.gitignore` 新增（.gradle/ 等本地产物，首次本地构建暴露的遗漏）。
 
 ### docs（2026-09-30，Android Agent 现状登记：ROADMAP 补 Milestone 9 移动端里程碑，文档滞后收口）
 

@@ -522,6 +522,13 @@ jobs:
       - name: Install SDK CMake 3.31.1
         run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.31.1" > /dev/null
 
+      # A3：JVM 单测（RestartPolicy/BootStartGate/WatchdogPolicy 可靠性纯逻辑）
+      # ——不依赖 NDK/vcpkg，先于 APK 构建执行；Kotlin 逻辑回归自此有 CI 门禁
+      # （此前 per-push CI 不编 Kotlin，只有 nightly assembleDebug 的编译检查）
+      - name: Android JVM unit tests
+        working-directory: apps/android
+        run: gradle :app:testDebugUnitTest --no-daemon
+
       # NDK 工程消费 apps/android/cpp/vcpkg.json manifest（与桌面同构）：
       # gradle → NDK CMake configure 时经 vcpkg toolchain 自动安装依赖
       - name: Build Android APK

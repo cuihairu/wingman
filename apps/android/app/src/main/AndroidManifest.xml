@@ -8,9 +8,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- A2 实际使用：投屏采集（MediaProjection） -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
-    <!-- A3 启用：开机自启 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" /> -->
+    <!-- A3 实际使用：开机自启（BootCompletedReceiver） -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
+        android:name=".WingmanApplication"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -45,5 +47,21 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_config" />
         </service>
+
+        <!-- A3：开机自启 / 覆盖安装后自启（放行判定 BootStartGate，
+             两者均在系统后台 FGS 启动豁免名单内） -->
+        <receiver
+            android:name=".BootCompletedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- A3：崩溃自重启的闹钟腿（CrashRestartHandler 调度，显式组件无过滤器） -->
+        <receiver
+            android:name=".CrashAlarmReceiver"
+            android:exported="false" />
     </application>
 </manifest>

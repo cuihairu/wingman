@@ -1,10 +1,24 @@
 # Wingman 项目待办事项
 
 > 最后更新: 2026-09-30
-> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3-P1 已落地、A3 剩余与 A4 未排期（见「2026-09-30 Android Agent 现状登记」）
+> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地、A3-P2 与 A4 未排期（见「2026-09-30 Android Agent 现状登记」及其后 A3 可靠性实施条目）
 
 > [本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator]
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
+
+---
+
+## 2026-09-30 Android A3 可靠性落地（开机自启 / 崩溃自重启 / 断连缓存自治 / 机型保活指引）
+
+todo「Android 现状登记」未完成三项中的第一项（A3 剩余可靠性项优先于 A4）：
+
+- **开机自启**：BootCompletedReceiver（BOOT_COMPLETED + MY_PACKAGE_REPLACED，均在系统后台 FGS 启动豁免名单）+ App 内开关（默认开）+ 已配置服务器地址才放行（BootStartGate 纯逻辑）；显式启动同时清零崩溃退避串。
+- **崩溃自重启**：WingmanApplication 安装进程级 CrashRestartHandler——崩溃时记录状态并经 AlarmManager 按指数退避（1s→60s 封顶）调度重启（CrashAlarmReceiver，best-effort，API 31+ 后台 FGS 限制下让位于 START_STICKY 系统路径）；10 分钟窗口连崩 5 次放弃防风暴；coreRunning 门控只在「崩溃前服务在跑」时复活；核心看门狗（服务存活但 C++ 核心不在跑时 30s 幂等重拉 nativeStart）。
+- **断连缓存自治**：C++ RemoteClient 重连/outbox/脚本断连自治自 A1 起现成（agentcore_test 28 例覆盖），本轮零 C++ 改动；App 侧以看门狗补进程内自愈；asset 缓存归 A4。
+- **机型保活指引**：docs/guides/android-keep-alive.md（五厂商 ROM 步骤 + 验证方法 + 已知边界）+ App 内指引对话框。
+- **测试**：纯逻辑对象（RestartPolicy/BootStartGate/WatchdogPolicy）Kotlin JVM 单测 15 例（app/src/test，JUnit4 + Maven 真 org.json——android.jar 对其只部分真实实现）；本机 `gradle :app:testDebugUnitTest` 15/15 全绿；build-android CI job 在打 APK 前先跑该单测（此前 Kotlin 逻辑无任何 CI 门禁）。
+- **文档同步**：android-agent-design.md §1.2/§5.4/§6.3/§7/§8/§9 + 新增 §10'（A3 实施摘要）；apps/android/README.md（标题/环境说明/里程碑/A3 验证步骤）；ROADMAP M9。
+- **遗留登记**：MediaProjection 授权崩溃后不可恢复（Android 14 单会话一次性，系统约束）；闹钟重启受 Doze 节流影响精度；A3-P2 安全演进与 A4 未动。
 
 ---
 

@@ -8,7 +8,9 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.ServiceCompat
 import org.json.JSONObject
@@ -17,8 +19,14 @@ import org.json.JSONObject
  * 前台服务（A1，docs/android-agent-design.md §5.4；A2 投屏扩展 §5.6）：
  * 托管 C++ 核心生命周期与投屏采集。
  *
- * 保活基线：前台服务优先级 + START_STICKY（崩溃后系统拉起，进程内 C++ 状态
- * 重建即重连）。完整自愈三件套（开机自启/崩溃自重启/断连自治）在 A3。
+ * 保活三层（A3 落地，§7）：
+ * - 前台服务优先级 + START_STICKY（系统保证的拉起路径，null intent 走
+ *   startCore 重建链路，配置来自持久化 prefs）；
+ * - 崩溃加速重启：CrashRestartHandler（进程级）+ CrashAlarmReceiver，
+ *   带指数退避与崩溃串放弃上限；本服务只在「服务确实在跑」时被复活；
+ * - 核心看门狗：服务存活但 C++ 核心不在跑（nativeStart 失败/核心异常
+ *   退出）时周期性重拉 nativeStart（幂等）。网络断开不在看门狗职责内
+ *   ——RemoteClient 自带指数退避重连与 outbox 冲刷。
  *
  * A2 时序硬约束（API 34）：ACTION_START_CAPTURE 分支必须先以 mediaProjection
  * 类型 startForeground，之后才能 getMediaProjection + createVirtualDisplay，
@@ -33,13 +41,36 @@ class WingmanService : Service() {
         const val ACTION_STOP_CAPTURE = "com.wingman.agent.action.STOP_CAPTURE"
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_RESULT_DATA = "resultData"
+
+        /** 崩溃闹钟重启路径携带：启动时不清零崩溃退避串（区别于用户/开机启动）。 */
+        const val EXTRA_FROM_CRASH_RESTART = "fromCrashRestart"
         private const val CHANNEL_ID = "wingman_agent"
         private const val NOTIFICATION_ID = 1
         private const val TAG = "WingmanService"
+        private const val WATCHDOG_INTERVAL_MS = 30_000L
     }
 
     private lateinit var prefs: SharedPreferences
     private var captureManager: ScreenCaptureManager? = null
+    private val watchdogHandler = Handler(Looper.getMainLooper())
+
+    @Volatile
+    private var expectCoreRunning = false
+
+    // 看门狗（A3 断连/进程内自愈）：服务期望核心在跑而 nativeStatus 报告
+    // 否时重拉 startCore；判定逻辑在 WatchdogPolicy（纯逻辑，单测直测）
+    private val coreWatchdog = object : Runnable {
+        override fun run() {
+            if (!expectCoreRunning) return
+            val status = runCatching { WingmanJni.nativeStatus() }.getOrNull()
+            if (WatchdogPolicy.shouldRestartCore(status, expectCoreRunning)) {
+                Log.w(TAG, "core not running while service expects it; re-invoking nativeStart")
+                startCore()
+            }
+            watchdogHandler.postDelayed(this, WATCHDOG_INTERVAL_MS)
+        }
+    }
+
 
     override fun onCreate() {
         super.onCreate()
@@ -64,6 +95,11 @@ class WingmanService : Service() {
             }
             else -> {
                 startForegroundWithTypes()
+                // 用户/开机/系统 sticky 重建的显式启动清零崩溃退避串；
+                // 崩溃闹钟路径（EXTRA_FROM_CRASH_RESTART）保持退避累积
+                if (intent?.getBooleanExtra(EXTRA_FROM_CRASH_RESTART, false) != true) {
+                    CrashRestartHandler.clearCrashState(this)
+                }
                 startCore()
             }
         }
@@ -112,6 +148,9 @@ class WingmanService : Service() {
     }
 
     private fun startCore() {
+        // 崩溃恢复门控：进程死掉时 CrashRestartHandler 据此判断服务是否在跑
+        prefs.edit().putBoolean(AgentPrefs.KEY_CORE_RUNNING, true).apply()
+        startWatchdog()
         val capabilities = JSONObject().apply {
             put("apiLevel", Build.VERSION.SDK_INT)
             put("abi", Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown")
@@ -136,8 +175,21 @@ class WingmanService : Service() {
     }
 
     private fun stopCore() {
+        stopWatchdog()
+        prefs.edit().putBoolean(AgentPrefs.KEY_CORE_RUNNING, false).apply()
         WingmanJni.nativeStop()
         Log.i(TAG, "nativeStop")
+    }
+
+    private fun startWatchdog() {
+        expectCoreRunning = true
+        watchdogHandler.removeCallbacks(coreWatchdog)
+        watchdogHandler.postDelayed(coreWatchdog, WATCHDOG_INTERVAL_MS)
+    }
+
+    private fun stopWatchdog() {
+        expectCoreRunning = false
+        watchdogHandler.removeCallbacks(coreWatchdog)
     }
 
     private fun isAccessibilityEnabled(): Boolean {

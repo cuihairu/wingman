@@ -1,0 +1,4 @@
+# Gradle 项目本地产物（JVM 单测/构建生成）
+.gradle/
+local.properties
+.cxx/

@@ -1,7 +1,9 @@
-# Wingman Android Agent（A1）
+# Wingman Android Agent
 
 Android 端侧 Agent：出站 TCP 长链接连接 Go 中控服务器，接收 Lua 脚本内联下发并
-执行，日志实时回传 Dashboard。设计与协议见 `docs/android-agent-design.md`，
+执行，日志实时回传 Dashboard（A1）；手势注入/屏幕采集/找色找图/远程截图（A2）；
+开机自启/崩溃自重启/看门狗/机型保活指引（A3）。设计与协议见
+`docs/android-agent-design.md`，
 端侧可行性背景见 `docs/mobile-support-feasibility.md`。
 
 ```
@@ -52,11 +54,13 @@ gradle :app:assembleDebug
 > 等共享层）同时编译进桌面 `wingman-runtime` 与 Android `libwingman_agent.so`：
 > 改动必须过两端编译与桌面同源单测，不要只验证桌面侧。
 
-> 说明：本仓库开发机（Linux，无 SDK/NDK）不构建此工程；Android 侧以
-> 「代码交付 + 构建脚本」为准，首次构建在本文件环境准备完成后进行。
-> C++ 核心逻辑（ScriptRunner/协议/重连）已在桌面环境有同源单测
-> （`libs/lua/tests/script_runner_test.cpp`、transport_tests），见
-> `docs/android-agent-design.md` §9 验证矩阵。
+> 说明：本仓库开发机（Linux）自 2026-09 起具备 SDK/NDK，可本地跑 Kotlin
+> JVM 单测（不依赖 NDK/vcpkg）：`gradle :app:testDebugUnitTest`——覆盖 A3
+> 可靠性纯逻辑（RestartPolicy/BootStartGate/WatchdogPolicy，`app/src/test`）。
+> 完整 APK 组装由 nightly CI 的 build-android job 验证（该 job 先跑 JVM
+> 单测再打 APK）。C++ 核心逻辑（ScriptRunner/协议/重连）在桌面环境有同源
+> 单测（`libs/lua/tests/script_runner_test.cpp`、transport_tests、
+> agentcore_test），见 `docs/android-agent-design.md` §9 验证矩阵。
 
 ## 真机端到端验收（A1 验收步骤）
 
@@ -106,8 +110,24 @@ gradle :app:assembleDebug
 adb push ok.png /sdcard/Android/data/com.wingman.agent/files/templates/
 ```
 
-**A2 已知前提**：投屏仅在设备亮屏时出帧（息屏采集/保活归 A3）；
+**A2 已知前提**：投屏仅在设备亮屏时出帧（息屏采集属 A4 之后事项）；
 无障碍/投屏未授权时脚本 API 降级返回 false/nil，不报错。
+
+## A3 可靠性验证步骤（开机自启 / 崩溃自重启 / 看门狗）
+
+1. **开机自启**：App 内勾选「开机自动启动 Agent」（默认开）并配置过服务器
+   IP → 重启设备，agent 未打开 App 即自动上线（Dashboard 观察）。
+2. **崩溃自重启**：启动 agent 后强制崩溃进程
+   （`adb shell am crash com.wingman.agent` 或 `adb shell kill <pid>`）→
+   数秒内 agent 重新上线（START_STICKY/闹钟双路径）；连续崩溃 5 次
+   （10 分钟窗口）后自动重启停摆，打开 App 手动启动可清零。
+3. **看门狗**：agent 运行中观察 logcat `WingmanService`——核心异常不在跑时
+   每 30s 重拉（正常在线时无该日志）。
+4. **机型保活**：按 `docs/guides/android-keep-alive.md` 完成厂商 ROM 设置，
+   静置 10-30 分钟验证 agent 不离线。
+
+已知边界：MediaProjection 授权在进程崩溃/重启后不恢复（Android 14 单会话
+一次性，系统约束），需重新点「开启投屏」。
 
 ## 里程碑
 
@@ -116,5 +136,10 @@ adb push ok.png /sdcard/Android/data/com.wingman.agent/files/templates/
   MediaProjection 采集真实现（`platform/android` 租户 + 反向 JNI 桥）；
   找色找图（ImageAnalyzer + OpenCV 进 NDK）；wingman.input/screen/vision
   脚本 API；screenshot.capture 远程截图。见设计文档 §5.5/§5.6。
-- **A3 可靠性**：开机自启、崩溃自重启、断连自治、token 认证、CI Android job。
+- **A3 可靠性（剩余项已实施，2026-09-30）**：开机自启（BootCompletedReceiver
+  + 开关）、崩溃自重启（退避闹钟 + 崩溃串放弃 + coreRunning 门控）、核心
+  看门狗、机型保活指引（docs/guides/android-keep-alive.md）；断连缓存自治
+  自 A1 起由 C++ RemoteClient 现成承担（outbox/重连，agentcore_test 覆盖）。
+  token 认证 P1 已于 2026-09-20 落地（见 docs/agent-token-auth-design.md），
+  nightly CI 打 APK、JVM 单测入 build-android job。剩余 A3-P2 安全演进。
 - **A4 多设备编排**：Dashboard 设备视图、批量下发、asset.sync 模板分发。

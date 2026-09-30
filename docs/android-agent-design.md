@@ -24,7 +24,7 @@ Dashboard 点击运行 → Go Server run_script{content} → 设备执行 Lua
 | 里程碑 | 内容 | 本文只做 |
 |--------|------|----------|
 | A2 能力闭环（已实施，2026-09-21） | `platform/android` 宿主桥（dispatchGesture 手势注入）/MediaProjection 采集真实现，找色找图，`screenshot.capture` 远程截图 | 租户目录 + stub 骨架 |
-| A3 可靠性 | 开机自启、崩溃自重启、断连缓存自治、token 认证 | 设计约束成文；P1 token 认证已落地（2026-09-20，见 §8） |
+| A3 可靠性（已落地，2026-09-30） | 开机自启、崩溃自重启、断连缓存自治、机型保活指引（见 §7 落地摘要；token 认证 P1 已于 2026-09-20 落地，见 §8） | 设计约束成文 |
 | A4 多设备编排 | Dashboard 设备视图、批量下发、asset.sync 模板分发 | 协议预留 |
 
 ### 1.3 硬约束核查（与 `docs/architecture-decisions.md` 对齐）
@@ -216,15 +216,19 @@ A2 的 capture/inject 反向接口）届时以同模式追加，A1 不预埋。
 **WingmanService**（Foreground Service，`dataSync` 类型）：
 - `onStartCommand`：读 SharedPreferences 配置（host/port/agentId）→ `nativeStart`
 - `onDestroy`：`nativeStop`
-- 崩溃自愈：`START_STICKY` + `onTaskRemoved` 重启调度（A1 最小自愈，完整自愈三件套在 A3）
+- 崩溃自愈（A3 落地，2026-09-30）：`START_STICKY`（系统保证路径）+
+  CrashRestartHandler 进程级崩溃处理（指数退避闹钟重启 + 崩溃串放弃上限，
+  只在「崩溃前服务在跑」时复活）+ 服务内核心看门狗（30s 周期，核心不在跑
+  时幂等重拉 `nativeStart`）
 - 通知渠道：常驻「Wingman Agent 运行中」（Android 8+ 前台服务要求）
 
 **MainActivity**：状态卡片（连接/脚本状态，来自 nativeStatus + onCoreStatus）、
-启停按钮、服务器地址配置输入、无障碍权限引导入口（A2 用，A1 先放置）。
+启停按钮、服务器地址配置输入、无障碍权限引导入口（A2 用，A1 先放置）、
+开机自启开关与机型保活指引入口（A3）。
 
-**AndroidManifest** 权限（A1 实际用到的前两个，其余 A2/A3 启用时再加注释说明）：
+**AndroidManifest** 权限（A1/A2/A3 实际使用）：
 `INTERNET`、`FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_DATA_SYNC`（API 34 要求）、
-`POST_NOTIFICATIONS`（前台服务通知）、`RECEIVE_BOOT_COMPLETED`（A3）、
+`POST_NOTIFICATIONS`（前台服务通知）、`RECEIVE_BOOT_COMPLETED`（A3 开机自启）、
 `BIND_ACCESSIBILITY_SERVICE`（A2 注入）。
 
 ### 5.5 platform/android 租户（A2 已实装）
@@ -334,20 +338,38 @@ gradle :app:assembleDebug
 ### 6.3 环境要求（README 展开）
 
 JDK 17+、Android SDK（API 34）、NDK r26+、vcpkg（android triplet 已 bootstrap）、
-Go 1.2x（server 侧）。本仓库开发机（Linux）当前无 SDK/NDK，A1 的 Android 工程
-以「代码交付 + 构建脚本」为准，Go 侧与桌面 C++ 回归在本机完整验证。
+Go 1.2x（server 侧）。本仓库开发机（Linux）自 2026-09 起具备 SDK/NDK，可本地跑
+JVM 单测（`gradle :app:testDebugUnitTest`，不依赖 NDK/vcpkg）；完整 APK 组装
+（NDK + vcpkg arm64-android）由 nightly CI 的 build-android job 验证
+（该 job 自 A3 起先跑 JVM 单测再打 APK）。
 
 ---
 
 ## 7. 生命周期与保活（A1 最小 + A3 完整约束）
 
-| 场景 | A1 行为 | A3 目标 |
+A3 可靠性剩余项于 2026-09-30 落地。逐场景的实现归属：
+
+| 场景 | A1 行为 | A3 落地（2026-09-30） |
 |------|---------|---------|
-| 用户杀 App | Foreground 服务进程优先级高，不易被杀 | 保活三件套 |
-| 崩溃 | `START_STICKY` 系统拉起 | 崩溃自重启 + 状态恢复 |
-| 断网 | RemoteClient 指数退避重连（现成） | 重连后冲刷 outbox（现成）+ 脚本自治 |
-| 厂商 ROM 杀后台 | 未处理（A1 文档引导用户加白名单） | 机型指引清单 |
-| 脚本执行中断连 | 脚本继续跑，日志丢入 outbox 重连补发（RemoteClient outbox 现成） | 同左 + asset 缓存 |
+| 用户杀 App | Foreground 服务进程优先级高，不易被杀 | 前台服务优先级 + START_STICKY 系统拉起（系统保证路径）+ 厂商 ROM 白名单指引（见下） |
+| 崩溃 | `START_STICKY` 系统拉起 | 三层：START_STICKY（系统保证）+ CrashRestartHandler/AlarmReceiver 指数退避加速重启（1s→60s 封顶；10 分钟窗口内连崩 5 次放弃，防崩溃风暴）+ 核心看门狗（服务存活但 C++ 核心不在跑时 30s 周期幂等重拉）。**状态恢复**：配置持久化于 SharedPreferences、null-intent 重建链路现成；仅在「崩溃前服务在跑」时复活（`coreRunning` 门控）；MediaProjection 授权系统约束单会话一次性、不可恢复（A2 已登记） |
+| 断网 | RemoteClient 指数退避重连（现成） | C++ 侧现成（agentcore_test 覆盖：重连后退避、断连事件入 outbox、重连冲刷、超容量丢弃）+ 脚本断连自治（执行线程独立于连接）——A3 无 C++ 改动，App 侧以核心看门狗补「服务在跑但核心不在跑」的自愈 |
+| 厂商 ROM 杀后台 | 未处理（A1 文档引导用户加白名单） | `docs/guides/android-keep-alive.md`（小米/华为/OPPO/vivo/三星逐机型步骤 + 验证方法 + 已知边界）+ App 内「机型保活指引」对话框 |
+| 脚本执行中断连 | 脚本继续跑，日志丢入 outbox 重连补发（RemoteClient outbox 现成） | 同左；asset 缓存归 A4 |
+| 开机/覆盖安装 | 无 | BootCompletedReceiver（BOOT_COMPLETED + MY_PACKAGE_REPLACED，均在系统后台 FGS 启动豁免名单内）+ 用户开关（默认开）+ 已配置服务器地址才放行（`BootStartGate`） |
+
+实现要点（Kotlin 壳内，全部本地组件、零新增网络面）：
+
+- **纯逻辑与框架分离**：退避/放弃策略（`RestartPolicy`）、开机放行判定
+  （`BootStartGate`）、看门狗判定（`WatchdogPolicy`）为无 Android 依赖的
+  纯 Kotlin 对象，JVM 单测直测（`app/src/test`，15 例）；Receiver/Service
+  只做薄壳装配。
+- **崩溃自重启的诚实边界**：AlarmManager 调度是 best-effort——API 31+
+  后台 FGS 启动限制下 `startForegroundService` 可能被系统拒绝（捕获并
+  记录），系统 START_STICKY 路径兜底；设备 Doze 下 `setAndAllowWhileIdle`
+  的触发精度受系统节流影响。
+- **崩溃退避的清零语义**：用户启动 / 开机 / 覆盖安装路径清零崩溃串
+  （新的使用意愿）；崩溃闹钟路径保持累积（防风暴）。
 
 ---
 
@@ -362,6 +384,9 @@ Go 1.2x（server 侧）。本仓库开发机（Linux）当前无 SDK/NDK，A1 �
 - A3-P2（演进）：per-agent token + Dashboard 管理与审计、token 迁移
   Android Keystore、challenge-response（需 NDK 引入 OpenSSL）与 TLS，
   见 `docs/agent-token-auth-design.md` §6。
+- A3 可靠性组件（2026-09-30，§7）不改变信任模型：开机/崩溃接收器、
+  AlarmManager 与看门狗全部为本地组件，不新增监听端口、不新增网络出向
+  目标，不参与 register/鉴权链路。
 
 ---
 
@@ -373,6 +398,8 @@ Go 1.2x（server 侧）。本仓库开发机（Linux）当前无 SDK/NDK，A1 �
 | C++ 帧协议/重连 | transport_tests 既有 118 例（Android 编译同一份代码） | ✅（Linux 面） |
 | ScriptRunner Lua 语义 | 抽为纯逻辑单测（注入 fake 回调），跑在 core_tests | ✅ |
 | A2 脚本能力 API（input/screen/vision） | FakeHostBridge 直测（合成帧找色/手势透传/降级），跑在 lua_tests | ✅ |
+| A3 可靠性纯逻辑（RestartPolicy/BootStartGate/WatchdogPolicy） | Kotlin JVM 单测 15 例（`gradle :app:testDebugUnitTest`，org.json 以 Maven 真实现入测试类路径） | ✅（2026-09-30 起） |
+| 断连缓存自治（outbox/重连冲刷） | agentcore_test 既有 28 例（Android 编译同一份代码） | ✅（Linux 面） |
 | JNI 桥/Kotlin/Gradle | 需 Android SDK；A1 交付 + README，接手环境首次构建验证 | ❌ |
 | 端到端链路 | 真机/模拟器 + Go Server 联调 | ❌（A1 验收步骤写入 README） |
 
@@ -398,6 +425,28 @@ ScriptRunner 的 Lua 执行与停止语义不依赖 Android（纯 sol2），因�
 - 构建：NDK cherry-pick lib/wingman 子集 + opencv4（关默认特性）
 - 真机验收：见 apps/android/README.md A2 步骤（息屏不出帧是 A2 已知前提，
   息屏采集/保活归 A3）
+
+---
+
+## 10'. A3 可靠性实施摘要（2026-09-30）
+
+- Kotlin 壳：`WingmanApplication`（进程级崩溃处理器安装）+ 
+  `CrashRestartHandler`/`CrashAlarmReceiver`（退避闹钟重启，`coreRunning`
+  门控只复活「崩溃前在跑」的服务）+ `BootCompletedReceiver`（开机/覆盖安装
+  自启，`BootStartGate` 放行）+ `WingmanService` 核心看门狗 + 
+  `MainActivity` 开机自启开关与保活指引对话框
+- 纯逻辑对象 `RestartPolicy`/`BootStartGate`/`WatchdogPolicy`（零 Android
+  依赖）+ JVM 单测 15 例（`app/src/test`，JUnit 4；org.json 以 Maven 真实现
+  入测试类路径——android.jar 对其只部分真实实现）
+- Manifest：`RECEIVE_BOOT_COMPLETED` 权限启用、两 Receiver 注册
+  （exported=false，系统保护广播可送达）
+- CI：build-package 的 build-android job 在打 APK 前先跑
+  `gradle :app:testDebugUnitTest`（此前 Kotlin 逻辑无任何 CI 门禁）
+- 机型保活指引：`docs/guides/android-keep-alive.md`
+- 断连缓存自治：C++ 侧（RemoteClient 重连/outbox/脚本自治）自 A1 起现成、
+  agentcore_test 28 例覆盖，本轮零 C++ 改动；App 侧以看门狗补进程内自愈
+- 遗留登记：MediaProjection 授权崩溃后不可恢复（系统约束）；A3-P2 安全
+  演进与 A4 多设备编排见 §1.2 与 agent-token-auth-design.md §6
 
 ---
 

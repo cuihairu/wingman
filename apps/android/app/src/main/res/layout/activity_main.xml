@@ -75,4 +75,18 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="@string/btn_accessibility" />
+
+    <CheckBox
+        android:id="@+id/checkAutoStartBoot"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/check_auto_start_boot" />
+
+    <Button
+        android:id="@+id/btnKeepAliveGuide"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/btn_keep_alive_guide" />
 </LinearLayout>

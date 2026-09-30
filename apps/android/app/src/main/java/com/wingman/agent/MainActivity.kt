@@ -5,10 +5,12 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
 
@@ -16,6 +18,8 @@ import org.json.JSONObject
  * 主界面（A1，docs/android-agent-design.md §5.4；A2 投屏授权 §5.6）：
  * 服务器配置 + 启停 + 状态轮询（1s nativeStatus）+ 权限引导
  * （无障碍设置入口、投屏授权对话框）。
+ * A3：开机自启开关（BootCompletedReceiver 的放行来源）+ 机型保活指引
+ * （厂商 ROM 后台清理对策，详见 docs/guides/android-keep-alive.md）。
  */
 class MainActivity : AppCompatActivity() {
 
@@ -87,6 +91,22 @@ class MainActivity : AppCompatActivity() {
         // 无障碍能力启用入口（注入前置）
         findViewById<Button>(R.id.btnAccessibility).setOnClickListener {
             startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+
+        // A3：开机自启开关（BootCompletedReceiver 放行判定读此键）
+        val bootView = findViewById<CheckBox>(R.id.checkAutoStartBoot)
+        bootView.isChecked = prefs.getBoolean(AgentPrefs.KEY_AUTO_START_ON_BOOT, true)
+        bootView.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(AgentPrefs.KEY_AUTO_START_ON_BOOT, checked).apply()
+        }
+
+        // A3：机型保活指引（厂商 ROM 对策清单，完整版 docs/guides/android-keep-alive.md）
+        findViewById<Button>(R.id.btnKeepAliveGuide).setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.keep_alive_guide_title)
+                .setMessage(R.string.keep_alive_guide_body)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
         }
 
         statusView = findViewById(R.id.textStatus)
