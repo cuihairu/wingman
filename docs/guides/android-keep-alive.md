@@ -14,7 +14,7 @@ App 侧三层机制（无需用户配置）：
 | 前台服务 + START_STICKY | 用户杀 App / 进程被系统回收后由系统拉起 |
 | 崩溃自重启（CrashRestartHandler + 闹钟） | 进程未捕获异常后按指数退避（1s→60s 封顶）重启；10 分钟内连崩 5 次放弃，等待用户或下次开机清零 |
 | 核心看门狗（WingmanService 内） | 服务存活但 C++ 核心不在跑时，每 30s 重拉 nativeStart |
-| 开机自启（BootCompletedReceiver） | 开机 / App 覆盖安装后按开关（默认开）自启 |
+| 开机自启（BootCompletedReceiver） | 开机 / App 覆盖安装后按开关（默认关，需在 App 内显式勾选）自启 |
 
 网络断开不在此列：C++ RemoteClient 自带指数退避重连 + 有界 outbox
 （断连期间事件缓存、重连后冲刷），脚本在断连期间继续本地执行。

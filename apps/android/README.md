@@ -115,7 +115,7 @@ adb push ok.png /sdcard/Android/data/com.wingman.agent/files/templates/
 
 ## A3 可靠性验证步骤（开机自启 / 崩溃自重启 / 看门狗）
 
-1. **开机自启**：App 内勾选「开机自动启动 Agent」（默认开）并配置过服务器
+1. **开机自启**：App 内显式勾选「开机自动启动 Agent」（默认关）并配置过服务器
    IP → 重启设备，agent 未打开 App 即自动上线（Dashboard 观察）。
 2. **崩溃自重启**：启动 agent 后强制崩溃进程
    （`adb shell am crash com.wingman.agent` 或 `adb shell kill <pid>`）→

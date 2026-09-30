@@ -9,7 +9,17 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 430 个提交（feat 76 / fix 142 / docs 78 / test 61 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 431 个提交（feat 77 / fix 142 / docs 78 / test 61 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+
+### feat（2026-09-30，Android A3 开机自启默认值校正：默认开 → 默认关、显式开启）
+
+- **对账**：任务点名的「开机自启」已于 6cecfad 落地（BootCompletedReceiver + BootStartGate 纯逻辑 + JVM 单测 + build-android CI 门禁）；本轮实质变更是**默认值口径**——任务明确「默认关闭、显式开启」，而 6cecfad 的「默认开」是登记假设（「A3 设计目标即无人值守，UI 可关」）非既定决策，按显式指令校正。
+- **行为变更（未发布区间内，无存量 release 影响）**：开机自启默认关——特权行为须用户在 App 内显式勾选。显式勾选过的安装不受影响（prefs 已存 true）；从未动过开关的安装从「装完即自启」变为「须显式开启」。
+- **实现**：默认值收敛单一来源 `BootStartGate.DEFAULT_ENABLED = false`；BootCompletedReceiver 与 MainActivity 两处 prefs 读取均改经该常量（禁字面量，`AgentPrefs` 注释同步）；KDoc 语义更新。
+- **回归钉**：BootStartGateTest `bootAutoStartDefaultsToOff`——钉常量 false + 「prefs 缺键（未显式开启）且已配置地址」不放行；默认值再变必须过显式决策，无法静默漂移。
+- **文档**：android-agent-design §7（默认开→默认关、显式开启，注明校正缘由与单一来源）；android-keep-alive 指引表；apps/android/README A3 验证步骤（显式勾选）；todo.md 勾销现状登记陈旧「未完成」条目 + 新条目。
+- **无真机可验证项（登记）**：BOOT_COMPLETED/MY_PACKAGE_REPLACED 真机广播到达、豁免名单内 startForegroundService 实际行为、覆盖安装后自启、勾选后重启全链路——需真机；本机口径 JVM 单测 + 编译，真机步骤已在 apps/android/README.md A3 节。
+- **验证**：`gradle :app:testDebugUnitTest` **22/22** 全绿（+1）；docs:build 复跑绿；零 Go/C++ 改动（相关门禁沿用 1a2acb5 同代码态已验结果）。
 
 ### feat（2026-09-30，Android A3 部署体验：Android 13+ 受限设置引导——手动允许 / adb 预授权 / Device Owner 三档落地）
 

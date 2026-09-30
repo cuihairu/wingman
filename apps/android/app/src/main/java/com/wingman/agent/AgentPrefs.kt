@@ -14,7 +14,7 @@ object AgentPrefs {
     const val KEY_SERVER_TOKEN = "serverToken"
 
     // A3 可靠性面
-    const val KEY_AUTO_START_ON_BOOT = "autoStartOnBoot" // 默认 true（开关在 MainActivity）
+    const val KEY_AUTO_START_ON_BOOT = "autoStartOnBoot" // 默认 false（BootStartGate.DEFAULT_ENABLED 单一来源）
     const val KEY_CORE_RUNNING = "coreRunning" // 崩溃时服务是否在跑（重启恢复的门控）
     const val KEY_CRASH_COUNT = "crashCount" // RestartPolicy.CrashState.crashCount
     const val KEY_CRASH_LAST_AT = "crashLastAt" // CrashState.lastCrashAtMs

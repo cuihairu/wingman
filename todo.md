@@ -8,6 +8,19 @@
 
 ---
 
+## 2026-09-30 Android A3 开机自启默认值校正（默认关、显式开启）
+
+todo「Android 现状登记」未完成清单第一项——A3 可靠性剩余项之「开机自启」。**对账结论：实现已于 6cecfad 落地**（BootCompletedReceiver + BootStartGate 纯逻辑 + JVM 单测 + build-android CI 门禁），本轮任务有实质增量的部分是**默认值口径**：
+
+- **冲突与取舍（登记）**：任务指定「默认关闭、显式开启」，而设计 §7 原文与 6cecfad 实现均为「默认开」——后者是落地轮登记的**假设**（CHANGELOG：「A3 设计目标即无人值守，UI 可关」），非用户既定决策。按指令显式口径执行：**默认关**。特权行为（自动化 Agent 开机自启）以显式勾选为准是更保守且可辩护的安全默认；既有显式勾选过的用户不受影响（prefs 已存 true），从未动过开关的安装从「装完即自启」变为「须显式开启」。
+- **实现**：默认值收敛单一来源 `BootStartGate.DEFAULT_ENABLED = false`——Receiver 与 MainActivity 两处 prefs 读取都改经该常量，禁止字面量（`AgentPrefs` 注释同步）；BootStartGate/BootCompletedReceiver KDoc 语义更新。
+- **回归钉**：BootStartGateTest 新增 `bootAutoStartDefaultsToOff`——钉住常量 false 且「未显式开启（prefs 缺键）+ 已配置地址」不放行，默认值再变必须过显式决策。
+- **文档**：android-agent-design §7（默认开→默认关、显式开启，注明校正缘由）；android-keep-alive 指引表；apps/android/README A3 验证步骤（「显式勾选」）；本节勾销现状登记陈旧条目。
+- **无真机可验证项（登记）**：BOOT_COMPLETED/MY_PACKAGE_REPLACED 真机广播到达与豁免名单内 startForegroundService 实际行为、覆盖安装后自启、勾选后重启设备全链路——均需真机，本机仅 JVM 单测 + 编译验证；验证步骤已写入 apps/android/README.md A3 节。
+- **验证**：`gradle :app:testDebugUnitTest` 22/22 全绿（+1）；零 Go/C++ 改动（Go/C++ 门禁沿用 1a2acb5 已验结果）；docs:build 随文档改动复跑。
+
+---
+
 ## 2026-09-30 Android A3 受限设置引导落地（Android 13+ 侧载开箱：手动允许 / adb 预授权 / Device Owner）
 
 todo「Android 现状登记」A3 剩余项第二项（按 development-todo A3 节顺序，先于 asset.sync；触发器项属 A2 节残留且无设计成文章节，不属「A3 之后」）。Android 13（API 33）起侧载 App 的无障碍被「受限设置」默认屏蔽——开关打不开的根因、端侧开箱失败最高来源（mobile-support-feasibility.md §5.2，风险表评级：高）。
@@ -45,7 +58,7 @@ todo「Android 现状登记」未完成三项中的第一项（A3 剩余可靠�
   - A3-P1 token 认证（2026-09-20，4c9a8f4）：register token 白名单 `WINGMAN_AGENT_TOKENS`（server+桌面+Android 三端，默认关闭、完全向后兼容，见 `docs/agent-token-auth-design.md`）。
   - 工程基建：共用核心下沉 `libs/agentcore` + `libs/androidagent`（2026-09-22，3ab3b7a），桌面同源编译、单测桌面跑。
 - **未完成（设计成文、未排期，供任务派发对账）**：
-  - A3 可靠性剩余项：开机自启、崩溃自重启、断连缓存自治、机型保活指引（设计约束见 android-agent-design.md §7）。
+  - ~~A3 可靠性剩余项：开机自启、崩溃自重启、断连缓存自治、机型保活指引~~（✅ 已落地 2026-09-30，6cecfad + 同日受限设置引导条目；开机自启默认值同日校正为「默认关、显式开启」，见前节）。
   - A3-P2 安全演进：per-agent token + Dashboard 管理与审计、token 迁移 Android Keystore、challenge-response（需 NDK 引入 OpenSSL）与 TLS（agent-token-auth-design.md §6）。
   - A4 多设备编排：Dashboard 设备视图、批量下发、asset.sync 模板分发（协议预留）。
 - **本轮文档收口**：ROADMAP.md 新增 Milestone 9「移动端 Agent（Android）」（A1-A4 状态表 + 工程基建注记）+ 平台说明补 Android 实验性 + 时间估算/下一阶段行动表登记未排期项；docs/android-agent-design.md §1.2 A3 行补注 P1 已落地（与 §8 口径对齐）。

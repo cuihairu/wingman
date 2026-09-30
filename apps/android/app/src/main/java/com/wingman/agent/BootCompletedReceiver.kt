@@ -8,8 +8,9 @@ import android.util.Log
 /**
  * A3 开机自启（docs/android-agent-design.md §7）：
  * BOOT_COMPLETED（开机）与 MY_PACKAGE_REPLACED（覆盖安装后）按用户开关
- * （默认开）+ 已配置服务器地址放行启动前台服务。两者均在系统的后台
- * FGS 启动豁免名单内（API 31+ 也可 startForegroundService）。
+ * （默认关、显式开启，[BootStartGate.DEFAULT_ENABLED] 单一来源）+ 已配置
+ * 服务器地址放行启动前台服务。两者均在系统的后台 FGS 启动豁免名单内
+ * （API 31+ 也可 startForegroundService）。
  *
  * 显式启动（开机/更新 = 新的使用意愿）同时清零崩溃退避串。
  * Receiver 保持薄壳：放行判定在 [BootStartGate]（纯逻辑，单测直测）。
@@ -23,7 +24,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
         ) return
 
         val prefs = context.getSharedPreferences(AgentPrefs.NAME, Context.MODE_PRIVATE)
-        val enabled = prefs.getBoolean(AgentPrefs.KEY_AUTO_START_ON_BOOT, true)
+        val enabled = prefs.getBoolean(AgentPrefs.KEY_AUTO_START_ON_BOOT, BootStartGate.DEFAULT_ENABLED)
         val serverIp = prefs.getString(AgentPrefs.KEY_SERVER_IP, null)
         if (!BootStartGate.shouldAutoStart(enabled, serverIp)) {
             Log.i(TAG, "boot auto-start skipped (enabled=$enabled serverIp=$serverIp)")

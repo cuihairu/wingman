@@ -101,9 +101,10 @@ class MainActivity : AppCompatActivity() {
             showRestrictedSettingsGuide()
         }
 
-        // A3：开机自启开关（BootCompletedReceiver 放行判定读此键）
+        // A3：开机自启开关（默认关、显式开启——BootCompletedReceiver 放行
+        // 判定读同一键；默认值单一来源 BootStartGate.DEFAULT_ENABLED）
         val bootView = findViewById<CheckBox>(R.id.checkAutoStartBoot)
-        bootView.isChecked = prefs.getBoolean(AgentPrefs.KEY_AUTO_START_ON_BOOT, true)
+        bootView.isChecked = prefs.getBoolean(AgentPrefs.KEY_AUTO_START_ON_BOOT, BootStartGate.DEFAULT_ENABLED)
         bootView.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean(AgentPrefs.KEY_AUTO_START_ON_BOOT, checked).apply()
         }

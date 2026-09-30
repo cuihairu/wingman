@@ -357,7 +357,7 @@ A3 可靠性剩余项于 2026-09-30 落地。逐场景的实现归属：
 | 断网 | RemoteClient 指数退避重连（现成） | C++ 侧现成（agentcore_test 覆盖：重连后退避、断连事件入 outbox、重连冲刷、超容量丢弃）+ 脚本断连自治（执行线程独立于连接）——A3 无 C++ 改动，App 侧以核心看门狗补「服务在跑但核心不在跑」的自愈 |
 | 厂商 ROM 杀后台 | 未处理（A1 文档引导用户加白名单） | `docs/guides/android-keep-alive.md`（小米/华为/OPPO/vivo/三星逐机型步骤 + 验证方法 + 已知边界）+ App 内「机型保活指引」对话框 |
 | 脚本执行中断连 | 脚本继续跑，日志丢入 outbox 重连补发（RemoteClient outbox 现成） | 同左；asset 缓存归 A4 |
-| 开机/覆盖安装 | 无 | BootCompletedReceiver（BOOT_COMPLETED + MY_PACKAGE_REPLACED，均在系统后台 FGS 启动豁免名单内）+ 用户开关（默认开）+ 已配置服务器地址才放行（`BootStartGate`） |
+| 开机/覆盖安装 | 无 | BootCompletedReceiver（BOOT_COMPLETED + MY_PACKAGE_REPLACED，均在系统后台 FGS 启动豁免名单内）+ 用户开关（**默认关、显式开启**——2026-09-30 按指令校正；原落地轮「默认开」为登记假设，特权行为须用户显式勾选）+ 已配置服务器地址才放行（`BootStartGate.DEFAULT_ENABLED` 单一来源） |
 
 实现要点（Kotlin 壳内，全部本地组件、零新增网络面）：
 
