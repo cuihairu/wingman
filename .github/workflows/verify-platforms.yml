@@ -26,6 +26,9 @@ env:
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
   VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
   VCPKG_BINARY_SOURCES: 'clear;files,${{ github.workspace }}/vcpkg/archives,readwrite'
+  # macOS runner 步骤环境默认无 LANG（C locale）——bash 3.2 在 C locale 下
+  # 会把紧跟变量的多字节字符并入变量名（首跑实测 unbound variable）
+  LANG: en_US.UTF-8
 
 jobs:
   macos-runtime:

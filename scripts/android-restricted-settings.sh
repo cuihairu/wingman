@@ -83,7 +83,7 @@ device_sdk() {
 require_installed() {
 	local out
 	if ! out="$("$ADB_BIN" shell pm path "$PKG" 2>/dev/null)" || [[ "$out" != *"package:"* ]]; then
-		echo "FAIL: 设备上未安装 $PKG（先安装 APK 再预授权；批量部署路径见 docs/guides/android-restricted-settings.md）"
+		echo "FAIL: 设备上未安装 ${PKG}（先安装 APK 再预授权；批量部署路径见 docs/guides/android-restricted-settings.md）"
 		return 1
 	fi
 }

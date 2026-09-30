@@ -30,7 +30,7 @@ esac
 
 BIN=build/lib/wingman/tests/core_tests
 if [[ ! -x "$BIN" || "${1:-}" == "--build" ]]; then
-	echo "==> 构建 core_tests（首次或 --build，triplet=$TRIPLET）"
+	echo "==> 构建 core_tests（首次或 --build，triplet=${TRIPLET}）"
 	cmake -B build \
 		-DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
 		-DVCPKG_TARGET_TRIPLET="$TRIPLET" \
@@ -39,14 +39,14 @@ if [[ ! -x "$BIN" || "${1:-}" == "--build" ]]; then
 fi
 
 FILTER='ClipboardTest.*:FileWatcherTest.*:ScreenTest.*:InputTest.*:UnixSocketChannelTest.*'
-echo "==> 运行 macOS 平台套件（$FILTER）"
+echo "==> 运行 macOS 平台套件（${FILTER}）"
 set +e
 "$BIN" --gtest_filter="$FILTER"
 RC=$?
 set -e
 
 if [[ $RC -ne 0 ]]; then
-	echo "FAIL: macOS 平台套件存在失败用例（exit=$RC）"; exit 1
+	echo "FAIL: macOS 平台套件存在失败用例（exit=${RC}）"; exit 1
 fi
 echo "PASS: macOS 可自动化验证项全部通过。"
 echo "提示: 以下仍属人工观察项——CGEvent 注入的焦点/权限手感（辅助功能授权）、"
