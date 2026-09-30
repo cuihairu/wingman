@@ -9,7 +9,18 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 437 个提交（feat 77 / fix 144 / docs 79 / test 63 / ci 21 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 438 个提交（feat 77 / fix 144 / docs 79 / test 64 / ci 21 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-30，C++（Linux）覆盖率扫描续：Clipboard 门面与 X11 后端——故障注入 3 例，可触达缺口归零）
+
+- **基线校正**：任务口径的 clipboard.cpp 58.1%/26 行、x11_clipboard 71.8%/37 行为 1f0f976 前旧树数字（彼时 Linux 文件列表用例按能力守卫 SKIP）；修复树复采基线 clipboard.cpp 58%（36/62）、x11_clipboard.cpp 74%（98/132），采集前先验证 X 环境存活（Xvfb :98 + xclip + gcovr）。
+- **新增 `lib/wingman/tests/clipboard_fault_coverage_test.cpp` 3 例**（`UNIX AND NOT APPLE` gate，Windows 编译面不含该文件；无 X 环境语义自洽）：`UninitializedBackendDegradesByContract`（坏 DISPLAY 经工厂直连，未初始化实例全接口降级契约——写 false/读空/isEmpty true/isInitialized 如实 false，覆盖 initialize 失败分支）；`PipeExhaustionFailsGracefully`（RLIMIT_NOFILE 压到「当前占用+4」再占满，毫秒级注入窗口——直接占满百万默认额度是秒级窗口，全量跑实测 1.4s）；`ForkFailureFailsGracefully`（/proc 统计 uid 进程数 + RLIMIT_NPROC 压限 + fork 探测确认 EAGAIN）。pipe/fork 两条防御分支（4+8 行）与 initialize 失败分支（2 行）全部落地。
+- **注入纪律（共享机）**：前置探测不成立一律 GTEST_SKIP 不误报；剪贴板 flock 按纪律持有；rlimit/fd/环境变量全 RAII 恢复（含「未成功 apply 不恢复」防把限额写成垃圾值）。
+- **在案 flake 收口（断言方向 5 处）**：全量门禁首跑在 load ~27 下抓红 `ClipboardTest.IsEmpty`——`setText` 后 `EXPECT_FALSE(waitFor(isEmpty))` 等价于要求「首次读取即为终态」，而 clear 建立的空态会一直可读到 xclip daemon 异步接管为止，t=0 读取必然与接管窗口竞争。同型 5 处（HasText/HasHTML/HasFiles 的 clear 后、Clear/IsEmpty 的 setText 后）一并改为正向等待终态 `EXPECT_TRUE(waitFor(终态谓词))`：断言契约不变（终态最终出现即通过、始终不出现即失败），只去掉与异步接管竞争的 t=0 硬要求；`clipboard_poll.hpp` 头注释登记方向纪律。
+- **覆盖率（gcovr 行）**：`x11_clipboard.cpp` 74% → **84%**（112/132）；`clipboard.cpp` 维持 58%（36/62）——两文件可触达缺口归零。
+- **结构性盲区登记（46 行，不写假用例）**：x11 子进程分支 19 行——fork 后 exec(xclip) 替换进程镜像或 _exit(1)，子进程 gcov 计数器永不落盘（父进程行可注入、子进程行工具不可观测，路径本身每次读写真实执行）；226 收尾行归因伪影（getAvailableFormats 函数体已全驱动）；clipboard.cpp 26 行 = NullClipboard 类体 + 工厂 null 兜底——两平台工厂恒无条件 new+initialize+return，回退恒不可达（Windows 侧 #else 分支不参与编译）。
+- **无真缺陷暴露（如实登记）**：三条防御路径行为全部符合既有契约，本轮零生产代码改动。
+- **验证**：新 3 例 ×5 连跑稳定（102/100/10ms）；全量两树 ctest（CI 口径 xvfb-run 串行 --timeout 300）**2496 注册 = 2465 passed + 31 环境 skip + 0 failed**（两树注册数一致、含本轮 +3；31 例 xclip/XRecord/能力守卫 skip 与既往一致）；gcovr（历轮口径，剔除 vcpkg 头与 tests/）TOTAL **90%（15238/16931）**（上轮 89.9%）。门禁插曲如实登记：首跑两树各挂 `AgentLifecycleTest.ApplyRemoteConfigWhileRunningReportsReconnectAndPersistFailure`——上一任务（Android 模拟器验证）遗留的 host Go server 仍占 :8888，打穿该用例「初始地址不可达」前提，杀遗留进程后恢复（与本轮改动无关）；同轮 load ~27 抓出 ClipboardTest.IsEmpty 断言方向 flake（见上条收口）。零 Go/JS 改动。
 
 ### fix（2026-09-30，Android 模拟器验证（API 34 AVD 全链路）抓出三处阻断级缺陷：主题 / FGS 类型 / 闹钟 PendingIntent）
 

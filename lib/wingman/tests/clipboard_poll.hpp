@@ -10,6 +10,12 @@
 //
 // 轮询等待谓词成立而非定值睡眠：命中即真的后端（Windows openClipboard
 // 互斥、内存 stub）首次查询即返回，零等待。
+//
+// 断言方向纪律：写后/clear 后的断言一律正向等待终态（EXPECT_TRUE(waitFor
+// 终态谓词)），不要写 EXPECT_FALSE(waitFor(pred))——后者要求首次读取即为
+// 终态，等于与异步接管窗口竞争：接管未完成时旧 owner（或 clear 建立的空态）
+// 仍在位，t=0 读取即命中相反状态而假红（2026-09-30 全量门禁
+// ClipboardTest.IsEmpty 在 load ~27 下实测，同型 5 处一并收口）。
 
 #include <chrono>
 #include <thread>

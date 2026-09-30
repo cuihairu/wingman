@@ -61,7 +61,11 @@ TEST_F(ClipboardTest, SetUnicodeText) {
 TEST_F(ClipboardTest, HasText) {
     Clipboard::clear();
 
-    EXPECT_FALSE(clipboard_test::waitFor([] { return Clipboard::hasText(); }));
+    // clear/setText 后 selection 所有权转移异步（xclip daemon 接管前旧 owner
+    // 仍在位）：写后断言一律用「最终态出现」的正向等待——EXPECT_FALSE(waitFor(pred))
+    // 相当于要求首次读取即为终态，与接管窗口竞争，高负载必偶发假红（2026-09-30
+    // 全量门禁 ClipboardTest.IsEmpty 实测）。
+    EXPECT_TRUE(clipboard_test::waitFor([] { return !Clipboard::hasText(); }));
 
     Clipboard::setText("Test content");
     EXPECT_TRUE(clipboard_test::waitFor([] { return Clipboard::hasText(); }));
@@ -88,7 +92,8 @@ TEST_F(ClipboardTest, SetAndGetHTML) {
 TEST_F(ClipboardTest, HasHTML) {
     Clipboard::clear();
 
-    EXPECT_FALSE(clipboard_test::waitFor([] { return Clipboard::hasHTML(); }));
+    // 同 HasText：clear 生效异步，正向等待终态（见该用例内注释）
+    EXPECT_TRUE(clipboard_test::waitFor([] { return !Clipboard::hasHTML(); }));
 
     Clipboard::setHTML("<p>Test</p>");
     EXPECT_TRUE(clipboard_test::waitFor([] { return Clipboard::hasHTML(); }));
@@ -198,8 +203,9 @@ TEST_F(ClipboardTest, HasFiles) {
 
     // x11 后端 selection 所有权转移异步生效：clear 后立即探测可能命中前一用例
     // 残留的 FILE_LIST target（第六批全量实测偶发失败，本批统一到共享轮询
-    // helper clipboard_poll.hpp）
-    EXPECT_FALSE(clipboard_test::waitFor([] { return Clipboard::hasFiles(); }));
+    // helper clipboard_poll.hpp）；断言取「最终消失」正向等待，避免首次读取
+    // 仍命中旧 owner 的接管窗口竞争
+    EXPECT_TRUE(clipboard_test::waitFor([] { return !Clipboard::hasFiles(); }));
 
     Clipboard::setFiles(files);
 
@@ -210,7 +216,8 @@ TEST_F(ClipboardTest, HasFiles) {
 
 TEST_F(ClipboardTest, Clear) {
     Clipboard::setText("Some content");
-    EXPECT_FALSE(clipboard_test::waitFor([] { return Clipboard::isEmpty(); }));
+    // setText 后正向等待非空终态（接管异步，见 HasText 用例内注释）
+    EXPECT_TRUE(clipboard_test::waitFor([] { return !Clipboard::isEmpty(); }));
 
     Clipboard::clear();
     EXPECT_TRUE(clipboard_test::waitFor([] { return Clipboard::isEmpty(); }));
@@ -221,7 +228,9 @@ TEST_F(ClipboardTest, IsEmpty) {
     EXPECT_TRUE(clipboard_test::waitFor([] { return Clipboard::isEmpty(); }));
 
     Clipboard::setText("Test");
-    EXPECT_FALSE(clipboard_test::waitFor([] { return Clipboard::isEmpty(); }));
+    // 同上：clear 建立的空态会一直可读到 setText 的 xclip daemon 接管为止，
+    // 首次读取恒可能为空——等待非空终态出现才是本用例的契约（写入可读）
+    EXPECT_TRUE(clipboard_test::waitFor([] { return !Clipboard::isEmpty(); }));
 }
 
 // ========== Boundary Condition Tests ==========

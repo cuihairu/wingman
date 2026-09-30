@@ -8,6 +8,20 @@
 
 ---
 
+## 2026-09-30 C++（Linux）覆盖率扫描续：Clipboard 门面与 X11 后端——故障注入 3 例，可触达缺口归零、结构性盲区全登记
+
+任务基线（clipboard.cpp 58.1%/26 行、x11_clipboard 71.8%/37 行）为 1f0f976 前旧树口径——彼时 Linux 文件列表用例按能力守卫 SKIP；修复落地后复采基线：**clipboard.cpp 58%（36/62）、x11_clipboard.cpp 74%（98/132）**。基线先验证 X 环境存活（Xvfb :98 在跑、xclip/gcovr 齐备）。
+
+- **测试**：新增 `lib/wingman/tests/clipboard_fault_coverage_test.cpp` 3 例（CMake 接 `UNIX AND NOT APPLE` gate——x11_clipboard.cpp 本就不在 Windows 编译面；无 X 环境语义自洽：坏 DISPLAY 注入不依赖真 X，fd/fork 注入在单例未初始化时同样走 false/空契约）：① `UninitializedBackendDegradesByContract`——坏 DISPLAY（:9999）经工厂直连取未初始化实例，全接口降级契约逐项断言（写恒 false、读恒空、isEmpty true、getBackendInfo().isInitialized=false；覆盖 initialize 失败分支）；② `PipeExhaustionFailsGracefully`——RLIMIT_NOFILE soft 压到「当前占用+4」再逐个占满（直接占满默认百万额度是秒级窗口、全量跑实测 1.4s，压限后毫秒级），覆盖 setText/getText 两条 pipe 失败防御分支；③ `ForkFailureFailsGracefully`——/proc 扫描统计本 uid 进程数后 RLIMIT_NPROC 压限（按 uid 计数），fork 探测确认 EAGAIN 前提成立，覆盖两条 fork 失败防御分支。
+- **注入纪律（共享机）**：三条注入全部前置探测（pipeStillFails / forkStillFails / rlimit 可用性），前提不成立一律 GTEST_SKIP 不误报代码失败；剪贴板 flock 按纪律持有（注入失效走通成功路径时不与并行进程竞态）；rlimit/fd/env 改动全部 RAII 恢复（含「未成功 apply 不恢复」防把限额写成垃圾值）。
+- **在案 flake 收口（断言方向 5 处）**：全量门禁首跑在 load ~27 下抓红 `ClipboardTest.IsEmpty`——`setText` 后 `EXPECT_FALSE(waitFor(isEmpty))` 等价于要求「首次读取即为终态」，而 clear 建立的空态会一直可读到 xclip daemon 异步接管为止，t=0 读取必然与接管窗口竞争。同型 5 处（HasText/HasHTML/HasFiles 的 clear 后、Clear/IsEmpty 的 setText 后）一并改为正向等待终态 `EXPECT_TRUE(waitFor(终态谓词))`：断言契约不变（终态最终出现即通过、始终不出现即失败），只去掉不可达成的「t=0 起持续为终态」硬要求；`clipboard_poll.hpp` 头注释登记该方向纪律。改后 Clipboard 全家族 + 故障注入 19 例 ×3 轮全绿。
+- **覆盖率（gcovr 行）**：`x11_clipboard.cpp` 74%（98/132）→ **84%**（112/132）；`clipboard.cpp` 维持 58%（36/62）——**两文件可触达缺口归零**（余量见下登记，均结构性）。
+- **结构性盲区登记（46 行，不写假用例）**：x11_clipboard 子进程分支 19 行（63-65/70-74/78/81 与 119-121/124-127/131/134）——fork 后 exec(xclip) 替换进程镜像或失败 _exit(1)，子进程 gcov 计数器永不落盘：父进程行可故障注入、子进程行是工具不可观测（路径本身每次 setText/getText 真实执行）；226 为 getAvailableFormats 收尾行归因伪影（函数体 222-225 已全驱动）；clipboard.cpp 26 行 = NullClipboard 类体（13-46）+ 工厂 null 兜底（88）——两平台工厂（createX11Clipboard/createCocoaClipboard）恒无条件 new+initialize+return，该回退在 Linux/macOS 恒不可达，Windows 侧 #else 分支不参与编译（直接 typedef Win32Clipboard）。
+- **无真缺陷暴露（如实登记）**：三条防御路径行为全部符合既有契约（优雅 false/空、不崩、未初始化如实上报），本轮零生产代码改动。
+- **验证**：新 3 例 ×5 连跑稳定（102/100/10ms）；全量两树 ctest（CI 口径：xvfb-run 串行 + --timeout 300）**2496 注册 = 2465 passed + 31 环境 skip + 0 failed**（两树一致，含本轮 +3）；gcovr TOTAL **90%（15238/16931）**（历轮口径剔除 vcpkg 头与 tests/，上轮 89.9%）。首跑插曲：两树各挂 1 例 `AgentLifecycleTest.ApplyRemoteConfigWhileRunningReportsReconnectAndPersistFailure`——Android 模拟器任务遗留 host Go server 仍占 :8888、打穿其「初始地址不可达」前提，杀遗留进程后恢复（与本轮零生产改动无关）；同轮 load ~27 抓出 ClipboardTest.IsEmpty 断言方向 flake，同型 5 处已收口（见上条）。零 Go/JS 改动。
+
+---
+
 ## 2026-09-30 Android 模拟器验证（API 34 AVD 全链路）：三处阻断级缺陷修复；「无真机可验证项」四条全部销账
 
 任务口径：真机验证两项里能在模拟器/runner 上验的全部验掉，确需物理硬件的如实列清单。macOS 腿（Actions macos-latest runner）与 XRecord 腿（本机 Xvfb :98）已于前两条勾销，本条收 Android 腿：**本机 Android SDK 模拟器 emulator-5554 = AVD test34（API 34，sdk_gphone64_x86_64，userdebug 可 adb root）**，host 侧 Go server（agent 0.0.0.0:8888，经 10.0.2.2 loopback alias 回连）+ `WINGMAN_AGENT_TOKENS` token 白名单口径复现生产链路。

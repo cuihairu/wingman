@@ -81,6 +81,9 @@ if(BUILD_CORE_TESTS)
         target_sources(core_tests PRIVATE recorder_x11_e2e_test.cpp)
         # MacroRecorder 平台无关状态机（recordEvent 手动注入，不依赖 XRecord）
         target_sources(core_tests PRIVATE recorder_offline_test.cpp)
+        # 剪贴板平台链故障注入（坏 DISPLAY 未初始化契约 / pipe EMFILE / fork EAGAIN；
+        #   x11_clipboard.cpp 仅 Linux 侧编译，注入口均为 POSIX 原语）
+        target_sources(core_tests PRIVATE clipboard_fault_coverage_test.cpp)
     endif()
 
     # smart_trigger 测试此前误 gate 在 WIN32（用例全部走 wingman 跨平台抽象，
