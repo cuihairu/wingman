@@ -2,6 +2,9 @@
 #include "wingman/clipboard.hpp"
 #include "clipboard_lock_guard.hpp"
 #include "clipboard_poll.hpp"
+#include <filesystem>
+#include <fstream>
+#include <random>
 #include <thread>
 #include <chrono>
 
@@ -138,18 +141,44 @@ TEST_F(ClipboardTest, HasImage) {
 
 // ========== File Operation Tests ==========
 
+// 文件列表输入须为真实存在的路径（Windows CF_HDROP 与 macOS public.file-url
+// 的语义都指向真实文件；原 Windows 硬编码路径在非 Windows 平台是挂空路径，
+// macOS 后端 fileURLWithPath: 对其生成无效 file URL——写入声明成功、读回
+// 为空，2026-09-30 macOS 验证腿首跑实证）。进程唯一临时目录 +
+// random_device 后缀（ctest 并行进程间不碰撞，同 storage_test 纪律），
+// 幂等创建空文件。
+static std::vector<std::string> makeExistingTempFiles(
+    std::initializer_list<const char*> names) {
+    namespace fs = std::filesystem;
+    static const fs::path dir = fs::temp_directory_path() /
+        ("wingman_clip_files_" + std::to_string(std::random_device{}()));
+    fs::create_directories(dir);
+    std::vector<std::string> paths;
+    for (const char* name : names) {
+        fs::path p = dir / name;
+        std::ofstream(p, std::ios::app);  // 已存在则保持，幂等
+        paths.push_back(p.string());
+    }
+    return paths;
+}
+
 TEST_F(ClipboardTest, SetAndGetFiles) {
-    // Note: actual file paths must exist
-    std::vector<std::string> files = {
-        "C:\\Windows\\System32\\notepad.exe",
-        "C:\\Windows\\System32\\calc.exe"
-    };
+    // actual file paths must exist（macOS 后端对挂空路径生成无效 file URL）
+    std::vector<std::string> files = makeExistingTempFiles({"a.txt", "b.txt"});
 
     // 后端能力守卫：X11/xclip 等后端未实现文件列表写入（恒 false），跳过而非误报
     if (!Clipboard::setFiles(files)) {
         GTEST_SKIP() << "Clipboard backend does not support file lists — skipping";
     }
-    std::vector<std::string> result = Clipboard::getFiles();
+    std::vector<std::string> result;
+    // x11 后端 selection 写入→可读异步生效（同 setTextAndGetText 轮询纪律）；
+    // 立即读即命中的后端行为不变
+    for (int attempt = 0; attempt < 40 && result != files; ++attempt) {
+        result = Clipboard::getFiles();
+        if (result != files) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+    }
 
     EXPECT_EQ(result.size(), files.size());
     if (result.size() == files.size()) {
@@ -160,7 +189,7 @@ TEST_F(ClipboardTest, SetAndGetFiles) {
 
 TEST_F(ClipboardTest, HasFiles) {
     // 后端能力守卫：无文件列表写入能力的后端（X11/xclip）跳过
-    std::vector<std::string> files = {"C:\\Windows\\System32\\notepad.exe"};
+    std::vector<std::string> files = makeExistingTempFiles({"a.txt"});
     if (!Clipboard::setFiles(files)) {
         GTEST_SKIP() << "Clipboard backend does not support file lists — skipping";
     }
