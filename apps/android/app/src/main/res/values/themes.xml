@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.WingmanAgent" parent="@android:style/Theme.Material.Light.NoActionBar" />
+    <!-- MainActivity 继承 AppCompatActivity 且用 androidx AlertDialog，必须是
+         AppCompat 主题（或其子类）：framework Theme.Material 会以
+         "You need to use a Theme.AppCompat theme" 启动即崩（模拟器实测）。
+         布局仅用框架控件，Theme.AppCompat.Light.NoActionBar 即够 -->
+    <style name="Theme.WingmanAgent" parent="Theme.AppCompat.Light.NoActionBar" />
 </resources>

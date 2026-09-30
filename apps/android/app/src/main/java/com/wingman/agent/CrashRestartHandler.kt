@@ -93,7 +93,12 @@ object CrashRestartHandler {
     private fun scheduleRestart(context: Context, delayMs: Long) {
         val intent = Intent(context, CrashAlarmReceiver::class.java)
             .setAction(CrashAlarmReceiver.ACTION_RESTART)
-        val pending = PendingIntent.getForegroundService(
+        // 目标是 BroadcastReceiver，必须 getBroadcast——getForegroundService
+        // 会让系统到点按 service 组件解析 CrashAlarmReceiver 而恒
+        // 「Unable to start service ... not found」，闹钟腿自 A3 落地起从未
+        // 真正触发（API 34 模拟器 am crash 实测；此前被 START_STICKY 兜底
+        // 掩盖）
+        val pending = PendingIntent.getBroadcast(
             context, CrashAlarmReceiver.REQUEST_CODE, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return

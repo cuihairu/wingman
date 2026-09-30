@@ -30,7 +30,10 @@ import org.json.JSONObject
  *
  * A2 时序硬约束（API 34）：ACTION_START_CAPTURE 分支必须先以 mediaProjection
  * 类型 startForeground，之后才能 getMediaProjection + createVirtualDisplay，
- * 否则 SecurityException。
+ * 否则 SecurityException。反向约束同样成立：未取得投屏授权（用户没走过
+ * createScreenCaptureIntent 同意流）时以 mediaProjection 类型 startForeground
+ * 同样 SecurityException——纯核心启动只带 dataSync 类型（2026-09-30 API 34
+ * 模拟器实测修复）。
  */
 class WingmanService : Service() {
 
@@ -87,14 +90,18 @@ class WingmanService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_START_CAPTURE -> {
-                startForegroundWithTypes()
+                startForegroundWithTypes(mediaProjection = true)
                 startCapture(intent)
             }
             ACTION_STOP_CAPTURE -> {
                 stopCapture()
             }
             else -> {
-                startForegroundWithTypes()
+                // 纯核心启动（A1）不带投屏授权：mediaProjection 类型要求
+                // 用户授权投屏后系统才放行（appop project_media），未授权时
+                // 一律 SecurityException 崩溃——API 34 模拟器实测。只用
+                // dataSync 类型即可承载核心托管
+                startForegroundWithTypes(mediaProjection = false)
                 // 用户/开机/系统 sticky 重建的显式启动清零崩溃退避串；
                 // 崩溃闹钟路径（EXTRA_FROM_CRASH_RESTART）保持退避累积
                 if (intent?.getBooleanExtra(EXTRA_FROM_CRASH_RESTART, false) != true) {
@@ -116,13 +123,16 @@ class WingmanService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun startForegroundWithTypes() {
+    private fun startForegroundWithTypes(mediaProjection: Boolean) {
         val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ServiceCompat.startForeground(
-                this, NOTIFICATION_ID, notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            // mediaProjection 类型仅投屏分支叠加（见 onStartCommand 注释）；
+            // 服务已前台时再次 startForeground 会原地更新类型集，升级路径安全
+            var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            if (mediaProjection) {
+                types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            }
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, types)
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
