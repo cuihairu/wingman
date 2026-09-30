@@ -9,7 +9,18 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 432 个提交（feat 77 / fix 142 / docs 78 / test 62 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 437 个提交（feat 77 / fix 144 / docs 79 / test 63 / ci 21 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+
+### fix（2026-09-30，Android 模拟器验证（API 34 AVD 全链路）抓出三处阻断级缺陷：主题 / FGS 类型 / 闹钟 PendingIntent）
+
+- **验证环境**：本机 Android SDK 模拟器 emulator-5554（AVD test34，API 34，userdebug）+ host Go server（agent 0.0.0.0:8888，10.0.2.2 loopback alias 回连、`WINGMAN_AGENT_TOKENS` 白名单）复现生产链路；macOS 腿（Actions macos-latest）与 XRecord 腿（Xvfb）此前已勾销，本轮收 Android 腿。
+- **① MainActivity 启动即崩（A1 起潜伏）**：AppCompatActivity + androidx AlertDialog 必须 Theme.AppCompat 后代主题，framework Theme.Material 在 setContentView 抛 `IllegalStateException`——UI 自 A1 起从未在任何构建上真正启动过（此前验证只走 `am startforegroundservice` 服务路径，未起过 Activity）。values/values-night 改 `Theme.AppCompat(.Light).NoActionBar`（布局仅框架控件，够用）。
+- **② API 34 纯核心启动 100% 崩**：`startForeground` 无条件带 mediaProjection 类型，未取得投屏授权（appop project_media）即 `SecurityException`。`startForegroundWithTypes(mediaProjection: Boolean)` 按分支选类型集——纯核心 dataSync、投屏分支叠加 mediaProjection（服务已前台时二次 startForeground 原地更新类型集，升级路径安全）。
+- **③ 崩溃闹钟腿自 A3 落地从未触发**：`PendingIntent.getForegroundService` 指向 BroadcastReceiver，系统按 service 组件解析恒 "Unable to start service … not found"（被 START_STICKY 兜底掩盖）。改 `getBroadcast`，`am crash` 实测触发。
+- **全链路验证（修复构建）**：安装 → MainActivity 稳定前台 → ACTION_START → FGS dataSync → nativeStart=1 → TCP 建立 → server `[Registry] Agent registered`（含断网自动重连）；`am crash` → START_STICKY + 闹钟腿双拉起、crash 遥测落 prefs；BOOT_COMPLETED / MY_PACKAGE_REPLACED（覆盖安装）自启正路径与默认关负路径全通；restricted-settings 脚本 check/allow/status/revoke 真机路径 exit code 语义正确。**前条 A3 登记的「无真机可验证项」四条（广播到达/豁免名单 startForegroundService/覆盖安装自启/勾选后重启全链路）全部销账**。
+- **误诊澄清（登记）**：exported=false 并不拦系统保护广播——中途误判源于共享机高负载下广播队列积压（BOOT_COMPLETED 发出到 receiver 实测延迟 47s）+ 检查窗口过短 + 提前 `logcat -c` 抹证据；manifest 零改动，既有口径正确。
+- **加固登记（未修）**：冷启动窗口内焦点被夺时 `ForegroundServiceStartNotAllowedException` 未捕获致进程崩溃（共享模拟器多会话特有触发面，单用户真机常规流程不踩）；后续按捕获退避重试方向加固。
+- **验证**：`gradle :app:testDebugUnitTest` 22/22 全绿；零 Go/C++ 改动。剩余真机项：macOS TCC 三项 / XRecord 回放手感 / Android 厂商保活逐机型 / MediaProjection 真机授权流。
 
 ### test（2026-09-30，C++（Linux）覆盖率扫描续：ResourceLoader 实例接口 68% → 87%（7 例），无嵌入早退链直测）
 
