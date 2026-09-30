@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-09-30 C++（Linux）覆盖率扫描续：ResourceLoader 实例接口 68% → 87%（7 例）
+
+todo 仅剩 macOS 与 Linux 真机验证两项（本机无真机、不可做），按既定规则转覆盖率缺口。双端对账：Go 侧全包覆盖率复测（`go test -coverprofile -count=1`）**全部 ≥95.6%**（最低 internal/remoteticket 95.6%、internal/handlers 96.6%、internal/workflow 99.7%，余均 100%），无 85% 以下缺口；Android 侧 gradle 无覆盖率插件基建（任务「如适用」条件不成立，登记不适用）。C++ 侧 gcovr 全量报告（TOTAL 89.9%，15213/16921）按未覆盖行数重排、逐项复核既有登记排除项（misc_modules UIA 平台耦合 / lua_engine 零引用遗留 / crypt OpenSSL 内部失败分支 / packer 私有+PE 平台 / x11_recorder 真桌面 / screenshot_handler VISION 变体门 / notify WebhookSender 配置性死代码 / ml_stub 恒失败的模型路径 / agent.cpp 84.6% 的 46 行余量已全部登记）后，85% 线下最大可离线测缺口锁定 `apps/runtime/src/resource_loader.cpp` **68.3%（40 行未覆盖）**——既有 43 例只直测静态字节级入口（loadScriptFromBytes / Packer 往返），实例接口面（构造探测/错误回调/资源信息/loadScript）零驱动。
+
+- **测试**：新增 `apps/runtime/tests/resource_loader_interface_test.cpp` 7 例（runtime_tests 接线；纯实例方法 + std::filesystem，无 POSIX/X11 符号，Windows CI 全量参与；测试二进制非 Packer 产物、不含 PACK_PE_RESOURCE_ID 资源，Linux 与 Windows 探测结果一致为「无嵌入脚本」）：构造探测无嵌入、ResourceInfo 默认值全字段、getExecutablePath 解析到存在的文件（Linux 走 /proc/self/exe 生产路径）、loadScript 无嵌入时错误回调收「No embedded script found」、无回调失败路径安全不崩、setErrorCallback 二次替换后旧回调不再接收、重复 loadScript 持续失败且探测态不漂移。
+- **余量 16 行登记（不写假用例）**：265-279（11 行）loadScript 有嵌入分支——`hasEmbeddedScript()` 在 Linux 恒 false，PE FindResource/LoadResource 为 Windows 产物路径本机结构性不可达，其解析/解压/解密核心由 loadScriptFromBytes 共用实现（unpackResource）覆盖；309 looksLikeLuaBytecode 的 size<3 早退——前置 size>=4 检查已蕴含 size>=3，恒假死防御；332 readlink 失败兜底——/proc/self/exe 恒可读；51 decompress 收尾行归因伪影（函数体已被往返用例驱动）；91/114 readResourceData 的 `#else return {}` 与函数开行——唯一调用点随有嵌入分支一同不可达。
+- **覆盖率**（gcovr 行）：`resource_loader.cpp` 68.3%（86/126）→ **87.3%**（110/126），函数 12/13；**TOTAL 维持 89.9%**（15217/16922）——本轮 +24 为真实增量（agent.cpp 顺带 +2），X11 家族 −23（x11_recorder −18 / x11_window −2 / x11_clipboard −2 / platform_types −1）为高负载窗口采集漂移：瞬态连接拒绝使 XRecord/X11 走早期失败腿、健康路径行未执行到，与本轮改动无关（零生产代码改动）。
+- **验证**：新增 7 例全绿（连跑多轮稳定）；runtime_tests 整二进制单进程 **209/209 ×2**（共享机 load 88 下 12s 稳定）；插桩 build-cov 全量 ctest 三轮 2493 例、常规 build/ 编译对齐且两树注册数一致 2493——三轮各 1-2 例负载型时序假红且**失败集合逐轮漂移**（ConfigSetRemoteAppliesAndPersists / MissingMethodIsRejected+InputMouseFullSweep / TextRoundtripAndClear，单跑均绿，均为在案 flake 家族：X11 瞬态连接拒绝、IPC 就绪时序、xclip 异步接管；采集窗口外部负载 17→88，无法取得干净全量窗口），与本轮改动无关，CI 推送后在专用 runner 串行复跑；Go 零改动沿用本轮覆盖率复测（全绿）。
+
+---
+
 ## 2026-09-30 Android A3 开机自启默认值校正（默认关、显式开启）
 
 todo「Android 现状登记」未完成清单第一项——A3 可靠性剩余项之「开机自启」。**对账结论：实现已于 6cecfad 落地**（BootCompletedReceiver + BootStartGate 纯逻辑 + JVM 单测 + build-android CI 门禁），本轮任务有实质增量的部分是**默认值口径**：

@@ -9,7 +9,15 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 431 个提交（feat 77 / fix 142 / docs 78 / test 61 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 432 个提交（feat 77 / fix 142 / docs 78 / test 62 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-30，C++（Linux）覆盖率扫描续：ResourceLoader 实例接口 68% → 87%（7 例），无嵌入早退链直测）
+
+- **缺口定位**：todo 仅剩 macOS 与 Linux 真机验证两项（本机无真机、不可做）按既定规则转覆盖率。Go 侧全包覆盖率复测（`-count=1`）全部 ≥95.6%（最低 internal/remoteticket 95.6% / internal/handlers 96.6% / internal/workflow 99.7%，余均 100%），无 85% 以下缺口；Android 侧 gradle 无覆盖率插件基建（「如适用」条件不成立，登记不适用）。C++ 侧 gcovr 全量报告（TOTAL 89.9%）按未覆盖行数重排并逐项复核既有登记排除项（misc_modules UIA 平台耦合 / lua_engine 零引用遗留 / crypt OpenSSL / packer 私有+PE / x11_recorder 真桌面 / screenshot_handler VISION 变体门 / notify WebhookSender 配置性死代码 / ml_stub 模型路径 / agent.cpp 84.6% 的 46 行余量已全部登记）后，85% 线下最大可离线测缺口锁定 `apps/runtime/src/resource_loader.cpp` **68.3%（40 行未覆盖）**——既有 43 例只直测静态字节级入口（loadScriptFromBytes / Packer 往返），实例接口面（构造探测/错误回调/资源信息/loadScript）零驱动。
+- **新增 `apps/runtime/tests/resource_loader_interface_test.cpp` 7 例**（runtime_tests 接线；纯实例方法 + std::filesystem 无 POSIX/X11 符号，Windows CI 全量参与；测试二进制非 Packer 产物不含 PACK_PE_RESOURCE_ID 资源，Linux 与 Windows 探测一致为「无嵌入」）：构造探测无嵌入、ResourceInfo 默认值全字段、getExecutablePath 解析到存在的文件（Linux /proc/self/exe 生产路径）、loadScript 无嵌入时错误回调收「No embedded script found」、无回调失败路径安全、setErrorCallback 二次替换后旧回调不再接收、重复 loadScript 持续失败且探测态不漂移。
+- **余量 16 行登记（不写假用例）**：265-279（11 行）loadScript 有嵌入分支——Linux 恒不可达（`hasEmbeddedScript()` 恒 false，PE FindResource 为 Windows 产物路径），核心解析/解压/解密由 loadScriptFromBytes 共用实现覆盖；309 为恒假死防御（size>=4 蕴含 size>=3）；332 readlink 失败兜底（/proc/self/exe 恒可读）；51 为收尾行归因伪影；91/114 随有嵌入分支一同不可达。
+- **覆盖率**（gcovr 行）：`resource_loader.cpp` 68.3%（86/126）→ **87.3%**（110/126），函数 12/13；TOTAL 维持 89.9%（15217/16922）——+24 为真实增量（agent.cpp 顺带 +2），X11 家族 −23 为高负载窗口采集漂移（瞬态连接拒绝走早期失败腿，与本轮零生产代码改动无关）。
+- **验证**：新增 7 例全绿；runtime_tests 整二进制单进程 **209/209 ×2**（load 88 下稳定）；插桩树全量 ctest 三轮 2493 例、两树注册数一致 2493——三轮各 1-2 例负载型假红且失败集合逐轮漂移（单跑均绿，均为在案 flake 家族：X11 瞬态连接拒绝 / IPC 就绪时序 / xclip 异步接管；外部负载 17→88 无干净全量窗口），CI 推送后专用 runner 串行复跑；Go 零改动沿用本轮全绿复测。
 
 ### feat（2026-09-30，Android A3 开机自启默认值校正：默认开 → 默认关、显式开启）
 

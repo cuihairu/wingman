@@ -7,6 +7,9 @@ add_executable(runtime_tests
     agent_loopback_test.cpp
     cli_test.cpp
     resource_pack_test.cpp
+    # ResourceLoader 实例接口补测（构造探测/错误回调/资源信息/loadScript
+    # 无嵌入早退；PE 读取腿为 Windows 产物路径，Linux 结构性不可达）
+    resource_loader_interface_test.cpp
     screen_runtime_test.cpp
     screenshot_handler_test.cpp
     system_handler_test.cpp
