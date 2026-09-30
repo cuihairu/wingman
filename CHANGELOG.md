@@ -9,7 +9,15 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 427 个提交（feat 74 / fix 142 / docs 77 / test 61 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 428 个提交（feat 74 / fix 142 / docs 78 / test 61 / ci 20 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+
+### docs（2026-09-30，Android Agent 现状登记：ROADMAP 补 Milestone 9 移动端里程碑，文档滞后收口）
+
+- **背景**：问询「Android agent 什么时候实现」并指认文档未更新。核查结论：代码侧 A1 链路打通（2026-09-19，ce4a648）、A2 能力闭环（2026-09-21，c1df705/c0a67fe——dispatchGesture 手势注入/MediaProjection 采集/找色找图/`screenshot.capture` 远程截图 + 反向 JNI 桥）、A3-P1 token 认证（2026-09-20，4c9a8f4——`WINGMAN_AGENT_TOKENS` 白名单三端）均已落地，nightly CI 自 2026-09-20 每日打 Android arm64 APK；但 ROADMAP.md 仅有桌面 M1-M8、平台说明未提 Android、todo.md 无移动端条目——**滞后的是路线图对账，不是实现**。
+- **ROADMAP.md**：新增 Milestone 9「移动端 Agent（Android）」——A1-A4 四阶段状态表（A1/A2 ✅、A3 🚧 P1 已落地、A4 ⬜ 协议预留）+ 工程基建注记（nightly APK/核心下沉 `libs/agentcore`+`libs/androidagent`）；平台说明补 Android 实验性支持；时间估算表补 M9 未排期行；下一阶段行动表登记 A3 剩余可靠性项（开机自启/崩溃自重启/断连缓存自治/机型保活指引）与 A4 多设备编排（Dashboard 设备视图/批量下发/asset.sync）为待排期项。
+- **docs/android-agent-design.md**：§1.2 里程碑表 A3 行补注「P1 token 认证已落地（2026-09-20）」，与 §8 安全节的「A3-P1（已落地）」口径对齐。
+- **todo.md**：新增 2026-09-30 Android Agent 现状登记节——已落地三项（附提交时间线）、未完成三项（A3 剩余/A3-P2 per-agent token + Keystore 迁移 + challenge-response 与 TLS/A4 多设备编排）与排期状态，供后续任务派发对账；顶部状态行同步移动端摘要。
+- 纯 .md 改动：主 CI 按路径规则跳过、Docs workflow 随推送运行；无代码/测试变更。
 
 ### test（2026-09-29，C++（Linux）覆盖率扫描续：StandaloneMode 78% → 92%（12 例），ScriptManager 状态机结构性缺陷登记）
 

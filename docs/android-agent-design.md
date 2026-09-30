@@ -24,7 +24,7 @@ Dashboard 点击运行 → Go Server run_script{content} → 设备执行 Lua
 | 里程碑 | 内容 | 本文只做 |
 |--------|------|----------|
 | A2 能力闭环（已实施，2026-09-21） | `platform/android` 宿主桥（dispatchGesture 手势注入）/MediaProjection 采集真实现，找色找图，`screenshot.capture` 远程截图 | 租户目录 + stub 骨架 |
-| A3 可靠性 | 开机自启、崩溃自重启、断连缓存自治、token 认证 | 设计约束成文 |
+| A3 可靠性 | 开机自启、崩溃自重启、断连缓存自治、token 认证 | 设计约束成文；P1 token 认证已落地（2026-09-20，见 §8） |
 | A4 多设备编排 | Dashboard 设备视图、批量下发、asset.sync 模板分发 | 协议预留 |
 
 ### 1.3 硬约束核查（与 `docs/architecture-decisions.md` 对齐）

@@ -1,10 +1,28 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-09-29
-> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）
+> 最后更新: 2026-09-30
+> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3-P1 已落地、A3 剩余与 A4 未排期（见「2026-09-30 Android Agent 现状登记」）
 
 > [本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator]
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
+
+---
+
+## 2026-09-30 Android Agent 现状登记（A1/A2/A3-P1 已落地；ROADMAP 补移动端里程碑）
+
+问询「android 的 agent 什么时候实现」并指认文档未更新，本轮核查并对账：**Android agent 并非未实现**——链路与能力均已落地，滞后的是路线图（ROADMAP 仅有桌面 M1-M8、平台说明未提 Android、todo 无移动端条目），不是代码。
+
+- **已落地（以提交时间线为准）**：
+  - A1 链路打通（2026-09-19 设计，ce4a648 落地）：Dashboard→Go Server `run_script{content}`→设备端 NDK C++ 核心执行 Lua→`agent.event` 日志回传；Kotlin 壳（WingmanService/MainActivity/JNI 窄接口）；复用 16B 帧头 + JSON 协议、零新消息类型、零监听端口（架构硬约束不破）；nightly CI 自 2026-09-20 打 arm64 APK。
+  - A2 能力闭环（2026-09-21，c1df705/c0a67fe）：`platform/android` 宿主桥——dispatchGesture 手势注入、MediaProjection 采集、找色找图、`screenshot.capture` 远程截图 + 反向 JNI 桥。
+  - A3-P1 token 认证（2026-09-20，4c9a8f4）：register token 白名单 `WINGMAN_AGENT_TOKENS`（server+桌面+Android 三端，默认关闭、完全向后兼容，见 `docs/agent-token-auth-design.md`）。
+  - 工程基建：共用核心下沉 `libs/agentcore` + `libs/androidagent`（2026-09-22，3ab3b7a），桌面同源编译、单测桌面跑。
+- **未完成（设计成文、未排期，供任务派发对账）**：
+  - A3 可靠性剩余项：开机自启、崩溃自重启、断连缓存自治、机型保活指引（设计约束见 android-agent-design.md §7）。
+  - A3-P2 安全演进：per-agent token + Dashboard 管理与审计、token 迁移 Android Keystore、challenge-response（需 NDK 引入 OpenSSL）与 TLS（agent-token-auth-design.md §6）。
+  - A4 多设备编排：Dashboard 设备视图、批量下发、asset.sync 模板分发（协议预留）。
+- **本轮文档收口**：ROADMAP.md 新增 Milestone 9「移动端 Agent（Android）」（A1-A4 状态表 + 工程基建注记）+ 平台说明补 Android 实验性 + 时间估算/下一阶段行动表登记未排期项；docs/android-agent-design.md §1.2 A3 行补注 P1 已落地（与 §8 口径对齐）。
+- **验证**：纯 .md 改动，主 CI 按路径规则跳过、Docs workflow 随推送运行；无代码/测试变更。
 
 ---
 

@@ -4,7 +4,7 @@
 
 > **✅ 架构重构已完成 (2025)** - 采用 apps + lib 架构，详见 docs/architecture.md
 
-> **📌 平台说明：支持 Windows（主要）、macOS、Linux。跨平台通过平台抽象层实现，详见 docs/architecture.md**
+> **📌 平台说明：支持 Windows（主要）、macOS、Linux；Android 端侧 Agent 实验性支持（A1 链路/A2 能力闭环/A3-P1 token 认证已落地，见 Milestone 9 与 docs/android-agent-design.md）。跨平台通过平台抽象层实现，详见 docs/architecture.md 与 docs/platforms.md**
 
 > **🔥 脚本层多语言抽象已完成 (2026-05)** - 支持 Lua (sol2) 和 Python (pybind11)，详见下文 "脚本引擎抽象"
 
@@ -563,6 +563,25 @@ local wingman = require('wingman')
 
 ---
 
+## Milestone 9: 移动端 Agent（Android）
+
+**目标**: Android 设备作为 agent 接入 Go Server 中控（架构硬约束不变：agent 主动 outbound TCP、无本地 UI、零监听端口），远程执行 Lua 脚本并具备手势注入/屏幕采集/找色找图/远程截图能力
+
+**状态**: 部分完成（2026-09-30 校准）— A1/A2 已实施、A3-P1 已落地，A3 剩余可靠性项与 A4 未排期。设计基线 [docs/android-agent-design.md](docs/android-agent-design.md)，平台与 API 适用性 [docs/platforms.md](docs/platforms.md)
+
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| A1 链路打通 | Dashboard→Go Server `run_script{content}`→设备端 NDK C++ 核心执行 Lua→`agent.event` 日志实时回传；Kotlin 壳（WingmanService 前台服务/MainActivity/JNI 窄接口）；复用 16B 帧头 + JSON 协议，零新消息类型 | ✅ 已完成（2026-09-19 设计并落地，ce4a648；2026-09-20 起 nightly 打 arm64 APK） |
+| A2 能力闭环 | `platform/android` 宿主桥：dispatchGesture 手势注入、MediaProjection 采集、找色找图、`screenshot.capture` 远程截图；反向 JNI 桥 | ✅ 已完成（2026-09-21，c1df705/c0a67fe） |
+| A3 可靠性 | A3-P1 register token 白名单（`WINGMAN_AGENT_TOKENS`，server+桌面+Android 三端，默认关闭、向后兼容）✅ 已落地（2026-09-20，4c9a8f4，见 [docs/agent-token-auth-design.md](docs/agent-token-auth-design.md)）；剩余：开机自启、崩溃自重启、断连缓存自治、机型保活指引 | 🚧 P1 已落地，其余未实施 |
+| A4 多设备编排 | Dashboard 设备视图、批量下发、asset.sync 模板分发 | ⬜ 协议预留，未实施 |
+
+工程基建：nightly CI 打 Android arm64 APK（vcpkg manifest 依赖、NDK 27）；共用 agent 核心已下沉 `libs/agentcore`（RemoteClient/EventBuffer）与 `libs/androidagent`（ScriptRunner/脚本能力 API），与桌面同源编译、单测在桌面端跑（`libs/lua/tests`）。
+
+**交付物**: 远程可控的 Android 自动化 agent（链路与脚本能力可用；生产可靠性待 A3 剩余项收口）
+
+---
+
 ## 时间估算
 
 | Milestone | 工作量 | 依赖 |
@@ -575,17 +594,20 @@ local wingman = require('wingman')
 | M6: 人性化 | 1 周 | M1 |
 | M7: 调试器 | 3 周 | M1 |
 | M8: 发布准备 | 2 周 | 全部 |
+| M9: Android Agent（A3 剩余 + A4） | 未排期 | A1/A2/A3-P1 已完成 |
 
-**总计**: ~21 周 (约 5 个月)
+**总计**: ~21 周 (约 5 个月)；M9 为 2026-09 新增的移动端里程碑（A1/A2/A3-P1 已落地），未计入原估算
 
 ---
 
 ## 下一阶段行动
 
-### 当前重点（2026-06-21 校准）
+### 当前重点（2026-09-30 校准）
 
 | 优先级 | 任务 | 预计时间 | 状态 |
 |--------|------|----------|------|
+| P2 | Android A3 可靠性剩余项（开机自启/崩溃自重启/断连缓存自治/机型保活指引） | 未排期 | ⬜ 设计已成文（android-agent-design.md §7） |
+| P3 | Android A4 多设备编排（Dashboard 设备视图/批量下发/asset.sync 模板分发） | 未排期 | ⬜ 协议预留 |
 | P1 | Dashboard Monitor triggers 接真实 API（需扩 agent 协议） | 1周 | ✅ list/toggle + add/update/remove CRUD 全链路（runtime Dispatcher Reuse，agents:manage） |
 | P2 | 跨平台运行时验证（macOS/Linux，需真机） | — | ⬜ 待验证 |
 | P2 | Swagger/OpenAPI 文档 | — | ✅ 全端点注解补全 + typed schema（workflows/scripts/debugger/triggers）+ 统一 ErrorResponse（401/403/404/500）+ 双注册路由标注，swag init 生成 docs，`/swagger/` UI 可用 |
