@@ -264,6 +264,23 @@ TEST_F(TransportInboxCoverageTest, UdpErrorBranches) {
     EXPECT_TRUE(asBool(defaulted, "success"));
 }
 
+TEST_F(TransportInboxCoverageTest, UdpSendToInvalidAddressFailsGracefully) {
+    // 坏地址 sendTo：asio::make_address 对非 IP 字符串抛异常 → catch → false
+    // （与 UdpErrorBranches 的坏地址 bind、坏 handle sendTo 互补——sendTo 的
+    // 坏地址腿此前从未触达）
+    const auto* socketFn = findFunction(transport_, "udpSocket");
+    const auto* sendToFn = findFunction(transport_, "udpSendTo");
+    ASSERT_NE(socketFn, nullptr);
+    ASSERT_NE(sendToFn, nullptr);
+
+    auto sock = (*socketFn)({ScriptValue::fromString("cov_udp_badhost")});
+    ASSERT_TRUE(asBool(sock, "success"));
+    const int handle = asInt(sock, "handle");
+
+    EXPECT_FALSE((*sendToFn)({ScriptValue::fromInt(handle), ScriptValue::fromString("not-an-ip"),
+                              ScriptValue::fromInt(9999), ScriptValue::fromString("x")}).asBool());
+}
+
 // ========== inbox 客户端（对真实 TCP listener 的生命周期） ==========
 
 TEST_F(TransportInboxCoverageTest, InboxLifecycleAgainstTcpListener) {

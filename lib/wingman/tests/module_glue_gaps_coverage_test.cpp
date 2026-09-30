@@ -178,12 +178,22 @@ TEST_F(ClipboardModuleGlue, HtmlImageAndFilesBehavior) {
     EXPECT_EQ(imageSet, call(mod_, "hasImage").asBool());
     EXPECT_EQ(imageSet, !call(mod_, "getImage").isNull());
 
-    // setFiles 混合参数形态：字符串、数组内字符串、非字符串项忽略
+    // setFiles 混合参数形态：字符串、数组内字符串、非字符串项忽略。
+    // 写后读回同属 xclip 异步接管窗口（同上），先正向轮询终态再断言——
+    // 第五批这里直接 t=0 读回，全套件高负载下命中旧 owner 残留（getFiles
+    // 拆回 1 行旧内容 / clear 后 hasFiles 仍 true）偶发假红（2026-09-30
+    // 门禁 load 68-104 实测一次），与 ClipboardTest.IsEmpty 同族收口
     EXPECT_EQ(call(mod_, "setFiles", {
                   ScriptValue::fromString("/tmp/a.txt"),
                   ScriptValue::fromArray({ScriptValue::fromString("/tmp/b.txt"),
                                           ScriptValue::fromInt(9)}),
                   ScriptValue::fromInt(7)}).asBool(), true);
+    EXPECT_TRUE(clipboard_test::waitFor([this] {
+        const auto f = call(mod_, "getFiles");
+        return f.isArray() && f.arrayVal.size() == 2u &&
+               f.arrayVal[0].asString() == "/tmp/a.txt" &&
+               f.arrayVal[1].asString() == "/tmp/b.txt";
+    }));
     const auto files = call(mod_, "getFiles");
     ASSERT_TRUE(files.isArray());
     ASSERT_EQ(files.arrayVal.size(), 2u);
@@ -192,6 +202,8 @@ TEST_F(ClipboardModuleGlue, HtmlImageAndFilesBehavior) {
     EXPECT_EQ(call(mod_, "hasFiles").asBool(), true);
 
     call(mod_, "clear");
+    // clear→新 xclip 异步接管（同上），正向轮询空态生效
+    EXPECT_TRUE(clipboard_test::waitFor([this] { return !call(mod_, "hasFiles").asBool(); }));
     EXPECT_EQ(call(mod_, "hasFiles").asBool(), false);
 }
 

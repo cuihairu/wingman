@@ -7,6 +7,8 @@
 #include "wingman/runtime/config.hpp"
 #include "wingman/runtime/packer.hpp"
 #include "wingman/runtime/resource_loader.hpp"
+#include "wingman/runtime/runtime_context.hpp"
+#include "wingman/lua/lua_script_engine.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -103,6 +105,58 @@ TEST(RuntimeCommandTest, ScriptCommandFailsWhenFileIsMissing) {
     EXPECT_EQ(wingman::runtime::commands::scriptCommand("/definitely/missing.lua", {}), 1);
 }
 
+// ========== script 命令执行面（成功/运行时错误/不可编译） ==========
+// 既有用例只测过「文件不存在」一条腿；命令主体（引擎装配、loadScript、
+// runScript、卸载收尾）零驱动。Lua 引擎经 registerLuaEngine() 惰性注册，
+// 与 rpc_ipc_test 的接线方式一致。
+
+namespace {
+
+std::filesystem::path writeTempScript(const std::string& name, const std::string& content) {
+    const auto dir = makeTempDir();
+    const auto path = dir / name;
+    std::ofstream file(path);
+    file << content;
+    return path;
+}
+
+} // namespace
+
+TEST(RuntimeCommandTest, ScriptCommandRunsLuaScriptToCompletion) {
+    wingman::lua::registerLuaEngine();
+    const auto script = writeTempScript("cli_ok.lua", "print('cli-ok')\n");
+    EXPECT_EQ(wingman::runtime::commands::scriptCommand(script.string(), {}), 0);
+}
+
+TEST(RuntimeCommandTest, ScriptCommandPassesArgumentsAsScriptEnv) {
+    // 位置参数进 config.env["arg1"..]（脚本经 env 读取；这里只锁「带参执行
+    // 不破坏成功路径」——env 的读取面属脚本引擎语义，不在本命令职责内）
+    wingman::lua::registerLuaEngine();
+    const auto script = writeTempScript("cli_args.lua", "print('cli-args')\n");
+    EXPECT_EQ(wingman::runtime::commands::scriptCommand(script.string(), {"alpha", "beta"}), 0);
+}
+
+TEST(RuntimeCommandTest, ScriptCommandRejectsUnreadableScriptSource) {
+    // 存在但不可作为脚本加载的路径（目录）：exists 通过、loadScript 失败——
+    // 与语法错误不同（引擎把编译推迟到运行，语法错走 runScript 失败腿）
+    wingman::lua::registerLuaEngine();
+    const auto dir = makeTempDir();
+    EXPECT_EQ(wingman::runtime::commands::scriptCommand(dir.string(), {}), 1);
+}
+
+TEST(RuntimeCommandTest, ScriptCommandReportsRuntimeError) {
+    wingman::lua::registerLuaEngine();
+    const auto script = writeTempScript("cli_error.lua", "error('boom-from-cli')\n");
+    EXPECT_EQ(wingman::runtime::commands::scriptCommand(script.string(), {}), 1);
+}
+
+TEST(RuntimeCommandTest, ScriptCommandRejectsUncompilableScript) {
+    wingman::lua::registerLuaEngine();
+    // 语法错误在 loadScript 阶段即失败（runScript 不应被触达）
+    const auto script = writeTempScript("cli_syntax.lua", "local local\n");
+    EXPECT_EQ(wingman::runtime::commands::scriptCommand(script.string(), {}), 1);
+}
+
 TEST(RuntimeCommandTest, BuildCommandFailsWhenScriptIsMissing) {
     wingman::runtime::commands::BuildOptions options;
     options.scriptPath = "/definitely/missing.lua";
@@ -122,6 +176,31 @@ TEST(RuntimeCommandTest, BuildCommandFailsWhenRuntimeStubIsMissing) {
     wingman::runtime::commands::BuildOptions options;
     options.scriptPath = scriptPath.string();
     options.outputPath = (tempDir / "out.bin").string();
+
+    EXPECT_EQ(wingman::runtime::commands::buildCommand(options), 1);
+}
+
+TEST(RuntimeCommandTest, BuildCommandWithStubFailsGracefullyOnNonPEHost) {
+    // resolveStubPath 只要求候选路径存在（CWD 首选 "wingman-runtime"）；
+    // 找到 stub 后走完整打包管线：Linux 上资源嵌入明确不支持（ELF 容器
+    // 未实现），build() 优雅失败 → "Build failed" 退出码 1（不抛异常）。
+    // 既有用例只测过「脚本缺失」「stub 缺失」两条前置拒绝腿。
+    const auto tempDir = makeTempDir();
+    WorkingDirectoryGuard guard(tempDir);
+
+    const auto scriptPath = tempDir / "test.lua";
+    std::ofstream script(scriptPath);
+    script << "print('ok')";
+    script.close();
+
+    std::ofstream stub(tempDir / "wingman-runtime", std::ios::binary);
+    stub << "ELF-placeholder";
+    stub.close();
+
+    wingman::runtime::commands::BuildOptions options;
+    options.scriptPath = scriptPath.string();
+    options.outputPath = (tempDir / "out" / "app.bin").string();  // 带父目录 → create_directories
+    options.iconPath = (tempDir / "icon.ico").string();          // 非空 → 图标日志行
 
     EXPECT_EQ(wingman::runtime::commands::buildCommand(options), 1);
 }

@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 #include "platform/posix/unix_socket_channel.hpp"
+#include "fd_exhaustion.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -435,6 +436,67 @@ TEST_F(UnixSocketChannelTestEnv, SendAfterPeerDisconnectFailsGracefully) {
     msg.method = "after.peer.close";
     EXPECT_FALSE(client->send(msg));
     EXPECT_EQ(client->getState(), IpcState::Error);
+}
+
+// ========== fd 耗尽故障注入（RLIMIT_NOFILE 压限 + 占满） ==========
+// 覆盖 createServer / connectToServer 两条 socket() 失败防御腿——
+// 与 Bind 失败（既有 ServerBindFailureSetsError）互补。注入纪律同
+// clipboard_fault_coverage_test：前提探测不成立（socket 仍可建）一律
+// GTEST_SKIP，不误报为代码失败；FdTableFiller RAII 恢复限额。
+
+TEST(UnixSocketChannelFdExhaustionTest, ServerSocketCreationFailureFailsGracefully) {
+    wingman::testutils::FdTableFiller filler;
+    if (!filler.socketStillFails()) GTEST_SKIP() << "fd 注入前提不成立（socket 仍可创建）";
+
+    const std::string path = makeSocketPath();
+    UnixSocketChannel server(true, path);
+    bool errored = false;
+    server.setErrorCallback([&errored](const std::string&) { errored = true; });
+
+    EXPECT_FALSE(server.connect(""));
+    EXPECT_EQ(server.getState(), IpcState::Error);
+    EXPECT_TRUE(errored);
+}
+
+TEST(UnixSocketChannelFdExhaustionTest, ClientSocketCreationFailureFailsGracefully) {
+    wingman::testutils::FdTableFiller filler;
+    if (!filler.socketStillFails()) GTEST_SKIP() << "fd 注入前提不成立（socket 仍可创建）";
+
+    // connectToServer 的第一条语句就是 socket()——无需真实 server 在听
+    const std::string path = makeSocketPath();
+    UnixSocketChannel client(false, path);
+
+    EXPECT_FALSE(client.connect(""));
+    EXPECT_EQ(client.getState(), IpcState::Error);
+}
+
+TEST_F(UnixSocketChannelTestEnv, RestartReceivingAfterPeerLossDoesNotReacceptOrHang) {
+    // 接收线程重启路径：会话已接受（serverAccepted_ 置位）后重启接收，
+    // acceptServerClient 走「已接受直接返回」早退而不重新 accept——
+    // listenFd 在首次 accept 后已关闭，重新 accept 会撞无效 fd；且旧会话
+    // 已随对端断开消亡，重启线程应立即退出而非挂死（阻塞 recv 无超时，
+    // 只有 state 已非 Connected 时退出才是安全形状）。
+    ASSERT_TRUE(connectPair());
+
+    IpcMessage msg;
+    msg.type = IpcMessageType::Event;
+    msg.method = "before.restart";
+    ASSERT_TRUE(client->send(msg));
+    ASSERT_TRUE(serverCollector->waitFor(1));
+
+    // 对端断开 → server 接收线程经 EOF 干净退出并把状态置 Disconnected
+    client->disconnect();
+    for (int i = 0; i < 40 && server->isConnected(); ++i) {
+        std::this_thread::sleep_for(50ms);
+    }
+    ASSERT_FALSE(server->isConnected());
+
+    server->stopReceiving();  // join 已退出的线程，立即返回
+    server->startReceiving(); // 重启 → acceptServerClient 早退 + 循环立即结束
+    std::this_thread::sleep_for(150ms);
+    server->stopReceiving();  // 若重启线程未退出，这里会挂死 → 用例失败
+
+    EXPECT_FALSE(server->isConnected());
 }
 
 #endif // !defined(_WIN32)

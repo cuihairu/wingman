@@ -1,10 +1,24 @@
 # Wingman 项目待办事项
 
 > 最后更新: 2026-09-30
-> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地（含 A3 可靠性与受限设置引导，见「2026-09-30 Android Agent 现状登记」及其后两条 A3 实施条目）、A3-P2 与 A4 未排期；2026-09-30 平台验证收口——macOS/XRecord（runner+Xvfb）与 Android API 34 模拟器全链路验证，模拟器腿抓出三处阻断级缺陷已修（见同日「Android 模拟器验证」条），剩余真机项见该条清单
+> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地（含 A3 可靠性与受限设置引导，见「2026-09-30 Android Agent 现状登记」及其后两条 A3 实施条目）、A3-P2 与 A4 未排期；2026-09-30 平台验证收口——macOS/XRecord（runner+Xvfb）与 Android API 34 模拟器全链路验证，模拟器腿抓出三处阻断级缺陷已修（见同日「Android 模拟器验证」条），剩余真机项见该条清单；同日 C++ 覆盖率扫描收官——v13 基线清账 TOTAL 90%，余量全部带论证登记（见「C++ 覆盖率扫描收官」条）
 
 > [本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator]
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
+
+---
+
+## 2026-09-30 C++（Linux）覆盖率扫描收官：v13 基线剩余缺口三分类清账——13 例 + 1 断言，可测缺口归零、结构性盲区带论证登记
+
+任务口径：v13 基线（miss 1252）剩余缺口逐文件三分类——可测 now / 结构性不可达（逐行论证）/ **行归因伪影**——后两类登记不硬凑。伪影判定实证：transport 362/368/503/521 报 miss 但其错误文案由既有通过用例（TcpListenPortConflictFails / UdpErrorBranches）直接断言，重跑该 2 用例后 miss 列表逐行不变（排除陈旧 gcda），定性为 gcov 对多行 braced-init 内层行/收尾行的零归因。**C++ 覆盖率扫描任务至此收官**（Go 侧 100%、前端 100%/99.7%、C++ TOTAL 90% 且余量全部带论证登记）。
+
+- **新增 13 例 + 1 断言（5 文件）**：① `glue_modules_coverage_test.cpp`（新）3 例——debugger/orchestration stub 契约（start 恒 false、breakpoint 串 `"a.lua:12"`、`DEBUG_BREAK_HERE`、orchestration 三 stub null/false/空数组）+ security 直通契约（hashString 64-hex 稳定、generateRandomString 长度、filterSensitive 整段替换 `***`），三模块胶水体此前零驱动；② transport_inbox +1——udpSendTo 非 IP 地址（asio::make_address 抛 → catch → false）；③ unix_socket_channel +3——server/client socket() 创建 EMFILE 注入 ×2（新共享注入器 `fd_exhaustion.hpp`：RLIMIT_NOFILE soft 压「当前占用+4」逐个占满 /dev/null，毫秒级窗口，探测先行不成立即 GTEST_SKIP）+ 断连后重启接收语义（listenFd_ 首个 accept 后关闭、serverAccepted_ 不复位 → 重启即早退不挂，钉住既有语义）；④ platform_x11 +1 断言——findByClassName 无命中腿返回 NullWindowHandle；⑤ cli_test +6——script 命令执行面（成功/带参 env/运行时错误/不可编译/目录不可读源）+ build 命令 stub 全链（resolveStubPath 命中 → 图标日志 → 选项装配 → create_directories → Linux ELF 嵌入不支持 → 优雅退出 1）。
+- **覆盖率**：TOTAL **90%（15238 → 15290/16931，+52 真覆盖行）**；transport_module 89→**90%**、unix_socket_channel 94→**97%**、x11_window 99%（余 1 行伪影）、script_command 13→**83%**、build_command 49→**87%**、debugger/orchestration/security 胶水体全驱动（余量全为收尾行伪影）。
+- **结构性不可达登记（34 行，逐行论证）**：transport 17（UDP 阻塞 receive_from catch——close 不唤醒阻塞 recv、UDP 无 shutdown；创建后句柄 null 防御 ×2——工厂单调计数永不失败；`start()` 失败腿——transport.hpp 内联恒 true）；usc 6（listen() 失败防御——fd 已持有无注入口）；script_command 5（loadScript TOCTOU 双检 31-32——loadScript 仅 `!exists` 失败而命令已前置检查；48-50 no-throw catch）；build_command 6（86-88 PE-only 成功腿——Linux ELF 嵌入明确不支持；95-97 no-throw catch）；ml_module 34 行沿用前轮登记（onnxruntime 为 vcpkg Windows 平台专属依赖，Linux gate 恒跑 ml_stub）。
+- **伪影登记（30 行）**：transport 13（braced-init 内层/收尾行，其中 4 行错误文案被既有用例直接断言）+ usc 1（catch 收尾行）+ debugger/orchestration/security 15（各导出函数 `}, "sig"});` 收尾行）+ x11_window 1。
+- **flake 收口（2 处）**：收官门禁首跑 load 68-104 抓红 `ClipboardModuleGlue.HtmlImageAndFilesBehavior`——同用例 HTML/text 段均已按轮询纪律改写，唯 files 段漏网（setFiles 读回与 clear 后 hasFiles 两处 t=0 直断，与 xclip 异步接管窗口竞争）。改正向轮询后单测 ×20（load 93）全绿，0.33-0.39s 慢轮次即轮询真实吸收竞态的证据。
+- **无真缺陷暴露**：全部新驱动路径行为符合既有契约，本轮零生产代码改动。
+- **验证**：全量两树 ctest（xvfb-run 串行 + --timeout 300）**2509 注册 = 2478 passed + 31 环境 skip + 0 failed**（两树一致，含 +13）；gcovr TOTAL 90%（历轮口径）。零 Go/JS 改动。
 
 ---
 

@@ -613,6 +613,8 @@ TEST_F(X11PlatformTest, X11WindowPlatformFeatures) {
     }
     EXPECT_EQ(byClass, win.handle());
     EXPECT_EQ(window->findByClassName("WingmanTest"), win.handle());
+    // 无命中类名：枚举耗尽后返回 NullWindowHandle（既有用例只测过命中腿）
+    EXPECT_EQ(window->findByClassName("definitely-no-such-class"), wingman::platform::NullWindowHandle);
 
     // _NET_WM_PID
     auto byPid = window->findByProcessId(static_cast<uint32_t>(::getpid()));

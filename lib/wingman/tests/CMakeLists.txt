@@ -54,6 +54,7 @@ if(BUILD_CORE_TESTS)
         ini_module_test.cpp
         crypt_test.cpp
         rpc_test.cpp
+        glue_modules_coverage_test.cpp
     )
 
     # Unix domain socket 通道与 posix TriggerManager 分支补测仅在非 Windows 平台编译

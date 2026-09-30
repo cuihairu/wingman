@@ -9,7 +9,18 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 438 个提交（feat 77 / fix 144 / docs 79 / test 64 / ci 21 / refactor 9 / chore 19 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 441 个提交（feat 77 / fix 145 / docs 79 / test 65 / ci 21 / refactor 9 / chore 20 / style 4 / security 1 / build 1 / 其他 19）。
+
+### test（2026-09-30，C++（Linux）覆盖率扫描收官：v13 基线剩余缺口三分类清账——13 例 + 1 断言，可测缺口归零、结构性盲区带论证登记）
+
+- **方法（先分类后动手）**：v13 基线剩余 miss 逐文件三分类——①可测 now（补用例）②结构性不可达（逐行论证登记，不写假用例）③**行归因伪影**。伪影判定实证：报告 miss 的 transport 362/368/503/521 其错误文案由既有通过用例（TcpListenPortConflictFails / UdpErrorBranches）直接断言——重跑该 2 用例后 miss 列表逐行不变，排除陈旧 gcda；定性为 gcov 对多行 braced-init 内层行/收尾行的零归因（语句计数归首行，其余行记录 0-hit）。此判定把「报告面缺口」压缩到真实可测集合，避免对着伪影硬凑用例。
+- **新增 13 例 + 1 断言（5 文件）**：① `glue_modules_coverage_test.cpp`（新）3 例——debugger/orchestration stub 契约（start 恒 false、断点串 `"a.lua:12"`、`DEBUG_BREAK_HERE`；orchestration 三 stub null/false/空数组）+ security 直通契约（hashString 64-hex 稳定、generateRandomString 长度、filterSensitive 整段替换 `***`），三模块胶水体此前零驱动；② transport_inbox +1 `UdpSendToInvalidAddressFailsGracefully`——非 IP 字符串经 asio::make_address 抛 → catch → false（transport_module 154-157）；③ unix_socket_channel +3——server/client socket 创建 EMFILE 注入 ×2（`fd_exhaustion.hpp` 共享注入器：RLIMIT_NOFILE soft 压「当前占用+4」逐个占满 /dev/null，毫秒级窗口；探测先行不成立即 GTEST_SKIP）+ 断连后重启接收语义（listenFd_ 首个 accept 后关闭、serverAccepted_ 不复位 → 重启即早退退出不挂，钉住既有语义）；④ platform_x11 +1 断言——findByClassName 无命中腿返回 NullWindowHandle（既有用例只测过命中腿）；⑤ cli_test +6——script 命令执行面 5 例（成功/带参 env/运行时错误/不可编译/目录不可读源：引擎惰性注册 + loadScript/runScript 主体 + 卸载收尾）+ build 命令 stub 全链 1 例（resolveStubPath CWD 命中 → 图标日志行 → PackerOptions 装配 → create_directories → Linux ELF 嵌入明确不支持 → 优雅失败退出 1）。
+- **在案 flake 收口（断言方向 2 处）**：收官全量门禁首跑在 load 68-104 下抓红 `ClipboardModuleGlue.HtmlImageAndFilesBehavior`——该用例 HTML/text 段均已按轮询纪律改写，唯 files 段漏网：setFiles 读回与 clear 后 hasFiles 两处 t=0 直断，与 xclip daemon 异步接管窗口竞争（`clipboard_poll.hpp` 头注释在案的同族）。改正向轮询终态后单测 ×20（load 93）全绿、0.33-0.39s 慢轮次即轮询真实吸收竞态窗口的证据；全量复跑（load 150）两树全绿。
+- **覆盖率（gcovr 行）**：TOTAL **90%（15238 → 15290/16931，+52 真覆盖行）**；transport_module 89%→**90%**（274→278）、unix_socket_channel 94%→**97%**（238→245）、x11_window 99%（275→276，余 1 行伪影）、script_command 13%→**83%**（4→25）、build_command 49%→**87%**（24→43）、debugger/orchestration/security 胶水体全驱动（余量全为收尾行伪影，见下）。
+- **结构性不可达登记（34 行，逐行论证）**：transport 17 行——UDP 阻塞 receive_from catch 4 行（close() 不唤醒阻塞 recv、UDP 无 shutdown 语义，不可确定性中断）+ tcpConnect/tcpListen 创建后句柄 null 防御 8 行（manager 工厂单调计数永不失败）+ `server->start()` 失败腿 5 行（transport.hpp 内联实现恒返回 true）；usc 6 行——listen() 失败防御（listenFd_ 已持有，Linux 无确定性注入口）；script_command 5 行——31-32 loadScript 失败腿（ScriptManager::loadScript 仅 `!exists` 返回 false，命令已前置存在性检查，属 TOCTOU 双检防御）+ 48-50 no-throw catch（引擎错误经返回值不走异常）；build_command 6 行——86-88 PE-only 成功腿（packer.cpp 明示 Linux ELF 资源嵌入不支持）+ 95-97 no-throw catch（Packer::build 无抛契约）；ml_module 34 行为前轮既证（onnxruntime 是 vcpkg Windows 平台专属依赖，Linux gate 恒跑 ml_stub，loadModel 恒 false）。
+- **行归因伪影登记（30 行，工具行为非缺口）**：transport 13（279,287,293,320,328,362,368,418,443,454,469,503,521——braced-init 内层/收尾行，其中 4 行的错误文案被既有用例直接断言）+ usc 1（380 deserializeMessage catch 收尾行，坏 JSON 体已覆盖）+ debugger/orchestration/security 15（各导出函数 `}, "sig"});` 收尾行，函数体由本批 3 例驱动）+ x11_window 1（134 findByClassName 收尾行）。
+- **无真缺陷暴露（如实登记）**：全部新驱动路径行为符合既有契约（EMFILE 优雅 false + Error 态 + 错误回调、UDP 坏地址 false、断连重启不挂不重收、build 非 PE 宿主退出 1），本轮零生产代码改动。
+- **验证**：全量两树 ctest（CI 口径 xvfb-run 串行 --timeout 300）**2509 注册 = 2478 passed + 31 环境 skip + 0 failed**（两树一致，含本轮 +13）；gcovr（历轮口径，剔除 vcpkg 头与 tests/，`grep -c tests/` = 0）TOTAL 90%。门禁插曲如实登记：首跑 build 树挂 1 例 HtmlImageAndFilesBehavior（见上 flake 收口），复跑全绿。零 Go/JS 改动。
 
 ### test（2026-09-30，C++（Linux）覆盖率扫描续：Clipboard 门面与 X11 后端——故障注入 3 例，可触达缺口归零）
 
