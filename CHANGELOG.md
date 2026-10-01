@@ -9,7 +9,14 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 441 个提交（feat 77 / fix 145 / docs 79 / test 65 / ci 21 / refactor 9 / chore 20 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 442 个提交（feat 77 / fix 146 / docs 79 / test 65 / ci 21 / refactor 9 / chore 20 / style 4 / security 1 / build 1 / 其他 19）。
+
+### fix（2026-10-01，glue 三用例悬垂指针修复——Windows CI 红根因定位 + Windows 覆盖率脚本补失败断言明细回显）
+
+- **CI 红**：收官批次推送后 C++ Windows job 唯红 `GlueDebuggerModuleTest.StubContract` / `GlueOrchestrationModuleTest.StubContract` / `GlueSecurityModuleTest.PassthroughContract`（同 commit Linux/macOS 全绿）。根因在本批新文件 `glue_modules_coverage_test.cpp`：`findModuleFunction` 直接在 `getAllModules()` 返回的**临时 vector** 上 range-for 并 `return &f`——函数指针逃逸到已析构对象（悬垂指针，UB）。Linux glibc tcache 释放块内容未复用，侥幸全绿；Windows Debug 堆复用/加毒后读到垃圾 `std::function` → AV 被 gtest SEH 兜底捕获 → 三用例均匀 ~50ms 假红，且恰好只有走了该 helper 的三例中招。
+- **修复**：对齐全库既有 glue 用例的 `getModule`-by-value 模式（先把模块拷贝到局部稳定对象再取函数指针），顺带补 `if (!fn) return ScriptValue::null()`——缺函数时先记断言失败、不再解引用空指针。全库审计 `getAllModules()` 消费方：其余 14 处全部按值拷贝或返回 by-value，仅此一处踩坑（含 script_function_test 返回 FunctionEntry by-value、platform_x11 先 `mod = m` 再取址）。
+- **CI 可诊断化（盲区修复）**：`run-windows-coverage.ps1` 失败路径此前只回显汇总行 + 日志尾 40 行——gtest 断言明细（file/line/Expected/Actual）打印在日志中段 per-test FAILED 行之前，从 CI 输出永远看不到，本次根因只能靠代码审查反推。补 per-test `"[  FAILED  ] … (N ms)"` 行前 15 行上下文回显，Windows 失败从此可直接从 CI 日志定位。
+- **验证**：3 例单跑绿；全量两树 ctest 2509 注册 0 failed（连同本修复重跑门禁）；悬垂期间 Linux 覆盖率计数路径真实执行（函数调用均落到合法对象），gcda 数字不受影响。
 
 ### test（2026-09-30，C++（Linux）覆盖率扫描收官：v13 基线剩余缺口三分类清账——13 例 + 1 断言，可测缺口归零、结构性盲区带论证登记）
 

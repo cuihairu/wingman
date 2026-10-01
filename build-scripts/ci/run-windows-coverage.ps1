@@ -75,6 +75,17 @@ if (Test-Path $gtestLog) {
     if ($failedLine) {
         Write-Host "Test failures detected in gtest output: $($failedLine.Line.Trim())"
         Select-String -Path $gtestLog -Pattern '\[\s+FAILED\s+\]' | ForEach-Object { Write-Host $_.Line }
+        # Assertion detail for each failed test: gtest prints the file/line +
+        # Expected/Actual block immediately BEFORE the per-test
+        # "[  FAILED  ] suite.name (N ms)" line, in the middle of the log —
+        # the Tail 40 below only ever shows the end-of-run summary, so without
+        # this context Windows failures are undiagnosable from CI output.
+        Select-String -Path $gtestLog -Pattern '\[\s+FAILED\s+\].*\(\d+ ms\)' -Context 15,1 | ForEach-Object {
+            Write-Host "----- failure context -----"
+            $_.Context.PreContext | ForEach-Object { Write-Host $_ }
+            Write-Host $_.Line
+            $_.Context.PostContext | ForEach-Object { Write-Host $_ }
+        }
         Get-Content $gtestLog -Tail 40 | ForEach-Object { Write-Host $_ }
         exit 1
     }

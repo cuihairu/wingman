@@ -13,21 +13,26 @@ using namespace wingman::script::modules;
 
 namespace {
 
-const ModuleDescriptor::FunctionEntry* findModuleFunction(const std::string& moduleName,
-                                                          const std::string& fnName) {
+// 先按值拷贝模块再取函数指针：getAllModules() 返回临时 vector，直接在
+// 循环里 return &f 是悬垂指针——Linux 上释放块内容未复用侥幸全绿，
+// Windows Debug 堆复用/加毒后三用例全红（2026-10-01 CI 实测，与其他
+// glue 用例的 getModule-by-value 模式对齐）
+ModuleDescriptor getModule(const std::string& moduleName) {
     for (const auto& mod : getAllModules()) {
-        if (mod.name != moduleName) continue;
-        for (const auto& f : mod.functions) {
-            if (f.name == fnName) return &f;
-        }
+        if (mod.name == moduleName) return mod;
     }
-    return nullptr;
+    return {};
 }
 
 ScriptValue call(const std::string& moduleName, const std::string& fnName,
                  std::vector<ScriptValue> args = {}) {
-    const auto* fn = findModuleFunction(moduleName, fnName);
+    const auto mod = getModule(moduleName);
+    const ModuleDescriptor::FunctionEntry* fn = nullptr;
+    for (const auto& f : mod.functions) {
+        if (f.name == fnName) { fn = &f; break; }
+    }
     EXPECT_NE(fn, nullptr) << moduleName << "." << fnName;
+    if (!fn) return ScriptValue::null();  // 缺函数时不断言后仍解引用（防升级为崩溃）
     return (*fn)(args);
 }
 

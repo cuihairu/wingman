@@ -19,6 +19,7 @@
 - **flake 收口（2 处）**：收官门禁首跑 load 68-104 抓红 `ClipboardModuleGlue.HtmlImageAndFilesBehavior`——同用例 HTML/text 段均已按轮询纪律改写，唯 files 段漏网（setFiles 读回与 clear 后 hasFiles 两处 t=0 直断，与 xclip 异步接管窗口竞争）。改正向轮询后单测 ×20（load 93）全绿，0.33-0.39s 慢轮次即轮询真实吸收竞态的证据。
 - **无真缺陷暴露**：全部新驱动路径行为符合既有契约，本轮零生产代码改动。
 - **验证**：全量两树 ctest（xvfb-run 串行 + --timeout 300）**2509 注册 = 2478 passed + 31 环境 skip + 0 failed**（两树一致，含 +13）；gcovr TOTAL 90%（历轮口径）。零 Go/JS 改动。
+- **推送后 CI 插曲（同批收口）**：C++ Windows job 唯红本批新文件的 glue 三用例——`findModuleFunction` 在 `getAllModules()` 临时 vector 上 `return &f` 悬垂指针（Linux 释放块侥幸未复用全绿，Windows Debug 堆加毒假红）；按全库既有 `getModule`-by-value 模式修复 + 补空指针防护，门禁重跑全绿重推。同时修 `run-windows-coverage.ps1` 盲区：失败时只回显日志尾 40 行，断言明细在日志中段永远看不到——补 per-test FAILED 行前 15 行上下文（详见 CHANGELOG fix 条目）。
 
 ---
 
