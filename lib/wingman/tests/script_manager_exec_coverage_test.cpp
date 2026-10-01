@@ -2,8 +2,10 @@
 #include "test_helpers.hpp" // 静态初始化 WINGMAN_CONFIG_DIR -> 临时目录，避免污染真实 config
 #include "wingman/script_manager.hpp"
 #include <atomic>
+#include <chrono>
 #include <fstream>
 #include <mutex>
+#include <thread>
 
 #ifdef WINGMAN_HAS_LUA
 #include "wingman/lua/lua_script_engine.hpp"
@@ -17,9 +19,11 @@ using namespace wingman;
 // 本文件以临时 Lua 脚本文件走完整生命周期。引擎注册隐式契约：Lua 引擎由
 // registerLuaEngine() 注册进 ScriptEngineFactory（runtime 在 main 里调用），
 // 测试进程须同样注册——见 tests/CMakeLists.txt 对 wingman::lua 的可选链接。
-// 已知不可达分支（不硬凑，见 CHANGELOG）：callFunction/pauseScript/
-// resumeScript 的 running 状态路径——同步执行模型下无任何入口把脚本置为
-// running（runScript 同步等待完成后即 completed），属异步执行模型的遗留。
+// 2026-10-01 状态机修复后：pause/resume 的成功腿与 running/paused 态已可达
+// （runScriptInternal 在执行线程起动后迁 running，此前唯一赋值点在
+// resumeScript——死锁环）；仍不测 callFunction 的 running 路径：同步模型下
+// running 窗口引擎正被执行线程独占，跨线程调用即数据竞争（无生产调用方，
+// 见 script_manager.cpp 注释与 todo 登记）。
 
 namespace {
 
@@ -152,6 +156,98 @@ TEST_F(ScriptManagerExecTest, ReloadScriptResetsStateAndReruns) {
 
     EXPECT_TRUE(mgr_.unloadScript("cov_reload"));
     EXPECT_FALSE(mgr_.runScript("cov_reload")); // 卸载后运行拒绝
+}
+
+// ========== 状态机全链（2026-10-01 死锁环修复回归钉）==========
+
+namespace {
+
+// 轮询等待脚本进入期望状态（等待循环以 50ms 为周期收尾，超时上界只作失败时限）
+bool waitForState(ScriptManager& mgr, const std::string& name, ScriptState expected,
+                  int timeoutMs = 5000) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    while (std::chrono::steady_clock::now() < deadline) {
+        auto info = mgr.getScriptInfo(name);
+        if (info && info->state == expected) {
+            return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    return false;
+}
+
+} // namespace
+
+// wingman.timer.sleep 全平台可用（wingman 全局表不受沙箱 strip 影响），让脚本
+// 驻留足够久以观察/操作中间态；被 stop 后执行线程睡完剩余时长自然退出，不烧 CPU。
+TEST_F(ScriptManagerExecTest, PauseResumeStopFullChainIsReachable) {
+    // 2026-09-29 登记的结构性缺陷回归钉：running 从不可达（唯一赋值点在
+    // resumeScript，resume 前置 paused、pause 前置 running——死锁环），全链
+    // start→running→pause→paused→resume→running→stop 不可达。修复：执行
+    // 线程起动后迁 running；stop 改协作停止（stopRequested，不再 shutdown
+    // 执行线程正在使用的引擎），终态 loaded。
+    std::string path = writeScript("cov_chain.lua",
+        "for i = 1, 150 do wingman.timer.sleep(20) end\n");
+    ASSERT_TRUE(mgr_.loadScript("cov_chain", path));
+
+    std::atomic<bool> runResult{true};
+    std::thread runner([&] { runResult = mgr_.runScript("cov_chain"); });
+
+    ASSERT_TRUE(waitForState(mgr_, "cov_chain", ScriptState::running));
+    EXPECT_EQ(mgr_.getRunningScripts(), std::vector<std::string>({"cov_chain"}));
+
+    // 重入防护：running 期间再次 run 拒绝（旧实现先 stop 再重启，会与执行
+    // 线程并发复用同一引擎）
+    EXPECT_FALSE(mgr_.runScript("cov_chain"));
+    EXPECT_NE(mgr_.getScriptInfo("cov_chain")->lastError.find("already running"),
+              std::string::npos);
+
+    // pause：running → paused（簿记态；底层执行继续）
+    EXPECT_TRUE(mgr_.pauseScript("cov_chain"));
+    EXPECT_EQ(mgr_.getScriptInfo("cov_chain")->state, ScriptState::paused);
+    EXPECT_TRUE(mgr_.getRunningScripts().empty());
+    EXPECT_FALSE(mgr_.pauseScript("cov_chain")); // 重复 pause 拒绝
+    // callFunction 前置 running：paused 态直接拒绝（不触碰引擎）
+    EXPECT_FALSE(mgr_.callFunction("cov_chain", "nosuch"));
+
+    // resume：paused → running
+    EXPECT_TRUE(mgr_.resumeScript("cov_chain"));
+    EXPECT_EQ(mgr_.getScriptInfo("cov_chain")->state, ScriptState::running);
+    EXPECT_FALSE(mgr_.resumeScript("cov_chain")); // 重复 resume 拒绝
+
+    // stop：running → stopping（等待循环 ≤50ms 内收尾）→ loaded
+    EXPECT_TRUE(mgr_.stopScript("cov_chain"));
+    const auto midState = mgr_.getScriptInfo("cov_chain")->state;
+    EXPECT_TRUE(midState == ScriptState::stopping || midState == ScriptState::loaded);
+    ASSERT_TRUE(waitForState(mgr_, "cov_chain", ScriptState::loaded, 2000));
+
+    runner.join();
+    EXPECT_FALSE(runResult.load()); // 被停止的运行不报成功
+
+    const auto info = mgr_.getScriptInfo("cov_chain");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->state, ScriptState::loaded); // 停止终态：区别于 completed/error
+    EXPECT_TRUE(info->lastError.empty());        // 停止不是错误
+    EXPECT_EQ(info->engine, nullptr);            // manager 侧引擎引用已释放
+}
+
+TEST_F(ScriptManagerExecTest, RerunAfterStopCreatesFreshRun) {
+    std::string path = writeScript("cov_rerun.lua",
+        "for i = 1, 40 do wingman.timer.sleep(25) end\n");
+    ASSERT_TRUE(mgr_.loadScript("cov_rerun", path));
+
+    std::atomic<bool> firstRun{true};
+    std::thread runner([&] { firstRun = mgr_.runScript("cov_rerun"); });
+    ASSERT_TRUE(waitForState(mgr_, "cov_rerun", ScriptState::running));
+    EXPECT_TRUE(mgr_.stopScript("cov_rerun"));
+    ASSERT_TRUE(waitForState(mgr_, "cov_rerun", ScriptState::loaded, 2000));
+    runner.join();
+    EXPECT_FALSE(firstRun.load());
+
+    // 停止收尾后重跑：loaded 不在重入防护集合内；旧引擎已由 detached 线程
+    // 持有，新运行创建新引擎并完整执行至 completed
+    EXPECT_TRUE(mgr_.runScript("cov_rerun"));
+    EXPECT_EQ(mgr_.getScriptInfo("cov_rerun")->state, ScriptState::completed);
 }
 
 } // anonymous namespace

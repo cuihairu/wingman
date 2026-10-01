@@ -19,6 +19,20 @@
 
 namespace wingman {
 
+namespace {
+
+// 活跃执行态：执行线程正在（或即将）占用该脚本的引擎实例。
+// 从这些状态迁出必须经 stopScript_Locked（协作停止 + 释放 manager 侧引擎
+// 引用），否则后续重跑可能复用执行线程仍在使用的引擎（数据竞争）。
+bool isActiveScriptState(ScriptState state) {
+	return state == ScriptState::running ||
+	       state == ScriptState::paused ||
+	       state == ScriptState::starting ||
+	       state == ScriptState::stopping;
+}
+
+} // namespace
+
 // ========== ScriptManager Implementation ==========
 
 ScriptManager::ScriptManager() = default;
@@ -121,7 +135,7 @@ bool ScriptManager::unloadScript_Locked(const std::string& name) {
 		return false;
 	}
 
-	if (it->second->state == ScriptState::running) {
+	if (isActiveScriptState(it->second->state)) {
 		stopScript_Locked(name);
 	}
 
@@ -137,7 +151,7 @@ bool ScriptManager::reloadScript(const std::string& name) {
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
 		auto it = m_scripts.find(name);
-		restart = it != m_scripts.end() && it->second->state == ScriptState::running;
+		restart = it != m_scripts.end() && isActiveScriptState(it->second->state);
 		reloaded = reloadScript_Locked(name);
 		if (reloaded) {
 			callback = m_eventCallback;
@@ -161,9 +175,9 @@ bool ScriptManager::reloadScript_Locked(const std::string& name) {
 	}
 
 	auto& info = it->second;
-	bool wasRunning = info->state == ScriptState::running;
+	bool wasActive = isActiveScriptState(info->state);
 
-	if (wasRunning) {
+	if (wasActive) {
 		stopScript_Locked(name);
 	}
 
@@ -180,7 +194,7 @@ bool ScriptManager::checkReload(const std::string& name) {
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
 		auto it = m_scripts.find(name);
-		restart = it != m_scripts.end() && it->second->state == ScriptState::running;
+		restart = it != m_scripts.end() && isActiveScriptState(it->second->state);
 		reloaded = checkReload_Locked(name);
 	}
 
@@ -216,7 +230,7 @@ void ScriptManager::checkAllReloads() {
 		std::vector<std::string> names = getScriptNames_Locked();
 		for (const auto& name : names) {
 			auto it = m_scripts.find(name);
-			bool restart = it != m_scripts.end() && it->second->state == ScriptState::running;
+			bool restart = it != m_scripts.end() && isActiveScriptState(it->second->state);
 			if (checkReload_Locked(name) && restart) {
 				restartNames.push_back(name);
 			}
@@ -271,6 +285,8 @@ bool ScriptManager::runScript(const std::string& name) {
 
 bool ScriptManager::runScriptInternal(const std::string& name) {
 	std::shared_ptr<ScriptInfo> infoPtr;
+	std::shared_ptr<script::IScriptEngine> engineToRun;
+	uint32_t myGeneration = 0;
 
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
@@ -281,13 +297,21 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 
 		infoPtr = it->second;
 
-		if (infoPtr->state == ScriptState::running) {
-			stopScript_Locked(name);
+		// 重入防护：同步执行模型下 running/starting/paused/stopping 都意味着
+		// 执行线程正在（或即将）占用当前引擎实例，放行重跑会让两个执行线程
+		// 并发复用同一引擎（数据竞争）。旧实现在此对 running 先 stop 再重启，
+		// 但 running 从不可达（见下方 running 赋值点注释），该分支实为死代码。
+		if (isActiveScriptState(infoPtr->state)) {
+			infoPtr->lastError = "script is already running: " + name;
+			return false;
 		}
 
 		// Mark as starting (initializing engine)
 		infoPtr->state = ScriptState::starting;
 		infoPtr->lastError.clear();
+		infoPtr->stopRequested = false;
+		++infoPtr->runGeneration;
+		myGeneration = infoPtr->runGeneration;
 
 		// Create engine instance
 		if (!infoPtr->engine) {
@@ -309,36 +333,69 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 			infoPtr->engine->setGlobal(k, script::ScriptValue::fromString(v));
 		}
 
+		// 执行引用必须在锁内取：锁外读取会与并发 stopScript_Locked 的
+		// engine.reset() 竞争（可能拿到空引用）
+		engineToRun = infoPtr->engine;
 	}
 
 	// Execute script file with timeout support
 	// Note: true interruptibility requires engine-level cooperation (e.g., debug hooks)
 	// This implementation provides timeout detection and state cleanup, but the engine
 	// may continue running in the background until it naturally completes or fails.
-	// 超时路径会 detach 执行线程，因此所有跨 detach 生命周期的对象必须按值
-	// 捕获（此前按引用捕获局部栈对象，线程在主线程返回后写悬空引用，实测段
-	// 错误）；engine 以 shared_ptr 与线程共享，超时时 manager 侧释放——杜绝
-	// detach 后 unload/重跑与执行并发复用同一引擎。
-	auto engineToRun = infoPtr->engine;
+	// 超时/协作停止路径会 detach 执行线程，因此所有跨 detach 生命周期的对象必须
+	// 按值捕获（此前按引用捕获局部栈对象，线程在主线程返回后写悬空引用，实测段
+	// 错误）；engine 以 shared_ptr 与线程共享，manager 侧只释放引用（绝不
+	// shutdown——那会销毁执行线程正在使用的 lua_State）——detach 后线程跑完
+	// 自然销毁引擎，重跑/卸载也不会与执行并发复用同一引擎。
 	auto scriptDone = std::make_shared<std::atomic<bool>>(false);
 	auto scriptSuccess = std::make_shared<std::atomic<bool>>(false);
 	const std::string scriptPath = infoPtr->config.path;
 	std::thread execThread;
 
-	// Launch execution in a detached thread
-	execThread = std::thread([engineToRun, scriptPath, scriptDone, scriptSuccess]() {
-		scriptSuccess->store(engineToRun->executeFile(scriptPath));
-		scriptDone->store(true);
-	});
+	// Launch execution in a worker thread
+	try {
+		execThread = std::thread([engineToRun, scriptPath, scriptDone, scriptSuccess]() {
+			scriptSuccess->store(engineToRun->executeFile(scriptPath));
+			scriptDone->store(true);
+		});
+	} catch (const std::exception& e) {
+		// 线程创建失败不能停在 starting：重入防护会永久拒绝后续 run/stop
+		std::lock_guard<std::mutex> lock(m_mutex);
+		infoPtr->state = ScriptState::error;
+		infoPtr->lastError = std::string("failed to launch execution thread: ") + e.what();
+		infoPtr->engine.reset();
+		return false;
+	}
+
+	{
+		// 执行线程已起动：状态机迁移到 running。此前实现从不进入 running
+		// （全文件唯一赋值点在 resumeScript，而 resume 前置 paused、pause 前置
+		// running——死锁环），导致 pause/resume 成功腿与 running/paused 状态
+		// 映射全部不可达（2026-09-29 覆盖率扫描登记的结构性缺陷）。
+		// 复查仍是本次运行的 starting 才迁移：并发 stop 可能已置 stopping，
+		// 更新的运行（runGeneration 变化）也不由本次代为迁移。
+		std::lock_guard<std::mutex> lock(m_mutex);
+		if (infoPtr->state == ScriptState::starting && infoPtr->runGeneration == myGeneration) {
+			infoPtr->state = ScriptState::running;
+		}
+	}
 
 	// Get timeout from config
 	int timeoutMs = infoPtr->config.timeoutMs > 0 ? infoPtr->config.timeoutMs : 30000;
 
-	// Wait for completion with timeout
+	// Wait for completion / cooperative stop / timeout
 	auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 	bool timedOut = false;
+	bool stopRequested = false;
 
-	while (!scriptDone->load()) {
+	while (true) {
+		if (scriptDone->load()) {
+			break;
+		}
+		if (infoPtr->stopRequested.load()) {
+			stopRequested = true;
+			break;
+		}
 		if (std::chrono::steady_clock::now() >= deadline) {
 			timedOut = true;
 			break;
@@ -346,19 +403,30 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	}
 
-	if (timedOut) {
-		// Timeout occurred - mark as error and detach the execution thread
-		// The script may continue running in the background until it finishes
+	if (timedOut || stopRequested) {
+		// 超时与协作停止共用收尾：置终态 + detach 执行线程 + 释放 manager 侧
+		// 引擎（线程侧 shared_ptr 保活，跑完自然销毁；脚本可能继续在后台跑到
+		// 自然结束/失败——引擎级中断[指令钩子]登记为后续独立项）。
 		std::lock_guard<std::mutex> lock(m_mutex);
-		infoPtr->state = ScriptState::error;
-		infoPtr->lastError = "Script execution timeout after " + std::to_string(timeoutMs) + "ms";
 		// Detach the thread to let it complete independently
 		if (execThread.joinable()) {
 			execThread.detach();
 		}
-		// manager 侧释放引擎（线程侧 shared_ptr 保活，跑完自动销毁），
-		// 下次运行将创建新引擎
-		infoPtr->engine.reset();
+		auto it = m_scripts.find(name);
+		const bool superseded = it == m_scripts.end() || it->second != infoPtr ||
+		                        infoPtr->runGeneration != myGeneration;
+		if (!superseded) {
+			// 只处置本次运行的引擎；被超越时 infoPtr->engine 属于更新的运行
+			infoPtr->engine.reset();
+			if (timedOut) {
+				infoPtr->state = ScriptState::error;
+				infoPtr->lastError = "Script execution timeout after " + std::to_string(timeoutMs) + "ms";
+			} else {
+				// stopScript 请求的停止：终态 loaded（区别于 completed/error）
+				infoPtr->state = ScriptState::loaded;
+				infoPtr->lastError.clear();
+			}
+		}
 		return false;
 	}
 
@@ -370,15 +438,20 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 	// Check result
 	if (!scriptSuccess->load()) {
 		std::lock_guard<std::mutex> lock(m_mutex);
-		infoPtr->state = ScriptState::error;
-		infoPtr->lastError = infoPtr->engine->getLastError();
+		auto it = m_scripts.find(name);
+		if (it != m_scripts.end() && it->second == infoPtr &&
+		    infoPtr->runGeneration == myGeneration) {
+			infoPtr->state = ScriptState::error;
+			infoPtr->lastError = engineToRun->getLastError();
+		}
 		return false;
 	}
 
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
 		auto it = m_scripts.find(name);
-		if (it == m_scripts.end() || it->second != infoPtr) {
+		if (it == m_scripts.end() || it->second != infoPtr ||
+		    infoPtr->runGeneration != myGeneration) {
 			return false;
 		}
 
@@ -423,21 +496,28 @@ bool ScriptManager::stopScript_Locked(const std::string& name) {
 		return false;
 	}
 
-	// Mark as stopping (in cooperative model, script should check this)
+	// 协作停止：只置停止请求 + 簿记态，不触碰引擎。旧实现直接
+	// engine->shutdown()+reset()——shutdown 会销毁执行线程正在使用的
+	// lua_State（sol::state 重建），跨线程并发即 use-after-free（stop 成功腿
+	// 仅 starting 窗口的并发 stop 可达且必然伴生该竞争，此前从不触发）。
+	// 真正的引擎级中断（Lua 指令钩子 / Python trace）登记为后续独立项；
+	// 当前语义：执行线程自然跑完（与超时路径相同的 detach + 线程侧
+	// shared_ptr 保活模型），runScriptInternal 的等待循环看到 stopRequested
+	// 后收尾。
+	it->second->stopRequested = true;
 	it->second->state = ScriptState::stopping;
 
-	// For synchronous execution model, transition directly to loaded
-	// In async model, this would wait for the script to actually stop
-	if (it->second->engine) {
-		it->second->engine->shutdown();
-		it->second->engine.reset();
-	}
-
-	it->second->state = ScriptState::loaded;
+	// 释放 manager 侧引擎引用（引用计数操作，线程安全）：确保后续重跑创建
+	// 新引擎，不会与仍在执行的旧引擎并发复用；引擎对象由执行线程的
+	// shared_ptr 保活、跑完自然销毁。
+	it->second->engine.reset();
 	return true;
 }
 
 bool ScriptManager::pauseScript(const std::string& name) {
+	// pause 是簿记级状态：底层脚本线程不被挂起（无引擎级暂停钩子），执行
+	// 继续到自然完成/超时/停止；簿记态影响 pause/resume/callFunction 的前置
+	// 判定与状态上报（GUI/远程观察到的 Paused）。
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	auto it = m_scripts.find(name);
@@ -472,6 +552,10 @@ bool ScriptManager::resumeScript(const std::string& name) {
 bool ScriptManager::callFunction(const std::string& name, const std::string& func,
                                 const std::vector<std::string>& args,
                                 std::string* result) {
+	// 注意：同步执行模型下 running 窗口 = 引擎正被执行线程独占；此刻跨线程
+	// 调用会与 executeFile 并发操作同一引擎（数据竞争）。本接口面向异步执行
+	// 模型设计（脚本驻留后按名调用其函数），当前无生产调用方；引擎级并发
+	// 安全的调用通道随协作停止钩子一并登记为后续独立项。
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	auto it = m_scripts.find(name);

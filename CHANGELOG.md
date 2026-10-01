@@ -9,7 +9,19 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 442 个提交（feat 77 / fix 146 / docs 79 / test 65 / ci 21 / refactor 9 / chore 20 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 443 个提交（feat 77 / fix 147 / docs 79 / test 65 / ci 21 / refactor 9 / chore 20 / style 4 / security 1 / build 1 / 其他 19）。
+
+### fix（2026-10-01，ScriptManager 状态机死锁环修复 + stop 数据竞争根治——running 赋值 / 协作停止 / 重入防护 / 运行代号）
+
+2026-09-29 覆盖率扫描登记的结构性缺陷（当时明确「建议独立任务」，本条即该任务）：**runScriptInternal 从不赋值 `ScriptState::running`**（全文件唯一赋值点在 resumeScript，而 resume 前置 paused、pause 前置 running——死锁环），导致 pause/resume 成功腿、pauseAll/resumeAll/stopAll 批量计数增量、running/paused 状态映射（standalone_mode / script_module 两处消费方）与对应 state_changed 推送**全部不可达（真机同样不可达）**；stopScript 成功腿仅 starting 窗口并发 stop 可达，且伴生 `engine->shutdown()` 与执行线程的数据竞争（shutdown 做 `lua_ = sol::state()` 销毁 lua_State，与 execThread 内 executeFile 并发即 use-after-free）。
+
+- **running 赋值（死锁环解扣）**：runScriptInternal 在执行线程起动后、加锁复查仍处本次运行的 starting 时迁移到 running——`start→running→pause→paused→resume→running→stop` 全链语义正确可达。pause 明确为**簿记态**：底层脚本线程不被挂起（无引擎级暂停钩子），执行继续到自然完成/超时/停止，簿记态影响前置判定与状态上报。
+- **stop 协作化（数据竞争根治）**：stopScript_Locked 对 {running, paused, starting} 只置 `ScriptInfo::stopRequested`（新原子标志）+ state=stopping + **释放 manager 侧引擎引用**（shared_ptr 引用计数操作，线程安全），不再 `engine->shutdown()`——引擎对象由执行线程持有的 shared_ptr 保活、跑完自然销毁（与超时路径既有的 detach 模型一致）。runScriptInternal 等待循环轮询 scriptDone / stopRequested / deadline：停止请求 ≤50ms 内收尾，终态 **loaded**（区别于 completed/error）、lastError 保持空（停止不是错误）；脚本本体继续在后台跑到自然结束。**引擎级中断（Lua 指令钩子 / Python trace）工程量超本轮，登记为后续独立项**——与登记口径一致，本条只修状态机与数据竞争最小面。
+- **重入防护**：旧实现 running 态重跑「先 stop 再重启」会与执行线程并发复用同一引擎（且 running 不可达、实为死代码）；改为 running/starting/paused/stopping 一律拒绝（false + lastError "already running"），从根上杜绝两个执行线程共享一个引擎。unload/reload/checkReload 的「运行中先停」判定从仅 running 扩到全活跃态集合（paused/starting 态 reload 旧实现不 reset 引擎，重跑会复用执行中引擎——同型竞争，一并收口）。线程创建失败不再停在 starting（会永久卡死重入防护），改记 error。
+- **运行代号（runGeneration）**：reload 对执行中脚本 stop 后立即重启会产生两代运行并存（旧执行线程尚未退出）；ScriptInfo 新增每次运行自增的代号，等待线程收尾时若已被更新的运行超越（或条目被替换），不写状态、不动属于新运行的引擎——状态机在并发 reload/restart 交错下收敛。
+- **回归钉（4 例）**：`script_manager_exec_coverage_test.cpp` +2——PauseResumeStopFullChainIsReachable（全链逐态迁移 + getRunningScripts 映射 + 重复 pause/resume 拒绝 + 重入防护 + 停止终态 loaded/lastError 空/引擎引用已释放）与 RerunAfterStopCreatesFreshRun（停止后重跑创建新引擎完整执行至 completed）；`standalone_mode_coverage_test.cpp` +2——FullChainRunningPauseResumeStopReachable（经 StandaloneMode 编排面全链 + running/paused 状态映射 + paused→running→stopped 事件序列）与 BulkOperationsCountRunningScripts（双运行脚本 pauseAll/resumeAll/stopAll 计数增量 2）。脚本用 `wingman.timer.sleep` 驻留（沙箱下 wingman 全局表可用、全平台、零 CPU），被停后 detached 执行线程睡完剩余时长自然退出。standalone_mode_coverage_test 文件头与批量闲置用例的「结构性不可达登记」注释同步改写为新语义。
+- **callFunction 登记（不动）**：同步执行模型下 running 窗口 = 引擎正被执行线程独占，跨线程调用即数据竞争；该接口面向异步模型设计、当前无生产调用方，running 前置保持不变（paused 态直接拒绝已由新用例钉住），引擎级并发安全调用通道随协作停止钩子一并归后续独立项。
+- **验证**：新 4 例 ×10 连跑稳定；ScriptManager/script_module/timer/rpc_ipc/agent_loopback 相关 161+47 例、CLI script/build 命令面 34 例全绿；全量两树 ctest（CI 口径 xvfb-run 串行 --timeout 300）**2513 注册（2509+4）两树各取得 100% 全绿**（31 例环境 skip 与既往一致）。门禁插曲如实登记（load 60~69，两例均与本轮改动零交集——剪贴板/transport 不触达 ScriptManager）：首跑两树各 1 例 `ClipboardTest.HasText/HasHTML` 假红（clear 后空 owner 接管超 waitFor 窗口，2026-09-30 已登记的 xclip 异步接管家族残余负载风险，隔离 ×10 全绿）；复跑 cov 树全绿、build 树漂移出 1 例 `TcpE2ECoverageTest.ZeroLengthFrameTerminatesLoop`（零长帧断开异步收尾的 t=0 直断，负载时序形状，隔离 ×20 全绿）；build 树再复跑 100% 全绿。C++ 改动无平台分支（`std::atomic` + 显式拷贝构造保持 ScriptInfo 值语义），Windows CI 编译与 Debug 堆验证随推送。
 
 ### fix（2026-10-01，glue 三用例悬垂指针修复——Windows CI 红根因定位 + Windows 覆盖率脚本补失败断言明细回显）
 

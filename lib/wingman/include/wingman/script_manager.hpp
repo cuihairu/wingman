@@ -66,6 +66,16 @@ struct ScriptInfo {
 	uint64_t lastModified = 0;
 	uint64_t lastLoaded = 0;
 
+	// 协作停止请求：stopScript 置位，runScriptInternal 的等待循环在
+	// m_mutex 之外轮询（故必须是 atomic）。atomic 不可拷贝，这里显式按
+	// 当前值复制以保住 ScriptInfo 的值语义（getAllScriptInfos 仍可拷贝）。
+	std::atomic<bool> stopRequested{false};
+
+	// 运行代号：每次进入新的执行（runScriptInternal 首个加锁段）自增。
+	// 供等待线程收尾时判断自己是否已被更新的运行「超越」（reload 对执行中
+	// 脚本 stop 后立即重启即产生两代并存），被超越时不写状态、不动引擎。
+	uint32_t runGeneration = 0;
+
 	// Language-agnostic script engine instance
 	// shared_ptr：执行线程与 ScriptManager 共享持有——runScript 超时 detach
 	// 后线程继续跑完脚本，manager 侧必须能先释放引用（否则下次运行会与
@@ -75,6 +85,22 @@ struct ScriptInfo {
 
 	// Script stored data
 	std::unordered_map<std::string, std::string> data;
+
+	// atomic 成员使隐式拷贝被删除；显式给出拷贝构造（按值复制 stopRequested），
+	// 用户声明的拷贝构造同时抑制隐式移动——右值初始化回落到拷贝，保持值语义
+	ScriptInfo() = default;
+	ScriptInfo(const ScriptInfo& other)
+		: config(other.config),
+		  state(other.state),
+		  lastError(other.lastError),
+		  lastModified(other.lastModified),
+		  lastLoaded(other.lastLoaded),
+		  stopRequested(other.stopRequested.load()),
+		  runGeneration(other.runGeneration),
+		  engine(other.engine),
+		  language(other.language),
+		  data(other.data) {}
+	ScriptInfo& operator=(const ScriptInfo&) = delete;
 };
 
 // Sandbox configuration

@@ -1,7 +1,22 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-09-30
-> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地（含 A3 可靠性与受限设置引导，见「2026-09-30 Android Agent 现状登记」及其后两条 A3 实施条目）、A3-P2 与 A4 未排期；2026-09-30 平台验证收口——macOS/XRecord（runner+Xvfb）与 Android API 34 模拟器全链路验证，模拟器腿抓出三处阻断级缺陷已修（见同日「Android 模拟器验证」条），剩余真机项见该条清单；同日 C++ 覆盖率扫描收官——v13 基线清账 TOTAL 90%，余量全部带论证登记（见「C++ 覆盖率扫描收官」条）
+> 最后更新: 2026-10-01
+> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地（含 A3 可靠性与受限设置引导，见「2026-09-30 Android Agent 现状登记」及其后两条 A3 实施条目）、A3-P2 与 A4 未排期；2026-09-30 平台验证收口——macOS/XRecord（runner+Xvfb）与 Android API 34 模拟器全链路验证，模拟器腿抓出三处阻断级缺陷已修（见同日「Android 模拟器验证」条），剩余真机项见该条清单；同日 C++ 覆盖率扫描收官——v13 基线清账 TOTAL 90%，余量全部带论证登记（见「C++ 覆盖率扫描收官」条）；2026-10-01 ScriptManager 状态机死锁环与 stop 数据竞争修复（2026-09-29 登记的独立任务落地，见同日条目）
+
+---
+
+## 2026-10-01 ScriptManager 状态机死锁环 + stop 数据竞争修复（2026-09-29 登记的独立任务）
+
+登记缺陷（2026-09-29 覆盖率扫描条「结构性不可达登记」）落地修复，根因/修法/验证详见 CHANGELOG 同日 fix 条目：
+
+- **死锁环解扣**：runScriptInternal 从不赋值 running（唯一赋值点在 resumeScript，resume 前置 paused、pause 前置 running）——pause/resume 成功腿、批量计数增量、running/paused 状态映射全不可达（真机同样）。修复：执行线程起动后迁 running，全链 start→running→pause→paused→resume→running→stop 可达；pause 明确为簿记态（无引擎级暂停钩子，底层执行继续）。
+- **stop 数据竞争根治**：旧 stopScript 对执行中引擎直接 `shutdown()+reset()`（shutdown 销毁执行线程正在使用的 lua_State——跨线程 UAF）。修复：协作停止（ScriptInfo 新增原子 stopRequested，等待循环 ≤50ms 收尾、终态 loaded）+ 只释放 manager 侧引擎引用（shared_ptr 保活，线程跑完自然销毁，同超时路径 detach 模型）。
+- **连带收口**：重入防护（running/starting/paused/stopping 重跑一律拒绝——旧「先 stop 再重启」会双执行线程共享引擎）；unload/reload/checkReload 的先停判定扩到全活跃态；线程创建失败不再卡死 starting；新增 runGeneration 运行代号防并发 reload 重启时新旧两代运行互写状态。
+- **回归钉 4 例**：ScriptManager 级全链 + 停止后重跑（script_manager_exec_coverage_test）；StandaloneMode 级全链（含事件序列）+ 批量计数增量（standalone_mode_coverage_test，旧「结构性不可达登记」注释同步改写）。
+- **登记未做（后续独立项）**：引擎级协作停止钩子（Lua 指令钩子 / Python trace·PendingCall）——被停/超时脚本本体仍继续在后台跑到自然结束；callFunction 的并发安全调用通道（同步模型下 running 窗口引擎被执行线程独占，当前无生产调用方，维持 running 前置不变）。
+
+---
+
 
 > [本文档已于 2026-06-21 依据代码实际状态重新校准。之前的版本严重低估了 Go orchestrator]
 > （工作流引擎、Agent 心跳、审计均已实现）并错误描述了 dashboard 位置。
@@ -125,7 +140,7 @@ todo「Android 现状登记」未完成三项中的第一项（A3 剩余可靠�
 module_helpers 收口后继续。重跑 gcovr 全量（xvfb 门禁 2474/2474 全绿后出报），排除项复核不变，remote_client 与 standalone_mode 并列 51 miss；standalone_mode 为纯编排层（进程级 ScriptManager + EventBuffer，确定性可离线驱动），锁定 **78%（51 行）**。
 
 - **测试**：新增 `apps/runtime/tests/standalone_mode_coverage_test.cpp` 12 例（runtime_tests 接线 + registerLuaEngine() 惰性注册同 rpc_ipc_test；全平台编译）：start 幂等/scriptDir 被文件占据失败、autoStart 装配（输出回调空串跳过实证、completed→Unknown 现状钉）、缺失脚本跳过、loadScript 登记（unloaded→Stopped 现状钉、reload 后 Loaded）、失败脚本 error 态 + 事件推送全链、unknown-id 防御、manager 失同步降级三腿（getScript 默认/unloadScript false/stop 不崩）、批量操作闲置计数 0 契约、getConfig 镜像。
-- **结构性不可达登记（19 行）——ScriptManager 状态机缺陷**：runScriptInternal 从不赋值 running（唯一赋值点在 resumeScript，resume 前置 paused、pause 前置 running——死锁环）→ pause/resume 成功腿、批量计数增量、running/paused 状态映射均不可达（**真机同样不可达**，修正 round-4「真机观察」归类）；stopScript 成功腿仅 starting 态并发 stop 可达但伴生 engine->shutdown() 与执行线程的数据竞争，不触发。修复 = 补 running 赋值 + 引擎级协作停止（指令钩子），建议独立任务。另登记 167-168（manager 失败腿为 TOCTOU 外不可达的防御双检）、46（-O2 行归因伪影）。
+- **结构性不可达登记（19 行）——~~ScriptManager 状态机缺陷~~（✅ 已修复 2026-10-01，见顶部「ScriptManager 状态机死锁环 + stop 数据竞争修复」条）**：runScriptInternal 从不赋值 running（唯一赋值点在 resumeScript，resume 前置 paused、pause 前置 running——死锁环）→ pause/resume 成功腿、批量计数增量、running/paused 状态映射均不可达（**真机同样不可达**，修正 round-4「真机观察」归类）；stopScript 成功腿仅 starting 态并发 stop 可达但伴生 engine->shutdown() 与执行线程的数据竞争，不触发。修复 = 补 running 赋值 + 引擎级协作停止（指令钩子），建议独立任务。另登记 167-168（manager 失败腿为 TOCTOU 外不可达的防御双检）、46（-O2 行归因伪影）。
 - **覆盖率**（gcovr 行）：standalone_mode.cpp 78%（189/240）→ **92%**（221/240）；**TOTAL 14849→14878/16600**（89%，+29 行）。
 - **验证**：新增 12 例全绿（连跑 3 轮稳定）；build/ 与插桩 build-cov 全量 ctest **2486/2486**（两树一致，含 +12；xvfb 口径 0 failed）；Go/JS 零改动，CI 随推送复跑。
 

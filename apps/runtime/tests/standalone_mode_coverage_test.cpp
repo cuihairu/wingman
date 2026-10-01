@@ -5,14 +5,14 @@
 // 现状钉）、unknown-id 防御、pause/resume/stopAll 对闲置脚本的计数契约、
 // manager 已侧卸载后的 stop/unload 降级腿、getConfig。
 //
-// 结构性不可达登记（不写假用例，根因见 CHANGELOG 本轮条目）：
-// ScriptManager::runScriptInternal 从不赋值 ScriptState::running（全文件唯一
-// 赋值点在 resumeScript，而 resume 前置要求 paused、pause 前置要求 running
-// ——死锁环），因此 pause/resume 的成功腿、pauseAll/resumeAll/stopAll 的
-// 非零计数、StandaloneMode 对应的 state_changed 推送均不可达；stopScript
-// 成功腿仅当脚本处于 starting（runScript 阻塞等待中）时可达，但该路径会并发
-// engine->shutdown()（销毁执行线程正在使用的 lua_State，数据竞争）——同
-// agent_loopback_test 注记 2 的延迟口径，此处不触发。
+// 2026-10-01 ScriptManager 状态机修复后补入全链回归钉：running 此前从不可达
+// （唯一赋值点在 resumeScript，resume 前置 paused、pause 前置 running——死锁
+// 环），pause/resume 成功腿、批量操作非零计数、running/paused 状态映射与对应
+// state_changed 推送全部不可达；stop 成功腿仅 starting 窗口并发 stop 可达且
+// 伴生 engine->shutdown() 与执行线程的数据竞争（不触发）。修复后：执行线程
+// 起动即迁 running，stop 为协作停止（stopRequested，终态 loaded）——全链与
+// 批量计数增量由本文件 FullChain/Bulk 两条用例钉住（根因与修复见 CHANGELOG
+// 本轮条目）。
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
@@ -21,6 +21,8 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <thread>
+#include <vector>
 
 #include "wingman/agentcore/event_buffer.hpp"
 #include "wingman/lua/lua_script_engine.hpp"
@@ -77,6 +79,21 @@ protected:
             }
         }
         return found;
+    }
+
+    // 轮询等待脚本进入期望的运行态（manager 等待循环以 50ms 为周期收尾，
+    // 超时上界只作失败时限）
+    static bool waitForRuntimeState(const StandaloneMode& mode, const std::string& id,
+                                    ScriptState expected, int timeoutMs = 5000) {
+        const auto deadline =
+            std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+        while (std::chrono::steady_clock::now() < deadline) {
+            if (mode.getScript(id).state == expected) {
+                return true;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return false;
     }
 
     fs::path dir_;
@@ -221,11 +238,91 @@ TEST_F(StandaloneModeCoverageTest, BulkOperationsCountZeroForIdleScripts) {
     ASSERT_FALSE(mode.loadScript(writeScript("b.lua", "x = 2\n").string()).empty());
     ASSERT_EQ(mode.listScripts().size(), 2u);
 
-    // 闲置（loaded）脚本 pause/resume/stop 均失败 → 计数 0（现状钉：
-    // 非零计数需 running/paused 态，见文件头结构性不可达登记）
+    // 闲置（loaded）脚本 pause/resume/stop 均失败 → 计数 0（对照用例：
+    // 运行中脚本的批量计数增量见 BulkOperationsCountRunningScripts）
     EXPECT_EQ(mode.pauseAllScripts(), 0u);
     EXPECT_EQ(mode.resumeAllScripts(), 0u);
     EXPECT_EQ(mode.stopAllScripts(), 0u);
+    mode.stop();
+}
+
+// ========== 状态机全链（2026-10-01 死锁环修复回归钉）==========
+
+TEST_F(StandaloneModeCoverageTest, FullChainRunningPauseResumeStopReachable) {
+    // 全链 start→running→pause→paused→resume→running→stop 此前不可达
+    // （running 从不赋值——死锁环，见文件头登记）；修复后经 StandaloneMode
+    // 编排面逐态驱动，running/paused 状态映射（toRuntimeState）与对应
+    // state_changed 推送一并钉住。脚本用 wingman.timer.sleep 驻留（沙箱下
+    // wingman 全局表可用），被停后执行线程睡完剩余时长自然退出。
+    const auto script = writeScript("chain.lua",
+                                    "for i = 1, 150 do wingman.timer.sleep(20) end\n");
+    StandaloneModeConfig config;
+    config.scriptDir = dir_.string();
+    StandaloneMode mode(config);
+    ASSERT_TRUE(mode.start());  // 注册 manager error 事件回调
+    const auto id = mode.loadScript(script.string());
+    ASSERT_FALSE(id.empty());
+
+    std::atomic<bool> runResult{true};
+    std::thread runner([&] { runResult = mode.startScript(id); });
+
+    ASSERT_TRUE(waitForRuntimeState(mode, id, ScriptState::Running));
+    EXPECT_TRUE(mode.pauseScript(id));
+    EXPECT_EQ(mode.getScript(id).state, ScriptState::Paused);
+    EXPECT_TRUE(mode.resumeScript(id));
+    EXPECT_EQ(mode.getScript(id).state, ScriptState::Running);
+    EXPECT_TRUE(mode.stopScript(id));
+    ASSERT_TRUE(waitForRuntimeState(mode, id, ScriptState::Loaded, 2000));
+
+    runner.join();
+    EXPECT_FALSE(runResult.load());  // 被停止的运行不报成功（也不推 running）
+
+    // 事件序列：paused → running(resume) → stopped；startScript 因被停止
+    // 返回 false 不推 running
+    const auto events = drainedEvents("script.state_changed", id);
+    ASSERT_EQ(events.size(), 3u);
+    EXPECT_EQ(events[0].value("state", ""), "paused");
+    EXPECT_EQ(events[1].value("state", ""), "running");
+    EXPECT_EQ(events[2].value("state", ""), "stopped");
+    mode.stop();
+}
+
+TEST_F(StandaloneModeCoverageTest, BulkOperationsCountRunningScripts) {
+    // 批量计数增量回归钉：此前 pauseAll/resumeAll/stopAll 的非零计数不可达
+    // （running 不可达），任何脚本永远闲置计数 0。
+    StandaloneModeConfig config;
+    config.scriptDir = dir_.string();
+    StandaloneMode mode(config);
+    const auto idA = mode.loadScript(
+        writeScript("long_a.lua", "for i = 1, 100 do wingman.timer.sleep(20) end\n").string());
+    const auto idB = mode.loadScript(
+        writeScript("long_b.lua", "for i = 1, 100 do wingman.timer.sleep(20) end\n").string());
+    ASSERT_FALSE(idA.empty());
+    ASSERT_FALSE(idB.empty());
+
+    std::atomic<bool> runA{true}, runB{true};
+    std::thread runnerA([&] { runA = mode.startScript(idA); });
+    std::thread runnerB([&] { runB = mode.startScript(idB); });
+
+    ASSERT_TRUE(waitForRuntimeState(mode, idA, ScriptState::Running));
+    ASSERT_TRUE(waitForRuntimeState(mode, idB, ScriptState::Running));
+
+    EXPECT_EQ(mode.pauseAllScripts(), 2u);
+    EXPECT_EQ(mode.getScript(idA).state, ScriptState::Paused);
+    EXPECT_EQ(mode.getScript(idB).state, ScriptState::Paused);
+
+    EXPECT_EQ(mode.resumeAllScripts(), 2u);
+    EXPECT_EQ(mode.getScript(idA).state, ScriptState::Running);
+    EXPECT_EQ(mode.getScript(idB).state, ScriptState::Running);
+
+    EXPECT_EQ(mode.stopAllScripts(), 2u);
+    ASSERT_TRUE(waitForRuntimeState(mode, idA, ScriptState::Loaded, 2000));
+    ASSERT_TRUE(waitForRuntimeState(mode, idB, ScriptState::Loaded, 2000));
+
+    runnerA.join();
+    runnerB.join();
+    EXPECT_FALSE(runA.load());
+    EXPECT_FALSE(runB.load());
     mode.stop();
 }
 
