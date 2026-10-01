@@ -10,6 +10,7 @@ task 模块提供异步任务管理功能：
 - **等待完成** - 等待任务执行完成
 - **获取结果** - 获取任务执行结果
 - **取消任务** - 取消正在执行的任务
+- **暂停 / 恢复** - 协作式暂停执行中的任务，恢复后继续
 - **重试任务** - 重试失败的任务
 
 ---
@@ -102,7 +103,7 @@ status(taskId: string) -> string
 - `task_id` / `taskId` - 任务 ID
 
 **返回**：
-- 状态字符串：`"pending"`, `"running"`, `"succeeded"`, `"failed"`, `"canceled"`, `"timeout"`
+- 状态字符串：`"pending"`, `"running"`, `"paused"`, `"succeeded"`, `"failed"`, `"canceled"`, `"timeout"`
 
 :::tabs
 
@@ -283,6 +284,82 @@ wingman.task.cancel(taskId)
 
 ---
 
+## 暂停 / 恢复任务
+
+### pause(task_id) / pause(taskId)
+
+**说明**：暂停任务。协作式语义——无法挂起正在执行的工作函数本身，暂停在
+生命周期检查点生效：开工前驻留不执行、工作完成后结果扣住不落账、重试间隙
+不进入下一次尝试；超时时钟在暂停期间停走。`pending` / `running` 之外的
+状态（含不存在的任务）返回 `false`。
+
+**函数签名**：
+
+```python
+pause(task_id: str) -> bool
+```
+
+```lua
+pause(taskId: string) -> boolean
+```
+
+**参数**：
+- `task_id` / `taskId` - 任务 ID
+
+**返回**：
+- 是否成功进入暂停（任务不存在或非可暂停状态返回 `false`）
+
+### resume(task_id) / resume(taskId)
+
+**说明**：恢复暂停中的任务，放行全部驻留检查点（开工、结果落账、重试）。
+仅 `paused` 状态返回 `true`，其他状态返回 `false`。
+
+**函数签名**：
+
+```python
+resume(task_id: str) -> bool
+```
+
+```lua
+resume(taskId: string) -> boolean
+```
+
+**参数**：
+- `task_id` / `taskId` - 任务 ID
+
+**返回**：
+- 是否成功恢复（任务不存在或不在暂停状态返回 `false`）
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import task
+
+# 暂停执行中的任务
+task.pause(task_id)
+
+# 恢复执行
+task.resume(task_id)
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 暂停执行中的任务
+wingman.task.pause(taskId)
+
+-- 恢复执行
+wingman.task.resume(taskId)
+```
+
+:::
+
+---
+
 ## 重试任务
 
 ### retry(task_id, options?) / retry(taskId, options?)
@@ -338,6 +415,8 @@ wingman.task.retry(taskId, { maxRetries = 5, backoffMs = 1000 })
 |------------|---------|------|-----|
 | `submit(work, options?)` | `submit(work, options?)` | 提交任务 | work: 工作函数<br>options: 配置(可选)<br>返回: 任务ID |
 | `cancel(taskId)` | `cancel(taskId)` | 取消任务 | taskId: 任务ID<br>返回: 是否成功 |
+| `pause(taskId)` | `pause(taskId)` | 暂停任务(协作式) | taskId: 任务ID<br>返回: 是否进入暂停 |
+| `resume(taskId)` | `resume(taskId)` | 恢复暂停的任务 | taskId: 任务ID<br>返回: 是否恢复 |
 | `status(taskId)` | `status(taskId)` | 获取状态 | taskId: 任务ID<br>返回: 状态字符串 |
 | `wait(taskId, timeoutMs?)` | `wait(taskId, timeoutMs?)` | 等待完成 | taskId: 任务ID<br>timeoutMs: 等待超时(默认30000)<br>返回: 是否完成 |
 | `result(taskId)` | `result(taskId)` | 获取结果 | taskId: 任务ID<br>返回: 任务结果 |
@@ -354,6 +433,8 @@ wingman.task.retry(taskId, { maxRetries = 5, backoffMs = 1000 })
 |--------|------|---------|
 | `task.submitted` | 任务已提交 | taskId, metadata |
 | `task.started` | 任务开始执行 | taskId, metadata |
+| `task.paused` | 任务已暂停 | taskId, metadata |
+| `task.resumed` | 任务已恢复 | taskId, metadata |
 | `task.succeeded` | 任务成功 | taskId, metadata |
 | `task.failed` | 任务失败 | taskId, metadata, error |
 | `task.canceled` | 任务已取消 | taskId, metadata |
@@ -368,6 +449,8 @@ from wingman import event
 
 event.on("task.submitted", lambda e: print(f"任务提交: {e['payload']['taskId']}"))
 event.on("task.started", lambda e: print("任务开始"))
+event.on("task.paused", lambda e: print("任务暂停"))
+event.on("task.resumed", lambda e: print("任务恢复"))
 event.on("task.succeeded", lambda e: print("任务成功"))
 event.on("task.failed", lambda e: print(f"任务失败: {e['payload']['error']}"))
 event.on("task.canceled", lambda e: print("任务取消"))
@@ -384,6 +467,12 @@ wingman.event.on("task.submitted", function(e)
 end)
 wingman.event.on("task.started", function(e)
     print("任务开始")
+end)
+wingman.event.on("task.paused", function(e)
+    print("任务暂停")
+end)
+wingman.event.on("task.resumed", function(e)
+    print("任务恢复")
 end)
 wingman.event.on("task.succeeded", function(e)
     print("任务成功")

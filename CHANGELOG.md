@@ -9,7 +9,18 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 444 个提交（feat 77 / fix 147 / docs 79 / test 65 / ci 22 / refactor 9 / chore 20 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 445 个提交（feat 78 / fix 147 / docs 79 / test 65 / ci 22 / refactor 9 / chore 20 / style 4 / security 1 / build 1 / 其他 19）。
+
+### feat（2026-10-01，wingman.task pause/resume 落地——协作式暂停四检查点 / 超时时钟悬挂 / pausedFrom_ 状态恢复 / task.paused·resumed 事件）
+
+`docs/development-todo.md` 缺口清单条目「pause(taskId) / resume(taskId)（未实现）」落地，Lua/Python 双侧 API 同步（清单中「API 形状统一」「命名风格统一」两项范围模糊，按任务指示留后）。
+
+- **协作式暂停语义（无法挂起正在执行的 work 本身，暂停在生命周期检查点生效）**：① 开工前（execute 入口）驻留不执行；② work 执行中被暂停则完成后结果扣住不落账（resume 才提交 succeeded，cancel/timeout 打断则丢弃）；③ 重试间隙不进入下一次尝试；④ **超时时钟在暂停期间停走**（timeout 线程驻留、deadline 顺延暂停时长）。状态机 `pending → running → paused → running` 恢复，仅 pending/running 可 pause、仅 paused 可 resume（其余含不存在返回 false）。
+- **pausedFrom_ 状态恢复（自查抓出的真缺陷）**：resume 一律恢复 running 会使「worker 启动前完成 pause+resume」时 execute 入口误判重入直接返回——work 永不执行且无超时监控。改为 pause 记录 `pausedFrom_`、resume 恢复原状态（开工前→pending，执行中→running），入口为「驻留环 + 仅 pending 开工」。
+- **配套收口**：重试检查点驻留醒来后复查 cancel/timeout（否则 cancel 打断后会带着 canceled 状态落入 try 执行 work）；超时线程 `wait_until` 改谓词化消除 pause 的 lost-notify 竞态；wait() 将 paused 视为未完成继续等待、等待者超时对 paused 只返回 false 不改写状态不发事件；cancel() 改为仅状态真正转换时发 `task.canceled`（终态任务不再发误导事件）；TaskManager::shutdown 先 cancel-all 再 join（暂停中任务超时时钟已停走、可能无限驻留）；pause/resume 与 cancel 同款「锁外调 task 方法」防事件死锁纪律。
+- **双侧落地最小面**：C++ ModuleDescriptor 注册 pause/resume（Lua 侧即得）；Python 侧经 registerModule + camelToSnake 自动绑定零运行时代码，仅补 `task.pyi`（TaskStatus Literal 加 `"paused"` + 两函数签名）。新增 `task.paused`/`task.resumed` 生命周期事件（载荷 taskId, metadata）。
+- **测试（TaskModuleTest 42 → 47 例）**：PauseRunningTaskHoldsCompletionUntilResume（扣留+wait 契约+事件计数）、PauseResumeInvalidTargetsReturnFalse（不存在/缺参/非字符串/终态）、CancelPausedTaskDiscardsHeldResult、PauseSuspendsTimeoutClock（timeoutMs=300 下暂停睡 600ms 仍 paused 对照钉时钟停走）、PauseBetweenRetriesDelaysNextAttempt（backoffMs=300 下暂停睡 400ms attempts 仍 1 对照钉停试）。
+- **验证**：新 5 例 ×10 连跑全绿；全量两树 ctest（CI 口径 xvfb-run 串行 --timeout 300）**2518 注册（2513+5）两树各 100% 全绿、0 failed**。文档同步：docs/api/task.md（暂停/恢复章节 + status 返回加 paused + 接口表 + 事件表）与 development-todo.md 勾选。
 
 ### ci（2026-10-01，C++ Linux (full tests, Python engine) 网络下载脆弱性修复——libuuid vendor 预缓存旁路 sourceforge 单点）
 

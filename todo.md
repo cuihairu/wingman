@@ -1,7 +1,18 @@
 # Wingman 项目待办事项
 
 > 最后更新: 2026-10-01
-> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地（含 A3 可靠性与受限设置引导，见「2026-09-30 Android Agent 现状登记」及其后两条 A3 实施条目）、A3-P2 与 A4 未排期；2026-09-30 平台验证收口——macOS/XRecord（runner+Xvfb）与 Android API 34 模拟器全链路验证，模拟器腿抓出三处阻断级缺陷已修（见同日「Android 模拟器验证」条），剩余真机项见该条清单；同日 C++ 覆盖率扫描收官——v13 基线清账 TOTAL 90%，余量全部带论证登记（见「C++ 覆盖率扫描收官」条）；2026-10-01 ScriptManager 状态机死锁环与 stop 数据竞争修复（2026-09-29 登记的独立任务落地，见同日条目）
+> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地（含 A3 可靠性与受限设置引导，见「2026-09-30 Android Agent 现状登记」及其后两条 A3 实施条目）、A3-P2 与 A4 未排期；2026-09-30 平台验证收口——macOS/XRecord（runner+Xvfb）与 Android API 34 模拟器全链路验证，模拟器腿抓出三处阻断级缺陷已修（见同日「Android 模拟器验证」条），剩余真机项见该条清单；同日 C++ 覆盖率扫描收官——v13 基线清账 TOTAL 90%，余量全部带论证登记（见「C++ 覆盖率扫描收官」条）；2026-10-01 ScriptManager 状态机死锁环与 stop 数据竞争修复（2026-09-29 登记的独立任务落地，见同日条目）、task pause/resume 落地（见同日条目）
+
+---
+
+## 2026-10-01 wingman.task pause/resume 落地（缺口清单条目，Lua/Python 双侧同步）
+
+`docs/development-todo.md` 缺口清单「pause(taskId) / resume(taskId)（未实现）」落地，细节详见 CHANGELOG 同日 feat 条目；清单中「API 形状统一」「命名风格统一」两项范围模糊，按任务指示留后：
+
+- **协作式暂停四检查点**：开工前驻留不执行、work 完成后扣住结果不落账（resume 才提交）、重试间隙停试、超时时钟暂停期间停走（deadline 顺延暂停时长）。仅 pending/running 可暂停、仅 paused 可恢复。
+- **pausedFrom_ 状态恢复**：resume 恢复暂停前状态（开工前→pending、执行中→running），避免「worker 启动前 pause+resume」使 execute 入口误判重入、work 永不执行。
+- **双侧落地**：C++ ModuleDescriptor 注册（Lua 即得）+ Python 自动绑定零运行时代码，仅补 task.pyi；新增 `task.paused`/`task.resumed` 事件；wait() 对 paused 只等待不改写、cancel 仅状态转换时发事件、shutdown 先 cancel-all 再 join。
+- **测试与文档**：TaskModuleTest 42 → 47 例（5 新例 ×10 连跑全绿）；docs/api/task.md 补暂停/恢复章节与事件表；development-todo.md 勾选。全量两树 ctest **2518 注册两树 100% 全绿、0 failed**。
 
 ---
 

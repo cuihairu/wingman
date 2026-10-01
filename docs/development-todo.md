@@ -28,8 +28,9 @@
 > `libs/python/typing/wingman/`（37 个 .pyi）与 200+ 条模块测试逐项核对。P0/P1 的
 > event/fsm/task/notify 均已落地并有完整测试（各 38/44/42/39 条用例）与 typing 文件，
 > 此前清单未同步勾选。orchestration 已有基础工作流 API。timer 已于 2026-09-19 落地
-> （timer_module.cpp + timer.pyi + 12 条测试）。仍缺：hotkey 模块、文件 IO 工具、
-> notify tray、事件按名清理与监听器查询、task pause/resume。
+> （timer_module.cpp + timer.pyi + 12 条测试）；事件按名清理与监听器查询已于
+> 2026-09-27 落地；task pause/resume 已于 2026-10-01 落地。仍缺：hotkey 模块、
+> 文件 IO 工具、notify tray。
 
 ### 脚本与运行时
 - [ ] 统一 Lua / Python API 形状与文档
@@ -62,9 +63,9 @@
   - [x] `cancel(taskId)`
   - [x] `status(taskId)` / `wait(taskId, timeout?)`
   - [x] `retry(taskId, options?)`（含 backoffMs/backoffFactor/maxRetries）
-  - [ ] `pause(taskId)` / `resume(taskId)`（未实现）
+  - [x] `pause(taskId)` / `resume(taskId)`（2026-10-01 落地：协作式暂停——开工前驻留、work 完成后扣住结果不落账、重试间隙停试，超时时钟暂停期间停走；仅 pending/running 可暂停、仅 paused 可恢复）
   - [x] `result(taskId)` / `error(taskId)`
-  - [x] 任务生命周期事件：`task.submitted/started/succeeded/failed/canceled/timeout`（pending/running/succeeded/failed/canceled 状态流转）
+  - [x] 任务生命周期事件：`task.submitted/started/paused/resumed/succeeded/failed/canceled/timeout`（pending/running/paused/succeeded/failed/canceled 状态流转）
 - [x] `wingman.notify`（notify_module.cpp + notify.pyi + 39 条测试）
   - [x] `info/warn/error/debug`
   - [x] `toast(title, message, level?)`
