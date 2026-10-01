@@ -398,6 +398,14 @@ jobs:
       - name: Prepare vcpkg cache
         run: mkdir -p "${{ github.workspace }}/vcpkg/archives" "${{ github.workspace }}/vcpkg/downloads"
 
+      - name: Seed vcpkg downloads
+        # sourceforge 单点旁路：python3 → libuuid（vcpkg_from_sourceforge）
+        # 在 SF 事故窗口（源站 522 + 全镜像坏内容）曾致本 job 恒红。
+        # 预置 vendor tarball 进 downloads，vcpkg 按 portfile SHA512 复验、
+        # 命中零网络；清单哈希与 builtin-baseline 钉值一致。详见
+        # build-scripts/ci/seed-vcpkg-downloads.sh 头注释。
+        run: bash ./build-scripts/ci/seed-vcpkg-downloads.sh
+
       - name: Configure CMake
         run: |
           max_retries=3

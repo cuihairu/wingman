@@ -9,7 +9,14 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 443 个提交（feat 77 / fix 147 / docs 79 / test 65 / ci 21 / refactor 9 / chore 20 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 444 个提交（feat 77 / fix 147 / docs 79 / test 65 / ci 22 / refactor 9 / chore 20 / style 4 / security 1 / build 1 / 其他 19）。
+
+### ci（2026-10-01，C++ Linux (full tests, Python engine) 网络下载脆弱性修复——libuuid vendor 预缓存旁路 sourceforge 单点）
+
+- **现象与根因链**：7071a54 CI 唯红该 job 的 Configure CMake 步。依赖图 python3 → libuuid 走 `vcpkg_from_sourceforge`；sourceforge 事故窗口内源站 522（vcpkg 判非瞬态不重试）、~20 个镜像全部返回坏内容（unexpected hash）→ workflow 层 configure 3 次重试全灭。仓库无 ExternalProject/FetchContent；哈希钉死的对应机制即 vcpkg port 的 SHA512（随 builtin-baseline 固定，`vcpkg_from_sourceforge` 内置）——真正缺失的是「预缓存」腿。全图核查：该 job 依赖面里 sourceforge 托管的下载**仅 libuuid 一个**（28 端口逐一遍历 portfile 实证），其余全在 github/lua.org/sqlite.org。
+- **放大器（登记，不修）**：actions/cache 两维虽命中（397MB 恢复），但 Linux files 二进制缓存 ABI 恒不匹配（全部 Linux/macOS job 每轮 `Restored 0 package(s)`、全量源码构建），且 GitHub cache key 不可变（对已存在 key 的 save 必失败，downloads 缓存成化石、不含 libuuid）→ libuuid 每轮重下、SF 挂即恒红。Windows job 走 NuGet（恢复 20 包）不受影响。滚动 cache key 只摊薄首建成本、首建仍需本预缓存，不另立项。
+- **修复**：vendor `build-scripts/ci/vcpkg-downloads/libuuid-1.0.3.tar.gz`（318KB；deac-riga 镜像取货，SHA512 与 baseline portfile 钉值逐位一致）+ `sha512.manifest`（`sha512sum --check --strict` 口径）+ `seed-vcpkg-downloads.sh`（先验后拷进 `${VCPKG_ROOT}/downloads`）+ ci.yml 该 job 在 Prepare/Configure 间接线。vcpkg 下载前先查本地文件并按 portfile SHA512 独立复验，命中即零网络——脚本清单与 vcpkg portfile 双层哈希即供应链边界；baseline 升级若改端口哈希，清单先行失败给出明确报错（脚本头注释含更新口径）。
+- **验证**：本地 `vcpkg install libuuid:x64-linux --no-downloads`（禁网）全链通过（SHA512 校验→构建→二进制缓存提交）；种子脚本 shellcheck 干净、篡改腿实测拒绝（FAILED 即不拷贝）、恢复件哈希复验一致；ci.yml YAML 解析通过；CI 结果见提交对应 run。
 
 ### fix（2026-10-01，ScriptManager 状态机死锁环修复 + stop 数据竞争根治——running 赋值 / 协作停止 / 重入防护 / 运行代号）
 

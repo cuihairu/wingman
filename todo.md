@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-10-01 CI「C++ Linux (full tests, Python engine)」sourceforge 单点修复（libuuid vendor 预缓存）
+
+CI「下载脆弱性」独立小任务收口，根因/验证详见 CHANGELOG 同日 ci 条目：
+
+- **恒红根因**：依赖图 python3 → libuuid（`vcpkg_from_sourceforge`）在 SF 事故窗口源站 522 + 全镜像坏内容，configure 三次重试全灭；全图 28 端点核查 sourceforge 托管仅此一个。
+- **修复**：vendor tarball（SHA512 与 baseline portfile 钉值一致）+ `seed-vcpkg-downloads.sh` 预置 vcpkg downloads（先 `sha512sum --strict -c` 后拷贝），vcpkg 安装时按 portfile SHA512 独立复验、命中零网络；本地 `--no-downloads` 禁网实证全链通过。
+- **登记不修**：Linux files 二进制缓存 ABI 恒 0 恢复 + GitHub cache key 不可变致 downloads 化石（每轮全量源码构建）——滚动 key 只摊薄首建、首建仍需本预缓存；Windows 走 NuGet 不受影响。
+
+---
+
 ## 2026-10-01 ScriptManager 状态机死锁环 + stop 数据竞争修复（2026-09-29 登记的独立任务）
 
 登记缺陷（2026-09-29 覆盖率扫描条「结构性不可达登记」）落地修复，根因/修法/验证详见 CHANGELOG 同日 fix 条目：
