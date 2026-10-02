@@ -2,6 +2,7 @@
 #
 # Agent 链路核心（transport 之上、应用之下的共享层）：
 #   - RemoteClient      出站 TCP 长连接：注册/心跳/重连退避/有界 outbox/命令分发
+#   - ProxyTunnel       代理数据面：proxy.* Notify 的裸 TCP 拨号分支（只拨号不监听）
 #   - RemoteClientConfig 远程链路配置（自 apps/runtime/config.hpp 下沉）
 #   - EventBuffer       本地 UI 事件缓冲（events.drain pull 模型）
 #
@@ -28,6 +29,7 @@ endif()
 
 add_library(wingman_agentcore STATIC
     src/remote_client.cpp
+    src/proxy_tunnel.cpp
     src/event_buffer.cpp
 )
 add_library(wingman::agentcore ALIAS wingman_agentcore)

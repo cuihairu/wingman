@@ -1,13 +1,15 @@
 # 远程网关像素面集成 Apache Guacamole 设计
 
-- 状态：P0 已实现（服务端网关 + 票据 + RBAC + 三协议 e2e + 前端组件，2026-09-23）；阶段二（剪贴板控制 UI、文件传输、会话录制）2026-09-25 实现完成（设计见 §14–§16，DG-7/DG-8/DG-9）；P1（cockpit 接入、前端公共组件抽取、审计报表）✅ 2026-09-25 完成（§7.1/§17）；SSH/SFTP 文件浏览器第一版 ✅ 2026-09-26 实现（§15.1），第二版（分页/进度/重试/审计）✅ 同日实现（§15.2）
-- 日期：2026-09-23（P0 设计），2026-09-25（阶段二设计），2026-09-26（文件浏览器与浏览器内回放实现）
+- 状态：P0 已实现（服务端网关 + 票据 + RBAC + 三协议 e2e + 前端组件，2026-09-23）；阶段二（剪贴板控制 UI、文件传输、会话录制）2026-09-25 实现完成（设计见 §14–§16，DG-7/DG-8/DG-9）；P1（cockpit 接入、前端公共组件抽取、审计报表）✅ 2026-09-25 完成（§7.1/§17）；SSH/SFTP 文件浏览器第一版 ✅ 2026-09-26 实现（§15.1），第二版（分页/进度/重试/审计）✅ 同日实现（§15.2）；目标转发中继（DG-10，guacd 不直拨目标）✅ 2026-10-02 实现（§4.5，cockpit 0767b8b 方案移植）
+- 日期：2026-09-23（P0 设计），2026-09-25（阶段二设计），2026-09-26（文件浏览器与浏览器内回放实现），2026-10-02（目标转发中继修正）
 - 关联文档：`architecture-decisions.md`（硬约束）、`mobile-automation-design.md`（Mobile D1–D9 决策）、`ROADMAP.md`（A4 里程碑）
 - 本文编号：**DG-x**（Guacamole 相关决策），与 Mobile D1–D9、架构 ADEC 并列互引
 - 实现落点：`orchestrator/server/internal/handlers/guacamole.go`（网关）、
+  `internal/agent/guac_relay.go`（目标转发中继，§4.5）、
   `internal/remoteticket/`（一次性票据）、`deployments/guacd/`（部署，锁定 1.5.5）、
-  `orchestrator/dashboard/src/services/remote.ts` + `src/components/RemoteDesktopModal/`（前端）；
-  e2e：`orchestrator/server/integration/guacd_e2e_test.go`（SSH/VNC/RDP 三协议真实链路）
+  `orchestrator/dashboard/src/services/remote.ts` + `src/components/RemoteDesktopModal/`（前端）、
+  `libs/agentcore/src/proxy_tunnel.cpp`（runtime 侧代理数据面，§4.5）；
+  e2e：`orchestrator/server/integration/guacd_e2e_test.go`（SSH/VNC/RDP 三协议真实链路，经中继）
 
 ---
 
@@ -102,12 +104,17 @@ Go server（orchestrator/server）
    │  └─ 审计：连接建立/断开/时长/操作者/目标 agent（沿用 rbac 审计）
    │  TCP 4822（guacd 默认端口，guacd 仅 localhost 监听）
    ▼
-guacd（无状态协议翻译守护进程，与 Go server 同机部署）
-   │  RDP                        VNC/RFB                    VNC/RFB
-   ▼                             ▼                          ▼
-Windows endpoint            macOS endpoint             Linux endpoint
-（内置 RDP host，            （系统设置开启              （x11vnc 附着真实
- Pro+；Home 版 VNC 兜底）     屏幕共享）                  X display；或 TigerVNC）
+guacd（无状态协议翻译守护进程，与 Go server 同机部署——回环中继可见性要求，§4.5）
+   │  拨本会话回环中继 127.0.0.1:<ephemeral>（connect 的 hostname/port 指向它）
+   ▼
+Go server 内 per-session GuacRelay（127.0.0.1:0 listener）
+   │  proxy.new / proxy.data(base64) / proxy.close——走既有 Agent TCP 链路
+   ▼
+runtime ProxyTunnel（只拨号、不监听，§4.3）
+   │  拨真实 target（host 语义 = agent 侧可达地址，§4.4）
+   ▼
+Windows / macOS / Linux endpoint（RDP 3389 / VNC 5900 / SSH 22）
+（内置 RDP host Pro+、系统设置屏幕共享、x11vnc 附着真实 X display）
 ```
 
 ### 4.2 Go 桥在 guacd 握手中的角色
@@ -116,18 +123,46 @@ guacd 对外说 Guacamole 协议。官方 Java webapp 扮演的角色（握手�
 
 1. dashboard 先向 Go server REST 申请票据（操作者身份、目标 agent、权限校验、审计"申请"事件）；
 2. 浏览器以票据发起 WebSocket 升级，Go 桥校验后连 guacd，发送 `select` 指令（协议 `rdp` 或 `vnc`，由目标平台的 endpoint 矩阵决定）；
-3. guacd 回 `args` 要求连接参数，Go 桥回 `connect` 指令，附 endpoint 地址、端口与凭证——**凭证只存在于 Go 桥→guacd 这一段内存里，永远不下发浏览器**；
-4. guacd 连真实 endpoint 成功后，Go 桥进入纯透传模式：两侧字节流原样转发，生命周期结束（任一侧断开）即写审计"断开 + 时长"。
+3. guacd 回 `args` 要求连接参数，Go 桥回 `connect` 指令，附**本会话回环中继**的地址端口与凭证（真实目标地址由中继携带、经 agent 链路到 runtime 侧拨号，§4.5）——**凭证只存在于 Go 桥→guacd 这一段内存里，永远不下发浏览器**；
+4. guacd 连上中继后，Go 桥进入透传模式：浏览器↔guacd 段是既有 WS↔TCP 桥，guacd↔目标段是回环中继 + Agent TCP 链路 + runtime 拨号（§4.5），生命周期结束（任一侧断开）即写审计"断开 + 时长"。
 
 这个结构有两个直接红利：**审计天然完备**（每条连接的申请/建立/断开都经过桥，无旁路）；**endpoint 异构性被 guacd 吸收**（前端从头到尾只见 Guacamole 协议，不知道也不需要知道背后是 RDP 还是 RFB）。
 
-### 4.3 runtime 的角色：零新增监听面
+### 4.3 runtime 的角色：只拨号、零新增监听面
 
-像素面里 runtime（agent 进程）**不在数据链路上**。VNC/RDP server 是 endpoint OS 的系统服务，guacd 直连它们，与 wingman runtime 无关。runtime 仅有的参与是既有能力上报机制的扩展：注册时上报 `remotePreview` 能力位（检测本机 RDP/VNC server 是否可达），供 dashboard 展示"该机可监看/不可监看"。这是既有 outbound 控制面上加一个字段，不新增任何监听端口、不引入任何 server 语义——架构决策的 Forbidden Changes 全部无触碰。
+（2026-10-02 修正：原「runtime 不在数据链路上」的假设随 §4.5 中继拓扑一并修正。）
+
+像素面里 runtime（agent 进程）**在数据链路上，但只作为裸 TCP 字节转发端**：guacd 不直拨目标（云/NAT 下 server 与目标不同网段必败，且 endpoint 端口本就不该对 server 暴露），改拨 Go server 的会话回环中继，字节流经既有 Agent TCP 链路的 `proxy.*` Notify 帧送到 runtime，由 runtime 的 ProxyTunnel 从自己网络位拨真实 target。runtime 不做任何像素采集/编码/协议翻译——VNC/RDP server 仍是 endpoint OS 的系统服务，协议翻译仍全在 guacd。
+
+架构约束零触碰：ProxyTunnel **只拨号、不监听**（无任何新增监听端口、不引入 server 语义），全部流量走既有 outbound 连接（runtime 主动连 Go server 的同一条链路）；注册时上报 `remotePreview` 能力位（检测本机 RDP/VNC server 是否可达）的既有设计不变。
 
 ### 4.4 endpoint 地址的解析
 
-Go server 需要知道目标机的 VNC/RDP 端点地址。来源：agent 注册/心跳上报的局域网地址（既有字段）+ 平台默认端口（RDP 3389、VNC 5900），允许 endpoint 矩阵里按 agent 配置覆盖。地址解析失败（agent 离线/端口不可达）在票据申请时就拒绝，不留给握手期。
+Go server 需要知道目标机的 VNC/RDP 端点地址。来源：agent 注册/心跳上报的局域网地址（既有字段）+ 平台默认端口（RDP 3389、VNC 5900），允许 endpoint 矩阵里按 agent 配置覆盖。地址解析失败（agent 离线/无上报地址）在票据申请时就拒绝，不留给握手期。
+
+中继拓扑下（§4.5）该地址的语义变为「**agent 侧可达地址**」：它不需要 server 拨得通，只需要 runtime 拨得通（NAT 后内网、本机回环、容器网络名均可）——这解除了原「server 与 endpoint 同网段」的隐含前提。注册表存的 `conn.RemoteAddr()` 原文常带临时端口，票据签发时 `SplitHostPort` 只取地址位（无端口的手动注册、裸主机名原样保留），否则中继 target 会拼成 `ip:ephemeral:port`。
+
+### 4.5 目标转发中继（DG-10，2026-10-02）
+
+**决策**：guacd 不直拨目标 endpoint。每条会话在 Go server 内起一个 `127.0.0.1:0` 回环 listener（`GuacRelay`），connect 握手把 hostname/port 指向该中继；guacd 拨中继成功后，字节流按代理协议在既有 Agent TCP 链路上搬运：server 下发 `proxy.new`（携带 target），runtime 拨通后双向走 `proxy.data`（base64 载荷，Notify 帧），任一侧关闭发 `proxy.close`，拨号/链路失败回 `proxy.error`。
+
+**为什么**（cockpit 0767b8b 同款方案，对方仓库跑通后移植——DG-6 共享的另一落点）：
+
+1. 云/NAT 部署下 server 与目标不在同网段，server 直拨内网地址必败——runtime 常驻目标侧网络，由它拨号天然可达；
+2. endpoint 的 RDP/VNC/SSH 端口本就不该对 server 暴露，收敛为「只对 agent 所在网络可达」（§8 网络拓扑的收紧而非放宽）；
+3. guacd 侧零改动——它只是被 connect 参数指向了一个"看起来像 endpoint"的回环地址。
+
+**部署拓扑约束**：guacd 必须与 Go server 同机（或至少共享回环视图）——中继 listener 绑 127.0.0.1，guacd 拨不到即连接失败。这与既有「guacd 仅 localhost 监听、server 拨 127.0.0.1:4822」是同一条部署前提的另一面；§16 录制目录双挂同理。
+
+**实现纪律**（cockpit 侧实测踩过的坑，移植时全部保留）：
+
+- 读缓冲 `buf[:n]` 入队/序列化前必须拷贝——异步写泵会被下次 Read 覆写（RDP 亚毫秒连发高频命中）；
+- `proxy.data` 可能先于拨号完成到达（guacd 的 connect 一成功就发协议首包）：写入先进 per-conn 队列，拨通后按序冲刷——无拨号等待原语、无丢首包窗口；
+- 代理流不可缓冲重放：链路断开即拆全部中继连接、会话作废重开（`proxy.data` 不进 outbox）。
+
+**runtime 侧（ProxyTunnel）线程模型**：每连接一个 worker 线程跑 io_context 全生命周期，socket 的全部操作（拨号/读泵/写入/收口）都是该线程内 async handler；`stop()` 逐连接 post 收口后 join 全部 worker——对象析构后不存在游离线程（detached 线程与进程退出期静态析构竞态是全量二进制偶发 `terminate ... std::system_error` 的根因，CI 按单测过滤跑永远看不到全量退出，故按结构性修复落地）。
+
+**验证**（2026-10-02）：Go 单测全绿；agentcore 33 例全绿（含 5 例 ProxyTunnel 新用例），4 轮全量 + 3 轮并发全量无退出期 terminate；三协议真链路 e2e（SSH/VNC/RDP 全走中继 + 三个拒绝路径）RC=0；server docker 镜像（`orchestrator/server/Dockerfile`）构建 + 容器 healthy 冒烟通过。
 
 ---
 
@@ -286,9 +321,9 @@ GET /api/remote/sessions            desktop:view（只读，报表不含接管�
 | 硬约束 | 本设计 | 判定 |
 |---|---|---|
 | Go server 是远程中控编排器 | guacd 网关、票据、审计全部落在 Go server | ✅ |
-| Runtime 作为 agent 主动 outbound 连接 Go server | runtime 像素面零参与，仅既有 outbound 上加能力字段 | ✅ |
+| Runtime 作为 agent 主动 outbound 连接 Go server | 代理数据面（§4.5）复用既有 outbound 连接收发 proxy.* Notify，不新开连接方向 | ✅ |
 | 本地 Tauri UI 通过本地 IPC 控制 runtime | 未触碰；本地 UI 不在本设计范围 | ✅ |
-| **Runtime 禁止引入 HTTP/WebSocket server** | runtime 无任何新增监听；VNC/RDP server 是 OS 系统服务，与 runtime 进程无关 | ✅ |
+| **Runtime 禁止引入 HTTP/WebSocket server** | runtime 无任何新增监听（ProxyTunnel 只拨号不监听，§4.3）；VNC/RDP server 是 OS 系统服务，与 runtime 进程无关 | ✅ |
 | Dashboard/远程客户端只连接 Go server | 浏览器唯一入口 = Go server WS 边界；不直连 guacd、不直连 endpoint | ✅ |
 | WebSocket 允许在 Go server 边界 | Guacamole 指令流跑在既有允许的 dashboard↔Go server WS 上 | ✅ |
 | Mobile D3：自动化数据面拒 scrcpy | 不推翻；Android 像素面为远期可选项且走 VNC 桥而非 scrcpy | ✅ |
@@ -314,7 +349,7 @@ GET /api/remote/sessions            desktop:view（只读，报表不含接管�
 - 不做自研 MJPEG 流；
 - 不部署 Java guacamole-client webapp；
 - 不让 guacd 暴露公网、不让浏览器直连 guacd；
-- 不在 runtime 里加任何像素采集转发（桌面像素面与 runtime 无关；Android 像素面远期走 VNC 桥也不经 runtime）；
+- 不在 runtime 里做像素采集/编码（runtime 仅按 §4.5 转发裸 TCP 字节流，协议翻译全在 guacd；Android 像素面远期走 VNC 桥也不经 runtime）；
 - 不做 iOS（平台不可能，§6 DG-5）。
 
 ---

@@ -406,6 +406,13 @@ func (h *GuacamoleHandler) HandleTicketCreate(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"success": false, "error": "agent has no reported LAN address"})
 		return
 	}
+	// registry IP 由 handleRegister 写入 conn.RemoteAddr() 原文（含临时端口），
+	// endpoint 语义只要地址位：票据 host 按此归一，否则中继 target 拼成
+	// ip:ephemeral:servicePort。无端口的（手动注册、裸主机名）原样保留。
+	host := info.IP
+	if h, _, err := net.SplitHostPort(host); err == nil && strings.TrimSpace(h) != "" {
+		host = h
+	}
 	port := req.Port
 	if port <= 0 {
 		port = guacProtocolPort(req.Protocol)
@@ -417,7 +424,7 @@ func (h *GuacamoleHandler) HandleTicketCreate(c *gin.Context) {
 
 	params := map[string]string{
 		"agent_id":  req.AgentID,
-		"host":      info.IP,
+		"host":      host,
 		"port":      strconv.Itoa(port),
 		"protocol":  req.Protocol,
 		"username":  req.Username,
@@ -441,7 +448,7 @@ func (h *GuacamoleHandler) HandleTicketCreate(c *gin.Context) {
 
 	WriteAuditLog(h.db, username, "desktop.ticket", req.AgentID, map[string]any{
 		"protocol": req.Protocol,
-		"host":     info.IP,
+		"host":     host,
 		"port":     port,
 		"readOnly": req.ReadOnly,
 		"record":   req.Record,
@@ -476,10 +483,13 @@ type GuacamoleSession struct {
 	ClientWS *websocket.Conn
 	guacd    net.Conn
 	guacdRd  *bufio.Reader
-	Created  time.Time
-	writeMu  sync.Mutex
-	done     chan struct{}
-	once     sync.Once
+	// relay 目标转发中继（§设计修正 2026-10-02）：guacd 拨回环中继，字节流
+	// 经 agent 链路代理协议到 agent 侧拨真实目标。closeSession 时随会话关闭。
+	relay   *agent.GuacRelay
+	Created time.Time
+	writeMu sync.Mutex
+	done    chan struct{}
+	once    sync.Once
 }
 
 // guacTicketFromRequest 票据双通道提取：URL query ?ticket=（首选，
@@ -564,6 +574,38 @@ func (h *GuacamoleHandler) HandleWS(c *gin.Context) {
 		return
 	}
 
+	// 目标转发中继：guacd 不直拨目标（云/NAT 下 server 与目标不同网段必败），
+	// 拨本会话回环中继，字节流经 agent 链路代理协议、由 agent 侧拨 target。
+	// host 语义自此处起为「agent 侧可达地址」。起中继须在 WS 升级前——失败
+	// 时还能回干净的 502 JSON 而非半截隧道。
+	target := net.JoinHostPort(host, strconv.Itoa(port))
+	relay, relayAddr, err := agent.StartGuacRelay(agentID, agent.GuacRelayPrefix+sessionID, target,
+		func(aid, msgType string, data map[string]any) error {
+			return agent.GuacRelaySendToAgent(h.registry, aid, msgType, data)
+		})
+	if err != nil {
+		log.Printf("Guacamole: start target relay failed: %v", err)
+		WriteAuditLog(h.db, tk.Username, "desktop.connect_fail", agentID, map[string]any{
+			"protocol": protocol, "host": host, "port": port, "reason": "relay setup failed",
+		})
+		RecordRemoteSession(h.db, models.RemoteSessionAudit{
+			SessionID:  sessionID,
+			AgentID:    agentID,
+			Operator:   tk.Username,
+			Protocol:   protocol,
+			Host:       host,
+			Port:       port,
+			ReadOnly:   readOnly,
+			Record:     record,
+			Status:     models.RemoteSessionStatusFailed,
+			FailReason: "relay setup failed",
+			StartedAt:  startedAt,
+		})
+		_ = guacdConn.Close()
+		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": "target relay unavailable"})
+		return
+	}
+
 	conn, err := guacamoleUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("Guacamole: websocket upgrade failed: %v", err)
@@ -591,6 +633,7 @@ func (h *GuacamoleHandler) HandleWS(c *gin.Context) {
 		TicketID:      ticketID,
 		ClientWS:      conn,
 		guacd:         guacdConn,
+		relay:         relay,
 		Created:       startedAt,
 		done:          make(chan struct{}),
 	}
@@ -621,6 +664,12 @@ func (h *GuacamoleHandler) HandleWS(c *gin.Context) {
 	}
 	argNames := guacParseArgs(argsFrame)
 	table := guacParamTable(protocol, host, port, tk.Params, width, height, readOnly)
+	// connect 的 hostname/port 指向回环中继（guacd → server 同机回环 → agent
+	// 链路 → agent 侧拨真实 target）。审计仍记真实目标（session.Host/Port 不动）。
+	if rh, rp, err := net.SplitHostPort(relayAddr); err == nil {
+		table["hostname"] = rh
+		table["port"] = rp
+	}
 	// 文件传输通道（§15）与会话录制（§16）参数：都是按名注入，args 名单里
 	// 没有的协议（如 vnc 的文件参数）自然落空，不影响按位对应
 	guacApplyFileTransfer(protocol, table, h.drivePath)
@@ -728,6 +777,9 @@ func (h *GuacamoleHandler) closeSession(gs *GuacamoleSession) {
 	gs.once.Do(func() {
 		_ = gs.ClientWS.Close()
 		_ = gs.guacd.Close()
+		if gs.relay != nil {
+			gs.relay.Close() // 关中继 listener + 拆全部 guacd 侧连接（并通知 agent 拆链）
+		}
 		if gs.TicketID != "" {
 			h.opSessions.Delete(gs.TicketID)
 		}

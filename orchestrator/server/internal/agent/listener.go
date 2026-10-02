@@ -2,6 +2,7 @@ package agent
 
 import (
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"log"
 	"maps"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -492,9 +494,64 @@ func (ac *agentConn) handleNotify(body []byte) {
 		ac.handleTeamStatusReport(msg)
 	case "team.broadcast":
 		ac.handleTeamBroadcast(msg)
+	case "proxy.data":
+		ac.handleProxyData(msg)
+	case "proxy.close":
+		ac.handleProxyClose(msg)
+	case "proxy.error":
+		ac.handleProxyError(msg)
 	default:
 		log.Printf("[FrameListener] Unknown notify type: %s", msgType)
 	}
+}
+
+// handleProxyData agent → server 方向的代理数据帧。按 proxyId 前缀路由到
+// 对应中继（guac: → Guacamole 目标转发）；data 为 base64。未知前缀记日志
+// 丢弃——后续端口转发等消费方在此扩路由，与 cockpit proxyMgr 同位。
+func (ac *agentConn) handleProxyData(msg map[string]any) {
+	proxyID, _ := msg["proxyId"].(string)
+	connID, _ := msg["connId"].(string)
+	dataB64, _ := msg["data"].(string)
+	if proxyID == "" || connID == "" {
+		log.Printf("[FrameListener] proxy.data missing proxyId/connId")
+		return
+	}
+	if !strings.HasPrefix(proxyID, GuacRelayPrefix) {
+		log.Printf("[FrameListener] proxy.data for unknown prefix: %s", proxyID)
+		return
+	}
+	data, err := base64.StdEncoding.DecodeString(dataB64)
+	if err != nil {
+		log.Printf("[FrameListener] proxy.data bad base64 for %s: %v", connID, err)
+		return
+	}
+	if err := guacRelayDeliver(proxyID, connID, data); err != nil {
+		log.Printf("[FrameListener] proxy.data deliver %s: %v", connID, err)
+	}
+}
+
+// handleProxyClose agent 侧关闭（目标断开/写错误）。
+func (ac *agentConn) handleProxyClose(msg map[string]any) {
+	proxyID, _ := msg["proxyId"].(string)
+	connID, _ := msg["connId"].(string)
+	reason, _ := msg["reason"].(string)
+	if !strings.HasPrefix(proxyID, GuacRelayPrefix) {
+		return // 非中继会话的关闭通知无需日志噪声
+	}
+	guacRelayHandleClose(proxyID, connID, reason)
+}
+
+// handleProxyError agent 拨目标失败等错误上报 → 拆 guacd 侧连接，让 connect
+// 立即失败而非挂到超时。
+func (ac *agentConn) handleProxyError(msg map[string]any) {
+	proxyID, _ := msg["proxyId"].(string)
+	connID, _ := msg["connId"].(string)
+	errMsg, _ := msg["error"].(string)
+	if !strings.HasPrefix(proxyID, GuacRelayPrefix) {
+		log.Printf("[FrameListener] proxy.error for unknown prefix: %s", proxyID)
+		return
+	}
+	guacRelayHandleError(proxyID, connID, errMsg)
 }
 
 // handleRequest 应答 runtime 发来的 Request 帧（runtime 主动向服务器取数）。
@@ -676,6 +733,34 @@ func (l *FrameListener) deliverInboxMessage(agentID string, msg *InboxMessage) {
 		"payload":     msg.Payload,
 		"timestamp":   msg.Timestamp.UnixMilli(),
 	})
+}
+
+// SendNotify 导出的 Notify 帧发送口（代理协议面：中继经 AgentConn 抽象向
+// agent 推 proxy.* 帧）。写入失败如实返回——中继以此判定拆链，静默会让
+// guacd 侧挂到超时。
+func (ac *agentConn) SendNotify(msgType string, data map[string]any) error {
+	msg := map[string]any{
+		"type": msgType,
+	}
+	maps.Copy(msg, data)
+
+	body, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("marshal notify %s: %w", msgType, err)
+	}
+
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+
+	header := MessageHeader{
+		Length: uint32(len(body)),
+		Type:   Notify,
+	}
+	if err := ac.writeMsgHeaderLocked(&header); err != nil {
+		return err
+	}
+	_, err = ac.conn.Write(body)
+	return err
 }
 
 // sendNotify sends a Notify message.

@@ -80,12 +80,13 @@ func guacReadyHit(frame string) bool {
 	return strings.HasPrefix(frame, "5.ready,")
 }
 
-// guacSetupChain 全链路公共段：注册假 agent（IP 指向宿主回环，容器端口
-// 映射在回环上）→ admin 登录 → 票据 → WS 升级 → 读隧道 UUID。
+// guacSetupChain 全链路公共段：真 TCP 注册 simAgent（走 FrameListener 全链路，
+// 注册后携带代理数据面 proxy.*——中继 target 由 agent 侧从回环拨容器端点）→
+// admin 登录 → 票据 → WS 升级 → 读隧道 UUID。
 func guacSetupChain(t *testing.T, env *testEnv, protocol string, port int, username, password string) *websocket.Conn {
 	t.Helper()
 
-	env.registry.Register(guacE2EAgentID, "guac-e2e-host", "127.0.0.1", nil)
+	newSimAgent(t, env.agentAddr, guacE2EAgentID, "guac-e2e-host", nil)
 
 	token := env.login(t, "admin")
 	res := env.do(t, http.MethodPost, "/api/remote/tickets", token, map[string]any{

@@ -4,6 +4,9 @@ find_package(GTest CONFIG REQUIRED)
 
 add_executable(agentcore_tests agentcore_test.cpp)
 
+# ProxyTunnel 是 RemoteClient 的内部组件（src/ 头），测试经源目录直含
+target_include_directories(agentcore_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+
 target_link_libraries(agentcore_tests PRIVATE
     wingman::agentcore
     GTest::gtest

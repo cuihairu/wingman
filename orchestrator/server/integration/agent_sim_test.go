@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -48,6 +49,12 @@ type simAgent struct {
 	commands []simCommand
 	notifies []string
 	handler  func(method string, data map[string]any) map[string]any
+
+	// 代理数据面（Guacamole 中继 e2e）：connID → target 侧连接。
+	// 与 runtime ProxyTunnel 同构——proxy.new 同步拨号（保序，proxy.data
+	// 帧由 readLoop 串行排在拨号之后，无「拨号中丢首包」窗口）。
+	proxyMu    sync.Mutex
+	proxyConns map[string]net.Conn
 }
 
 // newSimAgent 连接 orchestrator、发送 agent.register 并等待 register_ack。
@@ -57,7 +64,8 @@ func newSimAgent(t *testing.T, addr, agentID, hostname string, handler func(stri
 	if err != nil {
 		t.Fatalf("sim agent %s dial %s: %v", agentID, addr, err)
 	}
-	a := &simAgent{t: t, id: agentID, conn: conn, handler: handler}
+	a := &simAgent{t: t, id: agentID, conn: conn, handler: handler,
+		proxyConns: map[string]net.Conn{}}
 	t.Cleanup(a.close)
 	go a.readLoop()
 
@@ -70,6 +78,12 @@ func newSimAgent(t *testing.T, addr, agentID, hostname string, handler func(stri
 }
 
 func (a *simAgent) close() {
+	a.proxyMu.Lock()
+	for id, c := range a.proxyConns {
+		c.Close()
+		delete(a.proxyConns, id)
+	}
+	a.proxyMu.Unlock()
 	a.conn.Close()
 }
 
@@ -168,6 +182,89 @@ func (a *simAgent) recordNotify(body []byte) {
 	a.mu.Lock()
 	a.notifies = append(a.notifies, typ)
 	a.mu.Unlock()
+
+	switch typ {
+	case "proxy.new": // 同步拨号：readLoop 串行保证后续 proxy.data 排在拨号后
+		a.proxyHandleNew(msg)
+	case "proxy.data":
+		a.proxyDeliver(msg)
+	case "proxy.close":
+		a.proxyDrop(msg)
+	}
+}
+
+// ---------- 代理数据面（Guacamole 目标转发 e2e，与 runtime ProxyTunnel 同构） ----------
+
+func (a *simAgent) proxyHandleNew(msg map[string]any) {
+	proxyID, _ := msg["proxyId"].(string)
+	connID, _ := msg["connId"].(string)
+	target, _ := msg["target"].(string)
+	conn, err := net.DialTimeout("tcp", target, 2*time.Second)
+	if err != nil {
+		a.notify("proxy.error", map[string]any{
+			"proxyId": proxyID, "connId": connID, "error": err.Error(),
+		})
+		return
+	}
+	a.proxyMu.Lock()
+	a.proxyConns[connID] = conn
+	a.proxyMu.Unlock()
+
+	go func() { // target → server 读泵
+		buf := make([]byte, 32*1024)
+		for {
+			n, err := conn.Read(buf)
+			if n > 0 {
+				a.notify("proxy.data", map[string]any{
+					"proxyId": proxyID,
+					"connId":  connID,
+					"data":    base64.StdEncoding.EncodeToString(buf[:n]),
+				})
+			}
+			if err != nil {
+				if a.proxyRemove(connID) {
+					a.notify("proxy.close", map[string]any{
+						"proxyId": proxyID, "connId": connID, "reason": err.Error(),
+					})
+				}
+				return
+			}
+		}
+	}()
+}
+
+func (a *simAgent) proxyDeliver(msg map[string]any) {
+	connID, _ := msg["connId"].(string)
+	dataB64, _ := msg["data"].(string)
+	data, err := base64.StdEncoding.DecodeString(dataB64)
+	if err != nil {
+		return
+	}
+	a.proxyMu.Lock()
+	conn := a.proxyConns[connID]
+	a.proxyMu.Unlock()
+	if conn != nil {
+		_, _ = conn.Write(data)
+	}
+}
+
+func (a *simAgent) proxyDrop(msg map[string]any) {
+	connID, _ := msg["connId"].(string)
+	a.proxyRemove(connID)
+}
+
+// proxyRemove 摘除并关闭一条 target 连接（幂等，返回是否由本次摘除）。
+func (a *simAgent) proxyRemove(connID string) bool {
+	a.proxyMu.Lock()
+	conn, ok := a.proxyConns[connID]
+	if ok {
+		delete(a.proxyConns, connID)
+	}
+	a.proxyMu.Unlock()
+	if ok {
+		conn.Close()
+	}
+	return ok
 }
 
 // ---------- agent 侧主动行为 ----------

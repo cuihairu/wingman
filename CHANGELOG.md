@@ -9,7 +9,16 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 454 个提交（feat 79 / fix 151 / docs 83 / test 65 / ci 22 / refactor 9 / chore 20 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 456 个提交（feat 80 / fix 151 / docs 83 / test 65 / ci 22 / refactor 9 / chore 21 / style 4 / security 1 / build 1 / 其他 19）。
+
+### feat（2026-10-03，Guacamole 目标转发中继落地——guacd 不直拨目标，字节流经 Agent TCP 链路由 runtime 侧拨真实 target）
+
+背景：guacd 原先按 connect 参数直拨 endpoint 地址，云/NAT 部署下 server 与目标不同网段必败，且 endpoint 的 RDP/VNC/SSH 端口本就不该对 server 暴露。自 cockpit 0767b8b 移植中继方案（对方仓库已跑通）：每会话 Go server 起 `127.0.0.1:0` 回环 listener，connect 的 hostname/port 指向中继，字节流按代理协议（`proxy.new`/`proxy.data`(base64)/`proxy.close`/`proxy.error`，Notify 帧）在既有 Agent TCP 链路上搬运，runtime 侧 ProxyTunnel 从自己网络位拨真实 target——host 语义变为「agent 侧可达地址」。设计定案见 `docs/remote-gateway-guacamole-design.md` §4.5/DG-10（§4.1 流向图、§4.3 runtime 角色、§4.4 地址解析、§9 合规表、§10 不做清单同步修正）。
+
+- **server 侧（`internal/agent/guac_relay.go`，新）**：`GuacRelay` 每会话一个回环 listener；guacd 侧连接的读泵保留 cockpit 拷贝纪律（`buf[:n]` 先拷贝再入队/序列化——异步写泵会被下次 Read 覆写，RDP 亚毫秒连发高频命中）；`guacRelayDeliver`/`HandleClose`/`HandleError` 按 proxyID 经包级注册表路由；发送口 `agentConn.SendNotify`（新导出方法，持既有写锁）。`listener.go` handleNotify 增 proxy.* 三分发；`guacamole.go` 在 WS 升级前起中继（失败回干净 502 JSON 而非半截隧道）、connect 参数覆写为中继地址（审计与会话记录仍记真实目标）、`closeSession` 随会话拆中继；票据侧对 registry IP `SplitHostPort` 剥临时端口（`conn.RemoteAddr()` 原文含 ephemeral 端口，不剥则中继 target 拼成 `ip:ephemeral:port`；无端口的手动注册/裸主机名原样保留）。
+- **runtime 侧（`libs/agentcore/src/proxy_tunnel.cpp/.hpp`，新）**：ProxyTunnel 只拨号不监听（架构硬约束零触碰）。线程模型为每连接一个 worker 线程跑 io_context 全生命周期——socket 全部操作（拨号/读泵/写入/收口）都是该线程内 async handler，其他线程只 post 投递或查 atomic 标志；`stop()` 先逐连接 post 收口再 join 全部 worker。**该模型是退出期崩溃的根治**：初版 detached 线程实现下全量二进制偶发 `terminate ... std::system_error`（detached 线程与静态析构竞态；CI 按 gtest_filter 单测跑永远看不到全量退出，本地 3 次全量重跑均 0 也难复现，docker 构建并发负载下现形一次后定位重写）。`proxy.data` 先于拨号完成到达（guacd connect 一成功即发协议首包）时写入进 per-conn 队列、拨通后按序冲刷——无拨号等待原语、无丢首包窗口；代理流不缓冲重放（`proxy.data` 不入 outbox，链路断即拆链会话作废）。内置 base64（agentcore 层禁依赖 lib/wingman 的 crypt）。`remote_client.cpp` 注入 ProxyTunnel 并分发 proxy.* Notify，`stop()` 在断链后拆全部连接。
+- **测试**：agentcore +5 例（双向回环 / 目标 EOF 回 proxy.close / 拨号失败回 proxy.error / stop 后迟到 proxy.new 拒绝 / 坏 target 与坏 base64 优雅拒绝），33 例全绿 ×4 轮全量 + 3 轮并发全量均无退出期 terminate；`agent_sim_test.go` 的 simAgent 升级为真 TCP 链路 + 代理数据面（`proxyHandleNew` 在 readLoop 内同步拨号保序、target→server 读泵、幂等拆链），guacd e2e 从纯注册表登记改走真链路；三协议真链路 e2e（SSH/VNC/RDP 全经中继）RC=0，加三个拒绝路径（未知 agent 404 / 坏协议 400 / 伪票据 401）。Go 全模块 `go test ./...` 绿。
+- **docker 镜像**：`orchestrator/server/Dockerfile` 构建验证（golang:1.26-alpine → alpine 运行时，95.4MB），容器启动 healthy 冒烟通过（JWT secret 32+ 字符校验路径顺带覆盖）。
 
 ### feat（2026-10-02，wingman agent 一键安装三件套——install.sh / install.ps1 / agent 独立构建矩阵接入 nightly 分发）
 

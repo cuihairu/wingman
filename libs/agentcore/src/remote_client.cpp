@@ -1,5 +1,6 @@
 #include "wingman/agentcore/remote_client.hpp"
 #include "wingman/agentcore/event_buffer.hpp"
+#include "proxy_tunnel.hpp"
 #include "wingman/transport/transport_client.hpp"
 #include <spdlog/spdlog.h>
 #include <thread>
@@ -91,12 +92,27 @@ public:
     static constexpr size_t kMaxOutbox = 100;
     std::mutex outboxMutex;
     std::queue<transport::MessagePtr> outbox;
+
+    // 代理数据面（Guacamole 目标转发等）：proxy.* Notify 的裸 TCP 拨号分支。
+    // 只拨号不监听（架构约束），连接不跨链路断线存续。
+    std::shared_ptr<ProxyTunnel> proxy;
 };
 
 RemoteClient::RemoteClient(const RemoteClientConfig& config)
     : impl_(std::make_unique<Impl>()) {
     impl_->config = config;
     impl_->client = transport::createTcpClient();
+    impl_->proxy = std::make_shared<ProxyTunnel>(
+        [this](const std::string& msgType, const nlohmann::json& fields) -> bool {
+            nlohmann::json msg = fields;
+            msg["type"] = msgType;
+            auto message = std::make_shared<transport::Message>();
+            message->header.type = transport::MessageType::Notify;
+            message->body = msg.dump();
+            // queueable=false：代理流数据断线即陈旧，重放会污染协议会话；
+            // 链路失效由 ProxyTunnel 据此拆链，server 中继随会话清理。
+            return deliverMessage(message, false);
+        });
 }
 
 RemoteClient::~RemoteClient() {
@@ -205,6 +221,11 @@ void RemoteClient::stop() {
     // 断开连接
     if (impl_->client) {
         impl_->client->disconnect();
+    }
+
+    // 收口代理数据面：连接不跨链路断线存续（proxy.data 不入 outbox）
+    if (impl_->proxy) {
+        impl_->proxy->stop();
     }
 
     spdlog::info("RemoteClient stopped");
@@ -519,6 +540,9 @@ void RemoteClient::handleNotifyMessage(const transport::MessagePtr& msg) {
 
         if (type == "agent.register_ack") {
             handleRegisterAck(body);
+        } else if (type == "proxy.new" || type == "proxy.data" || type == "proxy.close") {
+            // 代理数据面（Guacamole 目标转发等）：高频帧不逐条 info 级刷日志
+            impl_->proxy->handleNotify(type, json);
         } else {
             spdlog::debug("Received Notify: type={}", type);
         }
