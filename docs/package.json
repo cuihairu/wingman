@@ -1,6 +1,6 @@
 {
   "name": "wingman-docs",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Wingman Documentation",
   "type": "module",
   "scripts": {

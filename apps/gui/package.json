@@ -1,6 +1,6 @@
 {
   "name": "wingman-gui",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Wingman - Game Automation Programmable Control Engine",
   "type": "module",
   "scripts": {

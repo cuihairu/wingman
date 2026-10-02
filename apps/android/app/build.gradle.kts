@@ -17,8 +17,8 @@ android {
         // OpenCV_FOUND=FALSE），26 → 28（Android 9，2018）
         minSdk = 28
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.2"
 
         // 显式对齐 CI runner 预装版本（AGP 默认 NDK 26.1 过旧，与最新 vcpkg
         // toolchain 的探测/组合行为不一致）

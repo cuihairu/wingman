@@ -9,7 +9,15 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 459 个提交（feat 81 / fix 150 / docs 83 / test 65 / ci 22 / refactor 9 / chore 22 / style 4 / security 1 / build 1 / 其他 21）。
+## [v0.1.2] - 2026-10-03
+
+### 🎉 正式发布：相比 v0.1.1（2026-06）的主要变化
+
+- **Android Agent A1/A2/A3 可靠性全面落地**：链路打通（A1）、手势注入/屏幕采集/找色找图/远程截图（A2）、开机自启/崩溃自重启/核心看门狗/机型保活指引/受限设置引导（A3），APK 随 nightly 分发（`wingman-*-android-arm64.apk`）
+- **密钥保险箱**：主口令派生加密存储（PBKDF2-HMAC-SHA256 600k + AES-256-GCM）、连接快捷调用（`useSaved` 自动注入凭据）、管理界面（设主口令/解锁/锁定/条目列表/导出）
+- **Guacamole 目标转发中继**：guacd 不直拨目标，字节流经 Agent TCP 链路由 runtime 侧拨真实 target（解决云/NAT 下 server 与目标不同网段必败）
+- **一键安装三件套**：`install.sh` / `install.ps1` + agent 独立构建矩阵接入 nightly 分发（linux/macos/windows × x64/arm64 六腿）
+- **三处生产级修复**：Dashboard 列表恒空（useRequest formatResult）、Guacamole WS 票据 401（URL 污染）、浏览器 WS 握手秒断（子协议回显缺失）
 
 ### feat（2026-10-03，密钥保险箱——主口令派生加密存储 / 连接快捷调用 / 管理界面，附 dashboard 列表与 Guacamole WS 三处生产级修复）
 
