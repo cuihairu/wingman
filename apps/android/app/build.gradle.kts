@@ -26,7 +26,7 @@ android {
 
         ndk {
             // A1 只出 arm64 真机；模拟器按需加 x86_64
-            abiFilters += listOf("arm64-v8a")
+            abiFilters += listOf("x86_64")  // 本地模拟器验证构建（不提交）
         }
         externalNativeBuild {
             cmake {
@@ -36,7 +36,7 @@ android {
                 arguments += listOf(
                     "-DCMAKE_TOOLCHAIN_FILE=" + file("../cpp/vcpkg-android.cmake").absolutePath,
                     "-DWINGMAN_VCPKG_ROOT=$wingmanVcpkgRoot",
-                    "-DVCPKG_TARGET_TRIPLET=arm64-android",
+                    "-DVCPKG_TARGET_TRIPLET=x64-android",
                     "-DANDROID_STL=c++_static",
                 )
             }
