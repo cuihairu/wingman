@@ -214,6 +214,9 @@ bool SecurityManager::checkDebuggerFlags() {
 bool SecurityManager::checkHardwareBreakpoints() {
 #ifndef _WIN32
     return false;
+#elif !defined(_M_X64) && !defined(_M_IX86)
+    // 调试寄存器 Dr0-Dr7 是 x86/x64 专属，ARM64 的 _CONTEXT 无此字段
+    return false;
 #else
     CONTEXT ctx = {0};
     ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
@@ -336,6 +339,9 @@ bool SecurityManager::checkVMDrivers() {
 
 bool SecurityManager::checkVMCPUID() {
 #ifndef _WIN32
+    return false;
+#elif !defined(_M_X64) && !defined(_M_IX86)
+    // __cpuid 内建函数 x86/x64 专属；ARM64 由注册表/进程/驱动检测兜底
     return false;
 #else
     // Detect virtual machine using CPUID instruction
