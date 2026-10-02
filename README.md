@@ -57,6 +57,46 @@ C++ + Lua/Python 的高性能游戏自动化框架
 
 ## 快速开始
 
+### 一键安装 Agent
+
+一条命令安装 `wingman-agent` 单二进制（自动检测 OS 与 CPU 架构，匿名下载，无需登录 GitHub；重跑即升级）：
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/cuihairu/wingman/main/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/cuihairu/wingman/main/scripts/install.ps1 | iex
+```
+
+可选参数（Linux/macOS 用 `bash -s --`，Windows 用 scriptblock）：
+
+```bash
+# 指定版本 + 注册常驻服务（Linux: systemd user unit；macOS: launchd）
+curl -fsSL https://raw.githubusercontent.com/cuihairu/wingman/main/scripts/install.sh | bash -s -- --version nightly --service
+```
+
+```powershell
+# 指定版本 + 注册 Windows 服务（需管理员；服务运行于 Session 0，仅适合 headless）
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/cuihairu/wingman/main/scripts/install.ps1))) -Version nightly -Service
+```
+
+| OS | 架构 | 产物 |
+|----|------|------|
+| Linux | x86_64 (x64) / aarch64 (arm64) | `wingman-agent-*-linux-{x64,arm64}.tar.gz` |
+| macOS | x86_64 (x64) / arm64 (Apple Silicon) | `wingman-agent-*-macos-{x64,arm64}.tar.gz` |
+| Windows | x64 / arm64 | `wingman-agent-*-windows-{x64,arm64}.zip` |
+
+说明：
+
+- 默认安装到 `~/.local/bin`（Linux/macOS）或 `%LOCALAPPDATA%\Programs\Wingman\bin`（Windows），安装后自动运行 `wingman-agent --version` 验证
+- 版本选择：按发布时间倒序取第一个含本平台 agent 产物的 release（正式版优先，尚无正式 agent 产物时落到 nightly 预发布）
+- 下载走 GitHub Releases 资产匿名直链；API 查询有 60 次/小时匿名限流，可用 `--token`/`-Token`（或 `GITHUB_TOKEN` 环境变量）提升额度
+- 不认识的 OS/架构会明确报错并列出支持范围（armv7 等暂无构建产物）
+- 完整参数见 [scripts/install.sh](scripts/install.sh) / [scripts/install.ps1](scripts/install.ps1) 头部注释
+
 ### 环境要求
 
 - **Windows**: Windows 10/11 + Visual Studio 2022

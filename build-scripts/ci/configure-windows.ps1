@@ -3,7 +3,11 @@ param(
     [string]$Config = "Debug",
     [switch]$EnableTests,
     [switch]$EnablePython,
-    [string]$VersionSuffix = ""
+    [string]$VersionSuffix = "",
+    # CMake 平台架构与 vcpkg triplet（agent 矩阵在 ARM64 runner 上用
+    # `-Platform ARM64 -Triplet arm64-windows-static-md`；默认与既有 x64 一致）
+    [string]$Platform = "x64",
+    [string]$Triplet = "x64-windows-static"
 )
 
 $vcpkgRoot = $env:VCPKG_ROOT
@@ -17,10 +21,10 @@ $args = @(
     "-S", ".",
     "-B", $BuildDir,
     "-G", "Visual Studio 17 2022",
-    "-A", "x64",
+    "-A", $Platform,
     "-DCMAKE_TOOLCHAIN_FILE=$vcpkgRoot/scripts/buildsystems/vcpkg.cmake",
     "-DVCPKG_OVERLAY_PORTS=$overlayPorts",
-    "-DVCPKG_TARGET_TRIPLET=x64-windows-static"
+    "-DVCPKG_TARGET_TRIPLET=$Triplet"
 )
 
 if ($Config) {

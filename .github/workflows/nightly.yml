@@ -68,10 +68,22 @@ jobs:
       release_tag: nightly
       prerelease: true
 
+  # Agent 单二进制矩阵（scripts/install.sh / install.ps1 一键安装的
+  # 分发产物）：linux/macos/windows × x64/arm64，上传同一 nightly release
+  build-agent:
+    name: Agent Matrix
+    needs: resolve-version
+    uses: ./.github/workflows/build-agent.yml
+    with:
+      version: ${{ needs.resolve-version.outputs.version }}
+      version_suffix: ${{ needs.resolve-version.outputs.version_suffix }}
+      release_tag: nightly
+      prerelease: true
+
   # build-package 不再写入 release body，nightly 说明在此统一维护
   nightly-notes:
     name: Nightly Release Notes
-    needs: build
+    needs: [build, build-agent]
     runs-on: ubuntu-latest
     steps:
       - name: Update nightly release body
@@ -91,6 +103,7 @@ jobs:
             | `wingman-*-linux-x64.tar.gz` | C++ Runtime / Tauri AppImage+deb / Go Server / Dashboard / scripts / config |
             | `wingman-*-macos-x64.tar.gz` | C++ Runtime / Tauri dmg+app / Go Server / Dashboard / scripts / config |
             | `wingman-*-android-arm64.apk` | Android Agent（arm64，debug 签名；iOS 因无签名证书暂不提供） |
+            | `wingman-agent-*-{linux,macos,windows}-{x64,arm64}.tar.gz/.zip` | Wingman Agent 单二进制（一键安装 `scripts/install.sh` / `install.ps1` 的分发产物） |
 
             ⚠️ nightly 为预发布构建，仅供测试，不建议生产使用。
           prerelease: true
@@ -103,7 +116,7 @@ jobs:
   # 今日尚无构建资产时不动，避免误删昨天唯一可用版本。
   cleanup-assets:
     name: Prune Old Nightly Assets
-    needs: build
+    needs: [build, build-agent]
     runs-on: ubuntu-latest
     steps:
       - name: Keep only today's latest build assets
@@ -127,11 +140,13 @@ jobs:
 
           groups = {}  # (date, sha) -> [asset]
           for a in rel["assets"]:
-              m = re.match(r"^wingman-(\d{4}\.\d{2}\.\d{2})-nightly-([0-9a-f]+)-", a["name"])
+              # 整包 wingman-<date>-nightly-<sha>-* 与 agent 单体
+              # wingman-agent-<date>-nightly-<sha>-* 同组归属（同一 sha 一组保留）
+              m = re.match(r"^wingman-(agent-)?(\d{4}\.\d{2}\.\d{2})-nightly-([0-9a-f]+)-", a["name"])
               if not m:
                   delete(a)  # 不带日期的旧格式遗留包
                   continue
-              groups.setdefault(m.groups(), []).append(a)
+              groups.setdefault((m.group(2), m.group(3)), []).append(a)
 
           today_groups = {k: v for k, v in groups.items() if k[0] == today}
           if not today_groups:

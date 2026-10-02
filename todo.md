@@ -1,7 +1,19 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-10-01
-> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地（含 A3 可靠性与受限设置引导，见「2026-09-30 Android Agent 现状登记」及其后两条 A3 实施条目）、A3-P2 与 A4 未排期；2026-09-30 平台验证收口——macOS/XRecord（runner+Xvfb）与 Android API 34 模拟器全链路验证，模拟器腿抓出三处阻断级缺陷已修（见同日「Android 模拟器验证」条），剩余真机项见该条清单；同日 C++ 覆盖率扫描收官——v13 基线清账 TOTAL 90%，余量全部带论证登记（见「C++ 覆盖率扫描收官」条）；2026-10-01 ScriptManager 状态机死锁环与 stop 数据竞争修复（2026-09-29 登记的独立任务落地，见同日条目）、task pause/resume 落地（见同日条目）
+> 最后更新: 2026-10-02
+> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地（含 A3 可靠性与受限设置引导，见「2026-09-30 Android Agent 现状登记」及其后两条 A3 实施条目）、A3-P2 与 A4 未排期；2026-09-30 平台验证收口——macOS/XRecord（runner+Xvfb）与 Android API 34 模拟器全链路验证，模拟器腿抓出三处阻断级缺陷已修（见同日「Android 模拟器验证」条），剩余真机项见该条清单；同日 C++ 覆盖率扫描收官——v13 基线清账 TOTAL 90%，余量全部带论证登记（见「C++ 覆盖率扫描收官」条）；2026-10-01 ScriptManager 状态机死锁环与 stop 数据竞争修复（2026-09-29 登记的独立任务落地，见同日条目）、task pause/resume 落地（见同日条目）；2026-10-02 wingman agent 一键安装三件套落地（install.sh / install.ps1 / agent 构建矩阵接入 nightly 分发，见同日条目）
+
+---
+
+## 2026-10-02 wingman agent 一键安装三件套（install.sh / install.ps1 / agent 构建矩阵）
+
+一条命令（`curl … | bash` / `irm … | iex`）从 nightly 分发面安装 wingman-agent 单二进制，细节详见 CHANGELOG 同日 feat 条目：
+
+- **agent 构建矩阵（build-agent.yml，新）**：linux/macos/windows × x64/arm64 六腿只构建 `wingman-runtime` 打 `wingman-agent-<ver>-<os>-<arch>` 包（整包矩阵不动）；publish-assets 同款重试 + 远端大小校验；nightly.yml 接线（job + 资产表 + cleanup 正则兼容 `wingman-agent-*` 前缀、同 sha 一组保留）；armv7 无 runner 不产出，安装侧明确报错。
+- **install.sh（Linux/macOS）**：OS/架构自动检测（不认识的输入明确报错含 issue 指引）、零依赖 JSON 解析（grep/cut 提取 browser_download_url）、版本选择=release 倒序取第一个含本平台 agent 资产（正式版优先、nightly 兜底）、HTTP 失败按 403/000/404 分型报错、幂等覆盖升级（rm+install 防 ETXTBSY）、`--version` 验证（失败 ldd 列缺库）、`--service` 注册 systemd user unit / launchd。
+- **install.ps1（Windows，PS 5.1+）**：Desktop 视为 Windows + TLS1.2 强制、param 惰性求值（非 Windows 会话 LOCALAPPDATA null 会先抛——真跑抓到）、查询统一 IWR+ConvertFrom-Json（**pwsh 7.4 `Invoke-RestMethod` 对 JSON 数组返回嵌套不枚举、5.1 平铺——本机实测分叉后统一**）、用户 PATH 幂等追加（2047 上限防御）、`-Service` 注册 Windows 服务（Session 0 警告）。
+- **cli 验证入口**：`wingman-agent --version`/`-V`/`version` 三拼写等价（+1 测试，全树注册 2518 → 2519）。
+- **验证**：install.sh 防御分支全实测（--help / armv7l / SunOS / 未知参数 / 真 API 无资产 / 404）+ shellcheck 干净；ps1 AST 解析 + Linux 防御分支真跑 + 带 token 真 API 遍历（命中 nightly linux-x64 资产、tag 提取正确）。**边界**：ps1 Windows 主流程未真跑（无 Windows 机），矩阵资产上线后本机 Linux 真装走查另行汇报。
 
 ---
 

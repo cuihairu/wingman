@@ -3,6 +3,7 @@
 #include "wingman/runtime/commands/stop_command.hpp"
 #include "wingman/runtime/commands/script_command.hpp"
 #include "wingman/runtime/commands/build_command.hpp"
+#include "wingman/version.hpp"
 
 #include <cstdlib>  // std::getenv（WINGMAN_PACK_PASSWORD）
 #include <iostream>
@@ -22,6 +23,7 @@ void printUsage() {
         << "  stop\n"
         << "  status\n"
         << "  script  <script-path> [args...]\n"
+        << "  version\n"
         << "  build   --script|-s <path> --output|-o <path> [--icon|-i <path>]\n"
         << "          [--encrypt [--password <p>] | --no-encrypt] [--no-compress]\n"
         << "          --password implies --encrypt; without a password --encrypt is refused.\n"
@@ -146,6 +148,11 @@ int dispatchCommand(const std::vector<std::string>& args) {
     }
     if (command == "script") {
         return runScript(tail);
+    }
+    // 一键安装脚本的版本验证入口：wingman-agent --version / version / -V
+    if (command == "--version" || command == "-V" || command == "version") {
+        std::cout << WINGMAN_VERSION_STRING << "\n";
+        return 0;
     }
     if (command == "build") {
         return runBuild(tail);

@@ -51,6 +51,13 @@ TEST(RuntimeCliTest, HelpCommandReturnsSuccess) {
     EXPECT_EQ(wingman::runtime::dispatchCommand({"help"}), 0);
 }
 
+// 一键安装脚本经 wingman-agent --version 验证安装（三种拼写等价）
+TEST(RuntimeCliTest, VersionCommandReturnsSuccess) {
+    EXPECT_EQ(wingman::runtime::dispatchCommand({"--version"}), 0);
+    EXPECT_EQ(wingman::runtime::dispatchCommand({"-V"}), 0);
+    EXPECT_EQ(wingman::runtime::dispatchCommand({"version"}), 0);
+}
+
 TEST(RuntimeCliTest, EmptyArgsReturnFailure) {
     EXPECT_EQ(wingman::runtime::dispatchCommand({}), 1);
 }

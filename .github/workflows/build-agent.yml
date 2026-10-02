@@ -1,0 +1,308 @@
+name: Build Agent
+
+# Agent 单二进制矩阵（wingman-agent-<ver>-<os>-<arch>）：一键安装脚本
+# （scripts/install.sh / install.ps1）的分发产物，与 build-package.yml 的
+# 整包（GUI/Dashboard/server）分离——agent 只含 C++ runtime，构建快、包体
+# 小，跨架构矩阵（linux/macos × x64/arm64、windows × x64/arm64）成本可控。
+# 分发走 release 资产匿名直链（Actions artifacts 需登录，不作分发面）。
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version string (e.g. v0.2.0 or 2026.06.07-nightly-abc1234)'
+        required: true
+        type: string
+      version_suffix:
+        description: 'Version suffix for CMake (e.g. 2026.06.07-nightly, empty for releases)'
+        required: false
+        type: string
+        default: ''
+      release_tag:
+        description: 'GitHub release tag to upload assets to; empty = artifacts only'
+        required: false
+        type: string
+        default: ''
+      ref:
+        description: 'Git ref (tag/branch/SHA) to checkout; empty falls back to github.ref'
+        required: false
+        type: string
+        default: ''
+      prerelease:
+        description: 'Mark release as prerelease when creating a fallback release'
+        required: false
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version string (e.g. 2026.10.02-nightly-abc1234)'
+        required: true
+        type: string
+      version_suffix:
+        description: 'Version suffix for CMake (empty for releases)'
+        required: false
+        type: string
+        default: ''
+      release_tag:
+        description: 'Release tag to upload to (empty = artifacts only)'
+        required: false
+        type: string
+        default: ''
+      ref:
+        description: 'Git ref to checkout (empty = default branch)'
+        required: false
+        type: string
+        default: ''
+      prerelease:
+        description: 'Mark release as prerelease when creating a fallback release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
+  VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+
+jobs:
+  build:
+    name: Agent ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    # Linux/macOS 不配 NuGet 认证（同 build-package.yml：仅 Windows 配
+    # readwrite 源），binary cache 走本地目录
+    env:
+      VCPKG_BINARY_SOURCES: ${{ matrix.os == 'windows' && format('clear;nuget,https://nuget.pkg.github.com/{0}/index.json,readwrite', github.repository_owner) || 'clear' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux,   arch: x64,   runner: ubuntu-latest,     triplet: x64-linux }
+          - { os: linux,   arch: arm64, runner: ubuntu-24.04-arm,  triplet: arm64-linux }
+          - { os: macos,   arch: x64,   runner: macos-15-intel,    triplet: x64-osx }
+          - { os: macos,   arch: arm64, runner: macos-latest,      triplet: arm64-osx }
+          - { os: windows, arch: x64,   runner: windows-2022,      triplet: x64-windows-static }
+          - { os: windows, arch: arm64, runner: windows-11-arm,    triplet: arm64-windows-static-md }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+          submodules: recursive
+
+      # ====== Linux / macOS ======
+      - name: Setup vcpkg (unix)
+        if: matrix.os != 'windows'
+        run: bash ./build-scripts/ci/setup-vcpkg.sh
+
+      - name: Prepare vcpkg cache (unix)
+        if: matrix.os != 'windows'
+        run: mkdir -p "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
+
+      - name: Install build tools (linux)
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build ccache mono-complete
+          sudo apt-get install -y libx11-dev libxrandr-dev libxext-dev libxtst-dev libxt-dev libxinerama-dev
+
+      - name: Install build tools (macos)
+        if: matrix.os == 'macos'
+        run: brew install cmake ninja mono
+
+      - name: Configure CMake (unix)
+        if: matrix.os != 'windows'
+        run: >
+          bash ./build-scripts/ci/configure-unix.sh
+          "${{ matrix.triplet }}" "Ninja" "build" "Release" "${{ inputs.version_suffix }}"
+
+      - name: Build agent (unix)
+        if: matrix.os != 'windows'
+        run: cmake --build build --config Release --target wingman-runtime --parallel
+
+      # ====== Windows ======
+      - name: Setup vcpkg (windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: ./build-scripts/ci/setup-vcpkg.ps1
+
+      - name: Add NuGet sources (windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          $patToken = "${{ secrets.VCPKG_PAT_TOKEN }}"
+          if ([string]::IsNullOrEmpty($patToken)) {
+            Write-Host "VCPKG_PAT_TOKEN not found, using GITHUB_TOKEN (may have limited permissions)"
+            $patToken = "${{ github.token }}"
+          }
+          $feed = "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          $user = "${{ github.repository_owner }}"
+          .\vcpkg\vcpkg fetch nuget | ForEach-Object { & $_ sources add `
+            -Source $feed `
+            -StorePasswordInClearText `
+            -Name "GitHubPackages" `
+            -UserName $user `
+            -Password $patToken }
+          .\vcpkg\vcpkg fetch nuget | ForEach-Object { & $_ setapikey $patToken -Source $feed }
+
+      - name: Prepare vcpkg cache (windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+
+      - name: Configure CMake (windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: >
+          ./build-scripts/ci/configure-windows.ps1
+          -BuildDir build
+          -Config Release
+          -Platform "${{ matrix.arch == 'arm64' && 'ARM64' || 'x64' }}"
+          -Triplet "${{ matrix.triplet }}"
+          -VersionSuffix "${{ inputs.version_suffix }}"
+
+      - name: Build agent (windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: cmake --build build --config Release --target wingman-runtime --parallel
+
+      # ====== Package ======
+      # 单二进制产物 + VERSION.txt（无 GUI/Dashboard/server——agent 安装面）
+      - name: Package (unix)
+        if: matrix.os != 'windows'
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          dist="dist-wingman-agent"
+          mkdir -p "$dist"
+          cp "build/apps/runtime/wingman-runtime" "$dist/wingman-agent"
+          chmod +x "$dist/wingman-agent"
+          cat > "$dist/VERSION.txt" << EOF
+          Wingman Agent $VERSION
+          Build Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          Commit: ${{ github.sha }}
+          Platform: ${{ matrix.os }}-${{ matrix.arch }}
+          EOF
+          tar czf "wingman-agent-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" -C "$dist" .
+          ls -la wingman-agent-*.tar.gz
+
+      - name: Package (windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $dist = "dist-wingman-agent"
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          Copy-Item "build\apps\runtime\Release\wingman-runtime.exe" "$dist\wingman-agent.exe"
+          @"
+          Wingman Agent $env:VERSION
+          Build Date: $(Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+          Commit: ${{ github.sha }}
+          Platform: ${{ matrix.os }}-${{ matrix.arch }}
+          "@ | Out-File -FilePath "$dist\VERSION.txt" -Encoding UTF8
+          Compress-Archive -Path "$dist\*" -DestinationPath "wingman-agent-$env:VERSION-${{ matrix.os }}-${{ matrix.arch }}.zip" -Force
+          Get-ChildItem wingman-agent-*.zip
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: wingman-agent-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: wingman-agent-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.*
+          retention-days: 30
+          overwrite: true
+
+  # 统一上传 release 资产（release_tag 为空则只保留 artifacts）：与
+  # build-package.yml publish-assets 同款纪律——gh release upload --clobber
+  # + 指数退避重试 + 远端大小校验（上传 API 超时会留下半截资产）。
+  publish-assets:
+    name: Publish Agent Assets
+    needs: build
+    if: inputs.release_tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all agent artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: assets
+          merge-multiple: true
+          pattern: wingman-agent-${{ inputs.version }}-*
+
+      - name: Upload to GitHub Release with retry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          cd assets
+          ls -la
+          shopt -s nullglob
+          files=(wingman-agent-*)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No agent artifacts to publish"
+            exit 1
+          fi
+
+          # release 不存在时兜底创建（正常路径：nightly 滚动 tag 已存在）
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG does not exist, creating"
+            create_args=(--title "$RELEASE_TAG")
+            if [ "$PRERELEASE" = "true" ]; then
+              create_args+=(--prerelease)
+            fi
+            gh release create "$RELEASE_TAG" "${create_args[@]}" --repo "$GITHUB_REPOSITORY"
+          fi
+
+          upload_one() {
+            local f="$1"
+            local attempt
+            for attempt in 1 2 3; do
+              if gh release upload "$RELEASE_TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY"; then
+                return 0
+              fi
+              echo "::warning::Upload attempt $attempt failed for $f"
+              if [ "$attempt" -lt 3 ]; then
+                sleep $((attempt * 30))
+              fi
+            done
+            return 1
+          }
+
+          remote_size_of() {
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+              --jq ".assets[] | select(.name == \"$1\") | .size" || true
+          }
+
+          for f in "${files[@]}"; do
+            local_size=$(stat -c%s "$f")
+            verified=false
+            for attempt in 1 2 3; do
+              if ! upload_one "$f"; then
+                echo "::error::All upload attempts failed for $f"
+                exit 1
+              fi
+              remote_size=$(remote_size_of "$f")
+              if [ -n "$remote_size" ] && [ "$remote_size" -eq "$local_size" ]; then
+                echo "$f: $local_size bytes verified"
+                verified=true
+                break
+              fi
+              echo "::warning::Size mismatch for $f (local=$local_size remote=${remote_size:-none}), attempt $attempt — re-uploading"
+              if [ "$attempt" -lt 3 ]; then
+                sleep $((attempt * 30))
+              fi
+            done
+            if [ "$verified" != "true" ]; then
+              echo "::error::Size verification failed for $f (local=$local_size remote=${remote_size:-none})"
+              exit 1
+            fi
+          done
+
+          echo "All agent assets uploaded and verified"
