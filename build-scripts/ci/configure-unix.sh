@@ -6,6 +6,11 @@ generator="${2:-Ninja}"
 build_dir="${3:-build}"
 build_type="${4:-Release}"
 version_suffix="${5:-}"
+# 兼容模式开关：默认 ON（历史行为——整包/CI 用，跳过 agent 多模块目标）。
+# agent 单二进制矩阵必须传 OFF：COMPAT=ON 时根 CMakeLists 显式跳过
+# apps/runtime，wingman-runtime 目标不存在（Build Agent 矩阵六腿中
+# unix 三腿 unknown target 的根因）
+compat_build="${6:-ON}"
 
 vcpkg_root="${VCPKG_ROOT:-$PWD/vcpkg}"
 overlay_ports="$PWD/vcpkg-ports"
@@ -16,7 +21,7 @@ cmake_args=(
   -DVCPKG_OVERLAY_PORTS="$overlay_ports"
   -DVCPKG_TARGET_TRIPLET="$triplet"
   -DCMAKE_BUILD_TYPE="$build_type"
-  -DWINGMAN_COMPAT_BUILD=ON
+  -DWINGMAN_COMPAT_BUILD="$compat_build"
 )
 
 # macOS-specific settings

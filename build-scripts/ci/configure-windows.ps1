@@ -7,7 +7,12 @@ param(
     # CMake 平台架构与 vcpkg triplet（agent 矩阵在 ARM64 runner 上用
     # `-Platform ARM64 -Triplet arm64-windows-static-md`；默认与既有 x64 一致）
     [string]$Platform = "x64",
-    [string]$Triplet = "x64-windows-static"
+    [string]$Triplet = "x64-windows-static",
+    # VS 生成器：windows-2022 镜像装 VS2022（17）；windows-11-arm 镜像
+    # 2026-09 起切换为 VS2026 Enterprise 18（runner-images#14602），
+    # VS17 生成器在该镜像上报 "could not find any instance of Visual
+    # Studio"（vcpkg 端口编译不受影响，因其探测不锁定 VS 主版本）
+    [string]$Generator = "Visual Studio 17 2022"
 )
 
 $vcpkgRoot = $env:VCPKG_ROOT
@@ -20,7 +25,7 @@ $overlayPorts = Join-Path (Get-Location).Path "vcpkg-ports"
 $args = @(
     "-S", ".",
     "-B", $BuildDir,
-    "-G", "Visual Studio 17 2022",
+    "-G", $Generator,
     "-A", $Platform,
     "-DCMAKE_TOOLCHAIN_FILE=$vcpkgRoot/scripts/buildsystems/vcpkg.cmake",
     "-DVCPKG_OVERLAY_PORTS=$overlayPorts",

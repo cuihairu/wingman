@@ -84,8 +84,8 @@ jobs:
           - { os: linux,   arch: arm64, runner: ubuntu-24.04-arm,  triplet: arm64-linux }
           - { os: macos,   arch: x64,   runner: macos-15-intel,    triplet: x64-osx }
           - { os: macos,   arch: arm64, runner: macos-latest,      triplet: arm64-osx }
-          - { os: windows, arch: x64,   runner: windows-2022,      triplet: x64-windows-static }
-          - { os: windows, arch: arm64, runner: windows-11-arm,    triplet: arm64-windows-static-md }
+          - { os: windows, arch: x64,   runner: windows-2022,      triplet: x64-windows-static,      vs-generator: 'Visual Studio 17 2022' }
+          - { os: windows, arch: arm64, runner: windows-11-arm,    triplet: arm64-windows-static-md, vs-generator: 'Visual Studio 18 2026' }
 
     steps:
       - name: Checkout
@@ -96,6 +96,20 @@ jobs:
           submodules: recursive
 
       # ====== Linux / macOS ======
+      # arm64 runner 的 vcpkg-tool 不像 x64 腿那样自动下载 host cmake
+      # （x64：A suitable version of cmake was not found → 下载
+      # cmake-4.4.0-linux-x86_64），落回系统 cmake(<4.4)，而 vcpkg 基线
+      # 脚本用了 string(JSON STRING_ENCODE)（CMake 4.4+ 新模式，
+      # z_vcpkg_spdx.cmake），asio 等端口直接 BUILD_FAILED——预装 Kitware
+      # cmake 4.4.0 aarch64 到 /usr/local（PATH 优先于 /usr/bin）
+      - name: Install cmake 4.4 (linux arm64)
+        if: matrix.os == 'linux' && matrix.arch == 'arm64'
+        run: |
+          curl -fsSL --retry 3 -o /tmp/cmake-4.4.0.tar.gz \
+            https://github.com/Kitware/CMake/releases/download/v4.4.0/cmake-4.4.0-linux-aarch64.tar.gz
+          sudo tar xzf /tmp/cmake-4.4.0.tar.gz -C /usr/local --strip-components=1
+          cmake --version
+
       - name: Setup vcpkg (unix)
         if: matrix.os != 'windows'
         run: bash ./build-scripts/ci/setup-vcpkg.sh
@@ -119,7 +133,7 @@ jobs:
         if: matrix.os != 'windows'
         run: >
           bash ./build-scripts/ci/configure-unix.sh
-          "${{ matrix.triplet }}" "Ninja" "build" "Release" "${{ inputs.version_suffix }}"
+          "${{ matrix.triplet }}" "Ninja" "build" "Release" "${{ inputs.version_suffix }}" "OFF"
 
       - name: Build agent (unix)
         if: matrix.os != 'windows'
@@ -165,6 +179,7 @@ jobs:
           -Platform "${{ matrix.arch == 'arm64' && 'ARM64' || 'x64' }}"
           -Triplet "${{ matrix.triplet }}"
           -VersionSuffix "${{ inputs.version_suffix }}"
+          -Generator "${{ matrix.vs-generator || 'Visual Studio 17 2022' }}"
 
       - name: Build agent (windows)
         if: matrix.os == 'windows'
