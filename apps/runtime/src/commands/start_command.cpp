@@ -50,7 +50,7 @@ int startCommand(const StartOptions& options) {
         }
     }
 
-    spdlog::info("Wingman Agent {}", WINGMAN_VERSION);
+    spdlog::info("Wingman Agent {}", WINGMAN_VERSION_FULL);
     spdlog::info("====================");
 
     // Create Agent

@@ -113,6 +113,16 @@ if(WINGMAN_ENABLE_ML AND NOT WINGMAN_COMPAT_BUILD)
 endif()
 
 # ========== 版本信息 ==========
+# CI 注入的构建后缀（build-scripts/ci/configure-unix.sh:45 /
+# configure-windows.ps1:66 传 -DWINGMAN_VERSION_SUFFIX=，nightly 形如
+# 2026.10.02-nightly；正式版不传）。此前该变量无人消费、后缀被静默丢弃，
+# 致 --version 与启动日志对所有 nightly 都报纯 0.1.0。
+set(WINGMAN_VERSION_SUFFIX "" CACHE STRING "Build version suffix (e.g. 2026.10.02-nightly); empty for release builds")
+set(WINGMAN_VERSION_FULL_SUFFIX "")
+if(NOT WINGMAN_VERSION_SUFFIX STREQUAL "")
+    set(WINGMAN_VERSION_FULL_SUFFIX "-${WINGMAN_VERSION_SUFFIX}")
+endif()
+
 set(WINGMAN_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/include" CACHE INTERNAL "Generated headers directory")
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/wingman/include/wingman/version.hpp.in
