@@ -125,13 +125,26 @@ jobs:
       prerelease: ${{ needs.resolve-version.outputs.prerelease }}
     secrets: inherit
 
+  # Agent 单二进制矩阵（linux/macos/windows × x64/arm64，与 nightly 同源）：
+  # 一键安装脚本的分发产物；arm64 桌面全量包暂无构建矩阵，arm64 覆盖由此承担
+  build-agent:
+    name: Agent Matrix
+    needs: [resolve-version, create-release]
+    uses: ./.github/workflows/build-agent.yml
+    with:
+      version: ${{ needs.resolve-version.outputs.version }}
+      release_tag: ${{ needs.resolve-version.outputs.tag }}
+      ref: ${{ needs.resolve-version.outputs.ref }}
+      prerelease: ${{ needs.resolve-version.outputs.prerelease }}
+    secrets: inherit
+
   # 全部平台构建成功后才发布：
-  # 1. 汇总三平台产物生成 SHA256SUMS.txt 并追加到 release
+  # 1. 汇总三平台产物生成 SHA256SUMS.txt（含 APK）+ BUILD_INFO.txt + VERIFY.md
   # 2. 将 draft release 正式发布（draft=false）
   # 若任一平台构建失败，draft 保留在 Releases 页面便于排查，不会发布半成品
   publish-release:
     name: Publish Release
-    needs: [resolve-version, build]
+    needs: [resolve-version, build, build-agent]
     runs-on: ubuntu-latest
     steps:
       - name: Download all platform artifacts
@@ -141,18 +154,44 @@ jobs:
           merge-multiple: true
           pattern: wingman-${{ needs.resolve-version.outputs.version }}-*
 
-      - name: Generate SHA256SUMS
+      - name: Generate SHA256SUMS / BUILD_INFO / VERIFY
         run: |
           ls -la assets/
           cd assets
-          sha256sum wingman-*.zip wingman-*.tar.gz > "$GITHUB_WORKSPACE/SHA256SUMS.txt"
+          sha256sum wingman-*.zip wingman-*.tar.gz wingman-*.apk > "$GITHUB_WORKSPACE/SHA256SUMS.txt"
           cat "$GITHUB_WORKSPACE/SHA256SUMS.txt"
 
-      - name: Upload checksums
+          {
+            echo "Wingman ${{ needs.resolve-version.outputs.version }}"
+            echo "Tag:        ${{ needs.resolve-version.outputs.tag }}"
+            echo "Commit:     ${{ needs.resolve-version.outputs.ref }}"
+            echo "Build time: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+            echo
+            echo "## Assets"
+            ls wingman-* | sed 's/^/- /'
+          } > "$GITHUB_WORKSPACE/BUILD_INFO.txt"
+
+          {
+            echo "# 校验下载完整性（VERIFY）"
+            echo
+            echo '下载 \`SHA256SUMS.txt\` 与目标包到同一目录后执行：'
+            echo
+            echo '```bash'
+            echo 'sha256sum -c SHA256SUMS.txt --ignore-missing'
+            echo '```'
+            echo
+            echo 'macOS 可用 \`shasum -a 256 -c SHA256SUMS.txt --ignore-missing\`；'
+            echo 'Windows PowerShell 可用 \`Get-FileHash\` 对照 SHA256SUMS.txt 中的值。'
+          } > "$GITHUB_WORKSPACE/VERIFY.md"
+
+      - name: Upload checksums & build info
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.resolve-version.outputs.tag }}
-          files: SHA256SUMS.txt
+          files: |
+            SHA256SUMS.txt
+            BUILD_INFO.txt
+            VERIFY.md
           prerelease: ${{ needs.resolve-version.outputs.prerelease }}
           draft: true
         env:

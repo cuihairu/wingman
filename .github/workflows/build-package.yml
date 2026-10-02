@@ -31,20 +31,27 @@ permissions:
   packages: write
   contents: write
 
-env:
-  ACTIONS_NODE_VERSION: '24'
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
-  USERNAME: ${{ github.repository_owner }}
-  VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
-  FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
-  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
+# 顶层 env 于 2026-10-03 下沉到各 job 的 env：顶层（workflow 级）env 存在时，
+# 本 workflow 作为 workflow_call callee 被 release.yml 调用会导致 caller 侧
+# build job 静默 startup_failure（无 check-run、无 annotation、内层 run 不创建），
+# nightly.yml 调用却正常——GitHub 对 callee 顶层 env 在两类调用路径下行为
+# 不一致。job 级 env 的 github.* 求值与顶层等价（github.workspace/
+# repository_owner 同值），下沉是无行为差异的规避。
 
 jobs:
   build-windows:
     name: Windows x64
     runs-on: windows-2022
+    # 原顶层 env 的完整下沉（含 GitHub Packages vcpkg 二进制缓存源）
+    env:
+      ACTIONS_NODE_VERSION: '24'
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
+      USERNAME: ${{ github.repository_owner }}
+      VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+      FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
     defaults:
       run:
         shell: pwsh
@@ -220,7 +227,15 @@ jobs:
   build-linux:
     name: Linux x64
     runs-on: ubuntu-latest
+    # 原顶层 env 下沉；VCPKG_BINARY_SOURCES 保持 job 级 "clear"（不用共享缓存）
     env:
+      ACTIONS_NODE_VERSION: '24'
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
+      USERNAME: ${{ github.repository_owner }}
+      VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+      FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
       VCPKG_BINARY_SOURCES: "clear"
     defaults:
       run:
@@ -350,7 +365,15 @@ jobs:
   build-macos:
     name: macOS x64
     runs-on: macos-15-intel
+    # 原顶层 env 下沉；VCPKG_BINARY_SOURCES 保持 job 级 "clear"（不用共享缓存）
     env:
+      ACTIONS_NODE_VERSION: '24'
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
+      USERNAME: ${{ github.repository_owner }}
+      VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+      FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
       VCPKG_BINARY_SOURCES: "clear"
     defaults:
       run:
@@ -479,7 +502,15 @@ jobs:
   build-android:
     name: Android arm64
     runs-on: ubuntu-latest
+    # 原顶层 env 下沉；VCPKG_BINARY_SOURCES 保持 job 级 "clear"（不用共享缓存）
     env:
+      ACTIONS_NODE_VERSION: '24'
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
+      USERNAME: ${{ github.repository_owner }}
+      VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+      FEED_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
       VCPKG_BINARY_SOURCES: "clear"
     defaults:
       run:
@@ -580,6 +611,10 @@ jobs:
     name: Publish Release Assets
     needs: [build-windows, build-linux, build-macos, build-android]
     runs-on: ubuntu-latest
+    # 原顶层 env 中作用于 JS actions 的部分（上传重试/大小校验逻辑保持原环境）
+    env:
+      ACTIONS_NODE_VERSION: '24'
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Download all platform artifacts
         uses: actions/download-artifact@v7
