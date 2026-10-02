@@ -85,7 +85,9 @@ jobs:
           - { os: macos,   arch: x64,   runner: macos-15-intel,    triplet: x64-osx }
           - { os: macos,   arch: arm64, runner: macos-latest,      triplet: arm64-osx }
           - { os: windows, arch: x64,   runner: windows-2022,      triplet: x64-windows-static,      vs-generator: 'Visual Studio 17 2022' }
-          - { os: windows, arch: arm64, runner: windows-11-arm,    triplet: arm64-windows-static-md, vs-generator: 'Visual Studio 18 2026' }
+          # arm64 也用全静态 triplet：根 CMakeLists 无条件 /MT，static-md
+          # （静态库+动态 CRT）会 LNK2038 RuntimeLibrary mismatch
+          - { os: windows, arch: arm64, runner: windows-11-arm,    triplet: arm64-windows-static, vs-generator: 'Visual Studio 18 2026' }
 
     steps:
       - name: Checkout

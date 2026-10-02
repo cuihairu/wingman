@@ -5,7 +5,7 @@ param(
     [switch]$EnablePython,
     [string]$VersionSuffix = "",
     # CMake 平台架构与 vcpkg triplet（agent 矩阵在 ARM64 runner 上用
-    # `-Platform ARM64 -Triplet arm64-windows-static-md`；默认与既有 x64 一致）
+    # `-Platform ARM64 -Triplet arm64-windows-static`；默认与既有 x64 一致）
     [string]$Platform = "x64",
     [string]$Triplet = "x64-windows-static",
     # VS 生成器：windows-2022 镜像装 VS2022（17）；windows-11-arm 镜像
