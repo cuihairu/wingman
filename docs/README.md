@@ -12,6 +12,8 @@
 | [构建指南](../BUILD.md) | 平台依赖、vcpkg、测试与故障排查（仓库根目录） |
 | [VS Code 开发环境](development-environment.md) | Lua/Python 补全、调试和任务配置 |
 | [配置管理实践](guides/configuration.md) | INI/JSON 配置管理实践 |
+| [Android Agent](../apps/android/README.md) | APK 获取与安装、能力清单、真机验收步骤（仓库根目录） |
+| [Android Agent](android-agent.md) | Android 端侧 Agent（实验性），出站 TCP 连 Go 中控，Dashboard 统一下发与查看 |
 
 ### API 参考
 

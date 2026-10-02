@@ -50,6 +50,7 @@ C++ + Lua/Python 的高性能游戏自动化框架
 | 💾 **数据持久化** | kv 键值存储、SQLite 数据库 |
 | 📄 **序列化格式** | JSON、INI 配置文件解析 |
 | 🐛 **调试支持** | VS Code 断点调试 Lua 脚本（需启用调试组件） |
+| 🤖 **Android Agent** | Android 端侧 Agent（实验性，arm64 / Android 9.0+），出站 TCP 连 Go 中控，脚本 API 与桌面 runtime 同名同形，Dashboard 统一下发与查看 |
 
 > 部分高级模块（OCR、ML/YOLO、远程编排、脚本调试器）依赖可选组件或仍处于持续建设中。默认可用能力以当前构建配置、运行时参数和对应 API 文档为准。
 
@@ -124,6 +125,65 @@ build-scripts\build-runtime-msvc-ninja.bat
 ```
 
 **详细构建步骤请查看 [构建指南](BUILD.md)**
+
+---
+
+## Android Agent
+
+Android 端侧 Agent（实验性，arm64 / Android 9.0+）：出站 TCP 连 Go 中控，
+脚本 API 与桌面 runtime 同名同形（`wingman.input` / `wingman.screen` /
+`wingman.vision`），Dashboard 统一下发与查看。
+
+**能力清单**
+
+| 能力 | 说明 |
+|------|------|
+| 🖐️ **手势注入** | 无障碍服务注入点击/滑动（`wingman.input.tap` / `swipe` / `delay`） |
+| 📺 **屏幕采集** | MediaProjection 实时投屏采集（亮屏时出帧） |
+| 🎯 **找色找图** | `wingman.vision.findColor` / `findImage`（OpenCV 模板匹配，进 NDK） |
+| 📷 **远程截图** | Dashboard workflow 的 screenshot 步骤直接上屏（与桌面同形） |
+| 🔑 **token 认证** | server 端 `WINGMAN_AGENT_TOKENS` 注册 token 白名单（默认关闭可留空） |
+| 🛡️ **保活** | 开机自启、崩溃自重启（指数退避）、30s 核心看门狗、机型保活与受限设置引导 |
+
+**获取 APK**
+
+nightly Release 的 `wingman-*-android-arm64.apk`（debug 签名）：
+
+- 发布页：[releases/tag/nightly](https://github.com/cuihairu/wingman/releases/tag/nightly)
+- Assets 里取最新一组的 `wingman-<date>-nightly-<sha>-android-arm64.apk`
+  （nightly 每日构建，仅保留当日最新）
+- debug 签名：手机安装时需允许「未知来源」；无需登录 GitHub，直链匿名下载
+
+**快速上手**
+
+1. 启动 Go server（`orchestrator/server`，Dashboard + agent 端口 8888）。
+2. 手机安装 APK（与 server 同网段），打开 App → 填服务器 IP / 端口 / 设备 ID
+   → 「启动 Agent」。首次启动会创建常驻通知（前台服务要求）；server 若配置了
+   `WINGMAN_AGENT_TOKENS`（注册 token 白名单），需同时填入注册 Token。
+3. Dashboard 的 Agent 列表出现该设备（platform=android）。
+4. 新建脚本运行到该设备，实时日志回传：
+
+   ```lua
+   print('hello android')
+   ```
+
+5. 启用 A2 能力：App 内「无障碍设置」打开注入服务 +「开启投屏」授权
+   （Android 14+ 每次重开投屏都会再弹授权，系统约束），随后下发找色/手势脚本：
+
+   ```lua
+   local pt = wingman.vision.findColor(0xE23B3B, 10)
+   if pt then wingman.input.tap(pt.x, pt.y) end
+   wingman.input.swipe(540, 1800, 540, 600, 400)
+   ```
+
+6. 远程截图：Dashboard workflow 加 screenshot 步骤选该设备 → 截图上屏。
+7. Android 13+ 侧载安装的无障碍被「受限设置」默认屏蔽：系统设置 → 应用 →
+   Wingman Agent → ⋮ → 允许受限制的设置，或电脑连真机执行
+   `scripts/android-restricted-settings.sh allow` 预授权（App 内也有引导）。
+
+详细验收步骤、已知边界与 A3 可靠性验证见 [apps/android/README.md](apps/android/README.md)，
+设计与协议见 [docs/android-agent-design.md](docs/android-agent-design.md)，
+机型保活见 [docs/guides/android-keep-alive.md](docs/guides/android-keep-alive.md)。
 
 ---
 

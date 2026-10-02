@@ -36,6 +36,9 @@ features:
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M3.5 18.5C7 11 11 20.5 20.5 6"/><path d="m17.5 5.5 3.4.6-.7 3.4"/><circle cx="6" cy="7" r="2"/><path d="M6 9v3.5"/></svg>'
     title: 人性化模拟
     details: 贝塞尔曲线鼠标移动、随机延迟、自然操作模式
+  - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 6.5h4"/><path d="M10.5 17.5h3"/></svg>'
+    title: Android Agent
+    details: 手势注入、屏幕采集、找色找图、远程截图，APK 随 nightly 分发
 
 ---
 
@@ -97,6 +100,58 @@ if result:
     x, y = result
     input.click(x, y)
 ```
+
+## Android Agent
+
+Android 端侧 Agent（实验性，arm64 / Android 9.0+）：出站 TCP 连 Go 中控，
+脚本 API 与桌面 runtime 同名同形（`wingman.input` / `wingman.screen` /
+`wingman.vision`），Dashboard 统一下发与查看。
+
+**能力清单**
+
+| 能力 | 说明 |
+|------|------|
+| 手势注入 | 无障碍服务注入点击/滑动（`wingman.input.tap` / `swipe` / `delay`） |
+| 屏幕采集 | MediaProjection 实时投屏采集（亮屏时出帧） |
+| 找色找图 | `wingman.vision.findColor` / `findImage`（OpenCV 模板匹配） |
+| 远程截图 | Dashboard workflow 的 screenshot 步骤直接上屏 |
+| token 认证 | server 端 `WINGMAN_AGENT_TOKENS` 注册 token 白名单（默认关闭可留空） |
+| 保活 | 开机自启、崩溃自重启（指数退避）、30s 核心看门狗、机型保活与受限设置引导 |
+
+**获取 APK**
+
+nightly Release 的 `wingman-*-android-arm64.apk`（debug 签名）：
+[releases/tag/nightly](https://github.com/cuihairu/wingman/releases/tag/nightly)
+页 Assets 取最新一组的 `wingman-<date>-nightly-<sha>-android-arm64.apk`
+（每日构建仅保留当日最新；直链匿名下载，无需登录 GitHub）。
+
+**快速上手**
+
+1. 启动 Go server（`orchestrator/server`，Dashboard + agent 端口 8888）。
+2. 手机安装 APK（与 server 同网段）→ 打开 App → 填服务器 IP / 端口 / 设备 ID
+   → 「启动 Agent」。首次启动创建常驻通知（前台服务要求）；server 若配置了
+   `WINGMAN_AGENT_TOKENS`，需同时填入注册 Token。
+3. Dashboard 的 Agent 列表出现该设备（platform=android），新建脚本
+   `print('hello android')` 运行到该设备，实时日志回传。
+4. 启用 A2 能力：App 内「无障碍设置」打开注入服务 +「开启投屏」授权
+   （Android 14+ 每次重开投屏都会再弹授权，系统约束），随后下发找色/手势脚本：
+
+   ```lua
+   local pt = wingman.vision.findColor(0xE23B3B, 10)
+   if pt then wingman.input.tap(pt.x, pt.y) end
+   wingman.input.swipe(540, 1800, 540, 600, 400)
+   ```
+
+5. 远程截图：Dashboard workflow 加 screenshot 步骤选该设备 → 截图上屏。
+6. Android 13+ 侧载无障碍被「受限设置」默认屏蔽：系统设置 → 应用 →
+   Wingman Agent → ⋮ → 允许受限制的设置，或
+   `scripts/android-restricted-settings.sh allow` 预授权（App 内也有引导）。
+
+详细验收步骤与已知边界见
+[apps/android/README.md](https://github.com/cuihairu/wingman/blob/main/apps/android/README.md)，
+设计与协议见 [Android Agent 设计](./android-agent-design.md)，
+机型保活见 [Android Agent 保活](/guides/android-keep-alive)，
+受限设置见 [Android Agent 受限设置](/guides/android-restricted-settings)。
 
 ## 编译项目
 
