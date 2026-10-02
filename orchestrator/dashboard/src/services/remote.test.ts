@@ -92,23 +92,21 @@ describe('services/remote', () => {
   });
 
   describe('guacamoleWSPath', () => {
-    it('拼接 ws 隧道地址并编码票据', () => {
-      expect(guacamoleWSPath('abc+def/1')).toBe(
-        'ws://localhost:8000/api/remote/guacamole?ticket=abc%2Bdef%2F1',
-      );
+    it('返回不带查询串的 ws 隧道基址（票据走 connect 数据，防 ?ticket=xx?undefined 污染）', () => {
+      expect(guacamoleWSPath()).toBe('ws://localhost:8000/api/remote/guacamole');
     });
 
     it('https 页面升级为 wss（防把 TLS 页面降级成明文隧道）', () => {
       // jsdom 的 location.protocol 不可改写，按签名注入来源
       expect(
-        guacamoleWSPath('tk', { protocol: 'https:', host: 'desk.example.com' } as Location),
-      ).toBe('wss://desk.example.com/api/remote/guacamole?ticket=tk');
+        guacamoleWSPath({ protocol: 'https:', host: 'desk.example.com' } as Location),
+      ).toBe('wss://desk.example.com/api/remote/guacamole');
     });
 
     it('http 页面保持 ws（显式注入来源，与默认 location 行为一致）', () => {
       expect(
-        guacamoleWSPath('tk', { protocol: 'http:', host: 'desk.example.com' } as Location),
-      ).toBe('ws://desk.example.com/api/remote/guacamole?ticket=tk');
+        guacamoleWSPath({ protocol: 'http:', host: 'desk.example.com' } as Location),
+      ).toBe('ws://desk.example.com/api/remote/guacamole');
     });
   });
 

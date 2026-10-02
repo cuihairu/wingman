@@ -155,5 +155,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&StepStatus{},
 		&Role{},
 		&Permission{},
+		&VaultMaster{},
+		&RemoteCredential{},
 	)
 }

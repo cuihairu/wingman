@@ -86,16 +86,14 @@ const Workflows: React.FC = () => {
   const [workflows, setWorkflows] = useState<Workflow[]>([]); // 本地状态用于实时更新
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
 
-  // 获取工作流列表
+  // 获取工作流列表。service 返回完整信封，由 umi useRequest 默认
+  // formatResult（r => r?.data）解包，理由同 Agents 页
   const {
     data: workflowsData,
     loading,
     refresh,
   } = useRequest(
-    async (): Promise<Workflow[]> => {
-      const response = await getWorkflows();
-      return response.data || [];
-    },
+    async () => getWorkflows(),
     {
       onSuccess: (data) => {
         setWorkflows(Array.isArray(data) ? (data as Workflow[]) : []);
@@ -195,16 +193,14 @@ const Workflows: React.FC = () => {
     };
   }, [selectedWorkflow]);
 
-  // 获取工作流详情
+  // 获取工作流详情。service 返回完整信封，由 umi useRequest 默认
+  // formatResult（r => r?.data）解包，理由同 Agents 页
   const { run: fetchDetail } = useRequest(
-    async (workflowId: string) => {
-      const response = await getWorkflow(workflowId);
-      return response.data;
-    },
+    async (workflowId: string) => getWorkflow(workflowId),
     {
       manual: true,
       onSuccess: (data) => {
-        setSelectedWorkflow(data);
+        setSelectedWorkflow(data ?? null);
         setDrawerVisible(true);
       },
     },

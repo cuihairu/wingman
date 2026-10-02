@@ -61,6 +61,13 @@ const (
 var guacamoleUpgrader = websocket.Upgrader{
 	ReadBufferSize:  guacamoleReadBuf,
 	WriteBufferSize: guacamoleReadBuf,
+	// guacamole-common-js 的 WebSocketTunnel 以子协议 "guacamole" 建连
+	// （new WebSocket(url, "guacamole")）。Chrome 对「请求了子协议但响应
+	// 未回显」的握手判失败并立刻断开（Sent non-empty 'Sec-WebSocket-Protocol'
+	// header but no response was received），表现为会话建立同毫秒被浏览器
+	// 关闭。gorilla 只在 Upgrader.Subprotocols 里列出才会回显；不请求子
+	// 协议的客户端（集成测试裸 WS）不受影响。
+	Subprotocols: []string{"guacamole"},
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
 		if origin == "" {
@@ -342,6 +349,9 @@ type ticketRequest struct {
 	ReadOnly bool   `json:"readOnly"`
 	Port     int    `json:"port"`   // 0 = 协议默认端口
 	Record   bool   `json:"record"` // 会话录制（需服务端已配置录制，设计 §16）
+	// UseSaved 从保险箱取已存凭据填充缺失字段（快捷调用，vault.go）；
+	// 现场显式传入的值优先
+	UseSaved bool `json:"useSaved"`
 }
 
 // HandleTicketCreate 签发一次性连接票据（5 分钟有效）。挂 /api 组
@@ -422,6 +432,28 @@ func (h *GuacamoleHandler) HandleTicketCreate(c *gin.Context) {
 		return
 	}
 
+	// 保险箱快捷调用（useSaved）：已存凭据只填充请求里缺失的字段——现场
+	// 显式传入的值优先。解密结果只进票据参数，不进日志/审计（authSource
+	// 只记来源枚举，与 cockpit 同款取舍）。
+	authSource := "user"
+	if req.UseSaved {
+		savedUser, savedPass, savedDomain, err := VaultLookupSaved(h.db, userID, req.AgentID, req.Protocol, port)
+		if err != nil {
+			c.JSON(VaultErrStatus(err), gin.H{"success": false, "error": VaultErrMsg(err)})
+			return
+		}
+		if req.Username == "" {
+			req.Username = savedUser
+		}
+		if req.Password == "" {
+			req.Password = savedPass
+		}
+		if req.Domain == "" {
+			req.Domain = savedDomain
+		}
+		authSource = "saved"
+	}
+
 	params := map[string]string{
 		"agent_id":  req.AgentID,
 		"host":      host,
@@ -447,11 +479,12 @@ func (h *GuacamoleHandler) HandleTicketCreate(c *gin.Context) {
 	}
 
 	WriteAuditLog(h.db, username, "desktop.ticket", req.AgentID, map[string]any{
-		"protocol": req.Protocol,
-		"host":     host,
-		"port":     port,
-		"readOnly": req.ReadOnly,
-		"record":   req.Record,
+		"protocol":   req.Protocol,
+		"host":       host,
+		"port":       port,
+		"readOnly":   req.ReadOnly,
+		"record":     req.Record,
+		"authSource": authSource,
 	})
 
 	c.JSON(http.StatusOK, gin.H{

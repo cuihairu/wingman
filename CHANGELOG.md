@@ -9,7 +9,23 @@
 
 ## [Unreleased]
 
-自 v0.1.1 以来共 456 个提交（feat 80 / fix 151 / docs 83 / test 65 / ci 22 / refactor 9 / chore 21 / style 4 / security 1 / build 1 / 其他 19）。
+自 v0.1.1 以来共 459 个提交（feat 81 / fix 150 / docs 83 / test 65 / ci 22 / refactor 9 / chore 22 / style 4 / security 1 / build 1 / 其他 21）。
+
+### feat（2026-10-03，密钥保险箱——主口令派生加密存储 / 连接快捷调用 / 管理界面，附 dashboard 列表与 Guacamole WS 三处生产级修复）
+
+cockpit 密码箱模式的 wingman 落地：远程桌面凭据加密存本机、连接时自动取用，解决「密钥不能每次手输」。走查口径：存一次密钥 → 断开 → 重连凭据留空 → 经 useSaved 自动注入建会话。
+
+- **加密结构（`internal/security/vault.go` + `models/vault.go`，新）**：主口令 `PBKDF2-HMAC-SHA256(salt, 600k)` 派生 KEK → AES-256-GCM 包裹随机 32B DEK 落库；凭据 `Password/PrivateKey` 经 DEK AES-256-GCM 加密落库（hex nonce‖ciphertext）。DEK 仅解锁期驻留内存、空闲超时锁回，主口令与 DEK 永不落库、不留可校验口令摘要（解锁 = 解开 WrappedKey，GCM 认证失败与篡改不可区分）。忘主口令即不可恢复是设计属性；与 cockpit 的差异：对方落库密文用 server 级 env 密钥，本实现按用户主口令派生——存储被拖走也解不开。
+- **API（`handlers/vault.go`，`routes.go` 装配）**：`/api/remote/vault/{status,setup,unlock,lock,change-password,credentials,export}` 与票据同权限面 `desktop:view|control`；写操作 handler 内要求解锁态（423）；凭据按 (用户, agent, 协议, 端口) 唯一 upsert；导出仅回密文。
+- **快捷调用（`guacamole.go` 票据侧）**：`useSaved=true` 时只填充请求里缺失的 username/password/domain（现场显式值优先），解密结果只进票据参数不进日志/审计（authSource 仅记 `user|saved` 枚举）。
+- **管理界面（`VaultManagerModal` 新 + Agents 页接线）**：首装设主口令（双输入校验）/解锁/锁定（表单内联解锁）/条目列表/删除/导出 Popconfirm 确认；连接表单「保存到保险箱」「使用保险箱已存凭据」（探测命中且解锁默认勾选）+ 端口字段透传（`RemoteSessionParams.port`）。隐私默认：凭据不出本机、导出需明示确认。
+- **三处生产级修复（同批真实走查中定位）**：
+  - Agents/Scripts/Workflows 列表恒空：umi `useRequest` 包装器恒注入 `formatResult: r => r?.data`，service 手工解包返回裸数组被二次取 `.data` 得 undefined——四处 service 改回完整 ApiResponse 信封交 formatResult 解包。
+  - Guacamole WS 票据 401：`WebSocketTunnel.connect(data)` 原样拼 `base + '?' + data`，`client.connect()` 空参拼出 `?ticket=x?undefined` 污染票据——`guacamoleWSPath` 改只返干净基址，票据作 connect 数据传（`ticket=<enc>`）。
+  - 浏览器 WS 握手秒断：guacamole-common-js 以子协议 `guacamole` 建连，Chrome 对「请求了子协议但响应未回显」判握手失败即刻关闭（会话建立同毫秒被浏览器拆，日志上像服务端秒杀）——upgrader 配 `Subprotocols: []string{"guacamole"}` 回显；不请求子协议的集成测试裸 WS 不受影响。
+- **SPA fallback（`routes.go` NoRoute）**：未命中路由先按静态文件找（umi 产物含根级 `umi.<hash>.js`、preload_helper），未命中回 index.html 交客户端路由；`/api`、`/swagger` 未注册路径保持 404 JSON，`path.Clean` 归一防穿越。
+- **测试（全绿口径）**：`go test ./...` 14 包 ok（security/handlers 新增 vault 用例：错口令拒绝、密文篡改拒绝、解锁态机、唯一 upsert、useSaved 填充语义）；jest 427/427（新增 `vault.test.ts` + remote/modal 用例更新）；`tsc --noEmit` 0。
+- **真实走查（headless 浏览器全链路）10/12**：登录 → 设主口令 → 手输凭据+保存勾选连 SSH → 断开 → 重连凭据留空（useSaved 默认勾选）→ 自动注入建会话 → 条目列表 → 导出确认，全 PASS；2 项远端键入铁证（echo 落盘）未过——走查栈 guacd 子进程在 SSH 成功后 ~300ms 早退（票据链、中继 accept、SSH 握手均已验通），根因待独立跟进。
 
 ### feat（2026-10-03，Guacamole 目标转发中继落地——guacd 不直拨目标，字节流经 Agent TCP 链路由 runtime 侧拨真实 target）
 

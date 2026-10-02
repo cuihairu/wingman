@@ -5,6 +5,9 @@ package handlers
 // 为后续按域拆分 handlers 子包提供单一装配点。
 
 import (
+	"net/http"
+	"path"
+	"strings"
 	"time"
 
 	_ "github.com/cuihaitao/wingman/orchestrator/server/docs" // swag 生成的 OpenAPI 文档
@@ -43,6 +46,9 @@ type RouterDeps struct {
 	RemoteSessions *RemoteSessionHandler
 	// FileOps SFTP 文件操作审计上报（nil = 不启用；设计 §15.1 第二版）
 	FileOps *RemoteFileOpsHandler
+	// Vault 密钥保险箱（nil = 不启用；凭据加密存储 + 连接快捷调用，
+	// 见 internal/handlers/vault.go 头注释）
+	Vault *VaultHandler
 	// ScriptsDir / StaticDir 静态资源与脚本目录
 	ScriptsDir string
 	StaticDir  string
@@ -69,6 +75,25 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 	r.Static("/assets", deps.StaticDir+"/assets")
 	r.StaticFile("/favicon.ico", deps.StaticDir+"/favicon.ico")
 	r.GET("/", func(c *gin.Context) {
+		c.File(deps.StaticDir + "/index.html")
+	})
+	// SPA fallback：umi 前端是客户端路由（/agents、/user/login 等），且构建
+	// 产物不止 /assets——umi.<hash>.js、preload_helper、/scripts/loading.js
+	// 都在 dist 根。未命中已注册路由的请求先按静态文件找，找不到再回
+	// index.html 交给前端路由。未注册的 /api、/swagger 路径保持 404 JSON。
+	r.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/api") ||
+			strings.HasPrefix(c.Request.URL.Path, "/swagger") {
+			c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "not found"})
+			return
+		}
+		// path.Clean 归一（含 .. 归并），只在 StaticDir 内取文件
+		clean := path.Clean("/" + c.Request.URL.Path)
+		if f, err := http.Dir(deps.StaticDir).Open(strings.TrimPrefix(clean, "/")); err == nil {
+			f.Close()
+			c.FileFromFS(clean, http.Dir(deps.StaticDir))
+			return
+		}
 		c.File(deps.StaticDir + "/index.html")
 	})
 
@@ -232,6 +257,25 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 			desktop.Use(middleware.PermissionRequired(deps.DB, "desktop:view", "desktop:control"))
 			{
 				desktop.POST("/remote/tickets", deps.Guacamole.HandleTicketCreate)
+			}
+		}
+
+		// 密钥保险箱：与票据同权限面（desktop:view/control 任一）。列表/状态
+		// 只要登录态语义下的权限（弹窗探测「已存凭据」正是连接便利所在），
+		// 写操作在 handler 内要求解锁态（主口令二次因子）。
+		if deps.Vault != nil {
+			vault := api.Group("")
+			vault.Use(middleware.PermissionRequired(deps.DB, "desktop:view", "desktop:control"))
+			{
+				vault.GET("/remote/vault/status", deps.Vault.HandleStatus)
+				vault.POST("/remote/vault/setup", deps.Vault.HandleSetup)
+				vault.POST("/remote/vault/change-password", deps.Vault.HandleChangePassword)
+				vault.POST("/remote/vault/unlock", deps.Vault.HandleUnlock)
+				vault.POST("/remote/vault/lock", deps.Vault.HandleLock)
+				vault.GET("/remote/vault/credentials", deps.Vault.HandleList)
+				vault.PUT("/remote/vault/credentials", deps.Vault.HandleUpsert)
+				vault.DELETE("/remote/vault/credentials/:id", deps.Vault.HandleDelete)
+				vault.GET("/remote/vault/export", deps.Vault.HandleExport)
 			}
 		}
 

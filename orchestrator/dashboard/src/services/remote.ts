@@ -40,18 +40,23 @@ export async function createRemoteTicket(params: RemoteTicketParams): Promise<Re
 }
 
 /**
- * Guacamole WS 隧道地址（票据即凭证，路径与后端路由对齐）。
+ * Guacamole WS 隧道基址（不带任何查询串，票据走 connect 数据）。
+ *
+ * guacamole-common-js 的 WebSocketTunnel.connect(data) 会原样拼
+ * `tunnelURL + '?' + data`——若基址已带 `?ticket=...`，再拼一次会出现
+ * `?ticket=xxx?undefined` 把票据污染成 `xxx?undefined`（服务端 401）。
+ * 因此这里只给干净基址，票据由调用方作为 connect 数据传
+ * `ticket=<enc>`（服务端 HandleWS 同样按 ticket 查询参数解析）。
  *
  * loc 可注入：https 页面必须升级为 wss（否则 TLS 页面会把像素面隧道降级成
  * 明文）。jsdom 无法改写 location.protocol，故留参数便于单测覆盖该分支，
  * 也让 SSR/测试环境能显式指定来源。
  */
 export function guacamoleWSPath(
-  ticket: string,
   loc: Pick<Location, 'protocol' | 'host'> = location,
 ): string {
   const proto = loc.protocol === 'https:' ? 'wss' : 'ws';
-  return `${proto}://${loc.host}/api/remote/guacamole?ticket=${encodeURIComponent(ticket)}`;
+  return `${proto}://${loc.host}/api/remote/guacamole`;
 }
 
 // ---------- 会话录像检索（设计 §16：desktop:view 列/下载，desktop:control 删） ----------

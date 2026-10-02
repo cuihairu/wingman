@@ -42,6 +42,8 @@ export interface RemoteDesktopModalProps {
   readOnly?: boolean;
   /** 会话录制（需服务端已配置录制双路径，否则票据申请 400） */
   record?: boolean;
+  /** 从保险箱取已存凭据填充缺失字段（凭据保险箱，vault.go）：显式传值优先 */
+  useSaved?: boolean;
   width?: number;
   height?: number;
   /** 画布高度（px），默认 480 */
@@ -65,6 +67,7 @@ export default function RemoteDesktopModal({
   domain,
   readOnly = false,
   record = false,
+  useSaved,
   width = 1280,
   height = 800,
   stageHeight = 480,
@@ -90,10 +93,11 @@ export default function RemoteDesktopModal({
       domain,
       readOnly,
       record,
+      useSaved,
       width,
       height,
     }),
-    [agentId, protocol, port, username, password, domain, readOnly, record, width, height],
+    [agentId, protocol, port, username, password, domain, readOnly, record, useSaved, width, height],
   );
 
   return (

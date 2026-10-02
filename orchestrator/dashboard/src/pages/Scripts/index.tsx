@@ -54,16 +54,14 @@ const Scripts: React.FC = () => {
   const [runningExecutions, setRunningExecutions] = useState<Record<string, string>>({});
   const [createModalVisible, setCreateModalVisible] = useState(false);
 
-  // 获取脚本列表
+  // 获取脚本列表。service 返回完整信封，由 umi useRequest 默认
+  // formatResult（r => r?.data）解包，理由同 Agents 页
   const {
     data: scriptsData,
     loading,
     refresh,
   } = useRequest(
-    async () => {
-      const response = await getScripts();
-      return response.data || [];
-    },
+    async () => getScripts(),
     {
       pollingInterval: 5000,
     },

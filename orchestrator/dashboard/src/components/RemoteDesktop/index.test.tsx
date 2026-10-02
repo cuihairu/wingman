@@ -33,7 +33,7 @@ import { RTL_ASYNC_UTIL_TIMEOUT } from '@/testSupport/rtlWindow';
 
 jest.mock('@/services/remote', () => ({
   createRemoteTicket: jest.fn(),
-  guacamoleWSPath: jest.fn((t: string) => `ws://host/api/remote/guacamole?ticket=${t}`),
+  guacamoleWSPath: jest.fn(() => 'ws://host/api/remote/guacamole'),
 }));
 
 jest.mock('guacamole-common-js', () => {
@@ -235,8 +235,8 @@ describe('createWingmanTicketClient', () => {
     const params: RemoteSessionParams = { agentId: 'a', protocol: 'ssh', readOnly: true };
     await expect(client.issueTicket(params)).resolves.toEqual({ ticket: 'tk-9', expiresAt: 'x' });
     expect(createRemoteTicket).toHaveBeenCalledWith(params);
-    expect(client.tunnelURL('tk-9')).toBe('ws://host/api/remote/guacamole?ticket=tk-9');
-    expect(guacamoleWSPath).toHaveBeenCalledWith('tk-9');
+    expect(client.tunnelURL('tk-9')).toBe('ws://host/api/remote/guacamole');
+    expect(guacamoleWSPath).toHaveBeenCalledWith();
   });
 });
 

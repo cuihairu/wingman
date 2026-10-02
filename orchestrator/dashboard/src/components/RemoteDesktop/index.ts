@@ -16,7 +16,9 @@ import type { RemoteSessionParams, TicketClient } from './types';
 /** wingman 默认票据客户端（对接本仓 Go server 的 /api/remote/*） */
 export const createWingmanTicketClient = (): TicketClient => ({
   issueTicket: (params: RemoteSessionParams) => createRemoteTicket(params),
-  tunnelURL: (ticket: string) => guacamoleWSPath(ticket),
+  // 只返回干净基址：票据由 useGuacamoleSession 作为 connect 数据传递
+  // （WebSocketTunnel.connect 会拼 `base + '?' + data`，见 guacamoleWSPath 注释）
+  tunnelURL: () => guacamoleWSPath(),
 });
 
 export { default as RemoteDesktopPanel } from './RemoteDesktopPanel';

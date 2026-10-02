@@ -31,6 +31,11 @@ export interface RemoteSessionParams {
   readOnly?: boolean;
   /** 会话录制（设计 §16）：服务端未配置录制双路径时票据申请被 400 拒绝 */
   record?: boolean;
+  /**
+   * 从保险箱取已存凭据填充缺失字段（凭据保险箱，vault.go）：现场显式
+   * 传入的值优先；保险箱未解锁返回 423、无对应条目返回 404
+   */
+  useSaved?: boolean;
   width?: number;
   height?: number;
 }

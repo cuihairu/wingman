@@ -128,6 +128,9 @@ func run() error {
 	remoteSessionsHandler := handlers.NewRemoteSessionHandler(db)
 	// 文件操作审计上报（设计 §15.1）：与网关同库；票据→会话反解走网关快照
 	fileOpsHandler := handlers.NewRemoteFileOpsHandler(db, guacamoleHandler)
+	// 密钥保险箱（远程凭据加密存储 + 连接快捷调用）：主口令派生 KEK 包裹
+	// per-user DEK，解锁期驻留内存（models/vault.go 头注释）
+	vaultHandler := handlers.NewVaultHandler(db)
 
 	// gin engine 与全部路由（中间件/静态资源/API）由 handlers 包统一装配
 	r := gin.New()
@@ -142,6 +145,7 @@ func run() error {
 		Recordings:     recordingsHandler,
 		RemoteSessions: remoteSessionsHandler,
 		FileOps:        fileOpsHandler,
+		Vault:          vaultHandler,
 		ScriptsDir:     cfg.ScriptsDir,
 		StaticDir:      cfg.StaticDir,
 		ProcessStart:   processStartedAt,

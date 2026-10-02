@@ -15,9 +15,7 @@ import { RTL_ASYNC_UTIL_TIMEOUT } from '@/testSupport/rtlWindow';
 jest.mock('@/services/remote', () => ({
   createRemoteTicket: jest.fn(),
   reportRemoteFileOp: jest.fn(),
-  guacamoleWSPath: jest.fn(
-    (ticket: string) => `ws://localhost/api/remote/guacamole?ticket=${ticket}`,
-  ),
+  guacamoleWSPath: jest.fn(() => 'ws://localhost/api/remote/guacamole'),
 }));
 
 jest.mock('guacamole-common-js', () => {
@@ -147,9 +145,9 @@ describe('RemoteDesktopModal', () => {
     expect(mockedCreate).toHaveBeenCalledWith(
       expect.objectContaining({ agentId: 'agent-1', protocol: 'rdp', readOnly: false }),
     );
-    expect(WebSocketTunnel).toHaveBeenCalledWith('ws://localhost/api/remote/guacamole?ticket=tk-9');
+    expect(WebSocketTunnel).toHaveBeenCalledWith('ws://localhost/api/remote/guacamole');
     const instance = lastClient();
-    expect(instance.connect).toHaveBeenCalled();
+    expect(instance.connect).toHaveBeenCalledWith('ticket=tk-9');
     unmount();
   });
 

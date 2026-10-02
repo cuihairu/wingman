@@ -11,6 +11,7 @@ import {
   PauseCircleOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
+  SafetyCertificateOutlined,
   ScheduleOutlined,
   ThunderboltOutlined,
   VideoCameraOutlined,
@@ -48,6 +49,15 @@ import {
 } from 'antd';
 import React, { useState, useEffect } from 'react';
 import TriggerFormModal from '@/components/TriggerFormModal';
+import VaultManagerModal from '@/components/VaultManagerModal';
+import {
+  getVaultStatus,
+  listVaultCredentials,
+  saveVaultCredential,
+  unlockVault,
+  type VaultEntryMeta,
+  type VaultStatus,
+} from '@/services/vault';
 import RemoteDesktopModal from '@/components/RemoteDesktopModal';
 import RemoteSessionReportModal from '@/components/RemoteDesktop/RemoteSessionReportModal';
 import {
@@ -120,24 +130,119 @@ const Agents: React.FC = () => {
   const [desktopForm, setDesktopForm] = useState<{
     agentId: string;
     protocol: RemoteProtocol;
+    port: string;
     username: string;
     password: string;
     readOnly: boolean;
     record: boolean;
+    /** 从保险箱取已存凭据填充缺失字段（服务端注入，显式输入优先） */
+    useSaved: boolean;
+    /** 连接同时把本次输入保存进保险箱 */
+    saveToVault: boolean;
   } | null>(null);
   const [desktopTarget, setDesktopTarget] = useState<{
     agentId: string;
     protocol: RemoteProtocol;
+    port: string;
     username: string;
     password: string;
     readOnly: boolean;
     record: boolean;
+    useSaved: boolean;
   } | null>(null);
-  // openDesktop 表单确认：把表单参数固化为连接目标（触发 RemoteDesktopModal 建连）
-  const openDesktop = () => {
-    if (desktopForm) {
-      setDesktopTarget(desktopForm);
+  // ===== 凭据保险箱（连接表单探测态 + 管理弹窗开关） =====
+  const [vaultOpen, setVaultOpen] = useState(false);
+  const [vaultStatus, setVaultStatus] = useState<VaultStatus | null>(null);
+  const [vaultEntries, setVaultEntries] = useState<VaultEntryMeta[]>([]);
+  const [unlockInput, setUnlockInput] = useState('');
+  const [unlockBusy, setUnlockBusy] = useState(false);
+
+  // 连接表单打开/换目标时探测保险箱：已有该目标的已存凭据且解锁 → 默认
+  // 启用快捷调用（用户名/密码可留空）。探测失败静默（保险箱不可用时退回
+  // 手输，不阻断连接）。
+  const desktopFormOpen = desktopForm !== null;
+  useEffect(() => {
+    if (!desktopFormOpen || !desktopForm) {
+      return undefined;
     }
+    let cancelled = false;
+    Promise.all([getVaultStatus(), listVaultCredentials()])
+      .then(([status, entries]) => {
+        if (cancelled) {
+          return;
+        }
+        setVaultStatus(status);
+        setVaultEntries(entries);
+        setDesktopForm((prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const hit = entries.some(
+            (entry) => entry.agentId === prev.agentId && entry.protocol === prev.protocol,
+          );
+          return { ...prev, useSaved: hit && status.unlocked };
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // 探测只在弹窗开闭/目标切换时触发；输入框打字不重查
+  }, [desktopFormOpen, desktopForm?.agentId, desktopForm?.protocol]);
+
+  // 连接表单内联解锁：解锁成功即刷新探测并默认启用取用
+  const inlineUnlock = async () => {
+    if (!unlockInput) {
+      return;
+    }
+    setUnlockBusy(true);
+    try {
+      await unlockVault(unlockInput);
+      const [status, entries] = await Promise.all([getVaultStatus(), listVaultCredentials()]);
+      setVaultStatus(status);
+      setVaultEntries(entries);
+      setUnlockInput('');
+      setDesktopForm((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const hit = entries.some(
+          (entry) => entry.agentId === prev.agentId && entry.protocol === prev.protocol,
+        );
+        return { ...prev, useSaved: hit };
+      });
+      message.success('保险箱已解锁');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '解锁失败');
+    } finally {
+      setUnlockBusy(false);
+    }
+  };
+
+  // openDesktop 表单确认：先按需落库保险箱，再把表单参数固化为连接目标
+  // （触发 RemoteDesktopModal 建连）。保存失败不阻断连接——手输凭据仍有效。
+  const openDesktop = async () => {
+    if (!desktopForm) {
+      return;
+    }
+    const form = { ...desktopForm };
+    if (form.saveToVault && vaultStatus?.unlocked) {
+      try {
+        await saveVaultCredential({
+          agentId: form.agentId,
+          protocol: form.protocol,
+          port: form.port ? Number(form.port) : undefined,
+          label: `${form.agentId}·${form.protocol.toUpperCase()}`,
+          username: form.username,
+          password: form.password || undefined,
+        });
+        form.useSaved = true; // 刚存的这条本次连接即取用
+        message.success('凭据已保存到保险箱');
+      } catch (err) {
+        message.warning(err instanceof Error ? err.message : '保存到保险箱失败，继续连接');
+      }
+    }
+    setDesktopTarget(form);
     setDesktopForm(null);
   };
   // ===== 会话录像（设计 §16）：desktop:view 列/下载/回放，desktop:control 删 =====
@@ -216,12 +321,12 @@ const Agents: React.FC = () => {
       ? agents
       : agents.filter((a) => (a.tags ?? []).some((t) => tagFilter.includes(t)));
 
-  // 获取 Agent 列表
+  // 获取 Agent 列表。umi 的 useRequest 包装器默认注入 formatResult:
+  // r => r?.data（见 .umi/plugin-request/request.ts），因此 service 须返回
+  // 完整 ApiResponse 信封由 formatResult 解包——返回裸数组会被二次取
+  // .data 变 undefined，列表恒空。
   const { loading, refresh } = useRequest(
-    async (): Promise<AgentInfo[]> => {
-      const response = await getAgents();
-      return response.data || [];
-    },
+    async () => getAgents(),
     {
       onSuccess: (data) => {
         setAgents(Array.isArray(data) ? (data as AgentInfo[]) : []);
@@ -667,10 +772,13 @@ const Agents: React.FC = () => {
                 setDesktopForm({
                   agentId: record.agentId,
                   protocol: record.platform === 'android' ? 'vnc' : 'rdp',
+                  port: '',
                   username: '',
                   password: '',
                   readOnly: true,
                   record: false,
+                  useSaved: false,
+                  saveToVault: false,
                 })
               }
               disabled={record.status === AgentStatus.Offline}
@@ -774,6 +882,12 @@ const Agents: React.FC = () => {
                 {canDesktopView && (
                   <Button icon={<AuditOutlined />} onClick={() => setSessionReportOpen(true)}>
                     会话审计
+                  </Button>
+                )}
+                {/* 凭据保险箱：主口令加密存储 + 连接快捷调用（vault.go） */}
+                {canDesktopView && (
+                  <Button icon={<SafetyCertificateOutlined />} onClick={() => setVaultOpen(true)}>
+                    凭据保险箱
                   </Button>
                 )}
                 <Button icon={<ReloadOutlined />} onClick={refresh} loading={loading}>
@@ -957,6 +1071,17 @@ const Agents: React.FC = () => {
             ]}
           />
           <Input
+            placeholder={
+              desktopForm?.protocol === 'ssh'
+                ? '端口（默认 22）'
+                : desktopForm?.protocol === 'vnc'
+                  ? '端口（默认 5900）'
+                  : '端口（默认 3389）'
+            }
+            value={desktopForm?.port}
+            onChange={(e) => desktopForm && setDesktopForm({ ...desktopForm, port: e.target.value })}
+          />
+          <Input
             placeholder="用户名（可选）"
             value={desktopForm?.username}
             onChange={(e) =>
@@ -964,13 +1089,68 @@ const Agents: React.FC = () => {
             }
           />
           <Input
-            placeholder="密码（可选）"
+            placeholder={
+              desktopForm?.useSaved ? '密码（已存凭据可留空）' : '密码（可选）'
+            }
             type="password"
             value={desktopForm?.password}
             onChange={(e) =>
               desktopForm && setDesktopForm({ ...desktopForm, password: e.target.value })
             }
           />
+          {/* 凭据保险箱（快捷调用）：已存且解锁 → 默认取用；未解锁 → 内联解锁；
+              未设置 → 指引到工具栏管理弹窗 */}
+          {vaultStatus?.configured && !vaultStatus.unlocked && (
+            <Space.Compact style={{ width: '100%' }}>
+              <Input.Password
+                placeholder="保险箱已锁定——输入主口令解锁"
+                value={unlockInput}
+                onChange={(e) => setUnlockInput(e.target.value)}
+                onPressEnter={inlineUnlock}
+              />
+              <Button loading={unlockBusy} onClick={inlineUnlock}>
+                解锁
+              </Button>
+            </Space.Compact>
+          )}
+          {vaultStatus?.unlocked &&
+            desktopForm &&
+            vaultEntries.some(
+              (entry) =>
+                entry.agentId === desktopForm.agentId && entry.protocol === desktopForm.protocol,
+            ) && (
+              <Checkbox
+                checked={desktopForm.useSaved}
+                onChange={(e) =>
+                  desktopForm && setDesktopForm({ ...desktopForm, useSaved: e.target.checked })
+                }
+              >
+                使用保险箱已存凭据（{(() => {
+                  const hit = vaultEntries.find(
+                    (entry) =>
+                      entry.agentId === desktopForm.agentId &&
+                      entry.protocol === desktopForm.protocol,
+                  );
+                  return hit?.label || hit?.username || '已保存';
+                })()}
+                ，用户名/密码留空自动填充）
+              </Checkbox>
+            )}
+          {vaultStatus?.unlocked && (
+            <Checkbox
+              checked={desktopForm?.saveToVault}
+              onChange={(e) =>
+                desktopForm && setDesktopForm({ ...desktopForm, saveToVault: e.target.checked })
+              }
+            >
+              保存到保险箱（下次免输入）
+            </Checkbox>
+          )}
+          {vaultStatus && !vaultStatus.configured && (
+            <Typography.Text type="secondary">
+              保险箱未设置——在工具栏「凭据保险箱」设置主口令后，凭据可加密保存并自动取用
+            </Typography.Text>
+          )}
           <Select
             style={{ width: '100%' }}
             value={desktopForm?.readOnly ? 'view' : 'control'}
@@ -997,13 +1177,18 @@ const Agents: React.FC = () => {
           open
           agentId={desktopTarget.agentId}
           protocol={desktopTarget.protocol}
+          port={desktopTarget.port ? Number(desktopTarget.port) : undefined}
           username={desktopTarget.username || undefined}
           password={desktopTarget.password || undefined}
           readOnly={desktopTarget.readOnly}
           record={desktopTarget.record}
+          useSaved={desktopTarget.useSaved || undefined}
           onCancel={() => setDesktopTarget(null)}
         />
       )}
+
+      {/* 凭据保险箱管理：主口令生命周期 + 条目列表（改标签/删除）+ 密文导出 */}
+      <VaultManagerModal open={vaultOpen} onClose={() => setVaultOpen(false)} />
 
       {/* 会话录像（设计 §16）：guacd 录制目录检索；.mjs 下载后可用
           guacenc 离线转 mp4；删除需 desktop:control */}

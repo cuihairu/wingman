@@ -234,7 +234,9 @@ export function useGuacamoleSession(options: UseGuacamoleSessionOptions): Guacam
 
         cleanups.push(() => window.removeEventListener('resize', onWindowResize));
 
-        client.connect();
+        // 票据走 connect 数据：WebSocketTunnel.connect 拼 `base + '?' + data`，
+        // 传空参会拼出 `?undefined` 污染查询串（服务端按 ticket 参数解析）
+        client.connect(`ticket=${encodeURIComponent(ticket)}`);
         if (!cancelled) {
           setPhase('connected');
         }
