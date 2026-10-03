@@ -232,6 +232,9 @@ jobs:
   deploy:
     name: Deploy compose stack
     needs: [gate, build-server, build-dashboard, build-screenshot]
+    # 截图镜像构建失败不阻塞部署（部署内截图步本身也是 warning 降级）：
+    # 只要门禁与两个业务镜像绿就照常部署
+    if: ${{ !cancelled() && needs.gate.result == 'success' && needs.build-server.result == 'success' && needs.build-dashboard.result == 'success' }}
     runs-on: [self-hosted, wingman]
     # 截图镜像走 GHCR（本机秒拉），无需为大镜像下载留余量
     timeout-minutes: 60
