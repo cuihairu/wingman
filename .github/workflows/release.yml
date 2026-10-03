@@ -122,7 +122,7 @@ jobs:
       version: ${{ needs.resolve-version.outputs.version }}
       release_tag: ${{ needs.resolve-version.outputs.tag }}
       ref: ${{ needs.resolve-version.outputs.ref }}
-      prerelease: ${{ needs.resolve-version.outputs.prerelease }}
+      prerelease: ${{ fromJSON(needs.resolve-version.outputs.prerelease) }}
     secrets: inherit
 
   # Agent 单二进制矩阵（linux/macos/windows × x64/arm64，与 nightly 同源）：
@@ -135,7 +135,7 @@ jobs:
       version: ${{ needs.resolve-version.outputs.version }}
       release_tag: ${{ needs.resolve-version.outputs.tag }}
       ref: ${{ needs.resolve-version.outputs.ref }}
-      prerelease: ${{ needs.resolve-version.outputs.prerelease }}
+      prerelease: ${{ fromJSON(needs.resolve-version.outputs.prerelease) }}
     secrets: inherit
 
   # 全部平台构建成功后才发布：
