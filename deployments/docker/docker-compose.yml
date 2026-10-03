@@ -1,0 +1,84 @@
+# Wingman 演示部署栈（docker compose，全部走 GHCR 预构建镜像，无本地构建）
+#
+# 用途：在部署机上起一套"活的"wingman.cuihairu.site 演示环境 ——
+# Go server（API + agent 接入）+ dashboard（nginx 托管前端，同源反代 /api、
+# /ws 到 server）。Cloudflare 隧道 → 宿主 nginx → 宿主 8080（dashboard）。
+#
+# 与 .github/workflows/deploy-server.yml 的配合：
+#   - 镜像 tag 经 .env 的 WINGMAN_TAG 插值（sha-<full>，回滚即滚回上一组 tag）；
+#   - WINGMAN_JWT_SECRET / WINGMAN_ADMIN_PASSWORD 不写进 .env（不落盘），
+#     由部署工作流以进程环境变量传入 compose 插值；
+#   - wingman-net / wingman-data / wingman-scripts 声明为 external：直接接管
+#     旧 docker run 部署留下的同名网络与数据卷（不重建、不清数据），
+#     部署腿负责 create-if-missing 与卷属主迁移（uid 10001）。
+#
+# 用法（部署目录内只有本文件与 .env）：
+#   docker compose --env-file .env -f docker-compose.yml pull
+#   WINGMAN_JWT_SECRET=... WINGMAN_ADMIN_PASSWORD=... \
+#     docker compose --env-file .env -f docker-compose.yml up -d
+#
+# 端口（.env 可改；缺省与旧 docker run 部署一致，宿主 nginx 反代无感知）：
+#   WINGMAN_HTTP_PORT        API（宿主 nginx/直连调试）        缺省 9527
+#   WINGMAN_AGENT_PORT       agent TCP 接入（runtime 主动外连）  缺省 8888
+#   WINGMAN_DASHBOARD_PORT   dashboard（Cloudflare 隧道入口）    缺省 8080
+#   WINGMAN_DASHBOARD_TARGET 容器内监听口；回滚到旧的 root 镜像
+#                           （listen 80）时由部署腿改为 80        缺省 8080
+
+name: wingman
+
+services:
+  server:
+    image: ghcr.io/${GHCR_OWNER:-cuihairu}/wingman-server:${WINGMAN_TAG:-latest}
+    container_name: wingman-server
+    restart: unless-stopped
+    networks: [wingman-net]
+    ports:
+      - "${WINGMAN_HTTP_PORT:-9527}:9527"
+      - "${WINGMAN_AGENT_PORT:-8888}:8888"
+    environment:
+      WINGMAN_JWT_SECRET: ${WINGMAN_JWT_SECRET:?must be provided via deploy workflow env}
+      WINGMAN_ADMIN_PASSWORD: ${WINGMAN_ADMIN_PASSWORD:?must be provided via deploy workflow env}
+      WINGMAN_HOST: 0.0.0.0
+      WINGMAN_PORT: "9527"
+      WINGMAN_DB_PATH: /app/data/wingman.db
+      WINGMAN_AGENT_ADDR: 0.0.0.0:8888
+      WINGMAN_SCRIPTS_DIR: /app/scripts
+    volumes:
+      - wingman-data:/app/data
+      - wingman-scripts:/app/scripts
+    healthcheck:
+      # 同镜像内 HEALTHCHECK：gin 路由 '/' 返回 404，用确定存在的 swagger 页探测
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "--spider", "http://localhost:9527/swagger/index.html"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  dashboard:
+    image: ghcr.io/${GHCR_OWNER:-cuihairu}/wingman-dashboard:${WINGMAN_TAG:-latest}
+    container_name: wingman-dashboard
+    restart: unless-stopped
+    networks: [wingman-net]
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - "${WINGMAN_DASHBOARD_PORT:-8080}:${WINGMAN_DASHBOARD_TARGET:-8080}"
+    healthcheck:
+      # alpine 容器里 localhost 先解析 ::1，而 nginx 只听 IPv4 —— 健康探测必须
+      # 走 127.0.0.1，否则服务正常也报 connection refused
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
+      interval: 15s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+networks:
+  wingman-net:
+    external: true
+
+volumes:
+  wingman-data:
+    external: true
+  wingman-scripts:
+    external: true

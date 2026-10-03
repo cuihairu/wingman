@@ -1,5 +1,7 @@
 ARG NODE_IMAGE=node:22-alpine
-ARG NGINX_IMAGE=nginx:alpine
+# nginx-unprivileged：以 nginx 用户（uid 101）运行，监听 8080（非特权端口）。
+# nginx.conf 同步改为 listen 8080，宿主端口映射保持 8080:8080 不变。
+ARG NGINX_IMAGE=nginxinc/nginx-unprivileged:alpine
 
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app
@@ -18,4 +20,4 @@ FROM ${NGINX_IMAGE} AS runtime
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist/ /usr/share/nginx/html/
 
-EXPOSE 80
+EXPOSE 8080

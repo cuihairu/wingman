@@ -20,13 +20,22 @@ FROM alpine:latest
 
 RUN apk add --no-cache ca-certificates tzdata sqlite-libs
 
+# 非 root 运行账号（uid/gid 10001）。数据卷 wingman-data / wingman-scripts 由
+# 部署腿迁移属主到该 uid（named volume 首次挂载会继承镜像目录属主，仅对
+# 全新卷生效；存量 root 属主卷必须显式 chown，见 deploy-server.yml）。
+RUN addgroup -S -g 10001 wingman \
+ && adduser -S -u 10001 -G wingman -h /app -s /sbin/nologin wingman
+
 WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder /build/wingman-server .
 
 # Create necessary directories
-RUN mkdir -p /app/data /app/scripts
+RUN mkdir -p /app/data /app/scripts \
+ && chown -R wingman:wingman /app
+
+USER wingman
 
 # Expose ports
 # 9527 - HTTP API

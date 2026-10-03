@@ -1,37 +1,119 @@
+# 部署工作流（wingman.cuihairu.site 演示环境，照 atlas deploy-docker.yml 同法）
+#
+# 链路：ci.yml 在 main 上全绿（门禁）→ 本工作流构建 server/dashboard 镜像推
+# GHCR（tag = sha-<full>，精确锚定本次部署）→ 部署机 runner（标签 wingman）
+# 拉镜像、起 deployments/docker/docker-compose.yml 栈 → 本机/线上两层验活 →
+# 失败自动回滚上一组镜像 tag 再报失败。
+#
+# 触发：
+#   workflow_run：CI 在 main 上跑成功即自动部署（「主分支绿才部署」的门禁本体，
+#     绿之外任何结论直接不开工）；
+#   workflow_dispatch：手动补部署，gate 会轮询 ci.yml 对该 SHA 的结论。
+#
+# 幂等与接管：
+#   - 同 tag 重复 compose up -d 无副作用；.env 只滚动镜像 tag，不覆盖其他变量；
+#   - wingman-net / wingman-data / wingman-scripts 以 external 引用，接管旧
+#     docker run 部署留下的同名资源（数据不丢）；旧容器在移除前记录镜像 ID，
+#     作为首次 compose 部署失败时的回滚锚点。
+#
+# secrets（WINGMAN_JWT_SECRET / WINGMAN_ADMIN_PASSWORD / WINGMAN_DEMO_PASSWORD）
+# 经 step env 传给 compose 插值与 demo 账号步骤，不写进部署机 .env 落盘。
+
 name: Deploy Server & Dashboard
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
-    paths:
-      - 'orchestrator/server/**'
-      - 'orchestrator/dashboard/**'
-      - '.github/workflows/deploy-server.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  actions: read   # gate 轮询 ci.yml 运行结论
+
+# 同时只允许一个部署在跑：并发 up -d 会互相 --remove-orphans。
+concurrency:
+  group: deploy-wingman
+  cancel-in-progress: false
 
 env:
   ACTIONS_NODE_VERSION: '24'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   REGISTRY: ghcr.io
-  SERVER_IMAGE: ${{ github.repository_owner }}/wingman-server
-  DASHBOARD_IMAGE: ${{ github.repository_owner }}/wingman-dashboard
-
-permissions:
-  contents: read
-  packages: write
-  deployments: write
 
 jobs:
-  deploy-server:
-    name: Deploy Server
-    runs-on: [self-hosted, wingman]
-    timeout-minutes: 30
+  # CI 不绿时把部署 run 显式标红（否则全 skip 会显示成绿色 success，像是部署过）
+  gate-rejected:
+    name: Gate — CI not green, deploy skipped
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Report
+        run: |
+          echo "CI for ${{ github.event.workflow_run.head_sha }} concluded: ${{ github.event.workflow_run.conclusion }} — 主分支不绿，不部署"
+          exit 1
 
+  gate:
+    name: Gate — main green
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Resolve SHA & confirm CI green
+        id: resolve
+        timeout-minutes: 50
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            sha="${{ github.event.workflow_run.head_sha }}"
+          else
+            sha="${{ github.sha }}"
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "deploy candidate: $sha"
+
+          # workflow_run 到这里时 ci.yml 必已 success（本事件的触发条件），
+          # 轮询零等待；手动 dispatch 时等 ci.yml 跑完（全矩阵实测最长 ~40 分钟）
+          for _ in $(seq 1 100); do
+            resp="$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$sha&per_page=1" || true)"
+            status="$(printf '%s' "$resp" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
+            concl="$(printf '%s' "$resp" | grep -o '"conclusion":"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
+            if [ -z "$status" ]; then
+              echo "ci.yml: no run for $sha yet, retrying..."
+            elif [ "$status" = "completed" ]; then
+              if [ "$concl" = "success" ]; then
+                echo "ci.yml green for $sha"
+                exit 0
+              fi
+              echo "ci.yml $concl for $sha — 主分支不绿，不部署" >&2
+              exit 1
+            else
+              echo "ci.yml $status ..."
+            fi
+            sleep 30
+          done
+          echo "ci.yml not completed in time for $sha" >&2
+          exit 1
+
+  build-server:
+    name: Build server image
+    needs: gate
+    runs-on: [self-hosted, wingman]
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          submodules: recursive
+          ref: ${{ needs.gate.outputs.sha }}
 
       - name: Set up Docker Buildx
         timeout-minutes: 5
@@ -45,102 +127,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        timeout-minutes: 3
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.SERVER_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push Docker image
+      - name: Build and push
         timeout-minutes: 45
         uses: docker/build-push-action@v5
         with:
           context: ./orchestrator/server
           file: ./orchestrator/server/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          # sha-<full> 供 compose 精确引用（回滚 = 滚回上一组 sha tag）；latest 给人看
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wingman-server:sha-${{ needs.gate.outputs.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wingman-server:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy to runner-docker
-        if: success()
-        env:
-          WINGMAN_JWT_SECRET: ${{ secrets.WINGMAN_JWT_SECRET }}
-          WINGMAN_ADMIN_PASSWORD: ${{ secrets.WINGMAN_ADMIN_PASSWORD }}
-        run: |
-          echo "Deploying server to runner-docker..."
-
-          if [ -z "$WINGMAN_JWT_SECRET" ]; then
-            echo "::error::WINGMAN_JWT_SECRET is not set. Configure it in Settings > Secrets > Actions."
-            exit 1
-          fi
-
-          # Ensure the shared network exists (so dashboard can reach server by name)
-          docker network create wingman-net 2>/dev/null || true
-
-          # Stop and remove existing container if running
-          docker stop wingman-server 2>/dev/null || true
-          docker rm wingman-server 2>/dev/null || true
-
-          # Pull the latest image
-          docker pull ${{ env.REGISTRY }}/${{ env.SERVER_IMAGE }}:latest
-
-          # Run the container
-          docker run -d \
-            --name wingman-server \
-            --network wingman-net \
-            --restart unless-stopped \
-            -p 9527:9527 \
-            -p 8888:8888 \
-            -v wingman-data:/app/data \
-            -v wingman-scripts:/app/scripts \
-            -e WINGMAN_JWT_SECRET="$WINGMAN_JWT_SECRET" \
-            -e WINGMAN_ADMIN_PASSWORD="$WINGMAN_ADMIN_PASSWORD" \
-            -e WINGMAN_HOST=0.0.0.0 \
-            -e WINGMAN_PORT=9527 \
-            -e WINGMAN_DB_PATH=/app/data/wingman.db \
-            -e WINGMAN_AGENT_ADDR=0.0.0.0:8888 \
-            -e WINGMAN_SCRIPTS_DIR=/app/scripts \
-            ${{ env.REGISTRY }}/${{ env.SERVER_IMAGE }}:latest
-
-          # Wait for container to start and check health
-          echo "Waiting for server to start..."
-          for i in $(seq 1 30); do
-            if docker ps --filter name=wingman-server --filter health=healthy -q | grep -q .; then
-              echo "Server is healthy!"
-              docker ps | grep wingman-server
-              echo "Deployment completed successfully"
-              exit 0
-            fi
-            if ! docker ps --filter name=wingman-server -q | grep -q .; then
-              echo "::error::Container exited unexpectedly"
-              docker logs wingman-server 2>&1 | tail -20
-              exit 1
-            fi
-            sleep 1
-          done
-
-          echo "::warning::Server not healthy within 30s, showing logs"
-          docker logs wingman-server 2>&1 | tail -20
-          docker ps | grep wingman-server
-
-  deploy-dashboard:
-    name: Deploy Dashboard
-    needs: deploy-server
+  build-dashboard:
+    name: Build dashboard image
+    needs: gate
     runs-on: [self-hosted, wingman]
-    timeout-minutes: 30
-
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          submodules: recursive
+          ref: ${{ needs.gate.outputs.sha }}
 
       - name: Set up Docker Buildx
         timeout-minutes: 5
@@ -154,77 +164,327 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        timeout-minutes: 3
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.DASHBOARD_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push Docker image
-        # dashboard 镜像内执行 pnpm install + pnpm build，lockfile 变化时
-        # Docker 层缓存全部失效，自托管 runner 网络慢时可能超过 15 分钟
+      - name: Build and push
+        # 镜像内执行 pnpm install + pnpm build，lockfile 变化时 Docker 层缓存
+        # 全部失效，自托管 runner 网络慢时可能超过 15 分钟
         timeout-minutes: 45
         uses: docker/build-push-action@v5
         with:
           context: ./orchestrator/dashboard
           file: ./orchestrator/dashboard/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wingman-dashboard:sha-${{ needs.gate.outputs.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wingman-dashboard:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy to runner-docker
-        if: success()
+  deploy:
+    name: Deploy compose stack
+    needs: [gate, build-server, build-dashboard]
+    runs-on: [self-hosted, wingman]
+    timeout-minutes: 45
+    env:
+      DEPLOY_DIR: /data/deploy/wingman
+      IMAGE_OWNER: ${{ github.repository_owner }}
+      DEPLOY_TAG: sha-${{ needs.gate.outputs.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+
+      - name: Login to GHCR
+        timeout-minutes: 3
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 部署目录与 .env（记录上一组 tag，供失败回滚） ─────────────
+      - name: Prepare deploy directory
+        timeout-minutes: 3
         run: |
-          echo "Deploying dashboard to runner-docker..."
+          set -euo pipefail
+          sudo_cmd=""
+          if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
+            sudo_cmd="sudo"
+          fi
+          $sudo_cmd mkdir -p "$DEPLOY_DIR"
+          $sudo_cmd chown "$(id -u):$(id -g)" "$DEPLOY_DIR"
+          cp deployments/docker/docker-compose.yml "$DEPLOY_DIR/docker-compose.yml"
 
-          # Ensure the shared network exists (so dashboard can reach server by name)
+          prev_tag=""
+          if [ -f "$DEPLOY_DIR/.env" ]; then
+            prev_tag="$(grep '^WINGMAN_TAG=' "$DEPLOY_DIR/.env" | tail -1 | cut -d= -f2- || true)"
+          fi
+          echo "PREV_TAG=$prev_tag" >> "$GITHUB_ENV"
+
+          # .env 只放镜像 tag/owner；secrets 由各 step 的进程环境传入 compose 插值
+          if [ ! -f "$DEPLOY_DIR/.env" ]; then
+            printf 'GHCR_OWNER=%s\nWINGMAN_TAG=%s\n' "$IMAGE_OWNER" "$DEPLOY_TAG" > "$DEPLOY_DIR/.env"
+          else
+            sed -i '/^GHCR_OWNER=/d;/^WINGMAN_TAG=/d' "$DEPLOY_DIR/.env"
+            printf 'GHCR_OWNER=%s\nWINGMAN_TAG=%s\n' "$IMAGE_OWNER" "$DEPLOY_TAG" >> "$DEPLOY_DIR/.env"
+          fi
+          echo "--- $DEPLOY_DIR/.env ---"
+          cat "$DEPLOY_DIR/.env"
+
+      # ── 网络与卷（external 引用，接管旧 docker run 时代的同名资源） ──
+      - name: Prepare docker resources & take over legacy containers
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
           docker network create wingman-net 2>/dev/null || true
+          docker volume create wingman-data >/dev/null
+          docker volume create wingman-scripts >/dev/null
 
-          # Stop and remove existing container if running
-          docker stop wingman-dashboard 2>/dev/null || true
-          docker rm wingman-dashboard 2>/dev/null || true
-
-          # Pull the latest image
-          docker pull ${{ env.REGISTRY }}/${{ env.DASHBOARD_IMAGE }}:latest
-
-          # Run the container
-          docker run -d \
-            --name wingman-dashboard \
-            --network wingman-net \
-            --restart unless-stopped \
-            -p 8080:80 \
-            ${{ env.REGISTRY }}/${{ env.DASHBOARD_IMAGE }}:latest
-
-          # Wait for container to start
-          echo "Waiting for dashboard to start..."
-          timeout 30 sh -c 'until docker ps | grep wingman-dashboard; do sleep 1; done'
-
-          # Verify the API proxy reaches wingman-server (401/404/405 = gin responded;
-          # 502/503/000 = proxy broken). Retry since nginx may take a moment to start.
-          echo "Verifying API proxy -> wingman-server..."
-          code=000
-          for i in $(seq 1 15); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 \
-              http://localhost:8080/api/v1/auth/login || echo 000)
-            case "$code" in
-              502|503|000) sleep 2 ;;
-              *) echo "Dashboard API proxy OK (HTTP $code)"; break ;;
-            esac
+          # 旧 docker run 容器与 compose 的 container_name 同名冲突：非本项目
+          # 接管的先记录镜像 ID（首次部署失败时的回滚锚点）再移除
+          prev_server_img=""
+          prev_dash_img=""
+          for c in wingman-server wingman-dashboard; do
+            if docker container inspect "$c" >/dev/null 2>&1; then
+              proj="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$c")"
+              if [ "$proj" != "wingman" ]; then
+                img="$(docker inspect -f '{{.Image}}' "$c")"
+                case "$c" in
+                  wingman-server)    prev_server_img="$img" ;;
+                  wingman-dashboard) prev_dash_img="$img" ;;
+                esac
+                echo "removing legacy non-compose container $c ($img)"
+                docker rm -f "$c"
+              fi
+            fi
           done
-          if [ "$code" = "502" ] || [ "$code" = "503" ] || [ "$code" = "000" ]; then
-            echo "::error::Dashboard API proxy not reaching wingman-server (HTTP $code)"
-            docker logs wingman-dashboard 2>&1 | tail -20
-            exit 1
+          echo "PREV_SERVER_IMAGE=$prev_server_img" >> "$GITHUB_ENV"
+          echo "PREV_DASHBOARD_IMAGE=$prev_dash_img" >> "$GITHUB_ENV"
+
+          # 镜像内以 uid 10001 跑：存量卷是旧 root 容器写的 root 属主，迁移之
+          # （幂等；全新空卷首次挂载会继承镜像属主，此处 chown 为无害空操作）
+          docker run --rm -v wingman-data:/d -v wingman-scripts:/s alpine:latest \
+            sh -c 'chown -R 10001:10001 /d /s'
+
+      - name: Pull images
+        timeout-minutes: 10
+        env:
+          # compose 即使对 pull 也做全文件插值，占位值即可（不进容器）
+          WINGMAN_JWT_SECRET: x
+          WINGMAN_ADMIN_PASSWORD: x
+        run: |
+          set -euo pipefail
+          docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" pull
+
+      - name: Deploy containers
+        timeout-minutes: 10
+        env:
+          WINGMAN_JWT_SECRET: ${{ secrets.WINGMAN_JWT_SECRET }}
+          WINGMAN_ADMIN_PASSWORD: ${{ secrets.WINGMAN_ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # up -d 对同 tag 重复执行即幂等：镜像未变则原样不动，变了才重建
+          docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" \
+            up -d --remove-orphans
+          docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" ps
+
+      # ── 验活第 1 层：部署机本机端口 ─────────────────────────────
+      - name: Wait for health (local)
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          # 端口从 .env 读（运维可能改过），缺省与 compose 默认一致
+          read_env() { grep -E "^$1=" "$DEPLOY_DIR/.env" | tail -1 | cut -d= -f2; }
+          dash_port="$(read_env WINGMAN_DASHBOARD_PORT)"; dash_port="${dash_port:-8080}"
+          http_port="$(read_env WINGMAN_HTTP_PORT)"; http_port="${http_port:-9527}"
+          for i in $(seq 1 40); do
+            ok=1
+            # dashboard SPA 首页
+            curl -fsS -o /dev/null --max-time 3 "http://127.0.0.1:$dash_port/" || ok=0
+            # 经 dashboard 同源反代的 API：GET /api/v1/status 无 token 应答 401。
+            # 不用 POST /auth/login 做探测——login 有按 IP 的 5 次/15 分钟限流
+            #（成功也不清计数），CI 反复部署会把自己限进去并连累同 IP 的真实用户
+            code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 \
+              "http://127.0.0.1:$dash_port/api/v1/status" || echo 000)"
+            case "$code" in 502|503|000) ok=0 ;; esac
+            # server 直连（宿主 nginx / 调试用端口）
+            curl -fsS -o /dev/null --max-time 3 "http://127.0.0.1:$http_port/swagger/index.html" || ok=0
+            if [ "$ok" = 1 ]; then
+              echo "stack healthy after $i probes"
+              exit 0
+            fi
+            if [ "$i" = 40 ]; then
+              echo "::error::stack did not become healthy (last API probe: HTTP $code)"
+              WINGMAN_JWT_SECRET=x WINGMAN_ADMIN_PASSWORD=x \
+                docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" logs --tail 80
+              exit 1
+            fi
+            sleep 10
+          done
+
+      # ── 验活第 2 层：线上域名（Cloudflare 隧道 → 宿主 nginx → dashboard） ──
+      - name: Verify online (https://wingman.cuihairu.site)
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          echo "--- homepage ---"
+          curl -fsS --retry 8 --retry-delay 3 --retry-all-errors -o /dev/null \
+            -w 'HTTP %{http_code} in %{time_total}s\n' https://wingman.cuihairu.site/
+          echo "--- API endpoint through the tunnel (GET /api/v1/status, 无 token 预期 401) ---"
+          code="$(curl -s -o /dev/null -w '%{http_code}' --retry 5 --retry-delay 3 --retry-all-errors \
+            --max-time 10 https://wingman.cuihairu.site/api/v1/status)"
+          case "$code" in
+            2*|4*) echo "API responds through tunnel (HTTP $code)" ;;
+            *) echo "::error::unexpected API HTTP $code through tunnel"; exit 1 ;;
+          esac
+
+      # ── 演示账号（demo/viewer，幂等；README 公开的演示入口） ─────
+      - name: Ensure demo account (idempotent)
+        timeout-minutes: 5
+        env:
+          WINGMAN_ADMIN_PASSWORD: ${{ secrets.WINGMAN_ADMIN_PASSWORD }}
+          WINGMAN_DEMO_PASSWORD: ${{ secrets.WINGMAN_DEMO_PASSWORD }}
+        run: |
+          set -euo pipefail
+          read_env() { grep -E "^$1=" "$DEPLOY_DIR/.env" | tail -1 | cut -d= -f2; }
+          dash_port="$(read_env WINGMAN_DASHBOARD_PORT)"; dash_port="${dash_port:-8080}"
+          base="http://127.0.0.1:$dash_port"   # 走 dashboard 同源代理，与线上同链路
+          [ -n "$WINGMAN_ADMIN_PASSWORD" ] || { echo "::error::WINGMAN_ADMIN_PASSWORD secret is not set"; exit 1; }
+          [ -n "$WINGMAN_DEMO_PASSWORD" ] || { echo "::error::WINGMAN_DEMO_PASSWORD secret is not set"; exit 1; }
+
+          # admin 登录取 token（响应：{"success":true,"token":"...","user":{...}}）
+          login_body="$(printf '{"username":"admin","password":"%s"}' "$WINGMAN_ADMIN_PASSWORD" \
+            | curl -fsS -X POST "$base/api/v1/auth/login" -H 'Content-Type: application/json' --data @-)"
+          token="$(printf '%s' "$login_body" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)"
+          [ -n "$token" ] || { echo "::error::admin login failed: $login_body"; exit 1; }
+          auth=(-H "Authorization: Bearer $token" -H 'Content-Type: application/json')
+
+          # keyword=demo 过滤后列表里实际只有 demo 一个用户，取首个 id 足够
+          list="$(curl -fsS "${auth[@]}" "$base/api/admin/users?keyword=demo&page=1&size=20")"
+          if printf '%s' "$list" | grep -q '"username":"demo"'; then
+            demo_id="$(printf '%s' "$list" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)"
+            echo "demo user exists (id=$demo_id), syncing role/active/password..."
+            printf '{"role":"viewer","active":true}' \
+              | curl -fsS -X PUT "$base/api/admin/users/$demo_id" "${auth[@]}" --data @- | head -c 200; echo
+            printf '{"newPassword":"%s"}' "$WINGMAN_DEMO_PASSWORD" \
+              | curl -fsS -X POST "$base/api/admin/users/$demo_id/reset-password" "${auth[@]}" --data @- | head -c 200; echo
+          else
+            echo "creating demo user (role=viewer, active)..."
+            printf '{"username":"demo","password":"%s","role":"viewer","active":true}' "$WINGMAN_DEMO_PASSWORD" \
+              | curl -fsS -X POST "$base/api/admin/users" "${auth[@]}" --data @- | head -c 200; echo
           fi
 
-          # Show container status
-          docker ps | grep wingman-dashboard
+          # 验证 demo 能从线上域名登录（README 口径的入口）
+          sleep 1
+          demo_code="$(printf '{"username":"demo","password":"%s"}' "$WINGMAN_DEMO_PASSWORD" \
+            | curl -s -o "$RUNNER_TEMP/demo-login.json" -w '%{http_code}' --max-time 10 \
+              -X POST https://wingman.cuihairu.site/api/v1/auth/login \
+              -H 'Content-Type: application/json' --data @-)"
+          if [ "$demo_code" = "200" ] && grep -q '"token"' "$RUNNER_TEMP/demo-login.json"; then
+            echo "demo login verified through https://wingman.cuihairu.site (HTTP $demo_code)"
+          else
+            echo "::error::demo login failed through public origin (HTTP $demo_code)"
+            head -c 300 "$RUNNER_TEMP/demo-login.json" || true
+            exit 1
+          fi
+          rm -f "$RUNNER_TEMP/demo-login.json"
 
-          echo "Dashboard deployment completed successfully"
+      # ── 部署记录：线上验证截图（尽力而为，不因截图工具失败回滚服务） ──
+      - name: Screenshot the live site
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          mkdir -p "$DEPLOY_DIR/records"
+          for i in 1 2 3; do
+            if docker run --rm -v "$DEPLOY_DIR/records":/shots \
+              chromedp/headless-shell:latest \
+              --no-sandbox --disable-gpu --hide-scrollbars \
+              --window-size=1440,2000 --timeout=15000 \
+              --screenshot=/shots/deploy-online.png \
+              https://wingman.cuihairu.site/ ; then
+              ls -la "$DEPLOY_DIR/records/deploy-online.png"
+              exit 0
+            fi
+            echo "screenshot attempt $i failed; retrying in 10s"
+            sleep 10
+          done
+          echo "::warning::screenshot failed after 3 attempts — 线上探测已通过，部署保持绿，仅缺截图 artifact"
+
+      - name: Upload screenshot
+        if: always()
+        timeout-minutes: 3
+        uses: actions/upload-artifact@v7
+        with:
+          name: deploy-screenshot
+          path: ${{ env.DEPLOY_DIR }}/records/deploy-online.png
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # ── 失败自动回滚：滚回上一组镜像 tag 重新 up 并验活 ────────────
+      - name: Rollback to previous images
+        if: failure()
+        timeout-minutes: 10
+        env:
+          WINGMAN_JWT_SECRET: ${{ secrets.WINGMAN_JWT_SECRET }}
+          WINGMAN_ADMIN_PASSWORD: ${{ secrets.WINGMAN_ADMIN_PASSWORD }}
+        run: |
+          set -uo pipefail
+          if [ -n "${PREV_TAG:-}" ]; then
+            echo "回滚到上一组镜像 tag：${PREV_TAG}"
+            sed -i '/^WINGMAN_TAG=/d;/^WINGMAN_DASHBOARD_TARGET=/d' "$DEPLOY_DIR/.env"
+            printf 'WINGMAN_TAG=%s\n' "$PREV_TAG" >> "$DEPLOY_DIR/.env"
+            docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" pull || true
+          elif [ -n "${PREV_SERVER_IMAGE:-}" ] || [ -n "${PREV_DASHBOARD_IMAGE:-}" ]; then
+            # 首次 compose 部署失败：滚回被接管的旧 docker run 镜像。
+            # 旧 dashboard 镜像 listen 80（非 8080），容器侧端口随回滚一起改。
+            echo "首次 compose 部署失败：回滚到部署前的旧容器镜像"
+            [ -n "${PREV_SERVER_IMAGE:-}" ] && docker tag "$PREV_SERVER_IMAGE" \
+              "ghcr.io/$IMAGE_OWNER/wingman-server:rollback"
+            [ -n "${PREV_DASHBOARD_IMAGE:-}" ] && docker tag "$PREV_DASHBOARD_IMAGE" \
+              "ghcr.io/$IMAGE_OWNER/wingman-dashboard:rollback"
+            sed -i '/^WINGMAN_TAG=/d;/^WINGMAN_DASHBOARD_TARGET=/d' "$DEPLOY_DIR/.env"
+            printf 'WINGMAN_TAG=rollback\nWINGMAN_DASHBOARD_TARGET=80\n' >> "$DEPLOY_DIR/.env"
+          else
+            echo "没有可回滚的旧镜像（全新环境）——保持现状并报告失败。" >&2
+            exit 1
+          fi
+          # rollback tag 只在本地存在，不能再 pull；直接 up
+          docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" \
+            up -d --remove-orphans || true
+          docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" ps || true
+          read_env() { grep -E "^$1=" "$DEPLOY_DIR/.env" | tail -1 | cut -d= -f2; }
+          dash_port="$(read_env WINGMAN_DASHBOARD_PORT)"; dash_port="${dash_port:-8080}"
+          for _ in $(seq 1 20); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 \
+              "http://127.0.0.1:$dash_port/api/v1/status" || echo 000)"
+            case "$code" in
+              502|503|000) sleep 6 ;;
+              *) echo "回滚完成，旧版本恢复（部署仍按失败报告）。"; exit 1 ;;
+            esac
+          done
+          echo "回滚后仍未通过健康检查——需要人工介入。" >&2
+          docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" logs --tail 80 || true
+          exit 1
+
+      - name: Deploy summary
+        if: always()
+        timeout-minutes: 3
+        run: |
+          {
+            echo "### Wingman 部署记录"
+            echo
+            echo "- 部署 run：<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>"
+            echo "- 提交：\`${{ needs.gate.outputs.sha }}\`"
+            echo "- 镜像标签：\`${DEPLOY_TAG}\`（回滚目标：\`${PREV_TAG:-${PREV_SERVER_IMAGE:+rollback-legacy}}\`）"
+            echo "- 部署目录：\`$DEPLOY_DIR\`"
+            echo "- 站点：<https://wingman.cuihairu.site/>（线上验证截图见 artifact \`deploy-screenshot\`）"
+            echo "- 演示账号：demo（viewer 只读，幂等同步，经线上域名验证登录）"
+            echo "- 结论：${{ job.status }}"
+            echo
+            echo '```'
+            # compose 插值要求 secrets 变量存在；summary 只读状态，用占位值即可
+            WINGMAN_JWT_SECRET=x WINGMAN_ADMIN_PASSWORD=x \
+              docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" \
+              ps --format '{{.Name}}\t{{.Image}}\t{{.Status}}' 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
