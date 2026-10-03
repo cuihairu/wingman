@@ -298,7 +298,7 @@ jobs:
         run: |
           set -euo pipefail
           # 端口从 .env 读（运维可能改过），缺省与 compose 默认一致
-          read_env() { grep -E "^$1=" "$DEPLOY_DIR/.env" | tail -1 | cut -d= -f2; }
+          read_env() { grep -E "^$1=" "$DEPLOY_DIR/.env" | tail -1 | cut -d= -f2 || true; }
           dash_port="$(read_env WINGMAN_DASHBOARD_PORT)"; dash_port="${dash_port:-8080}"
           http_port="$(read_env WINGMAN_HTTP_PORT)"; http_port="${http_port:-9527}"
           for i in $(seq 1 40); do
@@ -350,7 +350,7 @@ jobs:
           WINGMAN_DEMO_PASSWORD: ${{ secrets.WINGMAN_DEMO_PASSWORD }}
         run: |
           set -euo pipefail
-          read_env() { grep -E "^$1=" "$DEPLOY_DIR/.env" | tail -1 | cut -d= -f2; }
+          read_env() { grep -E "^$1=" "$DEPLOY_DIR/.env" | tail -1 | cut -d= -f2 || true; }
           dash_port="$(read_env WINGMAN_DASHBOARD_PORT)"; dash_port="${dash_port:-8080}"
           base="http://127.0.0.1:$dash_port"   # 走 dashboard 同源代理，与线上同链路
           [ -n "$WINGMAN_ADMIN_PASSWORD" ] || { echo "::error::WINGMAN_ADMIN_PASSWORD secret is not set"; exit 1; }
@@ -358,15 +358,15 @@ jobs:
 
           # admin 登录取 token（响应：{"success":true,"token":"...","user":{...}}）
           login_body="$(printf '{"username":"admin","password":"%s"}' "$WINGMAN_ADMIN_PASSWORD" \
-            | curl -fsS -X POST "$base/api/v1/auth/login" -H 'Content-Type: application/json' --data @-)"
-          token="$(printf '%s' "$login_body" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)"
+            | curl -fsS -X POST "$base/api/v1/auth/login" -H 'Content-Type: application/json' --data @- || true)"
+          token="$(printf '%s' "$login_body" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
           [ -n "$token" ] || { echo "::error::admin login failed: $login_body"; exit 1; }
           auth=(-H "Authorization: Bearer $token" -H 'Content-Type: application/json')
 
           # keyword=demo 过滤后列表里实际只有 demo 一个用户，取首个 id 足够
-          list="$(curl -fsS "${auth[@]}" "$base/api/admin/users?keyword=demo&page=1&size=20")"
+          list="$(curl -fsS "${auth[@]}" "$base/api/admin/users?keyword=demo&page=1&size=20" || true)"
           if printf '%s' "$list" | grep -q '"username":"demo"'; then
-            demo_id="$(printf '%s' "$list" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)"
+            demo_id="$(printf '%s' "$list" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || true)"
             echo "demo user exists (id=$demo_id), syncing role/active/password..."
             printf '{"role":"viewer","active":true}' \
               | curl -fsS -X PUT "$base/api/admin/users/$demo_id" "${auth[@]}" --data @- | head -c 200; echo
@@ -383,7 +383,7 @@ jobs:
           demo_code="$(printf '{"username":"demo","password":"%s"}' "$WINGMAN_DEMO_PASSWORD" \
             | curl -s -o "$RUNNER_TEMP/demo-login.json" -w '%{http_code}' --max-time 10 \
               -X POST https://wingman.cuihairu.site/api/v1/auth/login \
-              -H 'Content-Type: application/json' --data @-)"
+              -H 'Content-Type: application/json' --data @- || true)"
           if [ "$demo_code" = "200" ] && grep -q '"token"' "$RUNNER_TEMP/demo-login.json"; then
             echo "demo login verified through https://wingman.cuihairu.site (HTTP $demo_code)"
           else
@@ -456,7 +456,7 @@ jobs:
           docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" \
             up -d --remove-orphans || true
           docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" ps || true
-          read_env() { grep -E "^$1=" "$DEPLOY_DIR/.env" | tail -1 | cut -d= -f2; }
+          read_env() { grep -E "^$1=" "$DEPLOY_DIR/.env" | tail -1 | cut -d= -f2 || true; }
           dash_port="$(read_env WINGMAN_DASHBOARD_PORT)"; dash_port="${dash_port:-8080}"
           for _ in $(seq 1 20); do
             code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 \
