@@ -62,6 +62,35 @@ jobs:
             } > release_notes.md
           fi
 
+          # GitHub release body 上限 125000 字符，超出部分被**静默截断**：写入不
+          # 报错，读回来才发现尾巴没了。v0.1.2 实测：CHANGELOG 段落 218411 字节，
+          # release body 只剩 124994 字符——尾部条目与 create-release 追加的
+          # Package Contents 附录整段丢失（2026-10-03 run 37086451387 后的 draft）。
+          # 官方文档只说"限制"，不报错，故在此源头按 100000 字符截断并补指针：
+          # 保留头部（本就有 🎉 摘要 + 最近条目，用户最先看的部分），完整记录
+          # 指向 CHANGELOG。
+          python3 - <<'PY'
+          import os
+
+          LIMIT = 100_000
+          path = "release_notes.md"
+          text = open(path, encoding="utf-8").read()
+          if len(text) > LIMIT:
+              head = text[:LIMIT]
+              # 回退到最后一个换行，避免把条目/UTF-8 字符切成两半
+              head = head[: head.rfind("\n")]
+              tail = (
+                  "\n\n---\n\n"
+                  "以上为节选（完整记录见 [CHANGELOG.md]"
+                  f"(https://github.com/{os.environ['GITHUB_REPOSITORY']}/blob/main/CHANGELOG.md)）。\n"
+              )
+              text = head + tail
+              open(path, "w", encoding="utf-8").write(text)
+              print(f"release notes truncated to {len(text)} chars (limit {LIMIT})")
+          else:
+              print(f"release notes length {len(text)} chars — within limit")
+          PY
+
       - name: Upload release notes
         uses: actions/upload-artifact@v7
         with:
@@ -96,11 +125,13 @@ jobs:
 
           | Package | Platform | Contents |
           |---------|----------|----------|
-          | `wingman-*-windows-x64.zip` | Windows | C++ runtime / Tauri GUI installer (NSIS) / Go orchestrator server / dashboard / scripts / config |
-          | `wingman-*-linux-x64.tar.gz` | Linux | C++ runtime / Tauri GUI (AppImage, deb) / Go orchestrator server / dashboard / scripts / config |
-          | `wingman-*-macos-x64.tar.gz` | macOS | C++ runtime / Tauri GUI (dmg, app) / Go orchestrator server / dashboard / scripts / config |
+          | `wingman-*-windows-x64.zip` | Windows x64 | C++ runtime / Tauri GUI installer (NSIS) / Go orchestrator server / dashboard / scripts / config |
+          | `wingman-*-linux-x64.tar.gz` | Linux x64 | C++ runtime / Tauri GUI (AppImage, deb) / Go orchestrator server / dashboard / scripts / config |
+          | `wingman-*-macos-x64.tar.gz` | macOS x64 | C++ runtime / Tauri GUI (dmg, app) / Go orchestrator server / dashboard / scripts / config |
+          | `wingman-*-android-arm64.apk` | Android arm64 | wingman agent（手势注入 / 屏幕采集 / 找色找图 / 远程截图），装在目标安卓设备上 |
+          | `wingman-agent-*`（六腿） | linux / macos / windows × x64 / arm64 | agent 单二进制，供 `install.sh` / `install.ps1` 一键安装分发；arm64 桌面的 agent 覆盖由此承担（暂无 arm64 桌面全量包） |
 
-          校验和见 `SHA256SUMS.txt`。
+          校验和见 `SHA256SUMS.txt`，逐包校验步骤见 `VERIFY.md`，构建元信息见 `BUILD_INFO.txt`。
           EOF
 
       - name: Create draft release
