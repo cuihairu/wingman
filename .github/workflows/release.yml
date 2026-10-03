@@ -122,7 +122,14 @@ jobs:
       version: ${{ needs.resolve-version.outputs.version }}
       release_tag: ${{ needs.resolve-version.outputs.tag }}
       ref: ${{ needs.resolve-version.outputs.ref }}
-      prerelease: ${{ needs.resolve-version.outputs.prerelease }}
+      # fromJSON 转型是必需的，不是风格问题：callee 把 prerelease 声明为
+      # type: boolean，而 job outputs 一律是字符串（"true"/"false"）。GitHub 在
+      # 图构建期做类型校验，字符串直传 boolean 类型的 with: 会让整个 reusable
+      # job 被静默丢弃——run 里只剩 resolve-version/create-release，无
+      # check-run、无 annotation、内层 run 不创建，publish-release 随之 skipped
+      # 而整条 run 记 failure（37081668034 / 37085699901 复现）。fromJSON
+      # 把 outputs 字符串还原成真 boolean，job 正常创建。
+      prerelease: ${{ fromJSON(needs.resolve-version.outputs.prerelease) }}
     secrets: inherit
 
   # Agent 单二进制矩阵（linux/macos/windows × x64/arm64，与 nightly 同源）：
@@ -135,7 +142,7 @@ jobs:
       version: ${{ needs.resolve-version.outputs.version }}
       release_tag: ${{ needs.resolve-version.outputs.tag }}
       ref: ${{ needs.resolve-version.outputs.ref }}
-      prerelease: ${{ needs.resolve-version.outputs.prerelease }}
+      prerelease: ${{ fromJSON(needs.resolve-version.outputs.prerelease) }}
     secrets: inherit
 
   # 全部平台构建成功后才发布：
