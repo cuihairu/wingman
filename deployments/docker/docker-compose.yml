@@ -66,8 +66,11 @@ services:
       - "${WINGMAN_DASHBOARD_PORT:-8080}:${WINGMAN_DASHBOARD_TARGET:-8080}"
     healthcheck:
       # alpine 容器里 localhost 先解析 ::1，而 nginx 只听 IPv4 —— 健康探测必须
-      # 走 127.0.0.1，否则服务正常也报 connection refused
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
+      # 走 127.0.0.1，否则服务正常也报 connection refused。
+      # 探测端口跟随 WINGMAN_DASHBOARD_TARGET（compose 解析本文件时插值）：
+      # 正常新镜像（nginx-unprivileged）listen 8080；回滚到旧 root 镜像 listen 80
+      # 时由部署腿把 TARGET 写成 80，健康检查随之改探 80，不会对新端口误报 unhealthy
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:${WINGMAN_DASHBOARD_TARGET:-8080}/ >/dev/null"]
       interval: 15s
       timeout: 3s
       start_period: 5s

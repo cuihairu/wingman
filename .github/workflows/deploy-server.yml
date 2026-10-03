@@ -8,7 +8,8 @@
 # 触发：
 #   workflow_run：CI 在 main 上跑成功即自动部署（「主分支绿才部署」的门禁本体，
 #     绿之外任何结论直接不开工）；
-#   workflow_dispatch：手动补部署，gate 会轮询 ci.yml 对该 SHA 的结论。
+#   workflow_dispatch：手动补部署，gate 会轮询 ci.yml 对该 SHA 的结论；
+#     drill_failure=true 时在部署全链成功后强制失败一次，专门演练回滚路径。
 #
 # 幂等与接管：
 #   - 同 tag 重复 compose up -d 无副作用；.env 只滚动镜像 tag，不覆盖其他变量；
@@ -27,6 +28,11 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      drill_failure:
+        description: '回滚演练：部署成功后强制失败触发回滚（验证回滚后站点恢复 200）'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -223,6 +229,14 @@ jobs:
           if [ -f "$DEPLOY_DIR/.env" ]; then
             prev_tag="$(grep '^WINGMAN_TAG=' "$DEPLOY_DIR/.env" | tail -1 | cut -d= -f2- || true)"
           fi
+          # 回滚锚只认 GHCR 上真实可 pull 的 sha-* 新契约 tag。rollback-legacy /
+          # rollback 是回滚段写的本地别名（旧 root 镜像 listen 80），拿它当回滚
+          # 目标会 pull not found 且按新契约映射 8080:8080（旧镜像 listen 80）→
+          # 站点 502（2026-10-03 事故根因）
+          case "$prev_tag" in
+            sha-*) ;;
+            *)   prev_tag="" ;;
+          esac
           echo "PREV_TAG=$prev_tag" >> "$GITHUB_ENV"
 
           # .env 只放镜像 tag/owner；secrets 由各 step 的进程环境传入 compose 插值
@@ -397,18 +411,33 @@ jobs:
           rm -f "$RUNNER_TEMP/demo-login.json"
 
       # ── 部署记录：线上验证截图（尽力而为，不因截图工具失败回滚服务） ──
+      # 截图工具换代（2026-10-03）：chromedp/headless-shell（151/153 精简构建）在
+      # 内核 7.0 上 GPU 子进程起不来（zygote 崩溃，GPU process launch failed
+      # error_code=1002），about:blank 都挂死，部署机同症状。playwright 镜像带
+      # 完整 Chromium（本机同内核验证可用），镜像版本固定保证可复现。
       - name: Screenshot the live site
         timeout-minutes: 12
         run: |
           mkdir -p "$DEPLOY_DIR/records"
+          shot_img=mcr.microsoft.com/playwright:v1.63.0-noble
+          if ! timeout 240 docker pull "$shot_img"; then
+            echo "::warning::screenshot image pull failed — 线上探测已通过，仅缺截图 artifact"
+            exit 0
+          fi
           for i in 1 2 3; do
-            if timeout 90 docker run --rm --network host -v "$DEPLOY_DIR/records":/shots \
-              chromedp/headless-shell:latest \
-              --no-sandbox --disable-gpu --hide-scrollbars \
-              --window-size=1440,2000 --timeout=15000 \
-              --virtual-time-budget=8000 \
-              --screenshot=/shots/deploy-online.png \
-              https://wingman.cuihairu.site/ ; then
+            if timeout 120 docker run --rm --network host --user 0:0 \
+              -v "$DEPLOY_DIR/records":/shots \
+              -e SITE_URL=https://wingman.cuihairu.site/ \
+              "$shot_img" node -e '
+                const { chromium } = require("playwright");
+                (async () => {
+                  const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-gpu"] });
+                  const page = await browser.newPage({ viewport: { width: 1440, height: 2000 } });
+                  await page.goto(process.env.SITE_URL, { waitUntil: "networkidle", timeout: 60000 });
+                  await page.screenshot({ path: "/shots/deploy-online.png" });
+                  await browser.close();
+                })().catch((e) => { console.error(e); process.exit(1); });
+              ' ; then
               ls -la "$DEPLOY_DIR/records/deploy-online.png"
               exit 0
             fi
@@ -426,6 +455,14 @@ jobs:
           path: ${{ env.DEPLOY_DIR }}/records/deploy-online.png
           if-no-files-found: ignore
           retention-days: 30
+
+      # ── 回滚演练：部署全链成功后强制失败，让下面的 Rollback 真跑一遍 ─────
+      # 截图/演示账号等步骤都已通过，演练不破坏数据（回滚只换镜像 tag，卷不动）
+      - name: Drill — force failure to exercise rollback
+        if: inputs.drill_failure == true
+        run: |
+          echo "::error::rollback drill requested — 部署已成功，现强制失败以触发回滚演练"
+          exit 1
 
       # ── 失败自动回滚：滚回上一组镜像 tag 重新 up 并验活 ────────────
       - name: Rollback to previous images
@@ -445,12 +482,14 @@ jobs:
             # 首次 compose 部署失败：滚回被接管的旧 docker run 镜像。
             # 旧 dashboard 镜像 listen 80（非 8080），容器侧端口随回滚一起改。
             echo "首次 compose 部署失败：回滚到部署前的旧容器镜像"
+            # 别名叫 rollback-legacy：prepare 只认 sha-* 当回滚锚，本地别名
+            # 不会被下一轮部署误当成可 pull 的回滚目标
             [ -n "${PREV_SERVER_IMAGE:-}" ] && docker tag "$PREV_SERVER_IMAGE" \
-              "ghcr.io/$IMAGE_OWNER/wingman-server:rollback"
+              "ghcr.io/$IMAGE_OWNER/wingman-server:rollback-legacy"
             [ -n "${PREV_DASHBOARD_IMAGE:-}" ] && docker tag "$PREV_DASHBOARD_IMAGE" \
-              "ghcr.io/$IMAGE_OWNER/wingman-dashboard:rollback"
+              "ghcr.io/$IMAGE_OWNER/wingman-dashboard:rollback-legacy"
             sed -i '/^WINGMAN_TAG=/d;/^WINGMAN_DASHBOARD_TARGET=/d' "$DEPLOY_DIR/.env"
-            printf 'WINGMAN_TAG=rollback\nWINGMAN_DASHBOARD_TARGET=80\n' >> "$DEPLOY_DIR/.env"
+            printf 'WINGMAN_TAG=rollback-legacy\nWINGMAN_DASHBOARD_TARGET=80\n' >> "$DEPLOY_DIR/.env"
           else
             echo "没有可回滚的旧镜像（全新环境）——保持现状并报告失败。" >&2
             exit 1
