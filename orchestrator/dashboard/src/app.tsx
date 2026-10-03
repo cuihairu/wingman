@@ -15,6 +15,28 @@ import { setAppApi } from './utils/antdApp';
 const isDev = process.env.NODE_ENV === 'development';
 const loginPath = '/user/login';
 
+// 登录页等 layout:false 路由不经过 ProLayout 的 childrenRender —— AntdApp 若只挂
+// 在那里，登录页上 getMessage() 恒为 undefined，requestErrorConfig 的 errorHandler
+// 与页面 catch 的 toast 全部静默（2026-10-03 线上实测 401/429 均无任何提示）。
+// 把 provider 提到 rootContainer，全站（含 layout:false 页面）都能拿到
+// context-aware message/notification API。
+const AppApiRegistrar: React.FC = () => {
+  const inst = AntdApp.useApp();
+  useEffect(() => {
+    setAppApi({ message: inst.message, notification: inst.notification });
+  }, [inst]);
+  return null;
+};
+
+export function rootContainer(container: React.ReactNode) {
+  return (
+    <AntdApp>
+      <AppApiRegistrar />
+      {container}
+    </AntdApp>
+  );
+}
+
 type InitialCurrentUser = {
   name?: string;
   userid?: string;
@@ -119,13 +141,6 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     );
   };
 
-  const AppApiRegistrar: React.FC = () => {
-    const inst = AntdApp.useApp();
-    useEffect(() => {
-      setAppApi({ message: inst.message, notification: inst.notification });
-    }, [inst]);
-    return null;
-  };
   return {
     actionsRender: () => [<HeaderActions key="header-actions" />] as any,
     splitMenus: false,
@@ -149,8 +164,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     menuHeaderRender: undefined,
     childrenRender: (children) => {
       return (
-        <AntdApp>
-          <AppApiRegistrar />
+        <>
           {children}
           {isDev && (
             <SettingDrawer
@@ -165,7 +179,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
               }}
             />
           )}
-        </AntdApp>
+        </>
       );
     },
     ...initialState?.settings,
