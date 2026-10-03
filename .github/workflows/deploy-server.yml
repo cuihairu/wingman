@@ -189,11 +189,51 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # 截图镜像（alpine + chromium + CJK 字体，~1GB 未压缩）：mcr playwright 2.5GB
+  # 在部署机带宽下拉不完，自建后 push GHCR，部署步秒拉。Dockerfile 变更才重建，
+  # 层缓存命中时秒过。
+  build-screenshot:
+    name: Build screenshot image
+    needs: gate
+    runs-on: [self-hosted, wingman]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+
+      - name: Set up Docker Buildx
+        timeout-minutes: 5
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        timeout-minutes: 3
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        # alpine apk 拉包慢时可能超 10 分钟，给 30 分钟余量
+        timeout-minutes: 30
+        uses: docker/build-push-action@v5
+        with:
+          context: ./deployments/docker/screenshot
+          push: true
+          # tag 含版本 pin，升级 chromium/alpine 时同步改截图步的 shot_img
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wingman-screenshot:chromium131-alpine3.20
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/wingman-screenshot:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
     name: Deploy compose stack
-    needs: [gate, build-server, build-dashboard]
+    needs: [gate, build-server, build-dashboard, build-screenshot]
     runs-on: [self-hosted, wingman]
-    # 含首次拉 playwright 镜像（~15-25min，仅第一次）的余量
+    # 截图镜像走 GHCR（本机秒拉），无需为大镜像下载留余量
     timeout-minutes: 60
     env:
       DEPLOY_DIR: /data/deploy/wingman
@@ -412,35 +452,29 @@ jobs:
           rm -f "$RUNNER_TEMP/demo-login.json"
 
       # ── 部署记录：线上验证截图（尽力而为，不因截图工具失败回滚服务） ──
-      # 截图工具换代（2026-10-03）：chromedp/headless-shell（151/153 精简构建）在
-      # 内核 7.0 上 GPU 子进程起不来（zygote 崩溃，GPU process launch failed
-      # error_code=1002），about:blank 都挂死，部署机同症状。playwright 镜像带
-      # 完整 Chromium（本机同内核验证可用），镜像版本固定保证可复现。
-      # 首次拉 playwright 镜像约 2.5GB，部署机到 mcr 带宽下 240s 拉不完（2026-10-03
-      # 实测 4 分钟仅下到一半）；runner 本地有层缓存，只有第一次付这个时间
+      # 截图工具三轮换代（2026-10-03，选型详见 Dockerfile 注释）：
+      #   chromedp/headless-shell 内核 7.0 上 zygote 崩溃（about:blank 都挂死）→
+      #   mcr playwright 2.5GB 部署机带宽 1500s 拉不完 → 自建 alpine+chromium
+      #   由 build-screenshot job 推 GHCR，本步秒拉。完整 chromium 必须
+      #   --headless（非 headless-shell），root 跑容器要 --no-sandbox。
+      # 截图失败只降级为 warning：线上探测已通过，部署保持绿，仅缺 artifact。
       - name: Screenshot the live site
-        timeout-minutes: 35
+        timeout-minutes: 15
         run: |
           mkdir -p "$DEPLOY_DIR/records"
-          shot_img=mcr.microsoft.com/playwright:v1.63.0-noble
-          if ! timeout 1500 docker pull "$shot_img"; then
+          shot_img=ghcr.io/$IMAGE_OWNER/wingman-screenshot:chromium131-alpine3.20
+          if ! timeout 300 docker pull "$shot_img"; then
             echo "::warning::screenshot image pull failed — 线上探测已通过，仅缺截图 artifact"
             exit 0
           fi
           for i in 1 2 3; do
-            if timeout 120 docker run --rm --network host --user 0:0 \
+            if timeout 90 docker run --rm --network host \
               -v "$DEPLOY_DIR/records":/shots \
-              -e SITE_URL=https://wingman.cuihairu.site/ \
-              "$shot_img" node -e '
-                const { chromium } = require("playwright");
-                (async () => {
-                  const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-gpu"] });
-                  const page = await browser.newPage({ viewport: { width: 1440, height: 2000 } });
-                  await page.goto(process.env.SITE_URL, { waitUntil: "networkidle", timeout: 60000 });
-                  await page.screenshot({ path: "/shots/deploy-online.png" });
-                  await browser.close();
-                })().catch((e) => { console.error(e); process.exit(1); });
-              ' ; then
+              "$shot_img" \
+                --headless --no-sandbox --disable-gpu --hide-scrollbars \
+                --window-size=1440,2000 --virtual-time-budget=8000 \
+                --screenshot=/shots/deploy-online.png \
+                https://wingman.cuihairu.site/ ; then
               ls -la "$DEPLOY_DIR/records/deploy-online.png"
               exit 0
             fi
