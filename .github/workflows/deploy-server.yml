@@ -193,7 +193,8 @@ jobs:
     name: Deploy compose stack
     needs: [gate, build-server, build-dashboard]
     runs-on: [self-hosted, wingman]
-    timeout-minutes: 45
+    # 含首次拉 playwright 镜像（~15-25min，仅第一次）的余量
+    timeout-minutes: 60
     env:
       DEPLOY_DIR: /data/deploy/wingman
       IMAGE_OWNER: ${{ github.repository_owner }}
@@ -415,12 +416,14 @@ jobs:
       # 内核 7.0 上 GPU 子进程起不来（zygote 崩溃，GPU process launch failed
       # error_code=1002），about:blank 都挂死，部署机同症状。playwright 镜像带
       # 完整 Chromium（本机同内核验证可用），镜像版本固定保证可复现。
+      # 首次拉 playwright 镜像约 2.5GB，部署机到 mcr 带宽下 240s 拉不完（2026-10-03
+      # 实测 4 分钟仅下到一半）；runner 本地有层缓存，只有第一次付这个时间
       - name: Screenshot the live site
-        timeout-minutes: 12
+        timeout-minutes: 35
         run: |
           mkdir -p "$DEPLOY_DIR/records"
           shot_img=mcr.microsoft.com/playwright:v1.63.0-noble
-          if ! timeout 240 docker pull "$shot_img"; then
+          if ! timeout 1500 docker pull "$shot_img"; then
             echo "::warning::screenshot image pull failed — 线上探测已通过，仅缺截图 artifact"
             exit 0
           fi
