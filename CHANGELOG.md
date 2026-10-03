@@ -19,6 +19,16 @@
 - **一键安装三件套**：`install.sh` / `install.ps1` + agent 独立构建矩阵接入 nightly 分发（linux/macos/windows × x64/arm64 六腿）
 - **三处生产级修复**：Dashboard 列表恒空（useRequest formatResult）、Guacamole WS 票据 401（URL 污染）、浏览器 WS 握手秒断（子协议回显缺失）
 
+### fix（2026-10-03，正式版发布链两处根因——reusable job 被静默丢弃 + 资产校验查 draft 恒 404）
+
+v0.1.2 首次正式发布连续两次卡死，两处根因均无错误提示、只在 run 的 job 数量上体现。修复后 run 37088776490 十三 job 全绿，v0.1.2 十三资产上线。
+
+- **根因一：reusable job 被静默丢弃（`prerelease` 需 `fromJSON` 转型）**：callee 把 `prerelease` 声明为 `type: boolean`，而 job outputs 一律是字符串（`resolve-version` 写 `"true"`/`"false"`）。GitHub 在**图构建期**做 `with:` 类型校验，字符串直传 boolean 类型的输入会让整个 reusable job 被丢弃——失败发生在图构建而非 job 执行，因此 run 里只有 `resolve-version`/`create-release` 成功、build 侧无 check-run 无 annotation、内层 run 不创建、`publish-release` 随之 skipped 而整条 run 记 failure（37081668034 / 37085699901 复现）。修复：两处 `with:` 改 `fromJSON(needs.resolve-version.outputs.prerelease)`。
+  - 前两次修复（cabfa81 callee 顶层 env 下沉、453dc13 build-agent env 下沉）方向判断有误：env 下沉本身是有效的卫生改动，但与本故障无关，移除 env 后故障依旧。四个探针逐项排除后定位：x2（移除 `secrets: inherit`）、x4（`needs` 改单值不传 `ref`）、x5（不传 `ref`）各自只改一处仍失败；x3 同时把 `prerelease` 改字面量 `false` 并换最小 callee，job 成功创建并运行 noop——x3 与其余三支的唯一共同变量即类型不匹配。
+- **根因二：资产大小校验查 draft release 恒 404（`remote_size_of` 改走 release id）**：根因一修复后 11 条构建腿全绿，但两个 `publish-assets` 在**校验环节**失败——`gh: Not Found (HTTP 404) /releases/get-a-release-by-tag-name` 加 `[: {"message":"Not Found"...}: integer expression expected`。根因是校验逻辑而非上传：`remote_size_of` 走 `/releases/tags/<tag>` 端点，而 GitHub API 不允许按 tag 取未发布的 release，正式版的 draft 正是 `create-release` 建的，该端点恒 404；上传本身成功（v0.1.2 draft 上 agent linux-arm64 6172495B 与 android-arm64.apk 28188410B 均为 `uploaded`）。修复：先从 `/releases` 列表按 `tag_name` 筛出 release id（列表端点含 draft），解析不到即报错退出，再按 id 取资产大小。本机以 v0.1.2 draft 实证：新路径返回 6172495（与本地产物字节数一致），旧路径 404。`build-package.yml` 与 `build-agent.yml` 的 `publish-assets` 各有一份同款逻辑，一并修正；两段脚本经 shellcheck error 级校验干净，actionlint 无 schema 错。
+- **发布实证（run 37088776490，tag push 路径）**：十三 job 全 success——三平台整包（windows-x64 34995637B / linux-x64 111850460B / macos-x64 35102132B）+ android-arm64.apk 28188410B + 六腿 agent 矩阵 + `SHA256SUMS.txt`/`BUILD_INFO.txt`/`VERIFY.md`。真实下载 `wingman-v0.1.2-macos-x64.tar.gz` 跑 `sha256sum -c --ignore-missing` 得 OK。
+- **已知瑕疵（未修）**：`BUILD_INFO.txt` 的 `Commit:` 行显示 tag 名 `v0.1.2` 而非 commit SHA——`resolve-version` 的 `ref` output 直接赋 tag 值，该行本意是记录构建 commit。不影响资产完整性（SHA256SUMS 覆盖），下版修正。
+
 ### feat（2026-10-03，密钥保险箱——主口令派生加密存储 / 连接快捷调用 / 管理界面，附 dashboard 列表与 Guacamole WS 三处生产级修复）
 
 cockpit 密码箱模式的 wingman 落地：远程桌面凭据加密存本机、连接时自动取用，解决「密钥不能每次手输」。走查口径：存一次密钥 → 断开 → 重连凭据留空 → 经 useSaved 自动注入建会话。
