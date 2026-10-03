@@ -229,7 +229,10 @@ jobs:
           if [ ! -f "$DEPLOY_DIR/.env" ]; then
             printf 'GHCR_OWNER=%s\nWINGMAN_TAG=%s\n' "$IMAGE_OWNER" "$DEPLOY_TAG" > "$DEPLOY_DIR/.env"
           else
-            sed -i '/^GHCR_OWNER=/d;/^WINGMAN_TAG=/d' "$DEPLOY_DIR/.env"
+            # WINGMAN_DASHBOARD_TARGET 只在回滚到旧 root 镜像（listen 80）时由
+            # 回滚段写入；新 compose 部署必须清掉，否则宿主 8080 会映射到新的
+            # nginx-unprivileged 镜像的错误容器端口 80，health 必败
+            sed -i '/^GHCR_OWNER=/d;/^WINGMAN_TAG=/d;/^WINGMAN_DASHBOARD_TARGET=/d' "$DEPLOY_DIR/.env"
             printf 'GHCR_OWNER=%s\nWINGMAN_TAG=%s\n' "$IMAGE_OWNER" "$DEPLOY_TAG" >> "$DEPLOY_DIR/.env"
           fi
           echo "--- $DEPLOY_DIR/.env ---"
