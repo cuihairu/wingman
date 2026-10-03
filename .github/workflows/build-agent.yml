@@ -293,10 +293,30 @@ jobs:
             return 1
           }
 
-          remote_size_of() {
-            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-              --jq ".assets[] | select(.name == \"$1\") | .size" || true
+          # 按 tag 查 release 的端点（/releases/tags/<tag>）对 draft 恒返回
+          # 404——GitHub API 不允许按 tag 取未发布的 release。正式版走
+          # create-release 建的正是 draft，因此这里必须走 release id：
+          # 先从 /releases 列表按 tag 筛出 id（列表端点包含 draft），再用
+          # id 取资产大小。上传本身用 gh release upload（其内部按 id 或
+          # fallback 解析），此前失败全在校验环节而非上传。
+          release_id() {
+            gh api "repos/$GITHUB_REPOSITORY/releases" \
+              --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .id" | head -1
           }
+
+          remote_size_of() {
+            local rid="$1" name="$2"
+            [ -n "$rid" ] || return 0
+            gh api "repos/$GITHUB_REPOSITORY/releases/$rid" \
+              --jq ".assets[] | select(.name == \"$name\") | .size" || true
+          }
+
+          RELEASE_ID=$(release_id)
+          if [ -z "$RELEASE_ID" ]; then
+            echo "::error::Could not resolve release id for tag $RELEASE_TAG"
+            exit 1
+          fi
+          echo "Release id for $RELEASE_TAG: $RELEASE_ID"
 
           for f in "${files[@]}"; do
             local_size=$(stat -c%s "$f")
@@ -306,7 +326,7 @@ jobs:
                 echo "::error::All upload attempts failed for $f"
                 exit 1
               fi
-              remote_size=$(remote_size_of "$f")
+              remote_size=$(remote_size_of "$RELEASE_ID" "$f")
               if [ -n "$remote_size" ] && [ "$remote_size" -eq "$local_size" ]; then
                 echo "$f: $local_size bytes verified"
                 verified=true

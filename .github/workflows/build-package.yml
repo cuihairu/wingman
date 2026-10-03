@@ -659,10 +659,26 @@ jobs:
             return 1
           }
 
-          remote_size_of() {
-            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-              --jq ".assets[] | select(.name == \"$1\") | .size" || true
+          # draft release 不能按 tag 查（/releases/tags/<tag> 对未发布恒 404），
+          # 故先从 /releases 列表取 id（含 draft），再按 id 取资产大小。
+          release_id() {
+            gh api "repos/$GITHUB_REPOSITORY/releases" \
+              --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .id" | head -1
           }
+
+          remote_size_of() {
+            local rid="$1" name="$2"
+            [ -n "$rid" ] || return 0
+            gh api "repos/$GITHUB_REPOSITORY/releases/$rid" \
+              --jq ".assets[] | select(.name == \"$name\") | .size" || true
+          }
+
+          RELEASE_ID=$(release_id)
+          if [ -z "$RELEASE_ID" ]; then
+            echo "::error::Could not resolve release id for tag $RELEASE_TAG"
+            exit 1
+          fi
+          echo "Release id for $RELEASE_TAG: $RELEASE_ID"
 
           for f in wingman-*; do
             if [ ! -f "$f" ]; then
@@ -679,7 +695,7 @@ jobs:
 
               # 远端大小校验：上传 API 可能超时中断但留下半截资产（2026-09-17
               # Windows 实例：31.6 MB 包只落了 3.65 MB），不校验会静默发布坏包
-              remote_size=$(remote_size_of "$f")
+              remote_size=$(remote_size_of "$RELEASE_ID" "$f")
               if [ -n "$remote_size" ] && [ "$remote_size" -eq "$local_size" ]; then
                 echo "$f: $local_size bytes verified"
                 verified=true
