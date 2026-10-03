@@ -398,15 +398,15 @@ jobs:
 
       # ── 部署记录：线上验证截图（尽力而为，不因截图工具失败回滚服务） ──
       - name: Screenshot the live site
-        timeout-minutes: 5
+        timeout-minutes: 12
         run: |
-          set -euo pipefail
           mkdir -p "$DEPLOY_DIR/records"
           for i in 1 2 3; do
-            if docker run --rm -v "$DEPLOY_DIR/records":/shots \
+            if timeout 90 docker run --rm --network host -v "$DEPLOY_DIR/records":/shots \
               chromedp/headless-shell:latest \
               --no-sandbox --disable-gpu --hide-scrollbars \
               --window-size=1440,2000 --timeout=15000 \
+              --virtual-time-budget=8000 \
               --screenshot=/shots/deploy-online.png \
               https://wingman.cuihairu.site/ ; then
               ls -la "$DEPLOY_DIR/records/deploy-online.png"
