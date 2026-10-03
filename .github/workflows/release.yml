@@ -134,6 +134,23 @@ jobs:
           校验和见 `SHA256SUMS.txt`，逐包校验步骤见 `VERIFY.md`，构建元信息见 `BUILD_INFO.txt`。
           EOF
 
+      # 守卫：拒绝把已发布的正式版替换成空 draft。2026-10-03 事故（run
+      # 37094346293）：对已发布的 v0.1.2 误 dispatch Release，softprops 以
+      # draft:true 重建 release——原 release 对象被删、tag 消失、后续 build
+      # 全部 checkout 404。已发布版的重发必须先显式删 release+tag（发布面
+      # 纪律同禁 force push）；中途回归重跑（既有 draft）不受影响——draft
+      # 无 tag ref，/releases/tags/ 查不到，照旧走 softprops 就地更新。
+      - name: Guard against replacing a published release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.resolve-version.outputs.tag }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > /dev/null 2>&1; then
+            echo "::error::Release $TAG already exists and is published. Re-dispatching would replace it with an empty draft and orphan the tag (2026-10-03 incident). Delete the release and tag explicitly first if a re-release is intended."
+            exit 1
+          fi
+          echo "No published release for $TAG — safe to create draft"
+
       - name: Create draft release
         uses: softprops/action-gh-release@v3
         with:
