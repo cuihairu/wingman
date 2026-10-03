@@ -73,20 +73,24 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # workflow_run 触发时 CI 已 success（gate job 的 if 条件保证），
+            # 直接开工，不再轮询（2026-10-03 事故：GitHub API 返回带空格的
+            # "status": "..."，下方 grep 无空格模式永远解析失败，gate 死循环
+            # 50 分钟，deploy-wingman 并发组被占导致后续 run 全排队）
             sha="${{ github.event.workflow_run.head_sha }}"
-          else
-            sha="${{ github.sha }}"
+            echo "sha=$sha" >> "$GITHUB_OUTPUT"
+            echo "workflow_run: CI concluded success for $sha — 直接开工"
+            exit 0
           fi
+          sha="${{ github.sha }}"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "deploy candidate: $sha"
 
-          # workflow_run 到这里时 ci.yml 必已 success（本事件的触发条件），
-          # 轮询零等待；手动 dispatch 时等 ci.yml 跑完（全矩阵实测最长 ~40 分钟）
           for _ in $(seq 1 100); do
             resp="$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$sha&per_page=1" || true)"
-            status="$(printf '%s' "$resp" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
-            concl="$(printf '%s' "$resp" | grep -o '"conclusion":"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
+            status="$(printf '%s' "$resp" | grep -o '"status": *"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
+            concl="$(printf '%s' "$resp" | grep -o '"conclusion": *"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
             if [ -z "$status" ]; then
               echo "ci.yml: no run for $sha yet, retrying..."
             elif [ "$status" = "completed" ]; then
