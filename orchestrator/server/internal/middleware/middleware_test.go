@@ -1,10 +1,12 @@
 package middleware
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -565,6 +567,66 @@ func TestRateLimitMiddleware(t *testing.T) {
 	r.ServeHTTP(w, httptest.NewRequest("GET", "/x", nil))
 	if w.Code != http.StatusTooManyRequests {
 		t.Errorf("blocked: got %d, want 429", w.Code)
+	}
+}
+
+func TestRateLimit429CarriesRetryHint(t *testing.T) {
+	rl := &RateLimiter{clients: make(map[string]*clientInfo)}
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(RateLimitMiddleware(rl))
+	r.GET("/x", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"ok": true}) })
+
+	for i := 0; i < maxAttempts; i++ {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest("GET", "/x", nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("attempt %d: got %d", i+1, w.Code)
+		}
+	}
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/x", nil))
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("blocked: got %d, want 429", w.Code)
+	}
+
+	var body struct {
+		RetryAfterSeconds int `json:"retry_after_seconds"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode 429 body: %v", err)
+	}
+	if body.RetryAfterSeconds < 1 || body.RetryAfterSeconds > int(blockDuration.Seconds()) {
+		t.Errorf("retry_after_seconds = %d, want in [1, %d]", body.RetryAfterSeconds, int(blockDuration.Seconds()))
+	}
+	if got := w.Header().Get("Retry-After"); got == "" || got != strconv.Itoa(body.RetryAfterSeconds) {
+		t.Errorf("Retry-After header = %q, want %q matching body", got, strconv.Itoa(body.RetryAfterSeconds))
+	}
+}
+
+func TestRateLimiterBlockRemaining(t *testing.T) {
+	rl := &RateLimiter{clients: make(map[string]*clientInfo)}
+
+	if rem := rl.BlockRemaining("nobody"); rem != 0 {
+		t.Errorf("unknown client remaining = %v, want 0", rem)
+	}
+	for i := 0; i < maxAttempts; i++ {
+		rl.Check("c1")
+	}
+	if rem := rl.BlockRemaining("c1"); rem != 0 {
+		t.Errorf("client within quota should not be blocked, remaining = %v", rem)
+	}
+	rl.Check("c1") // 触发封禁
+	rem := rl.BlockRemaining("c1")
+	if rem <= 0 || rem > blockDuration {
+		t.Errorf("blocked remaining = %v, want in (0, %v]", rem, blockDuration)
+	}
+	// 解封后归零
+	rl.mu.Lock()
+	rl.clients["c1"].blockUntil = time.Now().Add(-time.Second)
+	rl.mu.Unlock()
+	if rem := rl.BlockRemaining("c1"); rem != 0 {
+		t.Errorf("expired block remaining = %v, want 0", rem)
 	}
 }
 

@@ -4,6 +4,7 @@
  */
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import React from 'react';
+import { setAppApi } from '@/utils/antdApp';
 
 const historyMock = { push: jest.fn(), replace: jest.fn() };
 const mockCreateSession = jest.fn();
@@ -81,6 +82,64 @@ describe('Login 页扩展分支', () => {
     expect(historyMock.push).not.toHaveBeenCalled();
 
     root.unmount();
+  });
+
+  it('429 限流时按服务端剩余封禁时间提示「请 N 分钟后再试」', async () => {
+    const errorSpy = jest.fn();
+    setAppApi({
+      message: {
+        error: errorSpy,
+        success: jest.fn(),
+        warning: jest.fn(),
+        info: jest.fn(),
+      } as any,
+      notification: { open: jest.fn() } as any,
+    });
+    mockCreateSession.mockRejectedValueOnce(
+      Object.assign(new Error('rate limited'), {
+        status: 429,
+        response: { status: 429, data: { success: false, retry_after_seconds: 600 } },
+      }),
+    );
+
+    const root = await submitLoginForm();
+
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith('尝试过于频繁，请 10 分钟后再试');
+    });
+    expect(historyMock.push).not.toHaveBeenCalled();
+
+    root.unmount();
+    (setAppApi as any)(null);
+  });
+
+  it('全局 errorHandler 已提示过（__wmErrorShown）时不再弹第二个 toast', async () => {
+    const errorSpy = jest.fn();
+    setAppApi({
+      message: {
+        error: errorSpy,
+        success: jest.fn(),
+        warning: jest.fn(),
+        info: jest.fn(),
+      } as any,
+      notification: { open: jest.fn() } as any,
+    });
+    mockCreateSession.mockRejectedValueOnce(
+      Object.assign(new Error('handled globally'), { __wmErrorShown: true }),
+    );
+
+    const root = await submitLoginForm();
+
+    await waitFor(() => {
+      expect(mockCreateSession).toHaveBeenCalled();
+    });
+    // 等 catch 分支执行完（defer 之后）再断言没有第二个 toast
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(historyMock.push).not.toHaveBeenCalled();
+
+    root.unmount();
+    (setAppApi as any)(null);
   });
 
   it('登录成功且返回游戏列表时写入 scope 并跳转 redirect', async () => {

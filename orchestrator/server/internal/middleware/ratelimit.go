@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -79,6 +80,22 @@ func (rl *RateLimiter) Check(clientID string) bool {
 	return true
 }
 
+// BlockRemaining returns how long clientID is still blocked (0 if not blocked).
+// Used to answer 429 responses with a concrete retry hint.
+func (rl *RateLimiter) BlockRemaining(clientID string) time.Duration {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	info, exists := rl.clients[clientID]
+	if !exists {
+		return 0
+	}
+	if rem := time.Until(info.blockUntil); rem > 0 {
+		return rem
+	}
+	return 0
+}
+
 // RecordSuccess resets the attempt counter for a successful login
 func (rl *RateLimiter) RecordSuccess(clientID string) {
 	rl.mu.Lock()
@@ -120,9 +137,16 @@ func RateLimitMiddleware(rl *RateLimiter) gin.HandlerFunc {
 		clientID := c.ClientIP()
 
 		if !rl.Check(clientID) {
+			// 附带剩余封禁秒数：前端据此渲染「请 N 分钟后再试」，不再只弹通用文案
+			retryAfter := int((rl.BlockRemaining(clientID) + time.Second - 1) / time.Second)
+			if retryAfter < 1 {
+				retryAfter = 1
+			}
+			c.Header("Retry-After", strconv.Itoa(retryAfter))
 			c.JSON(http.StatusTooManyRequests, gin.H{
-				"success": false,
-				"error":   "Too many failed attempts. Please try again later.",
+				"success":             false,
+				"error":               "Too many failed attempts. Please try again later.",
+				"retry_after_seconds": retryAfter,
 			})
 			c.Abort()
 			return

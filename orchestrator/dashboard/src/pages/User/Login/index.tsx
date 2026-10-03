@@ -3,6 +3,7 @@ import { BRAND } from '@/config/branding';
 import { createSession, fetchCurrentUserGames } from '@/services/api';
 import { setScope } from '@/stores/scope';
 import { getMessage } from '@/utils/antdApp';
+import { formatRateLimitMessage } from '@/utils/rateLimit';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormText } from '@ant-design/pro-components';
 import { FormattedMessage, Helmet, history, SelectLang, useIntl, useModel } from '@umijs/max';
@@ -127,12 +128,22 @@ const Login: React.FC = () => {
       const urlParams = new URL(window.location.href).searchParams;
       history.push(urlParams.get('redirect') || '/');
     } catch (error) {
-      const defaultLoginFailureMessage = intl.formatMessage({
-        id: 'pages.login.failure',
-        defaultMessage: '登录失败，请重试',
-      });
       console.log(error);
-      getMessage()?.error(defaultLoginFailureMessage);
+      // 全局 errorHandler 已提示过（如 429 限流文案）时不再叠第二个 toast
+      if (!(error as any)?.__wmErrorShown) {
+        const status = (error as any)?.status ?? (error as any)?.response?.status;
+        const text =
+          status === 429
+            ? formatRateLimitMessage(
+                (error as any)?.response?.data?.retry_after_seconds ??
+                  (error as any)?.retry_after_seconds,
+              )
+            : intl.formatMessage({
+                id: 'pages.login.failure',
+                defaultMessage: '登录失败，请重试',
+              });
+        getMessage()?.error(text);
+      }
     }
   };
 

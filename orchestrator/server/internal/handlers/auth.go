@@ -84,9 +84,10 @@ func (h *AuthHandler) HandleLogin(c *gin.Context) {
 		return
 	}
 
-	// Record successful login to reset the rate limit counter
-	key := clientIP + ":" + req.Username
-	rl.RecordSuccess(key)
+	// Record successful login to reset the rate limit counter.
+	// 中间件按纯 clientIP 计数（封禁的唯一依据），这里必须复位同一个键——
+	// 早先传 ip:username 组合键导致成功登录后封禁计数不清零
+	rl.RecordSuccess(clientIP)
 	WriteAuditLog(h.db, user.Username, "login", "auth.login", loginAuditMeta(clientIP, c.GetHeader("User-Agent"), "success"))
 
 	token, err := middleware.GenerateToken(user.ID, user.Username, user.Role)

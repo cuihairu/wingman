@@ -3,6 +3,17 @@ import type { RequestConfig } from '@umijs/max';
 import { history } from '@umijs/max';
 // Use App.useApp() instances (see app.tsx) to avoid AntD static message warnings
 import { getMessage, getNotification } from './utils/antdApp';
+import { formatRateLimitMessage } from './utils/rateLimit';
+
+// 全局 errorHandler 已 toast 过的错误打上标记：调用方（如登录页 catch）据此
+// 不再叠第二个 toast，避免同一失败弹两条文案
+function markErrorShown(error: unknown) {
+  try {
+    (error as any).__wmErrorShown = true;
+  } catch {
+    /* 不可写对象忽略 */
+  }
+}
 
 // Defer message/notification to avoid calling during render (React 18 concurrent mode)
 function defer(fn: () => void) {
@@ -33,6 +44,8 @@ type RestErrorPayload = {
   error?: string;
   message?: string;
   details?: Record<string, any>;
+  // 登录限流 429 附带剩余封禁秒数（server RateLimitMiddleware）
+  retry_after_seconds?: number;
 };
 
 function resolveRestMessage(payload: RestErrorPayload | undefined, status?: number): string {
@@ -64,6 +77,10 @@ function resolveRestMessage(payload: RestErrorPayload | undefined, status?: numb
     422: '请求语义无效',
     500: '服务器内部错误',
   };
+  // 429 优先于 payload 文案：用服务端剩余封禁秒数给出「请 N 分钟后再试」
+  if (status === 429) {
+    return formatRateLimitMessage(payload?.retry_after_seconds);
+  }
   if (rawMessage) return rawMessage;
   if (code && zh[code]) return zh[code];
   if (status && fallbackByStatus[status]) return fallbackByStatus[status];
@@ -97,6 +114,11 @@ export const errorConfig: RequestConfig = {
       }
       // Silence expected 401s during boot/login for profile + messages endpoints
       if (status === 401 && url) {
+        // 登录请求本身的 401（用户名或密码错误）由登录页 catch 提示，
+        // 全局不再叠「未授权」toast
+        if (url.includes('/auth/login')) {
+          return;
+        }
         if (url.includes('/api/v1/profile') || url.includes('/api/messages')) {
           // 清除无效 token，静默跳转（不显示警告消息）
           try {
@@ -118,6 +140,7 @@ export const errorConfig: RequestConfig = {
         typeof payload === 'object' &&
         (payload.error || payload.message || payload.details)
       ) {
+        markErrorShown(error);
         if (errorCode === 'unauthorized') {
           try {
             localStorage.removeItem('token');
