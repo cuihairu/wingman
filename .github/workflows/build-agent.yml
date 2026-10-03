@@ -63,10 +63,8 @@ on:
 permissions:
   contents: write
 
-env:
-  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
-  VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+# 顶层禁 env（同 build-package.yml 2026-10-03 规避）：workflow_call callee
+# 顶层 env 会导致 caller 侧 job 静默 startup_failure。vcpkg 路径下沉到 build job。
 
 jobs:
   build:
@@ -75,6 +73,9 @@ jobs:
     # Linux/macOS 不配 NuGet 认证（同 build-package.yml：仅 Windows 配
     # readwrite 源），binary cache 走本地目录
     env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/archives
+      VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
       VCPKG_BINARY_SOURCES: ${{ matrix.os == 'windows' && format('clear;nuget,https://nuget.pkg.github.com/{0}/index.json,readwrite', github.repository_owner) || 'clear' }}
     strategy:
       fail-fast: false
