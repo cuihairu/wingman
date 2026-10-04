@@ -38,7 +38,7 @@
 
 **P2 — 收敛与登记**
 
-7. 收敛表 Capability/Execution/Artifact 🔶 状态随 P0 闭环逐项更新。
+7. ✅ 收敛表更新（本笔）：docs/architecture.md 核心概念表 Capability/Execution 🔶→✅（v1 范围内嵌）；ADR 两条 Status 段更新为 "v1 landed (2026-10-04)" 并登记 v1 缺口（Capability：模块级词汇不入词汇表；Execution：screenshot 步骤未接、wait/condition 服务端内部步骤不接、artifact 存储未建仅记引用）。Artifact 维持 🔶。
 8. （登记不排期）WebhookSender worker、UIA 后端、XRecord 真机、NullClipboard 等结构性盲区，见 2026-09-30 覆盖率收官登记与 development-todo.md 引用。
 
 ### 过时条目清理

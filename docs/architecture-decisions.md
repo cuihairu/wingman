@@ -548,10 +548,18 @@ Rules:
   candidate agents instead of failing silently. This supersedes the current
   "workflow workers by tags" note in Agent Groups & Batch Operations.
 
-Status: the wire fields (`platform`, `capabilities`) already exist in
-`agent.register` (`docs/android-agent-design.md`, `docs/protocols.md`) with
-weak server-side dependencies; this decision standardizes semantics and
-makes the server the vocabulary owner. Agent identity hardening
+Status: **v1 landed (2026-10-04)**. The wire fields (`platform`,
+`capabilities`) exist in `agent.register` (`docs/android-agent-design.md`,
+`docs/protocols.md`); the desktop runtime derives its set from the compiled
+platform implementations (ML build gates `ml.onnx`; touch/stream never
+claimed), the Android agent carries them via agent config; the Go server
+owns the vocabulary, persists capabilities on `models.Agent`, and flags
+unknown names as `unverified` (`unknownCapabilities`); the Dashboard Agents
+page shows both; workflow `selectAgent` filters candidates on
+`requires: {platform, capabilities[]}` and reports the unsatisfied
+requirement with the online agent list on mismatch. Module-level
+granularity (file IO, tray, hotkey) is intentionally outside the v1
+vocabulary; revisit when a scheduler needs it. Agent identity hardening
 (registration token → device identity) proceeds per
 `docs/agent-token-auth-design.md`.
 
@@ -590,10 +598,14 @@ Rules:
   concern; the platform artifact model is orthogonal and server-side.
 - Audit log entries reference `executionId` when one exists.
 
-Status: today the pieces exist separately — `run_script`/`command.result`
-(`docs/protocols.md`), script lifecycle in `StandaloneMode`, and the workflow
-engine's own execution records (`internal/workflow`). This decision is the
-convergence target: unify them behind one model and one server API
-(`GET /api/executions/:id` etc.) before adding new execution-shaped
-features. Implementation is intentionally deferred until the model is in
-the Go server as `models.Execution`.
+Status: **v1 landed (2026-10-04)**. `models.Execution` exists in the Go
+server; `run_script`, batch fan-out (offline agents skipped with
+single-send semantics), and workflow steps (one record per attempt,
+`WorkflowID`/`StepID` attached, `errStepTimeout` sentinel distinguishing
+timeout from cancelled) all write execution records; the Dashboard
+Executions page exposes the unified read-only view (list + detail with
+result/artifacts). Known v1 gaps, tracked for later: screenshot steps do
+not create executions yet; `wait`/`condition` steps are server-internal
+(not agent-dispatched) and stay unwired; artifacts are recorded as
+references, the `execution/{id}/artifacts/{name}` store is not built
+(the deploy-screenshot path remains deploy-time).

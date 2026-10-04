@@ -134,8 +134,8 @@ Wingman 是四层模型，中间横着一条硬性的 **Control Plane / Executio
 | 概念 | 当前实现位置 | 状态 |
 |------|--------------|------|
 | **Agent** | Agent TCP 注册/心跳/命令生命周期（[protocols.md](protocols.md)）+ A3-P1 注册令牌（[agent-token-auth-design.md](agent-token-auth-design.md)） | ✅ |
-| **Capability** | `agent.register` 已携带 `platform`/`capabilities` 字段（server 弱依赖）；标准化决策见 architecture-decisions.md *Capability System* | 🔶 |
-| **Execution** | `run_script`/`command.result` + workflow engine 内部执行记录；统一模型见 architecture-decisions.md *Execution as the Platform Core Object* | 🔶 |
+| **Capability** | v1 闭环：词汇表 13 词冻结（ADR）；desktop runtime 注册上报 `platform` + 对齐词汇（ml.onnx 按 ML 构建声明，不虚报）、Android 经 capabilitiesJson 配置；server 校验入库并向 Dashboard 暴露 `capabilities`/`unknownCapabilities`（Agents 页展示）。模块级词汇（file.*/tray 等）另行决策，不入 v1 词汇表 | ✅ |
+| **Execution** | v1 闭环：统一 Execution 记录——`run_script`、batch fan-out（offline 跳过语义对齐单发）、workflow 步骤（每 attempt 一条，WorkflowID/StepID 挂载，timeout/cancelled 终态区分）；Dashboard Executions 页只读视图。后续：screenshot 步骤接 Execution、wait/condition 非 agent 下发不接 | ✅ |
 | **Workflow** | Go server `internal/workflow` DAG 引擎（环检测/超时/重试/等待）+ Dashboard Workflows 页 | ✅ |
 | **Artifact** | 部署截图 artifact（`deploy-screenshot`，部署链路）；平台级 Execution artifact 模型见 architecture-decisions.md *Execution* | 🔶 |
 | **Control Plane** | Go server：registry / RBAC / audit / workflow / 批量操作 / Guacamole 网关 | ✅ |
