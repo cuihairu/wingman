@@ -26,7 +26,7 @@
 
 **P0 — ADR 闭环（收敛表 Capability/Execution 🔶 → ✅）**
 
-1. **runtime 侧 capabilities 实际上报**（Capability System 闭环）：C++ desktop runtime 与 Android agent 的 agent.register 填 capabilities 字段与词汇表对齐；Server 侧已就绪（解析/持久化/展示），缺口在 agent 端。
+1. ✅ **runtime 侧 capabilities 实际上报**（Capability System 闭环）：desktop runtime 于 initRemoteClient 注入 `platform=desktop` + 词汇表对齐的能力清单（ml.onnx 仅 WINGMAN_ENABLE_ML 构建声明；不虚报 input.touch/screen.stream，AgentLoopbackTest.RegisterReportsDesktopCapabilityVocabulary 钉定）；Android agent 经 capabilitiesJson 配置已在位。
 2. **Execution v2：batch + workflow 接线**：batch 接口（handlers/batch.go fan-out）与 workflow 引擎步骤（StepStatus 平行记录）落 Execution 记录（WorkflowID/StepID/AgentID 挂载）；v1 已接线 run_script。
 3. **Dashboard 视图**：executions 页（列表/详情/状态过滤）+ Agents 页 capabilities / unknownCapabilities 展示（server 字段已出）。
 

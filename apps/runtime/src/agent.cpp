@@ -14,10 +14,40 @@
 #include <spdlog/spdlog.h>
 
 #include <thread>
+#include <vector>
 
 namespace wingman::runtime {
 
 namespace {
+
+// desktopCapabilities 桌面 runtime 的设备能力词汇（ADR: Capability System）。
+// 与 server 侧 KnownCapabilities（orchestrator/server/internal/agent/
+// capabilities.go）对齐；只声明本构建确实实现的能力，宁可少报不虚报：
+//   screen.capture  ← script/screen 模块（capture/captureRegion/getPixel）
+//   input.mouse/keyboard ← script/input 模块（click/move/keyDown/key/type）
+//   window.enumerate/activate ← script/window 模块（find/activate/getForeground）
+//   process.spawn  ← script/process 模块（start/wait/terminate）
+//   vision.image/color ← script/vision 模块（findImage/findColor）
+//   ocr            ← script/ocr 模块（含 OCR_* 触发条件）
+// ml.onnx 仅当启用 WINGMAN_ENABLE_ML 编译时声明（默认 OFF 走 ml_stub，
+// 不谎报推理能力）；input.touch/screen.stream 桌面不提供，永不声明。
+std::vector<std::string> desktopCapabilities() {
+    std::vector<std::string> caps = {
+        "screen.capture",
+        "input.mouse",
+        "input.keyboard",
+        "window.enumerate",
+        "window.activate",
+        "process.spawn",
+        "vision.image",
+        "vision.color",
+        "ocr",
+    };
+#ifdef WINGMAN_ENABLE_ML
+    caps.push_back("ml.onnx");
+#endif
+    return caps;
+}
 
 std::string scriptStateToString(ScriptState state) {
     switch (state) {
@@ -368,6 +398,15 @@ bool Agent::initRemoteClient() {
     if (!impl_->config.remoteClient.registerToken.empty()) {
         impl_->remoteClient->setAuthToken(impl_->config.remoteClient.registerToken);
     }
+
+    // 设备能力上报（ADR: Capability System）：随 agent.register 携带
+    // platform + capabilities 词汇；server 侧注册/持久化/展示（workflow
+    // requires 调度匹配依赖此上报）。initRemoteClient 可重入（applyRemoteConfig
+    // 热重建），每次重建重新注入。
+    impl_->remoteClient->setRegisterMetadata({
+        {"platform", "desktop"},
+        {"capabilities", desktopCapabilities()},
+    });
 
     impl_->remoteDispatcher = std::make_unique<rpc::RpcDispatcher>();
     impl_->screen = platform::createPlatformScreen();

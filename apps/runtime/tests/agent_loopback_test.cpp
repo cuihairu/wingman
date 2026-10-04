@@ -810,6 +810,56 @@ TEST_F(AgentLoopbackTest, ConfigSetRemoteAppliesAndPersists) {
     EXPECT_EQ(reloaded.remoteClient.registerToken, "tok-9");
 }
 
+// agent.register 应携带设备能力词汇（ADR: Capability System）：platform=desktop +
+// capabilities 列表（与 server 侧 KnownCapabilities 对齐、只报真实实现的能力）；
+// 不虚报 input.touch/screen.stream（桌面不提供）。
+TEST_F(AgentLoopbackTest, RegisterReportsDesktopCapabilityVocabulary) {
+    const auto path = fs::path(tempPath("caps"));
+    AgentConfig seed = loopConfig(true, true, true);
+    ASSERT_TRUE(seed.saveToFile(path.string()));
+
+    agent_ = std::make_unique<Agent>();
+    ASSERT_TRUE(agent_->initialize(path.string()));
+    ASSERT_TRUE(agent_->start());
+    ASSERT_TRUE(waitForServerBodyType("agent.register", 1));
+
+    // 取最后一个 agent.register body 断言（重连场景会多次注册，取最新）
+    json registerBody;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (const auto& msg : serverMessages_) {
+            try {
+                auto body = json::parse(msg->body);
+                if (body.value("type", "") == "agent.register") {
+                    registerBody = std::move(body);
+                }
+            } catch (const std::exception&) {}
+        }
+    }
+    ASSERT_FALSE(registerBody.is_null()) << "no agent.register captured";
+    EXPECT_EQ(registerBody.value("platform", ""), "desktop");
+
+    ASSERT_TRUE(registerBody.contains("capabilities"));
+    const auto caps = registerBody["capabilities"];
+    ASSERT_TRUE(caps.is_array()) << caps.dump();
+    ASSERT_FALSE(caps.empty()) << caps.dump();
+    for (const char* expect : {"screen.capture", "input.mouse", "input.keyboard",
+                               "window.enumerate", "window.activate", "process.spawn",
+                               "vision.image", "vision.color", "ocr"}) {
+        EXPECT_TRUE(std::find(caps.begin(), caps.end(), expect) != caps.end())
+            << "missing capability: " << expect;
+    }
+    // 不谎报：桌面无触摸/流式能力
+    EXPECT_TRUE(std::find(caps.begin(), caps.end(), "input.touch") == caps.end());
+    EXPECT_TRUE(std::find(caps.begin(), caps.end(), "screen.stream") == caps.end());
+    // ml.onnx 声明与否与本二进制编译开关一致（默认 OFF 走 ml_stub）
+#ifdef WINGMAN_ENABLE_ML
+    EXPECT_TRUE(std::find(caps.begin(), caps.end(), "ml.onnx") != caps.end());
+#else
+    EXPECT_TRUE(std::find(caps.begin(), caps.end(), "ml.onnx") == caps.end());
+#endif
+}
+
 TEST_F(AgentLoopbackTest, ConfigSetRemoteWithUnwritableConfigPathReportsPartialApply) {
     const auto dir = fs::path(tempPath("dir3"));
     const auto path = dir / "nested" / "config.toml";
