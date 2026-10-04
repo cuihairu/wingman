@@ -4,7 +4,7 @@
   "cmake.generator": "Ninja",
   "C_Cpp.default.cppStandard": "c++23",
   "C_Cpp.default.compileCommands": "${workspaceFolder}/build-msvc-ninja-vcpkg/compile_commands.json",
-  "Lua.runtime.version": "Lua 5.4",
+  "Lua.runtime.version": "Lua 5.5",
   "Lua.workspace.checkThirdParty": false,
   "Lua.workspace.library": [
     "${workspaceFolder}/assets/vscode-wingman-lua",
