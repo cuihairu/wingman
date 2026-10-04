@@ -57,7 +57,10 @@ func TestWorkflowStepWritesExecutionSuccess(t *testing.T) {
 	if !strings.HasSuffix(ex.ScriptPath, "a.lua") {
 		t.Errorf("scriptPath = %s, want suffix a.lua", ex.ScriptPath)
 	}
-	if ex.StartedAt == nil || ex.FinishedAt == nil || !ex.FinishedAt.After(*ex.StartedAt) {
+	// finished ≥ started（非严格大于）：mock 下发瞬时完成时两者可能落在
+	// Windows 时钟同一 tick（实测 started==finished 精确相等），断言起点是
+	// 两个字段都已记录且顺序不倒挂。
+	if ex.StartedAt == nil || ex.FinishedAt == nil || ex.FinishedAt.Before(*ex.StartedAt) {
 		t.Errorf("startedAt/finishedAt not recorded properly: %+v", ex)
 	}
 }
