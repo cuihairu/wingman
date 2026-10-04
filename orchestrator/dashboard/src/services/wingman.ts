@@ -379,6 +379,93 @@ export async function setAgentTags(agentId: string, tags: string[]) {
   });
 }
 
+// ========== 执行记录（ADR: Execution as the Platform Core Object） ==========
+
+// ExecutionStatus 状态机：pending→queued→running→终态五分支
+export type ExecutionStatus =
+  | 'pending'
+  | 'queued'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
+  | 'timeout'
+  | 'lost';
+
+// ExecutionView 服务端 Execution 视图（/api/executions 输出，Result/Artifacts 已展开）
+export interface ExecutionView {
+  id: number;
+  executionId: string;
+  /** 0 = 直接下发（run_script/batch），非 workflow 步骤 */
+  workflowId: number;
+  stepId: string;
+  agentId: string;
+  scriptPath: string;
+  status: ExecutionStatus;
+  startedAt: string;
+  finishedAt: string;
+  timeoutSec: number;
+  result?: unknown;
+  artifacts: string[];
+  createdAt: string;
+}
+
+// ExecutionListQuery 列表查询参数（分页 + 过滤）
+export interface ExecutionListQuery {
+  page?: number;
+  pageSize?: number;
+  status?: string;
+  agentId?: string;
+}
+
+// ExecutionListResult 分页结果
+export interface ExecutionListResult {
+  data: ExecutionView[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+// listExecutions 执行记录列表（登录即可）
+export async function listExecutions(params: ExecutionListQuery) {
+  const search = new URLSearchParams();
+  if (params.page) search.set('page', String(params.page));
+  if (params.pageSize) search.set('pageSize', String(params.pageSize));
+  if (params.status) search.set('status', params.status);
+  if (params.agentId) search.set('agentId', params.agentId);
+  const qs = search.toString();
+  return request<{ success: boolean } & ExecutionListResult>(`/api/executions${qs ? `?${qs}` : ''}`, {
+    method: 'GET',
+  });
+}
+
+// getExecution 执行记录详情
+export async function getExecution(id: number) {
+  return request<ApiResponse<ExecutionView>>(`/api/executions/${id}`, {
+    method: 'GET',
+  });
+}
+
+// getExecutionStatusColor 状态语义色（与 Agent/Workflow 状态色约定一致）
+export function getExecutionStatusColor(status: ExecutionStatus): string {
+  switch (status) {
+    case 'succeeded':
+      return 'green';
+    case 'failed':
+      return 'red';
+    case 'running':
+      return 'processing';
+    case 'timeout':
+      return 'orange';
+    case 'cancelled':
+      return 'default';
+    case 'lost':
+      return 'volcano';
+    default:
+      return 'blue'; // pending / queued
+  }
+}
+
 // normalizeAgentTrigger 归一化 runtime trigger.list 条目：
 // 字段缺失/类型不符时回退安全默认值，避免渲染层抛错。
 export function normalizeAgentTrigger(value: unknown): AgentTrigger {

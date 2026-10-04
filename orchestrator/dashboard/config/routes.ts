@@ -35,6 +35,13 @@ export default [
     icon: 'block',
     component: './Workflows',
   },
+  // 执行记录（ADR: Execution as the Platform Core Object）
+  {
+    path: '/executions',
+    name: 'Executions',
+    icon: 'history',
+    component: './Executions',
+  },
   // 脚本管理
   {
     path: '/scripts',

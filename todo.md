@@ -27,8 +27,8 @@
 **P0 — ADR 闭环（收敛表 Capability/Execution 🔶 → ✅）**
 
 1. ✅ **runtime 侧 capabilities 实际上报**（Capability System 闭环）：desktop runtime 于 initRemoteClient 注入 `platform=desktop` + 词汇表对齐的能力清单（ml.onnx 仅 WINGMAN_ENABLE_ML 构建声明；不虚报 input.touch/screen.stream，AgentLoopbackTest.RegisterReportsDesktopCapabilityVocabulary 钉定）；Android agent 经 capabilitiesJson 配置已在位。
-2. **Execution v2：batch + workflow 接线**：batch 接口（handlers/batch.go fan-out）与 workflow 引擎步骤（StepStatus 平行记录）落 Execution 记录（WorkflowID/StepID/AgentID 挂载）；v1 已接线 run_script。
-3. **Dashboard 视图**：executions 页（列表/详情/状态过滤）+ Agents 页 capabilities / unknownCapabilities 展示（server 字段已出）。
+2. ✅ **Execution v2：batch + workflow 接线**（8a9997b）：batch 接口（handlers/batch.go fan-out 后串行落库、offline 跳过与单发语义对齐）与 workflow 引擎步骤（每轮 attempt 一条，WorkflowID/StepID/AgentID 挂载；errStepTimeout 哨兵 + errors.Is 区分 timeout/cancelled 终态）；v1 已接线 run_script。
+3. ✅ **Dashboard 视图**（aa2202f + 本笔）：executions 页（ProTable 列表/status 过滤/详情 Drawer：result 展开 + artifacts）+ Agents 页 capabilities / unknownCapabilities 展示（server 字段已出）。v1 范围：executions 页只读；screenshot 步骤未接 Execution、wait/condition 非 agent 下发不接（记入后续）。
 
 **P1 — 缺口清单按原语边界归位（Runtime 能力层，轻者优先）**
 
