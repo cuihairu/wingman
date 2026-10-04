@@ -77,7 +77,7 @@ gradle :app:assembleDebug
      ExecutionLog 落库 → WS 转发）与 `[exec_...] finished`；
    - 长死循环脚本可被停止（stop_script → Lua 指令 hook 强制中断）。
 
-## A2 能力闭环使用步骤（手势注入 + 屏幕采集 + 找色找图）
+## A2 脚本能力使用步骤（手势注入 + 屏幕采集 + 找色找图）
 
 前置：完成上面 A1 链路验收（Agent 在线）。
 
@@ -147,7 +147,7 @@ Android 13 起侧载安装的无障碍被「受限设置」默认屏蔽（开关
 ## 里程碑
 
 - **A1（本目录）**：链路打通（连接/注册/脚本下发/日志回传/停止）。
-- **A2 能力闭环（已实施，2026-09-21）**：宿主桥（dispatchGesture 手势注入）/
+- **A2 脚本能力（已实施，2026-09-21）**：宿主桥（dispatchGesture 手势注入）/
   MediaProjection 采集真实现（`platform/android` 租户 + 反向 JNI 桥）；
   找色找图（ImageAnalyzer + OpenCV 进 NDK）；wingman.input/screen/vision
   脚本 API；screenshot.capture 远程截图。见设计文档 §5.5/§5.6。
