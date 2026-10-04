@@ -1,7 +1,51 @@
 # Wingman 项目待办事项
 
-> 最后更新: 2026-10-02
-> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地（含 A3 可靠性与受限设置引导，见「2026-09-30 Android Agent 现状登记」及其后两条 A3 实施条目）、A3-P2 与 A4 未排期；2026-09-30 平台验证收口——macOS/XRecord（runner+Xvfb）与 Android API 34 模拟器全链路验证，模拟器腿抓出三处阻断级缺陷已修（见同日「Android 模拟器验证」条），剩余真机项见该条清单；同日 C++ 覆盖率扫描收官——v13 基线清账 TOTAL 90%，余量全部带论证登记（见「C++ 覆盖率扫描收官」条）；2026-10-01 ScriptManager 状态机死锁环与 stop 数据竞争修复（2026-09-29 登记的独立任务落地，见同日条目）、task pause/resume 落地（见同日条目）；2026-10-02 wingman agent 一键安装三件套落地（install.sh / install.ps1 / agent 构建矩阵接入 nightly 分发，见同日条目）
+> 最后更新: 2026-10-04
+> 状态: 收尾阶段（P0/P1 全部完成；2026-09-14 完成「声明完成但实际不可用」类缺陷修复——Go Team/Inbox 三断链、C++ ml.run 推理入口、GUI scripts 页文件管理——并推进测试覆盖率，见「2026-09-14 功能修复与覆盖率冲刺」；同日新增 agent 分组与批量操作，见「Agent 分组与批量操作」）；移动端 Android A1/A2/A3 已落地（含 A3 可靠性与受限设置引导，见「2026-09-30 Android Agent 现状登记」及其后两条 A3 实施条目）、A3-P2 与 A4 未排期；2026-09-30 平台验证收口——macOS/XRecord（runner+Xvfb）与 Android API 34 模拟器全链路验证，模拟器腿抓出三处阻断级缺陷已修（见同日「Android 模拟器验证」条），剩余真机项见该条清单；同日 C++ 覆盖率扫描收官——v13 基线清账 TOTAL 90%，余量全部带论证登记（见「C++ 覆盖率扫描收官」条）；2026-10-01 ScriptManager 状态机死锁环与 stop 数据竞争修复（2026-09-29 登记的独立任务落地，见同日条目）、task pause/resume 落地（见同日条目）；2026-10-02 wingman agent 一键安装三件套落地（install.sh / install.ps1 / agent 构建矩阵接入 nightly 分发，见同日条目）；**2026-10-04 架构决策加载与任务重排——四层模型/Capability/Execution ADR 四条落地文档（0c2bbe6），代码侧 Execution v1 + Capability v1 落地（4d4b6c3，见下方同日条目）；任务队列按新架构决策重排（P0 ADR 闭环：runtime capabilities 上报 / Execution v2 batch+workflow 接线 / Dashboard 视图；P1 缺口清单按原语边界归位：文件 IO → hotkey → notify tray）**
+
+---
+
+## 2026-10-04 架构决策加载与任务重排：四层模型 / Capability / Execution ADR 四条 + 缺口清单按新架构归位 + 过时条目清理
+
+### 架构决策（docs/architecture-decisions.md 追加四条，0c2bbe6）
+
+- **四层模型**：Automation Core（lib/wingman，不得感知 Agent/Dashboard/Workflow/User/Team）→ Runtime（Execution Plane）→ Agent（身份 + 能力集）→ Control Plane（Go server）；Control/Execution Plane 硬边界。
+- **原语边界**：Trigger（事件→动作）< Script（过程）< Behavior Tree（实时决策）< Workflow（跨 Agent 长生命周期）< Team（协同）；轻者优先，不得跨级叠造。
+- **Capability System**：dotted 词汇表（screen.capture / input.touch / ml.onnx …13 项，server internal/agent/capabilities.go）；agent.register 上报 → 注册/持久化/展示；workflow 步骤 requires 调度匹配；未知能力存而标 unverified（不拒绝）。
+- **Execution 平台核心对象**：统一执行对象 + 状态机 pending→queued→running→{succeeded|failed|cancelled|timeout|lost}；Artifact 一等子对象；executions 表是日志/审计/Artifact 的统一挂载点；**统一前不得再新增执行形态功能**。
+- 收敛表（docs/architecture.md，2026-10-04 快照）：Agent/Workflow/Control Plane/Execution Plane ✅；Capability/Execution/Artifact 🔶 演进中。
+
+### 代码侧落地（4d4b6c3，本日）
+
+- **Execution v1**：models.Execution + AutoMigrate（executions 表）；GET /api/executions（page/status/agentId 过滤 + /:id 详情，登录即可，与 /api/agents 同级）；run_script 下发前落 running → 命令返回后终态（succeeded/failed + finishedAt + Result JSON 摘要），审计补新规范 executionId；响应体保持 `executionId: scriptName` 兼容不变。
+- **Capability v1**：KnownCapabilities 词汇表；agent.register 解析 capabilities → Registry 内存持有 + CapabilityStore 持久化（与 TagStore 同构，DB IO 锁外、重连保留内存值）；ToJSON 输出 capabilities / unknownCapabilities（词汇表外项原样展示）。
+- **WorkflowStep.Requires**：selectAgent 先按 platform（空值归一 desktop）+ capabilities 全命中过滤，再负载均衡；无候选错误列出在线节点与缺失项；无要求时沿用既有文案（既有断言不破）。
+- **测试**：agent（持久化/恢复/重连保留/未知标记/register 透传 6 例）、handlers（capstore roundtrip、run_script 生命周期成功/失败终态、查询分支 401/400/404）、workflow（requires 平台/能力/组合/错误诊断 5 例）。全量 `go test ./...` 全绿，vet 全清。
+
+### 按新架构决策重排的任务队列（2026-10-04 起）
+
+**P0 — ADR 闭环（收敛表 Capability/Execution 🔶 → ✅）**
+
+1. **runtime 侧 capabilities 实际上报**（Capability System 闭环）：C++ desktop runtime 与 Android agent 的 agent.register 填 capabilities 字段与词汇表对齐；Server 侧已就绪（解析/持久化/展示），缺口在 agent 端。
+2. **Execution v2：batch + workflow 接线**：batch 接口（handlers/batch.go fan-out）与 workflow 引擎步骤（StepStatus 平行记录）落 Execution 记录（WorkflowID/StepID/AgentID 挂载）；v1 已接线 run_script。
+3. **Dashboard 视图**：executions 页（列表/详情/状态过滤）+ Agents 页 capabilities / unknownCapabilities 展示（server 字段已出）。
+
+**P1 — 缺口清单按原语边界归位（Runtime 能力层，轻者优先）**
+
+4. **文件 IO 工具**（file 模块：读写/存在/移动；filewatcher 已提供监控腿；platform-abstraction 挂点）——P2 组常用工具补齐。
+5. **hotkey 模块**（全局热键监听；依赖输入层抽象，与 input.touch/mouse/keyboard 词汇同层）——P2 组内。
+6. **notify tray**（`tray.show()/hide()/setBadge()` + `event.*`/`task.*` 桥接自动接线）——P1 notify 模块残余。
+
+**P2 — 收敛与登记**
+
+7. 收敛表 Capability/Execution/Artifact 🔶 状态随 P0 闭环逐项更新。
+8. （登记不排期）WebhookSender worker、UIA 后端、XRecord 真机、NullClipboard 等结构性盲区，见 2026-09-30 覆盖率收官登记与 development-todo.md 引用。
+
+### 过时条目清理
+
+- 注意事项「测试基线 #6」：C++ `ctest -N` 计数 1705 → **2509 注册**（2026-09-30 收官：2478 passed + 31 环境 skip，TOTAL 90%）；Go server 测试函数 355 → **597**（同日实测 `grep -rc '^func Test'`）。
+- 底部 Sprint A–E 档案段为历史完成记录，保持原样不改（改动会破坏档案口径）。
+- 状态行「最后更新」滚动至 2026-10-04；全文无与硬约束冲突的遗留条目（「Dashboard 不直连 runtime」「runtime 禁 HTTP/WS server」等注意事项即是硬约束本身，保留）。
 
 ---
 
@@ -906,7 +950,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 3. **远程链路**：Dashboard → Go server → runtime (outbound)，Dashboard 不直连 runtime
 4. **Dashboard 位置**：真正的 dashboard 在 `orchestrator/dashboard/`，根目录 `dashboard/` 是无关的 Croupier 副本
 5. **vcpkg 约束**：所有 C++ 依赖必须走 vcpkg x64-windows-static
-6. **测试基线**：C++ 当前 `ctest -N -C Debug` 可发现 1705 个测试；`WINGMAN_BUILD_TESTS` 自动启用 core/runtime/transport/proto/debug 标准套件，Go server 355 个测试函数（rbac/workflow/handlers/hub/registry/middleware/debugger/integration/security/scripts），vet 全清
+6. **测试基线**：C++ 当前 `ctest -N` 可发现 **2509 个测试**（2026-09-30 收官：2478 passed + 31 环境 skip，TOTAL 90%；`WINGMAN_BUILD_TESTS` 自动启用 core/runtime/transport/proto/debug 标准套件）；Go server **597 个测试函数**（2026-10-04 实测 `grep -rc '^func Test'`：rbac/workflow/handlers/hub/registry/middleware/debugger/integration/security/scripts），vet 全清
 
 ---
 
