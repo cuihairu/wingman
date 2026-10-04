@@ -86,6 +86,21 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 
 ### 支持的 RPC 方法
 
+当前共注册 **26 个**方法（以 `apps/runtime/src/rpc/handlers/` 的 `registerHandler` 为准）：
+
+| 分组 | 方法 |
+|------|------|
+| system | `getStatus` `getVersion` `isPaused` `togglePause` `pauseAll` `resumeAll` `stopAll` |
+| script | `list` `start` `stop` `pause` `resume` `restart` `unload` |
+| trigger | `list` `add` `remove` `update` `toggle` |
+| screenshot | `capture` |
+| screen | `listMonitors` |
+| events | `drain` |
+| macro | `start` `stop` `play` `status` `save` `load` `clear` |
+| config | `getRemote` `setRemote` |
+
+> 远程编排命令（如 `system.shutdown`）走 agent transport 通道（`apps/runtime/src/agent.cpp`），不属于本地 IPC 面，见 `docs/protocols.md`。
+
 #### system.getStatus
 获取系统状态
 
@@ -214,6 +229,158 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
     "scriptId": "script-id"
   },
   "id": 10,
+  "timestamp": 1715299200000
+}
+```
+
+#### script.pause / script.resume
+暂停/恢复运行中的脚本（`scriptId` 必填）
+
+```json
+{
+  "type": 0,
+  "method": "script.pause",
+  "payload": { "scriptId": "script-id" },
+  "id": 11,
+  "timestamp": 1715299200000
+}
+```
+
+#### script.restart
+重启已加载脚本：对已运行/已暂停的脚本 stop → start（路径复用，ID 不变）
+
+```json
+{
+  "type": 0,
+  "method": "script.restart",
+  "payload": { "scriptId": "script-id" },
+  "id": 12,
+  "timestamp": 1715299200000
+}
+```
+
+#### script.unload
+从脚本表移除（仅对非运行中的脚本有效；运行中先 stop）
+
+```json
+{
+  "type": 0,
+  "method": "script.unload",
+  "payload": { "scriptId": "script-id" },
+  "id": 13,
+  "timestamp": 1715299200000
+}
+```
+
+#### system.isPaused
+查询是否存在已暂停脚本，返回 `{ "paused": bool }`
+
+```json
+{ "type": 0, "method": "system.isPaused", "payload": {}, "id": 14, "timestamp": 1715299200000 }
+```
+
+#### system.togglePause
+切换全局暂停：有暂停则全部恢复，否则全部暂停。返回 `{ "paused": bool, "changedScripts": int }`
+
+```json
+{ "type": 0, "method": "system.togglePause", "payload": {}, "id": 15, "timestamp": 1715299200000 }
+```
+
+#### system.pauseAll / system.resumeAll
+全部暂停/全部恢复。返回 `{ "paused": bool, "changedScripts": int }`
+
+```json
+{ "type": 0, "method": "system.pauseAll", "payload": {}, "id": 16, "timestamp": 1715299200000 }
+```
+
+#### system.stopAll
+全部停止。返回 `{ "stoppedScripts": int }`
+
+```json
+{ "type": 0, "method": "system.stopAll", "payload": {}, "id": 17, "timestamp": 1715299200000 }
+```
+
+#### screenshot.capture
+截取屏幕为 JPEG（base64 data URL）。需要 `WINGMAN_ENABLE_VISION`（OpenCV），否则返回错误。可选参数：
+- `region` - `{x, y, width, height}`；省略或空 → 整屏（或指定显示器）
+- `displayId` - 显示器索引（-1/省略 → 主屏）；`region` 相对该显示器原点
+
+返回 `{ "image": "data:image/jpeg;base64,...", "width", "height", "timestamp", "region" }`
+
+```json
+{
+  "type": 0,
+  "method": "screenshot.capture",
+  "payload": { "displayId": 0, "region": { "x": 0, "y": 0, "width": 800, "height": 600 } },
+  "id": 18,
+  "timestamp": 1715299200000
+}
+```
+
+#### screen.listMonitors
+列出显示器，返回 `{ "monitors": [{ "id", "name", "isPrimary", "bounds" }], "primaryId": int }`
+
+```json
+{ "type": 0, "method": "screen.listMonitors", "payload": {}, "id": 19, "timestamp": 1715299200000 }
+```
+
+#### events.drain
+拉取本地事件流（GUI 轮询）。事件 method 集合：`tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip`（脚本托盘意图）、`trigger.fired`、`script.state_changed`、`script.output`、`connection.ipc_client`。参数 `max`（默认 500，单次拉取上限）。返回：
+
+```json
+{
+  "type": 0,
+  "method": "events.drain",
+  "payload": { "max": 500 },
+  "id": 20,
+  "timestamp": 1715299200000
+}
+```
+
+响应 `result`：`{ "events": [...], "remaining": int, "dropped": int }`（`remaining` = 缓冲区剩余，`dropped` = 累计丢弃数）。
+
+#### macro.start / macro.stop / macro.status / macro.clear
+宏录制控制。`status` 返回 `{ "recording": bool, "paused": bool, "eventCount": int }`；其余无参数。
+
+```json
+{ "type": 0, "method": "macro.status", "payload": {}, "id": 21, "timestamp": 1715299200000 }
+```
+
+#### macro.play
+回放宏。参数：`speed`（百分比，默认 100，内部钳制 ≥1）、`repeat`（次数，默认 1，钳制 ≥1）。**回放在调用线程同步执行，GUI 侧应异步调用避免阻塞**。
+
+```json
+{
+  "type": 0,
+  "method": "macro.play",
+  "payload": { "speed": 150, "repeat": 2 },
+  "id": 22,
+  "timestamp": 1715299200000
+}
+```
+
+#### macro.save / macro.load
+按 JSON 路径保存/加载宏（`path` 必填）。返回 `{ "success": true, "eventCount": int }`
+
+```json
+{
+  "type": 0,
+  "method": "macro.save",
+  "payload": { "path": "macros/demo.json" },
+  "id": 23,
+  "timestamp": 1715299200000
+}
+```
+
+#### config.getRemote / config.setRemote
+读取/应用远程注册配置（`serverIp` / `serverPort` / `registerToken`，仅本地 IPC，无对应远程命令）。`setRemote` 请求体为配置补丁（部分更新），成功返回应用后的完整配置；运行中生效会触发 agent 重连。
+
+```json
+{
+  "type": 0,
+  "method": "config.setRemote",
+  "payload": { "serverIp": "192.168.1.10", "serverPort": 9000, "registerToken": "..." },
+  "id": 24,
   "timestamp": 1715299200000
 }
 ```

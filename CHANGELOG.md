@@ -430,7 +430,7 @@ cockpit 密码箱模式的 wingman 落地：远程桌面凭据加密存本机、
 
 ### feat（2026-09-25，M4 远控阶段二：Guacamole 剪贴板 / 文件传输 / 会话录制）
 
-- **选型落地**：第三方 VNC/SSH/RDP 远控集成采用 Apache Guacamole（guacd 1.5.5 协议翻译 + Go server 反代 WS 网关 + 浏览器 guacamole-common-js 像素面），runtime 零参与不破架构硬约束；备选方案（myrtille、websockify+novnc、自研三协议客户端）否决理由见 `docs/remote-gateway-guacamole-design.md` §9。P0 网关/票据/RBAC/Dashboard 弹窗已先行合入（20fdb30），本轮补齐阶段二 DG-7/8/9：
+- **选型落地**：第三方 VNC/SSH/RDP 远控集成采用 Apache Guacamole（guacd 1.5.5 协议翻译 + Go server 反代 WS 网关 + 浏览器 guacamole-common-js 像素面），runtime 零参与不破架构硬约束；备选方案（myrtille、websockify+novnc、自行开发三协议客户端）否决理由见 `docs/remote-gateway-guacamole-design.md` §9。P0 网关/票据/RBAC/Dashboard 弹窗已先行合入（20fdb30），本轮补齐阶段二 DG-7/8/9：
 - **剪贴板（§14）**：`onclipboard` 接收（逐块 ack）+ `createClipboardStream` 发送（text/plain），监看模式隐藏发送 UI；网关零改动纯透传。
 - **文件传输（§15）**：按协议注入 connect 参数——SSH `enable-sftp=true`、RDP `enable-drive`+`drive-path`（默认 `/wingman-drive`）、VNC 无通道（UI 整块隐藏）；上传 `createFileStream`+`BlobWriter` 分块，下载 `onfile` 聚合 Blob 触发浏览器下载。
 - **会话录制（§16）**：票据新增 `record` 字段（未配置双路径时 400 拒绝并附指引）→ connect 注入 `recording-path/{agentID}-{sessionID}.mjs`；安全默认 `recording-include-keys=false`（按键内容永不入录像）；新增检索 API：`GET /api/remote/recordings`（desktop:view，mtime 倒序）+ `GET .../:name/download`（desktop:view + 审计）+ `DELETE .../:name`（desktop:control + 审计），名字 basename+.mjs 白名单防穿越，未配置返回结构化 501。

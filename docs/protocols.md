@@ -1,6 +1,6 @@
 # Wingman 通信协议规范
 
-> 本文档描述 Wingman 三条通信链路的权威协议规范，依据代码实现（2026-06-20 校准）。
+> 本文档描述 Wingman 三条通信链路的协议规范，依据代码实现（2026-10-04 校准）。
 > 历史迁移说明见 [remote_protocol.md](./remote_protocol.md)（已标为历史文档）。
 > 架构硬约束见 [architecture-decisions.md](./architecture-decisions.md)。
 
@@ -24,7 +24,7 @@
 
 ---
 
-## ① Local IPC（Tauri GUI [Runtime]
+## ① Local IPC（Tauri GUI → Runtime）
 
 本地控制通道，传输层为 Named Pipe（Windows）/ Unix Domain Socket（macOS/Linux）。
 
@@ -69,21 +69,25 @@ GUI 侧从 `data.result` 取业务字段（如 `data.result.paused`）。
 
 ### 已注册方法
 
+26 个（以 `apps/runtime/src/rpc/handlers/` 的 `registerHandler` 为准）：
+
 | 方法 | 说明 |
 |------|------|
 | `system.getStatus` / `getVersion` | 状态/版本 |
 | `system.togglePause` / `pauseAll` / `resumeAll` / `stopAll` / `isPaused` | 脚本暂停控制 |
-| `script.list` / `script.start` / `script.stop` | 脚本管理 |
+| `script.list` / `start` / `stop` / `pause` / `resume` / `restart` / `unload` | 脚本管理 |
 | `trigger.list` / `add` / `remove` / `update` / `toggle` | 触发器管理 |
 | `screen.listMonitors` | 显示器枚举 |
-| `screenshot.capture` | 截图（可选 `displayId`） |
-| `events.drain` | 拉取缓冲事件（`log.line` / `trigger.fired` / 预留 `screenshot.frame`） |
+| `screenshot.capture` | 截图（可选 `displayId`、`region`） |
+| `events.drain` | 拉取缓冲事件 |
+| `macro.start` / `stop` / `play` / `status` / `save` / `load` / `clear` | 宏录制与回放 |
+| `config.getRemote` / `setRemote` | 远程注册配置读写（仅本地 IPC，Go server 侧改不了） |
 
-`events.drain` 响应：`{ events: [{method, payload, timestamp}], remaining: N }`。
+`events.drain` 响应：`{ events: [{method, payload, timestamp}], remaining: N, dropped: N }`。事件 method 集合：`tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip`、`trigger.fired`、`script.state_changed`、`script.output`、`connection.ipc_client`。请求参数 `max`（默认 500）。
 
 ---
 
-## ② Agent TCP（Runtime [Go Orchestrator]
+## ② Agent TCP（Runtime → Go Orchestrator）
 
 Runtime 作为 **outbound agent** 主动连接 Go server（默认 `127.0.0.1:8888`）。Go server 监听，不反向拨入。
 
@@ -99,13 +103,13 @@ MessageHeader (16 bytes, 小端):
 Body: JSON（最大 16 MiB）
 ```
 
-### Notify（runtime [server，无需响应]
+### Notify（runtime → server，无需响应）
 
 | type 字段 | 说明 |
 |-----------|------|
-| `agent.register` | `{agentId, hostname}` → server 回 `agent.register_ack` |
+| `agent.register` | `{agentId, hostname, platform, capabilities, token?}` → server 回 `agent.register_ack`。`platform` 当前为 `"desktop"`（Android 端另有值）；`capabilities` 为设备能力词汇（`screen.capture`、`input.mouse`、`window.enumerate` 等，见 agent.cpp `desktopCapabilities()` 与 server 侧 KnownCapabilities 对齐）；`token` 仅在配置了注册令牌时携带 |
 | `agent.heartbeat` | `{status, resources}` → server 更新 LastSeen/状态 |
-| `agent.event` | 通用事件 |
+| `agent.event` | 通用事件（`trigger_fired` / `script_state` / `script_output`；`log.line` 与连接类事件不转发） |
 | 原始 `PING`（4 字节体） | server 回 `PONG` + `UpdateHeartbeat` |
 
 ### Request（server [runtime，需 Response]
@@ -128,11 +132,11 @@ Response：`{success, method, message?, error?, data?}`，`sequence` 与请求�
 
 ---
 
-## ③ Dashboard WebSocket（Dashboard [Go Orchestrator]
+## ③ Dashboard WebSocket（Dashboard → Go Orchestrator）
 
 升级端点 `GET /ws?token=<JWT>`（或 `Authorization: Bearer`），同源校验防 CSWSH。
 
-### 服务端 [客户端消息]
+### 服务端 → 客户端消息
 
 ```json
 { "type": "agent", "event": "connected", "data": {...}, "timestamp": 1715299200 }
@@ -147,7 +151,7 @@ Response：`{success, method, message?, error?, data?}`，`sequence` 与请求�
 | `screenshot` | — | 截图广播 |
 | `ping` | — | 服务端 ping，客户端回 pong |
 
-### 客户端 [服务端消息]
+### 客户端 → 服务端消息
 
 | type | 说明 |
 |------|------|
@@ -162,6 +166,6 @@ Response：`{success, method, message?, error?, data?}`，`sequence` 与请求�
 
 ## 鉴权
 
-- **Dashboard HTTP/WS**：JWT（HS256，密钥 `WINGMAN_JWT_SECRET` ≥32 字符），15 分钟过期。RBAC：`admin`/`operator`/`viewer` 角色 + `resource:action` 权限码。
-- **Agent TCP**：暂无应用层鉴权（依赖网络边界）；agent 注册即纳管。
+- **Dashboard HTTP/WS**：JWT（HS256，密钥 `WINGMAN_JWT_SECRET` ≥32 字符），15 分钟过期。RBAC：`admin`/`operator`/`viewer` 角色 + `resource:action` 权限码。登录接口有 429 限流。
+- **Agent TCP**：注册令牌白名单（server 侧 `WINGMAN_AGENT_TOKENS` 环境变量；agent 在 `agent.register` 里带 `token`，server 校验失败拒绝注册）。默认未配置时关闭校验、注册即纳管，靠网络边界。
 - **Local IPC**：本机隐式信任（Named Pipe/UDS 本地访问）。

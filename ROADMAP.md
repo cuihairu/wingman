@@ -4,7 +4,7 @@
 
 > **✅ 架构重构已完成 (2025)** - 采用 apps + lib 架构，详见 docs/architecture.md
 
-> **📌 平台说明：支持 Windows（主要）、macOS、Linux；Android 端侧 Agent 实验性支持（A1 链路/A2 能力闭环/A3-P1 token 认证已落地，见 Milestone 9 与 docs/android-agent-design.md）。跨平台通过平台抽象层实现，详见 docs/architecture.md 与 docs/platforms.md**
+> **📌 平台说明：支持 Windows（主要）、macOS、Linux；Android 端侧 Agent 实验性支持（A1 链路/A2 能力闭环/A3（token 认证 + 可靠性自愈）已落地，见 Milestone 9 与 docs/android-agent-design.md）。跨平台通过平台抽象层实现，详见 docs/architecture.md 与 docs/platforms.md**
 
 > **🔥 脚本层多语言抽象已完成 (2026-05)** - 支持 Lua (sol2) 和 Python (pybind11)，详见下文 "脚本引擎抽象"
 
@@ -96,15 +96,16 @@ wingman/
 ┌─────────▼───────────────────────────────────────────────┐
 │           lib/wingman/ (核心库 + 脚本抽象)               │
 │  ScriptManager (语言无关) + IScriptEngine 接口           │
-│  33 ModuleDescriptor (screen/input/window/...)           │
+│  42 ModuleDescriptor (screen/input/window/...)           │
 │  屏幕捕获、输入模拟、触发器、视觉识别、行为树、OCR...     │
 └─────────┬───────────────────────────────────────────────┘
           │
 ┌─────────▼───────────────────────────────────────────────┐
-│              libs/ (引擎实现)                            │
-│  ┌──────────┐  ┌──────┐  ┌──────┐  ┌──────┐           │
-│  │transport │  │ lua  │  │python│  │ proto│           │
-│  └──────────┘  └──────┘  └──────┘  └──────┘           │
+│         libs/ (引擎与链路实现)                            │
+│  ┌──────────┐ ┌──────┐ ┌──────┐ ┌─────────┐ ┌────────┐ │
+│  │transport │ │ lua  │ │python│ │agentcore│ │android │ │
+│  │          │ │      │ │      │ │         │ │agent   │ │
+│  └──────────┘ └──────┘ └──────┘ └─────────┘ └────────┘ │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -117,7 +118,7 @@ ScriptManager (自动检测语言)
     ↓
 ScriptEngineFactory → LuaScriptEngine / PythonScriptEngine
     ↓
-ModuleDescriptor (33 语言无关模块) → C++ 核心 API
+ModuleDescriptor (42 语言无关模块) → C++ 核心 API
     ↓
 lib/wingman/ (核心功能：screen, input, trigger...)
     ↓
@@ -146,7 +147,7 @@ apps/runtime/ (应用：CLI + outbound agent + local IPC)
                     └───┬────┘
                 ┌────────▼────────┐
                 │ ModuleDescriptor │ (语言无关的模块定义)
-                │ screen/input/... │ (33 模块)
+                │ screen/input/... │ (42 模块)
                 └─────────────────┘
 ```
 
@@ -186,7 +187,7 @@ Runtime 不再按互斥“运行模式”建模。远程编排和本地 UI 控�
 | Phase 2 | 目录结构重组 (apps + lib) | ✅ 已完成 |
 | Phase 3 | 核心库迁移 (libs/core → lib/wingman) | ✅ 已完成 |
 | Phase 4 | Runtime outbound agent + local execution 能力整理 | ✅ 已完成 |
-| Phase 5 | Tauri GUI 通过 local IPC 控制 runtime | 🚧 进行中 |
+| Phase 5 | Tauri GUI 通过 local IPC 控制 runtime | ✅ 已完成（54 个 Tauri 命令覆盖脚本/触发器/宏/系统/截屏/配置/档案/事件/托盘，三平台 CI 构建） |
 | Phase 6 | EmmyLua 集成 | ✅ 已完成 |
 | Phase 7 | 测试与文档 | ✅ 已完成 |
 | Phase 8 | 脚本层抽象 (IScriptEngine) + Lua 引擎；Python 为可选后端（默认关闭，按需启用；引擎已纳入主 CI——Linux 全量测试维度 + Windows 链接链路 job，默认启用经评估维持关闭，2026-09-26） | ✅ |

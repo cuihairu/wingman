@@ -61,6 +61,9 @@ C++ + Lua/Python 的高性能自动化 Agent Runtime + Go 远程编排中控
 | 📖 **OCR 识别** | Tesseract 文字识别（可选依赖） |
 | 💾 **数据持久化** | kv 键值存储、SQLite 数据库 |
 | 📄 **序列化格式** | JSON、INI 配置文件解析 |
+| 📁 **文件 IO** | 文件读写（二进制安全）、移动复制、目录操作（`wingman.file`） |
+| ⌨️ **全局热键** | 轮询式全局键态监听、组合键回调（`wingman.hotkey`，Python 回调） |
+| 🔔 **通知系统** | 日志/Toast/Webhook/事件桥接、脚本托盘意图（`wingman.notify`） |
 | 🐛 **调试支持** | VS Code 断点调试 Lua 脚本（需启用调试组件） |
 | 🤖 **Android Agent** | Android 端侧 Agent（实验性，arm64 / Android 9.0+），出站 TCP 连 Go 中控，脚本 API 与桌面 runtime 同名同形，Dashboard 统一下发与查看 |
 | 🌐 **远程编排** | Agent 注册/心跳/命令分发（16 字节头 + JSON 帧、单命令超时）、批量操作（按 ID/标签选择器 fan-out）、DAG 工作流、RBAC/审计、Guacamole 远程桌面（Go 中控） |
@@ -259,7 +262,7 @@ Wingman 采用 **C++ 核心引擎 + 多语言脚本** 的架构设计：
 - **控制面**: Go server 作为远程中控，runtime 作为 agent 主动连接
 - **本地控制**: Tauri GUI 通过本地 IPC 控制 runtime
 - **脚本引擎**: Lua (sol2) 和 Python (pybind11) 统一接口
-- **模块化**: 25+ 语言无关模块，易于扩展
+- **模块化**: 42 个语言无关脚本模块（见 [API 文档](docs/api/index.md)），易于扩展
 
 详细架构说明请查看 [架构文档](docs/architecture.md)
 

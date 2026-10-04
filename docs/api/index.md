@@ -208,9 +208,10 @@ end
 - [event](./event.md) - 事件订阅与发布系统
 - [fsm](./fsm.md) - 有限状态机（FSM）
 - [task](./task.md) - 任务编排与执行
-- [notify](./notify.md) - 通知系统（日志、Toast、Webhook）
+- [notify](./notify.md) - 通知系统（日志、Toast、Webhook、托盘意图）
 - [smart-trigger](./smart-trigger.md) - 智能触发器
 - [behavior-tree](./behavior-tree.md) - 行为树引擎
+- [hotkey](./hotkey.md) - 全局热键监听（轮询式，Python 回调）
 
 ### 网络
 
@@ -247,6 +248,7 @@ end
 - [debugger](./debugger.md) - 调试器
 - [util](./util.md) - 工具函数（sleep、随机数等）
 - [timer](./timer.md) - 定时器（一次性/周期回调、sleep）
+- [file](./file.md) - 文件 IO（读写、移动复制、目录操作）
 
 ### 安全与加密
 

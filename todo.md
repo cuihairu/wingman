@@ -425,7 +425,7 @@ SSH/SFTP 文件浏览器在第一版（commit cc7d094，设计 §15.1）之上�
 
 ## 2026-09-25 VNC/SSH/RDP 远控集成（Guacamole，P0 + 阶段二）
 
-第三方远控方案选型 **Apache Guacamole（guacd 1.5.5）**：浏览器侧 guacamole-common-js 像素面 + Go server 反代 WS 网关 + guacd 协议翻译（RDP/VNC/SSH 三协议客户端在 guacd 内实现）。runtime 零参与（像素面与控制面正交，架构硬约束不破）。设计文档 `docs/remote-gateway-guacamole-design.md`（§9 备选方案：myrtille/Apache 老栈、websockify+novnc、自研三协议客户端均否决的理由）。
+第三方远控方案选型 **Apache Guacamole（guacd 1.5.5）**：浏览器侧 guacamole-common-js 像素面 + Go server 反代 WS 网关 + guacd 协议翻译（RDP/VNC/SSH 三协议客户端在 guacd 内实现）。runtime 零参与（像素面与控制面正交，架构硬约束不破）。设计文档 `docs/remote-gateway-guacamole-design.md`（§9 备选方案：myrtille/Apache 老栈、websockify+novnc、自行开发三协议客户端均否决的理由）。
 
 - **P0（commit 20fdb30，2026-09-23）**：一次性 5 分钟票据（`remoteticket.Manager`）+ RBAC（desktop:view 监看 / desktop:control 接管）+ 网关 WS 隧道（`/api/remote/guacamole`，票据即凭证）+ Dashboard RemoteDesktopModal + 三协议 e2e（`WINGMAN_GUACD_E2E=1` 门控，需容器栈）。
 - **阶段二（本轮，DG-7/8/9）**：

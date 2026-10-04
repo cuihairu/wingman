@@ -9,6 +9,7 @@ notify 模块提供多种通知方式：
 - **Toast 通知** - 桌面弹窗通知
 - **Webhook** - HTTP POST 远程通知
 - **事件桥接** - 将事件转发到其他目标
+- **托盘意图** - trayShow/trayHide/traySetBadge/traySetTooltip，经事件流驱动 GUI 系统托盘
 
 ---
 
@@ -296,6 +297,118 @@ wingman.notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
 
 ---
 
+## 系统托盘
+
+托盘意图经事件桥发出（`notify.tray.<action>`）：runtime 侧 notify_bridge 订阅后转投事件流，**GUI 收到事件后驱动系统托盘**——脚本不直接操作托盘，仅表达意图。无 GUI 客户端时意图为无害 no-op。
+
+### trayShow() / trayShow()
+
+**说明**：请求显示系统托盘图标。
+
+**函数签名**：
+
+```python
+trayShow() -> bool
+```
+
+```lua
+trayShow() -> boolean
+```
+
+**返回**：恒为 `true`（意图已发出）
+
+---
+
+### trayHide() / trayHide()
+
+**说明**：请求隐藏系统托盘图标。
+
+**函数签名**：
+
+```python
+trayHide() -> bool
+```
+
+```lua
+trayHide() -> boolean
+```
+
+**返回**：恒为 `true`（意图已发出）
+
+---
+
+### traySetBadge(text?) / traySetBadge(text?)
+
+**说明**：设置托盘角标文本；无参或 `None`/`nil` 清除角标。
+
+**函数签名**：
+
+```python
+traySetBadge(text: str | None = None) -> bool
+```
+
+```lua
+traySetBadge(text: string | nil) -> boolean
+```
+
+**参数**：
+- `text` - 角标文本；省略/`nil` 表示清除
+
+**返回**：
+- `bool`/`boolean` - 是否成功（非字符串参数返回 `false`）
+
+---
+
+### traySetTooltip(text?) / traySetTooltip(text?)
+
+**说明**：设置托盘提示文本；无参清除。
+
+**函数签名**：
+
+```python
+traySetTooltip(text: str | None = None) -> bool
+```
+
+```lua
+traySetTooltip(text: string | nil) -> boolean
+```
+
+**参数**：
+- `text` - 提示文本；省略表示清除
+
+**返回**：
+- `bool`/`boolean` - 是否成功（非字符串参数返回 `false`）
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import notify
+
+notify.trayShow()
+notify.traySetBadge("3")          # 3 条待办
+notify.traySetTooltip("Wingman 运行中")
+# notify.traySetBadge()           # 清除角标
+# notify.trayHide()
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+wingman.notify.trayShow()
+wingman.notify.traySetBadge("3")   -- 3 条待办
+wingman.notify.traySetTooltip("Wingman 运行中")
+-- wingman.notify.traySetBadge()   -- 清除角标
+-- wingman.notify.trayHide()
+```
+
+:::
+
+---
+
 ## 可用接口
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
@@ -307,3 +420,7 @@ wingman.notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
 | `toast(title, message, level?)` | `toast(title, message, level?)` | Toast通知 | title: 标题<br>message: 消息内容<br>level: 级别(默认info) |
 | `webhook(url, payload, options?)` | `webhook(url, payload, options?)` | Webhook通知 | url: 目标URL<br>payload: 请求体<br>options: 配置(可选) |
 | `bridge(eventName, target, options?)` | `bridge(eventName, target, options?)` | 事件桥接 | eventName: 事件名称<br>target: 目标地址<br>options: 配置(可选) |
+| `trayShow()` | `trayShow()` | 请求显示托盘图标 | 无 |
+| `trayHide()` | `trayHide()` | 请求隐藏托盘图标 | 无 |
+| `traySetBadge(text?)` | `traySetBadge(text?)` | 设置/清除托盘角标 | text: 角标文本(省略清除) |
+| `traySetTooltip(text?)` | `traySetTooltip(text?)` | 设置/清除托盘提示 | text: 提示文本(省略清除) |

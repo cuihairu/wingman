@@ -60,7 +60,7 @@ cmake --build build-tests --config Debug --target core_tests runtime_tests trans
 ctest --test-dir build-tests -C Debug --output-on-failure
 ```
 
-`WINGMAN_BUILD_TESTS=ON` 会自动启用标准 C++ 测试目标（core/runtime/transport）。
+`WINGMAN_BUILD_TESTS=ON` 会自动启用标准 C++ 测试目标（core/agentcore/runtime/transport；启用 Python 引擎时含 python 绑定测试）。
 如果还需要单独验证 Lua 绑定层，再额外加 `-DBUILD_LUA_TESTS=ON` 并构建 `lua_tests`。
 建议测试使用单独的 `build-tests/` 目录，避免和现有 `build/` 的生成器或配置冲突。
 
@@ -101,12 +101,18 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxilia
 |------|--------|------|
 | `WINGMAN_ENABLE_OCR` | OFF | 启用 OCR 支持 (需要 Tesseract) |
 | `WINGMAN_ENABLE_ML` | OFF | 启用 ML/AI 支持 (需要 ONNX Runtime) |
+| `WINGMAN_ENABLE_PYTHON` | OFF | 启用 Python 脚本引擎 (需要 CPython + pybind11) |
+| `WINGMAN_COMPAT_BUILD` | OFF | 只构建可移植兼容目标 |
+| `WINGMAN_BUILD_AGENT` | ON | 构建 Agent 多模块（同时决定 TRANSPORT/CORE/LUA/RUNTIME 默认值） |
+| `WINGMAN_BUILD_TRANSPORT` / `CORE` / `LUA` / `RUNTIME` | 跟随 AGENT | 各模块单独开关 |
 | `WINGMAN_BUILD_TESTS` | OFF | 构建测试 |
 | `WINGMAN_BUILD_BENCHMARKS` | OFF | 构建基准测试 |
-| `BUILD_CLIENT_TESTS` | OFF | 构建 runtime 测试（通常由 `WINGMAN_BUILD_TESTS` 自动启用） |
+| `BUILD_CLIENT_TESTS` | OFF | 构建 runtime 应用测试 |
 | `BUILD_CORE_TESTS` | OFF | 构建核心库测试 |
 | `BUILD_TRANSPORT_TESTS` | OFF | 构建传输库测试 |
+| `BUILD_AGENTCORE_TESTS` | OFF | 构建 agentcore 库测试 |
 | `BUILD_LUA_TESTS` | OFF | 构建 Lua 绑定层测试（默认手动开启） |
+| `BUILD_PYTHON_TESTS` | OFF | 构建 Python 绑定层测试 |
 
 ### Vcpkg Features
 
@@ -115,23 +121,20 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxilia
 -DVCPKG_MANIFEST_FEATURES=tests
 
 # 启用多个 features
--DVCPKG_MANIFEST_FEATURES=tests;ocr
+-DVCPKG_MANIFEST_FEATURES=tests;ocr;ml;vision;python
 ```
+
+features 映射：`tests`→gtest、`ocr`→tesseract、`ml`→onnxruntime、`vision`→opencv4、`python`→python3+pybind11。
 
 ## 依赖项
 
-### 核心依赖 (自动安装)
-- lua 5.4
-- spdlog
-- nlohmann-json
-- asio
-- curl
-- sqlite3
+全部由 `vcpkg.json` manifest 声明，CMake 经 toolchain 自动安装，禁止系统库回退（见 CLAUDE.md）。
 
-### 可选依赖
-- tesseract (OCR)
-- onnxruntime (ML/AI)
-- gtest (测试)
+### 核心依赖（始终安装）
+- asio、curl、lua、nlohmann-json、opencv4、openssl、sol2、spdlog、sqlite3
+
+### 可选依赖（按 feature / 选项）
+- tesseract（OCR）、onnxruntime（ML/AI）、gtest（tests feature）、python3 + pybind11（Python 引擎）
 
 ## 故障排除
 
@@ -191,18 +194,19 @@ sudo apt install -y g++ gcc rsync
 
 ## CI/CD
 
-项目使用 GitHub Actions 进行持续集成：
+GitHub Actions 工作流：`ci.yml`（门禁）、`build-package.yml`（三平台打包）、`deploy-server.yml`（部署）、`docs.yml` / `deploy-docs.yml`（文档站）、`build-agent.yml`、`release.yml`、`verify-platforms.yml`、`nightly.yml`。
 
-```yaml
-# .github/workflows/ci.yml
-- Windows 构建
-- C++ 测试
-- Lua 测试
-- 代码覆盖率
-```
+### ci.yml 任务矩阵
 
-## CI Status
+| Job | 内容 |
+|-----|------|
+| C++ Windows ×2 | MSVC 构建 + ctest + 覆盖率（失败时回显 gtest 明细） |
+| C++ Linux (full tests) ×2 | 全量 ctest（2000+ 例）+ 覆盖率 |
+| C++ ubuntu-22.04 | 兼容性构建 |
+| C++ macos-15-intel | 构建验证（continue-on-error） |
+| Go Server ×3 | ubuntu / windows / macos，`go test -race ./...` |
+| Platform Boundary Guard | `scripts/check_platform_boundary.sh`：公共层禁平台宏，allowlist 只减不增 |
 
-- Windows: build, run C++ tests, generate coverage, upload to Codecov
-- Linux/macOS: compile-only validation
-- Go server: run `go test ./...` on Windows
+### build-package.yml
+
+Windows x64 / Linux x64 / macOS x64（intel）/ Android 四条打包腿，各含 C++ runtime、Go server、Tauri GUI（三平台 `pnpm tauri build`）与 install 脚本产物。
