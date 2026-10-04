@@ -31,6 +31,7 @@ type AgentRegistrar interface {
 	UpdateHeartbeat(agentID string)
 	UpdateLinkHealth(agentID string, raw map[string]any)
 	UpdatePlatform(agentID string, platform string)
+	UpdateCapabilities(agentID string, caps []string)
 	SetClient(agentID string, conn any)
 }
 
@@ -585,6 +586,18 @@ func (ac *agentConn) handleRegister(msg map[string]any) {
 	// Registry 归一为 desktop。见 docs/android-agent-design.md §3.3。
 	platform, _ := msg["platform"].(string)
 
+	// 能力集（agent.register 上报，ADR: Capability System）：宽容解析，
+	// 字段缺失/类型不符按空集处理，不因此拒绝注册；词汇表外的未知项
+	// 照常存储（见 registry.ToJSON 的 unknownCapabilities）。
+	capList := []string{}
+	if rawCaps, ok := msg["capabilities"].([]any); ok {
+		for _, rc := range rawCaps {
+			if s, ok := rc.(string); ok && s != "" {
+				capList = append(capList, s)
+			}
+		}
+	}
+
 	// 注册鉴权（docs/agent-token-auth-design.md §2）：开关开启时校验顶层
 	// token，失败回 ack success:false 后立即断连——不 set agentID、不入
 	// Registry，未授权连接不允许停留在链路上（readLoop 退出时 agentID 为空
@@ -611,6 +624,7 @@ func (ac *agentConn) handleRegister(msg map[string]any) {
 	ac.setAgentID(agentID)
 	ac.listener.registry.Register(agentID, hostname, ac.conn.RemoteAddr().String(), ac)
 	ac.listener.registry.UpdatePlatform(agentID, platform)
+	ac.listener.registry.UpdateCapabilities(agentID, capList)
 	ac.listener.registry.SetClient(agentID, ac)
 
 	ac.sendNotify("agent.register_ack", map[string]any{

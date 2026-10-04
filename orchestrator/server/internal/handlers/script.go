@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -430,8 +432,27 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		payload["language"] = lang
 	}
 
+	// Execution 记录（ADR: Execution as the Platform Core Object）：下发前落
+	// running 初始态，命令返回后由 finishExecution 落终态。服务端为唯一事实源，
+	// executionId 为执行记录的唯一键；响应体仍返回 scriptName（executionId 字段）
+	// 保持既有兼容。记录失败不阻断下发——只损失审计可追踪性，执行本身不受影响。
+	now := time.Now()
+	exec := models.Execution{
+		ExecutionID: newExecutionID(),
+		AgentID:     onlineAgent.AgentID,
+		ScriptPath:  scriptPath,
+		Status:      models.ExecutionRunning,
+		StartedAt:   &now,
+		TimeoutSec:  30,
+		Artifacts:   "[]",
+	}
+	if err := h.db.Create(&exec).Error; err != nil {
+		log.Printf("[Script] Failed to persist execution record for %s: %v", scriptPath, err)
+	}
+
 	resp, err := onlineAgent.Client.SendCommandWithTimeout("run_script", payload, 30*time.Second)
 	if err != nil {
+		h.finishExecution(exec.ID, models.ExecutionFailed, err.Error(), nil)
 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -443,9 +464,11 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		if errText == "" {
 			errText = "agent command failed"
 		}
+		h.finishExecution(exec.ID, models.ExecutionFailed, errText, nil)
 		c.JSON(http.StatusBadGateway, gin.H{"success": false, "error": errText})
 		return
 	}
+	h.finishExecution(exec.ID, models.ExecutionSucceeded, "", resp)
 
 	scriptName := strings.TrimSuffix(filepath.Base(scriptPath), filepath.Ext(scriptPath))
 	h.db.Model(&models.Script{}).Where("path = ?", scripts.DisplayPath(h.store.Root(), scriptPath)).Updates(map[string]any{
@@ -457,7 +480,8 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 	WriteAuditLog(h.db, actor, "script.run", req.Path, map[string]any{
 		"script_path":  req.Path,
 		"agent_id":     onlineAgent.AgentID,
-		"execution_id": scriptName,
+		"execution_id": scriptName, // 兼容历史语义（脚本名）；新规范键见 executionId
+		"executionId":  exec.ExecutionID,
 		"ip":           c.ClientIP(),
 	})
 
@@ -467,6 +491,27 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 			"executionId": scriptName,
 			"agent":       resp,
 		},
+	})
+}
+
+// finishExecution 落 Execution 终态（succeeded/failed），Result 为 JSON 摘要
+// （成功携带 agent 响应，失败携带错误文本）。timeout/cancelled 等其余终态由
+// 上层命令超时路径决定，v1 同步下发只落到 failed。记录不存在（Create 失败
+// 留空 id）时 Where 无匹配行，静默跳过。
+func (h *ScriptHandler) finishExecution(id uint, status models.ExecutionStatus, errText string, resp map[string]any) {
+	now := time.Now()
+	result := map[string]any{"status": string(status)}
+	switch {
+	case resp != nil:
+		result["response"] = resp
+	case errText != "":
+		result["error"] = errText
+	}
+	payload, _ := json.Marshal(result)
+	h.db.Model(&models.Execution{}).Where("id = ?", id).Updates(map[string]any{
+		"status":      string(status),
+		"finished_at": &now,
+		"result":      string(payload),
 	})
 }
 

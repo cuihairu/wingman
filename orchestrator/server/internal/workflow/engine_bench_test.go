@@ -53,7 +53,7 @@ func BenchmarkSelectAgent(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, _, err := e.selectAgent(nil); err != nil {
+		if _, _, err := e.selectAgent(nil, nil); err != nil {
 			b.Fatalf("select agent: %v", err)
 		}
 	}

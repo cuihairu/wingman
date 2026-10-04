@@ -170,7 +170,7 @@ func TestSelectAgentPicksLeastBusy(t *testing.T) {
 	// 模拟 a1 已有一个在执行步骤
 	e.reserveAgent("a1")
 
-	conn, id, err := e.selectAgent(nil)
+	conn, id, err := e.selectAgent(nil, nil)
 	if err != nil {
 		t.Fatalf("selectAgent: %v", err)
 	}
@@ -188,13 +188,13 @@ func TestSelectAgentRespectsPreferred(t *testing.T) {
 	registerAgent(reg, "a2", &mockConn{})
 
 	// 指定只允许 a2
-	_, id, err := e.selectAgent([]string{"a2"})
+	_, id, err := e.selectAgent([]string{"a2"}, nil)
 	if err != nil || id != "a2" {
 		t.Errorf("expected a2, got %s err=%v", id, err)
 	}
 
 	// 指定不存在的 worker
-	_, _, err = e.selectAgent([]string{"ghost"})
+	_, _, err = e.selectAgent([]string{"ghost"}, nil)
 	if err == nil {
 		t.Error("expected error for unknown preferred worker")
 	}
@@ -202,7 +202,7 @@ func TestSelectAgentRespectsPreferred(t *testing.T) {
 
 func TestSelectAgentNoAgentAvailable(t *testing.T) {
 	e, _, _ := newTestEngine(t) // 无 agent 注册
-	_, _, err := e.selectAgent(nil)
+	_, _, err := e.selectAgent(nil, nil)
 	if err == nil {
 		t.Error("expected error when no agent available")
 	}

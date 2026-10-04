@@ -17,7 +17,7 @@ func TestSelectAgentLoadComparisonBranch(t *testing.T) {
 		e.inflight = map[string]int{"load-a": 1, "load-b": 0}
 		e.mu.Unlock()
 
-		_, id, err := e.selectAgent(nil)
+		_, id, err := e.selectAgent(nil, nil)
 		if err != nil {
 			t.Fatalf("selectAgent: %v", err)
 		}

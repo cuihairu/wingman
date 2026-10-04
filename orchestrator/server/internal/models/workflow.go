@@ -62,6 +62,16 @@ func (w *Workflow) SetContext(ctx map[string]interface{}) error {
 	return nil
 }
 
+// StepRequirements 步骤对执行节点的要求（ADR: Capability System）。
+// 与 Workers 同时给出时，先按 Requires 过滤候选，再在剩余候选中
+// 应用 Workers 约束（未命中则步骤失败并列明候选）。
+type StepRequirements struct {
+	// Platform 要求的平台标识（android/desktop/...）；空 = 不限。
+	Platform string `json:"platform"`
+	// Capabilities 要求节点具备的全部能力；空 = 不限。
+	Capabilities []string `json:"capabilities"`
+}
+
 // WorkflowStep 工作流步骤
 type WorkflowStep struct {
 	ID                  string                 `json:"id"`
@@ -74,6 +84,7 @@ type WorkflowStep struct {
 	Parameters          map[string]interface{} `json:"parameters"`
 	MaxRetries          int                    `json:"maxRetries"`          // 失败重试次数（0=不重试）
 	RetryBackoffSeconds int                    `json:"retryBackoffSeconds"` // 重试退避基数（秒，默认 2，指数翻倍）
+	Requires            *StepRequirements      `json:"requires"`
 }
 
 // StepStatus 步骤执行状态

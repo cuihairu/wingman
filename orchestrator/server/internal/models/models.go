@@ -153,6 +153,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&Agent{},
 		&Workflow{},
 		&StepStatus{},
+		&Execution{},
 		&Role{},
 		&Permission{},
 		&VaultMaster{},

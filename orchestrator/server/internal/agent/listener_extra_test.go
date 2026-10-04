@@ -17,6 +17,7 @@ type recordingRegistry struct {
 	statuses     map[string]string
 	heartbeats   []string
 	platforms    []string
+	capabilities [][]string
 	clients      map[string]any
 }
 
@@ -37,6 +38,12 @@ func (r *recordingRegistry) UpdatePlatform(agentID string, platform string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.platforms = append(r.platforms, platform)
+}
+
+func (r *recordingRegistry) UpdateCapabilities(agentID string, caps []string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.capabilities = append(r.capabilities, caps)
 }
 
 func (r *recordingRegistry) Unregister(agentID string) {

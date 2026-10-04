@@ -82,6 +82,7 @@ func run() error {
 	// Agent 注册表
 	registry := agent.NewRegistry(wsHub)
 	registry.SetTagStore(handlers.NewAgentTagStore(db))
+	registry.SetCapabilityStore(handlers.NewAgentCapabilityStore(db))
 	go registry.StartHeartbeatCheck()
 
 	// TCP Frame Listener（接受 runtime outbound 连接）

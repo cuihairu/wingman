@@ -47,6 +47,9 @@ type AgentInfo struct {
 	// Platform 设备平台（android/desktop/...），agent.register 上报；
 	// 空值视为 desktop（旧版桌面 agent 不上报）。见 docs/android-agent-design.md §3.3。
 	Platform string
+	// Capabilities 设备能力集（agent.register 上报，ADR: Capability System）；
+	// 词汇表见 capabilities.go，未知项按原样存储展示。
+	Capabilities []string
 }
 
 // TagStore agent 标签持久化接口（由 DB 层实现，Registry 不直接依赖 gorm）。
@@ -66,6 +69,9 @@ type Registry struct {
 	heartbeat time.Duration
 	// tagStore 可选的标签持久化后端，SetTagStore 注入；读写均受 mu 保护。
 	tagStore TagStore
+	// capabilityStore 可选的能力集持久化后端，SetCapabilityStore 注入；
+	// 与 tagStore 同构（Registry 不依赖 gorm，DB IO 一律锁外）。
+	capabilityStore CapabilityStore
 	// checkInterval 心跳巡检周期（默认 30s），测试中可缩短以触发 ticker 分支。
 	checkInterval time.Duration
 	stopCh        chan struct{}
@@ -97,16 +103,36 @@ func (r *Registry) tagStoreRef() TagStore {
 	return r.tagStore
 }
 
+// SetCapabilityStore 注入能力集持久化后端（启动时调用一次，幂等）。
+func (r *Registry) SetCapabilityStore(store CapabilityStore) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.capabilityStore = store
+}
+
+// capabilityStoreRef 在锁外取 capabilityStore 引用，避免 DB IO 持锁。
+func (r *Registry) capabilityStoreRef() CapabilityStore {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.capabilityStore
+}
+
 // Register 注册 Agent（实现 AgentRegistrar 接口）
 // conn 参数可以是任何实现了 SendCommand 的类型。
-// 标签恢复：内存中已有条目（重连）保留内存 Tags；否则从 TagStore（DB）载入，
-// 使 server 重启后标签不丢失。DB IO 一律在锁外。
+// 标签/能力集恢复：内存中已有条目（重连）保留内存值；否则从持久化后端
+// （DB）载入，使 server 重启后不丢失。DB IO 一律在锁外。
 func (r *Registry) Register(agentID, hostname, ip string, conn any) {
-	// 锁外载入持久化标签（store 为 nil 时跳过）
+	// 锁外载入持久化标签与能力集（store 为 nil 时跳过）
 	var restored []string
 	if store := r.tagStoreRef(); store != nil {
 		if tags, ok := store.LoadTags(agentID); ok {
 			restored = tags
+		}
+	}
+	var restoredCaps []string
+	if store := r.capabilityStoreRef(); store != nil {
+		if caps, ok := store.LoadCapabilities(agentID); ok {
+			restoredCaps = caps
 		}
 	}
 
@@ -114,16 +140,18 @@ func (r *Registry) Register(agentID, hostname, ip string, conn any) {
 	defer r.mu.Unlock()
 
 	info := &AgentInfo{
-		AgentID:  agentID,
-		Hostname: hostname,
-		IP:       ip,
-		Status:   StatusOnline,
-		LastSeen: time.Now(),
-		Tags:     restored,
+		AgentID:      agentID,
+		Hostname:     hostname,
+		IP:           ip,
+		Status:       StatusOnline,
+		LastSeen:     time.Now(),
+		Tags:         restored,
+		Capabilities: restoredCaps,
 	}
 	if existing, ok := r.agents[agentID]; ok {
 		info.Resources = existing.Resources
-		info.Tags = existing.Tags // 重连保留内存标签，不用旧 DB 值覆盖
+		info.Tags = existing.Tags                 // 重连保留内存标签，不用旧 DB 值覆盖
+		info.Capabilities = existing.Capabilities // 同上
 	}
 	// 尝试将 conn 转为 AgentConn
 	if ac, ok := conn.(AgentConn); ok {
@@ -380,6 +408,27 @@ func (r *Registry) UpdatePlatform(agentID string, platform string) {
 	}
 }
 
+// UpdateCapabilities 记录 agent.register 上报的能力集（ADR: Capability System）。
+// 每次重连随 register 重新上报，直接覆盖；未知能力按原样存储（UI 侧经
+// unknownCapabilities 标记 unverified）。写穿持久化在锁外，失败仅记日志。
+func (r *Registry) UpdateCapabilities(agentID string, caps []string) {
+	if caps == nil {
+		caps = []string{}
+	}
+	r.mu.Lock()
+	info, ok := r.agents[agentID]
+	if ok {
+		info.Capabilities = caps
+	}
+	r.mu.Unlock()
+
+	if store := r.capabilityStoreRef(); store != nil {
+		if err := store.SaveCapabilities(agentID, caps); err != nil {
+			log.Printf("[Registry] Failed to persist capabilities for %s: %v", agentID, err)
+		}
+	}
+}
+
 // StartHeartbeatCheck 启动心跳检测
 func (r *Registry) StartHeartbeatCheck() {
 	r.mu.RLock()
@@ -451,6 +500,18 @@ func (info *AgentInfo) ToJSON() map[string]any {
 	if tags == nil {
 		tags = []string{}
 	}
+	// 能力集与未知能力标记（ADR: Capability System）：词汇表外的上报项
+	// 原样展示，由 UI 标 unverified，不做服务端过滤。
+	caps := info.Capabilities
+	if caps == nil {
+		caps = []string{}
+	}
+	unknown := make([]string, 0, len(caps))
+	for _, c := range caps {
+		if !KnownCapabilities[c] {
+			unknown = append(unknown, c)
+		}
+	}
 	link := map[string]any{
 		"reconnects":           info.Link.Reconnects,
 		"dropped":              info.Link.Dropped,
@@ -465,15 +526,17 @@ func (info *AgentInfo) ToJSON() map[string]any {
 		platform = "desktop"
 	}
 	return map[string]any{
-		"agentId":     info.AgentID,
-		"hostname":    info.Hostname,
-		"ip":          info.IP,
-		"status":      string(info.Status),
-		"platform":    platform,
-		"resources":   info.Resources,
-		"link":        link,
-		"lastSeen":    info.LastSeen.UnixMilli(),
-		"currentTask": "",
-		"tags":        tags,
+		"agentId":             info.AgentID,
+		"hostname":            info.Hostname,
+		"ip":                  info.IP,
+		"status":              string(info.Status),
+		"platform":            platform,
+		"resources":           info.Resources,
+		"link":                link,
+		"lastSeen":            info.LastSeen.UnixMilli(),
+		"currentTask":         "",
+		"tags":                tags,
+		"capabilities":        caps,
+		"unknownCapabilities": unknown,
 	}
 }

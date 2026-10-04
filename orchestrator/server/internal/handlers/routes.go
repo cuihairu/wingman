@@ -176,6 +176,11 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 		api.GET("/agents/:agentId", agentHandler.HandleGet)
 		api.GET("/agents/:agentId/triggers", triggerHandler.HandleList)
 
+		// 执行记录 - 只读接口（ADR: Execution as the Platform Core Object）
+		executionHandler := NewExecutionHandler(deps.DB)
+		api.GET("/executions", executionHandler.HandleList)
+		api.GET("/executions/:id", executionHandler.HandleGet)
+
 		// 工作流管理 - 只读接口
 		wfHandler := NewWorkflowHandler(deps.WfEngine, deps.DB)
 		api.GET("/workflows", wfHandler.HandleList)
