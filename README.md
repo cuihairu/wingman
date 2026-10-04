@@ -4,9 +4,13 @@
 
 # Wingman
 
-**游戏自动化可编程控制引擎**
+**跨平台可编程自动化 Agent 与远程编排平台**（游戏自动化是第一垂直场景）
 
-C++ + Lua/Python 的高性能游戏自动化框架
+C++ + Lua/Python 的高性能自动化 Agent Runtime + Go 远程编排中控
+
+> 一句话定位：把 Windows / macOS / Linux / Android 机器统一注册成 Agent，通过
+> 脚本、视觉、输入、OCR/ML 与 Workflow 对它们做自动化控制；游戏自动化是当前
+> 最强、打磨最深的垂直场景，但控制面与执行面从一开始就是按通用 Agent 平台设计的。
 
 [![OS](https://img.shields.io/badge/OS-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](https://github.com/cuihairu/wingman)
 [![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml)
@@ -59,6 +63,7 @@ C++ + Lua/Python 的高性能游戏自动化框架
 | 📄 **序列化格式** | JSON、INI 配置文件解析 |
 | 🐛 **调试支持** | VS Code 断点调试 Lua 脚本（需启用调试组件） |
 | 🤖 **Android Agent** | Android 端侧 Agent（实验性，arm64 / Android 9.0+），出站 TCP 连 Go 中控，脚本 API 与桌面 runtime 同名同形，Dashboard 统一下发与查看 |
+| 🌐 **远程编排** | Agent 注册/心跳/命令分发（16 字节头 + JSON 帧、单命令超时）、批量操作（按 ID/标签选择器 fan-out）、DAG 工作流、RBAC/审计、Guacamole 远程桌面（Go 中控） |
 
 > 部分高级模块（OCR、ML/YOLO、远程编排、脚本调试器）依赖可选组件或仍处于持续建设中。默认可用能力以当前构建配置、运行时参数和对应 API 文档为准。
 

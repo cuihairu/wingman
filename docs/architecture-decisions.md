@@ -428,3 +428,172 @@ carry zero platform macros.
 ## Documentation Requirement
 
 When changing runtime control, local UI, or remote orchestration code, update this document and `docs/architecture.md` in the same change. If implementation is experimental, mark it explicitly as experimental instead of presenting it as the stable architecture.
+
+## Four-Layer Model: Core / Runtime / Agent / Control Plane
+
+Decision (2026-10-04): Wingman's architecture is formally a four-layer model,
+with a hard **Control Plane / Execution Plane** boundary:
+
+```text
+CONTROL PLANE (Go server, apps/orchestrator)
+  Dashboard (React) · RBAC · Audit · Agent Registry · Workflow engine
+        │
+        │ Agent TCP (outbound, authenticated register)
+        ▼
+AGENT LAYER (runtime identity, apps/runtime + Android agent)
+  identity · register · heartbeat · capability · command · event
+        │
+        ▼
+RUNTIME LAYER (Execution Plane, apps/runtime)
+  ScriptManager · Lua/Python engines · CommandDispatcher · TriggerManager
+        │
+        ▼
+AUTOMATION CORE (lib/wingman)
+  screen · input · window · vision · OCR · ML · process · kv · trigger · behavior
+```
+
+Layer ownership rules:
+
+- `lib/wingman` (Automation Core) must not know Agent / Dashboard / Workflow /
+  User / Team concepts. It is the platform's most reusable asset and the
+  portable core for the Android agent (see Platform Macro Boundary and
+  `docs/platform-abstraction-design.md`).
+- The Runtime layer owns script engines, the transport-agnostic
+  `CommandDispatcher`, execution lifecycle (`script.run/stop`, local IPC plus
+  remote agent commands — see Dispatcher Reuse) and the local UI path
+  (Tauri → IPC).
+- The Agent layer is the runtime's remote identity: what registers with the
+  Go server, what is addressable by `agent_id` (plus A3-P1 registration token,
+  `docs/agent-token-auth-design.md`), and what owns the outbound TCP session.
+  New with this decision: an Agent carries a **capability set** (see
+  Capability System below), not just `{agentId, hostname, platform}`.
+- The Control Plane (Go server) is the only remote entry point. It owns
+  registry, RBAC, audit, workflow scheduling, and all dashboard APIs. It must
+  not dial runtimes (see Non-Negotiable Control Plane).
+
+Consequences:
+
+- Workflow steps are written against capabilities/roles, not hardcoded
+  `agent_id`s, once the Capability System lands (below).
+- The remote-desktop pixel plane (guacd gateway, `docs/remote-gateway-guacamole-design.md`)
+  stays in the Control Plane; the Agent layer is not part of it.
+- Existing naming is kept: "runtime" (Execution Plane) and "server"/"orchestrator"
+  (Control Plane). New components must not blur these names.
+
+## Automation Primitive Boundaries
+
+Decision (2026-10-04): the five automation primitives have non-overlapping
+responsibilities. When a new feature can be realized with two primitives, the
+boundary below decides; when it still fits both, prefer the *lighter*
+primitive (Trigger < Script < Behavior Tree < Workflow < Team).
+
+| Primitive | Responsibility | Example | Owner |
+|-----------|----------------|---------|-------|
+| **Trigger** | 事件 → 动作（单次/循环条件反应） | `WHEN pixel becomes red THEN press F1` | `lib/wingman` TriggerManager, exposed over IPC + agent RPC (`trigger.*`) |
+| **Script** | 过程逻辑（确定性步骤序列） | 检查背包 → 出售 → 断言结果 | Lua/Python engines over shared `ModuleDescriptor` modules |
+| **Behavior Tree** | 实时决策（高频循环状态决策） | 战斗 AI：IsDead→Restart / HasTarget→Attack / else Patrol | `lib/wingman` behavior_tree |
+| **Workflow** | 跨 Agent / 跨任务 / 长生命周期编排（DAG，可等待、重试、超时） | Agent A 准备 → Agent B 执行 → 截图步骤 → 条件分支 | Go server workflow engine |
+| **Team** | 多个 Agent 的协同分组（角色 + 投票/收件箱等协商机制） | 团队副本分工 | Go server (计划中，见 ROADMAP「远程编排」Team/Vote/Inbox) |
+
+Consequences:
+
+- The four-level escalation path (Trigger → Script → BT → Workflow) is the
+  documented default; features that jump a level must state why in review.
+- Workflow must not duplicate Behavior Tree decision loops: BT is for
+  millisecond-to-second in-loop decisions on one node; Workflow is for
+  minute-to-hour pipelines across nodes.
+- Scripts stay the unit of execution for both local UI and remote command
+  (`run_script`/`stop_script`); Workflow steps reference scripts, not inline
+  logic, until an explicit inline-step decision is made.
+
+## Capability System
+
+Decision (2026-10-04): Agent registration reports a **standardized capability
+set**, and scheduling is written against capabilities instead of platforms.
+
+Capability identifiers are dotted namespaces, versioned at the server:
+
+```text
+screen.capture    screen.stream      screen.listMonitors
+input.mouse       input.keyboard     input.touch
+window.enumerate  window.activate
+process.spawn
+vision.image      vision.color
+ocr
+ml.onnx
+```
+
+Registration payload (both desktop runtime and Android agent, same shape):
+
+```json
+{
+  "agentId": "pc-shanghai-01",
+  "platform": "windows",
+  "arch": "x64",
+  "version": "1.2.0",
+  "capabilities": ["screen.capture", "input.mouse", "input.keyboard", "window.enumerate", "vision.image", "ml.onnx"]
+}
+```
+
+Rules:
+
+- The Go server owns the capability vocabulary and persists it on
+  `models.Agent` (alongside tags, same `TagStore`-style decoupling). Unknown
+  capability names are accepted but flagged in the registry UI as
+  `unverified` until a server review adds them to the vocabulary.
+- The runtime derives its capability set from the platform implementation
+  actually compiled in (a build without OCR omits `ocr`), never from config only.
+- Workflow steps may declare `requires: {platform, capabilities[]}`; the
+  scheduler matches agents against it and reports a scheduling error listing
+  candidate agents instead of failing silently. This supersedes the current
+  "workflow workers by tags" note in Agent Groups & Batch Operations.
+
+Status: the wire fields (`platform`, `capabilities`) already exist in
+`agent.register` (`docs/android-agent-design.md`, `docs/protocols.md`) with
+weak server-side dependencies; this decision standardizes semantics and
+makes the server the vocabulary owner. Agent identity hardening
+(registration token → device identity) proceeds per
+`docs/agent-token-auth-design.md`.
+
+## Execution as the Platform Core Object
+
+Decision (2026-10-04): executions — not commands — are the platform's core
+tracked object. A single `Execution` model unifies script runs, workflow step
+runs, and agent-side command runs:
+
+```json
+{
+  "executionId": "...",
+  "workflowId": "...", "stepId": "...",
+  "agentId": "...",
+  "scriptId": "...",
+  "status": "running",
+  "startedAt": "...", "finishedAt": "...",
+  "timeout": 30,
+  "retry": 0,
+  "logs": [], "artifacts": [], "result": {}
+}
+```
+
+Status model: `pending → queued → running → {succeeded | failed | cancelled | timeout | lost}` (stopping in flight).
+
+Rules:
+
+- The server is the source of truth for `Execution`; runtime reports into it
+  via `command.result` / `event.script_log` (existing protocol, unchanged).
+- **Artifacts** (screenshots, captured frames, stdout/stderr, result.json,
+  ML output) are first-class children of an execution, addressed as
+  `execution/{id}/artifacts/{name}` and listed in the Dashboard Execution
+  view. The deployment-screenshot path
+  (`.github/workflows/deploy-server.yml` → `deploy-screenshot` artifact
+  upload, `docs/remote-gateway-guacamole-design.md`) remains a deploy-time
+  concern; the platform artifact model is orthogonal and server-side.
+- Audit log entries reference `executionId` when one exists.
+
+Status: today the pieces exist separately — `run_script`/`command.result`
+(`docs/protocols.md`), script lifecycle in `StandaloneMode`, and the workflow
+engine's own execution records (`internal/workflow`). This decision is the
+convergence target: unify them behind one model and one server API
+(`GET /api/executions/:id` etc.) before adding new execution-shaped
+features. Implementation is intentionally deferred until the model is in
+the Go server as `models.Execution`.

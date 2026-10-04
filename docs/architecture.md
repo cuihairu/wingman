@@ -71,7 +71,42 @@ wingman/
 └── CMakeLists.txt                ← 根 CMake（聚合构建）
 ```
 
-## 架构分层
+## 架构分层（四层模型）
+
+Wingman 是四层模型，中间横着一条硬性的 **Control Plane / Execution Plane
+边界**（决策详见 `docs/architecture-decisions.md` 的 *Four-Layer Model*）：
+
+```
+ CONTROL PLANE                      Go server（apps/orchestrator）
+   Dashboard (React) · RBAC · Audit · Agent Registry · Workflow 引擎
+        │
+        │ Agent TCP（outbound，注册令牌鉴权）
+        ▼
+ AGENT LAYER（执行节点身份）         runtime Agent + Android Agent
+    identity · register({agentId, platform, capabilities}) · heartbeat
+    · command · event
+        ↓
+ RUNTIME LAYER（Execution Plane）    apps/runtime
+    ScriptManager · Lua/Python 引擎 · CommandDispatcher · TriggerManager
+    · 本地 IPC（Tauri → runtime）
+        ↓
+ AUTOMATION CORE（lib/wingman）      screen · input · window · vision · OCR
+    · ML · process · kv · trigger · behavior（平台实现在 platform/<os>/）
+```
+
+边界规则：
+
+- **Automation Core 不感知上层**：`lib/wingman` 不知道 Agent / Dashboard /
+  Workflow / User / Team 概念，是整个平台最可复用的资产，也是 Android
+  agent 的可移植核心。
+- **Runtime = Execution Plane**：脚本引擎、传输无关的 CommandDispatcher、
+  执行生命周期、本地 UI 路径都在这一层；它不是 server。
+- **Agent = 远程身份层**：向 Go server 注册、以 `agent_id` 寻址、持有
+  outbound TCP 会话与能力集（见 Capability System 决策）。
+- **Go server = 唯一 Control Plane**：注册表、RBAC、审计、工作流调度与
+  全部 Dashboard API 都由它拥有；它不 dial 任何 runtime。
+
+本地与远程两条控制路径（等价于上面的 RUNTIME LAYER 两侧）：
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -91,6 +126,20 @@ wingman/
 │                                        lib/wingman core   │
 └─────────────────────────────────────────────────────────┘
 ```
+
+## 平台核心概念与现状
+
+七个个核心概念的当前实现位置（2026-10-04 收敛审查快照；✅ 已落地，🔶 部分/演进中）：
+
+| 概念 | 当前实现位置 | 状态 |
+|------|--------------|------|
+| **Agent** | Agent TCP 注册/心跳/命令生命周期（[protocols.md](protocols.md)）+ A3-P1 注册令牌（[agent-token-auth-design.md](agent-token-auth-design.md)） | ✅ |
+| **Capability** | `agent.register` 已携带 `platform`/`capabilities` 字段（server 弱依赖）；标准化决策见 architecture-decisions.md *Capability System* | 🔶 |
+| **Execution** | `run_script`/`command.result` + workflow engine 内部执行记录；统一模型见 architecture-decisions.md *Execution as the Platform Core Object* | 🔶 |
+| **Workflow** | Go server `internal/workflow` DAG 引擎（环检测/超时/重试/等待）+ Dashboard Workflows 页 | ✅ |
+| **Artifact** | 部署截图 artifact（`deploy-screenshot`，部署链路）；平台级 Execution artifact 模型见 architecture-decisions.md *Execution* | 🔶 |
+| **Control Plane** | Go server：registry / RBAC / audit / workflow / 批量操作 / Guacamole 网关 | ✅ |
+| **Execution Plane** | apps/runtime + Android agent（outbound 执行、本地 IPC） | ✅ |
 
 ## 调用链
 
