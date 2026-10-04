@@ -32,7 +32,7 @@
 
 **P1 — 缺口清单按原语边界归位（Runtime 能力层，轻者优先）**
 
-4. **文件 IO 工具**（file 模块：读写/存在/移动；filewatcher 已提供监控腿；platform-abstraction 挂点）——P2 组常用工具补齐。
+4. ✅ **文件 IO 工具**（file 模块：本笔落地——`script/modules/file_module.cpp` 十三函数全部 std::filesystem 真实现非 stub（read/write/append/exists/isFile/isDir/size/move/copy/remove/removeAll/mkdir/listDir），move 带跨文件系统 copy+remove 回退；file_module_test 16 用例；filewatcher 已提供监控腿）。
 5. **hotkey 模块**（全局热键监听；依赖输入层抽象，与 input.touch/mouse/keyboard 词汇同层）——P2 组内。
 6. **notify tray**（`tray.show()/hide()/setBadge()` + `event.*`/`task.*` 桥接自动接线）——P1 notify 模块残余。
 

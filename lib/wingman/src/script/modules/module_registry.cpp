@@ -43,6 +43,7 @@ ModuleDescriptor createDbModule();
 ModuleDescriptor createIniModule();
 ModuleDescriptor createClipboardModule();
 ModuleDescriptor createFileWatcherModule();
+ModuleDescriptor createFileModule();
 ModuleDescriptor createMacroModule();
 ModuleDescriptor createScriptModule();
 ModuleDescriptor createMlModule();
@@ -85,6 +86,7 @@ std::vector<ModuleDescriptor> getAllModules() {
 	modules.push_back(createIniModule());
 	modules.push_back(createClipboardModule());
 	modules.push_back(createFileWatcherModule());
+	modules.push_back(createFileModule());
 	modules.push_back(createMacroModule());
 	modules.push_back(createScriptModule());
 	modules.push_back(createMlModule());

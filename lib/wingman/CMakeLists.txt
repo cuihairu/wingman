@@ -115,6 +115,7 @@ set(WINGMAN_SOURCES
     src/script/modules/orchestration_module.cpp
     src/script/modules/clipboard_module.cpp
     src/script/modules/filewatcher_module.cpp
+    src/script/modules/file_module.cpp
     src/script/modules/macro_module.cpp
     src/script/modules/script_module.cpp
     src/script/modules/ml_module.cpp
