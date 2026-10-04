@@ -33,10 +33,11 @@ ModuleDescriptor::FunctionEntry findNotifyFunction(const ModuleDescriptor& mod, 
 TEST(NotifyModuleTest, HasExpectedFunctions) {
 	auto mod = createNotifyModule();
 	EXPECT_EQ(mod.name, "notify");
-	ASSERT_GE(mod.functions.size(), 7u);
+	ASSERT_GE(mod.functions.size(), 11u);
 
 	bool hasDebug = false, hasInfo = false, hasWarn = false, hasError = false;
 	bool hasToast = false, hasWebhook = false, hasBridge = false;
+	bool hasTrayShow = false, hasTrayHide = false, hasTrayBadge = false, hasTrayTooltip = false;
 	for (const auto& fn : mod.functions) {
 		if (fn.name == "debug") hasDebug = true;
 		if (fn.name == "info") hasInfo = true;
@@ -45,6 +46,10 @@ TEST(NotifyModuleTest, HasExpectedFunctions) {
 		if (fn.name == "toast") hasToast = true;
 		if (fn.name == "webhook") hasWebhook = true;
 		if (fn.name == "bridge") hasBridge = true;
+		if (fn.name == "trayShow") hasTrayShow = true;
+		if (fn.name == "trayHide") hasTrayHide = true;
+		if (fn.name == "traySetBadge") hasTrayBadge = true;
+		if (fn.name == "traySetTooltip") hasTrayTooltip = true;
 	}
 	EXPECT_TRUE(hasDebug);
 	EXPECT_TRUE(hasInfo);
@@ -53,6 +58,10 @@ TEST(NotifyModuleTest, HasExpectedFunctions) {
 	EXPECT_TRUE(hasToast);
 	EXPECT_TRUE(hasWebhook);
 	EXPECT_TRUE(hasBridge);
+	EXPECT_TRUE(hasTrayShow);
+	EXPECT_TRUE(hasTrayHide);
+	EXPECT_TRUE(hasTrayBadge);
+	EXPECT_TRUE(hasTrayTooltip);
 }
 
 TEST(NotifyModuleTest, DebugReturnsNull) {
@@ -597,6 +606,119 @@ TEST(NotifyModuleTest, BridgeHttpTargetRoutesThroughWebhookSenderOnEmit) {
 	// 同步拒绝路径：send 在锁内检查白名单即 emit blocked
 	EXPECT_EQ(blocked.value("url", ""), "https://127.0.0.1:9/hook");
 	EXPECT_EQ(blocked.value("reason", ""), "URL not in whitelist or webhooks disabled");
+
+	wingman::EventHub::instance().unsubscribe(subId);
+}
+
+// ========== 托盘意图（todo 2026-10-04 P1-6）==========
+// tray.* 不直达系统托盘：只向 EventHub 发 notify.tray.* 意图事件，由 runtime
+// notify_bridge 转投 EventBuffer、GUI 落 TrayIcon。此处验证意图发射与参数门控。
+
+TEST(NotifyModuleTest, TrayShowEmitsIntentEvent) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "trayShow");
+	ASSERT_FALSE(fn.name.empty());
+
+	nlohmann::json received = nlohmann::json::object();
+	auto subId = wingman::EventHub::instance().subscribe("notify.tray.show",
+		[&received](const wingman::EventMessage& msg) {
+			received = msg.payload;
+		});
+
+	auto result = fn({});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_TRUE(result.asBool());
+
+	EXPECT_TRUE(received.contains("timestamp"));
+	EXPECT_TRUE(received["timestamp"].is_number());
+
+	wingman::EventHub::instance().unsubscribe(subId);
+}
+
+TEST(NotifyModuleTest, TrayHideEmitsIntentEvent) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "trayHide");
+	ASSERT_FALSE(fn.name.empty());
+
+	nlohmann::json received = nlohmann::json::object();
+	auto subId = wingman::EventHub::instance().subscribe("notify.tray.hide",
+		[&received](const wingman::EventMessage& msg) { received = msg.payload; });
+
+	auto result = fn({});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_TRUE(result.asBool());
+
+	EXPECT_TRUE(received["timestamp"].is_number());
+
+	wingman::EventHub::instance().unsubscribe(subId);
+}
+
+TEST(NotifyModuleTest, TraySetBadgeTextAndClear) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "traySetBadge");
+	ASSERT_FALSE(fn.name.empty());
+
+	nlohmann::json received = nlohmann::json::object();
+	std::atomic<int> hits{0};
+	auto subId = wingman::EventHub::instance().subscribe("notify.tray.badge",
+		[&received, &hits](const wingman::EventMessage& msg) {
+			received = msg.payload;
+			++hits;
+		});
+
+	// 文本角标
+	auto result = fn({ScriptValue::fromString("3")});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_TRUE(result.asBool());
+	EXPECT_EQ(received.value("text", ""), "3");
+	EXPECT_TRUE(received["timestamp"].is_number());
+
+	// 无参 = 清除角标（text null），事件照发（GUI 端 set_badge_label(None)）
+	result = fn({});
+	EXPECT_TRUE(result.asBool());
+	EXPECT_EQ(hits.load(), 2);
+	ASSERT_TRUE(received.contains("text"));
+	EXPECT_TRUE(received["text"].is_null());
+
+	// 非法参数拒绝：不发射、返回 false
+	result = fn({ScriptValue::fromInt(3)});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_FALSE(result.asBool());
+	EXPECT_EQ(hits.load(), 2);
+
+	wingman::EventHub::instance().unsubscribe(subId);
+}
+
+TEST(NotifyModuleTest, TraySetTooltipTextAndClear) {
+	auto mod = createNotifyModule();
+	auto fn = findNotifyFunction(mod, "traySetTooltip");
+	ASSERT_FALSE(fn.name.empty());
+
+	nlohmann::json received = nlohmann::json::object();
+	std::atomic<int> hits{0};
+	auto subId = wingman::EventHub::instance().subscribe("notify.tray.tooltip",
+		[&received, &hits](const wingman::EventMessage& msg) {
+			received = msg.payload;
+			++hits;
+		});
+
+	auto result = fn({ScriptValue::fromString("Running: backup")});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_TRUE(result.asBool());
+	EXPECT_EQ(received.value("text", ""), "Running: backup");
+
+	// 非法参数拒绝
+	result = fn({ScriptValue::fromBool(true)});
+	EXPECT_TRUE(result.isBool());
+	EXPECT_FALSE(result.asBool());
+	EXPECT_EQ(hits.load(), 1);
+
+	// 无参清除
+	result = fn({});
+	EXPECT_TRUE(result.asBool());
+	EXPECT_EQ(hits.load(), 2);
+	ASSERT_TRUE(received.contains("text"));
+	EXPECT_TRUE(received["text"].is_null());
 
 	wingman::EventHub::instance().unsubscribe(subId);
 }

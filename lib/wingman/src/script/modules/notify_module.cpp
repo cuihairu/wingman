@@ -218,6 +218,17 @@ public:
 		});
 	}
 
+	// tray 意图事件（todo 2026-10-04 P1-6）：notify.tray.{show,hide,badge,tooltip}。
+	// runtime 侧 notify_bridge 订阅后转投 EventBuffer（"tray.*"），GUI 经
+	// events.drain 拉取并驱动系统托盘（tauri TrayIcon）。无 GUI 附着时事件
+	// 仅入有界缓冲、无消费者——托盘本体归 GUI 所有，runtime 只发意图。
+	void tray(const std::string& action, const nlohmann::json& payload) {
+		nlohmann::json body = payload;
+		body["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::system_clock::now().time_since_epoch()).count();
+		EventHub::instance().emit("notify.tray." + action, body, "notify");
+	}
+
 	void bridge(const std::string& eventName, const std::string& target, const nlohmann::json& options) {
 		std::lock_guard<std::mutex> lock(mutex_);
 
@@ -406,6 +417,44 @@ ModuleDescriptor createNotifyModule() {
 		g_notifyManager.bridge(eventName, target, options);
 		return ScriptValue::null();
 	}, "eventName:string, target:string, options?:object -> nil"});
+
+	// ===== 托盘（GUI 附属，runtime 发意图事件；见 NotifyManager::tray）=====
+
+	// tray.show() -> boolean
+	mod.functions.push_back({"trayShow", [](const std::vector<ScriptValue>&) -> ScriptValue {
+		g_notifyManager.tray("show", nlohmann::json::object());
+		return ScriptValue::fromBool(true);
+	}, "() -> boolean"});
+
+	// tray.hide() -> boolean
+	mod.functions.push_back({"trayHide", [](const std::vector<ScriptValue>&) -> ScriptValue {
+		g_notifyManager.tray("hide", nlohmann::json::object());
+		return ScriptValue::fromBool(true);
+	}, "() -> boolean"});
+
+	// tray.setBadge(text?) -> boolean（无参/nil 清除角标）
+	mod.functions.push_back({"traySetBadge", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.empty() || args[0].isNull()) {
+			g_notifyManager.tray("badge", {{"text", nullptr}});
+		} else if (args[0].isString()) {
+			g_notifyManager.tray("badge", {{"text", args[0].asString()}});
+		} else {
+			return ScriptValue::fromBool(false);
+		}
+		return ScriptValue::fromBool(true);
+	}, "text?:string -> boolean"});
+
+	// tray.setTooltip(text) -> boolean（无参清除）
+	mod.functions.push_back({"traySetTooltip", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.empty()) {
+			g_notifyManager.tray("tooltip", {{"text", nullptr}});
+		} else if (args[0].isString()) {
+			g_notifyManager.tray("tooltip", {{"text", args[0].asString()}});
+		} else {
+			return ScriptValue::fromBool(false);
+		}
+		return ScriptValue::fromBool(true);
+	}, "text:string -> boolean"});
 
 	return mod;
 }

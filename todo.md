@@ -34,7 +34,7 @@
 
 4. ✅ **文件 IO 工具**（file 模块：本笔落地——`script/modules/file_module.cpp` 十三函数全部 std::filesystem 真实现非 stub（read/write/append/exists/isFile/isDir/size/move/copy/remove/removeAll/mkdir/listDir），move 带跨文件系统 copy+remove 回退；file_module_test 16 用例；filewatcher 已提供监控腿）。
 5. ✅ **hotkey 模块**（本笔落地——`wingman/hotkey.hpp` + `script/modules/hotkey_module.cpp`：轮询式全局键态监听，后台线程按固定间隔读 IInput 键态、主键+Ctrl/Shift/Alt 组合上升沿触发回调；组合文本解析（大小写不敏感、Win/Meta 显式拒绝）；注册/注销自动启停线程、回调锁外触发按 ID 复核；脚本侧 register/unregister 带 callableThreadSafe 门控（Lua 拒收走 hotkey.error 事件）；9 用例 + 全量回归 2085 passed。v1 限制：轮询间隔内按下又弹起可能漏检；macOS 权限行为待真机）。
-6. **notify tray**（`tray.show()/hide()/setBadge()` + `event.*`/`task.*` 桥接自动接线）——P1 notify 模块残余。
+6. **notify tray**（本笔落地——脚本层 `trayShow()/trayHide()/traySetBadge(text?)/traySetTooltip(text?)` 四函数：不直达系统托盘，只向 EventHub 发 `notify.tray.{show,hide,badge,tooltip}` 意图事件（source "notify"，附 timestamp）；runtime 侧 `notify_bridge` 订阅转投 EventBuffer（method 去 "notify." 前缀 → `tray.*`，installNotifyBridge 按 subscriptionByName 幂等防订阅泄漏），GUI events.ts 轮询分发 → tauri `tray_control` 命令 → TrayIcon set_visible/set_badge_label/set_tooltip。分层诚实：托盘本体归 GUI，无 GUI 附着时事件仅入有界缓冲（EventBuffer 1000 条）。v1 限制：badge 仅 Windows/macOS 生效，Linux 底层 no-op。测试：notify_module_test 4 用例 + notify_bridge_test 2 用例 + events.test.ts 3 用例）。
 
 **P2 — 收敛与登记**
 

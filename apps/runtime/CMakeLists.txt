@@ -18,6 +18,7 @@ set(RUNTIME_SOURCES
     src/main.cpp
     src/agent.cpp
     src/standalone_mode.cpp
+    src/notify_bridge.cpp
     src/local_ipc_server.cpp
     src/agent_config.cpp
     src/packer.cpp

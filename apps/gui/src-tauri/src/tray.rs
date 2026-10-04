@@ -4,6 +4,27 @@ use tauri::{
     AppHandle, Manager, Runtime,
 };
 
+/// runtime 托盘意图 → 系统托盘控件（脚本 notify.trayShow/… 经 events.drain
+/// 链路到达，见前端 events.ts 的 tray.* 分发）。
+///
+/// action: "show" / "hide" / "badge" / "tooltip"；badge/tooltip 的 text 为
+/// null 时清除对应状态。show/hide 幂等。tauri v2 角标 label 仅 Windows/macOS
+/// 生效，Linux 底层为 no-op（尽力而为，错误统一吞并返回给前端记日志）。
+#[tauri::command]
+pub fn tray_control(app: AppHandle, action: String, text: Option<String>) -> Result<(), String> {
+    let tray = app
+        .tray_by_id("main-tray")
+        .ok_or_else(|| "tray not initialized".to_string())?;
+    let result = match action.as_str() {
+        "show" => tray.set_visible(true),
+        "hide" => tray.set_visible(false),
+        "badge" => tray.set_badge_label(text.as_deref()),
+        "tooltip" => tray.set_tooltip(text.as_deref()),
+        other => return Err(format!("unknown tray action: {other}")),
+    };
+    result.map_err(|e| e.to_string())
+}
+
 /// 设置系统托盘：左键点击切换窗口显隐，右键菜单提供「显示/隐藏」「退出」。
 ///
 /// 仅在 setup 阶段调用一次。窗口关闭行为（最小化到托盘 vs 退出）由前端

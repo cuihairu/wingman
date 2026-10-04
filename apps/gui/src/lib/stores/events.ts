@@ -100,7 +100,33 @@ function dispatch(event: RuntimeEvent) {
 		// screenshot.frame 预留：runtime 侧 ScreenshotReporter 未接入，待后续连线
 		case 'screenshot.frame':
 			break;
+		// 托盘意图（脚本 notify.trayShow/… → runtime notify_bridge → events.drain）：
+		// 驱动系统托盘显隐/角标/提示。托盘本体归 GUI（tauri TrayIcon），runtime
+		// 只发意图；角标在 tauri v2 仅 Windows/macOS 生效，Linux 底层 no-op。
+		case 'tray.show':
+		case 'tray.hide':
+		case 'tray.badge':
+		case 'tray.tooltip': {
+			applyTrayEvent(event.method, event.payload?.text, event.timestamp);
+			break;
+		}
 	}
+}
+
+/// 托盘意图落到系统托盘（tauri tray_control 命令）。
+/// 非 Tauri 环境（浏览器开发模式）无 `__TAURI_INVOKE__`，仅记日志。
+function applyTrayEvent(method: string, text: unknown, timestamp: number) {
+	const action = method.replace('tray.', '');
+	const invoke = (window as any).__TAURI_INVOKE__;
+	if (invoke) {
+		invoke('tray_control', {
+			action,
+			text: typeof text === 'string' ? text : null,
+		}).catch((error: unknown) => {
+			logs.addRuntime(`托盘控制失败: ${String(error)}`, 'error', timestamp);
+		});
+	}
+	logs.addRuntime(`托盘: ${action}${typeof text === 'string' ? `（${text}）` : ''}`, 'info', timestamp);
 }
 
 export function createEventPoller() {

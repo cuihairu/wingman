@@ -67,6 +67,8 @@ fn main() {
             commands::triggers::toggle_trigger,
             // 事件拉取（runtime → GUI 日志/触发器/截图事件）
             commands::events::drain_events,
+            // 托盘控制（脚本 notify.tray.* 意图经 events.drain 到达前端后转发）
+            tray::tray_control,
             // 宏录制（录制/停止/回放/保存/载入）
             commands::macros::macro_record,
             commands::macros::macro_stop,

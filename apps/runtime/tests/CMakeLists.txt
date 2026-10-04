@@ -18,6 +18,8 @@ add_executable(runtime_tests
     # 回调空串跳过、状态映射现状钉、批量操作闲置计数 0、manager 失同步降级腿、
     # getConfig；pause/resume/stop 成功腿为状态机结构性不可达，登记在案）
     standalone_mode_coverage_test.cpp
+    # notify.tray.* 意图 → EventBuffer 桥（命名去前缀/透传/幂等安装）
+    notify_bridge_test.cpp
     cli_test_stubs.cpp
     ../src/cli.cpp
     ../src/packer.cpp
@@ -26,6 +28,7 @@ add_executable(runtime_tests
     ../src/agent_config.cpp
     ../src/standalone_mode.cpp
     ../src/local_ipc_server.cpp
+    ../src/notify_bridge.cpp
     ../src/rpc/handlers/script_handler.cpp
     ../src/rpc/handlers/system_handler.cpp
     ../src/rpc/handlers/config_handler.cpp

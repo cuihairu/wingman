@@ -8,6 +8,7 @@
 #include "wingman/rpc/rpc_dispatcher.hpp"
 #include "wingman/rpc/script_handler.hpp"
 #include "wingman/agentcore/event_buffer.hpp"
+#include "wingman/runtime/notify_bridge.hpp"
 #include "wingman/runtime/rpc/event_handler.hpp"
 #include "wingman/runtime/rpc/macro_handler.hpp"
 #include "wingman/runtime/rpc/screenshot_handler.hpp"
@@ -109,6 +110,8 @@ bool LocalIpcServer::start() {
     if (impl_->remoteConfigAccess) {
         rpc::registerRuntimeConfigHandlers(*impl_->dispatcher, *impl_->remoteConfigAccess);
     }
+    // 脚本托盘意图（notify.tray.*）→ events.drain 事件流（GUI 驱动系统托盘）
+    installNotifyBridge();
 
     {
         std::lock_guard<std::mutex> lock(startMutex_);

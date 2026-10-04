@@ -275,4 +275,71 @@ describe('events 轮询器与事件分发', () => {
 		poller.stop();
 		expect(get(logs)).toHaveLength(0);
 	});
+
+	it('tray.*：转发 tray_control（text 字符串透传，非字符串归 null），并记录日志', async () => {
+		(window as any)[INVOKE_KEY] = vi.fn(async (cmd: string) => {
+			if (cmd === 'drain_events') {
+				return {
+					events: [
+						event('tray.show', {}),
+						event('tray.badge', { text: '3' }),
+						event('tray.tooltip', { text: 'Running: backup' }),
+						event('tray.hide', { text: 42 }),
+					],
+				};
+			}
+			return undefined;
+		});
+		const { createEventPoller, logs, settings } = await fresh();
+		const invoke = (window as any)[INVOKE_KEY];
+		settings.update({ logLevel: 'debug' });
+		const poller = createEventPoller();
+		poller.start();
+		await new Promise(r => setTimeout(r, 0));
+		poller.stop();
+
+		expect(invoke).toHaveBeenCalledWith('tray_control', { action: 'show', text: null });
+		expect(invoke).toHaveBeenCalledWith('tray_control', { action: 'badge', text: '3' });
+		expect(invoke).toHaveBeenCalledWith('tray_control', { action: 'tooltip', text: 'Running: backup' });
+		expect(invoke).toHaveBeenCalledWith('tray_control', { action: 'hide', text: null });
+		const messages = get(logs).map(e => e.message);
+		expect(messages).toContain('托盘: show');
+		expect(messages).toContain('托盘: badge（3）');
+		expect(messages).toContain('托盘: tooltip（Running: backup）');
+		expect(messages).toContain('托盘: hide');
+	});
+
+	it('tray.*：非 Tauri 环境（无 invoke）仅记日志不抛错', async () => {
+		(window as any)[INVOKE_KEY] = vi.fn(async () => ({
+			events: [event('tray.show', { text: 'x' })],
+		}));
+		const { createEventPoller, logs, settings } = await fresh();
+		settings.update({ logLevel: 'debug' });
+		const poller = createEventPoller();
+		poller.start();
+		await Promise.resolve();
+		await Promise.resolve();
+		poller.stop();
+		const messages = get(logs).map(e => e.message);
+		expect(messages).toEqual(['托盘: show（x）']);
+	});
+
+	it('tray.*：tray_control 失败时记录 error 日志', async () => {
+		(window as any)[INVOKE_KEY] = vi.fn(async (cmd: string) => {
+			if (cmd === 'drain_events') {
+				return { events: [event('tray.badge', { text: '9' })] };
+			}
+			throw new Error('tray not initialized');
+		});
+		const { createEventPoller, logs, settings } = await fresh();
+		settings.update({ logLevel: 'debug' });
+		const poller = createEventPoller();
+		poller.start();
+		await new Promise(r => setTimeout(r, 0));
+		poller.stop();
+
+		const entries = get(logs);
+		expect(entries.some(e => e.type === 'error' && e.message.includes('托盘控制失败'))).toBe(true);
+		expect(entries.some(e => e.message === '托盘: badge（9）')).toBe(true);
+	});
 });
