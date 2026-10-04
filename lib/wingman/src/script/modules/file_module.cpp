@@ -1,6 +1,7 @@
 #include "wingman/script/iscript_engine.hpp"
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 #include <system_error>
 
 namespace wingman {
@@ -12,64 +13,41 @@ namespace fs = std::filesystem;
 namespace {
 
 // readFileBytes 整文件读入字符串（二进制安全），失败返回 false。
+// 用 fs::path 重载的 fstream：MSVC 内部按宽字符打开，非 ASCII 路径
+// 安全性与 _wfopen 相同，且公共层无平台宏（P0 边界守卫纪律）。
 bool readFileBytes(const fs::path& path, std::string& out) {
 	std::error_code ec;
 	if (!fs::is_regular_file(path, ec)) {
 		return false;
 	}
-	FILE* f = nullptr;
-#ifdef _WIN32
-	if (_wfopen_s(&f, path.c_str(), L"rb") != 0 || !f) {
-		return false;
-	}
-#else
-	f = std::fopen(path.c_str(), "rb");
+	std::ifstream f(path, std::ios::binary);
 	if (!f) {
 		return false;
 	}
-#endif
-	// RAII 守卫，任何提前返回都关文件
-	struct FileGuard {
-		FILE* f;
-		~FileGuard() { if (f) std::fclose(f); }
-	} guard{f};
-
 	char buf[64 * 1024];
-	size_t n;
-	while ((n = std::fread(buf, 1, sizeof(buf), f)) > 0) {
-		out.append(buf, n);
+	while (f.good()) {
+		f.read(buf, sizeof(buf));
+		out.append(buf, static_cast<size_t>(f.gcount()));
 	}
-	return std::ferror(f) == 0;
+	// 读到 EOF 会置 failbit（正常）；bad 才是不可恢复 IO 错误
+	return !f.bad();
 }
 
 // writeFileBytes 整体写出（append=false 截断写 / true 追加写），失败返回 false。
 bool writeFileBytes(const fs::path& path, const std::string& content, bool append) {
-	std::error_code ec;
-	FILE* f = nullptr;
-#ifdef _WIN32
-	const wchar_t* modeW = append ? L"ab" : L"wb";
-	if (_wfopen_s(&f, path.c_str(), modeW) != 0 || !f) {
-		return false;
-	}
-#else
-	const char* mode = append ? "ab" : "wb";
-	f = std::fopen(path.c_str(), mode);
+	const auto mode = std::ios::binary | (append ? std::ios::app : std::ios::trunc);
+	std::ofstream f(path, mode);
 	if (!f) {
 		return false;
 	}
-#endif
-	struct FileGuard {
-		FILE* f;
-		~FileGuard() { if (f) std::fclose(f); }
-	} guard{f};
-
 	if (!content.empty()) {
-		const size_t n = std::fwrite(content.data(), 1, content.size(), f);
-		if (n != content.size()) {
+		f.write(content.data(), static_cast<std::streamsize>(content.size()));
+		if (!f) {
 			return false;
 		}
 	}
-	return std::fflush(f) == 0;
+	f.flush();
+	return f.good();
 }
 
 } // namespace
