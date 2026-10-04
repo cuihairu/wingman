@@ -135,6 +135,7 @@ export default {
   'pages.agents.viewDetails': 'Ver detalhes',
   'pages.agents.hostname': 'Nome do host',
   'pages.agents.platform': 'Plataforma',
+  'pages.agents.capabilities': 'Capacidades do dispositivo',
   'pages.agents.ipAddress': 'Endereço IP',
   'pages.agents.tags': 'Tags',
   'pages.agents.memory': 'Memória',

@@ -134,6 +134,10 @@ export interface AgentInfo {
   tags?: string[];
   /** 注册平台：desktop（缺省）/ android，来自 agent.register（A1，见 docs/android-agent-design.md §3.3） */
   platform?: string;
+  /** 设备能力词汇（ADR: Capability System），agent.register 上报；空数组 = 未上报 */
+  capabilities?: string[];
+  /** 词汇表外的上报项（server 标 unverified，UI 以警示色展示） */
+  unknownCapabilities?: string[];
 }
 
 // 触发器条件（runtime BasicTriggerCondition）

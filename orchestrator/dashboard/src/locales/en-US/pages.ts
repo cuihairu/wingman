@@ -424,6 +424,7 @@ export default {
   'pages.agents.viewDetails': 'View details',
   'pages.agents.hostname': 'Hostname',
   'pages.agents.platform': 'Platform',
+  'pages.agents.capabilities': 'Capabilities',
   'pages.agents.ipAddress': 'IP address',
   'pages.agents.tags': 'Tags',
   'pages.agents.memory': 'Memory',

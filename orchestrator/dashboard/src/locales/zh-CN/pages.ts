@@ -404,6 +404,7 @@ export default {
   'pages.agents.viewDetails': '查看详情',
   'pages.agents.hostname': '主机名',
   'pages.agents.platform': '平台',
+  'pages.agents.capabilities': '设备能力',
   'pages.agents.ipAddress': 'IP 地址',
   'pages.agents.tags': '标签',
   'pages.agents.memory': '内存',

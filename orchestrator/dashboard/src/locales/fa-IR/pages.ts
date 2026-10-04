@@ -132,6 +132,7 @@ export default {
   'pages.agents.viewDetails': 'مشاهده جزئیات',
   'pages.agents.hostname': 'نام میزبان',
   'pages.agents.platform': 'پلتفرم',
+  'pages.agents.capabilities': 'قابلیت‌ها',
   'pages.agents.ipAddress': 'آدرس IP',
   'pages.agents.tags': 'برچسب‌ها',
   'pages.agents.memory': 'حافظه',

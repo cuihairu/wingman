@@ -133,6 +133,7 @@ export default {
   'pages.agents.viewDetails': 'Lihat detail',
   'pages.agents.hostname': 'Nama host',
   'pages.agents.platform': 'Platform',
+  'pages.agents.capabilities': 'Kemampuan perangkat',
   'pages.agents.ipAddress': 'Alamat IP',
   'pages.agents.tags': 'Tag',
   'pages.agents.memory': 'Memori',

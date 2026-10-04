@@ -110,6 +110,26 @@ const PlatformTag: React.FC<{ platform?: string }> = ({ platform }) => {
   );
 };
 
+// CapabilityTags 能力词汇标签（ADR: Capability System）：agent.register 上报的
+// 能力集逐项展示；词汇表外项（server 侧 unknownCapabilities，标 unverified）
+// 以警示色区分，不做客户端过滤。
+const CapabilityTags: React.FC<{ record: AgentInfo }> = ({ record }) => {
+  const caps = record.capabilities || [];
+  if (caps.length === 0) {
+    return <Text type="secondary">—</Text>;
+  }
+  const unknown = new Set(record.unknownCapabilities || []);
+  return (
+    <Space size={4} wrap>
+      {caps.map((c) => (
+        <Tag key={c} color={unknown.has(c) ? 'warning' : 'default'} style={{ fontSize: 11 }}>
+          {c}
+        </Tag>
+      ))}
+    </Space>
+  );
+};
+
 // extractErrorMessage 从 umi request 抛出的错误中提取可读文本；
 // 模块级纯函数拿不到 intl，兜底文案由调用方传入
 function extractErrorMessage(error: unknown, fallback: string): string {
@@ -628,6 +648,13 @@ const Agents: React.FC = () => {
       render: (_, record) => <PlatformTag platform={record.platform} />,
     },
     {
+      title: formatMessage('pages.agents.capabilities'),
+      dataIndex: 'capabilities',
+      key: 'capabilities',
+      width: 220,
+      render: (_, record) => <CapabilityTags record={record} />,
+    },
+    {
       title: formatMessage('pages.agents.ipAddress'),
       dataIndex: 'ip',
       key: 'ip',
@@ -1007,6 +1034,11 @@ const Agents: React.FC = () => {
                       title: formatMessage('pages.agents.platform'),
                       dataIndex: 'platform',
                       render: (_, record) => <PlatformTag platform={record.platform} />,
+                    },
+                    {
+                      title: formatMessage('pages.agents.capabilities'),
+                      dataIndex: 'capabilities',
+                      render: (_, record) => <CapabilityTags record={record} />,
                     },
                     {
                       title: formatMessage('pages.agents.ipAddress'),
