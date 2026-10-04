@@ -29,8 +29,9 @@
 > event/fsm/task/notify 均已落地并有完整测试（各 38/44/42/39 条用例）与 typing 文件，
 > 此前清单未同步勾选。orchestration 已有基础工作流 API。timer 已于 2026-09-19 落地
 > （timer_module.cpp + timer.pyi + 12 条测试）；事件按名清理与监听器查询已于
-> 2026-09-27 落地；task pause/resume 已于 2026-10-01 落地。仍缺：hotkey 模块、
-> 文件 IO 工具、notify tray。
+> 2026-09-27 落地；task pause/resume 已于 2026-10-01 落地；hotkey 模块、文件 IO
+> 工具、notify tray 已于 2026-10-04 落地（见 todo.md「按新架构决策重排的任务队列」
+> P1 第 4-6 条）
 
 ### 脚本与运行时
 - [ ] 统一 Lua / Python API 形状与文档
@@ -71,7 +72,7 @@
   - [x] `toast(title, message, level?)`
   - [x] `log(channel, message, meta?)`（notify.log + 事件化）
   - [x] `webhook(url, payload, options?)`（含 pending/success/failed/blocked 全生命周期事件）
-  - [ ] `tray.show()/hide()/setBadge()`（未实现）
+  - [x] `trayShow()/trayHide()/traySetBadge(text?)/traySetTooltip(text?)`（2026-10-04 落地：向 EventHub 发 `notify.tray.*` 意图事件，runtime notify_bridge 转投 EventBuffer，GUI 经 tauri `tray_control` 驱动系统托盘；badge 仅 Windows/macOS 生效，Linux 底层 no-op）
   - [ ] 订阅 `event.*` 与 `task.*` 的通知桥接（bridge 机制已有，自动桥接规则未完整接线）
 
 ### 编排与恢复
@@ -89,19 +90,19 @@
 
 ### 常用工具补齐
 - [x] 剪贴板模块（clipboard_module.cpp + clipboard.pyi）
-- [ ] 文件系统模块（filewatcher 已提供文件变化监控；文件 IO 工具未实现）
-- [ ] 热键监听模块（未实现）
+- [x] 文件 IO 模块（`wingman.file`：read/write/append/exists/isFile/isDir/size/move/copy/remove/removeAll/mkdir/listDir 13 函数，move 跨文件系统 copy+remove 回退，2026-10-04 落地；文件变化监控由 filewatcher 提供）
+- [x] 热键监听模块（`wingman.hotkey`：轮询式全局键态 + 组合键上升沿回调，register/unregister，Windows/Linux/macOS，2026-10-04 落地；v1 限制：轮询间隔内点按可能漏检、macOS 辅助功能权限待真机）
 - [x] 定时器 / 计划任务模块（timer_module.cpp + timer.pyi + 12 条测试；after/every/取消/查询/sleep）
 - [ ] 更完整的 UI 控件树遍历与等待（uia 模块已有树遍历基础，等待类 API 待补）
 - [ ] 图像模板批量管理与识别
 - [x] 录制 / 回放闭环（macro_module.cpp）
-- [ ] UIA 事件统一抽象
+- [x] UIA 事件监听绑定（`onPropertyChanged` / `onStructureChanged` / `removeEventListener`，Windows UIA 专属，回调线程安全门控走 `uia.error`；跨平台统一事件源见下条「进程/窗口/文件变化统一事件源」）
 - [ ] 进程/窗口/文件变化统一事件源（文件变化已有 filewatcher；进程/窗口事件源未实现）
 
 ### 优先级建议
 - [x] P0: `event`、`task`、`fsm`
 - [x] P1: `notify`、`orchestration`
-- [ ] P2: `clipboard` ✅、`file`（监控 ✅ / IO ❌）、`hotkey` ❌、`timer` ✅
+- [x] P2: `clipboard` ✅、`file` ✅（监控+IO）、`hotkey` ✅、`timer` ✅
 - [ ] P3: UI 树、模板管理、录制回放增强（录制回放主体 ✅）
 
 ### 建议的落地顺序
