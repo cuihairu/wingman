@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"maps"
@@ -692,7 +693,38 @@ func (e *Engine) executeStep(ctx context.Context, exec *Execution, step models.W
 			return err
 		}
 
+		// Execution 记录（ADR: Execution as the Platform Core Object）：每轮
+		// 下发对应一次执行，WorkflowID/StepID 挂载（StepStatus 为既有平行记录，
+		// 收敛前保留）；终态由该轮 runScriptOnce 结果驱动。
+		now := time.Now()
+		stepExec := &models.Execution{
+			ExecutionID: newExecutionID(),
+			WorkflowID:  exec.Workflow.ID,
+			StepID:      step.ID,
+			AgentID:     workerID,
+			ScriptPath:  step.Script,
+			Status:      models.ExecutionRunning,
+			StartedAt:   &now,
+			TimeoutSec:  int(timeout.Seconds()),
+			Artifacts:   "[]",
+		}
+		if err := e.db.Create(stepExec).Error; err != nil {
+			log.Printf("[WorkflowEngine] Step %s: failed to persist execution record: %v", step.ID, err)
+		}
+
 		runErr := e.runScriptOnce(ctx, conn, step, timeout)
+		// 落本轮执行终态：成功 / 取消 / 超时（私案哨兵） / 其余失败
+		switch {
+		case runErr == nil:
+			e.finishStepExecution(stepExec.ID, models.ExecutionSucceeded, "")
+		case ctx.Err() != nil:
+			e.finishStepExecution(stepExec.ID, models.ExecutionCancelled, "")
+		case errors.Is(runErr, errStepTimeout):
+			e.finishStepExecution(stepExec.ID, models.ExecutionTimeout, runErr.Error())
+		default:
+			e.finishStepExecution(stepExec.ID, models.ExecutionFailed, runErr.Error())
+		}
+
 		if runErr == nil {
 			lastErr = nil
 			break
@@ -780,6 +812,10 @@ func validateConditionStep(step models.WorkflowStep) error {
 	return fmt.Errorf("step %s: condition step requires parameters.value (or actual/expression)", step.ID)
 }
 
+// errStepTimeout 脚本下发超时哨兵：runScriptOnce 的 select 超时分支 wrap 它，
+// 步骤执行层据 errors.Is 区分 Execution 终态 timeout 与普通 failed。
+var errStepTimeout = errors.New("script dispatch timed out")
+
 // runScriptOnce 向 agent 发起一次脚本执行，遵循步骤超时与工作流取消。
 func (e *Engine) runScriptOnce(ctx context.Context, conn agent.AgentConn, step models.WorkflowStep, timeout time.Duration) error {
 	// 内容内联：与 handlers 单发/批量一致（docs/android-agent-design.md §3.2），
@@ -824,7 +860,7 @@ func (e *Engine) runScriptOnce(ctx context.Context, conn agent.AgentConn, step m
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-time.After(timeout):
-		return fmt.Errorf("step %s timed out after %v", step.ID, timeout)
+		return fmt.Errorf("step %s timed out after %v: %w", step.ID, timeout, errStepTimeout)
 	case err := <-done:
 		return err
 	}

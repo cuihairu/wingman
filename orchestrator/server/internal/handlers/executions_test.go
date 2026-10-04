@@ -217,3 +217,41 @@ func TestExecutionsQueryBranchAndFilters(t *testing.T) {
 		t.Errorf("unauthenticated: expected 401, got %d", w.Code)
 	}
 }
+
+// batch run_script 落逐台 Execution（fan-out 后串行落库；offline 未下发不建行，
+// 与单发 selectAgent 失败不建行语义一致）。
+func TestBatchRunScriptWritesExecutions(t *testing.T) {
+	env := setupBatchEnv(t)
+	name := env.writeScript(t, "batch.lua")
+
+	env.addAgent("b1")
+	b2 := env.addAgent("b2")
+	b2.errs = []error{errBoom}
+	env.addAgent("b3")
+	env.registry.Unregister("b3") // 离线：不下发、不建行
+
+	w := doJSON(env.r, "POST", "/api/agents/batch/run-script",
+		map[string]any{"agentIds": []string{"b1", "b2", "b3"}, "path": name})
+	if w.Code != http.StatusOK {
+		t.Fatalf("batch run: %d %s", w.Code, w.Body.String())
+	}
+
+	var rows []models.Execution
+	env.db.Order("id").Find(&rows)
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 execution rows (offline skipped), got %d", len(rows))
+	}
+	byAgent := map[string]models.Execution{}
+	for _, r := range rows {
+		byAgent[r.AgentID] = r
+	}
+	if byAgent["b1"].Status != models.ExecutionSucceeded {
+		t.Errorf("b1 should be succeeded, got %+v", byAgent["b1"])
+	}
+	if byAgent["b2"].Status != models.ExecutionFailed || !strings.Contains(byAgent["b2"].Result, "boom") {
+		t.Errorf("b2 should be failed with error text, got %+v", byAgent["b2"])
+	}
+	if _, ok := byAgent["b3"]; ok {
+		t.Error("offline agent should not get an execution row")
+	}
+}

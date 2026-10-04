@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -274,6 +275,36 @@ func (h *BatchHandler) HandleBatchRunScript(c *gin.Context) {
 				return false, commandErrorText(resp, nil)
 			}
 			return true, ""
+		})
+	}
+
+	// Execution 记录（ADR: Execution as the Platform Core Object）：batch 为
+	// fan-out 语义，遵守「DB 写在 fan-out 之后串行执行」纪律——runBatch 结果
+	// 按目标顺序携带逐台 (AgentID, Success, Error)，据此串行落库。offline 未
+	// 下发不建行（与单发 HandleRun 在 selectAgent 失败时不建行语义一致）。
+	startedAt := time.Now()
+	for _, r := range summary.Results {
+		if r.Error == "agent offline" {
+			continue
+		}
+		status := models.ExecutionSucceeded
+		result := map[string]any{"status": "succeeded"}
+		if !r.Success {
+			status = models.ExecutionFailed
+			result = map[string]any{"status": "failed", "error": r.Error}
+		}
+		resultJSON, _ := json.Marshal(result)
+		finishedAt := time.Now()
+		h.db.Create(&models.Execution{
+			ExecutionID: newExecutionID(),
+			AgentID:     r.AgentID,
+			ScriptPath:  scriptPath,
+			Status:      status,
+			StartedAt:   &startedAt,
+			FinishedAt:  &finishedAt,
+			TimeoutSec:  30,
+			Result:      string(resultJSON),
+			Artifacts:   "[]",
 		})
 	}
 
