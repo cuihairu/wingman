@@ -72,7 +72,7 @@ wingman 的远程能力分两个面：
 
 **为什么不自行开发像素流。** 表中右列的每一个难点都是 RDP（1996 起）和 VNC/RFB（1998 起）打磨了二十多年的领域；Guacamole 又把"这两个协议翻译成浏览器 canvas 指令流"这件事（2009 起）做成了 Apache 顶级项目。自行开发像素流 = 同时重做编码器自适应、协议状态机、输入语义映射三件事，且每一件都只在运行时才能暴露问题。用现成协议栈的这笔账没有任何悬念。
 
-**为什么 Guacamole 而不是"浏览器直连 VNC"。** 浏览器没有原生 RFB/RDP 支持，任何方案都需要一个"翻译层 + WebSocket 出口"。Guacamole 生态把这一层产品化了：**guacd**（C 守护进程）负责协议翻译，前端 `guacamole-common-js` 负责渲染。我们要写的只剩"Go server 里的那座桥"（§4）。
+**为什么 Guacamole 而不是"浏览器直连 VNC"。** 浏览器没有原生 RFB/RDP 支持，任何方案都需要一个"翻译层 + WebSocket 出口"。Guacamole 把这一层产品化了：**guacd**（C 守护进程）负责协议翻译，前端 `guacamole-common-js` 负责渲染。我们要写的只剩"Go server 里的那座桥"（§4）。
 
 一个值得点出的呼应：Guacamole 协议与 wingman Agent TCP 同属"长度前缀帧"家族（Guacamole 用 `len.` 前缀的指令，Agent TCP 用 16 字节头），团队心智模型一致，排查工具（tcpdump/strace 看帧）通用。
 
@@ -341,7 +341,7 @@ GET /api/remote/sessions            desktop:view（只读，报表不含接管�
 | RFB 带宽高（尤其 Windows 兜底路径） | 兜底路径明示为"可用"而非"舒适"；文档写清 Pro 版 RDP 的体验差；guacd 自带 JPEG 压缩率/色深参数按 agent 配置降质 |
 | guacd 单点 | guacd 无状态，崩溃重连即可恢复（桥检测断开、票据重申请）；不做 guacd 集群（当前规模不需要，先不加复杂度） |
 | 接管与自动化的输入竞争（桌面平台） | 桌面平台 OS 层天然共享真实键鼠（人动即真动），语义自洽无需仲裁；Android 若远期落地则必须先设计仲裁（§6.1） |
-| guacamole-common-js 维护活跃度 | Apache 顶级项目、RDP/VNC 生态稳定，协议层变化风险低；渲染层封装在公共组件内（§7 第 3 条），替换成本被隔离 |
+| guacamole-common-js 维护活跃度 | Apache 顶级项目、RDP/VNC 协议栈稳定，协议层变化风险低；渲染层封装在公共组件内（§7 第 3 条），替换成本被隔离 |
 
 **不做清单（明确拒绝，防反复）**
 
@@ -586,7 +586,7 @@ wingman 版实现与单测护栏可直接复用（DG-6：第一方实现完成�
 写成 `.mjs` 文件（Guacamole session 格式，官方 `guacenc` 可离线转码 mp4）。
 **零新增第三方组件**——录制器内建于 libguac，权威实现只有一份。
 
-安全默认：`recording-include-keys=false`（**永不**把按键内容写进录像——
+安全默认：`recording-include-keys=false`（**不会**把按键内容写进录像——
 录像里出现明文口令是审计资产变泄漏源）；`recording-exclude-mouse=false`
 （鼠标轨迹是排障关键信息，保留）。
 

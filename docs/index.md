@@ -31,10 +31,10 @@ features:
     title: 跨平台
     details: 支持 Windows、macOS、Linux，统一接口抽象
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="13.5" r="4"/><path d="M12 9.5V6.5"/><path d="m10.4 4.9 1.6 1.6 1.6-1.6"/><path d="M8 13.5H4.5"/><path d="M20 13.5h-3.5"/><path d="m8.4 10.2-2.2-2.2"/><path d="m15.6 10.2 2.2-2.2"/><path d="m8.4 16.8-2.2 2.2"/><path d="m15.6 16.8 2.2 2.2"/></svg>'
-    title: 强大的调试
+    title: 调试支持
     details: VS Code 插件支持，断点调试、变量查看、性能分析
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M3.5 18.5C7 11 11 20.5 20.5 6"/><path d="m17.5 5.5 3.4.6-.7 3.4"/><circle cx="6" cy="7" r="2"/><path d="M6 9v3.5"/></svg>'
-    title: 人性化模拟
+    title: 拟人化输入
     details: 贝塞尔曲线鼠标移动、随机延迟、自然操作模式
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 6.5h4"/><path d="M10.5 17.5h3"/></svg>'
     title: Android Agent
@@ -46,26 +46,26 @@ features:
 
 **Wingman** 是一个跨平台的游戏自动化工具。
 
-- 基于 **C++** 开发核心引擎，提供高性能的屏幕操作和输入模拟能力
-- 支持 **Lua** 和 **Python** 两种脚本引擎，灵活可扩展
+- 基于 **C++** 开发核心引擎，屏幕捕获与输入注入在原生层实现
+- 支持 **Lua** 和 **Python** 两种脚本引擎，同一套 API
 - 纯**用户态**运行，使用合法平台 API，安全可靠
 - 支持**远程编排**，runtime agent 主动连接 Go server，由 Go server 统一中控
 - 支持**本地单机 UI**，Tauri 通过本地 IPC 控制 runtime，不通过 runtime WebSocket/HTTP server
 
 ## 核心特性
 
-- [**屏幕操作** - 截图、像素检测、颜色匹配、图像查找]
-- [**输入模拟** - 鼠标点击/移动、按键发送、文本输入]
-- [**窗口管理** - 查找窗口、激活窗口、获取位置]
-- [**UI Automation** - 直接操作 Windows 控件，无需坐标定位]
-- [**进程管理** - 启动/等待/终止进程]
-- [**宏录制** - 录制鼠标键盘操作，自动回放]
-- [**触发器系统** - 像素触发、定时触发、条件组合]
-- [**编排层** - Runtime agent 主动连接 Go server，Dashboard 只连接 Go server]
-- [**调试器** - VS Code 插件，断点调试、变量查看]
-- [**人性化模拟** - 贝塞尔曲线、随机延迟、自然操作]
-- [**存储系统** - 四层存储架构，支持本地和远程数据持久化]
-- [**版本管理** - 动态版本信息，支持 nightly 构建]
+- **屏幕操作** - 截图、像素检测、颜色匹配、图像查找
+- **输入模拟** - 鼠标点击/移动、按键发送、文本输入
+- **窗口管理** - 查找窗口、激活窗口、获取位置
+- **UI Automation** - 直接操作 Windows 控件，无需坐标定位
+- **进程管理** - 启动/等待/终止进程
+- **宏录制** - 录制鼠标键盘操作，自动回放
+- **触发器系统** - 像素触发、定时触发、条件组合
+- **编排层** - Runtime agent 主动连接 Go server，Dashboard 只连接 Go server
+- **调试器** - VS Code 插件，断点调试、变量查看
+- **拟人化输入** - 贝塞尔曲线、随机延迟、自然操作
+- **存储系统** - 四层存储架构，支持本地和远程数据持久化
+- **版本管理** - 动态版本信息，支持 nightly 构建
 
 ## 快速开始
 

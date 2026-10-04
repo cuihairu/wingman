@@ -2,7 +2,7 @@
 
 本指南详细介绍如何使用 Wingman 的触发器系统实现自动化操作。
 
-> ℹ️ **当前实现（`wingman.smarttrigger`）**：触发器通过命令式 API 配置（条件 + 动作），等价于下文声明式 `trigger.create(config)`：
+> **当前实现（`wingman.smarttrigger`）**：触发器通过命令式 API 配置（条件 + 动作），等价于下文声明式 `trigger.create(config)`：
 >
 > ```lua
 > local wingman = require("wingman")

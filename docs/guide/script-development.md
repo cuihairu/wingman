@@ -11,8 +11,8 @@ Wingman 脚本用 **Lua** 或 **Python** 编写，调用统一的 `wingman` 模�
 | | Lua | Python |
 |---|---|---|
 | 启动速度 | 极快 | 较慢（解释器冷启动） |
-| 依赖 | 仅 Lua 5.4（sol2 绑定） | Python 3（vcpkg `python3` 端口，当前 3.12.x；pybind11 嵌入） |
-| 适用 | 高频、低延迟、嵌入式场景 | 复杂逻辑、复用 Python 生态 |
+| 依赖 | 仅 Lua 5.5（sol2 绑定） | Python 3（vcpkg `python3` 端口，当前 3.12.x；pybind11 嵌入） |
+| 适用 | 高频、低延迟、嵌入式场景 | 复杂逻辑、复用 Python 第三方库 |
 | 编辑/调试 | VS Code + EmmyLua（推荐） | VS Code + Python 扩展 |
 
 > 本地 GUI 的脚本**编辑统一在 VS Code**，GUI 只负责加载/运行/停止。远程 Dashboard 才有内置编辑器。

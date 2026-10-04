@@ -16,11 +16,11 @@
 | iOS 端侧（任意形态） | ❌ | **不可行**。App Store 沙箱不允许跨 App 注入，无合法通道，放弃 |
 | iOS 主机控（PC → WDA） | ⚠️ 中 | 可行但绑 Mac 签名链（开发者证书 + Developer Mode + WDA 需随 iOS 大版本适配），列为远期可选 |
 
-**核心判断**：控制面（脚本管理、调度、编排、监控）放 Server，执行面（截屏 → 找图 → 注入的实时闭环）留在端侧本地——这个拆分既满足实时性要求（每帧回传 Server 决策的延迟与带宽都不可接受），又完整复用了 Wingman「Runtime-as-Agent + Go Server 中控」的既有架构。
+**核心判断**：控制面（脚本管理、调度、编排、监控）放 Server，执行面（截屏 → 找图 → 注入的实时决策）留在端侧本地——这个拆分既满足实时性要求（每帧回传 Server 决策的延迟与带宽都不可接受），又完整复用了 Wingman「Runtime-as-Agent + Go Server 中控」的既有架构。
 
 ---
 
-## 2. 生态调研
+## 2. 第三方方案调研
 
 ### 2.1 Android：两条技术路线
 
@@ -52,12 +52,12 @@ Auto.js 的强项是**控件树**，但手游是渲染表面，无障碍树拿�
 | 维度 | Auto.js 单机 | **Wingman 云控（本方案）** | Appium 主机控 |
 |------|-------------|--------------------------|---------------|
 | 脚本存放/编辑 | 手机本地 | **Server 集中管理，下发执行** | PC 本地 |
-| 执行位置 | 手机端 | **手机端（本地闭环）** | PC 决策，手机执行 |
+| 执行位置 | 手机端 | **手机端（决策也在本地）** | PC 决策，手机执行 |
 | 断网后继续执行 | ✅（本来就单机） | ✅（Agent 缓存当前脚本自治运行，重连后汇报） | ❌ PC 断则停 |
 | 多设备编排/群控 | ❌ 弱 | **✅ 复用 Go Server 编排 + Team/inbox** | 需自建设备管理 |
 | 监控/日志聚合 | ❌ 本地 | **✅ Dashboard 实时查看** | 需自建 |
 | 每台手机需 PC | 否 | **否** | 是 |
-| 实时闭环延迟 | 最低 | 最低（决策在端侧） | 受帧回传链路影响 |
+| 实时决策延迟 | 最低 | 最低（决策在端侧） | 受帧回传链路影响 |
 | 与 Wingman 架构契合 | 无 | **原生契合（Runtime-as-Agent）** | 需较大改造 |
 
 云控模式在商业上已有验证：Hamibot（Auto.js + 账号 + 脚本市场 + 下发执行）、各类 autojs pro9
@@ -149,7 +149,7 @@ Android App（Kotlin 壳）
 
 | 方案 | 帧率 | 限制 | 用途 |
 |------|------|------|------|
-| MediaProjection + VirtualDisplay | 30-60fps | 会话级授权弹窗 | **主方案**：找图/找色实时闭环 |
+| MediaProjection + VirtualDisplay | 30-60fps | 会话级授权弹窗 | **主方案**：端侧实时找图/找色 |
 | AccessibilityService.takeScreenshot | 限流（约 1 次/秒） | API 30+ | 兜底/低频场景 |
 | 控件树截图（无） | — | — | 控件信息直接走无障碍节点树，无需截屏 |
 
@@ -189,7 +189,7 @@ Android App（Kotlin 壳）
 | 手游反检测（generated gesture 标记、投屏图标） | 中 | 人性化模拟强化；明确产品定位与合规声明 |
 | iOS 大版本变动 | — | iOS 仅做远期可选，不背主线成本 |
 | 体积：OpenCV + Lua + transport 的 NDK 产物 | 低 | 按需裁剪 OpenCV 模块（imgproc/core 足够） |
-| 工作量：Kotlin 壳 + JNI + CI 三平台 | 中 | 分阶段（见 8），A1 PoC 先验证长链接与脚本下发闭环 |
+| 工作量：Kotlin 壳 + JNI + CI 三平台 | 中 | 分阶段（见 8），A1 PoC 先验证长链接与脚本下发链路 |
 
 ---
 
@@ -201,7 +201,7 @@ Android App（Kotlin 壳）
   - [x] C++ 核心可移植面就位（transport + RemoteClient + Lua/Sol2 + ScriptRunner；
     lib/wingman 本体 Android 编译随 A2 接入，租户目录与构建分支已就位）
   - [ ] 真机端到端验收（需 Android SDK/NDK 环境，步骤见 apps/android/README.md）
-- [ ] **A2 能力闭环：自动化可用**
+- [ ] **A2 脚本能力：自动化可用**
   - [ ] `platform/android/` IInput 后端（dispatchGesture，JNI）
   - [ ] `platform/android/` ICapture 后端（MediaProjection 主 + takeScreenshot 兜底）
   - [ ] 找色/找图/像素检测对手机截帧可用；screen/input 脚本 API 全通

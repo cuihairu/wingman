@@ -3,7 +3,7 @@
 > 日期：2026-09-20。
 > 里程碑定位：`docs/android-agent-design.md` §1.2 A3 可靠性中的「token 认证」，
 > 本文为其工程设计 + P1 实施。与该文 §8 的约定一致：A1 不半途引入鉴权，
-> A3 一次性落完整闭环（server 校验 + 双端 agent 携带 + 灰度开关）。
+> A3 一次性落完整链路（server 校验 + 双端 agent 携带 + 灰度开关）。
 
 ---
 
@@ -132,7 +132,7 @@ agent                                server
   `WingmanService` 从 SharedPreferences 读 `serverToken` 传入；
 - token 存储：P1 用 SharedPreferences（与 server 地址同级的信任级别，
   部署者手输）；迁移 Android Keystore / EncryptedSharedPreferences 属
-  A3 后续加固，不阻塞本闭环。
+  A3 后续加固，不阻塞本设计。
 
 ---
 
@@ -153,7 +153,7 @@ nightly 用户），鉴权属于部署者显式启用的能力；文档（本文
 ## 6. P2 演进（设计预留，不在本次实施）
 
 1. **challenge-response**：register 后 server 下发 `auth.challenge{nonce}`，
-   agent 回 `HMAC-SHA256(token, nonce)`——token 永不上网，消除嗅探面。
+   agent 回 `HMAC-SHA256(token, nonce)`——token 不离开本机，消除嗅探面。
    C++ 侧需 OpenSSL HMAC（桌面已有依赖；Android NDK 构建需补 openssl 包）。
 2. **per-agent token + 管理面**：token 入 DB，Dashboard（admin RBAC）创建/
    吊销，register 校验 + 审计落库（WriteAuditLog）。

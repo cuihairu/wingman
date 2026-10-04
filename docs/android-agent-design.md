@@ -1,7 +1,7 @@
 # Android 端侧 Agent 设计（A1 落地版）
 
 > 日期：2026-09-19。
-> 前置调研：`docs/mobile-support-feasibility.md`（可行性、三模式对比、生态调研）。
+> 前置调研：`docs/mobile-support-feasibility.md`（可行性、三模式对比、第三方方案调研）。
 > 本文是该调研中「云控模式 + A1 PoC」的工程设计，作为 A2-A4 的实现基线。
 
 ---
@@ -23,7 +23,7 @@ Dashboard 点击运行 → Go Server run_script{content} → 设备执行 Lua
 
 | 里程碑 | 内容 | 本文只做 |
 |--------|------|----------|
-| A2 能力闭环（已实施，2026-09-21） | `platform/android` 宿主桥（dispatchGesture 手势注入）/MediaProjection 采集真实现，找色找图，`screenshot.capture` 远程截图 | 租户目录 + stub 骨架 |
+| A2 脚本能力（已实施，2026-09-21） | `platform/android` 宿主桥（dispatchGesture 手势注入）/MediaProjection 采集真实现，找色找图，`screenshot.capture` 远程截图 | 租户目录 + stub 骨架 |
 | A3 可靠性（已落地，2026-09-30） | 开机自启、崩溃自重启、断连缓存自治、机型保活指引（见 §7 落地摘要；token 认证 P1 已于 2026-09-20 落地，见 §8） | 设计约束成文 |
 | A4 多设备编排 | Dashboard 设备视图、批量下发、asset.sync 模板分发 | 协议预留 |
 
@@ -208,7 +208,7 @@ object WingmanJni {
 AttachCurrentThread 的线程管理）；C++ → Kotlin 的事件回调（onCoreStatus 及
 A2 的 capture/inject 反向接口）届时以同模式追加，A1 不预埋。
 
-原则（承可行性文档 4.3）：**系统权限与 Android 生态的活全在 Kotlin；可移植的活
+原则（承可行性文档 4.3）：**系统权限与 Android 平台特有 API 的活全在 Kotlin；可移植的活
 （通信/脚本/日志）全在 C++**。
 
 ### 5.4 Kotlin 壳
@@ -248,7 +248,7 @@ A2 实施时确认这是无人消费的死代码路径（Android ScriptRunner �
 注册表），租户只放被消费的 HostBridge + CaptureSource，触屏语义经
 `wingman.input.*` Lua API 直接暴露。
 
-### 5.6 反向 JNI 桥与 A2 能力闭环（A2 实装）
+### 5.6 反向 JNI 桥与 A2 脚本能力（A2 实装）
 
 **宿主桥模式**：`jni_bridge.cpp`（唯一 JNIEnv 翻译层）实现 `JniHostBridge`，
 `nativeStart` 时注册进全局 setter。规则：

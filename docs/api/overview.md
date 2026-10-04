@@ -229,7 +229,7 @@ wingman.debugger.breakHere()
 ### 输入和控制
 
 - [**鼠标**: `input.click()`, `input.move()`, `input.scroll()`]
-- ⌨️ **键盘**: `input.keyDown()`, `input.keyUp()`, `input.key()`
+- **键盘**: `input.keyDown()`, `input.keyUp()`, `input.key()`
 - [**文本**: `input.type()`]
 - [**人性化**: `human.mouse_move()`, `human.mouse_click()`, `human.keyboard_type()`]
 

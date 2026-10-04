@@ -24,7 +24,7 @@ build-scripts\build-runtime-msvc-ninja.bat
 The repository includes checked-in VS Code configuration for common development
 flows:
 
-- `.vscode/settings.json` configures C++23, CMake, Lua 5.4 and Python stubs.
+- `.vscode/settings.json` configures C++23, CMake, Lua and Python stubs.
 - `.vscode/tasks.json` exposes runtime, GUI, docs and Go server tasks.
 - `.vscode/launch.json` contains EmmyLua attach and current-script launch configs.
 - `examples/wingman-scripts.code-workspace` is a lightweight workspace for script authors.

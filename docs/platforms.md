@@ -96,7 +96,7 @@ ScriptRunner 不加载桌面模块注册表（见
 
 ### Android 端侧脚本面（A 线）
 
-Android Agent 的 Lua 环境只有 `wingman` 下三张子表（A2 能力闭环，
+Android Agent 的 Lua 环境只有 `wingman` 下三张子表（A2 脚本能力，
 见 [Android 设计 · §5.5/5.6](android-agent-design.md)）：
 
 | 子表 | 能力 | 与桌面的行为差异 |
@@ -131,7 +131,7 @@ Unix 系用 Unix 域套接字，均带 TCP 回退（`127.0.0.1:9800`）——嵌
 ### 显示服务与截屏
 
 - **Linux 只支持 X11**：截屏、取色、注入、宏录制（XRecord）全部建立在 X 协议上。
-  原因是历史与生态——XTest/XRecord 是 Linux 桌面注入的事实标准，而 Wayland 出于
+  原因是历史与现状——XTest/XRecord 是 Linux 桌面注入的事实标准，而 Wayland 出于
   安全模型刻意不提供全局注入通道。影响：Wayland 会话需切换到 XWayland 或 X11 会话；
   无头环境用虚拟显示（Xvfb）即可跑全量测试——CI 的 Linux 测试 job 与本机覆盖率采集
   都是这样执行的。
@@ -195,7 +195,7 @@ iOS 的状态不是"还没做"，而是"端侧做不了"。App Store 沙箱（Sa
 - **签名链无法自动化**：开发者账号 + 证书 + 描述文件（免费证书 7 天过期）+ 目标设备
   开发者模式 + Mac 执行 `xcodebuild` 部署 WDA，全部是人工前置步骤；
 - **版本跟随成本**：WDA 需随 iOS 大版本重新编译适配，是持续性维护成本而非一次性移植；
-- **性能天花板**：USB 链路上截屏往返 200-400ms/帧，仅支撑 1-3 fps 的找色找图节奏，
+- **性能上限**：USB 链路上截屏往返 200-400ms/帧，仅支撑 1-3 fps 的找色找图节奏，
   不承诺高性能场景；
 - **明确的边界**：不做越狱通道（合规红线）、不做 iOS 端侧 Agent（技术上不可行）、
   不做 iOS Dashboard 原生客户端（Dashboard 走 Web，浏览器即可）。

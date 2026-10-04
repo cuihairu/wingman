@@ -5,8 +5,8 @@
 > Wingman 的手机端自动化应该长什么样、为什么这样长。
 >
 > 前置文档（本文在其结论上演进，不推翻）：
-> - `docs/mobile-support-feasibility.md` —— 可行性调研：云控模式、三模式对比、生态
-> - `docs/android-agent-design.md` —— A1 链路打通与 A2 能力闭环的工程设计（已实施）
+> - `docs/mobile-support-feasibility.md` —— 可行性调研：云控模式、三模式对比、第三方方案
+> - `docs/android-agent-design.md` —— A1 链路打通与 A2 脚本能力的工程设计（已实施）
 > - `docs/ios-agent-design.md` —— iOS 主机控（I1，远期可选）
 > - `docs/architecture-decisions.md` —— 硬架构约束（本文全部决策在该约束内）
 
@@ -78,7 +78,7 @@ Sauce/BrowserStack 类云平台为此做了厚重的设备管理补偿层。
 （反外挂/风控）对 Appium 特征的识别是成熟商品能力。
 
 **适用场景**：被测 App 可控的 QA/E2E 测试、回归自动化、云真机租赁平台。
-其 W3C 协议与多驱动生态是测试行业的公共资产。
+其 W3C 协议与多驱动体系是测试行业的公共资产。
 
 ### 2.2 AutoJS / AutoX / AutoJs6：无障碍服务的端侧自治
 
@@ -94,10 +94,10 @@ AccessibilityService。系统持续把全窗口控件树推给无障碍服务；
   **SurfaceView/游戏引擎渲染面拿不到任何控件**——游戏场景只能坐标+找图；
 - 附带一整套自动化配套：悬浮窗控制台、录制定点、OCR（MLKit/Paddle 模型
   插件）、OpenCV 找图找色（AutoX 内置）、root 混合模式（可选增强）；
-- 脚本语言是 JS（Rhino），生态脚本以单文件/工程形式在用户间流转。
+- 脚本语言是 JS（Rhino），社区脚本以单文件/工程形式在用户间流转。
 
 **性能开销**：决策与执行同进程同线程，控件操作毫秒级、手势注入毫秒级；
-找图在端侧直接读位图。**闭环延迟只取决于脚本逻辑本身，没有跨设备链路**——
+找图在端侧直接读位图。**决策延迟只取决于脚本逻辑本身，没有跨设备链路**——
 这是它与 Appium 最本质的性能差异。
 
 **稳定性**：短板都在「端侧常驻」：无障碍服务可能被系统/用户关掉、厂商
@@ -118,16 +118,16 @@ ROM 杀后台、Doze 限制。AutoJS 系用「前台服务 + 通知栏 + 悬浮�
 
 | 维度 | Appium（uiautomator2） | AutoJS（无障碍） | 对 Wingman 的含义 |
 |------|------------------------|------------------|-------------------|
-| 执行平面 | PC 主机控（决策在 PC） | **端侧自治**（决策在设备） | 云控实时闭环必须端侧（可行性文档 §3 已论证，再次验证） |
+| 执行平面 | PC 主机控（决策在 PC） | **端侧自治**（决策在设备） | 云控的实时决策必须在端侧（可行性文档 §3 已论证，再次验证） |
 | 控件能力 | XPath/语义操作，WebView 深 | 选择器/语义操作，通用面广 | **端侧控件树是缺口，须补**（D4） |
 | 注入通道 | UiAutomation.injectInputEvent（shell 侧） | dispatchGesture（无障碍侧） | 已选无障碍（D2），检测面更小、无需 instrumentation |
 | 采集通道 | minicap/scrcpy/UiAutomation 截屏 | MediaProjection/无障碍截屏 | 已选 MediaProjection（D3），无需 adb 常连 |
 | 会话语义 | WebDriver session | 脚本一跑一停 | 云控语义 = executionId 脚本上下文（D8），不引入 session |
-| 常驻稳定性 | 链路是短板，双进程隔离好 | 服务常驻是短板，自愈成熟 | 自愈三件套已在 A3 计划，AutoJS 生态经验直接借鉴 |
+| 常驻稳定性 | 链路是短板，双进程隔离好 | 服务常驻是短板，自愈成熟 | 自愈三件套已在 A3 计划，AutoJS 十年的保活经验直接借鉴 |
 | 被检测面 | 固定特征包名+shell 注入，识别成熟 | 无障碍标记可检，无固定特征，可做人化 | 已选无障碍（D2）；人化模拟是刚需（重申） |
 | 设备依赖 | PC+adb 常连，N 台需 PC 编排 | 独立运行，WiFi/蜂窝即可 | 端侧 agent 天然达标；adb 只留给部署/预授权（D7） |
 | 断 PC 影响 | 全停 | **无影响** | 云控断连自治（A3）与 AutoJS 单机韧性同构 |
-| 生态 | 测试行业 W3C 标准件、云真机 | 脚本市场、灰产工具链 | 脚本生态对齐 Lua 用户群；W3C 语义仅借鉴命名 |
+| 社区与工具链 | 测试行业 W3C 标准件、云真机 | 脚本市场、灰产工具链 | 社区脚本形态对齐 Lua 用户群；W3C 语义仅借鉴命名 |
 
 ### 2.4 对照结论
 
@@ -138,7 +138,7 @@ ROM 杀后台、Doze 限制。AutoJS 系用「前台服务 + 通知栏 + 悬浮�
    操作的动作语义、以及「驱动可替换」的分层。这三样都能在不引入
    WebDriver/session/HTTP 的前提下吸收（分别进 D7/D4/D2）。
 3. **AutoJS 真正值钱的也是三样**：无障碍单通道同时解决注入+控件树、
-   端侧 OCR/找图的闭环配套、以及被十年用户踩出来的常驻自愈经验。
+   端侧 OCR/找图的配套、以及被十年用户踩出来的常驻自愈经验。
    前两样进 D2/D4/D5，第三样进 A3。
 4. **两条路线都不该照搬的部分**：Appium 的 session/HTTP/instrumentation
    与 AutoJS 的 JS 引擎/单机形态。前者与硬约束和云控模型冲突，后者
@@ -152,7 +152,7 @@ ROM 杀后台、Doze 限制。AutoJS 系用「前台服务 + 通知栏 + 悬浮�
 ### D1 执行平面：维持端侧自治，拒绝 Appium 主机控形制
 
 **决策**：Android 端继续 A1/A2 已落地的「端侧 Agent + 长链接云控」，
-决策闭环（截屏→找图/找控件→注入）全部在设备本地完成；Go Server 只做
+决策循环（截屏→找图/找控件→注入）全部在设备本地完成；Go Server 只做
 控制面（脚本管理、下发、编排、监控）。
 
 **为什么**：§2.1/§2.3 已论证性能（每步跨链路往返不可接受）与韧性
@@ -190,13 +190,13 @@ minitouch/minicap 二进制、不引入 uiautomator2 server。
 ### D3 采集通道：MediaProjection 主、无障碍 takeScreenshot 兜底，拒绝 scrcpy 依赖
 
 **决策**：维持 A2 已实装的双通道——MediaProjection + VirtualDisplay +
-ImageReader（30–60fps，实时闭环主通道）；`takeScreenshot`（API 30+，
+ImageReader（30–60fps，实时采集主通道）；`takeScreenshot`（API 30+，
 限流 ~1Hz）作低频/投屏未授权兜底。**不引入 scrcpy 采集**。
 
 **为什么拒绝 scrcpy**：scrcpy 是优秀的**主机控**取帧方案，但它要求
 设备持续连接一台 scrcpy-server 宿主（经 adb），等于把「adb 常连」重新
 请回架构——这正是 D1 拒绝 Appium 形制的理由。其 60fps 低延迟解码链
-（H.264 编码→socket→解码）在端侧没有意义：端侧闭环里采集与匹配在
+（H.264 编码→socket→解码）在端侧没有意义：端侧方案里采集与匹配在
 同一台设备上，MediaProjection 直读 RGBA 缓存比「编码再解码」链路更短。
 scrcpy 唯一的真实价值场景是**远程调试可视化**（人看设备画面），那属于
 A4 的 Dashboard 设备视图增强（经 Go Server 转发），不进自动化数据面。
@@ -219,13 +219,13 @@ HostBridge→Lua API 模式落地。
 **为什么是本设计最大的新增项**：A2 的注入是纯坐标语义，对「控件在
 哪」的回答只有找图一条路——游戏场景足够，App 场景（原生/WebView）
 是明显短板：找图对分辨率/主题/字体敏感，控件树定位对它们全部免疫。
-AutoJS 十年生态证明控件树是 App 自动化的第一生产力；Appium 的
+AutoJS 十年的实践积累证明控件树是 App 自动化的主流路径；Appium 的
 语义操作（element.click 而非坐标点击）同样是其稳定性来源（点的是
 「那个按钮」而不是「那个像素」）。两者指向同一件事：**端侧控件树
 能力是 A 线与成熟标杆之间最大的能力差**。
 
 **为什么不引入 uiautomator2 server 来做这件事**：u2 的价值在「PC 侧
-WebDriver 客户端生态」，其控件树数据源与 AutoJS 同为
+WebDriver 客户端库」，其控件树数据源与 AutoJS 同为
 AccessibilityNodeInfo——引入它等于在设备上跑一个 HTTP server（经
 adb forward 暴露）来重复无障碍服务已有的能力，检测面（固定包名）、
 部署面（多装两个 APK）、约束面（设备上新增监听口，尽管仅回环，仍与
@@ -266,7 +266,7 @@ capabilities 上报（D7）、API 文档的「平台差异」标注、桥缺失�
 
 **为什么坚持同名同形**：这是 Wingman 对用户的核心承诺——一份脚本
 认知资产跨平台复用（桌面学的 `wingman.findImage` 到手机上原样成立）。
-AutoJS/Appium 生态各自绑死自己的 API 形状，脚本不可迁移；Wingman
+AutoJS/Appium 各自绑死自己的 API 形状，脚本不可迁移；Wingman
 以 ModuleDescriptor 单点定义双引擎绑定（architecture-decisions.md
 Scripting Language Strategy），跨端复用的边际成本接近零，没有理由
 放弃。反例警惕：为移动端「顺手」发明第二套命名（如 autojs 风格
@@ -431,7 +431,7 @@ false/nil（既有约定）。
 | uiautomator2 / Appium instrumentation | **不做** | D4/D2：检测面、部署面、架构卫生三输，能力经宿主桥自建 |
 | scrcpy 进自动化数据面 | **不做** | D3：adb 常连违背 D1；「人看设备画面」已另议定案——Dashboard 预览走 Guacamole 像素面（VNC 桥 + guacd），见 `remote-gateway-guacamole-design.md` |
 | WebDriver/W3C 协议面 | **不做** | D8：session 语义与挂机模型冲突；能力等价物已各有归属 |
-| JS 引擎兼容 AutoJS 脚本 | **不做** | 双语言决策已闭（Lua/Python）；生态迁移靠 API 对照文档 |
+| JS 引擎兼容 AutoJS 脚本 | **不做** | 双语言决策已定（Lua/Python）；脚本迁移靠 API 对照文档 |
 | 绕过 FLAG_SECURE / 反检测承诺 | **不做** | 合规红线；人化模拟是工程手段不是对抗承诺 |
 | iOS 端侧 | **不做** | 无合法通道（既有结论不变） |
 | 无障碍服务被杀的「强保活」（对抗系统） | **不承诺** | 自愈重启 + 降级告警是正道；与系统对抗是猫鼠游戏，进风险清单不进设计 |
@@ -458,7 +458,7 @@ Lite 在低端机的推理延迟（对策：独立线程池 + 脚本层异步语
 
 - **形制**：AutoJS 的形制（端侧自治 + 无障碍单通道）+ 云控的调度
   （Go Server），拒绝 Appium 的形制（主机控/adb 常连/session）——
-  因为目标场景是不可控的任意 App 与 7×24 挂机，且实时闭环只能在端侧。
+  因为目标场景是不可控的任意 App 与 7×24 挂机，且实时决策只能在端侧。
 - **吸收**：Appium 的 capabilities（升级为实时能力流 D7）、语义操作
   思想（D4 控件树）；AutoJS 的控件树生产力（D4）、端侧 OCR 配套（D5）、
   常驻自愈经验（A3）。

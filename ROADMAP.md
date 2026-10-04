@@ -2,11 +2,11 @@
 
 > 类似 Chimpeeon 的游戏自动化工具完整开发计划
 
-> **✅ 架构重构已完成 (2025)** - 采用 apps + lib 架构，详见 docs/architecture.md
+> **架构重构已完成 (2025)** - 采用 apps + lib 架构，详见 docs/architecture.md
 
-> **📌 平台说明：支持 Windows（主要）、macOS、Linux；Android 端侧 Agent 实验性支持（A1 链路/A2 能力闭环/A3（token 认证 + 可靠性自愈）已落地，见 Milestone 9 与 docs/android-agent-design.md）。跨平台通过平台抽象层实现，详见 docs/architecture.md 与 docs/platforms.md**
+> **平台说明：支持 Windows（主要）、macOS、Linux；Android 端侧 Agent 实验性支持（A1 链路/A2 脚本能力/A3（token 认证 + 可靠性自愈）已落地，见 Milestone 9 与 docs/android-agent-design.md）。跨平台通过平台抽象层实现，详见 docs/architecture.md 与 docs/platforms.md**
 
-> **🔥 脚本层多语言抽象已完成 (2026-05)** - 支持 Lua (sol2) 和 Python (pybind11)，详见下文 "脚本引擎抽象"
+> **脚本层多语言抽象已完成 (2026-05)** - 支持 Lua (sol2) 和 Python (pybind11)，详见下文 "脚本引擎抽象"
 
 ## 参考项目分析
 
@@ -573,7 +573,7 @@ local wingman = require('wingman')
 | 阶段 | 内容 | 状态 |
 |------|------|------|
 | A1 链路打通 | Dashboard→Go Server `run_script{content}`→设备端 NDK C++ 核心执行 Lua→`agent.event` 日志实时回传；Kotlin 壳（WingmanService 前台服务/MainActivity/JNI 窄接口）；复用 16B 帧头 + JSON 协议，零新消息类型 | ✅ 已完成（2026-09-19 设计并落地，ce4a648；2026-09-20 起 nightly 打 arm64 APK） |
-| A2 能力闭环 | `platform/android` 宿主桥：dispatchGesture 手势注入、MediaProjection 采集、找色找图、`screenshot.capture` 远程截图；反向 JNI 桥 | ✅ 已完成（2026-09-21，c1df705/c0a67fe） |
+| A2 脚本能力 | `platform/android` 宿主桥：dispatchGesture 手势注入、MediaProjection 采集、找色找图、`screenshot.capture` 远程截图；反向 JNI 桥 | ✅ 已完成（2026-09-21，c1df705/c0a67fe） |
 | A3 可靠性 | A3-P1 register token 白名单（`WINGMAN_AGENT_TOKENS`，server+桌面+Android 三端，默认关闭、向后兼容）✅ 已落地（2026-09-20，4c9a8f4，见 [docs/agent-token-auth-design.md](docs/agent-token-auth-design.md)）；A3 剩余可靠性项（开机自启、崩溃自重启、断连缓存自治、机型保活指引）✅ 已落地（2026-09-30，见设计文档 §7/§10'：BootCompletedReceiver + 退避闹钟崩溃重启 + 核心看门狗 + [docs/guides/android-keep-alive.md](docs/guides/android-keep-alive.md)，Kotlin JVM 单测 15 例入 build-android CI job）；Android 13+ 受限设置引导 ✅ 已落地（2026-09-30，设计文档 §10''：[docs/guides/android-restricted-settings.md](docs/guides/android-restricted-settings.md) + scripts/android-restricted-settings.sh 幂等预授权（Go 契约测试）+ App 内 RestrictedSettingsPolicy 引导）；剩余 A3-P2 安全演进 | ✅ 可靠性与受限设置引导已落地（P2 安全演进未实施） |
 | A4 多设备编排 | Dashboard 设备视图、批量下发、asset.sync 模板分发 | ⬜ 协议预留，未实施 |
 

@@ -21,7 +21,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `.vscode/settings.json` | C++23、CMake、Lua 5.4、Python typing 和搜索排除规则 |
+| `.vscode/settings.json` | C++23、CMake、Lua、Python typing 和搜索排除规则 |
 | `.vscode/tasks.json` | Runtime、GUI、Docs、Go server 的常用构建/测试任务 |
 | `.vscode/launch.json` | EmmyLua attach，以及通过 runtime 运行当前 Lua/Python 脚本 |
 | `.vscode/extensions.json` | 推荐扩展列表 |
