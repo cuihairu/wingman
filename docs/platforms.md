@@ -28,8 +28,8 @@ CI 未必测，CI 编译了的功能未必在所有平台有实现，而用户�
 |------|------|------|--------------|----------|----------|
 | Windows | 已支持 | x86_64 | Windows 10 / Server 2016+ | [Nightly](https://github.com/cuihairu/wingman/releases/tag/nightly) 或 Release 的 `wingman-*-windows-x64.zip`；源码构建见 [BUILD](../BUILD.md)（vcpkg 三元组 `x64-windows-static`） | OCR / ML / Python 引擎为可选开关，默认关闭（见 [API 适用性](#api-适用性标注)） |
 | Linux | 已支持 | x86_64 | Ubuntu 22.04+（GCC 11+），X11 显示服务 | Nightly / Release 的 `wingman-*-linux-x64.tar.gz`（含 AppImage 与 deb）；源码构建（三元组 `x64-linux`） | 仅 X11；Wayland 需经 XWayland 兼容层，原生 Wayland 未支持；无 UI 自动化后端（见[环境差异](#各环境差异说明)） |
-| macOS | 已支持 | x86_64（Intel） | macOS 12+（部署目标 `MACOSX_DEPLOYMENT_TARGET=12`） | Nightly / Release 的 `wingman-*-macos-x64.tar.gz`（含 dmg 与 app）；源码构建（三元组 `x64-osx`） | Apple Silicon（arm64）原生构建未提供；无 OpenCV（视觉分析走内置路径）；CI 验证为尽力而为（continue-on-error） |
-| Android | 实验性 | arm64 | Android 9.0+（minSdk 28，targetSdk 34） | Nightly / Release 的 `wingman-*-android-arm64` APK（debug 签名）；源码构建见 [apps/android/README.md](../apps/android/README.md) | 仅 A2 能力面（`wingman.input/screen/vision` 三张 Lua 子表，见下文）；无正式签名；生命周期保活与安全加固属 A3 规划 |
+| macOS | 已支持 | x86_64（Intel）/ arm64（Apple Silicon，仅 agent 单二进制） | macOS 12+（部署目标 `MACOSX_DEPLOYMENT_TARGET=12`） | agent：`wingman-agent-*-macos-{x64,arm64}.tar.gz`（`build-agent.yml` 矩阵含 arm64）；打包（dmg/app/GUI）：`wingman-*-macos-x64.tar.gz`（仅 x64）；源码构建（三元组 `x64-osx`） | 无 OpenCV（视觉分析走内置路径）；CI 验证为尽力而为（continue-on-error） |
+| Android | 实验性 | arm64 | Android 9.0+（minSdk 28，targetSdk 34） | Nightly / Release 的 `wingman-*-android-arm64` APK（debug 签名）；源码构建见 [apps/android/README.md](../apps/android/README.md) | 仅 A2 能力面（`wingman.input/screen/vision` 三张 Lua 子表，见下文）；无正式签名；A3 可靠性（开机自启/崩溃自重启/看门狗/保活指引）已于 2026-09-30 落地，正式签名属 A3-P2 |
 | iOS | 规划中 | arm64 | — | — | 端侧 Agent 不可行（沙箱限制），仅"主机控"路线有设计，见 [iOS 一节](#ios-为什么是-规划中-而不是-支持) |
 
 获取方式的补充说明：Nightly 每日构建自 main 分支，**仅保留当日最新一组**（按提交 sha
@@ -62,6 +62,7 @@ Linux 没有 UI Automation 框架），纯逻辑组理论上处处可用，可�
 | `wingman.process`（进程枚举/启动/终止） | ✅ Win32 | ✅ POSIX | ✅ POSIX | ❌ 未实现 | 📋 |
 | `wingman.macro`（宏录制/回放） | ✅ 系统钩子 | ✅ XRecord | ✅ Cocoa 事件 | ❌ 未实现 | 📋 |
 | `wingman.uiAutomation`（UI 元素树自动化） | ✅ UI Automation | ❌ **无后端**：Linux 无等价框架，调用降级返回失败并告警 | ✅ AXUIElement | ❌ 未实现 | 📋 |
+| `wingman.hotkey`（全局热键监听） | ✅ GetAsyncKeyState | ✅ XQueryKeymap（X11） | ⚠️ CGEventSourceKeyState 需辅助功能权限，真实行为待真机验证 | ❌ 未实现 | 📋 |
 
 **纯逻辑组**（不触碰平台系统能力，桌面三平台行为一致；Android 端 A 线脚本面未引入）：
 
@@ -75,6 +76,8 @@ Linux 没有 UI Automation 框架），纯逻辑组理论上处处可用，可�
 | `wingman.json` / `ini` / `kv` / `db` / `config` | ✅ | ❌* | 序列化与存储面 |
 | `wingman.crypto` / `security`（含 TOTP） | ✅ | ❌* | |
 | `wingman.human`（拟人化轨迹）/ `gameProfile` / `verification` / `timer` / `util` / `system` | ✅ | ❌* | `system` 的信息采集部分依赖平台后端，三桌面均有 |
+| `wingman.file`（文件 IO：读写/移动复制/目录） | ✅ | ❌* | 纯 `std::filesystem`，桌面三平台一致；`wingman.filewatcher` 提供变更监控 |
+| `wingman.hotkey`（全局热键） | ✅ | ❌* | 依赖平台输入后端（见上行平台差异表），Android 无全局键态语义 |
 
 \* 标注"❌\*"的含义：不是能力缺失，而是**架构性不适用**——Android Agent（A 线）的
 ScriptRunner 不加载桌面模块注册表（见
@@ -89,7 +92,7 @@ ScriptRunner 不加载桌面模块注册表（见
 | `wingman.vision` 之 **OpenCV 加速分析**（`WINGMAN_ENABLE_VISION`） | ✅ | ✅（vcpkg `vision` feature） | ❌ 无 OpenCV 依赖（manifest 未覆盖 macOS） | ❌ | macOS/Android 构建不带 OpenCV；需引入时走 vcpkg manifest，不手探系统库 |
 | `wingman.ocr`（文字识别，`WINGMAN_ENABLE_OCR`） | ✅（Tesseract） | ❌ | ❌ | ❌ | vcpkg `ocr` feature 仅覆盖 Windows；无 OCR 时脚本调用降级返回空结果 |
 | `wingman.ml`（ONNX 推理，`WINGMAN_ENABLE_ML`） | ✅（ONNX Runtime） | ❌ | ❌ | ❌ | 同上，`ml` feature 仅 Windows |
-| Python 双引擎（`WINGMAN_ENABLE_PYTHON`） | ⚠️ 实验性 | ❌ | ❌ | ❌ | 仅 Windows 有 CI 实验 job；Linux/macOS 构建未验证 Python 引擎 |
+| Python 双引擎（`WINGMAN_ENABLE_PYTHON`） | ⚠️ 实验性 | ✅（CI 全量测试含 Python 引擎） | ❌ | ❌ | Linux：`C++ Linux (full tests, Python engine)` job 全量跑；Windows：链接链路 + best-effort 测试；macOS 未验证 |
 
 ### Android 端侧脚本面（A 线）
 
@@ -211,6 +214,7 @@ iOS 的状态不是"还没做"，而是"端侧做不了"。App Store 沙箱（Sa
 | Windows | `C++ Windows` | windows-2022 | **C++ 全量测试 + 覆盖率**（OpenCppCoverage） | ✅（`build-package.yml`，zip） |
 | Windows | `C++ Windows (Python engine)` | windows-2022 | Python 引擎实验编译 + best-effort 测试 | — |
 | Linux | `C++ Linux (full tests)` | ubuntu-24.04 | **C++ 完整构建 + 全量核心测试**（xvfb-run 提供虚拟显示，openbox/xclip 随 apt 安装） | — |
+| Linux | `C++ Linux (full tests, Python engine)` | ubuntu-24.04 | 同上 + `-DWINGMAN_ENABLE_PYTHON=ON`（全量跑，证明开 Python 不破坏 Lua/既有路径） | — |
 | Linux | `C++ ubuntu-22.04`（compat matrix） | ubuntu-22.04 | ⚠️ **仅编译** compat 层 `wingman_transport` 单 target，**无核心测试** | ✅（tar.gz/AppImage/deb） |
 | macOS | `C++ macos-15-intel`（compat matrix） | macos-15-intel | ⚠️ 同上，且 `continue-on-error: true`（失败不阻塞合并） | ✅（tar.gz/dmg/app） |
 | Android | — | — | ❌ **无 CI 测试 job** | ✅（debug 签名 APK） |

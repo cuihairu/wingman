@@ -20,7 +20,7 @@ wingman 的远程能力分两个面：
 | 面 | 载荷 | 协议 | 状态 |
 |---|---|---|---|
 | **控制面**（自动化） | 小 JSON 指令/事件/心跳 | 现有 Agent TCP（16 字节头 + JSON 体） | 已上线，**保持不动**（DG-1） |
-| **像素面**（人看 + 人接管） | 高频二进制图形流 + 输入事件 | Guacamole 协议，经 guacd 翻译 RDP/VNC（DG-2） | 本文设计，未实现 |
+| **像素面**（人看 + 人接管） | 高频二进制图形流 + 输入事件 | Guacamole 协议，经 guacd 翻译 RDP/VNC（DG-2） | 已实现：P0 网关 + 票据 + RBAC + 三协议 e2e（2026-09-23），剪贴板/文件传输/会话录制/目标转发中继见 §14–§16、§4.5 |
 
 像素面的平台覆盖（DG-3/DG-4/DG-5）：Windows 走 RDP（Pro 及以上；Home 版无 RDP host，VNC 兜底）、macOS 走内置屏幕共享（VNC/RFB）、Linux 走 x11vnc（优先）或 TigerVNC；Android 自动化数据面不推翻 MediaProjection 决策（DG-4），"人看 Android"以 droidVNC-NG → guacd VNC 桥为远期可选项单独评估（§6.1）；iOS 无公开屏幕共享 server API，明确不覆盖（DG-5）。
 

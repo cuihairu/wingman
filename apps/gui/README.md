@@ -6,10 +6,10 @@ Tauri 桌面应用，用于本地控制 Wingman runtime。
 
 ## 前置要求
 
-- Windows 10/11
+- Windows 10/11 / macOS 12+ / Linux（CI 三平台 `pnpm tauri build` 均通过）
 - Rust 1.70+
-- Node.js 18+
-- WebView2 Runtime
+- Node.js 18+（pnpm，仓库含 pnpm-lock.yaml）
+- WebView2 Runtime（Windows）
 
 ## 开发
 
@@ -63,12 +63,17 @@ Wingman Core
 
 ## Tauri 命令
 
-| 命令 | 参数 | 说明 |
-|------|------|------|
-| `connect_ipc` | `endpoint?: string` | 连接到本地 runtime IPC |
-| `get_scripts` | - | 获取脚本列表 |
-| `start_script` | `id: string` | 启动脚本 |
-| `stop_script` | `script_id: string` | 停止脚本 |
-| `get_system_status` | - | 获取系统状态 |
-| `get_version` | - | 获取版本信息 |
-| `call_command` | `method: string, params?: object` | 通用本地命令调用 |
+共 54 个（`src-tauri/src/commands/`），按域分组：
+
+| 域 | 命令 |
+|----|------|
+| 连接 | `connect_ipc` `disconnect_ipc` `is_connected` `get_ipc_state` |
+| 脚本 | `get_scripts` `start_script` `stop_script` `pause_script` `resume_script` `restart_script` `unload_script` `start_active_profile_scripts` `stop_active_profile_scripts` |
+| 脚本文件 | `get_scripts_root` `set_scripts_root` `list_script_files` `read_script_file` `write_script_file` `delete_script_file` |
+| 系统 | `get_system_status` `get_version` `get_runtime_info` `toggle_pause` `pause_all` `resume_all` `stop_all` `is_paused` `reload_hotkeys` |
+| 触发器 | `get_triggers` `add_trigger` `remove_trigger` `update_trigger` `toggle_trigger` |
+| 宏 | `macro_record` `macro_stop` `macro_play` `macro_status` `macro_save` `macro_load` `macro_clear` |
+| 截屏 | `capture_screenshot` `list_monitors` |
+| 远程配置 | `get_remote_config` `set_remote_config` |
+| 档案 | `get_profiles` `get_active_profile` `set_active_profile` `create_profile` `delete_profile` `update_profile` `export_profile_json` `import_profile_json` |
+| 事件/托盘 | `drain_events` `tray_control` |

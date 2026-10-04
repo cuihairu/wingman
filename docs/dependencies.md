@@ -1,84 +1,43 @@
-# Wingman 依赖安装指南
+# Wingman 依赖说明
 
-## 问题说明
+依赖统一由 vcpkg manifest 管理，清单是仓库根目录的 `vcpkg.json`（与 baseline 版本绑定）。CMake 经 toolchain 在 configure 阶段自动安装，不需要也不允许手工 `vcpkg install <包名>` 拼清单，不回退到系统库（见 CLAUDE.md 依赖管理规则）。
 
-由于网络限制，无法直接从 GitHub 克隆 vcpkg。本文档提供了几种安装依赖的方法。
+## 核心依赖（manifest，始终安装）
 
-## 方法 1：使用 vcpkg（推荐）
+asio、curl、lua、nlohmann-json、opencv4（仅 Windows）、openssl、sol2、spdlog、sqlite3
 
-### 前提条件
-- 网络连接
-- Git
-- Visual Studio 2022
+其中 OpenCV 有平台门：`platform: "windows"`，Linux 走 `vision` feature，macOS 不带 OpenCV（视觉分析走内置逐像素路径）。
 
-### 步骤
+## 可选 feature（`-DVCPKG_MANIFEST_FEATURES=`）
 
-1. **克隆 vcpkg**（在网络恢复后）
-   ```cmd
-   cd wingman
-   git clone https://github.com/Microsoft/vcpkg.git
-   cd vcpkg
-   bootstrap-vcpkg.bat -disableMetrics
-   ```
+| feature | 装什么 | 开关 |
+|---------|--------|------|
+| `tests` | gtest | `WINGMAN_BUILD_TESTS=ON` |
+| `ocr` | tesseract（Windows） | `WINGMAN_ENABLE_OCR=ON` |
+| `ml` | onnxruntime（Windows） | `WINGMAN_ENABLE_ML=ON` |
+| `vision` | opencv4（Linux） | 自动：CMake 找到 OpenCV 即定义 `WINGMAN_ENABLE_VISION`（Linux 需此 feature 提供 OpenCV；Windows 基础依赖已含） |
+| `python` | python3 + pybind11 | `WINGMAN_ENABLE_PYTHON=ON` |
 
-2. **安装依赖**（使用静态链接）
-   ```cmd
-   vcpkg install --triplet=x64-windows-static lua opencv4 spdlog nlohmann-json asio curl sqlite3
-   ```
+Android 用独立的 `cpp/vcpkg-android.cmake` 叠加 NDK 工具链（见 apps/android/app/build.gradle.kts）。
 
-3. **配置项目**
-   ```cmd
-   cd ..
-   build-scripts\build-runtime-msvc-ninja.bat
-   ```
+## 配置命令
 
-## 方法 2：使用预构建依赖包
-
-如果无法使用 vcpkg，可以从以下位置获取预构建的依赖：
-
-| 依赖 | 预构建包位置 |
-|------|-------------|
-| Lua | https://sourceforge.net/projects/luabinaries/files/5.4.8/Tools%20Executables/ |
-| OpenCV | https://opencv.org/releases/ |
-| spdlog | https://github.com/gabime/spdlog/releases |
-| nlohmann/json | https://github.com/nlohmann/json/releases |
-| asio | https://sourceforge.net/projects/asio/files/asio/ |
-
-## 方法 3：使用 Scoop（部分依赖）
-
-已安装：Lua 5.4.8
-
-```cmd
-scoop install lua
+```bash
+cmake -B build \
+  -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake \
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static \
+  -DVCPKG_MANIFEST_FEATURES=tests \
+  -DWINGMAN_BUILD_TESTS=ON
 ```
 
-## 当前状态
+Windows 快捷脚本：`build-scripts\configure-msvc-ninja.bat` + `build-scripts\build-runtime-msvc-ninja.bat`。完整步骤见 [BUILD.md](../BUILD.md)。
 
-✅ 已安装：
-- Lua 5.4.8 (via Scoop)
+## 版本与 baseline
 
-❌ 待安装：
-- OpenCV (图像处理)
-- spdlog (日志)
-- nlohmann-json (JSON)
-- asio (网络)
-- curl (HTTP)
-- sqlite3 (数据库)
+- baseline：`vcpkg.json` 的 `builtin-baseline`
+- Windows 三元组：`x64-windows-static`（/MT 静态运行时）
+- Linux 三元组：`x64-linux`；Android：`arm64-android`
 
-## 临时方案
+## 历史说明
 
-可以使用 `build-scripts\configure_minimal.bat` 配置最小化构建，但这是备用路径，功能受限。
-
-## 建议
-
-1. 等待网络恢复后运行 `setup.bat`
-2. 或者使用预构建的依赖包
-3. 或者联系团队成员获取 vcpkg 安装包的副本
-
-## 离线安装
-
-如果有 vcpkg 安装包的副本：
-
-1. 将 vcpkg 目录复制到项目根目录
-2. 运行 `build-scripts\build-runtime-msvc-ninja.bat`
-3. 构建项目
+本文档曾是网络受限时期的安装绕行指南（预构建包、Scoop、手工 `vcpkg install` 清单）。那些路径与 manifest 模式冲突，2026-10-04 已删除；依赖缺失时的做法是补 `vcpkg.json`、配好 toolchain 或执行 manifest 驱动的安装，不是换来源。
