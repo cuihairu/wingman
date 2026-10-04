@@ -69,7 +69,10 @@ func TestRunScriptWritesExecutionLifecycle(t *testing.T) {
 	if e.AgentID != "a1" || e.ScriptPath != filepath.Join(dir, "demo.lua") || e.TimeoutSec != 30 {
 		t.Errorf("unexpected execution fields: %+v", e)
 	}
-	if e.StartedAt == nil || e.FinishedAt == nil || !e.FinishedAt.After(*e.StartedAt) {
+	// finished ≥ started（非严格大于）：mock 响应瞬时完成时两者可能落在
+	// Windows 时钟同一 tick（同族 engine_exec_record_test.go 实测
+	// started==finished 精确相等），断言起点是两个字段都已记录且顺序不倒挂。
+	if e.StartedAt == nil || e.FinishedAt == nil || e.FinishedAt.Before(*e.StartedAt) {
 		t.Errorf("startedAt/finishedAt not recorded properly: %+v", e)
 	}
 	if !strings.Contains(e.Result, `"out":"ok"`) {
