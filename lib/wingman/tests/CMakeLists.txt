@@ -53,6 +53,7 @@ if(BUILD_CORE_TESTS)
         db_module_test.cpp
         ini_module_test.cpp
         file_module_test.cpp
+        hotkey_test.cpp
         crypt_test.cpp
         rpc_test.cpp
         glue_modules_coverage_test.cpp

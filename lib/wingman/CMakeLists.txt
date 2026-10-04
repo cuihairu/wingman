@@ -53,6 +53,7 @@ set(WINGMAN_SOURCES
 
     # Triggers
     src/trigger_engine.cpp
+    src/hotkey.cpp
 
     # System modules (note: performance.cpp needs OpenCV, added later)
     src/security.cpp
@@ -116,6 +117,7 @@ set(WINGMAN_SOURCES
     src/script/modules/clipboard_module.cpp
     src/script/modules/filewatcher_module.cpp
     src/script/modules/file_module.cpp
+    src/script/modules/hotkey_module.cpp
     src/script/modules/macro_module.cpp
     src/script/modules/script_module.cpp
     src/script/modules/ml_module.cpp

@@ -33,7 +33,7 @@
 **P1 — 缺口清单按原语边界归位（Runtime 能力层，轻者优先）**
 
 4. ✅ **文件 IO 工具**（file 模块：本笔落地——`script/modules/file_module.cpp` 十三函数全部 std::filesystem 真实现非 stub（read/write/append/exists/isFile/isDir/size/move/copy/remove/removeAll/mkdir/listDir），move 带跨文件系统 copy+remove 回退；file_module_test 16 用例；filewatcher 已提供监控腿）。
-5. **hotkey 模块**（全局热键监听；依赖输入层抽象，与 input.touch/mouse/keyboard 词汇同层）——P2 组内。
+5. ✅ **hotkey 模块**（本笔落地——`wingman/hotkey.hpp` + `script/modules/hotkey_module.cpp`：轮询式全局键态监听，后台线程按固定间隔读 IInput 键态、主键+Ctrl/Shift/Alt 组合上升沿触发回调；组合文本解析（大小写不敏感、Win/Meta 显式拒绝）；注册/注销自动启停线程、回调锁外触发按 ID 复核；脚本侧 register/unregister 带 callableThreadSafe 门控（Lua 拒收走 hotkey.error 事件）；9 用例 + 全量回归 2085 passed。v1 限制：轮询间隔内按下又弹起可能漏检；macOS 权限行为待真机）。
 6. **notify tray**（`tray.show()/hide()/setBadge()` + `event.*`/`task.*` 桥接自动接线）——P1 notify 模块残余。
 
 **P2 — 收敛与登记**
