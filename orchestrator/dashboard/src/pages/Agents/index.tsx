@@ -325,15 +325,12 @@ const Agents: React.FC = () => {
   // r => r?.data（见 .umi/plugin-request/request.ts），因此 service 须返回
   // 完整 ApiResponse 信封由 formatResult 解包——返回裸数组会被二次取
   // .data 变 undefined，列表恒空。
-  const { loading, refresh } = useRequest(
-    async () => getAgents(),
-    {
-      onSuccess: (data) => {
-        setAgents(Array.isArray(data) ? (data as AgentInfo[]) : []);
-      },
-      pollingInterval: 10000, // 降低轮询频率，主要依靠 WebSocket
+  const { loading, refresh } = useRequest(async () => getAgents(), {
+    onSuccess: (data) => {
+      setAgents(Array.isArray(data) ? (data as AgentInfo[]) : []);
     },
-  );
+    pollingInterval: 10000, // 降低轮询频率，主要依靠 WebSocket
+  });
 
   // WebSocket 连接状态
   useEffect(() => {
@@ -1079,7 +1076,9 @@ const Agents: React.FC = () => {
                   : '端口（默认 3389）'
             }
             value={desktopForm?.port}
-            onChange={(e) => desktopForm && setDesktopForm({ ...desktopForm, port: e.target.value })}
+            onChange={(e) =>
+              desktopForm && setDesktopForm({ ...desktopForm, port: e.target.value })
+            }
           />
           <Input
             placeholder="用户名（可选）"
@@ -1089,9 +1088,7 @@ const Agents: React.FC = () => {
             }
           />
           <Input
-            placeholder={
-              desktopForm?.useSaved ? '密码（已存凭据可留空）' : '密码（可选）'
-            }
+            placeholder={desktopForm?.useSaved ? '密码（已存凭据可留空）' : '密码（可选）'}
             type="password"
             value={desktopForm?.password}
             onChange={(e) =>
@@ -1125,7 +1122,8 @@ const Agents: React.FC = () => {
                   desktopForm && setDesktopForm({ ...desktopForm, useSaved: e.target.checked })
                 }
               >
-                使用保险箱已存凭据（{(() => {
+                使用保险箱已存凭据（
+                {(() => {
                   const hit = vaultEntries.find(
                     (entry) =>
                       entry.agentId === desktopForm.agentId &&

@@ -60,12 +60,9 @@ const Scripts: React.FC = () => {
     data: scriptsData,
     loading,
     refresh,
-  } = useRequest(
-    async () => getScripts(),
-    {
-      pollingInterval: 5000,
-    },
-  );
+  } = useRequest(async () => getScripts(), {
+    pollingInterval: 5000,
+  });
 
   const scripts: ScriptInfo[] = Array.isArray(scriptsData) ? (scriptsData as ScriptInfo[]) : [];
 

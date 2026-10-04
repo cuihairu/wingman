@@ -97,7 +97,19 @@ export default function RemoteDesktopModal({
       width,
       height,
     }),
-    [agentId, protocol, port, username, password, domain, readOnly, record, useSaved, width, height],
+    [
+      agentId,
+      protocol,
+      port,
+      username,
+      password,
+      domain,
+      readOnly,
+      record,
+      useSaved,
+      width,
+      height,
+    ],
   );
 
   return (

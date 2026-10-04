@@ -79,7 +79,9 @@ function MasterPasswordModal({
   return (
     <Modal
       open={open}
-      title={mode === 'setup' ? '设置保险箱主口令' : mode === 'unlock' ? '解锁保险箱' : '修改主口令'}
+      title={
+        mode === 'setup' ? '设置保险箱主口令' : mode === 'unlock' ? '解锁保险箱' : '修改主口令'
+      }
       onOk={submit}
       confirmLoading={busy}
       onCancel={() => {
@@ -130,10 +132,7 @@ function MasterPasswordModal({
 }
 
 /** 凭据保险箱管理弹窗 */
-const VaultManagerModal: React.FC<{ open: boolean; onClose: () => void }> = ({
-  open,
-  onClose,
-}) => {
+const VaultManagerModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const [status, setStatus] = useState<VaultStatus | null>(null);
   const [entries, setEntries] = useState<VaultEntryMeta[]>([]);
   const [pwModal, setPwModal] = useState<'setup' | 'unlock' | 'change' | null>(null);

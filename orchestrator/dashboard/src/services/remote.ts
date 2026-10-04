@@ -52,9 +52,7 @@ export async function createRemoteTicket(params: RemoteTicketParams): Promise<Re
  * 明文）。jsdom 无法改写 location.protocol，故留参数便于单测覆盖该分支，
  * 也让 SSR/测试环境能显式指定来源。
  */
-export function guacamoleWSPath(
-  loc: Pick<Location, 'protocol' | 'host'> = location,
-): string {
+export function guacamoleWSPath(loc: Pick<Location, 'protocol' | 'host'> = location): string {
   const proto = loc.protocol === 'https:' ? 'wss' : 'ws';
   return `${proto}://${loc.host}/api/remote/guacamole`;
 }

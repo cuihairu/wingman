@@ -88,6 +88,7 @@
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "express": "^5.2.1",
+    "fast-json-stable-stringify": "^2.1.0",
     "gh-pages": "6.3.0",
     "husky": "^9.1.7",
     "jest": "^30.4.2",

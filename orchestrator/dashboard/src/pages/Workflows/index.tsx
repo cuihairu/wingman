@@ -92,15 +92,12 @@ const Workflows: React.FC = () => {
     data: workflowsData,
     loading,
     refresh,
-  } = useRequest(
-    async () => getWorkflows(),
-    {
-      onSuccess: (data) => {
-        setWorkflows(Array.isArray(data) ? (data as Workflow[]) : []);
-      },
-      pollingInterval: 10000, // 降低轮询频率
+  } = useRequest(async () => getWorkflows(), {
+    onSuccess: (data) => {
+      setWorkflows(Array.isArray(data) ? (data as Workflow[]) : []);
     },
-  );
+    pollingInterval: 10000, // 降低轮询频率
+  });
 
   // WebSocket 连接状态
   useEffect(() => {
@@ -195,16 +192,13 @@ const Workflows: React.FC = () => {
 
   // 获取工作流详情。service 返回完整信封，由 umi useRequest 默认
   // formatResult（r => r?.data）解包，理由同 Agents 页
-  const { run: fetchDetail } = useRequest(
-    async (workflowId: string) => getWorkflow(workflowId),
-    {
-      manual: true,
-      onSuccess: (data) => {
-        setSelectedWorkflow(data ?? null);
-        setDrawerVisible(true);
-      },
+  const { run: fetchDetail } = useRequest(async (workflowId: string) => getWorkflow(workflowId), {
+    manual: true,
+    onSuccess: (data) => {
+      setSelectedWorkflow(data ?? null);
+      setDrawerVisible(true);
     },
-  );
+  });
 
   // 加载内置模板目录
   useEffect(() => {

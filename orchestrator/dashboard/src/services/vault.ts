@@ -77,10 +77,7 @@ export function setupVault(masterPassword: string): Promise<{ unlockedUntil: str
 }
 
 /** 修改主口令（DEK 重包裹，已存凭据不受影响） */
-export function changeVaultPassword(
-  currentPassword: string,
-  newPassword: string,
-): Promise<void> {
+export function changeVaultPassword(currentPassword: string, newPassword: string): Promise<void> {
   return vaultRequest<void>('/api/remote/vault/change-password', {
     method: 'POST',
     data: { currentPassword, newPassword },
@@ -102,9 +99,7 @@ export function lockVault(): Promise<void> {
 
 /** 凭据列表（元数据） */
 export function listVaultCredentials(): Promise<VaultEntryMeta[]> {
-  return vaultRequest<VaultEntryMeta[]>('/api/remote/vault/credentials').then(
-    (data) => data || [],
-  );
+  return vaultRequest<VaultEntryMeta[]>('/api/remote/vault/credentials').then((data) => data || []);
 }
 
 /** 保存/更新一条凭据（须解锁；同目标重复保存视为更新） */

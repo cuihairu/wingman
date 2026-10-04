@@ -73,7 +73,10 @@ describe('requestErrorConfig errorHandler', () => {
   });
 
   it('登录请求 401 全局静默（登录页自行提示，不弹「未授权」）', async () => {
-    errorHandler(restError(401, { success: false, error: 'Invalid credentials' }, '/api/v1/auth/login'), {});
+    errorHandler(
+      restError(401, { success: false, error: 'Invalid credentials' }, '/api/v1/auth/login'),
+      {},
+    );
 
     // defer 的 toast 都是 setTimeout(0)，等一拍确认没有弹任何文案
     await new Promise((resolve) => setTimeout(resolve, 10));

@@ -223,6 +223,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      fast-json-stable-stringify:
+        specifier: ^2.1.0
+        version: 2.1.0
       gh-pages:
         specifier: 6.3.0
         version: 6.3.0
