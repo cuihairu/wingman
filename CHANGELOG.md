@@ -9,6 +9,51 @@
 
 ## [Unreleased]
 
+### docs（2026-10-04/05，全站文档对账与展示优化——API 面 26 方法校准、缺口清单反向对账、Lua 版本口径统一）
+
+三轮文档批（[7cf1bb1](https://github.com/cuihairu/wingman/commit/7cf1bb1)、[71acf0b](https://github.com/cuihairu/wingman/commit/71acf0b)、[e86a4bf](https://github.com/cuihairu/wingman/commit/e86a4bf)、[eff3502](https://github.com/cuihairu/wingman/commit/eff3502)、[a2bdbeb](https://github.com/cuihairu/wingman/commit/a2bdbeb)），对账在先、展示优化在后，全部 `cd docs && pnpm docs:build` 死链检查通过。
+
+- **API 面对账**：docs/API.md 补 26 个本地 IPC 方法分组索引与远程命令边界（实测 `registerHandler` 去重口径，system.shutdown 属远程命令不入本地面）；新增 `docs/api/file.md`（13 函数）、`docs/api/hotkey.md`（轮询语义与 combo 格式）参考页，notify 页补系统托盘四函数节；`config.setRemote` 字段按实现校正 camelCase（`serverIp`/`serverPort`/`registerToken`）；`events.drain` 事件集合按 EventBuffer 实测校正（tray.* / trigger.fired / script.state_changed / script.output / connection.ipc_client，hotkey.error 不入缓冲）。
+- **能力与平台矩阵**：模块数 25+ → 42 贯通 README 与 ROADMAP 三处图；platforms.md 补 macOS arm64（仅 agent 单二进制，打包仅 x64）、Python 引擎 CI 行、hotkey/file 跨平台行；game-automation-coverage 对比表去排名改能力事实；dependencies.md 重写为 vcpkg manifest 权威口径（`WINGMAN_ENABLE_VISION` 非 option、CMake 检测 OpenCV 自动定义）。
+- **缺口清单反向对账（a2bdbeb）**：development-todo「当前缺口清单」六处仍写 file/hotkey/tray「未实现」——三项 2026-10-04 已落地，勾选同步（头注仍缺段、notify tray 子项、文件 IO、热键监听、UIA 事件绑定、P2 优先级行）；其余未勾项（编排依赖/并发/条件、任务与订阅持久化、等待类 API、模板批量、进程/窗口事件源）逐条对码核实仍真实未实现，保持原样。
+- **展示优化与口径统一**：README 特性/模块/Android 三表去装饰符号并新增「技术底座」节（Lua 5.5+sol2、pybind11、Guacamole 等开源来源写明）；全仓 Lua 版本 5.4 → 5.5（vcpkg baseline `9e593bb` 锁 lua 5.5.0——README 徽章、5 处文档、`.vscode/settings.json`（[9d732f9](https://github.com/cuihairu/wingman/commit/9d732f9)）同步）；吹牛话与空洞词 73 处改写（生态 22 / 闭环 29 / 天花板 ×2 / 永不 ×2 等），KV ttl 永不过期等 API 语义与工具 PASS 输出串保留。
+
+### fix（2026-10-05，run_script 执行记录测试放宽起止时间断言——Windows 时钟粒度同族第二例）
+
+TestRunScriptWritesExecutionLifecycle 在 windows-latest race job 间歇失败：mock 响应瞬时完成时 `StartedAt` 与 `FinishedAt` 落在同一时钟 tick（实测精确相等），严格 `FinishedAt.After(StartedAt)` 不成立——与 073f77a 同根因。放宽为非倒挂（finished ≥ started），断言重点回到两个字段都已记录（[77bc9f1](https://github.com/cuihairu/wingman/commit/77bc9f1)）；修前全仓扫描确认严格 `After` 时间断言仅此最后一处。验证：目标用例 `-race` ok + 全仓 `go test ./... -race` 一轮 0 FAIL，重跑 CI 与 Deploy 全绿。
+
+### fix（2026-10-04，workflow 执行记录测试放宽起止时间断言——Windows 时钟粒度）
+
+TestWorkflowStepWritesExecutionSuccess 同 tick 精确相等问题首发，engine 侧写入点正确（下发记 started、终态记 finished），属断言过严——放宽为非倒挂（[073f77a](https://github.com/cuihairu/wingman/commit/073f77a)）。`go test ./internal/workflow/` 与 `-race` 各一轮 ok。
+
+### fix（2026-10-04，file 模块去平台宏——fs::path 版 fstream 替代 _wfopen 分支）
+
+file_module 宽字符读写走 `_wfopen` 平台分支，被 platform-boundary guard 判为公共层平台宏（迁移 allowlist 冻结）。改为 `std::filesystem::path` 构造 `fstream`——path 原生承接 Windows 宽路径，宏分支整段移除（[b811825](https://github.com/cuihairu/wingman/commit/b811825)）。两树 CI 与边界守卫全绿。
+
+### docs（2026-10-04，架构决策落地——四层模型/Capability/Execution ADR 四条、收敛表落账、todo 按新决策重排）
+
+- **ADR 追加四条（[0c2bbe6](https://github.com/cuihairu/wingman/commit/0c2bbe6)）**：四层模型（Automation Core → Runtime → Agent → Control Plane，Control/Execution Plane 硬边界）、原语边界（Trigger < Script < Behavior Tree < Workflow < Team，轻者优先不得跨级叠造）、Capability System（dotted 词汇表 13 词）、Execution 平台核心对象（统一状态机 + Artifact 一等子对象，统一前不得新增执行形态）；README 定位同步升级。
+- **收敛表落账（[ef138d3](https://github.com/cuihairu/wingman/commit/ef138d3)）**：docs/architecture.md 核心概念表 Capability/Execution 🔶→✅（v1 范围内），ADR Status 段更新为 v1 landed 并登记缺口（模块级词汇、screenshot 步骤、artifact 存储）；Artifact 维持 🔶。
+- **todo 重排（[f4dd451](https://github.com/cuihairu/wingman/commit/f4dd451)）**：任务队列按新架构决策重排（P0 ADR 闭环三件、P1 缺口清单按原语边界归位 file → hotkey → notify tray），过时测试基线校准（ctest 注册 2509、Go 测试函数 597）。
+
+### feat（2026-10-04，P1 缺口三件套——文件 IO / 全局热键 / 托盘意图全链，todo P1 第 4-6 条）
+
+- **`wingman.file`（[e14a89d](https://github.com/cuihairu/wingman/commit/e14a89d)）**：13 函数全部 `std::filesystem` 真实现非 stub（read/write/append/exists/isFile/isDir/size/move/copy/remove/removeAll/mkdir/listDir），move 跨文件系统 copy+remove 回退；file_module_test 16 用例；filewatcher 已提供监控腿。
+- **`wingman.hotkey`（[a03e677](https://github.com/cuihairu/wingman/commit/a03e677)）**：轮询式全局键态监听——后台线程固定间隔读 IInput 键态、主键+Ctrl/Shift/Alt 组合上升沿触发；组合文本解析大小写不敏感（Win/Meta 显式拒绝）；注册/注销自动启停线程、回调锁外触发按 ID 复核；Lua callable 非线程安全被拒走 hotkey.error 事件（Python 可）；9 用例 + 全量回归 2085 passed。v1 限制：<30ms 点按可能漏检、macOS 权限待真机。
+- **notify 托盘（[72da5cc](https://github.com/cuihairu/wingman/commit/72da5cc)）**：脚本层 `trayShow/trayHide/traySetBadge/traySetTooltip` 四函数只发 `notify.tray.*` 意图事件，runtime notify_bridge 订阅转投 EventBuffer（method 去前缀，installNotifyBridge 幂等防订阅泄漏），GUI events.ts 轮询分发经 tauri `tray_control` 驱动系统托盘——托盘本体归 GUI，无 GUI 附着时事件仅入有界缓冲（1000 条）；badge 仅 Windows/macOS 生效。测试：notify_module 4 + notify_bridge 2 + events.test.ts 3。
+
+### feat（2026-10-04，Execution 与 Capability 架构决策代码落地——executions API、能力词汇表、batch/workflow 接线、Dashboard 视图）
+
+- **Execution v1（[4d4b6c3](https://github.com/cuihairu/wingman/commit/4d4b6c3)）**：models.Execution + AutoMigrate；GET /api/executions（page/status/agentId 过滤 + 详情）；run_script 下发前落 running → 命令返回后终态（succeeded/failed + finishedAt + Result 摘要），审计补 executionId；响应体保持 `executionId: scriptName` 兼容。
+- **Capability v1（[4d4b6c3](https://github.com/cuihairu/wingman/commit/4d4b6c3)）+ desktop 上报（[0b2d91a](https://github.com/cuihairu/wingman/commit/0b2d91a)）**：KnownCapabilities 词汇表；register 解析 capabilities → 内存持有 + 持久化（重连保留）；ToJSON 输出 capabilities/unknownCapabilities；runtime 注入 `platform=desktop` + 词汇表对齐清单（ml.onnx 仅 ML 构建声明不虚报，AgentLoopbackTest 钉定）。
+- **Execution v2（[8a9997b](https://github.com/cuihairu/wingman/commit/8a9997b)）**：batch 接口 fan-out 后串行落库、offline 跳过与单发语义对齐；workflow 引擎每 attempt 一条记录（WorkflowID/StepID 挂载，errStepTimeout 区分 timeout/cancelled 终态）；WorkflowStep.Requires 按 platform + capabilities 全命中调度匹配。
+- **Dashboard 视图（[aa2202f](https://github.com/cuihairu/wingman/commit/aa2202f)、[74f191b](https://github.com/cuihairu/wingman/commit/74f191b)）**：Agents 页 capabilities/unknownCapabilities 展示；executions 页只读视图（ProTable + status 过滤 + 详情 Drawer：result 展开 + artifacts）。
+- **测试**：agent 6 例、handlers 生命周期/查询分支、workflow requires 5 例，`go test ./...` 全绿 + vet 全清。
+
+### fix(deps)（2026-10-04，dependabot 7 条告警收敛——pnpm-workspace overrides 按族钉版本）
+
+hono 4.13.7、fast-uri 3.1.7、dompurify 3.4.16、brace-expansion 三代按族钉 1.1.21/2.1.7/5.0.12（[d71f2a0](https://github.com/cuihairu/wingman/commit/d71f2a0)）；`pnpm-workspace.yaml` overrides 声明、lock 文件收敛（[b38959d](https://github.com/cuihairu/wingman/commit/b38959d)）。告警面待 GitHub 重扫自动关闭（按惯例不手关）。
+
 ## [v0.1.2] - 2026-10-03
 
 ### 正式发布：相比 v0.1.1（2026-06）的主要变化
