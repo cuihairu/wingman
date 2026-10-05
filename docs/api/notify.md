@@ -339,7 +339,7 @@ trayHide() -> boolean
 
 ### traySetBadge(text?) / traySetBadge(text?)
 
-**说明**：设置托盘角标文本；无参或 `None`/`nil` 清除角标。
+**说明**：发出设置托盘角标的意图；无参或 `None`/`nil` 表示清除。脚本层恒返回 `true`。注意：tauri v2 TrayIcon 没有角标 label API，GUI 端当前不支持该意图——执行后会有一条错误日志（「托盘控制失败: tray badge not supported…」），`trayShow`/`trayHide`/`traySetTooltip` 正常驱动系统托盘。
 
 **函数签名**：
 
@@ -387,9 +387,8 @@ traySetTooltip(text: string | nil) -> boolean
 from wingman import notify
 
 notify.trayShow()
-notify.traySetBadge("3")          # 3 条待办
 notify.traySetTooltip("Wingman 运行中")
-# notify.traySetBadge()           # 清除角标
+# notify.traySetBadge("3")         # 角标意图：GUI 端暂不支持（tauri v2 无角标 API）
 # notify.trayHide()
 ```
 
@@ -399,9 +398,8 @@ notify.traySetTooltip("Wingman 运行中")
 local wingman = require("wingman")
 
 wingman.notify.trayShow()
-wingman.notify.traySetBadge("3")   -- 3 条待办
 wingman.notify.traySetTooltip("Wingman 运行中")
--- wingman.notify.traySetBadge()   -- 清除角标
+-- wingman.notify.traySetBadge("3") -- 角标意图：GUI 端暂不支持（tauri v2 无角标 API）
 -- wingman.notify.trayHide()
 ```
 
@@ -422,5 +420,5 @@ wingman.notify.traySetTooltip("Wingman 运行中")
 | `bridge(eventName, target, options?)` | `bridge(eventName, target, options?)` | 事件桥接 | eventName: 事件名称<br>target: 目标地址<br>options: 配置(可选) |
 | `trayShow()` | `trayShow()` | 请求显示托盘图标 | 无 |
 | `trayHide()` | `trayHide()` | 请求隐藏托盘图标 | 无 |
-| `traySetBadge(text?)` | `traySetBadge(text?)` | 设置/清除托盘角标 | text: 角标文本(省略清除) |
+| `traySetBadge(text?)` | `traySetBadge(text?)` | 托盘角标意图（GUI 端暂不支持） | text: 角标文本(省略清除) |
 | `traySetTooltip(text?)` | `traySetTooltip(text?)` | 设置/清除托盘提示 | text: 提示文本(省略清除) |

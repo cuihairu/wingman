@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### fix（2026-10-05，tray badge 编译错误修复——tauri v2 无角标 API，意图端改显式不支持）
+
+72da5cc 的 `tray_control` 调用 `TrayIcon::set_badge_label`，该方法在 tauri v2（锁 2.11.2）全平台不存在，三腿 nightly 整包构建（run 37240534697，Linux/macOS/Windows）同报 E0599——CI 无 GUI/Tauri 构建 job，仅 nightly 抓到（nightly 首次抓 GUI 失败）。修复：`"badge"` 分支显式返回 `tray badge not supported` 错误走前端 `.catch` 日志（[4deb667] 后续提交），不再臆造「仅 Windows/macOS 生效、Linux no-op」语义；同步修正 development-todo 与 docs/api/notify.md 三处 badge 描述。`cargo check` 通过。
+
 ### docs（2026-10-04/05，全站文档对账与展示优化——API 面 26 方法校准、缺口清单反向对账、Lua 版本口径统一）
 
 三轮文档批（[7cf1bb1](https://github.com/cuihairu/wingman/commit/7cf1bb1)、[71acf0b](https://github.com/cuihairu/wingman/commit/71acf0b)、[e86a4bf](https://github.com/cuihairu/wingman/commit/e86a4bf)、[eff3502](https://github.com/cuihairu/wingman/commit/eff3502)、[a2bdbeb](https://github.com/cuihairu/wingman/commit/a2bdbeb)），对账在先、展示优化在后，全部 `cd docs && pnpm docs:build` 死链检查通过。
@@ -40,7 +44,7 @@ file_module 宽字符读写走 `_wfopen` 平台分支，被 platform-boundary gu
 
 - **`wingman.file`（[e14a89d](https://github.com/cuihairu/wingman/commit/e14a89d)）**：13 函数全部 `std::filesystem` 真实现非 stub（read/write/append/exists/isFile/isDir/size/move/copy/remove/removeAll/mkdir/listDir），move 跨文件系统 copy+remove 回退；file_module_test 16 用例；filewatcher 已提供监控腿。
 - **`wingman.hotkey`（[a03e677](https://github.com/cuihairu/wingman/commit/a03e677)）**：轮询式全局键态监听——后台线程固定间隔读 IInput 键态、主键+Ctrl/Shift/Alt 组合上升沿触发；组合文本解析大小写不敏感（Win/Meta 显式拒绝）；注册/注销自动启停线程、回调锁外触发按 ID 复核；Lua callable 非线程安全被拒走 hotkey.error 事件（Python 可）；9 用例 + 全量回归 2085 passed。v1 限制：<30ms 点按可能漏检、macOS 权限待真机。
-- **notify 托盘（[72da5cc](https://github.com/cuihairu/wingman/commit/72da5cc)）**：脚本层 `trayShow/trayHide/traySetBadge/traySetTooltip` 四函数只发 `notify.tray.*` 意图事件，runtime notify_bridge 订阅转投 EventBuffer（method 去前缀，installNotifyBridge 幂等防订阅泄漏），GUI events.ts 轮询分发经 tauri `tray_control` 驱动系统托盘——托盘本体归 GUI，无 GUI 附着时事件仅入有界缓冲（1000 条）；badge 仅 Windows/macOS 生效。测试：notify_module 4 + notify_bridge 2 + events.test.ts 3。
+- **notify 托盘（[72da5cc](https://github.com/cuihairu/wingman/commit/72da5cc)）**：脚本层 `trayShow/trayHide/traySetBadge/traySetTooltip` 四函数只发 `notify.tray.*` 意图事件，runtime notify_bridge 订阅转投 EventBuffer（method 去前缀，installNotifyBridge 幂等防订阅泄漏），GUI events.ts 轮询分发经 tauri `tray_control` 驱动系统托盘——托盘本体归 GUI，无 GUI 附着时事件仅入有界缓冲（1000 条）；badge 意图通道保留但 tauri v2 无角标 API，GUI 端暂不支持（同日 fix 条实证修正）。测试：notify_module 4 + notify_bridge 2 + events.test.ts 3。
 
 ### feat（2026-10-04，Execution 与 Capability 架构决策代码落地——executions API、能力词汇表、batch/workflow 接线、Dashboard 视图）
 

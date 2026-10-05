@@ -72,7 +72,7 @@
   - [x] `toast(title, message, level?)`
   - [x] `log(channel, message, meta?)`（notify.log + 事件化）
   - [x] `webhook(url, payload, options?)`（含 pending/success/failed/blocked 全生命周期事件）
-  - [x] `trayShow()/trayHide()/traySetBadge(text?)/traySetTooltip(text?)`（2026-10-04 落地：向 EventHub 发 `notify.tray.*` 意图事件，runtime notify_bridge 转投 EventBuffer，GUI 经 tauri `tray_control` 驱动系统托盘；badge 仅 Windows/macOS 生效，Linux 底层 no-op）
+  - [x] `trayShow()/trayHide()/traySetBadge(text?)/traySetTooltip(text?)`（2026-10-04 落地：向 EventHub 发 `notify.tray.*` 意图事件，runtime notify_bridge 转投 EventBuffer，GUI 经 tauri `tray_control` 驱动系统托盘；badge 因 tauri v2 TrayIcon 无角标 API 暂不支持——GUI 端返回错误走前端日志（2026-10-05 nightly 实证修正），待上游支持或自绘方案再接）
   - [ ] 订阅 `event.*` 与 `task.*` 的通知桥接（bridge 机制已有，自动桥接规则未完整接线）
 
 ### 编排与恢复

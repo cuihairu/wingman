@@ -8,8 +8,9 @@ use tauri::{
 /// 链路到达，见前端 events.ts 的 tray.* 分发）。
 ///
 /// action: "show" / "hide" / "badge" / "tooltip"；badge/tooltip 的 text 为
-/// null 时清除对应状态。show/hide 幂等。tauri v2 角标 label 仅 Windows/macOS
-/// 生效，Linux 底层为 no-op（尽力而为，错误统一吞并返回给前端记日志）。
+/// null 时清除对应状态。show/hide 幂等。tauri v2 TrayIcon 没有角标 label
+/// API（ nightly 37240534697 三腿 E0599 实证），"badge" 显式返回错误走
+/// 前端失败日志，不再臆造 no-op 语义；错误统一返回给前端记日志。
 #[tauri::command]
 pub fn tray_control(app: AppHandle, action: String, text: Option<String>) -> Result<(), String> {
     let tray = app
@@ -18,7 +19,12 @@ pub fn tray_control(app: AppHandle, action: String, text: Option<String>) -> Res
     let result = match action.as_str() {
         "show" => tray.set_visible(true),
         "hide" => tray.set_visible(false),
-        "badge" => tray.set_badge_label(text.as_deref()),
+        "badge" => {
+            let _ = text;
+            return Err(
+                "tray badge not supported: tauri v2 TrayIcon has no badge label API".to_string(),
+            )
+        }
         "tooltip" => tray.set_tooltip(text.as_deref()),
         other => return Err(format!("unknown tray action: {other}")),
     };
