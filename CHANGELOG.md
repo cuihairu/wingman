@@ -11,7 +11,7 @@
 
 ### fix（2026-10-05，tray badge 编译错误修复——tauri v2 无角标 API，意图端改显式不支持）
 
-72da5cc 的 `tray_control` 调用 `TrayIcon::set_badge_label`，该方法在 tauri v2（锁 2.11.2）全平台不存在，三腿 nightly 整包构建（run 37240534697，Linux/macOS/Windows）同报 E0599——CI 无 GUI/Tauri 构建 job，仅 nightly 抓到（nightly 首次抓 GUI 失败）。修复：`"badge"` 分支显式返回 `tray badge not supported` 错误走前端 `.catch` 日志（[4deb667] 后续提交），不再臆造「仅 Windows/macOS 生效、Linux no-op」语义；同步修正 development-todo 与 docs/api/notify.md 三处 badge 描述。`cargo check` 通过。
+72da5cc 的 `tray_control` 调用 `TrayIcon::set_badge_label`，该方法在 tauri v2（锁 2.11.2）全平台不存在，三腿 nightly 整包构建（run 37240534697，Linux/macOS/Windows）同报 E0599——CI 无 GUI/Tauri 构建 job，仅 nightly 抓到（nightly 首次抓 GUI 失败）。修复：`"badge"` 分支显式返回 `tray badge not supported` 错误走前端 `.catch` 日志（[8837da6](https://github.com/cuihairu/wingman/commit/8837da6)），不再臆造「仅 Windows/macOS 生效、Linux no-op」语义；同步修正 development-todo 与 docs/api/notify.md 三处 badge 描述。`cargo check` 通过，重触发 nightly 的 Linux/Windows/Android/Agent 七腿绿（macOS x64 腿为 DMG 打包抖动，同 SHA 定时 nightly 全绿顶替）。
 
 ### docs（2026-10-04/05，全站文档对账与展示优化——API 面 26 方法校准、缺口清单反向对账、Lua 版本口径统一）
 
