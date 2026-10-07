@@ -4,6 +4,14 @@
 
 # Wingman
 
+[![OS](https://img.shields.io/badge/OS-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](https://github.com/cuihairu/wingman)
+[![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman)
+[![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
+[![Lua](https://img.shields.io/badge/Lua-5.5-000080.svg?logo=lua&logoColor=white)](https://www.lua.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 **跨平台可编程自动化 Agent 与远程编排平台**（游戏自动化是第一垂直场景）
 
 C++ + Lua/Python 的自动化 Agent Runtime + Go 远程编排中控
@@ -12,13 +20,7 @@ C++ + Lua/Python 的自动化 Agent Runtime + Go 远程编排中控
 > 脚本、视觉、输入、OCR/ML 与 Workflow 对它们做自动化控制；游戏自动化是打磨
 > 最深的垂直场景，但控制面与执行面从一开始就是按通用 Agent 平台设计的。
 
-[![OS](https://img.shields.io/badge/OS-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](https://github.com/cuihairu/wingman)
-[![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman)
-[![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
-[![Lua](https://img.shields.io/badge/Lua-5.5-000080.svg?logo=lua&logoColor=white)](https://www.lua.org/)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 
 [文档](docs/README.md) · [快速开始](docs/guide/getting-started.md) · [平台支持](docs/platforms.md) · [API 参考](docs/api/overview.md) · [示例](docs/examples/) · [贡献指南](CONTRIBUTING.md)
 
