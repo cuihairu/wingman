@@ -352,13 +352,16 @@ TEST(A11Batch11GlueTest, BitmapBmpParsingAndSaveFailureBranches) {
     writeBytes(dir + "/badsig.bmp", makeBmpBytes(2, 2, 24, /*badSignature=*/true));
     EXPECT_EQ(Bitmap::fromFile(dir + "/badsig.bmp"), nullptr);
     writeBytes(dir + "/badplanes.bmp", makeBmpBytes(2, 2, 24, false, /*badPlanes=*/true));
-#ifdef _WIN32
+    // 宽容档 = 平台系统解码器（Windows GDI+）或 cv::imread（vision 构建）：
+    // 两者对 planes/bitCount 头字段都宽容（照常解出 2x2 图）——按各平台
+    // 真实语义断言；仅手工 BMP 解析器（无 vision 的 POSIX 档）严格拒绝
+#if defined(_WIN32) || defined(WINGMAN_ENABLE_VISION)
     EXPECT_NE(Bitmap::fromFile(dir + "/badplanes.bmp"), nullptr);
 #else
     EXPECT_EQ(Bitmap::fromFile(dir + "/badplanes.bmp"), nullptr);
 #endif
     writeBytes(dir + "/badbpp.bmp", makeBmpBytes(2, 2, 24, false, false, /*badBitCount=*/true));
-#ifdef _WIN32
+#if defined(_WIN32) || defined(WINGMAN_ENABLE_VISION)
     EXPECT_NE(Bitmap::fromFile(dir + "/badbpp.bmp"), nullptr);
 #else
     EXPECT_EQ(Bitmap::fromFile(dir + "/badbpp.bmp"), nullptr);

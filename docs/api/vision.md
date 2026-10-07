@@ -274,6 +274,89 @@ end
 
 ---
 
+---
+
+## AI 视觉识别（aiSetup / aiLocate）
+
+AI 语义定位：截取当前屏幕（或指定区域）→ JPEG → OpenAI 兼容视觉模型 →
+结构化包围盒（像素坐标），配合 `input.click` 完成「识别目标并点击」。
+需 `WINGMAN_ENABLE_VISION` 构建（与 findImage 同门禁）。
+
+**端点约定**：OpenAI 兼容 `chat.completions`（`baseUrl` 填到 `/v1` 为止）——
+云端 API 与本地推理服务（Ollama `http://127.0.0.1:11434/v1`、vLLM 等）同形，
+模型需支持图像输入与坐标定位（如 Qwen2.5-VL 系列）。模型被要求只回
+`{"found": bool, "label": str, "bbox_2d": [x1,y1,x2,y2], "confidence": 0-1}`，
+坐标为 0–1000 归一值，按帧尺寸换算像素。
+
+### ai_setup(cfg) / aiSetup(cfg)
+
+**说明**：配置 provider（进程级驻内存，重复调用整体覆盖）。
+
+**参数**（`cfg` 表）：
+- `baseUrl`（string，必填）— 到 `/v1` 为止的 OpenAI 兼容端点
+- `model`（string，必填）— 视觉模型名
+- `apiKey`（string）— 明文凭据，仅推荐本地/测试环境
+- `apiKeyEnc` + `passphrase`（string，成对）— **凭据加密面**：`apiKeyEnc`
+  为 `crypto.encryptAES(apiKey, passphrase)` 的密文（AES-256-GCM，与密钥
+  保险箱同型原语），配置文件里只存密文，运行时解密后仅驻内存，不落盘、
+  不进日志；`apiKey` 与 `apiKeyEnc` 二选一
+- `timeoutSeconds`（int，默认 60）
+
+**返回**：`bool`（baseUrl/model 缺失或密文解密失败返回 `false`）
+
+### ai_setup_status() / aiSetupStatus()
+
+**返回**：`{configured, baseUrl, model, hasKey, lastError}`——凭据明文不出
+查询接口（只有 `hasKey` 标志位）。
+
+### ai_locate(desc, region?) / aiLocate(desc, region?)
+
+**说明**：定位屏幕上符合自然语言描述的目标。
+
+**参数**：
+- `desc`（string）— 目标描述，如「登录按钮」「左上角红色关闭叉」
+- `region`（表，可选）— 只在该区域内截帧识别，坐标仍为全屏系
+
+**返回**：
+- `{found=true, x, y, w, h, confidence, label}` — 像素包围盒（左上角+尺寸）
+- `{found=false, error}` — 未配置 / 截帧失败 / HTTP 失败 / 模型未找到目标，
+  `error` 可区分原因
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import vision, input, crypto
+
+# 配置侧：密文预先用 crypto 生成后写进配置（明文不落盘）
+cipher = crypto.encryptAES("sk-xxx", "machine-passphrase")
+
+assert vision.aiSetup({
+    "baseUrl": "http://127.0.0.1:11434/v1",   # 本地 Ollama
+    "model": "qwen2.5-vl:7b",
+    "apiKeyEnc": cipher,
+    "passphrase": "machine-passphrase",
+})
+
+box = vision.aiLocate("设置图标")
+if box["found"]:
+    input.click(box["x"] + box["w"] // 2, box["y"] + box["h"] // 2)
+```
+
+== Lua
+
+```lua:line-numbers
+local box = wingman.vision.aiLocate("登录按钮")
+if box.found then
+    wingman.input.click(box.x + box.w / 2, box.y + box.h / 2)
+end
+```
+
+:::
+
+---
+
 ## 可用接口
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
@@ -283,3 +366,6 @@ end
 | `has_color(color, tolerance?, region?)` | `hasColor(color, tolerance?, region?)` | 检查颜色存在 | 返回: 是否存在 |
 | `get_dominant_color(region?)` | `getDominantColor(region?)` | 获取主要颜色 | region: 分析区域(可选)<br>返回: 颜色对象RGBA |
 | `find_image(path, threshold?, region?)` | `findImage(path, threshold?, region?)` | 查找图像 | path: 模板路径<br>threshold: 匹配阈值(默认0.9)<br>region: 搜索区域(可选)<br>返回: 匹配结果对象 |
+| `ai_setup(cfg)` | `aiSetup(cfg)` | 配置 AI 视觉 provider | cfg: 配置表（baseUrl/model/凭据）<br>返回: 是否成功 |
+| `ai_setup_status()` | `aiSetupStatus()` | 查询 provider 配置状态 | 返回: {configured, baseUrl, model, hasKey, lastError} |
+| `ai_locate(desc, region?)` | `aiLocate(desc, region?)` | AI 语义定位屏幕目标 | desc: 目标描述<br>region: 区域(可选)<br>返回: {found,x,y,w,h,confidence,label} 或 {found:false,error} |

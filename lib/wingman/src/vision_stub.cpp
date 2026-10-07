@@ -1,4 +1,5 @@
 #include "wingman/vision.hpp"
+#include "wingman/vision_ai.hpp"
 #include <spdlog/spdlog.h>
 
 // OpenCV Vision stub implementation
@@ -94,6 +95,30 @@ bool Vision::isColorMatch(const Color& c1, const Color& c2, int tolerance) {
     int dg = abs((int)c1.g - (int)c2.g);
     int db = abs((int)c1.b - (int)c2.b);
     return dr <= tolerance && dg <= tolerance && db <= tolerance;
+}
+
+// ========== AI Vision (stub) ==========
+
+void VisionAi::setup(const VisionAiConfig&) {}
+void VisionAi::reset() {}
+bool VisionAi::isConfigured() { return false; }
+VisionAiConfig VisionAi::config() { return VisionAiConfig{}; }
+bool VisionAi::hasApiKey() { return false; }
+std::string VisionAi::lastError() { return {}; }
+
+std::string VisionAi::buildLocateRequestBody(const std::string&, const std::string&, const std::string&) {
+    spdlog::warn("Vision support not enabled (OpenCV not available)");
+    return {};
+}
+
+VisionAiBox VisionAi::parseLocateResponse(const std::string&, int, int) {
+    spdlog::warn("Vision support not enabled (OpenCV not available)");
+    return VisionAiBox{};
+}
+
+VisionAiBox VisionAi::locate(const std::string&, const Rect&) {
+    spdlog::warn("Vision support not enabled (OpenCV not available)");
+    return VisionAiBox{};
 }
 
 } // namespace wingman

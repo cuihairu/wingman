@@ -94,6 +94,14 @@
 - [x] 热键监听模块（`wingman.hotkey`：轮询式全局键态 + 组合键上升沿回调，register/unregister，Windows/Linux/macOS，2026-10-04 落地；v1 限制：轮询间隔内点按可能漏检、macOS 辅助功能权限待真机）
 - [x] 定时器 / 计划任务模块（timer_module.cpp + timer.pyi + 12 条测试；after/every/取消/查询/sleep）
 - [ ] 更完整的 UI 控件树遍历与等待（uia 模块已有树遍历基础，等待类 API 待补）
+- [ ] AI 视觉识别（2026-10-07 启动，MVP 单场景「识别屏幕按钮并点击」先行，原子项逐项验收）：
+  - [x] provider 配置面：`aiSetup`（OpenAI 兼容端点 baseUrl/model/凭据，配置驻内存；`apiKeyEnc` 走 crypto AES-256-GCM 密文 + 口令解密驻内存——保险箱同型加密面，明文与密钥不落盘不落日志）+ 状态查询
+  - [x] locate 协议：请求构造（截屏 JPEG→base64→chat.completions）与响应解析（模型返回 `found/label/bbox_2d/confidence`，坐标 0–1000 归一，按帧尺寸换算像素）——纯函数可单测
+  - [x] 桌面 `wingman.vision.aiLocate(desc[, region])` 闭环：Screen::capture 截帧 → provider → 结构化 bbox → 脚本 `input.click` 动作映射
+  - [x] Lua/Python 绑定 + docs/api/vision.md AI 节（凭据加密面写法与 provider 约定）
+  - [ ] Android 接入：androidagent 挂同形 `aiLocate`（captureFrame 位图 → 同 provider 通道，HTTP client 需在租户侧可用）
+  - [ ] 真机走查截图证据（模拟器：识别指定按钮并点击成功，B 批同口径）
+  - [ ] 扩展：`aiElements()` 批量元素识别（文本/状态字段）、本地 ONNX 检测模型 provider
 - [ ] 图像模板批量管理与识别
 - [x] 录制 / 回放闭环（macro_module.cpp）
 - [x] UIA 事件监听绑定（`onPropertyChanged` / `onStructureChanged` / `removeEventListener`，Windows UIA 专属，回调线程安全门控走 `uia.error`；跨平台统一事件源见下条「进程/窗口/文件变化统一事件源」）

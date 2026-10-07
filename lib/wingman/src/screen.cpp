@@ -48,6 +48,7 @@ std::unique_ptr<ICapture> createX11Capture(const CaptureConfig& config);
 
 #include <cstring>
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -770,7 +771,30 @@ bool Bitmap::save(const std::string& filepath) const {
     }
 
     cv::Mat bgra(m_height, m_width, CV_8UC4, const_cast<uint8_t*>(m_data.get()));
-    return cv::imwrite(filepath, bgra);
+    // OpenCV 的 BMP/JPEG 编码器不收 4 通道：这三类后缀先 BGRA→BGR；
+    // PNG 保留 alpha 直写。imwrite 对编不了的格式是抛异常而非返回 false，
+    // 兜底转 false 守住「失败返回 false」契约（batch11 save 分支依赖）
+    const std::string lower = [&] {
+        std::string out = filepath;
+        std::transform(out.begin(), out.end(), out.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return out;
+    }();
+    const bool needs3ch =
+        lower.size() >= 4 && (lower.compare(lower.size() - 4, 4, ".bmp") == 0
+                              || lower.compare(lower.size() - 4, 4, ".jpg") == 0);
+    const bool needs3chJpeg = lower.size() >= 5
+                              && lower.compare(lower.size() - 5, 5, ".jpeg") == 0;
+    try {
+        if (needs3ch || needs3chJpeg) {
+            cv::Mat bgr;
+            cv::cvtColor(bgra, bgr, cv::COLOR_BGRA2BGR);
+            return cv::imwrite(filepath, bgr);
+        }
+        return cv::imwrite(filepath, bgra);
+    } catch (const cv::Exception&) {
+        return false;
+    }
 }
 #else
 bool Bitmap::save(const std::string& filepath) const {

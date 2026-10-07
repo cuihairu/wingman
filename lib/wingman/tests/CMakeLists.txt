@@ -167,6 +167,8 @@ if(BUILD_CORE_TESTS)
         target_compile_definitions(core_tests PRIVATE WINGMAN_ENABLE_VISION)
         # performance.cpp 仅 OpenCV 版本（无 stub），其测试同理只在有 OpenCV 时编译
         target_sources(core_tests PRIVATE performance_test.cpp)
+        # vision_ai 解析器断言在 stub 构建（parse 恒空 box）下不成立，同理 gate
+        target_sources(core_tests PRIVATE vision_ai_test.cpp)
         message(STATUS "Core tests: WINGMAN_ENABLE_VISION defined")
     endif()
 

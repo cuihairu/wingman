@@ -299,6 +299,13 @@ color 接受 `0xRRGGBB` 整数或 `{r,g,b}` 表；findImage 相对路径按 conf
 `ImageAnalyzer`（bitmap-first：每 API 调用取一帧再分析，与桌面 Vision 每次查找
 重新截屏的结构差异——投屏取帧代价更高）。
 
+**AI 视觉识别**：桌面侧已落地 `wingman.vision.aiSetup/aiSetupStatus/aiLocate`
+（OpenAI 兼容 provider，截帧→JPEG→视觉模型→像素包围盒，凭据走
+`crypto.encryptAES` 加密面，详见 docs/api/vision.md「AI 视觉识别」节）。
+Android 侧**尚未接入**（规划增量）：同形三函数挂 `android_script_api.cpp`，
+captureFrame 位图复用同一 provider 通路；因 androidagent 不链接 lib/wingman
+本体（A1 红线），HTTP 调 provider 走租户侧 client，接通前本节不视为已实现。
+
 **远程截图**：AndroidAgent 响应 `screenshot.capture`（与桌面 screenshot_handler
 同形：region 参数、4K clamp、BGRA→BGR→JPEG q82→base64 data URI），Go server
 workflow 的 screenshot 步骤零改动覆盖 Android 设备。displayId 接受即忽略。

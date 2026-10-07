@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### feat（2026-10-07，AI 视觉识别 MVP——aiSetup/aiLocate 单场景闭环，凭据走保险箱同型加密面）
+
+- **provider 配置面**：新增 VisionAi（`vision_ai.hpp/.cpp`），OpenAI 兼容 chat.completions 端点（baseUrl/model/超时配置驻内存）；`apiKeyEnc` 支持 crypto AES-256-GCM 密文+口令解密驻内存（明文与密钥不落盘不落日志），`aiSetupStatus` 状态查询。
+- **locate 协议纯函数**：截屏 JPEG→base64 data URL→chat.completions 请求构造；响应解析 `found/label/bbox_2d/confidence`（坐标 0–1000 归一，按帧尺寸换算像素），content 字符串/对象双形态容错；失败统一 `found=false`+`lastError()` 可区分。
+- **绑定与闭环**：vision 模块暴露 `aiSetup`/`aiSetupStatus`/`aiLocate`（Lua/Python 绑定同步，`vision.pyi` 补型）；桌面闭环 Screen::capture 截帧→provider→结构化 bbox→脚本 `input.click` 动作映射；无 OpenCV 平台 stub 化（`WINGMAN_ENABLE_VISION` 自动检测口径不变）。
+- **screen save 修复**：OpenCV BMP/JPEG 编码器不收 4 通道，BGRA→BGR 后写，imwrite 抛异常兜底转 false。
+- **测试**：新增 `vision_ai_test`（协议构造/解析/双形态/失败路径/配置面），batch11 BMP 用例按平台解码器分宽容档。
+- **文档**：docs/api/vision.md 新增 AI 节（凭据加密面写法）；android-agent-design.md 视觉节注明 Android 侧尚未接入（接通前不视为已实现）；development-todo 立七原子项并勾前四。
+
 ### fix（2026-10-05，tray badge 编译错误修复——tauri v2 无角标 API，意图端改显式不支持）
 
 72da5cc 的 `tray_control` 调用 `TrayIcon::set_badge_label`，该方法在 tauri v2（锁 2.11.2）全平台不存在，三腿 nightly 整包构建（run 37240534697，Linux/macOS/Windows）同报 E0599——CI 无 GUI/Tauri 构建 job，仅 nightly 抓到（nightly 首次抓 GUI 失败）。修复：`"badge"` 分支显式返回 `tray badge not supported` 错误走前端 `.catch` 日志（[8837da6](https://github.com/cuihairu/wingman/commit/8837da6)），不再臆造「仅 Windows/macOS 生效、Linux no-op」语义；同步修正 development-todo 与 docs/api/notify.md 三处 badge 描述。`cargo check` 通过，重触发 nightly 的 Linux/Windows/Android/Agent 七腿绿（macOS x64 腿为 DMG 打包抖动，同 SHA 定时 nightly 全绿顶替）。

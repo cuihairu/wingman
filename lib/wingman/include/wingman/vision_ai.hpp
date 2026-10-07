@@ -1,0 +1,79 @@
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include "screen.hpp"
+
+namespace wingman {
+
+/// AI 视觉识别 provider 配置（vision 模块 aiSetup 的 C++ 面）。
+///
+/// 端点约定为 OpenAI 兼容 chat.completions（云端 API 与本地推理服务如
+/// Ollama/vLLM 的 /v1 同形），baseUrl 填到 /v1 为止。apiKey 为解密后的
+/// 明文，仅驻内存——本类不落盘、不打日志（凭据加密面见 vision.md：
+/// 配置侧用 crypto.encryptAES 密文保存，aiSetup 传入密文与口令在此解密）。
+struct VisionAiConfig {
+	std::string baseUrl;
+	std::string model;
+	std::string apiKey;
+	int timeoutSeconds = 60;
+};
+
+/// 一次定位结果：bbox 为帧像素坐标（x/y 左上角，w/h 尺寸）。
+struct VisionAiBox {
+	bool found = false;
+	int x = 0;
+	int y = 0;
+	int w = 0;
+	int h = 0;
+	double confidence = 0.0;
+	std::string label;
+};
+
+/// AI 视觉识别（WINGMAN_ENABLE_VISION 构建下可用，stub 构建返回未构建错误）。
+///
+/// 链路：Screen::capture 截帧 → JPEG（质量 82，与远程截图同参数）→
+/// base64 data URL → OpenAI 兼容 chat.completions → 模型返回
+/// {"found":bool,"label":str,"bbox_2d":[x1,y1,x2,y2],"confidence":0-1}
+/// （bbox_2d 为 0–1000 归一坐标，解析时按帧尺寸换算像素）。
+/// 复用面：桌面 runtime 与 Android 租户（A 线）同协议接入。
+class VisionAi {
+public:
+	/// 写入配置（进程级驻内存；重复 setup 整体覆盖）。
+	static void setup(const VisionAiConfig& cfg);
+
+	/// 清空配置（测试与「断开 provider」用）。
+	static void reset();
+
+	static bool isConfigured();
+
+	/// 当前配置快照（apiKey 打码为 hasKey 标志，明文不出本接口）。
+	static VisionAiConfig config();
+	static bool hasApiKey();
+
+	/// 构造 OpenAI 兼容定位请求体（纯函数，单测面）。
+	/// prompt 约定模型只回 JSON 对象；坐标 0–1000 归一（Qwen-VL bbox_2d 风格），
+	/// 与帧尺寸无关，换算只发生在解析侧。
+	static std::string buildLocateRequestBody(const std::string& model,
+	                                          const std::string& desc,
+	                                          const std::string& jpegBase64);
+
+	/// 解析 provider 响应（纯函数，单测面）。
+	/// 容忍 ```json 围栏与前后杂文本；非法 JSON / 字段缺失 / 坐标越界
+	/// 一律 found=false（识别失败与「没找到」在调用面同形，错误详情走
+	/// lastError()）。
+	static VisionAiBox parseLocateResponse(const std::string& responseBody,
+	                                       int frameWidth,
+	                                       int frameHeight);
+
+	/// 完整闭环：截帧（region 空则全屏）→ provider → 像素 bbox。
+	/// provider 未配置 / 未启用视觉构建 / HTTP 失败 / 解析失败：
+	/// found=false 且 lastError() 给出可区分原因。
+	static VisionAiBox locate(const std::string& desc, const Rect& region = Rect());
+
+	/// 最近一次 locate 失败原因（成功后清空）。
+	static std::string lastError();
+};
+
+} // namespace wingman

@@ -17,7 +17,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Find dependencies
 find_package(OpenCV CONFIG QUIET)
 if(OpenCV_FOUND)
-    if(NOT OpenCV_DIR MATCHES "/vcpkg_installed/")
+    # vcpkg 白名单：manifest 安装（…/vcpkg_installed/…）或工具链经典安装
+    # （${_VCPKG_INSTALLED_DIR}=<vcpkg根>/installed）。其余来源（/usr/local、
+    # Homebrew、系统 SDK 等）一律拒绝——CLAUDE.md 依赖管理规则 2/3。
+    if(NOT OpenCV_DIR MATCHES "/vcpkg_installed/" AND
+       NOT (_VCPKG_INSTALLED_DIR AND OpenCV_DIR MATCHES "^${_VCPKG_INSTALLED_DIR}/"))
         message(STATUS "Ignoring non-vcpkg OpenCV at ${OpenCV_DIR}")
         set(OpenCV_FOUND FALSE)
     endif()
@@ -153,6 +157,7 @@ endif()
 if(OpenCV_FOUND AND TARGET opencv_core)
     list(APPEND WINGMAN_SOURCES
         src/vision.cpp
+        src/vision_ai.cpp
         src/performance.cpp
     )
     add_compile_definitions(WINGMAN_ENABLE_VISION)
