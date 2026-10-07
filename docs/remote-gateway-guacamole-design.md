@@ -1,13 +1,14 @@
 # 远程网关像素面集成 Apache Guacamole 设计
 
-- 状态：P0 已实现（服务端网关 + 票据 + RBAC + 三协议 e2e + 前端组件，2026-09-23）；阶段二（剪贴板控制 UI、文件传输、会话录制）2026-09-25 实现完成（设计见 §14–§16，DG-7/DG-8/DG-9）；P1（cockpit 接入、前端公共组件抽取、审计报表）✅ 2026-09-25 完成（§7.1/§17）；SSH/SFTP 文件浏览器第一版 ✅ 2026-09-26 实现（§15.1），第二版（分页/进度/重试/审计）✅ 同日实现（§15.2）；目标转发中继（DG-10，guacd 不直拨目标）✅ 2026-10-02 实现（§4.5，cockpit 0767b8b 方案移植）
+- 状态：P0 已实现（服务端网关 + 票据 + RBAC + 三协议 e2e + 前端组件，2026-09-23）；阶段二（剪贴板控制 UI、文件传输、会话录制）2026-09-25 实现完成（设计见 §14–§16，DG-7/DG-8/DG-9）；P1（cockpit 接入、前端公共组件抽取、审计报表）✅ 2026-09-25 完成（§7.1/§17）；SSH/SFTP 文件浏览器第一版 ✅ 2026-09-26 实现（§15.1），第二版（分页/进度/重试/审计）✅ 同日实现（§15.2）；目标转发中继（DG-10，guacd 不直拨目标）✅ 2026-10-02 实现（§4.5，cockpit 0767b8b 方案移植）；密钥保险箱（DG-11）✅ 2026-10-03 实现（§18：主口令派生加密存远程凭据，useSaved 注入票据签发）
 - 日期：2026-09-23（P0 设计），2026-09-25（阶段二设计），2026-09-26（文件浏览器与浏览器内回放实现），2026-10-02（目标转发中继修正）
 - 关联文档：`architecture-decisions.md`（硬约束）、`mobile-automation-design.md`（Mobile D1–D9 决策）、`ROADMAP.md`（A4 里程碑）
 - 本文编号：**DG-x**（Guacamole 相关决策），与 Mobile D1–D9、架构 ADEC 并列互引
 - 实现落点：`orchestrator/server/internal/handlers/guacamole.go`（网关）、
   `internal/agent/guac_relay.go`（目标转发中继，§4.5）、
   `internal/remoteticket/`（一次性票据）、`deployments/guacd/`（部署，锁定 1.5.5）、
-  `orchestrator/dashboard/src/services/remote.ts` + `src/components/RemoteDesktopModal/`（前端）、
+  `internal/security/vault.go` + `internal/handlers/vault.go`（保险箱加密与端点，§18）、
+  `orchestrator/dashboard/src/services/remote.ts` + `src/components/RemoteDesktopModal/` + `src/components/VaultManagerModal/`（前端）、
   `libs/agentcore/src/proxy_tunnel.cpp`（runtime 侧代理数据面，§4.5）；
   e2e：`orchestrator/server/integration/guacd_e2e_test.go`（SSH/VNC/RDP 三协议真实链路，经中继）
 
@@ -653,3 +654,59 @@ WINGMAN_RECORDING_DIR 均已设，否则 400）→ WS 握手时 connect 参数�
 | guacd 容器内 guacenc 实时转 mp4 | guacd 镜像不带 guacenc；每会话一路 ffmpeg 级转码 CPU；mp4 不可流式追加，会话中途崩溃丢整段——.mjs 恰好是崩溃安全的（逐指令追加） |
 | 经 agent 截图帧序列录制 | 重回「控制面扛视频流」的老路（§1.1 已否决）；且录制从此依赖 agent 在线 |
 | 录像自动清理/保留策略 | 第一版只做手动删除；保留策略是运维策略不是协议问题，等真实部署规模出现再设计 |
+
+---
+
+## 18. 密钥保险箱（DG-11，P1 落地，2026-10-03）
+
+### 动机与定位
+
+远程凭据（RDP/VNC/SSH 的密码与私钥）每次连接手输是 cockpit 密码箱模式要解决的
+痛点；wingman 的落地比 cockpit 更严一层——cockpit 落库密文用 server 级 env 密钥，
+本实现按用户主口令派生，**服务端存储被拖走也解不开凭据**。保险箱是 Dashboard
+Agents 页的管理入口，连接表单经 `useSaved` 自动注入，属远程控制面的凭据管理，
+非脚本 API。
+
+### 加密结构（`internal/security/vault.go` + `models/vault.go`）
+
+```
+主口令 ──PBKDF2-HMAC-SHA256(salt, 600k)──▶ KEK
+随机 32B DEK ──AES-256-GCM(KEK)──▶ WrappedKey（落库）
+凭据 Password/PrivateKey ──AES-256-GCM(DEK)──▶ hex(nonce‖ciphertext)（落库）
+```
+
+- 600k 轮是 OWASP 2023 对 PBKDF2-HMAC-SHA256 的建议值，只在解锁时执行一次；
+- DEK 仅解锁期驻留服务端内存，空闲 30 分钟自动锁回（每次取用续期）；主口令与
+  DEK 永不落库，也不存任何可校验主口令的明文摘要——解锁 = 解开 WrappedKey，
+  GCM 认证失败与密文篡改在 AEAD 下不可区分，忘主口令即不可恢复是设计属性；
+- 一条 (用户, agent, 协议, 端口) 四列唯一，重复保存视为更新；列表 API 只出
+  `hasPassword`/`hasSecret` 标志位与用户名等非机密元数据，密文字段 `json:"-"`
+  永不序列化（掩码展示的实现面）。
+
+### 端点与审计（`/api/remote/vault/*`，挂 desktop:view/control 权限组）
+
+```
+GET    /api/remote/vault/status             箱状态（是否已设/是否解锁）
+POST   /api/remote/vault/setup              首装设主口令        审计 vault.setup
+POST   /api/remote/vault/change-password    改主口令（错口令也记）审计 vault.change_password
+POST   /api/remote/vault/unlock             解锁（失败也记）      审计 vault.unlock
+POST   /api/remote/vault/lock               锁回（幂等）          审计 vault.lock
+GET    /api/remote/vault/credentials        列表（仅元数据+标志位，不审计——高频）
+PUT    /api/remote/vault/credentials        保存/更新             审计 vault.save
+DELETE /api/remote/vault/credentials/:id    删除                  审计 vault.delete
+GET    /api/remote/vault/export             导出（浏览器明示确认） 审计 vault.export
+```
+
+全部操作留痕于既有 Operation Logs（Admin 页可见）；`useSaved` 在
+`guacamole.go` 票据签发处调 `VaultLookupSaved` 只填充请求里缺失的字段，
+**明文只在那一刻解密进 connect 参数，不回传浏览器、不进日志与审计**——
+本实现不提供「查看明文」端点，这是比「查看留痕」更强的取舍：浏览器面
+永远拿不到凭据明文，留痕记的是全部管理与解锁动作。
+
+### 与硬约束的相容性
+
+- 全部端点收敛在 Go server，浏览器只连 server（硬约束 5）；新增的只是
+  server 内的 REST 面，runtime 侧零改动（保险箱不参与 runtime 连接）。
+- 管理界面：`VaultManagerModal`（设主口令/解锁/锁定/条目列表/删除/导出），
+  连接表单「保存到保险箱」「使用保险箱已存凭据」（探测命中且解锁默认勾选），
+  密码输入一律 `Input.Password` 掩码。

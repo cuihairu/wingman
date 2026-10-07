@@ -78,6 +78,7 @@ go run main.go
 - **Agent 详情**：查看 Agent 的系统信息、资源占用
 - **标签管理**：为 Agent 设置分组标签（需要 `agents:manage` 权限）
 - **远程关闭**：发送关闭命令到 Agent（需要 `agents:manage` 权限）
+- **密钥保险箱**：按主口令加密保存远程桌面凭据（RDP/VNC/SSH），连接时自动注入（需要 `desktop:view`/`desktop:control` 权限）——首装设主口令、解锁/锁定、条目管理、导出；凭据明文不回传浏览器，全部操作留痕于操作日志（详见远程网关设计 §18）
 
 #### Agent 状态说明
 
