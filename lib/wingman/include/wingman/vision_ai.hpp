@@ -33,6 +33,17 @@ struct VisionAiBox {
 	std::string label;
 };
 
+/// 批量元素识别单项（坐标与置信度语义同 VisionAiBox，无 found 位——
+/// 整批是否为空由 elements() 返回序列本身表达）。
+struct VisionAiElement {
+	std::string label;
+	int x = 0;
+	int y = 0;
+	int w = 0;
+	int h = 0;
+	double confidence = 0.0;
+};
+
 /// AI 视觉识别（WINGMAN_ENABLE_VISION 构建下可用，stub 构建返回未构建错误）。
 ///
 /// 链路：Screen::capture 截帧 → JPEG（质量 82，与远程截图同参数）→
@@ -83,6 +94,27 @@ public:
 	/// provider 未配置 / 未启用视觉构建 / HTTP 失败 / 解析失败：
 	/// found=false 且 lastError() 给出可区分原因。
 	static VisionAiBox locate(const std::string& desc, const Rect& region = Rect());
+
+	/// 构造批量元素识别请求体（纯函数，单测面）。desc 空=列出全部可交互
+	/// 元素，非空=筛选匹配描述的元素；协议约定模型只回 JSON 对象：
+	/// {"found":bool,"elements":[{"label":str,"bbox_2d":[x1,y1,x2,y2],
+	/// "confidence":0-1}]}（bbox_2d 同 locate 的 0–1000 归一）。
+	static std::string buildElementsRequestBody(const std::string& model,
+	                                            const std::string& desc,
+	                                            const std::string& jpegBase64);
+
+	/// 解析批量元素响应（纯函数，单测面）。容错口径同 parseLocateResponse
+	/// （围栏/杂文本/choices 包裹/content 对象形态）；坏 JSON 或 found=false
+	/// 返回空批；elements 内单项 bbox 缺失/退化只跳过该项不废整批。
+	static std::vector<VisionAiElement> parseElementsResponse(const std::string& responseBody,
+	                                                          int frameWidth,
+	                                                          int frameHeight);
+
+	/// 完整闭环：截帧（region 空则全屏）→ provider → 像素 bbox 列表。
+	/// 失败语义同 locate：返回空批且 lastError() 给出可区分原因
+	///（解析成功但屏幕无匹配元素属正常空批，lastError 为空）。
+	static std::vector<VisionAiElement> elements(const std::string& desc,
+	                                             const Rect& region = Rect());
 
 	/// 最近一次 locate 失败原因（成功后清空）。
 	static std::string lastError();

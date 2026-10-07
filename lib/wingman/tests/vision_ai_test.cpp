@@ -21,6 +21,7 @@ using wingman::Rect;
 using wingman::VisionAi;
 using wingman::VisionAiBox;
 using wingman::VisionAiConfig;
+using wingman::VisionAiElement;
 
 // OpenAI 兼容响应外壳：choices[0].message.content 携带模型 JSON 文本。
 std::string openAiEnvelope(const std::string& content) {
@@ -222,6 +223,134 @@ TEST_F(VisionAiFrameProviderEnv, ProviderNotCalledWithoutConfig) {
 	});
 	const VisionAiBox box = VisionAi::locate("按钮");
 	EXPECT_FALSE(box.found);
+	EXPECT_EQ(calls, 0); // 未配置在截帧前短路
+	EXPECT_NE(VisionAi::lastError().find("aiSetup"), std::string::npos);
+}
+
+// ===== 批量元素识别（aiElements）协议纯函数 =====
+
+TEST(VisionAiElementsProtocol, BuildElementsRequestBodyShape) {
+	const std::string body = VisionAi::buildElementsRequestBody(
+	    "qwen2.5-vl:7b", "按钮", "QUJD");
+	ASSERT_FALSE(body.empty());
+	EXPECT_NE(body.find("\"model\":\"qwen2.5-vl:7b\""), std::string::npos);
+	EXPECT_NE(body.find("data:image/jpeg;base64,QUJD"), std::string::npos);
+	EXPECT_NE(body.find("按钮"), std::string::npos);
+	EXPECT_NE(body.find("elements"), std::string::npos);
+	EXPECT_NE(body.find("bbox_2d"), std::string::npos);
+	auto root = nlohmann::json::parse(body);
+	ASSERT_EQ(root["messages"].size(), 1u);
+	EXPECT_EQ(root["messages"][0]["role"], "user");
+}
+
+TEST(VisionAiElementsProtocol, BuildElementsRequestBodyListsAllWhenDescEmpty) {
+	// desc 空 = 列出全部可交互元素（prompt 任务段切换）
+	const std::string body = VisionAi::buildElementsRequestBody("m", "", "QUJD");
+	EXPECT_NE(body.find("ALL interactive UI elements"), std::string::npos);
+}
+
+TEST(VisionAiElementsProtocol, ParseElementsBatch) {
+	// 归一换算：[0,0,500,500] → 1000x500 帧 [0,0,500,250]；
+	// [500,500,1000,1000] → [500,250,500,250]
+	const std::string resp = openAiEnvelope(
+	    R"({"found":true,"elements":[{"label":"登录","bbox_2d":[0,0,500,500],"confidence":0.9},)"
+	    R"({"label":"取消","bbox_2d":[500,500,1000,1000],"confidence":0.6}]})");
+	const std::vector<VisionAiElement> elems =
+	    VisionAi::parseElementsResponse(resp, 1000, 500);
+	ASSERT_EQ(elems.size(), 2u);
+	EXPECT_EQ(elems[0].label, "登录");
+	EXPECT_EQ(elems[0].x, 0);
+	EXPECT_EQ(elems[0].y, 0);
+	EXPECT_EQ(elems[0].w, 500);
+	EXPECT_EQ(elems[0].h, 250);
+	EXPECT_DOUBLE_EQ(elems[0].confidence, 0.9);
+	EXPECT_EQ(elems[1].label, "取消");
+	EXPECT_EQ(elems[1].x, 500);
+	EXPECT_EQ(elems[1].y, 250);
+	EXPECT_EQ(elems[1].w, 500);
+	EXPECT_EQ(elems[1].h, 250);
+	EXPECT_TRUE(VisionAi::lastError().empty());
+}
+
+TEST(VisionAiElementsProtocol, ParseElementsEmptyBatchNotFound) {
+	const std::string resp = openAiEnvelope(R"({"found":false,"elements":[]})");
+	const std::vector<VisionAiElement> elems =
+	    VisionAi::parseElementsResponse(resp, 1000, 500);
+	EXPECT_TRUE(elems.empty());
+	// 模型明示无匹配=正常空批（lastError 保持空，区别于失败）
+	EXPECT_TRUE(VisionAi::lastError().empty());
+}
+
+TEST(VisionAiElementsProtocol, ParseElementsSkipsBadItemsKeepsGood) {
+	// 单项坏（bbox 缺失 / 退化零尺寸 / 长度非法）跳过不废整批
+	const std::string resp = openAiEnvelope(
+	    R"({"found":true,"elements":[)"
+	    R"({"label":"ok","bbox_2d":[0,0,1000,1000],"confidence":0.8},)"
+	    R"({"label":"nobbox","confidence":0.5},)"
+	    R"({"label":"degenerate","bbox_2d":[500,500,500,500],"confidence":0.5},)"
+	    R"({"label":"shortbbox","bbox_2d":[1,2,3]}]})");
+	const std::vector<VisionAiElement> elems =
+	    VisionAi::parseElementsResponse(resp, 640, 480);
+	ASSERT_EQ(elems.size(), 1u);
+	EXPECT_EQ(elems[0].label, "ok");
+	EXPECT_TRUE(VisionAi::lastError().empty());
+}
+
+TEST(VisionAiElementsProtocol, ParseElementsRejectsFoundWithoutArray) {
+	const std::string resp = openAiEnvelope(R"({"found":true})");
+	const std::vector<VisionAiElement> elems =
+	    VisionAi::parseElementsResponse(resp, 1000, 500);
+	EXPECT_TRUE(elems.empty());
+	EXPECT_NE(VisionAi::lastError().find("elements"), std::string::npos);
+}
+
+TEST(VisionAiElementsProtocol, ParseElementsRejectsBadJson) {
+	const std::vector<VisionAiElement> elems =
+	    VisionAi::parseElementsResponse("garbage", 1000, 500);
+	EXPECT_TRUE(elems.empty());
+	EXPECT_FALSE(VisionAi::lastError().empty());
+}
+
+TEST(VisionAiElementsProtocol, ParseElementsStripsFence) {
+	const std::string content =
+	    "```json\n"
+	    + std::string(
+	        R"({"found":true,"elements":[{"label":"btn","bbox_2d":[100,100,300,300],"confidence":0.9}]})")
+	    + "\n```";
+	const std::string payload = nlohmann::json(content).dump();
+	const std::vector<VisionAiElement> elems =
+	    VisionAi::parseElementsResponse(openAiEnvelope(payload), 1000, 1000);
+	ASSERT_EQ(elems.size(), 1u);
+	EXPECT_EQ(elems[0].x, 100);
+	EXPECT_EQ(elems[0].w, 200);
+}
+
+TEST_F(VisionAiFrameProviderEnv, ElementsInjectedProviderDrivesCapture) {
+	VisionAiConfig cfg;
+	// 端口 1 立即拒绝：截帧链路验证不外呼
+	cfg.baseUrl = "http://127.0.0.1:1";
+	cfg.model = "test-model";
+	cfg.timeoutSeconds = 2;
+	VisionAi::setup(cfg);
+	int calls = 0;
+	VisionAi::setFrameProvider([&](const Rect&) {
+		++calls;
+		return std::make_unique<Bitmap>(4, 2);
+	});
+	const std::vector<VisionAiElement> elems = VisionAi::elements("");
+	EXPECT_EQ(calls, 1); // 注入 provider 驱动截帧（Android 同通路）
+	EXPECT_TRUE(elems.empty());
+	EXPECT_FALSE(VisionAi::lastError().empty()); // HTTP 拒绝可区分
+}
+
+TEST_F(VisionAiFrameProviderEnv, ElementsWithoutConfigShortCircuits) {
+	int calls = 0;
+	VisionAi::setFrameProvider([&](const Rect&) {
+		++calls;
+		return std::make_unique<Bitmap>(4, 2);
+	});
+	const std::vector<VisionAiElement> elems = VisionAi::elements("按钮");
+	EXPECT_TRUE(elems.empty());
 	EXPECT_EQ(calls, 0); // 未配置在截帧前短路
 	EXPECT_NE(VisionAi::lastError().find("aiSetup"), std::string::npos);
 }

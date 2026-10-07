@@ -126,6 +126,35 @@ ModuleDescriptor createVisionModule() {
 		});
 	}, "desc:string, region? -> {found,x,y,w,h,confidence,label} | {found:false,error}"});
 
+	mod.functions.push_back({"aiElements", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string desc = args[0].asString();
+		Rect region = args.size() > 1 && !args[1].isNull() ? toRect(args[1]) : Rect();
+		std::vector<VisionAiElement> elems = VisionAi::elements(desc, region);
+		if (elems.empty() && !VisionAi::lastError().empty()) {
+			// 失败与「屏幕无匹配」在返回序列上同形，靠 lastError 区分
+			return ScriptValue::fromObject({
+				{"found", ScriptValue::fromBool(false)},
+				{"error", ScriptValue::fromString(VisionAi::lastError())},
+			});
+		}
+		std::vector<ScriptValue> arr;
+		arr.reserve(elems.size());
+		for (const auto& e : elems) {
+			arr.push_back(ScriptValue::fromObject({
+				{"label", ScriptValue::fromString(e.label)},
+				{"x", ScriptValue::fromInt(e.x)},
+				{"y", ScriptValue::fromInt(e.y)},
+				{"w", ScriptValue::fromInt(e.w)},
+				{"h", ScriptValue::fromInt(e.h)},
+				{"confidence", ScriptValue::fromFloat(e.confidence)},
+			}));
+		}
+		return ScriptValue::fromObject({
+			{"found", ScriptValue::fromBool(!arr.empty())},
+			{"elements", ScriptValue::fromArray(std::move(arr))},
+		});
+	}, "desc:string, region? -> {found, elements:[{label,x,y,w,h,confidence}]} | {found:false,error} (desc 空=列出全部可交互元素)"});
+
 	return mod;
 }
 

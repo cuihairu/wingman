@@ -287,6 +287,27 @@ TEST(AndroidApiTest, AiLocateRegionPassedThrough) {
     EXPECT_EQ(bridge.captureCount, 1);
     wingman::VisionAi::reset();
 }
+
+TEST(AndroidApiTest, AiElementsCapturesFrameThroughBridge) {
+    FakeHostBridge bridge;
+    ApiEnv env(&bridge);
+
+    // 批量元素：同 provider 通路（端口 1 拒绝 → 空批 + error 可区分）
+    env.eval(R"(
+        assert(wingman.vision.aiSetup({
+            baseUrl = "http://127.0.0.1:1", model = "test-model",
+            timeoutSeconds = 2 }) == true)
+        local r = wingman.vision.aiElements("可点击按钮")
+        assert(r.found == false)
+        assert(#r.error > 0)
+        local all = wingman.vision.aiElements("")   -- desc 空=列出全部
+        assert(all.found == false)
+    )");
+
+    // 两次调用各经 captureFrame 取帧一次
+    EXPECT_EQ(bridge.captureCount, 2);
+    wingman::VisionAi::reset();
+}
 #else
 TEST(AndroidApiTest, AiSetupStubSemanticsMatchesDesktopStub) {
     ApiEnv env(nullptr);
@@ -300,6 +321,9 @@ TEST(AndroidApiTest, AiSetupStubSemanticsMatchesDesktopStub) {
         assert(st.configured == false)
         local r = wingman.vision.aiLocate("登录按钮")
         assert(r.found == false)
+        local e = wingman.vision.aiElements("登录按钮")
+        assert(e.found == false)
+        assert(type(e.elements) == "table" and #e.elements == 0)  -- stub 空批（lastError 恒空不走 error 形态）
     )");
 
     wingman::VisionAi::reset();

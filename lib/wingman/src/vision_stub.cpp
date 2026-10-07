@@ -122,4 +122,19 @@ VisionAiBox VisionAi::locate(const std::string&, const Rect&) {
     return VisionAiBox{};
 }
 
+std::string VisionAi::buildElementsRequestBody(const std::string&, const std::string&, const std::string&) {
+    spdlog::warn("Vision support not enabled (OpenCV not available)");
+    return {};
+}
+
+std::vector<VisionAiElement> VisionAi::parseElementsResponse(const std::string&, int, int) {
+    spdlog::warn("Vision support not enabled (OpenCV not available)");
+    return {};
+}
+
+std::vector<VisionAiElement> VisionAi::elements(const std::string&, const Rect&) {
+    spdlog::warn("Vision support not enabled (OpenCV not available)");
+    return {};
+}
+
 } // namespace wingman

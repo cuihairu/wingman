@@ -299,14 +299,16 @@ color 接受 `0xRRGGBB` 整数或 `{r,g,b}` 表；findImage 相对路径按 conf
 `ImageAnalyzer`（bitmap-first：每 API 调用取一帧再分析，与桌面 Vision 每次查找
 重新截屏的结构差异——投屏取帧代价更高）。
 
-**AI 视觉识别**：桌面侧已落地 `wingman.vision.aiSetup/aiSetupStatus/aiLocate`
-（OpenAI 兼容 provider，截帧→JPEG→视觉模型→像素包围盒，凭据走
-`crypto.encryptAES` 加密面，详见 docs/api/vision.md「AI 视觉识别」节）。
-Android 侧已接入（2026-10-07，桌面同源单测绿，真机走查证据见 development-todo
-独立项）：同形三函数挂 `android_script_api.cpp`（无 OpenCV 构建注册桌面
-vision_stub 同语义假体）；截帧经 `VisionAi::setFrameProvider` 注入
-captureFrame 适配——NDK 下公共层 `Screen::capture` 无 `__ANDROID__` 装配
-（平台宏冻结不新增），注入点让 captureFrame 位图复用同一 provider 通路。
+**AI 视觉识别**：桌面侧已落地
+`wingman.vision.aiSetup/aiSetupStatus/aiLocate/aiElements`
+（OpenAI 兼容 provider，截帧→JPEG→视觉模型→像素包围盒，aiElements 一次
+调用批量取元素，凭据走 `crypto.encryptAES` 加密面，详见 docs/api/vision.md
+「AI 视觉识别」节）。Android 侧已接入（2026-10-07，桌面同源单测绿，真机
+走查证据见 development-todo 独立项）：同形四函数挂 `android_script_api.cpp`
+（无 OpenCV 构建注册桌面 vision_stub 同语义假体）；截帧经
+`VisionAi::setFrameProvider` 注入 captureFrame 适配——NDK 下公共层
+`Screen::capture` 无 `__ANDROID__` 装配（平台宏冻结不新增），注入点让
+captureFrame 位图复用同一 provider 通路。
 HTTP/解密按 cherry-pick 模式收口：`http.cpp`（`WINGMAN_HAS_CURL`）与
 `crypt.cpp` 进 androidagent 目标，android vcpkg 清单补 `curl`/`openssl`
 （与 opencv4 同款清单必含），缺失时 CMake 明确报错不降级。

@@ -439,6 +439,38 @@ void registerVisionModule(sol::state& lua, AndroidHostBridge* bridge,
             }
             return sol::make_object(lua, result);
         });
+
+    // 批量元素识别（桌面 vision 模块同形）：desc 空=列出全部可交互元素；
+    // 失败与空批靠 error 字段区分（空批无 error）。截帧经注入的
+    // captureFrame provider 同 aiLocate。
+    vision.set_function("aiElements",
+        [&lua](const std::string& desc, sol::optional<sol::object> regionObj)
+            -> sol::object {
+            sol::table result = lua.create_table();
+            Rect region;
+            const bool hasRegion = regionObj && toRect(*regionObj, region);
+            const std::vector<VisionAiElement> elems = VisionAi::elements(
+                desc, hasRegion ? region : Rect());
+            if (elems.empty() && !VisionAi::lastError().empty()) {
+                result["found"] = false;
+                result["error"] = VisionAi::lastError();
+                return sol::make_object(lua, result);
+            }
+            sol::table arr = lua.create_table();
+            int idx = 0;
+            for (const auto& e : elems) {
+                arr[++idx] = lua.create_table_with(
+                    "label", e.label,
+                    "x", e.x,
+                    "y", e.y,
+                    "w", e.w,
+                    "h", e.h,
+                    "confidence", e.confidence);
+            }
+            result["found"] = !elems.empty();
+            result["elements"] = arr;
+            return sol::make_object(lua, result);
+        });
 }
 
 } // namespace

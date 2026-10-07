@@ -101,7 +101,8 @@
   - [x] Lua/Python 绑定 + docs/api/vision.md AI 节（凭据加密面写法与 provider 约定）
   - [x] Android 接入：androidagent 挂同形 `aiLocate`（captureFrame 位图经 `VisionAi::setFrameProvider` 注入复用同 provider 通道；http.cpp/crypt.cpp cherry-pick，清单补 curl/openssl）
   - [x] 真机走查截图证据（模拟器：识别指定按钮并点击成功，B 批同口径）——2026-10-07 PASS：模拟器 agent 连 Go server，`/api/scripts/run` 下发脚本 aiSetup(mock provider)→aiLocate("目标按钮") found=true box=(471,1457,135,133) conf=0.93→input.click(538,1523) 注入成功，Settings 主页跳 Notifications 子页（前后截图佐证）；provider 收 163KB 截帧请求，script_output 落库至 finished（结论记 CHANGELOG 同日条目）
-  - [ ] 扩展：`aiElements()` 批量元素识别（文本/状态字段）、本地 ONNX 检测模型 provider
+  - [x] 扩展：`aiElements()` 批量元素识别（2026-10-07 落地：`VisionAi::elements` 批量协议 `{"found", "elements":[{label,bbox_2d,confidence}]}`，desc 空=全部可交互元素；Lua/Python/Android 三面同形绑定，单项坏跳过不废整批，失败与空批靠 error 区分；两构建档 2633+2580 全绿）
+  - [ ] 扩展：本地 ONNX 检测模型 provider（provider 抽象扩展本地推理后端，vcpkg onnx 依赖评估）
 - [ ] 图像模板批量管理与识别
 - [x] 录制 / 回放闭环（macro_module.cpp）
 - [x] UIA 事件监听绑定（`onPropertyChanged` / `onStructureChanged` / `removeEventListener`，Windows UIA 专属，回调线程安全门控走 `uia.error`；跨平台统一事件源见下条「进程/窗口/文件变化统一事件源」）

@@ -276,13 +276,13 @@ end
 
 ---
 
-## AI 视觉识别（aiSetup / aiLocate）
+## AI 视觉识别（aiSetup / aiLocate / aiElements）
 
 AI 语义定位：截取当前屏幕（或指定区域）→ JPEG → OpenAI 兼容视觉模型 →
 结构化包围盒（像素坐标），配合 `input.click` 完成「识别目标并点击」。
 需 `WINGMAN_ENABLE_VISION` 构建（与 findImage 同门禁）。
 
-> **Android**：`wingman.vision` 三函数同形可用（截帧走 captureFrame 注入，
+> **Android**：`wingman.vision` 四函数同形可用（截帧走 captureFrame 注入，
 > 参数与返回一致）；无 OpenCV 构建下 `aiSetup` 注册桌面 stub 同语义假体
 > （`aiSetup` 恒 `true`、`aiSetupStatus.configured` 恒 `false`）。
 
@@ -361,6 +361,54 @@ end
 
 ---
 
+## 批量元素识别（aiElements）
+
+一次 provider 调用取回多个元素（坐标语义同 `aiLocate`），供批量断言、
+遍历点击等场景。截帧/凭据/容错口径与 `aiLocate` 共用（0–1000 归一按帧
+换算像素；协议约定模型回
+`{"found": bool, "elements": [{"label": str, "bbox_2d": [x1,y1,x2,y2], "confidence": 0-1}]}`）。
+
+### ai_elements(desc, region?) / aiElements(desc, region?)
+
+**参数**：
+- `desc`（string）— 元素筛选描述；**空串 = 列出屏幕上全部可交互元素**
+- `region`（表，可选）— 只在该区域内截帧识别，坐标仍为全屏系
+
+**返回**：
+- `{found=true, elements=[{label, x, y, w, h, confidence}, ...]}` — 像素
+  包围盒列表（顺序即模型返回顺序）
+- `{found=false, elements=[]}` — 屏幕无匹配元素（正常空批）
+- `{found=false, error}` — 未配置 / 截帧失败 / HTTP 失败，`error` 可区分原因
+  （失败与正常空批靠 `error` 字段区分）
+
+单项 bbox 缺失或退化只跳过该项，不废整批。
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+page = vision.aiElements("")   # 全部可交互元素
+if page["found"]:
+    for el in page["elements"]:
+        print(el["label"], el["x"], el["y"], el["w"], el["h"])
+```
+
+== Lua
+
+```lua:line-numbers
+local page = wingman.vision.aiElements("确定类按钮")
+if page.found then
+    for _, el in ipairs(page.elements) do
+        wingman.input.click(el.x + el.w / 2, el.y + el.h / 2)
+    end
+end
+```
+
+:::
+
+---
+
 ## 可用接口
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
@@ -373,3 +421,4 @@ end
 | `ai_setup(cfg)` | `aiSetup(cfg)` | 配置 AI 视觉 provider | cfg: 配置表（baseUrl/model/凭据）<br>返回: 是否成功 |
 | `ai_setup_status()` | `aiSetupStatus()` | 查询 provider 配置状态 | 返回: {configured, baseUrl, model, hasKey, lastError} |
 | `ai_locate(desc, region?)` | `aiLocate(desc, region?)` | AI 语义定位屏幕目标 | desc: 目标描述<br>region: 区域(可选)<br>返回: {found,x,y,w,h,confidence,label} 或 {found:false,error} |
+| `ai_elements(desc, region?)` | `aiElements(desc, region?)` | AI 批量元素识别 | desc: 筛选描述（空串=全部可交互元素）<br>region: 区域(可选)<br>返回: {found,elements:[{label,x,y,w,h,confidence}]} 或 {found:false,error} |

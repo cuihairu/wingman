@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### feat（2026-10-07，AI 视觉批量元素识别——aiElements 一次调用取多元素，三面绑定同形）
+
+- **批量协议**：VisionAi 新增 `elements`/`buildElementsRequestBody`/`parseElementsResponse`——prompt 约定模型回 `{"found": bool, "elements": [{"label", "bbox_2d", "confidence"}]}`（bbox 同 locate 的 0–1000 归一按帧换算像素）；`desc` 空=列出全部可交互元素、非空=按描述筛选。
+- **容错口径**：围栏/杂文本/choices 包裹/content 对象双形态同 `aiLocate`（抽取段提公共 `extractReplyObject`，闭环截帧/HTTP 提 `prepareProviderFrame`/`postChatCompletions`/`normalizedBboxToPixels` 共享）；单项 bbox 缺失或退化只跳过不废整批；失败与正常空批靠 `lastError()` 区分。
+- **绑定三面同形**：桌面 vision 模块、androidagent `aiElements(desc[, region])`（返回 `{found, elements:[{label,x,y,w,h,confidence}]}` 或 `{found:false, error}`），`vision.pyi` 补型；stub 构建（无 OpenCV）补同款假体保持绑定可注册。
+- **测试**：vision_ai_test 增 8 协议用例（批量解析/归一换算/坏项跳过/空批语义/围栏/闭环注入截帧强证据）+ android_api_test 增 vision 档 captureFrame 链路用例与 stub 档空批断言——build-vision 树 2633 与 build 树 2580 全绿（ScriptRunnerTest 时序抖单跑/整轮复核绿，立案口径）。
+- **文档**：vision.md 新增「批量元素识别」节（返回形态、空批与失败区分、双语言示例）、速查表行、Android 口径四函数；development-todo 扩展项拆行勾选（本地 ONNX provider 留待办）。
+
 ### feat（2026-10-07，AI 视觉 Android 接入——aiLocate 同形三函数挂 androidagent，captureFrame 注入复用同 provider 通路）
 
 - **截帧注入点**：VisionAi 新增 `setFrameProvider`（装配层，与配置数据面分离；`reset` 不清注入）——默认空走桌面 `Screen::capture`；Android 在 `registerAndroidApis` 注入 captureFrame 适配（`AndroidCaptureSource` region 裁剪同桌面语义）。NDK 下公共层 `Screen::capture` 无 `__ANDROID__` 装配且平台宏冻结不新增，注入是公共层免平台宏的收口解法。
