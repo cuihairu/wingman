@@ -15,7 +15,8 @@
 - **绑定同形**：`android_script_api.cpp` 挂 `aiSetup/aiSetupStatus/aiLocate`（语义对齐桌面 vision 模块，`apiKeyEnc`+`passphrase` 走 AES-256-GCM 解密面）；无 OpenCV 构建编 `vision_stub.cpp` 同款假体（`setFrameProvider` 空体补齐），绑定保持可注册。
 - **依赖收口**：androidagent cherry-pick 加 `http.cpp`（`WINGMAN_HAS_CURL`）与 `crypt.cpp`，android vcpkg 清单补 `curl`/`openssl`（与 opencv4 同款清单必含，缺失 CMake `FATAL_ERROR` 明示不降级）；`WINGMAN_ENABLE_VISION` 改 PUBLIC 导出（消费方分档断言可见）。
 - **测试**：vision_ai_test 增截帧注入用例（注入被采用/未配置短路，端口 1 立即拒绝不外呼）；android_api_test 增 4 用例（参数校验、Fake 桥 captureFrame 链路强证据 `captureCount`、region 透传、stub 档语义对齐）——桌面同源 build-vision 树与 stub 树各档全绿。
-- **文档**：android-agent-design 视觉节「尚未接入」转已接入（含落点与收口说明）、vision.md 补 Android 口径、development-todo 原子项勾选（真机走查证据仍为独立待办项）。
+- **文档**：android-agent-design 视觉节「尚未接入」转已接入（含落点与收口说明）、vision.md 补 Android 口径、development-todo 原子项勾选。
+- **真机走查（2026-10-07 PASS）**：模拟器 agent 连 Go server，`/api/scripts/run` 内联下发 Lua——aiSetup(mock provider)→aiLocate("目标按钮") 命中（bbox 0–1000 归一按帧 1080×2208 换算 (471,1457,135,133)、conf 0.93）→`input.click(538,1523)` 注入成功，宿主屏幕 Settings 主页跳 Notifications 子页（前后截图佐证）；mock provider 收 163KB 截帧 chat.completions 请求，script_output 逐行落库至 finished。
 
 ### feat（2026-10-07，AI 视觉识别 MVP——aiSetup/aiLocate 单场景闭环，凭据走保险箱同型加密面）
 
