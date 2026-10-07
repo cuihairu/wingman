@@ -13,6 +13,7 @@
 
 #include "wingman/androidagent/android_script_api.hpp"
 #include "platform/android/android_host_bridge.hpp"
+#include "wingman/vision_ai.hpp"
 
 #include <sol/sol.hpp>
 
@@ -225,3 +226,82 @@ TEST(AndroidApiTest, DelayInterruptsOnStop) {
     const std::string error = result.get<sol::error>().what();
     EXPECT_NE(error.find("script stopped"), std::string::npos);
 }
+
+// ===== AI 视觉识别（provider 通路，桌面 vision 模块同形）=====
+// VisionAi 配置为进程级静态：配过 baseUrl 的用例必须在收尾 reset，
+// 防污染后续用例的 HTTP 路径
+
+TEST(AndroidApiTest, AiSetupValidatesAndStatusShape) {
+    ApiEnv env(nullptr);
+
+    env.eval(R"(
+        assert(wingman.vision.aiSetup({ model = "m" }) == false)             -- 缺 baseUrl
+        assert(wingman.vision.aiSetup({ baseUrl = "http://x/v1" }) == false) -- 缺 model
+        assert(wingman.vision.aiSetup({
+            baseUrl = "http://x/v1", model = "m",
+            apiKeyEnc = "enc" }) == false)                                   -- 密文缺口令
+        local st = wingman.vision.aiSetupStatus()
+        assert(type(st.configured) == "boolean")
+        assert(type(st.hasKey) == "boolean")
+        assert(type(st.lastError) == "string")
+    )");
+
+    wingman::VisionAi::reset();
+}
+
+#ifdef WINGMAN_ENABLE_VISION
+TEST(AndroidApiTest, AiLocateCapturesFrameThroughBridge) {
+    FakeHostBridge bridge;
+    ApiEnv env(&bridge);
+
+    // 端口 1 立即拒绝：截帧→HTTP 链路验证不外呼
+    env.eval(R"(
+        assert(wingman.vision.aiSetup({
+            baseUrl = "http://127.0.0.1:1", model = "test-model",
+            apiKey = "sk-test", timeoutSeconds = 2 }) == true)
+        local st = wingman.vision.aiSetupStatus()
+        assert(st.configured == true)
+        local r = wingman.vision.aiLocate("登录按钮")
+        assert(r.found == false)
+        assert(#r.error > 0)
+    )");
+
+    // 注入被采用的强证据：locate 经 captureFrame 取帧
+    EXPECT_EQ(bridge.captureCount, 1);
+    wingman::VisionAi::reset();
+}
+
+TEST(AndroidApiTest, AiLocateRegionPassedThrough) {
+    FakeHostBridge bridge;
+    ApiEnv env(&bridge);
+
+    env.eval(R"(
+        assert(wingman.vision.aiSetup({
+            baseUrl = "http://127.0.0.1:1", model = "test-model",
+            timeoutSeconds = 2 }) == true)
+        local r = wingman.vision.aiLocate("图标", { x = 0, y = 0, width = 2, height = 1 })
+        assert(r.found == false)
+    )");
+
+    // AndroidCaptureSource region 裁剪：2x1 region 来自 4x2 帧
+    EXPECT_EQ(bridge.captureCount, 1);
+    wingman::VisionAi::reset();
+}
+#else
+TEST(AndroidApiTest, AiSetupStubSemanticsMatchesDesktopStub) {
+    ApiEnv env(nullptr);
+
+    // 桌面 vision_stub 同语义：setup 空体恒 true、isConfigured 恒 false、
+    // locate 恒空 box（error 串为空）
+    env.eval(R"(
+        assert(wingman.vision.aiSetup({
+            baseUrl = "http://x/v1", model = "m" }) == true)
+        local st = wingman.vision.aiSetupStatus()
+        assert(st.configured == false)
+        local r = wingman.vision.aiLocate("登录按钮")
+        assert(r.found == false)
+    )");
+
+    wingman::VisionAi::reset();
+}
+#endif

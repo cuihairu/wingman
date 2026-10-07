@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -40,6 +42,16 @@ struct VisionAiBox {
 /// 复用面：桌面 runtime 与 Android 租户（A 线）同协议接入。
 class VisionAi {
 public:
+	/// 截帧注入（装配层，与配置数据面分离）：region 空=全屏。
+	/// 默认不注入（空）→ 截帧走 Screen::capture；Android 租户在
+	/// registerAndroidApis 注入 captureFrame 适配——NDK 下 Screen::
+	/// capture 无装配（公共层平台宏冻结），同 provider 通路复用
+	/// captureFrame 位图（android-agent-design「AI 视觉识别」节）。传 nullptr 复位。
+	using FrameProvider = std::function<std::unique_ptr<Bitmap>(const Rect& region)>;
+
+	/// 写入截帧提供者（进程级；与 setup 配置互不影响，reset 不清注入）。
+	static void setFrameProvider(FrameProvider provider);
+
 	/// 写入配置（进程级驻内存；重复 setup 整体覆盖）。
 	static void setup(const VisionAiConfig& cfg);
 

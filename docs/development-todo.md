@@ -99,7 +99,7 @@
   - [x] locate 协议：请求构造（截屏 JPEG→base64→chat.completions）与响应解析（模型返回 `found/label/bbox_2d/confidence`，坐标 0–1000 归一，按帧尺寸换算像素）——纯函数可单测
   - [x] 桌面 `wingman.vision.aiLocate(desc[, region])` 闭环：Screen::capture 截帧 → provider → 结构化 bbox → 脚本 `input.click` 动作映射
   - [x] Lua/Python 绑定 + docs/api/vision.md AI 节（凭据加密面写法与 provider 约定）
-  - [ ] Android 接入：androidagent 挂同形 `aiLocate`（captureFrame 位图 → 同 provider 通道，HTTP client 需在租户侧可用）
+  - [x] Android 接入：androidagent 挂同形 `aiLocate`（captureFrame 位图经 `VisionAi::setFrameProvider` 注入复用同 provider 通道；http.cpp/crypt.cpp cherry-pick，清单补 curl/openssl）
   - [ ] 真机走查截图证据（模拟器：识别指定按钮并点击成功，B 批同口径）
   - [ ] 扩展：`aiElements()` 批量元素识别（文本/状态字段）、本地 ONNX 检测模型 provider
 - [ ] 图像模板批量管理与识别

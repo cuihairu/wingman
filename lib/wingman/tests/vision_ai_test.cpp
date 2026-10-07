@@ -6,6 +6,7 @@
 // stub 构建（无 OpenCV）下 VisionAi::parseLocateResponse 恒返回空 box，
 // 下列解析断言不成立。
 
+#include <memory>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -15,6 +16,7 @@
 
 namespace {
 
+using wingman::Bitmap;
 using wingman::Rect;
 using wingman::VisionAi;
 using wingman::VisionAiBox;
@@ -168,6 +170,59 @@ TEST(VisionAiLocateProtocol, LocateWithoutConfigFailsWithHint) {
 	VisionAi::reset();
 	const VisionAiBox box = VisionAi::locate("登录按钮");
 	EXPECT_FALSE(box.found);
+	EXPECT_NE(VisionAi::lastError().find("aiSetup"), std::string::npos);
+}
+
+// ===== 截帧注入（Android captureFrame 适配面）=====
+// 注入为装配层状态、reset 不清——每个用例自带复位 guard 防跨用例污染
+
+class VisionAiFrameProviderEnv : public ::testing::Test {
+protected:
+	void SetUp() override { VisionAi::reset(); }
+	void TearDown() override {
+		VisionAi::setFrameProvider(nullptr);
+		VisionAi::reset();
+	}
+};
+
+TEST_F(VisionAiFrameProviderEnv, InjectedProviderDrivesLocateCapture) {
+	VisionAiConfig cfg;
+	// 端口 1 立即拒绝：截帧链路验证不外呼
+	cfg.baseUrl = "http://127.0.0.1:1";
+	cfg.model = "test-model";
+	cfg.apiKey = "sk-test";
+	cfg.timeoutSeconds = 2;
+	VisionAi::setup(cfg);
+
+	int calls = 0;
+	int seenW = -1;
+	int seenH = -1;
+	VisionAi::setFrameProvider([&](const Rect& region) {
+		++calls;
+		seenW = region.width;
+		seenH = region.height;
+		return std::make_unique<Bitmap>(4, 2);
+	});
+
+	const VisionAiBox box = VisionAi::locate("按钮", Rect(1, 2, 3, 4));
+	EXPECT_EQ(calls, 1);
+	// region 原样透传给注入提供者（空 region=全屏语义在提供者侧）
+	EXPECT_EQ(seenW, 3);
+	EXPECT_EQ(seenH, 4);
+	// 注入帧尺寸进入解析链路；HTTP 拒绝 → found=false + 可区分错误
+	EXPECT_FALSE(box.found);
+	EXPECT_FALSE(VisionAi::lastError().empty());
+}
+
+TEST_F(VisionAiFrameProviderEnv, ProviderNotCalledWithoutConfig) {
+	int calls = 0;
+	VisionAi::setFrameProvider([&](const Rect&) {
+		++calls;
+		return std::make_unique<Bitmap>(4, 2);
+	});
+	const VisionAiBox box = VisionAi::locate("按钮");
+	EXPECT_FALSE(box.found);
+	EXPECT_EQ(calls, 0); // 未配置在截帧前短路
 	EXPECT_NE(VisionAi::lastError().find("aiSetup"), std::string::npos);
 }
 

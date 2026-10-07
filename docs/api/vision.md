@@ -282,6 +282,10 @@ AI 语义定位：截取当前屏幕（或指定区域）→ JPEG → OpenAI 兼
 结构化包围盒（像素坐标），配合 `input.click` 完成「识别目标并点击」。
 需 `WINGMAN_ENABLE_VISION` 构建（与 findImage 同门禁）。
 
+> **Android**：`wingman.vision` 三函数同形可用（截帧走 captureFrame 注入，
+> 参数与返回一致）；无 OpenCV 构建下 `aiSetup` 注册桌面 stub 同语义假体
+> （`aiSetup` 恒 `true`、`aiSetupStatus.configured` 恒 `false`）。
+
 **端点约定**：OpenAI 兼容 `chat.completions`（`baseUrl` 填到 `/v1` 为止）——
 云端 API 与本地推理服务（Ollama `http://127.0.0.1:11434/v1`、vLLM 等）同形，
 模型需支持图像输入与坐标定位（如 Qwen2.5-VL 系列）。模型被要求只回

@@ -18,6 +18,7 @@ namespace {
 std::mutex s_mutex;
 VisionAiConfig s_config;
 bool s_configured = false;
+VisionAi::FrameProvider s_frameProvider;
 std::string s_lastError;
 
 constexpr int kJpegQuality = 82; // 与远程截图（android_screenshot.cpp）同参数
@@ -38,6 +39,11 @@ std::vector<uint8_t> encodeJpeg(const Bitmap& bitmap) {
 }
 
 } // namespace
+
+void VisionAi::setFrameProvider(FrameProvider provider) {
+	std::lock_guard<std::mutex> lock(s_mutex);
+	s_frameProvider = std::move(provider);
+}
 
 void VisionAi::setup(const VisionAiConfig& cfg) {
 	std::lock_guard<std::mutex> lock(s_mutex);
@@ -185,7 +191,20 @@ VisionAiBox VisionAi::locate(const std::string& desc, const Rect& region) {
 		cfg = s_config;
 	}
 
-	auto frame = region.width > 0 && region.height > 0 ? Screen::capture(region) : Screen::capture();
+	// 截帧：注入优先（Android captureFrame 适配；锁外执行，避免截帧
+	// JNI 往返期间持配置锁），未注入走桌面 Screen::capture 装配
+	std::unique_ptr<Bitmap> frame;
+	{
+		FrameProvider provider;
+		{
+			std::lock_guard<std::mutex> lock(s_mutex);
+			provider = s_frameProvider;
+		}
+		frame = provider ? provider(region)
+		                 : (region.width > 0 && region.height > 0
+		                        ? Screen::capture(region)
+		                        : Screen::capture());
+	}
 	if (!frame || frame->getWidth() <= 0 || frame->getHeight() <= 0) {
 		setError("vision-ai: screen capture failed");
 		return box;

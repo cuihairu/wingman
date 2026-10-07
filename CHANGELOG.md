@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### feat（2026-10-07，AI 视觉 Android 接入——aiLocate 同形三函数挂 androidagent，captureFrame 注入复用同 provider 通路）
+
+- **截帧注入点**：VisionAi 新增 `setFrameProvider`（装配层，与配置数据面分离；`reset` 不清注入）——默认空走桌面 `Screen::capture`；Android 在 `registerAndroidApis` 注入 captureFrame 适配（`AndroidCaptureSource` region 裁剪同桌面语义）。NDK 下公共层 `Screen::capture` 无 `__ANDROID__` 装配且平台宏冻结不新增，注入是公共层免平台宏的收口解法。
+- **绑定同形**：`android_script_api.cpp` 挂 `aiSetup/aiSetupStatus/aiLocate`（语义对齐桌面 vision 模块，`apiKeyEnc`+`passphrase` 走 AES-256-GCM 解密面）；无 OpenCV 构建编 `vision_stub.cpp` 同款假体（`setFrameProvider` 空体补齐），绑定保持可注册。
+- **依赖收口**：androidagent cherry-pick 加 `http.cpp`（`WINGMAN_HAS_CURL`）与 `crypt.cpp`，android vcpkg 清单补 `curl`/`openssl`（与 opencv4 同款清单必含，缺失 CMake `FATAL_ERROR` 明示不降级）；`WINGMAN_ENABLE_VISION` 改 PUBLIC 导出（消费方分档断言可见）。
+- **测试**：vision_ai_test 增截帧注入用例（注入被采用/未配置短路，端口 1 立即拒绝不外呼）；android_api_test 增 4 用例（参数校验、Fake 桥 captureFrame 链路强证据 `captureCount`、region 透传、stub 档语义对齐）——桌面同源 build-vision 树与 stub 树各档全绿。
+- **文档**：android-agent-design 视觉节「尚未接入」转已接入（含落点与收口说明）、vision.md 补 Android 口径、development-todo 原子项勾选（真机走查证据仍为独立待办项）。
+
 ### feat（2026-10-07，AI 视觉识别 MVP——aiSetup/aiLocate 单场景闭环，凭据走保险箱同型加密面）
 
 - **provider 配置面**：新增 VisionAi（`vision_ai.hpp/.cpp`），OpenAI 兼容 chat.completions 端点（baseUrl/model/超时配置驻内存）；`apiKeyEnc` 支持 crypto AES-256-GCM 密文+口令解密驻内存（明文与密钥不落盘不落日志），`aiSetupStatus` 状态查询。

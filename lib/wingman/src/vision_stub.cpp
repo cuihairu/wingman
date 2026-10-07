@@ -99,6 +99,7 @@ bool Vision::isColorMatch(const Color& c1, const Color& c2, int tolerance) {
 
 // ========== AI Vision (stub) ==========
 
+void VisionAi::setFrameProvider(FrameProvider) {}
 void VisionAi::setup(const VisionAiConfig&) {}
 void VisionAi::reset() {}
 bool VisionAi::isConfigured() { return false; }

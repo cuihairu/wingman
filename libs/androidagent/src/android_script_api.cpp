@@ -1,7 +1,9 @@
 #include "wingman/androidagent/android_script_api.hpp"
 
 #include "platform/android/android_capture.hpp"
+#include "wingman/crypt.hpp"
 #include "wingman/vision/image_analyzer.hpp"
+#include "wingman/vision_ai.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -373,6 +375,70 @@ void registerVisionModule(sol::state& lua, AndroidHostBridge* bridge,
             }
             return sol::make_object(lua, result);
         });
+
+    // ===== AI 视觉识别（桌面 vision 模块同形；OpenAI 兼容 provider）=====
+    // 语义与 docs/api/vision.md「AI 视觉识别」节一致：配置驻内存、
+    // apiKeyEnc 走 AES-256-GCM 密文+口令解密面（明文不落盘不落日志）、
+    // locate 结构化 bbox 供脚本 input.click 动作映射。截帧经
+    // registerAndroidApis 注入的 captureFrame 适配（NDK 无 Screen::capture）。
+    vision.set_function("aiSetup", [](const sol::table& cfg) -> bool {
+        VisionAiConfig c;
+        c.baseUrl = cfg.get_or("baseUrl", std::string{});
+        c.model = cfg.get_or("model", std::string{});
+        c.timeoutSeconds = cfg.get_or("timeoutSeconds", 60);
+        c.apiKey = cfg.get_or("apiKey", std::string{});
+        // 凭据加密面（与桌面 vision_module aiSetup 同语义）：
+        // apiKeyEnc = crypto.encryptAES 密文，二者成对传入
+        const sol::object enc = cfg["apiKeyEnc"];
+        if (enc.valid() && !enc.is<sol::nil_t>()) {
+            const sol::object pass = cfg["passphrase"];
+            if (!pass.valid() || pass.is<sol::nil_t>()) {
+                return false;
+            }
+            c.apiKey = crypt::decryptAES(enc.as<std::string>(),
+                                         pass.as<std::string>());
+            if (c.apiKey.empty()) {
+                return false;
+            }
+        }
+        if (c.baseUrl.empty() || c.model.empty()) {
+            return false;
+        }
+        VisionAi::setup(c);
+        return true;
+    });
+
+    vision.set_function("aiSetupStatus", [&lua]() -> sol::object {
+        return sol::make_object(lua, lua.create_table_with(
+            "configured", VisionAi::isConfigured(),
+            "baseUrl", VisionAi::config().baseUrl,
+            "model", VisionAi::config().model,
+            "hasKey", VisionAi::hasApiKey(),
+            "lastError", VisionAi::lastError()));
+    });
+
+    vision.set_function("aiLocate",
+        [&lua](const std::string& desc, sol::optional<sol::object> regionObj)
+            -> sol::object {
+            sol::table result = lua.create_table();
+            Rect region;
+            const bool hasRegion = regionObj && toRect(*regionObj, region);
+            const VisionAiBox box = VisionAi::locate(
+                desc, hasRegion ? region : Rect());
+            if (box.found) {
+                result["found"] = true;
+                result["x"] = box.x;
+                result["y"] = box.y;
+                result["w"] = box.w;
+                result["h"] = box.h;
+                result["confidence"] = box.confidence;
+                result["label"] = box.label;
+            } else {
+                result["found"] = false;
+                result["error"] = VisionAi::lastError();
+            }
+            return sol::make_object(lua, result);
+        });
 }
 
 } // namespace
@@ -383,6 +449,14 @@ void registerAndroidApis(sol::state& lua, std::atomic<bool>& stopFlag,
     registerInputModule(lua, stopFlag, bridge);
     registerScreenModule(lua, bridge, filesDir);
     registerVisionModule(lua, bridge, filesDir);
+    // AI provider 截帧注入：captureFrame 位图复用同一 provider 通路
+    //（空 region=全屏；NDK 下 Screen::capture 无装配，公共层平台宏冻结）。
+    // stub 构建（无 OpenCV）为空实现假体，注入无副作用。重复注册整体
+    // 覆盖（与 setGlobalHostBridge 同款）。
+    VisionAi::setFrameProvider([bridge](const Rect& region) {
+        platform::android::AndroidCaptureSource source(bridge);
+        return source.capture(region);
+    });
 }
 
 } // namespace wingman::android
