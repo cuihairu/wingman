@@ -22,6 +22,7 @@ using wingman::VisionAi;
 using wingman::VisionAiBox;
 using wingman::VisionAiConfig;
 using wingman::VisionAiElement;
+using wingman::VisionAiLocalConfig;
 
 // OpenAI 兼容响应外壳：choices[0].message.content 携带模型 JSON 文本。
 std::string openAiEnvelope(const std::string& content) {
@@ -353,6 +354,37 @@ TEST_F(VisionAiFrameProviderEnv, ElementsWithoutConfigShortCircuits) {
 	EXPECT_TRUE(elems.empty());
 	EXPECT_EQ(calls, 0); // 未配置在截帧前短路
 	EXPECT_NE(VisionAi::lastError().find("aiSetup"), std::string::npos);
+}
+
+// ========== 本地 ONNX provider（setupLocal 失败路径） ==========
+//
+// 成功路径需真实 onnxruntime 会话 + 可加载模型文件，不在门禁内（与
+// vision_ai_test 的 HTTP provider 同口径）。失败路径在 ML 与非 ML 构建
+// 下语义一致（false + lastError、isLocalMode 不置位），两档都可验证。
+
+TEST(VisionAiLocalMode, SetupLocalFailsWhenModelMissing) {
+	VisionAi::reset();
+	VisionAiLocalConfig cfg;
+	cfg.modelPath = "/nonexistent/wingman-test-model.onnx";
+	cfg.labels = {"button"};
+	EXPECT_FALSE(VisionAi::setupLocal(cfg));
+	EXPECT_FALSE(VisionAi::isLocalMode());
+	EXPECT_FALSE(VisionAi::lastError().empty());
+}
+
+TEST(VisionAiLocalMode, SetupLocalFailsWhenPathEmpty) {
+	VisionAi::reset();
+	VisionAiLocalConfig cfg; // 空 modelPath：ML 档报空路径、非 ML 档报缺依赖
+	EXPECT_FALSE(VisionAi::setupLocal(cfg));
+	EXPECT_FALSE(VisionAi::isLocalMode());
+	EXPECT_FALSE(VisionAi::lastError().empty());
+}
+
+TEST(VisionAiLocalMode, ResetClearsLocalModeState) {
+	VisionAi::reset();
+	EXPECT_FALSE(VisionAi::isLocalMode());
+	EXPECT_FALSE(VisionAi::isConfigured());
+	EXPECT_TRUE(VisionAi::lastError().empty()); // reset 双清含错误面
 }
 
 } // namespace

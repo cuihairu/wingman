@@ -191,9 +191,9 @@ TEST(ModelEngineTest, GetAvailableExecutionProviders) {
     EXPECT_EQ(providers[0], "cpu");
 }
 
-// ========== ModelHelpers (Stub) ==========
+// ========== ModelHelpers (unloaded-engine guard paths) ==========
 
-TEST(ModelHelpersTest, ClassifyImageReturnsEmptyStub) {
+TEST(ModelHelpersTest, ClassifyImageWithUnloadedEngineReturnsEmpty) {
     ModelEngine engine;
     uint8_t img[] = {0, 0, 0};
     auto [label, confidence] = ModelHelpers::classifyImage(engine, "input", img, 1, 1);
@@ -201,7 +201,9 @@ TEST(ModelHelpersTest, ClassifyImageReturnsEmptyStub) {
     EXPECT_FLOAT_EQ(confidence, 0.0f);
 }
 
-TEST(ModelHelpersTest, DetectObjectsReturnsEmptyStub) {
+TEST(ModelHelpersTest, DetectObjectsWithUnloadedEngineReturnsEmpty) {
+    // 未加载模型的引擎在 detectObjects 入口被防护拦截（真实推理路径依赖
+    // 模型文件，不在门禁内）
     ModelEngine engine;
     uint8_t img[] = {0, 0, 0};
     auto detections = ModelHelpers::detectObjects(engine, "input", img, 1, 1);
@@ -318,13 +320,16 @@ TEST(InferenceResultTest, SuccessWithOutputs) {
     EXPECT_DOUBLE_EQ(result.inferenceTimeMs, 12.5);
 }
 
-// ========== ModelHelpers::segment (Stub) ==========
+// ========== ModelHelpers::segment (not implemented) ==========
 
-TEST(ModelHelpersTest, SegmentDoesNotCrashStub) {
+TEST(ModelHelpersTest, SegmentNotImplementedReturnsEmptyBitmap) {
+    // 分割 decode 未实现：诚实报错返回空位图，不做静默降级
     ModelEngine engine;
     uint8_t img[] = {128, 128, 128};
     Bitmap bm(0, 0);
     EXPECT_NO_THROW(bm = ModelHelpers::segment(engine, "input", img, 1, 1));
+    EXPECT_EQ(bm.getWidth(), 0);
+    EXPECT_EQ(bm.getHeight(), 0);
 }
 
 // ========== Execution Provider Extended ==========
@@ -501,4 +506,113 @@ TEST(TensorConversionTest, ModelOutputInt32DecodesToInts) {
     ASSERT_EQ(data->size(), 4u);
     EXPECT_EQ(data->at(0).asInt(), 7);
     EXPECT_EQ(data->at(3).asInt(), -1);
+}
+
+// ========== YOLO 输出解码与 NMS（检测后处理纯函数） ==========
+//
+// decodeYoloOutput/nmsBoxes 全档编译（不依赖 onnxruntime 会话），合成张量
+// 直接验证；detectObjects 真实推理路径依赖模型文件，不在门禁内（与
+// vision_ai_test 的 HTTP provider 同口径）。
+
+TEST(YoloDecodeTest, RejectsNonFloat32OrBadShape) {
+    TensorData nonFloat;
+    nonFloat.dataType = TensorDataType::INT32;
+    nonFloat.shape = {1, 2, 3};
+    EXPECT_TRUE(ModelHelpers::decodeYoloOutput(nonFloat, 0.5f).empty());
+    EXPECT_TRUE(ModelHelpers::decodeYoloOutput(
+                    Tensor::createFloat32({1, 2}, {0.0f}), 0.5f)
+                    .empty()); // 2 维非 [1,N,K]
+    EXPECT_TRUE(ModelHelpers::decodeYoloOutput(
+                    Tensor::createFloat32({2, 2, 3}, {0.0f}), 0.5f)
+                    .empty()); // batch 维非 1
+}
+
+TEST(YoloDecodeTest, DecodesV5LayoutWithObjTimesClassConfidence) {
+    // [1,100,7]：v5 布局 N=100 > stride=7；首候选 cx,cy,w,h,obj,cls0,cls1
+    // obj=0.9 × cls1=0.8 → 0.72，其余候选全 0 被滤
+    std::vector<float> data(100 * 7, 0.0f);
+    data[0] = 50.0f; data[1] = 60.0f; data[2] = 20.0f; data[3] = 10.0f;
+    data[4] = 0.9f; data[5] = 0.1f; data[6] = 0.8f;
+    const auto dets =
+        ModelHelpers::decodeYoloOutput(Tensor::createFloat32({1, 100, 7}, data), 0.5f);
+    ASSERT_EQ(dets.size(), 1u);
+    EXPECT_FLOAT_EQ(dets[0].x, 40.0f); // cx - w/2
+    EXPECT_FLOAT_EQ(dets[0].y, 55.0f); // cy - h/2
+    EXPECT_FLOAT_EQ(dets[0].width, 20.0f);
+    EXPECT_FLOAT_EQ(dets[0].height, 10.0f);
+    EXPECT_EQ(dets[0].classId, 1);
+    EXPECT_FLOAT_EQ(dets[0].confidence, 0.72f);
+}
+
+TEST(YoloDecodeTest, DecodesV8LayoutWithoutObjectness) {
+    // [1,6,10]：v8 布局 4+C=6 通道、N=10 > 通道维；通道 4/5 为 cls scores
+    //（CHW 排布）候选 0：cls1=0.8 命中；候选 7：cx=40,cy=50、cls1=0.7 命中
+    std::vector<float> data(6 * 10, 0.0f);
+    auto at = [&data](int64_t ch, int64_t i) -> float& { return data[ch * 10 + i]; };
+    at(0, 0) = 50.0f; at(1, 0) = 60.0f; at(2, 0) = 20.0f; at(3, 0) = 10.0f;
+    at(5, 0) = 0.8f;
+    at(0, 7) = 40.0f; at(1, 7) = 50.0f; at(2, 7) = 20.0f; at(3, 7) = 10.0f;
+    at(5, 7) = 0.7f;
+    const auto dets =
+        ModelHelpers::decodeYoloOutput(Tensor::createFloat32({1, 6, 10}, data), 0.5f);
+    ASSERT_EQ(dets.size(), 2u);
+    EXPECT_EQ(dets[0].classId, 1);
+    EXPECT_FLOAT_EQ(dets[0].confidence, 0.8f);
+    EXPECT_FLOAT_EQ(dets[1].x, 30.0f); // cx - w/2
+    EXPECT_FLOAT_EQ(dets[1].y, 45.0f);
+    EXPECT_FLOAT_EQ(dets[1].confidence, 0.7f);
+}
+
+TEST(YoloDecodeTest, FiltersBelowConfidenceThreshold) {
+    std::vector<float> data(100 * 7, 0.0f);
+    data[0] = 50.0f; data[1] = 60.0f; data[2] = 20.0f; data[3] = 10.0f;
+    data[4] = 0.9f; data[5] = 0.3f; data[6] = 0.3f; // obj×cls = 0.27 < 0.5
+    EXPECT_TRUE(ModelHelpers::decodeYoloOutput(
+                    Tensor::createFloat32({1, 100, 7}, data), 0.5f)
+                    .empty());
+}
+
+TEST(YoloDecodeTest, AmbiguousShapeReturnsEmpty) {
+    // 方形 [1,7,7]：v5/v8 判别均不成立（N 维与类别维无法区分）
+    EXPECT_TRUE(ModelHelpers::decodeYoloOutput(
+                    Tensor::createFloat32({1, 7, 7}, std::vector<float>(49, 0.5f)),
+                    0.5f)
+                    .empty());
+    // 单候选 [1,1,7]：v5 判别要求 N > stride，同样不可判
+    EXPECT_TRUE(ModelHelpers::decodeYoloOutput(
+                    Tensor::createFloat32({1, 1, 7}, std::vector<float>(7, 0.5f)),
+                    0.5f)
+                    .empty());
+}
+
+TEST(NmsTest, SuppressesOverlapKeepsHighestConfidence) {
+    std::vector<ModelHelpers::Detection> dets = {
+        {10, 10, 20, 20, 0, 0.9f},
+        {12, 12, 20, 20, 0, 0.8f}, // 与首框 IoU 高 → 抑制
+        {100, 100, 20, 20, 1, 0.7f}, // 无重叠 → 保留
+    };
+    const auto kept = ModelHelpers::nmsBoxes(dets, 0.45f);
+    ASSERT_EQ(kept.size(), 2u);
+    EXPECT_FLOAT_EQ(kept[0].confidence, 0.9f);
+    EXPECT_FLOAT_EQ(kept[1].confidence, 0.7f);
+}
+
+TEST(NmsTest, KeepsDisjointBoxesRegardlessOfOrder) {
+    std::vector<ModelHelpers::Detection> dets = {
+        {0, 0, 10, 10, 0, 0.5f},
+        {50, 50, 10, 10, 1, 0.4f},
+        {100, 100, 10, 10, 2, 0.3f},
+    };
+    const auto kept = ModelHelpers::nmsBoxes(dets, 0.45f);
+    EXPECT_EQ(kept.size(), 3u);
+}
+
+TEST(NmsTest, BorderTouchingBoxesAreKept) {
+    // IoU=0（仅边界相触）不算重叠
+    std::vector<ModelHelpers::Detection> dets = {
+        {0, 0, 10, 10, 0, 0.9f},
+        {10, 0, 10, 10, 0, 0.8f},
+    };
+    const auto kept = ModelHelpers::nmsBoxes(dets, 0.45f);
+    EXPECT_EQ(kept.size(), 2u);
 }

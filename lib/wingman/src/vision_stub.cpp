@@ -101,6 +101,11 @@ bool Vision::isColorMatch(const Color& c1, const Color& c2, int tolerance) {
 
 void VisionAi::setFrameProvider(FrameProvider) {}
 void VisionAi::setup(const VisionAiConfig&) {}
+bool VisionAi::setupLocal(const VisionAiLocalConfig&) {
+    spdlog::warn("Vision support not enabled (OpenCV not available)");
+    return false;
+}
+bool VisionAi::isLocalMode() { return false; }
 void VisionAi::reset() {}
 bool VisionAi::isConfigured() { return false; }
 VisionAiConfig VisionAi::config() { return VisionAiConfig{}; }

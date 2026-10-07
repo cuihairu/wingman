@@ -240,8 +240,15 @@ TEST(AndroidApiTest, AiSetupValidatesAndStatusShape) {
         assert(wingman.vision.aiSetup({
             baseUrl = "http://x/v1", model = "m",
             apiKeyEnc = "enc" }) == false)                                   -- 密文缺口令
+        -- 本地 ONNX provider：Android 侧恒 false（onnxruntime NDK 未收口）；
+        -- 表参全字段走过 labels/minConfidence 解析分支
+        assert(wingman.vision.aiSetupLocal({
+            modelPath = "/nonexistent.onnx",
+            labels = { "button", "input" },
+            minConfidence = 0.6 }) == false)
         local st = wingman.vision.aiSetupStatus()
         assert(type(st.configured) == "boolean")
+        assert(st.localMode == false)
         assert(type(st.hasKey) == "boolean")
         assert(type(st.lastError) == "string")
     )");

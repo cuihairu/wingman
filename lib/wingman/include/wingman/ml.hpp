@@ -119,8 +119,12 @@ public:
     );
 
     // Object detection
+    // 约定：输入 BGR packed 3 通道（与 Tensor::fromImage 一致），内部按模型
+    // 输入尺寸 resize（无 letterbox，比例失真按对应关系还原）；支持 YOLOv5
+    // [1,N,5+C]（cx,cy,w,h,obj,classes，conf=obj×cls）与 YOLOv8 [1,4+C,N]
+    // （cx,cy,w,h,classes）两种导出格式，按输出形状自动判别。
     struct Detection {
-        float x, y, width, height;
+        float x, y, width, height; // 原图像素坐标（左上角+尺寸）
         int classId;
         float confidence;
     };
@@ -132,6 +136,21 @@ public:
         float confThreshold = 0.5f,
         float nmsThreshold = 0.45f
     );
+
+    // ===== 检测后处理纯函数（单测面；不依赖 onnxruntime 会话）=====
+
+    // 解码 YOLO 检测输出为候选框：坐标为模型输入空间像素（x/y 左上角、
+    // w/h 尺寸），conf ≥ confThreshold 才保留。v5/v8 布局按输出张量形状
+    // 自动判别；非法形状/非 float32 返回空。
+    static std::vector<Detection> decodeYoloOutput(
+        const TensorData& output,
+        float confThreshold);
+
+    // IoU 贪心 NMS：按 confidence 降序保留，与已保留框 IoU > iouThreshold
+    // 的抑制（保留先出现者）。
+    static std::vector<Detection> nmsBoxes(
+        std::vector<Detection> detections,
+        float iouThreshold);
 
     // Segmentation
     static Bitmap segment(

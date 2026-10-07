@@ -91,7 +91,7 @@ ScriptRunner 不加载桌面模块注册表（见
 | `wingman.vision` 之 **找色/找图/模板匹配**（`findColor`/`findImage` 等） | ✅ | ✅ | ✅ | ✅（A 线子表，bitmap-first 差异见下文） | 核心走内置 `ImageAnalyzer`（纯 C++ 逐像素实现，不依赖 OpenCV），全平台可用 |
 | `wingman.vision` 之 **OpenCV 加速分析**（`WINGMAN_ENABLE_VISION`） | ✅ | ✅（vcpkg `vision` feature） | ❌ 无 OpenCV 依赖（manifest 未覆盖 macOS） | ❌ | macOS/Android 构建不带 OpenCV；需引入时走 vcpkg manifest，不手探系统库 |
 | `wingman.ocr`（文字识别，`WINGMAN_ENABLE_OCR`） | ✅（Tesseract） | ❌ | ❌ | ❌ | vcpkg `ocr` feature 仅覆盖 Windows；无 OCR 时脚本调用降级返回空结果 |
-| `wingman.ml`（ONNX 推理，`WINGMAN_ENABLE_ML`） | ✅（ONNX Runtime） | ❌ | ❌ | ❌ | 同上，`ml` feature 仅 Windows |
+| `wingman.ml`（ONNX 推理，`WINGMAN_ENABLE_ML`） | ✅（ONNX Runtime） | ✅（`ml` feature，本地实测装通 1.23.2） | ❌ | ❌（绑定同形恒 false，NDK 依赖未收口） | macOS manifest 未覆盖 onnxruntime |
 | Python 双引擎（`WINGMAN_ENABLE_PYTHON`） | ⚠️ 实验性 | ✅（CI 全量测试含 Python 引擎） | ❌ | ❌ | Linux：`C++ Linux (full tests, Python engine)` job 全量跑；Windows：链接链路 + best-effort 测试；macOS 未验证 |
 
 ### Android 端侧脚本面（A 线）

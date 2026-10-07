@@ -14,7 +14,7 @@ asio、curl、lua、nlohmann-json、opencv4（仅 Windows）、openssl、sol2、
 |---------|--------|------|
 | `tests` | gtest | `WINGMAN_BUILD_TESTS=ON` |
 | `ocr` | tesseract（Windows） | `WINGMAN_ENABLE_OCR=ON` |
-| `ml` | onnxruntime（Windows） | `WINGMAN_ENABLE_ML=ON` |
+| `ml` | onnxruntime（Windows/Linux） | `WINGMAN_ENABLE_ML=ON` |
 | `vision` | opencv4（Linux） | 自动：CMake 找到 OpenCV 即定义 `WINGMAN_ENABLE_VISION`（Linux 需此 feature 提供 OpenCV；Windows 基础依赖已含） |
 | `python` | python3 + pybind11 | `WINGMAN_ENABLE_PYTHON=ON` |
 

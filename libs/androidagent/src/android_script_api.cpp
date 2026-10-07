@@ -411,10 +411,30 @@ void registerVisionModule(sol::state& lua, AndroidHostBridge* bridge,
     vision.set_function("aiSetupStatus", [&lua]() -> sol::object {
         return sol::make_object(lua, lua.create_table_with(
             "configured", VisionAi::isConfigured(),
+            "localMode", VisionAi::isLocalMode(),
             "baseUrl", VisionAi::config().baseUrl,
             "model", VisionAi::config().model,
             "hasKey", VisionAi::hasApiKey(),
             "lastError", VisionAi::lastError()));
+    });
+
+    // 本地 ONNX 检测 provider：桌面 WINGMAN_ENABLE_ML 构建可用；Android
+    // 侧 onnxruntime NDK 依赖未收口，绑定同形注册但恒 false（语义诚实，
+    // 不静默切 HTTP——与桌面未构建 ML 同款降级）
+    vision.set_function("aiSetupLocal", [](const sol::table& cfg) -> bool {
+        VisionAiLocalConfig c;
+        c.modelPath = cfg.get_or("modelPath", std::string{});
+        c.minConfidence = static_cast<float>(cfg.get_or("minConfidence", 0.5));
+        if (sol::object labels = cfg["labels"]; labels.valid() && labels.is<sol::table>()) {
+            sol::table t = labels.as<sol::table>();
+            for (size_t i = 1; i <= t.size(); ++i) {
+                sol::object item = t[i];
+                if (item.valid() && item.is<std::string>()) {
+                    c.labels.push_back(item.as<std::string>());
+                }
+            }
+        }
+        return VisionAi::setupLocal(c);
     });
 
     vision.set_function("aiLocate",

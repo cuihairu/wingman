@@ -22,6 +22,18 @@ struct VisionAiConfig {
 	int timeoutSeconds = 60;
 };
 
+/// 本地 ONNX 检测 provider 配置（vision 模块 aiSetupLocal 的 C++ 面）。
+///
+/// WINGMAN_ENABLE_ML 构建下生效：模型为本仓 ml 模块 ModelEngine 可加载的
+/// ONNX 检测模型（YOLOv5/v8 导出约定，ml.hpp detectObjects）；labels 为
+/// classId→名称表，desc 匹配按双向大小写不敏感子串。未构建 ML 时
+/// setupLocal 恒失败（绑定层返回 false，不降级不静默切 HTTP）。
+struct VisionAiLocalConfig {
+	std::string modelPath;
+	std::vector<std::string> labels;
+	float minConfidence = 0.5f;
+};
+
 /// 一次定位结果：bbox 为帧像素坐标（x/y 左上角，w/h 尺寸）。
 struct VisionAiBox {
 	bool found = false;
@@ -66,7 +78,15 @@ public:
 	/// 写入配置（进程级驻内存；重复 setup 整体覆盖）。
 	static void setup(const VisionAiConfig& cfg);
 
-	/// 清空配置（测试与「断开 provider」用）。
+	/// 切换到本地 ONNX 检测 provider（与 setup 的 HTTP provider 互斥，
+	/// 后调用者生效；reset 双清）。模型加载失败返回 false 且不影响既有
+	/// 配置。WINGMAN_ENABLE_ML 未构建时恒 false。
+	static bool setupLocal(const VisionAiLocalConfig& cfg);
+
+	/// 当前是否本地检测模式（setupLocal 成功后、setup/reset 前）。
+	static bool isLocalMode();
+
+	/// 清空配置（测试与「断开 provider」用；本地模式与 HTTP 配置双清）。
 	static void reset();
 
 	static bool isConfigured();

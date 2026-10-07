@@ -58,7 +58,7 @@
       "dependencies": [
         {
           "name": "onnxruntime",
-          "platform": "windows"
+          "platform": "windows | linux"
         }
       ]
     },

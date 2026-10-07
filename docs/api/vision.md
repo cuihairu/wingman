@@ -282,9 +282,11 @@ AI 语义定位：截取当前屏幕（或指定区域）→ JPEG → OpenAI 兼
 结构化包围盒（像素坐标），配合 `input.click` 完成「识别目标并点击」。
 需 `WINGMAN_ENABLE_VISION` 构建（与 findImage 同门禁）。
 
-> **Android**：`wingman.vision` 四函数同形可用（截帧走 captureFrame 注入，
-> 参数与返回一致）；无 OpenCV 构建下 `aiSetup` 注册桌面 stub 同语义假体
-> （`aiSetup` 恒 `true`、`aiSetupStatus.configured` 恒 `false`）。
+> **Android**：`wingman.vision` 五函数同形可用（截帧走 captureFrame 注入，
+> 参数与返回一致；`aiSetupLocal` 例外——onnxruntime NDK 依赖未收口，
+> Android 侧恒返回 `false`，不静默切 HTTP）；无 OpenCV 构建下 `aiSetup`
+> 注册桌面 stub 同语义假体（`aiSetup` 恒 `true`、
+> `aiSetupStatus.configured` 恒 `false`）。
 
 **端点约定**：OpenAI 兼容 `chat.completions`（`baseUrl` 填到 `/v1` 为止）——
 云端 API 与本地推理服务（Ollama `http://127.0.0.1:11434/v1`、vLLM 等）同形，
@@ -310,8 +312,9 @@ AI 语义定位：截取当前屏幕（或指定区域）→ JPEG → OpenAI 兼
 
 ### ai_setup_status() / aiSetupStatus()
 
-**返回**：`{configured, baseUrl, model, hasKey, lastError}`——凭据明文不出
-查询接口（只有 `hasKey` 标志位）。
+**返回**：`{configured, localMode, baseUrl, model, hasKey, lastError}`——凭据
+明文不出查询接口（只有 `hasKey` 标志位）；`localMode` 标识当前走本地
+ONNX 检测（见下节）。
 
 ### ai_locate(desc, region?) / aiLocate(desc, region?)
 
@@ -409,6 +412,69 @@ end
 
 ---
 
+## 本地 ONNX 检测 provider（aiSetupLocal）
+
+不依赖外部推理服务的本地视觉定位：加载本地 ONNX 检测模型（YOLOv5/v8
+导出约定）直接推理，`aiLocate`/`aiElements` 入口自动分流，返回形状与
+HTTP provider 完全一致。需 `WINGMAN_ENABLE_ML` 构建（onnxruntime，
+Windows/Linux 档收口，Linux 为开发档验证）；未构建 ML 时 `aiSetupLocal`
+恒返回 `false`，不静默降级到 HTTP provider。
+
+### ai_setup_local(cfg) / aiSetupLocal(cfg)
+
+**说明**：切换到本地检测 provider。与 `aiSetup` 的 HTTP provider 互斥，
+后调用者生效；`reset` 双清。模型加载失败返回 `false` 且不影响既有配置。
+
+**参数**（`cfg` 表）：
+- `modelPath`（string，必填）— ONNX 模型文件路径
+- `labels`（string 列表，可选）— classId→名称表；`aiLocate` 的 `desc`
+  与 label 按双向大小写不敏感子串匹配，命中者中置信最高者胜出
+- `minConfidence`（float，默认 0.5）— 检测置信阈值
+
+**返回**：`bool`
+
+**模型约定**：YOLOv5 布局 `[1,N,5+C]`（conf=obj×cls）与 YOLOv8 布局
+`[1,4+C,N]`（无 obj）按输出形状自动判别；输入按模型 NCHW 尺寸 resize 到
+0–1 归一，输出框按比例还原原图像素。
+
+**限制**：预处理为简单 resize、无 letterbox（极端长宽比画面检测框会有
+系统性偏移）；分割（segment）未实现，诚实报错返回空位图。
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+assert vision.aiSetupLocal({
+    "modelPath": "models/ui-detector.onnx",
+    "labels": ["button", "input", "checkbox"],
+    "minConfidence": 0.6,
+})
+
+box = vision.aiLocate("button")   # 本地推理，返回形状同 HTTP provider
+if box["found"]:
+    input.click(box["x"] + box["w"] // 2, box["y"] + box["h"] // 2)
+```
+
+== Lua
+
+```lua:line-numbers
+assert(wingman.vision.aiSetupLocal({
+    modelPath = "models/ui-detector.onnx",
+    labels = { "button", "input", "checkbox" },
+    minConfidence = 0.6,
+}))
+
+local box = wingman.vision.aiLocate("button")
+if box.found then
+    wingman.input.click(box.x + box.w / 2, box.y + box.h / 2)
+end
+```
+
+:::
+
+---
+
 ## 可用接口
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
@@ -419,6 +485,7 @@ end
 | `get_dominant_color(region?)` | `getDominantColor(region?)` | 获取主要颜色 | region: 分析区域(可选)<br>返回: 颜色对象RGBA |
 | `find_image(path, threshold?, region?)` | `findImage(path, threshold?, region?)` | 查找图像 | path: 模板路径<br>threshold: 匹配阈值(默认0.9)<br>region: 搜索区域(可选)<br>返回: 匹配结果对象 |
 | `ai_setup(cfg)` | `aiSetup(cfg)` | 配置 AI 视觉 provider | cfg: 配置表（baseUrl/model/凭据）<br>返回: 是否成功 |
-| `ai_setup_status()` | `aiSetupStatus()` | 查询 provider 配置状态 | 返回: {configured, baseUrl, model, hasKey, lastError} |
+| `ai_setup_status()` | `aiSetupStatus()` | 查询 provider 配置状态 | 返回: {configured, localMode, baseUrl, model, hasKey, lastError} |
+| `ai_setup_local(cfg)` | `aiSetupLocal(cfg)` | 切换本地 ONNX 检测 provider（需 ML 构建） | cfg: 配置表（modelPath/labels/minConfidence）<br>返回: 是否成功 |
 | `ai_locate(desc, region?)` | `aiLocate(desc, region?)` | AI 语义定位屏幕目标 | desc: 目标描述<br>region: 区域(可选)<br>返回: {found,x,y,w,h,confidence,label} 或 {found:false,error} |
 | `ai_elements(desc, region?)` | `aiElements(desc, region?)` | AI 批量元素识别 | desc: 筛选描述（空串=全部可交互元素）<br>region: 区域(可选)<br>返回: {found,elements:[{label,x,y,w,h,confidence}]} 或 {found:false,error} |

@@ -145,7 +145,12 @@ else()
 endif()
 
 # ML support (optional)
+# 检测后处理纯函数（decodeYoloOutput/nmsBoxes，零 onnxruntime 依赖）：
+# ML 档与替身档两份实现二选一，此文件两档共编保证后处理逻辑单源可测
+list(APPEND WINGMAN_SOURCES src/ml_postprocess.cpp)
 if(DEFINED WINGMAN_ENABLE_ML AND WINGMAN_ENABLE_ML)
+    # 依赖缺失显式报错，不静默降级到替身档（vcpkg manifest 需含 ml feature）
+    find_package(onnxruntime CONFIG REQUIRED)
     list(APPEND WINGMAN_SOURCES src/ml.cpp)
     add_compile_definitions(WINGMAN_ENABLE_ML)
 else()
@@ -245,6 +250,11 @@ endif()
 find_package(Threads REQUIRED)
 add_library(wingman STATIC ${WINGMAN_SOURCES})
 target_link_libraries(wingman PRIVATE Threads::Threads)
+if(DEFINED WINGMAN_ENABLE_ML AND WINGMAN_ENABLE_ML)
+    # 会话库经 PRIVATE 以 LINK_ONLY 传递到消费方链接步（静态库语义），
+    # onnxruntime 头文件保持库内部可见
+    target_link_libraries(wingman PRIVATE onnxruntime::onnxruntime)
+endif()
 
 # Debug info
 message(STATUS "WINGMAN_GENERATED_DIR in wingman: ${WINGMAN_GENERATED_DIR}")

@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### feat（2026-10-07，本地 ONNX 检测 provider——aiSetupLocal 切换 YOLOv5/v8 本地推理，两档后处理单源共编）
+
+- **本地 provider 面**：VisionAi 新增 `setupLocal`/`isLocalMode`（`VisionAiLocalConfig`：modelPath/labels/minConfidence）——与 HTTP `setup` 互斥、后调用者生效、`reset` 双清；`aiLocate`/`aiElements` 入口自动分流，返回形状与 HTTP provider 一致（locate 取置信最高一枚、labels 与 desc 双向大小写不敏感子串匹配、elements 全量透传）。未构建 ML 时 `setupLocal` 恒 `false` 不静默降级；Android 绑定同形恒 `false`（onnxruntime NDK 未收口）；`aiSetupStatus` 补 `localMode` 状态位。
+- **YOLO 检测链落地**：ml.cpp `detectObjects` 真实推理链（getInputInfo 取 NCHW → BGR 双线性 resize → 0–1 归一 → run → decode → 比例还原原图像素 → NMS）；`decodeYoloOutput` 支持 YOLOv5 `[1,N,5+C]`（conf=obj×cls）与 YOLOv8 `[1,4+C,N]`（无 obj）双布局按形状关系判别（歧义形状返回空）；`nmsBoxes` 置信降序贪心 IoU 抑制；`segment` 诚实报错返回空位图。decode/NMS 抽 `ml_postprocess.cpp`——零 onnxruntime 依赖，ML 档（ml.cpp）与替身档（ml_stub.cpp）共编单源，两档测试都真实执行这段纯函数。
+- **ORT 1.23 API 现代化**（ML 档首次真编译抓出，此前从未有构建真实编过 ml.cpp）：`GetInputNameAllocated`/`GetOutputNameAllocated` 替代已移除的裸指针接口（免手动 Free 悬垂）、`GetShape()` vector 直赋替代 per-dim 取维；输出拷贝宽度按元素类型成对映射（旧实现写死 4 字节，非 4 字节类型截断/越界）；include 修至 vcpkg 端口实际布局 `include/onnxruntime/`；`TensorData::byteSize` 未知类型缺省对齐替身档契约（float32，旧版回 0——两份替代实现漂移由 ML 档首跑测试揭出）；CMake ML 档补 `find_package(onnxruntime CONFIG REQUIRED)` + 链接 `onnxruntime::onnxruntime`，依赖缺失显式报错不静默降级。
+- **依赖收口**：`vcpkg.json` ml feature 的 onnxruntime 平台条件扩为 `windows | linux`——隔离 manifest 试装（锁同一 baseline `9e593bb`）本地装通 1.23.2，证实 ci.baseline 的 fail 仅为 CI 验证跳过；CI 各 job 不激活 ml feature，零 CI 影响。
+- **测试**：ml_test 增 decode/NMS 8 用例（v5/v8 解码与置信合成/阈值过滤/歧义形状空返/重叠抑制取最高/无序不重叠保留/边界相触不抑制——合成张量直验，两档共编后替身档同样真实执行）；vision_ai_test 增 `VisionAiLocalMode` 3 用例（模型缺失/空路径失败 + reset 双清，失败路径 ML 与非 ML 语义一致两档可验证，成功路径需真实会话不在门禁内）；android_api_test 增 aiSetupLocal 绑定断言（全字段表参走解析分支、恒 false、`localMode` 状态位）。验证：build-vision 树 2644/2644、build 树 2588/2588 全绿；新启 build-ml 树（`tests;vision;ml` feature + `WINGMAN_ENABLE_ML=ON`，onnxruntime 二进制缓存热装）2618 用例两轮整跑——byteSize 真 bug 修复后，两轮红名单互不重叠且全部单跑绿（高并发 -j 环境抖动，立案口径同 ScriptRunnerTest）。
+- **文档**：vision.md 新增「本地 ONNX 检测 provider」节（模型约定/labels 匹配语义/letterbox 限制）、Android 口径五函数；dependencies.md/platforms.md 平台矩阵更新（ml：Windows + Linux 开发档）；development-todo ONNX 扩展项勾选。
+
 ### feat（2026-10-07，AI 视觉批量元素识别——aiElements 一次调用取多元素，三面绑定同形）
 
 - **批量协议**：VisionAi 新增 `elements`/`buildElementsRequestBody`/`parseElementsResponse`——prompt 约定模型回 `{"found": bool, "elements": [{"label", "bbox_2d", "confidence"}]}`（bbox 同 locate 的 0–1000 归一按帧换算像素）；`desc` 空=列出全部可交互元素、非空=按描述筛选。

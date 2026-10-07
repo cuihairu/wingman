@@ -98,12 +98,34 @@ ModuleDescriptor createVisionModule() {
 	mod.functions.push_back({"aiSetupStatus", [](const std::vector<ScriptValue>&) -> ScriptValue {
 		return ScriptValue::fromObject({
 			{"configured", ScriptValue::fromBool(VisionAi::isConfigured())},
+			{"localMode", ScriptValue::fromBool(VisionAi::isLocalMode())},
 			{"baseUrl", ScriptValue::fromString(VisionAi::config().baseUrl)},
 			{"model", ScriptValue::fromString(VisionAi::config().model)},
 			{"hasKey", ScriptValue::fromBool(VisionAi::hasApiKey())},
 			{"lastError", ScriptValue::fromString(VisionAi::lastError())},
 		});
-	}, "() -> {configured, baseUrl, model, hasKey, lastError}"});
+	}, "() -> {configured, localMode, baseUrl, model, hasKey, lastError}"});
+
+	// 本地 ONNX 检测 provider（WINGMAN_ENABLE_ML 构建；未构建恒 false）
+	mod.functions.push_back({"aiSetupLocal", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.empty() || !args[0].isObject()) {
+			return ScriptValue::fromBool(false);
+		}
+		const ScriptValue& v = args[0];
+		VisionAiLocalConfig cfg;
+		if (auto* p = v.get("modelPath")) cfg.modelPath = p->asString();
+		if (auto* labels = v.get("labels")) {
+			if (labels->isArray()) {
+				for (size_t i = 0; i < labels->size(); ++i) {
+					cfg.labels.push_back(labels->at(i).asString());
+				}
+			}
+		}
+		if (auto* p = v.get("minConfidence")) {
+			cfg.minConfidence = static_cast<float>(p->asFloat(0.5));
+		}
+		return ScriptValue::fromBool(VisionAi::setupLocal(cfg));
+	}, "cfg:{modelPath:string, labels:[string]?, minConfidence:float?} -> bool（本地 ONNX 检测模型，需 ML 构建）"});
 
 	mod.functions.push_back({"aiLocate", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		std::string desc = args[0].asString();
