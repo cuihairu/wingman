@@ -145,6 +145,7 @@ configure_file(
 if(WINGMAN_ENABLE_CRASHPAD AND NOT WINGMAN_COMPAT_BUILD)
     # vcpkg 依赖（zlib）与钉版子模块须就位，缺失时配置期明确报错
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/crashpad.cmake)
+    add_subdirectory(libs/crash)
 endif()
 
 if(WINGMAN_BUILD_TRANSPORT)
