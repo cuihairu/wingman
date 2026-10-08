@@ -38,6 +38,19 @@ Windows 快捷脚本：`build-scripts\configure-msvc-ninja.bat` + `build-scripts
 - Windows 三元组：`x64-windows-static`（/MT 静态运行时）
 - Linux 三元组：`x64-linux`；Android：`arm64-android`
 
+## 子模块依赖（vcpkg 外，钉版 commit）
+
+Crashpad 崩溃采集在 vcpkg 官方 registry 无 port，经批准以 git 子模块钉版接入（例外声明与设计口径见 [crash-reporting-design.md](design/crash-reporting-design.md)），构建期零网络。zlib 仍走 vcpkg manifest。
+
+| 子模块 | 钉版 | 许可 | 用途 |
+|--------|------|------|------|
+| `third_party/crashpad-cmake` | `80573ad` | Apache-2.0 | CMake 包装：只取其 `cmake/` 模块文件直驱（`cmake/crashpad.cmake`），不经其 FetchContent 根 |
+| `third_party/crashpad`（backtrace-labs fork） | `7b9686b` | Apache-2.0 | 崩溃采集本体（client 库 + handler 进程） |
+| `third_party/mini_chromium` | `9cdc2a7` | BSD-3-Clause | crashpad 依赖的 chromium base 子集 |
+| `third_party/lss`（cpp-pm 镜像，上游 chromium.googlesource.com/linux-syscall-support） | `e1e7b0a` | BSD-3-Clause | Linux 直接系统调用支持头 |
+
+开关 `WINGMAN_ENABLE_CRASHPAD` 默认仅 Linux 开；升级走子模块指针更新。本机缺子模块时 Linux 配置期会明确报错（`git submodule update --init third_party/`）。
+
 ## 历史说明
 
 本文档曾是网络受限时期的安装绕行指南（预构建包、Scoop、手工 `vcpkg install` 清单）。那些路径与 manifest 模式冲突，2026-10-04 已删除；依赖缺失时的做法是补 `vcpkg.json`、配好 toolchain 或执行 manifest 驱动的安装，不是换来源。

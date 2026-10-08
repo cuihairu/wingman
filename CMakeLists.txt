@@ -58,6 +58,15 @@ if(WINGMAN_BUILD_RUNTIME)
 endif()
 
 # ========== 测试选项 ==========
+# Crashpad 崩溃采集：本批默认仅 Linux 开（真机验证轮），Windows/macOS 构建代码
+# 就位但默认关，待专门验证轮放开。
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(WINGMAN_CRASHPAD_DEFAULT ON)
+else()
+    set(WINGMAN_CRASHPAD_DEFAULT OFF)
+endif()
+option(WINGMAN_ENABLE_CRASHPAD "Enable Crashpad crash reporting (handler + client libs)" ${WINGMAN_CRASHPAD_DEFAULT})
+
 option(BUILD_CLIENT_TESTS "Build runtime app tests" OFF)
 option(BUILD_CORE_TESTS "Build core library tests" OFF)
 option(BUILD_TRANSPORT_TESTS "Build transport library tests" OFF)
@@ -133,6 +142,11 @@ configure_file(
 # ========== 多模块架构 ==========
 
 # 共享库子目录
+if(WINGMAN_ENABLE_CRASHPAD AND NOT WINGMAN_COMPAT_BUILD)
+    # vcpkg 依赖（zlib）与钉版子模块须就位，缺失时配置期明确报错
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/crashpad.cmake)
+endif()
+
 if(WINGMAN_BUILD_TRANSPORT)
     add_subdirectory(libs/transport)
 endif()

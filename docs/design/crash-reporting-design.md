@@ -11,10 +11,11 @@
 | 项 | 决定 | 依据 |
 |----|------|------|
 | 采集器 | Crashpad（上游 gn 构建，不接入） | 独立 handler 进程模型、minidump 生态延续 |
-| 构建接入 | [TheAssemblyArmada/crashpad-cmake](https://github.com/TheAssemblyArmada/crashpad-cmake)（Apache-2.0）的 cmake 模块，以 **git 子模块钉版** 引入；crashpad/mini_chromium/lss 以本仓子模块钉死 commit，配置期零网络 | 上游 crashpad 只支持 gn/depot_tools 构建；该包装 fork 是唯一覆盖 Win/mac/Linux 三平台的开源 CMake 包装（Windows 专用替代品 unidentifieddeveloper/crashpad 仅 MSVC 单流，不取） |
-| 钉版 | crashpad `backtrace-labs/crashpad@7b9686b`（2021-07）、mini_chromium `chromium/mini_chromium@9cdc2a7`（2021-06）、lss `e1e7b0a` | 与包装 fork CI 实证组合一致（其 FetchContent GIT_TAG 原值），升级走子模块指针更新 |
+| 构建接入 | [TheAssemblyArmada/crashpad-cmake](https://github.com/TheAssemblyArmada/crashpad-cmake)（Apache-2.0）以 **git 子模块钉版**引入；只取其 `cmake/` 模块文件直驱（本仓 `cmake/crashpad.cmake` 设 `*_git_SOURCE_DIR` 后按其根文件顺序 include），**不走其 FetchContent 根**；crashpad/mini_chromium/lss 以本仓子模块钉死 commit，配置期零网络 | 上游 crashpad 只支持 gn/depot_tools 构建；该包装 fork 是唯一覆盖 Win/mac/Linux 三平台的开源 CMake 包装（Windows 专用替代品 unidentifieddeveloper/crashpad 仅 MSVC 单流，不取）。绕开 FetchContent 根的原因：其 GIT_REPOSITORY 在配置期触网，且单参 `FetchContent_Populate` 在 CMake 4.x 已弃用 |
+| 钉版 | crashpad `backtrace-labs/crashpad@7b9686b`（2021-07）、mini_chromium `chromium/mini_chromium@9cdc2a7`（2021-06）、lss `e1e7b0a`（取 [cpp-pm/linux-syscall-support](https://github.com/cpp-pm/linux-syscall-support) 镜像，commit 同上游 chromium.googlesource.com/linux-syscall-support） | 与包装 fork CI 实证组合一致（其 FetchContent GIT_TAG 原值），升级走子模块指针更新 |
 | zlib | **vcpkg manifest**（crashpad util/net 依赖） | CLAUDE.md 依赖规则：能走 vcpkg 的走 vcpkg |
-| 依赖规则例外声明 | crashpad 本体在 vcpkg 无 port（官方 registry 无 crashpad/breakpad），无法按 vcpkg 统一管理，经用户令批准以子模块钉版接入 | CLAUDE.md 第 3 条禁 FetchContent 临时拉取的意图是禁「绕过 vcpkg 的临时源」；子模块钉版 commit 是确定性来源，且构建期不触网（FetchContent 经 `FETCHCONTENT_SOURCE_DIR_*` 指向本仓子模块） |
+| 依赖规则例外声明 | crashpad 本体在 vcpkg 无 port（官方 registry 无 crashpad/breakpad），无法按 vcpkg 统一管理，经用户令批准以子模块钉版接入 | CLAUDE.md 第 3 条禁 FetchContent 临时拉取的意图是禁「绕过 vcpkg 的临时源」；子模块钉版 commit 是确定性来源，且构建期不触网 |
+| 新工具链豁免 | 包装 INTERFACE 上追加 `-Wno-error`（钉版代码冻结 2021，新编译器新增告警不作闸门）与 `-include cstdint`（GCC 13+ 不再传递包含 `<cstdint>`，GCC 15 已实证需要） | 子模块源码保持原样不打补丁，豁免集中在本仓 glue |
 
 **架构红线核对**：crashpad_handler 是采集端子进程，不开任何监听端口，不属控制面；runtime 依旧无 HTTP/WebSocket server，符合 architecture-decisions.md Forbidden Changes。
 

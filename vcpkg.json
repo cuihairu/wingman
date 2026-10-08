@@ -41,6 +41,10 @@
     {
       "$comment": "OpenSSL for AES-256-GCM encryption",
       "name": "openssl"
+    },
+    {
+      "$comment": "Crashpad crash reporting (crashpad_util links zlib)",
+      "name": "zlib"
     }
   ],
   "features": {
