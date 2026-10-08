@@ -23,19 +23,19 @@ local function stringExample()
     local exists = wingman.kv.exists("user:name")
     print(string.format("'user:name' 存在: %s", exists and "是" or "否"))
 
-    -- 追加值
-    wingman.kv.append("user:log", "登录时间: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n")
-    wingman.kv.append("user:log", "执行操作: 测试\n")
+    -- 追加值（现行 kv 无 append，用读改写实现）
+    wingman.kv.set("user:log", "登录时间: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n")
+    wingman.kv.set("user:log", wingman.kv.get("user:log") .. "执行操作: 测试\n")
     local log = wingman.kv.get("user:log")
     print("日志内容:")
     print(log)
 
     -- 获取字符串长度
-    local len = wingman.kv.strlen("user:name")
+    local len = #name
     print(string.format("'user:name' 长度: %d", len))
 
-    -- 清理
-    wingman.kv.del("user:name", "user:level", "user:log")
+    -- 清理（delete 支持传键数组批量删除）
+    wingman.kv.delete({ "user:name", "user:level", "user:log" })
 end
 
 -- ========== 数字操作 ==========
@@ -44,8 +44,8 @@ local function numberExample()
     print("\n--- 数字操作 ---")
 
     -- 设置初始值
-    wingman.kv.set("counter:hits", 0)
-    wingman.kv.set("counter:misses", 0)
+    wingman.kv.set("counter:hits", "0")
+    wingman.kv.set("counter:misses", "0")
 
     -- 自增
     wingman.kv.incr("counter:hits")
@@ -53,19 +53,19 @@ local function numberExample()
     wingman.kv.incr("counter:hits")
     print("点击次数: " .. wingman.kv.get("counter:hits"))
 
-    -- 自减
-    wingman.kv.decr("counter:misses")
+    -- 自减（incr 传负步长等价 decr）
+    wingman.kv.incr("counter:misses", -1)
     print("未命中次数: " .. wingman.kv.get("counter:misses"))
 
     -- 按指定值增减
-    wingman.kv.incrBy("counter:hits", 10)
+    wingman.kv.incr("counter:hits", 10)
     print("增加后点击: " .. wingman.kv.get("counter:hits"))
 
-    wingman.kv.decrBy("counter:misses", 5)
+    wingman.kv.incr("counter:misses", -5)
     print("减少后未命中: " .. wingman.kv.get("counter:misses"))
 
     -- 清理
-    wingman.kv.del("counter:hits", "counter:misses")
+    wingman.kv.delete({ "counter:hits", "counter:misses" })
 end
 
 -- ========== Hash 操作 ==========
@@ -85,7 +85,7 @@ local function hashExample()
     local user = wingman.kv.hget(hashKey, "username")
     print(string.format("用户名: %s", user))
 
-    -- 获取多个字段
+    -- 获取所有字段
     local fields = wingman.kv.hgetall(hashKey)
     print("所有字段:")
     for k, v in pairs(fields) do
@@ -102,11 +102,11 @@ local function hashExample()
     print("字段名: " .. table.concat(keys, ", "))
 
     -- 获取字段数量
-    local count = wingman.kv.hlen(hashKey)
+    local count = #keys
     print(string.format("字段数量: %d", count))
 
     -- 清理
-    wingman.kv.del(hashKey)
+    wingman.kv.delete(hashKey)
 end
 
 -- ========== List 操作 ==========
@@ -117,7 +117,7 @@ local function listExample()
     local listKey = "queue:tasks"
 
     -- 清空现有列表
-    wingman.kv.del(listKey)
+    wingman.kv.delete(listKey)
 
     -- 从左侧推入
     wingman.kv.lpush(listKey, "task1")
@@ -146,55 +146,97 @@ local function listExample()
     task = wingman.kv.rpop(listKey)
     print(string.format("从右侧取出: %s", task))
 
-    -- 索引访问
-    task = wingman.kv.lindex(listKey, 0)
+    -- 索引访问（现行 kv 无 lindex，用 lrange 取单个元素）
+    task = wingman.kv.lrange(listKey, 0, 0)[1]
     print(string.format("第一个任务: %s", task))
 
     -- 清理
-    wingman.kv.del(listKey)
+    wingman.kv.delete(listKey)
 end
 
 -- ========== Set 操作 ==========
+-- 现行 kv 模块未提供 sadd/smembers 等集合原语，以下用 Hash 模拟集合语义
+
+local function setAdd(key, member)
+    wingman.kv.hset(key, member, "1")
+end
+
+local function setMembers(key)
+    return wingman.kv.hkeys(key)
+end
+
+local function setIntersect(a, b)
+    local mark, out = {}, {}
+    for _, v in ipairs(b) do mark[v] = true end
+    for _, v in ipairs(a) do
+        if mark[v] then out[#out + 1] = v end
+    end
+    return out
+end
+
+local function setUnion(a, b)
+    local seen, out = {}, {}
+    for _, v in ipairs(a) do
+        if not seen[v] then seen[v] = true; out[#out + 1] = v end
+    end
+    for _, v in ipairs(b) do
+        if not seen[v] then seen[v] = true; out[#out + 1] = v end
+    end
+    return out
+end
+
+local function setDiff(a, b)
+    local mark, out = {}, {}
+    for _, v in ipairs(b) do mark[v] = true end
+    for _, v in ipairs(a) do
+        if not mark[v] then out[#out + 1] = v end
+    end
+    return out
+end
 
 local function setExample()
-    print("\n--- Set 操作 ---")
+    print("\n--- Set 操作（Hash 模拟） ---")
 
     local setKey = "online:users"
 
-    -- 添加成员
-    wingman.kv.sadd(setKey, "user1", "user2", "user3")
-    wingman.kv.sadd(setKey, "user2", "user4")  -- user2 重复
+    -- 添加成员（重复添加幂等）
+    setAdd(setKey, "user1")
+    setAdd(setKey, "user2")
+    setAdd(setKey, "user3")
+    setAdd(setKey, "user2")  -- user2 重复
 
     -- 获取成员数
-    local count = wingman.kv.scard(setKey)
+    local count = #setMembers(setKey)
     print(string.format("在线用户数: %d", count))
 
     -- 获取所有成员
-    local members = wingman.kv.smembers(setKey)
+    local members = setMembers(setKey)
     print("在线用户: " .. table.concat(members, ", "))
 
     -- 检查成员是否存在
-    local isOnline = wingman.kv.sismember(setKey, "user1")
+    local isOnline = wingman.kv.hexists(setKey, "user1")
     print(string.format("user1 在线: %s", isOnline and "是" or "否"))
 
     -- 集合运算
     local setKey2 = "vip:users"
-    wingman.kv.sadd(setKey2, "user2", "user3", "user5")
+    setAdd(setKey2, "user2")
+    setAdd(setKey2, "user3")
+    setAdd(setKey2, "user5")
 
     -- 交集
-    local common = wingman.kv.sinter(setKey, setKey2)
+    local common = setIntersect(setMembers(setKey), setMembers(setKey2))
     print("既是在线又是VIP: " .. table.concat(common, ", "))
 
     -- 并集
-    local all = wingman.kv.sunion(setKey, setKey2)
+    local all = setUnion(setMembers(setKey), setMembers(setKey2))
     print("所有用户: " .. table.concat(all, ", "))
 
     -- 差集
-    local diff = wingman.kv.sdiff(setKey, setKey2)
+    local diff = setDiff(setMembers(setKey), setMembers(setKey2))
     print("在线但非VIP: " .. table.concat(diff, ", "))
 
     -- 清理
-    wingman.kv.del(setKey, setKey2)
+    wingman.kv.delete({ setKey, setKey2 })
 end
 
 -- ========== 过期时间 ==========
@@ -216,12 +258,12 @@ local function expiryExample()
     ttl = wingman.kv.ttl("temp:data")
     print(string.format("2 秒后剩余时间: %d 秒", ttl))
 
-    -- 设置时同时指定过期时间
-    wingman.kv.set("temp:data2", "With TTL", 5)
+    -- 设置时同时指定过期时间（options 表传 ttl）
+    wingman.kv.set("temp:data2", "With TTL", { ttl = 5 })
     print("设置了 5 秒过期的键")
 
     -- 清理
-    wingman.kv.del("temp:data", "temp:data2")
+    wingman.kv.delete({ "temp:data", "temp:data2" })
 end
 
 -- ========== 实用示例：游戏配置缓存 ==========
@@ -237,7 +279,7 @@ local function gameConfigExample()
         local configJson = wingman.kv.get(configKey)
         local config = wingman.json.decode(configJson)
         print("配置:")
-        print(wingman.json.encode(config, {indent = true}))
+        print(wingman.json.encode(config, 2))
     else
         print("创建新配置")
         local config = {
@@ -258,7 +300,7 @@ local function gameConfigExample()
     end
 
     -- 清理
-    wingman.kv.del(configKey)
+    wingman.kv.delete(configKey)
 end
 
 -- 运行所有示例

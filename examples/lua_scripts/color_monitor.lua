@@ -99,17 +99,10 @@ end
 
 -- 主监控循环
 while true do
-    -- 检查目标颜色
-    local result = wingman.screen.findColor(
-        TARGET_COLOR,
-        MONITOR_REGION.x,
-        MONITOR_REGION.y,
-        MONITOR_REGION.width,
-        MONITOR_REGION.height,
-        COLOR_TOLERANCE
-    )
+    -- 检查目标颜色（返回数组：result[1]=点表或nil，result[2]=是否找到）
+    local result = wingman.screen.findColor(TARGET_COLOR, MONITOR_REGION, COLOR_TOLERANCE)
 
-    if result then
+    if result[2] then
         executeAction()
     end
 

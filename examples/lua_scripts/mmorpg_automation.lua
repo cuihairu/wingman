@@ -25,14 +25,14 @@ local Config = {
         skillReady = 0x00FF00  -- 技能就绪颜色
     },
 
-    -- 按键配置
+    -- 按键配置 (Windows 虚拟键码)
     keys = {
-        hpPotion = "1",
-        mpPotion = "2",
-        skill1 = "3",
-        skill2 = "4",
-        skill3 = "5",
-        autoAttack = "0"
+        hpPotion = 0x31,     -- 1 键
+        mpPotion = 0x32,     -- 2 键
+        skill1 = 0x33,       -- 3 键
+        skill2 = 0x34,       -- 4 键
+        skill3 = 0x35,       -- 5 键
+        autoAttack = 0x30    -- 0 键
     },
 
     -- 延迟配置 (毫秒)
@@ -129,25 +129,29 @@ function AutoCombat.findTarget()
     local centerY = wingman.screen.getScreenHeight() / 2
     local searchRadius = 200
 
-    local found, x, y = wingman.screen.findColor(
+    -- 查找敌人颜色（返回数组：result[1]=点表或nil，result[2]=是否找到）
+    local result = wingman.screen.findColor(
         Config.colors.enemy,
-        centerX - searchRadius,
-        centerY - searchRadius,
-        searchRadius * 2,
-        searchRadius * 2,
+        {
+            x = centerX - searchRadius,
+            y = centerY - searchRadius,
+            width = searchRadius * 2,
+            height = searchRadius * 2
+        },
         10
     )
 
-    if found then
+    if result[2] then
+        local pt = result[1]
         -- 使用人性化移动点击敌人
-        wingman.input.move(x, y, 200)
+        wingman.input.move(pt.x, pt.y, 200)
         humanDelay(100)
-        wingman.input.click(x, y)
+        wingman.input.click(pt.x, pt.y)
         AutoCombat.currentTarget = true
         print(string.format("[%s] 选中目标", os.date("%H:%M:%S")))
     end
 
-    return found
+    return result[2]
 end
 
 function AutoCombat.castSkills()
@@ -243,15 +247,14 @@ local Automation = {
 
 function Automation.start()
     print("开始自动化循环...")
-    print("按 F10 停止")
 
-    while Automation.running do
-        -- 检测停止键 (F10 = 121)
-        if wingman.input.isKeyDown(121) then
-            print("检测到停止信号...")
-            Automation.running = false
-            break
-        end
+    -- 现行 input 模块无按键状态查询 API（无 isKeyDown），
+    -- 这里以固定轮次演示；长时间运行的停止可交给宿主 stop 或 smarttrigger
+    local maxLoops = 600  -- 检查间隔 100ms，约 60s
+    local loops = 0
+
+    while Automation.running and loops < maxLoops do
+        loops = loops + 1
 
         -- 执行各模块
         AutoPotion.check()
@@ -299,10 +302,6 @@ function Automation.test()
     print("测试 HP 检测...")
     local hp = detectHP()
     print(string.format("HP 状态: %s", hp))
-
-    print("\n测试鼠标移动...")
-    local pos = wingman.input.getMousePosition()
-    print(string.format("当前位置: (%d, %d)", pos.x, pos.y))
 
     print("\n测试按键...")
     pressKey(Config.keys.hpPotion)

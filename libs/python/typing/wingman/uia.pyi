@@ -1,5 +1,68 @@
 from __future__ import annotations
 
-def findByName(name: str) -> int | None: ...
-def findById(id: str) -> int | None: ...
-def find(selector: dict) -> int | None: ...
+from typing import Any, Callable, TypedDict
+
+from .types import Rect
+
+# 模块函数名与引擎注册名一致（snake_case 直注，见 misc_modules.cpp
+# createUIAutomationModule）；注册名不含大写字母，camelToSnake 映射为原名，
+# 因此无额外别名。所有查找函数在元素不存在时返回 None。
+
+
+class UIElementInfo(TypedDict):
+    """get_info() 返回的元素信息（运行时为 dict）。"""
+
+    name: str
+    id: str
+    className: str
+    role: int
+    text: str
+    is_enabled: bool
+    is_visible: bool
+    has_focus: bool
+    bounds: Rect
+
+
+class UIElement(TypedDict):
+    """UIA 元素句柄：运行时为 dict，键为 _handle + snake_case 方法名，方法值均为 Callable。"""
+
+    _handle: int
+    get_info: Callable[[], UIElementInfo]
+    click: Callable[[], bool]
+    double_click: Callable[[], bool]
+    focus: Callable[[], bool]
+    get_value: Callable[[], str | None]
+    set_value: Callable[[str], bool]
+    get_children: Callable[[], list[UIElement]]
+    expand: Callable[[], bool]
+    collapse: Callable[[], bool]
+    is_expanded: Callable[[], bool]
+    is_visible: Callable[[], bool]
+    is_enabled: Callable[[], bool]
+
+
+# ===== 根元素获取 =====
+
+def from_foreground() -> UIElement | None: ...
+def from_point(x: int, y: int) -> UIElement | None: ...
+def from_window(hwnd: int) -> UIElement | None: ...
+
+# ===== 通用查找 =====
+
+def find_by_name(name: str) -> UIElement | None: ...
+def find_by_id(id: str) -> UIElement | None: ...
+def find_all_by_control_type(controlType: int) -> list[UIElement]: ...
+def wait_for_name(name: str, timeout: int = ...) -> UIElement | None: ...
+
+# ===== 专用查找 =====
+
+def find_button(name: str) -> UIElement | None: ...
+def find_edit(name: str) -> UIElement | None: ...
+def find_text(name: str) -> UIElement | None: ...
+
+# ===== 事件监听 =====
+# 回调从后台线程触发，需传 Python 函数（线程安全 callable）。
+
+def on_property_changed(name: str, callback: Callable[[str, str], Any]) -> int: ...
+def on_structure_changed(name: str, callback: Callable[[], Any]) -> int: ...
+def remove_event_listener(listenerId: int) -> bool: ...

@@ -41,7 +41,8 @@ if echo "$OUT" | grep -q '\[  FAILED  \]' || [[ $RC -ne 0 ]]; then
 	echo "FAIL: XRecord 真桌面验证未通过（exit=$RC）"; exit 1
 fi
 if [[ "$PASSED" -eq 0 ]]; then
-	echo "SKIP: 用例全部跳过——当前是 Xvfb/无头环境，无 RECORD 正向能力。"
-	echo "      请在真实桌面（GNOME/KDE/XFCE 等）的终端重跑本脚本。"; exit 2
+	echo "SKIP: 用例全部跳过——当前环境无 X server 或 RECORD 扩展不可用。"
+	echo "      注：Xvfb+RECORD 1.13 已实测可跑（2026-09-24 修复启动时序后），全跳通常意味着不在 X 环境。"
+	echo "      请在有 X server 与 RECORD 的环境（真桌面或配好 RECORD 的 Xvfb）重跑本脚本。"; exit 2
 fi
 echo "PASS: XRecord 捕获 + JSON 序列化闭环验证通过。"

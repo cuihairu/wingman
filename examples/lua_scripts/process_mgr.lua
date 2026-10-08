@@ -5,17 +5,13 @@ local wingman = require("wingman")
 
 print("=== 进程管理示例 ===")
 
--- 查找进程
+-- 查找进程（返回数组：result[1]=PID或nil，result[2]=是否找到）
 local function findProcess(name)
     print(string.format("查找进程: %s", name))
-    local pid = wingman.process.find(name)
-    if pid ~= 0 then
+    local result = wingman.process.find(name)
+    if result[2] then
+        local pid = result[1]
         print(string.format("找到进程! PID: %d", pid))
-        -- 获取进程路径
-        local path = wingman.process.getPath(pid)
-        if path and path ~= "" then
-            print(string.format("路径: %s", path))
-        end
         return pid
     else
         print("未找到进程")
@@ -37,12 +33,13 @@ local function startProcess(path, args)
     end
 end
 
--- 等待进程启动
+-- 等待进程启动（waitFor 返回是否在超时内出现，成功后再 find 取 PID）
 local function waitForProcess(name, timeout)
     timeout = timeout or 10000
     print(string.format("等待进程启动: %s (超时: %dms)", name, timeout))
-    local pid = wingman.process.waitFor(name, timeout)
-    if pid ~= 0 then
+    if wingman.process.waitFor(name, timeout) then
+        local result = wingman.process.find(name)
+        local pid = result[2] and result[1] or 0
         print(string.format("进程已启动! PID: %d", pid))
         return pid
     else
@@ -124,11 +121,10 @@ local function gameMonitorExample()
     print("按 Ctrl+C 停止监控")
 
     while true do
-        local pid = wingman.process.find(gameProcess)
-        if pid ~= 0 then
-            local path = wingman.process.getPath(pid)
+        local result = wingman.process.find(gameProcess)
+        if result[2] then
             print(string.format("[%s] %s (PID: %d)",
-                os.date("%H:%M:%S"), gameProcess, pid))
+                os.date("%H:%M:%S"), gameProcess, result[1]))
         else
             print(string.format("[%s] %s 未运行",
                 os.date("%H:%M:%S"), gameProcess))

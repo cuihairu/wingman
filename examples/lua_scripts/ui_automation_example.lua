@@ -10,26 +10,27 @@
 
 local wingman = require("wingman")
 
--- 等待记事本窗口出现
+-- 等待记事本窗口出现（find 返回数组：result[1]=句柄或nil，result[2]=是否找到）
 print("等待记事本窗口...")
-local hwnd, found = wingman.window.find("记事本")
-if not found then
+local result = wingman.window.find("记事本")
+if not result[2] then
     -- 尝试创建新记事本
     print("未找到记事本，尝试启动...")
     wingman.process.start("notepad.exe")
     wingman.util.sleep(1000)
-    hwnd, found = wingman.window.find("记事本")
+    result = wingman.window.find("记事本")
 end
 
-if not found then
+if not result[2] then
     print("错误: 无法找到记事本窗口")
     return
 end
 
-print("找到记事本窗口")
+local hwnd = result[1]
+print(string.format("找到记事本窗口 (HWND: %d)", hwnd))
 
 -- 获取前台窗口的 UI Automation 根元素
-local root = wingman.uia.fromForeground()
+local root = wingman.uia.from_foreground()
 if not root then
     print("错误: 无法获取 UI Automation 元素")
     return
@@ -37,68 +38,68 @@ end
 
 print("UI Automation 已初始化")
 
--- 获取所有子元素
+-- 获取所有子元素（元素方法用点号调用）
 print("\n=== 记事本 UI 元素 ===")
-local children = root:getChildren()
+local children = root.get_children()
 for i, child in ipairs(children) do
-    local info = child:getInfo()
-    print(string.format("[%d] %s - %s (类型: %s, 可见: %s)",
-        i, info.name, info.className, info.controlType,
-        info.isVisible and "是" or "否"))
+    local info = child.get_info()
+    print(string.format("[%d] %s - %s (角色: %d, 可见: %s)",
+        i, info.name, info.className, info.role,
+        info.is_visible and "是" or "否"))
 end
 
 -- 查找编辑框
 print("\n=== 查找编辑框 ===")
-local edit = wingman.uia.findEdit("")
+local edit = wingman.uia.find_edit("")
 if edit then
-    print("找到编辑框")
-    print("编辑框名称: " .. edit:getName())
+    print("找到编辑框: " .. edit.get_info().name)
 
     -- 设置文本
-    edit:setValue("Hello from UI Automation!\n这是通过 Lua 脚本输入的文本。\n")
+    edit.set_value("Hello from UI Automation!\n这是通过 Lua 脚本输入的文本。\n")
     print("已设置文本")
 
     -- 等待一下
     wingman.util.sleep(500)
 
     -- 获取文本
-    local value = edit:getValue()
+    local value = edit.get_value()
     print("当前文本长度: " .. #value)
 else
     print("未找到编辑框")
 end
 
--- 查找菜单栏的"文件"按钮
+-- 查找菜单栏的"文件"菜单
 print("\n=== 查找菜单 ===")
-local fileMenu = wingman.uia:findByName("文件")
+local fileMenu = wingman.uia.find_by_name("文件")
 if fileMenu then
-    print("找到文件菜单: " .. fileMenu:getName())
-    -- fileMenu:click()  -- 取消注释可点击菜单
+    print("找到文件菜单: " .. fileMenu.get_info().name)
+    -- fileMenu.click()  -- 取消注释可点击菜单
 end
 
--- 从鼠标位置获取元素
-print("\n=== 从鼠标位置获取元素 ===")
-local x, y = wingman.input.getMousePos()
-print(string.format("鼠标位置: (%d, %d)", x, y))
-local element = wingman.uia.fromPoint(x, y)
+-- 从屏幕中心获取元素（input 模块无鼠标位置查询，取屏幕中心演示）
+print("\n=== 从屏幕中心获取元素 ===")
+local cx = math.floor(wingman.screen.getScreenWidth() / 2)
+local cy = math.floor(wingman.screen.getScreenHeight() / 2)
+print(string.format("屏幕中心: (%d, %d)", cx, cy))
+local element = wingman.uia.from_point(cx, cy)
 if element then
-    local info = element:getInfo()
-    print(string.format("鼠标下的元素: %s (%s)", info.name, info.controlType))
+    local info = element.get_info()
+    print(string.format("屏幕中心下的元素: %s (角色: %d)", info.name, info.role))
 end
 
 -- 查找记事本标题栏的关闭按钮
 print("\n=== 查找关闭按钮 ===")
-local closeButton = wingman.uia.findButton("关闭")
+local closeButton = wingman.uia.find_button("关闭")
 if closeButton then
     print("找到关闭按钮")
-    -- closeButton:click()  -- 取消注释可点击关闭按钮
+    -- closeButton.click()  -- 取消注释可点击关闭按钮
 else
     print("未找到关闭按钮")
 end
 
 -- 等待特定元素出现
 print("\n=== 等待元素测试 ===")
-local testElement = wingman.uia:waitForName("不存在的元素", 2000)
+local testElement = wingman.uia.wait_for_name("不存在的元素", 2000)
 if testElement then
     print("元素已出现")
 else

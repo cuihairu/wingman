@@ -13,8 +13,8 @@ print()
 
 -- 2. 随机偏移 (点击抖动)
 print("2. 随机偏移 (模拟人类操作)")
-local offsetX, offsetY = wingman.security.getRandomOffset()
-print(string.format("X 偏移: %.2f, Y 偏移: %.2f", offsetX, offsetY))
+local offset = wingman.security.getRandomOffset()  -- 返回数组：offset[1]=x, offset[2]=y
+print(string.format("X 偏移: %.2f, Y 偏移: %.2f", offset[1], offset[2]))
 print()
 
 -- 3. 反调试检测
@@ -32,7 +32,7 @@ print()
 -- 5. 完整性验证
 print("5. 程序完整性验证")
 local integrity = wingman.security.verifyIntegrity()
-print(string.format("完整性: %s", integrity and "通过" else "失败"))
+print(string.format("完整性: %s", integrity and "通过" or "失败"))
 print()
 
 -- 6. 字符串哈希
@@ -41,14 +41,14 @@ local hash = wingman.security.hashString("Hello, Wingman!")
 print(string.format("SHA256: %s", hash))
 print()
 
--- 7. 字符串加密/解密
-print("7. 字符串加密 (XOR)")
+-- 7. 字符串加密/解密 (crypto 模块 AES-256-GCM)
+print("7. 字符串加密 (AES)")
 local secret = "my_secret_key"
 local message = "Sensitive data"
-local encrypted = wingman.security.encryptString(message, secret)
+local encrypted = wingman.crypto.encryptAES(message, secret)
 print(string.format("原文: %s", message))
 print(string.format("加密: %s", encrypted))
-local decrypted = wingman.security.decryptString(encrypted, secret)
+local decrypted = wingman.crypto.decryptAES(encrypted, secret)
 print(string.format("解密: %s", decrypted))
 print()
 
@@ -71,15 +71,15 @@ print("10. 实际应用 - 安全的鼠标点击")
 print([[
     -- 获取带抖动的坐标
     local baseX, baseY = 100, 100
-    local offsetX, offsetY = wingman.security.getRandomOffset()
-    local clickX, clickY = baseX + offsetX, baseY + offsetY
+    local offset = wingman.security.getRandomOffset()
+    local clickX, clickY = baseX + offset[1], baseY + offset[2]
 
     -- 添加随机延迟
     local delay = wingman.security.getRandomDelay()
     wingman.util.sleep(delay)
 
     -- 执行点击
-    wingman.input.click(clickX, clickY, "left")
+    wingman.input.click(clickX, clickY)  -- 左键为默认按钮
 ]])
 print()
 

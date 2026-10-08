@@ -1,15 +1,20 @@
 from __future__ import annotations
 
-from . import bt, config, db, debugger, event, fsm, gameprofile, http, human, inbox, ini, input, json, kv, ml, node, notify, ocr, orchestration, perf, process, qrcode, screen, security, smarttrigger, system, task, team, transport, uia, util, verification, vision, window
+from . import bt, clipboard, config, crypto, db, debugger, event, file, filewatcher, fsm, gameprofile, hotkey, http, human, inbox, ini, input, json, kv, ml, node, notify, ocr, orchestration, perf, process, qrcode, screen, security, smarttrigger, system, task, team, transport, uia, util, verification, vision, window
 
 __all__ = [
     "bt",
+    "clipboard",
     "config",
+    "crypto",
     "db",
     "debugger",
     "event",
+    "file",
+    "filewatcher",
     "fsm",
     "gameprofile",
+    "hotkey",
     "http",
     "human",
     "inbox",

@@ -21,15 +21,14 @@ local tolerance = 10
 
 print("正在搜索红色...")
 
--- 查找单个颜色点
-local found, x, y = wingman.screen.findColor(targetColor, region.x, region.y,
-                                      region.width, region.height, tolerance)
+-- 查找单个颜色点（返回数组：result[1]=点表或nil，result[2]=是否找到）
+local result = wingman.screen.findColor(targetColor, region, tolerance)
 
-if found then
-    print(string.format("找到红色! 位置: (%d, %d)", x, y))
+if result[2] then
+    print(string.format("找到红色! 位置: (%d, %d)", result[1].x, result[1].y))
 
     -- 在该位置点击
-    wingman.input.click(x, y)
+    wingman.input.click(result[1].x, result[1].y)
     print("已点击")
 else
     print("未找到红色")
@@ -37,8 +36,7 @@ end
 
 -- 查找所有红色点
 print("\n正在搜索所有红色点...")
-local points = wingman.screen.findColors(targetColor, region.x, region.y,
-                                   region.width, region.height, tolerance, 10)
+local points = wingman.screen.findColors(targetColor, region, tolerance, 10)
 
 print(string.format("找到 %d 个红色点", #points))
 for i, point in ipairs(points) do

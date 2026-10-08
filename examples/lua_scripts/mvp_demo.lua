@@ -15,9 +15,9 @@ print()
 
 -- 2. 截取屏幕
 print("2. 截取屏幕...")
-local screenshot = wingman.screen.capture(0, 0, 800, 600)
-if screenshot then
-    print("   截图成功: " .. screenshot.width .. "x" .. screenshot.height)
+local captured = wingman.screen.captureRegion({ x = 0, y = 0, width = 800, height = 600 })
+if captured then
+    print("   截图成功: 800x600")
 else
     print("   截图失败")
 end
@@ -36,18 +36,22 @@ print()
 -- 4. 查找颜色
 print("4. 查找白色像素:")
 local white = { r = 255, g = 255, b = 255 }
-local result = wingman.screen.findColor(white, 0, 0, 400, 300, 10)
-if result then
-    print("   找到白色像素: (" .. result.x .. "," .. result.y .. ")")
+local result = wingman.screen.findColor(white, { x = 0, y = 0, width = 400, height = 300 }, 10)
+if result[2] then
+    print("   找到白色像素: (" .. result[1].x .. "," .. result[1].y .. ")")
 else
     print("   未找到白色像素")
 end
 print()
 
--- 5. 获取鼠标位置
-print("5. 鼠标位置:")
-local mousePos = wingman.input.getMousePosition()
-print("   当前鼠标位置: (" .. mousePos.x .. "," .. mousePos.y .. ")")
+-- 5. 前台窗口
+print("5. 前台窗口:")
+local hwnd = wingman.window.getForeground()
+if hwnd and hwnd ~= 0 then
+    print("   前台窗口标题: " .. wingman.window.getTitle(hwnd))
+else
+    print("   无法获取前台窗口")
+end
 print()
 
 -- 6. 鼠标移动（带动画）
@@ -62,7 +66,7 @@ print()
 -- 7. 点击演示
 print("7. 点击演示:")
 print("   执行左键单击...")
-wingman.input.click(targetX, targetY, wingman.input.MouseButton.Left)
+wingman.input.click(targetX, targetY, 0)  -- 0=左键（默认）
 wingman.input.delay(500)
 print()
 

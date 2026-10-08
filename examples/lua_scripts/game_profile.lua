@@ -17,9 +17,10 @@ print()
 
 -- 3. 创建新游戏配置模板
 print("3. 创建游戏配置模板")
-local profileId, profileName = wingman.gameprofile.createTemplate("示例游戏")
+local tpl = wingman.gameprofile.createTemplate("示例游戏")  -- 返回数组：tpl[1]=id, tpl[2]=名称
+local profileId = tpl[1]
 print(string.format("配置 ID: %s", profileId))
-print(string.format("配置名称: %s\n", profileName))
+print(string.format("配置名称: %s\n", tpl[2]))
 
 -- 4. 列出所有配置
 print("4. 列出所有配置")
@@ -32,17 +33,17 @@ print()
 
 -- 5. 获取配置详情
 print("5. 获取配置详情")
-local id, name = wingman.gameprofile.get(profileId)
-if id then
-    print(string.format("配置: %s (%s)", name, id))
+local prof = wingman.gameprofile.get(profileId)  -- 返回数组：prof[1]=名称, prof[2]=窗口标题；未找到为 nil
+if prof then
+    print(string.format("配置: %s (%s)", prof[1], profileId))
 end
 print()
 
 -- 6. 根据窗口查找配置
 print("6. 根据窗口查找配置")
-local foundId, foundName = wingman.gameprofile.findByWindow("游戏")
-if foundId then
-    print(string.format("找到配置: %s (%s)", foundName, foundId))
+local found = wingman.gameprofile.findByWindow("游戏")  -- 返回数组：found[1]=id, found[2]=名称；未找到为 nil
+if found then
+    print(string.format("找到配置: %s (%s)", found[2], found[1]))
 else
     print("未找到匹配的配置")
 end
@@ -55,9 +56,9 @@ print(string.format("设置活动配置: %s\n", tostring(success)))
 
 -- 8. 获取活动配置
 print("8. 获取活动配置")
-local activeId, activeName = wingman.gameprofile.getActive()
-if activeId then
-    print(string.format("当前活动: %s (%s)", activeName, activeId))
+local active = wingman.gameprofile.getActive()  -- 返回数组：active[1]=id, active[2]=名称；未找到为 nil
+if active then
+    print(string.format("当前活动: %s (%s)", active[2], active[1]))
 else
     print("没有活动配置")
 end
@@ -100,10 +101,10 @@ print([[
     local hwnd = wingman.window.getForeground()
     local title = wingman.window.getTitle(hwnd)
 
-    local profileId, profileName = wingman.gameprofile.findByWindow(title)
-    if profileId then
-        wingman.gameprofile.setActive(profileId)
-        print("已加载配置: " .. profileName)
+    local found = wingman.gameprofile.findByWindow(title)
+    if found then
+        wingman.gameprofile.setActive(found[1])
+        print("已加载配置: " .. found[2])
     else
         print("未找到匹配的游戏配置")
     end

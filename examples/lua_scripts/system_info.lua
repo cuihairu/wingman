@@ -28,7 +28,7 @@ print(string.format("  使用率: %.1f%%", mem.usage))
 print("\n--- 磁盘信息 ---")
 local disks = wingman.system.getDiskInfo()
 for i, disk in ipairs(disks) do
-    print(string.format("  [%s] %s", disk.drive, disk.volumeName))
+    print(string.format("  [%s]", disk.drive))
     print(string.format("    总计: %.2f GB", disk.total / 1024 / 1024 / 1024))
     print(string.format("    可用: %.2f GB", disk.free / 1024 / 1024 / 1024))
     print(string.format("    文件系统: %s", disk.fileSystem))
@@ -39,8 +39,6 @@ print("\n--- GPU 信息 ---")
 local gpus = wingman.system.getGpuInfo()
 for i, gpu in ipairs(gpus) do
     print(string.format("  [%d] %s", i, gpu.name))
-    print(string.format("    专用内存: %.2f GB", gpu.dedicatedMemory / 1024 / 1024 / 1024))
-    print(string.format("    共享内存: %.2f GB", gpu.sharedMemory / 1024 / 1024 / 1024))
 end
 
 -- 操作系统信息

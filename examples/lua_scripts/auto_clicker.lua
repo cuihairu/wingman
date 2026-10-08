@@ -46,26 +46,20 @@ while running do
         break
     end
 
-    -- 查找目标颜色
-    local result = wingman.screen.findColor(
-        CONFIG.targetColor,
-        CONFIG.searchRegion.x,
-        CONFIG.searchRegion.y,
-        CONFIG.searchRegion.width,
-        CONFIG.searchRegion.height,
-        CONFIG.tolerance
-    )
+    -- 查找目标颜色（返回数组：result[1]=点表或nil，result[2]=是否找到）
+    local result = wingman.screen.findColor(CONFIG.targetColor, CONFIG.searchRegion, CONFIG.tolerance)
 
-    if result then
+    if result[2] then
         -- 找到目标，执行点击
         clickCount = clickCount + 1
         local timestamp = os.date("%H:%M:%S")
-        print("[" .. timestamp .. "] 找到目标! 点击 #" .. clickCount .. " at (" .. result.x .. "," .. result.y .. ")")
+        local pt = result[1]
+        print("[" .. timestamp .. "] 找到目标! 点击 #" .. clickCount .. " at (" .. pt.x .. "," .. pt.y .. ")")
 
         -- 移动鼠标并点击
-        wingman.input.move(result.x, result.y, CONFIG.moveDuration)
+        wingman.input.move(pt.x, pt.y, CONFIG.moveDuration)
         wingman.input.delay(50)
-        wingman.input.click(result.x, result.y, wingman.input.MouseButton.Left)
+        wingman.input.click(pt.x, pt.y)  -- 左键为默认按钮
 
         -- 等待指定时间
         wingman.input.delay(CONFIG.clickInterval)

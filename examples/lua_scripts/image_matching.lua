@@ -26,18 +26,19 @@ local threshold = 0.85
 print("正在查找图像: " .. templatePath)
 print("匹配阈值: " .. threshold)
 
--- 查找图像
-local point, found = wingman.screen.findImage(templatePath, region, threshold)
+-- 查找图像（返回数组：result[1]=点表或nil，result[2]=是否找到）
+local result = wingman.screen.findImage(templatePath, region, threshold)
 
-if found then
-    print(string.format("找到图像在位置: (%d, %d)", point.x, point.y))
+if result[2] then
+    local pt = result[1]
+    print(string.format("找到图像在位置: (%d, %d)", pt.x, pt.y))
 
     -- 移动鼠标到该位置
-    wingman.input.move(point.x, point.y, 500) -- 500ms 平滑移动
+    wingman.input.move(pt.x, pt.y, 500) -- 500ms 平滑移动
     wingman.util.sleep(100)
 
     -- 点击
-    wingman.input.click(point.x, point.y)
+    wingman.input.click(pt.x, pt.y)
     print("已点击该位置")
 else
     print("未找到匹配的图像")

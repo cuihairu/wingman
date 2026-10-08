@@ -5,12 +5,12 @@ local wingman = require("wingman")
 
 print("=== HTTP API 示例 ===")
 
--- GET 请求示例
+-- GET 请求示例（http 模块第二参为 options 表，自定义头放在 options.headers）
 local function getRequest(url, headers)
     headers = headers or {}
     print(string.format("GET: %s", url))
 
-    local resp = wingman.http.get(url, headers)
+    local resp = wingman.http.get(url, {headers = headers})
     print(string.format("状态码: %d", resp.status))
     print(string.format("成功: %s", resp.success and "是" or "否"))
 
@@ -31,7 +31,7 @@ local function postRequest(url, data, headers)
     local body = wingman.json.encode(data)
     print(string.format("请求体: %s", body))
 
-    local resp = wingman.http.post(url, body, headers)
+    local resp = wingman.http.post(url, body, {headers = headers})
     print(string.format("状态码: %d", resp.status))
     print(string.format("成功: %s", resp.success and "是" or "否"))
 
@@ -49,11 +49,11 @@ local function httpbinExample()
     print("\n--- httpbin.org 示例 ---")
 
     -- GET 请求
-    local resp = getRequest("https://httpbin.org/get")
-    if resp then
-        local data = wingman.json.decode(resp)
+    local body = getRequest("https://httpbin.org/get")
+    if body then
+        local data = wingman.json.decode(body)
         print("响应数据:")
-        print(wingman.json.encode(data, {indent = true}))
+        print(wingman.json.encode(data, 2))
     end
 
     wingman.util.sleep(1000)
@@ -66,7 +66,7 @@ local function httpbinExample()
     })
     if result then
         print("响应数据:")
-        print(wingman.json.encode(result.json, {indent = true}))
+        print(wingman.json.encode(result.json, 2))
     end
 end
 
@@ -80,7 +80,7 @@ local function wingmanServerExample()
     print("获取服务器状态...")
     local resp = wingman.http.get(baseUrl .. "/status")
     if resp.success then
-        local data = wingman.json.decode(resp)
+        local data = wingman.json.decode(resp.body)
         print(string.format("服务器状态: %s", data.status or "unknown"))
     else
         print("服务器未响应，请先启动 wingman server")
@@ -94,8 +94,7 @@ local function wingmanServerExample()
             screen = {
                 width = wingman.screen.getScreenWidth(),
                 height = wingman.screen.getScreenHeight()
-            },
-            mouse = wingman.input.getMousePosition()
+            }
         }
     ]]
 
@@ -104,9 +103,9 @@ local function wingmanServerExample()
     }))
 
     if resp.success then
-        local data = wingman.json.decode(resp)
+        local data = wingman.json.decode(resp.body)
         print("执行结果:")
-        print(wingman.json.encode(data, {indent = true}))
+        print(wingman.json.encode(data, 2))
     end
 end
 
@@ -120,11 +119,11 @@ local function customHeadersExample()
         ["X-Custom-Header"] = "test-value"
     }
 
-    local resp = wingman.http.get("https://httpbin.org/headers", headers)
+    local resp = wingman.http.get("https://httpbin.org/headers", {headers = headers})
     if resp then
-        local data = wingman.json.decode(resp)
+        local data = wingman.json.decode(resp.body)
         print("请求的 Headers:")
-        print(wingman.json.encode(data.headers, {indent = true}))
+        print(wingman.json.encode(data.headers, 2))
     end
 end
 
@@ -140,9 +139,9 @@ local function errorHandlingExample()
         print("错误处理成功!")
     end
 
-    -- 超时处理
+    -- 超时处理（timeout 走 options 表）
     print("\n测试超时:")
-    resp = wingman.http.get("https://httpbin.org/delay/10", {}, {timeout = 2000})
+    resp = wingman.http.get("https://httpbin.org/delay/10", {timeout = 2000})
     print(string.format("成功: %s", resp.success and "是" or "否"))
 end
 

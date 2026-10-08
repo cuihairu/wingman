@@ -42,10 +42,10 @@ local function mainLoop()
     print("开始自动循环...")
 
     while true do
-        -- 检查血量颜色
-        local found = wingman.screen.findColor(0xFF0000, 100, 100, 50, 50, 10)
+        -- 检查血量颜色（返回数组：result[1]=点表或nil，result[2]=是否找到）
+        local result = wingman.screen.findColor(0xFF0000, {x = 100, y = 100, width = 50, height = 50}, 10)
 
-        if found then
+        if result[2] then
             print("血量低! 使用药品...")
             wingman.input.key(49)  -- 按 1 键
             wingman.util.sleep(2000)  -- 等待 2 秒

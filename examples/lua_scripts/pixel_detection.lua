@@ -24,14 +24,15 @@ local region = {
 print("正在查找颜色: 0x" .. string.format("%X", targetColor))
 print("搜索区域: " .. region.x .. "," .. region.y .. "," .. region.width .. "," .. region.height)
 
--- 查找单个颜色点
-local point, found = wingman.screen.findColor(targetColor, region, tolerance)
+-- 查找单个颜色点（返回数组：result[1]=点表或nil，result[2]=是否找到）
+local result = wingman.screen.findColor(targetColor, region, tolerance)
 
-if found then
-    print(string.format("找到颜色在位置: (%d, %d)", point.x, point.y))
+if result[2] then
+    local pt = result[1]
+    print(string.format("找到颜色在位置: (%d, %d)", pt.x, pt.y))
 
     -- 在该位置点击
-    wingman.input.click(point.x, point.y)
+    wingman.input.click(pt.x, pt.y)
     print("已点击该位置")
 else
     print("未找到指定颜色")
