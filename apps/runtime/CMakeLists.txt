@@ -24,11 +24,13 @@ set(RUNTIME_SOURCES
     src/packer.cpp
     src/resource_loader.cpp
     src/runtime_context.cpp
+    src/crash_setup.cpp
     # 命令实现
     src/commands/start_command.cpp
     src/commands/stop_command.cpp
     src/commands/script_command.cpp
     src/commands/build_command.cpp
+    src/commands/crash_test_command.cpp
     # RPC handlers
     src/rpc/handlers/script_handler.cpp
     src/rpc/handlers/system_handler.cpp
@@ -59,6 +61,19 @@ target_link_libraries(wingman-runtime PRIVATE
 if(TARGET wingman::lua)
     target_link_libraries(wingman-runtime PRIVATE wingman::lua)
     target_compile_definitions(wingman-runtime PRIVATE WINGMAN_HAS_LUA)
+endif()
+
+# Crashpad 崩溃采集：链接封装库（WINGMAN_HAS_CRASHPAD 门随其传递），
+# handler 可执行文件随产物分发——与本可执行文件同目录（crash_setup 按
+# argv[0] 同目录解析）。
+if(TARGET wingman::crash)
+    target_link_libraries(wingman-runtime PRIVATE wingman::crash)
+    add_custom_command(TARGET wingman-runtime POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:crashpad_handler>
+            $<TARGET_FILE_DIR:wingman-runtime>/crashpad_handler
+        COMMENT "Copying crashpad_handler next to wingman-runtime"
+        VERBATIM)
 endif()
 
 if(WINGMAN_HAS_OPENCV)

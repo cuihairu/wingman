@@ -76,6 +76,9 @@ set(WINGMAN_SOURCES
     src/platform/common/tcp_channel.cpp
     src/platform/posix/unix_socket_channel.cpp
 
+    # 应用数据目录/平台名（崩溃采集等自描述元数据的路径基座）
+    src/platform/app_paths.cpp
+
     # Network
     src/http.cpp
     src/node_status.cpp

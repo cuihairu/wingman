@@ -1,4 +1,5 @@
 #include "wingman/runtime/cli.hpp"
+#include "wingman/runtime/crash_setup.hpp"
 #include "wingman/runtime/event_log_sink.hpp"
 #include "wingman/runtime/resource_loader.hpp"
 #include "wingman/runtime/commands/start_command.hpp"
@@ -105,6 +106,10 @@ int main(int argc, char** argv) {
     spdlog::default_logger()->sinks().push_back(wingman::runtime::createEventLogSink());
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
+
+    // 崩溃采集：sink 就绪后尽早初始化，覆盖后续全部命令路径；失败内部降级为
+    // 无采集，不影响进程可用性。
+    wingman::runtime::setupCrashReporting(argc > 0 ? argv[0] : nullptr);
 
 #ifdef WINGMAN_HAS_LUA
     wingman::lua::registerLuaEngine();
