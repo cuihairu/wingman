@@ -25,6 +25,12 @@
 #include <system_error>
 #include <vector>
 
+#if defined(_WIN32)
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
+
 namespace {
 
 using wingman::runtime::AgentConfig;
@@ -34,12 +40,19 @@ using wingman::runtime::RunMode;
 
 class AgentConfigTest : public ::testing::Test {
 protected:
-    // 每用例独立的临时文件路径（进程内原子序号避免同套件并发撞名；
-    // temp_directory_path 在 Windows/macOS/Linux 语义一致）。
+    // 每用例独立的临时文件路径（pid 掺名防 ctest -j 跨进程撞名——每用例
+    // 独立进程的序号从同一值起，确定性文件名会让并发进程读写串数据；
+    // 进程内序号避免同套件并发撞名；temp_directory_path 平台语义一致）。
     std::filesystem::path tempFile(const std::string& tag) {
         const auto base = std::filesystem::temp_directory_path();
         const auto path = base / ("wm-agent-config-" + tag + "-" +
-            std::to_string(++seq_) + ".tmp");
+            std::to_string(
+#if defined(_WIN32)
+                _getpid()
+#else
+                getpid()
+#endif
+            ) + "-" + std::to_string(++seq_) + ".tmp");
         files_.push_back(path);
         return path;
     }

@@ -63,6 +63,12 @@
 #include <thread>
 #include <vector>
 
+#if defined(_WIN32)
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
+
 using json = nlohmann::json;
 using Agent = wingman::runtime::Agent;
 using wingman::runtime::AgentConfig;
@@ -80,11 +86,23 @@ namespace fs = std::filesystem;
 
 namespace {
 
-// 进程内唯一临时路径（配置文件/脚本/XDG 私有目录共用；同一二进制串行运行）
+// ctest -j 下每用例独立进程并发：进程内 static 序号跨进程重合，确定性目录名
+// 会撞车——先收尾进程的 remove_all 连树拔掉在用目录，后者 bind socket 报
+// ENOENT。掺 pid 保证并发进程的临时目录互不相撞。
+int processId() {
+#if defined(_WIN32)
+    return _getpid();
+#else
+    return getpid();
+#endif
+}
+
+// 进程内唯一临时路径（配置文件/脚本/XDG 私有目录共用；pid 掺名 + 进程内序号递增）
 std::string tempPath(const std::string& tag) {
     static std::atomic<int> seq{0};
     static const auto base = fs::temp_directory_path();
-    return (base / ("wm-agent-loop-" + tag + "-" +
+    static const auto pid = std::to_string(processId());
+    return (base / ("wm-agent-loop-" + tag + "-" + pid + "-" +
                     std::to_string(seq.fetch_add(1)) + ".tmp"))
         .string();
 }
