@@ -31,7 +31,7 @@ totp(secret: string, digits: number?, period: number?) -> string
 ```
 
 **参数**：
-- `secret` - Base32 编码的密钥
+- `secret` - Base32 编码的密钥。**需 ≥16 字符且仅含 Base32 字符（`A-Z`、`2-7`，可含空格）**，否则返回空串
 - `digits` - 验证码位数，默认 6
 - `period` - 时间步长（秒），默认 30
 
@@ -74,7 +74,7 @@ local code = wingman.verification.totp("JBSWY3DPEHPK3PXP", 8, 60)
 
 ### steamGuard(secret) / steamGuard(secret)
 
-**说明**：生成 Steam Guard 验证码（5 位字母）。
+**说明**：生成 Steam Guard 验证码（5 位数字）。
 
 **函数签名**：
 
@@ -87,10 +87,10 @@ steamGuard(secret: string) -> string
 ```
 
 **参数**：
-- `secret` - Steam Guard 密钥
+- `secret` - Steam Guard 密钥（≥16 字符 Base32，或 Base64 编码密钥）
 
 **返回**：
-- 5 位字母验证码
+- 5 位**数字**验证码（00000-99999，前导零补齐）
 
 :::tabs
 
@@ -133,7 +133,7 @@ verify(secret: string, code: string, digits: number?, period: number?, window: n
 ```
 
 **参数**：
-- `secret` - Base32 编码的密钥
+- `secret` - Base32 编码的密钥。**需 ≥16 字符且仅含 Base32 字符（`A-Z`、`2-7`，可含空格）**，否则返回 `False`/`false`
 - `code` - 要验证的验证码
 - `digits` - 验证码位数，默认 6
 - `period` - 时间步长（秒），默认 30
@@ -242,7 +242,7 @@ local secs = wingman.verification.remaining(60)
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|------|
-| `totp(secret, digits?, period?)` | `totp(secret, digits?, period?)` | 生成 TOTP 验证码 | secret: Base32 密钥<br>digits: 位数 (默认 6)<br>period: 步长秒数 (默认 30)<br>返回: 验证码字符串 |
-| `steam_guard(secret)` | `steamGuard(secret)` | 生成 Steam Guard 验证码 | secret: 密钥<br>返回: 5 位字母验证码 |
-| `verify(secret, code, digits?, period?, window?)` | `verify(secret, code, digits?, period?, window?)` | 验证 TOTP 验证码 | secret: 密钥<br>code: 验证码<br>window: 容错窗口 (默认 1)<br>返回: 是否有效 |
+| `totp(secret, digits?, period?)` | `totp(secret, digits?, period?)` | 生成 TOTP 验证码 | secret: Base32 密钥（≥16 字符）<br>digits: 位数 (默认 6)<br>period: 步长秒数 (默认 30)<br>返回: 验证码字符串 |
+| `steam_guard(secret)` | `steamGuard(secret)` | 生成 Steam Guard 验证码 | secret: 密钥<br>返回: 5 位数字验证码 |
+| `verify(secret, code, digits?, period?, window?)` | `verify(secret, code, digits?, period?, window?)` | 验证 TOTP 验证码 | secret: 密钥（≥16 字符 Base32）<br>code: 验证码<br>window: 容错窗口 (默认 1)<br>返回: 是否有效 |
 | `remaining(period?)` | `remaining(period?)` | 剩余有效秒数 | period: 步长秒数 (默认 30)<br>返回: 剩余秒数 |

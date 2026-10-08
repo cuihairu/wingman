@@ -15,7 +15,7 @@ find_edit(name: str) -> UIElement | None
 ```
 
 ```lua
-findEdit(name: string) -> UIElement | nil
+find_edit(name: string) -> UIElement | nil
 ```
 
 **参数**：
@@ -34,7 +34,7 @@ from wingman import uia
 edit = uia.find_edit("用户名")
 if edit:
     # 找到了，可以操作
-    edit.set_value("player123")
+    edit["set_value"]("player123")
     print("已填写用户名")
 else:
     print("未找到用户名输入框")
@@ -46,10 +46,10 @@ else:
 local wingman = require("wingman")
 
 -- 查找名为"用户名"的编辑框
-local edit = wingman.uia.findEdit("用户名")
+local edit = wingman.uia.find_edit("用户名")
 if edit then
     -- 找到了，可以操作
-    edit:setValue("player123")
+    edit:set_value("player123")
     print("已填写用户名")
 else
     print("未找到用户名输入框")
@@ -60,10 +60,10 @@ end
 
 ### 查找空名称编辑框
 
-**说明**：很多编辑框没有设置标签名称（Name 为空字符串），这种情况下可以传入空字符串来查找。
+**说明**：传入空字符串时 `find_edit` **不按名称过滤**，返回查找到的第一个 Edit 角色控件（名称不限，不一定是没有名称的那个）。
 
 **注意事项**：
-- 如果有多个空名称编辑框，可能会找到错误的那个
+- 如果界面有多个编辑框，命中的不一定是目标控件
 - 建议配合 AutomationId 或位置信息来精确定位
 
 :::tabs
@@ -73,10 +73,10 @@ end
 ```python:line-numbers
 from wingman import uia
 
-# 查找第一个空名称的编辑框
+# 返回第一个 Edit 控件（不区分名称）
 edit = uia.find_edit("")
 if edit:
-    edit.set_value("some text")
+    edit["set_value"]("some text")
     print("已填写内容")
 ```
 
@@ -85,10 +85,10 @@ if edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 查找第一个空名称的编辑框
-local edit = wingman.uia.findEdit("")
+-- 返回第一个 Edit 控件（不区分名称）
+local edit = wingman.uia.find_edit("")
 if edit then
-    edit:setValue("some text")
+    edit:set_value("some text")
     print("已填写内容")
 end
 ```
@@ -110,7 +110,7 @@ UIElement.get_value() -> str
 ```
 
 ```lua
-UIElement:getValue() -> string
+UIElement:get_value() -> string
 ```
 
 **返回**：编辑框中的文本内容
@@ -130,7 +130,7 @@ from wingman import uia
 edit = uia.find_edit("搜索")
 if edit:
     # 读取当前搜索关键词
-    current_text = edit.get_value()
+    current_text = edit["get_value"]()
     print(f"当前搜索内容: {current_text}")
 ```
 
@@ -139,10 +139,10 @@ if edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local edit = wingman.uia.findEdit("搜索")
+local edit = wingman.uia.find_edit("搜索")
 if edit then
     -- 读取当前搜索关键词
-    local currentText = edit:getValue()
+    local currentText = edit:get_value()
     print("当前搜索内容: " .. currentText)
 end
 ```
@@ -160,7 +160,7 @@ UIElement.set_value(text: str) -> None
 ```
 
 ```lua
-UIElement:setValue(text: string) -> None
+UIElement:set_value(text: string) -> None
 ```
 
 **参数**：
@@ -176,7 +176,7 @@ from wingman import uia
 edit = uia.find_edit("用户名")
 if edit:
     # 设置用户名
-    edit.set_value("player123")
+    edit["set_value"]("player123")
     print("已填写用户名")
 ```
 
@@ -185,10 +185,10 @@ if edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local edit = wingman.uia.findEdit("用户名")
+local edit = wingman.uia.find_edit("用户名")
 if edit then
     -- 设置用户名
-    edit:setValue("player123")
+    edit:set_value("player123")
     print("已填写用户名")
 end
 ```
@@ -209,7 +209,7 @@ from wingman import uia
 edit = uia.find_edit("搜索")
 if edit:
     # 清空搜索框
-    edit.set_value("")
+    edit["set_value"]("")
     print("已清空搜索框")
 ```
 
@@ -218,10 +218,10 @@ if edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local edit = wingman.uia.findEdit("搜索")
+local edit = wingman.uia.find_edit("搜索")
 if edit then
     -- 清空搜索框
-    edit:setValue("")
+    edit:set_value("")
     print("已清空搜索框")
 end
 ```
@@ -242,13 +242,13 @@ from wingman import uia
 edit = uia.find_edit("日志")
 if edit:
     # 读取现有内容
-    current = edit.get_value()
+    current = edit["get_value"]()
 
     # 追加新行
     new_content = current + "\n[INFO] 新的日志条目"
 
     # 设置回编辑框
-    edit.set_value(new_content)
+    edit["set_value"](new_content)
     print("已追加日志")
 ```
 
@@ -257,16 +257,16 @@ if edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local edit = wingman.uia.findEdit("日志")
+local edit = wingman.uia.find_edit("日志")
 if edit then
     -- 读取现有内容
-    local current = edit:getValue()
+    local current = edit:get_value()
 
     -- 追加新行
     local newContent = current .. "\n[INFO] 新的日志条目"
 
     -- 设置回编辑框
-    edit:setValue(newContent)
+    edit:set_value(newContent)
     print("已追加日志")
 end
 ```
@@ -298,11 +298,11 @@ from wingman import uia
 password_edit = uia.find_edit("密码")
 if password_edit:
     # 设置密码（这是允许的）
-    password_edit.set_value("mypassword123")
+    password_edit["set_value"]("mypassword123")
     print("已设置密码")
 
     # 注意：无法读取密码内容
-    # content = password_edit.get_value()  # 返回空或 "*"
+    # content = password_edit["get_value"]()  # 返回空或 "*"
 ```
 
 == Lua
@@ -310,14 +310,14 @@ if password_edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local passwordEdit = wingman.uia.findEdit("密码")
+local passwordEdit = wingman.uia.find_edit("密码")
 if passwordEdit then
     -- 设置密码（这是允许的）
-    passwordEdit:setValue("mypassword123")
+    passwordEdit:set_value("mypassword123")
     print("已设置密码")
 
     -- 注意：无法读取密码内容
-    -- local content = passwordEdit:getValue()  -- 返回空或 "*"
+    -- local content = passwordEdit:get_value()  -- 返回空或 "*"
 end
 ```
 
@@ -327,7 +327,7 @@ end
 
 **说明**：只读编辑框用于显示信息，不允许用户修改。常见于状态显示、日志输出等场景。
 
-**识别方式**：通过 `get_info()` 获取属性，检查 `is_readonly` 字段。
+**识别方式**：`get_info()` 的返回键中**没有只读标记**（无 `is_readonly` 字段），脚本层目前无法直接识别只读编辑框；对只读编辑框调用 `set_value` 是否生效由应用侧决定。
 
 :::tabs
 
@@ -338,15 +338,10 @@ from wingman import uia
 
 readonly_edit = uia.find_edit("状态信息")
 if readonly_edit:
-    # 检查是否只读
-    info = readonly_edit.get_info()
-    if info.get('is_readonly', False):
-        # 只读编辑框只能读取，不能写入
-        text = readonly_edit.get_value()
-        print(f"状态信息: {text}")
-
-        # 以下操作无效（被忽略）
-        # readonly_edit.set_value("尝试修改")  # 不会生效
+    # get_info 无只读字段，脚本层无法识别只读属性
+    # 只读编辑框只能读取，写入是否生效由应用侧决定
+    text = readonly_edit["get_value"]()
+    print(f"状态信息: {text}")
 ```
 
 == Lua
@@ -354,18 +349,12 @@ if readonly_edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local readonlyEdit = wingman.uia.findEdit("状态信息")
+local readonlyEdit = wingman.uia.find_edit("状态信息")
 if readonlyEdit then
-    -- 检查是否只读
-    local info = readonlyEdit:getInfo()
-    if info.isReadOnly then
-        -- 只读编辑框只能读取，不能写入
-        local text = readonlyEdit:getValue()
-        print("状态信息: " .. text)
-
-        -- 以下操作无效（被忽略）
-        -- readonlyEdit:setValue("尝试修改")  -- 不会生效
-    end
+    -- get_info 无只读字段，脚本层无法识别只读属性
+    -- 只读编辑框只能读取，写入是否生效由应用侧决定
+    local text = readonlyEdit:get_value()
+    print("状态信息: " .. text)
 end
 ```
 
@@ -395,7 +384,7 @@ if textarea:
 第二行内容
 第三行内容"""
 
-    textarea.set_value(multi_line_text)
+    textarea["set_value"](multi_line_text)
     print("已填写多行描述")
 ```
 
@@ -405,12 +394,12 @@ if textarea:
 local wingman = require("wingman")
 
 -- 多行编辑框通常也是 Edit 类型
-local textarea = wingman.uia.findEdit("描述")
+local textarea = wingman.uia.find_edit("描述")
 if textarea then
     -- 设置多行文本（使用 \n 分隔各行）
     local multiLineText = "第一行内容\n第二行内容\n第三行内容"
 
-    textarea:setValue(multiLineText)
+    textarea:set_value(multiLineText)
     print("已填写多行描述")
 end
 ```
@@ -427,7 +416,7 @@ end
 
 **使用场景**：
 - 准备输入前确保焦点正确
-- 配合 `input.send_keys()` 使用
+- 配合 `input.key()` / `input.type()` 使用
 
 **方法签名**：
 
@@ -449,7 +438,7 @@ from wingman import uia
 edit = uia.find_edit("用户名")
 if edit:
     # 设置焦点到用户名输入框
-    edit.focus()
+    edit["focus"]()
     print("焦点已设置到用户名输入框")
 ```
 
@@ -458,7 +447,7 @@ if edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local edit = wingman.uia.findEdit("用户名")
+local edit = wingman.uia.find_edit("用户名")
 if edit then
     -- 设置焦点到用户名输入框
     edit:focus()
@@ -484,13 +473,15 @@ from wingman import uia, input
 edit = uia.find_edit("搜索")
 if edit:
     # 1. 先设置焦点
-    edit.focus()
+    edit["focus"]()
 
-    # 2. 发送 Ctrl+A 全选
-    input.send_keys("^a")
+    # 2. 发送 Ctrl+A 全选（keyDown/keyUp 组合：0x11=Ctrl，0x41=A）
+    input.key_down(0x11)
+    input.key(0x41)
+    input.key_up(0x11)
 
-    # 3. 可以继续操作，如删除（发送 Delete 键）
-    # input.send_keys("{DELETE}")
+    # 3. 可以继续操作，如输入替换文本
+    # input.type("新的搜索词")
 ```
 
 == Lua
@@ -498,16 +489,15 @@ if edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local edit = wingman.uia.findEdit("搜索")
+local edit = wingman.uia.find_edit("搜索")
 if edit then
     -- 1. 先设置焦点
     edit:focus()
 
-    -- 2. 发送 Ctrl+A 全选
-    wingman.input.sendKeys("^a")
-
-    -- 3. 可以继续操作，如删除（发送 Delete 键）
-    -- wingman.input.sendKeys("{DELETE}")
+    -- 2. 发送 Ctrl+A 全选（keyDown/keyUp 组合：0x11=Ctrl，0x41=A）
+    wingman.input.keyDown(0x11)
+    wingman.input.key(0x41)
+    wingman.input.keyUp(0x11)
 end
 ```
 
@@ -523,11 +513,14 @@ end
 
 **常用属性**：
 - `name` - 编辑框名称（可能为空）
-- `value` - 当前文本内容
-- `control_type` - 控件类型（应为 "Edit"）
-- `automation_id` - AutomationId（如果有）
-- `is_readonly` - 是否只读
-- `is_password` - 是否密码框
+- `text` - 当前文本内容
+- `id` - AutomationId（如果有）
+- `className` - 控件类名
+- `role` - 角色数值（int，TextBox = 3）
+- `is_enabled` / `is_visible` / `has_focus` - 状态位
+- `bounds` - 位置和大小（`{x, y, width, height}`）
+
+> get_info 返回键中**没有** `is_readonly`（只读）与 `is_password`（密码框）标记。
 
 :::tabs
 
@@ -538,14 +531,14 @@ from wingman import uia
 
 edit = uia.find_edit("用户名")
 if edit:
-    info = edit.get_info()
+    info = edit["get_info"]()
 
     print(f"编辑框名称: {info.get('name', '')}")
-    print(f"当前内容: {info.get('value', '')}")
-    print(f"控件类型: {info.get('control_type', '')}")
-    print(f"AutomationId: {info.get('automation_id', '')}")
-    print(f"是否只读: {info.get('is_readonly', False)}")
-    print(f"是否密码框: {info.get('is_password', False)}")
+    print(f"当前内容: {info.get('text', '')}")
+    print(f"id: {info.get('id', '')}")
+    print(f"类名: {info.get('className', '')}")
+    print(f"角色: {info.get('role', 0)}")  # 3 = UIARole TextBox
+    print(f"是否启用: {info.get('is_enabled', True)}")
 ```
 
 == Lua
@@ -553,16 +546,16 @@ if edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local edit = wingman.uia.findEdit("用户名")
+local edit = wingman.uia.find_edit("用户名")
 if edit then
-    local info = edit:getInfo()
+    local info = edit:get_info()
 
     print("编辑框名称: " .. (info.name or ""))
-    print("当前内容: " .. (info.value or ""))
-    print("控件类型: " .. (info.controlType or ""))
-    print("AutomationId: " .. (info.automationId or ""))
-    print("是否只读: " .. tostring(info.isReadOnly or false))
-    print("是否密码框: " .. tostring(info.isPassword or false))
+    print("当前内容: " .. (info.text or ""))
+    print("id: " .. (info.id or ""))
+    print("类名: " .. (info.className or ""))
+    print("角色: " .. tostring(info.role or 0))  -- 3 = UIARole TextBox
+    print("是否启用: " .. tostring(info.is_enabled or false))
 end
 ```
 
@@ -587,7 +580,7 @@ def login(username, password):
     # 1. 填写用户名
     username_edit = uia.find_edit("用户名")
     if username_edit:
-        username_edit.set_value(username)
+        username_edit["set_value"](username)
         print(f"已填写用户名: {username}")
     else:
         print("未找到用户名输入框")
@@ -596,7 +589,7 @@ def login(username, password):
     # 2. 填写密码
     password_edit = uia.find_edit("密码")
     if password_edit:
-        password_edit.set_value(password)
+        password_edit["set_value"](password)
         print("已填写密码")
     else:
         print("未找到密码输入框")
@@ -605,7 +598,7 @@ def login(username, password):
     # 3. 点击登录按钮
     login_btn = uia.find_button("登录")
     if login_btn:
-        login_btn.click()
+        login_btn["click"]()
         print("已点击登录按钮")
         return True
     else:
@@ -626,9 +619,9 @@ local wingman = require("wingman")
 
 local function login(username, password)
     -- 1. 填写用户名
-    local usernameEdit = wingman.uia.findEdit("用户名")
+    local usernameEdit = wingman.uia.find_edit("用户名")
     if usernameEdit then
-        usernameEdit:setValue(username)
+        usernameEdit:set_value(username)
         print("已填写用户名: " .. username)
     else
         print("未找到用户名输入框")
@@ -636,9 +629,9 @@ local function login(username, password)
     end
 
     -- 2. 填写密码
-    local passwordEdit = wingman.uia.findEdit("密码")
+    local passwordEdit = wingman.uia.find_edit("密码")
     if passwordEdit then
-        passwordEdit:setValue(password)
+        passwordEdit:set_value(password)
         print("已填写密码")
     else
         print("未找到密码输入框")
@@ -646,7 +639,7 @@ local function login(username, password)
     end
 
     -- 3. 点击登录按钮
-    local loginBtn = wingman.uia.findButton("登录")
+    local loginBtn = wingman.uia.find_button("登录")
     if loginBtn then
         loginBtn:click()
         print("已点击登录按钮")
@@ -675,24 +668,32 @@ end
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `find_edit(name)` | `findEdit(name)` | 按名称查找编辑框 | `name` - 编辑框名称 |
-| `find_by_id(id)` | `findById(id)` | 按 AutomationId 查找 | `id` - AutomationId |
+| `find_edit(name)` | `find_edit(name)` | 按名称查找编辑框 | `name` - 编辑框名称（传空串返回第一个 Edit，不区分名称） |
+| `find_by_id(id)` | `find_by_id(id)` | 按 AutomationId 查找 | `id` - AutomationId |
 
 ### 编辑框操作
 
 | Python 方法 | Lua 方法 | 说明 |
 |------------|---------|------|
-| `get_value()` | `:getValue()` | 获取当前文本内容 |
-| `set_value(text)` | `:setValue(text)` | 设置文本内容 |
+| `get_value()` | `:get_value()` | 获取当前文本内容 |
+| `set_value(text)` | `:set_value(text)` | 设置文本内容 |
 | `focus()` | `:focus()` | 设置焦点到编辑框 |
-| `get_info()` | `:getInfo()` | 获取编辑框所有属性 |
+| `get_info()` | `:get_info()` | 获取编辑框所有属性 |
 
 ### 编辑框属性
+
+`get_info()` 返回键集：
 
 | 属性 | 类型 | 说明 |
 |-----|------|------|
 | `name` | string | 编辑框名称（可能为空） |
-| `value` | string | 当前文本内容 |
-| `control_type` | string | 控件类型（"Edit"） |
-| `is_readonly` | boolean | 是否只读 |
-| `is_password` | boolean | 是否密码框 |
+| `text` | string | 当前文本内容 |
+| `id` | string | AutomationId（可能为空） |
+| `className` | string | 控件类名 |
+| `role` | int | 角色数值（TextBox = 3） |
+| `is_enabled` | boolean | 是否启用 |
+| `is_visible` | boolean | 是否可见 |
+| `has_focus` | boolean | 是否持有焦点 |
+| `bounds` | object | 位置和大小 `{x, y, width, height}` |
+
+> 无 `is_readonly` / `is_password` 字段。

@@ -15,7 +15,7 @@ timer 模块提供以下能力：
 
 > **注意**：回调在后台 timer 线程执行（非脚本主线程）。Python 回调经 GIL 包装跨线程安全；
 > Lua 回调非线程安全，与 `event.on` + 后台线程 emit 的既有敞口一致，Lua 脚本中请只做
-> 简单的标志位/队列操作或自行评估线程安全。脚本引擎关闭时会自动清理该脚本创建的定时器。
+> 简单的标志位/队列操作或自行评估线程安全。脚本引擎关闭时清空的是**当前进程全部**待触发定时器（TimerService 为进程级单例，含其他脚本/runtime 创建的定时器），并非只清本脚本的。
 > Python 侧多词函数同时暴露 camelCase（`clearTimer`）与 snake_case（`clear_timer`）两种形式，下文以 camelCase 示例。
 
 ---
@@ -87,11 +87,11 @@ every(ms: number, callback: function) -> number
 ```
 
 **参数**：
-- `ms` - 触发间隔毫秒数（必须大于 0）
+- `ms` - 触发间隔毫秒数。`ms <= 0` 不报错，按 **1ms** 间隔处理
 - `callback` - 周期触发的回调（不接收参数）
 
 **返回**：
-- `int`/`number` - timerId（参数无效时返回 0）
+- `int`/`number` - timerId（仅参数缺失或回调不可调用时返回 0）
 
 :::tabs
 

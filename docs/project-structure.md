@@ -21,11 +21,10 @@ wingman/
 │   └── server/              # Go 服务端
 ├── assets/                  # 资源文件
 ├── build-scripts/           # 构建脚本
-├── cmake/                   # CMake 模块
 ├── config/                  # 配置文件
 ├── docs/                    # 项目文档
 ├── examples/                # 示例和模板
-└── vcpkg-ports/             # 本地 vcpkg ports
+└── vcpkg-ports/             # 本地 vcpkg ports（预留，当前为空）
 ```
 
 ## 模块说明
@@ -62,7 +61,7 @@ Android 端侧 Agent（Kotlin，实验性）。无障碍服务注入 + MediaProj
 - **hotkey** - 全局热键监听
 - **file** - 文件 IO
 
-脚本模块注册表（`script/modules/`，42 个 ModuleDescriptor）也在此库。
+脚本模块注册表（`script/modules/`，41 个 ModuleDescriptor）也在此库。
 
 ### libs/
 
@@ -95,7 +94,7 @@ ScriptManager (语言无关) → IScriptEngine
     ↓
 libs/lua/ 或 libs/python/ (引擎绑定)
     ↓
-lib/wingman/ (42 个脚本模块 → screen, input, trigger...)
+lib/wingman/ (41 个脚本模块 → screen, input, trigger...)
     ↓
 apps/runtime/ (应用：CLI + outbound agent + local IPC)
     ↓ (outbound TCP)

@@ -55,7 +55,7 @@ Wingman 选择同时支持 Python 和 Lua，是为了满足不同用户的需求
 **Python（snake_case）**：
 ```python
 screen.get_pixel(x, y)
-screen.find_image(path, x, y, w, h)
+screen.find_image(path, region)
 uia.find_button("确定")
 http.post(url, data)
 ```
@@ -63,10 +63,12 @@ http.post(url, data)
 **Lua（camelCase）**：
 ```lua
 screen.getPixel(x, y)
-screen.findImage(path, x, y, w, h)
-uia.findButton("确定")
+screen.findImage(path, region)
+uia.find_button("确定")
 http.post(url, data)
 ```
+
+> 注意：各模块以实际注册名为准。`screen`/`input`/`window` 等模块注册名为 camelCase，Python 绑层会自动提供 snake_case 别名；`uia` 模块注册名本身为 snake_case（两种语言同名，Python 侧无 camelCase 形式）。
 
 ### 模块化设计
 
@@ -92,16 +94,18 @@ http.post(url, data)
 # Python
 from wingman import screen
 
-img = screen.capture(0, 0, 400, 300)
-result = screen.find_image("button.png", 0, 0, 1920, 1080)
+img = screen.capture()
+result = screen.find_image("button.png", {"x": 0, "y": 0, "width": 1920, "height": 1080})
+# result 为数组 [point, found]（point 为 {x, y} 对象）
 ```
 
 ```lua
 local wingman = require("wingman")
 
 -- Lua
-local img = wingman.screen.capture(0, 0, 400, 300)
-local result = wingman.screen.findImage("button.png", 0, 0, 1920, 1080)
+local img = wingman.screen.capture()
+local result = wingman.screen.findImage("button.png", {x = 0, y = 0, width = 1920, height = 1080})
+-- result 为数组 {point, found}（point 为 {x, y} 对象）
 ```
 
 ---
@@ -149,13 +153,15 @@ local result = wingman.screen.findImage("button.png", 0, 0, 1920, 1080)
 ```python
 from wingman import screen, input
 
-# 截图并找图
-img = screen.capture(0, 0, 400, 300)
-result = screen.find_image("button.png", 0, 0, 1920, 1080)
+# 截屏（返回是否成功，图像存于内部缓冲区）
+ok = screen.capture()
 
-if result:
-    x, y, confidence = result
-    input.click(x, y)
+# 全屏找图（region 表；返回数组 [point, found]）
+result = screen.find_image("button.png", {"x": 0, "y": 0, "width": 1920, "height": 1080})
+
+if result[1]:
+    point = result[0]
+    input.click(point["x"], point["y"])
 ```
 
 ### Lua
@@ -163,12 +169,14 @@ if result:
 ```lua
 local wingman = require("wingman")
 
--- 截图并找图
-local img = wingman.screen.capture(0, 0, 400, 300)
-local result = wingman.screen.findImage("button.png", 0, 0, 1920, 1080)
+-- 截屏（返回是否成功，图像存于内部缓冲区）
+local ok = wingman.screen.capture()
 
-if result then
-    wingman.input.click(result.x, result.y)
+-- 全屏找图（region 表；返回数组 {point, found}）
+local result = wingman.screen.findImage("button.png", {x = 0, y = 0, width = 1920, height = 1080})
+
+if result[2] then
+    wingman.input.click(result[1].x, result[1].y)
 end
 ```
 
@@ -208,6 +216,7 @@ end
 - [event](./event.md) - 事件订阅与发布系统
 - [fsm](./fsm.md) - 有限状态机（FSM）
 - [task](./task.md) - 任务编排与执行
+- [script](./script.md) - 脚本管理控制面（列举、启动/停止/重载、环境变量）
 - [notify](./notify.md) - 通知系统（日志、Toast、Webhook、托盘意图）
 - [smart-trigger](./smart-trigger.md) - 智能触发器
 - [behavior-tree](./behavior-tree.md) - 行为树引擎

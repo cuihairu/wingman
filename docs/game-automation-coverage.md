@@ -2,7 +2,10 @@
 
 This document records the current game-automation coverage of Wingman and compares it with similar products. It is intended to guide future implementation and prevent scope drift.
 
-Last calibrated: 2026-10-04 (trigger GUI editing and global hotkeys landed; see Product UX Gaps for what remains).
+Last calibrated: 2026-10-08 (local ONNX object detection and the team
+protocol — voting/inbox/broadcast — recalibrated; see Engine/API Gaps and
+Orchestration/Team Gaps). Previous calibration: 2026-10-04 (trigger GUI
+editing and global hotkeys landed; see Product UX Gaps for what remains).
 
 ## Positioning
 
@@ -36,7 +39,7 @@ Current coverage is strong at the engine/API layer and weaker at the product UX 
 | Local UI control | Medium | IPC architecture is correct; UI needs trigger/profile/debug workflows. |
 | Remote orchestration | Medium | Architecture is correct: Go server as central controller, runtime connects outbound. Protocol and UX still need maturation. |
 | Team coordination | Medium | Direction exists; voting, member state, task assignment, and server arbitration need productization. |
-| Advanced vision / ML | Low-Medium | Basic CV exists; object detection and robust scene understanding are future work. |
+| Advanced vision / ML | Medium | Basic CV exists; an optional local ONNX object-detection layer has landed (`aiSetupLocal`, ML build profile — see `docs/api/vision.md`). It is not enabled by default and still needs per-scenario model/tuning work. Robust scene understanding is future work. |
 | Product usability | Medium-Low | Main gap: visual configuration, preview/debugging, template management. |
 
 Approximate coverage:
@@ -108,17 +111,24 @@ References:
 - Window-relative coordinates instead of absolute screen-only coordinates.
 - Retry/timeout/fallback primitives for image/OCR operations.
 - Failure recovery: stuck detection, window lost, game restart, reset flow.
-- Optional object detection layer: ONNX/YOLO-style target detection.
+- Object detection: the optional ONNX/YOLO-style layer already exists as an
+  opt-in (local provider via `aiSetupLocal`, `WINGMAN_ENABLE_ML` build). The
+  remaining gap is that it ships disabled by default and needs per-game
+  model assets and scenario tuning.
 - Asset versioning for templates and regions.
 
 ### Orchestration/Team Gaps
 
-- Server-arbitrated team voting.
-- Member state model: online, busy, idle, failed, paused.
-- Task assignment and lease/ack model.
-- Runtime inbox controlled by server.
-- Team event broadcast from server to runtimes.
-- Dashboard view for team state and vote progress.
+- Task assignment and lease/ack model: the server assigns work units to team
+  members with lease/ack semantics (no Task/Assign/lease protocol yet).
+- Dashboard view for team state and vote progress (the team protocol exists
+  server-side; the Dashboard UI does not yet surface it).
+
+Already implemented and therefore no longer gaps: server-arbitrated team
+voting (`team.vote_create` / `team.vote_cast`, votes persisted server-side),
+member state reporting (`team.status_report`), the server-controlled runtime
+inbox (`inbox.register` / `inbox.heartbeat` / `inbox.ack` / `inbox.report`
+with server acks), and team event broadcast.
 
 ## Recommended Priority
 

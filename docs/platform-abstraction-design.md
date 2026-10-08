@@ -496,7 +496,8 @@ scripts/check_platform_boundary.sh   # 无依赖，CI 首个 job 运行（Platfo
   文件即失败并列出位置。
 - 迁移清单 `scripts/platform_boundary_allowlist.txt`（P0 冻结时的 47 个历史欠账文件）**只减不增**：
   每完成一处迁移删除一行并跑守卫验证；新增文件入清单须经维护者批准并在 PR 中说明理由。
-  P1 收回 2 行、P2 收回 14 行（ipc 6 + capture_source 2 + transport 6），现存 31 行。
+  P1 收回 2 行、P2 收回 14 行（ipc 6 + capture_source 2 + transport 6），现存 30 行
+  （2026-10-04 实测，与 §6.4 同口径）。
 - 欠账清零后，本守卫退化为纯红线检查（清单为空、只拦新增违规）。
 
 ### 8.4 独立库薄层

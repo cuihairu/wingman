@@ -189,9 +189,13 @@ minitouch/minicap 二进制、不引入 uiautomator2 server。
 
 ### D3 采集通道：MediaProjection 主、无障碍 takeScreenshot 兜底，拒绝 scrcpy 依赖
 
-**决策**：维持 A2 已实装的双通道——MediaProjection + VirtualDisplay +
-ImageReader（30–60fps，实时采集主通道）；`takeScreenshot`（API 30+，
-限流 ~1Hz）作低频/投屏未授权兜底。**不引入 scrcpy 采集**。
+**决策**：采集主通道维持 A2 已实装的 MediaProjection + VirtualDisplay +
+ImageReader（30–60fps，实时采集）；`takeScreenshot`（API 30+，限流 ~1Hz）
+作低频/投屏未授权兜底。**不引入 scrcpy 采集**。
+
+> **状态**：当前实现为 `AndroidCaptureSource` 单通道（包装 captureFrame）。
+> takeScreenshot 兜底通道与两通道聚合均**未实现（计划中）**，属本设计的
+> 计划项，非 A2 交付物。
 
 **为什么拒绝 scrcpy**：scrcpy 是优秀的**主机控**取帧方案，但它要求
 设备持续连接一台 scrcpy-server 宿主（经 adb），等于把「adb 常连」重新
@@ -202,9 +206,10 @@ scrcpy 唯一的真实价值场景是**远程调试可视化**（人看设备画
 A4 的 Dashboard 设备视图增强（经 Go Server 转发），不进自动化数据面。
 
 **兜底语义**：takeScreenshot 兜底不是「性能兜底」而是「权限兜底」——
-投屏授权弹窗被拒/失效时，找色找图类低频脚本仍可用。两通道在
-`AndroidCaptureSource` 后聚合（A2 已有），对上层 API 透明，本设计不
-改变该边界，只要求 capabilities 上报当前激活通道（D7）。
+投屏授权弹窗被拒/失效时，找色找图类低频脚本仍可用。落地后两通道在
+`AndroidCaptureSource` 后聚合，对上层 API 透明，本设计不改变该边界，
+只要求 capabilities 上报当前激活通道（D7）。（聚合与兜底均为上述
+计划项，尚未实现。）
 
 ### D4 控件树自动化：新增 wingman.ui.* 模块，AutoJS 语义、wingman 接口
 
@@ -416,7 +421,8 @@ false/nil（既有约定）。
 
 | 阶段 | 内容 | 验收标准 |
 |------|------|----------|
-| **A2 收尾**（进行中） | 真机行为验证：dispatchGesture 真机手感、MediaProjection 息屏约束确认、takeScreenshot API 30+ 兜底 | 真机完成 development-todo 移动端清单 A2 剩余人工项；FakeHostBridge 测试全绿保持 |
+| **A2 收尾**（进行中） | 真机行为验证：dispatchGesture 真机手感、MediaProjection 息屏约束确认 | 真机完成 development-todo 移动端清单 A2 剩余人工项；FakeHostBridge 测试全绿保持 |
+| **D3 兜底采集**（计划中，未实现） | takeScreenshot（API 30+，限流 ~1Hz）兜底通道 + `AndroidCaptureSource` 两通道聚合（见 D3 状态注） | 投屏未授权时低频找色找图脚本仍可用；capabilities 上报当前激活通道 |
 | **A2.5 控件树 + OCR**（本设计核心交付） | D4 wingman.ui.* 全套；D5 wingman.ocr.findText；capabilities 扩展（D7） | ① 选择器单测（Kotlin 快照 JSON 固定样例→C++ 求值，桌面可跑）；② 真机验收：在设置 App 中经 wingman.ui 找到指定开关并点击，无需任何坐标；③ OCR 真机验收：对含已知文字的截帧 findText 命中坐标误差 ≤ 文字框高度；④ capabilities 变更（关无障碍）10s 内反映到 server |
 | **A3 可靠性**（既有计划 + 本设计增强） | 自愈三件套、断连自治、受限设置预授权脚本、**降级审计**（D9） | 断网 5 分钟自治运行且重连后日志补发；杀进程/重启后 60s 内恢复纳管；预授权脚本在 5 台主流 ROM 实测通过；降级事件全链路可见 |
 | **A4 多设备编排**（既有计划） | Team/inbox 端侧接入、Dashboard 设备视图（capabilities/降级告警展示、按 platform 分组、远程桌面预览/接管经 Guacamole 像素面网关——见 `remote-gateway-guacamole-design.md`，P0 已实现） | 20 台设备分组批量下发成功率 ≥ 既有 batch 基线；设备视图能区分「在线但能力降级」与「健康」设备 |

@@ -84,7 +84,7 @@ Auto.js 的强项是**控件树**，但手游是渲染表面，无障碍树拿�
 
 | 现有组件 | 在 Android 端侧 Agent 中的角色 | 预估改动 |
 |---------|------------------------------|---------|
-| `libs/transport` 客户端（TCP 长链接、`length\njson\n` 信封、心跳、自动重连、register/agent_id） | Agent ↔ Go Server 通信层 | **几乎零改动**，直接编译到 Android |
+| `libs/transport` 客户端（TCP 长链接、16 字节二进制头 + JSON 体信封（命名权威见 `docs/protocols.md`）、心跳、自动重连、register/agent_id） | Agent ↔ Go Server 通信层 | **几乎零改动**，直接编译到 Android |
 | Go Server 会话管理（AgentInfo / kGetAgents / 心跳超时） | 设备纳管 | 新增少量消息类型（见 4.2） |
 | Lua 引擎（libs/lua） | 端侧脚本执行 | NDK 交叉编译 |
 | vision（OpenCV 找色找图、金字塔、LRU 缓存） | 游戏场景核心能力 | arm64-android 编译（NEON 加速） |
@@ -96,13 +96,23 @@ Auto.js 的强项是**控件树**，但手游是渲染表面，无障碍树拿�
 
 ### 4.2 协议扩展点（沿用现有 TCP 协议，不动架构）
 
-现有协议已支持 1024+ 自定义业务码，新增消息类型即可：
+现行协议（`docs/protocols.md`）没有数字「业务码」概念：帧类型仅
+Request/Response/Notify/Error 四值，应用层消息靠 body 内字符串 `type`
+区分，由 server 侧 `internal/agent/listener.go` 按类型分发（现有
+`agent.*` / `team.*` / `inbox.*` / `proxy.*` 等 Notify）。扩展即新增一个
+字符串类型 + 一个分发 case：
 
-- `script.push` / `script.pull` —— 脚本下发与版本管理（Server 为脚本仓库）
-- `device.capabilities` —— 能力上报（屏幕分辨率/密度/朝向、Android 版本、有无 Root）
-- `asset.sync` —— 模板图片/资源同步（找图模板由 Server 按脚本打包下发）
-- `log.stream` —— 端侧日志/截图事件上报（复用现有事件转发机制）
-- 现有 `kRegister / kHeartbeat / kSyncTask / kShutdown` 原样复用
+- 脚本下发：Request `run_script`（content 内联）——**已落地**（A1，
+  见 `docs/android-agent-design.md` §3.2）；`script.pull` 类增量版本同步
+  为预留（未实现）
+- `device.capabilities` 能力上报：register 的 capabilities 字段已透传，
+  主动变更上报为预留（未实现）
+- `asset.sync` 模板图片/资源同步：预留（未实现，A4）
+- 端侧日志/截图事件上报：Notify `agent.event`{event:"script_output"}——
+  **现成承担**（A1 落地，server 转发 Dashboard）
+- 注册/心跳：复用现有 Notify `agent.register` / `agent.heartbeat`
+  （`agent.register_ack` 应答；不存在 kRegister/kSyncTask/kShutdown 等
+  常量）
 
 ### 4.3 新增组件：Android 壳与 JNI 桥
 
@@ -150,7 +160,7 @@ Android App（Kotlin 壳）
 | 方案 | 帧率 | 限制 | 用途 |
 |------|------|------|------|
 | MediaProjection + VirtualDisplay | 30-60fps | 会话级授权弹窗 | **主方案**：端侧实时找图/找色 |
-| AccessibilityService.takeScreenshot | 限流（约 1 次/秒） | API 30+ | 兜底/低频场景 |
+| AccessibilityService.takeScreenshot | 限流（约 1 次/秒） | API 30+ | 兜底/低频场景（候选方案，未实现——`mobile-automation-design.md` D3 计划项） |
 | 控件树截图（无） | — | — | 控件信息直接走无障碍节点树，无需截屏 |
 
 ### 5.4 输入注入
@@ -201,11 +211,14 @@ Android App（Kotlin 壳）
   - [x] C++ 核心可移植面就位（transport + RemoteClient + Lua/Sol2 + ScriptRunner；
     lib/wingman 本体 Android 编译随 A2 接入，租户目录与构建分支已就位）
   - [ ] 真机端到端验收（需 Android SDK/NDK 环境，步骤见 apps/android/README.md）
-- [ ] **A2 脚本能力：自动化可用**
-  - [ ] `platform/android/` IInput 后端（dispatchGesture，JNI）
-  - [ ] `platform/android/` ICapture 后端（MediaProjection 主 + takeScreenshot 兜底）
-  - [ ] 找色/找图/像素检测对手机截帧可用；screen/input 脚本 API 全通
-  - [ ] 触发器系统在端侧跑通（定时/像素触发）
+- [x] **A2 脚本能力：自动化可用**（✅ 2026-09-21 已实施，设计与验收步骤见
+  `docs/android-agent-design.md` §5.5/§5.6、`docs/android-agent.md` 里程碑）
+  - [x] `platform/android/` IInput 后端（dispatchGesture，JNI）
+  - [x] `platform/android/` ICapture 后端（MediaProjection 主通道；takeScreenshot
+    兜底不在 A2 交付内、未实现——`docs/mobile-automation-design.md` D3 计划项）
+  - [x] 找色/找图/像素检测对手机截帧可用；screen/input 脚本 API 全通
+  - [ ] 触发器系统在端侧跑通（定时/像素触发）——A2 范围未含，仍未实施
+    （与 `mobile-automation-design.md` §5「端侧跑通（A2 后续）」同口径）
 - [ ] **A3 可靠性与部署体验**
   - [x] 开机自启、崩溃自重启、断连自治（缓存脚本继续执行、重连后汇报）（✅ 2026-09-30，6cecfad）
   - [x] 受限设置引导 + adb 预授权脚本（✅ 2026-09-30：脚本 + App 内引导 + 手册 `docs/guides/android-restricted-settings.md`）

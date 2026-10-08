@@ -12,7 +12,7 @@ filewatcher 模块提供以下能力：
 - **isWatching** - 查询某路径是否处于监听中
 - **getWatchedPaths** - 列出当前所有被监听的路径
 
-> **注意**：当前模块的脚本桥接实现为占位版本。`watch` 在参数校验通过后固定返回 `true`，`unwatch`/`unwatchAll` 仅清理解释层状态，`isWatching` 固定返回 `false`，`getWatchedPaths` 固定返回空数组。底层 `FileWatcher` 原生回调绑定尚未在脚本层接通，使用时请以代码实际行为为准。
+> **注意**：当前模块的脚本桥接实现为占位版本。`watch` 在参数校验通过后固定返回 `true`，`unwatch`/`unwatchAll` 为 **no-op 占位**（仅做参数校验：`unwatch` 的 `path` 非字符串返回 `false`，`unwatchAll` 返回 null，不存在任何可清理的监听状态），`isWatching` 固定返回 `false`，`getWatchedPaths` 固定返回空数组。底层 `FileWatcher` 原生回调绑定尚未在脚本层接通，使用时请以代码实际行为为准。
 
 ---
 
@@ -72,7 +72,7 @@ wingman.filewatcher.watch("./data", on_change)
 
 ### unwatch(path) / unwatch(path)
 
-**说明**：停止监听指定路径。`path` 必须为字符串，否则返回 `false`。
+**说明**：停止监听指定路径。当前为 no-op 占位：仅校验 `path` 为字符串（否则返回 `false`），通过后固定返回 `true`，无实际清理动作。
 
 **函数签名**：
 
@@ -116,7 +116,7 @@ wingman.filewatcher.unwatch("./data")
 
 ### unwatchAll() / unwatchAll()
 
-**说明**：停止所有正在监听的路径。
+**说明**：停止所有正在监听的路径。当前为 no-op 占位（直接返回 null，无实际清理动作）。
 
 **函数签名**：
 

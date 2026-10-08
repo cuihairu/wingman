@@ -72,7 +72,7 @@ Dashboard 点击运行 → Go Server run_script{content} → 设备执行 Lua
 
 ## 3. 协议设计（复用现有帧协议，零新消息类型）
 
-帧格式与 `orchestrator/server/pkg/agent/client.go` 一致：
+帧格式与 `orchestrator/server/internal/agent/client.go` 一致：
 16 字节头（length/sequence/type/reserved，小端）+ JSON body；
 type ∈ Request(1)/Response(2)/Notify(3)/Error(4)。
 
@@ -135,7 +135,7 @@ server 侧三条脚本下发路径（单发 / 批量 / 工作流步骤）统一�
 | `internal/handlers/batch.go` | 批量下发同上（先解析目标，零目标零下发不读文件） |
 | `internal/workflow/engine.go` | 工作流 `runScriptOnce` 同上（读失败判步骤失败） |
 | `internal/agent/registry.go` | `AgentInfo` 增加 `Platform` 字段（空值视为 desktop，兼容旧 agent） |
-| `pkg/agent/listener.go` | `handleRegister` 读取 `platform` 透传给 Registry（~3 行） |
+| `internal/agent/listener.go` | `handleRegister` 读取 `platform` 透传给 Registry（~3 行） |
 | 测试 | registry 平台字段测试 + 三条路径 content 下发测试 |
 
 ---
@@ -150,16 +150,19 @@ apps/android/
 ├── settings.gradle.kts
 ├── build.gradle.kts               # AGP 版本与仓库
 ├── gradle.properties
+├── cpp/                           # ★ C++ 源位于 app 外层（不在 src/main/cpp），
+│   │                              #   gradle 经 ../cpp/CMakeLists.txt 引用（§5.2）
+│   ├── CMakeLists.txt             # NDK 构建：wingman_agent JNI so
+│   ├── vcpkg.json                 # Android 独立 manifest（见 §6.1）
+│   ├── vcpkg-android.cmake        # vcpkg NDK triplet 工具链
+│   ├── jni_bridge.cpp             # JNI 边界（唯一接触 JNIEnv 的翻译层）
+│   └── agent/
+│       ├── android_agent.hpp/.cpp      # 装配：RemoteClient+命令分发+日志回传
+│       └── android_screenshot.hpp/.cpp # 截图通路（MediaProjection → captureFrame）
 └── app/
-    ├── build.gradle.kts           # externalNativeBuild → NDK CMake
+    ├── build.gradle.kts           # externalNativeBuild → path = file("../cpp/CMakeLists.txt")
     └── src/main/
         ├── AndroidManifest.xml    # 权限与组件声明
-        ├── cpp/
-        │   ├── CMakeLists.txt     # NDK 构建：wingman_agent JNI so
-        │   ├── jni_bridge.cpp     # JNI 边界（唯一接触 JNIEnv 的翻译层）
-        │   └── agent/
-        │       ├── android_agent.hpp/.cpp   # 装配：RemoteClient+命令分发+日志回传
-        │       └── script_runner.hpp/.cpp   # Lua 执行线程
         ├── java/com/wingman/agent/
         │   ├── MainActivity.kt
         │   ├── WingmanService.kt

@@ -35,6 +35,11 @@ Wingman 提供了丰富的 API 来支持游戏自动化开发。
 | `verification` | 验证码识别、TOTP | [verification](verification.md) |
 | `gameprofile` | 游戏配置档案 | [gameprofile](gameprofile.md) |
 | `util` | 工具函数 | [util](util.md) |
+| `ml` | ONNX 模型加载与输入/输出元数据查询（可选依赖） | [ml](ml.md) |
+| `file` | 文件 IO（读写、移动复制、目录操作） | [file](file.md) |
+| `filewatcher` | 文件系统监听 | [filewatcher](filewatcher.md) |
+| `clipboard` | 剪贴板读写 | [clipboard](clipboard.md) |
+| `hotkey` | 全局热键监听 | [hotkey](hotkey.md) |
 
 ### 快速示例
 
@@ -188,6 +193,9 @@ config_string = ini.encode(config)
 | `http` | HTTP 请求 | [http](http.md) |
 | `config` | 配置管理 | [config](config.md) |
 | `transport` | TCP/UDP 网络通信 | [transport](transport.md) |
+| `script` | 脚本管理控制面（列举、启动/停止/重载） | [script](script.md) |
+| `timer` | 定时器（一次性/周期回调） | [timer](timer.md) |
+| `macro` | 宏录制与回放 | [macro](macro.md) |
 | `orchestration` | 编排控制 | [orchestration](orchestration.md) |
 | `inbox` | 消息收件箱 | [inbox](inbox.md) |
 | `team` | 组队编排 | [team](team.md) |
@@ -263,16 +271,15 @@ wingman.debugger.breakHere()
 ### Lua
 
 - 统一引入: `local wingman = require("wingman")`，模块作为子表访问: `wingman.screen`
-- 方法使用驼峰命名: `wingman.screen.capture()`
-- 常量使用全大写: `KEY_CTRL`
+- 方法以模块实际注册名为准（如 `wingman.screen.capture()`、`wingman.uia.find_button()`）
+- 脚本层当前没有注册常量
 
 ### Python
 
 - 模块使用小写: `from wingman import screen`
-- 方法使用蛇形命名: `screen.capture()`
-- 常量使用全大写: `KEY_CTRL`
+- 方法以模块实际注册名为准（camelCase 注册名会同时提供 snake_case 别名；原生 snake_case 注册名仅此一种形式）
 
-> [**命名约定**：Python 绑层对每个模块函数同时注册 camelCase（与 Lua 一致）与 snake_case（PEP 8 风格）两种形式，例如 `get_foreground()` 与 `getForeground()` 等价可用。推荐脚本使用 snake_case，camelCase 保留以兼容历史脚本。]
+> [**命名约定**：Python 绑层对 camelCase 注册名自动提供 snake_case 别名（如 `util` 模块的 `getTime` 可写作 `get_time`）；原生 snake_case 注册名（如 `uia` 模块的 `find_by_name`）仅此一种形式，没有 camelCase 形式。推荐脚本先查各模块文档确认注册名。]
 
 ## 类型转换
 

@@ -13,7 +13,7 @@ hotkey 模块提供以下能力：
 
 - **轮询式 v1**：后台线程按固定间隔（默认 30ms）读全局键盘状态，按上升沿触发一次回调（`Ctrl+Shift+A` 风格组合键，大小写不敏感、修饰键顺序不限）。
 - **线程约束**：回调从后台轮询线程触发，**必须是线程安全 callable**（Python 函数可以；Lua callable 非线程安全，会被拒绝并发出 `hotkey.error` 事件——Lua 侧请改用事件/触发器）。
-- **平台支持**：Windows（`GetAsyncKeyState`）/ Linux X11（`XQueryKeymap`）/ macOS（`CGEventSourceKeyState`，需辅助功能权限，真实行为待真机验证）。
+- **平台支持**：Windows（`GetKeyState`——读取的是调用线程的消息队列键态，轮询线程无消息泵，语义与「全局异步键态」存在偏差风险）/ Linux X11（`XQueryKeymap`）/ macOS（`CGEventSourceKeyState`，需辅助功能权限，真实行为待真机验证）。
 - **v1 已知限制**：按键在两次轮询间隔内按下又弹起（<30ms）可能漏检。
 - **生命周期**：首个注册自动启动轮询线程；注销清空后线程自查退出（下次注册自动重启）。
 

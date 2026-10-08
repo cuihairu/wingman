@@ -25,7 +25,7 @@ if slider:
 local wingman = require("wingman")
 
 -- 查找名为"音量"的滑块
-local slider = wingman.uia.findByName("音量")
+local slider = wingman.uia.find_by_name("音量")
 if slider then
     print("找到滑块")
 end
@@ -37,7 +37,7 @@ end
 
 ## 获取当前值
 
-**说明**：读取滑块的当前值。
+> **未实现（计划中）**：`get_info()` 的返回键中没有数值字段（无 `value`），`get_value()` 返回的是元素文本（实现为 `getText`），不是滑块数值。滑块当前值读取暂不可用。
 
 :::tabs
 
@@ -48,9 +48,9 @@ from wingman import uia
 
 slider = uia.find_by_name("音量")
 if slider:
-    info = slider.get_info()
-    value = info.get('value', 0)
-    print(f"当前音量: {value}")
+    # get_info 无数值字段，这里只读取通用信息
+    info = slider["get_info"]()
+    print(f"名称: {info.get('name', '')}")
 ```
 
 == Lua
@@ -58,11 +58,11 @@ if slider:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local slider = wingman.uia.findByName("音量")
+local slider = wingman.uia.find_by_name("音量")
 if slider then
-    local info = slider:getInfo()
-    local value = info.value or 0
-    print("当前音量: " .. value)
+    -- get_info 无数值字段，这里只读取通用信息
+    local info = slider:get_info()
+    print("名称: " .. (info.name or ""))
 end
 ```
 
@@ -72,43 +72,18 @@ end
 
 ## 设置滑块值
 
-**说明**：设置滑块的值。值必须在滑块的最小值和最大值之间。
-
-**方法签名**：
-
-```python
-UIElement.set_value(value: number) -> None
-```
-
-```lua
-UIElement:setValue(value: number) -> None
-```
-
-**参数**：
-- `value` - 要设置的值
+> **未实现（计划中）**：`set_value(number)` 设置滑块值的能力未实现——`set_value` 的实现是设置元素文本（`setText`），对滑块调用不会拖动滑块或改变数值。调值需等待 Range/Value 模式接口补齐；过渡方案可用 `input.scroll()` 或拖拽模拟。
 
 :::tabs
 
 == Python
 
 ```python:line-numbers
-from wingman import uia
+from wingman import input
 
-slider = uia.find_by_name("音量")
-if slider:
-    info = slider.get_info()
-
-    # 设置为 80
-    slider.set_value(80)
-    print("已设置音量为 80")
-
-    # 设置为最大值
-    slider.set_value(info.get('maximum', 100))
-    print("已设置为最大音量")
-
-    # 设置为最小值
-    slider.set_value(info.get('minimum', 0))
-    print("已设置为最小音量（静音）")
+# 过渡方案：鼠标移到滑块上后用滚轮微调（方向取决于应用）
+input.move(400, 300)
+input.scroll(400, 300, -1)
 ```
 
 == Lua
@@ -116,22 +91,9 @@ if slider:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local slider = wingman.uia.findByName("音量")
-if slider then
-    local info = slider:getInfo()
-
-    -- 设置为 80
-    slider:setValue(80)
-    print("已设置音量为 80")
-
-    -- 设置为最大值
-    slider:setValue(info.maximum or 100)
-    print("已设置为最大音量")
-
-    -- 设置为最小值
-    slider:setValue(info.minimum or 0)
-    print("已设置为最小音量（静音）")
-end
+-- 过渡方案：鼠标移到滑块上后用滚轮微调（方向取决于应用）
+wingman.input.move(400, 300)
+wingman.input.scroll(400, 300, -1)
 ```
 
 :::
@@ -140,44 +102,7 @@ end
 
 ## 获取滑块范围
 
-**说明**：查看滑块允许的最小值和最大值。
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import uia
-
-slider = uia.find_by_name("音量")
-if slider:
-    info = slider.get_info()
-    minimum = info.get('minimum', 0)
-    maximum = info.get('maximum', 100)
-    current = info.get('value', 0)
-
-    print(f"音量范围: {minimum} - {maximum}")
-    print(f"当前音量: {current}")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
-local slider = wingman.uia.findByName("音量")
-if slider then
-    local info = slider:getInfo()
-    local minimum = info.minimum or 0
-    local maximum = info.maximum or 100
-    local current = info.value or 0
-
-    print(string.format("音量范围: %d - %d", minimum, maximum))
-    print("当前音量: " .. current)
-end
-```
-
-:::
+> **未实现（计划中）**：`get_info()` 的返回键中没有 `minimum`/`maximum` 字段，滑块范围读取暂不可用。
 
 ---
 
@@ -185,10 +110,10 @@ end
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
-| `find_by_name(name)` | `findByName(name)` | 按名称查找 |
+| `find_by_name(name)` | `find_by_name(name)` | 按名称查找 |
 
 | Python 方法 | Lua 方法 | 说明 |
 |------------|---------|------|
-| `get_value()` | `:getValue()` | 获取当前值 |
-| `set_value(value)` | `:setValue(value)` | 设置滑块值 |
-| `get_info()` | `:getInfo()` | 获取滑块信息 |
+| `get_info()` | `:get_info()` | 获取滑块通用信息 |
+
+> **未实现（计划中）**：滑块值/范围的读取（`get_value` 数值语义、`minimum`/`maximum` 字段）与设置（`set_value` 数值语义）均未实现——`get_value`/`set_value` 实为读取/设置元素文本，仅对文本型控件有效。

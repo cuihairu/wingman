@@ -11,24 +11,21 @@ wingman/
 │   │   ├── src/
 │   │   │   ├── main.cpp          ← 入口
 │   │   │   ├── agent.cpp         ← Agent 主逻辑（主动连接编排器）
-│   │   │   ├── remote_client.cpp ← 远程客户端（主动 outbound 连接编排器）
 │   │   │   ├── standalone_mode.cpp ← 单机模式
 │   │   │   └── commands/         ← CLI 子命令
 │   │   ├── include/wingman/runtime/
 │   │   ├── tests/                ← 应用测试
 │   │   └── CMakeLists.txt
 │   │
-│   ├── gui/                      ← Tauri/Svelte GUI
-│   │   ├── src-tauri/
-│   │   ├── src/
-│   │   └── package.json
-│   │
-│   └── client/                   ← 客户端库
+│   └── gui/                      ← Tauri/Svelte GUI
+│       ├── src-tauri/
+│       ├── src/
+│       └── package.json
 │
 ├── lib/wingman/                  ← 核心库
 │   ├── include/wingman/
 │   │   ├── screen.hpp            ← 屏幕捕获
-│   │   ├── input.hpp             ← 输入模拟
+│   │   ├── platform/iinput.hpp   ← 输入模拟接口
 │   │   ├── trigger.hpp           ← 触发器
 │   │   ├── vision.hpp            ← 视觉识别
 │   │   ├── behavior_tree.hpp     ← 行为树
@@ -77,7 +74,7 @@ Wingman 是四层模型，中间横着一条硬性的 **Control Plane / Executio
 边界**（决策详见 `docs/architecture-decisions.md` 的 *Four-Layer Model*）：
 
 ```
- CONTROL PLANE                      Go server（apps/orchestrator）
+ CONTROL PLANE                      Go server（orchestrator/）
    Dashboard (React) · RBAC · Audit · Agent Registry · Workflow 引擎
         │
         │ Agent TCP（outbound，注册令牌鉴权）

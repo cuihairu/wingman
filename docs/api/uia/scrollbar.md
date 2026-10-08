@@ -30,13 +30,13 @@ if h_scroll:
 local wingman = require("wingman")
 
 -- 查找垂直滚动条
-local vScroll = wingman.uia.findByName("垂直滚动条")
+local vScroll = wingman.uia.find_by_name("垂直滚动条")
 if vScroll then
     print("找到垂直滚动条")
 end
 
 -- 查找水平滚动条
-local hScroll = wingman.uia.findByName("水平滚动条")
+local hScroll = wingman.uia.find_by_name("水平滚动条")
 if hScroll then
     print("找到水平滚动条")
 end
@@ -48,73 +48,23 @@ end
 
 ## 获取滚动位置
 
-**说明**：查看滚动条当前的滚动位置（通常为 0-100 的百分比）。
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import uia
-
-v_scroll = uia.find_by_name("垂直滚动条")
-if v_scroll:
-    info = v_scroll.get_info()
-    value = info.get('value', 0)
-    print(f"当前滚动位置: {value}%")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
-local vScroll = wingman.uia.findByName("垂直滚动条")
-if vScroll then
-    local info = vScroll:getInfo()
-    local value = info.value or 0
-    print("当前滚动位置: " .. value .. "%")
-end
-```
-
-:::
+> **未实现（计划中）**：`get_info()` 的返回键中没有滚动数值字段（无 `value`），`get_value()` 返回的是元素文本（实现为 `getText`），不是滚动位置。滚动位置读取暂不可用。
 
 ---
 
 ## 设置滚动位置
 
-**说明**：设置滚动条的滚动位置。值为 0 表示滚动到顶部/左侧，100 表示滚动到底部/右侧。
-
-**方法签名**：
-
-```python
-UIElement.set_value(value: number) -> None
-```
-
-```lua
-UIElement:setValue(value: number) -> None
-```
-
-**参数**：
-- `value` - 滚动位置（0-100）
+> **未实现（计划中）**：`set_value(number)` 设置滚动位置的能力未实现——`set_value` 的实现是设置元素文本（`setText`），对滚动条调用不会改变滚动位置。滚动请改用 `input.scroll(x, y, delta)`（模拟鼠标滚轮，input 模块）。
 
 :::tabs
 
 == Python
 
 ```python:line-numbers
-from wingman import uia
+from wingman import input
 
-v_scroll = uia.find_by_name("垂直滚动条")
-if v_scroll:
-    # 滚动到顶部（0%）
-    v_scroll.set_value(0)
-
-    # 滚动到中间（50%）
-    v_scroll.set_value(50)
-
-    # 滚动到底部（100%）
-    v_scroll.set_value(100)
+# 在指定坐标处滚动（delta 正负号为滚动方向，按平台约定）
+input.scroll(500, 400, -3)
 ```
 
 == Lua
@@ -122,17 +72,8 @@ if v_scroll:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local vScroll = wingman.uia.findByName("垂直滚动条")
-if vScroll then
-    -- 滚动到顶部（0%）
-    vScroll:setValue(0)
-
-    -- 滚动到中间（50%）
-    vScroll:setValue(50)
-
-    -- 滚动到底部（100%）
-    vScroll:setValue(100)
-end
+-- 在指定坐标处滚动（delta 正负号为滚动方向，按平台约定）
+wingman.input.scroll(500, 400, -3)
 ```
 
 :::
@@ -141,44 +82,7 @@ end
 
 ## 获取滚动范围
 
-**说明**：查看滚动条的最小值和最大值。
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import uia
-
-v_scroll = uia.find_by_name("垂直滚动条")
-if v_scroll:
-    info = v_scroll.get_info()
-    minimum = info.get('minimum', 0)
-    maximum = info.get('maximum', 100)
-    current = info.get('value', 0)
-
-    print(f"滚动范围: {minimum} - {maximum}")
-    print(f"当前位置: {current}")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
-local vScroll = wingman.uia.findByName("垂直滚动条")
-if vScroll then
-    local info = vScroll:getInfo()
-    local minimum = info.minimum or 0
-    local maximum = info.maximum or 100
-    local current = info.value or 0
-
-    print(string.format("滚动范围: %d - %d", minimum, maximum))
-    print("当前位置: " .. current)
-end
-```
-
-:::
+> **未实现（计划中）**：`get_info()` 的返回键中没有 `minimum`/`maximum` 字段，滚动范围读取暂不可用。
 
 ---
 
@@ -186,10 +90,10 @@ end
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
-| `find_by_name(name)` | `findByName(name)` | 按名称查找 |
+| `find_by_name(name)` | `find_by_name(name)` | 按名称查找 |
 
 | Python 方法 | Lua 方法 | 说明 |
 |------------|---------|------|
-| `get_value()` | `:getValue()` | 获取当前滚动位置 |
-| `set_value(value)` | `:setValue(value)` | 设置滚动位置（0-100） |
-| `get_info()` | `:getInfo()` | 获取滚动条信息 |
+| `get_info()` | `:get_info()` | 获取滚动条通用信息 |
+
+> **未实现（计划中）**：滚动位置/范围的读取（`get_value` 数值语义、`minimum`/`maximum` 字段）与设置（`set_value` 数值语义）均未实现——`get_value`/`set_value` 实为读取/设置元素文本，仅对文本型控件有效。

@@ -27,7 +27,7 @@ Agent (Runtime)  ──主动连接──>  Go Orchestrator (TCP Server)
 ```
 
 关键实现文件：
-- `apps/runtime/src/remote_client.cpp` - 远程客户端，主动连接编排器
+- `libs/agentcore/src/remote_client.cpp` - 远程客户端（`wingman::runtime::RemoteClient`，桌面 runtime 与 Android agent 同源），主动连接编排器
 - `libs/transport/` - 网络传输层
 
 ### 2. Local IPC（本地 GUI 控制）
@@ -57,52 +57,29 @@ Dashboard（`orchestrator/dashboard/`）通过 WebSocket 连接到 Go 编排器�
 Web Dashboard (React/Umi)  ──WebSocket──>  Go Orchestrator  ──Transport TCP──>  Agent
 ```
 
-## API 端点（由 Go 编排器提供服务）
+## 旧协议动作名（历史存档，非现行接口）
 
-以下 API 端点概念仍然存在，但现在由 Go 编排器（`orchestrator/server/`）提供服务，而非 C++ runtime 直接暴露。
+下表为旧 JSON-RPC 协议的动作名历史存档，仅供迁移对照。这些动作名在现行
+链路中**均不存在**：现行 server→agent 命令是 Request 帧的 `method` 字段
+（`run_script`/`stop_script`/`get_status`/`list_windows`/
+`screenshot.capture`/`system.shutdown`/`trigger.*`，权威命名见
+[protocols.md](./protocols.md)）；runtime 本地能力走本地 IPC RPC
+（`screenshot.capture`、`script.*`、`trigger.*`、`macro.*` 等）；像素级
+能力以脚本 API（`wingman.screen.*` / `wingman.vision.*`）形态提供，无独立
+RPC。
 
-### 系统操作
-
-| 动作 | 说明 |
+| 旧动作（已废弃） | 现行对应 |
 |------|------|
-| ping | 健康检查 |
-| get_version | 获取版本信息 |
-
-### 屏幕操作
-
-| 动作 | 说明 |
-|------|------|
-| capture_screen | 截取屏幕区域 |
-| get_pixel | 获取指定坐标像素颜色 |
-| find_color | 在指定区域查找颜色 |
-| find_image | 在屏幕上查找图像 |
-
-### 输入模拟
-
-| 动作 | 说明 |
-|------|------|
-| click | 模拟鼠标点击 |
-| move | 移动鼠标 |
-| key | 模拟键盘按键 |
-| type_text | 输入文本 |
-
-### 触发器管理
-
-| 动作 | 说明 |
-|------|------|
-| list_triggers | 列出所有触发器 |
-| add_trigger | 添加新触发器 |
-| remove_trigger | 删除触发器 |
-| enable_trigger | 启用触发器 |
-| disable_trigger | 禁用触发器 |
-
-### 宏操作
-
-| 动作 | 说明 |
-|------|------|
-| record_macro | 开始录制宏 |
-| stop_macro_recording | 停止宏录制 |
-| play_macro | 回放宏 |
+| ping / get_version | Dashboard REST/WS（Go 编排器侧健康与版本信息），无同名 agent 命令 |
+| capture_screen | `screenshot.capture`（server→agent 命令与本地 IPC RPC 同名） |
+| get_pixel / find_color / find_image | 脚本 API `wingman.screen.getPixel` / `wingman.vision.findColor` / `wingman.vision.findImage` |
+| click / move / key / type_text | 脚本 API `wingman.input.*`（click/move/key/type 等） |
+| list_triggers | `trigger.list` |
+| add_trigger | `trigger.add` |
+| remove_trigger | `trigger.remove` |
+| enable_trigger / disable_trigger | `trigger.toggle` |
+| record_macro / stop_macro_recording | `macro.start` / `macro.stop` |
+| play_macro | `macro.play` |
 
 ## 迁移指南
 

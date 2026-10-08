@@ -65,6 +65,6 @@ end)
 
 ## 持续集成
 
-每次推送到 main/develop 分支或创建 PR 时，会自动运行测试。
+busted 测试为本地手动运行（CI 实跑的是 ctest C++ 测试套件，busted 未接入流水线）。
 
-测试覆盖率报告上传至 [Codecov](https://codecov.io/gh/yourusername/wingman)。
+测试覆盖率报告上传至 [Codecov](https://codecov.io/gh/cuihairu/wingman)。

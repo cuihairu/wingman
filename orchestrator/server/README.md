@@ -39,6 +39,10 @@
 - `WINGMAN_JWT_SECRET`
 - `WINGMAN_ADMIN_PASSWORD`
 - `WINGMAN_AGENT_TOKENS`
+- `WINGMAN_GUACD_ADDR`（guacd 网关地址，默认 `127.0.0.1:4822`）
+- `WINGMAN_GUACD_DRIVE_PATH`（guacd 驱动器挂载路径，默认 `/wingman-drive`）
+- `WINGMAN_GUACD_RECORDING_PATH`（会话录像路径，默认空）
+- `WINGMAN_RECORDING_DIR`（录像目录，默认空）
 
 其中：
 
@@ -82,8 +86,9 @@ pnpm install
 pnpm build     # 产物输出到 orchestrator/dashboard/dist
 ```
 
-## 实际接口
+## 常用接口
 
+> 本节只列常用端点，并非穷举；消息/反馈/执行记录/触发器/团队/批量操作/远程桌面（含 guacamole WebSocket）/保险箱/录像/会话审计等域见 `internal/handlers/routes.go`。
 > 完整交互式 API 文档见 Swagger UI：`http://127.0.0.1:9527/swagger/index.html`
 > 改动 handler 注解后用 `swag init -g main.go -o docs --parseDependency --parseInternal` 重新生成。
 
@@ -114,7 +119,9 @@ pnpm build     # 产物输出到 orchestrator/dashboard/dist
 - `POST /api/scripts/content`
 - `GET /api/audit`
 
-### 仅 `admin`
+### 仅 `admin`（`/api/v1/*` 组）
+
+`/api/v1/*` 组仍为粗粒度 `RoleRequired("admin")`：
 
 - `POST /api/v1/screenshot`
 - `GET /api/v1/scripts`
@@ -126,16 +133,15 @@ pnpm build     # 产物输出到 orchestrator/dashboard/dist
 - `POST /api/v1/scripts/stop`
 - `POST /api/v1/scripts/logs`
 - `PUT /api/v1/settings`
-- `POST /api/agents/:agentId/shutdown`
-- `POST /api/workflows`
-- `POST /api/workflows/:id/cancel`
-- `POST /api/scripts`
-- `POST /api/scripts/delete`
-- `DELETE /api/scripts`
-- `POST /api/scripts/save`
-- `POST /api/scripts/run`
-- `POST /api/scripts/stop`
-- `POST /api/scripts/logs`
+
+### `/api` 组（按权限码）
+
+`/api` 组写接口已由粗粒度 `RoleRequired("admin")` 改为细粒度 `PermissionRequired`（按权限码放行，`admin` 通配自动通过），划分见 `internal/handlers/routes.go`：
+
+- `agents:manage`：`POST /api/agents/:agentId/shutdown`、`PUT /api/agents/:agentId/tags`、`POST /api/teams`、触发器增删改查/toggle、`POST /api/agents/batch/trigger`
+- `workflows:run`：`POST /api/workflows`、`POST /api/workflows/:id/cancel`
+- `scripts:edit`：`POST /api/scripts`、`POST /api/scripts/delete`、`DELETE /api/scripts`、`POST /api/scripts/save`
+- `scripts:run`：`POST /api/scripts/run`、`POST /api/scripts/stop`、`POST /api/scripts/logs`、`POST /api/agents/batch/run-script`、`POST /api/agents/batch/stop-script`
 
 ### 用户/角色/权限管理（RBAC，`admin`）
 
@@ -202,6 +208,13 @@ Wingman 的 Lua 调试基于 EmmyLua，由 **VSCode 直连 runtime 的调试端�
 - `roles`
 - `permissions`
 - `role_permissions`
+- `RemoteSessionAudit`
+- `Message`
+- `MessageRead`
+- `Feedback`
+- `Execution`
+- `VaultMaster`
+- `RemoteCredential`
 
 ## 管理员初始化
 
@@ -222,6 +235,6 @@ Wingman 的 Lua 调试基于 EmmyLua，由 **VSCode 直连 runtime 的调试端�
 
 如需确认实际行为，请以代码为准：
 
-- [main.go](/D:/workspaces/wingman/orchestrator/server/main.go:1)
-- [config.go](/D:/workspaces/wingman/orchestrator/server/internal/config/config.go:1)
-- [auth.go](/D:/workspaces/wingman/orchestrator/server/internal/middleware/auth.go:1)
+- [main.go](main.go)
+- [config.go](internal/config/config.go)
+- [auth.go](internal/middleware/auth.go)

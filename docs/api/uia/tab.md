@@ -23,7 +23,7 @@ if tab:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local tab = wingman.uia.findByName("设置")
+local tab = wingman.uia.find_by_name("设置")
 if tab then
     print("找到标签控件")
 end
@@ -49,7 +49,7 @@ from wingman import uia
 # 直接查找并点击"高级"标签页
 tab_page = uia.find_by_name("高级")
 if tab_page:
-    tab_page.click()
+    tab_page["click"]()
     print("已切换到高级标签页")
 ```
 
@@ -59,7 +59,7 @@ if tab_page:
 local wingman = require("wingman")
 
 -- 直接查找并点击"高级"标签页
-local tabPage = wingman.uia.findByName("高级")
+local tabPage = wingman.uia.find_by_name("高级")
 if tabPage then
     tabPage:click()
     print("已切换到高级标签页")
@@ -82,12 +82,12 @@ from wingman import uia
 tab = uia.find_by_name("设置")
 if tab:
     # 获取所有标签页
-    tabs = tab.get_children()
+    tabs = tab["get_children"]()
     print(f"共有 {len(tabs)} 个标签页")
 
     # 切换到第二个标签（索引从 0 开始）
     if len(tabs) > 1:
-        tabs[1].click()
+        tabs[1]["click"]()
         print("已切换到第二个标签页")
 ```
 
@@ -96,10 +96,10 @@ if tab:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local tab = wingman.uia.findByName("设置")
+local tab = wingman.uia.find_by_name("设置")
 if tab then
     -- 获取所有标签页
-    local tabs = tab:getChildren()
+    local tabs = tab:get_children()
     print("共有 " .. #tabs .. " 个标签页")
 
     -- 切换到第二个标签（索引从 1 开始）
@@ -127,11 +127,11 @@ from wingman import uia
 
 tab = uia.find_by_name("设置")
 if tab:
-    tabs = tab.get_children()
+    tabs = tab["get_children"]()
 
     print(f"共有 {len(tabs)} 个标签页：")
     for i, tab_page in enumerate(tabs):
-        info = tab_page.get_info()
+        info = tab_page["get_info"]()
         name = info.get('name', '(无名称)')
         print(f"  [{i}] {name}")
 ```
@@ -141,13 +141,13 @@ if tab:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local tab = wingman.uia.findByName("设置")
+local tab = wingman.uia.find_by_name("设置")
 if tab then
-    local tabs = tab:getChildren()
+    local tabs = tab:get_children()
 
     print("共有 " .. #tabs .. " 个标签页：")
     for i, tabPage in ipairs(tabs) do
-        local info = tabPage:getInfo()
+        local info = tabPage:get_info()
         local name = info.name or "(无名称)"
         print(string.format("  [%d] %s", i, name))
     end
@@ -160,48 +160,7 @@ end
 
 ## 获取当前活动标签
 
-**说明**：找出当前被激活的标签页。
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import uia
-
-tab = uia.find_by_name("设置")
-if tab:
-    tabs = tab.get_children()
-
-    for tab_page in tabs:
-        info = tab_page.get_info()
-        # selection_state 为 1 表示选中
-        if info.get('selection_state', 0) == 1:
-            print(f"当前活动标签: {info.get('name', '')}")
-            break
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
-local tab = wingman.uia.findByName("设置")
-if tab then
-    local tabs = tab:getChildren()
-
-    for i, tabPage in ipairs(tabs) do
-        local info = tabPage:getInfo()
-        -- selectionState 为 1 表示选中
-        if info.selectionState == 1 then
-            print("当前活动标签: " .. (info.name or ""))
-            break
-        end
-    end
-end
-```
-
-:::
+> **未实现（计划中）**：`get_info()` 的返回键中没有选中状态字段（无 `selection_state`），脚本层目前**无法判断哪个标签页处于激活状态**。过渡方案：点击目标标签页（见「切换标签页」）以确定激活状态。
 
 ---
 
@@ -209,7 +168,7 @@ end
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
-| `find_by_name(name)` | `findByName(name)` | 按名称查找 |
-| `find_by_id(id)` | `findById(id)` | 按 AutomationId 查找 |
-| `get_children()` | `:getChildren()` | 获取所有标签页 |
+| `find_by_name(name)` | `find_by_name(name)` | 按名称查找（Tab 无专用 UIARole，按名称匹配） |
+| `find_by_id(id)` | `find_by_id(id)` | 按 AutomationId 查找 |
+| `get_children()` | `:get_children()` | 获取所有标签页 |
 | `click()` | `:click()` | 切换到该标签页 |

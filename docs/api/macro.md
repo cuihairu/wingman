@@ -616,48 +616,54 @@ wingman.macro.playback(200, 3)
 
 ### 录制 + 回放（热键驱动）
 
+> 说明：脚本层没有 `input.isKeyPressed` 这类键态轮询接口（键态读取仅存在于 C++ 平台层，未注册给脚本），
+> 热键驱动请用 `hotkey.register` 回调。Python 回调线程安全可直接注册；**Lua callable 非线程安全，
+> `hotkey.register` 会拒绝**——Lua 侧请改用 `smarttrigger` 或事件驱动方式触发录制/回放。
+
 :::tabs
 
 == Python
 
 ```python:line-numbers
-from wingman import macro, input, util
+from wingman import macro, hotkey
 
 print("F6 开始录制 / F7 停止 / F8 回放")
 
-while True:
-    if input.isKeyPressed("VK_F6"):
-        macro.start()
-        print("recording started")
-    elif input.isKeyPressed("VK_F7"):
-        macro.stop()
-        print("events:", macro.getEventCount())
-    elif input.isKeyPressed("VK_F8"):
-        macro.playback()
+def on_record():
+    macro.start()
+    print("recording started")
 
-    util.sleep(50)
+def on_stop():
+    macro.stop()
+    print("events:", macro.getEventCount())
+
+def on_playback():
+    macro.playback()
+
+if hotkey.register("F6", on_record) == 0 or \
+   hotkey.register("F7", on_stop) == 0 or \
+   hotkey.register("F8", on_playback) == 0:
+    print("热键注册失败")
+
+# 主线程保持存活即可，回调在热键轮询线程触发
+import util
+while True:
+    util.sleep(1000)
 ```
 
 == Lua
 
 ```lua:line-numbers
+-- Lua callable 非线程安全，hotkey.register 会拒绝注册（返回 0 并发出 hotkey.error 事件），
+-- 本示例的热键驱动模式仅 Python 可行。
+-- Lua 侧可用 smarttrigger 条件触发，或由外部事件（event.on）驱动 macro.start()/stop()/playback()。
 local wingman = require("wingman")
 
-print("F6 开始录制 / F7 停止 / F8 回放")
-
-while true do
-    if wingman.input.isKeyPressed("VK_F6") then
-        wingman.macro.start()
-        print("recording started")
-    elseif wingman.input.isKeyPressed("VK_F7") then
-        wingman.macro.stop()
-        print("events:", wingman.macro.getEventCount())
-    elseif wingman.input.isKeyPressed("VK_F8") then
-        wingman.macro.playback()
-    end
-
-    wingman.util.sleep(50)
-end
+wingman.macro.start()
+wingman.util.sleep(2000)
+wingman.macro.stop()
+print("events:", wingman.macro.getEventCount())
+wingman.macro.playback()
 ```
 
 :::

@@ -389,6 +389,8 @@ print("输入变异度: " .. config.typing_variance)
 
 ## 可用接口
 
+### 高层拟人化接口
+
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
 | `random_delay(min?, max?)` | `randomDelay(min?, max?)` | 随机延迟 | min: 最小延迟(默认100)<br>max: 最大延迟(默认300) |
@@ -400,3 +402,20 @@ print("输入变异度: " .. config.typing_variance)
 | `set_typing_variance(variance)` | `setTypingVariance(variance)` | 设置输入变异度 | variance: 变异度(0.0-1.0) |
 | `set_config(key, value)` | `setConfig(key, value)` | 设置配置参数 | key: 参数名<br>value: 参数值 |
 | `get_config()` | `getConfig()` | 获取配置 | 返回: 配置对象 |
+
+### 底层拟人化接口
+
+不经贝塞尔平滑/随机化包装、直接调用平台输入的轻量接口（坐标/按键语义与 `input` 模块同型）：
+
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `mouse_move(x, y, duration?)` | `mouse_move(x, y, duration?)` | 移动鼠标 | x, y: 目标坐标<br>duration: 移动后等待(ms，默认0) |
+| `mouse_click(x, y)` | `mouse_click(x, y)` | 左键单击 | x, y: 坐标 |
+| `mouse_right_click(x, y)` | `mouse_rightClick(x, y)` | 右键单击 | x, y: 坐标 |
+| `mouse_double_click(x, y)` | `mouse_doubleClick(x, y)` | 双击 | x, y: 坐标 |
+| `mouse_drag(fromX, fromY, toX, toY)` | `mouse_drag(fromX, fromY, toX, toY)` | 拖拽 | fromX, fromY: 起点<br>toX, toY: 终点 |
+| `mouse_scroll(x, y, delta?)` | `mouse_scroll(x, y, delta?)` | 滚轮滚动 | x, y: 坐标<br>delta: 滚动量(默认-3，负=向下) |
+| `keyboard_press(vkCode)` | `keyboard_press(vkCode)` | 按下并释放一个键 | vkCode: 虚拟键码 |
+| `keyboard_down(vkCode)` | `keyboard_down(vkCode)` | 按下键 | vkCode: 虚拟键码 |
+| `keyboard_up(vkCode)` | `keyboard_up(vkCode)` | 释放键 | vkCode: 虚拟键码 |
+| `keyboard_type(text, randomCase?)` | `keyboard_type(text, randomCase?)` | 输入文本 | text: 文本<br>randomCase: 随机大小写(默认false) |

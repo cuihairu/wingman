@@ -197,7 +197,7 @@ off(subscription: string | number) -> boolean
 - `subscription` - 订阅 ID（int）或名称（str）
 
 **返回**：
-- 是否成功
+- 恒为 `True`/`true`——仅表示调用被受理，**不反映订阅是否存在**（取消不存在的订阅也返回 true）
 
 ---
 
@@ -401,7 +401,7 @@ message(type: string, payload: any = nil, meta: table = nil) -> table
 | `on(type, callback, name?)` | `on(type, callback, name?)` | 订阅事件 | type: 事件名<br>callback: 回调函数<br>name: 订阅名称(可选)<br>返回: 订阅 ID |
 | `once(type, callback)` | `once(type, callback)` | 一次性订阅 | type: 事件名<br>callback: 回调函数<br>返回: 订阅 ID |
 | `emit(type, payload?, meta?)` | `emit(type, payload?, meta?)` | 发布事件 | type: 事件名<br>payload: 载荷(可选)<br>meta: 元数据(可选)<br>返回: 是否成功 |
-| `off(subscription)` | `off(subscription)` | 取消订阅 | subscription: 订阅 ID 或名称<br>返回: 是否成功 |
+| `off(subscription)` | `off(subscription)` | 取消订阅 | subscription: 订阅 ID 或名称<br>返回: 恒 true（不反映订阅是否存在） |
 | `listener(subscription)` | `listener(subscription)` | 查询单个监听器 | subscription: 订阅 ID 或监听器名<br>返回: ListenerInfo 或 nil |
 | `listeners(type)` | `listeners(type)` | 列出事件的全部监听器 | type: 事件名<br>返回: ListenerInfo 数组 |
 | `clear(type?)` | `clear(type?)` | 清理全部或指定事件的监听 | type: 事件名(可选)<br>无返回值 |

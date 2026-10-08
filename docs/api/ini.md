@@ -21,7 +21,7 @@ key3 = value3
 ```
 
 **语法规则：**
-- 注释以 `;` 或 `#` 开头
+- 注释以 `;` 或 `#` 开头，且必须独占一行（行内注释会被当作值的一部分）
 - Section 名称用 `[` 和 `]` 包围
 - Key-value 对使用 `=` 分隔
 - 空行被忽略
@@ -159,24 +159,24 @@ local port = ini.get(data, "Server", "port")
 设置配置值。
 
 **参数：**
-- `data` (object): INI 数据（会被修改）
+- `data` (object): INI 数据（不会被就地修改）
 - `section` (string): section 名称
 - `key` (string): key 名称
 - `value` (string): 新值
 
 **返回：**
-- string: 设置的值
+- object: 合并后的**新** INI 数据对象。原 `data` 不变，必须接收返回值：`data = ini.set(...)`
 
 **示例：**
 
 ```python
-ini.set(data, "Server", "host", "192.168.1.1")
-ini.set(data, "Server", "port", "9000")
+data = ini.set(data, "Server", "host", "192.168.1.1")
+data = ini.set(data, "Server", "port", "9000")
 ```
 
 ```lua
-ini.set(data, "Server", "host", "192.168.1.1")
-ini.set(data, "Server", "port", "9000")
+data = ini.set(data, "Server", "host", "192.168.1.1")
+data = ini.set(data, "Server", "port", "9000")
 ```
 
 ### ini.delete(data, section, key?)
@@ -184,29 +184,29 @@ ini.set(data, "Server", "port", "9000")
 删除配置。
 
 **参数：**
-- `data` (object): INI 数据（会被修改）
+- `data` (object): INI 数据（不会被就地修改）
 - `section` (string): section 名称
 - `key` (string?, optional): key 名称
 
 **返回：**
-- boolean: 是否成功删除
+- object: 删除后的**新** INI 数据对象，须 `data = ini.delete(...)` 接收
 
 **示例：**
 
 ```python
 # 删除整个 section
-ini.delete(data, "OldSection")
+data = ini.delete(data, "OldSection")
 
 # 删除特定 key
-ini.delete(data, "Server", "debug")
+data = ini.delete(data, "Server", "debug")
 ```
 
 ```lua
 -- 删除整个 section
-ini.delete(data, "OldSection")
+data = ini.delete(data, "OldSection")
 
 -- 删除特定 key
-ini.delete(data, "Server", "debug")
+data = ini.delete(data, "Server", "debug")
 ```
 
 ### ini.has_section(data, section)
@@ -374,12 +374,12 @@ config = ini.decode(content)
 server_host = ini.get(config, "Server", "host")
 server_port = ini.get(config, "Server", "port")
 
-# 修改配置
-ini.set(config, "Server", "host", "192.168.1.100")
-ini.set(config, "Server", "port", "9000")
+# 修改配置（返回新数据对象，须接收）
+config = ini.set(config, "Server", "host", "192.168.1.100")
+config = ini.set(config, "Server", "port", "9000")
 
 # 删除配置
-ini.delete(config, "Server", "debug")
+config = ini.delete(config, "Server", "debug")
 
 # 保存配置
 with open("config.ini", "w", encoding="utf-8") as f:
@@ -410,12 +410,12 @@ local config = wingman.ini.decode(content)
 local server_host = wingman.ini.get(config, "Server", "host")
 local server_port = wingman.ini.get(config, "Server", "port")
 
--- 修改配置
-wingman.ini.set(config, "Server", "host", "192.168.1.100")
-wingman.ini.set(config, "Server", "port", "9000")
+-- 修改配置（返回新数据对象，须接收）
+config = wingman.ini.set(config, "Server", "host", "192.168.1.100")
+config = wingman.ini.set(config, "Server", "port", "9000")
 
 -- 删除配置
-wingman.ini.delete(config, "Server", "debug")
+config = wingman.ini.delete(config, "Server", "debug")
 
 -- 保存配置
 local file = io.open("config.ini", "w")
@@ -475,12 +475,16 @@ path = C:\\Users\\Admin
 
 ### 4. 注释使用
 
+注释必须独占一行（以 `;` 或 `#` 开头），不支持写在行内：
+
 ```ini
 ; 数据库配置
 [Database]
-host = localhost     # 数据库主机
-port = 5432         # 数据库端口
-username = admin    # 用户名
+# 数据库主机
+host = localhost
+# 数据库端口
+port = 5432
+username = admin
 ```
 
 ### 5. 配置合并

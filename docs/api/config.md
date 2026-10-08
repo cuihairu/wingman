@@ -30,7 +30,7 @@ get(key: string) -> any
 - `key` - 配置键名。键为顶层字符串，不支持点号路径嵌套（传 `game.character` 会查找字面名为该串的顶层键）
 
 **返回**：
-- 配置值，不存在时返回 `None`/`nil`
+- 配置值（字符串），不存在时返回 `None`/`nil`
 
 :::tabs
 
@@ -68,16 +68,16 @@ end
 **函数签名**：
 
 ```python
-set(key: str, value: Any) -> None
+set(key: str, value: str) -> None
 ```
 
 ```lua
-set(key: string, value: any) -> nil
+set(key: string, value: string) -> nil
 ```
 
 **参数**：
 - `key` - 配置键名。键为顶层字符串，不支持点号路径嵌套
-- `value` - 配置值（支持 JSON 兼容类型）
+- `value` - 配置值，**仅支持字符串**。传入非字符串（数字、布尔、字典等）会被静默存成空串；需要非字符串 JSON 类型时请传 JSON 字符串（内部会做 `json::parse`，如 `config.set("count", "42")` 存为数字 42）
 
 :::tabs
 
@@ -86,10 +86,10 @@ set(key: string, value: any) -> nil
 ```python:line-numbers
 from wingman import config
 
-# 简单键值
+# 简单键值（值必须为字符串）
 config.set("myKey", "myValue")
-config.set("count", 42)
-config.set("enabled", True)
+config.set("count", "42")            # 存为 JSON 数字 42
+config.set("enabled", "true")        # 存为 JSON 布尔 true
 ```
 
 == Lua
@@ -97,10 +97,10 @@ config.set("enabled", True)
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 简单键值
+-- 简单键值（值必须为字符串）
 wingman.config.set("myKey", "myValue")
-wingman.config.set("count", 42)
-wingman.config.set("enabled", true)
+wingman.config.set("count", "42")            -- 存为 JSON 数字 42
+wingman.config.set("enabled", "true")        -- 存为 JSON 布尔 true
 ```
 
 :::
@@ -169,15 +169,15 @@ end
 **函数签名**：
 
 ```python
-save() -> None
+save() -> bool
 ```
 
 ```lua
-save() -> nil
+save() -> boolean
 ```
 
 **返回**：
-- 无
+- bool：是否保存成功（当前实现直写 JSON，恒为 `True`/`true`）
 
 :::tabs
 
@@ -214,15 +214,15 @@ wingman.config.save()
 **函数签名**：
 
 ```python
-load() -> None
+load() -> bool
 ```
 
 ```lua
-load() -> nil
+load() -> boolean
 ```
 
 **返回**：
-- 无
+- bool：是否加载成功（当前实现直读 JSON，恒为 `True`/`true`）
 
 :::tabs
 
@@ -252,8 +252,8 @@ wingman.config.load()
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `get(key)` | `get(key)` | 获取自定义配置 | key: 键名（顶层字符串，不支持嵌套路径） |
-| `set(key, value)` | `set(key, value)` | 设置自定义配置 | key: 键名, value: 值 |
+| `get(key)` | `get(key)` | 获取自定义配置 | key: 键名（顶层字符串，不支持嵌套路径）<br>返回: 字符串，不存在返回 None/nil |
+| `set(key, value)` | `set(key, value)` | 设置自定义配置 | key: 键名, value: 仅字符串（非字符串静默存空串；JSON 类型传 JSON 字符串） |
 | `remove(key)` | `remove(key)` | 删除自定义配置 | key: 键名 |
 | `save()` | `save()` | 保存配置到磁盘 | 无 |
 | `load()` | `load()` | 从磁盘加载配置 | 无 |

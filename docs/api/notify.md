@@ -5,9 +5,9 @@
 ## 模块概述
 
 notify 模块提供多种通知方式：
-- **日志通知** - debug、info、warn、error 各级别日志
-- **Toast 通知** - 桌面弹窗通知
-- **Webhook** - HTTP POST 远程通知
+- **日志通知** - debug、info、warn、error 各级别日志（仅发出 `notify.log` / `notify.log.<LEVEL>` 事件，**无内置消费侧**——runtime/GUI 的日志面板走 `log.line` 通路，与 notify.log 无关；需要可见输出请自行用 `wingman.event.on` 订阅）
+- **Toast 通知** - 发出 `notify.toast` 事件（**当前无内置消费者**，不会弹出桌面通知）
+- **Webhook** - HTTP POST 远程通知（**受主机白名单管控，默认全拒**，当前无配置入口，详见下文）
 - **事件桥接** - 将事件转发到其他目标
 - **托盘意图** - trayShow/trayHide/traySetBadge/traySetTooltip，经事件流驱动 GUI 系统托盘
 
@@ -15,9 +15,13 @@ notify 模块提供多种通知方式：
 
 ## 调试日志
 
+> **注意**：debug/info/warn/error 四个函数都只发出 `notify.log` 与 `notify.log.<LEVEL>` 事件，
+> **不会**写入 runtime 日志面板（GUI 日志走独立的 `log.line` 通路）。默认部署下这些调用
+> 不产生任何可见输出，需要自行用 `wingman.event.on("notify.log", cb)` 订阅消费。
+
 ### debug(message, meta?) / debug(message, meta?)
 
-**说明**：输出调试级别日志。
+**说明**：发出调试级别日志事件（见上方注意）。
 
 **函数签名**：
 
@@ -42,7 +46,7 @@ debug(message: string, meta: table = nil) -> nil
 
 ### info(message, meta?) / info(message, meta?)
 
-**说明**：输出信息级别日志。
+**说明**：发出信息级别日志事件（见「调试日志」节注意）。
 
 **函数签名**：
 
@@ -67,7 +71,7 @@ info(message: string, meta: table = nil) -> nil
 
 ### warn(message, meta?) / warn(message, meta?)
 
-**说明**：输出警告级别日志。
+**说明**：发出警告级别日志事件（见「调试日志」节注意）。
 
 **函数签名**：
 
@@ -92,7 +96,7 @@ warn(message: string, meta: table = nil) -> nil
 
 ### error(message, meta?) / error(message, meta?)
 
-**说明**：输出错误级别日志。
+**说明**：发出错误级别日志事件（见「调试日志」节注意）。
 
 **函数签名**：
 
@@ -145,7 +149,7 @@ wingman.notify.error("任务失败", { error = "timeout" })
 
 ### toast(title, message, level?) / toast(title, message, level?)
 
-**说明**：显示桌面 toast 通知。
+**说明**：发出 `notify.toast` 事件。**当前没有任何内置消费者订阅该事件**——runtime 桥与 GUI 事件流均不处理 `notify.toast`，因此调用它不会弹出桌面通知。
 
 **函数签名**：
 
@@ -172,7 +176,7 @@ toast(title: string, message: string, level: string = "info") -> nil
 ```python:line-numbers
 from wingman import notify
 
-# Toast 通知
+# 发出 notify.toast 事件（无内置消费者，需自行订阅才有反应）
 notify.toast("Wingman", "任务完成", level="success")
 notify.toast("警告", "血量过低", level="warning")
 ```
@@ -182,7 +186,7 @@ notify.toast("警告", "血量过低", level="warning")
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- Toast 通知
+-- 发出 notify.toast 事件（无内置消费者，需自行订阅才有反应）
 wingman.notify.toast("Wingman", "任务完成", "success")
 wingman.notify.toast("警告", "血量过低", "warning")
 ```
@@ -195,7 +199,7 @@ wingman.notify.toast("警告", "血量过低", "warning")
 
 ### webhook(url, payload, options?) / webhook(url, payload, options?)
 
-**说明**：发送 HTTP POST webhook。
+**说明**：发送 HTTP POST webhook。**受主机白名单管控：白名单为空时默认拒绝所有目标**（SSRF 防护），且当前 runtime/config 侧**没有配置白名单的入口**——因此现状下每次调用都会被拒：不发出 POST，仅发出 `notify.webhook.blocked` 事件并将 callback 以 `false` 调用（如提供了）。
 
 **函数签名**：
 
@@ -208,7 +212,7 @@ webhook(url: string, payload: table, options: table = nil) -> nil
 ```
 
 **参数**：
-- `url` - 目标 URL
+- `url` - 目标 URL（主机必须在白名单内才会真正发出）
 - `payload` - 请求体（JSON 对象）
 - `options` - 可选配置（预留）
 
@@ -222,7 +226,8 @@ webhook(url: string, payload: table, options: table = nil) -> nil
 ```python:line-numbers
 from wingman import notify
 
-# Webhook
+# Webhook（注意：白名单默认全拒且无配置入口，此调用会被拦截，
+# 仅产生 notify.webhook.blocked 事件，POST 不会发出）
 notify.webhook("http://127.0.0.1:9000/hook", {
     "event": "task.done",
     "result": 42
@@ -234,7 +239,7 @@ notify.webhook("http://127.0.0.1:9000/hook", {
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- Webhook
+-- Webhook（同上：默认全拒、无配置入口，仅产生 notify.webhook.blocked 事件）
 wingman.notify.webhook("http://127.0.0.1:9000/hook", {
     event = "task.done",
     result = 42

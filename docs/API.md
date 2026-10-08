@@ -92,14 +92,15 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 |------|------|
 | system | `getStatus` `getVersion` `isPaused` `togglePause` `pauseAll` `resumeAll` `stopAll` |
 | script | `list` `start` `stop` `pause` `resume` `restart` `unload` |
-| trigger | `list` `add` `remove` `update` `toggle` |
 | screenshot | `capture` |
 | screen | `listMonitors` |
 | events | `drain` |
 | macro | `start` `stop` `play` `status` `save` `load` `clear` |
 | config | `getRemote` `setRemote` |
 
-> 远程编排命令（如 `system.shutdown`）走 agent transport 通道（`apps/runtime/src/agent.cpp`），不属于本地 IPC 面，见 `docs/protocols.md`。
+> `trigger.*`（`list`/`add`/`remove`/`update`/`toggle`）不在本地 IPC 方法面——它仅由 runtime 在远程 agent 通道复用（`apps/runtime/src/agent.cpp`），见 `docs/protocols.md`。
+>
+> 远程编排命令（如 `system.shutdown`）同样走 agent transport 通道（`apps/runtime/src/agent.cpp`），不属于本地 IPC 面。
 
 #### system.getStatus
 获取系统状态
@@ -115,92 +116,11 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 { "type": 0, "method": "system.getVersion", "payload": {}, "id": 2, "timestamp": 1715299200000 }
 ```
 
-#### trigger.list
-列出所有触发器
-
-```json
-{ "type": 0, "method": "trigger.list", "payload": {}, "id": 3, "timestamp": 1715299200000 }
-```
-
-#### trigger.add
-添加触发器
-
-```json
-{
-  "type": 0,
-  "method": "trigger.add",
-  "payload": {
-    "config": {
-      "name": "Detect image",
-      "enabled": true,
-      "condition": {
-        "type": "ImageFound",
-        "value": "assets/button.png",
-        "interval": 1000,
-        "tolerance": 10
-      },
-      "actions": []
-    }
-  },
-  "id": 4,
-  "timestamp": 1715299200000
-}
-```
-
-#### trigger.remove
-删除触发器
-
-```json
-{
-  "type": 0,
-  "method": "trigger.remove",
-  "payload": {
-    "id": "trigger-id"
-  },
-  "id": 5,
-  "timestamp": 1715299200000
-}
-```
-
-#### trigger.update
-更新触发器
-
-```json
-{
-  "type": 0,
-  "method": "trigger.update",
-  "payload": {
-    "id": "trigger-id",
-    "config": {
-      "name": "Updated trigger",
-      "enabled": true
-    }
-  },
-  "id": 6,
-  "timestamp": 1715299200000
-}
-```
-
-#### trigger.toggle
-启用/禁用触发器
-
-```json
-{
-  "type": 0,
-  "method": "trigger.toggle",
-  "payload": {
-    "id": "trigger-id"
-  },
-  "id": 7,
-  "timestamp": 1715299200000
-}
-```
-
 #### script.list
 列出所有可用脚本
 
 ```json
-{ "type": 0, "method": "script.list", "payload": {}, "id": 8, "timestamp": 1715299200000 }
+{ "type": 0, "method": "script.list", "payload": {}, "id": 3, "timestamp": 1715299200000 }
 ```
 
 #### script.start
@@ -213,7 +133,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "payload": {
     "path": "scripts/example.lua"
   },
-  "id": 9,
+  "id": 4,
   "timestamp": 1715299200000
 }
 ```
@@ -228,7 +148,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "payload": {
     "scriptId": "script-id"
   },
-  "id": 10,
+  "id": 5,
   "timestamp": 1715299200000
 }
 ```
@@ -241,7 +161,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "type": 0,
   "method": "script.pause",
   "payload": { "scriptId": "script-id" },
-  "id": 11,
+  "id": 6,
   "timestamp": 1715299200000
 }
 ```
@@ -254,7 +174,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "type": 0,
   "method": "script.restart",
   "payload": { "scriptId": "script-id" },
-  "id": 12,
+  "id": 7,
   "timestamp": 1715299200000
 }
 ```
@@ -267,7 +187,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "type": 0,
   "method": "script.unload",
   "payload": { "scriptId": "script-id" },
-  "id": 13,
+  "id": 8,
   "timestamp": 1715299200000
 }
 ```
@@ -276,28 +196,28 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 查询是否存在已暂停脚本，返回 `{ "paused": bool }`
 
 ```json
-{ "type": 0, "method": "system.isPaused", "payload": {}, "id": 14, "timestamp": 1715299200000 }
+{ "type": 0, "method": "system.isPaused", "payload": {}, "id": 9, "timestamp": 1715299200000 }
 ```
 
 #### system.togglePause
 切换全局暂停：有暂停则全部恢复，否则全部暂停。返回 `{ "paused": bool, "changedScripts": int }`
 
 ```json
-{ "type": 0, "method": "system.togglePause", "payload": {}, "id": 15, "timestamp": 1715299200000 }
+{ "type": 0, "method": "system.togglePause", "payload": {}, "id": 10, "timestamp": 1715299200000 }
 ```
 
 #### system.pauseAll / system.resumeAll
 全部暂停/全部恢复。返回 `{ "paused": bool, "changedScripts": int }`
 
 ```json
-{ "type": 0, "method": "system.pauseAll", "payload": {}, "id": 16, "timestamp": 1715299200000 }
+{ "type": 0, "method": "system.pauseAll", "payload": {}, "id": 11, "timestamp": 1715299200000 }
 ```
 
 #### system.stopAll
 全部停止。返回 `{ "stoppedScripts": int }`
 
 ```json
-{ "type": 0, "method": "system.stopAll", "payload": {}, "id": 17, "timestamp": 1715299200000 }
+{ "type": 0, "method": "system.stopAll", "payload": {}, "id": 12, "timestamp": 1715299200000 }
 ```
 
 #### screenshot.capture
@@ -312,7 +232,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "type": 0,
   "method": "screenshot.capture",
   "payload": { "displayId": 0, "region": { "x": 0, "y": 0, "width": 800, "height": 600 } },
-  "id": 18,
+  "id": 13,
   "timestamp": 1715299200000
 }
 ```
@@ -321,7 +241,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 列出显示器，返回 `{ "monitors": [{ "id", "name", "isPrimary", "bounds" }], "primaryId": int }`
 
 ```json
-{ "type": 0, "method": "screen.listMonitors", "payload": {}, "id": 19, "timestamp": 1715299200000 }
+{ "type": 0, "method": "screen.listMonitors", "payload": {}, "id": 14, "timestamp": 1715299200000 }
 ```
 
 #### events.drain
@@ -332,7 +252,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "type": 0,
   "method": "events.drain",
   "payload": { "max": 500 },
-  "id": 20,
+  "id": 15,
   "timestamp": 1715299200000
 }
 ```
@@ -343,7 +263,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 宏录制控制。`status` 返回 `{ "recording": bool, "paused": bool, "eventCount": int }`；其余无参数。
 
 ```json
-{ "type": 0, "method": "macro.status", "payload": {}, "id": 21, "timestamp": 1715299200000 }
+{ "type": 0, "method": "macro.status", "payload": {}, "id": 16, "timestamp": 1715299200000 }
 ```
 
 #### macro.play
@@ -354,7 +274,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "type": 0,
   "method": "macro.play",
   "payload": { "speed": 150, "repeat": 2 },
-  "id": 22,
+  "id": 17,
   "timestamp": 1715299200000
 }
 ```
@@ -367,7 +287,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "type": 0,
   "method": "macro.save",
   "payload": { "path": "macros/demo.json" },
-  "id": 23,
+  "id": 18,
   "timestamp": 1715299200000
 }
 ```
@@ -380,7 +300,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "type": 0,
   "method": "config.setRemote",
   "payload": { "serverIp": "192.168.1.10", "serverPort": 9000, "registerToken": "..." },
-  "id": 24,
+  "id": 19,
   "timestamp": 1715299200000
 }
 ```

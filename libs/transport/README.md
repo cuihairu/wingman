@@ -1,6 +1,7 @@
 # wingman-transport 使用说明
 
-分层传输架构，提供 TCP/WebSocket 通信能力。
+分层传输架构，当前仅提供 TCP 传输；WebSocket 为枚举占位未实现（工厂对
+`TransportType::WebSocket` 返回 `nullptr`，由测试 `WebSocketTypeUnsupported` 锁定）。
 
 ## 架构层次
 
@@ -12,7 +13,7 @@
 ├─────────────────────────────────────────┤
 │         Session (会话管理)               │  ← 连接会话、消息收发
 ├─────────────────────────────────────────┤
-│         Transport (传输层)               │  ← TCP/WebSocket
+│         Transport (传输层)               │  ← 仅 TCP（WebSocket 占位未实现）
 └─────────────────────────────────────────┘
 ```
 
@@ -48,8 +49,12 @@ server->listen("0.0.0.0", 9527);
 ### 客户端
 
 ```cpp
+// request() 定义在具体类 TcpClient 上（基类 TransportClient 无 request()，
+// createTcpClient() 返回的是基类指针）
+#include "wingman/transport/transport_client.hpp"
+
 // 创建客户端
-auto client = createTcpClient();
+auto client = std::make_unique<TcpClient>();
 
 // 设置消息处理器
 client->setMessageHandler([](const MessagePtr& msg) {

@@ -34,8 +34,8 @@ from wingman import json
 config_str = '{"host": "localhost", "port": 8080, "debug": true}'
 config = json.decode(config_str)
 
-# 编码 JSON
-output = json.encode(config, indent=2)
+# 编码 JSON（模块函数只接受位置参数）
+output = json.encode(config, 2)
 ```
 
 ### YAML
@@ -110,8 +110,8 @@ output = ini.encode(config)
 host = ini.get(config, "Server", "host")
 port = ini.get(config, "Server", "port")
 
-# 修改配置
-ini.set(config, "Server", "host", "192.168.1.1")
+# 修改配置（返回新数据对象，须接收）
+config = ini.set(config, "Server", "host", "192.168.1.1")
 
 # 保存配置
 with open("config.ini", "w") as f:
@@ -134,8 +134,8 @@ local config = wingman.ini.decode(config_str)
 local host = wingman.ini.get(config, "Server", "host")
 local port = wingman.ini.get(config, "Server", "port")
 
--- 修改配置
-wingman.ini.set(config, "Server", "host", "192.168.1.1")
+-- 修改配置（返回新数据对象，须接收）
+config = wingman.ini.set(config, "Server", "host", "192.168.1.1")
 ```
 
 ## 选择指南

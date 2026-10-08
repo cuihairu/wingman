@@ -39,11 +39,11 @@ cmake --build build --config Release
 | C++ runtime/lib | `cmake --build build --config Release` + `ctest --test-dir build --build-config Release` |
 | GUI (Tauri) | `cd apps/gui && npx svelte-check --tsconfig ./tsconfig.json` + `cd src-tauri && cargo check` |
 
-**测试基线**：C++ runtime 维持 ~1705 测试 / 90%+ 覆盖；Go server 75+ 测试函数，`go vet` 全清。新功能请补测试。
+**测试基线**：C++ 侧维持 ~2700 测试 / 90%+ 覆盖；Go server 600+ 测试函数，`go vet` 全清。新功能请补测试。
 
 ## 代码风格
 
-- **C++**：C++17，命名遵循既有约定（成员 `m_` 前缀、`snake_case` 函数 / `PascalCase` 类名）。不引入新的第三方网络服务框架到 runtime。
+- **C++**：C++23，命名遵循既有约定（成员 `m_` 前缀、`snake_case` 函数 / `PascalCase` 类名）。不引入新的第三方网络服务框架到 runtime。
 - **Go**：`gofmt` + `go vet` 通过。
 - **TypeScript/Svelte**：既有缩进为 Tab，沿用即可。
 - **命令行入口**：每个具体命令实现拆到独立文件，不要把多条命令逻辑堆在同一个源文件里（见 CLAUDE.md）。

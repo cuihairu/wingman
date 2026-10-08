@@ -19,7 +19,7 @@ find_by_name(name: str) -> UIElement | None
 ```
 
 ```lua
-findByName(name: string) -> UIElement | nil
+find_by_name(name: string) -> UIElement | nil
 ```
 
 :::tabs
@@ -41,7 +41,7 @@ if radio:
 local wingman = require("wingman")
 
 -- 查找名为"男"的单选按钮
-local radio = wingman.uia.findByName("男")
+local radio = wingman.uia.find_by_name("男")
 if radio then
     print("找到单选按钮")
 end
@@ -67,7 +67,7 @@ from wingman import uia
 radio = uia.find_by_name("男")
 if radio:
     # 点击选中
-    radio.click()
+    radio["click"]()
     print("已选中：男")
 ```
 
@@ -76,7 +76,7 @@ if radio:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local radio = wingman.uia.findByName("男")
+local radio = wingman.uia.find_by_name("男")
 if radio then
     -- 点击选中
     radio:click()
@@ -88,150 +88,13 @@ end
 
 ### 通过设置值选中
 
-**说明**：使用 `set_value(True)` 来选中单选按钮。
-
-**方法签名**：
-
-```python
-UIElement.set_value(value: bool) -> None
-```
-
-```lua
-UIElement:setValue(value: boolean) -> None
-```
-
-**参数**：
-- `value` - True 选中，False 取消选中
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import uia
-
-radio = uia.find_by_name("男")
-if radio:
-    # 设置为选中
-    radio.set_value(True)
-    print("已选中：男")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
-local radio = wingman.uia.findByName("男")
-if radio then
-    -- 设置为选中
-    radio:setValue(true)
-    print("已选中：男")
-end
-```
-
-:::
+> **未实现（计划中）**：`set_value(bool)` 选中单选按钮的能力未实现——`set_value` 的实现是设置元素文本（`setText`），**仅对文本型控件有效**，对单选按钮调用不会选中它。选中请用 `click()`（见上节）。
 
 ---
 
 ## 获取选中状态
 
-### 检查单个单选按钮
-
-**说明**：检查某个单选按钮是否被选中。
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import uia
-
-radio = uia.find_by_name("男")
-if radio:
-    info = radio.get_info()
-    state = info.get('toggle_state', 'Off')
-
-    # toggle_state 为 'On' 表示选中
-    is_selected = state == 'On'
-
-    print(f"是否选中: {is_selected}")
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
-local radio = wingman.uia.findByName("男")
-if radio then
-    local info = radio:getInfo()
-    local state = info.toggleState or "Off"
-
-    -- toggle_state 为 "On" 表示选中
-    local isSelected = state == "On"
-
-    print("是否选中: " .. tostring(isSelected))
-end
-```
-
-:::
-
-### 获取一组单选按钮的选择
-
-**说明**：遍历所有单选按钮，找出被选中的那个。
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import uia
-
-# 查找所有性别相关的单选按钮
-male = uia.find_by_name("男")
-female = uia.find_by_name("女")
-other = uia.find_by_name("其他")
-
-# 检查哪个被选中
-for radio, label in [(male, "男"), (female, "女"), (other, "其他")]:
-    if radio:
-        info = radio.get_info()
-        if info.get('toggle_state') == 'On':
-            print(f"当前选择: {label}")
-            break
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
--- 查找所有性别相关的单选按钮
-local male = wingman.uia.findByName("男")
-local female = wingman.uia.findByName("女")
-local other = wingman.uia.findByName("其他")
-
--- 检查哪个被选中
-local options = {
-    {male, "男"},
-    {female, "女"},
-    {other, "其他"}
-}
-
-for i, option in ipairs(options) do
-    local radio, label = option[1], option[2]
-    if radio then
-        local info = radio:getInfo()
-        if info.toggleState == "On" then
-            print("当前选择: " .. label)
-            break
-        end
-    end
-end
-```
-
-:::
+> **未实现（计划中）**：`get_info()` 的返回键中没有 `toggle_state` 字段，`get_value()` 返回的也是元素文本而非选中状态——脚本层目前**无法读取单选按钮是否被选中**，也就无法遍历找出现被选中的那个。选中验证需等待选中状态接口（如 is_checked）补齐。
 
 ---
 
@@ -263,16 +126,10 @@ def select_gender(gender):
     # 查找并点击对应的单选按钮
     radio = uia.find_by_name(gender)
     if radio:
-        radio.click()
+        radio["click"]()
         print(f"已选择性别: {gender}")
-
-        # 验证是否成功选中
-        info = radio.get_info()
-        if info.get('toggle_state') == 'On':
-            return True
-        else:
-            print("验证失败：单选按钮未选中")
-            return False
+        # 脚本层暂无选中状态读取接口（get_info 无 toggle_state），无法回读验证
+        return True
     else:
         print(f"未找到性别选项: {gender}")
         return False
@@ -301,19 +158,12 @@ local function selectGender(gender)
     end
 
     -- 查找并点击对应的单选按钮
-    local radio = wingman.uia.findByName(gender)
+    local radio = wingman.uia.find_by_name(gender)
     if radio then
         radio:click()
         print("已选择性别: " .. gender)
-
-        -- 验证是否成功选中
-        local info = radio:getInfo()
-        if info.toggleState == "On" then
-            return true
-        else
-            print("验证失败：单选按钮未选中")
-            return false
-        end
+        -- 脚本层暂无选中状态读取接口（get_info 无 toggle_state），无法回读验证
+        return true
     else
         print("未找到性别选项: " .. gender)
         return false
@@ -336,22 +186,18 @@ end
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `find_by_name(name)` | `findByName(name)` | 按名称查找 | `name` - 单选按钮标签 |
-| `find_by_id(id)` | `findById(id)` | 按 AutomationId 查找 | `id` - AutomationId |
+| `find_by_name(name)` | `find_by_name(name)` | 按名称查找 | `name` - 单选按钮标签 |
+| `find_by_id(id)` | `find_by_id(id)` | 按 AutomationId 查找 | `id` - AutomationId |
 
 ### 单选按钮操作
 
 | Python 方法 | Lua 方法 | 说明 |
 |------------|---------|------|
 | `click()` | `:click()` | 点击选中 |
-| `set_value(bool)` | `:setValue(bool)` | 设置选中状态 |
-| `get_value()` | `:getValue()` | 获取是否选中 |
-| `get_info()` | `:getInfo()` | 获取所有属性 |
+| `get_info()` | `:get_info()` | 获取所有通用属性（不含选中状态） |
+
+> **未实现（计划中）**：`set_value(bool)` 设置选中与选中状态读取（`get_value` 返回布尔态、`toggle_state` 字段）均未实现——`set_value`/`get_value` 实为设置/读取元素文本，仅对文本型控件有效。
 
 ### 单选按钮属性
 
-| 属性 | 类型 | 说明 |
-|-----|------|------|
-| `name` | string | 单选按钮标签 |
-| `toggle_state` | string | 状态：On（选中）/Off（未选中） |
-| `is_toggle_pattern` | boolean | 是否支持切换（通常为 True） |
+`get_info()` 返回键集见 [概述](./index.md#uielement-通用方法)（`name`/`id`/`className`/`role`/`text`/`is_enabled`/`is_visible`/`has_focus`/`bounds`），其中**没有**选中状态字段（无 `toggle_state`/`is_toggle_pattern`）。

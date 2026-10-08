@@ -17,7 +17,7 @@ find_by_name(name: str) -> UIElement | None
 ```
 
 ```lua
-findByName(name: string) -> UIElement | nil
+find_by_name(name: string) -> UIElement | nil
 ```
 
 :::tabs
@@ -39,7 +39,7 @@ if combo:
 local wingman = require("wingman")
 
 -- 查找名为"国家/地区"的下拉框
-local combo = wingman.uia.findByName("国家/地区")
+local combo = wingman.uia.find_by_name("国家/地区")
 if combo then
     print("找到下拉框")
 end
@@ -64,8 +64,8 @@ from wingman import uia
 
 combo = uia.find_by_name("国家/地区")
 if combo:
-    info = combo.get_info()
-    current_value = info.get('value', '')
+    # get_value 返回元素文本（对下拉框通常是当前选中项的文字）
+    current_value = combo["get_value"]()
     print(f"当前选择: {current_value}")
 ```
 
@@ -74,10 +74,10 @@ if combo:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local combo = wingman.uia.findByName("国家/地区")
+local combo = wingman.uia.find_by_name("国家/地区")
 if combo then
-    local info = combo:getInfo()
-    local currentValue = info.value or ""
+    -- get_value 返回元素文本（对下拉框通常是当前选中项的文字）
+    local currentValue = combo:get_value()
     print("当前选择: " .. currentValue)
 end
 ```
@@ -123,7 +123,7 @@ if combo:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local combo = wingman.uia.findByName("国家/地区")
+local combo = wingman.uia.find_by_name("国家/地区")
 if combo then
     -- 1. 展开下拉框
     combo:expand()
@@ -133,7 +133,7 @@ if combo then
     wingman.util.sleep(300)
 
     -- 3. 查找并点击目标选项
-    local option = wingman.uia.findByName("中国")
+    local option = wingman.uia.find_by_name("中国")
     if option then
         option:click()
         print("已选择：中国")
@@ -145,9 +145,9 @@ end
 
 :::
 
-### 直接设置值（如果支持）
+### 直接设置值（仅文本型有效）
 
-**说明**：某些下拉框支持直接设置值，无需展开。
+**说明**：`set_value` 的实现是设置元素文本（`setText`），仅对支持文本设置的控件生效（如可编辑下拉框）；对纯选择型下拉框无效，选择选项请用「展开并选择」方式。
 
 :::tabs
 
@@ -158,8 +158,8 @@ from wingman import uia
 
 combo = uia.find_by_name("国家/地区")
 if combo:
-    # 尝试直接设置值
-    combo.set_value("中国")
+    # 仅对支持文本设置的下拉框生效（实为设置文本）
+    combo["set_value"]("中国")
     print("已设置为中国")
 ```
 
@@ -168,10 +168,10 @@ if combo:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local combo = wingman.uia.findByName("国家/地区")
+local combo = wingman.uia.find_by_name("国家/地区")
 if combo then
-    -- 尝试直接设置值
-    combo:setValue("中国")
+    -- 仅对支持文本设置的下拉框生效（实为设置文本）
+    combo:set_value("中国")
     print("已设置为中国")
 end
 ```
@@ -199,8 +199,8 @@ from wingman import uia
 # 可编辑下拉框通常也是 Edit 类型
 editable_combo = uia.find_edit("搜索")
 if editable_combo:
-    # 方法 1: 直接输入文本
-    editable_combo.set_value("搜索关键词")
+    # 方法 1: 直接输入文本（set_value 实为设置文本）
+    editable_combo["set_value"]("搜索关键词")
 
     # 方法 2: 展开选择预设选项
     # editable_combo.expand()
@@ -214,8 +214,8 @@ local wingman = require("wingman")
 -- 可编辑下拉框通常也是 Edit 类型
 local editableCombo = wingman.uia.findEdit("搜索")
 if editableCombo then
-    -- 方法 1: 直接输入文本
-    editableCombo:setValue("搜索关键词")
+    -- 方法 1: 直接输入文本（set_value 实为设置文本）
+    editableCombo:set_value("搜索关键词")
 
     -- 方法 2: 展开选择预设选项
     -- editableCombo:expand()
@@ -248,12 +248,12 @@ if combo:
     combo.expand()
     util.sleep(300)
 
-    # 获取所有 ListItem 类型的选项
-    options = uia.find_all_by_control_type("ListItem")
+    # 获取所有 ListItem 角色（UIARole 8）的元素
+    options = uia.find_all_by_control_type(8)
 
     print(f"共有 {len(options)} 个选项：")
     for i, opt in enumerate(options):
-        info = opt.get_info()
+        info = opt["get_info"]()
         print(f"  [{i}] {info.get('name', '')}")
 ```
 
@@ -262,18 +262,18 @@ if combo:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local combo = wingman.uia.findByName("国家/地区")
+local combo = wingman.uia.find_by_name("国家/地区")
 if combo then
     -- 展开下拉框
     combo:expand()
     wingman.util.sleep(300)
 
-    -- 获取所有 ListItem 类型的选项
-    local options = wingman.uia.findAllByControlType("ListItem")
+    -- 获取所有 ListItem 角色（UIARole 8）的元素
+    local options = wingman.uia.find_all_by_control_type(8)
 
     print("共有 " .. #options .. " 个选项：")
     for i, opt in ipairs(options) do
-        local info = opt:getInfo()
+        local info = opt:get_info()
         print(string.format("  [%d] %s", i, info.name or ""))
     end
 end
@@ -289,8 +289,8 @@ end
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `find_by_name(name)` | `findByName(name)` | 按名称查找 | `name` - 下拉框标签 |
-| `find_by_id(id)` | `findById(id)` | 按 AutomationId 查找 | `id` - AutomationId |
+| `find_by_name(name)` | `find_by_name(name)` | 按名称查找 | `name` - 下拉框标签 |
+| `find_by_id(id)` | `find_by_id(id)` | 按 AutomationId 查找 | `id` - AutomationId |
 
 ### 下拉框操作
 
@@ -298,5 +298,5 @@ end
 |------------|---------|------|
 | `expand()` | `:expand()` | 展开下拉框 |
 | `collapse()` | `:collapse()` | 折叠下拉框 |
-| `set_value(value)` | `:setValue(value)` | 设置选中值（如果支持） |
-| `get_value()` | `:getValue()` | 获取当前选中值 |
+| `set_value(text)` | `:set_value(text)` | 设置文本（仅对支持文本设置的控件生效，实为 setText） |
+| `get_value()` | `:get_value()` | 获取元素文本（通常是当前选中项文字） |

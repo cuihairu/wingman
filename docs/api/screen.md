@@ -203,28 +203,28 @@ end
 
 ## 查找颜色（首个匹配）
 
-### findColor(color, region?, tolerance=10)
+### findColor(color, region, tolerance=10)
 
 **说明**：在指定区域内查找第一个匹配指定颜色的像素。
 
 **函数签名**：
 
 ```python
-findColor(color: int, region: dict = None, tolerance: int = 10) -> dict
+findColor(color: int, region: dict, tolerance: int = 10) -> list
 ```
 
 ```lua
-findColor(color: number, region: table = nil, tolerance: number = 10) -> table
+findColor(color: number, region: table, tolerance: number = 10) -> table
 ```
 
 **参数**：
-- `color` - 目标颜色（`0xRRGGBB` 整数）
-- `region` - 可选，搜索区域 `{x, y, width, height}`，省略时搜索全屏
+- `color` - 目标颜色（`0xRRGGBB` 整数，或 `{r, g, b}` 对象）
+- `region` - 搜索区域 `{x, y, width, height}`。**必填**（当前实现不提供全屏默认值，缺省会出错）
 - `tolerance` - 可选，颜色容差（0-255），默认 10
 
-**返回**：包含 `point` 和 `found` 的对象：
-- `point` - 匹配点坐标 `{x, y}`（未找到时为空）
-- `found` - 是否找到匹配
+**返回**：二元**数组** `[匹配点, 是否找到]`（不是对象）：
+- 下标 `1`（Python `result[0]`）- 匹配点坐标 `{x, y}`，未找到时为 `None`/`nil`
+- 下标 `2`（Python `result[1]`）- 是否找到匹配（bool）
 
 **颜色容差**：容差越大，允许的颜色差异越大。
 
@@ -235,15 +235,15 @@ findColor(color: number, region: table = nil, tolerance: number = 10) -> table
 ```python:line-numbers
 from wingman import screen
 
-# 在全屏范围内查找红色像素（默认容差 10）
-result = screen.findColor(0xFF0000)
-if result["found"]:
-    p = result["point"]
-    print(f"找到红色像素，位置: {p['x']}, {p['y']}")
+# 在指定区域查找红色像素（默认容差 10）
+result = screen.findColor(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080})
+point, found = result
+if found:
+    print(f"找到红色像素，位置: {point['x']}, {point['y']}")
 else:
     print("未找到红色像素")
 
-# 在指定区域查找，精确匹配（容差为 0）
+# 精确匹配（容差为 0）
 result = screen.findColor(
     0x00FF00,
     {"x": 100, "y": 100, "width": 500, "height": 500},
@@ -256,10 +256,10 @@ result = screen.findColor(
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 在全屏范围内查找红色像素（默认容差 10）
-local result = wingman.screen.findColor(0xFF0000)
-if result.found then
-    print(string.format("找到红色像素，位置: %d, %d", result.point.x, result.point.y))
+-- 在指定区域查找红色像素（默认容差 10）；返回数组：result[1]=点表或nil，result[2]=布尔
+local result = wingman.screen.findColor(0xFF0000, {x=0, y=0, width=1920, height=1080})
+if result[2] then
+    print(string.format("找到红色像素，位置: %d, %d", result[1].x, result[1].y))
 else
     print("未找到红色像素")
 end
@@ -278,24 +278,25 @@ local result = wingman.screen.findColor(
 
 ## 查找颜色（所有匹配）
 
-### findColors(color, region?, tolerance)
+### findColors(color, region, tolerance=10, maxCount=0)
 
 **说明**：在指定区域内查找所有匹配指定颜色的像素。
 
 **函数签名**：
 
 ```python
-findColors(color: int, region: dict = None, tolerance: int = 10) -> list[dict]
+findColors(color: int, region: dict, tolerance: int = 10, maxCount: int = 0) -> list[dict]
 ```
 
 ```lua
-findColors(color: number, region: table = nil, tolerance: number = 10) -> table
+findColors(color: number, region: table, tolerance: number = 10, maxCount: number = 0) -> table
 ```
 
 **参数**：
-- `color` - 目标颜色（`0xRRGGBB` 整数）
-- `region` - 可选，搜索区域 `{x, y, width, height}`，省略时搜索全屏
+- `color` - 目标颜色（`0xRRGGBB` 整数，或 `{r, g, b}` 对象）
+- `region` - 搜索区域 `{x, y, width, height}`。**必填**（当前实现不提供全屏默认值，缺省会出错）
 - `tolerance` - 可选，颜色容差（0-255），默认 10
+- `maxCount` - 可选，最多返回的匹配点数量，默认 0（不限制）
 
 **返回**：匹配点坐标数组 `[{x, y}, ...]`。
 
@@ -307,8 +308,11 @@ findColors(color: number, region: table = nil, tolerance: number = 10) -> table
 from wingman import screen
 
 # 查找所有红色像素
-results = screen.findColors(0xFF0000)
+results = screen.findColors(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080})
 print(f"找到 {len(results)} 个红色像素")
+
+# 只找前 5 个
+results = screen.findColors(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080}, 10, 5)
 
 # 遍历所有匹配的像素
 for p in results:
@@ -321,7 +325,7 @@ for p in results:
 local wingman = require("wingman")
 
 -- 查找所有红色像素
-local results = wingman.screen.findColors(0xFF0000)
+local results = wingman.screen.findColors(0xFF0000, {x=0, y=0, width=1920, height=1080})
 print("找到 " .. #results .. " 个红色像素")
 
 -- 遍历所有匹配的像素
@@ -343,7 +347,7 @@ end
 **函数签名**：
 
 ```python
-findImage(imagePath: str, region: dict = None, threshold: float = 0.9) -> dict
+findImage(imagePath: str, region: dict = None, threshold: float = 0.9) -> list
 ```
 
 ```lua
@@ -355,10 +359,9 @@ findImage(imagePath: string, region: table = nil, threshold: number = 0.9) -> ta
 - `region` - 可选，搜索区域 `{x, y, width, height}`，省略时搜索全屏
 - `threshold` - 可选，匹配阈值（0.0-1.0），默认 0.9
 
-**返回**：包含 `point`、`found` 和 `region` 的对象：
-- `point` - 匹配位置坐标 `{x, y}`（未找到时为空）
-- `found` - 是否找到匹配
-- `region` - 匹配到的区域 `{x, y, width, height}`
+**返回**：二元**数组** `[匹配点, 是否找到]`（不是对象）：
+- 下标 `1`（Python `result[0]`）- 匹配位置坐标 `{x, y}`，未找到时为 `None`/`nil`
+- 下标 `2`（Python `result[1]`）- 是否找到匹配（bool）
 
 **匹配阈值**：值越高匹配越严格。0.9 表示 90% 相似度才认为匹配成功。
 
@@ -376,9 +379,9 @@ from wingman import screen
 
 # 在全屏范围内查找图像
 result = screen.findImage("target.png")
-if result["found"]:
-    p = result["point"]
-    print(f"找到图像，位置: {p['x']}, {p['y']}")
+point, found = result
+if found:
+    print(f"找到图像，位置: {point['x']}, {point['y']}")
 else:
     print("未找到图像")
 
@@ -395,10 +398,10 @@ result = screen.findImage(
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 在全屏范围内查找图像
+-- 在全屏范围内查找图像；返回数组：result[1]=点表或nil，result[2]=布尔
 local result = wingman.screen.findImage("target.png")
-if result.found then
-    print(string.format("找到图像，位置: %d, %d", result.point.x, result.point.y))
+if result[2] then
+    print(string.format("找到图像，位置: %d, %d", result[1].x, result[1].y))
 else
     print("未找到图像")
 end
@@ -495,10 +498,10 @@ def game_bot():
 
         # 2. 查找怪物
         monster = screen.findImage(monster_image)
-        if monster["found"]:
-            p = monster["point"]
-            print(f"发现怪物，位置: {p['x']}, {p['y']}")
-            input.click(p["x"], p["y"], 0)
+        point, found = monster
+        if found:
+            print(f"发现怪物，位置: {point['x']}, {point['y']}")
+            input.click(point["x"], point["y"], 0)
             util.sleep(500)  # 攻击后冷却
         else:
             print("未发现怪物，等待...")
@@ -536,10 +539,10 @@ local function gameBot()
 
         -- 2. 查找怪物
         local monster = wingman.screen.findImage(monsterImage)
-        if monster.found then
+        if monster[2] then
             print(string.format("发现怪物，位置: %d, %d",
-                monster.point.x, monster.point.y))
-            wingman.input.click(monster.point.x, monster.point.y, 0)
+                monster[1].x, monster[1].y))
+            wingman.input.click(monster[1].x, monster[1].y, 0)
             wingman.util.sleep(500)  -- 攻击后冷却
         else
             print("未发现怪物，等待...")
@@ -573,14 +576,14 @@ end
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
 | `getPixel(x, y)` | `getPixel(x, y)` | 获取像素颜色 | x,y: 坐标<br>返回: {r,g,b,a} |
-| `findColor(color, region?, tolerance=10)` | `findColor(color, region?, tolerance=10)` | 查找首个匹配像素 | color: 目标颜色<br>region: 搜索区域<br>tolerance: 容差(默认10)<br>返回: {point, found} |
-| `findColors(color, region?, tolerance)` | `findColors(color, region?, tolerance)` | 查找所有匹配像素 | 同 findColor<br>返回: 点数组 |
+| `findColor(color, region, tolerance=10)` | `findColor(color, region, tolerance=10)` | 查找首个匹配像素 | color: 目标颜色<br>region: 搜索区域（必填）<br>tolerance: 容差(默认10)<br>返回: [point或nil, found] 数组 |
+| `findColors(color, region, tolerance=10, maxCount=0)` | `findColors(color, region, tolerance=10, maxCount=0)` | 查找所有匹配像素 | color: 目标颜色<br>region: 搜索区域（必填）<br>tolerance: 容差(默认10)<br>maxCount: 最大数量(默认0不限制)<br>返回: 点数组 |
 
 ### 图像操作
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `findImage(imagePath, region?, threshold=0.9)` | `findImage(imagePath, region?, threshold=0.9)` | 查找图像 | imagePath: 图像路径<br>region: 搜索区域<br>threshold: 匹配阈值(默认0.9)<br>返回: {point, found, region} |
+| `findImage(imagePath, region?, threshold=0.9)` | `findImage(imagePath, region?, threshold=0.9)` | 查找图像 | imagePath: 图像路径<br>region: 搜索区域(省略搜全屏)<br>threshold: 匹配阈值(默认0.9)<br>返回: [point或nil, found] 数组 |
 
 ### 屏幕尺寸
 

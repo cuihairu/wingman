@@ -44,11 +44,16 @@ Wingman 使用以下 vcpkg 包：
 | 包名 | 用途 |
 |-----|------|
 | `lua` | Lua 脚本引擎 |
-| `opencv4` | 图像处理（可选） |
+| `sol2` | C++/Lua 绑定（header-only） |
+| `opencv4` | 图像处理 |
 | `spdlog` | 日志库 |
 | `nlohmann-json` | JSON 配置解析 |
 | `asio` | 网络库 |
-| `sol2` | C++/Lua 绑定（header-only） |
+| `curl` | HTTP 客户端 |
+| `sqlite3` | SQLite 存储 |
+| `openssl` | AES-256-GCM 加密 |
+
+另有按 feature 启用的可选依赖：`tesseract`（`ocr` feature）、`onnxruntime`（`ml` feature）、`gtest`（`tests` feature）、`python3` + `pybind11`（`python` feature）。
 
 ## 编译项目
 
@@ -61,12 +66,16 @@ cd wingman
 
 ### 2. 安装依赖
 
-```bash
-# 安装所有依赖
-vcpkg install --triplet x64-windows lua opencv4 spdlog nlohmann-json asio
+依赖由根目录 `vcpkg.json`（manifest 模式）统一管理，配置 CMake 工具链后自动安装：
 
-# 或使用 vcpkg.json 自动安装
-vcpkg install
+```bash
+cmake -B build -DCMAKE_TOOLCHAIN_FILE="<vcpkg根>/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static
+```
+
+也可手动按清单安装：
+
+```bash
+vcpkg install --triplet x64-windows-static
 ```
 
 ### 3. 使用 CMake 生成项目
@@ -85,10 +94,11 @@ build-scripts\build-runtime-msvc-ninja.bat
 
 ```bash
 # 运行 Lua 示例脚本
-.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script scripts\examples\hello.lua
+.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script examples\lua_scripts\hello.lua
 
-# 运行 Python 示例脚本
-.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script scripts\examples\hello.py
+# 运行 Python 脚本（Python 引擎默认关闭，需 WINGMAN_ENABLE_PYTHON=ON 构建；
+# hello.py 按下文「第一个脚本」自行创建）
+.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script hello.py
 ```
 
 ## vcpkg.json
@@ -98,17 +108,20 @@ build-scripts\build-runtime-msvc-ninja.bat
 ```json
 {
   "dependencies": [
+    { "name": "lua" },
+    { "name": "sol2" },
     {
-      "name": "lua",
-      "features": ["tool"]
+      "name": "opencv4",
+      "platform": "windows",
+      "default-features": false,
+      "features": ["intrinsics", "jpeg", "png", "thread", "tiff", "webp"]
     },
-    "opencv4",
-    {
-      "name": "spdlog",
-      "features": ["wchar"]
-    },
-    "nlohmann-json",
-    "asio"
+    { "name": "spdlog" },
+    { "name": "nlohmann-json" },
+    { "name": "asio" },
+    { "name": "curl" },
+    { "name": "sqlite3" },
+    { "name": "openssl" }
   ]
 }
 ```
@@ -183,7 +196,8 @@ from wingman import screen, util
 print("Hello from Wingman!")
 
 # 获取屏幕尺寸
-width, height = screen.get_size()
+width = screen.get_screen_width()
+height = screen.get_screen_height()
 print(f"Screen size: {width}x{height}")
 
 # 延迟 1 秒
@@ -203,7 +217,8 @@ local wingman = require("wingman")
 print("Hello from Wingman!")
 
 -- 获取屏幕尺寸
-local width, height = wingman.screen.getSize()
+local width = wingman.screen.getScreenWidth()
+local height = wingman.screen.getScreenHeight()
 print(string.format("Screen size: %dx%d", width, height))
 
 -- 延迟 1 秒

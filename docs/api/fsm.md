@@ -15,7 +15,7 @@ fsm 模块提供状态机的创建和管理功能：
 
 ## 创建状态机
 
-### create(name, initial) / create(name, initial)
+### create(name, initial)
 
 **说明**：创建一个新的状态机实例。
 
@@ -297,6 +297,21 @@ wingman.fsm.reset(machineId)
 ```
 
 :::
+
+---
+
+## 事件
+
+### fsm.changed
+
+每次状态机成功转移后，模块会发出 `fsm.changed` 事件。载荷字段：
+
+- `machine` - 状态机名称
+- `from` - 源状态名
+- `to` - 目标状态名
+- `event` - 触发转移的事件名
+
+可用 `wingman.event.on("fsm.changed", cb)` 订阅，集中观察状态变更。
 
 ---
 

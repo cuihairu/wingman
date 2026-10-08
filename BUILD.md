@@ -131,7 +131,7 @@ features 映射：`tests`→gtest、`ocr`→tesseract、`ml`→onnxruntime、`vi
 全部由 `vcpkg.json` manifest 声明，CMake 经 toolchain 自动安装，禁止系统库回退（见 CLAUDE.md）。
 
 ### 核心依赖（始终安装）
-- asio、curl、lua、nlohmann-json、opencv4、openssl、sol2、spdlog、sqlite3
+- asio、curl、lua、nlohmann-json、opencv4（仅 Windows；Linux 走 `vision` feature，macOS 无）、openssl、sol2、spdlog、sqlite3
 
 ### 可选依赖（按 feature / 选项）
 - tesseract（OCR）、onnxruntime（ML/AI）、gtest（tests feature）、python3 + pybind11（Python 引擎）

@@ -109,25 +109,26 @@ end
 
 ### post(url, data, options?)
 
-**说明**：发送 POST 请求，通常用于提交数据。数据默认以 JSON 格式发送。
+**说明**：发送 POST 请求，通常用于提交数据。**`data` 必须是字符串**——模块内部不做任何序列化，直接把字符串作为请求体发出；传 dict/table 会被静默转成**空请求体**。发送 JSON 请先用 `json.encode` 序列化。
 
 **函数签名**：
 
 ```python
-post(url: str, data: dict, options: dict = None) -> dict
+post(url: str, data: str, options: dict = None) -> dict
 ```
 
 ```lua
-post(url: string, data: string | table, options: table | nil) -> table
+post(url: string, data: string, options: table | nil) -> table
 ```
 
 **参数**：
 - `url` - 请求的 URL 地址
-- `data` - 要发送的数据（Python 使用字典，Lua 使用 JSON 字符串）
+- `data` - 要发送的请求体字符串（JSON 对象需先 `json.encode`，两端同此）
 - `options` - 可选，请求选项：
   - `timeout` - 超时时间（秒），默认 30
   - `headers` - 请求头字典/表格
-  - `json` - 是否使用 JSON 序列化（Python 默认 true）
+  - `followRedirects` - 是否跟随重定向
+  - `maxRedirects` - 最大重定向次数
 
 **返回**：响应对象
 
@@ -136,23 +137,22 @@ post(url: string, data: string | table, options: table | nil) -> table
 == Python
 
 ```python:line-numbers
-from wingman import http
+from wingman import http, json
 
-# 发送 JSON 数据
-resp = http.post("https://api.example.com/submit", {
+# 发送 JSON 数据（字典须先序列化为字符串）
+body = json.encode({
     "name": "Player1",
     "score": 100,
     "level": 5
 })
+resp = http.post("https://api.example.com/submit", body)
 
 if resp["success"]:
     print("提交成功")
     print(f"响应: {resp['body']}")
 
 # 带自定义请求头
-resp = http.post("https://api.example.com/submit", {
-    "name": "Player1"
-}, {
+resp = http.post("https://api.example.com/submit", body, {
     "headers": {
         "Content-Type": "application/json",
         "X-Custom-Header": "value"
@@ -188,16 +188,16 @@ end
 
 ### put(url, data, options?)
 
-**说明**：发送 PUT 请求，通常用于更新资源。
+**说明**：发送 PUT 请求，通常用于更新资源。**`data` 必须是字符串**（同 post，dict/table 会静默变空请求体，需先 `json.encode`）。
 
 **函数签名**：
 
 ```python
-put(url: str, data: dict, options: dict = None) -> dict
+put(url: str, data: str, options: dict = None) -> dict
 ```
 
 ```lua
-put(url: string, data: string | table, options: table | nil) -> table
+put(url: string, data: string, options: table | nil) -> table
 ```
 
 :::tabs
@@ -205,13 +205,13 @@ put(url: string, data: string | table, options: table | nil) -> table
 == Python
 
 ```python:line-numbers
-from wingman import http
+from wingman import http, json
 
 # 更新用户信息
-resp = http.put("https://api.example.com/user/123", {
+resp = http.put("https://api.example.com/user/123", json.encode({
     "name": "NewName",
     "email": "new@example.com"
-})
+}))
 ```
 
 == Lua
@@ -386,7 +386,7 @@ end
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
 | `get(url, opts?)` | `get(url, opts?)` | GET 请求 | url: 请求地址<br>opts: 请求选项 |
-| `post(url, data, opts?)` | `post(url, data, opts?)` | POST 请求 | url: 请求地址<br>data: 请求数据<br>opts: 请求选项 |
+| `post(url, data, opts?)` | `post(url, data, opts?)` | POST 请求 | url: 请求地址<br>data: 请求体字符串（JSON 需先 json.encode）<br>opts: 请求选项 |
 | `put(url, data, opts?)` | `put(url, data, opts?)` | PUT 请求 | 同 POST |
 | `delete(url, opts?)` | `delete(url, opts?)` | DELETE 请求 | url: 请求地址<br>opts: 请求选项 |
 

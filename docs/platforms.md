@@ -101,8 +101,8 @@ Android Agent 的 Lua 环境只有 `wingman` 下三张子表（A2 脚本能力�
 
 | 子表 | 能力 | 与桌面的行为差异 |
 |------|------|------------------|
-| `wingman.input` | `tap`/`swipe`/`longPress`/`text`/`delay`（经无障碍服务 Gesture API 注入） | 触屏语义（无悬停/右键/滚轮）；`delay` 可被停止标志中断 |
-| `wingman.screen` | `captureFrame`（MediaProjection 采集）/ `screenSize` | 帧来自推送式 ImageReader 缓存，非按需截屏 |
+| `wingman.input` | `click`/`tap`/`longPress`/`swipe`/`delay`（经无障碍服务 Gesture API 注入） | 触屏语义（无悬停/右键/滚轮）；`delay` 可被停止标志中断 |
+| `wingman.screen` | `capture`/`getScreenWidth`/`getScreenHeight`（MediaProjection 采集） | 帧来自推送式 ImageReader 缓存，非按需截屏 |
 | `wingman.vision` | `findColor`/`findImage` 等查找 | **bitmap-first**：帧取一次、多次分析，与桌面"每次查找重新截屏"是结构性差异，脚本编写时需注意时效性 |
 
 桥未授权（无障碍/投屏权限未给）时函数降级返回 `false`/`nil` 而非抛错——脚本应检查

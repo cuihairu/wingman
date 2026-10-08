@@ -10,6 +10,7 @@
 - [INI 配置](#ini-配置)
 - [配置合并](#配置合并)
 - [环境配置](#环境配置)
+- [运行时配置](#运行时配置)
 - [最佳实践](#最佳实践)
 - [实战案例](#实战案例)
 
@@ -27,11 +28,15 @@ Wingman 提供了灵活的配置管理方案，支持多种格式：
 
 ### 配置文件位置
 
-配置文件通常存储在以下位置：
+runtime/脚本侧的配置文件默认位于**工作目录**下：
 
-- **Windows**: `%APPDATA%\wingman\config\`
-- **macOS**: `~/Library/Application Support/wingman/config/`
-- **Linux**: `~/.config/wingman/`
+- 默认路径：`<工作目录>/config/config.json`（`ConfigManager` 构造参数默认 `configDir = "config"`）
+- 可用环境变量 `WINGMAN_CONFIG_DIR` 重定向到其他目录（未设置时保持默认）
+
+> GUI 桌面端另有自己的数据目录（Windows `%LOCALAPPDATA%`、macOS
+> `~/Library/Application Support`、Linux `XDG_DATA_HOME`（默认
+> `~/.local/share`）下的 wingman 目录），但只用于 profiles/脚本等数据，
+> **不用于** `config.json`。
 
 ---
 
@@ -54,9 +59,9 @@ local config = {
     maxConnections = 100
 }
 
--- 保存配置
+-- 保存配置（第二参为缩进空格数）
 local config_file = io.open("config.json", "w")
-config_file:write(wingman.json.encode(config, true))
+config_file:write(wingman.json.encode(config, 2))
 config_file:close()
 
 -- 加载配置
@@ -71,7 +76,7 @@ print(config.server.host)  -- "localhost"
 #### Python
 
 ```python
-import json
+from wingman import json
 
 # 创建配置
 config = {
@@ -83,9 +88,9 @@ config = {
     "maxConnections": 100
 }
 
-# 保存配置
+# 保存配置（第二参为缩进空格数）
 with open("config.json", "w") as f:
-    f.write(json.encode(config, pretty=True))
+    f.write(json.encode(config, 2))
 
 # 加载配置
 with open("config.json", "r") as f:
@@ -183,8 +188,9 @@ local config = {
 local json_string = wingman.json.encode(config)
 -- {"name":"MyApp","version":"1.0.0","debug":true}
 
--- 美化输出（带缩进）
-local pretty_json = wingman.json.encode(config, true)
+-- 美化输出（第二参为缩进空格数 int，默认 -1=压缩输出；
+-- 传 true 之类非整数会落到默认值，等于压缩输出）
+local pretty_json = wingman.json.encode(config, 2)
 print(pretty_json)
 -- {
 --   "name": "MyApp",
@@ -208,8 +214,8 @@ config = {
 # 编码为 JSON 字符串
 json_string = json.encode(config)
 
-# 美化输出
-pretty_json = json.encode(config, pretty=True)
+# 美化输出（第二参为缩进空格数；只收位置参数，无 pretty 关键字）
+pretty_json = json.encode(config, 2)
 print(pretty_json)
 ```
 
@@ -249,7 +255,7 @@ local config = {
 }
 
 -- 保存配置
-local json_string = wingman.json.encode(config, true)
+local json_string = wingman.json.encode(config, 2)
 local file = io.open("config.json", "w")
 file:write(json_string)
 file:close()
@@ -289,7 +295,7 @@ config = {
 }
 
 # 保存配置
-json_string = json.encode(config, pretty=True)
+json_string = json.encode(config, 2)
 with open("config.json", "w") as f:
     f.write(json_string)
 ```
@@ -319,7 +325,7 @@ config.modules.input.delay = 30
 config.app.newField = "newValue"
 
 -- 保存修改后的配置
-local updated_json = wingman.json.encode(config, true)
+local updated_json = wingman.json.encode(config, 2)
 local file = io.open("config.json", "w")
 file:write(updated_json)
 file:close()
@@ -347,7 +353,7 @@ config["modules"]["input"]["delay"] = 30
 config["app"]["newField"] = "newValue"
 
 # 保存修改后的配置
-updated_json = json.encode(config, pretty=True)
+updated_json = json.encode(config, 2)
 with open("config.json", "w") as f:
     f.write(updated_json)
 ```
@@ -454,6 +460,9 @@ print(ini_content)
 -- [Client]
 -- theme=dark
 -- language=zh
+--
+-- 注意：section 与 key 的输出顺序不保证与上表一致——encode 内部按
+-- unordered_map 遍历，顺序不确定，不要依赖输出的先后次序。
 ```
 
 #### Python
@@ -475,6 +484,7 @@ config = {
 
 ini_content = ini.encode(config)
 print(ini_content)
+# 同样注意：section/key 输出顺序不保证（内部 unordered_map 遍历）
 ```
 
 ### 修改 INI 配置
@@ -894,6 +904,99 @@ for path in config_paths:
 
 ---
 
+## 运行时配置
+
+前文各节是脚本内 JSON/INI 读写工具。Wingman 运行时本体另有一套真实配置体系，本节说明其组成。
+
+### config.json schema
+
+`config.json`（位置见「配置文件位置」）缺失或为空时，runtime 首次启动会自动生成默认内容：
+
+```json
+{
+  "server": {
+    "host": "localhost",
+    "port": 9527,
+    "username": "",
+    "password": "",
+    "autoConnect": false,
+    "serverControlled": false
+  },
+  "autoRun": {
+    "enabled": false,
+    "scriptPath": "",
+    "delaySeconds": 0,
+    "repeat": false,
+    "repeatInterval": 0
+  },
+  "heartbeat": {
+    "enabled": true,
+    "intervalSeconds": 30,
+    "timeoutSeconds": 90
+  },
+  "games": []
+}
+```
+
+- `server`：Go server 连接参数（中控编排器地址/凭据、是否自动连接、是否受服务器控制）
+- `autoRun`：runtime 启动后自动执行的脚本及延迟/重复策略
+- `heartbeat`：心跳开关与间隔（默认 30s）/ 超时（默认 90s）
+- `games`：游戏配置列表（name/path/args/workingDir/autoStart/scriptPath 等）
+
+### wingman.config 脚本模块
+
+脚本经 `wingman.config`（Python `from wingman import config`）读写同一份 `config.json`，键为 config.json 的**顶层键**（不支持点路径）：
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `config.get(key)` | `key:string -> string?` | 读取顶层键，值为 JSON 序列化字符串（字符串值自动解包）；缺失返回 nil/None |
+| `config.set(key, value)` | `key:string, value:string -> nil` | 写入顶层键，值能按 JSON 解析则按类型存储，否则按原样字符串；**立即落盘** |
+| `config.remove(key)` | `key:string -> bool` | 删除顶层键（存在才删），立即落盘 |
+| `config.save()` | `() -> bool` | 直写 JSON 模式实时保存，恒返回 true（兼容保留） |
+| `config.load()` | `() -> bool` | 直写 JSON 模式实时读取，恒返回 true（兼容保留） |
+
+```lua
+local wingman = require("wingman")
+
+wingman.config.set("server", wingman.json.encode({
+    host = "192.168.1.10",
+    port = 9527,
+    username = "agent01",
+    password = "",
+    autoConnect = true,
+    serverControlled = true
+}))
+
+local server = wingman.json.decode(wingman.config.get("server"))
+print(server.host)
+```
+
+### WINGMAN_CONFIG_DIR
+
+设置环境变量 `WINGMAN_CONFIG_DIR` 可把配置目录（含 `config.json`）重定向到任意位置；未设置时使用默认的 `<工作目录>/config`。典型用途是多实例隔离与测试（避免写穿真实配置）。
+
+### runtime CLI 与 agent.toml
+
+runtime 进程级配置与 config.json 是两套东西：`wingman-runtime start` 读取的是 **TOML 格式的 AgentConfig**：
+
+```bash
+# 默认读取工作目录下的 agent.toml
+wingman-runtime start
+
+# 显式指定配置文件
+wingman-runtime start --config /path/to/agent.toml     # 或 -c
+```
+
+常用 AgentConfig TOML 键（`[remote]` 节）：
+
+```toml
+[remote]
+server_ip = "192.168.1.10"
+server_port = 9527
+```
+
+---
+
 ## 最佳实践
 
 ### 1. 配置文件命名
@@ -925,10 +1028,10 @@ local config = {
     }
 }
 
--- ✅ 或使用加密配置
+-- ✅ 或使用加密配置（decryptAES 两参数：密文 base64、密码）
 local config = {
     database = {
-        password = wingman.crypto.decrypt(os.getenv("ENCRYPTED_PASSWORD"))
+        password = wingman.crypto.decryptAES(os.getenv("ENCRYPTED_PASSWORD"), os.getenv("ENCRYPTION_KEY"))
     }
 }
 ```
@@ -1081,7 +1184,7 @@ end
 
 function GameConfig:save()
     -- 保存配置
-    local content = wingman.json.encode(self.config, true)
+    local content = wingman.json.encode(self.config, 2)
     local file = io.open("user_settings.json", "w")
     file:write(content)
     file:close()

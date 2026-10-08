@@ -12,16 +12,11 @@ Wingman 使用 JSON 格式的配置文件来存储应用程序设置。配置文
 {
   "server": {
     "host": "localhost",
-    "port": 8080,
+    "port": 9527,
     "username": "",
     "password": "",
     "autoConnect": false,
     "serverControlled": false
-  },
-  "tray": {
-    "minimizeToTray": true,
-    "startMinimized": false,
-    "showNotifications": true
   },
   "autoRun": {
     "enabled": false,
@@ -40,94 +35,25 @@ Wingman 使用 JSON 格式的配置文件来存储应用程序设置。配置文
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `host` | string | `"localhost"` | 服务器地址 |
-| `port` | number | `8080` | 服务器端口 (1-65535) |
+| `port` | number | `9527` | 服务器端口 (1-65535) |
 | `username` | string | `""` | 登录用户名（可选） |
 | `password` | string | `""` | 登录密码（可选，明文存储） |
 | `autoConnect` | boolean | `false` | 启动时自动连接服务器 |
 | `serverControlled` | boolean | `false` | **服务器控制模式**：允许远程下发脚本控制客户端 |
 
-### Tray (托盘配置)
+### Tray (托盘配置)——未实现（计划中）
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `minimizeToTray` | boolean | `true` | 最小化到托盘而非任务栏 |
-| `startMinimized` | boolean | `false` | 启动时最小化到托盘 |
-| `showNotifications` | boolean | `true` | 显示托盘通知 |
-| `iconPath` | string | `""` | 默认托盘图标路径（.ico 文件） |
-| `tooltip` | string | `"Wingman"` | 托盘图标提示文本 |
-| `iconNormal` | string | `""` | 正常状态图标（正在运行） |
-| `iconIdle` | string | `""` | 空闲状态图标（变灰，无任务） |
-| `iconBusy` | string | `""` | 忙碌状态图标 |
-| `iconError` | string | `""` | 错误状态图标 |
-| `menuItems` | array | 见下方 | 托盘菜单项配置 |
+配置结构中**没有** `tray` 节。`TrayConfig` 及其相关字段（`minimizeToTray` / `iconPath` / `menuItems` / 图标状态等）尚未实现，属规划项，此处不提供配置说明。
 
-#### 图标状态
+脚本侧如需控制托盘展示，走 `notify` 模块的托盘函数（GUI 在线时生效）：
 
-托盘图标支持多种状态，可根据程序运行情况动态切换：
+```lua
+local wingman = require("wingman")
 
-| 状态值 | 名称 | 说明 |
-|-------|------|------|
-| `0` | normal | 正常状态（正在运行任务） |
-| `1` | idle | 空闲状态（无任务，显示灰色图标） |
-| `2` | disabled | 禁用状态 |
-| `3` | busy | 忙碌状态（处理中） |
-| `4` | error | 错误状态 |
-
-#### 菜单项配置 (menuItems)
-
-每个菜单项是一个对象，包含以下字段：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | string | 菜单项唯一标识 |
-| `label` | string | 显示文本 |
-| `actionType` | number | 动作类型：0=无, 1=命令, 2=Lua, 3=启动游戏, 4=HTTP请求, 5=回调 |
-| `action` | string | 动作参数（命令路径/Lua脚本/游戏名/URL等） |
-| `enabled` | boolean | 是否启用 |
-| `isSeparator` | boolean | 是否为分隔符 |
-| `subitems` | array | 子菜单项（仅用于子菜单类型） |
-
-**动作类型说明：**
-
-- `0` (none): 无动作，仅用于显示
-- `1` (command): 执行系统命令，`action` 为命令字符串
-- `2` (lua): 执行 Lua 脚本，`action` 为脚本代码
-- `3` (startGame): 启动游戏，`action` 为游戏名称
-- `4` (http): 发送 HTTP 请求，`action` 为 URL
-- `5` (callback): 内部回调，用于预设菜单项（如退出、查看配置等）
-
-**配置示例：**
-
-```json
-{
-  "tray": {
-    "minimizeToTray": true,
-    "iconPath": "assets/myicon.ico",
-    "iconNormal": "assets/icon_normal.ico",
-    "iconIdle": "assets/icon_gray.ico",
-    "iconBusy": "assets/icon_busy.ico",
-    "tooltip": "我的游戏助手",
-    "menuItems": [
-      {
-        "id": "game1",
-        "label": "启动游戏1",
-        "actionType": 3,
-        "action": "游戏1",
-        "enabled": true
-      },
-      {
-        "id": "sep1",
-        "isSeparator": true
-      },
-      {
-        "id": "exit",
-        "label": "退出",
-        "actionType": 5,
-        "enabled": true
-      }
-    ]
-  }
-}
+wingman.notify.trayShow()              -- 显示托盘
+wingman.notify.trayHide()              -- 隐藏托盘
+wingman.notify.traySetBadge("3")       -- 设置角标（nil 清除）
+wingman.notify.traySetTooltip("运行中") -- 设置提示文本（无参清除）
 ```
 
 ### AutoRun (自动运行配置)
@@ -183,10 +109,20 @@ server.host = "192.168.1.100";
 server.port = 9000;
 config.setServerConfig(server);
 
-// 托盘配置
-TrayConfig tray = config.getTrayConfig();
-tray.startMinimized = true;
-config.setTrayConfig(tray);
+// 自动运行配置
+AutoRunConfig autoRun = config.getAutoRunConfig();
+autoRun.enabled = true;
+config.setAutoRunConfig(autoRun);
+
+// 心跳配置
+HeartbeatConfig heartbeat = config.getHeartbeatConfig();
+heartbeat.intervalSeconds = 30;
+config.setHeartbeatConfig(heartbeat);
+
+// 游戏配置
+auto games = config.getGameConfigList();
+config.addGameConfig(game);              // GameConfig 结构见上表
+config.removeGameConfig("我的游戏");
 
 // 通用键值对访问
 config.set("custom_key", "custom_value");
@@ -195,121 +131,25 @@ auto value = config.get("custom_key");
 
 ## Lua API
 
+Lua `config` 模块只暴露 5 个函数：`get` / `set` / `remove` / `save` / `load`（通用键值对，值以字符串存取）。server / autoRun / heartbeat / games 等结构化配置仅 C++ `ConfigManager` 提供访问器（见上节），脚本侧没有对应的结构化 API。
+
 ```lua
--- 获取服务器配置
-local server = config.getServer()
-print("服务器: " .. server.host .. ":" .. server.port)
-print("服务器控制模式: " .. tostring(server.serverControlled))
+local wingman = require("wingman")
 
--- 设置服务器配置
-server.host = "192.168.1.100"
-server.port = 9000
-server.autoConnect = true
-server.serverControlled = true  -- 启用服务器控制模式
-config.setServer(server)
+-- 通用键值对（值以字符串存取）
+wingman.config.set("myKey", "myValue")
+local value = wingman.config.get("myKey")
+print(value)
 
--- 托盘配置
-local tray = config.getTray()
-tray.startMinimized = true
-tray.iconPath = "assets/myicon.ico"
-tray.tooltip = "我的游戏助手"
+-- 删除键
+wingman.config.remove("myKey")
 
--- 配置托盘菜单项
-tray.menuItems = {
-    {
-        id = "help",
-        label = "帮助",
-        actionType = 0,  -- 无动作
-        enabled = true,
-        isSeparator = false
-    },
-    {
-        id = "sep1",
-        isSeparator = true
-    },
-    {
-        id = "start_game",
-        label = "启动游戏",
-        actionType = 3,  -- startGame
-        action = "我的游戏",
-        enabled = true
-    },
-    {
-        id = "custom_script",
-        label = "运行自定义脚本",
-        actionType = 1,  -- command
-        action = "notepad.exe",
-        enabled = true
-    },
-    {
-        id = "sep2",
-        isSeparator = true
-    },
-    {
-        id = "exit",
-        label = "退出",
-        actionType = 5,  -- callback
-        enabled = true
-    }
-}
-config.setTray(tray)
-
--- 托盘图标状态切换
-local icon = tray.get("main")  -- 获取托盘图标
-
--- 状态值：0=normal, 1=idle(灰), 2=disabled, 3=busy, 4=error
-icon:setIconState(0)  -- 正常运行状态
-icon:setIconState(1)  -- 空闲状态（图标变灰）
-
--- 获取当前状态
-local state = icon:getIconState()
-print("当前图标状态: " .. state)
-
--- 自动运行配置
-local autoRun = config.getAutoRun()
-autoRun.enabled = true
-autoRun.scriptPath = "scripts/auto_task.lua"
-autoRun.delaySeconds = 5
-autoRun.repeat = true
-autoRun.repeatInterval = 60
-config.setAutoRun(autoRun)
-
--- 心跳配置
-local heartbeat = config.getHeartbeat()
-heartbeat.enabled = true
-heartbeat.intervalSeconds = 30  -- 每 30 秒发送一次心跳
-config.setHeartbeat(heartbeat)
-
--- 游戏配置
-local games = config.getGames()
-for i, game in ipairs(games) do
-    print("游戏: " .. game.name)
-    print("路径: " .. game.path)
-end
-
--- 添加游戏配置
-local newGame = {
-    name = "我的游戏",
-    path = "C:\\Games\\MyGame\\game.exe",
-    args = "-windowed -nosplash",
-    workingDir = "C:\\Games\\MyGame",
-    autoStart = true,
-    scriptPath = "scripts/my_game_script.lua",
-    windowTitle = "MyGame",
-    delaySeconds = 5,
-    autoRestart = true,
-    restartDelay = 10,
-    maxRestarts = 3
-}
-config.addGame(newGame)
-
--- 启动游戏
-game.startGame("我的游戏")
-
--- 通用键值对
-config.set("myKey", "myValue")
-local value = config.get("myKey")
+-- 落盘 / 重载
+wingman.config.save()
+wingman.config.load()
 ```
+
+> 注意：`repeat` 是 Lua 保留字，不能写作 `autoRun.repeat` 这样的字段访问；如自行用 JSON 解析读 autoRun 配置，字段需写作 `autoRun["repeat"]`。
 
 ## 节点模块 (node)
 
@@ -320,7 +160,9 @@ local value = config.get("myKey")
 创建心跳数据。
 
 ```lua
-local heartbeat = node.createHeartbeat()
+local wingman = require("wingman")
+
+local heartbeat = wingman.node.createHeartbeat()
 -- {
 --   json = "{...}",      -- 完整的 JSON 数据
 --   nodeId = "node-abc123",
@@ -330,11 +172,11 @@ local heartbeat = node.createHeartbeat()
 
 ### node.sendHeartbeat(table)
 
-发送心跳到服务器（需要启用服务器控制模式）。
+发送心跳。**注意：当前实现是本地记录桩——只记日志、直接返回，不向服务器发送任何网络消息**（真正的网络心跳由 runtime agent 自身维护）。
 
 ```lua
-local heartbeat = node.createHeartbeat()
-node.sendHeartbeat(heartbeat)
+local heartbeat = wingman.node.createHeartbeat()
+wingman.node.sendHeartbeat(heartbeat)  -- 本地记录桩，无网络发送
 ```
 
 ### node.getWindows()
@@ -342,7 +184,7 @@ node.sendHeartbeat(heartbeat)
 获取所有窗口列表（用于汇报游戏窗口状态）。
 
 ```lua
-local windows = node.getWindows()
+local windows = wingman.node.getWindows()
 for i, win in ipairs(windows) do
     print(win.title)
     print(win.handle)
@@ -388,14 +230,14 @@ end
 
 ## 环境变量
 
-部分配置可以通过环境变量覆盖：
+不存在 `WINGMAN_SERVER_*` 之类的配置覆盖变量。当前真实生效的环境变量：
 
-| 环境变量 | 配置项 |
+| 环境变量 | 作用 |
 |----------|--------|
-| `WINGMAN_SERVER_HOST` | server.host |
-| `WINGMAN_SERVER_PORT` | server.port |
-| `WINGMAN_SERVER_USERNAME` | server.username |
-| `WINGMAN_SERVER_PASSWORD` | server.password |
+| `WINGMAN_CONFIG_DIR` | 重定向配置目录（默认 `config`，多用于测试隔离） |
+| `WINGMAN_PACK_PASSWORD` | `build` 加密打包的口令来源（避免口令进命令行历史） |
+| `WINGMAN_SCRIPT_PASSWORD` | 运行加密打包产物时提供解包口令 |
+| `WINGMAN_ADMIN_PASSWORD` | Go server 首次启动时引导创建 admin 账号（未设置则不建号） |
 
 ## 安全提示
 

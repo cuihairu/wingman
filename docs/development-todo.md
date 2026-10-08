@@ -26,7 +26,7 @@
 
 > **🔄 核对更新（2026-09-18）**：对照 `lib/wingman/src/script/modules/`（45 个模块源文件）、
 > `libs/python/typing/wingman/`（37 个 .pyi）与 200+ 条模块测试逐项核对。P0/P1 的
-> event/fsm/task/notify 均已落地并有完整测试（各 38/44/42/39 条用例）与 typing 文件，
+> event/fsm/task/notify 均已落地并有完整测试（各 50/44/47/46 条用例）与 typing 文件，
 > 此前清单未同步勾选。orchestration 已有基础工作流 API。timer 已于 2026-09-19 落地
 > （timer_module.cpp + timer.pyi + 12 条测试）；事件按名清理与监听器查询已于
 > 2026-09-27 落地；task pause/resume 已于 2026-10-01 落地；hotkey 模块、文件 IO
@@ -59,7 +59,7 @@
   - [x] `dispatch(eventName, payload?)`
   - [x] `getState()` / `setState()`（`current()` 读取 + `reset()`；状态由转移驱动，无直接 setState）
   - [x] 状态变更自动发出 `fsm.changed`
-- [x] `wingman.task`（task_module.cpp + task.pyi + 42 条测试）
+- [x] `wingman.task`（task_module.cpp + task.pyi + 47 条测试）
   - [x] `submit(fn | workflow, options?)`
   - [x] `cancel(taskId)`
   - [x] `status(taskId)` / `wait(taskId, timeout?)`
@@ -67,7 +67,7 @@
   - [x] `pause(taskId)` / `resume(taskId)`（2026-10-01 落地：协作式暂停——开工前驻留、work 完成后扣住结果不落账、重试间隙停试，超时时钟暂停期间停走；仅 pending/running 可暂停、仅 paused 可恢复）
   - [x] `result(taskId)` / `error(taskId)`
   - [x] 任务生命周期事件：`task.submitted/started/paused/resumed/succeeded/failed/canceled/timeout`（pending/running/paused/succeeded/failed/canceled 状态流转）
-- [x] `wingman.notify`（notify_module.cpp + notify.pyi + 39 条测试）
+- [x] `wingman.notify`（notify_module.cpp + notify.pyi + 46 条测试）
   - [x] `info/warn/error/debug`
   - [x] `toast(title, message, level?)`
   - [x] `log(channel, message, meta?)`（notify.log + 事件化）
@@ -132,7 +132,7 @@
 ### A1 PoC：链路打通 [2026-09-22 校准，代码已落地]
 - [x] Kotlin 壳：ForegroundService + 长链接（`WingmanService.kt`：前台服务 + START_STICKY + dataSync|mediaProjection 类型；复用 libs/transport 编译到 Android）
 - [x] wingman 核心 NDK 编译通过（Lua + transport + 核心库；vcpkg 扩展 arm64-android triplet；nightly Android arm64 job 全绿，2026-09-22）
-- [x] Go Server 下发脚本 → 端侧执行（`android_agent.cpp` 支持 run_script/stop_script/screenshot.capture/system.shutdown 四命令；日志经 agent.event 上行回传 Dashboard）
+- [x] Go Server 下发脚本 → 端侧执行（`android_agent.cpp` 支持三命令 run_script/stop_script/screenshot.capture，`system.shutdown` 显式拒绝——不响应远端关停；日志经 agent.event 上行回传 Dashboard）
 
 ### A2 能力闭环（2026-09-22 校准：IInput/ICapture/脚本 API 已落地，余触发器与真机验证）
 - [x] `platform/android/` IInput 后端（AccessibilityService dispatchGesture，经 JNI；`WingmanAccessibilityService.kt` 主线程 post + seq/promise 回执，超时兜底在 C++）
@@ -160,11 +160,10 @@
 ### 1.1 屏幕操作模块
 - [x] `screen.capture()` - 截取屏幕/窗口
 - [x] `screen.getPixel(x, y)` - 获取单点像素
-- [x] `screen.findColor(color, x1, y1, x2, y2, tolerance)` - 单点颜色查找
-- [x] `screen.findColors(color, x1, y1, x2, y2, tolerance, count)` - 多点颜色查找
-- [x] `screen.findImage(imagePath, x1, y1, x2, y2, threshold)` - 图像匹配
-- [x] `screen.getWindowTitle(hwnd)` - 获取窗口标题
-- [x] `screen.getWindowBounds(hwnd)` - 获取窗口位置
+- [x] `screen.findColor(color, region, tolerance)` - 单点颜色查找（region:{x,y,width,height}，返回 `[point, found]` 数组；签名按现役注册修正）
+- [x] `screen.findColors(color, region, tolerance, maxCount)` - 多点颜色查找（返回点数组；签名按现役注册修正）
+- [x] `screen.findImage(imagePath, region, threshold)` - 图像匹配（region 可省略默认全屏，返回 `[point, found]`；签名按现役注册修正）
+- [x] 窗口标题/位置查询 - 实注册为 window.getTitle/getBounds（screen 模块无 getWindowTitle/getWindowBounds，2026-10-08 审计修正归属）
 
 ### 1.2 输入模拟模块
 - [x] `input.click(x, y, button)` - 鼠标点击
@@ -282,10 +281,10 @@
 - [x] 内存优化 (智能缓存管理)
 
 ### 7.3 安全特性
-- [x] 代码签名 (验证支持)
+- [x] 完整性自检 (verifyIntegrity；代码签名验证未实现)
 - [x] 进程保护 (反调试、反VM)
 - [x] 反检测机制 (随机延迟、点击抖动)
-- [x] 混淆支持 (字符串加密、哈希)
+- [x] 哈希 (hashString；字符串加密未实现)
 
 ---
 
@@ -326,26 +325,26 @@
 - [x] 元素等待 (waitFor)
 
 ### 9.2 Lua 绑定
-- [x] `uia.fromForeground()` - 获取前台窗口根元素
-- [x] `uia.fromPoint(x, y)` - 从坐标获取元素
-- [x] `uia.fromWindow(hwnd)` - 从句柄获取元素
-- [x] `uia.findButton(name)` - 查找按钮
-- [x] `uia.findEdit(name)` - 查找编辑框
-- [x] `uia.findText(name)` - 查找文本
-- [x] `uia.findByName(name)` - 按名称查找
-- [x] `uia.findById(id)` - 按 ID 查找
-- [x] `uia.waitForName(name, timeout)` - 等待元素
+- [x] `uia.from_foreground()` - 获取前台窗口根元素
+- [x] `uia.from_point(x, y)` - 从坐标获取元素
+- [x] `uia.from_window(hwnd)` - 从句柄获取元素
+- [x] `uia.find_button(name)` - 查找按钮
+- [x] `uia.find_edit(name)` - 查找编辑框
+- [x] `uia.find_text(name)` - 查找文本
+- [x] `uia.find_by_name(name)` - 按名称查找
+- [x] `uia.find_by_id(id)` - 按 ID 查找
+- [x] `uia.wait_for_name(name, timeout)` - 等待元素
 
 ### 9.3 UIElement 方法
 - [x] `:click()` - 点击
-- [x] `:rightClick()` - 右键点击
-- [x] `:doubleClick()` - 双击
+- [ ] `:rightClick()` - 右键点击（未实现）
+- [x] `:double_click()` - 双击
 - [x] `:focus()` - 设置焦点
-- [x] `:getValue()` - 获取值
-- [x] `:setValue(value)` - 设置值
-- [x] `:getName()` - 获取名称
-- [x] `:getInfo()` - 获取完整信息
-- [x] `:getChildren()` - 获取子元素
+- [x] `:get_value()` - 获取值
+- [x] `:set_value(value)` - 设置值
+- [x] `get_info().name` - 获取名称（经 get_info 返回的 info.name 取得，无独立 getName 方法）
+- [x] `:get_info()` - 获取完整信息
+- [x] `:get_children()` - 获取子元素
 
 ---
 
@@ -555,10 +554,10 @@
 ### Phase 14: UIA 功能增强 ✅
 - [x] 实现 UIACondition 查找条件
 - [x] 实现元素展开/折叠 (expand/collapse)
-- [x] 实现选择项操作 (selectItem/getSelection)
-- [x] 实现高级查找方法 (find/findAll)
+- [ ] 实现选择项操作 (selectItem/getSelection)
+- [x] 实现高级查找方法（C++ 层 `find(selector)`/`findAllByRole`，脚本层暴露 find_by_name/find_by_id/find_all_by_control_type）
 - [x] 添加 UIA 事件监听支持 (PropertyChangedEventHandler)
-- [x] Lua 绑定更新 (getParent, expand, collapse, isExpanded, selectItem, getSelection)
+- [ ] Lua 绑定更新 (expand, collapse, isExpanded；getParent/selectItem/getSelection 未实现)
 - [x] 更新 UIA 文档
 
 ### Phase 15: WebSocket 和 Dashboard ✅
@@ -577,30 +576,34 @@
 - [x] pnpm install 成功通过
 
 ### Phase 17: UIA 事件监听器 Lua 绑定 ✅
-- [x] 实现 `uia.onPropertyChanged(name, callback)` - 属性变更事件
-- [x] 实现 `uia.onStructureChanged(name, callback)` - 结构变更事件
-- [x] 实现 `uia.removeEventListener(listenerId)` - 移除监听器
+- [x] 实现 `uia.on_property_changed(name, callback)` - 属性变更事件
+- [x] 实现 `uia.on_structure_changed(name, callback)` - 结构变更事件
+- [x] 实现 `uia.remove_event_listener(listenerId)` - 移除监听器
 - [x] 添加全局监听器注册表和清理机制
 - [x] 修复 SmartTrigger 日志语法错误
 - [x] 更新 todo.md 确认触发器系统 Lua 函数执行和日志输出已完成
 
 ### Phase 18: UIA 文档更新 ✅
-- [x] 更新 `docs/api/uia.md` 添加事件监听器 API 文档
+- [x] 更新 `docs/api/uia/index.md` 添加事件监听器 API 文档
 - [x] 更新 `docs/examples/ui-automation.md` 添加事件监听器示例
 - [x] 添加监听对话框自动响应示例
 - [x] 添加监听内容变化示例
 
-### Phase 19: UIA 控件类型支持扩展 ✅
-- [x] 添加 `findCheckBox(name)` - 查找复选框
-- [x] 添加 `findRadioButton(name)` - 查找单选按钮
-- [x] 添加 `findComboBox(name)` - 查找下拉框
-- [x] 添加 `findList(name)` - 查找列表
-- [x] 添加 `findListItem(name)` - 查找列表项
-- [x] 添加 `findTab(name)` / `findTabItem(name)` - 查找标签页
-- [x] 添加 `findTree(name)` / `findTreeItem(name)` - 查找树形控件
-- [x] 添加 `findMenuItem(name)` - 查找菜单项
-- [x] 添加 `findHyperlink(name)` - 查找超链接
-- [x] 添加 `findImage(name)` - 查找图像
-- [x] 添加 `findSlider(name)` - 查找滑块
-- [x] 添加 `findSpinner(name)` - 查找微调器
-- [x] 添加 `findProgressBar(name)` - 查找进度条
+### Phase 19: UIA 控件类型支持扩展
+
+> 未实现——uia 模块实注册仅 13 个函数，见
+> `lib/wingman/src/script/modules/misc_modules.cpp:466-580`；下列 find* 控件查找函数在码中不存在，勾选状态按证据回退（2026-10-08 审计修正）。
+
+- [ ] 添加 `findCheckBox(name)` - 查找复选框
+- [ ] 添加 `findRadioButton(name)` - 查找单选按钮
+- [ ] 添加 `findComboBox(name)` - 查找下拉框
+- [ ] 添加 `findList(name)` - 查找列表
+- [ ] 添加 `findListItem(name)` - 查找列表项
+- [ ] 添加 `findTab(name)` / `findTabItem(name)` - 查找标签页
+- [ ] 添加 `findTree(name)` / `findTreeItem(name)` - 查找树形控件
+- [ ] 添加 `findMenuItem(name)` - 查找菜单项
+- [ ] 添加 `findHyperlink(name)` - 查找超链接
+- [ ] 添加 `findImage(name)` - 查找图像
+- [ ] 添加 `findSlider(name)` - 查找滑块
+- [ ] 添加 `findSpinner(name)` - 查找微调器
+- [ ] 添加 `findProgressBar(name)` - 查找进度条

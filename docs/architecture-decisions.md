@@ -21,36 +21,39 @@ The Go server is the central orchestrator.
 - The Go server should not depend on dialing a runtime listener such as `localhost:8888`.
 - Agent communication must use a clearly versioned transport protocol with bounded frame sizes and cross-language tests.
 
-The intended command flow is:
+The actual command flow, using the wire message names defined in
+`docs/protocols.md`, is:
 
 ```text
-runtime -> server: agent.register
-server -> runtime: register.ack
+runtime -> server: Notify  body type=agent.register
+server -> runtime: Notify  body type=agent.register_ack
 
-runtime -> server: agent.heartbeat
-server -> runtime: heartbeat.ack
+runtime -> server: Notify  body type=agent.heartbeat
+                           (server updates registry state; no ack frame is sent)
 
-server -> runtime: command.run_script
-runtime -> server: command.result
+server -> runtime: Request body method=run_script
+runtime -> server: Response (same frame sequence as the Request)
 
-runtime -> server: event.script_log
-runtime -> server: event.status_changed
+runtime -> server: Notify  body type=agent.event {event: "script_output"}
+runtime -> server: Notify  body type=agent.event {event: "script_state"}
 ```
 
-Every remote command must have at least:
+Every frame is a fixed 16-byte header followed by a JSON body
+(`libs/transport/include/wingman/transport/session/session.hpp`:
+`MessageHeader` = length / sequence / type / reserved). There are no
+dedicated `agent_id` / `command_id` / `timeout` wire fields:
 
-- `agent_id`
-- `command_id`
-- `type`
-- `payload`
-- `timeout`
+- command identity is carried by the frame header `sequence`, which the
+  Response frame echoes back;
+- agent identity is implied by the (authenticated) connection;
+- the command payload is the JSON body itself, with a `method` field
+  (e.g. `run_script`) selecting the handler;
+- `timeout` is a server-side send parameter
+  (`SendCommandWithTimeout`), not a wire field.
 
-Every command result must include:
-
-- `command_id`
-- `success`
-- `error`
-- `data`
+Every command result is a Response frame with the same `sequence`; its
+body carries `success`, and on failure `error`, plus `data` when the
+command returns data.
 
 ## Local Standalone UI
 
@@ -369,8 +372,8 @@ languages. Consolidating to a single language is explicitly rejected.
   additionally registers snake_case aliases). A new module costs one C++
   file plus a Python `.pyi`; dual-language support is not a per-feature
   rewrite.
-- Total engine glue is ~1.2k LOC (`libs/lua/src` 544 + `libs/python/src`
-  704). The Python-only burden is the `libs/python/typing` stubs; Lua has
+- Total engine glue is ~1.2k LOC (`libs/lua/src` 550 + `libs/python/src`
+  729). The Python-only burden is the `libs/python/typing` stubs; Lua has
   no parallel annotation layer to maintain.
 
 ### Tiered primacy
@@ -435,7 +438,7 @@ Decision (2026-10-04): Wingman's architecture is formally a four-layer model,
 with a hard **Control Plane / Execution Plane** boundary:
 
 ```text
-CONTROL PLANE (Go server, apps/orchestrator)
+CONTROL PLANE (Go server, orchestrator/)
   Dashboard (React) · RBAC · Audit · Agent Registry · Workflow engine
         │
         │ Agent TCP (outbound, authenticated register)
@@ -588,7 +591,9 @@ Status model: `pending → queued → running → {succeeded | failed | cancelle
 Rules:
 
 - The server is the source of truth for `Execution`; runtime reports into it
-  via `command.result` / `event.script_log` (existing protocol, unchanged).
+  via the same-`sequence` Response frame of each command and Notify
+  `agent.event` (`script_output` / `script_state`) — existing protocol,
+  unchanged (naming per `docs/protocols.md`).
 - **Artifacts** (screenshots, captured frames, stdout/stderr, result.json,
   ML output) are first-class children of an execution, addressed as
   `execution/{id}/artifacts/{name}` and listed in the Dashboard Execution

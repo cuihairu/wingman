@@ -63,7 +63,7 @@ Wingman Core
 
 ## Tauri 命令
 
-共 54 个（`src-tauri/src/commands/`），按域分组：
+共 54 个（`src-tauri/src/commands/` 与 `tray.rs`），按域分组：
 
 | 域 | 命令 |
 |----|------|

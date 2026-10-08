@@ -43,7 +43,7 @@ wingman/
 ├── libs/                    # Support libraries
 │   ├── lua/                 # Lua engine binding
 │   ├── python/              # Python engine binding
-│   └── transport/           # TCP/WebSocket transport
+│   └── transport/           # TCP/UDP（自定义帧）transport
 └── orchestrator/            # Orchestration layer
     ├── dashboard/           # Web dashboard
     └── server/             # Go server
@@ -59,13 +59,13 @@ LuaRocks is a package manager for Lua modules, similar to npm for Node.js.
 
 **Installation:**
 ```cmd
-scripts\install-luarocks.cmd
+examples\lua_scripts\install-luarocks.cmd
 ```
 
 **Usage:**
 ```cmd
 REM Add to PATH (temporary)
-set PATH=%CD%\scripts\luarocks;%PATH%
+set PATH=%CD%\examples\lua_scripts\luarocks;%PATH%
 
 REM Install a package
 luarocks install lua-cjson
@@ -81,17 +81,17 @@ Busted is a unit testing framework for Lua.
 **Installation:**
 ```cmd
 REM First install LuaRocks, then:
-scripts\install-busted.cmd
+examples\lua_scripts\install-busted.cmd
 ```
 
 **Run Tests:**
 ```cmd
-scripts\run-lua-tests.cmd
+examples\lua_scripts\run-lua-tests.cmd
 ```
 
 **Or manually:**
 ```cmd
-set PATH=%CD%\scripts\luarocks;%PATH%
+set PATH=%CD%\examples\lua_scripts\luarocks;%PATH%
 busted tests -o utfTerminal
 ```
 
@@ -146,7 +146,7 @@ cmake -S . -B build-tests ^
   -DVCPKG_TARGET_TRIPLET=x64-windows-static ^
   -DVCPKG_MANIFEST_FEATURES=tests ^
   -DWINGMAN_BUILD_TESTS=ON
-cmake --build build-tests --config Debug --target core_tests runtime_tests transport_tests proto_tests debug_tests
+cmake --build build-tests --config Debug --target core_tests runtime_tests transport_tests
 
 REM Run tests
 ctest --test-dir build-tests -C Debug --output-on-failure
@@ -207,7 +207,7 @@ feature（compat 构建不编 lib/wingman，不装 OpenCV）。
 
 ```cmd
 REM Requires LuaRocks and Busted (see above)
-scripts\run-lua-tests.cmd
+examples\lua_scripts\run-lua-tests.cmd
 ```
 
 ### GUI [Runtime 跨语言集成测试（Linux]
@@ -244,6 +244,6 @@ Lua tests are run locally by developers, not in CI, since LuaRocks is an optiona
 
 ## Additional Resources
 
-- [Lua Reference Manual](https://www.lua.org/manual/5.4/)
+- [Lua Reference Manual](https://www.lua.org/manual/5.5/)
 - [LuaRocks Documentation](https://luarocks.org/)
 - [Busted Documentation](https://olivinelabs.com/busted/)

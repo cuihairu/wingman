@@ -18,9 +18,9 @@ orchestration 模块提供工作流管理功能：
 
 ## 提交工作流
 
-### submit_workflow(workflow) / submitWorkflow(workflow)
+### submit_workflow(workflow)
 
-**说明**：提交一个新的工作流执行。
+**说明**：提交一个新的工作流执行。两端函数名一致（均为 snake_case）。
 
 **函数签名**：
 
@@ -29,15 +29,13 @@ submit_workflow(workflow: dict) -> str | None
 ```
 
 ```lua
-submitWorkflow(workflow: table) -> string | nil
+submit_workflow(workflow: table) -> string | nil
 ```
 
 **参数**：
-- `workflow` - 工作流定义对象
+- `workflow` - 工作流定义对象（字段口径以 Go 侧 API 为准：`name`、`description`、`steps`、`sharedContext`）
   - `name` / `name` - 工作流名称
   - `steps` / `steps` - 步骤数组
-  - `timeout` / `timeout` - 可选，超时时间
-  - `metadata` / `metadata` - 可选，元数据
 
 **返回**：
 - Python: 工作流 ID，失败返回 `None`
@@ -66,8 +64,8 @@ workflow_id = orchestration.submit_workflow({
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 提交工作流
-local workflowId = wingman.orchestration.submitWorkflow({
+-- 提交工作流（Lua 侧同样只有 snake_case 名）
+local workflowId = wingman.orchestration.submit_workflow({
     name = "combat_loop",
     steps = {
         { type = "vision", action = "find_enemy" },
@@ -83,7 +81,7 @@ local workflowId = wingman.orchestration.submitWorkflow({
 
 ## 取消工作流
 
-### cancel_workflow(workflow_id) / cancelWorkflow(workflowId)
+### cancel_workflow(workflow_id)
 
 **说明**：取消正在执行的工作流。
 
@@ -94,7 +92,7 @@ cancel_workflow(workflow_id: str) -> bool
 ```
 
 ```lua
-cancelWorkflow(workflowId: string) -> boolean
+cancel_workflow(workflowId: string) -> boolean
 ```
 
 **参数**：
@@ -120,7 +118,7 @@ orchestration.cancel_workflow(workflow_id)
 local wingman = require("wingman")
 
 -- 取消工作流
-wingman.orchestration.cancelWorkflow(workflowId)
+wingman.orchestration.cancel_workflow(workflowId)
 ```
 
 :::
@@ -129,7 +127,7 @@ wingman.orchestration.cancelWorkflow(workflowId)
 
 ## 获取工作流信息
 
-### get_workflow(workflow_id) / getWorkflow(workflowId)
+### get_workflow(workflow_id)
 
 **说明**：获取工作流详细信息。
 
@@ -140,7 +138,7 @@ get_workflow(workflow_id: str) -> dict | None
 ```
 
 ```lua
-getWorkflow(workflowId: string) -> table | nil
+get_workflow(workflowId: string) -> table | nil
 ```
 
 **参数**：
@@ -169,7 +167,7 @@ if workflow:
 local wingman = require("wingman")
 
 -- 获取工作流信息
-local workflow = wingman.orchestration.getWorkflow(workflowId)
+local workflow = wingman.orchestration.get_workflow(workflowId)
 if workflow then
     print("状态: " .. workflow.status)
 end
@@ -181,7 +179,7 @@ end
 
 ## 获取所有工作流
 
-### get_all_workflows() / getAllWorkflows()
+### get_all_workflows()
 
 **说明**：获取所有工作流列表。
 
@@ -192,7 +190,7 @@ get_all_workflows() -> list[dict]
 ```
 
 ```lua
-getAllWorkflows() -> table
+get_all_workflows() -> table
 ```
 
 **返回**：
@@ -218,7 +216,7 @@ for wf in workflows:
 local wingman = require("wingman")
 
 -- 获取所有工作流
-local workflows = wingman.orchestration.getAllWorkflows()
+local workflows = wingman.orchestration.get_all_workflows()
 for i, wf in ipairs(workflows) do
     print(wf.id .. ": " .. wf.name)
 end
@@ -232,24 +230,27 @@ end
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `submit_workflow(workflow)` | `submitWorkflow(workflow)` | 提交工作流 | workflow: 工作流定义对象<br>返回: 工作流ID或None/nil |
-| `cancel_workflow(workflowId)` | `cancelWorkflow(workflowId)` | 取消工作流 | workflowId: 工作流ID<br>返回: 是否成功 |
-| `get_workflow(workflowId)` | `getWorkflow(workflowId)` | 获取工作流信息 | workflowId: 工作流ID<br>返回: 工作流对象或None/nil |
-| `get_all_workflows()` | `getAllWorkflows()` | 获取所有工作流 | 返回: 工作流对象数组 |
+| `submit_workflow(workflow)` | `submit_workflow(workflow)` | 提交工作流 | workflow: 工作流定义对象<br>返回: 工作流ID或None/nil |
+| `cancel_workflow(workflowId)` | `cancel_workflow(workflowId)` | 取消工作流 | workflowId: 工作流ID<br>返回: 是否成功 |
+| `get_workflow(workflowId)` | `get_workflow(workflowId)` | 获取工作流信息 | workflowId: 工作流ID<br>返回: 工作流对象或None/nil |
+| `get_all_workflows()` | `get_all_workflows()` | 获取所有工作流 | 返回: 工作流对象数组 |
 
 ---
 
 ## 工作流对象
 
-工作流对象包含以下字段：
+> **字段口径以 Go server API 为准**（orchestrator `WorkflowDetailData`）。脚本层 C++ 模块当前为
+> 存根（恒返回 null/空/false），下表为 Go 侧详情 DTO 的实际字段：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `id` | string | 工作流唯一 ID |
 | `name` | string | 工作流名称 |
-| `status` | string | 状态：`pending`, `running`, `completed`, `failed`, `canceled` |
+| `description` | string | 工作流描述 |
+| `status` | string | 状态：`pending`, `running`, `completed`, `failed`, `cancelled` |
 | `steps` | array | 步骤定义 |
-| `result` | any | 执行结果 |
-| `error` | string | 错误信息 |
-| `createdAt` | number | 创建时间戳 |
-| `updatedAt` | number | 更新时间戳 |
+| `sharedContext` | object | 共享上下文 |
+| `stepStatus` | object | 各步骤状态 |
+| `createdTime` | number | 创建时间（毫秒时间戳） |
+| `startTime` | number | 开始时间（毫秒时间戳） |
+| `endTime` | number | 结束时间（毫秒时间戳） |

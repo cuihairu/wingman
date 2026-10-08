@@ -71,7 +71,7 @@
 | 模块 | 当前状态 |
 |------|----------|
 | OCR | 可选能力，依赖 Tesseract/运行时配置 |
-| ML/YOLO | 可选能力，当前脚本层支持 ONNX 模型加载与 IO 元数据查询；目标检测高层 API 仍在规划中 |
+| ML/YOLO | 可选能力，AI 视觉检测 API 已可用（云端 provider + 本地 ONNX：`aiSetup`/`aiSetupLocal`/`aiLocate`/`aiElements`） |
 | Vision | 基础图像能力可用，高级检测按具体构建配置启用 |
 | Debugger | Lua 调试接口存在，需配合调试插件/配置使用 |
 | Orchestration | Go server + Dashboard + runtime agent 远程编排，属于独立部署链路 |

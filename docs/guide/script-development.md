@@ -26,12 +26,10 @@ Wingman 脚本用 **Lua** 或 **Python** 编写，调用统一的 `wingman` 模�
 `hello.lua`：
 
 ```lua
-local screen = require("wingman.screen")
-local input  = require("wingman.input")
-local util   = require("wingman.util")
+local wingman = require("wingman")
 
 print("Hello Wingman")
-local w, h = screen.getScreenWidth(), screen.getScreenHeight()
+local w, h = wingman.screen.getScreenWidth(), wingman.screen.getScreenHeight()
 print(string.format("屏幕: %dx%d", w, h))
 ```
 
@@ -68,48 +66,50 @@ wingman-runtime script hello.py
 | 模块 | 典型用途 | 代表函数 |
 |------|----------|----------|
 | `screen` | 像素/图像检测、截图 | `findColor`、`findImage`、`capture`、`getScreenWidth` |
-| `input` | 鼠标键盘模拟（含人性化） | `click`、`move`、`keyPress`、`type` |
-| `vision` | 高级视觉（主色、模板匹配） | `getDominantColor`、`matchTemplate` |
+| `input` | 鼠标键盘模拟（含人性化） | `click`、`move`、`key`、`type` |
+| `vision` | 高级视觉（主色、模板匹配、AI 检测） | `getDominantColor`、`findImage` |
 | `trigger` | 条件触发器 | 颜色出现/消失、图像、热键、定时 |
 | `event` | 发布-订阅事件 | `on`、`emit` |
 | `task` | 任务编排 | 创建/等待/取消 |
-| `notify` | 通知（日志/toast） | `log`、`warn`、`error` |
-| `http` | HTTP 服务端（脚本内） | 路由、响应 |
+| `notify` | 通知（日志/toast） | `info`、`warn`、`error`、`toast` |
+| `http` | HTTP 客户端 | `get`、`post`、`put`、`delete` |
 | `human` | 人性化输入（防检测） | 随机延迟、轨迹移动 |
-| `util` | 工具（时间、睡眠） | `sleep`、`getTime` |
+| `util` | 工具（时间、睡眠、日志） | `sleep`、`getTime`、`log` |
 | `kv` / `db` | 持久化 | 键值存储、SQLite |
 
-> 注意：部分模块在 Lua 中为全局（`screen` / `input`），部分需 `require`；Python 统一从 `wingman` 包导入。以 [examples/lua_scripts/](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts) 的真实用法为准。
+> 注意：Lua 统一经 `require("wingman")` 后以 `wingman.<module>.<fn>` 命名空间访问，没有裸全局模块；Python 统一从 `wingman` 包导入。以 [examples/lua_scripts/](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts) 的真实用法为准。
 
 ## 典型模式
 
 ### 像素检测 + 点击（颜色触发）
 
 ```lua
-local screen = require("wingman.screen")
-local input  = require("wingman.input")
+local wingman = require("wingman")
 
-local found, x, y = screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
-if found then
-    input.click(x, y)
+-- findColor(color, region 表, tolerance) 返回单数组：res[1] = 命中点，res[2] = 是否找到
+-- （绑定层只回传单个 table，Lua 侧不会展开成多返回值）
+local res = wingman.screen.findColor(0xFF0000, {x = 0, y = 0, width = 1920, height = 1080}, 10)
+if res[2] then
+    wingman.input.click(res[1].x, res[1].y)
 end
 ```
 
 ### 循环监控（带退出条件）
 
 ```lua
-local screen = require("wingman.screen")
-local util   = require("wingman.util")
+local wingman = require("wingman")
 
 for i = 1, 100 do
-    local found, x, y = screen.findColor(0x00FF00, 0, 0, 1920, 1080, 10)
-    if found then
-        util.log("检测到目标: " .. x .. "," .. y)
+    local res = wingman.screen.findColor(0x00FF00, {x = 0, y = 0, width = 1920, height = 1080}, 10)
+    if res[2] then
+        wingman.util.log("检测到目标: " .. res[1].x .. "," .. res[1].y)
         break
     end
-    util.sleep(500)  -- 500ms 间隔
+    wingman.util.sleep(500)  -- 500ms 间隔
 end
 ```
+
+> 需要全部命中点时改用 `wingman.screen.findColors(color, region, tolerance, maxCount?)`，返回点数组。`window.find` 同 `findColor` 一样返回单数组 `{handle, found}`。
 
 更多模式（图像匹配、热键触发、HTTP 联动、宏录制回放）见 [examples](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts) 与 [触发器指南](../guides/triggers.md)。
 

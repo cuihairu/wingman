@@ -69,5 +69,6 @@ wingman.notify.error("Error message")
 
 ### 断点未命中
 
+- 确认 9966 端口未被占用
+- 确认 `.vscode/launch.json` 已选 `emmylua_new` 配置（`Attach to Wingman Lua (EmmyLua :9966)`）
 - 确认 VS Code 已连接到 `localhost:9966`
-- 确认运行目录中存在 EmmyLua 调试组件（`emmy_core`）

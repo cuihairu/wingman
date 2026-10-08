@@ -62,7 +62,7 @@ agent→server 出站长链接的 register 消息上，无新监听面、无新�
 
 随后**立即断连**（未注册连接不允许继续停留在链路上）。
 
-agent 端 `RemoteClient::handleRegisterAck`（remote_client.cpp:426）对
+agent 端 `RemoteClient::handleRegisterAck`（`libs/agentcore/src/remote_client.cpp`）对
 `success:false` 已有现成处理：置 `ConnectionState::Error`("Registration failed")
 ——**C++ 侧拒绝反馈零改动**，Android/桌面 UI 均能经既有状态回调感知。
 指数退避重连会持续重试，设备侧表现为「连上即断」，配合本文 §5 的配置项，
@@ -85,7 +85,7 @@ agent                                server
 | 文件 | 改动 |
 |------|------|
 | `internal/config/config.go` | `AgentTokens []string`，环境变量 `WINGMAN_AGENT_TOKENS`（逗号分隔）。**空 = 关闭鉴权（默认，向后兼容）** |
-| `pkg/agent/listener.go` | `FrameListener` 增 `agentTokens` + `SetAgentTokens()`（构造后注入，兼容既有调用方）；`handleRegister` 校验：失败 → ack success:false + 断连 + 日志，**不**入 Registry、不 set agentID |
+| `internal/agent/listener.go` | `FrameListener` 增 `agentTokens` + `SetAgentTokens()`（构造后注入，兼容既有调用方）；`handleRegister` 校验：失败 → ack success:false + 断连 + 日志，**不**入 Registry、不 set agentID |
 | `main.go` | 启动时 `frameListener.SetAgentTokens(cfg.AgentTokens)` |
 
 要点：
@@ -128,8 +128,9 @@ agent                                server
 ### 4.3 Android
 
 - `AndroidAgent::Config` 增 `authToken` → `setAuthToken`；
-- Kotlin 链路：`WingmanJni.nativeStart(configJson)` 的 config 增 `token` 键，
-  `WingmanService` 从 SharedPreferences 读 `serverToken` 传入；
+- Kotlin 链路：`WingmanJni.nativeStart(configJson)` 的 config 增 `authToken` 键
+  （进入 C++ 后仍以 wire 字段 `token` 携带上报），`WingmanService` 从
+  SharedPreferences 读 `serverToken` 传入；
 - token 存储：P1 用 SharedPreferences（与 server 地址同级的信任级别，
   部署者手输）；迁移 Android Keystore / EncryptedSharedPreferences 属
   A3 后续加固，不阻塞本设计。
@@ -181,5 +182,5 @@ P1 刻意不引入以上任何一项的半成品：校验点（handleRegister）
 - [x] 本设计文档
 - [x] Go：config + listener 校验 + main 接线 + 单测/集成测试
 - [x] C++：RemoteClient::setAuthToken + 桌面配置项 + Android Config
-- [x] Kotlin：configJson token 键 + Service 读取
+- [x] Kotlin：configJson `authToken` 键 + Service 读取
 - [x] 文档：android-agent-design.md §8 引用、apps/android/README 配置说明

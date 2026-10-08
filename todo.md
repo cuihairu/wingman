@@ -594,7 +594,7 @@ SSH/SFTP 文件浏览器在第一版（commit cc7d094，设计 §15.1）之上�
 （非 type=2 push），避免 Rust IPC 客户端在 Windows 阻塞 IO 下引入异步读取循环导致帧错位
 （设计决策见 `docs/architecture-decisions.md` "Runtime-to-UI Event Delivery"）。
 
-- [x] **事件缓冲**：`apps/runtime/.../event_buffer.hpp`（线程安全有界队列，上限 1000）
+- [x] **事件缓冲**：`libs/agentcore/include/wingman/agentcore/event_buffer.hpp`（线程安全有界队列，上限 1000）
 - [x] **日志事件**：spdlog `EventLogSink` → `log.line`（main.cpp 已挂载）
 - [x] **触发器事件**：`TriggerManager::setOnFired` 回调（win32+posix）→ `trigger.fired`（local_ipc_server 已接 EventBuffer）
 - [x] **drain RPC**：`events.drain` handler（local_ipc_server 已注册）
@@ -710,7 +710,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 - [x] **工作流引擎增强**（引擎已可用，重试+负载均衡+模板已加，2026-06-20）
   - [x] 指数退避重试策略（`WorkflowStep.MaxRetries`/`RetryBackoffSeconds`，取消不重试）
   - [x] Agent 负载均衡（`selectAgent` 选在执行步骤最少的 agent；显式 worker 优先）
-  - [x] 工作流模板库（`GET /api/workflow-templates`：5 内置模板 + dashboard 模板选择器）
+  - [x] 工作流模板库（`GET /api/workflow-templates`：6 内置模板 + dashboard 模板选择器）
   - [x] 独立步骤类型（`wait`/`condition`/`screenshot` 已实现；`screenshot` 通过远程 `screenshot.capture` 命令复用 runtime 截图 handler 并广播 Dashboard WS）
 - [x] **Agent 管理**
   - [x] 负载均衡（`selectAgent` 选在执行步骤最少的 agent；显式 worker 优先）

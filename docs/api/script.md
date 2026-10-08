@@ -90,7 +90,7 @@ end
 - `name` (string): 脚本名称
 
 **返回：**
-- string: 状态字符串；脚本不存在或 runtime 未就绪时返回 `"unknown"`
+- string: 状态字符串。分路径返回：脚本不存在返回 `"unknown"`；runtime 未就绪或参数缺失返回空字符串 `""`
 
 **示例：**
 
@@ -512,7 +512,7 @@ print("log_level:", script.getConfig("log_level"))
    - `setHotReload` 是全局开关；单脚本是否自动重载还取决于 `load` 时设置的 `autoReload` 配置。
 
 4. **状态查询容错**
-   - `getState` 对未知脚本返回 `"unknown"`；`isRunning` / `has` 对未知脚本返回 `false`，便于条件判断。
+   - `getState` 对未知脚本返回 `"unknown"`（runtime 未就绪/参数缺失返回 `""`）；`isRunning` / `has` 对未知脚本返回 `false`，便于条件判断。
 
 5. **配置值类型**
    - `setConfig` / `getConfig` 的值均为字符串，如需存储数字/布尔需调用方自行转换。

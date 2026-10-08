@@ -59,7 +59,7 @@ isRunningInVM() -> boolean
 
 ### verify_integrity() / verifyIntegrity()
 
-**说明**：验证程序完整性。
+**说明**：验证程序完整性。**当前为占位实现**：默认（完整性检查开关未开启）恒返回 `True`/`true`；显式开启后走未实现分支，恒返回 `False`/`false` 并打警告日志。不能据此判断程序是否被篡改。
 
 **函数签名**：
 
@@ -72,7 +72,7 @@ verifyIntegrity() -> boolean
 ```
 
 **返回**：
-- 程序是否未被篡改
+- 占位值（见上），非真实完整性校验结果
 
 :::tabs
 
@@ -149,16 +149,16 @@ getRandomDelay() -> number
 **函数签名**：
 
 ```python
-get_random_offset() -> tuple[int, int]
+get_random_offset() -> list[float, float]
 ```
 
 ```lua
-getRandomOffset() -> number, number
+getRandomOffset() -> table
 ```
 
-**返回**：
-- Python: `(x_offset, y_offset)` 元组
-- Lua: 两个返回值 `x_offset, y_offset`
+**返回**：**单个数组值** `[x_offset, y_offset]`（两端同构，不是多返回值）：
+- 下标 `1`（Python `result[0]`）- X 偏移
+- 下标 `2`（Python `result[1]`）- Y 偏移
 
 :::tabs
 
@@ -170,7 +170,7 @@ from wingman import security, input
 # 获取随机延迟（毫秒）
 delay = security.get_random_delay()
 
-# 获取随机坐标偏移
+# 获取随机坐标偏移（返回列表，可直接解包）
 offset_x, offset_y = security.get_random_offset()
 # 在目标坐标基础上添加随机偏移
 input.click(100 + offset_x, 200 + offset_y)
@@ -184,10 +184,10 @@ local wingman = require("wingman")
 -- 获取随机延迟（毫秒）
 local delay = wingman.security.getRandomDelay()
 
--- 获取随机坐标偏移
-local offsetX, offsetY = wingman.security.getRandomOffset()
+-- 获取随机坐标偏移（Lua 返回一张数组表，不能多重赋值解构）
+local offset = wingman.security.getRandomOffset()
 -- 在目标坐标基础上添加随机偏移
-wingman.input.click(100 + offsetX, 200 + offsetY)
+wingman.input.click(100 + offset[1], 200 + offset[2])
 ```
 
 :::
@@ -282,7 +282,7 @@ print("随机字符串: " .. randomStr)
 
 ### filter_sensitive(str) / filterSensitive(str)
 
-**说明**：过滤字符串中的敏感信息。
+**说明**：过滤字符串中的敏感信息。当前实现是**键名打码**：把命中的敏感键名本身（`password`/`passwd`/`pwd`/`token`/`key`/`secret`/`api_key`/`apikey`，大小写不敏感）替换为 `***`，**不是值打码**——`=` 后面的值原样保留。
 
 **函数签名**：
 
@@ -298,7 +298,7 @@ filterSensitive(str: string) -> string
 - `str` - 要过滤的字符串
 
 **返回**：
-- 敏感信息被替换为 `***` 的字符串
+- 敏感**键名**被替换为 `***` 的字符串（值不替换）
 
 :::tabs
 
@@ -307,9 +307,9 @@ filterSensitive(str: string) -> string
 ```python:line-numbers
 from wingman import security
 
-# 过滤敏感信息（如密码、token等）
+# 键名打码（非值打码）
 safe_string = security.filter_sensitive("password=123456&token=abc")
-print(safe_string)  # "password=***&token=***"
+print(safe_string)  # "***=123456&***=abc"
 ```
 
 == Lua
@@ -317,9 +317,9 @@ print(safe_string)  # "password=***&token=***"
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 过滤敏感信息（如密码、token等）
+-- 键名打码（非值打码）
 local safeString = wingman.security.filterSensitive("password=123456&token=abc")
-print(safeString)  -- "password=***&token=***"
+print(safeString)  -- "***=123456&***=abc"
 ```
 
 :::
@@ -332,9 +332,9 @@ print(safeString)  -- "password=***&token=***"
 |------------|---------|------|-----|
 | `is_debugger_present()` | `isDebuggerPresent()` | 检测调试器 | 返回: 是否检测到调试器 |
 | `is_running_in_vm()` | `isRunningInVM()` | 检测虚拟机 | 返回: 是否在虚拟机中 |
-| `verify_integrity()` | `verifyIntegrity()` | 验证完整性 | 返回: 是否未被篡改 |
+| `verify_integrity()` | `verifyIntegrity()` | 验证完整性 | 返回: 占位实现（默认恒 true；显式开启后恒 false） |
 | `get_random_delay()` | `getRandomDelay()` | 获取随机延迟 | 返回: 毫秒数 |
-| `get_random_offset()` | `getRandomOffset()` | 获取随机偏移 | 返回: X和Y偏移量 |
+| `get_random_offset()` | `getRandomOffset()` | 获取随机偏移 | 返回: [x, y] 数组（Lua 取 offset[1]/offset[2]） |
 | `hash_string(str)` | `hashString(str)` | 计算哈希 | str: 字符串<br>返回: 哈希值 |
 | `generate_random_string(length)` | `generateRandomString(length)` | 生成随机字符串 | length: 字符串长度<br>返回: 随机字符串 |
-| `filter_sensitive(str)` | `filterSensitive(str)` | 过滤敏感信息 | str: 原字符串<br>返回: 过滤后字符串 |
+| `filter_sensitive(str)` | `filterSensitive(str)` | 过滤敏感信息 | str: 原字符串<br>返回: 键名打码后字符串（值不替换） |

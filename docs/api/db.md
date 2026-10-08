@@ -6,7 +6,7 @@ db 模块提供本地 SQLite 数据库访问能力，用于脚本本地状态、
 
 1. **db 是本地脚本数据库，不是 orchestrator/server 数据库**
    - db 模块仅供脚本本地使用，不参与 server 中控数据模型
-   - 脚本之间的数据不共享，每个脚本有独立的数据空间
+   - 同名数据库连接在**进程内全局共享**：不同脚本 `db.open("local")` 拿到的是同一个连接、同一个数据文件，数据跨脚本可见；需要隔离时请使用不同的 db 名
 
 2. **路径限制**
    - db 默认只能打开 runtime 管理目录内的数据库
@@ -31,7 +31,8 @@ db 模块提供本地 SQLite 数据库访问能力，用于脚本本地状态、
    - 事务回调中可安全调用 `execute()`、`query()`、`scalar()`（recursive_mutex 保证）
 
 6. **查询限制**
-   - query 返回最大行数默认 1000（可配置，最大 10000）
+   - query 返回最大行数默认 1000，可通过 `maxRows` 参数调整，**无上限钳制**
+   - 10000 行上限仅约束 `query_limit`（ORM 链式查询）
    - 避免脚本一次性拉爆内存
 
 ## 路径映射
@@ -92,6 +93,7 @@ db.execute(conn, "INSERT INTO users (name, age) VALUES (?, ?)", ["Alice", 25])
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 db.execute(conn, "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)")
 db.execute(conn, "INSERT INTO users (name, age) VALUES (?, ?)", {"Alice", 25})
 ```
@@ -104,7 +106,7 @@ db.execute(conn, "INSERT INTO users (name, age) VALUES (?, ?)", {"Alice", 25})
 - `conn` (connection): 数据库连接对象
 - `sql` (string): SQL 语句，使用 `?` 作为参数占位符
 - `params` (array?, optional): 参数列表
-- `maxRows` (int?, optional): 最大返回行数，默认 1000
+- `maxRows` (int?, optional): 最大返回行数，默认 1000。**无上限钳制**（传 100000 也会照取；10000 的钳制只存在于 `query_limit`）
 
 **返回：**
 - array: 查询结果（字典数组）
@@ -118,6 +120,7 @@ for row in rows:
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local rows = db.query(conn, "SELECT * FROM users WHERE age > ?", {20})
 for i, row in ipairs(rows) do
     print(row.name, row.age)
@@ -144,6 +147,7 @@ max_age = db.scalar(conn, "SELECT MAX(age) FROM users")
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local count = db.scalar(conn, "SELECT COUNT(*) FROM users")
 local maxAge = db.scalar(conn, "SELECT MAX(age) FROM users")
 ```
@@ -170,6 +174,7 @@ success = db.transaction(conn, tx)
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local success = db.transaction(conn, function(tx)
     db.execute(tx, "INSERT INTO users (name) VALUES (?)", {"Alice"})
     db.execute(tx, "INSERT INTO users (name) VALUES (?)", {"Bob"})
@@ -194,6 +199,7 @@ id = db.last_insert_id(conn)
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 db.execute(conn, "INSERT INTO users (name) VALUES (?)", {"Alice"})
 local id = db.last_insert_id(conn)
 ```
@@ -216,6 +222,7 @@ num = db.changes(conn)
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 db.execute(conn, "UPDATE users SET age = 30 WHERE name = ?", {"Alice"})
 local num = db.changes(conn)
 ```
@@ -237,6 +244,7 @@ db.close(conn)
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 db.close(conn)
 ```
 
@@ -260,6 +268,7 @@ users = db.table(conn, "users")
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local users = db.table(conn, "users")
 ```
 
@@ -285,6 +294,7 @@ db.table_create(users, {
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 db.table_create(users, {
     id = "INTEGER PRIMARY KEY",
     name = "TEXT NOT NULL",
@@ -310,6 +320,7 @@ db.table_insert(users, {"name": "Alice", "age": 25})
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 db.table_insert(users, {name = "Alice", age = 25})
 ```
 
@@ -331,6 +342,7 @@ user = db.table_get(users, "1")
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local user = db.table_get(users, "1")
 ```
 
@@ -345,7 +357,7 @@ local user = db.table_get(users, "1")
 - `value` (string): 值
 
 **返回：**
-- query: 查询构建器对象
+- query: 查询构建器对象（数据句柄；后续 `query_*` 函数均以它为首参做函数式传递，**不支持** `.query_xxx()` 方法链）
 
 **示例：**
 
@@ -354,6 +366,7 @@ query = db.table_where(users, "age", ">", "20")
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local query = db.table_where(users, "age", ">", "20")
 ```
 
@@ -374,6 +387,7 @@ rows = db.table_all(users)
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local rows = db.table_all(users)
 ```
 
@@ -394,6 +408,7 @@ count = db.table_count(users)
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local count = db.table_count(users)
 ```
 
@@ -416,6 +431,7 @@ rows = db.query_all(query)
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local rows = db.query_all(query)
 ```
 
@@ -436,6 +452,7 @@ row = db.query_first(query)
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local row = db.query_first(query)
 ```
 
@@ -456,6 +473,7 @@ count = db.query_count(query)
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local count = db.query_count(query)
 ```
 
@@ -477,6 +495,7 @@ db.query_update(query, {"age": "26"})
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 db.query_update(query, {age = "26"})
 ```
 
@@ -497,6 +516,7 @@ count = db.query_delete(query)
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 local count = db.query_delete(query)
 ```
 
@@ -506,10 +526,10 @@ local count = db.query_delete(query)
 
 **参数：**
 - `query` (query): 查询构建器对象
-- `n` (int): 行数
+- `n` (int): 行数（上限 10000，超出会被钳制）
 
 **返回：**
-- query: 查询构建器对象（支持链式调用）
+- query: 修改后的 query 对象（**不是**可链式调用的方法对象；返回值须作为下一步函数调用的首参传入，如 `db.query_all(db.query_limit(q, 10))`）
 
 **示例：**
 
@@ -518,6 +538,7 @@ query = db.query_limit(query, 10)
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 query = db.query_limit(query, 10)
 ```
 
@@ -531,7 +552,7 @@ query = db.query_limit(query, 10)
 - `direction` (string?, optional): 方向 (asc, desc)，默认 "asc"
 
 **返回：**
-- query: 查询构建器对象（支持链式调用）
+- query: 修改后的 query 对象（返回值须作为下一步函数调用的首参传入，如 `db.query_all(db.query_order_by(q, "id", "desc"))`）
 
 **示例：**
 
@@ -540,8 +561,53 @@ query = db.query_order_by(query, "id", "desc")
 ```
 
 ```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
 query = db.query_order_by(query, "id", "desc")
 ```
+
+### table.close(t)
+
+释放 table 句柄（从进程内句柄注册表移除，句柄失效后不可再使用）。
+
+**参数：**
+- `t` (table): `db.table()` 返回的表对象
+
+**返回：**
+- boolean: 是否释放成功
+
+**示例：**
+
+```python
+db.table_close(users)
+```
+
+```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
+db.table_close(users)
+```
+
+### query.close(q)
+
+释放 query 句柄（语义同 `table_close`）。
+
+**参数：**
+- `q` (query): `db.table_where()` / `db.query_limit()` 等返回的 query 对象
+
+**返回：**
+- boolean: 是否释放成功
+
+**示例：**
+
+```python
+db.query_close(query)
+```
+
+```lua
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
+db.query_close(query)
+```
+
+**注意**：table/query 句柄记录在进程内注册表中，不会被 GC 自动回收。长循环里反复 `db.table_where(...)` + `db.query_all(...)` 会持续累积句柄，用完的 query 应及时调用 `db.query_close(query)`（table 同理）释放。
 
 ## 完整示例
 
@@ -668,7 +734,7 @@ wingman.db.close(conn)
    - 操作符白名单：`=, !=, >, >=, <, <=, like, in`
 
 3. **资源限制**
-   - 查询默认返回最多 1000 行，可通过 `maxRows` 参数调整（最大 10000）
+   - 查询默认返回最多 1000 行，可通过 `maxRows` 参数调整（`db.query` 无上限钳制；10000 上限仅在 `query_limit`）
    - 大数据量查询应使用分页（`limit` + `orderBy`）
 
 4. **路径限制**
@@ -677,25 +743,22 @@ wingman.db.close(conn)
 
 ## 错误处理
 
-db 模块操作失败时会抛出异常。建议使用 try-catch 处理：
+db 模块操作失败时**不抛出异常**，而是通过返回值报告：`execute`/`transaction` 等失败返回 `false`，查询类失败返回空结果，标量失败返回 `nil`/`0`（失败详情会记录到 runtime 日志）。因此 try-catch/pcall 捕获不到任何 db 失败，**必须检查返回值**：
 
 **Python:**
 
 ```python
-try:
-    db.execute(conn, "INSERT INTO users (name) VALUES (?)", ["Alice"])
-except Exception as e:
-    print(f"Database error: {e}")
+ok = db.execute(conn, "INSERT INTO users (name) VALUES (?)", ["Alice"])
+if not ok:
+    print("Database error: insert failed")
 ```
 
 **Lua:**
 
 ```lua
-local ok, err = pcall(function()
-    db.execute(conn, "INSERT INTO users (name) VALUES (?)", {"Alice"})
-end)
-
+local db = wingman.db  -- 模块挂在 wingman 表下，此处取局部别名
+local ok = db.execute(conn, "INSERT INTO users (name) VALUES (?)", {"Alice"})
 if not ok then
-    print("Database error: " .. tostring(err))
+    print("Database error: insert failed")
 end
 ```

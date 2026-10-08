@@ -4,7 +4,7 @@
 
 ## 查找工具提示
 
-**说明**：工具提示通常通过控件类型查找，因为它没有固定的名称。
+**说明**：UIARole 枚举**没有 ToolTip 专用角色值**，`find_all_by_control_type` 无法按类型过滤工具提示；只能按名称匹配查找（`find_text`，不做角色过滤）。
 
 **注意**：工具提示只有在鼠标悬停时才会出现，查找前需要先触发显示。
 
@@ -18,23 +18,22 @@ from wingman import uia, input, util
 # 先移动鼠标到按钮上触发工具提示
 btn = uia.find_button("帮助")
 if btn:
-    info = btn.get_info()
-    if 'bounding_rect' in info:
-        rect = info['bounding_rect']
-        center_x = rect['left'] + rect['width'] // 2
-        center_y = rect['top'] + rect['height'] // 2
+    info = btn["get_info"]()
+    rect = info["bounds"]
+    center_x = rect["x"] + rect["width"] // 2
+    center_y = rect["y"] + rect["height"] // 2
 
-        # 移动鼠标到按钮中心
-        input.move_mouse(center_x, center_y)
-        print("已移动鼠标到帮助按钮")
+    # 移动鼠标到按钮中心
+    input.move(center_x, center_y)
+    print("已移动鼠标到帮助按钮")
 
-        # 等待工具提示出现
-        util.sleep(1000)
+    # 等待工具提示出现
+    util.sleep(1000)
 
-        # 查找工具提示
-        tooltip = uia.find_by_control_type("ToolTip")
-        if tooltip:
-            print("工具提示已出现")
+    # 按提示文本查找（find_text 不做角色过滤）
+    tooltip = uia.find_text("显示帮助内容")
+    if tooltip:
+        print("工具提示已出现")
 ```
 
 == Lua
@@ -43,26 +42,24 @@ if btn:
 local wingman = require("wingman")
 
 -- 先移动鼠标到按钮上触发工具提示
-local btn = wingman.uia.findButton("帮助")
+local btn = wingman.uia.find_button("帮助")
 if btn then
-    local info = btn:getInfo()
-    if info.boundingRect then
-        local rect = info.boundingRect
-        local centerX = rect.left + rect.width / 2
-        local centerY = rect.top + rect.height / 2
+    local info = btn:get_info()
+    local rect = info.bounds
+    local centerX = rect.x + rect.width / 2
+    local centerY = rect.y + rect.height / 2
 
-        -- 移动鼠标到按钮中心
-        wingman.input.moveMouse(centerX, centerY)
-        print("已移动鼠标到帮助按钮")
+    -- 移动鼠标到按钮中心
+    wingman.input.move(centerX, centerY)
+    print("已移动鼠标到帮助按钮")
 
-        -- 等待工具提示出现
-        wingman.util.sleep(1000)
+    -- 等待工具提示出现
+    wingman.util.sleep(1000)
 
-        -- 查找工具提示
-        local tooltip = wingman.uia.findByControlType("ToolTip")
-        if tooltip then
-            print("工具提示已出现")
-        end
+    -- 按提示文本查找（find_text 不做角色过滤）
+    local tooltip = wingman.uia.find_text("显示帮助内容")
+    if tooltip then
+        print("工具提示已出现")
     end
 end
 ```
@@ -82,9 +79,9 @@ end
 ```python:line-numbers
 from wingman import uia
 
-tooltip = uia.find_by_control_type("ToolTip")
+tooltip = uia.find_text("显示帮助内容")
 if tooltip:
-    info = tooltip.get_info()
+    info = tooltip["get_info"]()
     text = info.get('name', '')
     print(f"工具提示内容: {text}")
 ```
@@ -94,9 +91,9 @@ if tooltip:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local tooltip = wingman.uia.findByControlType("ToolTip")
+local tooltip = wingman.uia.find_text("显示帮助内容")
 if tooltip then
-    local info = tooltip:getInfo()
+    local info = tooltip:get_info()
     local text = info.name or ""
     print("工具提示内容: " .. text)
 end
@@ -120,24 +117,22 @@ from wingman import uia, input, util
 # 移动鼠标触发工具提示
 btn = uia.find_button("帮助")
 if btn:
-    info = btn.get_info()
-    if 'bounding_rect' in info:
-        rect = info['bounding_rect']
-        center_x = rect['left'] + rect['width'] // 2
-        center_y = rect['top'] + rect['height'] // 2
-        input.move_mouse(center_x, center_y)
+    info = btn["get_info"]()
+    rect = info["bounds"]
+    center_x = rect["x"] + rect["width"] // 2
+    center_y = rect["y"] + rect["height"] // 2
+    input.move(center_x, center_y)
 
-        # 轮询等待工具提示出现（最多 1 秒）
-        for i in range(10):
-            tooltip = uia.find_by_control_type("ToolTip")
-            if tooltip:
-                tip_info = tooltip.get_info()
-                text = tip_info.get('name', '')
-                print(f"工具提示: {text}")
-                break
-            util.sleep(100)
-        else:
-            print("工具提示未出现")
+    # 轮询等待工具提示出现（最多 1 秒）
+    for i in range(10):
+        tooltip = uia.find_text("显示帮助内容")
+        if tooltip:
+            tip_info = tooltip["get_info"]()
+            print(f"工具提示: {tip_info.get('name', '')}")
+            break
+        util.sleep(100)
+    else:
+        print("工具提示未出现")
 ```
 
 == Lua
@@ -146,28 +141,28 @@ if btn:
 local wingman = require("wingman")
 
 -- 移动鼠标触发工具提示
-local btn = wingman.uia.findButton("帮助")
+local btn = wingman.uia.find_button("帮助")
 if btn then
-    local info = btn:getInfo()
-    if info.boundingRect then
-        local rect = info.boundingRect
-        local centerX = rect.left + rect.width / 2
-        local centerY = rect.top + rect.height / 2
-        wingman.input.moveMouse(centerX, centerY)
+    local info = btn:get_info()
+    local rect = info.bounds
+    local centerX = rect.x + rect.width / 2
+    local centerY = rect.y + rect.height / 2
+    wingman.input.move(centerX, centerY)
 
-        -- 轮询等待工具提示出现（最多 1 秒）
-        for i = 1, 10 do
-            local tooltip = wingman.uia.findByControlType("ToolTip")
-            if tooltip then
-                local tipInfo = tooltip:getInfo()
-                local text = tipInfo.name or ""
-                print("工具提示: " .. text)
-                break
-            end
-            wingman.util.sleep(100)
-        else
-            print("工具提示未出现")
+    -- 轮询等待工具提示出现（最多 1 秒）
+    local found = false
+    for i = 1, 10 do
+        local tooltip = wingman.uia.find_text("显示帮助内容")
+        if tooltip then
+            local tipInfo = tooltip:get_info()
+            print("工具提示: " .. (tipInfo.name or ""))
+            found = true
+            break
         end
+        wingman.util.sleep(100)
+    end
+    if not found then
+        print("工具提示未出现")
     end
 end
 ```
@@ -180,10 +175,10 @@ end
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
-| `find_by_control_type("ToolTip")` | `findByControlType("ToolTip")` | 按控件类型查找 |
+| `find_text(name)` | `find_text(name)` | 按名称查找（ToolTip 无专用 UIARole，不做角色过滤） |
 
 | Python 方法 | Lua 方法 | 说明 |
 |------------|---------|------|
-| `get_info()` | `:getInfo()` | 获取工具提示信息（包含 name 属性） |
+| `get_info()` | `:get_info()` | 获取工具提示信息（包含 name 属性） |
 
 > **注意**：工具提示是临时性控件，只有在鼠标悬停时才会出现。

@@ -7,45 +7,50 @@
 ## 代码
 
 ```lua
+-- examples/lua_scripts/macro_record.lua
+
 local wingman = require("wingman")
 
--- scripts/examples/macro-record.lua
-
 print("Macro Recording Example")
-print("Press F6 to start recording")
-print("Press F7 to stop recording")
-print("Press F8 to playback")
 
--- 热键处理（单例函数式 API，全局只有一个录制器）
-while true do
-  if wingman.input.isKeyPressed("VK_F6") then
-    print("Recording started...")
-    wingman.macro.start()
-  elseif wingman.input.isKeyPressed("VK_F7") then
-    wingman.macro.stop()
-    print(string.format("Recording stopped. Captured %d events", wingman.macro.getEventCount()))
-  elseif wingman.input.isKeyPressed("VK_F8") then
-    print("Playing back recorded events...")
-    wingman.macro.playback()
-  end
+print("录制将在 3 秒后开始...")
+wingman.util.sleep(3000)
 
-  wingman.util.sleep(50)
-end
+-- 开始录制
+wingman.macro.start()
+print("Recording started...")
+
+-- 录制 10 秒
+wingman.util.sleep(10000)
+
+-- 停止录制
+wingman.macro.stop()
+print(string.format("Recording stopped. Captured %d events", wingman.macro.getEventCount()))
+
+-- 回放录制的操作（100% 速度，播放 1 次）
+print("Playing back recorded events...")
+wingman.macro.playback(100, 1)
+
+print("Done")
 ```
 
 ## 运行
 
 ```bash
-wingman-runtime.exe script scripts/examples/macro-record.lua
+wingman-runtime.exe script examples/lua_scripts/macro_record.lua
 ```
+
+## 交互式开始/停止
+
+`input` 模块没有按键状态查询接口。交互式控制有两种方式：
+
+- **GUI Macros 页面**的录制/停止/回放按钮；
+- **Python 脚本**用 `wingman.hotkey.register("F6", callback)` 注册全局热键回调。注意回调从后台线程触发，Lua callable 非线程安全，`hotkey.register` 传入 Lua 函数会返回 0 并拒绝注册。
 
 ## 说明
 
-- **F6** - 开始录制
-- **F7** - 停止录制
-- **F8** - 回放录制的操作
-
-录制的操作包括鼠标移动、点击和键盘按键。
+- 录制包含鼠标移动、点击和键盘按键
+- `wingman.macro.playback(speed?, repeat?)`：`speed` 为百分比（100 即原速），`repeat` 默认 1
 
 ## API 参考
 

@@ -40,8 +40,8 @@ click(x: number, y: number, button: number) -> nil
 - `x, y` - 点击位置坐标
 - `button` - 鼠标按键（整数）：
   - `0` - 左键
-  - `1` - 右键
-  - `2` - 中键
+  - `1` - 中键
+  - `2` - 右键
 
 :::tabs
 
@@ -53,10 +53,10 @@ from wingman import input
 # 左键点击
 input.click(100, 100, 0)
 
-# 右键点击
+# 中键点击
 input.click(100, 100, 1)
 
-# 中键点击
+# 右键点击
 input.click(100, 100, 2)
 ```
 
@@ -68,10 +68,10 @@ local wingman = require("wingman")
 -- 左键点击
 wingman.input.click(100, 100, 0)
 
--- 右键点击
+-- 中键点击
 wingman.input.click(100, 100, 1)
 
--- 中键点击
+-- 右键点击
 wingman.input.click(100, 100, 2)
 ```
 
@@ -97,11 +97,13 @@ move(x: number, y: number, duration: number) -> nil
 
 **参数**：
 - `x, y` - 目标位置坐标
-- `duration` - 移动耗时（毫秒）
+- `duration` - 移动**完成后**等待的毫秒数（移动本身是瞬时跳转，不是平滑轨迹）
 
 **使用场景**：
-- `duration` 较小：快速移动，适合瞬移操作
-- `duration` 较大：缓慢移动，更像真人操作
+- `duration` 较小：移动后立即继续
+- `duration` 较大：给应用留出响应时间
+
+需要平滑/拟人轨迹时请使用 `human.moveMouse()`（贝塞尔平滑移动）。
 
 :::tabs
 
@@ -110,10 +112,10 @@ move(x: number, y: number, duration: number) -> nil
 ```python:line-numbers
 from wingman import input
 
-# 快速移动到 (500, 300)
+# 移动到 (500, 300) 后等待 0ms
 input.move(500, 300, 0)
 
-# 用 300ms 平滑移动到 (500, 300)（更像真人）
+# 移动到 (500, 300) 后等待 300ms
 input.move(500, 300, 300)
 ```
 
@@ -122,10 +124,10 @@ input.move(500, 300, 300)
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 快速移动到 (500, 300)
+-- 移动到 (500, 300) 后等待 0ms
 wingman.input.move(500, 300, 0)
 
--- 用 300ms 平滑移动到 (500, 300)（更像真人）
+-- 移动到 (500, 300) 后等待 300ms
 wingman.input.move(500, 300, 300)
 ```
 
@@ -151,12 +153,14 @@ scroll(x: number, y: number, delta: number) -> nil
 
 **参数**：
 - `x, y` - 滚动位置坐标
-- `delta` - 滚动量（正数向上，负数向下）
+- `delta` - 滚动量（正数向上，负数向下；三平台一致）
 
-**滚动量参考**：
-- 120 - 通常为一行
+**滚动量参考（仅 Windows）**：
+- 120 - 通常为一行（WHEEL_DELTA）
 - 360 - 通常为一页
 - -120 / -360 - 向下滚动
+
+Linux/macOS 的 delta 单位不同（Linux 上按 `abs(delta)` 次滚轮格计、macOS 按行数直接传递），上述 120/360 参考值不适用。
 
 :::tabs
 
@@ -292,21 +296,21 @@ wingman.input.keyUp(0x11)    -- 抬起 Ctrl
 
 ### type(text, delay?)
 
-**说明**：输入一段文本，逐字符模拟。
+**说明**：输入一段文本（整段一次性输入，非逐字符延时模拟）。
 
 **函数签名**：
 
 ```python
-type(text: str, delay: int = 0) -> None
+type(text: str, delay: int = 10) -> None
 ```
 
 ```lua
-type(text: string, delay: number = 0) -> nil
+type(text: string, delay: number = 10) -> nil
 ```
 
 **参数**：
 - `text` - 要输入的文本
-- `delay` - 可选，每个字符之间的间隔（毫秒），默认 0
+- `delay` - 可选，**整段输入完成后**等待的毫秒数，默认 10（不是字符间间隔）
 
 :::tabs
 
@@ -318,7 +322,7 @@ from wingman import input
 # 输入文本
 input.type("hello world")
 
-# 慢速输入，每个字符间隔 50ms
+# 输入完成后等待 50ms
 input.type("hello world", 50)
 ```
 
@@ -330,7 +334,7 @@ local wingman = require("wingman")
 -- 输入文本
 wingman.input.type("hello world")
 
--- 慢速输入，每个字符间隔 50ms
+-- 输入完成后等待 50ms
 wingman.input.type("hello world", 50)
 ```
 
@@ -431,8 +435,8 @@ wingman.input.randomDelay(500, 1500)
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `click(x, y, button)` | `click(x, y, button)` | 鼠标点击 | x,y: 坐标<br>button: 0=左/1=右/2=中 |
-| `move(x, y, duration)` | `move(x, y, duration)` | 移动鼠标 | x,y: 目标坐标<br>duration: 移动耗时(ms) |
+| `click(x, y, button)` | `click(x, y, button)` | 鼠标点击 | x,y: 坐标<br>button: 0=左/1=中/2=右 |
+| `move(x, y, duration)` | `move(x, y, duration)` | 移动鼠标 | x,y: 目标坐标<br>duration: 移动完成后等待(ms)，非平滑轨迹 |
 | `scroll(x, y, delta)` | `scroll(x, y, delta)` | 滚轮滚动 | x,y: 位置<br>delta: 滚动量 |
 
 ### 键盘操作
@@ -442,7 +446,7 @@ wingman.input.randomDelay(500, 1500)
 | `key(vkCode)` | `key(vkCode)` | 按键（按下并抬起） | vkCode: 虚拟键码 |
 | `keyDown(vkCode)` | `keyDown(vkCode)` | 按键按下 | vkCode: 虚拟键码 |
 | `keyUp(vkCode)` | `keyUp(vkCode)` | 按键抬起 | vkCode: 虚拟键码 |
-| `type(text, delay?)` | `type(text, delay?)` | 输入文本 | text: 文本<br>delay: 字符间隔(ms) |
+| `type(text, delay?)` | `type(text, delay?)` | 输入文本 | text: 文本<br>delay: 输入完成后等待(ms)，默认 10 |
 
 ### 延迟
 

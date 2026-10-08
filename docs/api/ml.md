@@ -355,8 +355,11 @@ local wingman = require("wingman")
 
 local modelId = wingman.ml.loadModel("models/yolov8n.onnx", "cpu")
 if modelId then
+    -- data 必须是非空数组（空 data 会直接失败）
+    local data = {}
+    for i = 1, 1 * 3 * 640 * 640 do data[i] = 0.0 end
     local result = wingman.ml.run(modelId, {
-        { name = "images", shape = {1, 3, 640, 640}, data = {} },
+        { name = "images", shape = {1, 3, 640, 640}, data = data },
     })
     if result.success then
         for _, item in ipairs(result.outputs) do

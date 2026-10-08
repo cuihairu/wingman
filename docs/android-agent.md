@@ -26,11 +26,11 @@ JNI（无 IPC、无 HTTP server）；Dashboard 只连 Go Server。
 | vcpkg | 已 bootstrap，工具链 `scripts/buildsystems/vcpkg.cmake` |
 | Gradle | 8.7+（或用本机 gradle 生成 wrapper） |
 
-安装 Android 依赖（与桌面同一份 `vcpkg.json`， triplet 换 android）：
-
-```bash
-vcpkg install --triplet arm64-android asio lua sol2 spdlog nlohmann-json
-```
+Android 依赖用 `apps/android/cpp/vcpkg.json` 独立清单（`wingman-agent-android`，
+与桌面根 `vcpkg.json` 不是同一份）：manifest 模式随 NDK CMake 配置自动安装，
+无需手动 `vcpkg install`。包集合：asio / curl / lua / openssl / sol2 / spdlog /
+nlohmann-json / opencv4（opencv4 关默认特性，仅保留 jpeg/png/webp/tiff 等图像
+编解码特性）。
 
 在 `gradle.properties` 填入 vcpkg 根：
 

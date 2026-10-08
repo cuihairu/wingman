@@ -31,7 +31,6 @@ wingman/
 │   │   ├── src/
 │   │   │   ├── main.cpp          ← 入口
 │   │   │   ├── agent.cpp         ← 运行时编排入口
-│   │   │   ├── remote_client.cpp ← 主动 outbound 连接 Go orchestrator
 │   │   │   ├── local_ipc_server.cpp ← 本地 IPC 控制面
 │   │   │   └── standalone_mode.cpp  ← 本地脚本/触发器执行能力
 │   │   ├── include/wingman/runtime/
@@ -46,7 +45,7 @@ wingman/
 ├── lib/wingman/                  ← 核心库
 │   ├── include/wingman/
 │   │   ├── screen.hpp            ← 屏幕捕获
-│   │   ├── input.hpp             ← 输入模拟
+│   │   ├── platform/iinput.hpp   ← 输入模拟接口
 │   │   ├── trigger.hpp           ← 触发器
 │   │   ├── vision.hpp            ← 视觉识别
 │   │   ├── behavior_tree.hpp     ← 行为树
@@ -57,7 +56,7 @@ wingman/
 │   └── CMakeLists.txt
 │
 ├── libs/                         ← 内部辅助库
-│   ├── transport/                ← 网络传输（TCP/WebSocket）
+│   ├── transport/                ← 网络传输：TCP/UDP（自定义帧）
 │   │   ├── include/wingman/transport/
 │   │   │   ├── transport.hpp     ← 传输抽象
 │   │   │   ├── transport_client.hpp
@@ -74,7 +73,6 @@ wingman/
 │   │   ├── include/wingman/python/
 │   │   └── src/
 │   │
-│   └── proto/                    ← Protobuf
 │
 ├── examples/                     ← 示例代码
 ├── scripts/                      ← 脚本
@@ -96,7 +94,7 @@ wingman/
 ┌─────────▼───────────────────────────────────────────────┐
 │           lib/wingman/ (核心库 + 脚本抽象)               │
 │  ScriptManager (语言无关) + IScriptEngine 接口           │
-│  42 ModuleDescriptor (screen/input/window/...)           │
+│  41 ModuleDescriptor (screen/input/window/...)           │
 │  屏幕捕获、输入模拟、触发器、视觉识别、行为树、OCR...     │
 └─────────┬───────────────────────────────────────────────┘
           │
@@ -118,7 +116,7 @@ ScriptManager (自动检测语言)
     ↓
 ScriptEngineFactory → LuaScriptEngine / PythonScriptEngine
     ↓
-ModuleDescriptor (42 语言无关模块) → C++ 核心 API
+ModuleDescriptor (41 语言无关模块) → C++ 核心 API
     ↓
 lib/wingman/ (核心功能：screen, input, trigger...)
     ↓
@@ -147,7 +145,7 @@ apps/runtime/ (应用：CLI + outbound agent + local IPC)
                     └───┬────┘
                 ┌────────▼────────┐
                 │ ModuleDescriptor │ (语言无关的模块定义)
-                │ screen/input/... │ (42 模块)
+                │ screen/input/... │ (41 模块)
                 └─────────────────┘
 ```
 
@@ -183,7 +181,7 @@ Runtime 不再按互斥“运行模式”建模。远程编排和本地 UI 控�
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| Phase 1 | Protobuf 协议定义 + 多模块 CMake | ✅ 已完成 |
+| Phase 1 | Protobuf 协议定义 + 多模块 CMake（协议已演进为 16B 头 + JSON 帧，落地于 libs/transport） | ✅ 已完成 |
 | Phase 2 | 目录结构重组 (apps + lib) | ✅ 已完成 |
 | Phase 3 | 核心库迁移 (libs/core → lib/wingman) | ✅ 已完成 |
 | Phase 4 | Runtime outbound agent + local execution 能力整理 | ✅ 已完成 |
@@ -329,17 +327,17 @@ class TriggerEngine {
 **状态**: 完成 (2026-09-22 校准) — 交付物全部落地；三层契约审计干净（server 下发 7 类命令 runtime 全支持；runtime 上行 trigger_fired/script_state/script_output 三类事件 server 全部转发，log.line 有意不转发防高频淹没上行；server 广播的 agent/workflow/script/screenshot 事件 Dashboard wsService 全部消费）；Go server 14 包测试 stmt/branch/func 100% 覆盖，三套 UI 基线全绿（Dashboard jest 235、GUI vitest 506、Rust cargo 14）
 
 **交付物**:
-- [Runtime outbound client（`apps/runtime/src/remote_client.cpp`：心跳 30s + 重连 + 指数退避 + 注册 + 有界 outbox）]
+- [Runtime outbound client（`libs/agentcore/src/remote_client.cpp`：心跳 30s + 重连 + 指数退避 + 注册 + 有界 outbox）]
 - [Go orchestrator 作为远程中控边界（`orchestrator/server/`）]
 - [Agent 注册、心跳、命令下发、结果回传（FrameListener TCP 协议 + 30s/90s 超时）]
 - [工作流引擎（`internal/workflow/engine.go`：DAG 调度 + 环检测 + 持久化 + 取消/超时 + 指数退避重试 + 负载均衡 + wait 步骤 + 模板库）]
-- [Team/投票/Inbox 多 agent 协同（`pkg/agent/team.go`）]
+- [Team/投票/Inbox 多 agent 协同（`internal/agent/team.go`）]
 - [JWT auth + bcrypt + 限流 + 审计日志]
 - [Dashboard 仅连接 Go server（`orchestrator/dashboard/` wsService），不直接连接 runtime]
 - [RBAC 权限系统（`internal/rbac/` + Role/Permission 模型 + `PermissionRequired` 中间件 + 用户/角色管理 API + Dashboard Admin 页面；`PermissionRequired` 已接线 8 权限码，历史「已实现未接线」缺陷已修复）]
 - [Debugger 端点（`/api/debugger/info` 直连模式契约：返回各 agent host:9966 + launch.json，非中转）]
 - [Runtime IPC 事件推送（EventBuffer + `events.drain` pull 模型 + log/trigger/script/connection 事件 + 公平性优先丢 log.line + dropped 计数）]
-- [Go orchestrator 测试覆盖（75 个测试函数：rbac/workflow/handlers/agent/ws/middleware/debugger，`go test ./...` 全绿）]
+- [Go orchestrator 测试覆盖（600+ 个测试函数：rbac/workflow/handlers/agent/ws/middleware/debugger，`go test ./...` 全绿）]
 - [跨语言 frame/protocol 集成测试（`integration/protocol_test.go`：按 C++ `MessageHeader` 16 字节小端布局的字节级裸 TCP 读写，覆盖 agent.register/agent.heartbeat/command dispatch+result/event report 四类帧 + 边界（超大 payload>16MiB 断连、非法 JSON/未知类型/截断 header 容错、断线重连恢复），`go test ./...` 全绿）]
 
 **目标命令流**:
@@ -539,9 +537,9 @@ local wingman = require('wingman')
 - 安装 EmmyLua 插件
 - 配置 TCP Attach 连接
 
-**交付物**: EmmyLua 集成完成，IDE 调试可用
+**交付物**: EmmyLua 调试链路依赖外部 emmy_core 组件，仓库不分发（构建期无开关，缺少即调试链路不可用）
 
-> 注（2026-09-22）：实际调试链路是脚本运行时 `require('emmy_core')`（动态库随 runtime 分发）。C++ 侧的 `libs/debug` EmmyAdapter 从未被任何代码调用，已作为死代码移除。
+> 注（2026-09-22）：实际调试链路是脚本运行时 `require('emmy_core')`（依赖外部 emmy_core 组件，仓库不分发；构建期无开关，缺少即调试链路不可用）。C++ 侧的 `libs/debug` EmmyAdapter 从未被任何代码调用，已作为死代码移除。
 
 ---
 
@@ -619,7 +617,7 @@ local wingman = require('wingman')
 | ✅ | RBAC 权限系统（Go orchestrator，PermissionRequired 已接线 8 权限码） | - | ✅ 已完成 |
 | ✅ | Runtime IPC 事件推送（log/trigger/script/connection，pull 模型） | - | ✅ 已完成 |
 | ✅ | Debugger 端点（降级为直连模式） | - | ✅ 已完成 |
-| ✅ | Go orchestrator 测试覆盖（75 函数） | - | ✅ 已完成 |
+| ✅ | Go orchestrator 测试覆盖（600+ 函数） | - | ✅ 已完成 |
 | ✅ | 工作流引擎增强（重试/负载均衡/模板/wait） | - | ✅ 已完成 |
 | ✅ | Milestone 6: 人性化模拟 | - | ✅ 已完成 |
 | ✅ | 代码覆盖率 90% (C++ runtime) | - | ✅ 已完成 |
@@ -656,7 +654,7 @@ local wingman = require('wingman')
 - [x] TriggerManager - 完整的触发器生命周期管理
 - [x] TriggerEngine - Lua配置加载支持
 - [x] 触发器测试 - 16个测试用例
-- [x] 示例配置 - config/triggers.lua
+- [x] 示例配置 - examples/configs/triggers.lua
 - [x] 集成Lua库 - trigger_engine.cpp链接
 
 #### Milestone 3: 宏系统 (已完成)

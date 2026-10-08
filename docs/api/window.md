@@ -39,19 +39,19 @@ Windows 系统中，每个窗口都有一个唯一的标识符称为窗口句柄
 **函数签名**：
 
 ```python
-find(title: str) -> tuple[int, bool]
+find(title: str) -> list[int | None, bool]
 ```
 
 ```lua
-find(title: string) -> number, boolean
+find(title: string) -> table
 ```
 
 **参数**：
 - `title` - 窗口标题（支持部分匹配）
 
-**返回**：
-- Python: `(hwnd, found)` 元组，hwnd 为窗口句柄，found 表示是否找到
-- Lua: `hwnd, found` 两个返回值
+**返回**：**单个数组值** `[hwnd, found]`（两端同构，不是多返回值）：
+- 下标 `1`（Python `result[0]`）- 窗口句柄，未找到时为 `None`/`nil`
+- 下标 `2`（Python `result[1]`）- 是否找到（bool）
 
 :::tabs
 
@@ -60,7 +60,7 @@ find(title: string) -> number, boolean
 ```python:line-numbers
 from wingman import window
 
-# 查找记事本窗口
+# 查找记事本窗口（返回列表，可直接解包）
 hwnd, found = window.find("记事本")
 if found:
     print(f"找到记事本窗口，句柄: {hwnd}")
@@ -78,18 +78,18 @@ if found:
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 查找记事本窗口
-local hwnd, found = wingman.window.find("记事本")
-if found then
-    print("找到记事本窗口，句柄:", hwnd)
+-- 查找记事本窗口（Lua 返回一张数组表，不能多重赋值解构）
+local r = wingman.window.find("记事本")
+if r[2] then
+    print("找到记事本窗口，句柄:", r[1])
 else
     print("未找到记事本窗口")
 end
 
 -- 查找 Chrome 窗口
-local hwnd, found = wingman.window.find("Chrome")
-if found then
-    print("找到 Chrome 窗口，句柄:", hwnd)
+local r = wingman.window.find("Chrome")
+if r[2] then
+    print("找到 Chrome 窗口，句柄:", r[1])
 end
 ```
 
@@ -139,9 +139,9 @@ if found:
 local wingman = require("wingman")
 
 -- 查找并激活记事本
-local hwnd, found = wingman.window.find("记事本")
-if found then
-    local success = wingman.window.activate(hwnd)
+local r = wingman.window.find("记事本")
+if r[2] then
+    local success = wingman.window.activate(r[1])
     if success then
         print("记事本已激活")
     end
@@ -294,9 +294,9 @@ if found:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local hwnd, found = wingman.window.find("记事本")
-if found then
-    local bounds = wingman.window.getBounds(hwnd)
+local r = wingman.window.find("记事本")
+if r[2] then
+    local bounds = wingman.window.getBounds(r[1])
     print(string.format("位置: (%d, %d)", bounds.x, bounds.y))
     print(string.format("大小: %dx%d", bounds.width, bounds.height))
 
@@ -377,9 +377,9 @@ if wingman.window.waitFor("记事本", 5000) then
     print("记事本已启动")
 
     -- 查找并激活窗口
-    local hwnd, found = wingman.window.find("记事本")
-    if found then
-        wingman.window.activate(hwnd)
+    local r = wingman.window.find("记事本")
+    if r[2] then
+        wingman.window.activate(r[1])
     end
 else
     print("超时：记事本未启动")
@@ -449,9 +449,9 @@ if found:
 local wingman = require("wingman")
 
 -- 查找记事本
-local hwnd, found = wingman.window.find("记事本")
+local r = wingman.window.find("记事本")
 
-if not found then
+if not r[2] then
     print("未找到记事本，尝试启动...")
     wingman.process.start("notepad.exe")
 
@@ -461,19 +461,19 @@ if not found then
         return
     end
 
-    hwnd, found = wingman.window.find("记事本")
+    r = wingman.window.find("记事本")
 end
 
-if found then
+if r[2] then
     -- 激活窗口
-    wingman.window.activate(hwnd)
+    wingman.window.activate(r[1])
     wingman.util.sleep(200)
 
     -- 获取窗口信息
-    local title = wingman.window.getTitle(hwnd)
+    local title = wingman.window.getTitle(r[1])
     print("标题:", title)
 
-    local bounds = wingman.window.getBounds(hwnd)
+    local bounds = wingman.window.getBounds(r[1])
     print(string.format("位置: (%d, %d)", bounds.x, bounds.y))
     print(string.format("大小: %dx%d", bounds.width, bounds.height))
 
@@ -496,7 +496,7 @@ end
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `find(title)` | `find(title)` | 查找窗口 | title: 窗口标题<br>返回: (hwnd, found) |
+| `find(title)` | `find(title)` | 查找窗口 | title: 窗口标题<br>返回: [hwnd, found] 数组（Lua 取 r[1]/r[2]） |
 | `activate(hwnd)` | `activate(hwnd)` | 激活窗口 | hwnd: 窗口句柄<br>返回: 是否成功 |
 | `wait_for(title, timeout?)` | `waitFor(title, timeout?)` | 等待窗口 | title: 窗口标题<br>timeout: 超时(ms) |
 

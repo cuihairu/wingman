@@ -1,10 +1,11 @@
 # Developer Tools
 
-This directory contains optional development tools for Wingman contributors.
+Optional development tools for Wingman contributors live in
+`examples/lua_scripts/` (Windows `.cmd` helpers for the Lua test stack).
 
 ## Available Scripts
 
-| Script | Description | Required |
+| Script (in `examples/lua_scripts/`) | Description | Required |
 |--------|-------------|-----------|
 | `install-luarocks.cmd` | Install LuaRocks package manager | Optional |
 | `install-busted.cmd` | Install Busted testing framework | LuaRocks |
@@ -15,15 +16,15 @@ This directory contains optional development tools for Wingman contributors.
 ### 1. LuaRocks (Package Manager)
 
 ```bash
-install-luarocks.cmd
+examples\lua_scripts\install-luarocks.cmd
 ```
 
-Installs LuaRocks to `scripts/luarocks/`
+Installs LuaRocks to `examples/lua_scripts/luarocks/`
 
 ### 2. Busted (Testing Framework)
 
 ```bash
-install-busted.cmd
+examples\lua_scripts\install-busted.cmd
 ```
 
 Requires LuaRocks to be installed first.
@@ -31,7 +32,7 @@ Requires LuaRocks to be installed first.
 ### 3. Run Tests
 
 ```bash
-run-lua-tests.cmd
+examples\lua_scripts\run-lua-tests.cmd
 ```
 
 Requires both LuaRocks and Busted.
@@ -41,7 +42,7 @@ Requires both LuaRocks and Busted.
 - These tools are **optional** for development
 - Wingman runs without them - only needed for Lua development/testing
 - LuaRocks is installed locally, not system-wide
-- Add to PATH: `set PATH=%CD%\scripts\luarocks;%PATH%`
+- Add to PATH: `set PATH=%CD%\examples\lua_scripts\luarocks;%PATH%`
 
 ## Manual Installation
 
@@ -50,7 +51,7 @@ If scripts don't work, install manually:
 ```bash
 # Download LuaRocks
 # https://luarocks.github.io/luarocks/releases/
-# Extract to scripts/luarocks/
+# Extract to examples/lua_scripts/luarocks/
 
 # Install Busted
 luarocks install busted

@@ -8,7 +8,8 @@ json 模块提供 JSON 格式的解析和序列化功能：
 - **解析 JSON** - 将 JSON 字符串转换为原生对象
 - **序列化 JSON** - 将原生对象转换为 JSON 字符串
 - **格式化输出** - 支持缩进控制的美化输出
-- **null 值处理** - 提供统一的 null 值表示
+
+Python 侧的 `None`、Lua 侧的 `nil` 经 `encode` 序列化即为 JSON `null`。
 
 ---
 
@@ -36,7 +37,8 @@ decode(str: string) -> any
 - Lua: 解析后的值（`table`/`string`/`number`/`boolean`/`nil`）
 
 **解析失败**：
-- 抛出异常，包含错误信息
+- 返回 `None`（Python）/ `nil`（Lua），不抛出异常
+- 注意：由于 `null` 本身也解析为 `None`/`nil`，仅凭返回值无法区分「解析结果就是 null」与「解析失败」
 
 :::tabs
 
@@ -119,8 +121,8 @@ obj = {
 compressed = json.encode(obj)
 # {"name":"Player1","score":100,"items":["sword","shield"]}
 
-# 格式化，2 空格缩进
-formatted = json.encode(obj, indent=2)
+# 格式化，2 空格缩进（模块函数只接受位置参数）
+formatted = json.encode(obj, 2)
 print(formatted)
 ```
 
@@ -148,70 +150,9 @@ print(formatted)
 
 ---
 
-## 获取 null 值
-
-### null() / null()
-
-**说明**：获取 JSON null 值的表示。
-
-**函数签名**：
-
-```python
-null() -> None
-```
-
-```lua
-null() -> nil
-```
-
-**返回**：
-- Python: `None`
-- Lua: `nil`
-
-**使用场景**：
-- 在对象中表示显式的 null 值
-- 区分"字段不存在"和"字段值为 null"
-
-:::tabs
-
-== Python
-
-```python:line-numbers
-from wingman import json
-
-obj = {
-    "name": "Player1",
-    "nickname": json.null(),  # 显式设置为 null
-    "score": 100
-}
-
-json_str = json.encode(obj)
-# {"name":"Player1","nickname":null,"score":100}
-```
-
-== Lua
-
-```lua:line-numbers
-local wingman = require("wingman")
-
-local obj = {
-    name = "Player1",
-    nickname = wingman.json.null(),  -- 显式设置为 null
-    score = 100
-}
-
-local jsonStr = wingman.json.encode(obj)
--- {"name":"Player1","nickname":null,"score":100}
-```
-
-:::
-
----
-
 ## 可用接口
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `decode(str)` | `decode(str)` | 解析 JSON 字符串 | str: JSON 字符串<br>返回: 原生对象 |
+| `decode(str)` | `decode(str)` | 解析 JSON 字符串 | str: JSON 字符串<br>返回: 原生对象；解析失败返回 None/nil |
 | `encode(value, indent?)` | `encode(value, indent?)` | 序列化为 JSON | value: 原生对象<br>indent: 缩进空格数(默认-1压缩)<br>返回: JSON 字符串 |
-| `null()` | `null()` | 获取 null 值 | 返回: None/nil |

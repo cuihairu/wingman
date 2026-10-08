@@ -1,11 +1,11 @@
 # API: wingman.task
 
-异步任务模块，提供异步任务提交与生命周期管理功能，支持重试、超时等特性。
+异步任务模块，提供任务提交与生命周期管理功能，支持重试、超时等特性。
 
 ## 模块概述
 
-task 模块提供异步任务管理功能：
-- **提交任务** - 提交异步任务到后台执行
+task 模块提供任务管理功能：
+- **提交任务** - 提交任务执行（默认在调用线程同步执行，`async: true` 时后台线程执行）
 - **状态查询** - 获取任务状态
 - **等待完成** - 等待任务执行完成
 - **获取结果** - 获取任务执行结果
@@ -19,7 +19,7 @@ task 模块提供异步任务管理功能：
 
 ### submit(work, options?) / submit(work, options?)
 
-**说明**：提交一个异步任务。
+**说明**：提交一个任务。
 
 **函数签名**：
 
@@ -32,8 +32,9 @@ submit(work: function, options: table = nil) -> string
 ```
 
 **参数**：
-- `work` - 工作函数，将在后台线程执行，接收上下文对象
+- `work` - 工作函数，接收上下文对象。**默认 `async: false`，在调用线程同步执行**；`options.async = true` 时才在后台线程执行（脚本回调不支持跨线程，后台任务的结果/事件经内部线程转投）
 - `options` - 可选配置
+  - `async` / `async` - 是否后台线程执行，默认 `false`（同步）
   - `timeoutMs` / `timeoutMs` - 超时时间（毫秒），默认 30000
   - `maxRetries` / `maxRetries` - 最大重试次数，默认 0
   - `backoffMs` / `backoffMs` - 重试退避基数（毫秒），默认 500
@@ -393,7 +394,7 @@ retry(taskId: string, options: table = nil) -> boolean
 from wingman import task
 
 # 重试失败的任务
-task.retry(task_id, {"max": 5, "backoffMs": 1000})
+task.retry(task_id, {"maxRetries": 5, "backoffMs": 1000})
 ```
 
 == Lua
@@ -427,18 +428,19 @@ wingman.task.retry(taskId, { maxRetries = 5, backoffMs = 1000 })
 
 ## 生命周期事件
 
-任务生命周期会触发以下事件：
+任务生命周期会触发以下事件。所有事件的载荷统一为 **`taskId`, `status`, `metadata`** 三个字段（**不含 `error`**——失败原因不随事件携带，需用 `task.error(taskId)` 查询）：
 
 | 事件名 | 说明 | 载荷字段 |
 |--------|------|---------|
-| `task.submitted` | 任务已提交 | taskId, metadata |
-| `task.started` | 任务开始执行 | taskId, metadata |
-| `task.paused` | 任务已暂停 | taskId, metadata |
-| `task.resumed` | 任务已恢复 | taskId, metadata |
-| `task.succeeded` | 任务成功 | taskId, metadata |
-| `task.failed` | 任务失败 | taskId, metadata, error |
-| `task.canceled` | 任务已取消 | taskId, metadata |
-| `task.timeout` | 任务超时 | taskId, metadata, error |
+| `task.submitted` | 任务已提交 | taskId, status, metadata |
+| `task.started` | 任务开始执行 | taskId, status, metadata |
+| `task.paused` | 任务已暂停 | taskId, status, metadata |
+| `task.resumed` | 任务已恢复 | taskId, status, metadata |
+| `task.succeeded` | 任务成功 | taskId, status, metadata |
+| `task.failed` | 任务失败 | taskId, status, metadata |
+| `task.canceled` | 任务已取消 | taskId, status, metadata |
+| `task.timeout` | 任务超时 | taskId, status, metadata |
+| `task.error` | 任务入队被拒（`async: true` 且回调非线程安全时发出） | error |
 
 :::tabs
 
@@ -452,9 +454,10 @@ event.on("task.started", lambda e: print("任务开始"))
 event.on("task.paused", lambda e: print("任务暂停"))
 event.on("task.resumed", lambda e: print("任务恢复"))
 event.on("task.succeeded", lambda e: print("任务成功"))
-event.on("task.failed", lambda e: print(f"任务失败: {e['payload']['error']}"))
+event.on("task.failed", lambda e: print("任务失败，用 task.error(task_id) 查原因"))
 event.on("task.canceled", lambda e: print("任务取消"))
 event.on("task.timeout", lambda e: print("任务超时"))
+event.on("task.error", lambda e: print(f"任务错误: {e['payload']['error']}"))
 ```
 
 == Lua
@@ -478,13 +481,16 @@ wingman.event.on("task.succeeded", function(e)
     print("任务成功")
 end)
 wingman.event.on("task.failed", function(e)
-    print("任务失败: " .. e.payload.error)
+    print("任务失败，用 wingman.task.error(taskId) 查原因")
 end)
 wingman.event.on("task.canceled", function(e)
     print("任务取消")
 end)
 wingman.event.on("task.timeout", function(e)
     print("任务超时")
+end)
+wingman.event.on("task.error", function(e)
+    print("任务错误: " .. tostring(e.payload.error))
 end)
 ```
 

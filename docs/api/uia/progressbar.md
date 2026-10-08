@@ -27,7 +27,7 @@ if progress:
 local wingman = require("wingman")
 
 -- 查找名为"下载进度"的进度条
-local progress = wingman.uia.findByName("下载进度")
+local progress = wingman.uia.find_by_name("下载进度")
 if progress then
     print("找到进度条")
 end
@@ -39,7 +39,7 @@ end
 
 ## 获取进度值
 
-**说明**：读取进度条的当前值，并计算完成百分比。
+> **未实现（计划中）**：`get_info()` 的返回键中**没有数值进度字段**（无 `value`/`minimum`/`maximum`）；`get_value()` 返回的是元素文本（实现为 `getText`），不是数值进度。若应用恰好把进度写进元素文本/名称（如 "80%"），可经 `get_value()` 读取后自行解析，但这不是保证存在的形态。
 
 :::tabs
 
@@ -50,17 +50,13 @@ from wingman import uia
 
 progress = uia.find_by_name("安装进度")
 if progress:
-    info = progress.get_info()
-    value = info.get('value', 0)
-    minimum = info.get('minimum', 0)
-    maximum = info.get('maximum', 100)
+    # get_info 无数值进度字段，这里只读取通用信息
+    info = progress["get_info"]()
+    print(f"名称: {info.get('name', '')}")
 
-    # 计算百分比
-    if maximum > minimum:
-        percent = (value - minimum) / (maximum - minimum) * 100
-        print(f"进度: {percent:.1f}%")
-    else:
-        print(f"进度值: {value}")
+    # get_value 返回元素文本（部分应用会写入进度文本）
+    text = progress["get_value"]()
+    print(f"元素文本: {text}")
 ```
 
 == Lua
@@ -68,20 +64,15 @@ if progress:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local progress = wingman.uia.findByName("安装进度")
+local progress = wingman.uia.find_by_name("安装进度")
 if progress then
-    local info = progress:getInfo()
-    local value = info.value or 0
-    local minimum = info.minimum or 0
-    local maximum = info.maximum or 100
+    -- get_info 无数值进度字段，这里只读取通用信息
+    local info = progress:get_info()
+    print("名称: " .. (info.name or ""))
 
-    -- 计算百分比
-    if maximum > minimum then
-        local percent = (value - minimum) / (maximum - minimum) * 100
-        print(string.format("进度: %.1f%%", percent))
-    else
-        print("进度值: " .. value)
-    end
+    -- get_value 返回元素文本（部分应用会写入进度文本）
+    local text = progress:get_value()
+    print("元素文本: " .. text)
 end
 ```
 
@@ -116,16 +107,15 @@ def wait_for_progress_complete(progress_name, timeout=30000):
     返回:
         True 表示完成，False 表示超时
     """
-    start_time = util.time()
+    start_time = util.get_time()
 
-    while util.time() - start_time < timeout:
+    while util.get_time() - start_time < timeout:
         progress = uia.find_by_name(progress_name)
         if progress:
-            info = progress.get_info()
-            value = info.get('value', 0)
-            maximum = info.get('maximum', 100)
-
-            if value >= maximum:
+            # get_info 无数值进度字段；若应用把进度写进元素文本（如 "100%"），
+            # 可经 get_value() 读取并自行解析
+            text = progress["get_value"]() or ""
+            if "100" in text:
                 print("进度完成！")
                 return True
 
@@ -146,28 +136,18 @@ else:
 ```lua:line-numbers
 local wingman = require("wingman")
 
+-- 等待进度完成：timeout 毫秒内轮询元素文本，完成返回 true，超时返回 false
 local function waitForProgressComplete(progressName, timeout)
-    """
-    等待进度完成
-
-    参数:
-        progressName: 进度条名称
-        timeout: 超时时间（毫秒），默认 30 秒
-
-    返回:
-        true 表示完成，false 表示超时
-    """
     timeout = timeout or 30000
-    local startTime = wingman.util.time()
+    local startTime = wingman.util.getTime()
 
-    while wingman.util.time() - startTime < timeout do
-        local progress = wingman.uia.findByName(progressName)
+    while wingman.util.getTime() - startTime < timeout do
+        local progress = wingman.uia.find_by_name(progressName)
         if progress then
-            local info = progress:getInfo()
-            local value = info.value or 0
-            local maximum = info.maximum or 100
-
-            if value >= maximum then
+            -- get_info 无数值进度字段；若应用把进度写进元素文本（如 "100%"），
+            -- 可经 get_value() 读取并自行解析
+            local text = progress:get_value() or ""
+            if string.find(text, "100", 1, true) then
                 print("进度完成！")
                 return true
             end
@@ -196,11 +176,11 @@ end
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
-| `find_by_name(name)` | `findByName(name)` | 按名称查找 |
+| `find_by_name(name)` | `find_by_name(name)` | 按名称查找 |
 
 | Python 方法 | Lua 方法 | 说明 |
 |------------|---------|------|
-| `get_value()` | `:getValue()` | 获取当前进度值 |
-| `get_info()` | `:getInfo()` | 获取进度条信息 |
+| `get_value()` | `:get_value()` | 获取元素文本（非数值进度，见上） |
+| `get_info()` | `:get_info()` | 获取进度条通用信息 |
 
 > **注意**：进度条通常只读，无法通过脚本设置其值。

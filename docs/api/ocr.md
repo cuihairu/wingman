@@ -37,7 +37,7 @@ recognize(region: table) -> table
 - 识别结果对象：
   - `success` / `success` - 是否成功
   - `text` / `text` - 识别的文本
-  - `confidence` / `confidence` - 置信度（0-1）
+  - `confidence` / `confidence` - 置信度（0-100 整数百分比）
 
 :::tabs
 

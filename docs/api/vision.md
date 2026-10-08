@@ -79,16 +79,16 @@ local pos = wingman.vision.findColor(0xFF0000, 10)
 **函数签名**：
 
 ```python
-find_all_colors(color: dict | int, tolerance: int = 0, region: dict = None) -> list[dict]
+find_all_colors(color: dict | int, tolerance: int = 10, region: dict = None) -> list[dict]
 ```
 
 ```lua
-findAllColors(color: table | number, tolerance: number = 0, region: table = nil) -> table
+findAllColors(color: table | number, tolerance: number = 10, region: table = nil) -> table
 ```
 
 **参数**：
 - `color` - 颜色值，支持字典 `{r, g, b}` 或整数
-- `tolerance` - 可选，容差值（0-255），默认 0
+- `tolerance` - 可选，容差值（0-255），默认 10
 - `region` - 可选，搜索区域，默认全屏
 
 **返回**：
@@ -131,16 +131,16 @@ end
 **函数签名**：
 
 ```python
-has_color(color: dict | int, tolerance: int = 0, region: dict = None) -> bool
+has_color(color: dict | int, tolerance: int = 10, region: dict = None) -> bool
 ```
 
 ```lua
-hasColor(color: table | number, tolerance: number = 0, region: table = nil) -> boolean
+hasColor(color: table | number, tolerance: number = 10, region: table = nil) -> boolean
 ```
 
 **参数**：
 - `color` - 颜色值
-- `tolerance` - 可选，容差值（0-255），默认 0
+- `tolerance` - 可选，容差值（0-255），默认 10
 - `region` - 可选，搜索区域，默认全屏
 
 **返回**：
@@ -322,7 +322,7 @@ ONNX 检测（见下节）。
 
 **参数**：
 - `desc`（string）— 目标描述，如「登录按钮」「左上角红色关闭叉」
-- `region`（表，可选）— 只在该区域内截帧识别，坐标仍为全屏系
+- `region`（表，可选）— 只在该区域内截帧识别；带 `region` 时返回的坐标**相对 region 左上角**（不回加偏移，如需全屏坐标请自行加上 region.x/region.y）
 
 **返回**：
 - `{found=true, x, y, w, h, confidence, label}` — 像素包围盒（左上角+尺寸）
@@ -375,7 +375,7 @@ end
 
 **参数**：
 - `desc`（string）— 元素筛选描述；**空串 = 列出屏幕上全部可交互元素**
-- `region`（表，可选）— 只在该区域内截帧识别，坐标仍为全屏系
+- `region`（表，可选）— 只在该区域内截帧识别；带 `region` 时返回的坐标**相对 region 左上角**（不回加偏移，如需全屏坐标请自行加上 region.x/region.y）
 
 **返回**：
 - `{found=true, elements=[{label, x, y, w, h, confidence}, ...]}` — 像素

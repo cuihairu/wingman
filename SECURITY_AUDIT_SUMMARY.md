@@ -49,7 +49,7 @@ All 7 alerts are addressed via `pnpm-workspace.yaml` overrides (transitive depen
 
 ---
 
-## 3. Files Modified
+## 4. Files Modified
 
 | File | Change |
 |------|--------|
@@ -59,7 +59,7 @@ All 7 alerts are addressed via `pnpm-workspace.yaml` overrides (transitive depen
 
 ---
 
-## 4. Final State
+## 5. Final State
 
 - **Git branch**: `main` (up to date with `origin/main`)
 - **Working tree**: 2 files modified (package.json + lockfile), 1 file already correct (pnpm-workspace.yaml)
@@ -70,7 +70,7 @@ All 7 alerts are addressed via `pnpm-workspace.yaml` overrides (transitive depen
 
 ---
 
-## 5. Compliance with Project Constraints
+## 6. Compliance with Project Constraints
 
 - ✅ Only modified `/home/cui/workspaces/wingman/orchestrator/dashboard/`
 - ✅ No `package.json` direct dep edits for hono/fast-uri/dompurify (they are transitive; fixed via `pnpm-workspace.yaml` overrides)

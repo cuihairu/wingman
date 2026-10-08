@@ -2,7 +2,7 @@
 
 性能优化模块，提供图像缓存、并行处理等性能优化配置。
 
-> **依赖说明**：本模块依赖 OpenCV。当构建未启用 OpenCV（`HAS_OPENCV` 未定义）时为 **stub 实现**——所有函数仍然存在并可调用，但返回空值/默认值（例如缓存统计恒为 0、`fastFindImage` 恒返回 nil、`parallelFindColors` 恒返回空表）。请确保构建时启用 OpenCV 才能获得真实功能。
+> **实现现状**：本模块的 C++ 实现带有 OpenCV 加速分支（`HAS_OPENCV` 宏），但当前构建系统从未定义该宏——因此**在现有任何构建档位下，脚本层 perf 均为 stub 实现**：所有函数仍然存在并可调用，但返回空值/默认值（缓存统计恒为 0、`fastFindImage` 恒返回 nil、`parallelFindColors` 恒返回空表）。下文函数清单与参数口径按真实注册面记述；OpenCV 加速分支待构建门禁接通后方可生效。
 
 ## 模块概述
 
@@ -32,9 +32,9 @@ setConfig(config: table) -> nil
 **参数**：
 - `config` - 配置对象
   - `enableImageCache` / `enableImageCache` - 是否启用图像缓存，默认 `true`
-  - `maxCacheSize` / `maxCacheSize` - 最大缓存大小（MB），默认 `100`
+  - `maxCacheSize` / `maxCacheSize` - 最大缓存图片**张数**（非 MB），默认 `50`
   - `enableParallelProcessing` / `enableParallelProcessing` - 是否启用并行处理，默认 `true`
-  - `numThreads` / `numThreads` - 线程数，默认 `4`
+  - `numThreads` / `numThreads` - 线程数，默认 `0`（自动，取 CPU 核心数）
 
 **返回**：
 - 无
@@ -49,9 +49,9 @@ from wingman import perf
 # 配置性能选项
 perf.set_config({
     "enableImageCache": True,
-    "maxCacheSize": 100,
+    "maxCacheSize": 50,          # 缓存图片张数
     "enableParallelProcessing": True,
-    "numThreads": 4
+    "numThreads": 0              # 0 = 自动（CPU 核心数）
 })
 ```
 
@@ -63,9 +63,9 @@ local wingman = require("wingman")
 -- 配置性能选项
 wingman.perf.setConfig({
     enableImageCache = true,
-    maxCacheSize = 100,
+    maxCacheSize = 50,          -- 缓存图片张数
     enableParallelProcessing = true,
-    numThreads = 4
+    numThreads = 0              -- 0 = 自动（CPU 核心数）
 })
 ```
 
@@ -103,7 +103,7 @@ from wingman import perf
 # 获取配置
 config = perf.get_config()
 print(f"图像缓存: {config['enableImageCache']}")
-print(f"最大缓存: {config['maxCacheSize']} MB")
+print(f"最大缓存: {config['maxCacheSize']} 张")
 ```
 
 == Lua
@@ -114,7 +114,7 @@ local wingman = require("wingman")
 -- 获取配置
 local config = wingman.perf.getConfig()
 print("图像缓存: " .. tostring(config.enableImageCache))
-print("最大缓存: " .. config.maxCacheSize .. " MB")
+print("最大缓存: " .. config.maxCacheSize .. " 张")
 ```
 
 :::
@@ -472,7 +472,7 @@ print("平均捕获耗时: " .. stats.avgCaptureTime .. "s")
 
 ### reset_stats() / resetStats()
 
-**说明**：重置性能管理器的运行统计计数器（捕获/查找次数与平均耗时归零）。不影响图像缓存内容。
+**说明**：重置性能管理器的运行统计计数器（捕获/查找次数与平均耗时归零，**同时**清零缓存命中/未命中计数，`get_cache_stats` 的 hits/misses/hitRate 随之归零）。图像缓存内容不受影响。
 
 **函数签名**：
 
@@ -530,6 +530,6 @@ wingman.perf.resetStats()
 | 选项 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `enableImageCache` | boolean | `true` | 是否启用图像缓存 |
-| `maxCacheSize` | number | `100` | 最大缓存大小（MB） |
+| `maxCacheSize` | number | `50` | 最大缓存图片张数（非 MB） |
 | `enableParallelProcessing` | boolean | `true` | 是否启用并行处理 |
-| `numThreads` | number | `4` | 线程数 |
+| `numThreads` | number | `0` | 线程数（0 = 自动，取 CPU 核心数） |

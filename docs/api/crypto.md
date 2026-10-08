@@ -17,7 +17,7 @@ crypto 模块提供密码学原语，包括 AES-256-GCM 对称加解密、密钥
    - 盐值以十六进制字符串形式传入（可通过 `generateSalt` 生成）。
 
 4. **参数校验**
-   - 必填参数缺失或类型不符时，函数返回空字符串（`""`）并记录错误日志，不抛出异常。
+   - 必填参数缺失或类型不符时，函数返回空字符串（`""`），不抛出异常。其中 `encryptAES` / `decryptAES` / `deriveKey` 会记录错误日志；`sha256` / `sha512` / `base64Encode` / `base64Decode` / `hexEncode` / `hexDecode` 等编码哈希类函数**静默**返回空串。
    - 调用方应自行检查返回值是否为空。
 
 5. **字节序列处理**
@@ -53,24 +53,26 @@ crypto 模块在 C++ 侧以 `mod.name = "crypto"` 注册，共 11 个函数：
 **参数：**
 - `plaintext` (string): 待加密的明文
 - `password` (string): 加密口令
-- `salt` (string?, optional): 盐值，用于派生密钥；不传时由实现内部处理
+- `salt` (string?, optional): 盐值（**十六进制字符串**），用于派生密钥；不传时由实现内部处理。**外部传入的盐解 hex 后必须恰为 16 字节（即 32 个 hex 字符）**，否则记错误日志并返回 `""`——请用 `crypto.generateSalt(16)` 生成
 
 **返回：**
-- string: base64 编码的密文（含 IV）；参数缺失时返回 `""`
+- string: base64 编码的密文（含 IV）；参数缺失或盐长度非法时返回 `""`
 
 **示例：**
 
 ```python
 from wingman import crypto
 
-ciphertext = crypto.encryptAES("hello world", "my-password", "a1b2c3d4e5f6")
+salt = crypto.generateSalt(16)  # 16 字节盐（32 个 hex 字符）
+ciphertext = crypto.encryptAES("hello world", "my-password", salt)
 print(ciphertext)  # base64 密文
 ```
 
 ```lua
 local wingman = require("wingman")
 
-local ciphertext = wingman.crypto.encryptAES("hello world", "my-password", "a1b2c3d4e5f6")
+local salt = wingman.crypto.generateSalt(16)  -- 16 字节盐（32 个 hex 字符）
+local ciphertext = wingman.crypto.encryptAES("hello world", "my-password", salt)
 print(ciphertext)  -- base64 密文
 ```
 

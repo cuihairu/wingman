@@ -28,7 +28,7 @@ cd orchestrator/server
 go run main.go
 ```
 
-默认监听端口：`8080`
+默认监听端口：`9527`（可用环境变量 `WINGMAN_PORT` 覆盖）
 
 ### 访问 Dashboard
 
@@ -41,7 +41,7 @@ go run main.go
    访问 `http://localhost:8000`
 
 2. **生产模式**：
-   构建后访问 `http://<server-ip>:8080`
+   构建后访问 `http://<server-ip>:9527`
 
 ## 用户认证
 
@@ -51,13 +51,13 @@ go run main.go
 2. 输入用户名和密码
 3. 点击「登录」按钮
 
-### 默认账号
+### 管理员账号引导
 
-| 用户名 | 密码 | 角色 |
-|--------|------|------|
-| admin | admin123 | 管理员（全部权限） |
+没有默认账号密码。首次启动时，若用户表为空且设置了环境变量 `WINGMAN_ADMIN_PASSWORD`，服务端会自动创建 `admin` 账号（密码即该变量的值，角色为管理员）；未设置该变量则只打印提示、不创建任何账号：
 
-> [首次登录后请立即修改默认密码]
+```bash
+WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
+```
 
 ## 页面功能
 
@@ -144,11 +144,12 @@ go run main.go
 
 #### 内置模板
 
-- **单步监控**：单个脚本定期执行
-- **并行采集**：多个 Agent 并行执行相同任务
-- **串行流水线**：步骤按顺序依次执行
-- **Fan-out 汇总**：分发任务并汇总结果
-- **带 Wait 节拍**：包含等待步骤的定时任务
+- **截图监控循环**：单 agent 周期性截图与检测，适合简单监控任务
+- **并行采集**：多个独立步骤并行执行，分布到不同 agent，最大化吞吐
+- **串行流水线**：按依赖顺序执行（准备 → 处理 → 收尾），失败自动重试
+- **分发-汇总**：fan-out 多路并行采集，全部完成后汇总处理
+- **带节拍的流水线**：采集 → wait 等待冷却 → 处理，无需脚本即可控制节奏
+- **条件守卫截图**：先做前置条件判断，再由 agent 主动截图并广播到 Dashboard
 
 ### 5. Monitor（监控面板）
 
@@ -200,7 +201,7 @@ go run main.go
 #### 可配置项
 
 - **日志级别**：控制日志输出详细程度
-- **并发上限**：最大并发任务数
+- **最大脚本数（maxScripts）**：1-100
 - **端口配置**：服务监听端口（只读）
 
 > 注：部分配置需要管理员权限才能修改
@@ -233,16 +234,19 @@ go run main.go
 
 ## WebSocket 实时事件
 
-Dashboard 通过 WebSocket 接收实时事件推送：
+Dashboard 通过 WebSocket 接收实时事件推送。服务端广播的事件名（`type` + `event` + `data`）：
 
-| 事件类型 | 说明 |
-|----------|------|
-| agent_connected | Agent 上线 |
-| agent_disconnected | Agent 下线 |
-| trigger_fired | 触发器触发 |
-| script_state | 脚本状态变更 |
-| script_output | 脚本输出 |
-| workflow_progress | 工作流进度更新 |
+| 服务端事件 | 通道（type） | 说明 | 前端适配层方法（`services/websocket.ts`） |
+|----------|------|------|------|
+| connected | agent | Agent 上线 | `onAgentConnected` |
+| disconnected | agent | Agent 下线 | `onAgentDisconnected` |
+| status_changed | agent | Agent 状态变更 | `onAgentStatusChanged` |
+| trigger_fired | agent | 触发器触发 | `onTriggerFired` |
+| script | script | 脚本状态变更 / 输出 | 暂无专用适配方法 |
+| workflow（submitted / status_changed / progress） | workflow | 工作流提交 / 状态 / 进度 | `onWorkflowSubmitted` / `onWorkflowStatusChanged` / `onWorkflowProgress` |
+| screenshot | screenshot | 截图上报 | 暂无专用适配方法 |
+
+> 前端不直接消费原始事件名，而是经 `services/websocket.ts` 适配层过滤后回调（例如 `event === 'connected'` → `onAgentConnected`）。
 
 ## 权限系统
 

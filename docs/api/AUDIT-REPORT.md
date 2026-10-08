@@ -1,5 +1,7 @@
 # API 文档 [代码实现 一致性审查报告]
 
+> 本文为 2026-06-27 时点快照，结论已过时；最新一致性状态以 docs/审计-文档一致性.md（2026-10-08）为准。
+
 > 审查日期：2026-06-27
 > 审查范围：`docs/api/*.md`（API 文档）↔ `lib/wingman/src/script/modules/`（C++ 脚本模块）+ `libs/python/`（Python 引擎）
 > 审查方法：38 个注册模块逐函数核对（文档声明 vs 代码 `mod.functions` 注册）

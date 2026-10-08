@@ -76,8 +76,9 @@ App 侧三层机制（无需用户配置）：
 
 1. 启动 agent，回到桌面静置 10–30 分钟（覆盖厂商常用冻结窗口）；
 2. Dashboard 观察 agent 是否持续在线、心跳不中断；
-3. `adb shell dumpsys activity services WingmanAgent`（或
-   `dumpsys deviceidle`）确认服务未被冻结；
+3. `adb shell dumpsys activity services com.wingman.agent`（或
+   `dumpsys activity services .WingmanService`）确认服务未被冻结；
+   `dumpsys deviceidle` 可另看 Doze/省电白名单状态；
 4. 重启设备一次，确认开机自启生效（App 未打开的情况下 agent 自动上线）。
 
 ## 已知边界（登记，非缺陷）

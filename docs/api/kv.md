@@ -108,17 +108,17 @@ wingman.kv.set("counter", "2", {xx = true})
 **函数签名**：
 
 ```python
-get(key: str) -> str | None
+get(key: str) -> str
 ```
 
 ```lua
-get(key: string) -> string | nil
+get(key: string) -> string
 ```
 
 **参数**：
 - `key` - 键名
 
-**返回**：键对应的值，键不存在时返回 None/nil
+**返回**：键对应的值。键不存在时返回**空字符串 `""`**（不是 None/nil）。判断键是否存在请用 `exists`，或与 `""` 比较
 
 :::tabs
 
@@ -129,7 +129,7 @@ from wingman import kv
 
 # 获取值
 value = kv.get("token")
-if value:
+if value != "":
     print(f"Token: {value}")
 else:
     print("Token 不存在")
@@ -140,9 +140,9 @@ else:
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 获取值
+-- 获取值（缺键返回空字符串；Lua 中 "" 为真值，勿用 if value then 判存在）
 local value = wingman.kv.get("token")
-if value then
+if value ~= "" then
     print("Token:", value)
 else
     print("Token 不存在")
@@ -263,8 +263,8 @@ ttl(key: string) -> number
 
 **返回**：
 - `> 0` - 剩余秒数
-- `-1` - 键存在但无过期时间
-- `-2` - 键不存在
+- `-1` - 键不存在**或**键存在但未设置过期时间（两者都返回 -1，与 Redis 的约定不同）
+- `-2` - 键已过期
 
 :::tabs
 
@@ -276,10 +276,10 @@ from wingman import kv
 remaining = kv.ttl("token")
 if remaining > 0:
     print(f"Token 将在 {remaining} 秒后过期")
-elif remaining == -1:
-    print("Token 永不过期")
+elif remaining == -2:
+    print("Token 已过期")
 else:
-    print("Token 不存在")
+    print("Token 不存在或未设置过期时间")
 ```
 
 == Lua
@@ -290,10 +290,10 @@ local wingman = require("wingman")
 local remaining = wingman.kv.ttl("token")
 if remaining > 0 then
     print("Token 将在 " .. remaining .. " 秒后过期")
-elseif remaining == -1 then
-    print("Token 永不过期")
+elseif remaining == -2 then
+    print("Token 已过期")
 else
-    print("Token 不存在")
+    print("Token 不存在或未设置过期时间")
 end
 ```
 
@@ -467,12 +467,14 @@ wingman.kv.hset("team:123", "member_count", "4")
 **函数签名**：
 
 ```python
-hget(hash: str, field: str) -> str | None
+hget(hash: str, field: str) -> str
 ```
 
 ```lua
-hget(hash: string, field: string) -> string | nil
+hget(hash: string, field: string) -> string
 ```
+
+**返回**：字段值。Hash 或字段不存在时返回**空字符串 `""`**（不是 None/nil）
 
 :::tabs
 
@@ -482,7 +484,7 @@ hget(hash: string, field: string) -> string | nil
 from wingman import kv
 
 leader = kv.hget("team:123", "leader")
-if leader:
+if leader != "":
     print(f"队长: {leader}")
 ```
 
@@ -492,7 +494,7 @@ if leader:
 local wingman = require("wingman")
 
 local leader = wingman.kv.hget("team:123", "leader")
-if leader then
+if leader ~= "" then
     print("队长:", leader)
 end
 ```
@@ -782,14 +784,14 @@ wingman.kv.rpush("events", "logout")
 **函数签名**：
 
 ```python
-lpop(list: str) -> str | None
+lpop(list: str) -> str
 ```
 
 ```lua
-lpop(list: string) -> string | nil
+lpop(list: string) -> string
 ```
 
-**返回**：弹出的元素，列表为空时返回 None/nil
+**返回**：弹出的元素，列表为空时返回**空字符串 `""`**（不是 None/nil）
 
 :::tabs
 
@@ -800,7 +802,7 @@ from wingman import kv
 
 # 处理日志（最新的先处理）
 log_entry = kv.lpop("log")
-if log_entry:
+if log_entry != "":
     print(f"处理日志: {log_entry}")
 ```
 
@@ -811,7 +813,7 @@ local wingman = require("wingman")
 
 -- 处理日志（最新的先处理）
 local logEntry = wingman.kv.lpop("log")
-if logEntry then
+if logEntry ~= "" then
     print("处理日志:", logEntry)
 end
 ```
@@ -827,14 +829,14 @@ end
 **函数签名**：
 
 ```python
-rpop(list: str) -> str | None
+rpop(list: str) -> str
 ```
 
 ```lua
-rpop(list: string) -> string | nil
+rpop(list: string) -> string
 ```
 
-**返回**：弹出的元素，列表为空时返回 None/nil
+**返回**：弹出的元素，列表为空时返回**空字符串 `""`**（不是 None/nil）
 
 :::tabs
 
@@ -845,7 +847,7 @@ from wingman import kv
 
 # 处理事件（按时间顺序）
 event = kv.rpop("events")
-if event:
+if event != "":
     print(f"处理事件: {event}")
 ```
 
@@ -856,7 +858,7 @@ local wingman = require("wingman")
 
 -- 处理事件（按时间顺序）
 local event = wingman.kv.rpop("events")
-if event then
+if event ~= "" then
     print("处理事件:", event)
 end
 ```
@@ -1077,7 +1079,7 @@ class TaskQueue:
     def get_task(self):
         """从队列获取任务"""
         task = kv.lpop(self.queue_name)
-        if task:
+        if task != "":
             print(f"执行任务: {task}")
         return task
 
@@ -1124,7 +1126,7 @@ end
 
 function TaskQueue:getTask()
     local task = wingman.kv.lpop(self.queueName)
-    if task then
+    if task ~= "" then
         print("执行任务:", task)
     end
     return task
@@ -1165,11 +1167,11 @@ end
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
 | `set(key, val, opts?)` | `set(key, val, opts?)` | 设置键值 | key: 键名<br>val: 值<br>opts: {ttl, nx, xx} 返回: nil |
-| `get(key)` | `get(key)` | 获取值 | key: 键名 |
+| `get(key)` | `get(key)` | 获取值 | key: 键名<br>返回: 字符串，缺键返回空串 "" |
 | `delete(keys)` | `delete(keys)` | 删除键 | keys: 键名或列表 返回: nil |
 | `exists(key)` | `exists(key)` | 检查键是否存在 | key: 键名 |
 | `expire(key, seconds)` | `expire(key, seconds)` | 为已存在键设过期 | key: 键名<br>seconds: 秒 返回: nil |
-| `ttl(key)` | `ttl(key)` | 获取过期时间 | key: 键名<br>返回: 剩余秒数 |
+| `ttl(key)` | `ttl(key)` | 获取过期时间 | key: 键名<br>返回: 剩余秒数；-1=不存在或未设过期，-2=已过期 |
 | `incr(key, delta?)` | `incr(key, delta?)` | 数字自增 | key: 键名<br>delta: 增量(默认1) |
 
 ### Hash 操作

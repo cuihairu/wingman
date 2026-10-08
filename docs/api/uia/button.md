@@ -15,7 +15,7 @@ find_button(name: str) -> UIElement | None
 ```
 
 ```lua
-findButton(name: string) -> UIElement | nil
+find_button(name: string) -> UIElement | nil
 ```
 
 **参数**：
@@ -42,7 +42,7 @@ if btn:
 local wingman = require("wingman")
 
 -- 查找名为"确定"的按钮
-local btn = wingman.uia.findButton("确定")
+local btn = wingman.uia.find_button("确定")
 if btn then
     btn:click()
 end
@@ -63,7 +63,7 @@ find_by_id(id: str) -> UIElement | None
 ```
 
 ```lua
-findById(id: string) -> UIElement | nil
+find_by_id(id: string) -> UIElement | nil
 ```
 
 **参数**：
@@ -79,7 +79,7 @@ from wingman import uia
 # 使用 AutomationId 查找（推荐）
 btn = uia.find_by_id("btnSubmit")
 if btn:
-    btn.click()
+    btn["click"]()
 ```
 
 == Lua
@@ -88,7 +88,7 @@ if btn:
 local wingman = require("wingman")
 
 -- 使用 AutomationId 查找（推荐）
-local btn = wingman.uia.findById("btnSubmit")
+local btn = wingman.uia.find_by_id("btnSubmit")
 if btn then
     btn:click()
 end
@@ -152,7 +152,7 @@ UIElement.double_click() -> None
 ```
 
 ```lua
-UIElement:doubleClick()
+UIElement:double_click()
 ```
 
 :::tabs
@@ -164,7 +164,7 @@ from wingman import uia
 
 btn = uia.find_button("运行")
 if btn:
-    btn.double_click()
+    btn["double_click"]()
     print("已双击运行按钮")
 ```
 
@@ -173,9 +173,9 @@ if btn:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local btn = wingman.uia.findButton("运行")
+local btn = wingman.uia.find_button("运行")
 if btn then
-    btn:doubleClick()
+    btn:double_click()
     print("已双击运行按钮")
 end
 ```
@@ -202,11 +202,11 @@ from wingman import uia
 btn = uia.find_button("提交")
 if btn:
     # 获取按钮信息
-    info = btn.get_info()
+    info = btn["get_info"]()
 
     # 检查是否启用
     if info.get('is_enabled', True):
-        btn.click()
+        btn["click"]()
         print("已点击提交按钮")
     else:
         print("按钮已禁用，可能需要先完成其他操作")
@@ -217,13 +217,13 @@ if btn:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local btn = wingman.uia.findButton("提交")
+local btn = wingman.uia.find_button("提交")
 if btn then
     -- 获取按钮信息
-    local info = btn:getInfo()
+    local info = btn:get_info()
 
     -- 检查是否启用
-    if info.isEnabled then
+    if info.is_enabled then
         btn:click()
         print("已点击提交按钮")
     else
@@ -261,11 +261,11 @@ def wait_for_button_enabled(name, timeout=5000):
     返回:
         启用的按钮元素，超时返回 None
     """
-    start = util.time()
-    while util.time() - start < timeout:
+    start = util.get_time()
+    while util.get_time() - start < timeout:
         btn = uia.find_button(name)
         if btn:
-            info = btn.get_info()
+            info = btn["get_info"]()
             if info.get('is_enabled', True):
                 return btn
         util.sleep(200)  # 每 200ms 检查一次
@@ -274,7 +274,7 @@ def wait_for_button_enabled(name, timeout=5000):
 # 使用示例
 btn = wait_for_button_enabled("确定", 10000)
 if btn:
-    btn.click()
+    btn["click"]()
     print("按钮已启用并点击")
 else:
     print("等待超时，按钮仍未启用")
@@ -285,25 +285,16 @@ else:
 ```lua:line-numbers
 local wingman = require("wingman")
 
+-- 等待按钮启用：timeout 毫秒内轮询，返回启用的按钮元素，超时返回 nil
 local function waitForButtonEnabled(name, timeout)
-    """
-    等待按钮启用
-
-    参数:
-        name: 按钮名称
-        timeout: 超时时间（毫秒），默认 5 秒
-
-    返回:
-        启用的按钮元素，超时返回 nil
-    """
     timeout = timeout or 5000
-    local start = wingman.util.time()
+    local start = wingman.util.getTime()
 
-    while wingman.util.time() - start < timeout do
-        local btn = wingman.uia.findButton(name)
+    while wingman.util.getTime() - start < timeout do
+        local btn = wingman.uia.find_button(name)
         if btn then
-            local info = btn:getInfo()
-            if info.isEnabled then
+            local info = btn:get_info()
+            if info.is_enabled then
                 return btn
             end
         end
@@ -334,11 +325,13 @@ end
 
 **常用属性**：
 - `name` - 按钮显示文本
-- `control_type` - 控件类型（应为 "Button"）
-- `automation_id` - AutomationId（如果有）
+- `id` - AutomationId（如果有）
+- `className` - 控件类名
+- `role` - 角色数值（int，Button = 2）
+- `text` - 控件文本
 - `is_enabled` - 是否启用
 - `is_visible` - 是否可见
-- `bounding_rect` - 按钮的位置和大小
+- `bounds` - 按钮的位置和大小（`{x, y, width, height}`）
 
 :::tabs
 
@@ -349,19 +342,20 @@ from wingman import uia
 
 btn = uia.find_button("确定")
 if btn:
-    info = btn.get_info()
+    info = btn["get_info"]()
 
     # 打印所有属性
     print(f"按钮名称: {info.get('name', '')}")
-    print(f"控件类型: {info.get('control_type', '')}")
-    print(f"AutomationId: {info.get('automation_id', '')}")
+    print(f"id: {info.get('id', '')}")
+    print(f"类名: {info.get('className', '')}")
+    print(f"角色: {info.get('role', 0)}")
     print(f"是否启用: {info.get('is_enabled', True)}")
     print(f"是否可见: {info.get('is_visible', True)}")
 
     # 位置信息
-    if 'bounding_rect' in info:
-        rect = info['bounding_rect']
-        print(f"位置: ({rect['left']}, {rect['top']})")
+    if 'bounds' in info:
+        rect = info['bounds']
+        print(f"位置: ({rect['x']}, {rect['y']})")
         print(f"大小: {rect['width']} x {rect['height']}")
 ```
 
@@ -370,21 +364,22 @@ if btn:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local btn = wingman.uia.findButton("确定")
+local btn = wingman.uia.find_button("确定")
 if btn then
-    local info = btn:getInfo()
+    local info = btn:get_info()
 
     -- 打印所有属性
     print("按钮名称: " .. (info.name or ""))
-    print("控件类型: " .. (info.controlType or ""))
-    print("AutomationId: " .. (info.automationId or ""))
-    print("是否启用: " .. tostring(info.isEnabled or true))
-    print("是否可见: " .. tostring(info.isVisible or true))
+    print("id: " .. (info.id or ""))
+    print("类名: " .. (info.className or ""))
+    print("角色: " .. tostring(info.role or 0))
+    print("是否启用: " .. tostring(info.is_enabled or false))
+    print("是否可见: " .. tostring(info.is_visible or false))
 
     -- 位置信息
-    if info.boundingRect then
-        local rect = info.boundingRect
-        print(string.format("位置: (%d, %d)", rect.left, rect.top))
+    if info.bounds then
+        local rect = info.bounds
+        print(string.format("位置: (%d, %d)", rect.x, rect.y))
         print(string.format("大小: %d x %d", rect.width, rect.height))
     end
 end
@@ -411,13 +406,13 @@ def submit_form():
     # 1. 填写用户名
     username = uia.find_edit("用户名")
     if username:
-        username.set_value("player123")
+        username["set_value"]("player123")
         print("已填写用户名")
 
     # 2. 填写密码
     password = uia.find_edit("密码")
     if password:
-        password.set_value("mypassword")
+        password["set_value"]("mypassword")
         print("已填写密码")
 
     util.sleep(500)
@@ -425,7 +420,7 @@ def submit_form():
     # 3. 等待提交按钮启用
     submit_btn = wait_for_button_enabled("提交", 5000)
     if submit_btn:
-        submit_btn.click()
+        submit_btn["click"]()
         print("已点击提交按钮")
         return True
     else:
@@ -446,12 +441,12 @@ local wingman = require("wingman")
 
 local function waitForButtonEnabled(name, timeout)
     timeout = timeout or 5000
-    local start = wingman.util.time()
-    while wingman.util.time() - start < timeout do
-        local btn = wingman.uia.findButton(name)
+    local start = wingman.util.getTime()
+    while wingman.util.getTime() - start < timeout do
+        local btn = wingman.uia.find_button(name)
         if btn then
-            local info = btn:getInfo()
-            if info.isEnabled then
+            local info = btn:get_info()
+            if info.is_enabled then
                 return btn
             end
         end
@@ -462,16 +457,16 @@ end
 
 local function submitForm()
     -- 1. 填写用户名
-    local username = wingman.uia.findEdit("用户名")
+    local username = wingman.uia.find_edit("用户名")
     if username then
-        username:setValue("player123")
+        username:set_value("player123")
         print("已填写用户名")
     end
 
     -- 2. 填写密码
-    local password = wingman.uia.findEdit("密码")
+    local password = wingman.uia.find_edit("密码")
     if password then
-        password:setValue("mypassword")
+        password:set_value("mypassword")
         print("已填写密码")
     end
 
@@ -507,25 +502,30 @@ end
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `find_button(name)` | `findButton(name)` | 按名称查找按钮 | `name` - 按钮显示文本 |
-| `find_by_id(id)` | `findById(id)` | 按 AutomationId 查找 | `id` - AutomationId |
-| `find_by_name(name)` | `findByName(name)` | 通用查找方法 | `name` - 元素名称 |
+| `find_button(name)` | `find_button(name)` | 按名称查找按钮 | `name` - 按钮显示文本 |
+| `find_by_id(id)` | `find_by_id(id)` | 按 AutomationId 查找 | `id` - AutomationId |
+| `find_by_name(name)` | `find_by_name(name)` | 通用查找方法 | `name` - 元素名称 |
 
 ### 按钮操作
 
 | Python 方法 | Lua 方法 | 说明 |
 |------------|---------|------|
 | `click()` | `:click()` | 点击按钮 |
-| `double_click()` | `:doubleClick()` | 双击按钮 |
-| `get_info()` | `:getInfo()` | 获取按钮所有属性 |
+| `double_click()` | `:double_click()` | 双击按钮 |
+| `get_info()` | `:get_info()` | 获取按钮所有属性 |
 
 ### 按钮属性
+
+`get_info()` 返回键集：
 
 | 属性 | 类型 | 说明 |
 |-----|------|------|
 | `name` | string | 按钮显示文本 |
-| `control_type` | string | 控件类型（"Button"） |
-| `automation_id` | string | AutomationId（可能为空） |
+| `id` | string | AutomationId（可能为空） |
+| `className` | string | 控件类名 |
+| `role` | int | 角色数值（Button = 2） |
+| `text` | string | 控件文本 |
 | `is_enabled` | boolean | 是否启用 |
 | `is_visible` | boolean | 是否可见 |
-| `bounding_rect` | object | 位置和大小 |
+| `has_focus` | boolean | 是否持有焦点 |
+| `bounds` | object | 位置和大小 `{x, y, width, height}` |

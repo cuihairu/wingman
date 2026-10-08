@@ -28,19 +28,19 @@ process 模块用于管理与操作系统进程相关的操作。主要功能包
 **函数签名**：
 
 ```python
-find(name: str) -> tuple[int, bool]
+find(name: str) -> list[int | None, bool]
 ```
 
 ```lua
-find(name: string) -> number, boolean
+find(name: string) -> table
 ```
 
 **参数**：
 - `name` - 进程名称（不需要 .exe 后缀，支持部分匹配）
 
-**返回**：
-- Python: `(pid, found)` 元组，pid 为进程 ID，found 表示是否找到
-- Lua: `pid, found` 两个返回值
+**返回**：**单个数组值** `[pid, found]`（两端同构，不是多返回值）：
+- 下标 `1`（Python `result[0]`）- 进程 ID，未找到时为 `None`/`nil`
+- 下标 `2`（Python `result[1]`）- 是否找到（bool）
 
 :::tabs
 
@@ -49,7 +49,7 @@ find(name: string) -> number, boolean
 ```python:line-numbers
 from wingman import process
 
-# 查找记事本进程
+# 查找记事本进程（返回列表，可直接解包）
 pid, found = process.find("notepad")
 if found:
     print(f"找到记事本进程，PID: {pid}")
@@ -67,18 +67,18 @@ if found:
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 查找记事本进程
-local pid, found = wingman.process.find("notepad")
-if found then
-    print("找到记事本进程，PID:", pid)
+-- 查找记事本进程（Lua 返回一张数组表，不能多重赋值解构）
+local r = wingman.process.find("notepad")
+if r[2] then
+    print("找到记事本进程，PID:", r[1])
 else
     print("记事本未运行")
 end
 
 -- 查找 Chrome 进程
-local pid, found = wingman.process.find("chrome")
-if found then
-    print("找到 Chrome 进程，PID:", pid)
+local r = wingman.process.find("chrome")
+if r[2] then
+    print("找到 Chrome 进程，PID:", r[1])
 end
 ```
 
@@ -251,9 +251,9 @@ terminate(pid: number, force: boolean) -> boolean
 
 **返回**：是否成功终止
 
-**force 参数说明**：
-- `force=False/False` - 尝试正常关闭（发送关闭消息）
-- `force=True/True` - 强制终止（立即结束进程）
+**force 参数说明**（平台差异）：
+- `force` **仅 POSIX（Linux/macOS）生效**：`false` 发送 SIGTERM 优雅终止、`true` 发送 SIGKILL 强杀
+- **Windows 上 `force` 被忽略，恒为 TerminateProcess 强制终止**，不存在「正常关闭」分支
 
 :::tabs
 
@@ -265,9 +265,9 @@ from wingman import process
 # 查找记事本进程
 pid, found = process.find("notepad")
 if found:
-    # 尝试正常关闭
+    # 尝试正常关闭（仅 POSIX 生效；Windows 恒为强制终止）
     if process.terminate(pid, force=False):
-        print("进程已正常终止")
+        print("进程已终止")
 
 # 强制终止进程
 pid, found = process.find("notepad")
@@ -282,18 +282,18 @@ if found:
 local wingman = require("wingman")
 
 -- 查找记事本进程
-local pid, found = wingman.process.find("notepad")
-if found then
-    -- 尝试正常关闭
-    if wingman.process.terminate(pid, false) then
-        print("进程已正常终止")
+local r = wingman.process.find("notepad")
+if r[2] then
+    -- 尝试正常关闭（仅 POSIX 生效；Windows 恒为强制终止）
+    if wingman.process.terminate(r[1], false) then
+        print("进程已终止")
     end
 end
 
 -- 强制终止进程
-local pid, found = wingman.process.find("notepad")
-if found then
-    if wingman.process.terminate(pid, true) then
+local r = wingman.process.find("notepad")
+if r[2] then
+    if wingman.process.terminate(r[1], true) then
         print("进程已被强制终止")
     end
 end
@@ -419,9 +419,9 @@ wingman.process.start("notepad.exe")
 -- 等待进程出现
 if wingman.process.waitFor("notepad", 5000) then
     print("记事本进程已启动")
-    local pid, found = wingman.process.find("notepad")
-    if found then
-        print("PID:", pid)
+    local r = wingman.process.find("notepad")
+    if r[2] then
+        print("PID:", r[1])
     end
 else
     print("超时：进程未启动")
@@ -481,16 +481,17 @@ if found:
 local wingman = require("wingman")
 
 -- 检查记事本是否运行
-local pid, found = wingman.process.find("notepad")
-if not found then
+local r = wingman.process.find("notepad")
+if not r[2] then
     print("记事本未运行，正在启动...")
-    pid = wingman.process.start("notepad.exe")
+    wingman.process.start("notepad.exe")
     wingman.util.sleep(500)
 end
 
 -- 获取进程信息
-pid, found = wingman.process.find("notepad")
-if found then
+r = wingman.process.find("notepad")
+if r[2] then
+    local pid = r[1]
     print("记事本 PID:", pid)
 
     -- 检查进程是否存在
@@ -502,7 +503,7 @@ if found then
     print("等待 5 秒...")
     wingman.util.sleep(5000)
 
-    -- 尝试正常关闭
+    -- 尝试正常关闭（仅 POSIX 生效；Windows 恒为强制终止）
     if wingman.process.terminate(pid, false) then
         print("进程已终止")
     end
@@ -525,7 +526,7 @@ end
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
-| `find(name)` | `find(name)` | 查找进程 | name: 进程名<br>返回: (pid, found) |
+| `find(name)` | `find(name)` | 查找进程 | name: 进程名<br>返回: [pid, found] 数组（Lua 取 r[1]/r[2]） |
 | `start(path, args?, working_dir?)` | `start(path, args?, workingDir?)` | 启动进程 | path: 可执行路径<br>args: 命令行参数<br>working_dir: 工作目录<br>返回: PID |
 | `wait_for(name, timeout?)` | `waitFor(name, timeout?)` | 等待进程 | name: 进程名<br>timeout: 超时(ms) |
 
@@ -534,5 +535,5 @@ end
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
 | `wait(pid, timeout?)` | `wait(pid, timeout?)` | 等待结束 | pid: 进程ID<br>timeout: 超时(ms, 0=无限)<br>返回: 是否结束 |
-| `terminate(pid, force)` | `terminate(pid, force)` | 终止进程 | pid: 进程ID<br>force: 是否强制<br>返回: 是否成功 |
+| `terminate(pid, force)` | `terminate(pid, force)` | 终止进程 | pid: 进程ID<br>force: 是否强制（仅 POSIX 生效；Windows 恒强杀）<br>返回: 是否成功 |
 | `exists(pid)` | `exists(pid)` | 检查存在 | pid: 进程ID<br>返回: 是否存在 |

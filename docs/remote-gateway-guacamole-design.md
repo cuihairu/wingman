@@ -308,7 +308,7 @@ GET /api/remote/sessions            desktop:view（只读，报表不含接管�
 ## 8. 安全模型
 
 - **凭证隔离**：RDP/VNC 凭证只在 Go 桥 → guacd 的 `connect` 指令参数里存在，不进浏览器、不进 URL、不进日志（桥对指令流做脱敏后才可审计留存）。
-- **票据**：短时效（默认 60s 一次性）viewing token；WS 升级时校验操作者 RBAC 权限（新增 `remote-view` / `remote-control` 两个权限点，接管比监看多一档）+ 目标 agent 在线 + endpoint 可达。
+- **票据**：5 分钟一次性 viewing token（`internal/remoteticket/ticket.go` `TTL = 5m`，一次性语义下这只是泄漏窗口的上界）；WS 升级时校验操作者 RBAC 权限（沿用既有 `desktop:view` / `desktop:control` 两个权限点，接管比监看多一档，与 §15.2/§16/§17 及 RBAC 表同口径）+ 目标 agent 在线 + endpoint 可达。
 - **网络拓扑**：guacd 仅 localhost 监听（`guacd -b 127.0.0.1`），endpoint 的 VNC/RDP 端口只在内网可达，一律不经公网暴露；浏览器到像素面的唯一入口是 Go server 的 WS 边界。
 - **审计**：票据申请、连接建立、断开（含时长）、接管/监看切换，全部落既有 RBAC 审计体系；审计记录含操作者、目标 agent、协议类型，不含凭证与画面内容。
 - **传输加密**：第一期内网明文 WS + guacd 本地明文（与既有 dashboard↔Go server 的安全假设一致）；公网部署场景由既有的 Go server TLS 终结覆盖，guacd 段始终不出主机。

@@ -86,7 +86,7 @@ print("使用率: " .. cpu.usage .. "%")
 **函数签名**：
 
 ```python
-get_cpu_usage() -> float
+get_cpu_usage() -> int
 ```
 
 ```lua
@@ -94,7 +94,7 @@ getCpuUsage() -> number
 ```
 
 **返回**：
-- CPU 使用率（0-100）
+- CPU 使用率（0-100 **整数**百分比；Python 侧拿到 int 而非 float）
 
 ---
 
@@ -224,12 +224,12 @@ print("C 盘使用率: " .. string.format("%.1f", cDrive.usage) .. "%")
 
 ### get_gpu_info() / getGpuInfo()
 
-**说明**：获取 GPU 信息。
+**说明**：获取 GPU 信息。返回的是 GPU 信息**数组**（一块显卡一项，可有多块）。
 
 **函数签名**：
 
 ```python
-get_gpu_info() -> dict
+get_gpu_info() -> list[dict]
 ```
 
 ```lua
@@ -237,7 +237,7 @@ getGpuInfo() -> table
 ```
 
 **返回**：
-- GPU 信息对象：
+- GPU 信息对象数组，每项含：
   - `name` / `name` - 显卡名称
 
 :::tabs
@@ -247,9 +247,14 @@ getGpuInfo() -> table
 ```python:line-numbers
 from wingman import system
 
-# 获取 GPU 信息
-gpu = system.get_gpu_info()
-print(f"显卡: {gpu['name']}")
+# 获取 GPU 信息（返回列表）
+gpus = system.get_gpu_info()
+for gpu in gpus:
+    print(f"显卡: {gpu['name']}")
+
+# 单显卡机器取第一块
+if gpus:
+    print(f"主显卡: {gpus[0]['name']}")
 ```
 
 == Lua
@@ -257,9 +262,11 @@ print(f"显卡: {gpu['name']}")
 ```lua:line-numbers
 local wingman = require("wingman")
 
--- 获取 GPU 信息
-local gpu = wingman.system.getGpuInfo()
-print("显卡: " .. gpu.name)
+-- 获取 GPU 信息（返回数组表）
+local gpus = wingman.system.getGpuInfo()
+for i, gpu in ipairs(gpus) do
+    print("显卡: " .. gpu.name)
+end
 ```
 
 :::
@@ -668,10 +675,10 @@ print("线程数: " .. count)
 | Python 函数 | Lua 函数 | 说明 | 参数 |
 |------------|---------|------|-----|
 | `get_cpu_info()` | `getCpuInfo()` | 获取CPU信息 | 返回: CPU信息对象 |
-| `get_cpu_usage()` | `getCpuUsage()` | 获取CPU使用率 | 返回: 使用率(0-100) |
+| `get_cpu_usage()` | `getCpuUsage()` | 获取CPU使用率 | 返回: 整数使用率(0-100) |
 | `get_memory_info()` | `getMemoryInfo()` | 获取内存信息 | 返回: 内存信息对象 |
 | `get_disk_info(drive?)` | `getDiskInfo(drive?)` | 获取磁盘信息 | drive: 驱动器号(可选)<br>返回: 磁盘信息对象或数组 |
-| `get_gpu_info()` | `getGpuInfo()` | 获取GPU信息 | 返回: GPU信息对象 |
+| `get_gpu_info()` | `getGpuInfo()` | 获取GPU信息 | 返回: GPU信息对象数组（gpu[0]['name'] 取第一块） |
 | `get_os_info()` | `getOsInfo()` | 获取系统信息 | 返回: 系统信息对象 |
 | `get_network_adapters()` | `getNetworkAdapters()` | 获取网络适配器信息 | 返回: 网络适配器信息数组 |
 | `get_display_info()` | `getDisplayInfo()` | 获取显示器信息 | 返回: 显示器信息数组 |
@@ -719,6 +726,8 @@ print("线程数: " .. count)
 | `fileSystem` | string | 文件系统类型（如 "NTFS"） |
 
 ### GPU 信息对象
+
+`get_gpu_info()` 返回该对象的**数组**（每块显卡一项）：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|

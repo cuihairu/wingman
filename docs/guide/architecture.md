@@ -75,7 +75,7 @@ sequenceDiagram
     S-->>C: OK(code=0)
 
     Note over C,S: 心跳保活
-    loop 每 15 秒
+    loop 每 30 秒（heartbeatInterval，可配置）
         C->>S: Heartbeat(status, currentTask)
         S-->>C: Pong
     end
@@ -121,29 +121,21 @@ graph LR
 
 #### 信封协议
 
+每帧为「4 字节二进制长度前缀 + JSON payload」，无分隔符/换行：
+
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  长度(16进制)\n                                          │
-│  {"type":"heartbeat","id":"xxx","timestamp":...}\n      │
+│  长度前缀（4 字节二进制）                                 │
+│  {"type":"heartbeat",...}          ← JSON payload        │
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### 错误码定义
+- C++ 侧（`libs/transport/`）以网络字节序写入/读取长度前缀。
+- Go 侧（`orchestrator/server`）按宿主机字节序解码长度前缀。
 
-| Code | 名称 | 说明 |
-|------|------|------|
-| 0 | OK | 成功 |
-| 1 | UNKNOWN | 未知错误 |
-| 2 | INVALID_REQUEST | 请求格式错误 |
-| 3 | NOT_FOUND | 资源未找到 |
-| 4 | TIMEOUT | 操作超时 |
-| 5 | BUSY | 服务忙碌 |
-| 6 | NOT_AUTHORIZED | 未授权 |
-| 7 | ALREADY_EXISTS | 资源已存在 |
-| 8 | FAILED | 操作失败 |
-| 9 | DISCONNECTED | 连接断开 |
-| 10 | RATE_LIMITED | 请求频率限制 |
-| **1024+** | **用户自定义** | **业务错误码** |
+#### 错误处理
+
+当前远程协议没有统一的数字错误码表。错误语义由具体消息类型的字段表达（如 `error` / `message` 字符串字段，token 校验失败返回 `error: "invalid or missing token"`）；Dashboard 与 Go server 之间的 REST 接口使用标准 HTTP 状态码。
 
 ## 多账号协作编排
 
@@ -254,23 +246,22 @@ stateDiagram-v2
 
 | 模块 | 职责 | 文件 |
 |-----|------|------|
-| **RemoteClient** | 主动连接编排器并收发任务 | `apps/runtime/src/remote_client.cpp` |
+| **RemoteClient** | 主动连接编排器并收发任务 | `libs/agentcore/src/remote_client.cpp` |
 | **Transport** | 连接、会话与消息收发 | `libs/transport/` |
 | **Runtime Agent** | 本机任务执行与状态上报 | `apps/runtime/` |
 
 ### 核心能力模块
 
-| 模块 | 职责 | 文件 |
+| 模块 | 职责 | 文件（`lib/wingman/src/`） |
 |-----|------|------|
-| **Screen** | 屏幕操作 | `src/screen.cpp` |
-| **Input** | 输入模拟 | `src/input.cpp` |
-| **Window** | 窗口管理 | `src/window.cpp` |
-| **Process** | 进程管理 | `src/process.cpp` |
-| **Recorder** | 宏录制 | `src/recorder.cpp` |
-| **Trigger** | 触发器系统 | `src/trigger.cpp` |
-| **Storage** | 存储系统 | `src/storage.cpp` |
-| **Verification** | 验证码能力 | `src/verification.cpp` |
-| **QRCode** | 二维码登录 | `src/qrcode.cpp` |
+| **Screen** | 屏幕操作 | `screen.cpp` + `platform/{win,linux,mac}/*_screen.cpp` |
+| **Input** | 输入模拟 | `platform/win/sendinput_input.cpp`、`platform/linux/xtest_input.cpp`、`platform/mac/cgevent_input.cpp` |
+| **Window** | 窗口管理 | `window.cpp` + `platform/{win,linux,mac}/*_window.cpp` |
+| **Process** | 进程管理 | `platform/win/win32_process.cpp`、`platform/{linux,mac}/posix_process.cpp` |
+| **Recorder** | 宏录制 | `platform/{win,linux,mac}/*_recorder.cpp` + `script/modules/macro_module.cpp` |
+| **Trigger** | 触发器系统 | `trigger_engine.cpp`、`smart_trigger.cpp` + `platform/win/win32_trigger.cpp` |
+| **Storage** | 存储系统 | `storage.cpp`、`kvstore.cpp` |
+| **Verification** | 验证码能力 | `verification.cpp` |
 
 ## C++ / Lua 分层
 
@@ -299,24 +290,27 @@ wingman/
 ├── apps/                    # 应用程序
 │   ├── runtime/             # C++ 运行时（主动 Agent）
 │   │   └── src/
-│   │       ├── agent.cpp          # Agent 主逻辑
-│   │       ├── remote_client.cpp  # 远程客户端
-│   │       ├── remote_client.cpp  # 远程客户端（transport TCP）
+│   │       ├── agent.cpp            # Agent 主逻辑
+│   │       ├── local_ipc_server.cpp # 本地 IPC 服务（Tauri GUI 控制通道）
 │   │       ├── standalone_mode.cpp
-│   │       └── commands/          # CLI 子命令
+│   │       └── commands/            # CLI 子命令
 │   ├── gui/                 # Tauri/Svelte GUI
 │   │   ├── src-tauri/
 │   │   └── src/
-│   └── client/              # 客户端库
+│   └── android/             # Android Agent
 ├── lib/wingman/             # C++ 核心引擎
 ├── libs/                    # 辅助库
 │   ├── lua/                 # Lua 绑定
 │   ├── python/              # Python 绑定
-│   └── transport/           # TCP/WebSocket 传输层
+│   ├── transport/           # TCP 传输层（帧协议）
+│   ├── agentcore/           # 远程客户端核心（RemoteClient）
+│   └── androidagent/        # Android Agent 库
 ├── orchestrator/            # 编排层
 │   ├── dashboard/           # Web 控制面板 (React/Umi)
 │   └── server/              # Go 服务端
+├── examples/lua_scripts/    # Lua 脚本示例
 ├── docs/                    # 文档
-├── scripts/                 # Lua 脚本示例
-└── tests/                   # 测试
+└── scripts/                 # 构建/校验工程脚本
 ```
+
+测试随各库存放（`lib/wingman/tests/`、`libs/lua/tests/`、`libs/python/tests/`），无顶层 tests/ 目录。

@@ -71,11 +71,10 @@ db.table_create(players, {
 # 插入数据
 db.table_insert(players, {"name": "Alice", "age": 25, "score": 1000})
 
-# 复杂查询
-top_players = (db.table_where(players, "score", ">", "500")
-               .query_order_by("score", "desc")
-               .query_limit(10)
-               .query_all())
+# 复杂查询（函数式：上一步返回的 query 对象作为下一步调用的首参）
+where = db.table_where(players, "score", ">", "500")
+ordered = db.query_order_by(where, "score", "desc")
+top_players = db.query_all(db.query_limit(ordered, 10))
 
 # 聚合查询
 count = db.scalar(conn, "SELECT COUNT(*) FROM players WHERE age > ?", [18])
@@ -134,26 +133,24 @@ db.table_insert(users, {"id": "1001", "name": "Alice", "email": "alice@example.c
 如需在 kv 和 db 间迁移数据：
 
 ```python
-# kv → db
-for key in kv.keys("user:*"):
-    data = kv.hgetall(key)
-    db.table_insert(users, data)
-
 # db → kv
 for row in db.table_all(users):
     kv.hset(f"user:{row['id']}", "name", row['name'])
     kv.hset(f"user:{row['id']}", "email", row['email'])
 ```
 
+注意：kv 模块当前未向脚本层提供键枚举接口（无 `keys`/`scan`），「kv → db」方向的批量迁移需自行维护键名清单，逐个 `hgetall` 后写入 db。
+
 ## 注意事项
 
 1. **数据安全**
-   - kv 和 db 的数据文件位于 `%APPDATA%/wingman/scripts/`（Windows）
+   - db 的数据文件位于 `%APPDATA%/wingman/scripts/`（Windows）或 `~/.local/share/wingman/scripts/`（Linux/macOS）
+   - kv 平时为纯内存存储，持久化位置完全由 `kv.save(path)` / `kv.enableAutoSave(path)` 传入的 path 决定，没有默认目录
    - 卸载 Wingman 不会删除这些文件，需手动清理
 
 2. **并发访问**
    - kv 和 db 都是线程安全的，可在多线程环境使用
-   - 不同脚本的数据不共享
+   - 同名数据库连接在进程内全局共享，跨脚本可见；需要隔离时请使用不同的 db 名
 
 3. **容量限制**
    - kv: 内存存储，受系统内存限制
@@ -162,4 +159,4 @@ for row in db.table_all(users):
 4. **备份建议**
    - 重要数据定期导出
    - db 可直接复制 `.db` 文件备份
-   - kv 可调用持久化接口（如果支持）
+   - kv 可通过 `kv.save(path)` 或 `kv.enableAutoSave(path)` 持久化到指定文件

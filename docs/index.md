@@ -79,9 +79,11 @@ local wingman = require("wingman")
 local img = wingman.screen.capture(0, 0, 1920, 1080)
 
 -- 查找颜色（Lua 使用 camelCase 命名）
-local x, y = wingman.screen.findPixel(0xFF0000, 0, 0, 1920, 1080, 10)
-if x then
-    wingman.input.click(x, y)
+local points = wingman.screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
+if points then
+    for _, p in ipairs(points) do
+        wingman.input.click(p.x, p.y)
+    end
 end
 ```
 
@@ -94,11 +96,11 @@ from wingman import screen, input
 # 截图
 img = screen.capture(0, 0, 1920, 1080)
 
-# 查找颜色（Python 使用 snake_case 命名）
-result = screen.find_pixel(0xFF0000, 0, 0, 1920, 1080, 10)
-if result:
-    x, y = result
-    input.click(x, y)
+# 查找颜色（API 名与 Lua 一致，camelCase）
+points = screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
+if points:
+    for p in points:
+        input.click(p["x"], p["y"])
 ```
 
 ## Android Agent
@@ -127,7 +129,7 @@ nightly Release 的 `wingman-*-android-arm64.apk`（debug 签名）：
 
 **快速上手**
 
-1. 启动 Go server（`orchestrator/server`，Dashboard + agent 端口 8888）。
+1. 启动 Go server（`orchestrator/server`，Dashboard 端口 9527、agent 端口 8888）。
 2. 手机安装 APK（与 server 同网段）→ 打开 App → 填服务器 IP / 端口 / 设备 ID
    → 「启动 Agent」。首次启动创建常驻通知（前台服务要求）；server 若配置了
    `WINGMAN_AGENT_TOKENS`，需同时填入注册 Token。
@@ -163,21 +165,23 @@ cd wingman
 # Windows (MSVC + Ninja + vcpkg)
 build-scripts\build-runtime-msvc-ninja.bat
 
-# macOS/Linux (GCC/Clang)
+# Linux (GCC/Clang)
 cmake -B build -S . -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake \
     -DVCPKG_TARGET_TRIPLET=x64-linux
+
+# macOS (Intel 用 x64-osx，Apple Silicon 用 arm64-osx)
+cmake -B build -S . -G Ninja \
+    -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake \
+    -DVCPKG_TARGET_TRIPLET=x64-osx
 
 ```
 
 ## 运行示例
 
 ```bash
-# CLI 运行时
-./build/apps/runtime/Release/wingman-runtime script examples/hello.lua
-
-# 或 Python 脚本（需要启用 WINGMAN_ENABLE_PYTHON）
-./build/apps/runtime/Release/wingman-runtime script examples/hello.py
+# CLI 运行时（Python 脚本同理，需启用 WINGMAN_ENABLE_PYTHON）
+./build/apps/runtime/wingman-runtime script examples/lua_scripts/hello.lua
 ```
 
 ## 系统要求

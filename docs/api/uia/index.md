@@ -38,33 +38,39 @@ Desktop (桌面)
     └── Status Bar (状态栏) - Text
 ```
 
-每个节点都是一个 **UIElement**，具有以下属性：
-- **Name** - 控件的显示名称（如"确定"、"用户名"）
-- **ControlType** - 控件类型（如 Button、Edit、ComboBox）
-- **AutomationId** - 开发者设置的唯一 ID（最稳定的查找方式）
-- **BoundingRect** - 控件的屏幕位置和大小
-- **IsEnabled** - 控件是否可用
-- **IsVisible** - 控件是否可见
+每个节点都是一个 **UIElement**，脚本层通过 `get_info()` 可读取以下属性：
+- **name** - 控件的显示名称（如"确定"、"用户名"）
+- **id** - 开发者设置的唯一 ID（对应 UIA AutomationId，最稳定的查找方式）
+- **className** - 控件类名
+- **role** - 控件角色（int，对应 UIARole 枚举，见下方对照表）
+- **text** - 控件文本内容
+- **is_enabled** - 控件是否可用
+- **is_visible** - 控件是否可见
+- **has_focus** - 控件是否持有焦点
+- **bounds** - 控件的屏幕位置和大小（`{x, y, width, height}`）
 
-### 支持的控件类型
+### 支持的控件类型与 UIARole 对照
 
-| ControlType | 中文名称 | 典型应用 | 可操作内容 |
-|-------------|---------|---------|-----------|
-| Button | 按钮 | 确认、取消、提交 | 点击 |
-| Edit | 编辑框 | 用户名、密码、搜索 | 读写文本 |
-| Text | 静态文本 | 标签、提示信息 | 读取文本 |
-| ComboBox | 下拉框 | 国家选择、选项列表 | 选择选项、展开/折叠 |
-| List | 列表 | 文件列表、项目选择 | 选择项目、遍历 |
-| CheckBox | 复选框 | 同意条款、记住密码 | 勾选/取消 |
-| RadioButton | 单选按钮 | 性别选择、唯一选项 | 选择 |
-| Tab | 标签页 | 设置分类、多页内容 | 切换页面 |
-| Menu | 菜单 | 文件菜单、右键菜单 | 展开、选择菜单项 |
-| Tree | 树形控件 | 文件夹树、组织结构 | 展开/折叠节点、选择 |
-| Window | 窗口 | 应用程序主窗口、对话框 | 激活、关闭 |
-| ScrollBar | 滚动条 | 窗口/面板滚动 | 滚动 |
-| ProgressBar | 进度条 | 加载进度、下载进度 | 读取进度（只读） |
-| Slider | 滇块 | 音量控制、亮度调节 | 调节值 |
-| ToolTip | 工具提示 | 按钮说明、字段帮助 | 读取提示文本 |
+`find_all_by_control_type(role)` 的实参是 **UIARole 角色数值（int）**，不是字符串——传字符串会被当成 0（Unknown），匹配不到任何控件。全部角色取值如下：
+
+| UIARole 数值 | 枚举名 | 中文名称 | 典型应用 | 脚本层可操作 |
+|-------------|--------|---------|---------|------------|
+| 0 | Unknown | 未知 | 无法归类时 | 通用方法 |
+| 1 | Window | 窗口 | 应用程序主窗口、对话框 | 获取信息、遍历子元素 |
+| 2 | Button | 按钮 | 确认、取消、提交 | 点击、双击 |
+| 3 | TextBox | 编辑框 | 用户名、密码、搜索 | 读写文本 |
+| 4 | CheckBox | 复选框 | 同意条款、记住密码 | 点击切换 |
+| 5 | RadioButton | 单选按钮 | 性别选择、唯一选项 | 点击选中 |
+| 6 | ComboBox | 下拉框 | 国家选择、选项列表 | 展开/折叠、遍历选项 |
+| 7 | ListBox | 列表 | 文件列表、项目选择 | 遍历列表项、点击选择 |
+| 8 | ListItem | 列表项 | 列表中的单个项目 | 点击、双击 |
+| 9 | Menu | 菜单 | 文件菜单、右键菜单 | 展开、点击菜单项 |
+| 10 | MenuItem | 菜单项 | 菜单中的单个命令 | 点击 |
+| 11 | Table | 表格 | 数据表格 | 遍历子元素 |
+| 12 | Tree | 树形控件 | 文件夹树、组织结构 | 展开/折叠节点、遍历 |
+| 13 | TreeItem | 树节点 | 树中的单个节点 | 点击、展开/折叠 |
+
+> **注意**：Text（静态文本）、Tab（标签页）、ScrollBar（滚动条）、ProgressBar（进度条）、Slider（滑块）、ToolTip（工具提示）在 UIARole 枚举中**没有专用角色值**，无法按角色过滤。查找这些控件请使用按名称匹配的 `find_by_name` / `find_text`（`find_text` 不做角色过滤，可能命中任意类型的同名元素）。各类型实际可用的操作见对应子模块文档。
 
 ### UIA vs 坐标点击
 
@@ -119,24 +125,24 @@ from wingman import uia
 # 获取前台窗口
 root = uia.from_foreground()
 if root:
-    # 递归打印所有控件的 AutomationId
-    def print_automation_ids(element, depth=0):
+    # 递归打印所有控件的 id（对应 UIA AutomationId）
+    def print_element_ids(element, depth=0):
         indent = "  " * depth
-        info = element.get_info()
+        info = element["get_info"]()
         name = info.get('name', '') or '(无名称)'
-        ctrl_type = info.get('control_type', 'Unknown')
-        auto_id = info.get('automation_id', '')
+        role = info.get('role', 0)
+        auto_id = info.get('id', '')
 
-        print(f"{indent}{name} ({ctrl_type})")
+        print(f"{indent}{name} (role={role})")
         if auto_id:
-            print(f"{indent}  └─ AutomationId: {auto_id}")
+            print(f"{indent}  └─ id: {auto_id}")
 
         # 递归子元素
-        children = element.get_children()
+        children = element["get_children"]()
         for child in children:
-            print_automation_ids(child, depth + 1)
+            print_element_ids(child, depth + 1)
 
-    print_automation_ids(root)
+    print_element_ids(root)
 ```
 
 == Lua
@@ -145,30 +151,30 @@ if root:
 local wingman = require("wingman")
 
 -- 获取前台窗口
-local root = wingman.uia.fromForeground()
+local root = wingman.uia.from_foreground()
 if root then
-    -- 递归打印所有控件的 AutomationId
-    local function printAutomationIds(element, depth)
+    -- 递归打印所有控件的 id（对应 UIA AutomationId）
+    local function printElementIds(element, depth)
         depth = depth or 0
         local indent = string.rep("  ", depth)
-        local info = element:getInfo()
+        local info = element:get_info()
         local name = info.name or "(无名称)"
-        local ctrlType = info.controlType or "Unknown"
-        local autoId = info.automationId or ""
+        local role = info.role or 0
+        local autoId = info.id or ""
 
-        print(indent .. name .. " (" .. ctrlType .. ")")
+        print(indent .. name .. " (role=" .. role .. ")")
         if autoId ~= "" then
-            print(indent .. "  └─ AutomationId: " .. autoId)
+            print(indent .. "  └─ id: " .. autoId)
         end
 
         -- 递归子元素
-        local children = element:getChildren()
+        local children = element:get_children()
         for i, child in ipairs(children) do
-            printAutomationIds(child, depth + 1)
+            printElementIds(child, depth + 1)
         end
     end
 
-    printAutomationIds(root)
+    printElementIds(root)
 end
 ```
 
@@ -177,17 +183,17 @@ end
 运行上述脚本后，你会看到类似这样的输出：
 
 ```
-记事本 (Window)
-  └─ AutomationId: NotepadWindow
-文件 (MenuItem)
-  └─ AutomationId: MenuItem_File
-新建 (MenuItem)
-  └─ AutomationId: MenuItem_New
-  (Edit)
-  └─ AutomationId: TextBox1
+记事本 (role=1)
+  └─ id: NotepadWindow
+文件 (role=10)
+  └─ id: MenuItem_File
+新建 (role=10)
+  └─ id: MenuItem_New
+  (role=3)
+  └─ id: TextBox1
 ```
 
-然后你就可以使用 AutomationId 来查找控件：
+然后你就可以使用 id（AutomationId）来查找控件：
 
 :::tabs
 
@@ -199,7 +205,7 @@ from wingman import uia
 # 使用 AutomationId 查找（最稳定）
 btn = uia.find_by_id("btnSubmit")
 if btn:
-    btn.click()
+    btn["click"]()
 ```
 
 == Lua
@@ -208,7 +214,7 @@ if btn:
 local wingman = require("wingman")
 
 -- 使用 AutomationId 查找（最稳定）
-local btn = wingman.uia.findById("btnSubmit")
+local btn = wingman.uia.find_by_id("btnSubmit")
 if btn then
     btn:click()
 end
@@ -240,12 +246,12 @@ from wingman import uia
 # 使用专用的查找函数（推荐）
 btn = uia.find_button("确定")
 if btn:
-    btn.click()
+    btn["click"]()
 
 # 或使用通用查找（不太推荐，可能找到其他控件）
 element = uia.find_by_name("确定")
-if element and element.get_info().get('control_type') == 'Button':
-    element.click()
+if element and element["get_info"]().get('role', 0) == 2:  # 2 = UIARole Button
+    element["click"]()
 ```
 
 == Lua
@@ -254,16 +260,16 @@ if element and element.get_info().get('control_type') == 'Button':
 local wingman = require("wingman")
 
 -- 使用专用的查找函数（推荐）
-local btn = wingman.uia.findButton("确定")
+local btn = wingman.uia.find_button("确定")
 if btn then
     btn:click()
 end
 
 -- 或使用通用查找（不太推荐，可能找到其他控件）
-local element = wingman.uia.findByName("确定")
+local element = wingman.uia.find_by_name("确定")
 if element then
-    local info = element:getInfo()
-    if info.controlType == "Button" then
+    local info = element:get_info()
+    if info.role == 2 then  -- 2 = UIARole Button
         element:click()
     end
 end
@@ -282,11 +288,12 @@ end
 ```python:line-numbers
 from wingman import uia
 
-# 可能找到多个"确定"按钮
-elements = uia.find_all_by_name("确定")
+# 先按角色取全部按钮（UIARole 2 = Button），再按名称筛选
+elements = uia.find_all_by_control_type(2)
 for element in elements:
-    info = element.get_info()
-    print(f"找到: {info['name']} ({info['control_type']})")
+    info = element["get_info"]()
+    if info.get('name') == "确定":
+        print(f"找到: {info['name']} (role={info['role']})")
 ```
 
 == Lua
@@ -295,15 +302,12 @@ for element in elements:
 local wingman = require("wingman")
 
 -- 可能找到多个"确定"按钮
--- 注意：需要先获取所有元素再筛选
-local root = wingman.uia.fromForeground()
-if root then
-    local elements = wingman.uia.findAllByControlType("Button")
-    for i, element in ipairs(elements) do
-        local info = element:getInfo()
-        if info.name == "确定" then
-            print("找到确定按钮")
-        end
+-- 注意：先按角色取全部按钮（UIARole 2 = Button），再按名称筛选
+local elements = wingman.uia.find_all_by_control_type(2)
+for i, element in ipairs(elements) do
+    local info = element:get_info()
+    if info.name == "确定" then
+        print("找到确定按钮")
     end
 end
 ```
@@ -338,16 +342,16 @@ def find_submit_button():
     if btn:
         return btn
 
-    # 方法 2: 回退到按名称+类型查找
+    # 方法 2: 回退到按名称查找（find_button 只在 Button 角色中找）
     btn = uia.find_button("提交")
     if btn:
         return btn
 
-    # 方法 3: 最后尝试纯名称查找并验证类型
+    # 方法 3: 最后尝试纯名称查找并验证角色
     btn = uia.find_by_name("提交")
     if btn:
-        info = btn.get_info()
-        if info.get('control_type') == 'Button' and info.get('is_enabled', True):
+        info = btn["get_info"]()
+        if info.get('role', 0) == 2 and info.get('is_enabled', True):  # 2 = Button
             return btn
 
     return None
@@ -355,7 +359,7 @@ def find_submit_button():
 # 使用
 btn = find_submit_button()
 if btn:
-    btn.click()
+    btn["click"]()
 else:
     print("未找到提交按钮")
 ```
@@ -367,22 +371,22 @@ local wingman = require("wingman")
 
 local function findSubmitButton()
     -- 方法 1: 优先使用 AutomationId
-    local btn = wingman.uia.findById("btnSubmit")
+    local btn = wingman.uia.find_by_id("btnSubmit")
     if btn then
         return btn
     end
 
-    -- 方法 2: 回退到按名称+类型查找
-    btn = wingman.uia.findButton("提交")
+    -- 方法 2: 回退到按名称查找（find_button 只在 Button 角色中找）
+    btn = wingman.uia.find_button("提交")
     if btn then
         return btn
     end
 
-    -- 方法 3: 最后尝试纯名称查找并验证类型
-    local btn = wingman.uia.findByName("提交")
+    -- 方法 3: 最后尝试纯名称查找并验证角色
+    local btn = wingman.uia.find_by_name("提交")
     if btn then
-        local info = btn:getInfo()
-        if info.controlType == "Button" and info.isEnabled then
+        local info = btn:get_info()
+        if info.role == 2 and info.is_enabled then  -- 2 = UIARole Button
             return btn
         end
     end
@@ -420,9 +424,9 @@ from wingman import uia
 
 root = uia.from_foreground()
 if root:
-    info = root.get_info()
+    info = root["get_info"]()
     print(f"窗口名称: {info['name']}")
-    print(f"控件类型: {info['control_type']}")
+    print(f"角色: {info['role']}")  # 1 = UIARole Window
 ```
 
 == Lua
@@ -430,11 +434,11 @@ if root:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local root = wingman.uia.fromForeground()
+local root = wingman.uia.from_foreground()
 if root then
-    local info = root:getInfo()
+    local info = root:get_info()
     print("窗口名称: " .. info.name)
-    print("控件类型: " .. info.controlType)
+    print("角色: " .. info.role)  -- 1 = UIARole Window
 end
 ```
 
@@ -451,6 +455,7 @@ end
 ```python:line-numbers
 from wingman import window, uia
 
+# window.find 返回数组 [handle, found]，Python 列表解包可用
 hwnd, found = window.find("记事本")
 if found:
     root = uia.from_window(hwnd)
@@ -463,9 +468,11 @@ if found:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local hwnd, found = wingman.window.find("记事本")
+-- window.find 返回单值数组 {handle, found}，Lua 需先取数组再解两个元素
+local result = wingman.window.find("记事本")
+local hwnd, found = result[1], result[2]
 if found then
-    local root = wingman.uia.fromWindow(hwnd)
+    local root = wingman.uia.from_window(hwnd)
     if root then
         print("记事本 UI 根元素获取成功")
     end
@@ -483,14 +490,16 @@ end
 == Python
 
 ```python:line-numbers
-from wingman import input, uia
+from wingman import uia
 
-x, y = input.get_mouse_pos()
+# 目标坐标（按需修改）
+x, y = 500, 300
+
 element = uia.from_point(x, y)
 if element:
-    info = element.get_info()
+    info = element["get_info"]()
     print(f"元素名称: {info['name']}")
-    print(f"控件类型: {info['control_type']}")
+    print(f"角色: {info['role']}")
 ```
 
 == Lua
@@ -498,12 +507,14 @@ if element:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local x, y = wingman.input.getMousePos()
-local element = wingman.uia.fromPoint(x, y)
+-- 目标坐标（按需修改）
+local x, y = 500, 300
+
+local element = wingman.uia.from_point(x, y)
 if element then
-    local info = element:getInfo()
+    local info = element:get_info()
     print("元素名称: " .. info.name)
-    print("控件类型: " .. info.controlType)
+    print("角色: " .. info.role)
 end
 ```
 
@@ -527,7 +538,7 @@ from wingman import uia
 # 查找名为"文件"的菜单
 file_menu = uia.find_by_name("文件")
 if file_menu:
-    file_menu.click()
+    file_menu["click"]()
 ```
 
 == Lua
@@ -536,7 +547,7 @@ if file_menu:
 local wingman = require("wingman")
 
 -- 查找名为"文件"的菜单
-local fileMenu = wingman.uia.findByName("文件")
+local fileMenu = wingman.uia.find_by_name("文件")
 if fileMenu then
     fileMenu:click()
 end
@@ -558,7 +569,7 @@ from wingman import uia
 # 通过 AutomationId 查找（推荐用于生产环境）
 btn = uia.find_by_id("btnSubmit")
 if btn:
-    btn.click()
+    btn["click"]()
 ```
 
 == Lua
@@ -567,7 +578,7 @@ if btn:
 local wingman = require("wingman")
 
 -- 通过 AutomationId 查找（推荐用于生产环境）
-local btn = wingman.uia.findById("btnSubmit")
+local btn = wingman.uia.find_by_id("btnSubmit")
 if btn then
     btn:click()
 end
@@ -600,7 +611,7 @@ else:
 local wingman = require("wingman")
 
 -- 等待对话框出现（最多等待 3 秒）
-local dialog = wingman.uia.waitForName("对话框", 3000)
+local dialog = wingman.uia.wait_for_name("对话框", 3000)
 if dialog then
     print("对话框已出现")
 else
@@ -618,7 +629,12 @@ end
 
 ### 获取元素信息
 
-`get_info()` 返回一个包含元素所有属性的对象：
+`get_info()` 返回一个包含元素所有属性的对象，键集固定为：
+
+- `name` / `id` / `className` / `text`
+- `role`（int，UIARole 角色值，见[上方对照表](#支持的控件类型与-uiarole-对照)）
+- `is_enabled` / `is_visible` / `has_focus`（boolean）
+- `bounds`（`{x, y, width, height}`）
 
 :::tabs
 
@@ -629,10 +645,11 @@ from wingman import uia
 
 element = uia.find_button("确定")
 if element:
-    info = element.get_info()
+    info = element["get_info"]()
     print(f"名称: {info.get('name', '')}")
-    print(f"类型: {info.get('control_type', '')}")
-    print(f"AutomationId: {info.get('automation_id', '')}")
+    print(f"id: {info.get('id', '')}")
+    print(f"类名: {info.get('className', '')}")
+    print(f"角色: {info.get('role', 0)}")
     print(f"启用: {info.get('is_enabled', True)}")
     print(f"可见: {info.get('is_visible', True)}")
 ```
@@ -642,14 +659,15 @@ if element:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local element = wingman.uia.findButton("确定")
+local element = wingman.uia.find_button("确定")
 if element then
-    local info = element:getInfo()
+    local info = element:get_info()
     print("名称: " .. (info.name or ""))
-    print("类型: " .. (info.controlType or ""))
-    print("AutomationId: " .. (info.automationId or ""))
-    print("启用: " .. tostring(info.isEnabled or true))
-    print("可见: " .. tostring(info.isVisible or true))
+    print("id: " .. (info.id or ""))
+    print("类名: " .. (info.className or ""))
+    print("角色: " .. tostring(info.role or 0))
+    print("启用: " .. tostring(info.is_enabled or false))
+    print("可见: " .. tostring(info.is_visible or false))
 end
 ```
 
@@ -666,7 +684,7 @@ from wingman import uia
 
 btn = uia.find_button("确定")
 if btn:
-    btn.click()
+    btn["click"]()
 ```
 
 == Lua
@@ -674,7 +692,7 @@ if btn:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local btn = wingman.uia.findButton("确定")
+local btn = wingman.uia.find_button("确定")
 if btn then
     btn:click()
 end
@@ -693,7 +711,7 @@ from wingman import uia
 
 item = uia.find_by_name("文件.txt")
 if item:
-    item.double_click()
+    item["double_click"]()
 ```
 
 == Lua
@@ -701,9 +719,9 @@ if item:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local item = wingman.uia.findByName("文件.txt")
+local item = wingman.uia.find_by_name("文件.txt")
 if item then
-    item:doubleClick()
+    item:double_click()
 end
 ```
 
@@ -720,7 +738,7 @@ from wingman import uia
 
 edit = uia.find_edit("用户名")
 if edit:
-    edit.focus()
+    edit["focus"]()
 ```
 
 == Lua
@@ -728,7 +746,7 @@ if edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local edit = wingman.uia.findEdit("用户名")
+local edit = wingman.uia.find_edit("用户名")
 if edit then
     edit:focus()
 end
@@ -738,7 +756,7 @@ end
 
 ### 获取/设置值
 
-适用于有值的控件（如编辑框、下拉框等）：
+`get_value()`/`set_value()` 的实现是读取/设置元素文本（getText/setText），**仅对文本型控件有效**（如编辑框）。对非文本控件（复选框、滚动条、滑块等）调用不会产生勾选、滚动、调值等效果：
 
 :::tabs
 
@@ -749,12 +767,12 @@ from wingman import uia
 
 edit = uia.find_edit("搜索")
 if edit:
-    # 获取值
-    value = edit.get_value()
+    # 获取文本
+    value = edit["get_value"]()
     print(f"当前值: {value}")
 
-    # 设置值
-    edit.set_value("搜索关键词")
+    # 设置文本
+    edit["set_value"]("搜索关键词")
 ```
 
 == Lua
@@ -762,14 +780,14 @@ if edit:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local edit = wingman.uia.findEdit("搜索")
+local edit = wingman.uia.find_edit("搜索")
 if edit then
-    -- 获取值
-    local value = edit:getValue()
+    -- 获取文本
+    local value = edit:get_value()
     print("当前值: " .. value)
 
-    -- 设置值
-    edit:setValue("搜索关键词")
+    -- 设置文本
+    edit:set_value("搜索关键词")
 end
 ```
 
@@ -788,10 +806,10 @@ from wingman import uia
 
 root = uia.from_foreground()
 if root:
-    children = root.get_children()
+    children = root["get_children"]()
     for i, child in enumerate(children):
-        info = child.get_info()
-        print(f"[{i}] {info['name']} ({info['control_type']})")
+        info = child["get_info"]()
+        print(f"[{i}] {info['name']} (role={info['role']})")
 ```
 
 == Lua
@@ -799,12 +817,12 @@ if root:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local root = wingman.uia.fromForeground()
+local root = wingman.uia.from_foreground()
 if root then
-    local children = root:getChildren()
+    local children = root:get_children()
     for i, child in ipairs(children) do
-        local info = child:getInfo()
-        print(string.format("[%d] %s (%s)", i, info.name, info.controlType))
+        local info = child:get_info()
+        print(string.format("[%d] %s (role=%d)", i, info.name, info.role))
     end
 end
 ```
@@ -825,14 +843,14 @@ from wingman import uia
 menu = uia.find_by_name("文件")
 if menu:
     # 展开
-    menu.expand()
+    menu["expand"]()
 
     # 检查是否已展开
-    if menu.is_expanded():
+    if menu["is_expanded"]():
         print("菜单已展开")
 
     # 折叠
-    menu.collapse()
+    menu["collapse"]()
 ```
 
 == Lua
@@ -840,13 +858,13 @@ if menu:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local menu = wingman.uia.findByName("文件")
+local menu = wingman.uia.find_by_name("文件")
 if menu then
     -- 展开
     menu:expand()
 
     -- 检查是否已展开
-    if menu:isExpanded() then
+    if menu:is_expanded() then
         print("菜单已展开")
     end
 
@@ -884,20 +902,16 @@ if listener_id:
 
 > **callback 参数语义**：`callback(prop, value)` 中 `prop` 为触发事件的元素名称，`value` 为元素当前文本。受后端事件接口限制，不区分具体变更的属性名（如 Name/Value/IsEnabled）。`on_structure_changed` 的 `callback()` 无参数。
 >
-> **线程安全**：事件回调从后台线程触发（Windows UIA RPC 线程 / macOS AXObserver run loop 线程），`callback` 必须是线程安全的（如 Python 函数）。Lua 函数非线程安全，注册时会被拒绝（触发 `uia.error` 事件）。
+> **线程安全**：事件回调从后台线程触发（Windows UIA RPC 线程 / macOS AXObserver run loop 线程），`callback` 必须是线程安全的（如 Python 函数）。Lua 函数非线程安全，注册时会被拒绝（返回 0 并触发 `uia.error` 事件）。**UIA 事件监听只能用 Python 注册**（见下方说明）。
 
 == Lua
 
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local listenerId = wingman.uia.onPropertyChanged("编辑框", function(propertyName, value)
-    print(string.format("属性 %s 变更为: %s", propertyName, value))
-end)
-
-if listenerId then
-    print("监听器已注册，ID: " .. listenerId)
-end
+-- 注意：Lua callable 非线程安全，wingman.uia.on_property_changed / on_structure_changed
+-- 注册会被拒绝——返回 0（非监听器 ID）并触发 uia.error 事件。
+-- UIA 事件监听请使用 Python（见上方 Python 页签），注册成功返回非 0 的监听器 ID。
 ```
 
 :::
@@ -924,9 +938,8 @@ listener_id = uia.on_structure_changed("列表", on_structure_change)
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local listenerId = wingman.uia.onStructureChanged("列表", function()
-    print("UI 结构发生变化")
-end)
+-- 注意：Lua callable 非线程安全，wingman.uia.on_structure_changed 注册会被拒绝
+-- （返回 0 并触发 uia.error 事件）。请使用 Python 注册 UIA 事件（见上方 Python 页签）。
 ```
 
 :::
@@ -952,14 +965,9 @@ if listener_id:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local listenerId = wingman.uia.onPropertyChanged("按钮", function(prop, val)
-    print("属性变化: " .. prop)
-end)
-
-if listenerId then
-    wingman.uia.removeEventListener(listenerId)
-    print("监听器已移除")
-end
+-- 注意：UIA 事件监听器只能用 Python 注册（Lua callable 非线程安全，注册会被拒绝），
+-- 因此 remove_event_listener 也只能在注册方（Python）中调用：
+-- uia.remove_event_listener(listener_id)
 ```
 
 :::
@@ -968,30 +976,32 @@ end
 
 ## 可用接口
 
+> uia 模块的注册名均为 snake_case，Python 与 Lua 使用相同的函数名：Python 经 `uia.` 前缀属性调用，Lua 经 `wingman.uia.` 前缀调用；UIElement 元素方法 Python 用 `element["方法名"]()`，Lua 用 `element:方法名()`。
+
 ### 根元素获取
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
-| `from_foreground()` | `fromForeground()` | 获取前台窗口的根元素 |
-| `from_window(hwnd)` | `fromWindow(hwnd)` | 从窗口句柄获取根元素 |
-| `from_point(x, y)` | `fromPoint(x, y)` | 从屏幕坐标获取元素 |
+| `from_foreground()` | `from_foreground()` | 获取前台窗口的根元素 |
+| `from_window(hwnd)` | `from_window(hwnd)` | 从窗口句柄获取根元素 |
+| `from_point(x, y)` | `from_point(x, y)` | 从屏幕坐标获取元素 |
 
 ### 通用查找
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
-| `find_by_name(name)` | `findByName(name)` | 按名称查找元素 |
-| `find_by_id(id)` | `findById(id)` | 按 AutomationId 查找 |
-| `find_all_by_control_type(type)` | `findAllByControlType(type)` | 查找所有指定类型的元素 |
-| `wait_for_name(name, timeout)` | `waitForName(name, timeout)` | 等待元素出现 |
+| `find_by_name(name)` | `find_by_name(name)` | 按名称查找元素 |
+| `find_by_id(id)` | `find_by_id(id)` | 按 AutomationId 查找 |
+| `find_all_by_control_type(role)` | `find_all_by_control_type(role)` | 查找所有指定角色的元素（role 为 UIARole 数值，见[对照表](#支持的控件类型与-uiarole-对照)） |
+| `wait_for_name(name, timeout)` | `wait_for_name(name, timeout)` | 等待元素出现 |
 
 ### 专用查找
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
-| `find_button(name)` | `findButton(name)` | 查找按钮控件 |
-| `find_edit(name)` | `findEdit(name)` | 查找编辑框控件 |
-| `find_text(name)` | `findText(name)` | 查找文本控件 |
+| `find_button(name)` | `find_button(name)` | 查找按钮控件 |
+| `find_edit(name)` | `find_edit(name)` | 查找编辑框控件 |
+| `find_text(name)` | `find_text(name)` | 按名称查找（UIARole 无 Text 角色，不做角色过滤，可能命中任意类型） |
 
 ### 事件监听
 
@@ -999,9 +1009,9 @@ end
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
-| `on_property_changed(name, callback)` | `onPropertyChanged(name, callback)` | 注册属性变更监听器 |
-| `on_structure_changed(name, callback)` | `onStructureChanged(name, callback)` | 注册结构变更监听器 |
-| `remove_event_listener(id)` | `removeEventListener(id)` | 移除事件监听器 |
+| `on_property_changed(name, callback)` | `on_property_changed(name, callback)` | 注册属性变更监听器（仅限线程安全 callable，Lua 会被拒绝） |
+| `on_structure_changed(name, callback)` | `on_structure_changed(name, callback)` | 注册结构变更监听器（仅限线程安全 callable，Lua 会被拒绝） |
+| `remove_event_listener(id)` | `remove_event_listener(id)` | 移除事件监听器 |
 
 ---
 
