@@ -13,6 +13,7 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
+#include <chrono>
 #include <thread>
 #include <vector>
 
@@ -485,8 +486,15 @@ CommandResult Agent::handleRemoteCommand(const std::string& command, const Comma
         spdlog::info("Shutting down agent due to remote command");
         // 命令回调内联运行在 RemoteClient 的消息处理线程上，同步 stop() 会
         // 停掉/回收正在执行本回调的线程（EDEADLK），ack 也无法发出——
-        // 先回 ack，stop 移交独立线程收尾
-        std::thread([this]() { stop(); }).detach();
+        // 先回 ack，stop 移交独立线程收尾。
+        // ack 的实际投递发生在本回调返回之后（消息循环统一 send）：高负载下
+        // 分离线程可能抢占先跑到 RemoteClient 停机，传输先断导致 ack 丢失
+        // （AgentLoopbackTest 全并行跑偶发超时的根因）。停机前留一个宽限窗，
+        // 让 µs 级的 ack 投递确定性地先走完。
+        std::thread([this]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            stop();
+        }).detach();
         return CommandResult::ok("agent shutting down");
 
     } else if (command == "list_windows") {
