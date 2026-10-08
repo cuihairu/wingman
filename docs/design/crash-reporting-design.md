@@ -42,8 +42,8 @@
 | macOS | `~/Library/Application Support/wingman/crashes` |
 
 - 目录由 `wingman::platform::appDataDir()`（本批新增，`lib/wingman/src/platform/` 平台层内实现——平台宏只允许出现在该层，边界守卫规则）拼接 `crashes` 得到；`libs/crash` 与 `apps/` 保持零平台宏。
-- 结构：该目录同时是 crashpad **数据库目录**（`CrashReportDatabase` 的 sqlite 元数据 + `reports/*.dmp`）与 metrics 目录（`metadata` 文件）。目录不存在时初始化前创建。
-- 保留策略：本批不做自动清理；设计上 `pendingReports()` 只读枚举，清理策略后续按容量拍板。
+- 结构（2026-10-09 实测确认，fork 数据库布局）：`settings.dat`（数据库设置，含上传关闭位）+ `new/`（写入中）→ `pending/`（完整落盘；无上传时即最终态）→ `completed/`（上传后）+ `attachments/`；metrics 同目录。完整 dump 判定按非空 `.dmp` 文件，`new/` 下的空壳不算。目录不存在时初始化前创建。
+- 保留策略：本批不做自动清理；设计上 `pendingReports()` 只读枚举 `pending/`，清理策略后续按容量拍板。
 
 ## 5. 独立 handler 进程打包
 
@@ -75,13 +75,30 @@
 ## 9. 验收方案（③ 的展开）
 
 1. `wingman-runtime crash-test`：新 CLI 命令（独立文件 `commands/crash_test_command.cpp`，遵循命令拆分惯例），初始化 crashpad 后故意空指针解引用（`wingman::crash::testCrashNullPointer()`，写页 0 触发 SIGSEGV）。
-2. 断言链：进程异常退出 → `crashes/reports/` 出现新 `.dmp` → `dump_syms` 产出符号 → `minidump_stackwalk` 栈顶还原出 `testCrashNullPointer` 帧与源码行。
+2. 断言链：进程异常退出 → `crashes/pending/` 出现完整 `.dmp` → `dump_syms` 产出符号 → `minidump_stackwalk` 栈顶还原出 `testCrashNullPointer` 帧与源码行。
 3. 固化为 `scripts/verify-crashpad.sh`（沿用 `verify-xrecord-desktop.sh` 范式：无 crashpad 构建或工具缺失判「未验证」而非通过）。
 4. 验收证据（脚本输出摘录）回填本档 §10。
 
 ## 10. 验收记录
 
-（待验收后回填：日期、commit、dump 落盘路径、stackwalk 符号化栈摘录。）
+**2026-10-09（Linux 真机，GCC 15.2 / CMake 4.2.3 / kernel 7.0，`scripts/verify-crashpad.sh` 全链 PASS）**
+
+- 环境：`XDG_DATA_HOME` 隔离目录，`wingman-runtime crash-test` exit=139（SIGSEGV）。
+- dump 落盘：`$XDG_DATA_HOME/wingman/crashes/pending/<uuid>.dmp`，14992–17392 bytes，连跑 6/6 成功（见下「偶发首跑」注）。
+- 符号化（rust 实现工具链，与 §6 breakpad 工具同格式互通）：
+  ```bash
+  dump_syms --store <symroot> build/apps/runtime/wingman-runtime
+  minidump-stackwalk --human <dump> <symroot>
+  ```
+  栈顶还原（源码行来自 Debug 构建的 `-g`）：
+  ```
+  Crash reason:  SIGSEGV / SEGV_MAPERR
+  Crash address: 0x0000000000000000
+  Thread 0  (crashed)
+   0  wingman-runtime!wingman::crash::testCrashNullPointer() [crash_client.cpp : 53 + 0x4]
+  ```
+- 排查记录：早期偶发失败为 `new/` 下 0 字节空壳或无文件——构建后首次运行的冷加载时窗内客户端 5s 等待超时（strace 佐证：PTRACE_ATTACH 被占位即失败属 strace 自身抢占 tracer，非产品问题）；稳态 6/6 全过。若 CI/脚本环境复现偶发，可在验收脚本加一次重跑。
+- ptrace 授权链实证：客户端 `prctl(PR_SET_PTRACER, handler_pid)`（yama ptrace_scope=1 下必需）+ handler 双 fork 脱离进程组，均按设计工作。
 
 ## 11. 来源
 
