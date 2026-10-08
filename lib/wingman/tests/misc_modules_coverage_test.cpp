@@ -125,8 +125,9 @@ TEST(SmartTriggerModuleTest, AddConditionAcceptsAllConditionTypeStrings) {
         });
         EXPECT_TRUE((*addCondFn)({ScriptValue::fromString(name), cond}).asBool()) << "type=" << t;
     }
-    // 未知 type 字符串：解析走默认分支，仍成功添加（不抛错）
-    EXPECT_TRUE((*addCondFn)({ScriptValue::fromString(name), makeObj({{"type", ScriptValue::fromString("bogus")}})}).asBool());
+    // 未知 type 字符串：拒绝添加（返回 false），避免枚举落入未初始化状态被按 COLOR_FOUND 误判
+    EXPECT_FALSE((*addCondFn)({ScriptValue::fromString(name), makeObj({{"type", ScriptValue::fromString("bogus")}})}).asBool());
+    EXPECT_FALSE((*addCondFn)({ScriptValue::fromString(name), makeObj({})}).asBool());
 
     (*removeFn)({ScriptValue::fromString(name)});
 }
@@ -163,7 +164,9 @@ TEST(SmartTriggerModuleTest, AddActionAcceptsAllActionTypeStringsAndFields) {
         });
         EXPECT_TRUE((*addActionFn)({ScriptValue::fromString(name), action}).asBool()) << "type=" << t;
     }
-    EXPECT_TRUE((*addActionFn)({ScriptValue::fromString(name), makeObj({{"type", ScriptValue::fromString("bogus")}})}).asBool());
+    // 未知/缺失 type：拒绝添加（返回 false），同 parseCondition 契约
+    EXPECT_FALSE((*addActionFn)({ScriptValue::fromString(name), makeObj({{"type", ScriptValue::fromString("bogus")}})}).asBool());
+    EXPECT_FALSE((*addActionFn)({ScriptValue::fromString(name), makeObj({})}).asBool());
 
     (*removeFn)({ScriptValue::fromString(name)});
 }

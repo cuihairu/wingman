@@ -43,9 +43,9 @@ ModuleDescriptor createOcrModule() {
 // SmartTrigger Module
 // ============================================================================
 namespace {
-// ScriptValue 表 -> TriggerCondition（type 兼容 snake_case 与原大写枚举名）
-TriggerCondition parseCondition(const ScriptValue& v) {
-	TriggerCondition c;
+// ScriptValue 表 -> TriggerCondition（type 兼容 snake_case 与原大写枚举名；
+// 未知/缺失 type 拒绝并返回 false，避免枚举落入未初始化状态被按 COLOR_FOUND 误判）
+bool parseCondition(const ScriptValue& v, TriggerCondition& c) {
 	const ScriptValue* typeVal = v.get("type");
 	const std::string type = typeVal ? typeVal->asString() : "";
 	if (type == "color_found" || type == "COLOR_FOUND") c.type = TriggerConditionType::COLOR_FOUND;
@@ -58,6 +58,7 @@ TriggerCondition parseCondition(const ScriptValue& v) {
 	else if (type == "color_changed" || type == "COLOR_CHANGED") c.type = TriggerConditionType::COLOR_CHANGED;
 	else if (type == "ocr_contains" || type == "OCR_CONTAINS") c.type = TriggerConditionType::OCR_CONTAINS;
 	else if (type == "ocr_equals" || type == "OCR_EQUALS") c.type = TriggerConditionType::OCR_EQUALS;
+	else return false;
 
 	if (const ScriptValue* color = v.get("color")) c.targetColor = toColor(*color);
 	if (const ScriptValue* tol = v.get("tolerance")) c.tolerance = static_cast<int>(tol->asInt());
@@ -66,12 +67,11 @@ TriggerCondition parseCondition(const ScriptValue& v) {
 	if (const ScriptValue* text = v.get("text")) c.targetText = text->asString();
 	if (const ScriptValue* tpl = v.get("template")) c.templatePath = tpl->asString();
 	if (const ScriptValue* tplPath = v.get("templatePath")) c.templatePath = tplPath->asString();
-	return c;
+	return true;
 }
 
-// ScriptValue 表 -> TriggerAction
-TriggerAction parseAction(const ScriptValue& v) {
-	TriggerAction a;
+// ScriptValue 表 -> TriggerAction（同 parseCondition：未知/缺失 type 拒绝）
+bool parseAction(const ScriptValue& v, TriggerAction& a) {
 	const ScriptValue* typeVal = v.get("type");
 	const std::string type = typeVal ? typeVal->asString() : "";
 	if (type == "click" || type == "CLICK") a.type = TriggerActionType::CLICK;
@@ -80,6 +80,7 @@ TriggerAction parseAction(const ScriptValue& v) {
 	else if (type == "lua_script" || type == "LUA_SCRIPT") a.type = TriggerActionType::LUA_SCRIPT;
 	else if (type == "log" || type == "LOG") a.type = TriggerActionType::LOG;
 	else if (type == "stop" || type == "STOP") a.type = TriggerActionType::STOP;
+	else return false;
 
 	if (const ScriptValue* pos = v.get("position")) {
 		if (pos->isObject()) {
@@ -95,7 +96,7 @@ TriggerAction parseAction(const ScriptValue& v) {
 	if (const ScriptValue* delay = v.get("delay")) a.waitMs = static_cast<int>(delay->asInt());
 	if (const ScriptValue* script = v.get("script")) a.luaScript = script->asString();
 	if (const ScriptValue* msg = v.get("message")) a.logMessage = msg->asString();
-	return a;
+	return true;
 }
 } // namespace
 
@@ -110,8 +111,9 @@ ModuleDescriptor createSmartTriggerModule() {
 
 	mod.functions.push_back({"start", [](const std::vector<ScriptValue>& args) -> ScriptValue {
 		auto trigger = SmartTriggerManager::instance().getTrigger(args[0].asString());
-		if (trigger) { trigger->start(); return ScriptValue::fromBool(true); }
-		return ScriptValue::fromBool(false);
+		if (!trigger) return ScriptValue::fromBool(false);
+		// 透传 SmartTrigger::start 的真实结果（已运行/无条件时为 false），不虚报成功
+		return ScriptValue::fromBool(trigger->start());
 	}, "name:string -> bool"});
 
 	mod.functions.push_back({"stop", [](const std::vector<ScriptValue>& args) -> ScriptValue {
@@ -129,7 +131,9 @@ ModuleDescriptor createSmartTriggerModule() {
 		if (args.size() < 2) return ScriptValue::fromBool(false);
 		auto t = SmartTriggerManager::instance().getTrigger(args[0].asString());
 		if (!t) return ScriptValue::fromBool(false);
-		t->addCondition(parseCondition(args[1]));
+		TriggerCondition cond{};
+		if (!parseCondition(args[1], cond)) return ScriptValue::fromBool(false);
+		t->addCondition(cond);
 		return ScriptValue::fromBool(true);
 	}, "name:string, condition:{type:string, color?, tolerance?, threshold?, region?, text?, template?} -> bool"});
 
@@ -137,7 +141,9 @@ ModuleDescriptor createSmartTriggerModule() {
 		if (args.size() < 2) return ScriptValue::fromBool(false);
 		auto t = SmartTriggerManager::instance().getTrigger(args[0].asString());
 		if (!t) return ScriptValue::fromBool(false);
-		t->addAction(parseAction(args[1]));
+		TriggerAction act{};
+		if (!parseAction(args[1], act)) return ScriptValue::fromBool(false);
+		t->addAction(act);
 		return ScriptValue::fromBool(true);
 	}, "name:string, action:{type:string, x?, y?, key?, waitMs?, script?, message?} -> bool"});
 

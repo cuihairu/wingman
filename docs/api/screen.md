@@ -219,7 +219,7 @@ findColor(color: number, region: table, tolerance: number = 10) -> table
 
 **参数**：
 - `color` - 目标颜色（`0xRRGGBB` 整数，或 `{r, g, b}` 对象）
-- `region` - 搜索区域 `{x, y, width, height}`。**必填**（当前实现不提供全屏默认值，缺省会出错）
+- `region` - 搜索区域 `{x, y, width, height}`。**必填**（当前实现不提供全屏默认值；缺参时 findColor 返回 `[nil, false]`、findColors 返回空数组）
 - `tolerance` - 可选，颜色容差（0-255），默认 10
 
 **返回**：二元**数组** `[匹配点, 是否找到]`（不是对象）：
@@ -294,7 +294,7 @@ findColors(color: number, region: table, tolerance: number = 10, maxCount: numbe
 
 **参数**：
 - `color` - 目标颜色（`0xRRGGBB` 整数，或 `{r, g, b}` 对象）
-- `region` - 搜索区域 `{x, y, width, height}`。**必填**（当前实现不提供全屏默认值，缺省会出错）
+- `region` - 搜索区域 `{x, y, width, height}`。**必填**（当前实现不提供全屏默认值；缺参时 findColor 返回 `[nil, false]`、findColors 返回空数组）
 - `tolerance` - 可选，颜色容差（0-255），默认 10
 - `maxCount` - 可选，最多返回的匹配点数量，默认 0（不限制）
 

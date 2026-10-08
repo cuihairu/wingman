@@ -94,7 +94,7 @@ addCondition(triggerName: string, condition: table) -> boolean
 | `template` | str | 否 | 模板图像路径（IMAGE_* 类型使用） |
 
 **返回**：
-- 是否添加成功（触发器不存在或参数不足时返回 `false`）
+- 是否添加成功（触发器不存在、参数不足或 `type` 未知/缺失时返回 `false`）
 
 :::tabs
 
@@ -191,7 +191,7 @@ addAction(triggerName: string, action: table) -> boolean
 | `message` | str | 否 | 日志内容（LOG 使用） |
 
 **返回**：
-- 是否添加成功（触发器不存在或参数不足时返回 `false`）
+- 是否添加成功（触发器不存在、参数不足或 `type` 未知/缺失时返回 `false`）
 
 :::tabs
 
@@ -261,7 +261,7 @@ start(triggerName: string) -> boolean
 - `triggerName` - 触发器名称
 
 **返回**：
-- 当前实现下返回 `true` **仅表示触发器存在**（触发器已在运行或无条件集为空时，底层启动会被拒绝，但脚本层不透出该结果）。判断触发器是否真正进入运行状态，请订阅其动作副作用或结合条件自行确认
+- 是否真正启动成功：`true`=已启动；`false`=触发器不存在、已在运行中（重复启动）或无条件集
 
 ---
 
@@ -511,7 +511,7 @@ print("已触发", count, "次")
 | `create(name)` | `create(name)` | 创建触发器 | name: 触发器名称<br>返回: 是否成功 |
 | `addCondition(name, condition)` | `addCondition(name, condition)` | 添加条件 | name: 触发器名称<br>condition: 条件对象表<br>返回: 是否成功 |
 | `addAction(name, action)` | `addAction(name, action)` | 添加动作 | name: 触发器名称<br>action: 动作对象表<br>返回: 是否成功 |
-| `start(name)` | `start(name)` | 启动触发器 | name: 触发器名称<br>返回: true 仅表示触发器存在 |
+| `start(name)` | `start(name)` | 启动触发器 | name: 触发器名称<br>返回: true=已启动；false=不存在/已在运行/无条件集 |
 | `stop(name)` | `stop(name)` | 停止触发器 | name: 触发器名称<br>返回: 是否成功 |
 | `remove(name)` | `remove(name)` | 移除触发器 | name: 触发器名称 |
 | `isRunning(name)` | `isRunning(name)` | 查询运行状态 | name: 触发器名称<br>返回: 是否运行中 |

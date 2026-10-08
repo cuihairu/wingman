@@ -29,6 +29,7 @@ ModuleDescriptor createScreenModule() {
 	}, "x:int, y:int -> {r,g,b,a}"});
 
 	mod.functions.push_back({"findColor", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.size() < 2) return ScriptValue::fromArray({ScriptValue::null(), ScriptValue::fromBool(false)});
 		Color color = toColor(args[0]);
 		Rect region = toRect(args[1]);
 		int tolerance = args.size() > 2 ? static_cast<int>(args[2].asInt(10)) : 10;
@@ -40,6 +41,7 @@ ModuleDescriptor createScreenModule() {
 	}, "color, region:{x,y,width,height}, tolerance:int -> point, found:bool"});
 
 	mod.functions.push_back({"findColors", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.size() < 2) return ScriptValue::fromArray({});
 		Color color = toColor(args[0]);
 		Rect region = toRect(args[1]);
 		int tolerance = args.size() > 2 ? static_cast<int>(args[2].asInt(10)) : 10;

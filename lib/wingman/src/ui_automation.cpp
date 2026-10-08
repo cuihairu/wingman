@@ -171,6 +171,9 @@ namespace {
 UIAutomation& uia() {
     std::call_once(g_initFlag, []() {
         g_instance = std::make_unique<UIAutomation>();
+        // 生产链路懒初始化：首个脚本调用即尝试建立平台 manager。
+        // 平台不支持或初始化失败仅记录日志，后续调用按未初始化降级（查找返空）。
+        g_instance->initialize();
     });
     return *g_instance;
 }
