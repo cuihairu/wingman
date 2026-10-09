@@ -70,6 +70,10 @@ type FrameListener struct {
 	// agentTokens agent 注册 token 白名单；空 = 关闭注册鉴权（向后兼容）。
 	// 支持 多 token 并存以平滑轮换。见 docs/agent-token-auth-design.md §3。
 	agentTokens []string
+	// tokenStore per-agent token DB 源（A3-P2，§6.2）；nil = 未启用。
+	// 与 env 白名单双源并存：任一命中即放行（演进只加不改），迁移期 env
+	// 兜底、清空 env 后即纯 DB 管理面模式。
+	tokenStore *TokenStore
 }
 
 // agentConn represents a single agent TCP connection.
@@ -131,6 +135,39 @@ func (l *FrameListener) tokenValid(token string) bool {
 		}
 	}
 	return false
+}
+
+// SetTokenStore sets the per-agent token DB source (nil disables DB auth).
+// 与 SetTeamManager 同风格：构造后注入，既有调用方与测试不受影响。
+func (l *FrameListener) SetTokenStore(store *TokenStore) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.tokenStore = store
+}
+
+// getTokenStore returns the DB token source (nil = disabled).
+func (l *FrameListener) getTokenStore() *TokenStore {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.tokenStore
+}
+
+// storeEnabled reports whether the DB token source is configured with at
+// least one issued record (revoked included — revoking the last token must
+// keep auth ON, fail-closed; an empty DB means the source is not in use).
+func (l *FrameListener) storeEnabled() bool {
+	s := l.getTokenStore()
+	if s == nil {
+		return false
+	}
+	ok, err := s.AnyExists()
+	return err == nil && ok
+}
+
+// authRequired reports whether register auth is on: env whitelist or DB
+// token source, either enabled (union; empty env + empty DB = closed).
+func (l *FrameListener) authRequired() bool {
+	return l.authEnabled() || l.storeEnabled()
 }
 
 // SetTeamManager sets the team manager (for testing/customization).
@@ -598,13 +635,18 @@ func (ac *agentConn) handleRegister(msg map[string]any) {
 		}
 	}
 
-	// 注册鉴权（docs/agent-token-auth-design.md §2）：开关开启时校验顶层
-	// token，失败回 ack success:false 后立即断连——不 set agentID、不入
-	// Registry，未授权连接不允许停留在链路上（readLoop 退出时 agentID 为空
-	// 自然跳过 Unregister）。
-	if ac.listener.authEnabled() {
+	// 注册鉴权（docs/agent-token-auth-design.md §2/§6.2）：env 白名单或 DB
+	// token 源任一启用即校验顶层 token，双源并存任一命中放行；失败回
+	// ack success:false 后立即断连——不 set agentID、不入 Registry，未授权
+	// 连接不允许停留在链路上（readLoop 退出时 agentID 为空自然跳过 Unregister）。
+	if ac.listener.authRequired() {
 		token, _ := msg["token"].(string)
-		if !ac.listener.tokenValid(token) {
+		envOK := ac.listener.tokenValid(token)
+		storeOK := false
+		if store := ac.listener.getTokenStore(); store != nil {
+			_, storeOK = store.Verify(token, agentID)
+		}
+		if !envOK && !storeOK {
 			ac.sendNotify("agent.register_ack", map[string]any{
 				"success": false,
 				"agentId": agentID,

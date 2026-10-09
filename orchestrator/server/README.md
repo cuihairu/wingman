@@ -50,6 +50,9 @@
 - `WINGMAN_ADMIN_PASSWORD` 仅用于首次无用户时引导初始化管理员账号
 - `WINGMAN_AGENT_TOKENS` agent 注册 token 白名单（逗号分隔，支持多 token
   并存以平滑轮换）；**空/未设置 = 关闭注册鉴权（默认，向后兼容）**。
+  与 per-agent token DB 源（Dashboard「系统管理 → 注册 Token」签发/吊销，
+  A3-P2）双源并存：任一命中即可注册；存在签发记录（含已吊销）即启用 DB
+  源校验（fail-closed，吊销全部 token 不会关闭鉴权）。
   详见 `docs/agent-token-auth-design.md`
 
 ## 启动

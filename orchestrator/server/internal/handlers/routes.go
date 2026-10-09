@@ -214,6 +214,18 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 			agentsMgmt.DELETE("/agents/:agentId/triggers/:triggerId", triggerHandler.HandleRemove)
 		}
 
+		// 注册 token 管理面（A3-P2；agenttokens:manage 内置角色未授予，默认仅 admin，
+		// docs/agent-token-auth-design.md §6.2）
+		tokenMgmt := api.Group("")
+		tokenMgmt.Use(middleware.PermissionRequired(deps.DB, "agenttokens:manage"))
+		{
+			tokenStore := agent.NewTokenStore(deps.DB)
+			tokenHandler := NewAgentTokenHandler(tokenStore, deps.DB)
+			tokenMgmt.GET("/agent-tokens", tokenHandler.HandleList)
+			tokenMgmt.POST("/agent-tokens", tokenHandler.HandleCreate)
+			tokenMgmt.DELETE("/agent-tokens/:id", tokenHandler.HandleRevoke)
+		}
+
 		// workflows:run
 		workflowsRun := api.Group("")
 		workflowsRun.Use(middleware.PermissionRequired(deps.DB, "workflows:run"))

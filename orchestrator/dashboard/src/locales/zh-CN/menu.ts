@@ -15,4 +15,5 @@ export default {
   'menu.Admin.Roles': '角色管理',
   'menu.Admin.Login Logs': '登录日志',
   'menu.Admin.Operation Logs': '操作日志',
+  'menu.Admin.Agent Tokens': '注册 Token',
 };

@@ -131,6 +131,13 @@ export default [
         component: './Admin/OperationLogs',
         access: 'canAccessAdmin',
       },
+      {
+        path: '/admin/agent-tokens',
+        name: 'Agent Tokens',
+        icon: 'key',
+        component: './Admin/AgentTokens',
+        access: 'canAgentTokenManage',
+      },
     ],
   },
   // 错误页面

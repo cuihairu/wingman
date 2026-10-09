@@ -151,15 +151,28 @@ nightly 用户），鉴权属于部署者显式启用的能力；文档（本文
 
 ---
 
-## 6. P2 演进（设计预留，不在本次实施）
+## 6. P2 演进
 
-1. **challenge-response**：register 后 server 下发 `auth.challenge{nonce}`，
+1. **challenge-response**（未实施）：register 后 server 下发 `auth.challenge{nonce}`，
    agent 回 `HMAC-SHA256(token, nonce)`——token 不离开本机，消除嗅探面。
    C++ 侧需 OpenSSL HMAC（桌面已有依赖；Android NDK 构建需补 openssl 包）。
-2. **per-agent token + 管理面**：token 入 DB，Dashboard（admin RBAC）创建/
-   吊销，register 校验 + 审计落库（WriteAuditLog）。
-3. **TLS 部署形态**：server 前置 TLS 终结或帧协议升级 TLS，一并解决明文
-   命令/脚本下发。
+2. **per-agent token + 管理面**（✅ 已落地，2026-10-10）：
+   - `models.AgentToken` 入 DB（label/sha256 哈希/前缀/可选 agentId 绑定/
+     createdBy/revokedAt/lastSeenAt），明文只在签发响应返回一次；
+   - `agent.TokenStore`：Create/Verify/Revoke/List/AnyExists，校验按哈希
+     constant-time 查库、命中后校验绑定并刷新 lastSeenAt；
+   - listener 双源并存（§6.3 演进只加不改的落点）：env 白名单 ∪ DB 源，
+     任一命中即放行；**DB 源启用口径 = 存在签发记录（含已吊销，
+     fail-closed）**——吊销全部 token 不会静默关闭鉴权；env 清空后即纯
+     DB 管理面模式；
+   - HTTP 管理面 `GET/POST/DELETE /api/agent-tokens`（`agenttokens:manage`
+     权限码，内置角色未授予、默认仅 admin），签发/吊销落审计
+     （`agenttoken.create` / `agenttoken.revoke`）；注册拒绝仍走 server
+     日志（不进审计表，防爆破刷表）；
+   - Dashboard「系统管理 → 注册 Token」页（签发弹窗一次性展示明文 +
+     吊销确认）。
+3. **TLS 部署形态**（未实施）：server 前置 TLS 终结或帧协议升级 TLS，
+   一并解决明文命令/脚本下发。
 
 P1 刻意不引入以上任何一项的半成品：校验点（handleRegister）、token 配置
 形态（环境变量列表）、agent 携带字段（顶层 token）在 P2 全部保持不变，
@@ -174,6 +187,9 @@ P1 刻意不引入以上任何一项的半成品：校验点（handleRegister）
 | config | `WINGMAN_AGENT_TOKENS` 解析（单/多/空/含空白） | ✅ go test |
 | listener | token 正确 → 注册成功；错误/缺失 + 开启 → ack success:false + 断连 + 不入 Registry；关闭开关 → 不校验 | ✅ go test |
 | integration | 开启 token 的真实链路：sim agent 带正确 token 上线、错误 token 被拒 | ✅ go test |
+| token store（P2） | 签发/校验/吊销/绑定/列表不泄哈希；fail-closed（吊销全部仍拒） | ✅ go test |
+| listener（P2） | DB token 放行；吊销后拒绝并断连；双源并存；空库不启用鉴权（兼容） | ✅ go test |
+| HTTP API（P2） | 签发响应明文仅一次；列表不泄哈希；吊销幂等 + 审计 | ✅ go test |
 | C++ | setAuthToken → register payload 含 token；未设置 → 不含字段（编译 + 桌面回归） | ✅ |
 | Android | configJson 传递（代码交付，真机验收见 apps/android/README） | ❌ |
 

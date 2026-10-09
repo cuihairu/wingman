@@ -158,5 +158,7 @@ Android 13 起侧载安装的无障碍被「受限设置」默认屏蔽（开关
   RestrictedSettingsPolicy 引导，同日落地）；断连缓存自治
   自 A1 起由 C++ RemoteClient 现成承担（outbox/重连，agentcore_test 覆盖）。
   token 认证 P1 已于 2026-09-20 落地（见 docs/agent-token-auth-design.md），
-  nightly CI 打 APK、JVM 单测入 build-android job。剩余 A3-P2 安全演进。
+  nightly CI 打 APK、JVM 单测入 build-android job。A3-P2 安全演进部分落地
+  （2026-10-10：per-agent token 服务侧入库 + Dashboard 管理面/审计，agent
+  侧零改动；Keystore 迁移/challenge-response/TLS 未实施）。
 - **A4 多设备编排**：Dashboard 设备视图、批量下发、asset.sync 模板分发。

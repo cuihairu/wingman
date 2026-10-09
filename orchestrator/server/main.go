@@ -92,6 +92,9 @@ func run() error {
 	// agent 注册 token 鉴权（WINGMAN_AGENT_TOKENS，空=关闭；
 	// docs/agent-token-auth-design.md §3）
 	frameListener.SetAgentTokens(cfg.AgentTokens)
+	// per-agent token DB 源（A3-P2 安全演进；docs/agent-token-auth-design.md §6.2）——
+	// 与 env 白名单双源并存：任一命中即放行，清空 env 后即纯 DB 管理面模式
+	frameListener.SetTokenStore(agent.NewTokenStore(db))
 	agentListenAddr := cfg.AgentAddr
 	go func() {
 		if err := frameListener.Start(agentListenAddr); err != nil {

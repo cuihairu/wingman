@@ -23,6 +23,8 @@ export default function access(initialState: { currentUser?: AccessCurrentUser }
     canAgentManage: has('agents:manage') || has('admin'),
     canUserManage: has('users:manage') || has('admin'),
     canRoleManage: has('roles:manage') || has('admin'),
+    // 注册 Token 管理（A3-P2；agenttokens:manage 内置角色未授予，默认仅 admin）
+    canAgentTokenManage: has('agenttokens:manage') || has('admin'),
     // 批量运行/停止脚本与单 agent run 同权限码
     canScriptRun: has('scripts:run') || has('admin'),
     // 远程桌面（Guacamole 像素面）：view=监看+录像检索；control=接管+删录像

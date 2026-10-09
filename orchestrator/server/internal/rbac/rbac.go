@@ -27,6 +27,7 @@ var builtinPermissions = []models.Permission{
 	{Code: "roles:manage", Name: "角色管理", Description: "创建/编辑角色并分配权限", Category: "admin", Builtin: true},
 	{Code: "agents:view", Name: "查看 Agent", Description: "查看 agent 列表与状态", Category: "agent", Builtin: true},
 	{Code: "agents:manage", Name: "管理 Agent", Description: "关闭 agent 等控制操作", Category: "agent", Builtin: true},
+	{Code: "agenttokens:manage", Name: "管理注册 Token", Description: "签发/吊销 agent 注册 token（A3-P2，默认仅 admin）", Category: "admin", Builtin: true},
 	{Code: "scripts:view", Name: "查看脚本", Description: "查看脚本列表与内容", Category: "script", Builtin: true},
 	{Code: "scripts:edit", Name: "编辑脚本", Description: "创建/保存/删除脚本", Category: "script", Builtin: true},
 	{Code: "scripts:run", Name: "运行脚本", Description: "启动/停止脚本", Category: "script", Builtin: true},

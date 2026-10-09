@@ -158,5 +158,6 @@ func AutoMigrate(db *gorm.DB) error {
 		&Permission{},
 		&VaultMaster{},
 		&RemoteCredential{},
+		&AgentToken{},
 	)
 }
