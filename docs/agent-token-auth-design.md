@@ -204,8 +204,26 @@ nightly 用户），鉴权属于部署者显式启用的能力；文档（本文
      日志（不进审计表，防爆破刷表）；
    - Dashboard「系统管理 → 注册 Token」页（签发弹窗一次性展示明文 +
      吊销确认）。
-3. **TLS 部署形态**（未实施）：server 前置 TLS 终结或帧协议升级 TLS，
-   一并解决明文命令/脚本下发。
+3. **TLS 部署形态**（未实施——两形态对比定案，见下）：
+   帧协议当前为裸 TCP（agentcore `asio::ip::tcp::socket` ↔ Go
+   `net.Listener`），TLS 不像 HTTP 可由反代透明叠加，两形态成本/收益：
+   - **形态 A：TCP 层 TLS 终结（部署形态，先行的过渡解）**——
+     nginx `stream {}` 或 stunnel 于 server 前终结 TLS、纯 TCP 转发
+     `server:8888`，agent 侧零改动只改连接地址。caddy/Let's Encrypt 管
+     证书（有域名）或自签（无域名）。收益：命令/脚本下发全程加密；
+     边界：agent 不校验证书（帧协议无 SNI/证书校验钩子），防被动嗅探
+     不防主动 MITM——token 已 challenge HMAC 化，MITM 也拿不到 token，
+     可接受为内网/演示形态。成本：一份 compose + 运维文档，零代码。
+   - **形态 B：帧协议原生 TLS（终态，需立项）**——Go `crypto/tls`
+     Listener + agentcore `asio::ssl::stream`（vcpkg openssl，桌面）+
+     Android `SSLSocket`/NDK openssl（与 §6.1.1「免 OpenSSL」取向冲突，
+     Android 端引包是主要成本）。证书校验取 **PIN 形态**（自签 root
+     fingerprint 内嵌配置，免域名免 ACME，契合内网拓扑），杜绝"关校验"
+     配置项。涉及重连/proxy_tunnel/超时全路径改造 + 双端测试矩阵，
+     按架构决策流程单独评审后立项。
+   - **定案**：A 立即落地作为演示/内网部署指引；B 为公网生产前置条件，
+     与「Dashboard HTTPS」一并纳入部署安全里程碑，不在 P2 token 工程
+     范围内强行捆绑。
 
 P1 刻意不引入以上任何一项的半成品：校验点（handleRegister）、token 配置
 形态（环境变量列表）、agent 携带字段（顶层 token）在 P2 全部保持不变，
