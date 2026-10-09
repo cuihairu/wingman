@@ -1,4 +1,5 @@
 #include "wingman/trigger.hpp"
+#include "wingman/event.hpp"
 #include "wingman/script_manager.hpp"
 #include "wingman/script/script_engine_factory.hpp"
 #include "wingman/script/module_registry.hpp"
@@ -250,8 +251,21 @@ void TriggerManager::checkThread() {
                 firedInstance = *it;
             }
 
-            if (firedInstance && m_onFired) {
-                m_onFired(*firedInstance);
+            if (firedInstance) {
+                // 统一事件源：命中同步分发到 wingman.event（脚本 event.on 订阅面）。
+                // 与 runtime 的 trigger.fired 缓冲推送同源同形；注意 emit 同步执行
+                // 订阅者回调，此行由 watchLoop 线程调用——脚本侧非线程安全 callable
+                // 同受 systemwatch/filewatcher 同款约束。
+                EventHub::instance().emit("trigger.fired", {
+                    {"id", firedInstance->id},
+                    {"name", firedInstance->config.name},
+                    {"type", static_cast<int>(firedInstance->config.condition.type)},
+                    {"triggered", firedInstance->triggered},
+                    {"lastTriggerTime", firedInstance->lastTriggerTime},
+                }, "trigger");
+                if (m_onFired) {
+                    m_onFired(*firedInstance);
+                }
             }
 
             executeActions(actions);

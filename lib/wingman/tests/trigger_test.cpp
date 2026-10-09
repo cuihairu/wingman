@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 #include "wingman/trigger.hpp"
 #include "wingman/trigger_engine.hpp"
+#include "wingman/event.hpp"
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <mutex>
 #include <thread>
 #include <chrono>
 
@@ -382,4 +384,48 @@ TEST_F(TriggerEngineTest, GetStatsEmpty) {
 TEST_F(TriggerEngineTest, EnableDisableWithNoTriggers) {
     EXPECT_FALSE(engine->enableTrigger("any"));
     EXPECT_FALSE(engine->disableTrigger("any"));
+}
+
+// ========== 统一事件源：命中分发到 wingman.event ==========
+// TriggerManager 命中时同步 emit "trigger.fired"（source "trigger"），与
+// runtime 的 EventBuffer 缓冲推送同源。TimeElapsed 触发器走 watchLoop 线程，
+// 断言正向轮询「出现过」，不假设恰一次。
+TEST_F(TriggerTest, FireEmitsUnifiedEvent) {
+    TriggerConfig config;
+    config.name = "emit_test";
+    config.condition.type = TriggerType::TimeElapsed;
+    config.condition.interval = 30;
+    config.condition.enabled = true;
+    config.cooldown = 0; // 无冷却，尽快命中
+    config.enabled = true;
+    config.oneShot = false;
+
+    std::mutex mutex;
+    std::string lastEventName;
+    int firedCount = 0;
+    const uint64_t sub = EventHub::instance().subscribe("trigger.fired",
+        [&](const EventMessage& msg) {
+            std::lock_guard<std::mutex> lock(mutex);
+            lastEventName = msg.payload.value("name", "");
+            ++firedCount;
+        });
+    ASSERT_NE(sub, 0u);
+
+    manager->add(config);
+    manager->start();
+
+    bool got = false;
+    for (int waited = 0; waited < 3000 && !got; waited += 25) {
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            got = firedCount > 0;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+    }
+    manager->stop();
+    EventHub::instance().unsubscribe(sub);
+
+    EXPECT_TRUE(got) << "trigger.fired not emitted to EventHub";
+    std::lock_guard<std::mutex> lock(mutex);
+    EXPECT_EQ(lastEventName, "emit_test");
 }

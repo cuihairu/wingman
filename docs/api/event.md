@@ -394,6 +394,22 @@ message(type: string, payload: any = nil, meta: table = nil) -> table
 
 ---
 
+## 内置事件源
+
+除脚本自行 `emit` 的事件外，以下模块在运行期向总线**同步**分发事件（`event.on` 可直接订阅）。**注意**：这些事件由模块的后台线程（轮询/平台后端）触发，订阅回调也在该线程执行——Lua callable 非线程安全，订阅这类事件请使用 Python 回调；Lua 侧请改用触发器。
+
+| 事件 | source | 载荷 | 说明 |
+|-----|--------|------|-----|
+| `systemwatch.process` | `"systemwatch"` | `{action, pid, name}` | 进程 started/exited（见 [systemwatch](./systemwatch.md)） |
+| `systemwatch.window` | `"systemwatch"` | `{action, handle, title}` | 窗口 opened/closed/changed |
+| `systemwatch.error` | `"systemwatch"` | `{error}` | 观察注册被拒（非线程安全 callable） |
+| `filewatcher.changed` | `"filewatcher"` | `{type, path, oldPath, timestamp}` | 文件变更（见 [filewatcher](./filewatcher.md)） |
+| `filewatcher.error` | `"filewatcher"` | `{error}` | 监听注册被拒（非线程安全 callable） |
+| `trigger.fired` | `"trigger"` | `{id, name, type, triggered, lastTriggerTime}` | 触发器命中（`type` 为 TriggerType 整型值） |
+| `hotkey.error` | `"hotkey"` | `{error}` | 热键注册被拒（非线程安全 callable；热键命中不走事件面，直接回调） |
+
+---
+
 ## 可用接口
 
 | Python 函数 | Lua 函数 | 说明 | 参数 |

@@ -214,7 +214,7 @@
 - [x] 窗口触发器 - 窗口出现/消失
 - [x] 进程触发器 - 进程启动/停止
 - [x] 像素变化触发器
-- [ ] 触发器统一接入 `wingman.event`
+- [x] 触发器统一接入 `wingman.event`（2026-10-09：TriggerManager 命中时同步 emit `trigger.fired`（source `trigger`，载荷 id/name/type/triggered/lastTriggerTime），与 runtime EventBuffer 的 trigger.fired 缓冲推送同源；posix/win 双 fire 点同改；内置事件源已在 docs/api/event.md 列表化）
 
 ### 2.2 触发器动作
 - [x] 发送按键
