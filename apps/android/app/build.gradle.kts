@@ -72,6 +72,8 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
+    // A3-P2：serverToken 走 Keystore 加密库（EncryptedSharedPreferences）
+    implementation("androidx.security:security-crypto:1.0.0")
 
     // A3：可靠性纯逻辑（RestartPolicy/BootStartGate/WatchdogPolicy）的 JVM 单测。
     // android.jar 对 org.json 只部分真实实现（optBoolean 即 stub 抛异常），

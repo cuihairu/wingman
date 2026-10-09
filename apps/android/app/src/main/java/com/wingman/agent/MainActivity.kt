@@ -26,6 +26,8 @@ import org.json.JSONObject
 class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: android.content.SharedPreferences
+    // serverToken 走 Keystore 加密库（A3-P2；装配时一次性迁移旧明文键）
+    private lateinit var tokenStore: SecretStore
     private lateinit var statusView: TextView
     private val uiHandler = Handler(Looper.getMainLooper())
 
@@ -58,6 +60,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         prefs = getSharedPreferences("wingman", MODE_PRIVATE)
+        tokenStore = SecretStores.tokenStore(this, prefs)
 
         val ipView = findViewById<EditText>(R.id.editServerIp)
         val portView = findViewById<EditText>(R.id.editServerPort)
@@ -67,7 +70,7 @@ class MainActivity : AppCompatActivity() {
         ipView.setText(prefs.getString("serverIp", "192.168.1.10"))
         portView.setText(prefs.getInt("serverPort", 8888).toString())
         agentView.setText(prefs.getString("agentId", "android-" + android.os.Build.MODEL))
-        tokenView.setText(prefs.getString("serverToken", ""))
+        tokenView.setText(tokenStore.read())
 
         findViewById<Button>(R.id.btnStart).setOnClickListener {
             saveConfig(ipView, portView, agentView, tokenView)
@@ -170,8 +173,9 @@ class MainActivity : AppCompatActivity() {
             .putString("serverIp", ipView.text.toString().trim())
             .putInt("serverPort", portView.text.toString().trim().toIntOrNull() ?: 8888)
             .putString("agentId", agentView.text.toString().trim())
-            .putString("serverToken", tokenView.text.toString().trim())
             .apply()
+        // token 不落明文库，走 Keystore 加密库（A3-P2）
+        tokenStore.write(tokenView.text.toString().trim())
     }
 
     private fun formatStatus(json: String): String {

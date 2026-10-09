@@ -54,6 +54,9 @@ class WingmanService : Service() {
     }
 
     private lateinit var prefs: SharedPreferences
+    // serverToken 走 Keystore 加密库（A3-P2；SecretStores.tokenStore 装配时
+    // 一次性迁移旧明文键）
+    private lateinit var tokenStore: SecretStore
     private var captureManager: ScreenCaptureManager? = null
     private val watchdogHandler = Handler(Looper.getMainLooper())
 
@@ -78,6 +81,7 @@ class WingmanService : Service() {
     override fun onCreate() {
         super.onCreate()
         prefs = getSharedPreferences("wingman", MODE_PRIVATE)
+        tokenStore = SecretStores.tokenStore(this, prefs)
         createChannel()
     }
 
@@ -175,8 +179,8 @@ class WingmanService : Service() {
             put("hostname", Build.MODEL)
             put("platform", "android")
             put("capabilitiesJson", capabilities.toString())
-            // 注册鉴权 token（可空；server 开启 WINGMAN_AGENT_TOKENS 时必填）
-            put("authToken", prefs.getString("serverToken", "") ?: "")
+            // 注册鉴权 token（可空；server 开启鉴权时必填；Keystore 加密库读）
+            put("authToken", tokenStore.read())
             // A2：模板图根目录（wingman.vision.findImage 相对路径解析根）
             put("filesDir", getExternalFilesDir(null)?.absolutePath ?: "")
         }

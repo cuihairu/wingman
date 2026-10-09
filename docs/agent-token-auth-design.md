@@ -132,8 +132,11 @@ agent                                server
   （进入 C++ 后仍以 wire 字段 `token` 携带上报），`WingmanService` 从
   SharedPreferences 读 `serverToken` 传入；
 - token 存储：P1 用 SharedPreferences（与 server 地址同级的信任级别，
-  部署者手输）；迁移 Android Keystore / EncryptedSharedPreferences 属
-  A3 后续加固，不阻塞本设计。
+  部署者手输）；✅ 已迁移 Android Keystore（2026-10-10，A3-P2）：
+  `EncryptedSecretStore`（EncryptedSharedPreferences，AES256-GCM 主密钥
+  入 AndroidKeyStore）+ 一次性明文迁移（`SecretStores.migrateToken`，
+  JVM 单测覆盖；确保 secure 持有值后即清除明文残留；EncryptedSettings
+  初始化失败回退明文库保可用）.
 
 ---
 
