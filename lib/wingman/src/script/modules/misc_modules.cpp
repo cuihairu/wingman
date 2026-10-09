@@ -530,6 +530,41 @@ ModuleDescriptor createUIAutomationModule() {
 		return makeUiaElementObject(uia().find(UIASelector{}.withName(name)));
 	}, "name:string -> UIElement?"});
 
+	mod.functions.push_back({"find_check_box", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::CheckBox).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_radio_button", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::RadioButton).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_combo_box", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::ComboBox).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_list", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::ListBox).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_list_item", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::ListItem).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_tree", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::Tree).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_tree_item", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::TreeItem).withName(name)));
+	}, "name:string -> UIElement?"});
+
 	// ===== 事件监听 =====
 	// UIA 事件回调从后台线程触发（Win UIA RPC / Mac AXObserver run loop），
 	// 非线程安全 callable（如 Lua）跨线程调用会崩溃，故用 callableThreadSafe 门控（仿 task_module async 检查）。

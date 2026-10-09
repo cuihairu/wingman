@@ -2,7 +2,7 @@
 
 UI Automation 模块，用于与 UI 控件进行自动化交互。
 
-> [**已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`）+ 专用查找（`find_button`/`find_edit`/`find_text`）+ UIElement 对象 12 方法（`get_info`/`click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`）+ 事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`）。支持 **Windows UIAutomation（COM 事件处理线程）+ macOS Accessibility（AXObserver run loop）** 双平台（Linux 暂不支持）。]
+> [**已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`）+ 专用查找（`find_button`/`find_edit`/`find_text`/`find_check_box`/`find_radio_button`/`find_combo_box`/`find_list`/`find_list_item`/`find_tree`/`find_tree_item`）+ UIElement 对象 12 方法（`get_info`/`click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`）+ 事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`）。支持 **Windows UIAutomation（COM 事件处理线程）+ macOS Accessibility（AXObserver run loop）** 双平台（Linux 暂不支持）。]
 
 ## 什么是 UI Automation
 
@@ -1002,6 +1002,15 @@ local wingman = require("wingman")
 | `find_button(name)` | `find_button(name)` | 查找按钮控件 |
 | `find_edit(name)` | `find_edit(name)` | 查找编辑框控件 |
 | `find_text(name)` | `find_text(name)` | 按名称查找（UIARole 无 Text 角色，不做角色过滤，可能命中任意类型） |
+| `find_check_box(name)` | `find_check_box(name)` | 查找复选框控件（CheckBox 角色） |
+| `find_radio_button(name)` | `find_radio_button(name)` | 查找单选按钮控件（RadioButton 角色） |
+| `find_combo_box(name)` | `find_combo_box(name)` | 查找下拉框控件（ComboBox 角色） |
+| `find_list(name)` | `find_list(name)` | 查找列表控件（ListBox 角色） |
+| `find_list_item(name)` | `find_list_item(name)` | 查找列表项控件（ListItem 角色） |
+| `find_tree(name)` | `find_tree(name)` | 查找树形控件（Tree 角色） |
+| `find_tree_item(name)` | `find_tree_item(name)` | 查找树节点控件（TreeItem 角色） |
+
+> **未实现（计划中）**：`find_tab(name)` / `find_tab_item(name)`（Tab 角色未在 `UIARole` 枚举中收录）；`get_parent()`（C++ 层 `IUIAElement` 无父节点接口）；`select_item()` / `get_selection()`（C++ 层无编程选中接口，选中请用 `click()`）。
 
 ### 事件监听
 

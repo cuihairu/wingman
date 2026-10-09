@@ -64,6 +64,14 @@ TEST(UiaModuleGlueTest, AllFindFunctionsReturnNullWithoutBackend) {
     EXPECT_TRUE(call(mod, "find_button", {ScriptValue::fromString("OK")}).isNull());
     EXPECT_TRUE(call(mod, "find_edit", {ScriptValue::fromString("user")}).isNull());
     EXPECT_TRUE(call(mod, "find_text", {ScriptValue::fromString("hello")}).isNull());
+    // 控件专用查找（CheckBox/RadioButton/ComboBox/ListBox/ListItem 角色）
+    EXPECT_TRUE(call(mod, "find_check_box", {ScriptValue::fromString("agree")}).isNull());
+    EXPECT_TRUE(call(mod, "find_radio_button", {ScriptValue::fromString("opt")}).isNull());
+    EXPECT_TRUE(call(mod, "find_combo_box", {ScriptValue::fromString("city")}).isNull());
+    EXPECT_TRUE(call(mod, "find_list", {ScriptValue::fromString("items")}).isNull());
+    EXPECT_TRUE(call(mod, "find_list_item", {ScriptValue::fromString("row1")}).isNull());
+    EXPECT_TRUE(call(mod, "find_tree", {ScriptValue::fromString("tree")}).isNull());
+    EXPECT_TRUE(call(mod, "find_tree_item", {ScriptValue::fromString("node")}).isNull());
     EXPECT_TRUE(call(mod, "wait_for_name",
                      {ScriptValue::fromString("never"), ScriptValue::fromInt(1)}).isNull());
 

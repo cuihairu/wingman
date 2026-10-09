@@ -594,13 +594,13 @@
 > 未实现——uia 模块实注册仅 13 个函数，见
 > `lib/wingman/src/script/modules/misc_modules.cpp:466-580`；下列 find* 控件查找函数在码中不存在，勾选状态按证据回退（2026-10-08 审计修正）。
 
-- [ ] 添加 `findCheckBox(name)` - 查找复选框
-- [ ] 添加 `findRadioButton(name)` - 查找单选按钮
-- [ ] 添加 `findComboBox(name)` - 查找下拉框
-- [ ] 添加 `findList(name)` - 查找列表
-- [ ] 添加 `findListItem(name)` - 查找列表项
+- [x] 添加 `findCheckBox(name)` - 查找复选框（2026-10-09：脚本层 `find_check_box`，CheckBox 角色过滤）
+- [x] 添加 `findRadioButton(name)` - 查找单选按钮（2026-10-09：`find_radio_button`，RadioButton 角色）
+- [x] 添加 `findComboBox(name)` - 查找下拉框（2026-10-09：`find_combo_box`，ComboBox 角色）
+- [x] 添加 `findList(name)` - 查找列表（2026-10-09：`find_list`，ListBox 角色）
+- [x] 添加 `findListItem(name)` - 查找列表项（2026-10-09：`find_list_item`，ListItem 角色）
 - [ ] 添加 `findTab(name)` / `findTabItem(name)` - 查找标签页
-- [ ] 添加 `findTree(name)` / `findTreeItem(name)` - 查找树形控件
+- [x] 添加 `findTree(name)` / `findTreeItem(name)` - 查找树形控件（2026-10-09：`find_tree`/`find_tree_item`，Tree/TreeItem 角色）
 - [ ] 添加 `findMenuItem(name)` - 查找菜单项
 - [ ] 添加 `findHyperlink(name)` - 查找超链接
 - [ ] 添加 `findImage(name)` - 查找图像
