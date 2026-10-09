@@ -7,6 +7,8 @@
 #include <atomic>
 #include <mutex>
 
+#include "wingman/event.hpp"
+
 #ifdef __APPLE__
 #include <CoreFoundation/CoreFoundation.h>
 #endif
@@ -46,6 +48,31 @@ struct RecordedEvent {
     std::string text;      // Input text
     int delay;             // Delay time
 };
+
+// RecordedEventType → 事件载荷字符串（macro.recorded 事件用）
+inline const char* recordedEventTypeName(RecordedEventType type) {
+    switch (type) {
+        case RecordedEventType::MouseMove:  return "mouse_move";
+        case RecordedEventType::MouseClick: return "mouse_click";
+        case RecordedEventType::MouseDown:  return "mouse_down";
+        case RecordedEventType::MouseUp:    return "mouse_up";
+        case RecordedEventType::Scroll:     return "scroll";
+        case RecordedEventType::KeyDown:    return "key_down";
+        case RecordedEventType::KeyUp:      return "key_up";
+        case RecordedEventType::Type:       return "type";
+        case RecordedEventType::Delay:      return "delay";
+    }
+    return "unknown";
+}
+
+// 宏状态事件统一分发到 wingman.event（source "macro"）：三平台 recorder 实现
+// 共用此内联助手，避免逐文件重复 emit 代码。state ∈ idle/recording/paused/
+// playing/stopped。注意 emit 同步执行订阅者回调——状态点由脚本调用线程或其
+// 内部工作线程触发，脚本侧非线程安全 callable 同受 systemwatch 同款约束。
+inline void emitMacroState(const char* state) {
+    EventHub::instance().emit("macro.state", {{"state", state}}, "macro");
+}
+
 
 // Macro recorder
 class MacroRecorder {

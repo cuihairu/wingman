@@ -55,6 +55,8 @@ void MacroRecorder::start() {
     // 低层钩子必须在装钩子的线程上跑消息循环才会触发回调。
     // 因此在独立线程里装钩子 + GetMessage 循环；stop 时 PostThreadMessage(WM_QUIT) 唤醒。
     m_hookThread = std::thread([this]() { hookThreadMain(); });
+
+    emitMacroState("recording");
 }
 
 void MacroRecorder::stop() {
@@ -70,6 +72,8 @@ void MacroRecorder::stop() {
         m_hookThread.join();
     }
     m_hookThreadId = 0;
+
+    emitMacroState("stopped");
 }
 
 void MacroRecorder::hookThreadMain() {
@@ -109,10 +113,12 @@ void MacroRecorder::hookThreadMain() {
 
 void MacroRecorder::pause() {
     m_paused = true;
+    emitMacroState("paused");
 }
 
 void MacroRecorder::resume() {
     m_paused = false;
+    emitMacroState("recording");
 }
 
 void MacroRecorder::clear() {
@@ -263,6 +269,8 @@ void MacroRecorder::playback(int speed, int repeat) const {
     }
     if (snapshot.empty()) return;
 
+    emitMacroState("playing");
+
     for (int r = 0; r < repeat; ++r) {
         DWORD lastTimestamp = static_cast<DWORD>(snapshot[0].timestamp);
 
@@ -305,6 +313,8 @@ void MacroRecorder::playback(int speed, int repeat) const {
             lastTimestamp = static_cast<DWORD>(event.timestamp);
         }
     }
+
+    emitMacroState("stopped");
 }
 
 LRESULT WINAPI MacroRecorder::mouseHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
@@ -385,8 +395,15 @@ void MacroRecorder::recordEvent(const RecordedEvent& event) {
     }
 
     m_events.push_back(event);
+
+    // 录制事件流导出：每条落库事件同步发 macro.recorded（source "macro"）。
+    // 本函数由低层钩子线程调用，emit 同步跑订阅者回调——脚本侧非线程安全
+    // callable 同受 systemwatch 同款约束。
+    EventHub::instance().emit("macro.recorded", {
+        {"type", recordedEventTypeName(event.type)},
+        {"x", event.x},
+        {"y", event.y},
+        {"keyCode", event.keyCode},
+        {"timestamp", event.timestamp},
+    }, "macro");
 }
-
-} // namespace wingman
-
-#endif // _WIN32

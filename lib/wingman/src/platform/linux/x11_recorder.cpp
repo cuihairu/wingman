@@ -237,6 +237,8 @@ void MacroRecorder::start() {
         stop();  // 复用清理：join 线程 + disable/free context + close display + 还原 handler
         return;
     }
+
+    emitMacroState("recording");
 }
 
 void MacroRecorder::stop() {
@@ -260,14 +262,18 @@ void MacroRecorder::stop() {
         // 录制期结束，归还进程级 error handler
         XSetErrorHandler(g_previousXHandler);
     }
+
+    emitMacroState("stopped");
 }
 
 void MacroRecorder::pause() {
     m_paused = true;
+    emitMacroState("paused");
 }
 
 void MacroRecorder::resume() {
     m_paused = false;
+    emitMacroState("recording");
 }
 
 void MacroRecorder::clear() {
@@ -390,6 +396,8 @@ bool MacroRecorder::loadFromJSON(const std::string& filepath) {
 void MacroRecorder::playback(int speed, int repeat) const {
     if (m_events.empty()) return;
 
+    emitMacroState("playing");
+
     for (int r = 0; r < repeat; ++r) {
         unsigned long lastTimestamp = m_events[0].timestamp;
 
@@ -432,6 +440,8 @@ void MacroRecorder::playback(int speed, int repeat) const {
             lastTimestamp = event.timestamp;
         }
     }
+
+    emitMacroState("stopped");
 }
 
 MacroRecorder* MacroRecorder::getInstance() {
@@ -447,6 +457,16 @@ void MacroRecorder::recordEvent(const RecordedEvent& event) {
     }
 
     m_events.push_back(event);
+
+    // 录制事件流导出：每条落库事件同步发 macro.recorded（source "macro"）。
+    // 仅此一处（去重后的 MouseMove 提前返回，不发同型抖动事件）。
+    EventHub::instance().emit("macro.recorded", {
+        {"type", recordedEventTypeName(event.type)},
+        {"x", event.x},
+        {"y", event.y},
+        {"keyCode", event.keyCode},
+        {"timestamp", event.timestamp},
+    }, "macro");
 }
 
 size_t MacroRecorder::getEventCount() const {

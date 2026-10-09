@@ -236,6 +236,8 @@ void MacroRecorder::start() {
 
     CFRunLoopAddSource(CFRunLoopGetCurrent(), m_runLoopSource, kCFRunLoopCommonModes);
     CGEventTapEnable(m_eventTap, true);
+
+    emitMacroState("recording");
 }
 
 void MacroRecorder::stop() {
@@ -264,14 +266,18 @@ void MacroRecorder::stop() {
         m_eventTap = nullptr;
         g_eventTap = nullptr;
     }
+
+    emitMacroState("stopped");
 }
 
 void MacroRecorder::pause() {
     m_paused = true;
+    emitMacroState("paused");
 }
 
 void MacroRecorder::resume() {
     m_paused = false;
+    emitMacroState("recording");
 }
 
 void MacroRecorder::clear() {
@@ -412,6 +418,8 @@ void MacroRecorder::playback(int speed, int repeat) const {
     const auto events = getEventsSnapshot();
     if (events.empty()) return;
 
+    emitMacroState("playing");
+
     for (int r = 0; r < repeat; ++r) {
         unsigned long lastTimestamp = events[0].timestamp;
 
@@ -454,6 +462,8 @@ void MacroRecorder::playback(int speed, int repeat) const {
             lastTimestamp = event.timestamp;
         }
     }
+
+    emitMacroState("stopped");
 }
 
 MacroRecorder* MacroRecorder::getInstance() {
@@ -470,6 +480,15 @@ void MacroRecorder::recordEvent(const RecordedEvent& event) {
     }
 
     m_events.push_back(event);
+
+    // 录制事件流导出：每条落库事件同步发 macro.recorded（source "macro"）。
+    EventHub::instance().emit("macro.recorded", {
+        {"type", recordedEventTypeName(event.type)},
+        {"x", event.x},
+        {"y", event.y},
+        {"keyCode", event.keyCode},
+        {"timestamp", event.timestamp},
+    }, "macro");
 }
 
 size_t MacroRecorder::getEventCount() const {

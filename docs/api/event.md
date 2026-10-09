@@ -407,6 +407,8 @@ message(type: string, payload: any = nil, meta: table = nil) -> table
 | `filewatcher.error` | `"filewatcher"` | `{error}` | 监听注册被拒（非线程安全 callable） |
 | `trigger.fired` | `"trigger"` | `{id, name, type, triggered, lastTriggerTime}` | 触发器命中（`type` 为 TriggerType 整型值） |
 | `trigger.action` | `"trigger"` | `{id, name, actionCount}` | 触发器动作执行完成（一次命中一条） |
+| `macro.state` | `"macro"` | `{state}` | 宏录制/回放状态（`state` ∈ `recording`/`paused`/`playing`/`stopped`；见 [macro](./macro.md)） |
+| `macro.recorded` | `"macro"` | `{type, x, y, keyCode, timestamp}` | 录制事件流（每条落库事件一条；`type` 为 `mouse_move`/`key_down`/`type` 等） |
 | `hotkey.error` | `"hotkey"` | `{error}` | 热键注册被拒（非线程安全 callable；热键命中不走事件面，直接回调） |
 
 ---

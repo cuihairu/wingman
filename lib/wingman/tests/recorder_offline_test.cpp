@@ -15,7 +15,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <mutex>
 #include <sstream>
+#include <string>
+#include <vector>
 
 using wingman::MacroRecorder;
 using wingman::RecordedEvent;
@@ -170,6 +173,46 @@ TEST(MacroRecorderOffline, PlaybackInjectsThroughXTest) {
     const auto pos = input->getMousePosition();
     EXPECT_LE(std::abs(pos.x - 640), 2);
     EXPECT_LE(std::abs(pos.y - 480), 2);
+}
+
+TEST(MacroRecorderOffline, EmitsRecordedAndStateEvents) {
+    // 录制事件流导出 + 状态事件统一事件源：recordEvent → macro.recorded（每条），
+    // pause/resume/playback → macro.state（source "macro"）。
+    wingman::EventHub& hub = wingman::EventHub::instance();
+    std::mutex mutex;
+    std::vector<std::string> recordedTypes;
+    std::vector<std::string> states;
+    const uint64_t subRec = hub.subscribe("macro.recorded", [&](const wingman::EventMessage& msg) {
+        std::lock_guard<std::mutex> lock(mutex);
+        recordedTypes.push_back(msg.payload.value("type", ""));
+    });
+    const uint64_t subState = hub.subscribe("macro.state", [&](const wingman::EventMessage& msg) {
+        std::lock_guard<std::mutex> lock(mutex);
+        states.push_back(msg.payload.value("state", ""));
+    });
+    ASSERT_NE(subRec, 0u);
+    ASSERT_NE(subState, 0u);
+
+    MacroRecorder rec;
+    rec.recordEvent(makeEvent(RecordedEventType::MouseMove, 10, 10, 0));
+    rec.recordEvent(makeEvent(RecordedEventType::KeyDown, 0, 0, 5, 0, 65));
+    rec.pause();
+    rec.resume();
+    rec.playback(100, 1);  // 有事件 → emit playing + stopped（无输入注入干扰：Move 无坐标差）
+
+    hub.unsubscribe(subRec);
+    hub.unsubscribe(subState);
+
+    std::lock_guard<std::mutex> lock(mutex);
+    ASSERT_EQ(recordedTypes.size(), 2u);
+    EXPECT_EQ(recordedTypes[0], "mouse_move");
+    EXPECT_EQ(recordedTypes[1], "key_down");
+    // 状态序列：paused → recording → playing → stopped
+    ASSERT_GE(states.size(), 4u);
+    EXPECT_EQ(states[0], "paused");
+    EXPECT_EQ(states[1], "recording");
+    EXPECT_EQ(states[2], "playing");
+    EXPECT_EQ(states[3], "stopped");
 }
 
 TEST(MacroRecorderOffline, StartFailsGracefullyWithoutRecordExtension) {

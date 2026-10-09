@@ -241,8 +241,8 @@
 - [x] `macro.save(name, path)` - 保存宏
 - [x] 回放速度控制
 - [x] 循环播放
-- [ ] 宏录制事件流导出
-- [ ] 宏回放状态事件
+- [x] 宏录制事件流导出（2026-10-09：recordEvent 每条落库事件同步 emit `macro.recorded`（source `macro`，载荷 type/x/y/keyCode/timestamp）；三平台 recorder 实现同改，去重后的 MouseMove 不发同型抖动）
+- [x] 宏回放状态事件（2026-10-09：start/stop/pause/resume/playback 发 `macro.state`（source `macro`，载荷 state ∈ recording/paused/playing/stopped）；三平台 recorder 实现同改）
 
 ---
 
