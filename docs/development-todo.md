@@ -223,7 +223,7 @@
 - [x] 播放声音
 - [x] 执行 Lua 函数 (RunScript 动作)
 - [x] 日志输出 (Log 动作)
-- [ ] 触发器动作事件通知
+- [x] 触发器动作事件通知（2026-10-09：动作执行完 emit `trigger.action`（source `trigger`，载荷 id/name/actionCount），与 `trigger.fired` 区分——fired=条件命中、action=动作执行完成；posix/win 双 fire 点同改）
 
 ---
 

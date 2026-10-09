@@ -406,6 +406,7 @@ message(type: string, payload: any = nil, meta: table = nil) -> table
 | `filewatcher.changed` | `"filewatcher"` | `{type, path, oldPath, timestamp}` | 文件变更（见 [filewatcher](./filewatcher.md)） |
 | `filewatcher.error` | `"filewatcher"` | `{error}` | 监听注册被拒（非线程安全 callable） |
 | `trigger.fired` | `"trigger"` | `{id, name, type, triggered, lastTriggerTime}` | 触发器命中（`type` 为 TriggerType 整型值） |
+| `trigger.action` | `"trigger"` | `{id, name, actionCount}` | 触发器动作执行完成（一次命中一条） |
 | `hotkey.error` | `"hotkey"` | `{error}` | 热键注册被拒（非线程安全 callable；热键命中不走事件面，直接回调） |
 
 ---

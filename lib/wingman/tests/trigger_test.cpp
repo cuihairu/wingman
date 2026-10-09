@@ -386,9 +386,9 @@ TEST_F(TriggerEngineTest, EnableDisableWithNoTriggers) {
     EXPECT_FALSE(engine->disableTrigger("any"));
 }
 
-// ========== 统一事件源：命中分发到 wingman.event ==========
-// TriggerManager 命中时同步 emit "trigger.fired"（source "trigger"），与
-// runtime 的 EventBuffer 缓冲推送同源。TimeElapsed 触发器走 watchLoop 线程，
+// ========== 统一事件源：命中/动作分发到 wingman.event ==========
+// TriggerManager 命中时同步 emit "trigger.fired"，动作执行完 emit
+// "trigger.action"（source "trigger"）。TimeElapsed 触发器走 watchLoop 线程，
 // 断言正向轮询「出现过」，不假设恰一次。
 TEST_F(TriggerTest, FireEmitsUnifiedEvent) {
     TriggerConfig config;
@@ -399,17 +399,29 @@ TEST_F(TriggerTest, FireEmitsUnifiedEvent) {
     config.cooldown = 0; // 无冷却，尽快命中
     config.enabled = true;
     config.oneShot = false;
+    // 一个 Log 动作（不依赖输入/外部程序），命中后动作可执行完
+    TriggerActionData logAction;
+    logAction.type = BasicTriggerAction::Log;
+    logAction.value = "emit_test_action";
+    config.actions.push_back(logAction);
 
     std::mutex mutex;
     std::string lastEventName;
     int firedCount = 0;
-    const uint64_t sub = EventHub::instance().subscribe("trigger.fired",
+    int actionCount = 0;
+    const uint64_t subFired = EventHub::instance().subscribe("trigger.fired",
         [&](const EventMessage& msg) {
             std::lock_guard<std::mutex> lock(mutex);
             lastEventName = msg.payload.value("name", "");
             ++firedCount;
         });
-    ASSERT_NE(sub, 0u);
+    const uint64_t subAction = EventHub::instance().subscribe("trigger.action",
+        [&](const EventMessage& msg) {
+            std::lock_guard<std::mutex> lock(mutex);
+            ++actionCount;
+        });
+    ASSERT_NE(subFired, 0u);
+    ASSERT_NE(subAction, 0u);
 
     manager->add(config);
     manager->start();
@@ -418,14 +430,17 @@ TEST_F(TriggerTest, FireEmitsUnifiedEvent) {
     for (int waited = 0; waited < 3000 && !got; waited += 25) {
         {
             std::lock_guard<std::mutex> lock(mutex);
-            got = firedCount > 0;
+            got = firedCount > 0 && actionCount > 0;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(25));
     }
     manager->stop();
-    EventHub::instance().unsubscribe(sub);
+    EventHub::instance().unsubscribe(subFired);
+    EventHub::instance().unsubscribe(subAction);
 
-    EXPECT_TRUE(got) << "trigger.fired not emitted to EventHub";
+    EXPECT_TRUE(got) << "trigger.fired/action not emitted to EventHub";
     std::lock_guard<std::mutex> lock(mutex);
     EXPECT_EQ(lastEventName, "emit_test");
+    EXPECT_GT(firedCount, 0);
+    EXPECT_GT(actionCount, 0);
 }

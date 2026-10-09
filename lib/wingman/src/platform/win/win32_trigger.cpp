@@ -269,6 +269,17 @@ void TriggerManager::checkThread() {
             }
 
             executeActions(actions);
+
+            if (firedInstance) {
+                // 动作执行完发 trigger.action（一次命中一条，承载动作条数）——
+                // 供脚本/GUI 感知「触发已执行动作」，与 trigger.fired 区分：
+                // fired = 条件命中，action = 动作执行完成。
+                EventHub::instance().emit("trigger.action", {
+                    {"id", firedInstance->id},
+                    {"name", firedInstance->config.name},
+                    {"actionCount", actions.size()},
+                }, "trigger");
+            }
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
