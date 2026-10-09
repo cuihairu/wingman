@@ -411,6 +411,8 @@ message(type: string, payload: any = nil, meta: table = nil) -> table
 | `macro.recorded` | `"macro"` | `{type, x, y, keyCode, timestamp}` | 录制事件流（每条落库事件一条；`type` 为 `mouse_move`/`key_down`/`type` 等） |
 | `hotkey.error` | `"hotkey"` | `{error}` | 热键注册被拒（非线程安全 callable；热键命中不走事件面，直接回调） |
 
+**转投到 GUI**：runtime 内的 `installSystemEventBridge` 会把上表全部事件原样转投本地 IPC 事件缓冲（method 与事件名一致），GUI 经 RPC `events.drain` 拉取后驱动界面展示（见 [protocols.md](../protocols.md)）。
+
 ---
 
 ## 可用接口

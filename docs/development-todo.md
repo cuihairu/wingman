@@ -259,7 +259,7 @@
 - [x] 文件输出
 - [x] 控制台输出
 - [ ] 性能统计
-- [ ] 事件通知桥接
+- [x] 事件通知桥接（2026-10-09：新增 `installSystemEventBridge`——把 EventHub 统一系统事件源（systemwatch.*/filewatcher.*/trigger.fired/trigger.action/macro.state/macro.recorded）原样转投 EventBuffer，method 与事件名一一对应；GUI 经 `events.drain` 拉取；与托盘桥接互补，幂等安装）
 
 ---
 

@@ -15,4 +15,12 @@ namespace wingman::runtime {
 /// 进程级单例，与 runtime 同生命周期）。
 void installNotifyBridge();
 
+/// 订阅 EventHub 的统一系统事件源（systemwatch.* / filewatcher.* /
+/// trigger.fired / trigger.action / macro.state / macro.recorded），原样
+/// 转投 EventBuffer（method 与事件名一致），GUI 经 `events.drain` 拉取。
+/// 与托盘桥接的差异：不改名（notify.* 桥接会剥前缀）。
+///
+/// 幂等：重复调用不重复订阅（订阅名 "system_event_bridge"）。常驻无 uninstall。
+void installSystemEventBridge();
+
 } // namespace wingman::runtime

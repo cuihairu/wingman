@@ -20,6 +20,7 @@ add_executable(runtime_tests
     standalone_mode_coverage_test.cpp
     # notify.tray.* 意图 → EventBuffer 桥（命名去前缀/透传/幂等安装）
     notify_bridge_test.cpp
+    system_event_bridge_test.cpp
     cli_test_stubs.cpp
     ../src/cli.cpp
     ../src/packer.cpp
@@ -29,6 +30,7 @@ add_executable(runtime_tests
     ../src/standalone_mode.cpp
     ../src/local_ipc_server.cpp
     ../src/notify_bridge.cpp
+    ../src/system_event_bridge.cpp
     ../src/rpc/handlers/script_handler.cpp
     ../src/rpc/handlers/system_handler.cpp
     ../src/rpc/handlers/config_handler.cpp

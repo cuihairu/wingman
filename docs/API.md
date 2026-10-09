@@ -245,7 +245,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 ```
 
 #### events.drain
-拉取本地事件流（GUI 轮询）。事件 method 集合：`tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip`（脚本托盘意图）、`trigger.fired`、`script.state_changed`、`script.output`、`connection.ipc_client`。参数 `max`（默认 500，单次拉取上限）。返回：
+拉取本地事件流（GUI 轮询）。事件 method 集合：`tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip`（脚本托盘意图）、`trigger.fired`/`trigger.action`、`systemwatch.process`/`systemwatch.window`/`systemwatch.error`、`filewatcher.changed`/`filewatcher.error`、`macro.state`/`macro.recorded`、`script.state_changed`、`script.output`、`connection.ipc_client`。参数 `max`（默认 500，单次拉取上限）。返回：
 
 ```json
 {

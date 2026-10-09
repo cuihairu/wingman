@@ -112,6 +112,8 @@ bool LocalIpcServer::start() {
     }
     // 脚本托盘意图（notify.tray.*）→ events.drain 事件流（GUI 驱动系统托盘）
     installNotifyBridge();
+    // 统一系统事件源（systemwatch/filewatcher/trigger/macro）→ events.drain
+    installSystemEventBridge();
 
     {
         std::lock_guard<std::mutex> lock(startMutex_);
