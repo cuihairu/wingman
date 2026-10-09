@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### feat（2026-10-09，工作流条件分支与并发控制——orchestration when 谓词过滤 + maxParallel 并发上限）
+
+- **条件分支**：任务定义增可选 `when`（线程安全可调用体，与 `run` 同门控——非可调用体/非线程安全提交即拒）。前置全部 `succeeded` 后在调度点锁外求值一次（谓词可重入 `get_workflow`/`cancel_workflow`）；不成立落**条件链 `skipped`**——分支过滤是正常控制流，不判工作流失败，沿依赖图传递（被跳过任务的后置连锁跳过），混合前置时失败链优先。求值异常沿用 task 模块失败语义：新增 `Task::fail(reason)` 调度侧落账入口，任务落 `failed` 携带错误信息 `when predicate threw: ...`。真值口径跨语言统一：Bool 按值、Int/Float 非 0、String/Array/Object 非空、Null 假（不走 `asBool` 的默认值语义）。
+- **并发控制**：工作流定义增可选 `maxParallel`（同时执行中任务数上限，默认 1 = 原串行语义不变，`<1` 提交即拒）。调度模型从单线程内联执行改为单调度线程决策 + 每任务独立 worker 线程：额度满则调度线程驻留 `cond` 等 worker 收尾释放空位，worker 完成回写状态并唤醒调度推进后置/定稿。依赖边仍优先于并发额度（就绪才派发）；`when` 不占执行额度。取消/停机 `notify` 唤醒调度线程定稿 `canceled`；worker 收账与派发同锁，与 `stop` 的 worker 移出互斥（派发前统一复查 `cancelRequested_`，停机后不再派生）；join 一律锁外。
+- **快照口径**：已派发未收账的任务以 Task 内核状态为准——协作取消即时反映 `canceled`，不等工作体自然返回（同 task 模块 async 语义）；工作流状态先行定稿、worker 后台收尾为既定语义。
+- **测试**：orchestration 套件扩至 32 例——条件分支 9 例（真假/二选一两方向/条件链传递不判失败/失败链优先/谓词异常/真值矩阵/when 拒绝矩阵/求值一次不随重试重复）、并发控制 6 例（双任务并行/额度占满不开工/默认串行保持/maxParallel 校验/并发下依赖序不变/双执行中取消）；新增 `ScopedFlag` RAII 放行器（断言失败路径也保证驻留 worker 退出，防静态析构 join 卡死掩盖真实失败）；编排套件连跑 5 遍压时序抖动。
+- **文档**：docs/api/orchestration.md 增 when/maxParallel 口径（条件链与失败链语义、真值表、worker 执行模型）；orchestration.pyi 同步；development-todo「条件分支」「并发控制」勾选。
+
 ### feat（2026-10-09，工作流任务依赖关系——orchestration 本地依赖调度 + task 内核抽出 task_core.hpp）
 
 - **依赖调度落地**：`wingman.orchestration` 自存根升级为 runtime 本地执行——`submit_workflow` 的任务定义增 `dependsOn` 前置任务集（前置全部 `succeeded` 才调度）；DFS 三色环检测提交即拒（自依赖/两节点环/三节点环/未知前置引用/重复 id 一律拒绝并发出 `orchestration.error` 事件负载 `{"error": 原因}`）。工作流由独立调度线程按拓扑序串行执行（跨工作流各自独立；v1 不并发，并发控制为后续批次项）；提交即返回 `wf-<N>`，快照（`get_workflow`/`get_all_workflows`）实时反映 `blocked`（前置未满足）/`pending`（就绪待调度）依赖阻塞态。
