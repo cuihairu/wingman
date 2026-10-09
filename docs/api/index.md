@@ -221,6 +221,7 @@ end
 - [smart-trigger](./smart-trigger.md) - 智能触发器
 - [behavior-tree](./behavior-tree.md) - 行为树引擎
 - [hotkey](./hotkey.md) - 全局热键监听（轮询式，Python 回调）
+- [systemwatch](./systemwatch.md) - 系统事件源：进程/窗口变化观察（轮询式，Python 回调）
 
 ### 网络
 

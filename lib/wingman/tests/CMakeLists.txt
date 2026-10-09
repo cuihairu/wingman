@@ -75,6 +75,12 @@ if(BUILD_CORE_TESTS)
         target_sources(core_tests PRIVATE tcp_channel_e2e_coverage_test.cpp)
         # posix_process 全链路（fork/exec + /proc 遍历 + 信号终止；仅 POSIX 实现）
         target_sources(core_tests PRIVATE posix_process_coverage_test.cpp)
+        # SystemWatcher 统一事件源（真实 fork/exec 子进程驱动 started/exited diff；
+        #   sleep 子进程 + 进程枚举依赖 POSIX；文件内 #ifdef __linux__ 双保险）
+        target_sources(core_tests PRIVATE system_watcher_test.cpp)
+        # filewatcher 脚本桥接接真（真实 inotify 目录驱动 changed 回调/事件面/
+        #   路径簿记；inotify 后端线程 + POSIX 原语；文件内 #ifdef __linux__ 双保险）
+        target_sources(core_tests PRIVATE filewatcher_module_test.cpp)
     endif()
 
     # Linux X11 平台集成测试（X11 链接随 wingman PUBLIC 传递；无 X 运行时用例自行 skip）
