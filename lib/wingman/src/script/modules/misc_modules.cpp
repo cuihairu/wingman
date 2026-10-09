@@ -565,6 +565,35 @@ ModuleDescriptor createUIAutomationModule() {
 		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::TreeItem).withName(name)));
 	}, "name:string -> UIElement?"});
 
+	// ===== 等待类 =====
+	// 轮询直到元素出现或超时（默认 3000ms，与 wait_for_name 同口径），超时返回 null。
+	mod.functions.push_back({"wait_for_id", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string id = args.size() > 0 ? args[0].asString() : std::string();
+		int timeout = static_cast<int>(args.size() > 1 ? args[1].asInt(3000) : 3000);
+		return makeUiaElementObject(uia().waitForId(id, timeout));
+	}, "id:string, timeout:int -> UIElement?"});
+
+	mod.functions.push_back({"wait_for_role", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		int roleInt = static_cast<int>(args.size() > 0 ? args[0].asInt(0) : 0);
+		int timeout = static_cast<int>(args.size() > 1 ? args[1].asInt(3000) : 3000);
+		return makeUiaElementObject(uia().waitForRole(static_cast<UIARole>(roleInt), timeout));
+	}, "controlType:int, timeout:int -> UIElement?"});
+
+	mod.functions.push_back({"wait_for", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		// 选择器对象：{name?, id?, className?, role?, text?}，任取其一组合，
+		// 与 UIASelector 逐字段（name/text 子串，其余全等）同语义。
+		UIASelector selector;
+		if (args.size() > 0 && args[0].isObject()) {
+			if (const ScriptValue* v = args[0].get("name")) selector.name = v->asString();
+			if (const ScriptValue* v = args[0].get("id")) selector.id = v->asString();
+			if (const ScriptValue* v = args[0].get("className")) selector.className = v->asString();
+			if (const ScriptValue* v = args[0].get("role")) selector.role = static_cast<UIARole>(v->asInt(0));
+			if (const ScriptValue* v = args[0].get("text")) selector.text = v->asString();
+		}
+		int timeout = static_cast<int>(args.size() > 1 ? args[1].asInt(3000) : 3000);
+		return makeUiaElementObject(uia().waitFor(selector, timeout));
+	}, "selector:{name?,id?,className?,role?,text?}, timeout:int -> UIElement?"});
+
 	// ===== 事件监听 =====
 	// UIA 事件回调从后台线程触发（Win UIA RPC / Mac AXObserver run loop），
 	// 非线程安全 callable（如 Lua）跨线程调用会崩溃，故用 callableThreadSafe 门控（仿 task_module async 检查）。

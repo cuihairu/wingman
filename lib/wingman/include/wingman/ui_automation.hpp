@@ -189,6 +189,11 @@ public:
     std::vector<std::shared_ptr<IUIAElement>> findAllByRole(UIARole role);
     std::shared_ptr<IUIAElement> waitForName(const std::string& name, int timeoutMs);
 
+    // Plan 6 Phase 3: 等待类接口（选选择器 / 按 ID / 按角色；超时返回 nullptr）
+    std::shared_ptr<IUIAElement> waitFor(const UIASelector& selector, int timeoutMs);
+    std::shared_ptr<IUIAElement> waitForId(const std::string& id, int timeoutMs);
+    std::shared_ptr<IUIAElement> waitForRole(UIARole role, int timeoutMs);
+
     // Plan 6 Phase 2: 事件监听门面方法
     uint64_t addPropertyChangedListener(const UIASelector& selector, UIAEventCallback cb);
     uint64_t addStructureChangedListener(const UIASelector& selector, UIAEventCallback cb);

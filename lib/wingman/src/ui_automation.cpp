@@ -150,6 +150,18 @@ std::shared_ptr<IUIAElement> UIAutomation::waitForName(const std::string& name, 
     return impl->waitFor(UIASelector{}.withName(name), timeoutMs);
 }
 
+std::shared_ptr<IUIAElement> UIAutomation::waitFor(const UIASelector& selector, int timeoutMs) {
+    return impl->waitFor(selector, timeoutMs);
+}
+
+std::shared_ptr<IUIAElement> UIAutomation::waitForId(const std::string& id, int timeoutMs) {
+    return impl->waitFor(UIASelector{}.withId(id), timeoutMs);
+}
+
+std::shared_ptr<IUIAElement> UIAutomation::waitForRole(UIARole role, int timeoutMs) {
+    return impl->waitFor(UIASelector{}.withRole(role), timeoutMs);
+}
+
 // Plan 6 Phase 2: 事件监听门面实现
 uint64_t UIAutomation::addPropertyChangedListener(const UIASelector& selector, UIAEventCallback cb) {
     return impl->addPropertyChangedListener(selector, std::move(cb));

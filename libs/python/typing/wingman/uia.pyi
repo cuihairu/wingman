@@ -67,6 +67,22 @@ def find_list_item(name: str) -> UIElement | None: ...
 def find_tree(name: str) -> UIElement | None: ...
 def find_tree_item(name: str) -> UIElement | None: ...
 
+# ===== 等待类 =====
+# 轮询直到元素出现或超时（默认 3000ms），超时返回 None。
+
+class UIASelector(TypedDict, total=False):
+    """wait_for 的选择器：name/text 为子串匹配，id/className/role 为全等。"""
+
+    name: str
+    id: str
+    className: str
+    role: int
+    text: str
+
+def wait_for_id(id: str, timeout: int = ...) -> UIElement | None: ...
+def wait_for_role(controlType: int, timeout: int = ...) -> UIElement | None: ...
+def wait_for(selector: UIASelector, timeout: int = ...) -> UIElement | None: ...
+
 # ===== 事件监听 =====
 # 回调从后台线程触发，需传 Python 函数（线程安全 callable）。
 

@@ -74,6 +74,25 @@ TEST(UiaModuleGlueTest, AllFindFunctionsReturnNullWithoutBackend) {
     EXPECT_TRUE(call(mod, "find_tree_item", {ScriptValue::fromString("node")}).isNull());
     EXPECT_TRUE(call(mod, "wait_for_name",
                      {ScriptValue::fromString("never"), ScriptValue::fromInt(1)}).isNull());
+    // 等待族（Phase 3）：无后端时均超时返回 null
+    EXPECT_TRUE(call(mod, "wait_for_id",
+                     {ScriptValue::fromString("no-such-id"), ScriptValue::fromInt(1)}).isNull());
+    EXPECT_TRUE(call(mod, "wait_for_role",
+                     {ScriptValue::fromInt(0), ScriptValue::fromInt(1)}).isNull());
+    EXPECT_TRUE(call(mod, "wait_for_role").isNull()); // 缺参默认 role=0, timeout=3000
+    EXPECT_TRUE(call(mod, "wait_for",
+                     {ScriptValue::fromInt(0), ScriptValue::fromInt(1)}).isNull()); // 非对象选择器
+    EXPECT_TRUE(call(mod, "wait_for").isNull()); // 缺参安全
+
+    // 选择器对象全字段解析路径（无后端 → null；构造不崩）
+    std::unordered_map<std::string, ScriptValue> sel;
+    sel["name"] = ScriptValue::fromString("btn");
+    sel["id"] = ScriptValue::fromString("id-1");
+    sel["className"] = ScriptValue::fromString("Button");
+    sel["role"] = ScriptValue::fromInt(50000);
+    sel["text"] = ScriptValue::fromString("OK");
+    EXPECT_TRUE(call(mod, "wait_for",
+                     {ScriptValue::fromObject(std::move(sel)), ScriptValue::fromInt(1)}).isNull());
 
     const auto all = call(mod, "find_all_by_control_type", {ScriptValue::fromInt(0)});
     EXPECT_TRUE(all.isArray());

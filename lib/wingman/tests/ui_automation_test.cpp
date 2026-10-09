@@ -329,6 +329,18 @@ TEST(UIAutomationTest, WaitForNameTimeoutDoesNotCrash) {
     EXPECT_NO_THROW(uia.waitForName("anything", 50));
 }
 
+// ========== Plan 6 Phase 3: 等待族（选择器 / ID / 角色）==========
+
+TEST(UIAutomationTest, WaitFamilyWithoutInitReturnsNull) {
+    UIAutomation uia;
+    EXPECT_EQ(uia.waitFor(UIASelector{}.withName("x"), 50), nullptr);
+    EXPECT_EQ(uia.waitForId("no-such-id", 50), nullptr);
+    EXPECT_EQ(uia.waitForRole(UIARole::Button, 50), nullptr);
+    // 空选择器 / 空 ID 也不崩（轮询到超时）
+    EXPECT_NO_THROW(uia.waitFor(UIASelector{}, 30));
+    EXPECT_EQ(uia.waitForId("", 30), nullptr);
+}
+
 // ========== Plan 6 Phase 2: 事件监听烟雾测试 ==========
 
 TEST(UIAutomationMacEvents, AddListenerWithoutInitReturnsZero) {

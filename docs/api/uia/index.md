@@ -2,7 +2,7 @@
 
 UI Automation 模块，用于与 UI 控件进行自动化交互。
 
-> [**已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`）+ 专用查找（`find_button`/`find_edit`/`find_text`/`find_check_box`/`find_radio_button`/`find_combo_box`/`find_list`/`find_list_item`/`find_tree`/`find_tree_item`）+ UIElement 对象 12 方法（`get_info`/`click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`）+ 事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`）。支持 **Windows UIAutomation（COM 事件处理线程）+ macOS Accessibility（AXObserver run loop）** 双平台（Linux 暂不支持）。]
+> [**已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`/`wait_for_id`/`wait_for_role`/`wait_for`）+ 专用查找（`find_button`/`find_edit`/`find_text`/`find_check_box`/`find_radio_button`/`find_combo_box`/`find_list`/`find_list_item`/`find_tree`/`find_tree_item`）+ UIElement 对象 12 方法（`get_info`/`click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`）+ 事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`）。支持 **Windows UIAutomation（COM 事件处理线程）+ macOS Accessibility（AXObserver run loop）** 双平台（Linux 暂不支持）。]
 
 ## 什么是 UI Automation
 
@@ -621,6 +621,36 @@ end
 
 :::
 
+按 ID / 角色 / 组合选择器等待同一语义：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+# 等待指定 AutomationId
+element = uia.wait_for_id("submit-btn", 5000)
+
+# 等待组合选择器（名称子串 + 角色）
+element = uia.wait_for({"name": "保存", "role": 50000}, 5000)
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 等待指定 AutomationId
+local element = wingman.uia.wait_for_id("submit-btn", 5000)
+
+-- 等待组合选择器（名称子串 + 角色）
+element = wingman.uia.wait_for({ name = "保存", role = 50000 }, 5000)
+```
+
+:::
+
 ---
 
 ## UIElement 通用方法
@@ -993,7 +1023,17 @@ local wingman = require("wingman")
 | `find_by_name(name)` | `find_by_name(name)` | 按名称查找元素 |
 | `find_by_id(id)` | `find_by_id(id)` | 按 AutomationId 查找 |
 | `find_all_by_control_type(role)` | `find_all_by_control_type(role)` | 查找所有指定角色的元素（role 为 UIARole 数值，见[对照表](#支持的控件类型与-uiarole-对照)） |
-| `wait_for_name(name, timeout)` | `wait_for_name(name, timeout)` | 等待元素出现 |
+| `wait_for_name(name, timeout)` | `wait_for_name(name, timeout)` | 等待元素出现（按名称） |
+
+### 等待类
+
+轮询直到元素出现或超时（默认 3000ms），超时返回 `None`/`nil`。
+
+| Python 函数 | Lua 函数 | 说明 |
+|------------|---------|------|
+| `wait_for_id(id, timeout)` | `wait_for_id(id, timeout)` | 等待指定 AutomationId 的元素出现 |
+| `wait_for_role(control_type, timeout)` | `wait_for_role(control_type, timeout)` | 等待指定角色（UIARole 数值）的元素出现 |
+| `wait_for(selector, timeout)` | `wait_for(selector, timeout)` | 等待匹配选择器的元素出现；`selector` 为 `{name?, id?, className?, role?, text?}`，`name`/`text` 子串匹配，其余全等，多字段为「与」关系 |
 
 ### 专用查找
 

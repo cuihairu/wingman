@@ -93,7 +93,7 @@
 - [x] 文件 IO 模块（`wingman.file`：read/write/append/exists/isFile/isDir/size/move/copy/remove/removeAll/mkdir/listDir 13 函数，move 跨文件系统 copy+remove 回退，2026-10-04 落地；文件变化监控由 filewatcher 提供）
 - [x] 热键监听模块（`wingman.hotkey`：轮询式全局键态 + 组合键上升沿回调，register/unregister，Windows/Linux/macOS，2026-10-04 落地；v1 限制：轮询间隔内点按可能漏检、macOS 辅助功能权限待真机）
 - [x] 定时器 / 计划任务模块（timer_module.cpp + timer.pyi + 12 条测试；after/every/取消/查询/sleep）
-- [ ] 更完整的 UI 控件树遍历与等待（uia 模块已有树遍历基础，等待类 API 待补）
+- [x] 更完整的 UI 控件树遍历与等待（uia 模块：树遍历基础 + 等待族补全——`wait_for_name`/`wait_for_id`/`wait_for_role`/`wait_for(selector)`，选择器 {name?,id?,className?,role?,text?}，name/text 子串、其余全等；默认超时 3000ms，超时返回 null）
 - [ ] AI 视觉识别（2026-10-07 启动，MVP 单场景「识别屏幕按钮并点击」先行，原子项逐项验收）：
   - [x] provider 配置面：`aiSetup`（OpenAI 兼容端点 baseUrl/model/凭据，配置驻内存；`apiKeyEnc` 走 crypto AES-256-GCM 密文 + 口令解密驻内存——保险箱同型加密面，明文与密钥不落盘不落日志）+ 状态查询
   - [x] locate 协议：请求构造（截屏 JPEG→base64→chat.completions）与响应解析（模型返回 `found/label/bbox_2d/confidence`，坐标 0–1000 归一，按帧尺寸换算像素）——纯函数可单测
