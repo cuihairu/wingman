@@ -40,6 +40,7 @@ Wingman 提供了丰富的 API 来支持游戏自动化开发。
 | `filewatcher` | 文件系统监听 | [filewatcher](filewatcher.md) |
 | `clipboard` | 剪贴板读写 | [clipboard](clipboard.md) |
 | `hotkey` | 全局热键监听 | [hotkey](hotkey.md) |
+| `systemwatch` | 系统事件源（进程/窗口变化） | [systemwatch](systemwatch.md) |
 
 ### 快速示例
 
