@@ -49,6 +49,7 @@ bool AndroidAgent::start(const Config& config) {
     auto rc = std::make_unique<RemoteClientConfig>();
     rc->serverIp = config.serverIp;
     rc->serverPort = config.serverPort;
+    rc->useChallengeAuth = config.useChallengeAuth;
 
     client_ = std::make_unique<RemoteClient>(*rc);
     if (!config.agentId.empty() || !config.hostname.empty()) {

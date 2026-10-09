@@ -181,6 +181,8 @@ class WingmanService : Service() {
             put("capabilitiesJson", capabilities.toString())
             // 注册鉴权 token（可空；server 开启鉴权时必填；Keystore 加密库读）
             put("authToken", tokenStore.read())
+            // challenge-response 注册鉴权（A3-P2；默认关 = P1 明文兼容）
+            put("challengeAuth", prefs.getBoolean(AgentPrefs.KEY_CHALLENGE_AUTH, false))
             // A2：模板图根目录（wingman.vision.findImage 相对路径解析根）
             put("filesDir", getExternalFilesDir(null)?.absolutePath ?: "")
         }

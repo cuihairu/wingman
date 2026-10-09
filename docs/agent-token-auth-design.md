@@ -136,7 +136,13 @@ agent                                server
   `EncryptedSecretStore`（EncryptedSharedPreferences，AES256-GCM 主密钥
   入 AndroidKeyStore）+ 一次性明文迁移（`SecretStores.migrateToken`，
   JVM 单测覆盖；确保 secure 持有值后即清除明文残留；EncryptedSettings
-  初始化失败回退明文库保可用）.
+  初始化失败回退明文库保可用）；
+- challenge 接入（✅ 2026-10-10，A3-P2 §6.1）：`AndroidAgent::Config` 增
+  `useChallengeAuth`（jni_bridge 解析 `challengeAuth` 键 → `RemoteClient`
+  config 透传；HMAC 走 agentcore 自含实现，Android 构建无需补 openssl
+  包）；Kotlin 侧 `AgentPrefs.KEY_CHALLENGE_AUTH`（默认 false）+ 主界面
+  Challenge 开关（布局/字符串/读写链路），`WingmanService.startCore`
+  读同一键入 config。
 
 ---
 

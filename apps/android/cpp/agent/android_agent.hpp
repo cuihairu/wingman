@@ -37,6 +37,9 @@ public:
         // 注册鉴权 token（可空；server 侧 WINGMAN_AGENT_TOKENS 开启鉴权时必填，
         // 见 docs/agent-token-auth-design.md §4.2）
         std::string authToken;
+        // challenge-response 注册鉴权（A3-P2 §6.1；默认关 = P1 明文兼容）。
+        // 开启后注册携 challenge:true 且明文 token 绝不过网
+        bool useChallengeAuth = false;
         // 模板图根目录（A2：wingman.vision.findImage 相对路径解析根；
         // 经 configJson 由 jni_bridge 传入）
         std::string filesDir;

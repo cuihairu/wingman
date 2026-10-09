@@ -112,6 +112,14 @@ class MainActivity : AppCompatActivity() {
             prefs.edit().putBoolean(AgentPrefs.KEY_AUTO_START_ON_BOOT, checked).apply()
         }
 
+        // A3-P2：challenge 注册鉴权开关（默认关 = P1 明文兼容——旧 server
+        // 不理解 challenge 字段会按缺 token 拒绝）
+        val challengeView = findViewById<CheckBox>(R.id.checkChallengeAuth)
+        challengeView.isChecked = prefs.getBoolean(AgentPrefs.KEY_CHALLENGE_AUTH, false)
+        challengeView.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(AgentPrefs.KEY_CHALLENGE_AUTH, checked).apply()
+        }
+
         // A3：机型保活指引（厂商 ROM 对策清单，完整版 docs/guides/android-keep-alive.md）
         findViewById<Button>(R.id.btnKeepAliveGuide).setOnClickListener {
             AlertDialog.Builder(this)
@@ -176,6 +184,11 @@ class MainActivity : AppCompatActivity() {
             .apply()
         // token 不落明文库，走 Keystore 加密库（A3-P2）
         tokenStore.write(tokenView.text.toString().trim())
+        // A3-P2：challenge 开关随配置一并落库（WingmanService.startCore 读）
+        prefs.edit()
+            .putBoolean(AgentPrefs.KEY_CHALLENGE_AUTH,
+                findViewById<CheckBox>(R.id.checkChallengeAuth).isChecked)
+            .apply()
     }
 
     private fun formatStatus(json: String): String {

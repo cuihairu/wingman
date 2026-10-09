@@ -18,6 +18,7 @@
 //   {"serverIp":"10.0.0.2","serverPort":8888,
 //    "agentId":"android-pixel-8","hostname":"Pixel 8",
 //    "capabilitiesJson":"{\"apiLevel\":34}","authToken":"...",
+//    "challengeAuth":false,
 //    "filesDir":"/sdcard/Android/data/com.wingman.agent/files"}
 
 #include <jni.h>
@@ -326,6 +327,8 @@ Java_com_wingman_agent_WingmanJni_nativeStart(JNIEnv* env, jclass /*clazz*/,
     // 注册鉴权 token（可空；server 侧 token 白名单开启时必填，
     // docs/agent-token-auth-design.md §4.2）
     config.authToken = parsed.value("authToken", "");
+    // challenge-response 注册鉴权（A3-P2 §6.1；默认关 = P1 明文兼容）
+    config.useChallengeAuth = parsed.value("challengeAuth", false);
     // 模板图根目录（A2：findImage 相对路径解析根）
     config.filesDir = parsed.value("filesDir", "");
 

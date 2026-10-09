@@ -12,6 +12,7 @@ object AgentPrefs {
     const val KEY_SERVER_PORT = "serverPort"
     const val KEY_AGENT_ID = "agentId"
     const val KEY_SERVER_TOKEN = "serverToken"
+    const val KEY_CHALLENGE_AUTH = "challengeAuth" // A3-P2 challenge 注册鉴权，默认 false（P1 明文兼容）
 
     // A3 可靠性面
     const val KEY_AUTO_START_ON_BOOT = "autoStartOnBoot" // 默认 false（BootStartGate.DEFAULT_ENABLED 单一来源）
