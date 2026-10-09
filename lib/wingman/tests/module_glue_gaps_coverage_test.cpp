@@ -17,7 +17,9 @@
 #include <filesystem>
 #include <fstream>
 #include <random>
+#include <system_error>
 #include <thread>
+#include <unistd.h>
 
 // MSVC Debug CRT：ctype 类函数收到负值（UTF-8 字节经 signed char）默认触发
 // _CrtDbgReport 模态断言对话框，headless CI/无人值守环境下进程永久挂死
@@ -72,43 +74,57 @@ ModuleDescriptor getModule(const std::string& name) {
 
 } // namespace
 
-// ========== filewatcher：stub 胶水参数校验分支 ==========
-// 实现为简化桩（不接 FileWatcher）。第五批曾论证"ScriptValue 无公开 Callable
-// 构造器、watch 成功行不可达"——该论证有误：iscript_engine.hpp 提供
-// ScriptValue::fromCallable(CallableFunc, bool threadSafe=false)，测试可直接
-// 构造 callable（第六批修正）。watch/unwatch/unwatchAll/isWatching/getWatchedPaths
-// 全部可达行均已覆盖。
+// ========== filewatcher：胶水参数校验分支（真实 FileWatcher 后端，批 B 接真后同步） ==========
+// 第五批曾论证"ScriptValue 无公开 Callable 构造器、watch 成功行不可达"——该论证
+// 有误：iscript_engine.hpp 提供 ScriptValue::fromCallable(CallableFunc, bool
+// threadSafe=false)，测试可直接构造 callable（第六批修正）。桥接 2026-10-09
+// 接真后本用例同步：校验分支不变，成功行从"桩恒 true"改为"真实目录 → 注册 ID"。
 
 TEST(FileWatcherModuleGlue, StubValidationBranches) {
     const auto mod = getModule("filewatcher");
     ASSERT_FALSE(mod.name.empty());
 
-    // watch：path 非 string / callable 非 callable → false
+    // watch：path 非 string / callable 非 callable → 0
     ScriptValue notCallable = ScriptValue::fromBool(true);
     EXPECT_EQ(call(mod, "watch", {ScriptValue::fromInt(1), notCallable}).asBool(), false);
     EXPECT_EQ(call(mod, "watch", {ScriptValue::fromString("/tmp/x"), notCallable}).asBool(), false);
-
-    // watch：合法参数（fromCallable 构造回调）→ 简化桩直接 true（成功返回行）
-    ScriptValue cb = ScriptValue::fromCallable(
+    // 回调非线程安全 → callableThreadSafe 门控拒绝 → 0
+    ScriptValue unsafeCb = ScriptValue::fromCallable(
         [](const std::vector<ScriptValue>&) { return ScriptValue::null(); });
-    EXPECT_EQ(call(mod, "watch", {ScriptValue::fromString("/tmp/wg6_watch"), cb}).asBool(), true);
+    EXPECT_EQ(call(mod, "watch", {ScriptValue::fromString("/tmp/x"), unsafeCb}).asInt(), 0);
     // 缺参防御（第六批修复的越界崩溃回归守卫：原实现 args[1] 裸下标）
     EXPECT_EQ(call(mod, "watch", {ScriptValue::fromString("/tmp/wg6_watch")}).asBool(), false);
     EXPECT_EQ(call(mod, "watch", {}).asBool(), false);
 
-    EXPECT_EQ(call(mod, "unwatch", {ScriptValue::fromString("/tmp/x")}).asBool(), true);
+    // watch：真实目录 + 线程安全 callable → 注册 ID > 0（成功返回行）
+    std::error_code ec;
+    const auto dir = std::filesystem::temp_directory_path() /
+        ("wmglue_" + std::to_string(::getpid()));
+    std::filesystem::create_directories(dir, ec);
+    ASSERT_FALSE(ec);
+    ScriptValue cb = ScriptValue::fromCallable(
+        [](const std::vector<ScriptValue>&) { return ScriptValue::null(); }, true);
+    const ScriptValue wid = call(mod, "watch", {ScriptValue::fromString(dir.string()), cb});
+    EXPECT_GT(wid.asInt(), 0) << "真实目录 watch 应成功返回注册 ID";
+    EXPECT_TRUE(call(mod, "isWatching", {ScriptValue::fromString(dir.string())}).asBool());
+
+    // unwatch：未知路径 false / 非 string false / 缺参 false / 已监听 true
+    EXPECT_EQ(call(mod, "unwatch", {ScriptValue::fromString("/tmp/x")}).asBool(), false);
     EXPECT_EQ(call(mod, "unwatch", {ScriptValue::fromInt(2)}).asBool(), false);
     EXPECT_EQ(call(mod, "unwatch", {}).asBool(), false);
+    EXPECT_EQ(call(mod, "unwatch", {ScriptValue::fromString(dir.string())}).asBool(), true);
+    EXPECT_FALSE(call(mod, "isWatching", {ScriptValue::fromString(dir.string())}).asBool());
 
     EXPECT_TRUE(call(mod, "unwatchAll").isNull());
 
-    EXPECT_EQ(call(mod, "isWatching", {ScriptValue::fromString("/tmp/x")}).asBool(), false);
     EXPECT_EQ(call(mod, "isWatching", {ScriptValue::fromInt(3)}).asBool(), false);
     EXPECT_EQ(call(mod, "isWatching", {}).asBool(), false);
 
     const auto paths = call(mod, "getWatchedPaths");
     EXPECT_TRUE(paths.isArray());
     EXPECT_EQ(paths.arrayVal.size(), 0u);
+
+    std::filesystem::remove_all(dir, ec);
 }
 
 // ========== clipboard：胶水直调 Clipboard 静态接口 ==========

@@ -106,7 +106,7 @@
 - [ ] 图像模板批量管理与识别
 - [x] 录制 / 回放闭环（macro_module.cpp）
 - [x] UIA 事件监听绑定（`onPropertyChanged` / `onStructureChanged` / `removeEventListener`，Windows UIA 专属，回调线程安全门控走 `uia.error`；跨平台统一事件源见下条「进程/窗口/文件变化统一事件源」）
-- [ ] 进程/窗口/文件变化统一事件源（文件变化已有 filewatcher；进程/窗口事件源未实现）
+- [x] 进程/窗口/文件变化统一事件源（2026-10-09 落地：进程/窗口腿 `wingman.systemwatch`——SystemWatcher 轮询 diff 快照（500ms，首拍基线）+ callableThreadSafe 门控直调 + `systemwatch.*` 事件面，Python 回调限定同 hotkey；文件腿 `wingman.filewatcher` 脚本桥接接真——原生 inotify/FSEvents/Win32 后端 + 路径簿记（isWatching/getWatchedPaths）+ `filewatcher.changed`/`filewatcher.error` 事件面，watch 返回注册 ID）
 
 ### 优先级建议
 - [x] P0: `event`、`task`、`fsm`
