@@ -134,6 +134,7 @@ public:
 
     // Plan 6: 新增接口
     virtual std::vector<std::shared_ptr<IUIAElement>> getChildren() = 0;
+    virtual std::shared_ptr<IUIAElement> getParent() = 0;
     virtual bool expand() = 0;
     virtual bool collapse() = 0;
     virtual bool isExpanded() const = 0;

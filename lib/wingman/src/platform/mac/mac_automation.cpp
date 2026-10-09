@@ -225,6 +225,17 @@ public:
         return results;
     }
 
+    std::shared_ptr<IUIAElement> getParent() override {
+        if (!element_) return nullptr;
+        AXUIElementRef parent = nullptr;
+        if (AXUIElementCopyAttributeValue(element_, kAXParentAttribute, (CFTypeRef*)&parent) != kAXErrorSuccess || !parent) {
+            return nullptr;
+        }
+        auto result = std::make_shared<UIAElement>(parent); // 构造会 CFRetain
+        CFRelease(parent);
+        return result;
+    }
+
     bool expand() override {
         if (!element_) return false;
         return AXUIElementSetAttributeValue(element_, kAXExpandedAttribute, kCFBooleanTrue) == kAXErrorSuccess;

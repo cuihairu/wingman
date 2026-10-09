@@ -203,6 +203,17 @@ public:
         return results;
     }
 
+    std::shared_ptr<IUIAElement> getParent() override {
+        if (!element_ || !automation_) return nullptr;
+
+        CComPtr<IUIAutomationTreeWalker> walker;
+        if (FAILED(automation_->get_RawViewWalker(&walker)) || !walker) return nullptr;
+
+        CComPtr<IUIAutomationElement> parent;
+        if (FAILED(walker->GetParentElement(element_, &parent)) || !parent) return nullptr;
+        return std::make_shared<UIAElement>(parent, automation_);
+    }
+
     bool expand() override {
         if (!element_) return false;
         CComPtr<IUIAutomationExpandCollapsePattern> pattern;

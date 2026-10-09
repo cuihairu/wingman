@@ -439,6 +439,13 @@ static ScriptValue makeUiaElementObject(std::shared_ptr<IUIAElement> e) {
 		return ScriptValue::fromArray(std::move(arr));
 	});
 
+	// 父元素；到根之后（或元素失效）返回 null
+	obj["get_parent"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		if (!el) return ScriptValue::null();
+		return makeUiaElementObject(el->getParent());
+	});
+
 	obj["expand"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
 		auto el = uiaGetElement(handle);
 		return el ? ScriptValue::fromBool(el->expand()) : ScriptValue::fromBool(false);

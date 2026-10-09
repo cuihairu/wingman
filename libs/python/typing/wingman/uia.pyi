@@ -34,6 +34,7 @@ class UIElement(TypedDict):
     get_value: Callable[[], str | None]
     set_value: Callable[[str], bool]
     get_children: Callable[[], list[UIElement]]
+    get_parent: Callable[[], UIElement | None]
     expand: Callable[[], bool]
     collapse: Callable[[], bool]
     is_expanded: Callable[[], bool]

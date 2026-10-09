@@ -2,7 +2,7 @@
 
 UI Automation 模块，用于与 UI 控件进行自动化交互。
 
-> [**已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`/`wait_for_id`/`wait_for_role`/`wait_for`）+ 专用查找（`find_button`/`find_edit`/`find_text`/`find_check_box`/`find_radio_button`/`find_combo_box`/`find_list`/`find_list_item`/`find_tree`/`find_tree_item`/`find_menu_item`/`find_hyperlink`/`find_image`/`find_slider`/`find_spinner`/`find_progress_bar`/`find_tab`/`find_tab_item`）+ UIElement 对象 12 方法（`get_info`/`click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`）+ 事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`）。支持 **Windows UIAutomation（COM 事件处理线程）+ macOS Accessibility（AXObserver run loop）** 双平台（Linux 暂不支持）。]
+> [**已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`/`wait_for_id`/`wait_for_role`/`wait_for`）+ 专用查找（`find_button`/`find_edit`/`find_text`/`find_check_box`/`find_radio_button`/`find_combo_box`/`find_list`/`find_list_item`/`find_tree`/`find_tree_item`/`find_menu_item`/`find_hyperlink`/`find_image`/`find_slider`/`find_spinner`/`find_progress_bar`/`find_tab`/`find_tab_item`）+ UIElement 对象 13 方法（`get_info`/`click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`get_parent`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`）+ 事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`）。支持 **Windows UIAutomation（COM 事件处理线程）+ macOS Accessibility（AXObserver run loop）** 双平台（Linux 暂不支持）。]
 
 ## 什么是 UI Automation
 
@@ -866,6 +866,40 @@ end
 
 :::
 
+### 获取父元素
+
+从子元素向上遍历（到根之后返回 `None`/`nil`）：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+item = uia.find_list_item("row1")
+if item:
+    parent = item["get_parent"]()
+    if parent:
+        print(f"父元素: {parent['get_info']()['name']}")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local item = wingman.uia.find_list_item("row1")
+if item then
+    local parent = item:get_parent()
+    if parent then
+        print("父元素: " .. parent:get_info().name)
+    end
+end
+```
+
+:::
+
 ### 展开/折叠元素
 
 适用于可展开的控件（如菜单、树节点、下拉框等）：
@@ -1065,7 +1099,7 @@ local wingman = require("wingman")
 | `find_tab(name)` | `find_tab(name)` | 查找标签页容器（Tab 角色） |
 | `find_tab_item(name)` | `find_tab_item(name)` | 查找标签项控件（TabItem 角色） |
 
-> **未实现（计划中）**：`get_parent()`（C++ 层 `IUIAElement` 无父节点接口）；`select_item()` / `get_selection()`（C++ 层无编程选中接口，选中请用 `click()`）。
+> **未实现（计划中）**：`select_item()` / `get_selection()`（C++ 层无编程选中接口，选中请用 `click()`）。
 
 ### 事件监听
 
