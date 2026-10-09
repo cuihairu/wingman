@@ -407,3 +407,7 @@ void MacroRecorder::recordEvent(const RecordedEvent& event) {
         {"timestamp", event.timestamp},
     }, "macro");
 }
+
+} // namespace wingman
+
+#endif // _WIN32
