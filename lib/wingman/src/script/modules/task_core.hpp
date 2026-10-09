@@ -256,6 +256,21 @@ public:
 		return true;
 	}
 
+	// 调度侧失败落账（工作流分支条件求值异常等任务未开工即失败的路径）：
+	// 仅 pending 态生效，置 failed 并记录错误信息。不经过 work/重试路径，
+	// 语义与 execute 内的失败落账一致（终态唤醒等待者）。
+	bool fail(const std::string& reason) {
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			if (status_ != TaskStatus::pending) return false;
+			status_ = TaskStatus::failed;
+			error_ = reason;
+		}
+		cond_.notify_all();
+		emitEvent("task.failed");
+		return true;
+	}
+
 	TaskStatus status() const {
 		std::lock_guard<std::mutex> lock(mutex_);
 		return status_;
