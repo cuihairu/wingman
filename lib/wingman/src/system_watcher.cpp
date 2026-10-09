@@ -195,7 +195,10 @@ void SystemWatcher::pollOnce() {
                 }
                 std::unordered_map<uint64_t, std::string> current;
                 for (const auto& info : windows) {
-                    const uint64_t handle = static_cast<uint64_t>(info.handle);
+                    // WindowHandle 在 Windows 是 HWND（不透明指针），需先经
+                    // uintptr_t 中转才能转整型（同 window_module 胶水惯例）
+                    const uint64_t handle =
+                        static_cast<uint64_t>(reinterpret_cast<uintptr_t>(info.handle));
                     if (entry.target.empty() ||
                         info.title.find(entry.target) != std::string::npos) {
                         current.emplace(handle, info.title);
