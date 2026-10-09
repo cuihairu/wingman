@@ -127,9 +127,10 @@ public:
         if (FAILED(element_->get_CurrentBoundingRectangle(&rect))) return false;
         POINT center = { rect.left + (rect.right - rect.left) / 2,
                          rect.top + (rect.bottom - rect.top) / 2 };
-        auto& input = wingman::platform::defaultSharedInput();
-        input.mouseMove(center.x, center.y);
-        input.mouseClick(wingman::platform::MouseButton::Right);
+        auto input = wingman::platform::defaultSharedInput();
+        if (!input) return false;
+        input->mouseMove(center.x, center.y);
+        input->mouseClick(wingman::platform::MouseButton::Right);
         return true;
     }
 
