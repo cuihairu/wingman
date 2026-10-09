@@ -11,11 +11,11 @@
 | 分类 | 函数 |
 |------|------|
 | 根元素 | `from_foreground()`、`from_point(x, y)`、`from_window(hwnd)` |
-| 通用查找 | `find_by_name(name)`、`find_by_id(id)`、`find_all_by_control_type(role:int)`、`wait_for_name(name, timeout?)` |
-| 专用查找 | `find_button(name)`、`find_edit(name)`、`find_text(name)` |
+| 通用查找 | `find_by_name(name)`、`find_by_id(id)`、`find_all_by_control_type(role:int)`、`wait_for_name(name, timeout?)`、`wait_for_id(id, timeout?)`、`wait_for_role(control_type, timeout?)`、`wait_for(selector, timeout?)` |
+| 专用查找 | `find_button(name)`、`find_edit(name)`、`find_text(name)`、`find_check_box(name)`、`find_radio_button(name)`、`find_combo_box(name)`、`find_list(name)`、`find_list_item(name)`、`find_tree(name)`、`find_tree_item(name)`、`find_menu_item(name)`、`find_hyperlink(name)`、`find_image(name)`、`find_slider(name)`、`find_spinner(name)`、`find_progress_bar(name)`、`find_tab(name)`、`find_tab_item(name)` |
 | 事件监听 | `on_property_changed(name, callback)`、`on_structure_changed(name, callback)`、`remove_event_listener(id)`（**Python 专用**，Lua 回调会被拒绝） |
 
-元素对象方法：`get_info()`、`click()`、`double_click()`、`focus()`、`get_value()`、`set_value(text)`、`get_children()`、`expand()`、`collapse()`、`is_expanded()`、`is_visible()`、`is_enabled()`。
+元素对象方法：`get_info()`、`click()`、`right_click()`、`double_click()`、`focus()`、`get_value()`、`set_value(text)`、`get_children()`、`get_parent()`、`expand()`、`collapse()`、`is_expanded()`、`is_visible()`、`is_enabled()`、`select()`、`get_selection()`、`is_checked()`、`set_checked(checked)`。
 
 `get_info()` 返回字段：`name`、`id`、`className`、`role`（**int** 控件类型，无 `controlType` 字符串）、`text`、`is_enabled`、`is_visible`、`has_focus`、`bounds`。
 
