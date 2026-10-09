@@ -19,7 +19,6 @@
 #include <random>
 #include <system_error>
 #include <thread>
-#include <unistd.h>
 
 // MSVC Debug CRT：ctype 类函数收到负值（UTF-8 字节经 signed char）默认触发
 // _CrtDbgReport 模态断言对话框，headless CI/无人值守环境下进程永久挂死

@@ -345,6 +345,10 @@
 - [x] `get_info().name` - 获取名称（经 get_info 返回的 info.name 取得，无独立 getName 方法）
 - [x] `:get_info()` - 获取完整信息
 - [x] `:get_children()` - 获取子元素
+- [x] `:get_parent()` - 获取父元素（2026-10-09：win RawViewWalker.GetParentElement / mac kAXParentAttribute）
+- [x] `:select()` - 编程选中（2026-10-09：win SelectionItem.Select / mac AXSelected=true）
+- [x] `:get_selection()` - 容器首个选中子项（2026-10-09：win Selection.GetCurrentSelection / mac AXSelectedRows/Children）
+- [x] `:expand()` / `:collapse()` / `:is_expanded()` / `:is_visible()` / `:is_enabled()` - 状态与展开（随 UIElement 12 方法批落地）
 
 ---
 
