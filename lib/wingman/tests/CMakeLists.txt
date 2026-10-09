@@ -29,6 +29,7 @@ if(BUILD_CORE_TESTS)
         event_module_test.cpp
         task_module_test.cpp
         notify_module_test.cpp
+        orchestration_module_test.cpp
         fsm_module_test.cpp
         timer_module_test.cpp
         behavior_tree_test.cpp

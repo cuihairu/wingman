@@ -275,11 +275,12 @@ TEST(SystemModuleFunctionsTest, GetNetworkAdapters) {
     EXPECT_TRUE(result.isArray());
 }
 
-// ========== Orchestration module (stubs) ==========
+// ========== Orchestration module ==========
 
 TEST(OrchestrationModuleFunctionsTest, SubmitWorkflowReturnsNull) {
     auto fn = findFunction("orchestration", "submit_workflow");
     ASSERT_FALSE(fn.name.empty());
+    // 空对象（无 tasks）：提交拒绝恒 null
     auto result = fn({ScriptValue::fromObject({})});
     EXPECT_TRUE(result.isNull());
 }
@@ -287,6 +288,8 @@ TEST(OrchestrationModuleFunctionsTest, SubmitWorkflowReturnsNull) {
 TEST(OrchestrationModuleFunctionsTest, CancelWorkflowReturnsFalse) {
     auto fn = findFunction("orchestration", "cancel_workflow");
     ASSERT_FALSE(fn.name.empty());
+    // 未知 ID 恒 false（与进程内是否已提交过工作流无关——全局管理器跨用例
+    // 累积，不做空集/恒空断言）
     auto result = fn({ScriptValue::fromString("wf1")});
     EXPECT_TRUE(result.isBool());
     EXPECT_FALSE(result.asBool());
@@ -299,12 +302,11 @@ TEST(OrchestrationModuleFunctionsTest, GetWorkflowReturnsNull) {
     EXPECT_TRUE(result.isNull());
 }
 
-TEST(OrchestrationModuleFunctionsTest, GetAllWorkflowsReturnsEmptyArray) {
+TEST(OrchestrationModuleFunctionsTest, GetAllWorkflowsReturnsArray) {
     auto fn = findFunction("orchestration", "get_all_workflows");
     ASSERT_FALSE(fn.name.empty());
     auto result = fn({});
     EXPECT_TRUE(result.isArray());
-    EXPECT_EQ(result.size(), 0u);
 }
 
 // ========== Team module ==========

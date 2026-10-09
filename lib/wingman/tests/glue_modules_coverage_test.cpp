@@ -8,8 +8,10 @@ using namespace wingman::script::modules;
 
 // 覆盖率收尾（2026-09-30 批次）：debugger / orchestration / security 三个
 // 胶水模块的全部导出函数从未被任何测试调用（stub/纯函数面，无平台分支）。
-// 经 ModuleDescriptor 直调锁死返回契约——debugger/orchestration 是有意
-// stub（返回 false/null/空集），security 是 SecurityManager 薄封装。
+// 经 ModuleDescriptor 直调锁死返回契约——debugger 是有意 stub（返回 false/
+// 空集），orchestration 已落地依赖调度（拒绝路径 + 未知 ID 契约在此锁定，
+// 行为面由 orchestration_module_test.cpp 覆盖），security 是 SecurityManager
+// 薄封装。
 
 namespace {
 
@@ -49,14 +51,16 @@ TEST(GlueDebuggerModuleTest, StubContract) {
     EXPECT_EQ(call("debugger", "breakHere").asString(), "DEBUG_BREAK_HERE");
 }
 
-TEST(GlueOrchestrationModuleTest, StubContract) {
-    // 有意 stub：脚本侧不直接编排工作流（经 server），全部空结果
+TEST(GlueOrchestrationModuleTest, RejectionAndUnknownIdContract) {
+    // 坏定义（缺参/非对象/无 tasks）与未知 ID 查询/取消：恒拒绝——与进程内
+    // 是否已提交过工作流无关（全局管理器跨用例累积，不做空集断言）
     EXPECT_TRUE(call("orchestration", "submit_workflow").isNull());
+    EXPECT_TRUE(call("orchestration", "submit_workflow",
+                     {ScriptValue::fromString("nope")}).isNull());
     EXPECT_FALSE(call("orchestration", "cancel_workflow",
-                      {ScriptValue::fromString("wf-1")}).asBool());
+                      {ScriptValue::fromString("no-such-workflow")}).asBool());
     EXPECT_TRUE(call("orchestration", "get_workflow",
-                     {ScriptValue::fromString("wf-1")}).isNull());
-    EXPECT_EQ(call("orchestration", "get_all_workflows").size(), 0u);
+                     {ScriptValue::fromString("no-such-workflow")}).isNull());
 }
 
 TEST(GlueSecurityModuleTest, PassthroughContract) {
