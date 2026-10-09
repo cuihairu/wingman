@@ -334,6 +334,8 @@
 - [x] `uia.find_by_name(name)` - 按名称查找
 - [x] `uia.find_by_id(id)` - 按 ID 查找
 - [x] `uia.wait_for_name(name, timeout)` - 等待元素
+- [x] `uia.find_check_box` / `find_radio_button` / `find_combo_box` / `find_list` / `find_list_item` / `find_tree` / `find_tree_item` / `find_menu_item` / `find_hyperlink` / `find_image` / `find_slider` / `find_spinner` / `find_progress_bar` / `find_tab` / `find_tab_item` - 控件专用查找（2026-10-09 批落地）
+- [x] `uia.wait_for_id` / `wait_for_role` / `wait_for(selector)` - 等待族（2026-10-09 落地）
 
 ### 9.3 UIElement 方法
 - [x] `:click()` - 点击
