@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <mutex>
 #include <string>
@@ -62,18 +63,24 @@ struct WfTask {
 	bool skippedByCondition = false;  // skipped 根因：条件过滤链（不判工作流失败）
 };
 
-// 工作流运行实例：单个调度线程按拓扑序串行执行就绪任务（串行语义，
-// 并发控制为下一增量）。依赖满足才调度；前置失败/取消沿依赖图传播跳过；
+// 工作流运行实例：单个调度线程做调度决策（传播不动点、选任务、求条件），
+// 每个就绪任务派发到独立 worker 线程执行，工作流内并发度受 maxParallel
+// 约束（默认 1 = 串行）。依赖满足才调度；前置失败/取消沿依赖图传播跳过；
 // 分支条件（when）不成立的任务按条件链跳过。
 class WorkflowRun {
 public:
-	WorkflowRun(std::string id, std::string name, std::vector<WfTask> tasks)
-		: id_(std::move(id)), name_(std::move(name)), tasks_(std::move(tasks)) {
+	WorkflowRun(std::string id, std::string name, int maxParallel, std::vector<WfTask> tasks)
+		: id_(std::move(id)), name_(std::move(name)), maxParallel_(maxParallel),
+		  tasks_(std::move(tasks)) {
 		// 无依赖任务直接进入就绪态
 		for (auto& t : tasks_) {
 			if (t.dependsOn.empty()) t.state = WfState::pending;
 			idToTask_[t.id] = &t;
 		}
+	}
+
+	~WorkflowRun() {
+		stop();  // 防御性收口：正常路径由 WorkflowManager::shutdown 调用
 	}
 
 	void start() {
@@ -82,7 +89,7 @@ public:
 
 	// 取消：仅当工作流尚未终局时生效。返回是否发生了取消转换（未知/已终局
 	// 的工作流恒 false——cancel_workflow 契约）。从未开工的任务直接置 canceled；
-	// 执行中的任务协作取消（Task 内核语义）。
+	// 执行中的任务协作取消（Task 内核语义）。工作流状态由调度线程唤醒后定稿。
 	bool cancelAll() {
 		std::vector<std::shared_ptr<Task>> running;
 		{
@@ -97,17 +104,21 @@ public:
 				}
 			}
 		}
+		// 唤醒调度线程定稿（其可能驻留在 cond_ 上等并发空位）
+		cond_.notify_all();
 		// 锁外取消执行中任务（Task 方法自持互锁，且不再触发 task.* 事件）
 		for (auto& task : running) task->cancel();
 		return true;
 	}
 
-	// 停机收口：请求取消 + 取消执行中任务 + join 调度线程
+	// 停机收口：请求取消 + 取消执行中任务 + join 调度线程与全部 worker。
+	// join 一律在锁外（worker 收尾要拿 mutex_ 记账）。
 	void stop() {
 		{
 			std::lock_guard<std::mutex> lock(mutex_);
 			cancelRequested_ = true;
 		}
+		cond_.notify_all();
 		std::vector<std::shared_ptr<Task>> running;
 		{
 			std::lock_guard<std::mutex> lock(mutex_);
@@ -117,6 +128,16 @@ public:
 		}
 		for (auto& task : running) task->cancel();
 		if (thread_.joinable()) thread_.join();
+		// 移出后 join：worker 不会在 cancelRequested_ 置位后再派生（调度
+		// 线程派发前统一复查标志，且派发与移出同锁互斥），故此快照完整
+		std::vector<std::thread> toJoin;
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			toJoin = std::move(workers_);
+		}
+		for (auto& th : toJoin) {
+			if (th.joinable()) th.join();
+		}
 	}
 
 	ScriptValue snapshot() const {
@@ -133,7 +154,12 @@ private:
 		switch (t.state) {
 		case WfState::blocked: return "blocked";
 		case WfState::pending: return "pending";
-		case WfState::running: return "running";
+		case WfState::running: {
+			// 已派发未收账：以 Task 内核状态为准——协作取消即时置 canceled，
+			// 快照随即反映，不等工作体自然返回（同 task 模块 async 语义）
+			const TaskStatus st = t.task->status();
+			return st == TaskStatus::running ? "running" : taskStatusToString(st);
+		}
 		case WfState::skipped: return "skipped";
 		case WfState::canceled: return "canceled";
 		case WfState::done: return taskStatusToString(t.task->status());
@@ -218,6 +244,11 @@ private:
 						}
 					}
 				}
+				if (runningCount_ >= static_cast<size_t>(maxParallel_)) {
+					// 并发额度用满：等任一 worker 收尾释放空位
+					cond_.wait(lock);
+					continue;
+				}
 				WfTask* cand = nullptr;
 				for (auto& t : tasks_) {
 					if (t.state == WfState::pending) {
@@ -226,7 +257,12 @@ private:
 					}
 				}
 				if (!cand) {
-					// 无待调度任务且全部终态：定稿工作流状态
+					if (runningCount_ > 0) {
+						// 无待调度任务但仍有执行中：等 worker 完成后推进后置
+						cond_.wait(lock);
+						continue;
+					}
+					// 全部终态：定稿工作流状态
 					finalizeLocked();
 					return;
 				}
@@ -246,8 +282,9 @@ private:
 						whenErr = "Unknown exception";
 					}
 					lock.lock();
-					// 求值窗口内的取消竞态：pending 已被改写则交还取消路径
-					if (cand->state != WfState::pending) continue;
+					// 求值窗口内的取消竞态（含 stop 只置标志不改任务态的路径）：
+					// 交还取消路径，且保证 cancelRequested_ 置位后不再派生 worker
+					if (cancelRequested_ || cand->state != WfState::pending) continue;
 					if (!whenErr.empty()) {
 						// 条件求值异常沿用 task 模块失败语义：任务落 failed 并
 						// 携带错误信息，沿依赖图按失败链传播
@@ -263,14 +300,27 @@ private:
 						continue;
 					}
 				}
+				// 派发：状态记账与 worker 派生同锁（与 stop 的 worker 移出互斥，
+				// 保证停机快照完整）；执行体在 worker 线程锁外运行，Task 内核
+				// 自带超时/重试/取消语义
 				cand->state = WfState::running;
-				std::shared_ptr<Task> toRun = cand->task;
-				lock.unlock();
-				// 执行在锁外：Task 内核自带超时/重试/取消语义，串行调度保证
-				// 任一时刻最多一个 running（并发控制为下一增量）
-				toRun->execute();
-				lock.lock();
-				cand->state = WfState::done;
+				++runningCount_;
+				std::shared_ptr<Task> dispatched = cand->task;
+				workers_.emplace_back([this, dispatched]() {
+					dispatched->execute();
+					{
+						std::lock_guard<std::mutex> lock(mutex_);
+						for (auto& t : tasks_) {
+							if (t.task == dispatched) {
+								t.state = WfState::done;
+								break;
+							}
+						}
+						--runningCount_;
+					}
+					// 唤醒调度线程：释放并发空位、推进后置任务或定稿
+					cond_.notify_all();
+				});
 			}
 		} catch (...) {
 			std::lock_guard<std::mutex> lock(mutex_);
@@ -297,11 +347,15 @@ private:
 	}
 
 	mutable std::mutex mutex_;
+	std::condition_variable cond_;
 	std::string id_;
 	std::string name_;
+	int maxParallel_ = 1;  // 工作流级并发上限（>=1，提交校验保证）
+	size_t runningCount_ = 0;  // 当前执行中任务数（调度线程派发时递增）
 	std::vector<WfTask> tasks_;
 	std::unordered_map<std::string, const WfTask*> idToTask_;
 	std::thread thread_;
+	std::vector<std::thread> workers_;  // 每任务一个，stop 统一移出 join
 	bool cancelRequested_ = false;
 	std::string status_ = "running";
 };
@@ -321,13 +375,13 @@ public:
 		for (auto& run : runs) run->stop();
 	}
 
-	std::string submit(const std::string& name, std::vector<WfTask> tasks) {
+	std::string submit(const std::string& name, int maxParallel, std::vector<WfTask> tasks) {
 		std::string workflowId;
 		std::shared_ptr<WorkflowRun> run;
 		{
 			std::lock_guard<std::mutex> lock(mutex_);
 			workflowId = "wf-" + std::to_string(nextWorkflowId_++);
-			run = std::make_shared<WorkflowRun>(workflowId, name, std::move(tasks));
+			run = std::make_shared<WorkflowRun>(workflowId, name, maxParallel, std::move(tasks));
 			workflows_[workflowId] = run;
 		}
 		run->start();
@@ -413,10 +467,12 @@ ModuleDescriptor createOrchestrationModule() {
 	mod.name = "orchestration";
 
 	// submit_workflow(workflow) -> workflowId | null
-	// workflow: {name?: string, tasks: [{id, run, dependsOn?, when?,
-	//            timeoutMs?, maxRetries?, backoffMs?, backoffFactor?}]}
-	// 任务在独立调度线程上执行：run/when 必须是线程安全可调用体
-	// （callableThreadSafe——Lua 可调用体一律拒绝，见 task 模块同形门控）。
+	// workflow: {name?: string, maxParallel?: int, tasks: [{id, run,
+	//            dependsOn?, when?, timeoutMs?, maxRetries?, backoffMs?,
+	//            backoffFactor?}]}
+	// 任务在独立 worker 线程上执行，工作流内并发度受 maxParallel（默认 1
+	// 串行）约束：run/when 必须是线程安全可调用体（callableThreadSafe——
+	// Lua 可调用体一律拒绝，见 task 模块同形门控）。
 	// when 在前置满足后的调度点求值一次，不成立落条件链 skipped（不判
 	// 工作流失败）；求值异常按 task 模块失败语义落 failed。
 	// 拒绝路径（坏定义/环/非线程安全可调用体）发 orchestration.error 事件。
@@ -437,6 +493,16 @@ ModuleDescriptor createOrchestrationModule() {
 				return rejectWithError("workflow.name must be a string");
 			}
 			name = nameVal->asString();
+		}
+
+		// 工作流级并发上限：同时执行中的任务数上限，默认 1（串行）；
+		// 非法值（非整数或 < 1）拒绝提交
+		int maxParallel = 1;
+		if (const ScriptValue* mpVal = workflow.get("maxParallel")) {
+			maxParallel = static_cast<int>(mpVal->asInt());
+			if (maxParallel < 1) {
+				return rejectWithError("workflow.maxParallel must be an integer >= 1");
+			}
 		}
 
 		std::vector<WfTask> tasks;
@@ -523,8 +589,8 @@ ModuleDescriptor createOrchestrationModule() {
 			return rejectWithError("dependency cycle detected in workflow.tasks");
 		}
 
-		return ScriptValue::fromString(g_workflowManager.submit(name, std::move(tasks)));
-	}, "workflow:{name?:string, tasks:[{id:string, run:function, dependsOn?:[string], when?:function, timeoutMs?, maxRetries?, backoffMs?, backoffFactor?}]} -> workflowId:string?"});
+		return ScriptValue::fromString(g_workflowManager.submit(name, maxParallel, std::move(tasks)));
+	}, "workflow:{name?:string, maxParallel?:int, tasks:[{id:string, run:function, dependsOn?:[string], when?:function, timeoutMs?, maxRetries?, backoffMs?, backoffFactor?}]} -> workflowId:string?"});
 
 	// cancel_workflow(workflowId) -> bool
 	// 取消执行中的工作流：执行中任务协作取消，未开工任务直接 canceled；
