@@ -349,6 +349,7 @@
 - [x] `:select()` - 编程选中（2026-10-09：win SelectionItem.Select / mac AXSelected=true）
 - [x] `:get_selection()` - 容器首个选中子项（2026-10-09：win Selection.GetCurrentSelection / mac AXSelectedRows/Children）
 - [x] `:expand()` / `:collapse()` / `:is_expanded()` / `:is_visible()` / `:is_enabled()` - 状态与展开（随 UIElement 12 方法批落地）
+- [x] `:is_checked()` / `:set_checked(bool)` - 复选/单选状态读取与设置（2026-10-09：win Toggle 模式 / mac AXChecked）
 
 ---
 

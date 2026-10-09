@@ -51,7 +51,34 @@ end
 
 ## 勾选/取消勾选
 
-> **未实现（计划中）**：脚本层目前没有直接设置复选框勾选状态的接口。`set_value` 的实现是设置元素文本（`setText`），**仅对文本型控件有效**，对复选框调用不会勾选/取消勾选；翻转勾选状态（toggle）接口同样未实现。
+> `set_checked(bool)` 可直接设置勾选状态（2026-10-09 落地：win Toggle 模式 / mac AXChecked）：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+agree = uia.find_check_box("同意条款")
+if agree:
+    agree["set_checked"](True)
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local agree = wingman.uia.find_check_box("同意条款")
+if agree then
+    agree:set_checked(true)
+end
+```
+
+:::
+
+> `set_value` 的实现是设置元素文本（`setText`），**仅对文本型控件有效**，对复选框调用不会勾选/取消勾选——请用 `set_checked`。
 
 ### 通过点击切换
 
@@ -90,7 +117,38 @@ end
 
 ## 获取复选框状态
 
-> **未实现（计划中）**：`get_value()` 返回的是元素文本（实现为 `getText`），不是布尔勾选状态；`get_info()` 的返回键中也没有勾选状态字段（无 `toggle_state`）。脚本层目前**无法读取复选框是否勾选**（`isChecked` 仅存在于 C++ 层 `IUIAElement` 接口，未注册到脚本层）。通用属性见 [get_info 说明](./index.md)。
+> `is_checked()` 读取勾选状态（2026-10-09 落地：win Toggle 模式 / mac AXChecked）：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+agree = uia.find_check_box("同意条款")
+if agree:
+    print("已勾选" if agree["is_checked"]() else "未勾选")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local agree = wingman.uia.find_check_box("同意条款")
+if agree then
+    if agree:is_checked() then
+        print("已勾选")
+    else
+        print("未勾选")
+    end
+end
+```
+
+:::
+
+> `get_value()` 返回的是元素文本（实现为 `getText`），不是布尔勾选状态；`get_info()` 返回键中也无勾选字段——读勾选状态请用 `is_checked`。
 
 ---
 
@@ -105,7 +163,7 @@ end
 - "全选"复选框：子项全部选中时为 On，全部未选中为 Off，部分选中为 Indeterminate
 - 树形结构中的父节点
 
-> **未实现（计划中）**：`set_toggle_state(state)`（设置 'On'/'Off'/'Indeterminate' 三态）尚未在脚本层实现，此处仅保留设计意图。当前可用操作为 `click()` 切换与通用 12 方法（见 [概述](./index.md#uielement-通用方法)）。
+> `set_toggle_state(state)`（'On'/'Off'/'Indeterminate' 三态显式建模）尚未实现，Indeterminate 态暂不可直接设置——两态场景请用 `set_checked(bool)`。当前可用操作：`set_checked` / `click()` 切换与通用方法（见 [概述](./index.md#uielement-通用方法)）。
 
 ---
 
@@ -216,7 +274,7 @@ end
 | `click()` | `:click()` | 点击切换勾选状态 | 无 |
 | `get_info()` | `:get_info()` | 获取所有通用属性（不含勾选状态） | 无 |
 
-> **未实现（计划中）**：勾选状态读取（`get_value` 返回布尔勾选态）与勾选设置（`set_value(bool)`、三态 `set_toggle_state`）均未实现——`get_value`/`set_value` 实为读取/设置元素文本，仅对文本型控件有效。
+> 勾选状态读取与设置请用 `is_checked` / `set_checked`（见上节）；`get_value`/`set_value` 实为读取/设置元素文本，仅对文本型控件有效；三态 `set_toggle_state` 未实现。
 
 ### 复选框属性
 

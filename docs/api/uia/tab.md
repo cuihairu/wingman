@@ -160,7 +160,43 @@ end
 
 ## 获取当前活动标签
 
-> **未实现（计划中）**：`get_info()` 的返回键中没有选中状态字段（无 `selection_state`），脚本层目前**无法判断哪个标签页处于激活状态**。过渡方案：点击目标标签页（见「切换标签页」）以确定激活状态。
+对**标签页容器**调 `get_selection()` 可读取当前激活的标签项（返回首个选中的子项；无选中返回 `None`/`nil`）：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+tabs = uia.find_tab("设置")
+if tabs:
+    active = tabs["get_selection"]()
+    if active:
+        print(f"当前标签页: {active['get_info']()['name']}")
+    else:
+        print("当前无激活标签页")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local tabs = wingman.uia.find_tab("设置")
+if tabs then
+    local active = tabs:get_selection()
+    if active then
+        print("当前标签页: " .. active:get_info().name)
+    else
+        print("当前无激活标签页")
+    end
+end
+```
+
+:::
+
+> `get_info()` 返回键中仍无 `selection_state` 字段；要求标签页容器支持 Selection 模式（Windows）/ 可读 AXSelectedRows/Children（macOS）。也可用专用查找 `uia.find_tab("名称")`（2026-10-09 落地，Tab 角色）。
 
 ---
 
@@ -168,7 +204,10 @@ end
 
 | Python 函数 | Lua 函数 | 说明 |
 |------------|---------|------|
-| `find_by_name(name)` | `find_by_name(name)` | 按名称查找（Tab 无专用 UIARole，按名称匹配） |
+| `find_tab(name)` | `find_tab(name)` | 按名称查找标签页容器（Tab 角色，2026-10-09 落地） |
+| `find_tab_item(name)` | `find_tab_item(name)` | 按名称查找标签项（TabItem 角色，2026-10-09 落地） |
+| `find_by_name(name)` | `find_by_name(name)` | 按名称查找（子串匹配，可能命中任意类型） |
+| `get_selection()` | `:get_selection()` | 读取当前激活标签项（容器） |
 | `find_by_id(id)` | `find_by_id(id)` | 按 AutomationId 查找 |
 | `get_children()` | `:get_children()` | 获取所有标签页 |
 | `click()` | `:click()` | 切换到该标签页 |

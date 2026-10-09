@@ -101,7 +101,43 @@ end
 
 ### 检查选中状态
 
-> **未实现（计划中）**：`get_info()` 的返回键中没有选中状态字段（无 `is_selected`），脚本层目前**无法读取列表项是否被选中**。可选替代：点击列表项后观察界面效果，或等待选中状态接口补齐。
+对**列表容器**调 `get_selection()` 可读取当前选中项（返回首个选中的列表元素；无选中返回 `None`/`nil`）：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+list_box = uia.find_list("文件列表")
+if list_box:
+    selected = list_box["get_selection"]()
+    if selected:
+        print(f"当前选中: {selected['get_info']()['name']}")
+    else:
+        print("当前无选中项")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local listBox = wingman.uia.find_list("文件列表")
+if listBox then
+    local selected = listBox:get_selection()
+    if selected then
+        print("当前选中: " .. selected:get_info().name)
+    else
+        print("当前无选中项")
+    end
+end
+```
+
+:::
+
+> `get_info()` 返回键中仍无 `is_selected` 字段；判断具体某一项是否被选中，可对比 `get_selection()` 返回元素与目标项。
 
 ---
 
@@ -251,4 +287,31 @@ end
 | `double_click()` | `:double_click()` | 双击列表项 |
 | `get_info()` | `:get_info()` | 获取列表项信息 |
 
-> **未实现**：`select()`（编程选中列表项）未在脚本层注册；选中列表项请用 `click()`。
+`select()` 编程选中列表项（2026-10-09 落地，不动鼠标）：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+item = uia.find_list_item("目标文件.txt")
+if item:
+    item["select"]()
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local item = wingman.uia.find_list_item("目标文件.txt")
+if item then
+    item:select()
+end
+```
+
+:::
+
+> 编程选中要求目标控件支持 SelectionItem 模式（Windows）/ 可设置 AXSelected（macOS）；不支持的控件返回 `false`，此时请回退用 `click()`。

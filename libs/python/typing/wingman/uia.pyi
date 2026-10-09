@@ -43,6 +43,8 @@ class UIElement(TypedDict):
     is_enabled: Callable[[], bool]
     select: Callable[[], bool]
     get_selection: Callable[[], UIElement | None]
+    is_checked: Callable[[], bool]
+    set_checked: Callable[[bool], bool]
 
 
 # ===== 根元素获取 =====

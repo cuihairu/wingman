@@ -483,6 +483,18 @@ static ScriptValue makeUiaElementObject(std::shared_ptr<IUIAElement> e) {
 		return el ? ScriptValue::fromBool(el->rightClick()) : ScriptValue::fromBool(false);
 	});
 
+	// 复选/单选状态读取与设置（win Toggle 模式 / mac AXChecked）
+	obj["is_checked"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->isChecked()) : ScriptValue::fromBool(false);
+	});
+
+	obj["set_checked"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>& args) -> ScriptValue {
+		bool checked = args.size() > 0 && args[0].asBool();
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->setChecked(checked)) : ScriptValue::fromBool(false);
+	});
+
 	// 容器的首个选中子项（List/Table/Tree 的 Selection 模式）；无选中返回 null
 	obj["get_selection"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
 		auto el = uiaGetElement(handle);

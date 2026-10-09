@@ -88,13 +88,13 @@ end
 
 ### 通过设置值选中
 
-> **未实现（计划中）**：`set_value(bool)` 选中单选按钮的能力未实现——`set_value` 的实现是设置元素文本（`setText`），**仅对文本型控件有效**，对单选按钮调用不会选中它。选中请用 `click()`（见上节）。
+> `set_checked(True)` 可编程选中单选按钮（2026-10-09 落地，win Toggle 模式 / mac AXChecked）；也可 `click()`（见上节）。`set_value` 的实现是设置元素文本（`setText`），**仅对文本型控件有效**，对单选按钮调用不会选中它。
 
 ---
 
 ## 获取选中状态
 
-> **未实现（计划中）**：`get_info()` 的返回键中没有 `toggle_state` 字段，`get_value()` 返回的也是元素文本而非选中状态——脚本层目前**无法读取单选按钮是否被选中**，也就无法遍历找出现被选中的那个。选中验证需等待选中状态接口（如 is_checked）补齐。
+> `is_checked()` 读取单选按钮选中状态（2026-10-09 落地）。`get_info()` 返回键中仍无 `toggle_state` 字段，`get_value()` 返回的是元素文本而非选中状态——读选中状态请用 `is_checked`。
 
 ---
 
@@ -196,7 +196,7 @@ end
 | `click()` | `:click()` | 点击选中 |
 | `get_info()` | `:get_info()` | 获取所有通用属性（不含选中状态） |
 
-> **未实现（计划中）**：`set_value(bool)` 设置选中与选中状态读取（`get_value` 返回布尔态、`toggle_state` 字段）均未实现——`set_value`/`get_value` 实为设置/读取元素文本，仅对文本型控件有效。
+> 选中设置与读取请用 `set_checked(bool)` / `is_checked()`（见上节）；`set_value`/`get_value` 实为设置/读取元素文本，仅对文本型控件有效。
 
 ### 单选按钮属性
 
