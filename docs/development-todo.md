@@ -78,7 +78,7 @@
 ### 编排与恢复
 - [x] `wingman.orchestration`（基础版：orchestration_module.cpp + orchestration.pyi——submit/get/get_all/cancel_workflow）
   - [x] 工作流定义
-  - [ ] 依赖关系
+  - [x] 依赖关系（2026-10-09 落地：runtime 本地执行——`dependsOn` 前置任务集 + DFS 环检测提交即拒（自环/多节点环/未知引用/重复 id）；前置全 succeeded 才调度，单工作流拓扑序串行（并发控制留后续批次）；前置 failed/canceled/timeout 沿依赖图传播 skipped（传递），取消走用户语义置 canceled；任务执行复用抽出的 task_core（timeoutMs/maxRetries/backoff 与 task 模块同词汇表同默认值，emitEvents 门控关 task.* 事件）；拒绝路径发 `orchestration.error` 事件；快照反映 blocked/pending 阻塞态。Lua 可调用体提交即拒（调度线程执行，同 task async 门控）；17 例测试（依赖图/环检测/传播矩阵/取消/快照）+ task 模块回归全绿）
   - [ ] 并发控制
   - [ ] 条件分支
   - [ ] 子任务聚合

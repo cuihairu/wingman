@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### feat（2026-10-09，工作流任务依赖关系——orchestration 本地依赖调度 + task 内核抽出 task_core.hpp）
+
+- **依赖调度落地**：`wingman.orchestration` 自存根升级为 runtime 本地执行——`submit_workflow` 的任务定义增 `dependsOn` 前置任务集（前置全部 `succeeded` 才调度）；DFS 三色环检测提交即拒（自依赖/两节点环/三节点环/未知前置引用/重复 id 一律拒绝并发出 `orchestration.error` 事件负载 `{"error": 原因}`）。工作流由独立调度线程按拓扑序串行执行（跨工作流各自独立；v1 不并发，并发控制为后续批次项）；提交即返回 `wf-<N>`，快照（`get_workflow`/`get_all_workflows`）实时反映 `blocked`（前置未满足）/`pending`（就绪待调度）依赖阻塞态。
+- **失败传播语义**：前置任务 `failed`/`canceled`/`timeout` 沿依赖图传播——后置任务置 `skipped` 且传递（被跳过任务的后置连锁跳过）；无依赖边的分支不受牵连照常执行；重试额度内（`maxRetries`/`backoffMs`，与 task 模块同词汇表同默认值）恢复的不传播。`cancel_workflow` 走用户取消语义：执行中任务协作式取消（不打断执行中可调用体），未开工任务直接 `canceled`（区别于依赖失败的 `skipped`）；未知 ID/已终局恒 `false`。
+- **task 内核抽出**：Task 状态机/超时监控/重试退避/协作取消自 `task_module.cpp` 原样抽至 `task_core.hpp`（task/orchestration 两模块共用），仅加 `Options::emitEvents` 门控（工作流任务关闭 `task.*` 事件发射——流程级状态事件为后续批次项，task 模块默认值行为不变）。
+- **线程安全门控**：任务 `run` 经调度线程调用，必须线程安全可调用体——Lua 可调用体（`callableThreadSafe=false`）提交即拒并报 `orchestration.error`（同 task 模块 `async` 路径门控语义）；Python 函数（GIL）不受影响。
+- **测试**：新增 `orchestration_module_test.cpp` 17 例——提交校验矩阵、环检测拒绝（自环/两/三节点）、线性链与菱形依赖执行顺序（事件序列钉死）、阻塞态可观测（运行中前置 + blocked 后置）、传播矩阵（失败跳过不执行/独立分支照跑/传递跳过/超时传播/重试额度内恢复）、取消（全链 canceled + 未知/终局拒绝）、快照形状与并发工作流；同步更新 glue/script_function 两处 stub 契约断言（去全局空集断言，防用例顺序耦合）。验证：build 树 core_tests 2228 例 0 失败（2133 通过 + 95 环境跳过）、build-python 树 ctest 2654/2654 全绿、平台边界守卫通过。
+- **文档**：docs/api/orchestration.md 重写（去存根警告，补工作流定义 schema、状态词汇表、拒绝规则与 v1 限制）；orchestration.pyi 同步（schema/状态/事件口径）；notify.pyi 核对无漂移；development-todo「依赖关系」勾选。
+
 ### feat（2026-10-07，本地 ONNX 检测 provider——aiSetupLocal 切换 YOLOv5/v8 本地推理，两档后处理单源共编）
 
 - **本地 provider 面**：VisionAi 新增 `setupLocal`/`isLocalMode`（`VisionAiLocalConfig`：modelPath/labels/minConfidence）——与 HTTP `setup` 互斥、后调用者生效、`reset` 双清；`aiLocate`/`aiElements` 入口自动分流，返回形状与 HTTP provider 一致（locate 取置信最高一枚、labels 与 desc 双向大小写不敏感子串匹配、elements 全量透传）。未构建 ML 时 `setupLocal` 恒 `false` 不静默降级；Android 绑定同形恒 `false`（onnxruntime NDK 未收口）；`aiSetupStatus` 补 `localMode` 状态位。
