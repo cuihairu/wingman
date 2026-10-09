@@ -565,6 +565,46 @@ ModuleDescriptor createUIAutomationModule() {
 		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::TreeItem).withName(name)));
 	}, "name:string -> UIElement?"});
 
+	mod.functions.push_back({"find_menu_item", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::MenuItem).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_hyperlink", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::Hyperlink).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_image", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::Image).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_slider", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::Slider).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_spinner", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::Spinner).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_progress_bar", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::ProgressBar).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_tab", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::Tab).withName(name)));
+	}, "name:string -> UIElement?"});
+
+	mod.functions.push_back({"find_tab_item", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::string name = args.size() > 0 ? args[0].asString() : std::string();
+		return makeUiaElementObject(uia().find(UIASelector{}.withRole(UIARole::TabItem).withName(name)));
+	}, "name:string -> UIElement?"});
+
 	// ===== 等待类 =====
 	// 轮询直到元素出现或超时（默认 3000ms，与 wait_for_name 同口径），超时返回 null。
 	mod.functions.push_back({"wait_for_id", [](const std::vector<ScriptValue>& args) -> ScriptValue {

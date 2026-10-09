@@ -247,6 +247,20 @@ private:
             case UIA_EditControlTypeId: return UIARole::TextBox;
             case UIA_WindowControlTypeId: return UIARole::Window;
             case UIA_RadioButtonControlTypeId: return UIARole::RadioButton;
+            case UIA_ListControlTypeId: return UIARole::ListBox;
+            case UIA_ListItemControlTypeId: return UIARole::ListItem;
+            case UIA_MenuControlTypeId: return UIARole::Menu;
+            case UIA_MenuItemControlTypeId: return UIARole::MenuItem;
+            case UIA_TableControlTypeId: return UIARole::Table;
+            case UIA_TreeControlTypeId: return UIARole::Tree;
+            case UIA_TreeItemControlTypeId: return UIARole::TreeItem;
+            case UIA_HyperlinkControlTypeId: return UIARole::Hyperlink;
+            case UIA_ImageControlTypeId: return UIARole::Image;
+            case UIA_SliderControlTypeId: return UIARole::Slider;
+            case UIA_SpinnerControlTypeId: return UIARole::Spinner;
+            case UIA_ProgressBarControlTypeId: return UIARole::ProgressBar;
+            case UIA_TabControlTypeId: return UIARole::Tab;
+            case UIA_TabItemControlTypeId: return UIARole::TabItem;
             default: return UIARole::Unknown;
         }
     }
@@ -423,6 +437,20 @@ public:
             case UIARole::TextBox: controlType = UIA_EditControlTypeId; break;
             case UIARole::Window: controlType = UIA_WindowControlTypeId; break;
             case UIARole::RadioButton: controlType = UIA_RadioButtonControlTypeId; break;
+            case UIARole::ListBox: controlType = UIA_ListControlTypeId; break;
+            case UIARole::ListItem: controlType = UIA_ListItemControlTypeId; break;
+            case UIARole::Menu: controlType = UIA_MenuControlTypeId; break;
+            case UIARole::MenuItem: controlType = UIA_MenuItemControlTypeId; break;
+            case UIARole::Table: controlType = UIA_TableControlTypeId; break;
+            case UIARole::Tree: controlType = UIA_TreeControlTypeId; break;
+            case UIARole::TreeItem: controlType = UIA_TreeItemControlTypeId; break;
+            case UIARole::Hyperlink: controlType = UIA_HyperlinkControlTypeId; break;
+            case UIARole::Image: controlType = UIA_ImageControlTypeId; break;
+            case UIARole::Slider: controlType = UIA_SliderControlTypeId; break;
+            case UIARole::Spinner: controlType = UIA_SpinnerControlTypeId; break;
+            case UIARole::ProgressBar: controlType = UIA_ProgressBarControlTypeId; break;
+            case UIARole::Tab: controlType = UIA_TabControlTypeId; break;
+            case UIARole::TabItem: controlType = UIA_TabItemControlTypeId; break;
             default: return results;
         }
 

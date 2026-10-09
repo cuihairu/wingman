@@ -26,6 +26,13 @@ enum class UIARole : uint16_t {
     Table,
     Tree,
     TreeItem,
+    Hyperlink,
+    Image,
+    Slider,
+    Spinner,
+    ProgressBar,
+    Tab,
+    TabItem,
 };
 
 /**

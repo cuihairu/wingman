@@ -72,6 +72,15 @@ TEST(UiaModuleGlueTest, AllFindFunctionsReturnNullWithoutBackend) {
     EXPECT_TRUE(call(mod, "find_list_item", {ScriptValue::fromString("row1")}).isNull());
     EXPECT_TRUE(call(mod, "find_tree", {ScriptValue::fromString("tree")}).isNull());
     EXPECT_TRUE(call(mod, "find_tree_item", {ScriptValue::fromString("node")}).isNull());
+    // 扩展控件查找（MenuItem/Hyperlink/Image/Slider/Spinner/ProgressBar/Tab/TabItem）
+    EXPECT_TRUE(call(mod, "find_menu_item", {ScriptValue::fromString("open")}).isNull());
+    EXPECT_TRUE(call(mod, "find_hyperlink", {ScriptValue::fromString("detail")}).isNull());
+    EXPECT_TRUE(call(mod, "find_image", {ScriptValue::fromString("logo")}).isNull());
+    EXPECT_TRUE(call(mod, "find_slider", {ScriptValue::fromString("volume")}).isNull());
+    EXPECT_TRUE(call(mod, "find_spinner", {ScriptValue::fromString("count")}).isNull());
+    EXPECT_TRUE(call(mod, "find_progress_bar", {ScriptValue::fromString("load")}).isNull());
+    EXPECT_TRUE(call(mod, "find_tab", {ScriptValue::fromString("general")}).isNull());
+    EXPECT_TRUE(call(mod, "find_tab_item", {ScriptValue::fromString("advanced")}).isNull());
     EXPECT_TRUE(call(mod, "wait_for_name",
                      {ScriptValue::fromString("never"), ScriptValue::fromInt(1)}).isNull());
     // 等待族（Phase 3）：无后端时均超时返回 null

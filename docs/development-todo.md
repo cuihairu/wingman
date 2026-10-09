@@ -557,7 +557,7 @@
 - [ ] 实现选择项操作 (selectItem/getSelection)
 - [x] 实现高级查找方法（C++ 层 `find(selector)`/`findAllByRole`，脚本层暴露 find_by_name/find_by_id/find_all_by_control_type）
 - [x] 添加 UIA 事件监听支持 (PropertyChangedEventHandler)
-- [ ] Lua 绑定更新 (expand, collapse, isExpanded；getParent/selectItem/getSelection 未实现)
+- [x] Lua 绑定更新（expand, collapse, isExpanded 已随 UIElement 对象 12 方法落地；getParent/selectItem/getSelection 仍未实现——C++ 层无对应接口）
 - [x] 更新 UIA 文档
 
 ### Phase 15: WebSocket 和 Dashboard ✅
@@ -591,19 +591,23 @@
 
 ### Phase 19: UIA 控件类型支持扩展
 
-> 未实现——uia 模块实注册仅 13 个函数，见
-> `lib/wingman/src/script/modules/misc_modules.cpp:466-580`；下列 find* 控件查找函数在码中不存在，勾选状态按证据回退（2026-10-08 审计修正）。
+> 2026-10-09 全量落地：脚本层 find* 共 21 个函数 + 等待族 3 个（wait_for_id/wait_for_role/wait_for selector）；
+> UIARole 枚举扩至 21 项（14-20 追加 Hyperlink/Image/Slider/Spinner/ProgressBar/Tab/TabItem），
+> Windows 后端 controlTypeToRole/findAllByRole 双向映射补全（此前 ListBox/ListItem/Menu/MenuItem/Table/
+> Tree/TreeItem 读回恒 Unknown，find_list/find_tree 等在 Windows 上匹配不到——已修），
+> macOS 后端 AX 角色串映射补全（AXList/AXMenu/AXMenuItem/AXTable/AXOutline/AXImage/AXSlider/
+> AXProgressIndicator/AXTabGroup + 字面量 AXLink/AXIncrementor/AXRow）。
 
 - [x] 添加 `findCheckBox(name)` - 查找复选框（2026-10-09：脚本层 `find_check_box`，CheckBox 角色过滤）
 - [x] 添加 `findRadioButton(name)` - 查找单选按钮（2026-10-09：`find_radio_button`，RadioButton 角色）
 - [x] 添加 `findComboBox(name)` - 查找下拉框（2026-10-09：`find_combo_box`，ComboBox 角色）
 - [x] 添加 `findList(name)` - 查找列表（2026-10-09：`find_list`，ListBox 角色）
 - [x] 添加 `findListItem(name)` - 查找列表项（2026-10-09：`find_list_item`，ListItem 角色）
-- [ ] 添加 `findTab(name)` / `findTabItem(name)` - 查找标签页
+- [x] 添加 `findTab(name)` / `findTabItem(name)` - 查找标签页（2026-10-09：`find_tab`/`find_tab_item`，Tab/TabItem 角色新增）
 - [x] 添加 `findTree(name)` / `findTreeItem(name)` - 查找树形控件（2026-10-09：`find_tree`/`find_tree_item`，Tree/TreeItem 角色）
-- [ ] 添加 `findMenuItem(name)` - 查找菜单项
-- [ ] 添加 `findHyperlink(name)` - 查找超链接
-- [ ] 添加 `findImage(name)` - 查找图像
-- [ ] 添加 `findSlider(name)` - 查找滑块
-- [ ] 添加 `findSpinner(name)` - 查找微调器
-- [ ] 添加 `findProgressBar(name)` - 查找进度条
+- [x] 添加 `findMenuItem(name)` - 查找菜单项（2026-10-09：`find_menu_item`，MenuItem 角色）
+- [x] 添加 `findHyperlink(name)` - 查找超链接（2026-10-09：`find_hyperlink`，Hyperlink 角色新增）
+- [x] 添加 `findImage(name)` - 查找图像（2026-10-09：`find_image`，Image 角色新增）
+- [x] 添加 `findSlider(name)` - 查找滑块（2026-10-09：`find_slider`，Slider 角色新增）
+- [x] 添加 `findSpinner(name)` - 查找微调器（2026-10-09：`find_spinner`，Spinner 角色新增）
+- [x] 添加 `findProgressBar(name)` - 查找进度条（2026-10-09：`find_progress_bar`，ProgressBar 角色新增）

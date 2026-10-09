@@ -282,6 +282,19 @@ private:
         if (CFEqual(role, kAXCheckBoxRole)) return UIARole::CheckBox;
         if (CFEqual(role, kAXRadioButtonRole)) return UIARole::RadioButton;
         if (CFEqual(role, kAXTextFieldRole)) return UIARole::TextBox;
+        if (CFEqual(role, kAXListRole)) return UIARole::ListBox;
+        if (CFEqual(role, kAXMenuRole)) return UIARole::Menu;
+        if (CFEqual(role, kAXMenuItemRole)) return UIARole::MenuItem;
+        if (CFEqual(role, kAXTableRole)) return UIARole::Table;
+        if (CFEqual(role, kAXOutlineRole)) return UIARole::Tree;
+        if (CFEqual(role, kAXImageRole)) return UIARole::Image;
+        if (CFEqual(role, kAXSliderRole)) return UIARole::Slider;
+        if (CFEqual(role, kAXProgressIndicatorRole)) return UIARole::ProgressBar;
+        if (CFEqual(role, kAXTabGroupRole)) return UIARole::Tab;
+        // Hyperlink/Spinner/ListItem/TreeItem/TabItem 的 AX 角色串无公开常量，直接比字面量
+        if (CFEqual(role, CFSTR("AXLink"))) return UIARole::Hyperlink;
+        if (CFEqual(role, CFSTR("AXIncrementor"))) return UIARole::Spinner;
+        if (CFEqual(role, CFSTR("AXRow"))) return UIARole::ListItem;
         return UIARole::Unknown;
     }
 };

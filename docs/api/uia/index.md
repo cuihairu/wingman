@@ -2,7 +2,7 @@
 
 UI Automation 模块，用于与 UI 控件进行自动化交互。
 
-> [**已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`/`wait_for_id`/`wait_for_role`/`wait_for`）+ 专用查找（`find_button`/`find_edit`/`find_text`/`find_check_box`/`find_radio_button`/`find_combo_box`/`find_list`/`find_list_item`/`find_tree`/`find_tree_item`）+ UIElement 对象 12 方法（`get_info`/`click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`）+ 事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`）。支持 **Windows UIAutomation（COM 事件处理线程）+ macOS Accessibility（AXObserver run loop）** 双平台（Linux 暂不支持）。]
+> [**已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`/`wait_for_id`/`wait_for_role`/`wait_for`）+ 专用查找（`find_button`/`find_edit`/`find_text`/`find_check_box`/`find_radio_button`/`find_combo_box`/`find_list`/`find_list_item`/`find_tree`/`find_tree_item`/`find_menu_item`/`find_hyperlink`/`find_image`/`find_slider`/`find_spinner`/`find_progress_bar`/`find_tab`/`find_tab_item`）+ UIElement 对象 12 方法（`get_info`/`click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`）+ 事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`）。支持 **Windows UIAutomation（COM 事件处理线程）+ macOS Accessibility（AXObserver run loop）** 双平台（Linux 暂不支持）。]
 
 ## 什么是 UI Automation
 
@@ -69,8 +69,15 @@ Desktop (桌面)
 | 11 | Table | 表格 | 数据表格 | 遍历子元素 |
 | 12 | Tree | 树形控件 | 文件夹树、组织结构 | 展开/折叠节点、遍历 |
 | 13 | TreeItem | 树节点 | 树中的单个节点 | 点击、展开/折叠 |
+| 14 | Hyperlink | 超链接 | 网页/文档链接 | 点击 |
+| 15 | Image | 图像 | 图标、图片控件 | 获取信息 |
+| 16 | Slider | 滑块 | 音量、进度调节 | 点击 |
+| 17 | Spinner | 微调器 | 数值增减控件 | 点击 |
+| 18 | ProgressBar | 进度条 | 加载/安装进度 | 获取信息 |
+| 19 | Tab | 标签页容器 | 选项卡控件 | 遍历标签项 |
+| 20 | TabItem | 标签项 | 单个选项卡 | 点击切换 |
 
-> **注意**：Text（静态文本）、Tab（标签页）、ScrollBar（滚动条）、ProgressBar（进度条）、Slider（滑块）、ToolTip（工具提示）在 UIARole 枚举中**没有专用角色值**，无法按角色过滤。查找这些控件请使用按名称匹配的 `find_by_name` / `find_text`（`find_text` 不做角色过滤，可能命中任意类型的同名元素）。各类型实际可用的操作见对应子模块文档。
+> **注意**：Text（静态文本）、ScrollBar（滚动条）、ToolTip（工具提示）在 UIARole 枚举中**没有专用角色值**，无法按角色过滤。查找这些控件请使用按名称匹配的 `find_by_name` / `find_text`（`find_text` 不做角色过滤，可能命中任意类型的同名元素）。各类型实际可用的操作见对应子模块文档。
 
 ### UIA vs 坐标点击
 
@@ -634,7 +641,7 @@ from wingman import uia
 element = uia.wait_for_id("submit-btn", 5000)
 
 # 等待组合选择器（名称子串 + 角色）
-element = uia.wait_for({"name": "保存", "role": 50000}, 5000)
+element = uia.wait_for({"name": "保存", "role": 2}, 5000)
 ```
 
 == Lua
@@ -646,7 +653,7 @@ local wingman = require("wingman")
 local element = wingman.uia.wait_for_id("submit-btn", 5000)
 
 -- 等待组合选择器（名称子串 + 角色）
-element = wingman.uia.wait_for({ name = "保存", role = 50000 }, 5000)
+element = wingman.uia.wait_for({ name = "保存", role = 2 }, 5000)
 ```
 
 :::
@@ -1049,8 +1056,16 @@ local wingman = require("wingman")
 | `find_list_item(name)` | `find_list_item(name)` | 查找列表项控件（ListItem 角色） |
 | `find_tree(name)` | `find_tree(name)` | 查找树形控件（Tree 角色） |
 | `find_tree_item(name)` | `find_tree_item(name)` | 查找树节点控件（TreeItem 角色） |
+| `find_menu_item(name)` | `find_menu_item(name)` | 查找菜单项控件（MenuItem 角色） |
+| `find_hyperlink(name)` | `find_hyperlink(name)` | 查找超链接控件（Hyperlink 角色） |
+| `find_image(name)` | `find_image(name)` | 查找图像控件（Image 角色） |
+| `find_slider(name)` | `find_slider(name)` | 查找滑块控件（Slider 角色） |
+| `find_spinner(name)` | `find_spinner(name)` | 查找微调器控件（Spinner 角色） |
+| `find_progress_bar(name)` | `find_progress_bar(name)` | 查找进度条控件（ProgressBar 角色） |
+| `find_tab(name)` | `find_tab(name)` | 查找标签页容器（Tab 角色） |
+| `find_tab_item(name)` | `find_tab_item(name)` | 查找标签项控件（TabItem 角色） |
 
-> **未实现（计划中）**：`find_tab(name)` / `find_tab_item(name)`（Tab 角色未在 `UIARole` 枚举中收录）；`get_parent()`（C++ 层 `IUIAElement` 无父节点接口）；`select_item()` / `get_selection()`（C++ 层无编程选中接口，选中请用 `click()`）。
+> **未实现（计划中）**：`get_parent()`（C++ 层 `IUIAElement` 无父节点接口）；`select_item()` / `get_selection()`（C++ 层无编程选中接口，选中请用 `click()`）。
 
 ### 事件监听
 
