@@ -7,6 +7,7 @@
 #include "wingman/transport/transport.hpp"
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <functional>
 #include <mutex>
@@ -152,6 +153,7 @@ private:
     void onMessage(const transport::MessagePtr& msg);  // 接收完整消息（含 header）
     void handleNotifyMessage(const transport::MessagePtr& msg);  // 处理 Notify 消息
     void handleRequestMessage(const transport::MessagePtr& msg);  // 处理 Request 消息并回复 Response
+    void handleAuthChallenge(std::uint32_t sequence, const std::string& nonce);  // A3-P2 §6.1：auth.challenge 应答（HMAC-SHA256）
     void onEvent(ConnectionState state, const std::string& message);
 
     // P-Impl

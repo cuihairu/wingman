@@ -171,9 +171,18 @@ nightly 用户），鉴权属于部署者显式启用的能力；文档（本文
    - agent 未实现 challenge 时继续走 §2.1 明文 token 路径（双模式并存，
      agent 侧按接入节奏切换）。
 
-   §6.1.1 agent 侧接入（待实施）：C++（agentcore，OpenSSL HMAC——桌面已有
-   依赖；Android NDK 构建需补 openssl 包）与 Android Kotlin 链路的
-   `challenge: true` 开关。
+   §6.1.1 agent 侧接入（✅ 桌面链路已落地，2026-10-10；Android 见 §4.3）：
+   - HMAC-SHA256 为 agentcore 自含实现（`hmac_sha256.hpp/.cpp`，纯 C++23
+     标准库、零平台分支）——只为一次 HMAC 调用不值得引 OpenSSL（Android
+     NDK 构建免补 openssl 包），单测以 RFC 4231 标准向量 + server 侧
+     tokenMAC 同向量交叉验证（agentcore 测试 40 例全绿）；
+   - `RemoteClientConfig.useChallengeAuth`（默认关 = P1 明文兼容）：开启后
+     register 携 `challenge: true` 且明文 token 绝不过网；server 下发
+     `auth.challenge` 由 `handleAuthChallenge` 拦截应答（鉴权凭证属于链路
+     自身，不进 commandCallback 命令分发）；
+   - 桌面配置 `[remote] challenge_auth`（agent_config.cpp 解析/写回 +
+     roundtrip 单测），GUI 设置页「远程注册配置」增 challenge 开关
+     （config.getRemote/setRemote 链路透传，vitest 覆盖）。
 2. **per-agent token + 管理面**（✅ 已落地，2026-10-10）：
    - `models.AgentToken` 入 DB（label/sha256 哈希/前缀/可选 agentId 绑定/
      createdBy/revokedAt/lastSeenAt），明文只在签发响应返回一次；
@@ -210,6 +219,8 @@ P1 刻意不引入以上任何一项的半成品：校验点（handleRegister）
 | listener（P2 challenge） | env/DB token 挑战应答通过（LastSeenAt 刷新）；错误 HMAC / 绑定不符 / 超时不应答 → 拒绝断连；挑战中重复 register → CAS 拒绝 | ✅ go test |
 | HTTP API（P2） | 签发响应明文仅一次；列表不泄哈希；吊销幂等 + 审计 | ✅ go test |
 | C++ | setAuthToken → register payload 含 token；未设置 → 不含字段（编译 + 桌面回归） | ✅ |
+| C++（P2 challenge） | HMAC RFC 4231 向量 + server tokenMAC 同向量；challenge 模式 register 携 challenge:true 不携 token；auth.challenge 应答 hmac 正确；无 token 回空 hmac；默认模式不携 challenge 字段 | ✅ gtest |
+| 桌面配置（P2 challenge） | `[remote] challenge_auth` 解析 + save/load roundtrip；GUI 开关读写链路 | ✅ gtest + vitest |
 | Android | configJson 传递（代码交付，真机验收见 apps/android/README） | ❌ |
 
 ## 8. 实施清单（P1，对应本次提交）

@@ -28,6 +28,12 @@ function remoteInputs(): HTMLInputElement[] {
 	return [inputs[2], inputs[3], inputs[4]];
 }
 
+function remoteCheckbox(): HTMLInputElement {
+	const checkbox = document.querySelector<HTMLInputElement>('input[type="checkbox"]');
+	if (!checkbox) throw new Error('challenge 复选框未渲染');
+	return checkbox;
+}
+
 function installInvoke(handler: (cmd: string, args?: Record<string, unknown>) => unknown) {
 	(window as any).__TAURI_INVOKE__ = vi.fn(handler);
 }
@@ -73,7 +79,12 @@ describe('设置页：远程注册配置区块', () => {
 	it('读取填充字段并提示成功', async () => {
 		installInvoke((cmd) => {
 			if (cmd === 'get_remote_config') {
-				return { serverIp: '192.168.1.10', serverPort: 9527, registerToken: 'tok-123' };
+				return {
+					serverIp: '192.168.1.10',
+					serverPort: 9527,
+					registerToken: 'tok-123',
+					challengeAuth: true,
+				};
 			}
 			throw new Error('unexpected ' + cmd);
 		});
@@ -88,6 +99,7 @@ describe('设置页：远程注册配置区块', () => {
 		expect(serverPort.value).toBe('9527');
 		expect(token.value).toBe('tok-123');
 		expect(token).toHaveAttribute('type', 'password');
+		expect(remoteCheckbox()).toBeChecked();
 	});
 
 	it('保存调用 set_remote_config 并按返回值刷新 + 写日志', async () => {
@@ -97,8 +109,14 @@ describe('设置页：远程注册配置区块', () => {
 					serverIp: '10.0.0.8',
 					serverPort: 9527,
 					registerToken: 'new-tok',
+					challengeAuth: true,
 				});
-				return { serverIp: '10.0.0.8', serverPort: 9527, registerToken: 'new-tok' };
+				return {
+					serverIp: '10.0.0.8',
+					serverPort: 9527,
+					registerToken: 'new-tok',
+					challengeAuth: true,
+				};
 			}
 			throw new Error('unexpected ' + cmd);
 		});
@@ -108,6 +126,7 @@ describe('设置页：远程注册配置区块', () => {
 		await fireEvent.input(serverIp, { target: { value: ' 10.0.0.8 ' } });
 		await fireEvent.input(serverPort, { target: { value: '9527' } });
 		await fireEvent.input(token, { target: { value: 'new-tok' } });
+		await fireEvent.click(remoteCheckbox());
 
 		await fireEvent.click(screen.getByRole('button', { name: '保存并应用' }));
 		await waitFor(() => {
@@ -116,6 +135,7 @@ describe('设置页：远程注册配置区块', () => {
 		expect(get(logs).map(e => e.message)).toContain('远程注册配置已更新: 10.0.0.8:9527');
 		// 保存成功后字段按 runtime 返回的生效值刷新
 		expect(serverIp.value).toBe('10.0.0.8');
+		expect(remoteCheckbox()).toBeChecked();
 		expect(invoke).toHaveBeenCalledTimes(1);
 	});
 

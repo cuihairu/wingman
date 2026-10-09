@@ -11,6 +11,7 @@ pub struct RemoteConfig {
     pub server_ip: String,
     pub server_port: u16,
     pub register_token: String,
+    pub challenge_auth: bool,
 }
 
 #[tauri::command]
@@ -28,6 +29,7 @@ pub async fn get_remote_config(
             server_ip: result["serverIp"].as_str().unwrap_or("").to_string(),
             server_port: result["serverPort"].as_u64().unwrap_or(0) as u16,
             register_token: result["registerToken"].as_str().unwrap_or("").to_string(),
+            challenge_auth: result["challengeAuth"].as_bool().unwrap_or(false),
         });
     }
     Err(response["data"]["error"]
@@ -42,6 +44,7 @@ pub async fn set_remote_config(
     server_ip: String,
     server_port: u16,
     register_token: String,
+    challenge_auth: bool,
 ) -> Result<RemoteConfig, String> {
     let mut client = state.ipc_client.lock().await;
     let response = client
@@ -51,6 +54,7 @@ pub async fn set_remote_config(
                 "serverIp": server_ip,
                 "serverPort": server_port,
                 "registerToken": register_token,
+                "challengeAuth": challenge_auth,
             }),
         )
         .await?;
@@ -61,6 +65,7 @@ pub async fn set_remote_config(
             server_ip: result["serverIp"].as_str().unwrap_or("").to_string(),
             server_port: result["serverPort"].as_u64().unwrap_or(0) as u16,
             register_token: result["registerToken"].as_str().unwrap_or("").to_string(),
+            challenge_auth: result["challengeAuth"].as_bool().unwrap_or(false),
         });
     }
     Err(response["data"]["error"]

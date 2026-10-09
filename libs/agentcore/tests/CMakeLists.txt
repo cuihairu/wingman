@@ -1,6 +1,7 @@
 # wingman::agentcore 单元测试
 # 模式与 libs/transport/tests 一致：独立可执行 + gtest_discover_tests。
 find_package(GTest CONFIG REQUIRED)
+include(GoogleTest)
 
 add_executable(agentcore_tests agentcore_test.cpp)
 

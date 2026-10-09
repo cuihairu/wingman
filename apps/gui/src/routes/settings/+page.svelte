@@ -142,7 +142,7 @@
 	}
 
 	// ===== 远程注册配置（runtime → Go server，经本地 IPC 读写） =====
-	let remoteConfig = $state({ serverIp: '', serverPort: 8888, registerToken: '' });
+	let remoteConfig = $state({ serverIp: '', serverPort: 8888, registerToken: '', challengeAuth: false });
 	let remoteConfigBusy = $state(false);
 	let remoteConfigMessage = $state('');
 	let remoteConfigOk = $state(false);
@@ -192,6 +192,7 @@
 				serverIp,
 				serverPort,
 				registerToken: remoteConfig.registerToken,
+				challengeAuth: remoteConfig.challengeAuth,
 			});
 			// runtime 会热重建远程链路并写回配置文件
 			setRemoteConfigMessage('已应用并写回 runtime 配置文件', true);
@@ -342,6 +343,17 @@
 					{showToken ? '隐藏' : '显示'}
 				</button>
 			</div>
+		</div>
+		<div class="form-group">
+			<span class="form-label">Challenge 注册鉴权（A3-P2）</span>
+			<label class="remote-challenge-row">
+				<input
+					type="checkbox"
+					bind:checked={remoteConfig.challengeAuth}
+					disabled={remoteConfigBusy}
+				>
+				<span>开启后注册走 HMAC 挑战应答，令牌明文不再经过网络（需 Go server 为新版）</span>
+			</label>
 		</div>
 		<button class="btn btn-primary" onclick={saveRemoteConfig} disabled={remoteConfigBusy}>
 			{remoteConfigBusy ? '应用中...' : '保存并应用'}
@@ -724,6 +736,15 @@
 	.remote-input { max-width: 360px; display: block; }
 	.token-row { display: flex; gap: 8px; align-items: center; max-width: 440px; }
 	.token-row .form-input { flex: 1; }
+	.remote-challenge-row {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		max-width: 440px;
+		font-size: 12px;
+		color: var(--text-secondary);
+		cursor: pointer;
+	}
 	.remote-config-msg {
 		margin-top: 10px;
 		padding: 8px 12px;

@@ -283,6 +283,7 @@ bool Agent::start() {
                     {"serverIp", rc.serverIp},
                     {"serverPort", rc.serverPort},
                     {"registerToken", rc.registerToken},
+                    {"challengeAuth", rc.useChallengeAuth},
                 };
             },
             [this](const nlohmann::json& req) -> std::string {
@@ -314,6 +315,12 @@ bool Agent::start() {
                         return "registerToken 过长（上限 256 字符）";
                     }
                     next.registerToken = std::move(token);
+                }
+                if (req.contains("challengeAuth")) {
+                    if (!req["challengeAuth"].is_boolean()) {
+                        return "challengeAuth 必须为布尔值";
+                    }
+                    next.useChallengeAuth = req["challengeAuth"].get<bool>();
                 }
                 return applyRemoteConfig(std::move(next));
             },

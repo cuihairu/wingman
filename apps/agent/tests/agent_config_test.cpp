@@ -164,6 +164,7 @@ TEST_F(AgentConfigTest, RemoteSectionParsesIntsAndStrings) {
         heartbeat_interval = 15
         connect_timeout = 3
         register_token = "tok-123"
+        challenge_auth = true
     )");
     EXPECT_EQ(config.remoteClient.serverIp, "10.1.2.3");
     EXPECT_EQ(config.remoteClient.serverPort, 9527);
@@ -172,6 +173,7 @@ TEST_F(AgentConfigTest, RemoteSectionParsesIntsAndStrings) {
     EXPECT_EQ(config.remoteClient.heartbeatInterval, 15);
     EXPECT_EQ(config.remoteClient.connectTimeout, 3);
     EXPECT_EQ(config.remoteClient.registerToken, "tok-123");
+    EXPECT_TRUE(config.remoteClient.useChallengeAuth);
 }
 
 TEST_F(AgentConfigTest, DebuggerSectionParsesBoolsAndInt) {
@@ -300,6 +302,7 @@ TEST_F(AgentConfigTest, SaveThenLoadRoundTripsAllPersistedSections) {
     config.remoteClient.heartbeatInterval = 10;
     config.remoteClient.connectTimeout = 4;
     config.remoteClient.registerToken = "secret#token";
+    config.remoteClient.useChallengeAuth = true;
     config.standalone.scriptDir = "scripts/rt";
     config.debugger.enable = false;
     config.debugger.listenPort = 7654;
@@ -325,6 +328,7 @@ TEST_F(AgentConfigTest, SaveThenLoadRoundTripsAllPersistedSections) {
     EXPECT_EQ(loaded.remoteClient.heartbeatInterval, config.remoteClient.heartbeatInterval);
     EXPECT_EQ(loaded.remoteClient.connectTimeout, config.remoteClient.connectTimeout);
     EXPECT_EQ(loaded.remoteClient.registerToken, config.remoteClient.registerToken);
+    EXPECT_EQ(loaded.remoteClient.useChallengeAuth, config.remoteClient.useChallengeAuth);
     EXPECT_EQ(loaded.standalone.scriptDir, config.standalone.scriptDir);
     EXPECT_EQ(loaded.debugger.enable, config.debugger.enable);
     EXPECT_EQ(loaded.debugger.listenPort, config.debugger.listenPort);

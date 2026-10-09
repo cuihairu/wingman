@@ -9,7 +9,8 @@ namespace wingman::rpc {
 
 // RemoteConfigAccess 为 config.getRemote / config.setRemote 提供读写通道。
 // 由 LocalIpcServer 的所有者（Agent）注入，handler 不依赖 Agent 类型：
-// - get   返回当前生效的远程配置（serverIp/serverPort/registerToken）
+// - get   返回当前生效的远程配置（serverIp/serverPort/registerToken/
+//         challengeAuth）
 // - apply 应用新值（更新内存 + 写配置文件 + 热重建远程客户端），
 //         返回错误串（空串 = 成功）
 struct RemoteConfigAccess {

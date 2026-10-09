@@ -128,7 +128,7 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
                 }
                 // Remote section keys
                 if (currentSection == "remote") {
-                    // No boolean keys in remote section currently
+                    if (key == "challenge_auth") config.remoteClient.useChallengeAuth = true;
                 }
                 // Debugger section keys
                 if (currentSection == "debugger") {
@@ -145,6 +145,10 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
                     if (key == "enable_remote") config.enableRemote = false;
                     if (key == "enable_local_ipc") config.enableLocalIpc = false;
                     if (key == "enable_standalone_script") config.enableStandaloneScript = false;
+                }
+                // Remote section keys
+                if (currentSection == "remote") {
+                    if (key == "challenge_auth") config.remoteClient.useChallengeAuth = false;
                 }
                 // Debugger section keys
                 if (currentSection == "debugger") {
@@ -223,7 +227,8 @@ bool AgentConfig::saveToFile(const std::string& path) const {
     file << "max_reconnect_interval = " << remoteClient.maxReconnectInterval << "\n";
     file << "heartbeat_interval = " << remoteClient.heartbeatInterval << "\n";
     file << "connect_timeout = " << remoteClient.connectTimeout << "\n";
-    file << "register_token = \"" << remoteClient.registerToken << "\"\n\n";
+    file << "register_token = \"" << remoteClient.registerToken << "\"\n";
+    file << "challenge_auth = " << (remoteClient.useChallengeAuth ? "true" : "false") << "\n\n";
 
     file << "# ========== 单机模式配置 ==========\n";
     file << "[standalone]\n";

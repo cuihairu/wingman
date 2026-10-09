@@ -1,5 +1,6 @@
 #include "wingman/agentcore/remote_client.hpp"
 #include "wingman/agentcore/event_buffer.hpp"
+#include "wingman/agentcore/hmac_sha256.hpp"
 #include "proxy_tunnel.hpp"
 #include "wingman/transport/transport_client.hpp"
 #include <spdlog/spdlog.h>
@@ -457,8 +458,16 @@ void RemoteClient::sendRegister() {
     for (auto it = impl_->registerMetadata.begin(); it != impl_->registerMetadata.end(); ++it) {
         registerMsg[it.key()] = it.value();
     }
-    // 注册鉴权 token（server 侧 WINGMAN_AGENT_TOKENS 白名单校验，见 listener.go handleRegister）
-    if (!impl_->authToken.empty()) {
+    // 注册鉴权（docs/agent-token-auth-design.md §2/§6.1）：
+    //   challenge 模式（useChallengeAuth，A3-P2 显式 opt-in）：携 challenge:true
+    //   且明文 token 绝不过网，等 server 的 auth.challenge 下发 nonce 后应答
+    //   HMAC-SHA256（handleAuthChallenge）；
+    //   明文模式（默认，P1 兼容）：携顶层 token，server 白名单直比。
+    if (impl_->config.useChallengeAuth) {
+        if (!impl_->authToken.empty()) {
+            registerMsg["challenge"] = true;
+        }
+    } else if (!impl_->authToken.empty()) {
         registerMsg["token"] = impl_->authToken;
     }
 
@@ -566,6 +575,15 @@ void RemoteClient::handleRequestMessage(const transport::MessagePtr& msg) {
 
         spdlog::info("Received Request: method={}, seq={}", method, msg->header.sequence);
 
+        // challenge-response 注册鉴权应答（A3-P2 §6.1）：鉴权凭证属于链路
+        // 自身，不走 commandCallback（脚本命令分发）。key = sha256Hex(token)
+        // 的 ASCII 字节、message = nonce 的 ASCII 字节，与 server 侧 tokenMAC
+        // 字节语义一致（hmac_sha256.hpp）。
+        if (method == "auth.challenge") {
+            handleAuthChallenge(msg->header.sequence, json.value("nonce", ""));
+            return;
+        }
+
         // 检查命令回调是否绑定
         if (!commandCallback_) {
             spdlog::warn("No command callback bound, cannot execute method={}", method);
@@ -649,6 +667,32 @@ void RemoteClient::handleRequestMessage(const transport::MessagePtr& msg) {
         }.dump();
 
         deliverMessage(responseMsg, false);
+    }
+}
+
+// auth.challenge 应答（A3-P2 §6.1）：回 Response（同 sequence）携
+// {"hmac": hex}，mac = HMAC-SHA256(key, nonce)，key = sha256Hex(token) 的
+// ASCII 字节——server 侧 env 源用明文派生同值、DB 源直接用哈希列验签，
+// token 明文全程不过网。无 token 时回空 hmac，server 校验失败走统一拒绝
+// 路径（register_ack success:false + 断连）。
+void RemoteClient::handleAuthChallenge(std::uint32_t sequence, const std::string& nonce) {
+    nlohmann::json response;
+    if (impl_->authToken.empty()) {
+        response = {{"hmac", ""}, {"error", "no auth token configured"}};
+        spdlog::warn("Received auth.challenge but no auth token configured");
+    } else {
+        response = {{"hmac", hmacSha256HexKey(sha256Hex(impl_->authToken), nonce)}};
+        spdlog::info("Answered auth.challenge (seq={})", sequence);
+    }
+
+    auto responseMsg = std::make_shared<transport::Message>();
+    responseMsg->header.type = transport::MessageType::Response;
+    responseMsg->header.sequence = sequence;
+    responseMsg->header.reserved = 0;
+    responseMsg->body = response.dump();
+
+    if (!deliverMessage(responseMsg, false)) {
+        spdlog::warn("Failed to send auth.challenge response (seq={})", sequence);
     }
 }
 

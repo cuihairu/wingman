@@ -31,6 +31,7 @@ add_library(wingman_agentcore STATIC
     src/remote_client.cpp
     src/proxy_tunnel.cpp
     src/event_buffer.cpp
+    src/hmac_sha256.cpp
 )
 add_library(wingman::agentcore ALIAS wingman_agentcore)
 

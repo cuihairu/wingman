@@ -16,6 +16,11 @@ struct RemoteClientConfig {
     int connectTimeout = 10;        // 秒
     // 注册鉴权 token（[remote] register_token；空 = 不携带，server 鉴权默认关闭）
     std::string registerToken;
+    // challenge-response 注册鉴权（[remote] challenge_auth，A3-P2 §6.1；
+    // 默认关 = P1 明文 token 兼容模式）。开启后注册携带 challenge:true 且
+    // 明文 token 绝不过网，server 以 auth.challenge 下发 nonce 完成校验。
+    // 旧 server（P1）不理解 challenge 字段会按缺 token 拒绝，故显式 opt-in。
+    bool useChallengeAuth = false;
 };
 
 } // namespace wingman::runtime
