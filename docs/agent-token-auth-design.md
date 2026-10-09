@@ -156,9 +156,24 @@ nightly 用户），鉴权属于部署者显式启用的能力；文档（本文
 
 ## 6. P2 演进
 
-1. **challenge-response**（未实施）：register 后 server 下发 `auth.challenge{nonce}`，
-   agent 回 `HMAC-SHA256(token, nonce)`——token 不离开本机，消除嗅探面。
-   C++ 侧需 OpenSSL HMAC（桌面已有依赖；Android NDK 构建需补 openssl 包）。
+1. **challenge-response**（✅ Go server 已落地，2026-10-10；agent 侧接入见 §6.1.1）：
+   register 携带顶层 `challenge: true` 且**不携明文 token** → server 下发
+   Request `auth.challenge{nonce}`（32 字节 hex，5s 超时）→ agent 回
+   `{"hmac": hex}`，**mac = HMAC-SHA256(key, nonce)，key = sha256hex(token)**：
+   - agent 侧自行从本地明文推导密钥，token 全程不过网，消除 P1 的嗅探面；
+   - 服务端 env 源以明文派生 sha256hex、DB 源直接用 TokenHash 列作密钥
+     （两者同值）——无需存明文、无 schema 变更，DB 泄露威胁面与 §6.2 等同；
+   - 验签命中路径与 §6.2 Verify 完全同口径：constant-time 比对、agentId
+     绑定校验、LastSeenAt 刷新；
+   - 实现要点：挑战在独立 goroutine 完成（handleRegister 由 readLoop 驱动，
+     同步等 Response 会自锁），`challengeStarted`/`settled` 两个 CAS 门
+     防并发双重注册与异步终态竞态。
+   - agent 未实现 challenge 时继续走 §2.1 明文 token 路径（双模式并存，
+     agent 侧按接入节奏切换）。
+
+   §6.1.1 agent 侧接入（待实施）：C++（agentcore，OpenSSL HMAC——桌面已有
+   依赖；Android NDK 构建需补 openssl 包）与 Android Kotlin 链路的
+   `challenge: true` 开关。
 2. **per-agent token + 管理面**（✅ 已落地，2026-10-10）：
    - `models.AgentToken` 入 DB（label/sha256 哈希/前缀/可选 agentId 绑定/
      createdBy/revokedAt/lastSeenAt），明文只在签发响应返回一次；
@@ -192,6 +207,7 @@ P1 刻意不引入以上任何一项的半成品：校验点（handleRegister）
 | integration | 开启 token 的真实链路：sim agent 带正确 token 上线、错误 token 被拒 | ✅ go test |
 | token store（P2） | 签发/校验/吊销/绑定/列表不泄哈希；fail-closed（吊销全部仍拒） | ✅ go test |
 | listener（P2） | DB token 放行；吊销后拒绝并断连；双源并存；空库不启用鉴权（兼容） | ✅ go test |
+| listener（P2 challenge） | env/DB token 挑战应答通过（LastSeenAt 刷新）；错误 HMAC / 绑定不符 / 超时不应答 → 拒绝断连；挑战中重复 register → CAS 拒绝 | ✅ go test |
 | HTTP API（P2） | 签发响应明文仅一次；列表不泄哈希；吊销幂等 + 审计 | ✅ go test |
 | C++ | setAuthToken → register payload 含 token；未设置 → 不含字段（编译 + 桌面回归） | ✅ |
 | Android | configJson 传递（代码交付，真机验收见 apps/android/README） | ❌ |

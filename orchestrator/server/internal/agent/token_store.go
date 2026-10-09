@@ -3,6 +3,7 @@ package agent
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -73,6 +74,33 @@ func (s *TokenStore) Verify(token, agentID string) (*models.AgentToken, bool) {
 	now := time.Now()
 	_ = s.db.Model(&rec).Update("last_seen_at", &now).Error
 	return &rec, true
+}
+
+// VerifyHMAC challenge-response 校验（§6.1）：agent 以 sha256hex(token) 为
+// HMAC-SHA256 密钥对 nonce 求签，密钥与库内 TokenHash 列同值——服务端无需
+// 持有明文即可验签。逐条有效记录 constant-time 比对，命中后查 agentId 绑定
+// 并刷新 LastSeenAt（与 Verify 同收尾口径）。
+func (s *TokenStore) VerifyHMAC(macHex, nonceHex, agentID string) (*models.AgentToken, bool) {
+	if macHex == "" || nonceHex == "" {
+		return nil, false
+	}
+	var recs []models.AgentToken
+	if err := s.db.Where("revoked_at IS NULL").Find(&recs).Error; err != nil {
+		return nil, false
+	}
+	for i := range recs {
+		want := tokenMAC(recs[i].TokenHash, nonceHex)
+		if subtle.ConstantTimeCompare([]byte(macHex), []byte(want)) != 1 {
+			continue
+		}
+		if recs[i].AgentID != "" && recs[i].AgentID != agentID {
+			return nil, false
+		}
+		now := time.Now()
+		_ = s.db.Model(&recs[i]).Update("last_seen_at", &now).Error
+		return &recs[i], true
+	}
+	return nil, false
 }
 
 // Revoke 吊销 token（幂等：已吊销返回 false 不报错）。

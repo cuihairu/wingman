@@ -53,6 +53,8 @@
   与 per-agent token DB 源（Dashboard「系统管理 → 注册 Token」签发/吊销，
   A3-P2）双源并存：任一命中即可注册；存在签发记录（含已吊销）即启用 DB
   源校验（fail-closed，吊销全部 token 不会关闭鉴权）。
+  agent 亦可走 challenge-response 注册（register 带 `challenge: true`，
+  token 明文不过网，HMAC-SHA256 应答），双模式并存。
   详见 `docs/agent-token-auth-design.md`
 
 ## 启动

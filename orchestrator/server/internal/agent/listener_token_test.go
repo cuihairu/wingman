@@ -5,6 +5,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 )
 
 // startTestListenerWithTokens 起 token 白名单开启的测试 listener。
@@ -263,4 +265,207 @@ func TestRegisterEmptyStoreKeepsAuthClosed(t *testing.T) {
 	}
 	waitForCond(t, time.Second, func() bool { return registeredWith(reg, "tk-open") }, "tk-open registered")
 	_ = conn
+}
+
+// ---- challenge-response（§6.1）----
+
+// dialRegisterChallenge 发送 challenge 型注册（不携明文 token），读取服务端
+// 下发的 auth.challenge Request，返回连接、请求 sequence 与 nonce。
+func dialRegisterChallenge(t *testing.T, addr, agentID string) (net.Conn, uint32, string) {
+	t.Helper()
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+
+	sendMessage(t, conn, Notify, 0, map[string]any{
+		"type": "agent.register", "agentId": agentID, "hostname": "ch-host",
+		"challenge": true,
+	})
+
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	f, err := readFrameE(conn)
+	if err != nil {
+		t.Fatalf("read challenge request: %v", err)
+	}
+	if f.msgType != Request {
+		t.Fatalf("expected Request frame for auth.challenge, got %v", f.msgType)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(f.body, &payload); err != nil {
+		t.Fatalf("challenge body: %v", err)
+	}
+	if payload["type"] != "auth.challenge" {
+		t.Fatalf("expected auth.challenge, got %v", payload["type"])
+	}
+	nonce, _ := payload["nonce"].(string)
+	if len(nonce) != 64 { // 32 字节 hex
+		t.Fatalf("nonce should be 64 hex chars (32 bytes), got %d: %q", len(nonce), nonce)
+	}
+	return conn, f.sequence, nonce
+}
+
+// answerChallenge 以正确/错误的 HMAC 应答挑战（Response 帧、回显 sequence）。
+func answerChallenge(t *testing.T, conn net.Conn, seq uint32, macHex string) {
+	t.Helper()
+	sendMessage(t, conn, Response, seq, map[string]any{"hmac": macHex})
+}
+
+// readRegisterAck 读下一帧并断言为 register_ack，返回 payload。
+func readRegisterAck(t *testing.T, conn net.Conn) map[string]any {
+	t.Helper()
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	f, err := readFrameE(conn)
+	if err != nil {
+		t.Fatalf("read register ack: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(f.body, &payload); err != nil {
+		t.Fatalf("ack body: %v", err)
+	}
+	if payload["type"] != "agent.register_ack" {
+		t.Fatalf("expected register_ack, got %v", payload["type"])
+	}
+	return payload
+}
+
+// TestRegisterChallengeEnvTokenAccepted env 白名单 token 的挑战应答通过：
+// 明文 token 全程不过网，服务端以 sha256hex(token) 为 HMAC 密钥验签。
+func TestRegisterChallengeEnvTokenAccepted(t *testing.T) {
+	addr, reg := startTestListenerWithTokens(t, "env-secret")
+
+	conn, seq, nonce := dialRegisterChallenge(t, addr, "tk-ch-env")
+	answerChallenge(t, conn, seq, tokenMAC(sha256Hex("env-secret"), nonce))
+
+	payload := readRegisterAck(t, conn)
+	if payload["success"] != true {
+		t.Fatalf("challenge with correct HMAC should register, got %v", payload)
+	}
+	waitForCond(t, time.Second, func() bool { return registeredWith(reg, "tk-ch-env") }, "tk-ch-env registered")
+}
+
+// TestRegisterChallengeDBTokenAccepted DB 源 token 挑战通过：服务端直接用
+// TokenHash 列作 HMAC 密钥，LastSeenAt 在验签命中时刷新。
+func TestRegisterChallengeDBTokenAccepted(t *testing.T) {
+	db := newTokenTestDB(t)
+	store := NewTokenStore(db)
+	plain := mustCreateToken(t, store, "pixel-8", "")
+
+	addr, reg := startTestListenerWithStore(t, store)
+	conn, seq, nonce := dialRegisterChallenge(t, addr, "tk-ch-db")
+	answerChallenge(t, conn, seq, tokenMAC(sha256Hex(plain), nonce))
+
+	payload := readRegisterAck(t, conn)
+	if payload["success"] != true {
+		t.Fatalf("DB-token challenge should register, got %v", payload)
+	}
+	waitForCond(t, time.Second, func() bool { return registeredWith(reg, "tk-ch-db") }, "tk-ch-db registered")
+
+	// 验签命中即刷新 LastSeenAt（先于 completeRegistration，注册成功必已落）
+	var rec models.AgentToken
+	if err := db.First(&rec, 1).Error; err != nil {
+		t.Fatalf("load token record: %v", err)
+	}
+	if rec.LastSeenAt == nil {
+		t.Errorf("LastSeenAt should be touched on challenge verify")
+	}
+}
+
+// TestRegisterChallengeWrongMACRejected 错误 HMAC：ack success:false +
+// 不入 Registry + 断连。
+func TestRegisterChallengeWrongMACRejected(t *testing.T) {
+	addr, reg := startTestListenerWithTokens(t, "env-secret")
+
+	conn, seq, nonce := dialRegisterChallenge(t, addr, "tk-ch-bad")
+	answerChallenge(t, conn, seq, tokenMAC(sha256Hex("wrong-secret"), nonce))
+
+	payload := readRegisterAck(t, conn)
+	if payload["success"] != false {
+		t.Fatalf("wrong HMAC should be rejected, got %v", payload)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if registeredWith(reg, "tk-ch-bad") {
+		t.Errorf("agent with wrong HMAC must not be registered")
+	}
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, err := readFrameE(conn); err == nil {
+		t.Errorf("server should close connection after failed challenge")
+	}
+}
+
+// TestRegisterChallengeBoundTokenWrongAgentRejected 绑定 token 挑战：
+// HMAC 正确但 agentId 不匹配绑定 → 拒绝。
+func TestRegisterChallengeBoundTokenWrongAgentRejected(t *testing.T) {
+	store := NewTokenStore(newTokenTestDB(t))
+	plain := mustCreateToken(t, store, "pixel-8", "agent-pixel-8")
+
+	addr, reg := startTestListenerWithStore(t, store)
+	conn, seq, nonce := dialRegisterChallenge(t, addr, "agent-other")
+	answerChallenge(t, conn, seq, tokenMAC(sha256Hex(plain), nonce))
+
+	payload := readRegisterAck(t, conn)
+	if payload["success"] != false {
+		t.Fatalf("bound token beyond binding should be rejected, got %v", payload)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if registeredWith(reg, "agent-other") {
+		t.Errorf("agent beyond binding must not be registered")
+	}
+	_ = conn
+}
+
+// TestRegisterChallengeDuplicateRegisterRejected 挑战进行中同连接再来一次
+// register：CAS 拒绝 + 断连（防并发双重注册）。挑战 goroutine 随超时收尾，
+// 已 settled 的拒绝路径保持幂等。
+func TestRegisterChallengeDuplicateRegisterRejected(t *testing.T) {
+	old := challengeTimeout
+	challengeTimeout = 150 * time.Millisecond
+	t.Cleanup(func() { challengeTimeout = old })
+
+	addr, reg := startTestListenerWithTokens(t, "env-secret")
+
+	conn, _, _ := dialRegisterChallenge(t, addr, "tk-ch-dup")
+	// 未应答挑战，先插第二次 register（协议违规）
+	sendMessage(t, conn, Notify, 0, map[string]any{
+		"type": "agent.register", "agentId": "tk-ch-dup", "hostname": "ch-host",
+		"challenge": true,
+	})
+
+	payload := readRegisterAck(t, conn)
+	if payload["success"] != false {
+		t.Fatalf("duplicate register during pending challenge should be rejected, got %v", payload)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if registeredWith(reg, "tk-ch-dup") {
+		t.Errorf("duplicate register must not be registered")
+	}
+	// 等挑战 goroutine 超时收尾（150ms），确保 cleanup 恢复 challengeTimeout
+	// 前无在途读者
+	time.Sleep(300 * time.Millisecond)
+	_ = conn
+}
+
+// TestRegisterChallengeTimeoutNoAnswer 挑战超时不应答：拒绝 + 断连。
+func TestRegisterChallengeTimeoutNoAnswer(t *testing.T) {
+	old := challengeTimeout
+	challengeTimeout = 150 * time.Millisecond
+	t.Cleanup(func() { challengeTimeout = old })
+
+	addr, reg := startTestListenerWithTokens(t, "env-secret")
+
+	conn, _, _ := dialRegisterChallenge(t, addr, "tk-ch-timeout")
+	// 不应答，直接等服务端超时判定
+	payload := readRegisterAck(t, conn)
+	if payload["success"] != false {
+		t.Fatalf("unanswered challenge should be rejected on timeout, got %v", payload)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if registeredWith(reg, "tk-ch-timeout") {
+		t.Errorf("unanswered agent must not be registered")
+	}
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, err := readFrameE(conn); err == nil {
+		t.Errorf("server should close connection after challenge timeout")
+	}
 }
