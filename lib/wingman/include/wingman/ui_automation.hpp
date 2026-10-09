@@ -135,6 +135,10 @@ public:
     // Plan 6: 新增接口
     virtual std::vector<std::shared_ptr<IUIAElement>> getChildren() = 0;
     virtual std::shared_ptr<IUIAElement> getParent() = 0;
+
+    // 编程选中：可选中项 Select（SelectionItem）；容器返回首个选中子项（Selection）
+    virtual bool select() = 0;
+    virtual std::shared_ptr<IUIAElement> getSelection() = 0;
     virtual bool expand() = 0;
     virtual bool collapse() = 0;
     virtual bool isExpanded() const = 0;

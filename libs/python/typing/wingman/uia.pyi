@@ -40,6 +40,8 @@ class UIElement(TypedDict):
     is_expanded: Callable[[], bool]
     is_visible: Callable[[], bool]
     is_enabled: Callable[[], bool]
+    select: Callable[[], bool]
+    get_selection: Callable[[], UIElement | None]
 
 
 # ===== 根元素获取 =====

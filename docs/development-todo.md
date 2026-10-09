@@ -554,10 +554,10 @@
 ### Phase 14: UIA 功能增强 ✅
 - [x] 实现 UIACondition 查找条件
 - [x] 实现元素展开/折叠 (expand/collapse)
-- [ ] 实现选择项操作 (selectItem/getSelection)
+- [x] 实现选择项操作（2026-10-09：UIElement `select`（win SelectionItem.Select / mac AXSelected=true）+ `get_selection`（win Selection.GetCurrentSelection 首项 / mac AXSelectedRows/AXSelectedChildren 首项））
 - [x] 实现高级查找方法（C++ 层 `find(selector)`/`findAllByRole`，脚本层暴露 find_by_name/find_by_id/find_all_by_control_type）
 - [x] 添加 UIA 事件监听支持 (PropertyChangedEventHandler)
-- [x] Lua 绑定更新（expand, collapse, isExpanded 已随 UIElement 对象 12 方法落地；getParent/selectItem/getSelection 仍未实现——C++ 层无对应接口）
+- [x] Lua 绑定更新（expand, collapse, isExpanded 及 get_parent/select/get_selection 已随 UIElement 对象方法落地）
 - [x] 更新 UIA 文档
 
 ### Phase 15: WebSocket 和 Dashboard ✅

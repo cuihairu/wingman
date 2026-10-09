@@ -214,6 +214,28 @@ public:
         return std::make_shared<UIAElement>(parent, automation_);
     }
 
+    bool select() override {
+        if (!element_) return false;
+        CComPtr<IUIAutomationSelectionItemPattern> pattern;
+        if (FAILED(element_->GetCurrentPatternAs(UIA_SelectionItemPatternId,
+            __uuidof(IUIAutomationSelectionItemPattern), reinterpret_cast<void**>(&pattern))) || !pattern) return false;
+        return SUCCEEDED(pattern->Select());
+    }
+
+    std::shared_ptr<IUIAElement> getSelection() override {
+        if (!element_) return nullptr;
+        CComPtr<IUIAutomationSelectionPattern> pattern;
+        if (FAILED(element_->GetCurrentPatternAs(UIA_SelectionPatternId,
+            __uuidof(IUIAutomationSelectionPattern), reinterpret_cast<void**>(&pattern))) || !pattern) return nullptr;
+        CComPtr<IUIAutomationElementArray> selection;
+        if (FAILED(pattern->GetCurrentSelection(&selection)) || !selection) return nullptr;
+        int count = 0;
+        if (FAILED(selection->get_Length(&count)) || count <= 0) return nullptr;
+        CComPtr<IUIAutomationElement> first;
+        if (FAILED(selection->GetElement(0, &first)) || !first) return nullptr;
+        return std::make_shared<UIAElement>(first, automation_);
+    }
+
     bool expand() override {
         if (!element_) return false;
         CComPtr<IUIAutomationExpandCollapsePattern> pattern;

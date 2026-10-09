@@ -471,6 +471,19 @@ static ScriptValue makeUiaElementObject(std::shared_ptr<IUIAElement> e) {
 		return el ? ScriptValue::fromBool(el->isEnabled()) : ScriptValue::fromBool(false);
 	});
 
+	// 编程选中：可选中项（ListItem/TreeItem/TabItem 等 SelectionItem 模式）
+	obj["select"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->select()) : ScriptValue::fromBool(false);
+	});
+
+	// 容器的首个选中子项（List/Table/Tree 的 Selection 模式）；无选中返回 null
+	obj["get_selection"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		if (!el) return ScriptValue::null();
+		return makeUiaElementObject(el->getSelection());
+	});
+
 	return ScriptValue::fromObject(std::move(obj));
 }
 

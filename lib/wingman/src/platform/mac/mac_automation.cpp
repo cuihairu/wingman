@@ -236,6 +236,30 @@ public:
         return result;
     }
 
+    bool select() override {
+        if (!element_) return false;
+        return AXUIElementSetAttributeValue(element_, kAXSelectedAttribute, kCFBooleanTrue) == kAXErrorSuccess;
+    }
+
+    std::shared_ptr<IUIAElement> getSelection() override {
+        if (!element_) return nullptr;
+        // 表格取选中行，大纲/列表取选中子项，取首个
+        CFArrayRef selection = nullptr;
+        if (AXUIElementCopyAttributeValue(element_, kAXSelectedRowsAttribute, (CFTypeRef*)&selection) != kAXErrorSuccess || !selection) {
+            if (AXUIElementCopyAttributeValue(element_, kAXSelectedChildrenAttribute, (CFTypeRef*)&selection) != kAXErrorSuccess || !selection) {
+                return nullptr;
+            }
+        }
+        if (CFArrayGetCount(selection) <= 0) {
+            CFRelease(selection);
+            return nullptr;
+        }
+        AXUIElementRef first = (AXUIElementRef)CFArrayGetValueAtIndex(selection, 0);
+        auto result = std::make_shared<UIAElement>(first); // 构造会 CFRetain
+        CFRelease(selection);
+        return result;
+    }
+
     bool expand() override {
         if (!element_) return false;
         return AXUIElementSetAttributeValue(element_, kAXExpandedAttribute, kCFBooleanTrue) == kAXErrorSuccess;
