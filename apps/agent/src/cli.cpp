@@ -18,7 +18,7 @@ using Args = std::vector<std::string>;
 
 void printUsage() {
     std::cout
-        << "wingman-runtime <command> [options]\n"
+        << "wingman-agent <command> [options]\n"
         << "Commands:\n"
         << "  start   [--config|-c <path>] [--standalone]\n"
         << "  stop\n"

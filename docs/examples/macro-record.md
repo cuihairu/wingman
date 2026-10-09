@@ -37,7 +37,7 @@ print("Done")
 ## 运行
 
 ```bash
-wingman-runtime.exe script examples/lua_scripts/macro_record.lua
+wingman-agent.exe script examples/lua_scripts/macro_record.lua
 ```
 
 ## 交互式开始/停止

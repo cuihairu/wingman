@@ -55,7 +55,7 @@ Wingman Core
 
 ## Local IPC
 
-- Start runtime for local UI with `wingman-runtime start --standalone`.
+- Start runtime for local UI with `wingman-agent start --standalone`.
 - Windows 默认使用 Named Pipe。
 - macOS/Linux 默认使用 Unix Domain Socket。
 - Windows Unix Domain Socket 可做运行时探测支持，但不是默认主路径。

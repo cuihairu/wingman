@@ -58,7 +58,7 @@ Dashboard 点击运行 → Go Server run_script{content} → 设备执行 Lua
 │  C++ 核心（NDK 编译，app/src/main/cpp/）                            │
 │  ├─ AndroidAgent         装配层：注册/命令分发/日志回传              │
 │  ├─ ScriptRunner         Lua 执行线程：print 重定向、协作式停止     │
-│  ├─ RemoteClient         ★直接复用 apps/runtime（重连/outbox/心跳） │
+│  ├─ RemoteClient         ★直接复用 apps/agent（重连/outbox/心跳） │
 │  ├─ libs/transport       ★直接复用（asio 帧协议）                   │
 │  └─ libs/lua (sol2)      ★直接复用（Lua 5.5 引擎）                  │
 └────────────────────────────────────────────────────────────────────┘
@@ -189,7 +189,7 @@ apps/android/
 - 超时：A1 无强制超时（手动 stop）；A3 接 server 下发的 timeout
 
 **复用与边界**：
-- `RemoteClient`（apps/runtime）原样编入：它仅依赖 transport + spdlog + nlohmann
+- `RemoteClient`（apps/agent）原样编入：它仅依赖 transport + spdlog + nlohmann
   （`event_buffer.hpp` 为独立 bounded queue 头，随编无害）。其内部 `#ifdef _WIN32`
   两处宏不影响 Android 编译（Android 走 POSIX 分支）。
 - 不编 lib/wingman、不编 OpenCV —— A2 再接入。

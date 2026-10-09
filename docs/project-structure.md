@@ -96,7 +96,7 @@ libs/lua/ 或 libs/python/ (引擎绑定)
     ↓
 lib/wingman/ (41 个脚本模块 → screen, input, trigger...)
     ↓
-apps/runtime/ (应用：CLI + outbound agent + local IPC)
+apps/agent/ (应用：CLI + outbound agent + local IPC)
     ↓ (outbound TCP)
 orchestrator/server/ (Go 编排服务)
 ```
@@ -134,7 +134,7 @@ build-scripts\build-runtime-msvc-ninja.bat
 ### 测试覆盖
 
 - C++ 单元测试：`lib/wingman/tests/`（core_tests，2000+ 例）
-- Runtime 测试：`apps/runtime/tests/`（runtime_tests）
+- Runtime 测试：`apps/agent/tests/`（runtime_tests）
 - Lua 单元测试：`libs/lua/tests/`
 - Python 单元测试：`libs/python/tests/`
 - 传输层测试：`libs/transport/tests/`

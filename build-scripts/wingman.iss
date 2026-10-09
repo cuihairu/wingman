@@ -4,7 +4,7 @@
 #define AppName "Wingman"
 #define AppVersion "0.1.0"
 #define AppPublisher "Wingman"
-#define AppExeName "wingman-runtime.exe"
+#define AppExeName "wingman-agent.exe"
 #define AppPublisherUrl "https://github.com/cuihairu/wingman"
 #define AppSupportUrl "https://github.com/cuihairu/wingman/issues"
 
@@ -51,8 +51,8 @@ Name: "autostart"; Description: "开机自动启动"; GroupDescription: "其他�
 
 [Files]
 ; 主程序
-Source: "build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "build-msvc-ninja-vcpkg\apps\runtime\*.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "build-msvc-ninja-vcpkg\apps\agent\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Dashboard 前端
 Source: "orchestrator\dashboard\dist\*"; DestDir: "{app}\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -61,7 +61,7 @@ Source: "orchestrator\dashboard\dist\*"; DestDir: "{app}\dist"; Flags: ignorever
 Source: "scripts\examples\*.lua"; DestDir: "{app}\scripts\examples"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; 配置文件
-Source: "apps\runtime\config\agent.toml"; DestDir: "{app}\config"; Flags: ignoreversion
+Source: "apps\agent\config\agent.toml"; DestDir: "{app}\config"; Flags: ignoreversion
 
 ; 文档
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion

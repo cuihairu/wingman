@@ -181,7 +181,7 @@ cmake -B build -S . -G Ninja \
 
 ```bash
 # CLI 运行时（Python 脚本同理，需启用 WINGMAN_ENABLE_PYTHON）
-./build/apps/runtime/wingman-runtime script examples/lua_scripts/hello.lua
+./build/apps/agent/wingman-agent script examples/lua_scripts/hello.lua
 ```
 
 ## 系统要求

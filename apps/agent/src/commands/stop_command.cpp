@@ -9,12 +9,12 @@ namespace {
 
 #ifdef _WIN32
 constexpr std::array<const char*, 2> kAgentProcessNames = {
-    "wingman-runtime.exe",
+    "wingman-agent.exe",
     "wingman-agent.exe",
 };
 #else
 constexpr std::array<const char*, 2> kAgentProcessNames = {
-    "wingman-runtime",
+    "wingman-agent",
     "wingman-agent",
 };
 #endif

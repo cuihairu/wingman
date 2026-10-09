@@ -83,7 +83,7 @@ Wingman 是四层模型，中间横着一条硬性的 **Control Plane / Executio
     identity · register({agentId, platform, capabilities}) · heartbeat
     · command · event
         ↓
- RUNTIME LAYER（Execution Plane）    apps/runtime
+ RUNTIME LAYER（Execution Plane）    apps/agent
     ScriptManager · Lua/Python 引擎 · CommandDispatcher · TriggerManager
     · 本地 IPC（Tauri → runtime）
         ↓
@@ -136,7 +136,7 @@ Wingman 是四层模型，中间横着一条硬性的 **Control Plane / Executio
 | **Workflow** | Go server `internal/workflow` DAG 引擎（环检测/超时/重试/等待）+ Dashboard Workflows 页 | ✅ |
 | **Artifact** | 部署截图 artifact（`deploy-screenshot`，部署链路）；平台级 Execution artifact 模型见 architecture-decisions.md *Execution* | 🔶 |
 | **Control Plane** | Go server：registry / RBAC / audit / workflow / 批量操作 / Guacamole 网关 | ✅ |
-| **Execution Plane** | apps/runtime + Android agent（outbound 执行、本地 IPC） | ✅ |
+| **Execution Plane** | apps/agent + Android agent（outbound 执行、本地 IPC） | ✅ |
 
 ## 调用链
 
@@ -147,7 +147,7 @@ libs/lua/ (Lua 绑定)
     ↓
 lib/wingman/ (核心功能：screen, input, trigger...)
     ↓
-apps/runtime/ (应用：CLI + 运行模式)
+apps/agent/ (应用：CLI + 运行模式)
 ```
 
 ## 控制面

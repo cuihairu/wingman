@@ -12,20 +12,20 @@ namespace {
 
 std::vector<std::filesystem::path> candidateStubPaths() {
 #ifdef _WIN32
-    constexpr const char* stubName = "wingman-runtime.exe";
+    constexpr const char* stubName = "wingman-agent.exe";
     return {
         std::filesystem::path(stubName),
-        std::filesystem::path("build/apps/runtime/Release") / stubName,
-        std::filesystem::path("../build/apps/runtime/Release") / stubName,
-        std::filesystem::path("build/apps/runtime/Debug") / stubName,
-        std::filesystem::path("../build/apps/runtime/Debug") / stubName,
+        std::filesystem::path("build/apps/agent/Release") / stubName,
+        std::filesystem::path("../build/apps/agent/Release") / stubName,
+        std::filesystem::path("build/apps/agent/Debug") / stubName,
+        std::filesystem::path("../build/apps/agent/Debug") / stubName,
     };
 #else
-    constexpr const char* stubName = "wingman-runtime";
+    constexpr const char* stubName = "wingman-agent";
     return {
         std::filesystem::path(stubName),
-        std::filesystem::path("build/apps/runtime") / stubName,
-        std::filesystem::path("../build/apps/runtime") / stubName,
+        std::filesystem::path("build/apps/agent") / stubName,
+        std::filesystem::path("../build/apps/agent") / stubName,
     };
 #endif
 }
@@ -57,7 +57,7 @@ int buildCommand(const BuildOptions& options) {
 
     const auto stubPath = resolveStubPath();
     if (!stubPath) {
-        spdlog::error("Stub executable not found. Expected one of the configured wingman-runtime build outputs.");
+        spdlog::error("Stub executable not found. Expected one of the configured wingman-agent build outputs.");
         return 1;
     }
 

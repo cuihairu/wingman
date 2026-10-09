@@ -9,7 +9,7 @@ echo === Wingman EXE 签名 ===
 REM 设置路径
 set CERT_FILE=setup\wingman-cert.pfx
 set CERT_PASS=Wingman2024
-set EXE_PATH=build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe
+set EXE_PATH=build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe
 
 REM 检查证书文件
 if not exist "%CERT_FILE%" (

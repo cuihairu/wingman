@@ -1,13 +1,13 @@
 //! GUI↔Runtime 本地 IPC 跨语言集成测试（Linux UDS）。
 //!
-//! 每个用例 spawn 真 C++ runtime 子进程（`wingman-runtime start --standalone`，
+//! 每个用例 spawn 真 C++ runtime 子进程（`wingman-agent start --standalone`，
 //! 经 `XDG_RUNTIME_DIR` 指向临时目录注入 socket 路径），用真实 [`IpcClient`]
 //! 走 UDS 帧协议（u32 LE 长度 + JSON envelope）做端到端断言——补上全链路中
 //! Rust 客户端帧读写这一唯一无跨端覆盖的环节。
 //!
 //! runtime 二进制缺失时打印 `SKIP:` 并跳过（CI Linux job 不构建 runtime，属预期；
-//! 本地先 `cmake --build build-runtime --target wingman-runtime`，或设
-//! `WINGMAN_RUNTIME_BIN` 指向已构建产物）。
+//! 本地先 `cmake --build build-runtime --target wingman-agent`，或设
+//! `WINGMAN_AGENT_BIN` 指向已构建产物）。
 //!
 //! 协议契约见 docs/protocols.md ① Local IPC；响应恒为
 //! `{"type":"response","id":<信封数字/payload内字符串>,"data":{...}}`：
@@ -86,7 +86,7 @@ fn spawn_output_drain<R: Read + Send + 'static>(mut reader: R, sink: Arc<Mutex<S
 
 impl RuntimeHandle {
     fn resolve_binary() -> Option<PathBuf> {
-        if let Ok(path) = std::env::var("WINGMAN_RUNTIME_BIN") {
+        if let Ok(path) = std::env::var("WINGMAN_AGENT_BIN") {
             let p = PathBuf::from(path);
             if p.is_file() {
                 return Some(p);
@@ -94,16 +94,16 @@ impl RuntimeHandle {
         }
         // 默认回退仓库根的 build-runtime 产物（src-tauri 上三级即仓库根）
         let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../build-runtime/apps/runtime/wingman-runtime");
+            .join("../../../build-runtime/apps/agent/wingman-agent");
         p.is_file().then_some(p)
     }
 
-    /// spawn `wingman-runtime start --standalone`；XDG_RUNTIME_DIR 仅注入子进程，
+    /// spawn `wingman-agent start --standalone`；XDG_RUNTIME_DIR 仅注入子进程，
     /// 不改测试进程全局 env（Rust 客户端直接传 socket 绝对路径，不依赖 env）。
     fn spawn() -> Result<Self, String> {
         let binary = Self::resolve_binary().ok_or_else(|| {
             "runtime binary not found (build: cmake --build build-runtime \
-             --target wingman-runtime, or set WINGMAN_RUNTIME_BIN)"
+             --target wingman-agent, or set WINGMAN_AGENT_BIN)"
                 .to_string()
         })?;
         let temp = TempDir::new();

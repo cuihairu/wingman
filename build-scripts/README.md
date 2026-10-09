@@ -19,7 +19,7 @@ build-scripts\configure-msvc-ninja.bat
 ## 前置条件
 
 1. 安装 [Inno Setup 6.x](http://www.jrsoftware.org/isdl.php)
-2. 确保主程序已编译 (`build-msvc-ninja-vcpkg/apps/runtime/wingman-runtime.exe`)
+2. 确保主程序已编译 (`build-msvc-ninja-vcpkg/apps/agent/wingman-agent.exe`)
 3. 确保 Dashboard 已构建
 
 ## 构建步骤

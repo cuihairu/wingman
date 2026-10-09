@@ -15,13 +15,13 @@ Wingman Runtime 的本地控制面应通过本地 IPC 提供，供 Tauri UI 调�
 
 ```bash
 # 默认配置
-wingman-runtime start
+wingman-agent start
 
 # 指定配置文件
-wingman-runtime start --config agent.toml
+wingman-agent start --config agent.toml
 
 # 本地 GUI / 单机模式，启动本地 IPC listener
-wingman-runtime start --standalone
+wingman-agent start --standalone
 ```
 
 > 远程 Agent 使用 `agent.toml` 中的 `server_ip` / `server_port` 连接 Go orchestrator。本地 GUI 使用 `--standalone` 启动 runtime local IPC。
@@ -86,7 +86,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 
 ### 支持的 RPC 方法
 
-当前共注册 **26 个**方法（以 `apps/runtime/src/rpc/handlers/` 的 `registerHandler` 为准）：
+当前共注册 **26 个**方法（以 `apps/agent/src/rpc/handlers/` 的 `registerHandler` 为准）：
 
 | 分组 | 方法 |
 |------|------|
@@ -98,9 +98,9 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 | macro | `start` `stop` `play` `status` `save` `load` `clear` |
 | config | `getRemote` `setRemote` |
 
-> `trigger.*`（`list`/`add`/`remove`/`update`/`toggle`）不在本地 IPC 方法面——它仅由 runtime 在远程 agent 通道复用（`apps/runtime/src/agent.cpp`），见 `docs/protocols.md`。
+> `trigger.*`（`list`/`add`/`remove`/`update`/`toggle`）不在本地 IPC 方法面——它仅由 runtime 在远程 agent 通道复用（`apps/agent/src/agent.cpp`），见 `docs/protocols.md`。
 >
-> 远程编排命令（如 `system.shutdown`）同样走 agent transport 通道（`apps/runtime/src/agent.cpp`），不属于本地 IPC 面。
+> 远程编排命令（如 `system.shutdown`）同样走 agent transport 通道（`apps/agent/src/agent.cpp`），不属于本地 IPC 面。
 
 #### system.getStatus
 获取系统状态

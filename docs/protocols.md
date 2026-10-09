@@ -69,7 +69,7 @@ GUI 侧从 `data.result` 取业务字段（如 `data.result.paused`）。
 
 ### 已注册方法
 
-31 个唯一方法（26 个注册于 `apps/runtime/src/rpc/handlers/`，5 个 `trigger.*` 注册于 `lib/wingman/src/rpc/handlers/trigger_handler.cpp`）：
+31 个唯一方法（26 个注册于 `apps/agent/src/rpc/handlers/`，5 个 `trigger.*` 注册于 `lib/wingman/src/rpc/handlers/trigger_handler.cpp`）：
 
 | 方法 | 说明 |
 |------|------|

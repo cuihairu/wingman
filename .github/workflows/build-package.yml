@@ -162,7 +162,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$distDir" | Out-Null
 
           # C++ Runtime
-          Copy-Item "build\apps\runtime\Release\wingman-runtime.exe" -Destination "$distDir\wingman.exe"
+          Copy-Item "build\apps\agent\Release\wingman-agent.exe" -Destination "$distDir\wingman.exe"
 
           # Go Orchestrator Server
           if (Test-Path "build\orchestrator-server.exe") {
@@ -190,9 +190,9 @@ jobs:
           }
 
           # Config examples
-          if (Test-Path "apps\runtime\config") {
+          if (Test-Path "apps\agent\config") {
             New-Item -ItemType Directory -Force -Path "$distDir\config" | Out-Null
-            Copy-Item "apps\runtime\config\*" -Destination "$distDir\config\" -Recurse
+            Copy-Item "apps\agent\config\*" -Destination "$distDir\config\" -Recurse
           }
 
           # Version info
@@ -326,7 +326,7 @@ jobs:
           distDir="dist-wingman-$version"
           mkdir -p "$distDir"
 
-          cp build/apps/runtime/wingman-runtime "$distDir/wingman" || true
+          cp build/apps/agent/wingman-agent "$distDir/wingman" || true
           cp build/orchestrator-server "$distDir/orchestrator-server" || true
 
           # Dashboard
@@ -343,7 +343,7 @@ jobs:
           fi
 
           [ -d scripts ] && cp -r scripts "$distDir/"
-          [ -d apps/runtime/config ] && mkdir -p "$distDir/config" && cp -r apps/runtime/config/* "$distDir/config/"
+          [ -d apps/agent/config ] && mkdir -p "$distDir/config" && cp -r apps/agent/config/* "$distDir/config/"
 
           cat > "$distDir/VERSION.txt" << EOF
           Wingman $version
@@ -460,7 +460,7 @@ jobs:
           distDir="dist-wingman-$version"
           mkdir -p "$distDir"
 
-          cp build/apps/runtime/wingman-runtime "$distDir/wingman" || true
+          cp build/apps/agent/wingman-agent "$distDir/wingman" || true
           cp build/orchestrator-server "$distDir/orchestrator-server" || true
 
           # Dashboard
@@ -477,7 +477,7 @@ jobs:
           fi
 
           [ -d scripts ] && cp -r scripts "$distDir/"
-          [ -d apps/runtime/config ] && mkdir -p "$distDir/config" && cp -r apps/runtime/config/* "$distDir/config/"
+          [ -d apps/agent/config ] && mkdir -p "$distDir/config" && cp -r apps/agent/config/* "$distDir/config/"
 
           cat > "$distDir/VERSION.txt" << EOF
           Wingman $version

@@ -222,10 +222,10 @@ cmake -S . -B build-runtime -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE=$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake \
   -DVCPKG_TARGET_TRIPLET=x64-linux -DVCPKG_MANIFEST_FEATURES=tests \
   -DCMAKE_BUILD_TYPE=Debug -DWINGMAN_BUILD_TESTS=ON \
-  -DWINGMAN_BUILD_RUNTIME=ON -DWINGMAN_BUILD_AGENT=OFF -DWINGMAN_BUILD_LUA=OFF
-cmake --build build-runtime --target wingman-runtime
+  -DWINGMAN_BUILD_DESKTOP=ON -DWINGMAN_BUILD_LUA=OFF
+cmake --build build-runtime --target wingman-agent
 
-# 2. 跑集成测试（自动定位 build-runtime 产物，或用 WINGMAN_RUNTIME_BIN 指定）
+# 2. 跑集成测试（自动定位 build-runtime 产物，或用 WINGMAN_AGENT_BIN 指定）
 cargo test --manifest-path apps/gui/src-tauri/Cargo.toml integration_tests -- --nocapture
 ```
 

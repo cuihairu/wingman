@@ -46,7 +46,7 @@ code examples/wingman-scripts.code-workspace
 
 ## Lua 调试
 
-Runtime 默认配置文件 `apps/runtime/config/agent.toml` 已包含调试端口：
+Runtime 默认配置文件 `apps/agent/config/agent.toml` 已包含调试端口：
 
 ```toml
 [debugger]
@@ -71,8 +71,8 @@ build-scripts\build-runtime-msvc-ninja.bat
 
 | 配置 | 用途 |
 |------|------|
-| `Run current Lua script (runtime)` | 调用 `wingman-runtime.exe script ${file}` |
-| `Run current Python script (runtime)` | 调用 `wingman-runtime.exe script ${file}` |
+| `Run current Lua script (runtime)` | 调用 `wingman-agent.exe script ${file}` |
+| `Run current Python script (runtime)` | 调用 `wingman-agent.exe script ${file}` |
 
 Python 脚本需要使用 `WINGMAN_ENABLE_PYTHON=ON` 重新配置构建，并安装 vcpkg `python` feature 依赖。
 

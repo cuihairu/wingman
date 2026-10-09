@@ -36,7 +36,7 @@ print(string.format("屏幕: %dx%d", w, h))
 运行：
 
 ```bash
-wingman-runtime script hello.lua
+wingman-agent script hello.lua
 ```
 
 ### Python
@@ -54,7 +54,7 @@ print(f"屏幕: {w}x{h}")
 运行（需启用 Python 引擎的构建，见上节「Python 引擎默认关闭」）：
 
 ```bash
-wingman-runtime script hello.py
+wingman-agent script hello.py
 ```
 
 > Python 侧的 `wingman` 模块面与 Lua 完全一致（引擎无关的统一注册），模块函数同时以原始 camelCase 与 snake_case 两个名字暴露——`screen.getScreenWidth()` 与 `screen.get_screen_width()` 等价，后者符合 PEP 8。`libs/python/typing/` 提供 `.pyi` 类型桩。
@@ -117,9 +117,9 @@ end
 
 | 模式 | 命令 | 适用 |
 |------|------|------|
-| 单脚本 | `wingman-runtime script foo.lua` | 一次性任务、快速验证 |
-| 本地 GUI | `wingman-runtime start`（local 能力）+ Tauri GUI | 单机带界面日常使用 |
-| 远程编排 | `wingman-runtime start`（agent 能力）→ Go server → Dashboard | 多机集中管控 |
+| 单脚本 | `wingman-agent script foo.lua` | 一次性任务、快速验证 |
+| 本地 GUI | `wingman-agent start`（local 能力）+ Tauri GUI | 单机带界面日常使用 |
+| 远程编排 | `wingman-agent start`（agent 能力）→ Go server → Dashboard | 多机集中管控 |
 
 三种模式的控制路径与架构约束见 [快速开始 - 运行模式](./getting-started.md#运行模式) 与 [通信协议](../protocols.md)。
 

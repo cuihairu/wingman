@@ -46,14 +46,14 @@ option(WINGMAN_BUILD_AGENT "Build new Agent (multi-module)" ON)
 option(WINGMAN_BUILD_TRANSPORT "Build transport module" ${WINGMAN_BUILD_AGENT})
 option(WINGMAN_BUILD_CORE "Build core wingman library" ${WINGMAN_BUILD_AGENT})
 option(WINGMAN_BUILD_LUA "Build Lua module" ${WINGMAN_BUILD_AGENT})
-option(WINGMAN_BUILD_RUNTIME "Build runtime app" ${WINGMAN_BUILD_AGENT})
+option(WINGMAN_BUILD_DESKTOP "Build desktop agent app" ${WINGMAN_BUILD_AGENT})
 
-if(WINGMAN_BUILD_RUNTIME)
+if(WINGMAN_BUILD_DESKTOP)
     if(NOT WINGMAN_BUILD_CORE)
-        message(FATAL_ERROR "WINGMAN_BUILD_RUNTIME=ON requires WINGMAN_BUILD_CORE=ON")
+        message(FATAL_ERROR "WINGMAN_BUILD_DESKTOP=ON requires WINGMAN_BUILD_CORE=ON")
     endif()
     if(NOT WINGMAN_BUILD_TRANSPORT)
-        message(FATAL_ERROR "WINGMAN_BUILD_RUNTIME=ON requires WINGMAN_BUILD_TRANSPORT=ON")
+        message(FATAL_ERROR "WINGMAN_BUILD_DESKTOP=ON requires WINGMAN_BUILD_TRANSPORT=ON")
     endif()
 endif()
 
@@ -77,9 +77,9 @@ option(BUILD_PYTHON_TESTS "Build python library tests" OFF)
 # WINGMAN_BUILD_TESTS acts as the top-level switch for the standard C++ test suites.
 # Lua tests remain opt-in because they are usually only needed when validating Lua bindings directly.
 if(WINGMAN_BUILD_TESTS)
-    if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_RUNTIME)
+    if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DESKTOP)
         set(BUILD_CLIENT_TESTS ON CACHE BOOL "Build runtime app tests" FORCE)
-        set(WINGMAN_BUILD_CLIENT_TESTS ON CACHE BOOL "Build runtime tests" FORCE)
+        set(WINGMAN_BUILD_CLIENT_TESTS ON CACHE BOOL "Build agent tests" FORCE)
     endif()
     if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_CORE)
         set(BUILD_CORE_TESTS ON CACHE BOOL "Build core library tests" FORCE)
@@ -87,7 +87,7 @@ if(WINGMAN_BUILD_TESTS)
     if(WINGMAN_BUILD_TRANSPORT)
         set(BUILD_TRANSPORT_TESTS ON CACHE BOOL "Build transport library tests" FORCE)
     endif()
-    if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_RUNTIME)
+    if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DESKTOP)
         set(BUILD_AGENTCORE_TESTS ON CACHE BOOL "Build agentcore library tests" FORCE)
     endif()
     if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_ENABLE_PYTHON)
@@ -96,7 +96,7 @@ if(WINGMAN_BUILD_TESTS)
 endif()
 
 if(BUILD_CLIENT_TESTS)
-    set(WINGMAN_BUILD_CLIENT_TESTS ON CACHE BOOL "Build runtime tests" FORCE)
+    set(WINGMAN_BUILD_CLIENT_TESTS ON CACHE BOOL "Build agent tests" FORCE)
 endif()
 
 if(WINGMAN_BUILD_TESTS OR BUILD_CLIENT_TESTS OR BUILD_CORE_TESTS OR BUILD_TRANSPORT_TESTS OR
@@ -152,7 +152,7 @@ if(WINGMAN_BUILD_TRANSPORT)
     add_subdirectory(libs/transport)
 endif()
 
-if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_RUNTIME)
+if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DESKTOP)
     add_subdirectory(libs/agentcore)
 endif()
 
@@ -180,10 +180,10 @@ if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_CORE)
     add_subdirectory(lib/wingman)
 endif()
 
-if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_RUNTIME)
-    add_subdirectory(apps/runtime)
-elseif(WINGMAN_BUILD_RUNTIME)
-    message(STATUS "Compatibility build enabled: skipping runtime app")
+if(NOT WINGMAN_COMPAT_BUILD AND WINGMAN_BUILD_DESKTOP)
+    add_subdirectory(apps/agent)
+elseif(WINGMAN_BUILD_DESKTOP)
+    message(STATUS "Compatibility build enabled: skipping desktop agent app")
 endif()
 
 if(WINGMAN_BUILD_AGENT)
@@ -205,8 +205,8 @@ if(WINGMAN_BUILD_BENCHMARKS AND WINGMAN_BUILD_CORE)
 endif()
 
 # ========== 安装 ==========
-if(TARGET wingman-runtime)
-    install(TARGETS wingman-runtime
+if(TARGET wingman-agent)
+    install(TARGETS wingman-agent
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib

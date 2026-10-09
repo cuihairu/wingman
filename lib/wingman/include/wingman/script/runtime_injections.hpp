@@ -1,7 +1,7 @@
 #pragma once
 
 // Runtime -> 脚本模块的依赖反转注入点。
-// 这些声明放在公开头，供 apps/runtime 在启动时把自身持有的实例注入
+// 这些声明放在公开头，供 apps/agent 在启动时把自身持有的实例注入
 // 到脚本模块，使 wingman.<module>.* 与 RPC.<module>.* 共享同一实例。
 // 声明与内部 macro_module.cpp / script_module.cpp 的实现对应。
 

@@ -8,7 +8,7 @@ build_type="${4:-Release}"
 version_suffix="${5:-}"
 # 兼容模式开关：默认 ON（历史行为——整包/CI 用，跳过 agent 多模块目标）。
 # agent 单二进制矩阵必须传 OFF：COMPAT=ON 时根 CMakeLists 显式跳过
-# apps/runtime，wingman-runtime 目标不存在（Build Agent 矩阵六腿中
+# apps/agent，wingman-agent 目标不存在（Build Agent 矩阵六腿中
 # unix 三腿 unknown target 的根因）
 compat_build="${6:-ON}"
 

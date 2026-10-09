@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
-# ========== Wingman Runtime ==========
-# CLI runtime agent, connects outbound to orchestrator
+# ========== Wingman Agent ==========
+# CLI desktop agent, connects outbound to orchestrator
 
-project(wingman_runtime LANGUAGES CXX)
+project(wingman_agent LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,8 +12,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# Runtime 源文件
-set(RUNTIME_SOURCES
+# Agent 源文件
+set(AGENT_SOURCES
     src/cli.cpp
     src/main.cpp
     src/agent.cpp
@@ -42,16 +42,16 @@ set(RUNTIME_SOURCES
 )
 
 # 创建可执行文件
-add_executable(wingman-runtime ${RUNTIME_SOURCES})
+add_executable(wingman-agent ${AGENT_SOURCES})
 
 # 包含目录
-target_include_directories(wingman-runtime PRIVATE
+target_include_directories(wingman-agent PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${WINGMAN_GENERATED_DIR}
 )
 
 # 链接库
-target_link_libraries(wingman-runtime PRIVATE
+target_link_libraries(wingman-agent PRIVATE
     wingman::agentcore
     wingman::transport
     wingman
@@ -60,30 +60,30 @@ target_link_libraries(wingman-runtime PRIVATE
 )
 
 if(TARGET wingman::lua)
-    target_link_libraries(wingman-runtime PRIVATE wingman::lua)
-    target_compile_definitions(wingman-runtime PRIVATE WINGMAN_HAS_LUA)
+    target_link_libraries(wingman-agent PRIVATE wingman::lua)
+    target_compile_definitions(wingman-agent PRIVATE WINGMAN_HAS_LUA)
 endif()
 
 # Crashpad 崩溃采集：链接封装库（WINGMAN_HAS_CRASHPAD 门随其传递），
 # handler 可执行文件随产物分发——与本可执行文件同目录（crash_setup 按
 # argv[0] 同目录解析）。
 if(TARGET wingman::crash)
-    target_link_libraries(wingman-runtime PRIVATE wingman::crash)
-    add_custom_command(TARGET wingman-runtime POST_BUILD
+    target_link_libraries(wingman-agent PRIVATE wingman::crash)
+    add_custom_command(TARGET wingman-agent POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_FILE:crashpad_handler>
-            $<TARGET_FILE_DIR:wingman-runtime>/crashpad_handler
-        COMMENT "Copying crashpad_handler next to wingman-runtime"
+            $<TARGET_FILE_DIR:wingman-agent>/crashpad_handler
+        COMMENT "Copying crashpad_handler next to wingman-agent"
         VERBATIM)
 endif()
 
 if(WINGMAN_HAS_OPENCV)
-    target_compile_definitions(wingman-runtime PRIVATE WINGMAN_ENABLE_VISION)
+    target_compile_definitions(wingman-agent PRIVATE WINGMAN_ENABLE_VISION)
 endif()
 
 # Python 引擎（可选）
 if(WINGMAN_ENABLE_PYTHON)
-    target_link_libraries(wingman-runtime PRIVATE wingman::python)
+    target_link_libraries(wingman-agent PRIVATE wingman::python)
 endif()
 
 # 复制配置文件到输出目录
@@ -97,13 +97,13 @@ configure_file(
 if(WIN32)
     # 添加资源文件
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../assets/wingman.rc")
-        target_sources(wingman-runtime PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../assets/wingman.rc")
+        target_sources(wingman-agent PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../assets/wingman.rc")
     endif()
 endif()
 
 # ========== 子模块测试 ==========
 
-option(WINGMAN_BUILD_CLIENT_TESTS "Build Client tests" OFF)
+option(WINGMAN_BUILD_CLIENT_TESTS "Build agent app tests" OFF)
 if(WINGMAN_BUILD_CLIENT_TESTS)
     enable_testing()
     add_subdirectory(tests)

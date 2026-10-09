@@ -13,7 +13,7 @@ TEST(ScreenRuntimeTest, BitmapSaveWritesFile) {
     bmp.setPixel(0, 1, Color(0, 0, 255));
     bmp.setPixel(1, 1, Color(255, 255, 255));
 
-    const auto outputPath = std::filesystem::temp_directory_path() / "wingman-runtime-screen-test.png";
+    const auto outputPath = std::filesystem::temp_directory_path() / "wingman-agent-screen-test.png";
     std::error_code ec;
     std::filesystem::remove(outputPath, ec);
 

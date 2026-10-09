@@ -19,7 +19,7 @@
       "name": "Run current Lua script (runtime)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build-msvc-ninja-vcpkg/apps/runtime/wingman-runtime.exe",
+      "program": "${workspaceFolder}/build-msvc-ninja-vcpkg/apps/agent/wingman-agent.exe",
       "args": [
         "script",
         "${file}"
@@ -32,7 +32,7 @@
       "name": "Run current Python script (runtime)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build-msvc-ninja-vcpkg/apps/runtime/wingman-runtime.exe",
+      "program": "${workspaceFolder}/build-msvc-ninja-vcpkg/apps/agent/wingman-agent.exe",
       "args": [
         "script",
         "${file}"

@@ -25,7 +25,7 @@ Wingman 的 Lua 调试基于 EmmyLua。仓库已提供 VS Code 配置，可直�
 ## Lua 调试流程
 
 1. 构建 runtime：`build-scripts\build-runtime-msvc-ninja.bat`
-2. 确认 runtime 配置启用调试：`apps/runtime/config/agent.toml` 中 `[debugger] enable = true`
+2. 确认 runtime 配置启用调试：`apps/agent/config/agent.toml` 中 `[debugger] enable = true`
 3. 在 VS Code 选择 `Attach to Wingman Lua (EmmyLua :9966)`
 4. 运行需要调试的 Lua 脚本
 5. 使用断点、单步、变量窗口定位问题
@@ -37,7 +37,7 @@ Wingman 的 Lua 调试基于 EmmyLua。仓库已提供 VS Code 配置，可直�
 VS Code 的 `Run current Lua script (runtime)` 和 `Run current Python script (runtime)` 会执行：
 
 ```powershell
-.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script <当前文件>
+.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe script <当前文件>
 ```
 
 Python 脚本需要使用 `WINGMAN_ENABLE_PYTHON=ON` 重新配置构建。

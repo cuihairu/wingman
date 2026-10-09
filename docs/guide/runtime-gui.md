@@ -23,17 +23,17 @@ Wingman Runtime GUI 是基于 Tauri 2.0 + Svelte 5 构建的本地桌面控制�
 
 ### 前置条件
 
-- 已编译 Runtime：`build-msvc-ninja-vcpkg/apps/runtime/wingman-runtime.exe`
+- 已编译 Runtime：`build-msvc-ninja-vcpkg/apps/agent/wingman-agent.exe`
 - Node.js 18+（用于开发模式）
 
 ### 启动 Runtime
 
 ```bash
 # 启动 Runtime 并启用本地 IPC
-.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe start
+.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe start
 
 # 或以独立模式启动（不连接远程服务器）
-.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe start --standalone
+.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe start --standalone
 ```
 
 ### 启动 GUI

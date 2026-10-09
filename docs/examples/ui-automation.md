@@ -32,7 +32,7 @@
 
     使用方法:
     1. 打开记事本 (notepad.exe)
-    2. 运行此脚本: wingman-runtime.exe script examples/lua_scripts/ui_automation_example.lua
+    2. 运行此脚本: wingman-agent.exe script examples/lua_scripts/ui_automation_example.lua
 ]]
 
 local wingman = require("wingman")
@@ -271,7 +271,7 @@ end
 ## 运行示例
 
 ```bash
-wingman-runtime.exe script examples/lua_scripts/ui_automation_example.lua
+wingman-agent.exe script examples/lua_scripts/ui_automation_example.lua
 ```
 
 ## 调试技巧

@@ -35,7 +35,7 @@ std::string decryptAES(const std::string& ciphertext, const std::string& passwor
 /// 与 encryptAES/decryptAES 的分工：那两个是「口令进、base64 串出」的自描述格式
 /// （salt + IV 内嵌在载荷里，PBKDF2 迭代次数固定）。下面这对只吃/吐原始字节，
 /// 密钥与 IV 由调用方给出——供需要自定义密钥派生与二进制头部布局的格式使用
-/// （如 runtime 打包资源 PACK_HEADER，见 apps/runtime/include/wingman/runtime/resource_pack.hpp）。
+/// （如 runtime 打包资源 PACK_HEADER，见 apps/agent/include/wingman/runtime/resource_pack.hpp）。
 ///
 
 /// Encrypt with AES-256-GCM using a caller-provided key

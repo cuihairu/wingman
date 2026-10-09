@@ -110,7 +110,7 @@ agent                                server
 
 ## 4. Agent 端改动
 
-### 4.1 共享层（apps/runtime/RemoteClient，桌面与 Android 同源）
+### 4.1 共享层（apps/agent/RemoteClient，桌面与 Android 同源）
 
 - `RemoteClient::setAuthToken(const std::string&)`：Impl 增 `authToken`，
   `sendRegister` 时写入 payload 顶层 `token`（空则不写字段，兼容不鉴权部署）。

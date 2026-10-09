@@ -1,6 +1,6 @@
 # 崩溃采集设计：Crashpad 直集成（简档）
 
-> 设计日期：2026-10-08。范围：桌面 C++ runtime（`apps/runtime`）。
+> 设计日期：2026-10-08。范围：桌面 C++ runtime（`apps/agent`）。
 > 选型已定：Google **Crashpad**，C++ 直集成；Breakpad 只作历史对照（§2）。
 > 实现拆批：文档 → 构建接入 → 库与 runtime 接线 → 验收脚本。
 
@@ -28,8 +28,8 @@
 
 ## 3. 初始化点
 
-- 位置：`apps/runtime/src/main.cpp` 的 `main()` 内、事件日志 sink 挂上之后、命令分发之前——覆盖 `start`/`script`/`crash-test` 等全部命令路径与嵌入式脚本路径。
-- 调用：`setupCrashReporting(argv[0])`（`apps/runtime/src/crash_setup.cpp`），内部组装 `wingman::crash::CrashpadConfig` 后调 `wingman::crash::initialize()`。
+- 位置：`apps/agent/src/main.cpp` 的 `main()` 内、事件日志 sink 挂上之后、命令分发之前——覆盖 `start`/`script`/`crash-test` 等全部命令路径与嵌入式脚本路径。
+- 调用：`setupCrashReporting(argv[0])`（`apps/agent/src/crash_setup.cpp`），内部组装 `wingman::crash::CrashpadConfig` 后调 `wingman::crash::initialize()`。
 - 语义：`CrashpadClient::StartHandler`（restartable=true, asynchronous_start=false）；**初始化失败只记 spdlog 警告并降级为无采集**，进程照常运行——崩溃采集不得成为可用性单点。
 - 编译门：`#ifdef WINGMAN_HAS_CRASHPAD`（沿用 `WINGMAN_HAS_LUA` 的可选库门模式）。
 
@@ -47,8 +47,8 @@
 
 ## 5. 独立 handler 进程打包
 
-- `crashpad_handler` 可执行文件随 runtime 产物分发，与 `wingman-runtime` 同目录；`libs/crash` 默认按「本可执行文件同目录」解析 handler 路径（由 `argv[0]` 推导，PATH 直呼场景退化为按 PATH 查找，见 §3）。
-- 构建期：`wingman-runtime` POST_BUILD 把 `$<TARGET_FILE:crashpad_handler>` copy 到运行输出目录；CI 打包脚本收集运行输出目录即自然带上。
+- `crashpad_handler` 可执行文件随 runtime 产物分发，与 `wingman-agent` 同目录；`libs/crash` 默认按「本可执行文件同目录」解析 handler 路径（由 `argv[0]` 推导，PATH 直呼场景退化为按 PATH 查找，见 §3）。
+- 构建期：`wingman-agent` POST_BUILD 把 `$<TARGET_FILE:crashpad_handler>` copy 到运行输出目录；CI 打包脚本收集运行输出目录即自然带上。
 - 许可随附：crashpad / mini_chromium / lss 为 BSD 类许可、cmake 包装为 Apache-2.0，登记 `docs/dependencies.md`。
 
 ## 6. 符号表管理
@@ -74,7 +74,7 @@
 
 ## 9. 验收方案（③ 的展开）
 
-1. `wingman-runtime crash-test`：新 CLI 命令（独立文件 `commands/crash_test_command.cpp`，遵循命令拆分惯例），初始化 crashpad 后故意空指针解引用（`wingman::crash::testCrashNullPointer()`，写页 0 触发 SIGSEGV）。
+1. `wingman-agent crash-test`：新 CLI 命令（独立文件 `commands/crash_test_command.cpp`，遵循命令拆分惯例），初始化 crashpad 后故意空指针解引用（`wingman::crash::testCrashNullPointer()`，写页 0 触发 SIGSEGV）。
 2. 断言链：进程异常退出 → `crashes/pending/` 出现完整 `.dmp` → `dump_syms` 产出符号 → `minidump_stackwalk` 栈顶还原出 `testCrashNullPointer` 帧与源码行。
 3. 固化为 `scripts/verify-crashpad.sh`（沿用 `verify-xrecord-desktop.sh` 范式：无 crashpad 构建或工具缺失判「未验证」而非通过）。
 4. 验收证据（脚本输出摘录）回填本档 §10。
@@ -83,11 +83,11 @@
 
 **2026-10-09（Linux 真机，GCC 15.2 / CMake 4.2.3 / kernel 7.0，`scripts/verify-crashpad.sh` 全链 PASS）**
 
-- 环境：`XDG_DATA_HOME` 隔离目录，`wingman-runtime crash-test` exit=139（SIGSEGV）。
+- 环境：`XDG_DATA_HOME` 隔离目录，`wingman-agent crash-test` exit=139（SIGSEGV）。
 - dump 落盘：`$XDG_DATA_HOME/wingman/crashes/pending/<uuid>.dmp`，14992–17392 bytes，连跑 6/6 成功（见下「偶发首跑」注）。
 - 符号化（rust 实现工具链，与 §6 breakpad 工具同格式互通）：
   ```bash
-  dump_syms --store <symroot> build/apps/runtime/wingman-runtime
+  dump_syms --store <symroot> build/apps/agent/wingman-agent
   minidump-stackwalk --human <dump> <symroot>
   ```
   栈顶还原（源码行来自 Debug 构建的 `-g`）：
@@ -95,7 +95,7 @@
   Crash reason:  SIGSEGV / SEGV_MAPERR
   Crash address: 0x0000000000000000
   Thread 0  (crashed)
-   0  wingman-runtime!wingman::crash::testCrashNullPointer() [crash_client.cpp : 53 + 0x4]
+   0  wingman-agent!wingman::crash::testCrashNullPointer() [crash_client.cpp : 53 + 0x4]
   ```
 - 排查记录：早期偶发失败为 `new/` 下 0 字节空壳或无文件——构建后首次运行的冷加载时窗内客户端 5s 等待超时（strace 佐证：PTRACE_ATTACH 被占位即失败属 strace 自身抢占 tracer，非产品问题）；稳态 6/6 全过。若 CI/脚本环境复现偶发，可在验收脚本加一次重跑。
 - ptrace 授权链实证：客户端 `prctl(PR_SET_PTRACER, handler_pid)`（yama ptrace_scope=1 下必需）+ handler 双 fork 脱离进程组，均按设计工作。

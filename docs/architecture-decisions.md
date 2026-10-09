@@ -443,11 +443,11 @@ CONTROL PLANE (Go server, orchestrator/)
         │
         │ Agent TCP (outbound, authenticated register)
         ▼
-AGENT LAYER (runtime identity, apps/runtime + Android agent)
+AGENT LAYER (runtime identity, apps/agent + Android agent)
   identity · register · heartbeat · capability · command · event
         │
         ▼
-RUNTIME LAYER (Execution Plane, apps/runtime)
+RUNTIME LAYER (Execution Plane, apps/agent)
   ScriptManager · Lua/Python engines · CommandDispatcher · TriggerManager
         │
         ▼
@@ -482,6 +482,13 @@ Consequences:
   stays in the Control Plane; the Agent layer is not part of it.
 - Existing naming is kept: "runtime" (Execution Plane) and "server"/"orchestrator"
   (Control Plane). New components must not blur these names.
+- App naming (2026-10-09): the desktop app `apps/runtime` is renamed
+  `apps/agent` (binary `wingman-runtime` → `wingman-agent`). The agent family
+  is named by role: desktop agent (`apps/agent`), Android agent, and the
+  planned load-test agent (`apps/loadgen`, see `docs/load-testing-design.md`).
+  The **layer term "Runtime Layer" (Execution Plane) is unchanged** — it names
+  the architectural layer, not the app directory. Historical documents that
+  say "runtime" for the app should be read as "desktop agent".
 
 ## Automation Primitive Boundaries
 

@@ -3,7 +3,7 @@
 $Version = "0.1.0"
 $PortableDir = "portable\wingman"
 $OutputZip = "wingman-portable-$Version.zip"
-$RuntimeExe = "build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe"
+$RuntimeExe = "build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe"
 
 Write-Host "=== Wingman 便携版打包 ===" -ForegroundColor Green
 
@@ -27,7 +27,7 @@ New-Item -ItemType Directory -Force -Path "$PortableDir\cache" | Out-Null
 Write-Host "复制主程序..." -ForegroundColor Yellow
 if (Test-Path $RuntimeExe) {
     Copy-Item -Path $RuntimeExe -Destination "$PortableDir\" -Force
-    Copy-Item -Path "build-msvc-ninja-vcpkg\apps\runtime\*.dll" -Destination "$PortableDir\" -Force -ErrorAction SilentlyContinue
+    Copy-Item -Path "build-msvc-ninja-vcpkg\apps\agent\*.dll" -Destination "$PortableDir\" -Force -ErrorAction SilentlyContinue
 } else {
     Write-Host "错误: 找不到编译后的主程序，请先编译！" -ForegroundColor Red
     exit 1
@@ -47,8 +47,8 @@ if (Test-Path "scripts\examples") {
 
 # 复制配置文件
 Write-Host "复制配置文件..." -ForegroundColor Yellow
-if (Test-Path "apps\runtime\config\agent.toml") {
-    Copy-Item -Path "apps\runtime\config\agent.toml" -Destination "$PortableDir\config\" -Force
+if (Test-Path "apps\agent\config\agent.toml") {
+    Copy-Item -Path "apps\agent\config\agent.toml" -Destination "$PortableDir\config\" -Force
 }
 
 # 复制文档
@@ -71,7 +71,7 @@ if not exist "config\agent.toml" (
 )
 
 REM 启动主程序
-start "" wingman-runtime.exe
+start "" wingman-agent.exe
 
 echo Wingman 已启动！
 echo.

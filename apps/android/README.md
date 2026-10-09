@@ -49,7 +49,7 @@ gradle :app:assembleDebug
 脚本能力 API + core 子集）→ `libwingman_agent.so`。
 
 > [双端同源文件（`libs/agentcore`、`libs/androidagent`，以及 `libs/transport`]
-> 等共享层）同时编译进桌面 `wingman-runtime` 与 Android `libwingman_agent.so`：
+> 等共享层）同时编译进桌面 `wingman-agent` 与 Android `libwingman_agent.so`：
 > 改动必须过两端编译与桌面同源单测，不要只验证桌面侧。
 
 > 说明：本仓库开发机（Linux）自 2026-09 起具备 SDK/NDK，可本地跑 Kotlin

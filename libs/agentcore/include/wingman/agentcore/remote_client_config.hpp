@@ -1,6 +1,6 @@
 #pragma once
 
-// 远程链路配置（自 apps/runtime/config.hpp 下沉，桌面 runtime 与 Android
+// 远程链路配置（自 apps/agent/config.hpp 下沉，桌面 runtime 与 Android
 // agent 同源使用）。命名空间保持 wingman::runtime，与既有调用方/文档一致。
 
 #include <string>

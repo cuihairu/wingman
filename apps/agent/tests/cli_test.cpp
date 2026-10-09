@@ -40,7 +40,7 @@ private:
 
 std::filesystem::path makeTempDir() {
     const auto path = std::filesystem::temp_directory_path() /
-        ("wingman-runtime-tests-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        ("wingman-agent-tests-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(path);
     return path;
 }
@@ -188,7 +188,7 @@ TEST(RuntimeCommandTest, BuildCommandFailsWhenRuntimeStubIsMissing) {
 }
 
 TEST(RuntimeCommandTest, BuildCommandWithStubFailsGracefullyOnNonPEHost) {
-    // resolveStubPath 只要求候选路径存在（CWD 首选 "wingman-runtime"）；
+    // resolveStubPath 只要求候选路径存在（CWD 首选 "wingman-agent"）；
     // 找到 stub 后走完整打包管线：Linux 上资源嵌入明确不支持（ELF 容器
     // 未实现），build() 优雅失败 → "Build failed" 退出码 1（不抛异常）。
     // 既有用例只测过「脚本缺失」「stub 缺失」两条前置拒绝腿。
@@ -200,7 +200,7 @@ TEST(RuntimeCommandTest, BuildCommandWithStubFailsGracefullyOnNonPEHost) {
     script << "print('ok')";
     script.close();
 
-    std::ofstream stub(tempDir / "wingman-runtime", std::ios::binary);
+    std::ofstream stub(tempDir / "wingman-agent", std::ios::binary);
     stub << "ELF-placeholder";
     stub.close();
 

@@ -248,7 +248,7 @@ stateDiagram-v2
 |-----|------|------|
 | **RemoteClient** | 主动连接编排器并收发任务 | `libs/agentcore/src/remote_client.cpp` |
 | **Transport** | 连接、会话与消息收发 | `libs/transport/` |
-| **Runtime Agent** | 本机任务执行与状态上报 | `apps/runtime/` |
+| **Runtime Agent** | 本机任务执行与状态上报 | `apps/agent/` |
 
 ### 核心能力模块
 

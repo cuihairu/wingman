@@ -2,7 +2,7 @@ find_package(GTest CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
-add_executable(runtime_tests
+add_executable(agent_tests
     agent_config_test.cpp
     agent_loopback_test.cpp
     cli_test.cpp
@@ -44,13 +44,13 @@ add_executable(runtime_tests
     ../src/resource_loader.cpp
 )
 
-target_include_directories(runtime_tests PRIVATE
+target_include_directories(agent_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/lua/include
     ${WINGMAN_GENERATED_DIR}
 )
 
-target_link_libraries(runtime_tests PRIVATE
+target_link_libraries(agent_tests PRIVATE
     GTest::gtest
     GTest::gtest_main
     wingman
@@ -63,8 +63,8 @@ target_link_libraries(runtime_tests PRIVATE
 # rpc_ipc_test 的脚本生命周期用例需要真实 Lua 引擎（registerLuaEngine()
 # 自注册进 ScriptEngineFactory，与 lib/wingman/tests 的接线方式一致）
 if(TARGET wingman::lua)
-    target_link_libraries(runtime_tests PRIVATE wingman::lua)
+    target_link_libraries(agent_tests PRIVATE wingman::lua)
 endif()
 
 include(GoogleTest)
-gtest_discover_tests(runtime_tests DISCOVERY_MODE PRE_TEST)
+gtest_discover_tests(agent_tests DISCOVERY_MODE PRE_TEST)

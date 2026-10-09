@@ -12,7 +12,7 @@
 # 「未验证」（exit 2）而非通过，防止环境缺件误报绿。
 #
 # 用法：scripts/verify-crashpad.sh [--build]
-#       --build  强制重新构建 wingman-runtime（默认缺二进制时才构建）
+#       --build  强制重新构建 wingman-agent（默认缺二进制时才构建）
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -20,8 +20,8 @@ if [[ "$(uname -s)" != "Linux" ]]; then
 	echo "SKIP: 本脚本仅用于 Linux（当前 $(uname -s)）"; exit 2
 fi
 
-RUNTIME=build/apps/runtime/wingman-runtime
-HANDLER=build/apps/runtime/crashpad_handler
+RUNTIME=build/apps/agent/wingman-agent
+HANDLER=build/apps/agent/crashpad_handler
 DUMP_SYMS="${DUMP_SYMS:-$HOME/.cargo/bin/dump_syms}"
 STACKWALK="${STACKWALK:-$HOME/.cargo/bin/minidump-stackwalk}"
 
@@ -31,9 +31,9 @@ if [[ ! -x "$DUMP_SYMS" || ! -x "$STACKWALK" ]]; then
 fi
 
 if [[ ! -x "$RUNTIME" || "${1:-}" == "--build" ]]; then
-	echo "==> 构建 wingman-runtime（首次或 --build；WINGMAN_ENABLE_CRASHPAD 默认 Linux 开）"
+	echo "==> 构建 wingman-agent（首次或 --build；WINGMAN_ENABLE_CRASHPAD 默认 Linux 开）"
 	cmake -B build >/dev/null
-	cmake --build build --target wingman-runtime -j"$(nproc)"
+	cmake --build build --target wingman-agent -j"$(nproc)"
 fi
 if [[ ! -x "$HANDLER" ]]; then
 	echo "SKIP: crashpad_handler 未随产物生成——本构建未启用 WINGMAN_ENABLE_CRASHPAD"; exit 2

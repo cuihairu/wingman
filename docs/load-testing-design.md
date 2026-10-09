@@ -43,7 +43,7 @@ CONTROL PLANE (orchestrator/)
         ▲                            ▲
         │ agent TCP (outbound)       │ agent TCP (outbound)
 AGENT LAYER                            │
-  apps/runtime（现有）                  apps/loadgen（新）
+  apps/agent（现有）                  apps/loadgen（新）
   UI 后端：screen/input/vision          VU 引擎：事件循环 × VU 状态机
   · 行为：fsm/task/orchestration        · plan 解释器（无脚本引擎）
         │                              · codec 运行时

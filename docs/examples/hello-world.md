@@ -25,7 +25,7 @@ print("脚本执行完成!")
 ## 运行
 
 ```bash
-wingman-runtime.exe script examples/lua_scripts/hello_world.lua
+wingman-agent.exe script examples/lua_scripts/hello_world.lua
 ```
 
 ## 输出

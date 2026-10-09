@@ -94,11 +94,11 @@ build-scripts\build-runtime-msvc-ninja.bat
 
 ```bash
 # 运行 Lua 示例脚本
-.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script examples\lua_scripts\hello.lua
+.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe script examples\lua_scripts\hello.lua
 
 # 运行 Python 脚本（Python 引擎默认关闭，需 WINGMAN_ENABLE_PYTHON=ON 构建；
 # hello.py 按下文「第一个脚本」自行创建）
-.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe script hello.py
+.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe script hello.py
 ```
 
 ## vcpkg.json
@@ -130,20 +130,20 @@ build-scripts\build-runtime-msvc-ninja.bat
 
 ```bash
 # 执行脚本
-wingman-runtime.exe script script.lua
-wingman-runtime.exe script script.py
+wingman-agent.exe script script.lua
+wingman-agent.exe script script.py
 
 # 启动 Agent（读取 agent.toml，主动 outbound 连接 Go orchestrator）
-wingman-runtime.exe start
+wingman-agent.exe start
 
 # 打包单文件脚本运行时
-wingman-runtime.exe build --script script.lua --output script-runtime.exe
+wingman-agent.exe build --script script.lua --output script-runtime.exe
 
 # 加密打包（脚本源码以 AES-256-GCM 密文嵌入 PE 资源）
-wingman-runtime.exe build --script script.lua --output script-runtime.exe --password 'your-passphrase'
+wingman-agent.exe build --script script.lua --output script-runtime.exe --password 'your-passphrase'
 
 # 帮助信息
-wingman-runtime.exe --help
+wingman-agent.exe --help
 ```
 
 ### 加密打包与加载
@@ -157,7 +157,7 @@ wingman-runtime.exe --help
 | `--no-encrypt` | 显式关闭加密（旧命令行兼容；写在 `--password` 之后即取消加密） |
 | `--no-compress` | 关闭压缩 |
 
-- 口令也可以不进命令行：`WINGMAN_PACK_PASSWORD=... wingman-runtime build --script ... --output ...`（命令行参数会留在 shell 历史与进程列表里，环境变量是更合适的默认来源）。
+- 口令也可以不进命令行：`WINGMAN_PACK_PASSWORD=... wingman-agent build --script ... --output ...`（命令行参数会留在 shell 历史与进程列表里，环境变量是更合适的默认来源）。
 - 没有口令就不允许加密：产物打不开等于永久作废，故 `--encrypt` 无口令时打包直接失败，而不是产出一个打不开的 exe。
 - 密钥由口令派生（PBKDF2-HMAC-SHA256，100000 轮迭代，随机 16 字节 salt 与 12 字节 IV 写进打包头），载荷为 AES-256-GCM 认证密文。改一个字节、换口令、或头部被篡改都会在加载时失败并给出可区分的原因（`Incorrect password` / `authentication failed` / `Hash verification failed`）。
 - 运行加密产物时从环境变量取口令：
@@ -175,9 +175,9 @@ Wingman 有三种运行模式，按控制路径区分（详见 [架构决策](..
 
 | 模式 | 命令 | 控制路径 | 适用场景 |
 |------|------|----------|----------|
-| **单脚本** | `wingman-runtime script foo.lua` | 直接执行后退出 | 一次性任务、CI、快速验证 |
-| **本地 GUI** | `wingman-runtime start`（local 能力）+ Tauri GUI | `Tauri UI → local IPC（Named Pipe/UDS）→ runtime` | 单机有界面的日常使用 |
-| **远程编排** | `wingman-runtime start`（agent 能力）→ Go orchestrator | `runtime agent → outbound → Go server → Dashboard` | 多机集中管控、团队协作 |
+| **单脚本** | `wingman-agent script foo.lua` | 直接执行后退出 | 一次性任务、CI、快速验证 |
+| **本地 GUI** | `wingman-agent start`（local 能力）+ Tauri GUI | `Tauri UI → local IPC（Named Pipe/UDS）→ runtime` | 单机有界面的日常使用 |
+| **远程编排** | `wingman-agent start`（agent 能力）→ Go orchestrator | `runtime agent → outbound → Go server → Dashboard` | 多机集中管控、团队协作 |
 
 - 本地 GUI 与远程编排可并存：runtime 同时承载 local IPC 服务和 agent outbound 连接。
 - **架构硬约束**：runtime 不开 HTTP/WebSocket server 作为控制面；Dashboard 只连 Go server，不直连 runtime。
@@ -231,10 +231,10 @@ print("Script completed!")
 
 ```bash
 # Python
-wingman-runtime.exe script hello.py
+wingman-agent.exe script hello.py
 
 # Lua
-wingman-runtime.exe script hello.lua
+wingman-agent.exe script hello.lua
 ```
 
 ## 选择脚本语言

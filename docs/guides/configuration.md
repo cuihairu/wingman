@@ -977,14 +977,14 @@ print(server.host)
 
 ### runtime CLI 与 agent.toml
 
-runtime 进程级配置与 config.json 是两套东西：`wingman-runtime start` 读取的是 **TOML 格式的 AgentConfig**：
+runtime 进程级配置与 config.json 是两套东西：`wingman-agent start` 读取的是 **TOML 格式的 AgentConfig**：
 
 ```bash
 # 默认读取工作目录下的 agent.toml
-wingman-runtime start
+wingman-agent start
 
 # 显式指定配置文件
-wingman-runtime start --config /path/to/agent.toml     # 或 -c
+wingman-agent start --config /path/to/agent.toml     # 或 -c
 ```
 
 常用 AgentConfig TOML 键（`[remote]` 节）：

@@ -38,7 +38,7 @@ build-scripts\build-runtime-msvc-ninja.bat
 ### 4. 运行
 
 ```bash
-.\build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe
+.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe
 ```
 
 ## 测试
@@ -56,7 +56,7 @@ cmake -S . -B build-tests `
 ### 运行测试
 
 ```bash
-cmake --build build-tests --config Debug --target core_tests runtime_tests transport_tests
+cmake --build build-tests --config Debug --target core_tests agent_tests transport_tests
 ctest --test-dir build-tests -C Debug --output-on-failure
 ```
 

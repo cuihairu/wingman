@@ -64,7 +64,7 @@ echo ========================================
 echo.
 echo Next steps:
 echo 1. Run: build-scripts\build-runtime-msvc-ninja.bat
-echo 2. Binary output: build-msvc-ninja-vcpkg\apps\runtime\wingman-runtime.exe
+echo 2. Binary output: build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe
 echo.
 
 pause

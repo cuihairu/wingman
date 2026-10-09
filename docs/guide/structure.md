@@ -39,7 +39,7 @@ wingman/
 │   └── package.json          # 文档依赖
 │
 ├── apps/                     # 应用程序
-│   ├── runtime/              # C++ 运行时（wingman-runtime：主动 Agent + 本地 IPC）
+│   ├── runtime/              # C++ 运行时（wingman-agent：主动 Agent + 本地 IPC）
 │   ├── gui/                  # Tauri/Svelte 桌面 GUI
 │   │   ├── src/              # Svelte 前端
 │   │   └── src-tauri/        # Rust 后端
@@ -128,7 +128,7 @@ Lua 脚本调试基于 EmmyLua attach（runtime 监听 `:9966`），脚本内可
 
 ### examples/lua_scripts/ - 脚本示例
 
-Lua 脚本示例（`hello.lua`、`pixel_detection.lua`、`image_matching.lua`、`auto_loop.lua` 等），以 `wingman-runtime.exe script examples/lua_scripts/xxx.lua` 运行。
+Lua 脚本示例（`hello.lua`、`pixel_detection.lua`、`image_matching.lua`、`auto_loop.lua` 等），以 `wingman-agent.exe script examples/lua_scripts/xxx.lua` 运行。
 
 ### scripts/ / build-scripts/ - 工程脚本
 

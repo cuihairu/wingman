@@ -120,13 +120,13 @@ ModuleDescriptor (41 语言无关模块) → C++ 核心 API
     ↓
 lib/wingman/ (核心功能：screen, input, trigger...)
     ↓
-apps/runtime/ (应用：CLI + outbound agent + local IPC)
+apps/agent/ (应用：CLI + outbound agent + local IPC)
 ```
 
 ### 脚本引擎抽象
 
 ```
-                        apps/runtime
+                        apps/agent
                              │
                     ┌────────▼────────┐
                     │  ScriptManager  │ (语言无关)
@@ -165,7 +165,7 @@ Runtime 不再按互斥“运行模式”建模。远程编排和本地 UI 控�
 | Local IPC Control | Tauri UI -> Rust backend -> local IPC -> runtime，用于本机控制 | 可与 Remote Agent 同时启用 |
 | Standalone Execution | 本地脚本、触发器和自动化执行能力 | 被 Local IPC 和 CLI 复用 |
 
-`wingman-runtime start --standalone` 只是便捷启动参数：它强制关闭远程连接，只启动本地执行能力和 local IPC。它不是说本地 UI 与远程 agent 在架构上互斥。
+`wingman-agent start --standalone` 只是便捷启动参数：它强制关闭远程连接，只启动本地执行能力和 local IPC。它不是说本地 UI 与远程 agent 在架构上互斥。
 
 禁止把本地 UI 控制实现成 runtime HTTP/WebSocket server。Local TCP 只允许显式 debug fallback，默认关闭。
 
