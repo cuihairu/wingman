@@ -29,6 +29,7 @@ class UIElement(TypedDict):
     _handle: int
     get_info: Callable[[], UIElementInfo]
     click: Callable[[], bool]
+    right_click: Callable[[], bool]
     double_click: Callable[[], bool]
     focus: Callable[[], bool]
     get_value: Callable[[], str | None]

@@ -477,6 +477,12 @@ static ScriptValue makeUiaElementObject(std::shared_ptr<IUIAElement> e) {
 		return el ? ScriptValue::fromBool(el->select()) : ScriptValue::fromBool(false);
 	});
 
+	// 右键点击（win 落元素中心发右键；mac AXShowMenu 弹上下文菜单）
+	obj["right_click"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto el = uiaGetElement(handle);
+		return el ? ScriptValue::fromBool(el->rightClick()) : ScriptValue::fromBool(false);
+	});
+
 	// 容器的首个选中子项（List/Table/Tree 的 Selection 模式）；无选中返回 null
 	obj["get_selection"] = ScriptValue::fromCallable([handle](const std::vector<ScriptValue>&) -> ScriptValue {
 		auto el = uiaGetElement(handle);

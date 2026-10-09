@@ -337,7 +337,7 @@
 
 ### 9.3 UIElement 方法
 - [x] `:click()` - 点击
-- [ ] `:rightClick()` - 右键点击（未实现）
+- [x] `:right_click()` - 右键点击（2026-10-09：win 落元素中心 SendInput 右键；mac AXShowMenu 弹上下文菜单）
 - [x] `:double_click()` - 双击
 - [x] `:focus()` - 设置焦点
 - [x] `:get_value()` - 获取值

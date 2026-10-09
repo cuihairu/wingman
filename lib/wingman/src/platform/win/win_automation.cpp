@@ -9,6 +9,7 @@
 #endif
 
 #include "wingman/ui_automation.hpp"
+#include "wingman/platform/input_factory.hpp"
 #include <spdlog/spdlog.h>
 #include <memory>
 #include <thread>
@@ -118,6 +119,18 @@ public:
             return SUCCEEDED(invokePattern->Invoke());
         }
         return false;
+    }
+
+    bool rightClick() override {
+        if (!element_) return false;
+        RECT rect;
+        if (FAILED(element_->get_CurrentBoundingRectangle(&rect))) return false;
+        POINT center = { rect.left + (rect.right - rect.left) / 2,
+                         rect.top + (rect.bottom - rect.top) / 2 };
+        auto& input = wingman::platform::defaultSharedInput();
+        input.mouseMove(center.x, center.y);
+        input.mouseClick(wingman::platform::MouseButton::Right);
+        return true;
     }
 
     bool setFocus() override {

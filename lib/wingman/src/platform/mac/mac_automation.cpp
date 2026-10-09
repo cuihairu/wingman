@@ -156,6 +156,13 @@ public:
         return err == kAXErrorSuccess;
     }
 
+    bool rightClick() override {
+        if (!element_) return false;
+        // AX 无右键动作，AXShowMenu 等价弹出上下文菜单
+        AXError err = AXUIElementPerformAction(element_, kAXShowMenuAction);
+        return err == kAXErrorSuccess;
+    }
+
     bool setFocus() override {
         if (!element_) return false;
         AXError err = AXUIElementSetAttributeValue(element_, kAXFocusedAttribute, kCFBooleanTrue);
