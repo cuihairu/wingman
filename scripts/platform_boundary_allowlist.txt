@@ -21,7 +21,6 @@ lib/wingman/src/game_profile.cpp
 lib/wingman/src/performance.cpp
 lib/wingman/src/screen.cpp
 lib/wingman/src/script_manager.cpp
-lib/wingman/src/script/modules/db_module.cpp
 lib/wingman/src/security.cpp
 lib/wingman/src/ui_automation.cpp
 lib/wingman/src/verification.cpp
