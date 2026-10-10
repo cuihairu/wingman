@@ -3,12 +3,7 @@
 #include "wingman/platform/iclipboard.hpp"
 #include <memory>
 #include <string>
-
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#endif
+#include <vector>
 
 namespace wingman {
 

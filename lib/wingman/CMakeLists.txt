@@ -184,6 +184,7 @@ if(WIN32)
         src/platform/win/capture_source.cpp
         src/platform/win/screenshot_reporter.cpp
         src/platform/win/msvc_link_pragmas.cpp
+        src/platform/win/clipboard_factory.cpp
         src/platform/win/win32_clipboard.cpp
         src/platform/win/win32_filewatcher.cpp
         src/platform/win/named_pipe_channel.cpp
@@ -208,6 +209,7 @@ elseif(APPLE)
         src/platform/mac/cocoa_recorder.cpp
         src/platform/mac/sccapture_capture.cpp
         src/platform/mac/cocoa_clipboard.cpp
+        src/platform/mac/clipboard_factory.cpp
         src/platform/mac/fsevents_filewatcher.cpp
         src/platform/posix/posix_trigger.cpp
     )
@@ -242,6 +244,7 @@ elseif(UNIX AND NOT APPLE)
         src/platform/linux/posix_process.cpp
         src/platform/linux/posix_system.cpp
         src/platform/linux/x11_recorder.cpp
+        src/platform/linux/clipboard_factory.cpp
         src/platform/posix/posix_trigger.cpp
     )
     # Linux requires X11 and XRandR

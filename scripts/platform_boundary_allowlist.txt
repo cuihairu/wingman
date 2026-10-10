@@ -7,14 +7,12 @@
 #
 apps/agent/src/packer.cpp
 apps/agent/src/resource_loader.cpp
-lib/wingman/include/wingman/clipboard.hpp
 lib/wingman/include/wingman/platform/platform_types.hpp
 lib/wingman/include/wingman/process.hpp
 lib/wingman/include/wingman/recorder.hpp
 lib/wingman/include/wingman/screen.hpp
 lib/wingman/include/wingman/system.hpp
 lib/wingman/include/wingman/window.hpp
-lib/wingman/src/clipboard.cpp
 lib/wingman/src/filewatcher.cpp
 lib/wingman/src/game_profile.cpp
 lib/wingman/src/performance.cpp
