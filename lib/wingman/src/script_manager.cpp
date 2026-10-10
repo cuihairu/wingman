@@ -10,12 +10,7 @@
 #include <future>
 #include <atomic>
 #include <nlohmann/json.hpp>
-
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <sys/stat.h>
-#endif
+#include "platform/script_helpers.hpp"
 
 namespace wingman {
 
@@ -667,19 +662,10 @@ std::string ScriptManager::getEnv(const std::string& key) const {
 		return it->second;
 	}
 
-#ifdef _WIN32
-	DWORD needed = GetEnvironmentVariableA(key.c_str(), nullptr, 0);
-	if (needed > 0) {
-		std::string buf(needed - 1, '\0');
-		GetEnvironmentVariableA(key.c_str(), buf.data(), needed);
-		return buf;
-	}
-#else
-	const char* val = std::getenv(key.c_str());
-	if (val) {
+	const std::string val = platform::readEnvironmentVariable(key);
+	if (!val.empty()) {
 		return val;
 	}
-#endif
 
 	return "";
 }
@@ -857,29 +843,7 @@ void ScriptManager::stopHotReload() {
 // ========== Private Helpers ==========
 
 uint64_t ScriptManager::getFileModifiedTime(const std::string& path) {
-#ifdef _WIN32
-	WIN32_FILE_ATTRIBUTE_DATA data;
-	if (GetFileAttributesExA(path.c_str(), GetFileExInfoStandard, &data)) {
-		LARGE_INTEGER time;
-		time.HighPart = data.ftLastWriteTime.dwHighDateTime;
-		time.LowPart = data.ftLastWriteTime.dwLowDateTime;
-		return static_cast<uint64_t>(time.QuadPart / 10000 - 11644473600000LL);
-	}
-#else
-	struct stat st;
-	if (stat(path.c_str(), &st) == 0) {
-#if defined(__APPLE__)
-		return static_cast<uint64_t>(st.st_mtimespec.tv_sec) * 1000000000ULL +
-		       static_cast<uint64_t>(st.st_mtimespec.tv_nsec);
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
-		return static_cast<uint64_t>(st.st_mtim.tv_sec) * 1000000000ULL +
-		       static_cast<uint64_t>(st.st_mtim.tv_nsec);
-#else
-		return static_cast<uint64_t>(st.st_mtime) * 1000000000ULL;
-#endif
-	}
-#endif
-	return 0;
+	return platform::readFileModifiedTime(path);
 }
 
 	bool ScriptManager::loadJsonConfig(const std::string& path) {
