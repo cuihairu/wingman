@@ -199,6 +199,7 @@ if(WIN32)
         src/platform/win/win32_recorder.cpp
         src/platform/win/win32_trigger.cpp
         src/platform/win/script_helpers.cpp
+        src/platform/win/security_helpers.cpp
     )
 elseif(APPLE)
     list(APPEND WINGMAN_SOURCES
@@ -215,6 +216,7 @@ elseif(APPLE)
         src/platform/mac/fsevents_filewatcher.cpp
         src/platform/mac/filewatcher_factory.cpp
         src/platform/posix/script_helpers.cpp
+        src/platform/posix/security_helpers.cpp
         src/platform/posix/posix_trigger.cpp
     )
     set_source_files_properties(
@@ -253,6 +255,7 @@ elseif(UNIX AND NOT APPLE)
         src/platform/linux/linux_ui_automation_factory.cpp
         src/platform/posix/posix_trigger.cpp
         src/platform/posix/script_helpers.cpp
+        src/platform/posix/security_helpers.cpp
     )
     # Linux requires X11 and XRandR
     find_package(PkgConfig REQUIRED)
