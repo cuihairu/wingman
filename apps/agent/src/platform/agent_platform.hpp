@@ -5,6 +5,7 @@
 // docs/platform-abstraction-design.md §8）。
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -16,5 +17,19 @@ std::vector<std::string> agentProcessNames();
 
 // build 命令的 stub 可执行文件候选路径（按优先级排列）
 std::vector<std::filesystem::path> stubCandidatePaths();
+
+// 嵌入资源（PE RCDATA）探测：Windows FindResource/SizeofResource；非 Windows
+// 无嵌入资源，恒 exists=false
+struct EmbeddedResourceProbe {
+    bool exists = false;
+    uint32_t size = 0;
+};
+EmbeddedResourceProbe probeEmbeddedResource();
+
+// 嵌入资源字节读取；无资源/读取失败返回空
+std::vector<uint8_t> readEmbeddedResource();
+
+// 可执行文件绝对路径（含文件名）；解析失败返回空串
+std::string executablePath();
 
 } // namespace wingman::runtime::platform
