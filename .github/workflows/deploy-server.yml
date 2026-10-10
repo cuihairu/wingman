@@ -196,7 +196,9 @@ jobs:
     name: Build screenshot image
     needs: gate
     runs-on: [self-hosted, wingman]
-    timeout-minutes: 30
+    # TUNA 冷缓存拉 chromium+fonts 实测 35-50min（30min 会超时被取消，
+    # run 级 conclusion 连带 cancelled；部署 job 不依赖本镜像故不影响上线）
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v7
