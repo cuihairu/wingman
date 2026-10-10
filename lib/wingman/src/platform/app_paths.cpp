@@ -53,6 +53,24 @@ std::filesystem::path appDataDir() {
     return base;
 }
 
+std::filesystem::path roamingAppDataDir() {
+#ifdef _WIN32
+    PWSTR path = nullptr;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &path))) {
+        std::filesystem::path base(path);
+        CoTaskMemFree(path);
+        return base;
+    }
+    return {};
+#else
+    // 非 Windows 保持历史口径（db 模块脚本数据目录基座，不走 XDG 变量）
+    if (const char* home = std::getenv("HOME")) {
+        return std::filesystem::path(home) / ".local" / "share";
+    }
+    return {};
+#endif
+}
+
 std::string platformName() {
 #if defined(_WIN32)
     return "windows";

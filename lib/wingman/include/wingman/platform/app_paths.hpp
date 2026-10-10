@@ -11,6 +11,11 @@ namespace wingman::platform {
 /// 失败返回空路径，调用方自行降级。
 std::filesystem::path appDataDir();
 
+/// 漫游级应用数据根目录（不含 wingman 段、不建目录）。
+/// Win: %APPDATA%（Roaming，脚本库等跨机漫游数据）；非 Windows 保持历史
+/// 口径 ~/.local/share。失败返回空路径，调用方自行降级。
+std::filesystem::path roamingAppDataDir();
+
 /// 当前平台短名（windows / linux / macos），用于崩溃注解等自描述元数据。
 std::string platformName();
 

@@ -1,5 +1,6 @@
 #include "wingman/script/modules/db_connection.hpp"
 #include "wingman/script/iscript_engine.hpp"
+#include "wingman/platform/app_paths.hpp"
 #include <spdlog/spdlog.h>
 #include <algorithm>  // std::transform（显式包含，不依赖传递包含）
 #include <regex>
@@ -7,11 +8,6 @@
 #include <unordered_set>
 #include <mutex>
 #include <chrono>
-
-#ifdef _WIN32
-#include <shlobj.h>
-#pragma comment(lib, "shell32.lib")
-#endif
 
 namespace wingman {
 namespace script {
@@ -30,26 +26,15 @@ namespace {
 			return g_scriptDataDir;
 		}
 
-#ifdef _WIN32
-		// Windows: 使用 %APPDATA%/wingman/scripts
-		PWSTR path = nullptr;
-		if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &path))) {
-			std::filesystem::path appData(path);
-			CoTaskMemFree(path);
-			g_scriptDataDir = (appData / "wingman" / "scripts").string();
+		// Win: %APPDATA%/wingman/scripts；Unix: ~/.local/share/wingman/scripts
+		// （基座解析的平台分支收敛在 platform::roamingAppDataDir）
+		const std::filesystem::path base = platform::roamingAppDataDir();
+		if (!base.empty()) {
+			g_scriptDataDir = (base / "wingman" / "scripts").string();
 		} else {
 			// Fallback: 当前目录
 			g_scriptDataDir = (std::filesystem::current_path() / "scripts").string();
 		}
-#else
-		// Unix: 使用 ~/.local/share/wingman/scripts
-		const char* home = std::getenv("HOME");
-		if (home) {
-			g_scriptDataDir = (std::filesystem::path(home) / ".local" / "share" / "wingman" / "scripts").string();
-		} else {
-			g_scriptDataDir = (std::filesystem::current_path() / "scripts").string();
-		}
-#endif
 
 		// 确保目录存在
 		try {
