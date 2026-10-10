@@ -5,15 +5,6 @@
 #include <chrono>
 #include <thread>
 
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
-
 namespace wingman {
 
 // ============================================================================
@@ -21,15 +12,9 @@ namespace wingman {
 // ============================================================================
 
 int PerformanceManager::getNumCpuCores() {
-#ifdef _WIN32
-    SYSTEM_INFO sysInfo;
-    GetSystemInfo(&sysInfo);
-    return static_cast<int>(sysInfo.dwNumberOfProcessors);
-#elif defined(_SC_NPROCESSORS_ONLN)
-    return static_cast<int>(sysconf(_SC_NPROCESSORS_ONLN));
-#else
+    // 可用核心数统一走标准库（glibc 侧读 sched_getaffinity，与原
+    // sysconf(_SC_NPROCESSORS_ONLN) 口径同为在线可用核；监控指标足够）
     return static_cast<int>(std::thread::hardware_concurrency());
-#endif
 }
 
 PerformanceManager& PerformanceManager::instance() {

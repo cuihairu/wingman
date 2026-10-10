@@ -14,8 +14,6 @@ lib/wingman/include/wingman/screen.hpp
 lib/wingman/include/wingman/system.hpp
 lib/wingman/include/wingman/window.hpp
 lib/wingman/src/filewatcher.cpp
-lib/wingman/src/game_profile.cpp
-lib/wingman/src/performance.cpp
 lib/wingman/src/screen.cpp
 lib/wingman/src/script_manager.cpp
 lib/wingman/src/security.cpp

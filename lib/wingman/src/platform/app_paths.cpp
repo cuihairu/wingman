@@ -71,6 +71,19 @@ std::filesystem::path roamingAppDataDir() {
 #endif
 }
 
+std::filesystem::path executableDir() {
+#ifdef _WIN32
+    char exePath[MAX_PATH];
+    if (GetModuleFileNameA(nullptr, exePath, MAX_PATH) > 0) {
+        return std::filesystem::path(exePath).parent_path();
+    }
+    return {};
+#else
+    // 非 Windows 保持历史口径（game_profile 原实现用 CWD）
+    return std::filesystem::current_path();
+#endif
+}
+
 std::string platformName() {
 #if defined(_WIN32)
     return "windows";

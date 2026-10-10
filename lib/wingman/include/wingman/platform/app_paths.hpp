@@ -16,6 +16,10 @@ std::filesystem::path appDataDir();
 /// 口径 ~/.local/share。失败返回空路径，调用方自行降级。
 std::filesystem::path roamingAppDataDir();
 
+/// 可执行文件所在目录（Win: GetModuleFileNameA 的父目录；非 Windows 保持
+/// 历史口径返回当前工作目录）。Win 侧查询失败返回空路径，调用方自行降级。
+std::filesystem::path executableDir();
+
 /// 当前平台短名（windows / linux / macos），用于崩溃注解等自描述元数据。
 std::string platformName();
 

@@ -1,12 +1,6 @@
 #include "wingman/game_profile.hpp"
+#include "wingman/platform/app_paths.hpp"
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-
-#ifdef _WIN32
-#include <Windows.h>
-#endif
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <filesystem>
@@ -186,14 +180,9 @@ GameProfileManager& GameProfileManager::instance() {
 }
 
 GameProfileManager::GameProfileManager() {
-#ifdef _WIN32
-    char exePath[MAX_PATH];
-    GetModuleFileNameA(nullptr, exePath, MAX_PATH);
-    std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
-#else
-    std::filesystem::path exeDir = std::filesystem::current_path();
-#endif
-    m_profilesDirectory = (exeDir / "profiles").string();
+    // exe 目录解析的平台分支收敛在 platform::executableDir（薄层纪律）
+    const std::filesystem::path base = platform::executableDir();
+    m_profilesDirectory = ((base.empty() ? std::filesystem::current_path() : base) / "profiles").string();
 }
 
 // ========== Configuration Management ==========
