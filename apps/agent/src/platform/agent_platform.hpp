@@ -32,4 +32,16 @@ std::vector<uint8_t> readEmbeddedResource();
 // 可执行文件绝对路径（含文件名）；解析失败返回空串
 std::string executablePath();
 
+// PE 资源写入（BeginUpdateResource/UpdateResource）：Windows 专有；
+// 非 Windows 无对应物，明确失败返回 false（不静默产出未嵌脚本的产物）
+bool updatePeResource(const std::string& outputPath, const std::vector<uint8_t>& resourceData);
+
+// PE 图标替换：Windows 专有；非 Windows 跳过（返回 true）
+bool replacePeIcon(const std::string& outputPath, const std::string& iconPath);
+
+// PE 版本信息写入（VS_VERSIONINFO）：Windows 专有；非 Windows 跳过（返回 true）
+bool setPeVersionInfo(const std::string& outputPath,
+                      const std::string& appName,
+                      const std::string& appVersion);
+
 } // namespace wingman::runtime::platform
