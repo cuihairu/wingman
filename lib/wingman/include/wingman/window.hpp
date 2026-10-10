@@ -95,6 +95,9 @@ public:
     // 指针，reinterpret_cast 中转收敛在实现层，公共调用点保持平台中立
     static uint64_t key(WindowHandle hwnd);
 
+    // key() 的逆变换（RPC/脚本载荷往返还原句柄）
+    static WindowHandle fromKey(uint64_t key);
+
     // Wait for window to appear
     static bool waitFor(const std::string& title, int timeoutMs = 5000);
 

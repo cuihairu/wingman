@@ -194,6 +194,10 @@ uint64_t Window::key(WindowHandle hwnd) {
     return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hwnd));
 }
 
+WindowHandle Window::fromKey(uint64_t key) {
+    return reinterpret_cast<WindowHandle>(static_cast<uintptr_t>(key));
+}
+
 bool Window::waitFor(const std::string& title, int timeoutMs) {
     auto start = std::chrono::steady_clock::now();
     while (true) {
@@ -391,6 +395,10 @@ bool Window::resize(WindowHandle hwnd, int width, int height) {
 uint64_t Window::key(WindowHandle hwnd) {
     // 非 Windows 平台 WindowHandle 本就是 uint64_t
     return static_cast<uint64_t>(hwnd);
+}
+
+WindowHandle Window::fromKey(uint64_t key) {
+    return static_cast<WindowHandle>(key);
 }
 
 bool Window::waitFor(const std::string& title, int timeoutMs) {
