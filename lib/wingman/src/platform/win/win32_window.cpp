@@ -6,6 +6,8 @@
 #include <psapi.h>
 #pragma comment(lib, "psapi.lib")
 
+#include "platform/win/handle_traits.hpp"
+
 #include <chrono>
 #include <thread>
 #include <cstring>
@@ -36,7 +38,7 @@ public:
         data.title = title;
         EnumWindows(enumWindowsCallback, reinterpret_cast<LPARAM>(&data));
 
-        return data.results.empty() ? nullptr : data.results[0];
+        return data.results.empty() ? 0 : data.results[0];
     }
 
     std::vector<WindowHandle> findAll(const std::string& title) override {
@@ -47,8 +49,7 @@ public:
     }
 
     WindowHandle findByClassName(const std::string& className) override {
-        HWND hwnd = FindWindowA(className.c_str(), nullptr);
-        return hwnd;
+        return opaqueHwnd(FindWindowA(className.c_str(), nullptr));
     }
 
     std::vector<WindowHandle> findByProcessId(uint32_t processId) override {
@@ -66,7 +67,7 @@ public:
     }
 
     WindowHandle getForeground() override {
-        return GetForegroundWindow();
+        return opaqueHwnd(GetForegroundWindow());
     }
 
     bool activate(WindowHandle hwnd) override {
@@ -74,16 +75,18 @@ public:
             return false;
         }
 
-        if (IsIconic(hwnd)) {
-            ShowWindow(hwnd, SW_RESTORE);
+        HWND h = nativeHwnd(hwnd);
+
+        if (IsIconic(h)) {
+            ShowWindow(h, SW_RESTORE);
         }
 
-        DWORD threadId = GetWindowThreadProcessId(hwnd, nullptr);
+        DWORD threadId = GetWindowThreadProcessId(h, nullptr);
         AttachThreadInput(GetCurrentThreadId(), threadId, TRUE);
 
-        ShowWindow(hwnd, SW_SHOW);
-        SetForegroundWindow(hwnd);
-        SetFocus(hwnd);
+        ShowWindow(h, SW_SHOW);
+        SetForegroundWindow(h);
+        SetFocus(h);
 
         AttachThreadInput(GetCurrentThreadId(), threadId, FALSE);
 
@@ -91,31 +94,31 @@ public:
     }
 
     bool minimize(WindowHandle hwnd) override {
-        return ShowWindow(hwnd, SW_MINIMIZE) != 0;
+        return ShowWindow(nativeHwnd(hwnd), SW_MINIMIZE) != 0;
     }
 
     bool maximize(WindowHandle hwnd) override {
-        return ShowWindow(hwnd, SW_MAXIMIZE) != 0;
+        return ShowWindow(nativeHwnd(hwnd), SW_MAXIMIZE) != 0;
     }
 
     bool restore(WindowHandle hwnd) override {
-        return ShowWindow(hwnd, SW_RESTORE) != 0;
+        return ShowWindow(nativeHwnd(hwnd), SW_RESTORE) != 0;
     }
 
     bool close(WindowHandle hwnd) override {
-        return PostMessage(hwnd, WM_CLOSE, 0, 0) != 0;
+        return PostMessage(nativeHwnd(hwnd), WM_CLOSE, 0, 0) != 0;
     }
 
     bool forceClose(WindowHandle hwnd) override {
-        return PostMessage(hwnd, WM_DESTROY, 0, 0) != 0;
+        return PostMessage(nativeHwnd(hwnd), WM_DESTROY, 0, 0) != 0;
     }
 
     bool hide(WindowHandle hwnd) override {
-        return ShowWindow(hwnd, SW_HIDE) != 0;
+        return ShowWindow(nativeHwnd(hwnd), SW_HIDE) != 0;
     }
 
     bool show(WindowHandle hwnd) override {
-        return ShowWindow(hwnd, SW_SHOW) != 0;
+        return ShowWindow(nativeHwnd(hwnd), SW_SHOW) != 0;
     }
 
     std::string getTitle(WindowHandle hwnd) override {
@@ -124,7 +127,7 @@ public:
         }
 
         wchar_t titleBuf[512];
-        GetWindowTextW(hwnd, titleBuf, 512);
+        GetWindowTextW(nativeHwnd(hwnd), titleBuf, 512);
 
         char titleUtf8[1024];
         WideCharToMultiByte(CP_UTF8, 0, titleBuf, -1,
@@ -135,14 +138,14 @@ public:
 
     Rect getBounds(WindowHandle hwnd) override {
         RECT rect = {};
-        GetWindowRect(hwnd, &rect);
+        GetWindowRect(nativeHwnd(hwnd), &rect);
         return Rect(rect.left, rect.top,
                     rect.right - rect.left,
                     rect.bottom - rect.top);
     }
 
     bool setBounds(WindowHandle hwnd, const Rect& bounds) override {
-        return SetWindowPos(hwnd, nullptr,
+        return SetWindowPos(nativeHwnd(hwnd), nullptr,
                            bounds.x, bounds.y,
                            bounds.width, bounds.height,
                            SWP_NOZORDER) != 0;
@@ -172,7 +175,7 @@ public:
         // Get display bounds
         MONITORINFO mi = {};
         mi.cbSize = sizeof(mi);
-        GetMonitorInfoA(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &mi);
+        GetMonitorInfoA(MonitorFromWindow(nativeHwnd(hwnd), MONITOR_DEFAULTTONEAREST), &mi);
 
         Rect workArea{
             mi.rcWork.left,
@@ -188,38 +191,38 @@ public:
     }
 
     bool isValid(WindowHandle hwnd) override {
-        return IsWindow(hwnd) != 0;
+        return IsWindow(nativeHwnd(hwnd)) != 0;
     }
 
     bool isVisible(WindowHandle hwnd) override {
-        return IsWindowVisible(hwnd) != 0;
+        return IsWindowVisible(nativeHwnd(hwnd)) != 0;
     }
 
     bool isForeground(WindowHandle hwnd) override {
-        return GetForegroundWindow() == hwnd;
+        return nativeHwnd(hwnd) == GetForegroundWindow();
     }
 
     bool isMinimized(WindowHandle hwnd) override {
-        return IsIconic(hwnd) != 0;
+        return IsIconic(nativeHwnd(hwnd)) != 0;
     }
 
     bool isMaximized(WindowHandle hwnd) override {
         WINDOWPLACEMENT wp = {};
         wp.length = sizeof(wp);
-        GetWindowPlacement(hwnd, &wp);
+        GetWindowPlacement(nativeHwnd(hwnd), &wp);
         return wp.showCmd == SW_SHOWMAXIMIZED;
     }
 
     std::optional<uint32_t> getProcessId(WindowHandle hwnd) override {
         DWORD pid;
-        GetWindowThreadProcessId(hwnd, &pid);
+        GetWindowThreadProcessId(nativeHwnd(hwnd), &pid);
         return pid;
     }
 
     bool waitFor(const std::string& title, int timeoutMs) override {
         auto start = std::chrono::steady_clock::now();
         while (true) {
-            if (find(title) != nullptr) {
+            if (find(title) != 0) {
                 return true;
             }
 
@@ -236,7 +239,7 @@ public:
     bool waitClose(const std::string& title, int timeoutMs) override {
         auto start = std::chrono::steady_clock::now();
         while (true) {
-            if (find(title) == nullptr) {
+            if (find(title) == 0) {
                 return true;
             }
 
@@ -325,15 +328,15 @@ private:
             }
         }
 
-        data->results.push_back(hwnd);
+        data->results.push_back(opaqueHwnd(hwnd));
 
         if (data->collectInfo) {
             WindowInfo info;
-            info.handle = hwnd;
+            info.handle = opaqueHwnd(hwnd);
             info.title = data->collectInfo ?
-                (std::unique_ptr<Win32Window>(new Win32Window())->getTitle(hwnd)) : "";
+                (std::unique_ptr<Win32Window>(new Win32Window())->getTitle(opaqueHwnd(hwnd))) : "";
             info.bounds = data->collectInfo ?
-                (std::unique_ptr<Win32Window>(new Win32Window())->getBounds(hwnd)) : Rect{};
+                (std::unique_ptr<Win32Window>(new Win32Window())->getBounds(opaqueHwnd(hwnd))) : Rect{};
             info.isForeground = (GetForegroundWindow() == hwnd);
             DWORD pid;
             GetWindowThreadProcessId(hwnd, &pid);

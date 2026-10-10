@@ -6,6 +6,8 @@
 #ifdef _WIN32
 #include <Windows.h>
 #include <shellscalingapi.h>
+
+#include "platform/win/handle_traits.hpp"
 #pragma comment(lib, "shcore.lib")
 
 namespace wingman::platform::win {
@@ -306,7 +308,7 @@ public:
     }
 
     int getMonitorFromWindow(WindowHandle hwnd) override {
-        HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        HMONITOR hMonitor = MonitorFromWindow(nativeHwnd(hwnd), MONITOR_DEFAULTTONEAREST);
 
         struct MonitorData {
             HMONITOR target;

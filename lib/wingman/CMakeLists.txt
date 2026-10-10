@@ -51,7 +51,7 @@ set(WINGMAN_SOURCES
     # I/O
     src/platform/screen_image_codec.cpp
     src/platform/screen_backend.cpp
-    src/window.cpp
+    src/platform/window_backend.cpp
     src/ui_automation.cpp
     src/clipboard.cpp
     src/filewatcher.cpp

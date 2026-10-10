@@ -5,10 +5,6 @@
 #include <vector>
 #include <optional>
 
-#ifdef _WIN32
-#include <Windows.h>
-#endif
-
 namespace wingman::platform {
 
 // ========== Common type definitions ==========
@@ -67,14 +63,12 @@ struct DisplayMode {
 
 /**
  * @brief Window handle type
+ *
+ * 跨平台不透明句柄：Windows HWND / X11 Window / macOS windowID 一律按
+ * 64 位整型承载；原生句柄互转收口在各平台后端分区。
  */
-#ifdef _WIN32
-using WindowHandle = HWND;
-static constexpr WindowHandle NullWindowHandle = nullptr;
-#else
 using WindowHandle = uint64_t;
 static constexpr WindowHandle NullWindowHandle = 0;
-#endif
 
 /**
  * @brief Window information

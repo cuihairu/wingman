@@ -1,23 +1,16 @@
 #pragma once
 
 #include "wingman/screen.hpp"
+#include <cstdint>
 #include <string>
 #include <vector>
 
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#endif
-
 namespace wingman {
 
-#ifdef _WIN32
-using WindowHandle = HWND;
-#else
+// 跨平台不透明窗口句柄：Windows HWND / X11 Window / macOS windowID 一律按
+// 64 位整型承载（同 platform/platform_types.hpp 口径）；原生句柄的互转
+// 收口在各平台后端（src/platform/ 分区），公共层不出现平台类型。
 using WindowHandle = uint64_t;
-#endif
 
 struct WindowInfo {
     WindowHandle handle;

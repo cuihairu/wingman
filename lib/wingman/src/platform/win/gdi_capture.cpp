@@ -5,6 +5,8 @@
 #ifdef _WIN32
 #include <Windows.h>
 #include <shellscalingapi.h>
+
+#include "platform/win/handle_traits.hpp"
 #pragma comment(lib, "shcore.lib")
 
 namespace wingman::platform::win {
@@ -100,38 +102,38 @@ public:
     }
 
     std::unique_ptr<Bitmap> captureWindow(WindowHandle hwnd) override {
-        if (!initialized_ || !IsWindow(hwnd)) {
+        if (!initialized_ || !IsWindow(nativeHwnd(hwnd))) {
             return nullptr;
         }
 
         RECT rect;
-        GetWindowRect(hwnd, &rect);
+        GetWindowRect(nativeHwnd(hwnd), &rect);
 
         int width = rect.right - rect.left;
         int height = rect.bottom - rect.top;
 
-        HDC hdcWindow = GetDC(hwnd);
+        HDC hdcWindow = GetDC(nativeHwnd(hwnd));
         if (!hdcWindow) {
             return nullptr;
         }
 
         HDC hdcMem = CreateCompatibleDC(hdcWindow);
         if (!hdcMem) {
-            ReleaseDC(hwnd, hdcWindow);
+            ReleaseDC(nativeHwnd(hwnd), hdcWindow);
             return nullptr;
         }
 
         HBITMAP hBitmap = CreateCompatibleBitmap(hdcWindow, width, height);
         if (!hBitmap) {
             DeleteDC(hdcMem);
-            ReleaseDC(hwnd, hdcWindow);
+            ReleaseDC(nativeHwnd(hwnd), hdcWindow);
             return nullptr;
         }
 
         HBITMAP hOldBitmap = (HBITMAP)SelectObject(hdcMem, hBitmap);
 
         // Use PrintWindow to capture window content (including non-client area)
-        PrintWindow(hwnd, hdcMem, 0);
+        PrintWindow(nativeHwnd(hwnd), hdcMem, 0);
 
         SelectObject(hdcMem, hOldBitmap);
 
@@ -150,7 +152,7 @@ public:
 
         DeleteObject(hBitmap);
         DeleteDC(hdcMem);
-        ReleaseDC(hwnd, hdcWindow);
+        ReleaseDC(nativeHwnd(hwnd), hdcWindow);
 
         return bitmap;
     }

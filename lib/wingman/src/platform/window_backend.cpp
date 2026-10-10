@@ -1,3 +1,7 @@
+// Window 静态类平台实现，自 src/window.cpp 整体迁入（平台分支收口在
+// platform 分区，边界守卫豁免区）：Windows 直连 Win32，Linux/macOS 经
+// IWindow 后端工厂接线。win32_window.cpp 是 Windows 侧 IWindow 接口的
+// 平行实现（script/modules 消费的是本文件的 Window 静态类）。
 #include "wingman/window.hpp"
 
 #ifdef _WIN32
@@ -7,6 +11,8 @@
 #include <windows.h>
 #include <psapi.h>
 #pragma comment(lib, "psapi.lib")
+
+#include "platform/win/handle_traits.hpp"
 
 #include <chrono>
 #include <thread>
@@ -47,13 +53,13 @@ BOOL CALLBACK enumWindowsProc(HWND hwnd, LPARAM lParam) {
         }
     }
 
-    data->results.push_back(hwnd);
+    data->results.push_back(platform::win::opaqueHwnd(hwnd));
 
     if (data->windowInfos) {
         wingman::WindowInfo info;
-        info.handle = hwnd;
+        info.handle = platform::win::opaqueHwnd(hwnd);
         info.title = title;
-        info.bounds = wingman::Window::getBounds(hwnd);
+        info.bounds = wingman::Window::getBounds(platform::win::opaqueHwnd(hwnd));
         info.isForeground = (GetForegroundWindow() == hwnd);
         data->windowInfos->push_back(info);
     }
@@ -74,7 +80,7 @@ WindowHandle Window::find(const std::string& title) {
     data.title = title;
     EnumWindows(enumWindowsProc, reinterpret_cast<LPARAM>(&data));
 
-    return data.results.empty() ? nullptr : data.results[0];
+    return data.results.empty() ? 0 : data.results[0];
 }
 
 std::vector<WindowHandle> Window::findAll(const std::string& title) {
@@ -85,7 +91,7 @@ std::vector<WindowHandle> Window::findAll(const std::string& title) {
 }
 
 WindowHandle Window::getForeground() {
-    return GetForegroundWindow();
+    return platform::win::opaqueHwnd(GetForegroundWindow());
 }
 
 std::vector<WindowInfo> Window::enumerate() {
@@ -101,16 +107,18 @@ bool Window::activate(WindowHandle hwnd) {
         return false;
     }
 
-    if (IsIconic(hwnd)) {
-        ShowWindow(hwnd, SW_RESTORE);
+    HWND h = platform::win::nativeHwnd(hwnd);
+
+    if (IsIconic(h)) {
+        ShowWindow(h, SW_RESTORE);
     }
 
-    DWORD threadId = GetWindowThreadProcessId(hwnd, nullptr);
+    DWORD threadId = GetWindowThreadProcessId(h, nullptr);
     AttachThreadInput(GetCurrentThreadId(), threadId, TRUE);
 
-    ShowWindow(hwnd, SW_SHOW);
-    SetForegroundWindow(hwnd);
-    SetFocus(hwnd);
+    ShowWindow(h, SW_SHOW);
+    SetForegroundWindow(h);
+    SetFocus(h);
 
     AttachThreadInput(GetCurrentThreadId(), threadId, FALSE);
 
@@ -118,19 +126,19 @@ bool Window::activate(WindowHandle hwnd) {
 }
 
 bool Window::minimize(WindowHandle hwnd) {
-    return ShowWindow(hwnd, SW_MINIMIZE) != 0;
+    return ShowWindow(platform::win::nativeHwnd(hwnd), SW_MINIMIZE) != 0;
 }
 
 bool Window::maximize(WindowHandle hwnd) {
-    return ShowWindow(hwnd, SW_MAXIMIZE) != 0;
+    return ShowWindow(platform::win::nativeHwnd(hwnd), SW_MAXIMIZE) != 0;
 }
 
 bool Window::restore(WindowHandle hwnd) {
-    return ShowWindow(hwnd, SW_RESTORE) != 0;
+    return ShowWindow(platform::win::nativeHwnd(hwnd), SW_RESTORE) != 0;
 }
 
 bool Window::close(WindowHandle hwnd) {
-    return PostMessage(hwnd, WM_CLOSE, 0, 0) != 0;
+    return PostMessage(platform::win::nativeHwnd(hwnd), WM_CLOSE, 0, 0) != 0;
 }
 
 std::string Window::getTitle(WindowHandle hwnd) {
@@ -139,7 +147,7 @@ std::string Window::getTitle(WindowHandle hwnd) {
     }
 
     wchar_t titleBuf[512];
-    GetWindowTextW(hwnd, titleBuf, 512);
+    GetWindowTextW(platform::win::nativeHwnd(hwnd), titleBuf, 512);
 
     char titleUtf8[1024];
     WideCharToMultiByte(CP_UTF8, 0, titleBuf, -1,
@@ -150,29 +158,29 @@ std::string Window::getTitle(WindowHandle hwnd) {
 
 Rect Window::getBounds(WindowHandle hwnd) {
     RECT rect = {};
-    GetWindowRect(hwnd, &rect);
+    GetWindowRect(platform::win::nativeHwnd(hwnd), &rect);
     return Rect(rect.left, rect.top,
                 rect.right - rect.left,
                 rect.bottom - rect.top);
 }
 
 bool Window::setBounds(WindowHandle hwnd, const Rect& bounds) {
-    return SetWindowPos(hwnd, nullptr,
+    return SetWindowPos(platform::win::nativeHwnd(hwnd), nullptr,
                        bounds.x, bounds.y,
                        bounds.width, bounds.height,
                        SWP_NOZORDER) != 0;
 }
 
 bool Window::isValid(WindowHandle hwnd) {
-    return IsWindow(hwnd) != 0;
+    return IsWindow(platform::win::nativeHwnd(hwnd)) != 0;
 }
 
 bool Window::isForeground(WindowHandle hwnd) {
-    return GetForegroundWindow() == hwnd;
+    return platform::win::nativeHwnd(hwnd) == GetForegroundWindow();
 }
 
 bool Window::isVisible(WindowHandle hwnd) {
-    return IsWindowVisible(hwnd) != 0;
+    return IsWindowVisible(platform::win::nativeHwnd(hwnd)) != 0;
 }
 
 bool Window::move(WindowHandle hwnd, int x, int y) {
@@ -190,18 +198,17 @@ bool Window::resize(WindowHandle hwnd, int width, int height) {
 }
 
 uint64_t Window::key(WindowHandle hwnd) {
-    // HWND 是不透明指针，经 uintptr_t 中转转整型
-    return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hwnd));
+    return static_cast<uint64_t>(hwnd);
 }
 
 WindowHandle Window::fromKey(uint64_t key) {
-    return reinterpret_cast<WindowHandle>(static_cast<uintptr_t>(key));
+    return static_cast<WindowHandle>(key);
 }
 
 bool Window::waitFor(const std::string& title, int timeoutMs) {
     auto start = std::chrono::steady_clock::now();
     while (true) {
-        if (find(title) != nullptr) {
+        if (find(title) != 0) {
             return true;
         }
 
@@ -218,7 +225,7 @@ bool Window::waitFor(const std::string& title, int timeoutMs) {
 bool Window::waitClose(const std::string& title, int timeoutMs) {
     auto start = std::chrono::steady_clock::now();
     while (true) {
-        if (find(title) == nullptr) {
+        if (find(title) == 0) {
             return true;
         }
 
