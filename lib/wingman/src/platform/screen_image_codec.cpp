@@ -71,11 +71,12 @@ constexpr uint32_t kBmpCompressionRgb = 0;
 #endif
 
 #if defined(_WIN32) || defined(WINGMAN_ENABLE_VISION)
-namespace {
 
 // 模板匹配核心（Windows 与 Linux vision 构建共用）：imread 模板 → 截图
 // BGRA 数据转 BGR → TM_CCOEFF_NORMED → minMaxLoc 阈值判定，单尺度。
 // regionOrigin 为截图区域在屏幕上的原点（结果坐标平移回屏幕坐标系用）。
+// 非静态：screen_backend.cpp 的 Screen::findImage 跨 TU 调用（与 header
+// 声明保持外部链接，否则 Windows 链接期 LNK2019）。
 bool matchTemplateOnBitmap(const std::string& imagePath, uint8_t* bgraData,
                            int width, int height, const Point& regionOrigin,
                            double threshold, Point& result) {
@@ -108,7 +109,6 @@ bool matchTemplateOnBitmap(const std::string& imagePath, uint8_t* bgraData,
     return false;
 }
 
-} // namespace
 #endif
 
 std::unique_ptr<Bitmap> Bitmap::fromFile(const std::string& filepath) {
