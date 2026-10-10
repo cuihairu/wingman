@@ -187,6 +187,7 @@ if(WIN32)
         src/platform/win/clipboard_factory.cpp
         src/platform/win/win32_clipboard.cpp
         src/platform/win/win32_filewatcher.cpp
+        src/platform/win/filewatcher_factory.cpp
         src/platform/win/named_pipe_channel.cpp
         src/platform/win/gdi_capture.cpp
         src/platform/win/sendinput_input.cpp
@@ -211,6 +212,7 @@ elseif(APPLE)
         src/platform/mac/cocoa_clipboard.cpp
         src/platform/mac/clipboard_factory.cpp
         src/platform/mac/fsevents_filewatcher.cpp
+        src/platform/mac/filewatcher_factory.cpp
         src/platform/posix/posix_trigger.cpp
     )
     set_source_files_properties(
@@ -245,6 +247,7 @@ elseif(UNIX AND NOT APPLE)
         src/platform/linux/posix_system.cpp
         src/platform/linux/x11_recorder.cpp
         src/platform/linux/clipboard_factory.cpp
+        src/platform/linux/filewatcher_factory.cpp
         src/platform/linux/linux_ui_automation_factory.cpp
         src/platform/posix/posix_trigger.cpp
     )

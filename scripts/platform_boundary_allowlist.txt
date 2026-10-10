@@ -11,7 +11,6 @@ lib/wingman/include/wingman/platform/platform_types.hpp
 lib/wingman/include/wingman/process.hpp
 lib/wingman/include/wingman/recorder.hpp
 lib/wingman/include/wingman/window.hpp
-lib/wingman/src/filewatcher.cpp
 lib/wingman/src/screen.cpp
 lib/wingman/src/script_manager.cpp
 lib/wingman/src/security.cpp
