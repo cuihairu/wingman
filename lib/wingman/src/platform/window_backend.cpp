@@ -23,6 +23,9 @@
 
 namespace {
 
+// 匿名命名空间位于全局作用域，platform::win 需显式引入
+using wingman::platform::win::opaqueHwnd;
+
 struct EnumWindowsData {
     std::string title;
     std::vector<wingman::WindowHandle> results;
@@ -53,13 +56,13 @@ BOOL CALLBACK enumWindowsProc(HWND hwnd, LPARAM lParam) {
         }
     }
 
-    data->results.push_back(platform::win::opaqueHwnd(hwnd));
+    data->results.push_back(opaqueHwnd(hwnd));
 
     if (data->windowInfos) {
         wingman::WindowInfo info;
-        info.handle = platform::win::opaqueHwnd(hwnd);
+        info.handle = opaqueHwnd(hwnd);
         info.title = title;
-        info.bounds = wingman::Window::getBounds(platform::win::opaqueHwnd(hwnd));
+        info.bounds = wingman::Window::getBounds(opaqueHwnd(hwnd));
         info.isForeground = (GetForegroundWindow() == hwnd);
         data->windowInfos->push_back(info);
     }
