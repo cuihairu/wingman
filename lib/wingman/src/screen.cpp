@@ -10,6 +10,7 @@
 #include <windows.h>
 #include <comdef.h>
 #include <gdiplus.h>
+#include "platform/win/win32_screen.hpp"
 #pragma comment(lib, "gdiplus.lib")
 #endif
 
@@ -129,40 +130,6 @@ bool matchTemplateOnBitmap(const std::string& imagePath, uint8_t* bgraData,
 }
 
 } // namespace
-#endif
-
-#ifdef _WIN32
-std::unique_ptr<Bitmap> Bitmap::fromHBITMAP(HBITMAP hbitmap) {
-    BITMAP bm = {};
-    if (!GetObject(hbitmap, sizeof(bm), &bm)) {
-        return nullptr;
-    }
-
-    auto bitmap = std::make_unique<Bitmap>(bm.bmWidth, bm.bmHeight);
-
-    BITMAPINFO bmi = {};
-    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    bmi.bmiHeader.biWidth = bm.bmWidth;
-    bmi.bmiHeader.biHeight = -bm.bmHeight;
-    bmi.bmiHeader.biPlanes = 1;
-    bmi.bmiHeader.biBitCount = 32;
-    bmi.bmiHeader.biCompression = BI_RGB;
-
-    HDC hdc = GetDC(nullptr);
-    if (!hdc) {
-        return nullptr;
-    }
-
-    int result = GetDIBits(hdc, hbitmap, 0, bm.bmHeight,
-                           bitmap->getData(), &bmi, DIB_RGB_COLORS);
-    ReleaseDC(nullptr, hdc);
-
-    if (!result) {
-        return nullptr;
-    }
-
-    return bitmap;
-}
 #endif
 
 std::unique_ptr<Bitmap> Bitmap::fromFile(const std::string& filepath) {
@@ -428,7 +395,7 @@ std::unique_ptr<Bitmap> Screen::capture(const Rect& region) {
     DeleteDC(hdcMem);
     ReleaseDC(nullptr, hdcScreen);
 
-    auto bitmap = Bitmap::fromHBITMAP(hbitmap);
+    auto bitmap = platform::win::bitmapFromHBITMAP(hbitmap);
     DeleteObject(hbitmap);
 
     return bitmap;

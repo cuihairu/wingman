@@ -1,5 +1,6 @@
 #include "wingman/platform/iscreen.hpp"
 #include "wingman/screen.hpp"
+#include "win32_screen.hpp"
 #include <spdlog/spdlog.h>
 
 #ifdef _WIN32
@@ -362,6 +363,44 @@ private:
         return data.result;
     }
 };
+
+/**
+ * @brief HBITMAP 转 Bitmap（GDI 位图 → 32bpp BGRA 直拷贝）
+ *
+ * 声明留在 win 薄层私有头，避免 Windows 类型进公共层
+ * （公共层平台宏必须为 0）。
+ */
+std::unique_ptr<Bitmap> bitmapFromHBITMAP(HBITMAP hbitmap) {
+    BITMAP bm = {};
+    if (!GetObject(hbitmap, sizeof(bm), &bm)) {
+        return nullptr;
+    }
+
+    auto bitmap = std::make_unique<Bitmap>(bm.bmWidth, bm.bmHeight);
+
+    BITMAPINFO bmi = {};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = bm.bmWidth;
+    bmi.bmiHeader.biHeight = -bm.bmHeight;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    HDC hdc = GetDC(nullptr);
+    if (!hdc) {
+        return nullptr;
+    }
+
+    int result = GetDIBits(hdc, hbitmap, 0, bm.bmHeight,
+                           bitmap->getData(), &bmi, DIB_RGB_COLORS);
+    ReleaseDC(nullptr, hdc);
+
+    if (!result) {
+        return nullptr;
+    }
+
+    return bitmap;
+}
 
 } // namespace wingman::platform::win
 

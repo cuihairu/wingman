@@ -4,13 +4,6 @@
 #include <vector>
 #include <cstdint>
 
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#endif
-
 namespace wingman {
 
 // CPU information
@@ -118,11 +111,6 @@ public:
     static int getThreadCount();
 
 private:
-#if defined(_WIN32)
-    // Windows helper function
-    static std::string readRegistryValue(const std::string& path, const std::string& value);
-    static uint64_t getFileTimeAsUInt64(const FILETIME& ft);
-#endif
 };
 
 } // namespace wingman

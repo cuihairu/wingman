@@ -5,13 +5,6 @@
 #include <vector>
 #include <memory>
 
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#endif
-
 namespace wingman {
 
 struct Point {
@@ -107,11 +100,6 @@ public:
 
     // Load from image file (PNG, BMP, JPG, etc.)
     static std::unique_ptr<Bitmap> fromFile(const std::string& filepath);
-
-#ifdef _WIN32
-    // Create from HBITMAP
-    static std::unique_ptr<Bitmap> fromHBITMAP(HBITMAP hbitmap);
-#endif
 
 private:
     int m_width;

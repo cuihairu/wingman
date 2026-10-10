@@ -18,15 +18,17 @@
 namespace wingman {
 
 // ============================================================================
-// Helper functions
+// Helper functions（平台私有，声明随实现留在 win 薄层，不进公共头）
 // ============================================================================
 
-uint64_t System::getFileTimeAsUInt64(const FILETIME& ft) {
+namespace {
+
+uint64_t getFileTimeAsUInt64(const FILETIME& ft) {
     return (static_cast<uint64_t>(ft.dwHighDateTime) << 32) |
            static_cast<uint64_t>(ft.dwLowDateTime);
 }
 
-std::string System::readRegistryValue(const std::string& path, const std::string& value) {
+std::string readRegistryValue(const std::string& path, const std::string& value) {
     HKEY hKey;
     if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, path.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS) {
         return "";
@@ -45,6 +47,8 @@ std::string System::readRegistryValue(const std::string& path, const std::string
     RegCloseKey(hKey);
     return std::string(buffer);
 }
+
+} // namespace
 
 // ============================================================================
 // CPU info
