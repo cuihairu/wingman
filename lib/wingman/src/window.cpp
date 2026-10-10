@@ -189,6 +189,11 @@ bool Window::resize(WindowHandle hwnd, int width, int height) {
     return setBounds(hwnd, bounds);
 }
 
+uint64_t Window::key(WindowHandle hwnd) {
+    // HWND 是不透明指针，经 uintptr_t 中转转整型
+    return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hwnd));
+}
+
 bool Window::waitFor(const std::string& title, int timeoutMs) {
     auto start = std::chrono::steady_clock::now();
     while (true) {
@@ -381,6 +386,11 @@ bool Window::move(WindowHandle hwnd, int x, int y) {
 bool Window::resize(WindowHandle hwnd, int width, int height) {
     auto backend = windowBackend();
     return backend && backend->isValid(hwnd) && backend->resize(hwnd, width, height);
+}
+
+uint64_t Window::key(WindowHandle hwnd) {
+    // 非 Windows 平台 WindowHandle 本就是 uint64_t
+    return static_cast<uint64_t>(hwnd);
 }
 
 bool Window::waitFor(const std::string& title, int timeoutMs) {
