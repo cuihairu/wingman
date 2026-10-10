@@ -245,6 +245,7 @@ elseif(UNIX AND NOT APPLE)
         src/platform/linux/posix_system.cpp
         src/platform/linux/x11_recorder.cpp
         src/platform/linux/clipboard_factory.cpp
+        src/platform/linux/linux_ui_automation_factory.cpp
         src/platform/posix/posix_trigger.cpp
     )
     # Linux requires X11 and XRandR

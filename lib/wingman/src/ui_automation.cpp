@@ -3,12 +3,11 @@
 #include <memory>
 #include <mutex>
 
-// Platform-specific manager creation functions
-#ifdef _WIN32
-extern std::unique_ptr<wingman::IUIAManager> createUIAManager();
-#elif defined(__APPLE__)
-extern std::unique_ptr<wingman::IUIAManager> createUIAManager();
-#endif
+// 平台工厂符号（win_automation.cpp / mac_automation.cpp 提供；Linux 等无
+// UIA 后端平台由 linux_ui_automation_factory.cpp 返回 nullptr stub）。声明
+// 收敛在薄层头文件，调用点保持平台中立（薄层纪律，
+// docs/platform-abstraction-design.md §8）。
+#include "platform/ui_automation_factory.hpp"
 
 namespace wingman {
 
@@ -24,17 +23,10 @@ struct UIAutomation::Impl {
     bool initialize() {
         if (manager) return true;
 
-#ifdef _WIN32
         manager = ::createUIAManager();
-#elif defined(__APPLE__)
-        manager = ::createUIAManager();
-#else
-        spdlog::warn("[UIAutomation] No UI Automation support for this platform");
-        return false;
-#endif
 
         if (!manager) {
-            spdlog::error("[UIAutomation] Failed to create manager");
+            spdlog::warn("[UIAutomation] No UI Automation support for this platform");
             return false;
         }
 
