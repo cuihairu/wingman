@@ -13,7 +13,6 @@ lib/wingman/include/wingman/platform/platform_types.hpp
 lib/wingman/include/wingman/process.hpp
 lib/wingman/include/wingman/recorder.hpp
 lib/wingman/include/wingman/screen.hpp
-lib/wingman/include/wingman/screenshot_reporter.hpp
 lib/wingman/include/wingman/system.hpp
 lib/wingman/include/wingman/window.hpp
 lib/wingman/src/clipboard.cpp
@@ -21,7 +20,6 @@ lib/wingman/src/filewatcher.cpp
 lib/wingman/src/game_profile.cpp
 lib/wingman/src/performance.cpp
 lib/wingman/src/screen.cpp
-lib/wingman/src/screenshot_reporter.cpp
 lib/wingman/src/script_manager.cpp
 lib/wingman/src/script/modules/db_module.cpp
 lib/wingman/src/script/modules/window_module.cpp

@@ -1,6 +1,6 @@
-#include "wingman/screenshot_reporter.hpp"
-
-#ifdef _WIN32
+// Windows-only 组件，随平台目录选源（CMake WIN32 源列表），原 _WIN32
+// 整文件包裹壳已由目录级选源取代（薄层纪律）
+#include "screenshot_reporter.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -231,5 +231,3 @@ bool ScreenshotReporter::captureAndSend() {
 }
 
 } // namespace wingman
-
-#endif // _WIN32

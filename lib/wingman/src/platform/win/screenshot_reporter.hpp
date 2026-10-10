@@ -1,6 +1,5 @@
 #pragma once
 
-#ifdef _WIN32
 #include <string>
 #include <functional>
 #include <atomic>
@@ -48,5 +47,3 @@ private:
 };
 
 } // namespace wingman
-
-#endif // _WIN32

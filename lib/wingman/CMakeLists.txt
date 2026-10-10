@@ -181,8 +181,8 @@ endif()
 # ========== Platform-Specific Source Files ==========
 if(WIN32)
     list(APPEND WINGMAN_SOURCES
-        src/screenshot_reporter.cpp
         src/platform/win/capture_source.cpp
+        src/platform/win/screenshot_reporter.cpp
         src/platform/win/msvc_link_pragmas.cpp
         src/platform/win/win32_clipboard.cpp
         src/platform/win/win32_filewatcher.cpp
