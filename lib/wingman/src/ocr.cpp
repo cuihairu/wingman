@@ -3,13 +3,9 @@
 
 #ifdef WINGMAN_ENABLE_OCR
 
-// Tesseract API
-#ifdef _WIN32
+// Tesseract API（MSVC 自动链接指令收敛在 platform/win/msvc_link_pragmas.cpp
+// 薄层——原 _WIN32 分支两平台 include 同头，仅为挂 pragma，已简化）
 #include <tesseract/baseapi.h>
-#pragma comment(lib, "tesseract51.lib")
-#else
-#include <tesseract/baseapi.h>
-#endif
 
 // Leptonica API (for pixRead/pixDestroy)
 #ifdef WINGMAN_ENABLE_LEPTONICA

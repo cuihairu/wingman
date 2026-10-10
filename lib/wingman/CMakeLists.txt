@@ -183,6 +183,7 @@ if(WIN32)
     list(APPEND WINGMAN_SOURCES
         src/screenshot_reporter.cpp
         src/platform/win/capture_source.cpp
+        src/platform/win/msvc_link_pragmas.cpp
         src/platform/win/win32_clipboard.cpp
         src/platform/win/win32_filewatcher.cpp
         src/platform/win/named_pipe_channel.cpp

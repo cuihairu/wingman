@@ -4,11 +4,9 @@
 #include <cstring>
 #include <spdlog/spdlog.h>
 
-// ONNX Runtime：vcpkg 端口按上游布局装进 include/onnxruntime/ 子目录
+// ONNX Runtime：vcpkg 端口按上游布局装进 include/onnxruntime/ 子目录。
+// MSVC 自动链接指令收敛在 platform/win/msvc_link_pragmas.cpp（薄层纪律）
 #include <onnxruntime/onnxruntime_cxx_api.h>
-#ifdef _WIN32
-#pragma comment(lib, "onnxruntime")
-#endif
 
 namespace wingman {
 
