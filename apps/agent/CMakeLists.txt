@@ -41,12 +41,21 @@ set(AGENT_SOURCES
     src/rpc/handlers/macro_handler.cpp
 )
 
+# 平台薄层（进程名/stub 候选路径）：平台分支收敛在目录级选源，
+# 薄层实现与调用点零平台宏（薄层纪律，见 docs/platform-abstraction-design.md §8）
+if(WIN32)
+    list(APPEND AGENT_SOURCES src/platform/win/agent_platform.cpp)
+else()
+    list(APPEND AGENT_SOURCES src/platform/posix/agent_platform.cpp)
+endif()
+
 # 创建可执行文件
 add_executable(wingman-agent ${AGENT_SOURCES})
 
 # 包含目录
 target_include_directories(wingman-agent PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${WINGMAN_GENERATED_DIR}
 )
 

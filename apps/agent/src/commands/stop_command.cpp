@@ -1,29 +1,17 @@
 #include "wingman/runtime/commands/stop_command.hpp"
+#include "platform/agent_platform.hpp"
 #include "wingman/process.hpp"
-#include <array>
 #include <spdlog/spdlog.h>
 
 namespace wingman::runtime::commands {
 
 namespace {
 
-#ifdef _WIN32
-constexpr std::array<const char*, 2> kAgentProcessNames = {
-    "wingman-agent.exe",
-    "wingman-agent.exe",
-};
-#else
-constexpr std::array<const char*, 2> kAgentProcessNames = {
-    "wingman-agent",
-    "wingman-agent",
-};
-#endif
-
 std::vector<ProcessId> findAgentProcesses() {
     std::vector<ProcessId> results;
     const ProcessId currentPid = Process::getCurrentId();
 
-    for (const char* name : kAgentProcessNames) {
+    for (const auto& name : platform::agentProcessNames()) {
         for (ProcessId pid : Process::findAll(name)) {
             if (pid != 0 && pid != currentPid) {
                 results.push_back(pid);

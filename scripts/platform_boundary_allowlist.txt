@@ -6,8 +6,6 @@
 #  - 行格式：仓库相对路径，一行一个，# 开头为注释。
 #
 apps/agent/src/agent.cpp
-apps/agent/src/commands/build_command.cpp
-apps/agent/src/commands/stop_command.cpp
 apps/agent/src/packer.cpp
 libs/agentcore/src/remote_client.cpp
 apps/agent/src/resource_loader.cpp

@@ -1,4 +1,5 @@
 #include "wingman/runtime/commands/build_command.hpp"
+#include "platform/agent_platform.hpp"
 #include "wingman/runtime/packer.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>
@@ -10,28 +11,8 @@ namespace wingman::runtime::commands {
 
 namespace {
 
-std::vector<std::filesystem::path> candidateStubPaths() {
-#ifdef _WIN32
-    constexpr const char* stubName = "wingman-agent.exe";
-    return {
-        std::filesystem::path(stubName),
-        std::filesystem::path("build/apps/agent/Release") / stubName,
-        std::filesystem::path("../build/apps/agent/Release") / stubName,
-        std::filesystem::path("build/apps/agent/Debug") / stubName,
-        std::filesystem::path("../build/apps/agent/Debug") / stubName,
-    };
-#else
-    constexpr const char* stubName = "wingman-agent";
-    return {
-        std::filesystem::path(stubName),
-        std::filesystem::path("build/apps/agent") / stubName,
-        std::filesystem::path("../build/apps/agent") / stubName,
-    };
-#endif
-}
-
 std::optional<std::filesystem::path> resolveStubPath() {
-    for (const auto& candidate : candidateStubPaths()) {
+    for (const auto& candidate : platform::stubCandidatePaths()) {
         if (std::filesystem::exists(candidate)) {
             return std::filesystem::absolute(candidate);
         }
