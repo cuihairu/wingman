@@ -339,11 +339,7 @@ ModuleDescriptor createNodeModule() {
 			arr.push_back(ScriptValue::fromObject({
 				{"title", ScriptValue::fromString(w.title)},
 				{"handle", ScriptValue::fromInt(
-#ifdef _WIN32
-					reinterpret_cast<int64_t>(w.handle)
-#else
-					static_cast<int64_t>(w.handle)
-#endif
+					static_cast<int64_t>(Window::key(w.handle))
 				)},
 				{"isForeground", ScriptValue::fromBool(w.isForeground)},
 				{"bounds", fromRect(w.bounds)}

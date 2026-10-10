@@ -27,7 +27,6 @@ lib/wingman/src/screen.cpp
 lib/wingman/src/screenshot_reporter.cpp
 lib/wingman/src/script_manager.cpp
 lib/wingman/src/script/modules/db_module.cpp
-lib/wingman/src/script/modules/misc_modules.cpp
 lib/wingman/src/script/modules/window_module.cpp
 lib/wingman/src/security.cpp
 lib/wingman/src/ui_automation.cpp
