@@ -68,14 +68,6 @@ std::string scriptStateToString(ScriptState state) {
     }
 }
 
-int64_t encodeWindowHandle(WindowHandle handle) {
-#ifdef _WIN32
-    return static_cast<int64_t>(reinterpret_cast<uintptr_t>(handle));
-#else
-    return static_cast<int64_t>(handle);
-#endif
-}
-
 // dispatchViaRpcDispatcher 把远程命令转成 RPC 请求经共享 dispatcher 执行。
 // 遵循架构约束的 Dispatcher Reuse：本地 IPC 与远程 agent 命令共用同一套 handler
 //（如 trigger.* / screenshot.*），CommandData 的字符串值尽量按 JSON 解析。
@@ -508,7 +500,7 @@ CommandResult Agent::handleRemoteCommand(const std::string& command, const Comma
         nlohmann::json windows = nlohmann::json::array();
         for (const auto& info : Window::enumerate()) {
             windows.push_back({
-                {"handle", encodeWindowHandle(info.handle)},
+                {"handle", static_cast<int64_t>(Window::key(info.handle))},
                 {"title", info.title},
                 {"isForeground", info.isForeground},
                 {"bounds", {

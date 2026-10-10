@@ -5,7 +5,6 @@
 #  - 新增文件不允许加入本清单；确需例外须经维护者批准并在 PR 中说明理由；
 #  - 行格式：仓库相对路径，一行一个，# 开头为注释。
 #
-apps/agent/src/agent.cpp
 apps/agent/src/packer.cpp
 libs/agentcore/src/remote_client.cpp
 apps/agent/src/resource_loader.cpp

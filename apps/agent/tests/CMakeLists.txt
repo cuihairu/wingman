@@ -44,8 +44,16 @@ add_executable(agent_tests
     ../src/resource_loader.cpp
 )
 
+# 平台薄层与 wingman-agent 同口径选源（agent_tests 直接编译 ../src 源文件）
+if(WIN32)
+    target_sources(agent_tests PRIVATE ../src/platform/win/agent_platform.cpp)
+else()
+    target_sources(agent_tests PRIVATE ../src/platform/posix/agent_platform.cpp)
+endif()
+
 target_include_directories(agent_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/lua/include
     ${WINGMAN_GENERATED_DIR}
 )
