@@ -9,5 +9,4 @@ lib/wingman/include/wingman/platform/platform_types.hpp
 lib/wingman/include/wingman/process.hpp
 lib/wingman/include/wingman/recorder.hpp
 lib/wingman/include/wingman/window.hpp
-lib/wingman/src/screen.cpp
 lib/wingman/src/window.cpp

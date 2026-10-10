@@ -49,7 +49,8 @@ set(WINGMAN_SOURCES
     src/vision/image_analyzer.cpp
 
     # I/O
-    src/screen.cpp
+    src/platform/screen_image_codec.cpp
+    src/platform/screen_backend.cpp
     src/window.cpp
     src/ui_automation.cpp
     src/clipboard.cpp

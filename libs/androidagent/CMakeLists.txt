@@ -65,7 +65,8 @@ set(ANDROIDAGENT_SOURCES
     # TU——OpenCV 判定逻辑与 core 严格一致（上方同款防御），配置相同、
     # 链接器仅取其一；NDK 构建无 core 目标，全部由本目标提供。
     "${WINGMAN_REPO_ROOT}/lib/wingman/src/bitmap.cpp"
-    "${WINGMAN_REPO_ROOT}/lib/wingman/src/screen.cpp"
+    "${WINGMAN_REPO_ROOT}/lib/wingman/src/platform/screen_image_codec.cpp"
+    "${WINGMAN_REPO_ROOT}/lib/wingman/src/platform/screen_backend.cpp"
     "${WINGMAN_REPO_ROOT}/lib/wingman/src/vision/image_analyzer.cpp"
     # AI 视觉 provider 通路：HTTP 发射（WINGMAN_HAS_CURL）与凭据解密
     "${WINGMAN_REPO_ROOT}/lib/wingman/src/http.cpp"
