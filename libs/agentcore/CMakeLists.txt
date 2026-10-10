@@ -27,16 +27,30 @@ if(NOT TARGET wingman_transport)
     message(FATAL_ERROR "wingman_agentcore requires wingman_transport target; add_subdirectory(libs/transport) first")
 endif()
 
-add_library(wingman_agentcore STATIC
+set(AGENTCORE_SOURCES
     src/remote_client.cpp
     src/proxy_tunnel.cpp
     src/event_buffer.cpp
     src/hmac_sha256.cpp
 )
+
+# 平台薄层（主机名查询）：平台分支收敛在目录级选源，薄层实现与调用点
+# 零平台宏（薄层纪律，见 docs/platform-abstraction-design.md §8）
+if(WIN32)
+    list(APPEND AGENTCORE_SOURCES src/platform/win/host_info.cpp)
+else()
+    list(APPEND AGENTCORE_SOURCES src/platform/posix/host_info.cpp)
+endif()
+
+add_library(wingman_agentcore STATIC ${AGENTCORE_SOURCES})
 add_library(wingman::agentcore ALIAS wingman_agentcore)
 
 target_include_directories(wingman_agentcore PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+)
+# 平台私有头（src/platform/）仅本目标可见
+target_include_directories(wingman_agentcore PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_link_libraries(wingman_agentcore PUBLIC

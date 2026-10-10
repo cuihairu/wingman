@@ -1,6 +1,7 @@
 #include "wingman/agentcore/remote_client.hpp"
 #include "wingman/agentcore/event_buffer.hpp"
 #include "wingman/agentcore/hmac_sha256.hpp"
+#include "platform/host_info.hpp"
 #include "proxy_tunnel.hpp"
 #include "wingman/transport/transport_client.hpp"
 #include <spdlog/spdlog.h>
@@ -9,41 +10,17 @@
 #include <nlohmann/json.hpp>
 #include <random>
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#include <sys/utsname.h>
-#endif
-
 namespace wingman::runtime {
 
 // ========== 辅助函数 ==========
 
 namespace {
 
-std::string getHostname() {
-#ifdef _WIN32
-    char buffer[MAX_COMPUTERNAME_LENGTH + 1];
-    DWORD size = sizeof(buffer);
-    if (GetComputerNameA(buffer, &size)) {
-        return std::string(buffer);
-    }
-    return "windows-pc";
-#else
-    struct utsname uts;
-    if (uname(&uts) == 0) {
-        return std::string(uts.nodename);
-    }
-    return "unix-pc";
-#endif
-}
-
 std::string generateAgentId() {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(1000, 9999);
-    return "agent_" + getHostname() + "_" + std::to_string(dis(gen));
+    return "agent_" + platform::hostname() + "_" + std::to_string(dis(gen));
 }
 
 } // anonymous namespace
@@ -445,7 +422,7 @@ void RemoteClient::sendRegister() {
         impl_->agentId = generateAgentId();
     }
     if (impl_->hostname.empty()) {
-        impl_->hostname = getHostname();
+        impl_->hostname = platform::hostname();
     }
 
     // 发送 agent.register JSON 消息（与 server 侧 listener.go:340 匹配）

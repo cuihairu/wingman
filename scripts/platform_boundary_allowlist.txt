@@ -6,7 +6,6 @@
 #  - 行格式：仓库相对路径，一行一个，# 开头为注释。
 #
 apps/agent/src/packer.cpp
-libs/agentcore/src/remote_client.cpp
 apps/agent/src/resource_loader.cpp
 lib/wingman/include/wingman/clipboard.hpp
 lib/wingman/include/wingman/platform/platform_types.hpp
