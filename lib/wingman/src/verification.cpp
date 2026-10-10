@@ -8,14 +8,10 @@
 #include <vector>
 #include <cmath>
 
-#ifdef _WIN32
-#include <windows.h>
-#include <wincrypt.h>
-#pragma comment(lib, "crypt32.lib")
-#else
+// SHA-1 统一走 OpenSSL（lib/wingman 的 REQUIRED 依赖，跨平台同实现；
+// 原 Windows WinCrypt 支已删——摘要字节与算法无关，TOTP 输出不变）
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
-#endif
 
 namespace wingman {
 
@@ -53,31 +49,8 @@ static std::string base32Decode(const std::string& encoded) {
 static std::vector<uint8_t> sha1(const std::vector<uint8_t>& data) {
     std::vector<uint8_t> result(20);
 
-#ifdef _WIN32
-    HCRYPTPROV hProv = 0;
-    HCRYPTHASH hHash = 0;
-
-    if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
-        return result;
-    if (!CryptCreateHash(hProv, CALG_SHA1, 0, 0, &hHash)) {
-        CryptReleaseContext(hProv, 0);
-        return result;
-    }
-    if (!CryptHashData(hHash, reinterpret_cast<const BYTE*>(data.data()), static_cast<DWORD>(data.size()), 0)) {
-        CryptDestroyHash(hHash);
-        CryptReleaseContext(hProv, 0);
-        return result;
-    }
-
-    DWORD hashLen = 20;
-    CryptGetHashParam(hHash, HP_HASHVAL, reinterpret_cast<BYTE*>(result.data()), &hashLen, 0);
-
-    CryptDestroyHash(hHash);
-    CryptReleaseContext(hProv, 0);
-#else
     unsigned int len = 20;
     EVP_Digest(data.data(), data.size(), result.data(), &len, EVP_sha1(), nullptr);
-#endif
 
     return result;
 }
