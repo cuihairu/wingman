@@ -410,6 +410,13 @@ message(type: string, payload: any = nil, meta: table = nil) -> table
 | `macro.state` | `"macro"` | `{state}` | 宏录制/回放状态（`state` ∈ `recording`/`paused`/`playing`/`stopped`；见 [macro](./macro.md)） |
 | `macro.recorded` | `"macro"` | `{type, x, y, keyCode, timestamp}` | 录制事件流（每条落库事件一条；`type` 为 `mouse_move`/`key_down`/`type` 等） |
 | `hotkey.error` | `"hotkey"` | `{error}` | 热键注册被拒（非线程安全 callable；热键命中不走事件面，直接回调） |
+| `task.submitted` | `"task"` | `{taskId, metadata}` | 任务已提交入队 |
+| `task.started` / `task.succeeded` / `task.failed` / `task.timeout` / `task.canceled` / `task.paused` / `task.resumed` | `"task"` | `{taskId, status, metadata}` | 任务生命周期流转（统一负载形状，`status` 为任务状态词） |
+| `task.error` | `"task"` | `{error}` | 任务入队被拒（如非线程安全 callable 提交 async） |
+| `orchestration.started` | `"orchestration"` | `{workflow, name}` | 工作流调度启动（见 [orchestration](./orchestration.md)） |
+| `orchestration.task_finished` | `"orchestration"` | `{workflow, task, status, error?}` | 单任务落账终态 |
+| `orchestration.finished` | `"orchestration"` | `{workflow, name, status, tasks}` | 工作流定稿（计数负载见 orchestration 文档） |
+| `orchestration.error` | `"orchestration"` | `{error}` | 工作流提交被拒 |
 
 **转投到 GUI**：runtime 内的 `installSystemEventBridge` 会把上表全部事件原样转投本地 IPC 事件缓冲（method 与事件名一致），GUI 经 RPC `events.drain` 拉取后驱动界面展示（见 [protocols.md](../protocols.md)）。
 

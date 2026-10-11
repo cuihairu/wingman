@@ -73,7 +73,7 @@
   - [x] `log(channel, message, meta?)`（notify.log + 事件化）
   - [x] `webhook(url, payload, options?)`（含 pending/success/failed/blocked 全生命周期事件）
   - [x] `trayShow()/trayHide()/traySetBadge(text?)/traySetTooltip(text?)`（2026-10-04 落地：向 EventHub 发 `notify.tray.*` 意图事件，runtime notify_bridge 转投 EventBuffer，GUI 经 tauri `tray_control` 驱动系统托盘；badge 因 tauri v2 TrayIcon 无角标 API 暂不支持——GUI 端返回错误走前端日志（2026-10-05 nightly 实证修正），待上游支持或自绘方案再接）
-  - [ ] 订阅 `event.*` 与 `task.*` 的通知桥接（bridge 机制已有，自动桥接规则未完整接线）
+  - [ ] 订阅 `event.*` 与 `task.*` 的通知桥接（2026-10-11 部分落地：`task.*` 九类与 `orchestration.*` 四类生命周期事件并入 `installSystemEventBridge` 统一转投 EventBuffer（GUI events.drain 可见），`hotkey.error` 补齐文档已列而桥接缺失的漂移；**待拍板**——脚本自定义事件（`wingman.event.emit` 任意类型名）的通配桥接需 EventHub tap/前缀订阅机制，通知侧自动规则（哪些事件自动生成哪级通知）属产品语义）
 
 ### 编排与恢复
 - [x] `wingman.orchestration`（基础版：orchestration_module.cpp + orchestration.pyi——submit/get/get_all/cancel_workflow）

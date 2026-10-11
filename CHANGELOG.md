@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### feat（2026-10-11，系统事件桥接补全——task.*/orchestration.*/hotkey.error 并入统一转投）
+
+- **桥接面扩容**：`installSystemEventBridge` 从四族（systemwatch/filewatcher/trigger/macro）扩到七族——新增 `task.*` 九类（submitted/started/succeeded/failed/timeout/canceled/paused/resumed/error）与 `orchestration.*` 四类（started/task_finished/finished/error）生命周期事件原样转投 EventBuffer，GUI 经 `events.drain` 拉取即可见任务进度与工作流终局，无需脚本侧自行桥接；`hotkey.error` 补齐「内置事件源」文档已列而桥接缺失的漂移。
+- **语义不变**：method 与事件名一一对应、原样透传（与托盘桥接的剥前缀改写相区分）；桥接回调仅 EventBuffer::push，无脚本交互，不受 callableThreadSafe 约束。
+- **测试**：system_event_bridge_test 新增全族 14 类透传 + 负载透传断言；docs/api/event.md「内置事件源」表补 task.*/orchestration.* 行（负载形状按实际 emit 口径核对——task.* 统一 `{taskId, status, metadata}`）。
+- **余项挂起**：脚本自定义事件（`wingman.event.emit` 任意类型名）的通配桥接需 EventHub tap/前缀订阅机制；通知侧自动规则属产品语义——均待拍板，development-todo 记录现状。
+
 ### feat（2026-10-11，编排子任务产出聚合——快照 result 字段，下游经 get_workflow 读上游产出）
 
 - **快照聚合**：落账成功任务快照新增 `result` 字段，携带 `run()` 返回值原样（Int/String/Object 等任意 ScriptValue；Task 内核仅在完成时落账结果，失败/超时/取消不产出）；返回 `null` 则字段省略（与未产出同形，口径写入文档）；失败任务依旧走 `error` 字段，二者互斥。

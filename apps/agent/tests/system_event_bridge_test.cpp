@@ -73,3 +73,50 @@ TEST(SystemEventBridgeTest, InstallIsIdempotent) {
     }
     EXPECT_EQ(hits, 1); // 订阅泄漏回归：重复 install 会被投递 2 次
 }
+
+// 任务/工作流生命周期与热键错误事件同样原样转投（自动桥接规则补全：
+// 此前桥接只覆盖 systemwatch/filewatcher/trigger/macro 四族）
+TEST(SystemEventBridgeTest, ForwardsTaskAndOrchestrationEvents) {
+    wingman::runtime::installSystemEventBridge();
+    ASSERT_EQ(drainAll(), 0u);
+
+    wingman::EventHub::instance().emit("task.submitted", json{{"taskId", "t1"}}, "test");
+    wingman::EventHub::instance().emit("task.started", json{{"taskId", "t1"}}, "test");
+    wingman::EventHub::instance().emit("task.succeeded", json{{"taskId", "t2"}}, "test");
+    wingman::EventHub::instance().emit("task.failed", json{{"taskId", "t3"}, {"error", "boom"}}, "test");
+    wingman::EventHub::instance().emit("task.timeout", json{{"taskId", "t4"}}, "test");
+    wingman::EventHub::instance().emit("task.canceled", json{{"taskId", "t5"}}, "test");
+    wingman::EventHub::instance().emit("task.paused", json{{"taskId", "t6"}}, "test");
+    wingman::EventHub::instance().emit("task.resumed", json{{"taskId", "t7"}}, "test");
+    wingman::EventHub::instance().emit("task.error", json{{"error", "rejected"}}, "test");
+    wingman::EventHub::instance().emit("orchestration.started", json{{"workflow", "wf-1"}}, "test");
+    wingman::EventHub::instance().emit("orchestration.task_finished",
+        json{{"workflow", "wf-1"}, {"task", "a"}, {"status", "succeeded"}}, "test");
+    wingman::EventHub::instance().emit("orchestration.finished",
+        json{{"workflow", "wf-1"}, {"status", "failed"}, {"tasks", {{"failed", 1}}}}, "test");
+    wingman::EventHub::instance().emit("orchestration.error", json{{"error", "bad graph"}}, "test");
+    wingman::EventHub::instance().emit("hotkey.error", json{{"error", "not threadsafe"}}, "test");
+
+    auto events = wingman::runtime::EventBuffer::instance().drain(100);
+
+    // 全族 method 透传（13 类，逐一命中）
+    const char* expected[] = {
+        "task.submitted", "task.started", "task.succeeded", "task.failed",
+        "task.timeout", "task.canceled", "task.paused", "task.resumed",
+        "task.error", "orchestration.started", "orchestration.task_finished",
+        "orchestration.finished", "orchestration.error", "hotkey.error",
+    };
+    for (const char* type : expected) {
+        EXPECT_NE(findEvent(events, type), nullptr) << type << " 未转发";
+    }
+    EXPECT_EQ(events.size(), sizeof(expected) / sizeof(expected[0]));
+
+    // 负载原样透传
+    const auto* failed = findEvent(events, "task.failed");
+    ASSERT_NE(failed, nullptr);
+    EXPECT_EQ(failed->payload.value("error", ""), "boom");
+    const auto* done = findEvent(events, "orchestration.finished");
+    ASSERT_NE(done, nullptr);
+    EXPECT_EQ(done->payload.value("tasks", json::object()).value("failed", 0), 1);
+    EXPECT_GT(done->timestamp, 0u);
+}
