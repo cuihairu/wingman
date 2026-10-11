@@ -2,14 +2,9 @@
 
 #ifdef __APPLE__
 
-#include "wingman/platform/input_factory.hpp"
-#include <nlohmann/json.hpp>
-
-#include <fstream>
 #include <thread>
 #include <chrono>
 #include <memory>
-#include <mutex>
 #include <sys/time.h>
 
 #include <CoreFoundation/CoreFoundation.h>
@@ -18,24 +13,15 @@
 
 namespace wingman {
 
+// macOS 事件 tap 采集态：CGEventTap + run loop source
+struct MacroRecorder::Impl {
+    CFMachPortRef eventTap{nullptr};
+    CFRunLoopSourceRef runLoopSource{nullptr};
+};
+
 namespace {
 
-platform::IInput& getInput() {
-    static std::shared_ptr<platform::IInput> input = platform::defaultSharedInput();
-    return *input;
-}
-
-void sleepMs(unsigned long milliseconds) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
-}
-
-platform::MouseButton toPlatformMouseButton(int button) {
-    return static_cast<platform::MouseButton>(button);
-}
-
-} // namespace
-
-static MacroRecorder* g_instance = nullptr;
+MacroRecorder* g_instance = nullptr;
 static CFMachPortRef g_eventTap = nullptr;
 static std::thread g_runLoopThread;
 static bool g_runLoopRunning = false;
@@ -167,9 +153,10 @@ static void runLoopThreadFunc() {
     g_runLoopRunning = false;
 }
 
+} // namespace
+
 MacroRecorder::MacroRecorder()
-    : m_recording(false), m_paused(false), m_startTime(0),
-      m_eventTap(nullptr) {
+    : m_impl(std::make_unique<Impl>()) {
     g_instance = this;
 }
 
@@ -202,24 +189,24 @@ void MacroRecorder::start() {
                            CGEventMaskBit(kCGEventKeyDown) |
                            CGEventMaskBit(kCGEventKeyUp);
 
-    m_eventTap = CGEventTapCreate(kCGSessionEventTap,
-                                   kCGHeadInsertEventTap,
-                                   kCGEventTapOptionDefault,
-                                   eventMask,
-                                   eventTapCallback,
-                                   nullptr);
+    m_impl->eventTap = CGEventTapCreate(kCGSessionEventTap,
+                                        kCGHeadInsertEventTap,
+                                        kCGEventTapOptionDefault,
+                                        eventMask,
+                                        eventTapCallback,
+                                        nullptr);
 
-    if (!m_eventTap) {
+    if (!m_impl->eventTap) {
         m_recording = false;
         return;
     }
 
-    g_eventTap = m_eventTap;
-    m_runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, m_eventTap, 0);
+    g_eventTap = m_impl->eventTap;
+    m_impl->runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, m_impl->eventTap, 0);
 
-    if (!m_runLoopSource) {
-        CFRelease(m_eventTap);
-        m_eventTap = nullptr;
+    if (!m_impl->runLoopSource) {
+        CFRelease(m_impl->eventTap);
+        m_impl->eventTap = nullptr;
         g_eventTap = nullptr;
         m_recording = false;
         return;
@@ -234,8 +221,8 @@ void MacroRecorder::start() {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    CFRunLoopAddSource(CFRunLoopGetCurrent(), m_runLoopSource, kCFRunLoopCommonModes);
-    CGEventTapEnable(m_eventTap, true);
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), m_impl->runLoopSource, kCFRunLoopCommonModes);
+    CGEventTapEnable(m_impl->eventTap, true);
 
     emitMacroState("recording");
 }
@@ -245,14 +232,14 @@ void MacroRecorder::stop() {
 
     m_recording = false;
 
-    if (m_eventTap) {
-        CGEventTapEnable(m_eventTap, false);
+    if (m_impl->eventTap) {
+        CGEventTapEnable(m_impl->eventTap, false);
     }
 
-    if (m_runLoopSource) {
-        CFRunLoopRemoveSource(CFRunLoopGetCurrent(), m_runLoopSource, kCFRunLoopCommonModes);
-        CFRelease(m_runLoopSource);
-        m_runLoopSource = nullptr;
+    if (m_impl->runLoopSource) {
+        CFRunLoopRemoveSource(CFRunLoopGetCurrent(), m_impl->runLoopSource, kCFRunLoopCommonModes);
+        CFRelease(m_impl->runLoopSource);
+        m_impl->runLoopSource = nullptr;
     }
 
     g_runLoopRunning = false;
@@ -261,239 +248,13 @@ void MacroRecorder::stop() {
         g_runLoopThread.join();
     }
 
-    if (m_eventTap) {
-        CFRelease(m_eventTap);
-        m_eventTap = nullptr;
+    if (m_impl->eventTap) {
+        CFRelease(m_impl->eventTap);
+        m_impl->eventTap = nullptr;
         g_eventTap = nullptr;
     }
 
     emitMacroState("stopped");
-}
-
-void MacroRecorder::pause() {
-    m_paused = true;
-    emitMacroState("paused");
-}
-
-void MacroRecorder::resume() {
-    m_paused = false;
-    emitMacroState("recording");
-}
-
-void MacroRecorder::clear() {
-    std::lock_guard<std::mutex> lock(m_eventMutex);
-    m_events.clear();
-}
-
-// 在锁内拷贝一份事件快照，供后续无锁处理（文件 I/O、回放 sleep 等）
-std::vector<RecordedEvent> MacroRecorder::getEventsSnapshot() const {
-    std::lock_guard<std::mutex> lock(m_eventMutex);
-    return m_events;
-}
-
-bool MacroRecorder::saveToLua(const std::string& filepath) const {
-    const auto events = getEventsSnapshot();
-
-    std::ofstream file(filepath);
-    if (!file.is_open()) return false;
-
-    file << "-- Wingman Macro Recording Script\n";
-    file << "-- Recorded " << events.size() << " events\n\n";
-
-    file << "util.log(\"Starting macro playback...\")\n";
-    file << "local startTime = util.getTime()\n\n";
-
-    for (const auto& event : events) {
-        switch (event.type) {
-            case RecordedEventType::MouseMove:
-                file << "input.move(" << event.x << ", " << event.y << ")\n";
-                break;
-
-            case RecordedEventType::MouseClick:
-                file << "input.click(" << event.x << ", " << event.y << ", " << event.button << ")\n";
-                break;
-
-            case RecordedEventType::Scroll:
-                file << "input.scroll(" << event.x << ", " << event.y << ", " << event.delay << ")\n";
-                break;
-
-            case RecordedEventType::KeyDown:
-                file << "input.key(" << event.keyCode << ")\n";
-                break;
-
-            case RecordedEventType::Type:
-                file << "input.type(\"" << event.text << "\", " << event.delay << ")\n";
-                break;
-
-            case RecordedEventType::Delay:
-                file << "util.sleep(" << event.delay << ")\n";
-                break;
-
-            default:
-                break;
-        }
-    }
-
-    file << "\nutil.log(\"Macro playback completed!\")\n";
-
-    return true;
-}
-
-bool MacroRecorder::saveToJSON(const std::string& filepath) const {
-    const auto events = getEventsSnapshot();
-
-    std::ofstream file(filepath);
-    if (!file.is_open()) return false;
-
-    file << "{\n";
-    file << "  \"events\": [\n";
-
-    for (size_t i = 0; i < events.size(); ++i) {
-        const auto& event = events[i];
-        file << "    {\n";
-        file << "      \"type\": " << static_cast<int>(event.type) << ",\n";
-        file << "      \"timestamp\": " << event.timestamp << ",\n";
-        file << "      \"x\": " << event.x << ",\n";
-        file << "      \"y\": " << event.y << ",\n";
-        file << "      \"button\": " << event.button << ",\n";
-        file << "      \"keyCode\": " << event.keyCode << ",\n";
-        file << "      \"delay\": " << event.delay << "\n";
-        file << "    }" << (i < events.size() - 1 ? "," : "") << "\n";
-    }
-
-    file << "  ]\n";
-    file << "}\n";
-
-    return true;
-}
-
-bool MacroRecorder::loadFromJSON(const std::string& filepath) {
-    std::ifstream file(filepath);
-    if (!file.is_open()) return false;
-
-    try {
-        nlohmann::json j;
-        try {
-            file >> j;
-        } catch (const nlohmann::json::parse_error&) {
-            return false;
-        } catch (const nlohmann::json::type_error&) {
-            return false;
-        } catch (...) {
-            return false;
-        }
-
-        if (!j.contains("events") || !j["events"].is_array()) {
-            return false;
-        }
-
-        // 先解析到局部 vector，再一次性加锁赋值，缩短临界区。
-        std::vector<RecordedEvent> loaded;
-        for (const auto& eventJson : j["events"]) {
-            RecordedEvent event;
-            event.type = static_cast<RecordedEventType>(eventJson.value("type", 0));
-            event.timestamp = eventJson.value("timestamp", 0);
-            event.x = eventJson.value("x", 0);
-            event.y = eventJson.value("y", 0);
-            event.button = eventJson.value("button", 0);
-            event.keyCode = eventJson.value("keyCode", 0);
-            event.delay = eventJson.value("delay", 0);
-            event.text = eventJson.value("text", "");
-
-            loaded.push_back(event);
-        }
-
-        {
-            std::lock_guard<std::mutex> lock(m_eventMutex);
-            m_events = std::move(loaded);
-        }
-
-        return true;
-    } catch (...) {
-        return false;
-    }
-}
-
-void MacroRecorder::playback(int speed, int repeat) const {
-    const auto events = getEventsSnapshot();
-    if (events.empty()) return;
-
-    emitMacroState("playing");
-
-    for (int r = 0; r < repeat; ++r) {
-        unsigned long lastTimestamp = events[0].timestamp;
-
-        for (const auto& event : events) {
-            unsigned long delay = (event.timestamp - lastTimestamp) * 100 / speed;
-            if (delay > 0) {
-                sleepMs(delay);
-            }
-
-            switch (event.type) {
-                case RecordedEventType::MouseMove:
-                    getInput().mouseMove(event.x, event.y);
-                    break;
-
-                case RecordedEventType::MouseClick:
-                    getInput().mouseMove(event.x, event.y);
-                    getInput().mouseClick(toPlatformMouseButton(event.button));
-                    break;
-
-                case RecordedEventType::Scroll:
-                    getInput().mouseMove(event.x, event.y);
-                    getInput().mouseWheel(event.delay);
-                    break;
-
-                case RecordedEventType::KeyDown:
-                    getInput().keyPress(static_cast<platform::KeyCode>(event.keyCode));
-                    break;
-
-                case RecordedEventType::Type:
-                    getInput().textInput(event.text);
-                    if (event.delay > 0) {
-                        sleepMs(static_cast<unsigned long>(event.delay));
-                    }
-                    break;
-
-                default:
-                    break;
-            }
-
-            lastTimestamp = event.timestamp;
-        }
-    }
-
-    emitMacroState("stopped");
-}
-
-MacroRecorder* MacroRecorder::getInstance() {
-    return g_instance;
-}
-
-void MacroRecorder::recordEvent(const RecordedEvent& event) {
-    std::lock_guard<std::mutex> lock(m_eventMutex);
-    if (!m_events.empty() && event.type == RecordedEventType::MouseMove) {
-        if (m_events.back().type == RecordedEventType::MouseMove) {
-            m_events.back() = event;
-            return;
-        }
-    }
-
-    m_events.push_back(event);
-
-    // 录制事件流导出：每条落库事件同步发 macro.recorded（source "macro"）。
-    EventHub::instance().emit("macro.recorded", {
-        {"type", recordedEventTypeName(event.type)},
-        {"x", event.x},
-        {"y", event.y},
-        {"keyCode", event.keyCode},
-        {"timestamp", event.timestamp},
-    }, "macro");
-}
-
-size_t MacroRecorder::getEventCount() const {
-    std::lock_guard<std::mutex> lock(m_eventMutex);
-    return m_events.size();
 }
 
 } // namespace wingman

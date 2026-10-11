@@ -2,27 +2,12 @@
 
 #include <string>
 #include <vector>
-#include <thread>
 #include <cstdint>
 #include <atomic>
+#include <memory>
 #include <mutex>
 
 #include "wingman/event.hpp"
-
-#ifdef __APPLE__
-#include <CoreFoundation/CoreFoundation.h>
-#endif
-
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#endif
-
-#ifdef __linux__
-struct _XDisplay;
-#endif
 
 namespace wingman {
 
@@ -73,14 +58,20 @@ inline void emitMacroState(const char* state) {
     EventHub::instance().emit("macro.state", {{"state", state}}, "macro");
 }
 
-
-// Macro recorder
+// Macro recorder：事件存取/去重/导出/回放等平台无关逻辑统一在 src/recorder.cpp
+// （三平台实现曾各自复制一份且已漂移：win32/cocoa 锁内快照、x11 无锁直读）。
+// 平台采集（Win 低层钩子线程 / Linux XRecord / macOS 事件 tap）与平台态收在
+// Impl，由 src/platform/{win,linux,mac}/*_recorder.cpp 给出完整定义，头文件
+// 零平台宏（平台边界守卫 allowlist 末项）。
 class MacroRecorder {
 public:
     MacroRecorder();
     ~MacroRecorder();
 
-    // Start recording
+    MacroRecorder(const MacroRecorder&) = delete;
+    MacroRecorder& operator=(const MacroRecorder&) = delete;
+
+    // Start/Stop recording（平台采集：装/卸钩子、事件 tap、XRecord context）
     void start();
 
     // Stop recording
@@ -119,36 +110,18 @@ private:
     std::vector<RecordedEvent> getEventsSnapshot() const;
 
     std::vector<RecordedEvent> m_events;
-    std::atomic<bool> m_recording;
-    std::atomic<bool> m_paused;
-    uint64_t m_startTime;
+    std::atomic<bool> m_recording{false};
+    std::atomic<bool> m_paused{false};
+    uint64_t m_startTime{0};
     // 保护 m_events（hook 线程写，其它线程读/写）。
     mutable std::mutex m_eventMutex;
 
-#ifdef _WIN32
-    HHOOK m_mouseHook;
-    HHOOK m_keyboardHook;
-    // 低层钩子必须在装钩子的线程上跑消息循环才会触发；录制期间独占此线程。
-    std::thread m_hookThread;
-    DWORD m_hookThreadId{0};
-    void hookThreadMain();
-#elif defined(__linux__)
-    _XDisplay* m_display;
-    unsigned long m_recordContext;
-    std::thread m_processThread;
-#elif defined(__APPLE__)
-    CFMachPortRef m_eventTap;
-    CFRunLoopSourceRef m_runLoopSource;
-#endif
-
-    // Get instance
-    static MacroRecorder* getInstance();
-
-#ifdef _WIN32
-    // Windows Hook callback function
-    static LRESULT WINAPI mouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
-    static LRESULT WINAPI keyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam);
-#endif
+    // 平台态与平台采集逻辑（钩子句柄/线程、XRecord context、事件 tap 等）。
+    // 完整类型只在平台实现文件可见，构造/析构亦随平台文件（unique_ptr 析构
+    // 需完整类型）；事件回调经公有 API（isRecording/recordEvent 等）回访，
+    // Impl 不需要友元。
+    struct Impl;
+    std::unique_ptr<Impl> m_impl;
 };
 
 } // namespace wingman

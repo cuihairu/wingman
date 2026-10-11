@@ -97,6 +97,9 @@ set(WINGMAN_SOURCES
     src/human.cpp
     src/smart_trigger.cpp
 
+    # 宏录制：平台无关状态机/导出/回放（平台采集在 src/platform/*/）
+    src/recorder.cpp
+
     # Script abstraction layer (language-agnostic module descriptors)
     src/script_manager.cpp
     src/script/modules/screen_module.cpp
