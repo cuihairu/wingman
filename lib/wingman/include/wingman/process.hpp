@@ -1,22 +1,16 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-using ProcessId = DWORD;
-using ProcessHandle = HANDLE;
-#else
-#include <unistd.h>
-using ProcessId = pid_t;
-using ProcessHandle = int;
-#endif
-
 namespace wingman {
+
+// 跨平台进程标识：Windows 侧 DWORD、POSIX 侧 pid_t，两者宽度一致，统一为
+// 无符号 32 位；平台差异（有符号/错误码）收在实现层转换，见
+// src/platform/win/win32_process.cpp 与 src/platform/*/posix_process.cpp。
+// 约定 0 = 不存在/无结果。
+using ProcessId = uint32_t;
 
 struct ProcessInfo {
     ProcessId pid;

@@ -37,7 +37,7 @@ std::vector<ProcessId> Process::findAll(const std::string& name) {
     do {
         std::string processName = pe32.szExeFile;
         if (processName == name || processName.find(name) != std::string::npos) {
-            results.push_back(pe32.th32ProcessID);
+            results.push_back(static_cast<ProcessId>(pe32.th32ProcessID));
         }
     } while (Process32Next(snapshot, &pe32));
 
@@ -63,7 +63,7 @@ std::vector<ProcessInfo> Process::enumerate() {
 
     do {
         ProcessInfo info;
-        info.pid = pe32.th32ProcessID;
+        info.pid = static_cast<ProcessId>(pe32.th32ProcessID);
         info.name = pe32.szExeFile;
 
         HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pe32.th32ProcessID);
@@ -114,7 +114,7 @@ ProcessId Process::start(const std::string& path,
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
 
-    return pi.dwProcessId;
+    return static_cast<ProcessId>(pi.dwProcessId);
 }
 
 bool Process::wait(ProcessId pid, int timeoutMs) {
@@ -192,7 +192,7 @@ std::string Process::getPath(ProcessId pid) {
 }
 
 ProcessId Process::getCurrentId() {
-    return GetCurrentProcessId();
+    return static_cast<ProcessId>(GetCurrentProcessId());
 }
 
 bool Process::waitFor(const std::string& name, int timeoutMs) {

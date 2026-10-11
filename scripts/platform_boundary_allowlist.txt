@@ -5,5 +5,4 @@
 #  - 新增文件不允许加入本清单；确需例外须经维护者批准并在 PR 中说明理由；
 #  - 行格式：仓库相对路径，一行一个，# 开头为注释。
 #
-lib/wingman/include/wingman/process.hpp
 lib/wingman/include/wingman/recorder.hpp

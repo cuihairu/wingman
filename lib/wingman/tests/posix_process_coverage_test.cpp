@@ -11,6 +11,7 @@
 #include <thread>
 
 using wingman::Process;
+using wingman::ProcessId;
 
 namespace {
 

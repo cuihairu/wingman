@@ -20,6 +20,15 @@
 
 namespace wingman {
 
+namespace {
+
+// ProcessId 是跨平台无符号 32 位；POSIX 系统调用要 pid_t（有符号）
+pid_t toNativePid(ProcessId pid) {
+    return static_cast<pid_t>(pid);
+}
+
+} // namespace
+
 ProcessId Process::find(const std::string& name) {
     auto results = findAll(name);
     return results.empty() ? 0 : results[0];
@@ -41,11 +50,11 @@ std::vector<ProcessId> Process::findAll(const std::string& name) {
             continue;
         }
 
-        ProcessId pid = atoi(entry->d_name);
+        ProcessId pid = static_cast<ProcessId>(atoi(entry->d_name));
 
         // Read process name
         char comm_path[64];
-        snprintf(comm_path, sizeof(comm_path), "/proc/%d/comm", pid);
+        snprintf(comm_path, sizeof(comm_path), "/proc/%u/comm", pid);
 
         std::ifstream comm_file(comm_path);
         if (!comm_file.is_open()) {
@@ -90,7 +99,7 @@ std::vector<ProcessId> Process::findAll(const std::string& name) {
         std::string processName = basename(path);
 
         if (processName == name || processName.find(name) != std::string::npos) {
-            results.push_back(pid);
+            results.push_back(static_cast<ProcessId>(pid));
         }
     }
 #endif
@@ -113,14 +122,14 @@ std::vector<ProcessInfo> Process::enumerate() {
             continue;
         }
 
-        ProcessId pid = atoi(entry->d_name);
+        ProcessId pid = static_cast<ProcessId>(atoi(entry->d_name));
 
         ProcessInfo info;
         info.pid = pid;
 
         // Read process name
         char comm_path[64];
-        snprintf(comm_path, sizeof(comm_path), "/proc/%d/comm", pid);
+        snprintf(comm_path, sizeof(comm_path), "/proc/%u/comm", pid);
 
         std::ifstream comm_file(comm_path);
         if (comm_file.is_open()) {
@@ -130,7 +139,7 @@ std::vector<ProcessInfo> Process::enumerate() {
 
         // Read process path
         char exe_path[64];
-        snprintf(exe_path, sizeof(exe_path), "/proc/%d/exe", pid);
+        snprintf(exe_path, sizeof(exe_path), "/proc/%u/exe", pid);
 
         char link_path[PATH_MAX];
         ssize_t len = readlink(exe_path, link_path, sizeof(link_path) - 1);
@@ -161,7 +170,7 @@ std::vector<ProcessInfo> Process::enumerate() {
         }
 
         ProcessInfo info;
-        info.pid = pid;
+        info.pid = static_cast<ProcessId>(pid);
 
         char path[PROC_PIDPATHINFO_MAXSIZE];
         if (proc_pidpath(pid, path, sizeof(path)) > 0) {
@@ -216,20 +225,21 @@ ProcessId Process::start(const std::string& path,
     }
 
     // Parent process returns child PID
-    return pid;
+    return static_cast<ProcessId>(pid);
 }
 
 bool Process::wait(ProcessId pid, int timeoutMs) {
     int status;
     pid_t result;
+    const pid_t nativePid = toNativePid(pid);
 
     if (timeoutMs > 0) {
         // Wait with timeout
         auto start = std::chrono::steady_clock::now();
         while (true) {
-            result = waitpid(pid, &status, WNOHANG);
+            result = waitpid(nativePid, &status, WNOHANG);
 
-            if (result == pid) {
+            if (result == nativePid) {
                 return WIFEXITED(status) || WIFSIGNALED(status);
             }
 
@@ -247,25 +257,25 @@ bool Process::wait(ProcessId pid, int timeoutMs) {
         }
     } else {
         // Wait indefinitely
-        result = waitpid(pid, &status, 0);
-        return result == pid && (WIFEXITED(status) || WIFSIGNALED(status));
+        result = waitpid(nativePid, &status, 0);
+        return result == nativePid && (WIFEXITED(status) || WIFSIGNALED(status));
     }
 }
 
 bool Process::terminate(ProcessId pid, bool force) {
     int signal = force ? SIGKILL : SIGTERM;
-    return kill(pid, signal) == 0;
+    return kill(toNativePid(pid), signal) == 0;
 }
 
 bool Process::exists(ProcessId pid) {
     // Send signal 0 to check if process exists
-    return kill(pid, 0) == 0 || errno == EPERM;
+    return kill(toNativePid(pid), 0) == 0 || errno == EPERM;
 }
 
 std::string Process::getName(ProcessId pid) {
 #if defined(__linux__)
     char comm_path[64];
-    snprintf(comm_path, sizeof(comm_path), "/proc/%d/comm", pid);
+    snprintf(comm_path, sizeof(comm_path), "/proc/%u/comm", pid);
 
     std::ifstream comm_file(comm_path);
     if (!comm_file.is_open()) {
@@ -285,7 +295,7 @@ std::string Process::getName(ProcessId pid) {
 
 #elif defined(__APPLE__)
     char path[PROC_PIDPATHINFO_MAXSIZE];
-    if (proc_pidpath(pid, path, sizeof(path)) <= 0) {
+    if (proc_pidpath(toNativePid(pid), path, sizeof(path)) <= 0) {
         return "";
     }
 
@@ -297,7 +307,7 @@ std::string Process::getName(ProcessId pid) {
 std::string Process::getPath(ProcessId pid) {
 #if defined(__linux__)
     char exe_path[64];
-    snprintf(exe_path, sizeof(exe_path), "/proc/%d/exe", pid);
+    snprintf(exe_path, sizeof(exe_path), "/proc/%u/exe", pid);
 
     char link_path[PATH_MAX];
     ssize_t len = readlink(exe_path, link_path, sizeof(link_path) - 1);
@@ -310,7 +320,7 @@ std::string Process::getPath(ProcessId pid) {
 
 #elif defined(__APPLE__)
     char path[PROC_PIDPATHINFO_MAXSIZE];
-    if (proc_pidpath(pid, path, sizeof(path)) > 0) {
+    if (proc_pidpath(toNativePid(pid), path, sizeof(path)) > 0) {
         return std::string(path);
     }
 
@@ -320,7 +330,7 @@ std::string Process::getPath(ProcessId pid) {
 }
 
 ProcessId Process::getCurrentId() {
-    return getpid();
+    return static_cast<ProcessId>(getpid());
 }
 
 bool Process::waitFor(const std::string& name, int timeoutMs) {

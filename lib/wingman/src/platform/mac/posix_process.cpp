@@ -15,6 +15,15 @@
 
 namespace wingman {
 
+namespace {
+
+// ProcessId 是跨平台无符号 32 位；POSIX 系统调用要 pid_t（有符号）
+pid_t toNativePid(ProcessId pid) {
+    return static_cast<pid_t>(pid);
+}
+
+} // namespace
+
 ProcessId Process::find(const std::string& name) {
     auto results = findAll(name);
     return results.empty() ? 0 : results[0];
@@ -44,7 +53,7 @@ std::vector<ProcessId> Process::findAll(const std::string& name) {
         std::string processName = basename(path);
 
         if (processName == name || processName.find(name) != std::string::npos) {
-            results.push_back(pid);
+            results.push_back(static_cast<ProcessId>(pid));
         }
     }
 
@@ -68,7 +77,7 @@ std::vector<ProcessInfo> Process::enumerate() {
         }
 
         ProcessInfo info;
-        info.pid = pid;
+        info.pid = static_cast<ProcessId>(pid);
 
         char path[PROC_PIDPATHINFO_MAXSIZE];
         if (proc_pidpath(pid, path, sizeof(path)) > 0) {
@@ -113,19 +122,20 @@ ProcessId Process::start(const std::string& path,
         _exit(1);
     }
 
-    return pid;
+    return static_cast<ProcessId>(pid);
 }
 
 bool Process::wait(ProcessId pid, int timeoutMs) {
     int status;
     pid_t result;
+    const pid_t nativePid = toNativePid(pid);
 
     if (timeoutMs > 0) {
         auto start = std::chrono::steady_clock::now();
         while (true) {
-            result = waitpid(pid, &status, WNOHANG);
+            result = waitpid(nativePid, &status, WNOHANG);
 
-            if (result == pid) {
+            if (result == nativePid) {
                 return WIFEXITED(status) || WIFSIGNALED(status);
             }
 
@@ -142,23 +152,23 @@ bool Process::wait(ProcessId pid, int timeoutMs) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     } else {
-        result = waitpid(pid, &status, 0);
-        return result == pid && (WIFEXITED(status) || WIFSIGNALED(status));
+        result = waitpid(nativePid, &status, 0);
+        return result == nativePid && (WIFEXITED(status) || WIFSIGNALED(status));
     }
 }
 
 bool Process::terminate(ProcessId pid, bool force) {
     int signal = force ? SIGKILL : SIGTERM;
-    return kill(pid, signal) == 0;
+    return kill(toNativePid(pid), signal) == 0;
 }
 
 bool Process::exists(ProcessId pid) {
-    return kill(pid, 0) == 0 || errno == EPERM;
+    return kill(toNativePid(pid), 0) == 0 || errno == EPERM;
 }
 
 std::string Process::getName(ProcessId pid) {
     char path[PROC_PIDPATHINFO_MAXSIZE];
-    if (proc_pidpath(pid, path, sizeof(path)) <= 0) {
+    if (proc_pidpath(toNativePid(pid), path, sizeof(path)) <= 0) {
         return "";
     }
 
@@ -167,7 +177,7 @@ std::string Process::getName(ProcessId pid) {
 
 std::string Process::getPath(ProcessId pid) {
     char path[PROC_PIDPATHINFO_MAXSIZE];
-    if (proc_pidpath(pid, path, sizeof(path)) > 0) {
+    if (proc_pidpath(toNativePid(pid), path, sizeof(path)) > 0) {
         return std::string(path);
     }
 
@@ -175,7 +185,7 @@ std::string Process::getPath(ProcessId pid) {
 }
 
 ProcessId Process::getCurrentId() {
-    return getpid();
+    return static_cast<ProcessId>(getpid());
 }
 
 bool Process::waitFor(const std::string& name, int timeoutMs) {
