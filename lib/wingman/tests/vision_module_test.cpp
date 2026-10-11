@@ -8,7 +8,11 @@
 #include <string>
 #include <vector>
 
-#include <unistd.h>  // getpid
+#ifdef _WIN32
+#include <process.h> // getpid
+#else
+#include <unistd.h> // getpid
+#endif
 
 namespace wingman {
 namespace script {
