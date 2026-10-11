@@ -61,6 +61,7 @@ struct WfTask {
 	std::shared_ptr<Task> task;
 	WfState state = WfState::blocked;
 	bool skippedByCondition = false;  // skipped 根因：条件过滤链（不判工作流失败）
+	bool announced = false;  // 终态已广播 task_finished（调度线程单点广播）
 };
 
 // 工作流运行实例：单个调度线程做调度决策（传播不动点、选任务、求条件），
@@ -211,12 +212,85 @@ private:
 		return ScriptValue::fromObject(std::move(result));
 	}
 
+	// 流程级事件广播：调度线程单点发出（worker 只记账不 emit），保证
+	// started → task_finished… → finished 全序可断言。emit 一律锁外
+	// （订阅者回调可能重入查询/取消本工作流）。失败传播/条件过滤的
+	// skipped 不单发 task_finished，其数量在 finished 事件 tasks 计数可见。
+	void announceFinishedTasks() {
+		std::vector<const WfTask*> batch;
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			for (auto& t : tasks_) {
+				if (t.state == WfState::done && !t.announced) {
+					t.announced = true;
+					batch.push_back(&t);
+				}
+			}
+		}
+		for (const WfTask* t : batch) {
+			const TaskStatus st = t->task->status();  // 落账后终态不再变
+			nlohmann::json payload = {
+				{"workflow", id_},
+				{"task", t->id},
+				{"status", taskStatusToString(st)}
+			};
+			const std::string err = t->task->error();
+			if (!err.empty()) payload["error"] = err;
+			EventHub::instance().emit("orchestration.task_finished", payload, "orchestration");
+		}
+	}
+
+	// 终局事件：status ∈ succeeded/failed/canceled。tasks 计数覆盖落账四态
+	// （failed 含 timeout；other 仅取消窗口出现——执行中未收账任务，其内核
+	// 终态以快照为准，同「协作取消即时反映」语义）。
+	void emitFinished(const std::string& status) {
+		int succeeded = 0, failed = 0, skipped = 0, canceled = 0, other = 0;
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			for (const auto& t : tasks_) {
+				switch (t.state) {
+				case WfState::skipped: ++skipped; break;
+				case WfState::canceled: ++canceled; break;
+				case WfState::done:
+					if (isTaskFailureStatus(t.task->status())) ++failed;
+					else ++succeeded;
+					break;
+				default: ++other; break;
+				}
+			}
+		}
+		EventHub::instance().emit("orchestration.finished", {
+			{"workflow", id_},
+			{"name", name_},
+			{"status", status},
+			{"tasks", {
+				{"succeeded", succeeded},
+				{"failed", failed},
+				{"skipped", skipped},
+				{"canceled", canceled},
+				{"other", other},
+				{"total", static_cast<int>(tasks_.size())}
+			}}
+		}, "orchestration");
+	}
+
 	void scheduleLoop() {
 		try {
+			// 流程级状态事件：started 首发，task_finished/finished 均由本调度
+			// 线程广播（见 announceFinishedTasks/emitFinished 注）
+			EventHub::instance().emit("orchestration.started", {
+				{"workflow", id_},
+				{"name", name_}
+			}, "orchestration");
 			for (;;) {
+				// 广播上一轮以来落账的任务终态（锁外 emit）
+				announceFinishedTasks();
 				std::unique_lock<std::mutex> lock(mutex_);
 				if (cancelRequested_) {
 					finalizeLocked();
+					const std::string finalStatus = status_;
+					lock.unlock();
+					emitFinished(finalStatus);
 					return;
 				}
 				// 传播不动点：依赖全成功 → blocked 升 pending；前置失败链/条件链
@@ -262,8 +336,12 @@ private:
 						cond_.wait(lock);
 						continue;
 					}
-					// 全部终态：定稿工作流状态
+					// 全部终态：定稿工作流状态并收束流程级事件（尾批 task_finished
+					// 已在本轮循环顶广播——无在途 worker，状态自此前冻结）
 					finalizeLocked();
+					const std::string finalStatus = status_;
+					lock.unlock();
+					emitFinished(finalStatus);
 					return;
 				}
 				// 分支条件在调度点求值一次：锁外执行（谓词可能重入查询/取消
@@ -323,8 +401,13 @@ private:
 				});
 			}
 		} catch (...) {
-			std::lock_guard<std::mutex> lock(mutex_);
-			if (status_ == "running") status_ = "failed";
+			std::string finalStatus;
+			{
+				std::lock_guard<std::mutex> lock(mutex_);
+				if (status_ == "running") status_ = "failed";
+				finalStatus = status_;
+			}
+			emitFinished(finalStatus);
 		}
 	}
 
@@ -557,7 +640,7 @@ ModuleDescriptor createOrchestrationModule() {
 
 			// 任务执行选项与 task 模块同词汇表、同默认值（失败语义沿用）
 			Task::Options opts;
-			opts.emitEvents = false;  // 流程级状态事件为后续批次项
+			opts.emitEvents = false;  // 任务级 task.* 事件关闭：流程可观测走 orchestration.* 流程级事件
 			if (const ScriptValue* o = entry.get("timeoutMs")) opts.timeoutMs = static_cast<int>(o->asInt());
 			if (const ScriptValue* o = entry.get("maxRetries")) opts.maxRetries = static_cast<int>(o->asInt());
 			if (const ScriptValue* o = entry.get("backoffMs")) opts.backoffMs = static_cast<int>(o->asInt());

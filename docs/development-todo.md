@@ -82,7 +82,7 @@
   - [x] 条件分支（2026-10-09 落地：任务项可选 `when` 线程安全可调用体（与 run 同门控，提交即拒非可调用体/非线程安全），前置满足后的调度点锁外求值一次（谓词可重入查询/取消本工作流）；不成立落条件链 skipped——分支过滤是正常控制流，不判工作流失败，沿依赖图传递、混合前置时失败链优先；谓词求值异常沿用 task 失败语义 Task::fail 落 failed 携带错误信息；真值口径：Bool 按值、Int/Float 非 0、String/Array/Object 非空、Null 假；9 例测试（真假/二选一/传递/失败链优先/异常/真值矩阵/拒绝/求值一次））
   - [x] 并发控制（2026-10-09 落地：工作流级 `maxParallel` 同时执行中任务数上限，默认 1 串行、<1 提交即拒；单调度线程决策 + 每任务独立 worker 线程，执行额度满则调度线程驻留 cond 等 worker 收尾；依赖边仍优先于并发额度，取消/停机唤醒调度定稿、收集-取消-join 全在锁外；快照对已派发未收账任务以 Task 内核状态为准（协作取消即时反映）；6 例测试（并行/额度/默认串行/校验/并发下依赖序/取消））
   - [ ] 子任务聚合
-  - [ ] 流程级状态事件
+  - [x] 流程级状态事件（2026-10-11 落地：`orchestration.*` 三类——started{f,name} 调度线程首发、task_finished{f,task,status,error?} 单任务落账终态、finished{f,name,status,tasks{succeeded/failed/skipped/canceled/other/total}} 定稿；调度线程单点全序广播、锁外 emit（防订阅方重入自死锁）；传播 skipped 与取消窗口未收账任务不单发 task_finished，计数落 finished；`task.*` 模块级事件已由 emitEvents 门控关闭不重复；4 例测试全序/失败计数/条件链/取消 other 窗口；文档见 api/orchestration.md 流程级事件节）
 - [x] 任务重试、超时、退避封装（task 模块 backoffMs/backoffFactor/maxRetries/timeoutMs）
 - [ ] 任务状态持久化与恢复
 - [ ] 事件订阅持久化与断线重连

@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### feat（2026-10-11，编排流程级状态事件——orchestration.* 三类事件，调度线程单点全序广播）
+
+- **事件面**：`orchestration.started`（负载 `{workflow, name}`，调度线程首发）、`orchestration.task_finished`（`{workflow, task, status, error?}`，单任务落账终态，失败携 `error`）、`orchestration.finished`（`{workflow, name, status, tasks}`，定稿；`tasks` 为 `{succeeded, failed, skipped, canceled, other, total}` 计数）。`source` 统一 `orchestration`，与提交拒绝路径既有的 `orchestration.error` 同族。
+- **全序与单点**：三类事件全部由调度线程发出（worker 只记账不广播），顺序与调度序一致：`started` → `task_finished`×N → `finished`，消费方可按序断言。落账扫描批内先置 `announced` 再锁外 emit，不重复不发漏。
+- **锁外 emit**：`announceFinishedTasks`/`emitFinished` 均收集快照后解锁再广播——订阅者回调可再入查询/取消本工作流，锁内 emit 会自死锁。
+- **口径**：失败链/条件链传播的 `skipped` 与取消窗口执行中未收账的任务不单发 `task_finished`（未真实执行/未落账），只在 `finished` 计数可见（`other` 仅取消窗口出现）；编排内任务的 `task.*` 模块级事件保持 `emitEvents` 门控关闭，可观测单一通道。
+- **测试**：新增 4 例（成功链全序 + 负载断言、失败链计数与 error 透传、条件链 skipped 计数不判失败、取消 `other` 窗口且无任务事件）；`docs/api/orchestration.md` 增「流程级事件」节，development-todo 对应项勾销。
+
 ### refactor（2026-10-11，平台边界欠账清零——ProcessId 统一 uint32 + recorder 平台态 Impl 化，allowlist 退役）
 
 - **process.hpp**：`ProcessId` 自平台分叉别名（Win `DWORD`/POSIX `pid_t`）统一为 `using ProcessId = uint32_t`（两者皆 32 位，0=不存在口径不变），死 typedef `ProcessHandle` 删除（零使用）；有符号/错误码差异下沉平台实现——POSIX 侧 `toNativePid` 助手 + `/proc/%u` 格式对齐，Win 侧进程 ID 边界显式 `static_cast`；`posix_process_coverage_test` 补 `using wingman::ProcessId`（原全局别名消失）。

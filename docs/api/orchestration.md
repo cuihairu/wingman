@@ -226,6 +226,41 @@ get_all_workflows() -> table
 
 ---
 
+## 流程级事件
+
+工作流生命周期经 `EventHub` 广播 `orchestration.*` 三类事件（`source` 均为 `orchestration`）。
+全部由调度线程单点发出，**全序**与调度序一致：`started` → `task_finished`×N → `finished`。
+
+| 事件 | 负载 | 时机 |
+|------|------|------|
+| `orchestration.started` | `{workflow, name}` | 调度线程启动（提交成功即发） |
+| `orchestration.task_finished` | `{workflow, task, status, error?}` | 单个任务落账终态（`status` 为任务终态词，失败携带 `error`） |
+| `orchestration.finished` | `{workflow, name, status, tasks}` | 工作流定稿（`status` ∈ succeeded/failed/canceled） |
+
+`orchestration.finished` 的 `tasks` 计数字段：
+
+| 字段 | 口径 |
+|------|------|
+| `succeeded` / `failed` / `skipped` / `canceled` | 按落账四态计数（`failed` 含 `timeout`） |
+| `other` | 取消窗口内执行中未收账的任务（仅此时出现；内核终态以快照为准） |
+| `total` | 任务总数（各字段之和） |
+
+::: warning 任务事件口径
+- 失败链/条件链传播的 `skipped` 任务**不**单发 `task_finished`（未真实执行），只在 `finished` 计数可见；取消窗口执行中的任务同样不单发。
+- 编排内任务的 `task.*` 模块级事件关闭（`emitEvents` 门控），可观测统一走本节 `orchestration.*`，避免双通道重复。
+:::
+
+```python:line-numbers
+from wingman import event_hub, orchestration
+
+event_hub.subscribe("orchestration.finished",
+                    lambda msg: print(msg.payload["status"], msg.payload["tasks"]),
+                    "report-watcher")
+workflow_id = orchestration.submit_workflow({"name": "daily_report", "tasks": [...]})
+```
+
+---
+
 ## 工作流快照对象
 
 | 字段 | 类型 | 说明 |
@@ -239,5 +274,5 @@ get_all_workflows() -> table
 - 工作流内并发由 `maxParallel` 约束（默认 1 串行）；跨工作流各自独立调度、互不设限。
 - 条件 `when` 只作分支过滤，不做循环/子工作流嵌套（子任务聚合为后续批次项）。
 - 终局工作流驻留内存注册表直至进程退出，不自动清理。
-- 本模块只负责脚本层本地执行；远程编排（Go server `WorkflowDetailData` DTO 对齐、流程级状态事件、子任务聚合）为后续批次项。
+- 本模块只负责脚本层本地执行；远程编排（Go server `WorkflowDetailData` DTO 对齐、子任务聚合）为后续批次项。
 :::
