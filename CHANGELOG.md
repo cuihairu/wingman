@@ -9,6 +9,20 @@
 
 ## [Unreleased]
 
+### refactor（2026-10-11，平台边界欠账清零——ProcessId 统一 uint32 + recorder 平台态 Impl 化，allowlist 退役）
+
+- **process.hpp**：`ProcessId` 自平台分叉别名（Win `DWORD`/POSIX `pid_t`）统一为 `using ProcessId = uint32_t`（两者皆 32 位，0=不存在口径不变），死 typedef `ProcessHandle` 删除（零使用）；有符号/错误码差异下沉平台实现——POSIX 侧 `toNativePid` 助手 + `/proc/%u` 格式对齐，Win 侧进程 ID 边界显式 `static_cast`；`posix_process_coverage_test` 补 `using wingman::ProcessId`（原全局别名消失）。
+- **recorder.hpp**：平台私有态（Win 钩子句柄+装钩线程、Linux XRecord context+处理线程、macOS 事件 tap+run loop source）与钩子回调声明全部收进 `struct MacroRecorder::Impl`（平台实现文件给完整定义；事件回调经公有 API 回访，无需友元），头文件平台宏清零；构造/析构随平台文件（unique_ptr 析构需完整类型）。公共 API 面零变化。
+- **三份平台实现漂移收敛**：saveToLua/saveToJSON/loadFromJSON/playback/recordEvent 等平台无关逻辑三平台各复制一份且已漂移——win32/cocoa 导出前锁内快照、x11 直接无锁读 `m_events`（录制线程并发导出是真数据竞争），recordEvent 的 emit 亦分叉锁内/无锁两版。统一抽至新增 `src/recorder.cpp` 单源：导出/回放统一走 `getEventsSnapshot` 锁内快照；recordEvent 锁内去重落库、锁外 emit（订阅者回调可再入取快照，锁内 emit 会自锁）。净 −449 行。
+- **allowlist 退役**：`scripts/platform_boundary_allowlist.txt` 两条尾款删除后清空——P0 冻结 47 条 → 2026-10-04 实测 30 条 → 2026-10-11 清零，守卫退化为纯红线检查（实测 252 文件 0 命中）；`docs/platform-abstraction-design.md` §6.4/§8.3 状态同步。
+- **验证**：Release 档 core_tests 2308 例全绿（2280 通过 + 28 环境跳过，Xvfb）；wingman-agent 应用档随改随编通过；平台边界守卫 0 命中。Win/macOS 档由 CI 验证。
+
+### fix（2026-10-11，Lua marshal callable 错误逃逸——Release 档 sol2 安全腿默认关，调用点钉死 protected）
+
+- **根因**：sol2 3.5.0 的 `sol::function` 仅在 `SOL_SAFE_FUNCTION_OBJECTS`（`SOL_DEBUG_BUILD`/Debug 档默认开）下才是 protected 腿；Release（NDEBUG）下退化为 unprotected `lua_call`——Lua error 经 atpanic 以 C++ 异常穿透 `ScriptValue` callable 的调用方（模块回调/事件分发路径皆暴露），与 lua_marshal_test 钉的「error 不外抛、valid()==false 腿返 null」契约相悖。此前门禁未揭穿是 CI 统一 Debug 档；本地 build-ml 转 Release 后首跑即现。
+- **修法**：`libs/lua/src/lua_marshal.cpp` 的 callable 包装显式持 `sol::protected_function`（forward.hpp 无条件别名，两档构建同型），与 lua_script_engine 直调路径、`LuaEngine::LuaCFunction` 的既有 protected 口径对齐；测试注释按「调用点钉死」改写。Python 侧无需动——pybind11 恒 raise 且 marshal 已捕 `error_already_set` 返 null，跨语言契约本就一致。
+- **验证**：Release 档 LuaMarshal 全套 28 例通过，core_tests 全量绿。
+
 ### feat（2026-10-09，工作流条件分支与并发控制——orchestration when 谓词过滤 + maxParallel 并发上限）
 
 - **条件分支**：任务定义增可选 `when`（线程安全可调用体，与 `run` 同门控——非可调用体/非线程安全提交即拒）。前置全部 `succeeded` 后在调度点锁外求值一次（谓词可重入 `get_workflow`/`cancel_workflow`）；不成立落**条件链 `skipped`**——分支过滤是正常控制流，不判工作流失败，沿依赖图传递（被跳过任务的后置连锁跳过），混合前置时失败链优先。求值异常沿用 task 模块失败语义：新增 `Task::fail(reason)` 调度侧落账入口，任务落 `failed` 携带错误信息 `when predicate threw: ...`。真值口径跨语言统一：Bool 按值、Int/Float 非 0、String/Array/Object 非空、Null 假（不走 `asBool` 的默认值语义）。

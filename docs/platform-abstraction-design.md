@@ -427,17 +427,19 @@ lib/wingman/
 2. 实现 Linux 平台（X11/PipeWire, XTest）
 3. 添加编译条件
 
-### 6.4 状态与后续阶段（2026-09-19）
+### 6.4 状态与后续阶段（2026-10-11）
 
-第一至第三阶段已完成（接口 + 三平台实现 + CMake 按平台选源）。当前欠账：
-公共路径仍有 30 个文件带平台宏（P0 冻结 47 个，2026-10-04 实测 allowlist 30 条，见 §8）。
+第一至第三阶段已完成（接口 + 三平台实现 + CMake 按平台选源）。边界欠账已清零：
+P0 冻结 47 个 → 2026-10-04 实测 allowlist 30 条 → 2026-10-11 收掉尾款两条（process.hpp
+的跨平台进程标识类型别名、recorder.hpp 的平台私有成员与钩子回调声明，见 §8.3），
+allowlist 清空，守卫退化为纯红线检查。
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
 | P0 | 薄层纪律成文 + 边界守卫（`scripts/check_platform_boundary.sh`）+ 迁移清单冻结 | ✅ |
 | P1 | 命名统一（`platform::windows`→`::win`）、`unix/`→`posix/` 更名、include 侧平台私有头收回、`linux` 宏守卫 | ✅（2026-09-19） |
 | P2 | 泄漏销号：ipc 通道（管道/socket 实现搬入 platform/）、capture_source、transport 宏归位 | ✅（2026-09-19） |
-| P3 | 接口补缺：security 探测、recorder 钩子各抽小接口 | 按需 |
+| P3 | 接口补缺：recorder 平台态经 Impl 收敛（2026-10-11）；security 探测按需 | 按需 |
 | P4 | 遗留静态类下线（`screen.cpp`/`window.cpp`/`clipboard.cpp` 等，ADR 已冻结） | 待办 |
 | P5 | android 租户接入（A1 目录/构建分支已就位；真实现随移动端 A2） | A1 部分 ✅ |
 
@@ -496,9 +498,12 @@ scripts/check_platform_boundary.sh   # 无依赖，CI 首个 job 运行（Platfo
   文件即失败并列出位置。
 - 迁移清单 `scripts/platform_boundary_allowlist.txt`（P0 冻结时的 47 个历史欠账文件）**只减不增**：
   每完成一处迁移删除一行并跑守卫验证；新增文件入清单须经维护者批准并在 PR 中说明理由。
-  P1 收回 2 行、P2 收回 14 行（ipc 6 + capture_source 2 + transport 6），现存 30 行
-  （2026-10-04 实测，与 §6.4 同口径）。
-- 欠账清零后，本守卫退化为纯红线检查（清单为空、只拦新增违规）。
+  P1 收回 2 行、P2 收回 14 行（ipc 6 + capture_source 2 + transport 6），2026-10-04 实测 30 行
+  （与 §6.4 同口径）；2026-10-11 清零——尾款两条为 process.hpp（`ProcessId` 统一
+  `uint32_t`、死 `ProcessHandle` 删除）与 recorder.hpp（平台私有态与钩子回调声明
+  收进 `MacroRecorder::Impl`，平台无关逻辑三份漂移副本收敛为 `src/recorder.cpp` 单源）。
+  清单保留作为政策载体。
+- 欠账清零后，本守卫退化为纯红线检查（清单为空、只拦新增违规）——已达此态（2026-10-11）。
 
 ### 8.4 独立库薄层
 
