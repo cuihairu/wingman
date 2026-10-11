@@ -961,3 +961,12 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 - [docs/architecture-decisions.md](./docs/architecture-decisions.md) — 架构决策记录（硬约束）
 - [docs/API.md](./docs/API.md) — API 文档
 - [docs/development-environment.md](./docs/development-environment.md) — VS Code 开发环境
+
+## 密码箱抽象与可替换提供商（2026-10-11 用户令：persona 新升级已实现密码箱、可作网站密码箱使用；各项目密码箱应抽象接口、支持替换提供商）
+
+- [ ] **VaultProvider 抽象接口**：统一 接口（解锁/读/写/列/删除/审计），加密与解锁会话口径收敛到一处（KDF、主口令、会话超时不散落各实现）
+- [ ] **默认实现 + 可插拔 Provider**：默认**本地加密实现**（自托管零外部依赖，当下即可用）+ Provider 注册/切换机制；预留外部密码箱提供商接入（参照 persona 密码箱的接口形态）
+- [ ] **本仓凭据接入点改造**：本仓接入点（实现前先盘点并列全）：第三方平台 token、webhook secret、第三方 API key 等配置中的明文凭据，逐个改走 VaultProvider
+- [ ] **配置**：配置文件加 `vault.provider` 选择项 + 每个 provider 各自的配置节；**配置文档逐字段**（字段名/类型/默认值/含义/示例），示例不写真实密钥
+- **红线**：密钥不进仓库；解锁口令与明文凭据不落日志、不出现在错误消息
+- **验收（硬口径）**：①真实切换 provider——只改配置把 provider 换成另一实现，**不改任何业务代码**原功能仍可用（实测留证）；②接入点扫描无一处还直读明文配置/env 明文凭据；③测试绿才 push、commit 英文简短、不发版
