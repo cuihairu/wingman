@@ -27,8 +27,10 @@ from __future__ import annotations
 # failed（存在失败链任务：failed/timeout 及其传播的 skipped）/ canceled
 # （cancel_workflow 请求后定稿，执行中任务协作取消、worker 后台收尾）。
 # get_workflow/get_all_workflows 返回快照：
-# {id: str, name: str, status: str, tasks: [{id, status, dependsOn, error?}]}，
-# error 仅失败任务携带（异常消息，task 模块语义）。
+# {id: str, name: str, status: str, tasks: [{id, status, dependsOn, error?, result?}]}，
+# error 仅失败任务携带（异常消息，task 模块语义）；result 仅落账成功任务
+# 携带（run() 返回值原样聚合，返回 null 则字段省略），下游任务可经
+# get_workflow 读取上游产出实现数据流。
 # 终局工作流驻留注册表直至进程退出（v1 不自动清理）。
 
 def submit_workflow(workflow: dict) -> str | None: ...

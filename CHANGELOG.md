@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### feat（2026-10-11，编排子任务产出聚合——快照 result 字段，下游经 get_workflow 读上游产出）
+
+- **快照聚合**：落账成功任务快照新增 `result` 字段，携带 `run()` 返回值原样（Int/String/Object 等任意 ScriptValue；Task 内核仅在完成时落账结果，失败/超时/取消不产出）；返回 `null` 则字段省略（与未产出同形，口径写入文档）；失败任务依旧走 `error` 字段，二者互斥。
+- **数据流组合**：下游任务在 `run` 内经 `get_workflow` 读取上游 `result`（依赖边保证读到的是已落账产出）；嵌套工作流借同一路径逐层聚合——父任务 `run` 提交子工作流、等终局、返回其结果，v1 不做图内子工作流节点。
+- **测试**：新增 2 例（Int/Object 产出聚合 + null/失败不携带、下游读上游 result 组合 b=a+1）；pyi 桩与 api/orchestration.md 快照节同步。
+- **测试基建修正**：流程级事件取消用例的放行旗标改 shared_ptr 两侧共持——原栈上旗标经 `ScopedFlag` 在测试帧析构才置位，worker 5ms 轮询错过窗口后读到的是悬垂栈址（后续用例栈帧复用写回假值即永久循环），表现为与后续用例同跑时进程退出在全局 WorkflowManager 析构 join 卡死；旗标随 worker 共享后生命周期自洽（此前单跑通过纯属悬垂址残留真值侥幸）。
+
 ### feat（2026-10-11，编排流程级状态事件——orchestration.* 三类事件，调度线程单点全序广播）
 
 - **事件面**：`orchestration.started`（负载 `{workflow, name}`，调度线程首发）、`orchestration.task_finished`（`{workflow, task, status, error?}`，单任务落账终态，失败携 `error`）、`orchestration.finished`（`{workflow, name, status, tasks}`，定稿；`tasks` 为 `{succeeded, failed, skipped, canceled, other, total}` 计数）。`source` 统一 `orchestration`，与提交拒绝路径既有的 `orchestration.error` 同族。

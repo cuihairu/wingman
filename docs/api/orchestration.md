@@ -268,7 +268,13 @@ workflow_id = orchestration.submit_workflow({"name": "daily_report", "tasks": [.
 | `id` | string | 工作流唯一 ID（`wf-<N>`） |
 | `name` | string | 工作流名称（未提供为空串） |
 | `status` | string | 工作流状态（见上表） |
-| `tasks` | array | 任务快照，按定义顺序：`{id, status, dependsOn, error?}` |
+| `tasks` | array | 任务快照，按定义顺序：`{id, status, dependsOn, error?, result?}` |
+
+**子任务产出聚合**：落账成功任务的 `result` 字段携带 `run()` 返回值（原样，
+Int/String/Object 等任意 ScriptValue）；返回 `null` 则字段省略（与未产出
+同形）；失败/超时/取消/跳过任务不携带。下游任务可在 `run` 内经
+`get_workflow` 读取上游 `result` 组合数据流；嵌套工作流的产出也可借此在
+父工作流快照逐层聚合（`run` 提交子工作流、等终局、返回其结果）。
 
 ::: warning v1 限制
 - 工作流内并发由 `maxParallel` 约束（默认 1 串行）；跨工作流各自独立调度、互不设限。

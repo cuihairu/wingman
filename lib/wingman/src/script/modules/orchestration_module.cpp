@@ -201,6 +201,12 @@ private:
 				std::string err = t.task->error();
 				if (!err.empty()) obj["error"] = ScriptValue::fromString(err);
 			}
+			// 子任务产出聚合：落账成功任务携带 run() 返回值（含 null 语义歧义
+			// ——返回 null 与未产出同形，字段省略；下游经 get_workflow 读取）
+			if (t.state == WfState::done && t.task->status() == TaskStatus::succeeded) {
+				ScriptValue res = t.task->result();
+				if (!res.isNull()) obj["result"] = std::move(res);
+			}
 			taskVals.push_back(ScriptValue::fromObject(std::move(obj)));
 		}
 

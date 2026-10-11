@@ -81,7 +81,7 @@
   - [x] 依赖关系（2026-10-09 落地：runtime 本地执行——`dependsOn` 前置任务集 + DFS 环检测提交即拒（自环/多节点环/未知引用/重复 id）；前置全 succeeded 才调度，单工作流拓扑序串行（并发控制留后续批次）；前置 failed/canceled/timeout 沿依赖图传播 skipped（传递），取消走用户语义置 canceled；任务执行复用抽出的 task_core（timeoutMs/maxRetries/backoff 与 task 模块同词汇表同默认值，emitEvents 门控关 task.* 事件）；拒绝路径发 `orchestration.error` 事件；快照反映 blocked/pending 阻塞态。Lua 可调用体提交即拒（调度线程执行，同 task async 门控）；17 例测试（依赖图/环检测/传播矩阵/取消/快照）+ task 模块回归全绿）
   - [x] 条件分支（2026-10-09 落地：任务项可选 `when` 线程安全可调用体（与 run 同门控，提交即拒非可调用体/非线程安全），前置满足后的调度点锁外求值一次（谓词可重入查询/取消本工作流）；不成立落条件链 skipped——分支过滤是正常控制流，不判工作流失败，沿依赖图传递、混合前置时失败链优先；谓词求值异常沿用 task 失败语义 Task::fail 落 failed 携带错误信息；真值口径：Bool 按值、Int/Float 非 0、String/Array/Object 非空、Null 假；9 例测试（真假/二选一/传递/失败链优先/异常/真值矩阵/拒绝/求值一次））
   - [x] 并发控制（2026-10-09 落地：工作流级 `maxParallel` 同时执行中任务数上限，默认 1 串行、<1 提交即拒；单调度线程决策 + 每任务独立 worker 线程，执行额度满则调度线程驻留 cond 等 worker 收尾；依赖边仍优先于并发额度，取消/停机唤醒调度定稿、收集-取消-join 全在锁外；快照对已派发未收账任务以 Task 内核状态为准（协作取消即时反映）；6 例测试（并行/额度/默认串行/校验/并发下依赖序/取消））
-  - [ ] 子任务聚合
+  - [x] 子任务聚合（2026-10-11 落地：快照聚合任务产出——落账成功任务 `result` 字段携带 `run()` 返回值原样聚合（null 省略字段与未产出同形；失败/超时/取消/跳过不携带）；下游任务经 `get_workflow` 读上游 `result` 组合数据流，嵌套工作流可借 `run` 提交子工作流等终局后返回其结果逐层聚合（组合即嵌套，v1 不做图内子工作流节点）；2 例测试（多型产出聚合/null 与失败不携带/下游读上游））
   - [x] 流程级状态事件（2026-10-11 落地：`orchestration.*` 三类——started{f,name} 调度线程首发、task_finished{f,task,status,error?} 单任务落账终态、finished{f,name,status,tasks{succeeded/failed/skipped/canceled/other/total}} 定稿；调度线程单点全序广播、锁外 emit（防订阅方重入自死锁）；传播 skipped 与取消窗口未收账任务不单发 task_finished，计数落 finished；`task.*` 模块级事件已由 emitEvents 门控关闭不重复；4 例测试全序/失败计数/条件链/取消 other 窗口；文档见 api/orchestration.md 流程级事件节）
 - [x] 任务重试、超时、退避封装（task 模块 backoffMs/backoffFactor/maxRetries/timeoutMs）
 - [ ] 任务状态持久化与恢复

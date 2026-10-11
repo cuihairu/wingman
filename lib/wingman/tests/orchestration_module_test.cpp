@@ -6,6 +6,7 @@
 #include <atomic>
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -1882,10 +1883,13 @@ TEST(OrchestrationModuleTest, FlowEventsCanceledReportsRunningAsOther) {
 			finishedPayload = msg.payload;
 		}, "orchestration-test");
 
-	std::atomic<bool> release{false};
-	ScopedFlag releaser{release};
-	auto blocked = ScriptValue::fromCallable([&release](const std::vector<ScriptValue>&) -> ScriptValue {
-		while (!release) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	// 旗标经 shared_ptr 由 worker 与测试两侧共同持有：worker 的生存期不归
+	// 测试帧管（工作流登记在进程级 manager，退出时才统一 join）——栈上旗标
+	// 在测试帧结束后即悬垂，worker 5ms 轮询一旦错过帧内存的 true，后续读
+	// 到的是复用栈帧的垃圾值，会永远循环到进程退出 join 卡死
+	auto release = std::make_shared<std::atomic<bool>>(false);
+	auto blocked = ScriptValue::fromCallable([release](const std::vector<ScriptValue>&) -> ScriptValue {
+		while (!release->load()) std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		return ScriptValue::null();
 	}, true);
 	auto workflowId = submit({ScriptValue::fromObject({
@@ -1922,6 +1926,154 @@ TEST(OrchestrationModuleTest, FlowEventsCanceledReportsRunningAsOther) {
 		EXPECT_EQ(taskEvents, 0u);  // 执行中未收账：无 task_finished
 	}
 
+	// 断言后再放行 worker（协作取消不打断执行体，工作体须有限）
+	*release = true;
 	wingman::EventHub::instance().unsubscribe(subTask);
 	wingman::EventHub::instance().unsubscribe(subFin);
+}
+
+// ========== 子任务产出聚合 ==========
+
+// 快照聚合 run() 返回值：Int/Object 落 result 字段；返回 null 与失败任务
+// 不携带 result（失败走 error 字段）
+TEST(OrchestrationModuleTest, TaskResultsAggregateIntoSnapshot) {
+	auto mod = createOrchestrationModule();
+	auto submit = findFn(mod, "submit_workflow");
+	auto get = findFn(mod, "get_workflow");
+	ASSERT_FALSE(submit.name.empty());
+	ASSERT_FALSE(get.name.empty());
+
+	auto workflowId = submit({ScriptValue::fromObject({
+		{"tasks", ScriptValue::fromArray({
+			ScriptValue::fromObject({
+				{"id", ScriptValue::fromString("a")},
+				{"run", callable([] { return ScriptValue::fromInt(42); })}
+			}),
+			ScriptValue::fromObject({
+				{"id", ScriptValue::fromString("b")},
+				{"run", callable([] {
+					return ScriptValue::fromObject({{"x", ScriptValue::fromString("v")}});
+				})}
+			}),
+			ScriptValue::fromObject({
+				{"id", ScriptValue::fromString("c")},
+				{"run", callable([] { return ScriptValue::null(); })}
+			}),
+			ScriptValue::fromObject({
+				{"id", ScriptValue::fromString("d")},
+				{"run", callable([]() -> ScriptValue { throw std::runtime_error("no result"); })}
+			})
+		})}
+	})});
+	ASSERT_TRUE(workflowId.isString());
+
+	ScriptValue workflow = get({workflowId});
+	ASSERT_TRUE(spinUntil([&] {
+		workflow = get({workflowId});
+		const ScriptValue* status = workflow.get("status");
+		return status && status->isString() && status->asString() == "failed";
+	}));
+
+	ASSERT_EQ(taskStatus(workflow, "a"), "succeeded");
+	ASSERT_EQ(taskStatus(workflow, "b"), "succeeded");
+	ASSERT_EQ(taskStatus(workflow, "c"), "succeeded");
+	ASSERT_EQ(taskStatus(workflow, "d"), "failed");
+
+	const ScriptValue* tasks = workflow.get("tasks");
+	ASSERT_TRUE(tasks && tasks->isArray());
+	auto findById = [&](const std::string& id) -> const ScriptValue* {
+		for (size_t i = 0; i < tasks->size(); ++i) {
+			const ScriptValue& t = tasks->at(i);
+			const ScriptValue* tid = t.get("id");
+			if (tid && tid->isString() && tid->asString() == id) return &t;
+		}
+		return nullptr;
+	};
+	const ScriptValue* ta = findById("a");
+	const ScriptValue* tb = findById("b");
+	const ScriptValue* tc = findById("c");
+	const ScriptValue* td = findById("d");
+	ASSERT_NE(ta, nullptr);
+	ASSERT_NE(tb, nullptr);
+	ASSERT_NE(tc, nullptr);
+	ASSERT_NE(td, nullptr);
+
+	// Int 产出原样聚合
+	const ScriptValue* resA = ta->get("result");
+	ASSERT_TRUE(resA && resA->isInt());
+	EXPECT_EQ(resA->asInt(), 42);
+	// Object 产出原样聚合
+	const ScriptValue* resB = tb->get("result");
+	ASSERT_TRUE(resB && resB->isObject());
+	const ScriptValue* x = resB->get("x");
+	ASSERT_TRUE(x && x->isString());
+	EXPECT_EQ(x->asString(), "v");
+	// 返回 null：字段省略（与未产出同形）
+	EXPECT_EQ(tc->get("result"), nullptr);
+	// 失败任务：无 result，有 error
+	EXPECT_EQ(td->get("result"), nullptr);
+	const ScriptValue* errD = td->get("error");
+	ASSERT_TRUE(errD && errD->isString());
+	EXPECT_EQ(errD->asString(), "no result");
+}
+
+// 下游任务经 get_workflow 读上游产出（组合即数据流：b = a + 1）
+TEST(OrchestrationModuleTest, DownstreamTaskReadsUpstreamResult) {
+	auto mod = createOrchestrationModule();
+	auto submit = findFn(mod, "submit_workflow");
+	auto get = findFn(mod, "get_workflow");
+	ASSERT_FALSE(submit.name.empty());
+	ASSERT_FALSE(get.name.empty());
+
+	ScriptValue workflowId;  // run 执行前 submit 已返回，捕获引用安全
+	auto bRun = callable([&]() -> ScriptValue {
+		ScriptValue wf = get({workflowId});
+		const ScriptValue* tasks = wf.get("tasks");
+		if (!tasks || !tasks->isArray()) return ScriptValue::fromInt(-1);
+		for (size_t i = 0; i < tasks->size(); ++i) {
+			const ScriptValue& t = tasks->at(i);
+			const ScriptValue* id = t.get("id");
+			if (id && id->isString() && id->asString() == "a") {
+				const ScriptValue* res = t.get("result");
+				if (res && res->isInt()) return ScriptValue::fromInt(res->asInt() + 1);
+			}
+		}
+		return ScriptValue::fromInt(-1);
+	});
+	workflowId = submit({ScriptValue::fromObject({
+		{"tasks", ScriptValue::fromArray({
+			ScriptValue::fromObject({
+				{"id", ScriptValue::fromString("a")},
+				{"run", callable([] { return ScriptValue::fromInt(41); })}
+			}),
+			ScriptValue::fromObject({
+				{"id", ScriptValue::fromString("b")},
+				{"run", bRun},
+				{"dependsOn", ScriptValue::fromArray({ScriptValue::fromString("a")})}
+			})
+		})}
+	})});
+	ASSERT_TRUE(workflowId.isString());
+
+	ScriptValue workflow = get({workflowId});
+	ASSERT_TRUE(spinUntil([&] {
+		workflow = get({workflowId});
+		const ScriptValue* status = workflow.get("status");
+		return status && status->isString() && status->asString() == "succeeded";
+	}));
+	ASSERT_EQ(taskStatus(workflow, "b"), "succeeded");
+
+	const ScriptValue* tasks = workflow.get("tasks");
+	ASSERT_TRUE(tasks && tasks->isArray());
+	for (size_t i = 0; i < tasks->size(); ++i) {
+		const ScriptValue& t = tasks->at(i);
+		const ScriptValue* id = t.get("id");
+		if (id && id->isString() && id->asString() == "b") {
+			const ScriptValue* res = t.get("result");
+			ASSERT_TRUE(res && res->isInt());
+			EXPECT_EQ(res->asInt(), 42);
+			return;
+		}
+	}
+	FAIL() << "task b missing from snapshot";
 }
