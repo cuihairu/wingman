@@ -16,18 +16,23 @@ const (
 	defaultStaticDir  = "../build/dist"
 	defaultAgentAddr  = "127.0.0.1:8888"
 	defaultScriptsDir = "./scripts"
+	// 自动更新制品根目录（WINGMAN_UPDATES_DIR）；admin 发布的安装包落
+	// <UpdatesDir>/<channel>/<platform>-<arch>/，DB 只存元数据（models.UpdateRelease）。
+	defaultUpdatesDir = "./data/updates"
 	defaultGuacdAddr  = "127.0.0.1:4822"
 	// 默认虚拟盘路径与 deployments/guacd/docker-compose.yml 的挂卷对齐
 	defaultGuacdDrivePath = "/wingman-drive"
 )
 
 type Config struct {
-	Host        string
-	Port        int
-	DBPath      string
-	StaticDir   string
-	AgentAddr   string
-	ScriptsDir  string
+	Host       string
+	Port       int
+	DBPath     string
+	StaticDir  string
+	AgentAddr  string
+	ScriptsDir string
+	// UpdatesDir 自动更新制品根目录（见 defaultUpdatesDir）。
+	UpdatesDir  string
 	JWTSecret   string
 	CORSOrigins []string
 	// AgentTokens agent 注册 token 列表（WINGMAN_AGENT_TOKENS，逗号分隔）。
@@ -63,6 +68,7 @@ func Load() (Config, error) {
 		StaticDir:   getenv("WINGMAN_STATIC_DIR", defaultStaticDir),
 		AgentAddr:   getenv("WINGMAN_AGENT_ADDR", defaultAgentAddr),
 		ScriptsDir:  getenv("WINGMAN_SCRIPTS_DIR", defaultScriptsDir),
+		UpdatesDir:  getenv("WINGMAN_UPDATES_DIR", defaultUpdatesDir),
 		JWTSecret:   os.Getenv("WINGMAN_JWT_SECRET"),
 		CORSOrigins: splitList(os.Getenv("WINGMAN_CORS_ORIGINS")),
 		AgentTokens: splitList(os.Getenv("WINGMAN_AGENT_TOKENS")),

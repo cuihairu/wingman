@@ -59,6 +59,11 @@ func run() error {
 		return fmt.Errorf("failed to create data directory: %w", err)
 	}
 
+	// 自动更新制品根目录（admin 发布落盘点，ROADMAP M8.1）
+	if err := os.MkdirAll(cfg.UpdatesDir, 0755); err != nil {
+		return fmt.Errorf("failed to create updates directory: %w", err)
+	}
+
 	db, err := gorm.Open(sqlite.Open(cfg.DBPath), &gorm.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to connect database: %w", err)
@@ -152,6 +157,7 @@ func run() error {
 		Vault:          vaultHandler,
 		ScriptsDir:     cfg.ScriptsDir,
 		StaticDir:      cfg.StaticDir,
+		UpdatesDir:     cfg.UpdatesDir,
 		ProcessStart:   processStartedAt,
 	})
 

@@ -52,6 +52,8 @@ type RouterDeps struct {
 	// ScriptsDir / StaticDir 静态资源与脚本目录
 	ScriptsDir string
 	StaticDir  string
+	// UpdatesDir 自动更新制品根目录（models.UpdateRelease 制品落盘处）
+	UpdatesDir string
 	// ProcessStart 进程启动时间（uptime 指标基准）
 	ProcessStart time.Time
 }
@@ -112,6 +114,12 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 		// Logout 需要有效会话；无状态 JWT 由客户端丢弃令牌
 		v1.POST("/auth/logout", middleware.AuthRequired(), deps.AuthHandler.HandleLogout)
 
+		// 自动更新 manifest / 制品下载（公开只读：仅版本号与校验值；
+		// runtime outbound 轮询无 JWT，见 models.UpdateRelease 注释）
+		updateHandler := NewUpdateHandler(deps.DB, deps.UpdatesDir)
+		v1.GET("/update/latest", updateHandler.HandleLatest)
+		v1.GET("/update/download/:id", updateHandler.HandleDownload)
+
 		auth := v1.Group("")
 		auth.Use(middleware.AuthRequired())
 		{
@@ -155,6 +163,10 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 			admin.POST("/scripts/logs", scriptHandler.HandleLogs)
 
 			admin.PUT("/settings", settingsHandler.HandleUpdateSettings)
+
+			// 自动更新发布管理（admin；ROADMAP M8.1）
+			admin.POST("/update/publish", updateHandler.HandlePublish)
+			admin.GET("/update/releases", updateHandler.HandleList)
 		}
 	}
 
