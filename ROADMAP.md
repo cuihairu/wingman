@@ -560,8 +560,10 @@ local wingman = require('wingman')
 - [x] 用户手册
 - [x] API 参考
 - [x] 远程控制协议文档
-- [ ] 视频教程——六集系列分镜脚本已备（docs/tutorials/video-storyboard.md，
-      含逐镜旁白与录制规格），实拍录制需真实 Windows 环境人工完成
+- [ ] 视频教程（卡点：录制需人工）——脚本包已完备（docs/tutorials/
+      video-storyboard.md：六集分镜 + 逐字旁白 + 录制规格 + 发布检查单，
+      演示素材对齐 examples/lua_scripts/ 现有脚本，触发器类型与 GUI 实现
+      核对过）；剩实拍录制/SRT/发布，需真实 Windows 环境人工完成
 - [x] 示例脚本库
 
 ---
