@@ -43,6 +43,7 @@ if(BUILD_CORE_TESTS)
         extra_modules_test.cpp
         script_manager_test.cpp
         http_test.cpp
+        update_test.cpp
         ui_automation_test.cpp
         ml_test.cpp
         ocr_test.cpp
@@ -178,6 +179,13 @@ if(BUILD_CORE_TESTS)
         # vision_ai 解析器断言在 stub 构建（parse 恒空 box）下不成立，同理 gate
         target_sources(core_tests PRIVATE vision_ai_test.cpp)
         message(STATUS "Core tests: WINGMAN_ENABLE_VISION defined")
+    endif()
+
+    # update_test 的 file:// 端到端段与 wingman 库同条件编译
+    # （WINGMAN_HAS_CURL 由 lib/wingman 以 CACHE INTERNAL 传递，见其 CMakeLists）
+    if(WINGMAN_HAS_CURL)
+        target_compile_definitions(core_tests PRIVATE WINGMAN_HAS_CURL)
+        message(STATUS "Core tests: WINGMAN_HAS_CURL defined")
     endif()
 
     # Apply coverage options (must be after target creation)

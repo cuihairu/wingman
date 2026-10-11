@@ -551,7 +551,10 @@ local wingman = require('wingman')
 - [x] 安装程序 (InnoSetup)
 - [x] 便携版 ZIP
 - [x] 自签名证书生成脚本
-- [ ] 自动更新 (可选)
+- [x] 自动更新 (可选)——Go server 发布/manifest/下载 API（admin 发布、
+  公开 latest/download、sha256/size 服务端实测）+ lib 客户端核心
+  （manifest 解析、semver 比较、流式 sha256 校验、file:// 可测传输层）；
+  runtime 轮询触发与 GUI 安装编排未接（后续按需补）
 
 ### 8.2 文档
 - [x] 用户手册

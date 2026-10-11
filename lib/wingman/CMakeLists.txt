@@ -31,6 +31,10 @@ set(WINGMAN_HAS_OPENCV ${OpenCV_FOUND} CACHE INTERNAL "OpenCV available for wing
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(CURL QUIET)
+# tests/ 由根 CMakeLists 平行 add_subdirectory（非本目录子树），IMPORTED
+# 目标（CURL::libcurl）在其作用域不可见，经 CACHE INTERNAL 变量同口径传递
+# （update_test 的 file:// 端到端段与库侧 WINGMAN_HAS_CURL 同条件编译）
+set(WINGMAN_HAS_CURL ${CURL_FOUND} CACHE INTERNAL "CURL available for wingman")
 find_package(OpenSSL QUIET)
 find_package(unofficial-sqlite3 CONFIG)
 if(WINGMAN_BUILD_LUA)
@@ -83,6 +87,7 @@ set(WINGMAN_SOURCES
 
     # Network
     src/http.cpp
+    src/update.cpp
     src/node_status.cpp
 
     # TOTP utilities
