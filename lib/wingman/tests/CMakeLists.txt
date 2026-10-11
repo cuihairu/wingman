@@ -16,6 +16,7 @@ if(BUILD_CORE_TESTS)
         screen_test.cpp
         input_test.cpp
         vision_test.cpp
+        vision_module_test.cpp
         window_test.cpp
         human_test.cpp
         clipboard_test.cpp

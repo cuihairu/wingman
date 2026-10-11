@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### feat（2026-10-11，图像模板批量管理——具名登记 + 批量识别五入口）
+
+- **登记面**：新增进程内 `TemplateRegistry`（name→path，std::map 名序确定 + mutex）；`templateAdd` 登记期校验非空与路径存在（`std::filesystem::exists`，坏路径不进登记）、重名拒绝（显式 `templateRemove` 后可再登记）；`templateRemove`/`templateHas`/`templateList` 同族。
+- **批量识别**：`templateFindAll(names?, threshold?, region?)`——names 空/缺省 = 全部登记模板，未知名跳过；输出名序确定，条目 `{name, found, position?, confidence?, region?}`；匹配逐个在锁外执行（findImage 为重操作不持锁），单模板异常按未命中落账不废整批。
+- **契约不变**：`findImage` 返回形状原样（`name` 键仅批量面携带，单模板调用不增字段）。
+- **测试与文档**：新增 `vision_module_test` 3 例（登记生命周期/坏路径拒绝/批量形状与过滤）；`vision.pyi` 补五入口桩，`docs/api/vision.md` 增「图像模板批量管理」节。
+
 ### feat（2026-10-11，系统事件桥接补全——task.*/orchestration.*/hotkey.error 并入统一转投）
 
 - **桥接面扩容**：`installSystemEventBridge` 从四族（systemwatch/filewatcher/trigger/macro）扩到七族——新增 `task.*` 九类（submitted/started/succeeded/failed/timeout/canceled/paused/resumed/error）与 `orchestration.*` 四类（started/task_finished/finished/error）生命周期事件原样转投 EventBuffer，GUI 经 `events.drain` 拉取即可见任务进度与工作流终局，无需脚本侧自行桥接；`hotkey.error` 补齐「内置事件源」文档已列而桥接缺失的漂移。

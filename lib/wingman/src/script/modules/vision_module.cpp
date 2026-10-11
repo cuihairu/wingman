@@ -4,9 +4,85 @@
 #include "wingman/vision_ai.hpp"
 #include "module_helpers.hpp"
 
+#include <filesystem>
+#include <map>
+#include <mutex>
+#include <string>
+#include <utility>
+#include <vector>
+
 namespace wingman {
 namespace script {
 namespace modules {
+
+namespace {
+
+// 具名模板注册表（进程内全局）：批量管理 + 批量识别的登记面。v1 驻内存
+// （进程生命周期，与工作流注册表同口径）；登记时校验模板文件存在，防
+// 脚本把坏路径拖到识别期才暴露。识别（截屏+匹配）在锁外逐个执行——
+// findImage 是重操作，不得持锁。
+class TemplateRegistry {
+public:
+	bool add(const std::string& name, const std::string& path) {
+		if (name.empty() || path.empty()) return false;
+		std::error_code ec;
+		if (!std::filesystem::exists(path, ec) || ec) return false;
+		std::lock_guard<std::mutex> lock(mutex_);
+		return templates_.emplace(name, path).second;  // 重名拒绝：显式 remove 后再登记
+	}
+
+	bool remove(const std::string& name) {
+		std::lock_guard<std::mutex> lock(mutex_);
+		return templates_.erase(name) > 0;
+	}
+
+	bool has(const std::string& name) const {
+		std::lock_guard<std::mutex> lock(mutex_);
+		return templates_.count(name) > 0;
+	}
+
+	// 登记快照（name → path，名序确定）；names 为空 = 全部，未知名跳过
+	std::vector<std::pair<std::string, std::string>> resolve(
+		const std::vector<std::string>& names) const {
+		std::lock_guard<std::mutex> lock(mutex_);
+		std::vector<std::pair<std::string, std::string>> snapshot;
+		if (names.empty()) {
+			snapshot.assign(templates_.begin(), templates_.end());
+		} else {
+			for (const auto& n : names) {
+				auto it = templates_.find(n);
+				if (it != templates_.end()) snapshot.emplace_back(it->first, it->second);
+			}
+		}
+		return snapshot;
+	}
+
+private:
+	std::map<std::string, std::string> templates_;  // 有序容器：list/批量天然名序确定
+	mutable std::mutex mutex_;
+};
+
+TemplateRegistry g_templateRegistry;
+
+// ImageMatch → 脚本对象（findImage 与批量识别共用同一形状；name 空串 =
+// 单模板调用，不带 name 键——findImage 既有契约不增字段）
+ScriptValue matchToScriptValue(const std::string& name, const ImageMatch& result) {
+	if (result.found) {
+		std::unordered_map<std::string, ScriptValue> obj;
+		if (!name.empty()) obj["name"] = ScriptValue::fromString(name);
+		obj["found"] = ScriptValue::fromBool(true);
+		obj["position"] = fromPoint(result.position);
+		obj["confidence"] = ScriptValue::fromFloat(result.confidence);
+		obj["region"] = fromRect(result.region);
+		return ScriptValue::fromObject(std::move(obj));
+	}
+	std::unordered_map<std::string, ScriptValue> obj;
+	if (!name.empty()) obj["name"] = ScriptValue::fromString(name);
+	obj["found"] = ScriptValue::fromBool(false);
+	return ScriptValue::fromObject(std::move(obj));
+}
+
+} // namespace
 
 ModuleDescriptor createVisionModule() {
 	ModuleDescriptor mod;
@@ -57,17 +133,70 @@ ModuleDescriptor createVisionModule() {
 			// Full-screen search
 			result = Vision::findImage(templatePath, threshold);
 		}
-
-		if (result.found) {
-			return ScriptValue::fromObject({
-				{"found", ScriptValue::fromBool(true)},
-				{"position", fromPoint(result.position)},
-				{"confidence", ScriptValue::fromFloat(result.confidence)},
-				{"region", fromRect(result.region)}
-			});
-		}
-		return ScriptValue::fromObject({{"found", ScriptValue::fromBool(false)}});
+		return matchToScriptValue("", result);
 	}, "templatePath:string, threshold:float?, region? -> {found,position?,confidence?}"});
+
+	// ===== 图像模板批量管理 =====
+
+	// templateAdd(name, path) -> bool：登记具名模板（路径须存在；重名拒绝）
+	mod.functions.push_back({"templateAdd", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.size() < 2) return ScriptValue::fromBool(false);
+		return ScriptValue::fromBool(g_templateRegistry.add(args[0].asString(), args[1].asString()));
+	}, "name:string, path:string -> bool"});
+
+	mod.functions.push_back({"templateRemove", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.empty()) return ScriptValue::fromBool(false);
+		return ScriptValue::fromBool(g_templateRegistry.remove(args[0].asString()));
+	}, "name:string -> bool"});
+
+	mod.functions.push_back({"templateHas", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		if (args.empty()) return ScriptValue::fromBool(false);
+		return ScriptValue::fromBool(g_templateRegistry.has(args[0].asString()));
+	}, "name:string -> bool"});
+
+	// templateList() -> [{name, path}]：全部登记，名序确定
+	mod.functions.push_back({"templateList", [](const std::vector<ScriptValue>&) -> ScriptValue {
+		auto snapshot = g_templateRegistry.resolve({});
+		std::vector<ScriptValue> arr;
+		arr.reserve(snapshot.size());
+		for (auto& [name, path] : snapshot) {
+			arr.push_back(ScriptValue::fromObject({
+				{"name", ScriptValue::fromString(name)},
+				{"path", ScriptValue::fromString(path)}
+			}));
+		}
+		return ScriptValue::fromArray(std::move(arr));
+	}, "-> [{name,path}]"});
+
+	// templateFindAll(names?, threshold?, region?) -> [{name,found,position?,confidence?,region?}]
+	// 批量识别：names 空/缺省 = 全部登记模板，未知名跳过；输出名序确定。
+	// 匹配逐个在锁外执行，单模板失败（截屏异常等）按未命中落账不中断整批。
+	mod.functions.push_back({"templateFindAll", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::vector<std::string> names;
+		if (!args.empty() && args[0].isArray()) {
+			for (size_t i = 0; i < args[0].size(); ++i) {
+				names.push_back(args[0].at(i).asString());
+			}
+		}
+		double threshold = args.size() > 1 ? args[1].asFloat(0.9) : 0.9;
+		auto snapshot = g_templateRegistry.resolve(names);
+		std::vector<ScriptValue> arr;
+		arr.reserve(snapshot.size());
+		for (auto& [name, path] : snapshot) {
+			ImageMatch result;
+			try {
+				if (args.size() > 2 && !args[2].isNull()) {
+					result = Vision::findImage(path, toRect(args[2]), threshold);
+				} else {
+					result = Vision::findImage(path, threshold);
+				}
+			} catch (...) {
+				result = ImageMatch{};  // 未命中形状落账，不废整批
+			}
+			arr.push_back(matchToScriptValue(name, result));
+		}
+		return ScriptValue::fromArray(std::move(arr));
+	}, "names:array?, threshold:float?, region? -> [{name,found,position?,confidence?,region?}]"});
 
 	// ===== AI 视觉识别（OpenAI 兼容 provider，WINGMAN_ENABLE_VISION 构建）=====
 	mod.functions.push_back({"aiSetup", [](const std::vector<ScriptValue>& args) -> ScriptValue {

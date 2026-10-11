@@ -7,6 +7,7 @@
 vision 模块提供屏幕视觉检测功能：
 - **颜色检测** - 查找颜色、检查颜色存在、获取主要颜色
 - **图像匹配** - 查找图像模板
+- **模板批量管理** - 具名登记模板、批量识别（templateAdd / templateFindAll）
 
 ---
 
@@ -274,6 +275,54 @@ end
 
 ---
 
+## 图像模板批量管理（templateAdd / templateFindAll）
+
+**说明**：具名模板登记面 + 批量识别。v1 注册表驻内存（进程生命周期）；
+登记时校验模板文件存在（坏路径登记期即拒，重名拒绝——显式 `templateRemove`
+后可重新登记）；批量识别逐个模板匹配，输出**名序确定**，单模板失败按未
+命中落账不中断整批。
+
+| 函数 | 签名 | 说明 |
+|------|------|------|
+| `templateAdd` | `templateAdd(name, path) -> bool` | 登记具名模板（路径须存在；重名拒绝） |
+| `templateRemove` | `templateRemove(name) -> bool` | 移除登记（未知名 false） |
+| `templateHas` | `templateHas(name) -> bool` | 查询登记 |
+| `templateList` | `templateList() -> [{name, path}]` | 全部登记，名序确定 |
+| `templateFindAll` | `templateFindAll(names?, threshold?, region?) -> [{name, found, position?, confidence?, region?}]` | 批量识别：`names` 空/缺省 = 全部登记模板，未知名跳过 |
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import vision
+
+vision.templateAdd("start_btn", "assets/start.png")
+vision.templateAdd("settings_btn", "assets/settings.png")
+
+# 批量识别全部登记模板（或传 ["start_btn"] 过滤；未知名跳过）
+for hit in vision.template_find_all(threshold=0.85):
+    if hit["found"]:
+        print(hit["name"], hit["position"], hit["confidence"])
+    else:
+        print(hit["name"], "未命中")
+```
+
+== Lua
+
+```lua:line-numbers
+wingman.vision.templateAdd("start_btn", "assets/start.png")
+wingman.vision.templateAdd("settings_btn", "assets/settings.png")
+
+for _, hit in ipairs(wingman.vision.templateFindAll(nil, 0.85)) do
+    if hit.found then
+        print(hit.name, hit.position.x, hit.position.y, hit.confidence)
+    end
+end
+```
+
+:::
+
 ---
 
 ## AI 视觉识别（aiSetup / aiLocate / aiElements）
@@ -484,6 +533,11 @@ end
 | `has_color(color, tolerance?, region?)` | `hasColor(color, tolerance?, region?)` | 检查颜色存在 | 返回: 是否存在 |
 | `get_dominant_color(region?)` | `getDominantColor(region?)` | 获取主要颜色 | region: 分析区域(可选)<br>返回: 颜色对象RGBA |
 | `find_image(path, threshold?, region?)` | `findImage(path, threshold?, region?)` | 查找图像 | path: 模板路径<br>threshold: 匹配阈值(默认0.9)<br>region: 搜索区域(可选)<br>返回: 匹配结果对象 |
+| `template_add(name, path)` | `templateAdd(name, path)` | 登记具名模板 | name: 模板名（重名拒绝）<br>path: 模板图像路径（须存在）<br>返回: 是否成功 |
+| `template_remove(name)` | `templateRemove(name)` | 移除登记 | 返回: 是否成功 |
+| `template_has(name)` | `templateHas(name)` | 查询登记 | 返回: 是否已登记 |
+| `template_list()` | `templateList()` | 全部登记 | 返回: [{name, path}]（名序） |
+| `template_find_all(names?, threshold?, region?)` | `templateFindAll(names?, threshold?, region?)` | 批量识别 | names: 过滤名单（空=全部，未知名跳过）<br>threshold: 匹配阈值(默认0.9)<br>region: 搜索区域(可选)<br>返回: [{name,found,position?,confidence?,region?}]（名序） |
 | `ai_setup(cfg)` | `aiSetup(cfg)` | 配置 AI 视觉 provider | cfg: 配置表（baseUrl/model/凭据）<br>返回: 是否成功 |
 | `ai_setup_status()` | `aiSetupStatus()` | 查询 provider 配置状态 | 返回: {configured, localMode, baseUrl, model, hasKey, lastError} |
 | `ai_setup_local(cfg)` | `aiSetupLocal(cfg)` | 切换本地 ONNX 检测 provider（需 ML 构建） | cfg: 配置表（modelPath/labels/minConfidence）<br>返回: 是否成功 |
