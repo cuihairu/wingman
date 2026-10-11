@@ -202,8 +202,9 @@ TEST_F(LuaMarshalTest, LuaFunctionWithNumericArgsAndIntReturn) {
 }
 
 TEST_F(LuaMarshalTest, ErroringLuaFunctionYieldsNull) {
-	// 实证契约（按现状钉）：sol::function 经 as_args 的调用在该版本是 protected
-	// 调用——Lua error 不向调用方抛异常，result.valid()==false 腿返回 null。
+	// 契约：marshal 侧显式持 sol::protected_function（sol::function 的 protected
+	// 腿只在 Debug/NDEBUG 关档默认开，Release 下会抛 C++ 异常）——Lua error 不向
+	// 调用方抛异常，result.valid()==false 腿返回 null。
 	// 与 lua_script_engine_test 直调 executeString 的「走 catch 腿」路径不同
 	lua_.script("function bad() error('boom') end");
 	auto v = toScriptValue(lua_["bad"]);

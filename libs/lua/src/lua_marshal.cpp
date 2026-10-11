@@ -80,7 +80,10 @@ script::ScriptValue toScriptValue(const sol::object& obj) {
 		// Check if callable (function or cxxfunction)
 		if (obj.valid() && (obj.get_type() == sol::type::function || obj.is<sol::function>())) {
 			// Wrap Lua function as ScriptValue callable (NOT thread-safe)
-			sol::function func = obj;
+			// 显式持 protected_function：sol::function 只在 SOL_SAFE_FUNCTION_OBJECTS
+			// （Debug/NDEBUG 关）档默认是 protected 腿，Release 下 Lua error 会以
+			// C++ 异常穿透调用方。钉死 protected 腿，两档构建同契约。
+			sol::protected_function func = obj;
 			return script::ScriptValue::fromCallable([func](const std::vector<script::ScriptValue>& args) -> script::ScriptValue {
 				std::vector<sol::object> luaArgs;
 				luaArgs.reserve(args.size());
