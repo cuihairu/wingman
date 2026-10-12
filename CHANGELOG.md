@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### feat（2026-10-13，性能基准测试面——四基准二进制 + 一键运行脚本 + 基线文档）
+
+- **bench 框架**：`lib/wingman/tests/benchmarks/bench.hpp` 轻量助手（无第三方依赖，vcpkg 统一供包约束）——每用例先跑 1/10 轮热身，再整批计时 7 轮取中位 ns/op 与吞吐，抗单次抖动；注释明示绝对值受宿主负载影响、对比须同机同负载成对测。
+- **四基准**：`event_hub_bench`（emit→1/10 订阅者、1KB 负载、订阅 churn）、`lua_bench`（引擎生命周期/纯执行/callFunction/全模块注册后 kv 胶水端到端）、`vision_bench`（全屏截屏/找色命中与未命中/32x32 模板找图——运行期合成噪声模板到临时目录，无显示面时自跳过），并入既有 `kvstore_bench` 凑齐 KV/事件/脚本/视觉四条公共路径；可选依赖按 `if(TARGET wingman::lua)`、`if(WINGMAN_HAS_OPENCV)` 门控。
+- **一键运行**：`scripts/run-benchmarks.sh`——构建目录未开 `WINGMAN_BUILD_BENCHMARKS` 时自动重配，按 OpenCV 档裁剪目标列表，输出时间/内核/负载/CPU 机器上下文后逐个运行。
+- **基线文档**：`docs/benchmarks.md`（运行方式/解读须知/2026-10-13 基线/新增指引）。首基线（i9-10880H，load 26~42）：kvstore 单操作 0.02~0.19µs；event_hub 同步分发 288~542ns/op；lua 引擎创建 119µs、脚本往返 2.5µs、模块胶水端到端 ~5.5µs；vision Xvfb 全屏截屏 ~130ms、找色 ~92ms、找图 ~350ms（宿主负载 wall 偏移大，仅看量级）。基准不进 CI 门禁（数值不适合做回归断言）。
+
 ### feat（2026-10-12，Lua/Python API 形状统一——描述符单源审计门 + Lua 类型提示生成器）
 
 - **审计门**：`scripts/audit_pyi_drift.py` 以 C++ 模块描述符（`mod.name` + `mod.functions.push_back` 注册面，兼容 db 模块命名函数一行式与 ml 签名串 `\"` 转义）为唯一事实源，比对 `libs/python/typing/wingman/*.pyi`：缺失/孤儿模块、函数面（camelToSnake 同形归一，与 python_script_engine 双暴露口径一致）、`__init__.pyi` 导出面，漂移即非零退出；pyi-only 手写别名（timer.after 等）仅提示不计门。
