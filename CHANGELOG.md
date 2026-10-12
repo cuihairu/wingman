@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+### docs（2026-10-13，示例脚本首批 Python 化 + 新特性示例）
+
+- **Python 示例 0→4**（`examples/python_scripts/`）：`hello.py`（KV/通知入门）、`template_batch.py`（模板批量管理，与 Lua 版同型）、`workflow_pipeline.py`（工作流编排——依赖/when 分支/产出聚合数据流；注明 run/when 需线程安全可调用体，Lua 函数体提交即拒，故编排示例仅 Python）、`events_fsm.py`（event 订阅与 FSM 状态机组合）。统一走 snake_case 主形（与 `libs/python/typing` 桩一致，双命名口径见函数命名约定）。
+- **Lua 补充**：`examples/lua_scripts/template_batch.lua`（templateAdd/templateList/templateFindAll/templateRemove 全生命周期 + 命中即点击典型用法）。
+- **工程与索引**：`wingman-scripts.code-workspace` 补 python_scripts 与 Python 桩目录；`docs/examples/index.md` 补功能示例与 Python 示例两节。全部示例过 `luac -p` / `py_compile` 语法门。
+
 ### feat（2026-10-13，性能基准测试面——四基准二进制 + 一键运行脚本 + 基线文档）
 
 - **bench 框架**：`lib/wingman/tests/benchmarks/bench.hpp` 轻量助手（无第三方依赖，vcpkg 统一供包约束）——每用例先跑 1/10 轮热身，再整批计时 7 轮取中位 ns/op 与吞吐，抗单次抖动；注释明示绝对值受宿主负载影响、对比须同机同负载成对测。

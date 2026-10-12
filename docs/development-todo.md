@@ -507,7 +507,7 @@
 
 ### 待规划 📋
 - [ ] 视频教程
-- [ ] 更多示例脚本
+- [x] 更多示例脚本（2026-10-13 首批：Python 示例 0→4（hello 入门/template_batch 模板批量/workflow_pipeline 工作流编排——run/when 需线程安全可调用体故仅 Python/events_fsm 事件+状态机），Lua 补 template_batch.lua；语法门 luac -p + py_compile；workspace 工程补 python_scripts 与 Python 桩目录，docs/examples/index.md 补索引。示例是滚动项，新模块落地时按需续补）
 - [x] 性能基准测试（2026-10-13：`lib/wingman/tests/benchmarks/` 四基准二进制 + `bench.hpp` 中位数计时助手（warmup + 7 轮取中位 ns/op）+ `scripts/run-benchmarks.sh` 一键构建运行（自动重配 BENCHMARKS=ON、按 OpenCV 档裁剪、打印机器上下文）+ `docs/benchmarks.md` 基线与新增指引。首基线（i9-10880H/load 26-42/Xvfb 1280x800）：kvstore 0.02~0.19µs/操作、event_hub 同步分发 288~542ns/op、lua 引擎创建 119µs、脚本往返 2.5µs、模块胶水端到端 ~5.5µs、vision 全屏截屏 ~130ms/找色 ~92ms/找图 ~350ms（宿主负载 wall 偏移大，仅看量级）。基准不进 CI 门禁；优化半场归入下方中期「性能基准测试和优化」）
 - [ ] 用户反馈收集
 

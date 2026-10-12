@@ -177,3 +177,7 @@ coverage_ci_v3/
 coverage_ci_v4/
 coverage.cobertura.xml
 **/coverage.cobertura.xml
+
+# Python
+__pycache__/
+*.py[cod]
