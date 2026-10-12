@@ -87,6 +87,24 @@ ModuleDescriptor createScriptModule() {
         return ScriptValue::fromBool(info && info->state == ScriptState::running);
     }, "name:string -> bool"});
 
+    // getStats(name) -> {runCount, successCount, failCount, lastDurationMs,
+    //                    totalDurationMs, lastRunAt} | null
+    // 进程内累计口径：runCount 启动即计；stop 不计成败；失败含执行失败/超时。
+    mod.functions.push_back({"getStats", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+        auto* m = mgr();
+        if (!m || args.empty()) return ScriptValue::null();
+        auto info = m->getScriptInfo(args[0].asString());
+        if (!info) return ScriptValue::null();
+        return ScriptValue::fromObject({
+            {"runCount", ScriptValue::fromInt(static_cast<int64_t>(info->stats.runCount))},
+            {"successCount", ScriptValue::fromInt(static_cast<int64_t>(info->stats.successCount))},
+            {"failCount", ScriptValue::fromInt(static_cast<int64_t>(info->stats.failCount))},
+            {"lastDurationMs", ScriptValue::fromInt(static_cast<int64_t>(info->stats.lastDurationMs))},
+            {"totalDurationMs", ScriptValue::fromInt(static_cast<int64_t>(info->stats.totalDurationMs))},
+            {"lastRunAt", ScriptValue::fromInt(static_cast<int64_t>(info->stats.lastRunAt))},
+        });
+    }, "name:string -> {runCount:int, successCount:int, failCount:int, lastDurationMs:int, totalDurationMs:int, lastRunAt:int} | null"});
+
     // has(name) -> bool
     mod.functions.push_back({"has", [](const std::vector<ScriptValue>& args) -> ScriptValue {
         auto* m = mgr();

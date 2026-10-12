@@ -30,6 +30,7 @@ script 模块在 C++ 侧以 `mod.name = "script"` 注册，共 13 个函数：
 |------|------|
 | `list` | `() -> array` |
 | `getState` | `(name) -> string` |
+| `getStats` | `(name) -> {runCount, successCount, failCount, lastDurationMs, totalDurationMs, lastRunAt} \| null` |
 | `isRunning` | `(name) -> bool` |
 | `has` | `(name) -> bool` |
 | `reload` | `(name) -> bool` |
@@ -108,6 +109,45 @@ local wingman = require("wingman")
 local state = wingman.script.getState("combat")
 if state == "running" then
     print("combat is running")
+end
+```
+
+### script.getStats(name)
+
+获取指定脚本的执行统计（进程内累计，runtime 重启后归零）。
+
+**参数：**
+- `name` (string): 脚本名称
+
+**返回：**
+- object | null: 统计对象，未知名或 runtime 未就绪返回 `null`
+
+**返回字段：**
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `runCount` | int | 运行启动次数（含超时/停止/被更新的运行取代的运行） |
+| `successCount` | int | 正常完成次数 |
+| `failCount` | int | 失败次数（执行失败/超时/线程启动失败；用户主动 stop 不计） |
+| `lastDurationMs` | int | 最近一次走到成败终局的运行耗时 |
+| `totalDurationMs` | int | 走到成败终局的运行耗时累计 |
+| `lastRunAt` | int | 最近一次运行启动时刻（epoch ms） |
+
+**示例：**
+
+```python
+from wingman import script
+
+stats = script.get_stats("combat")  # snake_case 别名，getStats 同义
+if stats and stats["failCount"] > 0:
+    print(f"combat failed {stats['failCount']} times")
+```
+
+```lua
+local wingman = require("wingman")
+
+local stats = wingman.script.getStats("combat")
+if stats and stats.failCount > 0 then
+    print(("combat failed %d times"):format(stats.failCount))
 end
 ```
 

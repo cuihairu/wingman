@@ -1,9 +1,22 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypedDict
+
+class ScriptStats(TypedDict, total=False):
+	runCount: int
+	successCount: int
+	failCount: int
+	lastDurationMs: int
+	totalDurationMs: int
+	lastRunAt: int
 
 def list() -> list[dict[str, Any]]:
 	"""全部脚本信息 [{name, path, state, language, lastError?}]。"""
+def get_stats(name: str) -> ScriptStats | None:
+	"""执行统计（进程内累计）：runCount 启动即计（含超时/停止/被超越），
+	stop 不计成败，失败含执行失败/超时/线程启动失败；lastDurationMs/
+	totalDurationMs 只对走到成败终局的运行累计；lastRunAt 为最近一次启动
+	时刻（epoch ms）。未知名返回 None（camelCase 形式为 getStats）。"""
 def get_state(name: str) -> str:
 	"""脚本状态字符串；未知名返回 "unknown"（camelCase 形式为 getState）。"""
 def is_running(name: str) -> bool:

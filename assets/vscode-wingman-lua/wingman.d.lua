@@ -1301,6 +1301,10 @@ function script.getEnv(name, key) end
 function script.getState(name) end
 
 ---@param name string
+---@return any
+function script.getStats(name) end
+
+---@param name string
 ---@return boolean
 function script.has(name) end
 

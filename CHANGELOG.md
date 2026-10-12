@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+### feat（2026-10-13，脚本执行统计——ScriptStats 进程内计数 + wingman.script.getStats 三语言出口）
+
+- **统计面**：`ScriptInfo` 增 `ScriptStats`（runCount/successCount/failCount/lastDurationMs/totalDurationMs/lastRunAt，进程内累计不持久化）。口径：runCount 在运行启动时计数（含超时/停止/被超越的运行）；success/fail 只在终局归属本代时计数（用户主动 stop 不计成败；失败=执行失败/超时/线程启动失败）；耗时只对走到成败终局的运行累计。
+- **出口**：`wingman.script.getStats(name)` 返回统计对象（未知名返回 null）；Python 补 `script.pyi`（ScriptStats TypedDict + get_stats snake 主形），Lua 类型提示重生成（413 函数），`docs/api/script.md` 补 getStats 节。
+- **测试**：ScriptManagerExecTest 增 2 例（成功累计两轮聚合 + 失败计 fail 而用户 stop 只计 runCount——stop 用 sleep 循环脚本，detached 收尾不烧 CPU）；ScriptModuleGlueTest 增 GetStatsAfterRealRun（真实 ScriptManager 注入跑通 + 未知名/参数不足防御）。
+
 ### docs（2026-10-13，示例脚本首批 Python 化 + 新特性示例）
 
 - **Python 示例 0→4**（`examples/python_scripts/`）：`hello.py`（KV/通知入门）、`template_batch.py`（模板批量管理，与 Lua 版同型）、`workflow_pipeline.py`（工作流编排——依赖/when 分支/产出聚合数据流；注明 run/when 需线程安全可调用体，Lua 函数体提交即拒，故编排示例仅 Python）、`events_fsm.py`（event 订阅与 FSM 状态机组合）。统一走 snake_case 主形（与 `libs/python/typing` 桩一致，双命名口径见函数命名约定）。

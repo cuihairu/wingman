@@ -83,6 +83,7 @@ TEST_F(ScriptModuleGlueTest, NullManagerReturnsDefaults) {
     EXPECT_EQ(call(mod_, "list").isArray(), true);
     EXPECT_EQ(call(mod_, "list").arrayVal.size(), 0u);
     EXPECT_EQ(call(mod_, "getState", {ScriptValue::fromString("x")}).asString(), "");
+    EXPECT_EQ(call(mod_, "getStats", {ScriptValue::fromString("x")}).isNull(), true);
     EXPECT_EQ(call(mod_, "isRunning", {ScriptValue::fromString("x")}).asBool(), false);
     EXPECT_EQ(call(mod_, "has", {ScriptValue::fromString("x")}).asBool(), false);
     EXPECT_EQ(call(mod_, "reload", {ScriptValue::fromString("x")}).asBool(), false);
@@ -212,4 +213,25 @@ TEST_F(ScriptModuleGlueTest, EnvAndConfigRoundtrip) {
 TEST_F(ScriptModuleGlueTest, SetHotReloadBothWays) {
     EXPECT_EQ(call(mod_, "setHotReload", {ScriptValue::fromBool(true)}).asBool(), true);
     EXPECT_EQ(call(mod_, "setHotReload", {ScriptValue::fromBool(false)}).asBool(), true);
+}
+
+// ========== getStats（261 执行统计胶水面） ==========
+
+TEST_F(ScriptModuleGlueTest, GetStatsAfterRealRun) {
+    const auto path = writeScript("glue_stats.lua", "return 5\n");
+    ASSERT_TRUE(mgr_.loadScript("glue_stats", path));
+    ASSERT_TRUE(mgr_.runScript("glue_stats"));
+
+    auto stats = call(mod_, "getStats", {ScriptValue::fromString("glue_stats")});
+    ASSERT_TRUE(stats.isObject());
+    EXPECT_EQ(stats.get("runCount")->asInt(), 1);
+    EXPECT_EQ(stats.get("successCount")->asInt(), 1);
+    EXPECT_EQ(stats.get("failCount")->asInt(), 0);
+    EXPECT_GE(stats.get("lastRunAt")->asInt(), 1);
+    EXPECT_TRUE(stats.get("lastDurationMs") && stats.get("totalDurationMs"));
+
+    // 未知名返回 null（有 mgr 分支）
+    EXPECT_EQ(call(mod_, "getStats", {ScriptValue::fromString("glue_ghost")}).isNull(), true);
+    // 参数不足返回 null
+    EXPECT_EQ(call(mod_, "getStats").isNull(), true);
 }

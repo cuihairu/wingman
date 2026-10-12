@@ -308,6 +308,15 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 		++infoPtr->runGeneration;
 		myGeneration = infoPtr->runGeneration;
 
+		// 执行统计：启动即计数；lastDurationMs 归零（终局是否归属本代由
+		// 各终局点的被超越检查把关，被超越的运行不改本代统计之外的任何字段——
+		// 但 lastRunAt/lastDurationMs 无代际归属语义，直接覆盖即可）
+		++infoPtr->stats.runCount;
+		infoPtr->stats.lastRunAt = std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::system_clock::now().time_since_epoch()
+		).count();
+		infoPtr->stats.lastDurationMs = 0;
+
 		// Create engine instance
 		if (!infoPtr->engine) {
 			infoPtr->engine = createEngineForLanguage(infoPtr->language, infoPtr->config);
@@ -345,6 +354,13 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 	auto scriptDone = std::make_shared<std::atomic<bool>>(false);
 	auto scriptSuccess = std::make_shared<std::atomic<bool>>(false);
 	const std::string scriptPath = infoPtr->config.path;
+	const auto runStart = std::chrono::steady_clock::now();
+	const auto elapsedMs = [&runStart]() -> uint64_t {
+		return static_cast<uint64_t>(
+			std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::steady_clock::now() - runStart
+			).count());
+	};
 	std::thread execThread;
 
 	// Launch execution in a worker thread
@@ -358,6 +374,7 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		infoPtr->state = ScriptState::error;
 		infoPtr->lastError = std::string("failed to launch execution thread: ") + e.what();
+		infoPtr->stats.failCount++;
 		infoPtr->engine.reset();
 		return false;
 	}
@@ -416,8 +433,12 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 			if (timedOut) {
 				infoPtr->state = ScriptState::error;
 				infoPtr->lastError = "Script execution timeout after " + std::to_string(timeoutMs) + "ms";
+				infoPtr->stats.failCount++;
+				infoPtr->stats.lastDurationMs = elapsedMs();
+				infoPtr->stats.totalDurationMs += infoPtr->stats.lastDurationMs;
 			} else {
-				// stopScript 请求的停止：终态 loaded（区别于 completed/error）
+				// stopScript 请求的停止：终态 loaded（区别于 completed/error）；
+				// 用户主动停不计成败、不计耗时（runCount 已在启动时计过）
 				infoPtr->state = ScriptState::loaded;
 				infoPtr->lastError.clear();
 			}
@@ -438,6 +459,9 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 		    infoPtr->runGeneration == myGeneration) {
 			infoPtr->state = ScriptState::error;
 			infoPtr->lastError = engineToRun->getLastError();
+			infoPtr->stats.failCount++;
+			infoPtr->stats.lastDurationMs = elapsedMs();
+			infoPtr->stats.totalDurationMs += infoPtr->stats.lastDurationMs;
 		}
 		return false;
 	}
@@ -456,6 +480,9 @@ bool ScriptManager::runScriptInternal(const std::string& name) {
 		infoPtr->lastLoaded = std::chrono::duration_cast<std::chrono::milliseconds>(
 			std::chrono::steady_clock::now().time_since_epoch()
 		).count();
+		infoPtr->stats.successCount++;
+		infoPtr->stats.lastDurationMs = elapsedMs();
+		infoPtr->stats.totalDurationMs += infoPtr->stats.lastDurationMs;
 	}
 
 	return true;

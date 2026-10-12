@@ -58,6 +58,19 @@ enum class ScriptState {
 	error
 };
 
+// 执行统计（进程内累计，不持久化）。口径：runCount 在运行启动时计数
+// （含超时/停止/被超越的运行）；successCount/failCount 只在终局归属本代时
+// 计数（用户主动 stop 不计成败；失败=执行失败/超时/线程启动失败）；
+// 耗时只对走到成败终局的运行累计。
+struct ScriptStats {
+	uint64_t runCount = 0;
+	uint64_t successCount = 0;
+	uint64_t failCount = 0;
+	uint64_t lastDurationMs = 0;
+	uint64_t totalDurationMs = 0;
+	uint64_t lastRunAt = 0;  // 最近一次运行启动时刻（epoch ms）
+};
+
 // Script info
 struct ScriptInfo {
 	ScriptConfig config;
@@ -65,6 +78,7 @@ struct ScriptInfo {
 	std::string lastError;
 	uint64_t lastModified = 0;
 	uint64_t lastLoaded = 0;
+	ScriptStats stats;
 
 	// 协作停止请求：stopScript 置位，runScriptInternal 的等待循环在
 	// m_mutex 之外轮询（故必须是 atomic）。atomic 不可拷贝，这里显式按
@@ -95,6 +109,7 @@ struct ScriptInfo {
 		  lastError(other.lastError),
 		  lastModified(other.lastModified),
 		  lastLoaded(other.lastLoaded),
+		  stats(other.stats),
 		  stopRequested(other.stopRequested.load()),
 		  runGeneration(other.runGeneration),
 		  engine(other.engine),

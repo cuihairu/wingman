@@ -178,6 +178,57 @@ bool waitForState(ScriptManager& mgr, const std::string& name, ScriptState expec
 
 } // namespace
 
+// ========== 执行统计（261 性能统计：per-script 进程内计数） ==========
+
+TEST_F(ScriptManagerExecTest, StatsAccumulateAcrossRuns) {
+    std::string path = writeScript("cov_stat_ok.lua", "return 1\n");
+    ASSERT_TRUE(mgr_.loadScript("cov_stat_ok", path));
+
+    ASSERT_TRUE(mgr_.runScript("cov_stat_ok"));
+    ASSERT_TRUE(mgr_.runScript("cov_stat_ok"));
+
+    auto info = mgr_.getScriptInfo("cov_stat_ok");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->stats.runCount, 2u);
+    EXPECT_EQ(info->stats.successCount, 2u);
+    EXPECT_EQ(info->stats.failCount, 0u);
+    EXPECT_GE(info->stats.lastRunAt, 1u);  // epoch ms 启动时刻已记录
+    // 成功终局累计耗时 >= 最近一次耗时
+    EXPECT_GE(info->stats.totalDurationMs, info->stats.lastDurationMs);
+}
+
+TEST_F(ScriptManagerExecTest, StatsCountFailuresNotStops) {
+    std::string badPath = writeScript("cov_stat_bad.lua", ")(\n");
+    ASSERT_TRUE(mgr_.loadScript("cov_stat_bad", badPath));
+    EXPECT_FALSE(mgr_.runScript("cov_stat_bad"));
+
+    auto info = mgr_.getScriptInfo("cov_stat_bad");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->stats.runCount, 1u);
+    EXPECT_EQ(info->stats.successCount, 0u);
+    EXPECT_EQ(info->stats.failCount, 1u);
+
+    // 用户主动 stop：计 runCount 不计成败（长脚本 + 运行中停止；
+    // 用 sleep 循环脚本，stop 后 detached 线程自然结束不占 CPU）
+    std::string slowPath = writeScript("cov_stat_stop.lua",
+        "for i = 1, 40 do wingman.timer.sleep(25) end\n");
+    ScriptConfig config;
+    config.timeoutMs = 10000;
+    ASSERT_TRUE(mgr_.loadScript("cov_stat_stop", slowPath, config));
+    std::atomic<bool> stopRunResult{true};
+    std::thread runner([&] { stopRunResult = mgr_.runScript("cov_stat_stop"); });
+    ASSERT_TRUE(waitForState(mgr_, "cov_stat_stop", ScriptState::running));
+    EXPECT_TRUE(mgr_.stopScript("cov_stat_stop"));
+    runner.join();
+    EXPECT_FALSE(stopRunResult.load());
+
+    auto stopInfo = mgr_.getScriptInfo("cov_stat_stop");
+    ASSERT_NE(stopInfo, nullptr);
+    EXPECT_EQ(stopInfo->stats.runCount, 1u);
+    EXPECT_EQ(stopInfo->stats.successCount, 0u);
+    EXPECT_EQ(stopInfo->stats.failCount, 0u);
+}
+
 // wingman.timer.sleep 全平台可用（wingman 全局表不受沙箱 strip 影响），让脚本
 // 驻留足够久以观察/操作中间态；被 stop 后执行线程睡完剩余时长自然退出，不烧 CPU。
 TEST_F(ScriptManagerExecTest, PauseResumeStopFullChainIsReachable) {

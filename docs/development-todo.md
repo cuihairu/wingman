@@ -84,8 +84,8 @@
   - [x] 子任务聚合（2026-10-11 落地：快照聚合任务产出——落账成功任务 `result` 字段携带 `run()` 返回值原样聚合（null 省略字段与未产出同形；失败/超时/取消/跳过不携带）；下游任务经 `get_workflow` 读上游 `result` 组合数据流，嵌套工作流可借 `run` 提交子工作流等终局后返回其结果逐层聚合（组合即嵌套，v1 不做图内子工作流节点）；2 例测试（多型产出聚合/null 与失败不携带/下游读上游））
   - [x] 流程级状态事件（2026-10-11 落地：`orchestration.*` 三类——started{f,name} 调度线程首发、task_finished{f,task,status,error?} 单任务落账终态、finished{f,name,status,tasks{succeeded/failed/skipped/canceled/other/total}} 定稿；调度线程单点全序广播、锁外 emit（防订阅方重入自死锁）；传播 skipped 与取消窗口未收账任务不单发 task_finished，计数落 finished；`task.*` 模块级事件已由 emitEvents 门控关闭不重复；4 例测试全序/失败计数/条件链/取消 other 窗口；文档见 api/orchestration.md 流程级事件节）
 - [x] 任务重试、超时、退避封装（task 模块 backoffMs/backoffFactor/maxRetries/timeoutMs）
-- [ ] 任务状态持久化与恢复
-- [ ] 事件订阅持久化与断线重连
+- [ ] 任务状态持久化与恢复（2026-10-13 评估挂起：v1 任务体是线程安全可调用体（Lua/Python 闭包），不可序列化——重启后「恢复」语义需要产品拍板（仅声明式定义可重放？未终局工作流标 failed 落账供查询？持久化介质 KV vs 文件？）。在语义定案前实现一半（只落账不恢复）价值存疑，挂起待拍板）
+- [ ] 事件订阅持久化与断线重连（2026-10-13 评估挂起：transport 层重连已存在（RemoteClient 指数退避重连循环 + 重连后 outbox 冲刷）；缺的是「订阅」面——Go server 目前没有事件订阅注册表（无 SSE/WS 订阅端点，事件面只在 runtime 内部 EventHub/EventBuffer），无存量订阅可持久化。做这件事=先设计 server 侧订阅/投递架构（订阅关系存谁、断线窗口事件是否补投），属产品/架构决策，挂起待拍板）
 - [ ] 统一回调/通知策略，避免 Lua 和 Python 语义分裂
 
 ### 常用工具补齐
@@ -258,7 +258,7 @@
 - [x] 分级日志 (DEBUG/INFO/WARN/ERROR) - 使用 spdlog
 - [x] 文件输出
 - [x] 控制台输出
-- [ ] 性能统计
+- [x] 性能统计（2026-10-13 落地为**脚本执行统计**：`ScriptInfo` 增 `ScriptStats`（runCount/successCount/failCount/lastDurationMs/totalDurationMs/lastRunAt，进程内累计不持久化）——runScriptInternal 启动即计 runCount+lastRunAt，成败终局计 success/fail 与耗时（被超越运行不计，用户主动 stop 不计成败不计耗时，超时计失败）；`wingman.script.getStats(name)` 三语言出口（pyi 补 ScriptStats TypedDict + get_stats，Lua 提示重生成 413 函数）。测试：ScriptManagerExecTest.Stats* 2 例（累计/失败计 stop 不计）+ ScriptModuleGlueTest.GetStatsAfterRealRun（胶水真实跑+防御分支））
 - [x] 事件通知桥接（2026-10-09：新增 `installSystemEventBridge`——把 EventHub 统一系统事件源（systemwatch.*/filewatcher.*/trigger.fired/trigger.action/macro.state/macro.recorded）原样转投 EventBuffer，method 与事件名一一对应；GUI 经 `events.drain` 拉取；与托盘桥接互补，幂等安装）
 
 ---
