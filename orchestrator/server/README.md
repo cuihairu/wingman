@@ -43,6 +43,8 @@
 - `WINGMAN_GUACD_DRIVE_PATH`（guacd 驱动器挂载路径，默认 `/wingman-drive`）
 - `WINGMAN_GUACD_RECORDING_PATH`（会话录像路径，默认空）
 - `WINGMAN_RECORDING_DIR`（录像目录，默认空）
+- `WINGMAN_VAULT_PROVIDER`（密钥保险箱 provider，默认 `local`）
+- `WINGMAN_VAULT_LOCAL_SESSION_TTL`（local provider 解锁空闲自动锁回时长，默认 `30m`）
 
 其中：
 
@@ -56,6 +58,14 @@
   agent 亦可走 challenge-response 注册（register 带 `challenge: true`，
   token 明文不过网，HMAC-SHA256 应答），双模式并存。
   详见 `docs/agent-token-auth-design.md`
+- `WINGMAN_VAULT_PROVIDER` 字符串，默认 `local`（自托管本地加密实现）。
+  切换 provider 只改此项 + 重启，业务代码零改动；未知名启动报错退出。
+- `WINGMAN_VAULT_<PROVIDER>_*` 各 provider 配置节（去公共前缀
+  `WINGMAN_VAULT_` 后透传给对应实现）：
+  - `WINGMAN_VAULT_LOCAL_SESSION_TTL`：duration（Go `time.ParseDuration`，
+    须 > 0），local 实现解锁空闲自动锁回时长（`autoLockAfterS` 倒计时
+    基准），默认 `30m`；非法值启动报错。
+  逐字段说明与凭据接入点盘点见 `docs/vault-provider-design.md`
 
 ## 启动
 

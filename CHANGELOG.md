@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### feat（2026-10-13，VaultProvider 抽象——保险箱可插拔实现与凭据接入点盘点）
+
+- **统一接口**：新增 `internal/vault` 包——`Provider` 接口收敛解锁/读/写/列/删除/导出/连接取用共 11 个面 + sentinel 语义错误（映射 401/404/409/423/400），配 `Register`/`Activate`/`Active` 注册表（进程级单选）。加密落库与解锁会话（驻留 TTL、空闲自动锁回、主口令最小长度）收敛在实现内部，不再散落在 HTTP 层。
+- **分工边界**：HTTP 适配层（`handlers/vault.go`）只保留请求形状校验（非空 / 协议白名单 / 端口归一 / export 显式确认）、审计（`vault.*` 事件统一在本层记，provider 不重复记）、sentinel → HTTP 映射；端点语义与响应形状不变。
+- **默认实现**：`LocalProvider`（自托管零外部依赖）沿用「主口令 PBKDF2-HMAC-SHA256(600k) → KEK 包裹 per-user DEK、凭据 AES-256-GCM(DEK) 落库」的既有结构；原包级解锁表与 30 分钟空闲锁回迁入实例内部，新增 `SESSION_TTL` 配置节覆盖（非法值启动报错）。
+- **配置**：`WINGMAN_VAULT_PROVIDER`（默认 `local`，未知名/构造失败启动报错退出，不静默降级）+ `WINGMAN_VAULT_<PROVIDER>_*` 配置节透传；逐字段文档（字段 / 类型 / 默认值 / 含义 / 示例占位）见 `docs/vault-provider-design.md` §4 与 `orchestrator/server/README.md`。
+- **验收①留证**：`TestVaultProviderSwitchByConfig`——注册语义全异的 stub 第二实现，仅 `Activate`（生产由 `WINGMAN_VAULT_PROVIDER` 驱动）即接管同一批端点与票据取用路径，切回 local 语义复原；形状校验与审计留在适配层不随 provider 走。业务代码零改动。
+- **凭据接入点盘点（验收②）**：新增 `scripts/check_vault_touchpoints.sh`（CI `Vault Touchpoint Scan` job 持续守护，白名单外命中即红）。实测：server 侧无 webhook secret / 第三方平台 token / 第三方 API key 明文面；现存 env 直读全部为自举层（`WINGMAN_JWT_SECRET` / `WINGMAN_AGENT_TOKENS` / `WINGMAN_ADMIN_PASSWORD`，均先于保险箱存在、结构性不可改走保险箱），逐项论证见设计文档 §5。
+- **测试**：`go test -race -count=1 ./...` 全绿。既有 7 个 vault HTTP 用例（生命周期 / TTL / 条目管理 / 取用回退 / 导出 / 换口令 / 票据 useSaved 注入）语义不变通过，即「业务面零改动」回归网；新增 vault 包 7 例（注册表语义 / 配置校验 / 会话过期懒清理 / 端口表）与 config 配置节用例。
+
 ### feat（2026-10-13，Dashboard Teams 页面——团队列表/详情与团队收件箱推送）
 
 - **列表**：新增 `/teams` 路由（`canAgentManage` 守卫）——团队列表（teamId 升序，与 server `GET /api/teams` 同口径），列：teamId（可复制）/名称/leader/成员数/状态（active 绿、dissolved 红）/创建时间；无团队时展示空态。

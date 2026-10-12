@@ -964,9 +964,9 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 
 ## 密码箱抽象与可替换提供商（2026-10-11 用户令：persona 新升级已实现密码箱、可作网站密码箱使用；各项目密码箱应抽象接口、支持替换提供商）
 
-- [ ] **VaultProvider 抽象接口**：统一 接口（解锁/读/写/列/删除/审计），加密与解锁会话口径收敛到一处（KDF、主口令、会话超时不散落各实现）
-- [ ] **默认实现 + 可插拔 Provider**：默认**本地加密实现**（自托管零外部依赖，当下即可用）+ Provider 注册/切换机制；预留外部密码箱提供商接入（参照 persona 密码箱的接口形态）
-- [ ] **本仓凭据接入点改造**：本仓接入点（实现前先盘点并列全）：第三方平台 token、webhook secret、第三方 API key 等配置中的明文凭据，逐个改走 VaultProvider
-- [ ] **配置**：配置文件加 `vault.provider` 选择项 + 每个 provider 各自的配置节；**配置文档逐字段**（字段名/类型/默认值/含义/示例），示例不写真实密钥
+- [x] **VaultProvider 抽象接口**：统一 接口（解锁/读/写/列/删除/审计），加密与解锁会话口径收敛到一处（KDF、主口令、会话超时不散落各实现）（2026-10-13：`internal/vault.Provider` 统一解锁/读/写/列/删除/导出/取用面；加密落库与解锁会话收敛在实现内，审计与形状校验、错误映射统一在 HTTP 适配层；文档 docs/vault-provider-design.md）
+- [x] **默认实现 + 可插拔 Provider**：默认**本地加密实现**（自托管零外部依赖，当下即可用）+ Provider 注册/切换机制；预留外部密码箱提供商接入（参照 persona 密码箱的接口形态）（2026-10-13：`LocalProvider` 默认实现 + `Register`/`Activate` 注册表，`WINGMAN_VAULT_PROVIDER` 选择、未知名启动报错；验收①留证 `TestVaultProviderSwitchByConfig`——stub 第二实现仅换激活即接管同一批端点，业务代码零改动）
+- [x] **本仓凭据接入点改造**：本仓接入点（实现前先盘点并列全）：第三方平台 token、webhook secret、第三方 API key 等配置中的明文凭据，逐个改走 VaultProvider（2026-10-13 盘点+扫描脚本 `scripts/check_vault_touchpoints.sh`（CI 守护）：server 侧无 webhook/第三方 token/API key 明文面；现存 env 直读全部为自举层（JWT 密钥/agent 注册 token/管理员引导），结构性先于保险箱存在；管理面 RDP/VNC/SSH 凭据已在保险箱内。逐项论证见 docs/vault-provider-design.md §5）
+- [x] **配置**：配置文件加 `vault.provider` 选择项 + 每个 provider 各自的配置节；**配置文档逐字段**（字段名/类型/默认值/含义/示例），示例不写真实密钥（2026-10-13：`WINGMAN_VAULT_PROVIDER` 选择项 + `WINGMAN_VAULT_<PROVIDER>_*` 配置节；逐字段表（字段/类型/默认/含义/示例占位）见 docs/vault-provider-design.md §4 与 orchestrator/server/README.md）
 - **红线**：密钥不进仓库；解锁口令与明文凭据不落日志、不出现在错误消息
 - **验收（硬口径）**：①真实切换 provider——只改配置把 provider 换成另一实现，**不改任何业务代码**原功能仍可用（实测留证）；②接入点扫描无一处还直读明文配置/env 明文凭据；③测试绿才 push、commit 英文简短、不发版
