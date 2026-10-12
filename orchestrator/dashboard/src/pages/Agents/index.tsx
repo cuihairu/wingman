@@ -35,6 +35,7 @@ import {
   Popover,
   Progress,
   Row,
+  Segmented,
   Select,
   Space,
   Statistic,
@@ -84,13 +85,14 @@ import {
   formatBytes,
   getAgentStatusColor,
 } from '@/services/wingman';
+import { countByPlatform, groupAgentsByTag } from '@/utils/agents';
 import wsService from '@/services/websocket';
 
 const { Text } = Typography;
 
 // PlatformTag 平台标识：desktop（含缺省，兼容未上报的旧 agent）→ 桌面、
 // android → 安卓、ios → Apple、其余 → 移动设备（docs/android-agent-design.md §3.3）
-const PlatformTag: React.FC<{ platform?: string }> = ({ platform }) => {
+const PlatformTag: React.FC<{ platform?: string; count?: number }> = ({ platform, count }) => {
   const value = platform || 'desktop';
   const icon =
     value === 'android' ? (
@@ -106,6 +108,7 @@ const PlatformTag: React.FC<{ platform?: string }> = ({ platform }) => {
   return (
     <Tag icon={icon} color={color}>
       {value.toUpperCase()}
+      {count !== undefined ? ` ${count}` : ''}
     </Tag>
   );
 };
@@ -138,6 +141,9 @@ function extractErrorMessage(error: unknown, fallback: string): string {
     | undefined;
   return candidate?.data?.error || candidate?.data?.message || candidate?.message || fallback;
 }
+
+/** 设备列表视图模式：平铺 ↔ 按标签分组 */
+type ViewMode = 'flat' | 'grouped';
 
 const Agents: React.FC = () => {
   const access = useAccess();
@@ -324,6 +330,11 @@ const Agents: React.FC = () => {
   // ===== 批量操作：rowSelection + 批量运行/停止脚本 + 批量下发触发器 =====
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [tagFilter, setTagFilter] = useState<string[]>([]); // 只过滤视图，不影响选中集
+  // 按标签批量下发：选择器 = 勾选 agentIds ∪ 标签命中 tags（服务端取并集），
+  // 与「按标签筛选」tagFilter 语义正交——后者只过滤可见行，不参与下发选择器。
+  const [batchTags, setBatchTags] = useState<string[]>([]);
+  // 列表视图模式：平铺（单一表格）↔ 按标签分组（每组一表，勾选跨组共享）
+  const [viewMode, setViewMode] = useState<'flat' | 'grouped'>('flat');
   const [batchModal, setBatchModal] = useState<'run' | 'stop' | null>(null);
   const [scripts, setScripts] = useState<ScriptInfo[]>([]);
   const [scriptsLoading, setScriptsLoading] = useState(false);
@@ -340,6 +351,13 @@ const Agents: React.FC = () => {
     tagFilter.length === 0
       ? agents
       : agents.filter((a) => (a.tags ?? []).some((t) => tagFilter.includes(t)));
+  // 下发选择器（agentIds ∪ tags）：两端皆空时按钮禁用
+  const batchSelector = { agentIds: selectedIds, tags: batchTags };
+  const batchSelectorEmpty = selectedIds.length === 0 && batchTags.length === 0;
+  const batchTagText = batchTags.join(',');
+  // 分组视图：在「按标签筛选」后的可见行上再分组（筛选项优先收敛范围）
+  const tagGroups = groupAgentsByTag(visibleAgents);
+  const platformCounts = countByPlatform(agents);
 
   // 获取 Agent 列表。umi 的 useRequest 包装器默认注入 formatResult:
   // r => r?.data（见 .umi/plugin-request/request.ts），因此 service 须返回
@@ -457,10 +475,11 @@ const Agents: React.FC = () => {
 
   // ===== 批量操作：一律先 Modal.confirm 二次确认，完成后弹结果表并清空选择 =====
 
-  // showBatchResult 展示逐台结果，清空选择并刷新列表
+  // showBatchResult 展示逐台结果，清空勾选与标签选择器并刷新列表
   const showBatchResult = (summary: BatchSummary | undefined) => {
     setBatchResult(summary ?? { total: 0, succeeded: 0, failed: 0, results: [] });
     setSelectedRowKeys([]);
+    setBatchTags([]);
     refresh();
   };
 
@@ -487,13 +506,15 @@ const Agents: React.FC = () => {
     Modal.confirm({
       title: formatMessage('pages.agents.batchRunConfirmTitle'),
       content: intl.formatMessage(
-        { id: 'pages.agents.batchRunConfirmContent' },
-        { count: selectedIds.length, target: runPath },
+        batchTags.length > 0
+          ? { id: 'pages.agents.batchRunConfirmContentTags' }
+          : { id: 'pages.agents.batchRunConfirmContent' },
+        { count: selectedIds.length, target: runPath, tags: batchTagText },
       ),
       okText: formatMessage('pages.agents.batchRun'),
       onOk: async () => {
         try {
-          const response = await batchRunScript({ agentIds: selectedIds }, runPath);
+          const response = await batchRunScript(batchSelector, runPath);
           if (!response.success) {
             message.error(response.error || formatMessage('pages.agents.batchRunFailed'));
             return;
@@ -516,13 +537,15 @@ const Agents: React.FC = () => {
     Modal.confirm({
       title: formatMessage('pages.agents.batchStopConfirmTitle'),
       content: intl.formatMessage(
-        { id: 'pages.agents.batchStopConfirmContent' },
-        { count: selectedIds.length, target: executionId },
+        batchTags.length > 0
+          ? { id: 'pages.agents.batchStopConfirmContentTags' }
+          : { id: 'pages.agents.batchStopConfirmContent' },
+        { count: selectedIds.length, target: executionId, tags: batchTagText },
       ),
       okText: formatMessage('pages.agents.batchStop'),
       onOk: async () => {
         try {
-          const response = await batchStopScript({ agentIds: selectedIds }, executionId);
+          const response = await batchStopScript(batchSelector, executionId);
           if (!response.success) {
             message.error(response.error || formatMessage('pages.agents.batchStopFailed'));
             return;
@@ -823,6 +846,41 @@ const Agents: React.FC = () => {
     },
   ];
 
+  // 设备表（平铺与分组视图共用同一列定义、勾选集与行点击行为）
+  const renderAgentTable = (dataSource: AgentInfo[]) => (
+    <ProTable<AgentInfo>
+      columns={columns}
+      dataSource={dataSource}
+      loading={loading}
+      rowKey="agentId"
+      search={false}
+      options={false}
+      rowSelection={
+        canScriptRun || canAgentManage
+          ? {
+              selectedRowKeys,
+              onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+            }
+          : undefined
+      }
+      pagination={
+        viewMode === 'grouped'
+          ? { pageSize: 5, showSizeChanger: false }
+          : { pageSize: 10, showSizeChanger: true }
+      }
+      onRow={(record) => ({
+        onClick: (event) => {
+          // 勾选批量选择框时不打开详情面板
+          if ((event.target as HTMLElement).closest('.ant-table-selection-column')) {
+            return;
+          }
+          setSelectedAgent(record);
+        },
+        style: { cursor: 'pointer' },
+      })}
+    />
+  );
+
   return (
     <PageContainer
       header={{
@@ -849,6 +907,12 @@ const Agents: React.FC = () => {
               value={agents.length}
               prefix={<NodeIndexOutlined />}
             />
+            {/* 平台维度大盘：desktop/android/ios 计数（缺失 platform 按桌面口径） */}
+            <div style={{ marginTop: 8 }}>
+              {platformCounts.map((entry) => (
+                <PlatformTag key={entry.platform} platform={entry.platform} count={entry.count} />
+              ))}
+            </div>
           </Card>
         </Col>
         <Col xs={24} sm={6}>
@@ -920,7 +984,7 @@ const Agents: React.FC = () => {
               </Space>
             }
           >
-            {/* 批量工具栏：标签筛选只过滤视图；批量按钮选中 0 台时禁用 */}
+            {/* 批量工具栏：标签筛选只过滤视图；批量按钮在选择器为空时禁用 */}
             <Space style={{ marginBottom: 16, display: 'flex' }} wrap>
               <Select
                 mode="multiple"
@@ -931,18 +995,41 @@ const Agents: React.FC = () => {
                 onChange={(vals) => setTagFilter(vals)}
                 options={tagOptions.map((tag) => ({ value: tag, label: tag }))}
               />
+              {/* 视图切换：平铺 ↔ 按标签分组（有标签时才有意义） */}
+              {tagOptions.length > 0 && (
+                <Segmented<ViewMode>
+                  value={viewMode}
+                  onChange={(val) => setViewMode(val)}
+                  options={[
+                    { value: 'flat', label: formatMessage('pages.agents.viewFlat') },
+                    { value: 'grouped', label: formatMessage('pages.agents.viewGrouped') },
+                  ]}
+                />
+              )}
+              {/* 按标签下发：与勾选取并集（docs/architecture-decisions.md 批量下发表） */}
+              {canScriptRun && tagOptions.length > 0 && (
+                <Select
+                  mode="multiple"
+                  allowClear
+                  placeholder={formatMessage('pages.agents.batchByTags')}
+                  style={{ minWidth: 160 }}
+                  value={batchTags}
+                  onChange={(vals) => setBatchTags(vals)}
+                  options={tagOptions.map((tag) => ({ value: tag, label: tag }))}
+                />
+              )}
               {canScriptRun && (
                 <>
                   <Button
                     icon={<PlayCircleOutlined />}
-                    disabled={selectedIds.length === 0}
+                    disabled={batchSelectorEmpty}
                     onClick={openBatchRun}
                   >
                     {formatMessage('pages.agents.batchRunScript')}
                   </Button>
                   <Button
                     icon={<PauseCircleOutlined />}
-                    disabled={selectedIds.length === 0}
+                    disabled={batchSelectorEmpty}
                     onClick={() => {
                       setStopExecutionId('');
                       setBatchModal('stop');
@@ -955,7 +1042,7 @@ const Agents: React.FC = () => {
               {canAgentManage && (
                 <Button
                   icon={<ThunderboltOutlined />}
-                  disabled={selectedIds.length === 0}
+                  disabled={batchSelectorEmpty}
                   onClick={() => setTriggerModalOpen(true)}
                 >
                   {formatMessage('pages.agents.batchDeployTrigger')}
@@ -971,37 +1058,27 @@ const Agents: React.FC = () => {
                   )}
                 </Text>
               )}
+              {batchTags.length > 0 && (
+                <Text type="secondary">
+                  {intl.formatMessage(
+                    { id: 'pages.agents.byTagsSelected' },
+                    { tags: batchTagText },
+                  )}
+                </Text>
+              )}
             </Space>
-            <ProTable<AgentInfo>
-              columns={columns}
-              dataSource={visibleAgents}
-              loading={loading}
-              rowKey="agentId"
-              search={false}
-              options={false}
-              rowSelection={
-                canScriptRun || canAgentManage
-                  ? {
-                      selectedRowKeys,
-                      onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
-                    }
-                  : undefined
-              }
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
-              }}
-              onRow={(record) => ({
-                onClick: (event) => {
-                  // 勾选批量选择框时不打开详情面板
-                  if ((event.target as HTMLElement).closest('.ant-table-selection-column')) {
-                    return;
-                  }
-                  setSelectedAgent(record);
-                },
-                style: { cursor: 'pointer' },
-              })}
-            />
+            {/* 列表：平铺单表 或 按标签分组多表（勾选跨组共享同一选择集） */}
+            {(viewMode === 'flat' || tagGroups.length === 0) && renderAgentTable(visibleAgents)}
+            {viewMode === 'grouped' &&
+              tagGroups.map((group) => (
+                <ProCard
+                  key={group.tag ?? '__ungrouped__'}
+                  title={group.tag ?? formatMessage('pages.agents.untaggedGroup')}
+                  style={{ marginBottom: 16 }}
+                >
+                  {renderAgentTable(group.agents)}
+                </ProCard>
+              ))}
           </ProCard>
         </Col>
 
@@ -1396,15 +1473,18 @@ const Agents: React.FC = () => {
       <TriggerFormModal
         open={triggerModalOpen}
         title={intl.formatMessage(
-          { id: 'pages.agents.batchTriggerModalTitle' },
+          batchTags.length > 0
+            ? { id: 'pages.agents.batchTriggerModalTitleTags' }
+            : { id: 'pages.agents.batchTriggerModalTitle' },
           {
             count: selectedIds.length,
+            tags: batchTagText,
           },
         )}
         onSubmit={async (config) => {
           let response;
           try {
-            response = await batchCreateTrigger({ agentIds: selectedIds }, config);
+            response = await batchCreateTrigger(batchSelector, config);
           } catch (error) {
             throw new Error(extractErrorMessage(error, requestFailed));
           }

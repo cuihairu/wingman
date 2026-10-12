@@ -147,7 +147,7 @@
 
 ### A4 多设备编排
 - [ ] Team/inbox 模块接入端侧 Agent
-- [ ] Dashboard 设备视图（分组、批量下发、状态大盘）
+- [x] Dashboard 设备视图（分组、批量下发、状态大盘）（2026-10-13：Agents 页面增量——按标签分组视图（平铺/分组切换，每组一表、勾选跨组共享）、按标签批量下发选择器（agentIds ∪ tags 与勾选取并集，服务端既有契约直接复用）、状态大盘平台维度（desktop/android/ios 计数，缺失 platform 按桌面口径）；批量操作按钮禁用口径随之改为选择器非空；8 语言 i18n key 补齐，纯函数口径抽 utils/agents.ts 单测钉住）
 
 ### 远期可选
 - [ ] I1: iOS 主机控——PC 端 ICapture/IInput 的 WDA 后端（usbmuxd/libimobiledevice，依赖 Mac 签名链）

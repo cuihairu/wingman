@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### feat（2026-10-13，Dashboard 设备视图——按标签分组、标签选择器批量下发、平台维度大盘）
+
+- **分组**：Agents 列表新增平铺/按标签分组视图切换（`Segmented`）——有标签才显示；分组视图每组一表（组名升序、未分组组置末、多标签 agent 同属多组），勾选跨组共享同一选择集，分组内分页收敛到 5 条。标签筛选仍只过滤可见范围（与下发选择器语义正交）。
+- **批量下发**：工具栏新增「按标签下发」多选，批量运行/停止/触发器下发选择器由 `{agentIds}` 扩展为 `{agentIds, tags}` 并集（服务端 `POST /api/agents/batch/*` 既有契约直接复用，无后端改动）；按钮禁用口径由「勾选 0 台」改为「选择器为空」；确认弹窗与触发器弹窗标题在标签非空时走 tags 变体文案；成功后同时清空勾选与标签选择器。
+- **状态大盘**：统计卡增平台维度——desktop/android/ios 计数（platform 缺失按桌面口径，与 PlatformTag 同口径），`PlatformTag` 支持可选 count。
+- **测试与口径**：分组与平台统计纯函数抽到 `src/utils/agents.ts`，`agents.test.ts` 5 例钉住多标签归属、未分组置末、空列表、platform 缺失与同数量排序；8 语言（en-US/zh-CN/zh-TW/ja-JP/pt-BR/id-ID/fa-IR/bn-BD）i18n key 补齐。dashboard `tsc`/`eslint`/`prettier` 绿，全量 jest 442/442 通过（CI 不跑前端测试；全局 95% 覆盖率门禁在 HEAD 上本就为 93.66%，本次新增文件 100% 覆盖不构成回退）。
+
 ### feat（2026-10-13，脚本版本管理——内容即版本 sha256 随脚本与执行记录）
 
 - **内容指纹**：新增 `scripts.Sha256Of(content)`（sha256 hex 小写）。`models.Script.Sha256`（`gorm:"size:64"`）在创建/保存时按落盘内容更新，脚本列表 `sha256` 字段对存量空行按文件懒回填（读不到/不存在的行跳过，不影响列表 200）。

@@ -90,18 +90,27 @@ export default {
   'pages.agents.list': 'فهرست ایجنت‌ها',
   'pages.agents.realtimeUpdate': 'به‌روزرسانی زنده',
   'pages.agents.filterByTag': 'فیلتر بر اساس برچسب',
+  'pages.agents.viewFlat': 'نمایش تخت',
+  'pages.agents.viewGrouped': 'گروه‌بندی بر اساس برچسب',
+  'pages.agents.untaggedGroup': 'بدون برچسب',
   'pages.agents.selectedCount': '{count} مورد انتخاب شد',
+  'pages.agents.batchByTags': 'استقرار بر اساس برچسب',
+  'pages.agents.byTagsSelected': 'برچسب‌ها: {tags}',
   'pages.agents.batchRunScript': 'اجرای گروهی اسکریپت',
   'pages.agents.batchStopScript': 'توقف گروهی اسکریپت',
   'pages.agents.batchDeployTrigger': 'استقرار گروهی تریگر',
   'pages.agents.batchRunConfirmTitle': 'اجرای گروهی اسکریپت',
   'pages.agents.batchRunConfirmContent':
     'اجرای {target} روی {count} ایجنت انتخاب‌شده تأیید می‌شود؟',
+  'pages.agents.batchRunConfirmContentTags':
+    'آیا {target} روی اجتماع {count} ایجنت انتخاب‌شده و ایجنت‌های دارای برچسب {tags} اجرا شود؟',
   'pages.agents.batchRun': 'اجرای گروهی',
   'pages.agents.batchRunFailed': 'اجرای گروهی ناموفق بود',
   'pages.agents.batchStopConfirmTitle': 'توقف گروهی اسکریپت',
   'pages.agents.batchStopConfirmContent':
     'توقف {target} روی {count} ایجنت انتخاب‌شده تأیید می‌شود؟',
+  'pages.agents.batchStopConfirmContentTags':
+    'آیا {target} روی اجتماع {count} ایجنت انتخاب‌شده و ایجنت‌های دارای برچسب {tags} متوقف شود؟',
   'pages.agents.batchStop': 'توقف گروهی',
   'pages.agents.batchStopFailed': 'توقف گروهی ناموفق بود',
   'pages.agents.selectScriptFirst': 'ابتدا یک اسکریپت انتخاب کنید',
@@ -111,6 +120,8 @@ export default {
   'pages.agents.batchStopModalTitle': 'توقف گروهی اسکریپت ({count} انتخاب‌شده)',
   'pages.agents.executionIdPlaceholder': 'شناسه اجرا (نام اسکریپت)',
   'pages.agents.batchTriggerModalTitle': 'استقرار گروهی تریگر ({count} انتخاب‌شده)',
+  'pages.agents.batchTriggerModalTitleTags':
+    'استقرار گروهی تریگر ({count} انتخاب‌شده + برچسب {tags})',
   'pages.agents.batchDeployFailed': 'استقرار گروهی ناموفق بود',
   'pages.agents.batchResultTitle': 'نتایج عملیات گروهی',
   'pages.agents.batchResultSummary': 'مجموع {total}: {succeeded} موفق، {failed} ناموفق',
