@@ -156,6 +156,7 @@ func run() error {
 		FileOps:        fileOpsHandler,
 		Vault:          vaultHandler,
 		ScriptsDir:     cfg.ScriptsDir,
+		AssetsDir:      cfg.AssetsDir,
 		StaticDir:      cfg.StaticDir,
 		UpdatesDir:     cfg.UpdatesDir,
 		ProcessStart:   processStartedAt,

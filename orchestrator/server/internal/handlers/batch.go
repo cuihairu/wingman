@@ -125,6 +125,11 @@ func parseBatchSelector(agentIDs, tags []string) ([]string, []string, error) {
 // resolveTargets 从注册表快照中解析并集目标（agentIds 精确匹配 ∪ tags 命中任一），
 // 去重后按 AgentID 排序返回（注册表为 map，遍历顺序随机，排序保证结果顺序确定）。
 func (h *BatchHandler) resolveTargets(agentIDs, tags []string) []*agent.AgentInfo {
+	return resolveBatchTargets(h.registry, agentIDs, tags)
+}
+
+// resolveBatchTargets resolveTargets 的无状态版本（asset sync 等批量下发复用）。
+func resolveBatchTargets(registry *agent.Registry, agentIDs, tags []string) []*agent.AgentInfo {
 	idSet := make(map[string]bool, len(agentIDs))
 	tagSet := make(map[string]bool, len(tags))
 	for _, id := range agentIDs {
@@ -136,7 +141,7 @@ func (h *BatchHandler) resolveTargets(agentIDs, tags []string) []*agent.AgentInf
 
 	seen := map[string]bool{}
 	targets := make([]*agent.AgentInfo, 0)
-	for _, info := range h.registry.List() {
+	for _, info := range registry.List() {
 		matched := idSet[info.AgentID]
 		if !matched {
 			for _, t := range info.Tags {

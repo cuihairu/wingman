@@ -120,6 +120,7 @@ Body: JSON（最大 16 MiB）
 | `stop_script` | `{script_id}` |
 | `get_status` | 查询状态 |
 | `list_windows` | 枚举窗口 |
+| `asset.sync` | `{name, contentBase64, sha256}` 模板图片等资产下发，agent 落盘本地资产目录（`<scriptDir>/assets/<name>`），响应 data 携带落盘路径与字节数；name 白名单 `[A-Za-z0-9][A-Za-z0-9._-]{0,127}`（两端同口径），sha256 提供即强校验，单资产 ≤1MB（server 触发：`POST /api/assets/sync`，权限 `assets:manage`） |
 | `system.shutdown` | 关闭 agent |
 
 Response：`{success, method, message?, error?, data?}`，`sequence` 与请求一致。

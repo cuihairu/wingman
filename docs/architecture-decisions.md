@@ -328,14 +328,15 @@ control plane; the C++ runtime gains no new commands and no new transport.
 
 Fan-out is implemented in the Go server by looping over the existing
 per-agent commands (`run_script` 30s / `stop_script` 10s / `trigger.add`
-10s) over the existing agent TCP connection. No new command, listener, or
-transport is introduced.
+10s / `asset.sync` 10s) over the existing agent TCP connection. No new
+command, listener, or transport is introduced.
 
 | Endpoint | Permission | Underlying command |
 |----------|------------|--------------------|
 | `POST /api/agents/batch/run-script` | `scripts:run` | `run_script` |
 | `POST /api/agents/batch/stop-script` | `scripts:run` | `stop_script` |
 | `POST /api/agents/batch/trigger` | `agents:manage` | `trigger.add` |
+| `POST /api/assets/sync` | `assets:manage` | `asset.sync` |
 
 Semantics:
 
@@ -354,6 +355,19 @@ Semantics:
   selector and per-agent summary. DB writes happen serially after fan-out.
 - The workflow engine is intentionally unchanged; mapping tags to workflow
   workers is left for a future decision.
+
+### Asset Sync (A4 precursor)
+
+Template images and other script companions are stored server-side
+(`internal/assets`, `<AssetsDir>/<name>` + `.meta/<name>.json` sidecar
+carrying `sha256`/size/timestamp, no DB row) and pushed with `asset.sync`:
+payload carries `contentBase64` inline (same 1MB budget as inline scripts —
+the 16MB frame limit leaves ample headroom) plus the sha256 for the runtime
+to verify; the agent writes to `<scriptDir>/assets/<name>` atomically and
+reports the absolute path back so scripts can reference it. Name
+allow-lists are enforced identically on both ends (`assets.SanitizeName` /
+`asset_handler.cpp`), rejecting path traversal before any filesystem touch.
+Large assets still need a URL-pull path — deferred to the A4 rollout.
 
 The Dashboard consumes these endpoints from the Agents page (row selection
 + batch toolbar + result table); the trigger form is shared with the

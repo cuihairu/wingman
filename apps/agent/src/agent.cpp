@@ -1,6 +1,7 @@
 #include "wingman/runtime/agent.hpp"
 #include "wingman/platform/screen_factory.hpp"
 #include "wingman/rpc/rpc_dispatcher.hpp"
+#include "wingman/rpc/asset_handler.hpp"
 #include "wingman/rpc/trigger_handler.hpp"
 #include "wingman/trigger.hpp"
 #include "wingman/window.hpp"
@@ -14,6 +15,7 @@
 #include <spdlog/spdlog.h>
 
 #include <chrono>
+#include <filesystem>
 #include <thread>
 #include <vector>
 
@@ -419,6 +421,10 @@ bool Agent::initRemoteClient() {
     if (impl_->triggerManager) {
         rpc::registerTriggerHandlers(*impl_->remoteDispatcher, *impl_->triggerManager);
     }
+    // asset.sync：模板图片等资产落盘脚本目录的 assets/ 子目录（脚本以
+    // assets/<name> 相对引用；响应 data 携带落盘绝对路径）
+    rpc::registerAssetHandlers(*impl_->remoteDispatcher,
+        (std::filesystem::path(impl_->config.standalone.scriptDir) / "assets").string());
 
     // 绑定命令回调，处理 server 下发的命令
     impl_->remoteClient->setCommandCallback([this](const std::string& command, const CommandData& data) {
@@ -553,6 +559,13 @@ CommandResult Agent::handleRemoteCommand(const std::string& command, const Comma
             return CommandResult::error("trigger handlers not available");
         }
         return dispatchViaRpcDispatcher(*impl_->remoteDispatcher, command, data, "trigger command");
+
+    } else if (command.rfind("asset.", 0) == 0) {
+        // asset.sync：远程通道复用 RPC handler（Dispatcher Reuse）
+        if (!impl_->remoteDispatcher) {
+            return CommandResult::error("asset handlers not available");
+        }
+        return dispatchViaRpcDispatcher(*impl_->remoteDispatcher, command, data, "asset command");
 
     } else if (command == "stop_script") {
         auto scriptIdIt = data.find("script_id");

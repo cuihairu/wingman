@@ -1,9 +1,14 @@
 #include <gtest/gtest.h>
 #include "wingman/rpc/rpc_dispatcher.hpp"
 #include "wingman/rpc/trigger_handler.hpp"
+#include "wingman/rpc/asset_handler.hpp"
 #include "wingman/trigger.hpp"
+#include "wingman/crypt.hpp"
 #include "wingman/platform/mock_input.hpp"
 #include <nlohmann/json.hpp>
+
+#include <filesystem>
+#include <fstream>
 
 using namespace wingman;
 using namespace wingman::rpc;
@@ -265,4 +270,103 @@ TEST_F(TriggerRpcTest, ToggleNonexistentTrigger) {
     auto response = call("trigger.toggle", {{"id", "1234"}});
     EXPECT_FALSE(response["data"]["success"].get<bool>());
     EXPECT_EQ(response["data"]["error"], "Trigger not found");
+}
+
+// ========== Asset Handlers ==========
+
+// asset.sync：server 下发的模板图片等资产落盘 assetsDir（与 Go 侧
+// internal/assets + handlers/asset.go 的 payload 契约对齐）
+class AssetRpcTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        assetsDir = (std::filesystem::path(::testing::TempDir()) / "rpc-assets").string();
+        std::filesystem::remove_all(assetsDir);
+        registerAssetHandlers(dispatcher, assetsDir);
+    }
+
+    json call(const json& params) {
+        json req = {{"method", "asset.sync"}, {"id", "1"}, {"params", params}};
+        return json::parse(dispatcher.dispatch(req.dump()));
+    }
+
+    static std::string b64(const std::string& raw) {
+        return crypt::base64Encode({raw.begin(), raw.end()});
+    }
+
+    bool fileExists(const std::string& name) const {
+        return std::filesystem::exists(std::filesystem::path(assetsDir) / name);
+    }
+
+    std::string readFile(const std::string& name) const {
+        std::ifstream in(std::filesystem::path(assetsDir) / name, std::ios::binary);
+        return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+    }
+
+    RpcDispatcher dispatcher;
+    std::string assetsDir;
+};
+
+TEST_F(AssetRpcTest, SyncWritesFileAndReturnsPath) {
+    const std::string content = "fake-png-bytes";
+    json response = call({
+        {"name", "btn.png"},
+        {"contentBase64", b64(content)},
+        {"sha256", crypt::sha256(content)},
+    });
+    EXPECT_TRUE(response["data"]["success"].get<bool>());
+    const std::string path = response["data"]["result"]["path"].get<std::string>();
+    EXPECT_EQ(std::filesystem::path(path).filename(), "btn.png");
+    EXPECT_TRUE(std::filesystem::exists(path));
+    EXPECT_EQ(response["data"]["result"]["size"].get<size_t>(), content.size());
+    EXPECT_EQ(readFile("btn.png"), content);
+    // 无 .tmp 残留
+    EXPECT_FALSE(fileExists("btn.png.tmp"));
+}
+
+TEST_F(AssetRpcTest, SyncSha256MismatchRejects) {
+    json response = call({
+        {"name", "btn.png"},
+        {"contentBase64", b64("content")},
+        {"sha256", std::string(64, '0')},
+    });
+    EXPECT_FALSE(response["data"]["success"].get<bool>());
+    EXPECT_EQ(response["data"]["error"], "sha256 mismatch");
+    EXPECT_FALSE(fileExists("btn.png"));
+}
+
+TEST_F(AssetRpcTest, SyncRejectsBadNames) {
+    const std::vector<std::string> badNames = {"", "../evil.png", "/abs.png",
+                                               "a/b.png", std::string(129, 'a')};
+    for (const auto& name : badNames) {
+        json response = call({
+            {"name", name},
+            {"contentBase64", b64("x")},
+        });
+        EXPECT_FALSE(response["data"]["success"].get<bool>()) << name;
+        EXPECT_EQ(response["data"]["error"], "invalid asset name");
+    }
+    // 全拒路径不触碰文件系统（目录均不创建）
+    EXPECT_FALSE(std::filesystem::exists(assetsDir));
+}
+
+TEST_F(AssetRpcTest, SyncRejectsMissingContentAndOversize) {
+    json missing = call({{"name", "a.png"}});
+    EXPECT_FALSE(missing["data"]["success"].get<bool>());
+
+    const std::string big(kMaxAssetSize + 1, 'x');
+    json oversize = call({
+        {"name", "big.png"},
+        {"contentBase64", b64(big)},
+    });
+    EXPECT_FALSE(oversize["data"]["success"].get<bool>());
+    EXPECT_EQ(oversize["data"]["error"], "asset too large");
+    EXPECT_FALSE(fileExists("big.png"));
+}
+
+TEST_F(AssetRpcTest, SyncReplacesExistingContent) {
+    ASSERT_TRUE(call({{"name", "tpl.png"},
+                      {"contentBase64", b64("v1")}})["data"]["success"].get<bool>());
+    ASSERT_TRUE(call({{"name", "tpl.png"},
+                      {"contentBase64", b64("v2-bytes")}})["data"]["success"].get<bool>());
+    EXPECT_EQ(readFile("tpl.png"), "v2-bytes");
 }

@@ -31,6 +31,7 @@ var builtinPermissions = []models.Permission{
 	{Code: "scripts:view", Name: "查看脚本", Description: "查看脚本列表与内容", Category: "script", Builtin: true},
 	{Code: "scripts:edit", Name: "编辑脚本", Description: "创建/保存/删除脚本", Category: "script", Builtin: true},
 	{Code: "scripts:run", Name: "运行脚本", Description: "启动/停止脚本", Category: "script", Builtin: true},
+	{Code: "assets:manage", Name: "管理资产", Description: "上传/删除模板图片等资产并下发 agent（默认未授予内置角色，仅 admin）", Category: "script", Builtin: true},
 	{Code: "workflows:view", Name: "查看工作流", Description: "查看工作流列表与详情", Category: "workflow", Builtin: true},
 	{Code: "workflows:run", Name: "运行工作流", Description: "提交/取消工作流", Category: "workflow", Builtin: true},
 	{Code: "monitor:view", Name: "监控查看", Description: "查看实时监控与截图", Category: "monitor", Builtin: true},

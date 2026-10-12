@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### feat（2026-10-13，模板图片 asset.sync 下发——服务端资产存储 + agent 通道落盘）
+
+- **服务端**：`internal/assets` 资产存储（`<AssetsDir>/<name>` + `.meta/` sidecar 元数据 sha256/大小/时间，无 DB 依赖，原子写；1MB 上限与内联脚本同口径）；`/api/assets` 五端点——上传（内联 base64）/列表/内容下载/删除/`sync` 按选择器（agentIds/tags 并集）fan-out，权限 `assets:manage`（新内置权限，默认仅 admin），审计 `asset.sync`/`asset.delete`；`WINGMAN_ASSETS_DIR` 配置（默认 `./data/assets`）。
+- **agent 通道**：新 Request 方法 `asset.sync`（`{name, contentBase64, sha256}`）——runtime 侧 `rpc::registerAssetHandlers` 落盘 `<scriptDir>/assets/<name>`（原子写临时文件 + rename），sha256 提供即强校验，响应携带落盘绝对路径供脚本引用；name 白名单两端同口径（`assets.SanitizeName` / C++ 同规则），路径穿越在上传与落盘两侧前置拒绝。Dispatcher Reuse：本地 IPC 同 handler 可达，无新传输通道。
+- **测试**：Go `internal/assets` 存储全生命周期/名称白名单/并发写 6 组 + handlers 上传/列表/内容/删除/同步 fan-out（在线/离线/零命中）2 组；C++ `rpc_test` 增 AssetRpcTest 5 例（落盘路径/sha256 不匹配拒绝/坏名/超限/覆盖写）。Go 全量 `go test ./...` 绿，core_tests RPC 面无回归。
+- **文档**：`docs/protocols.md` ② Request 表补 `asset.sync` 契约；`docs/architecture-decisions.md` 批量下发表补端点行 + 增「Asset Sync (A4 precursor)」节。脚本版本管理（sha256 随脚本列表/执行记录）与 Android 端侧接面为后续增量。
+
 ### feat（2026-10-13，Android 端触发器引擎——定时/像素条件 + 声明式动作）
 
 - **引擎**：`AndroidTriggerManager`（libs/androidagent，进程级单例）——单监视线程 25ms 滴答遍历全部已启动触发器（设备友好，不每触发器一线程），每轮锁内快照活跃条目、锁外判定执行、结果写回（触发计数只增不减）。条件全 AND：`timer`（边沿触发，距上次满足满 ms 再满足）、`color_found`/`color_not_found`（桌面同款 ImageAnalyzer 区域找色）、`pixel_changed`（采样点变化超容差，首拍建基线）；每触发器每轮最多取一帧（bitmap-first）。动作：`tap`/`long_press`/`swipe`/`stop`，直接走宿主桥；桥缺失或取帧失败该轮按未满足降级。语义对齐桌面 SmartTrigger：checkInterval 轮询（<50ms 收敛防忙等）、maxTriggers 自停、脚本退出后于服务进程内继续监视。

@@ -15,6 +15,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/assets"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/workflow"
 	"github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
@@ -51,7 +52,9 @@ type RouterDeps struct {
 	Vault *VaultHandler
 	// ScriptsDir / StaticDir 静态资源与脚本目录
 	ScriptsDir string
-	StaticDir  string
+	// AssetsDir 资产（模板图片等脚本配套文件）服务端存储目录
+	AssetsDir string
+	StaticDir string
 	// UpdatesDir 自动更新制品根目录（models.UpdateRelease 制品落盘处）
 	UpdatesDir string
 	// ProcessStart 进程启动时间（uptime 指标基准）
@@ -206,6 +209,11 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 		api.GET("/scripts", scriptHandlerAPI.HandleList)
 		api.POST("/scripts/content", scriptHandlerAPI.HandleGetContent) // 获取内容
 
+		// 资产管理 - 只读接口（资产内容经 /api/assets/content 下载原始字节）
+		assetHandler := NewAssetHandler(deps.DB, assets.NewStore(deps.AssetsDir), deps.Registry)
+		api.GET("/assets", assetHandler.HandleList)
+		api.GET("/assets/content", assetHandler.HandleContent)
+
 		// 批量操作（按 agentIds/tags 选择器 fan-out）
 		batchHandler := NewBatchHandler(deps.DB, deps.ScriptsDir, deps.Registry)
 
@@ -265,6 +273,16 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 			scriptsRun.POST("/scripts/logs", scriptHandlerAPI.HandleLogs)
 			scriptsRun.POST("/agents/batch/run-script", batchHandler.HandleBatchRunScript)
 			scriptsRun.POST("/agents/batch/stop-script", batchHandler.HandleBatchStopScript)
+		}
+
+		// assets:manage（上传/删除/下发模板图片等资产）
+		assetsMgmt := api.Group("")
+		assetsMgmt.Use(middleware.PermissionRequired(deps.DB, "assets:manage"))
+		{
+			assetsMgmt.POST("/assets", assetHandler.HandleUpload)
+			assetsMgmt.POST("/assets/delete", assetHandler.HandleDelete)
+			assetsMgmt.DELETE("/assets", assetHandler.HandleDelete)
+			assetsMgmt.POST("/assets/sync", assetHandler.HandleSync)
 		}
 
 		// 设置 - dashboard 兼容路径（与 /api/v1/settings 等价，统一前端前缀为 /api）
