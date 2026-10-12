@@ -2,8 +2,8 @@ package handlers
 
 // 密钥保险箱 handler 测试：生命周期（setup/unlock/lock/status）、条目管理
 // （元数据列表不含密文、留空保旧值、删除幂等）、导出须显式确认、票据
-// useSaved 注入。解锁表是包级状态，各用例用独立 userID + defer 锁回，
-// 互不污染。
+// useSaved 注入。解锁会话收敛在 provider 实例内：各用例经 vaultActivate
+// 激活 per-test 本地实现（重激活即全锁），互不污染。
 
 import (
 	"encoding/json"
@@ -16,7 +16,9 @@ import (
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/remoteticket"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/vault"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // vaultJSONCtx 构造带登录态与 JSON body 的测试上下文。
@@ -94,13 +96,22 @@ func vaultSetup(t *testing.T, h *VaultHandler, userID uint, master string) {
 	}
 }
 
+// vaultActivate 为单个用例激活 per-test 本地实现（会话态在 provider 实例
+// 内，重激活即全锁）。cfg 为 provider 配置节（如 SESSION_TTL 覆盖）。
+func vaultActivate(t *testing.T, db *gorm.DB, cfg map[string]string) {
+	t.Helper()
+	if err := vault.Activate(vault.LocalName, vault.Options{DB: db, Config: cfg}); err != nil {
+		t.Fatalf("activate local vault: %v", err)
+	}
+}
+
 // ---------- 主口令生命周期 ----------
 
 func TestVaultSetupUnlockLockLifecycle(t *testing.T) {
 	db := newDB(t)
+	vaultActivate(t, db, nil)
 	h := NewVaultHandler(db)
 	const uid = uint(101)
-	defer vaultLockUser(uid)
 
 	// 未配置：status 报未配置；unlock 409
 	code, resp := vaultDo(t, h, uid, "GET", "/status", "")
@@ -150,21 +161,29 @@ func TestVaultSetupUnlockLockLifecycle(t *testing.T) {
 
 func TestVaultUnlockTTLExpiryAutoLocks(t *testing.T) {
 	db := newDB(t)
+	// 短空闲 TTL：顺带覆盖「配置节 → provider → status」的整条链路
+	// （取整秒口径的配置值，autoLockAfterS 才有非 0 的断言意义）
+	vaultActivate(t, db, map[string]string{"SESSION_TTL": "2s"})
 	h := NewVaultHandler(db)
 	const uid = uint(102)
-	defer vaultLockUser(uid)
-	vaultSetup(t, h, uid, "master-pass-1")
-
-	// 直接把驻留态拨到过期（懒清理路径）
-	vaultUnlocksMu.Lock()
-	vaultUnlocks[uid].expiresAt = time.Now().Add(-time.Second)
-	vaultUnlocksMu.Unlock()
-	if dek := vaultKeepAlive(uid); dek != nil {
-		t.Fatalf("expired unlock must lazily drop")
+	if code, _ := vaultDo(t, h, uid, "POST", "/setup", `{"masterPassword":"master-pass-1"}`); code != http.StatusOK {
+		t.Fatalf("setup: %d", code)
 	}
+	// 配置节生效（与解锁态无关，无时序依赖）：自动锁定时长反映配置
 	code, resp := vaultDo(t, h, uid, "GET", "/status", "")
-	if code != 200 || resp["data"].(map[string]any)["unlocked"] != false {
-		t.Fatalf("expired status should be locked: %d %v", code, resp)
+	data := resp["data"].(map[string]any)
+	if code != 200 || data["configured"] != true || data["autoLockAfterS"] != float64(2) {
+		t.Fatalf("status should reflect SESSION_TTL: %d %v", code, data)
+	}
+	time.Sleep(2500 * time.Millisecond) // TTL 余量充足；到期判定单调安全
+	code, resp = vaultDo(t, h, uid, "GET", "/status", "")
+	data = resp["data"].(map[string]any)
+	if code != 200 || data["unlocked"] != false || data["unlockedUntil"] != nil {
+		t.Fatalf("expired session should auto-lock: %d %v", code, data)
+	}
+	// 懒清理已丢会话：取用通道立刻 423（票据注入的数据源同路径）
+	if _, _, _, err := VaultLookupSaved(uid, "ag1", "ssh", 22); VaultErrStatus(err) != http.StatusLocked {
+		t.Fatalf("lookup after expiry must be locked: %v", err)
 	}
 }
 
@@ -172,9 +191,9 @@ func TestVaultUnlockTTLExpiryAutoLocks(t *testing.T) {
 
 func TestVaultUpsertListDeleteFlow(t *testing.T) {
 	db := newDB(t)
+	vaultActivate(t, db, nil)
 	h := NewVaultHandler(db)
 	const uid = uint(103)
-	defer vaultLockUser(uid)
 
 	// 未解锁：PUT/DELETE 一律 423
 	if code, _ := vaultDo(t, h, uid, "PUT", "/credentials",
@@ -240,9 +259,9 @@ func TestVaultUpsertListDeleteFlow(t *testing.T) {
 
 func TestVaultUpsertKeepsSecretsWhenOmitted(t *testing.T) {
 	db := newDB(t)
+	vaultActivate(t, db, nil)
 	h := NewVaultHandler(db)
 	const uid = uint(104)
-	defer vaultLockUser(uid)
 	vaultSetup(t, h, uid, "master-pass-1")
 
 	vaultDo(t, h, uid, "PUT", "/credentials",
@@ -257,7 +276,7 @@ func TestVaultUpsertKeepsSecretsWhenOmitted(t *testing.T) {
 		t.Fatalf("relabel entry: %v", entry)
 	}
 	// 密文确实还在（经取用通道验证，而非仅看 hasPassword 位）
-	user, pass, _, err := VaultLookupSaved(db, uid, "ag1", "rdp", 3389)
+	user, pass, _, err := VaultLookupSaved(uid, "ag1", "rdp", 3389)
 	if err != nil || user != "bob" || pass != "secret-pw" {
 		t.Fatalf("secret must survive relabel: %q %q %v", user, pass, err)
 	}
@@ -267,12 +286,12 @@ func TestVaultUpsertKeepsSecretsWhenOmitted(t *testing.T) {
 
 func TestVaultLookupSavedPortFallbackAndErrors(t *testing.T) {
 	db := newDB(t)
+	vaultActivate(t, db, nil)
 	h := NewVaultHandler(db)
 	const uid = uint(105)
-	defer vaultLockUser(uid)
 
 	// 锁定态：errVaultLocked
-	if _, _, _, err := VaultLookupSaved(db, uid, "ag1", "ssh", 22); VaultErrStatus(err) != http.StatusLocked {
+	if _, _, _, err := VaultLookupSaved(uid, "ag1", "ssh", 22); VaultErrStatus(err) != http.StatusLocked {
 		t.Fatalf("locked lookup: %v", err)
 	}
 	vaultSetup(t, h, uid, "master-pass-1")
@@ -281,13 +300,13 @@ func TestVaultLookupSavedPortFallbackAndErrors(t *testing.T) {
 
 	// 显式 22 与归一后的默认端口是同一条；非默认端口查不到回退默认条目
 	for _, port := range []int{22, 2222} {
-		user, pass, _, err := VaultLookupSaved(db, uid, "ag1", "ssh", port)
+		user, pass, _, err := VaultLookupSaved(uid, "ag1", "ssh", port)
 		if err != nil || user != "bob" || pass != "secret-pw" {
 			t.Fatalf("lookup port %d: %q %q %v", port, user, pass, err)
 		}
 	}
 	// 不同协议无条目
-	if _, _, _, err := VaultLookupSaved(db, uid, "ag1", "vnc", 5900); VaultErrStatus(err) != http.StatusNotFound {
+	if _, _, _, err := VaultLookupSaved(uid, "ag1", "vnc", 5900); VaultErrStatus(err) != http.StatusNotFound {
 		t.Fatalf("missing entry should 404, got %v", err)
 	}
 }
@@ -296,9 +315,9 @@ func TestVaultLookupSavedPortFallbackAndErrors(t *testing.T) {
 
 func TestVaultExportRequiresConfirmAndNeverPlaintext(t *testing.T) {
 	db := newDB(t)
+	vaultActivate(t, db, nil)
 	h := NewVaultHandler(db)
 	const uid = uint(106)
-	defer vaultLockUser(uid)
 	vaultSetup(t, h, uid, "master-pass-1")
 	vaultDo(t, h, uid, "PUT", "/credentials",
 		`{"agentId":"ag1","protocol":"ssh","username":"bob","password":"secret-pw"}`)
@@ -348,9 +367,9 @@ func TestVaultExportRequiresConfirmAndNeverPlaintext(t *testing.T) {
 
 func TestVaultChangePasswordKeepsEntries(t *testing.T) {
 	db := newDB(t)
+	vaultActivate(t, db, nil)
 	h := NewVaultHandler(db)
 	const uid = uint(107)
-	defer vaultLockUser(uid)
 	vaultSetup(t, h, uid, "master-pass-1")
 	vaultDo(t, h, uid, "PUT", "/credentials",
 		`{"agentId":"ag1","protocol":"ssh","username":"bob","password":"secret-pw"}`)
@@ -372,7 +391,7 @@ func TestVaultChangePasswordKeepsEntries(t *testing.T) {
 	if code, _ := vaultDo(t, h, uid, "POST", "/unlock", `{"masterPassword":"master-pass-2"}`); code != 200 {
 		t.Fatalf("new password should unlock, got %d", code)
 	}
-	_, pass, _, err := VaultLookupSaved(db, uid, "ag1", "ssh", 22)
+	_, pass, _, err := VaultLookupSaved(uid, "ag1", "ssh", 22)
 	if err != nil || pass != "secret-pw" {
 		t.Fatalf("entries must survive rekey: %q %v", pass, err)
 	}
@@ -382,6 +401,7 @@ func TestVaultChangePasswordKeepsEntries(t *testing.T) {
 
 func TestGuacTicketUseSavedInjectsVaultCredential(t *testing.T) {
 	db := newDB(t)
+	vaultActivate(t, db, nil)
 	registry, _ := newRegistry(t)
 	registry.Register("ag1", "host1", "127.0.0.1", nil)
 
@@ -390,7 +410,6 @@ func TestGuacTicketUseSavedInjectsVaultCredential(t *testing.T) {
 	guac := NewGuacamoleHandler(db, registry, tickets, "127.0.0.1:4822", "", "", "")
 	vh := NewVaultHandler(db)
 	const uid = uint(108)
-	defer vaultLockUser(uid)
 
 	// 未存凭据 + useSaved：404
 	vaultSetup(t, vh, uid, "master-pass-1")

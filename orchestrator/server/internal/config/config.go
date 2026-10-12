@@ -59,6 +59,14 @@ type Config struct {
 	// 与 GuacdRecordingPath 指向同一宿主卷的两个挂载点（可不同容器路径）。
 	// 两者均非空才允许 record=true 的票据与录像检索 API；空 = 录制关闭。
 	RecordingDir string
+	// VaultProvider 密钥保险箱 provider（WINGMAN_VAULT_PROVIDER，默认
+	// local = 自托管本地加密实现）。可选值见 internal/vault 注册表；未知值
+	// 在启动装配 vault.Activate 时报错退出，不静默降级。
+	VaultProvider string
+	// VaultProviderConfig 各 provider 的配置节：WINGMAN_VAULT_<NAME>_* 环境
+	// 变量去公共前缀后的大写键值（如 WINGMAN_VAULT_LOCAL_SESSION_TTL →
+	// LOCAL_SESSION_TTL）。值原样透传，由 provider 自行解析校验。
+	VaultProviderConfig map[string]string
 }
 
 // filepathAbs 以变量形式间接引用 filepath.Abs，便于测试注入失败场景
@@ -67,22 +75,23 @@ var filepathAbs = filepath.Abs
 
 func Load() (Config, error) {
 	cfg := Config{
-		Host:        getenv("WINGMAN_HOST", defaultHost),
-		Port:        getenvInt("WINGMAN_PORT", defaultPort),
-		DBPath:      getenv("WINGMAN_DB_PATH", defaultDBPath),
-		StaticDir:   getenv("WINGMAN_STATIC_DIR", defaultStaticDir),
-		AgentAddr:   getenv("WINGMAN_AGENT_ADDR", defaultAgentAddr),
-		ScriptsDir:  getenv("WINGMAN_SCRIPTS_DIR", defaultScriptsDir),
-		UpdatesDir:  getenv("WINGMAN_UPDATES_DIR", defaultUpdatesDir),
-		AssetsDir:   getenv("WINGMAN_ASSETS_DIR", defaultAssetsDir),
-		JWTSecret:   os.Getenv("WINGMAN_JWT_SECRET"),
-		CORSOrigins: splitList(os.Getenv("WINGMAN_CORS_ORIGINS")),
-		AgentTokens: splitList(os.Getenv("WINGMAN_AGENT_TOKENS")),
-		GuacdAddr:   getenv("WINGMAN_GUACD_ADDR", defaultGuacdAddr),
-
-		GuacdDrivePath:     getenv("WINGMAN_GUACD_DRIVE_PATH", defaultGuacdDrivePath),
-		GuacdRecordingPath: getenv("WINGMAN_GUACD_RECORDING_PATH", ""),
-		RecordingDir:       getenv("WINGMAN_RECORDING_DIR", ""),
+		Host:                getenv("WINGMAN_HOST", defaultHost),
+		Port:                getenvInt("WINGMAN_PORT", defaultPort),
+		DBPath:              getenv("WINGMAN_DB_PATH", defaultDBPath),
+		StaticDir:           getenv("WINGMAN_STATIC_DIR", defaultStaticDir),
+		AgentAddr:           getenv("WINGMAN_AGENT_ADDR", defaultAgentAddr),
+		ScriptsDir:          getenv("WINGMAN_SCRIPTS_DIR", defaultScriptsDir),
+		UpdatesDir:          getenv("WINGMAN_UPDATES_DIR", defaultUpdatesDir),
+		AssetsDir:           getenv("WINGMAN_ASSETS_DIR", defaultAssetsDir),
+		JWTSecret:           os.Getenv("WINGMAN_JWT_SECRET"),
+		CORSOrigins:         splitList(os.Getenv("WINGMAN_CORS_ORIGINS")),
+		AgentTokens:         splitList(os.Getenv("WINGMAN_AGENT_TOKENS")),
+		GuacdAddr:           getenv("WINGMAN_GUACD_ADDR", defaultGuacdAddr),
+		GuacdDrivePath:      getenv("WINGMAN_GUACD_DRIVE_PATH", defaultGuacdDrivePath),
+		GuacdRecordingPath:  getenv("WINGMAN_GUACD_RECORDING_PATH", ""),
+		RecordingDir:        getenv("WINGMAN_RECORDING_DIR", ""),
+		VaultProvider:       getenv("WINGMAN_VAULT_PROVIDER", "local"),
+		VaultProviderConfig: vaultProviderConfig(),
 	}
 
 	if cfg.JWTSecret == "" {
@@ -117,6 +126,23 @@ func MustLoad() Config {
 
 func Addr(cfg Config) string {
 	return fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+}
+
+// vaultProviderConfig 收集 provider 配置节：环境变量 WINGMAN_VAULT_<NAME>_
+// * 去公共前缀后的大写键值（如 WINGMAN_VAULT_LOCAL_SESSION_TTL →
+// LOCAL_SESSION_TTL）；选择项 WINGMAN_VAULT_PROVIDER 本身除外。值原样
+// 透传，解析与校验由 provider 实现负责。
+func vaultProviderConfig() map[string]string {
+	const prefix = "WINGMAN_VAULT_"
+	out := map[string]string{}
+	for _, kv := range os.Environ() {
+		key, value, found := strings.Cut(kv, "=")
+		if !found || !strings.HasPrefix(key, prefix) || key == "WINGMAN_VAULT_PROVIDER" {
+			continue
+		}
+		out[key[len(prefix):]] = value
+	}
+	return out
 }
 
 func getenv(key, fallback string) string {

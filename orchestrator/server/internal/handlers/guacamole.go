@@ -37,6 +37,7 @@ import (
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/rbac"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/remoteticket"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/vault"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
@@ -127,17 +128,10 @@ func (h *GuacamoleHandler) recordingEnabled() bool {
 }
 
 // guacProtocolPort 各协议的 agent 侧默认端口（endpoint 矩阵 §5：RDP 3389、
-// VNC 5900、SSH 22）。
+// VNC 5900、SSH 22）。表本体在 internal/vault.DefaultProtocolPort——保险箱
+// 存入归一与取用回退共用同一张表，此处只是 guacd 域的别名。
 func guacProtocolPort(protocol string) int {
-	switch protocol {
-	case "rdp":
-		return 3389
-	case "vnc":
-		return 5900
-	case "ssh":
-		return 22
-	}
-	return 0
+	return vault.DefaultProtocolPort(protocol)
 }
 
 // guacSupportedProtocol Guacamole 承接的协议（rdp/vnc/ssh）。链路一致性由
@@ -437,7 +431,7 @@ func (h *GuacamoleHandler) HandleTicketCreate(c *gin.Context) {
 	// 只记来源枚举，与 cockpit 同款取舍）。
 	authSource := "user"
 	if req.UseSaved {
-		savedUser, savedPass, savedDomain, err := VaultLookupSaved(h.db, userID, req.AgentID, req.Protocol, port)
+		savedUser, savedPass, savedDomain, err := VaultLookupSaved(userID, req.AgentID, req.Protocol, port)
 		if err != nil {
 			c.JSON(VaultErrStatus(err), gin.H{"success": false, "error": VaultErrMsg(err)})
 			return

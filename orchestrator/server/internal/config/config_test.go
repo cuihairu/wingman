@@ -10,7 +10,7 @@ const testSecret = "0123456789abcdef0123456789abcdef"
 
 func TestLoadDefaults(t *testing.T) {
 	t.Setenv("WINGMAN_JWT_SECRET", testSecret)
-	for _, key := range []string{"WINGMAN_HOST", "WINGMAN_PORT", "WINGMAN_DB_PATH", "WINGMAN_STATIC_DIR", "WINGMAN_AGENT_ADDR", "WINGMAN_SCRIPTS_DIR", "WINGMAN_CORS_ORIGINS"} {
+	for _, key := range []string{"WINGMAN_HOST", "WINGMAN_PORT", "WINGMAN_DB_PATH", "WINGMAN_STATIC_DIR", "WINGMAN_AGENT_ADDR", "WINGMAN_SCRIPTS_DIR", "WINGMAN_CORS_ORIGINS", "WINGMAN_VAULT_PROVIDER"} {
 		t.Setenv(key, "")
 	}
 
@@ -20,6 +20,9 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if cfg.Host != "127.0.0.1" || cfg.Port != 9527 || cfg.AgentAddr != "127.0.0.1:8888" {
 		t.Errorf("unexpected defaults: %+v", cfg)
+	}
+	if cfg.VaultProvider != "local" {
+		t.Errorf("vault provider default should be local, got %q", cfg.VaultProvider)
 	}
 	if cfg.JWTSecret != testSecret {
 		t.Errorf("jwt secret not loaded")
@@ -153,6 +156,26 @@ func TestLoadScriptsDirAbsFails(t *testing.T) {
 
 	if _, err := Load(); err == nil {
 		t.Error("expected error when scripts dir abs resolution fails")
+	}
+}
+
+func TestVaultProviderConfig(t *testing.T) {
+	t.Setenv("WINGMAN_JWT_SECRET", testSecret)
+	t.Setenv("WINGMAN_VAULT_PROVIDER", "stub")
+	t.Setenv("WINGMAN_VAULT_LOCAL_SESSION_TTL", "5m")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.VaultProvider != "stub" {
+		t.Errorf("unexpected vault provider: %q", cfg.VaultProvider)
+	}
+	if got := cfg.VaultProviderConfig["LOCAL_SESSION_TTL"]; got != "5m" {
+		t.Errorf("provider config section: %v", cfg.VaultProviderConfig)
+	}
+	// 选择项本身不进配置节
+	if _, ok := cfg.VaultProviderConfig["PROVIDER"]; ok {
+		t.Errorf("WINGMAN_VAULT_PROVIDER must not leak into the section: %v", cfg.VaultProviderConfig)
 	}
 }
 

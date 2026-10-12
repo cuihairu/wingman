@@ -27,6 +27,7 @@ import (
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/rbac"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/remoteticket"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/vault"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/workflow"
 	"github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
 	"github.com/gin-gonic/gin"
@@ -137,6 +138,12 @@ func run() error {
 	remoteSessionsHandler := handlers.NewRemoteSessionHandler(db)
 	// 文件操作审计上报（设计 §15.1）：与网关同库；票据→会话反解走网关快照
 	fileOpsHandler := handlers.NewRemoteFileOpsHandler(db, guacamoleHandler)
+	// 密钥保险箱 provider 装配（WINGMAN_VAULT_PROVIDER，默认 local）：配置
+	// 选实现，业务面只依赖 vault.Active()——换实现不改业务代码。未知名/
+	// 构造失败启动即炸，不静默降级。
+	if err := vault.Activate(cfg.VaultProvider, vault.Options{DB: db, Config: cfg.VaultProviderConfig}); err != nil {
+		return fmt.Errorf("init vault provider: %w", err)
+	}
 	// 密钥保险箱（远程凭据加密存储 + 连接快捷调用）：主口令派生 KEK 包裹
 	// per-user DEK，解锁期驻留内存（models/vault.go 头注释）
 	vaultHandler := handlers.NewVaultHandler(db)
