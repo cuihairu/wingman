@@ -248,17 +248,21 @@ public:
 				currentTeam_.members = msg["members"].get<std::vector<std::string>>();
 			}
 			joined_ = true;
+			// 触发本地事件（team.md 事件订阅面：on("joined") 等）
+			EventHub::instance().emit("team.joined", msg);
 			spdlog::info("[Team] Joined team {}", currentTeam_.teamId);
 		}
 		else if (type == "team.left") {
 			currentTeam_ = TeamStatus();
 			memberId_.clear();
 			joined_ = false;
+			EventHub::instance().emit("team.left", msg);
 			spdlog::info("[Team] Left team");
 		}
 		else if (type == "team.member_joined") {
 			std::string newMember = msg.value("memberId", "");
 			currentTeam_.members.push_back(newMember);
+			EventHub::instance().emit("team.member_joined", msg);
 			spdlog::info("[Team] Member {} joined team {}", newMember, currentTeam_.teamId);
 		}
 		else if (type == "team.member_left") {
@@ -267,6 +271,7 @@ public:
 			if (it != currentTeam_.members.end()) {
 				currentTeam_.members.erase(it);
 			}
+			EventHub::instance().emit("team.member_left", msg);
 			spdlog::info("[Team] Member {} left team {}", leavingMember, currentTeam_.teamId);
 		}
 		else if (type == "team.vote_started") {
@@ -544,6 +549,19 @@ ModuleDescriptor createTeamModule() {
 
 		return ScriptValue::fromBool(true);
 	}, "event:string, callback:function -> bool"});
+
+	// 运行时桥下行分派（apps/agent 装配）：agent 通道下行的 inbox.message 经
+	// EventHub team.inbound 事件到达，这里驱动默认客户端（handle 1）的
+	// handleServerMessage，使 join/vote/broadcast 的本地状态与 on() 事件订阅真正
+	// 被 server 驱动。按名去重：模块可随多个脚本引擎重复创建，桥只挂一次。
+	if (!EventHub::instance().subscriptionByName("team.inbound_bridge").has_value()) {
+		EventHub::instance().subscribe("team.inbound", [](const EventMessage& msg) {
+			auto* client = TeamManager::instance().getClient(1);
+			if (client) {
+				client->handleServerMessage(msg.payload);
+			}
+		}, "team.inbound_bridge");
+	}
 
 	return mod;
 }

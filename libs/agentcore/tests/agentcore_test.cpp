@@ -423,6 +423,58 @@ TEST_F(RemoteClientTest, RegisterAckMalformedJsonDoesNotCrash) {
     client_->stop();
 }
 
+TEST_F(RemoteClientTest, SendNotifyDeliversTypedFrameWithMergedFields) {
+    ASSERT_TRUE(connectAndRegister(true));
+    ASSERT_NE(client_, nullptr);
+
+    // 团队协同桥出站面：type + 逐键合并字段，Notify 帧（server 侧 sendNotify 对称面）
+    client_->sendNotify("team.join", {
+        {"teamId", "team_1"},
+        {"memberId", "m-1"},
+    });
+    ASSERT_TRUE(waitServerMessages(2));
+    const MessagePtr& sent = serverMessages_[1];
+    EXPECT_EQ(sent->header.type, MessageType::Notify);
+    const nlohmann::json body = nlohmann::json::parse(sent->body);
+    EXPECT_EQ(body.value("type", ""), "team.join");
+    EXPECT_EQ(body.value("teamId", ""), "team_1");
+    EXPECT_EQ(body.value("memberId", ""), "m-1");
+    client_->stop();
+}
+
+TEST_F(RemoteClientTest, NotifyHandlerReceivesUnhandledTypes) {
+    ASSERT_TRUE(startServer());
+    client_ = std::make_unique<RemoteClient>(makeConfig());
+
+    // 内建类型（agent.register_ack / proxy.*）之外全部交宿主装配层分派
+    std::mutex cbMutex;
+    std::condition_variable cbCv;
+    std::vector<std::pair<std::string, nlohmann::json>> received;
+    client_->setNotifyHandler([&](const std::string& type, const nlohmann::json& body) {
+        std::lock_guard<std::mutex> lock(cbMutex);
+        received.emplace_back(type, body);
+        cbCv.notify_all();
+    });
+    ASSERT_TRUE(client_->start());
+    ASSERT_TRUE(waitServerMessages(1));
+
+    nlohmann::json frame = {
+        {"type", "inbox.message"},
+        {"msgId", "msg_1"},
+        {"messageType", "team.joined"},
+        {"payload", {{"type", "team.joined"}, {"teamId", "team_1"}}},
+        {"timestamp", 1715299200000},
+    };
+    auto msg = Message::create(MessageType::Notify, frame.dump());
+    ASSERT_TRUE(server_->send(server_->getSessionIds()[0], msg));
+    std::unique_lock<std::mutex> lock(cbMutex);
+    ASSERT_TRUE(cbCv.wait_for(lock, 3000ms, [&] { return received.size() >= 1; }));
+    EXPECT_EQ(received[0].first, "inbox.message");
+    EXPECT_EQ(received[0].second.value("msgId", ""), "msg_1");
+    EXPECT_EQ(received[0].second.value("messageType", ""), "team.joined");
+    client_->stop();
+}
+
 TEST_F(RemoteClientTest, DoubleStartReturnsTrueWithoutRestart) {
     ASSERT_TRUE(connectAndRegister(true));
     ASSERT_NE(client_, nullptr);

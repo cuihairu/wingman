@@ -386,10 +386,14 @@ the notifier callback emits the existing `inbox.message` notify frame over
 the agent TCP connection; offline members keep the buffered message until
 ack or disconnect purge. Members without a bound device (including the
 team leader created with the team) are reported as `skipped` in the
-per-member summary instead of enqueueing against an empty agentID. The
-Android runtime does not consume `inbox.message` (see platforms.md); the
-desktop runtime inbox module dispatches any message type via registered
-callbacks.
+per-member summary instead of enqueueing against an empty agentID. On the
+runtime side the frames cross back into the script layer through the same
+agent channel: outbound `wingman.team.*` calls emit a `team.outbound`
+EventHub event that apps/agent forwards as `team.join` / `team.leave` /
+`team.vote_*` / `team.status_report` / `team.broadcast` notifies, and
+inbound `inbox.message` notifies are converted to a `team.inbound` event
+that drives the team module state machine, then auto-acked (`inbox.ack`).
+The Android runtime does not consume `inbox.message` (see platforms.md).
 
 ## Scripting Language Strategy (Dual-Language, Tiered Primacy)
 

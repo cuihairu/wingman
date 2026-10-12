@@ -482,11 +482,21 @@ void RemoteClient::handleRegisterAck(const std::string& data) {
 void RemoteClient::sendAgentEvent(const std::string& event, const nlohmann::json& data) {
     // 发送 agent.event Notify（与 server 侧 listener.go:384 case "agent.event" 匹配）。
     // queueable=true：断线时入 outbox，重连后 flush，避免事件丢失。
-    nlohmann::json msg = {
-        {"type", "agent.event"},
+    sendNotify("agent.event", {
         {"event", event},
         {"data", data},
+    });
+}
+
+void RemoteClient::sendNotify(const std::string& type, const nlohmann::json& fields) {
+    // 通用 Notify 发送：type + 逐键合并 fields 构成帧体（server 侧 sendNotify 对称面）。
+    // queueable=true：断线时入 outbox，重连后 flush。
+    nlohmann::json msg = {
+        {"type", type},
     };
+    for (auto it = fields.begin(); it != fields.end(); ++it) {
+        msg[it.key()] = it.value();
+    }
     auto message = std::make_shared<transport::Message>();
     message->header.type = transport::MessageType::Notify;
     message->body = msg.dump();
@@ -529,6 +539,9 @@ void RemoteClient::handleNotifyMessage(const transport::MessagePtr& msg) {
         } else if (type == "proxy.new" || type == "proxy.data" || type == "proxy.close") {
             // 代理数据面（Guacamole 目标转发等）：高频帧不逐条 info 级刷日志
             impl_->proxy->handleNotify(type, json);
+        } else if (notifyHandler_) {
+            // 内建类型之外（inbox.message / team.error / inbox.*_ack …）交宿主装配层分派
+            notifyHandler_(type, json);
         } else {
             spdlog::debug("Received Notify: type={}", type);
         }

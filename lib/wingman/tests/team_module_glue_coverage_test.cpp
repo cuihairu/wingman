@@ -13,8 +13,8 @@ using namespace wingman::script::modules;
 // 参数分支（缺参/类型回退/已加入拒绝）与 joined 状态下的完整路径。
 // TeamManager 是进程级单例且胶水固定用 handle 1，现有测试已触碰过该句柄，
 // 因此每个用例自带 ensureJoined/ensureLeft 准备状态，不依赖用例执行顺序。
-// 已知不可达：getVoteResult 命中 votes_ 的分支——votes_ 仅由
-// TeamClient::handleServerMessage 填充，胶水层没有暴露该入口，不硬凑。
+// getVoteResult 命中 votes_ 的分支曾因 handleServerMessage 无胶水入口而
+// 不可达；team.inbound 桥（2026-10-13）接通后由 InboundBridgeDrives* 用例触达。
 
 namespace {
 
@@ -203,6 +203,84 @@ TEST_F(TeamGlueCoverageTest, SubscribeBranches) {
     ASSERT_TRUE((*fn)({ScriptValue::fromString("vote_started"), counter}).asBool());
     EventHub::instance().emit("team.vote_started", {{"voteId", "v-cov"}});
     EXPECT_EQ(called, 1);
+}
+
+// ========== team.inbound 桥下行：server 驱动的状态机与事件 ==========
+// （apps/agent 把 agent 通道下行的 inbox.message 转成 team.inbound 事件，
+//  team_module 按名去重挂接 handleServerMessage —— 测试直接 emit 模拟）
+
+TEST_F(TeamGlueCoverageTest, InboundBridgeDrivesJoinedStateAndMemberEvents) {
+    // 先经胶水建出默认客户端（handle 1），桥下行分派才有着落
+    ensureJoined();
+
+    // team.joined 载荷驱动本地状态（区别于 joinTeam 的乐观更新路径）
+    EventHub::instance().emit("team.inbound", {
+        {"type", "team.joined"},
+        {"teamId", "bridge-team"},
+        {"leaderId", "admin"},
+        {"members", nlohmann::json::array({"bridge-member"})},
+    });
+    EXPECT_TRUE(isJoined());
+    const auto* statusFn = findFunction(mod_, "getTeamStatus");
+    const std::string status = (*statusFn)({}).asString();
+    EXPECT_NE(status.find("\"teamId\":\"bridge-team\""), std::string::npos);
+    EXPECT_NE(status.find("\"leaderId\":\"admin\""), std::string::npos);
+    EXPECT_NE(status.find("bridge-member"), std::string::npos);
+
+    // member_joined 事件经 on() 订阅触达（载荷 JSON 字符串透传给回调）
+    const auto* onFn = findFunction(mod_, "on");
+    std::string seenPayload;
+    auto memberCb = ScriptValue::fromCallable([&seenPayload](const std::vector<ScriptValue>& args) -> ScriptValue {
+        seenPayload = args.at(0).asString();
+        return ScriptValue::fromBool(true);
+    });
+    ASSERT_TRUE((*onFn)({ScriptValue::fromString("member_joined"), memberCb}).asBool());
+    EventHub::instance().emit("team.inbound", {
+        {"type", "team.member_joined"},
+        {"teamId", "bridge-team"},
+        {"memberId", "late-member"},
+    });
+    EXPECT_NE(seenPayload.find("late-member"), std::string::npos);
+
+    // 成员表同步追加
+    const std::string after = (*statusFn)({}).asString();
+    EXPECT_NE(after.find("late-member"), std::string::npos);
+
+    // 收尾保持「已加入」终态：A11 空态用例按 teamId 非空 skip，若留下
+    // 「client 存在但未加入」的中间态，其空态断言（state=idle）无从触达也不触发 skip
+    ensureJoined();
+}
+
+TEST_F(TeamGlueCoverageTest, InboundBridgeDrivesVoteLifecycle) {
+    ensureJoined();
+    const auto* voteResultFn = findFunction(mod_, "getVoteResult");
+
+    // vote_started 入本地投票表（votes_ 历史上仅 handleServerMessage 可填、
+    // 胶水无入口而被判不可达 —— team.inbound 桥接通后该分支可达）
+    EventHub::instance().emit("team.inbound", {
+        {"type", "team.vote_started"},
+        {"voteId", "v-bridge"},
+        {"teamId", "cov-team"},
+        {"proposerId", "admin"},
+        {"subject", "switch map"},
+        {"deadline", 1715299200000},
+    });
+    const std::string started = (*voteResultFn)({ScriptValue::fromString("v-bridge")}).asString();
+    EXPECT_NE(started.find("\"voteId\":\"v-bridge\""), std::string::npos);
+    EXPECT_NE(started.find("\"active\":true"), std::string::npos);
+
+    // vote_ended 携结果回填 responses 并落定 active=false
+    EventHub::instance().emit("team.inbound", {
+        {"type", "team.vote_ended"},
+        {"voteId", "v-bridge"},
+        {"result", {{"cov-member", "yes"}}},
+    });
+    const std::string ended = (*voteResultFn)({ScriptValue::fromString("v-bridge")}).asString();
+    EXPECT_NE(ended.find("cov-member"), std::string::npos);
+    EXPECT_NE(ended.find("\"active\":false"), std::string::npos);
+
+    // 同上：保持「已加入」终态，避免 A11 空态用例的盲区
+    ensureJoined();
 }
 
 } // anonymous namespace

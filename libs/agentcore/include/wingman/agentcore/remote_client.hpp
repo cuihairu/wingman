@@ -48,6 +48,13 @@ struct CommandResult {
 
 using CommandCallback = std::function<CommandResult(const std::string& command, const CommandData& data)>;
 
+// ========== Notify 下行处理器 ==========
+// server 推送的 Notify 帧中，除 RemoteClient 内建处理的 agent.register_ack /
+// proxy.*（与 auth.challenge）之外（inbox.message、team.error、inbox.*_ack 及
+// 未来新增类型）都经此交给宿主装配层分派。handler 运行在消息线程上，
+// 不得重入 RemoteClient 的加锁方法。
+using NotifyHandler = std::function<void(const std::string& type, const nlohmann::json& body)>;
+
 // ========== Connection State ==========
 
 enum class ConnectionState {
@@ -123,6 +130,17 @@ public:
     // 对应 server 侧 listener.go handleNotify -> case "agent.event" -> handleEvent（广播到 Dashboard WS）。
     void sendAgentEvent(const std::string& event, const nlohmann::json& data);
 
+    // 通用 Notify 发送（server 侧 sendNotify 的对称面）：type + 逐键合并 fields
+    // 构成帧体。queueable=true：断线时入 outbox，重连后 flush。
+    // 团队协同桥（apps/agent）经此转发脚本 wingman.team.* 的 team.outbound 事件
+    // （team.join / team.leave / team.vote_* / team.status_report / team.broadcast）。
+    void sendNotify(const std::string& type, const nlohmann::json& fields);
+
+    // Notify 下行分派回调（内建类型之外的帧都经此交给宿主，见 NotifyHandler 注释）
+    void setNotifyHandler(NotifyHandler callback) {
+        notifyHandler_ = std::move(callback);
+    }
+
 private:
     // 连接管理
     void connect();
@@ -167,6 +185,7 @@ private:
 
     ConnectionCallback eventCallback_;
     CommandCallback commandCallback_;
+    NotifyHandler notifyHandler_;
 };
 
 } // namespace wingman::runtime

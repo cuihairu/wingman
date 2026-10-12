@@ -6,6 +6,7 @@
 #include "wingman/trigger.hpp"
 #include "wingman/window.hpp"
 #include "wingman/agentcore/event_buffer.hpp"
+#include "wingman/event.hpp"
 #include "wingman/runtime/local_ipc_server.hpp"
 #include "wingman/agentcore/remote_client.hpp"
 #include "wingman/runtime/rpc/config_handler.hpp"
@@ -444,6 +445,38 @@ bool Agent::initRemoteClient() {
             impl_->remoteClient->sendAgentEvent("script_output", payload);
         }
         // log.line / connection.state_changed 为本地相关，不转发
+    });
+
+    // 团队/收件箱桥（A4 多设备协同）：脚本 wingman.team.* 出站经 EventHub
+    // team.outbound 事件转 agent 通道 Notify（team.join / team.leave / team.vote_*
+    // / team.status_report / team.broadcast）；server 下行 inbox.message 转
+    // team.inbound 事件交回 team 模块状态机（team_module 订阅），处理即 ack。
+    // 订阅按名去重：initRemoteClient 可重入（applyRemoteConfig 热重建）不重复挂，
+    // lambda 每次 fresh 读 impl_->remoteClient，重建后仍指向当前实例。
+    if (!EventHub::instance().subscriptionByName("team.outbound_remote_bridge").has_value()) {
+        EventHub::instance().subscribe("team.outbound", [this](const EventMessage& msg) {
+            if (!impl_->remoteClient) return;
+            const std::string type = msg.payload.value("type", "");
+            if (type.empty()) return;
+            impl_->remoteClient->sendNotify(type, msg.payload);
+        }, "team.outbound_remote_bridge");
+    }
+    impl_->remoteClient->setNotifyHandler([this](const std::string& type, const nlohmann::json& body) {
+        if (!impl_->remoteClient) return;
+        if (type == "inbox.message") {
+            // sendToInbox 的载荷自带 type 键；HTTP 团队推送的载荷没有，
+            // 用 messageType 补齐后交 team 模块状态机分派（未知类型静默忽略）
+            nlohmann::json payload = body.value("payload", nlohmann::json::object());
+            if (!payload.contains("type")) {
+                payload["type"] = body.value("messageType", "");
+            }
+            EventHub::instance().emit("team.inbound", payload);
+            // 处理即确认：server GetMessages 只回未 ack 消息，不 ack 永久占缓冲
+            impl_->remoteClient->sendNotify("inbox.ack", {
+                {"msgId", body.value("msgId", "")},
+            });
+        }
+        // team.error / inbox.*_ack 当前仅记录，无需分派
     });
 
     return true;
