@@ -320,6 +320,13 @@ public:
 			// 触发本地事件
 			EventHub::instance().emit("team.broadcast_received", msg);
 		}
+		else if (!type.empty()) {
+			// 未识别的团队消息类型（团队范围推送的自定义类型，如 system.notice）：
+			// 以 "team." + 原类型名 emit，脚本经 on("<messageType>") 订阅触达，
+			// 不因本地无对应状态处理而被静默丢弃
+			EventHub::instance().emit("team." + type, msg);
+			spdlog::debug("[Team] Custom team message type: {}", type);
+		}
 	}
 
 private:

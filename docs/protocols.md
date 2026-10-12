@@ -128,7 +128,7 @@ Body: JSON（最大 16 MiB）
 | type 字段 | 说明 |
 |-----------|------|
 | `agent.register_ack` | 注册应答（`{success, agentId, ...}`） |
-| `inbox.message` | 收件箱投递帧：`{msgId, messageType, payload, timestamp}`。在线实时推送；agent 离线时留在 server 内存缓冲（断连即清）。`messageType` 取值：团队协同面 `team.joined` / `team.member_joined` / `team.left` / `team.member_left` / `team.vote_started` / `team.vote_ended` / `team.status_report` / `team.broadcast_received`，以及团队范围推送的自定义类型（server 触发：`POST /api/teams/:teamId/messages`，权限 `agents:manage`，未绑定设备的成员跳过）。桌面 runtime 经 apps/agent 桥消费：载荷转 `team.inbound` 事件驱动 team 模块状态机（`wingman.team.on()` 事件订阅），处理完自动经 `inbox.ack` 确认；其余类型按 `messageType` 分派脚本回调（`wingman.inbox.*`）。Android runtime 不消费此帧 |
+| `inbox.message` | 收件箱投递帧：`{msgId, messageType, payload, timestamp}`。在线实时推送；agent 离线时留在 server 内存缓冲（断连即清）。`messageType` 取值：团队协同面 `team.joined` / `team.member_joined` / `team.left` / `team.member_left` / `team.vote_started` / `team.vote_ended` / `team.status_report` / `team.broadcast_received`，以及团队范围推送的自定义类型（server 触发：`POST /api/teams/:teamId/messages`，权限 `agents:manage`，未绑定设备的成员跳过）。桌面 runtime 经 apps/agent 桥消费：团队协同类型载荷转 `team.inbound` 事件驱动 team 模块状态机（`wingman.team.on()` 事件订阅），自定义类型以 `team.<messageType>` 事件触达脚本（`on("<messageType>")` 订阅），处理完自动经 `inbox.ack` 确认。脚本侧轮询消费走 `wingman.inbox.*`（独立连接 + `connect`/`consume`/`ack`/`report`，见 docs/api/inbox.md），不经此桥。Android runtime 不消费此帧 |
 | `inbox.register_ack` / `inbox.heartbeat_ack` | 收件箱注册/心跳应答（载荷见上表） |
 | `team.error` | `{error}`，team.join / team.vote_create 失败原因 |
 

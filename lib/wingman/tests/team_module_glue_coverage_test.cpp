@@ -283,4 +283,29 @@ TEST_F(TeamGlueCoverageTest, InboundBridgeDrivesVoteLifecycle) {
     ensureJoined();
 }
 
+TEST_F(TeamGlueCoverageTest, InboundBridgeDrivesCustomPushTypes) {
+    ensureJoined();
+
+    // 未识别的 messageType（团队范围推送的自定义类型）以 team.<type> 事件
+    // 触达脚本订阅，不因无本地状态处理而被静默丢弃
+    const auto* onFn = findFunction(mod_, "on");
+    std::string seenPayload;
+    auto noticeCb = ScriptValue::fromCallable([&seenPayload](const std::vector<ScriptValue>& args) -> ScriptValue {
+        seenPayload = args.at(0).asString();
+        return ScriptValue::fromBool(true);
+    });
+    ASSERT_TRUE((*onFn)({ScriptValue::fromString("system.notice"), noticeCb}).asBool());
+
+    EventHub::instance().emit("team.inbound", {
+        {"type", "system.notice"},
+        {"teamId", "cov-team"},
+        {"text", "maintenance in 5 min"},
+    });
+    EXPECT_NE(seenPayload.find("system.notice"), std::string::npos);
+    EXPECT_NE(seenPayload.find("maintenance in 5 min"), std::string::npos);
+
+    // 同上：保持「已加入」终态
+    ensureJoined();
+}
+
 } // anonymous namespace

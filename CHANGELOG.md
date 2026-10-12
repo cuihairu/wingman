@@ -23,7 +23,8 @@
 - **agentcore 通用 Notify 面**：`RemoteClient` 新增 `sendNotify(type, fields)`（发 Notify 帧，走既有 outbox 断线缓冲/重连冲刷）与 `NotifyHandler`（`agent.register_ack`/`proxy.*` 等内建类型之外的下行 Notify 统一交宿主装配层分派）；`sendAgentEvent` 改为经 `sendNotify("agent.event", …)` 委托，不再自拼帧。
 - **apps/agent 双向桥**（EventHub 缝合，按名去重可重入）：出站订阅 `team.outbound` → `sendNotify` 以同名类型转 agent 通道（`team.join`/`team.leave`/`team.vote_create`/`team.vote_cast`/`team.status_report`/`team.broadcast`，server 侧既有处理器直接消费）；下行 `setNotifyHandler` 把 `inbox.message` 载荷转成 `team.inbound` 事件（载荷无 `type` 键时以 `messageType` 补齐）并处理即 `inbox.ack`（server GetMessages 只回未确认消息，不 ack 会重发）。
 - **team 模块接通状态机**：模块创建时按名去重订阅 `team.inbound` → 驱动默认客户端（handle 1）`handleServerMessage`，join/vote/broadcast 的本地状态与 `on()` 事件订阅首次真正被 server 驱动；并补齐 team.md 事件面已声明的 `joined`/`left`/`member_joined`/`member_left` 四个本地事件 emit（此前只改状态不 emit，`on()` 订阅永不触发）。
-- **测试**：agentcore `RemoteClientTest` +2（sendNotify 帧体类型与字段合并逐键断言；未处理类型进 NotifyHandler 含 msgId/messageType）；core_tests `TeamGlueCoverageTest` +2（team.inbound 驱动 joined 状态与 `member_joined` 事件订阅；投票全生命周期入 `votes_` 表——该分支此前因胶水无入口被判不可达）；全量 core_tests 2178 绿、agentcore_tests 42 绿、agent_tests 224 绿。
+- **自定义推送触达脚本**：未识别的 `messageType`（团队范围推送的自定义类型，如 `system.notice`）不再被静默丢弃——以 `team.<messageType>` 事件 emit，脚本经 `wingman.team.on("<messageType>")` 订阅。
+- **测试**：agentcore `RemoteClientTest` +2（sendNotify 帧体类型与字段合并逐键断言；未处理类型进 NotifyHandler 含 msgId/messageType）；core_tests `TeamGlueCoverageTest` +3（team.inbound 驱动 joined 状态与 `member_joined` 事件订阅；投票全生命周期入 `votes_` 表——该分支此前因胶水无入口被判不可达；自定义 messageType 经 `on()` 订阅触达）；全量 core_tests 2178 绿、agentcore_tests 42 绿、agent_tests 224 绿。
 - **边界**：Android runtime 仍不消费 `inbox.message`（platforms.md 既定口径）；协议面（帧类型/载荷）零变更，纯端侧装配补齐，见 docs/protocols.md 与 architecture-decisions.md「Team inbox push」节。
 
 ### docs（2026-10-13，protocols.md 补齐 agent 通道团队/收件箱协议面）

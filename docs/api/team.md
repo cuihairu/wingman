@@ -479,6 +479,10 @@ on(event: str, callback: function) -> boolean
 - `member_joined` - 队友加入
 - `member_left` - 队友离开
 
+此外，团队范围推送的**自定义类型**（如 `system.notice`）以原类型名触发同名事件：
+`on("system.notice", cb)` 即可订阅，回调收到该帧完整载荷（未识别的 messageType
+不再被静默丢弃）。
+
 :::tabs
 
 == Python
