@@ -4,7 +4,7 @@ Team 模块提供多 Runtime 协同组队、投票协调和群体通信功能。
 
 ## 模块概述
 
-team 模块基于 inbox 消息队列实现分布式协同功能：
+team 模块基于 Go server 的 TeamManager（内存态）实现分布式协同功能：
 
 - **组队管理**：加入/离开队伍，获取队友信息
 - **投票协调**：发起投票、参与投票、获取投票结果
@@ -28,17 +28,20 @@ team 模块基于 inbox 消息队列实现分布式协同功能：
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────────────────────────┐   │  │
 │  │  │createVote│  │castVote  │      │ Local State (members, votes)│   │  │
 │  │  └──────────┘  └──────────┘      └──────────────────────────────┘   │  │
+│  │                                                                   │  │
+│  │  脚本调用 → 发 team.outbound 事件（本地乐观更新）                   │  │
+│  │  team.inbound 事件 → handleServerMessage 状态机 → on() 事件        │  │
 │  └──────────────────────────────────────────────────────────────────┘  │
-│                                  ↑                                       │
-│                                  │ EventHub                              │
-│                                  │ team.outbound                         │
-│                                  ↓                                       │
+│         │ team.outbound                        ↑ team.inbound           │
+│         ↓                                      │                        │
 │  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │                      Inbox Module                                 │  │
-│  │                     (consume/ack/report)                          │  │
+│  │            apps/agent 装配桥（EventHub ↔ RemoteClient）           │  │
+│  │   出站：team.outbound → 同名 Notify 帧（team.join 等）             │  │
+│  │   下行：inbox.message → team.inbound（处理即自动 inbox.ack）       │  │
 │  └──────────────────────────────────────────────────────────────────┘  │
 │                                  ↑                                       │
-│                                  │ TCP                                   │
+│                          agent 通道（TCP，                        │
+│                          runtime 主动 outbound 连接）                    │
 │                                  ↓                                       │
 └─────────────────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -61,7 +64,7 @@ team 模块基于 inbox 消息队列实现分布式协同功能：
 │  └──────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────┘
                                    ▲
-                                   │ TCP
+                                   │ agent 通道
                                    │
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           Runtime B                                       │
@@ -69,7 +72,8 @@ team 模块基于 inbox 消息队列实现分布式协同功能：
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+> 桥接细节见 docs/architecture-decisions.md「Team inbox push」与 docs/protocols.md
+> inbox.message 行。团队与收件箱均为服务端内存态，服务重启丢失。
 
 ## 加入队伍
 
@@ -467,6 +471,8 @@ on(event: str, callback: function) -> boolean
 - `callback` - 回调函数
 
 **可用事件**：
+- `joined` - 已加入队伍（服务器确认后触发）
+- `left` - 已离开队伍
 - `vote_started` - 投票开始
 - `vote_ended` - 投票结束
 - `broadcast_received` - 收到广播消息
@@ -747,6 +753,10 @@ print("最终结果:", wingman.json.encode(result.responses))
 
 ## 协议消息格式
 
+出站帧经 agent 通道 Notify 直发（类型如下表）；下行帧由 server 封装在 `inbox.message`
+（`messageType` 字段携带下列类型，载荷即 payload）推送，桌面 runtime 处理后自动回
+`inbox.ack`。完整帧格式见 docs/protocols.md。
+
 ### Runtime [Server]
 
 **加入队伍**：
@@ -892,9 +902,9 @@ print("最终结果:", wingman.json.encode(result.responses))
 
 ## 注意事项
 
-1. **依赖 inbox 模块**：
-   - team 模块通过 inbox 接收服务器消息
-   - 需要先连接 inbox 才能使用 team 功能
+1. **依赖 agent 通道连接**：
+   - team 出站/下行都经 apps/agent 装配桥走 agent 通道 Notify（见 docs/protocols.md）
+   - runtime 未连接 Go server 时，team.* 只做本地乐观更新，收不到服务器事件
 
 2. **本地状态同步**：
    - `getTeamStatus()` 返回本地缓存的状态
