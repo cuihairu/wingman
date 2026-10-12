@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### feat（2026-10-13，Dashboard Teams 页面——团队列表/详情与团队收件箱推送）
+
+- **列表**：新增 `/teams` 路由（`canAgentManage` 守卫）——团队列表（teamId 升序，与 server `GET /api/teams` 同口径），列：teamId（可复制）/名称/leader/成员数/状态（active 绿、dissolved 红）/创建时间；无团队时展示空态。
+- **详情抽屉**：基础字段（teamId/名称/描述/leader/状态/创建与更新时间）+ 成员表——`buildMemberRows` 纯函数合并 members 与 memberAgents 映射（memberId 升序、绑定设备展示、未绑定打灰标签、leader 打金标），提示未绑定成员会被团队推送跳过。
+- **团队收件箱推送**：每行「推送消息」弹窗——消息类型必填、载荷可选（JSON 校验，非法 JSON 阻止提交），提交走 `POST /api/teams/:teamId/messages`；成功后在弹窗内展示逐成员结果汇总（总数/已送达/已跳过 + 逐行结果，未送达行显示 server 给出的跳过原因）。
+- **服务层**：`wingman.ts` 新增 `TeamView`/`TeamMessageSummary` 类型与 `normalizeTeam`/`normalizeTeamMessageSummary` 防御性归一 + `getTeams`/`getTeam`/`pushTeamMessage`（详情接口独有的 memberAgents 字段在归一时保留、列表视图不带）。
+- **测试与 i18n**：`src/utils/teams.test.ts` 6 例（成员行合并排序与 leader/未绑定标记、映射幽灵条目不产生行、字节序排序与 server `sort.Strings` 同口径且不变更入参）；8 语言（en-US/zh-CN/zh-TW/ja-JP/pt-BR/id-ID/fa-IR/bn-BD）`pages.teams.*` 与 zh-CN `menu.Teams` 补齐。dashboard `tsc`/`eslint`/`prettier` 绿，全量 jest 448/448 通过。
+
 ### feat（2026-10-13，team 模块桥接 agent 通道——脚本 wingman.team.* 出站与 server 下行真正打通）
 
 - **背景**：脚本侧 team 模块此前完全未接线——`wingman.team.joinTeam/leaveTeam/createVote/castVote/reportStatus/broadcast` 只发 `team.outbound` 事件（零消费者，纯本地乐观状态）、`TeamClient::handleServerMessage` 零调用方、agent 通道下行的 `inbox.message` 在 RemoteClient 里被静默丢弃；团队协作状态机实际不可达。

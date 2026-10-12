@@ -28,6 +28,14 @@ export default [
     icon: 'api',
     component: './Agents',
   },
+  // 团队协作（多 agent 协作团队与团队收件箱推送）
+  {
+    path: '/teams',
+    name: 'Teams',
+    icon: 'team',
+    component: './Teams',
+    access: 'canAgentManage',
+  },
   // 工作流管理
   {
     path: '/workflows',

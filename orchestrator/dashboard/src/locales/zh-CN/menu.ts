@@ -5,6 +5,7 @@ export default {
   'menu.Workflows': '工作流',
   'menu.Scripts': '脚本管理',
   'menu.Monitor': '游戏监控',
+  'menu.Teams': '团队协作',
   'menu.Account': '账号中心',
   'menu.Account.Profile': '个人中心',
   'menu.Account.Messages': '站内消息',

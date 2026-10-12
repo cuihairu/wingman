@@ -94,7 +94,19 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 2. 在弹出的 Popover 中添加/移除标签
 3. 标签用于工作流负载均衡和分组筛选
 
-### 3. Scripts（脚本管理）
+### 3. Teams（团队协作）
+
+多 Agent 协作团队的管理入口（需要 `agents:manage` 权限）。团队运行时状态由服务端内存持有，服务重启后丢失，页面只反映当前在线视图。
+
+#### 功能列表
+
+- **团队列表**：查看全部团队（按 teamId 升序）及其 leader、成员数、状态、创建时间
+- **团队详情**：查看基础字段与成员列表——每个成员标注绑定设备（未绑定设备的成员不会被团队收件箱推送，推送时计入 skipped）
+- **团队收件箱推送**：向团队全部成员下发一条收件箱消息（消息类型必填，载荷为可选 JSON 对象）；在线 Runtime 实时收到 `inbox.message`，离线成员保留在服务端内存缓冲，弹窗内回显逐成员送达结果
+
+> Runtime 侧脚本通过 `wingman.team.*` 加入团队并消费收件箱消息，见脚本开发指南与 docs/protocols.md。
+
+### 4. Scripts（脚本管理）
 
 管理远程脚本库，支持在线编辑和执行。
 
@@ -121,7 +133,7 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 3. 选择要执行的 Agent
 4. 查看执行日志
 
-### 4. Workflows（工作流管理）
+### 5. Workflows（工作流管理）
 
 创建和管理复杂的自动化工作流。
 
@@ -151,7 +163,7 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 - **带节拍的流水线**：采集 → wait 等待冷却 → 处理，无需脚本即可控制节奏
 - **条件守卫截图**：先做前置条件判断，再由 agent 主动截图并广播到 Dashboard
 
-### 5. Monitor（监控面板）
+### 6. Monitor（监控面板）
 
 实时监控系统运行状态。
 
@@ -163,7 +175,7 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 
 > 注：触发器列表通过 WebSocket 事件驱动更新，上限显示 20 条记录
 
-### 6. Admin（管理后台）
+### 7. Admin（管理后台）
 
 需要管理员权限访问。
 
@@ -194,7 +206,7 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 - 支持按时间、用户、操作类型筛选
 - CSV 导出功能
 
-### 7. Settings（系统设置）
+### 8. Settings（系统设置）
 
 配置 Go Orchestrator Server 参数。
 
@@ -206,7 +218,7 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 
 > 注：部分配置需要管理员权限才能修改
 
-### 8. Profile（个人资料）
+### 9. Profile（个人资料）
 
 管理当前用户的个人信息。
 
@@ -220,13 +232,13 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 - **主题设置**：切换亮/暗主题
 - **语言设置**：界面语言选择
 
-### 9. Support/Feedback（支持反馈）
+### 10. Support/Feedback（支持反馈）
 
 - **提交反馈**：报告问题或提出建议
 - **权限申请**：申请额外权限
 - **反馈历史**：查看已提交的反馈
 
-### 10. Account/Messages（站内信）
+### 11. Account/Messages（站内信）
 
 - **消息列表**：查看系统通知和站内信
 - **已读标记**：标记消息为已读
