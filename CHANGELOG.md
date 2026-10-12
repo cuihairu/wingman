@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+### docs（2026-10-13，protocols.md 补齐 agent 通道团队/收件箱协议面）
+
+- **Notify 表补全（runtime → server）**：补上此前完全缺失的 `inbox.register` / `inbox.heartbeat` / `inbox.ack` / `inbox.report`、`team.join` / `team.leave` / `team.vote_create` / `team.vote_cast` / `team.status_report` / `team.broadcast`、`proxy.*`（Guacamole 中继）各行，载荷与缺省行为按 listener.go 处理器口径逐条核对（agentId/memberId 缺省回填、vote timeout 缺省 30s 等）。
+- **新增 server → runtime 下发表**：`agent.register_ack`（success/agentId/error?）、`inbox.message`（`{msgId, messageType, payload, timestamp}`，在线实时推、离线留内存缓冲、断连即清；`messageType` 全量枚举：8 个团队协同类型 + 团队范围推送自定义类型）、`inbox.register_ack`/`inbox.heartbeat_ack`、`team.error`。
+- 修正既有标题笔误：`Request（server [runtime，需 Response]` → `server → runtime`。
+
 ### feat（2026-10-13，团队读面与团队范围收件箱推送——Team/inbox 接入中控 HTTP 面）
 
 - **背景**：多 agent 协作的运行时机制（内存态 `TeamManager`：建团/team.join/收件箱缓冲/`inbox.message` 通知帧实时下发、离线留内存缓冲）此前已随 agent 通道落地，但 Dashboard 侧只有 `POST /api/teams` 建团一个孤儿端点，无读入口、无法触达团队收件箱。

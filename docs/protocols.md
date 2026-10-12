@@ -111,8 +111,28 @@ Body: JSON（最大 16 MiB）
 | `agent.heartbeat` | `{status, resources}` → server 更新 LastSeen/状态 |
 | `agent.event` | 通用事件（`trigger_fired` / `script_state` / `script_output`；`log.line` 与连接类事件不转发） |
 | 原始 `PING`（4 字节体） | server 回 `PONG` + `UpdateHeartbeat` |
+| `inbox.register` | `{agentId?}`（缺省取注册 agentId）→ server 回 `inbox.register_ack {success, agentId}` |
+| `inbox.heartbeat` | `{agentId?}` → 刷新注册表心跳，回 `inbox.heartbeat_ack {timestamp}` |
+| `inbox.ack` | `{msgId, agentId?}` → 标记收件箱消息已确认（`GetMessages` 只回未确认消息） |
+| `inbox.report` | `{msgId, agentId?, result{}}` → 记录消息执行结果 |
+| `team.join` | `{teamId, memberId, agentId?}`（agentId 缺省取注册 agentId）→ 入团并向成员广播 `team.joined`（新成员）/`team.member_joined`（其余成员）；失败回 `team.error {error}` |
+| `team.leave` | `{teamId, memberId?, agentId?}` → memberId 缺省按 agentID 反查成员；广播 `team.left`/`team.member_left` |
+| `team.vote_create` | `{teamId, proposerId, subject, timeout?(ms)}` → timeout 缺省 30000；发起投票，成员收 `team.vote_started`，截止后收 `team.vote_ended`；失败回 `team.error {error}` |
+| `team.vote_cast` | `{voteId, memberId, response}` → 计入投票 |
+| `team.status_report` | `{teamId, memberId, status{}}` → 以收件箱消息转发给除上报者外的全部成员 |
+| `team.broadcast` | `{teamId, memberId, message{}}` → 以 `team.broadcast_received {teamId, senderId, message}` 转发给除发送者外的全部成员 |
+| `proxy.data` / `proxy.close` / `proxy.error` | 远程代理（Guacamole）中继帧，`data` 为 base64，按 `proxyId` 路由（见 remote-gateway 设计文档） |
 
-### Request（server [runtime，需 Response]
+### Notify（server → runtime，主动下发）
+
+| type 字段 | 说明 |
+|-----------|------|
+| `agent.register_ack` | 注册应答（`{success, agentId, ...}`） |
+| `inbox.message` | 收件箱投递帧：`{msgId, messageType, payload, timestamp}`。在线实时推送；agent 离线时留在 server 内存缓冲（断连即清）。`messageType` 取值：团队协同面 `team.joined` / `team.member_joined` / `team.left` / `team.member_left` / `team.vote_started` / `team.vote_ended` / `team.status_report` / `team.broadcast_received`，以及团队范围推送的自定义类型（server 触发：`POST /api/teams/:teamId/messages`，权限 `agents:manage`，未绑定设备的成员跳过）。runtime 收到后按 `messageType` 分派脚本回调（`wingman.inbox.*`），处理完经 `inbox.ack` 确认 |
+| `inbox.register_ack` / `inbox.heartbeat_ack` | 收件箱注册/心跳应答（载荷见上表） |
+| `team.error` | `{error}`，team.join / team.vote_create 失败原因 |
+
+### Request（server → runtime，需 Response）
 
 | method | 用途 |
 |--------|------|
