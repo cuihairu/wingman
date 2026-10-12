@@ -831,9 +831,10 @@ func (e *Engine) runScriptOnce(ctx context.Context, conn agent.AgentConn, step m
 	done := make(chan error, 1)
 	go func() {
 		data := map[string]any{
-			"path":    step.Script,
-			"content": string(content),
-			"timeout": int(timeout.Milliseconds()),
+			"path":          step.Script,
+			"content":       string(content),
+			"contentSha256": scripts.Sha256Of(content),
+			"timeout":       int(timeout.Milliseconds()),
 		}
 		if lang := scripts.LanguageOf(step.Script); lang != "" {
 			data["language"] = lang

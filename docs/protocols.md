@@ -116,7 +116,7 @@ Body: JSON（最大 16 MiB）
 
 | method | 用途 |
 |--------|------|
-| `run_script` | `{path, timeout, ...params}` |
+| `run_script` | `{path, content, contentSha256, language?}` —— content 为脚本内容内联（Android 等无服务器文件系统的 agent 依赖）；contentSha256 为内容指纹（脚本版本管理，Execution 记录同口径 scriptSha256）；workflow 引擎下发另带 `timeout` |
 | `stop_script` | `{script_id}` |
 | `get_status` | 查询状态 |
 | `list_windows` | 枚举窗口 |

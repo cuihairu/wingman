@@ -1,6 +1,8 @@
 package scripts
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -28,6 +30,14 @@ func ReadInline(path string) ([]byte, error) {
 			ErrScriptTooLarge, len(content), MaxInlineScriptSize)
 	}
 	return content, nil
+}
+
+// Sha256Of 脚本内容版本指纹（十六进制小写）。run_script 下发 payload 携带
+// contentSha256，Execution 记录落 scriptSha256——内容即版本：内容变化即
+// 版本变化，两侧可对账（脚本版本管理，development-todo 146）。
+func Sha256Of(content []byte) string {
+	sum := sha256.Sum256(content)
+	return hex.EncodeToString(sum[:])
 }
 
 // LanguageOf 按扩展名推断脚本语言（Android 端 A1 仅执行 lua；

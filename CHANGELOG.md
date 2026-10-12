@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### feat（2026-10-13，脚本版本管理——内容即版本 sha256 随脚本与执行记录）
+
+- **内容指纹**：新增 `scripts.Sha256Of(content)`（sha256 hex 小写）。`models.Script.Sha256`（`gorm:"size:64"`）在创建/保存时按落盘内容更新，脚本列表 `sha256` 字段对存量空行按文件懒回填（读不到/不存在的行跳过，不影响列表 200）。
+- **下发契约**：`run_script` payload 携带 `contentSha256`——单发（HandleRun）、批量（HandleBatchRunScript）、workflow 引擎（runScriptOnce）三处同口径；`models.Execution.ScriptSha256` 随执行记录落库（`ExecutionView.scriptSha256` 对 Dashboard 可见）。runtime 忽略未知 payload 字段，老 agent 兼容。
+- **测试**：`script_version_test.go` 2 例（版本全生命周期：创建指纹=文件内容、保存后更新、payload 与执行记录同口径；存量空行回填 + 幽灵行跳过）+ `engine_extra_test.go` 引擎面 contentSha256 断言。Go 全量 `go test ./...` 绿。
+- **文档**：`docs/protocols.md` ② Request 表 `run_script` 行更新为 `{path, content, contentSha256, language?}`（引擎带 `timeout`）。
+
 ### feat（2026-10-13，模板图片 asset.sync 下发——服务端资产存储 + agent 通道落盘）
 
 - **服务端**：`internal/assets` 资产存储（`<AssetsDir>/<name>` + `.meta/` sidecar 元数据 sha256/大小/时间，无 DB 依赖，原子写；1MB 上限与内联脚本同口径）；`/api/assets` 五端点——上传（内联 base64）/列表/内容下载/删除/`sync` 按选择器（agentIds/tags 并集）fan-out，权限 `assets:manage`（新内置权限，默认仅 admin），审计 `asset.sync`/`asset.delete`；`WINGMAN_ASSETS_DIR` 配置（默认 `./data/assets`）。

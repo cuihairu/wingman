@@ -78,6 +78,8 @@ type Script struct {
 	Description string `json:"description"`
 	IsRunning   bool   `gorm:"default:false" json:"is_running"`
 	Status      string `gorm:"default:stopped" json:"status"`
+	// Sha256 当前内容的版本指纹（Sha256Of；创建/保存时更新，列表懒回填）
+	Sha256 string `gorm:"size:64" json:"sha256"`
 }
 
 // Settings 配置模型

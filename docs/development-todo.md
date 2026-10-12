@@ -143,7 +143,7 @@
 ### A3 可靠性与部署体验
 - [x] 开机自启、崩溃自重启、断连自治（缓存脚本继续执行、重连后汇报）（2026-09-30，6cecfad：BootCompletedReceiver/退避闹钟/核心看门狗 + RemoteClient 既有 outbox）
 - [x] Android 13+ 受限设置引导（手动允许 / adb 预授权 / Device Owner 批量部署）（2026-09-30：`scripts/android-restricted-settings.sh`（幂等，Go 契约测试护栏）+ App 内引导（RestrictedSettingsPolicy 自动弹一次 + 常驻按钮）+ `docs/guides/android-restricted-settings.md`）
-- [ ] 模板图片 asset.sync 下发、脚本版本管理（2026-10-13 asset.sync 前半落地：服务端资产存储（internal/assets，sha256 sidecar，1MB 上限）+ `POST /api/assets*` 五端点（权限 assets:manage）+ agent 通道 `asset.sync` 命令（内容内联 base64 + sha256 强校验，runtime 落盘 `<scriptDir>/assets/<name>`，Go/C++ 两端测试绿）；⚠️ Android 端 runtime 未接 RpcDispatcher 面，端侧落盘走后续增量；脚本版本管理（sha256 随脚本列表/执行记录）待做）
+- [x] 模板图片 asset.sync 下发、脚本版本管理（2026-10-13 全量落地：asset.sync 前半——服务端资产存储（internal/assets，sha256 sidecar，1MB 上限）+ `POST /api/assets*` 五端点（权限 assets:manage）+ agent 通道 `asset.sync` 命令（内容内联 base64 + sha256 强校验，runtime 落盘 `<scriptDir>/assets/<name>`，Go/C++ 两端测试绿）；脚本版本管理后半——内容即版本：Script 行 sha256 创建/保存时维护、列表对存量空行懒回填，run_script payload 携带 contentSha256（单发/批量/workflow 三处同口径），Execution 落 scriptSha256，runtime 忽略未知字段向后兼容；⚠️ Android 端 runtime 未接 RpcDispatcher 面，端侧落盘走后续增量）
 
 ### A4 多设备编排
 - [ ] Team/inbox 模块接入端侧 Agent

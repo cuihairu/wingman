@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/scripts"
 )
 
 // ---------- 纯函数：条件求值 ----------
@@ -678,6 +679,10 @@ func TestRunScriptOnceSendsInlineContent(t *testing.T) {
 	}
 	if data["content"] != "print('a.lua')" {
 		t.Errorf("content should be inlined file body, got %v", data["content"])
+	}
+	// 脚本版本管理（146）：payload 携带内容指纹，与 handlers 单发/批量同口径
+	if data["contentSha256"] != scripts.Sha256Of([]byte("print('a.lua')")) {
+		t.Errorf("contentSha256 mismatch, got %v", data["contentSha256"])
 	}
 	if data["language"] != "lua" {
 		t.Errorf("language should be inferred lua, got %v", data["language"])

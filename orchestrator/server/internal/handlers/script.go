@@ -165,6 +165,28 @@ func (h *ScriptHandler) HandleList(c *gin.Context) {
 	var list []models.Script
 	h.db.Find(&list)
 
+	// 脚本版本管理（146）懒回填：存量行 sha256 为空时按当前文件内容补齐并
+	// 落库（只读接口顺带补齐，读失败跳过不动行——文件可能已被外部删除）
+	for i := range list {
+		if list[i].Sha256 != "" {
+			continue
+		}
+		path, err := h.store.Resolve(list[i].Path)
+		if err != nil {
+			continue
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		sum := scripts.Sha256Of(content)
+		if err := h.db.Model(&models.Script{}).Where("id = ?", list[i].ID).
+			Update("sha256", sum).Error; err != nil {
+			continue
+		}
+		list[i].Sha256 = sum
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    list,
@@ -238,6 +260,7 @@ func (h *ScriptHandler) HandleCreate(c *gin.Context) {
 		Name:        strings.TrimSuffix(name, filepath.Ext(name)),
 		Path:        scripts.DisplayPath(h.store.Root(), scriptPath),
 		Description: req.Description,
+		Sha256:      scripts.Sha256Of([]byte(content)),
 	}
 	h.db.Create(&script)
 
@@ -364,6 +387,12 @@ func (h *ScriptHandler) HandleSave(c *gin.Context) {
 		return
 	}
 
+	// 脚本版本管理（146）：内容变化即版本变化——已登记行同步更新版本指纹；
+	// 未登记文件（无 DB 行）跳过，列表接口会懒回填
+	displayPath := scripts.DisplayPath(h.store.Root(), scriptPath)
+	h.db.Model(&models.Script{}).Where("path = ?", displayPath).
+		Update("sha256", scripts.Sha256Of([]byte(req.Content)))
+
 	_, actor, _ := middleware.GetCurrentUser(c)
 	WriteAuditLog(h.db, actor, "script.save", req.Path, map[string]any{
 		"script_path": req.Path,
@@ -424,9 +453,11 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 		return
 	}
 
+	contentSha256 := scripts.Sha256Of(content)
 	payload := map[string]any{
-		"path":    scriptPath,
-		"content": string(content),
+		"path":          scriptPath,
+		"content":       string(content),
+		"contentSha256": contentSha256,
 	}
 	if lang := scripts.LanguageOf(scriptPath); lang != "" {
 		payload["language"] = lang
@@ -438,13 +469,14 @@ func (h *ScriptHandler) HandleRun(c *gin.Context) {
 	// 保持既有兼容。记录失败不阻断下发——只损失审计可追踪性，执行本身不受影响。
 	now := time.Now()
 	exec := models.Execution{
-		ExecutionID: newExecutionID(),
-		AgentID:     onlineAgent.AgentID,
-		ScriptPath:  scriptPath,
-		Status:      models.ExecutionRunning,
-		StartedAt:   &now,
-		TimeoutSec:  30,
-		Artifacts:   "[]",
+		ExecutionID:  newExecutionID(),
+		AgentID:      onlineAgent.AgentID,
+		ScriptPath:   scriptPath,
+		ScriptSha256: contentSha256,
+		Status:       models.ExecutionRunning,
+		StartedAt:    &now,
+		TimeoutSec:   30,
+		Artifacts:    "[]",
 	}
 	if err := h.db.Create(&exec).Error; err != nil {
 		log.Printf("[Script] Failed to persist execution record for %s: %v", scriptPath, err)

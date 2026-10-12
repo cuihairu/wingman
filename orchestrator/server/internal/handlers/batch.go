@@ -261,8 +261,9 @@ func (h *BatchHandler) HandleBatchRunScript(c *gin.Context) {
 			return
 		}
 		payload := map[string]any{
-			"path":    scriptPath,
-			"content": string(content),
+			"path":          scriptPath,
+			"content":       string(content),
+			"contentSha256": scripts.Sha256Of(content),
 		}
 		if lang := scripts.LanguageOf(scriptPath); lang != "" {
 			payload["language"] = lang

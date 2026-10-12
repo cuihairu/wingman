@@ -32,15 +32,17 @@ const (
 // Execution 是既有的并行记录，收敛到本模型前不得再新增执行形态功能。
 type Execution struct {
 	gorm.Model
-	ExecutionID string          `gorm:"uniqueIndex;not null" json:"executionId"`
-	WorkflowID  uint            `json:"workflowId"` // 0 = 直接下发，非 workflow 步骤
-	StepID      string          `json:"stepId"`
-	AgentID     string          `gorm:"index" json:"agentId"`
-	ScriptPath  string          `json:"scriptPath"`
-	Status      ExecutionStatus `gorm:"default:queued;index" json:"status"`
-	StartedAt   *time.Time      `json:"startedAt"`
-	FinishedAt  *time.Time      `json:"finishedAt"`
-	TimeoutSec  int             `json:"timeoutSec"`
+	ExecutionID string `gorm:"uniqueIndex;not null" json:"executionId"`
+	WorkflowID  uint   `json:"workflowId"` // 0 = 直接下发，非 workflow 步骤
+	StepID      string `json:"stepId"`
+	AgentID     string `gorm:"index" json:"agentId"`
+	ScriptPath  string `json:"scriptPath"`
+	// ScriptSha256 本次执行所跑脚本内容的版本指纹（内容即版本，可对账）
+	ScriptSha256 string          `gorm:"size:64" json:"scriptSha256"`
+	Status       ExecutionStatus `gorm:"default:queued;index" json:"status"`
+	StartedAt    *time.Time      `json:"startedAt"`
+	FinishedAt   *time.Time      `json:"finishedAt"`
+	TimeoutSec   int             `json:"timeoutSec"`
 	// Result JSON 文本：成功为 command result data 摘要，失败为错误信息。
 	Result string `gorm:"type:text" json:"-"`
 	// Artifacts JSON 数组文本（执行产物引用，v1 预留，恒空数组）。
@@ -52,19 +54,20 @@ func (Execution) TableName() string { return "executions" }
 
 // ExecutionView 对外视图（展开 Result/Artifacts JSON，隐藏原始文本列）。
 type ExecutionView struct {
-	ID          uint            `json:"id"`
-	ExecutionID string          `json:"executionId"`
-	WorkflowID  uint            `json:"workflowId"`
-	StepID      string          `json:"stepId"`
-	AgentID     string          `json:"agentId"`
-	ScriptPath  string          `json:"scriptPath"`
-	Status      ExecutionStatus `json:"status"`
-	StartedAt   string          `json:"startedAt"`
-	FinishedAt  string          `json:"finishedAt"`
-	TimeoutSec  int             `json:"timeoutSec"`
-	Result      any             `json:"result"`
-	Artifacts   []string        `json:"artifacts"`
-	CreatedAt   string          `json:"createdAt"`
+	ID           uint            `json:"id"`
+	ExecutionID  string          `json:"executionId"`
+	WorkflowID   uint            `json:"workflowId"`
+	StepID       string          `json:"stepId"`
+	AgentID      string          `json:"agentId"`
+	ScriptPath   string          `json:"scriptPath"`
+	ScriptSha256 string          `json:"scriptSha256"`
+	Status       ExecutionStatus `json:"status"`
+	StartedAt    string          `json:"startedAt"`
+	FinishedAt   string          `json:"finishedAt"`
+	TimeoutSec   int             `json:"timeoutSec"`
+	Result       any             `json:"result"`
+	Artifacts    []string        `json:"artifacts"`
+	CreatedAt    string          `json:"createdAt"`
 }
 
 // ToView 产出脱敏后视图。
@@ -76,18 +79,19 @@ func (e Execution) ToView() ExecutionView {
 		return t.Format("2006-01-02 15:04:05")
 	}
 	v := ExecutionView{
-		ID:          e.ID,
-		ExecutionID: e.ExecutionID,
-		WorkflowID:  e.WorkflowID,
-		StepID:      e.StepID,
-		AgentID:     e.AgentID,
-		ScriptPath:  e.ScriptPath,
-		Status:      e.Status,
-		StartedAt:   fmtTime(e.StartedAt),
-		FinishedAt:  fmtTime(e.FinishedAt),
-		TimeoutSec:  e.TimeoutSec,
-		Artifacts:   []string{},
-		CreatedAt:   fmtTime(&e.CreatedAt),
+		ID:           e.ID,
+		ExecutionID:  e.ExecutionID,
+		WorkflowID:   e.WorkflowID,
+		StepID:       e.StepID,
+		AgentID:      e.AgentID,
+		ScriptPath:   e.ScriptPath,
+		ScriptSha256: e.ScriptSha256,
+		Status:       e.Status,
+		StartedAt:    fmtTime(e.StartedAt),
+		FinishedAt:   fmtTime(e.FinishedAt),
+		TimeoutSec:   e.TimeoutSec,
+		Artifacts:    []string{},
+		CreatedAt:    fmtTime(&e.CreatedAt),
 	}
 	if e.Result != "" {
 		var r any
