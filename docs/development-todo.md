@@ -34,10 +34,10 @@
 > P1 第 4-6 条）
 
 ### 脚本与运行时
-- [ ] 统一 Lua / Python API 形状与文档
+- [x] 统一 Lua / Python API 形状与文档（2026-10-12 落地：`scripts/audit_pyi_drift.py` 以 C++ 描述符为唯一事实源比对 pyi 桩（模块面/函数面 camelToSnake 同形归一/`__init__` 导出面），漂移即非零退出；清偿全部存量漂移——补 macro.pyi/script.pyi 新文件、删除 qrcode.pyi 孤儿（模块 535fbfe 已移除）与其 types.pyi 的 QRLoginResult、bt/db/gameprofile/human/team/verification/security 七桩对齐真实注册面、__init__ 补导出 macro/script/systemwatch/timer；fsm.pyi 保留字键改函数式 TypedDict、ini.pyi 修 docstring 嵌套三引号语法错——两文件此前不能过 Python ast 解析；`scripts/gen_lua_hints.py` 同源重生成 vscode-wingman-lua/wingman.d.lua（42 模块 412 函数，luac -p 过），CI 增 api-typing-audit job（audit 门 + Lua 提示重生成 diff 门））
 - [x] Python typing 基础包已提供
 - [x] 补齐事件/状态机/任务/通知模块的 typing 文件（event/fsm/task/notify/orchestration 等 37 个 .pyi 齐全）
-- [ ] 统一模块命名和函数命名风格
+- [x] 统一模块命名和函数命名风格（2026-10-12 落地：口径写进 docs/guide/script-development.md「函数命名约定」——描述符 camelCase 原名两种语言通用，Python 引擎同源 camelToSnake 双暴露，pyi 桩 snake 为主形 docstring 标注 camel 别名；存量 snake 直登记模块（db/human 等）与 pythonic 手写别名（timer.after）为兼容保留不再新增；audit 门把漂移锁死）
 - [x] 所有 Python 公开 API 统一到 `wingman.*`（typing 命名空间 + module_registry 统一注册）
 
 ### 事件与状态

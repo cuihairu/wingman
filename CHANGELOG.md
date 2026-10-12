@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### feat（2026-10-12，Lua/Python API 形状统一——描述符单源审计门 + Lua 类型提示生成器）
+
+- **审计门**：`scripts/audit_pyi_drift.py` 以 C++ 模块描述符（`mod.name` + `mod.functions.push_back` 注册面，兼容 db 模块命名函数一行式与 ml 签名串 `\"` 转义）为唯一事实源，比对 `libs/python/typing/wingman/*.pyi`：缺失/孤儿模块、函数面（camelToSnake 同形归一，与 python_script_engine 双暴露口径一致）、`__init__.pyi` 导出面，漂移即非零退出；pyi-only 手写别名（timer.after 等）仅提示不计门。
+- **存量清偿**：新增 `macro.pyi`/`script.pyi`（各 13 函数）；删除 `qrcode.pyi` 孤儿（模块已随 535fbfe 移除）与 `types.pyi` 仅存于它的 `QRLoginResult`；`bt`(+10)/`db`(+2)/`gameprofile`(+9)/`human`(+9)/`team`(重写 11 函数)/`verification`(重写 4 函数)/`security`(删 2 个未注册函数) 七桩对齐真实注册面；`__init__.pyi` 补导出 macro/script/systemwatch/timer。修复 `fsm.pyi`（保留字键 `from` 改函数式 TypedDict）与 `ini.pyi`（docstring 嵌套三引号致语法错）——两文件此前不能通过 Python ast 解析。
+- **Lua 类型提示生成器**：`scripts/gen_lua_hints.py` 同源重生成 `assets/vscode-wingman-lua/wingman.d.lua`（42 模块 412 函数全量，luac -p 通过），替换旧手写版（仅 11 模块且多 api 已漂移：macro.startRecording/play、team.getSessionId 等，含一处 Lua 语法错）；Lua 保留字（bt.repeat）以 `["repeat"]` 形式生成。
+- **CI**：新增 `api-typing-audit` job——audit 门 + 重生成 Lua 提示后 `git diff --exit-code` 同步门。
+- **测试基建修正**：`ApplyRemoteConfigWhileRunningReportsReconnectAndPersistFailure` 不再依赖默认端点 8888 空闲——本机出现外部服务常驻监听 8888 后，默认配置 connect 直接成功、`start()` 走成功分支摸不到「初始地址不可达」前提；改用同文件既有的 127.0.0.1+已释放端口口径。
+- **口径文档**：`docs/guide/script-development.md` 增「函数命名约定」节（camelCase 原名两语言通用、Python 双暴露、pyi snake 主形 + camel 别名注记、存量 snake 直登记与手写别名兼容保留）。
+
 ### feat（2026-10-11，图像模板批量管理——具名登记 + 批量识别五入口）
 
 - **登记面**：新增进程内 `TemplateRegistry`（name→path，std::map 名序确定 + mutex）；`templateAdd` 登记期校验非空与路径存在（`std::filesystem::exists`，坏路径不进登记）、重名拒绝（显式 `templateRemove` 后可再登记）；`templateRemove`/`templateHas`/`templateList` 同族。

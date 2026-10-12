@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from typing import Any, Callable, TypedDict
 
-class StateContext(TypedDict, total=False):
-    state: str
-    from: str
-    event: str
-    payload: dict[str, Any]
+# "from" 是 Python 保留字，类语法定义不了该键，走函数式 TypedDict
+StateContext = TypedDict(
+    "StateContext",
+    {"state": str, "from": str, "event": str, "payload": dict[str, Any]},
+    total=False,
+)
 
-class TransitionContext(TypedDict, total=False):
-    from: str
-    to: str
-    event: str
-    payload: dict[str, Any]
+TransitionContext = TypedDict(
+    "TransitionContext",
+    {"from": str, "to": str, "event": str, "payload": dict[str, Any]},
+    total=False,
+)
 
 StateCallback = Callable[[StateContext], Any]
 TransitionCallback = Callable[[TransitionContext], Any]

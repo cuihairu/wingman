@@ -281,6 +281,21 @@ def table_count(table: Table) -> int:
 	"""
 	...
 
+def table_close(table: Table) -> bool:
+	"""
+	关闭表助手
+
+	Args:
+		table: 表对象
+
+	Returns:
+		是否成功
+
+	Example:
+		db.table_close(users)
+	"""
+	...
+
 # ========== Query Methods ==========
 
 def query_all(query: Query) -> Rows:
@@ -389,5 +404,20 @@ def query_order_by(query: Query, field: str, direction: str = ...) -> Query:
 
 	Example:
 		query = db.query_order_by(query, "id", "desc")
+	"""
+	...
+
+def query_close(query: Query) -> bool:
+	"""
+	关闭查询构建器
+
+	Args:
+		query: 查询构建器对象
+
+	Returns:
+		是否成功
+
+	Example:
+		db.query_close(query)
 	"""
 	...

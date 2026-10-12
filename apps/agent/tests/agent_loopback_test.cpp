@@ -393,6 +393,10 @@ TEST_F(AgentLifecycleTest, ApplyRemoteConfigWhileRunningReportsReconnectAndPersi
     ASSERT_TRUE(agent.initialize(path.string())); // 默认配置（远程开、LocalIpc 开）
     // LocalIpc 能力下 start() 会绑定默认端点；显式关掉避免碰真实生产 socket
     AgentConfig disabled = agent.getConfig();
+    // 默认端点 8888 在部分机器上被外部服务占用——connect 成功会让 start()
+    // 走成功分支，摸不到「初始地址不可达」前提。同上例口径：127.0.0.1 +
+    // 已释放端口构造注定不可达
+    disabled.remoteClient.serverPort = static_cast<int>(findFreePort());
     disabled.enableLocalIpc = false;
     ASSERT_TRUE(agent.initialize(disabled));
     EXPECT_FALSE(agent.start());

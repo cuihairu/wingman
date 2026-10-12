@@ -23,7 +23,7 @@ def decode(content: str) -> IniData:
 		解析后的数据 {section: {key: value}}
 
 	Example:
-		data = ini.decode("""
+		data = ini.decode('''
 		[Server]
 		host = localhost
 		port = 8080
@@ -31,7 +31,7 @@ def decode(content: str) -> IniData:
 		[Database]
 		host = db.example.com
 		port = 5432
-		""")
+		''')
 	"""
 	...
 

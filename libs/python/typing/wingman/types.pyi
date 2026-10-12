@@ -34,10 +34,3 @@ class HttpResponse(TypedDict):
     headers: Dict[str, str]
     error: NotRequired[str]
 
-class QRLoginResult(TypedDict, total=False):
-    state: str
-    message: str
-    token: str
-    sessionId: str
-    data: JSONValue
-
