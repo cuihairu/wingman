@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+### feat（2026-10-13，Android 端触发器引擎——定时/像素条件 + 声明式动作）
+
+- **引擎**：`AndroidTriggerManager`（libs/androidagent，进程级单例）——单监视线程 25ms 滴答遍历全部已启动触发器（设备友好，不每触发器一线程），每轮锁内快照活跃条目、锁外判定执行、结果写回（触发计数只增不减）。条件全 AND：`timer`（边沿触发，距上次满足满 ms 再满足）、`color_found`/`color_not_found`（桌面同款 ImageAnalyzer 区域找色）、`pixel_changed`（采样点变化超容差，首拍建基线）；每触发器每轮最多取一帧（bitmap-first）。动作：`tap`/`long_press`/`swipe`/`stop`，直接走宿主桥；桥缺失或取帧失败该轮按未满足降级。语义对齐桌面 SmartTrigger：checkInterval 轮询（<50ms 收敛防忙等）、maxTriggers 自停、脚本退出后于服务进程内继续监视。
+- **绑定**：`wingman.trigger`（add/start/stop/remove/startAll/stopAll/isRunning/getTriggerCount/count），add 声明式表参（未知类型/坏参数/空条件/空动作拒绝），design 文档补 §5.7。
+- **测试**：桌面同源单测 9 用例（libs/lua/tests，Fake 桥 + 合成帧）：timer 边沿与 maxTriggers 自停、color_found/not_found 判定、pixel_changed 基线后触发、stop/remove/stopAll、坏定义拒绝、Lua 面形状与 timer 触发端到端；OpenCV（35/35）与无 OpenCV stub（33/33）两档树全绿。⚠️ 真机触摸/截帧行为与拆桥前 stopAll 时序待真机验证。
+
 ### feat（2026-10-13，脚本执行统计——ScriptStats 进程内计数 + wingman.script.getStats 三语言出口）
 
 - **统计面**：`ScriptInfo` 增 `ScriptStats`（runCount/successCount/failCount/lastDurationMs/totalDurationMs/lastRunAt，进程内累计不持久化）。口径：runCount 在运行启动时计数（含超时/停止/被超越的运行）；success/fail 只在终局归属本代时计数（用户主动 stop 不计成败；失败=执行失败/超时/线程启动失败）；耗时只对走到成败终局的运行累计。

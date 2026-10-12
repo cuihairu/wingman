@@ -320,6 +320,56 @@ HTTP/解密按 cherry-pick 模式收口：`http.cpp`（`WINGMAN_HAS_CURL`）与
 同形：region 参数、4K clamp、BGRA→BGR→JPEG q82→base64 data URI），Go server
 workflow 的 screenshot 步骤零改动覆盖 Android 设备。displayId 接受即忽略。
 
+### 5.7 触发器引擎（声明式定时/像素触发，A2 扩展实装）
+
+对齐桌面 SmartTriggerManager 的词汇与语义（条件全 AND、checkInterval 轮询、
+maxTriggers 自停、条件/动作均为声明式数据），但按 Android 原生形态实现
+（`libs/androidagent`，`AndroidTriggerManager` + `wingman.trigger` 绑定）：
+
+- **单监视线程**：进程级单例持一条 25ms 滴答线程（condvar 等待，stop/登记
+  变更即刻响应），遍历全部已启动触发器——设备友好，避免每触发器一线程；
+  每轮锁内快照活跃条目、锁外判定与执行，检查结果经 commitState 写回
+  （触发计数只增不减）；
+- **条件**（全满足才执行动作）：`timer`（距上次满足满 ms 才再满足，边沿
+  触发）、`color_found` / `color_not_found`（区域内找色，走桌面同款
+  ImageAnalyzer）、`pixel_changed`（采样点相对上一拍变化超容差，首拍只建
+  基线）；每触发器每轮最多取一帧（bitmap-first，与 A2 找色同口径）；
+- **动作**：`tap` / `long_press` / `swipe` / `stop`（自停），直接走宿主桥；
+  桥为 null 或取帧失败时该轮按未满足处理（降级不崩）；
+- **轮询门**：`checkIntervalMs`（<50 收敛到 50 防忙等）；触发器在脚本退出后
+  继续于服务进程内监视（与桌面 SmartTriggerManager 单例语义一致）。
+
+```lua
+wingman.trigger.add(name, {
+    checkIntervalMs = 500, maxTriggers = 0,       -- maxTriggers: 0=不限
+    conditions = {
+        { type = "timer", ms = 30000 },
+        { type = "color_found", color = 0xFF0000, tolerance = 10, region = {x,y,width,height} },
+        { type = "color_not_found", color = 0x00FF00 },
+        { type = "pixel_changed", x = 100, y = 200, tolerance = 20 },
+    },
+    actions = {
+        { type = "tap", x = 1, y = 2 },
+        { type = "long_press", x = 1, y = 2, durationMs = 600 },
+        { type = "swipe", x1 = 0, y1 = 0, x2 = 100, y2 = 200, durationMs = 300 },
+        { type = "stop" },
+    },
+}) -> bool        -- 同名/空名/空条件/空动作/未知类型/坏参数拒绝
+wingman.trigger.start(name)/stop(name) -> bool
+wingman.trigger.remove(name) -> bool
+wingman.trigger.startAll()/stopAll() -> int        -- 实际完成切换的数量
+wingman.trigger.isRunning(name) -> bool
+wingman.trigger.getTriggerCount(name) -> int       -- 未知名 -1
+wingman.trigger.count() -> int
+```
+
+生命周期注意：桥生命周期归宿主，宿主拆桥前必须 `stopAll`（否则下一轮取帧
+走空桥按未满足处理，不崩但触发器仍在空转）。
+
+测试：引擎与 Lua 绑定均为桌面同源单测（libs/lua/tests，Fake 桥 + 合成帧）：
+timer 边沿与 maxTriggers 自停、color_found/not_found 判定、pixel_changed
+基线、stop/remove/stopAll 语义、坏定义拒绝、null 桥降级。
+
 ---
 
 ## 6. 构建体系

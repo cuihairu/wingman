@@ -60,6 +60,7 @@ endif()
 set(ANDROIDAGENT_SOURCES
     src/script_runner.cpp
     src/android_script_api.cpp
+    src/android_trigger.cpp
     # lib/wingman cherry-pick 子集（A2；docs/android-agent-design.md §5.6）。
     # 桌面构建中 bitmap/screen/image_analyzer 与 wingman core 重复编译同一
     # TU——OpenCV 判定逻辑与 core 严格一致（上方同款防御），配置相同、

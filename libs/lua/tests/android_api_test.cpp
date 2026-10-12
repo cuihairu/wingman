@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "wingman/androidagent/android_script_api.hpp"
+#include "wingman/androidagent/android_trigger.hpp"
 #include "platform/android/android_host_bridge.hpp"
 #include "wingman/vision_ai.hpp"
 
@@ -336,3 +337,59 @@ TEST(AndroidApiTest, AiSetupStubSemanticsMatchesDesktopStub) {
     wingman::VisionAi::reset();
 }
 #endif
+
+// ========== wingman.trigger（声明式触发器绑定；引擎细粒度测试见
+// android_trigger_test.cpp，此处钉 Lua 面形状与坏定义拒绝） ==========
+
+TEST(AndroidApiTest, TriggerLuaRejectsBadDefs) {
+    FakeHostBridge bridge;
+    ApiEnv env(&bridge);
+
+    env.eval(R"(
+        assert(wingman.trigger.add("t_lua_bad_a", {
+            conditions = { { type = "unknown_type" } },
+            actions = { { type = "tap", x = 1, y = 1 } },
+        }) == false)                                        -- 未知条件类型
+        assert(wingman.trigger.add("t_lua_bad_b", {
+            conditions = { { type = "timer" } },            -- timer 缺 ms
+            actions = { { type = "tap", x = 1, y = 1 } },
+        }) == false)
+        assert(wingman.trigger.add("t_lua_bad_c", {
+            conditions = { { type = "timer", ms = 100 } },  -- 缺 actions
+        }) == false)
+        assert(wingman.trigger.add("t_lua_bad_d", {
+            conditions = { { type = "color_found" } },      -- color 条件缺 color
+            actions = { { type = "tap", x = 1, y = 1 } },
+        }) == false)
+        assert(wingman.trigger.count() == 0)                -- 全部拒绝未登记
+    )");
+}
+
+TEST(AndroidApiTest, TriggerLuaTimerFiresTap) {
+    FakeHostBridge bridge;
+    ApiEnv env(&bridge);
+
+    env.eval(R"(
+        assert(wingman.trigger.add("t_lua_timer", {
+            checkIntervalMs = 50, maxTriggers = 1,
+            conditions = { { type = "timer", ms = 100 } },
+            actions = { { type = "tap", x = 3, y = 1 } },
+        }) == true)
+        assert(wingman.trigger.start("t_lua_timer") == true)
+        assert(wingman.trigger.isRunning("t_lua_timer") == true)
+    )");
+
+    auto& mgr = wingman::android::AndroidTriggerManager::instance();
+    const auto fired = [&] { return mgr.getTriggerCount("t_lua_timer") >= 1; };
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+    while (std::chrono::steady_clock::now() < deadline && !fired()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    ASSERT_TRUE(fired());
+    // maxTriggers=1 自停；清场（单例跨用例共存）
+    mgr.stopAll();
+    ASSERT_TRUE(mgr.remove("t_lua_timer"));
+    ASSERT_EQ(bridge.taps.size(), 1u);
+    EXPECT_EQ(bridge.taps[0].x, 3);
+    EXPECT_EQ(bridge.taps[0].y, 1);
+}

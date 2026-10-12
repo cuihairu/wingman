@@ -1,5 +1,7 @@
 #include "wingman/androidagent/android_script_api.hpp"
 
+#include "wingman/androidagent/android_trigger.hpp"
+
 #include "platform/android/android_capture.hpp"
 #include "wingman/crypt.hpp"
 #include "wingman/vision/image_analyzer.hpp"
@@ -493,6 +495,149 @@ void registerVisionModule(sol::state& lua, AndroidHostBridge* bridge,
         });
 }
 
+// ---------- wingman.trigger（声明式触发器，引擎见 android_trigger.hpp）----------
+//
+// 与桌面 smarttrigger 同词汇（条件全 AND、checkInterval 轮询、maxTriggers
+// 自停、条件/动作声明式不持有 Lua 回调），类型名取 Android 端自然形态：
+// 条件 color_found / color_not_found / pixel_changed / timer，动作
+// tap / long_press / swipe / stop。引擎为进程单例：脚本退出后触发器继续
+// 在服务进程内监视（与桌面 SmartTriggerManager 一致）；桥随宿主更新。
+
+void registerTriggerModule(sol::state& lua, AndroidHostBridge* bridge) {
+    sol::table trigger = lua["wingman"]["trigger"] = lua.create_table();
+
+    trigger.set_function("add", [bridge](sol::object nameObj, sol::object cfgObj) -> bool {
+        if (!nameObj.is<std::string>() || !cfgObj.is<sol::table>()) {
+            return false;
+        }
+        TriggerDef def;
+        def.name = nameObj.as<std::string>();
+        const sol::table cfg = cfgObj.as<sol::table>();
+        def.checkIntervalMs = cfg.get_or("checkIntervalMs", 500);
+        def.maxTriggers = cfg.get_or("maxTriggers", 0);
+
+        // 条件：至少一条，类型必须可识别（未知类型整体拒绝，不静默降级）
+        sol::object condsObj = cfg["conditions"];
+        if (!condsObj.is<sol::table>()) {
+            return false;
+        }
+        for (auto& pair : condsObj.as<sol::table>()) {
+            sol::object cObj = pair.second;
+            if (!cObj.is<sol::table>()) {
+                return false;
+            }
+            const sol::table t = cObj.as<sol::table>();
+            TriggerCondition cond;
+            const std::string type = t.get_or("type", std::string());
+            if (type == "color_found") {
+                cond.type = TriggerConditionType::ColorFound;
+            } else if (type == "color_not_found") {
+                cond.type = TriggerConditionType::ColorNotFound;
+            } else if (type == "pixel_changed") {
+                cond.type = TriggerConditionType::PixelChanged;
+            } else if (type == "timer") {
+                cond.type = TriggerConditionType::Timer;
+                cond.timerMs = t.get_or("ms", 0);
+                if (cond.timerMs <= 0) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+            if (type == "color_found" || type == "color_not_found") {
+                sol::object colorObj = t["color"];
+                if (!colorObj.valid()) {
+                    return false;
+                }
+                cond.color = toColor(colorObj);
+                cond.tolerance = t.get_or("tolerance", 10);
+                toRect(t["region"], cond.region);
+            } else if (type == "pixel_changed") {
+                cond.x = t.get_or("x", 0);
+                cond.y = t.get_or("y", 0);
+                cond.tolerance = t.get_or("tolerance", 10);
+            }
+            def.conditions.push_back(cond);
+        }
+        if (def.conditions.empty()) {
+            return false;
+        }
+
+        // 动作：至少一条
+        sol::object actsObj = cfg["actions"];
+        if (!actsObj.is<sol::table>()) {
+            return false;
+        }
+        for (auto& pair : actsObj.as<sol::table>()) {
+            sol::object aObj = pair.second;
+            if (!aObj.is<sol::table>()) {
+                return false;
+            }
+            const sol::table t = aObj.as<sol::table>();
+            TriggerAction action;
+            const std::string type = t.get_or("type", std::string());
+            if (type == "tap") {
+                action.type = TriggerActionType::Tap;
+                action.x = t.get_or("x", 0);
+                action.y = t.get_or("y", 0);
+                action.durationMs = t.get_or("durationMs", 60);
+            } else if (type == "long_press") {
+                action.type = TriggerActionType::LongPress;
+                action.x = t.get_or("x", 0);
+                action.y = t.get_or("y", 0);
+                action.durationMs = t.get_or("durationMs", 600);
+            } else if (type == "swipe") {
+                action.type = TriggerActionType::Swipe;
+                action.x = t.get_or("x1", 0);
+                action.y = t.get_or("y1", 0);
+                action.x2 = t.get_or("x2", 0);
+                action.y2 = t.get_or("y2", 0);
+                action.durationMs = t.get_or("durationMs", 300);
+            } else if (type == "stop") {
+                action.type = TriggerActionType::Stop;
+            } else {
+                return false;
+            }
+            def.actions.push_back(action);
+        }
+        if (def.actions.empty()) {
+            return false;
+        }
+        AndroidTriggerManager::instance().setBridge(bridge);
+        return AndroidTriggerManager::instance().add(def);
+    });
+
+    trigger.set_function("start", [](sol::object nameObj) -> bool {
+        if (!nameObj.is<std::string>()) return false;
+        return AndroidTriggerManager::instance().start(nameObj.as<std::string>());
+    });
+    trigger.set_function("stop", [](sol::object nameObj) -> bool {
+        if (!nameObj.is<std::string>()) return false;
+        return AndroidTriggerManager::instance().stop(nameObj.as<std::string>());
+    });
+    trigger.set_function("remove", [](sol::object nameObj) -> bool {
+        if (!nameObj.is<std::string>()) return false;
+        return AndroidTriggerManager::instance().remove(nameObj.as<std::string>());
+    });
+    trigger.set_function("startAll", []() -> int {
+        return AndroidTriggerManager::instance().startAll();
+    });
+    trigger.set_function("stopAll", []() -> int {
+        return AndroidTriggerManager::instance().stopAll();
+    });
+    trigger.set_function("isRunning", [](sol::object nameObj) -> bool {
+        if (!nameObj.is<std::string>()) return false;
+        return AndroidTriggerManager::instance().isRunning(nameObj.as<std::string>());
+    });
+    trigger.set_function("getTriggerCount", [](sol::object nameObj) -> int {
+        if (!nameObj.is<std::string>()) return -1;
+        return AndroidTriggerManager::instance().getTriggerCount(nameObj.as<std::string>());
+    });
+    trigger.set_function("count", []() -> int {
+        return AndroidTriggerManager::instance().count();
+    });
+}
+
 } // namespace
 
 void registerAndroidApis(sol::state& lua, std::atomic<bool>& stopFlag,
@@ -501,6 +646,8 @@ void registerAndroidApis(sol::state& lua, std::atomic<bool>& stopFlag,
     registerInputModule(lua, stopFlag, bridge);
     registerScreenModule(lua, bridge, filesDir);
     registerVisionModule(lua, bridge, filesDir);
+    // 声明式触发器（定时/像素）：add 时同步宿主桥到引擎单例
+    registerTriggerModule(lua, bridge);
     // AI provider 截帧注入：captureFrame 位图复用同一 provider 通路
     //（空 region=全屏；NDK 下 Screen::capture 无装配，公共层平台宏冻结）。
     // stub 构建（无 OpenCV）为空实现假体，注入无副作用。重复注册整体

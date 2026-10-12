@@ -86,7 +86,7 @@
 - [x] 任务重试、超时、退避封装（task 模块 backoffMs/backoffFactor/maxRetries/timeoutMs）
 - [ ] 任务状态持久化与恢复（2026-10-13 评估挂起：v1 任务体是线程安全可调用体（Lua/Python 闭包），不可序列化——重启后「恢复」语义需要产品拍板（仅声明式定义可重放？未终局工作流标 failed 落账供查询？持久化介质 KV vs 文件？）。在语义定案前实现一半（只落账不恢复）价值存疑，挂起待拍板）
 - [ ] 事件订阅持久化与断线重连（2026-10-13 评估挂起：transport 层重连已存在（RemoteClient 指数退避重连循环 + 重连后 outbox 冲刷）；缺的是「订阅」面——Go server 目前没有事件订阅注册表（无 SSE/WS 订阅端点，事件面只在 runtime 内部 EventHub/EventBuffer），无存量订阅可持久化。做这件事=先设计 server 侧订阅/投递架构（订阅关系存谁、断线窗口事件是否补投），属产品/架构决策，挂起待拍板）
-- [ ] 统一回调/通知策略，避免 Lua 和 Python 语义分裂
+- [ ] 统一回调/通知策略，避免 Lua 和 Python 语义分裂（2026-10-13 评估挂起：现状已收敛大半——事件回调统一 callableThreadSafe 门控（hotkey/systemwatch/uia.error 同口径），命名约定已由描述符审计门钉死（camelCase 原名 + Python snake 别名）。剩余分裂点（回调线程模型是否对齐 Lua 的协程式排队、错误上报事件名是否统一）属 API 语义设计，改动即破坏存量脚本，需产品拍板后单独立项）
 
 ### 常用工具补齐
 - [x] 剪贴板模块（clipboard_module.cpp + clipboard.pyi）
@@ -138,7 +138,7 @@
 - [x] `platform/android/` IInput 后端（AccessibilityService dispatchGesture，经 JNI；`WingmanAccessibilityService.kt` 主线程 post + seq/promise 回执，超时兜底在 C++）
 - [x] `platform/android/` ICapture 后端（MediaProjection 主通道；`ScreenCaptureManager.kt` + AndroidHostBridge::captureFrame。⚠️ takeScreenshot API 30+ 兜底未做）
 - [x] 找色/找图/像素检测对手机截帧可用；screen/input 脚本 API 全通（input click/tap/longPress/swipe/delay + screen getScreenWidth/Height/capture/getPixel/findColor/findColors/findImage + vision 五函数；桌面同源编译验证：android_api_test 6 + script_runner_test 8 用例。⚠️ 真机触摸/截帧行为待真机验证）
-- [ ] 触发器系统端侧跑通（定时/像素触发）
+- [x] 触发器系统端侧跑通（定时/像素触发）（2026-10-13：AndroidTriggerManager（单监视线程，timer 边沿/color_found/color_not_found/pixel_changed 条件 + tap/long_press/swipe/stop 动作，checkInterval 轮询 + maxTriggers 自停，对齐桌面 SmartTrigger 语义）+ `wingman.trigger` Lua 绑定 + 桌面同源单测 9 用例（libs/lua/tests，OpenCV/无 OpenCV 两档树全绿）。⚠️ 真机触摸/截帧行为与宿主拆桥前 stopAll 时序待真机验证）
 
 ### A3 可靠性与部署体验
 - [x] 开机自启、崩溃自重启、断连自治（缓存脚本继续执行、重连后汇报）（2026-09-30，6cecfad：BootCompletedReceiver/退避闹钟/核心看门狗 + RemoteClient 既有 outbox）

@@ -13,6 +13,7 @@ if(BUILD_LUA_TESTS)
         ${CMAKE_CURRENT_SOURCE_DIR}/lua_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/script_runner_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/android_api_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/android_trigger_test.cpp
     )
     add_executable(lua_tests ${LUA_TESTS_SOURCES})
 
