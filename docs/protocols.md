@@ -121,7 +121,7 @@ Body: JSON（最大 16 MiB）
 | `team.vote_cast` | `{voteId, memberId, response}` → 计入投票 |
 | `team.status_report` | `{teamId, memberId, status{}}` → 以收件箱消息转发给除上报者外的全部成员 |
 | `team.broadcast` | `{teamId, memberId, message{}}` → 以 `team.broadcast_received {teamId, senderId, message}` 转发给除发送者外的全部成员 |
-| `proxy.data` / `proxy.close` / `proxy.error` | 远程代理（Guacamole）中继帧，`data` 为 base64，按 `proxyId` 路由（见 remote-gateway 设计文档） |
+| `proxy.data` / `proxy.close` / `proxy.error` | 远程代理（Guacamole）中继帧，`data` 为 base64，按 `proxyId` 路由（见 `docs/remote-gateway-guacamole-design.md`） |
 
 ### Notify（server → runtime，主动下发）
 
