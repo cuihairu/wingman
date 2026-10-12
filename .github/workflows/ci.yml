@@ -42,6 +42,17 @@ jobs:
       - name: Check platform macro boundary (P0 thin-layer discipline)
         run: ./scripts/check_platform_boundary.sh
 
+  vault-touchpoints:
+    name: Vault Touchpoint Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Scan plaintext credential env reads outside boot-tier allowlist
+        run: ./scripts/check_vault_touchpoints.sh
+
   api-typing-audit:
     name: API Typing Drift Audit
     runs-on: ubuntu-latest
