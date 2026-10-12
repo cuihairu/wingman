@@ -373,6 +373,24 @@ The Dashboard consumes these endpoints from the Agents page (row selection
 + batch toolbar + result table); the trigger form is shared with the
 Monitor page as a callback-style component.
 
+### Team inbox push (team-scoped fan-out)
+
+Teams are runtime state held by the in-memory `TeamManager` on the agent
+channel (created via `POST /api/teams`, joined by runtime agents via
+`team.join`); a server restart loses them by design. The HTTP face only
+adapts: `GET /api/teams` / `GET /api/teams/:teamId` read the current view
+(`agents:manage`), and `POST /api/teams/:teamId/messages` fans a message
+out to every member with a bound device. Delivery reuses the inbox path —
+`SendMessageToAgent` enqueues into the member's in-memory inbox buffer and
+the notifier callback emits the existing `inbox.message` notify frame over
+the agent TCP connection; offline members keep the buffered message until
+ack or disconnect purge. Members without a bound device (including the
+team leader created with the team) are reported as `skipped` in the
+per-member summary instead of enqueueing against an empty agentID. The
+Android runtime does not consume `inbox.message` (see platforms.md); the
+desktop runtime inbox module dispatches any message type via registered
+callbacks.
+
 ## Scripting Language Strategy (Dual-Language, Tiered Primacy)
 
 Decision (2026-09-19): Wingman keeps **both** Lua and Python as script

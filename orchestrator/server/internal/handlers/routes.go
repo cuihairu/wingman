@@ -107,7 +107,7 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 	// 触发器处理器（透传 runtime trigger.* 到 Dashboard）
 	triggerHandler := NewTriggerHandler(deps.Registry, deps.DB)
 	// 团队处理器（Dashboard 创建团队；runtime agent 随后经 team.join 加入）
-	teamHandler := NewTeamHandler(deps.TeamManager)
+	teamHandler := NewTeamHandler(deps.DB, deps.TeamManager)
 
 	// ====== API v1 路由（保留兼容） ======
 	v1 := r.Group("/api/v1")
@@ -225,6 +225,10 @@ func RegisterRoutes(r *gin.Engine, deps RouterDeps) {
 		agentsMgmt.Use(middleware.PermissionRequired(deps.DB, "agents:manage"))
 		{
 			agentsMgmt.POST("/teams", teamHandler.HandleCreate)
+			agentsMgmt.GET("/teams", teamHandler.HandleList)
+			agentsMgmt.GET("/teams/:teamId", teamHandler.HandleGet)
+			// 团队范围收件箱推送：TeamManager 通知回调经 inbox.message 通知帧下发
+			agentsMgmt.POST("/teams/:teamId/messages", teamHandler.HandleSendMessage)
 			agentsMgmt.POST("/agents/batch/trigger", batchHandler.HandleBatchTrigger)
 			agentsMgmt.POST("/agents/:agentId/shutdown", agentHandler.HandleShutdown)
 			agentsMgmt.PUT("/agents/:agentId/tags", agentHandler.HandleSetTags)

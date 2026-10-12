@@ -568,6 +568,27 @@ func (tm *TeamManager) GetTeamInfo(teamID string) (map[string]any, error) {
 	return tm.InfoOf(team), nil
 }
 
+// ListTeams 返回全部团队的对外视图（按 teamId 升序，供 Dashboard 列表渲染）。
+// 视图结构与 GetTeamInfo 一致；遍历期间被解散的团队直接跳过。
+func (tm *TeamManager) ListTeams() []map[string]any {
+	tm.mu.RLock()
+	ids := make([]string, 0, len(tm.teams))
+	for id := range tm.teams {
+		ids = append(ids, id)
+	}
+	tm.mu.RUnlock()
+
+	// RWMutex 不可重入：先释放团队表锁，再逐个取视图（InfoOf 走 team.mu）
+	sort.Strings(ids)
+	views := make([]map[string]any, 0, len(ids))
+	for _, id := range ids {
+		if info, err := tm.GetTeamInfo(id); err == nil {
+			views = append(views, info)
+		}
+	}
+	return views
+}
+
 // InfoOf 将团队对象格式化为对外响应视图（字段结构与 GetTeamInfo 一致）。
 // 独立成方法供 HTTP handler 直接格式化刚创建的团队对象——此时按 teamID
 // 回查只会徒增一个不可达的错误分支。

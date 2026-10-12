@@ -142,7 +142,7 @@ func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *w
 	scriptHandler := handlers.NewScriptHandler(db, scriptsDir, registry)
 	triggerHandler := handlers.NewTriggerHandler(registry, db)
 	wfHandler := handlers.NewWorkflowHandler(wfEngine, db)
-	teamHandler := handlers.NewTeamHandler(teamMgr)
+	teamHandler := handlers.NewTeamHandler(db, teamMgr)
 	batchHandler := handlers.NewBatchHandler(db, scriptsDir, registry)
 
 	r := gin.New()

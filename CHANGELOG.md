@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### feat（2026-10-13，团队读面与团队范围收件箱推送——Team/inbox 接入中控 HTTP 面）
+
+- **背景**：多 agent 协作的运行时机制（内存态 `TeamManager`：建团/team.join/收件箱缓冲/`inbox.message` 通知帧实时下发、离线留内存缓冲）此前已随 agent 通道落地，但 Dashboard 侧只有 `POST /api/teams` 建团一个孤儿端点，无读入口、无法触达团队收件箱。
+- **读 API**（`agents:manage` 权限）：`GET /api/teams`（全量团队列表，teamId 升序，遍历期间被解散的团队跳过）；`GET /api/teams/:teamId`（团队详情 = 基础字段 + `memberAgents` 成员→设备映射）；不存在的团队 404。
+- **团队范围推送**：`POST /api/teams/:teamId/messages`（`{messageType, payload?}`）——按 `memberAgents` 解析成员到设备，对每个已绑定设备的成员经 `SendMessageToAgent` 入队一条消息（notifier 回调实时下发 `inbox.message`，离线成员留内存缓冲）；未绑定设备的成员（含建团 leader 本身）计入 skipped，不向空 agentID 入队避免污染收件箱；响应为逐成员结果汇总 `{teamId, total, delivered, skipped, results[]}`（按 memberId 升序）。审计落 `team.create` / `team.message_push`。
+- **测试**：`teams_test.go` 重构装配（真实 TeamManager + sqlite）+ 新增列表/详情（升序、memberAgents、404）、推送全链路（JoinTeam 广播与推送分离断言、notifier 回调逐条校验、收件箱缓冲落位、payload 透传、未绑定成员不收推送）、参数拒绝（404/400）5 组；integration harness 适配新构造签名。Go 全量 `go test ./... -count=1` 绿。
+- **已知边界**：团队与收件箱均为内存态，服务重启丢失（与 TeamManager 既有口径一致）；Dashboard Teams UI 页面未做（读 API 已可用）；Android runtime 不消费 `inbox.message`（platforms.md 既定）。
+
 ### feat（2026-10-13，Dashboard 设备视图——按标签分组、标签选择器批量下发、平台维度大盘）
 
 - **分组**：Agents 列表新增平铺/按标签分组视图切换（`Segmented`）——有标签才显示；分组视图每组一表（组名升序、未分组组置末、多标签 agent 同属多组），勾选跨组共享同一选择集，分组内分页收敛到 5 条。标签筛选仍只过滤可见范围（与下发选择器语义正交）。
