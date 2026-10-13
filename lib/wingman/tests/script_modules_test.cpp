@@ -470,6 +470,7 @@ TEST(MlModuleTest, ProvidersReturnsStringArray) {
 
     const auto result = (*providersFn)({});
     EXPECT_TRUE(result.isArray()) << "providers should return an array";
+    // stub 下至少返回 cpu；真引擎返回可用执行提供者列表
     EXPECT_GT(result.size(), 0u) << "providers list should not be empty";
 }
 
@@ -480,6 +481,7 @@ TEST(MlModuleTest, UnloadReturnsFalseForMissingModel) {
     const auto* unloadFn = findFunction(mod, "unload");
     ASSERT_NE(unloadFn, nullptr);
 
+    // 卸载从未加载的模型应返回 false
     const auto result = (*unloadFn)({ScriptValue::fromString("ml-never-existed")});
     EXPECT_FALSE(result.asBool()) << "unload of missing model should return false";
 }
@@ -520,6 +522,7 @@ TEST(MlModuleTest, OutputsReturnsEmptyArrayForMissingModel) {
 }
 
 TEST(MlModuleTest, CleanupDoesNotCrash) {
+    // cleanupMlModule 应在任何状态下安全调用（全局模型映射为空时也是空操作）
     EXPECT_NO_THROW(cleanupMlModule());
 }
 
@@ -527,6 +530,7 @@ TEST(MlModuleTest, ModuleHasExpectedFunctionSet) {
     auto mod = getMlModule();
     ASSERT_FALSE(mod.name.empty());
 
+    // ml 模块必须暴露 7 个函数：providers / loadModel / unload / isLoaded / inputs / outputs / run
     const std::vector<std::string> expected = {
         "providers", "loadModel", "unload", "isLoaded", "inputs", "outputs", "run",
     };
