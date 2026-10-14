@@ -544,6 +544,7 @@
 - [ ] 用户文档完善
     - [x] 脚本 API 面对账三批（core.md 全页对账、benchmark 基线同步、API 名/签名/返回值口径清理）+ 签名级对账零漂移（六模块 lambda 体验证，见上）
     - [x] README/结构文档对账（2026-10-15）：脚本模块计数四份口径互不一致（README/README.zh 各两处 40 与 41、docs/project-structure.md 41 与「41 个 ModuleDescriptor」），真值 42——注册表恰 42 个 `modules.push_back` / 42 个 create*Module() / 42 个唯一 `mod.name`，自 2026-10-13 未再变动；10-08 审计表 A-D05 记「实际 41、统一改 41」系时点快照（`132eb09` 加 systemwatch 后 41→42），此后无一处按真值更新。已全仓统一 42。附带纠偏：project-structure.md 示例模块名 `trigger` 查无此模块（脚本面触发器为 `wingman.smarttrigger`，module_registry.cpp 无 trigger 描述符）；`本地测试口径` 段原被 `f9f962e` 误插进 README 安装参数 bash 代码栏（GitHub 渲染为 bash 注释、中文段混入英文 README），已迁回 CONTRIBUTING.md「构建与验证」节（该文件原有按路径检查表、无三路分流约定）
+    - [x] 目录改名残留+示例路径对账（2026-10-15 第二批）：`43bc328` 把 apps/runtime 改名 apps/agent 后，六份活文档目录树仍留旧名共 7 处（project-structure.md 树图+`#### runtime/` 小节头、architecture.md、guide/architecture.md、guide/structure.md、DEVELOPMENT.md、ROADMAP.md），README 双语 Quick Start 示例路径 `examples\hello.lua` 实不存在（真路径 examples/lua_scripts/hello.lua，getting-started/index.md 均已用对）——已全改（commit 5434055，docs:build 绿 113.83s）；CHANGELOG/审计台账里的 apps/runtime 字样系历史证据按约定不重写。同批兜底：审计-文档一致性.md 243 行仅 2 行带销行标记（整改未回填、属静态发现清单），按页归组抽 27 行复核（P0/P1/P2 点名 15 行 + api 页分层 12 行）全部为现行态；初判仍漂移的 API.md「26 个方法」细看已修——:97 注记明确 trigger.* 不在本地 IPC 面，26=apps/agent 注册面、protocols.md「31 个唯一方法」=跨两注册面合计，两口径并行不矛盾
 
 ### 长期
 - [ ] 视频教程制作
