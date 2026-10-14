@@ -25,7 +25,7 @@ Dashboard 点击运行 → Go Server run_script{content} → 设备执行 Lua
 |--------|------|----------|
 | A2 脚本能力（已实施，2026-09-21） | `platform/android` 宿主桥（dispatchGesture 手势注入）/MediaProjection 采集真实现，找色找图，`screenshot.capture` 远程截图 | 租户目录 + stub 骨架 |
 | A3 可靠性（已落地，2026-09-30） | 开机自启、崩溃自重启、断连缓存自治、机型保活指引（见 §7 落地摘要；token 认证 P1 已于 2026-09-20 落地，见 §8） | 设计约束成文 |
-| A4 多设备编排 | Dashboard 设备视图、批量下发、asset.sync 模板分发 | 协议预留 |
+| A4 多设备编排 | Dashboard 设备视图、批量下发、asset.sync 模板分发 | 已落地（2026-10-13 服务端 + 桌面 runtime + Dashboard；2026-10-15 Android 端侧落盘接 RpcDispatcher） |
 
 ### 1.3 硬约束核查（与 `docs/architecture-decisions.md` 对齐）
 

@@ -21,6 +21,10 @@
 #include "wingman/agentcore/remote_client.hpp"
 #include "wingman/androidagent/script_runner.hpp"
 
+namespace wingman::rpc {
+class RpcDispatcher;
+}
+
 namespace wingman::android {
 
 class AndroidAgent {
@@ -74,6 +78,9 @@ private:
     std::unique_ptr<runtime::RemoteClient> client_;
     ScriptRunner runner_;
     Config config_;
+    // asset.sync 端侧落盘（A3）：远程通道经 RpcDispatcher 复用
+    // registerAssetHandlers（start 时按 filesDir/assets 装配）
+    std::unique_ptr<rpc::RpcDispatcher> assetDispatcher_;
     mutable std::mutex mutex_;
     // 当前脚本回传用的 scriptId（onCommand 启动成功时设置；单脚本模型）
     std::string activeScriptId_;

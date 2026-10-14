@@ -74,6 +74,12 @@ set(ANDROIDAGENT_SOURCES
     "${WINGMAN_REPO_ROOT}/lib/wingman/src/crypt.cpp"
     "${WINGMAN_REPO_ROOT}/lib/wingman/src/platform/android/android_host_bridge.cpp"
     "${WINGMAN_REPO_ROOT}/lib/wingman/src/platform/android/android_capture.cpp"
+    # asset.sync 端侧落盘（A3 后续增量）：RpcDispatcher + asset handler
+    #（Dispatcher Reuse，与桌面 agent.cpp 远程通道共用同一套 handler；
+    # 依赖仅 filesystem + crypt，零新增重量依赖；桌面侧守卫用例
+    # libs/lua/tests/android_asset_test.cpp 只链本目标）
+    "${WINGMAN_REPO_ROOT}/lib/wingman/src/rpc/rpc_dispatcher.cpp"
+    "${WINGMAN_REPO_ROOT}/lib/wingman/src/rpc/handlers/asset_handler.cpp"
 )
 if(WINGMAN_ANDROIDAGENT_VISION)
     list(APPEND ANDROIDAGENT_SOURCES

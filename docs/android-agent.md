@@ -162,4 +162,8 @@ Android 13 起侧载安装的无障碍被「受限设置」默认屏蔽（开关
   （2026-10-10：per-agent token 服务侧入库 + Dashboard 管理面/审计，
   agent 侧零改动；token 存储迁移 Keystore 加密库 + 明文一次性迁移；
   challenge-response/TLS 未实施）。
-- **A4 多设备编排**：Dashboard 设备视图、批量下发、asset.sync 模板分发。
+- **A4 多设备编排（已落地）**：Dashboard 设备视图（标签分组/批量下发/平台大盘）与
+  Teams 页面（2026-10-13）；asset.sync 模板分发——服务端资产存储与
+  `POST /api/assets/sync` 下发 + 桌面 runtime 落盘（2026-10-13），Android 端侧
+  接 RpcDispatcher 复用同一 `registerAssetHandlers` 落 `filesDir/assets`
+  （2026-10-15，桌面同源守卫测试 `android_asset_test`；真机走查待真机）。

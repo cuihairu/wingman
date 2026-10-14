@@ -2,11 +2,13 @@
 
 #include "agent/android_screenshot.hpp"
 #include "platform/android/android_host_bridge.hpp"
+#include "wingman/rpc/asset_handler.hpp"
 
 #include <nlohmann/json.hpp>
 
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 
 namespace wingman::android {
 
@@ -30,6 +32,45 @@ std::string scriptIdFromPath(const std::string& path) {
         name = name.substr(0, dot);
     }
     return name;
+}
+
+// dispatchViaRpcDispatcher 把远程命令转成 RPC 请求经共享 dispatcher 执行
+//（与桌面 apps/agent/src/agent.cpp 同形；Dispatcher Reuse——远程 agent 命令
+// 复用 lib/wingman 注册的同一套 handler，CommandData 的字符串值尽量按
+// JSON 解析）
+CommandResult dispatchViaRpcDispatcher(rpc::RpcDispatcher& dispatcher,
+                                       const std::string& command,
+                                       const CommandData& data,
+                                       const std::string& errorPrefix) {
+    nlohmann::json params = nlohmann::json::object();
+    for (const auto& [key, value] : data) {
+        try {
+            params[key] = nlohmann::json::parse(value);
+        } catch (const std::exception&) {
+            params[key] = value;
+        }
+    }
+
+    nlohmann::json request = {
+        {"type", "call"},
+        {"id", "remote-" + command},
+        {"method", command},
+        {"params", params}
+    };
+
+    try {
+        auto response = nlohmann::json::parse(dispatcher.dispatch(request.dump()));
+        auto payload = response.value("data", nlohmann::json::object());
+        if (payload.value("success", true) == false) {
+            return CommandResult::error(payload.value("error", errorPrefix + " failed"));
+        }
+        if (payload.contains("result")) {
+            return CommandResult::okData(payload["result"].dump());
+        }
+        return CommandResult::okData(payload.dump());
+    } catch (const std::exception& e) {
+        return CommandResult::error(errorPrefix + " failed: " + e.what());
+    }
 }
 
 } // namespace
@@ -86,6 +127,14 @@ bool AndroidAgent::start(const Config& config) {
     // API 降级）+ 模板图根目录
     runner_.setHostBridge(platform::android::globalHostBridge());
     runner_.setFilesDir(config.filesDir);
+
+    // asset.sync 端侧落盘（A3）：模板图片等资产落 <filesDir>/assets/
+    //（脚本以 assets/<name> 相对引用——findImage 相对路径按 filesDir
+    // 解析，与桌面 scriptDir/assets 的引用形态一致）
+    assetDispatcher_ = std::make_unique<rpc::RpcDispatcher>();
+    rpc::registerAssetHandlers(
+        *assetDispatcher_,
+        (std::filesystem::path(config.filesDir) / "assets").generic_string());
 
     client_->setCommandCallback(
         [this](const std::string& command, const CommandData& data) {
@@ -180,6 +229,14 @@ CommandResult AndroidAgent::onCommand(const std::string& command,
         // 支持服务连接晚于 agent 启动的时序
         return handleScreenshotCapture(
             data, platform::android::globalHostBridge());
+
+    } else if (command.rfind("asset.", 0) == 0) {
+        // asset.sync：server 下发模板图片等资产落盘 filesDir/assets
+        //（远程通道复用 RPC handler，与桌面 agent.cpp 的 asset.* 分支同形）
+        if (!assetDispatcher_) {
+            return CommandResult::error("asset handlers not available");
+        }
+        return dispatchViaRpcDispatcher(*assetDispatcher_, command, data, "asset command");
 
     } else if (command == "system.shutdown") {
         // 服务生命周期归 Kotlin 前台服务管理，不响应远端关停
