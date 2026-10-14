@@ -542,6 +542,8 @@
     - [x] 基准测试面已落地（2026-10-13，见上「待规划」条目与 docs/benchmarks.md）；优化半场待按基线数据驱动
     - [x] 优化首增量（2026-10-15）：10-14 复测揭示 findImage 双路径——桌面走 OpenCV TM_CCOEFF_NORMED，而 Android 端 screen/vision.findImage 与 trigger 图像条件走 `PatternMatcher::templateMatch` 朴素四重循环（全屏 1600x1000 vs 32x32 达 18.1 s/op，触发器 500ms 轮询下失能）。常数因子优化（模板范数外提 + 亮度面预计算 + 行指针访问，累加顺序逐项保持）→ 全屏 2.49 s/op（7.3x）、400x300 区域 162 ms/op（9.1x），输出位级不变（黄金值回归钉 TemplateMatchGoldenBits/FindImageGoldenBits 前后同值）；新增 matcher_bench（合成帧无显示面依赖）。剩余提速（SIMD/金字塔/端侧 OpenCV 匹配器）均改数值或命中语义，属设计取舍待拍板，见 docs/benchmarks.md 优化记录
 - [ ] 用户文档完善
+    - [x] 脚本 API 面对账三批（core.md 全页对账、benchmark 基线同步、API 名/签名/返回值口径清理）+ 签名级对账零漂移（六模块 lambda 体验证，见上）
+    - [x] README/结构文档对账（2026-10-15）：脚本模块计数四份口径互不一致（README/README.zh 各两处 40 与 41、docs/project-structure.md 41 与「41 个 ModuleDescriptor」），真值 42——注册表恰 42 个 `modules.push_back` / 42 个 create*Module() / 42 个唯一 `mod.name`，自 2026-10-13 未再变动；10-08 审计表 A-D05 记「实际 41、统一改 41」系时点快照（`132eb09` 加 systemwatch 后 41→42），此后无一处按真值更新。已全仓统一 42。附带纠偏：project-structure.md 示例模块名 `trigger` 查无此模块（脚本面触发器为 `wingman.smarttrigger`，module_registry.cpp 无 trigger 描述符）；`本地测试口径` 段原被 `f9f962e` 误插进 README 安装参数 bash 代码栏（GitHub 渲染为 bash 注释、中文段混入英文 README），已迁回 CONTRIBUTING.md「构建与验证」节（该文件原有按路径检查表、无三路分流约定）
 
 ### 长期
 - [ ] 视频教程制作

@@ -50,7 +50,7 @@ English | [简体中文](README.zh.md)
 - **C++ core** - Engine and script modules implemented in C++23; Lua/Python are script layers only
 - **Dual-language scripting** - Lua (sol2) and Python (pybind11) share the same `wingman.*` API
 - **Pure user mode** - Only calls public system APIs; no game memory reads/writes, no process injection
-- **Programmable** - 40 script modules plus triggers and macros; complex logic written as scripts
+- **Programmable** - 42 script modules plus triggers and macros; complex logic written as scripts
 - **Cross-platform** - Unified interface abstraction for Windows, macOS and Linux; experimental Android support, iOS planned ([platform details](docs/platforms.md))
 
 ### Feature Modules
@@ -96,19 +96,6 @@ irm https://raw.githubusercontent.com/cuihairu/wingman/main/scripts/install.ps1 
 Optional parameters (use `bash -s --` on Linux/macOS, a scriptblock on Windows):
 
 ```bash
-
-## 本地测试口径
-
-CI 与本地开发按改动面三路分流——改一行文档不该全量编译。
-
-1. **文档改动**（`*.md`、`docs/**`、图片）：不编译。主 CI workflow 的
-   `paths-ignore` 已跳过这些路径。
-2. **代码改动**：只跑改动子集，不全量。
-   - `ctest --test-dir build -R '<改动测试>'`
-   - `go test ./<改动包>/... -race`
-3. **全量**（`ctest + go test -race ./...`）：仅以下情形触发——Cargo.toml / go.mod / CMakeLists.txt / vcpkg.json、
-   `.github/**`、Docker/Compose 配置、发布前。
-
 # Pin a version + register as a persistent service (Linux: systemd user unit; macOS: launchd)
 curl -fsSL https://raw.githubusercontent.com/cuihairu/wingman/main/scripts/install.sh | bash -s -- --version nightly --service
 ```
@@ -281,7 +268,7 @@ Wingman uses a **C++ core engine + multi-language scripting** architecture:
 - **Control plane**: a Go server acts as the remote control plane; runtimes connect to it as agents
 - **Local control**: the Tauri GUI controls the runtime over local IPC
 - **Script engines**: Lua (sol2) and Python (pybind11) behind a unified interface
-- **Modular**: 41 language-agnostic script modules (see the [API docs](docs/api/index.md)), easy to extend
+- **Modular**: 42 language-agnostic script modules (see the [API docs](docs/api/index.md)), easy to extend
 
 For details see the [architecture doc](docs/architecture.md)
 

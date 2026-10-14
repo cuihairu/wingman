@@ -61,7 +61,7 @@ Android 端侧 Agent（Kotlin，实验性）。无障碍服务注入 + MediaProj
 - **hotkey** - 全局热键监听
 - **file** - 文件 IO
 
-脚本模块注册表（`script/modules/`，41 个 ModuleDescriptor）也在此库。
+脚本模块注册表（`script/modules/`，42 个 ModuleDescriptor）也在此库。
 
 ### libs/
 
@@ -94,7 +94,7 @@ ScriptManager (语言无关) → IScriptEngine
     ↓
 libs/lua/ 或 libs/python/ (引擎绑定)
     ↓
-lib/wingman/ (41 个脚本模块 → screen, input, trigger...)
+lib/wingman/ (42 个脚本模块 → screen, input, smarttrigger...)
     ↓
 apps/agent/ (应用：CLI + outbound agent + local IPC)
     ↓ (outbound TCP)

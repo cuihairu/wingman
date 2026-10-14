@@ -49,7 +49,7 @@ C++ + Lua/Python 的自动化 Agent Runtime + Go 远程编排中控
 - **C++ 核心** - 引擎与脚本模块以 C++23 实现，Lua/Python 只做脚本层
 - **双语言脚本** - Lua（sol2）与 Python（pybind11）共用同一套 `wingman.*` API
 - **纯用户态** - 只调用系统公开 API，不读写游戏内存、不注入进程
-- **可编程** - 40 个脚本模块加触发器、宏，复杂逻辑写成脚本
+- **可编程** - 42 个脚本模块加触发器、宏，复杂逻辑写成脚本
 - **跨平台** - Windows、macOS、Linux 统一接口抽象；Android 实验性支持、iOS 规划中（[平台支持详情](docs/platforms.md)）
 
 ### 功能模块
@@ -264,7 +264,7 @@ Wingman 采用 **C++ 核心引擎 + 多语言脚本** 的架构设计：
 - **控制面**: Go server 作为远程中控，runtime 作为 agent 主动连接
 - **本地控制**: Tauri GUI 通过本地 IPC 控制 runtime
 - **脚本引擎**: Lua (sol2) 和 Python (pybind11) 统一接口
-- **模块化**: 41 个语言无关脚本模块（见 [API 文档](docs/api/index.md)），易于扩展
+- **模块化**: 42 个语言无关脚本模块（见 [API 文档](docs/api/index.md)），易于扩展
 
 详细架构说明请查看 [架构文档](docs/architecture.md)
 

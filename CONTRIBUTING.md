@@ -41,6 +41,18 @@ cmake --build build --config Release
 
 **测试基线**：C++ 侧维持 ~2700 测试 / 90%+ 覆盖；Go server 600+ 测试函数，`go vet` 全清。新功能请补测试。
 
+### 测试范围（按改动面三路分流）
+
+改一行文档不该全量编译。提交前的检查范围按改动面定：
+
+1. **文档改动**（`*.md`、`docs/**`、图片）：不编译。主 CI workflow 的
+   `paths-ignore` 已跳过这些路径。
+2. **代码改动**：只跑改动子集，不全量。
+   - `ctest --test-dir build -R '<改动测试>'`
+   - `go test ./<改动包>/... -race`
+3. **全量**（`ctest + go test -race ./...`）：仅以下情形触发——Cargo.toml / go.mod / CMakeLists.txt / vcpkg.json、
+   `.github/**`、Docker/Compose 配置、发布前。
+
 ## 代码风格
 
 - **C++**：C++23，命名遵循既有约定（成员 `m_` 前缀、`snake_case` 函数 / `PascalCase` 类名）。不引入新的第三方网络服务框架到 runtime。
