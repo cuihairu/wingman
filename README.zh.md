@@ -4,6 +4,8 @@
 
 # Wingman
 
+> [English](README.md) | **中文**
+
 [![OS](https://img.shields.io/badge/OS-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](https://github.com/cuihairu/wingman)
 [![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman)
@@ -47,7 +49,7 @@ C++ + Lua/Python 的自动化 Agent Runtime + Go 远程编排中控
 - **C++ 核心** - 引擎与脚本模块以 C++23 实现，Lua/Python 只做脚本层
 - **双语言脚本** - Lua（sol2）与 Python（pybind11）共用同一套 `wingman.*` API
 - **纯用户态** - 只调用系统公开 API，不读写游戏内存、不注入进程
-- **可编程** - 41 个脚本模块加触发器、宏，复杂逻辑写成脚本
+- **可编程** - 40 个脚本模块加触发器、宏，复杂逻辑写成脚本
 - **跨平台** - Windows、macOS、Linux 统一接口抽象；Android 实验性支持、iOS 规划中（[平台支持详情](docs/platforms.md)）
 
 ### 功能模块
@@ -212,15 +214,14 @@ nightly Release 的 `wingman-*-android-arm64.apk`（debug 签名）：
 ```lua
 local wingman = require("wingman")
 
--- 截图并保存
-local screenshot = wingman.screen.capture(0, 0, 1920, 1080)
-screenshot:save("screenshot.png")
+-- 截图（capture 返回布尔：是否成功）
+local ok = wingman.screen.capture()
 
 -- 查找颜色并点击
-local points = wingman.screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
+local points = wingman.screen.findColor(0xFF0000, {x = 0, y = 0, width = 1920, height = 1080}, 10)
 if points then
     for _, p in ipairs(points) do
-        wingman.input.click(p.x, p.y, "left")
+        wingman.input.click(p.x, p.y, 0)
     end
 end
 ```
@@ -230,12 +231,11 @@ end
 ```python
 from wingman import screen, input
 
-# 截图
-screenshot = screen.capture(0, 0, 1920, 1080)
-screenshot.save("screenshot.png")
+# 截图（capture 返回布尔：是否成功）
+ok = screen.capture()
 
 # 查找颜色并点击
-points = screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
+points = screen.findColor(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080}, 10)
 if points:
     for p in points:
         input.click(p["x"], p["y"])
