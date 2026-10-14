@@ -75,11 +75,11 @@ features:
 local wingman = require("wingman")
 
 -- hello.lua
--- 截图
-local img = wingman.screen.capture(0, 0, 1920, 1080)
+-- 截图（capture 返回布尔：是否成功）
+local ok = wingman.screen.capture()
 
--- 查找颜色（Lua 使用 camelCase 命名）
-local points = wingman.screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
+-- 查找颜色（区域用表：{x=, y=, width=, height=}）
+local points = wingman.screen.findColor(0xFF0000, {x = 0, y = 0, width = 1920, height = 1080}, 10)
 if points then
     for _, p in ipairs(points) do
         wingman.input.click(p.x, p.y)
@@ -93,11 +93,11 @@ end
 # hello.py
 from wingman import screen, input
 
-# 截图
-img = screen.capture(0, 0, 1920, 1080)
+# 截图（capture 返回布尔：是否成功）
+ok = screen.capture()
 
-# 查找颜色（API 名与 Lua 一致，camelCase）
-points = screen.findColor(0xFF0000, 0, 0, 1920, 1080, 10)
+# 查找颜色（区域用字典）
+points = screen.findColor(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080}, 10)
 if points:
     for p in points:
         input.click(p["x"], p["y"])

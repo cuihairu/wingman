@@ -154,6 +154,7 @@ pnpm build     # 产物输出到 orchestrator/dashboard/dist
 `/api` 组写接口已由粗粒度 `RoleRequired("admin")` 改为细粒度 `PermissionRequired`（按权限码放行，`admin` 通配自动通过），划分见 `internal/handlers/routes.go`：
 
 - `agents:manage`：`POST /api/agents/:agentId/shutdown`、`PUT /api/agents/:agentId/tags`、`POST /api/teams`、触发器增删改查/toggle、`POST /api/agents/batch/trigger`
+- `agenttokens:manage`：`GET /api/agent-tokens`、`POST /api/agent-tokens`、`DELETE /api/agent-tokens/:id`
 - `workflows:run`：`POST /api/workflows`、`POST /api/workflows/:id/cancel`
 - `scripts:edit`：`POST /api/scripts`、`POST /api/scripts/delete`、`DELETE /api/scripts`、`POST /api/scripts/save`
 - `scripts:run`：`POST /api/scripts/run`、`POST /api/scripts/stop`、`POST /api/scripts/logs`、`POST /api/agents/batch/run-script`、`POST /api/agents/batch/stop-script`

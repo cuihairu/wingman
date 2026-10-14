@@ -11,6 +11,7 @@
 
 | 方法 | 语义 | 失败 sentinel |
 |------|------|---------------|
+| `Name()` | provider 名（`local` 等） | — |
 | `Status(userID)` | 配置/解锁状态（弹窗探测，不泄密） | — |
 | `Setup(userID, masterPassword)` | 首次设置主口令（设置即解锁） | `ErrWeakMaster` / `ErrAlreadyConfigured` |
 | `Unlock(userID, masterPassword)` | 校验主口令并进入解锁态 | `ErrNotConfigured` / `ErrWrongMaster` |

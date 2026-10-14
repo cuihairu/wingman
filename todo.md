@@ -933,7 +933,7 @@ JWT auth（bcrypt + 限流）、审计日志、Team/投票/Inbox。
 - [x] 工作流重试策略（指数退避）+ Agent 负载均衡（selectAgent 最少在执行）
 - [x] Agent 断线指数退避（reconnectLoop + computeBackoff）
 - [x] Agent 离线命令队列（有界 outbox + flush）
-- [x] 工作流模板库（4 内置模板 + dashboard 选择器）
+- [x] 工作流模板库（6 内置模板 + dashboard 选择器）
 - [x] Agent 分组/标签（PUT tags API + Dashboard 标签编辑）
 
 ### Sprint E (2周) — 测试 + 跨平台 + 收尾
