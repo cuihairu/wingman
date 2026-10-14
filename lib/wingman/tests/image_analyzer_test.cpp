@@ -312,7 +312,64 @@ TEST(ImageAnalyzerTest, FindColorAsyncFindsMatch) {
     EXPECT_EQ(asyncResult->position.y, 7);
 }
 
-// ========== PatternMatcher::matchColorPattern tests ==========
+// ========== templateMatch 位级回归钉 ==========
+
+// templateMatch 是脚本 findImage 的匹配核（桌面 Vision::findImage 走
+// OpenCV，Android/触发器路径走本实现）。实现侧的常数优化必须保持输出
+// 位级不变——本用例以确定性 LCG 灰度图固化 bestScore 的每一位，黄金值
+// 在优化前的实现上采集（详见 docs/benchmarks.md 优化记录）。
+TEST(PatternMatcherTest, TemplateMatchGoldenBits) {
+    Bitmap bmp(12, 8);
+    Bitmap tpl(4, 3);
+    uint32_t seed = 12345;
+    auto nextGray = [&seed]() {
+        seed = seed * 1103515245u + 12345u;
+        return static_cast<uint8_t>((seed >> 16) & 0xFF);
+    };
+    for (int y = 0; y < 8; ++y)
+        for (int x = 0; x < 12; ++x)
+            bmp.setPixel(x, y, Color(nextGray(), nextGray(), nextGray()));
+    // 模板从 (7,2) 裁出但抹花一个像素：最优分 < 1.0，尾数位有内容
+    for (int ty = 0; ty < 3; ++ty)
+        for (int tx = 0; tx < 4; ++tx)
+            tpl.setPixel(tx, ty, bmp.getPixel(7 + tx, 2 + ty));
+    tpl.setPixel(1, 1, Color(255, 255, 255));
+
+    Point bestPos;
+    const double bestScore =
+        PatternMatcher::templateMatch(bmp, tpl, bestPos, Rect{});
+
+    EXPECT_EQ(bestPos.x, 7);
+    EXPECT_EQ(bestPos.y, 2);
+    // 位级钉：优化实现必须与采集值逐位一致（EXPECT_EQ 对 double 即 ==）
+    EXPECT_EQ(bestScore, 0.99882563675917868);
+}
+
+// findImage 全链（含阈值与置信度字段）同钉
+TEST(ImageAnalyzerTest, FindImageGoldenBits) {
+    Bitmap bmp(12, 8);
+    Bitmap tpl(4, 3);
+    uint32_t seed = 12345;
+    auto nextGray = [&seed]() {
+        seed = seed * 1103515245u + 12345u;
+        return static_cast<uint8_t>((seed >> 16) & 0xFF);
+    };
+    for (int y = 0; y < 8; ++y)
+        for (int x = 0; x < 12; ++x)
+            bmp.setPixel(x, y, Color(nextGray(), nextGray(), nextGray()));
+    for (int ty = 0; ty < 3; ++ty)
+        for (int tx = 0; tx < 4; ++tx)
+            tpl.setPixel(tx, ty, bmp.getPixel(7 + tx, 2 + ty));
+    tpl.setPixel(1, 1, Color(255, 255, 255));
+
+    ImageAnalyzer analyzer;
+    const auto result = analyzer.findImage(bmp, tpl, Rect{}, 0.5);
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->position.x, 7);
+    EXPECT_EQ(result->position.y, 2);
+    EXPECT_EQ(result->confidence, 0.99882563675917868);
+}
 
 TEST(PatternMatcherTest, MatchColorPatternEmptyColors) {
     Bitmap bmp(10, 10);

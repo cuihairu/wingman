@@ -32,6 +32,19 @@ target_link_libraries(event_hub_bench PRIVATE
     wingman
 )
 
+# PatternMatcher 匹配核（Android/触发器路径的 findImage 实现；纯合成帧
+# 无显示面依赖，尺寸与 vision_bench 对齐便于横向读数）
+add_executable(matcher_bench
+    matcher_bench.cpp
+)
+target_include_directories(matcher_bench PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/wingman/include
+)
+target_link_libraries(matcher_bench PRIVATE
+    wingman
+)
+
 # Lua 引擎与模块胶水往返（需 wingman::lua 提供引擎自注册）
 if(TARGET wingman::lua)
     add_executable(lua_bench

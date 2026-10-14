@@ -2,6 +2,7 @@
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace wingman::vision {
 
@@ -243,34 +244,67 @@ double PatternMatcher::templateMatch(
         return 0.0;
     }
 
+    // ===== 常数因子优化（输出位级不变，黄金值回归钉见 image_analyzer_test
+    // 的 TemplateMatchGoldenBits）。原实现三处冗余：模板范数在每个搜索
+    // 位置重算（不变量）；模板/目标像素经 getPixel（边界检查 + Color
+    // 构造）在每个位置重读 w*h 次；亮度重复求值。预计算亮度面后内层
+    // 只剩两次 double 载入与乘加；累加顺序与原实现逐项一致（ty 外层 /
+    // tx 内层，三个累加器相互独立），保证位级一致。
+    const int tw = tpl.getWidth();
+    const int th = tpl.getHeight();
+    const int bw = bitmap.getWidth();
+    const uint8_t* const tdata = tpl.getData();
+    const uint8_t* const bdata = bitmap.getData();
+
+    // 模板亮度与范数（原为逐位置不变量，位型：ty 外层 / tx 内层累加）
+    std::vector<double> tl(static_cast<size_t>(tw) * th);
+    double sumTemplate = 0.0;
+    for (int ty = 0; ty < th; ++ty) {
+        for (int tx = 0; tx < tw; ++tx) {
+            const uint8_t* p = tdata + (static_cast<size_t>(ty) * tw + tx) * 4;
+            const double v = (p[2] + p[1] + p[0]) / 3.0;
+            tl[static_cast<size_t>(ty) * tw + tx] = v;
+            sumTemplate += v * v;
+        }
+    }
+    const double sqrtSumTemplate = std::sqrt(sumTemplate);
+
+    // 搜索区亮度面：每像素读一次（内存 sw*sh*8B，全屏 1600x1000 约
+    // 12.8MB，相对匹配成本可忽略）
+    const int sw = searchRegion.width;
+    const int sh = searchRegion.height;
+    std::vector<double> sl(static_cast<size_t>(sw) * sh);
+    for (int y = 0; y < sh; ++y) {
+        const uint8_t* row =
+            bdata + (static_cast<size_t>(searchRegion.y + y) * bw + searchRegion.x) * 4;
+        double* out = sl.data() + static_cast<size_t>(y) * sw;
+        for (int x = 0; x < sw; ++x) {
+            out[x] = (row[x * 4 + 2] + row[x * 4 + 1] + row[x * 4]) / 3.0;
+        }
+    }
+
     double bestScore = -1.0;
 
-    for (int y = searchRegion.y; y <= maxY; ++y) {
-        for (int x = searchRegion.x; x <= maxX; ++x) {
+    for (int y = 0; y <= maxY - searchRegion.y; ++y) {
+        for (int x = 0; x <= maxX - searchRegion.x; ++x) {
             double sum = 0.0;
-            double sumTemplate = 0.0;
             double sumTarget = 0.0;
 
-            for (int ty = 0; ty < tpl.getHeight(); ++ty) {
-                for (int tx = 0; tx < tpl.getWidth(); ++tx) {
-                    Color targetPixel = bitmap.getPixel(x + tx, y + ty);
-                    Color templatePixel = tpl.getPixel(tx, ty);
-
-                    double tVal = (templatePixel.r + templatePixel.g + templatePixel.b) / 3.0;
-                    double sVal = (targetPixel.r + targetPixel.g + targetPixel.b) / 3.0;
-
-                    sum += tVal * sVal;
-                    sumTemplate += tVal * tVal;
-                    sumTarget += sVal * sVal;
+            for (int ty = 0; ty < th; ++ty) {
+                const double* trow = &tl[static_cast<size_t>(ty) * tw];
+                const double* srow = &sl[static_cast<size_t>(y + ty) * sw + x];
+                for (int tx = 0; tx < tw; ++tx) {
+                    sum += trow[tx] * srow[tx];
+                    sumTarget += srow[tx] * srow[tx];
                 }
             }
 
-            double denominator = std::sqrt(sumTemplate) * std::sqrt(sumTarget);
-            double score = (denominator > 0) ? (sum / denominator) : 0.0;
+            const double denominator = sqrtSumTemplate * std::sqrt(sumTarget);
+            const double score = (denominator > 0) ? (sum / denominator) : 0.0;
 
             if (score > bestScore) {
                 bestScore = score;
-                bestPosition = Point{x, y};
+                bestPosition = Point{searchRegion.x + x, searchRegion.y + y};
             }
         }
     }

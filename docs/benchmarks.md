@@ -127,6 +127,39 @@ kv 微操 2~3x 波动出现在更低负载下，属 0.0x µs 级操作对频率/
   匹配占 ~93%。优化半场的第一个数据驱动目标在此（区域限定搜索已支持，
   全屏找图要提速需金字塔/降采样类匹配策略，属设计取舍，未动）。
 
+## 优化记录（2026-10-15，i9-10880H，同日同负载成对测）
+
+### 两路径事实
+
+findImage 有两条实现路径，此前基线只量了桌面一条：
+
+- **桌面 `Vision::findImage`**（脚本 vision/screen 面在桌面 runtime 的路径）：
+  `cv::matchTemplate(TM_CCOEFF_NORMED)`，OpenCV 已是优化实现；
+- **`PatternMatcher::templateMatch`**（Android 端 `screen/vision.findImage` 与
+  `wingman.trigger` 图像条件的路径，桌面不经此）：朴素四重标量循环。
+
+### matcher_bench（新增，纯合成帧无显示面依赖，1600x1000 vs 32x32 未命中）
+
+| 用例 | 优化前 | 优化后 | 提升 |
+| --- | --- | --- | --- |
+| templateMatch 全屏未命中 | 18,145 ms/op | 2,491 ms/op | 7.3x |
+| templateMatch 400x300 区域未命中 | 1,481 ms/op | 162 ms/op | 9.1x |
+
+优化内容（常数因子，**输出位级不变**）：模板范数原在每个搜索位置重算
+（不变量外提）、模板/目标像素原经 `getPixel`（边界检查 + Color 构造）在每
+个位置重读 w*h 次（亮度面预计算，每像素读一次）、亮度重复求值。累加顺序
+与原实现逐项一致（ty 外层 / tx 内层，三个累加器独立），黄金值回归钉
+（`image_analyzer_test.cpp` 的 `TemplateMatchGoldenBits` / `FindImageGoldenBits`，
+LCG 确定性输入，EXPECT_EQ 位级比较）在优化前后同值通过。
+
+### 剩余门槛（设计取舍，维持登记未动）
+
+- 全屏 2.5 s 对 Android 触发器轮询（500ms 间隔）仍偏慢；进一步提速只剩
+  改语义的选项——SIMD/float32 会重排浮点累加（位级一致失守）、金字塔/降
+  采样会改命中语义、端侧接 OpenCV 匹配器（NDK 有 opencv4）会引入与桌面
+  TM_CCOEFF_NORMED 的分数口径差。属设计取舍，待拍板后单独立项。
+- 桌面路径的 264 ms 大头在 OpenCV 匹配本体，同属金字塔类取舍，口径同上。
+
 ## 新增基准
 
 1. 在 `lib/wingman/tests/benchmarks/` 新建 `<name>_bench.cpp`，用 `bench.hpp`

@@ -540,6 +540,7 @@
 ### 中期 (1-2月)
 - [ ] 性能基准测试和优化
     - [x] 基准测试面已落地（2026-10-13，见上「待规划」条目与 docs/benchmarks.md）；优化半场待按基线数据驱动
+    - [x] 优化首增量（2026-10-15）：10-14 复测揭示 findImage 双路径——桌面走 OpenCV TM_CCOEFF_NORMED，而 Android 端 screen/vision.findImage 与 trigger 图像条件走 `PatternMatcher::templateMatch` 朴素四重循环（全屏 1600x1000 vs 32x32 达 18.1 s/op，触发器 500ms 轮询下失能）。常数因子优化（模板范数外提 + 亮度面预计算 + 行指针访问，累加顺序逐项保持）→ 全屏 2.49 s/op（7.3x）、400x300 区域 162 ms/op（9.1x），输出位级不变（黄金值回归钉 TemplateMatchGoldenBits/FindImageGoldenBits 前后同值）；新增 matcher_bench（合成帧无显示面依赖）。剩余提速（SIMD/金字塔/端侧 OpenCV 匹配器）均改数值或命中语义，属设计取舍待拍板，见 docs/benchmarks.md 优化记录
 - [ ] 用户文档完善
 
 ### 长期

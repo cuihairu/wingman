@@ -23,7 +23,7 @@ if ! grep -q "WINGMAN_BUILD_BENCHMARKS:BOOL=ON" "$BUILD_DIR/CMakeCache.txt" 2>/d
         -DWINGMAN_BUILD_BENCHMARKS=ON
 fi
 
-TARGETS=(kvstore_bench event_hub_bench lua_bench)
+TARGETS=(kvstore_bench event_hub_bench matcher_bench lua_bench)
 if grep -q "WINGMAN_HAS_OPENCV:INTERNAL=1" "$BUILD_DIR/CMakeCache.txt" 2>/dev/null; then
     TARGETS+=(vision_bench)
 fi
