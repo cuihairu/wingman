@@ -132,7 +132,7 @@ if btn:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local btn = wingman.uia.findButton("提交")
+local btn = wingman.uia.find_button("提交")
 if btn then
     btn:click()
     print("已点击提交按钮")

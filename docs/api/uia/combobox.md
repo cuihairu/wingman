@@ -212,7 +212,7 @@ if editable_combo:
 local wingman = require("wingman")
 
 -- 可编辑下拉框通常也是 Edit 类型
-local editableCombo = wingman.uia.findEdit("搜索")
+local editableCombo = wingman.uia.find_edit("搜索")
 if editableCombo then
     -- 方法 1: 直接输入文本（set_value 实为设置文本）
     editableCombo:set_value("搜索关键词")

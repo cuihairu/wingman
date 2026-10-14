@@ -106,12 +106,13 @@ local wingman = require("wingman")
 
 -- Use built-in modules
 -- Get screen size
-local width, height = wingman.screen.getDimensions()
+local width = wingman.screen.getScreenWidth()
+local height = wingman.screen.getScreenHeight()
 print("Screen: " .. width .. "x" .. height)
 
 -- Get pixel color
 local color = wingman.screen.getPixel(100, 100)
-print("Color at (100, 100): " .. string.format("0x%06X", color))
+print(string.format("Color at (100, 100): 0x%02X%02X%02X", color.r, color.g, color.b))
 
 -- Move mouse
 wingman.input.click(500, 300)
