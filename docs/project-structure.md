@@ -5,7 +5,7 @@
 ```
 wingman/
 ├── apps/                    # 应用程序
-│   ├── runtime/             # CLI 运行时 (C++)
+│   ├── agent/               # CLI 运行时 (C++)
 │   ├── gui/                 # Tauri/Svelte 桌面 GUI
 │   └── android/             # Android 端侧 Agent (Kotlin)
 ├── lib/                     # 核心库
@@ -33,7 +33,7 @@ wingman/
 
 应用程序目录，包含所有可执行程序：
 
-#### runtime/
+#### agent/
 C++ CLI 运行时，作为主动 Agent 运行：
 - **Agent 模式**：主动连接到编排器（Go orchestrator），通过 transport TCP 接收任务并上报状态
 - **StandaloneMode**：单机模式，本地 IPC 供 GUI 控制

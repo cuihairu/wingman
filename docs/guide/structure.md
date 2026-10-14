@@ -39,7 +39,7 @@ wingman/
 │   └── package.json          # 文档依赖
 │
 ├── apps/                     # 应用程序
-│   ├── runtime/              # C++ 运行时（wingman-agent：主动 Agent + 本地 IPC）
+│   ├── agent/                # C++ 运行时（wingman-agent：主动 Agent + 本地 IPC）
 │   ├── gui/                  # Tauri/Svelte 桌面 GUI
 │   │   ├── src/              # Svelte 前端
 │   │   └── src-tauri/        # Rust 后端

@@ -141,7 +141,7 @@ C:\vcpkg\vcpkg integrate install
 build-scripts\build-runtime-msvc-ninja.bat
 
 # 运行 Lua 脚本
-.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe script examples\hello.lua
+.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe script examples\lua_scripts\hello.lua
 ```
 
 **详细构建步骤请查看 [构建指南](BUILD.md)**

@@ -27,7 +27,7 @@
 ```
 wingman/
 ├── apps/                         ← 所有可执行程序
-│   ├── runtime/                  ← 主运行时（outbound agent + 本地 IPC 控制面）
+│   ├── agent/                    ← 主运行时（outbound agent + 本地 IPC 控制面）
 │   │   ├── src/
 │   │   │   ├── main.cpp          ← 入口
 │   │   │   ├── agent.cpp         ← 运行时编排入口

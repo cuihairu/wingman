@@ -36,7 +36,7 @@ See [VS Code 开发环境](development-environment.md) for the full workflow.
 ```
 wingman/
 ├── apps/                    # Applications
-│   ├── runtime/             # CLI runtime
+│   ├── agent/               # CLI runtime
 │   ├── gui/                 # Tauri GUI
 ├── lib/                     # Core library
 │   └── wingman/             # Core functionality

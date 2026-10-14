@@ -7,7 +7,7 @@
 ```
 wingman/
 ├── apps/                         ← 所有可执行程序
-│   ├── runtime/                  ← 主运行时（主动 Agent + 本地 IPC 服务端）
+│   ├── agent/                    ← 主运行时（主动 Agent + 本地 IPC 服务端）
 │   │   ├── src/
 │   │   │   ├── main.cpp          ← 入口
 │   │   │   ├── agent.cpp         ← Agent 主逻辑（主动连接编排器）

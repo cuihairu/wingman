@@ -288,7 +288,7 @@ stateDiagram-v2
 wingman/
 ├── .github/workflows/       # CI/CD 配置
 ├── apps/                    # 应用程序
-│   ├── runtime/             # C++ 运行时（主动 Agent）
+│   ├── agent/               # C++ 运行时（主动 Agent）
 │   │   └── src/
 │   │       ├── agent.cpp            # Agent 主逻辑
 │   │       ├── local_ipc_server.cpp # 本地 IPC 服务（Tauri GUI 控制通道）
