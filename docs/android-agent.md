@@ -23,7 +23,7 @@ JNI（无 IPC、无 HTTP server）；Dashboard 只连 Go Server。
 | Android SDK | API 34（platform-tools / build-tools） |
 | Android NDK | r26+ |
 | CMake | 3.22.1+（SDK 的 cmake 亦可） |
-| vcpkg | 已 bootstrap，工具链 `scripts/buildsystems/vcpkg.cmake` |
+| vcpkg | 已 bootstrap；NDK 构建经仓内 `apps/android/cpp/vcpkg-android.cmake` 包装工具链（gradle `-DWINGMAN_VCPKG_ROOT=<vcpkg 根>` 传入），`scripts/buildsystems/vcpkg.cmake` 是 vcpkg 自带路径、非仓内 |
 | Gradle | 8.7+（或用本机 gradle 生成 wrapper） |
 
 Android 依赖用 `apps/android/cpp/vcpkg.json` 独立清单（`wingman-agent-android`，

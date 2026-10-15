@@ -18,7 +18,7 @@ asio、curl、lua、nlohmann-json、opencv4（仅 Windows）、openssl、sol2、
 | `vision` | opencv4（Linux） | 自动：CMake 找到 OpenCV 即定义 `WINGMAN_ENABLE_VISION`（Linux 需此 feature 提供 OpenCV；Windows 基础依赖已含） |
 | `python` | python3 + pybind11 | `WINGMAN_ENABLE_PYTHON=ON` |
 
-Android 用独立的 `cpp/vcpkg-android.cmake` 叠加 NDK 工具链（见 apps/android/app/build.gradle.kts）。
+Android 用独立的 `apps/android/cpp/vcpkg-android.cmake` 叠加 NDK 工具链（见 apps/android/app/build.gradle.kts）。
 
 ## 配置命令
 
