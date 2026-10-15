@@ -149,8 +149,11 @@ Android 13 起侧载安装的无障碍被「受限设置」默认屏蔽（开关
 - **A1（本目录）**：链路打通（连接/注册/脚本下发/日志回传/停止）。
 - **A2 脚本能力（已实施，2026-09-21）**：宿主桥（dispatchGesture 手势注入）/
   MediaProjection 采集真实现（`platform/android` 租户 + 反向 JNI 桥）；
-  找色找图（ImageAnalyzer + OpenCV 进 NDK）；wingman.input/screen/vision
-  脚本 API；screenshot.capture 远程截图。见设计文档 §5.5/§5.6。
+  找色找图（ImageAnalyzer，纯 C++ 不走 OpenCV：找色直查、找图走
+  PatternMatcher::templateMatch；桌面同名 API 走 OpenCV
+  cv::matchTemplate，两条路径分数口径不同）；wingman.input/screen/vision
+  脚本 API；screenshot.capture 远程截图（NDK 的 OpenCV 仅用于截图
+  JPEG 编码）。见设计文档 §5.5/§5.6。
 - **A3 可靠性（剩余项已实施，2026-09-30）**：开机自启（BootCompletedReceiver
   + 开关）、崩溃自重启（退避闹钟 + 崩溃串放弃 + coreRunning 门控）、核心
   看门狗、机型保活指引（docs/guides/android-keep-alive.md）；受限设置引导
