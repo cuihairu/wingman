@@ -62,6 +62,6 @@ end
 
 ## 限制
 
-- **Android 端 runtime 未接 RpcDispatcher 面**：`asset.sync` 落盘在桌面 runtime 生效；Android 端侧落盘走后续增量（见 `docs/development-todo.md` 146 注记）。
+- **Android 端侧已接入（2026-10-15）**：Android agent 的独立 RpcDispatcher 注册同一 `registerAssetHandlers`（`apps/android/cpp/agent/android_agent.cpp:135`），`asset.sync` 落 `<filesDir>/assets/`；脚本以 `assets/<name>` 相对引用、与桌面 `scriptDir/assets` 同形（findImage 相对路径按 filesDir 解析）。端侧行为经桌面同源测试（`android_asset_test`）与 NDK 层宿主编译核验，真机走查待真机（见 `docs/android-agent.md` A4 里程碑）。
 - 资产为内存 + 文件系统存储，**无 DB 版本历史**；删除即不可回滚。
 - 单资产 1MB 上限；超大资源请走脚本内联或外部存储。

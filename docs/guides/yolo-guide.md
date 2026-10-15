@@ -289,7 +289,7 @@ end
 
 未命中返回 `{found=false, error}`。
 
-`vision.aiElements(desc, region?)` — 批量结果，返回 `{found, elements:[{label, x, y, w, h, confidence}]}`，每个元素含 `label` / `x` / `y` / `w` / `h` / `confidence`；失败与「无匹配」同形返回 `{found=false, error}`。
+`vision.aiElements(desc, region?)` — 批量结果，返回 `{found, elements:[{label, x, y, w, h, confidence}]}`，每个元素含 `label` / `x` / `y` / `w` / `h` / `confidence`；失败（未加载模型/截帧/推理错误）返回 `{found=false, error}`，而「无匹配」（推理成功但零检出）返回 `{found=false, elements:[]}`——两种情况 `found` 恒为 false，靠 `error` 是否有值区分。
 
 ---
 
