@@ -24,6 +24,19 @@
 - **找图路径归属核实证伪**（[8368b59](https://github.com/cuihairu/wingman/commit/8368b59)）：`docs/android-agent.md` A2 摘要原写「找色找图（ImageAnalyzer + OpenCV 进 NDK）」与实现不符——源码核验 `ImageAnalyzer::findImage` 直连 `PatternMatcher::templateMatch`（纯 C++，不经 OpenCV），Android 脚本面 `screen/vision.findImage` 与触发器图像条件都走 `ImageAnalyzer`；NDK 的 OpenCV 仅在 `apps/android/cpp/agent/android_screenshot.cpp` 用于截图 JPEG 编码（`cv::cvtColor` + `cv::imencode`）；桌面同名 API 走 `Vision`/`Screen::findImage` 的 `cv::matchTemplate`——**两端分数口径不同**，已改文并注明。
 - 全部批次 `cd docs && npm run docs:build` 死链检查通过（本轮复测 113.83s / 109.30s / 38.72s）。
 
+### feat（2026-10-15，Android 端 asset.sync 接面——服务端下发的模板资产端侧落盘）
+
+- **端侧落盘**：Android agent 自建 `rpc::RpcDispatcher` 并注册 `registerAssetHandlers`，根目录 `<filesDir>/assets/`——server `asset.sync` 下发的模板图片落端侧，脚本以 `assets/<name>` 相对引用（`findImage` 相对路径按 filesDir 解析，与桌面 `scriptDir/assets` 引用形态一致）（[006aa09](https://github.com/cuihairu/wingman/commit/006aa09)）。
+- **Dispatcher Reuse 远程通道**：远程命令 `asset.*` 经共享 RPC dispatcher 执行（`dispatchViaRpcDispatcher` 与桌面 `apps/agent/src/agent.cpp` 的 `asset.*` 分支同形；`CommandData` 字符串值尽量按 JSON 解析），sha256 强校验与 name 白名单规则复用 lib/wingman 同一套 handler，不另起传输通道。
+- **测试**：新增 `libs/lua/tests/android_asset_test.cpp` 3 例（`AndroidAssetChannelTest`：落盘成功并回返绝对路径、非法名拒绝且不建 assets 目录、sha256 不符拒绝），并入 `libs/lua/tests/CMakeLists.txt`。兑现 2026-10-13 asset.sync 条目自注的「Android 端侧接面为后续增量」。
+
+### docs（2026-10-14/15，API 对账与基线复测五批）
+
+- **core.md 全页对账**（[838c2a0](https://github.com/cuihairu/wingman/commit/838c2a0)，+396/-330）：脚本 API 核心页逐函数与实现核对。
+- **API 示例同步**（[c134b1a](https://github.com/cuihairu/wingman/commit/c134b1a)、[27b2ce7](https://github.com/cuihairu/wingman/commit/27b2ce7)）：首页/保险箱设计/server README 示例与实现对齐；修正不存在或大小写错误的脚本 API 示例（DEVELOPMENT.md、uia/button、uia/combobox）。
+- **基准基线低负载复测**（[9cbb8d6](https://github.com/cuihairu/wingman/commit/9cbb8d6)）：`docs/benchmarks.md` 补 10-14 低负载复测节与「修正 10-13 的结论」——低负载下「找色/找图成本由全屏截屏主导」不成立（10-13 的 129 ms 截屏读数是负载伪影），真实结构是 findImage 由全屏模板匹配主导（264 ms 中匹配占 ~93%），据此选定后续优化目标。
+- **README 双语顶部语言切换器**（[0e49af5](https://github.com/cuihairu/wingman/commit/0e49af5)）。
+
 ### feat（2026-10-13，VaultProvider 抽象——保险箱可插拔实现与凭据接入点盘点）
 
 - **统一接口**：新增 `internal/vault` 包——`Provider` 接口收敛解锁/读/写/列/删除/导出/连接取用共 11 个面 + sentinel 语义错误（映射 401/404/409/423/400），配 `Register`/`Activate`/`Active` 注册表（进程级单选）。加密落库与解锁会话（驻留 TTL、空闲自动锁回、主口令最小长度）收敛在实现内部，不再散落在 HTTP 层。
