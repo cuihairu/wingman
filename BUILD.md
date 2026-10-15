@@ -69,9 +69,14 @@ ctest --test-dir build-tests -C Debug --output-on-failure
 ### 编译基准测试
 
 ```bash
-cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake -S . -B build-msvc-ninja-vcpkg -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:\Users\admin\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DWINGMAN_BUILD_BENCHMARKS=ON"
-cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake --build build-msvc-ninja-vcpkg --target kvstore_bench --config Debug"
+cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake -S . -B build-msvc-ninja-vcpkg -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:\Users\admin\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_BUILD_TYPE=Release -DWINGMAN_BUILD_BENCHMARKS=ON"
+cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat"" && cmake --build build-msvc-ninja-vcpkg --target kvstore_bench"
 ```
+
+> Ninja 是单配置生成器，`--build --config` 会被静默忽略；构建类型只由
+> `CMAKE_BUILD_TYPE` 决定，**必须显式给 Release**，否则基准测的是无优化读数
+> （`scripts/run-benchmarks.sh` 亦显式设 Release）。改用 MSVC 多配置工程时
+> 则换成 `-G "Visual Studio 17 2022"` + `--config Release`。
 
 ### 运行基准测试
 
@@ -80,6 +85,11 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxilia
 ```
 
 ### 性能指标
+
+下表是一次历史快照（无日期与机器标注），**仅示意量级**：绝对值受宿主负载影响大，
+kvstore 口径是「1 次热身 + 单轮均值 + µs」，其中 DELETE 实为 set+del、LPOP 实为
+lpop+lpush 的复合操作。带日期的基线、其余四套基准（event_hub / lua / vision /
+matcher_bench）与计时方法学以 `docs/benchmarks.md` 为准。
 
 | 操作 | 性能 |
 |------|------|
@@ -199,16 +209,20 @@ GitHub Actions 工作流：`ci.yml`（门禁）、`build-package.yml`（三平�
 
 ### ci.yml 任务矩阵
 
+ci.yml 共 9 个 job：`cpp-compat` 展开 2 个矩阵条目、`go-build` 展开 3 个，其余为单配置单腿。
+
 | Job | 内容 |
 |-----|------|
-| C++ Windows ×2 | MSVC 构建 + ctest + 覆盖率（失败时回显 gtest 明细） |
-| C++ Linux (full tests) ×2 | 全量 ctest（2000+ 例）+ 覆盖率 |
-| C++ ubuntu-22.04 | 兼容性构建 |
-| C++ macos-15-intel | 构建验证（continue-on-error） |
-| Go Server ×3 | ubuntu / windows / macos，`go test -race ./...` |
-| Platform Boundary Guard | `scripts/check_platform_boundary.sh`：公共层禁平台宏，allowlist 只减不增 |
-| Vault Touchpoint Scan | `scripts/check_vault_touchpoints.sh`：boot-tier 允许清单外明文凭证环境变量读取扫描 |
-| API Typing Drift Audit | `scripts/audit_pyi_drift.py`（pyi stub 对 C++ 模块描述符）+ 重生成 Lua hints 并校验同步 |
+| Platform Boundary Guard | 公共层平台宏边界检查（`scripts/check_platform_boundary.sh`，allowlist 只减不增） |
+| Vault Touchpoint Scan | boot-tier 明文凭证环境变量读取扫描（`scripts/check_vault_touchpoints.sh`） |
+| API Typing Drift Audit | pyi stub 对 C++ 模块描述符漂移 + 重生成 Lua hints 并校验同步 |
+| C++ Windows | MSVC Debug 构建 + ctest + **覆盖率**（OpenCppCoverage 采集，全 ci.yml 唯一覆盖率腿；失败时回显 gtest 明细） |
+| C++ Windows (Python engine) | Windows 上 Python 引擎实验编译 + best-effort 测试 |
+| C++ Linux (full tests) | ubuntu-24.04 全量 ctest（2000+ 例），xvfb-run 虚拟显示，**不采集覆盖率** |
+| C++ Linux (full tests, Python engine) | 同上 + `WINGMAN_ENABLE_PYTHON=ON` 全量跑 |
+| C++ ubuntu-22.04 | compat matrix，仅编译 `wingman_transport` 单 target |
+| C++ macos-15-intel | compat matrix，同上且 `continue-on-error` |
+| Go Server（3 OS matrix） | ubuntu / windows / macos，`go test -race ./...` |
 
 ### build-package.yml
 

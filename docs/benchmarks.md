@@ -1,8 +1,10 @@
 # 性能基准测试
 
 Wingman 的性能基准是一组独立可执行文件，位于 `lib/wingman/tests/benchmarks/`，
-覆盖 KV 存储、事件分发、Lua 引擎与视觉链路四条公共路径。基准不进 CI 门禁
-（数值受宿主负载影响大，不适合做回归断言），用于开发期定性对比。
+覆盖 KV 存储、事件分发、Lua 引擎、视觉链路与 PatternMatcher 匹配核五条公共路径
+（`kvstore_bench` / `event_hub_bench` / `lua_bench` / `vision_bench` / `matcher_bench`；
+后三者按依赖条件构建，见下文「运行方式」）。基准不进 CI 门禁（数值受宿主负载
+影响大，不适合做回归断言；`.github/workflows/` 全仓零引用），用于开发期定性对比。
 
 ## 运行方式
 
@@ -16,22 +18,35 @@ scripts/run-benchmarks.sh [build-dir]
 
 - 构建目录未开 `WINGMAN_BUILD_BENCHMARKS=ON` 时自动重配；
 - 按 `WINGMAN_HAS_OPENCV` 决定是否包含 `vision_bench`；
-- 输出机器上下文（时间 / 内核 / 负载 / CPU 型号）后再逐个运行；
+- 输出机器上下文（时间 / 内核 / 负载 / CPU 型号 / matcher 线程档位）后再逐个运行；
 - `vision_bench` 需要可用显示面，本机跑法：`Xvfb :99` + `DISPLAY=:99`（脚本已默认传递）。
 
 手动方式等价于：
 
 ```bash
 cmake -B build-ml -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake \
-    -DVCPKG_TARGET_TRIPLET=x64-linux -DWINGMAN_BUILD_BENCHMARKS=ON
-cmake --build build-ml --target kvstore_bench event_hub_bench lua_bench vision_bench
+    -DVCPKG_TARGET_TRIPLET=x64-linux -DCMAKE_BUILD_TYPE=Release \
+    -DWINGMAN_BUILD_BENCHMARKS=ON
+cmake --build build-ml --target kvstore_bench event_hub_bench matcher_bench lua_bench vision_bench
 build-ml/lib/wingman/tests/benchmarks/kvstore_bench   # 其余同理
 ```
+
+两点与脚本同源的约束（手写命令时最容易踩）：
+
+- 基准子目录的门控是 `if(WINGMAN_BUILD_BENCHMARKS AND WINGMAN_BUILD_CORE)`（根
+  `CMakeLists.txt`），`lua_bench` 另需 `TARGET wingman::lua`、`vision_bench` 另需
+  `WINGMAN_HAS_OPENCV`；目标不存在时 `cmake --build --target` 直接报 unknown target。
+- 必须显式给 `-DCMAKE_BUILD_TYPE=Release`（脚本 `run-benchmarks.sh` 就是这么设的）：
+  默认构建目录不带优化，基准会测出无优化读数。
 
 ## 结果解读须知
 
 - 除 `kvstore_bench`（早期自写计时）外，全部走 `bench.hpp` 的 `Bench` 助手：
-  每个用例先跑 1/10 轮热身，再整批计时 7 轮取**中位 ns/op**，抗单次抖动。
+  每个用例先跑 `iterations/10` 轮热身，再整批计时 7 轮取**中位 ns/op**，抗单次抖动。
+- **kvstore 数字与另外四套方法论不同，不可直接横比**：`kvstore_bench.cpp` 自带
+  手写计时助手（1 次热身调用 + 单轮计时取均值，单位 µs/op），没有 7 轮中位；
+  且两个用例计的是**复合操作**——`DELETE` 每次迭代是 `set`+`del`，
+  `LPOP` 是 `lpop`+`lpush`（还原列表），单列值高于纯单操作成本。
 - **绝对数值受宿主负载影响大**：共享开发机上 wall 时间可能数倍于真实 CPU
   成本（可用 `time` 看 wall/user 比估算负载系数）。横向对比必须同机同负载
   成对测；下表基线仅示意量级。
@@ -108,24 +123,28 @@ build-ml/lib/wingman/tests/benchmarks/kvstore_bench   # 其余同理
 kv 微操 2~3x 波动出现在更低负载下，属 0.0x µs 级操作对频率/缓存态的敏
 感噪声，不构成回归信号；event_hub 与 lua 全部不劣于基线。
 
-### vision（1600x1000 ≈ 200 万像素）
+### vision（1600x1000 = 160 万像素）
 
-| 用例 | 本轮 | 按 10-13 几何折算 |
+右列一律按本轮像素量折算（每百万像素成本），故各行同一基准、可相减。
+
+| 用例 | 本轮 | 折算（每百万像素） |
 | --- | --- | --- |
 | Screen::capture 全屏 | ~18 ms/op | ~11 ms/百万像素 |
-| findColor 全屏未命中（tol=10） | ~23 ms/op | 截屏成本 + ~2 ms |
+| findColor 全屏未命中（tol=10） | ~23 ms/op | 截屏成本 + ~3 ms |
 | findColor 全屏命中（tol=0） | ~18 ms/op | ≈ 截屏成本 |
-| findImage 32x32 模板全屏未命中 | ~264 ms/op | 截屏成本 + ~123 ms/百万像素 |
+| findImage 32x32 模板全屏未命中 | ~264 ms/op | 截屏成本 + ~154 ms/百万像素 |
 
 ### 修正 10-13 的结论
 
 低负载下「找色/找图成本由全屏截屏主导」不成立：10-13 的 129 ms 截屏读
-数是负载伪影（wall 被拉高约 7x）。真实成本结构是——
+数是负载伪影（两轮同用例读数之比 129/18 ≈ 7x；注意与 10-13 基线节提到的
+wall/user 比约 5x 是两个量——后者是更早一次复测的独立读数）。真实成本结构是——
 
-- findColor ≈ 截屏成本（全屏像素扫描仅加 ~2 ms，量级可忽略）；
+- findColor ≈ 截屏成本（全屏像素扫描仅加 ~5 ms/轮，即 ~3 ms/百万像素，
+  量级可忽略）；
 - **findImage 由全屏模板匹配主导**：264 ms 中截屏只占 ~18 ms（7%），
-  匹配占 ~93%。优化半场的第一个数据驱动目标在此（区域限定搜索已支持，
-  全屏找图要提速需金字塔/降采样类匹配策略，属设计取舍，未动）。
+  匹配占 ~93%（~154 ms/百万像素）。优化半场的第一个数据驱动目标在此（区域
+  限定搜索已支持，全屏找图要提速需金字塔/降采样类匹配策略，属设计取舍，未动）。
 
 ## 优化记录（2026-10-15，i9-10880H，同日同负载成对测）
 
@@ -182,7 +201,9 @@ IEEE-754 结果位与「首个最大位置优先」的平局次序都与串行�
 
 1. 在 `lib/wingman/tests/benchmarks/` 新建 `<name>_bench.cpp`，用 `bench.hpp`
    的 `Bench` 类（`b.header(...)` 分组 + `b.run(name, fn, iterations)`）；
-2. `CMakeLists.txt` 加对应 `add_executable`，可选依赖用 `if(TARGET ...)` /
+2. 在 `lib/wingman/tests/benchmarks/CMakeLists.txt` 加对应 `add_executable`
+   （含 `target_include_directories` + `target_link_libraries(… PRIVATE wingman)`，
+   Windows 档另在 `if(WIN32)` 块补 `ws2_32`），可选依赖用 `if(TARGET ...)` /
    `if(WINGMAN_HAS_OPENCV)` 门控；
 3. `scripts/run-benchmarks.sh` 的 `TARGETS` 列表加进新目标；
 4. 运行后在本文档「基线记录」补一段（注明日期与机器/负载上下文）。
