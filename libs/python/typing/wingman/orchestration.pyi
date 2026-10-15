@@ -32,8 +32,17 @@ from __future__ import annotations
 # 携带（run() 返回值原样聚合，返回 null 则字段省略），下游任务可经
 # get_workflow 读取上游产出实现数据流。
 # 终局工作流驻留注册表直至进程退出（v1 不自动清理）。
+#
+# 历史账本：提交与终局落 app 数据目录 JSONL（路径可用环境变量
+# WINGMAN_WORKFLOW_LEDGER 重定向，app 数据目录不可得时账本关闭）。任务体是
+# 脚本闭包不可序列化，故只落账不自动恢复——重启把上次遗留的在途条目补一条
+# interrupted 终局（进程内一次，首次 submit_workflow/history 访问时执行，并发
+# orchestration.interrupted 事件），不重跑工作流。history 返回视图，最新在前：
+# {id, name, run, status, startedAt, finishedAt?, interrupted?, tasks?}，
+# 进行中（仅提交）报 running 且不带 finishedAt 并置顶；run 区分跨进程重号 id。
 
 def submit_workflow(workflow: dict) -> str | None: ...
 def cancel_workflow(workflowId: str) -> bool: ...
 def get_workflow(workflowId: str) -> dict | None: ...
 def get_all_workflows() -> list[dict]: ...
+def history(limit: int = 20) -> list[dict]: ...

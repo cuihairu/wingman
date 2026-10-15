@@ -1,18 +1,26 @@
 #include "wingman/event.hpp"
+#include "wingman/platform/app_paths.hpp"
+#include "wingman/process.hpp"
 #include "wingman/script/iscript_engine.hpp"
 #include "task_core.hpp"
+#include "workflow_ledger.hpp"
 
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
+#include <cstdint>
+#include <cstdlib>
+#include <filesystem>
 #include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace wingman {
@@ -52,6 +60,63 @@ bool isTruthy(const ScriptValue& v) {
 // 工作流内任务的调度视图状态：blocked（依赖未满足）/ pending（已就绪待调度）/
 // running / skipped（依赖失败传播跳过）/ canceled（cancel_workflow 取消，含
 // 从未开工的任务）/ done（已落账，终态经 Task 内核读出）。
+// ===== 工作流状态账本 =====
+// 代决（2026-10-16，见 docs/development-todo.md P3 任务持久化条目）：
+// 任务体是不可序列化闭包，自动恢复=假恢复，故只落账不自动恢复。
+
+// 路径解析：环境变量 WINGMAN_WORKFLOW_LEDGER（全路径，测试与运维重定向
+// 用）优先；否则 appDataDir()/workflows.jsonl；app 数据目录不可得则
+// 空路径 = 账本整体关闭。
+static WorkflowLedger makeLedger() {
+	std::filesystem::path file;
+	const char* env = std::getenv("WINGMAN_WORKFLOW_LEDGER");
+	if (env && *env) {
+		file = env;
+	} else {
+		const std::filesystem::path data = platform::appDataDir();
+		if (!data.empty()) file = data / "workflows.jsonl";
+	}
+	return WorkflowLedger(std::move(file));
+}
+
+// 启动恢复（进程内一次）：本进程首次访问账本时运行。首次访问由第一条
+// submit_workflow / history 触发，此刻本进程尚无在途工作流，账本中
+// 「有提交无终局」者必为上次遗留，补 interrupted 终局并发事件通知
+static void runLedgerRecovery(WorkflowLedger& ledger) {
+	std::vector<std::string> interrupted;
+	ledger.recoverInterrupted(&interrupted);
+	for (const auto& id : interrupted) {
+		EventHub::instance().emit("orchestration.interrupted", {{"workflow", id}},
+								  "orchestration");
+	}
+}
+
+WorkflowLedger& workflowLedger() {
+	static WorkflowLedger ledger = makeLedger();
+	static std::mutex recoveryMutex;
+	static bool recovered = false;
+	{
+		std::lock_guard<std::mutex> lock(recoveryMutex);
+		if (!recovered) {
+			recovered = true;
+			runLedgerRecovery(ledger);
+		}
+	}
+	return ledger;
+}
+
+// 进程标识（pid + 首启毫秒，进程内稳定）：区分跨进程重号 workflowId。
+// pid 走平台层 Process::getCurrentId，本层不引入平台宏。
+const std::string& processRunTag() {
+	static const std::string tag = []() {
+		const int64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+							   std::chrono::system_clock::now().time_since_epoch())
+							   .count();
+		return std::to_string(Process::getCurrentId()) + "-" + std::to_string(ms);
+	}();
+	return tag;
+}
+
 enum class WfState { blocked, pending, running, skipped, canceled, done };
 
 struct WfTask {
@@ -150,6 +215,8 @@ public:
 
 	const std::string& name() const { return name_; }
 
+	const std::vector<WfTask>& tasks() const { return tasks_; }
+
 private:
 	std::string effectiveStatus(const WfTask& t) const {
 		switch (t.state) {
@@ -216,6 +283,17 @@ private:
 		result["status"] = ScriptValue::fromString(status_);
 		result["tasks"] = ScriptValue::fromArray(std::move(taskVals));
 		return ScriptValue::fromObject(std::move(result));
+	}
+
+	// 终局账本记录：锁内收集逐任务状态（与快照口径一致），锁外落盘。
+	// 账本只读不阻塞调度，IO 失败静默降级（见 workflow_ledger.hpp）。
+	void persistFinish(const std::string& finalStatus) {
+		std::vector<std::pair<std::string, std::string>> statuses;
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			for (const auto& t : tasks_) statuses.emplace_back(t.id, effectiveStatus(t));
+		}
+		workflowLedger().recordFinish(id_, processRunTag(), finalStatus, std::move(statuses));
 	}
 
 	// 流程级事件广播：调度线程单点发出（worker 只记账不 emit），保证
@@ -297,6 +375,7 @@ private:
 					const std::string finalStatus = status_;
 					lock.unlock();
 					emitFinished(finalStatus);
+					persistFinish(finalStatus);
 					return;
 				}
 				// 传播不动点：依赖全成功 → blocked 升 pending；前置失败链/条件链
@@ -348,6 +427,7 @@ private:
 					const std::string finalStatus = status_;
 					lock.unlock();
 					emitFinished(finalStatus);
+					persistFinish(finalStatus);
 					return;
 				}
 				// 分支条件在调度点求值一次：锁外执行（谓词可能重入查询/取消
@@ -414,6 +494,7 @@ private:
 				finalStatus = status_;
 			}
 			emitFinished(finalStatus);
+			persistFinish(finalStatus);
 		}
 	}
 
@@ -473,6 +554,10 @@ public:
 			run = std::make_shared<WorkflowRun>(workflowId, name, maxParallel, std::move(tasks));
 			workflows_[workflowId] = run;
 		}
+		// 账本提交记录：任务图快照（id + dependsOn），不落可调用体
+		std::vector<std::pair<std::string, std::vector<std::string>>> graph;
+		for (const auto& t : run->tasks()) graph.emplace_back(t.id, t.dependsOn);
+		workflowLedger().recordSubmit(workflowId, processRunTag(), name, maxParallel, graph);
 		run->start();
 		return workflowId;
 	}
@@ -547,6 +632,33 @@ bool hasNoDependencyCycle(const std::vector<WfTask>& tasks) {
 		if (color[t.id] == 0 && !visit(t)) return false;
 	}
 	return true;
+}
+
+// 账本历史视图（json）→ 脚本值：五型映射，对象保序无关（unordered_map）
+ScriptValue jsonToScriptValue(const nlohmann::json& j) {
+	switch (j.type()) {
+	case nlohmann::json::value_t::null: return ScriptValue::null();
+	case nlohmann::json::value_t::boolean: return ScriptValue::fromBool(j.get<bool>());
+	case nlohmann::json::value_t::number_integer:
+	case nlohmann::json::value_t::number_unsigned:
+		return ScriptValue::fromInt(j.get<int64_t>());
+	case nlohmann::json::value_t::number_float: return ScriptValue::fromFloat(j.get<double>());
+	case nlohmann::json::value_t::string: return ScriptValue::fromString(j.get<std::string>());
+	case nlohmann::json::value_t::array: {
+		std::vector<ScriptValue> arr;
+		arr.reserve(j.size());
+		for (const auto& el : j) arr.push_back(jsonToScriptValue(el));
+		return ScriptValue::fromArray(std::move(arr));
+	}
+	case nlohmann::json::value_t::object: {
+		std::unordered_map<std::string, ScriptValue> obj;
+		for (auto it = j.begin(); it != j.end(); ++it) {
+			obj.emplace(it.key(), jsonToScriptValue(it.value()));
+		}
+		return ScriptValue::fromObject(std::move(obj));
+	}
+	default: return ScriptValue::null();
+	}
 }
 
 } // namespace
@@ -703,6 +815,27 @@ ModuleDescriptor createOrchestrationModule() {
 	mod.functions.push_back({"get_all_workflows", [](const std::vector<ScriptValue>&) -> ScriptValue {
 		return ScriptValue::fromArray(g_workflowManager.getAll());
 	}, "() -> {workflow}"});
+
+	// history(limit?=20) -> [{id, name, run, status, startedAt, finishedAt?,
+	//                         interrupted?, tasks?}]
+	// 终局账本查询（只读）：工作流提交与终局落 app 数据目录 JSONL，重启后仍可
+	// 查。进行中（仅有提交无终局）的条目 status 报 running 且不带 finishedAt，
+	// 排在最前；其后的终局条目按 finishedAt 倒序。interrupted 标记进程强杀
+	// 遗留的条目（启动恢复时合成，不等于运行失败）；tasks 为任务 id → 状态。
+	// 介质/恢复语义的取舍见 docs/api/orchestration.md「历史账本」节。
+	mod.functions.push_back({"history", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		int limit = 20;
+		if (!args.empty() && args[0].isInt()) {
+			limit = static_cast<int>(args[0].asInt(limit));
+			if (limit < 1) limit = 1;
+			if (limit > 500) limit = 500;
+		}
+		std::vector<ScriptValue> views;
+		const auto records = workflowLedger().history(limit);
+		views.reserve(records.size());
+		for (const auto& rec : records) views.push_back(jsonToScriptValue(rec));
+		return ScriptValue::fromArray(std::move(views));
+	}, "limit?:int=20 -> [{id, name, run, status, startedAt, finishedAt?, interrupted?, tasks?}]"});
 
 	return mod;
 }

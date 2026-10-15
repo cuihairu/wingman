@@ -31,6 +31,7 @@ if(BUILD_CORE_TESTS)
         task_module_test.cpp
         notify_module_test.cpp
         orchestration_module_test.cpp
+        workflow_ledger_test.cpp
         fsm_module_test.cpp
         timer_module_test.cpp
         behavior_tree_test.cpp

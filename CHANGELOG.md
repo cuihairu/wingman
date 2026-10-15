@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### feat（2026-10-16，工作流终局账本——提交/终局落盘 + 启动恢复 + `history` 查询）
+
+- **背景**：工作流定义与状态此前只在内存态（`get_workflow`/`get_all_workflows` 只看活实例），进程重启即丢，事后无法查「跑过什么、结果如何」；`docs/development-todo.md` 把「任务状态持久化与恢复」挂起待拍板——v1 任务体是 Lua/Python 闭包、不可序列化，「恢复」语义需产品决策（2026-10-13 评估，本轮巡检代决定案）。
+- **决策：只落账不自动恢复**。任务体是闭包、无声明式定义，重启后自动重跑是「假恢复」；改为落账 + 中断标记 + 查询面，供事后审计与订阅方感知。声明式重放留待提交面支持 scriptRef 形态后另立。
+- **实现（`lib/wingman/src/script/modules/workflow_ledger.hpp` + `orchestration_module.cpp`）**：JSONL 追加账本 `<appDataDir>/workflows.jsonl`，提交与终局各一条（任务 id / 依赖图 / 状态；不落 `run()` 结果载荷——可能含闭包引用与大对象）；单文件 8 MiB 轮转 `.old`；坏行静默跳过（账本绝不破坏工作流执行）；`run` = pid + 首启毫秒，区分跨进程重号 `workflowId`（每进程从 `wf-1` 起）；路径可用 `WINGMAN_WORKFLOW_LEDGER` 重定向（测试与运维），app 数据目录不可得则账本整体关闭降级。
+- **启动恢复**：进程内一次（首次 `submit_workflow`/`history` 访问时执行），为上次遗留「有提交无终局」的条目补 `interrupted` 终局并发 `orchestration.interrupted` 事件——中断与运行失败可区分，幂等不重复合成。
+- **API**：`orchestration.history(limit?=20)`（钳制 1..500）读账本，最新在前：进行中（仅提交无终局）置顶报 `running` 且不带 `finishedAt`，其余按 `finishedAt` 倒序、同毫秒按追加序取较新者；视图 `{id, name, run, status, startedAt, finishedAt?, interrupted?, tasks?}`。
+- 覆盖 `docs/api/orchestration.md`（「历史账本」节 + 状态词汇表补 `interrupted`）、`libs/python/typing/wingman/orchestration.pyi` 存根同步；测试 10 例新增（账本 8：提交/终局落账、恢复幂等、视图排序与 limit、轮转、坏行容错、空路径降级、跨进程重号；集成 2：注册签名 + 提交终局落账可见，账本路径经环境变量重定向到临时文件）。
+
 ### feat（2026-10-16，uia 模块新增 `tree` UI 树导出）
 
 - `uia.tree(root?, maxDepth?=6)`：一键导出子树为嵌套表（`{info: {...}, children: [...]}`，info 字段与 `get_info` 同构 snake_case）；root 省略时以前台焦点元素为根，首参也可直接传深度（`tree(3)`）；深度钳制 1..16 防大 UI 树失控遍历；元素失效的子节点不入树；无后端（Linux stub）或根元素不可得返回 null。

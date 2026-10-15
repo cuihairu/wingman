@@ -2,9 +2,13 @@
 
 #include "wingman/script/iscript_engine.hpp"
 #include "wingman/event.hpp"
+#include "wingman/process.hpp"
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
+#include <cstdlib>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -2076,4 +2080,111 @@ TEST(OrchestrationModuleTest, DownstreamTaskReadsUpstreamResult) {
 		}
 	}
 	FAIL() << "task b missing from snapshot";
+}
+
+// ========== 历史账本（提交/终局落盘 + 启动恢复） ==========
+// 账本路径重定向：本进程第一次访问账本前把 WINGMAN_WORKFLOW_LEDGER 指到
+// 临时文件，避免测试写入真实 app 数据目录。静态初始化在主程序开始前完成，
+// 与本 TU 内任意 TEST 的执行顺序无关。
+namespace {
+
+std::string ledgerTestFile() {
+	std::string file;
+	try {
+		const std::filesystem::path p = std::filesystem::temp_directory_path() /
+			("wf-ledger-test-" + std::to_string(wingman::Process::getCurrentId()) + ".jsonl");
+		std::error_code ec;
+		std::filesystem::remove(p, ec);
+		file = p.string();
+	} catch (...) {
+		// 临时目录不可得时不改环境变量，单例退回 app 数据目录
+	}
+	return file;
+}
+
+struct LedgerEnvGuard {
+	LedgerEnvGuard() {
+		const std::string file = ledgerTestFile();
+		if (!file.empty()) {
+#ifdef _WIN32
+			_putenv_s("WINGMAN_WORKFLOW_LEDGER", file.c_str());
+#else
+			setenv("WINGMAN_WORKFLOW_LEDGER", file.c_str(), 0);
+#endif
+		}
+	}
+};
+
+const LedgerEnvGuard g_ledgerEnvGuard;
+
+} // namespace
+
+TEST(OrchestrationModuleTest, HistoryRegisteredWithSignature) {
+	auto mod = createOrchestrationModule();
+	const auto history = findFn(mod, "history");
+	ASSERT_FALSE(history.name.empty());
+	EXPECT_NE(history.signature.find("limit"), std::string::npos);
+}
+
+TEST(OrchestrationModuleTest, SubmittedWorkflowPersistsToHistory) {
+	auto mod = createOrchestrationModule();
+	const auto submit = findFn(mod, "submit_workflow");
+	const auto get = findFn(mod, "get_workflow");
+	const auto history = findFn(mod, "history");
+	ASSERT_FALSE(submit.name.empty());
+	ASSERT_FALSE(history.name.empty());
+
+	const ScriptValue aRun = callable([] { return ScriptValue::fromInt(3); });
+	const ScriptValue bRun = callable([] { return ScriptValue::fromInt(7); });
+	const ScriptValue definition = ScriptValue::fromObject({
+		{"name", ScriptValue::fromString("ledger-check")},
+		{"tasks", ScriptValue::fromArray({
+			ScriptValue::fromObject({
+				{"id", ScriptValue::fromString("a")},
+				{"run", aRun},
+				{"dependsOn", ScriptValue::fromArray({})}
+			}),
+			ScriptValue::fromObject({
+				{"id", ScriptValue::fromString("b")},
+				{"run", bRun},
+				{"dependsOn", ScriptValue::fromArray({ScriptValue::fromString("a")})}
+			})
+		})}
+	});
+
+	const ScriptValue workflowId = submit({definition});
+	ASSERT_TRUE(workflowId.isString());
+
+	EXPECT_TRUE(spinUntil([&] {
+		const ScriptValue snap = get({workflowId});
+		const ScriptValue* status = snap.get("status");
+		return status && status->isString() && status->asString() == "succeeded";
+	}));
+
+	// 终局账本落盘与调度线程异步：轮询至本条工作流的终局记录出现
+	const std::string want = workflowId.asString();
+	EXPECT_TRUE(spinUntil([&] {
+		const ScriptValue records = history({ScriptValue::fromInt(500)});
+		if (!records.isArray()) return false;
+		for (size_t i = 0; i < records.size(); ++i) {
+			const ScriptValue rec = records.at(i);
+			const ScriptValue* id = rec.get("id");
+			if (!id || !id->isString() || id->asString() != want) continue;
+			const ScriptValue* status = rec.get("status");
+			if (!status || !status->isString() || status->asString() != "succeeded") return false;
+			const ScriptValue* tasks = rec.get("tasks");
+			if (!tasks) return false;
+			const ScriptValue* taskB = tasks->get("b");
+			return taskB && taskB->isString() && taskB->asString() == "succeeded";
+		}
+		return false;
+	}));
+
+	// 默认 limit 生效：视图非空，每项必带 status
+	const ScriptValue small = history({});
+	ASSERT_TRUE(small.isArray());
+	EXPECT_GT(small.size(), 0u);
+	for (size_t i = 0; i < small.size(); ++i) {
+		EXPECT_TRUE(small.at(i).get("status")) << "view " << i << " missing status";
+	}
 }

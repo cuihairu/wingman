@@ -200,6 +200,49 @@ get_all_workflows() -> table
 
 ---
 
+## 历史账本
+
+工作流的**提交**与**终局**会落到 app 数据目录的 JSONL 账本（`<appDataDir>/workflows.jsonl`，单文件超 8 MiB 轮转 `.old`），进程重启后仍可查历史；`get_workflow`/`get_all_workflows` 只反映内存态。路径可用环境变量 `WINGMAN_WORKFLOW_LEDGER`（全路径）重定向，app 数据目录不可得时账本整体关闭（`history` 恒返回空数组）。
+
+账本只记任务 id、依赖图与状态，**不落 `run()` 结果载荷**；任务体本身是脚本闭包、不可序列化，因此**只落账不自动恢复**——重启不会重跑未终局的工作流，而是把上次遗留的条目补一条 `interrupted` 终局（见下节状态词汇表），供事后查询与订阅方感知。
+
+### history(limit = 20)
+
+**说明**：查询终局账本视图，最新在前。进行中（仅有提交、无终局）的条目 `status` 报 `running` 且不带 `finishedAt`，排在最前；其余按 `finishedAt` 倒序。`limit` 默认 20、钳制 1..500。
+
+**函数签名**：
+
+```python
+history(limit: int = 20) -> list[dict]
+```
+
+```lua
+history(limit?: int) -> table
+```
+
+**返回**：视图数组，每项 `{id, name, run, status, startedAt, finishedAt?, interrupted?, tasks?}`：
+
+- `run`：进程标识（pid + 首启毫秒），区分跨进程重号的 `workflowId`（每进程从 `wf-1` 起）；
+- `tasks`：任务 id → 状态（与快照口径一致）；被补 `interrupted` 的条目不带该字段；
+- `interrupted`：仅被启动恢复合成的终局携带，表示进程强杀遗留（不等于运行失败）。
+
+示例：
+
+```python
+for rec in wingman.orchestration.history(50):
+    print(rec["id"], rec["status"], rec.get("interrupted", False))
+```
+
+```lua
+for _, rec in ipairs(wingman.orchestration.history(50)) do
+    print(rec.id, rec.status, rec.interrupted == true)
+end
+```
+
+启动恢复（进程内一次，首次 `submit_workflow`/`history` 访问时执行）会为每个遗留条目发出 `orchestration.interrupted` 事件（负载 `{workflow}`）。
+
+---
+
 ## 状态词汇表
 
 **工作流状态**（`status`）：
@@ -210,6 +253,7 @@ get_all_workflows() -> table
 | `succeeded` | 全部任务 `succeeded`（或按条件链 `skipped`） |
 | `failed` | 存在失败链任务（`failed`/`timeout` 及其传播的 `skipped`）且无未终局任务 |
 | `canceled` | `cancel_workflow` 请求后定稿（执行中任务协作取消，worker 后台收尾） |
+| `interrupted` | 仅历史账本：进程强杀遗留的在途工作流，由启动恢复合成的终局（不等于运行失败） |
 
 **任务状态**（`tasks[].status`）：
 
