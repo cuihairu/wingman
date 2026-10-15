@@ -41,6 +41,8 @@ if command -v lscpu >/dev/null 2>&1; then
     echo "cpu: $(lscpu | awk '/Model name/ {$1=$2=""; sub(/^  */, ""); print}')"
 fi
 echo "cpu cores: $(nproc)"
+# matcher_bench 读数随并行度变化（未设置=自动档=cpu cores；0/1=串行；N>=2=强制 N 线程）
+echo "matcher threads: ${WINGMAN_MATCHER_THREADS:-<unset=auto>}"
 
 for t in "${TARGETS[@]}"; do
     echo
