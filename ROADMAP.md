@@ -566,6 +566,9 @@ local wingman = require('wingman')
       video-storyboard.md：六集分镜 + 逐字旁白 + 录制规格 + 发布检查单，
       演示素材对齐 examples/lua_scripts/ 现有脚本，触发器类型与 GUI 实现
       核对过）；剩实拍录制/SRT/发布，需真实 Windows 环境人工完成
+      （2026-10-16 复核：docs/tutorials/video-storyboard.md 112 行在位，六集
+      分镜 + 逐字旁白 + 录制规格 + SRT/发布检查单齐备，解锁条件仍不成立——
+      实拍/SRT/发布需真实 Windows 环境人工完成）
 - [x] 示例脚本库
 
 ---
