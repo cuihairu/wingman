@@ -4,9 +4,9 @@
 
 ## 核心依赖（manifest，始终安装）
 
-asio、curl、lua、nlohmann-json、opencv4（仅 Windows）、openssl、sol2、spdlog、sqlite3
+asio、curl、lua、nlohmann-json、opencv4（仅 Windows）、openssl、sol2、spdlog、sqlite3、zlib（crashpad_util 链接，见下「子模块依赖」）
 
-其中 OpenCV 有平台门：`platform: "windows"`，Linux 走 `vision` feature，macOS 不带 OpenCV（视觉分析走内置逐像素路径）。
+其中 OpenCV 有平台门：`platform: "windows"`（Windows 基础依赖已含），Linux 走 `vision` feature；macOS 不带 OpenCV——此时视觉实现改用 `src/vision_stub.cpp`（`lib/wingman/CMakeLists.txt:176-187` 按 `OpenCV_FOUND AND TARGET opencv_core` 选源文件，命中才定义 `WINGMAN_ENABLE_VISION`），`findImage` / `findColor` / `findAllColors` 等视觉函数恒返回未命中或空值（stub 全部实现为 `std::nullopt` / `{false, ...}` / `{}`），macOS 上视觉类自动化不可用。
 
 ## 可选 feature（`-DVCPKG_MANIFEST_FEATURES=`）
 
@@ -17,6 +17,8 @@ asio、curl、lua、nlohmann-json、opencv4（仅 Windows）、openssl、sol2、
 | `ml` | onnxruntime（Windows/Linux） | `WINGMAN_ENABLE_ML=ON` |
 | `vision` | opencv4（Linux） | 自动：CMake 找到 OpenCV 即定义 `WINGMAN_ENABLE_VISION`（Linux 需此 feature 提供 OpenCV；Windows 基础依赖已含） |
 | `python` | python3 + pybind11 | `WINGMAN_ENABLE_PYTHON=ON` |
+
+「装什么」与「开关」两列**必须同时给**：`-DVCPKG_MANIFEST_FEATURES=<feature>` 只决定 vcpkg 是否安装该包，CMake 选项只决定本仓走哪条代码路径；CMake 不自动设置该变量（仓内仅 `.github/workflows/ci.yml` 设置，见「配置命令」）。缺 feature 的后果按模块不同：`ml` 在 configure 期**硬失败**（`find_package(onnxruntime CONFIG REQUIRED)`，CMake 注释即写明「依赖缺失显式报错，不静默降级到替身档」）；`ocr` 在编译期因缺 tesseract 头失败；**只有 `vision` 是静默降级**——`src/vision_stub.cpp` 接档、编译通过但全部视觉函数返回未命中/空值，日志只有一行 `STATUS "Vision support disabled"`。
 
 Android 用独立的 `apps/android/cpp/vcpkg-android.cmake` 叠加 NDK 工具链（见 apps/android/app/build.gradle.kts）。
 
