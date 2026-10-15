@@ -2,10 +2,11 @@
 
 This document records the current game-automation coverage of Wingman and compares it with similar products. It is intended to guide future implementation and prevent scope drift.
 
-Last calibrated: 2026-10-08 (local ONNX object detection and the team
-protocol — voting/inbox/broadcast — recalibrated; see Engine/API Gaps and
-Orchestration/Team Gaps). Previous calibration: 2026-10-04 (trigger GUI
-editing and global hotkeys landed; see Product UX Gaps for what remains).
+Last calibrated: 2026-10-15 (desktop GUI screen preview/region select, profile
+import/export, script hot reload, and the Dashboard Teams page; see Product UX
+Gaps and Orchestration/Team Gaps). Previous calibration: 2026-10-08 (local ONNX
+object detection and the team protocol — voting/inbox/broadcast — recalibrated).
+Previous calibration: 2026-10-04 (trigger GUI editing and global hotkeys landed).
 
 ## Positioning
 
@@ -27,7 +28,7 @@ Current coverage is strong at the engine/API layer and weaker at the product UX 
 | --- | --- | --- |
 | Screen capture | High | Supports screenshots and bitmap operations. |
 | Pixel/color detection | High | Covers cooldowns, health bars, resource indicators, UI state checks. |
-| Image/template matching | Medium-High | Core capability exists, but template asset management and visual tooling are still needed. |
+| Image/template matching | Medium-High | Core capability exists; server-side template asset distribution and the script-level template registry have landed, but the GUI capture/crop tool and per-profile binding are still needed. |
 | OCR | Medium | Useful for UI prompts and text detection; robustness depends on preprocessing and OCR quality. |
 | Input simulation | High | Mouse and keyboard automation covers macro and action execution. |
 | Macro recording/replay | Medium | Core recording/replay exists, but timeline editing and user workflow are incomplete. |
@@ -36,7 +37,7 @@ Current coverage is strong at the engine/API layer and weaker at the product UX 
 | FSM / behavior tree / task orchestration | High | Suitable for combat loops, gathering loops, and complex state handling. |
 | Humanized input | Medium-High | Random delay and human-like movement direction is correct; tuning UI and profiles are needed. |
 | Game profiles | Medium | Basic profile direction exists; needs stronger asset/config binding per game. |
-| Local UI control | Medium | IPC architecture is correct; UI needs trigger/profile/debug workflows. |
+| Local UI control | Medium | IPC architecture is correct; the desktop UI has trigger editing, profile management, and screen/region workflows, but no runtime debug panel yet. |
 | Remote orchestration | Medium | Architecture is correct: Go server as central controller, runtime connects outbound. Protocol and UX still need maturation. |
 | Team coordination | Medium | Direction exists; voting, member state, task assignment, and server arbitration need productization. |
 | Advanced vision / ML | Medium | Basic CV exists; an optional local ONNX object-detection layer has landed (`aiSetupLocal`, ML build profile — see `docs/api/vision.md`). It is not enabled by default and still needs per-scenario model/tuning work. Robust scene understanding is future work. |
@@ -73,7 +74,7 @@ Facts only: what each tool ships with, and where Wingman's capability boundary s
 | --- | --- | --- |
 | Chimpeon | Game automation with triggers, fast pixel detection, keyboard/mouse/macro actions, combat rotation, AFK handling, prompt detection. | Wingman additionally has Lua/Python scripting, FSM, behavior tree, and central orchestration; Chimpeon ships game-focused UX templates that Wingman lacks. |
 | AutoHotkey | Hotkeys, scripting, macro automation, keyboard/mouse/window automation, community script library. | Wingman has built-in vision/OCR/behavior modules; AutoHotkey has the larger third-party script library and longer Windows track record. |
-| Pulover's Macro Creator | GUI macro creator based on AutoHotkey, recording, loops, conditions, variables, image/pixel search. | Wingman's scripting engine and orchestration run server-side; Pulover's visual macro editing is further along than Wingman's. |
+| Pulover's Macro Creator | GUI macro creator based on AutoHotkey, recording, loops, conditions, variables, image/pixel search. | Wingman's orchestration runs server-side while scripts execute in the local runtime agent; Pulover's visual macro editing is further along than Wingman's. |
 | SikuliX | Image-driven automation, wait/click on images, OCR support, visual scripting style. | Similar primitives; Wingman lacks SikuliX's high-level image API and region-based visual workflow. |
 | TinyTask | Minimal record/replay, loops, playback speed, simple executable workflow. | Wingman covers a wider capability set; TinyTask has a lower floor for casual use. Wingman has no one-click simple mode yet. |
 | Macro Recorder | Mouse/keyboard recording, playback, image/OCR search, GUI action editing. | Wingman can run the same scenarios; action-list editing, condition branches, and visual debugging are not built out yet. |
@@ -94,14 +95,32 @@ References:
 
 ### Product UX Gaps
 
-- Visual screen preview: live screenshot, selected region, current cursor, pixel color.
-- Region selector: drag to select screen/window area and save as named region.
+- Named region library: save a picked region as a reusable name. The desktop GUI
+  screen page already previews live, draws the region overlay, supports drag
+  selection plus numeric/monitor pickers, and reads the pixel color under the
+  pointer; what is missing is persisting the result as a named region.
 - Template capture tool: crop image from preview and save as a named template.
 - Template asset manager: organize button/icon/state images per game profile.
+  Distribution already exists server-side (asset upload/list/sync with sha256
+  verification) plus the script-level template registry; what is missing is the
+  GUI-side organization and per-profile binding.
 - Macro timeline editor: reorder actions, edit delays, insert loops/conditions.
+  The macros page shows a read-only session summary (captured events, speed,
+  repeat, state); editing is not built yet.
 - Runtime debug panel: last screenshot, matched regions, confidence, trigger hits.
-- Profile import/export: share game profiles and templates.
-- Hot reload: update scripts/configs without restarting runtime.
+- Profile/template import-export: game profiles already import and export as
+  JSON from the desktop settings page; templates have no import/export path.
+- Config and profile hot reload: update configs/profiles without restarting the
+  runtime. Script-level hot reload already exists (`script.reload(name)`
+  re-reads the file and restarts the script if it was active, and the GUI
+  scripts page exposes the same via the restart action).
+
+Already implemented and therefore no longer gaps: live screen preview with
+per-pointer pixel color, on-preview drag region selection, region overlay with
+copyable coordinates, and monitor selection (desktop GUI screen page); game
+profile JSON import/export (desktop GUI settings page); script hot reload and
+restart without a runtime restart (`script.reload(name)` plus the GUI restart
+action).
 
 ### Engine/API Gaps
 
@@ -121,19 +140,22 @@ References:
 
 - Task assignment and lease/ack model: the server assigns work units to team
   members with lease/ack semantics (no Task/Assign/lease protocol yet).
-- Dashboard view for team state and vote progress (the team protocol exists
-  server-side; the Dashboard UI does not yet surface it).
+- Dashboard view for vote progress: the Dashboard already has a Teams page
+  listing team status, members (including device binding and leader tag) and
+  team message push, but no view of an in-flight vote or its tally.
 
 Already implemented and therefore no longer gaps: server-arbitrated team
 voting (`team.vote_create` / `team.vote_cast`, votes persisted server-side),
 member state reporting (`team.status_report`), the server-controlled runtime
 inbox (`inbox.register` / `inbox.heartbeat` / `inbox.ack` / `inbox.report`
-with server acks), and team event broadcast.
+with server acks), team event broadcast, and the Dashboard Teams page (team
+state, member list, per-team message push).
 
 ## Recommended Priority
 
-1. Screen preview, region selection, and pixel/color picker.
-2. Template capture and template asset management.
+1. Named region library on top of the existing preview/select/picker.
+2. GUI template capture and template asset management (server-side distribution
+   already exists).
 3. Macro timeline editor.
 4. Runtime debug panel with hit visualization.
 5. Window-relative coordinate system and DPI/resolution adaptation.
