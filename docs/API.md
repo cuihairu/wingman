@@ -86,21 +86,24 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 
 ### 支持的 RPC 方法
 
-当前共注册 **26 个**方法（以 `apps/agent/src/rpc/handlers/` 的 `registerHandler` 为准）：
+当前共注册 **31 个**唯一方法（26 个注册于 `apps/agent/src/rpc/handlers/`，5 个 `trigger.*` 注册于 `lib/wingman/src/rpc/handlers/trigger_handler.cpp`），与 `docs/protocols.md` 同一口径：
 
 | 分组 | 方法 |
 |------|------|
 | system | `getStatus` `getVersion` `isPaused` `togglePause` `pauseAll` `resumeAll` `stopAll` |
 | script | `list` `start` `stop` `pause` `resume` `restart` `unload` |
+| trigger | `list` `add` `remove` `update` `toggle` |
 | screenshot | `capture` |
 | screen | `listMonitors` |
 | events | `drain` |
 | macro | `start` `stop` `play` `status` `save` `load` `clear` |
 | config | `getRemote` `setRemote` |
 
-> `trigger.*`（`list`/`add`/`remove`/`update`/`toggle`）不在本地 IPC 方法面——它仅由 runtime 在远程 agent 通道复用（`apps/agent/src/agent.cpp`），见 `docs/protocols.md`。
+> `trigger.*` 在本地 IPC 与远程 agent 通道**双面注册**，两端共用同一组 handler：本地由 `LocalIpcServer::start()` 装进本方法的 dispatcher（有外部 TriggerManager 时复用、没有则自建一个），GUI 的 Tauri command `get_triggers`/`add_trigger`/`remove_trigger`/`update_trigger`/`toggle_trigger`（`apps/gui/src-tauri/src/commands/triggers.rs`）即走这条本地 IPC；远程侧是 Dispatcher Reuse（`apps/agent/src/agent.cpp`），Dashboard 经 Go server 透传访问。见 `docs/protocols.md`。
 >
 > 远程编排命令（如 `system.shutdown`）同样走 agent transport 通道（`apps/agent/src/agent.cpp`），不属于本地 IPC 面。
+>
+> `asset.sync` 不在本地 IPC 面——它只在远程 dispatcher 与 Android 端侧注册。
 
 #### system.getStatus
 获取系统状态
@@ -259,11 +262,73 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 
 响应 `result`：`{ "events": [...], "remaining": int, "dropped": int }`（`remaining` = 缓冲区剩余，`dropped` = 累计丢弃数）。
 
+#### trigger.list
+列出全部触发器。无参数。返回 `{ "triggers": [ ... ] }`，每项字段：
+
+| 字段 | 说明 |
+|------|------|
+| `id` | 触发器 ID，**字符串**（`remove`/`update`/`toggle` 按此回传） |
+| `name` / `enabled` / `oneShot` / `cooldown` | 顶层开关与冷却（`cooldown` 单位 ms） |
+| `type` | 条件类型（见下表，取自 `condition.type`） |
+| `condition` | `{ type, value, region: {x, y, width, height}, tolerance, interval, enabled }` |
+| `actions` | 数组，每项 `{ type, value, x, y, delay }` |
+| `lastTriggered` | 是否已命中过（bool） |
+
+```json
+{ "type": 0, "method": "trigger.list", "payload": {}, "id": 16, "timestamp": 1715299200000 }
+```
+
+条件类型：`ColorFound` `ColorLost` `ImageFound` `ImageLost` `WindowOpened` `WindowClosed` `ProcessStarted` `ProcessStopped` `TimeElapsed` `HotkeyPressed` `PixelChanged`；动作类型：`RunScript` `Click` `KeyPress` `Type` `StopScript` `PauseScript` `ShowMessage` `PlayAudio` `Log` `Delay`。
+
+#### trigger.add
+新增触发器。参数 `config`（对象；顶层直接给配置体亦可，此时以整个 payload 为配置源）。`config` 字段：
+
+| 字段 | 说明 |
+|------|------|
+| `name` | 名称，省略时默认 `Unnamed Trigger` |
+| `enabled` / `oneShot` | 默认 `true` / `false` |
+| `cooldown` | 冷却 ms，默认 0 |
+| `condition.type` | 默认 `ColorFound` |
+| `condition.value` | 条件值（按类型解释，如颜色/窗口标题/图片路径） |
+| `condition.region` | `{x, y, width, height}`，全零即不限定区域 |
+| `condition.tolerance` | 默认 10 |
+| `condition.interval` | 轮询间隔 ms，默认 1000 |
+| `condition.enabled` | 默认 `true` |
+| `actions` | 数组，**整表替换**语义（出现即先清空后重建） |
+
+返回 `{ "id": string }`。
+
+```json
+{
+  "type": 0,
+  "method": "trigger.add",
+  "payload": {
+    "config": {
+      "name": "血量监控",
+      "cooldown": 2000,
+      "condition": { "type": "ColorFound", "value": "0xFF0000", "tolerance": 15, "interval": 2000, "region": { "x": 50, "y": 50, "width": 20, "height": 20 } },
+      "actions": [{ "type": "KeyPress", "value": "2" }]
+    }
+  },
+  "id": 17,
+  "timestamp": 1715299200000
+}
+```
+
+`type` 字段大小写与下划线不敏感（`ColorFound` / `colorfound` / `color_found` 等价，别名 `pixel`→`ColorFound`、`image`→`ImageFound`；动作侧别名 `macro`→`RunScript`、`key`→`KeyPress`），也接受 `TriggerType` / `BasicTriggerAction` 的数值枚举。无法识别的类型回落为 `ColorFound` / `Log`。
+
+#### trigger.remove / trigger.update / trigger.toggle
+三者均以 `id` 定位触发器（`id` 传字符串或数字均可）。`update` 额外带 `config` 补丁（字段语义同 `add`，`actions` 为整表替换）；`id` 不存在时返回 `{ "success": false, "error": "Trigger not found" }`。`toggle` 在 `enabled` 上来回切换，返回切换后的 `{ "enabled": bool }`。
+
+```json
+{ "type": 0, "method": "trigger.toggle", "payload": { "id": "3" }, "id": 18, "timestamp": 1715299200000 }
+```
+
 #### macro.start / macro.stop / macro.status / macro.clear
 宏录制控制。`status` 返回 `{ "recording": bool, "paused": bool, "eventCount": int }`；其余无参数。
 
 ```json
-{ "type": 0, "method": "macro.status", "payload": {}, "id": 16, "timestamp": 1715299200000 }
+{ "type": 0, "method": "macro.status", "payload": {}, "id": 19, "timestamp": 1715299200000 }
 ```
 
 #### macro.play
@@ -274,7 +339,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "type": 0,
   "method": "macro.play",
   "payload": { "speed": 150, "repeat": 2 },
-  "id": 17,
+  "id": 20,
   "timestamp": 1715299200000
 }
 ```
@@ -287,7 +352,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "type": 0,
   "method": "macro.save",
   "payload": { "path": "macros/demo.json" },
-  "id": 18,
+  "id": 21,
   "timestamp": 1715299200000
 }
 ```
@@ -300,7 +365,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
   "type": 0,
   "method": "config.setRemote",
   "payload": { "serverIp": "192.168.1.10", "serverPort": 9000, "registerToken": "..." },
-  "id": 19,
+  "id": 22,
   "timestamp": 1715299200000
 }
 ```
