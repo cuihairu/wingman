@@ -152,9 +152,27 @@ findImage 有两条实现路径，此前基线只量了桌面一条：
 （`image_analyzer_test.cpp` 的 `TemplateMatchGoldenBits` / `FindImageGoldenBits`，
 LCG 确定性输入，EXPECT_EQ 位级比较）在优化前后同值通过。
 
+### templateMatch 按行分块并行（2026-10-15，14 逻辑核 Linux，同日同负载成对测）
+
+| 用例 | 串行（THREADS=1） | 自动档（未设置） | 提升 |
+| --- | --- | --- | --- |
+| templateMatch 全屏未命中 | 2,440–2,488 ms/op | 464–590 ms/op | 4.8x |
+| templateMatch 400x300 区域未命中 | 155–161 ms/op | 34–37 ms/op | 4.4x |
+
+优化内容（线程并行，**输出位级不变**）：每个搜索位置的 sum/sumTarget 相互
+独立，按行分块并行、块内保持原扫描序、块间按块序以严格 `>` 归约，因此
+IEEE-754 结果位与「首个最大位置优先」的平局次序都与串行一致。自动档仅在
+扫描行数 ≥ 64 且位置数 ≥ 16384 时启用（小画面分块净亏），线程数取
+`hardware_concurrency()`；可用环境变量 `WINGMAN_MATCHER_THREADS` 强制覆盖
+（0/1=串行，N≥2=强制 N 线程并绕过大小阈值）。回归钉
+`image_analyzer_test.cpp` 的 `TemplateMatchParallelBitExact`（强制 2/3/5/8
+线程 + 自动档，与串行基准 EXPECT_EQ 位级比较，全屏/区域两形态）。
+单核设备自动档退化为串行，不适用；多核收益见上表（本机 14 逻辑核）。
+
 ### 剩余门槛（设计取舍，维持登记未动）
 
-- 全屏 2.5 s 对 Android 触发器轮询（500ms 间隔）仍偏慢；进一步提速只剩
+- 全屏 2.5 s 的串行最坏路径在多核机器上已被并行档压到 ~0.5 s（Android 触发
+  器轮询 500ms 间隔可用）；单核设备仍为 2.4 s。进一步提速只剩
   改语义的选项——SIMD/float32 会重排浮点累加（位级一致失守）、金字塔/降
   采样会改命中语义、端侧接 OpenCV 匹配器（NDK 有 opencv4）会引入与桌面
   TM_CCOEFF_NORMED 的分数口径差。属设计取舍，待拍板后单独立项。

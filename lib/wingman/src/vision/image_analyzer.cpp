@@ -2,6 +2,8 @@
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <thread>
 #include <vector>
 
 namespace wingman::vision {
@@ -226,6 +228,21 @@ std::optional<Point> PatternMatcher::matchColorPattern(
     return std::nullopt;
 }
 
+namespace {
+
+// 每次调用现读 WINGMAN_MATCHER_THREADS，不缓存：测试可在用例内逐次切换。
+// 返回 -1 表示未设置（走自动档）；0/1 强制串行；N>=2 强制 N 线程并绕过
+// 自动档的大小阈值。
+int matcherThreadsRequested() {
+    const char* raw = std::getenv("WINGMAN_MATCHER_THREADS");
+    if (raw == nullptr || raw[0] == '\0') {
+        return -1;
+    }
+    return std::atoi(raw);
+}
+
+} // namespace
+
 double PatternMatcher::templateMatch(
     const Bitmap& bitmap,
     const Bitmap& tpl,
@@ -283,33 +300,99 @@ double PatternMatcher::templateMatch(
         }
     }
 
-    double bestScore = -1.0;
+    // ===== 按行分块并行（输出位级不变，回归钉见 image_analyzer_test 的
+    // TemplateMatchParallelBitExact）。每个搜索位置的 sum/sumTarget 相互
+    // 独立，块内保持原扫描序、块间按块序以严格 > 归约，因此 IEEE-754
+    // 结果位与「首个最大位置优先」的平局次序都与串行一致。
+    const int scanRows = maxY - searchRegion.y + 1;
+    const int scanCols = maxX - searchRegion.x + 1;
 
-    for (int y = 0; y <= maxY - searchRegion.y; ++y) {
-        for (int x = 0; x <= maxX - searchRegion.x; ++x) {
-            double sum = 0.0;
-            double sumTarget = 0.0;
+    struct Best {
+        double score = -1.0;
+        int x = 0;   // 搜索区相对坐标
+        int y = 0;
+    };
 
-            for (int ty = 0; ty < th; ++ty) {
-                const double* trow = &tl[static_cast<size_t>(ty) * tw];
-                const double* srow = &sl[static_cast<size_t>(y + ty) * sw + x];
-                for (int tx = 0; tx < tw; ++tx) {
-                    sum += trow[tx] * srow[tx];
-                    sumTarget += srow[tx] * srow[tx];
+    const auto processRows = [&](int yBegin, int yEnd, Best& best) {
+        for (int y = yBegin; y < yEnd; ++y) {
+            for (int x = 0; x < scanCols; ++x) {
+                double sum = 0.0;
+                double sumTarget = 0.0;
+
+                for (int ty = 0; ty < th; ++ty) {
+                    const double* trow = &tl[static_cast<size_t>(ty) * tw];
+                    const double* srow = &sl[static_cast<size_t>(y + ty) * sw + x];
+                    for (int tx = 0; tx < tw; ++tx) {
+                        sum += trow[tx] * srow[tx];
+                        sumTarget += srow[tx] * srow[tx];
+                    }
+                }
+
+                const double denominator = sqrtSumTemplate * std::sqrt(sumTarget);
+                const double score = (denominator > 0) ? (sum / denominator) : 0.0;
+
+                if (score > best.score) {
+                    best.score = score;
+                    best.x = x;
+                    best.y = y;
                 }
             }
+        }
+    };
 
-            const double denominator = sqrtSumTemplate * std::sqrt(sumTarget);
-            const double score = (denominator > 0) ? (sum / denominator) : 0.0;
+    Best best;
 
-            if (score > bestScore) {
-                bestScore = score;
-                bestPosition = Point{searchRegion.x + x, searchRegion.y + y};
+    const int forced = matcherThreadsRequested();
+    int threads = 0;   // 0 = 串行
+    if (forced >= 2) {
+        threads = forced;
+    } else if (forced == 0 || forced == 1) {
+        threads = 0;
+    } else {
+        // forced == -1（未设置）：自动档
+        const unsigned hc = std::thread::hardware_concurrency();
+        // 阈值：分块与线程启动成本约数十微秒，小画面分块净亏
+        if (hc >= 2 && scanRows >= 64 &&
+            static_cast<size_t>(scanRows) * scanCols >= 16384) {
+            threads = static_cast<int>(hc);
+        }
+    }
+
+    if (threads <= 1 || scanRows < 2) {
+        processRows(0, scanRows, best);
+    } else {
+        const int bands = std::min(threads, scanRows);
+        const int base = scanRows / bands;
+        const int extra = scanRows % bands;
+
+        std::vector<Best> partials(bands);
+        std::vector<std::thread> workers;
+        int y = 0;
+        for (int band = 0; band < bands; ++band) {
+            const int rows = base + (band < extra ? 1 : 0);
+            const int yBegin = y;
+            y += rows;
+            if (band == 0) {
+                // 首块留在调用线程，少建一个线程
+                processRows(yBegin, y, partials[0]);
+                continue;
+            }
+            workers.emplace_back([&, band, yBegin, y]() {
+                processRows(yBegin, y, partials[band]);
+            });
+        }
+        for (auto& worker : workers) {
+            worker.join();
+        }
+        for (const Best& partial : partials) {
+            if (partial.score > best.score) {
+                best = partial;
             }
         }
     }
 
-    return bestScore;
+    bestPosition = Point{searchRegion.x + best.x, searchRegion.y + best.y};
+    return best.score;
 }
 
 std::optional<Point> PatternMatcher::matchEdge(

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "wingman/vision/image_analyzer.hpp"
+#include <cstdlib>
 #include <filesystem>
 #include <atomic>
 #include <chrono>
@@ -369,6 +370,95 @@ TEST(ImageAnalyzerTest, FindImageGoldenBits) {
     EXPECT_EQ(result->position.x, 7);
     EXPECT_EQ(result->position.y, 2);
     EXPECT_EQ(result->confidence, 0.99882563675917868);
+}
+
+// ========== templateMatch 并行位级一致性 ==========
+
+// templateMatch 输出逐搜索位置独立（每位置独立累加 sum/sumTarget），按行
+// 分块并行、块内保持原扫描序、块间按块序以严格 > 归约，输出必须与串行
+// 逐位一致——含平局时「首个最大位置优先」的次序语义。线程数经
+// WINGMAN_MATCHER_THREADS 强制覆盖（0/1=串行，N>=2=强制 N 线程并绕过自动
+// 档的大小阈值，不设置=自动档），使本用例在任何机器上都能确定性地走分块
+// 路径；本用例画面跨阈值，多核机器上自动档同样走分块路径。
+namespace {
+void matcherThreadEnv(const char* value) {
+#if defined(_WIN32)
+    // 传空串即从环境中移除该变量（MSVCCRT 语义）
+    _putenv_s("WINGMAN_MATCHER_THREADS", value ? value : "");
+#else
+    if (value) {
+        setenv("WINGMAN_MATCHER_THREADS", value, 1);
+    } else {
+        unsetenv("WINGMAN_MATCHER_THREADS");
+    }
+#endif
+}
+} // namespace
+
+TEST(PatternMatcherTest, TemplateMatchParallelBitExact) {
+    constexpr int fw = 420, fh = 280, tw = 36, th = 24;
+    Bitmap bmp(fw, fh);
+    Bitmap tpl(tw, th);
+    uint32_t seed = 424242;
+    auto next = [&seed]() {
+        seed = seed * 1103515245u + 12345u;
+        return static_cast<uint8_t>((seed >> 16) & 0xFF);
+    };
+    for (int y = 0; y < fh; ++y)
+        for (int x = 0; x < fw; ++x)
+            bmp.setPixel(x, y, Color(next(), next(), next()));
+    // 模板取自帧内右下角并抹花一像素：最优分 < 1.0 且尾数位有内容
+    for (int ty = 0; ty < th; ++ty)
+        for (int tx = 0; tx < tw; ++tx)
+            tpl.setPixel(tx, ty, bmp.getPixel(fw - tw - 3 + tx, fh - th - 2 + ty));
+    tpl.setPixel(5, 5, Color(1, 2, 3));
+
+    const Rect region{100, 50, 300, 200};
+    const auto runAt = [&](const char* threads, Point& pos, double& score, const Rect& r) {
+        matcherThreadEnv(threads);
+        score = PatternMatcher::templateMatch(bmp, tpl, pos, r);
+    };
+
+    // 串行基准（全屏 + 区域限定两形态）
+    Point p1, r1;
+    double s1 = 0.0, sr1 = 0.0;
+    runAt("1", p1, s1, Rect{});
+    runAt("1", r1, sr1, region);
+    EXPECT_GT(s1, 0.5);   // 模板取自本帧：应有实质命中
+    EXPECT_LT(s1, 1.0);   // 抹花一处：最优分不等于 1
+    EXPECT_GT(sr1, 0.5);
+
+    // 强制 2/3/5/8 线程：分数逐位一致、命中位置一致（平局次序语义不变）
+    for (const char* t : {"2", "3", "5", "8"}) {
+        SCOPED_TRACE(std::string("WINGMAN_MATCHER_THREADS=") + t);
+        Point p, r;
+        double s = 0.0, sr = 0.0;
+        runAt(t, p, s, Rect{});
+        runAt(t, r, sr, region);
+        EXPECT_EQ(s, s1);
+        EXPECT_EQ(p.x, p1.x);
+        EXPECT_EQ(p.y, p1.y);
+        EXPECT_EQ(sr, sr1);
+        EXPECT_EQ(r.x, r1.x);
+        EXPECT_EQ(r.y, r1.y);
+    }
+
+    // 自动档（未设置）：本用例画面跨阈值，多核机器走分块路径，同样逐位一致
+    {
+        SCOPED_TRACE("WINGMAN_MATCHER_THREADS=<unset>");
+        Point p, r;
+        double s = 0.0, sr = 0.0;
+        runAt(nullptr, p, s, Rect{});
+        runAt(nullptr, r, sr, region);
+        EXPECT_EQ(s, s1);
+        EXPECT_EQ(p.x, p1.x);
+        EXPECT_EQ(p.y, p1.y);
+        EXPECT_EQ(sr, sr1);
+        EXPECT_EQ(r.x, r1.x);
+        EXPECT_EQ(r.y, r1.y);
+    }
+
+    matcherThreadEnv(nullptr);   // 恢复自动档
 }
 
 TEST(PatternMatcherTest, MatchColorPatternEmptyColors) {

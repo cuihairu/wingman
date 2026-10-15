@@ -238,6 +238,7 @@ end
 | `WINGMAN_PACK_PASSWORD` | `build` 加密打包的口令来源（避免口令进命令行历史） |
 | `WINGMAN_SCRIPT_PASSWORD` | 运行加密打包产物时提供解包口令 |
 | `WINGMAN_ADMIN_PASSWORD` | Go server 首次启动时引导创建 admin 账号（未设置则不建号） |
+| `WINGMAN_MATCHER_THREADS` | `PatternMatcher::templateMatch` 找图并行度：0/1=串行，N≥2=强制 N 线程（绕过自动阈值），不设置=自动档（多核 + 大画面启用）。输出与串行逐位一致，见 docs/benchmarks.md 优化记录 |
 
 ## 安全提示
 
