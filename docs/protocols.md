@@ -140,8 +140,12 @@ Body: JSON（最大 16 MiB）
 | `stop_script` | `{script_id}` |
 | `get_status` | 查询状态 |
 | `list_windows` | 枚举窗口 |
+| `screenshot.capture` | 截图，Dispatcher Reuse 转本地 IPC 的 `screenshot.capture` handler（同参同返，见 §① 与 `docs/API.md`），需 `WINGMAN_ENABLE_VISION`（OpenCV） |
+| `trigger.list` / `add` / `remove` / `update` / `toggle` | 触发器管理，Dispatcher Reuse 转本地 IPC 的 `trigger.*` handler（同参同返，字段与类型词表见 `docs/API.md`）；Dashboard 经 Go server 透传访问 |
 | `asset.sync` | `{name, contentBase64, sha256}` 模板图片等资产下发，agent 落盘本地资产目录（`<scriptDir>/assets/<name>`），响应 data 携带落盘路径与字节数；name 白名单 `[A-Za-z0-9][A-Za-z0-9._-]{0,127}`（两端同口径），sha256 提供即强校验，单资产 ≤1MB（server 触发：`POST /api/assets/sync`，权限 `assets:manage`） |
 | `system.shutdown` | 关闭 agent |
+
+> 上表 8 行即 `Agent::handleRemoteCommand` 的全部分派（`apps/agent/src/agent.cpp`）：`run_script` / `system.shutdown` / `list_windows` / `get_status` / `screenshot.capture` / `trigger.` 前缀（覆盖上表 5 个 method） / `asset.` 前缀（当前只注册 `asset.sync`） / `stop_script`。带点号的三类走 Dispatcher Reuse（同一组 RPC handler 与本地 IPC 共用，见 `dispatchViaRpcDispatcher`）。Android 端侧不是全量实现：`apps/android/cpp/agent/android_agent.cpp` 只分派 `run_script` / `stop_script` / `screenshot.capture` / `asset.` 前缀 / `system.shutdown` 五类，无 `get_status` / `list_windows` / `trigger.` 分支（也没有本地 IPC 面）。
 
 Response：`{success, method, message?, error?, data?}`，`sequence` 与请求一致。
 
