@@ -167,14 +167,17 @@ Response：`{success, method, message?, error?, data?}`，`sequence` 与请求�
 { "type": "agent", "event": "connected", "data": {...}, "timestamp": 1715299200 }
 ```
 
+> 事件字段位置不统一：`agent` / `debugger` / `room` 走顶层 `event`；`workflow` 只设顶层 `type`，事件名嵌在 `data.event`（如 `{type:"workflow", data:{event:"submitted", ...}}`），收端按 `data.event` 取。
+
 | `type` | `event` | 说明 |
 |--------|---------|------|
 | `connected` | — | 连接欢迎（含 connectionId） |
-| `agent` | `connected` / `disconnected` / `status_changed` | Agent 生命周期 |
-| `workflow` | `submitted` / `status_changed` / `progress` | 工作流进度 |
-| `debugger` | * | 调试事件（当前直连模式，不中转） |
+| `agent` | `connected` / `disconnected` / `status_changed` | Agent 生命周期（顶层 `event`） |
+| `workflow` | `submitted` / `status_changed` / `progress` | 工作流进度（事件在 `data.event`，非顶层） |
+| `debugger` | * | 调试事件（顶层 `event`；当前直连模式，不中转） |
 | `screenshot` | — | 截图广播 |
-| `ping` | — | 服务端 ping，客户端回 pong |
+| `room` | `message` | 房间消息广播（客户端 `room_message` 触发，含 `roomId` 与 `data`） |
+| `ping` | — | 服务端心跳：WS 协议层 `PingMessage`（30s 一发，非 JSON 消息）；客户端回 `PongMessage`（协议层自动）或 JSON `{type:"pong"}` |
 
 ### 客户端 → 服务端消息
 
@@ -185,7 +188,7 @@ Response：`{success, method, message?, error?, data?}`，`sequence` 与请求�
 
 ### 房间
 
-`Hub` 维护 `rooms map[roomID]map[connID]*Connection`，支持按房间广播（`JoinRoom`/`LeaveRoom`/`BroadcastToRoom`）。每个连接 `Send` 通道缓冲 256，慢消费连接被清理。
+`Hub` 维护 `rooms map[roomID]map[connID]*Connection`，支持按房间广播（`JoinRoom`/`LeaveRoom`/`BroadcastToRoom`）。每个连接 `Send` 通道缓冲 256，慢消费连接被清理。客户端 `room_message` 到达后，服务端向同房间其他连接广播 `{type:"room", event:"message", roomId, data, timestamp}`（`BroadcastToRoom`，房间内连接满通道时静默丢弃、不清理）。
 
 ---
 
