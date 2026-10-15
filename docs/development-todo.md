@@ -112,7 +112,7 @@
 - [x] P0: `event`、`task`、`fsm`
 - [x] P1: `notify`、`orchestration`
 - [x] P2: `clipboard` ✅、`file` ✅（监控+IO）、`hotkey` ✅、`timer` ✅
-- [ ] P3: UI 树、模板管理、录制回放增强（录制回放主体 ✅）
+- [x] P3: UI 树 ✅（`uia.tree(root?, maxDepth?=6)`，深度钳制 1..16，2026-10-16）、模板管理 ✅（gameprofile 模板 17 函数族：createTemplate/list/scan/import/export/delete 等）、录制回放增强 ✅（playback(speed,repeat) / pause/resume / saveToLua+saveToJSON+loadFromJSON 持久化）
 
 ### 建议的落地顺序
 1. `event` 先补齐事件对象、订阅管理和一次性监听

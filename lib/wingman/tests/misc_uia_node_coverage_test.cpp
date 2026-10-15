@@ -251,3 +251,35 @@ TEST(OcrModuleGlueTest, RecognizeResultIncludesTextField) {
     ASSERT_NE(result.get("text"), nullptr); // text 字段构造行（stub 与真实实现均稳定）
     EXPECT_TRUE(result.get("success") != nullptr);
 }
+
+// ========== uia：tree 树导出（P3「UI 树」条目；Linux stub 下覆盖降级契约）==========
+
+TEST(UiaModuleGlueTest, TreeRegisteredWithSignature) {
+    const auto mod = getModule("uia");
+    ASSERT_EQ(mod.name, "uia");
+    const auto* fn = findFunction(mod, "tree");
+    ASSERT_NE(fn, nullptr);
+    EXPECT_NE(fn->signature.find("maxDepth"), std::string::npos);
+}
+
+TEST(UiaModuleGlueTest, TreeUnknownHandleReturnsNull) {
+    // 元素注册表查无此 handle → null（后端无关，Windows 真后端下亦成立）
+    const auto mod = getModule("uia");
+    ASSERT_EQ(mod.name, "uia");
+    std::unordered_map<std::string, ScriptValue> fake;
+    fake["_handle"] = ScriptValue::fromInt(99999);
+    EXPECT_TRUE(call(mod, "tree", {ScriptValue::fromObject(std::move(fake))}).isNull());
+}
+
+TEST(UiaModuleGlueTest, TreeReturnsNullWithoutBackend) {
+#ifdef _WIN32
+    // Windows 有真实 UIA 后端，tree() 返回真实树——「无后端返回 null」
+    // 语义仅在 Linux stub 下成立（同 AllFindFunctionsReturnNullWithoutBackend 口径）
+    GTEST_SKIP() << "UIA backend exists on Windows; null-return semantics are Linux-stub only";
+#endif
+    const auto mod = getModule("uia");
+    ASSERT_EQ(mod.name, "uia");
+    EXPECT_TRUE(call(mod, "tree").isNull());
+    EXPECT_TRUE(call(mod, "tree", {ScriptValue::fromInt(3)}).isNull()); // 首参深度形
+    EXPECT_TRUE(call(mod, "tree", {ScriptValue::fromInt(0)}).isNull()); // 深度钳制后仍 null（无后端）
+}

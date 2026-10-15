@@ -501,6 +501,34 @@ static ScriptValue makeUiaElementObject(std::shared_ptr<IUIAElement> e) {
 	return ScriptValue::fromObject(std::move(obj));
 }
 
+// UI 树递归导出：node = {info:…, children:[…]}。depth 是剩余层数预算；
+// 元素失效返回 null 不入树。真实树深由调用侧的 maxDepth 钳制（1..16）。
+static ScriptValue buildUiaTreeNode(const std::shared_ptr<IUIAElement>& el, int depth) {
+	if (!el || depth <= 0) return ScriptValue::null();
+	UIAElementInfo info = el->getInfo();
+	std::vector<ScriptValue> children;
+	if (depth > 1) {
+		for (auto& c : el->getChildren()) {
+			ScriptValue node = buildUiaTreeNode(c, depth - 1);
+			if (!node.isNull()) children.push_back(std::move(node));
+		}
+	}
+	return ScriptValue::fromObject({
+		{"info", ScriptValue::fromObject({
+			{"name", ScriptValue::fromString(info.name)},
+			{"id", ScriptValue::fromString(info.id)},
+			{"className", ScriptValue::fromString(info.className)},
+			{"role", ScriptValue::fromInt(static_cast<int64_t>(info.role))},
+			{"text", ScriptValue::fromString(info.text)},
+			{"is_enabled", ScriptValue::fromBool(info.isEnabled)},
+			{"is_visible", ScriptValue::fromBool(info.isVisible)},
+			{"has_focus", ScriptValue::fromBool(info.hasFocus)},
+			{"bounds", fromRect(info.bounds)}
+		})},
+		{"children", ScriptValue::fromArray(std::move(children))}
+	});
+}
+
 ModuleDescriptor createUIAutomationModule() {
 	ModuleDescriptor mod;
 	mod.name = "uia";
@@ -520,6 +548,29 @@ ModuleDescriptor createUIAutomationModule() {
 		uint64_t hwnd = static_cast<uint64_t>(args.size() > 0 ? args[0].asInt(0) : 0);
 		return makeUiaElementObject(uia().fromWindow(hwnd));
 	}, "hwnd:int -> UIElement?"});
+
+	// ===== UI 树导出 =====
+	// tree(root?, maxDepth?=6)：root 省略时以前台焦点元素为根；首参也可直接
+	// 传深度整数（tree(3)）。深度钳制 1..16 防大 UI 树失控遍历；无后端或
+	// 根元素不可得返回 null。
+	mod.functions.push_back({"tree", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+		std::shared_ptr<IUIAElement> root;
+		int maxDepth = 6;
+		if (!args.empty()) {
+			if (args[0].isObject()) {
+				if (const ScriptValue* h = args[0].get("_handle"))
+					root = uiaGetElement(static_cast<int>(h->asInt(0)));
+			} else if (args[0].isInt()) {
+				maxDepth = static_cast<int>(args[0].asInt(6));
+			}
+		}
+		if (args.size() > 1 && args[1].isInt())
+			maxDepth = static_cast<int>(args[1].asInt(maxDepth));
+		if (maxDepth < 1) maxDepth = 1;
+		if (maxDepth > 16) maxDepth = 16;
+		if (!root) root = uia().getFocusedElement();
+		return buildUiaTreeNode(root, maxDepth);
+	}, "root?:UIElement, maxDepth?:int=6 -> {info:table, children:table[]}?"});
 
 	// ===== 通用查找 =====
 	mod.functions.push_back({"find_by_name", [](const std::vector<ScriptValue>& args) -> ScriptValue {

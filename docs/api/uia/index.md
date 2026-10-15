@@ -2,7 +2,7 @@
 
 UI Automation 模块，用于与 UI 控件进行自动化交互。
 
-> [**已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`/`wait_for_id`/`wait_for_role`/`wait_for`）+ 专用查找（`find_button`/`find_edit`/`find_text`/`find_check_box`/`find_radio_button`/`find_combo_box`/`find_list`/`find_list_item`/`find_tree`/`find_tree_item`/`find_menu_item`/`find_hyperlink`/`find_image`/`find_slider`/`find_spinner`/`find_progress_bar`/`find_tab`/`find_tab_item`）+ UIElement 对象 18 方法（`get_info`/`click`/`right_click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`get_parent`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`/`select`/`get_selection`/`is_checked`/`set_checked`）+ 事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`）。支持 **Windows UIAutomation（COM 事件处理线程）+ macOS Accessibility（AXObserver run loop）** 双平台（Linux 暂不支持）。]
+> [**已实现**：根元素获取（`from_foreground`/`from_window`/`from_point`）+ UI 树导出（`tree`）+ 通用查找（`find_by_name`/`find_by_id`/`find_all_by_control_type`/`wait_for_name`/`wait_for_id`/`wait_for_role`/`wait_for`）+ 专用查找（`find_button`/`find_edit`/`find_text`/`find_check_box`/`find_radio_button`/`find_combo_box`/`find_list`/`find_list_item`/`find_tree`/`find_tree_item`/`find_menu_item`/`find_hyperlink`/`find_image`/`find_slider`/`find_spinner`/`find_progress_bar`/`find_tab`/`find_tab_item`）+ UIElement 对象 18 方法（`get_info`/`click`/`right_click`/`double_click`/`focus`/`get_value`/`set_value`/`get_children`/`get_parent`/`expand`/`collapse`/`is_expanded`/`is_visible`/`is_enabled`/`select`/`get_selection`/`is_checked`/`set_checked`）+ 事件监听（`on_property_changed`/`on_structure_changed`/`remove_event_listener`）。支持 **Windows UIAutomation（COM 事件处理线程）+ macOS Accessibility（AXObserver run loop）** 双平台（Linux 暂不支持）。]
 
 ## 什么是 UI Automation
 
@@ -890,6 +890,48 @@ if root then
         local info = child:get_info()
         print(string.format("[%d] %s (role=%d)", i, info.name, info.role))
     end
+end
+```
+
+:::
+
+### 导出 UI 树
+
+一键导出子树为嵌套表：`tree(root?, maxDepth?)`。`root` 省略时以前台焦点元素为根；也可只传深度（`tree(3)`）。深度钳制 1..16；无后端或根元素不可得返回 `None`/`nil`。适合调试期打印控件层级，逐节点精细操作仍用 `get_children`/`get_info`：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+t = uia.tree(4)
+if t:
+    def dump(node, indent=0):
+        info = node["info"]
+        print("  " * indent + f"{info['name']} (role={info['role']})")
+        for c in node["children"]:
+            dump(c, indent + 1)
+    dump(t)
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local t = wingman.uia.tree(4)
+if t then
+    local function dump(node, indent)
+        indent = indent or 0
+        local info = node.info
+        print(string.rep("  ", indent) .. info.name .. " (role=" .. info.role .. ")")
+        for _, c in ipairs(node.children) do
+            dump(c, indent + 1)
+        end
+    end
+    dump(t)
 end
 ```
 

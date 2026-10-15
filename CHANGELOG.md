@@ -9,6 +9,11 @@
 
 ## [Unreleased]
 
+### feat（2026-10-16，uia 模块新增 `tree` UI 树导出）
+
+- `uia.tree(root?, maxDepth?=6)`：一键导出子树为嵌套表（`{info: {...}, children: [...]}`，info 字段与 `get_info` 同构 snake_case）；root 省略时以前台焦点元素为根，首参也可直接传深度（`tree(3)`）；深度钳制 1..16 防大 UI 树失控遍历；元素失效的子节点不入树；无后端（Linux stub）或根元素不可得返回 null。
+- 覆盖 `docs/api/uia/index.md`（能力清单 + 「导出 UI 树」双语言示例）、`libs/python/typing/wingman/uia.pyi` 存根同步；测试 3 例（注册签名 / 未知 handle 返 null / 无后端降级契约，Windows 真后端下 skip 守卫）。
+
 ### perf（2026-10-15，模板匹配两轮优化——Android 端找图与触发器图像条件 18.1s → 0.5s）
 
 - **背景（此前基线只量了桌面一条）**：`findImage` 有两条实现路径——桌面 `vision.findImage`/`screen.findImage` 走 `Vision::findImage`/`Screen::findImage` 的 OpenCV `cv::matchTemplate`（已优化实现）；Android 端脚本面与 `wingman.trigger` 图像条件走 `PatternMatcher::templateMatch` 朴素四重标量循环，全屏 1600x1000 vs 32x32 未命中达 18.1 s/op，在 500ms 触发器轮询间隔下失能。
