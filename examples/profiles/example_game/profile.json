@@ -6,8 +6,8 @@
 
   "window": {
     "title": "游戏窗口",
-    "process": "game.exe",
-    "exact_match": false,
+    "processName": "game.exe",
+    "exactMatch": false,
     "fullscreen": false
   },
 
