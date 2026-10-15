@@ -70,7 +70,8 @@ RPC。
 
 | 旧动作（已废弃） | 现行对应 |
 |------|------|
-| ping / get_version | Dashboard REST/WS（Go 编排器侧健康与版本信息），无同名 agent 命令 |
+| ping | 无同名 agent 命令。保活由 Go 编排器侧承担：`GET /api/v1/health`（需 Bearer，返回 `{"status":"ok"}`）与 Dashboard WS 的**协议层** Ping/Pong（30s 间隔，非 JSON 帧，见 [protocols.md](protocols.md) §③） |
+| get_version | 无同名 agent 命令，编排器侧亦无版本查询端点（`/api/v1/health` 只返 status、`/api/v1/status` 只汇总脚本/窗口/资源）。版本信息只在自动更新服务面：`GET /api/v1/update/latest`（公开只读 manifest，含 version/url/sha256） |
 | capture_screen | `screenshot.capture`（server→agent 命令与本地 IPC RPC 同名） |
 | get_pixel / find_color / find_image | 脚本 API `wingman.screen.getPixel` / `wingman.vision.findColor` / `wingman.vision.findImage` |
 | click / move / key / type_text | 脚本 API `wingman.input.*`（click/move/key/type 等） |

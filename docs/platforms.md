@@ -1,6 +1,6 @@
 # 平台支持与 API 适用性
 
-> 最后核对：2026-09-24（v18 覆盖率基线同期）。本文是平台信息的**唯一对账表**：
+> 最后核对：2026-10-15（逐条对现行源码、vcpkg.json、CMake 与 ci.yml 复扫）。本文是平台信息的**唯一对账表**：
 > 当 README 的承诺、CI 实际验证的范围、代码条件编译的真实覆盖三者出现不一致时，
 > 以本文记录的现状为准，并在此修订。
 
@@ -28,7 +28,7 @@ CI 未必测，CI 编译了的功能未必在所有平台有实现，而用户�
 |------|------|------|--------------|----------|----------|
 | Windows | 已支持 | x86_64 | Windows 10 / Server 2016+ | [Nightly](https://github.com/cuihairu/wingman/releases/tag/nightly) 或 Release 的 `wingman-*-windows-x64.zip`；源码构建见 [BUILD](../BUILD.md)（vcpkg 三元组 `x64-windows-static`） | OCR / ML / Python 引擎为可选开关，默认关闭（见 [API 适用性](#api-适用性标注)） |
 | Linux | 已支持 | x86_64 | Ubuntu 22.04+（GCC 11+），X11 显示服务 | Nightly / Release 的 `wingman-*-linux-x64.tar.gz`（含 AppImage 与 deb）；源码构建（三元组 `x64-linux`） | 仅 X11；Wayland 需经 XWayland 兼容层，原生 Wayland 未支持；无 UI 自动化后端（见[环境差异](#各环境差异说明)） |
-| macOS | 已支持 | x86_64（Intel）/ arm64（Apple Silicon，仅 agent 单二进制） | macOS 12+（部署目标 `MACOSX_DEPLOYMENT_TARGET=12`） | agent：`wingman-agent-*-macos-{x64,arm64}.tar.gz`（`build-agent.yml` 矩阵含 arm64）；打包（dmg/app/GUI）：`wingman-*-macos-x64.tar.gz`（仅 x64）；源码构建（三元组 `x64-osx`） | 无 OpenCV（视觉分析走内置路径）；CI 验证为尽力而为（continue-on-error） |
+| macOS | 已支持 | x86_64（Intel）/ arm64（Apple Silicon，仅 agent 单二进制） | macOS 12+（部署目标 `MACOSX_DEPLOYMENT_TARGET=12`） | agent：`wingman-agent-*-macos-{x64,arm64}.tar.gz`（`build-agent.yml` 矩阵含 arm64）；打包（dmg/app/GUI）：`wingman-*-macos-x64.tar.gz`（仅 x64）；源码构建（三元组 `x64-osx`） | 无 OpenCV（`vcpkg.json` 未覆盖 macOS）→ 视觉走 `src/vision_stub.cpp` 存根，找色/找图/找轮廓等恒返回未命中或空值，macOS 上视觉类自动化不可用（见 [API 适用性](#api-适用性标注)）；CI 验证为尽力而为（continue-on-error） |
 | Android | 实验性 | arm64 | Android 9.0+（minSdk 28，targetSdk 34） | Nightly / Release 的 `wingman-*-android-arm64` APK（debug 签名）；源码构建见 [apps/android/README.md](../apps/android/README.md) | 仅 A2 能力面（`wingman.input/screen/vision` 三张 Lua 子表，见下文）；无正式签名；A3 可靠性（开机自启/崩溃自重启/看门狗/保活指引）已于 2026-09-30 落地，正式签名属 A3-P2 |
 | iOS | 规划中 | arm64 | — | — | 端侧 Agent 不可行（沙箱限制），仅"主机控"路线有设计，见 [iOS 一节](#ios-为什么是-规划中-而不是-支持) |
 
@@ -61,34 +61,45 @@ Linux 没有 UI Automation 框架），纯逻辑组理论上处处可用，可�
 | `wingman.filewatcher`（文件变更监控） | ✅ ReadDirectoryChangesW | ✅ inotify | ✅ FSEvents | ❌ 未实现 | 📋 |
 | `wingman.process`（进程枚举/启动/终止） | ✅ Win32 | ✅ POSIX | ✅ POSIX | ❌ 未实现 | 📋 |
 | `wingman.macro`（宏录制/回放） | ✅ 系统钩子 | ✅ XRecord | ✅ Cocoa 事件 | ❌ 未实现 | 📋 |
-| `wingman.uiAutomation`（UI 元素树自动化） | ✅ UI Automation | ❌ **无后端**：Linux 无等价框架，调用降级返回失败并告警 | ✅ AXUIElement | ❌ 未实现 | 📋 |
+| `wingman.uia`（UI 元素树自动化） | ✅ UI Automation | ❌ **无后端**：Linux 无等价框架，调用降级返回失败并告警 | ✅ AXUIElement | ❌ 未实现 | 📋 |
 | `wingman.hotkey`（全局热键监听） | ✅ GetAsyncKeyState | ✅ XQueryKeymap（X11） | ⚠️ CGEventSourceKeyState 需辅助功能权限，真实行为待真机验证 | ❌ 未实现 | 📋 |
 
 **纯逻辑组**（不触碰平台系统能力，桌面三平台行为一致；Android 端 A 线脚本面未引入）：
 
 | 功能点 | Windows / Linux / macOS | Android | 说明 |
 |--------|-------------------------|---------|------|
-| `wingman.event` / `fsm` / `behaviorTree` / `smartTrigger` | ✅ | ❌* | 事件总线、状态机、行为树、智能触发 |
+| `wingman.event` / `fsm` / `bt` / `smarttrigger` | ✅ | ❌* | 事件总线、状态机、行为树（`bt`）、智能触发（`smarttrigger`） |
 | `wingman.task`（异步任务/重试/超时） | ✅ | ❌* | A 线有独立轻量执行模型，不走桌面模块注册表 |
 | `wingman.transport`（TCP/UDP 收发） | ✅ | ❌* | Android 的网络面在 Kotlin 壳与 `libs/transport` 库层，不在 Lua 模块层 |
 | `wingman.inbox` / `team` / `notify` / `orchestration` | ✅ | ❌* | 云控下行/组队/通知面，属桌面 Runtime 语义 |
 | `wingman.http`（HTTP 客户端） | ✅ | ❌* | 依赖 libcurl，构建带 `WINGMAN_HAS_CURL` 时可用 |
 | `wingman.json` / `ini` / `kv` / `db` / `config` | ✅ | ❌* | 序列化与存储面 |
 | `wingman.crypto` / `security`（含 TOTP） | ✅ | ❌* | |
-| `wingman.human`（拟人化轨迹）/ `gameProfile` / `verification` / `timer` / `util` / `system` | ✅ | ❌* | `system` 的信息采集部分依赖平台后端，三桌面均有 |
+| `wingman.human`（拟人化轨迹）/ `gameprofile` / `verification` / `timer` / `util` / `system` | ✅ | ❌* | `system` 的信息采集部分依赖平台后端，三桌面均有 |
 | `wingman.file`（文件 IO：读写/移动复制/目录） | ✅ | ❌* | 纯 `std::filesystem`，桌面三平台一致；`wingman.filewatcher` 提供变更监控 |
-| `wingman.hotkey`（全局热键） | ✅ | ❌* | 依赖平台输入后端（见上行平台差异表），Android 无全局键态语义 |
+| `wingman.node`（节点状态/心跳） | ✅ | ❌* | `getWindows` 走 `Window::enumerate()`（依赖平台窗口后端，三桌面均有）；`sendHeartbeat` 当前只落日志、未真实外发 |
+| `wingman.systemwatch`（进程/窗口变化观察） | ✅ | ❌* | 轮询式，底层为 `Process` / `Window` 门面（见平台绑定组） |
+| `wingman.script`（脚本管理控制面） | ✅ | ❌* | 走 `ScriptManager`，无平台依赖 |
 
 \* 标注"❌\*"的含义：不是能力缺失，而是**架构性不适用**——Android Agent（A 线）的
 ScriptRunner 不加载桌面模块注册表（见
 [Android 设计 · 5.5 的偏离说明](android-agent-design.md)），它只暴露下文三张子表。
 把桌面全套模块搬上端侧是 A 线后续里程碑的候选方向，当前未承诺。
 
+> `wingman.hotkey` 只出现在上方**平台绑定组**（依赖平台输入后端），不列入本组——
+> 它不满足"不触碰平台系统能力"的分组前提。
+>
+> `wingman.debugger` 四方法（`start`/`stop`/`breakpoint`/`breakHere`）在
+> `debugger_module.cpp` 中**全部是存根**（`start` 恒 `false`、`stop` 恒 `nil`，
+> 注释写明 "debugger header not yet implemented"），故三平台与 Android 均不提供可用实现，
+> 本就不构成平台差异、不列入任何表。
+
 **可选能力组**（取决于构建开关与依赖可用性，默认关闭的功能不随产物分发）：
 
 | 功能点 | Windows | Linux | macOS | Android | 不适用原因 |
 |--------|---------|-------|-------|---------|------------|
-| `wingman.vision` 之 **找色/找图/模板匹配**（`findColor`/`findImage` 等） | ✅ | ✅ | ✅ | ✅（A 线子表，bitmap-first 差异见下文） | 核心走内置 `ImageAnalyzer`（纯 C++ 逐像素实现，不依赖 OpenCV），全平台可用 |
+| `wingman.vision` 之 **找色/找图/模板匹配**（`findColor`/`findImage` 等） | ✅ | ✅ | ❌ 无 OpenCV → 走存根 | ✅（A 线子表，bitmap-first 差异见下文） | 脚本层走 `Vision::findColor` / `Vision::findImage`；`src/vision.cpp` 直接用 OpenCV（`opencv2/imgproc.hpp` 等），仅在 OpenCV 命中时编入，macOS/Android 否则编 `src/vision_stub.cpp`，全部视觉函数返回未命中/空值 |
+| `wingman.perf`（视觉性能调优） | ✅ | ✅ | ⚠️ 存根 | ❌ | 无 OpenCV 时 `performance_module.cpp` 走 `#else` 分支：模块仍注册，但 `preloadImage`/`clearCache` 等恒返回 `nil`/`0`（`HAS_OPENCV` 宏按构建开关二选一） |
 | `wingman.vision` 之 **OpenCV 加速分析**（`WINGMAN_ENABLE_VISION`） | ✅ | ✅（vcpkg `vision` feature） | ❌ 无 OpenCV 依赖（manifest 未覆盖 macOS） | ❌ | macOS/Android 构建不带 OpenCV；需引入时走 vcpkg manifest，不手探系统库 |
 | `wingman.ocr`（文字识别，`WINGMAN_ENABLE_OCR`） | ✅（Tesseract） | ❌ | ❌ | ❌ | vcpkg `ocr` feature 仅覆盖 Windows；无 OCR 时脚本调用降级返回空结果 |
 | `wingman.ml`（ONNX 推理，`WINGMAN_ENABLE_ML`） | ✅（ONNX Runtime） | ✅（`ml` feature，本地实测装通 1.23.2） | ❌ | ❌（绑定同形恒 false，NDK 依赖未收口） | macOS manifest 未覆盖 onnxruntime |
@@ -114,14 +125,17 @@ Android Agent 的 Lua 环境只有 `wingman` 下三张子表（A2 脚本能力�
 
 | 层 | 代表头文件 | 适用性 |
 |----|-----------|--------|
-| 平台抽象接口 | `platform/iscreen.hpp`、`iwindow.hpp`、`iinput.hpp`、`icapture.hpp`、`iclipboard.hpp`、`ifilewatcher.hpp` | 接口本身平台无关；实现存在性同"平台绑定组"。Android 仅有 `ICaptureSource` 适配（`platform/android/`） |
-| 平台相关门面 | `screen.hpp`、`window.hpp`、`clipboard.hpp`、`filewatcher.hpp`、`process.hpp`、`recorder.hpp`、`system.hpp`、`ui_automation.hpp` | 同脚本 API 对应行；`ui_automation.hpp` 在 Linux 无后端 |
+| 平台抽象接口 | `platform/iscreen.hpp`、`iwindow.hpp`、`iinput.hpp`、`icapture.hpp`、`iclipboard.hpp`、`ifilewatcher.hpp` | 接口本身平台无关；实现存在性同"平台绑定组"。Android 仅有 `capture::ICaptureSource` 适配（`lib/wingman/src/platform/android/android_capture.hpp`，`AndroidCaptureSource` 为其唯一实现） |
+| 平台相关门面 | `screen.hpp`、`window.hpp`、`clipboard.hpp`、`filewatcher.hpp`、`process.hpp`、`recorder.hpp`、`system.hpp`、`ui_automation.hpp` | 同脚本 API 对应行；`ui_automation.hpp` 在 Linux 无后端（`linux_ui_automation_factory.cpp` 返回 `nullptr`，门面层告警后退空语义） |
 | 跨平台逻辑 | `event.hpp`、`trigger.hpp`、`behavior_tree.hpp`、`config.hpp`、`kvstore.hpp`、`crypt.hpp`、`storage/*`、`script/*`、`rpc/*` 等 | 桌面三平台一致；Android 复用其子集（`libs/agentcore`、`libs/androidagent`） |
-| 平台限定 | `screenshot_reporter.hpp` | **仅 Windows 编译**（Windows 崩溃/截图上报链路专用） |
+| 平台限定（**私有头，不在 `include/` 公开面**） | `src/platform/win/screenshot_reporter.hpp` | **仅 Windows 编译**（Windows 崩溃/截图上报链路专用，`lib/wingman/CMakeLists.txt` 只在 `if(WIN32)` 块内附源文件）；二开方需自行 include 该路径 |
 
-IPC 工厂（`ipc/ipc_factory.hpp`）按平台自动选择：Windows 用命名管道（Named Pipe），
-Unix 系用 Unix 域套接字，均带 TCP 回退（`127.0.0.1:9800`）——嵌入方无需感知差异，
-但跨平台联调时回退端口的防火墙放行要留意。
+IPC 工厂（`ipc/ipc_factory.hpp`）按平台自动选择：Windows 用命名管道（Named Pipe，
+端点名 `wingman`），Unix 系用 Unix 域套接字（端点 `$XDG_RUNTIME_DIR/wingman.sock`，
+macOS 走 `$TMPDIR`，均回退 `/tmp/wingman.sock`）。TCP 回退（`127.0.0.1:9800`）**默认关闭**——
+只有显式置 `IpcConfig::allowTcpFallback` 或 `preferredTransport = TcpPipe` 时才创建
+（`lib/wingman/src/platform/ipc_factory.cpp` 的 `createTcpChannel`），属显式 debug 手段而非
+自动兜底。嵌入方无需感知前两者差异；若开启 TCP 回退，跨平台联调时该端口的防火墙放行要留意。
 
 ## 各环境差异说明
 
@@ -210,8 +224,10 @@ iOS 的状态不是"还没做"，而是"端侧做不了"。App Store 沙箱（Sa
 
 | 平台 | job | 运行环境 | 验证深度 | 打包验证 |
 |------|-----|----------|----------|----------|
-| Windows | `Platform Boundary Guard` | ubuntu-latest | 全平台平台宏边界检查（每提交） | — |
-| Windows | `C++ Windows` | windows-2022 | **C++ 全量测试 + 覆盖率**（OpenCppCoverage） | ✅（`build-package.yml`，zip） |
+| 全平台 | `Platform Boundary Guard` | ubuntu-latest | 平台宏边界检查（每提交）：公共层禁平台宏，allowlist 只减不增 | — |
+| 全平台 | `Vault Touchpoint Scan` | ubuntu-latest | boot-tier 明文凭证环境变量读取扫描（允许清单外即报） | — |
+| 全平台 | `API Typing Drift Audit` | ubuntu-latest | pyi stub 对 C++ 模块描述符漂移 + 重生成 Lua hints 并校验同步 | — |
+| Windows | `C++ Windows` | windows-2022 | **C++ 全量测试 + 覆盖率**（OpenCppCoverage，唯一采集覆盖率的 C++ job） | ✅（`build-package.yml`，zip） |
 | Windows | `C++ Windows (Python engine)` | windows-2022 | Python 引擎实验编译 + best-effort 测试 | — |
 | Linux | `C++ Linux (full tests)` | ubuntu-24.04 | **C++ 完整构建 + 全量核心测试**（xvfb-run 提供虚拟显示，openbox/xclip 随 apt 安装） | — |
 | Linux | `C++ Linux (full tests, Python engine)` | ubuntu-24.04 | 同上 + `-DWINGMAN_ENABLE_PYTHON=ON`（全量跑，证明开 Python 不破坏 Lua/既有路径） | — |
@@ -219,6 +235,10 @@ iOS 的状态不是"还没做"，而是"端侧做不了"。App Store 沙箱（Sa
 | macOS | `C++ macos-15-intel`（compat matrix） | macos-15-intel | ⚠️ 同上，且 `continue-on-error: true`（失败不阻塞合并） | ✅（tar.gz/dmg/app） |
 | Android | — | — | ❌ **无 CI 测试 job** | ✅（debug 签名 APK） |
 | Go Server | `Go Server`（3 OS matrix） | ubuntu/windows/macos-latest | `go vet` + `go test -race`（全平台） | — |
+
+> `ci.yml` 共 9 个 job（其中 `cpp-compat` 展开 2 个矩阵条目，`go-build` 展开 3 个）。
+> `cpp-windows` / `cpp-linux-tests` / `cpp-linux-python-tests` / `cpp-python` 均为单配置单腿，
+> 没有矩阵维度——覆盖率只在 `cpp-windows` 一处采集（`codecov/codecov-action@v5.0.1`）。
 
 **必须如实标注的现状**（即"为什么这么组织"一节所说的对账结论）：
 

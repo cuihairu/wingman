@@ -15,15 +15,20 @@ wingman/
 │   ├── python/              # Python 引擎绑定
 │   ├── transport/           # TCP/UDP 传输层
 │   ├── agentcore/           # 远程 agent 公共件（注册/心跳/事件缓冲）
-│   └── androidagent/        # Android 链路共享件（C++，供 android app 桥接）
+│   ├── androidagent/        # Android 链路共享件（C++，供 android app 桥接）
+│   └── crash/               # 崩溃采集封装（Crashpad client 接入）
 ├── orchestrator/            # 编排层
 │   ├── dashboard/           # Web 控制面板 (React/Umi)
 │   └── server/              # Go 服务端
 ├── assets/                  # 资源文件
 ├── build-scripts/           # 构建脚本
+├── cmake/                   # CMake 模块（crashpad.cmake）
 ├── config/                  # 配置文件
+├── deployments/             # 部署编排（docker、guacd）
 ├── docs/                    # 项目文档
 ├── examples/                # 示例和模板
+├── scripts/                 # 工具脚本（CI 守卫、安装、真机核验）
+├── third_party/             # 钉版 git 子模块（crashpad 系，见 docs/dependencies.md）
 └── vcpkg-ports/             # 本地 vcpkg ports（预留，当前为空）
 ```
 
@@ -74,6 +79,7 @@ Android 端侧 Agent（Kotlin，实验性）。无障碍服务注入 + MediaProj
 | **transport** | TCP/UDP 传输层（长度前缀帧 + JSON 体） |
 | **agentcore** | 远程 agent 公共件：RemoteClient（注册/心跳/重连/断连缓存）、EventBuffer |
 | **androidagent** | Android 链路共享件（C++，Kotlin 壳经 JNI 桥接复用桌面协议栈） |
+| **crash** | 崩溃采集封装（静态库 `wingman_crash`，链 `crashpad_client`；`WINGMAN_ENABLE_CRASHPAD` 开启，Linux 默认开） |
 
 ### orchestrator/
 
@@ -117,7 +123,7 @@ Runtime 作为主动 Agent 运行，通过 outbound 连接到编排器。
 1. **核心库独立** - `lib/wingman/` 不依赖 `apps/`，可单独复用
 2. **就近测试** - 每个模块都有自己的 `tests/` 目录
 3. **职责清晰** - apps（应用）、lib（核心库）、libs（引擎与链路库）分离
-4. **命名空间对应** - `include/wingman/xxx.hpp` → `namespace wingman::xxx`
+4. **命名空间** - 子目录头按目录嵌套：`include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>`（capture / core / ipc / platform / rpc / vision 同式）；顶层头平铺 `namespace wingman`（33 个中 31 个，`crypt.hpp` / `core.hpp` 例外用 `wingman::crypt` / `wingman::core`）
 
 ## 构建说明
 
@@ -134,7 +140,7 @@ build-scripts\build-runtime-msvc-ninja.bat
 ### 测试覆盖
 
 - C++ 单元测试：`lib/wingman/tests/`（core_tests，2000+ 例）
-- Runtime 测试：`apps/agent/tests/`（runtime_tests）
+- Runtime 测试：`apps/agent/tests/`（agent_tests）
 - Lua 单元测试：`libs/lua/tests/`
 - Python 单元测试：`libs/python/tests/`
 - 传输层测试：`libs/transport/tests/`
