@@ -17,10 +17,12 @@ wingman/
 │   │   ├── tests/                ← 应用测试
 │   │   └── CMakeLists.txt
 │   │
-│   └── gui/                      ← Tauri/Svelte GUI
-│       ├── src-tauri/
-│       ├── src/
-│       └── package.json
+│   ├── gui/                      ← Tauri/Svelte GUI
+│   │   ├── src-tauri/
+│   │   ├── src/
+│   │   └── package.json
+│   │
+│   └── android/                  ← Android 端侧 Agent（Kotlin，实验性）
 │
 ├── lib/wingman/                  ← 核心库
 │   ├── include/wingman/
@@ -32,9 +34,8 @@ wingman/
 │   │   ├── ocr.hpp               ← OCR
 │   │   └── ...
 │   ├── src/
-│   │   ├── screen.cpp
-│   │   ├── input.cpp
-│   │   └── ...
+│   │   ├── vision.cpp / kvstore.cpp / ...
+│   │   └── platform/<os>/        ← screen / input 等平台实现（win/linux/mac/android/mock）
 │   ├── tests/                    ← 核心库测试
 │   └── CMakeLists.txt
 │
@@ -48,11 +49,14 @@ wingman/
 │   │   │   ├── session/          ← 会话层（含 tcp_session）
 │   │   │   ├── channel/          ← 消息通道
 │   │   │   ├── stream_channel.hpp ← 流通道
-│   │   │   └── stream_manager.hpp ← 流管理器
+│   │   │   ├── stream_manager.hpp ← 流管理器
+│   │   │   └── stream_type.hpp    ← 流类型定义
 │   │   └── src/
 │   │       ├── transport_client.cpp
 │   │       ├── transport_server.cpp
 │   │       ├── simple_protocol.cpp
+│   │       ├── stream_channel.cpp
+│   │       ├── stream_manager.cpp
 │   │       ├── session/
 │   │       └── channel/
 │   │
@@ -60,13 +64,23 @@ wingman/
 │   │   ├── include/wingman/lua/
 │   │   └── src/
 │   │
+│   ├── python/                   ← Python 引擎绑定（默认关闭，WINGMAN_ENABLE_PYTHON=ON）
+│   ├── agentcore/                ← 远程 agent 公共件（注册/心跳/事件缓冲）
+│   ├── androidagent/             ← Android 链路共享件（C++，供 android app 桥接）
+│   └── crash/                    ← 崩溃采集封装（Crashpad client 接入）
 │
+├── orchestrator/                 ← 编排层（唯一 Control Plane）
+│   ├── server/                   ← Go 服务端
+│   └── dashboard/                ← Web 控制面板（React/Umi）
 │
 ├── examples/                     ← 示例代码
 ├── scripts/                      ← 脚本
 ├── docs/                         ← 文档
 └── CMakeLists.txt                ← 根 CMake（聚合构建）
 ```
+
+> 本树为架构视图节选；完整目录树（含 `cmake/`、`deployments/`、`third_party/` 等构建与部署面）见
+> [project-structure.md](project-structure.md)。
 
 ## 架构分层（四层模型）
 
@@ -126,7 +140,7 @@ Wingman 是四层模型，中间横着一条硬性的 **Control Plane / Executio
 
 ## 平台核心概念与现状
 
-七个个核心概念的当前实现位置（2026-10-04 收敛审查快照；✅ 已落地，🔶 部分/演进中）：
+七个核心概念的当前实现位置（2026-10-04 收敛审查快照；✅ 已落地，🔶 部分/演进中）：
 
 | 概念 | 当前实现位置 | 状态 |
 |------|--------------|------|
@@ -163,9 +177,11 @@ Runtime 远程模式和本地单机 UI 是两条不同控制路径。
 
 触发器命令（`trigger.*`）复用同一套 RPC handler：runtime 的 `Agent` 持有共享
 `TriggerManager`，本地 IPC dispatcher 与远程 dispatcher 都注册 `trigger.*`；
-Go server 经 `/api/agents/:agentId/triggers`（读，登录即可）与 `/triggers/toggle`、
-`POST /triggers`（新增）、`PUT /triggers/:triggerId`（更新）、
-`DELETE /triggers/:triggerId`（删除）（均需 agents:manage）透传给 Dashboard
+Go server 经 `GET /api/agents/:agentId/triggers`（读，登录即可）与
+`POST /api/agents/:agentId/triggers`（新增）、
+`POST /api/agents/:agentId/triggers/toggle`（启停）、
+`PUT /api/agents/:agentId/triggers/:triggerId`（更新）、
+`DELETE /api/agents/:agentId/triggers/:triggerId`（删除）（均需 agents:manage）透传给 Dashboard
 （见 architecture-decisions.md 的 Dispatcher Reuse）。
 
 远程注册配置（orchestrator 地址 + A3-P1 注册令牌）经本地 IPC 的
@@ -222,7 +238,7 @@ Agent Groups & Batch Operations）。
 1. **核心库独立** - `lib/wingman/` 不依赖 `apps/`，可单独复用
 2. **就近测试** - 每个模块都有自己的 `tests/` 目录
 3. **职责清晰** - apps（应用）、lib（核心库）、libs（辅助库）分离
-4. **命名空间对应** - `include/wingman/xxx.hpp` → `namespace wingman::xxx`
+4. **命名空间对应** - 子目录头按目录嵌套：`include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>`（capture / core / ipc / platform / rpc / vision 同式）；顶层头平铺 `namespace wingman`（33 个中 31 个，`crypt.hpp` / `core.hpp` 例外用 `wingman::crypt` / `wingman::core`）
 5. **控制面分离** - 远程编排走 Go server，本地 UI 走 IPC，runtime 不暴露 WebSocket/HTTP 控制面
 
 ## 多显示器截图
