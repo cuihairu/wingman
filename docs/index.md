@@ -78,13 +78,12 @@ local wingman = require("wingman")
 -- 截图（capture 返回布尔：是否成功）
 local ok = wingman.screen.capture()
 
--- 查找颜色（区域用表：{x=, y=, width=, height=}）
-local points = wingman.screen.findColor(0xFF0000, {x = 0, y = 0, width = 1920, height = 1080}, 10)
-if points then
-    for _, p in ipairs(points) do
-        wingman.input.click(p.x, p.y)
-    end
+-- 查找颜色（返回 {point, found} 两元组；区域用表：{x=, y=, width=, height=}）
+local pt, found = wingman.screen.findColor(0xFF0000, {x = 0, y = 0, width = 1920, height = 1080}, 10)
+if found then
+    wingman.input.click(pt.x, pt.y)
 end
+-- 多点查找用 findColors（返回点数组）：wingman.screen.findColors(0xFF0000, region, 10, 0)
 ```
 
 ### Python 脚本
@@ -96,11 +95,11 @@ from wingman import screen, input
 # 截图（capture 返回布尔：是否成功）
 ok = screen.capture()
 
-# 查找颜色（区域用字典）
-points = screen.findColor(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080}, 10)
-if points:
-    for p in points:
-        input.click(p["x"], p["y"])
+# 查找颜色（返回 [point, found] 两元组；区域用字典）
+pt, found = screen.findColor(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080}, 10)
+if found:
+    input.click(pt["x"], pt["y"])
+# 多点查找用 find_colors（返回点数组）：screen.find_colors(0xFF0000, region, 10, 0)
 ```
 
 ## Android Agent
@@ -115,7 +114,7 @@ Android 端侧 Agent（实验性，arm64 / Android 9.0+）：出站 TCP 连 Go �
 |------|------|
 | 手势注入 | 无障碍服务注入点击/滑动（`wingman.input.tap` / `swipe` / `delay`） |
 | 屏幕采集 | MediaProjection 实时投屏采集（亮屏时出帧） |
-| 找色找图 | `wingman.vision.findColor` / `findImage`（OpenCV 模板匹配） |
+| 找色找图 | `wingman.vision.findColor` / `findImage`（端侧走纯 C++ PatternMatcher；桌面同名 API 走 OpenCV，两条路径分数口径不同） |
 | 远程截图 | Dashboard workflow 的 screenshot 步骤直接上屏 |
 | token 认证 | server 端 `WINGMAN_AGENT_TOKENS` 注册 token 白名单（默认关闭可留空） |
 | 保活 | 开机自启、崩溃自重启（指数退避）、30s 核心看门狗、机型保活与受限设置引导 |
