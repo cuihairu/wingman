@@ -72,7 +72,8 @@ gradle :app:assembleDebug
 4. Dashboard 的 Agent 列表出现该设备（platform=android，来自 agent.register）。
 5. Dashboard 新建脚本 `hello.lua`：`print('hello android')` 并运行到该设备。
 6. 验收点：
-   - server 下发 payload 为 `{path, content, language:"lua"}`（内容内联）；
+   - server 下发 payload 为 `{path, content, contentSha256, language}`（内容内联；
+     contentSha256 为内容指纹、execution 记录同口径，语言由扩展名推导）；
    - Dashboard 实时日志出现 `hello android`（agent.event `script_output` →
      ExecutionLog 落库 → WS 转发）与 `[exec_...] finished`；
    - 长死循环脚本可被停止（stop_script → Lua 指令 hook 强制中断）。
