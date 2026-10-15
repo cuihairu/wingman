@@ -9,6 +9,21 @@
 
 ## [Unreleased]
 
+### perf（2026-10-15，模板匹配两轮优化——Android 端找图与触发器图像条件 18.1s → 0.5s）
+
+- **背景（此前基线只量了桌面一条）**：`findImage` 有两条实现路径——桌面 `vision.findImage`/`screen.findImage` 走 `Vision::findImage`/`Screen::findImage` 的 OpenCV `cv::matchTemplate`（已优化实现）；Android 端脚本面与 `wingman.trigger` 图像条件走 `PatternMatcher::templateMatch` 朴素四重标量循环，全屏 1600x1000 vs 32x32 未命中达 18.1 s/op，在 500ms 触发器轮询间隔下失能。
+- **优化一（常数因子，[fd455bb](https://github.com/cuihairu/wingman/commit/fd455bb)）**：模板范数原在每个搜索位置重算（不变量外提）；模板/目标像素原经 `getPixel`（边界检查 + Color 构造）在每个位置重读 w*h 次（改为亮度面预计算，每像素读一次）；亮度重复求值。累加顺序与原实现逐项一致（ty 外层 / tx 内层，三个累加器相互独立），**输出位级不变**——全屏 2.49 s/op（7.3x）、400x300 区域 162 ms/op（9.1x）。新增 `matcher_bench`（合成帧无显示面依赖，五基准之一）。
+- **优化二（按行分块并行，[1a472e9](https://github.com/cuihairu/wingman/commit/1a472e9)）**：每个搜索位置的 sum/sumTarget 相互独立，按扫描行分块、块内保持原扫描序、块间按块序以严格 `>` 归约——输出与串行 IEEE-754 逐位一致，含「首个最大位置优先」的平局次序语义。自动档仅在扫描行 ≥64 且位置 ≥16384 时启用（小画面分块净亏），线程数取 `hardware_concurrency()`；新增 `WINGMAN_MATCHER_THREADS` 强制覆盖（0/1=串行、N≥2=强制 N 线程并绕过大小阈值）。14 逻辑核实测：全屏 2,440–2,488 → 464–590 ms/op（4.8x）、400x300 区域 155–161 → 34–37 ms/op（4.4x）；单核自动档退化串行，不适用。
+- **回归钉**：既有黄金值位级钉 `TemplateMatchGoldenBits`/`FindImageGoldenBits`（LCG 确定性输入，EXPECT_EQ 位级比较）两轮前后同值通过；新增 `TemplateMatchParallelBitExact`（强制 2/3/5/8 线程 + 自动档 × 全屏/区域两形态与串行基准逐位比较）。受影响路径 30 套件 300 例（257 passed / 43 环境性 skip / 0 failed）。
+- **对账**：`docs/guide/config.md` 环境变量表补 `WINGMAN_MATCHER_THREADS`；`docs/benchmarks.md` 优化记录补两轮读数、自动档阈值与位级论证；`run-benchmarks.sh` 机器上下文补记 matcher 并行度（读数随该变量变化，[2d084ec](https://github.com/cuihairu/wingman/commit/2d084ec)）。剩余提速（SIMD/float32 累加、金字塔/降采样、端侧接 OpenCV 匹配器）均改数值或命中语义，属设计取舍待拍板。
+
+### docs（2026-10-15，三批实现对账——脚本模块计数 / 目录改名残留 / 找图路径归属）
+
+- **脚本模块计数四份口径互不一致**（README/README.zh 各两处 40 与 41、`docs/project-structure.md` 41 与「41 个 ModuleDescriptor」），真值 42——注册表恰 42 个 `modules.push_back` / 42 个 `create*Module()` / 42 个唯一 `mod.name`，自 2026-10-13 未再变动（10-08 审计表记「实际 41」系时点快照，此后无一处按真值更新）——已全仓统一（[9bb54b1](https://github.com/cuihairu/wingman/commit/9bb54b1)）。附带纠偏：`project-structure.md` 示例模块名 `trigger` 查无此模块（脚本面触发器为 `wingman.smarttrigger`）；README 双语「本地测试口径」段原被误插进安装参数 bash 代码栏，已迁回 CONTRIBUTING.md。
+- **目录改名残留 + 坏示例路径**（[5434055](https://github.com/cuihairu/wingman/commit/5434055)）：`43bc328` 把 `apps/runtime` 改名 `apps/agent` 后，六份活文档目录树仍留旧名共 7 处（project-structure 树图与小节头、architecture、guide/architecture、guide/structure、DEVELOPMENT、ROADMAP）；README 双语 Quick Start 示例路径 `examples\hello.lua` 实不存在（真路径 `examples/lua_scripts/hello.lua`）。CHANGELOG/审计台账里的旧名字样系历史证据，按约定不重写。
+- **找图路径归属核实证伪**（[8368b59](https://github.com/cuihairu/wingman/commit/8368b59)）：`docs/android-agent.md` A2 摘要原写「找色找图（ImageAnalyzer + OpenCV 进 NDK）」与实现不符——源码核验 `ImageAnalyzer::findImage` 直连 `PatternMatcher::templateMatch`（纯 C++，不经 OpenCV），Android 脚本面 `screen/vision.findImage` 与触发器图像条件都走 `ImageAnalyzer`；NDK 的 OpenCV 仅在 `apps/android/cpp/agent/android_screenshot.cpp` 用于截图 JPEG 编码（`cv::cvtColor` + `cv::imencode`）；桌面同名 API 走 `Vision`/`Screen::findImage` 的 `cv::matchTemplate`——**两端分数口径不同**，已改文并注明。
+- 全部批次 `cd docs && npm run docs:build` 死链检查通过（本轮复测 113.83s / 109.30s / 38.72s）。
+
 ### feat（2026-10-13，VaultProvider 抽象——保险箱可插拔实现与凭据接入点盘点）
 
 - **统一接口**：新增 `internal/vault` 包——`Provider` 接口收敛解锁/读/写/列/删除/导出/连接取用共 11 个面 + sentinel 语义错误（映射 401/404/409/423/400），配 `Register`/`Activate`/`Active` 注册表（进程级单选）。加密落库与解锁会话（驻留 TTL、空闲自动锁回、主口令最小长度）收敛在实现内部，不再散落在 HTTP 层。
