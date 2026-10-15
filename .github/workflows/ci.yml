@@ -69,6 +69,17 @@ jobs:
           python3 scripts/gen_lua_hints.py
           git diff --exit-code -- assets/vscode-wingman-lua/wingman.d.lua
 
+  event-conventions:
+    name: Event Convention Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Audit event names and error payloads
+        run: python3 scripts/audit_event_conventions.py
+
   cpp-windows:
     name: C++ Windows
     runs-on: windows-2022

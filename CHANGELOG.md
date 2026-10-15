@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### refactor（2026-10-16，冻结回调/错误事件口径 + 事件约定审计门）
+
+- **背景**：「统一回调/通知策略」挂起待拍板（2026-10-13 评估：剩余分裂点=回调线程模型是否对齐 Lua 协程式排队、错误上报事件名是否统一）。本轮巡检代决**冻结现状为约定、不新增语义面**：跨后台线程回调在调用方线程同线程直接调用 + `callableThreadSafe` 门控准入 + 非线程安全 callable（Lua）注册即拒——runtime 无主线程事件泵，排队即新增跨线程调度器，收益不抵风险，Lua 侧改用触发器或同步 `task.submit`；错误上报统一 `<module>.error` + 单键载荷 `{error: string}`、`source` = 模块名。
+- **守卫**：`scripts/audit_event_conventions.py`（CI job `event-conventions`，与 `api-typing-audit` 同族）钉死三条：`script/modules` 内 emit 事件名须 `<模块>.<动词>` 且模块在本文件 `mod.name` 注册表内；`.error` 事件载荷顶层键须恰为 `error`、同文件须有 `callableThreadSafe` 门控；`docs/api/event.md` 内置事件源表与代码双向对账（含 source 列与载荷列）。
+- **顺带补真漂移**：`uia.error` 代码实发但表内缺行（misc_modules.cpp 以 `uia` 为模块名前缀）；另补上轮 :87 新增的 `orchestration.interrupted` 行；`proxy.error`（载荷 `{proxyId, connId, error}`）走 agent→server 通道、不上脚本总线，明确排除在 `.error` 单键规则外。
+- **门禁**：`audit_event_conventions.py` 0 失败（6 个 error 事件 ↔ 6 行文档表）、`audit_pyi_drift.py` 0 失败、`npm --prefix docs run docs:build` 绿。
+
 ### feat（2026-10-16，工作流终局账本——提交/终局落盘 + 启动恢复 + `history` 查询）
 
 - **背景**：工作流定义与状态此前只在内存态（`get_workflow`/`get_all_workflows` 只看活实例），进程重启即丢，事后无法查「跑过什么、结果如何」；`docs/development-todo.md` 把「任务状态持久化与恢复」挂起待拍板——v1 任务体是 Lua/Python 闭包、不可序列化，「恢复」语义需产品决策（2026-10-13 评估，本轮巡检代决定案）。
