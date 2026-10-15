@@ -76,7 +76,7 @@ Android 端侧 Agent（Kotlin，实验性）。无障碍服务注入 + MediaProj
 |------|------|
 | **lua** | Lua 引擎绑定（sol2） |
 | **python** | Python 引擎绑定（pybind11，默认关闭，`WINGMAN_ENABLE_PYTHON=ON` 启用） |
-| **transport** | TCP/UDP 传输层（长度前缀帧 + JSON 体） |
+| **transport** | TCP 传输层（长度前缀帧 + JSON 体；脚本层 UDP 直连 asio，不经此库） |
 | **agentcore** | 远程 agent 公共件：RemoteClient（注册/心跳/重连/断连缓存）、EventBuffer |
 | **androidagent** | Android 链路共享件（C++，Kotlin 壳经 JNI 桥接复用桌面协议栈） |
 | **crash** | 崩溃采集封装（静态库 `wingman_crash`，链 `crashpad_client`；`WINGMAN_ENABLE_CRASHPAD` 开启，Linux 默认开） |

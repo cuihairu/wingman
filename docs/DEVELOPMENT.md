@@ -38,15 +38,19 @@ wingman/
 ├── apps/                    # Applications
 │   ├── agent/               # CLI runtime
 │   ├── gui/                 # Tauri GUI
+│   └── android/             # Android 端侧 Agent (Kotlin，实验性)
 ├── lib/                     # Core library
 │   └── wingman/             # Core functionality
 ├── libs/                    # Support libraries
 │   ├── lua/                 # Lua engine binding
-│   ├── python/              # Python engine binding
-│   └── transport/           # TCP/UDP（自定义帧）transport
+│   ├── python/              # Python engine binding (WINGMAN_ENABLE_PYTHON=ON)
+│   ├── transport/           # TCP transport（长度前缀帧 + JSON 体）
+│   ├── agentcore/           # 远程 agent 公共件（注册/心跳/事件缓冲）
+│   ├── androidagent/        # Android 链路共享件（C++）
+│   └── crash/               # 崩溃采集封装（Crashpad client）
 └── orchestrator/            # Orchestration layer
     ├── dashboard/           # Web dashboard
-    └── server/             # Go server
+    └── server/              # Go server
 ```
 
 ## Lua Development Tools
@@ -147,7 +151,7 @@ cmake -S . -B build-tests ^
   -DVCPKG_TARGET_TRIPLET=x64-windows-static ^
   -DVCPKG_MANIFEST_FEATURES=tests ^
   -DWINGMAN_BUILD_TESTS=ON
-cmake --build build-tests --config Debug --target core_tests runtime_tests transport_tests
+cmake --build build-tests --config Debug --target core_tests agent_tests transport_tests
 
 REM Run tests
 ctest --test-dir build-tests -C Debug --output-on-failure
@@ -211,7 +215,7 @@ REM Requires LuaRocks and Busted (see above)
 examples\lua_scripts\run-lua-tests.cmd
 ```
 
-### GUI [Runtime 跨语言集成测试（Linux]
+### GUI ↔ Runtime 跨语言集成测试（Linux）
 
 GUI 侧 Rust `IpcClient` ↔ C++ runtime `LocalIpcServer` 的本地 IPC 端到端测试
 （`apps/gui/src-tauri/src/ipc/integration_tests.rs`）。每个用例 spawn 真 runtime
