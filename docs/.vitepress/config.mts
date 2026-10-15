@@ -23,7 +23,8 @@ export default defineConfig({
             { text: '快速开始', link: '/guide/getting-started' },
             { text: '脚本开发指南', link: '/guide/script-development' },
             { text: '架构设计', link: '/guide/architecture' },
-            { text: 'VS Code 开发环境', link: '/development-environment' }
+            { text: 'VS Code 开发环境', link: '/development-environment' },
+            { text: '项目目录结构', link: '/guide/structure' }
           ]
         },
         {
@@ -42,7 +43,8 @@ export default defineConfig({
             { text: '数据库使用', link: '/guides/database' },
             { text: '触发器系统', link: '/guides/triggers' },
             { text: 'Android Agent 保活', link: '/guides/android-keep-alive' },
-            { text: 'Android Agent 受限设置', link: '/guides/android-restricted-settings' }
+            { text: 'Android Agent 受限设置', link: '/guides/android-restricted-settings' },
+            { text: '资产下发', link: '/guides/asset-sync' }
           ]
         },
         {
@@ -59,7 +61,8 @@ export default defineConfig({
           text: '参考',
           items: [
             { text: '数据类型', link: '/api/types' },
-            { text: '概览', link: '/api/' }
+            { text: '概览', link: '/api/' },
+            { text: '模块索引', link: '/api/overview' }
           ]
         },
         {
@@ -146,7 +149,17 @@ export default defineConfig({
             { text: 'wingman.util', link: '/api/util' },
             { text: 'wingman.timer', link: '/api/timer' },
             { text: 'wingman.perf', link: '/api/perf' },
-            { text: '数据类型', link: '/api/types' }
+            { text: 'wingman.clipboard', link: '/api/clipboard' },
+            { text: 'wingman.crypto', link: '/api/crypto' },
+            { text: 'wingman.file', link: '/api/file' },
+            { text: 'wingman.filewatcher', link: '/api/filewatcher' },
+            { text: 'wingman.hotkey', link: '/api/hotkey' },
+            { text: 'wingman.macro', link: '/api/macro' },
+            { text: 'wingman.script', link: '/api/script' },
+            { text: 'wingman.systemwatch', link: '/api/systemwatch' },
+            { text: '核心 API', link: '/api/core' },
+            { text: '数据存储', link: '/api/data' },
+            { text: '序列化', link: '/api/serialize' }
           ]
         },
         {
@@ -154,7 +167,7 @@ export default defineConfig({
           items: [
             { text: 'wingman.inbox', link: '/api/inbox' },
             { text: 'wingman.team', link: '/api/team' },
-            { text: 'wingman.node', link: '/api/orchestration' }
+            { text: 'wingman.node', link: '/guide/config' }
           ]
         }
       ],

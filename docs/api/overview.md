@@ -200,7 +200,7 @@ config_string = ini.encode(config)
 | `orchestration` | 编排控制 | [orchestration](orchestration.md) |
 | `inbox` | 消息收件箱 | [inbox](inbox.md) |
 | `team` | 组队编排 | [team](team.md) |
-| `node` | 节点管理 | [orchestration](orchestration.md) |
+| `node` | 节点管理 | [node](../guide/config.md) |
 
 ## 调试 API
 
