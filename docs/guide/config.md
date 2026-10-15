@@ -230,7 +230,7 @@ end
 
 ## 环境变量
 
-不存在 `WINGMAN_SERVER_*` 之类的配置覆盖变量。当前真实生效的环境变量：
+客户端/运行时侧不存在 `WINGMAN_SERVER_*` 之类的配置覆盖变量。客户端/运行时侧当前真实生效的环境变量：
 
 | 环境变量 | 作用 |
 |----------|--------|
@@ -239,6 +239,8 @@ end
 | `WINGMAN_SCRIPT_PASSWORD` | 运行加密打包产物时提供解包口令 |
 | `WINGMAN_ADMIN_PASSWORD` | Go server 首次启动时引导创建 admin 账号（未设置则不建号） |
 | `WINGMAN_MATCHER_THREADS` | `PatternMatcher::templateMatch` 找图并行度：0/1=串行，N≥2=强制 N 线程（绕过自动阈值），不设置=自动档（多核 + 大画面启用）。输出与串行逐位一致，见 docs/benchmarks.md 优化记录 |
+
+> Go 中控 server 另有一组部署面环境变量（监听地址、存储目录、JWT 密钥、agent token 白名单、CORS、guacd、录像、保险箱 provider 等共 16 个，上表 `WINGMAN_ADMIN_PASSWORD` 属其中自举项），统一在 `orchestrator/server/internal/config/config.go` 读取；`WINGMAN_JWT_SECRET` 与 `WINGMAN_CORS_ORIGINS` 在 `orchestrator/server/internal/middleware` 另有按请求读取。主题细节见 `docs/agent-token-auth-design.md`（token 白名单）与 `docs/vault-provider-design.md`（保险箱 provider 与自举层变量表）。
 
 ## 安全提示
 
