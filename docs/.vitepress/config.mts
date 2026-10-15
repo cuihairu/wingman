@@ -111,8 +111,8 @@ export default defineConfig({
             { text: 'wingman.fsm', link: '/api/fsm' },
             { text: 'wingman.task', link: '/api/task' },
             { text: 'wingman.notify', link: '/api/notify' },
-            { text: 'wingman.smart-trigger', link: '/api/smart-trigger' },
-            { text: 'wingman.behavior-tree', link: '/api/behavior-tree' },
+            { text: 'wingman.smarttrigger', link: '/api/smart-trigger' },
+            { text: 'wingman.bt', link: '/api/behavior-tree' },
             { text: 'wingman.orchestration', link: '/api/orchestration' }
           ]
         },

@@ -218,8 +218,8 @@ end
 - [task](./task.md) - 任务编排与执行
 - [script](./script.md) - 脚本管理控制面（列举、启动/停止/重载、环境变量）
 - [notify](./notify.md) - 通知系统（日志、Toast、Webhook、托盘意图）
-- [smart-trigger](./smart-trigger.md) - 智能触发器
-- [behavior-tree](./behavior-tree.md) - 行为树引擎
+- [smarttrigger](./smart-trigger.md) - 智能触发器
+- [bt](./behavior-tree.md) - 行为树引擎
 - [hotkey](./hotkey.md) - 全局热键监听（轮询式，Python 回调）
 - [systemwatch](./systemwatch.md) - 系统事件源：进程/窗口变化观察（轮询式，Python 回调）
 
@@ -277,4 +277,5 @@ end
 - [orchestration](./orchestration.md) - 编排控制
 - [inbox](./inbox.md) - 消息收件箱
 - [team](./team.md) - 组队编排
-- [node](./orchestration.md) - 节点管理（与 orchestration 共用文档）
+- [node](../guide/config.md) - 节点状态与心跳（文档在配置系统的「节点模块 (node)」节）
+- [script](./script.md) - 脚本管理控制面
