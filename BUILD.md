@@ -102,9 +102,10 @@ cmd /c "call ""C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxilia
 | `WINGMAN_ENABLE_OCR` | OFF | 启用 OCR 支持 (需要 Tesseract) |
 | `WINGMAN_ENABLE_ML` | OFF | 启用 ML/AI 支持 (需要 ONNX Runtime) |
 | `WINGMAN_ENABLE_PYTHON` | OFF | 启用 Python 脚本引擎 (需要 CPython + pybind11) |
+| `WINGMAN_ENABLE_CRASHPAD` | Linux ON / 其他 OFF | 崩溃采集（Windows/macOS 构建代码就位但默认关，见 `docs/dependencies.md`） |
 | `WINGMAN_COMPAT_BUILD` | OFF | 只构建可移植兼容目标 |
-| `WINGMAN_BUILD_AGENT` | ON | 构建 Agent 多模块（同时决定 TRANSPORT/CORE/LUA/RUNTIME 默认值） |
-| `WINGMAN_BUILD_TRANSPORT` / `CORE` / `LUA` / `RUNTIME` | 跟随 AGENT | 各模块单独开关 |
+| `WINGMAN_BUILD_AGENT` | ON | 构建 Agent 多模块（同时决定 TRANSPORT/CORE/LUA/DESKTOP 默认值） |
+| `WINGMAN_BUILD_TRANSPORT` / `CORE` / `LUA` / `DESKTOP` | 跟随 AGENT | 各模块单独开关（DESKTOP = 桌面 agent 应用，`CMakeLists.txt` 无 `WINGMAN_BUILD_RUNTIME` 选项） |
 | `WINGMAN_BUILD_TESTS` | OFF | 构建测试 |
 | `WINGMAN_BUILD_BENCHMARKS` | OFF | 构建基准测试 |
 | `BUILD_CLIENT_TESTS` | OFF | 构建 runtime 应用测试 |
@@ -206,6 +207,8 @@ GitHub Actions 工作流：`ci.yml`（门禁）、`build-package.yml`（三平�
 | C++ macos-15-intel | 构建验证（continue-on-error） |
 | Go Server ×3 | ubuntu / windows / macos，`go test -race ./...` |
 | Platform Boundary Guard | `scripts/check_platform_boundary.sh`：公共层禁平台宏，allowlist 只减不增 |
+| Vault Touchpoint Scan | `scripts/check_vault_touchpoints.sh`：boot-tier 允许清单外明文凭证环境变量读取扫描 |
+| API Typing Drift Audit | `scripts/audit_pyi_drift.py`（pyi stub 对 C++ 模块描述符）+ 重生成 Lua hints 并校验同步 |
 
 ### build-package.yml
 
