@@ -165,7 +165,7 @@ count = db.scalar(conn, "SELECT COUNT(*) FROM players")
 print(f"Total players: {count}")
 ```
 
-> **注意**：`db.query` 默认最多返回 1000 行；可通过 `db.query(conn, sql, params, maxRows)` 调整，硬顶 10000 行。大数据量请用 SQL 的 `LIMIT`/`OFFSET` 分页。
+> **注意**：`db.query` 默认最多返回 1000 行；可通过 `db.query(conn, sql, params, maxRows)` 调整，实现层不再额外封顶（传入值原样作为行数上限），所以大 maxRows 会真的拉满内存。大数据量请用 SQL 的 `LIMIT`/`OFFSET` 分页。
 
 ---
 

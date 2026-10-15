@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/public/logo.svg" alt="Wingman" width="100" />
+<img src="docs/public/logo.svg" alt="Wingman" width="64" />
 
 # Wingman
 

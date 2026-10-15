@@ -194,7 +194,9 @@ No new transport or listener is introduced.
 config (orchestrator address + A3-P1 register token, see
 `docs/agent-token-auth-design.md`) to the Tauri UI through local IPC:
 
-- `config.getRemote` returns the currently effective `{serverIp, serverPort, registerToken}`.
+- `config.getRemote` returns the currently effective `{serverIp, serverPort,
+  registerToken, challengeAuth}` (`challengeAuth` = whether the A3-P2
+  challenge/HMAC mode is on; the token itself is returned only over local IPC).
 - `config.setRemote` performs a partial update (missing fields keep current values),
   validates the result (non-empty `serverIp`, integer port 1–65535, token ≤ 256
   chars), then hot-applies: `Agent::applyRemoteConfig` rebuilds the remote client
@@ -351,8 +353,9 @@ Semantics:
   with a per-agent outcome. Script path resolution happens once before any
   dispatch (invalid path → 400, zero dispatch).
 - Each request writes one audit log (`script.batch_run` /
-  `script.batch_stop` / `agent.batch_trigger_add`) whose meta carries the
-  selector and per-agent summary. DB writes happen serially after fan-out.
+  `script.batch_stop` / `agent.batch_trigger_add` / `asset.sync`) whose meta
+  carries the selector and per-agent summary. DB writes happen serially after
+  fan-out.
 - The workflow engine is intentionally unchanged; mapping tags to workflow
   workers is left for a future decision.
 
@@ -408,9 +411,10 @@ languages. Consolidating to a single language is explicitly rejected.
   additionally registers snake_case aliases). A new module costs one C++
   file plus a Python `.pyi`; dual-language support is not a per-feature
   rewrite.
-- Total engine glue is ~1.2k LOC (`libs/lua/src` 550 + `libs/python/src`
-  729). The Python-only burden is the `libs/python/typing` stubs; Lua has
-  no parallel annotation layer to maintain.
+- Total engine glue is ~1.3k LOC (`libs/lua/src` 553 + `libs/python/src`
+  729). The Python-only burden is the `libs/python/typing` stubs (~1.7k LOC);
+  Lua has no hand-maintained annotation layer — its editor hints are generated
+  (`scripts/gen_lua_hints.py` → `assets/vscode-wingman-lua/wingman.d.lua`).
 
 ### Tiered primacy
 
@@ -435,6 +439,25 @@ language forfeits one of these; keeping both forfeits neither.
    as secondary references, not duplicated prose.
 3. Module global-state cleanup converges on a single registry mechanism
    instead of per-engine manual `cleanup*Module()` declarations.
+
+Landed state (measured 2026-10-15, so these stay commitments rather than
+facts):
+
+1. **Not landed** — the `.pyi` stubs are still hand-maintained; what exists is
+   the drift *gate* `scripts/audit_pyi_drift.py` (CI), not a generator.
+2. **Half landed** — the API docs are effectively Python-first
+   (`docs/api/` code fences: 642 python / 624 lua), but the example scripts
+   are Lua-first (`examples/lua_scripts` 29 vs `examples/python_scripts` 4).
+3. **Not landed** — cleanup is still per-engine: Lua calls
+   `cleanupFsmModule` / `cleanupMacroModule` / `cleanupMlModule` /
+   `cleanupTimerModule`, Python calls only `cleanupFsmModule` and
+   `cleanupTimerModule`. The two lists have drifted apart, so a Python script
+   that loads ONNX models (`cleanupMlModule` clears the global model map) or
+   starts a recording (`cleanupMacroModule` resets the default recorder)
+   leaves that global state resident after the script unloads, while the
+   Lua path does not. Fixing the asymmetry is a code change, not a docs
+   edit; it is registered as a residual finding in `docs/development-todo.md`
+   (L545 用户文档完善 batch record) pending a maintainer decision.
 
 ### Non-goals
 
@@ -493,10 +516,19 @@ AUTOMATION CORE (lib/wingman)
 
 Layer ownership rules:
 
-- `lib/wingman` (Automation Core) must not know Agent / Dashboard / Workflow /
-  User / Team concepts. It is the platform's most reusable asset and the
-  portable core for the Android agent (see Platform Macro Boundary and
-  `docs/platform-abstraction-design.md`).
+- `lib/wingman` (Automation Core) must not know Agent / Dashboard / User
+  concepts, and must not own Control Plane state. It is the platform's most
+  reusable asset and the portable core for the Android agent (see Platform
+  Macro Boundary and `docs/platform-abstraction-design.md`). Carve-out: the
+  **script layer** (`lib/wingman/src/script/modules/`) does host
+  collaboration-shaped modules — `team` (with its in-process `TeamManager`,
+  `lib/wingman/src/script/modules/team_module.cpp`), `inbox`, `node`, and
+  `orchestration`'s local workflow DAG — because those are script-facing state
+  machines, not control-plane clients: they carry no transport / HTTP / DB
+  dependency and reach the Control Plane only as EventHub events
+  (`team.outbound` / `team.inbound`) that `apps/agent` forwards. Control Plane
+  truth (team membership, workflow runs, execution records) stays in the Go
+  server (`internal/agent/team.go`, `internal/workflow`, `models.Execution`).
 - The Runtime layer owns script engines, the transport-agnostic
   `CommandDispatcher`, execution lifecycle (`script.run/stop`, local IPC plus
   remote agent commands — see Dispatcher Reuse) and the local UI path
@@ -539,7 +571,7 @@ primitive (Trigger < Script < Behavior Tree < Workflow < Team).
 | **Script** | 过程逻辑（确定性步骤序列） | 检查背包 → 出售 → 断言结果 | Lua/Python engines over shared `ModuleDescriptor` modules |
 | **Behavior Tree** | 实时决策（高频循环状态决策） | 战斗 AI：IsDead→Restart / HasTarget→Attack / else Patrol | `lib/wingman` behavior_tree |
 | **Workflow** | 跨 Agent / 跨任务 / 长生命周期编排（DAG，可等待、重试、超时） | Agent A 准备 → Agent B 执行 → 截图步骤 → 条件分支 | Go server workflow engine |
-| **Team** | 多个 Agent 的协同分组（角色 + 投票/收件箱等协商机制） | 团队副本分工 | Go server (计划中，见 ROADMAP「远程编排」Team/Vote/Inbox) |
+| **Team** | 多个 Agent 的协同分组（角色 + 投票/收件箱等协商机制） | 团队副本分工 | Go server 成员态（`internal/agent/team.go`，内存态）+ 脚本侧状态机（`lib/wingman` `wingman.team` / `TeamManager`） |
 
 Consequences:
 
@@ -573,13 +605,23 @@ Registration payload (both desktop runtime and Android agent, same shape):
 
 ```json
 {
+  "type": "agent.register",
   "agentId": "pc-shanghai-01",
-  "platform": "windows",
-  "arch": "x64",
-  "version": "1.2.0",
-  "capabilities": ["screen.capture", "input.mouse", "input.keyboard", "window.enumerate", "vision.image", "ml.onnx"]
+  "hostname": "pc-shanghai-01",
+  "platform": "desktop",
+  "capabilities": ["screen.capture", "input.mouse", "input.keyboard", "window.enumerate", "vision.image", "ml.onnx"],
+  "token": "<A3-P1 register token; key omitted when unset>"
 }
 ```
+
+`platform` is a coarse agent-family value, not an OS string: the desktop
+runtime always reports `desktop` (`apps/agent/src/agent.cpp`), the Android
+agent reports its configured value, default `android`
+(`apps/android/cpp/agent/android_agent.hpp`). A registration that carries no
+platform (older desktop agents) is normalized to `desktop` for display by the
+server (`orchestrator/server/internal/agent/registry.go`). There are **no**
+`arch` / `version` wire fields — `version` exists only inside the agent's
+`system.getStatus` response. `hostname` is always sent alongside `agentId`.
 
 Rules:
 
@@ -617,17 +659,25 @@ runs, and agent-side command runs:
 
 ```json
 {
+  "id": 128,
   "executionId": "...",
-  "workflowId": "...", "stepId": "...",
+  "workflowId": 0, "stepId": "...",
   "agentId": "...",
-  "scriptId": "...",
+  "scriptPath": "...", "scriptSha256": "...",
   "status": "running",
   "startedAt": "...", "finishedAt": "...",
-  "timeout": 30,
-  "retry": 0,
-  "logs": [], "artifacts": [], "result": {}
+  "timeoutSec": 30,
+  "artifacts": [], "result": {}
 }
 ```
+
+The shape above is the read API's `models.ExecutionView` (`GET /api/executions`,
+`GET /api/executions/:id`). Two fields have no counterpart and must not be
+relied on: there is **no `retry`** column and **no inline `logs`** — script
+output is stored as separate `ExecutionLog` rows (keyed by `scriptId`), not as
+a field of the execution record. `workflowId` is a numeric FK where `0` means
+"dispatched directly, not from a workflow step", and `scriptSha256` is the
+content fingerprint the script runs under.
 
 Status model: `pending → queued → running → {succeeded | failed | cancelled | timeout | lost}` (stopping in flight).
 
