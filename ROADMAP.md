@@ -22,6 +22,8 @@
 
 ## 新架构 (2025)
 
+> 本节为 2025 重构期的设计快照；现行目录树与命名空间口径以 [docs/architecture.md](docs/architecture.md) 与 [docs/project-structure.md](docs/project-structure.md) 为准（新增 `libs/agentcore`、`libs/androidagent`、`libs/crash` 与 `orchestrator/` 等在此树之后落地）。
+
 ### 架构设计
 
 ```
@@ -56,7 +58,7 @@ wingman/
 │   └── CMakeLists.txt
 │
 ├── libs/                         ← 内部辅助库
-│   ├── transport/                ← 网络传输：TCP/UDP（自定义帧）
+│   ├── transport/                ← 网络传输：TCP（自定义帧；脚本层 UDP 直连 asio 不经此库）
 │   │   ├── include/wingman/transport/
 │   │   │   ├── transport.hpp     ← 传输抽象
 │   │   │   ├── transport_client.hpp
@@ -94,7 +96,7 @@ wingman/
 ┌─────────▼───────────────────────────────────────────────┐
 │           lib/wingman/ (核心库 + 脚本抽象)               │
 │  ScriptManager (语言无关) + IScriptEngine 接口           │
-│  41 ModuleDescriptor (screen/input/window/...)           │
+│  42 ModuleDescriptor (screen/input/window/...)           │
 │  屏幕捕获、输入模拟、触发器、视觉识别、行为树、OCR...     │
 └─────────┬───────────────────────────────────────────────┘
           │
@@ -116,7 +118,7 @@ ScriptManager (自动检测语言)
     ↓
 ScriptEngineFactory → LuaScriptEngine / PythonScriptEngine
     ↓
-ModuleDescriptor (41 语言无关模块) → C++ 核心 API
+ModuleDescriptor (42 语言无关模块) → C++ 核心 API
     ↓
 lib/wingman/ (核心功能：screen, input, trigger...)
     ↓
@@ -145,7 +147,7 @@ apps/agent/ (应用：CLI + outbound agent + local IPC)
                     └───┬────┘
                 ┌────────▼────────┐
                 │ ModuleDescriptor │ (语言无关的模块定义)
-                │ screen/input/... │ (41 模块)
+                │ screen/input/... │ (42 模块)
                 └─────────────────┘
 ```
 
@@ -174,7 +176,7 @@ Runtime 不再按互斥“运行模式”建模。远程编排和本地 UI 控�
 1. **核心库独立** - `lib/wingman/` 不依赖 `apps/`，可单独复用
 2. **就近测试** - 每个模块都有自己的 `tests/` 目录
 3. **职责清晰** - apps（应用）、lib（核心库）、libs（辅助库）分离
-4. **命名空间对应** - `include/wingman/xxx.hpp` → `namespace wingman::xxx`
+4. **命名空间** - 子目录头按目录嵌套：`include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>`；顶层头平铺 `namespace wingman`（33 个中 31 个，`crypt.hpp`/`core.hpp` 例外）
 5. **不涉及账号管理** - 不做账号 CRUD、登录轮询、用户认证等业务功能；工具类函数（如 TOTP 验证码生成）保留为无状态纯函数，持久化需求由 kv 模块承担
 
 ### 重构里程碑
@@ -572,18 +574,18 @@ local wingman = require('wingman')
 
 **目标**: Android 设备作为 agent 接入 Go Server 中控（架构硬约束不变：agent 主动 outbound TCP、无本地 UI、零监听端口），远程执行 Lua 脚本并具备手势注入/屏幕采集/找色找图/远程截图能力
 
-**状态**: 部分完成（2026-09-30 校准）— A1/A2 已实施、A3-P1 已落地，A3 剩余可靠性项与 A4 未排期。设计基线 [docs/android-agent-design.md](docs/android-agent-design.md)，平台与 API 适用性 [docs/platforms.md](docs/platforms.md)
+**状态**: A1/A2/A3/A4 已落地（2026-10-15 校准）— A3-P2 安全演进部分落地（per-agent token 入库 + Dashboard 管理面/审计 + Keystore 迁移；challenge-response/TLS 未实施）；端侧行为经桌面同源测试 + NDK 宿主编译核验，真机走查待真机。设计基线 [docs/android-agent-design.md](docs/android-agent-design.md)，平台与 API 适用性 [docs/platforms.md](docs/platforms.md)
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| A1 链路打通 | Dashboard→Go Server `run_script{content}`→设备端 NDK C++ 核心执行 Lua→`agent.event` 日志实时回传；Kotlin 壳（WingmanService 前台服务/MainActivity/JNI 窄接口）；复用 16B 帧头 + JSON 协议，零新消息类型 | ✅ 已完成（2026-09-19 设计并落地，ce4a648；2026-09-20 起 nightly 打 arm64 APK） |
+| A1 链路打通 | Dashboard→Go Server `run_script{content, contentSha256}`→设备端 NDK C++ 核心执行 Lua→`agent.event` 日志实时回传；Kotlin 壳（WingmanService 前台服务/MainActivity/JNI 窄接口）；复用 16B 帧头 + JSON 协议，零新消息类型 | ✅ 已完成（2026-09-19 设计并落地，ce4a648；2026-09-20 起 nightly 打 arm64 APK） |
 | A2 脚本能力 | `platform/android` 宿主桥：dispatchGesture 手势注入、MediaProjection 采集、找色找图、`screenshot.capture` 远程截图；反向 JNI 桥 | ✅ 已完成（2026-09-21，c1df705/c0a67fe） |
 | A3 可靠性 | A3-P1 register token 白名单（`WINGMAN_AGENT_TOKENS`，server+桌面+Android 三端，默认关闭、向后兼容）✅ 已落地（2026-09-20，4c9a8f4，见 [docs/agent-token-auth-design.md](docs/agent-token-auth-design.md)）；A3 剩余可靠性项（开机自启、崩溃自重启、断连缓存自治、机型保活指引）✅ 已落地（2026-09-30，见设计文档 §7/§10'：BootCompletedReceiver + 退避闹钟崩溃重启 + 核心看门狗 + [docs/guides/android-keep-alive.md](docs/guides/android-keep-alive.md)，Kotlin JVM 单测 15 例入 build-android CI job）；Android 13+ 受限设置引导 ✅ 已落地（2026-09-30，设计文档 §10''：[docs/guides/android-restricted-settings.md](docs/guides/android-restricted-settings.md) + scripts/android-restricted-settings.sh 幂等预授权（Go 契约测试）+ App 内 RestrictedSettingsPolicy 引导）；剩余 A3-P2 安全演进 | ✅ 可靠性与受限设置引导已落地；P2 安全演进部分落地（2026-10-10：per-agent token 入库 + Dashboard 管理面/审计 + listener env∪DB 双源校验，agent 侧零改动；Keystore 迁移已落地（EncryptedSharedPreferences + 明文一次性迁移）/challenge-response/TLS 未实施，见 docs/agent-token-auth-design.md §6） |
-| A4 多设备编排 | Dashboard 设备视图、批量下发、asset.sync 模板分发 | ⬜ 协议预留，未实施 |
+| A4 多设备编排 | Dashboard 设备视图（标签分组/批量下发/平台大盘）与 Teams 页面；asset.sync 模板分发（服务端资产存储 + `POST /api/assets/sync` 下发 + 桌面 runtime 落盘 `<scriptDir>/assets/<name>`，Android 端侧 RpcDispatcher `registerAssetHandlers` 落 `<filesDir>/assets/`，脚本以 `assets/<name>` 相对引用同形） | ✅ 已落地（2026-10-13 服务端+Dashboard，2026-10-15 端侧；桌面同源守卫测试 `android_asset_test`；真机走查待真机） |
 
 工程基建：nightly CI 打 Android arm64 APK（vcpkg manifest 依赖、NDK 27；自 2026-09-30 起先跑 Kotlin JVM 单测再打 APK）；共用 agent 核心已下沉 `libs/agentcore`（RemoteClient/EventBuffer）与 `libs/androidagent`（ScriptRunner/脚本能力 API），与桌面同源编译、单测在桌面端跑（`libs/lua/tests`）。
 
-**交付物**: 远程可控的 Android 自动化 agent（链路、脚本能力与可靠性自愈可用；安全演进与多设备编排待 A3-P2/A4）
+**交付物**: 远程可控的 Android 自动化 agent（链路、脚本能力、可靠性自愈与多设备编排均可用；A3-P2 安全演进收尾项为 challenge-response/TLS）
 
 ---
 
@@ -599,9 +601,9 @@ local wingman = require('wingman')
 | M6: 人性化 | 1 周 | M1 |
 | M7: 调试器 | 3 周 | M1 |
 | M8: 发布准备 | 2 周 | 全部 |
-| M9: Android Agent（A3-P2 + A4） | 未排期 | A1/A2/A3 已完成 |
+| M9: Android Agent（A3-P2 安全演进收尾） | 未排期 | A1/A2/A3/A4 已完成 |
 
-**总计**: ~21 周 (约 5 个月)；M9 为 2026-09 新增的移动端里程碑（A1/A2/A3-P1 已落地），未计入原估算
+**总计**: ~21 周 (约 5 个月)；M9 为 2026-09 新增的移动端里程碑（A1/A2/A3/A4 已落地，A3-P2 安全演进收尾项除外），未计入原估算
 
 ---
 
@@ -613,7 +615,7 @@ local wingman = require('wingman')
 |--------|------|----------|------|
 | P2 | Android A3 可靠性剩余项（开机自启/崩溃自重启/断连缓存自治/机型保活指引） | — | ✅ 已完成（2026-09-30，android-agent-design.md §7/§10'） |
 | P2 | Android A3 受限设置引导（Android 13+ 侧载开箱：手动允许/adb 预授权/Device Owner） | — | ✅ 已完成（2026-09-30，android-agent-design.md §10''：手册 + scripts/android-restricted-settings.sh + App 内引导） |
-| P3 | Android A4 多设备编排（Dashboard 设备视图/批量下发/asset.sync 模板分发） | 未排期 | ⬜ 协议预留 |
+| P3 | Android A4 多设备编排（Dashboard 设备视图/批量下发/asset.sync 模板分发） | - | ✅ 已完成（2026-10-13 服务端+Dashboard / 2026-10-15 端侧，真机走查待真机） |
 | P1 | Dashboard Monitor triggers 接真实 API（需扩 agent 协议） | 1周 | ✅ list/toggle + add/update/remove CRUD 全链路（runtime Dispatcher Reuse，agents:manage） |
 | P2 | 跨平台运行时验证（macOS/Linux，需真机） | — | ⬜ 待验证 |
 | P2 | Swagger/OpenAPI 文档 | — | ✅ 全端点注解补全 + typed schema（workflows/scripts/debugger/triggers）+ 统一 ErrorResponse（401/403/404/500）+ 双注册路由标注，swag init 生成 docs，`/swagger/` UI 可用 |
@@ -651,7 +653,7 @@ local wingman = require('wingman')
 | script modules | screen/input/window/event/kv/config/json/verification/db/ini/transport | ✅ |
 | db (SQLite) | 连接管理、CRUD、事务、ORM、QueryBuilder | ✅ |
 | ini | 解析、编码、读写、合并、转义序列 | ✅ |
-| transport | TCP 客户端/服务器、UDP socket | ✅ |
+| transport | TCP 客户端/服务器（libs/transport）、脚本层 UDP socket API | ✅ |
 | kvstore | KV + Hash + List 操作 | ✅ |
 | security / window / json / ... | 其他核心模块 | ✅ |
 | **总计** | **1584 tests / 143 suites** | ✅ **90.04% 行覆盖率** |
