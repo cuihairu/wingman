@@ -1,3 +1,5 @@
+> [English](ui-automation.en.md) | **中文**
+
 # UI Automation 示例
 
 演示如何使用 UI Automation 操作 Windows 应用程序。

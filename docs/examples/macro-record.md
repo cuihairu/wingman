@@ -1,3 +1,5 @@
+> [English](macro-record.en.md) | **中文**
+
 # 宏录制
 
 演示如何录制并回放鼠标键盘操作。

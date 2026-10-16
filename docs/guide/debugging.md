@@ -1,3 +1,5 @@
+> [English](debugging.en.md) | **中文**
+
 # 调试指南
 
 Wingman 的 Lua 调试基于 EmmyLua。仓库已提供 VS Code 配置，可直接用于 attach 调试和通过 runtime 运行当前脚本。

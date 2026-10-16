@@ -9,6 +9,17 @@
 
 ## [Unreleased]
 
+### docs（2026-10-16，docs 子目录双语配对第一批——非 api 子目录全量 28 篇）
+
+- **范围**：承接 10-16 根目录批次的登记项（`docs/development-todo.md` 台账：子目录下一轮起分批），本批做**非 api 子目录全量** = `design`(2) + `guide`(9) + `guides`(9) + `tutorials`(1) + `examples`(7) = 28 篇（全部中文主）；`docs/api/` 实测 63 页 / 21,128 行，量大需独立批次，登记为第二批（台账此前误记 46 页，已纠正）。
+- **切换器**：28 篇全部加顶部语言切换器，与根目录批次同形（中文主 `> [English](X.en.md) | **中文**`）。frontmatter 4 篇（`guide/dashboard.md`、`guide/getting-started.md`、`guide/runtime-gui.md`、`guide/script-development.md`）切换器落在 frontmatter 闭合 `---` 之后——frontmatter 必须首位（同根目录 `index.md` 口径）；首轮脚本误插在起始 `---` 之后破坏了 YAML，已修正。
+- **真翻译 16 篇**（≤~200 行）：`guide/debugging`(74) / `guide/structure`(135) / `guide/introduction`(164) / `guide/script-development`(149) / `guides/asset-sync`(67) / `guides/android-keep-alive`(92) / `guides/android-restricted-settings`(115) / `guides/manual-verification`(142) / `design/crash-reporting-design`(108) / `tutorials/video-storyboard`(112) / `examples/index` / `examples/hello-world` / `examples/pixel-detection` / `examples/auto-loop` / `examples/image-matching` / `examples/macro-record`。代码块、命令、路径、标识符、中文 UI 按钮标签逐字保留（Lua/Python 块内中文注释与 `print` 字符串原样，含 1 处首轮误译的 `print("录制将在 3 秒后开始...")` 已回退）；`manual-verification.en.md` 的 PASS/FAIL/SKIP 判定串与脚本输出保持字节一致（该口径同台账「PASS 串对齐脚本」纪律）；目录树、ASCII 图、栈迹块 diff 逐块字节比对一致。
+- **长文如实占位 12 篇**：`design/load-testing-research`(251) / `guide/config`(250) / `guide/getting-started`(270) / `guide/dashboard`(314) / `guide/architecture`(316) / `guide/runtime-gui`(387) / `guides/yolo-guide`(349) / `guides/triggers`(913) / `guides/database`(1126) / `guides/configuration`(1349) / `guides/uia-guide`(1398) / `examples/ui-automation`(320)——切换器 + 「暂无译版」说明 + 源文档真实章节大纲（围栏感知提取，12 页逐页比对标题数量一致），不硬造劣质翻译。
+- **顺带保留**：`guide/script-development.en.md` 的锚点链接保留中文锚 `./getting-started.md#运行模式`——目标页英文版本是占位页（无该章节），指向中文页真标题才能保证链接可解析；与根目录批次把源锚点改为英文 slug 的方向不同，因目标形态不同（该处无英文真身）。
+- **门禁**（docs-only，未编译未跑测试套件）：自建校验 28 对切换器互指 0 问题、无 stray 文件、真翻译页围栏外 CJK 仅切换器标签与设计内保留串；`npm --prefix docs run docs:build` 绿（35.75s）。
+
+### docs（2026-10-16，docs 根目录文档双语配对——26 篇切换器 + 20 篇真翻译 + 6 篇长文占位）
+
 ### docs（2026-10-16，docs 根目录文档双语配对——26 篇切换器 + 20 篇真翻译 + 6 篇长文占位）
 
 - **背景**：`docs/` 根目录此前 0 对双语配对（README 的语言切换器只在自己那对文件里生效），英文读者无入口。本轮范围按用户执行单只做 `docs/` 根目录，子目录（`docs/api/`、`docs/design/`、`docs/guide/`、`docs/guides/`、`docs/tutorials/`、`docs/examples/`）登记进 `docs/development-todo.md`，下一轮分批。

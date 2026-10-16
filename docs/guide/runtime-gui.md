@@ -1,6 +1,8 @@
 ---
 title: Runtime GUI 使用教程
 ---
+> [English](runtime-gui.en.md) | **中文**
+
 
 # Runtime GUI 使用教程
 

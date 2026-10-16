@@ -1,3 +1,5 @@
+> [English](architecture.en.md) | **中文**
+
 # 架构设计
 
 ## 系统架构概览

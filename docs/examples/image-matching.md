@@ -1,3 +1,5 @@
+> [English](image-matching.en.md) | **中文**
+
 # 图像匹配
 
 演示如何在屏幕上查找图像。

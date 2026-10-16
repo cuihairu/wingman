@@ -1,3 +1,5 @@
+> [English](android-keep-alive.en.md) | **中文**
+
 # Android Agent 机型保活指引（A3）
 
 > 适用：Wingman Android Agent（apps/android，A3 可靠性落地 2026-09-30）。

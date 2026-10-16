@@ -1,3 +1,5 @@
+> [English](index.en.md) | **中文**
+
 # 示例脚本
 
 以下示例展示 Wingman 的各种功能用法：

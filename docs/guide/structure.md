@@ -1,3 +1,5 @@
+> [English](structure.en.md) | **中文**
+
 # 项目目录结构
 
 ```

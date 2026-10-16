@@ -1,3 +1,5 @@
+> [English](android-restricted-settings.en.md) | **中文**
+
 # Android Agent 受限设置指引（Android 13+，A3）
 
 > 适用：Wingman Android Agent（apps/android，A3 部署体验落地 2026-09-30）。

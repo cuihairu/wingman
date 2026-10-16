@@ -1,3 +1,5 @@
+> [English](manual-verification.en.md) | **中文**
+
 # 真机验证指引（macOS 运行时 / Linux XRecord 桌面）
 
 todo.md「跨平台验证」两项中，macOS 腿依赖真实 macOS 桌面会话（headless CI 无法

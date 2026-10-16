@@ -1,3 +1,5 @@
+> [English](hello-world.en.md) | **中文**
+
 # Hello World
 
 最简单的 Wingman 脚本示例。

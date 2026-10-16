@@ -1,6 +1,8 @@
 ---
 title: 快速开始
 ---
+> [English](getting-started.en.md) | **中文**
+
 
 # 快速开始
 

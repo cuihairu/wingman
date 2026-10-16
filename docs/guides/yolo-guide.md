@@ -1,3 +1,5 @@
+> [English](yolo-guide.en.md) | **中文**
+
 # YOLO 模型使用指南
 
 本指南面向初学者，说明如何准备 YOLO ONNX 模型，在 Wingman 中验证模型加载与输入/输出元数据，并通过 `vision.aiSetupLocal` 接入本地检测。

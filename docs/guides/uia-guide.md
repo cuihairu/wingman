@@ -1,3 +1,5 @@
+> [English](uia-guide.en.md) | **中文**
+
 # UI Automation 指南
 
 Wingman 的 UI Automation (UIA) 模块允许你直接与 Windows（UIAutomation）/ macOS（Accessibility）应用程序的 UI 控件交互，无需依赖坐标点击。Linux 平台暂不支持。

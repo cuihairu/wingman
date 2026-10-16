@@ -1,3 +1,5 @@
+> [English](crash-reporting-design.en.md) | **中文**
+
 # 崩溃采集设计：Crashpad 直集成（简档）
 
 > 设计日期：2026-10-08。范围：桌面 C++ runtime（`apps/agent`）。

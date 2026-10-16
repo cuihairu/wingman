@@ -1,3 +1,5 @@
+> [English](configuration.en.md) | **中文**
+
 # 配置管理指南
 
 本指南详细介绍如何使用 Wingman 的配置管理功能。

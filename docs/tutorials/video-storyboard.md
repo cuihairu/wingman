@@ -1,3 +1,5 @@
+> [English](video-storyboard.en.md) | **中文**
+
 # 视频教程系列脚本
 
 ROADMAP M8.2「视频教程」的前期交付物：六集分镜脚本 + 逐字旁白（可直接照读）。
