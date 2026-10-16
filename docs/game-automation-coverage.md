@@ -1,3 +1,5 @@
+> **English** | [中文](game-automation-coverage.zh.md) 
+
 # Game Automation Coverage Analysis
 
 This document records the current game-automation coverage of Wingman and compares it with similar products. It is intended to guide future implementation and prevent scope drift.

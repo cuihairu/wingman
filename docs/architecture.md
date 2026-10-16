@@ -1,3 +1,5 @@
+> [English](architecture.en.md) | **中文**
+
 # Wingman 项目架构
 
 > 架构硬约束见 `docs/architecture-decisions.md`。修改 runtime、GUI、orchestrator 或 transport 前必须先阅读该文档。

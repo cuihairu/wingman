@@ -1,3 +1,5 @@
+> [English](vault-provider-design.en.md) | **中文**
+
 # 密钥保险箱 Provider 抽象与凭据接入点盘点
 
 > 依据根 todo.md 2026-10-11「密码箱抽象与可替换提供商」（persona 新升级已实现密码箱，各项目密码箱应抽象接口、支持替换提供商）。

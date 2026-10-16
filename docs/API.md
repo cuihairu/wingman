@@ -1,3 +1,5 @@
+> [English](API.en.md) | **中文**
+
 # Wingman Runtime Local IPC API
 
 > 本文记录当前 runtime local IPC 控制面。Runtime 不应提供 WebSocket/HTTP server 作为本地 UI 或远程控制面。

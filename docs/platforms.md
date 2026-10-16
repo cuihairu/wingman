@@ -1,3 +1,5 @@
+> [English](platforms.en.md) | **中文**
+
 # 平台支持与 API 适用性
 
 > 最后核对：2026-10-15（逐条对现行源码、vcpkg.json、CMake 与 ci.yml 复扫）。本文是平台信息的**唯一对账表**：

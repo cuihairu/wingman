@@ -1,3 +1,5 @@
+> [English](platform-abstraction-design.en.md) | **中文**
+
 # 平台抽象层设计
 
 > **版本**: v1.0

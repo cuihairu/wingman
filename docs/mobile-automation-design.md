@@ -1,3 +1,5 @@
+> [English](mobile-automation-design.en.md) | **中文**
+
 # 手机端自动化方案设计（Appium / AutoJS 对照与选型）
 
 > 日期：2026-09-22。状态：**设计稿（含实现，不含新实现代码）**。

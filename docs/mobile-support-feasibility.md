@@ -1,3 +1,5 @@
+> [English](mobile-support-feasibility.en.md) | **中文**
+
 # 移动端支持可行性分析（Android 端侧 Agent 优先）
 
 > 分析日期：2026-09-19。

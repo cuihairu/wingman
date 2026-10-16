@@ -1,3 +1,5 @@
+> [English](dependencies.en.md) | **中文**
+
 # Wingman 依赖说明
 
 依赖统一由 vcpkg manifest 管理，清单是仓库根目录的 `vcpkg.json`（与 baseline 版本绑定）。CMake 经 toolchain 在 configure 阶段自动安装，不需要也不允许手工 `vcpkg install <包名>` 拼清单，不回退到系统库（见 CLAUDE.md 依赖管理规则）。

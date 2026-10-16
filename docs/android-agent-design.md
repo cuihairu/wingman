@@ -1,3 +1,5 @@
+> [English](android-agent-design.en.md) | **中文**
+
 # Android 端侧 Agent 设计（A1 落地版）
 
 > 日期：2026-09-19。

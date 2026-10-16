@@ -1,3 +1,5 @@
+> [English](benchmarks.en.md) | **中文**
+
 # 性能基准测试
 
 Wingman 的性能基准是一组独立可执行文件，位于 `lib/wingman/tests/benchmarks/`，

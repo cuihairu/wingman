@@ -1,3 +1,5 @@
+> [English](load-testing-design.en.md) | **中文**
+
 # Wingman 潮水级压测架构设计（提案）
 
 状态：**草案，待 owner 拍板**（本文不改变任何现有行为；拍板后按里程碑落地，并同步 `docs/architecture-decisions.md` 与 `docs/architecture.md`）。

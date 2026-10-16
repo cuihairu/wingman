@@ -1,3 +1,5 @@
+> [English](remote_protocol.en.md) | **中文**
+
 # Wingman 远程控制协议文档
 
 > [**历史文档**：本文记录旧 JSON-RPC 协议的迁移说明。当前权威协议规范见 [protocols.md](./protocols.md)。]

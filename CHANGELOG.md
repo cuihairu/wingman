@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### docs（2026-10-16，docs 根目录文档双语配对——26 篇切换器 + 20 篇真翻译 + 6 篇长文占位）
+
+- **背景**：`docs/` 根目录此前 0 对双语配对（README 的语言切换器只在自己那对文件里生效），英文读者无入口。本轮范围按用户执行单只做 `docs/` 根目录，子目录（`docs/api/`、`docs/design/`、`docs/guide/`、`docs/guides/`、`docs/tutorials/`、`docs/examples/`）登记进 `docs/development-todo.md`，下一轮分批。
+- **切换器**：26 篇实质文档全部加顶部语言切换器——英文主文档 `> **English** | [中文](X.zh.md)`、中文主文档 `> [English](X.en.md) | **中文**`，与 README 既有约定（`0e49af5`）同形、落首行；`index.md` 是 VitePress home 页、frontmatter 必须首位，切换器落第 44 行（唯一例外，已在台账登记）。
+- **真翻译配对 20 篇**：中文主 → `.en.md` 17 篇（API / README / architecture / protocols / project-structure / platforms / dependencies / benchmarks / android-agent / ios-agent-design / mobile-support-feasibility / load-testing-design / agent-token-auth-design / vault-provider-design / remote_protocol / development-environment / index）；英文主 → `.zh.md` 3 篇（DEVELOPER_TOOLS / DEVELOPMENT / game-automation-coverage）。红线遵守：命令、路径、代码块、目录树与 ASCII 图、专有名词逐字保留不译；README.md 无中文正文（切换器行除外）。
+- **长文只挂如实占位 6 篇**：`android-agent-design`(559 行) / `platform-abstraction-design`(523) / `mobile-automation-design`(476) / `remote-gateway-guacamole-design`(714) / `uia-abstraction-design`(869) / `审计-文档一致性`(412)——只放切换器 + 「暂无译版」说明 + 源文档真实章节大纲，不硬造劣质翻译。
+- **排除 2 篇**：`development-todo.md`（内部台账逐批追加，译出即过期，同 CHANGELOG 口径）、`architecture-decisions.md`（并行席在途未提交，冻结窗口）。
+- **顺带修正**：`platforms.en.md` 5 处中文源锚点残留（`#ci-验证对应`、`#api-适用性标注`、`#各环境差异说明`、`#ios-为什么是-规划中-而不是-支持`、`#平台支持矩阵` → 英文 slug）。
+- **门禁**：自建校验（切换器位置与互指、`.md` 链接可达、页内锚点可达）0 问题；`npm --prefix docs run docs:build` 绿（与 `docs.yml` 的 build-docs job 同款）。
+
 ### refactor（2026-10-16，冻结回调/错误事件口径 + 事件约定审计门）
 
 - **背景**：「统一回调/通知策略」挂起待拍板（2026-10-13 评估：剩余分裂点=回调线程模型是否对齐 Lua 协程式排队、错误上报事件名是否统一）。本轮巡检代决**冻结现状为约定、不新增语义面**：跨后台线程回调在调用方线程同线程直接调用 + `callableThreadSafe` 门控准入 + 非线程安全 callable（Lua）注册即拒——runtime 无主线程事件泵，排队即新增跨线程调度器，收益不抵风险，Lua 侧改用触发器或同步 `task.submit`；错误上报统一 `<module>.error` + 单键载荷 `{error: string}`、`source` = 模块名。

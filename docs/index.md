@@ -41,6 +41,8 @@ features:
     details: 手势注入、屏幕采集、找色找图、远程截图，APK 随 nightly 分发
 
 ---
+> [English](index.en.md) | **中文**
+
 
 ## 简介
 

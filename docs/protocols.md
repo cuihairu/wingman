@@ -1,3 +1,5 @@
+> [English](protocols.en.md) | **中文**
+
 # Wingman 通信协议规范
 
 > 本文档描述 Wingman 三条通信链路的协议规范，依据代码实现（2026-10-04 校准）。

@@ -1,3 +1,5 @@
+> [English](project-structure.en.md) | **中文**
+
 # Wingman 项目目录结构
 
 ## 顶层目录

@@ -1,3 +1,5 @@
+> [English](agent-token-auth-design.en.md) | **中文**
+
 # Agent 注册 Token 认证设计（A3-P1）
 
 > 日期：2026-09-20。

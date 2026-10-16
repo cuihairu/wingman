@@ -1,3 +1,5 @@
+> [English](development-environment.en.md) | **中文**
+
 # VS Code 开发环境
 
 本文说明仓库内置的 VS Code 配置、脚本补全和调试工作流。
