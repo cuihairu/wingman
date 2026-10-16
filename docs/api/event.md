@@ -410,7 +410,7 @@ message(type: string, payload: any = nil, meta: table = nil) -> table
 | `macro.state` | `"macro"` | `{state}` | 宏录制/回放状态（`state` ∈ `recording`/`paused`/`playing`/`stopped`；见 [macro](./macro.md)） |
 | `macro.recorded` | `"macro"` | `{type, x, y, keyCode, timestamp}` | 录制事件流（每条落库事件一条；`type` 为 `mouse_move`/`key_down`/`type` 等） |
 | `hotkey.error` | `"hotkey"` | `{error}` | 热键注册被拒（非线程安全 callable；热键命中不走事件面，直接回调） |
-| `uia.error` | `"uia"` | `{error}` | UIA 事件注册被拒（非线程安全 callable；见 [uia](./uia.md)） |
+| `uia.error` | `"uia"` | `{error}` | UIA 事件注册被拒（非线程安全 callable；见 [uia](./uia/)） |
 | `task.submitted` | `"task"` | `{taskId, metadata}` | 任务已提交入队 |
 | `task.started` / `task.succeeded` / `task.failed` / `task.timeout` / `task.canceled` / `task.paused` / `task.resumed` | `"task"` | `{taskId, status, metadata}` | 任务生命周期流转（统一负载形状，`status` 为任务状态词） |
 | `task.error` | `"task"` | `{error}` | 任务入队被拒（如非线程安全 callable 提交 async） |
