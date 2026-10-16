@@ -422,7 +422,7 @@ message(type: string, payload: any = nil, meta: table = nil) -> table
 | `orchestration.interrupted` | `"orchestration"` | `{workflow}` | 启动恢复：上次进程强杀遗留的在途工作流补 `interrupted` 终局（见 [orchestration](./orchestration.md)） |
 | `orchestration.error` | `"orchestration"` | `{error}` | 工作流提交被拒 |
 
-**转投到 GUI**：runtime 内的 `installSystemEventBridge` 会把上表全部事件原样转投本地 IPC 事件缓冲（method 与事件名一致），GUI 经 RPC `events.drain` 拉取后驱动界面展示（见 [protocols.md](../protocols.md)）。
+**转投到 GUI**：runtime 内的 `installSystemEventBridge` 会把上表全部事件原样转投本地 IPC 事件缓冲（method 与事件名一致），GUI 经 RPC `events.drain` 拉取后驱动界面展示（见 [protocols.md](../protocols.md)）。脚本自行 `wingman.event.emit` 发布的**自定义事件不在此列**——v1 不做通配桥接（自定义事件面向脚本间通信，接收方用 `event.on` 显式订阅；脚本需要 GUI 可见的提示请用 `wingman.notify`，裁决见 development-todo 通知桥接条目）。
 
 ---
 

@@ -9,6 +9,11 @@
 
 ## [Unreleased]
 
+### docs（2026-10-17，自定义事件通知桥接裁决收口）
+
+- **裁决**：台账「订阅 `event.*` 与 `task.*` 的通知桥接」待拍板项代决关闭（理由全文见 `docs/development-todo.md` 条目内联）——v1 不做脚本自定义事件通配桥接（不引入 EventHub tap/前缀订阅语义面，与 :88/:89 同口径）、不做通知侧自动规则（级别映射属产品语义，显式 `wingman.notify` 路径已足）。现码与裁决一致（`installSystemEventBridge` 订阅表 25 项全为显式枚举），本项为文档收口非代码改动。post-1.0 重启条件与侦察落点（emit 侧显式标记直推 EventBuffer，不改 EventHub 订阅语义）已存台账。
+- **文档同步**：`docs/api/event.md`「转投到 GUI」段补一句——脚本 `wingman.event.emit` 自定义事件不转投 GUI（v1 口径），GUI 可见提示走 `wingman.notify`。顺带修复 CHANGELOG 本批次标题重复行。
+
 ### docs（2026-10-16，docs 子目录双语配对第二批——docs/api/ 全量 63 页）
 
 - **范围**：承接台账「docs/api/ 双语配对第二批」登记项。`docs/api/` 实测 63 页 / 21,128 行（48 顶层 + `uia/` 16 元素页），全部中文主，均无 frontmatter。
@@ -17,8 +22,6 @@
 - **长文如实占位 34 篇**（250–1,246 行）：`kv`(1205) / `core`(971) / `team`(931) / `transport`(884) / `system`(766) / `db`(764) / `clipboard`(737) / `macro`(731) / `inbox`(621) / `screen`(593) / `script`(562) / `smart-trigger`(555) / `vision`(545) / `process`(539) / `perf`(535) / `ini`(527) / `ml`(522) / `window`(509) / `task`(497) / `file`(492) / `input`(456) / `event`(438) / `crypto`(437) / `notify`(429) / `human`(421) / `http`(400) / `AUDIT-REPORT`(140，历史审计台账同根目录口径) / `uia/index`(1246) / `uia/edit`(699) / `uia/button`(531) / `uia/list`(317) / `uia/tree`(303) / `uia/combobox`(302) / `uia/radiobutton`(253)——切换器 + 「暂无译版」说明 + 源文档真实章节大纲（围栏感知提取，34 页逐页比对标题数一致），不硬造劣质翻译。
 - **顺带修正**：7 篇 `uia/` 占位页的相对链接首轮按带目录名生成（`uia/X.md` 在 `uia/` 目录下解析为 404），已改回裸文件名；`behavior-tree.en.md` 首轮把同页锚点保留为中文锚（英文页无该标题），已改 `#node-construction`。
 - **门禁**（docs-only，未编译未跑测试套件）：自建校验 63 对切换器互指 0 问题、无 stray 文件、真翻译页围栏外 CJK 仅切换器标签与设计内保留串、函数级抽查零失败；`npm --prefix docs run docs:build` 绿（37.04s）。
-
-### docs（2026-10-16，docs 子目录双语配对第一批——非 api 子目录全量 28 篇）
 
 ### docs（2026-10-16，docs 子目录双语配对第一批——非 api 子目录全量 28 篇）
 
