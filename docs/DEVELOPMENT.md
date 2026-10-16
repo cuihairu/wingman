@@ -1,4 +1,4 @@
-> **English** | [中文](DEVELOPMENT.zh.md) 
+> **English** | [中文](zh/DEVELOPMENT)
 
 # Wingman Development Guide
 

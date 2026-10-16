@@ -1,13 +1,7 @@
 import { defineConfig } from 'vitepress'
 import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
 
-export default defineConfig({
-  title: 'Wingman',
-  description: '游戏自动化可编程控制引擎',
-  base: '/wingman/',
-  ignoreDeadLinks: true,
-
-  themeConfig: {
+const rootThemeConfig = {
     nav: [
       { text: '指南', link: '/guide/introduction' },
       { text: 'API', link: '/api/' },
@@ -192,6 +186,54 @@ export default defineConfig({
 
     search: {
       provider: 'local'
+    }
+  };
+
+const zhThemeConfig = {
+    nav: [
+      { text: '开发指南', link: '/zh/DEVELOPMENT' },
+      { text: '开发者工具', link: '/zh/DEVELOPER_TOOLS' },
+      { text: '覆盖度分析', link: '/zh/game-automation-coverage' }
+    ],
+
+    sidebar: {
+      '/zh/': [
+        {
+          text: '中文文档',
+          items: [
+            { text: '开发指南', link: '/zh/DEVELOPMENT' },
+            { text: '开发者工具', link: '/zh/DEVELOPER_TOOLS' },
+            { text: '覆盖度分析', link: '/zh/game-automation-coverage' }
+          ]
+        }
+      ]
+    },
+
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/cuihairu/wingman' }
+    ],
+
+    search: {
+      provider: 'local'
+    }
+  };
+
+export default defineConfig({
+  title: 'Wingman',
+  description: '游戏自动化可编程控制引擎',
+  base: '/wingman/',
+  ignoreDeadLinks: true,
+
+  locales: {
+    root: {
+      label: 'English',
+      lang: 'en',
+      themeConfig: rootThemeConfig
+    },
+    zh: {
+      label: '简体中文',
+      lang: 'zh-CN',
+      themeConfig: zhThemeConfig
     }
   },
 
