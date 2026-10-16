@@ -1,3 +1,5 @@
+> [English](macro.en.md) | **中文**
+
 # API: wingman.macro
 
 宏录制与回放模块，用于记录鼠标/键盘操作序列并按需回放。

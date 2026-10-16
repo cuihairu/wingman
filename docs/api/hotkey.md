@@ -1,3 +1,5 @@
+> [English](hotkey.en.md) | **中文**
+
 # API: wingman.hotkey
 
 全局热键模块，轮询式监听全局键态，主键与修饰键同时按下（上升沿）时触发回调。

@@ -1,3 +1,5 @@
+> [English](gameprofile.en.md) | **中文**
+
 # API: wingman.gameprofile
 
 游戏配置档案模块，用于管理游戏相关的配置档案（profile）：窗口/颜色/图像/触发器/脚本，支持模板、导入导出与版本管理。

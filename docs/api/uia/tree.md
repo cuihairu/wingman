@@ -1,3 +1,5 @@
+> [English](tree.en.md) | **中文**
+
 # API: UIA Tree
 
 树形控件（Tree）用于显示层次结构数据，常见于：

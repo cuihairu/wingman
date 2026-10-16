@@ -1,3 +1,5 @@
+> [English](ocr.en.md) | **中文**
+
 # API: wingman.ocr
 
 OCR 模块，提供基于 Tesseract 引擎的文字识别功能。

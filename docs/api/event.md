@@ -1,3 +1,5 @@
+> [English](event.en.md) | **中文**
+
 # API: wingman.event
 
 事件订阅和发布模块，提供进程内事件通信。

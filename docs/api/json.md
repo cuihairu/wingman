@@ -1,3 +1,5 @@
+> [English](json.en.md) | **中文**
+
 # API: wingman.json
 
 JSON 解析和序列化模块。

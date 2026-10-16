@@ -1,3 +1,5 @@
+> [English](smart-trigger.en.md) | **中文**
+
 # API: wingman.smarttrigger
 
 智能触发器模块，提供事件驱动的自动化能力。

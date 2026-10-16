@@ -1,3 +1,5 @@
+> [English](window.en.md) | **中文**
+
 # API: wingman.window
 
 窗口管理模块，提供窗口查找、激活、获取信息等功能。

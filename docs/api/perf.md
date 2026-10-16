@@ -1,3 +1,5 @@
+> [English](perf.en.md) | **中文**
+
 # API: wingman.perf
 
 性能优化模块，提供图像缓存、并行处理等性能优化配置。

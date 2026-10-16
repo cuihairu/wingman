@@ -1,3 +1,5 @@
+> [English](behavior-tree.en.md) | **中文**
+
 # API: wingman.bt
 
 行为树引擎，提供基础的 AI 决策系统。

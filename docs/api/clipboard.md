@@ -1,3 +1,5 @@
+> [English](clipboard.en.md) | **中文**
+
 # API: wingman.clipboard
 
 剪贴板模块，提供系统剪贴板的读写能力，支持文本、HTML、图像和文件列表。

@@ -1,3 +1,5 @@
+> [English](text.en.md) | **中文**
+
 # API: UIA Text
 
 文本（Text）控件用于显示静态文本标签，如字段标签、提示信息、状态显示等。

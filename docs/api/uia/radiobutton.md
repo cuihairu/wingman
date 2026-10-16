@@ -1,3 +1,5 @@
+> [English](radiobutton.en.md) | **中文**
+
 # API: UIA RadioButton
 
 单选按钮（RadioButton）用于从多个选项中**选择一个**。同一组内的单选按钮是互斥的——选中一个会自动取消其他选项。

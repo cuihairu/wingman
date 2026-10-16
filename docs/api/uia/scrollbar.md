@@ -1,3 +1,5 @@
+> [English](scrollbar.en.md) | **中文**
+
 # API: UIA ScrollBar
 
 滚动条（ScrollBar）控件用于滚动内容区域，有水平和垂直两种类型。

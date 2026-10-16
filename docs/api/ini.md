@@ -1,3 +1,5 @@
+> [English](ini.en.md) | **中文**
+
 # ini 模块
 
 ini 模块提供 INI 配置文件格式的解析和编码功能。

@@ -9,6 +9,17 @@
 
 ## [Unreleased]
 
+### docs（2026-10-16，docs 子目录双语配对第二批——docs/api/ 全量 63 页）
+
+- **范围**：承接台账「docs/api/ 双语配对第二批」登记项。`docs/api/` 实测 63 页 / 21,128 行（48 顶层 + `uia/` 16 元素页），全部中文主，均无 frontmatter。
+- **切换器**：63 篇全部落首行（无 frontmatter 例外）。
+- **真翻译 29 篇**（阈值 ≤~383 行，放宽依据见台账：API 页函数表格密集、散文稀少，标识符逐字保留后风险集中在散文单元格，可脚本级对账）：`hotkey`/`json`/`gameprofile`/`data`/`util`/`systemwatch`/`ocr`/`debugger`(143–192)、`behavior-tree`/`verification`/`config`/`serialize`/`index`/`timer`/`filewatcher`(228–301)、`fsm`/`orchestration`/`security`/`overview`(327–342)、`types`(383)、`uia` 元素 9 篇 `scrollbar`/`slider`/`text`/`tooltip`/`progressbar`/`tab`/`window`/`menu`/`checkbox`(99–281)。函数名/签名/参数名逐字保留；`:::tabs` 内 Python/Lua 块字节比对一致；同页锚点改英文 slug（`#node-construction`），跨页链接保持指向中文 `.md` 目标；函数级抽查（代码块字节 / 标题数 / 表格行数 1:1）零失败。
+- **长文如实占位 34 篇**（250–1,246 行）：`kv`(1205) / `core`(971) / `team`(931) / `transport`(884) / `system`(766) / `db`(764) / `clipboard`(737) / `macro`(731) / `inbox`(621) / `screen`(593) / `script`(562) / `smart-trigger`(555) / `vision`(545) / `process`(539) / `perf`(535) / `ini`(527) / `ml`(522) / `window`(509) / `task`(497) / `file`(492) / `input`(456) / `event`(438) / `crypto`(437) / `notify`(429) / `human`(421) / `http`(400) / `AUDIT-REPORT`(140，历史审计台账同根目录口径) / `uia/index`(1246) / `uia/edit`(699) / `uia/button`(531) / `uia/list`(317) / `uia/tree`(303) / `uia/combobox`(302) / `uia/radiobutton`(253)——切换器 + 「暂无译版」说明 + 源文档真实章节大纲（围栏感知提取，34 页逐页比对标题数一致），不硬造劣质翻译。
+- **顺带修正**：7 篇 `uia/` 占位页的相对链接首轮按带目录名生成（`uia/X.md` 在 `uia/` 目录下解析为 404），已改回裸文件名；`behavior-tree.en.md` 首轮把同页锚点保留为中文锚（英文页无该标题），已改 `#node-construction`。
+- **门禁**（docs-only，未编译未跑测试套件）：自建校验 63 对切换器互指 0 问题、无 stray 文件、真翻译页围栏外 CJK 仅切换器标签与设计内保留串、函数级抽查零失败；`npm --prefix docs run docs:build` 绿（37.04s）。
+
+### docs（2026-10-16，docs 子目录双语配对第一批——非 api 子目录全量 28 篇）
+
 ### docs（2026-10-16，docs 子目录双语配对第一批——非 api 子目录全量 28 篇）
 
 - **范围**：承接 10-16 根目录批次的登记项（`docs/development-todo.md` 台账：子目录下一轮起分批），本批做**非 api 子目录全量** = `design`(2) + `guide`(9) + `guides`(9) + `tutorials`(1) + `examples`(7) = 28 篇（全部中文主）；`docs/api/` 实测 63 页 / 21,128 行，量大需独立批次，登记为第二批（台账此前误记 46 页，已纠正）。

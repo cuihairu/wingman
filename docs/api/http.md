@@ -1,3 +1,5 @@
+> [English](http.en.md) | **中文**
+
 # API: wingman.http
 
 HTTP 客户端模块，支持 GET、POST、PUT、DELETE 等常见的 HTTP 请求方法。

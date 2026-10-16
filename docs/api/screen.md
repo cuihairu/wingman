@@ -1,3 +1,5 @@
+> [English](screen.en.md) | **中文**
+
 # API: wingman.screen
 
 屏幕操作模块，提供屏幕截图、像素颜色获取、颜色查找、图像匹配等功能。

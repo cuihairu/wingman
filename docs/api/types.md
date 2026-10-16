@@ -1,3 +1,5 @@
+> [English](types.en.md) | **中文**
+
 # API 数据类型参考
 
 本文档详细说明了 Wingman API 中使用的各种数据类型和对象结构。

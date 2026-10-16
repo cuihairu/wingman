@@ -1,3 +1,5 @@
+> [English](core.en.md) | **中文**
+
 # 核心 API
 
 核心 API 提供 Wingman 的基础功能，包括屏幕操作、输入模拟、窗口管理等。

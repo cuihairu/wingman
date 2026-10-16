@@ -1,3 +1,5 @@
+> [English](team.en.md) | **中文**
+
 # API: wingman.team
 
 Team 模块提供多 Runtime 协同组队、投票协调和群体通信功能。

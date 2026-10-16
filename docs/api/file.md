@@ -1,3 +1,5 @@
+> [English](file.en.md) | **中文**
+
 # API: wingman.file
 
 文件 IO 模块，基于 `std::filesystem` 提供常用文件与目录操作，二进制安全、路径支持非 ASCII 字符。

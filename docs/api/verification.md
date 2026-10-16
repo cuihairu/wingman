@@ -1,3 +1,5 @@
+> [English](verification.en.md) | **中文**
+
 # API: wingman.verification
 
 TOTP（双因素认证）纯工具函数模块。

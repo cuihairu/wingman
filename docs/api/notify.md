@@ -1,3 +1,5 @@
+> [English](notify.en.md) | **中文**
+
 # API: wingman.notify
 
 通知模块，提供统一的通知与告警出口，支持日志、toast、webhook 和事件桥接。

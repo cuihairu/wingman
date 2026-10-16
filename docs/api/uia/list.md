@@ -1,3 +1,5 @@
+> [English](list.en.md) | **中文**
+
 # API: UIA List
 
 列表（List）控件显示可选择的项目集合，常用于：

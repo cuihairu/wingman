@@ -1,3 +1,5 @@
+> [English](crypto.en.md) | **中文**
+
 # API: wingman.crypto
 
 crypto 模块提供密码学原语，包括 AES-256-GCM 对称加解密、密钥派生（PBKDF2）、盐值/随机字节生成、哈希、以及 base64 / hex 编码。

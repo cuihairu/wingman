@@ -1,3 +1,5 @@
+> [English](system.en.md) | **中文**
+
 # API: wingman.system
 
 系统模块，提供 CPU、内存、磁盘、GPU 和操作系统信息查询功能。

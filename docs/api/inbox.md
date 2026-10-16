@@ -1,3 +1,5 @@
+> [English](inbox.en.md) | **中文**
+
 # API: wingman.inbox
 
 Inbox 模块提供基于 TCP 的消息收件箱功能，用于接收和处理来自服务器的消息。

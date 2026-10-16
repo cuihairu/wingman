@@ -1,3 +1,5 @@
+> [English](process.en.md) | **中文**
+
 # API: wingman.process
 
 进程管理模块，提供进程查找、启动、终止等功能。

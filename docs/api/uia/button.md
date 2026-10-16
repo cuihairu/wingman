@@ -1,3 +1,5 @@
+> [English](button.en.md) | **中文**
+
 # API: UIA Button
 
 按钮控件是最常见的 UI 元素，用于触发操作、提交表单、确认对话框等。

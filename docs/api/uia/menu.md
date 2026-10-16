@@ -1,3 +1,5 @@
+> [English](menu.en.md) | **中文**
+
 # API: UIA Menu
 
 菜单（Menu）控件用于组织命令和选项，常见于：

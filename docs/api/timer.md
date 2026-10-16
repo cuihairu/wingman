@@ -1,3 +1,5 @@
+> [English](timer.en.md) | **中文**
+
 # API: wingman.timer
 
 定时器模块，提供一次性/周期性定时回调与同步睡眠能力，用于在脚本中安排延时任务。

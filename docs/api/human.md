@@ -1,3 +1,5 @@
+> [English](human.en.md) | **中文**
+
 # API: wingman.human
 
 人性化模拟模块，为自动化操作添加随机性和自然感。

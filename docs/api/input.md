@@ -1,3 +1,5 @@
+> [English](input.en.md) | **中文**
+
 # API: wingman.input
 
 输入模拟模块，提供鼠标和键盘输入的模拟功能。

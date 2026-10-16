@@ -1,3 +1,5 @@
+> [English](config.en.md) | **中文**
+
 # API: wingman.config
 
 配置管理模块，用于读写应用程序配置。

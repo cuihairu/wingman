@@ -1,3 +1,5 @@
+> [English](checkbox.en.md) | **中文**
+
 # API: UIA CheckBox
 
 复选框（CheckBox）用于多选项选择场景，用户可以勾选或取消勾选多个选项。常见场景包括：

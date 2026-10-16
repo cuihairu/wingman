@@ -1,3 +1,5 @@
+> [English](kv.en.md) | **中文**
+
 # API: wingman.kv
 
 持久化键值存储模块，提供类 Redis 的数据存储功能，支持 String、Hash、List 等数据结构。

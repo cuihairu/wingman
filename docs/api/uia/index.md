@@ -1,3 +1,5 @@
+> [English](index.en.md) | **中文**
+
 # API: wingman.uia
 
 UI Automation 模块，用于与 UI 控件进行自动化交互。

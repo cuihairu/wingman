@@ -1,3 +1,5 @@
+> [English](window.en.md) | **中文**
+
 # API: UIA Window
 
 窗口（Window）控件代表应用程序的主窗口、对话框或弹出窗口。

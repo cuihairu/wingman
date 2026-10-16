@@ -1,3 +1,5 @@
+> [English](security.en.md) | **中文**
+
 # API: wingman.security
 
 安全模块，提供环境检测、加密解密、随机偏移等安全相关功能。

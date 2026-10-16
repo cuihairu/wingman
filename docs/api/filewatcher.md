@@ -1,3 +1,5 @@
+> [English](filewatcher.en.md) | **中文**
+
 # API: wingman.filewatcher
 
 文件监听模块，提供对文件/目录变更的监视与回调能力，用于在脚本中响应文件系统事件。

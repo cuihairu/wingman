@@ -1,3 +1,5 @@
+> [English](slider.en.md) | **中文**
+
 # API: UIA Slider
 
 滑块（Slider）控件用于调节数值，如音量、亮度、对比度等。

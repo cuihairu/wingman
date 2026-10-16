@@ -1,3 +1,5 @@
+> [English](systemwatch.en.md) | **中文**
+
 # API: wingman.systemwatch
 
 统一系统事件源（进程/窗口两腿），轮询式监听进程与窗口快照变化，命中注册目标时触发回调。
