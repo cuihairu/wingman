@@ -1,3 +1,5 @@
+> **English** | [中文](zh/architecture-decisions)
+
 # Wingman Architecture Decisions
 
 This document records hard architecture constraints for Wingman. It is written for maintainers and AI coding agents. Do not introduce code that violates these decisions without an explicit architecture change approved by the project owner.
