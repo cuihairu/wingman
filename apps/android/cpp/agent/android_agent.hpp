@@ -49,7 +49,11 @@ public:
         std::string filesDir;
     };
 
-    AndroidAgent() = default;
+    // 构造/析构均出内联（.cpp 内 =default/定义）：assetDispatcher_ 是
+    // unique_ptr<RpcDispatcher>（头内仅前向声明），内联默认构造会在
+    // jni_bridge.cpp 等只有前向声明的 TU 实例化成员析构（sizeof 不完整
+    // 类型编译错，nightly Android arm64 2026-10-18 实证）
+    AndroidAgent();
     ~AndroidAgent();
 
     AndroidAgent(const AndroidAgent&) = delete;

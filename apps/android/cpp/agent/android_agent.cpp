@@ -75,6 +75,8 @@ CommandResult dispatchViaRpcDispatcher(rpc::RpcDispatcher& dispatcher,
 
 } // namespace
 
+AndroidAgent::AndroidAgent() = default;
+
 AndroidAgent::~AndroidAgent() {
     stop();
 }
