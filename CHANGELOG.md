@@ -15,7 +15,8 @@
 - **修复 1（`75ac68f`）**：从 `ae82920^` 字节级恢复 workflow 引用集（`ci/setup-vcpkg.{sh,ps1}`、`ci/configure-unix.sh`、`ci/configure-windows.ps1`、`ci/run-windows-coverage.ps1`、`ci/seed-vcpkg-downloads.sh` + `vcpkg-downloads/` 两载荷，seed 按 `dirname $0` 解析故一并恢复）；`sha512sum -c` 供应链校验过；未引用的 14 个本地开发脚本维持删除。教训已记：删脚本前先 grep `.github/workflows/` 引用。
 - **修复 2（`ff65343`）**：API Typing Drift Audit 红——并行席两笔新 API（`orchestration.history(limit)`、`uia.tree(root,maxDepth)`）未重生成 `assets/vscode-wingman-lua/wingman.d.lua`；`gen_lua_hints.py` 补 9 行、二次跑幂等。**API 面变更后必须重跑 `scripts/gen_lua_hints.py` 并提交生成物**。
 - **修复 3（`5011ed2`）**：C++ Windows coverage 档自 2026-10-15 起确定性红——全 2187 测试 PASSED、日志无 FAILED 行，OCPP 子进程 exit 相位返回 1。ps1 注释自述「OCPP 退出码不可靠、以 FAILED 汇总行为准」，exit-1 分支与该口径矛盾；改为 FAILED 行一票否决不变、PASSED 无 FAILED 判过并回显日志尾 60 行（exit 相位证据现可在 job 日志查，未见 teardown 报错，异常根因待后续定位——涉及 10-15 起并行席的 C++ 树）。
-- **验证**：CI run 39053329028 全 13 job 绿（10-15 以来首次全绿：C++ Linux/macOS/ubuntu-22.04/Windows 双引擎、Go 三平台、四个审计守卫全过）；nightly 手动 `workflow_dispatch` 补跑恢复断链（run 39055765947）。
+- **修复 4（`d3dd11e`）**：nightly 补跑（run 39055765947）大面恢复后 Android arm64 红——`006aa09` 给 `AndroidAgent` 加 `unique_ptr<rpc::RpcDispatcher> assetDispatcher_`（头内前向声明）但构造仍是头内 `= default`，`jni_bridge.cpp` 的 `make_unique<AndroidAgent>` 在不完整类型 TU 实例化默认构造（libc++ 要求成员析构完整类型），arm64/x86_64 双 ABI 同炸；10-16 起 nightly 死在 vcpkg 步掩盖了此红。修法：构造出内联（`.cpp` 内 `= default`，与析构同模式）。
+- **验证（终局）**：CI run 39053329028 全 13 job 绿（10-15 以来首次全绿）；nightly run 39058221591 全 17 job 绿——Android arm64 13m3s ✓（ctor 修复实证）、macOS x64 25m29s ✓（原 51s 快败位）、发布资产四步全过，滚动 nightly 交付面完整恢复。教训：nightly 是 Android 唯一编译面，其断链会让 app 层回归静默累积两轮以上。
 
 ### docs（2026-10-17，自定义事件通知桥接裁决收口）
 
