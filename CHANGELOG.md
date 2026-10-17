@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### ci（2026-10-18，修复 CI 连红与 nightly 断链）
+
+- **根因**：`ae82920`（提交名「docs: set readme logo to 64x64」）整体删除了 `build-scripts/` 23 个文件，而全部 workflow 仍引用其中 6 个 CI 脚本——nightly 与 CI 自 2026-10-16 起在 `Setup vcpkg` 步 exit 127 快败（Linux 1m38s / macOS 51s）。
+- **修复 1（`75ac68f`）**：从 `ae82920^` 字节级恢复 workflow 引用集（`ci/setup-vcpkg.{sh,ps1}`、`ci/configure-unix.sh`、`ci/configure-windows.ps1`、`ci/run-windows-coverage.ps1`、`ci/seed-vcpkg-downloads.sh` + `vcpkg-downloads/` 两载荷，seed 按 `dirname $0` 解析故一并恢复）；`sha512sum -c` 供应链校验过；未引用的 14 个本地开发脚本维持删除。教训已记：删脚本前先 grep `.github/workflows/` 引用。
+- **修复 2（`ff65343`）**：API Typing Drift Audit 红——并行席两笔新 API（`orchestration.history(limit)`、`uia.tree(root,maxDepth)`）未重生成 `assets/vscode-wingman-lua/wingman.d.lua`；`gen_lua_hints.py` 补 9 行、二次跑幂等。**API 面变更后必须重跑 `scripts/gen_lua_hints.py` 并提交生成物**。
+- **修复 3（`5011ed2`）**：C++ Windows coverage 档自 2026-10-15 起确定性红——全 2187 测试 PASSED、日志无 FAILED 行，OCPP 子进程 exit 相位返回 1。ps1 注释自述「OCPP 退出码不可靠、以 FAILED 汇总行为准」，exit-1 分支与该口径矛盾；改为 FAILED 行一票否决不变、PASSED 无 FAILED 判过并回显日志尾 60 行（exit 相位证据现可在 job 日志查，未见 teardown 报错，异常根因待后续定位——涉及 10-15 起并行席的 C++ 树）。
+- **验证**：CI run 39053329028 全 13 job 绿（10-15 以来首次全绿：C++ Linux/macOS/ubuntu-22.04/Windows 双引擎、Go 三平台、四个审计守卫全过）；nightly 手动 `workflow_dispatch` 补跑恢复断链（run 39055765947）。
+
 ### docs（2026-10-17，自定义事件通知桥接裁决收口）
 
 - **裁决**：台账「订阅 `event.*` 与 `task.*` 的通知桥接」待拍板项代决关闭（理由全文见 `docs/development-todo.md` 条目内联）——v1 不做脚本自定义事件通配桥接（不引入 EventHub tap/前缀订阅语义面，与 :88/:89 同口径）、不做通知侧自动规则（级别映射属产品语义，显式 `wingman.notify` 路径已足）。现码与裁决一致（`installSystemEventBridge` 订阅表 25 项全为显式枚举），本项为文档收口非代码改动。post-1.0 重启条件与侦察落点（emit 侧显式标记直推 EventBuffer，不改 EventHub 订阅语义）已存台账。
