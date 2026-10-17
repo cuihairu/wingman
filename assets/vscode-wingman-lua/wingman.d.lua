@@ -1150,6 +1150,10 @@ function orchestration.get_all_workflows() end
 ---@return any
 function orchestration.get_workflow(workflowId) end
 
+---@param limit? integer
+---@return any
+function orchestration.history(limit) end
+
 ---@param workflow any
 ---@return any
 function orchestration.submit_workflow(workflow) end
@@ -1844,6 +1848,11 @@ function uia.on_structure_changed(name, callback) end
 ---@param listenerId integer
 ---@return boolean
 function uia.remove_event_listener(listenerId) end
+
+---@param root? any
+---@param maxDepth? integer
+---@return any
+function uia.tree(root, maxDepth) end
 
 ---@param selector any
 ---@param timeout integer
