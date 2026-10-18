@@ -2,9 +2,10 @@
 
 # 真机验证指引（macOS 运行时 / Linux XRecord 桌面）
 
-todo.md「跨平台验证」两项中，macOS 腿依赖真实 macOS 桌面会话（headless CI 无法
+跨平台验证两项中，macOS 腿依赖真实 macOS 桌面会话（headless CI 无法
 覆盖）；Linux XRecord 腿在 Xvfb（RECORD 1.13）下已实测可跑通——2026-09-24 修复
-录制启动时序缺陷后 `RecorderX11E2E` 在 Xvfb 真实执行（见 todo.md 同名条目），
+录制启动时序缺陷后 `RecorderX11E2E` 在 Xvfb 真实执行（2026-09-30 本机实证
+PASS），
 仅无 X server / 无 RECORD 环境才判 SKIP。本文档是两个验证脚本的逐步操作指引：
 前置条件、系统授权项、预期输出与通过判定。脚本本身已自动化断言，人工只负责准备
 环境、响应授权弹窗与记录结果。
@@ -79,7 +80,7 @@ PASS: macOS 可自动化验证项全部通过。
     按键、焦点切换后注入去向是否符合预期；
   - **录屏授权弹窗行为**：拒绝授权后截图返回值的降级表现；
   - `cocoa_window` 的 **activate 后台激活语义**（后台激活常无效、hide 实为最小化
-    等已知语义疑点，见 todo.md 三后端装配断链条目）；
+    等已知语义疑点）；
   - 通知 / 系统休眠交互。
 
 ---
@@ -92,8 +93,9 @@ PASS: macOS 可自动化验证项全部通过。
   不适用（脚本依赖 X11 RECORD 扩展，走 `XOpenDisplay` 链路）。
 - X server 带 **RECORD 扩展**（标准 Xorg 默认启用）。Xvfb（RECORD 1.13）已实测
   可用：2026-09-24 修复录制启动时序缺陷后，`EnableContext` 正常、用例在 Xvfb 下
-  真实执行（本机 Xvfb 实跑脚本 PASS，口径见 todo.md「Linux 宏录制（XRecord）真
-  桌面验证」条目）。GTEST_SKIP 仅发生在无 X server（`DISPLAY` 不可用）或 RECORD
+  真实执行（2026-09-30 本机实跑脚本 PASS——记录见脚本头注与
+  `docs/development-todo.md`「真机验证自动化」条目）。GTEST_SKIP 仅发生在无 X
+  server（`DISPLAY` 不可用）或 RECORD
   不可用的环境。
 - 已按 BUILD.md 完成过一次构建配置（脚本复用既有 `build/` 缓存，缺测试二进制时
   才自动构建；`--build` 强制重建）。
@@ -132,13 +134,13 @@ PASS: XRecord 捕获 + JSON 序列化闭环验证通过。
 - **失败**：exit 1（用例 `[  FAILED  ]` 或进程非零退出）。
 - **人工观察项**：回放（playback）**时序手感**——自动化只覆盖「捕获 → 保存」
   两步；真实键鼠录制后的回放节奏（按下/释放间隔保持、回放速率观感）需真人操作
-  判定，见 todo.md「Linux 宏录制（XRecord）真桌面验证」条目。
+  判定。
 
 ---
 
 ## 结果回填
 
-验证完成后回填 todo.md 对应条目（勾选并注明）：日期、平台版本（macOS 版本 /
+验证完成后回填 `docs/development-todo.md` 对应条目（勾选并注明）：日期、平台版本（macOS 版本 /
 Linux 发行版 + 桌面环境）、脚本输出摘要（PASS 行 + 用例数）、人工观察项的结论。
 headless CI 无法替代 macOS 腿；Linux 腿的 Xvfb（RECORD 1.13）已实测可跑通，但
 真桌面会话仍是推荐口径（回放时序手感需真人观察）。如环境暂缺，保留条目不勾选即可。

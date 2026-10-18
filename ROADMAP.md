@@ -359,7 +359,7 @@ Runtime 不作为远程控制 server 被 Go server 反向拨入。
 
 **目标**: 类似 Chimpeeon 的可视化配置界面
 
-**状态**: 完成 (2026-09-22 校准) — 本地 Tauri GUI 六页面 + 远程 Dashboard 九页面全部可用；GUI↔IPC↔Runtime 跨语言集成测试（Rust spawn 真 runtime 子进程）通过；macOS 真机运行时验证为独立遗留项（见 todo.md 跨平台验证）
+**状态**: 完成 (2026-09-22 校准) — 本地 Tauri GUI 六页面 + 远程 Dashboard 九页面全部可用；GUI↔IPC↔Runtime 跨语言集成测试（Rust spawn 真 runtime 子进程）通过；macOS 真机运行时验证为独立遗留项（见 docs/guides/manual-verification.md）
 
 **已完成**:
 - [Tauri 2.0 框架集成]
@@ -620,10 +620,10 @@ local wingman = require('wingman')
 | P2 | Android A3 受限设置引导（Android 13+ 侧载开箱：手动允许/adb 预授权/Device Owner） | — | ✅ 已完成（2026-09-30，android-agent-design.md §10''：手册 + scripts/android-restricted-settings.sh + App 内引导） |
 | P3 | Android A4 多设备编排（Dashboard 设备视图/批量下发/asset.sync 模板分发） | - | ✅ 已完成（2026-10-13 服务端+Dashboard / 2026-10-15 端侧，真机走查待真机） |
 | P1 | Dashboard Monitor triggers 接真实 API（需扩 agent 协议） | 1周 | ✅ list/toggle + add/update/remove CRUD 全链路（runtime Dispatcher Reuse，agents:manage） |
-| P2 | 跨平台运行时验证（macOS/Linux，需真机） | — | ⬜ 待验证 |
+| P2 | 跨平台运行时验证（macOS/Linux，需真机） | — | ◐ Linux XRecord 腿已验（2026-09-30 Xvfb 实测 PASS，`scripts/verify-xrecord-desktop.sh`，见 docs/guides/manual-verification.md）；macOS 腿待真机桌面会话（headless CI 无法覆盖，人工执行 `scripts/verify-macos-runtime.sh`） |
 | P2 | Swagger/OpenAPI 文档 | — | ✅ 全端点注解补全 + typed schema（workflows/scripts/debugger/triggers）+ 统一 ErrorResponse（401/403/404/500）+ 双注册路由标注，swag init 生成 docs，`/swagger/` UI 可用 |
 | P2 | 自动发布（tag→release）+ 打包分发 | — | ✅ `v*` tag 推送自动发布：CHANGELOG 提取 notes → draft → 三平台构建上传 → SHA256SUMS → publish（release.yml） |
-| ✅ | 代码缺陷修复（10 项，见 todo.md「✅ 代码缺陷」） | - | ✅ 已完成 |
+| ✅ | 代码缺陷修复（10 项） | - | ✅ 已完成 |
 | ✅ | 远程连接状态回调通知 GUI + EventBuffer 公平性 + 全局快捷键 | - | ✅ 已完成 |
 | ✅ | RBAC 权限系统（Go orchestrator，PermissionRequired 已接线 8 权限码） | - | ✅ 已完成 |
 | ✅ | Runtime IPC 事件推送（log/trigger/script/connection，pull 模型） | - | ✅ 已完成 |

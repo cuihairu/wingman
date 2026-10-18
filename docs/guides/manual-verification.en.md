@@ -2,11 +2,11 @@
 
 # Manual Verification Guide (macOS Runtime / Linux XRecord Desktop)
 
-Of the two items under todo.md「跨平台验证」, the macOS leg depends on a real
+Of the two cross-platform verification items, the macOS leg depends on a real
 macOS desktop session (headless CI cannot cover it); the Linux XRecord leg has
 been verified to actually run under Xvfb (RECORD 1.13) — after the
 recording-start timing defect was fixed on 2026-09-24, `RecorderX11E2E`
-executes for real under Xvfb (see the entry of the same name in todo.md), and
+executes for real under Xvfb (verified passing on this machine on 2026-09-30), and
 only environments with no X server / no RECORD are judged SKIP. This document
 is a step-by-step operating guide for the two verification scripts:
 prerequisites, system authorization items, expected output, and pass criteria.
@@ -100,8 +100,7 @@ Output when the environment is invalid: not macOS →
     after authorization is denied;
   - The **activate background-activation semantics** of `cocoa_window` (known
     semantic doubts such as background activation often being ineffective and
-    hide actually being minimize; see the three-backend assembly broken-chain
-    entry in todo.md);
+    hide actually being minimize);
   - Notification / system-sleep interactions.
 
 ---
@@ -117,8 +116,9 @@ Output when the environment is invalid: not macOS →
   Xorg). Xvfb (RECORD 1.13) has been verified to work: after the
   recording-start timing defect was fixed on 2026-09-24, `EnableContext` works
   normally and the cases execute for real under Xvfb (the script actually run
-  under local Xvfb PASSES; the standard is recorded in the todo.md「Linux
-  宏录制（XRecord）真桌面验证」 entry). GTEST_SKIP happens only in
+  under local Xvfb PASSED on 2026-09-30 — the record is kept in the script's
+  header comment and the 「真机验证自动化」 entry of
+  `docs/development-todo.md`). GTEST_SKIP happens only in
   environments with no X server (`DISPLAY` unavailable) or no RECORD.
 - A build configuration has been completed once per BUILD.md (the script
   reuses the existing `build/` cache and only auto-builds when the test binary
@@ -166,14 +166,13 @@ works, see the prerequisites above).
 - **Manual observation item**: the **timing feel** of playback — automation
   covers only the 「捕获 → 保存」 (capture → save) steps; the replay rhythm of
   a real keyboard/mouse recording (press/release interval fidelity, perceived
-  replay speed) must be judged by a human; see the todo.md「Linux 宏录制
-  （XRecord）真桌面验证」 entry.
+  replay speed) must be judged by a human.
 
 ---
 
 ## Result Backfill
 
-After verification, backfill the corresponding todo.md entry (check it and
+After verification, backfill the corresponding entry in `docs/development-todo.md` (check it and
 note): the date, the platform version (macOS version / Linux distribution +
 desktop environment), a summary of the script output (the PASS line + the case
 count), and the conclusions for the manual observation items. Headless CI

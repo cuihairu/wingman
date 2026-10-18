@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+### docs（2026-10-19，台账引用漂移清理 + 跨平台验证状态对齐）
+
+- **背景**：上一批 ROADMAP 对齐时发现多处文档仍指向 todo.md 早已不存在的节（todo.md 2026-10-16 压缩为摘要后未同步引用方）。
+- **修正**：`docs/guides/manual-verification.{md,en.md}` 四处 todo.md 条目引用（「跨平台验证」两项 / 「三后端装配断链」/「Linux 宏录制（XRecord）真桌面验证」/ 结果回填指引）——前三处改为自包含表述或指向 `docs/development-todo.md`「真机验证自动化」条目与脚本头注（记录实际在位处），回填指引改指 `docs/development-todo.md`（现行台账）；`ROADMAP.md` M5 状态行「见 todo.md 跨平台验证」→ 指向 manual-verification.md；「下一阶段行动」跨平台验证行 ⬜ 待验证 → ◐ 拆分（Linux XRecord 腿 2026-09-30 Xvfb 实测 PASS 已在案；macOS 腿待真机桌面会话，headless CI 不可覆盖，人工执行 verify-macos-runtime.sh）；「代码缺陷修复 10 项」行删除悬空节指针。
+- **门禁**（docs-only）：`npm --prefix docs run docs:build` 绿（24.93s）。
+
 ### feat（2026-10-19，agent TCP 链路 TLS 终结部署栈（形态 A 落地））
 
 - **背景**：`docs/agent-token-auth-design.md` §6.3 两形态对比此前只有定案没有交付物——agent ⇄ Go server 的自定义裸 TCP 8888（16B 头 + JSON 帧协议）全程明文，脚本内容/命令载荷/上报事件可被链路被动嗅探。
