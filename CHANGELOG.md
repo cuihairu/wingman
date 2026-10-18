@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### feat（2026-10-19，agent TCP 链路 TLS 终结部署栈（形态 A 落地））
+
+- **背景**：`docs/agent-token-auth-design.md` §6.3 两形态对比此前只有定案没有交付物——agent ⇄ Go server 的自定义裸 TCP 8888（16B 头 + JSON 帧协议）全程明文，脚本内容/命令载荷/上报事件可被链路被动嗅探。
+- **交付**：`deployments/tls/` 三件——`docker-compose.yml`（nginx:1.27-alpine，stream/ssl 模块官方镜像静态编译零额外依赖，external wingman-net 并入既有演示栈不改原栈，9443→wingman-server:8888，healthcheck 走容器内 127.0.0.1:8085 本地端点）+ `nginx-stream-tls.conf`（stream{} 四层 TLS 终结：帧协议非 HTTP 不能走 http{} 反代；proxy_timeout 2h 不先于协议层断链）+ `README.md`（保护边界先读节：防被动嗅探、不防主动 MITM——agent 不校验证书，token 侧 challenge HMAC 兜底，证书 PIN 属形态 B 待立项；自签/CA 两可；接线三场景：演示栈并存、独立 server 改 upstream、stunnel 替代）。
+- **验证（本机 e2e，非 CI 门禁）**：本地构建 Go server 起 agent listener 127.0.0.1:18888，nginx 按交付配置同款（仅 upstream/listen 两行端口适配，diff 复核）TLSv1.3 终结监听 :28888；裸字节按 C++ MessageHeader 16B 布局（orchestrator/server/integration/protocol_test.go 同款）经 TLS 客户端发 agent.register→register_ack（agentId 回显）/agent.heartbeat/PING→PONG 全过；对照组明文直连 18888 同过、明文进 TLS 口被 reset（TLS 强制生效）。
+- **顺带修正与文档对齐**：docs/guides/configuration.md `[remote]` 示例 server_port 误写 9527（HTTP API 口）→ 8888（agent TCP 口，remote_client_config.hpp 默认值）；agent-token-auth-design.md/.en.md §6.3 状态（形态 A 未实施→已落地）；ROADMAP.md M9 A3 行与交付物行（challenge-response 已落地 2026-10-10 此前漏记 + TLS 形态 A 落地/形态 B 待立项）；development-todo.md A3 节补登记项。
+- **门禁**（deployments+docs，未动代码）：`docker compose config` 过；`go build ./...`（orchestrator/server）构建绿（e2e 前置）；`npm --prefix docs run docs:build` 绿（30.85s）。
+
 ### docs（2026-10-18，按架构评审修正失实能力表述）
 
 - **背景**：并行席入库的架构评审（`docs/review/gpt6-luna-review-2026-10-18.md`，`b15c2a7`）指出多处文档能力表述与实现不符；本席逐条核实全部属实后对齐真值。评审正文另指出 Agent TCP 鉴权基线、工作流重启恢复、Execution 日志关联三项工程缺口——属新能力立项，待用户定性，本轮不动。

@@ -994,7 +994,7 @@ wingman-agent start --config /path/to/agent.toml     # 或 -c
 ```toml
 [remote]
 server_ip = "192.168.1.10"
-server_port = 9527
+server_port = 8888
 ```
 
 ---

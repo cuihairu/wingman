@@ -229,7 +229,11 @@ states explicitly that public deployments must enable it.
      brute-force flooding);
    - Dashboard "System Management → Registration Token" page (issuance dialog shows the
      plaintext once + revocation confirmation).
-3. **TLS deployment form** (not implemented—decision between two forms, see below):
+3. **TLS deployment form** (Form A landed 2026-10-19: `deployments/tls/`—an nginx
+   `stream{}` TLS-termination compose + operations doc, zero code on the agent side;
+   verified locally end to end with TLSv1.3 termination and byte-level frame passthrough,
+   see the verification record in that directory's README. Form B not implemented,
+   pending a project proposal—comparison and decision between the two forms below):
    the frame protocol is currently bare TCP (agentcore `asio::ip::tcp::socket` ↔ Go
    `net.Listener`); TLS cannot be transparently layered by a reverse proxy the way HTTP can,
    so a cost/benefit comparison of two forms:
@@ -252,7 +256,8 @@ states explicitly that public deployments must enable it.
      configuration option. It involves full-path changes to reconnection/proxy_tunnel/timeout
      + a test matrix for both ends, and is proposed as a project after review through the
      architecture decision process.
-   - **Decision**: A lands immediately as a demo/intranet deployment guide; B is a
+   - **Decision**: A lands immediately as a demo/intranet deployment guide (✅ 2026-10-19,
+     `deployments/tls/`); B is a
      prerequisite for public production, and together with "Dashboard HTTPS" goes into the
      deployment security milestone; it is not forcibly bundled into the P2 token project.
 

@@ -1,0 +1,43 @@
+# Wingman agent TCP 链路 TLS 终结栈（agent-token-auth-design.md §6.3 形态 A）
+#
+# 用途：给 agent 接入链路（runtime ⇄ Go server 的裸 TCP 8888）叠加 TLS：
+# nginx stream{} 在 9443 终结 TLS、纯 TCP 转发到既有部署栈的
+# wingman-server:8888。runtime 侧零代码改造——只把 [remote] server_port
+# 从 8888 换成 9443（见 README「接线」）。
+#
+# 组网：加入 deployments/docker/docker-compose.yml 的 external wingman-net，
+# 不改动那套栈本身（宿主直连 8888 的旧入口与 9443 TLS 入口并存）。
+#
+# 证书：./certs/ 下自签或 CA 签发均可（agent 不校验证书，边界见 README）。
+# 首次生成自签对：
+#   mkdir -p certs && openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+#     -subj "/CN=wingman-agent-gw" -keyout certs/agent-tls.key -out certs/agent-tls.crt
+#
+# 用法：
+#   docker compose up -d
+#   # runtime 侧 [remote] server_port 改 9443 后重连即走加密链路
+
+name: wingman-agent-tls
+
+services:
+  agent-tls:
+    image: nginx:1.27-alpine
+    container_name: wingman-agent-tls
+    restart: unless-stopped
+    networks: [wingman-net]
+    ports:
+      - "${WINGMAN_AGENT_TLS_PORT:-9443}:9443"
+    volumes:
+      - ./nginx-stream-tls.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    healthcheck:
+      # 配置文件里 127.0.0.1:8085 的本地健康端点（见 nginx-stream-tls.conf）
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8085/healthz >/dev/null"]
+      interval: 15s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+networks:
+  wingman-net:
+    external: true
