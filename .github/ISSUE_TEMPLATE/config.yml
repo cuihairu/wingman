@@ -1,0 +1,14 @@
+# 反馈通道（2026-10-19 建，替代 CONTRIBUTING.md 中"issue / discussion"的悬空引用）
+# 选型口径：GitHub Issues + 轻量 markdown 模板，不引入 Discussions（需额外开启且无人维护）
+blank_issues_enabled: true
+
+contact_links:
+  - name: 架构决策记录 / Architecture decisions
+    url: https://github.com/cuihairu/wingman/blob/main/docs/architecture-decisions.md
+    about: 提架构类需求前先看这里；runtime 禁 HTTP/WS server 等硬约束已登记
+  - name: 路线图 / Roadmap
+    url: https://github.com/cuihairu/wingman/blob/main/ROADMAP.md
+    about: 已规划项与里程碑 M1–M8；提需求前确认是否已在路线图上
+  - name: 变更日志 / Changelog
+    url: https://github.com/cuihairu/wingman/blob/main/CHANGELOG.md
+    about: 已修复问题与已知边界；报 bug 前先确认版本是否已修复

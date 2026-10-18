@@ -88,3 +88,14 @@ scope 举例：`gui` / `runtime` / `server` / `dashboard` / `deps` / `ci`。
 2. PR 描述写清楚：解决了什么、如何验证（贴测试/构建结果）、是否触及架构约束。
 3. CI 全绿后再请求 review。
 4. 涉及架构变更的 PR 需先在 issue / discussion 达成共识。
+
+## 反馈与问题（Feedback / Issues）
+
+问题反馈统一走 [GitHub Issues](https://github.com/cuihairu/wingman/issues)，模板在 `.github/ISSUE_TEMPLATE/`：
+
+- **bug_report.md** — 崩溃、脚本行为异常、API 与文档不符、构建失败（请附组件、平台、commit 或 nightly 文件名、日志片段）
+- **feature_request.md** — 新能力/新平台/API 提案，提交前请勾选架构约束自查项（runtime 禁 HTTP/WS server 等硬约束，见 `docs/architecture-decisions.md`）
+- **question.md** — 使用方式与文档疑义（非缺陷），附最小脚本与已查阅文档
+- **config.yml** — 空白 issue 通道与外部入口（架构决策、路线图、变更日志）
+
+提功能需求前先看 [ROADMAP.md](./ROADMAP.md) 是否已规划；报 bug 前先看 [CHANGELOG.md](./CHANGELOG.md) 确认当前版本是否已修复。
