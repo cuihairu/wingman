@@ -1,3 +1,4 @@
+````text
 [0m
 > build · gpt-6-luna
 [0m→ [0mSkill "code-review" 
@@ -693,6 +694,8 @@ findSlider/findSpinner/findProgressBar | 查无，已搜：全仓 `grep -rn "fin
 > build · gpt-6-luna
 [0m→ [0mRead libs/androidagent/src/android_script_api.cpp [90m[offset=75, limit=45][0m
 > build · gpt-6-luna
+````
+
 ## 1) 最薄弱的 3 处（按风险排序）
 
 1. **Agent TCP 链路缺少默认的 fail-closed 安全基线。**  
