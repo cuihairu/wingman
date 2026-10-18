@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+### docs（2026-10-18，代决修正首访语言跳转方向）
+
+- **背景**：`c2f96be` 给 `docs/index.md` 加浏览器语言首访跳转，但方向与站点实际语言映射相反——根页 `/wingman/` 本就是中文（hero/快速开始全中文），英文首页是 `index.en.html`；原实现把 zh 浏览器跳去 `/wingman/zh/`（一份重复的中文文档清单页），非 zh 浏览器反而停留在中文首页。
+- **已代决（2026-10-18，按 2026-10-14 授权）**：根页保持中文不动（不重排 locale 结构），zh 浏览器留在根页、非 zh 浏览器首访跳 `index.en.html`（dist 为 `.html` 形态、`cleanUrls` 未设，已核路由）；localStorage 手动选择优先级不变，点击回写补记英文选择（原实现无法记住英文偏好）。改写 `docs/index.md` 脚本块，编译产物已核（`assets/index.md.*.js` 内 onBeforeMount 逻辑与裁决一致）。
+- **门禁**（docs-only）：`npm --prefix docs run docs:build` 绿（23.31s）。
+
 ### ci（2026-10-18，修复 CI 连红与 nightly 断链）
 
 - **根因**：`ae82920`（提交名「docs: set readme logo to 64x64」）整体删除了 `build-scripts/` 23 个文件，而全部 workflow 仍引用其中 6 个 CI 脚本——nightly 与 CI 自 2026-10-16 起在 `Setup vcpkg` 步 exit 127 快败（Linux 1m38s / macOS 51s）。

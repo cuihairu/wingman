@@ -45,11 +45,16 @@ features:
 <script setup lang="ts">
 // 首次访问按浏览器语言选择文档语言（vitepress 无此能力，GitHub Pages 不支持 _redirects）
 // 优先级：localStorage 手动选择 > navigator.language > 保持当前 locale
+//
+// 已代决（2026-10-18）：本页（/wingman/ 根）内容是中文，英文首页是 index.en.html；
+// 因此 zh 浏览器留在本页（原先跳 /zh/ 是重复的中文清单页，方向反了），
+// 非 zh 浏览器跳英文首页。裁决理由见 CHANGELOG（ci/docs 2026-10-18 条目）。
 import { onBeforeMount } from 'vue'
 const KEY = 'wingman-lang-auto-picked'
 const BASE = '/wingman/'
 const ROOT_PATH = BASE
-const ZH_PATH = BASE + 'zh/'
+const ZH_PREFIX = BASE + 'zh/'
+const EN_PATH = BASE + 'index.en.html'
 onBeforeMount(() => {{
   if (typeof window === 'undefined') return
   const p = window.location.pathname
@@ -57,13 +62,14 @@ onBeforeMount(() => {{
   const picked = localStorage.getItem(KEY)
   if (picked) {{ if (picked !== p) window.location.replace(picked); return }}
   const langs = (navigator.languages?.length ? navigator.languages : [navigator.language]).map(l => l.toLowerCase())
-  if (langs.some(l => l.startsWith('zh'))) window.location.replace(ZH_PATH)
+  if (!langs.some(l => l.startsWith('zh'))) window.location.replace(EN_PATH)
 }})
 if (typeof window !== 'undefined') {{
   window.addEventListener('click', (e) => {{
     const a = (e.target as HTMLElement)?.closest?.('a') as HTMLAnchorElement | null
     const href = a?.getAttribute('href') || ''
-    if (href.startsWith(ZH_PATH) || href.startsWith('zh/')) localStorage.setItem(KEY, ZH_PATH)
+    if (href.includes('index.en')) localStorage.setItem(KEY, EN_PATH)
+    else if (href.startsWith(ZH_PREFIX) || href.startsWith('zh/')) localStorage.setItem(KEY, ROOT_PATH)
     else if (href === ROOT_PATH || href === ROOT_PATH.slice(0, -1)) localStorage.setItem(KEY, ROOT_PATH)
   }}, true)
 }}
