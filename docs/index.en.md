@@ -32,7 +32,7 @@ features:
     details: Supports Windows, macOS and Linux behind a unified interface abstraction
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="13.5" r="4"/><path d="M12 9.5V6.5"/><path d="m10.4 4.9 1.6 1.6 1.6-1.6"/><path d="M8 13.5H4.5"/><path d="M20 13.5h-3.5"/><path d="m8.4 10.2-2.2-2.2"/><path d="m15.6 10.2 2.2-2.2"/><path d="m8.4 16.8-2.2 2.2"/><path d="m15.6 16.8 2.2 2.2"/></svg>'
     title: Debugging Support
-    details: VS Code extension support, with breakpoint debugging, variable inspection and performance profiling
+    details: VS Code Lua hints extension; breakpoint debugging planned (script debugger is a stub placeholder)
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M3.5 18.5C7 11 11 20.5 20.5 6"/><path d="m17.5 5.5 3.4.6-.7 3.4"/><circle cx="6" cy="7" r="2"/><path d="M6 9v3.5"/></svg>'
     title: Human-like Input
     details: Bézier-curve mouse movement, random delays and a natural-operation mode
@@ -63,7 +63,7 @@ features:
 - **Macro recording** - record mouse and keyboard operations, replay automatically
 - **Trigger system** - pixel triggers, timed triggers, conditional combinations
 - **Orchestration layer** - the runtime agent connects out to the Go server, and the Dashboard connects only to the Go server
-- **Debugger** - a VS Code extension with breakpoint debugging and variable inspection
+- **Debugger** - breakpoint debugging planned (stub placeholder for now); VS Code Lua hints extension available
 - **Human-like input** - Bézier curves, random delays, natural operation
 - **Storage system** - a four-layer storage architecture supporting local and remote data persistence
 - **Version management** - dynamic version information with support for nightly builds

@@ -15,10 +15,10 @@
 | 鼠标模拟 | ✅ | ✅ 已实现 | ✅ 完成 |
 | 远程控制 | ✅ 流式支持 | ✅ TCP Server | ✅ 完成 |
 | Lua 脚本 | ❌ | ✅ 核心特性 | ✅ 完成 |
-| VS Code 调试 | ❌ | ✅ 已规划 | 🚧 进行中 |
+| VS Code 调试 | ❌ | ❌ stub 占位未实现（debugger_module.cpp start() 恒 false） | ❌ 未实现 |
 | 防检测 | ✅ | ✅ 人性化模拟 | ✅ 完成 |
 | UI Automation | ❌ | ✅ 已实现 | ✅ 完成 |
-| WebSocket | ❌ | ✅ 已实现 | ✅ 完成 |
+| WebSocket | ❌ | ❌ 枚举占位未实现（transport 工厂返 nullptr，测试 WebSocketTypeUnsupported 锁定） | ❌ 未实现 |
 
 ---
 

@@ -32,7 +32,7 @@ features:
     details: 支持 Windows、macOS、Linux，统一接口抽象
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="13.5" r="4"/><path d="M12 9.5V6.5"/><path d="m10.4 4.9 1.6 1.6 1.6-1.6"/><path d="M8 13.5H4.5"/><path d="M20 13.5h-3.5"/><path d="m8.4 10.2-2.2-2.2"/><path d="m15.6 10.2 2.2-2.2"/><path d="m8.4 16.8-2.2 2.2"/><path d="m15.6 16.8 2.2 2.2"/></svg>'
     title: 调试支持
-    details: VS Code 插件支持，断点调试、变量查看、性能分析
+    details: VS Code Lua 提示插件；断点调试规划中（脚本调试器当前为占位 stub）
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M3.5 18.5C7 11 11 20.5 20.5 6"/><path d="m17.5 5.5 3.4.6-.7 3.4"/><circle cx="6" cy="7" r="2"/><path d="M6 9v3.5"/></svg>'
     title: 拟人化输入
     details: 贝塞尔曲线鼠标移动、随机延迟、自然操作模式
@@ -98,7 +98,7 @@ if (typeof window !== 'undefined') {{
 - **宏录制** - 录制鼠标键盘操作，自动回放
 - **触发器系统** - 像素触发、定时触发、条件组合
 - **编排层** - Runtime agent 主动连接 Go server，Dashboard 只连接 Go server
-- **调试器** - VS Code 插件，断点调试、变量查看
+- **调试器** - 断点调试规划中（当前为占位 stub）；VS Code Lua 提示插件已可用
 - **拟人化输入** - 贝塞尔曲线、随机延迟、自然操作
 - **存储系统** - 四层存储架构，支持本地和远程数据持久化
 - **版本管理** - 动态版本信息，支持 nightly 构建

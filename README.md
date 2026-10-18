@@ -69,8 +69,8 @@ English | [简体中文](README.zh.md)
 | **File IO** | File read/write (binary-safe), move/copy, directory operations (`wingman.file`) |
 | **Global hotkeys** | Polling global key-state monitoring, combo-key callbacks (`wingman.hotkey`, Python callbacks) |
 | **Notifications** | Log/Toast/Webhook/event bridging, script tray intents (`wingman.notify`) |
-| **Debugging** | VS Code breakpoint debugging for Lua scripts (debug components required) |
-| **Android Agent** | On-device Android agent (experimental, arm64 / Android 9.0+); outbound TCP to the Go control plane, script API mirrors the desktop runtime, unified dispatch and visibility from the Dashboard |
+| **Debugging** | VS Code Lua hints extension; breakpoint debugging planned (script debugger is a stub placeholder) |
+| **Android Agent** | On-device Android agent (experimental, arm64 / Android 9.0+); outbound TCP to the Go control plane, script API mirrors the desktop runtime (input/screen/vision subset), unified dispatch and visibility from the Dashboard |
 | **Remote orchestration** | Agent registration/heartbeat/command dispatch (16-byte header + JSON frames, per-command timeout), batch operations (fan-out by ID/tag selectors), DAG workflows, RBAC/audit, Guacamole remote desktop (Go control plane) |
 
 > Some advanced modules (OCR, ML/YOLO, remote orchestration, script debugger) depend on optional components or are still under active development. Default availability follows the current build configuration, runtime parameters and the corresponding API docs.

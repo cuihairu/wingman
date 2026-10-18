@@ -68,8 +68,8 @@ C++ + Lua/Python 的自动化 Agent Runtime + Go 远程编排中控
 | **文件 IO** | 文件读写（二进制安全）、移动复制、目录操作（`wingman.file`） |
 | **全局热键** | 轮询式全局键态监听、组合键回调（`wingman.hotkey`，Python 回调） |
 | **通知系统** | 日志/Toast/Webhook/事件桥接、脚本托盘意图（`wingman.notify`） |
-| **调试支持** | VS Code 断点调试 Lua 脚本（需启用调试组件） |
-| **Android Agent** | Android 端侧 Agent（实验性，arm64 / Android 9.0+），出站 TCP 连 Go 中控，脚本 API 与桌面 runtime 同名同形，Dashboard 统一下发与查看 |
+| **调试支持** | VS Code Lua 提示插件；断点调试规划中（脚本调试器当前为占位 stub） |
+| **Android Agent** | Android 端侧 Agent（实验性，arm64 / Android 9.0+），出站 TCP 连 Go 中控，脚本 API 与桌面 runtime 同名同形（input/screen/vision 子集），Dashboard 统一下发与查看 |
 | **远程编排** | Agent 注册/心跳/命令分发（16 字节头 + JSON 帧、单命令超时）、批量操作（按 ID/标签选择器 fan-out）、DAG 工作流、RBAC/审计、Guacamole 远程桌面（Go 中控） |
 
 > 部分高级模块（OCR、ML/YOLO、远程编排、脚本调试器）依赖可选组件或仍处于持续建设中。默认可用能力以当前构建配置、运行时参数和对应 API 文档为准。

@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### docs（2026-10-18，按架构评审修正失实能力表述）
+
+- **背景**：并行席入库的架构评审（`docs/review/gpt6-luna-review-2026-10-18.md`，`b15c2a7`）指出多处文档能力表述与实现不符；本席逐条核实全部属实后对齐真值。评审正文另指出 Agent TCP 鉴权基线、工作流重启恢复、Execution 日志关联三项工程缺口——属新能力立项，待用户定性，本轮不动。
+- **修正 1（debugger 表述）**：`lib/wingman/src/script/modules/debugger_module.cpp:14` stub 自述「debugger not yet implemented」、`start()` 恒 `false`；`README.zh.md:71`/`README.md:72`/`docs/index.md:35,:101`/`docs/index.en.md:35,:66` 原表述「VS Code 断点调试（需启用调试组件）」暗示可用——全部改为「断点调试规划中（调试器为占位 stub）、VS Code Lua 提示插件已可用」（`assets/vscode-wingman-lua` 插件实体存在）。
+- **修正 2（Android API 面表述）**：Android ScriptRunner 实际只暴露 input/screen/vision 三张子表（`libs/androidagent/src/android_script_api.cpp`，`docs/platforms.md:86-89` 已如实记载）；`README.zh.md:72`/`README.md:73` 的「同名同形 / mirrors the desktop runtime」补「（input/screen/vision 子集）」限定（`docs/index.md:144`/`README.zh.md:154` 原本已枚举三表，不动）。
+- **修正 3（台账失实状态）**：`docs/development-todo.md:18` VS Code 调试行「✅ 已规划 / 🚧 进行中」与 `:21` WebSocket 行「✅ 已实现 / ✅ 完成」均失实——WebSocket 为 transport 枚举占位（工厂返 `nullptr`，测试 `WebSocketTypeUnsupported` 锁定，`libs/transport/README.md:3-4` 自述），且 runtime 禁 WS server 属架构硬约束 №4；两行改 ❌ 未实现并内联证据。
+- **门禁**（docs-only）：`pnpm docs:build` 绿（60.16s）。
+
 ### docs（2026-10-18，代决修正首访语言跳转方向）
 
 - **背景**：`c2f96be` 给 `docs/index.md` 加浏览器语言首访跳转，但方向与站点实际语言映射相反——根页 `/wingman/` 本就是中文（hero/快速开始全中文），英文首页是 `index.en.html`；原实现把 zh 浏览器跳去 `/wingman/zh/`（一份重复的中文文档清单页），非 zh 浏览器反而停留在中文首页。
