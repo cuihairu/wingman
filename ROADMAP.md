@@ -584,7 +584,8 @@ local wingman = require('wingman')
       luac -p 28/28 过；教程引用面指南文档 Lua 片段同步改齐
       （configuration.md 15 处 + api/ini.md 2 处 io.open 与
       api/transport.md 1 处 os.execute 等待改 wingman.file/util，
-      5 处 os.getenv 无引擎等价物按 G-DB-07 先例注解沙箱限制））
+      5 处 os.getenv 无引擎等价物：4 处按 G-DB-07 先例注解沙箱限制、
+      HOME 路径 1 处移出示例表））
 - [x] 示例脚本库
 
 ---
