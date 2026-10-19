@@ -5,7 +5,8 @@
 
 ## 未完成
 
-无。剩余人工项「视频教程实拍录制/SRT/发布」登记在 ROADMAP.md M8.2（分镜脚本与逐字旁白已完备，docs/tutorials/video-storyboard.md；卡点：实拍成片/SRT/发布需人工——机器侧素材预采已推到临门：nightly 单二进制已落 win-worker 且零注入录屏管线全通（sha256 验证、进程预载命令、60fps 录屏、ffprobe 全 PASS），仅剩录制时桌面须解锁（机器空闲自动锁屏，等用户在场解锁或显式授权），见 ROADMAP M8.2 2026-10-20 四轮注）。
+- [ ] 视频教程 EP01 机器侧素材预采（wingman-agent.exe 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（2026.10.18-nightly，sha256 已验），零注入录屏管线已验证，详见 ROADMAP.md M8.2）**BLOCKED**：录制窗口期桌面须解锁——win-worker 空闲自动锁屏（2026-10-20 探针 LockApp/LogonUI 双证 LOCKED），等用户到场解锁或显式授权；解锁后同一任务书约 2 分钟出片
+- [ ] 视频教程人工成片（EP01-EP06 实拍旁白录制/SRT/发布；分镜与逐字旁白 docs/tutorials/video-storyboard.md 已完备，详见 ROADMAP.md M8.2）**BLOCKED**：需人工出镜/配音录制、字幕与发布
 
 ## 已完成
 
