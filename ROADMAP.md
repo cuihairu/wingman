@@ -637,7 +637,7 @@ local wingman = require('wingman')
 | P2 | Android A3 受限设置引导（Android 13+ 侧载开箱：手动允许/adb 预授权/Device Owner） | — | ✅ 已完成（2026-09-30，android-agent-design.md §10''：手册 + scripts/android-restricted-settings.sh + App 内引导） |
 | P3 | Android A4 多设备编排（Dashboard 设备视图/批量下发/asset.sync 模板分发） | - | ✅ 已完成（2026-10-13 服务端+Dashboard / 2026-10-15 端侧，真机走查待真机） |
 | P1 | Dashboard Monitor triggers 接真实 API（需扩 agent 协议） | 1周 | ✅ list/toggle + add/update/remove CRUD 全链路（runtime Dispatcher Reuse，agents:manage） |
-| P2 | 跨平台运行时验证（macOS/Linux，需真机） | — | ◐ Linux XRecord 腿已验（2026-09-30 Xvfb 实测 PASS，`scripts/verify-xrecord-desktop.sh`，见 docs/guides/manual-verification.md）；macOS 腿待真机桌面会话（headless CI 无法覆盖，人工执行 `scripts/verify-macos-runtime.sh`） |
+| P2 | 跨平台运行时验证（macOS/Linux，需真机） | — | ✅ Linux XRecord 腿已验（2026-09-30 Xvfb 实测 PASS，`scripts/verify-xrecord-desktop.sh`，见 docs/guides/manual-verification.md）；macOS 腿经 Platform Verification 工作流验证——macos-latest 真实 macOS 桌面会话跑 `scripts/verify-macos-runtime.sh` 五套件（2026-09-30 run 36715059719/36749601382 两轮绿；2026-10-19 run 39281620438 于 HEAD 1eaba23 复验绿） |
 | P2 | Swagger/OpenAPI 文档 | — | ✅ 全端点注解补全 + typed schema（workflows/scripts/debugger/triggers）+ 统一 ErrorResponse（401/403/404/500）+ 双注册路由标注，swag init 生成 docs，`/swagger/` UI 可用 |
 | P2 | 自动发布（tag→release）+ 打包分发 | — | ✅ `v*` tag 推送自动发布：CHANGELOG 提取 notes → draft → 三平台构建上传 → SHA256SUMS → publish（release.yml） |
 | ✅ | 代码缺陷修复（10 项） | - | ✅ 已完成 |

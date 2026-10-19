@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### docs（2026-10-19，macOS 运行时验证腿核销：Platform Verification 工作流 HEAD 复验绿，ROADMAP ◐→✅）
+
+- ROADMAP 下一阶段行动「跨平台运行时验证」行原断言 macOS 腿「待真机桌面会话（headless CI 无法覆盖，人工执行）」——与仓内既有事实矛盾：`verify-platforms.yml`（2026-09-30 起，workflow_dispatch）在 macos-latest 真实 macOS 桌面会话跑 `scripts/verify-macos-runtime.sh` 五套件（UDS IPC/剪贴板/CGWindowList 截图/FileWatcher/CGEvent 输入），当日已两轮绿（run 36715059719/36749601382）。本轮在 HEAD 1eaba23 手动触发复验 run 39281620438，五套件 success；行改 ✅ 并记三轮绿证。门禁：`npm --prefix docs run docs:build` 绿（docs-only，未编译未跑测试套件）。
+
 ### docs（2026-10-19，UIA 文档面一致性再枚举：元素方法调用语法改齐与指南陈旧断言修正）
 
 - **背景**：文档一致性再枚举线（以现行源码重扫，勿按审计台账复扫），本批扫 uia 文档面（`docs/api/uia/` 全部 zh/en 页 + `docs/guides/uia-guide.md`，真值 = `misc_modules.cpp` uia 注册 + `ui_automation.hpp` + 双引擎 marshal 层）。数据面零漂移：32 个模块函数、UIElement 18 公开方法（19 键含 `_handle` 内部句柄）、`get_info` 9 键、UIARole 21 值 0-20、wait 族默认 3000ms、`tree` 深度钳 1..16、事件回调线程安全门控与 `uia.error`——逐条与源码一致。但**调用语法面与绑定层实现矛盾**（两类系统性失效写法），且 uia-guide.md 多处断言早于 2026-10-09 is_checked/set_checked 落地：① Python：`ScriptValue::Type::Object` 经 python_marshal 转**纯 `py::dict`**（键即方法名，无属性访问）——子页与指南约 50 处 Python 示例用 `el.click()` 属性式，照抄必 AttributeError（index.md 的 `el["click"]()` 括号式才正确）；② Lua：元素对象是普通表，sol variadic 包装全量透传不剥离 self——`el:set_value("x")` / `el:set_checked(b)` 冒号式把元素表混入 args[0]，带参方法静默失效（零参方法因闭包忽略实参侥幸可用），index.md 与全部子页约 150 处冒号式；③ uia-guide.md：「完整方法列表」缺 6 个已实现方法（right_click/get_parent/select/is_checked/set_checked/get_selection）且断言 `select()` 未实现（源码已注册）、勾选状态「C++ 有接口未绑定脚本」（is_checked/set_checked 已绑定）、列表选中状态「脚本层暂不可查」（容器 `get_selection()` 可查）。
