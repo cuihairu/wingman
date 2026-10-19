@@ -39,7 +39,7 @@ point, found = screen.find_image("button.png", {"x": 0, "y": 0, "width": 1920, "
 
 ## UIElement Object
 
-> [The following 12 methods are implemented (Windows UIAutomation + macOS Accessibility, dual platform). UIElement is returned as a script object that references `IUIAElement` internally via a handle.]
+> [The following 18 methods are implemented (Windows UIAutomation + macOS Accessibility, dual platform). UIElement is returned as a script object that references `IUIAElement` internally via a handle.]
 
 **Source**: All lookup functions of the `uia` module
 
@@ -51,16 +51,22 @@ point, found = screen.find_image("button.png", {"x": 0, "y": 0, "width": 1920, "
 |------|------|
 | `get_info()` | Gets element info (returns an ElementInfo object) |
 | `click()` | Clicks the element |
+| `right_click()` | Right-clicks the element (macOS opens the context menu via `AXShowMenu`) |
 | `double_click()` | Double-clicks the element |
 | `focus()` | Sets focus |
-| `get_value()` | Gets the element value |
-| `set_value(value)` | Sets the element value |
+| `get_value()` | Gets the element text (implemented as getText) |
+| `set_value(value)` | Sets the element text (implemented as setText; only effective for text-capable controls) |
 | `get_children()` | Gets the list of child elements |
+| `get_parent()` | Gets the parent element (returns `None`/`nil` past the root) |
 | `expand()` | Expands the element |
 | `collapse()` | Collapses the element |
 | `is_expanded()` | Checks whether it is expanded |
 | `is_visible()` | Checks whether it is visible |
 | `is_enabled()` | Checks whether it is enabled |
+| `is_checked()` | Checks the checked state (Windows Toggle pattern / macOS AXChecked) |
+| `set_checked(checked)` | Sets the checked state (`true`/`false`) |
+| `select()` | Programmatically selects the element (list items/tree nodes/tab items etc.; no mouse movement) |
+| `get_selection()` | Container query for the first selected child (returns `None`/`nil` when none) |
 
 **Example**:
 
@@ -85,10 +91,11 @@ local wingman = require("wingman")
 
 local btn = wingman.uia.find_button("确定")
 if btn then
-    -- 方法名为 snake_case 键（无 camelCase 别名），冒号调用可用
-    local info = btn:get_info()
-    btn:click()
-    if btn:is_enabled() then
+    -- 方法名为 snake_case 键（无 camelCase 别名），点号调用
+    -- （冒号调用会把元素自身混入参数，带参方法如 set_value 会失效）
+    local info = btn.get_info()
+    btn.click()
+    if btn.is_enabled() then
         print("按钮可用")
     end
 end

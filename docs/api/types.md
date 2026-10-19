@@ -39,7 +39,7 @@ point, found = screen.find_image("button.png", {"x": 0, "y": 0, "width": 1920, "
 
 ## UIElement 对象
 
-> [以下 12 方法已实现（Windows UIAutomation + macOS Accessibility 双平台）。UIElement 以脚本对象形式返回，内部通过句柄引用 `IUIAElement`。]
+> [以下 18 方法已实现（Windows UIAutomation + macOS Accessibility 双平台）。UIElement 以脚本对象形式返回，内部通过句柄引用 `IUIAElement`。]
 
 **来源**：所有 `uia` 模块的查找函数
 
@@ -51,16 +51,22 @@ point, found = screen.find_image("button.png", {"x": 0, "y": 0, "width": 1920, "
 |------|------|
 | `get_info()` | 获取元素信息（返回 ElementInfo 对象） |
 | `click()` | 点击元素 |
+| `right_click()` | 右键点击元素（macOS 弹出上下文菜单 `AXShowMenu`） |
 | `double_click()` | 双击元素 |
 | `focus()` | 设置焦点 |
-| `get_value()` | 获取元素值 |
-| `set_value(value)` | 设置元素值 |
+| `get_value()` | 获取元素文本（实为 getText） |
+| `set_value(value)` | 设置元素文本（实为 setText，仅对文本型控件有效） |
 | `get_children()` | 获取子元素列表 |
+| `get_parent()` | 获取父元素（到根之后返回 `None`/`nil`） |
 | `expand()` | 展开元素 |
 | `collapse()` | 折叠元素 |
 | `is_expanded()` | 检查是否已展开 |
 | `is_visible()` | 检查是否可见 |
 | `is_enabled()` | 检查是否可用 |
+| `is_checked()` | 检查勾选状态（win Toggle 模式 / mac AXChecked） |
+| `set_checked(checked)` | 设置勾选状态（`true`/`false`） |
+| `select()` | 编程选中元素（列表项/树节点/标签项等，不移动鼠标） |
+| `get_selection()` | 容器查询首个选中子项（无选中返回 `None`/`nil`） |
 
 **示例**：
 
@@ -85,10 +91,11 @@ local wingman = require("wingman")
 
 local btn = wingman.uia.find_button("确定")
 if btn then
-    -- 方法名为 snake_case 键（无 camelCase 别名），冒号调用可用
-    local info = btn:get_info()
-    btn:click()
-    if btn:is_enabled() then
+    -- 方法名为 snake_case 键（无 camelCase 别名），点号调用
+    -- （冒号调用会把元素自身混入参数，带参方法如 set_value 会失效）
+    local info = btn.get_info()
+    btn.click()
+    if btn.is_enabled() then
         print("按钮可用")
     end
 end
