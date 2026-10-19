@@ -586,6 +586,16 @@ local wingman = require('wingman')
       api/transport.md 1 处 os.execute 等待改 wingman.file/util，
       5 处 os.getenv 无引擎等价物：4 处按 G-DB-07 先例注解沙箱限制、
       HOME 路径 1 处移出示例表））
+      （2026-10-20 三轮：机器侧素材预采走 hermes win-worker
+      （run_9c037b4d57904bb6b076fddc1b911bb8）——环境侧已齐备
+      （Windows 10.0.26300 / 1920x1080 / 100% 缩放 / D 盘在，
+      hello.lua 与 color_detect.lua 在位），但 D:\ 与 C:\Users\
+      深度<=4 全盘无 wingman-agent.exe（该机仓库副本 /d/workspaces/wingman
+      从未产出该 exe，仅有旧 conan-build 工程文件与 runtime 产物），
+      按任务书红线「缺 exe 只报缺项、不 clone 不构建」第 1 步即终止、
+      无产物。机器侧解锁=授权 win-worker 构建或提供 exe 绝对路径
+      （任务书与录制规格已备好可即续，第 2-5 步均未动过）；
+      人工侧实拍旁白/SRT/成片/发布不变）
 - [x] 示例脚本库
 
 ---

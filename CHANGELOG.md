@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### docs（2026-10-20，视频教程 M8.2 卡点精确化：win-worker 素材预采探因）
+
+- 机器侧素材预采经 hermes win-worker 实测（run_9c037b4d57904bb6b076fddc1b911bb8）：环境侧全齐（Windows 10.0.26300 / 1920x1080 / 100% 缩放 / D 盘在、hello.lua 与 color_detect.lua 在位），但 D:\ 与 C:\Users\ 深度<=4 全盘无 `wingman-agent.exe`（该机仓库副本 `/d/workspaces/wingman` 从未产出该 exe，仅存旧 conan-build 工程文件与 runtime 产物），按任务书红线「缺 exe 只报缺项、不 clone 不构建」第 1 步终止、零产物。原账目「录制需真实 Windows 环境人工」的机器侧半段前提已不再成立，ROADMAP M8.2 与 todo.md 卡点改记为「环境可用 + 缺 exe 构建产物，等授权构建或提供 exe 路径」；第 2-5 步（交互桌面/ffmpeg/录制/ffprobe）任务书已备好可即续，人工侧实拍旁白/SRT/成片/发布不变。门禁：`npm --prefix docs run docs:build` 绿（docs-only，未编译未跑测试套件）。
+
 ### docs（2026-10-19，macOS 运行时验证腿核销：Platform Verification 工作流 HEAD 复验绿，ROADMAP ◐→✅）
 
 - ROADMAP 下一阶段行动「跨平台运行时验证」行原断言 macOS 腿「待真机桌面会话（headless CI 无法覆盖，人工执行）」——与仓内既有事实矛盾：`verify-platforms.yml`（2026-09-30 起，workflow_dispatch）在 macos-latest 真实 macOS 桌面会话跑 `scripts/verify-macos-runtime.sh` 五套件（UDS IPC/剪贴板/CGWindowList 截图/FileWatcher/CGEvent 输入），当日已两轮绿（run 36715059719/36749601382）。本轮在 HEAD 1eaba23 手动触发复验 run 39281620438，五套件 success；行改 ✅ 并记三轮绿证。门禁：`npm --prefix docs run docs:build` 绿（docs-only，未编译未跑测试套件）。

@@ -1,11 +1,11 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-10-16
+> 最后更新: 2026-10-20
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
 
-无。剩余人工项「视频教程实拍录制/SRT/发布」登记在 ROADMAP.md M8.2（分镜脚本与逐字旁白已完备，docs/tutorials/video-storyboard.md；卡点：需真实 Windows 环境人工录制）。
+无。剩余人工项「视频教程实拍录制/SRT/发布」登记在 ROADMAP.md M8.2（分镜脚本与逐字旁白已完备，docs/tutorials/video-storyboard.md；卡点：实拍成片/SRT/发布需人工——Windows 环境侧已探明可用（win-worker：1920x1080/100% 缩放），机器侧素材预采的剩余卡点改为缺 wingman-agent.exe 构建产物，等授权构建或提供 exe 路径，见 ROADMAP M8.2 2026-10-20 注）。
 
 ## 已完成
 
