@@ -5,7 +5,7 @@
 
 ## 未完成
 
-无。剩余人工项「视频教程实拍录制/SRT/发布」登记在 ROADMAP.md M8.2（分镜脚本与逐字旁白已完备，docs/tutorials/video-storyboard.md；卡点：实拍成片/SRT/发布需人工——Windows 环境侧已探明可用（win-worker：1920x1080/100% 缩放），机器侧素材预采的剩余卡点改为缺 wingman-agent.exe 构建产物，等授权构建或提供 exe 路径，见 ROADMAP M8.2 2026-10-20 注）。
+无。剩余人工项「视频教程实拍录制/SRT/发布」登记在 ROADMAP.md M8.2（分镜脚本与逐字旁白已完备，docs/tutorials/video-storyboard.md；卡点：实拍成片/SRT/发布需人工——机器侧素材预采已推到临门：nightly 单二进制已落 win-worker 且零注入录屏管线全通（sha256 验证、进程预载命令、60fps 录屏、ffprobe 全 PASS），仅剩录制时桌面须解锁（机器空闲自动锁屏，等用户在场解锁或显式授权），见 ROADMAP M8.2 2026-10-20 四轮注）。
 
 ## 已完成
 

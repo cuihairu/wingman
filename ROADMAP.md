@@ -596,6 +596,16 @@ local wingman = require('wingman')
       无产物。机器侧解锁=授权 win-worker 构建或提供 exe 绝对路径
       （任务书与录制规格已备好可即续，第 2-5 步均未动过）；
       人工侧实拍旁白/SRT/成片/发布不变）
+      （2026-10-20 四轮：机器侧改用官方 nightly 单二进制续采，不 clone 不构建
+      ——wingman-agent-2026.10.18-nightly-184c7de-windows-x64.zip（公开资产，
+      下载 sha256 与官方 digest 一致）解压至 D:\wingman-tutorial\agent-bin\；
+      录屏方案两轮迭代后为零注入形态：进程创建预载命令拉最大化 PowerShell
+      + ffmpeg gdigrab 60fps + ffprobe 校验，逐步全 PASS 无授权拦截
+      （run_453be668 的点击聚焦属 GUI 注入被对端授权门拦下，弃用；
+      run_37edce34 改零注入后无拦截）。剩余卡点收窄为一项：录制窗口期机器
+      空闲自动锁屏，take2 全程录到锁屏（1920x1080/83s 技术合格、内容不合格，
+      产物保留在 D:\wingman-tutorial\）；解锁需用户在场或显式授权（涉凭据，
+      不代决）。用户解锁桌面后同一零注入任务书即可重录取材）
 - [x] 示例脚本库
 
 ---

@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### docs（2026-10-20，视频教程 M8.2 机器侧推进：nightly 单二进制落机 + 零注入录屏管线跑通，余解锁桌面一卡）
+
+- win-worker 两轮实测（run_453be668b8594c08aa97812a6949a511 / run_37edce34c372450c98d893e8bd1e7d5b）：①缺 exe 项解锁——官方 nightly 公开资产 `wingman-agent-2026.10.18-nightly-184c7de-windows-x64.zip`（6.3MB）下载 sha256 与官方 digest 一致，解压至 `D:\wingman-tutorial\agent-bin\`（全程不 clone 不构建）；②录屏方案迭代：点击聚焦属 GUI 注入被对端授权门拦截（沉默不是同意，不绕路），改为零注入形态——进程创建预载命令拉最大化 PowerShell + ffmpeg gdigrab 60fps + ffprobe 校验，逐步全 PASS 且无任何拦截；③剩余卡点收窄为一项：录制窗口期机器空闲自动锁屏，take2 全程录到锁屏（1920x1080/83s 技术合格、内容不合格，产物与抽帧佐证保留）。解锁需用户在场或显式授权（涉凭据，不代决）；解锁后同一任务书即可重录取材。ROADMAP M8.2 四轮注与 todo.md 卡点行同步。门禁：`npm --prefix docs run docs:build` 绿（docs-only，未编译未跑测试套件）。
+
 ### docs（2026-10-20，视频教程 M8.2 卡点精确化：win-worker 素材预采探因）
 
 - 机器侧素材预采经 hermes win-worker 实测（run_9c037b4d57904bb6b076fddc1b911bb8）：环境侧全齐（Windows 10.0.26300 / 1920x1080 / 100% 缩放 / D 盘在、hello.lua 与 color_detect.lua 在位），但 D:\ 与 C:\Users\ 深度<=4 全盘无 `wingman-agent.exe`（该机仓库副本 `/d/workspaces/wingman` 从未产出该 exe，仅存旧 conan-build 工程文件与 runtime 产物），按任务书红线「缺 exe 只报缺项、不 clone 不构建」第 1 步终止、零产物。原账目「录制需真实 Windows 环境人工」的机器侧半段前提已不再成立，ROADMAP M8.2 与 todo.md 卡点改记为「环境可用 + 缺 exe 构建产物，等授权构建或提供 exe 路径」；第 2-5 步（交互桌面/ffmpeg/录制/ffprobe）任务书已备好可即续，人工侧实拍旁白/SRT/成片/发布不变。门禁：`npm --prefix docs run docs:build` 绿（docs-only，未编译未跑测试套件）。
