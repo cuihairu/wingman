@@ -152,8 +152,8 @@
 - [x] Dashboard 设备视图（分组、批量下发、状态大盘）（2026-10-13：Agents 页面增量——按标签分组视图（平铺/分组切换，每组一表、勾选跨组共享）、按标签批量下发选择器（agentIds ∪ tags 与勾选取并集，服务端既有契约直接复用）、状态大盘平台维度（desktop/android/ios 计数，缺失 platform 按桌面口径）；批量操作按钮禁用口径随之改为选择器非空；8 语言 i18n key 补齐，纯函数口径抽 utils/agents.ts 单测钉住）
 
 ### 远期可选
-- [ ] I1: iOS 主机控——PC 端 ICapture/IInput 的 WDA 后端（usbmuxd/libimobiledevice，依赖 Mac 签名链）
-- [ ] 端侧 Python 引擎评估（Lua-first，Python+NDK 体积/维护成本高，暂缓）
+- [ ] I1: iOS 主机控——PC 端 ICapture/IInput 的 WDA 后端（BLOCKED：缺 Mac 签名链；usbmuxd/libimobiledevice，见 docs/ios-agent-design.md）
+- [ ] 端侧 Python 引擎评估（BLOCKED：等用户拍板是否投入评估；Lua-first，Python+NDK 体积/维护成本高，暂缓）
 
 ---
 
@@ -298,7 +298,7 @@
 - [x] UI Automation API 文档
 - [x] Window API 文档
 - [x] Process API 文档
-- [ ] 视频教程
+- [ ] 视频教程（BLOCKED：同 ROADMAP.md M8.2——录制需真实 Windows 环境人工）
 
 ### 8.2 示例脚本
 - [x] Hello World
@@ -508,7 +508,7 @@
 所有短期任务已完成！
 
 ### 待规划 📋
-- [ ] 视频教程
+- [ ] 视频教程（BLOCKED：同 ROADMAP.md M8.2——录制需真实 Windows 环境人工）
 - [x] 更多示例脚本（2026-10-13 首批：Python 示例 0→4（hello 入门/template_batch 模板批量/workflow_pipeline 工作流编排——run/when 需线程安全可调用体故仅 Python/events_fsm 事件+状态机），Lua 补 template_batch.lua；语法门 luac -p + py_compile；workspace 工程补 python_scripts 与 Python 桩目录，docs/examples/index.md 补索引。示例是滚动项，新模块落地时按需续补）
 - [x] 性能基准测试（2026-10-13：`lib/wingman/tests/benchmarks/` 四基准二进制 + `bench.hpp` 中位数计时助手（warmup + 7 轮取中位 ns/op）+ `scripts/run-benchmarks.sh` 一键构建运行（自动重配 BENCHMARKS=ON、按 OpenCV 档裁剪、打印机器上下文）+ `docs/benchmarks.md` 基线与新增指引。首基线（i9-10880H/load 26-42/Xvfb 1280x800）：kvstore 0.02~0.19µs/操作、event_hub 同步分发 288~542ns/op、lua 引擎创建 119µs、脚本往返 2.5µs、模块胶水端到端 ~5.5µs、vision 全屏截屏 ~130ms/找色 ~92ms/找图 ~350ms（宿主负载 wall 偏移大，仅看量级）。基准不进 CI 门禁；优化半场归入下方中期「性能基准测试和优化」）
 - [x] 用户反馈收集（2026-10-19 已代决收口：渠道选型定为 GitHub Issues + 轻量 markdown 模板，不引入 Discussions（需额外开启且无人维护）——新建 `.github/ISSUE_TEMPLATE/{bug_report,feature_request,question}.md` 三模板（功能需求模板内嵌架构硬约束自查项：runtime 禁 HTTP/WS server、编排方向、本地 UI 只走 IPC）+ `config.yml`（空白 issue 通道 + 架构决策/路线图/变更日志三外链）+ `.github/PULL_REQUEST_TEMPLATE.md`（对齐 CONTRIBUTING 四项要求与 API 面变更后重跑 gen_lua_hints 的教训）+ CONTRIBUTING.md「反馈与问题」节（顺带修掉该文件原「issue / discussion」引用悬空的漂移：此前仓内无任何 issue 模板与 Discussions 配置）。渠道即交付物，反馈持续沉淀在 Issues 列表，无需再登记人工项）
@@ -586,9 +586,9 @@
     - [x] VitePress 官方 locales 路由接线（2026-10-16）：已把现有 3 篇 `*.zh.md` 迁入 `docs/zh/`（DEVELOPER_TOOLS/DEVELOPMENT/game-automation-coverage），配置 root=`en` 与 `zh`=`zh-CN` 并分别给 nav/sidebar，页面语言切换器已实测渲染；`docs/zh/index.md` 仅做现有中文页导航。剩余待办沿用上方双语配对条目，本轮不新增翻译
     - [x] docs/api/ 双语配对第二批（2026-10-16，R1021/R1023）：实测 63 页 / 21,128 行（此前台账误记 46 页已纠正）；63 篇全部加切换器（无 frontmatter，落首行）。真翻译 29 篇（阈值放宽至 ≤~383 行，依据：API 页函数表格密集、散文稀少，函数名/签名/参数名逐字保留后翻译风险集中在散文单元格，可脚本级对账；放宽已在台账明示）：hotkey/json/gameprofile/data/util/systemwatch/ocr/debugger(143–192)、behavior-tree/verification/config/serialize/index/timer/filewatcher(228–301)、fsm/orchestration/security/overview(327–342)、types(383)、uia 元素页 9 篇 scrollbar/slider/text/tooltip/progressbar/tab/window/menu/checkbox(99–281)。长文占位 34 篇（250–1246 行，含 AUDIT-REPORT 历史审计台账，同根目录审计口径）：kv(1205)/core(971)/team(931)/transport(884)/system(766)/db(764)/clipboard(737)/macro(731)/inbox(621)/screen(593)/script(562)/smart-trigger(555)/vision(545)/process(539)/perf(535)/ini(527)/ml(522)/window(509)/task(497)/file(492)/input(456)/event(438)/crypto(437)/notify(429)/human(421)/http(400)/AUDIT-REPORT(140)/uia-index(1246)/uia-edit(699)/uia-button(531)/uia-list(317)/uia-tree(303)/uia-combobox(302)/uia-radiobutton(253)。红线遵守同前批：代码块/命令/路径/标识符逐字保留（`:::tabs` 内的 Python/Lua 块字节比对一致）、函数表格行数与标题数 1:1 对账、同页锚点改英文 slug、跨页链接保持指向中文 `.md` 目标（中文锚保留）；修复 7 篇 uia 占位页的相对链接（`uia/X.md`→`X.md`，首轮脚本按带目录名生成导致 404）与 behavior-tree 同页中文锚。校验 63 对切换器互指 0 问题、无 stray 文件、29 篇真翻译围栏外 CJK 仅切换器标签与设计内保留串、函数级抽查（代码块字节/标题数/表格行数）零失败；docs:build 绿 37.04s
 ### 长期
-- [ ] 视频教程制作
+- [ ] 视频教程制作（BLOCKED：同 ROADMAP.md M8.2——录制需真实 Windows 环境人工）
 - [ ] 社区建设（2026-10-19 已代决：仓内侧入口已齐备——issue 模板 + PR 模板 + CONTRIBUTING 反馈节 + 功能需求模板架构约束自查项；剩余为外部运营面（招募维护者、外部社群/推广渠道、discussion 是否需要），等用户拍板投入方向，仓内无可再写代码，未关闭）
-- [ ] 发布 1.0 正式版
+- [ ] 发布 1.0 正式版（BLOCKED：等用户明确发版并给版本号——全局红线，agent 不得自行判断）
 
 ---
 
