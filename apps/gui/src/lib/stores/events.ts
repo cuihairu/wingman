@@ -2,6 +2,7 @@ import { logs, type LogEntry } from './logs';
 import { triggers } from './triggers';
 import { connection } from './connection';
 import { scripts } from './scripts';
+import { updates } from './updates';
 
 /// runtime 事件轮询器。
 ///
@@ -100,6 +101,18 @@ function dispatch(event: RuntimeEvent) {
 		// screenshot.frame 预留：runtime 侧 ScreenshotReporter 未接入，待后续连线
 		case 'screenshot.frame':
 			break;
+		// 更新状态变更：payload 即完整 UpdateStatus（自动更新轮询 / 手动
+		// check/download 落地后由 runtime 经事件流回投）
+		case 'update.status_changed': {
+			updates.applyStatus(event.payload);
+			break;
+		}
+		// 更新状态变更：payload 即完整 UpdateStatus（自动更新轮询 / 手动
+		// check/download 落地后由 runtime 经事件流回投）
+		case 'update.status_changed': {
+			updates.applyStatus(event.payload);
+			break;
+		}
 		// 托盘意图（脚本 notify.trayShow/… → runtime notify_bridge → events.drain）：
 		// 驱动系统托盘显隐/角标/提示。托盘本体归 GUI（tauri TrayIcon），runtime
 		// 只发意图；角标在 tauri v2 仅 Windows/macOS 生效，Linux 底层 no-op。

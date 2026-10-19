@@ -20,8 +20,8 @@ namespace {
 std::string makeLatestBody(const std::string& version, const std::string& sha) {
     return std::string(R"({"success":true,"manifest":{"version":")" + version +
                        R"(","url":"/api/v1/update/download/1","sha256":")" + sha +
-                       R"(","size":7,"notes":"n","mandatory":true,)" +
-                       R"("publishedAt":"2026-01-01T00:00:00Z"}})");
+                       R"(","size":7,"notes":"n","mandatory":true,"fileName":"wingman-)" +
+                       version + R"(-setup.exe","publishedAt":"2026-01-01T00:00:00Z"}})");
 }
 
 void writeFile(const fs::path& path, const std::string& content) {
@@ -97,6 +97,7 @@ TEST(UpdateManifestParse, FullBody) {
     EXPECT_EQ(m.size, 7);
     EXPECT_EQ(m.notes, "n");
     EXPECT_TRUE(m.mandatory);
+    EXPECT_EQ(m.fileName, "wingman-1.2.3-setup.exe");
 }
 
 TEST(UpdateManifestParse, DefaultsWhenOptionalFieldsMissing) {
@@ -106,6 +107,7 @@ TEST(UpdateManifestParse, DefaultsWhenOptionalFieldsMissing) {
     EXPECT_EQ(m.size, 0);
     EXPECT_FALSE(m.mandatory);
     EXPECT_TRUE(m.notes.empty());
+    EXPECT_TRUE(m.fileName.empty());
 }
 
 TEST(UpdateManifestParse, RejectsMalformed) {

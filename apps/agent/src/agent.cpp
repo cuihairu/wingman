@@ -1,9 +1,12 @@
 #include "wingman/runtime/agent.hpp"
+#include "wingman/platform/app_paths.hpp"
 #include "wingman/platform/screen_factory.hpp"
 #include "wingman/rpc/rpc_dispatcher.hpp"
 #include "wingman/rpc/asset_handler.hpp"
 #include "wingman/rpc/trigger_handler.hpp"
 #include "wingman/trigger.hpp"
+#include "wingman/update_poller.hpp"
+#include "wingman/version.hpp"
 #include "wingman/window.hpp"
 #include "wingman/agentcore/event_buffer.hpp"
 #include "wingman/event.hpp"
@@ -108,6 +111,35 @@ CommandResult dispatchViaRpcDispatcher(rpc::RpcDispatcher& dispatcher, const std
     }
 }
 
+// 架构检测：与服务端 HandleLatest 的默认 arch 口径一致（amd64 / arm64）。
+std::string detectArch() {
+#if defined(__aarch64__) || defined(_M_ARM64)
+    return "arm64";
+#else
+    return "amd64";
+#endif
+}
+
+// [update] 配置 → 轮询器配置。enabled 且 base_url 非空才启用；platform/arch
+// 未配置时按本机架构自动探测（服务端同名字段可覆盖）。
+UpdatePollConfig makeUpdatePollConfig(const UpdateConfig& u) {
+    UpdatePollConfig cfg;
+    cfg.baseUrl = (u.enabled && !u.baseUrl.empty()) ? u.baseUrl : std::string();
+    cfg.channel = u.channel.empty() ? std::string("stable") : u.channel;
+    cfg.platform = u.platform.empty() ? platform::platformName() : u.platform;
+    cfg.arch = u.arch.empty() ? detectArch() : u.arch;
+    cfg.localVersion = WINGMAN_VERSION;
+    // download_dir 未配置时回退到用户数据目录下的 updates/ 子目录，
+    // 避免启用更新后因下载目录缺失导致下载恒失败。
+    cfg.downloadDir = u.downloadDir;
+    if (cfg.downloadDir.empty()) {
+        const auto data = platform::appDataDir();
+        cfg.downloadDir = data.empty() ? std::string() : (data / "updates").string();
+    }
+    cfg.pollIntervalSeconds = u.pollIntervalSeconds;
+    return cfg;
+}
+
 } // namespace
 
 // ========== Agent 实现 ==========
@@ -123,6 +155,8 @@ public:
     std::unique_ptr<RemoteClient> remoteClient;
     std::unique_ptr<StandaloneMode> standaloneMode;
     std::unique_ptr<LocalIpcServer> localIpcServer;
+    // 自动更新轮询器（[update]，出站到 Go server；状态经事件流投给 GUI）
+    std::unique_ptr<UpdatePoller> updatePoller;
     std::unique_ptr<rpc::RpcDispatcher> remoteDispatcher;
     std::unique_ptr<platform::IScreen> screen;
     // 共享触发器管理器：本地 IPC 与远程 agent 通道看到同一份触发器
@@ -206,6 +240,12 @@ void Agent::shutdown() {
     // 先摘除远程事件转发 sink：lambda 捕获 this，而 EventBuffer 是进程级
     // 单例——不摘除则 Agent 析构/重建后 push 事件会调用悬空回调
     EventBuffer::instance().setRemoteSink(nullptr);
+
+    // 先停更新轮询器，避免 IPC 服务拆除期间仍有 update.* 事件入队
+    if (impl_->updatePoller) {
+        impl_->updatePoller->stop();
+        impl_->updatePoller.reset();
+    }
 
     if (impl_->remoteClient) {
         impl_->remoteClient->stop();
@@ -320,6 +360,17 @@ bool Agent::start() {
                 return applyRemoteConfig(std::move(next));
             },
         });
+        // 自动更新轮询（[update]，ROADMAP M8.1）：仅 outbound HTTP 到 Go
+        // server，不新增任何监听端口。状态经 update.status_changed 事件投给
+        // GUI 事件流（runtime → EventBuffer → events.drain 拉取）。
+        impl_->updatePoller = std::make_unique<UpdatePoller>(makeUpdatePollConfig(impl_->config.update));
+        impl_->updatePoller->setOnStateChanged([](const UpdateStatus& status) {
+            EventBuffer::instance().push("update.status_changed", status.toJson());
+        });
+        impl_->localIpcServer->setUpdatePoller(impl_->updatePoller.get());
+        if (!impl_->config.update.baseUrl.empty() && impl_->config.update.enabled) {
+            impl_->updatePoller->start();
+        }
         if (!impl_->localIpcServer->start()) {
             spdlog::error("Failed to start local IPC server");
             success = false;
@@ -338,6 +389,7 @@ void Agent::stop() {
     running_.store(false);
 
     if (impl_->remoteClient) impl_->remoteClient->stop();
+    if (impl_->updatePoller) impl_->updatePoller->stop();
     if (impl_->localIpcServer) impl_->localIpcServer->stop();
     if (impl_->standaloneMode) impl_->standaloneMode->stop();
 }

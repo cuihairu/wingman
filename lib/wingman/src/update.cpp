@@ -146,6 +146,11 @@ bool UpdateManifest::parse(const std::string& body, UpdateManifest& out) {
         } else {
             out.notes.clear();
         }
+        if (m.contains("fileName") && m["fileName"].is_string()) {
+            out.fileName = m["fileName"].get<std::string>();
+        } else {
+            out.fileName.clear();
+        }
         if (m.contains("mandatory") && m["mandatory"].is_boolean()) {
             out.mandatory = m["mandatory"].get<bool>();
         } else {

@@ -14,6 +14,7 @@ add_executable(agent_tests
     screenshot_handler_test.cpp
     system_handler_test.cpp
     rpc_ipc_test.cpp
+    update_handler_test.cpp
     # StandaloneMode 缺口补测（start 幂等/建目录失败、autoStart 装配与输出
     # 回调空串跳过、状态映射现状钉、批量操作闲置计数 0、manager 失同步降级腿、
     # getConfig；pause/resume/stop 成功腿为状态机结构性不可达，登记在案）
@@ -37,6 +38,7 @@ add_executable(agent_tests
     ../src/rpc/handlers/screenshot_handler.cpp
     ../src/rpc/handlers/event_handler.cpp
     ../src/rpc/handlers/macro_handler.cpp
+    ../src/rpc/handlers/update_handler.cpp
     ../src/commands/build_command.cpp
     ../src/commands/script_command.cpp
     ../src/commands/stop_command.cpp

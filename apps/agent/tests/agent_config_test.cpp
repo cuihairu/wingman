@@ -212,6 +212,40 @@ TEST_F(AgentConfigTest, PerformanceSectionParsesInts) {
     EXPECT_EQ(config.performance.memoryLimitMb, 1024);
 }
 
+TEST_F(AgentConfigTest, UpdateSectionParses) {
+    const auto config = AgentConfig::loadFromString(R"(
+        [update]
+        enabled = true
+        base_url = "http://192.168.1.10:9527"
+        channel = "beta"
+        platform = "macos"
+        arch = "arm64"
+        poll_interval_seconds = 900
+        download_dir = "updates/staging"
+    )");
+    EXPECT_TRUE(config.update.enabled);
+    EXPECT_EQ(config.update.baseUrl, "http://192.168.1.10:9527");
+    EXPECT_EQ(config.update.channel, "beta");
+    EXPECT_EQ(config.update.platform, "macos");
+    EXPECT_EQ(config.update.arch, "arm64");
+    EXPECT_EQ(config.update.pollIntervalSeconds, 900);
+    EXPECT_EQ(config.update.downloadDir, "updates/staging");
+}
+
+TEST_F(AgentConfigTest, UpdateSectionDisabledByDefault) {
+    const auto config = AgentConfig::loadFromString(R"(
+        [update]
+        base_url = "http://192.168.1.10:9527"
+    )");
+    EXPECT_FALSE(config.update.enabled);
+    EXPECT_EQ(config.update.baseUrl, "http://192.168.1.10:9527");
+    EXPECT_EQ(config.update.channel, "stable");
+    EXPECT_TRUE(config.update.platform.empty());
+    EXPECT_TRUE(config.update.arch.empty());
+    EXPECT_EQ(config.update.pollIntervalSeconds, 3600);
+    EXPECT_TRUE(config.update.downloadDir.empty());
+}
+
 TEST_F(AgentConfigTest, StandaloneSectionParsesScriptDir) {
     const auto config = AgentConfig::loadFromString(R"(
         [standalone]
@@ -362,6 +396,35 @@ TEST_F(AgentConfigTest, SaveToFilePersistsPerformanceSection) {
     EXPECT_EQ(loaded.performance.screenshotCacheSize, 48);
     EXPECT_EQ(loaded.performance.matchThreadPoolSize, 6);
     EXPECT_EQ(loaded.performance.memoryLimitMb, 4096);
+}
+
+TEST_F(AgentConfigTest, SaveToFilePersistsUpdateSection) {
+    // 与 [performance] 同类缺陷回归钉：saveToFile 漏写 [update] 会让用户
+    // 配置的更新链路在 runtime 首次配置写回时被静默抹掉
+    AgentConfig config;
+    config.update.enabled = true;
+    config.update.baseUrl = "http://192.168.1.10:9527";
+    config.update.channel = "beta";
+    config.update.arch = "arm64";
+    config.update.pollIntervalSeconds = 1800;
+    config.update.downloadDir = "updates/staging";
+
+    const auto path = tempFile("update");
+    ASSERT_TRUE(config.saveToFile(path.string()));
+
+    std::ifstream in(path);
+    const std::string content((std::istreambuf_iterator<char>(in)),
+        std::istreambuf_iterator<char>());
+    EXPECT_NE(content.find("[update]"), std::string::npos)
+        << "saved config must contain [update] section:\n" << content;
+
+    const auto loaded = AgentConfig::loadFromFile(path.string());
+    EXPECT_TRUE(loaded.update.enabled);
+    EXPECT_EQ(loaded.update.baseUrl, "http://192.168.1.10:9527");
+    EXPECT_EQ(loaded.update.channel, "beta");
+    EXPECT_EQ(loaded.update.arch, "arm64");
+    EXPECT_EQ(loaded.update.pollIntervalSeconds, 1800);
+    EXPECT_EQ(loaded.update.downloadDir, "updates/staging");
 }
 
 TEST_F(AgentConfigTest, DefaultConfigSavesAndReloadsIdentical) {

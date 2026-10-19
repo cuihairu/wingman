@@ -12,6 +12,7 @@ async function fresh() {
 	const scriptsMod = await import('$lib/stores/scripts');
 	const connectionMod = await import('$lib/stores/connection');
 	const settingsMod = await import('$lib/stores/settings');
+	const updatesMod = await import('$lib/stores/updates');
 	return {
 		createEventPoller: eventsMod.createEventPoller,
 		triggers: triggersMod.triggers,
@@ -19,6 +20,7 @@ async function fresh() {
 		scripts: scriptsMod.scripts,
 		connection: connectionMod.connection,
 		settings: settingsMod.settings,
+		updates: updatesMod.updates,
 	};
 }
 
@@ -274,6 +276,34 @@ describe('events 轮询器与事件分发', () => {
 		await Promise.resolve();
 		poller.stop();
 		expect(get(logs)).toHaveLength(0);
+	});
+
+	it('update.status_changed：payload 整体回投更新状态并记录发现新版本', async () => {
+		(window as any)[INVOKE_KEY] = vi.fn(async () => ({
+			events: [
+				event('update.status_changed', {
+					enabled: true,
+					available: true,
+					downloading: false,
+					downloaded: false,
+					localVersion: '0.1.2',
+					candidate: { version: '0.2.0', url: '/api/v1/update/download/1', sha256: '', size: 0, notes: '', mandatory: false, fileName: 'wingman-0.2.0.exe' },
+					downloadPath: '',
+					lastCheckMs: 1700000000000,
+					lastError: '',
+				}),
+			],
+		}));
+		const { createEventPoller, logs, settings, updates } = await fresh();
+		settings.update({ logLevel: 'debug' });
+		const poller = createEventPoller();
+		poller.start();
+		await Promise.resolve();
+		await Promise.resolve();
+		poller.stop();
+		expect(get(updates)).toMatchObject({ available: true, localVersion: '0.1.2' });
+		expect(get(updates).candidate.version).toBe('0.2.0');
+		expect(get(logs).some(e => e.message.includes('发现新版本 0.2.0') && e.type === 'success')).toBe(true);
 	});
 
 	it('tray.*：转发 tray_control（text 字符串透传，非字符串归 null），并记录日志', async () => {

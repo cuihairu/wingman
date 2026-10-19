@@ -556,7 +556,11 @@ local wingman = require('wingman')
 - [x] 自动更新 (可选)——Go server 发布/manifest/下载 API（admin 发布、
   公开 latest/download、sha256/size 服务端实测）+ lib 客户端核心
   （manifest 解析、semver 比较、流式 sha256 校验、file:// 可测传输层）；
-  runtime 轮询触发与 GUI 安装编排未接（后续按需补）
+  runtime 轮询触发与 GUI 下载编排已接（2026-10-19：lib UpdatePoller 自有
+  worker 线程周期轮询 + 即时触发，agent `[update]` 配置节 + 本地 IPC
+  update.status/check/download，GUI 更新页经 events.drain 实时回投状态；
+  ⚠️ 仅下载到校验落盘，静默自替换是平台原生行为，需真机桌面会话单独
+  验收，见 docs/development-todo.md）
 
 ### 8.2 文档
 - [x] 用户手册

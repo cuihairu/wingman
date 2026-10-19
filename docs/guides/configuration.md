@@ -997,6 +997,23 @@ server_ip = "192.168.1.10"
 server_port = 8888
 ```
 
+自动更新（`[update]` 节，全部键可省略 = 功能关闭）：
+
+```toml
+[update]
+enabled = true                       # 总开关
+base_url = "http://192.168.1.10:9527" # Go server HTTP API 基址（非空且 enabled 才启用）
+channel = "stable"                   # 更新通道（缺省 stable）
+# platform / arch 缺省按本机自动探测（windows/macos/linux + amd64/arm64）
+# poll_interval_seconds 轮询周期，低于 60 收敛为 60（缺省 3600）
+# download_dir 制品落盘目录（缺省 <用户数据目录>/updates）
+```
+
+启用后 runtime 周期查询 Go server `GET /api/v1/update/latest`，发现新版本时
+经本地 IPC 把状态推给 GUI（更新页可手动触发检查/下载）。制品下载到本地目录
+后做 sha256 校验，校验通过才落名——runtime 不自动替换自身进程，安装需人工
+执行下载好的制品。
+
 ---
 
 ## 最佳实践

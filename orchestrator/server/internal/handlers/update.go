@@ -302,6 +302,9 @@ func (h *UpdateHandler) HandleLatest(c *gin.Context) {
 			"notes":       latest.Notes,
 			"mandatory":   latest.Mandatory,
 			"publishedAt": latest.CreatedAt,
+			// fileName 让客户端按原始上传名（含扩展名）落盘；url 末段是发布
+			// ID 数字，没有扩展名，直接用它会导致下载产物无法双击安装。
+			"fileName": latest.FileName,
 		},
 	})
 }

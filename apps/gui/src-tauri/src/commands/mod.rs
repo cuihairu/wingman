@@ -8,3 +8,4 @@ pub mod screen;
 pub mod scripts;
 pub mod system;
 pub mod triggers;
+pub mod update;

@@ -19,6 +19,9 @@ struct UpdateManifest {
     int64_t size = 0;
     std::string notes;
     bool mandatory = false;
+    // 服务端发布时上传的文件名（如 wingman-1.0.1-setup.exe）。缺省为空，
+    // 客户端落盘名回退到 url 末段或 wingman-<version>。
+    std::string fileName;
 
     // 从 latest 响应 JSON 解析；缺 manifest 对象或 version/url/sha256
     // 任一缺失/为空返回 false

@@ -10,6 +10,7 @@
 		{ id: 'logs', label: '日志', icon: 'logs' },
 		{ id: 'triggers', label: '触发器', icon: 'triggers' },
 		{ id: 'macros', label: '宏录制', icon: 'macros' },
+		{ id: 'updates', label: '更新', icon: 'updates' },
 		{ id: 'settings', label: '设置', icon: 'settings' },
 	];
 
@@ -21,6 +22,7 @@
 		logs: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`,
 		triggers: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`,
 		macros: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="6" r="1"></circle><circle cx="18" cy="12" r="1"></circle><circle cx="12" cy="18" r="1"></circle><circle cx="6" cy="12" r="1"></circle></svg>`,
+		updates: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"></path><polyline points="19 12 12 19 5 12"></polyline></svg>`,
 		settings: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6"></path><path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"></path><path d="M1 12h6m6 0h6"></path><path d="m4.93 19.07 4.24-4.24m5.66-5.66 4.24-4.24"></path></svg>`,
 	};
 

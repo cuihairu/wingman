@@ -39,6 +39,7 @@ set(AGENT_SOURCES
     src/rpc/handlers/screenshot_handler.cpp
     src/rpc/handlers/event_handler.cpp
     src/rpc/handlers/macro_handler.cpp
+    src/rpc/handlers/update_handler.cpp
 )
 
 # 平台薄层（进程名/stub 候选路径）：平台分支收敛在目录级选源，

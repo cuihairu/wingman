@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### feat（2026-10-19，自动更新 runtime 轮询触发与 GUI 下载编排补齐）
+
+- **背景**：ROADMAP M8.1 自动更新此前只交付 Go server 发布/manifest/下载 API + lib 客户端核心，runtime 轮询触发与 GUI 编排标注「后续按需补」——更新链路最后一公里（agent 定期检查、GUI 一键检查/下载）缺位。
+- **交付**：lib 新增 `UpdatePoller`（自有 worker 线程周期轮询，`update.check/download` 即时触发不阻塞本地 IPC handler 线程，状态按 (available, downloaded, candidate.version, lastError) 去重回调，check/download 传输注入可测）；agent 新增 `[update]` 配置节（enabled/base_url/channel/platform、arch 自动探测/poll_interval_seconds 下限 60s/download_dir 缺省回退用户数据目录 updates/ 子目录）与本地 IPC `update.status/check/download` 三方法（未启用统一返回 enabled=false，GUI 据此隐藏入口）；Go server latest manifest 新增 `fileName`（上传原始名含扩展名，修下载 url 末段为数字发布 ID 导致落盘制品无扩展名不可双击安装）；GUI（apps/gui）新增更新页与 Tauri `get_update_status/check_update/download_update` 三命令（经本地 IPC），`update.status_changed` 事件经 events.drain 实时回投页面。安全口径：制品只下载并 sha256 校验落盘，不执行、不自替换进程（静默自替换是平台原生行为，需真机桌面会话单独验收）。
+- **验证**：lib core_tests Update* 35 项 PASS（含 16 项新 UpdatePoller 状态机/URL 解析/文件名回退用例）；agent_tests 233 项 PASS（含 6 项新 update RPC 契约用例）；`go test ./...`（orchestrator/server）16 包全绿（含 manifest fileName 断言）；apps/gui `pnpm test` 529 项全过（含新 updates store/页面/事件分发用例）+ `pnpm build` 绿 + `cargo check` 绿。
+- **门禁**：见上行验证；GUI 测试不在 CI，本地全量跑。
+
 ### docs（2026-10-19，台账引用漂移清理 + 跨平台验证状态对齐）
 
 - **背景**：上一批 ROADMAP 对齐时发现多处文档仍指向 todo.md 早已不存在的节（todo.md 2026-10-16 压缩为摘要后未同步引用方）。

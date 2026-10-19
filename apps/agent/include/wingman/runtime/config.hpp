@@ -66,6 +66,18 @@ struct PerformanceConfig {
     int memoryLimitMb = 512;
 };
 
+// 自动更新配置（[update]，ROADMAP M8.1「runtime 轮询触发」半）。
+// baseUrl 留空即视为禁用——不配置时轮询器每次轮询只回可读错误，不触网。
+struct UpdateConfig {
+    bool enabled = false;
+    std::string baseUrl;              // Go server HTTP API 基址，如 http://192.168.1.10:9527
+    std::string channel = "stable";
+    std::string platform;             // 留空 = 用服务端默认（windows）
+    std::string arch;                 // 留空 = 用服务端默认（amd64）
+    int pollIntervalSeconds = 3600;   // 轮询周期；< 60 收敛为 60
+    std::string downloadDir;          // 校验通过的制品落盘目录
+};
+
 struct AgentConfig {
     // 能力配置（可组合）
     bool enableRemote = true;      // 启用远端 outbound 连接
@@ -77,6 +89,7 @@ struct AgentConfig {
     DebuggerConfig debugger;
     LoggingConfig logging;
     PerformanceConfig performance;
+    UpdateConfig update;
 
     // 加载配置文件
     static AgentConfig loadFromFile(const std::string& path);

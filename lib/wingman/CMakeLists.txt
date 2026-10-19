@@ -88,6 +88,7 @@ set(WINGMAN_SOURCES
     # Network
     src/http.cpp
     src/update.cpp
+    src/update_poller.cpp
     src/node_status.cpp
 
     # TOTP utilities

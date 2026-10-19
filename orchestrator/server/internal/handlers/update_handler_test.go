@@ -144,6 +144,10 @@ func TestUpdatePublishThenLatestDownload(t *testing.T) {
 	if m["url"] != pub.URL {
 		t.Fatalf("url mismatch: %v vs %s", m["url"], pub.URL)
 	}
+	// fileName 必须回传上传时的原始名（含扩展名），客户端据此落盘。
+	if m["fileName"] != "wingman-setup-1.2.3.exe" {
+		t.Fatalf("manifest fileName: %v", m["fileName"])
+	}
 
 	rec := doUpdateGet(r, t, pub.URL)
 	if rec.Code != http.StatusOK {

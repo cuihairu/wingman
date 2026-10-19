@@ -130,6 +130,10 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
                 if (currentSection == "remote") {
                     if (key == "challenge_auth") config.remoteClient.useChallengeAuth = true;
                 }
+                // Update section keys
+                if (currentSection == "update") {
+                    if (key == "enabled") config.update.enabled = true;
+                }
                 // Debugger section keys
                 if (currentSection == "debugger") {
                     if (key == "wait_for_ide") config.debugger.waitForIde = true;
@@ -149,6 +153,10 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
                 // Remote section keys
                 if (currentSection == "remote") {
                     if (key == "challenge_auth") config.remoteClient.useChallengeAuth = false;
+                }
+                // Update section keys
+                if (currentSection == "update") {
+                    if (key == "enabled") config.update.enabled = false;
                 }
                 // Debugger section keys
                 if (currentSection == "debugger") {
@@ -175,6 +183,10 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
                 if (currentSection == "debugger") {
                     if (key == "listen_port") config.debugger.listenPort = intValue;
                 }
+                // Update section keys
+                if (currentSection == "update") {
+                    if (key == "poll_interval_seconds") config.update.pollIntervalSeconds = intValue;
+                }
                 // Performance section keys
                 if (currentSection == "performance") {
                     if (key == "screenshot_cache_size") config.performance.screenshotCacheSize = intValue;
@@ -189,6 +201,14 @@ AgentConfig AgentConfig::loadFromString(const std::string& toml) {
                 if (currentSection == "remote") {
                     if (key == "server_ip") config.remoteClient.serverIp = value;
                     if (key == "register_token") config.remoteClient.registerToken = value;
+                }
+                // Update section keys
+                if (currentSection == "update") {
+                    if (key == "base_url") config.update.baseUrl = value;
+                    if (key == "channel") config.update.channel = value;
+                    if (key == "platform") config.update.platform = value;
+                    if (key == "arch") config.update.arch = value;
+                    if (key == "download_dir") config.update.downloadDir = value;
                 }
                 // Standalone section keys
                 if (currentSection == "standalone") {
@@ -254,6 +274,17 @@ bool AgentConfig::saveToFile(const std::string& path) const {
     file << "screenshot_cache_size = " << performance.screenshotCacheSize << "\n";
     file << "match_thread_pool_size = " << performance.matchThreadPoolSize << "\n";
     file << "memory_limit_mb = " << performance.memoryLimitMb << "\n\n";
+
+    // 同样对称：[update] 缺写会让用户配置的更新链路在首次落盘时被抹掉。
+    file << "# ========== 自动更新配置 ==========\n";
+    file << "[update]\n";
+    file << "enabled = " << (update.enabled ? "true" : "false") << "\n";
+    file << "base_url = \"" << update.baseUrl << "\"\n";
+    file << "channel = \"" << update.channel << "\"\n";
+    file << "platform = \"" << update.platform << "\"\n";
+    file << "arch = \"" << update.arch << "\"\n";
+    file << "poll_interval_seconds = " << update.pollIntervalSeconds << "\n";
+    file << "download_dir = \"" << update.downloadDir << "\"\n\n";
 
     return file.good();
 }

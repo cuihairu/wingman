@@ -10,6 +10,7 @@
 
 namespace wingman {
 class TriggerManager;
+class UpdatePoller;
 }
 
 namespace wingman::runtime {
@@ -42,6 +43,10 @@ public:
     // 注入 config.getRemote / config.setRemote 的读写通道（Agent 在 start()
     // 前调用）；未注入时 GUI 请求返回 "not available"
     void setRemoteConfigAccess(rpc::RemoteConfigAccess access);
+
+    // 注入自动更新轮询器（Agent 在 start() 前调用）；未注入时 update.* RPC
+    // 统一返回 enabled=false，GUI 据此隐藏更新入口
+    void setUpdatePoller(UpdatePoller* poller);
 
 private:
     std::unique_ptr<Impl> impl_;

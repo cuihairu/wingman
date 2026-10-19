@@ -46,6 +46,7 @@ if(BUILD_CORE_TESTS)
         script_manager_test.cpp
         http_test.cpp
         update_test.cpp
+        update_poller_test.cpp
         ui_automation_test.cpp
         ml_test.cpp
         ocr_test.cpp

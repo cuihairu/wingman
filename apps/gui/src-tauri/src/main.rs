@@ -86,6 +86,10 @@ fn main() {
             commands::profiles::update_profile,
             commands::profiles::export_profile_json,
             commands::profiles::import_profile_json,
+            // 自动更新（update.status / check / download）
+            commands::update::get_update_status,
+            commands::update::check_update,
+            commands::update::download_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

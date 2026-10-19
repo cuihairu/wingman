@@ -18,6 +18,7 @@
 	import SettingsPage from './routes/settings/+page.svelte';
 	import TriggersPage from './routes/triggers/+page.svelte';
 	import MacrosPage from './routes/macros/+page.svelte';
+	import UpdatesPage from './routes/updates/+page.svelte';
 
 	// 路由 → 页面组件分发表（router.current 类型恒为合法 key）
 	const pageMap: Record<string, typeof DashboardPage> = {
@@ -28,6 +29,7 @@
 		settings: SettingsPage,
 		triggers: TriggersPage,
 		macros: MacrosPage,
+		updates: UpdatesPage,
 	};
 	const CurrentPage = $derived(pageMap[$router.current]!);
 

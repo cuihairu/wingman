@@ -80,3 +80,44 @@ pub struct MonitorInfo {
     pub is_primary: bool,
     pub bounds: ScreenRegion,
 }
+
+/// 服务端下发的更新清单（release 元数据）。
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct UpdateManifest {
+    pub version: String,
+    pub url: String,
+    pub sha256: String,
+    pub size: u64,
+    pub notes: String,
+    pub mandatory: bool,
+    /// 上传时的原始文件名（含扩展名，用于本地落盘命名）
+    pub file_name: String,
+}
+
+/// 更新轮询器状态快照（update.status / check / download 的载荷）。
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct UpdateStatus {
+    /// 更新功能是否启用（[update] enabled 且 base_url 非空）
+    pub enabled: bool,
+    pub available: bool,
+    pub downloading: bool,
+    pub downloaded: bool,
+    pub local_version: String,
+    pub candidate: UpdateManifest,
+    /// 校验通过后的制品落盘路径（downloaded=true 时非空）
+    pub download_path: String,
+    /// 最近一次检查时间（epoch 毫秒；0 = 尚未检查）
+    pub last_check_ms: u64,
+    pub last_error: String,
+}
+
+/// update.check / update.download 的异步触发回执。
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct UpdateActionResult {
+    /// 请求是否已被受理（未启用时为 false）
+    pub started: bool,
+    pub status: UpdateStatus,
+}

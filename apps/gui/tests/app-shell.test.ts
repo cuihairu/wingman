@@ -114,6 +114,7 @@ describe('App 外壳（dev 模式）', () => {
 		for (const [route, marker] of [
 			['triggers', '管理和配置自动化触发器'],
 			['macros', '准备就绪'],
+			['updates', '检查 runtime 新版本，下载并校验升级制品'],
 			['triggers', '管理和配置自动化触发器'],
 			['dashboard', '系统状态'],
 		] as const) {

@@ -13,6 +13,7 @@
 #include "wingman/runtime/rpc/macro_handler.hpp"
 #include "wingman/runtime/rpc/screenshot_handler.hpp"
 #include "wingman/runtime/rpc/system_handler.hpp"
+#include "wingman/runtime/rpc/update_handler.hpp"
 #include "wingman/rpc/trigger_handler.hpp"
 #include "wingman/runtime/standalone_mode.hpp"
 #include "wingman/trigger.hpp"
@@ -39,6 +40,8 @@ public:
     std::unique_ptr<MacroRecorder> recorder;
     // config.getRemote / config.setRemote 读写通道（Agent 注入；空 = GUI 只读失败）
     std::optional<rpc::RemoteConfigAccess> remoteConfigAccess;
+    // 自动更新轮询器（Agent 注入；空 = update.* 返回 enabled=false）
+    UpdatePoller* updatePoller = nullptr;
     std::thread serverThread;
     std::atomic<bool> stopping{false};
     std::mutex channelMutex;
@@ -62,6 +65,11 @@ void LocalIpcServer::setStatusProviders(rpc::RuntimeStatusProviders providers)
 void LocalIpcServer::setRemoteConfigAccess(rpc::RemoteConfigAccess access)
 {
     impl_->remoteConfigAccess = std::move(access);
+}
+
+void LocalIpcServer::setUpdatePoller(UpdatePoller* poller)
+{
+    impl_->updatePoller = poller;
 }
 
 LocalIpcServer::~LocalIpcServer() {
@@ -110,6 +118,8 @@ bool LocalIpcServer::start() {
     if (impl_->remoteConfigAccess) {
         rpc::registerRuntimeConfigHandlers(*impl_->dispatcher, *impl_->remoteConfigAccess);
     }
+    // 自动更新（update.status/check/download）：未注入 poller 时返回 enabled=false
+    rpc::registerRuntimeUpdateHandlers(*impl_->dispatcher, impl_->updatePoller);
     // 脚本托盘意图（notify.tray.*）→ events.drain 事件流（GUI 驱动系统托盘）
     installNotifyBridge();
     // 统一系统事件源（systemwatch/filewatcher/trigger/macro）→ events.drain
