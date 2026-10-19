@@ -71,10 +71,11 @@ TEST_F(LuaScriptEngineTest, SandboxInitRemovesDangerousGlobals) {
     config.sandboxed = true;
     ASSERT_TRUE(engine.initialize(config));
 
-    // applySandbox 置 nil 的全集：io/os/debug/package + dofile/loadfile/load/require
+    // applySandbox 置 nil 的全集：io/os/debug/package + dofile/loadfile/load；
+    // require 不在禁用列——以仅解析 wingman 表的受控 shim 替代
     EXPECT_TRUE(engine.executeString(
         "return io == nil and os == nil and debug == nil and package == nil "
-        "and dofile == nil and loadfile == nil and load == nil and require == nil"));
+        "and dofile == nil and loadfile == nil and load == nil and require ~= nil"));
 }
 
 TEST_F(LuaScriptEngineTest, NonSandboxInitOpensFullStdlib) {
@@ -97,15 +98,52 @@ TEST_F(LuaScriptEngineTest, RequireWingmanResolvesInNonSandboxMode) {
     EXPECT_TRUE(required.isObject()) << "require(\"wingman\") 应解析为 wingman 表";
 }
 
-TEST_F(LuaScriptEngineTest, SandboxBlocksRequireCall) {
+TEST_F(LuaScriptEngineTest, SandboxRequireWingmanResolvesToGlobalTable) {
     LuaScriptEngine engine;
     EngineConfig config;
     config.sandboxed = true;
     ASSERT_TRUE(engine.initialize(config));
 
-    // require 被 applySandbox 置 nil：调用即 Lua error，executeString 报 false
-    EXPECT_FALSE(engine.executeString("require(\"wingman\")"));
+    // applySandbox 的 require shim 只解析内存 wingman 表
+    EXPECT_TRUE(engine.executeString("return require(\"wingman\") == wingman"));
+    const auto required = engine.getGlobal("wingman");
+    EXPECT_TRUE(required.isObject());
+}
+
+TEST_F(LuaScriptEngineTest, SandboxRequireRejectsOtherModules) {
+    LuaScriptEngine engine;
+    EngineConfig config;
+    config.sandboxed = true;
+    ASSERT_TRUE(engine.initialize(config));
+
+    // shim 之外的模块名显式报错，无文件加载旁路
+    EXPECT_FALSE(engine.executeString("require(\"io\")"));
+    EXPECT_FALSE(engine.executeString("require(\"other\")"));
     EXPECT_FALSE(engine.getLastError().empty());
+}
+
+TEST_F(LuaScriptEngineTest, SandboxRequireSeesRegisteredModules) {
+    LuaScriptEngine engine;
+    EngineConfig config;
+    config.sandboxed = true;
+    ASSERT_TRUE(engine.initialize(config));
+
+    ModuleDescriptor mod;
+    mod.name = "wmtest";
+    mod.functions.push_back({"add",
+        [](const std::vector<ScriptValue>& args) {
+            int64_t sum = 0;
+            for (const auto& a : args) sum += a.asInt();
+            return ScriptValue::fromInt(sum);
+        },
+        "x:int, y:int -> int"});
+    engine.registerModule(mod);
+
+    // 沙箱脚本按现行惯用法 require("wingman") 后取模块，等价于直接取全局表
+    ASSERT_TRUE(engine.executeString("wm_sum = require(\"wingman\").wmtest.add(2, 5)"));
+    const auto sum = engine.getGlobal("wm_sum");
+    EXPECT_TRUE(sum.isInt());
+    EXPECT_EQ(sum.intVal, 7);
 }
 
 TEST_F(LuaScriptEngineTest, EnvVarsExposedAsUnderscoreENVGlobals) {
@@ -379,7 +417,8 @@ TEST_F(LuaScriptEngineTest, EnableSandboxAfterInitStripsDangerousGlobals) {
 
 TEST_F(LuaScriptEngineTest, DisableSandboxRestoresOnlyIoOsDebug) {
     // 契约（按现状钉）：disableSandbox 只重开 io/os/debug 三个库——
-    // package 与 require 不恢复（applySandbox 置 nil 后无还原路径）
+    // package 不恢复（applySandbox 置 nil 后无还原路径）；require 保持
+    // 沙箱 shim（仅 wingman 可解析），不升级为完整 package 语义
     LuaScriptEngine engine;
     EngineConfig config;
     config.sandboxed = true;
@@ -388,7 +427,7 @@ TEST_F(LuaScriptEngineTest, DisableSandboxRestoresOnlyIoOsDebug) {
     engine.disableSandbox();
     EXPECT_TRUE(engine.executeString(
         "return os ~= nil and io ~= nil and debug ~= nil "
-        "and package == nil and require == nil"));
+        "and package == nil and require ~= nil"));
 }
 
 TEST_F(LuaScriptEngineTest, DisableSandboxBeforeInitializeIsNoop) {

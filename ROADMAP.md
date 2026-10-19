@@ -570,9 +570,13 @@ local wingman = require('wingman')
       video-storyboard.md：六集分镜 + 逐字旁白 + 录制规格 + 发布检查单，
       演示素材对齐 examples/lua_scripts/ 现有脚本，触发器类型与 GUI 实现
       核对过）；剩实拍录制/SRT/发布，需真实 Windows 环境人工完成
-      （2026-10-16 复核：docs/tutorials/video-storyboard.md 112 行在位，六集
-      分镜 + 逐字旁白 + 录制规格 + SRT/发布检查单齐备，解锁条件仍不成立——
-      实拍/SRT/发布需真实 Windows 环境人工完成）
+      （2026-10-19 复核：docs/tutorials/video-storyboard.md 114 行在位
+      （wc -l）；EP01 命令实跑通过——wingman-agent script
+      examples/lua_scripts/hello.lua exit 0 且打印屏幕尺寸；连带修复 Lua
+      沙箱 require shim（require("wingman") 此前在沙箱被禁，全部示例
+      脚本跑不起来）与 CLI script 输出接线（print 此前被静默丢弃），
+      EP04 两处口径改齐（Scripts 页无拖拽导入、color_detect 不打印耗时）；
+      解锁条件仍不成立——实拍/SRT/发布需真实 Windows 环境人工完成）
 - [x] 示例脚本库
 
 ---

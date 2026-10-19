@@ -62,10 +62,12 @@ bool LuaScriptEngine::initialize(const script::EngineConfig& config) {
 		lua_["wingman"] = lua_.create_table();
 
 		// 设置 require("wingman") 支持。
-		// 沙箱模式必须跳过：package 从未打开且被 applySandbox 置 nil、require
-		// 亦被禁用，此钩子既不可达也不需要；原实现无条件执行，prelude 引用
-		// nil 的 package 直接抛错，导致沙箱脚本（GUI script.start 的唯一路径，
-		// StandaloneMode 强制 sandboxed=true）100% 启动失败。
+		// 非沙箱：package.preload["wingman"] 钩子。沙箱：applySandbox 已装入
+		// 受控 require shim（仅解析 wingman 表），无 package 亦可达。
+		// 历史教训两条：prelude 曾无条件执行，引用沙箱下为 nil 的 package 直接
+		// 抛错，导致沙箱脚本（GUI script.start 的唯一路径，StandaloneMode 强制
+		// sandboxed=true）100% 启动失败；后改把 require 整个置 nil，又使全部
+		// 示例脚本 require("wingman") 报 attempt to call a nil value。
 		if (!config.sandboxed) {
 			lua_.script(R"(
 				local wingmanTable = wingman
@@ -264,7 +266,18 @@ void LuaScriptEngine::applySandbox(const script::EngineConfig& /*config*/) {
 	lua_["dofile"] = sol::lua_nil;
 	lua_["loadfile"] = sol::lua_nil;
 	lua_["load"] = sol::lua_nil;
-	lua_["require"] = sol::lua_nil;
+	// require 以受控 shim 替代而非禁用：示例与文档统一使用 require("wingman")
+	// 惯用法（docs/审计-文档一致性.md H-SD1），全部模块本就挂在内存 wingman
+	// 表下。此处仅解析该表，其余模块名显式报错；package/dofile/loadfile/load
+	// 仍为 nil，未开口任何磁盘读取路径。
+	lua_.script(R"(
+		require = function(name)
+			if name == "wingman" then
+				return wingman
+			end
+			error("sandbox: module not allowed: " .. tostring(name), 2)
+		end
+	)");
 }
 
 // ========== 自注册 ==========

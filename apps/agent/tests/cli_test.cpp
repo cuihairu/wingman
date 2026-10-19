@@ -12,6 +12,8 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <chrono>
@@ -127,12 +129,40 @@ std::filesystem::path writeTempScript(const std::string& name, const std::string
     return path;
 }
 
+// 重定向 std::cout 到内存流：scriptCommand 把脚本 print 接到 std::cout，
+// 断言输出确实到达终端而非被 ScriptManager 静默丢弃。
+class ScopedCoutRedirect {
+public:
+    ScopedCoutRedirect()
+        : original_(std::cout.rdbuf(captured_.rdbuf())) {}
+
+    ~ScopedCoutRedirect() {
+        std::cout.rdbuf(original_);
+    }
+
+    std::string captured() const { return captured_.str(); }
+
+private:
+    std::ostringstream captured_;
+    std::streambuf* original_;
+};
+
 } // namespace
 
 TEST(RuntimeCommandTest, ScriptCommandRunsLuaScriptToCompletion) {
     wingman::lua::registerLuaEngine();
     const auto script = writeTempScript("cli_ok.lua", "print('cli-ok')\n");
     EXPECT_EQ(wingman::runtime::commands::scriptCommand(script.string(), {}), 0);
+}
+
+TEST(RuntimeCommandTest, ScriptCommandPrintsScriptOutputToTerminal) {
+    // CLI 执行路径无 EventBuffer：不接 output 回调时 print 被静默丢弃
+    wingman::lua::registerLuaEngine();
+    const auto script = writeTempScript("cli_print.lua", "print('cli-stdout')\n");
+
+    ScopedCoutRedirect redirect;
+    EXPECT_EQ(wingman::runtime::commands::scriptCommand(script.string(), {}), 0);
+    EXPECT_NE(redirect.captured().find("cli-stdout"), std::string::npos);
 }
 
 TEST(RuntimeCommandTest, ScriptCommandPassesArgumentsAsScriptEnv) {

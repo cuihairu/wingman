@@ -2,6 +2,7 @@
 #include "wingman/runtime/runtime_context.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>
+#include <iostream>
 
 namespace wingman::runtime::commands {
 
@@ -13,6 +14,13 @@ int scriptCommand(const std::string& scriptPath, const std::vector<std::string>&
     }
 
     spdlog::info("Running script: {}", scriptPath);
+
+    // CLI 执行路径无 EventBuffer：不接 output 回调时，脚本 print 会被
+    // ScriptManager::logScriptOutput 静默丢弃。接到终端，命令行直接看到输出。
+    wingman::runtime::getScriptManager().setOutputCallback(
+        [](const std::string& /*scriptId*/, const std::string& output) {
+            std::cout << output << "\n";
+        });
 
     try {
         auto& manager = wingman::runtime::getScriptManager();

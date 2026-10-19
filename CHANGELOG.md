@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### fix（2026-10-19，Lua 沙箱 require shim 与 CLI script 输出接线）
+
+- **背景**：视频教程分镜（docs/tutorials/video-storyboard.md EP01）声称 `wingman-agent script examples\lua_scripts\hello.lua` 可直接跑——实跑 exit 1（`attempt to call a nil value (global 'require')`）：CLI `script` 与 GUI StandaloneMode 均强制 sandboxed=true，而沙箱把 require 整个置 nil，全部示例脚本与文档统一使用的 `require("wingman")` 惯用法（docs/guide/script-development.md:82、docs/审计-文档一致性.md H-SD1）在两条执行路径上 100% 失败；且 CLI 路径不接 ScriptManager output 回调，脚本 print 被 logScriptOutput 静默丢弃（standalone_mode.cpp 只接 GUI 腿）。
+- **交付**：`LuaScriptEngine::applySandbox` 把 require 从置 nil 改为受控 shim——仅解析内存 wingman 表，其余模块名显式报错，package/dofile/loadfile/load 保持 nil（无任何磁盘读取旁路）；非沙箱 package.preload 钩子行为不变，enable/disableSandbox 语义按现状钉。`scriptCommand` 补 output 接线（print → 终端，对齐 standalone 腿先例）。分镜 EP04 两处口径对齐：Scripts 页无拖拽导入（实际为按路径启动/快捷卡/文件管理）、color_detect.lua 不打印耗时（实际输出结果与匹配数量）。
+- **验证**：core_tests 2316 项 PASS（LuaScriptEngineTest 33 项，含 3 项新沙箱 require 用例、2 项契约断言更新）；agent_tests 234 项 PASS（含新 `ScriptCommandPrintsScriptOutputToTerminal`）；e2e `xvfb-run -a wingman-agent script examples/lua_scripts/hello.lua` exit 0 且打印「屏幕尺寸: 1280x1024」，color_detect.lua 同过。
+- **门禁**：docs 改动另跑 `npm --prefix docs run docs:build`。
+
 ### feat（2026-10-19，自动更新 runtime 轮询触发与 GUI 下载编排补齐）
 
 - **背景**：ROADMAP M8.1 自动更新此前只交付 Go server 发布/manifest/下载 API + lib 客户端核心，runtime 轮询触发与 GUI 编排标注「后续按需补」——更新链路最后一公里（agent 定期检查、GUI 一键检查/下载）缺位。
