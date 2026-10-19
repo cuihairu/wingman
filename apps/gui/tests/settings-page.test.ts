@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import Page from '../src/routes/settings/+page.svelte';
 import { connection } from '$lib/stores/connection';
@@ -78,7 +78,9 @@ describe('设置页：连接区块', () => {
 
 	it('应用选项切换与恢复默认', async () => {
 		render(Page);
-		const checkboxes = screen.getAllByRole('checkbox');
+		// 限定「应用程序」卡片：远程注册卡片的 challenge 复选框会改变全局序号
+		const appCard = screen.getByText('应用程序').closest('.card')!;
+		const checkboxes = within(appCard).getAllByRole('checkbox');
 		expect(checkboxes).toHaveLength(3); // 最小化 / 自动重连 / 自动启动
 		await fireEvent.click(checkboxes[0]); // minimizeOnStart → true
 		await fireEvent.click(checkboxes[1]); // autoReconnect → false
