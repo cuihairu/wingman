@@ -178,9 +178,9 @@ toast(title: string, message: string, level: string = "info") -> nil
 ```python:line-numbers
 from wingman import notify
 
-# 发出 notify.toast 事件（无内置消费者，需自行订阅才有反应）
-notify.toast("Wingman", "任务完成", level="success")
-notify.toast("警告", "血量过低", level="warning")
+# 发出 notify.toast 事件（无内置消费者，需自行订阅才有反应；第三参 level 按位置传）
+notify.toast("Wingman", "任务完成", "success")
+notify.toast("警告", "血量过低", "warning")
 ```
 
 == Lua

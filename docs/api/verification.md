@@ -51,8 +51,8 @@ from wingman import verification
 code = verification.totp("JBSWY3DPEHPK3PXP")
 print(f"TOTP: {code}")
 
-# 自定义 8 位，60 秒步长
-code = verification.totp("JBSWY3DPEHPK3PXP", digits=8, period=60)
+# 自定义 8 位，60 秒步长（digits/period 按位置传，绑定层不收关键字参数）
+code = verification.totp("JBSWY3DPEHPK3PXP", 8, 60)
 ```
 
 == Lua

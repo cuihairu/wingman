@@ -96,9 +96,9 @@ from wingman import fsm
 
 machine_id = fsm.create("combat", "idle")
 
-# 定义状态
-fsm.state(machine_id, "idle", on_enter=lambda ctx: print("进入空闲状态"))
-fsm.state(machine_id, "fight", on_enter=lambda ctx: print("进入战斗状态"))
+# 定义状态（签名 state(machine, name, onEnter?, onExit?)，位置传参）
+fsm.state(machine_id, "idle", lambda ctx: print("进入空闲状态"))
+fsm.state(machine_id, "fight", lambda ctx: print("进入战斗状态"))
 ```
 
 == Lua
