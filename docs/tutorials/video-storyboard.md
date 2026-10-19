@@ -43,6 +43,38 @@ ROADMAP M8.2「视频教程」的前期交付物：六集分镜脚本 + 逐字�
 | 6 | 输出窗口 | 展示屏幕尺寸输出 | 「hello.lua 调了内置 screen 模块，打印当前屏幕分辨率。」 |
 | 7 | 便携 ZIP | 解压到 D 盘，运行同一个脚本 | 「便携版与安装版行为一致，适合 U 盘携带。」 |
 
+### EP01 命令行镜头的机器侧预采（零注入实测配方）
+
+EP01 第 5-6 镜（`wingman-agent.exe script ...hello.lua` 及其输出）可机器侧预采，
+不必人工录：全流程只用进程创建与文件操作，不点不敲，约 2 分钟出片。
+以下为 2026-10-20 三次探针 + 两轮试录实测出的配方。
+
+**前置自检（缺一即停）**
+
+- `wingman-agent.exe` 就位：下载公开 nightly 资产
+  `wingman-agent-<date>-nightly-<sha>-windows-x64.zip`（zip 根下即
+  `wingman-agent.exe` + `VERSION.txt`），不 clone、不构建。
+- **桌面必须处于解锁态**：机器空闲自动锁屏，锁屏期间 gdigrab 只能采到锁屏画面
+  —— 规格全达标但内容不可用，这是两次废片的唯一原因。判据：
+  `Get-Process LockApp` 非空即已锁定。
+- ffmpeg 可用（PATH 或本机已装的 bin 路径）。
+- 1920×1080、100% 缩放、60fps，对齐系列约定。
+
+**执行（按序）**
+
+1. 门控探针：`Get-Process LockApp,LogonUI` 均无进程才继续（UNLOCKED）；
+   有任一进程即锁定，停止并先解锁，不要尝试解锁动作本身。
+2. 起录（后台）：`ffmpeg -f gdigrab -framerate 60 -i desktop -c:v libx264 -preset veryfast -pix_fmt yuv420p <out>.mp4`
+3. 等 3 秒，进程创建拉起最大化窗口并预载两条命令：
+   `powershell -NoExit -WindowStyle Maximized -Command "Set-Location <repo>; <wingman-agent.exe> script examples\lua_scripts\hello.lua; <wingman-agent.exe> script examples\lua_scripts\color_detect.lua"`
+4. 等 25 秒（两条命令输出滚完），向自己起的 ffmpeg 进程 stdin 写 `q` 停录。
+5. 验收：`ffprobe` 时长 ≥25s、分辨率 1920×1080；抽一帧确认画面是终端窗口
+   而非锁屏或空桌面。
+
+**不要**尝试点击窗口聚焦或模拟键盘输入——那属于 GUI 注入，需在机器上获得
+授权；上面的预载命令方式正是为免此授权。`wingman-agent.exe` 缺失是另一个
+独立卡点，用公开 nightly 资产下载即可绕过，无需在机器上构建。
+
 ## EP02 Runtime GUI 总览
 
 前置：EP01 环境；GUI 已随发行包带 Tauri 前端。
@@ -108,6 +140,7 @@ ROADMAP M8.2「视频教程」的前期交付物：六集分镜脚本 + 逐字�
 
 ## 录制与发布检查单
 
+- [ ] 机器侧预采前跑门控探针（`Get-Process LockApp` 为空才录）——桌面锁定时只会录到锁屏画面。
 - [ ] 每集录完先自查：旁白与画面是否同步、有无口误、敏感信息（token、内网地址）是否打码。
 - [ ] SRT 字幕与视频同名；术语拼写与 docs/guide 一致。
 - [ ] 上传后把链接回填剧集总览表「文件名」列旁。
