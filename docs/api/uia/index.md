@@ -166,7 +166,7 @@ if root then
     local function printElementIds(element, depth)
         depth = depth or 0
         local indent = string.rep("  ", depth)
-        local info = element:get_info()
+        local info = element.get_info()
         local name = info.name or "(无名称)"
         local role = info.role or 0
         local autoId = info.id or ""
@@ -177,7 +177,7 @@ if root then
         end
 
         -- 递归子元素
-        local children = element:get_children()
+        local children = element.get_children()
         for i, child in ipairs(children) do
             printElementIds(child, depth + 1)
         end
@@ -225,7 +225,7 @@ local wingman = require("wingman")
 -- 使用 AutomationId 查找（最稳定）
 local btn = wingman.uia.find_by_id("btnSubmit")
 if btn then
-    btn:click()
+    btn.click()
 end
 ```
 
@@ -271,15 +271,15 @@ local wingman = require("wingman")
 -- 使用专用的查找函数（推荐）
 local btn = wingman.uia.find_button("确定")
 if btn then
-    btn:click()
+    btn.click()
 end
 
 -- 或使用通用查找（不太推荐，可能找到其他控件）
 local element = wingman.uia.find_by_name("确定")
 if element then
-    local info = element:get_info()
+    local info = element.get_info()
     if info.role == 2 then  -- 2 = UIARole Button
-        element:click()
+        element.click()
     end
 end
 ```
@@ -314,7 +314,7 @@ local wingman = require("wingman")
 -- 注意：先按角色取全部按钮（UIARole 2 = Button），再按名称筛选
 local elements = wingman.uia.find_all_by_control_type(2)
 for i, element in ipairs(elements) do
-    local info = element:get_info()
+    local info = element.get_info()
     if info.name == "确定" then
         print("找到确定按钮")
     end
@@ -394,7 +394,7 @@ local function findSubmitButton()
     -- 方法 3: 最后尝试纯名称查找并验证角色
     local btn = wingman.uia.find_by_name("提交")
     if btn then
-        local info = btn:get_info()
+        local info = btn.get_info()
         if info.role == 2 and info.is_enabled then  -- 2 = UIARole Button
             return btn
         end
@@ -406,7 +406,7 @@ end
 -- 使用
 local btn = findSubmitButton()
 if btn then
-    btn:click()
+    btn.click()
 else
     print("未找到提交按钮")
 end
@@ -445,7 +445,7 @@ local wingman = require("wingman")
 
 local root = wingman.uia.from_foreground()
 if root then
-    local info = root:get_info()
+    local info = root.get_info()
     print("窗口名称: " .. info.name)
     print("角色: " .. info.role)  -- 1 = UIARole Window
 end
@@ -521,7 +521,7 @@ local x, y = 500, 300
 
 local element = wingman.uia.from_point(x, y)
 if element then
-    local info = element:get_info()
+    local info = element.get_info()
     print("元素名称: " .. info.name)
     print("角色: " .. info.role)
 end
@@ -558,7 +558,7 @@ local wingman = require("wingman")
 -- 查找名为"文件"的菜单
 local fileMenu = wingman.uia.find_by_name("文件")
 if fileMenu then
-    fileMenu:click()
+    fileMenu.click()
 end
 ```
 
@@ -589,7 +589,7 @@ local wingman = require("wingman")
 -- 通过 AutomationId 查找（推荐用于生产环境）
 local btn = wingman.uia.find_by_id("btnSubmit")
 if btn then
-    btn:click()
+    btn.click()
 end
 ```
 
@@ -700,7 +700,7 @@ local wingman = require("wingman")
 
 local element = wingman.uia.find_button("确定")
 if element then
-    local info = element:get_info()
+    local info = element.get_info()
     print("名称: " .. (info.name or ""))
     print("id: " .. (info.id or ""))
     print("类名: " .. (info.className or ""))
@@ -733,7 +733,7 @@ local wingman = require("wingman")
 
 local btn = wingman.uia.find_button("确定")
 if btn then
-    btn:click()
+    btn.click()
 end
 ```
 
@@ -762,7 +762,7 @@ local wingman = require("wingman")
 
 local item = wingman.uia.find_list_item("file.txt")
 if item then
-    item:right_click()
+    item.right_click()
 end
 ```
 
@@ -789,7 +789,7 @@ local wingman = require("wingman")
 
 local item = wingman.uia.find_by_name("文件.txt")
 if item then
-    item:double_click()
+    item.double_click()
 end
 ```
 
@@ -816,7 +816,7 @@ local wingman = require("wingman")
 
 local edit = wingman.uia.find_edit("用户名")
 if edit then
-    edit:focus()
+    edit.focus()
 end
 ```
 
@@ -851,11 +851,11 @@ local wingman = require("wingman")
 local edit = wingman.uia.find_edit("搜索")
 if edit then
     -- 获取文本
-    local value = edit:get_value()
+    local value = edit.get_value()
     print("当前值: " .. value)
 
     -- 设置文本
-    edit:set_value("搜索关键词")
+    edit.set_value("搜索关键词")
 end
 ```
 
@@ -887,9 +887,9 @@ local wingman = require("wingman")
 
 local root = wingman.uia.from_foreground()
 if root then
-    local children = root:get_children()
+    local children = root.get_children()
     for i, child in ipairs(children) do
-        local info = child:get_info()
+        local info = child.get_info()
         print(string.format("[%d] %s (role=%d)", i, info.name, info.role))
     end
 end
@@ -964,9 +964,9 @@ local wingman = require("wingman")
 
 local item = wingman.uia.find_list_item("row1")
 if item then
-    local parent = item:get_parent()
+    local parent = item.get_parent()
     if parent then
-        print("父元素: " .. parent:get_info().name)
+        print("父元素: " .. parent.get_info().name)
     end
 end
 ```
@@ -1003,15 +1003,15 @@ local wingman = require("wingman")
 
 local item = wingman.uia.find_list_item("row1")
 if item then
-    item:select()
+    item.select()
 end
 
 -- 容器查询当前选中
 local lst = wingman.uia.find_list("items")
 if lst then
-    local selected = lst:get_selection()
+    local selected = lst.get_selection()
     if selected then
-        print("当前选中: " .. selected:get_info().name)
+        print("当前选中: " .. selected.get_info().name)
     end
 end
 ```
@@ -1050,15 +1050,15 @@ local wingman = require("wingman")
 local menu = wingman.uia.find_by_name("文件")
 if menu then
     -- 展开
-    menu:expand()
+    menu.expand()
 
     -- 检查是否已展开
-    if menu:is_expanded() then
+    if menu.is_expanded() then
         print("菜单已展开")
     end
 
     -- 折叠
-    menu:collapse()
+    menu.collapse()
 end
 ```
 
@@ -1165,7 +1165,7 @@ local wingman = require("wingman")
 
 ## 可用接口
 
-> uia 模块的注册名均为 snake_case，Python 与 Lua 使用相同的函数名：Python 经 `uia.` 前缀属性调用，Lua 经 `wingman.uia.` 前缀调用；UIElement 元素方法 Python 用 `element["方法名"]()`，Lua 用 `element:方法名()`。
+> uia 模块的注册名均为 snake_case，Python 与 Lua 使用相同的函数名：Python 经 `uia.` 前缀属性调用，Lua 经 `wingman.uia.` 前缀调用；UIElement 元素方法 Python 用 `element["方法名"]()`（元素对象是字典，无属性访问），Lua 用 `element.方法名()`（元素对象是普通表，点号调用；冒号调用会把元素自身混入参数，带参方法如 `set_value`/`set_checked` 会失效）。
 
 ### 根元素获取
 

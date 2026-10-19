@@ -69,11 +69,11 @@ local wingman = require("wingman")
 local progress = wingman.uia.find_by_name("安装进度")
 if progress then
     -- get_info 无数值进度字段，这里只读取通用信息
-    local info = progress:get_info()
+    local info = progress.get_info()
     print("名称: " .. (info.name or ""))
 
     -- get_value 返回元素文本（部分应用会写入进度文本）
-    local text = progress:get_value()
+    local text = progress.get_value()
     print("元素文本: " .. text)
 end
 ```
@@ -148,7 +148,7 @@ local function waitForProgressComplete(progressName, timeout)
         if progress then
             -- get_info 无数值进度字段；若应用把进度写进元素文本（如 "100%"），
             -- 可经 get_value() 读取并自行解析
-            local text = progress:get_value() or ""
+            local text = progress.get_value() or ""
             if string.find(text, "100", 1, true) then
                 print("进度完成！")
                 return true

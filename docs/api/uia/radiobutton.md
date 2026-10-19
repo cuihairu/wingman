@@ -81,7 +81,7 @@ local wingman = require("wingman")
 local radio = wingman.uia.find_by_name("男")
 if radio then
     -- 点击选中
-    radio:click()
+    radio.click()
     print("已选中：男")
 end
 ```
@@ -162,7 +162,7 @@ local function selectGender(gender)
     -- 查找并点击对应的单选按钮
     local radio = wingman.uia.find_by_name(gender)
     if radio then
-        radio:click()
+        radio.click()
         print("已选择性别: " .. gender)
         -- 脚本层暂无选中状态读取接口（get_info 无 toggle_state），无法回读验证
         return true

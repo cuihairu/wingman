@@ -43,7 +43,7 @@ local wingman = require("wingman")
 -- 获取前台窗口
 local root = wingman.uia.from_foreground()
 if root then
-    local info = root:get_info()
+    local info = root.get_info()
     print("窗口名称: " .. (info.name or ""))
     print("角色: " .. tostring(info.role or 0))  -- 1 = UIARole Window
 end
@@ -135,7 +135,7 @@ local windows = wingman.uia.find_all_by_control_type(1)
 
 print("找到 " .. #windows .. " 个窗口：")
 for i, win in ipairs(windows) do
-    local info = win:get_info()
+    local info = win.get_info()
     print("  - " .. (info.name or "(无名称)"))
 end
 ```
@@ -171,7 +171,7 @@ local wingman = require("wingman")
 -- 等待对话框出现（最多 3 秒）
 local dialog = wingman.uia.wait_for_name("设置", 3000)
 if dialog then
-    local info = dialog:get_info()
+    local info = dialog.get_info()
     if info.role == 1 then  -- 1 = UIARole Window
         print("找到对话框窗口")
     end
@@ -216,7 +216,7 @@ local wingman = require("wingman")
 
 local root = wingman.uia.from_foreground()
 if root then
-    local info = root:get_info()
+    local info = root.get_info()
 
     print("窗口标题: " .. (info.name or ""))
     print("角色: " .. tostring(info.role or 0))  -- 1 = UIARole Window

@@ -46,7 +46,7 @@ local wingman = require("wingman")
 -- 先移动鼠标到按钮上触发工具提示
 local btn = wingman.uia.find_button("帮助")
 if btn then
-    local info = btn:get_info()
+    local info = btn.get_info()
     local rect = info.bounds
     local centerX = rect.x + rect.width / 2
     local centerY = rect.y + rect.height / 2
@@ -95,7 +95,7 @@ local wingman = require("wingman")
 
 local tooltip = wingman.uia.find_text("显示帮助内容")
 if tooltip then
-    local info = tooltip:get_info()
+    local info = tooltip.get_info()
     local text = info.name or ""
     print("工具提示内容: " .. text)
 end
@@ -145,7 +145,7 @@ local wingman = require("wingman")
 -- 移动鼠标触发工具提示
 local btn = wingman.uia.find_button("帮助")
 if btn then
-    local info = btn:get_info()
+    local info = btn.get_info()
     local rect = info.bounds
     local centerX = rect.x + rect.width / 2
     local centerY = rect.y + rect.height / 2
@@ -156,7 +156,7 @@ if btn then
     for i = 1, 10 do
         local tooltip = wingman.uia.find_text("显示帮助内容")
         if tooltip then
-            local tipInfo = tooltip:get_info()
+            local tipInfo = tooltip.get_info()
             print("工具提示: " .. (tipInfo.name or ""))
             found = true
             break

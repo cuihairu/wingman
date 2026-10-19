@@ -87,12 +87,12 @@ local wingman = require("wingman")
 local listBox = wingman.uia.find_by_name("文件列表")
 if listBox then
     -- 获取所有列表项
-    local items = listBox:get_children()
+    local items = listBox.get_children()
     print("共有 " .. #items .. " 个项目")
 
     -- 遍历打印
     for i, item in ipairs(items) do
-        local info = item:get_info()
+        local info = item.get_info()
         local name = info.name or "(无名称)"
         print(string.format("  [%d] %s", i, name))
     end
@@ -128,9 +128,9 @@ local wingman = require("wingman")
 
 local listBox = wingman.uia.find_list("文件列表")
 if listBox then
-    local selected = listBox:get_selection()
+    local selected = listBox.get_selection()
     if selected then
-        print("当前选中: " .. selected:get_info().name)
+        print("当前选中: " .. selected.get_info().name)
     else
         print("当前无选中项")
     end
@@ -173,7 +173,7 @@ local wingman = require("wingman")
 
 local listBox = wingman.uia.find_by_name("文件列表")
 if listBox then
-    local items = listBox:get_children()
+    local items = listBox.get_children()
 
     -- 点击第三个项目（索引从 1 开始）
     if #items > 2 then
@@ -213,7 +213,7 @@ local wingman = require("wingman")
 -- 直接按名称查找列表项
 local item = wingman.uia.find_by_name("目标文件.txt")
 if item then
-    item:click()
+    item.click()
     print("已选中：目标文件.txt")
 else
     print("未找到目标文件")
@@ -257,7 +257,7 @@ local wingman = require("wingman")
 
 local listBox = wingman.uia.find_by_name("文件列表")
 if listBox then
-    local items = listBox:get_children()
+    local items = listBox.get_children()
 
     -- 双击打开项目
     if #items > 2 then
@@ -310,7 +310,7 @@ local wingman = require("wingman")
 
 local item = wingman.uia.find_list_item("目标文件.txt")
 if item then
-    item:select()
+    item.select()
 end
 ```
 

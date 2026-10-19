@@ -51,7 +51,7 @@ local wingman = require("wingman")
 local edit = wingman.uia.find_edit("用户名")
 if edit then
     -- 找到了，可以操作
-    edit:set_value("player123")
+    edit.set_value("player123")
     print("已填写用户名")
 else
     print("未找到用户名输入框")
@@ -90,7 +90,7 @@ local wingman = require("wingman")
 -- 返回第一个 Edit 控件（不区分名称）
 local edit = wingman.uia.find_edit("")
 if edit then
-    edit:set_value("some text")
+    edit.set_value("some text")
     print("已填写内容")
 end
 ```
@@ -112,7 +112,7 @@ UIElement.get_value() -> str
 ```
 
 ```lua
-UIElement:get_value() -> string
+UIElement.get_value() -> string
 ```
 
 **返回**：编辑框中的文本内容
@@ -144,7 +144,7 @@ local wingman = require("wingman")
 local edit = wingman.uia.find_edit("搜索")
 if edit then
     -- 读取当前搜索关键词
-    local currentText = edit:get_value()
+    local currentText = edit.get_value()
     print("当前搜索内容: " .. currentText)
 end
 ```
@@ -162,7 +162,7 @@ UIElement.set_value(text: str) -> None
 ```
 
 ```lua
-UIElement:set_value(text: string) -> None
+UIElement.set_value(text: string) -> None
 ```
 
 **参数**：
@@ -190,7 +190,7 @@ local wingman = require("wingman")
 local edit = wingman.uia.find_edit("用户名")
 if edit then
     -- 设置用户名
-    edit:set_value("player123")
+    edit.set_value("player123")
     print("已填写用户名")
 end
 ```
@@ -223,7 +223,7 @@ local wingman = require("wingman")
 local edit = wingman.uia.find_edit("搜索")
 if edit then
     -- 清空搜索框
-    edit:set_value("")
+    edit.set_value("")
     print("已清空搜索框")
 end
 ```
@@ -262,13 +262,13 @@ local wingman = require("wingman")
 local edit = wingman.uia.find_edit("日志")
 if edit then
     -- 读取现有内容
-    local current = edit:get_value()
+    local current = edit.get_value()
 
     -- 追加新行
     local newContent = current .. "\n[INFO] 新的日志条目"
 
     -- 设置回编辑框
-    edit:set_value(newContent)
+    edit.set_value(newContent)
     print("已追加日志")
 end
 ```
@@ -315,11 +315,11 @@ local wingman = require("wingman")
 local passwordEdit = wingman.uia.find_edit("密码")
 if passwordEdit then
     -- 设置密码（这是允许的）
-    passwordEdit:set_value("mypassword123")
+    passwordEdit.set_value("mypassword123")
     print("已设置密码")
 
     -- 注意：无法读取密码内容
-    -- local content = passwordEdit:get_value()  -- 返回空或 "*"
+    -- local content = passwordEdit.get_value()  -- 返回空或 "*"
 end
 ```
 
@@ -355,7 +355,7 @@ local readonlyEdit = wingman.uia.find_edit("状态信息")
 if readonlyEdit then
     -- get_info 无只读字段，脚本层无法识别只读属性
     -- 只读编辑框只能读取，写入是否生效由应用侧决定
-    local text = readonlyEdit:get_value()
+    local text = readonlyEdit.get_value()
     print("状态信息: " .. text)
 end
 ```
@@ -401,7 +401,7 @@ if textarea then
     -- 设置多行文本（使用 \n 分隔各行）
     local multiLineText = "第一行内容\n第二行内容\n第三行内容"
 
-    textarea:set_value(multiLineText)
+    textarea.set_value(multiLineText)
     print("已填写多行描述")
 end
 ```
@@ -427,7 +427,7 @@ UIElement.focus() -> None
 ```
 
 ```lua
-UIElement:focus() -> None
+UIElement.focus() -> None
 ```
 
 :::tabs
@@ -452,7 +452,7 @@ local wingman = require("wingman")
 local edit = wingman.uia.find_edit("用户名")
 if edit then
     -- 设置焦点到用户名输入框
-    edit:focus()
+    edit.focus()
     print("焦点已设置到用户名输入框")
 end
 ```
@@ -494,7 +494,7 @@ local wingman = require("wingman")
 local edit = wingman.uia.find_edit("搜索")
 if edit then
     -- 1. 先设置焦点
-    edit:focus()
+    edit.focus()
 
     -- 2. 发送 Ctrl+A 全选（keyDown/keyUp 组合：0x11=Ctrl，0x41=A）
     wingman.input.keyDown(0x11)
@@ -550,7 +550,7 @@ local wingman = require("wingman")
 
 local edit = wingman.uia.find_edit("用户名")
 if edit then
-    local info = edit:get_info()
+    local info = edit.get_info()
 
     print("编辑框名称: " .. (info.name or ""))
     print("当前内容: " .. (info.text or ""))
@@ -623,7 +623,7 @@ local function login(username, password)
     -- 1. 填写用户名
     local usernameEdit = wingman.uia.find_edit("用户名")
     if usernameEdit then
-        usernameEdit:set_value(username)
+        usernameEdit.set_value(username)
         print("已填写用户名: " .. username)
     else
         print("未找到用户名输入框")
@@ -633,7 +633,7 @@ local function login(username, password)
     -- 2. 填写密码
     local passwordEdit = wingman.uia.find_edit("密码")
     if passwordEdit then
-        passwordEdit:set_value(password)
+        passwordEdit.set_value(password)
         print("已填写密码")
     else
         print("未找到密码输入框")
@@ -643,7 +643,7 @@ local function login(username, password)
     -- 3. 点击登录按钮
     local loginBtn = wingman.uia.find_button("登录")
     if loginBtn then
-        loginBtn:click()
+        loginBtn.click()
         print("已点击登录按钮")
         return true
     else

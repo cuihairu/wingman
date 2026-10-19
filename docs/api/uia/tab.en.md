@@ -63,7 +63,7 @@ local wingman = require("wingman")
 -- 直接查找并点击"高级"标签页
 local tabPage = wingman.uia.find_by_name("高级")
 if tabPage then
-    tabPage:click()
+    tabPage.click()
     print("已切换到高级标签页")
 end
 ```
@@ -101,7 +101,7 @@ local wingman = require("wingman")
 local tab = wingman.uia.find_by_name("设置")
 if tab then
     -- 获取所有标签页
-    local tabs = tab:get_children()
+    local tabs = tab.get_children()
     print("共有 " .. #tabs .. " 个标签页")
 
     -- 切换到第二个标签（索引从 1 开始）
@@ -145,11 +145,11 @@ local wingman = require("wingman")
 
 local tab = wingman.uia.find_by_name("设置")
 if tab then
-    local tabs = tab:get_children()
+    local tabs = tab.get_children()
 
     print("共有 " .. #tabs .. " 个标签页：")
     for i, tabPage in ipairs(tabs) do
-        local info = tabPage:get_info()
+        local info = tabPage.get_info()
         local name = info.name or "(无名称)"
         print(string.format("  [%d] %s", i, name))
     end
@@ -187,9 +187,9 @@ local wingman = require("wingman")
 
 local tabs = wingman.uia.find_tab("设置")
 if tabs then
-    local active = tabs:get_selection()
+    local active = tabs.get_selection()
     if active then
-        print("当前标签页: " .. active:get_info().name)
+        print("当前标签页: " .. active.get_info().name)
     else
         print("当前无激活标签页")
     end

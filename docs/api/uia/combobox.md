@@ -79,7 +79,7 @@ local wingman = require("wingman")
 local combo = wingman.uia.find_by_name("国家/地区")
 if combo then
     -- get_value 返回元素文本（对下拉框通常是当前选中项的文字）
-    local currentValue = combo:get_value()
+    local currentValue = combo.get_value()
     print("当前选择: " .. currentValue)
 end
 ```
@@ -105,7 +105,7 @@ from wingman import uia, util
 combo = uia.find_by_name("国家/地区")
 if combo:
     # 1. 展开下拉框
-    combo.expand()
+    combo["expand"]()
     print("已展开下拉框")
 
     # 2. 等待选项列表出现
@@ -114,7 +114,7 @@ if combo:
     # 3. 查找并点击目标选项
     option = uia.find_by_name("中国")
     if option:
-        option.click()
+        option["click"]()
         print("已选择：中国")
     else:
         print("未找到目标选项")
@@ -128,7 +128,7 @@ local wingman = require("wingman")
 local combo = wingman.uia.find_by_name("国家/地区")
 if combo then
     -- 1. 展开下拉框
-    combo:expand()
+    combo.expand()
     print("已展开下拉框")
 
     -- 2. 等待选项列表出现
@@ -137,7 +137,7 @@ if combo then
     -- 3. 查找并点击目标选项
     local option = wingman.uia.find_by_name("中国")
     if option then
-        option:click()
+        option.click()
         print("已选择：中国")
     else
         print("未找到目标选项")
@@ -173,7 +173,7 @@ local wingman = require("wingman")
 local combo = wingman.uia.find_by_name("国家/地区")
 if combo then
     -- 仅对支持文本设置的下拉框生效（实为设置文本）
-    combo:set_value("中国")
+    combo.set_value("中国")
     print("已设置为中国")
 end
 ```
@@ -205,7 +205,7 @@ if editable_combo:
     editable_combo["set_value"]("搜索关键词")
 
     # 方法 2: 展开选择预设选项
-    # editable_combo.expand()
+    # editable_combo["expand"]()
 ```
 
 == Lua
@@ -217,10 +217,10 @@ local wingman = require("wingman")
 local editableCombo = wingman.uia.find_edit("搜索")
 if editableCombo then
     -- 方法 1: 直接输入文本（set_value 实为设置文本）
-    editableCombo:set_value("搜索关键词")
+    editableCombo.set_value("搜索关键词")
 
     -- 方法 2: 展开选择预设选项
-    -- editableCombo:expand()
+    -- editableCombo.expand()
 end
 ```
 
@@ -247,7 +247,7 @@ from wingman import uia, util
 combo = uia.find_by_name("国家/地区")
 if combo:
     # 展开下拉框
-    combo.expand()
+    combo["expand"]()
     util.sleep(300)
 
     # 获取所有 ListItem 角色（UIARole 8）的元素
@@ -267,7 +267,7 @@ local wingman = require("wingman")
 local combo = wingman.uia.find_by_name("国家/地区")
 if combo then
     -- 展开下拉框
-    combo:expand()
+    combo.expand()
     wingman.util.sleep(300)
 
     -- 获取所有 ListItem 角色（UIARole 8）的元素
@@ -275,7 +275,7 @@ if combo then
 
     print("共有 " .. #options .. " 个选项：")
     for i, opt in ipairs(options) do
-        local info = opt:get_info()
+        local info = opt.get_info()
         print(string.format("  [%d] %s", i, info.name or ""))
     end
 end

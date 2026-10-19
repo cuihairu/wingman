@@ -85,7 +85,7 @@ local wingman = require("wingman")
 local menu = wingman.uia.find_by_name("文件")
 if menu then
     -- 展开菜单
-    menu:expand()
+    menu.expand()
     print("已展开文件菜单")
 
     -- 等待菜单项出现
@@ -94,7 +94,7 @@ if menu then
     -- 查找并点击"新建"菜单项
     local newItem = wingman.uia.find_by_name("新建")
     if newItem then
-        newItem:click()
+        newItem.click()
         print("已点击新建")
     end
 end
@@ -128,7 +128,7 @@ local wingman = require("wingman")
 -- 某些应用支持直接点击菜单项
 local saveItem = wingman.uia.find_by_name("保存")
 if saveItem then
-    saveItem:click()
+    saveItem.click()
     print("已点击保存")
 end
 ```
@@ -182,7 +182,7 @@ wingman.util.sleep(300)
 -- 操作菜单项
 local copyItem = wingman.uia.find_by_name("复制")
 if copyItem then
-    copyItem:click()
+    copyItem.click()
     print("已点击复制")
 end
 ```
@@ -226,15 +226,15 @@ local wingman = require("wingman")
 local menu = wingman.uia.find_by_name("文件")
 if menu then
     -- 展开菜单
-    menu:expand()
+    menu.expand()
     wingman.util.sleep(300)
 
     -- 获取所有菜单项
-    local items = menu:get_children()
+    local items = menu.get_children()
 
     print("文件菜单共有 " .. #items .. " 个项目：")
     for i, item in ipairs(items) do
-        local info = item:get_info()
+        local info = item.get_info()
         local name = info.name or "(无名称)"
         print("  - " .. name)
     end

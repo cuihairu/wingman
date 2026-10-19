@@ -86,7 +86,7 @@ from wingman import uia
 # 获取当前焦点元素
 root = uia.from_foreground()
 if root:
-    info = root.get_info()
+    info = root["get_info"]()
     print(f"元素名称: {info['name']}")
 ```
 
@@ -120,7 +120,7 @@ from wingman import uia
 btn = uia.find_button("确定")
 if btn:
     # 点击按钮
-    btn.click()
+    btn["click"]()
     print("已点击确定按钮")
 else:
     print("未找到确定按钮")
@@ -166,7 +166,7 @@ from wingman import uia
 # 查找名为"文件"的菜单
 file_menu = uia.find_by_name("文件")
 if file_menu:
-    file_menu.click()
+    file_menu["click"]()
 ```
 
 == Lua
@@ -201,7 +201,7 @@ from wingman import uia
 # 通过 AutomationId 查找（推荐用于生产环境）
 btn = uia.find_by_id("btnSubmit")
 if btn:
-    btn.click()
+    btn["click"]()
 ```
 
 == Lua
@@ -255,7 +255,7 @@ from wingman import uia
 # 查找所有按钮（2 = UIARole.Button）
 buttons = uia.find_all_by_control_type(2)
 for btn in buttons:
-    info = btn.get_info()
+    info = btn["get_info"]()
     print(f"按钮: {info['name']}")
 ```
 
@@ -347,12 +347,12 @@ from wingman import uia
 # 按名称查找
 btn = uia.find_button("确定")
 if btn:
-    btn.click()
+    btn["click"]()
 
 # 按 AutomationId 查找（更稳定）
 btn = uia.find_by_id("btnOK")
 if btn:
-    btn.click()
+    btn["click"]()
 ```
 
 == Lua
@@ -391,10 +391,10 @@ from wingman import uia
 
 btn = uia.find_button("提交")
 if btn:
-    info = btn.get_info()
+    info = btn["get_info"]()
     # 检查是否启用
     if info.get('is_enabled', True):
-        btn.click()
+        btn["click"]()
         print("已点击")
     else:
         print("按钮已禁用")
@@ -442,14 +442,14 @@ from wingman import uia
 # 查找命名编辑框
 edit = uia.find_edit("用户名")
 if edit:
-    edit.set_value("player123")
+    edit["set_value"]("player123")
 
 # 注意：name 传空字符串表示"不按名称过滤"，
 # 会返回匹配到的第一个编辑框（不论其名称是否为空），
 # 并非只查找"名称为空"的控件
 edit = uia.find_edit("")
 if edit:
-    edit.set_value("some text")
+    edit["set_value"]("some text")
 ```
 
 == Lua
@@ -490,14 +490,14 @@ from wingman import uia
 edit = uia.find_edit("搜索")
 if edit:
     # 读取内容
-    current_text = edit.get_value()
+    current_text = edit["get_value"]()
     print(f"当前内容: {current_text}")
 
     # 设置内容
-    edit.set_value("搜索关键词")
+    edit["set_value"]("搜索关键词")
 
     # 清空内容
-    edit.set_value("")
+    edit["set_value"]("")
 ```
 
 == Lua
@@ -535,7 +535,7 @@ from wingman import uia
 password_edit = uia.find_edit("密码")
 if password_edit:
     # 设置密码
-    password_edit.set_value("mypassword123")
+    password_edit["set_value"]("mypassword123")
 
     # 注意：密码框内容通常无法直接读取
     # get_value() 会返回空或隐藏字符
@@ -581,16 +581,16 @@ from wingman import uia, util
 combo = uia.find_by_name("国家/地区")
 if combo:
     # 展开下拉框
-    combo.expand()
+    combo["expand"]()
     util.sleep(300)
 
     # 选择选项（通过名称）
     option = uia.find_by_name("中国")
     if option:
-        option.click()
+        option["click"]()
 
     # 或直接设置值（如果支持）
-    combo.set_value("中国")
+    combo["set_value"]("中国")
 ```
 
 == Lua
@@ -633,10 +633,10 @@ from wingman import uia
 editable_combo = uia.find_edit("搜索")
 if editable_combo:
     # 直接输入文本
-    editable_combo.set_value("搜索内容")
+    editable_combo["set_value"]("搜索内容")
 
     # 或展开选择
-    editable_combo.expand()
+    editable_combo["expand"]()
 ```
 
 == Lua
@@ -679,16 +679,16 @@ from wingman import uia
 list_box = uia.find_by_name("文件列表")
 if list_box:
     # 获取所有列表项
-    items = list_box.get_children()
+    items = list_box["get_children"]()
     print(f"共有 {len(items)} 个项目")
 
     # 遍历列表项
     for i, item in enumerate(items):
-        info = item.get_info()
+        info = item["get_info"]()
         print(f"[{i}] {info['name']}")
 
 # 注意：get_info() 不含选中状态字段（is_selected 不存在），
-# 列表项的选中状态脚本层暂不可查；用脚本变量维护，或点击后以界面反馈确认
+# 查询当前选中项用容器的 get_selection()（无选中返回 None）
 ```
 
 == Lua
@@ -711,7 +711,7 @@ if listBox then
 end
 ```
 
-> **注意**：`get_info()` 的返回字段不含选中状态（无 `is_selected` 字段），列表项的选中状态脚本层暂不可查。可用脚本变量维护选中状态，或点击后以界面反馈确认。
+> **注意**：`get_info()` 的返回字段不含选中状态（无 `is_selected` 字段）。查询当前选中项请用容器的 `get_selection()`（返回首个选中子项，无选中返回 `None`/`nil`）；也可以用列表项的 `select()` 编程选中（不移动鼠标）。
 
 :::
 
@@ -726,12 +726,16 @@ from wingman import uia
 
 list_box = uia.find_by_name("用户列表")
 if list_box:
-    items = list_box.get_children()
+    items = list_box["get_children"]()
 
-    # 点击第三个项目
-    # （select() 未实现（计划中），选中列表项的现役替代是 click）
+    # 编程选中第三个项目（不移动鼠标；click() 是模拟点击的替代）
     if len(items) > 2:
-        items[2].click()
+        items[2]["select"]()
+
+    # 查询当前选中项
+    selected = list_box["get_selection"]()
+    if selected:
+        print(f"当前选中: {selected['get_info']()['name']}")
 ```
 
 == Lua
@@ -743,10 +747,15 @@ local listBox = wingman.uia.find_by_name("用户列表")
 if listBox then
     local items = listBox.get_children()
 
-    -- 点击第三个项目
-    -- （select() 未实现（计划中），选中列表项的现役替代是 click）
+    -- 编程选中第三个项目（不移动鼠标；click() 是模拟点击的替代）
     if #items > 2 then
-        items[3].click()
+        items[3].select()
+    end
+
+    -- 查询当前选中项
+    local selected = listBox.get_selection()
+    if selected then
+        print("当前选中: " .. selected.get_info().name)
     end
 end
 ```
@@ -762,9 +771,11 @@ end
 #### 勾选/取消勾选
 
 **相关方法**
+- `set_checked(bool)` - 直接设置勾选状态（win Toggle 模式 / mac AXChecked）
+- `is_checked()` - 读取勾选状态
 - `click()` - 切换勾选状态
 
-> **注意**：勾选状态在脚本层暂不可直接设置——C++ 层有 `setChecked` 接口但未绑定到脚本。`set_value()` 走文本 ValuePattern，对 CheckBox/RadioButton 通常无效（返回 `false`）；`get_value()` 通常也读不到勾选状态。现役做法是用 `click()` 切换，并用脚本变量维护状态。
+> **注意**：读勾选状态用 `is_checked()`，直接设置用 `set_checked(true/false)`。`set_value()` 的实现是设置元素文本，对 CheckBox/RadioButton 无效（不会勾选）；`get_value()` 读的也是文本，不是勾选状态。
 
 :::tabs
 
@@ -773,12 +784,17 @@ end
 ```python:line-numbers
 from wingman import uia
 
-is_checked = False
 checkbox = uia.find_by_name("记住密码")
 if checkbox:
-    # 用 click() 切换勾选（勾选状态脚本层不可直接设置）
-    checkbox.click()
-    is_checked = not is_checked
+    # 直接设置勾选状态
+    checkbox["set_checked"](True)
+
+    # 读取勾选状态
+    if checkbox["is_checked"]():
+        print("已勾选")
+
+    # click() 仍是可用的切换手段
+    checkbox["click"]()
 ```
 
 == Lua
@@ -786,12 +802,18 @@ if checkbox:
 ```lua:line-numbers
 local wingman = require("wingman")
 
-local isChecked = false
 local checkbox = wingman.uia.find_by_name("记住密码")
 if checkbox then
-    -- 用 click() 切换勾选（勾选状态脚本层不可直接设置）
+    -- 直接设置勾选状态
+    checkbox.set_checked(true)
+
+    -- 读取勾选状态
+    if checkbox.is_checked() then
+        print("已勾选")
+    end
+
+    -- click() 仍是可用的切换手段
     checkbox.click()
-    isChecked = not isChecked
 end
 ```
 
@@ -801,7 +823,7 @@ end
 
 某些复选框有三种状态：选中、未选中、不确定。
 
-> **`set_toggle_state()` 未实现（计划中）**。现役替代：`click()` 只能在选中/未选中间切换；"不确定"状态脚本层暂无法设置。
+> **`set_toggle_state()` 未实现（计划中）**。两态场景用 `set_checked(true/false)` 直接设置；"不确定"（Indeterminate）状态脚本层暂无法设置。
 
 ---
 
@@ -822,7 +844,7 @@ from wingman import uia
 radio = uia.find_by_name("男")
 if radio:
     # 用点击选中（set_value 对单选按钮通常无效，见上文 CheckBox 说明）
-    radio.click()
+    radio["click"]()
     selected = "男"
 ```
 
@@ -858,7 +880,7 @@ from wingman import uia
 selected_gender = None
 
 male = uia.find_by_name("男")
-if male and male.click():
+if male and male["click"]():
     selected_gender = "男"  # 用脚本变量维护选中状态
 ```
 
@@ -895,15 +917,15 @@ from wingman import uia
 # 方法 1: 直接点击标签页
 tab_page = uia.find_by_name("高级")
 if tab_page:
-    tab_page.click()
+    tab_page["click"]()
 
 # 方法 2: 通过 Tab 控件获取子元素
 tab = uia.find_by_name("设置")
 if tab:
-    tabs = tab.get_children()
+    tabs = tab["get_children"]()
     # 切换到第二个标签
     if len(tabs) > 1:
-        tabs[1].click()
+        tabs[1]["click"]()
 ```
 
 == Lua
@@ -923,7 +945,7 @@ if tab then
     local tabs = tab.get_children()
     -- 切换到第二个标签
     if #tabs > 1 then
-        tabs[2].click()
+        tabs[2]["click"]()
     end
 end
 ```
@@ -952,13 +974,13 @@ from wingman import uia, util
 # 查找并展开菜单
 menu = uia.find_by_name("文件")
 if menu:
-    menu.expand()
+    menu["expand"]()
     util.sleep(300)
 
     # 查找并点击菜单项
     new_item = uia.find_by_name("新建")
     if new_item:
-        new_item.click()
+        new_item["click"]()
 ```
 
 == Lua
@@ -998,7 +1020,7 @@ util.sleep(300)
 # 操作菜单项
 copy_item = uia.find_by_name("复制")
 if copy_item:
-    copy_item.click()
+    copy_item["click"]()
 ```
 
 == Lua
@@ -1043,12 +1065,12 @@ if tree:
     # 展开节点
     folder = uia.find_by_name("文档")
     if folder:
-        folder.expand()
+        folder["expand"]()
         util.sleep(200)
 
     # 折叠节点
     if folder:
-        folder.collapse()
+        folder["collapse"]()
 ```
 
 == Lua
@@ -1086,11 +1108,11 @@ from wingman import uia
 def traverse_tree(element, depth=0):
     """递归遍历树节点"""
     indent = "  " * depth
-    info = element.get_info()
+    info = element["get_info"]()
     print(f"{indent}{'└─' if depth > 0 else ''}{info['name']}")
 
     # 递归处理子节点
-    children = element.get_children()
+    children = element["get_children"]()
     for child in children:
         traverse_tree(child, depth + 1)
 
@@ -1144,13 +1166,13 @@ from wingman import uia
 def print_tree(element, depth=0):
     """打印 UI 树结构"""
     indent = "  " * depth
-    info = element.get_info()
+    info = element["get_info"]()
     name = info.get('name', '') or '(无名称)'
     role = info.get('role', 0)  # role 为 UIARole 数值枚举
     print(f"{indent}{name} (role={role})")
 
     # 递归遍历子元素
-    children = element.get_children()
+    children = element["get_children"]()
     for child in children:
         print_tree(child, depth + 1)
 
@@ -1212,7 +1234,7 @@ if found:
 # 从屏幕坐标获取元素（该坐标处的控件）
 element = uia.from_point(500, 300)
 if element:
-    info = element.get_info()
+    info = element["get_info"]()
     print(f"元素名称: {info['name']}")
 ```
 
@@ -1281,17 +1303,20 @@ uia.on_structure_changed("列表", on_structure_change)
 
 ### UIElement 对象完整方法列表
 
+调用约定：Python 用 `element["方法名"]()`（元素对象是字典，键为方法名），Lua 用 `element.方法名()`（元素对象是普通表，**点号调用**；冒号调用会把元素自身混入参数）。
+
 #### 获取信息
 
 | 方法 | 说明 |
 |-----|------|
-| `get_info()` | 获取元素所有属性（名称、类型、边界等） |
+| `get_info()` | 获取元素所有属性（名称、id、类名、角色、文本、状态、边界等） |
 
 #### 操作
 
 | 方法 | 说明 |
 |-----|------|
-| `click()` | 点击元素 |
+| `click()` | 点击元素（Windows 落在元素中心；macOS 等价 `AXShowMenu` 为右键） |
+| `right_click()` | 右键点击元素（macOS 弹出上下文菜单 `AXShowMenu`） |
 | `double_click()` | 双击元素 |
 | `focus()` | 设置焦点到元素 |
 
@@ -1299,8 +1324,8 @@ uia.on_structure_changed("列表", on_structure_change)
 
 | 方法 | 说明 |
 |-----|------|
-| `get_value()` | 获取当前值 |
-| `set_value(value)` | 设置值 |
+| `get_value()` | 获取元素文本（实为 getText） |
+| `set_value(text)` | 设置元素文本（实为 setText，仅对文本型控件有效） |
 
 #### 展开/折叠
 
@@ -1316,16 +1341,27 @@ uia.on_structure_changed("列表", on_structure_change)
 |-----|------|
 | `is_visible()` | 检查元素是否可见 |
 | `is_enabled()` | 检查元素是否启用 |
+| `is_checked()` | 检查勾选状态（win Toggle 模式 / mac AXChecked） |
+
+#### 勾选
+
+| 方法 | 说明 |
+|-----|------|
+| `set_checked(checked)` | 设置勾选状态（`true`/`false`） |
 
 #### 子元素
 
 | 方法 | 说明 |
 |-----|------|
 | `get_children()` | 获取所有直接子元素 |
+| `get_parent()` | 获取父元素（到根之后返回 `None`/`nil`） |
 
 #### 选择
 
-> `select()` 未实现（计划中）。选中列表项/单选按钮的现役替代是 `click()`。
+| 方法 | 说明 |
+|-----|------|
+| `select()` | 编程选中元素（列表项/树节点/标签项等，不移动鼠标） |
+| `get_selection()` | 容器查询首个选中子项（无选中返回 `None`/`nil`） |
 
 ---
 
@@ -1349,17 +1385,17 @@ if found:
     # 查找用户名输入框
     username = uia.find_edit("用户名")
     if username:
-        username.set_value("myusername")
+        username["set_value"]("myusername")
 
     # 查找密码输入框
     password = uia.find_edit("密码")
     if password:
-        password.set_value("mypassword")
+        password["set_value"]("mypassword")
 
     # 点击登录按钮
     login_btn = uia.find_button("登录")
     if login_btn:
-        login_btn.click()
+        login_btn["click"]()
         print("登录请求已发送")
 ```
 

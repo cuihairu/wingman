@@ -63,7 +63,7 @@ local wingman = require("wingman")
 local slider = wingman.uia.find_by_name("音量")
 if slider then
     -- get_info 无数值字段，这里只读取通用信息
-    local info = slider:get_info()
+    local info = slider.get_info()
     print("名称: " .. (info.name or ""))
 end
 ```

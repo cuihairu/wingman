@@ -74,7 +74,7 @@ if tree then
     -- 查找并展开"文档"节点
     local folder = wingman.uia.find_by_name("文档")
     if folder then
-        folder:expand()
+        folder.expand()
         print("已展开文档节点")
         wingman.util.sleep(200)  -- 等待子节点加载
     end
@@ -107,7 +107,7 @@ local wingman = require("wingman")
 
 local folder = wingman.uia.find_by_name("文档")
 if folder then
-    folder:collapse()
+    folder.collapse()
     print("已折叠文档节点")
 end
 ```
@@ -140,7 +140,7 @@ local wingman = require("wingman")
 local folder = wingman.uia.find_by_name("文档")
 if folder then
     -- 双击切换展开/折叠
-    folder:double_click()
+    folder.double_click()
     print("已双击切换状态")
 end
 ```
@@ -190,14 +190,14 @@ local wingman = require("wingman")
 local function traverseTree(element, depth)
     depth = depth or 0
     local indent = string.rep("  ", depth)
-    local info = element:get_info()
+    local info = element.get_info()
     local name = info.name or "(无名称)"
     local prefix = depth > 0 and "└─" or ""
 
     print(indent .. prefix .. name)
 
     -- 递归处理子节点
-    local children = element:get_children()
+    local children = element.get_children()
     for i, child in ipairs(children) do
         traverseTree(child, depth + 1)
     end
@@ -242,11 +242,11 @@ local wingman = require("wingman")
 local tree = wingman.uia.find_by_name("文件夹树")
 if tree then
     -- 获取直接子节点
-    local children = tree:get_children()
+    local children = tree.get_children()
 
     print("根节点共有 " .. #children .. " 个子节点：")
     for i, child in ipairs(children) do
-        local info = child:get_info()
+        local info = child.get_info()
         print("  - " .. (info.name or "(无名称)"))
     end
 end
@@ -284,7 +284,7 @@ local wingman = require("wingman")
 local node = wingman.uia.find_by_name("目标文件.txt")
 if node then
     -- 可能需要先展开父节点才能找到
-    node:click()
+    node.click()
     print("已选中：目标文件.txt")
 end
 ```

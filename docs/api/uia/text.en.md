@@ -76,7 +76,7 @@ local wingman = require("wingman")
 -- 查找欢迎文本
 local welcome = wingman.uia.find_text("欢迎使用")
 if welcome then
-    local info = welcome:get_info()
+    local info = welcome.get_info()
     local text = info.name or ""
     print("文本内容: " .. text)
 end
@@ -123,7 +123,7 @@ local wingman = require("wingman")
 -- 找到标签
 local label = wingman.uia.find_text("用户名：")
 if label then
-    local info = label:get_info()
+    local info = label.get_info()
     print("找到标签: " .. (info.name or ""))
 
     -- 获取标签位置（可用于坐标定位）

@@ -74,7 +74,7 @@ local wingman = require("wingman")
 
 local agree = wingman.uia.find_check_box("同意条款")
 if agree then
-    agree:set_checked(true)
+    agree.set_checked(true)
 end
 ```
 
@@ -108,7 +108,7 @@ local wingman = require("wingman")
 local checkbox = wingman.uia.find_by_name("记住密码")
 if checkbox then
     -- 点击复选框切换状态
-    checkbox:click()
+    checkbox.click()
     print("已点击切换状态")
 end
 ```
@@ -140,7 +140,7 @@ local wingman = require("wingman")
 
 local agree = wingman.uia.find_check_box("同意条款")
 if agree then
-    if agree:is_checked() then
+    if agree.is_checked() then
         print("已勾选")
     else
         print("未勾选")
@@ -228,21 +228,21 @@ local function registerWithAgreement()
     -- 仅在界面初始为未勾选时点击一次才能达成勾选；状态未知时先人工确认
     local agreement = wingman.uia.find_by_name("我已阅读并同意用户协议")
     if agreement then
-        agreement:click()
+        agreement.click()
         print("已点击同意用户协议")
     end
 
     -- 3. 可选：点击"记住密码"复选框
     local remember = wingman.uia.find_by_name("记住密码")
     if remember then
-        remember:click()
+        remember.click()
         print("已点击记住密码")
     end
 
     -- 4. 点击注册按钮
     local registerBtn = wingman.uia.find_button("注册")
     if registerBtn then
-        registerBtn:click()
+        registerBtn.click()
         print("已点击注册按钮")
         return true
     end
