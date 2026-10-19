@@ -61,15 +61,11 @@ local config = {
     maxConnections = 100
 }
 
--- 保存配置（第二参为缩进空格数）
-local config_file = io.open("config.json", "w")
-config_file:write(wingman.json.encode(config, 2))
-config_file:close()
+-- 保存配置（第二参为缩进空格数；沙箱禁用 io，统一走 wingman.file）
+wingman.file.write("config.json", wingman.json.encode(config, 2))
 
 -- 加载配置
-local config_file = io.open("config.json", "r")
-local config_content = config_file:read("*all")
-config_file:close()
+local config_content = wingman.file.read("config.json")
 
 local config = wingman.json.decode(config_content)
 print(config.server.host)  -- "localhost"
@@ -123,14 +119,10 @@ local config = {
 
 -- 保存配置
 local ini_content = wingman.ini.encode(config)
-local config_file = io.open("config.ini", "w")
-config_file:write(ini_content)
-config_file:close()
+wingman.file.write("config.ini", ini_content)
 
 -- 加载配置
-local config_file = io.open("config.ini", "r")
-local config_content = config_file:read("*all")
-config_file:close()
+local config_content = wingman.file.read("config.ini")
 
 local config = wingman.ini.decode(config_content)
 print(config.Server.host)  -- "localhost"
@@ -258,9 +250,7 @@ local config = {
 
 -- 保存配置
 local json_string = wingman.json.encode(config, 2)
-local file = io.open("config.json", "w")
-file:write(json_string)
-file:close()
+wingman.file.write("config.json", json_string)
 ```
 
 #### Python
@@ -310,9 +300,7 @@ with open("config.json", "w") as f:
 local wingman = require("wingman")
 
 -- 读取配置
-local file = io.open("config.json", "r")
-local config_content = file:read("*all")
-file:close()
+local config_content = wingman.file.read("config.json")
 
 local config = wingman.json.decode(config_content)
 
@@ -328,9 +316,7 @@ config.app.newField = "newValue"
 
 -- 保存修改后的配置
 local updated_json = wingman.json.encode(config, 2)
-local file = io.open("config.json", "w")
-file:write(updated_json)
-file:close()
+wingman.file.write("config.json", updated_json)
 ```
 
 #### Python
@@ -762,7 +748,7 @@ final_config = ini.merge(final_config, runtime_config)
 ```lua
 local wingman = require("wingman")
 
--- 检测环境
+-- 检测环境（注：沙箱模式禁用 os.getenv；env 经脚本配置 env 注入后以 _ENV_<KEY> 全局读取）
 local env = os.getenv("APP_ENV") or "development"
 
 -- 根据环境加载配置
@@ -843,21 +829,17 @@ local default_config = {
     logLevel = "info"
 }
 
--- 配置文件路径
+-- 配置文件路径（注：沙箱模式禁用 os.getenv，HOME 类路径需经脚本配置 env 注入后以 _ENV_<KEY> 读取）
 local config_paths = {
     "/etc/wingman/config.json",
-    os.getenv("HOME") .. "/.config/wingman/config.json",
     "config.json"
 }
 
--- 加载第一个存在的配置文件
+-- 加载第一个存在的配置文件（file.read 失败返回 nil，语义同 io.open）
 local config = default_config
 for _, path in ipairs(config_paths) do
-    local file = io.open(path, "r")
-    if file then
-        local content = file:read("*all")
-        file:close()
-
+    local content = wingman.file.read(path)
+    if content then
         local file_config = wingman.json.decode(content)
         -- 合并配置
         for k, v in pairs(file_config) do
@@ -1040,7 +1022,7 @@ local config = {
     }
 }
 
--- ✅ 使用环境变量
+-- ✅ 使用环境变量（注：沙箱模式禁用 os.getenv；env 经脚本配置 env 注入后以 _ENV_<KEY> 全局读取）
 local config = {
     database = {
         password = os.getenv("DB_PASSWORD")  -- 正确
@@ -1111,11 +1093,9 @@ local config_cache = nil
 function getConfig()
     if not config_cache then
         -- 首次加载
-        local file = io.open("config.json", "r")
-        local content = file:read("*all")
-        file:close()
+        local content = wingman.file.read("config.json")
 
-        config_cache = json.decode(content)
+        config_cache = wingman.json.decode(content)
     end
 
     return config_cache
@@ -1123,11 +1103,9 @@ end
 
 -- 重新加载配置
 function reloadConfig()
-    local file = io.open("config.json", "r")
-    local content = file:read("*all")
-    file:close()
+    local content = wingman.file.read("config.json")
 
-    config_cache = json.decode(content)
+    config_cache = wingman.json.decode(content)
 end
 ```
 
@@ -1150,28 +1128,21 @@ function GameConfig.load(config_path)
     local self = setmetatable({}, GameConfig)
 
     -- 加载主配置
-    local file = io.open(config_path, "r")
-    local content = file:read("*all")
-    file:close()
+    local content = wingman.file.read(config_path)
 
     self.config = wingman.json.decode(content)
 
     -- 加载键位绑定
-    local binds_file = io.open("keybinds.ini", "r")
-    if binds_file then
-        local binds_content = binds_file:read("*all")
-        binds_file:close()
+    local binds_content = wingman.file.read("keybinds.ini")
+    if binds_content then
         self.keybinds = wingman.ini.decode(binds_content)
     else
         self.keybinds = {}
     end
 
     -- 加载用户设置
-    local settings_file = io.open("user_settings.json", "r")
-    if settings_file then
-        local settings_content = settings_file:read("*all")
-        settings_file:close()
-
+    local settings_content = wingman.file.read("user_settings.json")
+    if settings_content then
         local user_settings = wingman.json.decode(settings_content)
         -- 合并用户设置
         for section, settings in pairs(user_settings) do
@@ -1204,9 +1175,7 @@ end
 function GameConfig:save()
     -- 保存配置
     local content = wingman.json.encode(self.config, 2)
-    local file = io.open("user_settings.json", "w")
-    file:write(content)
-    file:close()
+    wingman.file.write("user_settings.json", content)
 end
 
 function GameConfig:getKeybind(action)
@@ -1244,6 +1213,7 @@ ConfigManager.__index = ConfigManager
 
 function ConfigManager.new()
     local self = setmetatable({}, ConfigManager)
+    -- 注：沙箱模式禁用 os.getenv；env 经脚本配置 env 注入后以 _ENV_<KEY> 全局读取
     self.env = os.getenv("APP_ENV") or "development"
     self.config = {}
     return self
@@ -1275,11 +1245,8 @@ end
 function ConfigManager:loadEnvironment()
     local env_config_file = string.format("config/%s.json", self.env)
 
-    local file = io.open(env_config_file, "r")
-    if file then
-        local content = file:read("*all")
-        file:close()
-
+    local content = wingman.file.read(env_config_file)
+    if content then
         local env_config = wingman.json.decode(content)
 
         -- 深度合并配置

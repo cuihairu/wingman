@@ -400,10 +400,8 @@ for section in ini.sections(config):
 ```lua
 local wingman = require("wingman")
 
--- 读取配置文件
-local file = io.open("config.ini", "r")
-local content = file:read("*a")
-file:close()
+-- 读取配置文件（沙箱禁用 io，统一走 wingman.file）
+local content = wingman.file.read("config.ini")
 
 -- 解析配置
 local config = wingman.ini.decode(content)
@@ -420,9 +418,7 @@ config = wingman.ini.set(config, "Server", "port", "9000")
 config = wingman.ini.delete(config, "Server", "debug")
 
 -- 保存配置
-local file = io.open("config.ini", "w")
-file:write(wingman.ini.encode(config))
-file:close()
+wingman.file.write("config.ini", wingman.ini.encode(config))
 
 -- 遍历所有配置
 for _, section in ipairs(wingman.ini.sections(config)) do

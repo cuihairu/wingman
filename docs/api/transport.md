@@ -756,7 +756,7 @@ print("Echo 服务器启动在端口 9000")
 
 -- 运行 10 秒
 for i = 1, 10 do
-    os.execute("sleep 1")
+    wingman.util.sleep(1000)
     local sessions = wingman.transport.tcpGetSessions(server_handle)
     if #sessions > 0 then
         print("当前有", #sessions, "个连接")

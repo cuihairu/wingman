@@ -581,7 +581,10 @@ local wingman = require('wingman')
       （xvfb-run + timeout 6s）21 正常结束 + 7 长循环运行中、0 失败；
       修掉 8 个脚本共 16 处沙箱禁用全局调用（os.time/date/clock、io.open、os.exit）
       统一改用 wingman.util.getTime / wingman.file.exists，
-      luac -p 28/28 过）
+      luac -p 28/28 过；教程引用面指南文档 Lua 片段同步改齐
+      （configuration.md 15 处 + api/ini.md 2 处 io.open 与
+      api/transport.md 1 处 os.execute 等待改 wingman.file/util，
+      5 处 os.getenv 无引擎等价物按 G-DB-07 先例注解沙箱限制））
 - [x] 示例脚本库
 
 ---

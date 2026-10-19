@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+### docs（2026-10-19，指南类文档 Lua 片段沙箱可用性改齐）
+
+- **背景**：示例脚本沙箱改齐（见下条）后复查文档面，指南类 Lua 片段仍在教沙箱禁用调用——默认执行路径（CLI `script` / GUI StandaloneMode 均强制沙箱）下照抄即报 `attempt to index a nil value`：configuration.md 15 处、api/ini.md 2 处 `io.open` 读写配置，api/transport.md 1 处 `os.execute("sleep 1")` 做等待；与 docs/审计-文档一致性.md G-DB-07（database.md 已注解）同类。
+- **修正**：`io.open` 读写统一 `wingman.file.read/write`（read 失败返 nil，语义同 io.open；file_module.cpp:63-90）；`os.execute` 等待改 `wingman.util.sleep`；configuration.md 配置缓存片段顺带修裸 `json.decode` → `wingman.json.decode`（引擎无裸全局，同审计 B-DB-5 类）；5 处 `os.getenv` 无引擎等价物（环境注入仅脚本配置 env → `_ENV_<KEY>` 全局），按 G-DB-07 先例就地注解沙箱限制不改代码语义；Python 片段 os.getenv 为 python 引擎语义不动；en 镜像页为占位无此内容无需同步。
+- **门禁**（docs-only）：`npm --prefix docs run docs:build` 绿。
+
 ### fix（2026-10-19，示例脚本沙箱禁用全局调用改齐）
 
 - **背景**：上一批 require shim 落地后 CLI 能启动示例脚本，但沙箱仍禁用 os/io——逐脚本实跑扫描（`xvfb-run` + `timeout`）首跑失败 3 个，静态 grep 再捞到 5 个（长循环脚本的调用点在 6s 窗口外），共 16 处调用点、8 个脚本：kv_store.lua:27,76,81（os.date/os.time）、onnx_object_detection.lua:13（io.open 探模型文件）、team_orchestration.lua:83（os.time 广播时间戳）、auto_clicker.lua:34,55（os.exit/os.date）、color_monitor.lua:71,87（os.clock/os.date）、mmorpg_automation.lua:99,111,151,228（os.date 日志前缀）、process_mgr.lua:127,131（os.date）、http_api.lua:65（os.time）——沙箱下均报 `attempt to index a nil value (global 'os'/'io')` 退出 1。
