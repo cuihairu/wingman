@@ -66,9 +66,9 @@ local VK = {
     ESC = 0x1B
 }
 
--- 获取当前时间 (毫秒)
+-- 获取当前时间 (毫秒)：沙箱禁用 os，用 util.getTime（epoch 毫秒）
 function getTime()
-    return os.clock() * 1000
+    return wingman.util.getTime()
 end
 
 -- 检查是否在冷却中
@@ -84,7 +84,7 @@ function executeAction()
 
     triggerCount = triggerCount + 1
     lastTriggerTime = getTime()
-    local timestamp = os.date("%H:%M:%S")
+    local timestamp = wingman.util.getTime()  -- 沙箱禁用 os：epoch 毫秒
 
     if ACTION.type == "key" then
         print(string.format("[%s] 触发! #%d - 按键", timestamp, triggerCount))

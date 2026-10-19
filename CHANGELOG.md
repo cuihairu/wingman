@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### fix（2026-10-19，示例脚本沙箱禁用全局调用改齐）
+
+- **背景**：上一批 require shim 落地后 CLI 能启动示例脚本，但沙箱仍禁用 os/io——逐脚本实跑扫描（`xvfb-run` + `timeout`）首跑失败 3 个，静态 grep 再捞到 5 个（长循环脚本的调用点在 6s 窗口外），共 16 处调用点、8 个脚本：kv_store.lua:27,76,81（os.date/os.time）、onnx_object_detection.lua:13（io.open 探模型文件）、team_orchestration.lua:83（os.time 广播时间戳）、auto_clicker.lua:34,55（os.exit/os.date）、color_monitor.lua:71,87（os.clock/os.date）、mmorpg_automation.lua:99,111,151,228（os.date 日志前缀）、process_mgr.lua:127,131（os.date）、http_api.lua:65（os.time）——沙箱下均报 `attempt to index a nil value (global 'os'/'io')` 退出 1。
+- **修正**：时间戳统一 `wingman.util.getTime()`（util_module.cpp:27，epoch 毫秒），文件存在性统一 `wingman.file.exists()`（file_module.cpp:93），auto_clicker 的 `os.exit` 改 `return`（脚本自然结束即退出，`os.exit` 会杀整个 agent 进程，故沙箱不补 shim）。不新增引擎 API：os.exit/setenv/execute 等仍有副作用的函数保持禁用，沙箱面维持最小。
+- **验证**：examples/lua_scripts 全 28 个脚本实跑 21 正常结束 + 7 长循环运行中、0 失败；`luac -p` 28/28 过；grep 残留 `os.` 仅 system_info.lua 的合法局部遮蔽（`:46 local os = wingman.system.getOsInfo()`）。
+- **门禁**：示例脚本为数据文件无编译门禁，以上实跑 + 语法门即门禁；ROADMAP/CHANGELOG 为 markdown 改动。
+
 ### fix（2026-10-19，Lua 沙箱 require shim 与 CLI script 输出接线）
 
 - **背景**：视频教程分镜（docs/tutorials/video-storyboard.md EP01）声称 `wingman-agent script examples\lua_scripts\hello.lua` 可直接跑——实跑 exit 1（`attempt to call a nil value (global 'require')`）：CLI `script` 与 GUI StandaloneMode 均强制 sandboxed=true，而沙箱把 require 整个置 nil，全部示例脚本与文档统一使用的 `require("wingman")` 惯用法（docs/guide/script-development.md:82、docs/审计-文档一致性.md H-SD1）在两条执行路径上 100% 失败；且 CLI 路径不接 ScriptManager output 回调，脚本 print 被 logScriptOutput 静默丢弃（standalone_mode.cpp 只接 GUI 腿）。

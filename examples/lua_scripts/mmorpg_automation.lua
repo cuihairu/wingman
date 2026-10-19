@@ -96,7 +96,7 @@ function AutoPotion.check()
 
     -- HP 低且冷却完成
     if hpStatus == "low" and (now - AutoPotion.lastHPTime) > Config.delays.potion then
-        print(string.format("[%s] HP低! 使用血药", os.date("%H:%M:%S")))
+        print(string.format("[%d] HP低! 使用血药", wingman.util.getTime()))
         pressKey(Config.keys.hpPotion)
         AutoPotion.lastHPTime = now
         humanDelay(200)
@@ -108,7 +108,7 @@ function AutoPotion.check()
     local mpColor = wingman.screen.getPixel(x, y)
 
     if mpColor.b > 200 and (now - AutoPotion.lastMPTime) > Config.delays.potion then
-        print(string.format("[%s] MP低! 使用蓝药", os.date("%H:%M:%S")))
+        print(string.format("[%d] MP低! 使用蓝药", wingman.util.getTime()))
         pressKey(Config.keys.mpPotion)
         AutoPotion.lastMPTime = now
         humanDelay(200)
@@ -148,7 +148,7 @@ function AutoCombat.findTarget()
         humanDelay(100)
         wingman.input.click(pt.x, pt.y)
         AutoCombat.currentTarget = true
-        print(string.format("[%s] 选中目标", os.date("%H:%M:%S")))
+        print(string.format("[%d] 选中目标", wingman.util.getTime()))
     end
 
     return result[2]
@@ -225,7 +225,7 @@ function AutoLoot.check()
 
             -- 检测物品颜色 (黄色)
             if color.r == 255 and color.g == 255 and color.b == 0 then
-                print(string.format("[%s] 发现物品在 (%d, %d)", os.date("%H:%M:%S"), x, y))
+                print(string.format("[%d] 发现物品在 (%d, %d)", wingman.util.getTime(), x, y))
 
                 -- 人性化移动并点击
                 wingman.input.move(x, y, 150)

@@ -122,12 +122,13 @@ local function gameMonitorExample()
 
     while true do
         local result = wingman.process.find(gameProcess)
+        -- 沙箱禁用 os：时间戳用 util.getTime（epoch 毫秒）
         if result[2] then
-            print(string.format("[%s] %s (PID: %d)",
-                os.date("%H:%M:%S"), gameProcess, result[1]))
+            print(string.format("[%d] %s (PID: %d)",
+                wingman.util.getTime(), gameProcess, result[1]))
         else
-            print(string.format("[%s] %s 未运行",
-                os.date("%H:%M:%S"), gameProcess))
+            print(string.format("[%d] %s 未运行",
+                wingman.util.getTime(), gameProcess))
         end
 
         wingman.util.sleep(5000)  -- 每 5 秒检查一次

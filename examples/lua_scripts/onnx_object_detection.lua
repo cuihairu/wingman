@@ -9,13 +9,9 @@ print("=== Wingman ONNX 目标检测示例 ===")
 
 local MODEL_PATH = "scripts/models/yolov8n.onnx"
 
+-- 沙箱禁用 io：文件存在性用 wingman.file.exists
 local function checkModelExists()
-    local f = io.open(MODEL_PATH, "r")
-    if f then
-        f:close()
-        return true
-    end
-    return false
+    return wingman.file.exists(MODEL_PATH)
 end
 
 local function main()

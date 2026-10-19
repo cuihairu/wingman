@@ -24,7 +24,8 @@ local function stringExample()
     print(string.format("'user:name' 存在: %s", exists and "是" or "否"))
 
     -- 追加值（现行 kv 无 append，用读改写实现）
-    wingman.kv.set("user:log", "登录时间: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n")
+    -- 沙箱禁用 os：时间戳用 util.getTime（epoch 毫秒）
+    wingman.kv.set("user:log", "登录时间(ms): " .. wingman.util.getTime() .. "\n")
     wingman.kv.set("user:log", wingman.kv.get("user:log") .. "执行操作: 测试\n")
     local log = wingman.kv.get("user:log")
     print("日志内容:")
@@ -73,12 +74,12 @@ end
 local function hashExample()
     print("\n--- Hash 操作 ---")
 
-    local hashKey = "session:" .. os.time()
+    local hashKey = "session:" .. wingman.util.getTime()
 
     -- 设置字段
     wingman.kv.hset(hashKey, "user_id", "12345")
     wingman.kv.hset(hashKey, "username", "wingman")
-    wingman.kv.hset(hashKey, "login_time", os.time())
+    wingman.kv.hset(hashKey, "login_time", wingman.util.getTime())
     wingman.kv.hset(hashKey, "ip", "192.168.1.100")
 
     -- 获取单个字段

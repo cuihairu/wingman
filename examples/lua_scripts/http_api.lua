@@ -60,9 +60,10 @@ local function httpbinExample()
 
     -- POST 请求
     print("\nPOST 请求:")
+    -- 沙箱禁用 os：时间戳用 util.getTime（epoch 毫秒）
     local result = postRequest("https://httpbin.org/post", {
         message = "Hello from Wingman",
-        timestamp = os.time()
+        timestamp = wingman.util.getTime()
     })
     if result then
         print("响应数据:")

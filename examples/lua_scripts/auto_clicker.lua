@@ -35,7 +35,7 @@ function onExit()
     print()
     print("=== 脚本停止 ===")
     print("总点击次数: " .. clickCount)
-    os.exit(0)
+    return
 end
 
 -- 主循环
@@ -52,7 +52,7 @@ while running do
     if result[2] then
         -- 找到目标，执行点击
         clickCount = clickCount + 1
-        local timestamp = os.date("%H:%M:%S")
+        local timestamp = wingman.util.getTime()  -- 沙箱禁用 os：epoch 毫秒
         local pt = result[1]
         print("[" .. timestamp .. "] 找到目标! 点击 #" .. clickCount .. " at (" .. pt.x .. "," .. pt.y .. ")")
 

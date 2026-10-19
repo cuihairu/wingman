@@ -577,6 +577,11 @@ local wingman = require('wingman')
       脚本跑不起来）与 CLI script 输出接线（print 此前被静默丢弃），
       EP04 两处口径改齐（Scripts 页无拖拽导入、color_detect 不打印耗时）；
       解锁条件仍不成立——实拍/SRT/发布需真实 Windows 环境人工完成）
+      （2026-10-19 二轮：examples/lua_scripts 全 28 个脚本实跑扫描
+      （xvfb-run + timeout 6s）21 正常结束 + 7 长循环运行中、0 失败；
+      修掉 8 个脚本共 16 处沙箱禁用全局调用（os.time/date/clock、io.open、os.exit）
+      统一改用 wingman.util.getTime / wingman.file.exists，
+      luac -p 28/28 过）
 - [x] 示例脚本库
 
 ---

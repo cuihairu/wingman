@@ -80,7 +80,8 @@ while not allReady and checkCount < 10 do
 end
 
 if allReady then
-    wingman.team.broadcast({action = "start_mission", timestamp = os.time()})
+    -- 沙箱禁用 os：时间戳用 wingman.util.getTime()（epoch 毫秒）
+    wingman.team.broadcast({action = "start_mission", timestamp = wingman.util.getTime()})
     print("任务开始！")
 end
 
