@@ -785,7 +785,7 @@ print("Server:", config.server.host, config.server.port)
 import os
 from wingman import json
 
-# 检测环境
+# 检测环境（注：沙箱模式禁用 import os，且沙箱下 env 注入关闭——此片段仅非沙箱模式可用）
 env = os.getenv("APP_ENV", "development")
 
 # 根据环境加载配置
@@ -855,8 +855,7 @@ end
 #### Python
 
 ```python
-import os
-from wingman import json
+from wingman import file, json
 
 # 默认配置
 default_config = {
@@ -864,26 +863,22 @@ default_config = {
     "logLevel": "info"
 }
 
-# 配置文件路径
+# 配置文件路径（沙箱禁用 import os，HOME 类路径需经脚本配置 env 注入——此处与 Lua 页签同口径省略）
 config_paths = [
     "/etc/wingman/config.json",
-    os.path.expanduser("~/.config/wingman/config.json"),
     "config.json"
 ]
 
-# 加载第一个存在的配置文件
+# 加载第一个存在的配置文件（file.read 失败返回 None，语义同 open 失败）
 config = default_config.copy()
 for path in config_paths:
-    try:
-        with open(path, "r") as f:
-            content = f.read()
-            file_config = json.decode(content)
-            # 合并配置
-            config.update(file_config)
-            print(f"Loaded config from: {path}")
-            break
-    except FileNotFoundError:
-        continue
+    content = file.read(path)
+    if content:
+        file_config = json.decode(content)
+        # 合并配置
+        config.update(file_config)
+        print(f"Loaded config from: {path}")
+        break
 ```
 
 ---

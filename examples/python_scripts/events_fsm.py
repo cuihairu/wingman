@@ -17,8 +17,8 @@ def on_login(msg):
     fired.append(("login", msg["payload"]))
     print("收到 login 事件, payload =", msg["payload"])
 
-# on 返回订阅 id，off(id) 注销；name 可选便于 listeners() 里辨识
-sub_id = wingman.event.on("demo.login", on_login, name="login-watcher")
+# on 返回订阅 id，off(id) 注销；第三参 name 按位置传（可选，便于 listeners() 里辨识）
+sub_id = wingman.event.on("demo.login", on_login, "login-watcher")
 
 # once 只触发一次
 wingman.event.once("demo.boot", lambda msg: print("boot 事件（once，只此一次）"))
@@ -36,12 +36,14 @@ print("demo.login 订阅数 =", len(wingman.event.listeners("demo.login")))
 # create 返回机器 id；state/transition 挂回调与迁移
 machine = wingman.fsm.create("task_flow", "idle")
 wingman.fsm.state(machine, "idle")
-wingman.fsm.state(machine, "running", on_enter=lambda ctx: print("进入 running, 事件 =", ctx["event"]))
+# 回调均按位置传参（绑定层不收关键字参数）：state(machine, name, onEnter?, onExit?)
+wingman.fsm.state(machine, "running", lambda ctx: print("进入 running, 事件 =", ctx["event"]))
 wingman.fsm.state(machine, "done")
 
-wingman.fsm.transition(machine, "idle", "running", on="start")
-wingman.fsm.transition(machine, "running", "done", on="finish",
-                      action=lambda ctx: print("迁移动作触发, 到达 =", ctx["to"]))
+# transition(machine, from, to, on?, guard?, action?)
+wingman.fsm.transition(machine, "idle", "running", "start")
+wingman.fsm.transition(machine, "running", "done", "finish", None,
+                       lambda ctx: print("迁移动作触发, 到达 =", ctx["to"]))
 
 print("初始状态 =", wingman.fsm.current(machine))
 wingman.fsm.dispatch(machine, "start")

@@ -18,6 +18,7 @@
 
 namespace py = pybind11;
 using wingman::script::EngineConfig;
+using wingman::script::ModuleDescriptor;
 using wingman::script::ScriptEngineFactory;
 using wingman::script::ScriptValue;
 using wingman::python::PythonScriptEngine;
@@ -165,10 +166,73 @@ TEST(PythonSandboxTest, SandboxedBuiltinsExposeWhitelistOnly) {
 
 	auto bi = engine.getGlobal("__builtins__");
 	ASSERT_TRUE(bi.isObject()) << "__builtins__ 不是白名单 dict——沙箱没有生效";
-	EXPECT_EQ(bi.get("__import__"), nullptr);
+	// __import__ 以受控 shim 接管而非缺失：文档与示例统一使用
+	// from wingman import <module> 惯用法，shim 仅放行 wingman（见
+	// SandboxedFromWingmanImportResolvesToGlobalTable）
+	EXPECT_NE(bi.get("__import__"), nullptr);
 	EXPECT_EQ(bi.get("open"), nullptr);
 	EXPECT_NE(bi.get("len"), nullptr);
 	EXPECT_NE(bi.get("print"), nullptr);
+}
+
+TEST(PythonSandboxTest, SandboxedFromWingmanImportResolvesToGlobalTable) {
+	PythonScriptEngine engine;
+	EngineConfig cfg;
+	cfg.sandboxed = true;
+	ASSERT_TRUE(engine.initialize(cfg));
+
+	// 沙箱测试二进制无真实模块注册，挂一个最小 util 模块
+	ModuleDescriptor mod;
+	mod.name = "util";
+	mod.functions.push_back(
+	    {"getTime",
+	     [](const std::vector<ScriptValue>&) {
+		     ScriptValue v;
+		     v.type = ScriptValue::Type::Int;
+		     v.intVal = 12345;
+		     return v;
+	     },
+	     "() -> int"});
+	engine.registerModule(mod);
+
+	// 惯用法 from wingman import <module>：解析到 initialize() 注入
+	// globals_ 的同一模块对象
+	ASSERT_TRUE(engine.executeString("from wingman import util"));
+	ASSERT_TRUE(engine.executeString("same = util is wingman.util"));
+	EXPECT_TRUE(engine.getGlobal("same").boolVal);
+	// shim 解析后模块函数真可调用
+	ASSERT_TRUE(engine.executeString("now = util.getTime()"));
+	EXPECT_EQ(engine.getGlobal("now").intVal, int64_t(12345));
+}
+
+TEST(PythonSandboxTest, SandboxedDottedWingmanImportResolves) {
+	PythonScriptEngine engine;
+	EngineConfig cfg;
+	cfg.sandboxed = true;
+	ASSERT_TRUE(engine.initialize(cfg));
+
+	ModuleDescriptor mod;
+	mod.name = "orchestration";
+	engine.registerModule(mod);
+
+	ASSERT_TRUE(engine.executeString("import wingman.orchestration as orch"));
+	ASSERT_TRUE(engine.executeString("same = orch is wingman.orchestration"));
+	EXPECT_TRUE(engine.getGlobal("same").boolVal);
+}
+
+TEST(PythonSandboxTest, SandboxedImportRejectsNonWingmanModules) {
+	PythonScriptEngine engine;
+	EngineConfig cfg;
+	cfg.sandboxed = true;
+	ASSERT_TRUE(engine.initialize(cfg));
+
+	// stdlib 与任意第三方模块一律拒绝，且报错可定位模块名
+	EXPECT_FALSE(engine.executeString("import json"));
+	EXPECT_NE(engine.getLastError().find("sandbox: module not allowed: json"),
+	          std::string::npos);
+	EXPECT_FALSE(engine.executeString("import subprocess"));
+	EXPECT_NE(engine.getLastError().find("sandbox: module not allowed: subprocess"),
+	          std::string::npos);
 }
 
 TEST(PythonSandboxTest, SandboxedEngineBlocksImportAndDangerousBuiltins) {
@@ -182,9 +246,10 @@ TEST(PythonSandboxTest, SandboxedEngineBlocksImportAndDangerousBuiltins) {
 	auto safe = engine.getGlobal("safe");
 	EXPECT_EQ(safe.intVal, 3);
 
-	// import 被封：builtins 里的 __import__ 已被剥掉
+	// import 被受控 shim 拒绝：非 wingman 模块显式报错
 	EXPECT_FALSE(engine.executeString("import os"));
-	EXPECT_FALSE(engine.getLastError().empty());
+	EXPECT_NE(engine.getLastError().find("sandbox: module not allowed: os"),
+	          std::string::npos);
 
 	// open 不在白名单
 	EXPECT_FALSE(engine.executeString("f = open('/etc/passwd')"));
@@ -197,8 +262,8 @@ TEST(PythonSandboxTest, SandboxedEngineCannotImportOsSoEnvUnreachable) {
 	cfg.env["WINGMAN_TEST_MARKER"] = "leaked";
 	ASSERT_TRUE(engine.initialize(cfg));
 
-	// 沙箱下 import 被整体封禁（__import__ 被剥），env 注入分支也被跳过，
-	// 脚本侧没有任何路径摸到 os.environ
+	// 沙箱下 import 仅放行 wingman（其余被 shim 拒绝），env 注入分支
+	// 也被跳过，脚本侧没有任何路径摸到 os.environ
 	EXPECT_FALSE(engine.executeString("import os"));
 }
 

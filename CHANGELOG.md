@@ -9,6 +9,19 @@
 
 ## [Unreleased]
 
+### docs（2026-10-19，脚本教程补沙箱契约小节与 Python 片段改齐）
+
+- **背景**：script-development.md（主教程）全篇无沙箱小节——强制沙箱、Lua require shim、Python `__import__` shim（见下条）的契约此前零文档记录（grep "module not allowed" 全仓无命中）；Python `__import__` 语义落地后复查文档面：configuration.md 两处 Python 页签仍用 `import os`/`open()`（Lua 页签已于上一批改齐，Python 页签漏网）、api/macro.md `import util`（模块真名 `wingman.util`，非沙箱也跑不通）、api/event.md ×2 与 api/fsm.md ×3 的 kwargs 传参（绑定层 pybind11 包装只收位置参数，照抄即 TypeError）。
+- **修正**：guide/script-development.md 新增「沙箱模式」小节（zh/en 同步）：强制沙箱的两条本地执行路径与 `wingman.script.load` 的 `sandboxed` 开关、Lua 移除面与 require shim、Python 白名单与 `__import__` shim、常用替代（`util.getTime` / `file.*` / `util.sleep`）与 `_ENV_<KEY>` 注入口径。configuration.md 配置加载 Python 页签改 `wingman.file.read`（与 Lua 页签同口径）、环境检测页签注解非沙箱限制；macro.md 改 `from wingman import macro, hotkey, util`；event/fsm 两页改位置传参并注明绑定层不收关键字参数。en 镜像仅 script-development.en.md 为真翻译已同步，其余涉及页均为占位页无此内容。
+- **门禁**（docs-only 部分）：`npm --prefix docs run docs:build` 绿。
+
+### fix（2026-10-19，Python 沙箱 __import__ shim 与示例脚本可执行性改齐）
+
+- **背景**：docs 全仓 `from wingman import <module>` 惯用法 750+ 处（75 个文件）、examples/python_scripts 4 个示例全部以 `import wingman` 开头，而沙箱把 `__import__` 整个剥掉——CLI script 与 GUI StandaloneMode 两条强制沙箱路径上 Python 示例 100% 第 1 行即挂；workflow_pipeline.py 另用 `import time` + `time.sleep`。与上一批 Lua require shim 同型同源（惯用法统一、沙箱一刀切剥除）。
+- **交付**：`PythonScriptEngine::applySandbox` 把 `__import__` 从剥除改为受控 shim——仅放行 `wingman`/`wingman.*`（惰性取 initialize() 注入的 `globals_["wingman"]`，applySandbox 早于其创建，创建期捕获拿空键），其余模块名（含 stdlib）报 `ImportError: sandbox: module not allowed: <name>`；shim 自身 `__builtins__` 显式挂安全白名单，堵住经 `__import__.__globals__["__builtins__"]` 摸回完整内建的旁路；ImportError 补进白名单；os/sys/subprocess/io/importlib 置 None 与非沙箱路径零改动。示例改齐：events_fsm.py 三处 kwargs（event.on 的 name、fsm.state 的 on_enter、fsm.transition 的 on/action）改位置传参（C++ 描述符签名即位置参数，绑定层不收 kwargs）；workflow_pipeline.py 删 `import time`，轮询等待改 `wingman.util.sleep(100)`。
+- **验证**：python_engine_tests 20/20（新增 3 例钉 shim 契约：from-import 解析同一模块对象且函数可调、`import wingman.x as y` 别名、非 wingman 模块含 stdlib 拒绝且报错带模块名；2 例既有断言更新为 shim 契约）；python_name_conversion_tests 19/19、python_marshal_tests 15/15；examples/python_scripts 4 个脚本经 `xvfb-run -a wingman-agent script`（强制沙箱路径）实跑 4/4 exit 0 输出完整；`py_compile` 4/4。
+- **门禁**：本地 build 树以 `-DWINGMAN_ENABLE_PYTHON=ON` 全新启用（vcpkg `python3`+`pybind11` 端口 537s 装通，`add_compile_definitions` 在 libwingman 之后作用域故增量编译）后全量自跑；CI `cpp-linux-python-tests` / `cpp-python` 覆盖同一面。
+
 ### docs（2026-10-19，指南类文档 Lua 片段沙箱可用性改齐）
 
 - **背景**：示例脚本沙箱改齐（见下条）后复查文档面，指南类 Lua 片段仍在教沙箱禁用调用——默认执行路径（CLI `script` / GUI StandaloneMode 均强制沙箱）下照抄即报 `attempt to index a nil value`：configuration.md 15 处、api/ini.md 2 处 `io.open` 读写配置，api/transport.md 1 处 `os.execute("sleep 1")` 做等待；与 docs/审计-文档一致性.md G-DB-07（database.md 已注解）同类。

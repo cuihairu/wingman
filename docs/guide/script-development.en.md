@@ -81,6 +81,23 @@ See the "API" section in the sidebar for the complete API. The most used modules
 
 > Note: in Lua everything is accessed through the `wingman.<module>.<fn>` namespace after `require("wingman")`; there are no bare global modules. In Python everything is imported from the `wingman` package. Treat real usage in [examples/lua_scripts/](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts) as the source of truth.
 
+## Sandbox Mode
+
+Both local execution paths — the CLI `wingman-agent script` command and the local GUI (Standalone mode) — **force sandboxed execution** (`apps/agent/src/commands/script_command.cpp` and `apps/agent/src/standalone_mode.cpp` hard-code `sandboxed = true`). When loading via the `wingman.script.load` API, the `sandboxed` config can be specified separately (see the [script API](../api/script.md)). The sandbox surface of both engines:
+
+**Lua**:
+
+- The globals `io`, `os`, `debug`, and `package`, along with `dofile` / `loadfile` / `load`, are removed — scripts have no disk-read or system-call path.
+- `require` is a controlled shim: only `require("wingman")` resolves to the wingman module table; any other module name errors with `sandbox: module not allowed: <name>`.
+- Common substitutes: time via `wingman.util.getTime()` (epoch milliseconds), files via `wingman.file.read` / `write` / `exists`, waiting via `wingman.util.sleep(ms)`.
+- No `os.getenv`: keys injected through the script config `env` are read as `_ENV_<KEY>` global variables.
+
+**Python**:
+
+- `__builtins__` is replaced with a whitelist (`print` / `len` / `range`, basic types, exception classes, etc.), and the `os` / `sys` / `subprocess` / `io` / `importlib` aliases are cleared.
+- `import` is taken over by a controlled shim: only `import wingman` (including `wingman.*` submodules and `from wingman import <module>`) is allowed; everything else — including the standard library — raises `ImportError: sandbox: module not allowed: <name>`. So do not `import time`; wait with `wingman.util.sleep(ms)`.
+- Under the sandbox, `env` injection is disabled (there is no `os` to read environment variables).
+
 ## Typical Patterns
 
 ### Pixel Detection + Click (Color Trigger)

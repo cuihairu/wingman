@@ -156,13 +156,13 @@ transition(machineId: string, from: string, to: string, on: string = "", guard: 
 ```python:line-numbers
 from wingman import fsm
 
-# 定义状态转移
-fsm.transition(machine_id, "idle", "fight", on="enemy_found")
-fsm.transition(machine_id, "fight", "idle", on="enemy_lost")
+# 定义状态转移（签名 transition(machine, from, to, on?, guard?, action?)，位置传参）
+fsm.transition(machine_id, "idle", "fight", "enemy_found")
+fsm.transition(machine_id, "fight", "idle", "enemy_lost")
 
 # 带守卫函数
-fsm.transition(machine_id, "pending", "running",
-                on="start", guard=lambda ctx: ctx['payload'].get('ready', False))
+fsm.transition(machine_id, "pending", "running", "start",
+               lambda ctx: ctx['payload'].get('ready', False))
 ```
 
 == Lua

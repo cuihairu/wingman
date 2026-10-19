@@ -51,8 +51,8 @@ from wingman import event
 def on_enemy(e):
     print(f"Found enemy at {e['payload']}")
 
-# 订阅事件
-sub_id = event.on("combat.enemy_found", on_enemy, name="my-handler")
+# 订阅事件（第三参 name 按位置传，绑定层不收关键字参数）
+sub_id = event.on("combat.enemy_found", on_enemy, "my-handler")
 ```
 
 == Lua
@@ -317,7 +317,7 @@ listeners(type: string) -> table[]
 ```python:line-numbers
 from wingman import event
 
-sub_id = event.on("combat.enemy_found", on_enemy, name="my-handler")
+sub_id = event.on("combat.enemy_found", on_enemy, "my-handler")
 
 # 按订阅 ID 查询
 info = event.listener(sub_id)

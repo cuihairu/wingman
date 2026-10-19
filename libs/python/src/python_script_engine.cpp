@@ -543,6 +543,7 @@ void PythonScriptEngine::applySandbox(const script::EngineConfig& config) {
 		"zip", "map", "filter", "sorted", "reversed",
 		"None", "True", "False", "Exception", "ValueError",
 		"TypeError", "RuntimeError", "KeyError", "IndexError",
+		"ImportError",
 		nullptr
 	};
 
@@ -555,15 +556,36 @@ void PythonScriptEngine::applySandbox(const script::EngineConfig& config) {
 		}
 	}
 
+	// __import__ 以受控 shim 接管而非禁用：文档与示例统一使用
+	// from wingman import <module> 惯用法，wingman 模块对象在
+	// initialize() 注入 globals_ 与 sys.modules。此处仅放行 wingman
+	// 与其子模块，其余模块名（含 stdlib）显式报错，未开口任何解释器
+	// 内建能力。GL 持脚本全局表的引用做惰性查找——本函数在 wingman
+	// 模块创建之前调用，创建期捕获会拿到空键。
+	{
+		py::dict shimGlobals;
+		shimGlobals["GL"] = globals_;
+		// shim 的内建也挂白名单：否则脚本可经 __import__.__globals__
+		// ["__builtins__"] 摸回完整内建（exec 对缺 __builtins__ 的
+		// globals 会自动注入真实 builtins 模块）
+		shimGlobals["__builtins__"] = safeBuiltins;
+		py::exec(R"(
+def __import__(name, globals=None, locals=None, fromlist=(), level=0):
+    if name == "wingman" or name.startswith("wingman."):
+        return GL["wingman"]
+    raise ImportError("sandbox: module not allowed: " + str(name))
+)", shimGlobals);
+		safeBuiltins["__import__"] = shimGlobals["__import__"];
+	}
+
 	globals_["__builtins__"] = safeBuiltins;
 
-	// 移除危险模块（防止通过 import 访问）
+	// 移除危险模块别名（防止绕过 shim 直接取用）
 	globals_["os"] = py::none();
 	globals_["sys"] = py::none();
 	globals_["subprocess"] = py::none();
 	globals_["io"] = py::none();
 	globals_["importlib"] = py::none();
-	globals_["__import__"] = py::none();  // 禁用 import
 }
 
 // ========== 自注册 ==========

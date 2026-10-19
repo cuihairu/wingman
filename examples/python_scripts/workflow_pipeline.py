@@ -5,8 +5,9 @@
 # 注意：run/when 必须是线程安全可调用体——Python 函数即可；Lua 函数体会
 # 被提交即拒（发 orchestration.error 事件），所以工作流编排示例只给 Python。
 # 拒绝路径（坏定义/依赖环/非法 maxParallel）返回 None，事件面可见原因。
-
-import time
+#
+# 沙箱提示：脚本默认沙箱运行，import 仅放行 wingman——轮询等待用
+# wingman.util.sleep(毫秒)，不要 import time。
 
 import wingman
 
@@ -60,7 +61,7 @@ while True:
     snap = wingman.orchestration.get_workflow(wf_id)
     if snap["status"] in ("succeeded", "failed", "canceled"):
         break
-    time.sleep(0.1)
+    wingman.util.sleep(100)
 
 print("--- 快照 ---")
 print("status =", snap["status"])

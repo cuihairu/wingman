@@ -627,7 +627,7 @@ wingman.macro.playback(200, 3)
 == Python
 
 ```python:line-numbers
-from wingman import macro, hotkey
+from wingman import macro, hotkey, util
 
 print("F6 开始录制 / F7 停止 / F8 回放")
 
@@ -648,7 +648,6 @@ if hotkey.register("F6", on_record) == 0 or \
     print("热键注册失败")
 
 # 主线程保持存活即可，回调在热键轮询线程触发
-import util
 while True:
     util.sleep(1000)
 ```

@@ -81,6 +81,23 @@ wingman-agent script hello.py
 
 > 注意：Lua 统一经 `require("wingman")` 后以 `wingman.<module>.<fn>` 命名空间访问，没有裸全局模块；Python 统一从 `wingman` 包导入。以 [examples/lua_scripts/](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts) 的真实用法为准。
 
+## 沙箱模式
+
+本地两条执行路径——CLI `wingman-agent script` 与本地 GUI（Standalone 模式）——均**强制沙箱运行**（`apps/agent/src/commands/script_command.cpp` 与 `apps/agent/src/standalone_mode.cpp` 写死 `sandboxed = true`）。经 `wingman.script.load` API 加载时可经 `sandboxed` 配置另行指定（见 [script API](../api/script.md)）。两种引擎的沙箱面：
+
+**Lua**：
+
+- 移除全局 `io`、`os`、`debug`、`package` 与 `dofile` / `loadfile` / `load`——脚本内没有磁盘读取与系统调用路径。
+- `require` 为受控 shim：仅 `require("wingman")` 解析到 wingman 模块表，其余模块名报错 `sandbox: module not allowed: <name>`。
+- 常用替代：时间用 `wingman.util.getTime()`（epoch 毫秒）、文件用 `wingman.file.read` / `write` / `exists`、等待用 `wingman.util.sleep(ms)`。
+- 无 `os.getenv`：脚本配置 `env` 注入的键以 `_ENV_<KEY>` 全局变量读取。
+
+**Python**：
+
+- `__builtins__` 替换为白名单（`print` / `len` / `range` 与基础类型、异常类等），并清掉 `os` / `sys` / `subprocess` / `io` / `importlib` 别名。
+- `import` 由受控 shim 接管：仅 `import wingman`（含 `wingman.*` 子模块与 `from wingman import <module>`）放行，其余模块——包括标准库——报 `ImportError: sandbox: module not allowed: <name>`。因此不要 `import time`，等待用 `wingman.util.sleep(ms)`。
+- 沙箱下 `env` 注入关闭（无 `os` 可读环境变量）。
+
 ## 典型模式
 
 ### 像素检测 + 点击（颜色触发）
