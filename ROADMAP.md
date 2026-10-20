@@ -566,46 +566,19 @@ local wingman = require('wingman')
 - [x] 用户手册
 - [x] API 参考
 - [x] 远程控制协议文档
-- [ ] 视频教程（卡点：录制需人工）——脚本包已完备（docs/tutorials/
-      video-storyboard.md：六集分镜 + 逐字旁白 + 录制规格 + 发布检查单，
-      演示素材对齐 examples/lua_scripts/ 现有脚本，触发器类型与 GUI 实现
-      核对过）；剩实拍录制/SRT/发布，需真实 Windows 环境人工完成
-      （2026-10-19 复核：docs/tutorials/video-storyboard.md 114 行在位
-      （wc -l）；EP01 命令实跑通过——wingman-agent script
-      examples/lua_scripts/hello.lua exit 0 且打印屏幕尺寸；连带修复 Lua
-      沙箱 require shim（require("wingman") 此前在沙箱被禁，全部示例
-      脚本跑不起来）与 CLI script 输出接线（print 此前被静默丢弃），
-      EP04 两处口径改齐（Scripts 页无拖拽导入、color_detect 不打印耗时）；
-      解锁条件仍不成立——实拍/SRT/发布需真实 Windows 环境人工完成）
-      （2026-10-19 二轮：examples/lua_scripts 全 28 个脚本实跑扫描
-      （xvfb-run + timeout 6s）21 正常结束 + 7 长循环运行中、0 失败；
-      修掉 8 个脚本共 16 处沙箱禁用全局调用（os.time/date/clock、io.open、os.exit）
-      统一改用 wingman.util.getTime / wingman.file.exists，
-      luac -p 28/28 过；教程引用面指南文档 Lua 片段同步改齐
-      （configuration.md 15 处 + api/ini.md 2 处 io.open 与
-      api/transport.md 1 处 os.execute 等待改 wingman.file/util，
-      5 处 os.getenv 无引擎等价物：4 处按 G-DB-07 先例注解沙箱限制、
-      HOME 路径 1 处移出示例表））
-      （2026-10-20 三轮：机器侧素材预采走 hermes win-worker
-      （run_9c037b4d57904bb6b076fddc1b911bb8）——环境侧已齐备
-      （Windows 10.0.26300 / 1920x1080 / 100% 缩放 / D 盘在，
-      hello.lua 与 color_detect.lua 在位），但 D:\ 与 C:\Users\
-      深度<=4 全盘无 wingman-agent.exe（该机仓库副本 /d/workspaces/wingman
-      从未产出该 exe，仅有旧 conan-build 工程文件与 runtime 产物），
-      按任务书红线「缺 exe 只报缺项、不 clone 不构建」第 1 步即终止、
-      无产物。机器侧解锁=授权 win-worker 构建或提供 exe 绝对路径
-      （任务书与录制规格已备好可即续，第 2-5 步均未动过）；
-      人工侧实拍旁白/SRT/成片/发布不变）
-      （2026-10-20 四轮：机器侧改用官方 nightly 单二进制续采，不 clone 不构建
-      ——wingman-agent-2026.10.18-nightly-184c7de-windows-x64.zip（公开资产，
-      下载 sha256 与官方 digest 一致）解压至 D:\wingman-tutorial\agent-bin\；
-      录屏方案两轮迭代后为零注入形态：进程创建预载命令拉最大化 PowerShell
-      + ffmpeg gdigrab 60fps + ffprobe 校验，逐步全 PASS 无授权拦截
-      （run_453be668 的点击聚焦属 GUI 注入被对端授权门拦下，弃用；
-      run_37edce34 改零注入后无拦截）。剩余卡点收窄为一项：录制窗口期机器
-      空闲自动锁屏，take2 全程录到锁屏（1920x1080/83s 技术合格、内容不合格，
-      产物保留在 D:\wingman-tutorial\）；解锁需用户在场或显式授权（涉凭据，
-      不代决）。用户解锁桌面后同一零注入任务书即可重录取材）
+- [ ] 视频教程（卡点：EP01-EP06 实拍/SRT/发布需人工 + EP01 机器侧预采待
+      win-worker 桌面解锁）——脚本包已完备（docs/tutorials/
+      video-storyboard.md：六集分镜 + 逐字旁白 + 录制规格 + 发布检查单 +
+      EP01 机器侧零注入预采配方）
+      证据（2026-10-20）：28 个示例脚本实跑 0 失败（luac -p 28/28 过）；
+      wingman-agent.exe 已就位 win-worker `D:\wingman-tutorial\agent-bin\`
+      （nightly 184c7de zip，sha256 与官方 digest 一致），零注入录屏管线
+      （进程创建预载 PowerShell + ffmpeg gdigrab 60fps + ffprobe）逐步全
+      PASS，唯一余卡点=录制窗口期空闲自动锁屏（07:55 门控 LockApp/LogonUI
+      双证 LOCKED），解锁钥匙=用户到场登录或显式授权（涉凭据，不代决），
+      解锁后照配方约 2 分钟出片。过程史（Lua 沙箱 require shim、CLI script
+      输出接线、EP04 口径、8 脚本 16 处沙箱全局改写、take2 锁屏废片等）
+      见 CHANGELOG 2026-10-19/20 条目与 commit e3a84e0/171c281/a74bfca/03781ef
 - [x] 示例脚本库
 
 ---

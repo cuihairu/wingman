@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### docs（2026-10-20，ROADMAP M8.2 账本行压缩：过程史归 CHANGELOG，留需求+最新证据+解锁钥匙）
+
+- M8.2 视频教程条目 54 行/4751 字符的历轮过程注（沙箱 require shim、CLI 输出接线、EP04 口径、28 脚本扫描、win-worker 三四轮探录）压为需求一句话 + 一行最新证据（exe 就位/零注入管线全 PASS/唯一余卡点锁屏待用户解锁/照配方 2 分钟出片）+ commit hash 指针（e3a84e0/171c281/a74bfca/03781ef）；解锁条件与验收口径原样保留。同步核过 storyboard 与 M8.2 口径一致（录制规格/示例脚本/夜资名称均符）。门禁：`npm --prefix docs run docs:build` 绿（docs-only）。
+
 ### docs（2026-10-20，视频教程 M8.2 机器侧推进：nightly 单二进制落机 + 零注入录屏管线跑通，余解锁桌面一卡）
 
 - win-worker 两轮实测（run_453be668b8594c08aa97812a6949a511 / run_37edce34c372450c98d893e8bd1e7d5b）：①缺 exe 项解锁——官方 nightly 公开资产 `wingman-agent-2026.10.18-nightly-184c7de-windows-x64.zip`（6.3MB）下载 sha256 与官方 digest 一致，解压至 `D:\wingman-tutorial\agent-bin\`（全程不 clone 不构建）；②录屏方案迭代：点击聚焦属 GUI 注入被对端授权门拦截（沉默不是同意，不绕路），改为零注入形态——进程创建预载命令拉最大化 PowerShell + ffmpeg gdigrab 60fps + ffprobe 校验，逐步全 PASS 且无任何拦截；③剩余卡点收窄为一项：录制窗口期机器空闲自动锁屏，take2 全程录到锁屏（1920x1080/83s 技术合格、内容不合格，产物与抽帧佐证保留）。解锁需用户在场或显式授权（涉凭据，不代决）；解锁后同一任务书即可重录取材。ROADMAP M8.2 四轮注与 todo.md 卡点行同步。门禁：`npm --prefix docs run docs:build` 绿（docs-only，未编译未跑测试套件）。
