@@ -4,11 +4,21 @@ import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
 const rootThemeConfig = {
     nav: [
       { text: '指南', link: '/guide/introduction' },
+      { text: '教程', link: '/tutorials/video-storyboard' },
       { text: 'API', link: '/api/' },
       { text: '示例', link: '/examples/' }
     ],
 
     sidebar: {
+      '/tutorials/': [
+        {
+          text: '视频教程',
+          items: [
+            { text: '分镜脚本', link: '/tutorials/video-storyboard' },
+            { text: '字幕制作模板', link: '/tutorials/srt-template' }
+          ]
+        }
+      ],
       '/guide/': [
         {
           text: '开始',

@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### docs（2026-10-20，文档站补「教程」入口：tutorials 页从纯 URL 直达变可发现）
+
+- 复核发现 docs/tutorials/ 四页（video-storyboard zh/en、srt-template zh/en）虽已构建进站点（dist/tutorials/*.html 在）但 nav 与 sidebar 均无入口，只能猜 URL 直达。docs/.vitepress/config.mts：nav 加「教程」项（指向 /tutorials/video-storyboard）、sidebar 新增 '/tutorials/' 键（分镜脚本 + 字幕制作模板两页）。门禁：`npm --prefix docs run docs:build` 绿（exit 0，20.4s）；构建产物 index.html 出现教程 nav 链接、tutorial 页带侧栏，实证生效。
+
 ### docs（2026-10-20，EP04 旁白口径对齐脚本实况：红色区域→区域内找红像素、全屏示例注明图省事）
 
 - 复核 EP04 演示脚本 examples/lua_scripts/color_detect.lua 与分镜旁白发现两处张力：①旁白「脚本找一个红色区域」与脚本实况（在 region 内找红色像素/点，findColor 单点 + findColors 计数）不符；②旁白「区域别用全屏」与脚本自身用全屏 region 相矛盾、无说明。两版分镜（zh+en）EP04 第 2/4 镜旁白改齐：zh「脚本在一个区域内找红色像素…」「示例图省事用了全屏；实际范围越小越快，别用全屏。」，en 同义对译。分镜引用的 5 个 guide 文档与「运行模式」锚点（getting-started.md:174）核实在位。门禁：`npm --prefix docs run docs:build` 绿（docs-only）。
