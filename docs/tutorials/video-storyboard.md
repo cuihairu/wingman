@@ -142,6 +142,6 @@ EP01 第 5-6 镜（`wingman-agent.exe script ...hello.lua` 及其输出）可机
 
 - [ ] 机器侧预采前跑门控探针（`Get-Process LockApp` 为空才录）——桌面锁定时只会录到锁屏画面。
 - [ ] 每集录完先自查：旁白与画面是否同步、有无口误、敏感信息（token、内网地址）是否打码。
-- [ ] SRT 字幕与视频同名；术语拼写与 docs/guide 一致。
+- [ ] SRT 字幕与视频同名，按 srt-template.md 规范切分与校验；术语拼写与 docs/guide 一致。
 - [ ] 上传后把链接回填剧集总览表「文件名」列旁。
 - [ ] 全部录制发布完成后，勾选 ROADMAP M8.2「视频教程」。

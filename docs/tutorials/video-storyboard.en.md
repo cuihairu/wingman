@@ -105,6 +105,6 @@ Prerequisites: the EP03 orchestrator plus two machines (A = operator side, B = c
 ## Recording and Release Checklist
 
 - [ ] After each episode, self-check first: whether narration and visuals are in sync, whether there are misstatements, and whether sensitive information (tokens, internal addresses) is masked.
-- [ ] SRT subtitles share the video's filename; terminology spelling matches docs/guide.
+- [ ] SRT subtitles share the video's filename, authored and verified per srt-template.md; terminology spelling matches docs/guide.
 - [ ] After uploading, add the link next to the File column in the episode overview table.
 - [ ] Once all episodes are recorded and published, check off ROADMAP M8.2 "Video Tutorials".

@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### docs（2026-10-20，字幕制作模板：补 storyboard「SRT 随片发布」缺的制作方法面）
+
+- 新增 docs/tutorials/srt-template.md 与 srt-template.en.md：cue 文本从分镜表「旁白（逐字）」列逐字取用（不改写）、单 cue ≤4s/≤40 字的切分规则、时间码口径（首 cue 不早于片头 3s、末 cue 早于片尾、无重叠、相邻 ≥300ms、毫秒级对齐）、EP01 占位示例（占位时间码已核为全 ≤4s、间隔 400ms，与规则自洽）、五步制作流程与校验口径；六集 cue 数 7/7/4/5/7/5 合计 35。两版分镜检查单的 SRT 条补上模板指针（zh+en 同步）。仍不需录制即可完成，非录制面。门禁：`npm --prefix docs run docs:build` 绿（docs-only，未编译未跑测试套件）。
+
 ### docs（2026-10-20，ROADMAP M8.2 账本行压缩：过程史归 CHANGELOG，留需求+最新证据+解锁钥匙）
 
 - M8.2 视频教程条目 54 行/4751 字符的历轮过程注（沙箱 require shim、CLI 输出接线、EP04 口径、28 脚本扫描、win-worker 三四轮探录）压为需求一句话 + 一行最新证据（exe 就位/零注入管线全 PASS/唯一余卡点锁屏待用户解锁/照配方 2 分钟出片）+ commit hash 指针（e3a84e0/171c281/a74bfca/03781ef）；解锁条件与验收口径原样保留。同步核过 storyboard 与 M8.2 口径一致（录制规格/示例脚本/夜资名称均符）。门禁：`npm --prefix docs run docs:build` 绿（docs-only）。
