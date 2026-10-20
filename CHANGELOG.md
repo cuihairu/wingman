@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### docs（2026-10-20，EP04 旁白口径对齐脚本实况：红色区域→区域内找红像素、全屏示例注明图省事）
+
+- 复核 EP04 演示脚本 examples/lua_scripts/color_detect.lua 与分镜旁白发现两处张力：①旁白「脚本找一个红色区域」与脚本实况（在 region 内找红色像素/点，findColor 单点 + findColors 计数）不符；②旁白「区域别用全屏」与脚本自身用全屏 region 相矛盾、无说明。两版分镜（zh+en）EP04 第 2/4 镜旁白改齐：zh「脚本在一个区域内找红色像素…」「示例图省事用了全屏；实际范围越小越快，别用全屏。」，en 同义对译。分镜引用的 5 个 guide 文档与「运行模式」锚点（getting-started.md:174）核实在位。门禁：`npm --prefix docs run docs:build` 绿（docs-only）。
+
 ### docs（2026-10-20，字幕制作模板：补 storyboard「SRT 随片发布」缺的制作方法面）
 
 - 新增 docs/tutorials/srt-template.md 与 srt-template.en.md：cue 文本从分镜表「旁白（逐字）」列逐字取用（不改写）、单 cue ≤4s/≤40 字的切分规则、时间码口径（首 cue 不早于片头 3s、末 cue 早于片尾、无重叠、相邻 ≥300ms、毫秒级对齐）、EP01 占位示例（占位时间码已核为全 ≤4s、间隔 400ms，与规则自洽）、五步制作流程与校验口径；六集 cue 数 7/7/4/5/7/5 合计 35。两版分镜检查单的 SRT 条补上模板指针（zh+en 同步）。仍不需录制即可完成，非录制面。门禁：`npm --prefix docs run docs:build` 绿（docs-only，未编译未跑测试套件）。

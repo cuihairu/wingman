@@ -71,9 +71,9 @@ Prerequisites: the EP02 environment; the example scripts ship with the repositor
 | # | Visual | Operation | Narration (verbatim) |
 |---|--------|-----------|---------------------|
 | 1 | File manager | Open examples/lua_scripts/color_detect.lua | "The example scripts all live in the lua_scripts directory; this episode uses color detection." |
-| 2 | Editor | Point out the targetColor and region parameters | "The script looks for a red region; the region can be specified with screen coordinates." |
+| 2 | Editor | Point out the targetColor and region parameters | "The script looks for red pixels inside a region; the region can be specified with screen coordinates." |
 | 3 | GUI Scripts | Put the script in the scripts directory, select it on the Scripts page to start | "Once the script is in the scripts directory, the Scripts page can start it directly." |
-| 4 | Output window | Show the findColor result and the number of matches | "The smaller the detection region, the faster it is; don't use the full screen as the region." |
+| 4 | Output window | Show the findColor result and the number of matches | "This demo uses the full screen for simplicity; in practice smaller is faster, so don't use the full screen as the region." |
 | 5 | Scripts page | Stop the script, point out the state returning to gray | "After stopping, the state returns to stopped, and the logs are kept." |
 
 ## EP05 Triggers and Macros
