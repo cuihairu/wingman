@@ -1,3 +1,4 @@
+import { withMermaid } from "vitepress-plugin-mermaid";
 import { defineConfig } from 'vitepress'
 import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
 
@@ -228,7 +229,7 @@ const zhThemeConfig = {
     }
   };
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   title: 'Wingman',
   description: '游戏自动化可编程控制引擎',
   base: '/wingman/',
@@ -262,4 +263,4 @@ export default defineConfig({
       }
     ]
   }
-})
+}));
