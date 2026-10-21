@@ -90,6 +90,7 @@
 - [x] 快速开始 / Dashboard / Runtime GUI / 脚本开发指南 / 协议规范 / 贡献指南
 - [x] 文档-代码一致性审计：docs/审计-文档一致性.md（2026-10-08 批次 273 项，后续批次逐页对账）
 - [x] Android 设计文档 / 保活指引 / 受限设置指引 / 手动验证指引 / 教程分镜脚本
+- [x] Dependabot 清零（2026-10-21，#1/#2/#308/#309/#311/#312/#313/#314）：docs pnpm 锁 vite 6.4.4、esbuild 0.25.x；dashboard pnpm 锁 hono 4.13.11；docs:build PASS（62.16s）、dashboard build PASS（22.64s）；commit 8ab069b
 
 ## 注意事项
 

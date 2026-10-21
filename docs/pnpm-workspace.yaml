@@ -1,2 +1,6 @@
 packages:
   - '.'
+
+overrides:
+  vite: 6.4.4
+  esbuild@<=0.24.2: 0.25.0
