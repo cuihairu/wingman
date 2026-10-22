@@ -1,27 +1,27 @@
-> [English](fsm.en.md) | **中文**
+> [中文](fsm.md) | **English**
 
 # API: wingman.fsm
 
-状态机模块，提供事件驱动的状态机功能，用于管理游戏状态、流程控制等场景。
+State machine module providing event-driven state machine functionality, used for scenarios such as managing game states and flow control.
 
-## 模块概述
+## Module Overview
 
-fsm 模块提供状态机的创建和管理功能：
-- **创建状态机** - 创建命名状态机并指定初始状态
-- **定义状态** - 定义状态及进入/离开回调
-- **定义转移** - 定义状态转移规则，支持守卫函数
-- **派发事件** - 触发状态转移
-- **查询状态** - 获取当前状态、检查状态
+The fsm module provides state machine creation and management:
+- **Create state machines** - Create a named state machine with a specified initial state
+- **Define states** - Define states with enter/exit callbacks
+- **Define transitions** - Define state transition rules with guard function support
+- **Dispatch events** - Trigger state transitions
+- **Query state** - Get the current state, check states
 
 ---
 
-## 创建状态机
+## Creating a State Machine
 
 ### create(name, initial)
 
-**说明**：创建一个新的状态机实例。
+**Description**: Creates a new state machine instance.
 
-**函数签名**：
+**Signature**:
 
 ```python
 create(name: str, initial: str) -> str
@@ -31,12 +31,12 @@ create(name: str, initial: str) -> str
 create(name: string, initial: string) -> string
 ```
 
-**参数**：
-- `name` - 状态机名称
-- `initial` - 初始状态名
+**Parameters**:
+- `name` - State machine name
+- `initial` - Initial state name
 
-**返回**：
-- 状态机 ID
+**Returns**:
+- The state machine ID
 
 :::tabs
 
@@ -62,13 +62,13 @@ local machineId = wingman.fsm.create("combat", "idle")
 
 ---
 
-## 定义状态
+## Defining States
 
 ### state(machine_id, state_name, on_enter?, on_exit?) / state(machineId, stateName, onEnter?, onExit?)
 
-**说明**：定义或更新一个状态及其回调。
+**Description**: Defines or updates a state and its callbacks.
 
-**函数签名**：
+**Signature**:
 
 ```python
 state(machine_id: str, state_name: str, on_enter: Callable = None, on_exit: Callable = None) -> bool
@@ -78,14 +78,14 @@ state(machine_id: str, state_name: str, on_enter: Callable = None, on_exit: Call
 state(machineId: string, stateName: string, onEnter: function = nil, onExit: function = nil) -> boolean
 ```
 
-**参数**：
-- `machine_id` / `machineId` - 状态机 ID
-- `state_name` / `stateName` - 状态名
-- `on_enter` / `onEnter` - 可选，进入状态时的回调，接收上下文对象 `{state, from?, event, payload}`
-- `on_exit` / `onExit` - 可选，离开状态时的回调，接收上下文对象 `{state, event, payload}`
+**Parameters**:
+- `machine_id` / `machineId` - State machine ID
+- `state_name` / `stateName` - State name
+- `on_enter` / `onEnter` - Optional; callback invoked when entering the state, receives a context object `{state, from?, event, payload}`
+- `on_exit` / `onExit` - Optional; callback invoked when leaving the state, receives a context object `{state, event, payload}`
 
-**返回**：
-- 是否成功
+**Returns**:
+- Whether the operation succeeded
 
 :::tabs
 
@@ -96,9 +96,9 @@ from wingman import fsm
 
 machine_id = fsm.create("combat", "idle")
 
-# 定义状态（签名 state(machine, name, onEnter?, onExit?)，位置传参）
-fsm.state(machine_id, "idle", lambda ctx: print("进入空闲状态"))
-fsm.state(machine_id, "fight", lambda ctx: print("进入战斗状态"))
+# 定义状态
+fsm.state(machine_id, "idle", on_enter=lambda ctx: print("进入空闲状态"))
+fsm.state(machine_id, "fight", on_enter=lambda ctx: print("进入战斗状态"))
 ```
 
 == Lua
@@ -122,13 +122,13 @@ wingman.fsm.state(machineId, "fight")
 
 ---
 
-## 定义状态转移
+## Defining State Transitions
 
 ### transition(machine_id, from, to, on?, guard?, action?) / transition(machineId, from, to, on?, guard?, action?)
 
-**说明**：定义状态转移规则。
+**Description**: Defines a state transition rule.
 
-**函数签名**：
+**Signature**:
 
 ```python
 transition(machine_id: str, from: str, to: str, on: str = "", guard: Callable = None, action: Callable = None) -> bool
@@ -138,16 +138,16 @@ transition(machine_id: str, from: str, to: str, on: str = "", guard: Callable = 
 transition(machineId: string, from: string, to: string, on: string = "", guard: function = nil, action: function = nil) -> boolean
 ```
 
-**参数**：
-- `machine_id` / `machineId` - 状态机 ID
-- `from` - 源状态
-- `to` - 目标状态
-- `on` - 可选，触发事件名
-- `guard` - 可选，守卫函数，接收 `{from, to, event, payload}`，返回 `True`/`true` 才允许转移
-- `action` - 可选，转移动作函数，接收 `{from, to, event, payload}`
+**Parameters**:
+- `machine_id` / `machineId` - State machine ID
+- `from` - Source state
+- `to` - Target state
+- `on` - Optional; the event name that triggers the transition
+- `guard` - Optional; guard function that receives `{from, to, event, payload}`; the transition is allowed only when it returns `True`/`true`
+- `action` - Optional; transition action function that receives `{from, to, event, payload}`
 
-**返回**：
-- 是否成功
+**Returns**:
+- Whether the operation succeeded
 
 :::tabs
 
@@ -156,13 +156,13 @@ transition(machineId: string, from: string, to: string, on: string = "", guard: 
 ```python:line-numbers
 from wingman import fsm
 
-# 定义状态转移（签名 transition(machine, from, to, on?, guard?, action?)，位置传参）
-fsm.transition(machine_id, "idle", "fight", "enemy_found")
-fsm.transition(machine_id, "fight", "idle", "enemy_lost")
+# 定义状态转移
+fsm.transition(machine_id, "idle", "fight", on="enemy_found")
+fsm.transition(machine_id, "fight", "idle", on="enemy_lost")
 
 # 带守卫函数
-fsm.transition(machine_id, "pending", "running", "start",
-               lambda ctx: ctx['payload'].get('ready', False))
+fsm.transition(machine_id, "pending", "running",
+                on="start", guard=lambda ctx: ctx['payload'].get('ready', False))
 ```
 
 == Lua
@@ -184,13 +184,13 @@ end)
 
 ---
 
-## 派发事件
+## Dispatching Events
 
 ### dispatch(machine_id, event, payload?) / dispatch(machineId, event, payload?)
 
-**说明**：派发事件到状态机，触发可能的状态转移。
+**Description**: Dispatches an event to the state machine, triggering a state transition if one applies.
 
-**函数签名**：
+**Signature**:
 
 ```python
 dispatch(machine_id: str, event: str, payload: dict = None) -> bool
@@ -200,13 +200,13 @@ dispatch(machine_id: str, event: str, payload: dict = None) -> bool
 dispatch(machineId: string, event: string, payload: table = nil) -> boolean
 ```
 
-**参数**：
-- `machine_id` / `machineId` - 状态机 ID
-- `event` - 事件名
-- `payload` - 可选，事件载荷
+**Parameters**:
+- `machine_id` / `machineId` - State machine ID
+- `event` - Event name
+- `payload` - Optional; event payload
 
-**返回**：
-- 是否成功触发转移
+**Returns**:
+- Whether a transition was successfully triggered
 
 :::tabs
 
@@ -232,13 +232,13 @@ wingman.fsm.dispatch(machineId, "enemy_found", { target = "boss" })
 
 ---
 
-## 获取当前状态
+## Getting the Current State
 
 ### current(machine_id) / current(machineId)
 
-**说明**：获取当前状态名。
+**Description**: Gets the current state name.
 
-**函数签名**：
+**Signature**:
 
 ```python
 current(machine_id: str) -> str
@@ -248,21 +248,21 @@ current(machine_id: str) -> str
 current(machineId: string) -> string
 ```
 
-**参数**：
-- `machine_id` / `machineId` - 状态机 ID
+**Parameters**:
+- `machine_id` / `machineId` - State machine ID
 
-**返回**：
-- 当前状态名
+**Returns**:
+- The current state name
 
 ---
 
-## 重置状态机
+## Resetting the State Machine
 
 ### reset(machine_id) / reset(machineId)
 
-**说明**：重置状态机到初始状态。
+**Description**: Resets the state machine to its initial state.
 
-**函数签名**：
+**Signature**:
 
 ```python
 reset(machine_id: str) -> bool
@@ -272,11 +272,11 @@ reset(machine_id: str) -> bool
 reset(machineId: string) -> boolean
 ```
 
-**参数**：
-- `machine_id` / `machineId` - 状态机 ID
+**Parameters**:
+- `machine_id` / `machineId` - State machine ID
 
-**返回**：
-- 是否成功
+**Returns**:
+- Whether the operation succeeded
 
 :::tabs
 
@@ -302,28 +302,28 @@ wingman.fsm.reset(machineId)
 
 ---
 
-## 事件
+## Events
 
 ### fsm.changed
 
-每次状态机成功转移后，模块会发出 `fsm.changed` 事件。载荷字段：
+After every successful state machine transition, the module emits an `fsm.changed` event. Payload fields:
 
-- `machine` - 状态机名称
-- `from` - 源状态名
-- `to` - 目标状态名
-- `event` - 触发转移的事件名
+- `machine` - State machine name
+- `from` - Source state name
+- `to` - Target state name
+- `event` - Name of the event that triggered the transition
 
-可用 `wingman.event.on("fsm.changed", cb)` 订阅，集中观察状态变更。
+Subscribe with `wingman.event.on("fsm.changed", cb)` to observe state changes in one place.
 
 ---
 
-## 可用接口
+## Available APIs
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python Function | Lua Function | Description | Parameters |
 |------------|---------|------|-----|
-| `create(name, initial)` | `create(name, initial)` | 创建状态机 | name: 状态机名称<br>initial: 初始状态名<br>返回: 状态机ID |
-| `state(machineId, stateName, onEnter?, onExit?)` | `state(machineId, stateName, onEnter?, onExit?)` | 定义状态 | machineId: 状态机ID<br>stateName: 状态名<br>onEnter: 进入回调(可选)<br>onExit: 离开回调(可选)<br>返回: 是否成功 |
-| `transition(machineId, from, to, on?, guard?, action?)` | `transition(machineId, from, to, on?, guard?, action?)` | 定义转移 | machineId: 状态机ID<br>from: 源状态<br>to: 目标状态<br>on: 事件名(可选)<br>guard: 守卫函数(可选)<br>action: 动作函数(可选)<br>返回: 是否成功 |
-| `dispatch(machineId, event, payload?)` | `dispatch(machineId, event, payload?)` | 派发事件 | machineId: 状态机ID<br>event: 事件名<br>payload: 事件载荷(可选)<br>返回: 是否成功转移 |
-| `current(machineId)` | `current(machineId)` | 获取当前状态 | machineId: 状态机ID<br>返回: 当前状态名 |
-| `reset(machineId)` | `reset(machineId)` | 重置状态机 | machineId: 状态机ID<br>返回: 是否成功 |
+| `create(name, initial)` | `create(name, initial)` | Create a state machine | name: state machine name<br>initial: initial state name<br>Returns: state machine ID |
+| `state(machineId, stateName, onEnter?, onExit?)` | `state(machineId, stateName, onEnter?, onExit?)` | Define a state | machineId: state machine ID<br>stateName: state name<br>onEnter: enter callback (optional)<br>onExit: exit callback (optional)<br>Returns: whether it succeeded |
+| `transition(machineId, from, to, on?, guard?, action?)` | `transition(machineId, from, to, on?, guard?, action?)` | Define a transition | machineId: state machine ID<br>from: source state<br>to: target state<br>on: event name (optional)<br>guard: guard function (optional)<br>action: action function (optional)<br>Returns: whether it succeeded |
+| `dispatch(machineId, event, payload?)` | `dispatch(machineId, event, payload?)` | Dispatch an event | machineId: state machine ID<br>event: event name<br>payload: event payload (optional)<br>Returns: whether a transition was triggered |
+| `current(machineId)` | `current(machineId)` | Get the current state | machineId: state machine ID<br>Returns: current state name |
+| `reset(machineId)` | `reset(machineId)` | Reset the state machine | machineId: state machine ID<br>Returns: whether it succeeded |

@@ -1,0 +1,90 @@
+> [English](README.en.md) | **中文**
+
+# Wingman 文档
+
+欢迎来到 Wingman 项目文档。
+
+## 文档导航
+
+### 快速入门
+
+| 文档 | 说明 |
+|------|------|
+| [快速开始](guide/getting-started.md) | 本地编译、运行第一个脚本 |
+| [构建指南](../BUILD.md) | 平台依赖、vcpkg、测试与故障排查（仓库根目录） |
+| [VS Code 开发环境](development-environment.md) | Lua/Python 补全、调试和任务配置 |
+| [配置管理实践](guides/configuration.md) | INI/JSON 配置管理实践 |
+| [Android Agent](../apps/android/README.md) | APK 获取与安装、能力清单、真机验收步骤（仓库根目录） |
+| [Android Agent](android-agent.md) | Android 端侧 Agent（实验性），出站 TCP 连 Go 中控，Dashboard 统一下发与查看 |
+
+### API 参考
+
+| 模块 | 说明 |
+|------|------|
+| [API 总览](api/overview.md) | 脚本 API 的整体设计和命名约定 |
+| [API 索引](api/index.md) | 所有模块入口 |
+| [核心 API](api/core.md) | 屏幕、输入、窗口等核心能力 |
+| [键值存储](api/kv.md) / [数据库](api/db.md) | kv 键值存储和 SQLite |
+| [序列化](api/serialize.md) / [JSON](api/json.md) / [INI](api/ini.md) | JSON、INI 等格式处理 |
+| [脚本 API](api/script.md) | 脚本执行、任务和事件 |
+| [调试器](api/debugger.md) | Lua 调试接口说明 |
+
+### 使用指南
+
+| 指南 | 说明 |
+|------|------|
+| [数据库使用](guides/database.md) | SQLite 和 kv 的使用方式 |
+| [触发器系统](guides/triggers.md) | 自动化触发条件与动作 |
+| [UIA 指南](guides/uia-guide.md) | Windows UI Automation 使用说明 |
+| [YOLO 指南](guides/yolo-guide.md) | 可选 ML/ONNX 模型准备与加载验证 |
+| [资产下发指南](guides/asset-sync.md) | 模板图片等静态资源从服务端分发到 agent 本地与脚本引用 |
+| [真机验证指引](guides/manual-verification.md) | macOS 运行时 / Linux XRecord 真机脚本操作与通过判定 |
+
+### 架构与开发
+
+| 文档 | 说明 |
+|------|------|
+| [架构概览](architecture.md) | Runtime、GUI、Orchestrator 的边界 |
+| [架构决策](architecture-decisions.md) | 关键设计决策记录 |
+| [平台支持](platforms.md) | 支持矩阵、各平台 API 适用性与环境差异 |
+| [平台抽象设计](platform-abstraction-design.md) | 跨平台抽象层设计 |
+| [UIA 抽象设计](uia-abstraction-design.md) | UI Automation 抽象层设计 |
+| [项目结构](project-structure.md) | 目录职责和模块划分 |
+| [开发指南](DEVELOPMENT.md) | 构建、测试和贡献流程 |
+| [VS Code 开发环境](development-environment.md) | 仓库级编辑器配置和脚本调试工作流 |
+| [开发工具](DEVELOPER_TOOLS.md) | 本地开发辅助工具 |
+| [依赖说明](dependencies.md) | 依赖来源和用途 |
+
+### 示例代码
+
+| 类别 | 说明 |
+|------|------|
+| [示例索引](examples/index.md) | 所有示例入口 |
+| [Hello World](examples/hello-world.md) | 最小脚本示例 |
+| [像素检测](examples/pixel-detection.md) | 屏幕取色与条件判断 |
+| [图像匹配](examples/image-matching.md) | 图像查找示例 |
+| [自动循环](examples/auto-loop.md) | 持续检测和执行动作 |
+| [宏录制](examples/macro-record.md) | 录制和回放操作 |
+| [UI Automation](examples/ui-automation.md) | Windows 控件自动化 |
+
+## 功能状态说明
+
+默认构建以本地 Runtime、Lua 脚本、屏幕/输入/窗口等核心能力为主。以下模块需要额外依赖、构建开关或仍处于迭代中：
+
+| 模块 | 当前状态 |
+|------|----------|
+| OCR | 可选能力，依赖 Tesseract/运行时配置 |
+| ML/YOLO | 可选能力，AI 视觉检测 API 已可用（云端 provider + 本地 ONNX：`aiSetup`/`aiSetupLocal`/`aiLocate`/`aiElements`） |
+| Vision | 基础图像能力可用，高级检测按具体构建配置启用 |
+| Debugger | Lua 调试接口存在，需配合调试插件/配置使用 |
+| Orchestration | Go server + Dashboard + runtime agent 远程编排，属于独立部署链路 |
+
+## 获取帮助
+
+- [GitHub Issues](https://github.com/cuihairu/wingman/issues)
+- [GitHub Discussions](https://github.com/cuihairu/wingman/discussions)
+- 示例脚本目录：[`examples/`](../examples/)
+
+---
+
+**[返回首页](../README.md)**

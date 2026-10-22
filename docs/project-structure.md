@@ -1,8 +1,8 @@
-> [English](project-structure.en.md) | **中文**
+> [中文](project-structure.md) | **English**
 
-# Wingman 项目目录结构
+# Wingman Project Directory Structure
 
-## 顶层目录
+## Top-level Directories
 
 ```
 wingman/
@@ -34,66 +34,66 @@ wingman/
 └── vcpkg-ports/             # 本地 vcpkg ports（预留，当前为空）
 ```
 
-## 模块说明
+## Module Description
 
 ### apps/
 
-应用程序目录，包含所有可执行程序：
+Application directory, containing all executables:
 
 #### agent/
-C++ CLI 运行时，作为主动 Agent 运行：
-- **Agent 模式**：主动连接到编排器（Go orchestrator），通过 transport TCP 接收任务并上报状态
-- **StandaloneMode**：单机模式，本地 IPC 供 GUI 控制
+C++ CLI runtime, running as an active agent:
+- **Agent mode**: actively connects to the orchestrator (Go orchestrator), receives tasks over transport TCP and reports status
+- **StandaloneMode**: standalone mode, local IPC for GUI control
 
-> **注意**: 旧的 PassiveMode（被动监听）和 `serve` 命令已被移除。Runtime 不再作为被动服务器。
+> **Note**: the old PassiveMode (passive listening) and the `serve` command have been removed. The runtime no longer acts as a passive server.
 
 #### gui/
-Tauri/Svelte 桌面 GUI 应用，通过 Tauri Rust backend 使用本地 IPC 控制 runtime。
+Tauri/Svelte desktop GUI application, controlling the runtime through local IPC via the Tauri Rust backend.
 
 #### android/
-Android 端侧 Agent（Kotlin，实验性）。无障碍服务注入 + MediaProjection 采集，出站 TCP 连 Go 中控，设计见 docs/android-agent-design.md。
+Android on-device agent (Kotlin, experimental). Accessibility-service injection + MediaProjection capture, outbound TCP to the Go orchestrator; design in docs/android-agent-design.md.
 
 ### lib/wingman/
 
-核心库，包含主要功能模块：
+Core library, containing the main feature modules:
 
-- **screen** - 屏幕捕获、像素操作
-- **input** - 输入模拟（鼠标、键盘）
-- **window** - 窗口管理
-- **process** - 进程管理
-- **trigger** - 触发器系统
-- **vision** - 视觉识别
-- **behavior_tree** - 行为树
-- **ocr** - OCR 文字识别
-- **hotkey** - 全局热键监听
-- **file** - 文件 IO
+- **screen** - screen capture, pixel operations
+- **input** - input simulation (mouse, keyboard)
+- **window** - window management
+- **process** - process management
+- **trigger** - trigger system
+- **vision** - visual recognition
+- **behavior_tree** - behavior tree
+- **ocr** - OCR text recognition
+- **hotkey** - global hotkey listening
+- **file** - file IO
 
-脚本模块注册表（`script/modules/`，42 个 ModuleDescriptor）也在此库。
+The script module registry (`script/modules/`, 42 ModuleDescriptors) also lives in this library.
 
 ### libs/
 
-引擎与链路库，各模块独立编译：
+Engine and link libraries, each module compiled independently:
 
-| 模块 | 说明 |
+| Module | Description |
 |------|------|
-| **lua** | Lua 引擎绑定（sol2） |
-| **python** | Python 引擎绑定（pybind11，默认关闭，`WINGMAN_ENABLE_PYTHON=ON` 启用） |
-| **transport** | TCP 传输层（长度前缀帧 + JSON 体；脚本层 UDP 直连 asio，不经此库） |
-| **agentcore** | 远程 agent 公共件：RemoteClient（注册/心跳/重连/断连缓存）、EventBuffer |
-| **androidagent** | Android 链路共享件（C++，Kotlin 壳经 JNI 桥接复用桌面协议栈） |
-| **crash** | 崩溃采集封装（静态库 `wingman_crash`，链 `crashpad_client`；`WINGMAN_ENABLE_CRASHPAD` 开启，Linux 默认开） |
+| **lua** | Lua engine binding (sol2) |
+| **python** | Python engine binding (pybind11, off by default, enabled with `WINGMAN_ENABLE_PYTHON=ON`) |
+| **transport** | TCP transport layer (length-prefixed frames + JSON body; the script layer's UDP goes straight to asio, not through this library) |
+| **agentcore** | Remote agent shared pieces: RemoteClient (registration/heartbeat/reconnect/disconnect buffering), EventBuffer |
+| **androidagent** | Android link shared pieces (C++, reused by the Kotlin shell through JNI to share the desktop protocol stack) |
+| **crash** | Crash collection wrapper (static library `wingman_crash`, links `crashpad_client`; enabled by `WINGMAN_ENABLE_CRASHPAD`, default on for Linux) |
 
 ### orchestrator/
 
-编排层，提供 Web 控制和服务端功能：
+Orchestration layer, providing the web control panel and server-side functionality:
 
 #### dashboard/
-Web 控制面板（基于 React/Umi），用于监控和管理 Agent
+Web control panel (based on React/Umi), used to monitor and manage agents
 
 #### server/
-Go 服务端程序，提供远程控制和 API 服务
+Go server program, providing remote control and the API service
 
-## 调用链
+## Call Chain
 
 ```
 Lua/Python 脚本 (.lua / .py)
@@ -109,49 +109,49 @@ apps/agent/ (应用：CLI + outbound agent + local IPC)
 orchestrator/server/ (Go 编排服务)
 ```
 
-## 运行模式
+## Run Modes
 
-Runtime 作为主动 Agent 运行，通过 outbound 连接到编排器。
+The runtime runs as an active agent, connecting to the orchestrator outbound.
 
-| 模式 | 说明 | Transport |
+| Mode | Description | Transport |
 |------|------|-----------|
-| Agent 模式 | 主动连接到编排器服务器 | TcpClient (transport) |
-| StandaloneMode | 单机模式，本地 IPC | Named Pipe (Windows) / UDS (macOS/Linux) |
+| Agent mode | Actively connects to the orchestrator server | TcpClient (transport) |
+| StandaloneMode | Standalone mode, local IPC | Named Pipe (Windows) / UDS (macOS/Linux) |
 
-> **注意**: PassiveMode 已被移除，Runtime 不再作为被动服务器。
+> **Note**: PassiveMode has been removed; the runtime no longer acts as a passive server.
 
-## 设计原则
+## Design Principles
 
-1. **核心库独立** - `lib/wingman/` 不依赖 `apps/`，可单独复用
-2. **就近测试** - 每个模块都有自己的 `tests/` 目录
-3. **职责清晰** - apps（应用）、lib（核心库）、libs（引擎与链路库）分离
-4. **命名空间** - 子目录头按目录嵌套：`include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>`（capture / core / ipc / platform / rpc / vision 同式）；顶层头平铺 `namespace wingman`（33 个中 31 个，`crypt.hpp` / `core.hpp` 例外用 `wingman::crypt` / `wingman::core`）
+1. **Independent core library** - `lib/wingman/` does not depend on `apps/` and can be reused on its own
+2. **Tests next to code** - every module has its own `tests/` directory
+3. **Clear responsibilities** - apps (applications), lib (core library) and libs (engine and link libraries) are separated
+4. **Namespaces** - subdirectory headers are nested by directory: `include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>` (capture / core / ipc / platform / rpc / vision the same way); top-level headers use a flat `namespace wingman` (31 of 33, with `crypt.hpp` / `core.hpp` as exceptions using `wingman::crypt` / `wingman::core`)
 
-## 构建说明
+## Build Notes
 
-使用 vcpkg manifest 管理依赖（`vcpkg.json`）：
+Dependencies are managed with the vcpkg manifest (`vcpkg.json`):
 
 ```bash
 build-scripts\build-runtime-msvc-ninja.bat
 ```
 
-详细构建步骤请参考 [BUILD.md](../BUILD.md)。
+For the detailed build steps see [BUILD.md](../BUILD.md).
 
-## 测试
+## Tests
 
-### 测试覆盖
+### Test coverage
 
-- C++ 单元测试：`lib/wingman/tests/`（core_tests，2000+ 例）
-- Runtime 测试：`apps/agent/tests/`（agent_tests）
-- Lua 单元测试：`libs/lua/tests/`
-- Python 单元测试：`libs/python/tests/`
-- 传输层测试：`libs/transport/tests/`
-- agentcore 测试：`libs/agentcore/tests/`
-- GUI 前端测试：`apps/gui/tests/`（vitest）
-- Dashboard 测试：`orchestrator/dashboard/`（jest）
-- Go 服务端测试：`orchestrator/server/`（go test -race，三平台 CI）
+- C++ unit tests: `lib/wingman/tests/` (core_tests, 2000+ cases)
+- Runtime tests: `apps/agent/tests/` (agent_tests)
+- Lua unit tests: `libs/lua/tests/`
+- Python unit tests: `libs/python/tests/`
+- Transport layer tests: `libs/transport/tests/`
+- agentcore tests: `libs/agentcore/tests/`
+- GUI frontend tests: `apps/gui/tests/` (vitest)
+- Dashboard tests: `orchestrator/dashboard/` (jest)
+- Go server tests: `orchestrator/server/` (go test -race, three-platform CI)
 
-启用测试构建（vcpkg toolchain + tests feature）：
+Enabling a test build (vcpkg toolchain + tests feature):
 
 ```bash
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake \

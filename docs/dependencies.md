@@ -1,30 +1,30 @@
-> [English](dependencies.en.md) | **中文**
+> [中文](dependencies.md) | **English**
 
-# Wingman 依赖说明
+# Wingman Dependencies
 
-依赖统一由 vcpkg manifest 管理，清单是仓库根目录的 `vcpkg.json`（与 baseline 版本绑定）。CMake 经 toolchain 在 configure 阶段自动安装，不需要也不允许手工 `vcpkg install <包名>` 拼清单，不回退到系统库（见 CLAUDE.md 依赖管理规则）。
+Dependencies are managed uniformly through the vcpkg manifest; the manifest is `vcpkg.json` at the repository root (pinned to a baseline version). CMake installs them automatically via the toolchain at configure time. Manually assembling a manifest with `vcpkg install <package>` is neither needed nor allowed, and falling back to system libraries is prohibited (see the dependency management rules in CLAUDE.md).
 
-## 核心依赖（manifest，始终安装）
+## Core dependencies (manifest, always installed)
 
-asio、curl、lua、nlohmann-json、opencv4（仅 Windows）、openssl、sol2、spdlog、sqlite3、zlib（crashpad_util 链接，见下「子模块依赖」）
+asio, curl, lua, nlohmann-json, opencv4 (Windows only), openssl, sol2, spdlog, sqlite3, zlib (linked by crashpad_util; see "Submodule dependencies" below)
 
-其中 OpenCV 有平台门：`platform: "windows"`（Windows 基础依赖已含），Linux 走 `vision` feature；macOS 不带 OpenCV——此时视觉实现改用 `src/vision_stub.cpp`（`lib/wingman/CMakeLists.txt:176-187` 按 `OpenCV_FOUND AND TARGET opencv_core` 选源文件，命中才定义 `WINGMAN_ENABLE_VISION`），`findImage` / `findColor` / `findAllColors` 等视觉函数恒返回未命中或空值（stub 全部实现为 `std::nullopt` / `{false, ...}` / `{}`），macOS 上视觉类自动化不可用。
+OpenCV has a platform gate: `platform: "windows"` (already included in the Windows base dependencies), Linux goes through the `vision` feature; macOS does not ship OpenCV — in this case the vision implementation switches to `src/vision_stub.cpp` (`lib/wingman/CMakeLists.txt:176-187` selects the source file based on `OpenCV_FOUND AND TARGET opencv_core`, and `WINGMAN_ENABLE_VISION` is only defined when matched). Vision functions such as `findImage` / `findColor` / `findAllColors` always return not-found or empty values (the stub implements them all as `std::nullopt` / `{false, ...}` / `{}`), so vision-based automation is unavailable on macOS.
 
-## 可选 feature（`-DVCPKG_MANIFEST_FEATURES=`）
+## Optional features (`-DVCPKG_MANIFEST_FEATURES=`)
 
-| feature | 装什么 | 开关 |
+| feature | What it installs | Toggle |
 |---------|--------|------|
 | `tests` | gtest | `WINGMAN_BUILD_TESTS=ON` |
-| `ocr` | tesseract（Windows） | `WINGMAN_ENABLE_OCR=ON` |
-| `ml` | onnxruntime（Windows/Linux） | `WINGMAN_ENABLE_ML=ON` |
-| `vision` | opencv4（Linux） | 自动：CMake 找到 OpenCV 即定义 `WINGMAN_ENABLE_VISION`（Linux 需此 feature 提供 OpenCV；Windows 基础依赖已含） |
+| `ocr` | tesseract (Windows) | `WINGMAN_ENABLE_OCR=ON` |
+| `ml` | onnxruntime (Windows/Linux) | `WINGMAN_ENABLE_ML=ON` |
+| `vision` | opencv4 (Linux) | Automatic: CMake defines `WINGMAN_ENABLE_VISION` as soon as it finds OpenCV (Linux needs this feature to provide OpenCV; the Windows base dependencies already include it) |
 | `python` | python3 + pybind11 | `WINGMAN_ENABLE_PYTHON=ON` |
 
-「装什么」与「开关」两列**必须同时给**：`-DVCPKG_MANIFEST_FEATURES=<feature>` 只决定 vcpkg 是否安装该包，CMake 选项只决定本仓走哪条代码路径；CMake 不自动设置该变量（仓内仅 `.github/workflows/ci.yml` 设置，见「配置命令」）。缺 feature 的后果按模块不同：`ml` 在 configure 期**硬失败**（`find_package(onnxruntime CONFIG REQUIRED)`，CMake 注释即写明「依赖缺失显式报错，不静默降级到替身档」）；`ocr` 在编译期因缺 tesseract 头失败；**只有 `vision` 是静默降级**——`src/vision_stub.cpp` 接档、编译通过但全部视觉函数返回未命中/空值，日志只有一行 `STATUS "Vision support disabled"`。
+The "What it installs" and "Toggle" columns **must both be provided**: `-DVCPKG_MANIFEST_FEATURES=<feature>` only decides whether vcpkg installs the package, while the CMake option only decides which code path this repository takes; CMake does not set this variable automatically (only `.github/workflows/ci.yml` in the repo sets it; see "Configuration commands"). The consequences of a missing feature vary by module: `ml` fails hard at configure time (`find_package(onnxruntime CONFIG REQUIRED)`; the CMake comment itself states "report a missing dependency explicitly, do not silently degrade to a stub"); `ocr` fails at compile time due to missing tesseract headers; **only `vision` silently degrades** — `src/vision_stub.cpp` takes over, compilation succeeds but all vision functions return not-found/empty values, and the log contains only a single `STATUS "Vision support disabled"`.
 
-Android 用独立的 `apps/android/cpp/vcpkg-android.cmake` 叠加 NDK 工具链（见 apps/android/app/build.gradle.kts）。
+Android uses the standalone `apps/android/cpp/vcpkg-android.cmake` to layer on the NDK toolchain (see apps/android/app/build.gradle.kts).
 
-## 配置命令
+## Configuration commands
 
 ```bash
 cmake -B build \
@@ -34,27 +34,27 @@ cmake -B build \
   -DWINGMAN_BUILD_TESTS=ON
 ```
 
-Windows 快捷脚本：`build-scripts\configure-msvc-ninja.bat` + `build-scripts\build-runtime-msvc-ninja.bat`。完整步骤见 [BUILD.md](../BUILD.md)。
+Windows shortcut scripts: `build-scripts\configure-msvc-ninja.bat` + `build-scripts\build-runtime-msvc-ninja.bat`. Full steps are in [BUILD.md](../BUILD.md).
 
-## 版本与 baseline
+## Versions and baseline
 
-- baseline：`vcpkg.json` 的 `builtin-baseline`
-- Windows 三元组：`x64-windows-static`（/MT 静态运行时）
-- Linux 三元组：`x64-linux`；Android：`arm64-android`
+- baseline: the `builtin-baseline` in `vcpkg.json`
+- Windows triplet: `x64-windows-static` (/MT static runtime)
+- Linux triplet: `x64-linux`; Android: `arm64-android`
 
-## 子模块依赖（vcpkg 外，钉版 commit）
+## Submodule dependencies (outside vcpkg, pinned commits)
 
-Crashpad 崩溃采集在 vcpkg 官方 registry 无 port，经批准以 git 子模块钉版接入（例外声明与设计口径见 [crash-reporting-design.md](design/crash-reporting-design.md)），构建期零网络。zlib 仍走 vcpkg manifest。
+Crashpad crash collection has no port in the official vcpkg registry; it was approved for integration as a pinned git submodule (see [crash-reporting-design.md](design/crash-reporting-design.md) for the exception statement and design rationale), with zero network access at build time. zlib still goes through the vcpkg manifest.
 
-| 子模块 | 钉版 | 许可 | 用途 |
+| Submodule | Pinned version | License | Purpose |
 |--------|------|------|------|
-| `third_party/crashpad-cmake` | `80573ad` | Apache-2.0 | CMake 包装：只取其 `cmake/` 模块文件直驱（`cmake/crashpad.cmake`），不经其 FetchContent 根 |
-| `third_party/crashpad`（backtrace-labs fork） | `7b9686b` | Apache-2.0 | 崩溃采集本体（client 库 + handler 进程） |
-| `third_party/mini_chromium` | `9cdc2a7` | BSD-3-Clause | crashpad 依赖的 chromium base 子集 |
-| `third_party/lss`（cpp-pm 镜像，上游 chromium.googlesource.com/linux-syscall-support） | `e1e7b0a` | BSD-3-Clause | Linux 直接系统调用支持头 |
+| `third_party/crashpad-cmake` | `80573ad` | Apache-2.0 | CMake wrapper: only its `cmake/` module files are used directly (`cmake/crashpad.cmake`), without going through its FetchContent root |
+| `third_party/crashpad` (backtrace-labs fork) | `7b9686b` | Apache-2.0 | Crash collection body (client library + handler process) |
+| `third_party/mini_chromium` | `9cdc2a7` | BSD-3-Clause | Chromium base subset required by crashpad |
+| `third_party/lss` (cpp-pm mirror, upstream chromium.googlesource.com/linux-syscall-support) | `e1e7b0a` | BSD-3-Clause | Linux direct syscall support headers |
 
-开关 `WINGMAN_ENABLE_CRASHPAD` 默认仅 Linux 开；升级走子模块指针更新。本机缺子模块时 Linux 配置期会明确报错（`git submodule update --init third_party/`）。
+The `WINGMAN_ENABLE_CRASHPAD` toggle is enabled by default on Linux only; upgrades go through submodule pointer updates. When submodules are missing locally, Linux configure time fails with an explicit error (`git submodule update --init third_party/`).
 
-## 历史说明
+## Historical note
 
-本文档曾是网络受限时期的安装绕行指南（预构建包、Scoop、手工 `vcpkg install` 清单）。那些路径与 manifest 模式冲突，2026-10-04 已删除；依赖缺失时的做法是补 `vcpkg.json`、配好 toolchain 或执行 manifest 驱动的安装，不是换来源。
+This document used to be an installation workaround guide from the network-restricted period (prebuilt packages, Scoop, manual `vcpkg install` manifests). Those paths conflict with the manifest model and were removed on 2026-10-04; the correct response to missing dependencies is to complete `vcpkg.json`, configure the toolchain properly, or run manifest-driven installation — not to switch sources.

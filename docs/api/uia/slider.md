@@ -1,12 +1,12 @@
-> [English](slider.en.md) | **中文**
+> [中文](slider.md) | **English**
 
 # API: UIA Slider
 
-滑块（Slider）控件用于调节数值，如音量、亮度、对比度等。
+The Slider control is used to adjust a numeric value, such as volume, brightness, or contrast.
 
-## 查找滑块
+## Finding a Slider
 
-**说明**：滑块通常有描述性名称。
+**Note**: Sliders usually have descriptive names.
 
 :::tabs
 
@@ -37,9 +37,9 @@ end
 
 ---
 
-## 获取当前值
+## Getting the current value
 
-> **未实现（计划中）**：`get_info()` 的返回键中没有数值字段（无 `value`），`get_value()` 返回的是元素文本（实现为 `getText`），不是滑块数值。滑块当前值读取暂不可用。
+> **Not implemented (planned)**: The `get_info()` return keys have no numeric field (no `value`), and `get_value()` returns the element text (implemented as `getText`), not the slider value. Reading the slider's current value is currently unavailable.
 
 :::tabs
 
@@ -72,9 +72,9 @@ end
 
 ---
 
-## 设置滑块值
+## Setting the slider value
 
-> **未实现（计划中）**：`set_value(number)` 设置滑块值的能力未实现——`set_value` 的实现是设置元素文本（`setText`），对滑块调用不会拖动滑块或改变数值。调值需等待 Range/Value 模式接口补齐；过渡方案可用 `input.scroll()` 或拖拽模拟。
+> **Not implemented (planned)**: `set_value(number)` cannot set the slider value — `set_value` is implemented as setting the element text (`setText`), and calling it on a Slider does not move the slider or change its value. Adjusting the value must wait for the Range/Value pattern interfaces; as a transitional workaround, `input.scroll()` or drag simulation can be used.
 
 :::tabs
 
@@ -102,20 +102,20 @@ wingman.input.scroll(400, 300, -1)
 
 ---
 
-## 获取滑块范围
+## Getting the slider range
 
-> **未实现（计划中）**：`get_info()` 的返回键中没有 `minimum`/`maximum` 字段，滑块范围读取暂不可用。
+> **Not implemented (planned)**: The `get_info()` return keys have no `minimum`/`maximum` fields. Reading the slider range is currently unavailable.
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 |
-|------------|---------|------|
-| `find_by_name(name)` | `find_by_name(name)` | 按名称查找 |
+| Python function | Lua function | Description |
+|----------------|-------------|-------------|
+| `find_by_name(name)` | `find_by_name(name)` | Find by name |
 
-| Python 方法 | Lua 方法 | 说明 |
-|------------|---------|------|
-| `get_info()` | `:get_info()` | 获取滑块通用信息 |
+| Python method | Lua method | Description |
+|----------------|-------------|-------------|
+| `get_info()` | `:get_info()` | Get general information about the slider |
 
-> **未实现（计划中）**：滑块值/范围的读取（`get_value` 数值语义、`minimum`/`maximum` 字段）与设置（`set_value` 数值语义）均未实现——`get_value`/`set_value` 实为读取/设置元素文本，仅对文本型控件有效。
+> **Not implemented (planned)**: Reading the slider value/range (`get_value` numeric semantics, `minimum`/`maximum` fields) and setting it (`set_value` numeric semantics) are both not implemented — `get_value`/`set_value` actually read/set the element text and only work for text-type controls.

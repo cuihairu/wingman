@@ -41,13 +41,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}
           submodules: recursive
 
       - name: Restore vcpkg cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: ${{ github.workspace }}/vcpkg/archives
           key: macos-vcpkg-verify-${{ hashFiles('vcpkg.json') }}

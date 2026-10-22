@@ -1,28 +1,28 @@
-> [English](ocr.en.md) | **中文**
+> [中文](ocr.md) | **English**
 
 # API: wingman.ocr
 
-OCR 模块，提供基于 Tesseract 引擎的文字识别功能。
+OCR module providing text recognition based on the Tesseract engine.
 
-::: warning 注意
-此模块需要安装 Tesseract。未安装时返回存根实现。
+::: warning Note
+This module requires Tesseract to be installed. When it is not installed, a stub implementation is returned.
 :::
 
-## 模块概述
+## Module Overview
 
-ocr 模块提供文字识别功能：
-- **文字识别** - 识别指定区域的文字
-- **简化识别** - 直接返回识别文本
+The ocr module provides text recognition:
+- **Text recognition** - recognize text in a specified region
+- **Simplified recognition** - return the recognized text directly
 
 ---
 
-## 识别文字
+## Recognize Text
 
 ### recognize(region) / recognize(region)
 
-**说明**：识别指定区域的文字，返回详细结果。
+**Description**: Recognizes text in the specified region and returns a detailed result.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 recognize(region: dict) -> dict
@@ -32,14 +32,14 @@ recognize(region: dict) -> dict
 recognize(region: table) -> table
 ```
 
-**参数**：
-- `region` - 必传，识别区域 `{x: number, y: number, width: number, height: number}`
+**Parameters**:
+- `region` - required, the recognition region `{x: number, y: number, width: number, height: number}`
 
-**返回**：
-- 识别结果对象：
-  - `success` / `success` - 是否成功
-  - `text` / `text` - 识别的文本
-  - `confidence` / `confidence` - 置信度（0-100 整数百分比）
+**Returns**:
+- Recognition result object:
+  - `success` / `success` - whether the call succeeded
+  - `text` / `text` - the recognized text
+  - `confidence` / `confidence` - confidence (0-100 integer percentage)
 
 :::tabs
 
@@ -72,13 +72,13 @@ end
 
 ---
 
-## 简化版识别
+## Simplified Recognition
 
 ### recognize_text(region) / recognizeText(region)
 
-**说明**：简化版文字识别，直接返回文本。
+**Description**: Simplified text recognition that returns the text directly.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 recognize_text(region: dict) -> str | None
@@ -88,11 +88,11 @@ recognize_text(region: dict) -> str | None
 recognizeText(region: table) -> string | nil
 ```
 
-**参数**：
-- `region` - 必传，识别区域 `{x: number, y: number, width: number, height: number}`
+**Parameters**:
+- `region` - required, the recognition region `{x: number, y: number, width: number, height: number}`
 
-**返回**：
-- 识别的文本，失败返回 `None`/`nil`
+**Returns**:
+- The recognized text, or `None`/`nil` on failure
 
 :::tabs
 
@@ -121,54 +121,54 @@ end
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python function | Lua function | Description | Parameters |
 |------------|---------|------|-----|
-| `recognize(region)` | `recognize(region)` | 识别文字 | region: 识别区域(必传)<br>返回: 结果对象 |
-| `recognize_text(region)` | `recognizeText(region)` | 简化识别 | region: 识别区域(必传)<br>返回: 文本或None/nil |
+| `recognize(region)` | `recognize(region)` | Recognize text | region: recognition region (required)<br>Return: result object |
+| `recognize_text(region)` | `recognizeText(region)` | Simplified recognition | region: recognition region (required)<br>Return: text or None/nil |
 
 ---
 
-## 语言包配置
+## Language Pack Configuration
 
-Tesseract 语言包需要单独下载。
+Tesseract language packs must be downloaded separately.
 
-### 下载语言包
+### Download Language Packs
 
-从 [tessdata](https://github.com/tesseract-ocr/tessdata) 下载所需的 `.traineddata` 文件：
+Download the required `.traineddata` files from [tessdata](https://github.com/tesseract-ocr/tessdata):
 
-| 语言 | 文件名 |
+| Language | File name |
 |------|--------|
-| 英文 | `eng.traineddata` |
-| 简体中文 | `chi_sim.traineddata` |
-| 繁体中文 | `chi_tra.traineddata` |
-| 日文 | `jpn.traineddata` |
-| 韩文 | `kor.traineddata` |
+| English | `eng.traineddata` |
+| Simplified Chinese | `chi_sim.traineddata` |
+| Traditional Chinese | `chi_tra.traineddata` |
+| Japanese | `jpn.traineddata` |
+| Korean | `kor.traineddata` |
 
-### 安装语言包
+### Install Language Packs
 
-将下载的 `.traineddata` 文件放到 Tesseract 的 tessdata 目录：
+Place the downloaded `.traineddata` files into Tesseract's tessdata directory:
 
-**Windows (vcpkg 安装):**
+**Windows (vcpkg installation):**
 ```
 <vcpkg-root>\installed\x64-windows\share\tesseract\tessdata\
 ```
 
 ---
 
-## 编译选项
+## Build Options
 
-OCR 功能需要安装 Tesseract：
+The OCR feature requires Tesseract to be installed:
 
 ```bash
 vcpkg install tesseract
 ```
 
-如不需要 OCR 功能，可在编译时禁用：
+If you do not need the OCR feature, you can disable it at build time:
 
 ```bash
 cmake -DWINGMAN_ENABLE_OCR=OFF ..
 ```
 
-禁用后将使用 stub 实现，`recognize()` 始终返回空结果。
+When disabled, a stub implementation is used and `recognize()` always returns an empty result.

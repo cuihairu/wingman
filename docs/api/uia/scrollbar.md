@@ -1,12 +1,12 @@
-> [English](scrollbar.en.md) | **中文**
+> [中文](scrollbar.md) | **English**
 
 # API: UIA ScrollBar
 
-滚动条（ScrollBar）控件用于滚动内容区域，有水平和垂直两种类型。
+The ScrollBar control is used to scroll a content area. There are two types: horizontal and vertical.
 
-## 查找滚动条
+## Finding a ScrollBar
 
-**说明**：滚动条通常有名称或可通过类型查找。
+**Note**: ScrollBars usually have names, or can be located by type.
 
 :::tabs
 
@@ -48,15 +48,15 @@ end
 
 ---
 
-## 获取滚动位置
+## Getting the scroll position
 
-> **未实现（计划中）**：`get_info()` 的返回键中没有滚动数值字段（无 `value`），`get_value()` 返回的是元素文本（实现为 `getText`），不是滚动位置。滚动位置读取暂不可用。
+> **Not implemented (planned)**: The `get_info()` return keys have no scroll value field (no `value`), and `get_value()` returns the element text (implemented as `getText`), not the scroll position. Reading the scroll position is currently unavailable.
 
 ---
 
-## 设置滚动位置
+## Setting the scroll position
 
-> **未实现（计划中）**：`set_value(number)` 设置滚动位置的能力未实现——`set_value` 的实现是设置元素文本（`setText`），对滚动条调用不会改变滚动位置。滚动请改用 `input.scroll(x, y, delta)`（模拟鼠标滚轮，input 模块）。
+> **Not implemented (planned)**: `set_value(number)` cannot set the scroll position — `set_value` is implemented as setting the element text (`setText`), and calling it on a ScrollBar does not change the scroll position. For scrolling, use `input.scroll(x, y, delta)` instead (simulates the mouse wheel, input module).
 
 :::tabs
 
@@ -82,20 +82,20 @@ wingman.input.scroll(500, 400, -3)
 
 ---
 
-## 获取滚动范围
+## Getting the scroll range
 
-> **未实现（计划中）**：`get_info()` 的返回键中没有 `minimum`/`maximum` 字段，滚动范围读取暂不可用。
+> **Not implemented (planned)**: The `get_info()` return keys have no `minimum`/`maximum` fields. Reading the scroll range is currently unavailable.
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 |
-|------------|---------|------|
-| `find_by_name(name)` | `find_by_name(name)` | 按名称查找 |
+| Python function | Lua function | Description |
+|----------------|-------------|-------------|
+| `find_by_name(name)` | `find_by_name(name)` | Find by name |
 
-| Python 方法 | Lua 方法 | 说明 |
-|------------|---------|------|
-| `get_info()` | `:get_info()` | 获取滚动条通用信息 |
+| Python method | Lua method | Description |
+|----------------|-------------|-------------|
+| `get_info()` | `:get_info()` | Get general information about the scroll bar |
 
-> **未实现（计划中）**：滚动位置/范围的读取（`get_value` 数值语义、`minimum`/`maximum` 字段）与设置（`set_value` 数值语义）均未实现——`get_value`/`set_value` 实为读取/设置元素文本，仅对文本型控件有效。
+> **Not implemented (planned)**: Reading the scroll position/range (`get_value` numeric semantics, `minimum`/`maximum` fields) and setting it (`set_value` numeric semantics) are both not implemented — `get_value`/`set_value` actually read/set the element text and only work for text-type controls.

@@ -1,27 +1,27 @@
-> [English](json.en.md) | **中文**
+> [中文](json.md) | **English**
 
 # API: wingman.json
 
-JSON 解析和序列化模块。
+JSON parsing and serialization module.
 
-## 模块概述
+## Module Overview
 
-json 模块提供 JSON 格式的解析和序列化功能：
-- **解析 JSON** - 将 JSON 字符串转换为原生对象
-- **序列化 JSON** - 将原生对象转换为 JSON 字符串
-- **格式化输出** - 支持缩进控制的美化输出
+The json module provides parsing and serialization for the JSON format:
+- **Parse JSON** - convert a JSON string into a native object
+- **Serialize JSON** - convert a native object into a JSON string
+- **Formatted output** - pretty output with indentation control
 
-Python 侧的 `None`、Lua 侧的 `nil` 经 `encode` 序列化即为 JSON `null`。
+Python's `None` and Lua's `nil` serialize to JSON `null` through `encode`.
 
 ---
 
-## 解析 JSON 字符串
+## Parse a JSON String
 
 ### decode(str) / decode(str)
 
-**说明**：解析 JSON 字符串，转换为原生对象。
+**Description**: Parses a JSON string and converts it into a native object.
 
-**函数签名**：
+**Signature**:
 
 ```python
 decode(str: str) -> Any
@@ -31,16 +31,16 @@ decode(str: str) -> Any
 decode(str: string) -> any
 ```
 
-**参数**：
-- `str` - JSON 格式的字符串
+**Parameters**:
+- `str` - a string in JSON format
 
-**返回**：
-- Python: 解析后的值（`dict`/`list`/`str`/`int`/`float`/`bool`/`None`）
-- Lua: 解析后的值（`table`/`string`/`number`/`boolean`/`nil`）
+**Returns**:
+- Python: the parsed value (`dict`/`list`/`str`/`int`/`float`/`bool`/`None`)
+- Lua: the parsed value (`table`/`string`/`number`/`boolean`/`nil`)
 
-**解析失败**：
-- 返回 `None`（Python）/ `nil`（Lua），不抛出异常
-- 注意：由于 `null` 本身也解析为 `None`/`nil`，仅凭返回值无法区分「解析结果就是 null」与「解析失败」
+**On parse failure**:
+- Returns `None` (Python) / `nil` (Lua); no exception is thrown
+- Note: because JSON `null` itself also parses to `None`/`nil`, the return value alone cannot distinguish "the parsed result is null" from "parsing failed"
 
 :::tabs
 
@@ -81,13 +81,13 @@ end
 
 ---
 
-## 序列化为 JSON 字符串
+## Serialize to a JSON String
 
 ### encode(value, indent?) / encode(value, indent?)
 
-**说明**：将原生对象序列化为 JSON 字符串。
+**Description**: Serializes a native object into a JSON string.
 
-**函数签名**：
+**Signature**:
 
 ```python
 encode(value: Any, indent: int = -1) -> str
@@ -97,14 +97,14 @@ encode(value: Any, indent: int = -1) -> str
 encode(value: any, indent: number = -1) -> string
 ```
 
-**参数**：
-- `value` - 要序列化的值（字典、列表、或 JSON 兼容类型）
-- `indent` - 可选，缩进空格数
-  - `-1` 或省略：压缩格式（无空格）
-  - `0` 或其他：使用指定空格数缩进
+**Parameters**:
+- `value` - the value to serialize (dict, list, or JSON-compatible types)
+- `indent` - optional, number of indent spaces
+  - `-1` or omitted: compact format (no spaces)
+  - `0` or any other value: indent with the given number of spaces
 
-**返回**：
-- JSON 格式的字符串
+**Returns**:
+- a string in JSON format
 
 :::tabs
 
@@ -152,9 +152,9 @@ print(formatted)
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python Function | Lua Function | Description | Parameters |
 |------------|---------|------|-----|
-| `decode(str)` | `decode(str)` | 解析 JSON 字符串 | str: JSON 字符串<br>返回: 原生对象；解析失败返回 None/nil |
-| `encode(value, indent?)` | `encode(value, indent?)` | 序列化为 JSON | value: 原生对象<br>indent: 缩进空格数(默认-1压缩)<br>返回: JSON 字符串 |
+| `decode(str)` | `decode(str)` | Parse a JSON string | str: JSON string<br>Returns: native object; None/nil on parse failure |
+| `encode(value, indent?)` | `encode(value, indent?)` | Serialize to JSON | value: native object<br>indent: number of indent spaces (default -1 = compact)<br>Returns: JSON string |

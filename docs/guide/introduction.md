@@ -1,35 +1,35 @@
-> [English](introduction.en.md) | **中文**
+> [中文](introduction.md) | **English**
 
-# 项目简介
+# Project Introduction
 
-## 什么是 Wingman？
+## What is Wingman?
 
-**Wingman** 是一个游戏自动化可编程控制引擎，基于 C++ 构建，支持 Lua 和 Python 两种脚本语言。
+**Wingman** is a programmable game automation control engine built with C++, supporting both Lua and Python as scripting languages.
 
-## 设计目标
+## Design Goals
 
-### 核心目标
+### Core Goals
 
-1. **高性能** - C++ 核心引擎，Lua/Python 脚本执行，毫秒级响应
-2. **安全可靠** - 纯用户态运行，使用合法 Windows API
-3. **可编程** - Lua 和 Python 双语言支持，无限扩展可能
-4. **易调试** - VS Code 插件支持，断点调试、变量查看、性能分析
+1. **High performance** - C++ core engine with Lua/Python script execution and millisecond-level response
+2. **Safe and reliable** - Runs purely in user mode using legitimate Windows APIs
+3. **Programmable** - Dual-language support (Lua and Python) with unlimited extension possibilities
+4. **Easy to debug** - VS Code extension support with breakpoint debugging, variable inspection, and profiling
 
-### 不做什么
+### What We Don't Do
 
-Wingman 遵循单一职责原则，以下功能**不在**项目范围内：
+Wingman follows the single-responsibility principle; the following features are **out of scope**:
 
-| 功能 | 说明 |
+| Feature | Notes |
 |-----|------|
-| ❌ 内核驱动 | 不开发驱动，纯用户态 |
-| ❌ 内存读写 | 不读取/修改游戏内存 |
-| ❌ DLL 注入 | 不注入代码到游戏进程 |
-| ❌ 游戏破解 | 不修改游戏文件/协议 |
-| ❌ 分布式网络 | 不做分布式网络 |
-| ❌ 账号管理 | 不管理游戏账号 |
-| ❌ Runtime WebSocket/HTTP 控制面 | 本地 UI 使用 IPC，远程编排使用 Go server |
+| ❌ Kernel drivers | No driver development; user mode only |
+| ❌ Memory read/write | Does not read or modify game memory |
+| ❌ DLL injection | Does not inject code into game processes |
+| ❌ Game cracking | Does not modify game files or protocols |
+| ❌ Distributed networking | No distributed networking |
+| ❌ Account management | Does not manage game accounts |
+| ❌ Runtime WebSocket/HTTP control plane | The local UI uses IPC; remote orchestration uses the Go server |
 
-## 项目边界
+## Project Boundaries
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -66,51 +66,51 @@ Wingman 遵循单一职责原则，以下功能**不在**项目范围内：
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## 核心设计原则
+## Core Design Principles
 
-### 1. 安全第一
+### 1. Safety First
 
-- 纯用户态运行，不进入内核
-- 使用合法 Windows API（SendInput 等）
-- 不读写游戏内存
-- 不注入任何代码到游戏进程
-- 模拟真实人类操作模式
+- Runs purely in user mode; never enters the kernel
+- Uses legitimate Windows APIs (SendInput, etc.)
+- Does not read or write game memory
+- Does not inject any code into game processes
+- Simulates real human operation patterns
 
-### 2. 性能优先
+### 2. Performance First
 
-- C++ 实现性能敏感操作
-- Lua 和 Python 高效脚本执行
-- 零拷贝数据传递
-- 批量操作减少跨语言调用
+- Performance-sensitive operations implemented in C++
+- Efficient script execution in Lua and Python
+- Zero-copy data passing
+- Batched operations to reduce cross-language calls
 
-### 3. 多语言支持
+### 3. Multi-Language Support
 
-- **Lua** - 轻量级、高性能、适合游戏脚本
-- **Python** - 第三方库多，适合复杂逻辑和 AI 集成
-- 统一 API 设计，两种语言调用方式一致
+- **Lua** - Lightweight, high performance, well suited to game scripting
+- **Python** - Rich third-party ecosystem, well suited to complex logic and AI integration
+- Unified API design; both languages are called the same way
 
-### 4. 可编程
+### 4. Programmability
 
-- 脚本控制，用户可扩展
-- 不限制使用场景
-- 丰富的 API 暴露
-- 支持复杂业务逻辑
+- Script-driven control, extensible by users
+- No restrictions on use cases
+- Rich API surface exposed
+- Supports complex business logic
 
-### 5. 人性化
+### 5. Humanization
 
-- 模拟真实人类操作
-- 降低检测风险
-- 可配置的"人性化"参数
+- Simulates real human operations
+- Reduces detection risk
+- Configurable "humanization" parameters
 
-## 目标用户
+## Target Users
 
-| 用户类型 | 使用方式 |
+| User Type | How They Use It |
 |---------|---------|
-| **游戏工作室** | 编写 Lua/Python 脚本自动化 |
-| **高级玩家** | 编写个人辅助脚本 |
-| **AI 开发者** | 集成 YOLO 等模型实现智能识别 |
+| **Game studios** | Write Lua/Python scripts for automation |
+| **Advanced players** | Write personal assist scripts |
+| **AI developers** | Integrate models such as YOLO for intelligent recognition |
 
-## 技术栈
+## Tech Stack
 
 ```
 核心引擎
@@ -138,29 +138,29 @@ Wingman 遵循单一职责原则，以下功能**不在**项目范围内：
 └── VitePress
 ```
 
-## 为什么支持两种脚本语言？
+## Why Two Scripting Languages?
 
-### Lua 的优势
+### Lua's Advantages
 
-- **轻量级** - 极小的内存占用
-- **高性能** - 毫秒级启动时间
-- **简单** - 语法简洁，易于学习
-- **嵌入式** - 天生为嵌入式设计
+- **Lightweight** - Minimal memory footprint
+- **High performance** - Millisecond-level startup time
+- **Simple** - Concise syntax, easy to learn
+- **Embeddable** - Designed for embedding from day one
 
-### Python 的优势
+### Python's Advantages
 
-- **第三方库** - 覆盖面广，pip 直接安装
-- **AI 库** - 可接入 PyTorch、TensorFlow 模型
-- **开发效率** - IDE 支持完善，VS Code 可断点调试
-- **广泛应用** - 大量开发者熟悉
+- **Third-party libraries** - Broad coverage, installable directly via pip
+- **AI libraries** - Can hook up PyTorch and TensorFlow models
+- **Development efficiency** - Mature IDE support, breakpoint debugging in VS Code
+- **Widely used** - Familiar to a large developer base
 
-### 使用建议
+### Usage Recommendations
 
-- **游戏脚本** - 推荐 Lua，性能优先
-- **AI 集成** - 推荐 Python，第三方库多
-- **快速原型** - 推荐 Python，开发效率高
-- **生产环境** - 根据团队技术栈选择
+- **Game scripts** - Lua recommended, performance first
+- **AI integration** - Python recommended, rich third-party ecosystem
+- **Rapid prototyping** - Python recommended, higher development efficiency
+- **Production** - Choose based on your team's tech stack
 
-## 许可证
+## License
 
-Apache License 2.0 - 详见 [LICENSE](https://github.com/cuihairu/wingman/blob/main/LICENSE)
+Apache License 2.0 - see [LICENSE](https://github.com/cuihairu/wingman/blob/main/LICENSE) for details

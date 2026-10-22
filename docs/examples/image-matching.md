@@ -1,12 +1,12 @@
-> [English](image-matching.en.md) | **中文**
+> [中文](image-matching.md) | **English**
 
-# 图像匹配
+# Image Matching
 
-演示如何在屏幕上查找图像。
+Demonstrates how to find an image on the screen.
 
-> 模板图片需自备：仓库不附带 `images/target.png` 等示例图，请先准备一张小尺寸 PNG 放到脚本运行目录下。
+> You must supply the template images yourself: the repository does not ship example images like `images/target.png`; prepare a small PNG and place it in the script's working directory first.
 
-## 代码
+## Code
 
 ```lua
 -- examples/lua_scripts/image_matching.lua
@@ -39,9 +39,9 @@ while true do
 end
 ```
 
-## 需要匹配置信度（confidence）时
+## When You Need the Match Confidence
 
-`wingman.screen.findImage` 不返回置信度；改用 `wingman.vision.findImage`（返回 `{found, position, confidence, region}` 对象）：
+`wingman.screen.findImage` does not return a confidence value; use `wingman.vision.findImage` instead (it returns a `{found, position, confidence, region}` object):
 
 ```lua
 local wingman = require("wingman")
@@ -54,7 +54,7 @@ if result.found then
 end
 ```
 
-## 运行
+## Running
 
 ```bash
 wingman-agent.exe script examples/lua_scripts/image_matching.lua

@@ -3,11 +3,11 @@ layout: home
 
 hero:
   name: "Wingman"
-  text: "游戏自动化可编程控制引擎"
-  tagline: "C++ 核心，支持 Lua 和 Python 脚本"
+  text: "Programmable Control Engine for Game Automation"
+  tagline: "C++ core, with Lua and Python scripting"
   actions:
     - theme: brand
-      text: 快速开始
+      text: Get Started
       link: /guide/getting-started
     - theme: alt
       text: GitHub
@@ -19,93 +19,58 @@ hero:
 
 features:
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M13 2.5 4.5 14h6.5l-1 7.5L18.5 10h-6.5z"/></svg>'
-    title: 高性能
-    details: C++ 核心引擎，Lua/Python 脚本执行，毫秒级响应
+    title: High Performance
+    details: C++ core engine, Lua/Python script execution, millisecond-level response
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><path d="M12 14.5v2.5"/></svg>'
-    title: 安全可靠
-    details: 纯用户态运行，使用合法平台 API，不读写游戏内存
+    title: Safe and Reliable
+    details: Runs purely in user mode, uses legitimate platform APIs, does not read or write game memory
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="m8.5 7-4.5 5 4.5 5"/><path d="m15.5 7 4.5 5-4.5 5"/><path d="m13.2 5.5-2.4 13"/></svg>'
-    title: 多语言支持
-    details: 支持 Lua 和 Python 两种脚本语言，灵活选择
+    title: Multi-language Support
+    details: Supports both Lua and Python as scripting languages, choose freely
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5a13 13 0 0 1 0 17"/><path d="M12 3.5a13 13 0 0 0 0 17"/></svg>'
-    title: 跨平台
-    details: 支持 Windows、macOS、Linux，统一接口抽象
+    title: Cross-platform
+    details: Supports Windows, macOS and Linux behind a unified interface abstraction
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="13.5" r="4"/><path d="M12 9.5V6.5"/><path d="m10.4 4.9 1.6 1.6 1.6-1.6"/><path d="M8 13.5H4.5"/><path d="M20 13.5h-3.5"/><path d="m8.4 10.2-2.2-2.2"/><path d="m15.6 10.2 2.2-2.2"/><path d="m8.4 16.8-2.2 2.2"/><path d="m15.6 16.8 2.2 2.2"/></svg>'
-    title: 调试支持
-    details: VS Code Lua 提示插件；断点调试规划中（脚本调试器当前为占位 stub）
+    title: Debugging Support
+    details: VS Code Lua hints extension; breakpoint debugging planned (script debugger is a stub placeholder)
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M3.5 18.5C7 11 11 20.5 20.5 6"/><path d="m17.5 5.5 3.4.6-.7 3.4"/><circle cx="6" cy="7" r="2"/><path d="M6 9v3.5"/></svg>'
-    title: 拟人化输入
-    details: 贝塞尔曲线鼠标移动、随机延迟、自然操作模式
+    title: Human-like Input
+    details: Bézier-curve mouse movement, random delays and a natural-operation mode
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 6.5h4"/><path d="M10.5 17.5h3"/></svg>'
     title: Android Agent
-    details: 手势注入、屏幕采集、找色找图、远程截图，APK 随 nightly 分发
+    details: Gesture injection, screen capture, color and image search, remote screenshots, with the APK distributed alongside nightly
 
 ---
+> [中文](index.md) | **English**
 
-<script setup lang="ts">
-// 首次访问按浏览器语言选择文档语言（vitepress 无此能力，GitHub Pages 不支持 _redirects）
-// 优先级：localStorage 手动选择 > navigator.language > 保持当前 locale
-//
-// 已代决（2026-10-18）：本页（/wingman/ 根）内容是中文，英文首页是 index.en.html；
-// 因此 zh 浏览器留在本页（原先跳 /zh/ 是重复的中文清单页，方向反了），
-// 非 zh 浏览器跳英文首页。裁决理由见 CHANGELOG（ci/docs 2026-10-18 条目）。
-import { onBeforeMount } from 'vue'
-const KEY = 'wingman-lang-auto-picked'
-const BASE = '/wingman/'
-const ROOT_PATH = BASE
-const ZH_PREFIX = BASE + 'zh/'
-const EN_PATH = BASE + 'index.en.html'
-onBeforeMount(() => {{
-  if (typeof window === 'undefined') return
-  const p = window.location.pathname
-  if (p !== ROOT_PATH && p !== ROOT_PATH.slice(0, -1)) return
-  const picked = localStorage.getItem(KEY)
-  if (picked) {{ if (picked !== p) window.location.replace(picked); return }}
-  const langs = (navigator.languages?.length ? navigator.languages : [navigator.language]).map(l => l.toLowerCase())
-  if (!langs.some(l => l.startsWith('zh'))) window.location.replace(EN_PATH)
-}})
-if (typeof window !== 'undefined') {{
-  window.addEventListener('click', (e) => {{
-    const a = (e.target as HTMLElement)?.closest?.('a') as HTMLAnchorElement | null
-    const href = a?.getAttribute('href') || ''
-    if (href.includes('index.en')) localStorage.setItem(KEY, EN_PATH)
-    else if (href.startsWith(ZH_PREFIX) || href.startsWith('zh/')) localStorage.setItem(KEY, ROOT_PATH)
-    else if (href === ROOT_PATH || href === ROOT_PATH.slice(0, -1)) localStorage.setItem(KEY, ROOT_PATH)
-  }}, true)
-}}
-</script>
+## Introduction
 
-> [English](index.en.md) | **中文**
+**Wingman** is a cross-platform game automation tool.
 
+- Core engine built on **C++**, with screen capture and input injection implemented in the native layer
+- Supports two script engines, **Lua** and **Python**, with one shared API
+- Runs purely in **user mode**, using legitimate platform APIs, safe and reliable
+- Supports **remote orchestration**: the runtime agent connects out to the Go server, which acts as the unified central controller
+- Supports a **local standalone UI**: Tauri controls the runtime over local IPC, not through a runtime WebSocket/HTTP server
 
-## 简介
+## Core Features
 
-**Wingman** 是一个跨平台的游戏自动化工具。
+- **Screen operations** - screenshots, pixel detection, color matching, image search
+- **Input simulation** - mouse click/move, key sending, text input
+- **Window management** - find window, activate window, get position
+- **UI Automation** - manipulate Windows controls directly, no coordinate targeting needed
+- **Process management** - start/wait/terminate processes
+- **Macro recording** - record mouse and keyboard operations, replay automatically
+- **Trigger system** - pixel triggers, timed triggers, conditional combinations
+- **Orchestration layer** - the runtime agent connects out to the Go server, and the Dashboard connects only to the Go server
+- **Debugger** - breakpoint debugging planned (stub placeholder for now); VS Code Lua hints extension available
+- **Human-like input** - Bézier curves, random delays, natural operation
+- **Storage system** - a four-layer storage architecture supporting local and remote data persistence
+- **Version management** - dynamic version information with support for nightly builds
 
-- 基于 **C++** 开发核心引擎，屏幕捕获与输入注入在原生层实现
-- 支持 **Lua** 和 **Python** 两种脚本引擎，同一套 API
-- 纯**用户态**运行，使用合法平台 API，安全可靠
-- 支持**远程编排**，runtime agent 主动连接 Go server，由 Go server 统一中控
-- 支持**本地单机 UI**，Tauri 通过本地 IPC 控制 runtime，不通过 runtime WebSocket/HTTP server
+## Quick Start
 
-## 核心特性
-
-- **屏幕操作** - 截图、像素检测、颜色匹配、图像查找
-- **输入模拟** - 鼠标点击/移动、按键发送、文本输入
-- **窗口管理** - 查找窗口、激活窗口、获取位置
-- **UI Automation** - 直接操作 Windows 控件，无需坐标定位
-- **进程管理** - 启动/等待/终止进程
-- **宏录制** - 录制鼠标键盘操作，自动回放
-- **触发器系统** - 像素触发、定时触发、条件组合
-- **编排层** - Runtime agent 主动连接 Go server，Dashboard 只连接 Go server
-- **调试器** - 断点调试规划中（当前为占位 stub）；VS Code Lua 提示插件已可用
-- **拟人化输入** - 贝塞尔曲线、随机延迟、自然操作
-- **存储系统** - 四层存储架构，支持本地和远程数据持久化
-- **版本管理** - 动态版本信息，支持 nightly 构建
-
-## 快速开始
-
-### Lua 脚本
+### Lua Scripting
 
 ```lua
 local wingman = require("wingman")
@@ -122,7 +87,7 @@ end
 -- 多点查找用 findColors（返回点数组）：wingman.screen.findColors(0xFF0000, region, 10, 0)
 ```
 
-### Python 脚本
+### Python Scripting
 
 ```python
 # hello.py
@@ -140,38 +105,35 @@ if found:
 
 ## Android Agent
 
-Android 端侧 Agent（实验性，arm64 / Android 9.0+）：出站 TCP 连 Go 中控，
-脚本 API 与桌面 runtime 同名同形（`wingman.input` / `wingman.screen` /
-`wingman.vision`），Dashboard 统一下发与查看。
+The Android on-device Agent (experimental, arm64 / Android 9.0+): it dials out over TCP to the Go central controller, and its script APIs carry the same names and shapes as the desktop runtime (`wingman.input` / `wingman.screen` / `wingman.vision`), with the Dashboard handling delivery and inspection uniformly.
 
-**能力清单**
+**Capability list**
 
-| 能力 | 说明 |
+| Capability | Description |
 |------|------|
-| 手势注入 | 无障碍服务注入点击/滑动（`wingman.input.tap` / `swipe` / `delay`） |
-| 屏幕采集 | MediaProjection 实时投屏采集（亮屏时出帧） |
-| 找色找图 | `wingman.vision.findColor` / `findImage`（端侧走纯 C++ PatternMatcher；桌面同名 API 走 OpenCV，两条路径分数口径不同） |
-| 远程截图 | Dashboard workflow 的 screenshot 步骤直接上屏 |
-| token 认证 | server 端 `WINGMAN_AGENT_TOKENS` 注册 token 白名单（默认关闭可留空） |
-| 保活 | 开机自启、崩溃自重启（指数退避）、30s 核心看门狗、机型保活与受限设置引导 |
+| Gesture injection | The accessibility service injects taps and swipes (`wingman.input.tap` / `swipe` / `delay`) |
+| Screen capture | Real-time screen-projection capture via MediaProjection (frames are produced while the screen is on) |
+| Color / image search | `wingman.vision.findColor` / `findImage` (on-device uses the pure C++ PatternMatcher; the desktop API of the same name goes through OpenCV, and the two paths use different score conventions) |
+| Remote screenshots | The screenshot step of a Dashboard workflow puts the image on screen directly |
+| token authentication | A registration-token allowlist via `WINGMAN_AGENT_TOKENS` on the server side (off by default, may be left empty) |
+| Keep-alive | Boot auto-start, crash self-restart (exponential backoff), a 30s core watchdog, plus per-model keep-alive and restricted-settings guidance |
 
-**获取 APK**
+**Getting the APK**
 
-nightly Release 的 `wingman-*-android-arm64.apk`（debug 签名）：
+From the nightly Release, take `wingman-*-android-arm64.apk` (debug signed):
 [releases/tag/nightly](https://github.com/cuihairu/wingman/releases/tag/nightly)
-页 Assets 取最新一组的 `wingman-<date>-nightly-<sha>-android-arm64.apk`
-（每日构建仅保留当日最新；直链匿名下载，无需登录 GitHub）。
+— from that page's Assets, pick the newest `wingman-<date>-nightly-<sha>-android-arm64.apk`
+(daily builds keep only the latest of the day; direct anonymous download, no GitHub login required).
 
-**快速上手**
+**Getting started**
 
-1. 启动 Go server（`orchestrator/server`，Dashboard 端口 9527、agent 端口 8888）。
-2. 手机安装 APK（与 server 同网段）→ 打开 App → 填服务器 IP / 端口 / 设备 ID
-   → 「启动 Agent」。首次启动创建常驻通知（前台服务要求）；server 若配置了
-   `WINGMAN_AGENT_TOKENS`，需同时填入注册 Token。
-3. Dashboard 的 Agent 列表出现该设备（platform=android），新建脚本
-   `print('hello android')` 运行到该设备，实时日志回传。
-4. 启用 A2 能力：App 内「无障碍设置」打开注入服务 +「开启投屏」授权
-   （Android 14+ 每次重开投屏都会再弹授权，系统约束），随后下发找色/手势脚本：
+1. Start the Go server (`orchestrator/server`, Dashboard port 9527, agent port 8888).
+2. Install the APK on the phone (same subnet as the server) → open the App → fill in the server IP / port / device ID
+   → tap "Start Agent". The first launch creates a persistent notification (required by the foreground service); if the server has `WINGMAN_AGENT_TOKENS` configured, enter the registration Token as well.
+3. The device appears in the Dashboard's Agent list (platform=android); create a new script
+   `print('hello android')` and run it against that device, with live logs streaming back.
+4. Enable the A2 capabilities: turn on the injection service under "Accessibility Settings" in the App and grant "Enable screen projection"
+   (on Android 14+ every restart of screen projection pops the authorization dialog again, a system constraint), then deliver a color-search / gesture script:
 
    ```lua
    local pt = wingman.vision.findColor(0xE23B3B, 10)
@@ -179,18 +141,18 @@ nightly Release 的 `wingman-*-android-arm64.apk`（debug 签名）：
    wingman.input.swipe(540, 1800, 540, 600, 400)
    ```
 
-5. 远程截图：Dashboard workflow 加 screenshot 步骤选该设备 → 截图上屏。
-6. Android 13+ 侧载无障碍被「受限设置」默认屏蔽：系统设置 → 应用 →
-   Wingman Agent → ⋮ → 允许受限制的设置，或
-   `scripts/android-restricted-settings.sh allow` 预授权（App 内也有引导）。
+5. Remote screenshot: add a screenshot step to a Dashboard workflow and select that device → the image is put on screen.
+6. On Android 13+, accessibility for sideloaded apps is blocked by default under "restricted settings": system Settings → Apps →
+   Wingman Agent → ⋮ → Allow restricted settings, or pre-authorize with
+   `scripts/android-restricted-settings.sh allow` (there is in-app guidance too).
 
-详细验收步骤与已知边界见
-[apps/android/README.md](https://github.com/cuihairu/wingman/blob/main/apps/android/README.md)，
-设计与协议见 [Android Agent 设计](./android-agent-design.md)，
-机型保活见 [Android Agent 保活](/guides/android-keep-alive)，
-受限设置见 [Android Agent 受限设置](/guides/android-restricted-settings)。
+For detailed acceptance steps and known boundaries see
+[apps/android/README.md](https://github.com/cuihairu/wingman/blob/main/apps/android/README.md),
+for the design and protocol see [Android Agent Design](./android-agent-design.md),
+for per-model keep-alive see [Android Agent Keep-alive](/guides/android-keep-alive),
+and for restricted settings see [Android Agent Restricted Settings](/guides/android-restricted-settings).
 
-## 编译项目
+## Building the Project
 
 ```bash
 # 克隆仓库
@@ -212,31 +174,31 @@ cmake -B build -S . -G Ninja \
 
 ```
 
-## 运行示例
+## Running an Example
 
 ```bash
 # CLI 运行时（Python 脚本同理，需启用 WINGMAN_ENABLE_PYTHON）
 ./build/apps/agent/wingman-agent script examples/lua_scripts/hello.lua
 ```
 
-## 系统要求
+## System Requirements
 
 ### Windows
 - Windows 10/11 (x64)
 - Visual Studio 2022
 
 ### macOS
-- macOS 12+ (Monterey 或更高)
-- Xcode 14+ 或 Clang
+- macOS 12+ (Monterey or newer)
+- Xcode 14+ or Clang
 
 ### Linux
-- Ubuntu 22.04+ 或等效发行版
-- GCC 11+ 或 Clang 14+
+- Ubuntu 22.04+ or an equivalent distribution
+- GCC 11+ or Clang 14+
 
-### 通用
+### General
 - CMake 3.20+
 - vcpkg
 
-## 许可证
+## License
 
 [Apache-2.0 License](https://github.com/cuihairu/wingman/blob/main/LICENSE)

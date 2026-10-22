@@ -1,0 +1,215 @@
+> [English](tab.en.md) | **中文**
+
+# API: UIA Tab
+
+标签页（Tab）控件用于组织多页内容，常见于设置界面、分类浏览等场景。
+
+## 查找标签控件
+
+**说明**：标签控件通常有名称，可以通过名称查找。
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+tab = uia.find_by_name("设置")
+if tab:
+    print("找到标签控件")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local tab = wingman.uia.find_by_name("设置")
+if tab then
+    print("找到标签控件")
+end
+```
+
+:::
+
+---
+
+## 切换标签页
+
+### 直接点击标签页
+
+**说明**：最简单的方式是直接按名称查找并点击目标标签页。
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+# 直接查找并点击"高级"标签页
+tab_page = uia.find_by_name("高级")
+if tab_page:
+    tab_page["click"]()
+    print("已切换到高级标签页")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 直接查找并点击"高级"标签页
+local tabPage = wingman.uia.find_by_name("高级")
+if tabPage then
+    tabPage.click()
+    print("已切换到高级标签页")
+end
+```
+
+:::
+
+### 通过 Tab 控件获取子标签
+
+**说明**：先找到 Tab 控件，然后获取其所有子元素（标签页），再点击目标。
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+tab = uia.find_by_name("设置")
+if tab:
+    # 获取所有标签页
+    tabs = tab["get_children"]()
+    print(f"共有 {len(tabs)} 个标签页")
+
+    # 切换到第二个标签（索引从 0 开始）
+    if len(tabs) > 1:
+        tabs[1]["click"]()
+        print("已切换到第二个标签页")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local tab = wingman.uia.find_by_name("设置")
+if tab then
+    -- 获取所有标签页
+    local tabs = tab.get_children()
+    print("共有 " .. #tabs .. " 个标签页")
+
+    -- 切换到第二个标签（索引从 1 开始）
+    if #tabs > 1 then
+        tabs[2]:click()
+        print("已切换到第二个标签页")
+    end
+end
+```
+
+:::
+
+---
+
+## 获取所有标签页
+
+**说明**：遍历 Tab 控件的所有子元素，列出所有标签页的名称。
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+tab = uia.find_by_name("设置")
+if tab:
+    tabs = tab["get_children"]()
+
+    print(f"共有 {len(tabs)} 个标签页：")
+    for i, tab_page in enumerate(tabs):
+        info = tab_page["get_info"]()
+        name = info.get('name', '(无名称)')
+        print(f"  [{i}] {name}")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local tab = wingman.uia.find_by_name("设置")
+if tab then
+    local tabs = tab.get_children()
+
+    print("共有 " .. #tabs .. " 个标签页：")
+    for i, tabPage in ipairs(tabs) do
+        local info = tabPage.get_info()
+        local name = info.name or "(无名称)"
+        print(string.format("  [%d] %s", i, name))
+    end
+end
+```
+
+:::
+
+---
+
+## 获取当前活动标签
+
+对**标签页容器**调 `get_selection()` 可读取当前激活的标签项（返回首个选中的子项；无选中返回 `None`/`nil`）：
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import uia
+
+tabs = uia.find_tab("设置")
+if tabs:
+    active = tabs["get_selection"]()
+    if active:
+        print(f"当前标签页: {active['get_info']()['name']}")
+    else:
+        print("当前无激活标签页")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+local tabs = wingman.uia.find_tab("设置")
+if tabs then
+    local active = tabs.get_selection()
+    if active then
+        print("当前标签页: " .. active.get_info().name)
+    else
+        print("当前无激活标签页")
+    end
+end
+```
+
+:::
+
+> `get_info()` 返回键中仍无 `selection_state` 字段；要求标签页容器支持 Selection 模式（Windows）/ 可读 AXSelectedRows/Children（macOS）。也可用专用查找 `uia.find_tab("名称")`（2026-10-09 落地，Tab 角色）。
+
+---
+
+## 可用接口
+
+| Python 函数 | Lua 函数 | 说明 |
+|------------|---------|------|
+| `find_tab(name)` | `find_tab(name)` | 按名称查找标签页容器（Tab 角色，2026-10-09 落地） |
+| `find_tab_item(name)` | `find_tab_item(name)` | 按名称查找标签项（TabItem 角色，2026-10-09 落地） |
+| `find_by_name(name)` | `find_by_name(name)` | 按名称查找（子串匹配，可能命中任意类型） |
+| `get_selection()` | `:get_selection()` | 读取当前激活标签项（容器） |
+| `find_by_id(id)` | `find_by_id(id)` | 按 AutomationId 查找 |
+| `get_children()` | `:get_children()` | 获取所有标签页 |
+| `click()` | `:click()` | 切换到该标签页 |

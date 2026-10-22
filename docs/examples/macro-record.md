@@ -1,12 +1,12 @@
-> [English](macro-record.en.md) | **中文**
+> [中文](macro-record.md) | **English**
 
-# 宏录制
+# Macro Record
 
-演示如何录制并回放鼠标键盘操作。
+Demonstrates how to record and replay mouse and keyboard operations.
 
-> macOS 录制依赖 CGEventTap，需在「系统设置 → 隐私与安全 → 辅助功能」中授予运行进程权限。
+> macOS recording relies on CGEventTap; you must grant the running process Accessibility permission in "System Settings → Privacy & Security → Accessibility".
 
-## 代码
+## Code
 
 ```lua
 -- examples/lua_scripts/macro_record.lua
@@ -36,29 +36,29 @@ wingman.macro.playback(100, 1)
 print("Done")
 ```
 
-## 运行
+## Running
 
 ```bash
 wingman-agent.exe script examples/lua_scripts/macro_record.lua
 ```
 
-## 交互式开始/停止
+## Interactive Start/Stop
 
-`input` 模块没有按键状态查询接口。交互式控制有两种方式：
+The `input` module has no key-state query API. There are two ways to control recording interactively:
 
-- **GUI Macros 页面**的录制/停止/回放按钮；
-- **Python 脚本**用 `wingman.hotkey.register("F6", callback)` 注册全局热键回调。注意回调从后台线程触发，Lua callable 非线程安全，`hotkey.register` 传入 Lua 函数会返回 0 并拒绝注册。
+- The **GUI Macros page**'s record / stop / playback buttons;
+- A **Python script** registering a global hotkey callback via `wingman.hotkey.register("F6", callback)`. Note that the callback fires from a background thread and Lua callables are not thread-safe; passing a Lua function to `hotkey.register` returns 0 and the registration is refused.
 
-## 说明
+## Notes
 
-- 录制包含鼠标移动、点击和键盘按键
-- `wingman.macro.playback(speed?, repeat?)`：`speed` 为百分比（100 即原速），`repeat` 默认 1
+- Recording captures mouse movement, clicks, and keyboard key presses
+- `wingman.macro.playback(speed?, repeat?)`: `speed` is a percentage (100 means original speed), and `repeat` defaults to 1
 
-## API 参考
+## API Reference
 
-- `wingman.macro.start()` / `stop()` / `pause()` / `resume()` — 录制控制
-- `wingman.macro.clear()` — 清空已录制事件
-- `wingman.macro.isRecording()` / `isPaused()` / `getEventCount()` — 状态查询
-- `wingman.macro.saveToLua(path)` / `saveToJSON(path)` / `loadFromJSON(path)` — 持久化
-- `wingman.macro.playback(speed?, repeat?)` — 回放（`speed` 默认 100 即原速，`repeat` 默认 1）
-- `wingman.macro.status()` — 综合状态 `{recording, paused, eventCount}`
+- `wingman.macro.start()` / `stop()` / `pause()` / `resume()` - Recording control
+- `wingman.macro.clear()` - Clear the recorded events
+- `wingman.macro.isRecording()` / `isPaused()` / `getEventCount()` - State queries
+- `wingman.macro.saveToLua(path)` / `saveToJSON(path)` / `loadFromJSON(path)` - Persistence
+- `wingman.macro.playback(speed?, repeat?)` - Playback (`speed` defaults to 100, i.e. original speed; `repeat` defaults to 1)
+- `wingman.macro.status()` - Combined state `{recording, paused, eventCount}`

@@ -1,76 +1,85 @@
-> [English](agent-token-auth-design.en.md) | **中文**
+> [中文](agent-token-auth-design.md) | **English**
 
-# Agent 注册 Token 认证设计（A3-P1）
+# Agent Registration Token Authentication Design (A3-P1)
 
-> 日期：2026-09-20。
-> 里程碑定位：`docs/android-agent-design.md` §1.2 A3 可靠性中的「token 认证」，
-> 本文为其工程设计 + P1 实施。与该文 §8 的约定一致：A1 不半途引入鉴权，
-> A3 一次性落完整链路（server 校验 + 双端 agent 携带 + 灰度开关）。
+> Date: 2026-09-20.
+> Milestone positioning: "Token authentication" within §1.2 A3 Reliability of `docs/android-agent-design.md`;
+> this document is its engineering design + P1 implementation. Consistent with §8 of that document:
+> A1 does not introduce authentication halfway, A3 lands the full chain in one pass
+> (server-side verification + token carried by agents on both ends + gradual rollout switch).
 
 ---
 
-## 1. 目标与威胁模型
+## 1. Goals and Threat Model
 
-### 1.1 防什么
+### 1.1 What It Defends Against
 
-agent 端口（默认 8888）是 TCP 明文帧协议、register 无任何鉴权：任何能触达
-该端口的主机都可伪造 `agent.register` 成为「合法 agent」，进而：
+The agent port (default 8888) is a TCP plaintext frame protocol with no authentication on
+register at all: any host that can reach that port can forge an `agent.register` to
+become a "legitimate agent", thereby:
 
-- 接收并执行 server 下发的任意 Lua 脚本（run_script）；
-- 上报伪造的脚本输出 / 资源数据污染 Dashboard；
-- 挤占真实 agent 的 agentId（后注册覆盖同名）。
+- receiving and executing any Lua script dispatched by the server (run_script);
+- reporting forged script output / resource data to pollute the Dashboard;
+- crowding out the agentId of a real agent (a later registration overwrites the same name).
 
-P1 目标：**未持有效 token 的连接无法完成注册**。
+P1 goal: **a connection without a valid token cannot complete registration**.
 
-### 1.2 不防什么（边界文档化）
+### 1.2 What It Does Not Defend Against (Boundary Documented)
 
-| 不设防项 | 原因 | 演进 |
+| Item Not Defended Against | Reason | Evolution |
 |----------|------|------|
-| 通道窃听（token 明文过网） | 帧协议无 TLS；内网/局域网部署下嗅探风险可接受 | P2 challenge-response 免明文 / TLS 部署形态 |
-| 中间人 | 同上 | TLS |
-| 已持 token 的恶意 agent | token 即信任边界，泄露=轮换 | P2 per-agent token + 吊销 |
-| Dashboard / HTTP API | 已有 JWT + RBAC（middleware 层），不在本文范围 | — |
+| Channel eavesdropping (token travels in plaintext over the wire) | The frame protocol has no TLS; under intranet/LAN deployments the sniffing risk is acceptable | P2 challenge-response avoids plaintext / TLS deployment form |
+| Man-in-the-middle | Same as above | TLS |
+| A malicious agent already holding a token | The token is itself the trust boundary; leak = rotate | P2 per-agent token + revocation |
+| Dashboard / HTTP API | JWT + RBAC already exists (middleware layer), out of scope for this document | — |
 
-### 1.3 与架构约束的关系
+### 1.3 Relation to the Architecture Constraints
 
-`docs/architecture-decisions.md` 五条约束均不触碰：鉴权只加在既有
-agent→server 出站长链接的 register 消息上，无新监听面、无新消息类型。
+None of the five constraints in `docs/architecture-decisions.md` is touched: authentication
+is only added to the register message of the existing agent→server outbound long link,
+with no new listening surface and no new message type.
 
 ---
 
-## 2. 协议设计（复用现有帧，零新消息类型）
+## 2. Protocol Design (Reusing Existing Frames, Zero New Message Types)
 
-### 2.1 register 携带 token
+### 2.1 Register Carries the Token
 
-`agent.register` Notify payload 增加顶层 `token` 字段：
+The `agent.register` Notify payload gains a top-level `token` field:
 
 ```json
 { "type": "agent.register", "agentId": "android-pixel-8",
   "hostname": "Pixel 8", "platform": "android", "token": "wt_..." }
 ```
 
-- token 放**顶层**而非 capabilities/metadata：它是鉴权凭证，不是能力元数据，
-  server 校验逻辑直接读顶层字段，语义明确。
-- 旧版 agent 不带 token：server 侧开关开启时视为无效（拒绝），开关关闭时
-  完全兼容（现状不变）。
+- The token goes at the **top level**, not in capabilities/metadata: it is an
+  authentication credential, not capability metadata; the server verification logic reads
+  the top-level field directly, so the semantics are clear.
+- Old agents without a token: when the server-side switch is on, it is treated as invalid
+  (rejected); when the switch is off, it is fully compatible (current behavior unchanged).
 
-### 2.2 拒绝路径（复用 register_ack，agent 零改动）
+### 2.2 Rejection Path (Reusing register_ack, Zero Agent-Side Changes)
 
-校验失败时 server 回既有 `agent.register_ack`，`success:false`：
+On verification failure the server replies with the existing `agent.register_ack`,
+`success:false`:
 
 ```json
 { "type": "agent.register_ack", "success": false, "error": "invalid or missing token" }
 ```
 
-随后**立即断连**（未注册连接不允许继续停留在链路上）。
+Then **disconnects immediately** (an unregistered connection is not allowed to stay on
+the link).
 
-agent 端 `RemoteClient::handleRegisterAck`（`libs/agentcore/src/remote_client.cpp`）对
-`success:false` 已有现成处理：置 `ConnectionState::Error`("Registration failed")
-——**C++ 侧拒绝反馈零改动**，Android/桌面 UI 均能经既有状态回调感知。
-指数退避重连会持续重试，设备侧表现为「连上即断」，配合本文 §5 的配置项，
-部署者可直接定位为 token 错误。
+The agent side `RemoteClient::handleRegisterAck` (`libs/agentcore/src/remote_client.cpp`)
+already has existing handling for `success:false`: it sets
+`ConnectionState::Error` ("Registration failed")
+—**zero changes on the C++ rejection feedback path**; both Android and desktop UI can
+observe it through the existing state callback. Exponential-backoff reconnection keeps
+retrying; on the device side this shows up as "connects then immediately drops", and
+with the configuration items in §5 of this document, deployers can directly diagnose it
+as a wrong token.
 
-### 2.3 时序
+### 2.3 Sequence
 
 ```
 agent                                server
@@ -82,181 +91,203 @@ agent                                server
 
 ---
 
-## 3. Go Server 改动
+## 3. Go Server Changes
 
-| 文件 | 改动 |
+| File | Change |
 |------|------|
-| `internal/config/config.go` | `AgentTokens []string`，环境变量 `WINGMAN_AGENT_TOKENS`（逗号分隔）。**空 = 关闭鉴权（默认，向后兼容）** |
-| `internal/agent/listener.go` | `FrameListener` 增 `agentTokens` + `SetAgentTokens()`（构造后注入，兼容既有调用方）；`handleRegister` 校验：失败 → ack success:false + 断连 + 日志，**不**入 Registry、不 set agentID |
-| `main.go` | 启动时 `frameListener.SetAgentTokens(cfg.AgentTokens)` |
+| `internal/config/config.go` | Add `AgentTokens []string`, environment variable `WINGMAN_AGENT_TOKENS` (comma-separated). **Empty = authentication disabled (default, backward compatible)** |
+| `internal/agent/listener.go` | `FrameListener` gains `agentTokens` + `SetAgentTokens()` (injected after construction, compatible with existing callers); `handleRegister` verifies: failure → ack success:false + disconnect + log, does **not** enter the Registry, does not set agentID |
+| `main.go` | At startup call `frameListener.SetAgentTokens(cfg.AgentTokens)` |
 
-要点：
+Key points:
 
-- **多 token 并存**：配置多个有效 token，支持平滑轮换（新旧并存期间双端
-  依次更新，无停机窗口）。
-- **constant-time 比较**：用 `crypto/subtle.ConstantTimeCompare` 逐个比对，
-  防时序侧信道逐字节猜测。
-- **拒绝即断连**：ack 先于 close（sendNotify 同步写，flush 后再 Close），
-  保证 agent 能收到失败原因；未注册的 conn 断开后 readLoop 退出，
-  agentID 为空则跳过 Unregister，`conns` 表以 connID 清理——既有清理路径
-  自然兜住，无残留。
-- 失败日志带来源 IP：`[Auth] register rejected from %s (agentId=%s)`。
+- **Multiple tokens coexist**: configure multiple valid tokens to support smooth rotation
+  (during the coexistence period both ends update in turn, with no downtime window).
+- **Constant-time comparison**: use `crypto/subtle.ConstantTimeCompare` to compare one by
+  one, preventing byte-by-byte guessing via timing side channels.
+- **Reject means disconnect**: the ack comes before the close (sendNotify writes
+  synchronously, Close after flush), guaranteeing the agent receives the failure reason;
+  after an unregistered conn is closed, its readLoop exits; skip Unregister when agentID
+  is empty, and the `conns` table is cleaned by connID—the existing cleanup path catches
+  it naturally, with no residue.
+- Failure log carries the source IP: `[Auth] register rejected from %s (agentId=%s)`.
 
-### 3.1 轮换流程（运维约定）
+### 3.1 Rotation Procedure (Operational Convention)
 
-1. server 配置追加新 token（新旧并存）→ 重启/热加载；
-2. 各 agent 依次更新为新 token、重连（验证 Dashboard 在线）；
-3. 确认全部 agent 已用新 token 后，移除旧 token 再重启一次。
+1. Append the new token to the server configuration (new and old coexist) → restart / hot reload;
+2. Update each agent in turn to the new token and reconnect (verify the Dashboard is online);
+3. After confirming all agents use the new token, remove the old token and restart once more.
 
 ---
 
-## 4. Agent 端改动
+## 4. Agent-Side Changes
 
-### 4.1 共享层（apps/agent/RemoteClient，桌面与 Android 同源）
+### 4.1 Shared Layer (apps/agent/RemoteClient, same source for Desktop and Android)
 
-- `RemoteClient::setAuthToken(const std::string&)`：Impl 增 `authToken`，
-  `sendRegister` 时写入 payload 顶层 `token`（空则不写字段，兼容不鉴权部署）。
+- `RemoteClient::setAuthToken(const std::string&)`: the Impl gains an `authToken`; when
+  `sendRegister` runs, it writes the top-level `token` field into the payload (empty means
+  the field is not written, compatible with deployments without authentication).
 
-### 4.2 桌面 runtime
+### 4.2 Desktop Runtime
 
-- `RemoteClientConfig`（config.hpp）增 `registerToken`；
-- INI 配置 `[remote] register_token = "..."`（agent_config.cpp 解析 + 保存）；
-- `Agent::initRemoteClient()` 装配点调用 `setAuthToken`；
-- GUI 入口：Tauri 设置页「远程注册配置」经本地 IPC
-  `config.getRemote` / `config.setRemote` 读写 server 地址与 token，
-  保存即热生效并写回配置文件（仅本地 IPC，无远程命令，见
-  architecture-decisions.md 的 Remote Config Commands）。
+- `RemoteClientConfig` (config.hpp) gains `registerToken`;
+- INI configuration `[remote] register_token = "..."` (agent_config.cpp parses + saves);
+- `Agent::initRemoteClient()` calls `setAuthToken` at the assembly point;
+- GUI entry: the Tauri settings page "Remote Registration Configuration" reads/writes the
+  server address and token via local IPC `config.getRemote` / `config.setRemote`;
+  saving takes effect immediately and is written back to the configuration file (local IPC
+  only, no remote command, see Remote Config Commands in architecture-decisions.md).
 
 ### 4.3 Android
 
-- `AndroidAgent::Config` 增 `authToken` → `setAuthToken`；
-- Kotlin 链路：`WingmanJni.nativeStart(configJson)` 的 config 增 `authToken` 键
-  （进入 C++ 后仍以 wire 字段 `token` 携带上报），`WingmanService` 从
-  SharedPreferences 读 `serverToken` 传入；
-- token 存储：P1 用 SharedPreferences（与 server 地址同级的信任级别，
-  部署者手输）；✅ 已迁移 Android Keystore（2026-10-10，A3-P2）：
-  `EncryptedSecretStore`（EncryptedSharedPreferences，AES256-GCM 主密钥
-  入 AndroidKeyStore）+ 一次性明文迁移（`SecretStores.migrateToken`，
-  JVM 单测覆盖；确保 secure 持有值后即清除明文残留；EncryptedSettings
-  初始化失败回退明文库保可用）；
-- challenge 接入（✅ 2026-10-10，A3-P2 §6.1）：`AndroidAgent::Config` 增
-  `useChallengeAuth`（jni_bridge 解析 `challengeAuth` 键 → `RemoteClient`
-  config 透传；HMAC 走 agentcore 自含实现，Android 构建无需补 openssl
-  包）；Kotlin 侧 `AgentPrefs.KEY_CHALLENGE_AUTH`（默认 false）+ 主界面
-  Challenge 开关（布局/字符串/读写链路），`WingmanService.startCore`
-  读同一键入 config。
+- `AndroidAgent::Config` gains `authToken` → `setAuthToken`;
+- Kotlin chain: the config of `WingmanJni.nativeStart(configJson)` gains an `authToken`
+  key (after entering C++ it is still carried in the wire field `token` for reporting),
+  `WingmanService` reads `serverToken` from SharedPreferences and passes it in;
+- Token storage: P1 uses SharedPreferences (same trust level as the server address,
+  entered by the deployer); ✅ migrated to Android Keystore (2026-10-10, A3-P2):
+  `EncryptedSecretStore` (EncryptedSharedPreferences, AES256-GCM master key in
+  AndroidKeyStore) + one-time plaintext migration (`SecretStores.migrateToken`, covered
+  by JVM unit tests; after confirming the secure store holds the value, the plaintext
+  residue is cleared immediately; if EncryptedSettings initialization fails, fall back to
+  the plaintext store to preserve availability);
+- Challenge integration (✅ 2026-10-10, A3-P2 §6.1): `AndroidAgent::Config` gains
+  `useChallengeAuth` (jni_bridge parses the `challengeAuth` key → passed through to the
+  `RemoteClient` config; HMAC uses agentcore's self-contained implementation, so the
+  Android build needs no additional openssl package); the Kotlin side has
+  `AgentPrefs.KEY_CHALLENGE_AUTH` (default false) + a Challenge toggle in the main UI
+  (layout/string/read-write chain), and `WingmanService.startCore` reads the same key into
+  the config.
 
 ---
 
-## 5. 部署形态与默认值
+## 5. Deployment Forms and Defaults
 
-| 场景 | server 配置 | 行为 |
+| Scenario | Server Configuration | Behavior |
 |------|-------------|------|
-| 现有内网部署（默认） | 不设 `WINGMAN_AGENT_TOKENS` | 鉴权关闭，**完全向后兼容** |
-| 公网可达 / 多租户内网 | 设置 token 列表 + 各 agent 配置同 token | 未授权注册被拒 |
-| 轮换期 | 新旧 token 并存 | 双端依次迁移 |
+| Existing intranet deployment (default) | `WINGMAN_AGENT_TOKENS` not set | Authentication disabled, **fully backward compatible** |
+| Publicly reachable / multi-tenant intranet | Set a token list + configure the same token on each agent | Unauthorized registration is rejected |
+| Rotation period | New and old tokens coexist | Both ends migrate in turn |
 
-**设计取向**：默认关闭而非默认强制。强制默认会打断所有现存部署（含
-nightly 用户），鉴权属于部署者显式启用的能力；文档（本文 + README）明示
-公网部署必须开启。
-
----
-
-## 6. P2 演进
-
-1. **challenge-response**（✅ Go server 已落地，2026-10-10；agent 侧接入见 §6.1.1）：
-   register 携带顶层 `challenge: true` 且**不携明文 token** → server 下发
-   Request `auth.challenge{nonce}`（32 字节 hex，5s 超时）→ agent 回
-   `{"hmac": hex}`，**mac = HMAC-SHA256(key, nonce)，key = sha256hex(token)**：
-   - agent 侧自行从本地明文推导密钥，token 全程不过网，消除 P1 的嗅探面；
-   - 服务端 env 源以明文派生 sha256hex、DB 源直接用 TokenHash 列作密钥
-     （两者同值）——无需存明文、无 schema 变更，DB 泄露威胁面与 §6.2 等同；
-   - 验签命中路径与 §6.2 Verify 完全同口径：constant-time 比对、agentId
-     绑定校验、LastSeenAt 刷新；
-   - 实现要点：挑战在独立 goroutine 完成（handleRegister 由 readLoop 驱动，
-     同步等 Response 会自锁），`challengeStarted`/`settled` 两个 CAS 门
-     防并发双重注册与异步终态竞态。
-   - agent 未实现 challenge 时继续走 §2.1 明文 token 路径（双模式并存，
-     agent 侧按接入节奏切换）。
-
-   §6.1.1 agent 侧接入（✅ 桌面链路已落地，2026-10-10；Android 见 §4.3）：
-   - HMAC-SHA256 为 agentcore 自含实现（`hmac_sha256.hpp/.cpp`，纯 C++23
-     标准库、零平台分支）——只为一次 HMAC 调用不值得引 OpenSSL（Android
-     NDK 构建免补 openssl 包），单测以 RFC 4231 标准向量 + server 侧
-     tokenMAC 同向量交叉验证（agentcore 测试 40 例全绿）；
-   - `RemoteClientConfig.useChallengeAuth`（默认关 = P1 明文兼容）：开启后
-     register 携 `challenge: true` 且明文 token 绝不过网；server 下发
-     `auth.challenge` 由 `handleAuthChallenge` 拦截应答（鉴权凭证属于链路
-     自身，不进 commandCallback 命令分发）；
-   - 桌面配置 `[remote] challenge_auth`（agent_config.cpp 解析/写回 +
-     roundtrip 单测），GUI 设置页「远程注册配置」增 challenge 开关
-     （config.getRemote/setRemote 链路透传，vitest 覆盖）。
-2. **per-agent token + 管理面**（✅ 已落地，2026-10-10）：
-   - `models.AgentToken` 入 DB（label/sha256 哈希/前缀/可选 agentId 绑定/
-     createdBy/revokedAt/lastSeenAt），明文只在签发响应返回一次；
-   - `agent.TokenStore`：Create/Verify/Revoke/List/AnyExists，校验按哈希
-     constant-time 查库、命中后校验绑定并刷新 lastSeenAt；
-   - listener 双源并存（§6.3 演进只加不改的落点）：env 白名单 ∪ DB 源，
-     任一命中即放行；**DB 源启用口径 = 存在签发记录（含已吊销，
-     fail-closed）**——吊销全部 token 不会静默关闭鉴权；env 清空后即纯
-     DB 管理面模式；
-   - HTTP 管理面 `GET/POST/DELETE /api/agent-tokens`（`agenttokens:manage`
-     权限码，内置角色未授予、默认仅 admin），签发/吊销落审计
-     （`agenttoken.create` / `agenttoken.revoke`）；注册拒绝仍走 server
-     日志（不进审计表，防爆破刷表）；
-   - Dashboard「系统管理 → 注册 Token」页（签发弹窗一次性展示明文 +
-     吊销确认）。
-3. **TLS 部署形态**（形态 A 已落地 2026-10-19：`deployments/tls/`——
-   nginx `stream{}` TLS 终结 compose + 运维文档，agent 侧零代码；本机
-   e2e 实证 TLSv1.3 终结 + 16B 帧透传字节级兼容，见该目录 README 验证
-   记录。形态 B 未实施，待立项——两形态对比定案见下）：
-   帧协议当前为裸 TCP（agentcore `asio::ip::tcp::socket` ↔ Go
-   `net.Listener`），TLS 不像 HTTP 可由反代透明叠加，两形态成本/收益：
-   - **形态 A：TCP 层 TLS 终结（部署形态，先行的过渡解）**——
-     nginx `stream {}` 或 stunnel 于 server 前终结 TLS、纯 TCP 转发
-     `server:8888`，agent 侧零改动只改连接地址。caddy/Let's Encrypt 管
-     证书（有域名）或自签（无域名）。收益：命令/脚本下发全程加密；
-     边界：agent 不校验证书（帧协议无 SNI/证书校验钩子），防被动嗅探
-     不防主动 MITM——token 已 challenge HMAC 化，MITM 也拿不到 token，
-     可接受为内网/演示形态。成本：一份 compose + 运维文档，零代码。
-   - **形态 B：帧协议原生 TLS（终态，需立项）**——Go `crypto/tls`
-     Listener + agentcore `asio::ssl::stream`（vcpkg openssl，桌面）+
-     Android `SSLSocket`/NDK openssl（与 §6.1.1「免 OpenSSL」取向冲突，
-     Android 端引包是主要成本）。证书校验取 **PIN 形态**（自签 root
-     fingerprint 内嵌配置，免域名免 ACME，契合内网拓扑），杜绝"关校验"
-     配置项。涉及重连/proxy_tunnel/超时全路径改造 + 双端测试矩阵，
-     按架构决策流程单独评审后立项。
-   - **定案**：A 立即落地作为演示/内网部署指引（✅ 2026-10-19，
-     `deployments/tls/`）；B 为公网生产前置条件，
-     与「Dashboard HTTPS」一并纳入部署安全里程碑，不在 P2 token 工程
-     范围内强行捆绑。
-
-P1 刻意不引入以上任何一项的半成品：校验点（handleRegister）、token 配置
-形态（环境变量列表）、agent 携带字段（顶层 token）在 P2 全部保持不变，
-演进只加不改。
+**Design choice**: default off rather than default enforced. Enforcing it by default
+would break all existing deployments (including nightly users); authentication is a
+capability the deployer enables explicitly; the documentation (this document + README)
+states explicitly that public deployments must enable it.
 
 ---
 
-## 7. 测试矩阵
+## 6. P2 Evolution
 
-| 层 | 用例 | 本机可验 |
-|----|------|----------|
-| config | `WINGMAN_AGENT_TOKENS` 解析（单/多/空/含空白） | ✅ go test |
-| listener | token 正确 → 注册成功；错误/缺失 + 开启 → ack success:false + 断连 + 不入 Registry；关闭开关 → 不校验 | ✅ go test |
-| integration | 开启 token 的真实链路：sim agent 带正确 token 上线、错误 token 被拒 | ✅ go test |
-| token store（P2） | 签发/校验/吊销/绑定/列表不泄哈希；fail-closed（吊销全部仍拒） | ✅ go test |
-| listener（P2） | DB token 放行；吊销后拒绝并断连；双源并存；空库不启用鉴权（兼容） | ✅ go test |
-| listener（P2 challenge） | env/DB token 挑战应答通过（LastSeenAt 刷新）；错误 HMAC / 绑定不符 / 超时不应答 → 拒绝断连；挑战中重复 register → CAS 拒绝 | ✅ go test |
-| HTTP API（P2） | 签发响应明文仅一次；列表不泄哈希；吊销幂等 + 审计 | ✅ go test |
-| C++ | setAuthToken → register payload 含 token；未设置 → 不含字段（编译 + 桌面回归） | ✅ |
-| C++（P2 challenge） | HMAC RFC 4231 向量 + server tokenMAC 同向量；challenge 模式 register 携 challenge:true 不携 token；auth.challenge 应答 hmac 正确；无 token 回空 hmac；默认模式不携 challenge 字段 | ✅ gtest |
-| 桌面配置（P2 challenge） | `[remote] challenge_auth` 解析 + save/load roundtrip；GUI 开关读写链路 | ✅ gtest + vitest |
-| Android | configJson 传递（代码交付，真机验收见 apps/android/README） | ❌ |
+1. **challenge-response** (✅ landed on the Go server, 2026-10-10; agent-side integration
+   see §6.1.1): register carries a top-level `challenge: true` and does **not** carry the
+   plaintext token → the server dispatches Request `auth.challenge{nonce}` (32-byte hex,
+   5s timeout) → the agent replies `{"hmac": hex}`, **mac = HMAC-SHA256(key, nonce),
+   key = sha256hex(token)**:
+   - The agent derives the key itself from the local plaintext; the token never travels
+     over the wire, eliminating the P1 sniffing surface;
+   - On the server side, the env source derives sha256hex from the plaintext, and the DB
+     source uses the TokenHash column directly as the key (both have the same value)—no
+   plaintext storage, no schema change, and the DB leak threat surface is equivalent to §6.2;
+   - The signature verification hit path is exactly the same as the §6.2 Verify:
+     constant-time comparison, agentId binding check, LastSeenAt refresh;
+   - Implementation notes: the challenge completes in an independent goroutine (handleRegister
+     is driven by readLoop, and synchronously waiting for a Response would self-deadlock);
+     two CAS gates `challengeStarted`/`settled` prevent concurrent double registration and
+     async terminal-state races.
+   - When an agent has not implemented challenge, it continues to use the §2.1 plaintext
+   token path (both modes coexist, the agent side switches at its own integration pace).
 
-## 8. 实施清单（P1，对应本次提交）
+   §6.1.1 Agent-side integration (✅ desktop chain landed, 2026-10-10; Android see §4.3):
+   - HMAC-SHA256 is agentcore's self-contained implementation (`hmac_sha256.hpp/.cpp`,
+     pure C++23 standard library, zero platform branches)—a single HMAC call is not worth
+     pulling in OpenSSL (Android NDK builds need no additional openssl package); unit tests
+     cross-validate with RFC 4231 standard vectors + the server-side tokenMAC on the same
+     vectors (all 40 agentcore test cases green);
+   - `RemoteClientConfig.useChallengeAuth` (default off = P1 plaintext compatibility): when
+     enabled, register carries `challenge: true` and the plaintext token never travels over
+     the wire; the server dispatches `auth.challenge`, which `handleAuthChallenge` intercepts
+     and answers (authentication credentials belong to the link itself, not dispatched into
+     commandCallback);
+   - Desktop configuration `[remote] challenge_auth` (agent_config.cpp parse/write back +
+     roundtrip unit test), GUI settings page "Remote Registration Configuration" gains a
+     Challenge toggle (config.getRemote/setRemote chain passthrough, covered by vitest).
+2. **per-agent token + management plane** (✅ landed, 2026-10-10):
+   - `models.AgentToken` enters the DB (label/sha256 hash/prefix/optional agentId binding/
+     createdBy/revokedAt/lastSeenAt); the plaintext is returned only once in the issuance
+     response;
+   - `agent.TokenStore`: Create/Verify/Revoke/List/AnyExists; verification queries the DB
+     constant-time by hash, and after a hit verifies the binding and refreshes lastSeenAt;
+   - listener keeps both sources coexisting (the landing point for the §6.3 evolution which
+     only adds, never changes): env whitelist ∪ DB source, any hit passes; **the DB source
+     is considered enabled when an issuance record exists (including revoked ones,
+     fail-closed)**—revoking all tokens does not silently disable authentication; after the
+     env is cleared, it is pure DB management-plane mode;
+   - HTTP management plane `GET/POST/DELETE /api/agent-tokens` (permission code
+     `agenttokens:manage`, not granted to built-in roles, default admin only), issuance/
+     revocation are audited (`agenttoken.create` / `agenttoken.revoke`); registration
+     rejection still goes through server logs (not into the audit table, to prevent
+     brute-force flooding);
+   - Dashboard "System Management → Registration Token" page (issuance dialog shows the
+     plaintext once + revocation confirmation).
+3. **TLS deployment form** (Form A landed 2026-10-19: `deployments/tls/`—an nginx
+   `stream{}` TLS-termination compose + operations doc, zero code on the agent side;
+   verified locally end to end with TLSv1.3 termination and byte-level frame passthrough,
+   see the verification record in that directory's README. Form B not implemented,
+   pending a project proposal—comparison and decision between the two forms below):
+   the frame protocol is currently bare TCP (agentcore `asio::ip::tcp::socket` ↔ Go
+   `net.Listener`); TLS cannot be transparently layered by a reverse proxy the way HTTP can,
+   so a cost/benefit comparison of two forms:
+   - **Form A: TLS termination at the TCP layer (deployment form, the transitional
+     solution first)**—nginx `stream {}` or stunnel terminates TLS in front of the server
+     and forwards pure TCP to `server:8888`; the agent side needs zero changes, only the
+     connection address changes. caddy/Let's Encrypt manages the certificate (if a domain
+     exists) or self-signed (if no domain). Benefit: command/script dispatch is encrypted
+     end to end; boundary: the agent does not validate the certificate (the frame protocol
+     has no SNI/certificate-validation hook), so it defends against passive sniffing but not
+     active MITM—the token is already challenge-HMAC'd, so a MITM also cannot obtain the
+     token; acceptable as an intranet/demo form. Cost: one compose + operations docs, zero
+     code.
+   - **Form B: native TLS in the frame protocol (end state, needs a project proposal)**—Go
+     `crypto/tls` Listener + agentcore `asio::ssl::stream` (vcpkg openssl, desktop) +
+     Android `SSLSocket`/NDK openssl (conflicts with the §6.1.1 "no OpenSSL" approach;
+     pulling in the package on the Android side is the main cost). Certificate validation
+     uses the **PIN form** (self-signed root fingerprint embedded in configuration, no
+     domain needed, no ACME, fits intranet topology), eliminating any "disable validation"
+     configuration option. It involves full-path changes to reconnection/proxy_tunnel/timeout
+     + a test matrix for both ends, and is proposed as a project after review through the
+     architecture decision process.
+   - **Decision**: A lands immediately as a demo/intranet deployment guide (✅ 2026-10-19,
+     `deployments/tls/`); B is a
+     prerequisite for public production, and together with "Dashboard HTTPS" goes into the
+     deployment security milestone; it is not forcibly bundled into the P2 token project.
 
-- [x] 本设计文档
-- [x] Go：config + listener 校验 + main 接线 + 单测/集成测试
-- [x] C++：RemoteClient::setAuthToken + 桌面配置项 + Android Config
-- [x] Kotlin：configJson `authToken` 键 + Service 读取
-- [x] 文档：android-agent-design.md §8 引用、apps/android/README 配置说明
+P1 deliberately does not introduce a half-finished version of any of the above: the
+verification point (handleRegister), the token configuration form (environment variable
+list), and the agent-carried field (top-level token) all remain unchanged in P2; the
+evolution only adds, never changes.
+
+---
+
+## 7. Test Matrix
+
+| Layer | Case | Verifiable Locally |
+|-------|------|----------|
+| config | `WINGMAN_AGENT_TOKENS` parsing (single/multiple/empty/with whitespace) | ✅ go test |
+| listener | correct token → registration succeeds; wrong/missing + switch on → ack success:false + disconnect + does not enter Registry; switch off → no verification | ✅ go test |
+| integration | real link with token enabled: sim agent with correct token comes online, wrong token rejected | ✅ go test |
+| token store (P2) | issuance/verification/revocation/binding/list does not leak the hash; fail-closed (still rejects after revoking all) | ✅ go test |
+| listener (P2) | DB token passes; rejected and disconnected after revocation; both sources coexist; empty DB does not enable authentication (compatible) | ✅ go test |
+| listener (P2 challenge) | env/DB token challenge response passes (LastSeenAt refreshed); wrong HMAC / binding mismatch / timeout without response → rejected and disconnected; repeated register during challenge → CAS rejection | ✅ go test |
+| HTTP API (P2) | issuance response shows plaintext only once; list does not leak the hash; idempotent revocation + audit | ✅ go test |
+| C++ | setAuthToken → register payload contains token; not set → field absent (compile + desktop regression) | ✅ |
+| C++ (P2 challenge) | HMAC RFC 4231 vectors + server tokenMAC on the same vectors; challenge mode register carries challenge:true and no token; auth.challenge response hmac correct; no token returns empty hmac; default mode carries no challenge field | ✅ gtest |
+| Desktop configuration (P2 challenge) | `[remote] challenge_auth` parsing + save/load roundtrip; GUI toggle read-write chain | ✅ gtest + vitest |
+| Android | configJson passing (code delivered, real-device acceptance see apps/android/README) | ❌ |
+
+## 8. Implementation Checklist (P1, corresponding to this commit)
+
+- [x] This design document
+- [x] Go: config + listener verification + main wiring + unit/integration tests
+- [x] C++: RemoteClient::setAuthToken + desktop configuration item + Android Config
+- [x] Kotlin: configJson `authToken` key + Service read
+- [x] Docs: android-agent-design.md §8 reference, apps/android/README configuration notes

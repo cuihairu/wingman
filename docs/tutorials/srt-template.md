@@ -1,50 +1,60 @@
-> [English](srt-template.en.md) | **中文**
+> [中文](srt-template.md) | **English**
 
-# 字幕（SRT）制作模板
+# Subtitle (SRT) Authoring Template
 
-配套 [video-storyboard.md](video-storyboard.md) 的「字幕随视频同发 SRT」：分镜表已给出逐字旁白，
-字幕文本无需再写，录制后只剩时间码对齐。本模板把「文本从哪来、怎么切、时间码怎么填、
-怎么校验」固定下来，避免每集临场决定。
+Companion to the "publish subtitles with the video as SRT" line in
+[video-storyboard.en.md](video-storyboard.en.md). The storyboard already carries
+the verbatim narration, so subtitle text needs no writing — after recording only
+timecode alignment remains. This template fixes where the text comes from, how to
+split, how to fill timecodes, and how to verify.
 
-## 文件约定
+## File conventions
 
-- 文件名与视频同名同目录：`ep01-install-first-run.srt` 配 `ep01-install-first-run.mp4`。
-- 编码 UTF-8 无 BOM；换行 LF；行尾不留空白。
-- 格式为标准 SRT：cue 编号、`开始 --> 结束`、文本，cue 之间空一行。
-- 一个视频只发一份 SRT，不拆多语言轨。
+- Same name and directory as the video: `ep01-install-first-run.srt` with
+  `ep01-install-first-run.mp4`.
+- UTF-8 without BOM, LF line endings, no trailing whitespace.
+- Standard SRT layout: cue number, `start --> end`, text, blank line between cues.
+- One SRT per video; no multi-language tracks.
 
-## cue 文本：从分镜表逐字抄，不改写
+## Cue text: copied verbatim from the storyboard, never rewritten
 
-- 每集一表，表格「旁白（逐字）」列按镜号顺序即 cue 顺序，cue 编号从 1 递增。
-- 文本一字不改：不加语气词、不缩写、不合并两镜旁白。
-- 分镜表里已含引号与英文术语，原样保留（引号用中文全角引号）。
+- One table per episode; the "Narration (verbatim)" column in shot order is the
+  cue order, numbered from 1.
+- Text is unchanged: no filler words, no abbreviations, no merging two shots'
+  narration.
+- Keep the quotation marks and English terms exactly as written (full-width
+  Chinese quotation marks).
 
-各集 cue 数（= 分镜表行数）：EP01 7、EP02 7、EP03 4、EP04 5、EP05 7、EP06 5，合计 35。
-做的时候数一下，缺一条就是漏抄。
+Cue counts per episode (= storyboard rows): EP01 7, EP02 7, EP03 4, EP04 5,
+EP05 7, EP06 5 — 35 total. Count them; one short means one dropped.
 
-## 切分规则（单 cue 时长控制）
+## Splitting rules (per-cue duration)
 
-- 目标单 cue ≤ 4 秒、中文 ≤ 40 字。分镜表多数旁白已在该长度内，一般无需切。
-- 超长的在逗号处切两句，切点不落在词中间，两句合计时长仍对应同一镜画面。
-- 不跨镜头切分：一个 cue 覆盖的范围不超过它的镜。
+- Target: a cue lasts ≤ 4s, ≤ 40 Chinese characters. Most storyboard lines are
+  already within that, so usually no splitting is needed.
+- Split long ones at a comma; the break must not fall inside a word, and the two
+  parts must still cover that one shot's picture.
+- Never split across shots: a cue's span stays inside its shot.
 
-## 时间码
+## Timecodes
 
-格式 `00:MM:SS,mmm --> 00:MM:SS,mmm`（两位小时、逗号千分位）。
+Format `00:MM:SS,mmm --> 00:MM:SS,mmm` (two-digit hours, comma for
+milliseconds).
 
-| 规则 | 口径 |
-|------|------|
-| 起 | cue 开始 = 该镜口播首帧所在画面时刻 |
-| 止 | cue 结束 = 该镜画面结束前一刻 |
-| 片头 | 第一 cue 不早于片头结束（logo 3s + 本集标题） |
-| 片尾 | 末 cue 结束早于片尾（下集预告 5s + 文档链接字幕） |
-| 间隔 | cue 之间不重叠，相邻间隔 ≥300ms |
-| 精度 | 毫秒位按画面实际调整，不要四舍五入到整秒 |
+| Rule | Value |
+|------|-------|
+| Start | the picture frame where the shot's narration audio begins |
+| End | the moment before the shot's picture ends |
+| Intro | first cue no earlier than the end of the intro (logo 3s + episode title) |
+| Outro | last cue ends before the outro (next-episode teaser 5s + docs-link caption) |
+| Gaps | no overlap; ≥300ms between adjacent cues |
+| Precision | adjust the millisecond field to the picture; don't round to whole seconds |
 
-## EP01 示例（时间码为占位）
+## EP01 example (placeholder timecodes)
 
-下面时间码按「片头 3s 后顺排」写成占位值，仅示范格式与文本，**录制完成后必须按实际
-画面逐条替换**。
+The timecodes below are sequential placeholders ("after the 3s intro"), shown
+only to demonstrate format and text. **Replace every one against the actual
+footage after recording.**
 
 ```
 1
@@ -76,10 +86,15 @@
 「便携版与安装版行为一致，适合 U 盘携带。」
 ```
 
-## 制作流程
+## Authoring flow
 
-1. 从分镜表导出 cue 文本（顺序即编号），先出纯文本版占位 SRT。
-2. 录制并在播放器里对齐每条 cue 的开始与结束，逐条改时间码。
-3. 校验：cue 数与分镜表一致；无重叠、无空 cue；首尾在片头/片尾之外。
-4. 术语校对：与 docs/guide 正文拼写逐词比对（Runtime、GUI、中控、Agent、触发器、宏）。
-5. 交付：SRT 与 mp4 同名同目录一起上传，链接回填分镜表剧集总览表。
+1. Export the cue text from the storyboard (shot order = cue number); write the
+   placeholder-only SRT first.
+2. Record, then align each cue's start and end in a player and edit timecodes
+   one by one.
+3. Verify: cue count matches the storyboard; no overlap, no empty cues; first
+   and last cues sit outside intro/outro.
+4. Terminology pass: compare spelling word by word against the docs/guide prose
+   (Runtime, GUI, orchestrator, Agent, trigger, macro).
+5. Deliver: upload the SRT alongside the mp4 under the same name and backfill
+   the link into the storyboard's episode overview table.

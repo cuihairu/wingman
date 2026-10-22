@@ -1,24 +1,24 @@
-> [English](remote_protocol.en.md) | **中文**
+> [中文](remote_protocol.md) | **English**
 
-# Wingman 远程控制协议文档
+# Wingman Remote Control Protocol Document
 
-> [**历史文档**：本文记录旧 JSON-RPC 协议的迁移说明。当前权威协议规范见 [protocols.md](./protocols.md)。]
+> [**Historical document**: This document records the migration notes for the legacy JSON-RPC protocol. The current authoritative protocol specification is in [protocols.md](./protocols.md).]
 >
-> 注意：本文早前描述的「Protobuf 序列化」与实际实现不符——Agent TCP 实际使用 **16 字节头 + JSON 体**（见 protocols.md ②）。曾预留的 `protobuf/` 目录从未接入链路，已于 2026-09-22 移除。
+> Note: The "Protobuf serialization" described earlier in this document does not match the actual implementation — the Agent TCP actually uses a **16-byte header + JSON body** (see protocols.md ②). The `protobuf/` directory that was reserved for this was never wired into the link and was removed on 2026-09-22.
 
-## 协议演进说明
+## Protocol Evolution Notes
 
-> **已废弃**: 旧的 JSON-RPC 风格远程控制协议（基于 `wingman::RemoteControlServer` / `wingman::RemoteControlClient`，默认端口 9999）已被移除。
-> `wingman::RemoteControlServer` 和 `wingman::RemoteControlClient` 类已从核心库中删除。
-> Runtime 的 `serve` 命令（被动监听模式 PassiveMode）也已移除。
+> **Deprecated**: The legacy JSON-RPC style remote control protocol (based on `wingman::RemoteControlServer` / `wingman::RemoteControlClient`, default port 9999) has been removed.
+> The `wingman::RemoteControlServer` and `wingman::RemoteControlClient` classes have been deleted from the core library.
+> The Runtime's `serve` command (passive listening mode PassiveMode) has also been removed.
 
-## 当前架构
+## Current Architecture
 
-Runtime 现在作为**主动 Agent** 运行，通过 outbound transport 连接 Go 编排器。Runtime 不作为被动 HTTP/WebSocket/TCP 控制服务器。
+The Runtime now runs as an **active Agent**, connecting to the Go orchestrator via outbound transport. The Runtime is not a passive HTTP/WebSocket/TCP control server.
 
-### 1. Transport TCP（Agent 到编排器）
+### 1. Transport TCP (Agent to Orchestrator)
 
-Agent 通过 `wingman::runtime::RemoteClient`（基于 transport 层的 TCP）主动连接到 Go 编排器（orchestrator），通信采用 **16 字节头 + JSON 体**（Header + Body），而非旧的 JSON-RPC。
+The Agent actively connects to the Go orchestrator via `wingman::runtime::RemoteClient` (based on the TCP transport layer); communication uses a **16-byte header + JSON body** (Header + Body), not the legacy JSON-RPC.
 
 ```
 Agent (Runtime)  ──主动连接──>  Go Orchestrator (TCP Server)
@@ -28,13 +28,13 @@ Agent (Runtime)  ──主动连接──>  Go Orchestrator (TCP Server)
                                └── 工作流编排
 ```
 
-关键实现文件：
-- `libs/agentcore/src/remote_client.cpp` - 远程客户端（`wingman::runtime::RemoteClient`，桌面 runtime 与 Android agent 同源），主动连接编排器
-- `libs/transport/` - 网络传输层
+Key implementation files:
+- `libs/agentcore/src/remote_client.cpp` - the remote client (`wingman::runtime::RemoteClient`, shared source for the desktop runtime and the Android agent), actively connects to the orchestrator
+- `libs/transport/` - the network transport layer
 
-### 2. Local IPC（本地 GUI 控制）
+### 2. Local IPC (Local GUI Control)
 
-Tauri/Svelte GUI（`apps/gui/`）通过 Tauri `invoke()` 调用 Rust backend，Rust backend 通过本地 IPC 控制 runtime，无需经过网络协议。
+The Tauri/Svelte GUI (`apps/gui/`) calls the Rust backend via Tauri `invoke()`; the Rust backend controls the runtime via local IPC, with no network protocol involved.
 
 ```
 Tauri GUI (Svelte)  ──invoke──>  Tauri Rust backend  ──local IPC──>  Runtime
@@ -43,40 +43,39 @@ Tauri GUI (Svelte)  ──invoke──>  Tauri Rust backend  ──local IPC─�
                                                                         └── 核心能力调用
 ```
 
-本地 IPC 默认策略：
+Default local IPC policy:
 
-| 平台 | 默认 IPC |
+| Platform | Default IPC |
 |------|----------|
 | Windows | Named Pipe |
 | macOS/Linux | Unix Domain Socket |
-| 全平台 | Local TCP 仅显式 debug fallback |
+| All platforms | Local TCP only as an explicit debug fallback |
 
-### 3. Web Dashboard（React/Umi）
+### 3. Web Dashboard (React/Umi)
 
-Dashboard（`orchestrator/dashboard/`）通过 WebSocket 连接到 Go 编排器，由编排器转发命令到各 Agent。
+The Dashboard (`orchestrator/dashboard/`) connects to the Go orchestrator via WebSocket, and the orchestrator forwards commands to each Agent.
 
 ```
 Web Dashboard (React/Umi)  ──WebSocket──>  Go Orchestrator  ──Transport TCP──>  Agent
 ```
 
-## 旧协议动作名（历史存档，非现行接口）
+## Legacy Protocol Action Names (Historical Archive, Not Current Interfaces)
 
-下表为旧 JSON-RPC 协议的动作名历史存档，仅供迁移对照。这些动作名在现行
-链路中**均不存在**：现行 server→agent 命令是 Request 帧的 `method` 字段
-（`run_script`/`stop_script`/`get_status`/`list_windows`/
-`screenshot.capture`/`system.shutdown`/`trigger.*`，权威命名见
-[protocols.md](./protocols.md)）；runtime 本地能力走本地 IPC RPC
-（`screenshot.capture`、`script.*`、`trigger.*`、`macro.*` 等）；像素级
-能力以脚本 API（`wingman.screen.*` / `wingman.vision.*`）形态提供，无独立
-RPC。
+The following table is a historical archive of the legacy JSON-RPC protocol action names, for migration reference only. None of these action names exist in the current
+link: the current server→agent commands are the `method` field of the Request frame
+(`run_script`/`stop_script`/`get_status`/`list_windows`/
+`screenshot.capture`/`system.shutdown`/`trigger.*`; see [protocols.md](./protocols.md) for the authoritative naming); runtime local capabilities go through local IPC RPC
+(`screenshot.capture`, `script.*`, `trigger.*`, `macro.*`, etc.); pixel-level
+capabilities are provided in the form of the script API (`wingman.screen.*` / `wingman.vision.*`), with no independent
+RPC.
 
-| 旧动作（已废弃） | 现行对应 |
+| Legacy action (deprecated) | Current counterpart |
 |------|------|
-| ping | 无同名 agent 命令。保活由 Go 编排器侧承担：`GET /api/v1/health`（需 Bearer，返回 `{"status":"ok"}`）与 Dashboard WS 的**协议层** Ping/Pong（30s 间隔，非 JSON 帧，见 [protocols.md](protocols.md) §③） |
-| get_version | 无同名 agent 命令，编排器侧亦无版本查询端点（`/api/v1/health` 只返 status、`/api/v1/status` 只汇总脚本/窗口/资源）。版本信息只在自动更新服务面：`GET /api/v1/update/latest`（公开只读 manifest，含 version/url/sha256） |
-| capture_screen | `screenshot.capture`（server→agent 命令与本地 IPC RPC 同名） |
-| get_pixel / find_color / find_image | 脚本 API `wingman.screen.getPixel` / `wingman.vision.findColor` / `wingman.vision.findImage` |
-| click / move / key / type_text | 脚本 API `wingman.input.*`（click/move/key/type 等） |
+| ping | No agent command with the same name. Keep-alive is handled on the Go orchestrator side: `GET /api/v1/health` (requires Bearer, returns `{"status":"ok"}`) and the **protocol-level** Ping/Pong of the Dashboard WS (30s interval, not JSON frames, see [protocols.md](protocols.md) §③) |
+| get_version | No agent command with the same name, and no version query endpoint on the orchestrator side (`/api/v1/health` only returns status, `/api/v1/status` only aggregates scripts/windows/resources). Version information only exists in the auto-update service plane: `GET /api/v1/update/latest` (public read-only manifest, containing version/url/sha256) |
+| capture_screen | `screenshot.capture` (same name for the server→agent command and the local IPC RPC) |
+| get_pixel / find_color / find_image | Script API `wingman.screen.getPixel` / `wingman.vision.findColor` / `wingman.vision.findImage` |
+| click / move / key / type_text | Script API `wingman.input.*` (click/move/key/type, etc.) |
 | list_triggers | `trigger.list` |
 | add_trigger | `trigger.add` |
 | remove_trigger | `trigger.remove` |
@@ -84,16 +83,16 @@ RPC。
 | record_macro / stop_macro_recording | `macro.start` / `macro.stop` |
 | play_macro | `macro.play` |
 
-## 迁移指南
+## Migration Guide
 
-### 从旧 RemoteControlServer 迁移
+### Migrating from the Legacy RemoteControlServer
 
-1. **服务端模式已移除** - Runtime 不再支持 `serve` 命令（被动监听）。如需集中控制多个 Agent，请使用 Go 编排器（`orchestrator/server/`）。
+1. **Server mode removed** - The Runtime no longer supports the `serve` command (passive listening). If you need centralized control of multiple Agents, use the Go orchestrator (`orchestrator/server/`).
 
-2. **连接方向变更** - 旧模式中 Runtime 被动等待外部连接；新模式中 Runtime 主动连接到编排器。
+2. **Connection direction changed** - In the legacy model the Runtime passively waited for external connections; in the new model the Runtime actively connects to the orchestrator.
 
-3. **协议变更** - 旧的 JSON-RPC over raw TCP 已替换为 16 字节头 + JSON over transport TCP。消息格式见 [protocols.md](./protocols.md)。（曾预留的 `protobuf/` 目录与 `libs/proto` 已于 2026-09-22 移除——该层从未接入实际链路。）
+3. **Protocol changed** - The legacy JSON-RPC over raw TCP has been replaced by a 16-byte header + JSON over transport TCP. See [protocols.md](./protocols.md) for the message format. (The reserved `protobuf/` directory and `libs/proto` were removed on 2026-09-22 — that layer was never wired into the actual link.)
 
-4. **客户端库** - `wingman::RemoteControlClient` 已移除。外部工具应通过 Go 编排器的 REST/WebSocket API 间接控制 Agent。
+4. **Client library** - `wingman::RemoteControlClient` has been removed. External tools should indirectly control Agents through the Go orchestrator's REST/WebSocket API.
 
-5. **GUI 本地访问** - 如果只需要本地控制，使用 Tauri GUI（`apps/gui/`）通过本地 IPC 控制 runtime，无需任何网络通信。
+5. **GUI local access** - If you only need local control, use the Tauri GUI (`apps/gui/`) to control the runtime via local IPC, with no network communication at all.

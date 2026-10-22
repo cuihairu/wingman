@@ -1,272 +1,35 @@
 ---
-title: 快速开始
+title: Getting Started
 ---
-> [English](getting-started.en.md) | **中文**
 
-
-# 快速开始
-
-## 环境要求
-
-### 开发环境
-
-- **Windows 10/11** - 主要支持平台
-- **Visual Studio 2022** - C++17 支持
-- **CMake 3.20+** - 构建系统
-- **Git** - 版本控制
-- **vcpkg** - C++ 包管理器
-
-### Python 环境（可选）
-
-如需使用 Python 脚本：
-- **Python 3.8+**
-- **pybind11**
-
-### vcpkg 安装
-
-```bash
-# 1. 克隆 vcpkg
-git clone https://github.com/Microsoft/vcpkg.git
-cd vcpkg
-
-# 2. 运行引导脚本
-.\bootstrap-vcpkg.bat
-
-# 3. 集成到系统（自动关联到 Visual Studio）
-.\vcpkg integrate install
-
-# 4. 设置环境变量（可选，用于自动 triplet 检测）
-set VCPKG_ROOT=C:\path\to\vcpkg
-```
-
-## 项目依赖
-
-Wingman 使用以下 vcpkg 包：
-
-| 包名 | 用途 |
-|-----|------|
-| `lua` | Lua 脚本引擎 |
-| `sol2` | C++/Lua 绑定（header-only） |
-| `opencv4` | 图像处理 |
-| `spdlog` | 日志库 |
-| `nlohmann-json` | JSON 配置解析 |
-| `asio` | 网络库 |
-| `curl` | HTTP 客户端 |
-| `sqlite3` | SQLite 存储 |
-| `openssl` | AES-256-GCM 加密 |
-
-另有按 feature 启用的可选依赖：`tesseract`（`ocr` feature）、`onnxruntime`（`ml` feature）、`gtest`（`tests` feature）、`python3` + `pybind11`（`python` feature）。
-
-## 编译项目
-
-### 1. 克隆仓库
-
-```bash
-git clone https://github.com/cuihairu/wingman.git
-cd wingman
-```
-
-### 2. 安装依赖
-
-依赖由根目录 `vcpkg.json`（manifest 模式）统一管理，配置 CMake 工具链后自动安装：
-
-```bash
-cmake -B build -DCMAKE_TOOLCHAIN_FILE="<vcpkg根>/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static
-```
-
-也可手动按清单安装：
-
-```bash
-vcpkg install --triplet x64-windows-static
-```
-
-### 3. 使用 CMake 生成项目
-
-```bash
-build-scripts\configure-msvc-ninja.bat
-```
-
-### 4. 编译
-
-```bash
-build-scripts\build-runtime-msvc-ninja.bat
-```
-
-### 5. 运行
-
-```bash
-# 运行 Lua 示例脚本
-.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe script examples\lua_scripts\hello.lua
-
-# 运行 Python 脚本（Python 引擎默认关闭，需 WINGMAN_ENABLE_PYTHON=ON 构建；
-# hello.py 按下文「第一个脚本」自行创建）
-.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe script hello.py
-```
-
-## vcpkg.json
-
-项目根目录包含 `vcpkg.json`，声明依赖：
-
-```json
-{
-  "dependencies": [
-    { "name": "lua" },
-    { "name": "sol2" },
-    {
-      "name": "opencv4",
-      "platform": "windows",
-      "default-features": false,
-      "features": ["intrinsics", "jpeg", "png", "thread", "tiff", "webp"]
-    },
-    { "name": "spdlog" },
-    { "name": "nlohmann-json" },
-    { "name": "asio" },
-    { "name": "curl" },
-    { "name": "sqlite3" },
-    { "name": "openssl" }
-  ]
-}
-```
-
-## 命令行参数
-
-```bash
-# 执行脚本
-wingman-agent.exe script script.lua
-wingman-agent.exe script script.py
-
-# 启动 Agent（读取 agent.toml，主动 outbound 连接 Go orchestrator）
-wingman-agent.exe start
-
-# 打包单文件脚本运行时
-wingman-agent.exe build --script script.lua --output script-runtime.exe
-
-# 加密打包（脚本源码以 AES-256-GCM 密文嵌入 PE 资源）
-wingman-agent.exe build --script script.lua --output script-runtime.exe --password 'your-passphrase'
-
-# 帮助信息
-wingman-agent.exe --help
-```
-
-### 加密打包与加载
-
-`build` 的加密相关选项：
-
-| 选项 | 作用 |
-|------|------|
-| `--encrypt` | 打开加密（需要口令） |
-| `--password <p>` | 指定口令，并隐含 `--encrypt` |
-| `--no-encrypt` | 显式关闭加密（旧命令行兼容；写在 `--password` 之后即取消加密） |
-| `--no-compress` | 关闭压缩 |
-
-- 口令也可以不进命令行：`WINGMAN_PACK_PASSWORD=... wingman-agent build --script ... --output ...`（命令行参数会留在 shell 历史与进程列表里，环境变量是更合适的默认来源）。
-- 没有口令就不允许加密：产物打不开等于永久作废，故 `--encrypt` 无口令时打包直接失败，而不是产出一个打不开的 exe。
-- 密钥由口令派生（PBKDF2-HMAC-SHA256，100000 轮迭代，随机 16 字节 salt 与 12 字节 IV 写进打包头），载荷为 AES-256-GCM 认证密文。改一个字节、换口令、或头部被篡改都会在加载时失败并给出可区分的原因（`Incorrect password` / `authentication failed` / `Hash verification failed`）。
-- 运行加密产物时从环境变量取口令：
-
-```bash
-WINGMAN_SCRIPT_PASSWORD='your-passphrase' ./script-runtime.exe
-```
-
-  口令错误或缺失时 runtime 会记录失败原因并退回普通 GUI/Agent 模式，不会执行脚本。
-- 兼容性：未加密包（新旧版本）都可被无口令加载；历史上被禁用的 v1 加密包（一次性随机密钥、只留下 `sha256(key)`）无法恢复，加载时明确拒绝并要求用 `--encrypt --password` 重新打包。
-
-## 运行模式
-
-Wingman 有三种运行模式，按控制路径区分（详见 [架构决策](../architecture-decisions.md)）：
-
-| 模式 | 命令 | 控制路径 | 适用场景 |
-|------|------|----------|----------|
-| **单脚本** | `wingman-agent script foo.lua` | 直接执行后退出 | 一次性任务、CI、快速验证 |
-| **本地 GUI** | `wingman-agent start`（local 能力）+ Tauri GUI | `Tauri UI → local IPC（Named Pipe/UDS）→ runtime` | 单机有界面的日常使用 |
-| **远程编排** | `wingman-agent start`（agent 能力）→ Go orchestrator | `runtime agent → outbound → Go server → Dashboard` | 多机集中管控、团队协作 |
-
-- 本地 GUI 与远程编排可并存：runtime 同时承载 local IPC 服务和 agent outbound 连接。
-- **架构硬约束**：runtime 不开 HTTP/WebSocket server 作为控制面；Dashboard 只连 Go server，不直连 runtime。
-- Go orchestrator 与 Dashboard 的部署见 [`orchestrator/server/README.md`](../../orchestrator/server/README.md)。
-
-## 第一个脚本
-
-### Python 版本
-
-创建文件 `hello.py`：
-
-```python
-from wingman import screen, util
-
-# 打印问候
-print("Hello from Wingman!")
-
-# 获取屏幕尺寸
-width = screen.get_screen_width()
-height = screen.get_screen_height()
-print(f"Screen size: {width}x{height}")
-
-# 延迟 1 秒
-util.sleep(1000)
-
-print("Script completed!")
-```
-
-### Lua 版本
-
-创建文件 `hello.lua`：
-
-```lua
-local wingman = require("wingman")
-
--- 打印问候
-print("Hello from Wingman!")
-
--- 获取屏幕尺寸
-local width = wingman.screen.getScreenWidth()
-local height = wingman.screen.getScreenHeight()
-print(string.format("Screen size: %dx%d", width, height))
-
--- 延迟 1 秒
-wingman.util.sleep(1000)
-
-print("Script completed!")
-```
-
-运行：
-
-```bash
-# Python
-wingman-agent.exe script hello.py
-
-# Lua
-wingman-agent.exe script hello.lua
-```
-
-## 选择脚本语言
-
-Wingman 同时支持 Python 和 Lua，如何选择？
-
-### 使用 Python 如果你：
-- 熟悉 Python 语法
-- 需要使用丰富的 Python 库
-- 需要更好的 IDE 支持（类型提示、自动补全）
-- 开发复杂的项目
-
-### 使用 Lua 如果你：
-- 需要最快的启动速度
-- 内存受限的环境
-- 偏好简洁的语法
-
-## 开发容器（可选）
-
-使用 Dev Container 在 VS Code 中开发：
-
-```bash
-# 在容器中打开
-code .
-```
-
-## 下一步
-
-- [API 参考](../api/index.md) - 查看完整 API 文档
-- [示例脚本](../examples/index.md) - 学习更多用法
-- [调试指南](debugging.md) - 如何调试脚本
-- [远程协议](../remote_protocol.md) - 了解远程控制协议
-- [YOLO 模型使用](../guides/yolo-guide.md) - 准备 ONNX 模型并验证加载
+> [中文](getting-started.md) | **English**
+
+# Getting Started
+
+This document is lengthy (270 lines in the source) and has no English translation yet.
+
+The section outline below mirrors the Chinese source document; see [getting-started.md](getting-started.md) for the original.
+
+- 环境要求
+  - 开发环境
+  - Python 环境（可选）
+  - vcpkg 安装
+- 项目依赖
+- 编译项目
+  - 1. 克隆仓库
+  - 2. 安装依赖
+  - 3. 使用 CMake 生成项目
+  - 4. 编译
+  - 5. 运行
+- vcpkg.json
+- 命令行参数
+  - 加密打包与加载
+- 运行模式
+- 第一个脚本
+  - Python 版本
+  - Lua 版本
+- 选择脚本语言
+  - 使用 Python 如果你：
+  - 使用 Lua 如果你：
+- 开发容器（可选）
+- 下一步

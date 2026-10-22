@@ -1,18 +1,18 @@
-> [English](checkbox.en.md) | **中文**
+> [中文](checkbox.md) | **English**
 
 # API: UIA CheckBox
 
-复选框（CheckBox）用于多选项选择场景，用户可以勾选或取消勾选多个选项。常见场景包括：
-- 同意用户协议
-- 记住登录状态
-- 选择多个兴趣标签
-- 启用/禁用功能选项
+The CheckBox is used in multi-select scenarios, where the user can check or uncheck multiple options. Common scenarios include:
+- Agreeing to a user agreement
+- Remembering login state
+- Selecting multiple interest tags
+- Enabling/disabling feature options
 
-## 查找复选框
+## Finding a CheckBox
 
-**说明**：复选框通常有标签文字（如"记住密码"、"同意协议"），可以通过名称查找。
+**Note**: CheckBoxes usually have label text (such as "记住密码" or "同意协议") and can be found by name.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 find_by_name(name: str) -> UIElement | None
@@ -51,9 +51,9 @@ end
 
 ---
 
-## 勾选/取消勾选
+## Checking/unchecking
 
-> `set_checked(bool)` 可直接设置勾选状态（2026-10-09 落地：win Toggle 模式 / mac AXChecked）：
+> `set_checked(bool)` sets the checked state directly (shipped 2026-10-09: win Toggle pattern / mac AXChecked):
 
 :::tabs
 
@@ -80,11 +80,11 @@ end
 
 :::
 
-> `set_value` 的实现是设置元素文本（`setText`），**仅对文本型控件有效**，对复选框调用不会勾选/取消勾选——请用 `set_checked`。
+> `set_value` is implemented as setting the element text (`setText`) and **only works for text-type controls**; calling it on a CheckBox does not check/uncheck it — use `set_checked` instead.
 
-### 通过点击切换
+### Toggling by clicking
 
-**说明**：模拟用户点击复选框来切换状态（勾选变未勾选，未勾选变勾选）。这是当前唯一可用的勾选操作。
+**Note**: Simulate a user clicking the checkbox to toggle its state (checked becomes unchecked, unchecked becomes checked). This is currently the only available check operation.
 
 :::tabs
 
@@ -117,9 +117,9 @@ end
 
 ---
 
-## 获取复选框状态
+## Getting the CheckBox state
 
-> `is_checked()` 读取勾选状态（2026-10-09 落地：win Toggle 模式 / mac AXChecked）：
+> `is_checked()` reads the checked state (shipped 2026-10-09: win Toggle pattern / mac AXChecked):
 
 :::tabs
 
@@ -150,28 +150,28 @@ end
 
 :::
 
-> `get_value()` 返回的是元素文本（实现为 `getText`），不是布尔勾选状态；`get_info()` 返回键中也无勾选字段——读勾选状态请用 `is_checked`。
+> `get_value()` returns the element text (implemented as `getText`), not the boolean checked state; `get_info()` return keys also have no checked field — use `is_checked` to read the checked state.
 
 ---
 
-## 三态复选框
+## Three-state CheckBox
 
-**设计意图**：某些复选框支持三种状态：
-- **On（选中）** - 明确勾选
-- **Off（未选中）** - 明确不勾选
-- **Indeterminate（不确定）** - 部分选中状态
+**Design intent**: Some checkboxes support three states:
+- **On (checked)** - explicitly checked
+- **Off (unchecked)** - explicitly unchecked
+- **Indeterminate** - partially checked state
 
-**常见场景**：
-- "全选"复选框：子项全部选中时为 On，全部未选中为 Off，部分选中为 Indeterminate
-- 树形结构中的父节点
+**Common scenarios**:
+- "Select All" checkbox: On when all children are checked, Off when none are checked, Indeterminate when some are checked
+- Parent nodes in tree structures
 
-> `set_toggle_state(state)`（'On'/'Off'/'Indeterminate' 三态显式建模）尚未实现，Indeterminate 态暂不可直接设置——两态场景请用 `set_checked(bool)`。当前可用操作：`set_checked` / `click()` 切换与通用方法（见 [概述](./index.md#uielement-通用方法)）。
+> `set_toggle_state(state)` (explicit three-state modeling of 'On'/'Off'/'Indeterminate') is not yet implemented; the Indeterminate state cannot be set directly — for two-state scenarios use `set_checked(bool)`. Currently available operations: `set_checked` / `click()` toggling and the general methods (see [Overview](./index.md#uielement-通用方法)).
 
 ---
 
-## 完整示例
+## Complete examples
 
-### 用户注册场景
+### User registration scenario
 
 :::tabs
 
@@ -260,24 +260,24 @@ end
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-### 查找复选框
+### Finding a CheckBox
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
-|------------|---------|------|-----|
-| `find_by_name(name)` | `find_by_name(name)` | 按名称查找 | `name` - 复选框标签 |
-| `find_by_id(id)` | `find_by_id(id)` | 按 AutomationId 查找 | `id` - AutomationId |
+| Python function | Lua function | Description | Parameters |
+|----------------|-------------|-------------|------------|
+| `find_by_name(name)` | `find_by_name(name)` | Find by name | `name` - checkbox label |
+| `find_by_id(id)` | `find_by_id(id)` | Find by AutomationId | `id` - AutomationId |
 
-### 复选框操作
+### CheckBox operations
 
-| Python 方法 | Lua 方法 | 说明 | 参数 |
-|------------|---------|------|-----|
-| `click()` | `:click()` | 点击切换勾选状态 | 无 |
-| `get_info()` | `:get_info()` | 获取所有通用属性（不含勾选状态） | 无 |
+| Python method | Lua method | Description | Parameters |
+|----------------|-------------|-------------|------------|
+| `click()` | `:click()` | Click to toggle the checked state | None |
+| `get_info()` | `:get_info()` | Get all general properties (no checked state) | None |
 
-> 勾选状态读取与设置请用 `is_checked` / `set_checked`（见上节）；`get_value`/`set_value` 实为读取/设置元素文本，仅对文本型控件有效；三态 `set_toggle_state` 未实现。
+> Use `is_checked` / `set_checked` to read and set the checked state (see above); `get_value`/`set_value` actually read/set the element text and only work for text-type controls; the three-state `set_toggle_state` is not implemented.
 
-### 复选框属性
+### CheckBox properties
 
-`get_info()` 返回键集见 [概述](./index.md#uielement-通用方法)（`name`/`id`/`className`/`role`/`text`/`is_enabled`/`is_visible`/`has_focus`/`bounds`），其中**没有**勾选状态字段（无 `toggle_state`/`is_toggle_pattern`）。
+The `get_info()` return key set is documented in [Overview](./index.md#uielement-通用方法) (`name`/`id`/`className`/`role`/`text`/`is_enabled`/`is_visible`/`has_focus`/`bounds`), which contains **no** checked-state field (no `toggle_state`/`is_toggle_pattern`).

@@ -1,0 +1,431 @@
+> [English](notify.en.md) | **中文**
+
+# API: wingman.notify
+
+通知模块，提供统一的通知与告警出口，支持日志、toast、webhook 和事件桥接。
+
+## 模块概述
+
+notify 模块提供多种通知方式：
+- **日志通知** - debug、info、warn、error 各级别日志（仅发出 `notify.log` / `notify.log.<LEVEL>` 事件，**无内置消费侧**——runtime/GUI 的日志面板走 `log.line` 通路，与 notify.log 无关；需要可见输出请自行用 `wingman.event.on` 订阅）
+- **Toast 通知** - 发出 `notify.toast` 事件（**当前无内置消费者**，不会弹出桌面通知）
+- **Webhook** - HTTP POST 远程通知（**受主机白名单管控，默认全拒**，当前无配置入口，详见下文）
+- **事件桥接** - 将事件转发到其他目标
+- **托盘意图** - trayShow/trayHide/traySetBadge/traySetTooltip，经事件流驱动 GUI 系统托盘
+
+---
+
+## 调试日志
+
+> **注意**：debug/info/warn/error 四个函数都只发出 `notify.log` 与 `notify.log.<LEVEL>` 事件，
+> **不会**写入 runtime 日志面板（GUI 日志走独立的 `log.line` 通路）。默认部署下这些调用
+> 不产生任何可见输出，需要自行用 `wingman.event.on("notify.log", cb)` 订阅消费。
+
+### debug(message, meta?) / debug(message, meta?)
+
+**说明**：发出调试级别日志事件（见上方注意）。
+
+**函数签名**：
+
+```python
+debug(message: str, meta: dict = None) -> None
+```
+
+```lua
+debug(message: string, meta: table = nil) -> nil
+```
+
+**参数**：
+- `message` - 日志消息
+- `meta` - 可选，元数据对象
+
+**返回**：
+- 无
+
+---
+
+## 信息日志
+
+### info(message, meta?) / info(message, meta?)
+
+**说明**：发出信息级别日志事件（见「调试日志」节注意）。
+
+**函数签名**：
+
+```python
+info(message: str, meta: dict = None) -> None
+```
+
+```lua
+info(message: string, meta: table = nil) -> nil
+```
+
+**参数**：
+- `message` - 日志消息
+- `meta` - 可选，元数据对象
+
+**返回**：
+- 无
+
+---
+
+## 警告日志
+
+### warn(message, meta?) / warn(message, meta?)
+
+**说明**：发出警告级别日志事件（见「调试日志」节注意）。
+
+**函数签名**：
+
+```python
+warn(message: str, meta: dict = None) -> None
+```
+
+```lua
+warn(message: string, meta: table = nil) -> nil
+```
+
+**参数**：
+- `message` - 日志消息
+- `meta` - 可选，元数据对象
+
+**返回**：
+- 无
+
+---
+
+## 错误日志
+
+### error(message, meta?) / error(message, meta?)
+
+**说明**：发出错误级别日志事件（见「调试日志」节注意）。
+
+**函数签名**：
+
+```python
+error(message: str, meta: dict = None) -> None
+```
+
+```lua
+error(message: string, meta: table = nil) -> nil
+```
+
+**参数**：
+- `message` - 日志消息
+- `meta` - 可选，元数据对象
+
+**返回**：
+- 无
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import notify
+
+# 各级别日志
+notify.debug("调试信息", {"module": "combat"})
+notify.info("脚本启动", {"script": "farm.py"})
+notify.warn("资源不足", {"hp": 10})
+notify.error("任务失败", {"error": "timeout"})
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 各级别日志
+wingman.notify.debug("调试信息", { module = "combat" })
+wingman.notify.info("脚本启动", { script = "farm.lua" })
+wingman.notify.warn("资源不足", { hp = 10 })
+wingman.notify.error("任务失败", { error = "timeout" })
+```
+
+:::
+
+---
+
+## Toast 通知
+
+### toast(title, message, level?) / toast(title, message, level?)
+
+**说明**：发出 `notify.toast` 事件。**当前没有任何内置消费者订阅该事件**——runtime 桥与 GUI 事件流均不处理 `notify.toast`，因此调用它不会弹出桌面通知。
+
+**函数签名**：
+
+```python
+toast(title: str, message: str, level: str = "info") -> None
+```
+
+```lua
+toast(title: string, message: string, level: string = "info") -> nil
+```
+
+**参数**：
+- `title` - 标题
+- `message` - 消息内容
+- `level` - 可选，级别：`"info"`, `"success"`, `"warning"`, `"error"`，默认 `"info"`
+
+**返回**：
+- 无
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import notify
+
+# 发出 notify.toast 事件（无内置消费者，需自行订阅才有反应；第三参 level 按位置传）
+notify.toast("Wingman", "任务完成", "success")
+notify.toast("警告", "血量过低", "warning")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 发出 notify.toast 事件（无内置消费者，需自行订阅才有反应）
+wingman.notify.toast("Wingman", "任务完成", "success")
+wingman.notify.toast("警告", "血量过低", "warning")
+```
+
+:::
+
+---
+
+## Webhook 通知
+
+### webhook(url, payload, options?) / webhook(url, payload, options?)
+
+**说明**：发送 HTTP POST webhook。**受主机白名单管控：白名单为空时默认拒绝所有目标**（SSRF 防护），且当前 runtime/config 侧**没有配置白名单的入口**——因此现状下每次调用都会被拒：不发出 POST，仅发出 `notify.webhook.blocked` 事件并将 callback 以 `false` 调用（如提供了）。
+
+**函数签名**：
+
+```python
+webhook(url: str, payload: dict, options: dict = None) -> None
+```
+
+```lua
+webhook(url: string, payload: table, options: table = nil) -> nil
+```
+
+**参数**：
+- `url` - 目标 URL（主机必须在白名单内才会真正发出）
+- `payload` - 请求体（JSON 对象）
+- `options` - 可选配置（预留）
+
+**返回**：
+- 无
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import notify
+
+# Webhook（注意：白名单默认全拒且无配置入口，此调用会被拦截，
+# 仅产生 notify.webhook.blocked 事件，POST 不会发出）
+notify.webhook("http://127.0.0.1:9000/hook", {
+    "event": "task.done",
+    "result": 42
+})
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- Webhook（同上：默认全拒、无配置入口，仅产生 notify.webhook.blocked 事件）
+wingman.notify.webhook("http://127.0.0.1:9000/hook", {
+    event = "task.done",
+    result = 42
+})
+```
+
+:::
+
+---
+
+## 事件桥接
+
+### bridge(event_name, target, options?) / bridge(eventName, target, options?)
+
+**说明**：桥接事件到其他目标。
+
+**函数签名**：
+
+```python
+bridge(event_name: str, target: str, options: dict = None) -> None
+```
+
+```lua
+bridge(eventName: string, target: string, options: table = nil) -> nil
+```
+
+**参数**：
+- `event_name` / `eventName` - 事件名称（精确匹配）
+- `target` - 目标地址，支持 `event://` 协议或 HTTP URL
+- `options` - 可选配置（预留）
+
+**返回**：
+- 无
+
+**注意**：当前实现仅支持精确匹配，不支持通配符模式。如需监听多个事件，请多次调用 `bridge()`。
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import notify
+
+# 事件桥接
+notify.bridge("combat.enemy_found", "event://logging.combat_events")
+notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+-- 事件桥接
+wingman.notify.bridge("combat.enemy_found", "event://logging.combat_events")
+wingman.notify.bridge("task.failed", "http://127.0.0.1:9000/alert")
+```
+
+:::
+
+---
+
+## 系统托盘
+
+托盘意图经事件桥发出（`notify.tray.<action>`）：runtime 侧 notify_bridge 订阅后转投事件流，**GUI 收到事件后驱动系统托盘**——脚本不直接操作托盘，仅表达意图。无 GUI 客户端时意图为无害 no-op。
+
+### trayShow() / trayShow()
+
+**说明**：请求显示系统托盘图标。
+
+**函数签名**：
+
+```python
+trayShow() -> bool
+```
+
+```lua
+trayShow() -> boolean
+```
+
+**返回**：恒为 `true`（意图已发出）
+
+---
+
+### trayHide() / trayHide()
+
+**说明**：请求隐藏系统托盘图标。
+
+**函数签名**：
+
+```python
+trayHide() -> bool
+```
+
+```lua
+trayHide() -> boolean
+```
+
+**返回**：恒为 `true`（意图已发出）
+
+---
+
+### traySetBadge(text?) / traySetBadge(text?)
+
+**说明**：发出设置托盘角标的意图；无参或 `None`/`nil` 表示清除。脚本层恒返回 `true`。注意：tauri v2 TrayIcon 没有角标 label API，GUI 端当前不支持该意图——执行后会有一条错误日志（「托盘控制失败: tray badge not supported…」），`trayShow`/`trayHide`/`traySetTooltip` 正常驱动系统托盘。
+
+**函数签名**：
+
+```python
+traySetBadge(text: str | None = None) -> bool
+```
+
+```lua
+traySetBadge(text: string | nil) -> boolean
+```
+
+**参数**：
+- `text` - 角标文本；省略/`nil` 表示清除
+
+**返回**：
+- `bool`/`boolean` - 是否成功（非字符串参数返回 `false`）
+
+---
+
+### traySetTooltip(text?) / traySetTooltip(text?)
+
+**说明**：设置托盘提示文本；无参清除。
+
+**函数签名**：
+
+```python
+traySetTooltip(text: str | None = None) -> bool
+```
+
+```lua
+traySetTooltip(text: string | nil) -> boolean
+```
+
+**参数**：
+- `text` - 提示文本；省略表示清除
+
+**返回**：
+- `bool`/`boolean` - 是否成功（非字符串参数返回 `false`）
+
+:::tabs
+
+== Python
+
+```python:line-numbers
+from wingman import notify
+
+notify.trayShow()
+notify.traySetTooltip("Wingman 运行中")
+# notify.traySetBadge("3")         # 角标意图：GUI 端暂不支持（tauri v2 无角标 API）
+# notify.trayHide()
+```
+
+== Lua
+
+```lua:line-numbers
+local wingman = require("wingman")
+
+wingman.notify.trayShow()
+wingman.notify.traySetTooltip("Wingman 运行中")
+-- wingman.notify.traySetBadge("3") -- 角标意图：GUI 端暂不支持（tauri v2 无角标 API）
+-- wingman.notify.trayHide()
+```
+
+:::
+
+---
+
+## 可用接口
+
+| Python 函数 | Lua 函数 | 说明 | 参数 |
+|------------|---------|------|-----|
+| `debug(message, meta?)` | `debug(message, meta?)` | 调试日志 | message: 日志消息<br>meta: 元数据(可选) |
+| `info(message, meta?)` | `info(message, meta?)` | 信息日志 | message: 日志消息<br>meta: 元数据(可选) |
+| `warn(message, meta?)` | `warn(message, meta?)` | 警告日志 | message: 日志消息<br>meta: 元数据(可选) |
+| `error(message, meta?)` | `error(message, meta?)` | 错误日志 | message: 日志消息<br>meta: 元数据(可选) |
+| `toast(title, message, level?)` | `toast(title, message, level?)` | Toast通知 | title: 标题<br>message: 消息内容<br>level: 级别(默认info) |
+| `webhook(url, payload, options?)` | `webhook(url, payload, options?)` | Webhook通知 | url: 目标URL<br>payload: 请求体<br>options: 配置(可选) |
+| `bridge(eventName, target, options?)` | `bridge(eventName, target, options?)` | 事件桥接 | eventName: 事件名称<br>target: 目标地址<br>options: 配置(可选) |
+| `trayShow()` | `trayShow()` | 请求显示托盘图标 | 无 |
+| `trayHide()` | `trayHide()` | 请求隐藏托盘图标 | 无 |
+| `traySetBadge(text?)` | `traySetBadge(text?)` | 托盘角标意图（GUI 端暂不支持） | text: 角标文本(省略清除) |
+| `traySetTooltip(text?)` | `traySetTooltip(text?)` | 设置/清除托盘提示 | text: 提示文本(省略清除) |

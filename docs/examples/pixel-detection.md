@@ -1,10 +1,10 @@
-> [English](pixel-detection.en.md) | **中文**
+> [中文](pixel-detection.md) | **English**
 
-# 像素检测
+# Pixel Detection
 
-演示如何检测屏幕上的指定颜色。
+Demonstrates how to detect a specified color on the screen.
 
-## 代码
+## Code
 
 ```lua
 -- examples/lua_scripts/pixel_detection.lua
@@ -38,9 +38,9 @@ while true do
 end
 ```
 
-> 只需判断是否存在并取第一个命中点时，改用 `wingman.screen.findColor(targetColor, region, tolerance)`：返回单数组 `{命中点, 是否找到}`，取 `res[1]` / `res[2]`（第二参必须是 region 表；传标量坐标会得到零矩形，永远查不到）。
+> When you only need to check for existence and grab the first hit point, use `wingman.screen.findColor(targetColor, region, tolerance)` instead: it returns a single array `{hit point, found}`, so take `res[1]` / `res[2]` (the second argument must be a region table; passing scalar coordinates yields an empty rectangle, so nothing is ever found).
 
-## 运行
+## Running
 
 ```bash
 wingman-agent.exe script examples/lua_scripts/pixel_detection.lua

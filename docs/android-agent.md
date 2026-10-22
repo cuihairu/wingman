@@ -1,12 +1,8 @@
-> [English](android-agent.en.md) | **中文**
+> [中文](android-agent.md) | **English**
 
 # Android Agent
 
-Android 端侧 Agent：出站 TCP 长链接连接 Go 中控服务器，接收 Lua 脚本内联下发并
-执行，日志实时回传 Dashboard（A1）；手势注入/屏幕采集/找色找图/远程截图（A2）；
-开机自启/崩溃自重启/看门狗/机型保活指引（A3）。设计与协议见
-`docs/android-agent-design.md`，
-端侧可行性背景见 `docs/mobile-support-feasibility.md`。
+The Android on-device Agent: an outbound TCP long-lived connection to the Go orchestrator server, receiving Lua scripts delivered inline and executing them, with logs streamed back to the Dashboard in real time (A1); gesture injection / screen capture / find-color and find-image matching / remote screenshots (A2); boot autostart / crash self-restart / watchdog / device-model keep-alive guidance (A3). For the design and protocols see `docs/android-agent-design.md`; for on-device feasibility background see `docs/mobile-support-feasibility.md`.
 
 ```
 Kotlin 壳（前台服务/配置/状态）  ──JNI（进程内直调，非 IPC）──▶  C++ 核心
@@ -14,81 +10,69 @@ WingmanService / MainActivity                     AndroidAgent = RemoteClient
 WingmanAccessibilityService（A2）                 + ScriptRunner(Lua) + transport
 ```
 
-架构硬约束自检：Agent 只有 **出站** TCP 客户端，零监听端口；本地 UI 走进程内
-JNI（无 IPC、无 HTTP server）；Dashboard 只连 Go Server。
+Architecture hard-constraint self-check: the Agent has only an **outbound** TCP client and zero listening ports; the local UI goes through in-process JNI (no IPC, no HTTP server); the Dashboard connects only to the Go Server.
 
-## 环境准备
+## Environment Preparation
 
-| 工具 | 版本 |
+| Tool | Version |
 |------|------|
 | JDK | 17+ |
-| Android SDK | API 34（platform-tools / build-tools） |
+| Android SDK | API 34 (platform-tools / build-tools) |
 | Android NDK | r26+ |
-| CMake | 3.22.1+（SDK 的 cmake 亦可） |
-| vcpkg | 已 bootstrap；NDK 构建经仓内 `apps/android/cpp/vcpkg-android.cmake` 包装工具链（gradle `-DWINGMAN_VCPKG_ROOT=<vcpkg 根>` 传入），`scripts/buildsystems/vcpkg.cmake` 是 vcpkg 自带路径、非仓内 |
-| Gradle | 8.7+（或用本机 gradle 生成 wrapper） |
+| CMake | 3.22.1+ (the cmake in the SDK also works) |
+| vcpkg | already bootstrapped; NDK builds go through the in-repo `apps/android/cpp/vcpkg-android.cmake` wrapper toolchain (passed in by gradle via `-DWINGMAN_VCPKG_ROOT=<vcpkg 根>`); `scripts/buildsystems/vcpkg.cmake` is vcpkg's own path, not in-repo |
+| Gradle | 8.7+ (or use the local gradle to generate the wrapper) |
 
-Android 依赖用 `apps/android/cpp/vcpkg.json` 独立清单（`wingman-agent-android`，
-与桌面根 `vcpkg.json` 不是同一份）：manifest 模式随 NDK CMake 配置自动安装，
-无需手动 `vcpkg install`。包集合：asio / curl / lua / openssl / sol2 / spdlog /
-nlohmann-json / opencv4（opencv4 关默认特性，仅保留 jpeg/png/webp/tiff 等图像
-编解码特性）。
+Android dependencies use a separate manifest, `apps/android/cpp/vcpkg.json` (`wingman-agent-android`, not the same file as the desktop root `vcpkg.json`): in manifest mode they are installed automatically together with the NDK CMake configuration, so no manual `vcpkg install` is needed. Package set: asio / curl / lua / openssl / sol2 / spdlog / nlohmann-json / opencv4 (opencv4 turns off default features, keeping only image codec features such as jpeg/png/webp/tiff).
 
-在 `gradle.properties` 填入 vcpkg 根：
+Fill in the vcpkg root in `gradle.properties`:
 
 ```properties
 wingmanVcpkgRoot=/absolute/path/to/vcpkg
 ```
 
-## 构建
+## Build
 
 ```bash
 gradle :app:assembleDebug
 # 产物 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-构建链路：AGP externalNativeBuild → NDK CMake（`apps/android/cpp/CMakeLists.txt`）
-→ vcpkg arm64-android 依赖 + 仓库内共享库 `libs/transport`、`libs/agentcore`
-（远程链路，桌面 runtime 同源链接）、`libs/androidagent`（ScriptRunner +
-脚本能力 API + core 子集）→ `libwingman_agent.so`。
+Build chain: AGP externalNativeBuild → NDK CMake (`apps/android/cpp/CMakeLists.txt`) → vcpkg arm64-android dependencies + the in-repo shared libraries `libs/transport`, `libs/agentcore` (remote link, linked from the same source as the desktop runtime), `libs/androidagent` (ScriptRunner + script capability API + a subset of core) → `libwingman_agent.so`.
 
-> [双端同源文件（`libs/agentcore`、`libs/androidagent`，以及 `libs/transport`]
-> 等共享层）同时编译进桌面 `wingman-agent` 与 Android `libwingman_agent.so`：
-> 改动必须过两端编译与桌面同源单测，不要只验证桌面侧。
+> [The same-source files on both ends (`libs/agentcore`, `libs/androidagent`, as well as shared
+> layers such as `libs/transport`)] are compiled into the desktop `wingman-agent` and the Android
+> `libwingman_agent.so` at the same time: changes must pass compilation on both ends and the
+> same-source desktop unit tests — do not verify only the desktop side.
 
-> 说明：本仓库开发机（Linux）自 2026-09 起具备 SDK/NDK，可本地跑 Kotlin
-> JVM 单测（不依赖 NDK/vcpkg）：`gradle :app:testDebugUnitTest`——覆盖 A3
-> 可靠性纯逻辑（RestartPolicy/BootStartGate/WatchdogPolicy，`app/src/test`）。
-> 完整 APK 组装由 nightly CI 的 build-android job 验证（该 job 先跑 JVM
-> 单测再打 APK）。C++ 核心逻辑（ScriptRunner/协议/重连）在桌面环境有同源
-> 单测（`libs/lua/tests/script_runner_test.cpp`、transport_tests、
-> agentcore_test），见 `docs/android-agent-design.md` §9 验证矩阵。
+> Note: the development machines for this repo (Linux) have had the SDK/NDK since 2026-09, so the
+> Kotlin JVM unit tests can be run locally (no NDK/vcpkg dependency): `gradle :app:testDebugUnitTest`
+> — covering the pure logic of A3 reliability (RestartPolicy/BootStartGate/WatchdogPolicy,
+> `app/src/test`). Full APK assembly is verified by the build-android job of the nightly CI (that
+> job runs the JVM unit tests first, then builds the APK). The C++ core logic (ScriptRunner /
+> protocol / reconnect) has same-source unit tests on the desktop side
+> (`libs/lua/tests/script_runner_test.cpp`, transport_tests, agentcore_test); see the verification
+> matrix in §9 of `docs/android-agent-design.md`.
 
-## A1 链路验收步骤
+## A1 Link Acceptance Steps
 
-1. 启动 Go Server（`orchestrator/server`，监听 agent 端口 8888 与 Dashboard）。
-2. 手机安装 APK，同网段；首次启动会创建常驻通知（前台服务要求）。
-3. App 内填入服务器 IP / 端口 / 设备 ID → 「启动 Agent」。若 server 设置了
-   `WINGMAN_AGENT_TOKENS`（注册 token 白名单），需同时填入注册 Token
-   （见 `docs/agent-token-auth-design.md`；默认关闭可留空）。
-4. Dashboard 的 Agent 列表出现该设备（platform=android，来自 agent.register）。
-5. Dashboard 新建脚本 `hello.lua`：`print('hello android')` 并运行到该设备。
-6. 验收点：
-   - server 下发 payload 为 `{path, content, contentSha256, language}`（内容内联；
-     contentSha256 为内容指纹、execution 记录同口径，语言由扩展名推导）；
-   - Dashboard 实时日志出现 `hello android`（agent.event `script_output` →
-     ExecutionLog 落库 → WS 转发）与 `[exec_...] finished`；
-   - 长死循环脚本可被停止（stop_script → Lua 指令 hook 强制中断）。
+1. Start the Go Server (`orchestrator/server`, listening on agent port 8888 and the Dashboard).
+2. Install the APK on the phone, on the same subnet; the first launch creates a persistent notification (required for a foreground service).
+3. Enter the server IP / port / device ID in the app → tap "Start Agent". If the server sets `WINGMAN_AGENT_TOKENS` (registration token allowlist), the registration Token must be entered as well (see `docs/agent-token-auth-design.md`; it can be left empty when disabled by default).
+4. The device appears in the Dashboard's Agent list (platform=android, coming from agent.register).
+5. Create the script `hello.lua` in the Dashboard: `print('hello android')` and run it on that device.
+6. Acceptance points:
+   - the payload pushed by the server is `{path, content, contentSha256, language}` (content inlined; contentSha256 is the content fingerprint and is recorded under the same convention in the execution record; the language is derived from the file extension);
+   - `hello android` appears in the Dashboard's real-time logs (agent.event `script_output` → persisted to ExecutionLog → forwarded over WS), along with `[exec_...] finished`;
+   - a long-running infinite-loop script can be stopped (stop_script → forced interruption via a Lua instruction hook).
 
-## A2 脚本能力使用步骤（手势注入 + 屏幕采集 + 找色找图）
+## A2 Script Capability Steps (gesture injection + screen capture + find-color and find-image matching)
 
-前置：完成上面 A1 链路验收（Agent 在线）。
+Prerequisite: the A1 link acceptance above is complete (Agent online).
 
-1. **开启无障碍注入**：App 内点「无障碍设置」→ 系统设置里启用
-   Wingman 注入服务（服务连接后自动注册进 C++ 核心）。
-2. **开启投屏采集**：App 内点「开启投屏」→ 系统弹出 MediaProjection
-   授权对话框 → 同意。Android 14+ 每次重开投屏都会再弹一次（系统约束）。
-3. **跑示例脚本**（Dashboard 下发，`wingman.*` API 与桌面同名同形）：
+1. **Enable accessibility injection**: in the app tap "Accessibility Settings" → enable the Wingman injection service in system settings (the service registers itself into the C++ core automatically once connected).
+2. **Enable screen-cast capture**: in the app tap "Start Screen Cast" → the system pops up the MediaProjection authorization dialog → agree. On Android 14+ the dialog pops up again every time screen casting is restarted (system constraint).
+3. **Run the sample script** (pushed by the Dashboard; the `wingman.*` APIs have the same names and shape as on desktop):
 
    ```lua
    -- 找红色按钮并点击（0xRRGGBB 或 {r,g,b} 表）
@@ -104,72 +88,38 @@ gradle :app:assembleDebug
    if m.found then wingman.input.tap(m.position.x, m.position.y) end
    ```
 
-4. **远程截图验收**：Dashboard workflow 加 screenshot 步骤选该设备 →
-   截图上屏（与桌面同形，JPEG q82）。
+4. **Remote screenshot acceptance**: add a screenshot step to the Dashboard workflow and select that device → the screenshot is pushed to the screen (same shape as desktop, JPEG q82).
 
-模板图放置（app 对自身 external files 免存储权限）：
+Placing template images (the app's own external files need no storage permission):
 
 ```bash
 adb push ok.png /sdcard/Android/data/com.wingman.agent/files/templates/
 ```
 
-**A2 已知前提**：投屏仅在设备亮屏时出帧（息屏采集属 A4 之后事项）；
-无障碍/投屏未授权时脚本 API 降级返回 false/nil，不报错。
+**Known A2 prerequisites**: screen casting only produces frames while the device screen is on (off-screen capture is a matter for after A4); when accessibility/screen-cast is not authorized, the script APIs degrade to returning false/nil instead of raising an error.
 
-## A3 可靠性验证步骤（开机自启 / 崩溃自重启 / 看门狗）
+## A3 Reliability Verification Steps (boot autostart / crash self-restart / watchdog)
 
-1. **开机自启**：App 内显式勾选「开机自动启动 Agent」（默认关）并配置过服务器
-   IP → 重启设备，agent 未打开 App 即自动上线（Dashboard 观察）。
-2. **崩溃自重启**：启动 agent 后强制崩溃进程
-   （`adb shell am crash com.wingman.agent` 或 `adb shell kill <pid>`）→
-   数秒内 agent 重新上线（START_STICKY/闹钟双路径）；连续崩溃 5 次
-   （10 分钟窗口）后自动重启停摆，打开 App 手动启动可清零。
-3. **看门狗**：agent 运行中观察 logcat `WingmanService`——核心异常不在跑时
-   每 30s 重拉（正常在线时无该日志）。
-4. **机型保活**：按 `docs/guides/android-keep-alive.md` 完成厂商 ROM 设置，
-   静置 10-30 分钟验证 agent 不离线。
+1. **Boot autostart**: explicitly tick "Start Agent automatically on boot" in the app (off by default) and configure the server IP → reboot the device; the agent comes online on its own without opening the app (observe in the Dashboard).
+2. **Crash self-restart**: after starting the agent, force the process to crash (`adb shell am crash com.wingman.agent` or `adb shell kill <pid>`) → the agent comes back online within seconds (dual path via START_STICKY/alarm); after 5 consecutive crashes (within a 10-minute window) automatic restart stops, and opening the app to start it manually clears the counter.
+3. **Watchdog**: while the agent is running, watch logcat `WingmanService` — when the core is not running due to an exception it is pulled back up every 30s (no such log line appears when it is online normally).
+4. **Device-model keep-alive**: complete the vendor ROM settings per `docs/guides/android-keep-alive.md`, then leave the device idle for 10-30 minutes and verify the agent does not go offline.
 
-已知边界：MediaProjection 授权在进程崩溃/重启后不恢复（Android 14 单会话
-一次性，系统约束），需重新点「开启投屏」。
+Known boundary: MediaProjection authorization is not restored after a process crash/restart (on Android 14 the single session is one-shot, a system constraint), so "Start Screen Cast" must be tapped again.
 
-## A3 受限设置验证步骤（Android 13+ 侧载开箱）
+## A3 Restricted Settings Verification Steps (Android 13+ sideload out of the box)
 
-Android 13 起侧载安装的无障碍被「受限设置」默认屏蔽（开关打不开的根因），
-部署期一次性解开后不再复发：
+Since Android 13, accessibility installed by sideloading is blocked by default under "Restricted settings" (the root cause of the switch not turning on); once unlocked during deployment it does not recur:
 
-1. **脚本预授权（推荐）**：电脑连真机后
-   `scripts/android-restricted-settings.sh check` → FAIL 即未授权，
-   `allow` 幂等预授权后再 `check` 应 PASS；
-2. **手动允许**：系统设置 → 应用 → Wingman Agent → ⋮ → 允许受限制的
-   设置，随后无障碍开关即可正常打开；
-3. **App 内引导**：Android 13+ 且未开无障碍时主界面自动弹一次指引
-   （确认过不再自动弹，「受限设置指引」按钮常驻）。
+1. **Script-based pre-authorization (recommended)**: after connecting a real device to the PC, `scripts/android-restricted-settings.sh check` → FAIL means not authorized; run the idempotent `allow` pre-authorization, after which `check` should PASS;
+2. **Manual allow**: system settings → Apps → Wingman Agent → ⋮ → allow restricted settings, after which the accessibility switch can be turned on normally;
+3. **In-app guidance**: on Android 13+ with accessibility not yet enabled, the main screen automatically pops the guidance up once (after confirming, it no longer pops up automatically; the "Restricted settings guidance" button stays resident).
 
-批量/Device Owner 路径与故障排查见 `docs/guides/android-restricted-settings.md`。
+For batch/Device Owner paths and troubleshooting see `docs/guides/android-restricted-settings.md`.
 
-## 里程碑
+## Milestones
 
-- **A1（本目录）**：链路打通（连接/注册/脚本下发/日志回传/停止）。
-- **A2 脚本能力（已实施，2026-09-21）**：宿主桥（dispatchGesture 手势注入）/
-  MediaProjection 采集真实现（`platform/android` 租户 + 反向 JNI 桥）；
-  找色找图（ImageAnalyzer，纯 C++ 不走 OpenCV：找色直查、找图走
-  PatternMatcher::templateMatch；桌面同名 API 走 OpenCV
-  cv::matchTemplate，两条路径分数口径不同）；wingman.input/screen/vision
-  脚本 API；screenshot.capture 远程截图（NDK 的 OpenCV 仅用于截图
-  JPEG 编码）。见设计文档 §5.5/§5.6。
-- **A3 可靠性（剩余项已实施，2026-09-30）**：开机自启（BootCompletedReceiver
-  + 开关）、崩溃自重启（退避闹钟 + 崩溃串放弃 + coreRunning 门控）、核心
-  看门狗、机型保活指引（docs/guides/android-keep-alive.md）；受限设置引导
-  （docs/guides/android-restricted-settings.md + 预授权脚本 + App 内
-  RestrictedSettingsPolicy 引导，同日落地）；断连缓存自治
-  自 A1 起由 C++ RemoteClient 现成承担（outbox/重连，agentcore_test 覆盖）。
-  token 认证 P1 已于 2026-09-20 落地（见 docs/agent-token-auth-design.md），
-  nightly CI 打 APK、JVM 单测入 build-android job。A3-P2 安全演进部分落地
-  （2026-10-10：per-agent token 服务侧入库 + Dashboard 管理面/审计，
-  agent 侧零改动；token 存储迁移 Keystore 加密库 + 明文一次性迁移；
-  challenge-response/TLS 未实施）。
-- **A4 多设备编排（已落地）**：Dashboard 设备视图（标签分组/批量下发/平台大盘）与
-  Teams 页面（2026-10-13）；asset.sync 模板分发——服务端资产存储与
-  `POST /api/assets/sync` 下发 + 桌面 runtime 落盘（2026-10-13），Android 端侧
-  接 RpcDispatcher 复用同一 `registerAssetHandlers` 落 `filesDir/assets`
-  （2026-10-15，桌面同源守卫测试 `android_asset_test`；真机走查待真机）。
+- **A1 (this directory)**: the link is established (connect / register / script delivery / log return / stop).
+- **A2 script capabilities (implemented, 2026-09-21)**: the host bridge (gesture injection via dispatchGesture) / a real MediaProjection capture implementation (a `platform/android` tenant + a reverse JNI bridge); find-color and find-image matching (ImageAnalyzer, pure C++ without OpenCV: find-color does a direct lookup, find-image goes through PatternMatcher::templateMatch; the same-named desktop API goes through OpenCV cv::matchTemplate, and the two paths differ in score convention); the wingman.input/screen/vision script APIs; screenshot.capture remote screenshots (the NDK's OpenCV is used only for screenshot JPEG encoding). See §5.5/§5.6 of the design document.
+- **A3 reliability (remaining items implemented, 2026-09-30)**: boot autostart (BootCompletedReceiver + switch), crash self-restart (backoff alarm + crash-string abandonment + coreRunning gating), the core watchdog, device-model keep-alive guidance (docs/guides/android-keep-alive.md); restricted settings guidance (docs/guides/android-restricted-settings.md + the pre-authorization script + in-app RestrictedSettingsPolicy guidance, landed the same day); disconnect-buffer autonomy has been carried by the ready-made C++ RemoteClient since A1 (outbox/reconnect, covered by agentcore_test). The token auth P1 landed on 2026-09-20 (see docs/agent-token-auth-design.md), with the nightly CI building the APK and the JVM unit tests entering the build-android job. Part of the A3-P2 security evolution landed (2026-10-10: per-agent tokens stored server-side + Dashboard management UI/audit, with zero changes on the agent side; token storage migrated to the Keystore encrypted store + a one-time plaintext migration; challenge-response/TLS not implemented).
+- **A4 multi-device orchestration (landed)**: the Dashboard device view (tag grouping / batch delivery / platform dashboard) and the Teams page (2026-10-13); asset.sync template distribution — server-side asset storage and push via `POST /api/assets/sync` + desktop runtime writing to disk (2026-10-13), while the Android on-device side plugs in RpcDispatcher to reuse the same `registerAssetHandlers` and writes into `filesDir/assets` (2026-10-15, guarded by the same-source desktop test `android_asset_test`; the real-device walkthrough awaits a real device).

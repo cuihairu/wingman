@@ -1,27 +1,27 @@
-> [English](systemwatch.en.md) | **中文**
+> [中文](systemwatch.md) | **English**
 
 # API: wingman.systemwatch
 
-统一系统事件源（进程/窗口两腿），轮询式监听进程与窗口快照变化，命中注册目标时触发回调。
+Unified system event source (process/window watch legs). Listens to process and window snapshot changes by polling and triggers callbacks when a registered target is hit.
 
-## 模块概述
+## Module Overview
 
-systemwatch 模块提供以下能力：
+The systemwatch module provides the following capabilities:
 
-- **processWatch** - 观察进程启动/退出（按名称精确匹配或全部进程）
-- **windowWatch** - 观察窗口打开/关闭/标题变化（按标题子串匹配或全部窗口）
-- **unwatch** - 按注册 ID 注销观察
-- **clearAll** - 清空全部观察
-- **watchCount** - 查询当前观察数量（可按类别）
+- **processWatch** - watch process start/exit (exact name match, or all processes)
+- **windowWatch** - watch window open/close/title changes (title substring match, or all windows)
+- **unwatch** - unregister a watch by registration ID
+- **clearAll** - clear all watches
+- **watchCount** - query the current number of watches (optionally by category)
 
-**实现要点**：
+**Implementation notes**:
 
-- **轮询式 v1**：后台线程按固定间隔（默认 500ms）快照 `Process::enumerate()` 与 `Window::enumerate()`，与上一拍做 diff → 首拍只建立基线不触发。
-- **线程约束**：回调从后台轮询线程触发，**必须是线程安全 callable**（Python 函数可以；Lua callable 非线程安全，会被拒绝并发出 `systemwatch.error` 事件——Lua 侧请改用事件/触发器）。
-- **事件面**：命中事件同时以 `systemwatch.process` / `systemwatch.window` 进 `wingman.event`（source `"systemwatch"`，载荷含 action/pid/name 或 action/handle/title）——同样从后台线程同步分发，`event.on` 脚本订阅同受线程安全约束。
-- **v1 已知限制**：进程/窗口在两次轮询间隔内出现又消失（< 轮询间隔）可能漏检（与 hotkey 同型）；窗口事件按句柄归并，标题变化触发 `changed`。
-- **生命周期**：首个注册自动启动轮询线程；注销清空后线程自查退出（下次注册自动重启）。
-- **文件变化**：由 `wingman.filewatcher` 提供，不在本模块内。
+- **Polling-based v1**: a background thread snapshots `Process::enumerate()` and `Window::enumerate()` at a fixed interval (default 500ms) and diffs against the previous tick → the first tick only establishes a baseline and triggers nothing.
+- **Threading constraint**: callbacks are invoked from the background polling thread, so they **must be thread-safe callables** (Python functions are fine; Lua callables are not thread-safe and are rejected with a `systemwatch.error` event — on the Lua side use events/triggers instead).
+- **Event surface**: hit events are also fed into `wingman.event` as `systemwatch.process` / `systemwatch.window` (source `"systemwatch"`, payload carrying action/pid/name or action/handle/title) — likewise dispatched synchronously from the background thread, so script subscriptions via `event.on` are subject to the same thread-safety constraint.
+- **Known v1 limitations**: a process/window that appears and disappears within one polling interval (< polling interval) may be missed (same pattern as hotkey); window events are grouped by handle, and a title change triggers `changed`.
+- **Lifecycle**: the first registration automatically starts the polling thread; once unregistering empties the table, the thread self-checks and exits (it restarts automatically on the next registration).
+- **File changes**: provided by `wingman.filewatcher`, not part of this module.
 
 ---
 
@@ -29,20 +29,20 @@ systemwatch 模块提供以下能力：
 
 ### processWatch(name, callback) / process_watch(name, callback)
 
-**说明**：观察进程。`name` 为空时观察全部进程；非空按进程名精确匹配（与 `process.find` 一致）。回调为空或非线程安全时返回 `0`。
+**Description**: Watches processes. An empty `name` watches all processes; a non-empty name matches process names exactly (consistent with `process.find`). Returns `0` when the callback is empty or not thread-safe.
 
-**函数签名**：
+**Signature**:
 
 ```python
 processWatch(name: str, callback: Callable[[dict], None]) -> int
 ```
 
-**参数**：
-- `name` - 进程名（如 `"sleep"`）；空串 = 全部进程
-- `callback` - 变化回调，参数为载荷对象 `{ "action": "started"|"exited", "pid": int, "name": str }`
+**Parameters**:
+- `name` - process name (e.g. `"sleep"`); empty string = all processes
+- `callback` - change callback, receives the payload object `{ "action": "started"|"exited", "pid": int, "name": str }`
 
-**返回**：
-- `int` - 注册 ID（`0` = 失败）
+**Returns**:
+- `int` - registration ID (`0` = failure)
 
 :::tabs
 
@@ -74,20 +74,20 @@ if wid == 0:
 
 ### windowWatch(title, callback) / window_watch(title, callback)
 
-**说明**：观察窗口。`title` 为空时观察全部窗口；非空按标题子串匹配（与 `window.find` 一致）。
+**Description**: Watches windows. An empty `title` watches all windows; a non-empty title matches by title substring (consistent with `window.find`).
 
-**函数签名**：
+**Signature**:
 
 ```python
 windowWatch(title: str, callback: Callable[[dict], None]) -> int
 ```
 
-**参数**：
-- `title` - 窗口标题子串；空串 = 全部窗口
-- `callback` - 变化回调，参数为 `{ "action": "opened"|"closed"|"changed", "handle": int, "title": str }`（`changed` = 同句柄标题变化）
+**Parameters**:
+- `title` - window title substring; empty string = all windows
+- `callback` - change callback, receives `{ "action": "opened"|"closed"|"changed", "handle": int, "title": str }` (`changed` = title changed on the same handle)
 
-**返回**：
-- `int` - 注册 ID（`0` = 失败）
+**Returns**:
+- `int` - registration ID (`0` = failure)
 
 ---
 
@@ -95,9 +95,9 @@ windowWatch(title: str, callback: Callable[[dict], None]) -> int
 
 ### unwatch(id) / unwatch(id)
 
-**说明**：按注册 ID 注销观察（进程/窗口类别通用）。ID 不存在返回 `false`。
+**Description**: Unregisters a watch by registration ID (works for both the process and window categories). Returns `false` if the ID does not exist.
 
-**函数签名**：
+**Signature**:
 
 ```python
 unwatch(id: int) -> bool
@@ -109,9 +109,9 @@ unwatch(id: int) -> bool
 
 ### clearAll() / clear_all()
 
-**说明**：清空全部观察（幂等，空表时线程自查退出）。
+**Description**: Clears all watches (idempotent; the thread self-checks and exits once the table is empty).
 
-**函数签名**：
+**Signature**:
 
 ```python
 clearAll() -> None
@@ -123,9 +123,9 @@ clearAll() -> None
 
 ### watchCount(kind?) / watch_count(kind?)
 
-**说明**：查询当前观察数量。`kind` 可选 `"process"` / `"window"`；缺省返回总数；未知类别返回 `0`。
+**Description**: Queries the current number of watches. `kind` accepts `"process"` / `"window"`; omitted, it returns the total; an unknown category returns `0`.
 
-**函数签名**：
+**Signature**:
 
 ```python
 watchCount(kind: str | None = None) -> int
@@ -133,7 +133,7 @@ watchCount(kind: str | None = None) -> int
 
 ---
 
-## 完整示例
+## Full Example
 
 ```python
 from wingman import systemwatch
@@ -150,20 +150,20 @@ systemwatch.clearAll()
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python Function | Lua Function | Description | Parameters |
 |------------|---------|------|-----|
-| `processWatch(name, callback)` | 同名 | 观察进程启动/退出（Lua 侧拒绝，见模块概述） | name: 进程名（空=全部）<br>callback: 回调（须线程安全） |
-| `windowWatch(title, callback)` | 同名 | 观察窗口打开/关闭/标题变化 | title: 标题子串（空=全部）<br>callback: 回调（须线程安全） |
-| `unwatch(id)` | `unwatch(id)` | 按 ID 注销 | id: 注册 ID |
-| `clearAll()` | `clearAll()` | 清空全部观察 | - |
-| `watchCount(kind?)` | `watchCount(kind?)` | 查询观察数量 | kind: "process"/"window" 可选 |
+| `processWatch(name, callback)` | same name | Watch process start/exit (rejected on the Lua side, see Module Overview) | name: process name (empty = all)<br>callback: callback (must be thread-safe) |
+| `windowWatch(title, callback)` | same name | Watch window open/close/title changes | title: title substring (empty = all)<br>callback: callback (must be thread-safe) |
+| `unwatch(id)` | `unwatch(id)` | Unregister by ID | id: registration ID |
+| `clearAll()` | `clearAll()` | Clear all watches | - |
+| `watchCount(kind?)` | `watchCount(kind?)` | Query the number of watches | kind: optional "process"/"window" |
 
-**事件**：
+**Events**:
 
-| 事件 | 载荷 | 说明 |
+| Event | Payload | Description |
 |-----|------|-----|
-| `systemwatch.process` | `{action, pid, name}` | 进程 started/exited |
-| `systemwatch.window` | `{action, handle, title}` | 窗口 opened/closed/changed |
-| `systemwatch.error` | `{error}` | 注册被拒（非线程安全 callable） |
+| `systemwatch.process` | `{action, pid, name}` | Process started/exited |
+| `systemwatch.window` | `{action, handle, title}` | Window opened/closed/changed |
+| `systemwatch.error` | `{error}` | Registration rejected (non-thread-safe callable) |

@@ -58,14 +58,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
           submodules: recursive
 
       - name: Cache vcpkg binaries
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
           key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
@@ -107,7 +107,7 @@ jobs:
 
       # ====== Go Orchestrator Server ======
       - name: Setup Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.x'
           cache-dependency-path: orchestrator/server/go.sum
@@ -118,12 +118,12 @@ jobs:
 
       # ====== Dashboard Frontend ======
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ env.ACTIONS_NODE_VERSION }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.8
+        uses: pnpm/action-setup@v6.1.0
         with:
           version: 11
 
@@ -135,10 +135,10 @@ jobs:
 
       # ====== Tauri GUI ======
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@v1
 
       - name: Cache Cargo
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             ~/.cargo/registry
@@ -214,7 +214,7 @@ jobs:
           Compress-Archive -Path "$distDir\*" -DestinationPath "wingman-${version}-windows-x64.zip"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: wingman-${{ inputs.version }}-windows-x64
           path: wingman-${{ inputs.version }}-windows-x64.zip
@@ -243,7 +243,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
@@ -272,7 +272,7 @@ jobs:
 
       # ====== Go Orchestrator Server ======
       - name: Setup Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.x'
           cache-dependency-path: orchestrator/server/go.sum
@@ -283,12 +283,12 @@ jobs:
 
       # ====== Dashboard Frontend ======
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ env.ACTIONS_NODE_VERSION }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.8
+        uses: pnpm/action-setup@v6.1.0
         with:
           version: 11
 
@@ -300,10 +300,10 @@ jobs:
 
       # ====== Tauri GUI ======
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@v1
 
       - name: Cache Cargo
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             ~/.cargo/registry
@@ -355,7 +355,7 @@ jobs:
           tar czf "wingman-${version}-linux-x64.tar.gz" -C "$distDir" .
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: wingman-${{ inputs.version }}-linux-x64
           path: wingman-${{ inputs.version }}-linux-x64.tar.gz
@@ -381,7 +381,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
@@ -406,7 +406,7 @@ jobs:
 
       # ====== Go Orchestrator Server ======
       - name: Setup Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.x'
           cache-dependency-path: orchestrator/server/go.sum
@@ -417,12 +417,12 @@ jobs:
 
       # ====== Dashboard Frontend ======
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ env.ACTIONS_NODE_VERSION }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.8
+        uses: pnpm/action-setup@v6.1.0
         with:
           version: 11
 
@@ -434,10 +434,10 @@ jobs:
 
       # ====== Tauri GUI ======
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@v1
 
       - name: Cache Cargo
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             ~/.cargo/registry
@@ -489,7 +489,7 @@ jobs:
           tar czf "wingman-${version}-macos-x64.tar.gz" -C "$distDir" .
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: wingman-${{ inputs.version }}-macos-x64
           path: wingman-${{ inputs.version }}-macos-x64.tar.gz
@@ -518,14 +518,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
           submodules: recursive
 
       - name: Setup JDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version: '17'
@@ -539,7 +539,7 @@ jobs:
         run: bash ./build-scripts/ci/setup-vcpkg.sh
 
       - name: Cache vcpkg binaries
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
           key: ${{ runner.os }}-android-vcpkg-${{ hashFiles('apps/android/cpp/vcpkg.json') }}
@@ -578,7 +578,7 @@ jobs:
 
       - name: Upload CMake diagnostics
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: android-cmake-debug
           path: |
@@ -595,7 +595,7 @@ jobs:
             "wingman-${version}-android-arm64.apk"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: wingman-${{ inputs.version }}-android-arm64
           path: wingman-${{ inputs.version }}-android-arm64.apk
@@ -617,7 +617,7 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Download all platform artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8.0.2
         with:
           path: assets
           merge-multiple: true

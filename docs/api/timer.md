@@ -1,24 +1,24 @@
-> [English](timer.en.md) | **中文**
+> [中文](timer.md) | **English**
 
 # API: wingman.timer
 
-定时器模块，提供一次性/周期性定时回调与同步睡眠能力，用于在脚本中安排延时任务。
+Timer module providing one-shot/periodic timed callbacks and synchronous sleep, used to schedule delayed work in scripts.
 
-## 模块概述
+## Module Overview
 
-timer 模块提供以下能力：
+The timer module provides the following capabilities:
 
-- **after / setTimeout** - 一次性定时器：到点触发一次回调
-- **every / setInterval** - 周期定时器：按间隔重复触发，直到取消
-- **clearTimer / cancel / clearTimeout / clearInterval** - 取消定时器
-- **exists / count** - 查询待触发定时器
-- **clearAll** - 清理全部待触发定时器
-- **sleep** - 同步阻塞当前脚本线程
+- **after / setTimeout** - One-shot timer: fires the callback once when due
+- **every / setInterval** - Periodic timer: fires repeatedly at an interval until canceled
+- **clearTimer / cancel / clearTimeout / clearInterval** - Cancel timers
+- **exists / count** - Query pending timers
+- **clearAll** - Clear all pending timers
+- **sleep** - Synchronously block the current script thread
 
-> **注意**：回调在后台 timer 线程执行（非脚本主线程）。Python 回调经 GIL 包装跨线程安全；
-> Lua 回调非线程安全，与 `event.on` + 后台线程 emit 的既有敞口一致，Lua 脚本中请只做
-> 简单的标志位/队列操作或自行评估线程安全。脚本引擎关闭时清空的是**当前进程全部**待触发定时器（TimerService 为进程级单例，含其他脚本/runtime 创建的定时器），并非只清本脚本的。
-> Python 侧多词函数同时暴露 camelCase（`clearTimer`）与 snake_case（`clear_timer`）两种形式，下文以 camelCase 示例。
+> **Note**: Callbacks run on a background timer thread (not the script's main thread). Python callbacks are GIL-wrapped and safe
+> across threads; Lua callbacks are not thread safe — matching the existing exposure of `event.on` + background-thread emits — so in
+> Lua scripts stick to simple flag/queue operations or assess thread safety yourself. When the script engine shuts down, it clears **all** pending timers in the current process (TimerService is a process-wide singleton, including timers created by other scripts/runtimes), not just this script's.
+> On the Python side, multi-word functions are exposed in both camelCase (`clearTimer`) and snake_case (`clear_timer`) forms; examples below use camelCase.
 
 ---
 
@@ -26,9 +26,9 @@ timer 模块提供以下能力：
 
 ### after(ms, callback)
 
-**说明**：创建一次性定时器，`ms` 毫秒后在 timer 线程触发一次 `callback`。`ms` 小于 0 按 0 处理。
+**Description**: Creates a one-shot timer that fires `callback` once on the timer thread after `ms` milliseconds. `ms` values below 0 are treated as 0.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 after(ms: int, callback: Callable[[], Any]) -> int
@@ -38,12 +38,12 @@ after(ms: int, callback: Callable[[], Any]) -> int
 after(ms: number, callback: function) -> number
 ```
 
-**参数**：
-- `ms` - 延迟毫秒数
-- `callback` - 到点触发的回调（不接收参数）
+**Parameters**:
+- `ms` - Delay in milliseconds
+- `callback` - Callback fired when due (receives no arguments)
 
-**返回**：
-- `int`/`number` - timerId（参数无效时返回 0）
+**Returns**:
+- `int`/`number` - timerId (returns 0 for invalid arguments)
 
 :::tabs
 
@@ -76,9 +76,9 @@ end)
 
 ### every(ms, callback)
 
-**说明**：创建周期定时器，每 `ms` 毫秒触发一次 `callback`，直到调用 clearTimer/clearAll 或脚本结束。回调执行落后过多时重置基点，避免追赶风暴。
+**Description**: Creates a periodic timer that fires `callback` once every `ms` milliseconds until clearTimer/clearAll is called or the script ends. If callback execution falls too far behind, the base point resets to avoid a catch-up storm.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 every(ms: int, callback: Callable[[], Any]) -> int
@@ -88,12 +88,12 @@ every(ms: int, callback: Callable[[], Any]) -> int
 every(ms: number, callback: function) -> number
 ```
 
-**参数**：
-- `ms` - 触发间隔毫秒数。`ms <= 0` 不报错，按 **1ms** 间隔处理
-- `callback` - 周期触发的回调（不接收参数）
+**Parameters**:
+- `ms` - Firing interval in milliseconds. `ms <= 0` is not an error and is treated as a **1ms** interval
+- `callback` - Callback fired periodically (receives no arguments)
 
-**返回**：
-- `int`/`number` - timerId（仅参数缺失或回调不可调用时返回 0）
+**Returns**:
+- `int`/`number` - timerId (returns 0 only when arguments are missing or the callback is not callable)
 
 :::tabs
 
@@ -123,9 +123,9 @@ end)
 
 ### clearTimer(timerId)
 
-**说明**：取消一次性或周期定时器。已触发或不存在返回 false。
+**Description**: Cancels a one-shot or periodic timer. Returns false if it already fired or does not exist.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 clearTimer(timerId: int) -> bool
@@ -135,11 +135,11 @@ clearTimer(timerId: int) -> bool
 clearTimer(timerId: number) -> boolean
 ```
 
-**参数**：
-- `timerId` - after/every 返回的定时器 ID
+**Parameters**:
+- `timerId` - Timer ID returned by after/every
 
-**返回**：
-- `bool`/`boolean` - 是否成功取消
+**Returns**:
+- `bool`/`boolean` - Whether the cancellation succeeded
 
 :::tabs
 
@@ -169,9 +169,9 @@ wingman.timer.clearTimer(tid)
 
 ### exists(timerId) / count()
 
-**说明**：查询指定定时器是否仍在等待触发；查询当前待触发的定时器数量。
+**Description**: Queries whether a given timer is still pending; queries the number of currently pending timers.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 exists(timerId: int) -> bool
@@ -183,9 +183,9 @@ exists(timerId: number) -> boolean
 count() -> number
 ```
 
-**返回**：
-- `bool`/`boolean` - 是否存在
-- `int`/`number` - 待触发定时器数量
+**Returns**:
+- `bool`/`boolean` - Whether it exists
+- `int`/`number` - Number of pending timers
 
 ---
 
@@ -193,9 +193,9 @@ count() -> number
 
 ### clearAll()
 
-**说明**：清理全部待触发定时器。
+**Description**: Clears all pending timers.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 clearAll() -> int
@@ -205,8 +205,8 @@ clearAll() -> int
 clearAll() -> number
 ```
 
-**返回**：
-- `int`/`number` - 清理的定时器数量
+**Returns**:
+- `int`/`number` - Number of timers cleared
 
 ---
 
@@ -214,10 +214,10 @@ clearAll() -> number
 
 ### sleep(ms)
 
-**说明**：同步阻塞当前脚本线程 `ms` 毫秒（负值视为 0）。注意这会阻塞调用方线程本身；
-如需不阻塞的延时，请改用 `after`。
+**Description**: Synchronously blocks the current script thread for `ms` milliseconds (negative values are treated as 0). Note that this blocks the calling thread itself;
+for a non-blocking delay, use `after` instead.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 sleep(ms: int) -> None
@@ -229,7 +229,7 @@ sleep(ms: number) -> nil
 
 ---
 
-## 完整示例
+## Complete Example
 
 ### Python
 
@@ -284,19 +284,19 @@ print(timer.count())
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python Function | Lua Function | Description | Parameters |
 |------------|---------|------|-----|
-| `after(ms, callback)` | `after(ms, callback)` | 一次性定时器 | ms: 毫秒<br>callback: 回调 |
-| `setTimeout(ms, callback)` | `setTimeout(ms, callback)` | after 的 JS 风格别名 | 同 after |
-| `every(ms, callback)` | `every(ms, callback)` | 周期定时器 | ms: 间隔<br>callback: 回调 |
-| `setInterval(ms, callback)` | `setInterval(ms, callback)` | every 的 JS 风格别名 | 同 every |
-| `clearTimer(timerId)` | `clearTimer(timerId)` | 取消定时器 | timerId: 定时器 ID |
-| `cancel(timerId)` | `cancel(timerId)` | clearTimer 的别名 | 同 clearTimer |
-| `clearTimeout(timerId)` | `clearTimeout(timerId)` | clearTimer 的 JS 风格别名 | 同 clearTimer |
-| `clearInterval(timerId)` | `clearInterval(timerId)` | clearTimer 的 JS 风格别名 | 同 clearTimer |
-| `exists(timerId)` | `exists(timerId)` | 是否仍在等待触发 | timerId: 定时器 ID |
-| `count()` | `count()` | 待触发定时器数量 | 无 |
-| `clearAll()` | `clearAll()` | 清理全部定时器 | 无 |
-| `sleep(ms)` | `sleep(ms)` | 同步阻塞当前线程 | ms: 毫秒 |
+| `after(ms, callback)` | `after(ms, callback)` | One-shot timer | ms: milliseconds<br>callback: callback |
+| `setTimeout(ms, callback)` | `setTimeout(ms, callback)` | JS-style alias of after | Same as after |
+| `every(ms, callback)` | `every(ms, callback)` | Periodic timer | ms: interval<br>callback: callback |
+| `setInterval(ms, callback)` | `setInterval(ms, callback)` | JS-style alias of every | Same as every |
+| `clearTimer(timerId)` | `clearTimer(timerId)` | Cancel a timer | timerId: timer ID |
+| `cancel(timerId)` | `cancel(timerId)` | Alias of clearTimer | Same as clearTimer |
+| `clearTimeout(timerId)` | `clearTimeout(timerId)` | JS-style alias of clearTimer | Same as clearTimer |
+| `clearInterval(timerId)` | `clearInterval(timerId)` | JS-style alias of clearTimer | Same as clearTimer |
+| `exists(timerId)` | `exists(timerId)` | Whether still pending | timerId: timer ID |
+| `count()` | `count()` | Number of pending timers | None |
+| `clearAll()` | `clearAll()` | Clear all timers | None |
+| `sleep(ms)` | `sleep(ms)` | Synchronously block the current thread | ms: milliseconds |

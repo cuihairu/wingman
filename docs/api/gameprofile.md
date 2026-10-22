@@ -1,20 +1,20 @@
-> [English](gameprofile.en.md) | **中文**
+> [中文](gameprofile.md) | **English**
 
 # API: wingman.gameprofile
 
-游戏配置档案模块，用于管理游戏相关的配置档案（profile）：窗口/颜色/图像/触发器/脚本，支持模板、导入导出与版本管理。
+Game profile module for managing game-related configuration profiles: windows/colors/images/triggers/scripts, with support for templates, import/export, and version management.
 
-底层实现为 `GameProfileManager`（单例），档案含 `version` 字段便于版本管理。
+The underlying implementation is `GameProfileManager` (a singleton); each profile carries a `version` field to facilitate version management.
 
-## 模块概览
+## Module Overview
 
-| 分类 | 函数 |
+| Category | Functions |
 |------|------|
-| 读取 | `get`、`getActive`、`list`、`findByWindow` |
-| 写入 | `load`、`save`、`setActive`、`delete` |
-| 目录 | `setProfilesDirectory`、`getProfilesDirectory`、`scan` |
-| 模板 | `createTemplate` |
-| 导入导出 | `exportJson`、`importJson`、`exportPackage`、`importPackage` |
+| Read | `get`, `getActive`, `list`, `findByWindow` |
+| Write | `load`, `save`, `setActive`, `delete` |
+| Directory | `setProfilesDirectory`, `getProfilesDirectory`, `scan` |
+| Template | `createTemplate` |
+| Import/Export | `exportJson`, `importJson`, `exportPackage`, `importPackage` |
 
 ```lua
 local gameprofile = require("wingman.gameprofile")
@@ -26,11 +26,11 @@ from wingman import gameprofile
 
 ---
 
-## 目录与扫描
+## Directory and Scanning
 
 ### setProfilesDirectory(dir)
 
-设置档案扫描目录。
+Sets the profile scan directory.
 
 ```lua
 gameprofile.setProfilesDirectory("./profiles")
@@ -38,11 +38,11 @@ gameprofile.setProfilesDirectory("./profiles")
 
 ### getProfilesDirectory()
 
-返回当前档案目录。
+Returns the current profile directory.
 
 ### scan()
 
-扫描档案目录，加载其中所有 `profile.json`。
+Scans the profile directory and loads every `profile.json` in it.
 
 ```lua
 gameprofile.scan()
@@ -50,11 +50,11 @@ gameprofile.scan()
 
 ---
 
-## 模板
+## Template
 
 ### createTemplate(gameName) [id, name]
 
-基于游戏名创建默认模板并注册（id 由游戏名派生：小写 + 空格转下划线）。模板包含初始 `version = "1.0.0"`。已存在同名 id 时返回 `nil`。
+Creates a default template from the game name and registers it (the id is derived from the game name: lowercased + spaces turned into underscores). The template carries an initial `version = "1.0.0"`. Returns `nil` if an id with the same name already exists.
 
 ```lua
 local id, name = gameprofile.createTemplate("示例游戏")
@@ -63,11 +63,11 @@ local id, name = gameprofile.createTemplate("示例游戏")
 
 ---
 
-## 读取
+## Read
 
 ### list() [{id}]
 
-返回所有已加载档案的 id 列表。
+Returns the list of ids of all loaded profiles.
 
 ```lua
 local ids = gameprofile.list()
@@ -78,43 +78,43 @@ end
 
 ### get(id) [name, title?]
 
-返回指定档案的名称与窗口标题；不存在返回 `nil`。
+Returns the name and window title of the given profile; returns `nil` if it does not exist.
 
 ### getActive() [id, name?]
 
-返回当前激活档案。
+Returns the currently active profile.
 
 ### findByWindow(title) [id, name?]
 
-按窗口标题匹配档案。
+Matches a profile by window title.
 
 ---
 
-## 写入
+## Write
 
 ### load(id) [bool]
 
-从目录载入指定档案。
+Loads the given profile from the directory.
 
 ### save(id) [bool]
 
-保存指定档案到文件。
+Saves the given profile to file.
 
 ### setActive(id) [bool]
 
-设置当前激活档案。
+Sets the currently active profile.
 
 ### delete(id) [bool]
 
-删除指定档案。
+Deletes the given profile.
 
 ---
 
-## 导入 / 导出
+## Import / Export
 
 ### exportJson(id) [json]
 
-导出档案为 JSON 字符串（含 `version`、`window`、`colors`、`images`、`triggers`、`scripts`、`settings` 全部字段）。
+Exports a profile as a JSON string (including all fields: `version`, `window`, `colors`, `images`, `triggers`, `scripts`, `settings`).
 
 ```lua
 local json = gameprofile.exportJson(id)
@@ -123,7 +123,7 @@ local json = gameprofile.exportJson(id)
 
 ### importJson(json, id?) [bool]
 
-从 JSON 字符串导入档案（自动校验；可选指定 id 覆盖原 id）。
+Imports a profile from a JSON string (validated automatically; optionally pass an id to override the original id).
 
 ```lua
 gameprofile.importJson(jsonStr)        -- 使用 JSON 内的 id
@@ -132,23 +132,23 @@ gameprofile.importJson(jsonStr, "my")  -- 强制 id 为 "my"
 
 ### exportPackage(id, outputPath) [bool]
 
-导出档案为独立文件包（当前实现为 JSON 文件，预留 ZIP 打包扩展）。
+Exports a profile as a standalone file package (currently implemented as a JSON file; reserved for future ZIP packaging).
 
 ### importPackage(packagePath) [bool]
 
-从文件包导入档案。
+Imports a profile from a file package.
 
 ---
 
-## 版本管理
+## Version Management
 
-`GameProfile.version` 字段随档案持久化（模板默认 `1.0.0`）。导入导出时版本随 JSON 流转，可在档案内随升级递增，由脚本自行约定语义（如 `major.minor.patch`）。
+The `GameProfile.version` field is persisted along with the profile (templates default to `1.0.0`). On import/export the version travels with the JSON and can be incremented within the profile as it is upgraded; its semantics are left to the script's own convention (e.g. `major.minor.patch`).
 
 ---
 
-## 示例
+## Example
 
-完整示例见 [`examples/lua_scripts/game_profile.lua`](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts/game_profile.lua)：
+For a complete example see [`examples/lua_scripts/game_profile.lua`](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts/game_profile.lua):
 
 ```lua
 gameprofile.setProfilesDirectory("./profiles")

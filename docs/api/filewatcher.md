@@ -1,26 +1,26 @@
-> [English](filewatcher.en.md) | **中文**
+> [中文](filewatcher.md) | **English**
 
 # API: wingman.filewatcher
 
-文件监听模块，提供对文件/目录变更的监视与回调能力，用于在脚本中响应文件系统事件。
+File watcher module that monitors file/directory changes and invokes callbacks, letting scripts respond to file system events.
 
-## 模块概述
+## Module Overview
 
-filewatcher 模块提供以下能力：
+The filewatcher module provides the following capabilities:
 
-- **watch** - 开始监听指定路径的变更，返回注册 ID
-- **unwatch** - 停止监听指定路径
-- **unwatchAll** - 停止所有监听
-- **isWatching** - 查询某路径是否处于监听中
-- **getWatchedPaths** - 列出当前所有被监听的路径
+- **watch** - Start watching a specified path for changes, returns a registration ID
+- **unwatch** - Stop watching a specified path
+- **unwatchAll** - Stop all watches
+- **isWatching** - Query whether a path is currently being watched
+- **getWatchedPaths** - List all currently watched paths
 
-**实现要点**：
+**Implementation notes**:
 
-- **原生后端**：Linux 走 inotify、macOS 走 FSEvents、Windows 走 `ReadDirectoryChangesW`，变更由平台后端线程异步回调。
-- **线程约束**：回调从平台后端线程触发，**必须是线程安全 callable**（Python 函数可以；Lua callable 非线程安全，会被拒绝并发出 `filewatcher.error` 事件——Lua 侧请改用 Python 注册监听）。
-- **事件面**：每次变更同时以 `filewatcher.changed` 进 `wingman.event`（source `"filewatcher"`）——同样从后端线程同步分发，`event.on` 脚本订阅同受线程安全约束。
-- **路径簿记**：模块按注册路径记录监听（`isWatching`/`getWatchedPaths` 据此查询）；同一路径重复 `watch` 会先注销旧观察再注册新的（替换语义）。
-- **统一事件源**：进程/窗口变化由 `wingman.systemwatch` 提供，文件变化由本模块提供。
+- **Native backends**: Linux uses inotify, macOS uses FSEvents, Windows uses `ReadDirectoryChangesW`; changes are reported asynchronously from the platform backend thread.
+- **Threading constraints**: Callbacks fire from the platform backend thread and **must be thread-safe callables** (Python functions qualify; Lua callables are not thread safe and are rejected with a `filewatcher.error` event — on the Lua side, register watches from Python instead).
+- **Event surface**: Every change is also delivered as `filewatcher.changed` through `wingman.event` (source `"filewatcher"`) — likewise dispatched synchronously from the backend thread, so `event.on` script subscriptions are subject to the same thread-safety constraint.
+- **Path bookkeeping**: The module records watches by registered path (`isWatching`/`getWatchedPaths` query this bookkeeping); calling `watch` again on the same path unregisters the old watch before registering the new one (replacement semantics).
+- **Unified event sources**: Process/window changes come from `wingman.systemwatch`; file changes come from this module.
 
 ---
 
@@ -28,9 +28,9 @@ filewatcher 模块提供以下能力：
 
 ### watch(path, callback, recursive?) / watch(path, callback, recursive?)
 
-**说明**：开始监听指定路径的文件变更。`path` 必须为字符串、`callback` 必须为可调用对象；回调为非线程安全 callable 或原生后端注册失败时返回 `0`。`recursive` 缺省为 `true`（递归子目录）；传非布尔值按缺省处理。
+**Description**: Starts watching a specified path for file changes. `path` must be a string and `callback` must be callable; returns `0` when the callback is a non-thread-safe callable or native backend registration fails. `recursive` defaults to `true` (recurse into subdirectories); non-boolean values are treated as the default.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 watch(path: str, callback: Callable[[dict], None], recursive: bool = True) -> int
@@ -40,14 +40,14 @@ watch(path: str, callback: Callable[[dict], None], recursive: bool = True) -> in
 watch(path: string, callback: function, recursive?: boolean) -> integer
 ```
 
-**参数**：
-- `path` - 要监听的文件或目录路径
-- `callback` - 文件变更时触发的回调函数，参数为载荷对象 `{ "type": str, "path": str, "oldPath": str, "timestamp": int }`
+**Parameters**:
+- `path` - File or directory path to watch
+- `callback` - Callback invoked when files change; receives a payload object `{ "type": str, "path": str, "oldPath": str, "timestamp": int }`
   - `type` ∈ `"added"` / `"removed"` / `"modified"` / `"renamed_old"` / `"renamed_new"`
-- `recursive` - 是否递归监听子目录（可选，默认 `true`）
+- `recursive` - Whether to watch subdirectories recursively (optional, default `true`)
 
-**返回**：
-- `int`/`integer` - 注册 ID（`0` = 失败）
+**Returns**:
+- `int`/`integer` - Registration ID (`0` = failure)
 
 :::tabs
 
@@ -79,9 +79,9 @@ if wid == 0:
 
 ### unwatch(path) / unwatch(path)
 
-**说明**：停止监听指定路径。路径未被监听时返回 `false`，重复注销第二次返回 `false`。
+**Description**: Stops watching the specified path. Returns `false` if the path is not being watched; a repeated unwatch returns `false` the second time.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 unwatch(path: str) -> bool
@@ -91,11 +91,11 @@ unwatch(path: str) -> bool
 unwatch(path: string) -> boolean
 ```
 
-**参数**：
-- `path` - 要停止监听的文件或目录路径
+**Parameters**:
+- `path` - File or directory path to stop watching
 
-**返回**：
-- `bool`/`boolean` - 成功注销返回 `true`，否则返回 `false`
+**Returns**:
+- `bool`/`boolean` - `true` on successful unregistration, `false` otherwise
 
 :::tabs
 
@@ -123,9 +123,9 @@ wingman.filewatcher.unwatch("./data")
 
 ### unwatchAll() / unwatch_all()
 
-**说明**：停止所有正在监听的路径并清空簿记（幂等）。
+**Description**: Stops all active watches and clears the bookkeeping (idempotent).
 
-**函数签名**：
+**Function signature**:
 
 ```python
 unwatchAll() -> None
@@ -135,11 +135,11 @@ unwatchAll() -> None
 unwatchAll() -> nil
 ```
 
-**参数**：
-- 无
+**Parameters**:
+- None
 
-**返回**：
-- 无
+**Returns**:
+- None
 
 :::tabs
 
@@ -167,9 +167,9 @@ wingman.filewatcher.unwatchAll()
 
 ### isWatching(path) / is_watching(path)
 
-**说明**：查询指定路径是否正在被监听。`path` 必须为字符串，否则返回 `false`。
+**Description**: Queries whether the specified path is currently being watched. `path` must be a string; otherwise returns `false`.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 isWatching(path: str) -> bool
@@ -179,11 +179,11 @@ isWatching(path: str) -> bool
 isWatching(path: string) -> boolean
 ```
 
-**参数**：
-- `path` - 要查询的文件或目录路径
+**Parameters**:
+- `path` - File or directory path to query
 
-**返回**：
-- `bool`/`boolean` - 是否正在监听
+**Returns**:
+- `bool`/`boolean` - Whether the path is being watched
 
 :::tabs
 
@@ -214,9 +214,9 @@ end
 
 ### getWatchedPaths() / get_watched_paths()
 
-**说明**：返回当前所有正在被监听的路径。
+**Description**: Returns all paths currently being watched.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 getWatchedPaths() -> list[str]
@@ -226,11 +226,11 @@ getWatchedPaths() -> list[str]
 getWatchedPaths() -> string[]
 ```
 
-**参数**：
-- 无
+**Parameters**:
+- None
 
-**返回**：
-- `list[str]`/`string[]` - 监听路径数组
+**Returns**:
+- `list[str]`/`string[]` - Array of watched paths
 
 :::tabs
 
@@ -259,7 +259,7 @@ end
 
 ---
 
-## 完整示例
+## Complete Example
 
 ### Python
 
@@ -285,19 +285,19 @@ filewatcher.unwatchAll()
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python Function | Lua Function | Description | Parameters |
 |------------|---------|------|-----|
-| `watch(path, callback, recursive?)` | 同名（Lua 侧拒绝，见模块概述） | 监听路径，返回注册 ID | path: 路径<br>callback: 变更回调（须线程安全）<br>recursive: 是否递归（默认 true） |
-| `unwatch(path)` | `unwatch(path)` | 停止监听 | path: 路径 |
-| `unwatchAll()` | `unwatchAll()` | 停止所有监听 | 无 |
-| `isWatching(path)` | `isWatching(path)` | 是否在监听 | path: 路径 |
-| `getWatchedPaths()` | `getWatchedPaths()` | 列出监听路径 | 无 |
+| `watch(path, callback, recursive?)` | Same name (rejected on the Lua side, see Module Overview) | Watch a path, returns a registration ID | path: path to watch<br>callback: change callback (must be thread safe)<br>recursive: whether to recurse (default true) |
+| `unwatch(path)` | `unwatch(path)` | Stop watching | path: path to stop watching |
+| `unwatchAll()` | `unwatchAll()` | Stop all watches | None |
+| `isWatching(path)` | `isWatching(path)` | Whether it is being watched | path: path to query |
+| `getWatchedPaths()` | `getWatchedPaths()` | List watched paths | None |
 
-**事件**：
+**Events**:
 
-| 事件 | 载荷 | 说明 |
+| Event | Payload | Description |
 |-----|------|-----|
-| `filewatcher.changed` | `{type, path, oldPath, timestamp}` | 文件变更（added/removed/modified/renamed_old/renamed_new） |
-| `filewatcher.error` | `{error}` | 注册被拒（非线程安全 callable） |
+| `filewatcher.changed` | `{type, path, oldPath, timestamp}` | File change (added/removed/modified/renamed_old/renamed_new) |
+| `filewatcher.error` | `{error}` | Registration rejected (non-thread-safe callable) |

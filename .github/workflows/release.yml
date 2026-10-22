@@ -24,7 +24,7 @@ jobs:
       prerelease: ${{ steps.resolve.outputs.prerelease }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -92,7 +92,7 @@ jobs:
           PY
 
       - name: Upload release notes
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: release-notes
           path: release_notes.md
@@ -109,10 +109,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Download release notes
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8.0.2
         with:
           name: release-notes
           path: .
@@ -152,7 +152,7 @@ jobs:
           echo "No published release for $TAG — safe to create draft"
 
       - name: Create draft release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v3.0.3
         with:
           tag_name: ${{ needs.resolve-version.outputs.tag }}
           name: ${{ needs.resolve-version.outputs.tag }}
@@ -203,7 +203,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all platform artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8.0.2
         with:
           path: assets
           merge-multiple: true
@@ -240,7 +240,7 @@ jobs:
           } > "$GITHUB_WORKSPACE/VERIFY.md"
 
       - name: Upload checksums & build info
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v3.0.3
         with:
           tag_name: ${{ needs.resolve-version.outputs.tag }}
           files: |

@@ -1,27 +1,27 @@
-> [English](security.en.md) | **中文**
+> [中文](security.md) | **English**
 
 # API: wingman.security
 
-安全模块，提供环境检测、加密解密、随机偏移等安全相关功能。
+Security module providing environment detection, encryption and decryption, random offsets, and other security-related functionality.
 
-## 模块概述
+## Module Overview
 
-security 模块提供安全功能：
-- **环境检测** - 调试器检测、虚拟机检测、完整性验证
-- **人性化随机** - 随机延迟、随机坐标偏移
-- **加密解密** - 字符串加密解密
-- **哈希和随机** - 字符串哈希、随机字符串生成
-- **敏感信息过滤** - 过滤敏感字段
+The security module provides security features:
+- **Environment detection** - Debugger detection, virtual machine detection, integrity verification
+- **Humanized randomness** - Random delays, random coordinate offsets
+- **Encryption and decryption** - String encryption and decryption
+- **Hashing and randomness** - String hashing, random string generation
+- **Sensitive information filtering** - Filter sensitive fields
 
 ---
 
-## 检测调试器
+## Detecting a Debugger
 
 ### is_debugger_present() / isDebuggerPresent()
 
-**说明**：检测是否在调试器中运行。
+**Description**: Detects whether it is running under a debugger.
 
-**函数签名**：
+**Signature**:
 
 ```python
 is_debugger_present() -> bool
@@ -31,18 +31,18 @@ is_debugger_present() -> bool
 isDebuggerPresent() -> boolean
 ```
 
-**返回**：
-- 是否检测到调试器
+**Returns**:
+- Whether a debugger was detected
 
 ---
 
-## 检测虚拟机
+## Detecting a Virtual Machine
 
 ### is_running_in_vm() / isRunningInVM()
 
-**说明**：检测是否在虚拟机环境中运行。
+**Description**: Detects whether it is running inside a virtual machine environment.
 
-**函数签名**：
+**Signature**:
 
 ```python
 is_running_in_vm() -> bool
@@ -52,18 +52,18 @@ is_running_in_vm() -> bool
 isRunningInVM() -> boolean
 ```
 
-**返回**：
-- 是否在虚拟机中
+**Returns**:
+- Whether it is running in a virtual machine
 
 ---
 
-## 验证完整性
+## Verifying Integrity
 
 ### verify_integrity() / verifyIntegrity()
 
-**说明**：验证程序完整性。**当前为占位实现**：默认（完整性检查开关未开启）恒返回 `True`/`true`；显式开启后走未实现分支，恒返回 `False`/`false` 并打警告日志。不能据此判断程序是否被篡改。
+**Description**: Verifies program integrity. **Currently a placeholder implementation**: by default (integrity checking not enabled) it always returns `True`/`true`; when explicitly enabled, it takes the unimplemented branch, always returns `False`/`false`, and logs a warning. Do not rely on it to decide whether the program has been tampered with.
 
-**函数签名**：
+**Signature**:
 
 ```python
 verify_integrity() -> bool
@@ -73,8 +73,8 @@ verify_integrity() -> bool
 verifyIntegrity() -> boolean
 ```
 
-**返回**：
-- 占位值（见上），非真实完整性校验结果
+**Returns**:
+- A placeholder value (see above), not a real integrity verification result
 
 :::tabs
 
@@ -121,13 +121,13 @@ end
 
 ---
 
-## 获取随机延迟
+## Getting a Random Delay
 
 ### get_random_delay() / getRandomDelay()
 
-**说明**：获取人性化随机延迟时间。
+**Description**: Gets a humanized random delay.
 
-**函数签名**：
+**Signature**:
 
 ```python
 get_random_delay() -> int
@@ -137,18 +137,18 @@ get_random_delay() -> int
 getRandomDelay() -> number
 ```
 
-**返回**：
-- 随机延迟（毫秒）
+**Returns**:
+- A random delay (in milliseconds)
 
 ---
 
-## 获取随机偏移
+## Getting a Random Offset
 
 ### get_random_offset() / getRandomOffset()
 
-**说明**：获取人性化随机坐标偏移。
+**Description**: Gets a humanized random coordinate offset.
 
-**函数签名**：
+**Signature**:
 
 ```python
 get_random_offset() -> list[float, float]
@@ -158,9 +158,9 @@ get_random_offset() -> list[float, float]
 getRandomOffset() -> table
 ```
 
-**返回**：**单个数组值** `[x_offset, y_offset]`（两端同构，不是多返回值）：
-- 下标 `1`（Python `result[0]`）- X 偏移
-- 下标 `2`（Python `result[1]`）- Y 偏移
+**Returns**: A **single array value** `[x_offset, y_offset]` (same shape on both ends, not multiple return values):
+- Index `1` (Python `result[0]`) - X offset
+- Index `2` (Python `result[1]`) - Y offset
 
 :::tabs
 
@@ -194,19 +194,19 @@ wingman.input.click(100 + offset[1], 200 + offset[2])
 
 :::
 
-> [原 `security.encryptString` / `security.decryptString`（XOR 混淆，非真实加密）]
-> 已于 2026-09 移除。加密请使用 crypto 模块的 `crypto.encryptAES` / `crypto.decryptAES`
-> （AES-256-GCM），见 [crypto API](crypto.md)。
+> [The former `security.encryptString` / `security.decryptString` (XOR obfuscation, not real encryption)]
+> were removed in 2026-09. For encryption, use the crypto module's `crypto.encryptAES` / `crypto.decryptAES`
+> (AES-256-GCM); see [crypto API](crypto.md).
 
 ---
 
-## 计算哈希
+## Computing a Hash
 
 ### hash_string(str) / hashString(str)
 
-**说明**：计算字符串的哈希值。
+**Description**: Computes the hash of a string.
 
-**函数签名**：
+**Signature**:
 
 ```python
 hash_string(str: str) -> str
@@ -216,21 +216,21 @@ hash_string(str: str) -> str
 hashString(str: string) -> string
 ```
 
-**参数**：
-- `str` - 要哈希的字符串
+**Parameters**:
+- `str` - The string to hash
 
-**返回**：
-- 哈希值（十六进制字符串）
+**Returns**:
+- The hash value (a hexadecimal string)
 
 ---
 
-## 生成随机字符串
+## Generating a Random String
 
 ### generate_random_string(length) / generateRandomString(length)
 
-**说明**：生成随机字符串。
+**Description**: Generates a random string.
 
-**函数签名**：
+**Signature**:
 
 ```python
 generate_random_string(length: int) -> str
@@ -240,11 +240,11 @@ generate_random_string(length: int) -> str
 generateRandomString(length: number) -> string
 ```
 
-**参数**：
-- `length` - 字符串长度
+**Parameters**:
+- `length` - String length
 
-**返回**：
-- 随机字符串
+**Returns**:
+- The random string
 
 :::tabs
 
@@ -280,13 +280,13 @@ print("随机字符串: " .. randomStr)
 
 ---
 
-## 过滤敏感信息
+## Filtering Sensitive Information
 
 ### filter_sensitive(str) / filterSensitive(str)
 
-**说明**：过滤字符串中的敏感信息。当前实现是**键名打码**：把命中的敏感键名本身（`password`/`passwd`/`pwd`/`token`/`key`/`secret`/`api_key`/`apikey`，大小写不敏感）替换为 `***`，**不是值打码**——`=` 后面的值原样保留。
+**Description**: Filters sensitive information from a string. The current implementation does **key-name masking**: it replaces matched sensitive key names themselves (`password`/`passwd`/`pwd`/`token`/`key`/`secret`/`api_key`/`apikey`, case-insensitive) with `***`; it does **not mask values** — whatever follows `=` is kept as-is.
 
-**函数签名**：
+**Signature**:
 
 ```python
 filter_sensitive(str: str) -> str
@@ -296,11 +296,11 @@ filter_sensitive(str: str) -> str
 filterSensitive(str: string) -> string
 ```
 
-**参数**：
-- `str` - 要过滤的字符串
+**Parameters**:
+- `str` - The string to filter
 
-**返回**：
-- 敏感**键名**被替换为 `***` 的字符串（值不替换）
+**Returns**:
+- The string with sensitive **key names** replaced by `***` (values are not replaced)
 
 :::tabs
 
@@ -328,15 +328,15 @@ print(safeString)  -- "***=123456&***=abc"
 
 ---
 
-## 可用接口
+## Available APIs
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python Function | Lua Function | Description | Parameters |
 |------------|---------|------|-----|
-| `is_debugger_present()` | `isDebuggerPresent()` | 检测调试器 | 返回: 是否检测到调试器 |
-| `is_running_in_vm()` | `isRunningInVM()` | 检测虚拟机 | 返回: 是否在虚拟机中 |
-| `verify_integrity()` | `verifyIntegrity()` | 验证完整性 | 返回: 占位实现（默认恒 true；显式开启后恒 false） |
-| `get_random_delay()` | `getRandomDelay()` | 获取随机延迟 | 返回: 毫秒数 |
-| `get_random_offset()` | `getRandomOffset()` | 获取随机偏移 | 返回: [x, y] 数组（Lua 取 offset[1]/offset[2]） |
-| `hash_string(str)` | `hashString(str)` | 计算哈希 | str: 字符串<br>返回: 哈希值 |
-| `generate_random_string(length)` | `generateRandomString(length)` | 生成随机字符串 | length: 字符串长度<br>返回: 随机字符串 |
-| `filter_sensitive(str)` | `filterSensitive(str)` | 过滤敏感信息 | str: 原字符串<br>返回: 键名打码后字符串（值不替换） |
+| `is_debugger_present()` | `isDebuggerPresent()` | Detect a debugger | Returns: whether a debugger was detected |
+| `is_running_in_vm()` | `isRunningInVM()` | Detect a virtual machine | Returns: whether running in a VM |
+| `verify_integrity()` | `verifyIntegrity()` | Verify integrity | Returns: placeholder implementation (always true by default; always false when explicitly enabled) |
+| `get_random_delay()` | `getRandomDelay()` | Get a random delay | Returns: milliseconds |
+| `get_random_offset()` | `getRandomOffset()` | Get a random offset | Returns: [x, y] array (Lua uses offset[1]/offset[2]) |
+| `hash_string(str)` | `hashString(str)` | Compute a hash | str: the string<br>Returns: hash value |
+| `generate_random_string(length)` | `generateRandomString(length)` | Generate a random string | length: string length<br>Returns: the random string |
+| `filter_sensitive(str)` | `filterSensitive(str)` | Filter sensitive information | str: original string<br>Returns: string with key names masked (values not replaced) |

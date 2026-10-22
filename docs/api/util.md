@@ -1,24 +1,24 @@
-> [English](util.en.md) | **中文**
+> [中文](util.md) | **English**
 
 # API: wingman.util
 
-工具函数模块，提供常用的辅助功能。
+Utility function module providing common helper functionality.
 
-## 模块概述
+## Module Overview
 
-util 模块提供通用工具函数：
-- **时间函数** - 获取时间戳、延迟执行
-- **日志输出** - 输出日志
+The util module provides general-purpose utility functions:
+- **Time functions** - get timestamps, delay execution
+- **Log output** - print logs
 
 ---
 
-## 延迟执行
+## Delayed Execution
 
 ### sleep(milliseconds) / sleep(milliseconds)
 
-**说明**：延迟执行指定毫秒数。
+**Description**: Delays execution for the given number of milliseconds.
 
-**函数签名**：
+**Signature**:
 
 ```python
 sleep(milliseconds: int) -> None
@@ -28,11 +28,11 @@ sleep(milliseconds: int) -> None
 sleep(milliseconds: number) -> nil
 ```
 
-**参数**：
-- `milliseconds` - 延迟的毫秒数
+**Parameters**:
+- `milliseconds` - the number of milliseconds to delay
 
-**返回**：
-- 无
+**Returns**:
+- None
 
 :::tabs
 
@@ -64,13 +64,13 @@ wingman.util.sleep(2000)
 
 ---
 
-## 获取时间戳
+## Getting a Timestamp
 
 ### getTime() / getTime()
 
-**说明**：获取当前时间戳（毫秒）。
+**Description**: Gets the current timestamp (in milliseconds).
 
-**函数签名**：
+**Signature**:
 
 ```python
 getTime() -> int
@@ -80,8 +80,8 @@ getTime() -> int
 getTime() -> number
 ```
 
-**返回**：
-- 当前时间戳（毫秒）
+**Returns**:
+- the current timestamp (in milliseconds)
 
 :::tabs
 
@@ -109,13 +109,13 @@ print("当前时间戳: " .. timestamp)
 
 ---
 
-## 输出日志
+## Log Output
 
 ### log(message) / log(message)
 
-**说明**：输出日志到控制台。
+**Description**: Prints a log message to the console.
 
-**函数签名**：
+**Signature**:
 
 ```python
 log(message: str) -> None
@@ -125,11 +125,11 @@ log(message: str) -> None
 log(message: string) -> nil
 ```
 
-**参数**：
-- `message` - 日志消息
+**Parameters**:
+- `message` - the log message
 
-**返回**：
-- 无
+**Returns**:
+- None
 
 :::tabs
 
@@ -155,10 +155,10 @@ wingman.util.log("这是一条日志信息")
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python Function | Lua Function | Description | Parameters |
 |------------|---------|------|-----|
-| `sleep(milliseconds)` | `sleep(milliseconds)` | 延迟执行 | milliseconds: 毫秒数 |
-| `getTime()` | `getTime()` | 获取时间戳 | 返回: 毫秒时间戳 |
-| `log(message)` | `log(message)` | 输出日志 | message: 日志消息 |
+| `sleep(milliseconds)` | `sleep(milliseconds)` | Delay execution | milliseconds: number of milliseconds |
+| `getTime()` | `getTime()` | Get a timestamp | Returns: timestamp in milliseconds |
+| `log(message)` | `log(message)` | Print a log message | message: log message |

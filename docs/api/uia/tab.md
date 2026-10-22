@@ -1,12 +1,12 @@
-> [English](tab.en.md) | **中文**
+> [中文](tab.md) | **English**
 
 # API: UIA Tab
 
-标签页（Tab）控件用于组织多页内容，常见于设置界面、分类浏览等场景。
+The Tab control organizes multiple pages of content. It is commonly seen in settings windows, category browsing, and similar scenarios.
 
-## 查找标签控件
+## Finding a tab control
 
-**说明**：标签控件通常有名称，可以通过名称查找。
+**Note**: Tab controls usually have names and can be found by name.
 
 :::tabs
 
@@ -35,11 +35,11 @@ end
 
 ---
 
-## 切换标签页
+## Switching tabs
 
-### 直接点击标签页
+### Click the tab directly
 
-**说明**：最简单的方式是直接按名称查找并点击目标标签页。
+**Note**: The simplest way is to find the target tab by name and click it directly.
 
 :::tabs
 
@@ -70,9 +70,9 @@ end
 
 :::
 
-### 通过 Tab 控件获取子标签
+### Getting child tabs via the Tab control
 
-**说明**：先找到 Tab 控件，然后获取其所有子元素（标签页），再点击目标。
+**Note**: First find the Tab control, then get all of its children (the tab pages), and click the target.
 
 :::tabs
 
@@ -116,9 +116,9 @@ end
 
 ---
 
-## 获取所有标签页
+## Getting all tabs
 
-**说明**：遍历 Tab 控件的所有子元素，列出所有标签页的名称。
+**Note**: Iterate over all children of the Tab control and list the names of all tabs.
 
 :::tabs
 
@@ -160,9 +160,9 @@ end
 
 ---
 
-## 获取当前活动标签
+## Getting the active tab
 
-对**标签页容器**调 `get_selection()` 可读取当前激活的标签项（返回首个选中的子项；无选中返回 `None`/`nil`）：
+Calling `get_selection()` on a **tab page container** reads the currently active tab item (returns the first selected child; returns `None`/`nil` when nothing is selected):
 
 :::tabs
 
@@ -198,18 +198,18 @@ end
 
 :::
 
-> `get_info()` 返回键中仍无 `selection_state` 字段；要求标签页容器支持 Selection 模式（Windows）/ 可读 AXSelectedRows/Children（macOS）。也可用专用查找 `uia.find_tab("名称")`（2026-10-09 落地，Tab 角色）。
+> `get_info()` return keys still have no `selection_state` field; the tab page container must support the Selection pattern (Windows) / expose readable AXSelectedRows/Children (macOS). You can also use the dedicated finder `uia.find_tab("名称")` (shipped 2026-10-09, Tab role).
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 |
-|------------|---------|------|
-| `find_tab(name)` | `find_tab(name)` | 按名称查找标签页容器（Tab 角色，2026-10-09 落地） |
-| `find_tab_item(name)` | `find_tab_item(name)` | 按名称查找标签项（TabItem 角色，2026-10-09 落地） |
-| `find_by_name(name)` | `find_by_name(name)` | 按名称查找（子串匹配，可能命中任意类型） |
-| `get_selection()` | `:get_selection()` | 读取当前激活标签项（容器） |
-| `find_by_id(id)` | `find_by_id(id)` | 按 AutomationId 查找 |
-| `get_children()` | `:get_children()` | 获取所有标签页 |
-| `click()` | `:click()` | 切换到该标签页 |
+| Python function | Lua function | Description |
+|----------------|-------------|-------------|
+| `find_tab(name)` | `find_tab(name)` | Find the tab page container by name (Tab role, shipped 2026-10-09) |
+| `find_tab_item(name)` | `find_tab_item(name)` | Find the tab item by name (TabItem role, shipped 2026-10-09) |
+| `find_by_name(name)` | `find_by_name(name)` | Find by name (substring match; may hit any type) |
+| `get_selection()` | `:get_selection()` | Read the currently active tab item (container) |
+| `find_by_id(id)` | `find_by_id(id)` | Find by AutomationId |
+| `get_children()` | `:get_children()` | Get all tabs |
+| `click()` | `:click()` | Switch to that tab |

@@ -1,90 +1,90 @@
-> [English](README.en.md) | **中文**
+> [中文](README.md) | **English**
 
-# Wingman 文档
+# Wingman Documentation
 
-欢迎来到 Wingman 项目文档。
+Welcome to the Wingman project documentation.
 
-## 文档导航
+## Documentation Navigation
 
-### 快速入门
+### Quick Start
 
-| 文档 | 说明 |
+| Document | Description |
 |------|------|
-| [快速开始](guide/getting-started.md) | 本地编译、运行第一个脚本 |
-| [构建指南](../BUILD.md) | 平台依赖、vcpkg、测试与故障排查（仓库根目录） |
-| [VS Code 开发环境](development-environment.md) | Lua/Python 补全、调试和任务配置 |
-| [配置管理实践](guides/configuration.md) | INI/JSON 配置管理实践 |
-| [Android Agent](../apps/android/README.md) | APK 获取与安装、能力清单、真机验收步骤（仓库根目录） |
-| [Android Agent](android-agent.md) | Android 端侧 Agent（实验性），出站 TCP 连 Go 中控，Dashboard 统一下发与查看 |
+| [Quick Start](guide/getting-started.md) | Build locally, run your first script |
+| [Build Guide](../BUILD.md) | Platform dependencies, vcpkg, testing and troubleshooting (repository root) |
+| [VS Code Development Environment](development-environment.md) | Lua/Python completion, debugging, and task configuration |
+| [Configuration Management Practices](guides/configuration.md) | INI/JSON configuration management practices |
+| [Android Agent](../apps/android/README.md) | APK acquisition and installation, capability list, on-device acceptance steps (repository root) |
+| [Android Agent](android-agent.md) | On-device Agent for Android (experimental), outbound TCP to the Go orchestrator, Dashboard unified dispatch and viewing |
 
-### API 参考
+### API Reference
 
-| 模块 | 说明 |
+| Module | Description |
 |------|------|
-| [API 总览](api/overview.md) | 脚本 API 的整体设计和命名约定 |
-| [API 索引](api/index.md) | 所有模块入口 |
-| [核心 API](api/core.md) | 屏幕、输入、窗口等核心能力 |
-| [键值存储](api/kv.md) / [数据库](api/db.md) | kv 键值存储和 SQLite |
-| [序列化](api/serialize.md) / [JSON](api/json.md) / [INI](api/ini.md) | JSON、INI 等格式处理 |
-| [脚本 API](api/script.md) | 脚本执行、任务和事件 |
-| [调试器](api/debugger.md) | Lua 调试接口说明 |
+| [API Overview](api/overview.md) | Overall design and naming conventions of the scripting API |
+| [API Index](api/index.md) | Entry points for all modules |
+| [Core API](api/core.md) | Core capabilities such as screen, input, and windows |
+| [Key-Value Store](api/kv.md) / [Database](api/db.md) | kv key-value store and SQLite |
+| [Serialization](api/serialize.md) / [JSON](api/json.md) / [INI](api/ini.md) | Format handling for JSON, INI, etc. |
+| [Script API](api/script.md) | Script execution, tasks, and events |
+| [Debugger](api/debugger.md) | Lua debugging interface documentation |
 
-### 使用指南
+### Usage Guides
 
-| 指南 | 说明 |
+| Guide | Description |
 |------|------|
-| [数据库使用](guides/database.md) | SQLite 和 kv 的使用方式 |
-| [触发器系统](guides/triggers.md) | 自动化触发条件与动作 |
-| [UIA 指南](guides/uia-guide.md) | Windows UI Automation 使用说明 |
-| [YOLO 指南](guides/yolo-guide.md) | 可选 ML/ONNX 模型准备与加载验证 |
-| [资产下发指南](guides/asset-sync.md) | 模板图片等静态资源从服务端分发到 agent 本地与脚本引用 |
-| [真机验证指引](guides/manual-verification.md) | macOS 运行时 / Linux XRecord 真机脚本操作与通过判定 |
+| [Using the Database](guides/database.md) | How to use SQLite and kv |
+| [Trigger System](guides/triggers.md) | Automated trigger conditions and actions |
+| [UIA Guide](guides/uia-guide.md) | Windows UI Automation usage |
+| [YOLO Guide](guides/yolo-guide.md) | Optional ML/ONNX model preparation and load verification |
+| [Asset Distribution Guide](guides/asset-sync.md) | Static assets such as template images distributed from the server to agent local storage and referenced by scripts |
+| [On-Device Verification Guide](guides/manual-verification.md) | macOS runtime / Linux XRecord on-device script operations and pass criteria |
 
-### 架构与开发
+### Architecture and Development
 
-| 文档 | 说明 |
+| Document | Description |
 |------|------|
-| [架构概览](architecture.md) | Runtime、GUI、Orchestrator 的边界 |
-| [架构决策](architecture-decisions.md) | 关键设计决策记录 |
-| [平台支持](platforms.md) | 支持矩阵、各平台 API 适用性与环境差异 |
-| [平台抽象设计](platform-abstraction-design.md) | 跨平台抽象层设计 |
-| [UIA 抽象设计](uia-abstraction-design.md) | UI Automation 抽象层设计 |
-| [项目结构](project-structure.md) | 目录职责和模块划分 |
-| [开发指南](DEVELOPMENT.md) | 构建、测试和贡献流程 |
-| [VS Code 开发环境](development-environment.md) | 仓库级编辑器配置和脚本调试工作流 |
-| [开发工具](DEVELOPER_TOOLS.md) | 本地开发辅助工具 |
-| [依赖说明](dependencies.md) | 依赖来源和用途 |
+| [Architecture Overview](architecture.md) | Boundaries of Runtime, GUI, and Orchestrator |
+| [Architecture Decisions](architecture-decisions.md) | Record of key design decisions |
+| [Platform Support](platforms.md) | Support matrix, per-platform API applicability and environment differences |
+| [Platform Abstraction Design](platform-abstraction-design.md) | Cross-platform abstraction layer design |
+| [UIA Abstraction Design](uia-abstraction-design.md) | UI Automation abstraction layer design |
+| [Project Structure](project-structure.md) | Directory responsibilities and module breakdown |
+| [Development Guide](DEVELOPMENT.md) | Build, test, and contribution workflow |
+| [VS Code Development Environment](development-environment.md) | Repository-level editor configuration and script debugging workflow |
+| [Developer Tools](DEVELOPER_TOOLS.md) | Local development helper tools |
+| [Dependencies](dependencies.md) | Dependency sources and purposes |
 
-### 示例代码
+### Example Code
 
-| 类别 | 说明 |
+| Category | Description |
 |------|------|
-| [示例索引](examples/index.md) | 所有示例入口 |
-| [Hello World](examples/hello-world.md) | 最小脚本示例 |
-| [像素检测](examples/pixel-detection.md) | 屏幕取色与条件判断 |
-| [图像匹配](examples/image-matching.md) | 图像查找示例 |
-| [自动循环](examples/auto-loop.md) | 持续检测和执行动作 |
-| [宏录制](examples/macro-record.md) | 录制和回放操作 |
-| [UI Automation](examples/ui-automation.md) | Windows 控件自动化 |
+| [Examples Index](examples/index.md) | Entry point for all examples |
+| [Hello World](examples/hello-world.md) | Minimal script example |
+| [Pixel Detection](examples/pixel-detection.md) | Screen color sampling and conditional logic |
+| [Image Matching](examples/image-matching.md) | Image finding example |
+| [Auto Loop](examples/auto-loop.md) | Continuous detection and action execution |
+| [Macro Recording](examples/macro-record.md) | Recording and replaying operations |
+| [UI Automation](examples/ui-automation.md) | Windows control automation |
 
-## 功能状态说明
+## Feature Status
 
-默认构建以本地 Runtime、Lua 脚本、屏幕/输入/窗口等核心能力为主。以下模块需要额外依赖、构建开关或仍处于迭代中：
+The default build focuses on the local Runtime, Lua scripting, and core capabilities such as screen/input/window. The following modules require additional dependencies, build toggles, or are still being iterated:
 
-| 模块 | 当前状态 |
+| Module | Current Status |
 |------|----------|
-| OCR | 可选能力，依赖 Tesseract/运行时配置 |
-| ML/YOLO | 可选能力，AI 视觉检测 API 已可用（云端 provider + 本地 ONNX：`aiSetup`/`aiSetupLocal`/`aiLocate`/`aiElements`） |
-| Vision | 基础图像能力可用，高级检测按具体构建配置启用 |
-| Debugger | Lua 调试接口存在，需配合调试插件/配置使用 |
-| Orchestration | Go server + Dashboard + runtime agent 远程编排，属于独立部署链路 |
+| OCR | Optional capability, depends on Tesseract/runtime configuration |
+| ML/YOLO | Optional capability, AI vision detection APIs are available (cloud provider + local ONNX: `aiSetup`/`aiSetupLocal`/`aiLocate`/`aiElements`) |
+| Vision | Basic image capabilities available, advanced detection enabled per build configuration |
+| Debugger | Lua debugging interface exists, requires a debug plugin/configuration |
+| Orchestration | Go server + Dashboard + runtime agent remote orchestration, a separate deployment chain |
 
-## 获取帮助
+## Getting Help
 
 - [GitHub Issues](https://github.com/cuihairu/wingman/issues)
 - [GitHub Discussions](https://github.com/cuihairu/wingman/discussions)
-- 示例脚本目录：[`examples/`](../examples/)
+- Example scripts directory: [`examples/`](../examples/)
 
 ---
 
-**[返回首页](../README.md)**
+**[Back to Home](../README.md)**

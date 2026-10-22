@@ -1,37 +1,37 @@
-> [English](behavior-tree.en.md) | **中文**
+> [中文](behavior-tree.md) | **English**
 
 # API: wingman.bt
 
-行为树引擎，提供基础的 AI 决策系统。
+Behavior tree engine, providing a basic AI decision system.
 
-> [已实现 `create`/`tick`/`remove` 三基础函数 + 节点构造（sequence/selector/parallel/inverter/repeat/wait/condition/action）+ 组装（addChild/setRoot），可在脚本端完整构建并 tick 行为树（见 [节点构造](#节点构造)）。]
+> [The three basic functions `create`/`tick`/`remove` are implemented, plus node construction (sequence/selector/parallel/inverter/repeat/wait/condition action) and assembly (addChild/setRoot), so a behavior tree can be fully built and ticked on the script side (see [Node Construction](#node-construction)).]
 
-## 模块概述
+## Module Overview
 
-bt 模块提供行为树的基础执行管理：
-- **执行管理** - 创建、执行、移除行为树
+The bt module provides basic execution management for behavior trees:
+- **Execution management** - create, execute, and remove behavior trees
 
 ---
 
-## 节点状态
+## Node States
 
-每个节点执行后返回以下状态之一：
+Each node returns one of the following states after execution:
 
-| 状态 | 说明 |
+| State | Description |
 |------|------|
-| `SUCCESS` | 成功 |
-| `FAILURE` | 失败 |
-| `RUNNING` | 运行中 |
+| `SUCCESS` | Success |
+| `FAILURE` | Failure |
+| `RUNNING` | Running |
 
 ---
 
-## 创建行为树
+## Create Behavior Tree
 
 ### create(name) / create(name)
 
-**说明**：创建一个新的行为树。
+**Description**: Creates a new behavior tree.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 create(name: str) -> bool
@@ -41,11 +41,11 @@ create(name: str) -> bool
 create(name: string) -> boolean
 ```
 
-**参数**：
-- `name` - 行为树名称
+**Parameters**:
+- `name` - behavior tree name
 
-**返回**：
-- 是否创建成功
+**Returns**:
+- Whether creation succeeded
 
 :::tabs
 
@@ -76,13 +76,13 @@ end
 
 ---
 
-## 执行行为树
+## Execute Behavior Tree
 
 ### tick(tree_name) / tick(treeName)
 
-**说明**：执行行为树一次，返回执行状态。
+**Description**: Executes the behavior tree once and returns the execution status.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 tick(tree_name: str) -> str
@@ -92,11 +92,11 @@ tick(tree_name: str) -> str
 tick(treeName: string) -> string
 ```
 
-**参数**：
-- `tree_name` - 行为树名称
+**Parameters**:
+- `tree_name` - behavior tree name
 
-**返回**：
-- 执行状态：`"SUCCESS"` / `"FAILURE"` / `"RUNNING"`
+**Returns**:
+- Execution status: `"SUCCESS"` / `"FAILURE"` / `"RUNNING"`
 
 :::tabs
 
@@ -122,13 +122,13 @@ print("状态:", status)  -- SUCCESS/FAILURE/RUNNING
 
 ---
 
-## 移除行为树
+## Remove Behavior Tree
 
 ### remove(tree_name) / remove(treeName)
 
-**说明**：移除指定的行为树，释放资源。
+**Description**: Removes the specified behavior tree and releases its resources.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 remove(tree_name: str) -> None
@@ -138,11 +138,11 @@ remove(tree_name: str) -> None
 remove(treeName: string) -> nil
 ```
 
-**参数**：
-- `tree_name` - 行为树名称
+**Parameters**:
+- `tree_name` - behavior tree name
 
-**返回**：
-- 无
+**Returns**:
+- None
 
 :::tabs
 
@@ -168,53 +168,53 @@ wingman.bt.remove("combat_tree")
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python function | Lua function | Description | Parameters |
 |------------|---------|------|-----|
-| `create(name)` | `create(name)` | 创建行为树 | name: 行为树名称<br>返回: 是否成功 |
-| `tick(tree_name)` | `tick(treeName)` | 执行行为树 | tree_name: 行为树名称<br>返回: 执行状态 |
-| `remove(tree_name)` | `remove(treeName)` | 移除行为树 | tree_name: 行为树名称 |
+| `create(name)` | `create(name)` | Create behavior tree | name: behavior tree name<br>Return: whether successful |
+| `tick(tree_name)` | `tick(treeName)` | Execute behavior tree | tree_name: behavior tree name<br>Return: execution status |
+| `remove(tree_name)` | `remove(treeName)` | Remove behavior tree | tree_name: behavior tree name |
 
 ---
 
-## 节点构造
+## Node Construction
 
-行为树由节点组成。构造函数返回节点句柄（int，≥1 有效，0=无效），用 `addChild` 组装、`setRoot` 挂到树。
+Behavior trees are composed of nodes. Construction functions return a node handle (int, ≥1 means valid, 0 means invalid), which are assembled with `addChild` and attached to a tree with `setRoot`.
 
-### 复合节点
+### Composite Nodes
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python function | Lua function | Description | Parameters |
 |------------|---------|------|-----|
-| `sequence(name?)` | `sequence(name?)` | 序列：所有子节点成功才成功 | name: 节点名(可选) → handle |
-| `selector(name?)` | `selector(name?)` | 选择：任一子节点成功则成功 | name → handle |
-| `parallel(name?, policy?)` | `parallel(name?, policy?)` | 并行 | policy: SUCCEED_ON_ALL/SUCCEED_ON_ONE/FAIL_ON_ALL/FAIL_ON_ONE(默认 SUCCEED_ON_ALL) → handle |
+| `sequence(name?)` | `sequence(name?)` | Sequence: succeeds only when all child nodes succeed | name: node name (optional) → handle |
+| `selector(name?)` | `selector(name?)` | Selector: succeeds when any child node succeeds | name → handle |
+| `parallel(name?, policy?)` | `parallel(name?, policy?)` | Parallel | policy: SUCCEED_ON_ALL/SUCCEED_ON_ONE/FAIL_ON_ALL/FAIL_ON_ONE (default SUCCEED_ON_ALL) → handle |
 
-### 装饰节点
+### Decorator Nodes
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python function | Lua function | Description | Parameters |
 |------------|---------|------|-----|
-| `inverter(child)` | `inverter(child)` | 反转子节点结果 | childHandle → handle |
-| `repeat(child, count?)` | `repeat(child, count?)` | 重复执行子节点 | childHandle, count(默认 -1=无限) → handle |
+| `inverter(child)` | `inverter(child)` | Inverts the child node's result | childHandle → handle |
+| `repeat(child, count?)` | `repeat(child, count?)` | Repeatedly executes the child node | childHandle, count (default -1=infinite) → handle |
 
-### 叶子节点
+### Leaf Nodes
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python function | Lua function | Description | Parameters |
 |------------|---------|------|-----|
-| `wait(ms)` | `wait(ms)` | 等待指定毫秒 | milliseconds → handle |
-| `condition(name, callback)` | `condition(name, callback)` | 条件：回调返回 bool | name, callback(): bool → handle |
-| `action(name, callback)` | `action(name, callback)` | 动作：回调返回状态 | name, callback(): "SUCCESS"/"FAILURE"/"RUNNING" → handle |
+| `wait(ms)` | `wait(ms)` | Wait for the given number of milliseconds | milliseconds → handle |
+| `condition(name, callback)` | `condition(name, callback)` | Condition: callback returns bool | name, callback(): bool → handle |
+| `action(name, callback)` | `action(name, callback)` | Action: callback returns a status | name, callback(): "SUCCESS"/"FAILURE"/"RUNNING" → handle |
 
-### 组装
+### Assembly
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python function | Lua function | Description | Parameters |
 |------------|---------|------|-----|
-| `add_child(parent, child)` | `addChild(parent, child)` | 把子节点加到复合节点 | parentHandle, childHandle → bool |
-| `set_root(tree, node)` | `setRoot(tree, node)` | 设置行为树根节点 | treeName, nodeHandle → bool |
+| `add_child(parent, child)` | `addChild(parent, child)` | Adds a child node to a composite node | parentHandle, childHandle → bool |
+| `set_root(tree, node)` | `setRoot(tree, node)` | Sets the root node of a behavior tree | treeName, nodeHandle → bool |
 
-> condition/action 的 callback 在行为树 tick 时被回调（无参）。Lua 回调需在创建脚本的同一线程 tick（Lua state 非线程安全）；Python 回调线程安全（GIL）。
+> The condition/action callbacks are invoked when the behavior tree is ticked (no arguments). Lua callbacks must tick on the same thread that created the script (the Lua state is not thread-safe); Python callbacks are thread-safe (GIL).
 
-### 示例
+### Example
 
 ```python
 from wingman import bt

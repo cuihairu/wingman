@@ -1,94 +1,100 @@
-> [English](android-keep-alive.en.md) | **中文**
+> [中文](android-keep-alive.md) | **English**
 
-# Android Agent 机型保活指引（A3）
+# Android Agent Per-Device Keep-Alive Guide (A3)
 
-> 适用：Wingman Android Agent（apps/android，A3 可靠性落地 2026-09-30）。
-> 配套设计：`docs/android-agent-design.md` §7（生命周期与保活）。
-> 姊妹篇：`docs/guides/android-restricted-settings.md`——Android 13+ 侧载
-> 安装时无障碍**打不开**是受限设置问题，先看那一页再回来。
+> Applies to: Wingman Android Agent (apps/android, A3 reliability landed 2026-09-30).
+> Companion design: §7 (lifecycle and keep-alive) in `docs/android-agent-design.md`.
+> Sister page: `docs/guides/android-restricted-settings.md` — when the accessibility
+> service **won't turn on** for a sideloaded install on Android 13+ that is a
+> restricted-settings problem; read that page first, then come back.
 
-## 背景：Agent 自身的保活已经做了什么
+## Background: What the Agent's Own Keep-Alive Already Does
 
-App 侧三层机制（无需用户配置）：
+Three layers of mechanism on the app side (no user configuration needed):
 
-| 机制 | 覆盖场景 |
-|------|----------|
-| 前台服务 + START_STICKY | 用户杀 App / 进程被系统回收后由系统拉起 |
-| 崩溃自重启（CrashRestartHandler + 闹钟） | 进程未捕获异常后按指数退避（1s→60s 封顶）重启；10 分钟内连崩 5 次放弃，等待用户或下次开机清零 |
-| 核心看门狗（WingmanService 内） | 服务存活但 C++ 核心不在跑时，每 30s 重拉 nativeStart |
-| 开机自启（BootCompletedReceiver） | 开机 / App 覆盖安装后按开关（默认关，需在 App 内显式勾选）自启 |
+| Mechanism | Covered scenario |
+|-----------|------------------|
+| Foreground service + START_STICKY | After the user kills the app / the system reclaims the process, the system relaunches it |
+| Crash self-restart (CrashRestartHandler + alarm) | After an uncaught exception, the process restarts with exponential backoff (1s→60s cap); after 5 consecutive crashes within 10 minutes it gives up and waits for the user or the next boot to reset |
+| Core watchdog (inside WingmanService) | When the service is alive but the C++ core is not running, relaunch nativeStart every 30s |
+| Boot autostart (BootCompletedReceiver) | Autostart after boot / app overlay install, per the toggle (off by default; must be explicitly enabled in the app) |
 
-网络断开不在此列：C++ RemoteClient 自带指数退避重连 + 有界 outbox
-（断连期间事件缓存、重连后冲刷），脚本在断连期间继续本地执行。
+Network disconnection is not part of this: the C++ RemoteClient has its own
+exponential-backoff reconnection + bounded outbox (events are cached while
+disconnected and flushed on reconnect), and scripts keep executing locally
+during disconnections.
 
-## 为什么还需要手工设置
+## Why Manual Settings Are Still Needed
 
-多数国产厂商 ROM 在 AOSP 之上叠加了激进的省电策略：即便 App 持有前台
-服务，静止后台一段时间后仍可能被整进程冻结（cached/freezer）或杀死，且
-**跳过 START_STICKY 的重建**（部分实现直接移除任务栈）。这不是代码能
-自愈的范围——系统级的「不受信任」判定只能由用户在设置里显式豁免。
+Most Chinese domestic vendor ROMs layer aggressive power-saving strategies on
+top of AOSP: even when the app holds a foreground service, it can still be
+frozen (cached/freezer) or killed after sitting idle in the background, and
+**START_STICKY's relaunch is skipped** (some implementations remove the task
+outright). This is beyond what code can self-heal — the system-level
+"untrusted" verdict can only be explicitly exempted by the user in Settings.
 
-被冻结的典型症状：Dashboard 上 agent 离线，但设备端 App 图标还在、点开
-后 agent 立刻恢复在线（进程被冻而非被杀）。
+Typical symptom of being frozen: the agent shows as offline in the Dashboard,
+but the app icon is still on the device, and the agent comes back online the
+moment the user opens it (the process was frozen, not killed).
 
-## 分机型设置清单
+## Per-Device Settings Checklist
 
-### 小米 / Redmi（MIUI / HyperOS）
+### Xiaomi / Redmi (MIUI / HyperOS)
 
-1. 设置 → 应用设置 → 应用管理 → Wingman Agent → **自启动** 打开；
-2. 同页 → **省电策略 → 无限制**；
-3. 最近任务卡片长按/下拉 → **锁定**（加锁卡片不会被一键清理）。
+1. 设置 → 应用设置 → 应用管理 → Wingman Agent → turn on **自启动**;
+2. On the same page → **省电策略 → 无限制**;
+3. Long-press / pull down the recent-tasks card → **锁定** (a locked card is not removed by one-tap cleanup).
 
-### 华为 / 荣耀（EMUI / HarmonyOS / MagicOS）
+### Huawei / Honor (EMUI / HarmonyOS / MagicOS)
 
-1. 设置 → 应用 → 应用启动管理 → Wingman Agent → 关闭「自动管理」，
-   手动管理三项全开：**允许自启动、允许关联启动、允许后台活动**；
-2. 设置 → 电池 → 更多电池设置 → 关闭「休眠时始终保持网络连接」可按需
-   保留（息屏断网会直接断开 agent 长链接，重连由 RemoteClient 退避接管）。
+1. 设置 → 应用 → 应用启动管理 → Wingman Agent → turn off 「自动管理」, then enable all three manual toggles: **允许自启动、允许关联启动、允许后台活动**;
+2. 设置 → 电池 → 更多电池设置 → 「休眠时始终保持网络连接」 may be kept on as needed (cutting the network while the screen is off drops the agent's long connection; reconnection is handled by RemoteClient's backoff).
 
-### OPPO / 一加 / realme（ColorOS / OxygenOS）
+### OPPO / OnePlus / realme (ColorOS / OxygenOS)
 
-1. 设置 → 电池 → 更多 → 应用耗电管理 → Wingman Agent → **允许完全
-   后台行为**；
-2. 设置 → 应用管理 → Wingman Agent → 允许**自启动**；
-3. 最近任务卡片锁定。
+1. 设置 → 电池 → 更多 → 应用耗电管理 → Wingman Agent → **允许完全后台行为**;
+2. 设置 → 应用管理 → Wingman Agent → allow **自启动**;
+3. Lock the recent-tasks card.
 
-### vivo / iQOO（OriginOS / Funtouch OS）
+### vivo / iQOO (OriginOS / Funtouch OS)
 
-1. 设置 → 电池 → 后台耗电管理 → Wingman Agent → **允许后台高耗电**；
-2. 设置 → 快捷与辅助 / 更多设置 → vivo 手机管家 → 权限管理 → 自启动
-   允许 Wingman Agent。
+1. 设置 → 电池 → 后台耗电管理 → Wingman Agent → **允许后台高耗电**;
+2. 设置 → 快捷与辅助 / 更多设置 → vivo 手机管家 → 权限管理 → 自启动 allows Wingman Agent.
 
-### 三星（One UI）
+### Samsung (One UI)
 
-1. 设置 → 电池 → 后台使用限制：确认 Wingman Agent **不在**「从未使用的
-   应用」清理名单，不加入**深度休眠应用**；
-2. 需要息屏保活的设备：设置 → 电池 → 不受限制使用（若提供该选项）。
+1. 设置 → 电池 → 后台使用限制: confirm Wingman Agent is **not** on the 「从未使用的应用」 cleanup list, and do not add it to **深度休眠应用**;
+2. For devices that must stay alive with the screen off: 设置 → 电池 → 不受限制使用 (if the option is provided).
 
-### 通用（所有机型建议）
+### General (recommended for all devices)
 
-- 系统设置 → 应用 → Wingman Agent → 电池 → **不优化**（关闭电池优化）；
-- 通知权限保持开启（前台服务通知被关的 ROM 上，部分厂商会顺带降低进程优先级）；
-- Android 12+ 的「通知」与「电池」设置页厂商定制差异较大，找不到对应
-  入口时以「省电/后台/自启动」关键词检索系统设置。
+- 系统设置 → 应用 → Wingman Agent → 电池 → **不优化** (disable battery optimization);
+- Keep the notification permission enabled (on ROMs where foreground-service notifications get disabled, some vendors also lower the process priority);
+- The Android 12+ 「通知」 and 「电池」 settings pages vary heavily across vendors — if you cannot find the given entry, search system settings with keywords like 「省电/后台/自启动」.
 
-## 验证方法
+## How to Verify
 
-设置完成后：
+After applying the settings:
 
-1. 启动 agent，回到桌面静置 10–30 分钟（覆盖厂商常用冻结窗口）；
-2. Dashboard 观察 agent 是否持续在线、心跳不中断；
-3. `adb shell dumpsys activity services com.wingman.agent`（或
-   `dumpsys activity services .WingmanService`）确认服务未被冻结；
-   `dumpsys deviceidle` 可另看 Doze/省电白名单状态；
-4. 重启设备一次，确认开机自启生效（App 未打开的情况下 agent 自动上线）。
+1. Start the agent, return to the home screen, and leave the device idle for 10–30 minutes (covering the freeze windows vendors commonly use);
+2. Watch the Dashboard to confirm the agent stays online with an uninterrupted heartbeat;
+3. Run `adb shell dumpsys activity services com.wingman.agent` (or
+   `dumpsys activity services .WingmanService`) to confirm the service is not
+   frozen; `dumpsys deviceidle` additionally shows the Doze / power-saving
+   whitelist state;
+4. Reboot the device once and confirm boot autostart takes effect (the agent comes online automatically without the app being opened).
 
-## 已知边界（登记，非缺陷）
+## Known Boundaries (documented, not defects)
 
-- **MediaProjection 授权不可恢复**：Android 14 起投屏授权单会话一次性，
-  进程崩溃/重启后投屏不会自动恢复，需要重新点「开启投屏」走系统对话框
-  （系统约束，A2 已登记）；agent 链路（脚本/手势/日志）不受影响。
-- **息屏采集**：A2 已知前提——投屏仅在设备亮屏时出帧；息屏保活采集属
-  A4 之后的事项。
-- **崩溃串放弃后的恢复**：10 分钟内连崩 5 次（默认阈值）后自动重启停摆，
-  需用户打开 App 手动启动或等下次开机——防止「崩溃-重启」风暴循环。
+- **MediaProjection authorization is not recoverable**: since Android 14 the
+  screen-cast authorization is one-shot per session; after a crash/restart the
+  cast does not resume automatically, and the user must tap 「开启投屏」 again to go
+  through the system dialog (system constraint, registered in A2); the agent
+  pipeline (scripts/gestures/logs) is unaffected.
+- **Screen-off capture**: a known A2 premise — the cast only produces frames
+  while the device screen is on; capture while keeping the device alive with
+  the screen off is a post-A4 item.
+- **Recovery after the crash streak gives up**: after 5 consecutive crashes
+  within 10 minutes (default threshold), automatic restart stops; the user must
+  open the app and start it manually, or wait for the next boot — this prevents
+  a "crash-restart" storm loop.

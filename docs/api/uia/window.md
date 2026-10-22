@@ -1,16 +1,16 @@
-> [English](window.en.md) | **中文**
+> [中文](window.md) | **English**
 
 # API: UIA Window
 
-窗口（Window）控件代表应用程序的主窗口、对话框或弹出窗口。
+The Window control represents an application's main window, dialog, or popup window.
 
-## 获取窗口
+## Getting a window
 
-### 获取前台窗口
+### Getting the foreground window
 
-**说明**：获取当前活动窗口的 UI 根元素。这是最常用的方式。
+**Note**: Gets the UI root element of the currently active window. This is the most commonly used approach.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 from_foreground() -> UIElement | None
@@ -51,11 +51,11 @@ end
 
 :::
 
-### 从窗口句柄获取
+### Getting from a window handle
 
-**说明**：如果已经知道窗口句柄（HWND），可以直接获取其 UI 根元素。
+**Note**: If you already know the window handle (HWND), you can get its UI root element directly.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 from_window(hwnd: int) -> UIElement | None
@@ -65,8 +65,8 @@ from_window(hwnd: int) -> UIElement | None
 from_window(hwnd: number) -> UIElement | nil
 ```
 
-**参数**：
-- `hwnd` - 窗口句柄
+**Parameters**:
+- `hwnd` - window handle
 
 :::tabs
 
@@ -105,9 +105,9 @@ end
 
 ---
 
-## 查找子窗口/对话框
+## Finding child windows/dialogs
 
-**说明**：某些应用包含多个子窗口或对话框。
+**Note**: Some applications contain multiple child windows or dialogs.
 
 :::tabs
 
@@ -144,9 +144,9 @@ end
 
 ---
 
-## 等待对话框出现
+## Waiting for a dialog to appear
 
-**说明**：对话框可能需要时间加载，可以轮询等待。
+**Note**: A dialog may need time to load; you can poll and wait.
 
 :::tabs
 
@@ -182,9 +182,9 @@ end
 
 ---
 
-## 窗口属性
+## Window properties
 
-**说明**：获取窗口的各种属性信息。
+**Note**: Gets various property information of the window.
 
 :::tabs
 
@@ -236,19 +236,19 @@ end
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-### 获取窗口
+### Getting a window
 
-| Python 函数 | Lua 函数 | 说明 |
-|------------|---------|------|
-| `from_foreground()` | `from_foreground()` | 获取前台窗口 |
-| `from_window(hwnd)` | `from_window(hwnd)` | 从句柄获取窗口 |
-| `from_point(x, y)` | `from_point(x, y)` | 从坐标获取窗口元素 |
+| Python function | Lua function | Description |
+|----------------|-------------|-------------|
+| `from_foreground()` | `from_foreground()` | Get the foreground window |
+| `from_window(hwnd)` | `from_window(hwnd)` | Get the window from a handle |
+| `from_point(x, y)` | `from_point(x, y)` | Get the window element from coordinates |
 
-### 窗口操作
+### Window operations
 
-| Python 方法 | Lua 方法 | 说明 |
-|------------|---------|------|
-| `get_info()` | `:get_info()` | 获取窗口信息 |
-| `get_children()` | `:get_children()` | 获取窗口内的子元素 |
+| Python method | Lua method | Description |
+|----------------|-------------|-------------|
+| `get_info()` | `:get_info()` | Get window information |
+| `get_children()` | `:get_children()` | Get the child elements inside the window |

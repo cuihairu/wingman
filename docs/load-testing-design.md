@@ -1,42 +1,42 @@
-> [English](load-testing-design.en.md) | **中文**
+> [中文](load-testing-design.md) | **English**
 
-# Wingman 潮水级压测架构设计（提案）
+# Wingman Tide-Scale Load Testing Architecture Design (Proposal)
 
-状态：**草案，待 owner 拍板**（本文不改变任何现有行为；拍板后按里程碑落地，并同步 `docs/architecture-decisions.md` 与 `docs/architecture.md`）。
+Status: **Draft, pending owner sign-off** (this document changes no existing behavior; once signed off it lands by milestone, and `docs/architecture-decisions.md` and `docs/architecture.md` are updated in sync).
 
-关联决策：`docs/architecture-decisions.md`（四层模型 / Capability / Execution / 自动化原语边界）、`docs/protocols.md`、`docs/agent-token-auth-design.md`。
+Related decisions: `docs/architecture-decisions.md` (four-layer model / Capability / Execution / automation primitive boundaries), `docs/protocols.md`, `docs/agent-token-auth-design.md`.
 
-## 1. 定位与目标
+## 1. Positioning and Goals
 
-Wingman 的核心定位是游戏自动化测试（UI 层模拟真实玩家）。本设计在**不改变现有定位**的前提下，增加第二执行后端：协议层潮水级压测（万级 VU/机）。两个目标共享同一套行为建模、编排与控制面，只在"执行引擎"分家。
+Wingman's core positioning is game automation testing (UI-layer simulation of real players). Without **changing that existing positioning**, this design adds a second execution backend: protocol-layer tide-scale load testing (10k-scale VU per machine). The two goals share the same behavior modeling, orchestration, and control plane; they only diverge at the "execution engine".
 
-**目标**
+**Goals**
 
-- 单压测机 ≥ 5000 并发 VU（echo 基准；真实游戏协议视 codec 开销浮动）
-- 场景（玩家行为模型）与 UI 自动化测试同源创作、可复用
-- 指标可信：分位数延迟 / RPS / 错误分类，campaign 级聚合
-- 与既有部署形态一致：worker 是 outbound agent，不新增任何入站监听
+- ≥ 5000 concurrent VU per single load-test machine (echo baseline; real game protocols float depending on codec overhead)
+- Scenarios (player behavior models) authored from the same source as UI automation tests, and reusable
+- Trustworthy metrics: quantiles of latency / RPS / error classification, aggregated at campaign level
+- Consistent with the existing deployment shape: the worker is an outbound agent, with no new inbound listener whatsoever
 
-**非目标**
+**Non-goals**
 
-- 不重造 k6/locust 的报表与生态（指标导出外抛，重报告交给外部）
-- 不做 UI 自动化的密度提升（UI 后端保持 1~20 路/机的真实客户端定位）
-- 不在 v1 做混合场景的自动编排（UI 金丝雀 + 协议潮水的组合 v1 靠操作员手动并行，见 §9）
+- Do not rebuild the reporting and ecosystem of k6/locust (metric export is handed off; heavy reporting goes to external tools)
+- Do not pursue density gains for UI automation (the UI backend keeps its 1~20 streams/machine real-client positioning)
+- Do not do automatic orchestration of mixed scenarios in v1 (the combination of UI canary + protocol tide relies on the operator running the two in parallel manually in v1, see §9)
 
-## 2. 与现有架构决策的关系
+## 2. Relationship to Existing Architecture Decisions
 
-| 现有决策 | 本设计如何对齐 |
+| Existing decision | How this design aligns |
 |---------|---------------|
-| 四层模型（控制面/Agent/Runtime/Core） | loadgen worker = Agent+Runtime 层新成员；plan/codec/metrics 原语进 `lib/wingman`（Automation Core 不知道 campaign 概念） |
-| 控制面唯一入口 / agent outbound | worker 复用 agentcore 注册/心跳/命令通道，零 listener |
-| Dashboard 只连 Go server | 指标经 agent 通道上报，dashboard 读 server API/WS |
-| Capability System（v1 已落地） | 新增 `loadgen.proto` / `loadgen.report` 词汇；campaign 调度写 `requires: {capabilities}` |
-| Execution 核心对象 | campaign 与 worker 部署写 Execution 记录（审计统一） |
-| 自动化原语边界（Trigger<Script<BT<Workflow<Team） | 单 VU 行为 = plan（Script/plan 层）；跨机放量编排 = **campaign（Workflow 的兄弟对象，同属控制面）**，不塞进 workflow DAG 引擎（campaign 是带遥测的长时作业，不是步骤图） |
-| 双语言策略（桌面 Python-first） | 场景创作 Python-first；codec 声明式 schema 无语言之争；VU 热路径无解释器 |
-| 平台宏边界 | IO 多路复用差异（epoll/kqueue/IOCP，经 asio 抹平）留在 `libs/transport` 与 `lib/wingman/src/platform/<os>/` |
+| Four-layer model (control plane / Agent / Runtime / Core) | The loadgen worker is a new member of the Agent+Runtime layers; the plan/codec/metrics primitives go into `lib/wingman` (Automation Core does not know the campaign concept) |
+| Control plane has a single entry point / agent outbound | The worker reuses the agentcore registration/heartbeat/command channel, zero listeners |
+| Dashboard connects only to the Go server | Metrics are reported through the agent channel; the dashboard reads the server API/WS |
+| Capability System (already landed in v1) | New `loadgen.proto` / `loadgen.report` vocabulary; campaign scheduling writes `requires: {capabilities}` |
+| Execution core object | Campaigns and worker deployments write Execution records (unified audit) |
+| Automation primitive boundaries (Trigger<Script<BT<Workflow<Team) | A single VU behavior = a plan (Script/plan layer); cross-machine scale-out orchestration = **campaign (a sibling object of Workflow, both in the control plane)**, not stuffed into the workflow DAG engine (a campaign is a long-running job with telemetry, not a step graph) |
+| Dual-language strategy (desktop Python-first) | Scenario authoring is Python-first; the codec declarative schema leaves no room for language disputes; the VU hot path has no interpreter |
+| Platform macro boundary | IO multiplexing differences (epoll/kqueue/IOCP, smoothed over by asio) stay in `libs/transport` and `lib/wingman/src/platform/<os>/` |
 
-## 3. 总体分层
+## 3. Overall Layering
 
 ```text
 CONTROL PLANE (orchestrator/)
@@ -56,18 +56,18 @@ AUTOMATION CORE (lib/wingman + libs/*)
   复用：libs/transport（asio 会话）· libs/agentcore（注册/心跳）· task_core
 ```
 
-核心思想：**行为写一遍，密度选后端**。同一个游戏（gameprofile）+ 同一套行为词汇，UI 后端跑真实客户端，协议后端跑潮水。
+Core idea: **write the behavior once, choose the backend for density**. The same game (gameprofile) + the same behavior vocabulary: the UI backend runs real clients, the protocol backend runs the tide.
 
-## 4. 组件设计
+## 4. Component Design
 
-### 4.1 Scenario Plan（场景计划）——两段式执行的核心契约
+### 4.1 Scenario Plan (scenario plan) — the core contract of the two-stage execution model
 
-密度约束决定执行形态：Python 每_VU 一个解释器撑不起万级并发。采用**创作/执行两段式**：
+The density constraint determines the execution shape: one Python interpreter per VU cannot hold up 10k-scale concurrency. A **two-stage authoring/execution** split is adopted:
 
-1. **创作与验证**（脚本层，Python-first）：用既有 `task`/`fsm`/`orchestration` 词汇描述玩家行为；跑单 VU/少量 VU 验证逻辑正确。
-2. **编译为 plan**（声明式 JSON）：状态机 + 请求模板 + 提取/断言 + 思考时间分布。VU 引擎只解释 plan，不嵌脚本引擎。
+1. **Authoring and validation** (script layer, Python-first): describe player behavior with the existing `task`/`fsm`/`orchestration` vocabulary; run a single VU / a few VUs to verify the logic is correct.
+2. **Compilation into a plan** (declarative JSON): state machine + request templates + extraction/assertion + think-time distribution. The VU engine only interprets plans and embeds no script engine.
 
-Plan schema（v1 形状）：
+Plan schema (v1 shape):
 
 ```jsonc
 {
@@ -101,11 +101,11 @@ Plan schema（v1 形状）：
 }
 ```
 
-表达力边界（诚实声明）：plan 覆盖 send/await/extract/assert/think/状态迁移；超出生界逻辑（非常规加密握手、动态多包协商）走 codec 的 native 钩子（§4.2），**不在 plan 层引入图灵完备脚本**——这是保密度的一刀切。
+Expressiveness boundary (honest declaration): plans cover send/await/extract/assert/think/state transitions; logic beyond that boundary (unconventional encrypted handshakes, dynamic multi-packet negotiation) goes through the codec's native hooks (§4.2). **No Turing-complete scripting is introduced at the plan layer** — this is the across-the-board cut that protects density.
 
-### 4.2 Codec 层（gameprofile 集成，四层正交可插拔）
+### 4.2 Codec Layer (gameprofile integration, four orthogonal pluggable layers)
 
-每游戏协议编解码是持续成本（版本漂移、加密、反重放）。设计原则：**引擎适配 × 编码格式 × 消息 schema × 加密钩子四层正交，部署期热插拔**。
+Per-game protocol encode/decode is an ongoing cost (version drift, encryption, anti-replay). Design principle: **engine adaptation × encoding format × message schema × crypto hook — four orthogonal layers, hot-pluggable at deploy time**.
 
 ```jsonc
 // codec bundle（gameprofile 内，纯数据；plan 的 "codec" 字段引用它）
@@ -119,47 +119,47 @@ Plan schema（v1 形状）：
 }
 ```
 
-- **engine 适配器**（分帧/握手/心跳/重连等会话语义）：`kbe`（KBEngine：MessageID + Bundle、loginapp/baseapp 双通道、内置 Blowfish 链路）、`bigworld`（entity message / filtered packet 家族）、`generic`（长度前缀 + 单通道，覆盖多数自研协议）、`custom:<name>`（编译期注册的原生适配器兜底）。适配器编译进 worker、按 bundle 声明选择——KBEngine/BigWorld 是**协议族**不是编码格式，内置适配器比 schema 描述更保真、更省事。
-- **encoding 编码后端**（payload 序列化，编译期注册表 + 构建门控）：`protobuf`（vcpkg protobuf）、`json`（nlohmann，仓内已有）、`sproto`（独立 C 库；**vcpkg 无 port 时按依赖规则显式报错关档，不静默换源**）、`raw`（schema 字段表直排）。
-- **schema 消息表**：纯数据，随 gameprofile 版本 pin。
-- **crypto**：优先**组合式原语**（xor/偏移表/rc4/TEA 族/校验和，schema 内声明，覆盖多数自研变体，零编译）；引擎内置加密归 engine 适配器；真自定义算法才走编译期注册的 native 钩子。
+- **engine adapters** (session semantics such as framing / handshake / heartbeat / reconnect): `kbe` (KBEngine: MessageID + Bundle, dual loginapp/baseapp channels, built-in Blowfish link), `bigworld` (entity message / filtered packet families), `generic` (length prefix + single channel, covering most in-house protocols), `custom:<name>` (a compile-time-registered native adapter as a fallback). Adapters are compiled into the worker and selected per the bundle declaration — KBEngine/BigWorld are **protocol families**, not encoding formats, so built-in adapters are more faithful and less troublesome than a schema description.
+- **encoding backends** (payload serialization, compile-time registry + build gating): `protobuf` (vcpkg protobuf), `json` (nlohmann, already in-repo), `sproto` (a standalone C library; **when vcpkg has no port, follow the dependency rule and fail loudly by disabling that tier — do not silently switch source**), `raw` (schema field table laid out directly).
+- **schema message table**: pure data, pinned to the gameprofile version.
+- **crypto**: prefer **compositional primitives** (xor / offset tables / rc4 / TEA family / checksums, declared inside the schema, covering most in-house variants, zero compilation); engine built-in encryption belongs to the engine adapter; only genuinely custom algorithms go through compile-time-registered native hooks.
 
-**热插拔语义（诚实定义）**：
+**Hot-plug semantics (honest definition)**:
 
-- ✅ **部署期热插拔**：新游戏/新版本 = 往 gameprofile 投一个 codec bundle（纯数据 + 适配器选择），worker 部署时加载，**引擎二进制零重建**；campaign 之间换协议不动 worker。
-- ❌ **campaign 运行中换协议**：不支持（会污染负载语义）；要换就 stop → 换 bundle → 重新 arm。
-- ❌ **dlopen 式 C++ 运行时插件**：不做（C++ ABI 维护成本 > 收益，Windows CI 矩阵雪上加霜）；可插拔单位是"bundle 数据选择 + 编译期注册表"，不是运行时动态库。
+- ✅ **Hot-plug at deploy time**: a new game / new version = dropping a codec bundle (pure data + adapter selection) into the gameprofile, loaded when the worker is deployed, with **zero rebuilding of the engine binary**; switching protocols between campaigns does not touch the worker.
+- ❌ **Switching protocols while a campaign is running**: not supported (it would pollute the load semantics); if you want to switch, stop → swap the bundle → re-arm.
+- ❌ **`dlopen`-style C++ runtime plugins**: not done (C++ ABI maintenance cost > benefit, and it piles onto the Windows CI matrix); the pluggable unit is "bundle data selection + a compile-time registry", not a runtime dynamic library.
 
-**验证工作流**（codec 开发的日常回路）：
-  1. 抓包 → schema 化（工具侧辅助，不在 v1 范围内自动反推）
-  2. `proto.replay` 单连接回放对拍（与真实客户端流量**语义级一致**；有 golden 流量则字节级）
-  3. 回放进 CI（单 VU 便宜），漂移在 codec 层被拦截，不进潮水才暴露
+**Validation workflow** (the everyday loop for codec development):
+  1. Capture traffic → turn it into a schema (tooling assistance, not automatically reverse-engineered within v1 scope)
+  2. `proto.replay` single-connection replay A/B comparison (**semantic-level** parity with real client traffic; byte-level if golden traffic exists)
+  3. Put the replay into CI (a single VU is cheap), so drift is intercepted at the codec layer instead of only surfacing once the tide runs
 
-脚本层新增 `proto` 模块（编码/解码/单连接收发），服务 codec 开发与单连接验证，与 VU 引擎共用同一套 codec 运行时（`lib/wingman` 新原语）。
+The script layer gains a new `proto` module (encode / decode / single-connection send-receive), serving codec development and single-connection validation, sharing the same codec runtime as the VU engine (a new primitive in `lib/wingman`).
 
-### 4.3 VU 引擎（apps/loadgen，新 app）
+### 4.3 VU Engine (apps/loadgen, new app)
 
-- **形态**：`apps/loadgen` 独立二进制（apps+lib 架构的第三桌面 app）。线程模型与 runtime 的截图注入链路彻底隔离；复用 `libs/agentcore`（注册/心跳/命令）与 `libs/transport`（asio 会话）。
-- **引擎结构**：
-  - 事件循环：asio `io_context` per-core 分片，VU 按分片粘滞（避免跨核迁移）
-  - VU = 轻状态机实例（当前状态 + 提取变量表 + 计时器），目标单实例 < 4KB 稳态
-  - 连接生命周期：连接池 + 重连风暴退避（指数 + 抖动；目标拒绝时保护性降速，避免压死压测机自身）
-  - 定时器轮：think time / await 超时共用
-- **命令面**（沿用 16 字节头 + JSON body 协议，Request/Response + sequence）：
+- **Form**: `apps/loadgen` is a standalone binary (the third desktop app in the apps+lib architecture). Its threading model is thoroughly isolated from the runtime's screenshot injection path; it reuses `libs/agentcore` (registration/heartbeat/commands) and `libs/transport` (asio sessions).
+- **Engine structure**:
+  - Event loop: asio `io_context` sharded per core, with VUs sticky to a shard (avoiding cross-core migration)
+  - VU = a lightweight state machine instance (current state + extracted variable table + timers), targeting < 4KB steady-state per instance
+  - Connection lifecycle: connection pool + reconnect-storm backoff (exponential + jitter; protective slowdown when targets refuse, to avoid crushing the load-test machine itself)
+  - Timer wheel: shared by think time / await timeouts
+- **Command surface** (reusing the 16-byte header + JSON body protocol, Request/Response + sequence):
   `loadgen.deploy(planRef)` / `loadgen.start` / `loadgen.stop` / `loadgen.status`
-- **不注册脚本引擎**：plan 解释器是唯一执行形态；`proto` 模块验证回路跑在 runtime 侧，不在 loadgen 里。
+- **No script engine is registered**: the plan interpreter is the only execution form; the `proto` module validation loop runs on the runtime side, not inside loadgen.
 
-### 4.4 指标面
+### 4.4 Metrics Surface
 
-- **worker 侧**：每操作 log-bucket 直方图（HDR 风格）+ 计数器 + VU 状态量规；1s 窗口本地聚合。
-- **上报**：复用 `Notify agent.event`，`{event: "loadgen.metrics"}`，负载 = 紧凑 JSON（桶计数数组；帧界内，预估 < 64KB/窗口；预留升级为二进制 Notify 子类型的口子，不动帧头）。
-- **server 侧**（`internal/loadgen` 新包）：跨 worker 合并（直方图可加性）、滑动窗口内存态 + campaign 快照落库（挂 Execution 同款持久化）；dashboard 走既有 WS 推流。
-- **查询语义**：p50/p90/p95/p99/max、RPS、按操作错误分类（协议错误 / 超时 / 断言失败 / 网络断开）、per-worker 分解。
-- **外抛出口**（可选）：Prometheus remote-write 一个端点，生态交给外部。
+- **Worker side**: per-operation log-bucket histograms (HDR style) + counters + VU state gauges; local aggregation over a 1s window.
+- **Reporting**: reuses `Notify agent.event`, `{event: "loadgen.metrics"}`, with the payload being compact JSON (bucket count arrays; within frame limits, estimated < 64KB/window; a hook is reserved to upgrade to a binary Notify subtype later, without touching the frame header).
+- **Server side** (new package `internal/loadgen`): cross-worker merging (histogram additivity), in-memory sliding window state + campaign snapshots persisted to the DB (hanging off the same persistence as Execution); the dashboard uses the existing WS push stream.
+- **Query semantics**: p50/p90/p95/p99/max, RPS, error classification per operation (protocol error / timeout / assertion failure / network disconnect), per-worker breakdown.
+- **Export egress** (optional): one Prometheus remote-write endpoint; the ecosystem is left to external tools.
 
-### 4.5 控制面 LoadCampaign（Go server）
+### 4.5 Control Plane LoadCampaign (Go server)
 
-`internal/loadgen` 新包，campaign 是 Workflow 的**兄弟对象**（同属控制面长时作业，但不复用 DAG 引擎——campaign 是带遥测的调度作业）：
+New package `internal/loadgen`; a campaign is a **sibling object** of Workflow (both are control-plane long-running jobs, but the DAG engine is not reused — a campaign is a scheduling job with telemetry):
 
 ```jsonc
 {
@@ -172,69 +172,69 @@ Plan schema（v1 形状）：
 }
 ```
 
-- **调度**：capability 匹配（复用 workflow `selectAgent` 的匹配器）、VU 区间分片、ramp 全局推进。
-- **时钟**：v1 用心跳 RTT 估算偏移（±100ms 足够 ramp 粒度）；不引入 NTP 依赖。
-- **安全阀**：全局 stop（端到端 ≤ 1s）、错误率/分位数熔断（触发后自动降载或停止）、worker 失联 = 其 VU 区间标记 lost（不自动补位，v1）。
-- **权限**：新 `loadtests:run` RBAC 域；campaign 操作全量审计（挂 executionId）。
-- **混合场景**（UI 金丝雀 + 协议潮水）：v1 = 操作员在 dashboard 同时发起 campaign 与 UI runtime 的 workflow；组合编排留 §9 决策。
+- **Scheduling**: capability matching (reusing the matcher of workflow `selectAgent`), VU range sharding, globally advanced ramp.
+- **Clock**: v1 estimates skew from heartbeat RTT (±100ms is enough for ramp granularity); no NTP dependency is introduced.
+- **Safety valve**: global stop (end-to-end ≤ 1s), error-rate/quantile circuit breaker (automatic load shedding or stopping after it trips), worker disconnection = its VU range is marked lost (no automatic backfill in v1).
+- **Permissions**: a new `loadtests:run` RBAC domain; campaign operations are audited in full (hanging off executionId).
+- **Mixed scenarios** (UI canary + protocol tide): v1 = the operator starts the campaign and the UI runtime's workflow from the dashboard at the same time; combined orchestration is left to the §9 decision.
 
-### 4.6 脚本层开放面
+### 4.6 Script-Layer Surface
 
-- 新模块 `proto`（codec 开发/单连接验证）：`proto.connect` / `proto.call` / `proto.decode` / `proto.replay`。
-- plan 的创作回路：v1 plan 直接以 JSON 落 gameprofile；「从脚本/fsm 导出 plan」的编译器是后续增强，不阻塞 M1。
-- 双语言照旧：ModuleDescriptor 一次编写，Lua/Python 双绑定 + `.pyi`。
+- New module `proto` (codec development / single-connection validation): `proto.connect` / `proto.call` / `proto.decode` / `proto.replay`.
+- The plan authoring loop: in v1 the plan lands directly in the gameprofile as JSON; the "export plan from script/fsm" compiler is a later enhancement and does not block M1.
+- Dual language as before: ModuleDescriptor written once, with Lua/Python dual bindings + `.pyi`.
 
-## 5. 约束合规清单（对照 architecture-decisions.md）
+## 5. Constraint Compliance Checklist (against architecture-decisions.md)
 
-- Runtime/loadgen **零新增入站监听**；无 runtime HTTP/WebSocket server。
-- Dashboard/远程客户端只连 Go server。
-- agent 通道协议不变：16 字节头 + JSON body、sequence 回显、有界帧；新增的只是 method 名与 Notify 事件类型。
-- Automation Core 不出现 campaign/worker 概念；plan/codec/metrics 是纯原语。
-- 平台宏留在 platform 层与 libs/transport。
-- 新三方依赖走 vcpkg（asio 已在 transport 使用链上；protobuf 走 vcpkg protobuf；**sproto 无 port 时显式关档报错**，不静默换源——依赖规则第 5 条）。
+- Runtime/loadgen: **zero new inbound listeners**; no runtime HTTP/WebSocket server.
+- Dashboard/remote clients connect only to the Go server.
+- The agent channel protocol is unchanged: 16-byte header + JSON body, sequence echo, bounded frames; the only additions are method names and Notify event types.
+- Automation Core never gains the campaign/worker concept; plan/codec/metrics are pure primitives.
+- Platform macros stay in the platform layer and in libs/transport.
+- New third-party dependencies go through vcpkg (asio is already on the transport usage chain; protobuf goes through vcpkg protobuf; **when sproto has no port, the tier is explicitly disabled with an error — no silent source switch**, dependency rule #5).
 
-## 6. 与三留批次的衔接（顺序不变）
+## 6. Coordination with the Three Reserved Batches (order unchanged)
 
-Todo 中已留的编排批次是两目标共用地基，先落：
+The orchestration batches already reserved in Todo are the shared foundation for both goals and land first:
 
-| 留批次 | 压测侧受益 |
+| Reserved batch | How the load-testing side benefits |
 |-------|-----------|
-| 子任务聚合 | campaign 多 worker 结果聚合的编排层同构 |
-| 流程级状态事件 | campaign/worker 生命周期事件流同构 |
-| 持久化 | campaign 定义/快照、codec 版本 pin 落库 |
+| Subtask aggregation | The orchestration layer for aggregating multi-worker campaign results is structurally identical |
+| Process-level state events | The campaign/worker lifecycle event streams are structurally identical |
+| Persistence | Campaign definitions/snapshots and codec version pins are persisted |
 
-## 7. 里程碑与验收口径
+## 7. Milestones and Acceptance Criteria
 
-| 里程碑 | 内容 | 验收 |
+| Milestone | Content | Acceptance |
 |-------|------|------|
-| M0 | 三留批次（已在队列） | 既有口径 |
-| M1 | plan schema + codec 框架 + `proto` 模块 + 单 VU 回放 | 与真实客户端流量语义级对拍；golden 流量字节级一致；CI 单连接回放常驻 |
-| M2 | VU 引擎 + 本地指标 | echo-stub 基准 **≥5k VU/worker**（RSS ≤ 2GB、空载事件环 p99 ≤ 5ms）；直方图对拍 wrk（同场景 RPS ±5%、p99 偏差 ≤ 10%） |
-| M3 | LoadCampaign + 多 worker + dashboard 视图 | 全局 stop ≤ 1s；合并正确性（worker 计数器之和 == server 聚合）；ramp 起点偏差 ≤ 100ms |
-| M4 | 开放模型/熔断/导出/混合演练 | 熔断自动降载演练通过；Prometheus 导出（若拍板）；金丝雀混合演练报告 |
+| M0 | The three reserved batches (already in the queue) | Existing criteria |
+| M1 | plan schema + codec framework + `proto` module + single-VU replay | Semantic-level parity with real client traffic; byte-level parity with golden traffic; single-connection replay permanently in CI |
+| M2 | VU engine + local metrics | echo-stub baseline **≥5k VU/worker** (RSS ≤ 2GB, idle event loop p99 ≤ 5ms); histogram parity against wrk (same scenario RPS ±5%, p99 deviation ≤ 10%) |
+| M3 | LoadCampaign + multi-worker + dashboard view | Global stop ≤ 1s; merge correctness (sum of worker counters == server aggregate); ramp start-point deviation ≤ 100ms |
+| M4 | Open model / circuit breaking / export / mixed drills | Circuit-breaker automatic-load-shedding drill passes; Prometheus export (if signed off); canary mixed-drill report |
 
-每个里程碑照既有铁律：core_tests + python 树全绿、平台边界守卫、Windows CI 编译通过、英文短 commit。
+Every milestone follows the existing iron rules: core_tests + the Python tree fully green, platform boundary guards, Windows CI compiles, short English commits.
 
-## 8. 风险与对冲
+## 8. Risks and Hedging
 
-| 风险 | 对冲 |
+| Risk | Hedge |
 |------|------|
-| codec 保真度漂移（客户端升级） | codec 版本 pin + 单连接回放 CI + gameprofile 集中管理 |
-| 反作弊识别协议 bot | 隔离环境/内网部署形态；`loadtests` 环境标签进 RBAC |
-| 范围失控（重造 k6 生态） | 非目标清单写死；指标最小面 + 外抛出口 |
-| 指标帧超界 | 1s 窗口 + 桶数上限 + 预估 < 64KB；超界路径 = 二进制子类型升级 |
-| Python 密度陷阱复发 | plan 层无图灵完备脚本是硬边界（§4.1） |
-| ramp 时钟漂移 | v1 ±100ms 口径写进验收；不够再上校时 |
+| codec fidelity drift (client upgrades) | codec version pin + single-connection replay CI + centralized gameprofile management |
+| Anti-cheat identifying protocol bots | Isolated environment / intranet deployment shape; `loadtests` environment label enters RBAC |
+| Scope loss of control (rebuilding the k6 ecosystem) | The non-goals list is fixed; minimal metric surface + an export egress |
+| Metric frames exceeding limits | 1s window + bucket count ceiling + estimated < 64KB; the over-limit path = binary subtype upgrade |
+| The Python density trap recurring | No Turing-complete scripting at the plan layer is a hard boundary (§4.1) |
+| ramp clock drift | The v1 ±100ms convention is written into acceptance; add clock synchronization only if that is insufficient |
 
-## 9. 本设计留给 owner 的决策点
+## 9. Decision Points Left to the Owner by This Design
 
-1. **apps/loadgen 独立 agent 进程**（本设计推荐，owner 2026-10-09 倾向独立 agent——理由见 §4.3 的密度/故障域/部署形态三面；待最终确认收编为正式决策）。
-2. 密度目标数字（本设计按 ≥5k VU/worker 提案；影响 M2 验收）。
-3. 首批目标游戏与 codec 优先级（决定 M1 之后的实际节奏）。
-4. Prometheus remote-write 是否 v1 就要。
-5. 混合场景（UI 金丝雀 × campaign）的自动编排何时立项（当前留在手动并行）。
-6. campaign 快照挂 `models.Execution` 还是独立 `models.LoadCampaign` 表（推荐独立表 + audit 挂 executionId，避免 Execution 语义膨胀）。
+1. **apps/loadgen as a standalone agent process** (recommended by this design; the owner leaned toward a standalone agent on 2026-10-09 — the reasoning is on the three fronts of density / fault domain / deployment shape in §4.3; pending final confirmation to be recorded as a formal decision).
+2. The density target number (this design proposes ≥5k VU/worker; it affects M2 acceptance).
+3. The first batch of target games and codec priorities (this determines the actual pace after M1).
+4. Whether Prometheus remote-write is needed in v1.
+5. When automatic orchestration of mixed scenarios (UI canary × campaign) should be opened as an item (currently left as manual parallel operation).
+6. Whether campaign snapshots hang off `models.Execution` or get their own `models.LoadCampaign` table (a separate table + audit hanging off executionId is recommended, to avoid bloating the Execution semantics).
 
-## 10. 文档落地要求
+## 10. Documentation Landing Requirements
 
-拍板后同一变更内：本文件状态改 landed；`docs/architecture-decisions.md` 增「Load Testing Backend」节（四层模型图更新、capability 词汇、campaign 与 Workflow 的边界）；`docs/architecture.md` 与 `docs/protocols.md` 补 `loadgen.*` 命令与 Notify 事件；ROADMAP 增压测里程碑。
+Within the same change after sign-off: this file's status is changed to landed; `docs/architecture-decisions.md` gains a "Load Testing Backend" section (four-layer model diagram update, capability vocabulary, the boundary between campaign and Workflow); `docs/architecture.md` and `docs/protocols.md` add the `loadgen.*` commands and Notify events; the ROADMAP gains the load-testing milestones.

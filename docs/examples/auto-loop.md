@@ -1,10 +1,10 @@
-> [English](auto-loop.en.md) | **中文**
+> [中文](auto-loop.md) | **English**
 
-# 自动化循环
+# Auto Loop
 
-演示持续监控并执行操作的自动化脚本。
+Demonstrates an automation script that continuously monitors and performs actions.
 
-## 代码
+## Code
 
 ```lua
 -- examples/lua_scripts/auto_loop.lua
@@ -45,9 +45,9 @@ while true do
 end
 ```
 
-> 只需要第一个命中点时，可改用 `wingman.screen.findColor(color, region, tolerance)`：返回单数组 `{命中点, 是否找到}`，取 `res[1]` / `res[2]`（Lua 侧不会展开成多返回值）。
+> When you only need the first hit point, use `wingman.screen.findColor(color, region, tolerance)` instead: it returns a single array `{hit point, found}`, so take `res[1]` / `res[2]` (the Lua side does not expand it into multiple return values).
 
-## 运行
+## Running
 
 ```bash
 wingman-agent.exe script examples/lua_scripts/auto_loop.lua

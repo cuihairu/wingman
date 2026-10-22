@@ -1,24 +1,24 @@
-> [English](config.en.md) | **中文**
+> [中文](config.md) | **English**
 
 # API: wingman.config
 
-配置管理模块，用于读写应用程序配置。
+Configuration management module, used to read and write the application configuration.
 
-## 模块概述
+## Module Overview
 
-config 模块提供配置的读写功能，支持：
-- **自定义配置** - 存储用户自定义键值对
-- **持久化** - 保存配置到磁盘、从磁盘加载配置
+The config module provides configuration read/write functionality, supporting:
+- **Custom configuration** - store user-defined key-value pairs
+- **Persistence** - save the configuration to disk and load it from disk
 
 ---
 
-## 获取自定义配置
+## Get a Custom Config Entry
 
 ### get(key) / get(key)
 
-**说明**：获取自定义配置值。
+**Description**: Gets a custom configuration value.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 get(key: str) -> Any
@@ -28,11 +28,11 @@ get(key: str) -> Any
 get(key: string) -> any
 ```
 
-**参数**：
-- `key` - 配置键名。键为顶层字符串，不支持点号路径嵌套（传 `game.character` 会查找字面名为该串的顶层键）
+**Parameters**:
+- `key` - the config entry key name. Keys are top-level strings; dot-path nesting is not supported (passing `game.character` looks up a top-level key literally named that string)
 
-**返回**：
-- 配置值（字符串），不存在时返回 `None`/`nil`
+**Returns**:
+- The configuration value (a string), or `None`/`nil` when it does not exist
 
 :::tabs
 
@@ -61,13 +61,13 @@ end
 
 ---
 
-## 设置自定义配置
+## Set a Custom Config Entry
 
 ### set(key, value) / set(key, value)
 
-**说明**：设置自定义配置值。
+**Description**: Sets a custom configuration value.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 set(key: str, value: str) -> None
@@ -77,9 +77,9 @@ set(key: str, value: str) -> None
 set(key: string, value: string) -> nil
 ```
 
-**参数**：
-- `key` - 配置键名。键为顶层字符串，不支持点号路径嵌套
-- `value` - 配置值，**仅支持字符串**。传入非字符串（数字、布尔、字典等）会被静默存成空串；需要非字符串 JSON 类型时请传 JSON 字符串（内部会做 `json::parse`，如 `config.set("count", "42")` 存为数字 42）
+**Parameters**:
+- `key` - the config entry key name. Keys are top-level strings; dot-path nesting is not supported
+- `value` - the configuration value, **strings only**. Non-string values (numbers, booleans, tables, etc.) are silently stored as an empty string; for non-string JSON types, pass a JSON string (a `json::parse` is performed internally, e.g. `config.set("count", "42")` stores the number 42)
 
 :::tabs
 
@@ -109,13 +109,13 @@ wingman.config.set("enabled", "true")        -- 存为 JSON 布尔 true
 
 ---
 
-## 删除自定义配置
+## Delete a Custom Config Entry
 
 ### remove(key) / remove(key)
 
-**说明**：删除自定义配置值。
+**Description**: Deletes a custom configuration value.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 remove(key: str) -> bool
@@ -125,11 +125,11 @@ remove(key: str) -> bool
 remove(key: string) -> boolean
 ```
 
-**参数**：
-- `key` - 配置键名
+**Parameters**:
+- `key` - the config entry key name
 
-**返回**：
-- 是否成功删除（键存在返回 `True`/`true`，否则返回 `False`/`false`）
+**Returns**:
+- Whether the deletion succeeded (returns `True`/`true` if the key exists, otherwise `False`/`false`)
 
 :::tabs
 
@@ -162,13 +162,13 @@ end
 
 ---
 
-## 保存配置
+## Save the Configuration
 
 ### save() / save()
 
-**说明**：将当前配置保存到磁盘。
+**Description**: Saves the current configuration to disk.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 save() -> bool
@@ -178,8 +178,8 @@ save() -> bool
 save() -> boolean
 ```
 
-**返回**：
-- bool：是否保存成功（当前实现直写 JSON，恒为 `True`/`true`）
+**Returns**:
+- bool: whether saving succeeded (the current implementation writes JSON directly, so it is always `True`/`true`)
 
 :::tabs
 
@@ -207,13 +207,13 @@ wingman.config.save()
 
 ---
 
-## 加载配置
+## Load the Configuration
 
 ### load() / load()
 
-**说明**：从磁盘加载配置。
+**Description**: Loads the configuration from disk.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 load() -> bool
@@ -223,8 +223,8 @@ load() -> bool
 load() -> boolean
 ```
 
-**返回**：
-- bool：是否加载成功（当前实现直读 JSON，恒为 `True`/`true`）
+**Returns**:
+- bool: whether loading succeeded (the current implementation reads JSON directly, so it is always `True`/`true`)
 
 :::tabs
 
@@ -250,12 +250,12 @@ wingman.config.load()
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python function | Lua function | Description | Parameters |
 |------------|---------|------|-----|
-| `get(key)` | `get(key)` | 获取自定义配置 | key: 键名（顶层字符串，不支持嵌套路径）<br>返回: 字符串，不存在返回 None/nil |
-| `set(key, value)` | `set(key, value)` | 设置自定义配置 | key: 键名, value: 仅字符串（非字符串静默存空串；JSON 类型传 JSON 字符串） |
-| `remove(key)` | `remove(key)` | 删除自定义配置 | key: 键名 |
-| `save()` | `save()` | 保存配置到磁盘 | 无 |
-| `load()` | `load()` | 从磁盘加载配置 | 无 |
+| `get(key)` | `get(key)` | Get custom configuration | key: key name (top-level string, no nested paths)<br>Return: string, None/nil if not present |
+| `set(key, value)` | `set(key, value)` | Set custom configuration | key: key name, value: strings only (non-strings are silently stored as an empty string; pass JSON strings for JSON types) |
+| `remove(key)` | `remove(key)` | Delete custom configuration | key: key name |
+| `save()` | `save()` | Save the configuration to disk | None |
+| `load()` | `load()` | Load the configuration from disk | None |

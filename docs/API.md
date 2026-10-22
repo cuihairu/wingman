@@ -1,19 +1,19 @@
-> [English](API.en.md) | **中文**
+> [中文](API.md) | **English**
 
 # Wingman Runtime Local IPC API
 
-> 本文记录当前 runtime local IPC 控制面。Runtime 不应提供 WebSocket/HTTP server 作为本地 UI 或远程控制面。
+> This document describes the current runtime local IPC control plane. The Runtime must not provide a WebSocket/HTTP server as the local UI or remote control plane.
 >
-> 当前约束见 `docs/architecture-decisions.md`：
+> Current constraints see `docs/architecture-decisions.md`:
 >
-> - 远程编排: `runtime agent -> outbound transport -> Go orchestrator -> dashboard`
-> - 本地单机 UI: `Tauri UI -> Tauri Rust backend -> local IPC -> runtime`
+> - Remote orchestration: `runtime agent -> outbound transport -> Go orchestrator -> dashboard`
+> - Local standalone UI: `Tauri UI -> Tauri Rust backend -> local IPC -> runtime`
 >
-> Go orchestrator 的远程 API 应独立记录；不要把 dashboard/browser WebSocket 协议混入 runtime local IPC。
+> The Go orchestrator's remote API should be documented separately; do not mix the dashboard/browser WebSocket protocol into runtime local IPC.
 
-Wingman Runtime 的本地控制面应通过本地 IPC 提供，供 Tauri UI 调用。
+The Wingman Runtime's local control plane should be provided via local IPC, for the Tauri UI to call.
 
-## 启动 runtime
+## Starting the Runtime
 
 ```bash
 # 默认配置
@@ -26,17 +26,17 @@ wingman-agent start --config agent.toml
 wingman-agent start --standalone
 ```
 
-> 远程 Agent 使用 `agent.toml` 中的 `server_ip` / `server_port` 连接 Go orchestrator。本地 GUI 使用 `--standalone` 启动 runtime local IPC。
+> The remote Agent uses `server_ip` / `server_port` from `agent.toml` to connect to the Go orchestrator. The local GUI uses `--standalone` to start the runtime local IPC.
 
-## 本地 IPC 命令接口
+## Local IPC Command Interface
 
-IPC 传输使用长度前缀帧：`uint32 little-endian length + JSON envelope`。具体 transport 按平台自动选择：Windows 默认 Named Pipe，macOS/Linux 默认 Unix Domain Socket。
+The IPC transport uses length-prefixed frames: `uint32 little-endian length + JSON envelope`. The concrete transport is selected automatically per platform: Windows defaults to Named Pipe, macOS/Linux default to Unix Domain Socket.
 
-当前 IPC envelope 由 GUI Rust backend 和 C++ runtime 共享。不要把这里改成 WebSocket JSON-RPC，也不要为本地 UI 增加 HTTP/WebSocket server。
+The current IPC envelope is shared by the GUI Rust backend and the C++ runtime. Do not turn this into WebSocket JSON-RPC, and do not add an HTTP/WebSocket server for the local UI.
 
-### 消息格式
+### Message Format
 
-**Wire 请求 envelope:**
+**Wire request envelope:**
 ```json
 {
   "type": 0,
@@ -47,14 +47,14 @@ IPC 传输使用长度前缀帧：`uint32 little-endian length + JSON envelope`�
 }
 ```
 
-`type` 当前使用数字枚举：
+`type` currently uses a numeric enum:
 
 - `0`: request
 - `1`: response
 - `2`: event
 - `3`: error
 
-**Wire 响应 envelope:**
+**Wire response envelope:**
 ```json
 {
   "type": 1,
@@ -72,9 +72,9 @@ IPC 传输使用长度前缀帧：`uint32 little-endian length + JSON envelope`�
 }
 ```
 
-GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
+What the GUI Rust backend returns to a Tauri command is the `payload` inside the envelope.
 
-**Dispatcher 错误 payload:**
+**Dispatcher error payload:**
 ```json
 {
   "type": "response",
@@ -86,11 +86,11 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 }
 ```
 
-### 支持的 RPC 方法
+### Supported RPC Methods
 
-当前共注册 **31 个**唯一方法（26 个注册于 `apps/agent/src/rpc/handlers/`，5 个 `trigger.*` 注册于 `lib/wingman/src/rpc/handlers/trigger_handler.cpp`），与 `docs/protocols.md` 同一口径：
+Currently **31** unique methods are registered in total (26 registered under `apps/agent/src/rpc/handlers/`, 5 `trigger.*` registered in `lib/wingman/src/rpc/handlers/trigger_handler.cpp`), on the same accounting basis as `docs/protocols.md`:
 
-| 分组 | 方法 |
+| Group | Methods |
 |------|------|
 | system | `getStatus` `getVersion` `isPaused` `togglePause` `pauseAll` `resumeAll` `stopAll` |
 | script | `list` `start` `stop` `pause` `resume` `restart` `unload` |
@@ -101,35 +101,35 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 | macro | `start` `stop` `play` `status` `save` `load` `clear` |
 | config | `getRemote` `setRemote` |
 
-> `trigger.*` 在本地 IPC 与远程 agent 通道**双面注册**，两端共用同一组 handler：本地由 `LocalIpcServer::start()` 装进本方法的 dispatcher（有外部 TriggerManager 时复用、没有则自建一个），GUI 的 Tauri command `get_triggers`/`add_trigger`/`remove_trigger`/`update_trigger`/`toggle_trigger`（`apps/gui/src-tauri/src/commands/triggers.rs`）即走这条本地 IPC；远程侧是 Dispatcher Reuse（`apps/agent/src/agent.cpp`），Dashboard 经 Go server 透传访问。见 `docs/protocols.md`。
+> `trigger.*` is **registered on both sides**: local IPC and the remote agent channel, with both ends sharing the same set of handlers: locally, `LocalIpcServer::start()` installs them into this method group's dispatcher (reuses an external TriggerManager if one exists, otherwise builds its own); the GUI's Tauri commands `get_triggers`/`add_trigger`/`remove_trigger`/`update_trigger`/`toggle_trigger` (`apps/gui/src-tauri/src/commands/triggers.rs`) go through this local IPC; on the remote side it is Dispatcher Reuse (`apps/agent/src/agent.cpp`), accessed by the Dashboard via pass-through from the Go server. See `docs/protocols.md`.
 >
-> 远程编排命令（如 `system.shutdown`）同样走 agent transport 通道（`apps/agent/src/agent.cpp`），不属于本地 IPC 面。
+> Remote orchestration commands (e.g., `system.shutdown`) likewise go through the agent transport channel (`apps/agent/src/agent.cpp`) and are not part of the local IPC surface.
 >
-> `asset.sync` 不在本地 IPC 面——它只在远程 dispatcher 与 Android 端侧注册。
+> `asset.sync` is not on the local IPC surface—it is registered only on the remote dispatcher and on the Android device side.
 
 #### system.getStatus
-获取系统状态
+Get system status
 
 ```json
 { "type": 0, "method": "system.getStatus", "payload": {}, "id": 1, "timestamp": 1715299200000 }
 ```
 
 #### system.getVersion
-获取版本信息
+Get version information
 
 ```json
 { "type": 0, "method": "system.getVersion", "payload": {}, "id": 2, "timestamp": 1715299200000 }
 ```
 
 #### script.list
-列出所有可用脚本
+List all available scripts
 
 ```json
 { "type": 0, "method": "script.list", "payload": {}, "id": 3, "timestamp": 1715299200000 }
 ```
 
 #### script.start
-启动指定的脚本
+Start the specified script
 
 ```json
 {
@@ -144,7 +144,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 ```
 
 #### script.stop
-停止运行中的脚本
+Stop a running script
 
 ```json
 {
@@ -159,7 +159,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 ```
 
 #### script.pause / script.resume
-暂停/恢复运行中的脚本（`scriptId` 必填）
+Pause/resume a running script (`scriptId` required)
 
 ```json
 {
@@ -172,7 +172,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 ```
 
 #### script.restart
-重启已加载脚本：对已运行/已暂停的脚本 stop → start（路径复用，ID 不变）
+Restart a loaded script: for a running/paused script, stop → start (path reused, ID unchanged)
 
 ```json
 {
@@ -185,7 +185,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 ```
 
 #### script.unload
-从脚本表移除（仅对非运行中的脚本有效；运行中先 stop）
+Remove from the script table (only valid for scripts that are not running; stop a running script first)
 
 ```json
 {
@@ -198,39 +198,39 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 ```
 
 #### system.isPaused
-查询是否存在已暂停脚本，返回 `{ "paused": bool }`
+Query whether any paused script exists; returns `{ "paused": bool }`
 
 ```json
 { "type": 0, "method": "system.isPaused", "payload": {}, "id": 9, "timestamp": 1715299200000 }
 ```
 
 #### system.togglePause
-切换全局暂停：有暂停则全部恢复，否则全部暂停。返回 `{ "paused": bool, "changedScripts": int }`
+Toggle global pause: if any are paused, resume all; otherwise pause all. Returns `{ "paused": bool, "changedScripts": int }`
 
 ```json
 { "type": 0, "method": "system.togglePause", "payload": {}, "id": 10, "timestamp": 1715299200000 }
 ```
 
 #### system.pauseAll / system.resumeAll
-全部暂停/全部恢复。返回 `{ "paused": bool, "changedScripts": int }`
+Pause all / resume all. Returns `{ "paused": bool, "changedScripts": int }`
 
 ```json
 { "type": 0, "method": "system.pauseAll", "payload": {}, "id": 11, "timestamp": 1715299200000 }
 ```
 
 #### system.stopAll
-全部停止。返回 `{ "stoppedScripts": int }`
+Stop all. Returns `{ "stoppedScripts": int }`
 
 ```json
 { "type": 0, "method": "system.stopAll", "payload": {}, "id": 12, "timestamp": 1715299200000 }
 ```
 
 #### screenshot.capture
-截取屏幕为 JPEG（base64 data URL）。需要 `WINGMAN_ENABLE_VISION`（OpenCV），否则返回错误。可选参数：
-- `region` - `{x, y, width, height}`；省略或空 → 整屏（或指定显示器）
-- `displayId` - 显示器索引（-1/省略 → 主屏）；`region` 相对该显示器原点
+Capture the screen as JPEG (base64 data URL). Requires `WINGMAN_ENABLE_VISION` (OpenCV), otherwise returns an error. Optional parameters:
+- `region` - `{x, y, width, height}`; omitted or empty → the whole screen (or the specified monitor)
+- `displayId` - monitor index (-1/omitted → primary screen); `region` is relative to that monitor's origin
 
-返回 `{ "image": "data:image/jpeg;base64,...", "width", "height", "timestamp", "region" }`
+Returns `{ "image": "data:image/jpeg;base64,...", "width", "height", "timestamp", "region" }`
 
 ```json
 {
@@ -243,14 +243,14 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 ```
 
 #### screen.listMonitors
-列出显示器，返回 `{ "monitors": [{ "id", "name", "isPrimary", "bounds" }], "primaryId": int }`
+List monitors; returns `{ "monitors": [{ "id", "name", "isPrimary", "bounds" }], "primaryId": int }`
 
 ```json
 { "type": 0, "method": "screen.listMonitors", "payload": {}, "id": 14, "timestamp": 1715299200000 }
 ```
 
 #### events.drain
-拉取本地事件流（GUI 轮询）。事件 method 集合：`tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip`（脚本托盘意图）、`trigger.fired`/`trigger.action`、`systemwatch.process`/`systemwatch.window`/`systemwatch.error`、`filewatcher.changed`/`filewatcher.error`、`macro.state`/`macro.recorded`、`script.state_changed`、`script.output`、`connection.ipc_client`。参数 `max`（默认 500，单次拉取上限）。返回：
+Drain the local event stream (GUI polling). The event method set: `tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip` (script tray intents), `trigger.fired`/`trigger.action`, `systemwatch.process`/`systemwatch.window`/`systemwatch.error`, `filewatcher.changed`/`filewatcher.error`, `macro.state`/`macro.recorded`, `script.state_changed`, `script.output`, `connection.ipc_client`. Parameter `max` (default 500, single-drain cap). Returns:
 
 ```json
 {
@@ -262,43 +262,43 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 }
 ```
 
-响应 `result`：`{ "events": [...], "remaining": int, "dropped": int }`（`remaining` = 缓冲区剩余，`dropped` = 累计丢弃数）。
+Response `result`: `{ "events": [...], "remaining": int, "dropped": int }` (`remaining` = remaining in the buffer, `dropped` = cumulative dropped count).
 
 #### trigger.list
-列出全部触发器。无参数。返回 `{ "triggers": [ ... ] }`，每项字段：
+List all triggers. No parameters. Returns `{ "triggers": [ ... ] }`, each item's fields:
 
-| 字段 | 说明 |
+| Field | Description |
 |------|------|
-| `id` | 触发器 ID，**字符串**（`remove`/`update`/`toggle` 按此回传） |
-| `name` / `enabled` / `oneShot` / `cooldown` | 顶层开关与冷却（`cooldown` 单位 ms） |
-| `type` | 条件类型（见下表，取自 `condition.type`） |
+| `id` | Trigger ID, a **string** (`remove`/`update`/`toggle` pass it back by this) |
+| `name` / `enabled` / `oneShot` / `cooldown` | Top-level switch and cooldown (`cooldown` unit is ms) |
+| `type` | Condition type (see table below, taken from `condition.type`) |
 | `condition` | `{ type, value, region: {x, y, width, height}, tolerance, interval, enabled }` |
-| `actions` | 数组，每项 `{ type, value, x, y, delay }` |
-| `lastTriggered` | 是否已命中过（bool） |
+| `actions` | Array, each item `{ type, value, x, y, delay }` |
+| `lastTriggered` | Whether it has ever fired (bool) |
 
 ```json
 { "type": 0, "method": "trigger.list", "payload": {}, "id": 16, "timestamp": 1715299200000 }
 ```
 
-条件类型：`ColorFound` `ColorLost` `ImageFound` `ImageLost` `WindowOpened` `WindowClosed` `ProcessStarted` `ProcessStopped` `TimeElapsed` `HotkeyPressed` `PixelChanged`；动作类型：`RunScript` `Click` `KeyPress` `Type` `StopScript` `PauseScript` `ShowMessage` `PlayAudio` `Log` `Delay`。
+Condition types: `ColorFound` `ColorLost` `ImageFound` `ImageLost` `WindowOpened` `WindowClosed` `ProcessStarted` `ProcessStopped` `TimeElapsed` `HotkeyPressed` `PixelChanged`; action types: `RunScript` `Click` `KeyPress` `Type` `StopScript` `PauseScript` `ShowMessage` `PlayAudio` `Log` `Delay`.
 
 #### trigger.add
-新增触发器。参数 `config`（对象；顶层直接给配置体亦可，此时以整个 payload 为配置源）。`config` 字段：
+Add a new trigger. Parameter `config` (an object; giving the config body directly at the top level also works—in that case the whole payload is treated as the config source). `config` fields:
 
-| 字段 | 说明 |
+| Field | Description |
 |------|------|
-| `name` | 名称，省略时默认 `Unnamed Trigger` |
-| `enabled` / `oneShot` | 默认 `true` / `false` |
-| `cooldown` | 冷却 ms，默认 0 |
-| `condition.type` | 默认 `ColorFound` |
-| `condition.value` | 条件值（按类型解释，如颜色/窗口标题/图片路径） |
-| `condition.region` | `{x, y, width, height}`，全零即不限定区域 |
-| `condition.tolerance` | 默认 10 |
-| `condition.interval` | 轮询间隔 ms，默认 1000 |
-| `condition.enabled` | 默认 `true` |
-| `actions` | 数组，**整表替换**语义（出现即先清空后重建） |
+| `name` | Name; defaults to `Unnamed Trigger` when omitted |
+| `enabled` / `oneShot` | Defaults `true` / `false` |
+| `cooldown` | Cooldown in ms, default 0 |
+| `condition.type` | Default `ColorFound` |
+| `condition.value` | Condition value (interpreted by type, e.g., color/window title/image path) |
+| `condition.region` | `{x, y, width, height}`; all zeros means no region restriction |
+| `condition.tolerance` | Default 10 |
+| `condition.interval` | Polling interval in ms, default 1000 |
+| `condition.enabled` | Default `true` |
+| `actions` | Array, **replace-whole-table** semantics (when present, clears first then rebuilds) |
 
-返回 `{ "id": string }`。
+Returns `{ "id": string }`.
 
 ```json
 {
@@ -317,24 +317,24 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 }
 ```
 
-`type` 字段大小写与下划线不敏感（`ColorFound` / `colorfound` / `color_found` 等价，别名 `pixel`→`ColorFound`、`image`→`ImageFound`；动作侧别名 `macro`→`RunScript`、`key`→`KeyPress`），也接受 `TriggerType` / `BasicTriggerAction` 的数值枚举。无法识别的类型回落为 `ColorFound` / `Log`。
+The `type` field is case- and underscore-insensitive (`ColorFound` / `colorfound` / `color_found` are equivalent; aliases `pixel`→`ColorFound`, `image`→`ImageFound`; action-side aliases `macro`→`RunScript`, `key`→`KeyPress`), and the numeric enums of `TriggerType` / `BasicTriggerAction` are also accepted. Unrecognizable types fall back to `ColorFound` / `Log`.
 
 #### trigger.remove / trigger.update / trigger.toggle
-三者均以 `id` 定位触发器（`id` 传字符串或数字均可）。`update` 额外带 `config` 补丁（字段语义同 `add`，`actions` 为整表替换）；`id` 不存在时返回 `{ "success": false, "error": "Trigger not found" }`。`toggle` 在 `enabled` 上来回切换，返回切换后的 `{ "enabled": bool }`。
+All three locate the trigger by `id` (`id` may be passed as a string or a number). `update` additionally carries a `config` patch (field semantics same as `add`; `actions` is replace-whole-table); when `id` does not exist, returns `{ "success": false, "error": "Trigger not found" }`. `toggle` flips back and forth on `enabled` and returns the post-toggle `{ "enabled": bool }`.
 
 ```json
 { "type": 0, "method": "trigger.toggle", "payload": { "id": "3" }, "id": 18, "timestamp": 1715299200000 }
 ```
 
 #### macro.start / macro.stop / macro.status / macro.clear
-宏录制控制。`status` 返回 `{ "recording": bool, "paused": bool, "eventCount": int }`；其余无参数。
+Macro recording control. `status` returns `{ "recording": bool, "paused": bool, "eventCount": int }`; the others take no parameters.
 
 ```json
 { "type": 0, "method": "macro.status", "payload": {}, "id": 19, "timestamp": 1715299200000 }
 ```
 
 #### macro.play
-回放宏。参数：`speed`（百分比，默认 100，内部钳制 ≥1）、`repeat`（次数，默认 1，钳制 ≥1）。**回放在调用线程同步执行，GUI 侧应异步调用避免阻塞**。
+Play back a macro. Parameters: `speed` (percent, default 100, internally clamped ≥1), `repeat` (count, default 1, clamped ≥1). **Playback executes synchronously on the calling thread; the GUI side should call it asynchronously to avoid blocking**.
 
 ```json
 {
@@ -347,7 +347,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 ```
 
 #### macro.save / macro.load
-按 JSON 路径保存/加载宏（`path` 必填）。返回 `{ "success": true, "eventCount": int }`
+Save/load a macro by JSON path (`path` required). Returns `{ "success": true, "eventCount": int }`
 
 ```json
 {
@@ -360,7 +360,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 ```
 
 #### config.getRemote / config.setRemote
-读取/应用远程注册配置（`serverIp` / `serverPort` / `registerToken`，仅本地 IPC，无对应远程命令）。`setRemote` 请求体为配置补丁（部分更新），成功返回应用后的完整配置；运行中生效会触发 agent 重连。
+Read/apply the remote registration configuration (`serverIp` / `serverPort` / `registerToken`, local IPC only, no corresponding remote command). The `setRemote` request body is a config patch (partial update); on success it returns the full configuration after applying; taking effect while running triggers an agent reconnect.
 
 ```json
 {
@@ -372,11 +372,11 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 }
 ```
 
-### 心跳/Ping
+### Heartbeat/Ping
 
-当前 runtime local IPC 未实现独立 ping/pong。GUI 应使用 `system.getStatus` 作为连接健康检查。
+The current runtime local IPC does not implement a standalone ping/pong. The GUI should use `system.getStatus` as the connection health check.
 
-## 使用示例
+## Usage Examples
 
 ### JavaScript (Tauri)
 ```javascript
@@ -386,4 +386,4 @@ await invoke('connect_ipc', { endpoint: 'wingman' });
 const status = await invoke('get_system_status');
 ```
 
-当前 GUI 已使用专门的 Tauri commands，例如 `connect_ipc`、`get_system_status`、`get_scripts`。新增 UI 功能应优先复用这些 commands，或新增 Tauri command 通过 Rust IPC client 调用 runtime。
+The current GUI already uses dedicated Tauri commands, e.g., `connect_ipc`, `get_system_status`, `get_scripts`. New UI features should reuse these commands first, or add a new Tauri command that calls the runtime through the Rust IPC client.

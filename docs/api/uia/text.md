@@ -1,16 +1,16 @@
-> [English](text.en.md) | **中文**
+> [中文](text.md) | **English**
 
 # API: UIA Text
 
-文本（Text）控件用于显示静态文本标签，如字段标签、提示信息、状态显示等。
+The Text control is used to display static text labels, such as field labels, hints, and status displays.
 
-**重要**：Text 控件通常是**只读**的，不能修改其内容。
+**Important**: Text controls are usually **read-only**; their content cannot be modified.
 
-## 查找文本控件
+## Finding a Text control
 
-**说明**：文本控件通过其显示的文本来查找。注意：UIARole 枚举**没有 Text 专用角色值**，`find_text` 按名称匹配且**不做角色过滤**，可能命中任意类型的同名元素。
+**Note**: Text controls are found by the text they display. Note: the UIARole enum **has no Text-specific role value**; `find_text` matches by name and **does not filter by role**, so it may hit a same-named element of any type.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 find_text(name: str) -> UIElement | None
@@ -49,9 +49,9 @@ end
 
 ---
 
-## 获取文本内容
+## Getting the text content
 
-**说明**：读取 Text 控件显示的内容。通常用于验证或获取信息。
+**Note**: Reads the content displayed by the Text control. Commonly used for verification or information retrieval.
 
 :::tabs
 
@@ -86,11 +86,11 @@ end
 
 ---
 
-## 作为定位锚点
+## As a positioning anchor
 
-**说明**：Text 控件常用于定位其他控件。例如，找到"用户名："标签后，可以知道输入框就在附近。
+**Note**: Text controls are often used to locate other controls. For example, after finding the "用户名：" label, you know the input field is nearby.
 
-**注意**：这需要配合其他定位方式，因为 Text 控件本身不能直接"指向"其他控件。
+**Note**: This must be combined with other locating methods, since a Text control cannot directly "point to" other controls.
 
 :::tabs
 
@@ -141,15 +141,15 @@ end
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 |
-|------------|---------|------|
-| `find_text(name)` | `find_text(name)` | 按名称查找（无 Text 专用角色，不做角色过滤） |
-| `find_by_name(name)` | `find_by_name(name)` | 通用查找方法 |
+| Python function | Lua function | Description |
+|----------------|-------------|-------------|
+| `find_text(name)` | `find_text(name)` | Find by name (no Text-specific role; no role filtering) |
+| `find_by_name(name)` | `find_by_name(name)` | General finding method |
 
-| Python 方法 | Lua 方法 | 说明 |
-|------------|---------|------|
-| `get_info()` | `:get_info()` | 获取文本信息（包含 name 属性） |
+| Python method | Lua method | Description |
+|----------------|-------------|-------------|
+| `get_info()` | `:get_info()` | Get text information (includes the name attribute) |
 
-> **注意**：Text 控件通常只读，不支持修改内容。
+> **Note**: Text controls are usually read-only and do not support content modification.

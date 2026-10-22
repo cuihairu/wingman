@@ -1,50 +1,50 @@
-> [English](overview.en.md) | **中文**
+> [中文](overview.md) | **English**
 
-# API 参考
+# API Reference
 
-Wingman 提供了丰富的 API 来支持游戏自动化开发。
+Wingman provides a rich set of APIs to support game automation development.
 
-## 目录
+## Table of Contents
 
-- [核心 API](#核心-api)
-- [数据持久化 API](#数据持久化-api)
-- [序列化 API](#序列化-api)
-- [脚本 API](#脚本-api)
-- [调试 API](#调试-api)
+- [Core APIs](#core-apis)
+- [Data Persistence APIs](#data-persistence-apis)
+- [Serialization APIs](#serialization-apis)
+- [Scripting APIs](#scripting-apis)
+- [Debugging APIs](#debugging-apis)
 
-## 核心 API
+## Core APIs
 
-核心 API 提供屏幕操作、输入模拟、窗口管理等基础功能。
+The core APIs provide fundamental capabilities such as screen operations, input simulation, and window management.
 
-### 模块列表
+### Module List
 
-| 模块 | 功能 | 文档 |
+| Module | Functionality | Documentation |
 |------|------|------|
-| `screen` | 屏幕截图、颜色检测、图像识别 | [screen](screen.md) |
-| `input` | 鼠标点击、键盘输入、文本输入 | [input](input.md) |
-| `window` | 窗口查找、激活、位置获取 | [window](window.md) |
-| `process` | 进程查找和管理 | [process](process.md) |
-| `vision` | 图像识别和匹配 | [vision](vision.md) |
-| `ocr` | OCR 文字识别 | [ocr](ocr.md) |
-| `smarttrigger` | 智能触发器系统 | [smart-trigger](smart-trigger.md) |
-| `human` | 人性化模拟 | [human](human.md) |
-| `perf` | 性能监控 | [perf](perf.md) |
-| `system` | 系统信息获取 | [system](system.md) |
-| `uia` | UI Automation 控件交互 | [uia](uia/index.md) |
-| `bt` | 行为树引擎 | [behavior-tree](behavior-tree.md) |
-| `security` | 安全模块 | [security](security.md) |
-| `crypto` | 加密函数 | [crypto](crypto.md) |
-| `verification` | 验证码识别、TOTP | [verification](verification.md) |
-| `gameprofile` | 游戏配置档案 | [gameprofile](gameprofile.md) |
-| `util` | 工具函数 | [util](util.md) |
-| `ml` | ONNX 模型加载与输入/输出元数据查询（可选依赖） | [ml](ml.md) |
-| `file` | 文件 IO（读写、移动复制、目录操作） | [file](file.md) |
-| `filewatcher` | 文件系统监听 | [filewatcher](filewatcher.md) |
-| `clipboard` | 剪贴板读写 | [clipboard](clipboard.md) |
-| `hotkey` | 全局热键监听 | [hotkey](hotkey.md) |
-| `systemwatch` | 系统事件源（进程/窗口变化） | [systemwatch](systemwatch.md) |
+| `screen` | Screen capture, color detection, image recognition | [screen](screen.md) |
+| `input` | Mouse clicks, keyboard input, text input | [input](input.md) |
+| `window` | Window lookup, activation, bounds retrieval | [window](window.md) |
+| `process` | Process lookup and management | [process](process.md) |
+| `vision` | Image recognition and matching | [vision](vision.md) |
+| `ocr` | OCR text recognition | [ocr](ocr.md) |
+| `smarttrigger` | Smart trigger system | [smart-trigger](smart-trigger.md) |
+| `human` | Humanized simulation | [human](human.md) |
+| `perf` | Performance monitoring | [perf](perf.md) |
+| `system` | System information retrieval | [system](system.md) |
+| `uia` | UI Automation control interaction | [uia](uia/index.md) |
+| `bt` | Behavior tree engine | [behavior-tree](behavior-tree.md) |
+| `security` | Security module | [security](security.md) |
+| `crypto` | Cryptographic functions | [crypto](crypto.md) |
+| `verification` | CAPTCHA recognition, TOTP | [verification](verification.md) |
+| `gameprofile` | Game profiles | [gameprofile](gameprofile.md) |
+| `util` | Utility functions | [util](util.md) |
+| `ml` | ONNX model loading and input/output metadata queries (optional dependency) | [ml](ml.md) |
+| `file` | File IO (read/write, move/copy, directory operations) | [file](file.md) |
+| `filewatcher` | Filesystem watching | [filewatcher](filewatcher.md) |
+| `clipboard` | Clipboard read/write | [clipboard](clipboard.md) |
+| `hotkey` | Global hotkey listening | [hotkey](hotkey.md) |
+| `systemwatch` | System event sources (process/window changes) | [systemwatch](systemwatch.md) |
 
-### 快速示例
+### Quick Examples
 
 #### Lua
 
@@ -93,18 +93,18 @@ if match["found"]:
     input.click(match["point"]["x"], match["point"]["y"])
 ```
 
-## 数据持久化 API
+## Data Persistence APIs
 
-数据持久化 API 提供键值存储和数据库支持。
+The data persistence APIs provide key-value storage and database support.
 
-### 模块列表
+### Module List
 
-| 模块 | 功能 | 文档 |
+| Module | Functionality | Documentation |
 |------|------|------|
-| `kv` | 键值存储 | [kv](kv.md) |
-| `db` | SQLite 数据库 | [db](db.md) |
+| `kv` | Key-value storage | [kv](kv.md) |
+| `db` | SQLite database | [db](db.md) |
 
-### 快速示例
+### Quick Examples
 
 #### Lua
 
@@ -138,18 +138,18 @@ db.execute(conn, "INSERT INTO players (name) VALUES (?)", ["player1"])
 rows = db.query(conn, "SELECT * FROM players")
 ```
 
-## 序列化 API
+## Serialization APIs
 
-序列化 API 提供多种数据格式支持。
+The serialization APIs provide support for multiple data formats.
 
-### 模块列表
+### Module List
 
-| 模块 | 功能 | 文档 |
+| Module | Functionality | Documentation |
 |------|------|------|
-| `json` | JSON 编码/解码 | [json](json.md) |
-| `ini` | INI 配置文件解析 | [ini](ini.md) |
+| `json` | JSON encoding/decoding | [json](json.md) |
+| `ini` | INI configuration file parsing | [ini](ini.md) |
 
-### 快速示例
+### Quick Examples
 
 #### Lua
 
@@ -181,40 +181,40 @@ config = ini.decode(ini_content)
 config_string = ini.encode(config)
 ```
 
-## 脚本 API
+## Scripting APIs
 
-脚本 API 提供脚本执行和管理功能。
+The scripting APIs provide script execution and management functionality.
 
-### 模块列表
+### Module List
 
-| 模块 | 功能 | 文档 |
+| Module | Functionality | Documentation |
 |------|------|------|
-| `event` | 事件系统 | [event](event.md) |
-| `task` | 任务管理 | [task](task.md) |
-| `notify` | 通知系统 | [notify](notify.md) |
-| `fsm` | 有限状态机 | [fsm](fsm.md) |
-| `http` | HTTP 请求 | [http](http.md) |
-| `config` | 配置管理 | [config](config.md) |
-| `transport` | TCP/UDP 网络通信 | [transport](transport.md) |
-| `script` | 脚本管理控制面（列举、启动/停止/重载） | [script](script.md) |
-| `timer` | 定时器（一次性/周期回调） | [timer](timer.md) |
-| `macro` | 宏录制与回放 | [macro](macro.md) |
-| `orchestration` | 编排控制 | [orchestration](orchestration.md) |
-| `inbox` | 消息收件箱 | [inbox](inbox.md) |
-| `team` | 组队编排 | [team](team.md) |
-| `node` | 节点管理 | [node](../guide/config.md) |
+| `event` | Event system | [event](event.md) |
+| `task` | Task management | [task](task.md) |
+| `notify` | Notification system | [notify](notify.md) |
+| `fsm` | Finite state machine | [fsm](fsm.md) |
+| `http` | HTTP requests | [http](http.md) |
+| `config` | Configuration management | [config](config.md) |
+| `transport` | TCP/UDP networking | [transport](transport.md) |
+| `script` | Script management control plane (listing, start/stop/reload) | [script](script.md) |
+| `timer` | Timers (one-shot/periodic callbacks) | [timer](timer.md) |
+| `macro` | Macro recording and playback | [macro](macro.md) |
+| `orchestration` | Orchestration control | [orchestration](orchestration.md) |
+| `inbox` | Message inbox | [inbox](inbox.md) |
+| `team` | Team orchestration | [team](team.md) |
+| `node` | Node management | [node](../guide/config.md) |
 
-## 调试 API
+## Debugging APIs
 
-调试 API 提供脚本调试功能。
+The debugging APIs provide script debugging functionality.
 
-### 模块列表
+### Module List
 
-| 模块 | 功能 | 文档 |
+| Module | Functionality | Documentation |
 |------|------|------|
-| `debugger` | EmmyLua 调试器 | [debugger](debugger.md) |
+| `debugger` | EmmyLua debugger | [debugger](debugger.md) |
 
-### 快速示例
+### Quick Examples
 
 #### Lua
 
@@ -228,67 +228,67 @@ wingman.debugger.start()
 wingman.debugger.breakHere()
 ```
 
-## 按功能查找 API
+## Find APIs by Feature
 
-### 屏幕和图像
+### Screen and Image
 
-- [**截图**: `screen.capture()`, `screen.captureRegion()`]
-- [**颜色检测**: `screen.findColor()`, `screen.findColors()`]
-- [**图像识别**: `screen.findImage()`]
+- [**Screenshot**: `screen.capture()`, `screen.captureRegion()`]
+- [**Color detection**: `screen.findColor()`, `screen.findColors()`]
+- [**Image recognition**: `screen.findImage()`]
 - [**OCR**: `ocr.recognize()`]
 
-### 输入和控制
+### Input and Control
 
-- [**鼠标**: `input.click()`, `input.move()`, `input.scroll()`]
-- **键盘**: `input.keyDown()`, `input.keyUp()`, `input.key()`
-- [**文本**: `input.type()`]
-- [**人性化**: `human.mouse_move()`, `human.mouse_click()`, `human.keyboard_type()`]
+- [**Mouse**: `input.click()`, `input.move()`, `input.scroll()`]
+- **Keyboard**: `input.keyDown()`, `input.keyUp()`, `input.key()`
+- [**Text**: `input.type()`]
+- [**Humanized**: `human.mouse_move()`, `human.mouse_click()`, `human.keyboard_type()`]
 
-### 窗口和进程
+### Window and Process
 
-- [**窗口**: `window.find()`, `window.activate()`, `window.getBounds()`]
-- [**进程**: `process.find()`, `process.exists()`]
+- [**Window**: `window.find()`, `window.activate()`, `window.getBounds()`]
+- [**Process**: `process.find()`, `process.exists()`]
 
-### 数据和配置
+### Data and Configuration
 
-- [**存储**: `kv.set()`, `kv.get()`, `db.open()`]
-- [**配置**: `json.encode()`, `json.decode()`, `ini.encode()`, `ini.decode()`]
+- [**Storage**: `kv.set()`, `kv.get()`, `db.open()`]
+- [**Configuration**: `json.encode()`, `json.decode()`, `ini.encode()`, `ini.decode()`]
 
-### 自动化
+### Automation
 
-- [**触发器**: `smarttrigger.create()`, `smarttrigger.start()`]
-- [**录制**: `macro.start()`, `macro.stop()`, `macro.playback()`]
-- [**事件**: `event.on()`, `event.emit()`]
-- [**任务**: `task.submit()`, `task.status()`]
+- [**Triggers**: `smarttrigger.create()`, `smarttrigger.start()`]
+- [**Recording**: `macro.start()`, `macro.stop()`, `macro.playback()`]
+- [**Events**: `event.on()`, `event.emit()`]
+- [**Tasks**: `task.submit()`, `task.status()`]
 
-### 网络
+### Networking
 
 - [**HTTP**: `http.get()`, `http.post()`]
 
-### 调试
+### Debugging
 
-- [**调试器**: `debugger.start()`, `debugger.breakpoint()`, `debugger.breakHere()`]
+- [**Debugger**: `debugger.start()`, `debugger.breakpoint()`, `debugger.breakHere()`]
 
-## API 命名约定
+## API Naming Conventions
 
 ### Lua
 
-- 统一引入: `local wingman = require("wingman")`，模块作为子表访问: `wingman.screen`
-- 方法以模块实际注册名为准（如 `wingman.screen.capture()`、`wingman.uia.find_button()`）
-- 脚本层当前没有注册常量
+- Unified import: `local wingman = require("wingman")`, with modules accessed as sub-tables: `wingman.screen`
+- Method names follow what each module actually registers (e.g. `wingman.screen.capture()`, `wingman.uia.find_button()`)
+- No constants are currently registered at the script layer
 
 ### Python
 
-- 模块使用小写: `from wingman import screen`
-- 方法以模块实际注册名为准（camelCase 注册名会同时提供 snake_case 别名；原生 snake_case 注册名仅此一种形式）
+- Module names are lowercase: `from wingman import screen`
+- Method names follow what each module actually registers (camelCase registered names also provide snake_case aliases; natively snake_case registered names exist in that one form only)
 
-> [**命名约定**：Python 绑层对 camelCase 注册名自动提供 snake_case 别名（如 `util` 模块的 `getTime` 可写作 `get_time`）；原生 snake_case 注册名（如 `uia` 模块的 `find_by_name`）仅此一种形式，没有 camelCase 形式。推荐脚本先查各模块文档确认注册名。]
+> [**Naming convention**: The Python binding layer automatically provides snake_case aliases for camelCase registered names (e.g. the `util` module's `getTime` can be written as `get_time`); natively snake_case registered names (e.g. the `uia` module's `find_by_name`) exist in that one form only, with no camelCase variant. It is recommended to check each module's documentation first to confirm registered names.]
 
-## 类型转换
+## Type Conversion
 
-### Lua 到 ScriptValue
+### Lua to ScriptValue
 
-| Lua 类型 | ScriptValue 类型 |
+| Lua Type | ScriptValue Type |
 |----------|-----------------|
 | `nil` | Null |
 | `boolean` | Boolean |
@@ -297,9 +297,9 @@ wingman.debugger.breakHere()
 | `table` | Object/Array |
 | `function` | Function |
 
-### Python 到 ScriptValue
+### Python to ScriptValue
 
-| Python 类型 | ScriptValue 类型 |
+| Python Type | ScriptValue Type |
 |-------------|-----------------|
 | `None` | Null |
 | `bool` | Boolean |
@@ -310,7 +310,7 @@ wingman.debugger.breakHere()
 | `list` | Array |
 | `function` | Function |
 
-## 错误处理
+## Error Handling
 
 ### Lua
 
@@ -335,10 +335,10 @@ except Exception as e:
     print(f"Error: {e}")
 ```
 
-## 相关文档
+## Related Documentation
 
-- [快速开始](../guide/getting-started.md)
+- [Quick Start](../guide/getting-started.md)
 
 ---
 
-**返回**: [文档首页](../README.md)
+**Back**: [Documentation Home](../README.md)

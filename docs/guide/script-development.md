@@ -1,31 +1,31 @@
 ---
-title: 脚本开发指南
+title: Script Development Guide
 ---
-> [English](script-development.en.md) | **中文**
 
+> [中文](script-development.md) | **English**
 
-# 脚本开发指南
+# Script Development Guide
 
-Wingman 脚本用 **Lua** 或 **Python** 编写，调用统一的 `wingman` 模块（screen / input / vision / trigger / event 等）驱动自动化。本文覆盖从第一个脚本到调试的完整流程。
+Wingman scripts are written in **Lua** or **Python** and drive automation through the unified `wingman` module (screen / input / vision / trigger / event, etc.). This page covers the complete flow from your first script to debugging.
 
-## 语言选择
+## Choosing a Language
 
 | | Lua | Python |
 |---|---|---|
-| 启动速度 | 极快 | 较慢（解释器冷启动） |
-| 依赖 | 仅 Lua 5.5（sol2 绑定） | Python 3（vcpkg `python3` 端口，当前 3.12.x；pybind11 嵌入） |
-| 适用 | 高频、低延迟、嵌入式场景 | 复杂逻辑、复用 Python 第三方库 |
-| 编辑/调试 | VS Code + EmmyLua（推荐） | VS Code + Python 扩展 |
+| Startup speed | Extremely fast | Slower (interpreter cold start) |
+| Dependencies | Lua 5.5 only (sol2 bindings) | Python 3 (vcpkg `python3` port, currently 3.12.x; embedded via pybind11) |
+| Best suited for | High-frequency, low-latency, embedded scenarios | Complex logic, reusing Python third-party libraries |
+| Editing/debugging | VS Code + EmmyLua (recommended) | VS Code + Python extension |
 
-> 本地 GUI 的脚本**编辑统一在 VS Code**，GUI 只负责加载/运行/停止。远程 Dashboard 才有内置编辑器。
+> For the local GUI, script **editing happens exclusively in VS Code**; the GUI only loads, runs, and stops scripts. Only the remote Dashboard has a built-in editor.
 
-> **Python 引擎默认关闭**：官方发布的 runtime 包（release/nightly）只内置 Lua 引擎，直接运行 `.py` 脚本会提示引擎不存在。要使用 Python 需自行构建：CMake 加 `-DWINGMAN_ENABLE_PYTHON=ON`（vcpkg manifest `python` feature，会拉起 `python3` + `pybind11` 端口，勿混用系统 CPython）。该维度已纳入主 CI：`cpp-linux-python-tests` job 在 Linux 上带 Python 开关跑全量测试，`cpp-python` job 验证 Windows 链接链路。
+> **The Python engine is off by default**: officially released runtime packages (release/nightly) bundle only the Lua engine, and running a `.py` script directly reports that the engine does not exist. To use Python you must build it yourself: add `-DWINGMAN_ENABLE_PYTHON=ON` to CMake (the vcpkg manifest `python` feature, which pulls in the `python3` + `pybind11` ports; do not mix in the system CPython). This dimension is covered in the main CI: the `cpp-linux-python-tests` job runs the full test suite with Python enabled on Linux, and the `cpp-python` job validates the Windows link chain.
 
-## 第一个脚本
+## Your First Script
 
 ### Lua
 
-`hello.lua`：
+`hello.lua`:
 
 ```lua
 local wingman = require("wingman")
@@ -35,7 +35,7 @@ local w, h = wingman.screen.getScreenWidth(), wingman.screen.getScreenHeight()
 print(string.format("屏幕: %dx%d", w, h))
 ```
 
-运行：
+Run it:
 
 ```bash
 wingman-agent script hello.lua
@@ -43,7 +43,7 @@ wingman-agent script hello.lua
 
 ### Python
 
-`hello.py`：
+`hello.py`:
 
 ```python
 from wingman import screen, util
@@ -53,54 +53,54 @@ w, h = screen.getScreenWidth(), screen.getScreenHeight()
 print(f"屏幕: {w}x{h}")
 ```
 
-运行（需启用 Python 引擎的构建，见上节「Python 引擎默认关闭」）：
+Run it (requires a build with the Python engine enabled; see "The Python engine is off by default" above):
 
 ```bash
 wingman-agent script hello.py
 ```
 
-> Python 侧的 `wingman` 模块面与 Lua 完全一致（引擎无关的统一注册），模块函数同时以原始 camelCase 与 snake_case 两个名字暴露——`screen.getScreenWidth()` 与 `screen.get_screen_width()` 等价，后者符合 PEP 8。`libs/python/typing/` 提供 `.pyi` 类型桩。
+> On the Python side the `wingman` module surface is identical to Lua's (a unified, engine-agnostic registration), and module functions are exposed under both the original camelCase and snake_case names — `screen.getScreenWidth()` and `screen.get_screen_width()` are equivalent, the latter being PEP 8-compliant. `libs/python/typing/` provides `.pyi` type stubs.
 
-## 核心模块速览
+## Core Modules at a Glance
 
-完整 API 见侧栏「API」分类。常用模块：
+See the "API" section in the sidebar for the complete API. The most used modules:
 
-| 模块 | 典型用途 | 代表函数 |
+| Module | Typical Use | Representative Functions |
 |------|----------|----------|
-| `screen` | 像素/图像检测、截图 | `findColor`、`findImage`、`capture`、`getScreenWidth` |
-| `input` | 鼠标键盘模拟（含人性化） | `click`、`move`、`key`、`type` |
-| `vision` | 高级视觉（主色、模板匹配、AI 检测） | `getDominantColor`、`findImage` |
-| `trigger` | 条件触发器 | 颜色出现/消失、图像、热键、定时 |
-| `event` | 发布-订阅事件 | `on`、`emit` |
-| `task` | 任务编排 | 创建/等待/取消 |
-| `notify` | 通知（日志/toast） | `info`、`warn`、`error`、`toast` |
-| `http` | HTTP 客户端 | `get`、`post`、`put`、`delete` |
-| `human` | 人性化输入（防检测） | 随机延迟、轨迹移动 |
-| `util` | 工具（时间、睡眠、日志） | `sleep`、`getTime`、`log` |
-| `kv` / `db` | 持久化 | 键值存储、SQLite |
+| `screen` | Pixel/image detection, screenshots | `findColor`, `findImage`, `capture`, `getScreenWidth` |
+| `input` | Mouse/keyboard simulation (with humanization) | `click`, `move`, `key`, `type` |
+| `vision` | Advanced vision (dominant color, template matching, AI detection) | `getDominantColor`, `findImage` |
+| `trigger` | Conditional triggers | Color appears/disappears, image, hotkey, timer |
+| `event` | Publish-subscribe events | `on`, `emit` |
+| `task` | Task orchestration | Create/wait/cancel |
+| `notify` | Notifications (log/toast) | `info`, `warn`, `error`, `toast` |
+| `http` | HTTP client | `get`, `post`, `put`, `delete` |
+| `human` | Humanized input (anti-detection) | Random delays, trajectory-based movement |
+| `util` | Utilities (time, sleep, logging) | `sleep`, `getTime`, `log` |
+| `kv` / `db` | Persistence | Key-value store, SQLite |
 
-> 注意：Lua 统一经 `require("wingman")` 后以 `wingman.<module>.<fn>` 命名空间访问，没有裸全局模块；Python 统一从 `wingman` 包导入。以 [examples/lua_scripts/](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts) 的真实用法为准。
+> Note: in Lua everything is accessed through the `wingman.<module>.<fn>` namespace after `require("wingman")`; there are no bare global modules. In Python everything is imported from the `wingman` package. Treat real usage in [examples/lua_scripts/](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts) as the source of truth.
 
-## 沙箱模式
+## Sandbox Mode
 
-本地两条执行路径——CLI `wingman-agent script` 与本地 GUI（Standalone 模式）——均**强制沙箱运行**（`apps/agent/src/commands/script_command.cpp` 与 `apps/agent/src/standalone_mode.cpp` 写死 `sandboxed = true`）。经 `wingman.script.load` API 加载时可经 `sandboxed` 配置另行指定（见 [script API](../api/script.md)）。两种引擎的沙箱面：
+Both local execution paths — the CLI `wingman-agent script` command and the local GUI (Standalone mode) — **force sandboxed execution** (`apps/agent/src/commands/script_command.cpp` and `apps/agent/src/standalone_mode.cpp` hard-code `sandboxed = true`). When loading via the `wingman.script.load` API, the `sandboxed` config can be specified separately (see the [script API](../api/script.md)). The sandbox surface of both engines:
 
-**Lua**：
+**Lua**:
 
-- 移除全局 `io`、`os`、`debug`、`package` 与 `dofile` / `loadfile` / `load`——脚本内没有磁盘读取与系统调用路径。
-- `require` 为受控 shim：仅 `require("wingman")` 解析到 wingman 模块表，其余模块名报错 `sandbox: module not allowed: <name>`。
-- 常用替代：时间用 `wingman.util.getTime()`（epoch 毫秒）、文件用 `wingman.file.read` / `write` / `exists`、等待用 `wingman.util.sleep(ms)`。
-- 无 `os.getenv`：脚本配置 `env` 注入的键以 `_ENV_<KEY>` 全局变量读取。
+- The globals `io`, `os`, `debug`, and `package`, along with `dofile` / `loadfile` / `load`, are removed — scripts have no disk-read or system-call path.
+- `require` is a controlled shim: only `require("wingman")` resolves to the wingman module table; any other module name errors with `sandbox: module not allowed: <name>`.
+- Common substitutes: time via `wingman.util.getTime()` (epoch milliseconds), files via `wingman.file.read` / `write` / `exists`, waiting via `wingman.util.sleep(ms)`.
+- No `os.getenv`: keys injected through the script config `env` are read as `_ENV_<KEY>` global variables.
 
-**Python**：
+**Python**:
 
-- `__builtins__` 替换为白名单（`print` / `len` / `range` 与基础类型、异常类等），并清掉 `os` / `sys` / `subprocess` / `io` / `importlib` 别名。
-- `import` 由受控 shim 接管：仅 `import wingman`（含 `wingman.*` 子模块与 `from wingman import <module>`）放行，其余模块——包括标准库——报 `ImportError: sandbox: module not allowed: <name>`。因此不要 `import time`，等待用 `wingman.util.sleep(ms)`。
-- 沙箱下 `env` 注入关闭（无 `os` 可读环境变量）。
+- `__builtins__` is replaced with a whitelist (`print` / `len` / `range`, basic types, exception classes, etc.), and the `os` / `sys` / `subprocess` / `io` / `importlib` aliases are cleared.
+- `import` is taken over by a controlled shim: only `import wingman` (including `wingman.*` submodules and `from wingman import <module>`) is allowed; everything else — including the standard library — raises `ImportError: sandbox: module not allowed: <name>`. So do not `import time`; wait with `wingman.util.sleep(ms)`.
+- Under the sandbox, `env` injection is disabled (there is no `os` to read environment variables).
 
-## 典型模式
+## Typical Patterns
 
-### 像素检测 + 点击（颜色触发）
+### Pixel Detection + Click (Color Trigger)
 
 ```lua
 local wingman = require("wingman")
@@ -113,7 +113,7 @@ if res[2] then
 end
 ```
 
-### 循环监控（带退出条件）
+### Loop Monitoring (with Exit Condition)
 
 ```lua
 local wingman = require("wingman")
@@ -128,41 +128,41 @@ for i = 1, 100 do
 end
 ```
 
-> 需要全部命中点时改用 `wingman.screen.findColors(color, region, tolerance, maxCount?)`，返回点数组。`window.find` 同 `findColor` 一样返回单数组 `{handle, found}`。
+> When you need all matching points, use `wingman.screen.findColors(color, region, tolerance, maxCount?)` instead, which returns an array of points. `window.find` returns a single array `{handle, found}`, just like `findColor`.
 
-更多模式（图像匹配、热键触发、HTTP 联动、宏录制回放）见 [examples](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts) 与 [触发器指南](../guides/triggers.md)。
+For more patterns (image matching, hotkey triggers, HTTP integration, macro record/replay), see [examples](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts) and the [Trigger Guide](../guides/triggers.md).
 
-## 运行方式
+## Ways to Run
 
-| 模式 | 命令 | 适用 |
+| Mode | Command | Best For |
 |------|------|------|
-| 单脚本 | `wingman-agent script foo.lua` | 一次性任务、快速验证 |
-| 本地 GUI | `wingman-agent start`（local 能力）+ Tauri GUI | 单机带界面日常使用 |
-| 远程编排 | `wingman-agent start`（agent 能力）→ Go server → Dashboard | 多机集中管控 |
+| Single script | `wingman-agent script foo.lua` | One-off tasks, quick verification |
+| Local GUI | `wingman-agent start` (local capability) + Tauri GUI | Everyday single-machine use with a UI |
+| Remote orchestration | `wingman-agent start` (agent capability) → Go server → Dashboard | Centralized multi-machine control |
 
-三种模式的控制路径与架构约束见 [快速开始 - 运行模式](./getting-started.md#运行模式) 与 [通信协议](../protocols.md)。
+For the control paths and architecture constraints of the three modes, see [Getting Started - Run Modes](./getting-started.md#运行模式) and [Communication Protocols](../protocols.md).
 
-## 函数命名约定
+## Function Naming Conventions
 
-模块函数在 C++ 描述符中以 camelCase 登记（如 `joinTeam`、`getEventCount`）。两种脚本面均可用：
+Module functions are registered in camelCase in their C++ descriptors (e.g. `joinTeam`, `getEventCount`). Both script surfaces can use them:
 
-- **Lua**：只有 camelCase 原名（`wingman.team.joinTeam(...)`）。
-- **Python**：camelCase 原名与 snake_case 别名**同时暴露**（`wingman.team.join_team(...)` 与 `wingman.team.joinTeam(...)` 等价；别名规则与引擎内 `camelToSnake` 一致）。Python typing 桩（`libs/python/typing/wingman/*.pyi`）以 snake_case 为主形，docstring 标注对应 camelCase 形式。
+- **Lua**: only the original camelCase name (`wingman.team.joinTeam(...)`).
+- **Python**: the original camelCase name and the snake_case alias are **exposed simultaneously** (`wingman.team.join_team(...)` is equivalent to `wingman.team.joinTeam(...)`; the aliasing rule matches the engine's internal `camelToSnake`). The Python typing stubs (`libs/python/typing/wingman/*.pyi`) use snake_case as the primary form, with docstrings noting the corresponding camelCase form.
 
-少数函数直接以 snake_case 登记（如 `db.table_insert`、`human.mouse_move`），此时两种语言同名。脚本自定义的可手写 pythonic 别名不受此约束（如 `timer.after`）。
+A few functions are registered directly in snake_case (e.g. `db.table_insert`, `human.mouse_move`); in that case both languages share the same name. Hand-written pythonic aliases defined in user scripts are not bound by this convention (e.g. `timer.after`).
 
-**漂移守卫**：`python3 scripts/audit_pyi_drift.py` 比对 C++ 模块描述符与 pyi 桩（模块面、函数面、`__init__` 导出面），漂移即非零退出；CI 中 `api-typing-audit` job 同口径把关。
+**Drift guard**: `python3 scripts/audit_pyi_drift.py` compares the C++ module descriptors against the pyi stubs (module surface, function surface, `__init__` export surface) and exits non-zero on drift; the `api-typing-audit` job in CI enforces the same check.
 
-## 调试（Lua / EmmyLua）
+## Debugging (Lua / EmmyLua)
 
-1. VS Code 安装 `tangzx.emmylua` 扩展（仓库 `.vscode/extensions.json` 已推荐）。
-2. 补全：项目自带 [assets/vscode-wingman-lua/wingman.d.lua](https://github.com/cuihairu/wingman/tree/main/assets/vscode-wingman-lua)，提供 `wingman.*` 模块的类型提示。
-3. 断点调试：runtime 监听 `:9966`（EmmyLua attach 模式）。VS Code `launch.json` 已配置，按 F5 attach。
-4. 详见 [调试指南](./debugging.md) 与 [VS Code 开发环境](../development-environment.md)。
+1. Install the `tangzx.emmylua` extension in VS Code (already recommended by the repository's `.vscode/extensions.json`).
+2. Completion: the project ships [assets/vscode-wingman-lua/wingman.d.lua](https://github.com/cuihairu/wingman/tree/main/assets/vscode-wingman-lua), providing type hints for the `wingman.*` modules.
+3. Breakpoint debugging: the runtime listens on `:9966` (EmmyLua attach mode). The VS Code `launch.json` is already configured; press F5 to attach.
+4. See the [Debugging Guide](./debugging.md) and the [VS Code Development Environment](../development-environment.md) for details.
 
-## 下一步
+## Next Steps
 
-- [快速开始](./getting-started.md)
-- [API 参考](../api/script.md)
-- [示例脚本](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts)
-- [通信协议](../protocols.md)
+- [Getting Started](./getting-started.md)
+- [API Reference](../api/script.md)
+- [Example Scripts](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts)
+- [Communication Protocols](../protocols.md)

@@ -1,28 +1,28 @@
-> [English](verification.en.md) | **中文**
+> [中文](verification.md) | **English**
 
 # API: wingman.verification
 
-TOTP（双因素认证）纯工具函数模块。
+A pure utility function module for TOTP (two-factor authentication).
 
-## 模块概述
+## Module Overview
 
-verification 模块提供无状态的 TOTP 工具函数：
-- **TOTP 生成** - 生成基于时间的一次性验证码
-- **Steam Guard** - 生成 Steam Guard 验证码
-- **验证码校验** - 验证 TOTP 验证码是否有效
-- **剩余时间** - 获取当前验证码剩余有效秒数
+The verification module provides stateless TOTP utility functions:
+- **TOTP generation** - generate time-based one-time codes
+- **Steam Guard** - generate Steam Guard codes
+- **Code verification** - verify whether a TOTP code is valid
+- **Remaining time** - get the remaining valid seconds of the current code
 
-> 所有函数均为无状态纯函数，不涉及密钥持久化。如需存储密钥，请使用 `wingman.kv` 模块。
+> All functions are stateless pure functions and do not involve key persistence. If you need to store keys, use the `wingman.kv` module.
 
 ---
 
-## 生成 TOTP 验证码
+## Generate a TOTP Code
 
 ### totp(secret, digits?, period?) / totp(secret, digits?, period?)
 
-**说明**：生成基于时间的一次性验证码（TOTP, RFC 6238）。
+**Description**: Generates a time-based one-time code (TOTP, RFC 6238).
 
-**函数签名**：
+**Function signature**:
 
 ```python
 totp(secret: str, digits: int = 6, period: int = 30) -> str
@@ -32,13 +32,13 @@ totp(secret: str, digits: int = 6, period: int = 30) -> str
 totp(secret: string, digits: number?, period: number?) -> string
 ```
 
-**参数**：
-- `secret` - Base32 编码的密钥。**需 ≥16 字符且仅含 Base32 字符（`A-Z`、`2-7`，可含空格）**，否则返回空串
-- `digits` - 验证码位数，默认 6
-- `period` - 时间步长（秒），默认 30
+**Parameters**:
+- `secret` - Base32 encoded key. **Must be ≥16 characters and contain only Base32 characters (`A-Z`, `2-7`, spaces allowed)**; otherwise an empty string is returned
+- `digits` - number of code digits, default 6
+- `period` - time step in seconds, default 30
 
-**返回**：
-- 数字验证码字符串
+**Returns**:
+- A numeric code string
 
 :::tabs
 
@@ -51,8 +51,8 @@ from wingman import verification
 code = verification.totp("JBSWY3DPEHPK3PXP")
 print(f"TOTP: {code}")
 
-# 自定义 8 位，60 秒步长（digits/period 按位置传，绑定层不收关键字参数）
-code = verification.totp("JBSWY3DPEHPK3PXP", 8, 60)
+# 自定义 8 位，60 秒步长
+code = verification.totp("JBSWY3DPEHPK3PXP", digits=8, period=60)
 ```
 
 == Lua
@@ -72,13 +72,13 @@ local code = wingman.verification.totp("JBSWY3DPEHPK3PXP", 8, 60)
 
 ---
 
-## 生成 Steam Guard 验证码
+## Generate a Steam Guard Code
 
-### steamGuard(secret) / steamGuard(secret)
+### steam_guard(secret) / steamGuard(secret)
 
-**说明**：生成 Steam Guard 验证码（5 位数字）。
+**Description**: Generates a Steam Guard code (5 digits).
 
-**函数签名**：
+**Function signature**:
 
 ```python
 steam_guard(secret: str) -> str
@@ -88,11 +88,11 @@ steam_guard(secret: str) -> str
 steamGuard(secret: string) -> string
 ```
 
-**参数**：
-- `secret` - Steam Guard 密钥（≥16 字符 Base32，或 Base64 编码密钥）
+**Parameters**:
+- `secret` - Steam Guard key (Base32 of ≥16 characters, or a Base64 encoded key)
 
-**返回**：
-- 5 位**数字**验证码（00000-99999，前导零补齐）
+**Returns**:
+- A 5-digit **numeric** code (00000-99999, zero-padded)
 
 :::tabs
 
@@ -118,13 +118,13 @@ print("Steam Guard: " .. code)
 
 ---
 
-## 验证 TOTP 验证码
+## Verify a TOTP Code
 
 ### verify(secret, code, digits?, period?, window?) / verify(secret, code, digits?, period?, window?)
 
-**说明**：验证 TOTP 验证码是否有效。支持时间窗口容错。
+**Description**: Verifies whether a TOTP code is valid. Supports a time-window tolerance.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 verify(secret: str, code: str, digits: int = 6, period: int = 30, window: int = 1) -> bool
@@ -134,15 +134,15 @@ verify(secret: str, code: str, digits: int = 6, period: int = 30, window: int = 
 verify(secret: string, code: string, digits: number?, period: number?, window: number?) -> boolean
 ```
 
-**参数**：
-- `secret` - Base32 编码的密钥。**需 ≥16 字符且仅含 Base32 字符（`A-Z`、`2-7`，可含空格）**，否则返回 `False`/`false`
-- `code` - 要验证的验证码
-- `digits` - 验证码位数，默认 6
-- `period` - 时间步长（秒），默认 30
-- `window` - 时间窗口容错数，默认 1（允许前/后各 1 个周期）
+**Parameters**:
+- `secret` - Base32 encoded key. **Must be ≥16 characters and contain only Base32 characters (`A-Z`, `2-7`, spaces allowed)**; otherwise `False`/`false` is returned
+- `code` - the code to verify
+- `digits` - number of code digits, default 6
+- `period` - time step in seconds, default 30
+- `window` - time-window tolerance count, default 1 (allows 1 period before/after)
 
-**返回**：
-- 验证码是否有效
+**Returns**:
+- Whether the code is valid
 
 :::tabs
 
@@ -186,13 +186,13 @@ end
 
 ---
 
-## 获取剩余有效时间
+## Get the Remaining Valid Time
 
 ### remaining(period?) / remaining(period?)
 
-**说明**：获取当前 TOTP 验证码剩余有效秒数。
+**Description**: Gets the remaining valid seconds of the current TOTP code.
 
-**函数签名**：
+**Function signature**:
 
 ```python
 remaining(period: int = 30) -> int
@@ -202,11 +202,11 @@ remaining(period: int = 30) -> int
 remaining(period: number?) -> number
 ```
 
-**参数**：
-- `period` - 时间步长（秒），默认 30
+**Parameters**:
+- `period` - time step in seconds, default 30
 
-**返回**：
-- 剩余有效秒数
+**Returns**:
+- Remaining valid seconds
 
 :::tabs
 
@@ -240,11 +240,11 @@ local secs = wingman.verification.remaining(60)
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python function | Lua function | Description | Parameters |
 |------------|---------|------|------|
-| `totp(secret, digits?, period?)` | `totp(secret, digits?, period?)` | 生成 TOTP 验证码 | secret: Base32 密钥（≥16 字符）<br>digits: 位数 (默认 6)<br>period: 步长秒数 (默认 30)<br>返回: 验证码字符串 |
-| `steam_guard(secret)` | `steamGuard(secret)` | 生成 Steam Guard 验证码 | secret: 密钥<br>返回: 5 位数字验证码 |
-| `verify(secret, code, digits?, period?, window?)` | `verify(secret, code, digits?, period?, window?)` | 验证 TOTP 验证码 | secret: 密钥（≥16 字符 Base32）<br>code: 验证码<br>window: 容错窗口 (默认 1)<br>返回: 是否有效 |
-| `remaining(period?)` | `remaining(period?)` | 剩余有效秒数 | period: 步长秒数 (默认 30)<br>返回: 剩余秒数 |
+| `totp(secret, digits?, period?)` | `totp(secret, digits?, period?)` | Generate a TOTP code | secret: Base32 key (≥16 chars)<br>digits: digit count (default 6)<br>period: step seconds (default 30)<br>Return: code string |
+| `steam_guard(secret)` | `steamGuard(secret)` | Generate a Steam Guard code | secret: key<br>Return: 5-digit numeric code |
+| `verify(secret, code, digits?, period?, window?)` | `verify(secret, code, digits?, period?, window?)` | Verify a TOTP code | secret: key (≥16 chars Base32)<br>code: code<br>window: tolerance window (default 1)<br>Return: whether valid |
+| `remaining(period?)` | `remaining(period?)` | Remaining valid seconds | period: step seconds (default 30)<br>Return: remaining seconds |

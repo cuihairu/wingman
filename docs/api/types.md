@@ -1,27 +1,27 @@
-> [English](types.en.md) | **中文**
+> [中文](types.md) | **English**
 
-# API 数据类型参考
+# API Data Types Reference
 
-本文档详细说明了 Wingman API 中使用的各种数据类型和对象结构。
+This document describes the various data types and object structures used in the Wingman API.
 
-## 目录
+## Table of Contents
 
-- [Image 对象](#image-对象)
-- [UIElement 对象](#uielement-对象)
-- [Bounds 对象](#bounds-对象)
-- [ElementInfo 对象](#elementinfo-对象)
-- [HTTP Response 对象](#http-response-对象)
-- [图像匹配结果](#图像匹配结果)
-- [颜色值](#颜色值)
-- [进程和窗口句柄](#进程和窗口句柄)
+- [Image Object](#image-object)
+- [UIElement Object](#uielement-object)
+- [Bounds Object](#bounds-object)
+- [ElementInfo Object](#elementinfo-object)
+- [HTTP Response Object](#http-response-object)
+- [Image Match Result](#image-match-result)
+- [Color Values](#color-values)
+- [Process and Window Handles](#process-and-window-handles)
 
 ---
 
-## Image 对象
+## Image Object
 
-**说明**：脚本层没有独立的 Image 图像对象。`screen.capture()` 返回的是 **boolean**（截图是否成功），截图数据不暴露给脚本层。
+**Description**: There is no standalone Image object at the script layer. `screen.capture()` returns a **boolean** (whether the capture succeeded); the captured image data is not exposed to the script layer.
 
-**示例**：
+**Example**:
 
 ```python
 from wingman import screen
@@ -33,42 +33,42 @@ ok = screen.capture()
 point, found = screen.find_image("button.png", {"x": 0, "y": 0, "width": 1920, "height": 1080})
 ```
 
-**注意**：如需获取屏幕像素颜色，请使用 `screen.get_pixel(x, y)`，它返回 `{r, g, b, a}` 颜色对象（见[颜色值](#颜色值)）。
+**Note**: To get the color of a screen pixel, use `screen.get_pixel(x, y)`, which returns an `{r, g, b, a}` color object (see [Color Values](#color-values)).
 
 ---
 
-## UIElement 对象
+## UIElement Object
 
-> [以下 18 方法已实现（Windows UIAutomation + macOS Accessibility 双平台）。UIElement 以脚本对象形式返回，内部通过句柄引用 `IUIAElement`。]
+> [The following 18 methods are implemented (Windows UIAutomation + macOS Accessibility, dual platform). UIElement is returned as a script object that references `IUIAElement` internally via a handle.]
 
-**来源**：所有 `uia` 模块的查找函数
+**Source**: All lookup functions of the `uia` module
 
-**说明**：代表一个 UI Automation 元素（按钮、编辑框、列表等）。它是一个**方法表**：Lua 中是普通 table（方法名为 snake_case 键），Python 中是 `dict`——**没有属性访问**，必须用字典键取出方法再调用。
+**Description**: Represents a UI Automation element (button, edit box, list, etc.). It is a **method table**: a plain table in Lua (method names as snake_case keys) and a `dict` in Python — there is **no attribute access**; you must fetch the method by dictionary key and then call it.
 
-**方法表（两端键名一致，均为 snake_case）**：
+**Method table (identical key names on both ends, all snake_case)**:
 
-| 键名 | 说明 |
+| Key | Description |
 |------|------|
-| `get_info()` | 获取元素信息（返回 ElementInfo 对象） |
-| `click()` | 点击元素 |
-| `right_click()` | 右键点击元素（macOS 弹出上下文菜单 `AXShowMenu`） |
-| `double_click()` | 双击元素 |
-| `focus()` | 设置焦点 |
-| `get_value()` | 获取元素文本（实为 getText） |
-| `set_value(value)` | 设置元素文本（实为 setText，仅对文本型控件有效） |
-| `get_children()` | 获取子元素列表 |
-| `get_parent()` | 获取父元素（到根之后返回 `None`/`nil`） |
-| `expand()` | 展开元素 |
-| `collapse()` | 折叠元素 |
-| `is_expanded()` | 检查是否已展开 |
-| `is_visible()` | 检查是否可见 |
-| `is_enabled()` | 检查是否可用 |
-| `is_checked()` | 检查勾选状态（win Toggle 模式 / mac AXChecked） |
-| `set_checked(checked)` | 设置勾选状态（`true`/`false`） |
-| `select()` | 编程选中元素（列表项/树节点/标签项等，不移动鼠标） |
-| `get_selection()` | 容器查询首个选中子项（无选中返回 `None`/`nil`） |
+| `get_info()` | Gets element info (returns an ElementInfo object) |
+| `click()` | Clicks the element |
+| `right_click()` | Right-clicks the element (macOS opens the context menu via `AXShowMenu`) |
+| `double_click()` | Double-clicks the element |
+| `focus()` | Sets focus |
+| `get_value()` | Gets the element text (implemented as getText) |
+| `set_value(value)` | Sets the element text (implemented as setText; only effective for text-capable controls) |
+| `get_children()` | Gets the list of child elements |
+| `get_parent()` | Gets the parent element (returns `None`/`nil` past the root) |
+| `expand()` | Expands the element |
+| `collapse()` | Collapses the element |
+| `is_expanded()` | Checks whether it is expanded |
+| `is_visible()` | Checks whether it is visible |
+| `is_enabled()` | Checks whether it is enabled |
+| `is_checked()` | Checks the checked state (Windows Toggle pattern / macOS AXChecked) |
+| `set_checked(checked)` | Sets the checked state (`true`/`false`) |
+| `select()` | Programmatically selects the element (list items/tree nodes/tab items etc.; no mouse movement) |
+| `get_selection()` | Container query for the first selected child (returns `None`/`nil` when none) |
 
-**示例**：
+**Example**:
 
 ```python
 from wingman import uia
@@ -103,13 +103,13 @@ end
 
 ---
 
-## Bounds 对象
+## Bounds Object
 
-**来源**：`window.get_bounds()`, `ElementInfo.bounds`
+**Source**: `window.get_bounds()`, `ElementInfo.bounds`
 
-**说明**：表示矩形区域的位置和大小。
+**Description**: Represents the position and size of a rectangular region.
 
-**Python 结构**：
+**Python structure**:
 
 ```python
 {
@@ -120,7 +120,7 @@ end
 }
 ```
 
-**Lua 结构**：
+**Lua structure**:
 
 ```lua
 {
@@ -131,7 +131,7 @@ end
 }
 ```
 
-**示例**：
+**Example**:
 
 ```python
 from wingman import window
@@ -149,13 +149,13 @@ if found:
 
 ---
 
-## ElementInfo 对象
+## ElementInfo Object
 
-**来源**：`UIElement.get_info()`（即方法表中的 `get_info` 键）
+**Source**: `UIElement.get_info()` (the `get_info` key in the method table)
 
-**说明**：包含 UI 元素的所有属性信息。两端键名完全一致（无语言级转换）。
+**Description**: Contains all property information of a UI element. Key names are identical on both ends (no language-level conversion).
 
-**结构**：
+**Structure**:
 
 ```python
 {
@@ -176,9 +176,9 @@ if found:
 }
 ```
 
-Lua 结构键名与上表一致（`name`/`id`/`className`/`role`/`text`/`is_enabled`/`is_visible`/`has_focus`/`bounds`）。
+The Lua structure uses the same key names as above (`name`/`id`/`className`/`role`/`text`/`is_enabled`/`is_visible`/`has_focus`/`bounds`).
 
-**示例**：
+**Example**:
 
 ```python
 from wingman import uia
@@ -197,13 +197,13 @@ if btn:
 
 ---
 
-## HTTP Response 对象
+## HTTP Response Object
 
-**来源**：所有 `http` 模块的请求函数
+**Source**: All request functions of the `http` module
 
-**说明**：HTTP 请求的响应结果。
+**Description**: The result of an HTTP request.
 
-**Python 结构**：
+**Python structure**:
 
 ```python
 {
@@ -214,7 +214,7 @@ if btn:
 }
 ```
 
-**Lua 结构**：
+**Lua structure**:
 
 ```lua
 {
@@ -225,7 +225,7 @@ if btn:
 }
 ```
 
-**示例**：
+**Example**:
 
 ```python
 from wingman import http
@@ -240,19 +240,19 @@ else:
 
 ---
 
-## 图像匹配结果
+## Image Match Result
 
-**来源**：`screen.find_image()` / `screen.findImage()`
+**Source**: `screen.find_image()` / `screen.findImage()`
 
-**说明**：图像匹配结果是一个**二元数组** `[匹配点, 是否找到]`，不是对象，也没有 confidence 字段。
+**Description**: The image match result is a **two-element array** `[match point, found]`, not an object, and it has no confidence field.
 
-**Python 结构**：`list`，形如 `[{"x": int, "y": int}, True]`；未找到时为 `[None, False]`
+**Python structure**: a `list` shaped like `[{"x": int, "y": int}, True]`; `[None, False]` when not found
 
-**Lua 结构**：顺序表，形如 `{ {x=..., y=...}, true }`（`result[1]` 为点表、`result[2]` 为布尔）；未找到时为 `{ nil, false }`
+**Lua structure**: a sequential table shaped like `{ {x=..., y=...}, true }` (`result[1]` is the point table, `result[2]` the boolean); `{ nil, false }` when not found
 
-**签名**：`find_image(image_path: str, region: dict = 全屏, threshold: float = 0.9)`
+**Signature**: `find_image(image_path: str, region: dict = full screen, threshold: float = 0.9)`
 
-**示例**：
+**Example**:
 
 ```python
 from wingman import screen
@@ -274,31 +274,31 @@ end
 
 ---
 
-## 颜色值
+## Color Values
 
-**来源**：`screen.get_pixel()`（返回）、`screen.find_color()` / `screen.findColors()`（输入）
+**Source**: `screen.get_pixel()` (return value), `screen.find_color()` / `screen.findColors()` (input)
 
-**说明**：颜色在脚本层有两种形态：
+**Description**: Colors take two forms at the script layer:
 
-- **`screen.get_pixel(x, y)` 的返回值**是颜色**对象** `{r, g, b, a}`（四个 0-255 整数分量），不是整数。
-- **`0xRRGGBB` 24 位整数**只作为 `find_color` / `findColors` 的**输入**格式使用（也接受 `{r, g, b}` 对象）。
+- **The return value of `screen.get_pixel(x, y)`** is a color **object** `{r, g, b, a}` (four integer components in 0-255), not an integer.
+- **The `0xRRGGBB` 24-bit integer** is used only as the **input** format for `find_color` / `findColors` (which also accept an `{r, g, b}` object).
 
-**`0xRRGGBB` 输入格式**：
-- `RR` - 红色分量（0-255）
-- `GG` - 绿色分量（0-255）
-- `BB` - 蓝色分量（0-255）
+**`0xRRGGBB` input format**:
+- `RR` - Red component (0-255)
+- `GG` - Green component (0-255)
+- `BB` - Blue component (0-255)
 
-**常见颜色值**（用于 `find_color` 输入）：
+**Common color values** (for `find_color` input):
 
-| 颜色 | 十六进制 | 说明 |
+| Color | Hex | Description |
 |-----|---------|-----|
-| 纯红 | `0xFF0000` | |
-| 纯绿 | `0x00FF00` | |
-| 纯蓝 | `0x0000FF` | |
-| 白色 | `0xFFFFFF` | RGB(255, 255, 255) |
-| 黑色 | `0x000000` | RGB(0, 0, 0) |
+| Pure red | `0xFF0000` | |
+| Pure green | `0x00FF00` | |
+| Pure blue | `0x0000FF` | |
+| White | `0xFFFFFF` | RGB(255, 255, 255) |
+| Black | `0x000000` | RGB(0, 0, 0) |
 
-**get_pixel 返回的颜色对象**：
+**Color object returned by get_pixel**:
 
 ```python
 from wingman import screen
@@ -314,7 +314,7 @@ local c = wingman.screen.getPixel(100, 100)
 print(c.r, c.g, c.b, c.a)
 ```
 
-**构造 find_color 输入**：
+**Constructing find_color input**:
 
 ```python
 color = (r << 16) | (g << 8) | b   # 0xRRGGBB
@@ -330,23 +330,23 @@ local color = {r = r, g = g, b = b}
 
 ---
 
-## 进程和窗口句柄
+## Process and Window Handles
 
-**来源**：`process.find()`, `window.find()`, `process.start()`
+**Source**: `process.find()`, `window.find()`, `process.start()`
 
-**说明**：操作系统分配的唯一标识符。
+**Description**: Unique identifiers assigned by the operating system.
 
-### 进程 ID（PID）
+### Process ID (PID)
 
-**类型**：整数
+**Type**: integer
 
-**说明**：标识系统中的唯一进程。
+**Description**: Identifies a unique process in the system.
 
-**来源**：
-- `process.find()` 返回的 PID
-- `process.start()` 返回新进程的 PID
+**Source**:
+- The PID returned by `process.find()`
+- `process.start()` returns the PID of the new process
 
-**示例**：
+**Example**:
 
 ```python
 from wingman import process
@@ -359,17 +359,17 @@ if found:
 new_pid = process.start("notepad.exe")
 ```
 
-### 窗口句柄（HWND）
+### Window Handle (HWND)
 
-**类型**：整数
+**Type**: integer
 
-**说明**：标识系统中的唯一窗口。
+**Description**: Identifies a unique window in the system.
 
-**来源**：
-- `window.find()` 返回的 HWND
-- `window.get_foreground()` 返回的 HWND
+**Source**:
+- The HWND returned by `window.find()`
+- The HWND returned by `window.get_foreground()`
 
-**示例**：
+**Example**:
 
 ```python
 from wingman import window
@@ -382,11 +382,11 @@ if found:
 
 ---
 
-## 相关文档
+## Related Documentation
 
-- [API 索引](./index.md) - 所有 API 模块列表
-- [wingman.screen](./screen.md) - 屏幕操作模块
-- [wingman.uia](./uia/) - UI Automation 模块
-- [wingman.http](./http.md) - HTTP 客户端模块
-- [wingman.process](./process.md) - 进程管理模块
-- [wingman.window](./window.md) - 窗口管理模块
+- [API Index](./index.md) - A list of all API modules
+- [wingman.screen](./screen.md) - Screen operations module
+- [wingman.uia](./uia/) - UI Automation module
+- [wingman.http](./http.md) - HTTP client module
+- [wingman.process](./process.md) - Process management module
+- [wingman.window](./window.md) - Window management module

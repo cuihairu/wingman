@@ -1,60 +1,60 @@
-> [English](index.en.md) | **中文**
+> [中文](index.md) | **English**
 
-# API 参考
+# API Reference
 
-Wingman 的脚本 SDK 以 **Lua** 为一等公民（默认启用，随主构建与 CI 测试），并提供 **Python** 作为可选后端（嵌入式 CPython + pybind11，默认关闭，需通过 `WINGMAN_ENABLE_PYTHON=ON` 显式启用）。两者共享同一套模块功能与 `IScriptEngine` 抽象。
+Wingman's scripting SDK treats **Lua** as a first-class citizen (enabled by default, tested along with the main build and CI) and offers **Python** as an optional backend (embedded CPython + pybind11, off by default, must be enabled explicitly via `WINGMAN_ENABLE_PYTHON=ON`). Both share the same set of module functionality and the `IScriptEngine` abstraction.
 
-## 为什么支持两种语言
+## Why Two Languages
 
-Wingman 选择同时支持 Python 和 Lua，是为了满足不同用户的需求：
+Wingman supports both Python and Lua in order to serve different users' needs:
 
 ### Python
 
-**适合用户**：
-- 有编程经验的开发者
-- 需要处理复杂逻辑的自动化任务
-- 需要调用第三方库（网络请求、数据处理等）
-- 重视开发效率和代码可维护性
+**Suitable for**:
+- Developers with programming experience
+- Automation tasks that involve complex logic
+- Work that needs third-party libraries (network requests, data processing, etc.)
+- Users who value development efficiency and code maintainability
 
-**优势**：
-- 第三方库可直接经 pip 安装
-- 类型友好：支持类型提示，IDE 自动补全完善
-- 调试方便：成熟的调试工具和错误追踪
-- 代码组织：支持模块、类、函数等完整面向对象特性
+**Strengths**:
+- Third-party libraries install directly via pip
+- Type friendly: supports type hints with solid IDE autocompletion
+- Easy debugging: mature debugging tools and error tracing
+- Code organization: full object-oriented features including modules, classes, and functions
 
-**典型场景**：
-- 复杂的游戏辅助工具（需要网络同步、数据库存储）
-- 需要调用 AI/视觉能力（OCR、ONNX 模型加载等）
-- 团队协作开发的大型自动化项目
+**Typical scenarios**:
+- Complex game assistance tools (needing network sync, database storage)
+- Work that calls AI/vision capabilities (OCR, ONNX model loading, etc.)
+- Large automation projects developed by teams
 
 ### Lua
 
-**适合用户**：
-- 游戏玩家或轻度编程用户
-- 需要快速编写简单脚本的场景
-- 资源受限环境（嵌入式、低配置设备）
-- 重视启动速度和内存占用
+**Suitable for**:
+- Gamers or light-programming users
+- Situations that call for quick, simple scripts
+- Resource-constrained environments (embedded, low-spec devices)
+- Users who care about startup speed and memory footprint
 
-**优势**：
-- 轻量级：解释器体积小（< 1MB），启动迅速
-- 简单易学：语法简洁，上手快
-- 部署方便：单文件脚本，无需依赖管理
-- 游戏行业：许多游戏的宏系统使用 Lua，用户可能已熟悉
+**Strengths**:
+- Lightweight: small interpreter (< 1MB), fast startup
+- Easy to learn: concise syntax, quick to pick up
+- Easy deployment: single-file scripts, no dependency management
+- Game industry: many games' macro systems use Lua, so users may already know it
 
-**典型场景**：
-- 简单的挂机脚本
-- 游戏内宏录制后的小幅修改
-- 需要快速测试自动化想法
+**Typical scenarios**:
+- Simple AFK-farming scripts
+- Minor tweaks to recorded in-game macros
+- Quickly testing automation ideas
 
 ---
 
-## SDK 设计哲学
+## SDK Design Philosophy
 
-### 命名规范
+### Naming Conventions
 
-两种语言遵循各自社区的最佳实践：
+Both languages follow their respective communities' best practices:
 
-**Python（snake_case）**：
+**Python (snake_case)**:
 ```python
 screen.get_pixel(x, y)
 screen.find_image(path, region)
@@ -62,7 +62,7 @@ uia.find_button("确定")
 http.post(url, data)
 ```
 
-**Lua（camelCase）**：
+**Lua (camelCase)**:
 ```lua
 screen.getPixel(x, y)
 screen.findImage(path, region)
@@ -70,27 +70,27 @@ uia.find_button("确定")
 http.post(url, data)
 ```
 
-> 注意：各模块以实际注册名为准。`screen`/`input`/`window` 等模块注册名为 camelCase，Python 绑层会自动提供 snake_case 别名；`uia` 模块注册名本身为 snake_case（两种语言同名，Python 侧无 camelCase 形式）。
+> Note: Each module's actually registered names are authoritative. Modules such as `screen`/`input`/`window` are registered with camelCase names, and the Python binding layer automatically provides snake_case aliases; the `uia` module's registered names are themselves snake_case (same names in both languages, no camelCase forms on the Python side).
 
-### 模块化设计
+### Modular Design
 
-所有功能按模块划分，清晰明确：
+All functionality is divided into modules, clear and well-defined:
 
-| 模块 | 功能 | 典型用途 |
+| Module | Function | Typical use |
 |-----|------|---------|
-| `screen` | 屏幕操作 | 截图、找图、取色 |
-| `input` | 输入模拟 | 鼠标点击、键盘输入 |
-| `window` | 窗口管理 | 查找窗口、激活窗口 |
-| `process` | 进程管理 | 启动游戏、检查进程 |
-| `uia` | UI Automation | 稳定的控件操作 |
-| `http` | 网络请求 | API 调用、数据同步 |
-| `kv` | 数据存储 | 保存脚本状态 |
+| `screen` | Screen operations | Screenshots, image finding, pixel sampling |
+| `input` | Input simulation | Mouse clicks, keyboard input |
+| `window` | Window management | Finding windows, activating windows |
+| `process` | Process management | Launching games, checking processes |
+| `uia` | UI Automation | Reliable control manipulation |
+| `http` | Network requests | API calls, data syncing |
+| `kv` | Data storage | Persisting script state |
 
-### 一致性原则
+### Consistency Principle
 
-两种语言的 API 在功能上完全对等，只是语法适应语言习惯：
+The two languages' APIs are fully equivalent in functionality; only the syntax adapts to each language's conventions:
 
-**相同功能，不同语法**：
+**Same functionality, different syntax**:
 
 ```python
 # Python
@@ -112,43 +112,43 @@ local result = wingman.screen.findImage("button.png", {x = 0, y = 0, width = 192
 
 ---
 
-## 设计取舍
+## Design Trade-offs
 
-### 为什么不是 JavaScript / TypeScript
+### Why Not JavaScript / TypeScript
 
-- **执行效率**：V8 引擎体积大、启动慢
-- **部署复杂**：需要 node.js 环境，对普通用户门槛高
-- **游戏冲突**：许多游戏浏览器组件嵌入 JS 引擎，可能冲突
+- **Execution efficiency**: the V8 engine is large and slow to start
+- **Deployment complexity**: requires a Node.js environment, a high barrier for ordinary users
+- **Game conflicts**: many games embed JS engines in their browser components, which may conflict
 
-### 为什么不是 C# / .NET
+### Why Not C# / .NET
 
-- **运行时依赖**：需要 .NET Runtime，部署不友好
-- **编译步骤**：用户需要编译，不符合脚本快速迭代的特性
-- **学习曲线**：对轻度用户过重
+- **Runtime dependency**: needs the .NET Runtime, unfriendly to deploy
+- **Compilation step**: users would have to compile, which clashes with scripts' rapid iteration
+- **Learning curve**: too heavy for light users
 
-### Python vs Lua 的性能
+### Python vs Lua Performance
 
-两种语言在实际使用中的特点：
+How the two languages behave in practice:
 
-**Python 优势**：
-- 丰富的第三方库支持（numpy、pandas、requests 等）
-- 成熟的开发工具和调试器
-- 类型提示和 IDE 自动补全
-- 适合处理复杂逻辑和大规模项目
+**Python strengths**:
+- Rich third-party library support (numpy, pandas, requests, etc.)
+- Mature development tools and debuggers
+- Type hints and IDE autocompletion
+- Suited to complex logic and large-scale projects
 
-**Lua 优势**：
-- 解释器体积小，启动快
-- 内存占用相对较低
-- 语法简洁，脚本文件小
-- 部署方便，无需额外依赖
+**Lua strengths**:
+- Small interpreter, fast startup
+- Relatively low memory footprint
+- Concise syntax, small script files
+- Easy deployment, no extra dependencies
 
-**建议**：
-- 简单脚本、快速原型 → Lua
-- 复杂项目、需要第三方库 → Python
+**Recommendations**:
+- Simple scripts, quick prototypes → Lua
+- Complex projects, third-party libraries needed → Python
 
 ---
 
-## 快速开始
+## Quick Start
 
 ### Python
 
@@ -184,100 +184,100 @@ end
 
 ---
 
-## 数据类型
+## Data Types
 
-查看 [数据类型参考](./types.md) 了解 API 中使用的各种对象和数据结构。
+See the [Data Types reference](./types.md) for the various objects and data structures used in the API.
 
 ---
 
-## API 模块
+## API Modules
 
-### 核心模块
+### Core Modules
 
-基础操作模块，提供屏幕、输入、窗口、进程等核心功能。
+Foundational operation modules providing core functionality such as screen, input, window, and process.
 
-- [screen](./screen.md) - 屏幕截图、像素查找、图像匹配
-- [input](./input.md) - 鼠标点击、移动、键盘输入
-- [window](./window.md) - 窗口查找、激活、获取信息
-- [process](./process.md) - 进程启动、查找、终止
-- [system](./system.md) - 系统信息获取
-- [uia](./uia/) - UI Automation 控件交互
+- [screen](./screen.md) - Screen capture, pixel lookup, image matching
+- [input](./input.md) - Mouse clicks, movement, keyboard input
+- [window](./window.md) - Finding, activating, and inspecting windows
+- [process](./process.md) - Starting, finding, and terminating processes
+- [system](./system.md) - Getting system information
+- [uia](./uia/) - UI Automation control interaction
 
-### 视觉与 AI
+### Vision and AI
 
-计算机视觉与 AI 相关功能。
+Computer vision and AI-related functionality.
 
-- [vision](./vision.md) - 颜色检测、边缘检测、轮廓识别
-- [ocr](./ocr.md) - 文字识别（OCR，可选依赖）
-- [ml](./ml.md) - ONNX 模型加载与输入/输出元数据查询（可选依赖）
+- [vision](./vision.md) - Color detection, edge detection, contour recognition
+- [ocr](./ocr.md) - Text recognition (OCR, optional dependency)
+- [ml](./ml.md) - ONNX model loading and input/output metadata queries (optional dependency)
 
-### 自动化系统
+### Automation Systems
 
-高级自动化编排功能。
+Advanced automation orchestration.
 
-- [event](./event.md) - 事件订阅与发布系统
-- [fsm](./fsm.md) - 有限状态机（FSM）
-- [task](./task.md) - 任务编排与执行
-- [script](./script.md) - 脚本管理控制面（列举、启动/停止/重载、环境变量）
-- [notify](./notify.md) - 通知系统（日志、Toast、Webhook、托盘意图）
-- [smarttrigger](./smart-trigger.md) - 智能触发器
-- [bt](./behavior-tree.md) - 行为树引擎
-- [hotkey](./hotkey.md) - 全局热键监听（轮询式，Python 回调）
-- [systemwatch](./systemwatch.md) - 系统事件源：进程/窗口变化观察（轮询式，Python 回调）
+- [event](./event.md) - Event subscribe/publish system
+- [fsm](./fsm.md) - Finite state machine (FSM)
+- [task](./task.md) - Task orchestration and execution
+- [script](./script.md) - Script management control plane (listing, start/stop/reload, environment variables)
+- [notify](./notify.md) - Notification system (logging, Toast, Webhook, tray intents)
+- [smarttrigger](./smart-trigger.md) - Smart triggers
+- [bt](./behavior-tree.md) - Behavior tree engine
+- [hotkey](./hotkey.md) - Global hotkey listening (polling-based, Python callbacks)
+- [systemwatch](./systemwatch.md) - System event source: process/window change observation (polling-based, Python callbacks)
 
-### 网络
+### Networking
 
-网络请求与通信。
+Network requests and communication.
 
-- [http](./http.md) - HTTP 客户端（GET、POST、下载）
-- [transport](./transport.md) - TCP 客户端、服务器与 UDP Socket
+- [http](./http.md) - HTTP client (GET, POST, downloads)
+- [transport](./transport.md) - TCP client, server, and UDP sockets
 
-### 序列化
+### Serialization
 
-数据序列化与格式转换。
+Data serialization and format conversion.
 
-- [serialize](./serialize.md) - 序列化格式总览（json、yaml、ini 选择指南）
-- [json](./json.md) - JSON 解析与序列化
-- [ini](./ini.md) - INI 配置文件解析与编码
+- [serialize](./serialize.md) - Serialization format overview (json, yaml, ini selection guide)
+- [json](./json.md) - JSON parsing and serialization
+- [ini](./ini.md) - INI configuration file parsing and encoding
 
-### 数据存储
+### Data Storage
 
-本地数据持久化与缓存。
+Local data persistence and caching.
 
-- [data](./data.md) - 数据存储总览（kv 与 db 选择指南）
-- [kv](./kv.md) - 持久化键值存储（Redis-like API）
-- [db](./db.md) - 本地 SQLite 数据库（支持 SQL 和 ORM）
+- [data](./data.md) - Data storage overview (kv vs db selection guide)
+- [kv](./kv.md) - Persistent key-value store (Redis-like API)
+- [db](./db.md) - Local SQLite database (SQL and ORM supported)
 
-### 辅助功能
+### Utilities
 
-辅助自动化脚本的工具模块。
+Tool modules that assist automation scripts.
 
-- [human](./human.md) - 人性化模拟（随机延迟、不规律输入）
-- [perf](./perf.md) - 性能监控
-- [config](./config.md) - 配置管理
-- [verification](./verification.md) - 验证码识别、TOTP
-- [gameprofile](./gameprofile.md) - 游戏配置档案
-- [debugger](./debugger.md) - 调试器
-- [util](./util.md) - 工具函数（sleep、随机数等）
-- [timer](./timer.md) - 定时器（一次性/周期回调、sleep）
-- [file](./file.md) - 文件 IO（读写、移动复制、目录操作）
+- [human](./human.md) - Human-like simulation (random delays, irregular input)
+- [perf](./perf.md) - Performance monitoring
+- [config](./config.md) - Configuration management
+- [verification](./verification.md) - CAPTCHA recognition, TOTP
+- [gameprofile](./gameprofile.md) - Game configuration profiles
+- [debugger](./debugger.md) - Debugger
+- [util](./util.md) - Utility functions (sleep, random numbers, etc.)
+- [timer](./timer.md) - Timer (one-shot/periodic callbacks, sleep)
+- [file](./file.md) - File IO (read/write, move/copy, directory operations)
 
-### 安全与加密
+### Security and Encryption
 
-安全和加密相关功能。
+Security- and encryption-related functionality.
 
-- [security](./security.md) - 安全模块
-- [crypto](./crypto.md) - 加密函数
-- [clipboard](./clipboard.md) - 剪贴板读写
-- [macro](./macro.md) - 宏录制与回放
-- [filewatcher](./filewatcher.md) - 文件系统监听
+- [security](./security.md) - Security module
+- [crypto](./crypto.md) - Cryptographic functions
+- [clipboard](./clipboard.md) - Clipboard read/write
+- [macro](./macro.md) - Macro recording and playback
+- [filewatcher](./filewatcher.md) - File system watching
 
-### 编排与协作
+### Orchestration and Collaboration
 
-多实例协作和编排功能。
+Multi-instance collaboration and orchestration.
 
-- [orchestration](./orchestration.md) - 编排控制
-- [inbox](./inbox.md) - 消息收件箱
-- [team](./team.md) - 组队编排
-- [node](../guide/config.md) - 节点状态与心跳（文档在配置系统的「节点模块 (node)」节）
-- [script](./script.md) - 脚本管理控制面
+- [orchestration](./orchestration.md) - Orchestration control
+- [inbox](./inbox.md) - Message inbox
+- [team](./team.md) - Team orchestration
+- [node](../guide/config.md) - Node status and heartbeat (documented in the "Node module (node)" section of the configuration system)
+- [script](./script.md) - Script management control plane

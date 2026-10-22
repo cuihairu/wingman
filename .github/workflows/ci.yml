@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Check platform macro boundary (P0 thin-layer discipline)
         run: ./scripts/check_platform_boundary.sh
@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Scan plaintext credential env reads outside boot-tier allowlist
         run: ./scripts/check_vault_touchpoints.sh
@@ -59,7 +59,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Audit pyi stubs against C++ module descriptors
         run: python3 scripts/audit_pyi_drift.py
@@ -75,7 +75,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Audit event names and error payloads
         run: python3 scripts/audit_event_conventions.py
@@ -89,12 +89,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           submodules: recursive
 
       - name: Cache vcpkg binaries
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
           key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
@@ -170,7 +170,7 @@ jobs:
         timeout-minutes: 60
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: windows-cpp-coverage
           path: build/coverage/coverage.cobertura.xml
@@ -179,7 +179,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: codecov/codecov-action@v5.0.1
+        uses: codecov/codecov-action@v7.1.1
         with:
           files: build/coverage/coverage.cobertura.xml
           flags: windows-cpp
@@ -208,7 +208,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           submodules: recursive
 
@@ -308,7 +308,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           submodules: recursive
 
@@ -407,7 +407,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           submodules: recursive
 
@@ -508,7 +508,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           submodules: recursive
 
@@ -518,7 +518,7 @@ jobs:
       # 混用会导致 LNK1104 / ABI 不一致。
 
       - name: Cache vcpkg binaries
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
           key: ${{ runner.os }}-vcpkg-python-${{ hashFiles('vcpkg.json') }}
@@ -583,10 +583,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.26.x'
           cache-dependency-path: orchestrator/server/go.sum

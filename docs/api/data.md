@@ -1,32 +1,32 @@
-> [English](data.en.md) | **中文**
+> [中文](data.md) | **English**
 
-# 数据存储
+# Data Storage
 
-Wingman 提供两种本地数据存储方案：kv 模块和 db 模块。两者各有优势，适用于不同场景。
+Wingman provides two local data storage options: the kv module and the db module. Each has its own strengths and suits different scenarios.
 
-## 模块对比
+## Module Comparison
 
-| 特性 | kv 模块 | db 模块 |
+| Feature | kv module | db module |
 |------|---------|---------|
-| **数据模型** | 键值对（Redis-like） | 关系型数据库（SQLite） |
-| **查询能力** | 简单键查询 | SQL 查询、索引、关联 |
-| **数据结构** | String、Hash、List | 自定义表结构 |
-| **适用场景** | 缓存、会话状态、队列 | 结构化数据、复杂查询 |
-| **性能** | 极快（内存优先） | 较快（磁盘持久化） |
-| **学习曲线** | 低（简单 API） | 中（需了解 SQL） |
+| **Data model** | Key-value pairs (Redis-like) | Relational database (SQLite) |
+| **Query capability** | Simple key lookups | SQL queries, indexes, joins |
+| **Data structures** | String, Hash, List | Custom table schemas |
+| **Best suited for** | Caching, session state, queues | Structured data, complex queries |
+| **Performance** | Extremely fast (memory-first) | Fast (disk-persisted) |
+| **Learning curve** | Low (simple API) | Medium (requires SQL knowledge) |
 
-## 选择指南
+## Selection Guide
 
-### 使用 kv 模块
+### Use the kv module
 
-**适合场景：**
-- 简单键值缓存（如 token、配置）
-- 会话状态存储
-- 简单队列（List 操作）
-- 需要过期时间的临时数据
-- 快速原型开发
+**Suitable scenarios:**
+- Simple key-value caching (e.g. tokens, config)
+- Session state storage
+- Simple queues (List operations)
+- Temporary data that needs expiry
+- Rapid prototyping
 
-**示例：**
+**Example:**
 
 ```python
 from wingman import kv
@@ -45,16 +45,16 @@ kv.lpush("task_queue", "task1")
 task = kv.lpop("task_queue")
 ```
 
-### 使用 db 模块
+### Use the db module
 
-**适合场景：**
-- 需要复杂查询的数据（如按条件筛选、排序）
-- 多表关联数据
-- 需要事务保证的数据一致性
-- 大量结构化数据
-- 需要聚合统计（COUNT、SUM、AVG 等）
+**Suitable scenarios:**
+- Data requiring complex queries (e.g. conditional filtering, sorting)
+- Multi-table relational data
+- Data consistency requiring transaction guarantees
+- Large volumes of structured data
+- Aggregate statistics (COUNT, SUM, AVG, etc.)
 
-**示例：**
+**Example:**
 
 ```python
 from wingman import db
@@ -83,9 +83,9 @@ count = db.scalar(conn, "SELECT COUNT(*) FROM players WHERE age > ?", [18])
 avg_score = db.scalar(conn, "SELECT AVG(score) FROM players")
 ```
 
-## 混合使用
+## Mixing Both
 
-kv 和 db 可以同时使用，各司其职：
+kv and db can be used at the same time, each doing its own job:
 
 ```python
 from wingman import kv, db
@@ -99,40 +99,40 @@ users = db.table(conn, "users")
 db.table_insert(users, {"id": "1001", "name": "Alice", "email": "alice@example.com"})
 ```
 
-## 模块详情
+## Module Details
 
-- [kv 模块文档](./kv.md) - 键值存储完整 API
-- [db 模块文档](./db.md) - SQLite 数据库完整 API
+- [kv module docs](./kv.md) - full key-value storage API
+- [db module docs](./db.md) - full SQLite database API
 
-## 最佳实践
+## Best Practices
 
-### 命名规范
+### Naming Conventions
 
-**kv 模块：**
-- 使用冒号分隔命名空间：`user:1001:name`
-- Hash 使用统一前缀：`user:1001` 作为 hash key
-- 队列使用 `queue:` 前缀
+**kv module:**
+- Use colon-separated namespaces: `user:1001:name`
+- Use a consistent prefix for Hashes: `user:1001` as the hash key
+- Prefix queues with `queue:`
 
-**db 模块：**
-- 表名使用复数形式：`users`、`products`
-- 字段名使用 snake_case：`created_at`、`user_id`
-- 主键统一命名为 `id`
+**db module:**
+- Use plural table names: `users`, `products`
+- Use snake_case field names: `created_at`, `user_id`
+- Name primary keys uniformly as `id`
 
-### 性能优化
+### Performance Tuning
 
-**kv 模块：**
-- 合理使用 TTL 避免数据堆积
-- 批量操作使用管道（未来支持）
+**kv module:**
+- Use TTLs wisely to avoid unbounded data accumulation
+- Use pipelining for bulk operations (future support)
 
-**db 模块：**
-- 为常用查询字段创建索引
-- 使用事务批量操作
-- 查询使用 LIMIT 避免大结果集
-- 频繁查询的数据考虑用 kv 缓存
+**db module:**
+- Create indexes on frequently queried fields
+- Use transactions for bulk operations
+- Use LIMIT in queries to avoid large result sets
+- Consider caching frequently queried data in kv
 
-### 数据迁移
+### Data Migration
 
-如需在 kv 和 db 间迁移数据：
+To migrate data between kv and db:
 
 ```python
 # db → kv
@@ -141,24 +141,24 @@ for row in db.table_all(users):
     kv.hset(f"user:{row['id']}", "email", row['email'])
 ```
 
-注意：kv 模块当前未向脚本层提供键枚举接口（无 `keys`/`scan`），「kv → db」方向的批量迁移需自行维护键名清单，逐个 `hgetall` 后写入 db。
+Note: the kv module currently exposes no key-enumeration interface to the script layer (no `keys`/`scan`), so bulk migration in the "kv → db" direction requires maintaining your own list of key names, calling `hgetall` on each, and writing the results into db.
 
-## 注意事项
+## Notes
 
-1. **数据安全**
-   - db 的数据文件位于 `%APPDATA%/wingman/scripts/`（Windows）或 `~/.local/share/wingman/scripts/`（Linux/macOS）
-   - kv 平时为纯内存存储，持久化位置完全由 `kv.save(path)` / `kv.enableAutoSave(path)` 传入的 path 决定，没有默认目录
-   - 卸载 Wingman 不会删除这些文件，需手动清理
+1. **Data safety**
+   - db data files live in `%APPDATA%/wingman/scripts/` (Windows) or `~/.local/share/wingman/scripts/` (Linux/macOS)
+   - kv is normally pure in-memory storage; the persistence location is entirely determined by the path passed to `kv.save(path)` / `kv.enableAutoSave(path)` — there is no default directory
+   - Uninstalling Wingman does not delete these files; they must be cleaned up manually
 
-2. **并发访问**
-   - kv 和 db 都是线程安全的，可在多线程环境使用
-   - 同名数据库连接在进程内全局共享，跨脚本可见；需要隔离时请使用不同的 db 名
+2. **Concurrent access**
+   - Both kv and db are thread-safe and can be used in multi-threaded environments
+   - Connections to a same-named database are shared process-wide and visible across scripts; use a different db name when isolation is needed
 
-3. **容量限制**
-   - kv: 内存存储，受系统内存限制
-   - db: 磁盘存储，受磁盘空间限制
+3. **Capacity limits**
+   - kv: in-memory storage, limited by system memory
+   - db: on-disk storage, limited by disk space
 
-4. **备份建议**
-   - 重要数据定期导出
-   - db 可直接复制 `.db` 文件备份
-   - kv 可通过 `kv.save(path)` 或 `kv.enableAutoSave(path)` 持久化到指定文件
+4. **Backup advice**
+   - Export important data regularly
+   - db can be backed up by directly copying the `.db` file
+   - kv can be persisted to a chosen file via `kv.save(path)` or `kv.enableAutoSave(path)`

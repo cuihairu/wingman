@@ -1,15 +1,15 @@
-> [English](menu.en.md) | **中文**
+> [中文](menu.md) | **English**
 
 # API: UIA Menu
 
-菜单（Menu）控件用于组织命令和选项，常见于：
-- 应用程序顶部菜单栏（文件、编辑、查看...）
-- 右键上下文菜单
-- 下拉菜单
+The Menu control organizes commands and options. It is commonly seen in:
+- Application top menu bars (File, Edit, View, ...)
+- Right-click context menus
+- Dropdown menus
 
-## 查找菜单
+## Finding a menu
 
-**说明**：菜单通常有名称（如"文件"、"编辑"），可以通过名称查找。
+**Note**: Menus usually have names (such as "文件" or "编辑") and can be found by name.
 
 :::tabs
 
@@ -40,17 +40,17 @@ end
 
 ---
 
-## 展开菜单并选择
+## Expanding a menu and selecting
 
-### 展开菜单并点击菜单项
+### Expand the menu and click a menu item
 
-**说明**：先展开菜单，然后查找并点击目标菜单项。
+**Note**: First expand the menu, then find and click the target menu item.
 
-**步骤**：
-1. 查找菜单控件
-2. 使用 `expand()` 展开菜单
-3. 等待菜单项出现
-4. 查找并点击目标菜单项
+**Steps**:
+1. Find the menu control
+2. Use `expand()` to expand the menu
+3. Wait for the menu items to appear
+4. Find and click the target menu item
 
 :::tabs
 
@@ -102,9 +102,9 @@ end
 
 :::
 
-### 直接点击菜单项
+### Clicking a menu item directly
 
-**说明**：某些应用程序支持直接点击菜单项，无需先展开菜单。
+**Note**: Some applications support clicking menu items directly without expanding the menu first.
 
 :::tabs
 
@@ -137,14 +137,14 @@ end
 
 ---
 
-## 右键菜单（上下文菜单）
+## Right-click menu (context menu)
 
-**说明**：右键菜单是通过鼠标右键触发的上下文菜单。
+**Note**: The right-click menu is a context menu triggered by the right mouse button.
 
-**操作步骤**：
-1. 右键点击目标位置
-2. 等待菜单出现
-3. 查找并点击菜单项
+**Steps**:
+1. Right-click the target location
+2. Wait for the menu to appear
+3. Find and click a menu item
 
 :::tabs
 
@@ -191,9 +191,9 @@ end
 
 ---
 
-## 获取菜单项列表
+## Getting the menu item list
 
-**说明**：展开菜单后，可以遍历所有菜单项。
+**Note**: After expanding the menu, you can iterate over all menu items.
 
 :::tabs
 
@@ -245,11 +245,11 @@ end
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 方法 | Lua 方法 | 说明 |
-|------------|---------|------|
-| `expand()` | `:expand()` | 展开菜单 |
-| `collapse()` | `:collapse()` | 折叠菜单 |
-| `get_children()` | `:get_children()` | 获取所有菜单项 |
-| `click()` | `:click()` | 点击菜单项 |
+| Python method | Lua method | Description |
+|----------------|-------------|-------------|
+| `expand()` | `:expand()` | Expand the menu |
+| `collapse()` | `:collapse()` | Collapse the menu |
+| `get_children()` | `:get_children()` | Get all menu items |
+| `click()` | `:click()` | Click a menu item |

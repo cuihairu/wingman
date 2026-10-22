@@ -1,6 +1,6 @@
-> [English](structure.en.md) | **中文**
+> [中文](structure.md) | **English**
 
-# 项目目录结构
+# Project Directory Structure
 
 ```
 wingman/
@@ -84,54 +84,54 @@ wingman/
 └── README.md               # 项目说明
 ```
 
-各库的测试随库存放：单元测试在 `lib/wingman/tests/`，脚本引擎测试（含集成测试）在 `libs/lua/tests/`、`libs/python/tests/`，无顶层 tests/ 目录。
+Each library's tests live alongside that library: unit tests in `lib/wingman/tests/`, script engine tests (including integration tests) in `libs/lua/tests/` and `libs/python/tests/`; there is no top-level tests/ directory.
 
-## 目录说明
+## Directory Notes
 
-### docs/ - 文档中心
+### docs/ - Documentation Hub
 
-使用 VitePress 构建的文档网站，包含：
-- 指南文档（guide/ 九篇）
-- API 参考（api/）
-- 示例讲解（examples/）
+A documentation site built with VitePress, containing:
+- Guide documentation (nine pages under guide/)
+- API reference (api/)
+- Example walkthroughs (examples/)
 
-### orchestrator/ - 远程编排层
+### orchestrator/ - Remote Orchestration Layer
 
-Go server 是远程中控入口。Runtime 作为 agent 主动 outbound 连接 Go server，Dashboard 只连接 Go server。
+The Go server is the remote control entry point. The runtime acts as an agent and actively connects outbound to the Go server; the Dashboard only connects to the Go server.
 
-### local IPC - 本地单机控制
+### local IPC - Local Single-Machine Control
 
-Tauri GUI 通过 Tauri Rust backend 使用本地 IPC 控制 runtime。Runtime 不提供 WebSocket/HTTP server 作为本地 UI 控制面。
+The Tauri GUI controls the runtime over local IPC through the Tauri Rust backend. The runtime does not expose a WebSocket/HTTP server as a local UI control plane.
 
-### lib/wingman - 核心引擎
+### lib/wingman - Core Engine
 
-C++ 实现的核心功能：
-- 屏幕操作
-- 输入模拟
-- 窗口管理
-- 进程管理
-- 人性化模拟
-- 宏录制
-- 触发器系统
+Core functionality implemented in C++:
+- Screen operations
+- Input simulation
+- Window management
+- Process management
+- Humanized simulation
+- Macro recording
+- Trigger system
 
-平台相关实现按后端拆分在 `src/platform/{win,linux,mac}/` 下（如 `sendinput_input.cpp`、`xtest_input.cpp`、`cgevent_input.cpp`）。
+Platform-specific implementations are split by backend under `src/platform/{win,linux,mac}/` (e.g. `sendinput_input.cpp`, `xtest_input.cpp`, `cgevent_input.cpp`).
 
-### 调试器
+### Debugger
 
-Lua 脚本调试基于 EmmyLua attach（runtime 监听 `:9966`），脚本内可用 `debugger` 模块的四个函数：`start` / `stop` / `breakpoint` / `breakHere`。DAP 协议适配为规划项，尚未实现。
+Lua script debugging is based on EmmyLua attach (the runtime listens on `:9966`). Inside a script, four functions of the `debugger` module are available: `start` / `stop` / `breakpoint` / `breakHere`. DAP protocol adaptation is a planned item and not yet implemented.
 
-### libs/ - 脚本绑定与辅助库
+### libs/ - Script Bindings and Supporting Libraries
 
-- `libs/lua`：使用 sol2 将 C++ API 绑定到 Lua（统一挂到 `require("wingman")` 命名空间）。
-- `libs/python`：pybind11 绑定，与 Lua 共享同一套模块注册。
-- `libs/transport`：TCP 帧协议与会话管理。
-- `libs/agentcore`：RemoteClient（Agent 侧远程连接核心）。
-- `libs/androidagent`：Android Agent 实现。
+- `libs/lua`: uses sol2 to bind the C++ API into Lua (everything mounted under the `require("wingman")` namespace).
+- `libs/python`: pybind11 bindings sharing the same module registration as Lua.
+- `libs/transport`: TCP frame protocol and session management.
+- `libs/agentcore`: RemoteClient (the agent-side remote connection core).
+- `libs/androidagent`: the Android Agent implementation.
 
-### examples/lua_scripts/ - 脚本示例
+### examples/lua_scripts/ - Script Examples
 
-Lua 脚本示例（`hello.lua`、`pixel_detection.lua`、`image_matching.lua`、`auto_loop.lua` 等），以 `wingman-agent.exe script examples/lua_scripts/xxx.lua` 运行。
+Lua script examples (`hello.lua`, `pixel_detection.lua`, `image_matching.lua`, `auto_loop.lua`, etc.), run with `wingman-agent.exe script examples/lua_scripts/xxx.lua`.
 
-### scripts/ / build-scripts/ - 工程脚本
+### scripts/ / build-scripts/ - Engineering Scripts
 
-`build-scripts/` 是构建与打包脚本（Windows bat/ps1、CI 子脚本）；`scripts/` 是平台边界校验、部署验证等工程脚本。两者均不含 Lua 示例。
+`build-scripts/` holds build and packaging scripts (Windows bat/ps1, CI sub-scripts); `scripts/` holds engineering scripts such as platform boundary checks and deployment verification. Neither contains Lua examples.

@@ -1,23 +1,23 @@
-> [English](hotkey.en.md) | **中文**
+> [中文](hotkey.md) | **English**
 
 # API: wingman.hotkey
 
-全局热键模块，轮询式监听全局键态，主键与修饰键同时按下（上升沿）时触发回调。
+Global hotkey module. Listens to global key state by polling and triggers the callback when the main key and its modifiers are pressed together (rising edge).
 
-## 模块概述
+## Module Overview
 
-hotkey 模块提供以下能力：
+The hotkey module provides the following capabilities:
 
-- **注册全局热键** - 组合键文本 + 回调，返回注册 ID
-- **注销热键** - 按 ID 注销
+- **Register a global hotkey** - combo text + callback, returns a registration ID
+- **Unregister a hotkey** - unregister by ID
 
-**实现要点**：
+**Implementation notes**:
 
-- **轮询式 v1**：后台线程按固定间隔（默认 30ms）读全局键盘状态，按上升沿触发一次回调（`Ctrl+Shift+A` 风格组合键，大小写不敏感、修饰键顺序不限）。
-- **线程约束**：回调从后台轮询线程触发，**必须是线程安全 callable**（Python 函数可以；Lua callable 非线程安全，会被拒绝并发出 `hotkey.error` 事件——Lua 侧请改用事件/触发器）。
-- **平台支持**：Windows（`GetKeyState`——读取的是调用线程的消息队列键态，轮询线程无消息泵，语义与「全局异步键态」存在偏差风险）/ Linux X11（`XQueryKeymap`）/ macOS（`CGEventSourceKeyState`，需辅助功能权限，真实行为待真机验证）。
-- **v1 已知限制**：按键在两次轮询间隔内按下又弹起（<30ms）可能漏检。
-- **生命周期**：首个注册自动启动轮询线程；注销清空后线程自查退出（下次注册自动重启）。
+- **Polling-based v1**: a background thread reads global keyboard state at a fixed interval (default 30ms) and fires the callback once on the rising edge (`Ctrl+Shift+A`-style combos, case-insensitive, modifier order irrelevant).
+- **Threading constraint**: callbacks are invoked from the background polling thread, so they **must be thread-safe callables** (Python functions are fine; Lua callables are not thread-safe and are rejected with a `hotkey.error` event — on the Lua side use events/triggers instead).
+- **Platform support**: Windows (`GetKeyState` — reads the key state of the calling thread's message queue; since the polling thread has no message pump, the semantics can drift from "global asynchronous key state") / Linux X11 (`XQueryKeymap`) / macOS (`CGEventSourceKeyState`, requires Accessibility permission; real-world behavior pending verification on a physical machine).
+- **Known v1 limitations**: a key pressed and released within one polling interval (<30ms) may be missed.
+- **Lifecycle**: the first registration automatically starts the polling thread; once unregistering empties the table, the thread self-checks and exits (it restarts automatically on the next registration).
 
 ---
 
@@ -25,9 +25,9 @@ hotkey 模块提供以下能力：
 
 ### register(combo, callback) / register(combo, callback)
 
-**说明**：注册全局热键。组合键解析失败、回调为空或回调非线程安全时返回 `0`。
+**Description**: Registers a global hotkey. Returns `0` when the combo fails to parse, the callback is empty, or the callback is not thread-safe.
 
-**函数签名**：
+**Signature**:
 
 ```python
 register(combo: str, callback: Callable[[], None]) -> int
@@ -38,12 +38,12 @@ register(combo: str, callback: Callable[[], None]) -> int
 register(combo: string, callback: function) -> int
 ```
 
-**参数**：
-- `combo` - 组合键文本：`修饰键+…+主键`，如 `"Ctrl+Shift+A"`、`"Alt+F12"`、`"F9"`（仅主键也允许）。修饰键 `Ctrl`/`Shift`/`Alt` 可任意顺序、大小写不敏感；主键支持字母 `A-Z`、数字 `0-9`、`F1-F12`、`SPACE`/`ENTER`/`ESC`/`TAB`/`BACKSPACE`/`DELETE`/`INSERT` 等命名键。
-- `callback` - 触发回调，无参数。
+**Parameters**:
+- `combo` - Combo text: `modifier+…+main key`, e.g. `"Ctrl+Shift+A"`, `"Alt+F12"`, `"F9"` (a main key alone is also allowed). The modifiers `Ctrl`/`Shift`/`Alt` may appear in any order and are case-insensitive; the main key supports letters `A-Z`, digits `0-9`, `F1-F12`, and named keys such as `SPACE`/`ENTER`/`ESC`/`TAB`/`BACKSPACE`/`DELETE`/`INSERT`.
+- `callback` - Trigger callback, takes no arguments.
 
-**返回**：
-- `int` - 注册 ID（`0` = 失败）
+**Returns**:
+- `int` - registration ID (`0` = failure)
 
 :::tabs
 
@@ -69,7 +69,7 @@ if hid == 0:
 
 :::
 
-**事件**：注册被拒绝（非线程安全 callable）时发出 `hotkey.error`，载荷 `{ "error": "..." }`。
+**Events**: emits `hotkey.error` with payload `{ "error": "..." }` when a registration is rejected (non-thread-safe callable).
 
 ---
 
@@ -77,9 +77,9 @@ if hid == 0:
 
 ### unregister(id) / unregister(id)
 
-**说明**：按注册 ID 注销热键。ID 不存在返回 `false`。
+**Description**: Unregisters a hotkey by registration ID. Returns `false` if the ID does not exist.
 
-**函数签名**：
+**Signature**:
 
 ```python
 unregister(id: int) -> bool
@@ -89,11 +89,11 @@ unregister(id: int) -> bool
 unregister(id: int) -> boolean
 ```
 
-**参数**：
-- `id` - `register` 返回的注册 ID
+**Parameters**:
+- `id` - the registration ID returned by `register`
 
-**返回**：
-- `bool`/`boolean` - 是否成功
+**Returns**:
+- `bool`/`boolean` - whether the operation succeeded
 
 :::tabs
 
@@ -116,7 +116,7 @@ hotkey.unregister(hid)
 
 ---
 
-## 完整示例
+## Full Example
 
 ### Python
 
@@ -137,9 +137,9 @@ hotkey.unregister(hid)
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 | 参数 |
+| Python Function | Lua Function | Description | Parameters |
 |------------|---------|------|-----|
-| `register(combo, callback)` | `register(combo, callback)` | 注册全局热键（Lua 侧拒绝，见模块概述） | combo: 组合键文本<br>callback: 触发回调（须线程安全） |
-| `unregister(id)` | `unregister(id)` | 按 ID 注销 | id: register 返回的 ID |
+| `register(combo, callback)` | `register(combo, callback)` | Register a global hotkey (rejected on the Lua side, see Module Overview) | combo: combo text<br>callback: trigger callback (must be thread-safe) |
+| `unregister(id)` | `unregister(id)` | Unregister by ID | id: the ID returned by register |

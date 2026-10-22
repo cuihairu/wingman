@@ -1,34 +1,34 @@
-> [English](orchestration.en.md) | **中文**
+> [中文](orchestration.md) | **English**
 
 # API: wingman.orchestration
 
-工作流模块，提供工作流提交、依赖调度、取消与查询功能。
+Workflow module providing workflow submission, dependency scheduling, cancellation, and query functionality.
 
-## 模块概述
+## Module Overview
 
-orchestration 模块在 runtime 内**本地执行**工作流：
+The orchestration module executes workflows **locally** inside the runtime:
 
-- **提交工作流** - 校验依赖图（环检测）后立即返回工作流 ID；单调度线程做调度决策，就绪任务派发到独立 worker 线程执行
-- **依赖调度** - 前置任务全部成功才调度后置任务；前置失败/取消/超时沿依赖图传播跳过
-- **条件分支** - 任务可带 `when` 条件，前置满足后求值，不成立按条件链跳过（不判工作流失败）
-- **并发控制** - `maxParallel` 约束工作流内同时执行的任务数（默认 1 串行）
-- **取消工作流** - 取消执行中的工作流（协作式取消，未开工任务直接取消）
-- **查询工作流** - 获取工作流与任务级状态快照（含依赖阻塞态）
+- **Submit workflows** - Validates the dependency graph (cycle detection) and returns a workflow ID immediately; a single scheduler thread makes scheduling decisions and dispatches ready tasks to dedicated worker threads
+- **Dependency scheduling** - A task is scheduled only after all of its prerequisites succeed; prerequisite failures/cancellations/timeouts propagate as skips along the dependency graph
+- **Conditional branching** - Tasks may carry a `when` condition, evaluated once prerequisites are satisfied; when it does not hold, the task is skipped along the condition chain (this does not fail the workflow)
+- **Concurrency control** - `maxParallel` caps the number of tasks executing simultaneously within a workflow (default 1, serial)
+- **Cancel workflows** - Cancel a running workflow (cooperative cancellation; tasks that have not started are canceled outright)
+- **Query workflows** - Get workflow- and task-level status snapshots (including the dependency-blocked state)
 
-::: warning 注意
-任务 `run` 与条件 `when` 均在调度线程/worker 线程上调用，必须是线程安全可调用体——
-Python 函数满足（GIL），**Lua 函数提交即拒绝**（同 `task.submit` 的 `async` 门控语义）。
+::: warning Note
+Both task `run` bodies and `when` conditions are invoked on the scheduler/worker threads and must be thread-safe callables —
+Python functions qualify (GIL); **Lua functions are rejected at submission** (same gating semantics as the `async` flag in `task.submit`).
 :::
 
 ---
 
-## 提交工作流
+## Submitting a Workflow
 
 ### submit_workflow(workflow)
 
-**说明**：提交一个新的工作流执行。立即返回工作流 ID；调度线程按依赖序派发就绪任务到 worker 线程，工作流内并发度受 `maxParallel` 约束（默认 1 = 串行）。两端函数名一致（均为 snake_case）。
+**Description**: Submits a new workflow execution. Returns a workflow ID immediately; the scheduler thread dispatches ready tasks to worker threads in dependency order, and concurrency within the workflow is capped by `maxParallel` (default 1 = serial). The function name is identical on both ends (snake_case).
 
-**函数签名**：
+**Signature**:
 
 ```python
 submit_workflow(workflow: dict) -> str | None
@@ -38,33 +38,33 @@ submit_workflow(workflow: dict) -> str | None
 submit_workflow(workflow: table) -> string | nil
 ```
 
-**参数**：
+**Parameters**:
 
-- `workflow` - 工作流定义对象：
-  - `name` (string，可选) - 工作流名称
-  - `maxParallel` (int，可选) - 工作流级并发上限：同时执行中的任务数，默认 1（串行）；`<1` 拒绝
-  - `tasks` (array，必填，非空) - 任务定义数组，每个任务：
-    - `id` (string，必填) - 任务唯一标识（重复即拒绝）
-    - `run` (callable，必填) - 任务执行体（须线程安全可调用体）
-    - `dependsOn` (array of string，可选) - 前置任务 id 集合；前置全部 `succeeded` 才调度本任务
-    - `when` (callable，可选) - 分支条件，前置满足后的调度点求值一次（详见下节）
-    - `timeoutMs` (int，可选) - 超时毫秒数，默认 30000
-    - `maxRetries` (int，可选) - 失败重试次数，默认 0
-    - `backoffMs` (int，可选) - 重试退避基准毫秒数，默认 500
-    - `backoffFactor` (float，可选) - 退避因子，默认 2.0
+- `workflow` - Workflow definition object:
+  - `name` (string, optional) - Workflow name
+  - `maxParallel` (int, optional) - Workflow-level concurrency cap: the number of tasks executing simultaneously; default 1 (serial); `<1` is rejected
+  - `tasks` (array, required, non-empty) - Array of task definitions; each task:
+    - `id` (string, required) - Unique task identifier (duplicates are rejected)
+    - `run` (callable, required) - Task body (must be a thread-safe callable)
+    - `dependsOn` (array of string, optional) - Set of prerequisite task ids; this task is scheduled only when all prerequisites are `succeeded`
+    - `when` (callable, optional) - Branch condition, evaluated exactly once at the scheduling point after prerequisites are satisfied (see the next section)
+    - `timeoutMs` (int, optional) - Timeout in milliseconds, default 30000
+    - `maxRetries` (int, optional) - Number of retries on failure, default 0
+    - `backoffMs` (int, optional) - Base retry backoff in milliseconds, default 500
+    - `backoffFactor` (float, optional) - Backoff multiplier, default 2.0
 
-**返回**：
+**Returns**:
 
-- Python: 工作流 ID，失败返回 `None`
-- Lua: 工作流 ID，失败返回 `nil`
+- Python: the workflow ID, or `None` on failure
+- Lua: the workflow ID, or `nil` on failure
 
-**拒绝规则**（返回 `None` 并发出 `orchestration.error` 事件，负载 `{"error": 原因}`）：
+**Rejection rules** (returns `None` and emits an `orchestration.error` event with payload `{"error": reason}`):
 
-- `workflow` 非对象、`tasks` 缺失/空数组、任务项缺 `id`/`run` 或类型不符
-- `maxParallel` 非整数或 `< 1`
-- 重复任务 id
-- 未知前置引用、自依赖、依赖环（DFS 环检测，提交即拒绝）
-- `run`/`when` 非线程安全可调用体（Lua 函数）
+- `workflow` is not an object, `tasks` is missing or an empty array, or a task item is missing `id`/`run` or has a mismatched type
+- `maxParallel` is not an integer or is `< 1`
+- Duplicate task ids
+- Unknown prerequisite references, self-dependencies, dependency cycles (DFS cycle detection; rejected at submission)
+- `run`/`when` is not a thread-safe callable (Lua function)
 
 :::tabs
 
@@ -99,23 +99,23 @@ if workflow_id is None:
 
 ---
 
-## 条件分支（when）
+## Conditional Branching (`when`)
 
-任务项可选 `when` 谓词实现分支过滤。语义与依赖传播/重试对齐：
+Task items may carry an optional `when` predicate for branch filtering. Its semantics align with dependency propagation and retries:
 
-- **求值时机** - 前置任务全部 `succeeded` 后、开工前的调度点求值**一次**（不随重试重复）；谓词在锁外求值，可重入 `get_workflow`/`cancel_workflow`
-- **真值口径**（跨语言统一）：
+- **Evaluation timing** - Evaluated **once** at the scheduling point, after all prerequisites are `succeeded` and before the task starts (not re-evaluated on retries); the predicate is evaluated outside the lock and may re-enter `get_workflow`/`cancel_workflow`
+- **Truthiness rules** (uniform across languages):
 
-| 返回值 | 判定 |
+| Return value | Interpretation |
 |--------|------|
-| `bool` | 按值 |
-| `int` / `float` | 非 0 为真 |
-| `str` | 非空为真 |
-| `list` / `dict` | 非空为真 |
-| `None` | 假 |
+| `bool` | By value |
+| `int` / `float` | Truthy if non-zero |
+| `str` | Truthy if non-empty |
+| `list` / `dict` | Truthy if non-empty |
+| `None` | Falsy |
 
-- **不成立 → 条件链 `skipped`**：分支过滤是正常控制流，**不判工作流失败**；后置任务沿依赖图连锁跳过，混合前置时失败链优先于条件链
-- **求值异常 → 按失败落账**：任务置 `failed` 并携带错误信息 `when predicate threw: ...`（沿用 task 模块失败语义），后置按失败链传播
+- **Condition not met → condition-chain `skipped`**: branch filtering is normal control flow and **does not fail the workflow**; downstream tasks are skipped transitively along the dependency graph, and with mixed prerequisites the failure chain takes precedence over the condition chain
+- **Predicate raised → recorded as a failure**: the task is set to `failed` with the error message `when predicate threw: ...` (same failure semantics as the task module), and downstream tasks propagate along the failure chain
 
 ```python:line-numbers
 import wingman.orchestration as orch
@@ -139,20 +139,21 @@ orch.submit_workflow({
 # 只有一条分支执行，另一条 skipped；工作流终态 succeeded
 ```
 
-::: warning 注意
-`when` 与 `run` 同门控：必须线程安全可调用体，Lua 函数提交即拒绝。条件不成立
-的分支**不占** `maxParallel` 执行额度（求值即落账，不进 worker）。
+::: warning Note
+`when` is gated exactly like `run`: it must be a thread-safe callable, and Lua functions are rejected at submission. A branch
+whose condition does not hold does **not** consume a `maxParallel` execution slot (it is recorded at evaluation time and
+never enters a worker).
 :::
 
 ---
 
-## 取消工作流
+## Canceling a Workflow
 
 ### cancel_workflow(workflowId)
 
-**说明**：取消执行中的工作流。执行中任务协作式取消（`run` 内部无法被强制打断；快照即时反映 `canceled`，工作体自然返回后 worker 收尾）；未开工任务（含依赖阻塞态）直接置 `canceled`。未知 ID 或已终局的工作流返回 `false`。
+**Description**: Cancels a running workflow. Running tasks are canceled cooperatively (`run` bodies cannot be forcibly interrupted; the snapshot reflects `canceled` immediately, and the worker wraps up once the body returns naturally); tasks that have not started (including dependency-blocked ones) are set to `canceled` outright. Returns `false` for an unknown ID or an already-finalized workflow.
 
-**函数签名**：
+**Signature**:
 
 ```python
 cancel_workflow(workflowId: str) -> bool
@@ -162,19 +163,19 @@ cancel_workflow(workflowId: str) -> bool
 cancel_workflow(workflowId: string) -> boolean
 ```
 
-**返回**：
+**Returns**:
 
-- 是否发生取消转换
+- Whether a cancellation transition occurred
 
 ---
 
-## 查询工作流
+## Querying Workflows
 
 ### get_workflow(workflowId)
 
-**说明**：获取工作流状态快照。快照读取不阻塞调度。
+**Description**: Gets a workflow status snapshot. Snapshot reads do not block scheduling.
 
-**函数签名**：
+**Signature**:
 
 ```python
 get_workflow(workflowId: str) -> dict | None
@@ -184,13 +185,13 @@ get_workflow(workflowId: str) -> dict | None
 get_workflow(workflowId: string) -> table | nil
 ```
 
-**返回**：工作流快照对象，不存在返回 `None`/`nil`。
+**Returns**: The workflow snapshot object, or `None`/`nil` if it does not exist.
 
 ### get_all_workflows()
 
-**说明**：获取所有工作流快照列表。
+**Description**: Gets a list of snapshots of all workflows.
 
-**函数签名**：
+**Signature**:
 
 ```python
 get_all_workflows() -> list[dict]
@@ -202,17 +203,17 @@ get_all_workflows() -> table
 
 ---
 
-## 历史账本
+## History Ledger
 
-工作流的**提交**与**终局**会落到 app 数据目录的 JSONL 账本（`<appDataDir>/workflows.jsonl`，单文件超 8 MiB 轮转 `.old`），进程重启后仍可查历史；`get_workflow`/`get_all_workflows` 只反映内存态。路径可用环境变量 `WINGMAN_WORKFLOW_LEDGER`（全路径）重定向，app 数据目录不可得时账本整体关闭（`history` 恒返回空数组）。
+Both workflow **submissions** and **finalizations** are appended to a JSONL ledger in the app data directory (`<appDataDir>/workflows.jsonl`, rotated to `.old` when a single file exceeds 8 MiB); history remains queryable after a process restart. `get_workflow`/`get_all_workflows` reflect in-memory state only. The path can be redirected via the `WINGMAN_WORKFLOW_LEDGER` environment variable (a full path); when the app data directory is unavailable, the ledger is disabled entirely (`history` always returns an empty array).
 
-账本只记任务 id、依赖图与状态，**不落 `run()` 结果载荷**；任务体本身是脚本闭包、不可序列化，因此**只落账不自动恢复**——重启不会重跑未终局的工作流，而是把上次遗留的条目补一条 `interrupted` 终局（见下节状态词汇表），供事后查询与订阅方感知。
+The ledger records only task ids, the dependency graph, and statuses — **it does not persist `run()` result payloads**; task bodies are script closures and cannot be serialized, so the ledger is **append-only with no automatic recovery** — after a restart, unfinished workflows are not rerun; instead, a synthetic `interrupted` finalization is appended for each leftover entry (see the status vocabulary below), for post-hoc queries and subscriber awareness.
 
 ### history(limit = 20)
 
-**说明**：查询终局账本视图，最新在前。进行中（仅有提交、无终局）的条目 `status` 报 `running` 且不带 `finishedAt`，排在最前；其余按 `finishedAt` 倒序。`limit` 默认 20、钳制 1..500。
+**Description**: Queries the finalized ledger view, newest first. Entries still in progress (submitted but not finalized) report `status` as `running` without `finishedAt` and sort first; the rest are ordered by `finishedAt` descending. `limit` defaults to 20 and is clamped to 1..500.
 
-**函数签名**：
+**Signature**:
 
 ```python
 history(limit: int = 20) -> list[dict]
@@ -222,13 +223,13 @@ history(limit: int = 20) -> list[dict]
 history(limit?: int) -> table
 ```
 
-**返回**：视图数组，每项 `{id, name, run, status, startedAt, finishedAt?, interrupted?, tasks?}`：
+**Returns**: An array of views, each `{id, name, run, status, startedAt, finishedAt?, interrupted?, tasks?}`:
 
-- `run`：进程标识（pid + 首启毫秒），区分跨进程重号的 `workflowId`（每进程从 `wf-1` 起）；
-- `tasks`：任务 id → 状态（与快照口径一致）；被补 `interrupted` 的条目不带该字段；
-- `interrupted`：仅被启动恢复合成的终局携带，表示进程强杀遗留（不等于运行失败）。
+- `run`: process identity (pid + first-start milliseconds); distinguishes `workflowId` numbering collisions across processes (each process starts at `wf-1`);
+- `tasks`: task id → status (same shape as snapshots); entries given a synthetic `interrupted` finalization do not carry this field;
+- `interrupted`: carried only by finalizations synthesized during startup recovery; indicates a leftover from a killed process (not the same as a runtime failure).
 
-示例：
+Example:
 
 ```python
 for rec in wingman.orchestration.history(50):
@@ -241,59 +242,59 @@ for _, rec in ipairs(wingman.orchestration.history(50)) do
 end
 ```
 
-启动恢复（进程内一次，首次 `submit_workflow`/`history` 访问时执行）会为每个遗留条目发出 `orchestration.interrupted` 事件（负载 `{workflow}`）。
+Startup recovery (once per process, performed on the first `submit_workflow`/`history` access) emits an `orchestration.interrupted` event (payload `{workflow}`) for each leftover entry.
 
 ---
 
-## 状态词汇表
+## Status Vocabulary
 
-**工作流状态**（`status`）：
+**Workflow statuses** (`status`):
 
-| 状态 | 含义 |
+| Status | Meaning |
 |------|------|
-| `running` | 存在未终局任务 |
-| `succeeded` | 全部任务 `succeeded`（或按条件链 `skipped`） |
-| `failed` | 存在失败链任务（`failed`/`timeout` 及其传播的 `skipped`）且无未终局任务 |
-| `canceled` | `cancel_workflow` 请求后定稿（执行中任务协作取消，worker 后台收尾） |
-| `interrupted` | 仅历史账本：进程强杀遗留的在途工作流，由启动恢复合成的终局（不等于运行失败） |
+| `running` | Tasks exist that are not yet finalized |
+| `succeeded` | All tasks `succeeded` (or `skipped` via the condition chain) |
+| `failed` | Failure-chain tasks exist (`failed`/`timeout` plus the `skipped` they propagated) and no unfinalized tasks remain |
+| `canceled` | Finalized after a `cancel_workflow` request (running tasks canceled cooperatively, workers wrap up in the background) |
+| `interrupted` | History ledger only: an in-flight workflow left behind by a killed process, finalized by startup recovery (not the same as a runtime failure) |
 
-**任务状态**（`tasks[].status`）：
+**Task statuses** (`tasks[].status`):
 
-| 状态 | 含义 |
+| Status | Meaning |
 |------|------|
-| `blocked` | 前置任务未全部成功（依赖阻塞态） |
-| `pending` | 前置已全部成功，等待调度 |
-| `running` | worker 执行中；协作取消即时反映 `canceled`（不等工作体返回） |
-| `skipped` | 失败链（前置 `failed`/`canceled`/`timeout` 传播）或条件链（`when` 不成立的分支过滤）连锁跳过，传递；快照不区分根因 |
-| `canceled` | 工作流取消时未开工的任务 |
-| `succeeded` / `failed` / `timeout` | 终态，语义同 `wingman.task`（重试额度内的失败不传播，恢复后照常调度后置） |
+| `blocked` | Prerequisites have not all succeeded (dependency-blocked state) |
+| `pending` | All prerequisites succeeded, waiting to be scheduled |
+| `running` | Executing on a worker; cooperative cancellation is reflected as `canceled` immediately (without waiting for the body to return) |
+| `skipped` | Skipped transitively via the failure chain (propagated from a `failed`/`canceled`/`timeout` prerequisite) or the condition chain (branch filtering when `when` does not hold); snapshots do not distinguish the root cause |
+| `canceled` | Tasks that had not started when the workflow was canceled |
+| `succeeded` / `failed` / `timeout` | Terminal states, same semantics as `wingman.task` (failures within the retry budget do not propagate; after recovery, downstream tasks are scheduled as usual) |
 
-失败任务快照额外携带 `error` 字段（异常消息，同 `task.error` 语义）。
+Snapshots of failed tasks additionally carry an `error` field (the exception message, same semantics as `task.error`).
 
 ---
 
-## 流程级事件
+## Workflow-Level Events
 
-工作流生命周期经 `EventHub` 广播 `orchestration.*` 三类事件（`source` 均为 `orchestration`）。
-全部由调度线程单点发出，**全序**与调度序一致：`started` → `task_finished`×N → `finished`。
+The workflow lifecycle is broadcast over the `EventHub` as three `orchestration.*` events (`source` is always `orchestration`).
+All of them are emitted from the single scheduler thread, so their **total order** matches the scheduling order: `started` → `task_finished`×N → `finished`.
 
-| 事件 | 负载 | 时机 |
+| Event | Payload | When |
 |------|------|------|
-| `orchestration.started` | `{workflow, name}` | 调度线程启动（提交成功即发） |
-| `orchestration.task_finished` | `{workflow, task, status, error?}` | 单个任务落账终态（`status` 为任务终态词，失败携带 `error`） |
-| `orchestration.finished` | `{workflow, name, status, tasks}` | 工作流定稿（`status` ∈ succeeded/failed/canceled） |
+| `orchestration.started` | `{workflow, name}` | Scheduler thread startup (emitted as soon as submission succeeds) |
+| `orchestration.task_finished` | `{workflow, task, status, error?}` | A single task is recorded in a terminal state (`status` is the task's terminal status word; failures carry `error`) |
+| `orchestration.finished` | `{workflow, name, status, tasks}` | The workflow is finalized (`status` ∈ succeeded/failed/canceled) |
 
-`orchestration.finished` 的 `tasks` 计数字段：
+The `tasks` count fields of `orchestration.finished`:
 
-| 字段 | 口径 |
+| Field | Counting rule |
 |------|------|
-| `succeeded` / `failed` / `skipped` / `canceled` | 按落账四态计数（`failed` 含 `timeout`） |
-| `other` | 取消窗口内执行中未收账的任务（仅此时出现；内核终态以快照为准） |
-| `total` | 任务总数（各字段之和） |
+| `succeeded` / `failed` / `skipped` / `canceled` | Counted across the four recorded states (`failed` includes `timeout`) |
+| `other` | Tasks still executing and unaccounted for within the cancellation window (appears only then; the snapshot is authoritative for the underlying terminal state) |
+| `total` | Total number of tasks (sum of the other fields) |
 
-::: warning 任务事件口径
-- 失败链/条件链传播的 `skipped` 任务**不**单发 `task_finished`（未真实执行），只在 `finished` 计数可见；取消窗口执行中的任务同样不单发。
-- 编排内任务的 `task.*` 模块级事件关闭（`emitEvents` 门控），可观测统一走本节 `orchestration.*`，避免双通道重复。
+::: warning Task event semantics
+- Tasks `skipped` via failure-chain/condition-chain propagation do **not** emit an individual `task_finished` (they never actually executed) and are visible only in the `finished` counts; tasks still executing within the cancellation window likewise get no individual event.
+- Module-level `task.*` events are disabled for tasks inside an orchestration (`emitEvents` gating); observability goes uniformly through the `orchestration.*` events in this section, avoiding duplicate dual-channel reporting.
 :::
 
 ```python:line-numbers
@@ -307,24 +308,25 @@ workflow_id = orchestration.submit_workflow({"name": "daily_report", "tasks": [.
 
 ---
 
-## 工作流快照对象
+## Workflow Snapshot Object
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |------|------|------|
-| `id` | string | 工作流唯一 ID（`wf-<N>`） |
-| `name` | string | 工作流名称（未提供为空串） |
-| `status` | string | 工作流状态（见上表） |
-| `tasks` | array | 任务快照，按定义顺序：`{id, status, dependsOn, error?, result?}` |
+| `id` | string | Unique workflow ID (`wf-<N>`) |
+| `name` | string | Workflow name (empty string if not provided) |
+| `status` | string | Workflow status (see the table above) |
+| `tasks` | array | Task snapshots in definition order: `{id, status, dependsOn, error?, result?}` |
 
-**子任务产出聚合**：落账成功任务的 `result` 字段携带 `run()` 返回值（原样，
-Int/String/Object 等任意 ScriptValue）；返回 `null` 则字段省略（与未产出
-同形）；失败/超时/取消/跳过任务不携带。下游任务可在 `run` 内经
-`get_workflow` 读取上游 `result` 组合数据流；嵌套工作流的产出也可借此在
-父工作流快照逐层聚合（`run` 提交子工作流、等终局、返回其结果）。
+**Subtask output aggregation**: the `result` field of a succeeded task carries the return value of `run()` (as-is, any ScriptValue such as
+Int/String/Object); if it returns `null` the field is omitted (indistinguishable from producing no output);
+failed/timed-out/canceled/skipped tasks do not carry it. Downstream tasks can read upstream `result` values via
+`get_workflow` inside their `run` to compose data flows; outputs of nested workflows can likewise be aggregated
+level by level into the parent workflow snapshot (`run` submits the child workflow, waits for its finalization,
+and returns its result).
 
-::: warning v1 限制
-- 工作流内并发由 `maxParallel` 约束（默认 1 串行）；跨工作流各自独立调度、互不设限。
-- 条件 `when` 只作分支过滤，不做循环/子工作流嵌套（子任务聚合为后续批次项）。
-- 终局工作流驻留内存注册表直至进程退出，不自动清理。
-- 本模块只负责脚本层本地执行；远程编排（Go server `WorkflowDetailData` DTO 对齐、子任务聚合）为后续批次项。
+::: warning v1 limitations
+- Concurrency within a workflow is capped by `maxParallel` (default 1, serial); separate workflows are scheduled independently, with no cross-workflow cap.
+- The `when` condition is for branch filtering only — no loops or nested sub-workflows (subtask aggregation is a later batch item).
+- Finalized workflows stay in the in-memory registry until the process exits; there is no automatic cleanup.
+- This module covers local script-level execution only; remote orchestration (Go server `WorkflowDetailData` DTO alignment, subtask aggregation) is a later batch item.
 :::

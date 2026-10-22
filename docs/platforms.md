@@ -1,272 +1,274 @@
-> [English](platforms.en.md) | **中文**
+> [中文](platforms.md) | **English**
 
-# 平台支持与 API 适用性
+# Platform Support and API Availability
 
-> 最后核对：2026-10-15（逐条对现行源码、vcpkg.json、CMake 与 ci.yml 复扫）。本文是平台信息的**唯一对账表**：
-> 当 README 的承诺、CI 实际验证的范围、代码条件编译的真实覆盖三者出现不一致时，
-> 以本文记录的现状为准，并在此修订。
+> Last verified: 2026-10-15 (re-scanned item by item against current source code, vcpkg.json, CMake, and ci.yml). This document is the **single reconciliation table** for platform information:
+> When the README's promises, the scope CI actually verifies, and the true conditional-compilation coverage of the code disagree,
+> the current state recorded here prevails, and this document is where it gets revised.
 
-## 为什么单独一篇平台文档
+## Why a Separate Platform Document
 
-Wingman 的平台信息此前散在三处：README 的徽章（badge）宣称"支持 Windows、macOS、Linux"，
-CI 配置定义了"每个提交实际被哪些平台验证"，代码里的条件编译（Conditional Compilation）
-决定了"每个功能在哪个平台真的有后端"。这三者各自演进、互相不加校验——README 写了的
-CI 未必测，CI 编译了的功能未必在所有平台有实现，而用户最终只能通过一篇集中的文档
-回答"我要的平台能不能用、不能用是为什么"。
+Wingman's platform information was previously scattered across three places: the README badges claiming "supports Windows, macOS, Linux",
+the CI configuration defining "which platforms actually verify each commit", and the conditional compilation in the code
+deciding "which platform truly has a backend for each feature". These three evolve independently and cross-check nothing — what the README
+claims CI may not test, features CI compiles may not have implementations on all platforms, and users ultimately can only get
+"does my platform work, and if not, why" answered through one centralized document.
 
-按平台分文档的本质是把三条线对齐：
+Essentially, a per-platform document aligns these three threads:
 
-1. **用户按平台找信息**——支持矩阵是入口，API 适用性清单是答案；
-2. **CI 按平台验证**——[CI 验证对应](#ci-验证对应)一节把每个 job 与矩阵条目一一对应，
-   哪个承诺没有 CI 兜底必须如实可见（见该节的诚实标注）；
-3. **代码按平台条件编译**——平台宏只允许出现在平台租户目录
-   （`lib/wingman/src/platform/`，由 `scripts/check_platform_boundary.sh` 强制，
-   见 [架构决策 · Platform Macro Boundary](architecture-decisions.md)），
-   这保证了"一个平台有没有某能力"永远可以在租户目录里找到唯一事实源。
+1. **Users find information by platform**—the support matrix is the entry point, the API availability list is the answer;
+2. **CI verifies by platform**—the [CI verification mapping](#ci-verification-mapping) section maps every job and matrix entry one to one,
+   and any promise without CI backing must be honestly visible (see the honest annotations in that section);
+3. **Code is conditionally compiled by platform**—platform macros are only allowed in the platform tenant directories
+   (`lib/wingman/src/platform/`, enforced by `scripts/check_platform_boundary.sh`,
+   see [Architecture Decisions · Platform Macro Boundary](architecture-decisions.md)),
+   which guarantees that "whether a platform has a capability" can always be answered from a single source of truth in the tenant directories.
 
-## 平台支持矩阵
+## Platform Support Matrix
 
-| 平台 | 状态 | 架构 | 最低版本要求 | 获取方式 | 已知限制 |
+| Platform | Status | Architecture | Minimum Version Requirement | How to Obtain | Known Limitations |
 |------|------|------|--------------|----------|----------|
-| Windows | 已支持 | x86_64 | Windows 10 / Server 2016+ | [Nightly](https://github.com/cuihairu/wingman/releases/tag/nightly) 或 Release 的 `wingman-*-windows-x64.zip`；源码构建见 [BUILD](../BUILD.md)（vcpkg 三元组 `x64-windows-static`） | OCR / ML / Python 引擎为可选开关，默认关闭（见 [API 适用性](#api-适用性标注)） |
-| Linux | 已支持 | x86_64 | Ubuntu 22.04+（GCC 11+），X11 显示服务 | Nightly / Release 的 `wingman-*-linux-x64.tar.gz`（含 AppImage 与 deb）；源码构建（三元组 `x64-linux`） | 仅 X11；Wayland 需经 XWayland 兼容层，原生 Wayland 未支持；无 UI 自动化后端（见[环境差异](#各环境差异说明)） |
-| macOS | 已支持 | x86_64（Intel）/ arm64（Apple Silicon，仅 agent 单二进制） | macOS 12+（部署目标 `MACOSX_DEPLOYMENT_TARGET=12`） | agent：`wingman-agent-*-macos-{x64,arm64}.tar.gz`（`build-agent.yml` 矩阵含 arm64）；打包（dmg/app/GUI）：`wingman-*-macos-x64.tar.gz`（仅 x64）；源码构建（三元组 `x64-osx`） | 无 OpenCV（`vcpkg.json` 未覆盖 macOS）→ 视觉走 `src/vision_stub.cpp` 存根，找色/找图/找轮廓等恒返回未命中或空值，macOS 上视觉类自动化不可用（见 [API 适用性](#api-适用性标注)）；CI 验证为尽力而为（continue-on-error） |
-| Android | 实验性 | arm64 | Android 9.0+（minSdk 28，targetSdk 34） | Nightly / Release 的 `wingman-*-android-arm64` APK（debug 签名）；源码构建见 [apps/android/README.md](../apps/android/README.md) | 仅 A2 能力面（`wingman.input/screen/vision` 三张 Lua 子表，见下文）；无正式签名；A3 可靠性（开机自启/崩溃自重启/看门狗/保活指引）已于 2026-09-30 落地，正式签名属 A3-P2 |
-| iOS | 规划中 | arm64 | — | — | 端侧 Agent 不可行（沙箱限制），仅"主机控"路线有设计，见 [iOS 一节](#ios-为什么是-规划中-而不是-支持) |
+| Windows | Supported | x86_64 | Windows 10 / Server 2016+ | `wingman-*-windows-x64.zip` from [Nightly](https://github.com/cuihairu/wingman/releases/tag/nightly) or Release; for source builds see [BUILD](../BUILD.md) (vcpkg triplet `x64-windows-static`) | OCR / ML / Python engines are optional switches, off by default (see [API availability](#api-availability-annotations)) |
+| Linux | Supported | x86_64 | Ubuntu 22.04+ (GCC 11+), X11 display server | `wingman-*-linux-x64.tar.gz` from Nightly / Release (includes AppImage and deb); source build (triplet `x64-linux`) | X11 only; Wayland needs the XWayland compatibility layer, native Wayland not supported; no UI automation backend (see [environment differences](#environment-differences-explained)) |
+| macOS | Supported | x86_64 (Intel) / arm64 (Apple Silicon, agent single binary only) | macOS 12+ (deployment target `MACOSX_DEPLOYMENT_TARGET=12`) | agent: `wingman-agent-*-macos-{x64,arm64}.tar.gz` (the `build-agent.yml` matrix includes arm64); packaging (dmg/app/GUI): `wingman-*-macos-x64.tar.gz` (x64 only); source build (triplet `x64-osx`) | No OpenCV (`vcpkg.json` does not cover macOS) → vision goes through the `src/vision_stub.cpp` stub; find-color/find-image/find-contour always return no-hit or empty values, so vision-class automation is unavailable on macOS (see [API availability](#api-availability-annotations)); CI verification is best-effort (continue-on-error) |
+| Android | Experimental | arm64 | Android 9.0+ (minSdk 28, targetSdk 34) | `wingman-*-android-arm64` APK from Nightly / Release (debug signed); for source builds see [apps/android/README.md](../apps/android/README.md) | A2 capability surface only (the three Lua subtables `wingman.input/screen/vision`, see below); no official signing; A3 reliability (boot autostart/crash auto-restart/watchdog/keep-alive guidance) landed 2026-09-30, official signing belongs to A3-P2 |
+| iOS | Planned | arm64 | — | — | On-device Agent infeasible (sandbox restrictions); only the "host-controlled" route has a design, see the [iOS section](#ios-why-planned-instead-of-supported) |
 
-获取方式的补充说明：Nightly 每日构建自 main 分支，**仅保留当日最新一组**（按提交 sha
-命名，形如 `2026.09.24-nightly-<sha>`）；Release 由 tag 触发，产物经 SHA256SUMS 校验。
-两者均为预发布性质的产物，正式版本号目前停在 v0.1.x（见 [CHANGELOG](../CHANGELOG.md)）。
+Supplementary notes on obtaining builds: Nightly builds daily from the main branch and **keeps only the latest set for the current day** (named by
+commit sha, in the form `2026.09.24-nightly-<sha>`); Release is triggered by tags, artifacts verified against SHA256SUMS.
+Both are pre-release artifacts; the official version number currently sits at v0.1.x (see [CHANGELOG](../CHANGELOG.md)).
 
-## API 适用性标注
+## API Availability Annotations
 
-**这是本篇文档的核心用途**：Wingman 尚未做到跨平台 API 完全统一——同一功能名在不同
-平台可能"有真实后端 / 有降级实现 / 完全不存在"。下表让用户一眼知道自己所在平台能不能用。
+**This is the core purpose of this document**: Wingman does not yet have a fully unified cross-platform API—the same feature name may
+"differ per platform: have a real backend / have a degraded implementation / not exist at all". The table below lets users see at a glance whether their platform can use it.
 
-标注含义：✅ 完整支持 · ⚠️ 受限/降级（附原因） · ❌ 不可用（附原因） · 📋 规划中（iOS）。
+Annotation meanings: ✅ fully supported · ⚠️ limited/degraded (reason given) · ❌ unavailable (reason given) · 📋 planned (iOS).
 
-### 脚本 API（Lua `wingman.*` 模块，桌面 Runtime）
+### Script API (Lua `wingman.*` modules, desktop Runtime)
 
-桌面 Runtime 的脚本 API 按"平台绑定 → 纯逻辑 → 可选能力"三组组织。之所以这样分组，
-是因为三组**不可用的原因不同**：平台绑定组取决于目标系统有没有对应系统能力（比如
-Linux 没有 UI Automation 框架），纯逻辑组理论上处处可用，可选能力组取决于构建时
-有没有开启对应依赖开关。
+The desktop Runtime's script API is organized in three groups: "platform-bound → pure logic → optional capabilities". The reason for this grouping
+is that the three groups **fail for different reasons**: the platform-bound group depends on whether the target system has the corresponding
+system capability (e.g., Linux has no UI Automation framework), the pure-logic group is theoretically available everywhere, and the optional-capabilities
+group depends on whether the corresponding dependency switch was enabled at build time.
 
-**平台绑定组**（每个功能依赖一个平台后端，后端在 `lib/wingman/src/platform/` 租户目录）：
+**Platform-bound group** (each feature depends on one platform backend; backends live in the `lib/wingman/src/platform/` tenant directories):
 
-| 功能点 | Windows | Linux | macOS | Android | iOS |
+| Feature | Windows | Linux | macOS | Android | iOS |
 |--------|---------|-------|-------|---------|-----|
-| `wingman.screen`（截屏/取色/区域查询） | ✅ GDI | ✅ X11 | ✅ Cocoa | ⚠️ 经 A 线子表（见下文） | 📋 WDA 后端 |
-| `wingman.input`（键鼠注入/移动轨迹） | ✅ SendInput | ✅ XTest | ✅ CGEvent | ⚠️ 触屏语义经 A 线子表 | 📋 WDA 后端 |
-| `wingman.window`（窗口查找/激活/边界） | ✅ Win32 | ✅ X11 | ✅ Cocoa | ❌ 端侧无窗口管理器语义（无此需求） | 📋 |
-| `wingman.clipboard`（剪贴板读写） | ✅ | ✅ X11 | ✅ Cocoa | ❌ 未实现（A 线无此 API 面） | 📋 |
-| `wingman.filewatcher`（文件变更监控） | ✅ ReadDirectoryChangesW | ✅ inotify | ✅ FSEvents | ❌ 未实现 | 📋 |
-| `wingman.process`（进程枚举/启动/终止） | ✅ Win32 | ✅ POSIX | ✅ POSIX | ❌ 未实现 | 📋 |
-| `wingman.macro`（宏录制/回放） | ✅ 系统钩子 | ✅ XRecord | ✅ Cocoa 事件 | ❌ 未实现 | 📋 |
-| `wingman.uia`（UI 元素树自动化） | ✅ UI Automation | ❌ **无后端**：Linux 无等价框架，调用降级返回失败并告警 | ✅ AXUIElement | ❌ 未实现 | 📋 |
-| `wingman.hotkey`（全局热键监听） | ✅ GetAsyncKeyState | ✅ XQueryKeymap（X11） | ⚠️ CGEventSourceKeyState 需辅助功能权限，真实行为待真机验证 | ❌ 未实现 | 📋 |
+| `wingman.screen` (screenshot/color pickup/region query) | ✅ GDI | ✅ X11 | ✅ Cocoa | ⚠️ via A-line subtables (see below) | 📋 WDA backend |
+| `wingman.input` (keyboard/mouse injection/movement trajectories) | ✅ SendInput | ✅ XTest | ✅ CGEvent | ⚠️ touch semantics via A-line subtables | 📋 WDA backend |
+| `wingman.window` (window find/activate/bounds) | ✅ Win32 | ✅ X11 | ✅ Cocoa | ❌ no window-manager semantics on-device (no such requirement) | 📋 |
+| `wingman.clipboard` (clipboard read/write) | ✅ | ✅ X11 | ✅ Cocoa | ❌ not implemented (no such API surface on the A line) | 📋 |
+| `wingman.filewatcher` (file change monitoring) | ✅ ReadDirectoryChangesW | ✅ inotify | ✅ FSEvents | ❌ not implemented | 📋 |
+| `wingman.process` (process enumerate/start/terminate) | ✅ Win32 | ✅ POSIX | ✅ POSIX | ❌ not implemented | 📋 |
+| `wingman.macro` (macro record/playback) | ✅ system hooks | ✅ XRecord | ✅ Cocoa events | ❌ not implemented | 📋 |
+| `wingman.uia` (UI element tree automation) | ✅ UI Automation | ❌ **no backend**: Linux has no equivalent framework; calls degrade to returning failure with a warning | ✅ AXUIElement | ❌ not implemented | 📋 |
+| `wingman.hotkey` (global hotkey listening) | ✅ GetAsyncKeyState | ✅ XQueryKeymap (X11) | ⚠️ CGEventSourceKeyState requires Accessibility permission; real behavior pending on-device verification | ❌ not implemented | 📋 |
 
-**纯逻辑组**（不触碰平台系统能力，桌面三平台行为一致；Android 端 A 线脚本面未引入）：
+**Pure-logic group** (does not touch platform system capabilities, behavior identical across the three desktop platforms; the Android A-line script surface is not introduced):
 
-| 功能点 | Windows / Linux / macOS | Android | 说明 |
+| Feature | Windows / Linux / macOS | Android | Notes |
 |--------|-------------------------|---------|------|
-| `wingman.event` / `fsm` / `bt` / `smarttrigger` | ✅ | ❌* | 事件总线、状态机、行为树（`bt`）、智能触发（`smarttrigger`） |
-| `wingman.task`（异步任务/重试/超时） | ✅ | ❌* | A 线有独立轻量执行模型，不走桌面模块注册表 |
-| `wingman.transport`（TCP/UDP 收发） | ✅ | ❌* | Android 的网络面在 Kotlin 壳与 `libs/transport` 库层，不在 Lua 模块层 |
-| `wingman.inbox` / `team` / `notify` / `orchestration` | ✅ | ❌* | 云控下行/组队/通知面，属桌面 Runtime 语义 |
-| `wingman.http`（HTTP 客户端） | ✅ | ❌* | 依赖 libcurl，构建带 `WINGMAN_HAS_CURL` 时可用 |
-| `wingman.json` / `ini` / `kv` / `db` / `config` | ✅ | ❌* | 序列化与存储面 |
-| `wingman.crypto` / `security`（含 TOTP） | ✅ | ❌* | |
-| `wingman.human`（拟人化轨迹）/ `gameprofile` / `verification` / `timer` / `util` / `system` | ✅ | ❌* | `system` 的信息采集部分依赖平台后端，三桌面均有 |
-| `wingman.file`（文件 IO：读写/移动复制/目录） | ✅ | ❌* | 纯 `std::filesystem`，桌面三平台一致；`wingman.filewatcher` 提供变更监控 |
-| `wingman.node`（节点状态/心跳） | ✅ | ❌* | `getWindows` 走 `Window::enumerate()`（依赖平台窗口后端，三桌面均有）；`sendHeartbeat` 当前只落日志、未真实外发 |
-| `wingman.systemwatch`（进程/窗口变化观察） | ✅ | ❌* | 轮询式，底层为 `Process` / `Window` 门面（见平台绑定组） |
-| `wingman.script`（脚本管理控制面） | ✅ | ❌* | 走 `ScriptManager`，无平台依赖 |
+| `wingman.event` / `fsm` / `bt` / `smarttrigger` | ✅ | ❌* | Event bus, state machine, behavior tree (`bt`), smart trigger (`smarttrigger`) |
+| `wingman.task` (async task/retry/timeout) | ✅ | ❌* | The A line has its own lightweight execution model and does not go through the desktop module registry |
+| `wingman.transport` (TCP/UDP send/receive) | ✅ | ❌* | Android's networking surface is in the Kotlin shell and the `libs/transport` library layer, not in the Lua module layer |
+| `wingman.inbox` / `team` / `notify` / `orchestration` | ✅ | ❌* | Cloud-control downlink/team/notification surface, part of desktop Runtime semantics |
+| `wingman.http` (HTTP client) | ✅ | ❌* | Depends on libcurl; available when the build carries `WINGMAN_HAS_CURL` |
+| `wingman.json` / `ini` / `kv` / `db` / `config` | ✅ | ❌* | Serialization and storage surface |
+| `wingman.crypto` / `security` (incl. TOTP) | ✅ | ❌* | |
+| `wingman.human` (humanized trajectories) / `gameprofile` / `verification` / `timer` / `util` / `system` | ✅ | ❌* | The information-collection part of `system` depends on platform backends, present on all three desktops |
+| `wingman.file` (file IO: read/write/move-copy/directory) | ✅ | ❌* | Pure `std::filesystem`, identical across the three desktop platforms; `wingman.filewatcher` provides change monitoring |
+| `wingman.node` (node state/heartbeat) | ✅ | ❌* | `getWindows` goes through `Window::enumerate()` (depends on the platform window backend, present on all three desktops); `sendHeartbeat` currently only logs and does not actually send |
+| `wingman.systemwatch` (process/window change observation) | ✅ | ❌* | Polling-based; underlying it is the `Process` / `Window` facades (see the platform-bound group) |
+| `wingman.script` (script management control surface) | ✅ | ❌* | Goes through `ScriptManager`, no platform dependency |
 
-\* 标注"❌\*"的含义：不是能力缺失，而是**架构性不适用**——Android Agent（A 线）的
-ScriptRunner 不加载桌面模块注册表（见
-[Android 设计 · 5.5 的偏离说明](android-agent-design.md)），它只暴露下文三张子表。
-把桌面全套模块搬上端侧是 A 线后续里程碑的候选方向，当前未承诺。
+\* The meaning of the "❌\*" annotation: not a missing capability but **architectural non-applicability**—the Android Agent's (A line)
+ScriptRunner does not load the desktop module registry (see
+[Android Design · 5.5 deviation note](android-agent-design.md)); it only exposes the three subtables below.
+Porting the full desktop module set onto the device is a candidate direction for later A-line milestones and is not currently committed to.
 
-> `wingman.hotkey` 只出现在上方**平台绑定组**（依赖平台输入后端），不列入本组——
-> 它不满足"不触碰平台系统能力"的分组前提。
+> `wingman.hotkey` appears only in the **platform-bound group** above (it depends on the platform input backend) and is not listed in this group—
+> it does not satisfy the grouping premise of "does not touch platform system capabilities".
 >
-> `wingman.debugger` 四方法（`start`/`stop`/`breakpoint`/`breakHere`）在
-> `debugger_module.cpp` 中**全部是存根**（`start` 恒 `false`、`stop` 恒 `nil`，
-> 注释写明 "debugger header not yet implemented"），故三平台与 Android 均不提供可用实现，
-> 本就不构成平台差异、不列入任何表。
+> All four `wingman.debugger` methods (`start`/`stop`/`breakpoint`/`breakHere`) are **stubs** in
+> `debugger_module.cpp` (`start` always `false`, `stop` always `nil`,
+> with a comment stating "debugger header not yet implemented"), so neither the three platforms nor Android provides a usable implementation;
+> it never constituted a platform difference and is not listed in any table.
 
-**可选能力组**（取决于构建开关与依赖可用性，默认关闭的功能不随产物分发）：
+**Optional-capabilities group** (depends on build switches and dependency availability; features off by default are not distributed with artifacts):
 
-| 功能点 | Windows | Linux | macOS | Android | 不适用原因 |
+| Feature | Windows | Linux | macOS | Android | Reason for Non-Applicability |
 |--------|---------|-------|-------|---------|------------|
-| `wingman.vision` 之 **找色/找图/模板匹配**（`findColor`/`findImage` 等） | ✅ | ✅ | ❌ 无 OpenCV → 走存根 | ✅（A 线子表，bitmap-first 差异见下文） | 脚本层走 `Vision::findColor` / `Vision::findImage`；`src/vision.cpp` 直接用 OpenCV（`opencv2/imgproc.hpp` 等），仅在 OpenCV 命中时编入，macOS/Android 否则编 `src/vision_stub.cpp`，全部视觉函数返回未命中/空值 |
-| `wingman.perf`（视觉性能调优） | ✅ | ✅ | ⚠️ 存根 | ❌ | 无 OpenCV 时 `performance_module.cpp` 走 `#else` 分支：模块仍注册，但 `preloadImage`/`clearCache` 等恒返回 `nil`/`0`（`HAS_OPENCV` 宏按构建开关二选一） |
-| `wingman.vision` 之 **OpenCV 加速分析**（`WINGMAN_ENABLE_VISION`） | ✅ | ✅（vcpkg `vision` feature） | ❌ 无 OpenCV 依赖（manifest 未覆盖 macOS） | ❌ | macOS/Android 构建不带 OpenCV；需引入时走 vcpkg manifest，不手探系统库 |
-| `wingman.ocr`（文字识别，`WINGMAN_ENABLE_OCR`） | ✅（Tesseract） | ❌ | ❌ | ❌ | vcpkg `ocr` feature 仅覆盖 Windows；无 OCR 时脚本调用降级返回空结果 |
-| `wingman.ml`（ONNX 推理，`WINGMAN_ENABLE_ML`） | ✅（ONNX Runtime） | ✅（`ml` feature，本地实测装通 1.23.2） | ❌ | ❌（绑定同形恒 false，NDK 依赖未收口） | macOS manifest 未覆盖 onnxruntime |
-| Python 双引擎（`WINGMAN_ENABLE_PYTHON`） | ⚠️ 实验性 | ✅（CI 全量测试含 Python 引擎） | ❌ | ❌ | Linux：`C++ Linux (full tests, Python engine)` job 全量跑；Windows：链接链路 + best-effort 测试；macOS 未验证 |
+| `wingman.vision` **find-color/find-image/template matching** (`findColor`/`findImage` etc.) | ✅ | ✅ | ❌ no OpenCV → goes through the stub | ✅ (A-line subtable; bitmap-first difference see below) | The script layer goes through `Vision::findColor` / `Vision::findImage`; `src/vision.cpp` uses OpenCV directly (`opencv2/imgproc.hpp` etc.), compiled in only when OpenCV is hit; otherwise macOS/Android compile `src/vision_stub.cpp` and all vision functions return no-hit/empty values |
+| `wingman.perf` (vision performance tuning) | ✅ | ✅ | ⚠️ stub | ❌ | Without OpenCV, `performance_module.cpp` takes the `#else` branch: the module still registers, but `preloadImage`/`clearCache` etc. always return `nil`/`0` (the `HAS_OPENCV` macro is an either/or based on the build switch) |
+| `wingman.vision` **OpenCV-accelerated analysis** (`WINGMAN_ENABLE_VISION`) | ✅ | ✅ (vcpkg `vision` feature) | ❌ no OpenCV dependency (manifest does not cover macOS) | ❌ | macOS/Android builds do not carry OpenCV; when it needs to be introduced, go through the vcpkg manifest, do not hand-probe system libraries |
+| `wingman.ocr` (text recognition, `WINGMAN_ENABLE_OCR`) | ✅ (Tesseract) | ❌ | ❌ | ❌ | The vcpkg `ocr` feature covers Windows only; without OCR, script calls degrade to returning empty results |
+| `wingman.ml` (ONNX inference, `WINGMAN_ENABLE_ML`) | ✅ (ONNX Runtime) | ✅ (`ml` feature, locally verified working with 1.23.2) | ❌ | ❌ (bindings same-shaped but always false; NDK dependencies not settled) | The macOS manifest does not cover onnxruntime |
+| Python dual engine (`WINGMAN_ENABLE_PYTHON`) | ⚠️ experimental | ✅ (CI full test suite includes the Python engine) | ❌ | ❌ | Linux: the `C++ Linux (full tests, Python engine)` job runs the full suite; Windows: link chain + best-effort tests; macOS unverified |
 
-### Android 端侧脚本面（A 线）
+### Android On-Device Script Surface (A Line)
 
-Android Agent 的 Lua 环境只有 `wingman` 下三张子表（A2 脚本能力，
-见 [Android 设计 · §5.5/5.6](android-agent-design.md)）：
+The Android Agent's Lua environment has only the three subtables under `wingman` (A2 script capability,
+see [Android Design · §5.5/5.6](android-agent-design.md)):
 
-| 子表 | 能力 | 与桌面的行为差异 |
+| Subtable | Capabilities | Behavioral Differences vs Desktop |
 |------|------|------------------|
-| `wingman.input` | `click`/`tap`/`longPress`/`swipe`/`delay`（经无障碍服务 Gesture API 注入） | 触屏语义（无悬停/右键/滚轮）；`delay` 可被停止标志中断 |
-| `wingman.screen` | `capture`/`getScreenWidth`/`getScreenHeight`（MediaProjection 采集） | 帧来自推送式 ImageReader 缓存，非按需截屏 |
-| `wingman.vision` | `findColor`/`findImage` 等查找 | **bitmap-first**：帧取一次、多次分析，与桌面"每次查找重新截屏"是结构性差异，脚本编写时需注意时效性 |
+| `wingman.input` | `click`/`tap`/`longPress`/`swipe`/`delay` (injected via the accessibility service Gesture API) | Touch semantics (no hover/right-click/scroll wheel); `delay` can be interrupted by the stop flag |
+| `wingman.screen` | `capture`/`getScreenWidth`/`getScreenHeight` (MediaProjection capture) | Frames come from a push-style ImageReader cache, not on-demand screenshots |
+| `wingman.vision` | `findColor`/`findImage` etc. lookups | **bitmap-first**: capture once, analyze many times—structurally different from desktop's "re-capture on every lookup"; mind the staleness when writing scripts |
 
-桥未授权（无障碍/投屏权限未给）时函数降级返回 `false`/`nil` 而非抛错——脚本应检查
-返回值自行兜底，这是 A 线的防御性约定。
+When the bridge is not authorized (accessibility/screen-cast permission not granted), functions degrade to returning `false`/`nil` instead of
+throwing—scripts should check return values and handle fallback themselves; this is the A line's defensive convention.
 
-### C++ 公开头文件层（嵌入/二开视角）
+### C++ Public Header Layer (Embedding/Secondary-Development Perspective)
 
-`lib/wingman/include/wingman/` 的公开头分三层，逻辑同上：
+The public headers under `lib/wingman/include/wingman/` fall into three layers, with the same logic as above:
 
-| 层 | 代表头文件 | 适用性 |
+| Layer | Representative Headers | Applicability |
 |----|-----------|--------|
-| 平台抽象接口 | `platform/iscreen.hpp`、`iwindow.hpp`、`iinput.hpp`、`icapture.hpp`、`iclipboard.hpp`、`ifilewatcher.hpp` | 接口本身平台无关；实现存在性同"平台绑定组"。Android 仅有 `capture::ICaptureSource` 适配（`lib/wingman/src/platform/android/android_capture.hpp`，`AndroidCaptureSource` 为其唯一实现） |
-| 平台相关门面 | `screen.hpp`、`window.hpp`、`clipboard.hpp`、`filewatcher.hpp`、`process.hpp`、`recorder.hpp`、`system.hpp`、`ui_automation.hpp` | 同脚本 API 对应行；`ui_automation.hpp` 在 Linux 无后端（`linux_ui_automation_factory.cpp` 返回 `nullptr`，门面层告警后退空语义） |
-| 跨平台逻辑 | `event.hpp`、`trigger.hpp`、`behavior_tree.hpp`、`config.hpp`、`kvstore.hpp`、`crypt.hpp`、`storage/*`、`script/*`、`rpc/*` 等 | 桌面三平台一致；Android 复用其子集（`libs/agentcore`、`libs/androidagent`） |
-| 平台限定（**私有头，不在 `include/` 公开面**） | `src/platform/win/screenshot_reporter.hpp` | **仅 Windows 编译**（Windows 崩溃/截图上报链路专用，`lib/wingman/CMakeLists.txt` 只在 `if(WIN32)` 块内附源文件）；二开方需自行 include 该路径 |
+| Platform abstraction interfaces | `platform/iscreen.hpp`, `iwindow.hpp`, `iinput.hpp`, `icapture.hpp`, `iclipboard.hpp`, `ifilewatcher.hpp` | The interfaces themselves are platform-independent; implementation existence matches the "platform-bound group". Android has only the `capture::ICaptureSource` adaptation (`lib/wingman/src/platform/android/android_capture.hpp`, with `AndroidCaptureSource` as its sole implementation) |
+| Platform-dependent facades | `screen.hpp`, `window.hpp`, `clipboard.hpp`, `filewatcher.hpp`, `process.hpp`, `recorder.hpp`, `system.hpp`, `ui_automation.hpp` | Same as the corresponding script API rows; `ui_automation.hpp` has no backend on Linux (`linux_ui_automation_factory.cpp` returns `nullptr`; the facade layer warns and then yields empty semantics) |
+| Cross-platform logic | `event.hpp`, `trigger.hpp`, `behavior_tree.hpp`, `config.hpp`, `kvstore.hpp`, `crypt.hpp`, `storage/*`, `script/*`, `rpc/*` etc. | Identical across the three desktop platforms; Android reuses a subset (`libs/agentcore`, `libs/androidagent`) |
+| Platform-restricted (**private headers, not in the `include/` public surface**) | `src/platform/win/screenshot_reporter.hpp` | **Windows-only compilation** (dedicated to the Windows crash/screenshot reporting chain; `lib/wingman/CMakeLists.txt` attaches the source files only inside the `if(WIN32)` block); secondary developers must include that path themselves |
 
-IPC 工厂（`ipc/ipc_factory.hpp`）按平台自动选择：Windows 用命名管道（Named Pipe，
-端点名 `wingman`），Unix 系用 Unix 域套接字（端点 `$XDG_RUNTIME_DIR/wingman.sock`，
-macOS 走 `$TMPDIR`，均回退 `/tmp/wingman.sock`）。TCP 回退（`127.0.0.1:9800`）**默认关闭**——
-只有显式置 `IpcConfig::allowTcpFallback` 或 `preferredTransport = TcpPipe` 时才创建
-（`lib/wingman/src/platform/ipc_factory.cpp` 的 `createTcpChannel`），属显式 debug 手段而非
-自动兜底。嵌入方无需感知前两者差异；若开启 TCP 回退，跨平台联调时该端口的防火墙放行要留意。
+The IPC factory (`ipc/ipc_factory.hpp`) selects automatically per platform: Windows uses Named Pipes (endpoint name
+`wingman`), Unix-family uses Unix domain sockets (endpoint `$XDG_RUNTIME_DIR/wingman.sock`,
+macOS goes through `$TMPDIR`, both fall back to `/tmp/wingman.sock`). The TCP fallback (`127.0.0.1:9800`) is **off by default**—
+it is created only when `IpcConfig::allowTcpFallback` or `preferredTransport = TcpPipe` is explicitly set
+(`createTcpChannel` in `lib/wingman/src/platform/ipc_factory.cpp`); it is an explicit debug aid, not an
+automatic fallback. Embedders need not be aware of the difference between the first two; if the TCP fallback is enabled, mind
+the firewall allowance for that port during cross-platform joint debugging.
 
-## 各环境差异说明
+## Environment Differences Explained
 
-以下差异全部来自实际踩坑（CHANGELOG 有对应修复记录），不是理论差异罗列。
-每条按"差异 → 为什么 → 对脚本/使用的影响"展开。
+The differences below all come from actual pitfalls hit (CHANGELOG has the corresponding fix records); this is not a theoretical list of differences.
+Each item is expanded as "difference → why → impact on scripts/usage".
 
-### 显示服务与截屏
+### Display Server and Screenshots
 
-- **Linux 只支持 X11**：截屏、取色、注入、宏录制（XRecord）全部建立在 X 协议上。
-  原因是历史与现状——XTest/XRecord 是 Linux 桌面注入的事实标准，而 Wayland 出于
-  安全模型刻意不提供全局注入通道。影响：Wayland 会话需切换到 XWayland 或 X11 会话；
-  无头环境用虚拟显示（Xvfb）即可跑全量测试——CI 的 Linux 测试 job 与本机覆盖率采集
-  都是这样执行的。
-- **无显示环境的优雅降级**：Linux 无 `DISPLAY` 时，屏幕/窗口类查询返回降级值而非崩溃
-  （有专门的宽容 X 错误处理器，BadWindow 等错误以降级返回值呈现——这是踩过"死句柄
-  查询杀死整个进程"的坑后修的）。影响：脚本可以对无头环境做功能探测后自行分支。
-- **macOS 采集后端可选**：ScreenCaptureKit 采集受编译开关（`HAVE_SCREENCAPTUREKIT`）
-  控制。原因：该框架有系统版本门槛，关掉后退化到 Cocoa 基础路径仍能工作。
-- **Android 采集是推送式**：MediaProjection 帧经 ImageReader 独立线程推送入缓存
-  （见上表 bitmap-first 条目），与桌面"查询时截屏"的拉取式语义不同。这是权限模型的
-  结果——Android 每次主动截屏都可能触发系统提示，推送式缓存规避了这一点。
+- **Linux supports X11 only**: screenshots, color pickup, injection, and macro recording (XRecord) are all built on the X protocol.
+  The reason is historical and current reality—XTest/XRecord is the de facto standard for Linux desktop injection, while Wayland deliberately
+  provides no global injection channel out of security-model concerns. Impact: Wayland sessions must switch to XWayland or an X11 session;
+  headless environments can run the full test suite with a virtual display (Xvfb)—the CI Linux test job and local coverage collection
+  both run this way.
+- **Graceful degradation without a display**: when Linux has no `DISPLAY`, screen/window queries return degraded values instead of crashing
+  (there is a dedicated tolerant X error handler; errors like BadWindow surface as degraded return values—this was fixed after hitting the
+  pitfall of "a dead-handle query killing the whole process"). Impact: scripts can probe capabilities in headless environments and branch on their own.
+- **The macOS capture backend is optional**: ScreenCaptureKit capture is controlled by the compile switch
+  (`HAVE_SCREENCAPTUREKIT`). Reason: the framework has a system-version threshold; with it off, things degrade to the Cocoa basic path and still work.
+- **Android capture is push-style**: MediaProjection frames are pushed by an independent ImageReader thread into a cache
+  (see the bitmap-first entry in the table above), unlike desktop's pull-style "capture at query time" semantics. This is a consequence of the
+  permission model—every active screenshot on Android may trigger a system prompt, and the push-style cache avoids that.
 
-### 权限与文件
+### Permissions and Files
 
-- **root 下权限类防御失效**：`chmod 000` 对 root 无效（root 无视文件权限位），
-  依赖"不可读文件"做降级测试/验证的场景在 root 环境行为不同。影响：以 root 运行
-  Desktop 测试时部分权限分支不可达（测试中已用 `geteuid()` 显式跳过）。
-- **特殊设备文件是 Linux 专属**：`/dev/full`（写入必满错误）、`/proc`（进程信息）等
-  在 Windows/macOS 不存在，任何依赖它们的脚本或测试都需平台分支。
-- **macOS 沙箱与辅助功能授权**：CGEvent 注入与宏录制需要"辅助功能"（Accessibility）
-  授权，未授权时注入静默无效。原因：苹果把全局事件注入视为高权限操作。
-  Windows 无此层（SendInput 默认可用），Linux XTest 依赖 X 会话授权。
+- **Permission-class defenses fail under root**: `chmod 000` has no effect on root (root ignores file permission bits);
+  scenarios that rely on "unreadable files" for degradation testing/verification behave differently in root environments. Impact: some permission
+  branches are unreachable when running Desktop tests as root (the tests explicitly skip via `geteuid()`).
+- **Special device files are Linux-specific**: `/dev/full` (writes always fail with a full error), `/proc` (process info), etc.
+  do not exist on Windows/macOS; any script or test depending on them needs platform branches.
+- **macOS sandbox and Accessibility authorization**: CGEvent injection and macro recording require the "Accessibility"
+  authorization; without it, injection silently does nothing. Reason: Apple treats global event injection as a high-privilege operation.
+  Windows has no such layer (SendInput works by default), and Linux XTest depends on X session authorization.
 
-### 进程与信号
+### Processes and Signals
 
-- **信号语义不对称**：POSIX 有 `SIGPIPE`（对已关闭 socket 写入即杀进程），Windows 没有。
-  历史上 IPC 双通道曾因未忽略 `SIGPIPE` 导致远端断开时进程直接死亡（已修复）。
-  影响：二开者新增 socket 写入路径时必须沿用现有的 `MSG_NOSIGNAL`/忽略处理，不能只
-  在 Windows 上测试通过就认为安全。
-- **子进程模型不同**：POSIX 是 fork/exec 模型（`posix_process.cpp`），Windows 是
-  CreateProcess 族（`win32_process.cpp`）。对脚本可见的行为差异：Windows 拿不到
-  fork 语义（如写时复制的内存快照用法），Linux 的 `waitForever` 阻塞语义在 Windows
-  由句柄等待实现，表现一致但实现路径完全不同。
+- **Asymmetric signal semantics**: POSIX has `SIGPIPE` (writing to an already-closed socket kills the process outright); Windows does not.
+  Historically, the dual IPC channel once caused the process to die immediately on remote disconnect because `SIGPIPE` was not ignored (fixed).
+  Impact: when adding socket write paths, secondary developers must follow the existing `MSG_NOSIGNAL`/ignore handling; passing tests on
+  Windows alone does not mean safe.
+- **Different subprocess models**: POSIX uses the fork/exec model (`posix_process.cpp`), Windows uses the
+  CreateProcess family (`win32_process.cpp`). Behavior differences visible to scripts: Windows cannot get fork semantics
+  (e.g., copy-on-write memory snapshot usage); Linux's `waitForever` blocking semantics are implemented on Windows
+  via handle waiting—same behavior, completely different implementation paths.
 
-### 剪贴板的异步性（Linux 特有）
+### Clipboard Asynchrony (Linux-Specific)
 
-Linux 上 `xclip` 每次 `setText`/`clear` 都会 fork 一个守护进程**异步**接管剪贴板
-selection——写后立即读可能命中旧 owner（实测启动可超过 500ms）。Windows/macOS 的
-剪贴板写入是同步生效的系统调用语义。影响：Linux 上"写后立即断言"的脚本要容忍短暂
-延迟窗口；库内已用轮询封装收口，脚本层通常无感，但跨工具链混用剪贴板时要知道这层。
+On Linux, `xclip` forks a daemon on every `setText`/`clear` that **asynchronously** takes over the clipboard
+selection—reading immediately after writing may hit the old owner (measured takeover can exceed 500ms). On Windows/macOS,
+clipboard writes are synchronous system-call semantics. Impact: scripts on Linux that "assert immediately after writing" must tolerate a brief
+delay window; the library has wrapped this with polling so the script layer is usually unaware, but when mixing clipboard usage across toolchains, know about this layer.
 
-### IPC 与网络
+### IPC and Networking
 
-- **IPC 通道三平台不同形**：Windows 命名管道 / Unix 域套接字 / TCP 回退，由工厂按
-  平台选择。本地 UI 控制面遵守[架构决策](architecture-decisions.md)的本地 IPC 约束
-  （Runtime 不开任何本地 HTTP/WebSocket 服务），因此 IPC 行为差异不会泄漏到远程面。
-- **远程面只有一条**：所有平台的远程控制都经出站 TCP 连 Go Server（Runtime-as-Agent），
-  Android 端侧亦然。这是刻意的架构约束，保证"平台差异"止步于执行面，不进入控制面。
+- **IPC channels take three platform-specific forms**: Windows named pipes / Unix domain sockets / TCP fallback, chosen by the factory per
+  platform. The local UI control plane follows the local IPC constraint of [architecture decisions](architecture-decisions.md)
+  (the Runtime opens no local HTTP/WebSocket services), so IPC behavior differences do not leak into the remote plane.
+- **There is exactly one remote plane**: on all platforms, remote control goes through an outbound TCP connection to the Go Server (Runtime-as-Agent),
+  including the Android device side. This is a deliberate architectural constraint, ensuring "platform differences" stop at the execution plane and never enter the control plane.
 
-## iOS：为什么是"规划中"而不是"支持"
+## iOS: Why "Planned" Instead of "Supported"
 
-iOS 的状态不是"还没做"，而是"端侧做不了"。App Store 沙箱（Sandbox）不允许跨 App
-注入与全局截屏，**不存在合法的端侧执行通道**——这是 [可行性分析](mobile-support-feasibility.md)
-的核心结论，也是本节所有判断的前提。
+iOS's status is not "not done yet" but "impossible on-device". The App Store sandbox does not allow cross-app
+injection or global screenshots—**no legitimate on-device execution channel exists**. This is the core conclusion of the
+[feasibility analysis](mobile-support-feasibility.md) and the premise of every judgment in this section.
 
-存在的唯一合法路线是"主机控"：iOS 设备作为被控外设，由桌面 Runtime 经 USB 通道
-（usbmuxd 端口转发）连接设备上的 WebDriverAgent（WDA，Apple 官方测试框架的社区
-打包），截屏与触摸注入走 XCTest 能力。该路线的完整设计见
-[iOS 支持设计](ios-agent-design.md)（I1，仅设计未实现），其约束决定了它是"规划中"：
+The only legitimate route that exists is "host control": the iOS device acts as a controlled peripheral; the desktop Runtime connects via the USB
+channel (usbmuxd port forwarding) to WebDriverAgent (WDA, the community packaging of Apple's official test framework) on the device,
+with screenshots and touch injection going through XCTest capabilities. The full design of this route is in
+[iOS Support Design](ios-agent-design.md) (I1, design only, not implemented); its constraints determine that it is "planned":
 
-- **签名链无法自动化**：开发者账号 + 证书 + 描述文件（免费证书 7 天过期）+ 目标设备
-  开发者模式 + Mac 执行 `xcodebuild` 部署 WDA，全部是人工前置步骤；
-- **版本跟随成本**：WDA 需随 iOS 大版本重新编译适配，是持续性维护成本而非一次性移植；
-- **性能上限**：USB 链路上截屏往返 200-400ms/帧，仅支撑 1-3 fps 的找色找图节奏，
-  不承诺高性能场景；
-- **明确的边界**：不做越狱通道（合规红线）、不做 iOS 端侧 Agent（技术上不可行）、
-  不做 iOS Dashboard 原生客户端（Dashboard 走 Web，浏览器即可）。
+- **The signing chain cannot be automated**: developer account + certificates + provisioning profiles (free certificates expire in 7 days) + target-device
+  developer mode + a Mac running `xcodebuild` to deploy WDA—all are manual prerequisites;
+- **Version-following cost**: WDA must be rebuilt and adapted for every major iOS release—a continuous maintenance cost, not a one-time port;
+- **Performance ceiling**: screenshot round trips over the USB link take 200-400ms/frame, supporting only a 1-3 fps find-color/find-image cadence;
+  high-performance scenarios are not promised;
+- **Explicit boundaries**: no jailbreak channel (compliance red line), no iOS on-device Agent (technically infeasible),
+  no native iOS Dashboard client (Dashboard runs on the Web, a browser suffices).
 
-启动实施的条件（真实需求 + Mac 签名环境 + A 线交付完毕）写在上引设计文档 §7，
-本文不展开。
+The conditions for starting implementation (real demand + Mac signing environment + A-line delivery complete) are written in §7 of the design
+document cited above; this document does not expand on them.
 
-## CI 验证对应
+## CI Verification Mapping
 
-支持矩阵的每个承诺，都要能回答"哪个 CI job 在验证它"。下表是当前 `.github/workflows/`
-的实际覆盖（[ci.yml](../.github/workflows/ci.yml) 与打包 workflow）：
+Every promise in the support matrix must be able to answer "which CI job verifies it". The table below is the actual coverage of the current `.github/workflows/`
+([ci.yml](../.github/workflows/ci.yml) plus the packaging workflows):
 
-| 平台 | job | 运行环境 | 验证深度 | 打包验证 |
+| Platform | job | Runtime | Verification Depth | Packaging Verification |
 |------|-----|----------|----------|----------|
-| 全平台 | `Platform Boundary Guard` | ubuntu-latest | 平台宏边界检查（每提交）：公共层禁平台宏，allowlist 只减不增 | — |
-| 全平台 | `Vault Touchpoint Scan` | ubuntu-latest | boot-tier 明文凭证环境变量读取扫描（允许清单外即报） | — |
-| 全平台 | `API Typing Drift Audit` | ubuntu-latest | pyi stub 对 C++ 模块描述符漂移 + 重生成 Lua hints 并校验同步 | — |
-| Windows | `C++ Windows` | windows-2022 | **C++ 全量测试 + 覆盖率**（OpenCppCoverage，唯一采集覆盖率的 C++ job） | ✅（`build-package.yml`，zip） |
-| Windows | `C++ Windows (Python engine)` | windows-2022 | Python 引擎实验编译 + best-effort 测试 | — |
-| Linux | `C++ Linux (full tests)` | ubuntu-24.04 | **C++ 完整构建 + 全量核心测试**（xvfb-run 提供虚拟显示，openbox/xclip 随 apt 安装） | — |
-| Linux | `C++ Linux (full tests, Python engine)` | ubuntu-24.04 | 同上 + `-DWINGMAN_ENABLE_PYTHON=ON`（全量跑，证明开 Python 不破坏 Lua/既有路径） | — |
-| Linux | `C++ ubuntu-22.04`（compat matrix） | ubuntu-22.04 | ⚠️ **仅编译** compat 层 `wingman_transport` 单 target，**无核心测试** | ✅（tar.gz/AppImage/deb） |
-| macOS | `C++ macos-15-intel`（compat matrix） | macos-15-intel | ⚠️ 同上，且 `continue-on-error: true`（失败不阻塞合并） | ✅（tar.gz/dmg/app） |
-| Android | — | — | ❌ **无 CI 测试 job** | ✅（debug 签名 APK） |
-| Go Server | `Go Server`（3 OS matrix） | ubuntu/windows/macos-latest | `go vet` + `go test -race`（全平台） | — |
+| All platforms | `Platform Boundary Guard` | ubuntu-latest | Platform macro boundary check (every commit): platform macros forbidden in the common layer; the allowlist only shrinks, never grows | — |
+| All platforms | `Vault Touchpoint Scan` | ubuntu-latest | Scan for boot-tier plaintext-credential environment-variable reads (anything outside the allowlist fails) | — |
+| All platforms | `API Typing Drift Audit` | ubuntu-latest | pyi stub vs C++ module descriptor drift + regenerating Lua hints and verifying sync | — |
+| Windows | `C++ Windows` | windows-2022 | **Full C++ test suite + coverage** (OpenCppCoverage, the only C++ job collecting coverage) | ✅ (`build-package.yml`, zip) |
+| Windows | `C++ Windows (Python engine)` | windows-2022 | Experimental Python-engine compilation + best-effort tests | — |
+| Linux | `C++ Linux (full tests)` | ubuntu-24.04 | **Full C++ build + full core tests** (xvfb-run provides a virtual display; openbox/xclip installed via apt) | — |
+| Linux | `C++ Linux (full tests, Python engine)` | ubuntu-24.04 | Same as above + `-DWINGMAN_ENABLE_PYTHON=ON` (full run, proving that enabling Python does not break Lua/existing paths) | — |
+| Linux | `C++ ubuntu-22.04` (compat matrix) | ubuntu-22.04 | ⚠️ **Compile-only** for the compat-layer `wingman_transport` single target, **no core tests** | ✅ (tar.gz/AppImage/deb) |
+| macOS | `C++ macos-15-intel` (compat matrix) | macos-15-intel | ⚠️ Same as above, plus `continue-on-error: true` (failures do not block merging) | ✅ (tar.gz/dmg/app) |
+| Android | — | — | ❌ **No CI test job** | ✅ (debug-signed APK) |
+| Go Server | `Go Server` (3 OS matrix) | ubuntu/windows/macos-latest | `go vet` + `go test -race` (all platforms) | — |
 
-> `ci.yml` 共 9 个 job（其中 `cpp-compat` 展开 2 个矩阵条目，`go-build` 展开 3 个）。
-> `cpp-windows` / `cpp-linux-tests` / `cpp-linux-python-tests` / `cpp-python` 均为单配置单腿，
-> 没有矩阵维度——覆盖率只在 `cpp-windows` 一处采集（`codecov/codecov-action@v5.0.1`）。
+> `ci.yml` has 9 jobs in total (of which `cpp-compat` expands 2 matrix entries, `go-build` expands 3).
+> `cpp-windows` / `cpp-linux-tests` / `cpp-linux-python-tests` / `cpp-python` are all single-config single-leg
+> with no matrix dimension—coverage is collected only in `cpp-windows` (`codecov/codecov-action@v5.0.1`).
 
-**必须如实标注的现状**（即"为什么这么组织"一节所说的对账结论）：
+**The current state that must be honestly annotated** (i.e., the reconciliation conclusions mentioned in the "why organized this way" section):
 
-1. **Linux 的 C++ 核心测试已由 `C++ Linux (full tests)` job 覆盖**：ubuntu-24.04 上
-   完整构建 + 全量核心测试，X11 用例经 xvfb-run 在虚拟显示下真实执行，非 skip。
-   但需注意该 job 使用的 GCC 版本（13）与 compat matrix（ubuntu-22.04 的 GCC 11）
-   不同。最低支持工具链 GCC 11 的全量编译已于 2026-09-25 本地实测（g++-11 完整
-   构建，vcpkg 依赖全重编）：**唯一缺口**是 `ScriptValue::objectVal`——类内递归
-   `std::unordered_map<std::string, ScriptValue>` 成员（标准仅给 vector/list/
-   forward_list 不完整类型豁免；GCC 15 的 libstdc++ 碰巧容忍，GCC 11 在 pair
-   实例化时正确拒绝），连锁导致脚本子系统 53 个编译目标失败，其余目标全部编译
-   通过。修复需将对象表示改为标准豁免容器或间接层（`fromObject` 243 处调用 +
-   `objectVal` 35 处访问的破坏性重构），暂不进行——GCC 11 支持维持在 transport
-   层（compat job）的既有承诺范围。
-2. **macOS 的 C++ 核心仍无测试覆盖，且 job 允许失败**（continue-on-error），意味着
-   macOS 的"已支持"目前由打包成功 + 兼容层编译成功支撑，核心行为无 CI 证据。
-3. **Android 只有打包验证**。签名/发布流程的工程化在 A3 里程碑中，测试 job 亦然。
-4. **iOS 无任何 CI**（对应"规划中"状态）。
+1. **Linux's C++ core tests are covered by the `C++ Linux (full tests)` job**: a full
+   build + full core test suite on ubuntu-24.04; X11 cases run for real under a virtual display via xvfb-run, not skipped.
+   Note, however, that the GCC version this job uses (13) differs from the compat matrix (ubuntu-22.04's GCC 11).
+   A full build on the minimum supported toolchain GCC 11 was locally verified on 2026-09-25 (g++-11 full
+   build, all vcpkg dependencies rebuilt): **the only gap** is `ScriptValue::objectVal`—a recursive
+   `std::unordered_map<std::string, ScriptValue>` member inside the class (the standard grants incomplete-type
+   exemption only to vector/list/forward_list; GCC 15's libstdc++ happens to tolerate it, while GCC 11 correctly
+   rejects it at pair instantiation), which cascades into 53 failed compile targets in the script subsystem; all other
+   targets compile. The fix requires changing the object representation to a standard-exempt container or an
+   indirection layer (a breaking refactor touching 243 `fromObject` call sites + 35 `objectVal` accesses),
+   not undertaken for now—GCC 11 support stays within the existing commitment scope of the transport
+   layer (compat job).
+2. **macOS's C++ core still has no test coverage, and the job is allowed to fail** (continue-on-error), meaning
+   macOS's "Supported" is currently backed only by packaging success + compat-layer compile success, with no CI evidence for core behavior.
+3. **Android has packaging verification only**. Engineering of the signing/release pipeline is in the A3 milestone, and so is a test job.
+4. **iOS has no CI at all** (matching the "Planned" status).
 
-补齐方向与优先级不在本文展开（那是 CI 演进决策，不是平台现状记录），但缺口本身
-必须在这里可见。
+Remediation direction and priority are not expanded here (that is a CI evolution decision, not a record of current platform state), but the gaps themselves
+must be visible here.
 
-## 本机验证命令（Linux 开发环境）
+## Local Verification Commands (Linux Development Environment)
 
-Linux 是当前主力开发平台，以下命令在本仓库根目录可直接使用（其他平台的构建见
-[BUILD](../BUILD.md)，Windows 命令亦在该文档）：
+Linux is the current primary development platform; the following commands can be used directly from the repository root (for builds on other platforms see
+[BUILD](../BUILD.md), where the Windows commands also live):
 
 ```bash
 # 配置（Debug + 测试；Linux 测试需要 tests feature 与 WINGMAN_BUILD_TESTS）
@@ -284,27 +286,27 @@ cmake --build build-cov --target core_tests -j"$(nproc)"
 ./build-cov/lib/wingman/tests/core_tests
 ```
 
-两个已踩过的注意点：
+Two pitfalls already hit:
 
-1. **测试要求数 PASSED 计数**，而非只看退出码——超时被杀的测试进程也可能以
-   `[  PASSED  ]` 之前的中间状态留下看似正常的输出，核对 `[==========] N tests ran`
-   与 PASSED 数是否吻合；
-2. **GUI/屏幕类用例在无显示环境会 skip**（如剪贴板图像、窗口操作类），这是设计行为，
-   全量 PASSED + 若干 SKIPPED 是正常形态。
+1. **Tests require counting the PASSED count**, not just checking the exit code—a test process killed on
+   timeout can also leave seemingly normal output in the intermediate state before `[  PASSED  ]`;
+   verify that `[==========] N tests ran` matches the PASSED count;
+2. **GUI/screen-class cases skip in headless environments** (e.g., clipboard-image and window-operation cases); this is
+   by design—a full PASSED plus some SKIPPED is the normal shape.
 
-## 跨平台统一 API 收敛路线
+## Cross-Platform Unified API Convergence Route
 
-现状的差异（上表所有 ⚠️/❌）可以归为三类，收敛策略也相应分三条，本文只记录方向不画饼：
+The current differences (all ⚠️/❌ in the tables above) fall into three categories, with correspondingly three convergence strategies; this document records direction only, no vaporware:
 
-1. **系统能力缺失类**（Linux 无 UI Automation、macOS 无 OCR/ML 依赖）——不强行补齐，
-   以脚本侧能力探测 + 明确的降级返回值为准；是否引入新依赖由 vcpkg manifest 的平台
-   覆盖决策，不走系统库探测。
-2. **架构性分层类**（Android 不加载桌面模块注册表）——收敛方向是"同名同形"：A 线
-   子表已与桌面 API 同名同形（`wingman.input.*` 等），后续按需求逐面扩大子表覆盖，
-   而不是把桌面注册表整体搬上端侧。
-3. **多后端抽象类**（iOS 主机控路线）——不新增平台分支，而是给现有
-   `ICapture`/`IInput` 增加设备后端（"设备即一种屏幕"），脚本语义与桌面完全一致。
-   这是平台收敛的终态示范：脚本不变，后端可插拔。
+1. **Missing system capability** (no UI Automation on Linux, no OCR/ML dependencies on macOS)—do not force-fit; rely on
+   script-side capability probing + explicit degraded return values; whether to introduce new dependencies is decided by the vcpkg manifest's
+   platform coverage, not by probing system libraries.
+2. **Architectural layering** (Android does not load the desktop module registry)—the convergence direction is "same name, same shape":
+   the A-line subtables already share names and shapes with the desktop API (`wingman.input.*` etc.); subtable coverage expands per
+   demand going forward, rather than porting the desktop registry wholesale onto the device.
+3. **Multi-backend abstraction** (the iOS host-control route)—add no new platform branches; instead add device backends to the existing
+   `ICapture`/`IInput` ("a device is just another screen"), with script semantics fully identical to desktop.
+   This is the end-state demonstration of platform convergence: scripts unchanged, backends pluggable.
 
-任何一步的落地都会先出现在 [平台支持矩阵](#平台支持矩阵) 与 [API 适用性标注](#api-适用性标注)
-的对应行更新中——本文随代码同 commit 修订。
+Whenever any step lands, it will first appear as an update to the corresponding row in the [Platform Support Matrix](#platform-support-matrix) and [API Availability Annotations](#api-availability-annotations)
+—this document is revised in the same commit as the code.

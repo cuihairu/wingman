@@ -1,10 +1,10 @@
-> [English](architecture.en.md) | **中文**
+> [中文](architecture.md) | **English**
 
-# Wingman 项目架构
+# Wingman Architecture
 
-> 架构硬约束见 `docs/architecture-decisions.md`。修改 runtime、GUI、orchestrator 或 transport 前必须先阅读该文档。
+> Hard architecture constraints are documented in `docs/architecture-decisions.md`. Read that document before modifying runtime, GUI, orchestrator, or transport.
 
-## 目录结构
+## Directory Structure
 
 ```
 wingman/
@@ -81,13 +81,13 @@ wingman/
 └── CMakeLists.txt                ← 根 CMake（聚合构建）
 ```
 
-> 本树为架构视图节选；完整目录树（含 `cmake/`、`deployments/`、`third_party/` 等构建与部署面）见
-> [project-structure.md](project-structure.md)。
+> This tree is an architecture-view excerpt; the full directory tree (including build and deployment surfaces such as `cmake/`, `deployments/`, `third_party/`) is in
+> [project-structure.md](project-structure.md).
 
-## 架构分层（四层模型）
+## Architecture Layering (Four-Layer Model)
 
-Wingman 是四层模型，中间横着一条硬性的 **Control Plane / Execution Plane
-边界**（决策详见 `docs/architecture-decisions.md` 的 *Four-Layer Model*）：
+Wingman is a four-layer model with a hard **Control Plane / Execution Plane
+boundary** running across the middle (for the rationale, see *Four-Layer Model* in `docs/architecture-decisions.md`):
 
 ```
  CONTROL PLANE                      Go server（orchestrator/）
@@ -107,19 +107,19 @@ Wingman 是四层模型，中间横着一条硬性的 **Control Plane / Executio
     · ML · process · kv · trigger · behavior（平台实现在 platform/<os>/）
 ```
 
-边界规则：
+Boundary rules:
 
-- **Automation Core 不感知上层**：`lib/wingman` 不知道 Agent / Dashboard /
-  Workflow / User / Team 概念，是整个平台最可复用的资产，也是 Android
-  agent 的可移植核心。
-- **Runtime = Execution Plane**：脚本引擎、传输无关的 CommandDispatcher、
-  执行生命周期、本地 UI 路径都在这一层；它不是 server。
-- **Agent = 远程身份层**：向 Go server 注册、以 `agent_id` 寻址、持有
-  outbound TCP 会话与能力集（见 Capability System 决策）。
-- **Go server = 唯一 Control Plane**：注册表、RBAC、审计、工作流调度与
-  全部 Dashboard API 都由它拥有；它不 dial 任何 runtime。
+- **Automation Core is unaware of the layers above**: `lib/wingman` knows nothing about Agent / Dashboard /
+  Workflow / User / Team concepts; it is the most reusable asset of the entire platform and also the
+  portable core of the Android agent.
+- **Runtime = Execution Plane**: the scripting engine, the transport-agnostic CommandDispatcher,
+  the execution lifecycle, and the local UI path all live in this layer; it is not a server.
+- **Agent = remote identity layer**: registers with the Go server, is addressed by `agent_id`, and holds
+  an outbound TCP session with a capability set (see the Capability System decision).
+- **Go server = the only Control Plane**: the registry, RBAC, audit, workflow scheduling, and
+  all Dashboard APIs are owned by it; it dials no runtime.
 
-本地与远程两条控制路径（等价于上面的 RUNTIME LAYER 两侧）：
+The two local and remote control paths (equivalent to the two sides of the RUNTIME LAYER above):
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -140,21 +140,21 @@ Wingman 是四层模型，中间横着一条硬性的 **Control Plane / Executio
 └─────────────────────────────────────────────────────────┘
 ```
 
-## 平台核心概念与现状
+## Platform Core Concepts and Current State
 
-七个核心概念的当前实现位置（2026-10-04 收敛审查快照；✅ 已落地，🔶 部分/演进中）：
+The current implementation locations of the seven core concepts (convergence review snapshot 2026-10-04; ✅ landed, 🔶 partial/evolving):
 
-| 概念 | 当前实现位置 | 状态 |
+| Concept | Current Implementation Location | Status |
 |------|--------------|------|
-| **Agent** | Agent TCP 注册/心跳/命令生命周期（[protocols.md](protocols.md)）+ A3-P1 注册令牌（[agent-token-auth-design.md](agent-token-auth-design.md)） | ✅ |
-| **Capability** | v1 已落地：词汇表 13 词冻结（ADR）；desktop runtime 注册上报 `platform` + 对齐词汇（ml.onnx 按 ML 构建声明，不虚报）、Android 经 capabilitiesJson 配置；server 校验入库并向 Dashboard 暴露 `capabilities`/`unknownCapabilities`（Agents 页展示）。模块级词汇（file.*/tray 等）另行决策，不入 v1 词汇表 | ✅ |
-| **Execution** | v1 已落地：统一 Execution 记录——`run_script`、batch fan-out（offline 跳过语义对齐单发）、workflow 步骤（每 attempt 一条，WorkflowID/StepID 挂载，timeout/cancelled 终态区分）；Dashboard Executions 页只读视图。后续：screenshot 步骤接 Execution、wait/condition 非 agent 下发不接 | ✅ |
-| **Workflow** | Go server `internal/workflow` DAG 引擎（环检测/超时/重试/等待）+ Dashboard Workflows 页 | ✅ |
-| **Artifact** | 部署截图 artifact（`deploy-screenshot`，部署链路）；平台级 Execution artifact 模型见 architecture-decisions.md *Execution* | 🔶 |
-| **Control Plane** | Go server：registry / RBAC / audit / workflow / 批量操作 / Guacamole 网关 | ✅ |
-| **Execution Plane** | apps/agent + Android agent（outbound 执行、本地 IPC） | ✅ |
+| **Agent** | Agent TCP registration/heartbeat/command lifecycle ([protocols.md](protocols.md)) + A3-P1 registration token ([agent-token-auth-design.md](agent-token-auth-design.md)) | ✅ |
+| **Capability** | v1 landed: vocabulary frozen at 13 terms (ADR); desktop runtime registers and reports `platform` + aligned vocabulary (ml.onnx declared per the ML build, no overclaiming), Android configured via capabilitiesJson; server validates, stores, and exposes `capabilities`/`unknownCapabilities` to the Dashboard (shown on the Agents page). Module-level vocabulary (file.*/tray etc.) is decided separately and is not part of the v1 vocabulary | ✅ |
+| **Execution** | v1 landed: unified Execution records — `run_script`, batch fan-out (offline skip semantics aligned with single-shot), workflow steps (one record per attempt, WorkflowID/StepID attached, timeout/cancelled terminal-state distinction); Dashboard Executions page is read-only. Follow-ups: screenshot steps attach to Execution, wait/condition not issued by an agent does not attach | ✅ |
+| **Workflow** | Go server `internal/workflow` DAG engine (cycle detection/timeout/retry/wait) + Dashboard Workflows page | ✅ |
+| **Artifact** | Deployment screenshot artifact (`deploy-screenshot`, deployment pipeline); the platform-level Execution artifact model is documented under *Execution* in architecture-decisions.md | 🔶 |
+| **Control Plane** | Go server: registry / RBAC / audit / workflow / batch operations / Guacamole gateway | ✅ |
+| **Execution Plane** | apps/agent + Android agent (outbound execution, local IPC) | ✅ |
 
-## 调用链
+## Call Chains
 
 ```
 Lua 脚本
@@ -166,62 +166,64 @@ lib/wingman/ (核心功能：screen, input, trigger...)
 apps/agent/ (应用：CLI + 运行模式)
 ```
 
-## 控制面
+## Control Plane
 
-Runtime 远程模式和本地单机 UI 是两条不同控制路径。
+Runtime remote mode and the local standalone UI are two different control paths.
 
-| 场景 | 控制路径 | 约束 |
+| Scenario | Control Path | Constraint |
 |------|----------|------|
-| 远程编排 | runtime agent 主动 outbound 连接 Go orchestrator | Go server 是唯一远程中控入口 |
-| 本地单机 UI | Tauri UI -> Rust backend -> local IPC -> runtime | 不使用 runtime HTTP/WebSocket server |
+| Remote orchestration | runtime agent proactively connects outbound to the Go orchestrator | The Go server is the only remote control entry point |
+| Local standalone UI | Tauri UI -> Rust backend -> local IPC -> runtime | Does not use a runtime HTTP/WebSocket server |
 
-> **禁止**: Runtime 不得引入 HTTP/WebSocket server 作为本地 UI 或远程控制面。WebSocket 只允许用于 dashboard/browser 与 Go server 通信。
+> **Forbidden**: The Runtime must not introduce an HTTP/WebSocket server as a local UI or remote control surface. WebSocket is only allowed for dashboard/browser communication with the Go server.
 
-触发器命令（`trigger.*`）复用同一套 RPC handler：runtime 的 `Agent` 持有共享
-`TriggerManager`，本地 IPC dispatcher 与远程 dispatcher 都注册 `trigger.*`；
-Go server 经 `GET /api/agents/:agentId/triggers`（读，登录即可）与
-`POST /api/agents/:agentId/triggers`（新增）、
-`POST /api/agents/:agentId/triggers/toggle`（启停）、
-`PUT /api/agents/:agentId/triggers/:triggerId`（更新）、
-`DELETE /api/agents/:agentId/triggers/:triggerId`（删除）（均需 agents:manage）透传给 Dashboard
-（见 architecture-decisions.md 的 Dispatcher Reuse）。
+Trigger commands (`trigger.*`) reuse the same set of RPC handlers: the runtime's `Agent` holds a shared
+`TriggerManager`, and both the local IPC dispatcher and the remote dispatcher register `trigger.*`;
+the Go server passes them through to the Dashboard via
+`GET /api/agents/:agentId/triggers` (read, login only),
+`POST /api/agents/:agentId/triggers` (create),
+`POST /api/agents/:agentId/triggers/toggle` (enable/disable),
+`PUT /api/agents/:agentId/triggers/:triggerId` (update), and
+`DELETE /api/agents/:agentId/triggers/:triggerId` (delete) (all require agents:manage)
+(see Dispatcher Reuse in architecture-decisions.md).
 
-远程注册配置（orchestrator 地址 + A3-P1 注册令牌）经本地 IPC 的
-`config.getRemote` / `config.setRemote` 读写，GUI 设置页提供对应入口；
-`config.setRemote` 校验后热重建远程客户端并写回 `agent.toml`。该命令**仅注册在
-本地 IPC dispatcher**，刻意不提供远程 agent 命令——远程配置不允许从 Go server
-侧改写（见 architecture-decisions.md 的 Remote Config Commands）。
+Remote registration configuration (orchestrator address + A3-P1 registration token) is read/written via local IPC's
+`config.getRemote` / `config.setRemote`, with a corresponding entry on the GUI settings page;
+`config.setRemote` validates and hot-rebuilds the remote client, then writes back to `agent.toml`. This command is
+**registered only on the local IPC dispatcher** and deliberately provides no remote agent command — remote configuration must not be rewritten from the Go server
+side (see Remote Config Commands in architecture-decisions.md).
 
-**Agent 分组与批量操作**：agent 标签由 Registry 内存持有，并经 `TagStore`
-回调写穿持久化到 `models.Agent.tags`（server 重启恢复、断线重连保留内存值）。
-批量端点 `POST /api/agents/batch/run-script`、`/stop-script`（scripts:run）与
-`/api/agents/batch/trigger`（agents:manage）在 Go server 侧按选择器
-（agentIds/tags 并集）对既有 agent 命令做 fan-out，不引入新命令与传输通道；
-部分失败不算整体失败，一律 200 + 逐台结果（详见 architecture-decisions.md 的
-Agent Groups & Batch Operations）。
+**Agent grouping and batch operations**: agent tags are held in memory by the Registry and are
+write-through persisted to `models.Agent.tags` via the `TagStore`
+callback (restored on server restart, memory values retained on reconnect).
+Batch endpoints `POST /api/agents/batch/run-script`, `/stop-script` (scripts:run), and
+`/api/agents/batch/trigger` (agents:manage) fan out over existing agent commands in the Go server
+side by selector (union of agentIds/tags), introducing no new commands or transport channels;
+partial failures are not treated as overall failures, always returning 200 plus per-device results (see
+Agent Groups & Batch Operations in architecture-decisions.md for details).
 
-## Transport 层
+## Transport Layer
 
-`libs/transport` 提供两种不同用途的网络能力：
+`libs/transport` provides two different network capabilities for different purposes:
 
-| 用途 | 使用者 | 协议 | 说明 |
+| Purpose | User | Protocol | Description |
 |------|--------|------|------|
-| 编排通信 | `remote_client` (runtime → Go server) | 自定义 Message 协议 | runtime 主动 outbound 连接 Go orchestrator |
-| 脚本网络 | `wingman.transport` 模块 | TCP + UDP (asio) | 脚本中使用的 TCP 客户端/服务器、UDP socket |
+| Orchestration communication | `remote_client` (runtime → Go server) | Custom Message protocol | runtime proactively connects outbound to the Go orchestrator |
+| Script networking | `wingman.transport` module | TCP + UDP (asio) | TCP client/server and UDP sockets used in scripts |
 
-两者共用 `libs/transport` 的 TCP 基础设施（`TransportClient`、`TransportServer`、`Session`、`Channel`），但生命周期和管理方式独立。脚本层 UDP 直接基于 asio 实现，不经过 `libs/transport`。
+Both share the TCP infrastructure of `libs/transport` (`TransportClient`, `TransportServer`, `Session`, `Channel`), but their lifecycles and management are independent. Script-layer UDP is implemented directly on asio and does not go through `libs/transport`.
 
-脚本层 transport API 详见 `docs/api/transport.md`。编排通信协议详见 `docs/architecture-decisions.md`。
+The script-layer transport API is documented in `docs/api/transport.md`. The orchestration communication protocol is documented in `docs/architecture-decisions.md`.
 
-## 本地 IPC 策略
+## Local IPC Strategy
 
-| 平台 | 默认 IPC | 备注 |
+| Platform | Default IPC | Notes |
 |------|----------|------|
-| Windows | Named Pipe | Windows Unix Domain Socket 可探测支持，但不作为默认主路径 |
-| macOS/Linux | Unix Domain Socket | 使用用户运行时目录下的 socket |
-| 全平台 | Local TCP | 仅显式 debug fallback，默认关闭 |
+| Windows | Named Pipe | Windows Unix Domain Socket support is detectable but is not the default primary path |
+| macOS/Linux | Unix Domain Socket | Uses a socket in the user runtime directory |
+| All platforms | Local TCP | Only an explicit debug fallback, disabled by default |
 
-本地 IPC wire 格式固定为 `uint32 little-endian length + JSON envelope`。Envelope 使用 transport-level 字段：
+The local IPC wire format is fixed as `uint32 little-endian length + JSON envelope`. The envelope uses transport-level fields:
 
 ```json
 {
@@ -233,27 +235,27 @@ Agent Groups & Batch Operations）。
 }
 ```
 
-`payload` 承载 dispatcher 请求/响应数据。GUI 不应构造 WebSocket JSON-RPC；runtime 也不应为了本地 UI 增加 HTTP/WebSocket listener。
+`payload` carries the dispatcher request/response data. The GUI should not construct WebSocket JSON-RPC; the runtime should also not add an HTTP/WebSocket listener for the local UI.
 
-## 设计原则
+## Design Principles
 
-1. **核心库独立** - `lib/wingman/` 不依赖 `apps/`，可单独复用
-2. **就近测试** - 每个模块都有自己的 `tests/` 目录
-3. **职责清晰** - apps（应用）、lib（核心库）、libs（辅助库）分离
-4. **命名空间对应** - 子目录头按目录嵌套：`include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>`（capture / core / ipc / platform / rpc / vision 同式）；顶层头平铺 `namespace wingman`（33 个中 31 个，`crypt.hpp` / `core.hpp` 例外用 `wingman::crypt` / `wingman::core`）
-5. **控制面分离** - 远程编排走 Go server，本地 UI 走 IPC，runtime 不暴露 WebSocket/HTTP 控制面
+1. **Core library independence** - `lib/wingman/` does not depend on `apps/` and can be reused on its own
+2. **Nearby testing** - every module has its own `tests/` directory
+3. **Clear separation of concerns** - apps (applications), lib (core library), libs (support libraries) are separated
+4. **Namespace correspondence** - subdirectory headers nest by directory: `include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>` (same pattern for capture / core / ipc / platform / rpc / vision); top-level headers are flat in `namespace wingman` (31 of 33, with `crypt.hpp` / `core.hpp` as exceptions using `wingman::crypt` / `wingman::core`)
+5. **Control plane separation** - remote orchestration goes through the Go server, the local UI goes through IPC, and the runtime exposes no WebSocket/HTTP control surface
 
-## 多显示器截图
+## Multi-Display Screenshots
 
-截图支持按 `displayId` 选择目标显示器。该能力基于 `IScreen` 平台抽象（`lib/wingman/include/wingman/platform/iscreen.hpp`），三平台实现已就绪（Windows `EnumDisplayMonitors`、macOS `CGGetActiveDisplayList`、Linux X11/XRandR）。
+Screenshots support selecting a target display via `displayId`. This capability is built on the `IScreen` platform abstraction (`lib/wingman/include/wingman/platform/iscreen.hpp`), with implementations ready on all three platforms (Windows `EnumDisplayMonitors`, macOS `CGGetActiveDisplayList`, Linux X11/XRandR).
 
-- 显示器枚举：通过 RPC method `screen.listMonitors` 查询，返回 `{ id, name, isPrimary, bounds }` 列表
-- 按显示器截图：`screenshot.capture` payload 增加可选 `displayId` 字段，省略时默认主屏（向后兼容）
-- 抽象约束：`IScreen` 是屏幕抽象的唯一规范，旧的静态 `wingman::Screen` 类已冻结（仅历史调用方使用，不再扩展），新代码必须走 `IScreen`
+- Display enumeration: queried via the RPC method `screen.listMonitors`, returning a list of `{ id, name, isPrimary, bounds }`
+- Screenshot per display: the `screenshot.capture` payload adds an optional `displayId` field, defaulting to the primary display when omitted (backward compatible)
+- Abstraction constraint: `IScreen` is the sole specification of the screen abstraction; the old static `wingman::Screen` class is frozen (used only by historical callers, no longer extended), and new code must go through `IScreen`
 
-详见 `docs/architecture-decisions.md` 的 *Display Selection* 小节与 `docs/platform-abstraction-design.md`。
+See the *Display Selection* section of `docs/architecture-decisions.md` and `docs/platform-abstraction-design.md` for details.
 
-## 参考项目
+## Reference Projects
 
-- [moderncpp-project-template](https://github.com/madduci/moderncpp-project-template) - 应用与库分离结构
-- [Botcraft](https://github.com/adepierre/Botcraft) - 游戏机器人库设计
+- [moderncpp-project-template](https://github.com/madduci/moderncpp-project-template) - app/library separation structure
+- [Botcraft](https://github.com/adepierre/Botcraft) - game bot library design

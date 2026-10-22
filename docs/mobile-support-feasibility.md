@@ -1,73 +1,70 @@
-> [English](mobile-support-feasibility.en.md) | **中文**
+> [中文](mobile-support-feasibility.md) | **English**
 
-# 移动端支持可行性分析（Android 端侧 Agent 优先）
+# Mobile Support Feasibility Analysis (Android On-device Agent First)
 
-> 分析日期：2026-09-19。
-> 回答的问题：Wingman 能否像 Auto.js / Appium 一样支持 Android / iOS？
-> 核心设想：**手机上运行 Agent，通过 TCP 长链接直接连 Go Server**（云控模式），
-> 而非 Auto.js 的单机模式。
+> Analysis date: 2026-09-19.
+> The question being answered: can Wingman support Android / iOS the way Auto.js / Appium do?
+> The core premise: **run the Agent on the phone and connect straight to the Go Server over a TCP long-lived connection** (cloud-control mode),
+> rather than Auto.js's standalone mode.
 
 ---
 
-## 1. 结论速览
+## 1. Conclusion at a Glance
 
-| 目标形态 | 可行性 | 结论 |
+| Target form | Feasibility | Conclusion |
 |---------|--------|------|
-| **Android 端侧 Agent + 长链接 Go Server（云控）** | ✅ 高 | **推荐主线**。有商业化先例（Hamibot 即 Auto.js + 云控），且比 Auto.js 单机模式更贴合 Wingman 现有架构 |
-| Android 主机控（PC + adb，Appium 模式） | ✅ 高 | 备选/补充路线，可作为 PoC 切口，但不是目标形态 |
-| iOS 端侧（任意形态） | ❌ | **不可行**。App Store 沙箱不允许跨 App 注入，无合法通道，放弃 |
-| iOS 主机控（PC → WDA） | ⚠️ 中 | 可行但绑 Mac 签名链（开发者证书 + Developer Mode + WDA 需随 iOS 大版本适配），列为远期可选 |
+| **Android on-device Agent + long-lived connection to Go Server (cloud-controlled)** | ✅ High | **Recommended main line**. There is a commercial precedent (Hamibot is Auto.js + cloud control), and it fits Wingman's existing architecture far better than Auto.js standalone mode |
+| Android host-controlled (PC + adb, Appium model) | ✅ High | An alternative/supplementary route, usable as a PoC entry point, but not the target form |
+| iOS on-device (any form) | ❌ | **Not feasible**. The App Store sandbox does not allow cross-app injection and there is no legitimate channel; abandoned |
+| iOS host-controlled (PC → WDA) | ⚠️ Medium | Feasible but tied to the Mac signing chain (developer certificate + Developer Mode + WDA needing adaptation to each major iOS version); listed as a long-term option |
 
-**核心判断**：控制面（脚本管理、调度、编排、监控）放 Server，执行面（截屏 → 找图 → 注入的实时决策）留在端侧本地——这个拆分既满足实时性要求（每帧回传 Server 决策的延迟与带宽都不可接受），又完整复用了 Wingman「Runtime-as-Agent + Go Server 中控」的既有架构。
+**Core judgment**: put the control plane (script management, scheduling, orchestration, monitoring) on the Server, and keep the execution plane (the real-time decisions of capture → find image → inject) local on-device — this split both satisfies the real-time requirement (the latency and bandwidth of returning every frame to the Server for a decision is unacceptable) and fully reuses Wingman's existing "Runtime-as-Agent + Go Server as central controller" architecture.
 
 ---
 
-## 2. 第三方方案调研
+## 2. Survey of Third-Party Solutions
 
-### 2.1 Android：两条技术路线
+### 2.1 Android: two technical routes
 
-| 路线 | 代表 | 机制 | 免 Root |
+| Route | Representative | Mechanism | Root-free |
 |------|------|------|---------|
-| 端侧自治（单机） | Auto.js / AutoX / AutoJs6 | `AccessibilityService`：系统推送全屏控件树，脚本引擎（Rhino/JS）经 `dispatchGesture` 注入手势 | ✅ |
-| 端侧 + 云控 | **Hamibot**（基于 Auto.js）、autojs pro9 云控群控 | 单机能力之上加账号体系：Server 下发脚本 → 手机拉取执行；支持开机自启、崩溃重启、设备分组调度 | ✅ |
-| 主机控 | Appium UiAutomator2 / openatx uiautomator2 | 设备端跑 UiAutomator 测试进程开 HTTP RPC（atx-agent :7912），PC 经 adb 隧道调用；低延迟注入用 minitouch，取帧用 scrcpy | ✅ |
+| On-device autonomy (standalone) | Auto.js / AutoX / AutoJs6 | `AccessibilityService`: the system pushes the full-screen widget tree, and a script engine (Rhino/JS) injects gestures via `dispatchGesture` | ✅ |
+| On-device + cloud control | **Hamibot** (built on Auto.js), autojs pro9 cloud-control fleet-control systems | An account system on top of standalone capability: the Server delivers scripts → the phone pulls and executes them; supports boot auto-start, crash restart, and grouped-device scheduling | ✅ |
+| Host-controlled | Appium UiAutomator2 / openatx uiautomator2 | A UiAutomator test process runs on the device exposing HTTP RPC (atx-agent :7912), invoked from the PC through an adb tunnel; low-latency injection uses minitouch, frame capture uses scrcpy | ✅ |
 
-**免 Root 的钥匙只有两把：AccessibilityService（端侧）或 adb（主机控）。**
+**There are only two keys to being Root-free: AccessibilityService (on-device) or adb (host-controlled).**
 
-### 2.2 iOS：只有 WDA 一条合法通道
+### 2.2 iOS: WDA is the only legitimate channel
 
-- Appium XCUITest driver 的做法：用 Xcode 把 WebDriverAgent（WDA，一个测试 runner App）签名部署到真机，WDA 在设备上跑 HTTP 服务（:8100）暴露 XCTest 能力。iOS 17+ 经 `devicectl` 启动、18+ 经 RemoteXPC
-- 硬约束：Apple 开发者证书 + 描述文件（免费证书 7 天过期）、设备 Developer Mode、签名部署环节绑定 Mac；iOS 大版本升级常需重编译 WDA
-- WDA 是前台测试会话，无法后台常驻；**端侧自治在 iOS 上不存在合法通道**（App Store 自动点击器受沙箱限制只能控制自己内部）
-- 按键精灵 iOS 版走同类通道，旧版越狱支持仅到 iOS 14
+- What the Appium XCUITest driver does: use Xcode to sign and deploy WebDriverAgent (WDA, a test-runner App) to a real device, where WDA runs an HTTP service (:8100) exposing XCTest capabilities. On iOS 17+ it is launched via `devicectl`, and on 18+ via RemoteXPC
+- Hard constraints: an Apple developer certificate + provisioning profile (free certificates expire after 7 days), device Developer Mode, and the sign-and-deploy step being bound to Mac; major iOS version upgrades often require recompiling WDA
+- WDA is a foreground test session and cannot stay resident in the background; **there is no legitimate channel for on-device autonomy on iOS** (App Store auto-clickers are sandbox-limited to controlling only their own internals)
+- The iOS edition of 按键精灵 uses a similar channel, and its old jailbreak support only goes up to iOS 14
 
-### 2.3 游戏场景的特殊性（对 Wingman 有利）
+### 2.3 The Specifics of Game Scenarios (favorable to Wingman)
 
-Auto.js 的强项是**控件树**，但手游是渲染表面，无障碍树拿不到游戏内部控件。游戏自动化天然是
-「找色/找图 + 坐标 + 人性化模拟」模式——这正是 Wingman 的看家本领（像素检测 / OpenCV 模板匹配 /
-金字塔加速 / 贝塞尔输入 / 随机延迟）。**迁移到手机是主场作战，Auto.js 的控件树优势在游戏场景反而发挥不出来。**
+Auto.js's strength is the **widget tree**, but mobile games are rendered surfaces — the accessibility tree cannot reach controls inside the game. Game automation is naturally a "color search / image search + coordinates + humanized simulation" model — which is exactly Wingman's home turf (pixel detection / OpenCV template matching / pyramid acceleration / Bézier input / random delays). **Migrating to phones is playing at home, and Auto.js's widget-tree advantage cannot be leveraged in game scenarios at all.**
 
 ---
 
-## 3. 三种模式对比
+## 3. Comparison of the Three Modes
 
-| 维度 | Auto.js 单机 | **Wingman 云控（本方案）** | Appium 主机控 |
+| Dimension | Auto.js standalone | **Wingman cloud control (this proposal)** | Appium host-controlled |
 |------|-------------|--------------------------|---------------|
-| 脚本存放/编辑 | 手机本地 | **Server 集中管理，下发执行** | PC 本地 |
-| 执行位置 | 手机端 | **手机端（决策也在本地）** | PC 决策，手机执行 |
-| 断网后继续执行 | ✅（本来就单机） | ✅（Agent 缓存当前脚本自治运行，重连后汇报） | ❌ PC 断则停 |
-| 多设备编排/群控 | ❌ 弱 | **✅ 复用 Go Server 编排 + Team/inbox** | 需自建设备管理 |
-| 监控/日志聚合 | ❌ 本地 | **✅ Dashboard 实时查看** | 需自建 |
-| 每台手机需 PC | 否 | **否** | 是 |
-| 实时决策延迟 | 最低 | 最低（决策在端侧） | 受帧回传链路影响 |
-| 与 Wingman 架构契合 | 无 | **原生契合（Runtime-as-Agent）** | 需较大改造 |
+| Script storage / editing | Local on the phone | **Centrally managed on the Server, delivered for execution** | Local on the PC |
+| Execution location | On the phone | **On the phone (decisions also local)** | Decisions on the PC, execution on the phone |
+| Continuing execution after network loss | ✅ (it is standalone anyway) | ✅ (the Agent caches the current script and runs autonomously, reporting back after reconnecting) | ❌ stops when the PC disconnects |
+| Multi-device orchestration / fleet control | ❌ weak | **✅ reusing Go Server orchestration + Team/inbox** | Requires building your own device management |
+| Monitoring / log aggregation | ❌ local | **✅ real-time view in the Dashboard** | Requires building your own |
+| Does each phone need a PC | No | **No** | Yes |
+| Real-time decision latency | Lowest | Lowest (decisions on-device) | Affected by the frame-return link |
+| Fit with Wingman's architecture | None | **Native fit (Runtime-as-Agent)** | Requires substantial rework |
 
-云控模式在商业上已有验证：Hamibot（Auto.js + 账号 + 脚本市场 + 下发执行）、各类 autojs pro9
-云控群控系统（开机自启、崩溃自启、清后台自启），目标客群与 Wingman 重合（多开群控、游戏工作室）。
+The cloud-control model has already been validated commercially: Hamibot (Auto.js + accounts + a script marketplace + delivery-and-execution), and various autojs pro9 cloud-control fleet-control systems (boot auto-start, crash auto-start, app-switch-away auto-start); the target customer base overlaps with Wingman's (multi-instance farms, game studios).
 
 ---
 
-## 4. 推荐架构：端侧 Agent 长链接 Go Server
+## 4. Recommended Architecture: On-device Agent with a Long-lived Connection to the Go Server
 
 ```
 ┌─────────────────────── Go Server（中控，现有）───────────────────────┐
@@ -82,41 +79,31 @@ Auto.js 的强项是**控件树**，但手游是渲染表面，无障碍树拿�
                      └──────────────────┘
 ```
 
-### 4.1 现有组件复用映射
+### 4.1 Mapping of Existing Components for Reuse
 
-| 现有组件 | 在 Android 端侧 Agent 中的角色 | 预估改动 |
+| Existing component | Role in the Android on-device Agent | Estimated change |
 |---------|------------------------------|---------|
-| `libs/transport` 客户端（TCP 长链接、16 字节二进制头 + JSON 体信封（命名权威见 `docs/protocols.md`）、心跳、自动重连、register/agent_id） | Agent ↔ Go Server 通信层 | **几乎零改动**，直接编译到 Android |
-| Go Server 会话管理（AgentInfo / kGetAgents / 心跳超时） | 设备纳管 | 新增少量消息类型（见 4.2） |
-| Lua 引擎（libs/lua） | 端侧脚本执行 | NDK 交叉编译 |
-| vision（OpenCV 找色找图、金字塔、LRU 缓存） | 游戏场景核心能力 | arm64-android 编译（NEON 加速） |
-| `ICapture` / `IInput` / `IScreen` / `IWindow` 平台抽象接口 | 新增 `platform/android/` 后端 | **新实现**（JNI 桥接 Kotlin 层，见 4.3） |
-| event / fsm / task / timer / orchestration / clip模块 | 脚本层 API | 零改动 |
-| 触发器系统 / 宏录制回放 / 人性化模拟 | 端侧直接复用 | 少量适配（录制依赖注入事件源） |
-| Dashboard | 设备管理/监控入口 | 新增设备视图（设备列表已在 Agents 页） |
-| Python 引擎（libs/python） | 端侧暂缓 | Python+NDK 体积/维护成本高，**Lua-first**，后期按需评估 |
+| `libs/transport` client (TCP long-lived connection, 16-byte binary header + JSON body envelope (the naming authority is `docs/protocols.md`), heartbeat, auto-reconnect, register/agent_id) | The Agent ↔ Go Server communication layer | **Almost zero change**, compiled straight to Android |
+| Go Server session management (AgentInfo / kGetAgents / heartbeat timeout) | Device onboarding | A small number of new message types (see 4.2) |
+| Lua engine (libs/lua) | On-device script execution | NDK cross-compilation |
+| vision (OpenCV color search / image search, pyramid, LRU cache) | The core capability for game scenarios | arm64-android build (NEON acceleration) |
+| `ICapture` / `IInput` / `IScreen` / `IWindow` platform abstraction interfaces | New `platform/android/` backend | **New implementation** (JNI bridging to the Kotlin layer, see 4.3) |
+| event / fsm / task / timer / orchestration / clip modules | Script-layer API | Zero change |
+| Trigger system / macro record & replay / humanized simulation | Reused directly on-device | Minor adaptation (recording depends on injecting the event source) |
+| Dashboard | The entry point for device management / monitoring | Add a device view (the device list already exists on the Agents page) |
+| Python engine (libs/python) | Deferred on-device | Python+NDK carries high size/maintenance cost, so **Lua-first**; evaluated later as needed |
 
-### 4.2 协议扩展点（沿用现有 TCP 协议，不动架构）
+### 4.2 Protocol Extension Points (reusing the existing TCP protocol, no architecture change)
 
-现行协议（`docs/protocols.md`）没有数字「业务码」概念：帧类型仅
-Request/Response/Notify/Error 四值，应用层消息靠 body 内字符串 `type`
-区分，由 server 侧 `internal/agent/listener.go` 按类型分发（现有
-`agent.*` / `team.*` / `inbox.*` / `proxy.*` 等 Notify）。扩展即新增一个
-字符串类型 + 一个分发 case：
+The current protocol (`docs/protocols.md`) has no numeric "business code" concept: frame types take only four values, Request/Response/Notify/Error, and application-level messages are distinguished by a string `type` inside the body, dispatched by type on the server side in `internal/agent/listener.go` (existing Notify types such as `agent.*` / `team.*` / `inbox.*` / `proxy.*`). Extending means adding one string type and one dispatch case:
 
-- 脚本下发：Request `run_script`（content 内联）——**已落地**（A1，
-  见 `docs/android-agent-design.md` §3.2）；`script.pull` 类增量版本同步
-  为预留（未实现）
-- `device.capabilities` 能力上报：register 的 capabilities 字段已透传，
-  主动变更上报为预留（未实现）
-- `asset.sync` 模板图片/资源同步：预留（未实现，A4）
-- 端侧日志/截图事件上报：Notify `agent.event`{event:"script_output"}——
-  **现成承担**（A1 落地，server 转发 Dashboard）
-- 注册/心跳：复用现有 Notify `agent.register` / `agent.heartbeat`
-  （`agent.register_ack` 应答；不存在 kRegister/kSyncTask/kShutdown 等
-  常量）
+- Script delivery: Request `run_script` (content inlined) — **already landed** (A1, see `docs/android-agent-design.md` §3.2); incremental version sync of the `script.pull` type is reserved (not implemented)
+- `device.capabilities` capability reporting: the register capabilities field is already passed through; actively reporting changes is reserved (not implemented)
+- `asset.sync` template image / asset sync: reserved (not implemented, A4)
+- On-device log / screenshot event reporting: Notify `agent.event`{event:"script_output"} — **served by the existing mechanism** (landed with A1, forwarded by the server to the Dashboard)
+- Registration / heartbeat: reuses the existing Notify `agent.register` / `agent.heartbeat` (`agent.register_ack` replies; constants such as kRegister/kSyncTask/kShutdown do not exist)
 
-### 4.3 新增组件：Android 壳与 JNI 桥
+### 4.3 New Components: the Android Shell and the JNI Bridge
 
 ```
 Android App（Kotlin 壳）
@@ -131,114 +118,107 @@ Android App（Kotlin 壳）
     └── platform/android/      ← IInput/ICapture 新后端（调 JNI）
 ```
 
-分层原则：**系统权限相关的活（无障碍、投屏授权）全在 Kotlin 壳；可移植的活（脚本、视觉、编排、通信）全在 C++ 核心**。JNI 桥只暴露两类窄接口：`captureFrame() -> 位图` 和 `inject*()`。
+Layering principle: **everything touching system permissions (accessibility, screen-projection authorization) lives in the Kotlin shell; everything portable (scripting, vision, orchestration, communication) lives in the C++ core**. The JNI bridge exposes only two narrow interfaces: `captureFrame() -> bitmap` and `inject*()`.
 
 ---
 
-## 5. Android 关键技术点与对策
+## 5. Android Key Technical Points and Countermeasures
 
-### 5.1 长链接保活
+### 5.1 Long-Lived Connection Keep-alive
 
-| 限制 | 版本 | 对策 |
+| Limitation | Version | Countermeasure |
 |------|------|------|
-| 后台运行限制（Doze、后台服务） | Android 8+ | 前台服务（常驻通知，行业惯例：IM/推送类均如此） |
-| 后台不能启动前台服务 | Android 12+ | 开机自启走 `BOOT_COMPLETED` 豁免；崩溃重启靠服务内自恢复而非后台拉起 |
-| 前台服务必须声明类型 | Android 14+ | 声明 `connectedDevice`/`dataSync` 类型并申请对应运行时权限 |
-| 厂商 ROM 激进杀后台（MIUI/EMUI/ColorOS） | 全版本 | 自愈三件套：开机自启 + 服务崩溃自重启 + 断线指数退避重连（`libs/transport` 已有自动重连） |
-| TCP 被中间设备掐断 | 全版本 | 心跳保活（现有 `startHeartbeat`），必要时智能心跳间隔 |
+| Background execution limits (Doze, background services) | Android 8+ | Foreground service (persistent notification, industry practice: IM/push apps all do this) |
+| A foreground service cannot be started from the background | Android 12+ | Boot auto-start goes through the `BOOT_COMPLETED` exemption; crash restart relies on in-service self-recovery rather than background wake-up |
+| Foreground services must declare a type | Android 14+ | Declare the `connectedDevice`/`dataSync` type and request the corresponding runtime permission |
+| Aggressive vendor ROM background killing (MIUI/EMUI/ColorOS) | All versions | The self-healing trio: boot auto-start + service crash self-restart + exponential-backoff reconnect on disconnect (`libs/transport` already has auto-reconnect) |
+| TCP connections cut by middleboxes | All versions | Heartbeat keep-alive (existing `startHeartbeat`), with a smart heartbeat interval when necessary |
 
-### 5.2 权限摩擦（重要，影响开箱体验）
+### 5.2 Permission Friction (important, affects out-of-the-box experience)
 
-- **Android 13+ 受限设置**：侧载 App 的无障碍权限默认被系统屏蔽。解法（已落地，见 `docs/guides/android-restricted-settings.md`）：
-  1. 用户手动：应用信息 → ⋮ → 「允许受限制的设置」→ 再开无障碍
-  2. 批量部署场景：`adb shell appops set <pkg> ACCESS_RESTRICTED_SETTINGS allow` 预授权（已脚本化：`scripts/android-restricted-settings.sh check/allow/revoke/status`，幂等，Go 契约测试护栏）
-  3. 企业/工作室批量纳管：Device Owner 模式静默授权（MDM 通用做法，也是群控系统的标准路径）
-  App 内两级引导（Android 13+ 且无障碍未启用自动弹一次 + 常驻按钮）已随 A3 部署体验落地（2026-09-30）。
-- **MediaProjection**：每次会话需用户确认投屏弹窗（配合前台服务类型 `mediaProjection` 可持续）；引导一次即可
-- **无障碍服务开关**：系统改版/重启可能失效，Agent 需检测并上报 Server 提醒用户
+- **Android 13+ restricted settings**: accessibility permission for sideloaded apps is blocked by default by the system. Solutions (already landed, see `docs/guides/android-restricted-settings.md`):
+  1. Manual by the user: App info → ⋮ → "Allow restricted settings" → then enable accessibility
+  2. Bulk deployment scenarios: pre-authorize with `adb shell appops set <pkg> ACCESS_RESTRICTED_SETTINGS allow` (already scripted: `scripts/android-restricted-settings.sh check/allow/revoke/status`, idempotent, guarded by a Go contract test)
+  3. Enterprise/studio bulk onboarding: silent authorization in Device Owner mode (the general MDM practice, and also the standard path for fleet-control systems)
+  The two-level in-app guidance (auto-popped once on Android 13+ when accessibility is not yet enabled, plus a persistent button) landed with A3's deployment experience (2026-09-30).
+- **MediaProjection**: every session requires the user to confirm the screen-projection dialog (it can be sustained by pairing it with the `mediaProjection` foreground service type); guiding the user once is enough
+- **Accessibility service toggle**: it can break after an OS update or reboot, so the Agent needs to detect this and report it to the Server to remind the user
 
-### 5.3 截屏方案选择
+### 5.3 Choice of Screenshot Scheme
 
-| 方案 | 帧率 | 限制 | 用途 |
+| Scheme | Frame rate | Limitations | Use |
 |------|------|------|------|
-| MediaProjection + VirtualDisplay | 30-60fps | 会话级授权弹窗 | **主方案**：端侧实时找图/找色 |
-| AccessibilityService.takeScreenshot | 限流（约 1 次/秒） | API 30+ | 兜底/低频场景（候选方案，未实现——`mobile-automation-design.md` D3 计划项） |
-| 控件树截图（无） | — | — | 控件信息直接走无障碍节点树，无需截屏 |
+| MediaProjection + VirtualDisplay | 30-60fps | Session-level authorization dialog | **Primary scheme**: on-device real-time image search / color search |
+| AccessibilityService.takeScreenshot | Rate-limited (about 1 per second) | API 30+ | Fallback / low-frequency scenarios (a candidate scheme, not implemented — a `mobile-automation-design.md` D3 planned item) |
+| Widget-tree screenshot (none) | — | — | Widget information goes directly through the accessibility node tree, no screenshot needed |
 
-### 5.4 输入注入
+### 5.4 Input Injection
 
-- `AccessibilityService.dispatchGesture` / `GestureDescription`：多点触控、贝塞尔路径原生支持（连续笔画），与人性化模拟模块（贝塞尔移动、随机抖动）映射良好
-- 注入事件带系统标记（generated gesture），部分反外挂可检测——**人性化模拟在这边是刚需而非加分项**，建议文档明确声明
+- `AccessibilityService.dispatchGesture` / `GestureDescription`: multi-touch and Bézier paths are natively supported (continuous strokes), and they map well onto the humanized simulation module (Bézier movement, random jitter)
+- Injected events carry a system flag (generated gesture), which some anti-cheat systems can detect — **humanized simulation is a hard requirement here rather than a bonus**, and the documentation should state this explicitly
 
-### 5.5 C++ 核心移植
+### 5.5 Porting the C++ Core
 
-- vcpkg 支持 `arm64-android` triplet；项目当前锁定 `x64-windows-static`，需扩展 triplet 矩阵（CI 加 Android job）
-- OpenCV / asio / spdlog 均可 Android 编译；Lua 体积小、无依赖，优先级最高
-- **Lua-first**：端侧脚本执行先只支持 Lua；Python+NDK 体积与维护成本高，后期按需评估
-  （双语言分层决策已记入 `docs/architecture-decisions.md`「Scripting Language Strategy」：
-  桌面 Python 优先、移动端 Lua 优先，双语言长期保持）
+- vcpkg supports the `arm64-android` triplet; the project is currently locked to `x64-windows-static`, so the triplet matrix needs to be extended (add an Android job to CI)
+- OpenCV / asio / spdlog all compile for Android; Lua is small and dependency-free, so it has the highest priority
+- **Lua-first**: on-device script execution supports only Lua initially; Python+NDK carries high size and maintenance cost and is evaluated later as needed (the dual-language layering decision is already recorded in `docs/architecture-decisions.md` under "Scripting Language Strategy": Python first on the desktop, Lua first on mobile, both languages kept long term)
 
 ---
 
-## 6. 架构硬约束合规核查
+## 6. Compliance Check Against the Architecture Hard Constraints
 
-| # | 硬约束 | 端侧 Agent 方案 | 合规 |
+| # | Hard constraint | On-device Agent proposal | Compliant |
 |---|--------|----------------|------|
-| 1 | Go Server 是远程中控编排器 | 角色不变，新增设备纳管/脚本下发 | ✅ |
-| 2 | Runtime/Agent 主动 outbound 连 Go Server | Android Agent 出站长链接，行为同现有 runtime | ✅ |
-| 3 | 本地 Tauri UI 经本地 IPC 控制 runtime | Android 端不做本地 UI（无障碍悬浮窗调试工具可作为远期增强） | ✅ |
-| 4 | Runtime 禁止引入 HTTP/WebSocket server | Agent 只有 outbound TCP 客户端；**未来若接 WDA，WDA 的 HTTP 服务在设备上，Agent 是 client**（记入架构决策文档） | ✅ |
-| 5 | Dashboard/远程客户端只连 Go Server | 不变，Dashboard 新增设备视图走 Server API | ✅ |
+| 1 | The Go Server is the remote central control orchestrator | Role unchanged, adds device onboarding / script delivery | ✅ |
+| 2 | Runtime/Agent actively connects outbound to the Go Server | The Android Agent dials out with a long-lived connection, behaving like the existing runtime | ✅ |
+| 3 | The local Tauri UI controls the runtime over local IPC | No local UI on Android (an accessibility floating-window debugging tool can be a long-term enhancement) | ✅ |
+| 4 | Runtime is forbidden from introducing an HTTP/WebSocket server | The Agent only has an outbound TCP client; **if WDA is integrated in the future, WDA's HTTP service runs on the device and the Agent is the client** (recorded in the architecture decision document) | ✅ |
+| 5 | Dashboard/remote clients connect only to the Go Server | Unchanged, the Dashboard's new device view goes through the Server API | ✅ |
 
 ---
 
-## 7. 风险清单
+## 7. Risk List
 
-| 风险 | 等级 | 缓解 |
+| Risk | Level | Mitigation |
 |------|------|------|
-| Android 13+ 受限设置导致开箱失败率高 | 高 | 文档引导 + adb 预授权脚本 + Device Owner 批量部署方案（✅ 已落地 2026-09-30，见 §5.2 与 docs/guides/android-restricted-settings.md） |
-| 厂商 ROM 杀后台/自启被拦 | 高 | 自愈三件套（5.1）；按机型维护「保活设置指引」 |
-| 手游反检测（generated gesture 标记、投屏图标） | 中 | 人性化模拟强化；明确产品定位与合规声明 |
-| iOS 大版本变动 | — | iOS 仅做远期可选，不背主线成本 |
-| 体积：OpenCV + Lua + transport 的 NDK 产物 | 低 | 按需裁剪 OpenCV 模块（imgproc/core 足够） |
-| 工作量：Kotlin 壳 + JNI + CI 三平台 | 中 | 分阶段（见 8），A1 PoC 先验证长链接与脚本下发链路 |
+| Android 13+ restricted settings cause a high out-of-the-box failure rate | High | Documented guidance + adb pre-authorization script + Device Owner bulk deployment option (✅ landed 2026-09-30, see §5.2 and docs/guides/android-restricted-settings.md) |
+| Vendor ROM background killing / blocked auto-start | High | The self-healing trio (5.1); maintain "keep-alive settings guidance" per device model |
+| Mobile game anti-detection (generated gesture flags, screen-projection icon) | Medium | Strengthen humanized simulation; clarify the product positioning and compliance statement |
+| Major iOS version changes | — | iOS is only a long-term option and does not carry main-line cost |
+| Size: NDK artifacts of OpenCV + Lua + transport | Low | Trim OpenCV modules as needed (imgproc/core is sufficient) |
+| Workload: Kotlin shell + JNI + CI across three platforms | Medium | Phase it (see 8), with A1 PoC validating the long-lived connection and script delivery path first |
 
 ---
 
-## 8. 分阶段路线图
+## 8. Phased Roadmap
 
-- [x] **A1 PoC：链路打通**（✅ 2026-09-19 实施完成，工程设计与验收步骤见
-  `docs/android-agent-design.md`；完整工程在 `apps/android/`）
-  - [x] Kotlin 壳：ForegroundService + 长链接（复用 libs/transport + RemoteClient 编译到 Android）
-  - [x] C++ 核心可移植面就位（transport + RemoteClient + Lua/Sol2 + ScriptRunner；
-    lib/wingman 本体 Android 编译随 A2 接入，租户目录与构建分支已就位）
-  - [ ] 真机端到端验收（需 Android SDK/NDK 环境，步骤见 apps/android/README.md）
-- [x] **A2 脚本能力：自动化可用**（✅ 2026-09-21 已实施，设计与验收步骤见
-  `docs/android-agent-design.md` §5.5/§5.6、`docs/android-agent.md` 里程碑）
-  - [x] `platform/android/` IInput 后端（dispatchGesture，JNI）
-  - [x] `platform/android/` ICapture 后端（MediaProjection 主通道；takeScreenshot
-    兜底不在 A2 交付内、未实现——`docs/mobile-automation-design.md` D3 计划项）
-  - [x] 找色/找图/像素检测对手机截帧可用；screen/input 脚本 API 全通
-  - [ ] 触发器系统在端侧跑通（定时/像素触发）——A2 范围未含，仍未实施
-    （与 `mobile-automation-design.md` §5「端侧跑通（A2 后续）」同口径）
-- [ ] **A3 可靠性与部署体验**
-  - [x] 开机自启、崩溃自重启、断连自治（缓存脚本继续执行、重连后汇报）（✅ 2026-09-30，6cecfad）
-  - [x] 受限设置引导 + adb 预授权脚本（✅ 2026-09-30：脚本 + App 内引导 + 手册 `docs/guides/android-restricted-settings.md`）
-  - [ ] 无障碍失效检测上报（依赖 device.capabilities 预留槽位，未做，登记）
-  - [ ] 模板图片 asset.sync、脚本版本管理
-- [ ] **A4 多设备编排**
-  - [ ] Team/inbox 模块接入端侧 Agent
-  - [ ] Dashboard 设备视图（分组、批量下发、状态大盘）
-- [ ] **I1（远期可选）：iOS 主机控**——PC 端 ICapture/IInput 的 WDA 后端（usbmuxd/libimobiledevice），依赖 Mac 签名链
+- [x] **A1 PoC: bring up the link** (✅ implemented 2026-09-19; the engineering design and acceptance steps are in `docs/android-agent-design.md`; the full engineering work is in `apps/android/`)
+  - [x] Kotlin shell: ForegroundService + long-lived connection (reusing libs/transport + RemoteClient compiled to Android)
+  - [x] The portable surface of the C++ core is in place (transport + RemoteClient + Lua/Sol2 + ScriptRunner; lib/wingman proper compiling for Android comes in with A2, with the tenant directory and build branch already in place)
+  - [ ] End-to-end acceptance on a real device (requires an Android SDK/NDK environment; steps in apps/android/README.md)
+- [x] **A2 scripting capability: automation becomes usable** (✅ implemented 2026-09-21; design and acceptance steps in `docs/android-agent-design.md` §5.5/§5.6 and the `docs/android-agent.md` milestones)
+  - [x] `platform/android/` IInput backend (dispatchGesture, JNI)
+  - [x] `platform/android/` ICapture backend (MediaProjection as the primary channel; the takeScreenshot fallback is not part of the A2 delivery and is unimplemented — a `docs/mobile-automation-design.md` D3 planned item)
+  - [x] Color search / image search / pixel detection work on phone frames; the screen/input script APIs are fully wired
+  - [ ] The trigger system running on-device (timed / pixel triggers) — not included in the A2 scope, still unimplemented (same convention as `mobile-automation-design.md` §5 "on-device bring-up (post-A2)")
+- [ ] **A3 reliability and deployment experience**
+  - [x] Boot auto-start, crash self-restart, autonomous operation while disconnected (cached script keeps executing, reports after reconnecting) (✅ 2026-09-30, 6cecfad)
+  - [x] Restricted-settings guidance + adb pre-authorization script (✅ 2026-09-30: the script + in-app guidance + the manual `docs/guides/android-restricted-settings.md`)
+  - [ ] Reporting of accessibility failures (depends on the reserved device.capabilities slot, not done, logged)
+  - [ ] Template image asset.sync, script version management
+- [ ] **A4 multi-device orchestration**
+  - [ ] Integrating the Team/inbox module into the on-device Agent
+  - [ ] Dashboard device view (grouping, bulk delivery, status overview)
+- [ ] **I1 (long-term option): iOS host control** — a WDA backend for PC-side ICapture/IInput (usbmuxd/libimobiledevice), dependent on the Mac signing chain
 
 ---
 
-## 9. 参考资料
+## 9. References
 
-- [Auto.js 二开项目（GitHub）](https://github.com) / AutoX / [AutoJs6 指南（CSDN）](https://blog.csdn.net)
-- [Hamibot 官网](https://hamibot.com)（Auto.js + 云控的商业化先例）、[云控群控系统实例（CSDN）](https://blog.csdn.net)
-- [uiautomator2（openatx，GitHub）](https://github.com)、[pyminitouch+scrcpy 免 Root 方案（CSDN）](https://blog.csdn.net)
-- [Appium XCUITest driver：运行预装 WDA](https://appium.github.io/appium-xcuitest-driver/latest/guides/run-preinstalled-wda)、[能力参考（iOS 17+ devicectl / 18+ RemoteXPC）](https://appium.github.io/appium-xcuitest-driver/12.12/reference/capabilities)、[真机要求](https://appium.readthedocs.io/en/latest/en/drivers/ios-xcuitest-real-devices)
-- [WDA 架构解析（trinhngocthuyen.com）](https://trinhngocthuyen.com/posts/tech/mobile-e2e-wda)、[Appium Drivers 介绍](https://appium.io)、[iOS 自动化工具 2026 对比（drizz.dev）](https://www.drizz.dev/post/ios-automation-testing-tools-in-2026)
-- [Android 官方：受限设置（Google 帮助）](https://support.google.com/android/answer/12623953?hl=zh-Hans)、[后台启动前台服务限制](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start)
-- [按键精灵 iOS 免越狱论坛](https://bbs.vrbrothers.com)
+- [Auto.js forks (GitHub)](https://github.com) / AutoX / [AutoJs6 guide (CSDN)](https://blog.csdn.net)
+- [Hamibot official site](https://hamibot.com) (the commercial precedent of Auto.js + cloud control), [examples of cloud-control fleet-control systems (CSDN)](https://blog.csdn.net)
+- [uiautomator2 (openatx, GitHub)](https://github.com), [pyminitouch + scrcpy Root-free solution (CSDN)](https://blog.csdn.net)
+- [Appium XCUITest driver: running preinstalled WDA](https://appium.github.io/appium-xcuitest-driver/latest/guides/run-preinstalled-wda), [capability reference (iOS 17+ devicectl / 18+ RemoteXPC)](https://appium.github.io/appium-xcuitest-driver/12.12/reference/capabilities), [real device requirements](https://appium.readthedocs.io/en/latest/en/drivers/ios-xcuitest-real-devices)
+- [WDA architecture analysis (trinhngocthuyen.com)](https://trinhngocthuyen.com/posts/tech/mobile-e2e-wda), [Introduction to Appium Drivers](https://appium.io), [iOS automation tooling 2026 comparison (drizz.dev)](https://www.drizz.dev/post/ios-automation-testing-tools-in-2026)
+- [Official Android: restricted settings (Google Help)](https://support.google.com/android/answer/12623953?hl=zh-Hans), [background foreground-service start restrictions](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start)
+- [按键精灵 iOS jailbreak-free forum](https://bbs.vrbrothers.com)

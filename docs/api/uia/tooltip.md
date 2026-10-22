@@ -1,14 +1,14 @@
-> [English](tooltip.en.md) | **中文**
+> [中文](tooltip.md) | **English**
 
 # API: UIA ToolTip
 
-工具提示（ToolTip）控件显示鼠标悬停时的帮助信息。工具提示是临时性控件，只有在鼠标悬停在某个元素上时才会出现。
+The ToolTip control displays help information when the mouse hovers. ToolTips are temporary controls that only appear when the mouse hovers over an element.
 
-## 查找工具提示
+## Finding a ToolTip
 
-**说明**：UIARole 枚举**没有 ToolTip 专用角色值**，`find_all_by_control_type` 无法按类型过滤工具提示；只能按名称匹配查找（`find_text`，不做角色过滤）。
+**Note**: The UIARole enum **has no ToolTip-specific role value**; `find_all_by_control_type` cannot filter tooltips by type. You can only find them by name match (`find_text`, no role filtering).
 
-**注意**：工具提示只有在鼠标悬停时才会出现，查找前需要先触发显示。
+**Note**: ToolTips only appear when the mouse hovers; trigger the tooltip to show before searching.
 
 :::tabs
 
@@ -70,9 +70,9 @@ end
 
 ---
 
-## 获取工具提示文本
+## Getting the tooltip text
 
-**说明**：读取工具提示显示的文本内容。
+**Note**: Reads the text content displayed by the tooltip.
 
 :::tabs
 
@@ -105,9 +105,9 @@ end
 
 ---
 
-## 等待工具提示出现
+## Waiting for the tooltip to appear
 
-**说明**：工具提示可能需要短暂延迟才会出现，使用轮询方式等待。
+**Note**: A tooltip may take a brief delay to appear; wait for it by polling.
 
 :::tabs
 
@@ -173,14 +173,14 @@ end
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 |
-|------------|---------|------|
-| `find_text(name)` | `find_text(name)` | 按名称查找（ToolTip 无专用 UIARole，不做角色过滤） |
+| Python function | Lua function | Description |
+|----------------|-------------|-------------|
+| `find_text(name)` | `find_text(name)` | Find by name (ToolTip has no dedicated UIARole; no role filtering) |
 
-| Python 方法 | Lua 方法 | 说明 |
-|------------|---------|------|
-| `get_info()` | `:get_info()` | 获取工具提示信息（包含 name 属性） |
+| Python method | Lua method | Description |
+|----------------|-------------|-------------|
+| `get_info()` | `:get_info()` | Get tooltip information (includes the name attribute) |
 
-> **注意**：工具提示是临时性控件，只有在鼠标悬停时才会出现。
+> **Note**: ToolTips are temporary controls that only appear when the mouse hovers.

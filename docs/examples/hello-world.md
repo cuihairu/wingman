@@ -1,10 +1,10 @@
-> [English](hello-world.en.md) | **中文**
+> [中文](hello-world.md) | **English**
 
 # Hello World
 
-最简单的 Wingman 脚本示例。
+The simplest Wingman script example.
 
-## 代码
+## Code
 
 ```lua
 -- examples/lua_scripts/hello_world.lua
@@ -24,13 +24,13 @@ wingman.util.sleep(1000)
 print("脚本执行完成!")
 ```
 
-## 运行
+## Running
 
 ```bash
 wingman-agent.exe script examples/lua_scripts/hello_world.lua
 ```
 
-## 输出
+## Output
 
 ```
 === Wingman Hello World ===

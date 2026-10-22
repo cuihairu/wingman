@@ -1,14 +1,14 @@
-> [English](progressbar.en.md) | **中文**
+> [中文](progressbar.md) | **English**
 
 # API: UIA ProgressBar
 
-进度条（ProgressBar）控件显示操作进度，如加载进度、下载进度、安装进度等。
+The ProgressBar control displays the progress of an operation, such as loading progress, download progress, or installation progress.
 
-**重要**：进度条通常**只读**，无法通过脚本设置其值。
+**Important**: ProgressBars are usually **read-only**; their value cannot be set via script.
 
-## 查找进度条
+## Finding a ProgressBar
 
-**说明**：进度条通常有描述性名称。
+**Note**: ProgressBars usually have descriptive names.
 
 :::tabs
 
@@ -39,9 +39,9 @@ end
 
 ---
 
-## 获取进度值
+## Getting the progress value
 
-> **未实现（计划中）**：`get_info()` 的返回键中**没有数值进度字段**（无 `value`/`minimum`/`maximum`）；`get_value()` 返回的是元素文本（实现为 `getText`），不是数值进度。若应用恰好把进度写进元素文本/名称（如 "80%"），可经 `get_value()` 读取后自行解析，但这不是保证存在的形态。
+> **Not implemented (planned)**: The `get_info()` return keys have **no numeric progress field** (no `value`/`minimum`/`maximum`); `get_value()` returns the element text (implemented as `getText`), not a numeric progress. If the application happens to write the progress into the element text/name (e.g. "80%"), you can read it via `get_value()` and parse it yourself, but this is not a guaranteed form.
 
 :::tabs
 
@@ -82,14 +82,14 @@ end
 
 ---
 
-## 等待进度完成
+## Waiting for progress to complete
 
-**说明**：轮询检查进度条，直到达到 100% 或超时。
+**Note**: Poll the progress bar until it reaches 100% or times out.
 
-**使用场景**：
-- 等待文件下载完成
-- 等待安装完成
-- 等待加载完成
+**Use cases**:
+- Wait for a file download to finish
+- Wait for an installation to finish
+- Wait for loading to finish
 
 :::tabs
 
@@ -174,15 +174,15 @@ end
 
 ---
 
-## 可用接口
+## Available Interfaces
 
-| Python 函数 | Lua 函数 | 说明 |
-|------------|---------|------|
-| `find_by_name(name)` | `find_by_name(name)` | 按名称查找 |
+| Python function | Lua function | Description |
+|----------------|-------------|-------------|
+| `find_by_name(name)` | `find_by_name(name)` | Find by name |
 
-| Python 方法 | Lua 方法 | 说明 |
-|------------|---------|------|
-| `get_value()` | `:get_value()` | 获取元素文本（非数值进度，见上） |
-| `get_info()` | `:get_info()` | 获取进度条通用信息 |
+| Python method | Lua method | Description |
+|----------------|-------------|-------------|
+| `get_value()` | `:get_value()` | Get the element text (not a numeric progress; see above) |
+| `get_info()` | `:get_info()` | Get general information about the progress bar |
 
-> **注意**：进度条通常只读，无法通过脚本设置其值。
+> **Note**: ProgressBars are usually read-only; their value cannot be set via script.

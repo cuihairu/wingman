@@ -1,49 +1,49 @@
-> [English](asset-sync.en.md) | **中文**
+> [中文](asset-sync.md) | **English**
 
-# 资产下发指南（模板图片等静态资源）
+# Asset Delivery Guide (Template Images and Other Static Resources)
 
-本指南面向脚本开发者，说明如何把模板图片等静态资源从服务端分发到多台 agent 本地，以及脚本里如何引用。
+This guide is for script developers. It explains how to distribute static resources such as template images from the server to the local storage of multiple agents, and how to reference them from scripts.
 
-## 什么时候用资产下发
+## When to Use Asset Delivery
 
-- 脚本需要**模板图片**（找图 / 找色 / OCR 参考图），且希望资源由服务端统一维护、跨 agent 版本一致。
-- 目标设备**没有共享文件系统**（如 Android 端），脚本无法直接读服务端文件，只能由服务端内联分发。
-- 资源需要**完整性校验**（sha256 强校验，下发即验）。
+- The script needs **template images** (find-image / find-color / OCR reference images) and you want the resources maintained centrally on the server, with consistent versions across agents.
+- The target device has **no shared filesystem** (e.g. the Android side), so scripts cannot read server files directly — the server must deliver them inline.
+- The resources need **integrity verification** (strict sha256 check, verified on delivery).
 
-## 服务端存储与端点
+## Server Storage and Endpoints
 
-资产存储在 `WINGMAN_ASSETS_DIR`（默认 `./data/assets`）下：每个资产是 `<dir>/<name>` 文件 + `<dir>/.meta/<name>.json` sidecar（sha256 / 大小 / 上传时间），无 DB 依赖，原子写。
+Assets are stored under `WINGMAN_ASSETS_DIR` (default `./data/assets`): each asset is a `<dir>/<name>` file plus a `<dir>/.meta/<name>.json` sidecar (sha256 / size / upload time). No DB dependency; atomic writes.
 
-| 端点 | 方法 | 权限 | 说明 |
+| Endpoint | Method | Permission | Description |
 |---|---|---|---|
-| `/api/assets` | POST | `assets:manage` | 上传（内联 base64，≤1MB） |
-| `/api/assets` | GET | 只读 | 列表（含 sha256） |
-| `/api/assets/content` | GET | 只读 | 原始字节下载（`?name=`） |
-| `/api/assets` | DELETE | `assets:manage` | 删除 |
-| `/api/assets/sync` | POST | `assets:manage` | 按选择器下发到 agent |
+| `/api/assets` | POST | `assets:manage` | Upload (inline base64, ≤1MB) |
+| `/api/assets` | GET | Read-only | List (includes sha256) |
+| `/api/assets/content` | GET | Read-only | Raw byte download (`?name=`) |
+| `/api/assets` | DELETE | `assets:manage` | Delete |
+| `/api/assets/sync` | POST | `assets:manage` | Deliver to agents by selector |
 
-约束（两端同口径）：
+Constraints (same rules enforced on both sides):
 
-- name 白名单 `[A-Za-z0-9][A-Za-z0-9._-]{0,127}`，禁止 `..`（路径穿越前置拒绝）。
-- 单资产 ≤1MB（base64 内联，与内联脚本同口径）。
-- 提供 sha256 即强校验，不匹配直接拒绝落盘。
+- The name whitelist is `[A-Za-z0-9][A-Za-z0-9._-]{0,127}`; `..` is rejected up front (path traversal blocked).
+- A single asset is capped at 1MB (base64 inline, same convention as inline scripts).
+- If a sha256 is provided, a strict check is enforced; a mismatch is rejected before anything is written to disk.
 
-## 下发语义
+## Delivery Semantics
 
-`POST /api/assets/sync` 请求体：
+Request body of `POST /api/assets/sync`:
 
 ```json
 { "name": "login_button.png", "agentIds": ["agent-001"], "tags": ["prod"] }
 ```
 
-- 选择器 `{agentIds, tags}` 取**并集**（与批量运行/停止/触发器同口径），信号量 8 并发。
-- agent 收到 `asset.sync` 命令 → base64 解码 → sha256 强校验 → 原子写 `<scriptDir>/assets/<name>` → 响应 `{path, size}`。
-- 返回 `BatchSummary`（逐台成功/失败原因）；离线 agent 记 `agent offline`。
-- **部分失败不算整体失败**：HTTP 200 + 逐台 `results`。
+- The selector `{agentIds, tags}` takes a **union** (same convention as batch run/stop and triggers), with a semaphore of 8 concurrent deliveries.
+- The agent receives the `asset.sync` command → base64 decode → strict sha256 check → atomic write to `<scriptDir>/assets/<name>` → responds with `{path, size}`.
+- Returns a `BatchSummary` (per-agent success/failure reasons); offline agents are recorded as `agent offline`.
+- **Partial failure does not count as overall failure**: HTTP 200 + per-agent `results`.
 
-## 脚本里怎么引用
+## How to Reference Assets from Scripts
 
-下发响应返回落盘**绝对路径**（`result.path`），把它固化进脚本配置或直接用。Lua 示例：
+The delivery response returns the **absolute path** of the file on disk (`result.path`); bake it into the script config or use it directly. Lua example:
 
 ```lua
 -- 资产已由服务端下发到本机 <scriptDir>/assets/login_button.png
@@ -54,16 +54,16 @@ if hit.found then
 end
 ```
 
-> ⚠️ 当前 runtime 没有暴露「脚本目录」的脚本侧 API（`wingman.config` 是用户 KV 存储，不是运行时配置）。脚本里引用资产路径时，用下发响应返回的绝对路径，或在脚本配置里维护一份路径常量。
+> ⚠️ The current runtime does not expose a script-side API for the "script directory" (`wingman.config` is user KV storage, not runtime config). When referencing asset paths in scripts, use the absolute path returned by the delivery response, or maintain a path constant in the script config.
 
-## 与脚本版本管理的关系
+## Relationship to Script Version Management
 
-- 资产是「内容即版本」的**资源面**：sha256 由 sidecar 记录，下载/下发一致。
-- 脚本侧指纹是 `run_script` payload 的 `contentSha256` + `Execution.scriptSha256`（见 `docs/protocols.md` ② Request 表）。
-- 两者互不干扰：资产走 `asset.sync` 通道，脚本走 `run_script` 通道。
+- Assets are a resource plane where "content is the version": the sha256 is recorded in the sidecar, and download/delivery stay consistent.
+- The script-side fingerprint is the `contentSha256` of the `run_script` payload + `Execution.scriptSha256` (see the ② Request table in `docs/protocols.md`).
+- The two do not interfere: assets go through the `asset.sync` channel, scripts go through the `run_script` channel.
 
-## 限制
+## Limitations
 
-- **Android 端侧已接入（2026-10-15）**：Android agent 的独立 RpcDispatcher 注册同一 `registerAssetHandlers`（`apps/android/cpp/agent/android_agent.cpp:135`），`asset.sync` 落 `<filesDir>/assets/`；脚本以 `assets/<name>` 相对引用、与桌面 `scriptDir/assets` 同形（findImage 相对路径按 filesDir 解析）。端侧行为经桌面同源测试（`android_asset_test`）与 NDK 层宿主编译核验，真机走查待真机（见 `docs/android-agent.md` A4 里程碑）。
-- 资产为内存 + 文件系统存储，**无 DB 版本历史**；删除即不可回滚。
-- 单资产 1MB 上限；超大资源请走脚本内联或外部存储。
+- **The Android side is integrated (2026-10-15)**: the Android agent's standalone RpcDispatcher registers the same `registerAssetHandlers` (`apps/android/cpp/agent/android_agent.cpp:135`); `asset.sync` lands in `<filesDir>/assets/`; scripts reference assets relatively as `assets/<name>`, mirroring the desktop `scriptDir/assets` layout (findImage resolves relative paths against filesDir). On-device behavior has been verified via desktop-shared tests (`android_asset_test`) and host compilation at the NDK layer; a real-device walkthrough is pending until hardware is available (see the A4 milestone in `docs/android-agent.md`).
+- Assets are stored in memory plus the filesystem, with **no DB version history**; deletion cannot be rolled back.
+- 1MB cap per asset; for larger resources, use inline scripts or external storage.
