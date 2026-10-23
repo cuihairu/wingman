@@ -30,7 +30,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MODULES = ROOT / "lib" / "wingman" / "src" / "script" / "modules"
-DOC = ROOT / "docs" / "api" / "event.md"
+DOC = ROOT / "docs" / "zh" / "api" / "event.md"
 SCAN_ROOTS = (ROOT / "lib" / "wingman" / "src", ROOT / "libs", ROOT / "apps")
 
 EMIT_CALL = re.compile(r"emit\(\s*")
