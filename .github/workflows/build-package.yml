@@ -125,7 +125,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6.1.0
         with:
-          version: 11
+          version: 11.28.8
 
       - name: Build Dashboard
         working-directory: orchestrator/dashboard
@@ -290,7 +290,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6.1.0
         with:
-          version: 11
+          version: 11.28.8
 
       - name: Build Dashboard
         working-directory: orchestrator/dashboard
@@ -424,7 +424,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6.1.0
         with:
-          version: 11
+          version: 11.28.8
 
       - name: Build Dashboard
         working-directory: orchestrator/dashboard
