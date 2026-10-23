@@ -101,5 +101,10 @@
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "dompurify@<3.4.17": "3.4.17"
+    }
   }
 }
