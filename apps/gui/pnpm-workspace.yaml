@@ -5,3 +5,6 @@ packages:
 # GUI 构建依赖 esbuild 的原生二进制安装，因此需要显式允许。
 allowBuilds:
   esbuild: true
+
+overrides:
+  '@vitest/mocker@<5.0.3': '>=5.0.3 <6.0.0'
