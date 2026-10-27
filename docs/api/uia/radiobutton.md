@@ -1,10 +1,10 @@
-> [中文](radiobutton.md) | **English**
+> [中文](../../zh/api/uia/radiobutton.md) | **English**
 
 # UIA Radio Button
 
 This document is lengthy (203 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [radiobutton.md](radiobutton.md) for the original.
+The section outline below mirrors the Chinese source document; see [radiobutton.md](../../zh/api/uia/radiobutton.md) for the original.
 
 - 查找单选按钮
 - 选择单选按钮

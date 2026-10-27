@@ -1,4 +1,4 @@
-> [中文](tab.md) | **English**
+> [中文](../../zh/api/uia/tab.md) | **English**
 
 # API: UIA Tab
 

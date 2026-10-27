@@ -1,10 +1,10 @@
-> [中文](list.md) | **English**
+> [中文](../../zh/api/uia/list.md) | **English**
 
 # UIA List
 
 This document is lengthy (317 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [list.md](list.md) for the original.
+The section outline below mirrors the Chinese source document; see [list.md](../../zh/api/uia/list.md) for the original.
 
 - 查找列表
 - 遍历列表项

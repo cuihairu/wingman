@@ -1,4 +1,4 @@
-> [中文](vault-provider-design.md) | **English**
+> [中文](zh/vault-provider-design.md) | **English**
 
 # Secret Vault Provider Abstraction and Credential Touchpoint Inventory
 

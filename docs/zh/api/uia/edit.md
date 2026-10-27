@@ -1,4 +1,4 @@
-> [English](edit.en.md) | **中文**
+> [English](../../../api/uia/edit.md) | **中文**
 
 # API: UIA Edit
 

@@ -1,7 +1,7 @@
 ---
 title: 快速开始
 ---
-> [English](getting-started.en.md) | **中文**
+> [English](../../guide/getting-started.md) | **中文**
 
 
 # 快速开始
@@ -173,7 +173,7 @@ WINGMAN_SCRIPT_PASSWORD='your-passphrase' ./script-runtime.exe
 
 ## 运行模式
 
-Wingman 有三种运行模式，按控制路径区分（详见 [架构决策](../architecture-decisions.md)）：
+Wingman 有三种运行模式，按控制路径区分（详见 [架构决策](../../architecture-decisions.md)）：
 
 | 模式 | 命令 | 控制路径 | 适用场景 |
 |------|------|----------|----------|
@@ -183,7 +183,7 @@ Wingman 有三种运行模式，按控制路径区分（详见 [架构决策](..
 
 - 本地 GUI 与远程编排可并存：runtime 同时承载 local IPC 服务和 agent outbound 连接。
 - **架构硬约束**：runtime 不开 HTTP/WebSocket server 作为控制面；Dashboard 只连 Go server，不直连 runtime。
-- Go orchestrator 与 Dashboard 的部署见 [`orchestrator/server/README.md`](../../orchestrator/server/README.md)。
+- Go orchestrator 与 Dashboard 的部署见 [`orchestrator/server/README.md`](../../../orchestrator/server/README.md)。
 
 ## 第一个脚本
 

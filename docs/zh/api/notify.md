@@ -1,4 +1,4 @@
-> [English](notify.en.md) | **中文**
+> [English](../../api/notify.md) | **中文**
 
 # API: wingman.notify
 

@@ -1,4 +1,4 @@
-> [中文](benchmarks.md) | **English**
+> [中文](zh/benchmarks.md) | **English**
 
 # Performance Benchmarks
 

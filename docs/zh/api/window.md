@@ -1,4 +1,4 @@
-> [English](window.en.md) | **中文**
+> [English](../../api/window.md) | **中文**
 
 # API: wingman.window
 

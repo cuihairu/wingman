@@ -1,4 +1,4 @@
-> [English](tree.en.md) | **中文**
+> [English](../../../api/uia/tree.md) | **中文**
 
 # API: UIA Tree
 

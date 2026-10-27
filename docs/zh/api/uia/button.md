@@ -1,4 +1,4 @@
-> [English](button.en.md) | **中文**
+> [English](../../../api/uia/button.md) | **中文**
 
 # API: UIA Button
 

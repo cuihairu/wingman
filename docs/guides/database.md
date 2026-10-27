@@ -1,10 +1,10 @@
-> [中文](database.md) | **English**
+> [中文](../zh/guides/database.md) | **English**
 
 # Database
 
 This document is lengthy (1126 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [database.md](database.md) for the original.
+The section outline below mirrors the Chinese source document; see [database.md](../zh/guides/database.md) for the original.
 
 - 目录
 - 概述

@@ -1,4 +1,4 @@
-> [English](screen.en.md) | **中文**
+> [English](../../api/screen.md) | **中文**
 
 # API: wingman.screen
 

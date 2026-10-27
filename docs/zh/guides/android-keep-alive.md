@@ -1,4 +1,4 @@
-> [English](android-keep-alive.en.md) | **中文**
+> [English](../../guides/android-keep-alive.md) | **中文**
 
 # Android Agent 机型保活指引（A3）
 

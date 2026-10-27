@@ -1,4 +1,4 @@
-> [中文](security.md) | **English**
+> [中文](../zh/api/security.md) | **English**
 
 # API: wingman.security
 
@@ -196,7 +196,7 @@ wingman.input.click(100 + offset[1], 200 + offset[2])
 
 > [The former `security.encryptString` / `security.decryptString` (XOR obfuscation, not real encryption)]
 > were removed in 2026-09. For encryption, use the crypto module's `crypto.encryptAES` / `crypto.decryptAES`
-> (AES-256-GCM); see [crypto API](crypto.md).
+> (AES-256-GCM); see [crypto API](../zh/api/crypto.md).
 
 ---
 

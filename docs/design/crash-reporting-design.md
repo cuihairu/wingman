@@ -1,4 +1,4 @@
-> [中文](crash-reporting-design.md) | **English**
+> [中文](../zh/design/crash-reporting-design.md) | **English**
 
 # Crash Collection Design: Direct Crashpad Integration (Abridged)
 

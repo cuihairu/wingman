@@ -1,10 +1,10 @@
-> [中文](load-testing-research.md) | **English**
+> [中文](../zh/design/load-testing-research.md) | **English**
 
 # Load Testing Research
 
 This document is lengthy (251 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [load-testing-research.md](load-testing-research.md) for the original.
+The section outline below mirrors the Chinese source document; see [load-testing-research.md](../zh/design/load-testing-research.md) for the original.
 
 - 1. 结论速览
 - 2. 调研：加载协议做压测的机制

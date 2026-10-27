@@ -1,10 +1,10 @@
-> [中文](macro.md) | **English**
+> [中文](../zh/api/macro.md) | **English**
 
 # Macro
 
 This document is lengthy (731 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [macro.md](macro.md) for the original.
+The section outline below mirrors the Chinese source document; see [macro.md](../zh/api/macro.md) for the original.
 
 - 模块概述
 - 设计约束

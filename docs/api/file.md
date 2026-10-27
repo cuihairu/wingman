@@ -1,10 +1,10 @@
-> [中文](file.md) | **English**
+> [中文](../zh/api/file.md) | **English**
 
 # File
 
 This document is lengthy (492 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [file.md](file.md) for the original.
+The section outline below mirrors the Chinese source document; see [file.md](../zh/api/file.md) for the original.
 
 - 模块概述
 - 读文件

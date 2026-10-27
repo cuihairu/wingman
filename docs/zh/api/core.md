@@ -1,4 +1,4 @@
-> [English](core.en.md) | **中文**
+> [English](../../api/core.md) | **中文**
 
 # 核心 API
 

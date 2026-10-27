@@ -1,4 +1,4 @@
-> **English** | [中文](zh/DEVELOPER_TOOLS)
+> **English** | [中文](zh/DEVELOPER_TOOLS.md)
 
 # Developer Tools
 

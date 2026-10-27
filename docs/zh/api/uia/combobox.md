@@ -1,4 +1,4 @@
-> [English](combobox.en.md) | **中文**
+> [English](../../../api/uia/combobox.md) | **中文**
 
 # API: UIA ComboBox
 

@@ -1,4 +1,4 @@
-> [English](manual-verification.en.md) | **中文**
+> [English](../../guides/manual-verification.md) | **中文**
 
 # 真机验证指引（macOS 运行时 / Linux XRecord 桌面）
 

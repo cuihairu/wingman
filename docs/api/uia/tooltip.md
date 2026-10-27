@@ -1,4 +1,4 @@
-> [中文](tooltip.md) | **English**
+> [中文](../../zh/api/uia/tooltip.md) | **English**
 
 # API: UIA ToolTip
 

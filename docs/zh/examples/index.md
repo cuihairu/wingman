@@ -1,4 +1,4 @@
-> [English](index.en.md) | **中文**
+> [English](../../examples/index.md) | **中文**
 
 # 示例脚本
 

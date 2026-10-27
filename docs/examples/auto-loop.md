@@ -1,4 +1,4 @@
-> [中文](auto-loop.md) | **English**
+> [中文](../zh/examples/auto-loop.md) | **English**
 
 # Auto Loop
 

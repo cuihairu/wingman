@@ -1,4 +1,4 @@
-> [English](yolo-guide.en.md) | **中文**
+> [English](../../guides/yolo-guide.md) | **中文**
 
 # YOLO 模型使用指南
 

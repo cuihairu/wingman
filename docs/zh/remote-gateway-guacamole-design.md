@@ -1,4 +1,4 @@
-> [English](remote-gateway-guacamole-design.en.md) | **中文**
+> [English](../remote-gateway-guacamole-design.md) | **中文**
 
 # 远程网关像素面集成 Apache Guacamole 设计
 

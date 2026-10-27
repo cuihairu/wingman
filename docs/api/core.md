@@ -1,10 +1,10 @@
-> [中文](core.md) | **English**
+> [中文](../zh/api/core.md) | **English**
 
 # Core
 
 This document is lengthy (971 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [core.md](core.md) for the original.
+The section outline below mirrors the Chinese source document; see [core.md](../zh/api/core.md) for the original.
 
 - 模块列表
 - Screen - 屏幕操作

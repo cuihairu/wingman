@@ -1,4 +1,4 @@
-> [English](clipboard.en.md) | **中文**
+> [English](../../api/clipboard.md) | **中文**
 
 # API: wingman.clipboard
 

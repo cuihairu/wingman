@@ -1,4 +1,4 @@
-> [中文](window.md) | **English**
+> [中文](../../zh/api/uia/window.md) | **English**
 
 # API: UIA Window
 

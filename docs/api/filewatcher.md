@@ -1,4 +1,4 @@
-> [中文](filewatcher.md) | **English**
+> [中文](../zh/api/filewatcher.md) | **English**
 
 # API: wingman.filewatcher
 

@@ -1,4 +1,4 @@
-> [中文](debugging.md) | **English**
+> [中文](../zh/guide/debugging.md) | **English**
 
 # Debugging Guide
 

@@ -1,4 +1,4 @@
-> [中文](data.md) | **English**
+> [中文](../zh/api/data.md) | **English**
 
 # Data Storage
 
@@ -101,8 +101,8 @@ db.table_insert(users, {"id": "1001", "name": "Alice", "email": "alice@example.c
 
 ## Module Details
 
-- [kv module docs](./kv.md) - full key-value storage API
-- [db module docs](./db.md) - full SQLite database API
+- [kv module docs](../zh/api/kv.md) - full key-value storage API
+- [db module docs](../zh/api/db.md) - full SQLite database API
 
 ## Best Practices
 

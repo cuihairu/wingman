@@ -1,10 +1,10 @@
-> [English](protocols.en.md) | **中文**
+> [English](../protocols.md) | **中文**
 
 # Wingman 通信协议规范
 
 > 本文档描述 Wingman 三条通信链路的协议规范，依据代码实现（2026-10-04 校准）。
 > 历史迁移说明见 [remote_protocol.md](./remote_protocol.md)（已标为历史文档）。
-> 架构硬约束见 [architecture-decisions.md](./architecture-decisions.md)。
+> 架构硬约束见 [architecture-decisions.md](../architecture-decisions.md)。
 
 ## 三条链路总览
 

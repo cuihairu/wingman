@@ -1,7 +1,7 @@
 ---
 title: 脚本开发指南
 ---
-> [English](script-development.en.md) | **中文**
+> [English](../../guide/script-development.md) | **中文**
 
 
 # 脚本开发指南

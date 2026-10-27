@@ -1,5 +1,4 @@
-> [English](introduction.en.md) | **中文**
-
+> [English](../../guide/introduction.md) | **中文**
 # 项目简介
 
 ## 什么是 Wingman？

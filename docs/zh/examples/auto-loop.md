@@ -1,5 +1,4 @@
-> [English](auto-loop.en.md) | **中文**
-
+> [English](../../examples/auto-loop.md) | **中文**
 # 自动化循环
 
 演示持续监控并执行操作的自动化脚本。

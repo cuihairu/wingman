@@ -1,4 +1,4 @@
-> [English](architecture.en.md) | **中文**
+> [English](../../guide/architecture.md) | **中文**
 
 # 架构设计
 

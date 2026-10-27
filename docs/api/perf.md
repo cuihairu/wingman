@@ -1,10 +1,10 @@
-> [中文](perf.md) | **English**
+> [中文](../zh/api/perf.md) | **English**
 
 # Performance
 
 This document is lengthy (535 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [perf.md](perf.md) for the original.
+The section outline below mirrors the Chinese source document; see [perf.md](../zh/api/perf.md) for the original.
 
 - 模块概述
 - 设置性能配置

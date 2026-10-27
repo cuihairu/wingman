@@ -1,4 +1,4 @@
-> [中文](asset-sync.md) | **English**
+> [中文](../zh/guides/asset-sync.md) | **English**
 
 # Asset Delivery Guide (Template Images and Other Static Resources)
 

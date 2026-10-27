@@ -1,4 +1,4 @@
-> [English](android-restricted-settings.en.md) | **中文**
+> [English](../../guides/android-restricted-settings.md) | **中文**
 
 # Android Agent 受限设置指引（Android 13+，A3）
 

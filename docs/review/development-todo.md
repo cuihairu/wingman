@@ -125,7 +125,7 @@
 
 ## 移动端支持（规划，2026-09-19 立项）
 
-> 可行性分析与路线图详见 [mobile-support-feasibility.md](./mobile-support-feasibility.md)。
+> 可行性分析与路线图详见 [mobile-support-feasibility.md](../mobile-support-feasibility.md)。
 > 核心形态：**Android 端侧 Agent + TCP 长链接直连 Go Server（云控模式）**，控制面在
 > Server、执行面在端侧；iOS 端侧不可行（沙箱无合法通道），iOS 主机控（WDA）为远期可选。
 

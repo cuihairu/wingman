@@ -2,13 +2,13 @@
 title: Runtime GUI Tutorial
 ---
 
-> [中文](runtime-gui.md) | **English**
+> [中文](../zh/guide/runtime-gui.md) | **English**
 
 # Runtime GUI Tutorial
 
 This document is lengthy (387 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [runtime-gui.md](runtime-gui.md) for the original.
+The section outline below mirrors the Chinese source document; see [runtime-gui.md](../zh/guide/runtime-gui.md) for the original.
 
 - 概述
 - 架构关系

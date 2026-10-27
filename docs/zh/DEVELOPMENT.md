@@ -1,4 +1,4 @@
-> [English](../DEVELOPMENT) | **中文**
+> [English](../DEVELOPMENT.md) | **中文**
 
 # Wingman 开发指南
 

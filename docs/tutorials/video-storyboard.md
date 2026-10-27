@@ -1,4 +1,4 @@
-> [中文](video-storyboard.md) | **English**
+> [中文](../zh/tutorials/video-storyboard.md) | **English**
 
 # Video Tutorial Series Scripts
 

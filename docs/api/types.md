@@ -1,4 +1,4 @@
-> [中文](types.md) | **English**
+> [中文](../zh/api/types.md) | **English**
 
 # API Data Types Reference
 
@@ -385,8 +385,8 @@ if found:
 ## Related Documentation
 
 - [API Index](./index.md) - A list of all API modules
-- [wingman.screen](./screen.md) - Screen operations module
+- [wingman.screen](../zh/api/screen.md) - Screen operations module
 - [wingman.uia](./uia/) - UI Automation module
-- [wingman.http](./http.md) - HTTP client module
-- [wingman.process](./process.md) - Process management module
-- [wingman.window](./window.md) - Window management module
+- [wingman.http](../zh/api/http.md) - HTTP client module
+- [wingman.process](../zh/api/process.md) - Process management module
+- [wingman.window](../zh/api/window.md) - Window management module

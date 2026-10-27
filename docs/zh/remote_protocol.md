@@ -1,4 +1,4 @@
-> [English](remote_protocol.en.md) | **中文**
+> [English](../remote_protocol.md) | **中文**
 
 # Wingman 远程控制协议文档
 

@@ -1,5 +1,4 @@
-> [English](progressbar.en.md) | **中文**
-
+> [English](../../../api/uia/progressbar.md) | **中文**
 # API: UIA ProgressBar
 
 进度条（ProgressBar）控件显示操作进度，如加载进度、下载进度、安装进度等。

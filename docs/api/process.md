@@ -1,10 +1,10 @@
-> [中文](process.md) | **English**
+> [中文](../zh/api/process.md) | **English**
 
 # Process
 
 This document is lengthy (539 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [process.md](process.md) for the original.
+The section outline below mirrors the Chinese source document; see [process.md](../zh/api/process.md) for the original.
 
 - 模块概述
   - 进程 ID（PID）

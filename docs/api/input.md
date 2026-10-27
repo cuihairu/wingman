@@ -1,10 +1,10 @@
-> [中文](input.md) | **English**
+> [中文](../zh/api/input.md) | **English**
 
 # Input
 
 This document is lengthy (456 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [input.md](input.md) for the original.
+The section outline below mirrors the Chinese source document; see [input.md](../zh/api/input.md) for the original.
 
 - 模块概述
   - 坐标系统

@@ -1,4 +1,4 @@
-> **English** | [中文](zh/game-automation-coverage)
+> **English** | [中文](zh/game-automation-coverage.md)
 
 # Game Automation Coverage Analysis
 

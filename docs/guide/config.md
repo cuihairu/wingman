@@ -1,10 +1,10 @@
-> [中文](config.md) | **English**
+> [中文](../zh/guide/config.md) | **English**
 
 # Configuration Guide
 
 This document is lengthy (250 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [config.md](config.md) for the original.
+The section outline below mirrors the Chinese source document; see [config.md](../zh/guide/config.md) for the original.
 
 - 配置文件位置
 - 配置结构

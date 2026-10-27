@@ -1,4 +1,4 @@
-> [中文](timer.md) | **English**
+> [中文](../zh/api/timer.md) | **English**
 
 # API: wingman.timer
 

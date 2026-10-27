@@ -1,10 +1,10 @@
-> [English](../architecture-decisions) | **中文**
+> [English](../architecture-decisions.md) | **中文**
 
 # Wingman 架构决策（暂无译版）
 
 该文档（709 行）暂无中文译版。**本文的英文原文是架构硬约束的权威口径**——约束类文本以劣质译文传播比没有译文更危险，故只挂切换器 + 真实章节大纲，不硬造翻译。
 
-各节大纲（与英文原文一一对应，请以 [英文原文](../architecture-decisions) 为准）：
+各节大纲（与英文原文一一对应，请以 [英文原文](../architecture-decisions.md) 为准）：
 
 - Non-Negotiable Control Plane（不可协商的控制面）
 - Remote Orchestration（远程编排）

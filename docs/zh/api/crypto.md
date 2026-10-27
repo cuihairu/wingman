@@ -1,4 +1,4 @@
-> [English](crypto.en.md) | **中文**
+> [English](../../api/crypto.md) | **中文**
 
 # API: wingman.crypto
 

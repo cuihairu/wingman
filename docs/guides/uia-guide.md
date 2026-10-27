@@ -1,10 +1,10 @@
-> [中文](uia-guide.md) | **English**
+> [中文](../zh/guides/uia-guide.md) | **English**
 
 # UIA Guide
 
 This document is lengthy (1398 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [uia-guide.md](uia-guide.md) for the original.
+The section outline below mirrors the Chinese source document; see [uia-guide.md](../zh/guides/uia-guide.md) for the original.
 
 - 目录
 - 基础概念

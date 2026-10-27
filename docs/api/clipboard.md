@@ -1,10 +1,10 @@
-> [中文](clipboard.md) | **English**
+> [中文](../zh/api/clipboard.md) | **English**
 
 # Clipboard
 
 This document is lengthy (737 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [clipboard.md](clipboard.md) for the original.
+The section outline below mirrors the Chinese source document; see [clipboard.md](../zh/api/clipboard.md) for the original.
 
 - 平台支持
 - 模块概述

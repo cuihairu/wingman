@@ -1,4 +1,4 @@
-> [English](mobile-support-feasibility.en.md) | **中文**
+> [English](../mobile-support-feasibility.md) | **中文**
 
 # 移动端支持可行性分析（Android 端侧 Agent 优先）
 

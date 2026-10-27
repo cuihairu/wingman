@@ -1,4 +1,4 @@
-> [English](load-testing-research.en.md) | **中文**
+> [English](../../design/load-testing-research.md) | **中文**
 
 # 游戏压测场景扩展调研：协议加载机制、目标形态与分期
 
@@ -248,6 +248,6 @@ k6 的 thresholds 形状（`'http_req_duration{tag}': ['p(95)<500']` + `abortOnF
 **仓内文档**
 
 - [protocols.md](../protocols.md)：三条链路协议规范（16B 帧布局、心跳/超时、鉴权）
-- [architecture-decisions.md](../architecture-decisions.md)：控制面硬约束与 Forbidden Changes
+- [architecture-decisions.md](../../architecture-decisions.md)：控制面硬约束与 Forbidden Changes
 - [remote-gateway-guacamole-design.md](../remote-gateway-guacamole-design.md)：agent 链路字节流隧道先例
 - [mobile-support-feasibility.md](../mobile-support-feasibility.md)：云控模式可行性分析（分级与拍板的文档范式）

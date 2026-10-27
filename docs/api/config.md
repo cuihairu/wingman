@@ -1,4 +1,4 @@
-> [中文](config.md) | **English**
+> [中文](../zh/api/config.md) | **English**
 
 # API: wingman.config
 

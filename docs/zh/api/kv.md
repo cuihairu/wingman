@@ -1,4 +1,4 @@
-> [English](kv.en.md) | **中文**
+> [English](../../api/kv.md) | **中文**
 
 # API: wingman.kv
 

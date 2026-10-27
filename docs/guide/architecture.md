@@ -1,10 +1,10 @@
-> [中文](architecture.md) | **English**
+> [中文](../zh/guide/architecture.md) | **English**
 
 # Architecture
 
 This document is lengthy (316 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [architecture.md](architecture.md) for the original.
+The section outline below mirrors the Chinese source document; see [architecture.md](../zh/guide/architecture.md) for the original.
 
 - 系统架构概览
 - 中控机-受控机架构

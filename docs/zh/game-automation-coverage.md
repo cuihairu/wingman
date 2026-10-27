@@ -1,4 +1,4 @@
-> [English](../game-automation-coverage) | **中文**
+> [English](../game-automation-coverage.md) | **中文**
 
 # 游戏自动化覆盖度分析
 

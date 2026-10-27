@@ -1,4 +1,4 @@
-> [English](video-storyboard.en.md) | **中文**
+> [English](../../tutorials/video-storyboard.md) | **中文**
 
 # 视频教程系列脚本
 

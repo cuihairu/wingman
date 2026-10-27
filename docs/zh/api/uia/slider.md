@@ -1,4 +1,4 @@
-> [English](slider.en.md) | **中文**
+> [English](../../../api/uia/slider.md) | **中文**
 
 # API: UIA Slider
 

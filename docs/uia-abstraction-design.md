@@ -1,8 +1,8 @@
-> [中文](uia-abstraction-design.md) | **English**
+> [中文](zh/uia-abstraction-design.md) | **English**
 
 # UIA Abstraction Design
 
-**No English translation of this document yet.** The authoritative text is the Chinese document [`uia-abstraction-design.md`](uia-abstraction-design.md) (869 lines). It has not been translated yet: a rush translation of a 869-line design record would be lower quality than no translation at all, so this page carries only the language switcher and an exact outline of the source sections. The follow-up is tracked in [`development-todo.md`](development-todo.md).
+**No English translation of this document yet.** The authoritative text is the Chinese document [`uia-abstraction-design.md`](zh/uia-abstraction-design.md) (869 lines). It has not been translated yet: a rush translation of a 869-line design record would be lower quality than no translation at all, so this page carries only the language switcher and an exact outline of the source sections. The follow-up is tracked in [`development-todo.md`](review/development-todo.md).
 
 ## Sections of the Chinese source
 

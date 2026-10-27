@@ -1,4 +1,4 @@
-> [English](../DEVELOPER_TOOLS) | **中文**
+> [English](../DEVELOPER_TOOLS.md) | **中文**
 
 # 开发者工具
 

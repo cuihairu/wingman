@@ -1,4 +1,4 @@
-> [中文](menu.md) | **English**
+> [中文](../../zh/api/uia/menu.md) | **English**
 
 # API: UIA Menu
 

@@ -1,4 +1,4 @@
-> [English](hotkey.en.md) | **中文**
+> [English](../../api/hotkey.md) | **中文**
 
 # API: wingman.hotkey
 

@@ -1,10 +1,10 @@
-> [中文](combobox.md) | **English**
+> [中文](../../zh/api/uia/combobox.md) | **English**
 
 # UIA ComboBox
 
 This document is lengthy (302 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [combobox.md](combobox.md) for the original.
+The section outline below mirrors the Chinese source document; see [combobox.md](../../zh/api/uia/combobox.md) for the original.
 
 - 查找下拉框
 - 操作下拉框

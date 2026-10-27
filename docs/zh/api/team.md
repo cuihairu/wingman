@@ -1,4 +1,4 @@
-> [English](team.en.md) | **中文**
+> [English](../../api/team.md) | **中文**
 
 # API: wingman.team
 

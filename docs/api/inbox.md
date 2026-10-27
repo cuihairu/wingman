@@ -1,10 +1,10 @@
-> [中文](inbox.md) | **English**
+> [中文](../zh/api/inbox.md) | **English**
 
 # Inbox
 
 This document is lengthy (621 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [inbox.md](inbox.md) for the original.
+The section outline below mirrors the Chinese source document; see [inbox.md](../zh/api/inbox.md) for the original.
 
 - 模块概述
   - 架构设计

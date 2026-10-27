@@ -1,8 +1,8 @@
-> [中文](android-agent-design.md) | **English**
+> [中文](zh/android-agent-design.md) | **English**
 
 # Android Agent Design
 
-**No English translation of this document yet.** The authoritative text is the Chinese document [`android-agent-design.md`](android-agent-design.md) (559 lines). It has not been translated yet: a rush translation of a 559-line design record would be lower quality than no translation at all, so this page carries only the language switcher and an exact outline of the source sections. The follow-up is tracked in [`development-todo.md`](development-todo.md).
+**No English translation of this document yet.** The authoritative text is the Chinese document [`android-agent-design.md`](zh/android-agent-design.md) (559 lines). It has not been translated yet: a rush translation of a 559-line design record would be lower quality than no translation at all, so this page carries only the language switcher and an exact outline of the source sections. The follow-up is tracked in [`development-todo.md`](review/development-todo.md).
 
 ## Sections of the Chinese source
 

@@ -1,4 +1,4 @@
-> [English](db.en.md) | **中文**
+> [English](../../api/db.md) | **中文**
 
 # db 模块
 

@@ -1,4 +1,4 @@
-> [English](uia-guide.en.md) | **中文**
+> [English](../../guides/uia-guide.md) | **中文**
 
 # UI Automation 指南
 

@@ -1,4 +1,4 @@
-> [English](ui-automation.en.md) | **中文**
+> [English](../../examples/ui-automation.md) | **中文**
 
 # UI Automation 示例
 

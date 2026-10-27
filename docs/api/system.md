@@ -1,10 +1,10 @@
-> [中文](system.md) | **English**
+> [中文](../zh/api/system.md) | **English**
 
 # System
 
 This document is lengthy (766 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [system.md](system.md) for the original.
+The section outline below mirrors the Chinese source document; see [system.md](../zh/api/system.md) for the original.
 
 - 模块概述
 - 获取 CPU 信息

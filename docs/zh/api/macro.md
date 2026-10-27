@@ -1,4 +1,4 @@
-> [English](macro.en.md) | **中文**
+> [English](../../api/macro.md) | **中文**
 
 # API: wingman.macro
 

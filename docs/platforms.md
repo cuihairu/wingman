@@ -1,4 +1,4 @@
-> [中文](platforms.md) | **English**
+> [中文](zh/platforms.md) | **English**
 
 # Platform Support and API Availability
 
@@ -85,7 +85,7 @@ group depends on whether the corresponding dependency switch was enabled at buil
 
 \* The meaning of the "❌\*" annotation: not a missing capability but **architectural non-applicability**—the Android Agent's (A line)
 ScriptRunner does not load the desktop module registry (see
-[Android Design · 5.5 deviation note](android-agent-design.md)); it only exposes the three subtables below.
+[Android Design · 5.5 deviation note](zh/android-agent-design.md)); it only exposes the three subtables below.
 Porting the full desktop module set onto the device is a candidate direction for later A-line milestones and is not currently committed to.
 
 > `wingman.hotkey` appears only in the **platform-bound group** above (it depends on the platform input backend) and is not listed in this group—
@@ -110,7 +110,7 @@ Porting the full desktop module set onto the device is a candidate direction for
 ### Android On-Device Script Surface (A Line)
 
 The Android Agent's Lua environment has only the three subtables under `wingman` (A2 script capability,
-see [Android Design · §5.5/5.6](android-agent-design.md)):
+see [Android Design · §5.5/5.6](zh/android-agent-design.md)):
 
 | Subtable | Capabilities | Behavioral Differences vs Desktop |
 |------|------|------------------|

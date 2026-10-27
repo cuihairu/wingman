@@ -1,10 +1,10 @@
-> [中文](screen.md) | **English**
+> [中文](../zh/api/screen.md) | **English**
 
 # Screen
 
 This document is lengthy (593 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [screen.md](screen.md) for the original.
+The section outline below mirrors the Chinese source document; see [screen.md](../zh/api/screen.md) for the original.
 
 - 模块概述
   - 坐标系统

@@ -1,4 +1,4 @@
-> [English](script.en.md) | **中文**
+> [English](../../api/script.md) | **中文**
 
 # API: wingman.script
 

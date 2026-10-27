@@ -1,8 +1,8 @@
-> [中文](platform-abstraction-design.md) | **English**
+> [中文](zh/platform-abstraction-design.md) | **English**
 
 # Platform Abstraction Design
 
-**No English translation of this document yet.** The authoritative text is the Chinese document [`platform-abstraction-design.md`](platform-abstraction-design.md) (523 lines). It has not been translated yet: a rush translation of a 523-line design record would be lower quality than no translation at all, so this page carries only the language switcher and an exact outline of the source sections. The follow-up is tracked in [`development-todo.md`](development-todo.md).
+**No English translation of this document yet.** The authoritative text is the Chinese document [`platform-abstraction-design.md`](zh/platform-abstraction-design.md) (523 lines). It has not been translated yet: a rush translation of a 523-line design record would be lower quality than no translation at all, so this page carries only the language switcher and an exact outline of the source sections. The follow-up is tracked in [`development-todo.md`](review/development-todo.md).
 
 ## Sections of the Chinese source
 

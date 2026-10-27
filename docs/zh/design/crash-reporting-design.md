@@ -1,4 +1,4 @@
-> [English](crash-reporting-design.en.md) | **中文**
+> [English](../../design/crash-reporting-design.md) | **中文**
 
 # 崩溃采集设计：Crashpad 直集成（简档）
 

@@ -1,4 +1,4 @@
-> [中文](dependencies.md) | **English**
+> [中文](zh/dependencies.md) | **English**
 
 # Wingman Dependencies
 

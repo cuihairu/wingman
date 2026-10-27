@@ -1,4 +1,4 @@
-> [English](database.en.md) | **中文**
+> [English](../../guides/database.md) | **中文**
 
 # 数据库使用指南
 

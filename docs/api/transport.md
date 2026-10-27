@@ -1,10 +1,10 @@
-> [中文](transport.md) | **English**
+> [中文](../zh/api/transport.md) | **English**
 
 # Transport
 
 This document is lengthy (884 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [transport.md](transport.md) for the original.
+The section outline below mirrors the Chinese source document; see [transport.md](../zh/api/transport.md) for the original.
 
 - 模块概述
   - 消息格式

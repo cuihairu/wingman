@@ -1,10 +1,10 @@
-> [中文](event.md) | **English**
+> [中文](../zh/api/event.md) | **English**
 
 # Events
 
 This document is lengthy (438 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [event.md](event.md) for the original.
+The section outline below mirrors the Chinese source document; see [event.md](../zh/api/event.md) for the original.
 
 - 模块概述
 - 订阅事件

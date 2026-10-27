@@ -1,5 +1,4 @@
-> [English](checkbox.en.md) | **中文**
-
+> [English](../../../api/uia/checkbox.md) | **中文**
 # API: UIA CheckBox
 
 复选框（CheckBox）用于多选项选择场景，用户可以勾选或取消勾选多个选项。常见场景包括：
@@ -165,7 +164,7 @@ end
 - "全选"复选框：子项全部选中时为 On，全部未选中为 Off，部分选中为 Indeterminate
 - 树形结构中的父节点
 
-> `set_toggle_state(state)`（'On'/'Off'/'Indeterminate' 三态显式建模）尚未实现，Indeterminate 态暂不可直接设置——两态场景请用 `set_checked(bool)`。当前可用操作：`set_checked` / `click()` 切换与通用方法（见 [概述](./index.md#uielement-通用方法)）。
+> `set_toggle_state(state)`（'On'/'Off'/'Indeterminate' 三态显式建模）尚未实现，Indeterminate 态暂不可直接设置——两态场景请用 `set_checked(bool)`。当前可用操作：`set_checked` / `click()` 切换与通用方法（见 [概述](index.md#uielement-通用方法)）。
 
 ---
 
@@ -280,4 +279,4 @@ end
 
 ### 复选框属性
 
-`get_info()` 返回键集见 [概述](./index.md#uielement-通用方法)（`name`/`id`/`className`/`role`/`text`/`is_enabled`/`is_visible`/`has_focus`/`bounds`），其中**没有**勾选状态字段（无 `toggle_state`/`is_toggle_pattern`）。
+`get_info()` 返回键集见 [概述](index.md#uielement-通用方法)（`name`/`id`/`className`/`role`/`text`/`is_enabled`/`is_visible`/`has_focus`/`bounds`），其中**没有**勾选状态字段（无 `toggle_state`/`is_toggle_pattern`）。

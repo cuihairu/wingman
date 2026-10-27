@@ -1,4 +1,4 @@
-> [English](development-environment.en.md) | **中文**
+> [English](../development-environment.md) | **中文**
 
 # VS Code 开发环境
 

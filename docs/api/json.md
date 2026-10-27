@@ -1,4 +1,4 @@
-> [中文](json.md) | **English**
+> [中文](../zh/api/json.md) | **English**
 
 # API: wingman.json
 

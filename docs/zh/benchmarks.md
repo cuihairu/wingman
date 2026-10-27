@@ -1,4 +1,4 @@
-> [English](benchmarks.en.md) | **中文**
+> [English](../benchmarks.md) | **中文**
 
 # 性能基准测试
 

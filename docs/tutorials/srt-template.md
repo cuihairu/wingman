@@ -1,9 +1,9 @@
-> [中文](srt-template.md) | **English**
+> [中文](../zh/tutorials/srt-template.md) | **English**
 
 # Subtitle (SRT) Authoring Template
 
 Companion to the "publish subtitles with the video as SRT" line in
-[video-storyboard.en.md](video-storyboard.en.md). The storyboard already carries
+[video-storyboard.en.md](video-storyboard.md). The storyboard already carries
 the verbatim narration, so subtitle text needs no writing — after recording only
 timecode alignment remains. This template fixes where the text comes from, how to
 split, how to fill timecodes, and how to verify.

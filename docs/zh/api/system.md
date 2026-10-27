@@ -1,4 +1,4 @@
-> [English](system.en.md) | **中文**
+> [English](../../api/system.md) | **中文**
 
 # API: wingman.system
 

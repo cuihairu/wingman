@@ -1,4 +1,4 @@
-> [中文](progressbar.md) | **English**
+> [中文](../../zh/api/uia/progressbar.md) | **English**
 
 # API: UIA ProgressBar
 

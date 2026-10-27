@@ -1,10 +1,10 @@
-> [中文](smart-trigger.md) | **English**
+> [中文](../zh/api/smart-trigger.md) | **English**
 
 # Smart Trigger
 
 This document is lengthy (555 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [smart-trigger.md](smart-trigger.md) for the original.
+The section outline below mirrors the Chinese source document; see [smart-trigger.md](../zh/api/smart-trigger.md) for the original.
 
 - 模块概述
 - 创建触发器

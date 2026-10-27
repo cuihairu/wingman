@@ -1,10 +1,10 @@
-> [中文](index.md) | **English**
+> [中文](../../zh/api/uia/index.md) | **English**
 
 # UIA Elements (Index)
 
 This document is lengthy (1246 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [index.md](index.md) for the original.
+The section outline below mirrors the Chinese source document; see [index.md](../../zh/api/uia/index.md) for the original.
 
 - 什么是 UI Automation
   - UIA 的工作原理

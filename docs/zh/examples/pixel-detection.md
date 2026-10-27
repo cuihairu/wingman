@@ -1,5 +1,4 @@
-> [English](pixel-detection.en.md) | **中文**
-
+> [English](../../examples/pixel-detection.md) | **中文**
 # 像素检测
 
 演示如何检测屏幕上的指定颜色。

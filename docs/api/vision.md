@@ -1,10 +1,10 @@
-> [中文](vision.md) | **English**
+> [中文](../zh/api/vision.md) | **English**
 
 # Vision
 
 This document is lengthy (545 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [vision.md](vision.md) for the original.
+The section outline below mirrors the Chinese source document; see [vision.md](../zh/api/vision.md) for the original.
 
 - 模块概述
 - 查找颜色

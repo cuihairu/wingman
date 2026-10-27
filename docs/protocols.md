@@ -1,4 +1,4 @@
-> [中文](protocols.md) | **English**
+> [中文](zh/protocols.md) | **English**
 
 # Wingman Communication Protocol Specification
 

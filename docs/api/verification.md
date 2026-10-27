@@ -1,4 +1,4 @@
-> [中文](verification.md) | **English**
+> [中文](../zh/api/verification.md) | **English**
 
 # API: wingman.verification
 

@@ -1,4 +1,4 @@
-> [English](perf.en.md) | **中文**
+> [English](../../api/perf.md) | **中文**
 
 # API: wingman.perf
 

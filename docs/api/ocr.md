@@ -1,4 +1,4 @@
-> [中文](ocr.md) | **English**
+> [中文](../zh/api/ocr.md) | **English**
 
 # API: wingman.ocr
 

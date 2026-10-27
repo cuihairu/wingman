@@ -1,4 +1,4 @@
-> [中文](overview.md) | **English**
+> [中文](../zh/api/overview.md) | **English**
 
 # API Reference
 
@@ -20,27 +20,27 @@ The core APIs provide fundamental capabilities such as screen operations, input 
 
 | Module | Functionality | Documentation |
 |------|------|------|
-| `screen` | Screen capture, color detection, image recognition | [screen](screen.md) |
-| `input` | Mouse clicks, keyboard input, text input | [input](input.md) |
-| `window` | Window lookup, activation, bounds retrieval | [window](window.md) |
-| `process` | Process lookup and management | [process](process.md) |
-| `vision` | Image recognition and matching | [vision](vision.md) |
+| `screen` | Screen capture, color detection, image recognition | [screen](../zh/api/screen.md) |
+| `input` | Mouse clicks, keyboard input, text input | [input](../zh/api/input.md) |
+| `window` | Window lookup, activation, bounds retrieval | [window](../zh/api/window.md) |
+| `process` | Process lookup and management | [process](../zh/api/process.md) |
+| `vision` | Image recognition and matching | [vision](../zh/api/vision.md) |
 | `ocr` | OCR text recognition | [ocr](ocr.md) |
-| `smarttrigger` | Smart trigger system | [smart-trigger](smart-trigger.md) |
-| `human` | Humanized simulation | [human](human.md) |
-| `perf` | Performance monitoring | [perf](perf.md) |
-| `system` | System information retrieval | [system](system.md) |
-| `uia` | UI Automation control interaction | [uia](uia/index.md) |
+| `smarttrigger` | Smart trigger system | [smart-trigger](../zh/api/smart-trigger.md) |
+| `human` | Humanized simulation | [human](../zh/api/human.md) |
+| `perf` | Performance monitoring | [perf](../zh/api/perf.md) |
+| `system` | System information retrieval | [system](../zh/api/system.md) |
+| `uia` | UI Automation control interaction | [uia](../zh/api/uia/index.md) |
 | `bt` | Behavior tree engine | [behavior-tree](behavior-tree.md) |
 | `security` | Security module | [security](security.md) |
-| `crypto` | Cryptographic functions | [crypto](crypto.md) |
+| `crypto` | Cryptographic functions | [crypto](../zh/api/crypto.md) |
 | `verification` | CAPTCHA recognition, TOTP | [verification](verification.md) |
 | `gameprofile` | Game profiles | [gameprofile](gameprofile.md) |
 | `util` | Utility functions | [util](util.md) |
-| `ml` | ONNX model loading and input/output metadata queries (optional dependency) | [ml](ml.md) |
-| `file` | File IO (read/write, move/copy, directory operations) | [file](file.md) |
+| `ml` | ONNX model loading and input/output metadata queries (optional dependency) | [ml](../zh/api/ml.md) |
+| `file` | File IO (read/write, move/copy, directory operations) | [file](../zh/api/file.md) |
 | `filewatcher` | Filesystem watching | [filewatcher](filewatcher.md) |
-| `clipboard` | Clipboard read/write | [clipboard](clipboard.md) |
+| `clipboard` | Clipboard read/write | [clipboard](../zh/api/clipboard.md) |
 | `hotkey` | Global hotkey listening | [hotkey](hotkey.md) |
 | `systemwatch` | System event sources (process/window changes) | [systemwatch](systemwatch.md) |
 
@@ -101,8 +101,8 @@ The data persistence APIs provide key-value storage and database support.
 
 | Module | Functionality | Documentation |
 |------|------|------|
-| `kv` | Key-value storage | [kv](kv.md) |
-| `db` | SQLite database | [db](db.md) |
+| `kv` | Key-value storage | [kv](../zh/api/kv.md) |
+| `db` | SQLite database | [db](../zh/api/db.md) |
 
 ### Quick Examples
 
@@ -147,7 +147,7 @@ The serialization APIs provide support for multiple data formats.
 | Module | Functionality | Documentation |
 |------|------|------|
 | `json` | JSON encoding/decoding | [json](json.md) |
-| `ini` | INI configuration file parsing | [ini](ini.md) |
+| `ini` | INI configuration file parsing | [ini](../zh/api/ini.md) |
 
 ### Quick Examples
 
@@ -189,20 +189,20 @@ The scripting APIs provide script execution and management functionality.
 
 | Module | Functionality | Documentation |
 |------|------|------|
-| `event` | Event system | [event](event.md) |
-| `task` | Task management | [task](task.md) |
-| `notify` | Notification system | [notify](notify.md) |
+| `event` | Event system | [event](../zh/api/event.md) |
+| `task` | Task management | [task](../zh/api/task.md) |
+| `notify` | Notification system | [notify](../zh/api/notify.md) |
 | `fsm` | Finite state machine | [fsm](fsm.md) |
-| `http` | HTTP requests | [http](http.md) |
+| `http` | HTTP requests | [http](../zh/api/http.md) |
 | `config` | Configuration management | [config](config.md) |
-| `transport` | TCP/UDP networking | [transport](transport.md) |
-| `script` | Script management control plane (listing, start/stop/reload) | [script](script.md) |
+| `transport` | TCP/UDP networking | [transport](../zh/api/transport.md) |
+| `script` | Script management control plane (listing, start/stop/reload) | [script](../zh/api/script.md) |
 | `timer` | Timers (one-shot/periodic callbacks) | [timer](timer.md) |
-| `macro` | Macro recording and playback | [macro](macro.md) |
+| `macro` | Macro recording and playback | [macro](../zh/api/macro.md) |
 | `orchestration` | Orchestration control | [orchestration](orchestration.md) |
-| `inbox` | Message inbox | [inbox](inbox.md) |
-| `team` | Team orchestration | [team](team.md) |
-| `node` | Node management | [node](../guide/config.md) |
+| `inbox` | Message inbox | [inbox](../zh/api/inbox.md) |
+| `team` | Team orchestration | [team](../zh/api/team.md) |
+| `node` | Node management | [node](../zh/guide/config.md) |
 
 ## Debugging APIs
 
@@ -337,7 +337,7 @@ except Exception as e:
 
 ## Related Documentation
 
-- [Quick Start](../guide/getting-started.md)
+- [Quick Start](../zh/guide/getting-started.md)
 
 ---
 

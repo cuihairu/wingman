@@ -1,4 +1,4 @@
-> [English](mobile-automation-design.en.md) | **中文**
+> [English](../mobile-automation-design.md) | **中文**
 
 # 手机端自动化方案设计（Appium / AutoJS 对照与选型）
 

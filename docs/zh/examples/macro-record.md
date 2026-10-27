@@ -1,4 +1,4 @@
-> [English](macro-record.en.md) | **中文**
+> [English](../../examples/macro-record.md) | **中文**
 
 # 宏录制
 

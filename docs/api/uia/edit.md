@@ -1,10 +1,10 @@
-> [中文](edit.md) | **English**
+> [中文](../../zh/api/uia/edit.md) | **English**
 
 # UIA Edit
 
 This document is lengthy (699 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [edit.md](edit.md) for the original.
+The section outline below mirrors the Chinese source document; see [edit.md](../../zh/api/uia/edit.md) for the original.
 
 - 查找编辑框
   - 按名称查找

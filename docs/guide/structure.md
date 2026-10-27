@@ -1,4 +1,4 @@
-> [中文](structure.md) | **English**
+> [中文](../zh/guide/structure.md) | **English**
 
 # Project Directory Structure
 

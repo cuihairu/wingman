@@ -1,10 +1,10 @@
-> [中文](notify.md) | **English**
+> [中文](../zh/api/notify.md) | **English**
 
 # Notify
 
 This document is lengthy (429 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [notify.md](notify.md) for the original.
+The section outline below mirrors the Chinese source document; see [notify.md](../zh/api/notify.md) for the original.
 
 - 模块概述
 - 调试日志

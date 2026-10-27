@@ -1,10 +1,10 @@
-> [中文](window.md) | **English**
+> [中文](../zh/api/window.md) | **English**
 
 # Window
 
 This document is lengthy (509 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [window.md](window.md) for the original.
+The section outline below mirrors the Chinese source document; see [window.md](../zh/api/window.md) for the original.
 
 - 模块概述
   - 窗口句柄（HWND）

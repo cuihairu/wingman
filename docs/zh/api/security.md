@@ -1,4 +1,4 @@
-> [English](security.en.md) | **中文**
+> [English](../../api/security.md) | **中文**
 
 # API: wingman.security
 

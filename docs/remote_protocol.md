@@ -1,4 +1,4 @@
-> [中文](remote_protocol.md) | **English**
+> [中文](zh/remote_protocol.md) | **English**
 
 # Wingman Remote Control Protocol Document
 
@@ -71,7 +71,7 @@ RPC.
 
 | Legacy action (deprecated) | Current counterpart |
 |------|------|
-| ping | No agent command with the same name. Keep-alive is handled on the Go orchestrator side: `GET /api/v1/health` (requires Bearer, returns `{"status":"ok"}`) and the **protocol-level** Ping/Pong of the Dashboard WS (30s interval, not JSON frames, see [protocols.md](protocols.md) §③) |
+| ping | No agent command with the same name. Keep-alive is handled on the Go orchestrator side: `GET /api/v1/health` (requires Bearer, returns `{"status":"ok"}`) and the **protocol-level** Ping/Pong of the Dashboard WS (30s interval, not JSON frames, see [protocols.md](./protocols.md) §③) |
 | get_version | No agent command with the same name, and no version query endpoint on the orchestrator side (`/api/v1/health` only returns status, `/api/v1/status` only aggregates scripts/windows/resources). Version information only exists in the auto-update service plane: `GET /api/v1/update/latest` (public read-only manifest, containing version/url/sha256) |
 | capture_screen | `screenshot.capture` (same name for the server→agent command and the local IPC RPC) |
 | get_pixel / find_color / find_image | Script API `wingman.screen.getPixel` / `wingman.vision.findColor` / `wingman.vision.findImage` |

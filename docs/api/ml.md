@@ -1,10 +1,10 @@
-> [中文](ml.md) | **English**
+> [中文](../zh/api/ml.md) | **English**
 
 # ML/ONNX
 
 This document is lengthy (522 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [ml.md](ml.md) for the original.
+The section outline below mirrors the Chinese source document; see [ml.md](../zh/api/ml.md) for the original.
 
 - 模块概述
 - 查询执行提供器

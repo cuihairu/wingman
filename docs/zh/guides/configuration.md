@@ -1,4 +1,4 @@
-> [English](configuration.en.md) | **中文**
+> [English](../../guides/configuration.md) | **中文**
 
 # 配置管理指南
 

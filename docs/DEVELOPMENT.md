@@ -1,4 +1,4 @@
-> **English** | [中文](zh/DEVELOPMENT)
+> **English** | [中文](zh/DEVELOPMENT.md)
 
 # Wingman Development Guide
 
@@ -31,7 +31,7 @@ flows:
 - `.vscode/launch.json` contains EmmyLua attach and current-script launch configs.
 - `examples/wingman-scripts.code-workspace` is a lightweight workspace for script authors.
 
-See [VS Code 开发环境](development-environment.md) for the full workflow.
+See [VS Code Development Environment](development-environment.md) for the full workflow.
 
 ## Project Structure
 
@@ -159,43 +159,44 @@ REM Run tests
 ctest --test-dir build-tests -C Debug --output-on-failure
 ```
 
-`WINGMAN_BUILD_TESTS=ON` 会自动启用标准 C++ 测试集；Lua 绑定层测试仍然按需通过 `BUILD_LUA_TESTS=ON` 单独打开。
-建议测试使用单独的 `build-tests/` 目录，避免覆盖已有的开发构建目录。
+`WINGMAN_BUILD_TESTS=ON` automatically enables the standard C++ test suite; Lua binding-layer tests are still toggled separately on demand via `BUILD_LUA_TESTS=ON`.
+Use a dedicated `build-tests/` directory for tests so an existing development build directory is not clobbered.
 
-### Linux X11 测试可选依赖
+### Optional Linux X11 test dependencies
 
-Linux 上 `platform_x11_test.cpp` 的用例依赖三个**运行期可选依赖**（不在
-vcpkg 清单内，由系统包管理器提供）。缺失时对应用例 `GTEST_SKIP` 而非
-fail，其余用例不受影响：
+On Linux the `platform_x11_test.cpp` cases depend on three **runtime-optional dependencies** (not in the
+vcpkg manifest; provided by the system package manager). When one is missing the affected cases `GTEST_SKIP`
+instead of failing; the remaining cases are unaffected:
 
-| 依赖 | 覆盖用例 | 缺失时的行为 |
+| Dependency | Covered cases | Behavior when missing |
 | --- | --- | --- |
-| Xvfb | `X11PlatformTest.*` 全部 | 无可用 DISPLAY 时 SetUp 统一 skip |
-| openbox | `X11WmIntegrationTest.*`（真实 WM 集成） | 与 Xvfb 一并检测，缺失 skip |
-| xclip | `X11PlatformTest.ClipboardTextRoundtrip` | setText 走优雅失败路径，skip |
+| Xvfb | all `X11PlatformTest.*` | SetUp skips uniformly when no DISPLAY is available |
+| openbox | `X11WmIntegrationTest.*` (real-WM integration) | probed together with Xvfb; skipped when missing |
+| xclip | `X11PlatformTest.ClipboardTextRoundtrip` | setText takes the graceful-failure path; skipped |
 
-安装（Debian/Ubuntu）：
+Install (Debian/Ubuntu):
 
 ```bash
 sudo apt install xvfb openbox xclip
 ```
 
-`X11PlatformTest` 需要一个已运行的 X display（真桌面或手动起 Xvfb）：
+`X11PlatformTest` needs a running X display (a real desktop or a manually started Xvfb):
 
 ```bash
 Xvfb -screen 0 1280x800x24 :99 &
 DISPLAY=:99 ctest --test-dir build-runtime -R X11Platform --output-on-failure
 ```
 
-`X11WmIntegrationTest` 无需手动准备 display——测试进程自起自毁专用
-Xvfb + openbox 子进程（flock 串行化、专用 display 号、崩溃陪葬），只要
-两个二进制在 PATH 上即可；它也不读写既有 DISPLAY，不会影响并行用例。
+`X11WmIntegrationTest` needs no manually prepared display — the test process starts and tears down its own
+dedicated Xvfb + openbox subprocesses (flock serialization, a dedicated display number, crash reaping). The
+two binaries only have to be on PATH; the test neither reads nor writes the existing DISPLAY, so parallel
+cases are unaffected.
 
-#### Linux OpenCV vision（可选）
+#### Linux OpenCV vision (optional)
 
-`findImage`（模板匹配）、`Bitmap` PNG 编解码、`screenshot.capture` 的 JPEG
-编码依赖 OpenCV（vcpkg `vision` feature，Linux 开发构建按需启用；Windows
-构建经顶层 manifest 依赖恒启用）：
+`findImage` (template matching), the `Bitmap` PNG codec and the JPEG encoding of `screenshot.capture`
+depend on OpenCV (the vcpkg `vision` feature, enabled on demand for Linux development builds; Windows
+builds enable it permanently via the top-level manifest):
 
 ```bash
 cmake -S . -B build-runtime -G Ninja \
@@ -205,10 +206,10 @@ cmake -S . -B build-runtime -G Ninja \
   # ...其余参数同现有配置
 ```
 
-首次启用会源码编译 opencv4（约 15-30 分钟）。不启用时 Linux 构建走
-`vision_stub.cpp`：`findImage` 恒 false、`screenshot.capture` 返回明确
-错误信封（相关测试 GTEST_SKIP / 断言降级路径）。CI Linux job 不启用该
-feature（compat 构建不编 lib/wingman，不装 OpenCV）。
+The first enablement compiles opencv4 from source (about 15-30 minutes). When it is disabled the Linux build
+uses `vision_stub.cpp`: `findImage` always returns false and `screenshot.capture` returns a well-defined error
+envelope (affected tests GTEST_SKIP / degraded-assertion paths). The CI Linux job does not enable this feature
+(the compat build does not compile lib/wingman and does not install OpenCV).
 
 ### Lua Tests
 
@@ -217,11 +218,11 @@ REM Requires LuaRocks and Busted (see above)
 examples\lua_scripts\run-lua-tests.cmd
 ```
 
-### GUI ↔ Runtime 跨语言集成测试（Linux）
+### GUI ↔ Runtime cross-language integration tests (Linux)
 
-GUI 侧 Rust `IpcClient` ↔ C++ runtime `LocalIpcServer` 的本地 IPC 端到端测试
-（`apps/gui/src-tauri/src/ipc/integration_tests.rs`）。每个用例 spawn 真 runtime
-子进程（`start --standalone`，socket 注入临时目录），走 UDS 帧协议断言。
+End-to-end local IPC tests between the GUI-side Rust `IpcClient` and the C++ runtime `LocalIpcServer`
+(`apps/gui/src-tauri/src/ipc/integration_tests.rs`). Each case spawns a real runtime subprocess
+(`start --standalone`, socket injected into a temp directory) and asserts over the UDS frame protocol.
 
 ```bash
 # 1. 构建 runtime（一次即可；Linux 无 Lua/X 运行期依赖）
@@ -236,8 +237,8 @@ cmake --build build-runtime --target wingman-agent
 cargo test --manifest-path apps/gui/src-tauri/Cargo.toml integration_tests -- --nocapture
 ```
 
-runtime 二进制缺失时用例打印 `SKIP:` 跳过（不 fail）。CI Linux job 只构建
-proto+transport，故本测试不进 CI，属开发机验证。
+When the runtime binary is missing the cases print `SKIP:` and skip (they do not fail). The CI Linux job only
+builds proto+transport, so this test is not part of CI; it is a development-machine verification.
 
 ## CI/CD
 

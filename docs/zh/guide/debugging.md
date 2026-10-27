@@ -1,4 +1,4 @@
-> [English](debugging.en.md) | **中文**
+> [English](../../guide/debugging.md) | **中文**
 
 # 调试指南
 

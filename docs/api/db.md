@@ -1,10 +1,10 @@
-> [中文](db.md) | **English**
+> [中文](../zh/api/db.md) | **English**
 
 # Database
 
 This document is lengthy (764 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [db.md](db.md) for the original.
+The section outline below mirrors the Chinese source document; see [db.md](../zh/api/db.md) for the original.
 
 - 设计约束
 - 路径映射

@@ -1,4 +1,4 @@
-> [English](file.en.md) | **中文**
+> [English](../../api/file.md) | **中文**
 
 # API: wingman.file
 

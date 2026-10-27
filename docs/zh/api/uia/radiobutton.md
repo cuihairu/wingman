@@ -1,4 +1,4 @@
-> [English](radiobutton.en.md) | **中文**
+> [English](../../../api/uia/radiobutton.md) | **中文**
 
 # API: UIA RadioButton
 

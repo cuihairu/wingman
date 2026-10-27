@@ -1,4 +1,4 @@
-> [中文](macro-record.md) | **English**
+> [中文](../zh/examples/macro-record.md) | **English**
 
 # Macro Record
 

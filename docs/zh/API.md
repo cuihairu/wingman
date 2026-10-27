@@ -1,4 +1,4 @@
-> [English](API.en.md) | **中文**
+> [English](../API.md) | **中文**
 
 # Wingman Runtime Local IPC API
 

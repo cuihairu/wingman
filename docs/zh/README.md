@@ -1,4 +1,4 @@
-> [English](README.en.md) | **中文**
+> [English](../README.md) | **中文**
 
 # Wingman 文档
 
@@ -11,10 +11,10 @@
 | 文档 | 说明 |
 |------|------|
 | [快速开始](guide/getting-started.md) | 本地编译、运行第一个脚本 |
-| [构建指南](../BUILD.md) | 平台依赖、vcpkg、测试与故障排查（仓库根目录） |
+| [构建指南](../../BUILD.md) | 平台依赖、vcpkg、测试与故障排查（仓库根目录） |
 | [VS Code 开发环境](development-environment.md) | Lua/Python 补全、调试和任务配置 |
 | [配置管理实践](guides/configuration.md) | INI/JSON 配置管理实践 |
-| [Android Agent](../apps/android/README.md) | APK 获取与安装、能力清单、真机验收步骤（仓库根目录） |
+| [Android Agent](../../apps/android/README.md) | APK 获取与安装、能力清单、真机验收步骤（仓库根目录） |
 | [Android Agent](android-agent.md) | Android 端侧 Agent（实验性），出站 TCP 连 Go 中控，Dashboard 统一下发与查看 |
 
 ### API 参考
@@ -45,7 +45,7 @@
 | 文档 | 说明 |
 |------|------|
 | [架构概览](architecture.md) | Runtime、GUI、Orchestrator 的边界 |
-| [架构决策](architecture-decisions.md) | 关键设计决策记录 |
+| [架构决策](../architecture-decisions.md) | 关键设计决策记录 |
 | [平台支持](platforms.md) | 支持矩阵、各平台 API 适用性与环境差异 |
 | [平台抽象设计](platform-abstraction-design.md) | 跨平台抽象层设计 |
 | [UIA 抽象设计](uia-abstraction-design.md) | UI Automation 抽象层设计 |
@@ -87,4 +87,4 @@
 
 ---
 
-**[返回首页](../README.md)**
+**[返回首页](README.md)**

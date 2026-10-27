@@ -1,4 +1,4 @@
-> [English](asset-sync.en.md) | **中文**
+> [English](../../guides/asset-sync.md) | **中文**
 
 # 资产下发指南（模板图片等静态资源）
 

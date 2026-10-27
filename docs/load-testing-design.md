@@ -1,4 +1,4 @@
-> [中文](load-testing-design.md) | **English**
+> [中文](zh/load-testing-design.md) | **English**
 
 # Wingman Tide-Scale Load Testing Architecture Design (Proposal)
 

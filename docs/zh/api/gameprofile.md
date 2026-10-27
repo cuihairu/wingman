@@ -1,4 +1,4 @@
-> [English](gameprofile.en.md) | **中文**
+> [English](../../api/gameprofile.md) | **中文**
 
 # API: wingman.gameprofile
 

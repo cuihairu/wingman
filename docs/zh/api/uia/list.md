@@ -1,4 +1,4 @@
-> [English](list.en.md) | **中文**
+> [English](../../../api/uia/list.md) | **中文**
 
 # API: UIA List
 

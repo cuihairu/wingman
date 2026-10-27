@@ -1,4 +1,4 @@
-> [中文](android-restricted-settings.md) | **English**
+> [中文](../zh/guides/android-restricted-settings.md) | **English**
 
 # Android Agent Restricted-Settings Guide (Android 13+, A3)
 

@@ -1,4 +1,4 @@
-> [English](fsm.en.md) | **中文**
+> [English](../../api/fsm.md) | **中文**
 
 # API: wingman.fsm
 

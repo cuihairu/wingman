@@ -1,10 +1,10 @@
-> [中文](button.md) | **English**
+> [中文](../../zh/api/uia/button.md) | **English**
 
 # UIA Button
 
 This document is lengthy (531 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [button.md](button.md) for the original.
+The section outline below mirrors the Chinese source document; see [button.md](../../zh/api/uia/button.md) for the original.
 
 - 查找按钮
   - 按名称查找按钮

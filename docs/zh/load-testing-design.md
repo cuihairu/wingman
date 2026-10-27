@@ -1,4 +1,4 @@
-> [English](load-testing-design.en.md) | **中文**
+> [English](../load-testing-design.md) | **中文**
 
 # Wingman 潮水级压测架构设计（提案）
 

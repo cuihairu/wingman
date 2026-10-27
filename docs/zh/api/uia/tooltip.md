@@ -1,5 +1,4 @@
-> [English](tooltip.en.md) | **中文**
-
+> [English](../../../api/uia/tooltip.md) | **中文**
 # API: UIA ToolTip
 
 工具提示（ToolTip）控件显示鼠标悬停时的帮助信息。工具提示是临时性控件，只有在鼠标悬停在某个元素上时才会出现。

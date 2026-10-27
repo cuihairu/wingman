@@ -1,5 +1,4 @@
-> [English](tab.en.md) | **中文**
-
+> [English](../../../api/uia/tab.md) | **中文**
 # API: UIA Tab
 
 标签页（Tab）控件用于组织多页内容，常见于设置界面、分类浏览等场景。

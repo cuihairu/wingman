@@ -1,4 +1,4 @@
-> [English](uia-abstraction-design.en.md) | **中文**
+> [English](../uia-abstraction-design.md) | **中文**
 
 # UI 自动化抽象层设计
 

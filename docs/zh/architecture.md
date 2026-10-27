@@ -1,4 +1,4 @@
-> [English](architecture.en.md) | **中文**
+> [English](../architecture.md) | **中文**
 
 # Wingman 项目架构
 

@@ -1,4 +1,4 @@
-> [中文](checkbox.md) | **English**
+> [中文](../../zh/api/uia/checkbox.md) | **English**
 
 # API: UIA CheckBox
 
@@ -165,7 +165,7 @@ end
 - "Select All" checkbox: On when all children are checked, Off when none are checked, Indeterminate when some are checked
 - Parent nodes in tree structures
 
-> `set_toggle_state(state)` (explicit three-state modeling of 'On'/'Off'/'Indeterminate') is not yet implemented; the Indeterminate state cannot be set directly — for two-state scenarios use `set_checked(bool)`. Currently available operations: `set_checked` / `click()` toggling and the general methods (see [Overview](./index.md#uielement-通用方法)).
+> `set_toggle_state(state)` (explicit three-state modeling of 'On'/'Off'/'Indeterminate') is not yet implemented; the Indeterminate state cannot be set directly — for two-state scenarios use `set_checked(bool)`. Currently available operations: `set_checked` / `click()` toggling and the general methods (see [Overview](../../zh/api/uia/index.md#uielement-通用方法)).
 
 ---
 
@@ -280,4 +280,4 @@ end
 
 ### CheckBox properties
 
-The `get_info()` return key set is documented in [Overview](./index.md#uielement-通用方法) (`name`/`id`/`className`/`role`/`text`/`is_enabled`/`is_visible`/`has_focus`/`bounds`), which contains **no** checked-state field (no `toggle_state`/`is_toggle_pattern`).
+The `get_info()` return key set is documented in [Overview](../../zh/api/uia/index.md#uielement-通用方法) (`name`/`id`/`className`/`role`/`text`/`is_enabled`/`is_visible`/`has_focus`/`bounds`), which contains **no** checked-state field (no `toggle_state`/`is_toggle_pattern`).

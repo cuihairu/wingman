@@ -1,4 +1,4 @@
-> [English](inbox.en.md) | **中文**
+> [English](../../api/inbox.md) | **中文**
 
 # API: wingman.inbox
 

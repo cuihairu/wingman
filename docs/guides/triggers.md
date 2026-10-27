@@ -1,10 +1,10 @@
-> [中文](triggers.md) | **English**
+> [中文](../zh/guides/triggers.md) | **English**
 
 # Trigger System
 
 This document is lengthy (913 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [triggers.md](triggers.md) for the original.
+The section outline below mirrors the Chinese source document; see [triggers.md](../zh/guides/triggers.md) for the original.
 
 - 目录
 - 概述

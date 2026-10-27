@@ -1,4 +1,4 @@
-> [中文](pixel-detection.md) | **English**
+> [中文](../zh/examples/pixel-detection.md) | **English**
 
 # Pixel Detection
 

@@ -1,4 +1,4 @@
-> [English](ios-agent-design.en.md) | **中文**
+> [English](../ios-agent-design.md) | **中文**
 
 # iOS 支持设计（I1 主机控，远期可选）
 

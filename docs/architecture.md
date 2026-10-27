@@ -1,4 +1,4 @@
-> [中文](architecture.md) | **English**
+> [中文](zh/architecture.md) | **English**
 
 # Wingman Architecture
 

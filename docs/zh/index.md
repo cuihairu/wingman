@@ -75,7 +75,7 @@ if (typeof window !== 'undefined') {{
 }}
 </script>
 
-> [English](index.en.md) | **中文**
+> [English](../index.md) | **中文**
 
 
 ## 简介

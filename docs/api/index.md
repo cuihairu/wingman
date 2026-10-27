@@ -1,4 +1,4 @@
-> [中文](index.md) | **English**
+> [中文](../zh/api/index.md) | **English**
 
 # API Reference
 
@@ -196,31 +196,31 @@ See the [Data Types reference](./types.md) for the various objects and data stru
 
 Foundational operation modules providing core functionality such as screen, input, window, and process.
 
-- [screen](./screen.md) - Screen capture, pixel lookup, image matching
-- [input](./input.md) - Mouse clicks, movement, keyboard input
-- [window](./window.md) - Finding, activating, and inspecting windows
-- [process](./process.md) - Starting, finding, and terminating processes
-- [system](./system.md) - Getting system information
+- [screen](../zh/api/screen.md) - Screen capture, pixel lookup, image matching
+- [input](../zh/api/input.md) - Mouse clicks, movement, keyboard input
+- [window](../zh/api/window.md) - Finding, activating, and inspecting windows
+- [process](../zh/api/process.md) - Starting, finding, and terminating processes
+- [system](../zh/api/system.md) - Getting system information
 - [uia](./uia/) - UI Automation control interaction
 
 ### Vision and AI
 
 Computer vision and AI-related functionality.
 
-- [vision](./vision.md) - Color detection, edge detection, contour recognition
+- [vision](../zh/api/vision.md) - Color detection, edge detection, contour recognition
 - [ocr](./ocr.md) - Text recognition (OCR, optional dependency)
-- [ml](./ml.md) - ONNX model loading and input/output metadata queries (optional dependency)
+- [ml](../zh/api/ml.md) - ONNX model loading and input/output metadata queries (optional dependency)
 
 ### Automation Systems
 
 Advanced automation orchestration.
 
-- [event](./event.md) - Event subscribe/publish system
+- [event](../zh/api/event.md) - Event subscribe/publish system
 - [fsm](./fsm.md) - Finite state machine (FSM)
-- [task](./task.md) - Task orchestration and execution
-- [script](./script.md) - Script management control plane (listing, start/stop/reload, environment variables)
-- [notify](./notify.md) - Notification system (logging, Toast, Webhook, tray intents)
-- [smarttrigger](./smart-trigger.md) - Smart triggers
+- [task](../zh/api/task.md) - Task orchestration and execution
+- [script](../zh/api/script.md) - Script management control plane (listing, start/stop/reload, environment variables)
+- [notify](../zh/api/notify.md) - Notification system (logging, Toast, Webhook, tray intents)
+- [smarttrigger](../zh/api/smart-trigger.md) - Smart triggers
 - [bt](./behavior-tree.md) - Behavior tree engine
 - [hotkey](./hotkey.md) - Global hotkey listening (polling-based, Python callbacks)
 - [systemwatch](./systemwatch.md) - System event source: process/window change observation (polling-based, Python callbacks)
@@ -229,8 +229,8 @@ Advanced automation orchestration.
 
 Network requests and communication.
 
-- [http](./http.md) - HTTP client (GET, POST, downloads)
-- [transport](./transport.md) - TCP client, server, and UDP sockets
+- [http](../zh/api/http.md) - HTTP client (GET, POST, downloads)
+- [transport](../zh/api/transport.md) - TCP client, server, and UDP sockets
 
 ### Serialization
 
@@ -238,38 +238,38 @@ Data serialization and format conversion.
 
 - [serialize](./serialize.md) - Serialization format overview (json, yaml, ini selection guide)
 - [json](./json.md) - JSON parsing and serialization
-- [ini](./ini.md) - INI configuration file parsing and encoding
+- [ini](../zh/api/ini.md) - INI configuration file parsing and encoding
 
 ### Data Storage
 
 Local data persistence and caching.
 
 - [data](./data.md) - Data storage overview (kv vs db selection guide)
-- [kv](./kv.md) - Persistent key-value store (Redis-like API)
-- [db](./db.md) - Local SQLite database (SQL and ORM supported)
+- [kv](../zh/api/kv.md) - Persistent key-value store (Redis-like API)
+- [db](../zh/api/db.md) - Local SQLite database (SQL and ORM supported)
 
 ### Utilities
 
 Tool modules that assist automation scripts.
 
-- [human](./human.md) - Human-like simulation (random delays, irregular input)
-- [perf](./perf.md) - Performance monitoring
+- [human](../zh/api/human.md) - Human-like simulation (random delays, irregular input)
+- [perf](../zh/api/perf.md) - Performance monitoring
 - [config](./config.md) - Configuration management
 - [verification](./verification.md) - CAPTCHA recognition, TOTP
 - [gameprofile](./gameprofile.md) - Game configuration profiles
 - [debugger](./debugger.md) - Debugger
 - [util](./util.md) - Utility functions (sleep, random numbers, etc.)
 - [timer](./timer.md) - Timer (one-shot/periodic callbacks, sleep)
-- [file](./file.md) - File IO (read/write, move/copy, directory operations)
+- [file](../zh/api/file.md) - File IO (read/write, move/copy, directory operations)
 
 ### Security and Encryption
 
 Security- and encryption-related functionality.
 
 - [security](./security.md) - Security module
-- [crypto](./crypto.md) - Cryptographic functions
-- [clipboard](./clipboard.md) - Clipboard read/write
-- [macro](./macro.md) - Macro recording and playback
+- [crypto](../zh/api/crypto.md) - Cryptographic functions
+- [clipboard](../zh/api/clipboard.md) - Clipboard read/write
+- [macro](../zh/api/macro.md) - Macro recording and playback
 - [filewatcher](./filewatcher.md) - File system watching
 
 ### Orchestration and Collaboration
@@ -277,7 +277,7 @@ Security- and encryption-related functionality.
 Multi-instance collaboration and orchestration.
 
 - [orchestration](./orchestration.md) - Orchestration control
-- [inbox](./inbox.md) - Message inbox
-- [team](./team.md) - Team orchestration
-- [node](../guide/config.md) - Node status and heartbeat (documented in the "Node module (node)" section of the configuration system)
-- [script](./script.md) - Script management control plane
+- [inbox](../zh/api/inbox.md) - Message inbox
+- [team](../zh/api/team.md) - Team orchestration
+- [node](../zh/guide/config.md) - Node status and heartbeat (documented in the "Node module (node)" section of the configuration system)
+- [script](../zh/api/script.md) - Script management control plane

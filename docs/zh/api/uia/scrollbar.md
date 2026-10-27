@@ -1,4 +1,4 @@
-> [English](scrollbar.en.md) | **中文**
+> [English](../../../api/uia/scrollbar.md) | **中文**
 
 # API: UIA ScrollBar
 

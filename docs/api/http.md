@@ -1,10 +1,10 @@
-> [中文](http.md) | **English**
+> [中文](../zh/api/http.md) | **English**
 
 # HTTP
 
 This document is lengthy (400 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [http.md](http.md) for the original.
+The section outline below mirrors the Chinese source document; see [http.md](../zh/api/http.md) for the original.
 
 - 模块概述
   - 响应格式

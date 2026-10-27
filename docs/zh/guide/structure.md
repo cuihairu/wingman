@@ -1,5 +1,4 @@
-> [English](structure.en.md) | **中文**
-
+> [English](../../guide/structure.md) | **中文**
 # 项目目录结构
 
 ```

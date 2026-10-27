@@ -41,7 +41,7 @@ features:
     details: Gesture injection, screen capture, color and image search, remote screenshots, with the APK distributed alongside nightly
 
 ---
-> [中文](index.md) | **English**
+> [中文](zh/index.md) | **English**
 
 ## Introduction
 
@@ -148,7 +148,7 @@ From the nightly Release, take `wingman-*-android-arm64.apk` (debug signed):
 
 For detailed acceptance steps and known boundaries see
 [apps/android/README.md](https://github.com/cuihairu/wingman/blob/main/apps/android/README.md),
-for the design and protocol see [Android Agent Design](./android-agent-design.md),
+for the design and protocol see [Android Agent Design](./zh/android-agent-design.md),
 for per-model keep-alive see [Android Agent Keep-alive](/guides/android-keep-alive),
 and for restricted settings see [Android Agent Restricted Settings](/guides/android-restricted-settings).
 

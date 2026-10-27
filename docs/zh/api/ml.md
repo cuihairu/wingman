@@ -1,4 +1,4 @@
-> [English](ml.en.md) | **中文**
+> [English](../../api/ml.md) | **中文**
 
 # API: wingman.ml
 

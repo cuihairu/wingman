@@ -1,4 +1,4 @@
-> [English](srt-template.en.md) | **中文**
+> [English](../../tutorials/srt-template.md) | **中文**
 
 # 字幕（SRT）制作模板
 

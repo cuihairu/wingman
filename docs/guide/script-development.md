@@ -2,7 +2,7 @@
 title: Script Development Guide
 ---
 
-> [中文](script-development.md) | **English**
+> [中文](../zh/guide/script-development.md) | **English**
 
 # Script Development Guide
 
@@ -83,7 +83,7 @@ See the "API" section in the sidebar for the complete API. The most used modules
 
 ## Sandbox Mode
 
-Both local execution paths — the CLI `wingman-agent script` command and the local GUI (Standalone mode) — **force sandboxed execution** (`apps/agent/src/commands/script_command.cpp` and `apps/agent/src/standalone_mode.cpp` hard-code `sandboxed = true`). When loading via the `wingman.script.load` API, the `sandboxed` config can be specified separately (see the [script API](../api/script.md)). The sandbox surface of both engines:
+Both local execution paths — the CLI `wingman-agent script` command and the local GUI (Standalone mode) — **force sandboxed execution** (`apps/agent/src/commands/script_command.cpp` and `apps/agent/src/standalone_mode.cpp` hard-code `sandboxed = true`). When loading via the `wingman.script.load` API, the `sandboxed` config can be specified separately (see the [script API](../zh/api/script.md)). The sandbox surface of both engines:
 
 **Lua**:
 
@@ -130,7 +130,7 @@ end
 
 > When you need all matching points, use `wingman.screen.findColors(color, region, tolerance, maxCount?)` instead, which returns an array of points. `window.find` returns a single array `{handle, found}`, just like `findColor`.
 
-For more patterns (image matching, hotkey triggers, HTTP integration, macro record/replay), see [examples](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts) and the [Trigger Guide](../guides/triggers.md).
+For more patterns (image matching, hotkey triggers, HTTP integration, macro record/replay), see [examples](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts) and the [Trigger Guide](../zh/guides/triggers.md).
 
 ## Ways to Run
 
@@ -140,7 +140,7 @@ For more patterns (image matching, hotkey triggers, HTTP integration, macro reco
 | Local GUI | `wingman-agent start` (local capability) + Tauri GUI | Everyday single-machine use with a UI |
 | Remote orchestration | `wingman-agent start` (agent capability) → Go server → Dashboard | Centralized multi-machine control |
 
-For the control paths and architecture constraints of the three modes, see [Getting Started - Run Modes](./getting-started.md#运行模式) and [Communication Protocols](../protocols.md).
+For the control paths and architecture constraints of the three modes, see [Getting Started - Run Modes](../zh/guide/getting-started.md#运行模式) and [Communication Protocols](../protocols.md).
 
 ## Function Naming Conventions
 
@@ -162,7 +162,7 @@ A few functions are registered directly in snake_case (e.g. `db.table_insert`, `
 
 ## Next Steps
 
-- [Getting Started](./getting-started.md)
-- [API Reference](../api/script.md)
+- [Getting Started](../zh/guide/getting-started.md)
+- [API Reference](../zh/api/script.md)
 - [Example Scripts](https://github.com/cuihairu/wingman/tree/main/examples/lua_scripts)
 - [Communication Protocols](../protocols.md)

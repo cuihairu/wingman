@@ -1,4 +1,4 @@
-> **English** | [中文](zh/architecture-decisions)
+> **English** | [中文](zh/architecture-decisions.md)
 
 # Wingman Architecture Decisions
 

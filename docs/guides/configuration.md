@@ -1,10 +1,10 @@
-> [中文](configuration.md) | **English**
+> [中文](../zh/guides/configuration.md) | **English**
 
 # Configuration Management
 
 This document is lengthy (1349 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [configuration.md](configuration.md) for the original.
+The section outline below mirrors the Chinese source document; see [configuration.md](../zh/guides/configuration.md) for the original.
 
 - 目录
 - 概述

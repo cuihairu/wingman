@@ -1,10 +1,10 @@
-> [中文](script.md) | **English**
+> [中文](../zh/api/script.md) | **English**
 
 # Script
 
 This document is lengthy (562 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [script.md](script.md) for the original.
+The section outline below mirrors the Chinese source document; see [script.md](../zh/api/script.md) for the original.
 
 - 设计约束
 - 函数列表

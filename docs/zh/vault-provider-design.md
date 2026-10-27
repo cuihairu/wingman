@@ -1,4 +1,4 @@
-> [English](vault-provider-design.en.md) | **中文**
+> [English](../vault-provider-design.md) | **中文**
 
 # 密钥保险箱 Provider 抽象与凭据接入点盘点
 

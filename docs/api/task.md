@@ -1,10 +1,10 @@
-> [中文](task.md) | **English**
+> [中文](../zh/api/task.md) | **English**
 
 # Task
 
 This document is lengthy (497 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [task.md](task.md) for the original.
+The section outline below mirrors the Chinese source document; see [task.md](../zh/api/task.md) for the original.
 
 - 模块概述
 - 提交任务

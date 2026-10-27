@@ -1,4 +1,4 @@
-> [English](platforms.en.md) | **中文**
+> [English](../platforms.md) | **中文**
 
 # 平台支持与 API 适用性
 
@@ -21,22 +21,22 @@ CI 未必测，CI 编译了的功能未必在所有平台有实现，而用户�
    哪个承诺没有 CI 兜底必须如实可见（见该节的诚实标注）；
 3. **代码按平台条件编译**——平台宏只允许出现在平台租户目录
    （`lib/wingman/src/platform/`，由 `scripts/check_platform_boundary.sh` 强制，
-   见 [架构决策 · Platform Macro Boundary](architecture-decisions.md)），
+   见 [架构决策 · Platform Macro Boundary](../architecture-decisions.md)），
    这保证了"一个平台有没有某能力"永远可以在租户目录里找到唯一事实源。
 
 ## 平台支持矩阵
 
 | 平台 | 状态 | 架构 | 最低版本要求 | 获取方式 | 已知限制 |
 |------|------|------|--------------|----------|----------|
-| Windows | 已支持 | x86_64 | Windows 10 / Server 2016+ | [Nightly](https://github.com/cuihairu/wingman/releases/tag/nightly) 或 Release 的 `wingman-*-windows-x64.zip`；源码构建见 [BUILD](../BUILD.md)（vcpkg 三元组 `x64-windows-static`） | OCR / ML / Python 引擎为可选开关，默认关闭（见 [API 适用性](#api-适用性标注)） |
+| Windows | 已支持 | x86_64 | Windows 10 / Server 2016+ | [Nightly](https://github.com/cuihairu/wingman/releases/tag/nightly) 或 Release 的 `wingman-*-windows-x64.zip`；源码构建见 [BUILD](../../BUILD.md)（vcpkg 三元组 `x64-windows-static`） | OCR / ML / Python 引擎为可选开关，默认关闭（见 [API 适用性](#api-适用性标注)） |
 | Linux | 已支持 | x86_64 | Ubuntu 22.04+（GCC 11+），X11 显示服务 | Nightly / Release 的 `wingman-*-linux-x64.tar.gz`（含 AppImage 与 deb）；源码构建（三元组 `x64-linux`） | 仅 X11；Wayland 需经 XWayland 兼容层，原生 Wayland 未支持；无 UI 自动化后端（见[环境差异](#各环境差异说明)） |
 | macOS | 已支持 | x86_64（Intel）/ arm64（Apple Silicon，仅 agent 单二进制） | macOS 12+（部署目标 `MACOSX_DEPLOYMENT_TARGET=12`） | agent：`wingman-agent-*-macos-{x64,arm64}.tar.gz`（`build-agent.yml` 矩阵含 arm64）；打包（dmg/app/GUI）：`wingman-*-macos-x64.tar.gz`（仅 x64）；源码构建（三元组 `x64-osx`） | 无 OpenCV（`vcpkg.json` 未覆盖 macOS）→ 视觉走 `src/vision_stub.cpp` 存根，找色/找图/找轮廓等恒返回未命中或空值，macOS 上视觉类自动化不可用（见 [API 适用性](#api-适用性标注)）；CI 验证为尽力而为（continue-on-error） |
-| Android | 实验性 | arm64 | Android 9.0+（minSdk 28，targetSdk 34） | Nightly / Release 的 `wingman-*-android-arm64` APK（debug 签名）；源码构建见 [apps/android/README.md](../apps/android/README.md) | 仅 A2 能力面（`wingman.input/screen/vision` 三张 Lua 子表，见下文）；无正式签名；A3 可靠性（开机自启/崩溃自重启/看门狗/保活指引）已于 2026-09-30 落地，正式签名属 A3-P2 |
+| Android | 实验性 | arm64 | Android 9.0+（minSdk 28，targetSdk 34） | Nightly / Release 的 `wingman-*-android-arm64` APK（debug 签名）；源码构建见 [apps/android/README.md](../../apps/android/README.md) | 仅 A2 能力面（`wingman.input/screen/vision` 三张 Lua 子表，见下文）；无正式签名；A3 可靠性（开机自启/崩溃自重启/看门狗/保活指引）已于 2026-09-30 落地，正式签名属 A3-P2 |
 | iOS | 规划中 | arm64 | — | — | 端侧 Agent 不可行（沙箱限制），仅"主机控"路线有设计，见 [iOS 一节](#ios-为什么是-规划中-而不是-支持) |
 
 获取方式的补充说明：Nightly 每日构建自 main 分支，**仅保留当日最新一组**（按提交 sha
 命名，形如 `2026.09.24-nightly-<sha>`）；Release 由 tag 触发，产物经 SHA256SUMS 校验。
-两者均为预发布性质的产物，正式版本号目前停在 v0.1.x（见 [CHANGELOG](../CHANGELOG.md)）。
+两者均为预发布性质的产物，正式版本号目前停在 v0.1.x（见 [CHANGELOG](../../CHANGELOG.md)）。
 
 ## API 适用性标注
 
@@ -192,7 +192,7 @@ selection——写后立即读可能命中旧 owner（实测启动可超过 500m
 ### IPC 与网络
 
 - **IPC 通道三平台不同形**：Windows 命名管道 / Unix 域套接字 / TCP 回退，由工厂按
-  平台选择。本地 UI 控制面遵守[架构决策](architecture-decisions.md)的本地 IPC 约束
+  平台选择。本地 UI 控制面遵守[架构决策](../architecture-decisions.md)的本地 IPC 约束
   （Runtime 不开任何本地 HTTP/WebSocket 服务），因此 IPC 行为差异不会泄漏到远程面。
 - **远程面只有一条**：所有平台的远程控制都经出站 TCP 连 Go Server（Runtime-as-Agent），
   Android 端侧亦然。这是刻意的架构约束，保证"平台差异"止步于执行面，不进入控制面。
@@ -266,7 +266,7 @@ iOS 的状态不是"还没做"，而是"端侧做不了"。App Store 沙箱（Sa
 ## 本机验证命令（Linux 开发环境）
 
 Linux 是当前主力开发平台，以下命令在本仓库根目录可直接使用（其他平台的构建见
-[BUILD](../BUILD.md)，Windows 命令亦在该文档）：
+[BUILD](../../BUILD.md)，Windows 命令亦在该文档）：
 
 ```bash
 # 配置（Debug + 测试；Linux 测试需要 tests feature 与 WINGMAN_BUILD_TESTS）

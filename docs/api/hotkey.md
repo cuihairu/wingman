@@ -1,4 +1,4 @@
-> [中文](hotkey.md) | **English**
+> [中文](../zh/api/hotkey.md) | **English**
 
 # API: wingman.hotkey
 

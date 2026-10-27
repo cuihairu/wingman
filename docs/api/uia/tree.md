@@ -1,10 +1,10 @@
-> [中文](tree.md) | **English**
+> [中文](../../zh/api/uia/tree.md) | **English**
 
 # UIA Tree
 
 This document is lengthy (303 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [tree.md](tree.md) for the original.
+The section outline below mirrors the Chinese source document; see [tree.md](../../zh/api/uia/tree.md) for the original.
 
 - 查找树控件
 - 展开/折叠节点

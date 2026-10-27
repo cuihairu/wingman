@@ -1,4 +1,4 @@
-> [English](event.en.md) | **中文**
+> [English](../../api/event.md) | **中文**
 
 # API: wingman.event
 

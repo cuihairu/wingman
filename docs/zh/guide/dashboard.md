@@ -1,7 +1,7 @@
 ---
 title: Dashboard 使用教程
 ---
-> [English](dashboard.en.md) | **中文**
+> [English](../../guide/dashboard.md) | **中文**
 
 
 # Dashboard 使用教程

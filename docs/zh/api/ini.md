@@ -1,4 +1,4 @@
-> [English](ini.en.md) | **中文**
+> [English](../../api/ini.md) | **中文**
 
 # ini 模块
 

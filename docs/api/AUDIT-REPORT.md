@@ -1,10 +1,10 @@
-> [中文](AUDIT-REPORT.md) | **English**
+> [中文](../zh/api/AUDIT-REPORT.md) | **English**
 
 # API Audit Report
 
 This document is lengthy (140 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [AUDIT-REPORT.md](AUDIT-REPORT.md) for the original.
+The section outline below mirrors the Chinese source document; see [AUDIT-REPORT.md](../zh/api/AUDIT-REPORT.md) for the original.
 
 - 0. 健康度概览
 - 1. 关键查证结论（影响分类判断）

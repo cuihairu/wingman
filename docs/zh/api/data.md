@@ -1,4 +1,4 @@
-> [English](data.en.md) | **中文**
+> [English](../../api/data.md) | **中文**
 
 # 数据存储
 

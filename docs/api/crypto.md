@@ -1,10 +1,10 @@
-> [中文](crypto.md) | **English**
+> [中文](../zh/api/crypto.md) | **English**
 
 # Crypto
 
 This document is lengthy (437 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [crypto.md](crypto.md) for the original.
+The section outline below mirrors the Chinese source document; see [crypto.md](../zh/api/crypto.md) for the original.
 
 - 设计约束
 - 函数列表

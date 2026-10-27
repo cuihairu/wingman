@@ -1,4 +1,4 @@
-> [English](input.en.md) | **中文**
+> [English](../../api/input.md) | **中文**
 
 # API: wingman.input
 

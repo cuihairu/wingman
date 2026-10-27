@@ -1,4 +1,4 @@
-> [English](dependencies.en.md) | **中文**
+> [English](../dependencies.md) | **中文**
 
 # Wingman 依赖说明
 
@@ -34,7 +34,7 @@ cmake -B build \
   -DWINGMAN_BUILD_TESTS=ON
 ```
 
-Windows 快捷脚本：`build-scripts\configure-msvc-ninja.bat` + `build-scripts\build-runtime-msvc-ninja.bat`。完整步骤见 [BUILD.md](../BUILD.md)。
+Windows 快捷脚本：`build-scripts\configure-msvc-ninja.bat` + `build-scripts\build-runtime-msvc-ninja.bat`。完整步骤见 [BUILD.md](../../BUILD.md)。
 
 ## 版本与 baseline
 

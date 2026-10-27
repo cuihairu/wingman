@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### docs（2026-10-27，文档站语言切换与跨语言链接全量归位：双向镜像互指 + 跨语言误指纠正）
+
+- 对 docs 下 240 个 .md（en 121 / zh 119）的语言切换与相对路径做全量体检并归位，口径为「已译页面链英文同级、stub 页链权威原文」：①en 页 `[中文]` 与 zh 页 `[English]` 互指全部改为真实镜像——16 处 zh 侧原为自链（点 English 原地不动，如 zh/api/json.md 的 `json.en.md` 被改写成 `json.md` 仍指向自身），现 zh/api/json.md 落 `../../api/json.md`；②zh 侧仓库根相对路径统一补一级（`../BUILD.md` → `../../BUILD.md`、CHANGELOG、apps/android/README 共 9 处）；③en 侧 6 处仓库根链接被误删 `../`（BUILD/CHANGELOG/apps/android/README/ci.yml）还原；④纠正 58 处跨语言误指——en 侧 54 处把已有英文翻译的页面错链到 zh（api/index.md 的 ocr/fsm/json/types 等模块表、remote_protocol↔protocols 互链、examples 五页、DEVELOPMENT/development-environment、architecture/project-structure、guide/script-development 的 Debugging/Protocols、platforms 的 feasibility/iOS、dependencies 的 crash-reporting、api/types 的 API Index），zh 侧 4 处把指向纠正（zh/README.md 开发指南/开发工具回 zh 工作文档，zh/architecture-decisions 类保留 en 权威原文）；保留 124 处 stub 页链接改指中文权威原文（其中 stub 的自指「see the original」原指向文件自身）。另 docs/DEVELOPMENT.md 测试章节 59 行中文正文译为英文，对齐 root=英文 locale 约定（zh 镜像保持中文）；docs/.vitepress/config.mts 的 nav/sidebar 改为单一 sections 表按 locale 生成（zh/en 文案成对，杜绝两侧漂移），并带上「教程」入口。门禁：`npm --prefix docs run docs:build` 绿（98.6s）；dist 实证 zh/api/json.html 的 English 落 `/wingman/api/json.html`、api/index.html 29 个 zh 模块链（stub）+ ocr/fsm 等英文同级并存、platforms.html 落 `../BUILD.html`、remote_protocol.html 落 `./protocols.html`、index.html 出现教程 nav 链；config.mts nav/sidebar 93 条链接全数解析到既有页面。
+
 ### docs（2026-10-20，文档站补「教程」入口：tutorials 页从纯 URL 直达变可发现）
 
 - 复核发现 docs/tutorials/ 四页（video-storyboard zh/en、srt-template zh/en）虽已构建进站点（dist/tutorials/*.html 在）但 nav 与 sidebar 均无入口，只能猜 URL 直达。docs/.vitepress/config.mts：nav 加「教程」项（指向 /tutorials/video-storyboard）、sidebar 新增 '/tutorials/' 键（分镜脚本 + 字幕制作模板两页）。门禁：`npm --prefix docs run docs:build` 绿（exit 0，20.4s）；构建产物 index.html 出现教程 nav 链接、tutorial 页带侧栏，实证生效。

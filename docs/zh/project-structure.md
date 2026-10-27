@@ -1,4 +1,4 @@
-> [English](project-structure.en.md) | **中文**
+> [English](../project-structure.md) | **中文**
 
 # Wingman 项目目录结构
 
@@ -135,7 +135,7 @@ Runtime 作为主动 Agent 运行，通过 outbound 连接到编排器。
 build-scripts\build-runtime-msvc-ninja.bat
 ```
 
-详细构建步骤请参考 [BUILD.md](../BUILD.md)。
+详细构建步骤请参考 [BUILD.md](../../BUILD.md)。
 
 ## 测试
 

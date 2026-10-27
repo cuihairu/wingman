@@ -1,4 +1,4 @@
-> [中文](debugger.md) | **English**
+> [中文](../zh/api/debugger.md) | **English**
 
 # API: wingman.debugger
 

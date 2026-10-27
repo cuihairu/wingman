@@ -1,4 +1,4 @@
-> [English](triggers.en.md) | **中文**
+> [English](../../guides/triggers.md) | **中文**
 
 # 触发器系统指南
 

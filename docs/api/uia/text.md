@@ -1,4 +1,4 @@
-> [中文](text.md) | **English**
+> [中文](../../zh/api/uia/text.md) | **English**
 
 # API: UIA Text
 

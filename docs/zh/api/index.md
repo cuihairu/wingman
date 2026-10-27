@@ -1,4 +1,4 @@
-> [English](index.en.md) | **中文**
+> [English](../../api/index.md) | **中文**
 
 # API 参考
 

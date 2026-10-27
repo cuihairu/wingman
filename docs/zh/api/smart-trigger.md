@@ -1,4 +1,4 @@
-> [English](smart-trigger.en.md) | **中文**
+> [English](../../api/smart-trigger.md) | **中文**
 
 # API: wingman.smarttrigger
 

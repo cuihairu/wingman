@@ -1,4 +1,4 @@
-> [中文](systemwatch.md) | **English**
+> [中文](../zh/api/systemwatch.md) | **English**
 
 # API: wingman.systemwatch
 

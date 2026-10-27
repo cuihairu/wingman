@@ -2,13 +2,13 @@
 title: Dashboard Tutorial
 ---
 
-> [中文](dashboard.md) | **English**
+> [中文](../zh/guide/dashboard.md) | **English**
 
 # Dashboard Tutorial
 
 This document is lengthy (314 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [dashboard.md](dashboard.md) for the original.
+The section outline below mirrors the Chinese source document; see [dashboard.md](../zh/guide/dashboard.md) for the original.
 
 - 概述
 - 架构关系

@@ -1,4 +1,4 @@
-> [中文](project-structure.md) | **English**
+> [中文](zh/project-structure.md) | **English**
 
 # Wingman Project Directory Structure
 

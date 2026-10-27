@@ -1,10 +1,10 @@
-> [中文](ui-automation.md) | **English**
+> [中文](../zh/examples/ui-automation.md) | **English**
 
 # UI Automation
 
 This document is lengthy (320 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [ui-automation.md](ui-automation.md) for the original.
+The section outline below mirrors the Chinese source document; see [ui-automation.md](../zh/examples/ui-automation.md) for the original.
 
 - 可用 API 速查
 - 场景：自动化记事本

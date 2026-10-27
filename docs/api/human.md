@@ -1,10 +1,10 @@
-> [中文](human.md) | **English**
+> [中文](../zh/api/human.md) | **English**
 
 # Human-like Input
 
 This document is lengthy (421 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [human.md](human.md) for the original.
+The section outline below mirrors the Chinese source document; see [human.md](../zh/api/human.md) for the original.
 
 - 模块概述
 - 随机延迟

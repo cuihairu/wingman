@@ -1,10 +1,10 @@
-> [中文](team.md) | **English**
+> [中文](../zh/api/team.md) | **English**
 
 # Team
 
 This document is lengthy (931 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [team.md](team.md) for the original.
+The section outline below mirrors the Chinese source document; see [team.md](../zh/api/team.md) for the original.
 
 - 模块概述
   - 架构设计

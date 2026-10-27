@@ -1,4 +1,4 @@
-> [English](agent-token-auth-design.en.md) | **中文**
+> [English](../agent-token-auth-design.md) | **中文**
 
 # Agent 注册 Token 认证设计（A3-P1）
 

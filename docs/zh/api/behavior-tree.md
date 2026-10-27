@@ -1,4 +1,4 @@
-> [English](behavior-tree.en.md) | **中文**
+> [English](../../api/behavior-tree.md) | **中文**
 
 # API: wingman.bt
 

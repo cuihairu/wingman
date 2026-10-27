@@ -1,4 +1,4 @@
-> [English](types.en.md) | **中文**
+> [English](../../api/types.md) | **中文**
 
 # API 数据类型参考
 

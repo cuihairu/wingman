@@ -1,4 +1,4 @@
-> [中文](hello-world.md) | **English**
+> [中文](../zh/examples/hello-world.md) | **English**
 
 # Hello World
 

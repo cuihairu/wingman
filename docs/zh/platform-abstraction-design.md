@@ -1,4 +1,4 @@
-> [English](platform-abstraction-design.en.md) | **中文**
+> [English](../platform-abstraction-design.md) | **中文**
 
 # 平台抽象层设计
 

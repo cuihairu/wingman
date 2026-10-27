@@ -1,10 +1,10 @@
-> [中文](ini.md) | **English**
+> [中文](../zh/api/ini.md) | **English**
 
 # INI
 
 This document is lengthy (527 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [ini.md](ini.md) for the original.
+The section outline below mirrors the Chinese source document; see [ini.md](../zh/api/ini.md) for the original.
 
 - 格式规范
 - API 函数

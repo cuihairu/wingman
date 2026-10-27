@@ -1,4 +1,4 @@
-> [English](human.en.md) | **中文**
+> [English](../../api/human.md) | **中文**
 
 # API: wingman.human
 

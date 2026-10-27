@@ -2,13 +2,13 @@
 title: Getting Started
 ---
 
-> [中文](getting-started.md) | **English**
+> [中文](../zh/guide/getting-started.md) | **English**
 
 # Getting Started
 
 This document is lengthy (270 lines in the source) and has no English translation yet.
 
-The section outline below mirrors the Chinese source document; see [getting-started.md](getting-started.md) for the original.
+The section outline below mirrors the Chinese source document; see [getting-started.md](../zh/guide/getting-started.md) for the original.
 
 - 环境要求
   - 开发环境

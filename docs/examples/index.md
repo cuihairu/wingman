@@ -1,4 +1,4 @@
-> [中文](index.md) | **English**
+> [中文](../zh/examples/index.md) | **English**
 
 # Example Scripts
 
@@ -14,7 +14,7 @@ The following examples demonstrate various features of Wingman:
 
 ## UI Automation Example
 
-- [UI Automation](ui-automation.md) - Windows control automation interaction
+- [UI Automation](../zh/examples/ui-automation.md) - Windows control automation interaction
 
 ## Feature Examples (examples/lua_scripts)
 

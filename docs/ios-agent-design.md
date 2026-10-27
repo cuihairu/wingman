@@ -1,4 +1,4 @@
-> [中文](ios-agent-design.md) | **English**
+> [中文](zh/ios-agent-design.md) | **English**
 
 # iOS Support Design (I1 host control, long-term optional)
 

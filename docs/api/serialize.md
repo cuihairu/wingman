@@ -1,4 +1,4 @@
-> [中文](serialize.md) | **English**
+> [中文](../zh/api/serialize.md) | **English**
 
 # Serialization
 
@@ -202,7 +202,7 @@ file=app.log
 ## Module Details
 
 - [json module documentation](./json.md) - Full JSON API
-- [ini module documentation](./ini.md) - Full INI API
+- [ini module documentation](../zh/api/ini.md) - Full INI API
 - yaml module (planned)
 
 ## Format Conversion
