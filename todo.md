@@ -1,6 +1,6 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-10-20
+> 最后更新: 2026-10-28
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
@@ -109,3 +109,7 @@
 - [docs/architecture-decisions.md](./docs/architecture-decisions.md) — 架构决策记录（硬约束）
 - [docs/API.md](./docs/API.md) — API 文档
 - [docs/development-environment.md](./docs/development-environment.md) — VS Code 开发环境
+
+## 审核发现
+
+- [x] 审核发现：本次已更新 2026-10-28 的环境阻塞状态，但文件头“最后更新”仍停留在 2026-10-20，元数据与正文不一致（todo.md:3）— 已修复：头部日期更新为 2026-10-28
