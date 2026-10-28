@@ -566,17 +566,19 @@ local wingman = require('wingman')
 - [x] 用户手册
 - [x] API 参考
 - [x] 远程控制协议文档
-- [ ] 视频教程（卡点：EP01-EP06 实拍/SRT/发布需人工 + EP01 机器侧预采待
-      win-worker 桌面解锁）——脚本包已完备（docs/tutorials/
+- [ ] 视频教程（卡点：EP01-EP06 实拍/SRT/发布需人工 + EP01 机器侧预采
+      **环境级 BLOCKED**）——脚本包已完备（docs/tutorials/
       video-storyboard.md：六集分镜 + 逐字旁白 + 录制规格 + 发布检查单 +
       EP01 机器侧零注入预采配方）
       证据（2026-10-20）：28 个示例脚本实跑 0 失败（luac -p 28/28 过）；
       wingman-agent.exe 已就位 win-worker `D:\wingman-tutorial\agent-bin\`
       （nightly 184c7de zip，sha256 与官方 digest 一致），零注入录屏管线
       （进程创建预载 PowerShell + ffmpeg gdigrab 60fps + ffprobe）逐步全
-      PASS，唯一余卡点=录制窗口期空闲自动锁屏（07:55 门控 LockApp/LogonUI
-      双证 LOCKED），解锁钥匙=用户到场登录或显式授权（涉凭据，不代决），
-      解锁后照配方约 2 分钟出片。过程史（Lua 沙箱 require shim、CLI script
+      PASS；**环境级 BLOCKED 原因**=win-worker 已按用户 2026-10-27 令永久
+      停用（原卡点：录制窗口期空闲自动锁屏，2026-10-20 探针 LockApp/LogonUI
+      双证 LOCKED），手动动作=用户提供已解锁 Windows 真机，或授权人工执行
+      机器侧预采（照配方约 2 分钟出片，涉凭据/桌面会话不代决）；在此前不
+      虚构进展、不生成代餐素材。过程史（Lua 沙箱 require shim、CLI script
       输出接线、EP04 口径、8 脚本 16 处沙箱全局改写、take2 锁屏废片等）
       见 CHANGELOG 2026-10-19/20 条目与 commit e3a84e0/171c281/a74bfca/03781ef
 - [x] 示例脚本库

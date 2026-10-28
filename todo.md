@@ -5,7 +5,7 @@
 
 ## 未完成
 
-- [ ] 视频教程 EP01 机器侧素材预采（wingman-agent.exe 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（2026.10.18-nightly，sha256 已验），零注入录屏管线已验证，详见 ROADMAP.md M8.2）**BLOCKED**：录制窗口期桌面须解锁——win-worker 空闲自动锁屏（2026-10-20 探针 LockApp/LogonUI 双证 LOCKED），等用户到场解锁或显式授权；解锁后可照 docs/tutorials/video-storyboard.md「机器侧预采」配方自行执行，约 2 分钟出片
+- [ ] 视频教程 EP01 机器侧素材预采（wingman-agent.exe 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（2026.10.18-nightly，sha256 已验），零注入录屏管线已验证，详见 ROADMAP.md M8.2）**环境级 BLOCKED**：win-worker 已按用户 2026-10-27 令永久停用，EP01 依赖其桌面解锁；手动动作=用户提供已解锁 Windows 真机，或授权人工执行机器侧预采（照 docs/tutorials/video-storyboard.md「机器侧预采」配方，约 2 分钟出片）；此前不虚构进展、不生成代餐素材
 - [ ] 视频教程人工成片（EP01-EP06 实拍旁白录制/SRT/发布；分镜与逐字旁白 docs/tutorials/video-storyboard.md 已完备，详见 ROADMAP.md M8.2）**BLOCKED**：需人工出镜/配音录制、字幕与发布
 
 ## 已完成
