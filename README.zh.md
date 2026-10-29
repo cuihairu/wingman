@@ -7,6 +7,7 @@
 > [English](README.md) | **中文**
 
 [![OS](https://img.shields.io/badge/OS-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](https://github.com/cuihairu/wingman) [![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman) [![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23) [![Lua](https://img.shields.io/badge/Lua-5.5-000080.svg?logo=lua&logoColor=white)](https://www.lua.org/) [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/) [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 **跨平台可编程自动化 Agent 与远程编排平台**（游戏自动化是第一垂直场景）
 
 C++ + Lua/Python 的自动化 Agent Runtime + Go 远程编排中控
