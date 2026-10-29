@@ -113,6 +113,6 @@
 ## 审核发现
 
 - [x] 审核发现：本次已更新 2026-10-28 的环境阻塞状态，但文件头“最后更新”仍停留在 2026-10-20，元数据与正文不一致（todo.md:3）— 已修复：头部日期更新为 2026-10-28
-- [x] 审核发现：c7730da..HEAD 未发现问题 — 属实：区间含 e73fbbd（docs: fix todo header date）、b4eb5f3（docs: verify c7730da..HEAD audit finding）、d980b0e（docs: bump todo header date to 2026-10-29），均为 docs 改动，无代码/测试改动，无问题（git log --oneline c7730da..HEAD）
+- [x] 审核发现：c7730da..28f492f 未发现问题 — 属实：区间含 e73fbbd（docs: fix todo header date）、b4eb5f3（docs: verify c7730da..HEAD audit finding）、d980b0e（docs: bump todo header date to 2026-10-29）、28f492f（docs: verify e73fbbd..HEAD audit finding），均为 docs 改动，无代码/测试改动，无问题（git log --oneline c7730da..28f492f）
 - [x] 审核发现：e73fbbd..HEAD 新增审核发现行断言 c7730da..HEAD 区间仅 e73fbbd，但该区间实际包含 e73fbbd、b4eb5f3、d980b0e 三个提交，git 历史事实与记录不一致（todo.md:116）— 已修正：按实际提交列表更新该行表述，并附 git log --oneline 证据
-- [ ] 审核发现：新增审核记录仍把 `c7730da..HEAD` 的提交清单写成仅 3 个且遗漏当前提交 28f492f，与 git log 实际 4 个提交不一致（todo.md:116）
+- [x] 审核发现：新增审核记录仍把 `c7730da..HEAD` 的提交清单写成仅 3 个且遗漏当前提交 28f492f，与 git log 实际 4 个提交不一致（todo.md:116）— 属实：`git log --oneline c7730da..28f492f` 实为 4 个提交；已改用固定区间并把缺失的 28f492f 补入清单
