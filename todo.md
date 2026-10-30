@@ -1,12 +1,12 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-10-29
+> 最后更新: 2026-10-30
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
 
-- [ ] 视频教程 EP01 机器侧素材预采（wingman-agent.exe 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（2026.10.18-nightly，sha256 已验），零注入录屏管线已验证，详见 ROADMAP.md M8.2）**环境级 BLOCKED**：win-worker 已按用户 2026-10-27 令永久停用，EP01 依赖其桌面解锁；手动动作=用户提供已解锁 Windows 真机，或授权人工执行机器侧预采（照 docs/tutorials/video-storyboard.md「机器侧预采」配方，约 2 分钟出片）；此前不虚构进展、不生成代餐素材
-- [ ] 视频教程人工成片（EP01-EP06 实拍旁白录制/SRT/发布；分镜与逐字旁白 docs/tutorials/video-storyboard.md 已完备，详见 ROADMAP.md M8.2）**BLOCKED**：需人工出镜/配音录制、字幕与发布
+- [ ] 视频教程 EP01 机器侧素材预采（wingman-agent.exe 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（2026.10.18-nightly，sha256 已验），零注入录屏管线已验证，详见 ROADMAP.md M8.2）**环境级 BLOCKED**：win-worker 已按用户 2026-10-27 令永久停用，EP01 依赖其桌面解锁；手动动作=用户提供已解锁 Windows 真机，或授权人工执行机器侧预采（照 docs/tutorials/video-storyboard.md「机器侧预采」配方，约 2 分钟出片）；此前不虚构进展、不生成代餐素材；**已代决:按 docs/review/2026-10-30-decisions.md 执行(2026-10-30)**——暂缓待用户提供解锁真机或授权人工预采，涉凭据/桌面会话不代决
+- [ ] 视频教程人工成片（EP01-EP06 实拍旁白录制/SRT/发布；分镜与逐字旁白 docs/tutorials/video-storyboard.md 已完备，详见 ROADMAP.md M8.2）**BLOCKED**：需人工出镜/配音录制、字幕与发布；**已代决:按 docs/review/2026-10-30-decisions.md 执行(2026-10-30)**——暂缓待用户档期，仓库侧成片前置全就绪，零剩余工程
 
 ## 已完成
 
@@ -117,3 +117,4 @@
 - [x] 审核发现：e73fbbd..28f492f 新增审核发现行断言 c7730da..HEAD 区间仅 e73fbbd，但 c7730da..28f492f 实际包含 e73fbbd（docs: fix todo header date）、b4eb5f3（docs: verify c7730da..HEAD audit finding）、d980b0e（docs: bump todo header date to 2026-10-29）、28f492f（docs: verify e73fbbd..HEAD audit finding）四个提交，git 历史事实与记录不一致（todo.md:116）— 已修正：按实际提交列表更新该行表述，并附 git log --oneline 证据
 - [x] 审核发现：新增审核记录仍把 `c7730da..HEAD` 的提交清单写成仅 3 个且遗漏当前提交 28f492f，与 git log 实际 4 个提交不一致（todo.md:116）— 属实：`git log --oneline c7730da..28f492f` 实为 4 个提交；已改用固定区间并把缺失的 28f492f 补入清单
 - [x] 审核发现：todo.md:117 仍断言 `c7730da..HEAD`（当时 HEAD=28f492f）仅含 e73fbbd、b4eb5f3、d980b0e 三个提交，遗漏 28f492f，与 git rev-list --count c7730da..28f492f=4 不符；本区间修复仅更正 todo.md:116，未同步修正同源描述 todo.md:117（todo.md:117）— 属实：`git rev-list --count c7730da..28f492f`=4，该行由 28f492f 落地、自身落在区间内；已同步修正 todo.md:117：改用固定区间 c7730da..28f492f 并补入 28f492f（git log --oneline c7730da..28f492f）
+- [x] 审核发现：6692bca..HEAD 本次审核无发现 — 属实：区间仅含 09b6a95（docs: fix stale commit list in todo audit line），为 docs 改动，无代码/测试改动；该提交修正的 todo.md:117 及新增的 todo.md:119 所载提交清单、区间、计数与 `git log --oneline c7730da..28f492f`/`git rev-list --count c7730da..28f492f` 均复核一致，无问题（git log --oneline 6692bca..HEAD）
