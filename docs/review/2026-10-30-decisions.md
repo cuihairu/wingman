@@ -12,7 +12,7 @@
 
 **当前状态**：环境级 BLOCKED。
 
-**事实**：EP01 需要的可交付物已全部就绪——`wingman-agent.exe` 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（nightly 184c7de zip，sha256 与官方 digest 一致，`ROADMAP.md:574-575`）；零注入录屏管线（进程创建预载 PowerShell + ffmpeg gdigrab 60fps + ffprobe）已逐步全 PASS（`ROADMAP.md:575-576`）；六集分镜、逐字旁白、录制规格、发布检查单、EP01 机器侧预采配方均已在 `docs/tutorials/video-storyboard.md` 完备（`ROADMAP.md:572-573`）。唯一卡点：win-worker 已按用户 2026-10-27 令**永久停用**（`ROADMAP.md:577`），而 EP01 预采依赖其**桌面解锁**。
+**事实**：EP01 需要的可交付物已全部就绪——`wingman-agent.exe` 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（nightly 184c7de zip，sha256 与官方 digest 一致，`ROADMAP.md:574-575`）；零注入录屏管线（进程创建预载 PowerShell + ffmpeg gdigrab 60fps + ffprobe）已逐步全 PASS（`ROADMAP.md:575-576`）；六集分镜、逐字旁白、录制规格均已在 `docs/tutorials/video-storyboard.md` 完备，发布检查单在其行 105、EP01 机器侧预采配方在 `docs/zh/tutorials/video-storyboard.md:46`（`ROADMAP.md:572-573` 引用中文文件）。唯一卡点：win-worker 已按用户 2026-10-27 令**永久停用**（`ROADMAP.md:577`），而 EP01 预采依赖其**桌面解锁**。
 
 ### 推荐决策
 
@@ -29,6 +29,8 @@
 ### 立即执行动作
 
 无。仓库侧无低风险可逆动作可做；唯一动作（预采）涉桌面会话/凭据，需用户输入。
+
+**待用户**：① 提供已解锁的 Windows 真机；或 ② 明确授权人工执行机器侧预采（照 `docs/zh/tutorials/video-storyboard.md:46` 配方约 2 分钟出片）。
 
 ### 明确不做 / 延后什么
 
@@ -61,6 +63,8 @@
 ### 立即执行动作
 
 无。需用户出镜/配音档期与素材（条目 1）到位。
+
+**待用户**：出镜/配音档期；并依赖条目 1 预采素材到位。
 
 ### 明确不做 / 延后什么
 
