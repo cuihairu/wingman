@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1150" viewBox="0 0 1280 1150" role="img" aria-labelledby="title desc" xml:lang="en">
+<title id="title">Wingman · Architecture</title>
+<desc id="desc">Four-layer model. The Go orchestrator is the only Control Plane; the runtime Agent registers/heartbeats/commands over outbound TCP; ScriptManager + Lua/Python engine + CommandDispatcher form the Execution Plane; the lib/wingman automation core provides screen/input/vision/OCR etc., with platform implementations in platform/&lt;os&gt;/. The automation core is unaware of the layers above.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10Z" fill="context-stroke"/></marker></defs>
+<style>text{font-family:Arial,'Noto Sans',sans-serif;fill:#172b4d}.title{font-size:30px;font-weight:700}.name{font-size:22px;font-weight:700}.body{font-size:16px;fill:#435570}.small{font-size:14px;fill:#52647b}.label{font-size:15px;fill:#435570;paint-order:stroke;stroke:#f8fafc;stroke-width:5px;stroke-linejoin:round}.edge{fill:none;stroke-linejoin:round}.control{stroke-dasharray:7 5}</style>
+<rect width="1280" height="1150" rx="20" fill="#f8fafc"/>
+<text x="40" y="48" class="title" text-anchor="start">Wingman · Architecture</text>
+<text x="40" y="80" class="body" text-anchor="start">Four-layer model · hard Control/Execution plane boundary · Go-only Control Plane · C++ core + Lua/Python scripting · pure user mode</text>
+
+<g id="client-row">
+<rect x="40" y="104" width="1200" height="110" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+<text x="58" y="130" class="label">Clients</text>
+<g id="dashboard" data-node="dashboard"><rect x="70" y="144" width="480" height="56" rx="12" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+<text x="90" y="168" class="name" text-anchor="start">Dashboard (browser)</text>
+<text x="90" y="190" class="body" text-anchor="start">orchestrator/dashboard · React/Umi control panel</text>
+</g>
+<g id="tauri-gui" data-node="tauri-gui"><rect x="600" y="144" width="610" height="56" rx="12" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+<text x="620" y="168" class="name" text-anchor="start">Tauri GUI (local)</text>
+<text x="620" y="190" class="body" text-anchor="start">apps/gui · invoke → Rust backend → IPC → runtime</text>
+</g>
+</g>
+
+<path d="M310 200 V270" fill="none" stroke="#f8fafc" stroke-width="9"/>
+<path id="dash-http" data-from="dashboard" data-to="orchestrator" d="M310 200 V270" class="edge" style="stroke:#2563eb;stroke-width:2" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<path d="M1100 200 V780" fill="none" stroke="#f8fafc" stroke-width="9"/>
+<path id="tauri-ipc" data-from="tauri-gui" data-to="runtime" d="M1100 200 V780" class="edge" style="stroke:#475569;stroke-width:2" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+
+<g id="control-row">
+<rect x="40" y="238" width="1200" height="170" rx="12" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+<text x="58" y="264" class="label">Control Plane · Go server (the only one)</text>
+<g id="orchestrator" data-node="orchestrator"><rect x="70" y="280" width="1140" height="110" rx="14" fill="#fff" stroke="#fdba74" stroke-width="1.5"/>
+<text x="90" y="314" class="name" text-anchor="start">orchestrator/server (Go)</text>
+<text x="90" y="342" class="body" text-anchor="start">Dashboard API · RBAC · Audit · Agent Registry · Workflow engine</text>
+<text x="90" y="368" class="body" text-anchor="start">Only Control Plane: never dials the runtime; addresses by agent_id; holds capability set</text>
+</g>
+</g>
+
+<path d="M640 408 V432" fill="none" stroke="#f8fafc" stroke-width="9"/>
+<path id="ctrl-transport" data-from="orchestrator" data-to="transport" d="M640 408 V432" class="edge control" style="stroke:#7c3aed;stroke-width:2" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+
+<g id="transport" data-node="transport"><rect x="70" y="432" width="1140" height="64" rx="12" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.5"/>
+<text x="90" y="461" class="name" text-anchor="start">libs/transport</text>
+<text x="90" y="484" class="body" text-anchor="start">TCP + custom protocol (Header + Body) · session / channel / stream · outbound connection</text>
+</g>
+
+<path d="M640 496 V520" fill="none" stroke="#f8fafc" stroke-width="9"/>
+<path id="transport-agent" data-from="transport" data-to="agent" d="M640 496 V520" class="edge control" style="stroke:#7c3aed;stroke-width:2" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+
+<g id="agent-row">
+<rect x="40" y="520" width="1200" height="170" rx="12" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5"/>
+<text x="58" y="546" class="label">Agent Layer · execution-node identity</text>
+<g id="agent" data-node="agent"><rect x="70" y="562" width="560" height="110" rx="14" fill="#fff" stroke="#a5b4fc" stroke-width="1.5"/>
+<text x="90" y="596" class="name" text-anchor="start">apps/agent · runtime Agent</text>
+<text x="90" y="624" class="body" text-anchor="start">register({agentId, platform, capabilities}) · heartbeat</text>
+<text x="90" y="650" class="body" text-anchor="start">outbound TCP session · command / event · standalone mode</text>
+</g>
+<g id="android-agent" data-node="android-agent"><rect x="680" y="562" width="530" height="110" rx="14" fill="#fff" stroke="#a5b4fc" stroke-width="1.5"/>
+<text x="700" y="596" class="name" text-anchor="start">apps/android + libs/androidagent</text>
+<text x="700" y="624" class="body" text-anchor="start">Android-side Agent (Kotlin, experimental)</text>
+<text x="700" y="650" class="body" text-anchor="start">C++ shared bridge · reuses the portable lib/wingman core</text>
+</g>
+</g>
+
+<path d="M350 672 V714" fill="none" stroke="#f8fafc" stroke-width="9"/>
+<path id="agent-runtime" data-from="agent" data-to="runtime" d="M350 672 V714" class="edge" style="stroke:#475569;stroke-width:2" marker-end="url(#arrow)"/>
+<path d="M945 672 V714" fill="none" stroke="#f8fafc" stroke-width="9"/>
+<path id="android-runtime" data-from="android-agent" data-to="runtime" d="M945 672 V714" class="edge" style="stroke:#475569;stroke-width:2" marker-end="url(#arrow)"/>
+
+<g id="runtime-row">
+<rect x="40" y="714" width="1200" height="170" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+<text x="58" y="740" class="label">Runtime (Execution Plane) · not a server</text>
+<g id="runtime" data-node="runtime"><rect x="70" y="756" width="1140" height="110" rx="14" fill="#fff" stroke="#93c5fd" stroke-width="1.5"/>
+<text x="90" y="790" class="name" text-anchor="start">ScriptManager · Lua/Python engine · CommandDispatcher · TriggerManager</text>
+<text x="90" y="818" class="body" text-anchor="start">execution lifecycle · transport-agnostic CommandDispatcher · local IPC path (Tauri → runtime)</text>
+<text x="90" y="844" class="body" text-anchor="start">standalone_mode · not a server, no inbound listen</text>
+</g>
+</g>
+
+<path d="M640 884 V908" fill="none" stroke="#f8fafc" stroke-width="9"/>
+<path id="runtime-core" data-from="runtime" data-to="core" d="M640 884 V908" class="edge" style="stroke:#087f5b;stroke-width:3" marker-end="url(#arrow)"/>
+
+<g id="core-row">
+<rect x="40" y="908" width="1200" height="200" rx="12" fill="#eef8f5" stroke="#86c9b3" stroke-width="1.5"/>
+<text x="58" y="934" class="label">Automation core lib/wingman · unaware of upper layers</text>
+<g id="core" data-node="core"><rect x="70" y="950" width="1140" height="140" rx="14" fill="#fff" stroke="#86c9b3" stroke-width="1.5"/>
+<text x="90" y="984" class="name" text-anchor="start">screen · input · window · vision · OCR · ML · process · kv · trigger · behavior</text>
+<text x="90" y="1012" class="body" text-anchor="start">platform implementations in lib/wingman/src/platform/&lt;os&gt;/ (win / linux / mac / android / mock)</text>
+<text x="90" y="1038" class="body" text-anchor="start">pure user mode · legitimate platform APIs · no game-memory reads or writes · most reusable asset</text>
+<text x="90" y="1064" class="body" text-anchor="start">portable core of the Android Agent</text>
+</g>
+</g>
+</svg>

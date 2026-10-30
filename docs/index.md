@@ -43,6 +43,10 @@ features:
 ---
 > [中文](zh/index.md) | **English**
 
+## Architecture
+
+![Wingman architecture](/images/architecture-en.svg)
+
 ## Introduction
 
 **Wingman** is a cross-platform game automation tool.

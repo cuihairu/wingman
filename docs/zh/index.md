@@ -78,6 +78,11 @@ if (typeof window !== 'undefined') {{
 > [English](../index.md) | **中文**
 
 
+## 架构
+
+![Wingman 架构](/images/architecture-zh.svg)
+
+
 ## 简介
 
 **Wingman** 是一个跨平台的游戏自动化工具。
