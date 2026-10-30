@@ -12,7 +12,7 @@
 
 **当前状态**：环境级 BLOCKED。
 
-**事实**：EP01 需要的可交付物已全部就绪——`wingman-agent.exe` 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（nightly 184c7de zip，sha256 与官方 digest 一致，`ROADMAP.md:574-575`）；零注入录屏管线（进程创建预载 PowerShell + ffmpeg gdigrab 60fps + ffprobe）已逐步全 PASS（`ROADMAP.md:575-576`）；六集分镜、逐字旁白、录制规格均已在 `docs/tutorials/video-storyboard.md` 完备，发布检查单在其行 105、EP01 机器侧预采配方在 `docs/zh/tutorials/video-storyboard.md:46`（`ROADMAP.md:572-573` 引用中文文件）。唯一卡点：win-worker 已按用户 2026-10-27 令**永久停用**（`ROADMAP.md:577`），而 EP01 预采依赖其**桌面解锁**。
+**事实**：EP01 需要的可交付物已全部就绪——`wingman-agent.exe` 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（nightly 184c7de zip，sha256 与官方 digest 一致，`ROADMAP.md:574-575`）；零注入录屏管线（进程创建预载 PowerShell + ffmpeg gdigrab 60fps + ffprobe）已逐步全 PASS（`ROADMAP.md:575-576`）；六集分镜、逐字旁白、录制规格均已在 `docs/tutorials/video-storyboard.md` 完备，发布检查单在其行 105、EP01 机器侧预采配方在 `docs/zh/tutorials/video-storyboard.md:46`（`ROADMAP.md:570-572` 引用英文 `docs/tutorials/video-storyboard.md`，该英文文件不含机器侧预采配方，配方仅在中文文件）。唯一卡点：win-worker 已按用户 2026-10-27 令**永久停用**（`ROADMAP.md:577`），而 EP01 预采依赖其**桌面解锁**。
 
 ### 推荐决策
 

@@ -1,6 +1,6 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-10-30
+> 最后更新: 2026-10-31
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
@@ -120,3 +120,4 @@
 - [x] 审核发现：6692bca..09b6a95 本次审核无发现 — 属实：区间仅含 09b6a95（docs: fix stale commit list in todo audit line），为 docs 改动，无代码/测试改动；该提交修正的 todo.md:117 及新增的 todo.md:119 所载提交清单、区间、计数与 `git log --oneline c7730da..28f492f`/`git rev-list --count c7730da..28f492f` 均复核一致，无问题（git log --oneline 6692bca..09b6a95；git rev-list --count 6692bca..09b6a95=1）
 - [x] 审核发现：docs/review/2026-10-30-decisions.md:15 称「EP01 机器侧预采配方」已在英文 docs/tutorials/video-storyboard.md 完备，但该英文文件并无此配方（grep 机器侧/预采/gdigrab/ffmpeg 均 0 命中），实际配方仅在 docs/zh/tutorials/video-storyboard.md:46，属引用不实（docs/review/2026-10-30-decisions.md:15）— 属实：英文文件 `grep -c '机器侧\|预采\|gdigrab\|ffmpeg'`=0，中文文件 `docs/zh/tutorials/video-storyboard.md:46` 含配方；已修正引用为 `docs/zh/tutorials/video-storyboard.md:46`（grep -c 验证、docs/zh/tutorials/video-storyboard.md:46）
 - [x] 审核发现：todo.md:120 新增审核行断言「6692bca..HEAD 区间仅含 09b6a95」，但 git log --oneline 6692bca..HEAD 实含 09b6a95 与 cd25135 两个提交，遗漏本提交自身，与既往 c7730da..28f492f 同类计数口径错误（todo.md:120）— 属实：`git rev-list --count 6692bca..cd25135`=2；已将 todo.md:120 的区间改为 `6692bca..09b6a95`（当时审核 HEAD=09b6a95），`git rev-list --count 6692bca..09b6a95`=1 与断言一致（git rev-list --count 6692bca..09b6a95）
+- [x] 审核发现：docs/review/2026-10-30-decisions.md:15 断言「ROADMAP.md:572-573 引用中文文件」，但 ROADMAP.md:570-572 实际引用的是英文 docs/tutorials/video-storyboard.md（全文 grep 'zh/tutorials\|docs/zh' 均 0 命中），属引用不实（docs/review/2026-10-30-decisions.md:15）— 属实：`grep -n 'zh/tutorials\|docs/zh' ROADMAP.md`=0 命中，ROADMAP.md:570-572 引用的是英文 `docs/tutorials/video-storyboard.md`（该英文文件 `grep -c '机器侧\|预采\|gdigrab\|ffmpeg'`=0，配方仅在 `docs/zh/tutorials/video-storyboard.md:46`）；已修正 docs/review/2026-10-30-decisions.md:15 引用为「ROADMAP.md:570-572 引用英文 docs/tutorials/video-storyboard.md，该英文文件不含机器侧预采配方，配方仅在中文文件」（grep 验证、docs/review/2026-10-30-decisions.md:15）
