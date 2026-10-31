@@ -1,16 +1,23 @@
 import { writable, derived } from 'svelte/store';
 
+/// 归一化 hash：`#/scripts` 与 `#scripts` 等价（外部链接/刷新常用带斜杠形式），
+/// 否则 pageMap 查不到匹配页面，内容区渲染为空白。
+function normalize(raw: string): string {
+	return raw.replace(/^\/+/, '').trim() || 'dashboard';
+}
+
 function createRouter() {
-	const hash = writable(window.location.hash.slice(1) || 'dashboard');
+	const hash = writable(normalize(window.location.hash.slice(1)));
 
 	function navigate(page: string) {
-		window.location.hash = page;
-		hash.set(page);
+		const route = normalize(page);
+		window.location.hash = route;
+		hash.set(route);
 	}
 
 	function init() {
 		window.addEventListener('hashchange', () => {
-			hash.set(window.location.hash.slice(1) || 'dashboard');
+			hash.set(normalize(window.location.hash.slice(1)));
 		});
 	}
 
