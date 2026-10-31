@@ -164,7 +164,9 @@
 		box-shadow: inset 3px 0 0 var(--accent-blue);
 	}
 
-	.icon {
+	/* 必须用 :global：nav 图标经 {@html} 注入，Svelte 作用域类名不会附加到
+	   {@html} 内容上，scoped .icon 规则匹配不到注入的 SVG，会按默认尺寸放大撑破侧栏。 */
+	:global(.icon) {
 		width: 18px;
 		height: 18px;
 		opacity: 0.8;
