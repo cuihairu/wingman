@@ -78,6 +78,16 @@ textarea:disabled {
 	cursor: not-allowed;
 }
 
+/* 暗色主题：明亮 accent 填充按钮需深色文字才达 WCAG AA
+   （白字在 #3fb950 / #58a6ff 上仅约 2.5:1；深字 #101214 上为 5.6–7.4:1）。
+   与 .btn-warning 的深字浅底风格一致。仅在暗色生效，亮色主题白字本就合规。 */
+:root:not([data-theme='light']) .btn-primary,
+:root:not([data-theme='light']) .btn-success,
+:root:not([data-theme='light']) .btn-secondary,
+:root:not([data-theme='light']) .btn-danger {
+	color: var(--bg-primary);
+}
+
 input,
 select,
 textarea {
