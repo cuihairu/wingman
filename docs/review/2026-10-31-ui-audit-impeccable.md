@@ -3,7 +3,7 @@
 - Scope: two UI surfaces — `apps/gui` (Tauri 2 + Svelte 5 desktop control panel) and `orchestrator/dashboard` (Ant Design 5 + UmiJS admin dashboard).
 - Method: `impeccable detect --json apps/gui/src` (0 findings, clean), plus Playwright 1.64.1 (chromium) screenshots of every rendered route at 1440×900 and 390×844. PNGs live alongside this file (`gui-*-{desktop,narrow}.png`, `dash-*-{desktop,narrow}{,-logged}.png`).
 - Contrast ratios computed per WCAG 2.1 relative luminance. AA thresholds: 4.5:1 normal text, 3:1 large text (≥18.66px or ≥14px bold).
-- Outcome: **9 issues** (8 fixed+committed, 1 awaiting brand decision). **8 fixes committed.**
+- Outcome: **9 issues** (8 fixed+committed, 1 awaiting brand decision). **8 fixes committed.** Plus **3 follow-up hover-contrast fixes** (GUI-P2-2/3/4, commits `24441c9`/`e780354`) from the post-fix review — see the Follow-up section below.
 
 ---
 
@@ -135,6 +135,33 @@ Dashboard data flows through `/api/` (dev-proxied to `http://localhost:9527`). A
 
 ---
 
+## Follow-up fixes (2026-11-01, post-fix review)
+
+After the initial fix wave, a review of the todo.md 审核发现 lines found that `6bfa645`'s hover-contrast fix was incomplete: it handled only the macros/ScreenPickerModal scoped `.btn-primary` variants, but the updates page (blue hover) and the screen/dashboard pages (green primary whose hover falls through to the neutral `.btn:hover` fill) still rendered **dark text on a low-contrast hover fill** in the dark theme. These three were fixed (commits `24441c9` / `e780354`) and each now carries a before/after hover pair. Note: the original `GUI-P2-1` before/after pair (`GUI-4`) captured only the settled state; these follow-up pairs capture the **hovered** state, so they show the actual fix.
+
+### GUI-P2-2 — Updates page primary button hover dips below AA — FIXED
+
+- **Status:** FIXED — commit `24441c9` `fix(ui): use white text on updates primary hover in dark theme` | before: `shots-after/GUI-8-before.png` | after: `shots-after/GUI-8-after.png`
+- **Location:** `apps/gui/src/routes/updates/+page.svelte:381-389`
+- **Impact:** the blue `.btn-primary` hover fill darkens to `--accent-blue-hover` (`#1f6feb`); with the base dark text (`#101214`) that is **4.05:1** — under the 4.5:1 AA floor. White text on `#1f6feb` is **4.63:1** (AA).
+- **Fix:** added `:global(:root:not([data-theme='light'])) .btn-primary:hover { color: white }`, matching the macros/ScreenPickerModal treatment.
+
+### GUI-P2-3 — Screen page primary button hover falls to a neutral fill — FIXED
+
+- **Status:** FIXED — commit `e780354` `fix(ui): use white text on neutral-hover primaries in dark theme` | before: `shots-after/GUI-9-before.png` | after: `shots-after/GUI-9-after.png`
+- **Location:** `apps/gui/src/routes/screen/+page.svelte:978-989`
+- **Impact:** the green `.btn-primary` has **no independent hover rule**, so on hover `.btn:hover` (specificity 0,2,0) overrides its background to the neutral `--border-color` (`#343a43`); the base dark text (`#101214`) on that neutral fill is **1.64:1** — far below AA. The `6bfa645` comment argued "no-independent-hover buttons keep white text on the neutral fill," but this button uses **dark** text, so that reasoning did not apply.
+- **Fix:** added the same dark-theme `:hover { color: white }` rule; white on `#343a43` is **~13.3:1**.
+
+### GUI-P2-4 — Dashboard page primary button hover falls to a neutral fill — FIXED
+
+- **Status:** FIXED — commit `e780354` `fix(ui): use white text on neutral-hover primaries in dark theme` | before: `shots-after/GUI-10-before.png` | after: `shots-after/GUI-10-after.png`
+- **Location:** `apps/gui/src/routes/dashboard/+page.svelte:580-589`
+- **Impact:** same defect as GUI-P2-3 (green `.btn-primary`, no independent hover rule, dark text on neutral hover fill = 1.64:1).
+- **Fix:** same dark-theme `:hover { color: white }` rule (white on `#343a43` ≈ 13.3:1).
+
+---
+
 ## Totals & follow-up
 
 | Severity | apps/gui | orchestrator/dashboard | Fixed |
@@ -153,7 +180,7 @@ Dashboard data flows through `/api/` (dev-proxied to `http://localhost:9527`). A
 
 **Todo:** DASH-P2-1 primary contrast（需拍板，见该条「未修原因」）。GUI-P3-1 aria-labels、GUI-P3-2 focus-ring alpha、GUI-P3-3 reduced-motion、DASH-P3-1 Monitor empty/error state 已由 `6857299` 提交落地（2026-11-01）。
 
-**Before/after screenshot pairs (`shots-after/`):** all 8 renderable pairs captured 2026-11-01, one `-before.png`/`-after.png` per issue (1440×900, GUI via Vite dev server in headless Chromium; DASH-1 via the running Go orchestrator + admin login at `/monitor`). Caveats, honestly noted:
+**Before/after screenshot pairs (`shots-after/`):** all 8 renderable pairs captured 2026-11-01, one `-before.png`/`-after.png` per issue (1440×900, GUI via Vite dev server in headless Chromium; DASH-1 via the running Go orchestrator + admin login at `/monitor`), plus **3 hovered-state pairs** (`GUI-8/9/10`) for the follow-up hover fixes — GUI-9/10 were captured on the live dev server with the real `.btn-primary` hovered (`刷新截图` on `#screen`, `启动当前配置` on `#dashboard`; the "before" frame re-creates the pre-fix dark-text hover via a `color: var(--bg-primary) !important` override, verified by computed style: `rgb(16,18,20)` before vs `rgb(255,255,255)` after); GUI-8 (updates `下载更新` button) renders only when `$updates.available` is set, which the dev fallback cannot reach through the module-scoped Svelte store, so it is captured from a **static harness** that reproduces the button with the exact CSS rules from `app.css` + `updates/+page.svelte` (dark theme, same variables; pre-fix harness omits the hover rule, post-fix harness includes it). Caveats, honestly noted:
 - GUI-5 (TopBar aria-labels): before/after are **visually identical** — the change is DOM-only (`aria-label` present after, absent before; `title` retained in both). Pair captured anyway; verified via DOM (`aria-label="切换主题"/"刷新"` after vs `null` before).
 - GUI-7 (reduced motion): before/after **settled hover states are visually identical** — the change is dynamic (transitions disabled under `prefers-reduced-motion: reduce`). Computed style confirms: `transition: none` after vs `transition: 0.2s` before on a hovered nav item. Pair captured; the behavioral diff is not representable in a single static frame.
 - DASH-1: the `-after` shot shows the **Result error state** ("画面流未连接"), not the Empty "连接 Agent 后..." state, because no agent was connected and the dashboard WebSocket reported disconnected at capture time. Both new states were verified by DOM (`cardHasResult: true` / `cardHasEmpty: false`); the Empty (connected) branch was not exercised live.
