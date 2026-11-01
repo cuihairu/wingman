@@ -27,7 +27,7 @@ The desktop shell runs on Linux WebKitGTK, which exposes **no Chrome DevTools Pr
 
 ### GUI-P1-1 — Deep link with leading-slash hash renders blank content — FIXED
 
-- **Status:** FIXED — commit `d48f070` `fix(ui): normalize leading-slash hash routes`
+- **Status:** FIXED — commit `d48f070` `fix(ui): normalize leading-slash hash routes` | before: `shots-after/GUI-2-before.png` | after: `shots-after/GUI-2-after.png`
 - **Screenshot:** `gui-dashboard-desktop.png` (fixed render; the pre-fix state was an empty content area)
 - **Location:** `apps/gui/src/lib/router.svelte.ts`
 - **Impact:** Any navigation with a leading-slash hash — `#/dashboard`, `#/scripts`, external links, bookmarks, or a window reopened on a URL — produced `pageMap['/dashboard']` as `undefined` and the content area rendered **completely blank**, with no console error. This is the entry route for anyone sharing or deep-linking, so it was a hard break.
@@ -35,7 +35,7 @@ The desktop shell runs on Linux WebKitGTK, which exposes **no Chrome DevTools Pr
 
 ### GUI-P1-2 — Sidebar nav icons render at ~11× size, breaking layout — FIXED
 
-- **Status:** FIXED — commit `93f8284` `fix(ui): constrain sidebar nav icon size`
+- **Status:** FIXED — commit `93f8284` `fix(ui): constrain sidebar nav icon size` | before: `shots-after/GUI-1-before.png` | after: `shots-after/GUI-1-after.png`
 - **Screenshot:** `gui-dashboard-desktop.png`
 - **Location:** `apps/gui/src/lib/components/layout/Sidebar.svelte` (`.icon` rule → `:global(.icon)`)
 - **Impact:** The 8 navigation icons are injected as raw SVG strings via `{@html NAV_ICONS[item.icon]!}`. Svelte's scoped CSS appends a hash class only to elements present in the template; `{@html}`-injected markup does **not** get the scoped class, so the scoped `.icon { width: 18px }` rule never matched and each SVG fell back to its intrinsic/viewport size — measured **205×205px** in a 248px sidebar, overflowing the nav column and pushing labels off. (The inline tray icon, which *is* in the template, stayed at 18px — the diagnostic that proved the scoping root cause.)
@@ -43,7 +43,7 @@ The desktop shell runs on Linux WebKitGTK, which exposes **no Chrome DevTools Pr
 
 ### GUI-P1-3 — White text on accent buttons fails WCAG AA (dark theme) — FIXED
 
-- **Status:** FIXED — commit `ceb9d53` `fix(ui): use dark text on accent buttons in dark theme`
+- **Status:** FIXED — commit `ceb9d53` `fix(ui): use dark text on accent buttons in dark theme` | before: `shots-after/GUI-3-before.png` | after: `shots-after/GUI-3-after.png`
 - **Screenshot:** `gui-settings-desktop.png`, `gui-dashboard-desktop.png`
 - **Location:** `apps/gui/src/app.css`
 - **Impact:** In the default dark theme the primary/success/secondary/danger buttons use bright fills with **white** text: green `#3fb950` = **2.54:1**, blue `#58a6ff` = **2.53:1**, red `#f85149` = **3.35:1**. All are far below the 4.5:1 AA floor for the ~13px button text — unreadable for low-vision users. The green "启动" / blue "刷新" / red "急停" actions are the most-used controls in the app.
@@ -51,7 +51,7 @@ The desktop shell runs on Linux WebKitGTK, which exposes **no Chrome DevTools Pr
 
 ### GUI-P2-1 — Hover state on blue/red accent buttons dips below AA with new dark text — FIXED
 
-- **Status:** FIXED — commit `6bfa645` `fix(ui): use white text on blue and red hover in dark theme`
+- **Status:** FIXED — commit `6bfa645` `fix(ui): use white text on blue and red hover in dark theme` | before: `shots-after/GUI-4-before.png` | after: `shots-after/GUI-4-after.png`
 - **Screenshot:** `gui-dashboard-desktop.png` (hover states not captured in stills)
 - **Location:** `apps/gui/src/app.css` (`--accent-blue-hover: #1f6feb`, `--accent-red-hover: #da3633`)
 - **Impact:** The contrast fix above trades the persistent base state for the transient hover state on two buttons. With dark text `#101214`, hovered blue `#1f6feb` = **4.05:1** and hovered red `#da3633` = **4.07:1** — just under the 4.5:1 floor for normal text (green hover `#2ea043` = 5.57:1 still passes). The dip is brief and only during pointer hover, so it is a P2 polish item rather than a blocker.
@@ -59,7 +59,7 @@ The desktop shell runs on Linux WebKitGTK, which exposes **no Chrome DevTools Pr
 
 ### GUI-P3-1 — Icon-only buttons expose no accessible name via `aria-label` — REPORTED
 
-- **Status:** REPORTED (follow-up)
+- **Status:** FIXED — commit `6857299` `fix(ui): resolve ui audit follow-ups and verify findings` (TopBar.svelte aria-labels) | before: `shots-after/GUI-5-before.png` | after: `shots-after/GUI-5-after.png`
 - **Screenshot:** `gui-dashboard-desktop.png`
 - **Location:** `apps/gui/src/lib/components/layout/TopBar.svelte` — theme toggle (line 180), refresh (line 199)
 - **Impact:** Both are icon-only `<button>`s whose only accessible name is `title`. `title` is not a robust naming mechanism: it is often not announced by screen readers, is invisible to keyboard-only users (who never hover), and disappears on touch. Screen-reader and keyboard users get an unlabeled control.
@@ -67,7 +67,7 @@ The desktop shell runs on Linux WebKitGTK, which exposes **no Chrome DevTools Pr
 
 ### GUI-P3-2 — Focus ring is faint (0.32 alpha) — REPORTED
 
-- **Status:** REPORTED (minor; keyboard reachability itself passes)
+- **Status:** FIXED — commit `6857299` `fix(ui): resolve ui audit follow-ups and verify findings` (app.css focus-ring 0.32→0.55) | before: `shots-after/GUI-6-before.png` | after: `shots-after/GUI-6-after.png`
 - **Screenshot:** `gui-dashboard-desktop.png`
 - **Location:** `apps/gui/src/app.css` (`--focus-ring: rgba(88,166,255,0.32)`)
 - **Impact:** `:focus-visible` outline is 2px at 32% alpha — visible but low-contrast against the dark background; during the 0.2s transition it reads even fainter. Keyboard navigability was verified as **passing**: every interactive control is reachable via Tab and the ring settles to the intended 2px ring after the transition. This is a polish note, not a failure.
@@ -75,7 +75,7 @@ The desktop shell runs on Linux WebKitGTK, which exposes **no Chrome DevTools Pr
 
 ### GUI-P3-3 — No `prefers-reduced-motion` handling — REPORTED
 
-- **Status:** REPORTED (follow-up)
+- **Status:** FIXED — commit `6857299` `fix(ui): resolve ui audit follow-ups and verify findings` (app.css prefers-reduced-motion) | before: `shots-after/GUI-7-before.png` | after: `shots-after/GUI-7-after.png`
 - **Screenshot:** n/a (static)
 - **Location:** `apps/gui/src/app.css` and component `<style>` blocks (`transition: all 0.15–0.2s` in Sidebar/App/scripts/macros/screen pages)
 - **Impact:** Transitions are short (0.15–0.2s) and non-looping, so they are not motion-sickness triggers on their own, but there is **no** `@media (prefers-reduced-motion)` anywhere in the GUI source. Users who opt out of motion get animations anyway.
@@ -118,7 +118,7 @@ Dashboard data flows through `/api/` (dev-proxied to `http://localhost:9527`). A
 
 ### DASH-P3-1 — Monitor "游戏画面" card is an empty black rectangle with no real empty/error state — REPORTED (TODO)
 
-- **Status:** REPORTED (not fixed)
+- **Status:** FIXED — commit `6857299` `fix(ui): resolve ui audit follow-ups and verify findings` (ScreenshotView empty/error states) | before: `shots-after/DASH-1-before.png` | after: `shots-after/DASH-1-after.png`
 - **Screenshot:** `dash-monitor-desktop-logged.png`, `dash-monitor-narrow-logged.png`
 - **Location:** `orchestrator/dashboard/src/components/ScreenshotView/index.tsx` (rendered at `orchestrator/dashboard/src/pages/Monitor/index.tsx:700`)
 - **Impact:** The card body is a fixed-height (500px) `#000` rectangle containing only `Text type="secondary"` with "等待画面..." (or "预览已关闭") when no frame is available, and its refresh control is an icon-only `<Button icon={<ReloadOutlined />}>` with **no accessible label**. A first-time visitor sees a large black void with a faint caption and no explanation of what should appear, how to enable it, or what to do if nothing comes. No error branch exists if the screenshot stream fails or is disconnected.
@@ -152,3 +152,8 @@ Dashboard data flows through `/api/` (dev-proxied to `http://localhost:9527`). A
 5. `6857299` fix(ui): resolve ui audit follow-ups and verify findings (GUI-P3-1/2/3, DASH-P3-1)
 
 **Todo:** DASH-P2-1 primary contrast（需拍板，见该条「未修原因」）。GUI-P3-1 aria-labels、GUI-P3-2 focus-ring alpha、GUI-P3-3 reduced-motion、DASH-P3-1 Monitor empty/error state 已由 `6857299` 提交落地（2026-11-01）。
+
+**Before/after screenshot pairs (`shots-after/`):** all 8 renderable pairs captured 2026-11-01, one `-before.png`/`-after.png` per issue (1440×900, GUI via Vite dev server in headless Chromium; DASH-1 via the running Go orchestrator + admin login at `/monitor`). Caveats, honestly noted:
+- GUI-5 (TopBar aria-labels): before/after are **visually identical** — the change is DOM-only (`aria-label` present after, absent before; `title` retained in both). Pair captured anyway; verified via DOM (`aria-label="切换主题"/"刷新"` after vs `null` before).
+- GUI-7 (reduced motion): before/after **settled hover states are visually identical** — the change is dynamic (transitions disabled under `prefers-reduced-motion: reduce`). Computed style confirms: `transition: none` after vs `transition: 0.2s` before on a hovered nav item. Pair captured; the behavioral diff is not representable in a single static frame.
+- DASH-1: the `-after` shot shows the **Result error state** ("画面流未连接"), not the Empty "连接 Agent 后..." state, because no agent was connected and the dashboard WebSocket reported disconnected at capture time. Both new states were verified by DOM (`cardHasResult: true` / `cardHasEmpty: false`); the Empty (connected) branch was not exercised live.
