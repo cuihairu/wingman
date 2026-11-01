@@ -119,10 +119,10 @@ Plan schema（v1 形状）：
 }
 ```
 
-- **engine 适配器**（分帧/握手/心跳/重连等会话语义）：`kbe`（KBEngine：MessageID + Bundle、loginapp/baseapp 双通道、内置 Blowfish 链路）、`bigworld`（entity message / filtered packet 家族）、`generic`（长度前缀 + 单通道，覆盖多数自研协议）、`custom:<name>`（编译期注册的原生适配器兜底）。适配器编译进 worker、按 bundle 声明选择——KBEngine/BigWorld 是**协议族**不是编码格式，内置适配器比 schema 描述更保真、更省事。
+- **engine 适配器**（分帧/握手/心跳/重连等会话语义）：`kbe`（KBEngine：MessageID + Bundle、loginapp/baseapp 双通道、内置 Blowfish 链路）、`bigworld`（entity message / filtered packet 家族）、`generic`（长度前缀 + 单通道，覆盖多数私有协议）、`custom:<name>`（编译期注册的原生适配器兜底）。适配器编译进 worker、按 bundle 声明选择——KBEngine/BigWorld 是**协议族**不是编码格式，内置适配器比 schema 描述更保真、更省事。
 - **encoding 编码后端**（payload 序列化，编译期注册表 + 构建门控）：`protobuf`（vcpkg protobuf）、`json`（nlohmann，仓内已有）、`sproto`（独立 C 库；**vcpkg 无 port 时按依赖规则显式报错关档，不静默换源**）、`raw`（schema 字段表直排）。
 - **schema 消息表**：纯数据，随 gameprofile 版本 pin。
-- **crypto**：优先**组合式原语**（xor/偏移表/rc4/TEA 族/校验和，schema 内声明，覆盖多数自研变体，零编译）；引擎内置加密归 engine 适配器；真自定义算法才走编译期注册的 native 钩子。
+- **crypto**：优先**组合式原语**（xor/偏移表/rc4/TEA 族/校验和，schema 内声明，覆盖多数私有变体，零编译）；引擎内置加密归 engine 适配器；真自定义算法才走编译期注册的 native 钩子。
 
 **热插拔语义（诚实定义）**：
 
