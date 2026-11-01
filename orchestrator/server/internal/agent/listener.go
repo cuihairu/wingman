@@ -922,15 +922,10 @@ func (ac *agentConn) SendNotify(msgType string, data map[string]any) error {
 	ac.mu.Lock()
 	defer ac.mu.Unlock()
 
-	header := MessageHeader{
-		Length: uint32(len(body)),
-		Type:   Notify,
-	}
-	if err := ac.writeMsgHeaderLocked(&header); err != nil {
+	if err := ac.writeNotifyFrameLocked(body); err != nil {
 		return err
 	}
-	_, err = ac.conn.Write(body)
-	return err
+	return nil
 }
 
 // sendNotify sends a Notify message.
@@ -945,12 +940,29 @@ func (ac *agentConn) sendNotify(msgType string, data map[string]any) {
 	ac.mu.Lock()
 	defer ac.mu.Unlock()
 
+	if err := ac.writeNotifyFrameLocked(body); err != nil {
+		// 写失败：连接已死/窗口为零，主动关闭让 readLoop 走回收路径，
+		// 避免持有锁（含 TeamManager.mu 的同步回调）的一方被无限阻塞。
+		ac.conn.Close()
+	}
+}
+
+// writeNotifyFrameLocked 写入一个 Notify 帧。调用方须持有 ac.mu。
+// 写操作带有界超时：agent 停读或对端窗口为零时，5s 内返回错误而不是
+// 按 TCP 重传语义挂到分钟级。超时即视为连接失效，由调用方决定拆链。
+func (ac *agentConn) writeNotifyFrameLocked(body []byte) error {
 	header := MessageHeader{
 		Length: uint32(len(body)),
 		Type:   Notify,
 	}
-	ac.writeMsgHeaderLocked(&header)
-	ac.conn.Write(body)
+	if err := ac.writeMsgHeaderLocked(&header); err != nil {
+		return err
+	}
+	// 有界写：设置超时而非无限阻塞，失败后由调用方关闭连接回收。
+	_ = ac.conn.SetWriteDeadline(time.Now().Add(notifyWriteTimeout))
+	defer ac.conn.SetWriteDeadline(time.Time{})
+	_, err := ac.conn.Write(body)
+	return err
 }
 
 // writeMsgHeaderLocked writes a message header. Caller must hold ac.mu.

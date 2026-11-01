@@ -15,8 +15,15 @@ package agent
 //	    MessageType type;     // 消息类型 (1 byte)
 //	    uint32_t reserved;    // 保留字段 (4 bytes) + 3 bytes padding
 //	};
+import "time"
+
 const messageHeaderSize = 16
 const maxResponseSize = 16 * 1024 * 1024
+
+// notifyWriteTimeout 是 Notify 帧写入的超时上限。sendNotify 可能在
+// TeamManager.mu 持有期间同步执行（收件箱推送回调），必须给写操作
+// 一个上界，避免死连接把共享锁拖到 TCP 重传超时（分钟级）。
+const notifyWriteTimeout = 5 * time.Second
 
 // MessageType 匹配 C++ MessageType 枚举
 type MessageType uint8
