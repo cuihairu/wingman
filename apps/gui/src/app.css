@@ -90,9 +90,11 @@ textarea:disabled {
 
 /* 暗色主题：蓝色/红色按钮 hover 填充变深（#1f6feb / #da3633），深色文字在此上仅约
    4.05:1 / 4.07:1，跌破 AA；hover 时切回白字（#1f6feb 上 4.63:1、#da3633 上 4.61:1，
-   均达 AA）。绿色 hover（#2ea043 上深字约 5.57:1）本就合规，保持深字；
-   无独立 hover 背景的按钮（如 dashboard 的 .btn-secondary/.btn-danger 经通用
-   .btn:hover 变中性底）白字在中性底上远高于 AA。 */
+   均达 AA）。绿色 hover（#2ea043 上深字约 5.57:1）合规，保持深字。
+   .btn-primary 的 hover 填充因页面而异（绿/蓝/红/中性），无法全局一刀切：
+   绿 hover 页保持深字；蓝/红 hover 页（macros、ScreenPickerModal、updates）与
+   hover 落入通用 .btn:hover 中性底的页面（screen、dashboard）在各自 scoped
+   样式内加 :global(:root:not([data-theme='light'])) .btn-primary:hover 白字规则。 */
 :root:not([data-theme='light']) .btn-secondary:hover,
 :root:not([data-theme='light']) .btn-danger:hover {
 	color: white;

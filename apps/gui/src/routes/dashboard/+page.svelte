@@ -583,6 +583,13 @@
 		border-color: var(--accent-green);
 	}
 
+	/* 暗色主题：本页主按钮无独立 hover 背景，hover 经 .btn:hover 落入中性
+	   var(--border-color)（#343a43），深色文字仅约 1.64:1；hover 时切回白字
+	   （中性底上约 13.3:1，远高于 AA）。 */
+	:global(:root:not([data-theme='light'])) .btn-primary:hover {
+		color: white;
+	}
+
 	.btn-secondary {
 		background: var(--accent-blue);
 		color: white;
