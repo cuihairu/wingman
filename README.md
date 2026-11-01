@@ -18,7 +18,8 @@ An automation agent runtime in C++ + Lua/Python, with a Go remote orchestration 
 
 English | [简体中文](README.zh.md)
 
-[Docs](docs/README.md) · [Quick Start](docs/guide/getting-started.md) · [Platform Support](docs/platforms.md) · [API Reference](docs/api/overview.md) · [Examples](docs/examples/) · [Contributing](CONTRIBUTING.md) <a href="https://cuihairu.github.io/wingman//"><img src="https://img.shields.io/badge/docs-blue" alt="docs"></a>
+[Docs](docs/README.md) · [Quick Start](docs/guide/getting-started.md) · [Platform Support](docs/platforms.md) · [API Reference](docs/api/overview.md) · [Examples](docs/examples/) · [Contributing](CONTRIBUTING.md)
+
 </div>
 
 > [**Disclaimer**]
@@ -232,6 +233,8 @@ from wingman import screen, input
 ok = screen.capture()
 
 # Find a color and click it
+
+<p align="center"><a href="https://cuihairu.github.io/wingman/"><img src="https://img.shields.io/badge/docs-blue" alt="docs"></a></p>
 points = screen.findColor(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080}, 10)
 if points:
     for p in points:
