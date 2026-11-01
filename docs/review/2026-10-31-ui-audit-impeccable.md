@@ -3,7 +3,7 @@
 - Scope: two UI surfaces — `apps/gui` (Tauri 2 + Svelte 5 desktop control panel) and `orchestrator/dashboard` (Ant Design 5 + UmiJS admin dashboard).
 - Method: `impeccable detect --json apps/gui/src` (0 findings, clean), plus Playwright 1.64.1 (chromium) screenshots of every rendered route at 1440×900 and 390×844. PNGs live alongside this file (`gui-*-{desktop,narrow}.png`, `dash-*-{desktop,narrow}{,-logged}.png`).
 - Contrast ratios computed per WCAG 2.1 relative luminance. AA thresholds: 4.5:1 normal text, 3:1 large text (≥18.66px or ≥14px bold).
-- Outcome: **9 issues** (4 fixed+committed, 4 implemented in working tree pending commit, 1 awaiting brand decision). **4 fixes committed.**
+- Outcome: **9 issues** (8 fixed+committed, 1 awaiting brand decision). **8 fixes committed.**
 
 ---
 
@@ -141,13 +141,14 @@ Dashboard data flows through `/api/` (dev-proxied to `http://localhost:9527`). A
 |---|---|---|---|
 | P1 | 3 | 0 | 3 |
 | P2 | 1 | 1 | 1 |
-| P3 | 3 | 1 | 0 |
-| **Total** | **7** | **2** | **4** |
+| P3 | 3 | 1 | 4 |
+| **Total** | **7** | **2** | **8** |
 
 **Fixed (commits):**
 1. `93f8284` fix(ui): constrain sidebar nav icon size
 2. `d48f070` fix(ui): normalize leading-slash hash routes
 3. `ceb9d53` fix(ui): use dark text on accent buttons in dark theme
 4. `6bfa645` fix(ui): use white text on blue and red hover in dark theme
+5. `6857299` fix(ui): resolve ui audit follow-ups and verify findings (GUI-P3-1/2/3, DASH-P3-1)
 
-**Todo:** GUI-P3-1 aria-labels、GUI-P3-2 focus-ring alpha、GUI-P3-3 reduced-motion、DASH-P3-1 Monitor empty/error state（修复改动已在工作区、尚未提交，提交后补记 hash）；DASH-P2-1 primary contrast（需拍板，见该条「未修原因」）。
+**Todo:** DASH-P2-1 primary contrast（需拍板，见该条「未修原因」）。GUI-P3-1 aria-labels、GUI-P3-2 focus-ring alpha、GUI-P3-3 reduced-motion、DASH-P3-1 Monitor empty/error state 已由 `6857299` 提交落地（2026-11-01）。
