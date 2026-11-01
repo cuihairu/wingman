@@ -382,6 +382,12 @@
 		background: var(--accent-blue-hover);
 	}
 
+	/* 暗色主题：主按钮底色为蓝，hover 变深蓝（--accent-blue-hover #1f6feb）后深色文字
+	   仅约 4.05:1，跌破 AA；hover 时切回白字（4.63:1，达 AA）。 */
+	:global(:root:not([data-theme='light'])) .btn-primary:hover {
+		color: white;
+	}
+
 	@media (max-width: 1080px) {
 		.summary-grid {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
