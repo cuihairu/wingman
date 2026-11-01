@@ -97,7 +97,7 @@ The desktop shell runs on Linux WebKitGTK, which exposes **no Chrome DevTools Pr
 
 ## Overall critique
 
-The dashboard is a competent, internally consistent Ant Design pro-layout admin surface: routing, access control, tables, and forms are arranged sensibly, and the 17 routes I rendered all painted correctly at both desktop and 390px. But it is **almost entirely stock AntD** — the colors, spacing, type scale, and components come from the library defaults rather than from a Wingman design system, so it reads as "an AntD admin" rather than "the Wingman console." Its most pervasive issue is that the brand primary `#1677ff` used for every primary button, link, and active menu item renders **white text at 4.10:1** — under the 4.5:1 AA floor for normal-size text — a marginal but real failure across the most common interactive elements, and it is not fixable under this audit's constraint against brand/primary-color changes. The single most memorable surface, the Monitor page's "游戏画面" (game screen) card, is a **large empty black rectangle** with a faint "等待画面..." caption until a screenshot arrives — no placeholder illustration, no error state, no instruction. The dashboard is usable; it is not yet designed.
+The dashboard is a competent, internally consistent Ant Design pro-layout admin surface: routing, access control, tables, and forms are arranged sensibly, and the 16 routes I rendered all painted correctly at both desktop and 390px (勘误 2026-11-01: routes.ts 声明 17 个组件路由，但 account/messages 无对应截图，截图证据仅 16 个 dash-* 路由，故按截图证据记 16). But it is **almost entirely stock AntD** — the colors, spacing, type scale, and components come from the library defaults rather than from a Wingman design system, so it reads as "an AntD admin" rather than "the Wingman console." Its most pervasive issue is that the brand primary `#1677ff` used for every primary button, link, and active menu item renders **white text at 4.10:1** — under the 4.5:1 AA floor for normal-size text — a marginal but real failure across the most common interactive elements, and it is not fixable under this audit's constraint against brand/primary-color changes. The single most memorable surface, the Monitor page's "游戏画面" (game screen) card, is a **large empty black rectangle** with a faint "等待画面..." caption until a screenshot arrives — no placeholder illustration, no error state, no instruction. The dashboard is usable; it is not yet designed.
 
 ### Method limitation — backend dependency
 
@@ -128,7 +128,7 @@ Dashboard data flows through `/api/` (dev-proxied to `http://localhost:9527`). A
 
 ## Verified passing (no action needed)
 
-- **Routing:** all 17 routes render; admin sub-routes gated by `access` render for the admin user.
+- **Routing:** all 16 screenshot-captured routes render; admin sub-routes gated by `access` render for the admin user. (`account/messages` 无截图，未在本次渲染证据内。)
 - **Responsive:** every route renders without horizontal overflow at 390×844 (`dash-*-narrow-*.png`); AntD grid `xs`/`md`/`lg` columns stack correctly.
 - **Tables, forms, filters, pagination:** render and function on the Agents/Workflows/Executions/Scripts pages.
 - **i18n:** `zh-CN` default with the full locale set present.

@@ -177,7 +177,7 @@
 				<span class="action-text">{$connection.paused ? '恢复运行' : '暂停全部'}</span>
 			</button>
 		{/if}
-		<button class="btn btn-icon" title={$theme === 'dark' ? '切换到亮色' : '切换到暗色'} onclick={toggleTheme}>
+		<button class="btn btn-icon" aria-label="切换主题" title={$theme === 'dark' ? '切换到亮色' : '切换到暗色'} onclick={toggleTheme}>
 			{#if $theme === 'dark'}
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<circle cx="12" cy="12" r="5"></circle>
@@ -196,7 +196,7 @@
 				</svg>
 			{/if}
 		</button>
-		<button class="btn btn-icon" title="刷新" onclick={handleRefresh}>
+		<button class="btn btn-icon" aria-label="刷新" title="刷新" onclick={handleRefresh}>
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<polyline points="23 4 23 10 17 10"></polyline>
 				<polyline points="1 20 1 14 7 14"></polyline>

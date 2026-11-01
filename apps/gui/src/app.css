@@ -15,7 +15,7 @@
 	--accent-blue-hover: #1f6feb;
 	--accent-yellow: #d29922;
 	--accent-orange: #db6d28;
-	--focus-ring: rgba(88, 166, 255, 0.32);
+	--focus-ring: rgba(88, 166, 255, 0.55);
 	--shadow-color: rgba(0, 0, 0, 0.32);
 }
 
@@ -131,4 +131,14 @@ svg {
 ::-webkit-scrollbar-thumb:hover {
 	background: var(--text-secondary);
 	background-clip: padding-box;
+}
+
+/* 用户偏好减少动态效果时，关闭所有过渡与动画（含组件级 <style> 内的 transition/animation）。 */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		transition: none !important;
+		animation: none !important;
+	}
 }

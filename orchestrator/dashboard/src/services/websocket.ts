@@ -192,7 +192,10 @@ class WebSocketService {
   }
 
   isConnected(): boolean {
-    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+    // WebSocket 在部分测试环境（jsdom）未定义，此时视为未连接，避免读取 WebSocket.OPEN 抛错。
+    return (
+      this.ws !== null && typeof WebSocket !== 'undefined' && this.ws.readyState === WebSocket.OPEN
+    );
   }
 
   private setupEventHandlers(): void {
