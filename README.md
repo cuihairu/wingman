@@ -1,4 +1,25 @@
-<div align="center"><a href="https://wingman.cuihairu.sitehttps://wingman.cuihairu.site/"><img src="https://img.shields.io/badge/docs-docs-blue" alt="docs"></a> <a href="https://wingman.cuihairu.site/"><img src="https://img.shields.io/badge/docs-docs-blue" alt="docs"></a></div>
+<div align="center">
+
+<img src="docs/public/logo.svg" alt="Wingman" width="64" />
+
+# Wingman
+
+> **English** | [中文](README.zh.md)
+
+[![OS](https://img.shields.io/badge/OS-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](https://github.com/cuihairu/wingman) [![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman) [![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23) [![Lua](https://img.shields.io/badge/Lua-5.5-000080.svg?logo=lua&logoColor=white)](https://www.lua.org/) [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/) [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+**Cross-platform programmable automation agent and remote orchestration platform** (game automation is the first vertical)
+
+An automation agent runtime in C++ + Lua/Python, with a Go remote orchestration control plane
+
+> In one sentence: register Windows / macOS / Linux / Android machines as agents and control them
+> with scripts, vision, input, OCR/ML and workflows. Game automation is the most polished vertical,
+> but the control plane and execution plane were designed as a general agent platform from day one.
+
+English | [简体中文](README.zh.md)
+
+[Docs](docs/README.md) · [Quick Start](docs/guide/getting-started.md) · [Platform Support](docs/platforms.md) · [API Reference](docs/api/overview.md) · [Examples](docs/examples/) · [Contributing](CONTRIBUTING.md) <a href="https://cuihairu.github.io/wingman//"><img src="https://img.shields.io/badge/docs-blue" alt="docs"></a>
+</div>
 
 > [**Disclaimer**]
 >
