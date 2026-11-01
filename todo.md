@@ -5,92 +5,93 @@
 
 ## 未完成
 
-- [ ] 视频教程 EP01 机器侧素材预采（wingman-agent.exe 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（2026.10.18-nightly，sha256 已验），零注入录屏管线已验证，详见 ROADMAP.md M8.2）**环境级 BLOCKED**：win-worker 已按用户 2026-10-27 令永久停用，EP01 依赖其桌面解锁；手动动作=用户提供已解锁 Windows 真机，或授权人工执行机器侧预采（照 docs/tutorials/video-storyboard.md「机器侧预采」配方，约 2 分钟出片）；此前不虚构进展、不生成代餐素材；**已代决:按 docs/review/2026-10-30-decisions.md 执行(2026-10-30)**——暂缓待用户提供解锁真机或授权人工预采，涉凭据/桌面会话不代决
-- [ ] 视频教程人工成片（EP01-EP06 实拍旁白录制/SRT/发布；分镜与逐字旁白 docs/tutorials/video-storyboard.md 已完备，详见 ROADMAP.md M8.2）**BLOCKED**：需人工出镜/配音录制、字幕与发布；**已代决:按 docs/review/2026-10-30-decisions.md 执行(2026-10-30)**——暂缓待用户档期，仓库侧成片前置全就绪，零剩余工程
+- [ ] 视频教程 EP01 机器侧素材预采 — BLOCKED：待用户提供已解锁 Windows 真机或授权人工预采（已代决 2026-10-30，docs/review/2026-10-30-decisions.md）
+- [ ] 视频教程 EP01-EP06 人工成片 — BLOCKED：待用户档期；仓库侧前置已就绪
+- [ ] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归
 
 ## 已完成
 
 ### 架构决策与 Execution
 
 - [x] 四层模型 / 原语边界 / Capability / Execution 四条 ADR 落文档（0c2bbe6）
-- [x] Execution v1 + Capability v1 代码落地：executions 表 + 查询 API + run_script 生命周期 + capabilities 上报（4d4b6c3，go test 全绿）
+- [x] Execution v1 + Capability v1：executions 表 + 查询 API + run_script 生命周期 + capabilities 上报（4d4b6c3）
 - [x] Execution v2：batch 接口 + workflow 引擎步骤接线（8a9997b）
 - [x] Dashboard executions 页 + agents 页 capabilities 展示（aa2202f）
-- [x] runtime 侧 capabilities 实际上报（desktop 词汇表清单，AgentLoopbackTest 钉定）
+- [x] runtime 侧 capabilities 实际上报（AgentLoopbackTest 钉定）
 
 ### C++ Runtime 与脚本层
 
 - [x] Lua (sol2) + Python (pybind11) 双脚本引擎，42 个模块统一 `wingman.*` 命名空间
-- [x] file 模块 13 函数 std::filesystem 真实现（file_module_test 16 例）
-- [x] hotkey 模块轮询式全局热键（9 用例，全量 2085 passed）
-- [x] notify tray 四函数事件链（notify_module_test 4 + notify_bridge_test 2 + GUI vitest 3）
-- [x] task pause/resume 协作式暂停（TaskModuleTest 47 例，两树 2518 注册全绿）
-- [x] 事件系统 listener/listeners/clear(type) 查询与按名清理（EventModuleTest 50 例）
-- [x] ScriptManager 状态机死锁环 + stop 数据竞争修复（回归钉 4 例）
-- [x] 加密资源打包到加载闭环：PBKDF2 + AES-256-GCM，PACK_HEADER v2（resource_pack_test 43 例 + crypt_test +10，全量 2234 例 0 红）
-- [x] X11 显示瞬态拒绝根治：openX11Display 重试 + 回归钉（10/10 绿）
-- [x] 真机验证自动化：XRecord 正向 e2e 用例 + verify-xrecord-desktop.sh / verify-macos-runtime.sh
-- [x] 死代码清理：protobuf 链 / libs/debug / clasp / 双 system_handler / XOR 加密遗留
+- [x] file 模块 13 函数 std::filesystem 实现（16 例）
+- [x] hotkey 模块轮询式全局热键（9 例）
+- [x] notify tray 事件链（9 例）
+- [x] task pause/resume 协作式暂停（47 例）
+- [x] 事件系统 listener/listeners/clear(type)（50 例）
+- [x] ScriptManager 状态机死锁与数据竞争修复（4 例回归钉）
+- [x] 加密资源打包闭环：PBKDF2 + AES-256-GCM + PACK_HEADER v2（53 例）
+- [x] X11 显示瞬态拒绝根治（10 例）
+- [x] 真机验证自动化：XRecord e2e + verify-xrecord-desktop.sh / verify-macos-runtime.sh
+- [x] 死代码清理：protobuf 链 / libs/debug / clasp / 双 system_handler / XOR 遗留
 
 ### Go 中控
 
-- [x] 工作流引擎：DAG + 环检测 + 持久化 + 取消/超时/重试 + 负载均衡 + 6 内置模板 + wait/condition/screenshot 步骤
-- [x] 工作流取消终态竞争根治（-race -count=50 绿，回归 4 例）
-- [x] RBAC 权限系统：模型 + 中间件 + API + Dashboard 页面，8 权限码接线
-- [x] Team/Inbox 投递/清理/建团三断链修复（team_delivery_test 11 例，Go 覆盖率 100%）
-- [x] Agent 分组标签持久化 + 批量操作 API 与 UI（batch_test 10 例 + 集成测试）
-- [x] FrameListener.teamMgr 数据竞争修复（4c7ddd9，CI 全绿）
-- [x] VaultProvider 抽象 + LocalProvider 默认实现 + 注册表切换 + 接入点扫描入 CI（ce4b4ee / f501962 / 2c0923a，TestVaultProviderSwitchByConfig 留证）
-- [x] per-agent token 签发/吊销管理面（models.AgentToken + /api/agent-tokens）
-- [x] challenge-response 注册：server + 桌面 + Android 三端（HMAC-SHA256，RFC 4231 向量单测）
-- [x] 自动更新：发布/manifest/下载 API + 客户端 manifest 解析/semver/流式 sha256
-- [x] Swagger 47 端点全注解（swag init 再生成）
+- [x] 工作流引擎：DAG + 持久化 + 取消/超时/重试 + 负载均衡 + 6 模板 + wait/condition/screenshot 步骤
+- [x] 工作流取消终态竞争根治（-race -count=50 绿）
+- [x] RBAC：模型 + 中间件 + API + Dashboard 页面，8 权限码
+- [x] Team/Inbox 三断链修复（11 例，覆盖率 100%）
+- [x] Agent 分组标签 + 批量操作 API 与 UI（10 例）
+- [x] FrameListener.teamMgr 数据竞争修复（4c7ddd9）
+- [x] VaultProvider 抽象 + LocalProvider + 注册表切换 + CI 扫描（ce4b4ee / f501962 / 2c0923a）
+- [x] per-agent token 签发/吊销（/api/agent-tokens）
+- [x] challenge-response 注册三端（HMAC-SHA256，RFC 4231 向量）
+- [x] 自动更新：manifest API + 客户端 semver/流式 sha256
+- [x] Swagger 47 端点全注解
 
 ### Android Agent
 
 - [x] A1 链路打通：下发/执行/回传，零监听端口（ce4a648）
-- [x] A2 能力闭环：手势注入/MediaProjection 采集/找色找图/远程截图（c1df705 / c0a67fe）
+- [x] A2 能力闭环：手势注入/采集/找色找图/远程截图（c1df705 / c0a67fe）
 - [x] A3-P1 token 认证（4c9a8f4）
-- [x] A3 可靠性：开机自启（默认关）+ 崩溃自重启 + 30s 看门狗 + 机型保活指引（6cecfad，JVM 15 例）
-- [x] A3 受限设置引导：脚本预授权 + App 内引导（JVM 21 例 + Go 契约 11 例）
-- [x] A3-P2：token Keystore 加密迁移 + challenge 全链（JVM 单测 5 例）
-- [x] API 34 模拟器全链路验证，三处阻断级缺陷修复（95570d7，gradle 22/22）
+- [x] A3 可靠性：开机自启 + 崩溃自重启 + 30s 看门狗 + 保活指引（6cecfad，15 例）
+- [x] A3 受限设置引导（21 例 + Go 契约 11 例）
+- [x] A3-P2 token Keystore 加密迁移 + challenge 全链（5 例）
+- [x] API 34 模拟器全链路验证，三处阻断缺陷修复（95570d7，22/22）
 - [x] 共用核心下沉 libs/agentcore + libs/androidagent（3ab3b7a）
 
 ### 桌面 GUI（Tauri）与 Dashboard
 
-- [x] GUI 六页面 + IPC 连接重试 + events 轮询 + 托盘 + 主题 + 全局快捷键
-- [x] GUI scripts 页文件树/预览/新建/删除（Rust 9 单测 + vitest 18 例）
-- [x] Dashboard 9 页面 + 路由权限守卫 + WS 事件全对接 + 8 语言 i18n（约 530 处文案）
-- [x] Dashboard API 前缀契约断裂修复 + 26 例回归锁定（apiContracts.test.ts）
-- [x] 远控集成 Apache Guacamole：P0 票据/网关 + 剪贴板/文件传输/会话录制 + 会话审计 + e2e 容器栈（20fdb30 起，jest 261→351）
+- [x] GUI 六页面 + IPC 重试 + events 轮询 + 托盘 + 主题 + 全局快捷键
+- [x] GUI scripts 页文件树/预览/新建/删除（Rust 9 例 + vitest 18 例）
+- [x] Dashboard 9 页面 + 路由权限守卫 + WS 事件对接 + 8 语言 i18n
+- [x] Dashboard API 前缀契约锁定（26 例）
+- [x] Guacamole 远控：票据/网关 + 剪贴板/文件传输/录制 + 审计 + e2e 栈（20fdb30，jest 261→351）
 - [x] 浏览器内录像回放（jest 401→420）
-- [x] SSH/SFTP 文件浏览器 v2：分页/进度/重试/文件操作审计（v1 为 cc7d094）
-- [x] flaky 根治：RTL 窗口随 CPU 超售自适应 + 固定 sleep 清除（load 108 下全量 420/420）
+- [x] SSH/SFTP 文件浏览器 v2（v1 为 cc7d094）
+- [x] flaky 根治：RTL 窗口自适应 + 固定 sleep 清除（420/420）
 
 ### 测试与覆盖率
 
-- [x] Go server 覆盖率 stmt/branch/func 100%（597 测试函数，vet 全清）
-- [x] C++ Linux 覆盖率 TOTAL 90%（2509 注册：2478 passed + 31 环境 skip，余量逐行论证登记）
-- [x] 覆盖率收口系列：agentcore 28 例 / IPC-RPC 52 例 / AgentConfig 24 例 / LuaScriptEngine 31 例 / lua_marshal 28 例 / Agent 主类 35 例 / StandaloneMode 12 例 / module_helpers 15 例 / Clipboard 3 例 / ResourceLoader 7 例 / 收官 13 例
-- [x] 测试副产品真缺陷修复 11 处：TcpClient 重连 terminate / EventBuffer 死锁 / macro.play SIGFPE / config_handler 悬垂 / 沙箱 preload 崩溃 / EventLogSink 过滤反写 / system.shutdown 自死锁 / 事件 sink 悬空 / standalone stop 泄漏 / saveToFile 漏写 [performance] 节 / 心跳不可打断
-- [x] flake 根治系列：X11 WM 测试静默期 / TestRunHTTPEndpoints 共享 deadline / 工作流取消写序 / guacd 契约 macOS-Windows 适配
+- [x] Go server 覆盖率 stmt/branch/func 100%（597 测试函数）
+- [x] C++ Linux 覆盖率 TOTAL 90%（2509 注册：2478 passed + 31 skip）
+- [x] 覆盖率收口：agentcore/IPC-RPC/AgentConfig/LuaScriptEngine/lua_marshal/Agent 主类/StandaloneMode/module_helpers/Clipboard/ResourceLoader 等系列补测
+- [x] 测试副产品真缺陷修复 11 处
+- [x] flake 根治：X11 静默期 / 共享 deadline / 取消写序 / guacd 契约跨平台
 
 ### 构建与发布
 
-- [x] CI 矩阵：C++ Windows 全量+覆盖率 / Linux full tests(+Python) / compat、Go 三平台、Dashboard 打包、Android APK、平台边界守卫
-- [x] 一键安装三件套：install.sh / install.ps1 / agent 构建矩阵接入 nightly（shellcheck 干净 + ps1 AST + 防御分支实测）
-- [x] Release 上传健壮性：publish-assets 统一重试 + 远端大小校验
-- [x] libuuid vendor 预缓存（sourceforge 单点修复，--no-downloads 禁网实证）
-- [x] 文档站 VitePress：构建绿 + 站内死链 0
-- [x] 打包分发：Windows zip/NSIS、Linux tar.gz/AppImage/deb、macOS tar.gz/dmg/app、Docker 镜像
+- [x] CI 矩阵：Windows 全量+覆盖率 / Linux full(+Python) / compat / Go 三平台 / Dashboard / Android / 平台边界守卫
+- [x] 一键安装三件套接入 nightly（shellcheck + ps1 AST 实测）
+- [x] Release 上传健壮性：重试 + 远端大小校验
+- [x] libuuid vendor 预缓存（禁网实证）
+- [x] 文档站 VitePress：构建绿 + 死链 0
+- [x] 打包分发：Windows zip/NSIS、Linux tar.gz/AppImage/deb、macOS dmg/app、Docker
 
 ### 文档
 
-- [x] 快速开始 / Dashboard / Runtime GUI / 脚本开发指南 / 协议规范 / 贡献指南
-- [x] 文档-代码一致性审计：docs/审计-文档一致性.md（2026-10-08 批次 273 项，后续批次逐页对账）
-- [x] Android 设计文档 / 保活指引 / 受限设置指引 / 手动验证指引 / 教程分镜脚本
-- [x] Dependabot 清零（2026-10-21，#1/#2/#308/#309/#311/#312/#313/#314）：docs pnpm 锁 vite 6.4.4、esbuild 0.25.x；dashboard pnpm 锁 hono 4.13.11；docs:build PASS（62.16s）、dashboard build PASS（22.64s）；commit 8ab069b
+- [x] 快速开始 / Dashboard / Runtime GUI / 脚本开发 / 协议 / 贡献指南
+- [x] 文档-代码一致性审计落地：docs/审计-文档一致性.md（2026-10-08 批 273 项；2026-11-01 巡检轮见同文件）
+- [x] Android 设计文档 / 保活 / 受限设置 / 手动验证 / 教程分镜
+- [x] Dependabot 清零（2026-10-21，8ab069b，docs/dashboard build PASS）
 
 ## 注意事项
 
@@ -110,29 +111,7 @@
 - [docs/API.md](./docs/API.md) — API 文档
 - [docs/development-environment.md](./docs/development-environment.md) — VS Code 开发环境
 
-## 审核发现
+## 审核发现台账
 
-- [x] 审核发现：本次已更新 2026-10-28 的环境阻塞状态，但文件头“最后更新”仍停留在 2026-10-20，元数据与正文不一致（todo.md:3）— 已修复：头部日期更新为 2026-10-28
-- [x] 审核发现：c7730da..28f492f 未发现问题 — 属实：区间含 e73fbbd（docs: fix todo header date）、b4eb5f3（docs: verify c7730da..HEAD audit finding）、d980b0e（docs: bump todo header date to 2026-10-29）、28f492f（docs: verify e73fbbd..HEAD audit finding），均为 docs 改动，无代码/测试改动，无问题（git log --oneline c7730da..28f492f）
-- [x] 审核发现：e73fbbd..28f492f 新增审核发现行断言 c7730da..HEAD 区间仅 e73fbbd，但 c7730da..28f492f 实际包含 e73fbbd（docs: fix todo header date）、b4eb5f3（docs: verify c7730da..HEAD audit finding）、d980b0e（docs: bump todo header date to 2026-10-29）、28f492f（docs: verify e73fbbd..HEAD audit finding）四个提交，git 历史事实与记录不一致（todo.md:116）— 已修正：按实际提交列表更新该行表述，并附 git log --oneline 证据
-- [x] 审核发现：新增审核记录仍把 `c7730da..HEAD` 的提交清单写成仅 3 个且遗漏当前提交 28f492f，与 git log 实际 4 个提交不一致（todo.md:116）— 属实：`git log --oneline c7730da..28f492f` 实为 4 个提交；已改用固定区间并把缺失的 28f492f 补入清单
-- [x] 审核发现：todo.md:117 仍断言 `c7730da..HEAD`（当时 HEAD=28f492f）仅含 e73fbbd、b4eb5f3、d980b0e 三个提交，遗漏 28f492f，与 git rev-list --count c7730da..28f492f=4 不符；本区间修复仅更正 todo.md:116，未同步修正同源描述 todo.md:117（todo.md:117）— 属实：`git rev-list --count c7730da..28f492f`=4，该行由 28f492f 落地、自身落在区间内；已同步修正 todo.md:117：改用固定区间 c7730da..28f492f 并补入 28f492f（git log --oneline c7730da..28f492f）
-- [x] 审核发现：6692bca..09b6a95 本次审核无发现 — 属实：区间仅含 09b6a95（docs: fix stale commit list in todo audit line），为 docs 改动，无代码/测试改动；该提交修正的 todo.md:117 及新增的 todo.md:119 所载提交清单、区间、计数与 `git log --oneline c7730da..28f492f`/`git rev-list --count c7730da..28f492f` 均复核一致，无问题（git log --oneline 6692bca..09b6a95；git rev-list --count 6692bca..09b6a95=1）
-- [x] 审核发现：docs/review/2026-10-30-decisions.md:15 称「EP01 机器侧预采配方」已在英文 docs/tutorials/video-storyboard.md 完备，但该英文文件并无此配方（grep 机器侧/预采/gdigrab/ffmpeg 均 0 命中），实际配方仅在 docs/zh/tutorials/video-storyboard.md:46，属引用不实（docs/review/2026-10-30-decisions.md:15）— 属实：英文文件 `grep -c '机器侧\|预采\|gdigrab\|ffmpeg'`=0，中文文件 `docs/zh/tutorials/video-storyboard.md:46` 含配方；已修正引用为 `docs/zh/tutorials/video-storyboard.md:46`（grep -c 验证、docs/zh/tutorials/video-storyboard.md:46）
-- [x] 审核发现：todo.md:120 新增审核行断言「6692bca..HEAD 区间仅含 09b6a95」，但 git log --oneline 6692bca..HEAD 实含 09b6a95 与 cd25135 两个提交，遗漏本提交自身，与既往 c7730da..28f492f 同类计数口径错误（todo.md:120）— 属实：`git rev-list --count 6692bca..cd25135`=2；已将 todo.md:120 的区间改为 `6692bca..09b6a95`（当时审核 HEAD=09b6a95），`git rev-list --count 6692bca..09b6a95`=1 与断言一致（git rev-list --count 6692bca..09b6a95）
-- [x] 审核发现：docs/review/2026-10-30-decisions.md:15 断言「ROADMAP.md:572-573 引用中文文件」，但 ROADMAP.md:570-572 实际引用的是英文 docs/tutorials/video-storyboard.md（全文 grep 'zh/tutorials\|docs/zh' 均 0 命中），属引用不实（docs/review/2026-10-30-decisions.md:15）— 属实：`grep -n 'zh/tutorials\|docs/zh' ROADMAP.md`=0 命中，ROADMAP.md:570-572 引用的是英文 `docs/tutorials/video-storyboard.md`（该英文文件 `grep -c '机器侧\|预采\|gdigrab\|ffmpeg'`=0，配方仅在 `docs/zh/tutorials/video-storyboard.md:46`）；已修正 docs/review/2026-10-30-decisions.md:15 引用为「ROADMAP.md:570-572 引用英文 docs/tutorials/video-storyboard.md，该英文文件不含机器侧预采配方，配方仅在中文文件」（grep 验证、docs/review/2026-10-30-decisions.md:15）
-- [x] 审核发现：docs/review/2026-10-31-ui-audit-impeccable.md:116 建议改用 `#0958d9` 替代品牌主色并标注「≈5.2:1」，但实测 #ffffff 在 #0958d9 上对比度为 6.16:1，与「≈5.2:1」不符（#1677ff 白字 4.10:1 则属实）（docs/review/2026-10-31-ui-audit-impeccable.md:116）— 属实：按 WCAG 2.1 公式复算 `#ffffff`/`#0958d9`=6.16、`#ffffff`/`#1677ff`=4.10；报告 8782ec4 已在同位标注「实测白字对比度为 6.16:1，原记 ≈5.2:1 有误」，复核报告现状一致
-- [x] 审核发现：docs/review/2026-10-31-ui-audit-impeccable.md:100 称「17 routes I rendered」且 :130「all 17 routes render」，但截图目录 docs/review/2026-10-31-ui-audit-impeccable/ 仅含 16 个独立 dash-* 路由截图（orchestrator/dashboard/config/routes.ts 业务路由 17 个，其中 account/messages 无对应截图），「17 个已渲染」与截图证据 16 个不符（docs/review/2026-10-31-ui-audit-impeccable.md:100）— 属实：`dash-*` 截图去重后 16 个且无 `account/messages`；已将报告两处「17」按截图证据改为 16 并注明 `account/messages` 无截图未纳入渲染证据
-- [x] 审核发现：提交 ceb9d53 为暗色主题 accent 按钮设置深色文字以达 WCAG AA，但仅在 :root:not([data-theme="light"]) 的非 hover 态生效；hover 时蓝色/红色按钮填充变深（#1f6feb / #da3633），深色文字在其上实测仅 4.05:1 / 4.07:1，仍低于 AA 4.5:1 阈值——该提交未处理 hover 态，报告中 GUI-P2-1 已明确记录此问题（apps/gui/src/app.css:84-88；docs/review/2026-10-31-ui-audit-impeccable.md:60-70）— 属实：`ceb9d53` 仅含非 hover 深字规则，深字 hover 对比 4.05/4.07；后续 `6bfa645` 为蓝/红 hover 切白字（4.63/4.61）并覆盖 macros/ScreenPickerModal 两个 scoped primary 变体；补漏修复 `24441c9`（updates 页蓝底）与 `e780354`（screen/dashboard 页中性底）把其余 .btn-primary hover 一并切白字（中性底上约 13.3:1 达 AA），报告 GUI-P2-1 标记 FIXED，复核现状一致
-
-- [x] 审核发现：docs/review/2026-10-31-ui-audit-impeccable.md:6 与 :153 称 GUI-P3-1/2/3、DASH-P3-1 四项修复「已在工作区、尚未提交」，但该四项已由区间内提交 6857299 提交落地，git status 干净无未提交改动，报告状态表述过时（docs/review/2026-10-31-ui-audit-impeccable.md:6）— 属实：`git show --stat 6857299` 含 GUI-P3-1（TopBar.svelte aria-label）、GUI-P3-2（app.css focus-ring 0.32→0.55）、GUI-P3-3（app.css prefers-reduced-motion）、DASH-P3-1（ScreenshotView Empty/Result + websocket.isConnected 守卫 + 测试断言）四项落地；`git log -1 --oneline 6857299`（HEAD）确认已提交；已将报告 :6 与 :153 状态改为已提交事实，并同步修正 Fixed 列表/Totals 计数（docs/review/2026-10-31-ui-audit-impeccable.md:6、:153；git show --stat 6857299；git log -1 --oneline 6857299）
-- [x] 审核发现：apps/gui/src/routes/updates/+page.svelte:381-383 的 .btn-primary 蓝底 hover 变 --accent-blue-hover(#1f6feb)，暗色下全局深字(#101214)在其上对比仅 4.05:1，仍低于 AA 4.5:1——6bfa645 仅处理 macros/ScreenPickerModal 两个 scoped primary，遗漏本页（apps/gui/src/routes/updates/+page.svelte:381）— 属实：updates 页 .btn-primary 底色为 --accent-blue、hover 为 --accent-blue-hover，深字 hover 对比 4.05:1；已补与 macros/ScreenPickerModal 同款的暗色 hover 白字规则（:global(:root:not([data-theme='light'])) .btn-primary:hover，白字 4.63:1 达 AA），vite build + vitest 529 例全绿
-- [x] 审核发现：apps/gui/src/routes/screen/+page.svelte:978 的 .btn-primary（绿底）无独立 hover 规则，hover 经 .btn:hover 变中性 var(--border-color)=#343a43，暗色下深字 #101214 在其上对比仅 1.64:1，远低于 AA——6bfa645 注释称「无独立 hover 背景按钮白字在中性底上远高于 AA」，但本页按钮是深字非白字，推理不成立且未修复（apps/gui/src/routes/screen/+page.svelte:978）— 属实：`.btn:hover`(0,2,0) 覆盖 `.btn-primary`(0,1,0)，hover 落中性底、深字 1.64:1；已为 screen 与同缺陷的 dashboard 页（.btn-primary 同样无独立 hover 规则）加暗色 hover 白字规则（中性底上约 13.3:1），并把 app.css 注释改为按页面分列的真实口径，vite build + vitest 529 例全绿
-- [x] 审核发现：orchestrator/dashboard/tests/components.test.tsx:260 用例名「空帧时显示等待或断连提示」仅断言断连分支「无法接收游戏画面...」，未覆盖 wsConnected=true 的等待分支（Empty「连接 Agent 后此处将实时显示游戏画面」）与「预览已关闭」分支，用例名与断言范围不符（orchestrator/dashboard/tests/components.test.tsx:260）— 属实：原用例已断言「预览已关闭」分支，缺口仅在 wsConnected=true 的等待分支；已新增「ws 已连接时空帧显示等待提示」用例（FakeWS simulateOpen → isConnected 真、渲染 Empty「连接 Agent 后此处将实时显示游戏画面」且断言断连文案不存在），并把原用例名改为「ws 断连时空帧显示断连提示，关闭开关显示关闭文案」，jest 全量 449 例全绿（orchestrator/dashboard/tests/components.test.tsx:256-300）
-- [x] 审核发现：todo.md:123 新增审核记录称 6bfa645「覆盖两个 scoped primary 变体，报告 GUI-P2-1 标记 FIXED，复核现状一致」，但 updates/screen 页 .btn-primary hover 对比度问题仍未覆盖（见前两条发现），该记录未反映修复范围不完整，「复核现状一致」结论不准确（todo.md:123）— 属实：`6bfa645` 仅改 app.css + ScreenPickerModal + macros 三个文件，未覆盖 updates/screen/dashboard 页 .btn-primary，原记录「复核现状一致」结论过早；已把记录改为按补漏提交分列的真实口径（`6bfa645`→`24441c9`→`e780354`），updates/screen/dashboard 三页均落地白字规则，`git show --stat 6bfa645` / `24441c9` / `e780354` 复核一致
-
-- [ ] **DOC-GIF · P2 · 文档 · 配置开关效果动态图(每个开关 off→on 对比+GIF)**
-  - 交付:枚举本仓全部「开启后有效果」的开关/配置项;自动流水线生成证据——GUI 类用 @vscode/test-electron 或应用截图(off 一张/on 一张+切换过程录屏),CLI 类用终端录屏(asciinema→GIF 或 ffmpeg);ffmpeg 缝合动态 GIF。
-  - 文档:docs「配置效果」页(双语)逐开关嵌入:说明+off 图+on 图+GIF。
-  - 验收:清单内每个开关都有 off/on+GIF;流水线可重跑(配置变更随时再生成);兼作配置效果回归测试。
-  - 参考:kode todo C-24 同款流水线模式(2026-11-01 用户令全舰队推广)。
+- [x] 2026-10-28~31 文档/UI/测试覆盖审核批次闭环：todo 元数据、decisions 引用、UI 审计报告（对比度/路由计数/P3 系列）、ScreenshotView 测试缺口、todo 审核记录纠偏（代表提交 6857299 / 8782ec4 / 24441c9 / e780354 / f5a63ef / 56f6b05；逐条明细见 docs/review/* 与 git log）
+- [ ] DOC-GIF · P2 · 文档：配置开关效果动态图（枚举全仓有效果的开关，自动流水线产出 off→on 对比 + GIF，docs「配置效果」双语页嵌入，兼作配置效果回归；参考 kode C-24 流水线模式）
