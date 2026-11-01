@@ -6,7 +6,7 @@
 
 > [English](README.md) | **中文**
 
-[![OS](https://img.shields.io/badge/OS-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](https://github.com/cuihairu/wingman) [![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman) [![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23) [![Lua](https://img.shields.io/badge/Lua-5.5-000080.svg?logo=lua&logoColor=white)](https://www.lua.org/) [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/) [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![OS](https://img.shields.io/badge/OS-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](https://github.com/cuihairu/wingman) [![CI](https://github.com/cuihairu/wingman/workflows/CI/badge.svg)](https://github.com/cuihairu/wingman/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/cuihairu/wingman/branch/main/graph/badge.svg)](https://codecov.io/gh/cuihairu/wingman) [![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23) [![Lua](https://img.shields.io/badge/Lua-5.5-000080.svg?logo=lua&logoColor=white)](https://www.lua.org/) [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/) [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![文档](https://img.shields.io/badge/%E6%96%87%E6%A1%A3-blue.svg)](https://cuihairu.github.io/wingman/zh/)
 
 **跨平台可编程自动化 Agent 与远程编排平台**（游戏自动化是第一垂直场景）
 
@@ -16,9 +16,7 @@ C++ + Lua/Python 的自动化 Agent Runtime + Go 远程编排中控
 > 脚本、视觉、输入、OCR/ML 与 Workflow 对它们做自动化控制；游戏自动化是打磨
 > 最深的垂直场景，但控制面与执行面从一开始就是按通用 Agent 平台设计的。
 
-[English](README.md) | 简体中文
-
-[文档](docs/README.md) · [快速开始](docs/guide/getting-started.md) · [平台支持](docs/platforms.md) · [API 参考](docs/api/overview.md) · [示例](docs/examples/) · [贡献指南](CONTRIBUTING.md)
+[文档](docs/zh/README.md) · [快速开始](docs/zh/guide/getting-started.md) · [平台支持](docs/zh/platforms.md) · [API 参考](docs/zh/api/overview.md) · [示例](docs/zh/examples/) · [贡献指南](CONTRIBUTING.md)
 
 </div>
 
@@ -44,7 +42,7 @@ C++ + Lua/Python 的自动化 Agent Runtime + Go 远程编排中控
 - **双语言脚本** - Lua（sol2）与 Python（pybind11）共用同一套 `wingman.*` API
 - **纯用户态** - 只调用系统公开 API，不读写游戏内存、不注入进程
 - **可编程** - 42 个脚本模块加触发器、宏，复杂逻辑写成脚本
-- **跨平台** - Windows、macOS、Linux 统一接口抽象；Android 实验性支持、iOS 规划中（[平台支持详情](docs/platforms.md)）
+- **跨平台** - Windows、macOS、Linux 统一接口抽象；Android 实验性支持、iOS 规划中（[平台支持详情](docs/zh/platforms.md)）
 
 ### 功能模块
 
@@ -131,11 +129,13 @@ C:\vcpkg\vcpkg integrate install
 
 **Windows:**
 ```bash
+# 配置（需 VCPKG_ROOT；默认 VS 2022 生成器 + x64-windows-static）
+powershell -ExecutionPolicy Bypass -File build-scripts/ci/configure-windows.ps1
 # 编译
-build-scripts\build-runtime-msvc-ninja.bat
+cmake --build build --config Release
 
 # 运行 Lua 脚本
-.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe script examples\lua_scripts\hello.lua
+.\build\apps\agent\Release\wingman-agent.exe script examples\lua_scripts\hello.lua
 ```
 
 **详细构建步骤请查看 [构建指南](BUILD.md)**
@@ -196,8 +196,8 @@ nightly Release 的 `wingman-*-android-arm64.apk`（debug 签名）：
    `scripts/android-restricted-settings.sh allow` 预授权（App 内也有引导）。
 
 详细验收步骤、已知边界与 A3 可靠性验证见 [apps/android/README.md](apps/android/README.md)，
-设计与协议见 [docs/android-agent-design.md](docs/android-agent-design.md)，
-机型保活见 [docs/guides/android-keep-alive.md](docs/guides/android-keep-alive.md)。
+设计与协议见 [docs/zh/android-agent-design.md](docs/zh/android-agent-design.md)，
+机型保活见 [docs/zh/guides/android-keep-alive.md](docs/zh/guides/android-keep-alive.md)。
 
 ---
 
@@ -211,8 +211,8 @@ local wingman = require("wingman")
 -- 截图（capture 返回布尔：是否成功）
 local ok = wingman.screen.capture()
 
--- 查找颜色并点击
-local points = wingman.screen.findColor(0xFF0000, {x = 0, y = 0, width = 1920, height = 1080}, 10)
+-- 查找颜色并逐个点击（findColors 返回命中点数组）
+local points = wingman.screen.findColors(0xFF0000, {x = 0, y = 0, width = 1920, height = 1080}, 10)
 if points then
     for _, p in ipairs(points) do
         wingman.input.click(p.x, p.y, 0)
@@ -228,28 +228,26 @@ from wingman import screen, input
 # 截图（capture 返回布尔：是否成功）
 ok = screen.capture()
 
-# 查找颜色并点击
-
-<p align="center"><a href="https://cuihairu.github.io/wingman/zh/"><img src="https://img.shields.io/badge/%E6%96%87%E6%A1%A3-blue" alt="文档"></a></p>
-points = screen.findColor(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080}, 10)
+# 查找颜色并逐个点击（find_colors 返回命中点列表）
+points = screen.find_colors(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080}, 10)
 if points:
     for p in points:
         input.click(p["x"], p["y"])
 ```
 
-**更多示例请查看 [示例文档](docs/examples/)**
+**更多示例请查看 [示例文档](docs/zh/examples/)**
 
 ---
 
 ## 文档
 
-- [快速开始](docs/guide/getting-started.md) - 5 分钟上手指南
+- [快速开始](docs/zh/guide/getting-started.md) - 5 分钟上手指南
 - [构建指南](BUILD.md) - 详细的构建、测试和故障排除说明
-- [平台支持](docs/platforms.md) - 各平台状态、API 适用性与环境差异
-- [API 参考](docs/api/overview.md) - 完整的 API 文档
-- [架构设计](docs/architecture.md) - 系统架构和设计决策
-- [开发指南](docs/DEVELOPMENT.md) - 贡献和开发指南
-- [VS Code 开发环境](docs/development-environment.md) - Lua/Python 补全、任务和调试配置
+- [平台支持](docs/zh/platforms.md) - 各平台状态、API 适用性与环境差异
+- [API 参考](docs/zh/api/overview.md) - 完整的 API 文档
+- [架构设计](docs/zh/architecture.md) - 系统架构和设计决策
+- [开发指南](docs/zh/DEVELOPMENT.md) - 贡献和开发指南
+- [VS Code 开发环境](docs/zh/development-environment.md) - Lua/Python 补全、任务和调试配置
 
 ---
 
@@ -260,9 +258,9 @@ Wingman 采用 **C++ 核心引擎 + 多语言脚本** 的架构设计：
 - **控制面**: Go server 作为远程中控，runtime 作为 agent 主动连接
 - **本地控制**: Tauri GUI 通过本地 IPC 控制 runtime
 - **脚本引擎**: Lua (sol2) 和 Python (pybind11) 统一接口
-- **模块化**: 42 个语言无关脚本模块（见 [API 文档](docs/api/index.md)），易于扩展
+- **模块化**: 42 个语言无关脚本模块（见 [API 文档](docs/zh/api/index.md)），易于扩展
 
-详细架构说明请查看 [架构文档](docs/architecture.md)
+详细架构说明请查看 [架构文档](docs/zh/architecture.md)
 
 ---
 
@@ -272,7 +270,7 @@ Wingman 采用 **C++ 核心引擎 + 多语言脚本** 的架构设计：
 
 - 脚本引擎：Lua 5.5（vcpkg `lua` 端口，sol2 绑定）、Python 3（pybind11 嵌入）
 - C++ 基础库：asio、cURL、OpenSSL、nlohmann-json、spdlog、SQLite，统一由 vcpkg manifest 管理
-- 视觉与识别：OpenCV（模板匹配）、Tesseract（OCR）、ONNX Runtime（ML 推理），均为可选依赖
+- 视觉与识别：OpenCV（模板匹配；Windows 为核心依赖，Linux 走可选 `vision` feature）、Tesseract（OCR，可选）、ONNX Runtime（ML 推理，可选）
 - 桌面 GUI：Tauri + Svelte
 - 控制面板：Dashboard 基于 React + Umi，服务端为 Go
 - 远程桌面网关：基于 Apache Guacamole（guacd）
