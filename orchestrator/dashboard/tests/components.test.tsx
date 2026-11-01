@@ -2,7 +2,7 @@
  * 基础组件：PageStatePanel（全 tone / badge / actions / extra）、
  * HeaderDropdown、RightContent（SelectLang / Question）、
  * AvatarDropdown（loading / 正常 / 菜单点击登出与跳转）、
- * ScreenshotView（帧更新节流 / 开关 / 刷新）。
+ * ScreenshotView（空帧状态 / 帧更新节流 / 开关 / 刷新）。
  */
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
@@ -256,7 +256,7 @@ describe('ScreenshotView', () => {
     jest.useRealTimers();
   });
 
-  it('空帧时显示等待或断连提示，关闭开关显示关闭文案', () => {
+  it('ws 断连时空帧显示断连提示，关闭开关显示关闭文案', () => {
     const { container } = render(<ScreenshotView height={300} />);
 
     expect(
@@ -268,6 +268,34 @@ describe('ScreenshotView', () => {
       fireEvent.click(switchEl);
     });
     expect(screen.getByText('预览已关闭')).toBeInTheDocument();
+  });
+
+  it('ws 已连接时空帧显示等待提示', async () => {
+    const wsModule = await import('@/services/websocket');
+    class FakeWS {
+      static OPEN = 1;
+      readyState = 0;
+      onopen: (() => void) | null = null;
+      onclose: (() => void) | null = null;
+      close = jest.fn();
+      simulateOpen() {
+        this.readyState = FakeWS.OPEN;
+        this.onopen?.();
+      }
+    }
+    (global as any).WebSocket = FakeWS;
+    wsModule.default.connect();
+    const socket = (wsModule.default as unknown as { ws: FakeWS }).ws;
+    socket!.simulateOpen();
+
+    render(<ScreenshotView height={300} />);
+    expect(screen.getByText('连接 Agent 后此处将实时显示游戏画面')).toBeInTheDocument();
+    expect(
+      screen.queryByText('无法接收游戏画面，请检查与 Agent 的连接后重试'),
+    ).not.toBeInTheDocument();
+
+    wsModule.default.disconnect();
+    (global as any).WebSocket = undefined;
   });
 
   it('refresh 按钮触发 loading 状态', () => {
