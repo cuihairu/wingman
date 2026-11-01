@@ -21,16 +21,19 @@ fn active_profile_path() -> PathBuf {
     path
 }
 
-fn profile_path(id: &str) -> PathBuf {
+fn profile_path(id: &str) -> Result<PathBuf, String> {
     // Validate that id is a safe filename to prevent path traversal attacks
     // Reject unsafe IDs instead of silently sanitizing (fail-closed approach)
     if !is_safe_filename(id) {
-        panic!("Unsafe profile id detected: '{}'. Use set_active_profile() which validates before calling this.", id);
+        return Err(format!(
+            "Unsafe profile id detected: '{}'. Use set_active_profile() which validates before calling this.",
+            id
+        ));
     }
 
     let mut path = profiles_dir();
     path.push(format!("{}.json", id));
-    path
+    Ok(path)
 }
 
 /// Check if a string is a safe filename (no path traversal)
@@ -116,10 +119,11 @@ pub async fn get_active_profile() -> Result<Value, String> {
     if let Ok(active_id) = fs::read_to_string(&path) {
         let active_id = active_id.trim();
         if !active_id.is_empty() {
-            let profile_path = profile_path(active_id);
-            if let Ok(content) = fs::read_to_string(&profile_path) {
-                if let Ok(profile) = serde_json::from_str::<Value>(&content) {
-                    return Ok(profile);
+            if let Ok(profile_path) = profile_path(active_id) {
+                if let Ok(content) = fs::read_to_string(&profile_path) {
+                    if let Ok(profile) = serde_json::from_str::<Value>(&content) {
+                        return Ok(profile);
+                    }
                 }
             }
         }
@@ -161,7 +165,7 @@ pub async fn create_profile(name: String) -> Result<String, String> {
         },
         "settings": {}
     });
-    let path = profile_path(&id);
+    let path = profile_path(&id)?;
     let content = serde_json::to_string_pretty(&profile).map_err(|e| e.to_string())?;
     fs::write(&path, content).map_err(|e| e.to_string())?;
     Ok(id)
@@ -169,7 +173,7 @@ pub async fn create_profile(name: String) -> Result<String, String> {
 
 #[tauri::command]
 pub async fn delete_profile(app: AppHandle, id: String) -> Result<(), String> {
-    let path = profile_path(&id);
+    let path = profile_path(&id)?;
     if path.exists() {
         fs::remove_file(&path).map_err(|e| e.to_string())?;
     }
@@ -190,7 +194,7 @@ pub async fn update_profile(app: AppHandle, profile: Value) -> Result<(), String
         .as_str()
         .ok_or("Profile missing id field")?
         .to_string();
-    let path = profile_path(&id);
+    let path = profile_path(&id)?;
     let content = serde_json::to_string_pretty(&profile).map_err(|e| e.to_string())?;
     fs::write(&path, content).map_err(|e| e.to_string())?;
 
@@ -205,7 +209,7 @@ pub async fn update_profile(app: AppHandle, profile: Value) -> Result<(), String
 
 #[tauri::command]
 pub async fn export_profile_json(id: String) -> Result<String, String> {
-    let path = profile_path(&id);
+    let path = profile_path(&id)?;
     fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
@@ -216,7 +220,7 @@ pub async fn import_profile_json(json: String) -> Result<(), String> {
         .as_str()
         .ok_or("Profile missing id field")?
         .to_string();
-    let path = profile_path(&id);
+    let path = profile_path(&id)?;
     let content = serde_json::to_string_pretty(&profile).map_err(|e| e.to_string())?;
     fs::write(&path, content).map_err(|e| e.to_string())?;
     Ok(())
