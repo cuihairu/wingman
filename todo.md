@@ -130,3 +130,9 @@
 - [x] 审核发现：apps/gui/src/routes/screen/+page.svelte:978 的 .btn-primary（绿底）无独立 hover 规则，hover 经 .btn:hover 变中性 var(--border-color)=#343a43，暗色下深字 #101214 在其上对比仅 1.64:1，远低于 AA——6bfa645 注释称「无独立 hover 背景按钮白字在中性底上远高于 AA」，但本页按钮是深字非白字，推理不成立且未修复（apps/gui/src/routes/screen/+page.svelte:978）— 属实：`.btn:hover`(0,2,0) 覆盖 `.btn-primary`(0,1,0)，hover 落中性底、深字 1.64:1；已为 screen 与同缺陷的 dashboard 页（.btn-primary 同样无独立 hover 规则）加暗色 hover 白字规则（中性底上约 13.3:1），并把 app.css 注释改为按页面分列的真实口径，vite build + vitest 529 例全绿
 - [x] 审核发现：orchestrator/dashboard/tests/components.test.tsx:260 用例名「空帧时显示等待或断连提示」仅断言断连分支「无法接收游戏画面...」，未覆盖 wsConnected=true 的等待分支（Empty「连接 Agent 后此处将实时显示游戏画面」）与「预览已关闭」分支，用例名与断言范围不符（orchestrator/dashboard/tests/components.test.tsx:260）— 属实：原用例已断言「预览已关闭」分支，缺口仅在 wsConnected=true 的等待分支；已新增「ws 已连接时空帧显示等待提示」用例（FakeWS simulateOpen → isConnected 真、渲染 Empty「连接 Agent 后此处将实时显示游戏画面」且断言断连文案不存在），并把原用例名改为「ws 断连时空帧显示断连提示，关闭开关显示关闭文案」，jest 全量 449 例全绿（orchestrator/dashboard/tests/components.test.tsx:256-300）
 - [x] 审核发现：todo.md:123 新增审核记录称 6bfa645「覆盖两个 scoped primary 变体，报告 GUI-P2-1 标记 FIXED，复核现状一致」，但 updates/screen 页 .btn-primary hover 对比度问题仍未覆盖（见前两条发现），该记录未反映修复范围不完整，「复核现状一致」结论不准确（todo.md:123）— 属实：`6bfa645` 仅改 app.css + ScreenPickerModal + macros 三个文件，未覆盖 updates/screen/dashboard 页 .btn-primary，原记录「复核现状一致」结论过早；已把记录改为按补漏提交分列的真实口径（`6bfa645`→`24441c9`→`e780354`），updates/screen/dashboard 三页均落地白字规则，`git show --stat 6bfa645` / `24441c9` / `e780354` 复核一致
+
+- [ ] **DOC-GIF · P2 · 文档 · 配置开关效果动态图(每个开关 off→on 对比+GIF)**
+  - 交付:枚举本仓全部「开启后有效果」的开关/配置项;自动流水线生成证据——GUI 类用 @vscode/test-electron 或应用截图(off 一张/on 一张+切换过程录屏),CLI 类用终端录屏(asciinema→GIF 或 ffmpeg);ffmpeg 缝合动态 GIF。
+  - 文档:docs「配置效果」页(双语)逐开关嵌入:说明+off 图+on 图+GIF。
+  - 验收:清单内每个开关都有 off/on+GIF;流水线可重跑(配置变更随时再生成);兼作配置效果回归测试。
+  - 参考:kode todo C-24 同款流水线模式(2026-11-01 用户令全舰队推广)。
