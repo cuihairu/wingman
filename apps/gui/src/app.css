@@ -88,6 +88,16 @@ textarea:disabled {
 	color: var(--bg-primary);
 }
 
+/* 暗色主题：蓝色/红色按钮 hover 填充变深（#1f6feb / #da3633），深色文字在此上仅约
+   4.05:1 / 4.07:1，跌破 AA；hover 时切回白字（#1f6feb 上 4.63:1、#da3633 上 4.61:1，
+   均达 AA）。绿色 hover（#2ea043 上深字约 5.57:1）本就合规，保持深字；
+   无独立 hover 背景的按钮（如 dashboard 的 .btn-secondary/.btn-danger 经通用
+   .btn:hover 变中性底）白字在中性底上远高于 AA。 */
+:root:not([data-theme='light']) .btn-secondary:hover,
+:root:not([data-theme='light']) .btn-danger:hover {
+	color: white;
+}
+
 input,
 select,
 textarea {

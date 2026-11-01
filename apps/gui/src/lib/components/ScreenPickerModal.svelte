@@ -606,4 +606,10 @@
 		border-color: var(--accent-blue);
 	}
 	.btn-primary:hover:not(:disabled) { background: var(--accent-blue-hover, #388bfd); }
+
+	/* 暗色主题：确认按钮底色为蓝，hover 变深蓝（--accent-blue-hover）后深色文字仅约
+	   4.05:1，跌破 AA；hover 时切回白字（4.63:1，达 AA）。 */
+	:global(:root:not([data-theme='light'])) .btn-primary:hover:not(:disabled) {
+		color: white;
+	}
 </style>

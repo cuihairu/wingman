@@ -478,6 +478,12 @@
 		background: var(--accent-red-hover);
 	}
 
+	/* 暗色主题：本页主按钮底色为红，hover 变深红（--accent-red-hover）后深色文字仅
+	   约 4.07:1，跌破 AA；hover 时切回白字（4.61:1，达 AA）。 */
+	:global(:root:not([data-theme='light'])) .btn-primary:hover {
+		color: white;
+	}
+
 	.btn-success {
 		background: var(--accent-green);
 		border-color: var(--accent-green);
