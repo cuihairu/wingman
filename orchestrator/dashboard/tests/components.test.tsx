@@ -259,9 +259,7 @@ describe('ScreenshotView', () => {
   it('ws 断连时空帧显示断连提示，关闭开关显示关闭文案', () => {
     const { container } = render(<ScreenshotView height={300} />);
 
-    expect(
-      screen.getByText('无法接收游戏画面，请检查与 Agent 的连接后重试'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('无法接收游戏画面，请检查与 Agent 的连接后重试')).toBeInTheDocument();
 
     const switchEl = container.querySelector('.ant-switch')!;
     act(() => {
