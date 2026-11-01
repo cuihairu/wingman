@@ -1,4 +1,4 @@
-<div align="center"><img src="docs/public/logo.svg" alt="Wingman" width="64" /> <a href="https://wingman.cuihairu.site/zh/"><img src="https://img.shields.io/badge/docs-文档-blue" alt="docs"></a></div>
+<div align="center"><a href="https://wingman.cuihairu.site/zhhttps://wingman.cuihairu.site/"><img src="https://img.shields.io/badge/docs-文档-blue" alt="docs"></a> <a href="https://wingman.cuihairu.site/zh/"><img src="https://img.shields.io/badge/docs-文档-blue" alt="docs"></a></div>
 
 > [**免责声明**]
 >
