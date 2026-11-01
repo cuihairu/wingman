@@ -66,7 +66,8 @@ In VS Code choose `Attach to Wingman Lua (EmmyLua :9966)`, then run a Lua script
 Build the runtime first:
 
 ```powershell
-build-scripts\build-runtime-msvc-ninja.bat
+powershell -ExecutionPolicy Bypass -File build-scripts/ci/configure-windows.ps1   # requires VCPKG_ROOT
+cmake --build build --config Release
 ```
 
 Then open any `.lua` or `.py` script in VS Code and choose:
@@ -94,8 +95,8 @@ Run `Tasks: Run Task` from the VS Code command palette:
 
 | Task | Command |
 |------|------|
-| `configure runtime` | `build-scripts/configure-msvc-ninja.bat` |
-| `build runtime` | `build-scripts/build-runtime-msvc-ninja.bat` |
+| `configure runtime` | `powershell -ExecutionPolicy Bypass -File build-scripts/ci/configure-windows.ps1` |
+| `build runtime` | `cmake --build build --config Release` |
 | `build gui` | `npm run build` in `apps/gui` |
 | `build docs` | `npm run docs:build` in `docs` |
 | `test orchestrator server` | `go test ./...` in `orchestrator/server` |

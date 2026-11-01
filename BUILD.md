@@ -25,20 +25,21 @@ C:\vcpkg\bootstrap-vcpkg.bat
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
 
-# 配置 MSVC + Ninja + vcpkg
-build-scripts\configure-msvc-ninja.bat
+# 配置（VS 2022 生成器 + x64-windows-static；需先设置 VCPKG_ROOT 指向 vcpkg 目录）
+$env:VCPKG_ROOT = "C:\vcpkg"
+powershell -ExecutionPolicy Bypass -File build-scripts/ci/configure-windows.ps1
 ```
 
 ### 3. 编译
 
 ```bash
-build-scripts\build-runtime-msvc-ninja.bat
+cmake --build build --config Release
 ```
 
 ### 4. 运行
 
 ```bash
-.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe
+.\build\apps\agent\Release\wingman-agent.exe
 ```
 
 ## 测试

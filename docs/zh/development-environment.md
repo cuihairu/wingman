@@ -66,7 +66,8 @@ VS Code 中选择 `Attach to Wingman Lua (EmmyLua :9966)`，再运行启用了 E
 先构建 runtime：
 
 ```powershell
-build-scripts\build-runtime-msvc-ninja.bat
+powershell -ExecutionPolicy Bypass -File build-scripts/ci/configure-windows.ps1   # 需 VCPKG_ROOT
+cmake --build build --config Release
 ```
 
 然后在 VS Code 中打开任意 `.lua` 或 `.py` 脚本，选择：
@@ -94,8 +95,8 @@ libs/python/typing/wingman
 
 | 任务 | 命令 |
 |------|------|
-| `configure runtime` | `build-scripts/configure-msvc-ninja.bat` |
-| `build runtime` | `build-scripts/build-runtime-msvc-ninja.bat` |
+| `configure runtime` | `powershell -ExecutionPolicy Bypass -File build-scripts/ci/configure-windows.ps1` |
+| `build runtime` | `cmake --build build --config Release` |
 | `build gui` | `npm run build` in `apps/gui` |
 | `build docs` | `npm run docs:build` in `docs` |
 | `test orchestrator server` | `go test ./...` in `orchestrator/server` |

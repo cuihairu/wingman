@@ -18,7 +18,8 @@
 # Clone and build
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
-build-scripts\build-runtime-msvc-ninja.bat
+powershell -ExecutionPolicy Bypass -File build-scripts/ci/configure-windows.ps1   # 需 VCPKG_ROOT
+cmake --build build --config Release
 ```
 
 ## VS Code 工作区

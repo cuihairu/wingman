@@ -4,13 +4,13 @@
     {
       "label": "configure runtime",
       "type": "shell",
-      "command": "${workspaceFolder}/build-scripts/configure-msvc-ninja.bat",
+      "command": "powershell -ExecutionPolicy Bypass -File ${workspaceFolder}/build-scripts/ci/configure-windows.ps1",
       "problemMatcher": []
     },
     {
       "label": "build runtime",
       "type": "shell",
-      "command": "${workspaceFolder}/build-scripts/build-runtime-msvc-ninja.bat",
+      "command": "cmake --build ${workspaceFolder}/build --config Release",
       "group": {
         "kind": "build",
         "isDefault": true

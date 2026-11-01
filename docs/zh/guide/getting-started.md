@@ -83,24 +83,25 @@ vcpkg install --triplet x64-windows-static
 ### 3. 使用 CMake 生成项目
 
 ```bash
-build-scripts\configure-msvc-ninja.bat
+# 需先设置 VCPKG_ROOT 指向 vcpkg 目录；默认 VS 2022 生成器 + x64-windows-static
+powershell -ExecutionPolicy Bypass -File build-scripts/ci/configure-windows.ps1
 ```
 
 ### 4. 编译
 
 ```bash
-build-scripts\build-runtime-msvc-ninja.bat
+cmake --build build --config Release
 ```
 
 ### 5. 运行
 
 ```bash
 # 运行 Lua 示例脚本
-.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe script examples\lua_scripts\hello.lua
+.\build\apps\agent\Release\wingman-agent.exe script examples\lua_scripts\hello.lua
 
 # 运行 Python 脚本（Python 引擎默认关闭，需 WINGMAN_ENABLE_PYTHON=ON 构建；
 # hello.py 按下文「第一个脚本」自行创建）
-.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe script hello.py
+.\build\apps\agent\Release\wingman-agent.exe script hello.py
 ```
 
 ## vcpkg.json

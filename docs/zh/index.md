@@ -119,10 +119,10 @@ local wingman = require("wingman")
 -- 截图（capture 返回布尔：是否成功）
 local ok = wingman.screen.capture()
 
--- 查找颜色（返回 {point, found} 两元组；区域用表：{x=, y=, width=, height=}）
-local pt, found = wingman.screen.findColor(0xFF0000, {x = 0, y = 0, width = 1920, height = 1080}, 10)
-if found then
-    wingman.input.click(pt.x, pt.y)
+-- 查找颜色（返回 {point, found} 数组表，Lua 不展开多返回值，取 res[1] / res[2]）
+local res = wingman.screen.findColor(0xFF0000, {x = 0, y = 0, width = 1920, height = 1080}, 10)
+if res[2] then
+    wingman.input.click(res[1].x, res[1].y)
 end
 -- 多点查找用 findColors（返回点数组）：wingman.screen.findColors(0xFF0000, region, 10, 0)
 ```
