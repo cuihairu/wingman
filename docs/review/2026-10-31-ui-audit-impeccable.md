@@ -3,7 +3,7 @@
 - Scope: two UI surfaces — `apps/gui` (Tauri 2 + Svelte 5 desktop control panel) and `orchestrator/dashboard` (Ant Design 5 + UmiJS admin dashboard).
 - Method: `impeccable detect --json apps/gui/src` (0 findings, clean), plus Playwright 1.64.1 (chromium) screenshots of every rendered route at 1440×900 and 390×844. PNGs live alongside this file (`gui-*-{desktop,narrow}.png`, `dash-*-{desktop,narrow}{,-logged}.png`).
 - Contrast ratios computed per WCAG 2.1 relative luminance. AA thresholds: 4.5:1 normal text, 3:1 large text (≥18.66px or ≥14px bold).
-- Outcome: **9 issues** (3 fixed, 6 reported as follow-up). **3 fixes committed.** No dashboard code changed.
+- Outcome: **9 issues** (4 fixed+committed, 4 implemented in working tree pending commit, 1 awaiting brand decision). **4 fixes committed.**
 
 ---
 
@@ -49,13 +49,13 @@ The desktop shell runs on Linux WebKitGTK, which exposes **no Chrome DevTools Pr
 - **Impact:** In the default dark theme the primary/success/secondary/danger buttons use bright fills with **white** text: green `#3fb950` = **2.54:1**, blue `#58a6ff` = **2.53:1**, red `#f85149` = **3.35:1**. All are far below the 4.5:1 AA floor for the ~13px button text — unreadable for low-vision users. The green "启动" / blue "刷新" / red "急停" actions are the most-used controls in the app.
 - **Fix:** a dark-theme-only override (`:root:not([data-theme='light']) .btn-*`) sets button text to `var(--bg-primary)` (`#101214`), matching the existing dark-text-on-yellow `.btn-warning` treatment. Result: green **7.39:1**, blue **7.43:1**, red **5.60:1** — all AA/AAA. Light theme was left untouched (its darker accents with white text already pass at 4.87–5.36:1, verified).
 
-### GUI-P2-1 — Hover state on blue/red accent buttons dips below AA with new dark text — REPORTED
+### GUI-P2-1 — Hover state on blue/red accent buttons dips below AA with new dark text — FIXED
 
-- **Status:** REPORTED (follow-up; not fixed — would need per-button hover text handling)
+- **Status:** FIXED — commit `6bfa645` `fix(ui): use white text on blue and red hover in dark theme`
 - **Screenshot:** `gui-dashboard-desktop.png` (hover states not captured in stills)
 - **Location:** `apps/gui/src/app.css` (`--accent-blue-hover: #1f6feb`, `--accent-red-hover: #da3633`)
 - **Impact:** The contrast fix above trades the persistent base state for the transient hover state on two buttons. With dark text `#101214`, hovered blue `#1f6feb` = **4.05:1** and hovered red `#da3633` = **4.07:1** — just under the 4.5:1 floor for normal text (green hover `#2ea043` = 5.57:1 still passes). The dip is brief and only during pointer hover, so it is a P2 polish item rather than a blocker.
-- **Fix (suggested):** on `:hover` for blue/red accents in dark theme, switch text back to white (white-on-`#1f6feb` = 4.63:1, white-on-`#da3633` = 4.61:1), or darken the hover fill so dark text stays ≥4.5:1.
+- **Fix:** dark-theme `:hover` rule in `app.css` switches `.btn-secondary`/`.btn-danger` text back to white (white-on-`#1f6feb` = 4.63:1, white-on-`#da3633` = 4.61:1, both AA). The same dip existed on two `.btn-primary` variants whose hover fill is red/blue — the `macros` page record button (red) and `ScreenPickerModal` confirm (blue) — which get the same dark-theme white-on-hover rule in their scoped styles. Green-hover primaries keep dark text (5.57:1); accent buttons with no hover-fill change (dashboard page, hover falls through to the neutral `.btn:hover`) are unaffected since white on the neutral fill passes easily.
 
 ### GUI-P3-1 — Icon-only buttons expose no accessible name via `aria-label` — REPORTED
 
@@ -113,7 +113,8 @@ Dashboard data flows through `/api/` (dev-proxied to `http://localhost:9527`). A
 - **Screenshot:** `dash-welcome-desktop-logged.png`, `dash-agents-desktop-logged.png`
 - **Location:** AntD theme primary token (stock `#1677ff`), consumed by every `Button type="primary"`, link, and active menu item across `orchestrator/dashboard/src/pages/*`.
 - **Impact:** White text on `#1677ff` = **4.10:1**, below the 4.5:1 AA floor for 14px regular (non-bold) button/link text. This is the most-used interactive color in the dashboard, so the failure is widespread, though marginal (a 9% shortfall). Stock AntD ships this color; it is a library-default issue more than a code bug.
-- **Fix (suggested, when permitted):** either darken the primary to a token that clears 4.5:1 with white (e.g. `#0958d9`, ≈5.2:1) or use dark text on the current primary. Doing so is a brand-color change and is deliberately left as a TODO.
+- **Fix (suggested, when permitted):** either darken the primary to a token that clears 4.5:1 with white (e.g. `#0958d9`, ≈6.16:1 — 勘误 2026-11-01:实测白字对比度为 6.16:1，原记 ≈5.2:1 有误) or use dark text on the current primary. Doing so is a brand-color change and is deliberately left as a TODO.
+- **未修原因：** 品牌主色变更属品牌决策，须由用户拍板选定方向（加深主色 vs 改深字）后方可执行，本轮仅修其余项。
 
 ### DASH-P3-1 — Monitor "游戏画面" card is an empty black rectangle with no real empty/error state — REPORTED (TODO)
 
@@ -139,13 +140,14 @@ Dashboard data flows through `/api/` (dev-proxied to `http://localhost:9527`). A
 | Severity | apps/gui | orchestrator/dashboard | Fixed |
 |---|---|---|---|
 | P1 | 3 | 0 | 3 |
-| P2 | 1 | 1 | 0 |
+| P2 | 1 | 1 | 1 |
 | P3 | 3 | 1 | 0 |
-| **Total** | **7** | **2** | **3** |
+| **Total** | **7** | **2** | **4** |
 
 **Fixed (commits):**
 1. `93f8284` fix(ui): constrain sidebar nav icon size
 2. `d48f070` fix(ui): normalize leading-slash hash routes
 3. `ceb9d53` fix(ui): use dark text on accent buttons in dark theme
+4. `6bfa645` fix(ui): use white text on blue and red hover in dark theme
 
-**Todo (no code changed):** GUI-P2-1 hover contrast, GUI-P3-1 aria-labels, GUI-P3-2 focus-ring alpha, GUI-P3-3 reduced-motion, DASH-P2-1 primary contrast, DASH-P3-1 Monitor empty/error state.
+**Todo:** GUI-P3-1 aria-labels、GUI-P3-2 focus-ring alpha、GUI-P3-3 reduced-motion、DASH-P3-1 Monitor empty/error state（修复改动已在工作区、尚未提交，提交后补记 hash）；DASH-P2-1 primary contrast（需拍板，见该条「未修原因」）。
