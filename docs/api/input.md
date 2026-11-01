@@ -2,7 +2,7 @@
 
 # Input
 
-This document is lengthy (456 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [input.md](../zh/api/input.md) for the original.
 

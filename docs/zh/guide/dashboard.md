@@ -165,7 +165,17 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 - **带节拍的流水线**：采集 → wait 等待冷却 → 处理，无需脚本即可控制节奏
 - **条件守卫截图**：先做前置条件判断，再由 agent 主动截图并广播到 Dashboard
 
-### 6. Monitor（监控面板）
+### 6. Executions（执行记录）
+
+集中查看脚本与工作流的执行历史（Execution 为平台核心对象之一）。
+
+#### 功能列表
+
+- **执行列表**：Execution ID、状态、目标 Agent、脚本路径、起止时间
+- **执行详情**：查看单次执行的输出与状态流转
+- **操作**：按行查看/管理执行记录
+
+### 7. Monitor（监控面板）
 
 实时监控系统运行状态。
 
@@ -177,7 +187,7 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 
 > 注：触发器列表通过 WebSocket 事件驱动更新，上限显示 20 条记录
 
-### 7. Admin（管理后台）
+### 8. Admin（管理后台）
 
 需要管理员权限访问。
 
@@ -208,7 +218,7 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 - 支持按时间、用户、操作类型筛选
 - CSV 导出功能
 
-### 8. Settings（系统设置）
+### 9. Settings（系统设置）
 
 配置 Go Orchestrator Server 参数。
 
@@ -220,7 +230,7 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 
 > 注：部分配置需要管理员权限才能修改
 
-### 9. Profile（个人资料）
+### 10. Profile（个人资料）
 
 管理当前用户的个人信息。
 
@@ -234,13 +244,13 @@ WINGMAN_ADMIN_PASSWORD='your-strong-password' go run main.go
 - **主题设置**：切换亮/暗主题
 - **语言设置**：界面语言选择
 
-### 10. Support/Feedback（支持反馈）
+### 11. Support/Feedback（支持反馈）
 
 - **提交反馈**：报告问题或提出建议
 - **权限申请**：申请额外权限
 - **反馈历史**：查看已提交的反馈
 
-### 11. Account/Messages（站内信）
+### 12. Account/Messages（站内信）
 
 - **消息列表**：查看系统通知和站内信
 - **已读标记**：标记消息为已读

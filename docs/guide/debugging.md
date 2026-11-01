@@ -26,7 +26,7 @@ See [VS Code Development Environment](../development-environment.md) for the ful
 
 ## Lua Debugging Workflow
 
-1. Build the runtime: `build-scripts\build-runtime-msvc-ninja.bat`
+1. Build the runtime: `powershell -ExecutionPolicy Bypass -File build-scripts\ci\configure-windows.ps1` + `cmake --build build --config Release`
 2. Confirm debugging is enabled in the runtime configuration: `[debugger] enable = true` in `apps/agent/config/agent.toml`
 3. In VS Code, select `Attach to Wingman Lua (EmmyLua :9966)`
 4. Run the Lua script you want to debug
@@ -39,7 +39,7 @@ The default debugging port is `9966`.
 The VS Code `Run current Lua script (runtime)` and `Run current Python script (runtime)` commands execute:
 
 ```powershell
-.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe script <当前文件>
+.\build\apps\agent\Release\wingman-agent.exe script <当前文件>
 ```
 
 Python scripts require reconfiguring the build with `WINGMAN_ENABLE_PYTHON=ON`.

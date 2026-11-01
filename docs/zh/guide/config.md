@@ -2,11 +2,13 @@
 
 # 配置系统
 
-Wingman 使用 JSON 格式的配置文件来存储应用程序设置。配置文件在首次运行时自动创建。
+本页介绍**脚本侧的 JSON 配置存储**（`wingman.config` 脚本模块与 C++ `Config` API 读写的键值配置，首次使用时自动创建默认文件）。
+
+> Runtime 进程自身的运行配置（能力开关、远程连接等）**不在本文件**：`wingman-agent start` 加载的是 TOML 格式的 `agent.toml`（见[快速开始](getting-started.md)与[配置管理](../guides/configuration.md)的「运行时配置」一节）。
 
 ## 配置文件位置
 
-配置文件默认保存在 `config/config.json`（相对于可执行文件目录）。
+配置文件默认保存在 `config/config.json`（相对于可执行文件目录，`WINGMAN_CONFIG_DIR` 可覆盖）。
 
 ## 配置结构
 

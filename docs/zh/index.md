@@ -202,8 +202,9 @@ nightly Release 的 `wingman-*-android-arm64.apk`（debug 签名）：
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
 
-# Windows (MSVC + Ninja + vcpkg)
-build-scripts\build-runtime-msvc-ninja.bat
+# Windows (MSVC + vcpkg; 需 VCPKG_ROOT)
+powershell -ExecutionPolicy Bypass -File build-scripts/ci/configure-windows.ps1
+cmake --build build --config Release
 
 # Linux (GCC/Clang)
 cmake -B build -S . -G Ninja \

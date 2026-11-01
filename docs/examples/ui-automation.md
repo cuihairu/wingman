@@ -2,7 +2,7 @@
 
 # UI Automation
 
-This document is lengthy (320 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [ui-automation.md](../zh/examples/ui-automation.md) for the original.
 

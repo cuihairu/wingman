@@ -2,7 +2,7 @@
 
 # Load Testing Research
 
-This document is lengthy (251 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [load-testing-research.md](../zh/design/load-testing-research.md) for the original.
 

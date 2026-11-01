@@ -2,7 +2,7 @@
 
 # Performance
 
-This document is lengthy (535 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [perf.md](../zh/api/perf.md) for the original.
 

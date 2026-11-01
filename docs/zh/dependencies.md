@@ -34,7 +34,7 @@ cmake -B build \
   -DWINGMAN_BUILD_TESTS=ON
 ```
 
-Windows 快捷脚本：`build-scripts\configure-msvc-ninja.bat` + `build-scripts\build-runtime-msvc-ninja.bat`。完整步骤见 [BUILD.md](../../BUILD.md)。
+Windows 一键配置：`build-scripts\ci\configure-windows.ps1`（需 `VCPKG_ROOT`），再 `cmake --build build --config Release`。完整步骤见 [BUILD.md](../../BUILD.md)。
 
 ## 版本与 baseline
 

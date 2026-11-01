@@ -210,13 +210,14 @@ GitHub Actions 工作流：`ci.yml`（门禁）、`build-package.yml`（四条�
 
 ### ci.yml 任务矩阵
 
-ci.yml 共 9 个 job：`cpp-compat` 展开 2 个矩阵条目、`go-build` 展开 3 个，其余为单配置单腿。
+ci.yml 共 10 个 job：`cpp-compat` 展开 2 个矩阵条目、`go-build` 展开 3 个，其余为单配置单腿。
 
 | Job | 内容 |
 |-----|------|
 | Platform Boundary Guard | `scripts/check_platform_boundary.sh`：公共层禁平台宏，allowlist 只减不增 |
 | Vault Touchpoint Scan | `scripts/check_vault_touchpoints.sh`：boot-tier 允许清单外明文凭证环境变量读取扫描 |
 | API Typing Drift Audit | `scripts/audit_pyi_drift.py`（pyi stub 对 C++ 模块描述符）+ 重生成 Lua hints 并校验同步 |
+| Event Convention Audit | `scripts/audit_event_conventions.py`：事件命名与错误载荷规约校验 |
 | C++ Windows | MSVC Debug 构建 + ctest + **覆盖率**（OpenCppCoverage 采集，全 ci.yml 唯一覆盖率腿；失败时回显 gtest 明细） |
 | C++ Windows (Python engine) | Windows 上 Python 引擎实验编译 + best-effort 测试 |
 | C++ Linux (full tests) | ubuntu-24.04 全量 ctest（2000+ 例），xvfb-run 虚拟显示，**不采集覆盖率** |

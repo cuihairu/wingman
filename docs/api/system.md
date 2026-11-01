@@ -2,7 +2,7 @@
 
 # System
 
-This document is lengthy (766 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [system.md](../zh/api/system.md) for the original.
 

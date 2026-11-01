@@ -2,7 +2,7 @@
 
 # Key-Value Storage
 
-This document is lengthy (1205 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [kv.md](../zh/api/kv.md) for the original.
 

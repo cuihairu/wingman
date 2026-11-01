@@ -34,7 +34,7 @@ cmake -B build \
   -DWINGMAN_BUILD_TESTS=ON
 ```
 
-Windows shortcut scripts: `build-scripts\configure-msvc-ninja.bat` + `build-scripts\build-runtime-msvc-ninja.bat`. Full steps are in [BUILD.md](../BUILD.md).
+Windows one-shot configure: `build-scripts\ci\configure-windows.ps1` (requires `VCPKG_ROOT`), then `cmake --build build --config Release`. Full steps are in [BUILD.md](../BUILD.md).
 
 ## Versions and baseline
 

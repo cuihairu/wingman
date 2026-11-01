@@ -2,7 +2,7 @@
 
 # Crypto
 
-This document is lengthy (437 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [crypto.md](../zh/api/crypto.md) for the original.
 

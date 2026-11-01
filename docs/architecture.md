@@ -242,7 +242,7 @@ The local IPC wire format is fixed as `uint32 little-endian length + JSON envelo
 1. **Core library independence** - `lib/wingman/` does not depend on `apps/` and can be reused on its own
 2. **Nearby testing** - every module has its own `tests/` directory
 3. **Clear separation of concerns** - apps (applications), lib (core library), libs (support libraries) are separated
-4. **Namespace correspondence** - subdirectory headers nest by directory: `include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>` (same pattern for capture / core / ipc / platform / rpc / vision); top-level headers are flat in `namespace wingman` (31 of 33, with `crypt.hpp` / `core.hpp` as exceptions using `wingman::crypt` / `wingman::core`)
+4. **Namespace correspondence** - subdirectory headers nest by directory: `include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>` (same pattern for capture / core / ipc / platform / rpc / vision); top-level headers are flat in `namespace wingman` (32 of 34, with `crypt.hpp` / `core.hpp` as exceptions using `wingman::crypt` / `wingman::core`)
 5. **Control plane separation** - remote orchestration goes through the Go server, the local UI goes through IPC, and the runtime exposes no WebSocket/HTTP control surface
 
 ## Multi-Display Screenshots

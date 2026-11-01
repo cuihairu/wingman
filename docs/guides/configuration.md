@@ -2,7 +2,7 @@
 
 # Configuration Management
 
-This document is lengthy (1349 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [configuration.md](../zh/guides/configuration.md) for the original.
 
@@ -32,6 +32,7 @@ The section outline below mirrors the Chinese source document; see [configuratio
   - wingman.config 脚本模块
   - WINGMAN_CONFIG_DIR
   - runtime CLI 与 agent.toml
+  - 自动更新
 - 最佳实践
   - 1. 配置文件命名
   - 2. 敏感信息处理

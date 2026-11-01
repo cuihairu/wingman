@@ -71,7 +71,7 @@ GUI 侧从 `data.result` 取业务字段（如 `data.result.paused`）。
 
 ### 已注册方法
 
-31 个唯一方法（26 个注册于 `apps/agent/src/rpc/handlers/`，5 个 `trigger.*` 注册于 `lib/wingman/src/rpc/handlers/trigger_handler.cpp`）：
+34 个唯一方法（29 个注册于 `apps/agent/src/rpc/handlers/`，5 个 `trigger.*` 注册于 `lib/wingman/src/rpc/handlers/trigger_handler.cpp`）：
 
 | 方法 | 说明 |
 |------|------|
@@ -84,6 +84,7 @@ GUI 侧从 `data.result` 取业务字段（如 `data.result.paused`）。
 | `events.drain` | 拉取缓冲事件 |
 | `macro.start` / `stop` / `play` / `status` / `save` / `load` / `clear` | 宏录制与回放 |
 | `config.getRemote` / `setRemote` | 远程注册配置读写（仅本地 IPC，Go server 侧改不了） |
+| `update.check` / `download` / `status` | runtime 自更新：版本检查 / 下载 / 下载进度（支撑 GUI 更新页；仅本地 IPC） |
 
 `events.drain` 响应：`{ events: [{method, payload, timestamp}], remaining: N, dropped: N }`。事件 method 集合：`tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip`、`trigger.fired`/`trigger.action`、`systemwatch.process`/`systemwatch.window`/`systemwatch.error`、`filewatcher.changed`/`filewatcher.error`、`macro.state`/`macro.recorded`、`script.state_changed`、`script.output`、`connection.ipc_client`、`connection.state_changed`。请求参数 `max`（默认 500）。
 

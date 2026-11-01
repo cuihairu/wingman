@@ -74,7 +74,7 @@ wingman/
 │   ├── configs/              # 示例配置
 │   └── profiles/             # 示例 game profile
 │
-├── build-scripts/            # 构建/打包脚本（configure-msvc-ninja.bat 等）
+├── build-scripts/            # 构建/打包脚本（ci/configure-windows.ps1 等）
 ├── scripts/                  # 校验/部署工程脚本（check_platform_boundary.sh 等）
 │
 ├── CMakeLists.txt           # CMake 配置

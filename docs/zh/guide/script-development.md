@@ -147,7 +147,7 @@ end
 模块函数在 C++ 描述符中以 camelCase 登记（如 `joinTeam`、`getEventCount`）。两种脚本面均可用：
 
 - **Lua**：只有 camelCase 原名（`wingman.team.joinTeam(...)`）。
-- **Python**：camelCase 原名与 snake_case 别名**同时暴露**（`wingman.team.join_team(...)` 与 `wingman.team.joinTeam(...)` 等价；别名规则与引擎内 `camelToSnake` 一致）。Python typing 桩（`libs/python/typing/wingman/*.pyi`）以 snake_case 为主形，docstring 标注对应 camelCase 形式。
+- **Python**：camelCase 原名与 snake_case 别名**同时暴露**（`wingman.team.join_team(...)` 与 `wingman.team.joinTeam(...)` 等价；别名规则与引擎内 `camelToSnake` 一致）。Python typing 桩（`libs/python/typing/wingman/*.pyi`）以 camelCase 原名登记（与 C++ 描述符同源，`scripts/audit_pyi_drift.py` 校验同步），snake_case 别名不重复列出。
 
 少数函数直接以 snake_case 登记（如 `db.table_insert`、`human.mouse_move`），此时两种语言同名。脚本自定义的可手写 pythonic 别名不受此约束（如 `timer.after`）。
 

@@ -163,8 +163,9 @@ and for restricted settings see [Android Agent Restricted Settings](/guides/andr
 git clone https://github.com/cuihairu/wingman.git
 cd wingman
 
-# Windows (MSVC + Ninja + vcpkg)
-build-scripts\build-runtime-msvc-ninja.bat
+# Windows (MSVC + vcpkg; requires VCPKG_ROOT)
+powershell -ExecutionPolicy Bypass -File build-scripts/ci/configure-windows.ps1
+cmake --build build --config Release
 
 # Linux (GCC/Clang)
 cmake -B build -S . -G Ninja \

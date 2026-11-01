@@ -2,7 +2,7 @@
 
 # UIA Button
 
-This document is lengthy (531 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [button.md](../../zh/api/uia/button.md) for the original.
 

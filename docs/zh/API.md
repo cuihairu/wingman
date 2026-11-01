@@ -88,7 +88,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 
 ### 支持的 RPC 方法
 
-当前共注册 **31 个**唯一方法（26 个注册于 `apps/agent/src/rpc/handlers/`，5 个 `trigger.*` 注册于 `lib/wingman/src/rpc/handlers/trigger_handler.cpp`），与 `docs/protocols.md` 同一口径：
+当前共注册 **34 个**唯一方法（29 个注册于 `apps/agent/src/rpc/handlers/`，5 个 `trigger.*` 注册于 `lib/wingman/src/rpc/handlers/trigger_handler.cpp`），与 `docs/protocols.md` 同一口径：
 
 | 分组 | 方法 |
 |------|------|
@@ -100,6 +100,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 | events | `drain` |
 | macro | `start` `stop` `play` `status` `save` `load` `clear` |
 | config | `getRemote` `setRemote` |
+| update | `check` `download` `status` |
 
 > `trigger.*` 在本地 IPC 与远程 agent 通道**双面注册**，两端共用同一组 handler：本地由 `LocalIpcServer::start()` 装进本方法的 dispatcher（有外部 TriggerManager 时复用、没有则自建一个），GUI 的 Tauri command `get_triggers`/`add_trigger`/`remove_trigger`/`update_trigger`/`toggle_trigger`（`apps/gui/src-tauri/src/commands/triggers.rs`）即走这条本地 IPC；远程侧是 Dispatcher Reuse（`apps/agent/src/agent.cpp`），Dashboard 经 Go server 透传访问。见 `docs/protocols.md`。
 >
@@ -250,7 +251,7 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 ```
 
 #### events.drain
-拉取本地事件流（GUI 轮询）。事件 method 集合：`tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip`（脚本托盘意图）、`trigger.fired`/`trigger.action`、`systemwatch.process`/`systemwatch.window`/`systemwatch.error`、`filewatcher.changed`/`filewatcher.error`、`macro.state`/`macro.recorded`、`script.state_changed`、`script.output`、`connection.ipc_client`。参数 `max`（默认 500，单次拉取上限）。返回：
+拉取本地事件流（GUI 轮询）。事件 method 集合：`tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip`（脚本托盘意图）、`trigger.fired`/`trigger.action`、`systemwatch.process`/`systemwatch.window`/`systemwatch.error`、`filewatcher.changed`/`filewatcher.error`、`macro.state`/`macro.recorded`、`script.state_changed`、`script.output`、`connection.ipc_client`、`connection.state_changed`。参数 `max`（默认 500，单次拉取上限）。返回：
 
 ```json
 {

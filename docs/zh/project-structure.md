@@ -125,14 +125,15 @@ Runtime 作为主动 Agent 运行，通过 outbound 连接到编排器。
 1. **核心库独立** - `lib/wingman/` 不依赖 `apps/`，可单独复用
 2. **就近测试** - 每个模块都有自己的 `tests/` 目录
 3. **职责清晰** - apps（应用）、lib（核心库）、libs（引擎与链路库）分离
-4. **命名空间** - 子目录头按目录嵌套：`include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>`（capture / core / ipc / platform / rpc / vision 同式）；顶层头平铺 `namespace wingman`（33 个中 31 个，`crypt.hpp` / `core.hpp` 例外用 `wingman::crypt` / `wingman::core`）
+4. **命名空间** - 子目录头按目录嵌套：`include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>`（capture / core / ipc / platform / rpc / vision 同式）；顶层头平铺 `namespace wingman`（34 个中 32 个，`crypt.hpp` / `core.hpp` 例外用 `wingman::crypt` / `wingman::core`）
 
 ## 构建说明
 
 使用 vcpkg manifest 管理依赖（`vcpkg.json`）：
 
-```bash
-build-scripts\build-runtime-msvc-ninja.bat
+```powershell
+powershell -ExecutionPolicy Bypass -File build-scripts\ci\configure-windows.ps1
+cmake --build build --config Release
 ```
 
 详细构建步骤请参考 [BUILD.md](../../BUILD.md)。

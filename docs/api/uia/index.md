@@ -2,7 +2,7 @@
 
 # UIA Elements (Index)
 
-This document is lengthy (1246 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [index.md](../../zh/api/uia/index.md) for the original.
 

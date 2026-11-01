@@ -2,7 +2,7 @@
 
 # Events
 
-This document is lengthy (438 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [event.md](../zh/api/event.md) for the original.
 

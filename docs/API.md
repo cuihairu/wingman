@@ -88,7 +88,7 @@ What the GUI Rust backend returns to a Tauri command is the `payload` inside the
 
 ### Supported RPC Methods
 
-Currently **31** unique methods are registered in total (26 registered under `apps/agent/src/rpc/handlers/`, 5 `trigger.*` registered in `lib/wingman/src/rpc/handlers/trigger_handler.cpp`), on the same accounting basis as `docs/protocols.md`:
+Currently **34** unique methods are registered in total (29 registered under `apps/agent/src/rpc/handlers/`, 5 `trigger.*` registered in `lib/wingman/src/rpc/handlers/trigger_handler.cpp`), on the same accounting basis as `docs/protocols.md`:
 
 | Group | Methods |
 |------|------|
@@ -100,6 +100,7 @@ Currently **31** unique methods are registered in total (26 registered under `ap
 | events | `drain` |
 | macro | `start` `stop` `play` `status` `save` `load` `clear` |
 | config | `getRemote` `setRemote` |
+| update | `check` `download` `status` |
 
 > `trigger.*` is **registered on both sides**: local IPC and the remote agent channel, with both ends sharing the same set of handlers: locally, `LocalIpcServer::start()` installs them into this method group's dispatcher (reuses an external TriggerManager if one exists, otherwise builds its own); the GUI's Tauri commands `get_triggers`/`add_trigger`/`remove_trigger`/`update_trigger`/`toggle_trigger` (`apps/gui/src-tauri/src/commands/triggers.rs`) go through this local IPC; on the remote side it is Dispatcher Reuse (`apps/agent/src/agent.cpp`), accessed by the Dashboard via pass-through from the Go server. See `docs/protocols.md`.
 >
@@ -250,7 +251,7 @@ List monitors; returns `{ "monitors": [{ "id", "name", "isPrimary", "bounds" }],
 ```
 
 #### events.drain
-Drain the local event stream (GUI polling). The event method set: `tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip` (script tray intents), `trigger.fired`/`trigger.action`, `systemwatch.process`/`systemwatch.window`/`systemwatch.error`, `filewatcher.changed`/`filewatcher.error`, `macro.state`/`macro.recorded`, `script.state_changed`, `script.output`, `connection.ipc_client`. Parameter `max` (default 500, single-drain cap). Returns:
+Drain the local event stream (GUI polling). The event method set: `tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip` (script tray intents), `trigger.fired`/`trigger.action`, `systemwatch.process`/`systemwatch.window`/`systemwatch.error`, `filewatcher.changed`/`filewatcher.error`, `macro.state`/`macro.recorded`, `script.state_changed`, `script.output`, `connection.ipc_client`, `connection.state_changed`. Parameter `max` (default 500, single-drain cap). Returns:
 
 ```json
 {

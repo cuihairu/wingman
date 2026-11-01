@@ -25,17 +25,17 @@ Wingman Runtime GUI 是基于 Tauri 2.0 + Svelte 5 构建的本地桌面控制�
 
 ### 前置条件
 
-- 已编译 Runtime：`build-msvc-ninja-vcpkg/apps/agent/wingman-agent.exe`
+- 已编译 Runtime：`build/apps/agent/Release/wingman-agent.exe`
 - Node.js 18+（用于开发模式）
 
 ### 启动 Runtime
 
 ```bash
 # 启动 Runtime 并启用本地 IPC
-.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe start
+.\build\apps\agent\Release\wingman-agent.exe start
 
 # 或以独立模式启动（不连接远程服务器）
-.\build-msvc-ninja-vcpkg\apps\agent\wingman-agent.exe start --standalone
+.\build\apps\agent\Release\wingman-agent.exe start --standalone
 ```
 
 ### 启动 GUI
@@ -60,7 +60,7 @@ pnpm tauri dev
 ┌──────────────────────────────────────────────────────────────┐
 │  🎮 Wingman                        [连接状态] [设置] [主题]  │
 ├──────────────────────────────────────────────────────────────┤
-│  [Dashboard] [脚本] [触发器] [宏] [屏幕] [日志] [设置]       │
+│  [Dashboard] [脚本] [触发器] [宏] [屏幕] [日志] [设置] [更新] │
 ├──────────────────────────────────────────────────────────────┤
 │                                                              │
 │                      页面内容区域                             │
@@ -296,6 +296,16 @@ pnpm tauri dev
 | F7 | pause（暂停/继续） |
 | F12 | emergencyStop（紧急停止所有脚本） |
 
+### 8. Updates（更新）
+
+管理 Runtime 版本更新。
+
+#### 功能列表
+
+- **检查更新**：手动触发版本检查（本地 IPC 的 `update.check`）
+- **下载更新**：下载新版本并查看进度（`update.download` / `update.status`）
+- **自动轮询**：`agent.toml` 的 `[update]` 节可开启自动检查（见[配置管理](../guides/configuration.md)）
+
 ## 系统托盘
 
 GUI 启动后会在系统托盘显示图标。
@@ -377,7 +387,8 @@ apps/gui/
 │   │   ├── macros/
 │   │   ├── screen/
 │   │   ├── logs/
-│   │   └── settings/
+│   │   ├── settings/
+│   │   └── updates/
 │   └── app.css              # 全局样式
 ├── src-tauri/               # Rust 后端
 │   ├── src/

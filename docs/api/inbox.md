@@ -2,7 +2,7 @@
 
 # Inbox
 
-This document is lengthy (621 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [inbox.md](../zh/api/inbox.md) for the original.
 

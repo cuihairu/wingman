@@ -6,7 +6,7 @@ title: Runtime GUI Tutorial
 
 # Runtime GUI Tutorial
 
-This document is lengthy (387 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [runtime-gui.md](../zh/guide/runtime-gui.md) for the original.
 
@@ -27,6 +27,7 @@ The section outline below mirrors the Chinese source document; see [runtime-gui.
   - 5. Screen（屏幕工具）
   - 6. Logs（系统日志）
   - 7. Settings（设置）
+  - 8. Updates（更新）
 - 系统托盘
   - 托盘菜单
 - 快捷键

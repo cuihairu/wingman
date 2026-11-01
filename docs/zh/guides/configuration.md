@@ -974,6 +974,10 @@ server_ip = "192.168.1.10"
 server_port = 8888
 ```
 
+agent 链路如需 TLS：仓内自带部署态 TLS 终结栈（nginx `stream{}` 在 9443 终结
+TLS、四层透传 Go server 8888；agent 侧不校验证书——防被动嗅探、不防 MITM），
+见 `deployments/tls/` 与 `docs/agent-token-auth-design.md` §6.3。
+
 自动更新（`[update]` 节，全部键可省略 = 功能关闭）：
 
 ```toml

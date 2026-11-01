@@ -230,6 +230,7 @@ Every promise in the support matrix must be able to answer "which CI job verifie
 | All platforms | `Platform Boundary Guard` | ubuntu-latest | Platform macro boundary check (every commit): platform macros forbidden in the common layer; the allowlist only shrinks, never grows | — |
 | All platforms | `Vault Touchpoint Scan` | ubuntu-latest | Scan for boot-tier plaintext-credential environment-variable reads (anything outside the allowlist fails) | — |
 | All platforms | `API Typing Drift Audit` | ubuntu-latest | pyi stub vs C++ module descriptor drift + regenerating Lua hints and verifying sync | — |
+| All platforms | `Event Convention Audit` | ubuntu-latest | Event-name and error-payload convention audit (`scripts/audit_event_conventions.py`) | — |
 | Windows | `C++ Windows` | windows-2022 | **Full C++ test suite + coverage** (OpenCppCoverage, the only C++ job collecting coverage) | ✅ (`build-package.yml`, zip) |
 | Windows | `C++ Windows (Python engine)` | windows-2022 | Experimental Python-engine compilation + best-effort tests | — |
 | Linux | `C++ Linux (full tests)` | ubuntu-24.04 | **Full C++ build + full core tests** (xvfb-run provides a virtual display; openbox/xclip installed via apt) | — |
@@ -239,9 +240,9 @@ Every promise in the support matrix must be able to answer "which CI job verifie
 | Android | — | — | ❌ **No CI test job** | ✅ (debug-signed APK) |
 | Go Server | `Go Server` (3 OS matrix) | ubuntu/windows/macos-latest | `go vet` + `go test -race` (all platforms) | — |
 
-> `ci.yml` has 9 jobs in total (of which `cpp-compat` expands 2 matrix entries, `go-build` expands 3).
+> `ci.yml` has 10 jobs in total (of which `cpp-compat` expands 2 matrix entries, `go-build` expands 3).
 > `cpp-windows` / `cpp-linux-tests` / `cpp-linux-python-tests` / `cpp-python` are all single-config single-leg
-> with no matrix dimension—coverage is collected only in `cpp-windows` (`codecov/codecov-action@v5.0.1`).
+> with no matrix dimension—coverage is collected only in `cpp-windows` (`codecov/codecov-action@v7.1.1`).
 
 **The current state that must be honestly annotated** (i.e., the reconciliation conclusions mentioned in the "why organized this way" section):
 

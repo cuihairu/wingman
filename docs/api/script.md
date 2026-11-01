@@ -2,7 +2,7 @@
 
 # Script
 
-This document is lengthy (562 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [script.md](../zh/api/script.md) for the original.
 

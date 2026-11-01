@@ -6,7 +6,7 @@ title: Dashboard Tutorial
 
 # Dashboard Tutorial
 
-This document is lengthy (314 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [dashboard.md](../zh/guide/dashboard.md) for the original.
 
@@ -24,12 +24,13 @@ The section outline below mirrors the Chinese source document; see [dashboard.md
   - 3. Teams（团队协作）
   - 4. Scripts（脚本管理）
   - 5. Workflows（工作流管理）
-  - 6. Monitor（监控面板）
-  - 7. Admin（管理后台）
-  - 8. Settings（系统设置）
-  - 9. Profile（个人资料）
-  - 10. Support/Feedback（支持反馈）
-  - 11. Account/Messages（站内信）
+  - 6. Executions（执行记录）
+  - 7. Monitor（监控面板）
+  - 8. Admin（管理后台）
+  - 9. Settings（系统设置）
+  - 10. Profile（个人资料）
+  - 11. Support/Feedback（支持反馈）
+  - 12. Account/Messages（站内信）
 - WebSocket 实时事件
 - 权限系统
   - 内置角色

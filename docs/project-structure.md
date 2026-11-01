@@ -125,14 +125,15 @@ The runtime runs as an active agent, connecting to the orchestrator outbound.
 1. **Independent core library** - `lib/wingman/` does not depend on `apps/` and can be reused on its own
 2. **Tests next to code** - every module has its own `tests/` directory
 3. **Clear responsibilities** - apps (applications), lib (core library) and libs (engine and link libraries) are separated
-4. **Namespaces** - subdirectory headers are nested by directory: `include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>` (capture / core / ipc / platform / rpc / vision the same way); top-level headers use a flat `namespace wingman` (31 of 33, with `crypt.hpp` / `core.hpp` as exceptions using `wingman::crypt` / `wingman::core`)
+4. **Namespaces** - subdirectory headers are nested by directory: `include/wingman/<dir>/xxx.hpp` → `namespace wingman::<dir>` (capture / core / ipc / platform / rpc / vision the same way); top-level headers use a flat `namespace wingman` (32 of 34, with `crypt.hpp` / `core.hpp` as exceptions using `wingman::crypt` / `wingman::core`)
 
 ## Build Notes
 
 Dependencies are managed with the vcpkg manifest (`vcpkg.json`):
 
-```bash
-build-scripts\build-runtime-msvc-ninja.bat
+```powershell
+powershell -ExecutionPolicy Bypass -File build-scripts\ci\configure-windows.ps1
+cmake --build build --config Release
 ```
 
 For the detailed build steps see [BUILD.md](../BUILD.md).

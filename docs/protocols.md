@@ -71,7 +71,7 @@ The GUI side reads business fields from `data.result` (e.g. `data.result.paused`
 
 ### Registered Methods
 
-31 unique methods (26 registered in `apps/agent/src/rpc/handlers/`, 5 `trigger.*` registered in `lib/wingman/src/rpc/handlers/trigger_handler.cpp`):
+34 unique methods (29 registered in `apps/agent/src/rpc/handlers/`, 5 `trigger.*` registered in `lib/wingman/src/rpc/handlers/trigger_handler.cpp`):
 
 | Method | Description |
 |------|------|
@@ -84,6 +84,7 @@ The GUI side reads business fields from `data.result` (e.g. `data.result.paused`
 | `events.drain` | drain buffered events |
 | `macro.start` / `stop` / `play` / `status` / `save` / `load` / `clear` | macro recording and playback |
 | `config.getRemote` / `setRemote` | read/write of the remote registration config (local IPC only; the Go server side cannot change it) |
+| `update.check` / `download` / `status` | runtime self-update: version check, download, download status (backs the GUI Updates page; local IPC only) |
 
 `events.drain` response: `{ events: [{method, payload, timestamp}], remaining: N, dropped: N }`. The event method set: `tray.show`/`tray.hide`/`tray.badge`/`tray.tooltip`, `trigger.fired`/`trigger.action`, `systemwatch.process`/`systemwatch.window`/`systemwatch.error`, `filewatcher.changed`/`filewatcher.error`, `macro.state`/`macro.recorded`, `script.state_changed`, `script.output`, `connection.ipc_client`, `connection.state_changed`. Request parameter `max` (default 500).
 

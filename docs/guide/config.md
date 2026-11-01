@@ -2,9 +2,11 @@
 
 # Configuration Guide
 
-This document is lengthy (250 lines in the source) and has no English translation yet.
+This document is lengthy and has no English translation yet.
 
 The section outline below mirrors the Chinese source document; see [config.md](../zh/guide/config.md) for the original.
+
+> Scope: this page covers the script-side JSON config store (`config/config.json`, read/written via the `wingman.config` module and the C++ `Config` API). The runtime process itself reads TOML `agent.toml` (`wingman-agent start`); see the runtime-configuration section of the configuration guide.
 
 - 配置文件位置
 - 配置结构
