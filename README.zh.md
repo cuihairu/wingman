@@ -18,7 +18,8 @@ C++ + Lua/Python 的自动化 Agent Runtime + Go 远程编排中控
 
 [English](README.md) | 简体中文
 
-[文档](docs/README.md) · [快速开始](docs/guide/getting-started.md) · [平台支持](docs/platforms.md) · [API 参考](docs/api/overview.md) · [示例](docs/examples/) · [贡献指南](CONTRIBUTING.md) <a href="https://cuihairu.github.io/wingman/zh//"><img src="https://img.shields.io/badge/%E6%96%87%E6%A1%A3-blue" alt="docs"></a>
+[文档](docs/README.md) · [快速开始](docs/guide/getting-started.md) · [平台支持](docs/platforms.md) · [API 参考](docs/api/overview.md) · [示例](docs/examples/) · [贡献指南](CONTRIBUTING.md)
+
 </div>
 
 > [**免责声明**]
@@ -228,6 +229,8 @@ from wingman import screen, input
 ok = screen.capture()
 
 # 查找颜色并点击
+
+<p align="center"><a href="https://cuihairu.github.io/wingman/zh/"><img src="https://img.shields.io/badge/%E6%96%87%E6%A1%A3-blue" alt="文档"></a></p>
 points = screen.findColor(0xFF0000, {"x": 0, "y": 0, "width": 1920, "height": 1080}, 10)
 if points:
     for p in points:
