@@ -1,12 +1,12 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-11-01
+> 最后更新: 2026-11-02
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
 
-- [ ] 视频教程 EP01 机器侧素材预采 — BLOCKED：待用户提供已解锁 Windows 真机或授权人工预采（已代决 2026-10-30，docs/review/2026-10-30-decisions.md）
-- [ ] 视频教程 EP01-EP06 人工成片 — BLOCKED：待用户档期；仓库侧前置已就绪
+- [ ] 视频教程 EP01 机器侧素材预采（BLOCKED：待用户提供已解锁 Windows 真机或授权人工预采）
+- [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期）
 - [ ] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归
 
 ## 已完成
@@ -92,6 +92,7 @@
 - [x] 文档-代码一致性审计落地：docs/审计-文档一致性.md（2026-10-08 批 273 项；2026-11-01 巡检轮见同文件）
 - [x] Android 设计文档 / 保活 / 受限设置 / 手动验证 / 教程分镜
 - [x] Dependabot 清零（2026-10-21，8ab069b，docs/dashboard build PASS）
+- [x] 2026-10-28~31 文档/UI/测试覆盖审核批次闭环：todo 元数据、decisions 引用、UI 审计报告（对比度/路由计数/P3 系列）、ScreenshotView 测试缺口、todo 审核记录纠偏（代表提交 6857299 / 8782ec4 / 24441c9 / e780354 / f5a63ef / 56f6b05；逐条明细见 docs/review/* 与 git log）
 
 ## 注意事项
 
@@ -110,8 +111,3 @@
 - [docs/architecture-decisions.md](./docs/architecture-decisions.md) — 架构决策记录（硬约束）
 - [docs/API.md](./docs/API.md) — API 文档
 - [docs/development-environment.md](./docs/development-environment.md) — VS Code 开发环境
-
-## 审核发现台账
-
-- [x] 2026-10-28~31 文档/UI/测试覆盖审核批次闭环：todo 元数据、decisions 引用、UI 审计报告（对比度/路由计数/P3 系列）、ScreenshotView 测试缺口、todo 审核记录纠偏（代表提交 6857299 / 8782ec4 / 24441c9 / e780354 / f5a63ef / 56f6b05；逐条明细见 docs/review/* 与 git log）
-- [ ] DOC-GIF · P2 · 文档：配置开关效果动态图（枚举全仓有效果的开关，自动流水线产出 off→on 对比 + GIF，docs「配置效果」双语页嵌入，兼作配置效果回归；参考 kode C-24 流水线模式）

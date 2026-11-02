@@ -280,7 +280,7 @@ Wingman 采用 **C++ 核心引擎 + 多语言脚本** 的架构设计：
 
 ## 贡献
 
-贡献方式见 [开发指南](docs/DEVELOPMENT.md)。
+贡献方式见 [开发指南](docs/zh/DEVELOPMENT.md)。
 
 ---
 
