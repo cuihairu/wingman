@@ -20,10 +20,10 @@ import "time"
 const messageHeaderSize = 16
 const maxResponseSize = 16 * 1024 * 1024
 
-// notifyWriteTimeout 是 Notify 帧写入的超时上限。sendNotify 可能在
-// TeamManager.mu 持有期间同步执行（收件箱推送回调），必须给写操作
-// 一个上界，避免死连接把共享锁拖到 TCP 重传超时（分钟级）。
-const notifyWriteTimeout = 5 * time.Second
+// notifyWriteTimeout 是帧写入的超时上限。sendNotify 可能在 TeamManager.mu
+// 持有期间同步执行（收件箱推送回调），必须给写操作一个上界，避免死连接
+// 把共享锁拖到 TCP 重传超时（分钟级）。测试可临时覆写以缩短用例耗时。
+var notifyWriteTimeout = 5 * time.Second
 
 // MessageType 匹配 C++ MessageType 枚举
 type MessageType uint8

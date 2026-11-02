@@ -341,13 +341,9 @@ func (ac *agentConn) SendCommandWithTimeout(method string, data map[string]any, 
 		Type:     Request,
 		Sequence: seq,
 	}
-	if err := ac.writeMsgHeaderLocked(&header); err != nil {
+	if err := ac.writeFrameLocked(&header, reqBytes, notifyWriteTimeout); err != nil {
 		delete(ac.pending, seq) // Clean up on write failure
-		ac.mu.Unlock()
-		return nil, err
-	}
-	if _, err := ac.conn.Write(reqBytes); err != nil {
-		delete(ac.pending, seq) // Clean up on write failure
+		ac.conn.Close()
 		ac.mu.Unlock()
 		return nil, err
 	}
@@ -623,8 +619,9 @@ func (ac *agentConn) handleRequest(header *MessageHeader, _ []byte) {
 	}
 
 	ac.mu.Lock()
-	ac.writeMsgHeaderLocked(&respHeader)
-	ac.conn.Write(respBytes)
+	if err := ac.writeFrameLocked(&respHeader, respBytes, notifyWriteTimeout); err != nil {
+		ac.conn.Close()
+	}
 	ac.mu.Unlock()
 }
 
@@ -856,8 +853,9 @@ func (ac *agentConn) sendPong() {
 		Length: 4,
 		Type:   Notify,
 	}
-	ac.writeMsgHeaderLocked(&header)
-	ac.conn.Write([]byte("PONG"))
+	if err := ac.writeFrameLocked(&header, []byte("PONG"), notifyWriteTimeout); err != nil {
+		ac.conn.Close()
+	}
 }
 
 // getConnByAgent 返回该 agentID 当前活跃的连接；agent 离线时返回 nil。
@@ -955,12 +953,24 @@ func (ac *agentConn) writeNotifyFrameLocked(body []byte) error {
 		Length: uint32(len(body)),
 		Type:   Notify,
 	}
-	if err := ac.writeMsgHeaderLocked(&header); err != nil {
+	return ac.writeFrameLocked(&header, body, notifyWriteTimeout)
+}
+
+// writeFrameLocked writes one complete frame with a bounded deadline covering
+// both header and body. Without this, either write can hold ac.mu indefinitely
+// when the peer stops reading (TCP re-transmit backoff), stalling lock holders
+// such as a TeamManager.mu-held sendNotify callback.
+func (ac *agentConn) writeFrameLocked(header *MessageHeader, body []byte, timeout time.Duration) error {
+	if err := ac.conn.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
 		return err
 	}
-	// 有界写：设置超时而非无限阻塞，失败后由调用方关闭连接回收。
-	_ = ac.conn.SetWriteDeadline(time.Now().Add(notifyWriteTimeout))
-	defer ac.conn.SetWriteDeadline(time.Time{})
+	defer func() {
+		_ = ac.conn.SetWriteDeadline(time.Time{})
+	}()
+
+	if err := ac.writeMsgHeaderLocked(header); err != nil {
+		return err
+	}
 	_, err := ac.conn.Write(body)
 	return err
 }

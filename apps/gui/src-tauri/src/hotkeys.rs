@@ -149,7 +149,11 @@ fn load_active_hotkeys() -> ProfileHotkeys {
         return default_hotkeys();
     }
 
-    let profile_path = profiles_dir().join(format!("{active_id}.json"));
+    // 复用 profiles 模块的 fail-closed 校验：active_profile.txt 若被篡改，
+    // 直接回落默认热键而非尝试越界读取。
+    let Ok(profile_path) = crate::commands::profiles::profile_path(&active_id) else {
+        return default_hotkeys();
+    };
     let content = match fs::read_to_string(profile_path) {
         Ok(value) => value,
         Err(_) => return default_hotkeys(),

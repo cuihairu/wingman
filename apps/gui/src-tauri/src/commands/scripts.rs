@@ -230,7 +230,10 @@ fn active_profile_script_paths() -> Result<Vec<String>, String> {
         return Err("No active profile".to_string());
     }
 
-    let content = fs::read_to_string(profile_path(&active_id)).map_err(|e| e.to_string())?;
+    // 复用 profiles 模块的 fail-closed 校验，与 profile_path 语义一致，
+    // 避免 active_profile.txt 被篡改为路径穿越 id 时越界读取。
+    let profile_path = crate::commands::profiles::profile_path(&active_id)?;
+    let content = fs::read_to_string(&profile_path).map_err(|e| e.to_string())?;
     let profile: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
     let scripts = profile["scripts"]
         .as_array()
@@ -258,12 +261,6 @@ fn active_profile_path() -> PathBuf {
     let mut path = profiles_dir();
     path.pop();
     path.push("active_profile.txt");
-    path
-}
-
-fn profile_path(id: &str) -> PathBuf {
-    let mut path = profiles_dir();
-    path.push(format!("{}.json", id));
     path
 }
 

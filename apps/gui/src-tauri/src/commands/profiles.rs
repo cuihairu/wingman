@@ -21,7 +21,7 @@ fn active_profile_path() -> PathBuf {
     path
 }
 
-fn profile_path(id: &str) -> Result<PathBuf, String> {
+pub(crate) fn profile_path(id: &str) -> Result<PathBuf, String> {
     // Validate that id is a safe filename to prevent path traversal attacks
     // Reject unsafe IDs instead of silently sanitizing (fail-closed approach)
     if !is_safe_filename(id) {
@@ -37,7 +37,7 @@ fn profile_path(id: &str) -> Result<PathBuf, String> {
 }
 
 /// Check if a string is a safe filename (no path traversal)
-fn is_safe_filename(id: &str) -> bool {
+pub(crate) fn is_safe_filename(id: &str) -> bool {
     if id.is_empty() {
         return false;
     }
@@ -119,13 +119,12 @@ pub async fn get_active_profile() -> Result<Value, String> {
     if let Ok(active_id) = fs::read_to_string(&path) {
         let active_id = active_id.trim();
         if !active_id.is_empty() {
-            if let Ok(profile_path) = profile_path(active_id) {
-                if let Ok(content) = fs::read_to_string(&profile_path) {
-                    if let Ok(profile) = serde_json::from_str::<Value>(&content) {
-                        return Ok(profile);
-                    }
-                }
-            }
+            // fail-closed：active_profile.txt 若被篡改为不安全 id，显式报错
+            // 而非静默返回 null，避免上层误认为「无激活配置」。
+            let profile_path = profile_path(active_id)?;
+            let content = fs::read_to_string(&profile_path).map_err(|e| e.to_string())?;
+            let profile = serde_json::from_str::<Value>(&content).map_err(|e| e.to_string())?;
+            return Ok(profile);
         }
     }
     Ok(json!(null))
@@ -224,4 +223,77 @@ pub async fn import_profile_json(json: String) -> Result<(), String> {
     let content = serde_json::to_string_pretty(&profile).map_err(|e| e.to_string())?;
     fs::write(&path, content).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+// ---------- 单元测试 ----------
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    fn temp_data_dir() -> PathBuf {
+        static SEQ: AtomicU64 = AtomicU64::new(0);
+        let unique = format!(
+            "wingman_gui_profiles_test_{}_{}",
+            std::process::id(),
+            SEQ.fetch_add(1, Ordering::Relaxed)
+        );
+        let path = std::env::temp_dir().join(unique);
+        fs::create_dir_all(&path).expect("create temp data dir");
+        path
+    }
+
+    struct EnvGuard {
+        key: String,
+        prev: Option<std::ffi::OsString>,
+    }
+
+    impl EnvGuard {
+        fn set(key: &str, value: &std::path::Path) -> Self {
+            let prev = std::env::var_os(key);
+            std::env::set_var(key, value);
+            EnvGuard { key: key.to_string(), prev }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            match &self.prev {
+                Some(v) => std::env::set_var(&self.key, v),
+                None => std::env::remove_var(&self.key),
+            }
+        }
+    }
+
+    #[test]
+    fn profile_path_rejects_unsafe_id() {
+        assert!(profile_path("../evil").is_err());
+        assert!(profile_path("a/b").is_err());
+        assert!(profile_path("a\\b").is_err());
+        assert!(profile_path("..").is_err());
+        assert!(profile_path("").is_err());
+        assert!(profile_path("id with space").is_err());
+    }
+
+    #[test]
+    fn profile_path_accepts_safe_id() {
+        let guard = EnvGuard::set("XDG_DATA_HOME", &temp_data_dir());
+        let p = profile_path("profile_123").expect("safe id accepted");
+        assert!(p.to_string_lossy().ends_with("profiles/profile_123.json"));
+        drop(guard);
+    }
+
+    #[test]
+    fn get_active_profile_returns_error_on_unsafe_active_id() {
+        let dir = temp_data_dir();
+        let guard = EnvGuard::set("XDG_DATA_HOME", &dir);
+        // active_profile.txt 被篡改为路径穿越 id
+        let active = dir.join("wingman").join("active_profile.txt");
+        fs::create_dir_all(active.parent().unwrap()).unwrap();
+        fs::write(&active, "../../../etc/passwd").unwrap();
+        let runtime = tokio::runtime::Runtime::new().expect("create tokio runtime");
+        let result = runtime.block_on(get_active_profile());
+        assert!(result.is_err(), "unsafe active id must be rejected, got {result:?}");
+        drop(guard);
+    }
 }

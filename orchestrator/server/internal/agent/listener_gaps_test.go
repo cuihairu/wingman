@@ -3,7 +3,9 @@ package agent
 import (
 	"errors"
 	"net"
+	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -145,5 +147,93 @@ func TestSendCommandBodyWriteFailure(t *testing.T) {
 	ac.mu.Unlock()
 	if pendingLen != 0 {
 		t.Errorf("pending map should be cleaned up on write failure, got %d entries", pendingLen)
+	}
+}
+
+// ---------- 有界帧写（writeFrameLocked）与失败拆链 ----------
+
+// blockingConn 模拟对端窗口为零：所有 Write 都阻塞到写截止时间才返回超时。
+type blockingConn struct {
+	closed atomic.Bool
+}
+
+func (c *blockingConn) Read(b []byte) (int, error) { time.Sleep(50 * time.Millisecond); return 0, nil }
+func (c *blockingConn) Write(b []byte) (int, error) {
+	// 阻塞到写 deadline（由 SetWriteDeadline 设置）；net.Conn 契约要求按截止返回超时。
+	time.Sleep(notifyWriteTimeout + 100*time.Millisecond)
+	return 0, os.ErrDeadlineExceeded
+}
+func (c *blockingConn) Close() error                       { c.closed.Store(true); return nil }
+func (c *blockingConn) LocalAddr() net.Addr                { return nil }
+func (c *blockingConn) RemoteAddr() net.Addr               { return nil }
+func (c *blockingConn) SetDeadline(t time.Time) error      { return nil }
+func (c *blockingConn) SetReadDeadline(t time.Time) error  { return nil }
+func (c *blockingConn) SetWriteDeadline(t time.Time) error { return nil }
+
+// shortBlockingConn 与 blockingConn 同义，但写阻塞时长由构造参数控制（毫秒级测试用）。
+type shortBlockingConn struct {
+	block  time.Duration
+	closed atomic.Bool
+}
+
+func (c *shortBlockingConn) Read(b []byte) (int, error) {
+	time.Sleep(10 * time.Millisecond)
+	return 0, nil
+}
+func (c *shortBlockingConn) Write(b []byte) (int, error) {
+	time.Sleep(c.block)
+	return 0, os.ErrDeadlineExceeded
+}
+func (c *shortBlockingConn) Close() error                       { c.closed.Store(true); return nil }
+func (c *shortBlockingConn) LocalAddr() net.Addr                { return nil }
+func (c *shortBlockingConn) RemoteAddr() net.Addr               { return nil }
+func (c *shortBlockingConn) SetDeadline(t time.Time) error      { return nil }
+func (c *shortBlockingConn) SetReadDeadline(t time.Time) error  { return nil }
+func (c *shortBlockingConn) SetWriteDeadline(t time.Time) error { return nil }
+
+// header 写阻塞（对端零窗口）也必须受 writeFrameLocked 截止时间约束，不能无限持锁。
+func TestWriteFrameLockedBoundsHeaderWrite(t *testing.T) {
+	c := &shortBlockingConn{block: 500 * time.Millisecond}
+	ac := &agentConn{id: "bound-header", conn: c}
+	header := MessageHeader{Length: 4, Type: Notify}
+	start := time.Now()
+	err := ac.writeFrameLocked(&header, []byte("PONG"), 100*time.Millisecond)
+	if err == nil {
+		t.Fatal("expected write deadline error")
+	}
+	if elapsed := time.Since(start); elapsed > 750*time.Millisecond {
+		t.Fatalf("header write not bounded: elapsed %v > 750ms", elapsed)
+	}
+}
+
+// sendNotify 写失败应主动拆链（Close），让 readLoop 走回收路径，避免锁持有者卡死。
+func TestSendNotifyWriteFailureClosesConn(t *testing.T) {
+	c := &shortBlockingConn{block: 500 * time.Millisecond}
+	ac := &agentConn{id: "close-on-fail", conn: c, pending: map[uint32]*pendingResponse{}}
+	orig := notifyWriteTimeout
+	notifyWriteTimeout = 100 * time.Millisecond
+	defer func() { notifyWriteTimeout = orig }()
+	ac.sendNotify("inbox.message", map[string]any{"msgId": "m1"})
+	if !c.closed.Load() {
+		t.Fatal("sendNotify should close the connection on write failure")
+	}
+}
+
+// SendCommandWithTimeout 写失败（含 header）应返回错误并清理 pending。
+func TestSendCommandWriteFailureBoundsAndCleans(t *testing.T) {
+	c := &shortBlockingConn{block: 500 * time.Millisecond}
+	ac := &agentConn{id: "cmd-bound", conn: c, pending: map[uint32]*pendingResponse{}}
+	orig := notifyWriteTimeout
+	notifyWriteTimeout = 100 * time.Millisecond
+	defer func() { notifyWriteTimeout = orig }()
+	_, err := ac.SendCommandWithTimeout("run_script", map[string]any{"path": "x.lua"}, 2*time.Second)
+	if err == nil {
+		t.Fatal("expected write error")
+	}
+	ac.mu.Lock()
+	n := len(ac.pending)
+	ac.mu.Unlock()
+	if n != 0 {
+		t.Fatalf("pending not cleaned up on write failure, got %d", n)
 	}
 }
