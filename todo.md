@@ -8,6 +8,7 @@
 - [ ] 视频教程 EP01 机器侧素材预采（BLOCKED：待用户提供已解锁 Windows 真机或授权人工预采）
 - [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期）
 - [ ] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归
+- [ ] 代码深审 2026-11-01 P3 装饰项清理：remote_session.go SA4006/S1016、harness_test.go + main_coverage_test.go + main_wait_test.go ST1019、capstore_test.go S1040（staticcheck，无行为影响，见 docs/review/2026-11-01-code-review.md §5）
 
 ## 已完成
 
