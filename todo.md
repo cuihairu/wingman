@@ -112,3 +112,15 @@
 - [docs/architecture-decisions.md](./docs/architecture-decisions.md) — 架构决策记录（硬约束）
 - [docs/API.md](./docs/API.md) — API 文档
 - [docs/development-environment.md](./docs/development-environment.md) — VS Code 开发环境
+
+## 审核发现（68572995..HEAD，只审不改，2026-11-03）
+
+覆盖范围：git diff 68572995d4d4bc18522c3d051060a6a500bc88ed..HEAD 全部 118 个文件。代码类已逐行审：apps/gui/src-tauri/src/commands/profiles.rs、apps/gui/src/routes/{dashboard,screen,updates}/+page.svelte、apps/gui/src/app.css、.vscode/tasks.json、orchestrator/server/internal/agent/{client,listener}.go、orchestrator/server/internal/handlers/remote_session.go、orchestrator/server/integration/{harness,workflow}_test.go、orchestrator/server/internal/handlers/capstore_test.go、orchestrator/server/{main_coverage,main_wait}_test.go、orchestrator/dashboard/tests/components.test.tsx；其余为 docs/README/BUILD 文档与截图（抽查命令/路径一致性，未见问题）。
+
+- [x] 审核发现：writeNotifyFrameLocked 只给 body 写设 5s 截止，header 写（writeMsgHeaderLocked）在设截止之前执行且无界；对端窗口为零时 16 字节头写仍可无限阻塞持锁，修复不完整（orchestrator/server/internal/agent/listener.go:958）— 属实并已修复：522f34e 抽出 writeFrameLocked 对 header+body 统一设截止（listener.go:959-976），并补 TestWriteFrameLockedBoundsHeaderWrite（listener_gaps_test.go:195）
+- [x] 审核发现：0c7e208 仅绑定 notify 写；sendPong(859-860)/handleRequest(626-627)/SendCommandWithTimeout(349) 仍持 ac.mu 无界写，阻塞期间可让 TeamManager.mu 下 sendNotify 的 ac.mu 获取一并卡到 TCP 重传超时，同类锁持问题未消除（orchestrator/server/internal/agent/listener.go:859）— 属实并已修复：522f34e 将 SendCommandWithTimeout/handleRequest/sendPong 全部改走有界 writeFrameLocked，写失败即 Close（listener.go:344/622/856）
+- [x] 审核发现：notify 有界写与写失败主动拆链（writeNotifyFrameLocked / sendNotify 关闭连接）无单元测试覆盖，属行为变更缺回归测试（orchestrator/server/internal/agent/listener.go:953）— 属实并已修复：522f34e 补 TestSendNotifyWriteFailureClosesConn（listener_gaps_test.go:210）与 TestSendCommandWriteFailureBoundsAndCleans（listener_gaps_test.go:223）
+- [x] 审核发现：profile_path 由 panic 改返回 Err（1eda7cc）无测试断言不安全 id 现返回 Err 而非 panic；且 get_active_profile 静默吞 Err 无日志（apps/gui/src-tauri/src/commands/profiles.rs:24）— 属实并已修复：522f34e 将 get_active_profile 改为 fail-closed 显式返回 Err（profiles.rs:117-132），并补 profile_path_rejects_unsafe_id / get_active_profile_returns_error_on_unsafe_active_id（profiles.rs 测试模块）
+- [x] 审核发现：1eda7cc 修复未覆盖 scripts.rs:264 的同名未校验 profile_path（无 is_safe_filename 检查），unsafe id 处理在库内不一致，残余未校验路径（apps/gui/src-tauri/src/commands/scripts.rs:264）— 属实并已修复：522f34e 删除 scripts.rs 未校验 profile_path，active_profile_script_paths 改经 crate::commands::profiles::profile_path（scripts.rs:235），并同步修复 hotkeys.rs 同型路径（hotkeys.rs:154）
+
+其余已审文件结论：remote_session.go 的 applyRemoteSessionFilters 返回赋值（静态检查 p3 整理）在 GORM clone=0 语义下为行为等价的防御性改动，无功能变化、无注入（参数化占位符 + groupBy/bucket 白名单）；workflow_test.go 断言放宽为允许同时刻（Windows 时钟粒度）合理；components.test.tsx 新用例遵循文件既有 FakeWS 约定；profiles.rs 其余 `?` 传播与错误处理正确；Svelte/app.css 为暗色 hover 对比度样式，无安全影响；.vscode/tasks.json 与 BUILD.md 新命令均指向存在的 build-scripts/ci/configure-windows.ps1（VS 2022 多配置生成器 + --config Release 一致）。
