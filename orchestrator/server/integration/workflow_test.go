@@ -58,7 +58,8 @@ func TestWorkflowSubmitAgentExecuteResultChain(t *testing.T) {
 			t.Errorf("cmd[%d] run_script 应携带 language=lua, got %v", i, c.Data["language"])
 		}
 	}
-	if !cmds[0].At.Before(cmds[1].At) {
+	// At 为 agent 侧 time.Now() 记录，Windows 时钟粒度可能同刻，断言非严格序
+	if cmds[1].At.Before(cmds[0].At) {
 		t.Errorf("s2 的命令不应早于 s1: s1@%v s2@%v", cmds[0].At, cmds[1].At)
 	}
 
