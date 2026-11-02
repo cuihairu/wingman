@@ -21,7 +21,6 @@ import (
 	"unsafe"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
-	agentPkg "github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 	ws "github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
 	"gorm.io/driver/sqlite"
@@ -216,7 +215,7 @@ func TestShutdownComponentsDBError(t *testing.T) {
 	hub := ws.NewHub()
 	go hub.Run()
 	registry := agent.NewRegistry(hub)
-	listener := agentPkg.NewFrameListener(registry, hub)
+	listener := agent.NewFrameListener(registry, hub)
 
 	dsn := fmt.Sprintf("file:shutdown_cov_%d?mode=memory&cache=shared", time.Now().UnixNano())
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
@@ -233,7 +232,7 @@ func TestShutdownComponentsCloseError(t *testing.T) {
 	hub := ws.NewHub()
 	go hub.Run()
 	registry := agent.NewRegistry(hub)
-	listener := agentPkg.NewFrameListener(registry, hub)
+	listener := agent.NewFrameListener(registry, hub)
 
 	sqlDB, err := sql.Open("errCloseDriver", "dsn")
 	if err != nil {

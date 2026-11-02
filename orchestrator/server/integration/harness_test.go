@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
-	agentPkg "github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/handlers"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
@@ -43,7 +42,7 @@ type testEnv struct {
 	db         *gorm.DB
 	hub        *ws.Hub
 	registry   *agent.Registry
-	listener   *agentPkg.FrameListener
+	listener   *agent.FrameListener
 	httpSrv    *httptest.Server
 	agentAddr  string
 	scriptsDir string
@@ -99,7 +98,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	// 与 main.go 一致：标签经 DB 写穿/恢复
 	registry.SetTagStore(handlers.NewAgentTagStore(db))
 
-	listener := agentPkg.NewFrameListener(registry, hub)
+	listener := agent.NewFrameListener(registry, hub)
 	// 与 main.go 一致：脚本输出事件持久化到 ExecutionLog
 	listener.SetScriptOutputHandler(func(agentID string, data map[string]any) {
 		scriptID, _ := data["scriptId"].(string)
@@ -135,7 +134,7 @@ func newTestEnv(t *testing.T) *testEnv {
 
 // buildRouter 装配与 main.go 同构的路由子集（真实 AuthRequired/RoleRequired/
 // PermissionRequired 中间件链），覆盖四个测试场景所需的端点。
-func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *workflow.Engine, scriptsDir string, teamMgr *agentPkg.TeamManager) *gin.Engine {
+func buildRouter(db *gorm.DB, registry *agent.Registry, hub *ws.Hub, wfEngine *workflow.Engine, scriptsDir string, teamMgr *agent.TeamManager) *gin.Engine {
 	authHandler := handlers.NewAuthHandler(db)
 	agentHandler := handlers.NewAgentHandler(registry, db)
 	screenshotHandler := handlers.NewScreenshotHandler(hub)

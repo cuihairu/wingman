@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
 )
 
@@ -12,7 +11,7 @@ import (
 // （"[]"）应可 roundtrip；无记录返回 (nil, false)。
 func TestAgentCapabilityStoreRoundtrip(t *testing.T) {
 	db := newDB(t)
-	store := NewAgentCapabilityStore(db).(agent.CapabilityStore)
+	store := NewAgentCapabilityStore(db)
 
 	// 无记录
 	if _, ok := store.LoadCapabilities("ghost"); ok {

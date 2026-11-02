@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
-	agentPkg "github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
 	ws "github.com/cuihaitao/wingman/orchestrator/server/pkg/websocket"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -90,12 +89,12 @@ func TestMainFatalsOnRunError(t *testing.T) {
 // ---------- waitHTTPServer 各分支 ----------
 
 // waitTestComponents 构造 waitHTTPServer 所需的真实组件（listener/registry/db）。
-func waitTestComponents(t *testing.T) (*agentPkg.FrameListener, *agent.Registry, *gorm.DB) {
+func waitTestComponents(t *testing.T) (*agent.FrameListener, *agent.Registry, *gorm.DB) {
 	t.Helper()
 	hub := ws.NewHub()
 	go hub.Run()
 	registry := agent.NewRegistry(hub)
-	listener := agentPkg.NewFrameListener(registry, hub)
+	listener := agent.NewFrameListener(registry, hub)
 	dsn := fmt.Sprintf("file:wait_cov_%d?mode=memory&cache=shared", time.Now().UnixNano())
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {

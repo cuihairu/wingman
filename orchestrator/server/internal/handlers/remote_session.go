@@ -117,7 +117,7 @@ func (h *RemoteSessionHandler) HandleList(c *gin.Context) {
 	}
 
 	query := h.db.Model(&models.RemoteSessionAudit{}).Order("started_at desc, id desc")
-	applyRemoteSessionFilters(query, c)
+	query = applyRemoteSessionFilters(query, c)
 
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -158,7 +158,7 @@ func (h *RemoteSessionHandler) HandleList(c *gin.Context) {
 	// 汇总与分组基于**全量过滤结果**（不受分页影响）——报表要的是区间
 	// 总数，不是「这一页的总数」。
 	summaryQuery := h.db.Model(&models.RemoteSessionAudit{})
-	applyRemoteSessionFilters(summaryQuery, c)
+	summaryQuery = applyRemoteSessionFilters(summaryQuery, c)
 	summary := remoteSessionSummary{}
 	if err := remoteSessionAggregate(summaryQuery, &summary); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to summarize remote sessions"})
@@ -166,7 +166,7 @@ func (h *RemoteSessionHandler) HandleList(c *gin.Context) {
 	}
 
 	groupQuery := h.db.Model(&models.RemoteSessionAudit{})
-	applyRemoteSessionFilters(groupQuery, c)
+	groupQuery = applyRemoteSessionFilters(groupQuery, c)
 	groups, err := remoteSessionGrouped(groupQuery, remoteSessionGroupColumn(c.Query("groupBy")))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to group remote sessions"})
@@ -174,7 +174,7 @@ func (h *RemoteSessionHandler) HandleList(c *gin.Context) {
 	}
 
 	bucketQuery := h.db.Model(&models.RemoteSessionAudit{})
-	applyRemoteSessionFilters(bucketQuery, c)
+	bucketQuery = applyRemoteSessionFilters(bucketQuery, c)
 	buckets, err := remoteSessionBuckets(bucketQuery, remoteSessionBucketWidth(c.Query("bucket")))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to bucket remote sessions"})
@@ -196,7 +196,7 @@ func (h *RemoteSessionHandler) HandleList(c *gin.Context) {
 // applyRemoteSessionFilters 把查询参数翻译成 where 条件（列表/汇总/分组/
 // 分桶四条查询共用，保证「报表各处口径一致」——口径分叉是报表最常见的
 // 错误来源）。
-func applyRemoteSessionFilters(query *gorm.DB, c *gin.Context) {
+func applyRemoteSessionFilters(query *gorm.DB, c *gin.Context) *gorm.DB {
 	if v := strings.TrimSpace(c.Query("agentId")); v != "" {
 		query = query.Where("agent_id = ?", v)
 	}
@@ -226,6 +226,7 @@ func applyRemoteSessionFilters(query *gorm.DB, c *gin.Context) {
 	if end := parseRFC3339(c.Query("end")); !end.IsZero() {
 		query = query.Where("started_at <= ?", end)
 	}
+	return query
 }
 
 // remoteSessionGroupColumn 分组维度白名单（列名来自用户输入，必须白名单化
@@ -296,15 +297,7 @@ func remoteSessionAggregate(query *gorm.DB, out *remoteSessionSummary) error {
 	if err != nil {
 		return err
 	}
-	*out = remoteSessionSummary{
-		Total:      row.Total,
-		Closed:     row.Closed,
-		Failed:     row.Failed,
-		Recorded:   row.Recorded,
-		Control:    row.Control,
-		ViewOnly:   row.ViewOnly,
-		TotalMsSum: row.TotalMsSum,
-	}
+	*out = remoteSessionSummary(row)
 	return nil
 }
 
