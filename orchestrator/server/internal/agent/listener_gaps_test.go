@@ -152,28 +152,15 @@ func TestSendCommandBodyWriteFailure(t *testing.T) {
 
 // ---------- 有界帧写（writeFrameLocked）与失败拆链 ----------
 
-// blockingConn 模拟对端窗口为零：所有 Write 都阻塞到写截止时间才返回超时。
-type blockingConn struct {
-	closed atomic.Bool
-}
-
-func (c *blockingConn) Read(b []byte) (int, error) { time.Sleep(50 * time.Millisecond); return 0, nil }
-func (c *blockingConn) Write(b []byte) (int, error) {
-	// 阻塞到写 deadline（由 SetWriteDeadline 设置）；net.Conn 契约要求按截止返回超时。
-	time.Sleep(notifyWriteTimeout + 100*time.Millisecond)
-	return 0, os.ErrDeadlineExceeded
-}
-func (c *blockingConn) Close() error                       { c.closed.Store(true); return nil }
-func (c *blockingConn) LocalAddr() net.Addr                { return nil }
-func (c *blockingConn) RemoteAddr() net.Addr               { return nil }
-func (c *blockingConn) SetDeadline(t time.Time) error      { return nil }
-func (c *blockingConn) SetReadDeadline(t time.Time) error  { return nil }
-func (c *blockingConn) SetWriteDeadline(t time.Time) error { return nil }
-
-// shortBlockingConn 与 blockingConn 同义，但写阻塞时长由构造参数控制（毫秒级测试用）。
+// shortBlockingConn 模拟对端窗口为零：Write 阻塞到写截止时间（由
+// SetWriteDeadline 设置）才返回 os.ErrDeadlineExceeded。若 writeFrameLocked
+// 未设截止（回归），Write 会阻塞满 block 时长，测试以耗时上界判失败。
 type shortBlockingConn struct {
-	block  time.Duration
-	closed atomic.Bool
+	block       time.Duration
+	closed      atomic.Bool
+	mu          sync.Mutex
+	deadline    time.Time
+	deadlineSet atomic.Bool
 }
 
 func (c *shortBlockingConn) Read(b []byte) (int, error) {
@@ -181,15 +168,30 @@ func (c *shortBlockingConn) Read(b []byte) (int, error) {
 	return 0, nil
 }
 func (c *shortBlockingConn) Write(b []byte) (int, error) {
-	time.Sleep(c.block)
+	c.mu.Lock()
+	d := c.deadline
+	c.mu.Unlock()
+	if d.IsZero() {
+		time.Sleep(c.block)
+	} else if wait := time.Until(d); wait > 0 {
+		time.Sleep(wait)
+	}
 	return 0, os.ErrDeadlineExceeded
 }
-func (c *shortBlockingConn) Close() error                       { c.closed.Store(true); return nil }
-func (c *shortBlockingConn) LocalAddr() net.Addr                { return nil }
-func (c *shortBlockingConn) RemoteAddr() net.Addr               { return nil }
-func (c *shortBlockingConn) SetDeadline(t time.Time) error      { return nil }
-func (c *shortBlockingConn) SetReadDeadline(t time.Time) error  { return nil }
-func (c *shortBlockingConn) SetWriteDeadline(t time.Time) error { return nil }
+func (c *shortBlockingConn) Close() error                      { c.closed.Store(true); return nil }
+func (c *shortBlockingConn) LocalAddr() net.Addr               { return nil }
+func (c *shortBlockingConn) RemoteAddr() net.Addr              { return nil }
+func (c *shortBlockingConn) SetDeadline(t time.Time) error     { return nil }
+func (c *shortBlockingConn) SetReadDeadline(t time.Time) error { return nil }
+func (c *shortBlockingConn) SetWriteDeadline(t time.Time) error {
+	c.mu.Lock()
+	c.deadline = t
+	c.mu.Unlock()
+	if !t.IsZero() {
+		c.deadlineSet.Store(true)
+	}
+	return nil
+}
 
 // header 写阻塞（对端零窗口）也必须受 writeFrameLocked 截止时间约束，不能无限持锁。
 func TestWriteFrameLockedBoundsHeaderWrite(t *testing.T) {
@@ -201,8 +203,11 @@ func TestWriteFrameLockedBoundsHeaderWrite(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected write deadline error")
 	}
-	if elapsed := time.Since(start); elapsed > 750*time.Millisecond {
-		t.Fatalf("header write not bounded: elapsed %v > 750ms", elapsed)
+	if !c.deadlineSet.Load() {
+		t.Fatal("writeFrameLocked must set a write deadline; deadline mechanism not exercised")
+	}
+	if elapsed := time.Since(start); elapsed > 300*time.Millisecond {
+		t.Fatalf("header write not bounded by deadline: elapsed %v > 300ms", elapsed)
 	}
 }
 
