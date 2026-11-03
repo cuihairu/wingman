@@ -138,3 +138,7 @@
 - [ ] 审核发现：findChrome 在 ~/.cache/ms-playwright 目录不存在时 fs.readdirSync 直接抛 ENOENT，绕过「未找到本地 chromium」的友好提示与 exit 3 分支，落到 main().catch 通用失败（含堆栈、exit 1）；且仅探测 chrome-linux64/chrome，Windows/macOS 下默认路径无效（apps/gui/scripts/capture-config-gifs.mjs:43-52,82）
 - [ ] 审核发现（本轮复核 625504ca..HEAD 新增）：Dockerfile.vnc 的 /root/.vnc/config 显式 `localhost=no`，把弱口令（VNC_PW 默认 headless）VNC 绑到宿主全部网卡；sshd(Port 2222)/xrdp(3389) 在 network_mode: host 下亦默认绑 0.0.0.0。guacd 同宿主经 127.0.0.1 连目标，改绑回环即可消除暴露，且与 guacd-e2e-compose.yml 头注「直接监听宿主回环」自相矛盾（orchestrator/server/integration/testdata/Dockerfile.vnc:28）
 - [ ] 审核发现（本轮复核 625504ca..HEAD 新增）：capture-config-gifs.mjs 的 SWITCHES[].setting（autoReconnect/autoStart/minimizeOnStart）从未被脚本引用（仅定义在 34-36 行，采集循环只用到 key/label），确定性初态实际靠 localStorage 全 false 重置 + 点 checkbox 达成；setting 键属死数据，易与 src/routes/settings/+page.svelte 真实设置键漂移（apps/gui/scripts/capture-config-gifs.mjs:34）
+
+## 漏洞扫描遗留（2026-11-03 全舰队扫描，源 scratch/vuln-scan-*.md）
+
+- [ ] VULN-WINGMAN-001 [高危·GHSA-mrhx-c7xc-m3w5] zod 3.x→4.6.6【跨大版本需改代码】（orchestrator/dashboard，终扫残留 1）；验收：pnpm audit 中 zod 不再命中 + pnpm test 不新增失败（websocket 5 用例为既有失败）
