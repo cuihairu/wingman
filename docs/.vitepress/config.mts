@@ -23,7 +23,8 @@ const sections: Section[] = [
   {
     zh: '界面使用', en: 'Using the UI', items: [
       { zh: 'Dashboard 远程管理', en: 'Dashboard Remote Management', link: '/guide/dashboard' },
-      { zh: 'Runtime 本地 GUI', en: 'Runtime Local GUI', link: '/guide/runtime-gui' }
+      { zh: 'Runtime 本地 GUI', en: 'Runtime Local GUI', link: '/guide/runtime-gui' },
+      { zh: '配置开关效果', en: 'Config Switch Effects', link: '/guide/config-effects' }
     ]
   },
   {

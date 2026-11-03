@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "capture:config-gifs": "node scripts/capture-config-gifs.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
@@ -21,6 +22,7 @@
     "@vitest/coverage-v8": "^5.0.0",
     "esbuild": "^0.28.2",
     "jsdom": "^30.0.1",
+    "playwright-core": "^1.64.1",
     "svelte": "^5.55.9",
     "svelte-check": "^4.4.8",
     "typescript": "^6.0.3",
