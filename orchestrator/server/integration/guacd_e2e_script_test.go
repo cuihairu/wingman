@@ -298,27 +298,39 @@ func TestGuacdE2EScriptExitsZeroOnHelp(t *testing.T) {
 	}
 }
 
-// TestGuacdE2EComposePinsImageDigests compose 的四服务必须钉 digest。
+// TestGuacdE2EComposePinsImageDigests 外部镜像依赖必须钉 digest。
 //
-// 这是本轮「容器栈补强」的核心护栏：三条目标端点的上游都用 latest，任何
-// 一次上游重建都会静默换掉镜像内容，e2e 会在无人改代码的情况下变红。
-// 没有这条断言，改回 latest 不会有任何测试变红。
+// 这是本轮「容器栈补强」的核心护栏：上游任何一次重建都会静默换掉镜像内容，
+// e2e 会在无人改代码的情况下变红。没有这条断言，改回 latest 不会有任何测试变红。
+//
+// 供应链治理后策略分两层：
+//   - guacd 仍是运行时拉取的官方镜像：compose 里 image: 必须锁 1.5.5 + digest；
+//   - sshd/vnc/xrdp 已改为仓内 Dockerfile 自建：外部依赖收敛到 FROM——
+//     三个 Dockerfile 必须存在，且 FROM 必须钉官方基础镜像 digest。
 func TestGuacdE2EComposePinsImageDigests(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join(repoRoot(t), "orchestrator", "server", "integration", "testdata", "guacd-e2e-compose.yml"))
+	composePath := filepath.Join(repoRoot(t), "orchestrator", "server", "integration", "testdata", "guacd-e2e-compose.yml")
+	raw, err := os.ReadFile(composePath)
 	if err != nil {
 		t.Fatalf("read compose: %v", err)
 	}
 	body := string(raw)
 
+	// guacd 仍是唯一运行时拉取的镜像（必须钉 digest）；sshd/vnc/xrdp 走仓内
+	// build:，其 image: 行只是给构建产物打的本地 tag（wingman-e2e-*）
 	imageLine := regexp.MustCompile(`(?m)^\s*image:\s*(\S+)\s*$`)
 	images := imageLine.FindAllStringSubmatch(body, -1)
 	if len(images) != 4 {
-		t.Fatalf("应有 4 个 image 定义，实际 %d：\n%s", len(images), body)
+		t.Errorf("应有 4 个 image: 定义（guacd + 三个自建产物 tag），实际 %d：\n%s", len(images), body)
 	}
-	services := 0
 	for _, m := range images {
-		services++
 		ref := m[1]
+		if strings.HasPrefix(ref, "wingman-e2e-") {
+			continue // 本地构建产物 tag，无上游可重建
+		}
+		if !strings.HasPrefix(ref, "guacamole/guacd:") {
+			t.Errorf("运行时拉取的镜像必须是钉了 digest 的官方 guacd，发现：%s", ref)
+			continue
+		}
 		if !strings.Contains(ref, "@sha256:") {
 			t.Errorf("镜像未钉 digest（上游重建会静默换内容）：%s", ref)
 			continue
@@ -328,13 +340,27 @@ func TestGuacdE2EComposePinsImageDigests(t *testing.T) {
 			t.Errorf("digest 形状非法（应为 sha256: + 64 位十六进制）：%s", ref)
 		}
 	}
-	if services != 4 {
-		t.Errorf("service 数应为 4，实际 %d", services)
-	}
 
 	// guacd 必须仍是 1.5.5（1.6.0 RDP 双崩溃，见设计 §13.2）
 	if !strings.Contains(body, "guacamole/guacd:1.5.5@sha256:") {
 		t.Error("guacd 必须锁 1.5.5 + digest（1.6.0 存在 RDP 双崩溃）")
+	}
+
+	// 三个自建目标端点：compose 必须走 build:，Dockerfile 的 FROM 必须钉 digest
+	fromLine := regexp.MustCompile(`(?m)^FROM\s+\S+@sha256:[0-9a-f]{64}\b`)
+	for _, df := range []string{"Dockerfile.sshd", "Dockerfile.vnc", "Dockerfile.xrdp"} {
+		if !strings.Contains(body, "dockerfile: "+df) {
+			t.Errorf("compose 应以 build.dockerfile 引用 %s", df)
+			continue
+		}
+		rawDF, err := os.ReadFile(filepath.Join(filepath.Dir(composePath), df))
+		if err != nil {
+			t.Errorf("read %s: %v", df, err)
+			continue
+		}
+		if !fromLine.MatchString(string(rawDF)) {
+			t.Errorf("%s 的 FROM 必须钉官方基础镜像 digest（上游重建会静默换内容）", df)
+		}
 	}
 }
 

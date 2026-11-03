@@ -1,0 +1,44 @@
+# syntax=docker/dockerfile:1
+# wingman e2e fixture：RDP 目标端点自建镜像（供应链治理，替代
+# danielguerra/ubuntu-xrdp）。仅测试用，凭据弱是刻意的。
+#
+# 用途不变：给 guacd 的 rdp 协议链路提供**真实 X 桌面**（用例断言首帧 drawing，
+# xrdp 首次会话建立要起 X session），故官方 ubuntu 基础镜像 + xrdp/xorgxrdp
+# + xfce 自建。基础镜像固定官方 digest，保留原 fixture 钉 digest 习惯
+# （见 guacd-e2e-compose.yml 头注）。
+FROM ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+         xrdp xorgxrdp \
+         xfce4 dbus-x11 tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# 固定时区（与原 fixture 约定一致）
+RUN ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone
+
+# e2e 账号 ubuntu/ubuntu（guacd_e2e_test.go RDP 用例凭据）。
+# 注意：ubuntu 24.04 官方镜像自带 ubuntu 用户（uid 1000），直接复用即可
+RUN echo 'ubuntu:ubuntu' | chpasswd \
+    && usermod -aG ssl-cert ubuntu
+
+# 会话固定走 xfce（不依赖 Xsession 的会话选择）
+RUN printf '#!/bin/sh\n[ -r /etc/default/locale ] && . /etc/default/locale\nexec startxfce4\n' \
+       > /etc/xrdp/startwm.sh \
+    && chmod 755 /etc/xrdp/startwm.sh
+
+COPY <<'EOF' /usr/local/bin/xrdp-entrypoint
+#!/bin/sh
+set -e
+# 容器内无 systemd：sesman 先起（默认 daemonize），xrdp 前台运行供 compose 管理
+xrdp-sesman
+exec xrdp -n
+EOF
+RUN chmod +x /usr/local/bin/xrdp-entrypoint
+
+# healthcheck 用 bash /dev/tcp 探 3389（ubuntu 自带 bash）
+EXPOSE 3389
+ENTRYPOINT ["/usr/local/bin/xrdp-entrypoint"]

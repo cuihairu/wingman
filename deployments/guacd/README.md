@@ -86,26 +86,24 @@ cd orchestrator/server
 WINGMAN_GUACD_E2E=1 go test ./integration/ -run TestGuacdE2E -v
 ```
 
-### e2e 目标端点镜像全部钉 digest
+### e2e 镜像供应链：guacd 钉 digest，目标端点仓内自建
 
-compose 里四个镜像除 guacd 外都用 `latest`——上游任何一次重建都会静默换掉
-镜像内容，e2e 会在**无人改代码**的情况下变红，而排查方向会先怀疑网关。故
-全部改为 `image@sha256:...`（guacd 仍锁 1.5.5）。更新镜像必须是一次显式的、
-可评审的改动：
+供应链治理后，sshd/vnc/xrdp 三个目标端点不再拉第三方镜像（原 lscr.io/
+accetto/danielguerra 三家都用 `latest`，上游任何一次重建都会静默换掉镜像
+内容，e2e 会在**无人改代码**的情况下变红，而排查方向会先怀疑网关），改为
+`orchestrator/server/integration/testdata/` 下的仓内 Dockerfile 自建
+（`Dockerfile.sshd/.vnc/.xrdp`）：FROM 均固定官方基础镜像 tag + digest，
+基础镜像升级必须是一次显式的、可评审的改动。guacd 仍是运行时拉取的官方
+镜像，继续锁 1.5.5 + digest：
 
 ```bash
-# 1. 改 tag；2. 取 digest；3. 一并改回 compose
+# 更新 guacd：1. 改 tag；2. 取 digest；3. 一并改回 compose
 docker manifest inspect -v <image>            # 多架构看 Descriptor.digest
-# lscr.io 走 ghcr.io：
-#   curl -sI -H "Authorization: Bearer $(curl -s \
-#     'https://ghcr.io/token?scope=repository:linuxserver/openssh-server:pull&service=ghcr.io' \
-#     | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')" \
-#     -H 'Accept: application/vnd.oci.image.index.v1+json' \
-#     https://ghcr.io/v2/linuxserver/openssh-server/manifests/latest | grep -i docker-content-digest
 ```
 
-`TestGuacdE2EComposePinsImageDigests` 会断言四服务都钉了 digest——改回
-`latest` 不会有任何测试变红，这条断言就是防它退化的护栏。
+`TestGuacdE2EComposePinsImageDigests` 会断言 guacd 的 image: 钉 digest、
+三个 Dockerfile 的 FROM 钉官方 digest——改回 `latest` 不会有任何测试变红，
+这条断言就是防它退化的护栏。首次 `compose up` 会触发仓内构建，属预期。
 
 四个服务都带 healthcheck（用 bash `/dev/tcp` 探端口，**不依赖 curl/nc**——
 目标镜像未必自带）。注意端口可达只说明「容器已监听」，不等于「协议握手可用」

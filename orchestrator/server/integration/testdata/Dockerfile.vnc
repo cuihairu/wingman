@@ -1,0 +1,60 @@
+# syntax=docker/dockerfile:1
+# wingman e2e fixture：VNC 目标端点自建镜像（供应链治理，替代
+# accetto/ubuntu-vnc-xfce-g3）。仅测试用，凭据弱是刻意的。
+#
+# 用途不变：给 guacd 的 vnc 协议链路提供**真实桌面**（用例断言首帧 drawing，
+# 不能是无桌面的空壳端口），故官方 ubuntu 基础镜像 + TigerVNC + xfce 自建。
+# 基础镜像固定官方 digest，保留原 fixture 钉 digest 习惯（见 guacd-e2e-compose.yml 头注）。
+FROM ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+         tigervnc-standalone-server tigervnc-common \
+         xfce4 dbus-x11 tzdata openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 固定时区（与原 fixture 约定一致：跨时区跑出来的输出不可比）
+RUN ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone
+
+# 会话：xstartup 直接拉 xfce，不依赖 Xsession 的会话选择；
+# localhost=no 对齐原 accetto 镜像行为（e2e 栈仅本地测试用途）
+RUN mkdir -p /root/.vnc \
+    && printf '#!/bin/sh\nunset SESSION_MANAGER\nunset DBUS_SESSION_BUS_ADDRESS\nexec startxfce4\n' \
+       > /root/.vnc/xstartup \
+    && chmod +x /root/.vnc/xstartup \
+    && printf 'geometry=1280x800\nlocalhost=no\n' > /root/.vnc/config
+
+COPY <<'EOF' /usr/local/bin/vnc-entrypoint
+#!/bin/sh
+set -e
+# 密码沿用原 fixture 的环境变量契约（compose 传 VNC_PW）。
+#
+# ubuntu 24.04 的 tigervnc 包不带 vncpasswd，密码文件按 TigerVNC 的
+# vncauth 混淆格式自算（common/rfb/obfuscate.cxx）：DES-ECB 加密「密码补
+# 零到 8 字节」，密钥固定 E84AD660C4721AE0（即 d3des 混淆密钥
+# {23,82,107,6,35,78,88,7} 的位反转形，标准 DES 可直接用），取前 8 字节。
+pw="${VNC_PW:-headless}"
+codes=$(printf '%s' "$pw" | od -An -tu1 | tr -s ' \n' '  ')
+set --
+i=0
+for c in $codes; do
+    [ "$i" -ge 8 ] && break
+    set -- "$@" "$(printf '%03o' "$c")"
+    i=$((i + 1))
+done
+while [ "$i" -lt 8 ]; do set -- "$@" "000"; i=$((i + 1)); done
+printf "\\$1\\$2\\$3\\$4\\$5\\$6\\$7\\$8" > /tmp/vnc-pw-plain
+openssl enc -des-ecb -provider legacy -provider default -nosalt \
+    -K E84AD660C4721AE0 -in /tmp/vnc-pw-plain | head -c 8 > /root/.vnc/passwd
+chmod 600 /root/.vnc/passwd
+rm -f /tmp/vnc-pw-plain
+exec tigervncserver :1 -fg -rfbauth /root/.vnc/passwd
+EOF
+RUN chmod +x /usr/local/bin/vnc-entrypoint
+
+# healthcheck 用 bash /dev/tcp 探 5901（ubuntu 自带 bash）
+EXPOSE 5901
+ENTRYPOINT ["/usr/local/bin/vnc-entrypoint"]

@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1
+# wingman e2e fixture：sshd 目标端点自建镜像（供应链治理，替代
+# lscr.io/linuxserver/openssh-server）。仅测试用，凭据弱是刻意的。
+#
+# 基础镜像固定官方 debian:bookworm-slim digest——保留原 fixture「镜像变了必须
+# 是一次显式、可评审的改动」的钉 digest 习惯（见 guacd-e2e-compose.yml 头注）。
+FROM debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssh-server tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# 固定 locale/timezone：时区会进登录 shell 的 motd 与时区数据，跨时区跑出来的
+# 输出不可比（与原 fixture 约定一致）
+RUN ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone
+
+# e2e 账号 test/test（guacd_e2e_test.go SSH 用例凭据）
+RUN useradd -m -s /bin/bash test \
+    && echo 'test:test' | chpasswd
+
+# network_mode: host 下监听 2222（避开宿主 22，沿用原 fixture 端口约定）
+RUN mkdir -p /etc/ssh/sshd_config.d /run/sshd \
+    && printf 'Port 2222\nPasswordAuthentication yes\nPermitRootLogin no\nX11Forwarding no\n' \
+       > /etc/ssh/sshd_config.d/e2e.conf
+
+# healthcheck 用 bash /dev/tcp 探 2222（debian slim 自带 bash，无需额外探针工具）
+EXPOSE 2222
+CMD ["/usr/sbin/sshd", "-D", "-e"]

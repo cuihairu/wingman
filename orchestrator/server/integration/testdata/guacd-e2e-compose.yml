@@ -7,12 +7,14 @@
 # 全部 network_mode: host：guacd(4822) / sshd(2222) / vnc(5901) / xrdp(3389)
 # 直接监听宿主回环，agent 注册表以 127.0.0.1 作为目标 IP。
 #
-# 镜像全部**钉到 digest**（不只是 tag）。原因：三条目标端点的上游都用
-# `latest`，上游任何一次重建都会静默换掉镜像内容——e2e 会在无人改代码
-# 的情况下变红，而排查方向会先怀疑网关。钉 digest 后「镜像变了」必须是
-# 一次显式的、可评审的改动。
-#   更新方式：改 tag → 跑 `docker manifest inspect -v <image>` 取
-#   Descriptor.digest（多架构取 index digest，见各处注释）→ 一并改这里。
+# 镜像策略（供应链治理）：guacd 仍为运行时拉取的官方镜像，**钉 digest**（不只
+# 是 tag）——三条目标端点上游曾用 `latest`，任何一次重建都会静默换掉镜像内容，
+# e2e 会在无人改代码的情况下变红。sshd/vnc/xrdp 三个目标端点已改为**仓内
+# Dockerfile 自建**（Dockerfile.sshd/.vnc/.xrdp，替代 linuxserver/accetto/
+# danielguerra 三个第三方镜像）：其外部依赖收敛到 Dockerfile 的 FROM，
+# 均固定官方基础镜像 tag + digest，同样满足「镜像变了必须显式、可评审」。
+# guacd digest 更新方式不变：改 tag → 跑 `docker manifest inspect -v <image>`
+# 取 Descriptor.digest（多架构取 index digest）→ 一并改这里。
 services:
   guacd:
     # 锁定 1.5.5：官方 1.6.0（含 2026-02 latest 重建）RDP 双崩溃——
@@ -36,20 +38,21 @@ services:
       start_period: 5s
 
   sshd:
-    # linuxserver/openssh-server：index digest（多架构，amd64/arm64 都可用）
-    image: lscr.io/linuxserver/openssh-server:latest@sha256:946fa26105e0ec212fdf821b9ddc59aab65f2c2d07c02b25ff0f5001fc332ff0
+    # 自建镜像：debian:bookworm-slim + openssh-server（供应链治理，替代
+    # lscr.io/linuxserver/openssh-server；基础镜像钉官方 digest，见 Dockerfile.sshd）。
+    # 凭据 test/test 固化在镜像内；首次 up 会触发仓内构建。
+    build:
+      context: .
+      dockerfile: Dockerfile.sshd
+    image: wingman-e2e-sshd:latest
     container_name: wg-e2e-sshd
     network_mode: host
     environment:
-      PASSWORD_ACCESS: "true"
-      USER_NAME: test
-      USER_PASSWORD: test
       # 固定 locale/timezone：时区会进登录 shell 的 motd 与时区数据，
       # 跨时区跑出来的输出不可比
       TZ: Asia/Shanghai
     healthcheck:
-      # 22 是容器内端口；宿主映射在 2222。network_mode: host 下容器内也是
-      # 2222（linuxserver 镜像把 sshd 监听端口改成 2222 正是为了避开宿主 22），
+      # 自建镜像的 sshd_config.d/e2e.conf 已固定 Port 2222（避开宿主 22），
       # 故探 2222。
       test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/2222' || exit 1"]
       interval: 3s
@@ -58,25 +61,33 @@ services:
       start_period: 3s
 
   vnc:
-    # accetto/ubuntu-vnc-xfce-g3：index digest（多架构）
-    image: docker.io/accetto/ubuntu-vnc-xfce-g3:latest@sha256:a1d09470ba581a4b321ca87b70de43c4ac280fe92b3400758a772af0d791c824
+    # 自建镜像：ubuntu 24.04 官方基础镜像 + TigerVNC + xfce（供应链治理，替代
+    # accetto/ubuntu-vnc-xfce-g3；基础镜像钉官方 digest，见 Dockerfile.vnc）。
+    # 用例断言首帧 drawing，需真实桌面，故不能精简成空壳端口。
+    build:
+      context: .
+      dockerfile: Dockerfile.vnc
+    image: wingman-e2e-vnc:latest
     container_name: wg-e2e-vnc
     network_mode: host
     environment:
       VNC_PW: headless
     healthcheck:
-      # accetto 镜像无 curl/nc/bash 探针可用 nc 不可靠；改用其自带的
-      # x11vnc 进程存在性 + 5901 端口（/dev/tcp 需 bash，此镜像有 bash）
+      # ubuntu 官方基础镜像自带 bash，探针沿用 /dev/tcp（不引入 curl/nc 依赖）
       test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/5901' || exit 1"]
       interval: 5s
       timeout: 4s
-      # VNC 首启要装包/建 profile，实测比 sshd 慢不少
+      # VNC + xfce 首启要建 session，实测比 sshd 慢不少
       retries: 30
       start_period: 10s
 
   xrdp:
-    # danielguerra/ubuntu-xrdp：单架构 manifest digest
-    image: docker.io/danielguerra/ubuntu-xrdp:latest@sha256:1a00da32f4e486f2f5fd8f656fc23bb235987c219153a587894469cad300b12d
+    # 自建镜像：ubuntu 24.04 官方基础镜像 + xrdp/xorgxrdp + xfce（供应链治理，
+    # 替代 danielguerra/ubuntu-xrdp；基础镜像钉官方 digest，见 Dockerfile.xrdp）。
+    build:
+      context: .
+      dockerfile: Dockerfile.xrdp
+    image: wingman-e2e-xrdp:latest
     container_name: wg-e2e-xrdp
     network_mode: host
     healthcheck:

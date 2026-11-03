@@ -6,9 +6,9 @@
 //	export WINGMAN_GUACD_E2E_GUACD=127.0.0.1:4822   # 可省，默认回环
 //
 // 目标端点（integration/testdata/guacd-e2e-compose.yml 一键拉起）：
-//   - SSH  127.0.0.1:2222  linuxserver/openssh-server（test/test）
-//   - VNC  127.0.0.1:5901  accetto/ubuntu-vnc-xfce（密码 headless）
-//   - RDP  127.0.0.1:3389  danielguerra/ubuntu-xrdp
+//   - SSH  127.0.0.1:2222  仓内自建 wingman-e2e-sshd（debian+openssh-server，test/test）
+//   - VNC  127.0.0.1:5901  仓内自建 wingman-e2e-vnc（ubuntu+TigerVNC+xfce，密码 headless）
+//   - RDP  127.0.0.1:3389  仓内自建 wingman-e2e-xrdp（ubuntu+xrdp+xfce，ubuntu/ubuntu）
 //
 // 每条链路断言：REST 票据 → WS 升级 → 隧道 UUID → guacd ready（协议翻译
 // 会话建立）→ 数据指令流（SSH 终端 pipe / VNC·RDP 像素 drawing），即
