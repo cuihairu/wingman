@@ -230,6 +230,7 @@ pub async fn import_profile_json(json: String) -> Result<(), String> {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::{Mutex, MutexGuard, OnceLock};
 
     fn temp_data_dir() -> PathBuf {
         static SEQ: AtomicU64 = AtomicU64::new(0);
@@ -243,16 +244,29 @@ mod tests {
         path
     }
 
+    /// 串行化所有改写进程全局环境变量（如 XDG_DATA_HOME）的测试，
+    /// 避免并行线程交错导致 set_var/remove_var 读到另一测试的数据目录。
+    fn env_mutex() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
     struct EnvGuard {
+        _lock: MutexGuard<'static, ()>,
         key: String,
         prev: Option<std::ffi::OsString>,
     }
 
     impl EnvGuard {
         fn set(key: &str, value: &std::path::Path) -> Self {
+            let lock = env_mutex().lock().unwrap();
             let prev = std::env::var_os(key);
             std::env::set_var(key, value);
-            EnvGuard { key: key.to_string(), prev }
+            EnvGuard {
+                _lock: lock,
+                key: key.to_string(),
+                prev,
+            }
         }
     }
 
@@ -293,7 +307,10 @@ mod tests {
         fs::write(&active, "../../../etc/passwd").unwrap();
         let runtime = tokio::runtime::Runtime::new().expect("create tokio runtime");
         let result = runtime.block_on(get_active_profile());
-        assert!(result.is_err(), "unsafe active id must be rejected, got {result:?}");
+        assert!(
+            result.is_err(),
+            "unsafe active id must be rejected, got {result:?}"
+        );
         drop(guard);
     }
 }
