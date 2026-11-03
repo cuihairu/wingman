@@ -251,6 +251,13 @@ mod tests {
         LOCK.get_or_init(|| Mutex::new(()))
     }
 
+    #[cfg(windows)]
+    const DATA_DIR_ENV: &str = "LOCALAPPDATA";
+    #[cfg(target_os = "macos")]
+    const DATA_DIR_ENV: &str = "HOME";
+    #[cfg(all(unix, not(target_os = "macos")))]
+    const DATA_DIR_ENV: &str = "XDG_DATA_HOME";
+
     struct EnvGuard {
         _lock: MutexGuard<'static, ()>,
         key: String,
@@ -291,18 +298,22 @@ mod tests {
 
     #[test]
     fn profile_path_accepts_safe_id() {
-        let guard = EnvGuard::set("XDG_DATA_HOME", &temp_data_dir());
+        let guard = EnvGuard::set(DATA_DIR_ENV, &temp_data_dir());
         let p = profile_path("profile_123").expect("safe id accepted");
-        assert!(p.to_string_lossy().ends_with("profiles/profile_123.json"));
+        let expected = local_data_dir()
+            .join("wingman")
+            .join("profiles")
+            .join("profile_123.json");
+        assert_eq!(p, expected);
         drop(guard);
     }
 
     #[test]
     fn get_active_profile_returns_error_on_unsafe_active_id() {
         let dir = temp_data_dir();
-        let guard = EnvGuard::set("XDG_DATA_HOME", &dir);
+        let guard = EnvGuard::set(DATA_DIR_ENV, &dir);
         // active_profile.txt 被篡改为路径穿越 id
-        let active = dir.join("wingman").join("active_profile.txt");
+        let active = local_data_dir().join("wingman").join("active_profile.txt");
         fs::create_dir_all(active.parent().unwrap()).unwrap();
         fs::write(&active, "../../../etc/passwd").unwrap();
         let runtime = tokio::runtime::Runtime::new().expect("create tokio runtime");
