@@ -151,7 +151,9 @@ wait_ready() {
 do_up() {
 	require_engine
 	echo "==> 拉起容器栈（$ENGINE）"
-	compose up -d
+	# --build：自建端点镜像（Dockerfile.sshd/.vnc/.xrdp）每次从当前 Dockerfile
+	# 重建，避免 Dockerfile 改动后复跑静默沿用旧镜像（可变本地 tag 不触发重建）。
+	compose up -d --build
 	echo "==> 等待端口就绪（预算 ${READY_TIMEOUT}s）"
 	if ! wait_ready; then
 		return 1
