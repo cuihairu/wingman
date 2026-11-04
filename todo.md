@@ -5,7 +5,7 @@
 
 ## 未完成
 
-- [ ] 视频教程 EP01 机器侧素材预采（BLOCKED：待用户提供已解锁 Windows 真机或授权人工预采；2026-11-04 复核：仍缺，win-worker 已按用户令停用且无新授权/机器证据，保留 BLOCKED）
+- [ ] 视频教程 EP01 机器侧素材预采（BLOCKED：待用户提供已解锁 Windows 真机或授权人工预采；2026-11-04 复核：仍缺，win-worker 已按用户令停用且无新授权/机器证据，保留 BLOCKED；复核 2026-11-05 仍缺 已解锁 Windows 真机或授权人工预采）
 - [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期；2026-11-04 复核：仍缺档期证据，保留 BLOCKED）
 - [x] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归（c301206：apps/gui/scripts/capture-config-gifs.mjs、docs/guide/config-effects.md、docs/zh/guide/config-effects.md；vitest 529/529、docs build 绿、采集重跑成功）
 
@@ -153,3 +153,4 @@
 - [x] 审核发现：go.mod 新增 `toolchain go1.27.3` 并抬 `go 1.26.10`，而 CI 各 Go 步骤固定 `go-version: '1.26.x'`；GOTOOLCHAIN=auto（默认）下 CI 与本地低版本 go 会在构建期静默联网下载并使用 1.27.3 工具链，实际编译器版本与工作流声明不一致、引入非受控的构建期下载（离线/受限网络环境直接构建失败）（orchestrator/server/go.mod:5；.github/workflows/ci.yml:591、build-package.yml:112,277,411）— 属实并已修复：删除 `toolchain go1.27.3` 指令（go.mod:5），保留 `go 1.26.10`（gin-contrib/cors 与 gin-contrib/sse 经 `go list -m` 核验确需 1.26.10，本地 go1.27.1 下可构建）；go mod tidy 后 go build ./... 绿，go test ./... 全包绿，无 GOTOOLCHAIN 静默下载
 - [x] 审核发现：capture-config-gifs.mjs 的 findChrome 在非 darwin/linux/win32 平台上 `executables[process.platform]` 为 undefined，`for (const relativePath of undefined)` 直接抛 TypeError（原实现对未找到返回 null 走优雅 exit 3）；当前枚举仅覆盖三平台，未支持的平台会崩溃而非提示未找到 chromium（apps/gui/scripts/capture-config-gifs.mjs:50-54,62）— 属实并已修复：`for (const relativePath of executables[process.platform] ?? [])` 用空数组兜底（capture-config-gifs.mjs:62），未支持平台不再崩溃而是返回 null 走优雅 exit 3；node --check 绿
 - [x] 审核发现：本轮 diff 未见问题（f9fac034..HEAD）— 属实并已复核：该范围即 aab50e2（上述 5 项修复：zod override / EnvGuard 容忍 PoisonError / body 写截止测试 / 删 toolchain / findChrome 空数组兜底）+ ebe60a3 qs 依赖 bump + 285f1c2 merge，无新增问题；复核证据：go build ./... 绿 + go test ./... 全包绿、cargo test 17/17 绿、node --check 绿、pnpm test 449/449 绿 + pnpm tsc --noEmit 绿 + pnpm build 绿
+- [x] 审核发现：本轮 diff 未见问题（aab50e20..HEAD）— 属实并已复核：该范围即 ebe60a3 （qs 依赖 bump 6.15.2→6.17.1，锁文件单一 6.17.1，pnpm why 确认单版本）+ 285f1c2 merge + 0a4a441（todo 记录），无新增问题；复核证据：pnpm test 449/449 绿 + pnpm tsc --noEmit 绿 + pnpm build 绿
