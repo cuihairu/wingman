@@ -1,6 +1,6 @@
 // capture-config-gifs.mjs — 配置开关 off/on 截图与切换 GIF 流水线
 //
-// 用途：渲染 apps/gui 设置页的三个布尔配置开关，逐一采集 off/on 两态截图与
+// 用途：渲染 apps/gui 设置页的布尔配置开关，逐一采集 off/on 两态截图与
 // 切换循环 GIF，落 docs/public/config-effects/，供 docs「配置开关效果」双语页嵌入。
 // 可重跑兼作回归：重新执行即按固定视口/固定初始态重新生成，设置页布局或开关
 // 语义变化会体现在产物 diff 上。
@@ -8,7 +8,7 @@
 // 前置：
 //   1. 起 GUI dev server：cd apps/gui && npm run dev（默认 http://localhost:5173）
 //   2. playwright-core：cd apps/gui && npm i -D playwright-core
-//   3. 本地 chromium：默认取 ~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome，
+//   3. 本地 chromium：默认取 ~/.cache/ms-playwright/chromium-* 下的平台 chrome，
 //      可用 CHROME_PATH 覆盖；需 headless 支持（--no-sandbox）。
 //   4. 合成 GIF：ImageMagick `magick` 或 ffmpeg（自动回退）。
 //
@@ -29,11 +29,12 @@ try {
   process.exit(2);
 }
 
-// 开关清单：与 src/routes/settings/+page.svelte 的三个布尔设置一一对应。
+// 开关清单：与 src/routes/settings/+page.svelte 的布尔配置开关一一对应。
 const SWITCHES = [
-  { key: 'auto-reconnect', label: '自动重连', setting: 'autoReconnect' },
-  { key: 'auto-start', label: '启动后自动加载当前配置脚本', setting: 'autoStart' },
-  { key: 'minimize-to-tray', label: '启动时最小化到托盘', setting: 'minimizeOnStart' },
+  { key: 'auto-reconnect', label: '自动重连' },
+  { key: 'auto-start', label: '启动后自动加载当前配置脚本' },
+  { key: 'minimize-to-tray', label: '启动时最小化到托盘' },
+  { key: 'challenge-auth', label: 'Challenge 注册鉴权（A3-P2）' },
 ];
 
 const BASE = process.env.GUI_DEV_URL || 'http://localhost:5173';
@@ -42,11 +43,27 @@ const DWELL_MS = Number(process.env.DWELL_MS || 1000);
 
 function findChrome() {
   if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
-  const cache = path.join(os.homedir(), '.cache', 'ms-playwright');
-  const dirs = fs.readdirSync(cache).filter((d) => d.startsWith('chromium-'));
-  for (const d of dirs.sort().reverse()) {
-    const p = path.join(cache, d, 'chrome-linux64', 'chrome');
-    if (fs.existsSync(p)) return p;
+  const roots = [
+    path.join(os.homedir(), '.cache', 'ms-playwright'),
+    process.env.PLAYWRIGHT_BROWSERS_PATH || '',
+  ].filter(Boolean);
+  const executables = {
+    darwin: ['chrome-mac/Chromium.app/Contents/MacOS/Chromium', 'chrome-mac-arm/Chromium.app/Contents/MacOS/Chromium'],
+    linux: ['chrome-linux64/chrome', 'chrome-linux/chrome'],
+    win32: ['chrome-win64/chrome.exe', 'chrome-win/chrome.exe'],
+  };
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    const directories = fs.readdirSync(root)
+      .filter((entry) => entry.startsWith('chromium-'))
+      .sort()
+      .reverse();
+    for (const directory of directories) {
+      for (const relativePath of executables[process.platform]) {
+        const executable = path.join(root, directory, relativePath);
+        if (fs.existsSync(executable)) return executable;
+      }
+    }
   }
   return null;
 }

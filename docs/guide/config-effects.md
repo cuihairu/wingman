@@ -50,3 +50,12 @@ When the GUI starts, it minimizes to the system tray.
 ![minimize-to-tray off](/config-effects/minimize-to-tray-off.png)
 ![minimize-to-tray on](/config-effects/minimize-to-tray-on.png)
 ![minimize-to-tray toggle](/config-effects/minimize-to-tray.gif)
+
+### Challenge Auth
+
+When enabled, remote registration uses the HMAC challenge-response flow instead
+of sending the registration token in plaintext.
+
+![challenge-auth off](/config-effects/challenge-auth-off.png)
+![challenge-auth on](/config-effects/challenge-auth-on.png)
+![challenge-auth toggle](/config-effects/challenge-auth.gif)

@@ -23,7 +23,7 @@ RUN useradd -m -s /bin/bash test \
 
 # network_mode: host 下监听 2222（避开宿主 22，沿用原 fixture 端口约定）
 RUN mkdir -p /etc/ssh/sshd_config.d /run/sshd \
-    && printf 'Port 2222\nPasswordAuthentication yes\nPermitRootLogin no\nX11Forwarding no\n' \
+    && printf 'Port 2222\nListenAddress 127.0.0.1\nPasswordAuthentication yes\nPermitRootLogin no\nX11Forwarding no\n' \
        > /etc/ssh/sshd_config.d/e2e.conf
 
 # healthcheck 用 bash /dev/tcp 探 2222（debian slim 自带 bash，无需额外探针工具）

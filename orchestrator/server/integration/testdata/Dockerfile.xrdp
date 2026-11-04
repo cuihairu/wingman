@@ -30,6 +30,11 @@ RUN printf '#!/bin/sh\n[ -r /etc/default/locale ] && . /etc/default/locale\nexec
        > /etc/xrdp/startwm.sh \
     && chmod 755 /etc/xrdp/startwm.sh
 
+# network_mode: host 下仅监听回环，避免把测试 RDP 端口暴露到宿主其它网卡。
+# xrdp.ini [Globals] 的 port=3389 是监听端口（其它 port=-1/ask* 为会话内配置，
+# 不动）。xrdp 的地址绑定语法是 port=tcp://<addr>:<port>，见 xrdp.ini 注释。
+RUN sed -i '/^\[Globals\]$/,/^\[/ { s/^port=3389$/port=tcp:\/\/127.0.0.1:3389/ }' /etc/xrdp/xrdp.ini
+
 COPY <<'EOF' /usr/local/bin/xrdp-entrypoint
 #!/bin/sh
 set -e

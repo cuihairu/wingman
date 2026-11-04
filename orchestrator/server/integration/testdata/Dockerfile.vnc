@@ -20,12 +20,11 @@ RUN ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone
 
 # 会话：xstartup 直接拉 xfce，不依赖 Xsession 的会话选择；
-# localhost=no 对齐原 accetto 镜像行为（e2e 栈仅本地测试用途）
 RUN mkdir -p /root/.vnc \
     && printf '#!/bin/sh\nunset SESSION_MANAGER\nunset DBUS_SESSION_BUS_ADDRESS\nexec startxfce4\n' \
        > /root/.vnc/xstartup \
     && chmod +x /root/.vnc/xstartup \
-    && printf 'geometry=1280x800\nlocalhost=no\n' > /root/.vnc/config
+    && printf 'geometry=1280x800\nlocalhost=yes\n' > /root/.vnc/config
 
 COPY <<'EOF' /usr/local/bin/vnc-entrypoint
 #!/bin/sh

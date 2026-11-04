@@ -48,3 +48,11 @@ GUI 启动后最小化到系统托盘。
 ![最小化到托盘 关闭](/config-effects/minimize-to-tray-off.png)
 ![最小化到托盘 开启](/config-effects/minimize-to-tray-on.png)
 ![最小化到托盘 切换](/config-effects/minimize-to-tray.gif)
+
+### Challenge 注册鉴权
+
+开启后，远程注册走 HMAC 挑战应答流程，注册令牌明文不再经过网络。
+
+![Challenge 注册鉴权 关闭](/config-effects/challenge-auth-off.png)
+![Challenge 注册鉴权 开启](/config-effects/challenge-auth-on.png)
+![Challenge 注册鉴权 切换](/config-effects/challenge-auth.gif)
