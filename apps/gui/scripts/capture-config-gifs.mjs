@@ -59,7 +59,7 @@ function findChrome() {
       .sort()
       .reverse();
     for (const directory of directories) {
-      for (const relativePath of executables[process.platform]) {
+      for (const relativePath of executables[process.platform] ?? []) {
         const executable = path.join(root, directory, relativePath);
         if (fs.existsSync(executable)) return executable;
       }

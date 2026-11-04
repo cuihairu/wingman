@@ -266,7 +266,7 @@ mod tests {
 
     impl EnvGuard {
         fn set(key: &str, value: &std::path::Path) -> Self {
-            let lock = env_mutex().lock().unwrap();
+            let lock = env_mutex().lock().unwrap_or_else(|err| err.into_inner());
             let prev = std::env::var_os(key);
             std::env::set_var(key, value);
             EnvGuard {

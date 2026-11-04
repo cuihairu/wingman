@@ -242,3 +242,42 @@ func TestSendCommandWriteFailureBoundsAndCleans(t *testing.T) {
 		t.Fatalf("pending not cleaned up on write failure, got %d", n)
 	}
 }
+
+// shortBodyBlockingConn 模拟 header 写成功后 body 写阻塞的场景，
+// 确保 writeFrameLocked 的截止时间同样覆盖 body 写。
+type shortBodyBlockingConn struct {
+	shortBlockingConn
+	writes atomic.Int32
+}
+
+func (c *shortBodyBlockingConn) Write(b []byte) (int, error) {
+	if c.writes.Add(1) == 1 {
+		return len(b), nil
+	}
+	c.mu.Lock()
+	d := c.deadline
+	c.mu.Unlock()
+	if d.IsZero() {
+		time.Sleep(c.block)
+	} else if wait := time.Until(d); wait > 0 {
+		time.Sleep(wait)
+	}
+	return 0, os.ErrDeadlineExceeded
+}
+
+func TestWriteFrameLockedBoundsBodyWrite(t *testing.T) {
+	c := &shortBodyBlockingConn{shortBlockingConn: shortBlockingConn{block: 500 * time.Millisecond}}
+	ac := &agentConn{id: "bound-body", conn: c}
+	header := MessageHeader{Length: 4, Type: Notify}
+	start := time.Now()
+	err := ac.writeFrameLocked(&header, []byte("PONG"), 100*time.Millisecond)
+	if err == nil {
+		t.Fatal("expected write deadline error")
+	}
+	if c.writes.Load() != 2 {
+		t.Fatalf("expected header + body writes, got %d", c.writes.Load())
+	}
+	if elapsed := time.Since(start); elapsed > 300*time.Millisecond {
+		t.Fatalf("body write not bounded by deadline: elapsed %v > 300ms", elapsed)
+	}
+}
