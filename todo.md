@@ -5,8 +5,8 @@
 
 ## 未完成
 
-- [ ] 视频教程 EP01 机器侧素材预采（BLOCKED：待用户提供已解锁 Windows 真机或授权人工预采）
-- [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期）
+- [ ] 视频教程 EP01 机器侧素材预采（BLOCKED：待用户提供已解锁 Windows 真机或授权人工预采；2026-11-04 复核：仍缺，win-worker 已按用户令停用且无新授权/机器证据，保留 BLOCKED）
+- [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期；2026-11-04 复核：仍缺档期证据，保留 BLOCKED）
 - [x] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归（c301206：apps/gui/scripts/capture-config-gifs.mjs、docs/guide/config-effects.md、docs/zh/guide/config-effects.md；vitest 529/529、docs build 绿、采集重跑成功）
 
 ## 已完成
