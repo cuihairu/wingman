@@ -1,6 +1,6 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-11-02
+> 最后更新: 2026-11-05
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
@@ -152,3 +152,4 @@
 - [x] 审核发现：write deadline 测试仅覆盖「header 写阻塞」场景（shortBlockingConn.Write 恒返回 os.ErrDeadlineExceeded，header 必然失败），未模拟「header 写成功、body 写阻塞」路径——writeFrameLocked 同时约束 header+body 两段写，若回归只把 deadline 设/清在 header 段（body 段无界），现测试无法检出（orchestrator/server/internal/agent/listener_gaps_test.go:197-212；listener.go:963-976）— 属实并已修复：新增 shortBodyBlockingConn（首写成功、次写阻塞）与 TestWriteFrameLockedBoundsBodyWrite（listener_gaps_test.go:245-283），断言 header+body 均写且 body 受 100ms 截止约束（elapsed ≤300ms）；go test ./internal/agent -run 'TestWriteFrameLocked|TestSendNotifyWriteFailure|TestSendCommandWriteFailure' -v 5/5 绿，go test ./... 全包绿
 - [x] 审核发现：go.mod 新增 `toolchain go1.27.3` 并抬 `go 1.26.10`，而 CI 各 Go 步骤固定 `go-version: '1.26.x'`；GOTOOLCHAIN=auto（默认）下 CI 与本地低版本 go 会在构建期静默联网下载并使用 1.27.3 工具链，实际编译器版本与工作流声明不一致、引入非受控的构建期下载（离线/受限网络环境直接构建失败）（orchestrator/server/go.mod:5；.github/workflows/ci.yml:591、build-package.yml:112,277,411）— 属实并已修复：删除 `toolchain go1.27.3` 指令（go.mod:5），保留 `go 1.26.10`（gin-contrib/cors 与 gin-contrib/sse 经 `go list -m` 核验确需 1.26.10，本地 go1.27.1 下可构建）；go mod tidy 后 go build ./... 绿，go test ./... 全包绿，无 GOTOOLCHAIN 静默下载
 - [x] 审核发现：capture-config-gifs.mjs 的 findChrome 在非 darwin/linux/win32 平台上 `executables[process.platform]` 为 undefined，`for (const relativePath of undefined)` 直接抛 TypeError（原实现对未找到返回 null 走优雅 exit 3）；当前枚举仅覆盖三平台，未支持的平台会崩溃而非提示未找到 chromium（apps/gui/scripts/capture-config-gifs.mjs:50-54,62）— 属实并已修复：`for (const relativePath of executables[process.platform] ?? [])` 用空数组兜底（capture-config-gifs.mjs:62），未支持平台不再崩溃而是返回 null 走优雅 exit 3；node --check 绿
+- [x] 审核发现：本轮 diff 未见问题（f9fac034..HEAD）— 属实并已复核：该范围即 aab50e2（上述 5 项修复：zod override / EnvGuard 容忍 PoisonError / body 写截止测试 / 删 toolchain / findChrome 空数组兜底）+ ebe60a3 qs 依赖 bump + 285f1c2 merge，无新增问题；复核证据：go build ./... 绿 + go test ./... 全包绿、cargo test 17/17 绿、node --check 绿、pnpm test 449/449 绿 + pnpm tsc --noEmit 绿 + pnpm build 绿
