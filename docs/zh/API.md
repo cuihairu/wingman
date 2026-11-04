@@ -324,7 +324,15 @@ GUI Rust backend 返回给 Tauri command 的是 envelope 内的 `payload`。
 三者均以 `id` 定位触发器（`id` 传字符串或数字均可）。`update` 额外带 `config` 补丁（字段语义同 `add`，`actions` 为整表替换）；`id` 不存在时返回 `{ "success": false, "error": "Trigger not found" }`。`toggle` 在 `enabled` 上来回切换，返回切换后的 `{ "enabled": bool }`。
 
 ```json
-{ "type": 0, "method": "trigger.toggle", "payload": { "id": "3" }, "id": 18, "timestamp": 1715299200000 }
+{
+  "type": 0,
+  "method": "trigger.toggle",
+  "payload": {
+    "id": "3"
+  },
+  "id": 18,
+  "timestamp": 1715299200000
+}
 ```
 
 #### macro.start / macro.stop / macro.status / macro.clear

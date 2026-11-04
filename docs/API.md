@@ -324,7 +324,15 @@ The `type` field is case- and underscore-insensitive (`ColorFound` / `colorfound
 All three locate the trigger by `id` (`id` may be passed as a string or a number). `update` additionally carries a `config` patch (field semantics same as `add`; `actions` is replace-whole-table); when `id` does not exist, returns `{ "success": false, "error": "Trigger not found" }`. `toggle` flips back and forth on `enabled` and returns the post-toggle `{ "enabled": bool }`.
 
 ```json
-{ "type": 0, "method": "trigger.toggle", "payload": { "id": "3" }, "id": 18, "timestamp": 1715299200000 }
+{
+  "type": 0,
+  "method": "trigger.toggle",
+  "payload": {
+    "id": "3"
+  },
+  "id": 18,
+  "timestamp": 1715299200000
+}
 ```
 
 #### macro.start / macro.stop / macro.status / macro.clear
