@@ -58,6 +58,14 @@ code {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* line-numbered blocks keep hard lines: wrapping shifts code but not the
+   line-number column, so numbers would desync after the first wrapped row */
+.vp-doc div[class*='language-'].line-numbers-mode pre,
+.vp-doc div[class*='language-'].line-numbers-mode pre code {
+  white-space: pre;
+  word-break: normal;
+}
 .VPDoc .container > .content {
   max-width: 960px !important;
 }
