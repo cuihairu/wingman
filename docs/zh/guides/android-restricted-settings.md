@@ -112,6 +112,6 @@ adb shell appops get com.wingman.agent ACCESS_RESTRICTED_SETTINGS
   会明确 FAIL 并指回手动路径，不会假报成功；
 - **真机验收范围**：本页步骤按各厂商官方文档口径编写并在 AOSP/类原生
   环境验证脚本行为；五厂商（小米/华为/OPPO/vivo/三星）定制 ROM 的
-  ⋮ 菜单逐机型截图级验收未在本机执行（无真机环境），登记待真机抽样；
+  ⋮ 菜单逐机型截图级验收未在本机执行（对应 Android 手机不在三台 Windows 真机 openclaw/imac/.5 之列），登记待真机抽样；
 - **商店安装不触发**：经应用商店分发的构建不受受限设置约束（上架分发
   时本页仅需归档备查）。

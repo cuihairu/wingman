@@ -5,7 +5,7 @@
 
 ## 未完成
 
-- [ ] 视频教程 EP01 机器侧素材预采（BLOCKED：待用户提供已解锁 Windows 真机或授权人工预采；2026-11-04 复核：仍缺，win-worker 已按用户令停用且无新授权/机器证据，保留 BLOCKED；复核 2026-11-05 仍缺 已解锁 Windows 真机或授权人工预采；复核 2026-11-06 openclaw 真机：Windows Server 2022 / PowerShell 5.1，SSH 落 session 0 而桌面 console 为 session 2，且未检出 ffmpeg/ffprobe/wingman-agent.exe、无 D 盘，预采前置仍缺，保留 BLOCKED；复核 2026-11-06 仍缺可用桌面 session 与 ffmpeg/ffprobe/wingman-agent.exe 环境）
+- [ ] 视频教程 EP01 机器侧素材预采（Windows 真机与解锁桌面会话已在位：openclaw 桌面 console=session 2 且未锁屏、imac 192.168.5.117、work-win11 10.240.0.5，2026-11-07 agent 实测 openclaw 可 SSH+截图取证；剩余前置=在 openclaw 装 ffmpeg/ffprobe 与 wingman-agent.exe（agent 可自行安装，非用户提供项），工具链装齐后由 agent 执行预采；原「待用户提供已解锁 Windows 真机」口径作废）
 - [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期；2026-11-04 复核：仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺用户确认可用档期）
 - [x] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归（c301206：apps/gui/scripts/capture-config-gifs.mjs、docs/guide/config-effects.md、docs/zh/guide/config-effects.md；vitest 529/529、docs build 绿、采集重跑成功）
 

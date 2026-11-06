@@ -10,13 +10,13 @@
 
 **位置**：`todo.md:8`；`ROADMAP.md:569-580`（M8.2 视频教程）。
 
-**当前状态**：环境级 BLOCKED。
+**当前状态**：Windows 真机与解锁桌面会话已在位（openclaw session 2 / imac / work-win11），转为待执行（装 ffmpeg/ffprobe/wingman-agent.exe 后 agent 跑预采），不再是环境级 BLOCKED。
 
-**事实**：EP01 需要的可交付物已全部就绪——`wingman-agent.exe` 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（nightly 184c7de zip，sha256 与官方 digest 一致，`ROADMAP.md:574-575`）；零注入录屏管线（进程创建预载 PowerShell + ffmpeg gdigrab 60fps + ffprobe）已逐步全 PASS（`ROADMAP.md:575-576`）；六集分镜、逐字旁白、录制规格均已在 `docs/tutorials/video-storyboard.md` 完备，发布检查单在其行 105、EP01 机器侧预采配方在 `docs/zh/tutorials/video-storyboard.md:46`（`ROADMAP.md:570-572` 引用英文 `docs/tutorials/video-storyboard.md`，该英文文件不含机器侧预采配方，配方仅在中文文件）。唯一卡点：win-worker 已按用户 2026-10-27 令**永久停用**（`ROADMAP.md:577`），而 EP01 预采依赖其**桌面解锁**。
+**事实**：EP01 需要的可交付物已全部就绪——`wingman-agent.exe` 已就位 win-worker `D:\wingman-tutorial\agent-bin\`（nightly 184c7de zip，sha256 与官方 digest 一致，`ROADMAP.md:574-575`）；零注入录屏管线（进程创建预载 PowerShell + ffmpeg gdigrab 60fps + ffprobe）已逐步全 PASS（`ROADMAP.md:575-576`）；六集分镜、逐字旁白、录制规格均已在 `docs/tutorials/video-storyboard.md` 完备，发布检查单在其行 105、EP01 机器侧预采配方在 `docs/zh/tutorials/video-storyboard.md:46`（`ROADMAP.md:570-572` 引用英文 `docs/tutorials/video-storyboard.md`，该英文文件不含机器侧预采配方，配方仅在中文文件）。机器卡点已解除（2026-11-07）：win-worker 已按用户 2026-10-27 令**永久停用**（`ROADMAP.md:577`），但 Windows 真机 openclaw（桌面 console=session 2 未锁屏）/imac/work-win11 已在位，EP01 预采不再依赖 win-worker 的**桌面解锁**；剩余动作为在 openclaw 装 ffmpeg/ffprobe 与 wingman-agent.exe。
 
 ### 推荐决策
 
-**暂缓，需用户输入。** 等待用户二选一：① 提供已解锁的 Windows 真机；② 明确授权人工执行机器侧预采（照配方约 2 分钟出片）。在此之前不虚构进展、不生成代餐素材（维持 `ROADMAP.md:580` 既有红线）。
+**转为待执行（2026-11-07）。** Windows 真机与解锁桌面会话已在位：openclaw 桌面 console=session 2 未锁屏（agent 实测可 SSH+截图取证）、imac 192.168.5.117、work-win11 10.240.0.5；剩余动作=在 openclaw 装 ffmpeg/ffprobe 与 wingman-agent.exe 后由 agent 执行机器侧预采。涉凭据/桌面会话的步骤仍不代决；不虚构进展、不生成代餐素材（维持 `ROADMAP.md:580` 既有红线）。原「提供已解锁 Windows 真机」的等待项作废。
 
 ### 理由（面向非专业用户）
 
@@ -69,7 +69,7 @@
 ### 明确不做 / 延后什么
 
 - 不虚构「已发布/已完成」，不生成代餐视频（延续 `ROADMAP.md:580` 红线）。
-- 不在无真机环境用录屏工具伪造 EP01-EP06 实拍（会违反故事板真机实拍规格）。
+- 不用录屏工具伪造 EP01-EP06 实拍（会违反故事板真机实拍规格）；真机 openclaw/imac/.5 在位，拍摄一律在真机真实桌面做。
 - 不勾除 `todo.md:9`，直到成片真实发布。
 
 ---

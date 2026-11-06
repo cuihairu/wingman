@@ -545,7 +545,7 @@ ScriptRunner 的 Lua 执行与停止语义不依赖 Android（纯 sol2），因�
 - **手册**：`docs/guides/android-restricted-settings.md`（症状识别/三档
   解法/验证/已知边界，入文档站「进阶指南」，与保活指引互链）。
 - **测试**：JVM 单测 +6（21 例全绿）、Go 契约 11 例全绿；五厂商定制 ROM
-  真机逐机型验收登记未做（本机无真机）。
+  真机逐机型验收登记未做（对应 Android 手机不在三台 Windows 真机 openclaw/imac/.5 之列）。
 
 ---
 
