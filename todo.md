@@ -5,8 +5,8 @@
 
 ## 未完成
 
-- [ ] 视频教程 EP01 机器侧素材预采（BLOCKED：待用户提供已解锁 Windows 真机或授权人工预采；2026-11-04 复核：仍缺，win-worker 已按用户令停用且无新授权/机器证据，保留 BLOCKED；复核 2026-11-05 仍缺 已解锁 Windows 真机或授权人工预采；复核 2026-11-06 openclaw 真机：Windows Server 2022 / PowerShell 5.1，SSH 落 session 0 而桌面 console 为 session 2，且未检出 ffmpeg/ffprobe/wingman-agent.exe、无 D 盘，预采前置仍缺，保留 BLOCKED）
-- [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期；2026-11-04 复核：仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺档期证据，保留 BLOCKED）
+- [ ] 视频教程 EP01 机器侧素材预采（BLOCKED：待用户提供已解锁 Windows 真机或授权人工预采；2026-11-04 复核：仍缺，win-worker 已按用户令停用且无新授权/机器证据，保留 BLOCKED；复核 2026-11-05 仍缺 已解锁 Windows 真机或授权人工预采；复核 2026-11-06 openclaw 真机：Windows Server 2022 / PowerShell 5.1，SSH 落 session 0 而桌面 console 为 session 2，且未检出 ffmpeg/ffprobe/wingman-agent.exe、无 D 盘，预采前置仍缺，保留 BLOCKED；复核 2026-11-06 仍缺可用桌面 session 与 ffmpeg/ffprobe/wingman-agent.exe 环境）
+- [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期；2026-11-04 复核：仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺用户确认可用档期）
 - [x] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归（c301206：apps/gui/scripts/capture-config-gifs.mjs、docs/guide/config-effects.md、docs/zh/guide/config-effects.md；vitest 529/529、docs build 绿、采集重跑成功）
 
 ## 已完成
@@ -160,3 +160,4 @@
 - [x] 审核发现：todo.md 头部「最后更新: 2026-11-05」未随本轮追加的「复核 2026-11-06」记录同步更新，元数据日期落后于正文内容日期（todo.md:3，追加记录见 todo.md:8-9）—— 属实并已修复：将头部更新为「最后更新: 2026-11-06」与正文 2026-11-06 复核记录对齐（todo.md:3）；验证：git diff todo.md 仅头部日期与勾选状态变化，无代码改动（2026-11-06）
 - [x] 审核发现：本轮 diff 未见问题（eb57c49774c5a41a1071ec24bd99085313c9b09d..HEAD）— 属实并已复核：该范围即 4ddfdf9（仅改 todo.md 头部日期与追加一条复核记录，无代码改动），无新增问题；复核证据：git diff --stat eb57c497..HEAD 仅 todo.md +2/-1，git diff --name-only eb57c497..HEAD 仅 todo.md，git log --oneline eb57c497..HEAD 仅 4ddfdf9（2026-11-06，HEAD 4ddfdf9149d3ee698188c17c3c4e8b6aa59dbfa1）；审核通过，无需代码改动
 - [x] 审核发现：本轮 diff 未见问题（4ddfdf91..HEAD）— 属实并已复核：该范围仅 db22e15（todo.md +1 行），`git diff --stat 4ddfdf91..HEAD` 为 todo.md +1/-0、`git diff --name-only` 仅 todo.md、`git log --oneline` 仅 db22e15；审核通过，无需代码改动
+- [x] 审核发现：本轮 diff 未见问题（db22e153..HEAD）— 属实并已复核：该范围即 23cb0d9（仅改 todo.md 头部日期更新与追加一条复核记录，`git show --stat 23cb0d9` 为 todo.md +2/-1、`git diff --name-only db22e153..HEAD` 仅 todo.md、`git log --oneline db22e153..HEAD` 仅 23cb0d9）；文档纯记录变更，无代码改动；审核通过，无需代码改动
