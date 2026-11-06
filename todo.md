@@ -1,6 +1,6 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-11-05
+> 最后更新: 2026-11-06
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
@@ -157,3 +157,4 @@
 - [x] 审核发现：代码块强制自动换行后，带行号的示例在窄屏或长行折行时行号仍按固定行高排列，导致折行之后的行号与代码错位（docs/.vitepress/theme/custom.css:58）—— 属实并已修复：换行规则收窄，`.line-numbers-mode` 块回退 `white-space: pre`（行号列与代码行高一一对应，长行横向滚动），无行号块保留 `pre-wrap`（custom.css:60-69）；验证：vitepress build 绿，dist 中 hotkey.html 等 `:line-numbers` 页样式命中回退规则（2026-11-05）
 - [x] 审核发现：本轮 diff 未见问题（28c3aa9ff1..d931cf510d）— 属实并已复核：该范围即 d931cf5（docs/.vitepress/theme/custom.css 行号块回退 white-space:pre + todo 记录），无新增问题；复核证据：vitepress build 绿，dist style.BqPCXreW.css 命中 `.line-numbers-mode pre{white-space:pre;word-break:normal}`，zh/api/hotkey.html 等 `:line-numbers` 页使用 line-numbers-mode（2026-11-05）
 - [x] 审核发现：本轮 diff 未见问题（d931cf51..HEAD）— 属实并已复核：该范围即 cda3aa7（仅改 todo.md 记录一行，无代码改动），无新增问题；复核证据：git show --stat cda3aa7 仅 todo.md +1/-0，git diff --name-only d931cf51..HEAD 仅 todo.md（2026-11-05）；审核通过，无需改动
+- [x] 审核发现：todo.md 头部「最后更新: 2026-11-05」未随本轮追加的「复核 2026-11-06」记录同步更新，元数据日期落后于正文内容日期（todo.md:3，追加记录见 todo.md:8-9）—— 属实并已修复：将头部更新为「最后更新: 2026-11-06」与正文 2026-11-06 复核记录对齐（todo.md:3）；验证：git diff todo.md 仅头部日期与勾选状态变化，无代码改动（2026-11-06）
