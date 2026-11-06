@@ -152,7 +152,7 @@
 - [x] Dashboard 设备视图（分组、批量下发、状态大盘）（2026-10-13：Agents 页面增量——按标签分组视图（平铺/分组切换，每组一表、勾选跨组共享）、按标签批量下发选择器（agentIds ∪ tags 与勾选取并集，服务端既有契约直接复用）、状态大盘平台维度（desktop/android/ios 计数，缺失 platform 按桌面口径）；批量操作按钮禁用口径随之改为选择器非空；8 语言 i18n key 补齐，纯函数口径抽 utils/agents.ts 单测钉住）
 
 ### 远期可选
-- [ ] I1: iOS 主机控——PC 端 ICapture/IInput 的 WDA 后端（保持跳过：iOS/Mac 硬件不在三台 Windows 真机 openclaw/imac/.5 之列，缺 Mac 签名链；usbmuxd/libimobiledevice，见 docs/ios-agent-design.md）
+- [ ] I1: iOS 主机控——PC 端 ICapture/IInput 的 WDA 后端（保持跳过：iOS/Mac 硬件不在三台 Windows 真机 openclaw/imac/.5 之列，无 Mac 签名链；usbmuxd/libimobiledevice，见 docs/ios-agent-design.md）
 - [ ] 端侧 Python 引擎评估（BLOCKED：等用户拍板是否投入评估；Lua-first，Python+NDK 体积/维护成本高，暂缓）
 
 ---
