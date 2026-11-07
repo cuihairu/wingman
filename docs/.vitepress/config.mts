@@ -16,6 +16,7 @@ const sections: Section[] = [
       { zh: '快速开始', en: 'Quick Start', link: '/guide/getting-started' },
       { zh: '脚本开发指南', en: 'Script Development Guide', link: '/guide/script-development' },
       { zh: '架构设计', en: 'Architecture Design', link: '/guide/architecture' },
+      { zh: '源码分层术语表', en: 'Source Layer Glossary', link: '/guide/source-layer-glossary' },
       { zh: 'VS Code 开发环境', en: 'VS Code Development Environment', link: '/development-environment' },
       { zh: '项目目录结构', en: 'Project Structure', link: '/guide/structure' }
     ]

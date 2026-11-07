@@ -161,3 +161,39 @@
 - [x] 审核发现：本轮 diff 未见问题（eb57c49774c5a41a1071ec24bd99085313c9b09d..HEAD）— 属实并已复核：该范围即 4ddfdf9（仅改 todo.md 头部日期与追加一条复核记录，无代码改动），无新增问题；复核证据：git diff --stat eb57c497..HEAD 仅 todo.md +2/-1，git diff --name-only eb57c497..HEAD 仅 todo.md，git log --oneline eb57c497..HEAD 仅 4ddfdf9（2026-11-06，HEAD 4ddfdf9149d3ee698188c17c3c4e8b6aa59dbfa1）；审核通过，无需代码改动
 - [x] 审核发现：本轮 diff 未见问题（4ddfdf91..HEAD）— 属实并已复核：该范围仅 db22e15（todo.md +1 行），`git diff --stat 4ddfdf91..HEAD` 为 todo.md +1/-0、`git diff --name-only` 仅 todo.md、`git log --oneline` 仅 db22e15；审核通过，无需代码改动
 - [x] 审核发现：本轮 diff 未见问题（db22e153..HEAD）— 属实并已复核：该范围即 23cb0d9（仅改 todo.md 头部日期更新与追加一条复核记录，`git show --stat 23cb0d9` 为 todo.md +2/-1、`git diff --name-only db22e153..HEAD` 仅 todo.md、`git log --oneline db22e153..HEAD` 仅 23cb0d9）；文档纯记录变更，无代码改动；审核通过，无需代码改动
+
+## 源码分层分析 2026-11-07
+
+- 应用表现层：连接本地 Runtime 与远端编排面，维护用户界面状态（代表：`orchestrator/dashboard/src/app.tsx:36`）。
+- 边缘网关层：集中 HTTP/权限/静态路由与 WebSocket 状态扇出（代表：`orchestrator/server/internal/handlers/routes.go:38`）。
+- 领域编排层：拥有工作流定义/执行/模板与 Agent 注册表等持久领域状态（代表：`orchestrator/server/internal/workflow/engine.go:39`）。
+- Agent 链路层：维持外连注册、心跳、命令/通知与安全重连（代表：`libs/agentcore/src/remote_client.cpp:79`）。
+- Runtime 应用层：管理 Agent 进程生命周期、命令门面与本地/远程桥接（代表：`apps/agent/src/agent.cpp:191`）。
+- 脚本引擎层：加载用户脚本，通过可插拔引擎和模块描述符暴露能力（代表：`lib/wingman/src/script/modules/module_registry.cpp:101`）。
+- 设备能力层：隔离屏幕/输入/窗口/剪贴板/视觉/Android 宿主的 OS 差异（代表：`lib/wingman/src/platform/screen_backend.cpp:47`）。
+
+- [ ] LAY-001 [P1] 拆分 `lib/wingman/tests/orchestration_module_test.cpp`（2190 行）——编排脚本模块的注册、转发、收敛与错误路径共用一个测试文件，适合按场景拆分（`lib/wingman/tests/orchestration_module_test.cpp:16`）。
+- [ ] LAY-002 [P1] 拆分 `assets/vscode-wingman-lua/wingman.d.lua`（2075 行）——Lua 类型提示把所有 API 命名空间放在一个描述文件，适合按模块拆成导入集合（`assets/vscode-wingman-lua/wingman.d.lua:12`）。
+- [ ] LAY-003 [P1] 拆分 `lib/wingman/tests/script_function_test.cpp`（2064 行）——脚本函数断言覆盖多模块和异常路径，单文件难以维护（`lib/wingman/tests/script_function_test.cpp:14`）。
+- [ ] LAY-004 [P2] 拆分 `lib/wingman/tests/platform_x11_test.cpp`（1726 行）——X11 截屏、窗口、剪贴板和文件监听混在同一套平台测试中（`lib/wingman/tests/platform_x11_test.cpp:16`）。
+- [ ] LAY-005 [P2] 拆分 `lib/wingman/tests/script_manager_test.cpp`（1647 行）——脚本加载、执行、暂停、恢复、配置与热重载断言集中（`lib/wingman/tests/script_manager_test.cpp:16`）。
+- [ ] LAY-006 [P1] 拆分 `orchestrator/dashboard/src/pages/Agents/index.tsx`（1565 行）——页面同时承载列表、筛选、WebSocket 订阅、批量操作和多组弹窗状态（`orchestrator/dashboard/src/pages/Agents/index.tsx:298`）。
+- [ ] LAY-007 [P1] 拆分 `lib/wingman/src/script/modules/db_module.cpp`（1521 行）——SQLite 连接、语句封装、安全路径解析与 db.* 模块注册在同一翻译单元（`lib/wingman/src/script/modules/db_module.cpp:63`）。
+- [ ] LAY-008 [P2] 拆分 `orchestrator/dashboard/src/components/RemoteDesktop/index.test.tsx`（1491 行）——票据、连接、工具条、剪贴板和审计交互测试集中（`orchestrator/dashboard/src/components/RemoteDesktop/index.test.tsx:32`）。
+- [ ] LAY-009 [P1] 拆分 `orchestrator/dashboard/src/pages/Profile/index.tsx`（1382 行）——登录态资料、游戏范围、活动记录和偏好表单聚合在一个路由页面（`orchestrator/dashboard/src/pages/Profile/index.tsx:92`）。
+- [ ] LAY-010 [P1] 拆分 `orchestrator/server/internal/workflow/engine.go`（1330 行）——状态迁移、DAG 调度、步骤执行和持久化记录共享一个 Go 文件（`orchestrator/server/internal/workflow/engine.go:39`）。
+- [ ] LAY-011 [P2] 拆分 `lib/wingman/tests/event_module_test.cpp`（1355 行）——事件订阅、缓冲、过滤和并发路径断言过长（`lib/wingman/tests/event_module_test.cpp:16`）。
+- [ ] LAY-012 [P2] 拆分 `libs/transport/tests/stream_transport_test.cpp`（1345 行）——TCP 帧、粘包、会话与错误路径共用文件（`libs/transport/tests/stream_transport_test.cpp:14`）。
+- [ ] LAY-013 [P1] 拆分 `orchestrator/server/internal/agent/listener.go`（1224 行）——帧编解码、连接注册、鉴权、命令转发与 proxy 中继耦合（`orchestrator/server/internal/agent/listener.go:232`）。
+- [ ] LAY-014 [P2] 拆分 `libs/agentcore/tests/agentcore_test.cpp`（1222 行）——远程客户端注册、心跳、重连和出站缓冲测试集中（`libs/agentcore/tests/agentcore_test.cpp:16`）。
+- [ ] LAY-015 [P2] 拆分 `apps/agent/tests/agent_loopback_test.cpp`（1217 行）——Runtime 初始化、IPC、RPC、脚本与关闭链路做全回路断言（`apps/agent/tests/agent_loopback_test.cpp:16`）。
+- [ ] LAY-016 [P2] 拆分 `lib/wingman/tests/fsm_module_test.cpp`（1078 行）——状态机模块的正向、超时与异常测试过长（`lib/wingman/tests/fsm_module_test.cpp:16`）。
+- [ ] LAY-017 [P2] 拆分 `apps/agent/tests/rpc_ipc_test.cpp`（1037 行）——本地 IPC 信封与 RPC 方法契约测试集中（`apps/agent/tests/rpc_ipc_test.cpp:16`）。
+- [ ] LAY-018 [P2] 拆分 `lib/wingman/tests/task_module_test.cpp`（1026 行）——任务编排、并发取消和失败恢复断言集中（`lib/wingman/tests/task_module_test.cpp:16`）。
+- [ ] LAY-019 [P2] 拆分 `orchestrator/dashboard/src/services/wingman.ts`（1023 行）——类型定义、HTTP 调用、批量选择器和 WebSocket 桥接共享一个门面文件（`orchestrator/dashboard/src/services/wingman.ts:31`）。
+
+- 分类不一致：`apps/agent/src/resource_loader.cpp` 属于应用打包/资源能力，但根目录还有通用 `runtime` 等应用文件，资源路径逻辑应独立子目录或库（`apps/agent/src/resource_loader.cpp:42`）。
+- 分类不一致：`apps/agent/src/local_ipc_server.cpp` 是传输/协议装配，`apps/agent/src/agent.cpp` 是应用组合；两者同层但生命周期与协议职责不同（`apps/agent/src/local_ipc_server.cpp:139`）。
+- 分类不一致：`apps/android/cpp/agent/base64.hpp` 内联复制 base64 实现，而通用编解码在 `lib/wingman/src/crypt.cpp`；Android 约束成立但应建立共享轻量 codec 而非 agent 内副本（`apps/android/cpp/agent/base64.hpp:12`）。
+- 分类不一致：`orchestrator/server/internal/handlers/tagstore.go` 和 `capstore.go` 是注册表持久化适配器，却放在 HTTP handlers 包；registry 依赖会反向经过 API 包（`orchestrator/server/internal/agent/registry.go:90`）。
+- 分类不一致：`docs/zh/guide/architecture.md` 是完整架构文档，而 `docs/guide/architecture.md` 只有英文占位大纲；同一路径两侧深度不一致（`docs/guide/architecture.md:3`）。
