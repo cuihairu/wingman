@@ -3,9 +3,7 @@
 #include "wingman/script/module_registry.hpp"
 #include "wingman/script/iscript_engine.hpp"
 #include "wingman/crypt.hpp"
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <asio.hpp>
 #include <thread>
 #include <chrono>
 
@@ -19,7 +17,8 @@ using namespace wingman::script::modules;
 // 五类型转换、pending 满/空 msgId 防御、connect 复用均为零覆盖。
 // 本文件用 transport 胶水 tcpListen 起 server，tcpSendTo 向已注册 session
 // 推送 JSON 帧驱动 client 的接收线程，端到端触达下行链。
-// 仅在非 Windows 平台编译（POSIX socket 选端口），见 CMakeLists。
+// 2026-11-08 起跨平台编译：选端口改走 asio acceptor（原 POSIX socket 版本
+// 使本文件被 CMake 门禁排除，Windows CI 覆盖率口径因此漏掉下行链主体）。
 
 namespace {
 
@@ -46,18 +45,10 @@ ScriptValue call(const ModuleDescriptor& mod, const std::string& name,
 }
 
 int freeTcpPort() {
-    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-    EXPECT_GE(fd, 0);
-    sockaddr_in addr {};
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    addr.sin_port = 0;
-    EXPECT_EQ(::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)), 0);
-    socklen_t len = sizeof(addr);
-    EXPECT_EQ(::getsockname(fd, reinterpret_cast<sockaddr*>(&addr), &len), 0);
-    int port = ntohs(addr.sin_port);
-    ::close(fd);
-    return port;
+    asio::io_context io;
+    asio::ip::tcp::acceptor acceptor(
+        io, asio::ip::tcp::endpoint(asio::ip::address_v4::loopback(), 0));
+    return static_cast<int>(acceptor.local_endpoint().port());
 }
 
 int asInt(const ScriptValue& obj, const char* key) {

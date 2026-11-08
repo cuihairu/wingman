@@ -65,24 +65,30 @@ if(BUILD_CORE_TESTS)
         app_paths_test.cpp
     )
 
+    # transport/inbox 胶水补测跨平台编译（2026-11-08 起）：模块本体零平台分歧
+    # （asio 语义），选端口改走 asio acceptor 后不再依赖 POSIX socket——
+    # Windows CI 覆盖率口径（codecov 唯一数据源）因此补上两模块主体
+    target_sources(core_tests PRIVATE transport_inbox_coverage_test.cpp)
+    target_sources(core_tests PRIVATE inbox_downlink_coverage_test.cpp)
+
     # Unix domain socket 通道与 posix TriggerManager 分支补测仅在非 Windows 平台编译
     # （前者依赖 POSIX socket API；后者针对 posix_trigger.cpp 实现行为，用例含
     #   unistd.h/access——2026-09-22 Windows CI 编译失败后收进本 gate）
-    # transport/inbox 胶水补测同理（127.0.0.1 真实 socket 往返 + 端口探测用 POSIX API；
-    #   Windows 下两模块本就是 stub 胶水）
     if(NOT WIN32)
         target_sources(core_tests PRIVATE unix_socket_channel_test.cpp)
         target_sources(core_tests PRIVATE trigger_posix_coverage_test.cpp)
-        target_sources(core_tests PRIVATE transport_inbox_coverage_test.cpp)
-        # inbox 下行链（server→client 推送驱动 handleMessage/consume 全链，同上 POSIX gate）
-        target_sources(core_tests PRIVATE inbox_downlink_coverage_test.cpp)
         # tcp_channel 真实 socket 错误路径（bind 失败/坏帧注入/RST 后 send；POSIX 原语）
         target_sources(core_tests PRIVATE tcp_channel_e2e_coverage_test.cpp)
         # posix_process 全链路（fork/exec + /proc 遍历 + 信号终止；仅 POSIX 实现）
         target_sources(core_tests PRIVATE posix_process_coverage_test.cpp)
-        # SystemWatcher 统一事件源（真实 fork/exec 子进程驱动 started/exited diff；
-        #   sleep 子进程 + 进程枚举依赖 POSIX；文件内 #ifdef __linux__ 双保险）
-        target_sources(core_tests PRIVATE system_watcher_test.cpp)
+    endif()
+
+    # SystemWatcher 统一事件源（真实子进程驱动 started/exited diff；2026-11-08
+    # 起跨平台编译——受控子进程改平台分支工厂，Linux=唯一名 shebang 脚本、
+    # Windows=复制 ping.exe 唯一名 -n 自退）
+    target_sources(core_tests PRIVATE system_watcher_test.cpp)
+
+    if(NOT WIN32)
         # filewatcher 脚本桥接接真（真实 inotify 目录驱动 changed 回调/事件面/
         #   路径簿记；inotify 后端线程 + POSIX 原语；文件内 #ifdef __linux__ 双保险）
         target_sources(core_tests PRIVATE filewatcher_module_test.cpp)

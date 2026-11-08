@@ -2,10 +2,7 @@
 #include "test_helpers.hpp"
 #include "wingman/script/module_registry.hpp"
 #include "wingman/script/iscript_engine.hpp"
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <asio.hpp>
 #include <thread>
 #include <chrono>
 
@@ -17,7 +14,8 @@ using namespace wingman::script::modules;
 // 两模块此前仅 Windows stub 分支可达（胶水主体在 WINGMAN_HAS_TRANSPORT 下），
 // Linux 上从未被触达。本文件在 127.0.0.1 上自建真实 TCP listener / UDP 对端，
 // 经 ModuleDescriptor 直调胶水函数完成端到端触达。
-// 仅在非 Windows 平台编译（POSIX socket 选端口 + tcp:// 语义），见 CMakeLists。
+// 2026-11-08 起跨平台编译：选端口改走 asio acceptor（原 POSIX socket 版本
+// 使本文件被 CMake 门禁排除，Windows CI 覆盖率口径因此漏掉两模块主体）。
 
 namespace {
 
@@ -35,20 +33,13 @@ const ModuleDescriptor::FunctionEntry* findFunction(const ModuleDescriptor& mod,
     return nullptr;
 }
 
-// 向内核要一个临时空闲 TCP 端口（bind :0 后立即释放；竞态窗口在本机测试中可忽略）
+// 向内核要一个临时空闲 TCP 端口（bind :0 后随 acceptor 析构释放；竞态窗口
+// 在本机测试中可忽略）
 int freeTcpPort() {
-    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-    EXPECT_GE(fd, 0);
-    sockaddr_in addr {};
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    addr.sin_port = 0;
-    EXPECT_EQ(::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)), 0);
-    socklen_t len = sizeof(addr);
-    EXPECT_EQ(::getsockname(fd, reinterpret_cast<sockaddr*>(&addr), &len), 0);
-    int port = ntohs(addr.sin_port);
-    ::close(fd);
-    return port;
+    asio::io_context io;
+    asio::ip::tcp::acceptor acceptor(
+        io, asio::ip::tcp::endpoint(asio::ip::address_v4::loopback(), 0));
+    return static_cast<int>(acceptor.local_endpoint().port());
 }
 
 int asInt(const ScriptValue& obj, const char* key) {

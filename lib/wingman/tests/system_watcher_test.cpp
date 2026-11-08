@@ -1,12 +1,13 @@
 // SystemWatcher 统一系统事件源测试（development-todo「进程/窗口/文件变化统一
-// 事件源」进程/窗口两腿）：真实 fork/exec 子进程驱动 started/exited diff
-// （sleep 进程做受控子进程，与 posix_process_coverage_test 同套路）；窗口腿
-// 无 X/有 X 皆只断言 primed 基线与不崩（窗口集随环境漂移，不做事件数断言）。
+// 事件源」进程/窗口两腿）：真实子进程驱动 started/exited diff（受控自退子进程，
+// 与 posix_process_coverage_test 同套路）；窗口腿无 X/有 X/无桌面会话皆只断言
+// primed 基线与不崩（窗口集随环境漂移，不做事件数断言）。
 // 脚本模块面（门控/查询/注销）经 ModuleDescriptor 函数直调（同
 // script_modules_test 模式）。watch() 自动起 worker 轮询（500ms），与测试
 // 主线程的手动 pollOnce 并发——断言一律正向轮询「出现过」，不假设恰一次。
-#ifdef __linux__
-
+// 2026-11-08 起跨平台编译：受控子进程改平台分支工厂（Linux=唯一名 shebang
+// 脚本；Windows=复制 ping.exe 为唯一名后 -n 自退），文件本体无平台分歧，
+// 原 POSIX-only 门禁使 Windows CI 覆盖率口径漏掉 SystemWatcher 全部主体。
 #include <gtest/gtest.h>
 #include "wingman/system_watcher.hpp"
 #include "wingman/process.hpp"
@@ -23,28 +24,51 @@
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 using namespace wingman;
 using wingman::script::ModuleDescriptor;
 using wingman::script::ScriptValue;
 
 namespace {
 
-// 受控子进程工厂：生成唯一名 shell 脚本（掺本进程 pid + 计数）再启动——目标
-// 进程名每用例独占，ctest -j 并行下同家族用例的子进程互不触发对方的 diff
-// 事件（共享 "sleep" 名会互踩）。/bin/sleep 在本机是 coreutils 多路复用符号
-// 链接，复制文件内容后 argv[0] 按 basename 分发会 "unknown program" 直接退出，
-// 故改用 execvp 直跑 shebang 脚本（comm = 脚本名 = 目标名）。唯一名受 comm
-// 15 字符截断限制：前缀 4 + tag 1 + pid ≤7 + 分隔 1 + seq 1 = 14。
-// 脚本内层 sleep 到期自退；析构先 TERM（trap 收内层）再兜底 KILL，不泄漏。
+// 受控子进程工厂：生成唯一名子进程（掺本进程 pid + 计数）——目标进程名每用例
+// 独占，ctest -j 并行下同家族用例的子进程互不触发对方的 diff 事件（共享
+// "sleep"/"ping" 名会互踩）。
+// Linux：/bin/sleep 是 coreutils 多路复用符号链接，复制文件内容后 argv[0] 按
+//   basename 分发会 "unknown program" 直接退出，故用 execvp 直跑 shebang 脚本
+//   （comm = 脚本名 = 目标名）。唯一名受 comm 15 字符截断限制：
+//   前缀 4 + tag 1 + pid ≤7 + 分隔 1 + seq 1 = 14。
+// Windows：复制系统 ping.exe 为唯一名（进程名 = 镜像文件名含 .exe），
+//   `-n <kSeconds+1>` 约每秒一拍自退，等效受控 sleep。
+// 子进程到期自退；析构先宽限 TERM 再兜底强杀，不泄漏。
 class UniqueSleepChild {
 public:
     explicit UniqueSleepChild(const std::string& tag) {
         static std::atomic<int> seq{0};
-        const auto name = "wmw_" + tag + "_" + std::to_string(::getpid()) + "_" +
+        const auto name = "wmw_" + tag + "_" +
+                          std::to_string(Process::getCurrentId()) + "_" +
                           std::to_string(seq.fetch_add(1));
         binDir_ = std::filesystem::temp_directory_path() /
             ("wmw-bin-" + name);
         std::filesystem::create_directories(binDir_);
+#ifdef _WIN32
+        // 名称含 .exe（GetModuleFileNameExA basename 语义，两处一致即可互认）
+        name_ = name + ".exe";
+        bin_ = binDir_ / name_;
+        char sysDir[MAX_PATH] = {};
+        if (GetSystemDirectoryA(sysDir, MAX_PATH) == 0) return;
+        std::error_code copyEc;
+        std::filesystem::copy_file(
+            std::filesystem::path(sysDir) / "ping.exe", bin_,
+            std::filesystem::copy_options::overwrite_existing, copyEc);
+        if (copyEc) return;
+        pid_ = Process::start(bin_.string(),
+                              "127.0.0.1 -n " + std::to_string(kSeconds + 1), "");
+#else
+        name_ = name;
         bin_ = binDir_ / name;
         {
             std::error_code ec;
@@ -59,14 +83,14 @@ public:
                 std::filesystem::perm_options::add, ec);
             if (ec) return;
         }
-        name_ = name;
         pid_ = Process::start(bin_.string(), "");
+#endif
     }
     ~UniqueSleepChild() {
         if (pid_ > 0 && Process::exists(pid_)) {
-            Process::terminate(pid_, false); // TERM：trap 收内层 sleep
+            Process::terminate(pid_, false); // 宽限终止
             Process::wait(pid_, 3000);
-            if (Process::exists(pid_)) { // 兜底 KILL
+            if (Process::exists(pid_)) { // 兜底强杀
                 Process::terminate(pid_, true);
                 Process::wait(pid_, 3000);
             }
@@ -78,11 +102,11 @@ public:
     UniqueSleepChild& operator=(const UniqueSleepChild&) = delete;
 
     ProcessId pid() const { return pid_; }
-    // 目标进程名（uniqueSleep 名）；启动失败为空
+    // 目标进程名（唯一名；Windows 侧含 .exe）；启动失败为空
     const std::string& name() const { return name_; }
     bool ok() const { return pid_ > 0 && !name_.empty(); }
 private:
-    static constexpr int kSeconds = 4; // 内层 sleep 时长：覆盖基线建立窗口
+    static constexpr int kSeconds = 4; // 子进程自退时长：覆盖基线建立窗口
     ProcessId pid_ = 0;
     std::string name_;
     std::filesystem::path binDir_;
@@ -134,7 +158,8 @@ const ModuleDescriptor::FunctionEntry* findFunction(
 TEST(SystemWatcherTest, ProcessStartedAndExitedEvents) {
     UniqueSleepChild child("a");
     ASSERT_TRUE(child.ok());
-    // 等 comm 稳定为唯一名（fork 返回 ≠ 已 exec 的窗口，同 posix_process 纪律）
+    // 等进程名稳定为唯一名（Linux fork 返回 ≠ 已 exec；Windows 侧模块表初始化
+    // 期 getName 可能短暂为空——两边都需要名称稳定后再建立基线）
     for (int i = 0; i < 30; ++i) {
         if (Process::getName(child.pid()) == child.name()) break;
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -172,7 +197,7 @@ TEST(SystemWatcherTest, ProcessStartedAndExitedEvents) {
 TEST(SystemWatcherTest, PrimedBaselineSuppressesExistingProcesses) {
     UniqueSleepChild child("b");
     ASSERT_TRUE(child.ok());
-    // 等 comm 稳定为唯一名（同 posix_process 的 exec 窗口纪律）
+    // 等进程名稳定为唯一名（同上，平台两侧启动窗口纪律）
     for (int i = 0; i < 30; ++i) {
         if (Process::getName(child.pid()) == child.name()) break;
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -205,7 +230,7 @@ TEST(SystemWatcherTest, UnwatchStopsEvents) {
     std::mutex mutex;
     int startedCount = 0;
     // 目标名本用例独占：并行同家族用例的子进程不触发本观察
-    const std::string target = "wmwatch_none_" + std::to_string(::getpid());
+    const std::string target = "wmwatch_none_" + std::to_string(Process::getCurrentId());
     const uint64_t id = watcher.watchProcess(target, [&](const std::string& action,
                                                           int64_t pid, const std::string& name) {
         if (action == "started") {
@@ -335,5 +360,3 @@ TEST(SystemWatchModuleTest, UnwatchInvalidIdFails) {
     // 非整数参数拒绝
     EXPECT_EQ((*unwatch)({ScriptValue::fromString("x")}).asBool(), false);
 }
-
-#endif // __linux__
