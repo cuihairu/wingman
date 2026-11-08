@@ -2,7 +2,7 @@ packages:
   - '.'
 
 overrides:
-  vite: 6.4.4
+  vite: 6.4.5
   esbuild@<=0.24.2: 0.25.0
 
 allowBuilds:
