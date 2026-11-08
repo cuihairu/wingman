@@ -47,6 +47,25 @@ ScriptValue fakeElement() {
     return ScriptValue::fromObject({{"_handle", ScriptValue::fromInt(999999)}});
 }
 
+// Windows 有系统 UIA 后端（会话 0 亦然）：查找/树导出会返回真实元素或回退
+// 前台焦点，「无后端 → null」断言只在 Linux stub 下成立（同
+// misc_uia_node_coverage_test 的 #ifdef _WIN32 skip 口径）。后端在位时这些
+// 断言退化为「不崩 + 形态合法」，分支体照常执行（Windows 覆盖率口径）。
+#ifdef _WIN32
+constexpr bool kUiaBackendPresent = true;
+#else
+constexpr bool kUiaBackendPresent = false;
+#endif
+
+// 无后端严格 null；真后端容忍 null 或真实元素对象
+void expectNullOrElement(const ScriptValue& v) {
+    if (kUiaBackendPresent) {
+        EXPECT_TRUE(v.isNull() || v.isObject());
+    } else {
+        EXPECT_TRUE(v.isNull());
+    }
+}
+
 } // namespace
 
 // ========== 查找家族：无窗口环境返回 null/空数组，模块函数体即达覆盖 ==========
@@ -55,7 +74,7 @@ TEST(UiaModuleCoverageTest, FindFamilyReturnsWithoutBackend) {
     ModuleDescriptor mod = getModule("uia");
     ASSERT_FALSE(mod.name.empty());
 
-    // 无参/带参查找家族：无后端 → makeUiaElementObject(null) → null；find_all → 空数组
+    // 带具体不存在名的查找：真后端下也必然找不到 → 严格 null
     EXPECT_TRUE(call(mod, "find_by_name", {ScriptValue::fromString("no-such")}).isNull());
     EXPECT_TRUE(call(mod, "find_by_id", {ScriptValue::fromString("no-such")}).isNull());
     EXPECT_TRUE(call(mod, "find_all_by_control_type", {ScriptValue::fromInt(0)}).isArray());
@@ -78,13 +97,15 @@ TEST(UiaModuleCoverageTest, FindFamilyReturnsWithoutBackend) {
     EXPECT_TRUE(call(mod, "find_tab", {ScriptValue::fromString("no-such")}).isNull());
     EXPECT_TRUE(call(mod, "find_tab_item", {ScriptValue::fromString("no-such")}).isNull());
 
-    // 无参默认分支（args.size()==0 走默认空串）
-    EXPECT_TRUE(call(mod, "find_by_name").isNull());
-    EXPECT_TRUE(call(mod, "find_by_id").isNull());
+    // 无参默认分支（args.size()==0 走默认空串）：空名在真后端下可匹配任意
+    // 元素 → 环境容忍
+    expectNullOrElement(call(mod, "find_by_name"));
+    expectNullOrElement(call(mod, "find_by_id"));
     EXPECT_TRUE(call(mod, "find_all_by_control_type").isArray());
 }
 
-// wait 家族：短超时（50ms）绑定轮询，无后端返回 null；selector 对象逐字段解析
+// wait 家族：短超时（50ms）绑定轮询；具体不存在名严格 null，空选择器/宽泛
+// role 在真后端下可命中真实元素 → 环境容忍
 TEST(UiaModuleCoverageTest, WaitFamilyWithShortTimeout) {
     ModuleDescriptor mod = getModule("uia");
     ASSERT_FALSE(mod.name.empty());
@@ -93,9 +114,11 @@ TEST(UiaModuleCoverageTest, WaitFamilyWithShortTimeout) {
                      {ScriptValue::fromString("no-such"), ScriptValue::fromInt(50)}).isNull());
     EXPECT_TRUE(call(mod, "wait_for_id",
                      {ScriptValue::fromString("no-such"), ScriptValue::fromInt(50)}).isNull());
-    EXPECT_TRUE(call(mod, "wait_for_role",
-                     {ScriptValue::fromInt(0), ScriptValue::fromInt(50)}).isNull());
-    // wait_for 选择器对象全字段 + 非对象首参 + 缺省超时
+    // role 0 在真后端下可匹配某类控件 → 容忍
+    expectNullOrElement(call(mod, "wait_for_role",
+                             {ScriptValue::fromInt(0), ScriptValue::fromInt(50)}));
+    // wait_for 选择器对象全字段（名字不存在 → 严格 null）+ 非对象首参（退化为
+    // 空选择器，真后端可命中）+ 缺省超时
     EXPECT_TRUE(call(mod, "wait_for", {
         ScriptValue::fromObject({
             {"name", ScriptValue::fromString("n")},
@@ -106,31 +129,33 @@ TEST(UiaModuleCoverageTest, WaitFamilyWithShortTimeout) {
         }),
         ScriptValue::fromInt(50),
     }).isNull());
-    EXPECT_TRUE(call(mod, "wait_for",
-                     {ScriptValue::fromString("not-object"), ScriptValue::fromInt(50)}).isNull());
-    EXPECT_TRUE(call(mod, "wait_for", {ScriptValue::fromObject({})}).isNull());
+    expectNullOrElement(call(mod, "wait_for",
+                             {ScriptValue::fromString("not-object"), ScriptValue::fromInt(50)}));
+    expectNullOrElement(call(mod, "wait_for", {ScriptValue::fromObject({})}));
 }
 
 TEST(UiaModuleCoverageTest, FromAndTreeBranches) {
     ModuleDescriptor mod = getModule("uia");
     ASSERT_FALSE(mod.name.empty());
 
-    // from_foreground / from_point / from_window：无焦点/无效 → null
-    EXPECT_TRUE(call(mod, "from_foreground").isNull());
-    EXPECT_TRUE(call(mod, "from_point", {ScriptValue::fromInt(10), ScriptValue::fromInt(10)}).isNull());
-    EXPECT_TRUE(call(mod, "from_point").isNull()); // 缺参默认 0,0
-    EXPECT_TRUE(call(mod, "from_window", {ScriptValue::fromInt(0)}).isNull());
-    EXPECT_TRUE(call(mod, "from_window").isNull());
+    // from_foreground / from_point / from_window：无焦点/无效 → null；真后端
+    // 下可返回真实元素（会话 0 焦点可用性随时间漂移）→ 容忍
+    expectNullOrElement(call(mod, "from_foreground"));
+    expectNullOrElement(call(mod, "from_point", {ScriptValue::fromInt(10), ScriptValue::fromInt(10)}));
+    expectNullOrElement(call(mod, "from_point")); // 缺参默认 0,0
+    expectNullOrElement(call(mod, "from_window", {ScriptValue::fromInt(0)}));
+    expectNullOrElement(call(mod, "from_window"));
 
-    // tree 分支矩阵：整型首参 / null 首参 / 对象含 _handle / 对象不含 / 深度钳制
-    EXPECT_TRUE(call(mod, "tree", {ScriptValue::fromInt(3)}).isNull());          // 整型 → maxDepth=3
-    EXPECT_TRUE(call(mod, "tree", {ScriptValue::fromInt(0)}).isNull());          // 钳到 1
-    EXPECT_TRUE(call(mod, "tree", {ScriptValue::fromInt(99)}).isNull());         // 钳到 16
-    EXPECT_TRUE(call(mod, "tree", {ScriptValue::null()}).isNull());              // 非对象非整型 → 默认 6
-    EXPECT_TRUE(call(mod, "tree", {ScriptValue::null(), ScriptValue::fromInt(2)}).isNull()); // args[1] 深度
-    EXPECT_TRUE(call(mod, "tree", {ScriptValue::fromObject({})}).isNull());      // 对象无 _handle → 根走焦点
-    EXPECT_TRUE(call(mod, "tree", {fakeElement(), ScriptValue::fromInt(4)}).isNull()); // 无效 handle → 根走焦点
-    EXPECT_TRUE(call(mod, "tree").isNull());                                      // 无参
+    // tree 分支矩阵：整型首参 / null 首参 / 对象含 _handle / 对象不含 / 深度
+    // 钳制。真后端下根回退前台焦点可得真实树 → 容忍
+    expectNullOrElement(call(mod, "tree", {ScriptValue::fromInt(3)}));          // 整型 → maxDepth=3
+    expectNullOrElement(call(mod, "tree", {ScriptValue::fromInt(0)}));          // 钳到 1
+    expectNullOrElement(call(mod, "tree", {ScriptValue::fromInt(99)}));         // 钳到 16
+    expectNullOrElement(call(mod, "tree", {ScriptValue::null()}));              // 非对象非整型 → 默认 6
+    expectNullOrElement(call(mod, "tree", {ScriptValue::null(), ScriptValue::fromInt(2)})); // args[1] 深度
+    expectNullOrElement(call(mod, "tree", {ScriptValue::fromObject({})}));      // 对象无 _handle → 根走焦点
+    expectNullOrElement(call(mod, "tree", {fakeElement(), ScriptValue::fromInt(4)})); // 无效 handle → 根走焦点
+    expectNullOrElement(call(mod, "tree"));                                     // 无参
 }
 
 // ========== UIElement OO 方法：真实元素只读面 ==========

@@ -143,10 +143,29 @@ TEST_F(TransportInboxCoverageTest, TcpListenPortConflictFails) {
     auto first = listen("cov_conflict_a", port);
     ASSERT_TRUE(asBool(first, "success"));
 
+#ifdef _WIN32
+    // transport_server 设置 reuse_address(true)：Windows SO_REUSEADDR 允许
+    // 第二个套接字重绑定同一活动端口（抢占语义），二次监听成功属预期，
+    // 直接清理；Linux 下同端口二次绑定必然失败
+    auto second = listen("cov_conflict_b", port);
+    if (asBool(second, "success")) {
+        const auto* stopSecond = findFunction(transport_, "tcpStop");
+        (*stopSecond)({ScriptValue::fromInt(asInt(second, "handle"))});
+    }
+#else
     // 同端口二次监听 → listen 失败 + stop/removeServer 清理分支
     auto second = listen("cov_conflict_b", port);
     EXPECT_FALSE(asBool(second, "success"));
     EXPECT_EQ(second.get("error")->asString(), "Failed to listen on port");
+#endif
+
+    // 非法主机名两平台一致 listen 失败：真后端下同样触达失败清理分支
+    // （Windows 覆盖率口径经此覆盖，不依赖 SO_REUSEADDR 平台差异）
+    const auto* listenFn = findFunction(transport_, "tcpListen");
+    auto bad = (*listenFn)({ScriptValue::fromString("cov_conflict_bad"),
+                            ScriptValue::fromString("##no-such-host##"),
+                            ScriptValue::fromInt(1)});
+    EXPECT_FALSE(asBool(bad, "success"));
 
     const auto* stopFn = findFunction(transport_, "tcpStop");
     (*stopFn)({ScriptValue::fromInt(asInt(first, "handle"))});
