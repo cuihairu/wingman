@@ -1,6 +1,6 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-11-06
+> 最后更新: 2026-11-09
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
@@ -77,6 +77,7 @@
 - [x] 测试副产品真缺陷修复 11 处
 - [x] flake 根治：X11 静默期 / 共享 deadline / 取消写序 / guacd 契约跨平台
 - [x] staticcheck P3 装饰项清理：remote_session filters 返回传播 + 测试重复 import/类型断言收口（5cedf8e，见 docs/review/2026-11-01-code-review.md）
+- [x] codecov 口径 C++ 覆盖率收口（2026-11-08/09 四批，ed02492/bdd6ebf/f522d3c/dc550cf）：86.61% → 93.40%（12536/13422，Windows CI OpenCppCoverage 为 codecov 唯一数据源）。批次内容：transport/inbox/systemwatch 三文件跨平台移植（asio acceptor 选端口 + ping.exe 子进程工厂，补上 Windows 口径长期缺失的模块主体）、uia 查找家族/元素方法、vision aiSetup 校验矩阵、fastFindImage 金字塔路径、db 绑定越界/约束违反/事务回滚/stoll 兜底、script_manager 停止事件回调/运行中卸载/INI 缺文件。**98% 目标经核算不可达**：剩余 886 miss 中约 800 行为 Windows CI 不可达面（recorder.cpp X11/XRecord 71、crypt.cpp OpenSSL 调用错误分支 78（需故障注入）、notify_module 白名单死代码 44（setAllowedHosts/setWebhooksEnabled 无调用方）、X11 剪贴板/filewatcher 平台代码、私有防御分支（db prepare/bindParams/fetchResults 句柄守卫、isPathAllowed 前缀拒绝仅构造函数喂词法内路径）、线程创建失败/引擎初始化失败等强制不可行路径）+ 次级可回收余量约 60 行；任务纪律禁改生产行为，不为凑数字硬凑
 
 ### 构建与发布
 
