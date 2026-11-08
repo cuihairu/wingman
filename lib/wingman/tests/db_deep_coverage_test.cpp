@@ -517,3 +517,64 @@ TEST_F(DbDeepGlueTest, RepeatedCreateCloseCycles) {
 
 	closeConn(conn);
 }
+
+// ========== C++ 层：路径白名单与绑定/步进错误分支（2026-11-08 收口） ==========
+
+// 单占位符 SQL 绑定多余参数：第二次 bind 越界（SQLITE_RANGE）→
+// bindParams 错误分支沿 execute/query/scalar 三入口返回默认值，连接仍可用
+TEST_F(DbDeepConnectionTest, BindParamCountMismatchFailsAllEntryPoints) {
+	ASSERT_TRUE(conn->execute("CREATE TABLE t (id TEXT)"));
+	EXPECT_FALSE(conn->execute("SELECT ?", {"a", "b"}));
+	EXPECT_TRUE(conn->query("SELECT ?", {"a", "b"}).empty());
+	EXPECT_EQ(conn->scalar("SELECT ?", {"a", "b"}), "");
+
+	EXPECT_TRUE(conn->execute("INSERT INTO t (id) VALUES (?)", {"ok"}));
+	EXPECT_EQ(conn->scalar("SELECT id FROM t"), "ok");
+}
+
+// step 阶段错误（prepare/bind 均成功）：NOT NULL 约束违反 → execute false，
+// 失败后连接不损坏
+TEST_F(DbDeepConnectionTest, ExecuteStepErrorConstraintViolation) {
+	ASSERT_TRUE(conn->execute("CREATE TABLE t (id TEXT NOT NULL)"));
+	EXPECT_FALSE(conn->execute("INSERT INTO t (id) VALUES (NULL)"));
+	EXPECT_TRUE(conn->execute("INSERT INTO t (id) VALUES ('x')"));
+	EXPECT_EQ(conn->scalar("SELECT id FROM t"), "x");
+}
+
+// count() 对不存在的表/列：scalar 返回空串 → stoll 抛出被吞 → 0
+TEST(DbDeepCountFallbackTest, CountOnMissingTableOrColumnReturnsZero) {
+	auto connPtr = openMem();
+	DbTable ghost(connPtr, "no_such_table_cov4");
+	EXPECT_EQ(ghost.count(), 0);
+
+	ASSERT_TRUE(connPtr->execute("CREATE TABLE real_t (id INTEGER)"));
+	DbTable table(connPtr, "real_t");
+	QueryBuilder qb(&table);
+	qb.where("no_such_col", "=", "1");
+	EXPECT_EQ(qb.count(), 0);
+}
+
+// 胶水：scalar 携带非空参数数组（params 解析循环此前只被空数组触达）
+TEST_F(DbDeepGlueTest, ScalarWithNonEmptyParamArray) {
+	auto conn = open();
+	ASSERT_TRUE(call("execute", {conn, ScriptValue::fromString(
+		"CREATE TABLE t (id INTEGER, a TEXT)")}).asBool());
+	ASSERT_TRUE(call("execute", {conn, ScriptValue::fromString(
+		"INSERT INTO t (id, a) VALUES (?, ?)"),
+		ScriptValue::fromArray({ScriptValue::fromInt(7), ScriptValue::fromString("x")})}).asBool());
+
+	auto v = call("scalar", {conn, ScriptValue::fromString("SELECT a FROM t WHERE id = ?"),
+							 ScriptValue::fromArray({ScriptValue::fromInt(7)})});
+	EXPECT_EQ(v.asString(), "x");
+
+	closeConn(conn);
+}
+
+// 胶水：transaction 对注册表外句柄拒绝（dbTransaction 自身的
+// extractConnection 副本，此前只测过 execute 的同名分支）
+TEST_F(DbDeepGlueTest, TransactionRejectsStaleHandle) {
+	ScriptValue stale = makeObj({{"__conn_ptr__", ScriptValue::fromInt(123456789)}});
+	ScriptValue cb = ScriptValue::fromCallable(
+		[](const std::vector<ScriptValue>&) { return ScriptValue::null(); }, true);
+	EXPECT_FALSE(call("transaction", {stale, cb}).asBool());
+}

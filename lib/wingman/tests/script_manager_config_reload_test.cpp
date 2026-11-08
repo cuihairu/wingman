@@ -97,3 +97,12 @@ TEST_F(ScriptManagerConfigReloadTest, CheckReloadAfterFileRemovedStatFails) {
     EXPECT_FALSE(mgr.checkReload("vanish"));
     EXPECT_TRUE(mgr.hasScript("vanish"));  // 仅 stat 失败，注册表不受影响
 }
+
+TEST_F(ScriptManagerConfigReloadTest, LoadIniConfigMissingFileFails) {
+    // loadIniConfig 的 !file.is_open() 分支：不存在的 .ini/.cfg 一律拒绝
+    // （loadConfig 按扩展名分发，loadIniConfig 本体为 private）
+    ScriptManager mgr;
+    EXPECT_FALSE(mgr.loadConfig(tempDir + "/no_such.ini"));
+    EXPECT_FALSE(mgr.loadConfig(tempDir + "/no_such.cfg"));
+    EXPECT_FALSE(mgr.loadConfig(tempDir + "/no_such.txt"));
+}

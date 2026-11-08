@@ -301,4 +301,56 @@ TEST_F(ScriptManagerExecTest, RerunAfterStopCreatesFreshRun) {
     EXPECT_EQ(mgr_.getScriptInfo("cov_rerun")->state, ScriptState::completed);
 }
 
+// 用户主动 stop 触达 stopScript 的 stopped 事件回调腿（自然完结的运行只发
+// started/completed/error，stopped 仅在协作停止时发出）
+TEST_F(ScriptManagerExecTest, StopScriptFiresStoppedEventCallback) {
+    std::string path = writeScript("cov_ev_stop.lua",
+        "for i = 1, 40 do wingman.timer.sleep(25) end\n");
+    ASSERT_TRUE(mgr_.loadScript("cov_ev_stop", path));
+
+    std::mutex mu;
+    std::vector<std::pair<std::string, ScriptEvent>> events;
+    mgr_.setEventCallback([&](const std::string& name, ScriptEvent event, const std::string&) {
+        std::lock_guard lock(mu);
+        events.emplace_back(name, event);
+    });
+
+    std::atomic<bool> runResult{true};
+    std::thread runner([&] { runResult = mgr_.runScript("cov_ev_stop"); });
+    ASSERT_TRUE(waitForState(mgr_, "cov_ev_stop", ScriptState::running));
+    EXPECT_TRUE(mgr_.stopScript("cov_ev_stop"));
+    ASSERT_TRUE(waitForState(mgr_, "cov_ev_stop", ScriptState::loaded, 2000));
+    runner.join();
+    EXPECT_FALSE(runResult.load());
+
+    std::lock_guard lock(mu);
+    // 被停止的运行不产生 started 事件（runScript 仅在 result==true 时补发
+    // started，见 runScript 包装层），stopped 事件来自 stopScript 本体
+    bool sawStarted = false, sawStopped = false;
+    for (auto& [name, ev] : events) {
+        if (name == "cov_ev_stop" && ev == ScriptEvent::started) sawStarted = true;
+        if (name == "cov_ev_stop" && ev == ScriptEvent::stopped) sawStopped = true;
+    }
+    EXPECT_FALSE(sawStarted);
+    EXPECT_TRUE(sawStopped);
+}
+
+// 运行中卸载：unloadScript 先走 stopScript_Locked 收尾再 erase 注册表，
+// detached 执行线程以 stale 句柄检出收尾（返回 false），不悬挂不崩溃
+TEST_F(ScriptManagerExecTest, UnloadRunningScriptStopsAndRemoves) {
+    std::string path = writeScript("cov_unload_run.lua",
+        "for i = 1, 40 do wingman.timer.sleep(25) end\n");
+    ASSERT_TRUE(mgr_.loadScript("cov_unload_run", path));
+
+    std::atomic<bool> runResult{true};
+    std::thread runner([&] { runResult = mgr_.runScript("cov_unload_run"); });
+    ASSERT_TRUE(waitForState(mgr_, "cov_unload_run", ScriptState::running));
+
+    EXPECT_TRUE(mgr_.unloadScript("cov_unload_run"));
+    EXPECT_FALSE(mgr_.hasScript("cov_unload_run"));
+
+    runner.join();
+    EXPECT_FALSE(runResult.load());
+}
+
 } // anonymous namespace
