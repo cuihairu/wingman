@@ -149,6 +149,13 @@ if(BUILD_CORE_TESTS)
     target_sources(core_tests PRIVATE smart_trigger_triggerpath_coverage_test.cpp)
     # misc uia/node/bt 缺口补测（Linux stub 查找路径、bt 状态映射 tick、node 心跳）
     target_sources(core_tests PRIVATE misc_uia_node_coverage_test.cpp)
+    # uia 查找家族/元素 OO 方法失败分支/事件监听门控补测（find_*/from_*/tree 无后端
+    #   空路径；假 _handle 对象驱动 uiaGetElement 无效句柄 → false/null 分支；非线程
+    #   安全 callable 拒绝 + uia.error 事件）
+    target_sources(core_tests PRIVATE misc_uia_coverage_test.cpp)
+    # vision.aiSetup 校验矩阵 / aiSetupLocal / aiLocate / aiElements 补测（本地不可达
+    #   provider 瞬时拒绝面；aiSetup 成功路径纯存配置不联网）
+    target_sources(core_tests PRIVATE vision_ai_setup_coverage_test.cpp)
     # module_helpers 张量转换层缺口补测（11 dtype 全矩阵往返、类型名解析、
     # spec 错误矩阵、shape 缺省/显式语义、未知 dtype 兜底）
     target_sources(core_tests PRIVATE module_helpers_tensor_test.cpp)
@@ -185,6 +192,10 @@ if(BUILD_CORE_TESTS)
         target_compile_definitions(core_tests PRIVATE WINGMAN_ENABLE_VISION)
         # performance.cpp 仅 OpenCV 版本（无 stub），其测试同理只在有 OpenCV 时编译
         target_sources(core_tests PRIVATE performance_test.cpp)
+        # fastFindImage 金字塔路径（buildPyramid/pyramidMatch）补测：>50x50 模板
+        #   驱动 useImagePyramids 分支；真实屏幕裁剪作模板测命中 refinement，
+        #   合成噪声测顶层无匹配早退
+        target_sources(core_tests PRIVATE perf_pyramid_coverage_test.cpp)
         # vision_ai 解析器断言在 stub 构建（parse 恒空 box）下不成立，同理 gate
         target_sources(core_tests PRIVATE vision_ai_test.cpp)
         message(STATUS "Core tests: WINGMAN_ENABLE_VISION defined")
