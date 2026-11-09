@@ -55,6 +55,11 @@ if(BUILD_CORE_TESTS)
         ml_test.cpp
         ocr_test.cpp
         script_function_test.cpp
+        script_data_test.cpp
+        script_action_test.cpp
+        script_ui_test.cpp
+        script_bt_test.cpp
+        script_module_flow_test.cpp
         game_profile_io_test.cpp
         tcp_channel_test.cpp
         trigger_engine_test.cpp
