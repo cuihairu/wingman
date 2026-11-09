@@ -28,6 +28,10 @@ if(BUILD_CORE_TESTS)
         event_bus_test.cpp
         event_test.cpp
         event_module_test.cpp
+        event_module_test_callback.cpp
+        event_module_test_json.cpp
+        event_module_test_exception.cpp
+        event_module_test_listener.cpp
         task_module_test.cpp
         notify_module_test.cpp
         orchestration_module_test.cpp
