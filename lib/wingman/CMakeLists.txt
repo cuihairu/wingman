@@ -123,6 +123,7 @@ set(WINGMAN_SOURCES
     src/script/modules/transport_module.cpp
     src/script/modules/json_module.cpp
     src/script/modules/kv_module.cpp
+    src/script/modules/db_connection.cpp
     src/script/modules/db_module.cpp
     src/script/modules/ini_module.cpp
     src/script/modules/event_module.cpp
