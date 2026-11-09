@@ -41,6 +41,8 @@ if(BUILD_CORE_TESTS)
         orchestration_flow_test.cpp
         workflow_ledger_test.cpp
         fsm_module_test.cpp
+        fsm_guard_test.cpp
+        fsm_json_test.cpp
         timer_module_test.cpp
         behavior_tree_test.cpp
         config_test.cpp
