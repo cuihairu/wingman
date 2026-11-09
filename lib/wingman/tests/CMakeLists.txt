@@ -33,6 +33,9 @@ if(BUILD_CORE_TESTS)
         event_module_test_exception.cpp
         event_module_test_listener.cpp
         task_module_test.cpp
+        task_retry_test.cpp
+        task_coverage_test.cpp
+        task_pause_test.cpp
         notify_module_test.cpp
         orchestration_module_test.cpp
         orchestration_dependency_test.cpp
