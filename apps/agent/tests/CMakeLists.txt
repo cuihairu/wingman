@@ -5,6 +5,7 @@ find_package(spdlog CONFIG REQUIRED)
 add_executable(agent_tests
     agent_config_test.cpp
     agent_loopback_test.cpp
+    agent_lifecycle_test.cpp
     cli_test.cpp
     resource_pack_test.cpp
     # ResourceLoader 实例接口补测（构造探测/错误回调/资源信息/loadScript
