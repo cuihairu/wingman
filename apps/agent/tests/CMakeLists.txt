@@ -14,7 +14,11 @@ add_executable(agent_tests
     screen_runtime_test.cpp
     screenshot_handler_test.cpp
     system_handler_test.cpp
-    rpc_ipc_test.cpp
+    rpc_script_test.cpp
+    rpc_event_config_test.cpp
+    rpc_macro_test.cpp
+    rpc_system_test.cpp
+    rpc_loopback_test.cpp
     update_handler_test.cpp
     # StandaloneMode 缺口补测（start 幂等/建目录失败、autoStart 装配与输出
     # 回调空串跳过、状态映射现状钉、批量操作闲置计数 0、manager 失同步降级腿、
