@@ -67,7 +67,7 @@ jobs:
       - name: Regenerate Lua hints and check they are in sync
         run: |
           python3 scripts/gen_lua_hints.py
-          git diff --exit-code -- assets/vscode-wingman-lua/wingman.d.lua
+          git diff --exit-code -- assets/vscode-wingman-lua/
 
   event-conventions:
     name: Event Convention Audit

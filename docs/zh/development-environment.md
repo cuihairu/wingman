@@ -33,8 +33,11 @@
 Lua 类型定义位于：
 
 ```text
-assets/vscode-wingman-lua/wingman.d.lua
+assets/vscode-wingman-lua/wingman.d.lua        # wingman.* 命名空间聚合面
+assets/vscode-wingman-lua/defs/<模块名>.d.lua  # 按模块的函数级声明
 ```
+
+两者均由 `scripts/gen_lua_hints.py` 生成——聚合面把全部模块类组合到 `wingman.*` 命名空间，`defs/` 按模块一文件存放导入集合（函数级 `@param`/`@return` 注解）。
 
 仓库级 `settings.json` 已将该目录加入 `Lua.workspace.library`。打开 `examples/lua_scripts` 或项目根目录时，Lua 扩展可以读取 `wingman` API 注解并提供补全。
 

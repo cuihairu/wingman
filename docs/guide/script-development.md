@@ -156,7 +156,7 @@ A few functions are registered directly in snake_case (e.g. `db.table_insert`, `
 ## Debugging (Lua / EmmyLua)
 
 1. Install the `tangzx.emmylua` extension in VS Code (already recommended by the repository's `.vscode/extensions.json`).
-2. Completion: the project ships [assets/vscode-wingman-lua/wingman.d.lua](https://github.com/cuihairu/wingman/tree/main/assets/vscode-wingman-lua), providing type hints for the `wingman.*` modules.
+2. Completion: the project ships [assets/vscode-wingman-lua/](https://github.com/cuihairu/wingman/tree/main/assets/vscode-wingman-lua) (`wingman.d.lua` aggregate plus `defs/` per-module import collections), providing type hints for the `wingman.*` modules.
 3. Breakpoint debugging: the runtime listens on `:9966` (EmmyLua attach mode). The VS Code `launch.json` is already configured; press F5 to attach.
 4. See the [Debugging Guide](./debugging.md) and the [VS Code Development Environment](../development-environment.md) for details.
 

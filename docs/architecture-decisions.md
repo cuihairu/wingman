@@ -416,7 +416,7 @@ languages. Consolidating to a single language is explicitly rejected.
 - Total engine glue is ~1.3k LOC (`libs/lua/src` 553 + `libs/python/src`
   729). The Python-only burden is the `libs/python/typing` stubs (~1.7k LOC);
   Lua has no hand-maintained annotation layer — its editor hints are generated
-  (`scripts/gen_lua_hints.py` → `assets/vscode-wingman-lua/wingman.d.lua`).
+  (`scripts/gen_lua_hints.py` → `assets/vscode-wingman-lua/`, one import collection per module in `defs/<module>.d.lua` plus the `wingman.d.lua` namespace aggregate).
 
 ### Tiered primacy
 

@@ -1,0 +1,58 @@
+--[=[
+    Wingman Lua API 类型定义（生成文件，勿手改）—— system 模块
+
+    由 scripts/gen_lua_hints.py 从 C++ 模块描述符（lib/wingman/src 中
+    mod.functions.push_back 注册面）生成；CI 的 api-typing-audit job
+    重生成后 git diff --exit-code 保持同步。
+
+    与 wingman.d.lua 聚合面配套：将 wingman.d.lua 和 defs/ 目录一起
+    放进你的脚本项目根目录，VSCode 安装 EmmyLua 插件即可获得代码提示
+    （保留字函数如 bt.repeat 以 ["repeat"] 形式补全）。
+]=]
+
+-- ========== system 模块 ==========
+
+---@class system
+local system = {}
+
+---@return any
+function system.getCpuInfo() end
+
+---@return any
+function system.getCpuUsage() end
+
+---@return any
+function system.getDateTime() end
+
+---@param drive string
+---@return any
+function system.getDiskInfo(drive) end
+
+---@return any
+function system.getDisplayInfo() end
+
+---@return any
+function system.getGpuInfo() end
+
+---@return any
+function system.getMemoryInfo() end
+
+---@return any
+function system.getNetworkAdapters() end
+
+---@return any
+function system.getOsInfo() end
+
+---@return any
+function system.getProcessCount() end
+
+---@return any
+function system.getThreadCount() end
+
+---@return any
+function system.getTimeZone() end
+
+---@return any
+function system.getUptime() end
+
+return system

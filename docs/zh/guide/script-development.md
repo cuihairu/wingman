@@ -156,7 +156,7 @@ end
 ## 调试（Lua / EmmyLua）
 
 1. VS Code 安装 `tangzx.emmylua` 扩展（仓库 `.vscode/extensions.json` 已推荐）。
-2. 补全：项目自带 [assets/vscode-wingman-lua/wingman.d.lua](https://github.com/cuihairu/wingman/tree/main/assets/vscode-wingman-lua)，提供 `wingman.*` 模块的类型提示。
+2. 补全：项目自带 [assets/vscode-wingman-lua/](https://github.com/cuihairu/wingman/tree/main/assets/vscode-wingman-lua)（`wingman.d.lua` 聚合面 + `defs/` 按模块导入集合），提供 `wingman.*` 模块的类型提示。
 3. 断点调试：runtime 监听 `:9966`（EmmyLua attach 模式）。VS Code `launch.json` 已配置，按 F5 attach。
 4. 详见 [调试指南](./debugging.md) 与 [VS Code 开发环境](../development-environment.md)。
 

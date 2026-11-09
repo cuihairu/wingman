@@ -19,7 +19,7 @@ Files bundled in the repository:
 |------|---------|
 | `.vscode/launch.json` | The `Attach to Wingman Lua (EmmyLua :9966)` configuration plus script run configurations |
 | `.vscode/settings.json` | Lua, the Wingman Lua type library, and Python stub paths |
-| `assets/vscode-wingman-lua/wingman.d.lua` | Lua API completion declarations |
+| `assets/vscode-wingman-lua/` | Lua API completion declarations (`wingman.d.lua` aggregate + `defs/` per module) |
 | `libs/python/typing/wingman` | Python API type declarations |
 
 See [VS Code Development Environment](../development-environment.md) for the full configuration details.

@@ -22,7 +22,7 @@ cmake --build build && ctest --test-dir build -R <suite>
 
 - [ ] 未触及 runtime / 本地 UI / 远程编排（无需改架构文档）
 - [ ] 已同次更新 `docs/architecture-decisions.md` 及相关说明文档
-- [ ] API 面变更已重跑 `scripts/gen_lua_hints.py` 并提交 `assets/vscode-wingman-lua/wingman.d.lua`
+- [ ] API 面变更已重跑 `scripts/gen_lua_hints.py` 并提交 `assets/vscode-wingman-lua/`（wingman.d.lua 聚合面 + defs/ 按模块导入集合）
 
 ## 关联 / Related
 

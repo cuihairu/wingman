@@ -23,7 +23,11 @@ VSCode 配置文件，用于 Wingman Lua 脚本开发。
 ├── .vscode/
 │   ├── .emmyrc.json    # EmmyLua 配置
 │   └── launch.json      # 调试配置
-├── wingman.d.lua        # API 类型定义
+├── wingman.d.lua        # wingman.* 命名空间聚合面（生成文件）
+├── defs/                # 按模块的导入集合（生成文件，42 个 <模块名>.d.lua）
+│   ├── bt.d.lua
+│   ├── screen.d.lua
+│   └── …
 └── 你的脚本.lua
 ```
 
@@ -87,7 +91,7 @@ wingman.screen.capture(0, 0, 1920, 1080)
 
 ### Q: 没有代码提示？
 
-A: 确保 `wingman.d.lua` 在项目根目录，并重启 VSCode。
+A: 确保 `wingman.d.lua` 与 `defs/` 目录都在项目根目录，并重启 VSCode。
 
 ### Q: 调试连接失败？
 

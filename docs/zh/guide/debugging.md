@@ -19,7 +19,7 @@ Wingman 的 Lua 调试基于 EmmyLua。仓库已提供 VS Code 配置，可直�
 |------|------|
 | `.vscode/launch.json` | `Attach to Wingman Lua (EmmyLua :9966)` 和脚本运行配置 |
 | `.vscode/settings.json` | Lua、Wingman Lua 类型库、Python stub 路径 |
-| `assets/vscode-wingman-lua/wingman.d.lua` | Lua API 补全声明 |
+| `assets/vscode-wingman-lua/` | Lua API 补全声明（`wingman.d.lua` 聚合面 + `defs/` 按模块） |
 | `libs/python/typing/wingman` | Python API 类型声明 |
 
 完整配置说明见 [VS Code 开发环境](../development-environment.md)。
