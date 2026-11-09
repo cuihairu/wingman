@@ -165,7 +165,7 @@ Use a dedicated `build-tests/` directory for tests so an existing development bu
 
 ### Optional Linux X11 test dependencies
 
-On Linux the `platform_x11_test.cpp` cases depend on three **runtime-optional dependencies** (not in the
+On Linux the `platform_x11_*_test.cpp` cases depend on three **runtime-optional dependencies** (not in the
 vcpkg manifest; provided by the system package manager). When one is missing the affected cases `GTEST_SKIP`
 instead of failing; the remaining cases are unaffected:
 

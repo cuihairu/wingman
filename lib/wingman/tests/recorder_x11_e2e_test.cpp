@@ -1,4 +1,4 @@
-// XRecord 正向录制端到端验证（仅 Linux 编译，同 platform_x11_test.cpp 模式）。
+// XRecord 正向录制端到端验证（仅 Linux 编译，同 platform_x11_*_test.cpp 模式）。
 //
 // 与 recorder_test.cpp 的状态机用例互补：本文件验证「捕获 → 保存」的正向闭环——
 // start 后经 XTest 注入真实按键，断言 XRecord 捕获到事件并可序列化。

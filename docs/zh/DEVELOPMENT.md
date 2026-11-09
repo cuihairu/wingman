@@ -165,7 +165,7 @@ ctest --test-dir build-tests -C Debug --output-on-failure
 
 ### Linux X11 测试可选依赖
 
-Linux 上 `platform_x11_test.cpp` 的用例依赖三个**运行期可选依赖**（不在
+Linux 上 `platform_x11_*_test.cpp` 各文件的用例依赖三个**运行期可选依赖**（不在
 vcpkg 清单内，由系统包管理器提供）。缺失时对应用例 `GTEST_SKIP` 而非
 fail，其余用例不受影响：
 
