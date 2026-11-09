@@ -1,12 +1,8 @@
 import {
-  AndroidOutlined,
-  AppleOutlined,
   AuditOutlined,
   DeleteOutlined,
   DesktopOutlined,
-  DownloadOutlined,
   InfoCircleOutlined,
-  MobileOutlined,
   NodeIndexOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
@@ -28,10 +24,8 @@ import { useAccess, useIntl, useRequest } from '@umijs/max';
 import {
   Button,
   Card,
-  Checkbox,
   Col,
   Input,
-  Popconfirm,
   Popover,
   Progress,
   Row,
@@ -39,37 +33,17 @@ import {
   Select,
   Space,
   Statistic,
-  Table,
   Tag,
   Tooltip,
   Typography,
   message,
   Modal,
-  Alert,
   Badge,
 } from 'antd';
 import React, { useState, useEffect } from 'react';
 import TriggerFormModal from '@/components/TriggerFormModal';
 import VaultManagerModal from '@/components/VaultManagerModal';
-import {
-  getVaultStatus,
-  listVaultCredentials,
-  saveVaultCredential,
-  unlockVault,
-  type VaultEntryMeta,
-  type VaultStatus,
-} from '@/services/vault';
-import RemoteDesktopModal from '@/components/RemoteDesktopModal';
 import RemoteSessionReportModal from '@/components/RemoteDesktop/RemoteSessionReportModal';
-import {
-  deleteRecording,
-  downloadRecording,
-  fetchRecordingBlob,
-  listRecordings,
-  type RecordingEntry,
-  type RemoteProtocol,
-} from '@/services/remote';
-import RemoteRecordingPlayer from '@/components/RemoteDesktop/RemoteRecordingPlayer';
 import {
   AgentStatus,
   AgentInfo,
@@ -87,60 +61,12 @@ import {
 } from '@/services/wingman';
 import { countByPlatform, groupAgentsByTag } from '@/utils/agents';
 import wsService from '@/services/websocket';
+import DesktopConnectModal, { type DesktopConnectForm } from './DesktopConnectModal';
+import RecordingsModal from './RecordingsModal';
+import BatchResultModal from './BatchResultModal';
+import { CapabilityTags, PlatformTag, extractErrorMessage } from './shared';
 
 const { Text } = Typography;
-
-// PlatformTag 平台标识：desktop（含缺省，兼容未上报的旧 agent）→ 桌面、
-// android → 安卓、ios → Apple、其余 → 移动设备（docs/android-agent-design.md §3.3）
-const PlatformTag: React.FC<{ platform?: string; count?: number }> = ({ platform, count }) => {
-  const value = platform || 'desktop';
-  const icon =
-    value === 'android' ? (
-      <AndroidOutlined />
-    ) : value === 'ios' ? (
-      <AppleOutlined />
-    ) : value === 'desktop' ? (
-      <DesktopOutlined />
-    ) : (
-      <MobileOutlined />
-    );
-  const color = value === 'android' ? 'green' : value === 'desktop' ? 'geekblue' : 'default';
-  return (
-    <Tag icon={icon} color={color}>
-      {value.toUpperCase()}
-      {count !== undefined ? ` ${count}` : ''}
-    </Tag>
-  );
-};
-
-// CapabilityTags 能力词汇标签（ADR: Capability System）：agent.register 上报的
-// 能力集逐项展示；词汇表外项（server 侧 unknownCapabilities，标 unverified）
-// 以警示色区分，不做客户端过滤。
-const CapabilityTags: React.FC<{ record: AgentInfo }> = ({ record }) => {
-  const caps = record.capabilities || [];
-  if (caps.length === 0) {
-    return <Text type="secondary">—</Text>;
-  }
-  const unknown = new Set(record.unknownCapabilities || []);
-  return (
-    <Space size={4} wrap>
-      {caps.map((c) => (
-        <Tag key={c} color={unknown.has(c) ? 'warning' : 'default'} style={{ fontSize: 11 }}>
-          {c}
-        </Tag>
-      ))}
-    </Space>
-  );
-};
-
-// extractErrorMessage 从 umi request 抛出的错误中提取可读文本；
-// 模块级纯函数拿不到 intl，兜底文案由调用方传入
-function extractErrorMessage(error: unknown, fallback: string): string {
-  const candidate = error as
-    | { data?: { error?: string; message?: string }; message?: string }
-    | undefined;
-  return candidate?.data?.error || candidate?.data?.message || candidate?.message || fallback;
-}
 
 /** 设备列表视图模式：平铺 ↔ 按标签分组 */
 type ViewMode = 'flat' | 'grouped';
@@ -152,178 +78,19 @@ const Agents: React.FC = () => {
   const canAgentManage = Boolean(access.canAgentManage);
   const canScriptRun = Boolean(access.canScriptRun);
   const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
-  // 远程桌面（Guacamole 像素面）：desktopForm = 连接参数表单；desktopTarget = 确认后待连目标
-  const [desktopForm, setDesktopForm] = useState<{
-    agentId: string;
-    protocol: RemoteProtocol;
-    port: string;
-    username: string;
-    password: string;
-    readOnly: boolean;
-    record: boolean;
-    /** 从保险箱取已存凭据填充缺失字段（服务端注入，显式输入优先） */
-    useSaved: boolean;
-    /** 连接同时把本次输入保存进保险箱 */
-    saveToVault: boolean;
-  } | null>(null);
-  const [desktopTarget, setDesktopTarget] = useState<{
-    agentId: string;
-    protocol: RemoteProtocol;
-    port: string;
-    username: string;
-    password: string;
-    readOnly: boolean;
-    record: boolean;
-    useSaved: boolean;
-  } | null>(null);
-  // ===== 凭据保险箱（连接表单探测态 + 管理弹窗开关） =====
+  // 远程桌面（Guacamole 像素面）：row 操作写入连接表单初值，表单态/保险箱
+  // 探测态/建连目标均由 DesktopConnectModal 内部持有（DesktopConnectForm）
+  const [desktopForm, setDesktopForm] = useState<DesktopConnectForm | null>(null);
+  // ===== 凭据保险箱管理弹窗开关（连接表单内的探测/解锁在 DesktopConnectModal） =====
   const [vaultOpen, setVaultOpen] = useState(false);
-  const [vaultStatus, setVaultStatus] = useState<VaultStatus | null>(null);
-  const [vaultEntries, setVaultEntries] = useState<VaultEntryMeta[]>([]);
-  const [unlockInput, setUnlockInput] = useState('');
-  const [unlockBusy, setUnlockBusy] = useState(false);
-
-  // 连接表单打开/换目标时探测保险箱：已有该目标的已存凭据且解锁 → 默认
-  // 启用快捷调用（用户名/密码可留空）。探测失败静默（保险箱不可用时退回
-  // 手输，不阻断连接）。
-  const desktopFormOpen = desktopForm !== null;
-  useEffect(() => {
-    if (!desktopFormOpen || !desktopForm) {
-      return undefined;
-    }
-    let cancelled = false;
-    Promise.all([getVaultStatus(), listVaultCredentials()])
-      .then(([status, entries]) => {
-        if (cancelled) {
-          return;
-        }
-        setVaultStatus(status);
-        setVaultEntries(entries);
-        setDesktopForm((prev) => {
-          if (!prev) {
-            return prev;
-          }
-          const hit = entries.some(
-            (entry) => entry.agentId === prev.agentId && entry.protocol === prev.protocol,
-          );
-          return { ...prev, useSaved: hit && status.unlocked };
-        });
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-    // 探测只在弹窗开闭/目标切换时触发；输入框打字不重查
-  }, [desktopFormOpen, desktopForm?.agentId, desktopForm?.protocol]);
-
-  // 连接表单内联解锁：解锁成功即刷新探测并默认启用取用
-  const inlineUnlock = async () => {
-    if (!unlockInput) {
-      return;
-    }
-    setUnlockBusy(true);
-    try {
-      await unlockVault(unlockInput);
-      const [status, entries] = await Promise.all([getVaultStatus(), listVaultCredentials()]);
-      setVaultStatus(status);
-      setVaultEntries(entries);
-      setUnlockInput('');
-      setDesktopForm((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        const hit = entries.some(
-          (entry) => entry.agentId === prev.agentId && entry.protocol === prev.protocol,
-        );
-        return { ...prev, useSaved: hit };
-      });
-      message.success('保险箱已解锁');
-    } catch (err) {
-      message.error(err instanceof Error ? err.message : '解锁失败');
-    } finally {
-      setUnlockBusy(false);
-    }
-  };
-
-  // openDesktop 表单确认：先按需落库保险箱，再把表单参数固化为连接目标
-  // （触发 RemoteDesktopModal 建连）。保存失败不阻断连接——手输凭据仍有效。
-  const openDesktop = async () => {
-    if (!desktopForm) {
-      return;
-    }
-    const form = { ...desktopForm };
-    if (form.saveToVault && vaultStatus?.unlocked) {
-      try {
-        await saveVaultCredential({
-          agentId: form.agentId,
-          protocol: form.protocol,
-          port: form.port ? Number(form.port) : undefined,
-          label: `${form.agentId}·${form.protocol.toUpperCase()}`,
-          username: form.username,
-          password: form.password || undefined,
-        });
-        form.useSaved = true; // 刚存的这条本次连接即取用
-        message.success('凭据已保存到保险箱');
-      } catch (err) {
-        message.warning(err instanceof Error ? err.message : '保存到保险箱失败，继续连接');
-      }
-    }
-    setDesktopTarget(form);
-    setDesktopForm(null);
-  };
   // ===== 会话录像（设计 §16）：desktop:view 列/下载/回放，desktop:control 删 =====
   const canDesktopView = Boolean(access.canDesktopView);
-  const canDesktopControl = Boolean(access.canDesktopControl);
   const [recordingsOpen, setRecordingsOpen] = useState(false);
-  // 浏览器内回放（§16「回放」）：点回放拉取 Blob 本地解析，不经网关
-  const [playingRecording, setPlayingRecording] = useState<string | null>(null);
-  const [recordings, setRecordings] = useState<RecordingEntry[]>([]);
-  const [recordingsError, setRecordingsError] = useState('');
-  const [recordingsLoading, setRecordingsLoading] = useState(false);
-  const [deletingRecording, setDeletingRecording] = useState<string | null>(null);
-  const fetchRecordings = async (silent = false) => {
-    if (!silent) {
-      setRecordingsLoading(true);
-    }
-    setRecordingsError('');
-    try {
-      setRecordings(await listRecordings());
-    } catch (e) {
-      // 501（未配置）与其他错误都转为面板文案：错误串本身带配置指引
-      setRecordingsError(
-        e instanceof Error ? e.message : formatMessage('pages.agents.recordings.listFailed'),
-      );
-    } finally {
-      setRecordingsLoading(false);
-    }
-  };
   const openRecordings = () => {
     setRecordingsOpen(true);
-    fetchRecordings();
   };
   // 会话审计报表（设计 §11 P1）：只读视图，desktop:view 即可
   const [sessionReportOpen, setSessionReportOpen] = useState(false);
-  const handleDownloadRecording = async (name: string) => {
-    try {
-      await downloadRecording(name);
-    } catch (e) {
-      message.error(
-        extractErrorMessage(e, formatMessage('pages.agents.recordings.downloadFailed')),
-      );
-    }
-  };
-  const handleDeleteRecording = async (name: string) => {
-    setDeletingRecording(name);
-    try {
-      await deleteRecording(name);
-      message.success(intl.formatMessage({ id: 'pages.agents.recordings.deleted' }, { name }));
-      await fetchRecordings(true);
-    } catch (e) {
-      message.error(extractErrorMessage(e, formatMessage('pages.agents.recordings.deleteFailed')));
-    } finally {
-      setDeletingRecording(null);
-    }
-  };
   const [wsConnected, setWsConnected] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]); // 本地状态用于实时更新
   const [tagDraft, setTagDraft] = useState<{ agentId: string; tags: string[] } | null>(null);
@@ -1155,260 +922,15 @@ const Agents: React.FC = () => {
       </Row>
 
       {/* 远程桌面（Guacamole 像素面）：一次性票据 + WS 隧道，关闭即断开。
-          连接参数（协议/凭据/监看）经小表单确认后下发。 */}
-      <Modal
-        open={!!desktopForm}
-        title={desktopForm ? `远程桌面 - ${desktopForm.agentId}` : ''}
-        width={420}
-        onOk={openDesktop}
-        okText="连接"
-        onCancel={() => setDesktopForm(null)}
-        destroyOnClose
-      >
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          <Select
-            style={{ width: '100%' }}
-            value={desktopForm?.protocol}
-            onChange={(value) => desktopForm && setDesktopForm({ ...desktopForm, protocol: value })}
-            options={[
-              { value: 'rdp', label: 'RDP (Windows 桌面)' },
-              { value: 'vnc', label: 'VNC (macOS / Linux / Android)' },
-              { value: 'ssh', label: 'SSH (终端)' },
-            ]}
-          />
-          <Input
-            placeholder={
-              desktopForm?.protocol === 'ssh'
-                ? '端口（默认 22）'
-                : desktopForm?.protocol === 'vnc'
-                  ? '端口（默认 5900）'
-                  : '端口（默认 3389）'
-            }
-            value={desktopForm?.port}
-            onChange={(e) =>
-              desktopForm && setDesktopForm({ ...desktopForm, port: e.target.value })
-            }
-          />
-          <Input
-            placeholder="用户名（可选）"
-            value={desktopForm?.username}
-            onChange={(e) =>
-              desktopForm && setDesktopForm({ ...desktopForm, username: e.target.value })
-            }
-          />
-          <Input
-            placeholder={desktopForm?.useSaved ? '密码（已存凭据可留空）' : '密码（可选）'}
-            type="password"
-            value={desktopForm?.password}
-            onChange={(e) =>
-              desktopForm && setDesktopForm({ ...desktopForm, password: e.target.value })
-            }
-          />
-          {/* 凭据保险箱（快捷调用）：已存且解锁 → 默认取用；未解锁 → 内联解锁；
-              未设置 → 指引到工具栏管理弹窗 */}
-          {vaultStatus?.configured && !vaultStatus.unlocked && (
-            <Space.Compact style={{ width: '100%' }}>
-              <Input.Password
-                placeholder="保险箱已锁定——输入主口令解锁"
-                value={unlockInput}
-                onChange={(e) => setUnlockInput(e.target.value)}
-                onPressEnter={inlineUnlock}
-              />
-              <Button loading={unlockBusy} onClick={inlineUnlock}>
-                解锁
-              </Button>
-            </Space.Compact>
-          )}
-          {vaultStatus?.unlocked &&
-            desktopForm &&
-            vaultEntries.some(
-              (entry) =>
-                entry.agentId === desktopForm.agentId && entry.protocol === desktopForm.protocol,
-            ) && (
-              <Checkbox
-                checked={desktopForm.useSaved}
-                onChange={(e) =>
-                  desktopForm && setDesktopForm({ ...desktopForm, useSaved: e.target.checked })
-                }
-              >
-                使用保险箱已存凭据（
-                {(() => {
-                  const hit = vaultEntries.find(
-                    (entry) =>
-                      entry.agentId === desktopForm.agentId &&
-                      entry.protocol === desktopForm.protocol,
-                  );
-                  return hit?.label || hit?.username || '已保存';
-                })()}
-                ，用户名/密码留空自动填充）
-              </Checkbox>
-            )}
-          {vaultStatus?.unlocked && (
-            <Checkbox
-              checked={desktopForm?.saveToVault}
-              onChange={(e) =>
-                desktopForm && setDesktopForm({ ...desktopForm, saveToVault: e.target.checked })
-              }
-            >
-              保存到保险箱（下次免输入）
-            </Checkbox>
-          )}
-          {vaultStatus && !vaultStatus.configured && (
-            <Typography.Text type="secondary">
-              保险箱未设置——在工具栏「凭据保险箱」设置主口令后，凭据可加密保存并自动取用
-            </Typography.Text>
-          )}
-          <Select
-            style={{ width: '100%' }}
-            value={desktopForm?.readOnly ? 'view' : 'control'}
-            onChange={(value) =>
-              desktopForm && setDesktopForm({ ...desktopForm, readOnly: value === 'view' })
-            }
-            options={[
-              { value: 'view', label: '监看（只读）' },
-              { value: 'control', label: '接管（需 desktop:control 权限）' },
-            ]}
-          />
-          <Checkbox
-            checked={desktopForm?.record}
-            onChange={(e) =>
-              desktopForm && setDesktopForm({ ...desktopForm, record: e.target.checked })
-            }
-          >
-            {formatMessage('pages.agents.recordings.checkboxLabel')}
-          </Checkbox>
-        </Space>
-      </Modal>
-      {desktopTarget && (
-        <RemoteDesktopModal
-          open
-          agentId={desktopTarget.agentId}
-          protocol={desktopTarget.protocol}
-          port={desktopTarget.port ? Number(desktopTarget.port) : undefined}
-          username={desktopTarget.username || undefined}
-          password={desktopTarget.password || undefined}
-          readOnly={desktopTarget.readOnly}
-          record={desktopTarget.record}
-          useSaved={desktopTarget.useSaved || undefined}
-          onCancel={() => setDesktopTarget(null)}
-        />
-      )}
+          连接参数（协议/凭据/监看）经小表单确认后下发，建连在组件内部完成。 */}
+      <DesktopConnectModal form={desktopForm} onCancel={() => setDesktopForm(null)} />
 
       {/* 凭据保险箱管理：主口令生命周期 + 条目列表（改标签/删除）+ 密文导出 */}
       <VaultManagerModal open={vaultOpen} onClose={() => setVaultOpen(false)} />
 
       {/* 会话录像（设计 §16）：guacd 录制目录检索；.mjs 下载后可用
-          guacenc 离线转 mp4；删除需 desktop:control */}
-      <Modal
-        open={recordingsOpen}
-        title={formatMessage('pages.agents.recordings.title')}
-        width={680}
-        footer={
-          <Button type="primary" onClick={() => setRecordingsOpen(false)}>
-            {formatMessage('pages.agents.recordings.close')}
-          </Button>
-        }
-        onCancel={() => setRecordingsOpen(false)}
-      >
-        {recordingsError ? (
-          <Alert
-            type="warning"
-            showIcon
-            message={formatMessage('pages.agents.recordings.unavailable')}
-            description={recordingsError}
-            action={
-              <Button size="small" onClick={() => fetchRecordings()}>
-                {formatMessage('pages.agents.recordings.retry')}
-              </Button>
-            }
-          />
-        ) : (
-          <Table
-            rowKey="name"
-            size="small"
-            loading={recordingsLoading}
-            dataSource={recordings}
-            pagination={{ pageSize: 8, hideOnSinglePage: true }}
-            locale={{
-              emptyText: formatMessage('pages.agents.recordings.empty'),
-            }}
-            columns={[
-              {
-                title: formatMessage('pages.agents.recordings.colName'),
-                dataIndex: 'name',
-                ellipsis: true,
-              },
-              {
-                title: formatMessage('pages.agents.recordings.colSize'),
-                dataIndex: 'sizeBytes',
-                width: 90,
-                render: (v: number) => formatBytes(v),
-              },
-              {
-                title: formatMessage('pages.agents.recordings.colTime'),
-                dataIndex: 'modifiedAt',
-                width: 170,
-                render: (v: string) => (v ? new Date(v).toLocaleString() : '-'),
-              },
-              {
-                title: formatMessage('pages.agents.recordings.colActions'),
-                key: 'actions',
-                width: 210,
-                render: (_: unknown, r: RecordingEntry) => (
-                  <Space>
-                    <Button
-                      type="link"
-                      size="small"
-                      icon={<PlayCircleOutlined />}
-                      onClick={() => setPlayingRecording(r.name)}
-                    >
-                      {formatMessage('pages.agents.recordings.play')}
-                    </Button>
-                    <Button
-                      type="link"
-                      size="small"
-                      icon={<DownloadOutlined />}
-                      onClick={() => handleDownloadRecording(r.name)}
-                    >
-                      {formatMessage('pages.agents.recordings.download')}
-                    </Button>
-                    {canDesktopControl && (
-                      <Popconfirm
-                        title={intl.formatMessage(
-                          { id: 'pages.agents.recordings.deleteConfirm' },
-                          { name: r.name },
-                        )}
-                        description={formatMessage('pages.agents.recordings.deleteIrreversible')}
-                        okText={formatMessage('pages.agents.recordings.delete')}
-                        okButtonProps={{ danger: true }}
-                        onConfirm={() => handleDeleteRecording(r.name)}
-                      >
-                        <Button
-                          type="link"
-                          size="small"
-                          danger
-                          icon={<DeleteOutlined />}
-                          loading={deletingRecording === r.name}
-                        >
-                          {formatMessage('pages.agents.recordings.delete')}
-                        </Button>
-                      </Popconfirm>
-                    )}
-                  </Space>
-                ),
-              },
-            ]}
-          />
-        )}
-      </Modal>
-
-      {/* 浏览器内录像回放（设计 §16「回放」）：本地解析 .mjs，desktop:view 同级 */}
-      <RemoteRecordingPlayer
-        open={playingRecording !== null}
-        name={playingRecording ?? ''}
-        load={() => fetchRecordingBlob(playingRecording as string)}
-        onClose={() => setPlayingRecording(null)}
-      />
+          guacenc 离线转 mp4；删除需 desktop:control；列表/回放在组件内部 */}
+      <RecordingsModal open={recordingsOpen} onClose={() => setRecordingsOpen(false)} />
 
       {/* 远程桌面会话审计报表（设计 §11 P1）：谁在何时接管了哪台机器、多久、
           失败几次；与录像面板同属一批会话的两个侧面（文件 vs 行为） */}
@@ -1498,66 +1020,7 @@ const Agents: React.FC = () => {
       />
 
       {/* 批量操作结果：汇总 + 逐台明细（含离线/失败原因） */}
-      <Modal
-        open={batchResult !== null}
-        title={formatMessage('pages.agents.batchResultTitle')}
-        width={620}
-        footer={
-          <Button type="primary" onClick={() => setBatchResult(null)}>
-            {formatMessage('pages.common.close')}
-          </Button>
-        }
-        onCancel={() => setBatchResult(null)}
-      >
-        {batchResult && (
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            <Alert
-              type={
-                batchResult.failed === 0
-                  ? 'success'
-                  : batchResult.succeeded === 0
-                    ? 'error'
-                    : 'warning'
-              }
-              showIcon
-              message={intl.formatMessage(
-                { id: 'pages.agents.batchResultSummary' },
-                {
-                  total: batchResult.total,
-                  succeeded: batchResult.succeeded,
-                  failed: batchResult.failed,
-                },
-              )}
-            />
-            <Table
-              size="small"
-              rowKey="agentId"
-              dataSource={batchResult.results}
-              pagination={batchResult.results.length > 10 ? { pageSize: 10 } : false}
-              columns={[
-                { title: 'Agent ID', dataIndex: 'agentId', ellipsis: true },
-                {
-                  title: formatMessage('pages.agents.resultColumn'),
-                  dataIndex: 'success',
-                  width: 90,
-                  render: (ok: boolean) =>
-                    ok ? (
-                      <Tag color="success">{formatMessage('pages.common.success')}</Tag>
-                    ) : (
-                      <Tag color="error">{formatMessage('pages.common.failure')}</Tag>
-                    ),
-                },
-                {
-                  title: formatMessage('pages.agents.failureReason'),
-                  dataIndex: 'error',
-                  ellipsis: true,
-                  render: (text?: string) => text || '-',
-                },
-              ]}
-            />
-          </Space>
-        )}
-      </Modal>
+      <BatchResultModal result={batchResult} onClose={() => setBatchResult(null)} />
     </PageContainer>
   );
 };
