@@ -173,7 +173,7 @@
 - 脚本引擎层：加载用户脚本，通过可插拔引擎和模块描述符暴露能力（代表：`lib/wingman/src/script/modules/module_registry.cpp:101`）。
 - 设备能力层：隔离屏幕/输入/窗口/剪贴板/视觉/Android 宿主的 OS 差异（代表：`lib/wingman/src/platform/screen_backend.cpp:47`）。
 
-- [ ] LAY-001 [P1] 拆分 `lib/wingman/tests/orchestration_module_test.cpp`（2190 行）——编排脚本模块的注册、转发、收敛与错误路径共用一个测试文件，适合按场景拆分（`lib/wingman/tests/orchestration_module_test.cpp:16`）。
+- [x] LAY-001 [P1] 拆分 `lib/wingman/tests/orchestration_module_test.cpp`（2190 行）——编排脚本模块的注册、转发、收敛与错误路径共用一个测试文件，适合按场景拆分（`lib/wingman/tests/orchestration_module_test.cpp:16`）。已按场景拆为 5 文件 + 共享头（06528be：orchestration_module_test.cpp 收窄至提交校验+历史账本、orchestration_dependency_test.cpp 依赖图调度/传播矩阵/取消、orchestration_condition_test.cpp 条件分支、orchestration_parallel_test.cpp 独立并发/并发控制、orchestration_flow_test.cpp 查询面/流程状态/产出聚合、orchestration_test_helpers.hpp 共享 findFn/spinUntil/EventLog/taskStatus/callable/ScopedFlag）；纯重组无逻辑改动，OrchestrationModuleTest.* 40/40 绿、core_tests 全量 2333 例 2237 过 0 败。
 - [ ] LAY-002 [P1] 拆分 `assets/vscode-wingman-lua/wingman.d.lua`（2075 行）——Lua 类型提示把所有 API 命名空间放在一个描述文件，适合按模块拆成导入集合（`assets/vscode-wingman-lua/wingman.d.lua:12`）。
 - [ ] LAY-003 [P1] 拆分 `lib/wingman/tests/script_function_test.cpp`（2064 行）——脚本函数断言覆盖多模块和异常路径，单文件难以维护（`lib/wingman/tests/script_function_test.cpp:14`）。
 - [ ] LAY-004 [P2] 拆分 `lib/wingman/tests/platform_x11_test.cpp`（1726 行）——X11 截屏、窗口、剪贴板和文件监听混在同一套平台测试中（`lib/wingman/tests/platform_x11_test.cpp:16`）。
