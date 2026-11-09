@@ -60,16 +60,37 @@ EP01 第 5-6 镜（`wingman-agent.exe script ...hello.lua` 及其输出）可机
 - ffmpeg 可用（PATH 或本机已装的 bin 路径）。
 - 1920×1080、100% 缩放、60fps，对齐系列约定。
 
-**执行（按序）**
+**执行（按序，2026-11-09 imac 192.168.5.117 实测验证版）**
 
-1. 门控探针：`Get-Process LockApp,LogonUI` 均无进程才继续（UNLOCKED）；
-   有任一进程即锁定，停止并先解锁，不要尝试解锁动作本身。
-2. 起录（后台）：`ffmpeg -f gdigrab -framerate 60 -i desktop -c:v libx264 -preset veryfast -pix_fmt yuv420p <out>.mp4`
-3. 等 3 秒，进程创建拉起最大化窗口并预载两条命令：
-   `powershell -NoExit -WindowStyle Maximized -Command "Set-Location <repo>; <wingman-agent.exe> script examples\lua_scripts\hello.lua; <wingman-agent.exe> script examples\lua_scripts\color_detect.lua"`
-4. 等 25 秒（两条命令输出滚完），向自己起的 ffmpeg 进程 stdin 写 `q` 停录。
-5. 验收：`ffprobe` 时长 ≥25s、分辨率 1920×1080；抽一帧确认画面是终端窗口
-   而非锁屏或空桌面。
+1. 保活：`[Awake]::SetThreadExecutionState(0x80000000 -bor 1 -bor 2)`（ES_DISPLAY_REQUIRED，
+   无输入注入）。漏掉这步时显示器 AC 超时熄屏，ddagrab 会报
+   `Failed to enumerate DXGI output 0`（两次废片的根因）。
+2. 门控探针：先 `Get-Process LockApp,LogonUI` 均无进程才继续（UNLOCKED），有即停；
+   再用 `ffmpeg -filter_complex ddagrab=output_idx=0:framerate=30 -t 1 -f null NUL`
+   确认 DXGI 能枚举，输出含 `Failed to enumerate` 即停。
+3. 起录（后台，34s 上限）：
+   `ffmpeg -y -filter_complex "ddagrab=output_idx=0:framerate=60:dup_frames=0:draw_mouse=0,hwdownload,format=bgra,scale=1920:1080,format=yuv420p" -t 34 -c:v libx264 -preset ultrafast -crf 18 -r 60 -fps_mode cfr <out>.mp4`
+   - 坑：`,draw_mouse=0` 若写成独立 filter 节点会被解析成不存在滤镜，ffmpeg 即死；
+     必须作为 `ddagrab=...` 的**选项**（冒号连接）而不是 `-vf` 里的逗号节点。
+   - 坑：`dup_frames=true`（默认）产生非单调 dts，mp4 muxer 直接报错；用
+     `dup_frames=0` 且加 `-r 60 -fps_mode cfr` 得到严格 60fps CFR。
+   - `-preset ultrafast` 稳；AMF（h264_amf）与 scale_d3d11 均实测不稳/报错，不用。
+4. 等 3 秒，进程创建拉起最大化窗口并预载两条命令（PowerShell，UTF-8 控制台防中文乱码）：
+   `powershell -NoExit -WindowStyle Maximized -Command "Set-Location <repo>; [Console]::OutputEncoding=[System.Text.Encoding]::UTF8; chcp 65001 | Out-Null; <wingman-agent.exe> script examples\lua_scripts\hello.lua; <wingman-agent.exe> script examples\lua_scripts\game_profile.lua"`
+   - 第二脚本用 `game_profile.lua`（零输入调用）**不用** `color_detect.lua`：后者内部
+     `wingman.input.click()` 是真实输入注入，与本配方「不点不敲」矛盾（recipe 原稿列
+     color_detect 系笔误，实测已替换）。两脚本均 grep 验证零 input 调用。
+   - 中文输出在 CP936 控制台会乱码，先 `chcp 65001` + `OutputEncoding=UTF8`。
+5. 等 25 秒（两条命令输出滚完）后杀掉自起的 ffmpeg（或 `-t 34` 自动到头）；
+   清理只杀 CommandLine 含 `wingman-tutorial` 的 powershell/wingman-agent 进程，
+   绝不碰用户自己的控制台（用 `Get-CimInstance ... | Where-Object { $_.CommandLine -match 'wingman-tutorial' }`）。
+6. 验收：`ffprobe` 时长 ≥25s、分辨率 1920×1080、`r_frame_rate=60/1`、帧数≈时长×60；
+   抽一帧（`-ss 10 -frames:v 1`）确认画面是终端窗口且中文渲染正常，非锁屏或空桌面。
+
+**机器选择**：须真实 GPU + 已解锁的交互会话。实测 imac（192.168.5.117，AMD RX 6900 XT，
+主屏物理 3840×2160 @200% DPI = 逻辑 1920×1080，console 会话 20 已解锁）可用；
+openclaw（Ctyun 云 PC，虚拟 GPU，竖屏 1440×2560，`ChangeDisplaySettings` 返回 0 但
+不生效）不可用。
 
 **不要**尝试点击窗口聚焦或模拟键盘输入——那属于 GUI 注入，需在机器上获得
 授权；上面的预载命令方式正是为免此授权。`wingman-agent.exe` 缺失是另一个

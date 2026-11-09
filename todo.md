@@ -5,7 +5,7 @@
 
 ## 未完成
 
-- [ ] 视频教程 EP01 机器侧素材预采（Windows 真机与解锁桌面会话已在位：openclaw 桌面 console=session 2 且未锁屏、imac 192.168.5.117、work-win11 10.240.0.5，2026-11-07 agent 实测 openclaw 可 SSH+截图取证；剩余前置=在 openclaw 装 ffmpeg/ffprobe 与 wingman-agent.exe（agent 可自行安装，非用户提供项），工具链装齐后由 agent 执行预采；原「待用户提供已解锁 Windows 真机」口径作废）
+- [x] 视频教程 EP01 机器侧素材预采（2026-11-09 imac 192.168.5.117 完成：装齐 ffmpeg 9.0.2 + ffprobe 与公开 nightly wingman-agent.exe（sha256 2beeca9f… 与官方资产一致，不 clone 不构建），agent 自跑脚本零注入预采成功——产物 D:\wingman-tutorial\capture\ep01-script-demo-take5.mp4：34.0s / 1920×1080 / 60fps CFR / 2040 帧，抽帧中文渲染正常非锁屏非空桌面，脚本=hello.lua+game_profile.lua（均 grep 验证零 input 调用）；实测修正版配方已同步 docs/zh/tutorials/video-storyboard.md（ddagrab+dup_frames=0+fps_mode cfr+UTF-8 控制台+ES_DISPLAY_REQUIRED 保活；color_detect.lua 因内含 input.click 真注入与零注入规则矛盾已替换为 game_profile.lua）；openclaw 因虚拟 GPU 竖屏 1440×2560 且 ChangeDisplaySettings 不生效判不可用，imac 为实际采集机）
 - [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期；2026-11-04 复核：仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺用户确认可用档期）
 - [x] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归（c301206：apps/gui/scripts/capture-config-gifs.mjs、docs/guide/config-effects.md、docs/zh/guide/config-effects.md；vitest 529/529、docs build 绿、采集重跑成功）
 
