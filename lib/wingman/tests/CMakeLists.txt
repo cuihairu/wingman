@@ -47,7 +47,11 @@ if(BUILD_CORE_TESTS)
         ipc_factory_test.cpp
         storage_test.cpp
         extra_modules_test.cpp
-        script_manager_test.cpp
+        script_manager_value_test.cpp
+        script_manager_query_test.cpp
+        script_manager_load_test.cpp
+        script_manager_config_test.cpp
+        script_manager_exec_test.cpp
         http_test.cpp
         update_test.cpp
         update_poller_test.cpp
