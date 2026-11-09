@@ -11,7 +11,6 @@ import {
   Form,
   Input,
   List,
-  Modal,
   Row,
   Space,
   Statistic,
@@ -19,12 +18,10 @@ import {
   Tabs,
   Tag,
   Typography,
-  Upload,
   message,
 } from 'antd';
 import {
   BellOutlined,
-  InboxOutlined,
   EditOutlined,
   HistoryOutlined,
   LockOutlined,
@@ -33,13 +30,11 @@ import {
   RocketOutlined,
   SafetyOutlined,
   SettingOutlined,
-  CopyOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { useIntl, useLocation, useNavigate } from '@umijs/max';
 import {
-  changeMyPassword,
   getMyGames,
   getMyPermissions,
   getMyProfile,
@@ -50,8 +45,10 @@ import {
 import { listAudit, AuditEvent } from '@/services/api/audit';
 import { listMessages, MessageItem } from '@/services/api/messages';
 import { listPermissions, type PermissionRecord } from '@/services/api/permissions';
-import { createFeedback } from '@/services/api/support';
-import { buildAvatarObjectKey, uploadAsset } from '@/services/api/storage';
+import PasswordChangeModal from './PasswordChangeModal';
+import AvatarEditModal from './AvatarEditModal';
+import PermissionApplyModal from './PermissionApplyModal';
+import type { PermissionApplyItem } from './shared';
 import './index.less';
 
 const { Title, Text } = Typography;
@@ -65,15 +62,6 @@ const TAB_KEYS = {
   SESSIONS: 'sessions',
   NOTIFICATIONS: 'notifications',
 } as const;
-
-type PermissionApplyItem = {
-  id: string;
-  name: string;
-  description?: string;
-  resource: string;
-  action: string;
-  category?: string;
-};
 
 type PermissionApplyTemplate = Omit<PermissionApplyItem, 'name' | 'description'> & {
   nameId: string;
@@ -148,29 +136,23 @@ export default function Profile() {
   const navigate = useNavigate();
   const formatMessage = (id: string) => intl.formatMessage({ id });
   const [form] = Form.useForm();
-  const [passwordForm] = Form.useForm();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [profileEditing, setProfileEditing] = useState(false);
-  const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
-  const [avatarUploading, setAvatarUploading] = useState(false);
   const [games, setGames] = useState<ProfileGame[]>([]);
   const [permissions, setPermissions] = useState<ProfilePermission[]>([]);
   const [permissionIds, setPermissionIds] = useState<string[]>([]);
   const [permissionCatalog, setPermissionCatalog] = useState<PermissionRecord[]>([]);
   const [permissionCatalogAvailable, setPermissionCatalogAvailable] = useState(true);
   const [applyPermissionModalVisible, setApplyPermissionModalVisible] = useState(false);
-  const [applySubmitting, setApplySubmitting] = useState(false);
   const [selectedApplyPermission, setSelectedApplyPermission] =
     useState<PermissionApplyItem | null>(null);
   const [activities, setActivities] = useState<AuditEvent[]>([]);
   const [loginRecords, setLoginRecords] = useState<AuditEvent[]>([]);
   const [notifications, setNotifications] = useState<MessageItem[]>([]);
   const [extrasLoading, setExtrasLoading] = useState(false);
-  const [applyForm] = Form.useForm();
-  const [avatarForm] = Form.useForm();
   const infoSectionRef = useRef<HTMLDivElement>(null);
   const initialTab = useMemo(
     () => new URLSearchParams(location.search).get('tab') || TAB_KEYS.PROFILE,
@@ -276,72 +258,6 @@ export default function Profile() {
       message.error(formatMessage('profile.update.error'));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handlePasswordFinish = async (values: any) => {
-    setPasswordLoading(true);
-    try {
-      await changeMyPassword({
-        current: values.current,
-        password: values.password,
-      });
-      message.success(formatMessage('profile.password.success'));
-      setPasswordModalVisible(false);
-      passwordForm.resetFields();
-    } catch (error) {
-      message.error(formatMessage('profile.password.error'));
-      throw error;
-    } finally {
-      setPasswordLoading(false);
-    }
-  };
-
-  const showPasswordModal = () => {
-    passwordForm.resetFields();
-    setPasswordModalVisible(true);
-  };
-
-  const persistAvatar = async (avatar: string, closeModal = true) => {
-    await updateMyProfile({ avatar });
-    message.success(formatMessage('profile.avatar.success'));
-    if (closeModal) {
-      setAvatarModalVisible(false);
-    }
-    await loadProfile();
-  };
-
-  const handleAvatarSubmit = async () => {
-    const values = await avatarForm.validateFields();
-    try {
-      await persistAvatar(values.avatar);
-    } catch (error) {
-      message.error(formatMessage('profile.update.error'));
-    }
-  };
-
-  const handleAvatarUpload = async (options: any) => {
-    const file = options?.file as File | undefined;
-    if (!file) {
-      options?.onError?.(new Error('missing file'));
-      return;
-    }
-
-    setAvatarUploading(true);
-    try {
-      const uploaded = await uploadAsset(file, { path: buildAvatarObjectKey(file) });
-      const avatarUrl = uploaded?.URL || '';
-      if (!avatarUrl) {
-        throw new Error('missing avatar url');
-      }
-      avatarForm.setFieldsValue({ avatar: avatarUrl });
-      await persistAvatar(avatarUrl);
-      options?.onSuccess?.(uploaded);
-    } catch (error) {
-      message.error(formatMessage('profile.update.error'));
-      options?.onError?.(error);
-    } finally {
-      setAvatarUploading(false);
     }
   };
 
@@ -463,56 +379,7 @@ export default function Profile() {
 
   const handleOpenApplyPermission = (item: PermissionApplyItem) => {
     setSelectedApplyPermission(item);
-    applyForm.resetFields();
     setApplyPermissionModalVisible(true);
-  };
-
-  const buildApplyPermissionContent = (reason: string) => {
-    if (!selectedApplyPermission) return '';
-    return [
-      `${formatMessage('profile.permissions.apply.content.applicant')}: ${
-        profile?.username || '-'
-      }`,
-      `${formatMessage('profile.permissions.apply.content.permission')}: ${
-        selectedApplyPermission.name
-      }`,
-      `${formatMessage('profile.permissions.apply.content.permission.key')}: ${
-        selectedApplyPermission.resource
-      }:${selectedApplyPermission.action}`,
-      `${formatMessage('profile.permissions.apply.content.permission.id')}: ${
-        selectedApplyPermission.id
-      }`,
-      `${formatMessage('profile.permissions.apply.content.reason')}: ${reason || '-'}`,
-    ].join('\n');
-  };
-
-  const handleCopyPermissionApplyContent = async () => {
-    const values = await applyForm.validateFields();
-    const content = buildApplyPermissionContent(values.reason);
-    await navigator.clipboard.writeText(content);
-    message.success(formatMessage('profile.permissions.apply.copy.success'));
-  };
-
-  const handleSubmitPermissionApply = async () => {
-    const values = await applyForm.validateFields();
-    const content = buildApplyPermissionContent(values.reason);
-    setApplySubmitting(true);
-    try {
-      await createFeedback({
-        category: 'permission_request',
-        content,
-        priority: 'normal',
-        source: 'profile_permission_apply',
-      });
-      message.success(formatMessage('profile.permissions.apply.submit.success'));
-      setApplyPermissionModalVisible(false);
-    } catch (error) {
-      // 部分环境可能未开放反馈写入，降级为复制文案+人工提交流程
-      await navigator.clipboard.writeText(content);
-      message.warning(formatMessage('profile.permissions.apply.submit.fallback'));
-    } finally {
-      setApplySubmitting(false);
-    }
   };
 
   const infoItems = [
@@ -799,196 +666,6 @@ export default function Profile() {
     </Card>
   );
 
-  const passwordModal = (
-    <Modal
-      open={passwordModalVisible}
-      forceRender
-      title={formatMessage('profile.password.modal.title')}
-      onCancel={() => {
-        setPasswordModalVisible(false);
-        passwordForm.resetFields();
-      }}
-      onOk={() => passwordForm.submit()}
-      okText={formatMessage('profile.password.modal.submit')}
-      confirmLoading={passwordLoading}
-    >
-      <Alert
-        message={formatMessage('profile.password.modal.warning')}
-        type="warning"
-        showIcon
-        style={{ marginBottom: 16 }}
-      />
-      <Form layout="vertical" form={passwordForm} onFinish={handlePasswordFinish}>
-        <Form.Item
-          name="current"
-          label={formatMessage('profile.password.current')}
-          rules={[{ required: true }]}
-        >
-          <Input.Password placeholder={formatMessage('profile.password.current.placeholder')} />
-        </Form.Item>
-        <Form.Item
-          name="password"
-          label={formatMessage('profile.password.new')}
-          rules={[
-            { required: true },
-            { min: 6, message: formatMessage('profile.password.min.length') },
-          ]}
-        >
-          <Input.Password placeholder={formatMessage('profile.password.new.placeholder')} />
-        </Form.Item>
-        <Form.Item
-          name="confirm"
-          label={formatMessage('profile.password.confirm')}
-          rules={[
-            { required: true },
-            ({ getFieldValue }) => ({
-              validator(_, value) {
-                if (!value || getFieldValue('password') === value) {
-                  return Promise.resolve();
-                }
-                return Promise.reject(new Error(formatMessage('profile.password.mismatch')));
-              },
-            }),
-          ]}
-        >
-          <Input.Password placeholder={formatMessage('profile.password.confirm.placeholder')} />
-        </Form.Item>
-      </Form>
-    </Modal>
-  );
-
-  const avatarModal = (
-    <Modal
-      open={avatarModalVisible}
-      forceRender
-      title={formatMessage('profile.avatar.modal.title')}
-      onCancel={() => setAvatarModalVisible(false)}
-      onOk={() => handleAvatarSubmit().catch(() => {})}
-      okText={formatMessage('profile.avatar.modal.submit')}
-      confirmLoading={avatarUploading}
-    >
-      <Form form={avatarForm} layout="vertical" initialValues={{ avatar: profile?.avatar }}>
-        <Form.Item noStyle dependencies={['avatar']}>
-          {({ getFieldValue }) => {
-            const avatarValue = getFieldValue('avatar') || profile?.avatar;
-            return (
-              <div className="avatar-upload-preview">
-                <Avatar
-                  size={72}
-                  src={avatarValue}
-                  icon={!avatarValue ? <UserOutlined /> : undefined}
-                />
-                <div>
-                  <div className="avatar-upload-preview__title">
-                    {formatMessage('profile.avatar.modal.title')}
-                  </div>
-                  <div className="avatar-upload-preview__hint">
-                    {formatMessage('profile.avatar.modal.previewHint')}
-                  </div>
-                </div>
-              </div>
-            );
-          }}
-        </Form.Item>
-        <Form.Item label={formatMessage('profile.avatar.modal.uploadLabel')}>
-          <Upload.Dragger
-            accept="image/*"
-            maxCount={1}
-            showUploadList={false}
-            customRequest={handleAvatarUpload}
-            disabled={avatarUploading}
-          >
-            <p className="ant-upload-drag-icon">
-              <InboxOutlined />
-            </p>
-            <p className="ant-upload-text">{formatMessage('profile.avatar.modal.dragText')}</p>
-            <p className="ant-upload-hint">{formatMessage('profile.avatar.modal.uploadHint')}</p>
-          </Upload.Dragger>
-        </Form.Item>
-        <Form.Item
-          name="avatar"
-          label={formatMessage('profile.avatar.modal.label')}
-          rules={[
-            { required: true, message: formatMessage('profile.avatar.modal.required') },
-            {
-              validator(_, value) {
-                if (!value) {
-                  return Promise.reject(new Error(formatMessage('profile.avatar.modal.required')));
-                }
-                try {
-                  new URL(value);
-                  return Promise.resolve();
-                } catch (error) {
-                  return Promise.reject(new Error(formatMessage('profile.avatar.modal.invalid')));
-                }
-              },
-            },
-          ]}
-        >
-          <Input placeholder={formatMessage('profile.avatar.modal.placeholder')} />
-        </Form.Item>
-      </Form>
-    </Modal>
-  );
-
-  const permissionApplyModal = (
-    <Modal
-      open={applyPermissionModalVisible}
-      forceRender
-      title={formatMessage('profile.permissions.apply.modal.title')}
-      onCancel={() => {
-        setApplyPermissionModalVisible(false);
-        applyForm.resetFields();
-      }}
-      onOk={() => handleSubmitPermissionApply().catch(() => {})}
-      okText={formatMessage('profile.permissions.apply.modal.submit')}
-      confirmLoading={applySubmitting}
-    >
-      <Space direction="vertical" style={{ width: '100%' }} size={12}>
-        {selectedApplyPermission && (
-          <Alert
-            showIcon
-            type="info"
-            message={selectedApplyPermission.name}
-            description={`${selectedApplyPermission.resource}:${selectedApplyPermission.action}`}
-          />
-        )}
-        <Form form={applyForm} layout="vertical">
-          <Form.Item
-            name="reason"
-            label={formatMessage('profile.permissions.apply.reason')}
-            rules={[
-              {
-                required: true,
-                message: formatMessage('profile.permissions.apply.reason.required'),
-              },
-            ]}
-          >
-            <Input.TextArea
-              rows={4}
-              placeholder={formatMessage('profile.permissions.apply.reason.placeholder')}
-            />
-          </Form.Item>
-        </Form>
-        <Space>
-          <Button
-            icon={<CopyOutlined />}
-            onClick={() => handleCopyPermissionApplyContent().catch(() => {})}
-          >
-            {formatMessage('profile.permissions.apply.copy')}
-          </Button>
-          <Button
-            onClick={() => {
-              navigate('/support/feedback');
-            }}
-          >
-            {formatMessage('profile.permissions.apply.goto.feedback')}
-          </Button>
-        </Space>
-      </Space>
-    </Modal>
-  );
-
   if (!profile) {
     return (
       <>
@@ -1000,7 +677,10 @@ export default function Profile() {
             </Space>
           </Card>
         </PageContainer>
-        {passwordModal}
+        <PasswordChangeModal
+          open={passwordModalVisible}
+          onClose={() => setPasswordModalVisible(false)}
+        />
       </>
     );
   }
@@ -1076,7 +756,6 @@ export default function Profile() {
                       </Button>
                       <Button
                         onClick={() => {
-                          avatarForm.setFieldsValue({ avatar: profile?.avatar || '' });
                           setAvatarModalVisible(true);
                         }}
                       >
@@ -1246,7 +925,7 @@ export default function Profile() {
                                 </Text>
                               </div>
                             </Space>
-                            <Button type="primary" onClick={showPasswordModal}>
+                            <Button type="primary" onClick={() => setPasswordModalVisible(true)}>
                               {formatMessage('profile.password.change.btn')}
                             </Button>
                           </div>
@@ -1374,9 +1053,22 @@ export default function Profile() {
           />
         </Space>
       </PageContainer>
-      {passwordModal}
-      {avatarModal}
-      {permissionApplyModal}
+      <PasswordChangeModal
+        open={passwordModalVisible}
+        onClose={() => setPasswordModalVisible(false)}
+      />
+      <AvatarEditModal
+        open={avatarModalVisible}
+        avatar={profile?.avatar}
+        onClose={() => setAvatarModalVisible(false)}
+        onSaved={loadProfile}
+      />
+      <PermissionApplyModal
+        open={applyPermissionModalVisible}
+        target={selectedApplyPermission}
+        username={profile?.username}
+        onClose={() => setApplyPermissionModalVisible(false)}
+      />
     </>
   );
 }
