@@ -1,6 +1,6 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-11-10
+> 最后更新: 2026-11-11
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
@@ -202,3 +202,10 @@
 ## 审核发现（33ec1f83..HEAD，只审不改，2026-11-10）
 
 - [x] 审核发现：todo.md 头部「最后更新: 2026-11-09」落后于正文内容日期——LAY-001～LAY-019 勾选及 EP01 机器侧素材预采记录均在 2026-11-09 18:13 至 2026-11-10 06:01 之间追加/勾选，头部元数据日期未随本轮追加内容同步更新（todo.md:3）。—— 属实并已修复：将头部更新为「最后更新: 2026-11-10」与正文 2026-11-10 勾选记录对齐（todo.md:3）；验证：git diff todo.md 仅头部日期与勾选状态变化，无代码改动（2026-11-10）。
+
+- [ ] 审核发现：本轮 diff 未见问题（15e6dc8c..HEAD）
+
+## Go 覆盖率基线推进（2026-11-11，目标 98%）
+
+- [x] orchestrator/server 总覆盖率 91.6% → 95.5%（+3.9pp，7356 语句；go test ./... -count=1 全绿 16 包，go vet 0 错）。补测三个最低包（不改生产代码）：internal/vault 39.3%→90.8%（LocalProvider 主口令状态机 setup/unlock/change/lock 全哨兵错误、换口令后凭据可解、Upsert 秘密留空保留旧值、Delete 归属校验、Export 无明文契约、Lookup 端口回退+库改密文 ErrDecrypt，d17cff2）；internal/models 73.4%→100%（ToView 时间格式化与 Result/Artifacts JSON 展开/降级，b4158e9）；internal/agent 89.4%→98.8%（guac_relay 回环端到端含 base64 载荷与拆链语义、send 失败/非 EOF 读错误/整条中继拆、handleProxyData/Close/Error 路由分支、SendNotify 导出口写失败语义、ListTeams 排序视图，a7200c3）。
+- [ ] 覆盖率冲 98% 不可达，如实记录上限与原因：剩余 333 条未盖语句（95.5%），其中 handlers HTTP 错误分支长尾 ~139 条散布 10 个文件（guacamole/vault/update/asset/routes 等）、assets/store 19 条、vault DB 失败分支 18 条（内存 sqlite 天然不炸，需故障注入机制）、security 防御分支 10 条、杂项 ~30 条。到 98% 需覆盖 ≥186 条 ≈ 几乎清空全部 handler 错误分支 + 引入故障注入——超出「补 2-3 个包、不写凑数测试」的巡检范围；不硬凑。后续若继续推进，建议按 handlers 错误分支逐文件补 HTTP 层用例（每文件 10-30 条语句），预计可磨到 ~96.5%。
