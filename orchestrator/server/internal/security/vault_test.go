@@ -2,6 +2,7 @@ package security
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"testing"
 )
@@ -84,8 +85,18 @@ func TestVaultUnwrapWrongPassword(t *testing.T) {
 	if _, err := VaultUnwrapKey(wrongKek, wrapped); !errors.Is(err, ErrVaultWrongPassword) {
 		t.Fatalf("wrong password must map to ErrVaultWrongPassword, got %v", err)
 	}
-	// 篡改密文同样折叠为同一错误（AEAD 防篡改）
-	tampered := wrapped[:len(wrapped)-2] + "ff"
+	// 篡改密文同样折叠为同一错误（AEAD 防篡改）。
+	// 翻转最后一字节而不是固定替换为 "ff"：若原末尾恰为 0xff，等值替换
+	// 会成为 no-op，GCM 认证通过导致约 1/256 偶发失败（macOS CI 已踩）。
+	raw, err := hex.DecodeString(wrapped)
+	if err != nil {
+		t.Fatalf("wrapped key must be valid hex, got %v", err)
+	}
+	raw[len(raw)-1] ^= 0xff
+	tampered := hex.EncodeToString(raw)
+	if tampered == wrapped {
+		t.Fatalf("tamper must change the ciphertext")
+	}
 	if _, err := VaultUnwrapKey(kek, tampered); !errors.Is(err, ErrVaultWrongPassword) {
 		t.Fatalf("tampered wrapped key must fail auth, got %v", err)
 	}
