@@ -1,6 +1,6 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-11-09
+> 最后更新: 2026-11-10
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
@@ -198,3 +198,7 @@
 - 分类不一致：`apps/android/cpp/agent/base64.hpp` 内联复制 base64 实现，而通用编解码在 `lib/wingman/src/crypt.cpp`；Android 约束成立但应建立共享轻量 codec 而非 agent 内副本（`apps/android/cpp/agent/base64.hpp:12`）。
 - 分类不一致：`orchestrator/server/internal/handlers/tagstore.go` 和 `capstore.go` 是注册表持久化适配器，却放在 HTTP handlers 包；registry 依赖会反向经过 API 包（`orchestrator/server/internal/agent/registry.go:90`）。
 - 分类不一致：`docs/zh/guide/architecture.md` 是完整架构文档，而 `docs/guide/architecture.md` 只有英文占位大纲；同一路径两侧深度不一致（`docs/guide/architecture.md:3`）。
+
+## 审核发现（33ec1f83..HEAD，只审不改，2026-11-10）
+
+- [x] 审核发现：todo.md 头部「最后更新: 2026-11-09」落后于正文内容日期——LAY-001～LAY-019 勾选及 EP01 机器侧素材预采记录均在 2026-11-09 18:13 至 2026-11-10 06:01 之间追加/勾选，头部元数据日期未随本轮追加内容同步更新（todo.md:3）。—— 属实并已修复：将头部更新为「最后更新: 2026-11-10」与正文 2026-11-10 勾选记录对齐（todo.md:3）；验证：git diff todo.md 仅头部日期与勾选状态变化，无代码改动（2026-11-10）。
