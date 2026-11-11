@@ -3,7 +3,12 @@ FROM golang:1.26-alpine AS builder
 WORKDIR /build
 
 # Install build dependencies (gcc + musl-dev required for CGO / go-sqlite3)
-RUN apk add --no-cache git ca-certificates gcc musl-dev
+# 自建 runner 到外部源的 TLS 抖断会让 apk 部分包失败（2026-11-11 部署连败），
+# 重试 3 次 + apk info 校验兜底，照 screenshot Dockerfile 同法
+RUN for i in 1 2 3; do \
+      apk add --no-cache git ca-certificates gcc musl-dev && break; \
+      [ "$i" -lt 3 ] && sleep 10; \
+    done && apk info -e git ca-certificates gcc musl-dev
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -18,7 +23,10 @@ RUN CGO_ENABLED=1 GOOS=linux go build -o wingman-server .
 # Runtime stage
 FROM alpine:latest
 
-RUN apk add --no-cache ca-certificates tzdata sqlite-libs
+RUN for i in 1 2 3; do \
+      apk add --no-cache ca-certificates tzdata sqlite-libs && break; \
+      [ "$i" -lt 3 ] && sleep 10; \
+    done && apk info -e ca-certificates tzdata sqlite-libs
 
 # 非 root 运行账号（uid/gid 10001）。数据卷 wingman-data / wingman-scripts 由
 # 部署腿迁移属主到该 uid（named volume 首次挂载会继承镜像目录属主，仅对

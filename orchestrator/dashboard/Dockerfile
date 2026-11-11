@@ -10,7 +10,15 @@ ARG NPM_REGISTRY=
 RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi
 
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable && corepack prepare pnpm@9 --activate && pnpm install --no-frozen-lockfile --ignore-scripts
+# corepack 对 registry.npmjs.org 偶发连不上（2026-11-11 部署连败），重试兜底
+RUN corepack enable && for i in 1 2 3; do \
+      corepack prepare pnpm@9 --activate && break; \
+      [ "$i" -lt 3 ] && sleep 10; \
+    done && pnpm --version
+RUN for i in 1 2 3; do \
+      pnpm install --no-frozen-lockfile --ignore-scripts && break; \
+      [ "$i" -lt 3 ] && sleep 10; \
+    done
 
 COPY . .
 RUN pnpm run postinstall
