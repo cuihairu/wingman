@@ -110,6 +110,13 @@ if(BUILD_CORE_TESTS)
     # Windows=复制 ping.exe 唯一名 -n 自退）
     target_sources(core_tests PRIVATE system_watcher_test.cpp)
 
+    # hotkey/systemwatch 脚本桥接缺口补测跨平台编译（2026-11-12 覆盖率短板
+    # 推进）：参数校验/门控/簿记全平台一致，回调体触发平台分支收文件内
+    # （进程腿跨平台、X11 腿 #ifdef __linux__ + 无 X 运行时 skip）——同
+    # system_watcher_test.cpp 先例，Windows CI（codecov 唯一数据源）需编入
+    target_sources(core_tests PRIVATE hotkey_module_test.cpp)
+    target_sources(core_tests PRIVATE systemwatch_module_test.cpp)
+
     if(NOT WIN32)
         # filewatcher 脚本桥接接真（真实 inotify 目录驱动 changed 回调/事件面/
         #   路径簿记；inotify 后端线程 + POSIX 原语；文件内 #ifdef __linux__ 双保险）

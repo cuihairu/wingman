@@ -1,6 +1,6 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-11-11
+> 最后更新: 2026-11-12
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
@@ -209,3 +209,16 @@
 
 - [x] orchestrator/server 总覆盖率 91.6% → 95.5%（+3.9pp，7356 语句；go test ./... -count=1 全绿 16 包，go vet 0 错）。补测三个最低包（不改生产代码）：internal/vault 39.3%→90.8%（LocalProvider 主口令状态机 setup/unlock/change/lock 全哨兵错误、换口令后凭据可解、Upsert 秘密留空保留旧值、Delete 归属校验、Export 无明文契约、Lookup 端口回退+库改密文 ErrDecrypt，d17cff2）；internal/models 73.4%→100%（ToView 时间格式化与 Result/Artifacts JSON 展开/降级，b4158e9）；internal/agent 89.4%→98.8%（guac_relay 回环端到端含 base64 载荷与拆链语义、send 失败/非 EOF 读错误/整条中继拆、handleProxyData/Close/Error 路由分支、SendNotify 导出口写失败语义、ListTeams 排序视图，a7200c3）。
 - [ ] 覆盖率冲 98% 不可达，如实记录上限与原因：剩余 333 条未盖语句（95.5%），其中 handlers HTTP 错误分支长尾 ~139 条散布 10 个文件（guacamole/vault/update/asset/routes 等）、assets/store 19 条、vault DB 失败分支 18 条（内存 sqlite 天然不炸，需故障注入机制）、security 防御分支 10 条、杂项 ~30 条。到 98% 需覆盖 ≥186 条 ≈ 几乎清空全部 handler 错误分支 + 引入故障注入——超出「补 2-3 个包、不写凑数测试」的巡检范围；不硬凑。后续若继续推进，建议按 handlers 错误分支逐文件补 HTTP 层用例（每文件 10-30 条语句），预计可磨到 ~96.5%。
+
+## C++ 覆盖率基线推进（2026-11-12，目标 ≥96%）
+
+- [x] lib/wingman 总覆盖率 92.0% → 92.1%（14672/15933 行；Xvfb :99 下 core_tests 全量 2311 过 0 败 33 skip，build-cov 树 gcovr 8.6 口径）。巡检单点名短板逐文件补测（不改生产代码，Windows CI 是 codecov 唯一数据源 → 新测试文件全部无条件编译、平台差异收进文件内 `#ifdef`）：
+  - script/modules/hotkey_module.cpp 24%→**96%**：新 lib/wingman/tests/hotkey_module_test.cpp（6 例——模块在位、register 参数校验矩阵（空参/非 string combo/非 callable）、非线程安全 callable 拒绝 + hotkey.error 事件、非法/合法 combo 注册注销簿记与 unregister 参数校验、XTEST 合成 Ctrl+Alt+F9/F10 真触发正常回调与 std::exception/… 两条 catch（Linux 腿））。
+  - script/modules/systemwatch_module.cpp 37%→**93%**：新 lib/wingman/tests/systemwatch_module_test.cpp（5 例——processWatch/windowWatch 参数校验矩阵 + systemwatch.error、watchCount 全分支（缺省/process/window/bogus）、clearAll、进程腿受控子进程真触发 started/exited payload 构建 + EventHub 广播 + 两条 catch（priming 纪律：逐轮起探针证明 worker 已 primed 再断言事件）、窗口腿 TestX11Window 直写 _NET_CLIENT_LIST 驱动 opened/changed/closed 两轮 + 进程 canary 证 primed（Linux 腿，无 X skip））。
+  - recorder.cpp 85%→**94%**：recorder_test.cpp 补 PlaybackDispatchesAllEventTypesOffline（recordEvent 离线注入七事件类型驱动 playback 分派 Click/Scroll/Key/Type 腿 + Type delay 睡眠；断言 saveToJSON 整型类型编码 + loadFromJSON 七条往返）。
+  - 附带 system_watcher.cpp 82%→92%（systemwatch 模块测试的受控子进程/窗口腿捎带覆盖）。
+- [x] 巡检单点名平台头文件口径核实（勿误判）：iscreen.hpp 0%、ifilewatcher.hpp 50% 是 codecov（Windows）视图缺失——本地 gcovr 实测 iscreen.hpp 50%（唯一未盖行 = `virtual ~IScreen() = default;` 纯虚接口析构、ifilewatcher.hpp 66%（唯一未盖行同理 `= default` 析构）、platform_types.hpp 100%。纯虚接口类无逻辑可测，无需 ignore。
+- [x] 修复自查引入的测试顺序毒化：hotkey_module_test 曾在用例尾调 `defaultSharedInput()->shutdown()`——shared input 是进程级单例，关掉后依赖其已初始化态的后续用例（MacroRecorderOffline.PlaybackInjectsThroughXTest）静默空转注入失败（全量跑必挂、单独跑必过）。已改为不关；顺带定位法值得记：全量 vs 单跑 diff + 逐套件二分。
+- [ ] 剩余缺口如实记录（不硬凑）：clipboard.cpp 58% 的缺口全部是 NullClipboard（TU-private 空实现，仅在平台工厂返回空时装配，X11 工厂永不下空 → 本地不可达）；crypt.cpp 75% 缺 79 行（Base64/HMAC 大量错误分支矩阵，属历史基线非本轮点名短板）；其余 <95% 文件（ui_automation.cpp 80%、hotkey.cpp 83%、update.cpp 86% 等）为平台/网络错误路径长尾。本轮 92.1% 是本地 Linux 口径的天花板；codecov（Windows 视图）预计显著更高（script/modules 点名三件均已 87%+，本地 96%/93%/87%）。
+
+
