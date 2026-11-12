@@ -245,6 +245,7 @@ if points:
 - [构建指南](BUILD.md) - 详细的构建、测试和故障排除说明
 - [平台支持](docs/zh/platforms.md) - 各平台状态、API 适用性与环境差异
 - [API 参考](docs/zh/api/overview.md) - 完整的 API 文档
+- [MCP 服务器](docs/mcp.md) - 通过 stdio MCP 向 AI 客户端暴露 wingman UI 自动化能力
 - [架构设计](docs/zh/architecture.md) - 系统架构和设计决策
 - [开发指南](docs/zh/DEVELOPMENT.md) - 贡献和开发指南
 - [VS Code 开发环境](docs/zh/development-environment.md) - Lua/Python 补全、任务和调试配置

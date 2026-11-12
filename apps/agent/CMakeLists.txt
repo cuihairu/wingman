@@ -32,6 +32,7 @@ set(AGENT_SOURCES
     src/commands/script_command.cpp
     src/commands/build_command.cpp
     src/commands/crash_test_command.cpp
+    src/commands/mcp_command.cpp
     # RPC handlers
     src/rpc/handlers/script_handler.cpp
     src/rpc/handlers/system_handler.cpp

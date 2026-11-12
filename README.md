@@ -249,6 +249,7 @@ if points:
 - [Build Guide](BUILD.md) - detailed build, test and troubleshooting instructions
 - [Platform Support](docs/platforms.md) - platform status, API applicability and environment differences
 - [API Reference](docs/api/overview.md) - full API documentation
+- [MCP Server](docs/mcp.md) - expose wingman UI automation to AI clients via stdio MCP
 - [Architecture](docs/architecture.md) - system architecture and design decisions
 - [Development Guide](docs/DEVELOPMENT.md) - contribution and development guide
 - [VS Code Dev Environment](docs/development-environment.md) - Lua/Python completion, tasks and debug configuration

@@ -117,6 +117,11 @@ if(BUILD_CORE_TESTS)
     target_sources(core_tests PRIVATE hotkey_module_test.cpp)
     target_sources(core_tests PRIVATE systemwatch_module_test.cpp)
 
+    # MCP stdio server（mcp 子命令的协议层 + 7 tool 工具面）：协议矩阵/帧环回/
+    #   注入 mock 的工具面全平台一致；script 腿 registerLuaEngine（wingman
+    #   PUBLIC 定义 WINGMAN_HAS_LUA 传导）；UIA 生产门面腿收文件内 #ifndef _WIN32
+    target_sources(core_tests PRIVATE mcp_server_test.cpp)
+
     if(NOT WIN32)
         # filewatcher 脚本桥接接真（真实 inotify 目录驱动 changed 回调/事件面/
         #   路径簿记；inotify 后端线程 + POSIX 原语；文件内 #ifdef __linux__ 双保险）

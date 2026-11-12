@@ -4,6 +4,7 @@
 #include "wingman/runtime/commands/script_command.hpp"
 #include "wingman/runtime/commands/build_command.hpp"
 #include "wingman/runtime/commands/crash_test_command.hpp"
+#include "wingman/runtime/commands/mcp_command.hpp"
 #include "wingman/version.hpp"
 
 #include <cstdlib>  // std::getenv（WINGMAN_PACK_PASSWORD）
@@ -25,6 +26,9 @@ void printUsage() {
         << "  status\n"
         << "  script  <script-path> [args...]\n"
         << "  crash-test\n"
+        << "  mcp\n"
+        << "          Run the MCP server over stdio (newline-delimited JSON-RPC 2.0) for\n"
+        << "          AI clients; all logging goes to stderr.\n"
         << "  version\n"
         << "  build   --script|-s <path> --output|-o <path> [--icon|-i <path>]\n"
         << "          [--encrypt [--password <p>] | --no-encrypt] [--no-compress]\n"
@@ -163,6 +167,9 @@ int dispatchCommand(const std::vector<std::string>& args) {
     }
     if (command == "build") {
         return runBuild(tail);
+    }
+    if (command == "mcp") {
+        return commands::mcpCommand(tail);
     }
     if (command == "--help" || command == "-h" || command == "help") {
         printUsage();

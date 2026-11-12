@@ -100,10 +100,20 @@ int runGuiMode() {
 } // namespace
 
 int main(int argc, char** argv) {
-    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_st>();
-    spdlog::default_logger()->sinks().push_back(consoleSink);
+    // mcp 模式：stdout 承载 newline-delimited JSON-RPC 帧，任何日志写 stdout 都会
+    // 破坏协议流——默认 logger 全部 sink 清空改挂 stderr（_mt：脚本超时路径会
+    // detach 工作线程，后台线程仍可能打日志）。其余命令维持 stdout 控制台日志。
+    const bool mcpMode = argc > 1 && std::string(argv[1]) == "mcp";
+    auto& sinks = spdlog::default_logger()->sinks();
+    if (mcpMode) {
+        sinks.clear();
+        sinks.push_back(std::make_shared<spdlog::sinks::stderr_color_sink_mt>());
+    } else {
+        sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_st>());
+    }
     // 将运行时日志转发到本地 IPC 事件缓冲，供 GUI 实时日志面板轮询拉取
-    spdlog::default_logger()->sinks().push_back(wingman::runtime::createEventLogSink());
+    // （回调 sink，不落 stdout/stderr，mcp 模式下保留）
+    sinks.push_back(wingman::runtime::createEventLogSink());
     spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
 

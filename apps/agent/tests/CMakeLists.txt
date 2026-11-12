@@ -7,6 +7,8 @@ add_executable(agent_tests
     agent_loopback_test.cpp
     agent_lifecycle_test.cpp
     cli_test.cpp
+    # mcp 端到端（in-process 腿跨平台无条件；POSIX 真子进程腿验 stdout 纯净）
+    mcp_e2e_test.cpp
     resource_pack_test.cpp
     # ResourceLoader 实例接口补测（构造探测/错误回调/资源信息/loadScript
     # 无嵌入早退；PE 读取腿为 Windows 产物路径，Linux 结构性不可达）
@@ -48,6 +50,8 @@ add_executable(agent_tests
     ../src/commands/script_command.cpp
     ../src/commands/stop_command.cpp
     ../src/commands/crash_test_command.cpp
+    # mcp 命令（cli.cpp 的 mcp 分支引用；缺了 agent_tests 链接即 undefined reference）
+    ../src/commands/mcp_command.cpp
     ../src/resource_loader.cpp
 )
 

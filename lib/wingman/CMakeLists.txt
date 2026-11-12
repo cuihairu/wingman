@@ -277,6 +277,14 @@ elseif(UNIX AND NOT APPLE)
     pkg_check_modules(XTST REQUIRED xtst)
 endif()
 
+# ========== MCP stdio server（跨平台，无条件编译）==========
+# wingman-agent mcp 子命令的协议层与 7 个 tool（平台差异在 mcp_tools 内部
+# 分支：screen_shot 走上面的 vision 编译门，UIA 生产路径运行时降级）。
+list(APPEND WINGMAN_SOURCES
+    src/mcp/mcp_server.cpp
+    src/mcp/mcp_tools.cpp
+)
+
 # ========== Create Library ==========
 find_package(Threads REQUIRED)
 add_library(wingman STATIC ${WINGMAN_SOURCES})
