@@ -1,6 +1,6 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-11-12
+> 最后更新: 2026-11-13
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
@@ -10,6 +10,10 @@
 - [x] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归（c301206：apps/gui/scripts/capture-config-gifs.mjs、docs/guide/config-effects.md、docs/zh/guide/config-effects.md；vitest 529/529、docs build 绿、采集重跑成功）
 
 ## 已完成
+
+### MCP stdio server（2026-11-13）
+
+- [x] wingman-agent 新增 `mcp` 子命令：MCP（Model Context Protocol）stdio 传输，newline-delimited JSON-RPC 2.0（不用 Content-Length 帧），AI 客户端（Claude Code/Cursor/Hermes）本地拉起直调 wingman UI 自动化能力（351839f）。协议层 + 7 tool 在 `lib/wingman/src/mcp/`（mcp_server.cpp 协议分发：版本协商回显受支持版本否则回退 2025-11-25/capabilities.tools 显式空对象——裸 `{}` 序列化成 null 会被客户端读成未声明能力，冒烟实测抓过；mcp_tools.cpp：uia_tree/uia_find/uia_click/uia_action/screen_shot/input_click/script_run，ToolContext 三指针注入缝缺省走生产单例），apps/agent 只接线（commands/mcp_command.cpp + cli.cpp 分支 + main.cpp mcp 模式 sinks().clear() 后挂 stderr_color_sink_mt——stdout 只准 JSON-RPC 帧逐行 flush，日志全走 stderr）。失败语义：tool 内失败 = result.isError（协议层 crash catch 兜 "tool crashed" 不炸进程），未知 tool = -32602，缺依赖明确降级——Linux 无 UIA 后端报 not supported 不假装成功、uia_click 失败绝不静默转坐标点击、screen_shot 无 OpenCV 构建 tool 级 isError（vision 构建返回 MCP image content block + text 元数据）、script_run 沙箱 + 复用 ScriptManager 协作超时（运行时 getAvailableLanguages 探测 lua——WINGMAN_HAS_LUA 宏 lib 编译期不可见）。测试：core_tests mcp_server_test.cpp 41 例（协议矩阵/帧环回 CRLF+空行零输出+-32700 id:null/工具面注入 MockInput+手写 MockUIAManager/role 名全枚举往返/crash 注入经 McpServer ToolContext 构造缝/script 腿真 Lua 引擎含超时腿）；agent_tests mcp_e2e_test.cpp 3 例（in-process 环回跨平台 + POSIX fork/execvp 真子进程腿断言 stdout 逐行合法 JSON——日志漏进 stdout 即炸 + mcp 拒收参数 exit1/stdout 空/stderr 报错）。验证：core_tests 全量 2385 例 2346 过 33 skip（与基线 2344 差值=新增 41 全过；6 败全为 X11PlatformTest 环境既存——单进程隔离跑仍败、用例进程内 mcp 代码零参与无副作用、:99 上 Openbox 状态被并行会话驱动过，非本轮回归）+ agent_tests 237/237 + 平台边界守卫过 + 手动冒烟（initialize/tools_list/uia isError/input_click isError 三帧 stdout 纯 JSON）+ docs/mcp.md（client 配置/FAQ）+ README 双语入口行。覆盖率口径注记：gcovr 工具口径漂移（pipx venv/gcov 行归属变化）在无 mcp 代码上实测 90.27%（18020 行）vs 基线轮记录 92.1%（15933 行），差 1.8pp/行数 +2087 非本轮代码所致；同口径下 mcp 生产三文件 90.3%（401/444 行）与存量 90.3% 持平未拉低，分项 mcp_command 100%/mcp_server 96%/mcp_tools 87%（未盖大头为 gcov 对 roleFromString map 表/roleToString 全枚举 switch 兜底的行归属瑕疵与结构性不可达分支）。
 
 ### 架构决策与 Execution
 
