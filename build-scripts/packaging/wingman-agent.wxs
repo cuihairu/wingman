@@ -20,10 +20,12 @@
              Description="Wingman Agent runtime (nightly build)"
              Comments="Wingman agent - anonymous nightly build"/>
 
-    <!-- nightly 滚动覆盖安装：Version 固定为 agent 版本，每日重装即同版本升级，
-         需 AllowSameVersionUpgrades（与 AllowDowngrades 互斥，二选一）。
+    <!-- nightly 滚动覆盖安装：ProductVersion 跟随 agent 版本（每日重建间不变），
+         每日重装即同版本升级。AllowDowngrades 直接跳过版本比较检查，同版本与
+         降级均放行、不弹阻止；选它而非 AllowSameVersionUpgrades 是因为后者强制
+         配 DowngradeErrorMessage（candle CNDL0010），而这里没有"降级"语义要说。
          agent 版本真升级（0.1.2→0.1.3）走默认升级路径，同样放行。 -->
-    <MajorUpgrade AllowSameVersionUpgrades="yes"/>
+    <MajorUpgrade AllowDowngrades="yes"/>
 
     <MediaTemplate EmbedCab="yes"/>
 
