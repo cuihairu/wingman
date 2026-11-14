@@ -312,9 +312,15 @@ jobs:
           $msi = "wingman-agent-$version-windows-$env:ARCH.msi"
           Move-Item wingman-agent.msi $msi
 
-          # 结构冒烟：dark 能反编译即 MSI 结构有效（不安装）
+          # 结构冒烟：dark 能反编译即 MSI 结构有效（不安装）。
+          # dark 把反编译产物（<msi 基名>.wxs + .wixloc + .wixpdb + File\）写进
+          # **当前目录**，必须在子目录里跑，否则 .wxs 会匹配 Upload artifacts 的
+          # path glob 被当成资产上传到 release。
+          Push-Location (New-Item -ItemType Directory -Force -Path 'msi-smoke').FullName
           & $dark -x msi-extract $msi
+          if ($LASTEXITCODE -ne 0) { throw "dark failed with exit code $LASTEXITCODE" }
           Get-ChildItem msi-extract | Select-Object -First 8 | ForEach-Object { $_.Name }
+          Pop-Location
           Get-Item $msi
 
       - name: Upload artifacts
