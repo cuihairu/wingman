@@ -9,6 +9,7 @@
 - [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期；2026-11-04 复核：仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺用户确认可用档期）
 - [x] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归（c301206：apps/gui/scripts/capture-config-gifs.mjs、docs/guide/config-effects.md、docs/zh/guide/config-effects.md；vitest 529/529、docs build 绿、采集重跑成功）
 - [ ] 文档站语言自动切换脚本挂错页（P2，G2 审计 2026-11-14）：`docs/zh/index.md:47-64` 的 `<script setup>` 有 navigator.language 探测，但编译进 `/zh/` 页且 guard 只放行 `/wingman/` 根路径，主用例「中文浏览器首访 `/`」加载不到该脚本——实现挂而不生效；另 `EN_PATH=/wingman/index.en.html` 在 Pages 站点下不存在，2026-10-18 注释「本页（/wingman/ 根）内容是中文」的前提已随 root=en 布局翻转失效。修法=脚本移到 root 页（`docs/index.md`）并改跳板目标（`/zh/` 已存在）。是否动手、是否随其它仓统一推广待拍板；取证见 docs/zh/审计-文档一致性.md「2026-11-14 G2 轮」段
+- [ ] nightly 原生安装包从未真正落到 release 资产（P1，代码侧，G2 复核 2026-11-15）：`build-agent.yml:233`（deb/rpm）与 `:292`（msi）的产物被 `Upload artifacts`（`:305` glob `wingman-agent-<ver>-<os>-<arch>.*`）带出，但 `nightly.yml` `cleanup-assets`（`:151-189`）按 `^wingman-(agent-)?(\d{4}\.\d{2}\.\d{2})-nightly-([0-9a-f]+)-` 分组保留**同一 sha 的整组**，而 `build` 与 `build-agent` 是并行 job（`.github/workflows/nightly.yml:61-82`），各自 `resolve-version` 取 `${{ github.sha }}` 时 sha 不同 → 两组不同 sha → 保留 build 组时把 build-agent 整组（含 deb/rpm/msi）删光。实测 release `nightly` 现存 10 个资产全是整包与 agent 单体 zip/tar.gz，无 deb/rpm/msi（`8e42c83` 前后同）。后果：`README.md:106` / `README.zh.md:105` 与 `nightly.yml:107-108` 声明的 `.deb/.rpm/.msi` 在站点上取不到，本仓 docs 已在 platforms 矩阵补口径。修法=cleanup-assets 分组键去掉 sha（只按日期）或让两 job 共享同一 sha 解析；属代码侧，待拍板
 
 ## 已完成
 

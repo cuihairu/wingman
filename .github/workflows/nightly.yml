@@ -105,7 +105,7 @@ jobs:
             | `wingman-*-android-arm64.apk` | Android Agent（arm64，debug 签名；iOS 因无签名证书暂不提供） |
             | `wingman-agent-*-{linux,macos,windows}-{x64,arm64}.tar.gz/.zip` | Wingman Agent 单二进制（一键安装 `scripts/install.sh` / `install.ps1` 的分发产物） |
             | `wingman-agent-*-linux-{x64,arm64}.deb/.rpm` | Wingman Agent 原生安装包（Linux deb / rpm） |
-            | `wingman-agent-*-windows-{x64,arm64}.exe/.msi` | Wingman Agent 原生安装包（Windows 绿色 zip / MSI 安装包） |
+            | `wingman-agent-*-windows-{x64,arm64}.zip/.msi` | Wingman Agent 原生安装包（Windows 绿色 zip / MSI 安装包） |
             | `SHA256SUMS.txt` | 本次发布全部资产的 SHA256 校验和（每日重新生成覆盖） |
 
             ⚠️ nightly 为预发布构建，仅供测试，不建议生产使用。
