@@ -257,10 +257,11 @@ jobs:
           Get-ChildItem wingman-agent-*.zip
 
       # ====== 原生安装包（仅 nightly：version_suffix 非空即 nightly 线）======
-      # WiX v3 在 windows-2022 预装（3.14.1.8722）；arm64 runner 未预装时
-      # 如实跳过（本地验证命令：candle.exe -arch x64 -dProductVersion=2026.11.14
-      # -dAgentExe=<path>\wingman-agent.exe build-scripts\packaging\wingman-agent.wxs
-      # && light.exe -out wingman-agent.msi wingman-agent.wixobj）。
+      # WiX v3 在 windows-2022 预装（3.14.1.8722）；未预装时如实跳过。
+      # 本地验证命令：
+      #   candle.exe -arch x64 -dProductVersion=2026.11.14 \
+      #     -dAgentExe=<path>\wingman-agent.exe build-scripts\packaging\wingman-agent.wxs
+      #   light.exe -out wingman-agent.msi wingman-agent.wixobj
       - name: Package native (msi)
         if: matrix.os == 'windows' && inputs.version_suffix != ''
         env:
@@ -276,20 +277,34 @@ jobs:
           $light = Join-Path $binDir 'light.exe'
           $dark = Join-Path $binDir 'dark.exe'
 
+          $version = $env:VERSION
+          if ([string]::IsNullOrWhiteSpace($version)) { throw "VERSION env is empty" }
+
           # 冒烟：包内二进制可执行（与 linux 腿的 version 子命令同口径）
           & '.\build\apps\agent\Release\wingman-agent.exe' version | Out-Host
 
           # MSI 版本属性禁非数字段：nightly 版本号取日期前缀（2026.11.14）
-          $productVersion = ($env:VERSION -split '-')[0]
+          $productVersion = ($version -split '-')[0]
+          if ($productVersion -notmatch '^\d+\.\d+\.\d+$') {
+            throw "productVersion '$productVersion' is not x.y.z (VERSION='$version')"
+          }
 
           $exe = (Resolve-Path '.\build\apps\agent\Release\wingman-agent.exe').Path
-          & $wix.FullName -arch $env:ARCH `
-            -dProductVersion=$productVersion `
-            -dAgentExe=$exe `
-            -out wingman-agent.wixobj 'build-scripts\packaging\wingman-agent.wxs'
+          # define 值拼进单个数组元素：裸词 -dX=$var 在原生调用里可能不展开
+          $candleArgs = @(
+            '-arch', $env:ARCH,
+            "-dProductVersion=$productVersion",
+            "-dAgentExe=$exe",
+            '-out', 'wingman-agent.wixobj',
+            'build-scripts\packaging\wingman-agent.wxs'
+          )
+          Write-Host ('candle argv: ' + ($candleArgs -join ' '))
+          & $wix.FullName @candleArgs
+          if ($LASTEXITCODE -ne 0) { throw "candle failed with exit code $LASTEXITCODE" }
           & $light -out wingman-agent.msi wingman-agent.wixobj
+          if ($LASTEXITCODE -ne 0) { throw "light failed with exit code $LASTEXITCODE" }
 
-          $msi = "wingman-agent-$env:VERSION-windows-$env:ARCH.msi"
+          $msi = "wingman-agent-$version-windows-$env:ARCH.msi"
           Move-Item wingman-agent.msi $msi
 
           # 结构冒烟：dark 能反编译即 MSI 结构有效（不安装）
