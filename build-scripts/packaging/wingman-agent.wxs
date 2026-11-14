@@ -2,9 +2,10 @@
 <!-- Wingman Agent MSI（nightly 资产 wingman-agent-<version>-windows-<arch>.msi）。
      WiX v3 工程：candle/light 由 build-agent.yml windows 腿驱动（WiX 3.14 在
      windows runner 预装）。InstallScope=perMachine 装到 Program Files\Wingman Agent。
-     ProductVersion 取 nightly 日期三段（2026.11.14）：MSI 版本属性禁非数字，
-     日期前缀合法且单调递增，每日覆盖安装天然是升级。滚动重装由 MajorUpgrade
-     AllowDowngrades 兜底。
+     ProductVersion 取 agent 二进制自身上报的版本（CI 从 `wingman-agent version`
+     解析后注入，与 CMake PROJECT_VERSION 同源不漂移）。MSI 版本属性按位宽强约束
+     （major<256 / minor<256 / build<65536），日历式 YYYY.MM.DD 的 major=年份
+     越界（candle CNDL0242），故 nightly 日期不进 MSI 版本，只留在资产文件名里。
      -dProductVersion / -dAgentExe 由 CI 在 candle 命令行注入。 -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Id="*"
@@ -19,8 +20,10 @@
              Description="Wingman Agent runtime (nightly build)"
              Comments="Wingman agent - anonymous nightly build"/>
 
-    <!-- nightly 滚动覆盖安装：允许任意版本重装（含同版本/降级），不弹阻止 -->
-    <MajorUpgrade AllowDowngrades="yes"/>
+    <!-- nightly 滚动覆盖安装：Version 固定为 agent 版本，每日重装即同版本升级，
+         需 AllowSameVersionUpgrades（与 AllowDowngrades 互斥，二选一）。
+         agent 版本真升级（0.1.2→0.1.3）走默认升级路径，同样放行。 -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes"/>
 
     <MediaTemplate EmbedCab="yes"/>
 

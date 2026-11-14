@@ -83,7 +83,8 @@ jobs:
   # build-package 不再写入 release body，nightly 说明在此统一维护
   nightly-notes:
     name: Nightly Release Notes
-    needs: [build, build-agent]
+    # 说明正文引用 needs.resolve-version.outputs.version，该 job 必须在 needs 里
+    needs: [resolve-version, build, build-agent]
     runs-on: ubuntu-latest
     steps:
       - name: Update nightly release body

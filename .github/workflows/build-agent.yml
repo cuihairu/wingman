@@ -258,8 +258,8 @@ jobs:
 
       # ====== 原生安装包（仅 nightly：version_suffix 非空即 nightly 线）======
       # WiX v3 在 windows-2022 预装（3.14.1.8722）；未预装时如实跳过。
-      # 本地验证命令：
-      #   candle.exe -arch x64 -dProductVersion=2026.11.14 \
+      # 本地验证命令（ProductVersion 取 agent 二进制上报的版本，如 0.1.2）：
+      #   candle.exe -arch x64 -dProductVersion=0.1.2 \
       #     -dAgentExe=<path>\wingman-agent.exe build-scripts\packaging\wingman-agent.wxs
       #   light.exe -out wingman-agent.msi wingman-agent.wixobj
       - name: Package native (msi)
@@ -280,16 +280,21 @@ jobs:
           $version = $env:VERSION
           if ([string]::IsNullOrWhiteSpace($version)) { throw "VERSION env is empty" }
 
-          # 冒烟：包内二进制可执行（与 linux 腿的 version 子命令同口径）
-          & '.\build\apps\agent\Release\wingman-agent.exe' version | Out-Host
-
-          # MSI 版本属性禁非数字段：nightly 版本号取日期前缀（2026.11.14）
-          $productVersion = ($version -split '-')[0]
-          if ($productVersion -notmatch '^\d+\.\d+\.\d+$') {
-            throw "productVersion '$productVersion' is not x.y.z (VERSION='$version')"
+          # 冒烟：包内二进制可执行（与 linux 腿的 version 子命令同口径），并顺带
+          # 取真实版本号（Product/@Version 的单一事实源，不硬编码进 wxs）
+          $exe = (Resolve-Path '.\build\apps\agent\Release\wingman-agent.exe').Path
+          $banner = (& $exe version | Out-String).Trim()
+          Write-Host "agent banner: $banner"
+          # banner 形如 "Wingman 0.1.2-2026.11.14-nightly"：剥非数字前缀与 nightly 后缀
+          $productVersion = ($banner -replace '^[^0-9]*', '') -replace '-.*$', ''
+          # MSI 版本属性按位宽强约束：major/minor<256、build<65536
+          if ($productVersion -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
+            throw "could not read numeric version from banner '$banner'"
+          }
+          if ([int]$Matches[1] -ge 256 -or [int]$Matches[2] -ge 256 -or [int]$Matches[3] -ge 65536) {
+            throw "productVersion '$productVersion' exceeds MSI bit width (256/256/65536)"
           }
 
-          $exe = (Resolve-Path '.\build\apps\agent\Release\wingman-agent.exe').Path
           # define 值拼进单个数组元素：裸词 -dX=$var 在原生调用里可能不展开
           $candleArgs = @(
             '-arch', $env:ARCH,
@@ -326,7 +331,9 @@ jobs:
   publish-assets:
     name: Publish Agent Assets
     needs: build
-    if: inputs.release_tag != ''
+    # 任一带失败也要跑：矩阵腿互相独立，已成功腿（如 linux deb/rpm）的产物
+    # 不该被另一腿（如 windows msi）的失败连带吞掉。
+    if: always() && inputs.release_tag != ''
     runs-on: ubuntu-latest
     steps:
       - name: Download all agent artifacts
