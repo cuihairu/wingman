@@ -213,13 +213,46 @@ if(TARGET wingman-agent)
     )
 endif()
 
+# crashpad handler 与 agent 同目录分发（Linux crashpad 构建才有该目标）：
+# 运行期 agent 按 argv[0] 同目录查找 handler，缺失时启动直接 FATAL
+# （crashpad 的 execv 失败不走降级路径），CPack 包必须带上
+if(TARGET crashpad_handler)
+    install(TARGETS crashpad_handler RUNTIME DESTINATION bin)
+endif()
+
 # 复制脚本
 install(DIRECTORY build-scripts/
-    DESTINATION scripts
+    DESTINATION share/wingman-agent/scripts
     FILES_MATCHING PATTERN "*.lua"
 )
 
 # 复制 VSCode 配置包
 install(DIRECTORY assets/vscode-wingman-lua/
-    DESTINATION vscode-config
+    DESTINATION share/wingman-agent/vscode-config
 )
+
+# ========== 原生安装包（nightly 资产）==========
+# cpack -G DEB / -G RPM 消费（build-agent.yml linux 腿，仅 nightly 出包）；
+# 内容 = 上面的 install 规则集（/usr/bin/wingman-agent + /usr/share/wingman-agent）。
+# 产物文件名由 CPack 默认拼接，CI 再 mv 成 wingman-agent-<version>-linux-<arch>.<ext>
+# 资产名（CPackConfig 里的 set() 优先级高于 cpack -D，故不靠命令行覆盖命名）。
+set(CPACK_PACKAGE_NAME "wingman-agent")
+set(CPACK_PACKAGE_VENDOR "cuihairu")
+set(CPACK_PACKAGE_CONTACT "cuihairu <chuihairu@gmail.com>")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Wingman agent runtime")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/cuihairu/wingman")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}${WINGMAN_VERSION_FULL_SUFFIX}")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
+set(CPACK_STRIP_FILES TRUE)
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "cuihairu <chuihairu@gmail.com>")
+set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
+set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+# 动态链接系统 X11/stdc++ 库（vcpkg 依赖为静态）：依赖由 dpkg-shlibdeps 自动推导
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+# RPM 版本段禁用 '-'（version-release 分隔符），nightly 后缀转 '_'
+string(REPLACE "-" "_" WINGMAN_RPM_VERSION "${CPACK_PACKAGE_VERSION}")
+set(CPACK_RPM_PACKAGE_VERSION "${WINGMAN_RPM_VERSION}")
+set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+set(CPACK_RPM_PACKAGE_GROUP "Applications/System")
+set(CPACK_RPM_PACKAGE_DESCRIPTION "Wingman agent runtime")
+include(CPack)

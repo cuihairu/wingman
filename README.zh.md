@@ -102,6 +102,8 @@ curl -fsSL https://raw.githubusercontent.com/cuihairu/wingman/main/scripts/insta
 | macOS | x86_64 (x64) / arm64 (Apple Silicon) | `wingman-agent-*-macos-{x64,arm64}.tar.gz` |
 | Windows | x64 / arm64 | `wingman-agent-*-windows-{x64,arm64}.zip` |
 
+原生安装包同样发布在 nightly release 上：`wingman-agent-*-linux-{x64,arm64}.deb` / `.rpm`（Linux）与 `wingman-agent-*-windows-{x64,arm64}.msi`（Windows）。上表 zip 即同一组二进制按自管部署方式打包，nightly release 另附 `SHA256SUMS.txt` 收口全部资产的 SHA256 校验和。
+
 说明：
 
 - 默认安装到 `~/.local/bin`（Linux/macOS）或 `%LOCALAPPDATA%\Programs\Wingman\bin`（Windows），安装后自动运行 `wingman-agent --version` 验证

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Wingman Agent MSI（nightly 资产 wingman-agent-<version>-windows-<arch>.msi）。
+     WiX v3 工程：candle/light 由 build-agent.yml windows 腿驱动（WiX 3.14 在
+     windows runner 预装）。InstallScope=perMachine 装到 Program Files\Wingman Agent。
+     ProductVersion 传三段数字（nightly 日期）：MSI 版本属性禁非数字，nightly 后缀
+     不进 ProductVersion，滚动覆盖安装靠 MajorUpgrade AllowDowngrades。
+     -dProductVersion / -dAgentExe 由 CI 在 candle 命令行注入。 -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="Wingman Agent"
+           Language="1033"
+           Version="$(var.ProductVersion)"
+           Manufacturer="cuihairu"
+           UpgradeCode="3EA05C27-1590-4357-8927-BC0B1F6FF84D">
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Description="Wingman Agent runtime (nightly build)"
+             Comments="Wingman agent - anonymous nightly build"/>
+
+    <!-- nightly 滚动覆盖安装：允许任意版本重装（含同版本/降级），不弹阻止 -->
+    <MajorUpgrade AllowDowngrades="yes"/>
+
+    <MediaTemplate EmbedCab="yes"/>
+
+    <Feature Id="AgentFeature" Title="Wingman Agent" Level="1"
+             AllowAdvertise="no" Display="expand" ConfigurableDirectory="INSTALLFOLDER">
+      <ComponentGroupRef Id="AgentComponents"/>
+    </Feature>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="Wingman Agent"/>
+      </Directory>
+    </Directory>
+
+    <ComponentGroup Id="AgentComponents" Directory="INSTALLFOLDER">
+      <Component Id="AgentExecutable" Guid="*">
+        <File Id="AgentExeFile" Name="wingman-agent.exe"
+              Source="$(var.AgentExe)" KeyPath="yes" Checksum="no"/>
+      </Component>
+    </ComponentGroup>
+  </Product>
+</Wix>

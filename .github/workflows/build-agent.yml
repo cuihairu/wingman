@@ -127,6 +127,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build ccache mono-complete
           sudo apt-get install -y libx11-dev libxrandr-dev libxext-dev libxtst-dev libxt-dev libxinerama-dev
+          # rpmbuild：nightly 原生包（CPack RPM generator）需要
+          sudo apt-get install -y rpm
 
       - name: Install build tools (macos)
         if: matrix.os == 'macos'
@@ -201,6 +203,10 @@ jobs:
           mkdir -p "$dist"
           cp "build/apps/agent/wingman-agent" "$dist/wingman-agent"
           chmod +x "$dist/wingman-agent"
+          # Linux crashpad 构建的 agent 启动需要同目录 crashpad_handler
+          # （argv[0] 同目录解析，缺失即 FATAL）；macOS 默认无该目标
+          [ -f build/apps/agent/crashpad_handler ] && \
+            cp build/apps/agent/crashpad_handler "$dist/" || true
           cat > "$dist/VERSION.txt" << EOF
           Wingman Agent $VERSION
           Build Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -209,6 +215,28 @@ jobs:
           EOF
           tar czf "wingman-agent-${VERSION}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" -C "$dist" .
           ls -la wingman-agent-*.tar.gz
+
+      # ====== 原生安装包（仅 nightly：version_suffix 非空即 nightly 线）======
+      # CPack 消费根 CMakeLists 的 install 规则（/usr/bin/wingman-agent +
+      # /usr/share/wingman-agent），deb 依赖由 dpkg-shlibdeps 自动推导。
+      # 冒烟：version 子命令能跑通即证明包内二进制可执行（同 install.sh 的验证口径）。
+      - name: Package native (deb + rpm)
+        if: matrix.os == 'linux' && inputs.version_suffix != ''
+        env:
+          VERSION: ${{ inputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          ./build/apps/agent/wingman-agent version
+          # 双 generator 必须分号列表一次传入（-G 重复指定时后者覆盖前者）
+          (cd build && cpack -G "DEB;RPM")
+          for f in build/wingman-agent-*.deb; do
+            mv "$f" "wingman-agent-${VERSION}-linux-${ARCH}.deb"
+          done
+          for f in build/wingman-agent-*.rpm; do
+            mv "$f" "wingman-agent-${VERSION}-linux-${ARCH}.rpm"
+          done
+          ls -la wingman-agent-*.deb wingman-agent-*.rpm
 
       - name: Package (windows)
         if: matrix.os == 'windows'
@@ -227,6 +255,47 @@ jobs:
           "@ | Out-File -FilePath "$dist\VERSION.txt" -Encoding UTF8
           Compress-Archive -Path "$dist\*" -DestinationPath "wingman-agent-$env:VERSION-${{ matrix.os }}-${{ matrix.arch }}.zip" -Force
           Get-ChildItem wingman-agent-*.zip
+
+      # ====== 原生安装包（仅 nightly：version_suffix 非空即 nightly 线）======
+      # WiX v3 在 windows-2022 预装（3.14.1.8722）；arm64 runner 未预装时
+      # 如实跳过（本地验证命令：candle.exe -arch x64 -dProductVersion=2026.11.14
+      # -dAgentExe=<path>\wingman-agent.exe build-scripts\packaging\wingman-agent.wxs
+      # && light.exe -out wingman-agent.msi wingman-agent.wixobj）。
+      - name: Package native (msi)
+        if: matrix.os == 'windows' && inputs.version_suffix != ''
+        env:
+          VERSION: ${{ inputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          $wix = Get-ChildItem 'C:\Program Files (x86)\WiX Toolset v3.*\bin\candle.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $wix) {
+            Write-Host "::warning::WiX v3 not found on this runner, MSI package skipped"
+            return
+          }
+          $binDir = Split-Path $wix.FullName
+          $light = Join-Path $binDir 'light.exe'
+          $dark = Join-Path $binDir 'dark.exe'
+
+          # 冒烟：包内二进制可执行（与 linux 腿的 version 子命令同口径）
+          & '.\build\apps\agent\Release\wingman-agent.exe' version | Out-Host
+
+          # MSI 版本属性禁非数字段：nightly 版本号取日期前缀（2026.11.14）
+          $productVersion = ($env:VERSION -split '-')[0]
+
+          $exe = (Resolve-Path '.\build\apps\agent\Release\wingman-agent.exe').Path
+          & $wix.FullName -arch $env:ARCH `
+            -dProductVersion=$productVersion `
+            -dAgentExe=$exe `
+            -out wingman-agent.wixobj 'build-scripts\packaging\wingman-agent.wxs'
+          & $light -out wingman-agent.msi wingman-agent.wixobj
+
+          $msi = "wingman-agent-$env:VERSION-windows-$env:ARCH.msi"
+          Move-Item wingman-agent.msi $msi
+
+          # 结构冒烟：dark 能反编译即 MSI 结构有效（不安装）
+          & $dark -x msi-extract $msi
+          Get-ChildItem msi-extract | Select-Object -First 8 | ForEach-Object { $_.Name }
+          Get-Item $msi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7.0.2

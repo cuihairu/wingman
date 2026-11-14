@@ -104,12 +104,46 @@ jobs:
             | `wingman-*-macos-x64.tar.gz` | C++ Runtime / Tauri dmg+app / Go Server / Dashboard / scripts / config |
             | `wingman-*-android-arm64.apk` | Android Agent（arm64，debug 签名；iOS 因无签名证书暂不提供） |
             | `wingman-agent-*-{linux,macos,windows}-{x64,arm64}.tar.gz/.zip` | Wingman Agent 单二进制（一键安装 `scripts/install.sh` / `install.ps1` 的分发产物） |
+            | `wingman-agent-*-linux-{x64,arm64}.deb/.rpm` | Wingman Agent 原生安装包（Linux deb / rpm） |
+            | `wingman-agent-*-windows-{x64,arm64}.exe/.msi` | Wingman Agent 原生安装包（Windows 绿色 zip / MSI 安装包） |
+            | `SHA256SUMS.txt` | 本次发布全部资产的 SHA256 校验和（每日重新生成覆盖） |
 
             ⚠️ nightly 为预发布构建，仅供测试，不建议生产使用。
           prerelease: true
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 全部资产 SHA256 收口（含既有整包/apk/agent 单体）：发布侧只保留
+  # 一份滚动 SHA256SUMS.txt（每日 --clobber 覆盖），避免各 publish job
+  # 各写一份同名文件互相截断（后写者只含自己那批资产）。
+  asset-checksums:
+    name: Asset Checksums
+    needs: [build, build-agent]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all nightly artifacts
+        uses: actions/download-artifact@v8.0.2
+        with:
+          path: assets
+          merge-multiple: true
+          pattern: wingman-*
+
+      - name: Generate and upload SHA256SUMS
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd assets
+          shopt -s nullglob
+          files=(wingman-*)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No nightly artifacts found"
+            exit 1
+          fi
+          sha256sum "${files[@]}" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release upload nightly SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
 
   # 发布成功后修剪历史资产：nightly 只提供最新构建——保留今日资产中
   # 最新 sha 的一组，删除其余全部（历史日期、同日旧 sha、旧格式遗留包）。
@@ -140,6 +174,11 @@ jobs:
 
           groups = {}  # (date, sha) -> [asset]
           for a in rel["assets"]:
+              # 校验和清单不带日期，由 asset-checksums job 每日 --clobber
+              # 覆盖更新（内容与今日资产集合绑定），不参与日期分组
+              if a["name"] == "SHA256SUMS.txt":
+                  print("保留(校验和清单):", a["name"])
+                  continue
               # 整包 wingman-<date>-nightly-<sha>-* 与 agent 单体
               # wingman-agent-<date>-nightly-<sha>-* 同组归属（同一 sha 一组保留）
               m = re.match(r"^wingman-(agent-)?(\d{4}\.\d{2}\.\d{2})-nightly-([0-9a-f]+)-", a["name"])
