@@ -9,7 +9,7 @@
 - [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期；2026-11-04 复核：仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺用户确认可用档期）
 - [x] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归（c301206：apps/gui/scripts/capture-config-gifs.mjs、docs/guide/config-effects.md、docs/zh/guide/config-effects.md；vitest 529/529、docs build 绿、采集重跑成功）
 - [ ] 文档站语言自动切换脚本挂错页（P2，G2 审计 2026-11-14）：`docs/zh/index.md:47-64` 的 `<script setup>` 有 navigator.language 探测，但编译进 `/zh/` 页且 guard 只放行 `/wingman/` 根路径，主用例「中文浏览器首访 `/`」加载不到该脚本——实现挂而不生效；另 `EN_PATH=/wingman/index.en.html` 在 Pages 站点下不存在，2026-10-18 注释「本页（/wingman/ 根）内容是中文」的前提已随 root=en 布局翻转失效。修法=脚本移到 root 页（`docs/index.md`）并改跳板目标（`/zh/` 已存在）。是否动手、是否随其它仓统一推广待拍板；取证见 docs/zh/审计-文档一致性.md「2026-11-14 G2 轮」段
-- [ ] nightly 原生安装包从未真正落到 release 资产（P1，代码侧，G2 复核 2026-11-15）：`build-agent.yml:233`（deb/rpm）与 `:292`（msi）的产物被 `Upload artifacts`（`:305` glob `wingman-agent-<ver>-<os>-<arch>.*`）带出，但 `nightly.yml` `cleanup-assets`（`:151-189`）按 `^wingman-(agent-)?(\d{4}\.\d{2}\.\d{2})-nightly-([0-9a-f]+)-` 分组保留**同一 sha 的整组**，而 `build` 与 `build-agent` 是并行 job（`.github/workflows/nightly.yml:61-82`），各自 `resolve-version` 取 `${{ github.sha }}` 时 sha 不同 → 两组不同 sha → 保留 build 组时把 build-agent 整组（含 deb/rpm/msi）删光。实测 release `nightly` 现存 10 个资产全是整包与 agent 单体 zip/tar.gz，无 deb/rpm/msi（`8e42c83` 前后同）。后果：`README.md:106` / `README.zh.md:105` 与 `nightly.yml:107-108` 声明的 `.deb/.rpm/.msi` 在站点上取不到，本仓 docs 已在 platforms 矩阵补口径。修法=cleanup-assets 分组键去掉 sha（只按日期）或让两 job 共享同一 sha 解析；属代码侧，待拍板
+- [x] nightly 原生安装包从未真正落到 release 资产（P1，代码侧，G2 复核 2026-11-15）——**已修，run 43630941453 全绿**。初判归因（cleanup-assets 按 sha 分组把 agent 组删光）经核实**不成立**：build/build-agent 共用 nightly.yml 单点 `resolve-version` 的同一 `github.sha`，原生包与 agent 单体同组同 sha；真因是 job 级连带 skip——`publish-assets: needs: build` 使任一带失败就整批不上传。修法：build-agent publish-assets 改 `always()`（只多传不删）；cleanup-assets/asset-checksums **故意不加** `always()`（失败日连带跳过清理，保昨日完整资产集）；nightly-notes 补 `resolve-version` 进 needs（原引用越界无法解析，从未运行过故未暴露）
 
 ## 已完成
 
@@ -93,6 +93,7 @@
 - [x] libuuid vendor 预缓存（禁网实证）
 - [x] 文档站 VitePress：构建绿 + 死链 0
 - [x] 打包分发：Windows zip/NSIS、Linux tar.gz/AppImage/deb、macOS dmg/app、Docker
+- [x] nightly 原生安装包四腿 + SHA256 收口首跑全绿（run 43630941453，17 job 全 success，`23ac5fa`→`5cbae3e`；`3a95e1c` 引入 CPack `CPACK_GENERATOR="DEB;RPM"` 与 WiX v3 msi 腿）。release `nightly` 17 资产，原生包与校验和：`…-linux-x64.deb` 6271660 / `…-linux-x64.rpm` 6253808 / `…-linux-arm64.deb` 6385772 / `…-linux-arm64.rpm` 6389844 / `…-windows-x64.msi` 6160384 / `SHA256SUMS.txt` 1831（15 行收口全资产）。冒烟：deb 解包 `wingman-agent version` exit 0 且 `crash reporting enabled`（crashpad_handler 随包，`CMakeLists` install 规则）、rpm `-qp` 元数据 `License=Apache-2.0`/Arch=x86_64·aarch64、msi OLE 签名 + `msiextract --list` → `Wingman Agent/wingman-agent.exe`（不安装）。**BLOCKED 腿（如实）**：windows-arm64 msi —— arm64 runner 未预装 WiX，step 按设计打 `::warning::` 跳过且 job 仍 success，故 `…-windows-arm64.msi` 缺席（zip 在）。修 4 轮：①candle 收到字面量 `'$productVersion'`（PowerShell 裸词不展开）→ define 拼进双引号数组元素 + `@args` splat；②`CNDL0242` MSI 版本位宽 major<256/minor<256/build<65536，日历式 `2026.11.14` 越界 → 改从 `wingman-agent version` banner 解析真实版本（`0.1.2`）；③`CNDL0010` `AllowSameVersionUpgrades` 强制配 `DowngradeErrorMessage` → 回退 `AllowDowngrades="yes"`（跳过版本比较，同版本重装照放行）；④`dark -x` 反编译产物 `<msi基名>.wxs` 落仓库根被 Upload glob 当资产上传（误入 release + SHA256SUMS）→ dark 移入子目录（`d065d4d`，已删该假资产并重传校验和）
 
 ### 文档
 
