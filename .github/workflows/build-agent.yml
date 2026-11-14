@@ -312,32 +312,42 @@ jobs:
           $msi = "wingman-agent-$version-windows-$env:ARCH.msi"
           Move-Item wingman-agent.msi $msi
 
-          # 结构冒烟（不安装）：dark 能反编译 + **载荷组件真的编进了 MSI 数据库**。
-          # 只验「能解析」判别力不足——能解析的空壳也会过。故额外断言反编译出的
-          # 源里含 keypath 文件组件 AgentExecutable，否则 MSI 是"结构对但没货"。
-          # dark 把产物写进**调用者 CWD**：<msi 基名>.wxs + .wixloc + .wixpdb 落在
-          # 当前目录，只有 <msi 基名>\ 子目录才装反编译表；故 .wxs 在 msi-smoke 根，
-          # 不在 msi-extract 里。CWD 必须在子目录，否则 .wxs 会匹配 Upload artifacts 的
-          # path glob 被当成资产上传到 release。
+          # 结构冒烟（不安装）。判据=dark -x 的抽出物里有与源 exe SHA256 逐位一致
+          # 的文件——CI 内可当场变红的最强判据。查表/查反编译源没有区分度：空壳
+          # MSI（MediaTemplate 漏配）同样解析成功且 File/Component 表照样满（本地
+          # wixl 复现：9728B 空壳 File 行照记载荷名与字节数、Media 表零数据行、
+          # 解包 0 文件；真包 Media 多一行 #cab1.cab 数据行），而 dark 反编译自表
+          # → 反编译源必然含组件 Id。抽出对账则空壳 0 文件必拦下。
+          # 不按名找：cab 成员名=File 表主键（MSDN Cabinet Files：cab 内文件键须
+          # 与 File 表 File 列一致，本包即 AgentExeFile 无扩展名）；wix3 Unbinder
+          # 把 cab 成员解到 msi-extract\<表名>\、嵌入 cab 落 %TEMP% 不进导出目录
+          # ——按 *.exe 找必假红、*.cab 兜底是死路，只对内容。
+          # dark 产物写进**调用者 CWD**：<msi 基名>.wxs + .wixloc 落当前目录，
+          # msi-extract\<表名>\ 装抽出物。CWD 必须在子目录，否则 .wxs 会匹配
+          # Upload artifacts 的 path glob 被当成资产上传到 release。
+          # msi 先取绝对路径：Push-Location 后原生子进程 CWD 随 PowerShell 位置
+          # 变，裸相对路径会解析到 msi-smoke 下面去（dark 打不开输入即 nonzero）。
+          $msiPath = (Resolve-Path $msi).Path
+          $srcHash = (Get-FileHash $exe -Algorithm SHA256).Hash
+          Write-Host "source exe sha256=$srcHash size=$((Get-Item $exe).Length)"
           Push-Location (New-Item -ItemType Directory -Force -Path 'msi-smoke').FullName
-          & $dark -x msi-extract $msi
+          & $dark -x msi-extract $msiPath
           if ($LASTEXITCODE -ne 0) { throw "dark failed with exit code $LASTEXITCODE" }
-          # dark 命名时**剥掉 .msi 后缀**再补 .wxs（实测产物名 …-windows-x64.wxs，
-          # 不是 …-windows-x64.msi.wxs）——按 msi 全名拼会永远找不到。
-          $decompiled = Join-Path (Get-Location) ((Split-Path $msi -Leaf) -replace '\.msi$', '.wxs')
+          # dark 命名时**剥掉 .msi 后缀**再补 .wxs（dark.cs ChangeExtension，实测
+          # 产物名 …-windows-x64.wxs，不是 …-windows-x64.msi.wxs）——按 msi 全名
+          # 拼会永远找不到。
+          $decompiled = Join-Path (Get-Location) ((Split-Path $msiPath -Leaf) -replace '\.msi$', '.wxs')
           if (-not (Test-Path $decompiled)) { throw "dark produced no $decompiled (empty msi?)" }
-          if ((Get-Content $decompiled -Raw) -notmatch 'Id="AgentExecutable"') {
-            throw "decompiled msi has no AgentExecutable component: payload not embedded"
-          }
-          Write-Host "payload component asserted in $(Split-Path $decompiled -Leaf)"
-          Get-ChildItem msi-extract -Directory | Select-Object -First 8 | ForEach-Object { $_.Name }
 
-          # 载荷指纹供与 windows-x64.zip 资产离线对账（Windows runner 无 msiextract，
-          # 无法在 CI 内直接解 cab；hash 一致即证 MSI 内嵌的就是这份 exe）。
-          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
-          Write-Host "source exe sha256=$hash size=$((Get-Item $exe).Length)"
+          # 抽出物清单先进日志（首次跑看清 dark 抽取布局，断言别盲写），再按内容
+          # 对账：抽出物中与源 exe SHA256 一致的文件即证 MSI 内嵌的就是这份 exe。
+          Get-ChildItem msi-extract -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+          $payload = @(Get-ChildItem msi-extract -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash -eq $srcHash })
+          if ($payload.Count -eq 0) { throw "msi payload not embedded: nothing in dark extraction matches source exe sha256=$srcHash (hollow package?)" }
+          Write-Host "msi payload verified: $($payload[0].Name) $($payload[0].Length) bytes, sha256 identical to source exe"
           Pop-Location
-          Get-Item $msi
+          Get-Item $msiPath
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7.0.2
