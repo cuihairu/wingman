@@ -118,6 +118,9 @@ jobs:
   # 全部资产 SHA256 收口（含既有整包/apk/agent 单体）：发布侧只保留
   # 一份滚动 SHA256SUMS.txt（每日 --clobber 覆盖），避免各 publish job
   # 各写一份同名文件互相截断（后写者只含自己那批资产）。
+  # 本 job 与 cleanup-assets 故意不加 always()：某条腿失败时应连同清理一起跳过，
+  # 保留昨日完整资产集与对应校验和；build-agent 的 publish-assets 才用
+  # always()，只多传已成功腿的产物，不做删除。
   asset-checksums:
     name: Asset Checksums
     needs: [build, build-agent]
