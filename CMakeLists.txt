@@ -252,7 +252,7 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 # RPM 版本段禁用 '-'（version-release 分隔符），nightly 后缀转 '_'
 string(REPLACE "-" "_" WINGMAN_RPM_VERSION "${CPACK_PACKAGE_VERSION}")
 set(CPACK_RPM_PACKAGE_VERSION "${WINGMAN_RPM_VERSION}")
-set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+set(CPACK_RPM_PACKAGE_LICENSE "Apache-2.0")
 set(CPACK_RPM_PACKAGE_GROUP "Applications/System")
 set(CPACK_RPM_PACKAGE_DESCRIPTION "Wingman agent runtime")
 include(CPack)
