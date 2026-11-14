@@ -312,14 +312,27 @@ jobs:
           $msi = "wingman-agent-$version-windows-$env:ARCH.msi"
           Move-Item wingman-agent.msi $msi
 
-          # 结构冒烟：dark 能反编译即 MSI 结构有效（不安装）。
-          # dark 把反编译产物（<msi 基名>.wxs + .wixloc + .wixpdb + File\）写进
+          # 结构冒烟（不安装）：dark 能反编译 + **载荷路径真的编进了 MSI 数据库**。
+          # 只验「能解析」判别力不足——能解析的空壳也会过。故额外断言反编译出的
+          # 源里含 keypath 文件组件（File Id/Name），否则 MSI 是"结构对但没货"。
+          # dark 把产物（<msi 基名>.wxs + .wixloc + .wixpdb + File\）写进
           # **当前目录**，必须在子目录里跑，否则 .wxs 会匹配 Upload artifacts 的
           # path glob 被当成资产上传到 release。
           Push-Location (New-Item -ItemType Directory -Force -Path 'msi-smoke').FullName
           & $dark -x msi-extract $msi
           if ($LASTEXITCODE -ne 0) { throw "dark failed with exit code $LASTEXITCODE" }
           Get-ChildItem msi-extract | Select-Object -First 8 | ForEach-Object { $_.Name }
+          $wxsOut = Get-ChildItem -Recurse msi-extract -Filter *.wxs | Select-Object -First 1
+          if (-not $wxsOut) { throw "dark produced no .wxs under msi-extract (empty msi?)" }
+          if ((Get-Content $wxsOut.FullName -Raw) -notmatch 'Id="AgentExecutable"') {
+            throw "decompiled msi has no AgentExecutable component: payload not embedded"
+          }
+          Write-Host "payload component in msi: $($wxsOut.Name)"
+
+          # 载荷指纹供与 windows-x64.zip 资产离线对账（Windows runner 无 msiextract，
+          # 无法在 CI 内直接解 cab；hash 一致即证 MSI 内嵌的就是这份 exe）。
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
+          Write-Host "source exe sha256=$hash size=$((Get-Item $exe).Length)"
           Pop-Location
           Get-Item $msi
 
