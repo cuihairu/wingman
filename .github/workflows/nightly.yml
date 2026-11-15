@@ -154,16 +154,27 @@ jobs:
   # 今日尚无构建资产时不动，避免误删昨天唯一可用版本。
   cleanup-assets:
     name: Prune Old Nightly Assets
-    needs: [build, build-agent]
+    needs: [resolve-version, build, build-agent]
     runs-on: ubuntu-latest
     steps:
       - name: Keep only today's latest build assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.resolve-version.outputs.version }}
         run: |
           set -euo pipefail
           export REPO="${{ github.repository }}"
-          export TODAY="$(date -u +%Y.%m.%d)"
+          # 分组日期必须取 resolve-version 的版本首段（资产名日期的同一来源），
+          # 不能取清理时的运行钟：构建腿跨 UTC 午夜完成时（run 43654005814
+          # 实证：23:35Z 开跑、00:03Z 出包、00:04Z 清理），运行钟已是次日 →
+          # today_groups 恒空 → 兜底「全保留」空转，旧 sha 组滞留、
+          # keep-only-latest 失效。version 形如 2026.11.14-nightly-<sha>；
+          # 格式异常时才回退运行钟。
+          export TODAY="$(printf '%s' "$VERSION" | cut -d- -f1)"
+          case "$TODAY" in
+            [0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]) ;;
+            *) export TODAY="$(date -u +%Y.%m.%d)" ;;
+          esac
           python3 - <<'PY'
           import json, os, re, subprocess
 
