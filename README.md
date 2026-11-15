@@ -103,7 +103,7 @@ curl -fsSL https://raw.githubusercontent.com/cuihairu/wingman/main/scripts/insta
 | macOS | x86_64 (x64) / arm64 (Apple Silicon) | `wingman-agent-*-macos-{x64,arm64}.tar.gz` |
 | Windows | x64 / arm64 | `wingman-agent-*-windows-{x64,arm64}.zip` |
 
-Native installer artifacts are published on the nightly release as well: `wingman-agent-*-linux-{x64,arm64}.deb` / `.rpm` (Linux) and `wingman-agent-*-windows-{x64,arm64}.msi` (Windows). The zip above is the same binaries packaged for self-managed deployment, and the nightly release also carries a `SHA256SUMS.txt` checksum file covering every artifact.
+Native installer artifacts are published on the nightly release as well: `wingman-agent-*-linux-{x64,arm64}.deb` / `.rpm` (Linux), and `wingman-agent-*-windows-x64.msi` (Windows x64). The arm64 MSI is not built today — arm64 runners ship no WiX toolchain — so that architecture gets the zip above instead. Those zips are the same binaries packaged for self-managed deployment, and the nightly release also carries a `SHA256SUMS.txt` checksum file covering every artifact.
 
 Notes:
 
