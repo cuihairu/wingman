@@ -1,14 +1,14 @@
 # Wingman 项目待办
 
-> 最后更新: 2026-11-13
+> 最后更新: 2026-11-15
 > 本文件是需求清单；路线图见 ROADMAP.md，过程记录见 CHANGELOG.md 与 git log。
 
 ## 未完成
 
 - [x] 视频教程 EP01 机器侧素材预采（2026-11-09 imac 192.168.5.117 完成：装齐 ffmpeg 9.0.2 + ffprobe 与公开 nightly wingman-agent.exe（sha256 2beeca9f… 与官方资产一致，不 clone 不构建），agent 自跑脚本零注入预采成功——产物 D:\wingman-tutorial\capture\ep01-script-demo-take5.mp4：34.0s / 1920×1080 / 60fps CFR / 2040 帧，抽帧中文渲染正常非锁屏非空桌面，脚本=hello.lua+game_profile.lua（均 grep 验证零 input 调用）；实测修正版配方已同步 docs/zh/tutorials/video-storyboard.md（ddagrab+dup_frames=0+fps_mode cfr+UTF-8 控制台+ES_DISPLAY_REQUIRED 保活；color_detect.lua 因内含 input.click 真注入与零注入规则矛盾已替换为 game_profile.lua）；openclaw 因虚拟 GPU 竖屏 1440×2560 且 ChangeDisplaySettings 不生效判不可用，imac 为实际采集机）
-- [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期；2026-11-04 复核：仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺用户确认可用档期）
+- [ ] 视频教程 EP01-EP06 人工成片（BLOCKED：待用户档期；2026-11-04 复核：仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺档期证据，保留 BLOCKED；复核 2026-11-06 仍缺用户确认可用档期；复核 2026-11-15 仍缺用户确认可用档期）
 - [x] 配置开关效果动态图：全仓开关枚举 + off/on 截图与切换 GIF 流水线，docs「配置效果」双语页嵌入，可重跑兼作回归（c301206：apps/gui/scripts/capture-config-gifs.mjs、docs/guide/config-effects.md、docs/zh/guide/config-effects.md；vitest 529/529、docs build 绿、采集重跑成功）
-- [ ] 文档站语言自动切换脚本挂错页（P2，G2 审计 2026-11-14）：`docs/zh/index.md:47-64` 的 `<script setup>` 有 navigator.language 探测，但编译进 `/zh/` 页且 guard 只放行 `/wingman/` 根路径，主用例「中文浏览器首访 `/`」加载不到该脚本——实现挂而不生效；另 `EN_PATH=/wingman/index.en.html` 在 Pages 站点下不存在，2026-10-18 注释「本页（/wingman/ 根）内容是中文」的前提已随 root=en 布局翻转失效。修法=脚本移到 root 页（`docs/index.md`）并改跳板目标（`/zh/` 已存在）。是否动手、是否随其它仓统一推广待拍板；取证见 docs/zh/审计-文档一致性.md「2026-11-14 G2 轮」段
+- [ ] 文档站语言自动切换脚本挂错页（P2，G2 审计 2026-11-14）：`docs/zh/index.md:47-64` 的 `<script setup>` 有 navigator.language 探测，但编译进 `/zh/` 页且 guard 只放行 `/wingman/` 根路径，主用例「中文浏览器首访 `/`」加载不到该脚本——实现挂而不生效；另 `EN_PATH=/wingman/index.en.html` 在 Pages 站点下不存在，2026-10-18 注释「本页（/wingman/ 根）内容是中文」的前提已随 root=en 布局翻转失效。修法=脚本移到 root 页（`docs/index.md`）并改跳板目标（`/zh/` 已存在）。**BLOCKED（2026-11-15 复核：缺用户拍板——是否动手、是否随其它仓统一推广；修法已定，拍板即可执行）**；取证见 docs/zh/审计-文档一致性.md「2026-11-14 G2 轮」段
 - [x] nightly 原生安装包从未真正落到 release 资产（P1，代码侧，G2 复核 2026-11-15）——**已修，run 43630941453 全绿**。初判归因（cleanup-assets 按 sha 分组把 agent 组删光）经核实**不成立**：build/build-agent 共用 nightly.yml 单点 `resolve-version` 的同一 `github.sha`，原生包与 agent 单体同组同 sha；真因是 job 级连带 skip——`publish-assets: needs: build` 使任一带失败就整批不上传。修法：build-agent publish-assets 改 `always()`（只多传不删）；cleanup-assets/asset-checksums **故意不加** `always()`（失败日连带跳过清理，保昨日完整资产集）；nightly-notes 补 `resolve-version` 进 needs（原引用越界无法解析，从未运行过故未暴露）
 
 ## 已完成
@@ -210,12 +210,12 @@
 
 - [x] 审核发现：todo.md 头部「最后更新: 2026-11-09」落后于正文内容日期——LAY-001～LAY-019 勾选及 EP01 机器侧素材预采记录均在 2026-11-09 18:13 至 2026-11-10 06:01 之间追加/勾选，头部元数据日期未随本轮追加内容同步更新（todo.md:3）。—— 属实并已修复：将头部更新为「最后更新: 2026-11-10」与正文 2026-11-10 勾选记录对齐（todo.md:3）；验证：git diff todo.md 仅头部日期与勾选状态变化，无代码改动（2026-11-10）。
 
-- [ ] 审核发现：本轮 diff 未见问题（15e6dc8c..HEAD）
+- [x] 审核发现：本轮 diff 未见问题（15e6dc8c..HEAD）— 属实并已复核：该范围即 ecbc11b（仅改 todo.md 头部日期与追加复核记录，+5/-1，无代码改动）+ 3284206（仅 `orchestrator/server/internal/security/vault_test.go` 测试侧改动：`wrapped[:len-2]+"ff"` 固定替换改为翻转最后一字节 `raw[len(raw)-1] ^= 0xff` + `tampered == wrapped` 即 Fatalf 的自检，堵住原末尾恰为 0xff 时替换成为 no-op、GCM 认证通过、约 1/256 偶发失败的路径）；验证：`go test ./internal/security/ -run 'TestVaultUnwrap' -count=200 -race` 全绿 7.4s（200 次重复足以暴露 1/256 量级 flake）（2026-11-15）
 
 ## Go 覆盖率基线推进（2026-11-11，目标 98%）
 
 - [x] orchestrator/server 总覆盖率 91.6% → 95.5%（+3.9pp，7356 语句；go test ./... -count=1 全绿 16 包，go vet 0 错）。补测三个最低包（不改生产代码）：internal/vault 39.3%→90.8%（LocalProvider 主口令状态机 setup/unlock/change/lock 全哨兵错误、换口令后凭据可解、Upsert 秘密留空保留旧值、Delete 归属校验、Export 无明文契约、Lookup 端口回退+库改密文 ErrDecrypt，d17cff2）；internal/models 73.4%→100%（ToView 时间格式化与 Result/Artifacts JSON 展开/降级，b4158e9）；internal/agent 89.4%→98.8%（guac_relay 回环端到端含 base64 载荷与拆链语义、send 失败/非 EOF 读错误/整条中继拆、handleProxyData/Close/Error 路由分支、SendNotify 导出口写失败语义、ListTeams 排序视图，a7200c3）。
-- [ ] 覆盖率冲 98% 不可达，如实记录上限与原因：剩余 333 条未盖语句（95.5%），其中 handlers HTTP 错误分支长尾 ~139 条散布 10 个文件（guacamole/vault/update/asset/routes 等）、assets/store 19 条、vault DB 失败分支 18 条（内存 sqlite 天然不炸，需故障注入机制）、security 防御分支 10 条、杂项 ~30 条。到 98% 需覆盖 ≥186 条 ≈ 几乎清空全部 handler 错误分支 + 引入故障注入——超出「补 2-3 个包、不写凑数测试」的巡检范围；不硬凑。后续若继续推进，建议按 handlers 错误分支逐文件补 HTTP 层用例（每文件 10-30 条语句），预计可磨到 ~96.5%。
+- [x] 覆盖率冲 98% 不可达，如实记录上限与原因（2026-11-15 复核：上限与逐类原因均已记载完整、无待执行动作，条目闭环；后续推进路径已写明、属用户拍板范围）：剩余 333 条未盖语句（95.5%），其中 handlers HTTP 错误分支长尾 ~139 条散布 10 个文件（guacamole/vault/update/asset/routes 等）、assets/store 19 条、vault DB 失败分支 18 条（内存 sqlite 天然不炸，需故障注入机制）、security 防御分支 10 条、杂项 ~30 条。到 98% 需覆盖 ≥186 条 ≈ 几乎清空全部 handler 错误分支 + 引入故障注入——超出「补 2-3 个包、不写凑数测试」的巡检范围；不硬凑。后续若继续推进，建议按 handlers 错误分支逐文件补 HTTP 层用例（每文件 10-30 条语句），预计可磨到 ~96.5%。
 
 ## C++ 覆盖率基线推进（2026-11-12，目标 ≥96%）
 
@@ -226,6 +226,6 @@
   - 附带 system_watcher.cpp 82%→92%（systemwatch 模块测试的受控子进程/窗口腿捎带覆盖）。
 - [x] 巡检单点名平台头文件口径核实（勿误判）：iscreen.hpp 0%、ifilewatcher.hpp 50% 是 codecov（Windows）视图缺失——本地 gcovr 实测 iscreen.hpp 50%（唯一未盖行 = `virtual ~IScreen() = default;` 纯虚接口析构、ifilewatcher.hpp 66%（唯一未盖行同理 `= default` 析构）、platform_types.hpp 100%。纯虚接口类无逻辑可测，无需 ignore。
 - [x] 修复自查引入的测试顺序毒化：hotkey_module_test 曾在用例尾调 `defaultSharedInput()->shutdown()`——shared input 是进程级单例，关掉后依赖其已初始化态的后续用例（MacroRecorderOffline.PlaybackInjectsThroughXTest）静默空转注入失败（全量跑必挂、单独跑必过）。已改为不关；顺带定位法值得记：全量 vs 单跑 diff + 逐套件二分。
-- [ ] 剩余缺口如实记录（不硬凑）：clipboard.cpp 58% 的缺口全部是 NullClipboard（TU-private 空实现，仅在平台工厂返回空时装配，X11 工厂永不下空 → 本地不可达）；crypt.cpp 75% 缺 79 行（Base64/HMAC 大量错误分支矩阵，属历史基线非本轮点名短板）；其余 <95% 文件（ui_automation.cpp 80%、hotkey.cpp 83%、update.cpp 86% 等）为平台/网络错误路径长尾。本轮 92.1% 是本地 Linux 口径的天花板；codecov（Windows 视图）预计显著更高（script/modules 点名三件均已 87%+，本地 96%/93%/87%）。
+- [x] 剩余缺口如实记录（不硬凑）（2026-11-15 复核：缺口逐文件已记载、本轮 92.1% 为本地 Linux 口径天花板，条目闭环）：clipboard.cpp 58% 的缺口全部是 NullClipboard（TU-private 空实现，仅在平台工厂返回空时装配，X11 工厂永不下空 → 本地不可达）；crypt.cpp 75% 缺 79 行（Base64/HMAC 大量错误分支矩阵，属历史基线非本轮点名短板）；其余 <95% 文件（ui_automation.cpp 80%、hotkey.cpp 83%、update.cpp 86% 等）为平台/网络错误路径长尾。本轮 92.1% 是本地 Linux 口径的天花板；codecov（Windows 视图）预计显著更高（script/modules 点名三件均已 87%+，本地 96%/93%/87%）。
 
 
