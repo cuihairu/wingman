@@ -263,9 +263,17 @@ jobs:
         run: mkdir -p "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
 
       - name: Configure CMake
-        run: >
-          bash ./build-scripts/ci/configure-unix.sh
-          "x64-linux" "Ninja" "build" "Release" "${{ inputs.version_suffix }}"
+        # vcpkg dependency downloads can hit transient GitHub 503s; retry configure
+        run: |
+          for i in 1 2 3; do
+            bash ./build-scripts/ci/configure-unix.sh \
+              "x64-linux" "Ninja" "build" "Release" "${{ inputs.version_suffix }}" && break
+            rc=$?
+            echo "configure attempt $i failed (rc=$rc)"
+            [ "$i" = 3 ] && exit $rc
+            rm -rf build
+            sleep 60
+          done
 
       - name: Build C++ Runtime
         run: cmake --build build --config Release --parallel
@@ -397,9 +405,16 @@ jobs:
         run: mkdir -p "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
 
       - name: Configure CMake
-        run: >
-          bash ./build-scripts/ci/configure-unix.sh
-          "x64-osx" "Ninja" "build" "Release" "${{ inputs.version_suffix }}"
+        run: |
+          for i in 1 2 3; do
+            bash ./build-scripts/ci/configure-unix.sh \
+              "x64-osx" "Ninja" "build" "Release" "${{ inputs.version_suffix }}" && break
+            rc=$?
+            echo "configure attempt $i failed (rc=$rc)"
+            [ "$i" = 3 ] && exit $rc
+            rm -rf build
+            sleep 60
+          done
 
       - name: Build C++ Runtime
         run: cmake --build build --config Release --parallel
@@ -566,7 +581,13 @@ jobs:
         working-directory: apps/android
         run: |
           sed -i "s|^wingmanVcpkgRoot=.*|wingmanVcpkgRoot=$VCPKG_ROOT|" gradle.properties
-          gradle :app:assembleDebug --no-daemon 2>&1 | tee gradle-build.log
+          for i in 1 2 3; do
+            gradle :app:assembleDebug --no-daemon 2>&1 | tee gradle-build.log && break
+            rc=$?
+            echo "assembleDebug attempt $i failed (rc=$rc)"
+            [ "$i" = 3 ] && exit $rc
+            sleep 60
+          done
 
       # AGP 的 "error parsing CMake File API result" 只给结论不给现场，
       # 失败时上传 .cxx（含 File API reply）供离线分析
