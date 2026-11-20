@@ -163,7 +163,6 @@ jobs:
       - name: Setup vcpkg (windows)
         if: matrix.os == 'windows'
         shell: pwsh
-        shell: pwsh
         run: |
           for ($i = 1; $i -le 5; $i++) {
             ./build-scripts/ci/setup-vcpkg.ps1
