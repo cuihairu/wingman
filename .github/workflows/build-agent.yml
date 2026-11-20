@@ -185,14 +185,22 @@ jobs:
       - name: Configure CMake (windows)
         if: matrix.os == 'windows'
         shell: pwsh
-        run: >
-          ./build-scripts/ci/configure-windows.ps1
-          -BuildDir build
-          -Config Release
-          -Platform "${{ matrix.arch == 'arm64' && 'ARM64' || 'x64' }}"
-          -Triplet "${{ matrix.triplet }}"
-          -VersionSuffix "${{ inputs.version_suffix }}"
-          -Generator "${{ matrix.vs-generator || 'Visual Studio 17 2022' }}"
+        # vcpkg dependency downloads can hit transient GitHub 503s; retry configure
+        run: |
+          for ($i = 1; $i -le 3; $i++) {
+            ./build-scripts/ci/configure-windows.ps1 `
+              -BuildDir build `
+              -Config Release `
+              -Platform "${{ matrix.arch == 'arm64' && 'ARM64' || 'x64' }}" `
+              -Triplet "${{ matrix.triplet }}" `
+              -VersionSuffix "${{ inputs.version_suffix }}" `
+              -Generator "${{ matrix.vs-generator || 'Visual Studio 17 2022' }}"
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "configure attempt $i failed (rc=$LASTEXITCODE)"
+            if ($i -eq 3) { exit $LASTEXITCODE }
+            if (Test-Path build) { Remove-Item -Recurse -Force build }
+            Start-Sleep -Seconds 60
+          }
 
       - name: Build agent (windows)
         if: matrix.os == 'windows'
