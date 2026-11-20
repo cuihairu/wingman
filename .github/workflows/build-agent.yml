@@ -136,9 +136,17 @@ jobs:
 
       - name: Configure CMake (unix)
         if: matrix.os != 'windows'
-        run: >
-          bash ./build-scripts/ci/configure-unix.sh
-          "${{ matrix.triplet }}" "Ninja" "build" "Release" "${{ inputs.version_suffix }}" "OFF"
+        # vcpkg dependency downloads can hit transient GitHub 503s; retry configure
+        run: |
+          for i in 1 2 3; do
+            bash ./build-scripts/ci/configure-unix.sh \
+              "${{ matrix.triplet }}" "Ninja" "build" "Release" "${{ inputs.version_suffix }}" "OFF" && break
+            rc=$?
+            echo "configure attempt $i failed (rc=$rc)"
+            [ "$i" = 3 ] && exit $rc
+            rm -rf build
+            sleep 60
+          done
 
       - name: Build agent (unix)
         if: matrix.os != 'windows'
