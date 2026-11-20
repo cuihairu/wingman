@@ -138,14 +138,14 @@ jobs:
         if: matrix.os != 'windows'
         # vcpkg dependency downloads can hit transient GitHub 503s; retry configure
         run: |
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             bash ./build-scripts/ci/configure-unix.sh \
               "${{ matrix.triplet }}" "Ninja" "build" "Release" "${{ inputs.version_suffix }}" "OFF" && break
             rc=$?
             echo "configure attempt $i failed (rc=$rc)"
-            [ "$i" = 3 ] && exit $rc
+            [ "$i" = 5 ] && exit $rc
             rm -rf build
-            sleep 60
+            sleep 120
           done
 
       - name: Build agent (unix)
@@ -187,7 +187,7 @@ jobs:
         shell: pwsh
         # vcpkg dependency downloads can hit transient GitHub 503s; retry configure
         run: |
-          for ($i = 1; $i -le 3; $i++) {
+          for ($i = 1; $i -le 5; $i++) {
             ./build-scripts/ci/configure-windows.ps1 `
               -BuildDir build `
               -Config Release `
@@ -197,7 +197,7 @@ jobs:
               -Generator "${{ matrix.vs-generator || 'Visual Studio 17 2022' }}"
             if ($LASTEXITCODE -eq 0) { break }
             Write-Host "configure attempt $i failed (rc=$LASTEXITCODE)"
-            if ($i -eq 3) { exit $LASTEXITCODE }
+            if ($i -eq 5) { exit $LASTEXITCODE }
             if (Test-Path build) { Remove-Item -Recurse -Force build }
             Start-Sleep -Seconds 60
           }

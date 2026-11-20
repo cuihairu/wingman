@@ -98,14 +98,14 @@ jobs:
       - name: Configure CMake
         # vcpkg dependency downloads can hit transient GitHub 503s; retry configure
         run: |
-          for ($i = 1; $i -le 3; $i++) {
+          for ($i = 1; $i -le 5; $i++) {
             ./build-scripts/ci/configure-windows.ps1 `
               -BuildDir build `
               -Config Release `
               -VersionSuffix "${{ inputs.version_suffix }}"
             if ($LASTEXITCODE -eq 0) { break }
             Write-Host "configure attempt $i failed (rc=$LASTEXITCODE)"
-            if ($i -eq 3) { exit $LASTEXITCODE }
+            if ($i -eq 5) { exit $LASTEXITCODE }
             if (Test-Path build) { Remove-Item -Recurse -Force build }
             Start-Sleep -Seconds 60
           }
@@ -273,14 +273,14 @@ jobs:
       - name: Configure CMake
         # vcpkg dependency downloads can hit transient GitHub 503s; retry configure
         run: |
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             bash ./build-scripts/ci/configure-unix.sh \
               "x64-linux" "Ninja" "build" "Release" "${{ inputs.version_suffix }}" && break
             rc=$?
             echo "configure attempt $i failed (rc=$rc)"
-            [ "$i" = 3 ] && exit $rc
+            [ "$i" = 5 ] && exit $rc
             rm -rf build
-            sleep 60
+            sleep 120
           done
 
       - name: Build C++ Runtime
@@ -414,14 +414,14 @@ jobs:
 
       - name: Configure CMake
         run: |
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             bash ./build-scripts/ci/configure-unix.sh \
               "x64-osx" "Ninja" "build" "Release" "${{ inputs.version_suffix }}" && break
             rc=$?
             echo "configure attempt $i failed (rc=$rc)"
-            [ "$i" = 3 ] && exit $rc
+            [ "$i" = 5 ] && exit $rc
             rm -rf build
-            sleep 60
+            sleep 120
           done
 
       - name: Build C++ Runtime
@@ -589,12 +589,12 @@ jobs:
         working-directory: apps/android
         run: |
           sed -i "s|^wingmanVcpkgRoot=.*|wingmanVcpkgRoot=$VCPKG_ROOT|" gradle.properties
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             gradle :app:assembleDebug --no-daemon 2>&1 | tee gradle-build.log && break
             rc=$?
             echo "assembleDebug attempt $i failed (rc=$rc)"
-            [ "$i" = 3 ] && exit $rc
-            sleep 60
+            [ "$i" = 5 ] && exit $rc
+            sleep 120
           done
 
       # AGP 的 "error parsing CMake File API result" 只给结论不给现场，
