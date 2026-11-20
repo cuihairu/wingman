@@ -115,7 +115,14 @@ jobs:
 
       - name: Setup vcpkg (unix)
         if: matrix.os != 'windows'
-        run: bash ./build-scripts/ci/setup-vcpkg.sh
+        run: |
+          for i in 1 2 3 4 5; do
+            bash ./build-scripts/ci/setup-vcpkg.sh && break
+            rc=$?
+            echo "setup vcpkg attempt $i failed (rc=$rc)"
+            [ "$i" = 5 ] && exit $rc
+            sleep 120
+          done
 
       - name: Prepare vcpkg cache (unix)
         if: matrix.os != 'windows'
@@ -156,7 +163,15 @@ jobs:
       - name: Setup vcpkg (windows)
         if: matrix.os == 'windows'
         shell: pwsh
-        run: ./build-scripts/ci/setup-vcpkg.ps1
+        shell: pwsh
+        run: |
+          for ($i = 1; $i -le 5; $i++) {
+            ./build-scripts/ci/setup-vcpkg.ps1
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "setup vcpkg attempt $i failed (rc=$LASTEXITCODE)"
+            if ($i -eq 5) { exit $LASTEXITCODE }
+            Start-Sleep -Seconds 120
+          }
 
       - name: Add NuGet sources (windows)
         if: matrix.os == 'windows'

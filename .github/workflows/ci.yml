@@ -102,7 +102,15 @@ jobs:
             ${{ runner.os }}-vcpkg-
 
       - name: Setup vcpkg
-        run: ./build-scripts/ci/setup-vcpkg.ps1
+        shell: pwsh
+        run: |
+          for ($i = 1; $i -le 5; $i++) {
+            ./build-scripts/ci/setup-vcpkg.ps1
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "setup vcpkg attempt $i failed (rc=$LASTEXITCODE)"
+            if ($i -eq 5) { exit $LASTEXITCODE }
+            Start-Sleep -Seconds 120
+          }
 
       - name: Add NuGet sources (GitHub Packages)
         run: |
@@ -126,7 +134,7 @@ jobs:
 
       - name: Configure CMake
         run: |
-          $maxRetries = 3
+          $maxRetries = 5
           $retryCount = 0
           $success = $false
 
@@ -142,14 +150,14 @@ jobs:
                 Write-Host "CMake configure failed with exit code $LASTEXITCODE"
                 if ($retryCount -lt $maxRetries) {
                   Write-Host "Waiting 30 seconds before retry..."
-                  Start-Sleep -Seconds 30
+                  Start-Sleep -Seconds 120
                 }
               }
             } catch {
               Write-Host "Exception: $_"
               if ($retryCount -lt $maxRetries) {
                 Write-Host "Waiting 30 seconds before retry..."
-                Start-Sleep -Seconds 30
+                Start-Sleep -Seconds 120
               }
             }
           }
@@ -241,14 +249,21 @@ jobs:
             ${{ runner.os }}-vcpkg-
 
       - name: Setup vcpkg
-        run: bash ./build-scripts/ci/setup-vcpkg.sh
+        run: |
+          for i in 1 2 3 4 5; do
+            bash ./build-scripts/ci/setup-vcpkg.sh && break
+            rc=$?
+            echo "setup vcpkg attempt $i failed (rc=$rc)"
+            [ "$i" = 5 ] && exit $rc
+            sleep 120
+          done
 
       - name: Prepare vcpkg cache
         run: mkdir -p "${{ github.workspace }}/vcpkg/archives" "${{ github.workspace }}/vcpkg/downloads"
 
       - name: Configure CMake
         run: |
-          max_retries=3
+          max_retries=5
           retry_count=0
           success=false
 
@@ -262,7 +277,7 @@ jobs:
               echo "CMake configure failed with exit code $?"
               if [ $retry_count -lt $max_retries ]; then
                 echo "Waiting 30 seconds before retry..."
-                sleep 30
+                sleep 120
               fi
             fi
           done
@@ -329,14 +344,21 @@ jobs:
             ${{ runner.os }}-vcpkg-
 
       - name: Setup vcpkg
-        run: bash ./build-scripts/ci/setup-vcpkg.sh
+        run: |
+          for i in 1 2 3 4 5; do
+            bash ./build-scripts/ci/setup-vcpkg.sh && break
+            rc=$?
+            echo "setup vcpkg attempt $i failed (rc=$rc)"
+            [ "$i" = 5 ] && exit $rc
+            sleep 120
+          done
 
       - name: Prepare vcpkg cache
         run: mkdir -p "${{ github.workspace }}/vcpkg/archives" "${{ github.workspace }}/vcpkg/downloads"
 
       - name: Configure CMake
         run: |
-          max_retries=3
+          max_retries=5
           retry_count=0
           success=false
 
@@ -358,7 +380,7 @@ jobs:
               echo "CMake configure failed with exit code $?"
               if [ $retry_count -lt $max_retries ]; then
                 echo "Waiting 30 seconds before retry..."
-                sleep 30
+                sleep 120
               fi
             fi
           done
@@ -431,7 +453,14 @@ jobs:
             ${{ runner.os }}-vcpkg-
 
       - name: Setup vcpkg
-        run: bash ./build-scripts/ci/setup-vcpkg.sh
+        run: |
+          for i in 1 2 3 4 5; do
+            bash ./build-scripts/ci/setup-vcpkg.sh && break
+            rc=$?
+            echo "setup vcpkg attempt $i failed (rc=$rc)"
+            [ "$i" = 5 ] && exit $rc
+            sleep 120
+          done
 
       - name: Prepare vcpkg cache
         run: mkdir -p "${{ github.workspace }}/vcpkg/archives" "${{ github.workspace }}/vcpkg/downloads"
@@ -446,7 +475,7 @@ jobs:
 
       - name: Configure CMake
         run: |
-          max_retries=3
+          max_retries=5
           retry_count=0
           success=false
 
@@ -470,7 +499,7 @@ jobs:
               echo "CMake configure failed with exit code $?"
               if [ $retry_count -lt $max_retries ]; then
                 echo "Waiting 30 seconds before retry..."
-                sleep 30
+                sleep 120
               fi
             fi
           done
@@ -526,7 +555,15 @@ jobs:
             ${{ runner.os }}-vcpkg-
 
       - name: Setup vcpkg
-        run: ./build-scripts/ci/setup-vcpkg.ps1
+        shell: pwsh
+        run: |
+          for ($i = 1; $i -le 5; $i++) {
+            ./build-scripts/ci/setup-vcpkg.ps1
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "setup vcpkg attempt $i failed (rc=$LASTEXITCODE)"
+            if ($i -eq 5) { exit $LASTEXITCODE }
+            Start-Sleep -Seconds 120
+          }
 
       - name: Add NuGet sources (GitHub Packages)
         run: |
@@ -549,7 +586,16 @@ jobs:
         run: New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}" | Out-Null
 
       - name: Configure CMake (Python + tests enabled)
-        run: ./build-scripts/ci/configure-windows.ps1 -BuildDir build -Config Debug -EnablePython -EnableTests
+        # vcpkg dependency downloads can hit transient GitHub 503s; retry configure
+        run: |
+          for ($i = 1; $i -le 5; $i++) {
+            ./build-scripts/ci/configure-windows.ps1 -BuildDir build -Config Debug -EnablePython -EnableTests
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "configure attempt $i failed (rc=$LASTEXITCODE)"
+            if ($i -eq 5) { exit $LASTEXITCODE }
+            if (Test-Path build) { Remove-Item -Recurse -Force build }
+            Start-Sleep -Seconds 120
+          }
 
       - name: Build
         run: cmake --build build --config Debug --parallel
