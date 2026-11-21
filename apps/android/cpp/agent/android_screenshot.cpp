@@ -1,6 +1,6 @@
 #include "agent/android_screenshot.hpp"
 
-#include "agent/base64.hpp"
+#include "wingman/crypt.hpp"
 #include "platform/android/android_host_bridge.hpp"
 #include "wingman/screen.hpp"
 
@@ -105,7 +105,7 @@ runtime::CommandResult handleScreenshotCapture(const CommandData& data,
 
     const std::vector<uint8_t> bytes(jpegBuffer.begin(), jpegBuffer.end());
     const std::string image =
-        "data:image/jpeg;base64," + base64Encode(bytes);
+        "data:image/jpeg;base64," + crypt::base64Encode(bytes);
 
     nlohmann::json result = {
         {"image", image},
