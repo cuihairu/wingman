@@ -1,4 +1,4 @@
-package handlers
+package agentstore
 
 import (
 	"encoding/json"

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/agentstore"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/handlers"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/middleware"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
@@ -96,7 +97,7 @@ func newTestEnv(t *testing.T) *testEnv {
 
 	registry := agent.NewRegistry(hub)
 	// 与 main.go 一致：标签经 DB 写穿/恢复
-	registry.SetTagStore(handlers.NewAgentTagStore(db))
+	registry.SetTagStore(agentstore.NewAgentTagStore(db))
 
 	listener := agent.NewFrameListener(registry, hub)
 	// 与 main.go 一致：脚本输出事件持久化到 ExecutionLog

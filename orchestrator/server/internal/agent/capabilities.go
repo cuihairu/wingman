@@ -24,7 +24,7 @@ var KnownCapabilities = map[string]bool{
 	"ml.onnx":             true,
 }
 
-// CapabilityStore 能力集持久化接口（由 DB 层实现，见 handlers.NewAgentCapabilityStore）。
+// CapabilityStore 能力集持久化接口（由 DB 层实现，见 agentstore.NewAgentCapabilityStore）。
 // 与 TagStore 同构：Registry 只依赖接口，DB IO 全部在锁外执行。
 type CapabilityStore interface {
 	// LoadCapabilities 返回持久化的能力集；(nil, false) 表示无记录或解析失败。

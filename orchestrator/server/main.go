@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/agentstore"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/config"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/handlers"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/models"
@@ -87,8 +88,8 @@ func run() error {
 
 	// Agent 注册表
 	registry := agent.NewRegistry(wsHub)
-	registry.SetTagStore(handlers.NewAgentTagStore(db))
-	registry.SetCapabilityStore(handlers.NewAgentCapabilityStore(db))
+	registry.SetTagStore(agentstore.NewAgentTagStore(db))
+	registry.SetCapabilityStore(agentstore.NewAgentCapabilityStore(db))
 	go registry.StartHeartbeatCheck()
 
 	// TCP Frame Listener（接受 runtime outbound 连接）

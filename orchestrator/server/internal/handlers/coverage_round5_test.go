@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/agent"
+	"github.com/cuihaitao/wingman/orchestrator/server/internal/agentstore"
 	"github.com/cuihaitao/wingman/orchestrator/server/internal/scripts"
 	"github.com/gin-gonic/gin"
 )
@@ -231,7 +232,7 @@ func TestScriptHandleRunMissingFile500(t *testing.T) {
 // ---------- tagstore：nil db 分支 ----------
 
 func TestTagStoreNilDB(t *testing.T) {
-	store := NewAgentTagStore(nil)
+	store := agentstore.NewAgentTagStore(nil)
 
 	if tags, ok := store.LoadTags("any-agent"); ok || tags != nil {
 		t.Errorf("nil db LoadTags should return (nil,false), got (%v,%v)", tags, ok)

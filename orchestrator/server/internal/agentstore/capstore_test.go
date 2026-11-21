@@ -1,4 +1,4 @@
-package handlers
+package agentstore
 
 import (
 	"reflect"
@@ -10,7 +10,7 @@ import (
 // CapabilityStore 的持久化 roundtrip：Save → Load 应还原；空集清除语义
 // （"[]"）应可 roundtrip；无记录返回 (nil, false)。
 func TestAgentCapabilityStoreRoundtrip(t *testing.T) {
-	db := newDB(t)
+	db := setupStoreDB(t)
 	store := NewAgentCapabilityStore(db)
 
 	// 无记录
