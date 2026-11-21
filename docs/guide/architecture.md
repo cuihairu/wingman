@@ -2,24 +2,321 @@
 
 # Architecture
 
-This document is lengthy and has no English translation yet.
+## System Architecture Overview
 
-The section outline below mirrors the Chinese source document; see [architecture.md](../zh/guide/architecture.md) for the original.
+```mermaid
+graph TB
+    subgraph "User Layer"
+        UI[Web Dashboard<br/>monitoring and control<br/>React/Umi]
+        GUI[Tauri GUI<br/>desktop app<br/>Svelte]
+        CLI[CLI Client<br/>command line tool]
+    end
 
-- 系统架构概览
-- 中控机-受控机架构
-  - 通信协议
-  - TCP 消息格式
-- 多账号协作编排
-  - 工作流模型
-  - 屏障同步机制
-  - Agent 状态机
-- 核心模块
-  - 控制平面模块
-  - 执行平面模块
-  - 核心能力模块
-- C++ / Lua 分层
-- 目录结构
+    subgraph "Control Host Server (Go)"
+        Orchestrator[Task orchestrator<br/>Orchestrator]
+        AgentMgr[Client management<br/>AgentManager]
+        TCPServer[TCP Server<br/>asio async]
+        Storage[State store<br/>KV Store]
+    end
+
+    subgraph "Managed Host 1"
+        Client1[TCP Client<br/>outbound connect]
+        Lua1[Lua Engine]
+        Core1[C++ Core]
+    end
+
+    subgraph "Managed Host 2"
+        Client2[TCP Client<br/>outbound connect]
+        Lua2[Lua Engine]
+        Core2[C++ Core]
+    end
+
+    subgraph "Managed Host N"
+        ClientN[TCP Client<br/>outbound connect]
+        LuaN[Lua Engine]
+        CoreN[C++ Core]
+    end
+
+    UI -->|WebSocket| TCPServer
+    GUI -->|Tauri IPC| Core1
+    CLI -->|TCP| TCPServer
+    TCPServer --> AgentMgr
+    TCPServer --> Orchestrator
+    Orchestrator --> Storage
+
+    Client1 -.->|outbound only| TCPServer
+    Client2 -.->|outbound only| TCPServer
+    ClientN -.->|outbound only| TCPServer
+
+    Client1 --> Lua1
+    Client2 --> Lua2
+    ClientN --> LuaN
+
+    Lua1 --> Core1
+    Lua2 --> Core2
+    LuaN --> CoreN
+
+    style Orchestrator fill:#f9f,stroke:#333,stroke-width:2px
+    style TCPServer fill:#bbf,stroke:#333,stroke-width:2px
+```
+
+## Control Host and Managed Host Architecture
+
+### Communication Protocol
+
+```mermaid
+sequenceDiagram
+    participant C as Managed Host Client
+    participant S as Control Host Server
+
+    C->>S: TCP connect
+    S-->>C: connection established
+
+    Note over C,S: Registration phase
+    C->>S: Register(agentId, hostname)
+    S-->>C: OK(code=0)
+
+    Note over C,S: Heartbeat keep-alive
+    loop every 30 seconds (heartbeatInterval, configurable)
+        C->>S: Heartbeat(status, currentTask)
+        S-->>C: Pong
+    end
+
+    Note over C,S: Task execution
+    S->>C: ExecuteTask(script, params)
+    C->>C: Lua execution
+    C->>S: ReportProgress(stepId, progress)
+    C->>S: TaskComplete(result)
+    S-->>C: ACK
+
+    Note over C,S: Disconnect handling
+    C--xS: connection lost
+    S->>S: mark agent offline
+    C->>C: auto reconnect (after 5s)
+    C->>S: TCP reconnect
+    C->>S: Register (re-register)
+```
+
+### TCP Message Format
+
+```mermaid
+graph LR
+    subgraph "Request message"
+        A[Request] --> B[type: message type]
+        A --> C[id: request ID]
+        A --> D[timestamp: sent at]
+        A --> E[agent_id: sender ID]
+        A --> F[data: business data JSON]
+    end
+
+    subgraph "Response message"
+        G[Response] --> H[request_id: matching request ID]
+        G --> I[code: error code]
+        G --> J[timestamp: response time]
+        G --> K[message: readable description]
+        G --> L[data: business data JSON]
+    end
+
+    style A fill:#e1f5ff
+    style G fill:#fff4e1
+```
+
+#### Envelope Protocol
+
+Every frame is a 4-byte binary length prefix followed by a JSON payload, with no delimiter or newline:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  length prefix (4 bytes, binary)                        │
+│  {"type":"heartbeat",...}          <- JSON payload      │
+└─────────────────────────────────────────────────────────┘
+```
+
+- The C++ side (`libs/transport/`) writes and reads the length prefix in network byte order.
+- The Go side (`orchestrator/server`) decodes the length prefix in host byte order.
+
+#### Error Handling
+
+The remote protocol currently has no unified numeric error-code table. Error semantics are carried by fields of the concrete message type (such as the `error` / `message` string fields; a failed token check returns `error: "invalid or missing token"`). REST endpoints between the Dashboard and the Go server use standard HTTP status codes.
+
+## Multi-Account Collaborative Orchestration
+
+### Workflow Model
+
+```mermaid
+graph TB
+    subgraph "Workflow definition"
+        WF[Workflow]
+        S1[Step 1: login]
+        S2[Step 2: task A]
+        S3[Step 3: task B]
+        S4[Step 4: settlement]
+
+        WF --> S1
+        S1 --> S2
+        S1 --> S3
+        S2 --> S4
+        S3 --> S4
+    end
+
+    subgraph "Agent assignment"
+        S1 --> A1[Agent1, Agent2, Agent3]
+        S2 --> A2[Agent1, Agent2]
+        S3 --> A3[Agent3]
+    end
+
+    subgraph "Execution flow"
+        B1[Barrier sync: every agent done Step 1] --> S2
+        B2[Barrier sync: every agent done Step 2/3] --> S4
+    end
+
+    style WF fill:#f9f,stroke:#333,stroke-width:2px
+    style B1 fill:#ff9,stroke:#333,stroke-width:2px
+    style B2 fill:#ff9,stroke:#333,stroke-width:2px
+```
+
+### Barrier Synchronization
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending: workflow submitted
+
+    Pending --> Step1_Running: start Step 1
+    Step1_Running --> Step1_Complete: Agent1 done
+    Step1_Running --> Step1_Complete: Agent2 done
+    Step1_Running --> Step1_Complete: Agent3 done
+
+    Step1_Complete --> Barrier_Waiting: wait for all agents
+    Barrier_Waiting --> Step2_Running: barrier passed
+
+    Step2_Running --> Step2_Complete: Agent1 done
+    Step2_Running --> Step2_Complete: Agent2 done
+
+    Step2_Complete --> Barrier_Waiting2: wait for all agents
+    Barrier_Waiting2 --> Step3_Running: barrier passed
+
+    Step3_Running --> [*]: workflow complete
+
+    note right of Barrier_Waiting
+        Barrier sync: wait until every agent
+        assigned to the step completes it
+    end note
+```
+
+### Agent State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Disconnected: initial state
+
+    Disconnected --> Connecting: start connect
+    Connecting --> Registering: TCP connected
+    Registering --> Idle: registered
+
+    Idle --> Busy: task received
+    Busy --> Idle: task done
+    Busy --> Error: task failed
+
+    Idle --> Disconnected: heartbeat timeout
+    Busy --> Disconnected: heartbeat timeout
+    Error --> Idle: recovered
+
+    Registering --> Disconnected: registration failed
+    Connecting --> Disconnected: connect failed
+
+    Disconnected --> Connecting: auto reconnect
+
+    note right of Idle
+        Idle, waiting for tasks
+    end note
+
+    note right of Busy
+        Running a task,
+        reporting progress periodically
+    end note
+```
+
+## Core Modules
+
+### Control Plane Modules
+
+| Module | Responsibility | Location |
+|-----|------|------|
+| **Go Orchestrator** | Task orchestration, node management, workflow scheduling | `orchestrator/server/` |
+| **Dashboard** | Web console and visual monitoring | `orchestrator/dashboard/` |
+
+### Execution Plane Modules
+
+| Module | Responsibility | File |
+|-----|------|------|
+| **RemoteClient** | Connects outbound to the orchestrator and exchanges tasks | `libs/agentcore/src/remote_client.cpp` |
+| **Transport** | Connections, sessions and message exchange | `libs/transport/` |
+| **Runtime Agent** | Local task execution and status reporting | `apps/agent/` |
+
+### Core Capability Modules
+
+| Module | Responsibility | File (`lib/wingman/src/`) |
+|-----|------|------|
+| **Screen** | Screen operations | `screen.cpp` + `platform/{win,linux,mac}/*_screen.cpp` |
+| **Input** | Input simulation | `platform/win/sendinput_input.cpp`, `platform/linux/xtest_input.cpp`, `platform/mac/cgevent_input.cpp` |
+| **Window** | Window management | `window.cpp` + `platform/{win,linux,mac}/*_window.cpp` |
+| **Process** | Process management | `platform/win/win32_process.cpp`, `platform/{linux,mac}/posix_process.cpp` |
+| **Recorder** | Macro recording | `platform/{win,linux,mac}/*_recorder.cpp` + `script/modules/macro_module.cpp` |
+| **Trigger** | Trigger system | `trigger_engine.cpp`, `smart_trigger.cpp` + `platform/win/win32_trigger.cpp` |
+| **Storage** | Storage system | `storage.cpp`, `kvstore.cpp` |
+| **Verification** | CAPTCHA capability | `verification.cpp` |
+
+## C++ / Lua Layering
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Layering decisions                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   C++ implements               Lua implements                   │
+│   ──────────────               ──────────────                   │
+│                                                                 │
+│   ├── performance-critical ops   ├── business logic             │
+│   ├── system calls               ├── state machines             │
+│   ├── memory operations          ├── trigger combinations       │
+│   ├── image processing           ├── user-defined behavior      │
+│   └── TCP/network communication  └── script orchestration       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Directory Structure
+
+```
+wingman/
+├── .github/workflows/       # CI/CD configuration
+├── apps/                    # Applications
+│   ├── agent/               # C++ runtime (outbound agent)
+│   │   └── src/
+│   │       ├── agent.cpp            # agent main logic
+│   │       ├── local_ipc_server.cpp # local IPC service (Tauri GUI control channel)
+│   │       ├── standalone_mode.cpp
+│   │       └── commands/            # CLI subcommands
+│   ├── gui/                 # Tauri/Svelte GUI
+│   │   ├── src-tauri/
+│   │   └── src/
+│   └── android/             # Android agent
+├── lib/wingman/             # C++ core engine
+├── libs/                    # Support libraries
+│   ├── lua/                 # Lua bindings
+│   ├── python/              # Python bindings
+│   ├── transport/           # TCP transport layer (frame protocol)
+│   ├── agentcore/           # remote client core (RemoteClient)
+│   └── androidagent/        # Android agent library
+├── orchestrator/            # Orchestration layer
+│   ├── dashboard/           # web control panel (React/Umi)
+│   └── server/              # Go server
+├── examples/lua_scripts/    # Lua script examples
+├── docs/                    # Documentation
+└── scripts/                 # build and verification engineering scripts
+```
+
+Tests live next to each library (`lib/wingman/tests/`, `libs/lua/tests/`, `libs/python/tests/`); there is no top-level `tests/` directory.
 
 ## Source Layer Analysis (2026-11-07)
 
