@@ -203,7 +203,7 @@
 - 分类不一致：`apps/agent/src/resource_loader.cpp` 属于应用打包/资源能力，但根目录还有通用 `runtime` 等应用文件，资源路径逻辑应独立子目录或库（`apps/agent/src/resource_loader.cpp:42`）。
 - 分类不一致：`apps/agent/src/local_ipc_server.cpp` 是传输/协议装配，`apps/agent/src/agent.cpp` 是应用组合；两者同层但生命周期与协议职责不同（`apps/agent/src/local_ipc_server.cpp:139`）。
 - 分类不一致：`apps/android/cpp/agent/base64.hpp` 内联复制 base64 实现，而通用编解码在 `lib/wingman/src/crypt.cpp`；Android 约束成立但应建立共享轻量 codec 而非 agent 内副本（`apps/android/cpp/agent/base64.hpp:12`）。
-- 分类不一致：`orchestrator/server/internal/handlers/tagstore.go` 和 `capstore.go` 是注册表持久化适配器，却放在 HTTP handlers 包；registry 依赖会反向经过 API 包（`orchestrator/server/internal/agent/registry.go:90`）。
+- 分类不一致：`orchestrator/server/internal/handlers/tagstore.go` 和 `capstore.go` 是注册表持久化适配器，却放在 HTTP handlers 包；registry 依赖会反向经过 API 包（`orchestrator/server/internal/agent/registry.go:90`）。—— 属实并已修复（fa5f41d，2026-11-21）：两个 gorm 持久化适配器（实现 `agent.TagStore`/`agent.CapabilityStore`）迁出 HTTP handlers 包至新 `internal/agentstore` 包，main.go / integration harness 接线、纯 store 测试（5 标签 + 1 能力集 + nil-db）与 handlers 连通测试一并随迁。事实澄清：registry 依赖并不会反向经过 API 包（registry.go 仅 import stdlib + pkg/websocket，TagStore/CapabilityStore 接口本就定义在 `internal/agent` 包内），真正问题是持久化适配器与 HTTP 处理器同层混住、接口实现无处安放；分置后 agents 包零 gorm 依赖路径清晰。验证：`go build ./...`、`go vet ./...`、`go test ./...` 全绿（17 包 ok，含新 agentstore 包）。
 - 分类不一致：`docs/zh/guide/architecture.md` 是完整架构文档，而 `docs/guide/architecture.md` 只有英文占位大纲；同一路径两侧深度不一致（`docs/guide/architecture.md:3`）。—— 属实并已修复（`7fe333b`，2026-11-21）：英文版补齐至与中文镜像同深（系统架构概览 / 中控机-受控机架构（通信协议 + 信封协议 + 错误处理）/ 多账号协作编排（工作流模型 + 屏障同步 + Agent 状态机）/ 核心模块三表 / C++ · Lua 分层 / 目录结构全部译出，mermaid 标签与目录注释同步英文；Source Layer Analysis 段两侧原本成对不动）；en 411 行 vs zh 410 行，深度对齐，残余中文零。
 
 ## 审核发现（33ec1f83..HEAD，只审不改，2026-11-10）
