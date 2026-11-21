@@ -521,7 +521,7 @@ wingman.perf.resetStats()
 | `get_cache_size()` | `getCacheSize()` | 获取缓存图像数量 | 返回: int |
 | `get_cache_stats()` | `getCacheStats()` | 获取缓存统计 | 返回: {size, hits, misses, hitRate} |
 | `fast_find_image(...)` | `fastFindImage(...)` | 快速查找图像 | path, x, y, w, h, threshold=0.9 返回: {x,y}? |
-| `parallel_find_colors(...)` | `parallelFindColors(...)` | 并行查找颜色 | color, x, y, w, h, tolerance, maxCount=0 返回: {{x,y}} |
+| `parallel_find_colors(...)` | `parallelFindColors(...)` | 并行查找颜色 | color, x, y, w, h, tolerance, maxCount=0 返回: [{x,y}] |
 | `get_stats()` | `getStats()` | 获取性能统计 | 返回: {totalCaptures,...} |
 | `reset_stats()` | `resetStats()` | 重置性能统计 | 无返回值 |
 

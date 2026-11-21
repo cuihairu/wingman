@@ -38,6 +38,14 @@ jobs:
       working-directory: docs
       run: pnpm install
 
+    # vitepress 对 md→Vue 插值泄漏（双花括号漏进 template）exit 0 不报错，
+    # 2026-11-21 审计页截断即此盲区。秒级静态守卫在 build 前拦截。
+    - name: Lint docs
+      working-directory: docs
+      run: |
+        node tests/md-vue-interpolation.test.mjs
+        node tests/lang-pick.test.mjs
+
     - name: Build docs
       working-directory: docs
       run: pnpm docs:build

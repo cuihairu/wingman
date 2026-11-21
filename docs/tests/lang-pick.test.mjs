@@ -4,10 +4,12 @@
 // 旧值 index.en.html 清理后回落自动探测；root 以外路径不跳转；点击 zh/英文
 // 链接记账（站内链接 /wingman/zh/… 与 md 相对 zh/ 两种形态）。
 import assert from 'node:assert/strict'
+import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 
 const out = await build({
-  entryPoints: ['.vitepress/theme/lang.ts'],
+  // 相对本文件定位，不依赖调用时 cwd
+  entryPoints: [fileURLToPath(new URL('../.vitepress/theme/lang.ts', import.meta.url))],
   bundle: true,
   format: 'cjs',
   platform: 'node',
